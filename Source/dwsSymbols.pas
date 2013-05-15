@@ -137,9 +137,6 @@ type
          function  EvalAsBoolean(exec : TdwsExecution) : Boolean; virtual; abstract;
          function  EvalAsFloat(exec : TdwsExecution) : Double; virtual; abstract;
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); overload; virtual; abstract;
-         {$ifdef FPC}
-         procedure EvalAsUnicodeString(exec : TdwsExecution; var Result : UnicodeString);
-         {$endif}
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); overload; virtual; abstract;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); virtual; abstract;
          procedure EvalNoResult(exec : TdwsExecution); virtual;
@@ -1876,16 +1873,6 @@ function TExprBase.GetSubExprCount : Integer;
 begin
    Result:=0;
 end;
-
-{$ifdef FPC}
-procedure TExprBase.EvalAsUnicodeString(exec: TdwsExecution; var Result: UnicodeString);
-var
-   buf : UnicodeString;
-begin
-   EvalAsString(exec, buf);
-   Result:=UTF8ToUTF16(buf);
-end;
-{$endif}
 
 // EvalNoResult
 //

@@ -65,7 +65,7 @@ type
          procedure WriteStrings(const str : TStrings); overload;
          procedure WriteStrings(const str : array of UnicodeString); overload;
 
-         function ToString : UnicodeString; override;
+         function ToString : String; override;
 
          property Stream : TWriteOnlyBlockStream read FStream write FStream;
    end;
@@ -1318,11 +1318,7 @@ begin
          if FCount=0 then Break;
          RaiseJSONParseError('Invalid object pair name start character "%s"', c)
       end;
-      {$ifdef FPC}
-      name:=UTF8Encode(parserState.ParseJSONString(c));
-      {$else}
       parserState.ParseJSONString(c, name);
-      {$endif}
       c:=parserState.SkipBlanks(parserState.NeedChar());
       if c<>':' then
          RaiseJSONParseError('Invalid object pair name separator character "%s"', c);
@@ -1823,11 +1819,7 @@ begin
    parserState.TrailCharacter:=' ';
    case initialChar of
       '"' : begin
-         {$ifdef FPC}
-         PString(@FData)^:=UTF8Encode(parserState.ParseJSONString(initialChar));
-         {$else}
-         parserState.ParseJSONString(initialChar, PString(@FData)^);
-         {$endif}
+         parserState.ParseJSONString(initialChar, PUnicodeString(@FData)^);
          FType:=jvtString;
       end;
       '0'..'9', '-' : begin
@@ -2176,7 +2168,7 @@ end;
 
 // ToString
 //
-function TdwsJSONWriter.ToString : UnicodeString;
+function TdwsJSONWriter.ToString : String;
 begin
    Result:=FStream.ToString;
 end;
@@ -2196,7 +2188,7 @@ begin
 end;
 
 // AfterWriteImmediate
-//                                                            dwswebidltokenizer
+//
 procedure TdwsJSONWriter.AfterWriteImmediate;
 begin
    case FState of
@@ -2319,9 +2311,9 @@ initialization
 // ------------------------------------------------------------------
 
    vJSONFormatSettings.DecimalSeparator:='.';
-   vImmediate.Initialize;
-   vObject.Initialize;
-   vArray.Initialize;
+   vImmediate.Initialize(TdwsJSONImmediate.Create);
+   vObject.Initialize(TdwsJSONObject.Create);
+   vArray.Initialize(TdwsJSONArray.Create);
 
 finalization
 

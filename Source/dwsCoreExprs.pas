@@ -2169,13 +2169,6 @@ end;
 // AssignValueAsWideChar
 //
 procedure TStrVarExpr.AssignValueAsWideChar(exec : TdwsExecution; aChar : WideChar);
-{$ifdef FPC}
-begin
-   if charCode<128 then
-      AssignValueAsString(exec, Char(charCode))
-   else AssignValueAsString(exec, UTF8Encode(WideChar(charCode)));
-end;
-{$else}
 var
    pstr : PUnicodeString;
 begin
@@ -2184,7 +2177,6 @@ begin
       pstr^[1]:=aChar
    else pstr^:=aChar;
 end;
-{$endif}
 
 // SetChar
 //
@@ -3728,29 +3720,15 @@ end;
 procedure TStringArrayOpExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
 var
    i : Integer;
-   {$ifdef FPC}
-   n : Integer;
-   {$endif}
    buf : UnicodeString;
 begin
-   {$ifdef FPC}
-   FLeft.EvalAsUnicodeString(exec, buf);
-   {$else}
    FLeft.EvalAsString(exec, buf);
-   {$endif}
    i:=FRight.EvalAsInteger(exec);
    if i>Length(buf) then
       RaiseUpperExceeded(exec, i)
    else if i<1 then
       RaiseLowerExceeded(exec, i);
-   {$ifdef FPC}
-   n:=Ord(buf[i]);
-   if (n>=$D800) and (n<=$E000) then
-      n:=n+$10000;
-   Result:=UnicodeToUTF8(n);
-   {$else}
    Result:=buf[i];
-   {$endif}
 end;
 
 // ScriptPos
@@ -3770,11 +3748,7 @@ function TStringLengthExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 var
    buf : UnicodeString;
 begin
-   {$ifdef FPC}
-   FExpr.EvalAsUnicodeString(exec, buf);
-   {$else}
    FExpr.EvalAsString(exec, buf);
-   {$endif}
    Result:=Length(buf);
 end;
 
@@ -4081,11 +4055,7 @@ begin
       varSingle, varDouble, varCurrency :
          Result:=Round(v);
       varString, varUString, varOleStr : begin
-         {$ifdef FPC}
-         s:=UTF8Decode(UnicodeString(v));
-         {$else}
          s:=v;
-         {$endif}
          if s<>'' then
             Result:=Ord(s[1]);
       end;
@@ -4120,11 +4090,7 @@ function TOrdStrExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 var
    s : UnicodeString;
 begin
-   {$ifdef FPC}
-   FExpr.EvalAsUnicodeString(exec, s);
-   {$else}
    FExpr.EvalAsString(exec, s);
-   {$endif}
    if s<>'' then
       Result:=Ord(s[1])
    else Result:=0;
@@ -6897,29 +6863,17 @@ var
    i : Integer;
    s, buf : UnicodeString;
 begin
-   {$ifdef FPC}
-   FStringExpr.EvalAsUnicodeString(exec, s);
-   {$else}
    FStringExpr.EvalAsString(exec, s);
-   {$endif}
    i:=FIndexExpr.EvalAsInteger(exec);
    if i>Length(s) then
       RaiseUpperExceeded(exec, i)
    else if i<1 then
       RaiseLowerExceeded(exec, i);
-   {$ifdef FPC}
-   FValueExpr.EvalAsUnicodeString(exec, buf);
-   {$else}
    FValueExpr.EvalAsString(exec, buf);
-   {$endif}
    if Length(buf)<>1 then
       RaiseScriptError(exec, EScriptError.CreateFmt(RTE_InvalidInputDataSize, [Length(buf), 1]));
    s[i]:=buf[1];
-   {$ifdef FPC}
-   FStringExpr.AssignValue(exec, UTF8Encode(s));
-   {$else}
    FStringExpr.AssignValue(exec, s);
-   {$endif}
 end;
 
 // GetSubExpr
@@ -7980,11 +7934,7 @@ var
    p : PWideChar;
    s : UnicodeString;
 begin
-   {$ifdef FPC}
-   FInExpr.EvalAsUnicodeString(exec, s);
-   {$else}
    FInExpr.EvalAsString(exec, s);
-   {$endif}
 
    v:=TIntVarExpr(FVarExpr).EvalAsPInteger(exec);
 
@@ -8038,11 +7988,7 @@ var
    s : UnicodeString;
    strVarExpr : TStrVarExpr;
 begin
-   {$ifdef FPC}
-   FInExpr.EvalAsUnicodeString(exec, s);
-   {$else}
    FInExpr.EvalAsString(exec, s);
-   {$endif}
 
    strVarExpr:=TStrVarExpr(FVarExpr);
 
@@ -8052,11 +7998,7 @@ begin
       Inc(p);
       case code of
          $D800..$DBFF : // high surrogate
-            {$ifdef FPC}
-            strVarExpr.AssignValueAsString(exec, UTF8Encode(WideChar(code)+p^));
-            {$else}
             strVarExpr.AssignValueAsString(exec, WideChar(code)+p^);
-            {$endif}
          $DC00..$DFFF : //low surrogate
             continue;
       else

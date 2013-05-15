@@ -42,6 +42,7 @@ type
          procedure LookupTest;
          procedure SortedListExtract;
          procedure SimpleListOfInterfaces;
+         procedure UnifierTest;
 
          procedure UnicodeCompareTextTest;
          procedure FastCompareTextSortedValues;
@@ -406,6 +407,23 @@ begin
    finally
       list.Free;
    end;
+end;
+
+// UnifierTest
+//
+procedure TdwsUtilsTests.UnifierTest;
+var
+   s1, s2 : String;
+begin
+   s1:=IntToStr(123);
+   s2:=IntToStr(123);
+
+   Check(Pointer(s1)<>Pointer(s2), 'initial');
+
+   s1:=UnifiedString(s1);
+   s2:=UnifiedString(s2);
+
+   Check(Pointer(s1)=Pointer(s2), 'unified');
 end;
 
 // UnicodeCompareTextTest

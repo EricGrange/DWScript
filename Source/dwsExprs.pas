@@ -355,7 +355,7 @@ type
          procedure AddString(const str : UnicodeString); override;
          procedure AddCRLF; override;
          procedure Clear; override;
-         function ToString : UnicodeString; override;
+         function ToString : String; override;
          function ToDataString : RawByteString; override;
 
          property Text : UnicodeString read GetText;
@@ -1594,7 +1594,7 @@ type
          destructor Destroy; override;
          procedure BeforeDestruction; override;
 
-         function ToString : UnicodeString; override;
+         function ToString : String; override;
 
          procedure ClearData; override;
 
@@ -1633,7 +1633,7 @@ type
          function IndexOf(const item : Variant; fromIndex : Integer) : Integer; overload;
          function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer; overload;
 
-         function ToString : UnicodeString; override;
+         function ToString : String; override;
          function ToStringArray : TStringDynArray;
 
          procedure ReplaceData(const newData : TData); override;
@@ -1658,7 +1658,7 @@ type
                             executionContext : TdwsProgramExecution = nil);
          procedure BeforeDestruction; override;
 
-         function ToString : UnicodeString; override;
+         function ToString : String; override;
 
          property Typ : TInterfaceSymbol read FTyp;
          property Instance : IScriptObj read FInstance;
@@ -3204,7 +3204,7 @@ end;
 
 // ToString
 //
-function TdwsDefaultResult.ToString : UnicodeString;
+function TdwsDefaultResult.ToString : String;
 begin
    Result:=GetText;
 end;
@@ -5868,7 +5868,7 @@ end;
 
 // ToString
 //
-function TScriptObjInstance.ToString : UnicodeString;
+function TScriptObjInstance.ToString : String;
 begin
    Result:=FClassSym.Name;
 end;
@@ -6155,7 +6155,7 @@ end;
 
 // ToString
 //
-function TScriptDynamicArray.ToString : UnicodeString;
+function TScriptDynamicArray.ToString : String;
 begin
    Result:='array of '+FElementTyp.Name;
 end;
@@ -6204,7 +6204,7 @@ end;
 
 // ToString
 //
-function TScriptInterface.ToString : UnicodeString;
+function TScriptInterface.ToString : String;
 begin
    Result:=FTyp.ClassName;
 end;

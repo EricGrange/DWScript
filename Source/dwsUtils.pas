@@ -433,6 +433,38 @@ type
          function Compare(const item1, item2 : TRefCountedObject) : Integer; override;
    end;
 
+   TStringUnifierBucket = record
+      Hash : Cardinal;
+      Str : UnicodeString;
+   end;
+   PStringUnifierBucket = ^TStringUnifierBucket;
+   TStringUnifierBuckets = array of TStringUnifierBucket;
+
+   TStringUnifier = class
+      private
+         FLock : TFixedCriticalSection;
+         FBuckets : TStringUnifierBuckets;
+         FCount : Integer;
+         FGrowth : Integer;
+         FCapacity : Integer;
+
+      protected
+         procedure Grow;
+
+      public
+         constructor Create;
+         destructor Destroy; override;
+
+         // aString must NOT be empty
+         procedure UnifyAssign(const aString : String; var unifiedString : String);
+
+         procedure Lock; inline;
+         procedure UnLock; inline;
+
+         property Count : Integer read FCount;
+         procedure Clear;
+   end;
+
    TThreadCached<T> = class
       private
          FLock : TFixedCriticalSection;
@@ -512,8 +544,8 @@ type
       function DoCompareText(const s1,s2 : string) : PtrInt; override;
       {$else}
       function CompareStrings(const S1, S2: UnicodeString): Integer; override;
-      {$endif}
       function IndexOfName(const name : UnicodeString): Integer; override;
+      {$endif}
    end;
 
    TFastCompareTextList = class (TStringList)
@@ -521,17 +553,17 @@ type
       function DoCompareText(const s1,s2 : string) : PtrInt; override;
       {$else}
       function CompareStrings(const S1, S2: UnicodeString): Integer; override;
-      {$endif}
       function FindName(const name : UnicodeString; var index : Integer) : Boolean;
       function IndexOfName(const name : UnicodeString): Integer; override;
+      {$endif}
    end;
 
-   TClassCloneConstructor<T: class, constructor> = record
+   TClassCloneConstructor<T: class> = record
       private
          FTemplate : T;
          FSize : Integer;
       public
-         procedure Initialize;
+         procedure Initialize(aTemplate : T);
          procedure Finalize;
          function Create : T; inline;
    end;
@@ -590,7 +622,7 @@ implementation
 
 // SimpleStringHash
 //
-function SimpleStringHash(const s : UnicodeString) : Cardinal;
+function SimpleStringHash(const s : UnicodeString) : Cardinal; inline;
 var
    i : Integer;
 begin
@@ -807,6 +839,107 @@ begin
 end;
 
 // ------------------
+// ------------------ TStringUnifier ------------------
+// ------------------
+
+// Create
+//
+constructor TStringUnifier.Create;
+begin
+   inherited;
+   FLock:=TFixedCriticalSection.Create;
+end;
+
+// Destroy
+//
+destructor TStringUnifier.Destroy;
+begin
+   inherited;
+   FLock.Free;
+end;
+
+// UnifyAssign
+//
+procedure TStringUnifier.UnifyAssign(const aString : String; var unifiedString : String);
+var
+   i : Integer;
+   h : Cardinal;
+   bucket : PStringUnifierBucket;
+begin
+   if FGrowth=0 then Grow;
+
+   h:=SimpleStringHash(aString);
+   i:=(h and (FCapacity-1));
+
+   repeat
+      bucket:=@FBuckets[i];
+      if (bucket^.Hash=h) and (bucket^.Str=aString) then begin
+         unifiedString:=bucket^.Str;
+         Exit;
+      end else if bucket^.Hash=0 then begin
+         bucket^.Hash:=h;
+         bucket^.Str:=aString;
+         unifiedString:=aString;
+         Inc(FCount);
+         Dec(FGrowth);
+         Exit;
+      end;
+      i:=(i+1) and (FCapacity-1);
+   until False;
+end;
+
+// Lock
+//
+procedure TStringUnifier.Lock;
+begin
+   FLock.Enter;
+end;
+
+// UnLock
+//
+procedure TStringUnifier.UnLock;
+begin
+   FLock.Leave;
+end;
+
+// Clear
+//
+procedure TStringUnifier.Clear;
+begin
+   SetLength(FBuckets, 0);
+   FCount:=0;
+   FGrowth:=0;
+   FCapacity:=0;
+end;
+
+// Grow
+//
+procedure TStringUnifier.Grow;
+var
+   i, j, n : Integer;
+   oldBuckets : TStringUnifierBuckets;
+begin
+   if FCapacity=0 then
+      FCapacity:=32
+   else FCapacity:=FCapacity*2;
+   FGrowth:=(FCapacity*3) div 4-FCount;
+
+   oldBuckets:=FBuckets;
+   FBuckets:=nil;
+   SetLength(FBuckets, FCapacity);
+
+   n:=FCapacity-1;
+   for i:=0 to High(oldBuckets) do begin
+      if oldBuckets[i].Hash=0 then continue;
+      j:=(oldBuckets[i].Hash and (FCapacity-1));
+      while FBuckets[j].Hash<>0 do
+         j:=(j+1) and n;
+      FBuckets[j].Hash:=oldBuckets[i].Hash;
+      FBuckets[j].Str:=oldBuckets[i].Str;
+   end;
+end;
+
+// ------------------
 // ------------------ UnicodeString Unifier ------------------
 // ------------------
 
@@ -826,23 +959,18 @@ type
          FList : TStringListList;
    end;
 
-   TUnifierStringList = class (TFastCompareStringList)
-      public
-         FLock : TFixedCriticalSection;
-         constructor Create;
-         destructor Destroy; override;
-   end;
-
 var
-   vCharStrings : array [0..127] of TUnifierStringList;
+   vCharStrings : array [0..127] of TStringUnifier;
 
 // CompareStrings
 //
-{$ifndef FPC}
-function TFastCompareStringList.CompareStrings(const S1, S2: UnicodeString): Integer;
+{$ifdef FPC}
+function TFastCompareStringList.DoCompareText(const S1, S2: String): Integer;
+begin
+   Result:=CompareStr(S1, S2);
+end;
 {$else}
-function TFastCompareStringList.DoCompareText(const S1, S2: UnicodeString): Integer;
-{$endif}
+function TFastCompareStringList.CompareStrings(const S1, S2: UnicodeString): Integer;
 begin
    Result:=CompareStr(S1, S2);
 end;
@@ -866,24 +994,7 @@ begin
    end;
    Result:=-1;
 end;
-
-// TUnifierStringList.Create
-//
-constructor TUnifierStringList.Create;
-begin
-   inherited;
-   FLock:=TFixedCriticalSection.Create;
-   Sorted:=True;
-   Duplicates:=dupIgnore;
-end;
-
-// Destroy
-//
-destructor TUnifierStringList.Destroy;
-begin
-   inherited;
-   FLock.Destroy;
-end;
+{$endif}
 
 // InitializeStringsUnifier
 //
@@ -892,7 +1003,7 @@ var
    i : Integer;
 begin
    for i:=Low(vCharStrings) to High(vCharStrings) do
-      vCharStrings[i]:=TUnifierStringList.Create;
+      vCharStrings[i]:=TStringUnifier.Create;
 end;
 
 // FinalizeStringsUnifier
@@ -912,17 +1023,16 @@ end;
 procedure UnifyAssignString(const fromStr : UnicodeString; var toStr : UnicodeString);
 var
    i : Integer;
-   sl : TUnifierStringList;
+   su : TStringUnifier;
 begin
    if fromStr='' then
       toStr:=''
    else begin
       i:=Ord(fromStr[1]) and High(vCharStrings);
-      sl:=vCharStrings[i];
-      sl.FLock.Enter;
-      i:=sl.AddObject(fromStr, nil);
-      toStr:=TStringListCracker(sl).FList[i].FString;
-      sl.FLock.Leave;
+      su:=vCharStrings[i];
+      su.Lock;
+      su.UnifyAssign(fromStr, toStr);
+      su.UnLock;
    end;
 end;
 
@@ -938,13 +1048,13 @@ end;
 procedure TidyStringsUnifier;
 var
    i : Integer;
-   sl : TUnifierStringList;
+   su : TStringUnifier;
 begin
    for i:=Low(vCharStrings) to High(vCharStrings) do begin
-      sl:=vCharStrings[i];
-      sl.FLock.Enter;
-      sl.Clear;
-      sl.FLock.Leave;
+      su:=vCharStrings[i];
+      su.Lock;
+      su.Clear;
+      su.UnLock;
    end;
 end;
 
@@ -1176,11 +1286,13 @@ end;
 
 // CompareStrings
 //
-{$ifndef FPC}
-function TFastCompareTextList.CompareStrings(const S1, S2: UnicodeString): Integer;
+{$ifdef FPC}
+function TFastCompareTextList.DoCompareText(const S1, S2: String): Integer;
+begin
+   Result:=UnicodeCompareText(s1, s2);
+end;
 {$else}
-function TFastCompareTextList.DoCompareText(const S1, S2: UnicodeString): Integer;
-{$endif}
+function TFastCompareTextList.CompareStrings(const S1, S2: UnicodeString): Integer;
 begin
    Result:=UnicodeCompareText(s1, s2);
 end;
@@ -1247,6 +1359,7 @@ begin
          Result:=-1;
    end;
 end;
+{$endif}
 
 // ------------------
 // ------------------ TVarRecArrayContainer ------------------
@@ -2093,15 +2206,6 @@ begin
    Write(dw, 4);
 end;
 
-{$ifdef FPC}
-// WriteString
-//
-procedure TWriteOnlyBlockStream.WriteString(const utf8String : UnicodeString); overload;
-begin
-   WriteString(UTF8Decode(utf8String));
-end;
-{$endif}
-
 // WriteString
 //
 procedure TWriteOnlyBlockStream.WriteString(const utf16String : UnicodeString);
@@ -2150,7 +2254,7 @@ end;
 
 // ToString
 //
-function TWriteOnlyBlockStream.ToString : UnicodeString;
+function TWriteOnlyBlockStream.ToString : String;
 {$ifdef FPC}
 var
    uniBuf : UnicodeString;
@@ -3169,9 +3273,9 @@ end;
 
 // Initialize
 //
-procedure TClassCloneConstructor<T>.Initialize;
+procedure TClassCloneConstructor<T>.Initialize(aTemplate : T);
 begin
-   FTemplate:=T.Create;
+   FTemplate:=aTemplate;
    FSize:=TObject(FTemplate).InstanceSize;
 end;
 
