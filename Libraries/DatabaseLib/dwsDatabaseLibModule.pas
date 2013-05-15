@@ -4,7 +4,8 @@ interface
 
 uses
   SysUtils, Classes,
-  dwsStrings, dwsComp, dwsExprs, dwsSymbols, dwsStack, dwsDatabase, dwsJSON, dwsErrors;
+  dwsStrings, dwsUtils,
+  dwsComp, dwsExprs, dwsSymbols, dwsStack, dwsDatabase, dwsJSON, dwsErrors;
 
 type
 
@@ -97,7 +98,7 @@ type
    TDataSet = class
       Intf : IdwsDataSet;
       FirstDone : Boolean;
-      function IndexOfField(const name : String) : Integer;
+      function IndexOfField(const aName : String) : Integer;
       function FieldByName(Info : TProgramInfo) : IdwsDataField;
       function Step : Boolean;
       class procedure WriteValueToJSON(wr : TdwsJSONWriter; const fld : IdwsDataField); static;
@@ -112,10 +113,10 @@ type
 
 // IndexOfField
 //
-function TDataSet.IndexOfField(const name : String) : Integer;
+function TDataSet.IndexOfField(const aName : String) : Integer;
 begin
    for Result:=0 to Intf.FieldCount-1 do
-      if Intf.Fields[Result].Name=name then Exit;
+      if UnicodeSameText(Intf.Fields[Result].Name, aName) then Exit;
    Result:=-1;
 end;
 
