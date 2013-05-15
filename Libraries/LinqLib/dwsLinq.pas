@@ -5,13 +5,14 @@ uses
    Classes,
    dwsComp, dwsCompiler, dwsLanguageExtension, dwsSymbols, dwsExprs, dwsUtils,
    dwsXPlatform,
-   dwsTokenizer, dwsErrors, dwsConstExprs, dwsRelExprs, dwsMethodExprs;
+   dwsTokenizer, dwsErrors, dwsConstExprs, dwsRelExprs, dwsMethodExprs, dwsCoreExprs;
 
 type
    TSqlFromExpr = class;
    TSqlList = class;
    TSqlIdentifier = class;
    TSqlFunction = class;
+   TLinqIntoExpr = class;
 
    TJoinType = (jtFull, jtLeft, jtRight, jtFullOuter, jtCross);
 
@@ -49,6 +50,9 @@ type
         from: TSqlFromExpr);
       function ReadSqlFunction(const compiler: IdwsCompiler; tok: TTokenizer;
         base: TSqlIdentifier): TSqlFunction;
+      function ReadIntoExpression(const compiler: IdwsCompiler; tok: TTokenizer;
+        base: TSqlFromExpr): TLinqIntoExpr;
+      function ValidIntoExpr(target: TTypedExpr): boolean;
    public
       procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                            scriptType : TScriptSourceType); override;
@@ -123,10 +127,40 @@ type
       destructor Destroy; override;
    end;
 
+   TLinqIntoExpr = class(TTypedExpr)
+   private
+      FBase: TSqlFromExpr;
+      FInto: TFuncPtrExpr;
+      FAssign: TAssignExpr;
+      FData: TDataSymbol;
+      FFree: TMethodStaticExpr;
+   public
+      constructor Create(base: TSqlFromExpr; into: TFuncPtrExpr;
+        const compiler: IdwsCompiler; const aPos: TScriptPos);
+      destructor Destroy; override;
+   end;
+
+   TLinqIntoSingleExpr = class(TLinqIntoExpr)
+   private
+      FStep: TMethodStaticExpr;
+   public
+      constructor Create(base: TSqlFromExpr; into: TFuncPtrExpr;
+        const compiler: IdwsCompiler; const aPos: TScriptPos; dsSymbol: TClassSymbol);
+      destructor Destroy; override;
+      function Eval(exec : TdwsExecution) : Variant; override;
+   end;
+
+   TLinqIntoSetExpr = class(TLinqIntoExpr)
+   public
+      constructor Create(base: TSqlFromExpr; into: TFuncPtrExpr;
+        const compiler: IdwsCompiler; const aPos: TScriptPos);
+      function  Eval(exec : TdwsExecution) : Variant; override;
+   end;
+
 implementation
 uses
    SysUtils,
-   dwsDatabaseLibModule, dwsUnitSymbols, dwsCoreExprs, dwsConvExprs;
+   dwsDatabaseLibModule, dwsUnitSymbols, dwsConvExprs;
 
 { TdwsLinqFactory }
 
@@ -451,6 +485,43 @@ begin
    end;
 end;
 
+function TdwsLinqExtension.ValidIntoExpr(target: TTypedExpr): boolean;
+var
+   base: TFuncSymbol;
+   returnType: TTypeSymbol;
+begin
+   result := false;
+   if not (target is TFuncRefExpr) then
+      Exit;
+   base := TFuncRefExpr(target).FuncExpr.FuncSym;
+   if base.Params.Count <> 1 then
+      Exit;
+   if base.GetParamType(0) <> FDatasetSymbol then
+      Exit;
+   returnType := base.Typ;
+   if returnType = nil then
+      Exit;
+   result := true;
+end;
+
+function TdwsLinqExtension.ReadIntoExpression(const compiler: IdwsCompiler;
+  tok : TTokenizer; base: TSqlFromExpr): TLinqIntoExpr;
+var
+   target: TTypedExpr;
+   targetFunc: TFuncPtrExpr;
+   aPos: TScriptPos;
+begin
+   aPos := tok.CurrentPos;
+   tok.KillToken;
+   target := compiler.ReadExpr();
+   if not ValidIntoExpr(target) then
+      Error(compiler, 'Into expression must be a valid function reference.');
+   targetFunc := TFuncPtrExpr.Create(compiler.CurrentProg, aPos, target);
+   if targetFunc.FuncSym.Typ is TArraySymbol then
+      result := TLinqIntoSetExpr.Create(base, targetFunc, compiler, aPos)
+   else result := TLinqIntoSingleExpr.Create(base, targetFunc, compiler, aPos, FDatasetSymbol);
+end;
+
 function TdwsLinqExtension.ReadUnknownName(compiler: TdwsCompiler) : TTypedExpr;
 var
    tok : TTokenizer;
@@ -462,6 +533,8 @@ begin
       if result = nil then
          Exit;
       TSqlFromExpr(result).Codegen(compiler);
+      if TokenEquals(tok, 'into') then
+         result := ReadIntoExpression(compiler, tok, TSqlFromExpr(result));
    end
    else result := ReadSqlIdentifier(compiler, tok);
 end;
@@ -754,6 +827,97 @@ begin
    finally
       sl.Free;
    end;
+end;
+
+{ TLinqIntoExpr }
+
+constructor TLinqIntoExpr.Create(base: TSqlFromExpr; into: TFuncPtrExpr;
+  const compiler: IdwsCompiler; const aPos: TScriptPos);
+var
+   dsVar: TObjectVarExpr;
+   prog: TdwsProgram;
+   freeSym: TMethodSymbol;
+begin
+   inherited Create;
+   FBase := base;
+   FInto := into;
+   prog := compiler.CurrentProg;
+   FData := TDataSymbol.Create('', FBase.Typ);
+   FData.AllocateStackAddr(prog.Table.AddrGenerator);
+   dsVar := TObjectVarExpr.Create(prog, FData);
+   FBase.FMethod.IncRefCount;
+   FAssign := TAssignExpr.Create(prog, aPos, dsVar, FBase.FMethod);
+   dsVar.IncRefCount;
+   FInto.AddArg(dsVar);
+   FInto.Initialize(prog);
+   freeSym := (prog.Table.FindTypeSymbol('TObject', cvMagic) as TClassSymbol).Members.FindSymbol('Free', cvMagic) as TMethodSymbol;
+   dsVar.IncRefCount;
+   FFree := TMethodStaticExpr.Create(prog, aPos, freeSym, dsVar);
+end;
+
+destructor TLinqIntoExpr.Destroy;
+begin
+   FBase.Free;
+   FInto.Free;
+   FTyp.Free;
+   FAssign.Free;
+   FData.Free;
+   FFree.Free;
+   inherited;
+end;
+
+{ TLinqIntoSingleExpr }
+
+constructor TLinqIntoSingleExpr.Create(base: TSqlFromExpr; into: TFuncPtrExpr;
+  const compiler: IdwsCompiler; const aPos: TScriptPos; dsSymbol: TClassSymbol);
+begin
+   inherited Create(base, into, compiler, aPos);
+   self.Typ := TDynamicArraySymbol.Create('', into.FuncSym.Result.Typ, compiler.CurrentProg.TypInteger);
+   FAssign.Left.IncRefCount;
+   FStep := TMethodStaticExpr.Create(compiler.CurrentProg, aPos,
+     dsSymbol.Members.FindSymbol('Step', cvMagic) as TMethodSymbol, FAssign.Left);
+end;
+
+destructor TLinqIntoSingleExpr.Destroy;
+begin
+   FStep.Free;
+   inherited Destroy;
+end;
+
+function TLinqIntoSingleExpr.Eval(exec: TdwsExecution): Variant;
+var
+   dyn: TScriptDynamicArray;
+   n: integer;
+begin
+   FAssign.EvalNoResult(exec);
+   dyn := TScriptDynamicArray.Create(FTyp);
+   n := 0;
+
+   while FStep.EvalAsBoolean(exec) do
+   begin
+      dyn.ArrayLength := n + 1;
+      dyn.AsPVariant(n)^ := FInto.Eval(exec);
+      inc(n);
+   end;
+   result := IScriptObj(dyn);
+   FFree.Eval(exec);
+end;
+
+{ TLinqIntoSetExpr }
+
+constructor TLinqIntoSetExpr.Create(base: TSqlFromExpr; into: TFuncPtrExpr;
+  const compiler: IdwsCompiler; const aPos: TScriptPos);
+begin
+   inherited Create(base, into, compiler, aPos);
+   self.Typ := into.FuncSym.Result.Typ;
+   self.Typ.IncRefCount;
+end;
+
+function TLinqIntoSetExpr.Eval(exec: TdwsExecution): Variant;
+begin
+   FAssign.EvalNoResult(exec);
+   FInto.EvalAsVariant(exec, result);
+   FFree.Eval(exec);
 end;
 
 end.
