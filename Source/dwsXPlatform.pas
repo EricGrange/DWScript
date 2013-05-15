@@ -114,10 +114,17 @@ type
 function GetSystemMilliseconds : Int64;
 function UTCDateTime : TDateTime;
 
+{$ifndef FPC}
+function UnicodeFormat(const fmt : UnicodeString; const args : array of const) : UnicodeString;
+{$endif}
+
 function AnsiCompareText(const S1, S2 : UnicodeString) : Integer;
 function AnsiCompareStr(const S1, S2 : UnicodeString) : Integer;
-function UnicodeComparePChars(p1 : PChar; n1 : Integer; p2 : PChar; n2 : Integer) : Integer; overload;
-function UnicodeComparePChars(p1, p2 : PChar; n : Integer) : Integer; overload;
+function UnicodeComparePChars(p1 : PWideChar; n1 : Integer; p2 : PWideChar; n2 : Integer) : Integer; overload;
+function UnicodeComparePChars(p1, p2 : PWideChar; n : Integer) : Integer; overload;
+
+function UnicodeLowerCase(const s : UnicodeString) : UnicodeString;
+function UnicodeUpperCase(const s : UnicodeString) : UnicodeString;
 
 function InterlockedIncrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} inline; {$endif}
 function InterlockedDecrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} inline; {$endif}
@@ -129,7 +136,7 @@ procedure OutputDebugString(const msg : UnicodeString);
 procedure WriteToOSEventLog(const logName, logCaption, logDetails : UnicodeString;
                             const logRawData : RawByteString = ''); overload;
 
-function TryTextToFloat(const s : PChar; var value : Extended;
+function TryTextToFloat(const s : PWideChar; var value : Extended;
                         const formatSettings : TFormatSettings) : Boolean; {$ifndef FPC} inline; {$endif}
 
 {$ifdef FPC}
@@ -176,44 +183,75 @@ begin
               +EncodeTime(wHour, wMinute, wSecond, wMilliseconds);
 end;
 
+// UnicodeFormat
+//
+{$ifndef FPC}
+function UnicodeFormat(const fmt : UnicodeString; const args : array of const) : UnicodeString;
+begin
+   Result:=Format(fmt, args);
+end;
+{$endif}
+
 // AnsiCompareText
 //
 function AnsiCompareText(const S1, S2: UnicodeString) : Integer;
 begin
+   {$ifdef FPC}
+   Result:=widestringmanager.CompareTextUnicodeStringProc(s1,s2);
+   {$else}
    Result:=SysUtils.AnsiCompareText(S1, S2);
+   {$endif}
 end;
 
 // AnsiCompareStr
 //
 function AnsiCompareStr(const S1, S2: UnicodeString) : Integer;
 begin
+   {$ifdef FPC}
+   Result:=widestringmanager.CompareUnicodeStringProc(s1,s2);
+   {$else}
    Result:=SysUtils.AnsiCompareStr(S1, S2);
+   {$endif}
 end;
 
 // UnicodeComparePChars
 //
-function UnicodeComparePChars(p1 : PChar; n1 : Integer; p2 : PChar; n2 : Integer) : Integer;
+function UnicodeComparePChars(p1 : PWideChar; n1 : Integer; p2 : PWideChar; n2 : Integer) : Integer;
 const
    CSTR_EQUAL = 2;
 begin
-   {$ifdef FPC}
-   Result:=CompareStringA(LOCALE_USER_DEFAULT, NORM_IGNORECASE, p1, n1, p2, n2)-CSTR_EQUAL;
-   {$else}
    Result:=CompareStringW(LOCALE_USER_DEFAULT, NORM_IGNORECASE, p1, n1, p2, n2)-CSTR_EQUAL;
-   {$endif}
 end;
 
 // UnicodeComparePChars
 //
-function UnicodeComparePChars(p1, p2 : PChar; n : Integer) : Integer; overload;
+function UnicodeComparePChars(p1, p2 : PWideChar; n : Integer) : Integer; overload;
 const
    CSTR_EQUAL = 2;
 begin
-   {$ifdef FPC}
-   Result:=CompareStringA(LOCALE_USER_DEFAULT, NORM_IGNORECASE, p1, n, p2, n)-CSTR_EQUAL;
-   {$else}
    Result:=CompareStringW(LOCALE_USER_DEFAULT, NORM_IGNORECASE, p1, n, p2, n)-CSTR_EQUAL;
-   {$endif}
+end;
+
+// UnicodeLowerCase
+//
+function UnicodeLowerCase(const s : UnicodeString) : UnicodeString;
+begin
+   if s<>'' then begin
+      Result:=s;
+      UniqueString(Result);
+      Windows.CharUpperBuffW(PWideChar(Pointer(s)), Length(Result));
+   end else Result:=s;
+end;
+
+// UnicodeUpperCase
+//
+function UnicodeUpperCase(const s : UnicodeString) : UnicodeString;
+begin
+   if s<>'' then begin
+      Result:=s;
+      UniqueString(Result);
+      Windows.CharUpperBuffW(PWideChar(Pointer(s)), Length(Result));
+   end else Result:=s;
 end;
 
 // InterlockedIncrement
@@ -279,7 +317,7 @@ end;
 //
 procedure OutputDebugString(const msg : UnicodeString);
 begin
-   Windows.OutputDebugString(PChar(msg));
+   Windows.OutputDebugStringW(PWideChar(msg));
 end;
 
 // WriteToOSEventLog
@@ -288,18 +326,18 @@ procedure WriteToOSEventLog(const logName, logCaption, logDetails : UnicodeStrin
                             const logRawData : RawByteString = '');
 var
   eventSource : THandle;
-  detailsPtr : array [0..1] of PChar;
+  detailsPtr : array [0..1] of PWideChar;
 begin
    if logName<>'' then
-      eventSource:=RegisterEventSource(nil, PChar(logName))
-   else eventSource:=RegisterEventSource(nil, PChar(ChangeFileExt(ExtractFileName(ParamStr(0)), '')));
+      eventSource:=RegisterEventSourceW(nil, PWideChar(logName))
+   else eventSource:=RegisterEventSourceW(nil, PWideChar(ChangeFileExt(ExtractFileName(ParamStr(0)), '')));
    if eventSource>0 then begin
       try
-         detailsPtr[0]:=PChar(logCaption);
-         detailsPtr[1]:=PChar(logDetails);
-         ReportEvent(eventSource, EVENTLOG_INFORMATION_TYPE, 0, 0, nil,
-                     2, Length(logRawData),
-                     @detailsPtr, Pointer(logRawData));
+         detailsPtr[0]:=PWideChar(logCaption);
+         detailsPtr[1]:=PWideChar(logDetails);
+         ReportEventW(eventSource, EVENTLOG_INFORMATION_TYPE, 0, 0, nil,
+                      2, Length(logRawData),
+                      @detailsPtr, Pointer(logRawData));
       finally
          DeregisterEventSource(eventSource);
       end;
@@ -364,7 +402,7 @@ end;
 
 // TryTextToFloat
 //
-function TryTextToFloat(const s : PChar; var value : Extended; const formatSettings : TFormatSettings) : Boolean;
+function TryTextToFloat(const s : PWideChar; var value : Extended; const formatSettings : TFormatSettings) : Boolean;
 {$ifdef FPC}
 var
    cw : Word;
@@ -442,8 +480,8 @@ end;
 //
 function OpenFileForSequentialReadOnly(const fileName : UnicodeString) : THandle;
 begin
-   Result:=CreateFile(PChar(fileName), GENERIC_READ, FILE_SHARE_READ+FILE_SHARE_WRITE,
-                      nil, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, 0);
+   Result:=CreateFileW(PWideChar(fileName), GENERIC_READ, FILE_SHARE_READ+FILE_SHARE_WRITE,
+                       nil, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, 0);
    if Result=INVALID_HANDLE_VALUE then begin
       if GetLastError<>ERROR_FILE_NOT_FOUND then
          RaiseLastOSError;

@@ -424,8 +424,8 @@ type
          function GetDescription : UnicodeString; override;
 
       public
-         constructor Create(const name : UnicodeString; typ : TTypeSymbol; const value : Variant); overload;
-         constructor Create(const name : UnicodeString; typ : TTypeSymbol; const data : TData); overload;
+         constructor CreateValue(const name : UnicodeString; typ : TTypeSymbol; const value : Variant); overload;
+         constructor CreateData(const name : UnicodeString; typ : TTypeSymbol; const data : TData); overload;
 
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
 
@@ -987,6 +987,8 @@ type
          property IndexType : TTypeSymbol read FIndexType write FIndexType;
    end;
 
+   TInitDynamicArrayProc = procedure (typ : TTypeSymbol; var result : Variant);
+
    // array of FTyp
    TDynamicArraySymbol = class sealed (TArraySymbol)
       protected
@@ -999,7 +1001,7 @@ type
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function SameType(typSym : TTypeSymbol) : Boolean; override;
 
-         class var vInitDynamicArray : procedure (typ : TTypeSymbol; var result : Variant);
+         class procedure SetInitDynamicArrayProc(const aProc : TInitDynamicArrayProc);
    end;
 
    // array [FLowBound..FHighBound] of FTyp
@@ -1062,9 +1064,6 @@ type
          FVisibility : TdwsVisibility;
 
       public
-         constructor Create(const name : UnicodeString; typ : TTypeSymbol; const value : Variant;
-                            aVisibility : TdwsVisibility = cvPublic); overload;
-
          function QualifiedName : UnicodeString; override;
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
 
@@ -2746,15 +2745,6 @@ end;
 // ------------------
 // ------------------ TClassConstSymbol ------------------
 // ------------------
-
-// Create
-//
-constructor TClassConstSymbol.Create(const name : UnicodeString; typ : TTypeSymbol; const value : Variant;
-                                     aVisibility : TdwsVisibility = cvPublic);
-begin
-   inherited Create(name, typ, value);
-   Visibility:=aVisibility;
-end;
 
 // QualifiedName
 //
@@ -4767,18 +4757,23 @@ end;
 // ------------------ TConstSymbol ------------------
 // ------------------
 
-constructor TConstSymbol.Create(const Name: UnicodeString; Typ: TTypeSymbol; const Value: Variant);
+// CreateValue
+//
+constructor TConstSymbol.CreateValue(const Name: UnicodeString; Typ: TTypeSymbol; const Value: Variant);
 begin
-  inherited Create(Name, Typ);
-  SetLength(FData, 1);
-  VarCopy(FData[0], Value);
+   inherited Create(Name, Typ);
+   Assert(Typ.Size=1);
+   SetLength(FData, 1);
+   VarCopy(FData[0], Value);
 end;
 
-constructor TConstSymbol.Create(const Name: UnicodeString; Typ: TTypeSymbol; const data : TData);
+// CreateData
+//
+constructor TConstSymbol.CreateData(const Name: UnicodeString; Typ: TTypeSymbol; const data : TData);
 begin
-  inherited Create(Name, Typ);
-  SetLength(FData, Typ.Size);
-  DWSCopyData(data, 0, FData, 0, Typ.Size);
+   inherited Create(Name, Typ);
+   SetLength(FData, Typ.Size);
+   DWSCopyData(data, 0, FData, 0, Typ.Size);
 end;
 
 function TConstSymbol.GetCaption: UnicodeString;
@@ -5699,6 +5694,9 @@ end;
 // ------------------ TDynamicArraySymbol ------------------
 // ------------------
 
+var
+   vInitDynamicArray : TInitDynamicArrayProc;
+
 // Create
 //
 constructor TDynamicArraySymbol.Create(const name : UnicodeString; elementType, indexType : TTypeSymbol);
@@ -5746,6 +5744,13 @@ begin
    Result:=    (typSym<>nil)
            and (typSym.ClassType=TDynamicArraySymbol)
            and Typ.SameType(typSym.Typ);
+end;
+
+// SetInitDynamicArrayProc
+//
+class procedure TDynamicArraySymbol.SetInitDynamicArrayProc(const aProc : TInitDynamicArrayProc);
+begin
+   vInitDynamicArray:=aProc;
 end;
 
 // ------------------
@@ -5870,7 +5875,7 @@ end;
 constructor TElementSymbol.Create(const Name: UnicodeString; Typ: TTypeSymbol;
                                   const aValue : Int64; isUserDef: Boolean);
 begin
-   inherited Create(Name, Typ, aValue);
+   inherited CreateValue(Name, Typ, aValue);
    FIsUserDef := IsUserDef;
 end;
 

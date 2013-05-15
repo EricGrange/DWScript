@@ -55,7 +55,8 @@ type
          FLocalizer : TdwsCustomLocalizer;
 
       protected
-         procedure DoOnLocalize(Sender : TObject; const aString : String; var result : String);
+         procedure DoOnLocalize(Sender : TObject; const aString : UnicodeString;
+                                var result : UnicodeString);
 
       public
          procedure SetUp; override;
@@ -272,7 +273,8 @@ end;
 
 // DoOnLocalize
 //
-procedure TdwsFuncFunctionsTestsString.DoOnLocalize(Sender : TObject; const aString : String; var result : String);
+procedure TdwsFuncFunctionsTestsString.DoOnLocalize(Sender : TObject; const aString : UnicodeString;
+                                                    var result : UnicodeString);
 begin
    Result:='['+aString+']';
 end;

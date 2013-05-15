@@ -420,7 +420,7 @@ end;
 
 procedure TRightStrFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
-   buf : String;
+   buf : UnicodeString;
    n : Integer;
 begin
    buf:=args.AsString[0];
@@ -465,7 +465,7 @@ end;
 
 procedure TDeleteFunc.DoEvalProc(args : TExprBaseList);
 var
-   s : String;
+   s : UnicodeString;
 begin
    s:=args.AsString[0];
    Delete(s, args.AsInteger[1], args.AsInteger[2]);
@@ -476,7 +476,7 @@ end;
 
 procedure TInsertFunc.DoEvalProc(args : TExprBaseList);
 var
-   s : String;
+   s : UnicodeString;
 begin
    s:=args.AsString[1];
    Insert(args.AsString[0], s, args.AsInteger[2]);
@@ -494,7 +494,7 @@ end;
 
 procedure TAnsiLowerCaseFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
-   Result:=AnsiLowerCase(args.AsString[0]);
+   Result:=UnicodeLowerCase(args.AsString[0]);
 end;
 
 { TUpperCaseFunc }
@@ -508,7 +508,7 @@ end;
 
 procedure TAnsiUpperCaseFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
-   Result:=AnsiUpperCase(args.AsString[0]);
+   Result:=UnicodeUpperCase(args.AsString[0]);
 end;
 
 { TPosFunc }
@@ -585,7 +585,7 @@ end;
 
 function TSameTextFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
 begin
-   Result:=SameText(args.AsString[0], args.AsString[1]);
+   Result:=UnicodeSameText(args.AsString[0], args.AsString[1]);
 end;
 
 { TCompareTextFunc }
@@ -647,7 +647,7 @@ end;
 //
 procedure TQuotedStrFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
-   quoteChar : String;
+   quoteChar : UnicodeString;
 begin
    quoteChar:=args.AsString[1];
    if quoteChar='' then
@@ -661,7 +661,7 @@ end;
 //
 procedure TCharAtFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
-   buf : String;
+   buf : UnicodeString;
    n : Integer;
 begin
    buf:=args.AsString[0];
@@ -678,7 +678,7 @@ end;
 procedure TSetLengthFunc.DoEvalProc(args : TExprBaseList);
 var
    i, n : Integer;
-   s : String;
+   s : UnicodeString;
 begin
    s:=args.AsString[0];
 
@@ -699,7 +699,7 @@ end;
 //
 procedure TStringOfCharFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
-   ch : String;
+   ch : UnicodeString;
 begin
    ch:=args.AsString[0];
    if Length(ch)<1 then
@@ -713,7 +713,7 @@ end;
 //
 procedure TStringOfStringFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 
-   function StringOfString(const str : String; count : Integer) : UnicodeString;
+   function StringOfString(const str : UnicodeString; count : Integer) : UnicodeString;
    var
       ls : Integer;
    begin
@@ -735,7 +735,7 @@ end;
 
 function TStrBeginsWithFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
 var
-   str, beginStr : String;
+   str, beginStr : UnicodeString;
 begin
    str:=args.AsString[0];
    beginStr:=args.AsString[1];
@@ -751,7 +751,7 @@ end;
 
 function TStrEndsWithFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
 var
-   str, endStr : String;
+   str, endStr : UnicodeString;
 begin
    str:=args.AsString[0];
    endStr:=args.AsString[1];
@@ -775,7 +775,7 @@ end;
 procedure TStrAfterFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
    p : Integer;
-   str, delimiter : String;
+   str, delimiter : UnicodeString;
 begin
    str:=args.AsString[0];
    delimiter:=args.AsString[1];
@@ -790,7 +790,7 @@ end;
 procedure TStrBeforeFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
    p : Integer;
-   str, delimiter : String;
+   str, delimiter : UnicodeString;
 begin
    str:=args.AsString[0];
    delimiter:=args.AsString[1];

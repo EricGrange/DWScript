@@ -20,7 +20,7 @@ interface
 
 uses
    SysUtils,
-   dwsErrors, dwsStrings,
+   dwsErrors, dwsStrings, dwsXPlatform,
    dwsSymbols, dwsUnitSymbols,
    dwsExprs, dwsCoreExprs, dwsConstExprs, dwsMethodExprs, dwsMagicExprs;
 
@@ -60,7 +60,7 @@ type
 constructor TCheckAbstractClassConstruction.Create(msgs: TdwsMessageList; const text : UnicodeString; const p : TScriptPos;
                                                    classSym : TClassSymbol);
 begin
-   inherited Create(msgs, Format(MSG_Error, [text]), p);
+   inherited Create(msgs, UnicodeFormat(MSG_Error, [text]), p);
    FClassSym:=classSym;
 end;
 

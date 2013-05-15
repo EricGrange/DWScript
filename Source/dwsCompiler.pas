@@ -1028,7 +1028,7 @@ function TStandardSymbolFactory.CreateConstSymbol(const name : UnicodeString; co
                                                   typ : TTypeSymbol; const data : TData) : TConstSymbol;
 begin
    if Length(data)>0 then
-      Result:=TConstSymbol.Create(name, typ, data)
+      Result:=TConstSymbol.CreateData(name, typ, data)
    else Result:=TConstSymbol.Create(name, typ);
    FCompiler.FProg.Table.AddSymbol(Result);
 end;
@@ -1111,7 +1111,7 @@ function TCompositeTypeSymbolFactory.CreateConstSymbol(const name : UnicodeStrin
 var
    classConstSym : TClassConstSymbol;
 begin
-   classConstSym:=TClassConstSymbol.Create(name, typ, data);
+   classConstSym:=TClassConstSymbol.CreateData(name, typ, data);
    classConstSym.Visibility:=FVisibility;
    FOwnerType.AddConst(classConstSym);
    Result:=classConstSym;
@@ -3697,7 +3697,7 @@ procedure TdwsCompiler.ReadConditions(funcSymbol : TFuncSymbol; conditions : TSo
 var
    hotPos : TScriptPos;
    testExpr, msgExpr : TTypedExpr;
-   testStart : PChar;
+   testStart : PWideChar;
    testLength : Integer;
    msg : UnicodeString;
    srcCond : TSourceCondition;
@@ -3719,7 +3719,7 @@ begin
          if testExpr.IsConstant then
             FMsgs.AddCompilerWarning(hotPos, CPW_ConstantCondition);
 
-         testLength:=(NativeUInt(FTok.PosPtr)-NativeUInt(testStart)) div SizeOf(Char);
+         testLength:=(NativeUInt(FTok.PosPtr)-NativeUInt(testStart)) div SizeOf(WideChar);
          if FTok.TestDelete(ttCOLON) then begin
             msgExpr:=ReadExpr;
             if not msgExpr.IsOfType(FProg.TypString) then
@@ -12528,10 +12528,10 @@ begin
       sysTable.AddSymbol(sysTable.TypVariant);
    end;
    if sysTable.TypVariant<>nil then begin
-      sysTable.AddSymbol(TConstSymbol.Create('Null', sysTable.TypVariant, Null));
-      sysTable.AddSymbol(TConstSymbol.Create('Unassigned', sysTable.TypVariant, Unassigned));
+      sysTable.AddSymbol(TConstSymbol.CreateValue('Null', sysTable.TypVariant, Null));
+      sysTable.AddSymbol(TConstSymbol.CreateValue('Unassigned', sysTable.TypVariant, Unassigned));
       if sysTable.TypVariant.SupportsEmptyParam then
-         sysTable.AddSymbol(TConstSymbol.Create('EmptyParam', sysTable.TypVariant, EmptyParam));
+         sysTable.AddSymbol(TConstSymbol.CreateValue('EmptyParam', sysTable.TypVariant, EmptyParam));
       sysTable.AddSymbol(TOpenArraySymbol.Create('array of const', sysTable.TypVariant, sysTable.TypInteger));
    end;
 

@@ -409,13 +409,8 @@ var
    varData : PVarData;
 begin
    varData:=@Data[SourceAddr];
-   {$ifdef FPC}
-   if varData.VType=varString then
-      Result:=UnicodeString(varData.VString)
-   {$else}
    if varData.VType=varUString then
-      Result:=UnicodeString(varData.VUString)
-   {$endif}
+      Result:=UnicodeString(varData.VString)
    else Result:=PVariant(varData)^;
 end;
 
@@ -526,13 +521,8 @@ var
    varData : PVarData;
 begin
    varData:=@FBaseData[destAddr];
-   {$ifdef FPC}
-   Assert(varData.VType=varString);
-   UnicodeString(varData.VString):=UnicodeString(varData.VString)+value
-   {$else}
    Assert(varData.VType=varUString);
-   UnicodeString(varData.VUString):=UnicodeString(varData.VUString)+value
-   {$endif}
+   UnicodeString(varData.VString):=UnicodeString(varData.VString)+value
 end;
 
 // WriteData
@@ -609,13 +599,8 @@ var
    varData : PVarData;
 begin
    varData:=@Data[DestAddr];
-   {$ifdef FPC}
-   if varData.VType=varString then
-      UnicodeString(varData.VString):=Value
-   {$else}
    if varData.VType=varUString then
-      UnicodeString(varData.VUString):=Value
-    {$endif}
+      UnicodeString(varData.VString):=Value
    else PVariant(varData)^:=Value;
 end;
 
@@ -626,13 +611,8 @@ var
    varData : PVarData;
 begin
    varData:=@FBaseData[DestAddr];
-   {$ifdef FPC}
-   if varData.VType=varString then
-      UnicodeString(varData.VString):=Value
-   {$else}
    if varData.VType=varUString then
-      UnicodeString(varData.VUString):=Value
-    {$endif}
+      UnicodeString(varData.VString):=Value
    else PVariant(varData)^:=Value;
 end;
 
@@ -667,19 +647,11 @@ var
    varData : PVarData;
 begin
    varData:=@Data[DestAddr];
-   {$ifdef FPC}
-   if varData.VType=varString then
+   if varData.VType=varUString then
       if index>Length(UnicodeString(varData.VString)) then
          Exit(False)
       else UnicodeString(varData.VString)[index]:=c
-   else PVariant(varData)^[index]:=Char(c);
-   {$else}
-   if varData.VType=varUString then
-      if index>Length(UnicodeString(varData.VUString)) then
-         Exit(False)
-      else UnicodeString(varData.VUString)[index]:=c
    else PVariant(varData)^[index]:=c;
-   {$endif}
    Result:=True;
 end;
 

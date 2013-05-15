@@ -19,8 +19,8 @@ type
       public
          procedure SetUp; override;
          procedure TearDown; override;
-         procedure DoOnInclude(const scriptName : String; var scriptSource : String);
-         procedure DoOnResource(compiler : TdwsCompiler; const resName : String);
+         procedure DoOnInclude(const scriptName : UnicodeString; var scriptSource : UnicodeString);
+         procedure DoOnResource(compiler : TdwsCompiler; const resName : UnicodeString);
 
          procedure ReExec(info : TProgramInfo);
          procedure HostExcept(info : TProgramInfo);
@@ -234,7 +234,7 @@ end;
 
 // DoOnInclude
 //
-procedure TCornerCasesTests.DoOnInclude(const scriptName : String; var scriptSource : String);
+procedure TCornerCasesTests.DoOnInclude(const scriptName : UnicodeString; var scriptSource : UnicodeString);
 begin
    CheckEquals('test.dummy', scriptName, 'DoOnInclude');
    scriptSource:='Print(''hello'');';
@@ -242,7 +242,7 @@ end;
 
 // DoOnResource
 //
-procedure TCornerCasesTests.DoOnResource(compiler : TdwsCompiler; const resName : String);
+procedure TCornerCasesTests.DoOnResource(compiler : TdwsCompiler; const resName : UnicodeString);
 begin
    FLastResource:=resName;
    if resName='missing' then

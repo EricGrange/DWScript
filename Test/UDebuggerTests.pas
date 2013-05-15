@@ -25,7 +25,7 @@ type
          procedure DoGetValue(Info: TProgramInfo; ExtObject: TObject);
 
          procedure DoDebugEval(exec: TdwsExecution; expr: TExprBase);
-         procedure DoDebugMessage(const msg : String);
+         procedure DoDebugMessage(const msg : UnicodeString);
 
       public
          procedure SetUp; override;
@@ -144,7 +144,7 @@ end;
 
 // DoDebugMessage
 //
-procedure TDebuggerTests.DoDebugMessage(const msg : String);
+procedure TDebuggerTests.DoDebugMessage(const msg : UnicodeString);
 begin
    FDebugLastMessage:=msg;
 end;
@@ -156,7 +156,7 @@ var
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
    expr : IdwsEvaluateExpr;
-   buf : String;
+   buf : UnicodeString;
 begin
    prog:=FCompiler.Compile('var i := 10;');
    try

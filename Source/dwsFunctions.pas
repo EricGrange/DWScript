@@ -273,7 +273,7 @@ end;
 //
 function ConvertFuncParams(const funcParams : array of UnicodeString) : TParamArray;
 
-   procedure ParamSpecifier(c : Char; paramRec : PParamRec);
+   procedure ParamSpecifier(c : WideChar; paramRec : PParamRec);
    begin
       paramRec.IsVarParam:=(c='@');
       paramRec.IsConstParam:=(c='&');
@@ -290,7 +290,7 @@ function ConvertFuncParams(const funcParams : array of UnicodeString) : TParamAr
 
 var
    x, p : Integer;
-   c : Char;
+   c : WideChar;
    paramRec : PParamRec;
 begin
    SetLength(Result, Length(funcParams) div 2);
@@ -875,7 +875,7 @@ end;
 function TIdwsUnitList.IndexOfName(const unitName : UnicodeString) : Integer;
 begin
    for Result:=0 to Count-1 do
-      if SameText(Items[Result].GetUnitName, unitName) then
+      if UnicodeSameText(Items[Result].GetUnitName, unitName) then
          Exit;
    Result:=-1;
 end;

@@ -521,7 +521,7 @@ begin
   // Optional parameter for dispatch interfaces with unnamed arguments
   v := 0;
   PVarData(@v).VType := varError;
-  Table.AddSymbol(TConstSymbol.Create('ComOpt', VariantSym, v));
+  Table.AddSymbol(TConstSymbol.CreateValue('ComOpt', VariantSym, v));
 
   // Function to create a new COM-Object
   TCreateOleObjectFunc.Create(Table, 'CreateOleObject', ['ClassName', SYS_STRING], 'ComVariant');

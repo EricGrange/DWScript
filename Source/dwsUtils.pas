@@ -456,7 +456,7 @@ type
          destructor Destroy; override;
 
          // aString must NOT be empty
-         procedure UnifyAssign(const aString : String; var unifiedString : String);
+         procedure UnifyAssign(const aString : UnicodeString; var unifiedString : UnicodeString);
 
          procedure Lock; inline;
          procedure UnLock; inline;
@@ -578,7 +578,7 @@ procedure UnifyAssignString(const fromStr : UnicodeString; var toStr : UnicodeSt
 function  UnifiedString(const fromStr : UnicodeString) : UnicodeString; inline;
 procedure TidyStringsUnifier;
 
-function UnicodeCompareLen(p1, p2 : PChar; n : Integer) : Integer;
+function UnicodeCompareLen(p1, p2 : PWideChar; n : Integer) : Integer;
 function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
 function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
 
@@ -589,15 +589,15 @@ function StrBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
 function StrBeginsWithA(const aStr, aBegin : RawByteString) : Boolean;
 function StrEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
 function StrContains(const aStr, aSubStr : UnicodeString) : Boolean; overload;
-function StrContains(const aStr : UnicodeString; aChar : Char) : Boolean; overload;
+function StrContains(const aStr : UnicodeString; aChar : WideChar) : Boolean; overload;
 
 function StrDeleteLeft(const aStr : UnicodeString; n : Integer) : UnicodeString;
 function StrDeleteRight(const aStr : UnicodeString; n : Integer) : UnicodeString;
 
-function StrAfterChar(const aStr : UnicodeString; aChar : Char) : UnicodeString;
-function StrBeforeChar(const aStr : UnicodeString; aChar : Char) : UnicodeString;
+function StrAfterChar(const aStr : UnicodeString; aChar : WideChar) : UnicodeString;
+function StrBeforeChar(const aStr : UnicodeString; aChar : WideChar) : UnicodeString;
 
-function StrCountChar(const aStr : UnicodeString; c : Char) : Integer;
+function StrCountChar(const aStr : UnicodeString; c : WideChar) : Integer;
 
 function Min(a, b : Integer) : Integer; inline;
 
@@ -636,13 +636,13 @@ end;
 function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString;
 var
    i, n : Integer;
-   pSrc : PChar;
+   pSrc : PWideChar;
    pDest : PByteArray;
 begin
    if s='' then Exit('');
    n:=Length(s);
    SetLength(Result, n);
-   pSrc:=PChar(Pointer(s));
+   pSrc:=PWideChar(Pointer(s));
    pDest:=PByteArray(NativeUInt(Result));
    for i:=0 to n-1 do
       pDest[i]:=PByte(@pSrc[i])^;
@@ -675,9 +675,9 @@ asm
 {$endif}
 end;
 
-function EightDigits(i : Cardinal; p : PChar) : Integer;
+function EightDigits(i : Cardinal; p : PWideChar) : Integer;
 type
-   TTwoChars = packed array [0..1] of Char;
+   TTwoChars = packed array [0..1] of WideChar;
    PTwoChars = ^TTwoChars;
 const
    cDigits : packed array [10..99] of TTwoChars = (
@@ -703,7 +703,7 @@ begin
          Dec(p, 2);
          Inc(Result, 2);
       end else begin
-         p[1]:=Char(Ord('0')+r);
+         p[1]:=WideChar(Ord('0')+r);
          if i>0 then begin
             p[0]:='0';
             Dec(p, 2);
@@ -726,7 +726,7 @@ end;
 {$ENDIF}
 procedure FastInt64ToStr(const val : Int64; var s : UnicodeString);
 var
-   buf : array [0..21] of Char;
+   buf : array [0..21] of WideChar;
    n, nd : Integer;
    neg : Boolean;
    i : UInt64;
@@ -764,7 +764,7 @@ begin
    if neg then
       buf[n]:='-'
    else Inc(n);
-   SetString(s, PChar(@buf[n]), (High(buf)+1)-n);
+   SetString(s, PWideChar(@buf[n]), (High(buf)+1)-n);
 end;
 {$IFDEF RANGEON}
   {$R+}
@@ -860,7 +860,7 @@ end;
 
 // UnifyAssign
 //
-procedure TStringUnifier.UnifyAssign(const aString : String; var unifiedString : String);
+procedure TStringUnifier.UnifyAssign(const aString : UnicodeString; var unifiedString : UnicodeString);
 var
    i : Integer;
    h : Cardinal;
@@ -980,7 +980,7 @@ end;
 function TFastCompareStringList.IndexOfName(const name : UnicodeString): Integer;
 var
    n, nc : Integer;
-   nvs : Char;
+   nvs : WideChar;
    list : TStringListList;
 begin
    nvs:=NameValueSeparator;
@@ -989,8 +989,8 @@ begin
    for Result:=0 to Count-1 do begin
       nc:=Length(list[Result].FString);
       if     (nc>n) and (list[Result].FString[n+1]=nvs)
-         and CompareMem(PChar(Pointer(name)),
-                        PChar(Pointer(list[Result].FString)), n) then Exit;
+         and CompareMem(PWideChar(Pointer(name)),
+                        PWideChar(Pointer(list[Result].FString)), n) then Exit;
    end;
    Result:=-1;
 end;
@@ -1060,7 +1060,7 @@ end;
 
 // UnicodeCompareLen
 //
-function UnicodeCompareLen(p1, p2 : PChar; n : Integer) : Integer;
+function UnicodeCompareLen(p1, p2 : PWideChar; n : Integer) : Integer;
 var
    c1, c2 : Integer;
 begin
@@ -1094,14 +1094,14 @@ end;
 function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
 var
    n1, n2 : Integer;
-   ps1, ps2 : PChar;
+   ps1, ps2 : PWideChar;
 begin
-   ps1:=PChar(NativeInt(s1));
-   ps2:=PChar(NativeInt(s2));
+   ps1:=PWideChar(NativeInt(s1));
+   ps2:=PWideChar(NativeInt(s2));
    if ps1<>nil then begin
       if ps2<>nil then begin
-         n1:=PInteger(NativeInt(ps1)-4)^;
-         n2:=PInteger(NativeInt(ps2)-4)^;
+         n1:=PInteger(NativeUInt(ps1)-4)^;
+         n2:=PInteger(NativeUInt(ps2)-4)^;
          if n1<n2 then begin
             Result:=UnicodeCompareLen(ps1, ps2, n1);
             if Result=0 then
@@ -1141,7 +1141,7 @@ begin
    n2:=Length(aBegin);
    if (n2>n1) or (n2=0) then
       Result:=False
-   else Result:=(UnicodeCompareLen(PChar(aStr), PChar(aBegin), n2)=0);
+   else Result:=(UnicodeCompareLen(PWideChar(aStr), PWideChar(aBegin), n2)=0);
 end;
 
 // StrBeginsWith
@@ -1154,7 +1154,7 @@ begin
    n2:=Length(aBegin);
    if (n2>n1) or (n2=0) then
       Result:=False
-   else Result:=CompareMem(Pointer(aStr), Pointer(aBegin), n2*SizeOf(Char));
+   else Result:=CompareMem(Pointer(aStr), Pointer(aBegin), n2*SizeOf(WideChar));
 end;
 
 // StrBeginsWithA
@@ -1180,7 +1180,7 @@ begin
    n2:=Length(aEnd);
    if (n2>n1) or (n2=0) then
       Result:=False
-   else Result:=CompareMem(@aStr[n1-n2+1], Pointer(aEnd), n2*SizeOf(Char));
+   else Result:=CompareMem(@aStr[n1-n2+1], Pointer(aEnd), n2*SizeOf(WideChar));
 end;
 
 // StrContains (sub string)
@@ -1196,7 +1196,7 @@ end;
 
 // StrContains (sub char)
 //
-function StrContains(const aStr : UnicodeString; aChar : Char) : Boolean;
+function StrContains(const aStr : UnicodeString; aChar : WideChar) : Boolean;
 var
    i : Integer;
 begin
@@ -1221,7 +1221,7 @@ end;
 
 // StrAfterChar
 //
-function StrAfterChar(const aStr : UnicodeString; aChar : Char) : UnicodeString;
+function StrAfterChar(const aStr : UnicodeString; aChar : WideChar) : UnicodeString;
 var
    p : Integer;
 begin
@@ -1233,7 +1233,7 @@ end;
 
 // StrBeforeChar
 //
-function StrBeforeChar(const aStr : UnicodeString; aChar : Char) : UnicodeString;
+function StrBeforeChar(const aStr : UnicodeString; aChar : WideChar) : UnicodeString;
 var
    p : Integer;
 begin
@@ -1245,7 +1245,7 @@ end;
 
 // StrCountChar
 //
-function StrCountChar(const aStr : UnicodeString; c : Char) : Integer;
+function StrCountChar(const aStr : UnicodeString; c : WideChar) : Integer;
 var
    i : Integer;
 begin
@@ -1315,9 +1315,9 @@ begin
       mid:=(lo+hi) shr 1;
       nc:=Length(list[mid].FString);
       if nc>=n then begin
-         cmp:=UnicodeCompareLen(PChar(Pointer(list[mid].FString)), PChar(Pointer(initial)), n);
+         cmp:=UnicodeCompareLen(PWideChar(Pointer(list[mid].FString)), PWideChar(Pointer(initial)), n);
       end else begin
-         cmp:=UnicodeCompareLen(PChar(Pointer(list[mid].FString)), PChar(Pointer(initial)), nc);
+         cmp:=UnicodeCompareLen(PWideChar(Pointer(list[mid].FString)), PWideChar(Pointer(initial)), nc);
          if cmp=0 then
             cmp:=-1;
       end;
@@ -1340,7 +1340,7 @@ end;
 function TFastCompareTextList.IndexOfName(const name : UnicodeString): Integer;
 var
    n, nc : Integer;
-   nvs : Char;
+   nvs : WideChar;
    list : TStringListList;
 begin
    if not Sorted then begin
@@ -1350,8 +1350,8 @@ begin
       for Result:=0 to Count-1 do begin
          nc:=Length(list[Result].FString);
          if     (nc>n) and (list[Result].FString[n+1]=nvs)
-            and (UnicodeCompareLen(PChar(Pointer(name)),
-                                   PChar(Pointer(list[Result].FString)), n)=0) then Exit;
+            and (UnicodeCompareLen(PWideChar(Pointer(name)),
+                                   PWideChar(Pointer(list[Result].FString)), n)=0) then Exit;
       end;
       Result:=-1;
    end else begin
@@ -2233,7 +2233,7 @@ end;
 //
 procedure TWriteOnlyBlockStream.WriteDigits(value : Int64; digits : Integer);
 var
-   buf : array [0..19] of Char;
+   buf : array [0..19] of WideChar;
    n : Integer;
 begin
    if digits<=0 then Exit;
@@ -2243,13 +2243,13 @@ begin
    while digits>0 do begin
       Dec(n);
       if value<>0 then begin
-         buf[n]:=Char(Ord('0')+(value mod 10));
+         buf[n]:=WideChar(Ord('0')+(value mod 10));
          value:=value div 10;
       end else buf[n]:='0';
       Dec(digits);
    end;
 
-   Write(buf[n], (Length(buf)-n)*SizeOf(Char));
+   Write(buf[n], (Length(buf)-n)*SizeOf(WideChar));
 end;
 
 // ToString

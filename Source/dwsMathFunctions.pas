@@ -833,7 +833,7 @@ initialization
    RegisterInternalFloatFunction(TArcCosFunc, 'ArcCos', ['v', cFloat], [iffStateLess], 'ArcCos');
    RegisterInternalFloatFunction(TArcCoshFunc, 'ArcCosh', ['v', cFloat], [iffStateLess], 'ArcCosh');
    RegisterInternalFloatFunction(TArcTanFunc, 'ArcTan', ['v', cFloat], [iffStateLess], 'ArcTan');
-   RegisterInternalFloatFunction(TArcTan2Func, 'ArcTan2', ['y', cFloat, 'x', cFloat], [iffStateLess], );
+   RegisterInternalFloatFunction(TArcTan2Func, 'ArcTan2', ['y', cFloat, 'x', cFloat], [iffStateLess]);
    RegisterInternalFloatFunction(TArcTanhFunc, 'ArcTanh', ['v', cFloat], [iffStateLess], 'ArcTanh');
    RegisterInternalFloatFunction(TCotanFunc, 'Cotan', ['a', cFloat], [iffStateLess], 'Cotan');
    RegisterInternalFloatFunction(THypotFunc, 'Hypot', ['x', cFloat, 'y', cFloat], [iffStateLess]);

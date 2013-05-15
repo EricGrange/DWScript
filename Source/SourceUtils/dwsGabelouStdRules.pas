@@ -173,7 +173,7 @@ procedure TGR_ConstantNamingRules.EvaluateSymbol(const aSymbolList : TSymbolPosi
 
    function ChecksAllCapsUpToUnderscore(const s : UnicodeString) : Boolean;
    var
-      c : Char;
+      c : WideChar;
       i : Integer;
    begin
       for i:=1 to Length(s) do begin

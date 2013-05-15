@@ -723,7 +723,7 @@ end;
 constructor TSqlFunction.Create(base: TsqlIdentifier; const compiler: IdwsCompiler);
 begin
    inherited Create(base.Value, compiler);
-   FFunction := TFuncExprBase.Create(compiler.CurrentProg, compiler.Tokenizer.CurrentPos, nil);
+   FFunction := TFuncExpr.Create(compiler.CurrentProg, compiler.Tokenizer.CurrentPos, nil);
 end;
 
 destructor TSqlFunction.Destroy;

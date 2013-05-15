@@ -1619,7 +1619,6 @@ type
 
       public
          constructor Create(elemTyp : TTypeSymbol);
-         class procedure InitData(elemTyp : TTypeSymbol; var result : Variant); static;
 
          procedure Delete(index, count : Integer);
          procedure Insert(index : Integer);
@@ -5932,6 +5931,8 @@ end;
 // ------------------ TScriptDynamicArray ------------------
 // ------------------
 
+
+
 // Create
 //
 constructor TScriptDynamicArray.Create(elemTyp : TTypeSymbol);
@@ -5942,9 +5943,9 @@ begin
    end;
 end;
 
-// InitData
+// TScriptDynamicArray_InitData
 //
-class procedure TScriptDynamicArray.InitData(elemTyp : TTypeSymbol; var result : Variant);
+procedure TScriptDynamicArray_InitData(elemTyp : TTypeSymbol; var result : Variant);
 begin
    result:=IScriptObj(TScriptDynamicArray.Create(elemTyp));
 end;
@@ -7515,7 +7516,7 @@ initialization
 // ------------------------------------------------------------------
 
    TdwsGuardianThread.Initialize;
-   TDynamicArraySymbol.vInitDynamicArray:=TScriptDynamicArray.InitData;
+   TDynamicArraySymbol.SetInitDynamicArrayProc(TScriptDynamicArray_InitData);
 
 finalization
 

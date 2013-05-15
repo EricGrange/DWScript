@@ -114,7 +114,8 @@ procedure RegisterRTTITypes(systemTable : TSystemSymbolTable; unitSyms : TUnitMa
    var
       ccs : TClassConstSymbol;
    begin
-      ccs:=TClassConstSymbol.Create(name, systemTable.TypInteger, value);
+      ccs:=TClassConstSymbol.CreateValue(name, systemTable.TypInteger, value);
+      ccs.Visibility:=cvPublic;
       clsSym.AddConst(ccs);
    end;
 

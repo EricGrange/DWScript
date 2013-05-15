@@ -254,7 +254,7 @@ type
          procedure UnIndent;
 
          procedure WriteString(const s : String); overload;
-         procedure WriteString(const c : Char); overload;
+         procedure WriteString(const c : WideChar); overload;
          procedure WriteStringLn(const s : String);
          procedure WriteLineEnd;
          procedure WriteStatementEnd; virtual;
@@ -1140,7 +1140,7 @@ end;
 
 // WriteString
 //
-procedure TdwsCodeGen.WriteString(const c : Char);
+procedure TdwsCodeGen.WriteString(const c : WideChar);
 begin
    if FNeedIndent then begin
       WriteIndent;

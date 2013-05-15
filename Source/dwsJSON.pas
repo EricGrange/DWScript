@@ -118,7 +118,7 @@ type
          function SkipBlanks(currentChar : WideChar) : WideChar; inline;
 
          procedure ParseJSONString(initialChar : WideChar; var result : UnicodeString);
-         procedure ParseHugeJSONNumber(initialChars : PChar; initialCharCount : Integer; var result : Double);
+         procedure ParseHugeJSONNumber(initialChars : PWideChar; initialCharCount : Integer; var result : Double);
          procedure ParseJSONNumber(initialChar : WideChar; var result : Double);
    end;
 
@@ -395,11 +395,7 @@ var
 //
 constructor TdwsJSONParserState.Create(const aStr : UnicodeString);
 begin
-   {$ifdef FPC}
-   Str:=UTF8Decode(aStr);
-   {$else}
    Str:=aStr;
-   {$endif}
    Ptr:=PWideChar(Str);
    ColStart:=Ptr;
 end;
@@ -425,12 +421,12 @@ function TdwsJSONParserState.Location : UnicodeString;
 begin
    if (Line=0) then begin
       Result:=Format('line 1, col %d',
-                     [(NativeInt(Ptr)-NativeInt(ColStart)) div SizeOf(Char)]);
+                     [(NativeInt(Ptr)-NativeInt(ColStart)) div SizeOf(WideChar)]);
    end else begin
       Result:=Format('line %d, col %d (offset %d)',
                      [Line+1,
-                      (NativeInt(Ptr)-NativeInt(ColStart)) div SizeOf(Char),
-                      (NativeInt(Ptr)-NativeInt(PChar(Str))) div SizeOf(Char)]);
+                      (NativeInt(Ptr)-NativeInt(ColStart)) div SizeOf(WideChar),
+                      (NativeInt(Ptr)-NativeInt(PWideChar(Str))) div SizeOf(WideChar)]);
    end;
 end;
 
@@ -534,7 +530,7 @@ end;
 // ParseJSONNumber
 //
 procedure TdwsJSONParserState.ParseHugeJSONNumber(
-      initialChars : PChar; initialCharCount : Integer; var result : Double);
+      initialChars : PWideChar; initialCharCount : Integer; var result : Double);
 var
    buf : UnicodeString;
    c : WideChar;
@@ -543,7 +539,7 @@ begin
    repeat
       c:=NeedChar();
       case c of
-         '0'..'9', '-', '+', 'e', 'E', '.' : buf:=buf+Char(c);
+         '0'..'9', '-', '+', 'e', 'E', '.' : buf:=buf+WideChar(c);
       else
          TrailCharacter:=c;
          Break;
@@ -556,10 +552,10 @@ end;
 //
 procedure TdwsJSONParserState.ParseJSONNumber(initialChar : WideChar; var result : Double);
 var
-   bufPtr : PChar;
+   bufPtr : PWideChar;
    c : WideChar;
    resultBuf : Extended;
-   buf : array [0..50] of Char;
+   buf : array [0..50] of WideChar;
 begin
    buf[0]:=initialChar;
    bufPtr:=@buf[1];
@@ -580,7 +576,7 @@ begin
       end;
    until False;
    bufPtr^:=#0;
-   TryTextToFloat(PChar(@buf[0]), resultBuf, vJSONFormatSettings);
+   TryTextToFloat(PWideChar(@buf[0]), resultBuf, vJSONFormatSettings);
    Result:=resultBuf;
 end;
 
@@ -590,10 +586,10 @@ procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : 
 
    procedure WriteUTF16(destStream : TWriteOnlyBlockStream; c : Integer);
    const
-      cIntToHex : array [0..15] of Char = (
+      cIntToHex : array [0..15] of WideChar = (
          '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F');
    var
-      hex : array [0..5] of Char;
+      hex : array [0..5] of WideChar;
    begin
       hex[0]:='\';
       hex[1]:='u';
@@ -601,17 +597,17 @@ procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : 
       hex[3]:=cIntToHex[(c shr 8) and $F];
       hex[4]:=cIntToHex[(c shr 4) and $F];
       hex[5]:=cIntToHex[c and $F];
-      destStream.Write(hex[0], 6*SizeOf(Char));
+      destStream.Write(hex[0], 6*SizeOf(WideChar));
    end;
 
 const
-   cQUOTE : Char = '"';
+   cQUOTE : WideChar = '"';
 var
-   c : Char;
-   p : PChar;
+   c : WideChar;
+   p : PWideChar;
 begin
-   destStream.Write(cQUOTE, SizeOf(Char));
-   p:=PChar(Pointer(str));
+   destStream.Write(cQUOTE, SizeOf(WideChar));
+   p:=PWideChar(Pointer(str));
    if p<>nil then while True do begin
       c:=p^;
       case c of
@@ -635,11 +631,11 @@ begin
             WriteUTF16(destStream, Ord(c));
          {$endif}
       else
-         destStream.Write(p^, SizeOf(Char));
+         destStream.Write(p^, SizeOf(WideChar));
       end;
       Inc(p);
    end;
-   destStream.Write(cQUOTE, SizeOf(Char));
+   destStream.Write(cQUOTE, SizeOf(WideChar));
 end;
 
 // ------------------

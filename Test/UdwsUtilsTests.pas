@@ -512,7 +512,7 @@ procedure TdwsUtilsTests.FastIntToStrTest;
 var
    i : Integer;
    n : Int64;
-   s : String;
+   s : UnicodeString;
 begin
    FastInt64ToStr(0, s);
    CheckEquals('0', s);

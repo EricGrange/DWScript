@@ -16,8 +16,8 @@ type
          procedure SetUp; override;
          procedure TearDown; override;
 
-         procedure DoInclude(const scriptName : String; var scriptSource : String);
-         function DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+         procedure DoInclude(const scriptName : UnicodeString; var scriptSource : UnicodeString);
+         function DoNeedUnit(const unitName : UnicodeString; var unitSource : UnicodeString) : IdwsUnit;
 
          procedure Compilation;
          procedure Execution;
@@ -78,19 +78,19 @@ end;
 
 // DoInclude
 //
-procedure TBuildTests.DoInclude(const scriptName: string; var scriptSource: string);
+procedure TBuildTests.DoInclude(const scriptName: UnicodeString; var scriptSource: UnicodeString);
 var
    fileName : String;
 begin
    fileName:='BuildScripts\'+scriptName;
-   if FileExists(fileName) then begin
-      scriptSource:=LoadTextFromFile(fileName);
-   end else scriptSource:='';
+   if FileExists(fileName) then
+      scriptSource:=LoadTextFromFile(fileName)
+   else scriptSource:='';
 end;
 
 // DoNeedUnit
 //
-function TBuildTests.DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+function TBuildTests.DoNeedUnit(const unitName : UnicodeString; var unitSource : UnicodeString) : IdwsUnit;
 begin
    Result:=nil;
    DoInclude(unitName+'.pas', unitSource);
