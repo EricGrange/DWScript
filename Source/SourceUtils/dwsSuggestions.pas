@@ -87,6 +87,8 @@ type
    TdwsSuggestionsOption = (soNoReservedWords);
    TdwsSuggestionsOptions = set of TdwsSuggestionsOption;
 
+   TNameSymbolHash = TSimpleNameObjectHash<TSymbol>;
+
    TdwsSuggestions = class (TInterfacedObject, IdwsSuggestions)
       private
          FProg : IdwsProgram;
@@ -95,7 +97,7 @@ type
          FList : TSimpleSymbolList;
          FCleanupList : TTightList;
          FListLookup : TObjectsLookup;
-         FNamesLookup : TStringList;
+         FNamesLookup : TNameSymbolHash;
          FPartialToken : UnicodeString;
          FPreviousSymbol : TSymbol;
          FPreviousTokenString : UnicodeString;
@@ -185,8 +187,7 @@ begin
    FSourceFile:=sourcePos.SourceFile;
    FList:=TSimpleSymbolList.Create;
    FListLookup:=TObjectsLookup.Create;
-   FNamesLookup:=TFastCompareStringList.Create;
-   FNamesLookup.Sorted:=True;
+   FNamesLookup:=TNameSymbolHash.Create;
 
    AnalyzeLocalTokens;
 
@@ -356,9 +357,9 @@ begin
          if StrContains(sym.Name, ' ') then continue;
          if FListLookup.IndexOf(sym)<0 then begin
             FListLookup.Add(sym);
-            if FNamesLookup.IndexOf(sym.Name)<0 then begin
+            if FNamesLookup.Objects[sym.Name]=nil then begin
                tmp.AddObject(sym.Name, sym);
-               FNamesLookup.Add(sym.Name);
+               FNamesLookup.AddObject(sym.Name, sym);
             end;
          end;
       end;

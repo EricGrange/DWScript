@@ -2768,6 +2768,7 @@ end;
 procedure TSimpleNameObjectHash<T>.Clear;
 begin
    SetLength(FBuckets, 0);
+   FGrowth:=0;
    FCount:=0;
    FCapacity:=0;
 end;
