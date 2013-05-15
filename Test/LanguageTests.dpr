@@ -45,6 +45,7 @@ uses
   UJITTests in 'UJITTests.pas',
   UJITx86Tests in 'UJITx86Tests.pas',
   dwsLinq,
+  dwsLinqSql in '..\Libraries\LinqLib\dwsLinqSql.pas',
   ULinqTests in 'ULinqTests.pas',
   dwsSynSQLiteDatabase in '..\Libraries\DatabaseLib\dwsSynSQLiteDatabase.pas';
 
