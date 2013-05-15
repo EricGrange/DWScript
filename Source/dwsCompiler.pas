@@ -7733,7 +7733,7 @@ begin
 
          end else begin
 
-            if csfPartial in previousClassFlags then
+            if (csfPartial in previousClassFlags) and (Result.Parent<>nil) then
                ancestorTyp:=Result.Parent
             else if Result.IsExternal then begin
                if Assigned(FOnRootExternalClass) then

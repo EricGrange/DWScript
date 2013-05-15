@@ -69,6 +69,7 @@ type
          procedure MultiRunProtection;
          procedure MultipleHostExceptions;
          procedure OverloadOverrideIndwsUnit;
+         procedure PartialClassParent;
    end;
 
    ETestException = class (Exception);
@@ -1436,6 +1437,26 @@ begin
    finally
       un.Free;
    end;
+end;
+
+// PartialClassParent
+//
+procedure TCornerCasesTests.PartialClassParent;
+var
+   prog : IdwsProgram;
+   cls : TClassSymbol;
+begin
+   prog:=FCompiler.Compile( 'type TTest = partial class;'#13#10
+                           +'type TTest = partial class Field1 : Integer; end;'#13#10
+                           +'type TTest = partial class Field2 : Integer; end;'#13#10);
+
+   CheckEquals('', prog.Msgs.AsInfo, 'compile');
+
+   cls:=prog.Table.FindTypeLocal('TTest') as TClassSymbol;
+
+   CheckEquals(2, cls.Members.Count, 'members');
+   Check(cls.Parent<>nil, 'Parent not nil');
+   CheckEquals('TObject', cls.Parent.Name, 'Parent name');
 end;
 
 // ------------------------------------------------------------------
