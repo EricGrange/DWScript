@@ -1346,7 +1346,7 @@ begin
       obj.FItems[i].Name:=FItems[i].Name;
       obj.FItems[i].Hash:=FItems[i].Hash;
       member:=FItems[i].Value.Clone;
-      member.FOwner:=Self;
+      member.FOwner:=obj;
       obj.FItems[i].Value:=member;
    end;
    Result:=obj;

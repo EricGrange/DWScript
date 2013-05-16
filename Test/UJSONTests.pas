@@ -61,6 +61,7 @@ type
          procedure ArrayTest;
          procedure DefaultValues;
          procedure RepositionInArray;
+         procedure CloneAndDetach;
    end;
 
 // ------------------------------------------------------------------
@@ -663,6 +664,36 @@ begin
 
       a.Elements[1]:=b;
       CheckEquals('[null,{}]', a.ToString);
+   finally
+      a.Free;
+   end;
+end;
+
+// CloneAndDetach
+//
+procedure TdwsJSONTests.CloneAndDetach;
+var
+   a, b, c : TdwsJSONValue;
+begin
+   a:=TdwsJSONObject.ParseString('{"hello":"world"}');
+   try
+      b:=a.Clone;
+      try
+         a.Elements[0].AsString:='WORLD';
+         CheckEquals('{"hello":"WORLD"}', a.ToString);
+         CheckEquals('{"hello":"world"}', b.ToString);
+
+         c:=b.Elements[0];
+         c.Detach;
+         try
+            CheckEquals('{}', b.ToString);
+            CheckEquals('"world"', c.ToString);
+         finally
+            c.Free;
+         end;
+      finally
+         b.Free;
+      end;
    finally
       a.Free;
    end;
