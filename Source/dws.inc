@@ -48,6 +48,9 @@
    {$IF CompilerVersion>21.0}
       {$DEFINE DELPHI_XE_PLUS}
    {$IFEND}
+   {$IF CompilerVersion>22.0}
+      {$DEFINE DELPHI_XE2_PLUS}
+   {$IFEND}
    {$IF CompilerVersion>23.0}
       {$DEFINE DELPHI_XE3_PLUS}
    {$IFEND}
@@ -68,4 +71,9 @@
    {$IFEND}
 {$ENDIF}
 
+{$IFNDEF FPC}
+  {$IFNDEF DELPHI_XE2_PLUS}
+     {$DEFINE CPUX86}
+  {$ENDIF}
+{$ENDIF}
 
