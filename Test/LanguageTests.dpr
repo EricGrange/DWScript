@@ -47,7 +47,9 @@ uses
   dwsLinq,
   dwsLinqSql in '..\Libraries\LinqLib\dwsLinqSql.pas',
   ULinqTests in 'ULinqTests.pas',
-  dwsSynSQLiteDatabase in '..\Libraries\DatabaseLib\dwsSynSQLiteDatabase.pas';
+  dwsSynSQLiteDatabase in '..\Libraries\DatabaseLib\dwsSynSQLiteDatabase.pas',
+  dwsLinqJson in '..\Libraries\LinqLib\dwsLinqJson.pas',
+  ULinqJsonTests in 'ULinqJsonTests.pas';
 
 {$R *.res}
 

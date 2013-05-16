@@ -1,17 +1,17 @@
-unit ULinqTests;
+unit ULinqJsonTests;
 
 interface
 uses
    Classes,
-   dwsXPlatformTests, dwsComp, dwsLinq, dwsDataBaseLibModule;
+   dwsXPlatformTests, dwsComp, dwsLinq, dwsJSONConnector;
 
 type
-   TLinqSqlTests = class(TTestCase)
+   TLinqJsonTests = class(TTestCase)
       private
          FTests: TStringList;
          FCompiler: TDelphiWebScript;
          FLinq: TdwsLinqFactory;
-         FDataBaseLib : TdwsDatabaseLib;
+         FJSONLib: TdwsJSONLibModule;
       public
          procedure SetUp; override;
          procedure TearDown; override;
@@ -25,11 +25,11 @@ type
 implementation
 uses
    SysUtils,
-   dwsXPlatform, dwsExprs, dwsLinqSql;
+   dwsXPlatform, dwsExprs, dwsLinqJson;
 
-{ TLinqSqlTests }
+{ TLinqJsonTests }
 
-procedure TLinqSqlTests.Compilation;
+procedure TLinqJsonTests.Compilation;
 var
    source : TStringList;
    i : Integer;
@@ -44,7 +44,7 @@ begin
 
          prog:=FCompiler.Compile(source.Text);
          CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
-
+         prog := nil;
       end;
 
    finally
@@ -52,7 +52,7 @@ begin
    end;
 end;
 
-procedure TLinqSqlTests.Execution;
+procedure TLinqJsonTests.Execution;
 var
    source, expectedResult : TStringList;
    i : Integer;
@@ -92,29 +92,28 @@ begin
    end;
 end;
 
-procedure TLinqSqlTests.SetUp;
+procedure TLinqJsonTests.SetUp;
 begin
    FTests:=TStringList.Create;
 
-   CollectFiles(ExtractFilePath(ParamStr(0))+'Linq'+PathDelim, '*.pas', FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'LinqJson'+PathDelim, '*.pas', FTests);
 
    FCompiler:=TDelphiWebScript.Create(nil);
    FLinq := TdwsLinqFactory.Create(FCompiler);
    FLinq.Script := FCompiler;
-   FDataBaseLib:=TdwsDatabaseLib.Create(FCompiler);
-   FDataBaseLib.dwsDatabase.StaticSymbols := false;
-   FDataBaseLib.Script:=FCompiler;
-   dwsLinqSql.TLinqSqlExtension.Create(FCompiler).LinqFactory := FLinq;
+   FJSONLib:=TdwsJSONLibModule.Create(FCompiler);
+   FJSONLib.Script:=FCompiler;
+   dwsLinqJson.TLinqJsonExtension.Create(FCompiler).LinqFactory := FLinq;
 end;
 
-procedure TLinqSqlTests.TearDown;
+procedure TLinqJsonTests.TearDown;
 begin
    FCompiler.Free;
 
    FTests.Free;
 end;
 
-procedure TLinqSqlTests.Test;
+procedure TLinqJsonTests.Test;
 begin
    Compilation;
    Execution;
@@ -128,6 +127,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   RegisterTest('dwsLinqLibTests', TLinqSqlTests);
+   RegisterTest('dwsLinqLibTests', TLinqJsonTests);
 
 end.
