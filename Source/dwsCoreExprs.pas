@@ -774,7 +774,7 @@ type
    TArrayIndexOfExpr = class(TArrayTypedExpr)
       private
          FBaseExpr : TTypedExpr;
-         FItemExpr : TDataExpr;
+         FItemExpr : TTypedExpr;
          FFromIndexExpr : TTypedExpr;
 
       protected
@@ -785,14 +785,14 @@ type
 
       public
          constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos;
-                            aBase : TTypedExpr; aItem : TDataExpr; aFromIndex : TTypedExpr);
+                            aBase : TTypedExpr; aItem : TTypedExpr; aFromIndex : TTypedExpr);
          destructor Destroy; override;
 
          function  Eval(exec : TdwsExecution) : Variant; override;
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
 
          property BaseExpr : TTypedExpr read FBaseExpr;
-         property ItemExpr : TDataExpr read FItemExpr;
+         property ItemExpr : TTypedExpr read FItemExpr;
          property FromIndexExpr : TTypedExpr read FFromIndexExpr;
    end;
 
@@ -7562,7 +7562,7 @@ end;
 // Create
 //
 constructor TArrayIndexOfExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos;
-                                     aBase : TTypedExpr; aItem : TDataExpr; aFromIndex : TTypedExpr);
+                                     aBase : TTypedExpr; aItem : TTypedExpr; aFromIndex : TTypedExpr);
 begin
    inherited Create(prog, scriptPos);
    FBaseExpr:=aBase;

@@ -7166,7 +7166,7 @@ begin
                   Result:=TArrayIndexOfExpr.Create(FProg, namePos, baseExpr,
                                                    argList[0] as TDataExpr, argList[1]);
                end else Result:=TArrayIndexOfExpr.Create(FProg, namePos, baseExpr,
-                                                         argList[0] as TDataExpr, nil);
+                                                         argList[0] as TTypedExpr, nil);
                argList.Clear;
             end else Result:=TArrayIndexOfExpr.Create(FProg, namePos, baseExpr, nil, nil);
 
