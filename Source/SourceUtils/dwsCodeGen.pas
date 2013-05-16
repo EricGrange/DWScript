@@ -26,6 +26,7 @@ uses
 
 type
 
+   TdwsCodeGen = class;
    TdwsExprCodeGen = class;
 
    TdwsMappedSymbol = record
@@ -53,22 +54,26 @@ type
          FLookup : TdwsMappedSymbol;
          FReservedSymbol : TSymbol;
          FPrefix : String;
+         FCodeGen : TdwsCodeGen;
 
       protected
          function DoNeedUniqueName(symbol : TSymbol; tryCount : Integer; canObfuscate : Boolean) : String; virtual;
 
+         procedure RaiseAlreadyDefined(sym, existing : TSymbol);
+
       public
-         constructor Create(aParent : TdwsCodeGenSymbolMap; aSymbol : TSymbol);
+         constructor Create(aCodeGen : TdwsCodeGen; aParent : TdwsCodeGenSymbolMap; aSymbol : TSymbol);
          destructor Destroy; override;
 
          function SymbolToName(symbol : TSymbol) : String;
          function NameToSymbol(const name : String; scope : TdwsCodeGenSymbolScope) : TSymbol;
 
          procedure ReserveName(const name : String); inline;
-         procedure ReserveExternalName(sym : TSymbol); inline;
+         procedure ReserveExternalName(sym : TSymbol);
 
          function MapSymbol(symbol : TSymbol; scope : TdwsCodeGenSymbolScope; canObfuscate : Boolean) : String;
 
+         property CodeGen : TdwsCodeGen read FCodeGen;
          property Maps : TdwsCodeGenSymbolMaps read FMaps write FMaps;
          property Parent : TdwsCodeGenSymbolMap read FParent;
          property Prefix : String read FPrefix write FPrefix;
@@ -138,6 +143,7 @@ type
 
          FContext : TdwsProgram;
          FContextStack : TTightStack;
+         FContextSymbolDictionary : TdwsSymbolDictionary;
 
          FLocalVarSymbolMap : TStringList;
          FLocalVarSymbolMapStack : TTightStack;
@@ -283,6 +289,8 @@ type
          procedure CreateDataContext(const data : TData; addr : Integer; var result : IDataContext);
 
          property Context : TdwsProgram read FContext;
+         property ContextSymbolDictionary : TdwsSymbolDictionary read FContextSymbolDictionary;
+
          property LocalTable : TSymbolTable read FLocalTable write FLocalTable;
          property SymbolMap : TdwsCodeGenSymbolMap read FSymbolMap;
          property OutputLineOffset : Integer read FOutputLineOffset write FOutputLineOffset;
@@ -914,6 +922,8 @@ procedure TdwsCodeGen.BeginProgramSession(const prog : IdwsProgram);
 var
    p : TdwsProgram;
 begin
+   FContextSymbolDictionary:=prog.SymbolDictionary;
+
    if FSymbolMap=nil then
       EnterScope(nil);
 
@@ -926,6 +936,7 @@ end;
 procedure TdwsCodeGen.EndProgramSession;
 begin
    LeaveContext;
+   FContextSymbolDictionary:=nil;
 end;
 
 // ReserveSymbolNames
@@ -1342,7 +1353,7 @@ end;
 //
 function TdwsCodeGen.CreateSymbolMap(parentMap : TdwsCodeGenSymbolMap; symbol : TSymbol) : TdwsCodeGenSymbolMap;
 begin
-   Result:=TdwsCodeGenSymbolMap.Create(FSymbolMap, symbol);
+   Result:=TdwsCodeGenSymbolMap.Create(Self, FSymbolMap, symbol);
 end;
 
 // EnterScope
@@ -1867,12 +1878,13 @@ end;
 
 // Create
 //
-constructor TdwsCodeGenSymbolMap.Create(aParent : TdwsCodeGenSymbolMap; aSymbol : TSymbol);
+constructor TdwsCodeGenSymbolMap.Create(aCodeGen : TdwsCodeGen; aParent : TdwsCodeGenSymbolMap; aSymbol : TSymbol);
 begin
    inherited Create;
-   FHash:=TdwsMappedSymbolHash.Create;
+   FCodeGen:=aCodeGen;
    FParent:=aParent;
    FSymbol:=aSymbol;
+   FHash:=TdwsMappedSymbolHash.Create;
    FNames:=TSimpleNameObjectHash<TSymbol>.Create;
    FReservedSymbol:=TSymbol.Create('', nil);
    if aSymbol is TUnitSymbol then
@@ -1951,6 +1963,27 @@ begin
    FNames.Objects[name]:=FReservedSymbol;
 end;
 
+// RaiseAlreadyDefined
+//
+procedure TdwsCodeGenSymbolMap.RaiseAlreadyDefined(sym, existing : TSymbol);
+var
+   locationString : String;
+   existingPos, symPos : TSymbolPosition;
+   symDict : TdwsSymbolDictionary;
+begin
+   locationString:='';
+   symDict:=CodeGen.ContextSymbolDictionary;
+   if symDict<>nil then begin
+      existingPos:=symDict.FindSymbolUsage(existing, suDeclaration);
+      symPos:=symDict.FindSymbolUsage(sym, suDeclaration);
+      if (existingPos<>nil) and (symPos<>nil) then
+         locationString:= ', declarations at'+symPos.ScriptPos.AsInfo
+                         +' and'+existingPos.ScriptPos.AsInfo+')';
+   end;
+   raise ECodeGenException.CreateFmt('External symbol "%s" already defined%s',
+                                     [sym.Name, locationString])
+end;
+
 // ReserveExternalName
 //
 procedure TdwsCodeGenSymbolMap.ReserveExternalName(sym : TSymbol);
@@ -1964,7 +1997,7 @@ begin
    if not FNames.AddObject(n, sym) then begin
       existing:=FNames[n];
       if (existing<>FReservedSymbol) and (existing<>sym) then
-         raise ECodeGenException.CreateFmt('External symbol "%s" already defined', [sym.Name])
+         RaiseAlreadyDefined(sym, existing)
       else FNames.Objects[n]:=sym;
    end;
 end;

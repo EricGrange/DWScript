@@ -69,6 +69,7 @@ type
          function IsMainModule : Boolean;
          function IsSourceFile(const name : UnicodeString) : Boolean;
          function SourceName : UnicodeString; inline;
+         function SourceCode : UnicodeString; inline;
          function Defined : Boolean;
 
          procedure IncCol; inline;
@@ -385,6 +386,15 @@ begin
    else Result:='';
 end;
 
+// SourceCode
+//
+function TScriptPos.SourceCode : UnicodeString;
+begin
+   if SourceFile<>nil then
+      Result:=SourceFile.Code
+   else Result:='';
+end;
+
 // Defined
 //
 function TScriptPos.Defined : Boolean;
@@ -561,7 +571,7 @@ begin
          srcMsg:=TScriptMessage(msg);
          sf:=TSourceFile.Create;
          sf.Name:=srcMsg.ScriptPos.SourceName;
-         sf.Code:=srcMsg.ScriptPos.SourceFile.Code;
+         sf.Code:=srcMsg.ScriptPos.SourceCode;
          FSourceFiles.Add(sf);
          srcMsg.FScriptPos.SourceFile:=sf;
          if srcMsg.ScriptPos.Line=1 then
