@@ -578,6 +578,8 @@ type
          function ReadRecordSymbolName(baseType : TRecordSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
          function ReadConstName(constSym : TConstSymbol; isWrite: Boolean) : TProgramExpr;
          function ReadDataSymbolName(dataSym : TDataSymbol; fromTable : TSymbolTable; isWrite: Boolean; expecting : TTypeSymbol) : TProgramExpr;
+         function ReadImplicitCall(codeExpr : TTypedExpr; isWrite: Boolean;
+                                   expecting : TTypeSymbol) : TProgramExpr;
          function ReadResourceStringName(resSym : TResourceStringSymbol; const namePos : TScriptPos) : TResourceStringExpr;
          function ReadNameOld(isWrite : Boolean) : TTypedExpr;
          function ReadNameInherited(isWrite : Boolean) : TProgramExpr;
@@ -4433,7 +4435,7 @@ begin
             fieldExpr:=ReadField(namePos, selfSym, TFieldSymbol(sym));
 
          end;
-         Result:=ReadSymbol(fieldExpr, IsWrite, expecting);
+         Result:=ReadImplicitCall(fieldExpr, IsWrite, expecting);
 
       end else if sym.InheritsFrom(TPropertySymbol) then begin
 
@@ -4606,8 +4608,6 @@ var
    typ : TTypeSymbol;
 begin
    typ:=constSym.Typ;
-///   if typ.Typ is TArraySymbol then
-///      typ:=typ.Typ;
    Result := ReadSymbol(TConstExpr.CreateTyped(FProg, typ, constSym), IsWrite)
 end;
 
@@ -4616,23 +4616,38 @@ end;
 function TdwsCompiler.ReadDataSymbolName(dataSym : TDataSymbol; fromTable : TSymbolTable;
                                          isWrite: Boolean; expecting : TTypeSymbol) : TProgramExpr;
 var
-   funcSym : TFuncSymbol;
    varExpr : TVarExpr;
 begin
    varExpr:=GetVarExpr(dataSym);
-   if dataSym.Typ.IsFuncSymbol then begin
+   Result:=ReadImplicitCall(varExpr, isWrite, expecting);
+end;
+
+// ReadImplicitCall
+//
+function TdwsCompiler.ReadImplicitCall(codeExpr : TTypedExpr; isWrite: Boolean;
+                                       expecting : TTypeSymbol) : TProgramExpr;
+var
+   codeExprTyp : TTypeSymbol;
+   funcSym : TFuncSymbol;
+begin
+   if codeExpr=nil then Exit(nil);
+   codeExprTyp:=codeExpr.Typ;
+   if codeExprTyp=nil then Exit(nil);
+
+   if codeExprTyp.IsFuncSymbol then begin
       if     FTok.Test(ttASSIGN)
          or  (    (expecting<>nil)
-              and dataSym.Typ.IsOfType(expecting)
+              and codeExprTyp.IsOfType(expecting)
               and not FTok.Test(ttBLEFT)) then
-         Result:=varExpr
+         Result:=codeExpr
       else begin
-         funcSym:=TFuncSymbol(dataSym.Typ);
+         funcSym:=(codeExprTyp as TFuncSymbol);
          Assert(not funcSym.IsOverloaded);
          // Result:=ReadFuncOverloaded(funcSym, fromTable, varExpr, expecting)
-         Result:=ReadFunc(funcSym, varExpr, expecting);
+         Result:=ReadFunc(funcSym, codeExpr, expecting);
       end;
-   end else Result:=varExpr;
+   end else Result:=codeExpr;
+
    Result:=ReadSymbol(Result, isWrite, expecting);
 end;
 

@@ -1,0 +1,7 @@
+Errors >>>>
+Hint: OF OBJECT modifier is legacy and ignored [line: 2, column: 37]
+Hint: "result" does not match case of declaration ("Result") [line: 28, column: 2]
+Hint: "result" does not match case of declaration ("Result") [line: 36, column: 2]
+Hint: "free" does not match case of declaration ("Free") [line: 38, column: 7]
+Result >>>>
+passed
