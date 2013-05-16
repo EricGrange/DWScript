@@ -14,7 +14,7 @@ type
    TSqlJoinExpr = class;
 
    ILinqQueryBuilder = interface
-      function From(value: TTypedExpr; base: TDataSymbol): TTypedExpr;
+      function From(value: TSqlIdentifier; base: TDataSymbol): TTypedExpr;
       function Join(from: TTypedExpr; value: TSqlJoinExpr): TTypedExpr;
       function Where(from: TTypedExpr; list: TSqlList): TTypedExpr;
       function Group(from: TTypedExpr; list: TSqlList): TTypedExpr;
@@ -23,9 +23,7 @@ type
       function Into(from: TTypedExpr; value: TFuncPtrExpr; aPos: TScriptPos): TTypedExpr;
       function Distinct(from: TTypedExpr): TTypedExpr;
       procedure Finalize(From: TTypedExpr);
-      function NeedsDot: boolean;
    end;
-
    TLinqQueryBuilderFactory = function(compiler: TdwsCompiler; symbol: TTypeSymbol): ILinqQueryBuilder;
 
    TJoinType = (jtFull, jtLeft, jtRight, jtFullOuter, jtCross);
@@ -51,10 +49,8 @@ type
       FRecursionDepth: integer;
       FQueryBuilder: ILinqQueryBuilder;
       FQueryBuilders: TSimpleList<TLinqQueryBuilderFactory>;
-      function findQueryBuilder(const compiler: IdwsCompiler; typ: TTypeSymbol;
-        out builder: ILinqQueryBuilder): boolean;
       function ReadExpression(const compiler: IdwsCompiler; tok: TTokenizer): TTypedExpr;
-      procedure ReadFromExprBody(const compiler: IdwsCompiler; tok: TTokenizer; var from: TTypedExpr);
+      procedure ReadFromExprBody(const compiler: IdwsCompiler; tok: TTokenizer; from: TTypedExpr);
       function ReadFromExpression(const compiler: IdwsCompiler; tok : TTokenizer) : TTypedExpr;
       function DoReadFromExpr(const compiler: IdwsCompiler; tok: TTokenizer; db: TDataSymbol): TTypedExpr;
       procedure ReadWhereExprs(const compiler: IdwsCompiler; tok: TTokenizer; var from: TTypedExpr);
@@ -75,6 +71,8 @@ type
       function ReadIntoExpression(const compiler: IdwsCompiler; tok: TTokenizer;
         base: TTypedExpr): TTypedExpr;
       function ValidIntoExpr(from, target: TTypedExpr): boolean;
+    function findQueryBuilder(const compiler: IdwsCompiler; typ: TTypeSymbol;
+      out builder: ILinqQueryBuilder): boolean;
    public
       procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                            scriptType : TScriptSourceType); override;
@@ -205,13 +203,8 @@ var
 begin
    list := TSqlList.Create;
    tok.KillToken;
-   try
-      ReadComparisons(compiler, tok, list);
-      from := FQueryBuilder.Where(from, list);
-   except
-      list.Free;
-      raise;
-   end;
+   ReadComparisons(compiler, tok, list);
+   from := FQueryBuilder.Where(from, list);
 end;
 
 procedure TdwsLinqExtension.ReadSelectExprs(const compiler: IdwsCompiler;
@@ -343,7 +336,7 @@ begin
 end;
 
 procedure TdwsLinqExtension.ReadFromExprBody(const compiler: IdwsCompiler; tok: TTokenizer;
-  var from: TTypedExpr);
+  from: TTypedExpr);
 begin
    while TokenEquals(tok, 'join') or TokenEquals(tok, 'left') or
       TokenEquals(tok, 'right') or TokenEquals(tok, 'full') or TokenEquals(tok, 'cross') do
@@ -364,7 +357,7 @@ var
    id: TTypedExpr;
 begin
    id := self.ReadExpression(compiler, tok);
-   if FQueryBuilder.NeedsDot and not (id is TSqlIdentifier) then
+   if not (id is TSqlIdentifier) then
       Error(compiler, 'SQL identifier expected');
    result := FQueryBuilder.From(TSqlIdentifier(id), db);
    try
@@ -399,6 +392,7 @@ end;
 function TdwsLinqExtension.ReadFromExpression(const compiler: IdwsCompiler; tok : TTokenizer): TTypedExpr;
 var
    symbol: TSymbol;
+   factory: TLinqQueryBuilderFactory;
 begin
    result := nil;
    if not (tok.TestName and TokenEquals(tok, 'from')) then Exit;
@@ -414,14 +408,11 @@ begin
                Error(compiler, '"%s" is not a valid dwsLinq data source', [tok.GetToken.AsString]);
          end
          else Error(compiler, 'Identifier expected.');
-         if FQueryBuilder.NeedsDot then
-         begin
-            tok.KillToken;
-            if not tok.TestDelete(ttDOT) then
-               Error(compiler, '"." expected.');
-            if not tok.Test(ttNAME) then
-               Error(compiler, '"Identifier expected.');
-         end;
+         tok.KillToken;
+         if not tok.TestDelete(ttDOT) then
+            Error(compiler, '"." expected.');
+         if not tok.Test(ttNAME) then
+            Error(compiler, '"Identifier expected.');
          result := DoReadFromExpr(compiler, tok, TDataSymbol(symbol));
       except
          on EAbort do

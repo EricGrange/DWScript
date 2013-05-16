@@ -6,7 +6,7 @@ uses
    dwsXPlatformTests, dwsComp, dwsLinq, dwsDataBaseLibModule;
 
 type
-   TLinqSqlTests = class(TTestCase)
+   TLinqTests = class(TTestCase)
       private
          FTests: TStringList;
          FCompiler: TDelphiWebScript;
@@ -27,9 +27,9 @@ uses
    SysUtils,
    dwsXPlatform, dwsExprs, dwsLinqSql;
 
-{ TLinqSqlTests }
+{ TLinqTests }
 
-procedure TLinqSqlTests.Compilation;
+procedure TLinqTests.Compilation;
 var
    source : TStringList;
    i : Integer;
@@ -52,7 +52,7 @@ begin
    end;
 end;
 
-procedure TLinqSqlTests.Execution;
+procedure TLinqTests.Execution;
 var
    source, expectedResult : TStringList;
    i : Integer;
@@ -92,7 +92,7 @@ begin
    end;
 end;
 
-procedure TLinqSqlTests.SetUp;
+procedure TLinqTests.SetUp;
 begin
    FTests:=TStringList.Create;
 
@@ -107,14 +107,14 @@ begin
    dwsLinqSql.TLinqSqlExtension.Create(FCompiler).LinqFactory := FLinq;
 end;
 
-procedure TLinqSqlTests.TearDown;
+procedure TLinqTests.TearDown;
 begin
    FCompiler.Free;
 
    FTests.Free;
 end;
 
-procedure TLinqSqlTests.Test;
+procedure TLinqTests.Test;
 begin
    Compilation;
    Execution;
@@ -128,6 +128,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   RegisterTest('dwsLinqLibTests', TLinqSqlTests);
+   RegisterTest('dwsLinqLibTests', TLinqTests);
 
 end.

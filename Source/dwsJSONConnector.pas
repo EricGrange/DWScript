@@ -183,13 +183,6 @@ type
                                      clsSym : TClassSymbol; const obj : IScriptObj); static;
    end;
 
-   IBoxedJSONValue = interface
-      ['{585B989C-220C-4120-B5F4-2819A0708A80}']
-      function Value : TdwsJSONValue;
-   end;
-
-   function BoxedJsonValue(Value : TdwsJSONValue): IBoxedJSONValue;
-
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -209,6 +202,11 @@ const
    SYS_JSON_NEWARRAY = 'NewArray';
 
 type
+   IBoxedJSONValue = interface
+      ['{585B989C-220C-4120-B5F4-2819A0708A80}']
+      function Value : TdwsJSONValue;
+   end;
+
    TBoxedJSONValue = class (TInterfacedSelfObject, IBoxedJSONValue)
       FValue : TdwsJSONValue;
 
@@ -278,11 +276,6 @@ begin
       wrapped.IncRefCount;
       TBoxedJSONValue.Allocate(wrapped, v);
    end else v:=vNilJSONValue;
-end;
-
-function BoxedJsonValue(Value : TdwsJSONValue): IBoxedJSONValue;
-begin
-   result := TBoxedJSONValue.Create(value);
 end;
 
 // Value
