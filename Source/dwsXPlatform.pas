@@ -239,7 +239,7 @@ begin
    if s<>'' then begin
       Result:=s;
       UniqueString(Result);
-      Windows.CharUpperBuffW(PWideChar(Pointer(s)), Length(Result));
+      Windows.CharLowerBuffW(PWideChar(Pointer(Result)), Length(Result));
    end else Result:=s;
 end;
 
@@ -250,7 +250,7 @@ begin
    if s<>'' then begin
       Result:=s;
       UniqueString(Result);
-      Windows.CharUpperBuffW(PWideChar(Pointer(s)), Length(Result));
+      Windows.CharUpperBuffW(PWideChar(Pointer(Result)), Length(Result));
    end else Result:=s;
 end;
 
