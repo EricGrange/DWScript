@@ -8,9 +8,9 @@ uses
 
 type
    TLinqSqlExtension = class(TComponent)
-  private
-    FLinqFactory: TdwsLinqFactory;
-    procedure SetLinqFactory(const Value: TdwsLinqFactory);
+   private
+      FLinqFactory: TdwsLinqFactory;
+      procedure SetLinqFactory(const Value: TdwsLinqFactory);
    public
       property LinqFactory: TdwsLinqFactory read FLinqFactory write SetLinqFactory;
    end;
@@ -21,7 +21,7 @@ type
       FDatabaseSymbol: TClassSymbol;
       FDatasetSymbol: TClassSymbol;
 
-      function From(value: TSqlIdentifier; base: TDataSymbol): TTypedExpr;
+      function From(value: TTypedExpr; base: TDataSymbol): TTypedExpr;
       function Join(base: TTypedExpr; value: TSqlJoinExpr): TTypedExpr;
       function Where(from: TTypedExpr; list: TSqlList): TTypedExpr;
       function Group(from: TTypedExpr; list: TSqlList): TTypedExpr;
@@ -30,6 +30,7 @@ type
       function Into(base: TTypedExpr; targetFunc: TFuncPtrExpr; aPos: TScriptPos): TTypedExpr;
       function Distinct(from: TTypedExpr): TTypedExpr;
       procedure Finalize(From: TTypedExpr);
+      function NeedsDot: boolean;
    public
       constructor Create(compiler: TdwsCompiler);
    end;
@@ -429,7 +430,7 @@ begin
       TdwsLinqExtension.Error(compiler, 'Dataset type not found in script');
 end;
 
-function TLinqSqlFactory.From(value: TSqlIdentifier; base: TDataSymbol): TTypedExpr;
+function TLinqSqlFactory.From(value: TTypedExpr; base: TDataSymbol): TTypedExpr;
 begin
    result := TSqlFromExpr.Create(TSqlIdentifier(value), base);
    result.Typ := FDatasetSymbol;
@@ -461,6 +462,11 @@ begin
       from.FJoinList := TSqlList.Create;
    from.FJoinList.Add(value);
    result := from;
+end;
+
+function TLinqSqlFactory.NeedsDot: boolean;
+begin
+   result := true;
 end;
 
 function TLinqSqlFactory.Distinct(from: TTypedExpr): TTypedExpr;
