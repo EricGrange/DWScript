@@ -347,6 +347,12 @@ type
    IdwsCompiler = interface
       function Compiler : TdwsCompiler;
 
+      function Compile(const aCodeText : UnicodeString; aConf : TdwsConfiguration) : IdwsProgram;
+      procedure RecompileInContext(const context : IdwsProgram; const aCodeText : UnicodeString;
+                                   aConf : TdwsConfiguration);
+
+      procedure AbortCompilation;
+
       function GetCurrentProg : TdwsProgram;
       function GetMsgs : TdwsCompileMessageList;
       function GetTokenizer : TTokenizer;

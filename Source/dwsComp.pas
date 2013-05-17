@@ -95,7 +95,7 @@ type
    //
    TDelphiWebScript = class (TdwsEmptyUnit)
       private
-         FCompiler : TdwsCompiler;
+         FCompiler : IdwsCompiler;
          FConfig : TdwsConfiguration;
          FExtensions : TdwsLanguageExtensionAggregator;
          FLock : TFixedCriticalSection;
@@ -1350,7 +1350,7 @@ end;
 destructor TDelphiWebScript.Destroy;
 begin
    inherited;
-   FCompiler.Free;
+   FCompiler:=nil;
    FConfig.Free;
    FExtensions.Free;
    FLock.Free;
@@ -1398,31 +1398,34 @@ end;
 // SetupExtensions
 //
 procedure TDelphiWebScript.SetupExtensions;
+var
+   c : TdwsCompiler;
 begin
+   c:=FCompiler.Compiler;
    if FExtensions.Count>0 then begin
-      FCompiler.StaticExtensionSymbols:=FExtensions.StaticSymbols;
-      FCompiler.OnCreateBaseVariantSymbol:=FExtensions.CreateBaseVariantSymbol;
-      FCompiler.OnCreateSystemSymbols:=FExtensions.CreateSystemSymbols;
-      FCompiler.OnReadInstr:=FExtensions.ReadInstr;
-      FCompiler.OnReadInstrSwitch:=FExtensions.ReadInstrSwitch;
-      FCompiler.OnFindUnknownName:=FExtensions.FindUnknownName;
-      FCompiler.OnReadUnknownName:=FExtensions.ReadUnknownName;
-      FCompiler.OnSectionChanged:=FExtensions.SectionChanged;
-      FCompiler.OnReadScript:=FExtensions.ReadScript;
-      FCompiler.OnGetDefaultEnvironment:=FExtensions.DefaultEnvironment;
-      FCompiler.OnRootExternalClass:=FExtensions.RootExternalClass;
+      c.StaticExtensionSymbols:=FExtensions.StaticSymbols;
+      c.OnCreateBaseVariantSymbol:=FExtensions.CreateBaseVariantSymbol;
+      c.OnCreateSystemSymbols:=FExtensions.CreateSystemSymbols;
+      c.OnReadInstr:=FExtensions.ReadInstr;
+      c.OnReadInstrSwitch:=FExtensions.ReadInstrSwitch;
+      c.OnFindUnknownName:=FExtensions.FindUnknownName;
+      c.OnReadUnknownName:=FExtensions.ReadUnknownName;
+      c.OnSectionChanged:=FExtensions.SectionChanged;
+      c.OnReadScript:=FExtensions.ReadScript;
+      c.OnGetDefaultEnvironment:=FExtensions.DefaultEnvironment;
+      c.OnRootExternalClass:=FExtensions.RootExternalClass;
    end else begin
-      FCompiler.StaticExtensionSymbols:=True;
-      FCompiler.OnCreateBaseVariantSymbol:=nil;
-      FCompiler.OnCreateSystemSymbols:=nil;
-      FCompiler.OnReadInstr:=nil;
-      FCompiler.OnReadInstrSwitch:=nil;
-      FCompiler.OnFindUnknownName:=nil;
-      FCompiler.OnReadUnknownName:=nil;
-      FCompiler.OnSectionChanged:=nil;
-      FCompiler.OnReadScript:=nil;
-      FCompiler.OnGetDefaultEnvironment:=nil;
-      FCompiler.OnRootExternalClass:=nil;
+      c.StaticExtensionSymbols:=True;
+      c.OnCreateBaseVariantSymbol:=nil;
+      c.OnCreateSystemSymbols:=nil;
+      c.OnReadInstr:=nil;
+      c.OnReadInstrSwitch:=nil;
+      c.OnFindUnknownName:=nil;
+      c.OnReadUnknownName:=nil;
+      c.OnSectionChanged:=nil;
+      c.OnReadScript:=nil;
+      c.OnGetDefaultEnvironment:=nil;
+      c.OnRootExternalClass:=nil;
    end;
 end;
 
@@ -1433,7 +1436,7 @@ begin
    Lock;
    try
       SetupExtensions;
-      Result := FCompiler.Compile(Text, FConfig);
+      Result:=FCompiler.Compile(Text, FConfig);
    finally
       UnLock;
    end;
