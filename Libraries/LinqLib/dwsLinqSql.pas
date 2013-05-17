@@ -3,8 +3,8 @@ unit dwsLinqSql;
 interface
 uses
    Classes,
-   dwsLinq, dwsExprs, dwsSymbols, dwsConstExprs, dwsMethodExprs, dwsCompiler,
-   dwsCoreExprs, dwsErrors, dwsRelExprs;
+   dwsLinq, dwsExprs, dwsXPlatform, dwsSymbols, dwsConstExprs, dwsMethodExprs,
+   dwsCompiler, dwsCoreExprs, dwsErrors, dwsRelExprs;
 
 type
    TLinqSqlExtension = class(TComponent)

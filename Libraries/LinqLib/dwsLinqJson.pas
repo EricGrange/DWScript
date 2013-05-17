@@ -207,7 +207,6 @@ end;
 constructor TJsonFromExpr.Create(base: TDataExpr);
 begin
    FBase := base;
-   FBase.IncRefCount;
 end;
 
 destructor TJsonFromExpr.Destroy;
