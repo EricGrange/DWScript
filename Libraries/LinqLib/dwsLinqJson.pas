@@ -3,8 +3,9 @@ unit dwsLinqJson;
 interface
 uses
    Classes, Generics.Defaults, Generics.Collections,
-   dwsLinq, dwsExprs, dwsSymbols, dwsConstExprs, dwsMethodExprs, dwsCompiler,
-   dwsCoreExprs, dwsErrors, dwsRelExprs, dwsJson, dwsUtils;
+   dwsXPlatform, dwsLinq, dwsExprs, dwsSymbols, dwsConstExprs,
+   dwsMethodExprs, dwsCompiler, dwsCoreExprs, dwsErrors, dwsRelExprs,
+   dwsJson, dwsUtils;
 
 type
    TLinqJsonExtension = class(TComponent)
