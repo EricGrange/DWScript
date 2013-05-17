@@ -199,6 +199,35 @@ begin
   {$IFDEF LLVM}
   FLLVMCodeGen := TdwsLLVMCodeGen.Create;
   FLLVMCodeGen.ModuleName := 'dws';
+  FLLVMCodeGen.Optimizations := loNone;
+  FLLVMCodeGen.CustomOptimizationPasses := [cpPromoteMemoryToRegisterPass,
+     cpCFGSimplificationPass, cpDeadStoreEliminationPass,
+     cpInstructionCombiningPass, cpLoopDeletionPass, cpLoopIdiomPass,
+     cpLoopRotatePass, cpLoopUnrollPass, cpLoopUnswitchPass,
+     cpBasicAliasAnalysisPass, cpLoopVectorizePass, cpConstantMergePass,
+     cpStripDeadPrototypesPass, cpStripSymbolsPass];
+(*
+  FLLVMCodeGen.CustomOptimizationPasses := [cpAggressiveDCEPass,
+     cpCFGSimplificationPass, cpDeadStoreEliminationPass,
+     cpGVNPass, cpIndVarSimplifyPass, cpInstructionCombiningPass,
+     cpJumpThreadingPass, cpLICMPass, cpLoopDeletionPass,
+     cpLoopIdiomPass, cpLoopRotatePass, cpLoopUnrollPass,
+     cpLoopUnswitchPass, cpMemCpyOptPass,
+     cpPromoteMemoryToRegisterPass, cpReassociatePass,
+     cpSCCPPass, cpScalarReplAggregatesPass,
+     cpScalarReplAggregatesPassSSA, cpSimplifyLibCallsPass,
+     cpTailCallEliminationPass, cpConstantPropagationPass,
+     cpDemoteMemoryToRegisterPass, cpVerifierPass,
+     cpCorrelatedValuePropagationPass, cpEarlyCSEPass,
+     cpLowerExpectIntrinsicPass, cpTypeBasedAliasAnalysisPass,
+     cpBasicAliasAnalysisPass, cpBBVectorizePass, cpLoopVectorizePass,
+     cpArgumentPromotionPass,  cpConstantMergePass,
+     cpDeadArgEliminationPass, cpFunctionAttrsPass,
+     cpFunctionInliningPass, cpAlwaysInlinerPass, cpGlobalDCEPass,
+     cpGlobalOptimizerPass, cpIPConstantPropagationPass,
+     cpPruneEHPass, cpIPSCCPPass, cpStripDeadPrototypesPass,
+     cpStripSymbolsPass];
+*)
 
   // redirect std error and reload LLVM DLL
   FErrorLog := TFileStream.Create('Error.log', fmCreate or fmShareDenyWrite);
@@ -367,12 +396,22 @@ var
 {$ENDIF}
 begin
   {$IFDEF LLVM}
+
   FLLVMCodeGen.CompileProgram(FCompiledProgram);
   FLLVMCodeGen.PrintToFile('dws.ir');
 
-  {$IFDEF LLVM_EXECUTE}
-  Assert(LLVMInitializeNativeTarget = False);
+  // emit code
+  LLVMInitializeX86Target;
+  LLVMInitializeX86TargetInfo;
+  LLVMInitializeX86TargetMC;
+  LLVMInitializeX86AsmPrinter;
+  LLVMInitializeX86AsmParser;
+  LLVMInitializeX86Disassembler;
 
+  FLLVMCodeGen.EmitToFile('dws.asm', LLVMAssemblyFile);
+
+  {$IFDEF LLVM_EXECUTE}
+  LLVMInitializeNativeTarget;
   LLVMLinkInJIT;
 
   if not LLVMCreateJITCompilerForModule(JIT, FLLVMCodeGen.Module.Handle, 0, Error) then
@@ -826,3 +865,4 @@ begin
 end;
 
 end.
+
