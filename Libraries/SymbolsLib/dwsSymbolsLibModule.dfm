@@ -34,7 +34,7 @@ object dwsSymbolsLib: TdwsSymbolsLib
         Methods = <
           item
             Name = 'Destroy'
-            Attributes = [maOverride]
+            Attributes = [maVirtual, maOverride]
             OnEval = dwsUnit1ClassesTSymbolsMethodsDestroyEval
             Kind = mkDestructor
           end

@@ -329,7 +329,7 @@ begin
   name := Info.ValueAsString['Name'];
   wasFound := False;
   for x := 0 to table.Count - 1 do
-    if SameText(table[x].Name, name) then
+    if UnicodeSameText(table[x].Name, name) then
     begin
       TSymbols(ExtObject).FIndex := x;
       wasFound := True;

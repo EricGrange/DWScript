@@ -1652,7 +1652,7 @@ var
    oldContext : TdwsSourceContext;
 begin
    for i:=0 to FUnitsFromStack.Count-1 do
-      if SameText(FUnitsFromStack.Items[i], unitName) then
+      if UnicodeSameText(FUnitsFromStack.Items[i], unitName) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_UnitCircularReference);
 
    Result:=TUnitSymbol(FProg.Table.FindLocal(unitName, TUnitSymbol));
@@ -5553,7 +5553,7 @@ var
    iterBlockExpr : TBlockExpr;
 begin
    try
-      if FTok.Test(ttNAME) and SameText(FTok.GetToken.AsString, 'step') then begin
+      if FTok.Test(ttNAME) and ASCIISameText(FTok.GetToken.AsString, 'step') then begin
          FTok.KillToken;
          FTok.Test(ttNone);
          stepPos:=FTok.HotPos;
@@ -10512,23 +10512,23 @@ begin
       siWarnings : begin
          if not FTok.TestDeleteNamePos(name, condPos) then
             name:='';
-         conditionalTrue:=SameText(name, 'ON');
-         if conditionalTrue or SameText(name, 'OFF') then
+         conditionalTrue:=ASCIISameText(name, 'ON');
+         if conditionalTrue or ASCIISameText(name, 'OFF') then
             FMsgs.WarningsDisabled:=not conditionalTrue
          else FMsgs.AddCompilerError(FTok.HotPos, CPE_OnOffExpected);
       end;
       siHints : begin
          if not FTok.TestDeleteNamePos(name, condPos) then
             name:='';
-         if SameText(name, 'OFF') then
+         if ASCIISameText(name, 'OFF') then
             FMsgs.HintsLevel:=hlDisabled
-         else if SameText(name, 'ON') then
+         else if ASCIISameText(name, 'ON') then
             FMsgs.HintsLevel:=FDefaultHintsLevel
-         else if SameText(name, 'NORMAL') then
+         else if ASCIISameText(name, 'NORMAL') then
             FMsgs.HintsLevel:=hlNormal
-         else if SameText(name, 'STRICT') then
+         else if ASCIISameText(name, 'STRICT') then
             FMsgs.HintsLevel:=hlStrict
-         else if SameText(name, 'PEDANTIC') then
+         else if ASCIISameText(name, 'PEDANTIC') then
             FMsgs.HintsLevel:=hlPedantic
          else FMsgs.AddCompilerError(FTok.HotPos, CPE_OnOffExpected);
       end;
@@ -10563,15 +10563,15 @@ begin
    end;
    if name='' then
       FMsgs.AddCompilerError(hotPos, CPE_IncludeItemExpected)
-   else if SameText(name, 'FILE') then
+   else if ASCIISameText(name, 'FILE') then
       value:=hotPos.SourceFile.Name
-   else if SameText(name, 'LINE') then
+   else if ASCIISameText(name, 'LINE') then
       value:=IntToStr(hotPos.Line)
-   else if SameText(name, 'DATE') then
+   else if ASCIISameText(name, 'DATE') then
       value:=FormatDateTime('yyyy-mm-dd', Date)
-   else if SameText(name, 'TIME') then
+   else if ASCIISameText(name, 'TIME') then
       value:=FormatDateTime('hh:nn:ss', Time)
-   else if SameText(name, 'FUNCTION') then begin
+   else if ASCIISameText(name, 'FUNCTION') then begin
       if FProg is TdwsProcedure then begin
          funcSym:=TdwsProcedure(FProg).Func;
          if funcSym is TMethodSymbol then
@@ -10711,34 +10711,34 @@ begin
    n:=Length(name);
    case n of
       3 : case name[1] of
-         'a', 'A' : if SameText(name, cSpecialKeywords[skAbs]) then Exit(skAbs);
-         'd', 'D' : if SameText(name, cSpecialKeywords[skDec]) then Exit(skDec);
-         'i', 'I' : if SameText(name, cSpecialKeywords[skInc]) then Exit(skInc);
-         'l', 'L' : if SameText(name, cSpecialKeywords[skLow]) then Exit(skLow);
-         'o', 'O' : if SameText(name, cSpecialKeywords[skOrd]) then Exit(skOrd);
-         's', 'S' : if SameText(name, cSpecialKeywords[skSqr]) then Exit(skSqr);
+         'a', 'A' : if ASCIISameText(name, cSpecialKeywords[skAbs]) then Exit(skAbs);
+         'd', 'D' : if ASCIISameText(name, cSpecialKeywords[skDec]) then Exit(skDec);
+         'i', 'I' : if ASCIISameText(name, cSpecialKeywords[skInc]) then Exit(skInc);
+         'l', 'L' : if ASCIISameText(name, cSpecialKeywords[skLow]) then Exit(skLow);
+         'o', 'O' : if ASCIISameText(name, cSpecialKeywords[skOrd]) then Exit(skOrd);
+         's', 'S' : if ASCIISameText(name, cSpecialKeywords[skSqr]) then Exit(skSqr);
       end;
       4 : case name[1] of
-         'h', 'H' : if SameText(name, cSpecialKeywords[skHigh]) then Exit(skHigh);
-         'p', 'P' : if SameText(name, cSpecialKeywords[skPred]) then Exit(skPred);
+         'h', 'H' : if ASCIISameText(name, cSpecialKeywords[skHigh]) then Exit(skHigh);
+         'p', 'P' : if ASCIISameText(name, cSpecialKeywords[skPred]) then Exit(skPred);
          's', 'S' : case name[2] of
-            'u', 'U' : if SameText(name, cSpecialKeywords[skSucc]) then Exit(skSucc);
-            'w', 'W' : if SameText(name, cSpecialKeywords[skSwap]) then Exit(skSwap);
+            'u', 'U' : if ASCIISameText(name, cSpecialKeywords[skSucc]) then Exit(skSucc);
+            'w', 'W' : if ASCIISameText(name, cSpecialKeywords[skSwap]) then Exit(skSwap);
          end;
       end;
       6 : case name[1] of
-         'a', 'A' : if SameText(name, cSpecialKeywords[skAssert]) then Exit(skAssert);
-         'l', 'L' : if SameText(name, cSpecialKeywords[skLength]) then Exit(skLength);
-         's', 'S' : if SameText(name, cSpecialKeywords[skSizeOf]) then Exit(skSizeOf);
+         'a', 'A' : if ASCIISameText(name, cSpecialKeywords[skAssert]) then Exit(skAssert);
+         'l', 'L' : if ASCIISameText(name, cSpecialKeywords[skLength]) then Exit(skLength);
+         's', 'S' : if ASCIISameText(name, cSpecialKeywords[skSizeOf]) then Exit(skSizeOf);
       end;
       7 : case name[1] of
-         'd', 'D' : if SameText(name, cSpecialKeywords[skDefined]) then Exit(skDefined);
+         'd', 'D' : if ASCIISameText(name, cSpecialKeywords[skDefined]) then Exit(skDefined);
       end;
       8 : case name[1] of
-         'a', 'A' : if SameText(name, cSpecialKeywords[skAssigned]) then Exit(skAssigned);
-         'd', 'D' : if SameText(name, cSpecialKeywords[skDeclared]) then Exit(skDeclared);
+         'a', 'A' : if ASCIISameText(name, cSpecialKeywords[skAssigned]) then Exit(skAssigned);
+         'd', 'D' : if ASCIISameText(name, cSpecialKeywords[skDeclared]) then Exit(skDeclared);
       end;
-      18 : if SameText(name, cSpecialKeywords[skConditionalDefined]) then Exit(skConditionalDefined);
+      18 : if ASCIISameText(name, cSpecialKeywords[skConditionalDefined]) then Exit(skConditionalDefined);
    end;
    Result:=skNone;
 end;

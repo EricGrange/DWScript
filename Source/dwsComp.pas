@@ -1266,11 +1266,11 @@ begin
       varNull :
          Result := 'Null';
       varString, varUString, varOleStr, varStrArg :
-         Result := Format('''%s''', [VarToStr(value)]);
+         Result := UnicodeFormat('''%s''', [VarToStr(value)]);
       varDate :
-         Result := Format('DateTime(%f)', [TVarData(value).VDate]);
+         Result := UnicodeFormat('DateTime(%f)', [TVarData(value).VDate]);
    else
-      Result := VarToStr(value);
+      VariantToString(value, Result);
    end;
 end;
 
@@ -2069,7 +2069,7 @@ begin
         if Info.FuncSym.Typ is TClassSymbol then   // don't free the object instance returned
           Info.ResultAsVariant := Info.RegisterExternalObject(GetObjectProp(ExtObject, propName), False, False)  // wrap as best we can (find a match)
         // Boolean
-        else if SameText(Info.FuncSym.Typ.Name, SYS_BOOLEAN) then
+        else if ASCIISameText(Info.FuncSym.Typ.Name, SYS_BOOLEAN) then
           Info.ResultAsBoolean := Boolean(GetOrdProp(ExtObject, propName))
         // All others
         else
@@ -2353,7 +2353,7 @@ var
    valAsString : UnicodeString;
 begin
    valAsString:=VarToStr(Value);
-   if SameText(DataType, SYS_STRING) then  // just for show
+   if ASCIISameText(DataType, SYS_STRING) then  // just for show
       valAsString:=''''+valAsString+'''';
    Result := Format('const %s: %s = %s;', [Name, DataType, valAsString]);
 end;

@@ -2,7 +2,7 @@ unit dwsHashtables;
 
 interface
 
-uses SysUtils;
+uses SysUtils, dwsXPlatform, dwsUtils;
 
 type
   ValueType = IUnknown;
@@ -270,7 +270,7 @@ end;
 
 function TStringHashItem.Equals(Item: THashItem): Boolean;
 begin
-  Result := SameText(Key, TStringHashItem(Item).Key);
+  Result := UnicodeSameText(Key, TStringHashItem(Item).Key);
 end;
 
 function TStringHashItem.HashCode: Integer;

@@ -21,7 +21,7 @@ unit dwsUtils;
 interface
 
 uses
-   Classes, SysUtils, Variants, SyncObjs, Types,
+   Classes, SysUtils, Variants, Types,
    dwsXPlatform, Math;
 
 type
@@ -813,7 +813,7 @@ begin
       varNull :
          s:='Null';
       varDispatch :
-         s:=Format('IDispatch (%p)', [varData^.VDispatch]);
+         s:=UnicodeFormat('IDispatch (%p)', [varData^.VDispatch]);
       varUnknown :
          s:=UnknownAsString(IUnknown(varData^.VUnknown));
    else
@@ -954,10 +954,12 @@ type
    TStringListList = PStringItemList;
    {$ENDIF}
 
+   {$ifndef FPC}
    TStringListCracker = class (TStrings)
       private
          FList : TStringListList;
    end;
+   {$endif}
 
 var
    vCharStrings : array [0..127] of TStringUnifier;

@@ -20,7 +20,10 @@ unit dwsRTTIExposer;
 
 interface
 
-uses Classes, SysUtils, RTTI, TypInfo, dwsComp, dwsSymbols, dwsExprs, dwsStrings, dwsStack;
+uses
+   Classes, SysUtils, RTTI, TypInfo,
+   dwsXPlatform, dwsStrings,
+   dwsComp, dwsSymbols, dwsExprs, dwsStack;
 
 type
 
@@ -243,7 +246,7 @@ begin
 
    for meth in anInstanceType.GetMethods do begin
       if     (meth.MethodKind=TypInfo.mkConstructor)
-         and SameText(meth.Name, 'Create')
+         and ASCIISameText(meth.Name, 'Create')
          and (Length(meth.GetParameters)=0) then begin
          FInstanceConstructor:=meth;
          Break;

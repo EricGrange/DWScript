@@ -128,6 +128,9 @@ function UnicodeComparePChars(p1, p2 : PWideChar; n : Integer) : Integer; overlo
 function UnicodeLowerCase(const s : UnicodeString) : UnicodeString;
 function UnicodeUpperCase(const s : UnicodeString) : UnicodeString;
 
+function ASCIICompareText(const s1, s2 : UnicodeString) : Integer; inline;
+function ASCIISameText(const s1, s2 : UnicodeString) : Boolean; inline;
+
 function InterlockedIncrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} inline; {$endif}
 function InterlockedDecrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} inline; {$endif}
 
@@ -263,6 +266,28 @@ begin
       UniqueString(Result);
       Windows.CharUpperBuffW(PWideChar(Pointer(Result)), Length(Result));
    end else Result:=s;
+end;
+
+// ASCIICompareText
+//
+function ASCIICompareText(const s1, s2 : UnicodeString) : Integer; inline;
+begin
+   {$ifdef FPC}
+   Result:=CompareText(UTF8Encode(s1), UTF8Encode(s2));
+   {$else}
+   Result:=CompareText(s1, s2);
+   {$endif}
+end;
+
+// ASCIISameText
+//
+function ASCIISameText(const s1, s2 : UnicodeString) : Boolean; inline;
+begin
+   {$ifdef FPC}
+   Result:=(ASCIICompareText(s1, s2)=0);
+   {$else}
+   Result:=SameText(s1, s2);
+   {$endif}
 end;
 
 // InterlockedIncrement

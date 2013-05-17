@@ -2344,7 +2344,7 @@ begin
       if sym is TMethodSymbol then begin
          meth:=TMethodSymbol(sym);
          if     (meth.Visibility>=visibility)
-            and SameText(meth.Name, methSym.Name)
+            and UnicodeSameText(meth.Name, methSym.Name)
             and meth.IsCompatible(methSym) then
                Exit(meth);
       end;

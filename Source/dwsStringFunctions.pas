@@ -387,7 +387,11 @@ var
 begin
    p:=args.AsInteger[1];
    if p=99 then
+      {$ifdef FPC}
+      Result:=UTF8Decode(FloatToStr(args.AsFloat[0]))
+      {$else}
       Result:=FloatToStr(args.AsFloat[0])
+      {$endif}
    else begin
       v:=args.AsFloat[0];
       if p<0 then begin
@@ -402,14 +406,22 @@ end;
 
 procedure TStrToFloatFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
 begin
+   {$ifdef FPC}
+   Result:=StrToFloat(UTF8Encode(args.AsString[0]));
+   {$else}
    Result:=StrToFloat(args.AsString[0]);
+   {$endif}
 end;
 
 { TStrToFloatDefFunc }
 
 procedure TStrToFloatDefFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
 begin
+   {$ifdef FPC}
+   Result:=StrToFloatDef(UTF8Encode(args.AsString[0]), args.AsFloat[1]);
+   {$else}
    Result:=StrToFloatDef(args.AsString[0], args.AsFloat[1]);
+   {$endif}
 end;
 
 { TCopyFunc }
@@ -498,8 +510,22 @@ end;
 { TLowerCaseFunc }
 
 procedure TLowerCaseFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
+var
+   p : PWideChar;
+   i : Integer;
+   c : WideChar;
 begin
-   Result:=LowerCase(args.AsString[0]);
+   args.ExprBase[0].EvalAsString(args.Exec, Result);
+   if Result='' then Exit;
+   UniqueString(Result);
+   p:=PWideChar(Pointer(Result));
+   for i:=0 to Length(Result)-1 do begin
+      c:=p[i];
+      case c of
+        'A'..'Z':
+           p[i]:=WideChar(Word(c)+(Ord('a')-Ord('A')));
+      end;
+   end;
 end;
 
 { TAnsiLowerCaseFunc }
@@ -512,8 +538,22 @@ end;
 { TUpperCaseFunc }
 
 procedure TUpperCaseFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
+var
+   p : PWideChar;
+   i : Integer;
+   c : WideChar;
 begin
-   Result:=UpperCase(args.AsString[0]);
+   args.ExprBase[0].EvalAsString(args.Exec, Result);
+   if Result='' then Exit;
+   UniqueString(Result);
+   p:=PWideChar(Pointer(Result));
+   for i:=0 to Length(Result)-1 do begin
+      c:=p[i];
+      case c of
+        'a'..'z':
+           p[i]:=WideChar(Word(c)-(Ord('a')-Ord('A')));
+      end;
+   end;
 end;
 
 { TAnsiUpperCaseFunc }
@@ -604,7 +644,11 @@ end;
 
 function TCompareTextFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
 begin
+   {$ifdef FPC}
+   Result:=CompareText(UTF8Encode(args.AsString[0]), UTF8Encode(args.AsString[1]));
+   {$else}
    Result:=CompareText(args.AsString[0], args.AsString[1]);
+   {$endif}
 end;
 
 { TAnsiCompareTextFunc }
@@ -712,11 +756,20 @@ end;
 procedure TStringOfCharFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
    ch : UnicodeString;
+   charCode : WideChar;
+   p : PWideChar;
+   n : Integer;
 begin
+   n:=args.AsInteger[1];
+   if n<=0 then Exit;
    ch:=args.AsString[0];
-   if Length(ch)<1 then
-      Result:=StringOfChar(' ', args.AsInteger[1]) // default to blank if an empty String
-   else Result:=StringOfChar(ch[1], args.AsInteger[1]);
+   if ch='' then
+      charCode:=' ' // default to blank if an empty String
+   else charCode:=ch[1];
+   SetLength(Result, n);
+   p:=PWideChar(Pointer(Result));
+   for n:=n downto 1 do
+      p[n-1]:=charCode;
 end;
 
 { TStringOfStringFunc }
