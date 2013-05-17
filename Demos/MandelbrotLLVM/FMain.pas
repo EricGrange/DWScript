@@ -22,6 +22,7 @@ type
     FBitmap : TBitmap;
     FScanLines : array of Pointer;
     FLLVMCodeGen: TdwsLLVMCodeGen;
+    FJITOptimizations: TLLVMCodeGenOptLevel;
     procedure PrepareBitmap;
     procedure SetPixel(x, y, color : Integer);
 
@@ -65,7 +66,14 @@ begin
    // create LLVM codegent and set module name (not required)
    FLLVMCodeGen := TdwsLLVMCodeGen.Create;
    FLLVMCodeGen.ModuleName := 'Mandelbrot';
-   FLLVMCodeGen.Optimizations := loNone;
+
+   // tweak optimisations
+   FLLVMCodeGen.Optimizations := loDefault;
+   FJITOptimizations := LLVMCodeGenLevelNone;
+
+   // custom passes (only applied if FLLVMCodeGen.Optimizations := loCustom;)
+   FLLVMCodeGen.CustomOptimizationPasses := [cpDeadStoreEliminationPass,
+      cpInstructionCombiningPass, cpPromoteMemoryToRegisterPass];
 
    // initialize native target
    if LLVMInitializeNativeTarget then
@@ -239,7 +247,7 @@ begin
    FLLVMCodeGen.CompileProgram(prog);
 
    // create LLVM JIT compiler and check for errors
-   if not LLVMCreateJITCompilerForModule(eeJIT, FLLVMCodeGen.Module.Handle, LLVMCodeGenLevelNone, err) then
+   if not LLVMCreateJITCompilerForModule(eeJIT, FLLVMCodeGen.Module.Handle, FJITOptimizations, err) then
       try
          // map SetPixel function in LLVM code to SetPixelFlat
          if not LLVMFindFunction(eeJIT, 'SetPixel', fn) then

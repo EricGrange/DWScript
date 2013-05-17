@@ -836,7 +836,7 @@ begin
                      PassManagerBuilder.OptLevel := LLVMCodeGenLevelLess;
                      PassManagerBuilder.PopulateModulePassManager(PassManager);
                   finally
-                     Free;
+                     FreeAndNil(PassManagerBuilder);
                   end;
                end;
             loDefault:
@@ -846,7 +846,7 @@ begin
                      PassManagerBuilder.OptLevel := LLVMCodeGenLevelDefault;
                      PassManagerBuilder.PopulateModulePassManager(PassManager);
                   finally
-                     Free;
+                     FreeAndNil(PassManagerBuilder);
                   end;
                end;
             loAggressive:
@@ -856,7 +856,7 @@ begin
                      PassManagerBuilder.OptLevel := LLVMCodeGenLevelAggressive;
                      PassManagerBuilder.PopulateModulePassManager(PassManager);
                   finally
-                     Free;
+                     FreeAndNil(PassManagerBuilder);
                   end;
                end;
             loCustom:
