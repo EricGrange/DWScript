@@ -245,7 +245,6 @@ begin
    sNameEscapedS.AddTransition(cNAM, TConsumeTransition.Create(sNameEscapedF, [toStart], caNone));
    sNameEscapedS.AddTransition(['&'], TConsumeTransition.Create(sStart, [toFinal], caAmpAmp));
    sNameEscapedS.SetElse(TCheckTransition.Create(sStart, [toFinal], caAmp));
-//   sNameEscapedS.SetElse(TErrorTransition.Create(TOK_InvalidChar));
 
    sNameEscapedF.AddTransition(cNAM+cINT, TConsumeTransition.Create(sNameEscapedF, [], caNone));
    sNameEscapedF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caNameEscaped));

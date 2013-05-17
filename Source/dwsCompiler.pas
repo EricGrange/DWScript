@@ -662,6 +662,7 @@ type
                                        isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
 
          function ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TTypedExpr;
+         function ReadBracket(expecting : TTypeSymbol = nil) : TTypedExpr;
          function ReadNegation : TTypedExpr;
          function ReadIfExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
 
@@ -4090,9 +4091,9 @@ begin
       if (FTok.TestAny([ttBLEFT, ttINHERITED, ttNEW])<>ttNone) or FTok.TestName then begin // !! TestName must be the last !!
          hotPos:=FTok.HotPos;
          msgsCount:=FMsgs.Count;
-         if FTok.Test(ttBLEFT) then // (X as TY)
-            locExpr := ReadSymbol(ReadTerm(True))
-         else locExpr := ReadName(True);
+         if FTok.TestDelete(ttBLEFT) then // (X as TY)
+            locExpr:=ReadSymbol(ReadBracket, True)
+         else locExpr:=ReadName(True);
          if locExpr is TTypedExpr then begin
             if (FTok.TestAny([ttLESSLESS, ttGTRGTR])<>ttNone) then
                locExpr:=ReadExprAdd(nil, TTypedExpr(locExpr));
@@ -9742,12 +9743,7 @@ begin
       ttNOT :
          Result:=ReadNotTerm;
       ttBLEFT : begin
-         // Read expression in brackets
-         Result := ReadExpr;
-         if not FTok.TestDelete(ttBRIGHT) then begin
-            OrphanObject(Result);
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
-         end;
+         Result:=ReadBracket;
          if FTok.Test(ttDOT) then
             Result:=(ReadSymbol(Result, isWrite) as TTypedExpr);
       end;
@@ -9795,6 +9791,17 @@ begin
    // No expression found
    if not Assigned(Result) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
+end;
+
+// ReadBracket
+//
+function TdwsCompiler.ReadBracket(expecting : TTypeSymbol = nil) : TTypedExpr;
+begin
+   Result:=ReadExpr(expecting);
+   if not FTok.TestDelete(ttBRIGHT) then begin
+      OrphanObject(Result);
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+   end;
 end;
 
 // ReadNegation
