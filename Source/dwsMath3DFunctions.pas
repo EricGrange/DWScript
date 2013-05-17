@@ -22,8 +22,9 @@ interface
 
 uses
    Classes, SysUtils,
+   dwsStrings, dwsUtils, dwsXPlatform,
    dwsFunctions, dwsExprs, dwsSymbols, dwsOperators, dwsDataContext,
-   dwsStrings, dwsTokenizer, dwsUtils, dwsMagicExprs, dwsUnitSymbols, dwsExprList;
+   dwsTokenizer, dwsMagicExprs, dwsUnitSymbols, dwsExprList;
 
 type
    TVectorMakeExpr = class(TInternalMagicDataFunction)
@@ -157,9 +158,9 @@ var
    vectorData : IDataContext;
 begin
    vectorData:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
-   Result:=Format('[%f %f %f %f]',
-                  [Double(vectorData[0]), Double(vectorData[1]),
-                   Double(vectorData[2]), Double(vectorData[3])]);
+   Result:=UnicodeFormat('[%f %f %f %f]',
+                         [Double(vectorData[0]), Double(vectorData[1]),
+                          Double(vectorData[2]), Double(vectorData[3])]);
 end;
 
 // ------------------

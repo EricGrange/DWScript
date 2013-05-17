@@ -22,8 +22,9 @@ interface
 
 uses
    SysUtils,
+   dwsUtils, dwsXPlatform,
    dwsFunctions, dwsSymbols, dwsExprs, dwsStrings, dwsOperators, dwsExprList,
-   dwsTokenizer, dwsUtils, dwsMagicExprs, dwsUnitSymbols, dwsDataContext;
+   dwsTokenizer,dwsMagicExprs, dwsUnitSymbols, dwsDataContext;
 
 type
    TComplexMakeExpr = class(TInternalMagicDataFunction)
@@ -146,10 +147,10 @@ begin
    r:=cmplxData.AsFloat[0];
    i:=cmplxData.AsFloat[1];
    if i>0 then
-      Result:=Format('%f + %fi', [r, i])
+      Result:=UnicodeFormat('%f + %fi', [r, i])
    else if i<0 then
-      Result:=Format('%f - %fi', [r, Abs(i)])
-   else Result:=Format('%f', [r]);
+      Result:=UnicodeFormat('%f - %fi', [r, Abs(i)])
+   else Result:=UnicodeFormat('%f', [r]);
 end;
 
 // ------------------

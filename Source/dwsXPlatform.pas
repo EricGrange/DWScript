@@ -116,10 +116,12 @@ function UTCDateTime : TDateTime;
 
 {$ifndef FPC}
 function UnicodeFormat(const fmt : UnicodeString; const args : array of const) : UnicodeString;
+function UnicodeCompareStr(const S1, S2 : UnicodeString) : Integer; inline;
 {$endif}
 
 function AnsiCompareText(const S1, S2 : UnicodeString) : Integer;
 function AnsiCompareStr(const S1, S2 : UnicodeString) : Integer;
+
 function UnicodeComparePChars(p1 : PWideChar; n1 : Integer; p2 : PWideChar; n2 : Integer) : Integer; overload;
 function UnicodeComparePChars(p1, p2 : PWideChar; n : Integer) : Integer; overload;
 
@@ -183,14 +185,23 @@ begin
               +EncodeTime(wHour, wMinute, wSecond, wMilliseconds);
 end;
 
+{$ifndef FPC}
+
 // UnicodeFormat
 //
-{$ifndef FPC}
 function UnicodeFormat(const fmt : UnicodeString; const args : array of const) : UnicodeString;
 begin
    Result:=Format(fmt, args);
 end;
-{$endif}
+
+// UnicodeCompareStr
+//
+function UnicodeCompareStr(const S1, S2 : UnicodeString) : Integer;
+begin
+   Result:=CompareStr(S1, S2);
+end;
+
+{$endif} // FPC
 
 // AnsiCompareText
 //

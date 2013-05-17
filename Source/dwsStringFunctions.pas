@@ -291,14 +291,22 @@ end;
 
 function TStrToIntFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
 begin
+   {$ifdef FPC}
+   Result:=StrToInt64(UTF8Encode(args.AsString[0]));
+   {$else}
    Result:=StrToInt64(args.AsString[0]);
+   {$endif}
 end;
 
 { TStrToIntDefFunc }
 
 function TStrToIntDefFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
 begin
+   {$ifdef FPC}
+   Result:=StrToInt64Def(UTF8Encode(args.AsString[0]), args.AsInteger[1]);
+   {$else}
    Result:=StrToInt64Def(args.AsString[0], args.AsInteger[1]);
+   {$endif}
 end;
 
 { TIntToHexFunc }
@@ -307,7 +315,11 @@ end;
 //
 procedure TIntToHexFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
+   {$ifdef FPC}
+   Result:=UTF8Decode(SysUtils.IntToHex(args.AsInteger[0], args.AsInteger[1]));
+   {$else}
    Result:=SysUtils.IntToHex(args.AsInteger[0], args.AsInteger[1]);
+   {$endif}
 end;
 
 { THexToIntFunc }
@@ -381,8 +393,8 @@ begin
       if p<0 then begin
          p10:=Power(10, p);
          v:=Round(v*p10)/p10;
-         Result:=Format('%.0f', [v]);
-      end else Result:=Format('%.*f', [p, v]);
+         Result:=UnicodeFormat('%.0f', [v]);
+      end else Result:=UnicodeFormat('%.*f', [p, v]);
    end;
 end;
 
@@ -529,7 +541,7 @@ end;
 
 function TRevPosFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
 
-   function StrRevFind(const stringSearched, stringToFind : String; startPos : Integer = 0) : Integer;
+   function StrRevFind(const stringSearched, stringToFind : UnicodeString; startPos : Integer = 0) : Integer;
    var
       i : Integer;
    begin
@@ -606,7 +618,7 @@ end;
 
 function TCompareStrFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
 begin
-   Result:=CompareStr(args.AsString[0], args.AsString[1]);
+   Result:=UnicodeCompareStr(args.AsString[0], args.AsString[1]);
 end;
 
 { TAnsiCompareStrFunc }
@@ -825,7 +837,7 @@ begin
    // current implementation, limitations may be relaxed later
    if varRecs=nil then raise EScriptError.Create('Constant expression or open array expected');
    try
-      Result:=Format(args.AsString[0], varRecs.VarRecArray);
+      Result:=UnicodeFormat(args.AsString[0], varRecs.VarRecArray);
    finally
       varRecs.Free;
    end;
@@ -835,7 +847,7 @@ end;
 
 function TStrSplitFunc.DoEvalAsVariant(args : TExprBaseList) : Variant;
 var
-   str, delim : String;
+   str, delim : UnicodeString;
    dyn : TScriptDynamicArray;
    p, pn, nDelim, k : Integer;
 begin

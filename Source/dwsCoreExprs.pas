@@ -1738,7 +1738,8 @@ type
          FHandlerExpr : TProgramExpr;
 
       protected
-         function CreateEDelphiObj(exec : TdwsExecution; const ClassName, Message: UnicodeString): IScriptObj;
+         function CreateEDelphiObj(exec : TdwsExecution; const ClassName : String;
+                                   const Message : UnicodeString) : IScriptObj;
 
          procedure EnterExceptionBlock(exec : TdwsExecution; var exceptObj : IScriptObj);
          procedure LeaveExceptionBlock(exec : TdwsExecution);
@@ -6445,7 +6446,8 @@ end;
 
 // CreateEDelphiObj
 //
-function TExceptionExpr.CreateEDelphiObj(exec : TdwsExecution; const ClassName, Message: UnicodeString): IScriptObj;
+function TExceptionExpr.CreateEDelphiObj(exec : TdwsExecution; const ClassName : String;
+                                         const Message : UnicodeString) : IScriptObj;
 var
    info: TProgramInfo;
 begin
@@ -6733,7 +6735,7 @@ begin
    exceptObj.EvalAsString(0, exceptMessage);
    if exceptObj.ClassSym.Name<>SYS_EDELPHI then begin
       if exceptMessage<>'' then
-         exceptMessage:=Format(RTE_UserDefinedException_Msg, [exceptMessage])
+         exceptMessage:=UnicodeFormat(RTE_UserDefinedException_Msg, [exceptMessage])
       else exceptMessage:=RTE_UserDefinedException;
    end;
    e:=EScriptException.Create(exceptMessage, exceptObj, FScriptPos);

@@ -586,7 +586,7 @@ begin
          rawResult:=Integer(vd1.VType)-Integer(vd2.VType);
          if rawResult=0 then begin
             case vd1.VType of
-               varUString : rawResult:=CompareStr(UnicodeString(vd1.VString), UnicodeString(vd2.VString));
+               varUString : rawResult:=UnicodeCompareStr(UnicodeString(vd1.VString), UnicodeString(vd2.VString));
                varInt64 : rawResult:=vd1.VInt64-vd2.VInt64;
                varBoolean : rawResult:=Integer(vd1.VBoolean)-Integer(vd2.VBoolean);
             else
