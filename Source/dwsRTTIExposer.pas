@@ -721,7 +721,7 @@ begin
           Result.SetArrayElement(Index, TValue.FromVariant(info.Data[Index]));
       end
    else
-      Result:=ValueFromIInfo(asType, info);
+      // Unsupported
       Result:=TValue.Empty;
       Assert(False);
    end;
