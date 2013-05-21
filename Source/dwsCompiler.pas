@@ -345,6 +345,7 @@ type
    end;
 
    IdwsCompiler = interface
+      // direct access to the underlying instance, use with caution!!!
       function Compiler : TdwsCompiler;
 
       function Compile(const aCodeText : UnicodeString; aConf : TdwsConfiguration) : IdwsProgram;
