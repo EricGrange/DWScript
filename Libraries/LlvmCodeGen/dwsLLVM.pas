@@ -1996,7 +1996,7 @@ implementation
 
 resourcestring
   RStrCannotLoadLLVMLib = 'Cannot load LLVM library! (%s)';
-  RStrFunctionNotFound = '%s not founded!';
+  RStrFunctionNotFound = '%s not found!';
 
 var
    GLLVMLibraryName: TFileName;
