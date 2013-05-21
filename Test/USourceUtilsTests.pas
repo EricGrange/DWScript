@@ -26,6 +26,8 @@ type
          procedure StaticArrayTest;
          procedure DynamicArrayTest;
          procedure HelperSuggestTest;
+         procedure SuggestAfterCall;
+         procedure SuggestAcrossLines;
          procedure SymDictFunctionForward;
          procedure SymDictInherited;
          procedure ReferencesVars;
@@ -373,6 +375,59 @@ begin
    CheckEquals('IsPrime', sugg.Code[3], 'd. 3');
    CheckEquals('LeastFactor', sugg.Code[4], 'd. 4');
    CheckEquals('Next', sugg.Code[5], 'd. 5');
+end;
+
+// SuggestAfterCall
+//
+procedure TSourceUtilsTests.SuggestAfterCall;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile('function T(i : Integer) : String; forward;'#13#10
+                           +'T(1).L');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 7);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+
+   CheckEquals(4, sugg.Count, '.L');
+   CheckEquals('Left', sugg.Code[0], '.L 0');
+   CheckEquals('Length', sugg.Code[1], '.L 1');
+   CheckEquals('Low', sugg.Code[2], '.L 2');
+   CheckEquals('LowerCase', sugg.Code[3], '.L 3');
+
+   prog:=FCompiler.Compile('function T(i : Integer) : String; forward;'#13#10
+                           +'T(Ord(IntToStr(1)[1]+"])([")).Le');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 33);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+
+   CheckEquals(2, sugg.Count, '.Le');
+   CheckEquals('Left', sugg.Code[0], '.Le 0');
+   CheckEquals('Length', sugg.Code[1], '.Le 1');
+end;
+
+// SuggestAcrossLines
+//
+procedure TSourceUtilsTests.SuggestAcrossLines;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile('function T(i : Integer) : String; forward;'#13#10
+                           +'T('#13#10
+                           +'1'#13#10
+                           +')'#13#10
+                           +'.LO');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 5, 4);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+
+   CheckEquals(2, sugg.Count, '.Lo');
+   CheckEquals('Low', sugg.Code[0], '.Lo 0');
+   CheckEquals('LowerCase', sugg.Code[1], '.L 1');
 end;
 
 // SymDictFunctionForward

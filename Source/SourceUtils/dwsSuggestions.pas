@@ -227,23 +227,49 @@ procedure TdwsSuggestions.AnalyzeLocalTokens;
 var
    codeLine : UnicodeString;
    p, p2 : Integer;
+   sl : TStringList;
+   lineNumber : Integer;
 
-   function MoveBackArrayBrackets : Boolean;
+   function NeedCodeLine : Boolean;
+   begin
+      if lineNumber>0 then begin
+         Dec(lineNumber);
+         codeLine:=sl[lineNumber];
+         p:=Length(codeLine);
+         Result:=True;
+      end else Result:=False;
+   end;
+
+   function SkipBrackets : Boolean;
    var
       n : Integer;
+      inString : Char;
    begin
-      Result:=False;
-      if p<1 then Exit;
-      n:=Ord(codeLine[p]=']');
-      if n=0 then Exit(False);
-      while (p>1) and (n>0) do begin
-         case codeLine[p-1] of
-            ']' : Inc(n);
-            '[' : Dec(n);
+      while p<=0 do
+         if not NeedCodeLine then
+            Exit(False);
+      n:=0;
+      inString:=#0;
+      Result:=(codeLine[p]=']') or (codeLine[p]=')');
+      while p>=1 do begin
+         if inString=#0 then begin
+            case codeLine[p] of
+               ')', ']' : Inc(n);
+               '(', '[' : Dec(n);
+               '''' : inString:='''';
+               '"' : inString:='"';
+            end;
+            if n=0 then Exit;
+         end else begin
+            if codeLine[p]=inString then
+               inString:=#0;
          end;
          Dec(p);
+         while p<=0 do
+            if not NeedCodeLine then
+               Exit(False);
       end;
-      Result:=(n=0);
+      Result:=Result and (p>=1);
    end;
 
    procedure MoveToTokenStart;
@@ -266,7 +292,6 @@ var
    end;
 
 var
-   sl : TStringList;
    context : TdwsSourceContext;
    arrayItem : Boolean;
 begin
@@ -290,33 +315,37 @@ begin
    sl:=TStringList.Create;
    try
       sl.Text:=FSourceFile.Code;
-      if Cardinal(FSourcePos.Line-1)<Cardinal(sl.Count) then
-         codeLine:=sl[FSourcePos.Line-1]
-      else Exit;
+      if Cardinal(FSourcePos.Line-1)>=Cardinal(sl.Count) then begin
+         lineNumber:=0;
+         codeLine:='';
+      end else begin
+         lineNumber:=FSourcePos.Line-1;
+         codeLine:=sl[lineNumber]
+      end;
+
+      p:=FSourcePos.Col;
+      MoveToTokenStart;
+
+      FPartialToken:=Copy(codeLine, p, FSourcePos.Col-p);
+
+      if (p>1) and (codeLine[p-1]='.') then begin
+         FAfterDot:=True;
+         Dec(p, 2);
+         arrayItem:=SkipBrackets;
+         MoveToTokenStart;
+         FPreviousSymbol:=FProg.SymbolDictionary.FindSymbolAtPosition(p, lineNumber+1, FSourceFile.Name);
+         if FPreviousSymbol is TAliasSymbol then
+            FPreviousSymbol:=TAliasSymbol(FPreviousSymbol).UnAliasedType;
+         if arrayItem and (FPreviousSymbol<>nil) then begin
+            if FPreviousSymbol.Typ is TArraySymbol then
+               FPreviousSymbol:=TArraySymbol(FPreviousSymbol.Typ).Typ
+            else if FPreviousSymbol is TPropertySymbol then
+               FPreviousSymbol:=TArraySymbol(FPreviousSymbol).Typ;
+         end;
+      end else FAfterDot:=False;
    finally
       sl.Free;
    end;
-
-   p:=FSourcePos.Col;
-   MoveToTokenStart;
-
-   FPartialToken:=Copy(codeLine, p, FSourcePos.Col-p);
-
-   if (p>1) and (codeLine[p-1]='.') then begin
-      FAfterDot:=True;
-      Dec(p, 2);
-      arrayItem:=MoveBackArrayBrackets;
-      MoveToTokenStart;
-      FPreviousSymbol:=FProg.SymbolDictionary.FindSymbolAtPosition(p, FSourcePos.Line, FSourceFile.Name);
-      if FPreviousSymbol is TAliasSymbol then
-         FPreviousSymbol:=TAliasSymbol(FPreviousSymbol).UnAliasedType;
-      if arrayItem then begin
-         if FPreviousSymbol.Typ is TArraySymbol then
-            FPreviousSymbol:=TArraySymbol(FPreviousSymbol.Typ).Typ
-         else if FPreviousSymbol is TPropertySymbol then
-            FPreviousSymbol:=TArraySymbol(FPreviousSymbol).Typ;
-      end;
-   end else FAfterDot:=False;
 
    Dec(p);
    while (p>1) do begin
@@ -550,10 +579,11 @@ begin
    try
       if FPreviousSymbol<>nil then begin
 
-         if FPreviousSymbol.IsType then
-            AddTypeHelpers(FPreviousSymbol as TTypeSymbol, True, list)
-         else if (FPreviousSymbol.Typ<>nil) and FPreviousSymbol.Typ.IsType then
+         if FPreviousSymbol.IsType then begin
+            AddTypeHelpers(FPreviousSymbol as TTypeSymbol, True, list);
+         end else if (FPreviousSymbol.Typ<>nil) and FPreviousSymbol.Typ.IsType then begin
             AddTypeHelpers(FPreviousSymbol.Typ, False, list);
+         end;
 
          if FPreviousSymbol is TStructuredTypeMetaSymbol then begin
 
