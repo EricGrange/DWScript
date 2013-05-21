@@ -198,7 +198,6 @@ end;
 constructor TdwsFileNotifier.Create(const aDirectory : String; aMode : TdwsDirectoryNotifierMode);
 begin
    inherited Create(False);
-   NameThreadForDebugging('FileNotifier');
    FDirectory:=IncludeTrailingPathDelimiter(aDirectory);
    FMode:=aMode;
    FNotifyFilter:=   FILE_NOTIFY_CHANGE_FILE_NAME  or FILE_NOTIFY_CHANGE_DIR_NAME
@@ -243,6 +242,7 @@ var
    offset : Longint;
    fileName : String;
 begin
+   NameThreadForDebugging('FileNotifier');
    while not Terminated do begin
       GetQueuedCompletionStatus(FCompletionPort, numBytes, completionKey, FPOverlapped, INFINITE);
       if completionKey<>0 then begin
