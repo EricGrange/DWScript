@@ -19,7 +19,7 @@ interface
 
 uses
    Classes, SysUtils, Math,
-   dwsXPlatformTests, dwsJSON, dwsXPlatform;
+   dwsXPlatformTests, dwsJSON, dwsXPlatform, dwsUtils;
 
 type
 
@@ -37,6 +37,8 @@ type
          procedure JSONMissingElementValue;
          procedure JSONWriterNoValue;
          procedure JSONWriterNoName;
+
+         function CompareStringArray(v1, v2 : TdwsJSONValue) : Integer;
 
       published
          procedure JSONTest;
@@ -62,6 +64,7 @@ type
          procedure DefaultValues;
          procedure RepositionInArray;
          procedure CloneAndDetach;
+         procedure SortArray;
    end;
 
 // ------------------------------------------------------------------
@@ -373,6 +376,13 @@ begin
    finally
       wr.Free;
    end;
+end;
+
+// CompareStringArray
+//
+function TdwsJSONTests.CompareStringArray(v1, v2 : TdwsJSONValue) : Integer;
+begin
+   Result:=UnicodeCompareText(v1.AsString, v2.AsString);
 end;
 
 // JSONEmptyObject
@@ -694,6 +704,21 @@ begin
       finally
          b.Free;
       end;
+   finally
+      a.Free;
+   end;
+end;
+
+// SortArray
+//
+procedure TdwsJSONTests.SortArray;
+var
+   a : TdwsJSONValue;
+begin
+   a:=TdwsJSONObject.ParseString('["hello", "world", "some", "alpha", "stuff"]');
+   try
+      (a as TdwsJSONArray).Sort(CompareStringArray);
+      CheckEquals('["alpha","hello","some","stuff","world"]', a.ToString);
    finally
       a.Free;
    end;

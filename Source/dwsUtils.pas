@@ -571,6 +571,14 @@ type
    ETightListOutOfBound = class(Exception)
    end;
 
+   TQuickSort = record
+      public
+         CompareMethod : function (index1, index2 : Integer) : Integer of object;
+         SwapMethod : procedure (index1, index2 : Integer) of object;
+
+         procedure Sort(minIndex, maxIndex : Integer);
+   end;
+
 const
    cMSecToDateTime : Double = 1/(24*3600*1000);
 
@@ -3286,6 +3294,55 @@ function TClassCloneConstructor<T>.Create : T;
 begin
    GetMem(Pointer(TObject(Result)), FSize);
    System.Move(Pointer(TObject(FTemplate))^, Pointer(TObject(Result))^, FSize);
+end;
+
+// ------------------
+// ------------------ TQuickSort ------------------
+// ------------------
+
+// Sort
+//
+procedure TQuickSort.Sort(minIndex, maxIndex : Integer);
+var
+   i, j, p, n : Integer;
+begin
+   n:=maxIndex-minIndex;
+   case n of
+      1 : begin
+         if CompareMethod(minIndex, maxIndex)>0 then
+            SwapMethod(minIndex, maxIndex);
+      end;
+      2 : begin
+         i:=minIndex;
+         if CompareMethod(i, i+1)>0 then
+            SwapMethod(i, i+1);
+         if CompareMethod(i+1, i+2)>0 then begin
+            SwapMethod(i+1, i+2);
+            if CompareMethod(i, i+1)>0 then
+               SwapMethod(i, i+1);
+         end;
+      end;
+   else
+      if n<=0 then Exit;
+      repeat
+         i:=minIndex;
+         j:=maxIndex;
+         p:=((i+j) shr 1);
+         repeat
+            while CompareMethod(i, p)<0 do Inc(i);
+            while CompareMethod(j, p)>0 do Dec(j);
+            if i<=j then begin
+               SwapMethod(i, j);
+               if p=i then p:=j else if p=j then p:=i;
+               Inc(i);
+               Dec(j);
+            end;
+         until i>j;
+         if minIndex<j then
+            Sort(minIndex, j);
+         minIndex:=i;
+      until i>=maxIndex;
+   end;
 end;
 
 // ------------------------------------------------------------------

@@ -275,6 +275,8 @@ type
    PdwsJSONValueArray = ^TdwsJSONValueArray;
    TdwsJSONValueArray = array [0..MaxInt shr 4] of TdwsJSONValue;
 
+   TdwsJSONValueCompareMethod = function (left, right : TdwsJSONValue) : Integer of object;
+
    // TdwsJSONArray
    //
    TdwsJSONArray = class sealed (TdwsJSONValue)
@@ -313,6 +315,9 @@ type
          function AddObject : TdwsJSONObject;
          function AddArray : TdwsJSONArray;
          function AddValue : TdwsJSONImmediate;
+
+         procedure Sort(const aCompareMethod : TdwsJSONValueCompareMethod);
+         procedure Swap(index1, index2 : Integer);
 
          procedure WriteTo(writer : TdwsJSONWriter); override;
    end;
@@ -1552,6 +1557,50 @@ function TdwsJSONArray.AddValue : TdwsJSONImmediate;
 begin
    Result:=vImmediate.Create;
    Add(Result);
+end;
+
+// Sort
+//
+type
+   TCompareAdapter = class
+      ValueArray : PdwsJSONValueArray;
+      CompareMethod : TdwsJSONValueCompareMethod;
+      function Compare(index1, index2 : Integer) : Integer;
+   end;
+   function TCompareAdapter.Compare(index1, index2 : Integer) : Integer;
+   begin
+      Result:=CompareMethod(ValueArray[index1], ValueArray[Index2]);
+   end;
+procedure TdwsJSONArray.Sort(const aCompareMethod : TdwsJSONValueCompareMethod);
+var
+   qs : TQuickSort;
+   adapter : TCompareAdapter;
+begin
+   if FCount<=1 then Exit;
+
+   adapter:=TCompareAdapter.Create;
+   try
+      adapter.ValueArray:=FElements;
+      adapter.CompareMethod:=aCompareMethod;
+      qs.CompareMethod:=adapter.Compare;
+      qs.SwapMethod:=Swap;
+      qs.Sort(0, FCount-1);
+   finally
+      adapter.Free;
+   end;
+end;
+
+// Swap
+//
+procedure TdwsJSONArray.Swap(index1, index2 : Integer);
+var
+   temp : TdwsJSONValue;
+begin
+   Assert(Cardinal(index1)<Cardinal(FCount));
+   Assert(Cardinal(index2)<Cardinal(FCount));
+   temp:=FElements[index1];
+   FElements[index1]:=FElements[index2];
+   FElements[index2]:=temp;
 end;
 
 // DoGetName

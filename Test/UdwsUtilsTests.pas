@@ -52,6 +52,8 @@ type
          procedure VarRecArrayTest;
 
          procedure StrContainsTest;
+
+         procedure SortTest;
    end;
 
 // ------------------------------------------------------------------
@@ -582,6 +584,75 @@ begin
    CheckTrue(StrContains('banana', 'ba'));
    CheckTrue(StrContains('bananas', 'as'));
    CheckTrue(StrContains('bananas', 's'));
+end;
+
+// SortTest
+//
+type
+   TSortable = class
+      Items : array of Integer;
+      function Compare(i1, i2 : Integer) : Integer;
+      procedure Swap(i1, i2 : Integer);
+   end;
+function TSortable.Compare(i1, i2 : Integer) : Integer;
+begin
+   Result:=Items[i1]-Items[i2];
+end;
+procedure TSortable.Swap(i1, i2 : Integer);
+var
+   t : Integer;
+begin
+   t:=Items[i1];
+   Items[i1]:=Items[i2];
+   Items[i2]:=t;
+end;
+
+procedure TdwsUtilsTests.SortTest;
+var
+   i, n : Integer;
+   s : TSortable;
+   qs : TQuickSort;
+begin
+   s:=TSortable.Create;
+   try
+      qs.CompareMethod:=s.Compare;
+      qs.SwapMethod:=s.Swap;
+      qs.Sort(0, High(s.Items));
+
+      SetLength(s.Items, 1);
+      s.Items[0]:=-1;
+      qs.Sort(0, High(s.Items));
+      CheckEquals(-1, s.Items[0]);
+
+      SetLength(s.Items, 2);
+      s.Items[0]:=-2;
+      s.Items[1]:=-3;
+      qs.Sort(0, High(s.Items));
+      CheckEquals(-3, s.Items[0]);
+      CheckEquals(-2, s.Items[1]);
+
+      SetLength(s.Items, 3);
+      s.Items[0]:=-4;
+      s.Items[1]:=-5;
+      s.Items[2]:=-6;
+      qs.Sort(0, High(s.Items));
+      CheckEquals(-6, s.Items[0]);
+      CheckEquals(-5, s.Items[1]);
+      CheckEquals(-4, s.Items[2]);
+
+      SetLength(s.Items, 6);
+      for i:=0 to High(s.Items) do
+         s.Items[i]:=(i+1) and 3;
+      qs.Sort(0, High(s.Items));
+      CheckEquals(0, s.Items[0]);
+      CheckEquals(1, s.Items[1]);
+      CheckEquals(1, s.Items[2]);
+      CheckEquals(2, s.Items[3]);
+      CheckEquals(2, s.Items[4]);
+      CheckEquals(3, s.Items[5]);
+   finally
+      s.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------
