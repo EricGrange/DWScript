@@ -770,18 +770,25 @@ type
          property CountExpr : TTypedExpr read FCountExpr;
    end;
 
+   TArrayIndexOfMethod = function (exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer of object;
+
    // Find element in a dynamic array (shallow comparison)
    TArrayIndexOfExpr = class(TArrayTypedExpr)
       private
          FBaseExpr : TTypedExpr;
          FItemExpr : TTypedExpr;
          FFromIndexExpr : TTypedExpr;
+         FMethod : TArrayIndexOfMethod;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
-         function DoEval(exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer;
+         function DoEvalValue(exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer;
+         function DoEvalString(exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer;
+         function DoEvalInteger(exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer;
+         function DoEvalFuncPtr(exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer;
+         function DoEvalData(exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer;
 
       public
          constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos;
@@ -7565,12 +7572,29 @@ end;
 //
 constructor TArrayIndexOfExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos;
                                      aBase : TTypedExpr; aItem : TTypedExpr; aFromIndex : TTypedExpr);
+var
+   arrayItemTyp : TTypeSymbol;
 begin
    inherited Create(prog, scriptPos);
    FBaseExpr:=aBase;
    FItemExpr:=aItem;
    FFromIndexExpr:=aFromIndex;
    Typ:=prog.TypInteger;
+   // resolve internal method depending on array and item type
+   if (FItemExpr<>nil) and FItemExpr.Typ.IsFuncSymbol then
+      FMethod:=DoEvalFuncPtr
+   else if (FBaseExpr<>nil) and (FBaseExpr.Typ<>nil) then begin
+      arrayItemTyp:=FBaseExpr.Typ.Typ;
+      if arrayItemTyp<>nil then begin
+         if arrayItemTyp.Size>1 then
+            FMethod:=DoEvalData
+         else if arrayItemTyp.IsOfType(prog.TypString) then
+            FMethod:=DoEvalString
+         else if arrayItemTyp.IsOfType(prog.TypInteger) then
+            FMethod:=DoEvalInteger
+         else FMethod:=DoEvalValue;
+      end;
+   end;
 end;
 
 // Destroy
@@ -7599,12 +7623,12 @@ var
 begin
    BaseExpr.EvalAsScriptObj(exec, base);
    dyn:=TScriptDynamicArray(base.GetSelf);
-   Result:=DoEval(exec, dyn);
+   Result:=FMethod(exec, dyn);
 end;
 
-// DoEval
+// DoEvalValue
 //
-function TArrayIndexOfExpr.DoEval(exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer;
+function TArrayIndexOfExpr.DoEvalValue(exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer;
 var
    fromIndex : Integer;
    v : Variant;
@@ -7612,14 +7636,60 @@ begin
    if FFromIndexExpr<>nil then
       fromIndex:=FFromIndexExpr.EvalAsInteger(exec)
    else fromIndex:=0;
-   if dyn.ElementSize>1 then
-      Result:=dyn.IndexOf(TDataExpr(FItemExpr).DataPtr[exec], fromIndex)
-   else begin
-      FItemExpr.EvalAsVariant(exec, v);
-      if FItemExpr.Typ.IsFuncSymbol then
-         Result:=dyn.IndexOfFuncPtr(v, fromIndex)
-      else Result:=dyn.IndexOf(v, fromIndex);
-   end;
+   FItemExpr.EvalAsVariant(exec, v);
+   Result:=dyn.IndexOfValue(v, fromIndex);
+end;
+
+// DoEvalString
+//
+function TArrayIndexOfExpr.DoEvalString(exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer;
+var
+   fromIndex : Integer;
+   v : UnicodeString;
+begin
+   if FFromIndexExpr<>nil then
+      fromIndex:=FFromIndexExpr.EvalAsInteger(exec)
+   else fromIndex:=0;
+   FItemExpr.EvalAsString(exec, v);
+   Result:=dyn.IndexOfString(v, fromIndex);
+end;
+
+// DoEvalInteger
+//
+function TArrayIndexOfExpr.DoEvalInteger(exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer;
+var
+   fromIndex : Integer;
+begin
+   if FFromIndexExpr<>nil then
+      fromIndex:=FFromIndexExpr.EvalAsInteger(exec)
+   else fromIndex:=0;
+   Result:=dyn.IndexOfInteger(FItemExpr.EvalAsInteger(exec), fromIndex);
+end;
+
+// DoEvalFuncPtr
+//
+function TArrayIndexOfExpr.DoEvalFuncPtr(exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer;
+var
+   fromIndex : Integer;
+   v : Variant;
+begin
+   if FFromIndexExpr<>nil then
+      fromIndex:=FFromIndexExpr.EvalAsInteger(exec)
+   else fromIndex:=0;
+   FItemExpr.EvalAsVariant(exec, v);
+   Result:=dyn.IndexOfFuncPtr(v, fromIndex)
+end;
+
+// DoEvalData
+//
+function TArrayIndexOfExpr.DoEvalData(exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer;
+var
+   fromIndex : Integer;
+begin
+   if FFromIndexExpr<>nil then
+      fromIndex:=FFromIndexExpr.EvalAsInteger(exec)
+   else fromIndex:=0;
+   Result:=dyn.IndexOfData(TDataExpr(FItemExpr).DataPtr[exec], fromIndex)
 end;
 
 // GetSubExpr
@@ -7655,7 +7725,7 @@ var
 begin
    BaseExpr.EvalAsScriptObj(exec, base);
    dyn:=TScriptDynamicArray(base.GetSelf);
-   index:=DoEval(exec, dyn);
+   index:=FMethod(exec, dyn);
    if index>=0 then begin
       BaseExpr.EvalAsScriptObj(exec, base);
       dyn:=TScriptDynamicArray(base.GetSelf);

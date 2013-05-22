@@ -3313,13 +3313,13 @@ begin
             SwapMethod(minIndex, maxIndex);
       end;
       2 : begin
-         i:=minIndex;
-         if CompareMethod(i, i+1)>0 then
-            SwapMethod(i, i+1);
-         if CompareMethod(i+1, i+2)>0 then begin
-            SwapMethod(i+1, i+2);
-            if CompareMethod(i, i+1)>0 then
-               SwapMethod(i, i+1);
+         i:=minIndex+1;
+         if CompareMethod(minIndex,i)>0 then
+            SwapMethod(minIndex, i);
+         if CompareMethod(i, maxIndex)>0 then begin
+            SwapMethod(i, maxIndex);
+            if CompareMethod(minIndex, i)>0 then
+               SwapMethod(minIndex, i);
          end;
       end;
    else

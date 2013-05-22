@@ -1628,9 +1628,11 @@ type
          procedure Copy(src : TScriptDynamicArray; index, count : Integer);
          procedure RawCopy(const src : TData; rawIndex, rawCount : Integer);
          procedure Concat(src : TScriptDynamicArray);
-         function IndexOf(const item : IDataContext; fromIndex : Integer) : Integer; overload;
-         function IndexOf(const item : Variant; fromIndex : Integer) : Integer; overload;
-         function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer; overload;
+         function IndexOfData(const item : IDataContext; fromIndex : Integer) : Integer;
+         function IndexOfValue(const item : Variant; fromIndex : Integer) : Integer;
+         function IndexOfString(const item : UnicodeString; fromIndex : Integer) : Integer;
+         function IndexOfInteger(const item : Int64; fromIndex : Integer) : Integer;
+         function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
 
          function ToString : String; override;
          function ToStringArray : TStringDynArray;
@@ -6106,28 +6108,70 @@ begin
    end;
 end;
 
-// IndexOf
+// IndexOfData
 //
-function TScriptDynamicArray.IndexOf(const item : IDataContext; fromIndex : Integer) : Integer;
+function TScriptDynamicArray.IndexOfData(const item : IDataContext; fromIndex : Integer) : Integer;
 var
    i : Integer;
+   data : PData;
 begin
+   data:=AsPData;
    for i:=fromIndex to ArrayLength-1 do
-      if item.SameData(0, AsData, i*ElementSize, ElementSize) then
+      if item.SameData(0, data^, i*ElementSize, ElementSize) then
          Exit(i);
    Result:=-1;
 end;
 
-// IndexOf
+// IndexOfValue
 //
-function TScriptDynamicArray.IndexOf(const item : Variant; fromIndex : Integer) : Integer;
+function TScriptDynamicArray.IndexOfValue(const item : Variant; fromIndex : Integer) : Integer;
 var
    i : Integer;
+   data : PData;
 begin
    Assert(ElementSize=1);
+   data:=AsPData;
    for i:=fromIndex to ArrayLength-1 do
-      if DWSSameVariant(AsPVariant(i)^, item) then
+      if DWSSameVariant(data^[i], item) then
          Exit(i);
+   Result:=-1;
+end;
+
+// IndexOfString
+//
+function TScriptDynamicArray.IndexOfString(const item : UnicodeString; fromIndex : Integer) : Integer;
+var
+   i : Integer;
+   varData : PVarData;
+begin
+   if fromIndex<ArrayLength then begin
+      varData:=@AsPData^[fromIndex];
+      for i:=fromIndex to ArrayLength-1 do begin
+         Assert(varData^.VType=varUString);
+         if UnicodeString(varData^.VString)=item then
+            Exit(i);
+         Inc(varData);
+      end;
+   end;
+   Result:=-1;
+end;
+
+// IndexOfInteger
+//
+function TScriptDynamicArray.IndexOfInteger(const item : Int64; fromIndex : Integer) : Integer;
+var
+   i : Integer;
+   varData : PVarData;
+begin
+   if fromIndex<ArrayLength then begin
+      varData:=@AsPData^[fromIndex];
+      for i:=fromIndex to ArrayLength-1 do begin
+         Assert(varData^.VType=varInt64);
+         if varData^.VInt64=item then
+            Exit(i);
+         Inc(varData);
+      end;
+   end;
    Result:=-1;
 end;
 

@@ -224,13 +224,8 @@ begin
             Result:=TVarData(v1).VBoolean=TVarData(v2).VBoolean;
          varDouble :
             Result:=TVarData(v1).VDouble=TVarData(v2).VDouble;
-         {$ifdef FPC}
-         varString :
-            Result:=UnicodeString(TVarData(v1).VString)=UnicodeString(TVarData(v2).VString);
-         {$else}
          varUString :
-            Result:=UnicodeString(TVarData(v1).VUString)=UnicodeString(TVarData(v2).VUString);
-         {$endif}
+            Result:=UnicodeString(TVarData(v1).VString)=UnicodeString(TVarData(v2).VString);
          varUnknown :
             Result:=TVarData(v1).VUnknown=TVarData(v2).VUnknown;
       else
