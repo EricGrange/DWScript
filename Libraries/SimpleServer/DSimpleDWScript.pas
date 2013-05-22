@@ -20,7 +20,7 @@ interface
 
 uses
    Windows, SysUtils, Classes, StrUtils,
-   dwsFileSystem, dwsGlobalVarsFunctions,
+   dwsFileSystem, dwsGlobalVarsFunctions, dwsExprList,
    dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils, dwsXPlatform,
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
    dwsDataBase, dwsDataBaseLibModule, dwsSynSQLiteDatabase,

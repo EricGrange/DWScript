@@ -85,6 +85,7 @@ type
          FBytesWritten : DWORD;
          FCompletionPort : THandle;
          FLastChange : TDateTime;
+         FActive : Boolean;
 
       protected
          { Protected Declarations }
@@ -220,7 +221,8 @@ end;
 //
 destructor TdwsFileNotifier.Destroy;
 begin
-   Shutdown;
+   if FActive then
+      Shutdown;
    if FDirectoryHandle<>0 then
       CloseHandle(FDirectoryHandle);
    if FCompletionPort<>0 then
@@ -242,6 +244,7 @@ var
    offset : Longint;
    fileName : String;
 begin
+   FActive:=True;
    NameThreadForDebugging('FileNotifier');
    while not Terminated do begin
       GetQueuedCompletionStatus(FCompletionPort, numBytes, completionKey, FPOverlapped, INFINITE);
@@ -258,21 +261,25 @@ begin
          until offset=0;
          FBytesWritten:=0;
          FillChar(FNotificationBuffer, 0, SizeOf(FNotificationBuffer));
-         ReadDirectoryChanges(FDirectoryHandle, @FNotificationBuffer, SizeOf(FNotificationBuffer),
-                              (FMode=dnoDirectoryAndSubTree), FNotifyFilter,
-                              @FBytesWritten, @FOverlapped, nil);
+         if not ReadDirectoryChanges(FDirectoryHandle, @FNotificationBuffer, SizeOf(FNotificationBuffer),
+                                     (FMode=dnoDirectoryAndSubTree), FNotifyFilter,
+                                     @FBytesWritten, @FOverlapped, nil) then
+            Terminate;
       end else Terminate;
    end;
+   FActive:=False;
 end;
 
 // Shutdown
 //
 procedure TdwsFileNotifier.Shutdown;
 begin
-   Terminate;
-   if FCompletionPort<>0 then
-      PostQueuedCompletionStatus(FCompletionPort, 0, 0, nil);
-   WaitFor;
+   if FActive then begin
+      Terminate;
+      if FCompletionPort<>0 then
+         PostQueuedCompletionStatus(FCompletionPort, 0, 0, nil);
+      WaitFor;
+   end;
 end;
 
 end.

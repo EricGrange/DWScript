@@ -2,7 +2,8 @@ unit dwsCPUUsage;
 
 interface
 
-uses Windows, MMSystem, SysUtils, Registry, dwsUtils;
+uses Windows, MMSystem, SysUtils, Registry,
+   dwsUtils, dwsXPlatform;
 
 type
    SystemCPUCategory = (cpuUser, cpuKernel, cpuIdle);
