@@ -100,6 +100,7 @@ type
          FNamesLookup : TNameSymbolHash;
          FPartialToken : UnicodeString;
          FPreviousSymbol : TSymbol;
+         FPreviousSymbolIsMeta : Boolean;
          FPreviousTokenString : UnicodeString;
          FPreviousToken : TTokenType;
          FAfterDot : Boolean;
@@ -334,13 +335,18 @@ begin
          arrayItem:=SkipBrackets;
          MoveToTokenStart;
          FPreviousSymbol:=FProg.SymbolDictionary.FindSymbolAtPosition(p, lineNumber+1, FSourceFile.Name);
-         if FPreviousSymbol is TAliasSymbol then
-            FPreviousSymbol:=TAliasSymbol(FPreviousSymbol).UnAliasedType;
-         if arrayItem and (FPreviousSymbol<>nil) then begin
-            if FPreviousSymbol.Typ is TArraySymbol then
-               FPreviousSymbol:=TArraySymbol(FPreviousSymbol.Typ).Typ
-            else if FPreviousSymbol is TPropertySymbol then
-               FPreviousSymbol:=TArraySymbol(FPreviousSymbol).Typ;
+         if FPreviousSymbol<>nil then begin
+            if FPreviousSymbol is TAliasSymbol then
+               FPreviousSymbol:=TAliasSymbol(FPreviousSymbol).UnAliasedType;
+            if arrayItem then begin
+               FPreviousSymbolIsMeta:=False;
+               if FPreviousSymbol.Typ is TArraySymbol then
+                  FPreviousSymbol:=TArraySymbol(FPreviousSymbol.Typ).Typ
+               else if FPreviousSymbol is TPropertySymbol then
+                  FPreviousSymbol:=TArraySymbol(FPreviousSymbol).Typ;
+            end else begin
+               FPreviousSymbolIsMeta:=FPreviousSymbol.IsType;
+            end;
          end;
       end else FAfterDot:=False;
    finally
@@ -579,7 +585,7 @@ begin
    try
       if FPreviousSymbol<>nil then begin
 
-         if FPreviousSymbol.IsType then begin
+         if FPreviousSymbolIsMeta then begin
             AddTypeHelpers(FPreviousSymbol as TTypeSymbol, True, list);
          end else if (FPreviousSymbol.Typ<>nil) and FPreviousSymbol.Typ.IsType then begin
             AddTypeHelpers(FPreviousSymbol.Typ, False, list);
@@ -591,10 +597,14 @@ begin
 
          end else if FPreviousSymbol is TStructuredTypeSymbol then begin
 
-            if FPreviousToken in [ttPROCEDURE, ttFUNCTION, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR]  then begin
-               FSymbolClassFilter:=TFuncSymbol;
-               list.AddMembers(TStructuredTypeSymbol(FPreviousSymbol), FContextSymbol);
-            end else list.AddMetaMembers(TStructuredTypeSymbol(FPreviousSymbol), FContextSymbol);
+            if not FPreviousSymbolIsMeta then
+               list.AddMembers(TStructuredTypeSymbol(FPreviousSymbol), FContextSymbol)
+            else begin
+               if FPreviousToken in [ttPROCEDURE, ttFUNCTION, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR]  then begin
+                  FSymbolClassFilter:=TFuncSymbol;
+                  list.AddMembers(TStructuredTypeSymbol(FPreviousSymbol), FContextSymbol);
+               end else list.AddMetaMembers(TStructuredTypeSymbol(FPreviousSymbol), FContextSymbol);
+            end;
 
          end else if     (FPreviousSymbol is TMethodSymbol)
                      and (TMethodSymbol(FPreviousSymbol).Kind=fkConstructor) then begin

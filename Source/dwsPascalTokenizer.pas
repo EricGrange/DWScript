@@ -183,9 +183,11 @@ begin
    sComment.SetElse(TSeekTransition.Create(sCommentF, [], caNone));
 
    sCommentF.AddTransition(['}'], TSeekTransition.Create(sStart, [], caClear));
+   sCommentF.AddEOFTransition(TErrorTransition.Create(CPE_UnexpectedEndOfFileForUnfinishedComment));
    sCommentF.SetElse(TSeekTransition.Create(sCommentF, [], caNone));
 
    sSwitch.AddTransition(cNAM, TConsumeTransition.Create(sSwitchNameF, [toStart], caNone));
+   sSwitch.AddEOFTransition(TErrorTransition.Create(CPE_UnexpectedEndOfFileForUnfinishedDirective));
    sSwitch.SetElse(TErrorTransition.Create(TOK_NameOfSwitchExpected));
 
    sSwitchNameF.AddTransition(cNAM + cINT, TConsumeTransition.Create(sSwitchNameF, [], caNone));
@@ -208,6 +210,7 @@ begin
 
    sBlockCommentBracket1.AddTransition([')'], TSeekTransition.Create(sStart, [], caClear));
    sBlockCommentBracket1.AddTransition(['*'], TSeekTransition.Create(sBlockCommentBracket1, [], caNone));
+   sBlockCommentBracket1.AddEOFTransition(TErrorTransition.Create(CPE_UnexpectedEndOfFileForUnfinishedComment));
    sBlockCommentBracket1.SetElse(TSeekTransition.Create(sBlockCommentBracket, [], caNone));
 
    sBlockCommentSlash.AddTransition(['*'], TSeekTransition.Create(sBlockCommentSlash1, [], caNone));
@@ -215,6 +218,7 @@ begin
 
    sBlockCommentSlash1.AddTransition(['/'], TSeekTransition.Create(sStart, [], caClear));
    sBlockCommentSlash1.AddTransition(['*'], TSeekTransition.Create(sBlockCommentSlash1, [], caNone));
+   sBlockCommentSlash1.AddEOFTransition(TErrorTransition.Create(CPE_UnexpectedEndOfFileForUnfinishedComment));
    sBlockCommentSlash1.SetElse(TSeekTransition.Create(sBlockCommentSlash, [], caNone));
 
    sChar0.AddTransition(cINT, TConsumeTransition.Create(sCharF, [], caNone));
@@ -310,7 +314,7 @@ begin
 
    sStringDouble.AddTransition(cANYCHAR - ['"', #0], TConsumeTransition.Create(sStringDouble, [], caNone));
    sStringDouble.AddTransition(['"'], TSeekTransition.Create(sStringDoubleF, [], caNone));
-   sStringDouble.AddTransition([#0], TErrorTransition.Create(TOK_HereDocTerminationError));
+   sStringDouble.AddEOFTransition(TErrorTransition.Create(TOK_HereDocTerminationError));
 
    sStringDoubleF.AddTransition(['"'], TConsumeTransition.Create(sStringDouble, [], caNone));
    sStringDoubleF.AddTransition(['#'], TCheckTransition.Create(sStart, [], caString));
@@ -319,7 +323,7 @@ begin
 
    sStringIndentSingle.AddTransition(cANYCHAR - ['''', #0], TConsumeTransition.Create(sStringIndentSingle, [], caNone));
    sStringIndentSingle.AddTransition([''''], TSeekTransition.Create(sStringIndentSingleF, [], caNone));
-   sStringIndentSingle.AddTransition([#0], TErrorTransition.Create(TOK_HereDocTerminationError));
+   sStringIndentSingle.AddEOFTransition(TErrorTransition.Create(TOK_HereDocTerminationError));
 
    sStringIndentSingleF.AddTransition([''''], TConsumeTransition.Create(sStringIndentSingle, [], caNone));
    sStringIndentSingleF.AddTransition(['#'], TCheckTransition.Create(sStart, [], caMultiLineString));
@@ -328,7 +332,7 @@ begin
 
    sStringIndentDouble.AddTransition(cANYCHAR - ['"', #0], TConsumeTransition.Create(sStringIndentDouble, [], caNone));
    sStringIndentDouble.AddTransition(['"'], TSeekTransition.Create(sStringIndentDoubleF, [], caNone));
-   sStringIndentDouble.AddTransition([#0], TErrorTransition.Create(TOK_HereDocTerminationError));
+   sStringIndentDouble.AddEOFTransition(TErrorTransition.Create(TOK_HereDocTerminationError));
 
    sStringIndentDoubleF.AddTransition(['"'], TConsumeTransition.Create(sStringIndentDouble, [], caNone));
    sStringIndentDoubleF.AddTransition(['#'], TCheckTransition.Create(sStart, [], caMultiLineString));

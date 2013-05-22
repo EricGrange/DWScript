@@ -633,10 +633,10 @@ implementation
 function SimpleStringHash(const s : UnicodeString) : Cardinal; inline;
 var
    i : Integer;
-begin
+begin  // modified FNV-1a using length as seed
    Result:=Length(s);
    for i:=1 to Result do
-      Result:=((Result shl 3) or (Result shr 29)) xor Ord(s[i]);
+      Result:=(Result xor Ord(s[i]))*16777619;
 end;
 
 // ScriptStringToRawByteString

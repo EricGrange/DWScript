@@ -396,6 +396,8 @@ const
 
   CPE_UnbalancedConditionalDirective = 'Unbalanced conditional directive';
   CPE_UnfinishedConditionalDirective = 'Unfinished conditional directive';
+  CPE_UnexpectedEndOfFileForUnfinishedComment = 'Unexpected end of file (unfinished comment)';
+  CPE_UnexpectedEndOfFileForUnfinishedDirective = 'Unexpected end of file (unfinished directive)';
 
   CPE_TypeIsUnknown = 'Type "%s" unknown';
   CPE_TypeForParamNotFound = 'Type "%s" not found for parameter "%s" of function "%s"';

@@ -25,6 +25,7 @@ type
          procedure StringTest;
          procedure StaticArrayTest;
          procedure DynamicArrayTest;
+         procedure ObjectArrayTest;
          procedure HelperSuggestTest;
          procedure SuggestAfterCall;
          procedure SuggestAcrossLines;
@@ -351,6 +352,30 @@ begin
    CheckEquals('Reverse', sugg.Code[14], 'd. 14');
    CheckEquals('SetLength', sugg.Code[15], 'd. 15');
    CheckEquals('Swap', sugg.Code[16], 'd. 16');
+end;
+
+// ObjectArrayTest
+//
+procedure TSourceUtilsTests.ObjectArrayTest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile( 'type TObj = class X : Integer; end; var a : array of TObj;'#13#10
+                           +'a[0].');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 6);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+
+   CheckEquals(7, sugg.Count, 'a[0].');
+   CheckEquals('ClassName', sugg.Code[0], 'a[0]. 0');
+   CheckEquals('ClassParent', sugg.Code[1], 'a[0]. 1');
+   CheckEquals('ClassType', sugg.Code[2], 'a[0]. 2');
+   CheckEquals('Create', sugg.Code[3], 'a[0]. 3');
+   CheckEquals('Destroy', sugg.Code[4], 'a[0]. 4');
+   CheckEquals('Free', sugg.Code[5], 'a[0]. 5');
+   CheckEquals('X', sugg.Code[6], 'a[0]. 6');
 end;
 
 // HelperSuggestTest

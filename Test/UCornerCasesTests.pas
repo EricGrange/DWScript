@@ -33,6 +33,8 @@ type
          procedure IncludeViaEvent;
          procedure IncludeViaFile;
          procedure IncludeViaFileRestricted;
+         procedure IncludeCommentStart;
+         procedure IncludeStringStart;
          procedure StackMaxRecursion;
          procedure StackOverFlow;
          procedure StackOverFlowOnFuncPtr;
@@ -236,8 +238,14 @@ end;
 //
 procedure TCornerCasesTests.DoOnInclude(const scriptName : UnicodeString; var scriptSource : UnicodeString);
 begin
-   CheckEquals('test.dummy', scriptName, 'DoOnInclude');
-   scriptSource:='Print(''hello'');';
+   if scriptName='comment.inc' then
+      scriptSource:='{'
+   else if scriptName='string.inc' then
+      scriptSource:='"he'
+   else begin
+      CheckEquals('test.dummy', scriptName, 'DoOnInclude');
+      scriptSource:='Print(''hello'');';
+   end;
 end;
 
 // DoOnResource
@@ -416,6 +424,34 @@ begin
    end;
 
    CheckTrue(FCompiler.Config.CompileFileSystem=nil, 'Notification release');
+end;
+
+// IncludeCommentStart
+//
+procedure TCornerCasesTests.IncludeCommentStart;
+var
+   prog : IdwsProgram;
+begin
+   FCompiler.OnInclude:=DoOnInclude;
+   prog:=FCompiler.Compile('{$include "comment.inc"}');
+
+   CheckEquals( 'Syntax Error: Unexpected end of file (unfinished comment) '
+               +'[line: 2, column: 1, file: comment.inc]'#13#10,
+               prog.Msgs.AsInfo);
+end;
+
+// IncludeStringStart
+//
+procedure TCornerCasesTests.IncludeStringStart;
+var
+   prog : IdwsProgram;
+begin
+   FCompiler.OnInclude:=DoOnInclude;
+   prog:=FCompiler.Compile('{$include "string.inc"}');
+
+   CheckEquals( 'Syntax Error: End of string constant not found (end of file) '
+               +'[line: 2, column: 1, file: string.inc]'#13#10,
+               prog.Msgs.AsInfo);
 end;
 
 // StackMaxRecursion

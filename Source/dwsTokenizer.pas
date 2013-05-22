@@ -123,6 +123,7 @@ type
 
          function FindTransition(c : WideChar) : TTransition; inline;
          procedure AddTransition(const chrs : TCharsType; o : TTransition);
+         procedure AddEOFTransition(o : TTransition);
          procedure SetTransition(c : AnsiChar; o : TTransition); inline;
          procedure SetElse(o : TTransition);
    end;
@@ -921,6 +922,14 @@ begin
    FOwnedTransitions.Add(o);
 end;
 
+// AddEOFTransition
+//
+procedure TState.AddEOFTransition(o : TTransition);
+begin
+   SetTransition(#0, o);
+   FOwnedTransitions.Add(o);
+end;
+
 // SetTransition
 //
 procedure TState.SetTransition(c : AnsiChar; o : TTransition);
@@ -1512,8 +1521,9 @@ begin
 
       // Handle Errors
       if trns.IsError then begin
-         // tokenizer errors will raise exceptions, EOF won't
          DoErrorTransition(trns as TErrorTransition, pch^);
+         state:=FStartState;
+         FTokenBuf.Len:=0;
          if FSourceStack<>nil then begin
             EndSourceFile;
             pch:=PosPtr;
