@@ -34,7 +34,7 @@ uses
 
 const
    CLLVMLibraryMajorVersion = 3;
-   CLLVMLibraryMinorVersion = 2;
+   CLLVMLibraryMinorVersion = 3;
    CLLVMLibraryPrefix = 'LLVM';
    CLLVMLibraryExtension = '.dll';
    {$IFDEF CPUX86}
@@ -1184,7 +1184,7 @@ var
      pointer to a pre-allocated array of PLLVMBasicBlock of at least
      LLVMCountBasicBlocks in length. This array is populated with
      PLLVMBasicBlock instances. }
-   LLVMGetBasicBlocks: procedure(Fn: PLLVMValue; var BasicBlocks: PLLVMBasicBlock); cdecl;
+   LLVMGetBasicBlocks: procedure(Fn: PLLVMValue; BasicBlocks: PLLVMBasicBlockPtrArray); cdecl;
 
    { Obtain the first basic block in a function.
      The returned basic block can be used as an iterator. You will likely

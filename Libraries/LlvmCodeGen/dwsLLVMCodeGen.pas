@@ -251,10 +251,6 @@ type
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
-   TLLVMVarParamExpr = class (TLLVMVarExpr)
-      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
-   end;
-
    TLLVMOpExpr = class (TLLVMExprCodeGen)
    end;
 
@@ -825,7 +821,7 @@ begin
    RegisterCodeGen(TAssignConstToFloatVarExpr, TLLVMAssignConstVarExpr.Create(btFloat));
 
    RegisterCodeGen(TVarExpr, TLLVMVarExpr.Create);
-   RegisterCodeGen(TVarParamExpr, TLLVMVarParamExpr.Create);
+   RegisterCodeGen(TVarParamExpr, TLLVMVarExpr.Create);
 
    RegisterCodeGen(TBoolVarExpr, TLLVMVarExpr.Create);
    RegisterCodeGen(TIntVarExpr, TLLVMVarExpr.Create);
@@ -1464,7 +1460,13 @@ begin
    // get parameter / argument types
    SetLength(argTypes, argCount);
    for index := 0 to argCount - 1 do
+   begin
       argTypes[index] := TypeSymbolToLLVMType(Params.Symbols[index].Typ);
+
+      // eventually use pointer in case of a 'by reference' parameter
+      if params.Symbols[index] is TByRefParamSymbol then
+         argTypes[index] := LLVMPointerType(argTypes[index], 0);
+   end;
 
    // define function type and make sure no function with that name already exists
    funcType := LLVMFunctionType(retType, @argTypes[0], argCount, False);
@@ -1474,9 +1476,6 @@ begin
 
    // add function
    funcVal := LLVMAddFunction(Module.Handle, PAnsiChar(funcName), funcType);
-
-   // link function
-//   LinkLLVMValueToObject(funcVal, func);
 
    SetLength(argValues, argCount);
    if argCount > 0 then
@@ -1518,11 +1517,17 @@ begin
       begin
          argName := AnsiString(params.Symbols[index].Name);
          LLVMPositionBuilder(builder.Handle, allocBlock, allocBranch);
-         argValue := LLVMBuildAlloca(FBuilder.Handle, argTypes[index], PAnsiChar(argName));
          builder.PositionBuilderAtEnd(entryBlock);
-         LLVMBuildStore(FBuilder.Handle, argValues[index], argValue);
-         argValues[index] := argValue;
-         LinkLLVMValueToDataSymbol(argValues[index], params.Symbols[index]);
+
+         if (params.Symbols[index] is TByRefParamSymbol) then
+            Assert(LLVMGetTypeKind(LLVMTypeOf(argValues[index])) = LLVMPointerTypeKind)
+         else
+         begin
+            argValue := LLVMBuildAlloca(FBuilder.Handle, argTypes[index], PAnsiChar(argName));
+            LLVMBuildStore(FBuilder.Handle, argValues[index], argValue);
+            argValues[index] := argValue;
+            LinkLLVMValueToDataSymbol(argValues[index], params.Symbols[index]);
+         end;
       end;
 
       // allocate memory for result / return value and use this instead
@@ -1921,46 +1926,6 @@ begin
    end
 end;
 
-
-// ------------------
-// ------------------ TLLVMVarParamExpr ------------------
-// ------------------
-
-procedure TLLVMVarParamExpr.CodeGen(codeGen: TdwsCodeGen; expr: TExprBase);
-var
-   sym : TDataSymbol;
-   varExpr : TVarExpr;
-   vO : PLLVMValue;
-begin
-   varExpr := TVarExpr(expr);
-
-   sym := varExpr.DataSym;
-   if not Assigned(sym) then
-      raise ECodeGenUnsupportedSymbol.CreateFmt(RStrVarNotFound, [varExpr.StackAddr]);
-
-{$IFDEF LLVM_TAG}
-{$ELSE}
-   // synchronize symbol with expression
-   vO := codeGen.DataSymbolToLLVMValue(sym);
-   if Assigned(vO) then
-   begin
-      if not Assigned(codeGen.ExpressionToLLVMValue(expr)) then
-         codeGen.LinkLLVMValueToExpression(vO, expr)
-      else
-      begin
-         vO := codeGen.ExpressionToLLVMValue(expr);
-         if Assigned(vO) then
-            codeGen.LinkLLVMValueToDataSymbol(vO, sym)
-      end;
-   end
-   else
-   begin
-      vO := codeGen.ExpressionToLLVMValue(expr);
-      if Assigned(vO) then
-         codeGen.LinkLLVMValueToDataSymbol(vO, sym)
-   end;
-{$ENDIF}
-end;
 
 // ------------------
 // ------------------ TLLVMBinOpExpr ------------------
@@ -2386,40 +2351,52 @@ begin
    cg.CompileNoWrap(e.CondExpr);
    vCond := codeGen.ExpressionToLLVMValue(e.CondExpr);
 
-   // get, build and position basic blocks
-   bbList[0] := LLVMGetInsertBlock(cg.FBuilder.Handle);
-   bbList[1] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-     bbList[0], 'then');
-   LLVMMoveBasicBlockAfter(bbList[1], bbList[0]);
-   bbList[2] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-     bbList[1], 'else');
-   LLVMMoveBasicBlockAfter(bbList[2], bbList[1]);
-   bbList[3] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-     bbList[2], 'cont');
-   LLVMMoveBasicBlockAfter(bbList[3], bbList[2]);
+   if (e.TrueExpr is TConstExpr) and (e.FalseExpr is TConstExpr) then
+   begin
+      cg.CompileNoWrap(e.TrueExpr);
+      vTrue :=TdwsLLVMCodeGen(codeGen).ExpressionToLLVMValue(e.TrueExpr);
+      cg.CompileNoWrap(e.FalseExpr);
+      vFalse :=TdwsLLVMCodeGen(codeGen).ExpressionToLLVMValue(e.FalseExpr);
+      vPhi := LLVMBuildSelect(cg.FBuilder.Handle, vCond, vTrue, vFalse, '');
+      codeGen.LinkLLVMValueToExpression(vPhi, expr);
+   end
+   else
+   begin
+      // get, build and position basic blocks
+      bbList[0] := LLVMGetInsertBlock(cg.FBuilder.Handle);
+      bbList[1] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
+         bbList[0], 'then');
+      LLVMMoveBasicBlockAfter(bbList[1], bbList[0]);
+      bbList[2] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
+         bbList[1], 'else');
+      LLVMMoveBasicBlockAfter(bbList[2], bbList[1]);
+      bbList[3] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
+         bbList[2], 'cont');
+      LLVMMoveBasicBlockAfter(bbList[3], bbList[2]);
 
-   // build conditional branch (eventually swap blocks in case of a not condition)
-   LLVMBuildCondBr(cg.FBuilder.Handle, vCond, bbList[1], bbList[2]);
+      // build conditional branch (eventually swap blocks in case of a not condition)
+      LLVMBuildCondBr(cg.FBuilder.Handle, vCond, bbList[1], bbList[2]);
 
-   // locate & compile 'then' block
-   cg.FBuilder.PositionBuilderAtEnd(bbList[1]);
-   codeGen.Compile(e.TrueExpr);
-   vTrue :=TdwsLLVMCodeGen(codeGen).ExpressionToLLVMValue(e.TrueExpr);
-   LLVMBuildBr(cg.FBuilder.Handle, bbList[3]);
+      // locate & compile 'then' block
+      cg.FBuilder.PositionBuilderAtEnd(bbList[1]);
+      codeGen.Compile(e.TrueExpr);
+      vTrue :=TdwsLLVMCodeGen(codeGen).ExpressionToLLVMValue(e.TrueExpr);
+      LLVMBuildBr(cg.FBuilder.Handle, bbList[3]);
 
-   // locate & compile 'else' block
-   cg.FBuilder.PositionBuilderAtEnd(bbList[2]);
-   codeGen.Compile(e.FalseExpr);
-   vFalse := TdwsLLVMCodeGen(codeGen).ExpressionToLLVMValue(e.FalseExpr);
-   LLVMBuildBr(cg.FBuilder.Handle, bbList[3]);
+      // locate & compile 'else' block
+      cg.FBuilder.PositionBuilderAtEnd(bbList[2]);
+      codeGen.Compile(e.FalseExpr);
+      vFalse := TdwsLLVMCodeGen(codeGen).ExpressionToLLVMValue(e.FalseExpr);
+      LLVMBuildBr(cg.FBuilder.Handle, bbList[3]);
 
-   // locate final block
-   cg.FBuilder.PositionBuilderAtEnd(bbList[3]);
-   Assert(LLVMTypeOf(vTrue) = LLVMTypeOf(vFalse));
-   vPhi := LLVMBuildPhi(cg.FBuilder.Handle, LLVMTypeOf(vTrue), '');
-   LLVMAddIncoming(vPhi, @vTrue, @bbList[1], 1);
-   LLVMAddIncoming(vPhi, @vFalse, @bbList[2], 1);
-   codeGen.LinkLLVMValueToExpression(vPhi, expr);
+      // locate final block
+      cg.FBuilder.PositionBuilderAtEnd(bbList[3]);
+      Assert(LLVMTypeOf(vTrue) = LLVMTypeOf(vFalse));
+      vPhi := LLVMBuildPhi(cg.FBuilder.Handle, LLVMTypeOf(vTrue), '');
+      LLVMAddIncoming(vPhi, @vTrue, @bbList[1], 1);
+      LLVMAddIncoming(vPhi, @vFalse, @bbList[2], 1);
+      codeGen.LinkLLVMValueToExpression(vPhi, expr);
+   end;
 end;
 
 
@@ -2469,10 +2446,10 @@ begin
    // build basic blocks
    bbList[0] := LLVMGetInsertBlock(cg.FBuilder.Handle);
    bbList[1] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-     bbList[0], 'then');
+      bbList[0], 'then');
    LLVMMoveBasicBlockAfter(bbList[1], bbList[0]);
    bbList[2] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-     bbList[1], 'cont');
+      bbList[1], 'cont');
    LLVMMoveBasicBlockAfter(bbList[2], bbList[1]);
 
    if SwapBlocks then
@@ -2520,13 +2497,13 @@ begin
    // get, build and position basic blocks
    bbList[0] := LLVMGetInsertBlock(cg.FBuilder.Handle);
    bbList[1] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-     bbList[0], 'then');
+      bbList[0], 'then');
    LLVMMoveBasicBlockAfter(bbList[1], bbList[0]);
    bbList[2] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-     bbList[1], 'else');
+      bbList[1], 'else');
    LLVMMoveBasicBlockAfter(bbList[2], bbList[1]);
    bbList[3] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-     bbList[2], 'cont');
+      bbList[2], 'cont');
    LLVMMoveBasicBlockAfter(bbList[3], bbList[2]);
 
    // build conditional branch (eventually swap blocks in case of a not condition)

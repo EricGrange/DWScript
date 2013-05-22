@@ -255,7 +255,7 @@ type
          constructor Create(Context: TLLVMContext); overload; override;
    end;
 
-   TLLVMConstValue = class (TRefCountedObject)
+   TLLVMValue = class (TRefCountedObject)
       private
          FLLVMValue: PLLVMValue;
          function GetName: AnsiString;
@@ -280,7 +280,7 @@ type
          property IsUndef: Boolean read GetIsUndef;
    end;
 
-   TLLVMConstIntValue = class (TLLVMConstValue)
+   TLLVMConstIntValue = class (TLLVMValue)
       public
          constructor CreateAllOnes(BaseType: TLLVMIntBaseType);
          constructor CreateInt(BaseType: TLLVMIntBaseType; N: UInt64;
@@ -296,7 +296,7 @@ type
          function GetSExtValue: Int64;
    end;
 
-   TLLVMConstRealValue = class (TLLVMConstValue)
+   TLLVMConstRealValue = class (TLLVMValue)
       public
          constructor CreateReal(BaseType: TLLVMRealBaseType; N: Double);
          constructor CreateRealOfString(BaseType: TLLVMIntBaseType;
@@ -305,319 +305,319 @@ type
             const Text: AnsiString; TextLength: Cardinal); overload;
    end;
 
-   TLLVMConstStringValue = class (TLLVMConstValue)
+   TLLVMConstStringValue = class (TLLVMValue)
       public
          constructor Create(Text: AnsiString); overload;
          constructor Create(Context: TLLVMContext; Text: AnsiString); overload;
    end;
 
-   TLLVMConstStructValue = class (TLLVMConstValue)
+   TLLVMConstStructValue = class (TLLVMValue)
       public
          constructor Create(ConstantVals: PLLVMValuePtrArray; Count: Cardinal; &Packed: Boolean); overload;
          constructor Create(Context: TLLVMContext; ConstantVals: PLLVMValuePtrArray; Count: Cardinal; &Packed: Boolean); overload;
          constructor Create(Struct: TLLVMStructType; ConstantVals: PLLVMValuePtrArray; Count: Cardinal; &Packed: Boolean); overload;
    end;
 
-   TLLVMConstArrayValue = class (TLLVMConstValue)
+   TLLVMConstArrayValue = class (TLLVMValue)
       public
          constructor Create(ElementTy: PLLVMType; ConstantVals: PLLVMValuePtrArray; Length: Cardinal); overload;
    end;
 
-   TLLVMConstVectorValue = class (TLLVMConstValue)
+   TLLVMConstVectorValue = class (TLLVMValue)
       public
          constructor Create(ScalarConstantVals: PLLVMValuePtrArray; Size: Cardinal); overload;
    end;
 
-   TLLVMConstExpression = class (TLLVMConstValue);
+   TLLVMConstExpression = class (TLLVMValue);
 
    TLLVMConstNeg = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue);
+         constructor Create(ConstantVal: TLLVMValue);
    end;
 
    TLLVMConstNSWNeg = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue);
+         constructor Create(ConstantVal: TLLVMValue);
    end;
 
    TLLVMConstNUWNeg = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue);
+         constructor Create(ConstantVal: TLLVMValue);
    end;
 
    TLLVMConstFNeg = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue);
+         constructor Create(ConstantVal: TLLVMValue);
    end;
 
    TLLVMConstNot = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue);
+         constructor Create(ConstantVal: TLLVMValue);
    end;
 
    TLLVMConstAdd = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstNSWAdd = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstNUWAdd = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstFAdd = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstSub = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstNSWSub = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstNUWSub = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstFSub = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstMul = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstNSWMul = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstNUWMul = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstFMul = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstUDiv = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstSDiv = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstExactSDiv = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstFDiv = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstURem = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstSRem = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstFRem = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstAnd = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstOr = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstXor = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstICmp = class (TLLVMConstExpression)
       public
-         constructor Create(Predicate: TLLVMIntPredicate; LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(Predicate: TLLVMIntPredicate; LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstFCmp = class (TLLVMConstExpression)
       public
-         constructor Create(Predicate: TLLVMIntPredicate; LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(Predicate: TLLVMIntPredicate; LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstShl = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstLShr = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstAShr = class (TLLVMConstExpression)
       public
-         constructor Create(LHSConstant: TLLVMConstValue; RHSConstant: TLLVMConstValue);
+         constructor Create(LHSConstant: TLLVMValue; RHSConstant: TLLVMValue);
    end;
 
    TLLVMConstGEP = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ConstantIndices: PLLVMValuePtrArray; NumIndices: Cardinal);
+         constructor Create(ConstantVal: TLLVMValue; ConstantIndices: PLLVMValuePtrArray; NumIndices: Cardinal);
    end;
 
    TLLVMConstInBoundsGEP = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ConstantIndices: PLLVMValuePtrArray; NumIndices: Cardinal);
+         constructor Create(ConstantVal: TLLVMValue; ConstantIndices: PLLVMValuePtrArray; NumIndices: Cardinal);
    end;
 
    TLLVMConstTrunc = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType);
    end;
 
    TLLVMConstSExt = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType);
    end;
 
    TLLVMConstZExt = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType);
    end;
 
    TLLVMConstFPTrunc = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType);
    end;
 
    TLLVMConstFPExt = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType);
    end;
 
    TLLVMConstUIToFP = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType);
    end;
 
    TLLVMConstSIToFP = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType);
    end;
 
    TLLVMConstFPToUI = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType);
    end;
 
    TLLVMConstFPToSI = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType);
    end;
 
    TLLVMConstPtrToInt = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType);
    end;
 
    TLLVMConstIntToPtr = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType);
    end;
 
    TLLVMConstBitCast = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType);
    end;
 
    TLLVMConstZExtOrBitCast = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType);
    end;
 
    TLLVMConstSExtOrBitCast = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType);
    end;
 
    TLLVMConstTruncOrBitCast = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType);
    end;
 
    TLLVMConstPointerCast = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType);
    end;
 
    TLLVMConstIntCast = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType; isSigned: Boolean);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType; isSigned: Boolean);
    end;
 
    TLLVMConstFPCast = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantVal: TLLVMConstValue; ToType: TLLVMBaseType);
+         constructor Create(ConstantVal: TLLVMValue; ToType: TLLVMBaseType);
    end;
 
    TLLVMConstSelect = class (TLLVMConstExpression)
       public
-         constructor Create(ConstantCondition: TLLVMConstValue; ConstantIfTrue: TLLVMConstValue; ConstantIfFalse: TLLVMConstValue);
+         constructor Create(ConstantCondition: TLLVMValue; ConstantIfTrue: TLLVMValue; ConstantIfFalse: TLLVMValue);
    end;
 
    TLLVMConstExtractElement = class (TLLVMConstExpression)
       public
-         constructor Create(VectorConstant: TLLVMConstValue; IndexConstant: TLLVMConstValue);
+         constructor Create(VectorConstant: TLLVMValue; IndexConstant: TLLVMValue);
    end;
 
    TLLVMConstInsertElement = class (TLLVMConstExpression)
       public
-         constructor Create(VectorConstant: TLLVMConstValue; ElementValueConstant: TLLVMConstValue; IndexConstant: TLLVMConstValue);
+         constructor Create(VectorConstant: TLLVMValue; ElementValueConstant: TLLVMValue; IndexConstant: TLLVMValue);
    end;
 
    TLLVMConstShuffleVector = class (TLLVMConstExpression)
       public
-         constructor Create(VectorAConstant: TLLVMConstValue; VectorBConstant: TLLVMConstValue; MaskConstant: TLLVMConstValue);
+         constructor Create(VectorAConstant: TLLVMValue; VectorBConstant: TLLVMValue; MaskConstant: TLLVMValue);
    end;
 
    TLLVMConstExtractValue = class (TLLVMConstExpression)
       public
-         constructor Create(AggConstant: TLLVMConstValue; IdxList: PCardinal; NumIdx: Cardinal);
+         constructor Create(AggConstant: TLLVMValue; IdxList: PCardinal; NumIdx: Cardinal);
    end;
 
    TLLVMConstInsertValue = class (TLLVMConstExpression)
       public
-         constructor Create(AggConstant: TLLVMConstValue; ElementValueConstant: TLLVMConstValue; IdxList: PCardinal; NumIdx: Cardinal);
+         constructor Create(AggConstant: TLLVMValue; ElementValueConstant: TLLVMValue; IdxList: PCardinal; NumIdx: Cardinal);
    end;
 
    TLLVMConstInlineAsm = class (TLLVMConstExpression)
@@ -628,7 +628,22 @@ type
 
    TLLVMBlockAddress = class (TLLVMConstExpression)
       public
-         constructor Create(F: TLLVMConstValue; BB: PLLVMBasicBlock);
+         constructor Create(F: TLLVMValue; BB: PLLVMBasicBlock);
+   end;
+
+   TLLVMBasicBlock = class;
+
+   TLLVMExpression = class (TLLVMValue)
+      public
+         function GetInstructionParent: TLLVMBasicBlock;
+   end;
+
+   TLLVMBuilder = class;
+
+   TLLVMPhiValue = class (TLLVMExpression)
+      public
+         constructor Create(Builder: TLLVMBuilder; LLVMType: TLLVMBaseType; Name: AnsiString);
+         procedure AddIncoming(IncomingValue: TLLVMValue; IncomingBlock: TLLVMBasicBlock);
    end;
 
    TLLVMBuilder = class (TRefCountedObject)
@@ -641,122 +656,139 @@ type
 
          procedure ClearInsertionPosition;
 
-         procedure PositionBuilder(Block: PLLVMBasicBlock; Instr: TLLVMConstValue);
-         procedure PositionBuilderBefore(Instr: TLLVMConstValue);
+         procedure PositionBuilder(Block: PLLVMBasicBlock; Instr: TLLVMValue);
+         procedure PositionBuilderBefore(Instr: TLLVMValue);
          procedure PositionBuilderAtEnd(Block: PLLVMBasicBlock);
          function GetInsertBlock: PLLVMBasicBlock;
-         procedure InsertIntoBuilder(Instr: TLLVMConstValue);
-         procedure InsertIntoBuilderWithName(Instr: TLLVMConstValue; const Name: AnsiString);
+         procedure InsertIntoBuilder(Instr: TLLVMValue);
+         procedure InsertIntoBuilderWithName(Instr: TLLVMValue; const Name: AnsiString);
 
          { Metadata }
-         procedure SetCurrentDebugLocation(L: TLLVMConstValue);
+         procedure SetCurrentDebugLocation(L: TLLVMValue);
          function GetCurrentDebugLocation: PLLVMValue;
-         procedure SetInstDebugLocation(Instr: TLLVMConstValue);
+         procedure SetInstDebugLocation(Instr: TLLVMValue);
 
          { Terminators }
          function BuildRetVoid: PLLVMValue;
-         function BuildRet(V: TLLVMConstValue): PLLVMValue;
+         function BuildRet(V: TLLVMValue): PLLVMValue;
          function BuildAggregateRet(var RetVals: PLLVMValuePtrArray; N: Cardinal): PLLVMValue;
          function BuildBr(Dest: PLLVMBasicBlock): PLLVMValue;
-         function BuildCondBr(&If: TLLVMConstValue; &Then: PLLVMBasicBlock; &Else: PLLVMBasicBlock): PLLVMValue;
-         function BuildSwitch(V: TLLVMConstValue; &Else: PLLVMBasicBlock; NumCases: Cardinal): PLLVMValue;
-         function BuildIndirectBr(Addr: TLLVMConstValue; NumDests: Cardinal): PLLVMValue;
-         function BuildInvoke(Fn: TLLVMConstValue; var Args: PLLVMValuePtrArray; NumArgs: Cardinal; &Then: PLLVMBasicBlock; Catch: PLLVMBasicBlock; const Name: AnsiString): PLLVMValue;
+         function BuildCondBr(&If: TLLVMValue; &Then: PLLVMBasicBlock; &Else: PLLVMBasicBlock): PLLVMValue;
+         function BuildSwitch(V: TLLVMValue; &Else: PLLVMBasicBlock; NumCases: Cardinal): PLLVMValue;
+         function BuildIndirectBr(Addr: TLLVMValue; NumDests: Cardinal): PLLVMValue;
+         function BuildInvoke(Fn: TLLVMValue; var Args: PLLVMValuePtrArray; NumArgs: Cardinal; &Then: PLLVMBasicBlock; Catch: PLLVMBasicBlock; const Name: AnsiString): PLLVMValue;
 
-         function BuildLandingPad(Ty: TLLVMBaseType; PersFn: TLLVMConstValue; NumClauses: Cardinal; const Name: AnsiString): PLLVMValue;
-         function BuildResume(Exn: TLLVMConstValue): PLLVMValue;
+         function BuildLandingPad(Ty: TLLVMBaseType; PersFn: TLLVMValue; NumClauses: Cardinal; const Name: AnsiString): PLLVMValue;
+         function BuildResume(Exn: TLLVMValue): PLLVMValue;
          function BuildUnreachable: PLLVMValue;
 
          { Arithmetic }
-         function BuildAdd(LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildNSWAdd(LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildNUWAdd(LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildFAdd(LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildSub(LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildNSWSub(LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildNUWSub(LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildFSub(LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildMul(LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildNSWMul(LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildNUWMul(LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildFMul(LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildUDiv(LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildSDiv(LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildExactSDiv(LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildFDiv(LHS, RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildURem(LHS, RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildSRem(LHS, RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildFRem(LHS, RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildShl(LHS, RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildLShr(LHS, RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildAShr(LHS, RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildAnd(LHS, RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildOr(LHS, RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildXor(LHS, RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildBinOp(B: PLLVMBuilder; Op: TLLVMOpcode; LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildNeg(V: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildNSWNeg(V: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildNUWNeg(V: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildFNeg(V: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildNot(V: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
+         function BuildAdd(LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildNSWAdd(LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildNUWAdd(LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildFAdd(LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildSub(LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildNSWSub(LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildNUWSub(LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildFSub(LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildMul(LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildNSWMul(LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildNUWMul(LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildFMul(LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildUDiv(LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildSDiv(LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildExactSDiv(LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildFDiv(LHS, RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildURem(LHS, RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildSRem(LHS, RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildFRem(LHS, RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildShl(LHS, RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildLShr(LHS, RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildAShr(LHS, RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildAnd(LHS, RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildOr(LHS, RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildXor(LHS, RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildBinOp(B: PLLVMBuilder; Op: TLLVMOpcode; LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildNeg(V: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildNSWNeg(V: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildNUWNeg(V: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildFNeg(V: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildNot(V: TLLVMValue; const Name: AnsiString): PLLVMValue;
 
          { Memory }
          function BuildMalloc(Ty: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildArrayMalloc(Ty: TLLVMBaseType; Val: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
+         function BuildArrayMalloc(Ty: TLLVMBaseType; Val: TLLVMValue; const Name: AnsiString): PLLVMValue;
          function BuildAlloca(Ty: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildArrayAlloca(Ty: TLLVMBaseType; Val: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildFree(PointerVal: TLLVMConstValue): PLLVMValue;
-         function BuildLoad(PointerVal: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildStore(Val: TLLVMConstValue; Ptr: TLLVMConstValue): PLLVMValue;
-         function BuildGEP(Pointer: TLLVMConstValue; var Indices: PLLVMValuePtrArray; NumIndices: Cardinal; const Name: AnsiString): PLLVMValue;
-         function BuildInBoundsGEP(Pointer: TLLVMConstValue; var Indices: PLLVMValuePtrArray; NumIndices: Cardinal; const Name: AnsiString): PLLVMValue;
-         function BuildStructGEP(Pointer: TLLVMConstValue; Idx: Cardinal; const Name: AnsiString): PLLVMValue;
+         function BuildArrayAlloca(Ty: TLLVMBaseType; Val: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildFree(PointerVal: TLLVMValue): PLLVMValue;
+         function BuildLoad(PointerVal: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildStore(Val: TLLVMValue; Ptr: TLLVMValue): PLLVMValue;
+         function BuildGEP(Pointer: TLLVMValue; var Indices: PLLVMValuePtrArray; NumIndices: Cardinal; const Name: AnsiString): PLLVMValue;
+         function BuildInBoundsGEP(Pointer: TLLVMValue; var Indices: PLLVMValuePtrArray; NumIndices: Cardinal; const Name: AnsiString): PLLVMValue;
+         function BuildStructGEP(Pointer: TLLVMValue; Idx: Cardinal; const Name: AnsiString): PLLVMValue;
          function BuildGlobalString(Str: AnsiString; const Name: AnsiString): PLLVMValue;
          function BuildGlobalStringPtr(Str: AnsiString; const Name: AnsiString): PLLVMValue;
 
          { Casts }
-         function BuildTrunc(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildZExt(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildSExt(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildFPToUI(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildFPToSI(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildUIToFP(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildSIToFP(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildFPTrunc(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildFPExt(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildPtrToInt(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildIntToPtr(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildBitCast(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildZExtOrBitCast(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildSExtOrBitCast(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildTruncOrBitCast(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildCast(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildPointerCast(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildIntCast(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildFPCast(Val: TLLVMConstValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildTrunc(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildZExt(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildSExt(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildFPToUI(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildFPToSI(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildUIToFP(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildSIToFP(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildFPTrunc(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildFPExt(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildPtrToInt(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildIntToPtr(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildBitCast(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildZExtOrBitCast(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildSExtOrBitCast(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildTruncOrBitCast(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildCast(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildPointerCast(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildIntCast(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildFPCast(Val: TLLVMValue; DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
 
          { Comparisons }
-         function BuildICmp(Op: TLLVMIntPredicate; LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildFCmp(Op: TLLVMRealPredicate; LHS: TLLVMConstValue; RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
+         function BuildICmp(Op: TLLVMIntPredicate; LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildFCmp(Op: TLLVMRealPredicate; LHS: TLLVMValue; RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
 
          { Miscellaneous instructions }
          function BuildPhi(Ty: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildCall(Fn: TLLVMConstValue; var Args: PLLVMValuePtrArray; NumArgs: Cardinal; const Name: AnsiString): PLLVMValue;
-         function BuildSelect(&If, &Then, &Else: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildVAArg(List: TLLVMConstValue; Ty: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
-         function BuildExtractElement(VecVal: TLLVMConstValue; Index: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildInsertElement(VecVal, EltVal, Index: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildShuffleVector(V1, V2: TLLVMConstValue; Mask: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildExtractValue(AggVal: TLLVMConstValue; Index: Cardinal; const Name: AnsiString): PLLVMValue;
-         function BuildInsertValue(AggVal, EltVal: TLLVMConstValue; Index: Cardinal; const Name: AnsiString): PLLVMValue;
+         function BuildCall(Fn: TLLVMValue; var Args: PLLVMValuePtrArray; NumArgs: Cardinal; const Name: AnsiString): PLLVMValue;
+         function BuildSelect(&If, &Then, &Else: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildVAArg(List: TLLVMValue; Ty: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
+         function BuildExtractElement(VecVal: TLLVMValue; Index: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildInsertElement(VecVal, EltVal, Index: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildShuffleVector(V1, V2: TLLVMValue; Mask: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildExtractValue(AggVal: TLLVMValue; Index: Cardinal; const Name: AnsiString): PLLVMValue;
+         function BuildInsertValue(AggVal, EltVal: TLLVMValue; Index: Cardinal; const Name: AnsiString): PLLVMValue;
 
-         function BuildIsNull(Val: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildIsNotNull(Val: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
-         function BuildPtrDiff(LHS, RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
+         function BuildIsNull(Val: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildIsNotNull(Val: TLLVMValue; const Name: AnsiString): PLLVMValue;
+         function BuildPtrDiff(LHS, RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
 
          property Handle: PLLVMBuilder read FLLVMBuilder;
    end;
 
+   TLLVMBasicBlock = class (TRefCountedObject)
+      private
+         FLLVMBasicBlock: PLLVMBasicBlock;
+      public
+         constructor AppendInContext(Context: TLLVMContext; Func: PLLVMValue; const Name: AnsiString);
+         constructor Append(Func: PLLVMValue; const Name: AnsiString);
+         constructor InsertInContext(Context: TLLVMContext; Successor: TLLVMBasicBlock; const Name: AnsiString);
+         constructor Insert(Successor: TLLVMBasicBlock; const Name: AnsiString);
+         procedure RemoveFromParent;
+         procedure MoveAfter(MovePos: TLLVMBasicBlock);
+         procedure MoveBefore(MovePos: TLLVMBasicBlock);
+         function GetFirstInstruction: PLLVMValue;
+         function GetLastInstruction: PLLVMValue;
+         function GetTerminator: PLLVMValue;
+
+         property Handle: PLLVMBasicBlock read FLLVMBasicBlock;
+   end;
 
    TLLVMModuleProvider = class (TRefCountedObject)
       private
@@ -804,7 +836,7 @@ type
          constructor Create(Module: TLLVMModule); overload;
          constructor Create(ModuleProvider: TLLVMModuleProvider); overload;
 
-         function RunFunctionPassManager(Value: TLLVMConstValue): Boolean;
+         function RunFunctionPassManager(Value: TLLVMValue): Boolean;
          function InitializeFunctionPassManager: Boolean;
          function FinalizeFunctionPassManager: Boolean;
    end;
@@ -855,7 +887,7 @@ type
          function ABIAlignmentOfType(&Type: TLLVMBaseType): Cardinal;
          function CallFrameAlignmentOfType(&Type: TLLVMBaseType): Cardinal;
          function PreferredAlignmentOfType(&Type: TLLVMBaseType): Cardinal;
-         function PreferredAlignmentOfGlobal(GlobalVar: TLLVMConstValue): Cardinal;
+         function PreferredAlignmentOfGlobal(GlobalVar: TLLVMValue): Cardinal;
          function ElementAtOffset(StructType: TLLVMStructType; Offset: UInt64): Cardinal;
          function OffsetOfElement(StructType: TLLVMStructType; Element: Cardinal): UInt64;
 
@@ -1175,7 +1207,7 @@ begin
    FLLVMType := LLVMInt1TypeInContext(Context.Handle);
 end;
 
-procedure TLLVMBuilder.SetCurrentDebugLocation(L: TLLVMConstValue);
+procedure TLLVMBuilder.SetCurrentDebugLocation(L: TLLVMValue);
 begin
    LLVMSetCurrentDebugLocation(FLLVMBuilder, L.Handle);
 end;
@@ -1514,54 +1546,54 @@ begin
 end;
 
 
-{ TLLVMConstValue }
+{ TLLVMValue }
 
-constructor TLLVMConstValue.CreateNull(BaseType: TLLVMBaseType);
+constructor TLLVMValue.CreateNull(BaseType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstNull(BaseType.Handle);
 end;
 
-constructor TLLVMConstValue.CreatePointerNull(BaseType: TLLVMPointerType);
+constructor TLLVMValue.CreatePointerNull(BaseType: TLLVMPointerType);
 begin
    FLLVMValue := LLVMConstPointerNull(BaseType.Handle);
 end;
 
-constructor TLLVMConstValue.CreateUndef(BaseType: TLLVMBaseType);
+constructor TLLVMValue.CreateUndef(BaseType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMGetUndef(BaseType.Handle);
 end;
 
-function TLLVMConstValue.GetName: AnsiString;
+function TLLVMValue.GetName: AnsiString;
 begin
    Result := LLVMGetValueName(FLLVMValue);
 end;
 
-procedure TLLVMConstValue.SetName(const Value: AnsiString);
+procedure TLLVMValue.SetName(const Value: AnsiString);
 begin
    LLVMSetValueName(FLLVMValue, PAnsiChar(Value));
 end;
 
-procedure TLLVMConstValue.Dump;
+procedure TLLVMValue.Dump;
 begin
    LLVMDumpValue(FLLVMValue);
 end;
 
-function TLLVMConstValue.GetType: PLLVMType;
+function TLLVMValue.GetType: PLLVMType;
 begin
    Result := LLVMTypeOf(FLLVMValue);
 end;
 
-function TLLVMConstValue.GetIsConstant: Boolean;
+function TLLVMValue.GetIsConstant: Boolean;
 begin
    Result := LLVMIsConstant(FLLVMValue);
 end;
 
-function TLLVMConstValue.GetIsNull: Boolean;
+function TLLVMValue.GetIsNull: Boolean;
 begin
    Result := LLVMIsNull(FLLVMValue);
 end;
 
-function TLLVMConstValue.GetIsUndef: Boolean;
+function TLLVMValue.GetIsUndef: Boolean;
 begin
    Result := LLVMIsUndef(FLLVMValue);
 end;
@@ -1687,7 +1719,7 @@ end;
 
 { TLLVMConstNeg }
 
-constructor TLLVMConstNeg.Create(ConstantVal: TLLVMConstValue);
+constructor TLLVMConstNeg.Create(ConstantVal: TLLVMValue);
 begin
    FLLVMValue := LLVMConstNeg(ConstantVal.Handle);
 end;
@@ -1695,7 +1727,7 @@ end;
 
 { TLLVMConstNSWNeg }
 
-constructor TLLVMConstNSWNeg.Create(ConstantVal: TLLVMConstValue);
+constructor TLLVMConstNSWNeg.Create(ConstantVal: TLLVMValue);
 begin
    FLLVMValue := LLVMConstNSWNeg(ConstantVal.Handle);
 end;
@@ -1703,7 +1735,7 @@ end;
 
 { TLLVMConstNUWNeg }
 
-constructor TLLVMConstNUWNeg.Create(ConstantVal: TLLVMConstValue);
+constructor TLLVMConstNUWNeg.Create(ConstantVal: TLLVMValue);
 begin
    FLLVMValue := LLVMConstNUWNeg(ConstantVal.Handle);
 end;
@@ -1711,7 +1743,7 @@ end;
 
 { TLLVMConstFNeg }
 
-constructor TLLVMConstFNeg.Create(ConstantVal: TLLVMConstValue);
+constructor TLLVMConstFNeg.Create(ConstantVal: TLLVMValue);
 begin
    FLLVMValue := LLVMConstFNeg(ConstantVal.Handle);
 end;
@@ -1719,7 +1751,7 @@ end;
 
 { TLLVMConstNot }
 
-constructor TLLVMConstNot.Create(ConstantVal: TLLVMConstValue);
+constructor TLLVMConstNot.Create(ConstantVal: TLLVMValue);
 begin
    FLLVMValue := LLVMConstNot(ConstantVal.Handle);
 end;
@@ -1727,7 +1759,7 @@ end;
 
 { TLLVMConstAdd }
 
-constructor TLLVMConstAdd.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstAdd.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstAdd(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1735,7 +1767,7 @@ end;
 
 { TLLVMConstNSWAdd }
 
-constructor TLLVMConstNSWAdd.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstNSWAdd.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstNSWAdd(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1743,7 +1775,7 @@ end;
 
 { TLLVMConstNUWAdd }
 
-constructor TLLVMConstNUWAdd.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstNUWAdd.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstNUWAdd(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1751,7 +1783,7 @@ end;
 
 { TLLVMConstFAdd }
 
-constructor TLLVMConstFAdd.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstFAdd.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstFAdd(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1759,7 +1791,7 @@ end;
 
 { TLLVMConstSub }
 
-constructor TLLVMConstSub.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstSub.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstSub(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1767,7 +1799,7 @@ end;
 
 { TLLVMConstNSWSub }
 
-constructor TLLVMConstNSWSub.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstNSWSub.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstNSWSub(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1775,7 +1807,7 @@ end;
 
 { TLLVMConstNUWSub }
 
-constructor TLLVMConstNUWSub.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstNUWSub.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstNUWSub(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1783,7 +1815,7 @@ end;
 
 { TLLVMConstFSub }
 
-constructor TLLVMConstFSub.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstFSub.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstFSub(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1791,7 +1823,7 @@ end;
 
 { TLLVMConstMul }
 
-constructor TLLVMConstMul.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstMul.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstMul(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1799,7 +1831,7 @@ end;
 
 { TLLVMConstNSWMul }
 
-constructor TLLVMConstNSWMul.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstNSWMul.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstNSWMul(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1807,7 +1839,7 @@ end;
 
 { TLLVMConstNUWMul }
 
-constructor TLLVMConstNUWMul.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstNUWMul.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstNUWMul(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1815,7 +1847,7 @@ end;
 
 { TLLVMConstFMul }
 
-constructor TLLVMConstFMul.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstFMul.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstFMul(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1823,7 +1855,7 @@ end;
 
 { TLLVMConstUDiv }
 
-constructor TLLVMConstUDiv.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstUDiv.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstUDiv(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1831,7 +1863,7 @@ end;
 
 { TLLVMConstSDiv }
 
-constructor TLLVMConstSDiv.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstSDiv.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstSDiv(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1840,7 +1872,7 @@ end;
 { TLLVMConstExactSDiv }
 
 constructor TLLVMConstExactSDiv.Create(LHSConstant,
-  RHSConstant: TLLVMConstValue);
+  RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstSDiv(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1848,7 +1880,7 @@ end;
 
 { TLLVMConstFDiv }
 
-constructor TLLVMConstFDiv.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstFDiv.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstFDiv(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1856,7 +1888,7 @@ end;
 
 { TLLVMConstURem }
 
-constructor TLLVMConstURem.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstURem.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstURem(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1864,7 +1896,7 @@ end;
 
 { TLLVMConstSRem }
 
-constructor TLLVMConstSRem.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstSRem.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstSRem(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1872,7 +1904,7 @@ end;
 
 { TLLVMConstFRem }
 
-constructor TLLVMConstFRem.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstFRem.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstFRem(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1880,7 +1912,7 @@ end;
 
 { TLLVMConstAnd }
 
-constructor TLLVMConstAnd.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstAnd.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstAnd(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1888,7 +1920,7 @@ end;
 
 { TLLVMConstOr }
 
-constructor TLLVMConstOr.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstOr.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstOr(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1896,7 +1928,7 @@ end;
 
 { TLLVMConstXor }
 
-constructor TLLVMConstXor.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstXor.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstXor(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1905,7 +1937,7 @@ end;
 { TLLVMConstICmp }
 
 constructor TLLVMConstICmp.Create(Predicate: TLLVMIntPredicate; LHSConstant,
-  RHSConstant: TLLVMConstValue);
+  RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstICmp(Predicate, LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1914,7 +1946,7 @@ end;
 { TLLVMConstFCmp }
 
 constructor TLLVMConstFCmp.Create(Predicate: TLLVMIntPredicate; LHSConstant,
-  RHSConstant: TLLVMConstValue);
+  RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstFCmp(Predicate, LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1922,7 +1954,7 @@ end;
 
 { TLLVMConstShl }
 
-constructor TLLVMConstShl.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstShl.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstShl(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1930,7 +1962,7 @@ end;
 
 { TLLVMConstLShr }
 
-constructor TLLVMConstLShr.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstLShr.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstLShr(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1938,7 +1970,7 @@ end;
 
 { TLLVMConstAShr }
 
-constructor TLLVMConstAShr.Create(LHSConstant, RHSConstant: TLLVMConstValue);
+constructor TLLVMConstAShr.Create(LHSConstant, RHSConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstAShr(LHSConstant.Handle, RHSConstant.Handle);
 end;
@@ -1946,7 +1978,7 @@ end;
 
 { TLLVMConstGEP }
 
-constructor TLLVMConstGEP.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstGEP.Create(ConstantVal: TLLVMValue;
    ConstantIndices: PLLVMValuePtrArray; NumIndices: Cardinal);
 begin
    FLLVMValue := LLVMConstGEP(ConstantVal.Handle, ConstantIndices, NumIndices);
@@ -1955,7 +1987,7 @@ end;
 
 { TLLVMConstInBoundsGEP }
 
-constructor TLLVMConstInBoundsGEP.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstInBoundsGEP.Create(ConstantVal: TLLVMValue;
    ConstantIndices: PLLVMValuePtrArray; NumIndices: Cardinal);
 begin
    FLLVMValue := LLVMConstInBoundsGEP(ConstantVal.Handle, ConstantIndices,
@@ -1965,7 +1997,7 @@ end;
 
 { TLLVMConstTrunc }
 
-constructor TLLVMConstTrunc.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstTrunc.Create(ConstantVal: TLLVMValue;
    ToType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstTrunc(ConstantVal.Handle, ToType.Handle);
@@ -1974,7 +2006,7 @@ end;
 
 { TLLVMConstSExt }
 
-constructor TLLVMConstSExt.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstSExt.Create(ConstantVal: TLLVMValue;
    ToType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstSExt(ConstantVal.Handle, ToType.Handle);
@@ -1983,7 +2015,7 @@ end;
 
 { TLLVMConstZExt }
 
-constructor TLLVMConstZExt.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstZExt.Create(ConstantVal: TLLVMValue;
    ToType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstZExt(ConstantVal.Handle, ToType.Handle);
@@ -1992,7 +2024,7 @@ end;
 
 { TLLVMConstFPTrunc }
 
-constructor TLLVMConstFPTrunc.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstFPTrunc.Create(ConstantVal: TLLVMValue;
    ToType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstFPTrunc(ConstantVal.Handle, ToType.Handle);
@@ -2001,7 +2033,7 @@ end;
 
 { TLLVMConstFPExt }
 
-constructor TLLVMConstFPExt.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstFPExt.Create(ConstantVal: TLLVMValue;
    ToType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstFPExt(ConstantVal.Handle, ToType.Handle);
@@ -2010,7 +2042,7 @@ end;
 
 { TLLVMConstUIToFP }
 
-constructor TLLVMConstUIToFP.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstUIToFP.Create(ConstantVal: TLLVMValue;
    ToType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstUIToFP(ConstantVal.Handle, ToType.Handle);
@@ -2019,7 +2051,7 @@ end;
 
 { TLLVMConstSIToFP }
 
-constructor TLLVMConstSIToFP.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstSIToFP.Create(ConstantVal: TLLVMValue;
    ToType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstSIToFP(ConstantVal.Handle, ToType.Handle);
@@ -2028,7 +2060,7 @@ end;
 
 { TLLVMConstFPToUI }
 
-constructor TLLVMConstFPToUI.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstFPToUI.Create(ConstantVal: TLLVMValue;
    ToType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstFPToUI(ConstantVal.Handle, ToType.Handle);
@@ -2037,7 +2069,7 @@ end;
 
 { TLLVMConstFPToSI }
 
-constructor TLLVMConstFPToSI.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstFPToSI.Create(ConstantVal: TLLVMValue;
    ToType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstFPToSI(ConstantVal.Handle, ToType.Handle);
@@ -2046,7 +2078,7 @@ end;
 
 { TLLVMConstPtrToInt }
 
-constructor TLLVMConstPtrToInt.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstPtrToInt.Create(ConstantVal: TLLVMValue;
    ToType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstPtrToInt(ConstantVal.Handle, ToType.Handle);
@@ -2055,7 +2087,7 @@ end;
 
 { TLLVMConstIntToPtr }
 
-constructor TLLVMConstIntToPtr.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstIntToPtr.Create(ConstantVal: TLLVMValue;
   ToType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstIntToPtr(ConstantVal.Handle, ToType.Handle);
@@ -2064,7 +2096,7 @@ end;
 
 { TLLVMConstBitCast }
 
-constructor TLLVMConstBitCast.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstBitCast.Create(ConstantVal: TLLVMValue;
    ToType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstBitCast(ConstantVal.Handle, ToType.Handle);
@@ -2073,7 +2105,7 @@ end;
 
 { TLLVMConstZExtOrBitCast }
 
-constructor TLLVMConstZExtOrBitCast.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstZExtOrBitCast.Create(ConstantVal: TLLVMValue;
    ToType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstZExtOrBitCast(ConstantVal.Handle, ToType.Handle);
@@ -2082,7 +2114,7 @@ end;
 
 { TLLVMConstSExtOrBitCast }
 
-constructor TLLVMConstSExtOrBitCast.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstSExtOrBitCast.Create(ConstantVal: TLLVMValue;
    ToType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstSExtOrBitCast(ConstantVal.Handle, ToType.Handle);
@@ -2091,7 +2123,7 @@ end;
 
 { TLLVMConstTruncOrBitCast }
 
-constructor TLLVMConstTruncOrBitCast.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstTruncOrBitCast.Create(ConstantVal: TLLVMValue;
    ToType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstTruncOrBitCast(ConstantVal.Handle, ToType.Handle);
@@ -2100,7 +2132,7 @@ end;
 
 { TLLVMConstPointerCast }
 
-constructor TLLVMConstPointerCast.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstPointerCast.Create(ConstantVal: TLLVMValue;
    ToType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstPointerCast(ConstantVal.Handle, ToType.Handle);
@@ -2109,7 +2141,7 @@ end;
 
 { TLLVMConstIntCast }
 
-constructor TLLVMConstIntCast.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstIntCast.Create(ConstantVal: TLLVMValue;
   ToType: TLLVMBaseType; isSigned: Boolean);
 begin
    FLLVMValue := LLVMConstIntCast(ConstantVal.Handle, ToType.Handle, isSigned);
@@ -2117,7 +2149,7 @@ end;
 
 { TLLVMConstFPCast }
 
-constructor TLLVMConstFPCast.Create(ConstantVal: TLLVMConstValue;
+constructor TLLVMConstFPCast.Create(ConstantVal: TLLVMValue;
    ToType: TLLVMBaseType);
 begin
    FLLVMValue := LLVMConstFPCast(ConstantVal.Handle, ToType.Handle);
@@ -2128,7 +2160,7 @@ end;
 { TLLVMConstSelect }
 
 constructor TLLVMConstSelect.Create(ConstantCondition, ConstantIfTrue,
-  ConstantIfFalse: TLLVMConstValue);
+  ConstantIfFalse: TLLVMValue);
 begin
    FLLVMValue := LLVMConstSelect(ConstantCondition.Handle,
       ConstantIfTrue.Handle, ConstantIfFalse.Handle);
@@ -2138,7 +2170,7 @@ end;
 { TLLVMConstExtractElement }
 
 constructor TLLVMConstExtractElement.Create(VectorConstant,
-  IndexConstant: TLLVMConstValue);
+  IndexConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstExtractElement(VectorConstant.Handle,
       IndexConstant.Handle);
@@ -2148,7 +2180,7 @@ end;
 { TLLVMConstInsertElement }
 
 constructor TLLVMConstInsertElement.Create(VectorConstant, ElementValueConstant,
-  IndexConstant: TLLVMConstValue);
+  IndexConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstInsertElement(VectorConstant.Handle,
       ElementValueConstant.Handle, IndexConstant.Handle);
@@ -2158,7 +2190,7 @@ end;
 { TLLVMConstShuffleVector }
 
 constructor TLLVMConstShuffleVector.Create(VectorAConstant, VectorBConstant,
-  MaskConstant: TLLVMConstValue);
+  MaskConstant: TLLVMValue);
 begin
    FLLVMValue := LLVMConstShuffleVector(VectorAConstant.Handle,
       VectorBConstant.Handle, MaskConstant.Handle);
@@ -2167,7 +2199,7 @@ end;
 
 { TLLVMConstExtractValue }
 
-constructor TLLVMConstExtractValue.Create(AggConstant: TLLVMConstValue;
+constructor TLLVMConstExtractValue.Create(AggConstant: TLLVMValue;
   IdxList: PCardinal; NumIdx: Cardinal);
 begin
    FLLVMValue := LLVMConstExtractValue(AggConstant.Handle, IdxList, NumIdx);
@@ -2177,7 +2209,7 @@ end;
 { TLLVMConstInsertValue }
 
 constructor TLLVMConstInsertValue.Create(AggConstant,
-  ElementValueConstant: TLLVMConstValue; IdxList: PCardinal; NumIdx: Cardinal);
+  ElementValueConstant: TLLVMValue; IdxList: PCardinal; NumIdx: Cardinal);
 begin
    FLLVMValue := LLVMConstInsertValue(AggConstant.Handle,
       ElementValueConstant.Handle, IdxList, NumIdx);
@@ -2196,9 +2228,88 @@ end;
 
 { TLLVMBlockAddress }
 
-constructor TLLVMBlockAddress.Create(F: TLLVMConstValue; BB: PLLVMBasicBlock);
+constructor TLLVMBlockAddress.Create(F: TLLVMValue; BB: PLLVMBasicBlock);
 begin
    FLLVMValue := LLVMBlockAddress(F.Handle, BB);
+end;
+
+
+{ TLLVMExpression }
+
+function TLLVMExpression.GetInstructionParent: TLLVMBasicBlock;
+begin
+   LLVMGetInstructionParent(FLLVMValue);
+end;
+
+
+{ TLLVMBasicBlock }
+
+constructor TLLVMBasicBlock.Append(Func: PLLVMValue; const Name: AnsiString);
+begin
+   LLVMAppendBasicBlock(Func, PAnsiChar(Name));
+end;
+
+constructor TLLVMBasicBlock.AppendInContext(Context: TLLVMContext; Func: PLLVMValue; const Name: AnsiString);
+begin
+   LLVMAppendBasicBlockInContext(Context.Handle, Func, PAnsiChar(Name));
+end;
+
+function TLLVMBasicBlock.GetFirstInstruction: PLLVMValue;
+begin
+   Result := LLVMGetFirstInstruction(FLLVMBasicBlock);
+end;
+
+function TLLVMBasicBlock.GetTerminator: PLLVMValue;
+begin
+   Result := LLVMGetBasicBlockTerminator(FLLVMBasicBlock);
+end;
+
+constructor TLLVMBasicBlock.Insert(Successor: TLLVMBasicBlock;
+  const Name: AnsiString);
+begin
+   LLVMInsertBasicBlock(Successor.Handle, PAnsiChar(Name));
+end;
+
+constructor TLLVMBasicBlock.InsertInContext(Context: TLLVMContext;
+  Successor: TLLVMBasicBlock; const Name: AnsiString);
+begin
+   LLVMInsertBasicBlockInContext(Context.Handle, Successor.Handle,
+      PAnsiChar(Name));
+end;
+
+function TLLVMBasicBlock.GetLastInstruction: PLLVMValue;
+begin
+   Result := LLVMGetLastInstruction(FLLVMBasicBlock);
+end;
+
+procedure TLLVMBasicBlock.MoveAfter(MovePos: TLLVMBasicBlock);
+begin
+   LLVMMoveBasicBlockAfter(FLLVMBasicBlock, MovePos.Handle);
+end;
+
+procedure TLLVMBasicBlock.MoveBefore(MovePos: TLLVMBasicBlock);
+begin
+   LLVMMoveBasicBlockBefore(FLLVMBasicBlock, MovePos.Handle);
+end;
+
+procedure TLLVMBasicBlock.RemoveFromParent;
+begin
+   LLVMRemoveBasicBlockFromParent(FLLVMBasicBlock);
+end;
+
+
+{ TLLVMPhiValue }
+
+constructor TLLVMPhiValue.Create(Builder: TLLVMBuilder; LLVMType: TLLVMBaseType;
+   Name: AnsiString);
+begin
+   FLLVMValue := LLVMBuildPhi(Builder.Handle, LLVMType.Handle, PAnsiChar(Name));
+end;
+
+procedure TLLVMPhiValue.AddIncoming(IncomingValue: TLLVMValue;
+   IncomingBlock: TLLVMBasicBlock);
+begin
+   LLVMAddIncoming(FLLVMValue, @IncomingValue.Handle, @IncomingBlock.Handle, 1);
 end;
 
 
@@ -2220,7 +2331,7 @@ begin
    inherited;
 end;
 
-function TLLVMBuilder.BuildAdd(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildAdd(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildAdd(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
@@ -2238,37 +2349,37 @@ begin
    Result := LLVMBuildAlloca(FLLVMBuilder, Ty.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildAnd(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildAnd(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildAnd(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildArrayAlloca(Ty: TLLVMBaseType; Val: TLLVMConstValue;
+function TLLVMBuilder.BuildArrayAlloca(Ty: TLLVMBaseType; Val: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildArrayAlloca(FLLVMBuilder, Ty.Handle, Val.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildArrayMalloc(Ty: TLLVMBaseType; Val: TLLVMConstValue;
+function TLLVMBuilder.BuildArrayMalloc(Ty: TLLVMBaseType; Val: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildArrayMalloc(FLLVMBuilder, Ty.Handle, Val.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildAShr(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildAShr(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildAShr(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
 function TLLVMBuilder.BuildBinOp(B: PLLVMBuilder; Op: TLLVMOpcode; LHS,
-  RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
+  RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildBinOp(FLLVMBuilder, Op, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildBitCast(Val: TLLVMConstValue; DestTy: TLLVMBaseType;
+function TLLVMBuilder.BuildBitCast(Val: TLLVMValue; DestTy: TLLVMBaseType;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildBitCast(FLLVMBuilder, Val.Handle, DestTy.Handle, PAnsiChar(Name));
@@ -2279,130 +2390,130 @@ begin
    Result := LLVMBuildBr(FLLVMBuilder, Dest);
 end;
 
-function TLLVMBuilder.BuildCall(Fn: TLLVMConstValue; var Args: PLLVMValuePtrArray;
+function TLLVMBuilder.BuildCall(Fn: TLLVMValue; var Args: PLLVMValuePtrArray;
   NumArgs: Cardinal; const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildCall(FLLVMBuilder, Fn.Handle, Args, NumArgs, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildCast(Val: TLLVMConstValue; DestTy: TLLVMBaseType;
+function TLLVMBuilder.BuildCast(Val: TLLVMValue; DestTy: TLLVMBaseType;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildCast(FLLVMBuilder, Val.Handle, DestTy.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildCondBr(&If: TLLVMConstValue; &Then,
+function TLLVMBuilder.BuildCondBr(&If: TLLVMValue; &Then,
   &Else: PLLVMBasicBlock): PLLVMValue;
 begin
    Result := LLVMBuildCondBr(&FLLVMBuilder, &If.Handle, &Then, &Else);
 end;
 
-function TLLVMBuilder.BuildExactSDiv(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildExactSDiv(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildExactSDiv(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildExtractElement(VecVal, Index: TLLVMConstValue;
+function TLLVMBuilder.BuildExtractElement(VecVal, Index: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildExtractElement(FLLVMBuilder, VecVal.Handle, Index.Handle,
       PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildExtractValue(AggVal: TLLVMConstValue;
+function TLLVMBuilder.BuildExtractValue(AggVal: TLLVMValue;
   Index: Cardinal; const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildExtractValue(FLLVMBuilder, AggVal.Handle, Index,
       PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildFAdd(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildFAdd(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildFAdd(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
 function TLLVMBuilder.BuildFCmp(Op: TLLVMRealPredicate; LHS,
-  RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
+  RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildFCmp(FLLVMBuilder, Op, LHS.Handle, RHS.Handle,
       PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildFDiv(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildFDiv(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildFDiv(FLLVMBuilder, LHS.Handle, RHS.Handle,
       PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildFMul(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildFMul(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildFMul(FLLVMBuilder, LHS.Handle, RHS.Handle,
       PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildFNeg(V: TLLVMConstValue;
+function TLLVMBuilder.BuildFNeg(V: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildFNeg(FLLVMBuilder, V.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildFPCast(Val: TLLVMConstValue; DestTy: TLLVMBaseType;
+function TLLVMBuilder.BuildFPCast(Val: TLLVMValue; DestTy: TLLVMBaseType;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildFPCast(FLLVMBuilder, Val.Handle, DestTy.Handle,
       PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildFPExt(Val: TLLVMConstValue; DestTy: TLLVMBaseType;
+function TLLVMBuilder.BuildFPExt(Val: TLLVMValue; DestTy: TLLVMBaseType;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildFPExt(FLLVMBuilder, Val.Handle, DestTy.Handle,
       PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildFPToSI(Val: TLLVMConstValue; DestTy: TLLVMBaseType;
+function TLLVMBuilder.BuildFPToSI(Val: TLLVMValue; DestTy: TLLVMBaseType;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildFPToSI(FLLVMBuilder, Val.Handle, DestTy.Handle,
       PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildFPToUI(Val: TLLVMConstValue; DestTy: TLLVMBaseType;
+function TLLVMBuilder.BuildFPToUI(Val: TLLVMValue; DestTy: TLLVMBaseType;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildFPToUI(FLLVMBuilder, Val.Handle, DestTy.Handle,
       PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildFPTrunc(Val: TLLVMConstValue; DestTy: TLLVMBaseType;
+function TLLVMBuilder.BuildFPTrunc(Val: TLLVMValue; DestTy: TLLVMBaseType;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildFPTrunc(FLLVMBuilder, Val.Handle, DestTy.Handle,
       PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildFree(PointerVal: TLLVMConstValue): PLLVMValue;
+function TLLVMBuilder.BuildFree(PointerVal: TLLVMValue): PLLVMValue;
 begin
    Result := LLVMBuildFree(FLLVMBuilder, PointerVal.Handle);
 end;
 
-function TLLVMBuilder.BuildFRem(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildFRem(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildFRem(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildFSub(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildFSub(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildFSub(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildGEP(Pointer: TLLVMConstValue;
+function TLLVMBuilder.BuildGEP(Pointer: TLLVMValue;
   var Indices: PLLVMValuePtrArray; NumIndices: Cardinal;
   const Name: AnsiString): PLLVMValue;
 begin
@@ -2424,12 +2535,12 @@ begin
 end;
 
 function TLLVMBuilder.BuildICmp(Op: TLLVMIntPredicate; LHS,
-  RHS: TLLVMConstValue; const Name: AnsiString): PLLVMValue;
+  RHS: TLLVMValue; const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildICmp(FLLVMBuilder, Op, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildInBoundsGEP(Pointer: TLLVMConstValue;
+function TLLVMBuilder.BuildInBoundsGEP(Pointer: TLLVMValue;
   var Indices: PLLVMValuePtrArray; NumIndices: Cardinal;
   const Name: AnsiString): PLLVMValue;
 begin
@@ -2437,39 +2548,39 @@ begin
       NumIndices, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildIndirectBr(Addr: TLLVMConstValue;
+function TLLVMBuilder.BuildIndirectBr(Addr: TLLVMValue;
   NumDests: Cardinal): PLLVMValue;
 begin
    Result := LLVMBuildIndirectBr(FLLVMBuilder, Addr.Handle, NumDests);
 end;
 
-function TLLVMBuilder.BuildInsertElement(VecVal, EltVal, Index: TLLVMConstValue;
+function TLLVMBuilder.BuildInsertElement(VecVal, EltVal, Index: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildInsertElement(FLLVMBuilder, VecVal.Handle, EltVal.Handle,
       Index.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildInsertValue(AggVal, EltVal: TLLVMConstValue;
+function TLLVMBuilder.BuildInsertValue(AggVal, EltVal: TLLVMValue;
   Index: Cardinal; const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildInsertValue(FLLVMBuilder, AggVal.Handle, EltVal.Handle,
       Index, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildIntCast(Val: TLLVMConstValue; DestTy: TLLVMBaseType;
+function TLLVMBuilder.BuildIntCast(Val: TLLVMValue; DestTy: TLLVMBaseType;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildIntCast(FLLVMBuilder, Val.Handle, DestTy.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildIntToPtr(Val: TLLVMConstValue; DestTy: TLLVMBaseType;
+function TLLVMBuilder.BuildIntToPtr(Val: TLLVMValue; DestTy: TLLVMBaseType;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildIntToPtr(FLLVMBuilder, Val.Handle, DestTy.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildInvoke(Fn: TLLVMConstValue;
+function TLLVMBuilder.BuildInvoke(Fn: TLLVMValue;
   var Args: PLLVMValuePtrArray; NumArgs: Cardinal; &Then, Catch: PLLVMBasicBlock;
   const Name: AnsiString): PLLVMValue;
 begin
@@ -2477,32 +2588,32 @@ begin
       Catch, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildIsNotNull(Val: TLLVMConstValue;
+function TLLVMBuilder.BuildIsNotNull(Val: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildIsNotNull(FLLVMBuilder, Val.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildIsNull(Val: TLLVMConstValue;
+function TLLVMBuilder.BuildIsNull(Val: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildIsNull(FLLVMBuilder, Val.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildLandingPad(Ty: TLLVMBaseType; PersFn: TLLVMConstValue;
+function TLLVMBuilder.BuildLandingPad(Ty: TLLVMBaseType; PersFn: TLLVMValue;
   NumClauses: Cardinal; const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildLandingPad(FLLVMBuilder, Ty.Handle, PersFn.Handle,
       NumClauses, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildLoad(PointerVal: TLLVMConstValue;
+function TLLVMBuilder.BuildLoad(PointerVal: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildLoad(FLLVMBuilder, PointerVal.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildLShr(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildLShr(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildLShr(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
@@ -2514,73 +2625,73 @@ begin
    Result := LLVMBuildMalloc(FLLVMBuilder, Ty.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildMul(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildMul(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildMul(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildNeg(V: TLLVMConstValue;
+function TLLVMBuilder.BuildNeg(V: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildNeg(FLLVMBuilder, V.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildNot(V: TLLVMConstValue;
+function TLLVMBuilder.BuildNot(V: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildNot(FLLVMBuilder, V.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildNSWAdd(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildNSWAdd(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildNSWAdd(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildNSWMul(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildNSWMul(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildNSWMul(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildNSWNeg(V: TLLVMConstValue;
+function TLLVMBuilder.BuildNSWNeg(V: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildNSWNeg(FLLVMBuilder, V.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildNSWSub(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildNSWSub(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildNSWSub(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildNUWAdd(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildNUWAdd(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildNUWAdd(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildNUWMul(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildNUWMul(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildNUWMul(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildNUWNeg(V: TLLVMConstValue;
+function TLLVMBuilder.BuildNUWNeg(V: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildNUWNeg(FLLVMBuilder, V.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildNUWSub(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildNUWSub(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildNUWSub(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildOr(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildOr(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildOr(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
@@ -2592,30 +2703,30 @@ begin
    Result := LLVMBuildPhi(FLLVMBuilder, Ty.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildPointerCast(Val: TLLVMConstValue; DestTy: TLLVMBaseType;
+function TLLVMBuilder.BuildPointerCast(Val: TLLVMValue; DestTy: TLLVMBaseType;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildPointerCast(FLLVMBuilder, Val.Handle, DestTy.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildPtrDiff(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildPtrDiff(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildPtrDiff(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildPtrToInt(Val: TLLVMConstValue; DestTy: TLLVMBaseType;
+function TLLVMBuilder.BuildPtrToInt(Val: TLLVMValue; DestTy: TLLVMBaseType;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildPtrToInt(FLLVMBuilder, Val.Handle, DestTy.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildResume(Exn: TLLVMConstValue): PLLVMValue;
+function TLLVMBuilder.BuildResume(Exn: TLLVMValue): PLLVMValue;
 begin
    Result := LLVMBuildResume(FLLVMBuilder, Exn.Handle);
 end;
 
-function TLLVMBuilder.BuildRet(V: TLLVMConstValue): PLLVMValue;
+function TLLVMBuilder.BuildRet(V: TLLVMValue): PLLVMValue;
 begin
    Result := LLVMBuildRet(FLLVMBuilder, V.Handle);
 end;
@@ -2625,100 +2736,100 @@ begin
    Result := LLVMBuildRetVoid(FLLVMBuilder);
 end;
 
-function TLLVMBuilder.BuildSDiv(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildSDiv(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildSDiv(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildSelect(&If, &Then, &Else: TLLVMConstValue;
+function TLLVMBuilder.BuildSelect(&If, &Then, &Else: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildSelect(&FLLVMBuilder, &If.Handle, &Then.Handle,
       &Else.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildSExt(Val: TLLVMConstValue; DestTy: TLLVMBaseType;
+function TLLVMBuilder.BuildSExt(Val: TLLVMValue; DestTy: TLLVMBaseType;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildSExt(FLLVMBuilder, Val.Handle, DestTy.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildSExtOrBitCast(Val: TLLVMConstValue;
+function TLLVMBuilder.BuildSExtOrBitCast(Val: TLLVMValue;
   DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildSExtOrBitCast(FLLVMBuilder, Val.Handle, DestTy.Handle,
       PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildShl(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildShl(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildShl(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildShuffleVector(V1, V2, Mask: TLLVMConstValue;
+function TLLVMBuilder.BuildShuffleVector(V1, V2, Mask: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildShuffleVector(FLLVMBuilder, V1.Handle, V2.Handle,
       Mask.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildSIToFP(Val: TLLVMConstValue; DestTy: TLLVMBaseType;
+function TLLVMBuilder.BuildSIToFP(Val: TLLVMValue; DestTy: TLLVMBaseType;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildSIToFP(FLLVMBuilder, Val.Handle, DestTy.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildSRem(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildSRem(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildSRem(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildStore(Val, Ptr: TLLVMConstValue): PLLVMValue;
+function TLLVMBuilder.BuildStore(Val, Ptr: TLLVMValue): PLLVMValue;
 begin
    Result := LLVMBuildStore(FLLVMBuilder, Val.Handle, Ptr.Handle);
 end;
 
-function TLLVMBuilder.BuildStructGEP(Pointer: TLLVMConstValue; Idx: Cardinal;
+function TLLVMBuilder.BuildStructGEP(Pointer: TLLVMValue; Idx: Cardinal;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildStructGEP(FLLVMBuilder, Pointer.Handle, Idx, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildSub(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildSub(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildSub(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildSwitch(V: TLLVMConstValue; &Else: PLLVMBasicBlock;
+function TLLVMBuilder.BuildSwitch(V: TLLVMValue; &Else: PLLVMBasicBlock;
   NumCases: Cardinal): PLLVMValue;
 begin
    Result := LLVMBuildSwitch(FLLVMBuilder, V.Handle, &Else, NumCases);
 end;
 
-function TLLVMBuilder.BuildTrunc(Val: TLLVMConstValue; DestTy: TLLVMBaseType;
+function TLLVMBuilder.BuildTrunc(Val: TLLVMValue; DestTy: TLLVMBaseType;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildTrunc(FLLVMBuilder, Val.Handle, DestTy.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildTruncOrBitCast(Val: TLLVMConstValue;
+function TLLVMBuilder.BuildTruncOrBitCast(Val: TLLVMValue;
   DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildTruncOrBitCast(FLLVMBuilder, Val.Handle, DestTy.Handle,
       PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildUDiv(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildUDiv(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildUDiv(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildUIToFP(Val: TLLVMConstValue; DestTy: TLLVMBaseType;
+function TLLVMBuilder.BuildUIToFP(Val: TLLVMValue; DestTy: TLLVMBaseType;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildUIToFP(FLLVMBuilder, Val.Handle, DestTy.Handle,
@@ -2730,31 +2841,31 @@ begin
    Result := LLVMBuildUnreachable(FLLVMBuilder);
 end;
 
-function TLLVMBuilder.BuildURem(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildURem(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildURem(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildVAArg(List: TLLVMConstValue; Ty: TLLVMBaseType;
+function TLLVMBuilder.BuildVAArg(List: TLLVMValue; Ty: TLLVMBaseType;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildVAArg(FLLVMBuilder, List.Handle, Ty.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildXor(LHS, RHS: TLLVMConstValue;
+function TLLVMBuilder.BuildXor(LHS, RHS: TLLVMValue;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildXor(FLLVMBuilder, LHS.Handle, RHS.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildZExt(Val: TLLVMConstValue; DestTy: TLLVMBaseType;
+function TLLVMBuilder.BuildZExt(Val: TLLVMValue; DestTy: TLLVMBaseType;
   const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildZExt(FLLVMBuilder, Val.Handle, DestTy.Handle, PAnsiChar(Name));
 end;
 
-function TLLVMBuilder.BuildZExtOrBitCast(Val: TLLVMConstValue;
+function TLLVMBuilder.BuildZExtOrBitCast(Val: TLLVMValue;
   DestTy: TLLVMBaseType; const Name: AnsiString): PLLVMValue;
 begin
    Result := LLVMBuildZExtOrBitCast(FLLVMBuilder, Val.Handle, DestTy.Handle,
@@ -2776,19 +2887,19 @@ begin
    Result := LLVMGetInsertBlock(FLLVMBuilder)
 end;
 
-procedure TLLVMBuilder.InsertIntoBuilder(Instr: TLLVMConstValue);
+procedure TLLVMBuilder.InsertIntoBuilder(Instr: TLLVMValue);
 begin
    LLVMInsertIntoBuilder(FLLVMBuilder, Instr.Handle);
 end;
 
-procedure TLLVMBuilder.InsertIntoBuilderWithName(Instr: TLLVMConstValue;
+procedure TLLVMBuilder.InsertIntoBuilderWithName(Instr: TLLVMValue;
   const Name: AnsiString);
 begin
    LLVMInsertIntoBuilderWithName(FLLVMBuilder, Instr.Handle, PAnsiChar(Name));
 end;
 
 procedure TLLVMBuilder.PositionBuilder(Block: PLLVMBasicBlock;
-  Instr: TLLVMConstValue);
+  Instr: TLLVMValue);
 begin
    LLVMPositionBuilder(FLLVMBuilder, Block, Instr.Handle);
 end;
@@ -2798,12 +2909,12 @@ begin
    LLVMPositionBuilderAtEnd(FLLVMBuilder, Block);
 end;
 
-procedure TLLVMBuilder.PositionBuilderBefore(Instr: TLLVMConstValue);
+procedure TLLVMBuilder.PositionBuilderBefore(Instr: TLLVMValue);
 begin
    LLVMPositionBuilderBefore(FLLVMBuilder, Instr.Handle);
 end;
 
-procedure TLLVMBuilder.SetInstDebugLocation(Instr: TLLVMConstValue);
+procedure TLLVMBuilder.SetInstDebugLocation(Instr: TLLVMValue);
 begin
    LLVMSetInstDebugLocation(FLLVMBuilder, Instr.Handle);
 end;
@@ -2911,7 +3022,7 @@ begin
 end;
 
 function TLLVMFunctionPassManager.RunFunctionPassManager(
-  Value: TLLVMConstValue): Boolean;
+  Value: TLLVMValue): Boolean;
 begin
    Result := LLVMRunFunctionPassManager(FLLVMPassManager, Value.Handle);
 end;
@@ -3047,7 +3158,7 @@ begin
 end;
 
 function TLLVMTargetData.PreferredAlignmentOfGlobal(
-  GlobalVar: TLLVMConstValue): Cardinal;
+  GlobalVar: TLLVMValue): Cardinal;
 begin
    Result := LLVMPreferredAlignmentOfGlobal(FLLVMTargetData, GlobalVar.Handle);
 end;
