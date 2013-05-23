@@ -610,7 +610,7 @@ end;
 
 procedure TdwsUtilsTests.SortTest;
 var
-   i, n : Integer;
+   i : Integer;
    s : TSortable;
    qs : TQuickSort;
 begin
@@ -660,7 +660,7 @@ end;
 //
 procedure TdwsUtilsTests.SortReverseTest;
 var
-   i, k, n : Integer;
+   k, n : Integer;
    s : TSortable;
    qs : TQuickSort;
 begin

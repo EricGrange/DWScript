@@ -1615,7 +1615,6 @@ type
          procedure SetArrayLength(n : Integer);
 
          procedure QuickSort(lo, hi : Integer; const compareFunc : TScriptDynamicArrayCompareFunc);
-         function CompareFunc(idx1, idx2 : Integer) : Integer;
 
       public
          constructor Create(elemTyp : TTypeSymbol);
@@ -1624,7 +1623,7 @@ type
          procedure Insert(index : Integer);
          procedure Swap(i1, i2 : Integer);
          procedure Reverse;
-         procedure Sort(exec : TdwsExecution; compareExpr : TTypedExpr);
+         procedure Sort(exec : TdwsExecution; compareExpr : TFuncExpr);
          procedure Copy(src : TScriptDynamicArray; index, count : Integer);
          procedure RawCopy(const src : TData; rawIndex, rawCount : Integer);
          procedure Concat(src : TScriptDynamicArray);
@@ -5930,10 +5929,46 @@ begin
 end;
 
 // ------------------
-// ------------------ TScriptDynamicArray ------------------
+// ------------------ TArraySortComparer ------------------
 // ------------------
 
+type
+   TArraySortComparer = class
+      FExec : TdwsExecution;
+      FDyn : TScriptDynamicArray;
+      FFunc : TFuncExpr;
+      FLeft, FRight : TVarExpr;
+      constructor Create(exec : TdwsExecution; dyn : TScriptDynamicArray; compareFunc : TFuncExpr);
+      function Compare(index1, index2 : Integer) : Integer;
+   end;
 
+// Create
+//
+constructor TArraySortComparer.Create(exec : TdwsExecution; dyn : TScriptDynamicArray; compareFunc : TFuncExpr);
+begin
+   FExec:=exec;
+   FDyn:=dyn;
+   FFunc:=compareFunc;
+   FLeft:=compareFunc.Args[0] as TVarExpr;
+   FRight:=compareFunc.Args[1] as TVarExpr;
+end;
+
+// Compare
+//
+function TArraySortComparer.Compare(index1, index2 : Integer) : Integer;
+begin
+   DWSCopyData(FDyn.AsData, index1*FDyn.ElementSize,
+               FExec.Stack.Data, FExec.Stack.BasePointer+FLeft.StackAddr,
+               FDyn.ElementSize);
+   DWSCopyData(FDyn.AsData, index2*FDyn.ElementSize,
+               FExec.Stack.Data, FExec.Stack.BasePointer+FRight.StackAddr,
+               FDyn.ElementSize);
+   Result:=FFunc.EvalAsInteger(FExec);
+end;
+
+// ------------------
+// ------------------ TScriptDynamicArray ------------------
+// ------------------
 
 // Create
 //
@@ -6010,14 +6045,27 @@ end;
 //
 procedure TScriptDynamicArray.Swap(i1, i2 : Integer);
 var
+   i : Integer;
    elem1, elem2 : PVarData;
    buf : TVarData;
 begin
-   elem1:=PVarData(AsPVariant(i1*ElementSize));
-   elem2:=PVarData(AsPVariant(i2*ElementSize));
-   buf:=elem1^;
-   elem1^:=elem2^;
-   elem2^:=buf;
+   if ElementSize=1 then begin
+      elem1:=PVarData(AsPVariant(i1));
+      elem2:=PVarData(AsPVariant(i2));
+      buf:=elem1^;
+      elem1^:=elem2^;
+      elem2^:=buf;
+   end else begin
+      elem1:=PVarData(AsPVariant(i1*ElementSize));
+      elem2:=PVarData(AsPVariant(i2*ElementSize));
+      for i:=1 to ElementSize do begin
+         buf:=elem1^;
+         elem1^:=elem2^;
+         elem2^:=buf;
+         Inc(elem1);
+         Inc(elem2);
+      end;
+   end;
 end;
 
 // Reverse
@@ -6045,7 +6093,7 @@ begin
       repeat
          while compareFunc(i, pivot)<0 do
             Inc(i);
-         while compareFunc(i, pivot)>0 do
+         while compareFunc(j, pivot)>0 do
             Dec(j);
          if i<=j then begin
             if i<>j then
@@ -6060,18 +6108,19 @@ begin
    until i>=hi;
 end;
 
-// CompareFunc
-//
-function TScriptDynamicArray.CompareFunc(idx1, idx2 : Integer) : Integer;
-begin
-   Result:=0;
-end;
-
 // Sort
 //
-procedure TScriptDynamicArray.Sort(exec : TdwsExecution; compareExpr : TTypedExpr);
+procedure TScriptDynamicArray.Sort(exec : TdwsExecution; compareExpr : TFuncExpr);
+var
+   comparer : TArraySortComparer;
 begin
-   QuickSort(0, ArrayLength-1, CompareFunc);
+   if ArrayLength<=1 then Exit;
+   comparer:=TArraySortComparer.Create(exec, Self, compareExpr);
+   try
+      QuickSort(0, ArrayLength-1, comparer.Compare);
+   finally
+      comparer.Free;
+   end;
 end;
 
 // Copy

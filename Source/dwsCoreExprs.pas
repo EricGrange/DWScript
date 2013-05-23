@@ -649,7 +649,8 @@ type
    // Sort a dynamic array
    TArraySortExpr = class(TArrayPseudoMethodExpr)
       private
-         FCompareExpr : TTypedExpr;
+         FCompareExpr : TFuncExpr;
+         FLeft, FRight : TDataSymbol;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
@@ -657,12 +658,12 @@ type
 
       public
          constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
-                            aBase, aCompare : TTypedExpr);
+                            aBase : TTypedExpr; aCompare : TFuncExpr);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
 
-         property CompareExpr : TTypedExpr read FCompareExpr write FCompareExpr;
+         property CompareExpr : TFuncExpr read FCompareExpr write FCompareExpr;
    end;
 
    // Reverse a dynamic array
@@ -7175,18 +7176,27 @@ end;
 // Create
 //
 constructor TArraySortExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
-                            aBase, aCompare : TTypedExpr);
+                            aBase : TTypedExpr; aCompare : TFuncExpr);
+var
+   elemTyp : TTypeSymbol;
 begin
    inherited Create(prog, scriptPos, aBase);
    FCompareExpr:=aCompare;
+   elemTyp:=aCompare.FuncSym.Params[0].Typ;
+   FLeft:=TDataSymbol.Create('', elemTyp);
+   prog.Table.AddSymbol(FLeft);
+   FRight:=TDataSymbol.Create('', elemTyp);
+   prog.Table.AddSymbol(FRight);
+   FCompareExpr.AddArg(TVarExpr.Create(prog, FLeft));
+   FCompareExpr.AddArg(TVarExpr.Create(prog, FRight));
 end;
 
 // Destroy
 //
 destructor TArraySortExpr.Destroy;
 begin
-   inherited;
    FCompareExpr.Free;
+   inherited;
 end;
 
 // EvalNoResult

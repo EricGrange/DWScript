@@ -977,12 +977,17 @@ type
    TArraySymbol = class abstract(TTypeSymbol)
       private
          FIndexType : TTypeSymbol;
+         FSortFunctionType : TFuncSymbol;
 
       protected
          function ElementSize : Integer;
 
+
       public
          constructor Create(const name : UnicodeString; elementType, indexType : TTypeSymbol);
+         destructor Destroy; override;
+
+         function SortFunctionType(integerType : TTypeSymbol) : TFuncSymbol;
 
          property IndexType : TTypeSymbol read FIndexType write FIndexType;
    end;
@@ -5681,6 +5686,14 @@ begin
    FIndexType:=indexType;
 end;
 
+// Destroy
+//
+destructor TArraySymbol.Destroy;
+begin
+   FSortFunctionType.Free;
+   inherited;
+end;
+
 // ElementSize
 //
 function TArraySymbol.ElementSize : Integer;
@@ -5688,6 +5701,19 @@ begin
    if Typ<>nil then
       Result:=Typ.Size
    else Result:=0;
+end;
+
+// SortFunctionType
+//
+function TArraySymbol.SortFunctionType(integerType : TTypeSymbol) : TFuncSymbol;
+begin
+   if FSortFunctionType=nil then begin
+      FSortFunctionType:=TFuncSymbol.Create('', fkFunction, 0);
+      FSortFunctionType.Typ:=integerType;
+      FSortFunctionType.AddParam(TParamSymbol.Create('left', Typ));
+      FSortFunctionType.AddParam(TParamSymbol.Create('right', Typ));
+   end;
+   Result:=FSortFunctionType;
 end;
 
 // ------------------

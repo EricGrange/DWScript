@@ -506,7 +506,7 @@ type
                             const loopVarName : UnicodeString; const loopVarNamePos : TScriptPos) : TNoResultExpr;
          function ReadForStep(const forPos : TScriptPos; forExprClass : TForExprClass;
                               iterVarExpr : TIntVarExpr; var fromExpr, toExpr : TTypedExpr;
-                              loopFirstStatement : TNoResultExpr) : TForExpr;
+                              loopFirstStatement : TProgramExpr) : TForExpr;
          function ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr;
                             const loopVarName : UnicodeString; const loopVarNamePos : TScriptPos) : TProgramExpr;
          function ReadForInConnector(const forPos : TScriptPos;
@@ -5554,7 +5554,7 @@ end;
 //
 function TdwsCompiler.ReadForStep(const forPos : TScriptPos; forExprClass : TForExprClass;
                            iterVarExpr : TIntVarExpr; var fromExpr, toExpr : TTypedExpr;
-                           loopFirstStatement : TNoResultExpr) : TForExpr;
+                           loopFirstStatement : TProgramExpr) : TForExpr;
 var
    stepExpr : TTypedExpr;
    stepPos : TScriptPos;
@@ -5645,7 +5645,8 @@ var
    arraySymbol : TArraySymbol;
    enumSymbol : TTypeSymbol;
    inPos : TScriptPos;
-   inExprAssignExpr, readArrayItemExpr : TAssignExpr;
+   inExprAssignExpr : TAssignExpr;
+   readArrayItemExpr : TProgramExpr;
    inExprVarExpr : TVarExpr;
    blockExpr : TBlockExpr;
 begin
@@ -5743,8 +5744,10 @@ begin
          end;
 
          iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
-         readArrayItemExpr:=TAssignExpr.Create(FProg, FTok.HotPos, loopVarExpr,
-                                               CreateArrayExpr(FTok.HotPos, (inExpr as TDataExpr), iterVarExpr));
+//         readArrayItemExpr:=TAssignExpr.Create(FProg, FTok.HotPos, loopVarExpr,
+//                                               CreateArrayExpr(FTok.HotPos, (inExpr as TDataExpr), iterVarExpr));
+         readArrayItemExpr:=CreateAssign(FTok.HotPos, ttASSIGN, loopVarExpr,
+                                         CreateArrayExpr(FTok.HotPos, (inExpr as TDataExpr), iterVarExpr));
 
          iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
 
@@ -7088,6 +7091,10 @@ begin
          argSymTable.AddSymbol(TParamSymbol.Create('', arraySym.Typ));
          argList.Table:=argSymTable;
 
+      end else if UnicodeSameText(name, 'sort') then begin
+
+         argList.DefaultExpected:=TParamSymbol.Create('', arraySym.SortFunctionType(FProg.TypInteger))
+
       end;
 
       ReadArguments(argList.AddExpr, ttBLEFT, ttBRIGHT, argPosArray, argList.ExpectedArg);
@@ -7256,16 +7263,22 @@ begin
                argList.Clear;
             end else Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr, nil, nil);
 
-//         end else if UnicodeSameText(name, 'sort') then begin
-//
-//            CheckRestricted;
-//            if CheckArguments(1, 1) then begin
-//               if not argList[0].Typ.IsOfType(argList.DefaultExpected.Typ) then
-//                  IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
-//                                    argList.DefaultExpected.Typ, argList[0].Typ);
-//               Result:=TArraySortExpr.Create(FProg, namePos, baseExpr, argList[0]);
-//               argList.Clear;
-//            end else Result:=TArraySortExpr.Create(FProg, namePos, baseExpr, nil);
+         end else if UnicodeSameText(name, 'sort') then begin
+
+            CheckRestricted;
+            if CheckArguments(1, 1) then begin
+               if not argList[0].Typ.IsCompatible(arraySym.SortFunctionType(FProg.TypInteger)) then begin
+                  IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
+                                    arraySym.SortFunctionType(FProg.TypBoolean), argList[0].Typ);
+                  if not (argList[0].Typ is TFuncSymbol) then begin
+                     OrphanObject(argList[0]);
+                     argList.Clear;
+                  end;
+               end;
+               Result:=TArraySortExpr.Create(FProg, namePos, baseExpr,
+                                             TFuncPtrExpr.Create(FProg, argPosArray[0], argList[0]));
+               argList.Clear;
+            end else Result:=TArraySortExpr.Create(FProg, namePos, baseExpr, nil);
 
          end else if UnicodeSameText(name, 'reverse') then begin
 
