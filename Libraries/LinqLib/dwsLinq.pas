@@ -115,6 +115,10 @@ type
       property Criteria: TSqlList read FCriteria;
    end;
 
+   type TRelOp = (roEq, roNeq, roGt, roLt, roGte, roLte, roIn, roNin);
+
+   function GetOp(expr: TRelOpExpr): TRelOp;
+
 implementation
 uses
    SysUtils,
@@ -598,6 +602,23 @@ begin
    finally
       sl.Free;
    end;
+end;
+
+function GetOp(expr: TRelOpExpr): TRelOp;
+begin
+   if expr.ClassType = TRelEqualVariantExpr then
+      result := roEq
+   else if expr.ClassType = TRelNotEqualVariantExpr then
+      result := roNeq
+   else if expr.ClassType = TRelLessVariantExpr then
+      result := roLt
+   else if expr.ClassType = TRelLessEqualVariantExpr then
+      result := roLte
+   else if expr.ClassType = TRelGreaterVariantExpr then
+      result := roGt
+   else if expr.ClassType = TRelGreaterEqualVariantExpr then
+      result := roGte
+   else raise Exception.CreateFmt('Unknown op type: %s.', [expr.ClassName]);
 end;
 
 end.

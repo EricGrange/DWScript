@@ -2,7 +2,7 @@ unit dwsLinqJson;
 
 interface
 uses
-   Classes, Generics.Defaults, Generics.Collections,
+   Classes,
    dwsXPlatform, dwsLinq, dwsExprs, dwsSymbols, dwsConstExprs,
    dwsMethodExprs, dwsCompiler, dwsCoreExprs, dwsErrors, dwsRelExprs,
    dwsJson, dwsUtils;
@@ -62,6 +62,7 @@ type
    TJsonWhereFilter = class(TJsonFilter)
    private
       function MatchFilter(filter: TTypedExpr; value: TdwsJsonValue; exec: TdwsExecution): boolean;
+      function HalfFilterValue(filter: TTypedExpr; value: TdwsJsonValue; exec: TdwsExecution): variant;
    public
       function EvalAsJson(exec : TdwsExecution): TdwsJsonValue; override;
    end;
@@ -82,18 +83,12 @@ type
    end;
 
    TJsonOrderFilter = class(TJsonFilter)
-   private type
-      TJsonSorter = class(TInterfacedObject, IComparer<TdwsJsonValue>)
-      private
-         FFilters: TSqlList;
-         function CompareObjectStep(const Left, Right: TdwsJSONObject; filter: TSqlIdentifier): Integer;
-         function CompareObjects(const Left, Right: TdwsJSONObject): Integer;
-         function Compare(const Left, Right: TdwsJsonValue): Integer;
-      public
-         constructor Create(filters: TSqlList);
-      end;
    private
       procedure SortJsonArray(arr: TdwsJsonArray);
+       function Compare(Left, Right: TdwsJsonValue): Integer;
+       function CompareObjects(const Left, Right: TdwsJSONObject): Integer;
+       function CompareObjectStep(const Left, Right: TdwsJSONObject;
+         filter: TSqlIdentifier): Integer;
    public
       function EvalAsJson(exec : TdwsExecution): TdwsJsonValue; override;
    end;
@@ -241,22 +236,32 @@ end;
 
 { TJsonWhereFilter }
 
+function TJsonWhereFilter.HalfFilterValue(filter: TTypedExpr; value: TdwsJsonValue; exec: TdwsExecution): variant;
+begin
+   if filter is TSqlIdentifier then
+      result := value.Items[TSqlIdentifier(filter).Value].Value.AsVariant
+   else result := filter.Eval(exec);
+end;
+
 function TJsonWhereFilter.MatchFilter(filter: TTypedExpr; value: TdwsJsonValue; exec: TdwsExecution): boolean;
 var
-   rel: TRelEqualVariantExpr;
-   sub: TdwsJsonValue;
+   rel: TRelOpExpr;
+   l, r: variant;
 begin
-   if filter.ClassType = TRelEqualVariantExpr then
+   if filter is TRelOpExpr then
    begin
-      rel := TRelEqualVariantExpr(filter);
-      sub := value.Items[(rel.Left as TSqlIdentifier).Value];
-      result := sub.Value.AsVariant = rel.Right.Eval(exec);
-   end
-   else if filter.ClassType = TRelGreaterVariantExpr then
-   begin
-      rel := TRelEqualVariantExpr(filter);
-      sub := value.Items[(rel.Left as TSqlIdentifier).Value];
-      result := sub.Value.AsVariant > rel.Right.Eval(exec);
+      rel := TRelOpExpr(filter);
+      l := HalfFilterValue(rel.Left, value, exec);
+      r := HalfFilterValue(rel.Right, value, exec);
+      case GetOp(rel) of
+         roEq: result := l = r;
+         roNeq: result := l <> r;
+         roLt: result := l < r;
+         roLte: result := l <= r;
+         roGt: result := l > r;
+         roGte: result := l >= r;
+         else raise Exception.Create('Invalid operation');
+      end;
    end
    else begin
       assert(false);
@@ -306,35 +311,11 @@ begin
 end;
 
 procedure TJsonOrderFilter.SortJsonArray(arr: TdwsJsonArray);
-var
-   list: TArray<TdwsJsonValue>;
-   i: Integer;
-   sorter: TJsonSorter;
 begin
-   SetLength(list, arr.ElementCount);
-   for i := High(list) downto 0 do
-      list[i] := arr.Elements[i];
-   sorter := TJsonSorter.Create(FFilters);
-   try
-      TArray.Sort<TdwsJSONValue>(list, sorter);
-   finally
-      sorter.Free;
-   end;
-   for i := High(list) downto 0 do
-      list[i].IncRefCount;
-   arr.Clear;
-   for i := 0 to High(list) do
-      arr.add(list[i]);
+   arr.Sort(self.compare);
 end;
 
-{ TJsonOrderFilter.TJsonSorter }
-
-constructor TJsonOrderFilter.TJsonSorter.Create(filters: TSqlList);
-begin
-   FFilters := filters;
-end;
-
-function TJsonOrderFilter.TJsonSorter.CompareObjectStep(const Left, Right: TdwsJSONObject;
+function TJsonOrderFilter.CompareObjectStep(const Left, Right: TdwsJSONObject;
   filter: TSqlIdentifier): Integer;
 var
    elemName: string;
@@ -354,7 +335,7 @@ begin
 
    if (l = 0) and (r = 0) then
    begin
-      rel := VarCompareValue(lElem.Value.AsVariant, lElem.Value.AsVariant);
+      rel := VarCompareValue(lElem.Value.AsVariant, rElem.Value.AsVariant);
       case rel of
          vrEqual: result := 0;
          vrLessThan, vrNotEqual: result := -1;
@@ -367,7 +348,7 @@ begin
    else result := l - r;
 end;
 
-function TJsonOrderFilter.TJsonSorter.CompareObjects(const Left, Right: TdwsJSONObject): Integer;
+function TJsonOrderFilter.CompareObjects(const Left, Right: TdwsJSONObject): Integer;
 var
    i: integer;
 begin
@@ -380,7 +361,7 @@ begin
    end;
 end;
 
-function TJsonOrderFilter.TJsonSorter.Compare(const Left, Right: TdwsJsonValue): Integer;
+function TJsonOrderFilter.Compare(Left, Right: TdwsJsonValue): Integer;
 var
    l, r: integer;
 begin

@@ -150,21 +150,18 @@ begin
    WriteCommaList(FSelectList, list, prog);
 end;
 
-function GetOp(expr: TRelOpExpr): string;
+function GetOpText(expr: TRelOpExpr): string;
 begin
-   if expr.ClassType = TRelEqualVariantExpr then
-      result := '='
-   else if expr.ClassType = TRelNotEqualVariantExpr then
-      result := '<>'
-   else if expr.ClassType = TRelLessVariantExpr then
-      result := '<'
-   else if expr.ClassType = TRelLessEqualVariantExpr then
-      result := '<='
-   else if expr.ClassType = TRelGreaterVariantExpr then
-      result := '>'
-   else if expr.ClassType = TRelGreaterEqualVariantExpr then
-      result := '>='
-   else raise Exception.CreateFmt('Unknown op type: %s.', [expr.ClassName]);
+   case GetOp(expr) of
+      roEq: result := '=';
+      roNeq: result := '<>';
+      roLt: result := '<';
+      roLte: result := '<=';
+      roGt: result := '>';
+      roGte: result := '>=';
+      roIn: result := 'in';
+      roNin: result := 'not in';
+   end;
 end;
 
 function TSqlFromExpr.BuildHalfRelOpElement(expr: TTypedExpr; compiler: TdwsCompiler): string;
@@ -184,7 +181,7 @@ var
 begin
    l := BuildHalfRelOpElement(expr.Left, compiler);
    r := BuildHalfRelOpElement(expr.Right, compiler);
-   list.Add(format('%s %s %s', [l, GetOp(expr), r]));
+   list.Add(format('%s %s %s', [l, GetOpText(expr), r]));
 end;
 
 procedure TSqlFromExpr.BuildConditionElement(expr: TTypedExpr; compiler: TdwsCompiler; list: TStringList);
