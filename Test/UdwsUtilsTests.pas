@@ -54,6 +54,7 @@ type
          procedure StrContainsTest;
 
          procedure SortTest;
+         procedure SortReverseTest;
    end;
 
 // ------------------------------------------------------------------
@@ -650,6 +651,32 @@ begin
       CheckEquals(2, s.Items[3]);
       CheckEquals(2, s.Items[4]);
       CheckEquals(3, s.Items[5]);
+   finally
+      s.Free;
+   end;
+end;
+
+// SortReverseTest
+//
+procedure TdwsUtilsTests.SortReverseTest;
+var
+   i, k, n : Integer;
+   s : TSortable;
+   qs : TQuickSort;
+begin
+   s:=TSortable.Create;
+   try
+      qs.CompareMethod:=s.Compare;
+      qs.SwapMethod:=s.Swap;
+
+      for n:=2 to 65 do begin
+         SetLength(s.Items, n);
+         for k:=0 to n-1 do
+            s.Items[k]:=n-1-k;
+         qs.Sort(0, High(s.Items));
+         for k:=1 to n-1 do
+            CheckEquals(k, s.Items[k]);
+      end;
    finally
       s.Free;
    end;
