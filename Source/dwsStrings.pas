@@ -57,6 +57,8 @@ const
   SYS_TCUSTOMATTRIBUTE = 'TCustomAttribute';
   SYS_IINTERFACE = 'IInterface';
 
+  SYS_COMPILER_VERSION = 'CompilerVersion';
+
   SYS_MainModule = '*MainModule*';
 
   SYS_EXTERNAL_ARRAY = '[]';

@@ -55,6 +55,9 @@ const
    cDefaultMaxExceptionDepth = 10;
    cDefaultStackChunkSize = 4096;  // 64 kB in 32bit Delphi, each stack entry is a Variant
 
+   // compiler version is date in YYYYMMDD format, dot subversion number
+   cCompilerVersion = 20130524.0;
+
 type
    TdwsCompiler = class;
    TdwsFilter = class;
@@ -1543,6 +1546,7 @@ begin
    FMainProg.TimeoutMilliseconds:=aConf.TimeoutMilliseconds;
    FMainProg.RuntimeFileSystem:=aConf.RuntimeFileSystem;
    FMainProg.ConditionalDefines.Value.Assign(aConf.Conditionals);
+   FMainProg.ConditionalDefines.Value.Add('DWSCRIPT');
    FMainProg.OnExecutionStarted:=FOnExecutionStarted;
    FMainProg.OnExecutionEnded:=FOnExecutionEnded;
    FSourceContextMap:=FMainProg.SourceContextMap;
@@ -12675,6 +12679,9 @@ begin
       TParamFunc.Create(sysTable, 'Param', ['Index', SYS_INTEGER], SYS_VARIANT, []);
    TParamStrFunc.Create(sysTable, 'ParamStr', ['Index', SYS_INTEGER], SYS_STRING, []);
    TParamCountFunc.Create(sysTable, 'ParamCount', [], SYS_INTEGER, []);
+
+   // CompilerVersion
+   sysTable.AddSymbol(TConstSymbol.CreateValue(SYS_COMPILER_VERSION, sysTable.TypFloat, cCompilerVersion));
 
    if Assigned(FOnCreateSystemSymbols) then
       FOnCreateSystemSymbols(sysTable);
