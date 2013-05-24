@@ -3057,6 +3057,11 @@ begin
 
                SkipProcCallQualifiers;
 
+               if FTok.TestDelete(ttINLINE) then begin
+                  Result.SetInline;
+                  ReadSemiColon;
+               end;
+
                if FTok.Test(ttDEPRECATED) then
                   Result.DeprecatedMessage:=ReadDeprecatedMessage;
 

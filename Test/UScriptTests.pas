@@ -59,7 +59,7 @@ end;
 //
 procedure TScriptTests.SetUp;
 const
-   cFilter = 'class_error8*.pas';
+   cFilter = '*.pas';
 var
    basePath : String;
 begin

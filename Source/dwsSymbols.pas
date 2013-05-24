@@ -598,7 +598,7 @@ type
    TResultSymbol = class(TDataSymbol)
    end;
 
-   TFuncSymbolFlag = (fsfStateless, fsfExternal, fsfType, fsfOverloaded, fsfLambda);
+   TFuncSymbolFlag = (fsfStateless, fsfExternal, fsfType, fsfOverloaded, fsfLambda, fsfInline);
    TFuncSymbolFlags = set of TFuncSymbolFlag;
 
    // A script function / procedure: procedure X(param: Integer);
@@ -651,6 +651,7 @@ type
          function  IsType : Boolean; override;
          procedure SetIsType;
          function  GetIsFuncSymbol : Boolean; override;
+         procedure SetInline;
          procedure AddParam(param : TParamSymbol);
          procedure AddParams(params : TParamsSymbolTable);
          function  HasParam(param : TParamSymbol) : Boolean;
@@ -3214,6 +3215,13 @@ end;
 function TFuncSymbol.GetIsFuncSymbol : Boolean;
 begin
    Result:=True;
+end;
+
+// SetInline
+//
+procedure TFuncSymbol.SetInline;
+begin
+   Include(FFlags, fsfInline);
 end;
 
 procedure TFuncSymbol.InitData(const Data: TData; Offset: Integer);
