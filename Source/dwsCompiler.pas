@@ -718,7 +718,9 @@ type
          procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : UnicodeString; typ1, typ2 : TTypeSymbol);
          procedure IncompatibleTypesWarn(const scriptPos : TScriptPos; const fmt : UnicodeString; typ1, typ2 : TTypeSymbol);
 
-         function WrapWithImplicitConversion(expr : TTypedExpr; toTyp : TTypeSymbol) : TTypedExpr;
+         function WrapWithImplicitConversion(expr : TTypedExpr; toTyp : TTypeSymbol;
+                                             const hotPos : TScriptPos;
+                                             const msg : String = CPE_IncompatibleTypes) : TTypedExpr;
 
          function CreateProgram(const systemTable : ISystemSymbolTable;
                                 resultType : TdwsResultType;
@@ -1394,7 +1396,9 @@ end;
 
 // WrapWithImplicitConversion
 //
-function TdwsCompiler.WrapWithImplicitConversion(expr : TTypedExpr; toTyp : TTypeSymbol) : TTypedExpr;
+function TdwsCompiler.WrapWithImplicitConversion(expr : TTypedExpr; toTyp : TTypeSymbol;
+                                                 const hotPos : TScriptPos;
+                                                 const msg : String = CPE_IncompatibleTypes) : TTypedExpr;
 var
    exprTyp : TTypeSymbol;
 begin
@@ -1411,7 +1415,7 @@ begin
 
    end else begin
       // error & keep compiling
-      IncompatibleTypes(FTok.HotPos, CPE_AssignIncompatibleTypes, exprTyp, toTyp);
+      IncompatibleTypes(hotPos, msg, toTyp, exprTyp);
       Result:=TConvInvalidExpr.Create(FProg, expr, toTyp);
       Exit;
    end;
@@ -2692,7 +2696,7 @@ begin
          try
             if Assigned(typ) then begin
                if not typ.IsCompatible(expr.typ) then
-                  expr:=WrapWithImplicitConversion(expr, typ);
+                  expr:=WrapWithImplicitConversion(expr, typ, FTok.HotPos);
             end else begin
                typ:=expr.typ;
                detachTyp:=(typ.Name='');
@@ -7077,14 +7081,6 @@ begin
 
          argList.DefaultExpected:=TParamSymbol.Create('', arraySym.Typ)
 
-//      else if UnicodeSameText(name, 'sort') then begin
-//
-//         delegateSym:=TFuncSymbol.Create('', fkFunction, 0);
-//         delegateSym.Typ:=FProg.TypInteger;
-//         delegateSym.AddParam(TConstParamSymbol.Create('item1', arraySym.Typ));
-//         delegateSym.AddParam(TConstParamSymbol.Create('item2', arraySym.Typ));
-//         argList.DefaultExpected:=TParamSymbol.Create('', delegateSym);
-
       end else if UnicodeSameText(name, 'indexof') or UnicodeSameText(name, 'remove') then begin
 
          argSymTable:=TUnSortedSymbolTable.Create;
@@ -7129,8 +7125,8 @@ begin
                              or (    (argList[i].Typ is TStaticArraySymbol)
                                  and (   arraySym.Typ.IsCompatible(argList[i].Typ.Typ)
                                       or (argList[i].Typ.Size=0)))) then begin
-                     IncompatibleTypes(argPosArray[i], CPE_IncompatibleParameterTypes,
-                                       arraySym.Typ, argList[i].Typ);
+                     argList[i]:=WrapWithImplicitConversion(argList[i], arraySym.Typ, argPosArray[i],
+                                                            CPE_IncompatibleParameterTypes);
                      Break;
                   end else if argList[i].ClassType=TArrayConstantExpr then begin
                      TArrayConstantExpr(argList[i]).Prepare(FProg, arraySym.Typ);
@@ -7266,18 +7262,31 @@ begin
          end else if UnicodeSameText(name, 'sort') then begin
 
             CheckRestricted;
-            if CheckArguments(1, 1) then begin
-               if not argList[0].Typ.IsCompatible(arraySym.SortFunctionType(FProg.TypInteger)) then begin
-                  IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
-                                    arraySym.SortFunctionType(FProg.TypBoolean), argList[0].Typ);
-                  if not (argList[0].Typ is TFuncSymbol) then begin
+            if CheckArguments(0, 1) then begin
+               if argList.Count=0 then begin
+                  if arraySym.Typ.IsOfType(FProg.TypString) then
+                     Result:=TArraySortNaturalStringExpr.Create(FProg, namePos, baseExpr)
+                  else if arraySym.Typ.IsOfType(FProg.TypInteger) then
+                     Result:=TArraySortNaturalIntegerExpr.Create(FProg, namePos, baseExpr)
+                  else if arraySym.Typ.IsOfType(FProg.TypFloat) then
+                     Result:=TArraySortNaturalFloatExpr.Create(FProg, namePos, baseExpr)
+                  else begin
+                     FMsgs.AddCompilerError(namePos, CPE_ArrayDoesNotHaveNaturalSortOrder);
+                     Result:=TArraySortNaturalExpr.Create(FProg, namePos, baseExpr);
+                  end;
+               end else begin
+                  if not argList[0].Typ.IsCompatible(arraySym.SortFunctionType(FProg.TypInteger)) then begin
+                     IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
+                                       arraySym.SortFunctionType(FProg.TypBoolean), argList[0].Typ);
                      OrphanObject(argList[0]);
                      argList.Clear;
                   end;
+                  if argList.Count>0 then begin
+                     Result:=TArraySortExpr.Create(FProg, namePos, baseExpr,
+                                                   TFuncPtrExpr.Create(FProg, argPosArray[0], argList[0]));
+                     argList.Clear;
+                  end else Result:=TArraySortExpr.Create(FProg, namePos, baseExpr, nil);
                end;
-               Result:=TArraySortExpr.Create(FProg, namePos, baseExpr,
-                                             TFuncPtrExpr.Create(FProg, argPosArray[0], argList[0]));
-               argList.Clear;
             end else Result:=TArraySortExpr.Create(FProg, namePos, baseExpr, nil);
 
          end else if UnicodeSameText(name, 'reverse') then begin
@@ -7289,6 +7298,9 @@ begin
          end else FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
       except
          OrphanObject(Result);
+         for i:=0 to argList.Count-1 do
+            OrphanObject(argList[i]);
+         argList.Clear;
          raise;
       end;
    finally
@@ -8648,7 +8660,7 @@ begin
          try
             if Assigned(typ) then begin
                if not typ.IsCompatible(expr.typ) then
-                  expr:=WrapWithImplicitConversion(expr, typ);
+                  expr:=WrapWithImplicitConversion(expr, typ, FTok.HotPos);
             end else begin
                typ:=expr.typ;
                detachTyp:=(typ.Name='');
@@ -9176,7 +9188,7 @@ begin
 
          FMsgs.AddCompilerError(FTok.HotPos, CPE_TypeExpected);
          // keep compiling
-         Result:=FProg.TypVariant;
+         Result:=TAliasSymbol.Create(typeName, FProg.TypVariant);
 
       end;
 
@@ -10236,7 +10248,7 @@ begin
                               defaultExpr.Free;
                               defaultExpr:=nil;
                            end else if not Typ.IsCompatible(defaultExpr.Typ) then begin
-                              defaultExpr:=WrapWithImplicitConversion(defaultExpr, Typ);
+                              defaultExpr:=WrapWithImplicitConversion(defaultExpr, Typ, exprPos);
                               if defaultExpr.ClassType=TConvInvalidExpr then
                                  FreeAndNil(defaultExpr);
                            end;

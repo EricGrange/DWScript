@@ -376,7 +376,7 @@ var
    n: integer;
 begin
    FAssign.EvalNoResult(exec);
-   dyn := TScriptDynamicArray.Create(FTyp);
+   dyn := TScriptDynamicArray.CreateNew(FTyp);
    n := 0;
 
    while FStep.EvalAsBoolean(exec) do

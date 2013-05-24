@@ -907,7 +907,7 @@ begin
    str:=args.AsString[0];
    delim:=args.AsString[1];
 
-   dyn:=TScriptDynamicArray.Create((args.ExprBase[0] as TTypedExpr).Typ);
+   dyn:=TScriptDynamicArray.CreateNew((args.ExprBase[0] as TTypedExpr).Typ);
 
    if delim='' then begin
 

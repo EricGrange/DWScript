@@ -119,6 +119,34 @@ type
 
          property Count: Cardinal read GetCount;
    end;
+
+   TdwsTypeSymbolLLVMTypePair = record
+      TypeSymbol: TTypeSymbol;
+      LLVMType: PLLVMType;
+   end;
+
+   TdwsTypeSymbolLLVMTypeDictionary = class
+      private
+         FPairs: TSimpleList<TdwsTypeSymbolLLVMTypePair>;
+         function FindPairIndexForTypeSymbol(TypeSymbol: TTypeSymbol): Integer;
+         function FindPairIndexForLLVMType(LLVMType: PLLVMType): Integer;
+         function GetCount: Cardinal;
+      public
+         constructor Create;
+         destructor Destroy; override;
+
+         procedure LinkLLVMTypeToTypeSymbol(LLVMType: PLLVMType; TypeSymbol: TTypeSymbol);
+         procedure RemoveTypeSymbol(TypeSymbol: TTypeSymbol);
+         procedure RemoveLLVMType(LLVMType: PLLVMType);
+         procedure Clear;
+
+         function GetLLVMType(TypeSymbol: TTypeSymbol): PLLVMType;
+
+         function FindPairForTypeSymbol(TypeSymbol: TTypeSymbol): PLLVMType;
+         function FindPairForLLVMType(LLVMType: PLLVMType): TTypeSymbol;
+
+         property Count: Cardinal read GetCount;
+   end;
    {$ENDIF}
 
    TdwsLLVMBasicType = (btBool, btInt, btFloat);
@@ -184,11 +212,13 @@ type
          FIntType: TLLVMInt64Type;
          FFloatType: TLLVMDoubleType;
          FTargetData: TLLVMTargetData;
+         FAggregateLevel: Integer;
 
          {$IFNDEF LLVM_TAG}
          FdwsLLVMDict: TdwsExpressionLLVMValueDictionary;
          FdwsLLVMDataSymbolDict: TdwsDataSymbolLLVMValueDictionary;
          FdwsLLVMFuncSymbolDict: TdwsFunctionSymbolLLVMValueDictionary;
+         FdwsLLVMTypeSymbolDict: TdwsTypeSymbolLLVMTypeDictionary;
          {$ENDIF}
 
          FVerifyModule: Boolean;
@@ -199,8 +229,6 @@ type
       protected
          procedure DoCompileFuncSymbol(func: TFuncSymbol;
             deAnonymize: Boolean = False); override;
-         procedure LinkLLVMValueToDataSymbol(LLVMValue: PLLVMValue;
-            DataSymbol: TDataSymbol); inline;
       public
          constructor Create; override;
          destructor Destroy; override;
@@ -273,6 +301,7 @@ type
    TLLVMVarExpr = class (TLLVMExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
+
    TLLVMRecordExpr = class (TLLVMExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -443,6 +472,9 @@ type
    TLLVMAbsFloatExpr = class (TLLVMFuncBaseExpr)
       procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
    end;
+   TLLVMTanFloatExpr = class (TLLVMFuncBaseExpr)
+      procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
+   end;
 
    TLLVMPowFloatExpr = class (TLLVMFuncBaseExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
@@ -493,6 +525,8 @@ type
          function GetFloatType: TLLVMDoubleType; inline;
          function GetIntType: TLLVMInt64Type; inline;
          function GetModule: TLLVMModule; inline;
+         function GetAggregateLevel: Integer; inline;
+         procedure SetAggregateLevel(const Value: Integer); inline;
       public
          function TypeSymbolToLLVMType(TypeSymbol: TTypeSymbol): PLLVMType; inline;
          function DataSymbolToLLVMValue(DataSymbol: TDataSymbol): PLLVMValue; inline;
@@ -506,6 +540,7 @@ type
          property Module: TLLVMModule read GetModule;
          property Builder: TLLVMBuilder read GetBuilder;
 
+         property AggregateLevel: Integer read GetAggregateLevel write SetAggregateLevel;
          property BoolType: TLLVMInt1Type read GetBoolType;
          property IntType: TLLVMInt64Type read GetIntType;
          property FloatType: TLLVMDoubleType read GetFloatType;
@@ -515,6 +550,11 @@ type
 // ------------------
 // ------------------ TdwsExpressionLLVMValueDictionary ------------------
 // ------------------
+
+function TCodeGenHelper.GetAggregateLevel: Integer;
+begin
+   Result := TdwsLLVMCodeGen(Self).FAggregateLevel;
+end;
 
 function TCodeGenHelper.GetBoolType: TLLVMInt1Type;
 begin
@@ -566,6 +606,11 @@ begin
    TdwsLLVMCodeGen(Self).FdwsLLVMFuncSymbolDict.LinkLLVMValueToFunctionSymbol(
       LLVMValue, FuncSymbol);
 {$ENDIF}
+end;
+
+procedure TCodeGenHelper.SetAggregateLevel(const Value: Integer);
+begin
+   TdwsLLVMCodeGen(Self).FAggregateLevel := Value;
 end;
 
 procedure TCodeGenHelper.LinkLLVMValueToExpression(LLVMValue: PLLVMValue;
@@ -982,6 +1027,129 @@ begin
    if pairIndex >= 0 then
       FPairs.Extract(pairIndex);
 end;
+
+
+// ------------------
+// ------------------ TdwsTypeSymbolLLVMTypeDictionary ------------------
+// ------------------
+
+constructor TdwsTypeSymbolLLVMTypeDictionary.Create;
+begin
+   FPairs := TSimpleList<TdwsTypeSymbolLLVMTypePair>.Create;
+end;
+
+destructor TdwsTypeSymbolLLVMTypeDictionary.Destroy;
+begin
+   FPairs.Free;
+   inherited;
+end;
+
+procedure TdwsTypeSymbolLLVMTypeDictionary.Clear;
+begin
+   FPairs.Clear;
+end;
+
+function TdwsTypeSymbolLLVMTypeDictionary.FindPairForTypeSymbol(
+   TypeSymbol: TTypeSymbol): PLLVMType;
+var
+   pairIndex : Integer;
+begin
+   Result := nil;
+   for pairIndex := 0 to FPairs.Count - 1 do
+      if FPairs[pairIndex].TypeSymbol = TypeSymbol then
+         Exit(FPairs[pairIndex].LLVMType);
+end;
+
+function TdwsTypeSymbolLLVMTypeDictionary.FindPairForLLVMType(
+   LLVMType: PLLVMType): TTypeSymbol;
+var
+   pairIndex : Integer;
+begin
+   Result := nil;
+   for pairIndex := 0 to FPairs.Count - 1 do
+      if FPairs[pairIndex].LLVMType = LLVMType then
+         Exit(FPairs[pairIndex].TypeSymbol);
+end;
+
+function TdwsTypeSymbolLLVMTypeDictionary.FindPairIndexForTypeSymbol(
+  TypeSymbol: TTypeSymbol): Integer;
+var
+   pairIndex : Integer;
+begin
+   Result := -1;
+   for pairIndex := 0 to FPairs.Count - 1 do
+      if FPairs[pairIndex].TypeSymbol = TypeSymbol then
+         Exit(pairIndex);
+end;
+
+function TdwsTypeSymbolLLVMTypeDictionary.FindPairIndexForLLVMType(
+  LLVMType: PLLVMType): Integer;
+var
+   pairIndex : Integer;
+begin
+   Result := -1;
+   for pairIndex := 0 to FPairs.Count - 1 do
+      if FPairs[pairIndex].LLVMType = LLVMType then
+         Exit(pairIndex);
+end;
+
+function TdwsTypeSymbolLLVMTypeDictionary.GetCount: Cardinal;
+begin
+   Result := FPairs.Count;
+end;
+
+function TdwsTypeSymbolLLVMTypeDictionary.GetLLVMType(
+  TypeSymbol: TTypeSymbol): PLLVMType;
+var
+   pairIndex : Integer;
+begin
+   Result := nil;
+   pairIndex := FindPairIndexForTypeSymbol(TypeSymbol);
+   if pairIndex >= 0 then
+      Result := FPairs.Items[pairIndex].LLVMType;
+end;
+
+procedure TdwsTypeSymbolLLVMTypeDictionary.LinkLLVMTypeToTypeSymbol(LLVMType: PLLVMType;
+   TypeSymbol: TTypeSymbol);
+var
+   objIndex : Integer;
+   pair : TdwsTypeSymbolLLVMTypePair;
+begin
+   objIndex := FindPairIndexForTypeSymbol(TypeSymbol);
+   if objIndex >= 0 then
+   begin
+      pair := FPairs[objIndex];
+      Assert(pair.TypeSymbol = TypeSymbol);
+      pair.LLVMType := LLVMType;
+      FPairs[objIndex] := pair;
+      Exit;
+   end;
+
+   pair.TypeSymbol := TypeSymbol;
+   pair.LLVMType := LLVMType;
+   FPairs.Add(pair);
+end;
+
+procedure TdwsTypeSymbolLLVMTypeDictionary.RemoveTypeSymbol(TypeSymbol: TTypeSymbol);
+var
+   pairIndex : Integer;
+begin
+   pairIndex := FindPairIndexForTypeSymbol(TypeSymbol);
+
+   if pairIndex >= 0 then
+      FPairs.Extract(pairIndex);
+end;
+
+procedure TdwsTypeSymbolLLVMTypeDictionary.RemoveLLVMType(
+   LLVMType: PLLVMType);
+var
+   pairIndex : Integer;
+begin
+   pairIndex := FindPairIndexForLLVMType(LLVMType);
+
+   if pairIndex >= 0 then
+      FPairs.Extract(pairIndex);
+end;
 {$ENDIF}
 
 
@@ -1121,6 +1289,7 @@ begin
    FdwsLLVMDict := TdwsExpressionLLVMValueDictionary.Create;
    FdwsLLVMDataSymbolDict := TdwsDataSymbolLLVMValueDictionary.Create;
    FdwsLLVMFuncSymbolDict := TdwsFunctionSymbolLLVMValueDictionary.Create;
+   FdwsLLVMTypeSymbolDict := TdwsTypeSymbolLLVMTypeDictionary.Create;
 {$ENDIF}
 end;
 
@@ -1129,6 +1298,7 @@ end;
 destructor TdwsLLVMCodeGen.Destroy;
 begin
 {$IFNDEF LLVM_TAG}
+   FreeAndNil(FdwsLLVMTypeSymbolDict);
    FreeAndNil(FdwsLLVMFuncSymbolDict);
    FreeAndNil(FdwsLLVMDataSymbolDict);
    FreeAndNil(FdwsLLVMDict);
@@ -1341,18 +1511,6 @@ begin
    inherited;
 end;
 
-// LinkLLVMValueToDataSymbol
-//
-procedure TdwsLLVMCodeGen.LinkLLVMValueToDataSymbol(LLVMValue: PLLVMValue;
-   DataSymbol: TDataSymbol);
-begin
-{$IFDEF LLVM_TAG}
-      DataSymbol.LLVMValue := LLVMValue;
-{$ELSE}
-      FdwsLLVMDataSymbolDict.LinkLLVMValueToDataSymbol(LLVMValue, DataSymbol);
-{$ENDIF}
-end;
-
 // Dump
 //
 procedure TdwsLLVMCodeGen.Dump;
@@ -1506,10 +1664,11 @@ function TdwsLLVMCodeGen.TypeSymbolToLLVMType(
 var
   index: Integer;
   recSym: TRecordSymbol;
+  classSym: TClassSymbol;
   arrSym: TStaticArraySymbol;
   arrayType: TLLVMArrayType;
   structType: TLLVMStructType;
-  str: AnsiString;
+  name: AnsiString;
   ElementTypes: array of PLLVMType;
 begin
    // convert DWS types to LLVM types
@@ -1529,22 +1688,51 @@ begin
    if TypeSymbol is TStaticArraySymbol then
    begin
       arrSym := TStaticArraySymbol(TypeSymbol);
-      str := AnsiString(arrSym.Name);
-      arrayType := TLLVMArrayType.Create(TypeSymbolToLLVMType(arrSym.Typ), arrSym.ElementCount);
-      Result := arrayType.Handle;
+      Result := FdwsLLVMTypeSymbolDict.GetLLVMType(arrSym);
+      if not Assigned(Result) then
+      begin
+         name := AnsiString(arrSym.Name);
+         arrayType := TLLVMArrayType.Create(TypeSymbolToLLVMType(arrSym.Typ), arrSym.ElementCount);
+         Result := arrayType.Handle;
+         FdwsLLVMTypeSymbolDict.LinkLLVMTypeToTypeSymbol(Result, arrSym);
+      end;
    end
    else
    if TypeSymbol is TRecordSymbol then
    begin
       recSym := TRecordSymbol(TypeSymbol);
-      str := AnsiString(recSym.Name);
-      structType := TLLVMStructType.Create(FContext, PAnsiChar(str));
-      SetLength(ElementTypes, recSym.Members.Count);
-      for index := 0 to Length(ElementTypes) - 1 do
-        ElementTypes[index] := TypeSymbolToLLVMType(recSym.Members[index].Typ);
+      Result := FdwsLLVMTypeSymbolDict.GetLLVMType(recSym);
+      if not Assigned(Result) then
+      begin
+         name := AnsiString(recSym.Name);
+         structType := TLLVMStructType.Create(FContext, PAnsiChar(name));
+         SetLength(ElementTypes, recSym.Members.Count);
+         for index := 0 to Length(ElementTypes) - 1 do
+           ElementTypes[index] := TypeSymbolToLLVMType(recSym.Members[index].Typ);
 
-      structType.SetBody(@ElementTypes[0], Length(ElementTypes));
-      Result := structType.Handle;
+         structType.SetBody(@ElementTypes[0], Length(ElementTypes));
+         Result := structType.Handle;
+         FdwsLLVMTypeSymbolDict.LinkLLVMTypeToTypeSymbol(Result, recSym);
+      end;
+   end
+   else
+   if TypeSymbol is TClassSymbol then
+   begin
+      // yet todo
+      classSym := TClassSymbol(TypeSymbol);
+      Result := FdwsLLVMTypeSymbolDict.GetLLVMType(classSym);
+      if not Assigned(Result) then
+      begin
+         name := AnsiString(classSym.Name);
+         structType := TLLVMStructType.Create(FContext, PAnsiChar(name));
+         SetLength(ElementTypes, classSym.Members.Count);
+         for index := 0 to Length(ElementTypes) - 1 do
+           ElementTypes[index] := TypeSymbolToLLVMType(classSym.Members[index].Typ);
+
+         structType.SetBody(@ElementTypes[0], Length(ElementTypes));
+         Result := structType.Handle;
+         FdwsLLVMTypeSymbolDict.LinkLLVMTypeToTypeSymbol(Result, classSym);
+      end;
    end
    else
       Result := nil;
@@ -1655,6 +1843,7 @@ begin
    for index := 0 to argCount - 1 do
    begin
       argTypes[index] := TypeSymbolToLLVMType(Params.Symbols[index].Typ);
+      Assert(Assigned(argTypes[index]));
 
       // eventually use pointer in case of a 'by reference' parameter
       if params.Symbols[index] is TByRefParamSymbol then
@@ -1846,17 +2035,18 @@ procedure TLLVMAssignExpr.CodeGen(codeGen: TdwsCodeGen; expr: TExprBase);
 var
    cg : TdwsLLVMCodeGen;
    e : TAssignExpr;
-
+   eVar : TVarExpr;
    eDest : TDataExpr;
    eArr : TStaticArrayExpr;
-   vExpr, vSym, vRec : PLLVMValue;
-   vExprType : PLLVMType;
-   sym : TDataSymbol;
    eRec : TRecordExpr;
-   varExpr : TVarExpr;
-   varName : AnsiString;
+   sym : TDataSymbol;
+   index : Integer;
+   valExpr, valSym, valRec, valTerm : PLLVMValue;
+   valIndexList: TSimpleList<PLLVMValue>;
+   valIndices: array of PLLVMValue;
+   valExprType : PLLVMType;
    allocBB , currentBB : PLLVMBasicBlock;
-   term : PLLVMValue;
+   nameVar : AnsiString;
 begin
    e := TAssignExpr(expr);
    cg := TdwsLLVMCodeGen(codeGen);
@@ -1864,7 +2054,7 @@ begin
    if not (e.Left is TDataExpr) then
       raise ECodeGenException.Create(RStrNotSupported);
 
-   vExpr := GetLLVMValue(cg, e);
+   valExpr := GetLLVMValue(cg, e);
 
    eDest := TDataExpr(e.Left);
    while eDest is TRecordExpr do
@@ -1872,28 +2062,54 @@ begin
       eRec := TRecordExpr(eDest);
 
       // get LLVMValue for expression
-      vRec := codeGen.ExpressionToLLVMValue(eRec.BaseExpr);
-      LLVMBuildInsertValue(cg.Builder.Handle, vRec, vExpr, eRec.MemberOffset, '');
+      valRec := codeGen.ExpressionToLLVMValue(eRec.BaseExpr);
+      LLVMBuildInsertValue(cg.Builder.Handle, valRec, valExpr, eRec.MemberOffset, '');
 
       eDest := eRec.BaseExpr;
-      vExpr := vRec;
+      valExpr := valRec;
+   end;
+
+   if eDest is TStaticArrayExpr then
+   begin
+      eArr := TStaticArrayExpr(eDest);
+
+      valIndexList := TSimpleList<PLLVMValue>.Create;
+      try
+         repeat
+            if eDest is TStaticArrayExpr then
+               eArr := TStaticArrayExpr(eDest);
+
+            codeGen.CompileNoWrap(eArr.IndexExpr);
+            valIndexList.Add(codeGen.ExpressionToLLVMValue(eArr.IndexExpr));
+
+            eDest := eArr.BaseExpr;
+         until (eDest is TVarExpr);
+
+         SetLength(valIndices, valIndexList.Count + 1);
+         valIndices[0] := LLVMConstNull(codeGen.IntType.Handle);
+         for Index := 1 to valIndexList.Count do
+            valIndices[Index] := valIndexList.Items[Index - 1];
+
+      finally
+         valIndexList.Free;
+      end;
    end;
 
    // check if left expression is a TVarExpr (trivial case)
    if eDest is TVarExpr then
    begin
       // get TVarExpr and TDataSymbol
-      varExpr := TVarExpr(eDest);
-      sym := varExpr.DataSym;
+      eVar := TVarExpr(eDest);
+      sym := eVar.DataSym;
       if not Assigned(sym) then
-         raise ECodeGenUnsupportedSymbol.CreateFmt(RStrVarNotFound, [varExpr.StackAddr]);
+         raise ECodeGenUnsupportedSymbol.CreateFmt(RStrVarNotFound, [eVar.StackAddr]);
 
       // get LLVMValue for expression
-      varName := AnsiString(sym.Name);
+      nameVar := AnsiString(sym.Name);
 
       // get LLVMValue pointer
-      vSym := codeGen.DataSymbolToLLVMValue(sym);
-      if not Assigned(vSym) then
+      valSym := codeGen.DataSymbolToLLVMValue(sym);
+      if not Assigned(valSym) then
       begin
          // get current basic block
          currentBB := cg.Builder.GetInsertBlock;
@@ -1901,62 +2117,26 @@ begin
          // get entry for current basic block
          allocBB := LLVMGetEntryBasicBlock(LLVMGetBasicBlockParent(currentBB));
 
-         term := LLVMGetBasicBlockTerminator(allocBB);
-         if Assigned(term) then
-            LLVMPositionBuilder(cg.FBuilder.Handle, allocBB, term)
+         valTerm := LLVMGetBasicBlockTerminator(allocBB);
+         if Assigned(valTerm) then
+            LLVMPositionBuilder(cg.Builder.Handle, allocBB, valTerm)
          else
-            cg.FBuilder.PositionBuilderAtEnd(allocBB);
+            cg.Builder.PositionBuilderAtEnd(allocBB);
 
          // allocate memory for assign
-         vExprType := LLVMTypeOf(vExpr);
-         vSym := LLVMBuildAlloca(cg.Builder.Handle, vExprType, PAnsiChar(varName));
+         valExprType := LLVMTypeOf(valExpr);
+         valSym := LLVMBuildAlloca(cg.Builder.Handle, valExprType, PAnsiChar(nameVar));
          cg.Builder.PositionBuilderAtEnd(currentBB);
-         codeGen.LinkLLVMValueToDataSymbol(vSym, sym);
+         codeGen.LinkLLVMValueToDataSymbol(valSym, sym);
       end;
 
-      LLVMBuildStore(cg.Builder.Handle, vExpr, vSym);
-   end
-   else
-   if eDest is TStaticArrayExpr then
-   begin
-      eArr := TStaticArrayExpr(eDest);
-
-      codeGen.CompileNoWrap(eArr.IndexExpr);
-
-      if (eArr.BaseExpr is TVarExpr) then
+      if Length(valIndices) > 0 then
       begin
-         varExpr := TVarExpr(eArr.BaseExpr);
+         valSym := LLVMBuildGEP(TdwsLLVMCodeGen(codeGen).Builder.Handle,
+            valSym, @valIndices[0], Length(valIndices), PAnsiChar(nameVar));
+      end;
 
-         sym := varExpr.DataSym;
-(*
-         symName := AnsiString(sym.Name);
-         if not Assigned(sym) then
-            raise ECodeGenUnsupportedSymbol.CreateFmt(RStrVarNotFound, [eVar.StackAddr]);
-
-         vIndices[0] := LLVMConstNull(codeGen.IntType.Handle);
-         vIndices[1] := codeGen.ExpressionToLLVMValue(e.IndexExpr);
-
-         // load value from symbol and link to expression
-         vArrayPtr := codeGen.DataSymbolToLLVMValue(sym);
-
-         vO := LLVMBuildGEP(TdwsLLVMCodeGen(codeGen).Builder.Handle, vArrayPtr,
-            @vIndices[0], 2, PAnsiChar(symName));
-
-         vO := LLVMBuildLoad(codeGen.Builder.Handle, vO, PAnsiChar(symName));
-
-         if not Assigned(vArrayPtr) then
-            raise ECodeGenException.CreateFmt(RStrValueIsUndefined, [sym.Name]);
-
-         codeGen.LinkLLVMValueToExpression(vO, expr);
-*)
-      end
-      else
-      begin
-         raise ECodeGenException.Create(RStrNotImplemented);
-
-         codeGen.Compile(eArr.BaseExpr);
-      end
-
+      LLVMBuildStore(cg.Builder.Handle, valExpr, valSym);
    end
    else
       raise ECodeGenException.Create(RStrNotSupported);
@@ -2049,7 +2229,7 @@ var
    cg : TdwsLLVMCodeGen;
    e : TVarExpr;
    sym : TDataSymbol;
-   valTemp, valOut : PLLVMValue;
+   valOut : PLLVMValue;
    typeOut : PLLVMType;
    nameSym : AnsiString;
 begin
@@ -2061,19 +2241,22 @@ begin
       raise ECodeGenUnsupportedSymbol.CreateFmt(RStrVarNotFound, [e.StackAddr]);
 
    // load value from symbol and link to expression
-   valTemp := cg.DataSymbolToLLVMValue(sym);
+   valOut := cg.DataSymbolToLLVMValue(sym);
 
-   if not Assigned(valTemp) then
+   if not Assigned(valOut) then
       raise ECodeGenException.CreateFmt(RStrValueIsUndefined, [sym.Name]);
 
    nameSym := AnsiString(sym.Name);
 
    // get LLVMValue type and check if type is an integer (used as internal counter)
-   typeOut := LLVMTypeOf(valTemp);
+   typeOut := LLVMTypeOf(valOut);
    if (LLVMGetTypeKind(typeOut) = LLVMIntegerTypeKind) then
-      valOut := LLVMBuildSExt(cg.Builder.Handle, valTemp, cg.IntType.Handle, PAnsiChar(nameSym))
+      valOut := LLVMBuildSExt(cg.Builder.Handle, valOut, cg.IntType.Handle, PAnsiChar(nameSym))
    else
-      valOut := LLVMBuildLoad(cg.Builder.Handle, valTemp, PAnsiChar(nameSym));
+   begin
+      if (e.BaseType is TBaseSymbol) or (e.BaseType is TRecordSymbol) then
+         valOut := LLVMBuildLoad(cg.Builder.Handle, valOut, PAnsiChar(nameSym));
+   end;
    cg.LinkLLVMValueToExpression(valOut, expr);
 end;
 
@@ -2113,9 +2296,6 @@ procedure TLLVMStaticArrayExpr.CodeGen(codeGen: TdwsCodeGen; expr: TExprBase);
 var
    cg : TdwsLLVMCodeGen;
    e : TStaticArrayExpr;
-   eVar : TVarExpr;
-   sym : TDataSymbol;
-   nameSym: AnsiString;
    valIndices : array [0..1] of PLLVMValue;
    valOut, valArrayPtr: PLLVMValue;
 begin
@@ -2124,37 +2304,23 @@ begin
 
    cg.CompileNoWrap(e.IndexExpr);
 
-   if (e.BaseExpr is TVarExpr) then
-   begin
-      eVar := TVarExpr(e.BaseExpr);
+   valIndices[0] := LLVMConstNull(cg.IntType.Handle);
+   valIndices[1] := cg.ExpressionToLLVMValue(e.IndexExpr);
 
-      sym := eVar.DataSym;
-      nameSym := AnsiString(sym.Name);
-      if not Assigned(sym) then
-         raise ECodeGenUnsupportedSymbol.CreateFmt(RStrVarNotFound, [eVar.StackAddr]);
+   // compile base expression to LLVM pointer
+   cg.CompileNoWrap(e.BaseExpr);
+   valArrayPtr := cg.ExpressionToLLVMValue(e.BaseExpr);
 
-      valIndices[0] := LLVMConstNull(cg.IntType.Handle);
-      valIndices[1] := cg.ExpressionToLLVMValue(e.IndexExpr);
+   // calculate actual address
+   valOut := LLVMBuildGEP(cg.Builder.Handle, valArrayPtr,
+      @valIndices[0], 2, '');
 
-      // load value from symbol and link to expression
-      valArrayPtr := cg.DataSymbolToLLVMValue(sym);
+   // eventually dereferentiate
+   if (e.Typ is TBaseSymbol) or (e.BaseType is TRecordSymbol) then
+      valOut := LLVMBuildLoad(cg.Builder.Handle, valOut, '');
 
-      valOut := LLVMBuildGEP(cg.Builder.Handle, valArrayPtr,
-         @valIndices[0], 2, PAnsiChar(nameSym));
-
-      valOut := LLVMBuildLoad(cg.Builder.Handle, valOut, PAnsiChar(nameSym));
-
-      if not Assigned(valArrayPtr) then
-         raise ECodeGenException.CreateFmt(RStrValueIsUndefined, [sym.Name]);
-
-      cg.LinkLLVMValueToExpression(valOut, expr);
-   end
-   else
-   begin
-      raise ECodeGenException.Create(RStrNotImplemented);
-
-      codeGen.Compile(e.BaseExpr);
-   end
+   // assign output value to expression
+   cg.LinkLLVMValueToExpression(valOut, expr);
 end;
 
 
@@ -2239,7 +2405,7 @@ begin
    codeGen.CompileNoWrap(e.Expr);
    valL := cg.ExpressionToLLVMValue(e.Expr);
 
-   // calculate shift argument
+   // build shift argument
    valR := LLVMConstInt(cg.IntType.Handle, 1 + e.Shift, True);
 
    // some sanity checks
@@ -2247,7 +2413,7 @@ begin
    Assert(Assigned(valR));
 
    // perform shift
-   valOut := LLVMBuildShl(cg.FBuilder.Handle, valL, valR, '');
+   valOut := LLVMBuildShl(cg.Builder.Handle, valL, valR, '');
    codeGen.LinkLLVMValueToExpression(valOut, expr);
 end;
 
@@ -2362,7 +2528,7 @@ begin
    cg.CompileNoWrap(e.Expr);
    valIn := TdwsLLVMCodeGen(cg).ExpressionToLLVMValue(e.Expr);
 
-   // calculate output value
+   // build output value
    valOut := LLVMBuildNot(TdwsLLVMCodeGen(cg).FBuilder.Handle, valIn, '');
    cg.LinkLLVMValueToExpression(valOut, expr);
 end;
@@ -2397,8 +2563,8 @@ begin
    cg.CompileNoWrap(e.Expr);
    valIn := cg.ExpressionToLLVMValue(e.Expr);
 
-   // calculate output value
-   valOut := LLVMBuildBinOp(cg.FBuilder.Handle, CMulOps[FIsInteger], valIn, valIn, '');
+   // build output value
+   valOut := LLVMBuildBinOp(cg.Builder.Handle, CMulOps[FIsInteger], valIn, valIn, '');
    codeGen.LinkLLVMValueToExpression(valOut, expr);
 end;
 
@@ -2420,11 +2586,11 @@ begin
    cg.CompileNoWrap(e.Expr);
    valIn := cg.ExpressionToLLVMValue(e.Expr);
 
-   // calculate output value
+   // build output value
    if FIsInteger then
-      valOut := LLVMBuildNeg(cg.FBuilder.Handle, valIn, '')
+      valOut := LLVMBuildNeg(cg.Builder.Handle, valIn, '')
    else
-      valOut := LLVMBuildFNeg(cg.FBuilder.Handle, valIn, '');
+      valOut := LLVMBuildFNeg(cg.Builder.Handle, valIn, '');
    cg.LinkLLVMValueToExpression(valOut, expr);
 end;
 
@@ -2528,9 +2694,9 @@ begin
    Assert(Assigned(valR));
    Assert(LLVMGetTypeKind(LLVMTypeOf(valL)) = LLVMIntegerTypeKind);
 
-   // calculate out value
-   valOut := LLVMBuildICmp(cg.FBuilder.Handle, LLVMIntEQ, valL, valR, '');
-   valOut := LLVMBuildNot(cg.FBuilder.Handle, valOut, '');
+   // build out value
+   valOut := LLVMBuildICmp(cg.Builder.Handle, LLVMIntEQ, valL, valR, '');
+   valOut := LLVMBuildNot(cg.Builder.Handle, valOut, '');
    codeGen.LinkLLVMValueToExpression(valOut, expr);
 end;
 
@@ -2566,8 +2732,8 @@ begin
    Assert(Assigned(valR));
    Assert(LLVMGetTypeKind(LLVMTypeOf(valL)) = LLVMGetTypeKind(LLVMTypeOf(valR)));
 
-   // calculate out value
-   valOut := LLVMBuildICmp(cg.FBuilder.Handle, FPredicate, valL, valR, '');
+   // build out value
+   valOut := LLVMBuildICmp(cg.Builder.Handle, FPredicate, valL, valR, '');
    cg.LinkLLVMValueToExpression(valOut, expr);
 end;
 
@@ -2603,8 +2769,8 @@ begin
    Assert(Assigned(valL));
    Assert(Assigned(valR));
 
-   // calculate out value
-   valOut := LLVMBuildFCmp(cg.FBuilder.Handle, FPredicate, valL, valR, '');
+   // build out value
+   valOut := LLVMBuildFCmp(cg.Builder.Handle, FPredicate, valL, valR, '');
    cg.LinkLLVMValueToExpression(valOut, expr);
 end;
 
@@ -2618,29 +2784,29 @@ procedure TLLVMIfThenElseValueExpr.CodeGen(codeGen: TdwsCodeGen;
 var
    cg : TdwsLLVMCodeGen;
    e : TIfThenElseValueExpr;
-   bbList: array [0 .. 3] of PLLVMBasicBlock;
-   vCond, vTrue, vFalse, vPhi: PLLVMValue;
+   bbList : array [0 .. 3] of PLLVMBasicBlock;
+   valCond, valTrue, valFalse, valPhi : PLLVMValue;
 begin
-   cg := TdwsLLVMCodeGen(codeGen);;
+   cg := TdwsLLVMCodeGen(codeGen);
    e := TIfThenElseValueExpr(expr);
 
    // generate code for condition
    cg.CompileNoWrap(e.CondExpr);
-   vCond := codeGen.ExpressionToLLVMValue(e.CondExpr);
+   valCond := cg.ExpressionToLLVMValue(e.CondExpr);
 
    if (e.TrueExpr is TConstExpr) and (e.FalseExpr is TConstExpr) then
    begin
       cg.CompileNoWrap(e.TrueExpr);
-      vTrue :=TdwsLLVMCodeGen(codeGen).ExpressionToLLVMValue(e.TrueExpr);
+      valTrue :=cg.ExpressionToLLVMValue(e.TrueExpr);
       cg.CompileNoWrap(e.FalseExpr);
-      vFalse :=TdwsLLVMCodeGen(codeGen).ExpressionToLLVMValue(e.FalseExpr);
-      vPhi := LLVMBuildSelect(cg.FBuilder.Handle, vCond, vTrue, vFalse, '');
-      codeGen.LinkLLVMValueToExpression(vPhi, expr);
+      valFalse :=cg.ExpressionToLLVMValue(e.FalseExpr);
+      valPhi := LLVMBuildSelect(cg.Builder.Handle, valCond, valTrue, valFalse, '');
+      codeGen.LinkLLVMValueToExpression(valPhi, expr);
    end
    else
    begin
       // get, build and position basic blocks
-      bbList[0] := LLVMGetInsertBlock(cg.FBuilder.Handle);
+      bbList[0] := LLVMGetInsertBlock(cg.Builder.Handle);
       bbList[1] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
          bbList[0], 'then');
       LLVMMoveBasicBlockAfter(bbList[1], bbList[0]);
@@ -2652,27 +2818,27 @@ begin
       LLVMMoveBasicBlockAfter(bbList[3], bbList[2]);
 
       // build conditional branch (eventually swap blocks in case of a not condition)
-      LLVMBuildCondBr(cg.FBuilder.Handle, vCond, bbList[1], bbList[2]);
+      LLVMBuildCondBr(cg.Builder.Handle, valCond, bbList[1], bbList[2]);
 
       // locate & compile 'then' block
-      cg.FBuilder.PositionBuilderAtEnd(bbList[1]);
+      cg.Builder.PositionBuilderAtEnd(bbList[1]);
       codeGen.Compile(e.TrueExpr);
-      vTrue :=TdwsLLVMCodeGen(codeGen).ExpressionToLLVMValue(e.TrueExpr);
-      LLVMBuildBr(cg.FBuilder.Handle, bbList[3]);
+      valTrue :=cg.ExpressionToLLVMValue(e.TrueExpr);
+      LLVMBuildBr(cg.Builder.Handle, bbList[3]);
 
       // locate & compile 'else' block
-      cg.FBuilder.PositionBuilderAtEnd(bbList[2]);
+      cg.Builder.PositionBuilderAtEnd(bbList[2]);
       codeGen.Compile(e.FalseExpr);
-      vFalse := TdwsLLVMCodeGen(codeGen).ExpressionToLLVMValue(e.FalseExpr);
-      LLVMBuildBr(cg.FBuilder.Handle, bbList[3]);
+      valFalse := cg.ExpressionToLLVMValue(e.FalseExpr);
+      LLVMBuildBr(cg.Builder.Handle, bbList[3]);
 
       // locate final block
-      cg.FBuilder.PositionBuilderAtEnd(bbList[3]);
-      Assert(LLVMTypeOf(vTrue) = LLVMTypeOf(vFalse));
-      vPhi := LLVMBuildPhi(cg.FBuilder.Handle, LLVMTypeOf(vTrue), '');
-      LLVMAddIncoming(vPhi, @vTrue, @bbList[1], 1);
-      LLVMAddIncoming(vPhi, @vFalse, @bbList[2], 1);
-      codeGen.LinkLLVMValueToExpression(vPhi, expr);
+      cg.Builder.PositionBuilderAtEnd(bbList[3]);
+      Assert(LLVMTypeOf(valTrue) = LLVMTypeOf(valFalse));
+      valPhi := LLVMBuildPhi(cg.Builder.Handle, LLVMTypeOf(valTrue), '');
+      LLVMAddIncoming(valPhi, @valTrue, @bbList[1], 1);
+      LLVMAddIncoming(valPhi, @valFalse, @bbList[2], 1);
+      codeGen.LinkLLVMValueToExpression(valPhi, expr);
    end;
 end;
 
@@ -2684,19 +2850,22 @@ end;
 procedure TLLVMIfExpr.CodeGenCondition(codeGen: TdwsCodeGen;
   condExpr: TTypedExpr; out SwapBlocks: Boolean);
 var
-   vO: PLLVMValue;
+   cg : TdwsLLVMCodeGen;
+   valOut: PLLVMValue;
 begin
-   if (condExpr is TNotBoolExpr) then
+   cg := TdwsLLVMCodeGen(codeGen);
+
+   if condExpr is TNotBoolExpr then
    begin
       SwapBlocks := True;
-      codeGen.CompileNoWrap(TNotBoolExpr(condExpr).Expr);
-      vO := codeGen.ExpressionToLLVMValue(TNotBoolExpr(condExpr).Expr);
-      codeGen.LinkLLVMValueToExpression(vO, condExpr);
+      cg.CompileNoWrap(TNotBoolExpr(condExpr).Expr);
+      valOut := cg.ExpressionToLLVMValue(TNotBoolExpr(condExpr).Expr);
+      cg.LinkLLVMValueToExpression(valOut, condExpr);
    end
    else
    begin
       SwapBlocks := False;
-      codeGen.CompileNoWrap(condExpr);
+      cg.CompileNoWrap(condExpr);
    end;
 end;
 
@@ -2707,41 +2876,41 @@ end;
 
 procedure TLLVMIfThenExpr.CodeGen(codeGen: TdwsCodeGen; expr: TExprBase);
 var
-   cg: TdwsLLVMCodeGen;
-
+   cg : TdwsLLVMCodeGen;
    e : TIfThenExpr;
-   bbList: array [0 .. 2] of PLLVMBasicBlock;
-   vCond: PLLVMValue;
-   SwapBlocks: Boolean;
+
+   bbList : array [0 .. 2] of PLLVMBasicBlock;
+   valCond : PLLVMValue;
+   SwapBlocks : Boolean;
 begin
-   cg := TdwsLLVMCodeGen(codeGen);;
+   cg := TdwsLLVMCodeGen(codeGen);
    e := TIfThenExpr(expr);
 
    // generate code for condition
-   CodeGenCondition(codeGen, e.CondExpr, SwapBlocks);
-   vCond := codeGen.ExpressionToLLVMValue(e.CondExpr);
+   CodeGenCondition(cg, e.CondExpr, SwapBlocks);
+   valCond := cg.ExpressionToLLVMValue(e.CondExpr);
 
    // build basic blocks
-   bbList[0] := LLVMGetInsertBlock(cg.FBuilder.Handle);
-   bbList[1] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-      bbList[0], 'then');
+   bbList[0] := LLVMGetInsertBlock(cg.Builder.Handle);
+   bbList[1] := LLVMInsertBasicBlockInContext(cg.Context.Handle, bbList[0],
+      'then');
    LLVMMoveBasicBlockAfter(bbList[1], bbList[0]);
-   bbList[2] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-      bbList[1], 'cont');
+   bbList[2] := LLVMInsertBasicBlockInContext(cg.Context.Handle, bbList[1],
+      'cont');
    LLVMMoveBasicBlockAfter(bbList[2], bbList[1]);
 
    if SwapBlocks then
-      LLVMBuildCondBr(cg.FBuilder.Handle, vCond, bbList[2], bbList[1])
+      LLVMBuildCondBr(cg.Builder.Handle, valCond, bbList[2], bbList[1])
    else
-      LLVMBuildCondBr(cg.FBuilder.Handle, vCond, bbList[1], bbList[2]);
+      LLVMBuildCondBr(cg.Builder.Handle, valCond, bbList[1], bbList[2]);
 
-   cg.FBuilder.PositionBuilderAtEnd(bbList[1]);
+   cg.Builder.PositionBuilderAtEnd(bbList[1]);
 
-   codeGen.Compile(e.ThenExpr);
+   cg.Compile(e.ThenExpr);
    if not e.ThenExpr.InterruptsFlow then
-      LLVMBuildBr(cg.FBuilder.Handle, bbList[2]);
+      LLVMBuildBr(cg.Builder.Handle, bbList[2]);
 
-   cg.FBuilder.PositionBuilderAtEnd(bbList[2]);
+   cg.Builder.PositionBuilderAtEnd(bbList[2]);
 end;
 
 function TLLVMIfThenExpr.SubExprIsSafeStatement(sub: TExprBase): Boolean;
@@ -2759,60 +2928,54 @@ end;
 
 procedure TLLVMIfThenElseExpr.CodeGen(codeGen: TdwsCodeGen; expr: TExprBase);
 var
-   cg: TdwsLLVMCodeGen;
-
+   cg : TdwsLLVMCodeGen;
    e : TIfThenElseExpr;
-   bbList: array [0 .. 3] of PLLVMBasicBlock;
-   vCond: PLLVMValue;
-   SwapBlocks: Boolean;
+   bbList : array [0 .. 3] of PLLVMBasicBlock;
+   valCond : PLLVMValue;
+   SwapBlocks : Boolean;
 begin
-   cg := TdwsLLVMCodeGen(codeGen);;
+   cg := TdwsLLVMCodeGen(codeGen);
    e := TIfThenElseExpr(expr);
 
    // generate code for condition
-   CodeGenCondition(codeGen, e.CondExpr, SwapBlocks);
-   vCond := codeGen.ExpressionToLLVMValue(e.CondExpr);
+   CodeGenCondition(cg, e.CondExpr, SwapBlocks);
+   valCond := cg.ExpressionToLLVMValue(e.CondExpr);
 
    // get, build and position basic blocks
-   bbList[0] := LLVMGetInsertBlock(cg.FBuilder.Handle);
-   bbList[1] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-      bbList[0], 'then');
+   bbList[0] := LLVMGetInsertBlock(cg.Builder.Handle);
+   bbList[1] := LLVMInsertBasicBlockInContext(cg.Context.Handle, bbList[0], 'then');
    LLVMMoveBasicBlockAfter(bbList[1], bbList[0]);
-   bbList[2] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-      bbList[1], 'else');
+   bbList[2] := LLVMInsertBasicBlockInContext(cg.Context.Handle, bbList[1], 'else');
    LLVMMoveBasicBlockAfter(bbList[2], bbList[1]);
-   bbList[3] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-      bbList[2], 'cont');
+   bbList[3] := LLVMInsertBasicBlockInContext(cg.Context.Handle, bbList[2], 'cont');
    LLVMMoveBasicBlockAfter(bbList[3], bbList[2]);
 
    // build conditional branch (eventually swap blocks in case of a not condition)
    if SwapBlocks then
-      LLVMBuildCondBr(cg.FBuilder.Handle, vCond, bbList[2], bbList[1])
+      LLVMBuildCondBr(cg.Builder.Handle, valCond, bbList[2], bbList[1])
    else
-      LLVMBuildCondBr(cg.FBuilder.Handle, vCond, bbList[1], bbList[2]);
+      LLVMBuildCondBr(cg.Builder.Handle, valCond, bbList[1], bbList[2]);
 
    // locate & compile 'then' block
-   cg.FBuilder.PositionBuilderAtEnd(bbList[1]);
-   codeGen.Compile(e.ThenExpr);
+   cg.Builder.PositionBuilderAtEnd(bbList[1]);
+   cg.Compile(e.ThenExpr);
    if not e.ThenExpr.InterruptsFlow then
-      LLVMBuildBr(cg.FBuilder.Handle, bbList[3]);
+      LLVMBuildBr(cg.Builder.Handle, bbList[3]);
 
    // locate & compile 'else' block
-   cg.FBuilder.PositionBuilderAtEnd(bbList[2]);
-   codeGen.Compile(e.ElseExpr);
+   cg.Builder.PositionBuilderAtEnd(bbList[2]);
+   cg.Compile(e.ElseExpr);
    if not e.ElseExpr.InterruptsFlow then
-      LLVMBuildBr(cg.FBuilder.Handle, bbList[3]);
+      LLVMBuildBr(cg.Builder.Handle, bbList[3]);
 
    // locate final block
-   cg.FBuilder.PositionBuilderAtEnd(bbList[3]);
+   cg.Builder.PositionBuilderAtEnd(bbList[3]);
 end;
 
 function TLLVMIfThenElseExpr.SubExprIsSafeStatement(sub: TExprBase): Boolean;
 begin
-   Result :=    (sub is TFuncExprBase)
-           or (sub is TNoResultWrapperExpr)
-           or (sub is TAssignExpr)
-           or (sub is TFlowControlExpr);
+   Result := (sub is TFuncExprBase) or (sub is TNoResultWrapperExpr)
+      or (sub is TAssignExpr) or (sub is TFlowControlExpr);
 end;
 
 
@@ -2822,117 +2985,118 @@ end;
 
 procedure TLLVMCaseExpr.CodeGen(codeGen: TdwsCodeGen; expr: TExprBase);
 var
-   e: TCaseExpr;
-   caseIndex: Integer;
-   rangeIndex: Integer;
-   cc : TCaseCondition;
-   vVal, vSwitch: PLLVMValue;
-   vCaseVal: PLLVMValue;
-   caseName: AnsiString;
-   caseValue: array [0 .. 1] of Int64;
-   bbCase: PLLVMBasicBlock;
-   bbList: array [0 .. 2] of PLLVMBasicBlock;
+   cg : TdwsLLVMCodeGen;
+   e : TCaseExpr;
+   caseIndex : Integer;
+   rangeIndex : Integer;
+   caseCond : TCaseCondition;
+   valValue, valSwitch : PLLVMValue;
+   valCaseVal : PLLVMValue;
+   nameCase : AnsiString;
+   caseValue : array [0 .. 1] of Int64;
+   bbCase : PLLVMBasicBlock;
+   bbList : array [0 .. 2] of PLLVMBasicBlock;
 begin
+   cg := TdwsLLVMCodeGen(codeGen);
    e := TCaseExpr(expr);
-   codeGen.CompileNoWrap(e.ValueExpr);
-   vVal := codeGen.ExpressionToLLVMValue(e.ValueExpr);
+
+   cg.CompileNoWrap(e.ValueExpr);
+   valValue := cg.ExpressionToLLVMValue(e.ValueExpr);
 
    // get, build and position basic blocks
-   bbList[0] := LLVMGetInsertBlock(codeGen.Builder.Handle);
-   bbList[1] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-     bbList[0], 'else');
+   bbList[0] := LLVMGetInsertBlock(cg.Builder.Handle);
+   bbList[1] := LLVMInsertBasicBlockInContext(cg.Context.Handle, bbList[0], 'else');
    LLVMMoveBasicBlockAfter(bbList[1], bbList[0]);
-   bbList[2] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-     bbList[1], 'cont');
+   bbList[2] := LLVMInsertBasicBlockInContext(cg.Context.Handle, bbList[1], 'cont');
    LLVMMoveBasicBlockAfter(bbList[2], bbList[1]);
 
    // build switch instruction
-   vSwitch := LLVMBuildSwitch(codeGen.Builder.Handle, vVal, bbList[1],
+   valSwitch := LLVMBuildSwitch(cg.Builder.Handle, valValue, bbList[1],
       e.CaseConditions.Count);
 
    for caseIndex := 0 to e.CaseConditions.Count - 1 do
    begin
-      cc := TCaseCondition(e.CaseConditions.List[caseIndex]);
-      if cc is TCompareCaseCondition then
+      caseCond := TCaseCondition(e.CaseConditions.List[caseIndex]);
+      if caseCond is TCompareCaseCondition then
       begin
-         if TCompareCaseCondition(cc).CompareExpr is TConstIntExpr then
+         if TCompareCaseCondition(caseCond).CompareExpr is TConstIntExpr then
          begin
             // transfer case value as LLVM value
-            caseValue[0] :=  TConstIntExpr(TCompareCaseCondition(cc).CompareExpr).Value;
-            vCaseVal := LLVMConstInt(codeGen.IntType.Handle, caseValue[0], True);
+            caseValue[0] :=  TConstIntExpr(TCompareCaseCondition(caseCond).CompareExpr).Value;
+            valCaseVal := LLVMConstInt(cg.IntType.Handle, caseValue[0], True);
          end
          else
             raise ECodeGenException.Create(RStrNotSupported);
 
          // get proper label
          if caseValue[0] < 0 then
-            caseName := 'case__' + AnsiString(IntToStr(-caseValue[0]))
+            nameCase := 'case__' + AnsiString(IntToStr(-caseValue[0]))
          else
-            caseName := 'case_' + AnsiString(IntToStr(caseValue[0]));
+            nameCase := 'case_' + AnsiString(IntToStr(caseValue[0]));
 
          // insert new case right before 'else' block and add!
-         bbCase := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-            bbList[1], PAnsiChar(caseName));
-         LLVMAddCase(vSwitch, vCaseVal, bbCase);
+         bbCase := LLVMInsertBasicBlockInContext(cg.Context.Handle,
+            bbList[1], PAnsiChar(nameCase));
+         LLVMAddCase(valSwitch, valCaseVal, bbCase);
 
          // locate current case
-         codeGen.Builder.PositionBuilderAtEnd(bbCase);
+         cg.Builder.PositionBuilderAtEnd(bbCase);
 
          // compile case
-         codeGen.Compile(TCompareCaseCondition(cc).TrueExpr);
+         cg.Compile(TCompareCaseCondition(caseCond).TrueExpr);
 
          // jump to 'cont' branch (= end of case expression)
-         LLVMBuildBr(codeGen.Builder.Handle, bbList[2]);
+         LLVMBuildBr(cg.Builder.Handle, bbList[2]);
       end
       else
-      if cc is TRangeCaseCondition then
+      if caseCond is TRangeCaseCondition then
       begin
          // get transfer values
-         if TRangeCaseCondition(cc).FromExpr is TConstIntExpr then
-            caseValue[0] :=  TConstIntExpr(TRangeCaseCondition(cc).FromExpr).Value
+         if TRangeCaseCondition(caseCond).FromExpr is TConstIntExpr then
+            caseValue[0] :=  TConstIntExpr(TRangeCaseCondition(caseCond).FromExpr).Value
          else
             raise ECodeGenException.Create(RStrNotSupported);
 
-         if TRangeCaseCondition(cc).ToExpr is TConstIntExpr then
-            caseValue[1] :=  TConstIntExpr(TRangeCaseCondition(cc).ToExpr).Value
+         if TRangeCaseCondition(caseCond).ToExpr is TConstIntExpr then
+            caseValue[1] :=  TConstIntExpr(TRangeCaseCondition(caseCond).ToExpr).Value
          else
             raise ECodeGenException.Create(RStrNotSupported);
 
          // get proper label (not that meaningful yet)
-         caseName := 'range';
+         nameCase := 'range';
 
          // insert new case right before 'else' block
-         bbCase := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-            bbList[1], PAnsiChar(caseName));
+         bbCase := LLVMInsertBasicBlockInContext(cg.Context.Handle,
+            bbList[1], PAnsiChar(nameCase));
 
          for rangeIndex := caseValue[0] to caseValue[1] do
          begin
-            vCaseVal := LLVMConstInt(codeGen.IntType.Handle, rangeIndex, True);
-            LLVMAddCase(vSwitch, vCaseVal, bbCase);
+            valCaseVal := LLVMConstInt(cg.IntType.Handle, rangeIndex, True);
+            LLVMAddCase(valSwitch, valCaseVal, bbCase);
          end;
 
          // locate current case
-         codeGen.Builder.PositionBuilderAtEnd(bbCase);
+         cg.Builder.PositionBuilderAtEnd(bbCase);
 
          // compile case
-         codeGen.Compile(TCompareCaseCondition(cc).TrueExpr);
+         cg.Compile(TCompareCaseCondition(caseCond).TrueExpr);
 
          // jump to 'cont' branch (= end of case expression)
-         LLVMBuildBr(codeGen.Builder.Handle, bbList[2]);
+         LLVMBuildBr(cg.Builder.Handle, bbList[2]);
       end
       else
          raise ECodeGenException.Create(RStrNotSupported);
    end;
 
    // locate 'else' branch
-   codeGen.Builder.PositionBuilderAtEnd(bbList[1]);
+   cg.Builder.PositionBuilderAtEnd(bbList[1]);
 
    // compile else
-   codeGen.Compile(e.ElseExpr);
+   cg.Compile(e.ElseExpr);
 
    // jump to & locate 'cont' branch (= end of case expression)
-   LLVMBuildBr(codeGen.Builder.Handle, bbList[2]);
-   codeGen.Builder.PositionBuilderAtEnd(bbList[2]);
+   LLVMBuildBr(cg.Builder.Handle, bbList[2]);
+   cg.Builder.PositionBuilderAtEnd(bbList[2]);
 end;
 
 
@@ -2942,18 +3106,18 @@ end;
 
 procedure TLLVMExitExpr.CodeGen(codeGen: TdwsCodeGen; expr: TExprBase);
 var
-   Fn: PLLVMValue;
-   BB: PLLVMBasicBlock;
-   vB: PLLVMValue;
+   valFunc : PLLVMValue;
+   valBlock : PLLVMValue;
+   BB : PLLVMBasicBlock;
 begin
-   Fn := LLVMGetBasicBlockParent(codeGen.Builder.GetInsertBlock);
+   valFunc := LLVMGetBasicBlockParent(codeGen.Builder.GetInsertBlock);
 
    // locate result basic block and branch if found, then exit
-   BB := LLVMGetFirstBasicBlock(Fn);
+   BB := LLVMGetFirstBasicBlock(valFunc);
    while Assigned(BB) do
    begin
-      vB := LLVMBasicBlockAsValue(BB);
-      if LLVMGetValueName(vB) = 'result' then
+      valBlock := LLVMBasicBlockAsValue(BB);
+      if LLVMGetValueName(valBlock) = 'result' then
       begin
          LLVMBuildBr(codeGen.Builder.Handle, BB);
          Exit;
@@ -2972,13 +3136,13 @@ end;
 
 procedure TLLVMExitValueExpr.CodeGen(codeGen: TdwsCodeGen; expr: TExprBase);
 var
-   e: TExitValueExpr;
-   vO: PLLVMValue;
+   e : TExitValueExpr;
+   valOut : PLLVMValue;
 begin
    e := TExitValueExpr(expr);
    codeGen.Compile(e.AssignExpr);
-   vO := codeGen.ExpressionToLLVMValue(e.AssignExpr);
-   LLVMBuildRet(codeGen.Builder.Handle, vO);
+   valOut := codeGen.ExpressionToLLVMValue(e.AssignExpr);
+   LLVMBuildRet(codeGen.Builder.Handle, valOut);
 end;
 
 
@@ -2993,22 +3157,20 @@ end;
 
 procedure TLLVMForExpr.CodeGen(codeGen: TdwsCodeGen; expr: TExprBase);
 var
-   cg: TdwsLLVMCodeGen;
+   cg : TdwsLLVMCodeGen;
+   e : TForExpr;
 
-   e: TForExpr;
-
-   useInt32: Boolean;
-   bounds: array [0 .. 1] of Int64;
-   indexType: PLLVMType;
-   vPhi, vNext, vFrom, vTo, vStep : PLLVMValue;
-   loopVarSym: TDataSymbol;
-   valName: AnsiString;
-   bbList: array [0 .. 2] of PLLVMBasicBlock;
-   bbNext: PLLVMBasicBlock;
-   CondValue: PLLVMValue;
+   useInt32 : Boolean;
+   bounds : array [0 .. 1] of Int64;
+   indexType : PLLVMType;
+   valPhi, valNext, valFrom, valTo, valStep, valCond : PLLVMValue;
+   loopVarSym : TDataSymbol;
+   nameVal : AnsiString;
+   bbList : array [0 .. 2] of PLLVMBasicBlock;
+   bbNext : PLLVMBasicBlock;
 begin
-   e := TForExpr(expr);
    cg := TdwsLLVMCodeGen(codeGen);
+   e := TForExpr(expr);
 
    // check if we can use int32 instead of int64
    useInt32 := (e.FromExpr is TConstIntExpr) and (e.ToExpr is TConstIntExpr);
@@ -3032,8 +3194,8 @@ begin
    begin
       // simply transfer constant values to int32 LLVM values
       indexType := LLVMInt32TypeInContext(cg.Context.Handle);
-      vFrom := LLVMConstInt(indexType, bounds[0], True);
-      vTo := LLVMConstInt(indexType, bounds[1], True);
+      valFrom := LLVMConstInt(indexType, bounds[0], True);
+      valTo := LLVMConstInt(indexType, bounds[1], True);
    end
    else
    begin
@@ -3042,9 +3204,9 @@ begin
 
       // calculate 'from' and 'to'
       cg.CompileNoWrap(e.FromExpr);
-      vFrom := CodeGen.ExpressionToLLVMValue(e.FromExpr);
+      valFrom := cg.ExpressionToLLVMValue(e.FromExpr);
       cg.CompileNoWrap(e.ToExpr);
-      vTo := CodeGen.ExpressionToLLVMValue(e.ToExpr);
+      valTo := cg.ExpressionToLLVMValue(e.ToExpr);
    end;
 
    // check if for loop uses a dedicated step
@@ -3052,57 +3214,56 @@ begin
    begin
       // either transfer constant value or compile step value
       if useInt32 then
-         vStep := LLVMConstInt(indexType, TConstIntExpr(TForStepExpr(expr).StepExpr).Value, True)
+         valStep := LLVMConstInt(indexType, TConstIntExpr(TForStepExpr(expr).StepExpr).Value, True)
       else
       begin
          cg.CompileNoWrap(TForStepExpr(expr).StepExpr);
-         vStep := CodeGen.ExpressionToLLVMValue(TForStepExpr(expr).StepExpr);
+         valStep := cg.ExpressionToLLVMValue(TForStepExpr(expr).StepExpr);
       end;
    end
    else
-      vStep := LLVMConstInt(indexType, 1, True);
+      valStep := LLVMConstInt(indexType, 1, True);
 
-   bbList[0] := LLVMGetInsertBlock(cg.FBuilder.Handle);
-   bbList[1] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-     bbList[0], 'for_loop');
+   bbList[0] := LLVMGetInsertBlock(cg.Builder.Handle);
+   bbList[1] := LLVMInsertBasicBlockInContext(cg.Context.Handle, bbList[0], 'for_loop');
    LLVMMoveBasicBlockAfter(bbList[1], bbList[0]);
-   bbList[2] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-     bbList[1], 'loop_done');
+   bbList[2] := LLVMInsertBasicBlockInContext(cg.Context.Handle, bbList[1], 'loop_done');
    LLVMMoveBasicBlockAfter(bbList[2], bbList[1]);
 
    // perform comparison in
-   CondValue := LLVMBuildICmp(cg.Builder.Handle, LLVMIntSLE, vFrom, vTo, 'loopcond');
+   valCond := LLVMBuildICmp(cg.Builder.Handle, LLVMIntSLE, valFrom, valTo, 'loopcond');
 
-   LLVMBuildCondBr(cg.Builder.Handle, CondValue, bbList[1], bbList[2]);
+   LLVMBuildCondBr(cg.Builder.Handle, valCond, bbList[1], bbList[2]);
 
    loopVarSym := e.VarExpr.DataSym;
-   valName := AnsiString(loopVarSym.Name);
+   nameVal := AnsiString(loopVarSym.Name);
    if not Assigned(loopVarSym) then
       raise ECodeGenUnsupportedSymbol.CreateFmt(RStrVarNotFound, [e.VarExpr.StackAddr]);
 
-   cg.FBuilder.PositionBuilderAtEnd(bbList[1]);
-   vPhi := LLVMBuildPhi(cg.FBuilder.Handle, indexType, PAnsiChar(valName));
-   codeGen.LinkLLVMValueToDataSymbol(vPhi, loopVarSym);
+   cg.Builder.PositionBuilderAtEnd(bbList[1]);
+   valPhi := LLVMBuildPhi(cg.Builder.Handle, indexType, PAnsiChar(nameVal));
+   cg.LinkLLVMValueToDataSymbol(valPhi, loopVarSym);
 
-   LLVMAddIncoming(vPhi, @vFrom, @bbList[0], 1);
+   LLVMAddIncoming(valPhi, @valFrom, @bbList[0], 1);
 
-   codeGen.Compile(e.DoExpr);
+   // compile inner program
+   cg.Compile(e.DoExpr);
 
    // advance index
    if FReverse then
-      vNext := LLVMBuildSub(cg.Builder.Handle, vPhi, vStep, PAnsiChar(valName))
+      valNext := LLVMBuildSub(cg.Builder.Handle, valPhi, valStep, PAnsiChar(nameVal))
    else
-      vNext := LLVMBuildAdd(cg.Builder.Handle, vPhi, vStep, PAnsiChar(valName));
-   bbNext := LLVMGetInstructionParent(vNext);
-   LLVMAddIncoming(vPhi, @vNext, @bbNext, 1);
-   cg.LinkLLVMValueToDataSymbol(vNext, e.VarExpr.DataSym);
+      valNext := LLVMBuildAdd(cg.Builder.Handle, valPhi, valStep, PAnsiChar(nameVal));
+   bbNext := LLVMGetInstructionParent(valNext);
+   LLVMAddIncoming(valPhi, @valNext, @bbNext, 1);
+   cg.LinkLLVMValueToDataSymbol(valNext, e.VarExpr.DataSym);
 
-   CondValue := LLVMBuildICmp(cg.Builder.Handle, LLVMIntEQ, vPhi, vTo, 'loopcond');
-   LLVMBuildCondBr(cg.Builder.Handle, CondValue, bbList[2], bbList[1]);
+   // build conditional branch (the actual looping)
+   valCond := LLVMBuildICmp(cg.Builder.Handle, LLVMIntEQ, valPhi, valTo, 'loopcond');
+   LLVMBuildCondBr(cg.Builder.Handle, valCond, bbList[2], bbList[1]);
 
-   LLVMPositionBuilderBefore(cg.FBuilder.Handle, CondValue);
-
-   cg.FBuilder.PositionBuilderAtEnd(bbList[2]);
+   LLVMPositionBuilderBefore(cg.Builder.Handle, valCond);
+   cg.Builder.PositionBuilderAtEnd(bbList[2]);
 end;
 
 
@@ -3117,37 +3278,35 @@ end;
 
 procedure TLLVMRepeatExpr.CodeGen(codeGen: TdwsCodeGen; expr: TExprBase);
 var
-   cg: TdwsLLVMCodeGen;
-   e: TRepeatExpr;
-
-   vCond: PLLVMValue;
-   bbList: array [0 .. 2] of PLLVMBasicBlock;
+   cg : TdwsLLVMCodeGen;
+   e : TRepeatExpr;
+   valCond : PLLVMValue;
+   bbList : array [0 .. 2] of PLLVMBasicBlock;
 begin
-   e := TRepeatExpr(expr);
    cg := TdwsLLVMCodeGen(codeGen);
+   e := TRepeatExpr(expr);
 
    bbList[0] := LLVMGetInsertBlock(cg.Builder.Handle);
-   bbList[1] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-     bbList[0], 'repeat_loop');
+   bbList[1] := LLVMInsertBasicBlockInContext(cg.Context.Handle, bbList[0], 'repeat_loop');
    LLVMMoveBasicBlockAfter(bbList[1], bbList[0]);
-   bbList[2] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-     bbList[1], 'loop_done');
+   bbList[2] := LLVMInsertBasicBlockInContext(cg.Context.Handle, bbList[1], 'loop_done');
    LLVMMoveBasicBlockAfter(bbList[2], bbList[1]);
 
-   LLVMBuildBr(cg.FBuilder.Handle, bbList[1]);
-   cg.FBuilder.PositionBuilderAtEnd(bbList[1]);
+   LLVMBuildBr(cg.Builder.Handle, bbList[1]);
+   cg.Builder.PositionBuilderAtEnd(bbList[1]);
 
-   codeGen.Compile(e.LoopExpr);
+   // compile inner program
+   cg.Compile(e.LoopExpr);
 
-   cg.FBuilder.PositionBuilderAtEnd(bbList[1]);
-   codeGen.CompileNoWrap(e.CondExpr);
-   vCond := cg.ExpressionToLLVMValue(e.CondExpr);
+   cg.Builder.PositionBuilderAtEnd(bbList[1]);
+   cg.CompileNoWrap(e.CondExpr);
+   valCond := cg.ExpressionToLLVMValue(e.CondExpr);
 
-   LLVMSetValueName(vCond, 'repeat_cond');
+   LLVMSetValueName(valCond, 'repeat_cond');
 
-   LLVMBuildCondBr(cg.Builder.Handle, vCond, bbList[2], bbList[1]);
+   LLVMBuildCondBr(cg.Builder.Handle, valCond, bbList[2], bbList[1]);
 
-   cg.FBuilder.PositionBuilderAtEnd(bbList[2]);
+   cg.Builder.PositionBuilderAtEnd(bbList[2]);
 end;
 
 
@@ -3157,37 +3316,38 @@ end;
 
 procedure TLLVMWhileExpr.CodeGen(codeGen: TdwsCodeGen; expr: TExprBase);
 var
-   cg: TdwsLLVMCodeGen;
-   e: TWhileExpr;
+   cg : TdwsLLVMCodeGen;
+   e : TWhileExpr;
 
-   vCond: PLLVMValue;
-   bbList: array [0 .. 2] of PLLVMBasicBlock;
+   valCond : PLLVMValue;
+   bbList : array [0 .. 2] of PLLVMBasicBlock;
 begin
-   e := TWhileExpr(expr);
+   // TODO !!!
+
    cg := TdwsLLVMCodeGen(codeGen);
+   e := TWhileExpr(expr);
 
    bbList[0] := LLVMGetInsertBlock(cg.Builder.Handle);
-   bbList[1] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-     bbList[0], 'repeat_loop');
+   bbList[1] := LLVMInsertBasicBlockInContext(cg.Context.Handle, bbList[0], 'repeat_loop');
    LLVMMoveBasicBlockAfter(bbList[1], bbList[0]);
-   bbList[2] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle,
-     bbList[1], 'loop_done');
+   bbList[2] := LLVMInsertBasicBlockInContext(cg.Context.Handle, bbList[1], 'loop_done');
    LLVMMoveBasicBlockAfter(bbList[2], bbList[1]);
 
-   LLVMBuildBr(cg.FBuilder.Handle, bbList[1]);
-   cg.FBuilder.PositionBuilderAtEnd(bbList[1]);
+   LLVMBuildBr(cg.Builder.Handle, bbList[1]);
+   cg.Builder.PositionBuilderAtEnd(bbList[1]);
 
-   codeGen.Compile(e.LoopExpr);
+   // compile inner program
+   cg.Compile(e.LoopExpr);
 
-   cg.FBuilder.PositionBuilderAtEnd(bbList[1]);
-   codeGen.CompileNoWrap(e.CondExpr);
-   vCond := cg.ExpressionToLLVMValue(e.CondExpr);
+   cg.Builder.PositionBuilderAtEnd(bbList[1]);
+   cg.CompileNoWrap(e.CondExpr);
+   valCond := cg.ExpressionToLLVMValue(e.CondExpr);
 
-   LLVMSetValueName(vCond, 'repeat_cond');
+   LLVMSetValueName(valCond, 'while_cond');
 
-   LLVMBuildCondBr(cg.Builder.Handle, vCond, bbList[2], bbList[1]);
+   LLVMBuildCondBr(cg.Builder.Handle, valCond, bbList[2], bbList[1]);
 
-   cg.FBuilder.PositionBuilderAtEnd(bbList[2]);
+   cg.Builder.PositionBuilderAtEnd(bbList[2]);
 end;
 
 
@@ -3197,67 +3357,70 @@ end;
 
 procedure TLLVMFuncBaseExpr.CodeGen(codeGen: TdwsCodeGen; expr: TExprBase);
 var
+   cg : TdwsLLVMCodeGen;
    e : TFuncExprBase;
-   i : Integer;
+   index : Integer;
    funcSym : TFuncSymbol;
+   params : TParamsSymbolTable;
    paramExpr : TTypedExpr;
 
-   argumentCount: Integer;
-   argumentTypes: PLLVMTypePtrArray;
-   argumentValues: PLLVMValuePtrArray;
+   argCount : Integer;
+   argTypes : PLLVMTypePtrArray;
+   argValues : PLLVMValuePtrArray;
 
-   Fn: PLLVMValue;
-   vO: PLLVMValue;
+   valFunc : PLLVMValue;
+   valOut : PLLVMValue;
 
-   functionName: AnsiString;
-   functionType: PLLVMType;
-   returnType: PLLVMType;
-   Index: Integer;
+   nameFunc : AnsiString;
+   typeFunc : PLLVMType;
+   typeRet : PLLVMType;
 begin
+   cg := TdwsLLVMCodeGen(codeGen);
    e := TFuncExprBase(expr);
    funcSym := e.FuncSym;
+   params := e.FuncSym.Params;
 
-   Fn := codeGen.FunctionSymbolToLLVMValue(e.FuncSym);
+   valFunc := cg.FunctionSymbolToLLVMValue(e.FuncSym);
 
-   ArgumentCount := e.Args.Count;
-   Assert(e.Args.Count = e.FuncSym.Params.Count);
+   argCount := e.Args.Count;
+   Assert(e.Args.Count = params.Count);
 
    // function not found -> probably external? -> workaround solution (todo)
-   if not Assigned(Fn) then
+   if not Assigned(valFunc) then
    begin
-      functionName := AnsiString(funcSym.Name);
+      nameFunc := AnsiString(funcSym.Name);
       if Assigned(funcSym.Result) then
-         returnType := TdwsLLVMCodeGen(codeGen).TypeSymbolToLLVMType(funcSym.Result.Typ)
+         typeRet := cg.TypeSymbolToLLVMType(funcSym.Result.Typ)
       else
-         returnType := LLVMVoidTypeInContext(codeGen.Context.Handle);
+         typeRet := LLVMVoidTypeInContext(cg.Context.Handle);
 
-      GetMem(argumentTypes, argumentCount * SizeOf(PLLVMType));
-      for Index := 0 to argumentCount - 1 do
-         argumentTypes^[Index] := TdwsLLVMCodeGen(codeGen).TypeSymbolToLLVMType(funcSym.Params.Symbols[Index].Typ);
+      GetMem(argTypes, argCount * SizeOf(PLLVMType));
+      for index := 0 to argCount - 1 do
+         argTypes^[index] := cg.TypeSymbolToLLVMType(params.Symbols[index].Typ);
 
-      functionType := LLVMFunctionType(returnType, argumentTypes, argumentCount, False);
+      typeFunc := LLVMFunctionType(typeRet, argTypes, argCount, False);
 
-      Fn := LLVMGetNamedFunction(codeGen.Module.Handle, PAnsiChar(functionName));
-      if not Assigned(Fn) then
+      valFunc := LLVMGetNamedFunction(cg.Module.Handle, PAnsiChar(nameFunc));
+      if not Assigned(valFunc) then
       begin
-         Fn := LLVMAddFunction(codeGen.Module.Handle, PAnsiChar(functionName),
-            functionType);
+         valFunc := LLVMAddFunction(cg.Module.Handle, PAnsiChar(nameFunc),
+            typeFunc);
 
-         LLVMSetLinkage(Fn, LLVMExternalLinkage);
-         LLVMSetFunctionCallConv(Fn, Ord(LLVMCCallConv));
+         LLVMSetLinkage(valFunc, LLVMExternalLinkage);
+         LLVMSetFunctionCallConv(valFunc, Ord(LLVMCCallConv));
       end;
    end;
 
-   GetMem(argumentValues, ArgumentCount * SizeOf(PLLVMValue));
-   for i := 0 to ArgumentCount-1 do
+   GetMem(argValues, argCount * SizeOf(PLLVMValue));
+   for index := 0 to argCount - 1 do
    begin
-      paramExpr := e.Args.ExprBase[i] as TTypedExpr;
-      codeGen.CompileNoWrap(paramExpr);
-      argumentValues[i] := codeGen.ExpressionToLLVMValue(paramExpr);
+      paramExpr := e.Args.ExprBase[index] as TTypedExpr;
+      cg.CompileNoWrap(paramExpr);
+      argValues[index] := cg.ExpressionToLLVMValue(paramExpr);
    end;
 
-   vO := LLVMBuildCall(TdwsLLVMCodeGen(codeGen).FBuilder.Handle, Fn, argumentValues, argumentCount, '');
-   codeGen.LinkLLVMValueToExpression(vO, expr);
+   valOut := LLVMBuildCall(cg.Builder.Handle, valFunc, argValues, argCount, '');
+   cg.LinkLLVMValueToExpression(valOut, expr);
 end;
 
 
@@ -3276,6 +3439,7 @@ begin
    FMagicCodeGens.AddObject('Sqrt', TLLVMBaseFloatFuncExpr.Create('sqrt'));
    FMagicCodeGens.AddObject('Sin', TLLVMBaseFloatFuncExpr.Create('sin'));
    FMagicCodeGens.AddObject('Cos', TLLVMBaseFloatFuncExpr.Create('cos'));
+   FMagicCodeGens.AddObject('Tan', TLLVMTanFloatExpr.Create);
    FMagicCodeGens.AddObject('Power', TLLVMPowFloatExpr.Create);
    FMagicCodeGens.AddObject('Exp', TLLVMBaseFloatFuncExpr.Create('exp'));
    FMagicCodeGens.AddObject('Ln', TLLVMBaseFloatFuncExpr.Create('log'));
@@ -3322,13 +3486,17 @@ begin
    e := TMagicFuncExpr(expr);
    if e.FuncSym.IsOverloaded then
       name := GetSignature(e.FuncSym)
-   else name := e.FuncSym.QualifiedName;
+   else
+      name := e.FuncSym.QualifiedName;
+
    if cgoNoInlineMagics in codeGen.Options then
       i := -1
    else i := FMagicCodeGens.IndexOf(name);
-   if i>=0 then
+
+   if i >= 0 then
       TdwsExprCodeGen(FMagicCodeGens.Objects[i]).CodeGen(codeGen, expr)
-   else begin
+   else
+   begin
       codeGen.Dependencies.Add(name);
       inherited;
    end;
@@ -3341,72 +3509,68 @@ end;
 
 procedure TLLVMPrintLnExpr.CodeGen(codeGen: TdwsCodeGen; expr: TExprBase);
 var
-   AnsiCharType: TLLVMInt8Type;
-   PAnsiCharType: TLLVMPointerType;
-   Param, FuncPuts: PLLVMValue;
-
-   TypePuts: PLLVMType;
-
+   cg : TdwsLLVMCodeGen;
    e : TMagicFuncExpr;
    a : TExprBase;
    c : TConstStringExpr;
-   str: AnsiString;
-   vG: PLLVMValue;
-   vStr: PLLVMValue;
-   vO: PLLVMValue;
-   vGEP: PLLVMValue;
-   vPtrArray: array [0 .. 1] of PLLVMValue;
+   name : AnsiString;
+   typeAnsiChar : TLLVMInt8Type;
+   typePAnsiChar : TLLVMPointerType;
+   typePuts : PLLVMType;
+   valParam, valFuncPuts, valG, valStr, valOut, valGEP : PLLVMValue;
+   valPtrArray : array [0 .. 1] of PLLVMValue;
 begin
-   AnsiCharType := TLLVMInt8Type.Create(CodeGen.Context);
-   PAnsiCharType := TLLVMPointerType.Create(AnsiCharType.Handle, 0);
-
-   TypePuts := LLVMFunctionType(codeGen.IntType.Handle, @PAnsiCharType.Handle, 1, False);
-
-   FuncPuts := LLVMGetNamedFunction(CodeGen.Module.Handle, 'puts');
-   if not Assigned(FuncPuts) then
-   begin
-      FuncPuts := LLVMAddFunction(CodeGen.Module.Handle, 'puts', TypePuts);
-
-      Param := LLVMGetParam(FuncPuts, 0);
-      LLVMAddAttribute(Param, LLVMNoCaptureAttribute);
-
-      LLVMSetLinkage(FuncPuts, LLVMExternalLinkage);
-      LLVMSetFunctionCallConv(FuncPuts, Ord(LLVMCCallConv));
-   end;
-   LLVMAddFunctionAttr(FuncPuts, LLVMNoUnwindAttribute);
-
+   cg := TdwsLLVMCodeGen(codeGen);
    e := TMagicFuncExpr(expr);
+
+   typeAnsiChar := TLLVMInt8Type.Create(cg.Context);
+   typePAnsiChar := TLLVMPointerType.Create(typeAnsiChar.Handle, 0);
+   typePuts := LLVMFunctionType(cg.IntType.Handle, @typePAnsiChar.Handle, 1, False);
+
+   valFuncPuts := LLVMGetNamedFunction(cg.Module.Handle, 'puts');
+   if not Assigned(valFuncPuts) then
+   begin
+      valFuncPuts := LLVMAddFunction(cg.Module.Handle, 'puts', typePuts);
+
+      valParam := LLVMGetParam(valFuncPuts, 0);
+      LLVMAddAttribute(valParam, LLVMNoCaptureAttribute);
+
+      LLVMSetLinkage(valFuncPuts, LLVMExternalLinkage);
+      LLVMSetFunctionCallConv(valFuncPuts, Ord(LLVMCCallConv));
+   end;
+   LLVMAddFunctionAttr(valFuncPuts, LLVMNoUnwindAttribute);
+
    a := e.Args[0];
 
    if a is TConstStringExpr then
    begin
       c := TConstStringExpr(a);
-      str := AnsiString(c.Value);
-      str := str + #0;
+      name := AnsiString(c.Value);
+      name := name + #0;
 
       // global variable declaration and initialization
-      vStr := LLVMConstStringInContext(
-        codeGen.Context.Handle, PAnsiChar(str), Length(str), True);
-      vG := LLVMAddGlobal(codeGen.Module.Handle,
-         LLVMArrayType(AnsiCharType.Handle, Length(str)), 'printf_static');
-      LLVMSetLinkage(vG, LLVMInternalLinkage);
-      LLVMSetGlobalConstant(vG, True);
-      LLVMSetInitializer(vG, vStr);
+      valStr := LLVMConstStringInContext(
+        cg.Context.Handle, PAnsiChar(name), Length(name), True);
+      valG := LLVMAddGlobal(cg.Module.Handle,
+         LLVMArrayType(typeAnsiChar.Handle, Length(name)), 'printf_static');
+      LLVMSetLinkage(valG, LLVMInternalLinkage);
+      LLVMSetGlobalConstant(valG, True);
+      LLVMSetInitializer(valG, valStr);
 
-      vPtrArray[0] := LLVMConstNull(codeGen.IntType.Handle);
-      vPtrArray[1] := vPtrArray[0];
-      vGEP := LLVMBuildGEP(codeGen.Builder.Handle, vG, @vPtrArray[0], 2, 'cast');
+      valPtrArray[0] := LLVMConstNull(cg.IntType.Handle);
+      valPtrArray[1] := valPtrArray[0];
+      valGEP := LLVMBuildGEP(cg.Builder.Handle, valG, @valPtrArray[0], 2, 'cast');
 
-      vO := LLVMBuildCall(codeGen.Builder.Handle, FuncPuts, @vGEP, 1, 'puts_result');
-      codeGen.LinkLLVMValueToExpression(vO, expr);
-      LLVMSetInstructionCallConv(vO, Ord(LLVMCCallConv));
+      valOut := LLVMBuildCall(cg.Builder.Handle, valFuncPuts, @valGEP, 1, 'puts_result');
+      cg.LinkLLVMValueToExpression(valOut, expr);
+      LLVMSetInstructionCallConv(valOut, Ord(LLVMCCallConv));
    end
    else
    begin
       if a is TTypedExpr then
-         codeGen.Compile(a);
-      vO := codeGen.ExpressionToLLVMValue(a);
-      if LLVMGetTypeKind(LLVMTypeOf(vO)) = LLVMIntegerTypeKind then
+         cg.Compile(a);
+      valOut := cg.ExpressionToLLVMValue(a);
+      if LLVMGetTypeKind(LLVMTypeOf(valOut)) = LLVMIntegerTypeKind then
       begin
          // convert integer to string here
          // probably compare code with:
@@ -3428,30 +3592,39 @@ end;
 
 procedure TLLVMBaseFloatFuncExpr.CodeGen(codeGen: TdwsCodeGen; expr: TExprBase);
 var
+   cg : TdwsLLVMCodeGen;
    e : TMagicFuncExpr;
-   vI, vO, Param, FuncVal: PLLVMValue;
-   FnType: PLLVMType;
-   str: AnsiString;
+   valI, valO, valParam, valFunc : PLLVMValue;
+   typeFunc : PLLVMType;
+   nameVal : AnsiString;
 begin
-   FnType := LLVMFunctionType(codeGen.FloatType.Handle, @CodeGen.FloatType.Handle, 1, False);
+   cg := TdwsLLVMCodeGen(codeGen);
+   e := TMagicFuncExpr(expr);
 
-   str := 'llvm.' + FIntrisicName + '.f64';
-   FuncVal := LLVMGetNamedFunction(CodeGen.Module.Handle, PAnsiChar(str));
-   if not Assigned(FuncVal) then
+   typeFunc := LLVMFunctionType(cg.FloatType.Handle, @CodeGen.FloatType.Handle, 1, False);
+
+   // check if intrinsics declaration is present, otherwise declare
+   nameVal := 'llvm.' + FIntrisicName + '.f64';
+   valFunc := LLVMGetNamedFunction(cg.Module.Handle, PAnsiChar(nameVal));
+   if not Assigned(valFunc) then
    begin
-      FuncVal := LLVMAddFunction(CodeGen.Module.Handle, PAnsiChar(str), FnType);
-      Param := LLVMGetParam(FuncVal, 0);
-      str := 'Val';
-      LLVMSetValueName(Param, PAnsiChar(str));
+      valFunc := LLVMAddFunction(cg.Module.Handle, PAnsiChar(nameVal), typeFunc);
+      valParam := LLVMGetParam(valFunc, 0);
+      nameVal := 'Val';
+      LLVMSetValueName(valParam, PAnsiChar(nameVal));
    end;
 
-   e := TMagicFuncExpr(expr);
-   codeGen.Compile(e.Args[0]);
-   vI := codeGen.ExpressionToLLVMValue(e.Args[0]);
-   str := LLVMGetValueName(vI);
-   str := FIntrisicName + '_' + str;
-   vO := LLVMBuildCall(codeGen.Builder.Handle, FuncVal, @vI, 1, PAnsiChar(str));
-   codeGen.LinkLLVMValueToExpression(vO, expr);
+   // compile and get input
+   cg.Compile(e.Args[0]);
+   valI := cg.ExpressionToLLVMValue(e.Args[0]);
+
+   // get value name
+   nameVal := LLVMGetValueName(valI);
+   nameVal := FIntrisicName + '_' + nameVal;
+
+   // build output
+   valO := LLVMBuildCall(cg.Builder.Handle, valFunc, @valI, 1, PAnsiChar(nameVal));
+   codeGen.LinkLLVMValueToExpression(valO, expr);
 end;
 
 
@@ -3462,16 +3635,19 @@ end;
 procedure TLLVMBaseFloatIntFuncExpr.CodeGen(codeGen: TdwsCodeGen;
   expr: TExprBase);
 var
-   vVal: PLLVMValue;
-   str: AnsiString;
+   valIn, valOut : PLLVMValue;
+   nameVal : AnsiString;
 begin
    inherited;
 
-   vVal := codeGen.ExpressionToLLVMValue(expr);
-   str := LLVMGetValueName(vVal);
-   str := 'conv_' + str;
-   vVal := LLVMBuildFPToSI(codeGen.Builder.Handle, vVal, codeGen.IntType.Handle, PAnsiChar(str));
-   codeGen.LinkLLVMValueToExpression(vVal, expr);
+   // get in value and name
+   valIn := codeGen.ExpressionToLLVMValue(expr);
+   nameVal := LLVMGetValueName(valIn);
+   nameVal := 'conv_' + nameVal;
+
+   // build out value
+   valOut := LLVMBuildFPToSI(codeGen.Builder.Handle, valIn, codeGen.IntType.Handle, PAnsiChar(nameVal));
+   codeGen.LinkLLVMValueToExpression(valOut, expr);
 end;
 
 
@@ -3481,30 +3657,96 @@ end;
 
 procedure TLLVMAbsFloatExpr.CodeGenNoWrap(codeGen: TdwsCodeGen; expr: TTypedExpr);
 var
+   cg : TdwsLLVMCodeGen;
    e : TAbsFloatExpr;
-   vI, vO, Param, FuncVal: PLLVMValue;
-   FnType: PLLVMType;
-   str: AnsiString;
+   valI, valO, valParam, valFunc : PLLVMValue;
+   typeFunc : PLLVMType;
+   nameVal : AnsiString;
 begin
-   FnType := LLVMFunctionType(codeGen.FloatType.Handle, @CodeGen.FloatType.Handle, 1, False);
+   cg := TdwsLLVMCodeGen(codeGen);
+   e := TAbsFloatExpr(expr);
 
-   str := 'llvm.fabs.f64';
-   FuncVal := LLVMGetNamedFunction(CodeGen.Module.Handle, PAnsiChar(str));
-   if not Assigned(FuncVal) then
+   typeFunc := LLVMFunctionType(cg.FloatType.Handle, @cg.FloatType.Handle, 1, False);
+
+   // check if fabs intrinsics declaration is present, otherwise declare
+   nameVal := 'llvm.fabs.f64';
+   valFunc := LLVMGetNamedFunction(cg.Module.Handle, PAnsiChar(nameVal));
+   if not Assigned(valFunc) then
    begin
-      FuncVal := LLVMAddFunction(CodeGen.Module.Handle, PAnsiChar(str), FnType);
-      Param := LLVMGetParam(FuncVal, 0);
-      str := 'Val';
-      LLVMSetValueName(Param, PAnsiChar(str));
+      valFunc := LLVMAddFunction(cg.Module.Handle, PAnsiChar(nameVal), typeFunc);
+      valParam := LLVMGetParam(valFunc, 0);
+      nameVal := 'Val';
+      LLVMSetValueName(valParam, PAnsiChar(nameVal));
    end;
 
+   // compile and get input
+   cg.Compile(e.Expr);
+   valI := codeGen.ExpressionToLLVMValue(e.Expr);
+
+   // get value name
+   nameVal := LLVMGetValueName(valI);
+   nameVal := 'fabs_' + nameVal;
+
+   // build output
+   valO := LLVMBuildCall(cg.Builder.Handle, valFunc, @valI, 1, PAnsiChar(nameVal));
+   codeGen.LinkLLVMValueToExpression(valO, expr);
+end;
+
+
+// ------------------
+// ------------------ TLLVMTanFloatExpr ------------------
+// ------------------
+
+procedure TLLVMTanFloatExpr.CodeGenNoWrap(codeGen: TdwsCodeGen; expr: TTypedExpr);
+var
+   cg : TdwsLLVMCodeGen;
+   e : TAbsFloatExpr;
+   valI, valO, valL, valR, valParam, valFunc : PLLVMValue;
+   typeFunc : PLLVMType;
+   nameVal, nameInstr : AnsiString;
+begin
+   cg := TdwsLLVMCodeGen(codeGen);
    e := TAbsFloatExpr(expr);
-   codeGen.Compile(e.Expr);
-   vI := codeGen.ExpressionToLLVMValue(e.Expr);
-   str := LLVMGetValueName(vI);
-   str := 'fabs_' + str;
-   vO := LLVMBuildCall(codeGen.Builder.Handle, FuncVal, @vI, 1, PAnsiChar(str));
-   codeGen.LinkLLVMValueToExpression(vO, expr);
+
+   typeFunc := LLVMFunctionType(cg.FloatType.Handle, @cg.FloatType.Handle, 1, False);
+
+   // check if sin intrinsics is present, otherwise declare
+   nameVal := 'llvm.sin.f64';
+   valFunc := LLVMGetNamedFunction(cg.Module.Handle, PAnsiChar(nameVal));
+   if not Assigned(valFunc) then
+   begin
+      valFunc := LLVMAddFunction(cg.Module.Handle, PAnsiChar(nameVal), typeFunc);
+      valParam := LLVMGetParam(valFunc, 0);
+      nameVal := 'Val';
+      LLVMSetValueName(valParam, PAnsiChar(nameVal));
+   end;
+
+   // check if cos intrinsics is present, otherwise declare
+   nameVal := 'llvm.cos.f64';
+   valFunc := LLVMGetNamedFunction(cg.Module.Handle, PAnsiChar(nameVal));
+   if not Assigned(valFunc) then
+   begin
+      valFunc := LLVMAddFunction(cg.Module.Handle, PAnsiChar(nameVal), typeFunc);
+      valParam := LLVMGetParam(valFunc, 0);
+      nameVal := 'Val';
+      LLVMSetValueName(valParam, PAnsiChar(nameVal));
+   end;
+
+   // compile and get input
+   cg.Compile(e.Expr);
+   valI := codeGen.ExpressionToLLVMValue(e.Expr);
+   nameVal := LLVMGetValueName(valI);
+
+   nameInstr := 'sin_' + nameVal;
+   valL := LLVMBuildCall(cg.Builder.Handle, valFunc, @valI, 1, PAnsiChar(nameInstr));
+
+   nameInstr := 'cos_' + nameVal;
+   valR := LLVMBuildCall(cg.Builder.Handle, valFunc, @valI, 1, PAnsiChar(nameInstr));
+
+   // build tan by calculating sin / cos (not the best idea)
+   nameInstr := 'tan_' + nameVal;
+   valO := LLVMBuildFDiv(cg.Builder.Handle, valL, valR, PAnsiChar(nameInstr));
+   codeGen.LinkLLVMValueToExpression(valO, expr);
 end;
 
 
@@ -3515,41 +3757,44 @@ end;
 procedure TLLVMPowFloatExpr.CodeGen(codeGen: TdwsCodeGen;
   expr: TExprBase);
 var
+   cg : TdwsLLVMCodeGen;
    e : TMagicFuncExpr;
-   tI: array [0 .. 1] of PLLVMType;
-   vI: array [0 .. 1] of PLLVMValue;
-   vO, Param, FuncVal: PLLVMValue;
-   FnType: PLLVMType;
-   str: AnsiString;
+   typeIn : array [0 .. 1] of PLLVMType;
+   valIn : array [0 .. 1] of PLLVMValue;
+   valOut, valParam, valFunc : PLLVMValue;
+   typeFunc : PLLVMType;
+   nameVal : AnsiString;
 begin
-   tI[0] := CodeGen.FloatType.Handle;
-   tI[1] := CodeGen.FloatType.Handle;
-   FnType := LLVMFunctionType(codeGen.FloatType.Handle, @tI, 2, False);
-
-   str := 'llvm.pow.f64';
-   FuncVal := LLVMGetNamedFunction(CodeGen.Module.Handle, PAnsiChar(str));
-   if not Assigned(FuncVal) then
-   begin
-      FuncVal := LLVMAddFunction(CodeGen.Module.Handle, PAnsiChar(str), FnType);
-      Param := LLVMGetParam(FuncVal, 0);
-      str := 'Val';
-      LLVMSetValueName(Param, PAnsiChar(str));
-   end;
-
+   cg := TdwsLLVMCodeGen(codeGen);
    e := TMagicFuncExpr(expr);
 
+   typeIn[0] := cg.FloatType.Handle;
+   typeIn[1] := cg.FloatType.Handle;
+   typeFunc := LLVMFunctionType(cg.FloatType.Handle, @typeIn, 2, False);
+
+   // check if pow intrinsics is present, otherwise declare
+   nameVal := 'llvm.pow.f64';
+   valFunc := LLVMGetNamedFunction(cg.Module.Handle, PAnsiChar(nameVal));
+   if not Assigned(valFunc) then
+   begin
+      valFunc := LLVMAddFunction(cg.Module.Handle, PAnsiChar(nameVal), typeFunc);
+      valParam := LLVMGetParam(valFunc, 0);
+      nameVal := 'Val';
+      LLVMSetValueName(valParam, PAnsiChar(nameVal));
+   end;
+
    // compile value
-   codeGen.Compile(e.Args[0]);
-   vI[0] := codeGen.ExpressionToLLVMValue(e.Args[0]);
+   cg.Compile(e.Args[0]);
+   valIn[0] := cg.ExpressionToLLVMValue(e.Args[0]);
 
    // compile power
-   codeGen.Compile(e.Args[1]);
-   vI[1] := codeGen.ExpressionToLLVMValue(e.Args[1]);
+   cg.Compile(e.Args[1]);
+   valIn[1] := cg.ExpressionToLLVMValue(e.Args[1]);
 
-   str := LLVMGetValueName(vI[0]);
-   str := 'pow' + str;
-   vO := LLVMBuildCall(codeGen.Builder.Handle, FuncVal, @vI, 2, PAnsiChar(str));
-   codeGen.LinkLLVMValueToExpression(vO, expr);
+   nameVal := LLVMGetValueName(valIn[0]);
+   nameVal := 'pow' + nameVal;
+   valOut := LLVMBuildCall(cg.Builder.Handle, valFunc, @valIn, 2, PAnsiChar(nameVal));
+   codeGen.LinkLLVMValueToExpression(valOut, expr);
 end;
 
 
@@ -3567,55 +3812,56 @@ end;
 
 procedure TLLVMMinMaxIntExpr.CodeGen(codeGen: TdwsCodeGen; expr: TExprBase);
 var
-   e: TMagicFuncExpr;
-   valA, valB, valNull, valPhi, valCond: PLLVMValue;
-   bbList: array [0 .. 2] of PLLVMBasicBlock;
-   str: AnsiString;
+   cg : TdwsLLVMCodeGen;
+   e : TMagicFuncExpr;
+   valA, valB, valNull, valPhi, valCond : PLLVMValue;
+   bbList : array [0 .. 2] of PLLVMBasicBlock;
+   nameVal : AnsiString;
 begin
+   cg := TdwsLLVMCodeGen(codeGen);
    e := TMagicFuncExpr(expr);
 
    if e.Args.Count <> 2 then
       raise ECodeGenException.Create(RStrWrongNumberOfArgs);
 
    // compile value
-   codeGen.Compile(e.Args[0]);
-   valA := TdwsLLVMCodeGen(codeGen).ExpressionToLLVMValue(e.Args[0]);
+   cg.Compile(e.Args[0]);
+   valA := cg.ExpressionToLLVMValue(e.Args[0]);
 
-   codeGen.Compile(e.Args[1]);
-   valB := TdwsLLVMCodeGen(codeGen).ExpressionToLLVMValue(e.Args[1]);
+   cg.Compile(e.Args[1]);
+   valB := cg.ExpressionToLLVMValue(e.Args[1]);
 
    if not (LLVMGetTypeKind(LLVMTypeOf(valB)) = LLVMIntegerTypeKind) then
       raise ECodeGenException.Create('Type mismatch');
 
-   valCond := LLVMBuildICmp(codeGen.Builder.Handle, FPredicate, valA, valB, '');
-   valNull := LLVMConstNull(codeGen.IntType.Handle);
-
    // build basic blocks
-   bbList[0] := LLVMGetInsertBlock(codeGen.Builder.Handle);
-   bbList[1] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle, bbList[0], 'then');
+   bbList[0] := LLVMGetInsertBlock(cg.Builder.Handle);
+   bbList[1] := LLVMInsertBasicBlockInContext(cg.Context.Handle, bbList[0], 'then');
    LLVMMoveBasicBlockAfter(bbList[1], bbList[0]);
-   bbList[2] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle, bbList[1], 'cont');
+   bbList[2] := LLVMInsertBasicBlockInContext(cg.Context.Handle, bbList[1], 'cont');
    LLVMMoveBasicBlockAfter(bbList[2], bbList[1]);
 
-   LLVMBuildCondBr(codeGen.Builder.Handle, valCond, bbList[1], bbList[2]);
+   // build condition and branch
+   valCond := LLVMBuildICmp(cg.Builder.Handle, FPredicate, valA, valB, '');
+   LLVMBuildCondBr(cg.Builder.Handle, valCond, bbList[1], bbList[2]);
 
-   codeGen.Builder.PositionBuilderAtEnd(bbList[1]);
-   str := LLVMGetValueName(valB);
-   valB := LLVMBuildAdd(codeGen.Builder.Handle, valB, valNull, PAnsiChar(str));
-   LLVMBuildBr(codeGen.Builder.Handle, bbList[2]);
+   // goto then block and build value
+   cg.Builder.PositionBuilderAtEnd(bbList[1]);
+   nameVal := LLVMGetValueName(valB);
+   valNull := LLVMConstNull(cg.IntType.Handle);
+   valB := LLVMBuildAdd(cg.Builder.Handle, valB, valNull, PAnsiChar(nameVal));
+   LLVMBuildBr(cg.Builder.Handle, bbList[2]);
 
-   codeGen.Builder.PositionBuilderAtEnd(bbList[2]);
-
-   // build phi value
-   valPhi := LLVMBuildPhi(codeGen.Builder.Handle, codeGen.IntType.Handle, 'phi');
+   // goto phi block and build value
+   cg.Builder.PositionBuilderAtEnd(bbList[2]);
+   valPhi := LLVMBuildPhi(cg.Builder.Handle, cg.IntType.Handle, 'phi');
    LLVMAddIncoming(valPhi, @valA, @bbList[0], 1);
    LLVMAddIncoming(valPhi, @valB, @bbList[1], 1);
-
-   codeGen.LinkLLVMValueToExpression(valPhi, expr);
+   cg.LinkLLVMValueToExpression(valPhi, expr);
 end;
 
 procedure TLLVMMinMaxIntExpr.CodeGenNoWrap(codeGen: TdwsCodeGen;
-  expr: TTypedExpr);
+   expr: TTypedExpr);
 begin
    Self.CodeGen(codeGen, expr);
 end;
@@ -3635,48 +3881,52 @@ end;
 
 procedure TLLVMMinMaxFloatExpr.CodeGen(codeGen: TdwsCodeGen; expr: TExprBase);
 var
-   e: TMagicFuncExpr;
-   valA, valB, valNull, valPhi, valCond: PLLVMValue;
-   bbList: array [0 .. 2] of PLLVMBasicBlock;
-   str: AnsiString;
+   cg : TdwsLLVMCodeGen;
+   e : TMagicFuncExpr;
+   valA, valB, valNull, valPhi, valCond : PLLVMValue;
+   bbList : array [0 .. 2] of PLLVMBasicBlock;
+   nameVal : AnsiString;
 begin
+   cg := TdwsLLVMCodeGen(codeGen);
    e := TMagicFuncExpr(expr);
 
    if e.Args.Count <> 2 then
       raise ECodeGenException.Create(RStrWrongNumberOfArgs);
 
    // compile value
-   codeGen.Compile(e.Args[0]);
-   valA := TdwsLLVMCodeGen(codeGen).ExpressionToLLVMValue(e.Args[0]);
+   cg.Compile(e.Args[0]);
+   valA := cg.ExpressionToLLVMValue(e.Args[0]);
 
-   codeGen.Compile(e.Args[1]);
-   valB := TdwsLLVMCodeGen(codeGen).ExpressionToLLVMValue(e.Args[1]);
+   cg.Compile(e.Args[1]);
+   valB := cg.ExpressionToLLVMValue(e.Args[1]);
 
-   valCond := LLVMBuildFCmp(codeGen.Builder.Handle, FPredicate, valA, valB, '');
-   valNull := LLVMConstNull(codeGen.FloatType.Handle);
+   if not (LLVMGetTypeKind(LLVMTypeOf(valB)) = LLVMFloatTypeKind) then
+      raise ECodeGenException.Create('Type mismatch');
 
    // build basic blocks
-   bbList[0] := LLVMGetInsertBlock(codeGen.Builder.Handle);
-   bbList[1] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle, bbList[0], 'then');
+   bbList[0] := LLVMGetInsertBlock(cg.Builder.Handle);
+   bbList[1] := LLVMInsertBasicBlockInContext(cg.Context.Handle, bbList[0], 'then');
    LLVMMoveBasicBlockAfter(bbList[1], bbList[0]);
-   bbList[2] := LLVMInsertBasicBlockInContext(codeGen.Context.Handle, bbList[1], 'cont');
+   bbList[2] := LLVMInsertBasicBlockInContext(cg.Context.Handle, bbList[1], 'cont');
    LLVMMoveBasicBlockAfter(bbList[2], bbList[1]);
 
-   LLVMBuildCondBr(codeGen.Builder.Handle, valCond, bbList[1], bbList[2]);
+   // build condition and branch
+   valCond := LLVMBuildFCmp(cg.Builder.Handle, FPredicate, valA, valB, '');
+   LLVMBuildCondBr(cg.Builder.Handle, valCond, bbList[1], bbList[2]);
 
-   codeGen.Builder.PositionBuilderAtEnd(bbList[1]);
-   str := LLVMGetValueName(valB);
-   valB := LLVMBuildFAdd(codeGen.Builder.Handle, valB, valNull, PAnsiChar(str));
-   LLVMBuildBr(codeGen.Builder.Handle, bbList[2]);
+   // goto then block and build value
+   cg.Builder.PositionBuilderAtEnd(bbList[1]);
+   nameVal := LLVMGetValueName(valB);
+   valNull := LLVMConstNull(cg.FloatType.Handle);
+   valB := LLVMBuildFAdd(cg.Builder.Handle, valB, valNull, PAnsiChar(nameVal));
+   LLVMBuildBr(cg.Builder.Handle, bbList[2]);
 
-   codeGen.Builder.PositionBuilderAtEnd(bbList[2]);
-
-   // build phi value
-   valPhi := LLVMBuildPhi(codeGen.Builder.Handle, codeGen.FloatType.Handle, 'phi');
+   // goto phi block and build value
+   cg.Builder.PositionBuilderAtEnd(bbList[2]);
+   valPhi := LLVMBuildPhi(cg.Builder.Handle, cg.FloatType.Handle, 'phi');
    LLVMAddIncoming(valPhi, @valA, @bbList[0], 1);
    LLVMAddIncoming(valPhi, @valB, @bbList[1], 1);
-
-   codeGen.LinkLLVMValueToExpression(valPhi, expr);
+   cg.LinkLLVMValueToExpression(valPhi, expr);
 end;
 
 procedure TLLVMMinMaxFloatExpr.CodeGenNoWrap(codeGen: TdwsCodeGen;

@@ -224,7 +224,7 @@ var
    methSymbol : TMethodSymbol;
 begin
    typRawAttribute:=info.Execution.Prog.Table.FindTypeSymbol(SYS_TRTTIRAWATTRIBUTE, cvPublic) as TRecordSymbol;
-   dynArray:=TScriptDynamicArray.Create(typRawAttribute);
+   dynArray:=TScriptDynamicArray.CreateNew(typRawAttribute);
    scriptObj:=dynArray;
    info.Execution.RTTIRawAttributes:=scriptObj;
 

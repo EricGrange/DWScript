@@ -285,8 +285,6 @@ type
   TdwsCollection = class(TOwnedCollection)
   private
     FUnit: TdwsUnit;
-    FSortedSymbols: TdwsSymbolArray;
-    function GetSortedItem(Index: Integer): TdwsSymbol;
   protected
     class function GetSymbolClass : TdwsSymbolClass; virtual; abstract;
     function GetSymbols(const Name: UnicodeString): TdwsSymbol;
@@ -297,11 +295,9 @@ type
     constructor Create(AOwner: TPersistent);
     function GetOwner: TPersistent; override;
     function GetUnit: TdwsUnit;
-    function GetSortedItems: TdwsSymbolArray;
     function IndexOf(const Name: UnicodeString): Integer;
     property Symbols[const Name: UnicodeString]: TdwsSymbol read GetSymbols;
     property Items[Index: Integer]: TdwsSymbol read GetItem write SetItem;
-    property SortedItems[Index: Integer]: TdwsSymbol read GetSortedItem;
   end;
 
   TdwsVariable = class(TdwsSymbol)
@@ -1573,8 +1569,6 @@ begin
     FUnit := TdwsSymbol(AOwner).GetUnit
   else
     FUnit := nil;
-
-  FSortedSymbols := nil;
 end;
 
 function TdwsCollection.GetOwner: TPersistent;
@@ -1598,15 +1592,11 @@ var
 begin
   for x := 0 to Count - 1 do
     Items[x].Reset;
-  setlength(FSortedSymbols,0);
-  FSortedSymbols := nil;
 end;
 
 procedure TdwsCollection.SetItem(Index: Integer; Value: TdwsSymbol);
 begin
   Items[Index].Assign(Value);
-  setlength(FSortedSymbols,0);
-  FSortedSymbols := nil;
 end;
 
 function TdwsCollection.GetSymbols(const Name: UnicodeString): TdwsSymbol;
@@ -1620,38 +1610,6 @@ begin
       Exit;
   end;
   Result := nil;
-end;
-
-function TdwsCollection.GetSortedItems: TdwsSymbolArray;
-var
-  x: Integer;
-  FSortedItems: TStringList;
-begin
-  if not assigned(FSortedSymbols) then
-  begin
-    FSortedItems := TStringList.Create;
-    FSortedItems.Sorted := true;
-    FSortedItems.Duplicates := dupAccept;
-
-    for x := 0 to Count - 1 do
-      FSortedItems.AddObject(Items[x].Name,Items[x]);
-
-    SetLength(FSortedSymbols,FSortedItems.Count);
-    for x := Count - 1 downto 0 do
-    begin
-      FSortedSymbols[x] := TdwsSymbol(FSortedItems.Objects[x]);
-      FSortedItems.Objects[x] := nil;
-    end;
-
-    FSortedItems.Free;
-  end;
-
-  result := FSortedSymbols;
-end;
-
-function TdwsCollection.GetSortedItem(Index: Integer): TdwsSymbol;
-begin
-  result := GetSortedItems[Index];
 end;
 
 function TdwsCollection.IndexOf(const Name: UnicodeString): Integer;

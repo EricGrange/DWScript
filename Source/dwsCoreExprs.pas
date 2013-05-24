@@ -649,7 +649,7 @@ type
    // Sort a dynamic array
    TArraySortExpr = class(TArrayPseudoMethodExpr)
       private
-         FCompareExpr : TFuncExpr;
+         FCompareExpr : TFuncPtrExpr;
          FLeft, FRight : TDataSymbol;
 
       protected
@@ -658,12 +658,34 @@ type
 
       public
          constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
-                            aBase : TTypedExpr; aCompare : TFuncExpr);
+                            aBase : TTypedExpr; aCompare : TFuncPtrExpr);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
 
-         property CompareExpr : TFuncExpr read FCompareExpr write FCompareExpr;
+         property CompareExpr : TFuncPtrExpr read FCompareExpr write FCompareExpr;
+   end;
+
+   // Sort a dynamic array (natural order)
+   TArraySortNaturalExpr = class(TArrayPseudoMethodExpr)
+      public
+         procedure SetCompareMethod(var qs : TQuickSort; dyn : TScriptDynamicValueArray); virtual;
+         procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+
+   TArraySortNaturalStringExpr = class(TArraySortNaturalExpr)
+      public
+         procedure SetCompareMethod(var qs : TQuickSort; dyn : TScriptDynamicValueArray); override;
+   end;
+
+   TArraySortNaturalIntegerExpr = class(TArraySortNaturalExpr)
+      public
+         procedure SetCompareMethod(var qs : TQuickSort; dyn : TScriptDynamicValueArray); override;
+   end;
+
+   TArraySortNaturalFloatExpr = class(TArraySortNaturalExpr)
+      public
+         procedure SetCompareMethod(var qs : TQuickSort; dyn : TScriptDynamicValueArray); override;
    end;
 
    // Reverse a dynamic array
@@ -2558,7 +2580,7 @@ procedure TNewArrayExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScri
       n:=LengthExpr[d].EvalAsInteger(exec);
       if n<0 then
          RaiseScriptError(exec, EScriptOutOfBounds.CreatePosFmt(ScriptPos, RTE_ArrayLengthIncorrectForDimension, [n, d]));
-      Result:=TScriptDynamicArray.Create(TDynamicArraySymbol(FTyps.List[FTyps.Count-1-d]).Typ);
+      Result:=TScriptDynamicArray.CreateNew(TDynamicArraySymbol(FTyps.List[FTyps.Count-1-d]).Typ);
       Result.ArrayLength:=n;
       Inc(d);
       if d<LengthExprCount then begin
@@ -4985,7 +5007,7 @@ begin
       FLeft.EvalAsScriptObj(exec, obj);
       if obj=nil then begin
          // first init
-         dyn:=TScriptDynamicArray.Create(TDynamicArraySymbol(FLeft.Typ).Typ);
+         dyn:=TScriptDynamicArray.CreateNew(TDynamicArraySymbol(FLeft.Typ).Typ);
          FLeft.AssignValueAsScriptObj(exec, dyn);
       end else begin
          dyn:=TScriptDynamicArray(obj.GetSelf);
@@ -7170,25 +7192,76 @@ begin
 end;
 
 // ------------------
+// ------------------ TArraySortComparer ------------------
+// ------------------
+
+type
+   TArraySortComparer = class
+      FExec : TdwsExecution;
+      FDyn : TScriptDynamicArray;
+      FFunc : TFuncPtrExpr;
+      FFuncPointer : IFuncPointer;
+      FLeftAddr, FRightAddr : Integer;
+      FData : TData;
+      constructor Create(exec : TdwsExecution; dyn : TScriptDynamicArray; compareFunc : TFuncPtrExpr);
+      function CompareData(index1, index2 : Integer) : Integer;
+      function CompareValue(index1, index2 : Integer) : Integer;
+   end;
+
+// Create
+//
+constructor TArraySortComparer.Create(exec : TdwsExecution; dyn : TScriptDynamicArray;
+                                      compareFunc : TFuncPtrExpr);
+begin
+   FExec:=exec;
+   FDyn:=dyn;
+   FData:=dyn.AsData;
+   FLeftAddr:=exec.Stack.BasePointer+(compareFunc.Args[0] as TVarExpr).StackAddr;
+   FRightAddr:=exec.Stack.BasePointer+(compareFunc.Args[1] as TVarExpr).StackAddr;
+   FFunc:=compareFunc;
+   compareFunc.EvalAsFuncPointer(exec, FFuncPointer);
+end;
+
+// CompareData
+//
+function TArraySortComparer.CompareData(index1, index2 : Integer) : Integer;
+begin
+   DWSCopyData(FData, index1*FDyn.ElementSize, FExec.Stack.Data, FLeftAddr, FDyn.ElementSize);
+   DWSCopyData(FData, index2*FDyn.ElementSize, FExec.Stack.Data, FRightAddr, FDyn.ElementSize);
+   Result:=FFuncPointer.EvalAsInteger(FExec, FFunc);
+end;
+
+// CompareValue
+//
+function TArraySortComparer.CompareValue(index1, index2 : Integer) : Integer;
+begin
+   FExec.Stack.Data[FLeftAddr]:=FData[index1];
+   FExec.Stack.Data[FRightAddr]:=FData[index2];
+   Result:=FFuncPointer.EvalAsInteger(FExec, FFunc);
+end;
+
+// ------------------
 // ------------------ TArraySortExpr ------------------
 // ------------------
 
 // Create
 //
 constructor TArraySortExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
-                            aBase : TTypedExpr; aCompare : TFuncExpr);
+                                  aBase : TTypedExpr; aCompare : TFuncPtrExpr);
 var
    elemTyp : TTypeSymbol;
 begin
    inherited Create(prog, scriptPos, aBase);
    FCompareExpr:=aCompare;
-   elemTyp:=aCompare.FuncSym.Params[0].Typ;
-   FLeft:=TDataSymbol.Create('', elemTyp);
-   prog.Table.AddSymbol(FLeft);
-   FRight:=TDataSymbol.Create('', elemTyp);
-   prog.Table.AddSymbol(FRight);
-   FCompareExpr.AddArg(TVarExpr.Create(prog, FLeft));
-   FCompareExpr.AddArg(TVarExpr.Create(prog, FRight));
+   if aCompare<>nil then begin
+      elemTyp:=aCompare.FuncSym.Params[0].Typ;
+      FLeft:=TDataSymbol.Create('', elemTyp);
+      prog.Table.AddSymbol(FLeft);
+      FRight:=TDataSymbol.Create('', elemTyp);
+      prog.Table.AddSymbol(FRight);
+      FCompareExpr.AddArg(TVarExpr.CreateTyped(prog, FLeft));
+      FCompareExpr.AddArg(TVarExpr.CreateTyped(prog, FRight));
+   end;
 end;
 
 // Destroy
@@ -7204,11 +7277,22 @@ end;
 procedure TArraySortExpr.EvalNoResult(exec : TdwsExecution);
 var
    base : IScriptObj;
-   dyn : TScriptDynamicArray;
+   dyn : TScriptDynamicValueArray;
+   qs : TQuickSort;
+   comparer : TArraySortComparer;
 begin
    BaseExpr.EvalAsScriptObj(exec, base);
-   dyn:=TScriptDynamicArray(base.GetSelf);
-   dyn.Sort(exec, CompareExpr);
+   dyn:=TScriptDynamicValueArray(base.GetSelf);
+   comparer:=TArraySortComparer.Create(exec, dyn, CompareExpr);
+   try
+      if dyn.ElementSize>1 then
+         qs.CompareMethod:=comparer.CompareData
+      else qs.CompareMethod:=comparer.CompareValue;
+      qs.SwapMethod:=dyn.Swap;
+      qs.Sort(0, dyn.ArrayLength-1);
+   finally
+      comparer.Free;
+   end;
 end;
 
 // GetSubExpr
@@ -7225,6 +7309,65 @@ end;
 function TArraySortExpr.GetSubExprCount : Integer;
 begin
    Result:=2;
+end;
+
+// ------------------
+// ------------------ TArraySortNaturalExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TArraySortNaturalExpr.EvalNoResult(exec : TdwsExecution);
+var
+   base : IScriptObj;
+   dyn : TScriptDynamicValueArray;
+   qs : TQuickSort;
+begin
+   BaseExpr.EvalAsScriptObj(exec, base);
+   dyn:=TScriptDynamicValueArray(base.GetSelf);
+   SetCompareMethod(qs, dyn);
+   qs.SwapMethod:=dyn.Swap;
+   qs.Sort(0, dyn.ArrayLength-1);
+end;
+
+// SetCompareMethod
+//
+procedure TArraySortNaturalExpr.SetCompareMethod(var qs : TQuickSort; dyn : TScriptDynamicValueArray);
+begin
+   Assert(False, 'Not supported yet');
+end;
+
+// ------------------
+// ------------------ TArraySortNaturalStringExpr ------------------
+// ------------------
+
+// SetCompareMethod
+//
+procedure TArraySortNaturalStringExpr.SetCompareMethod(var qs : TQuickSort; dyn : TScriptDynamicValueArray);
+begin
+   qs.CompareMethod:=dyn.CompareString;
+end;
+
+// ------------------
+// ------------------ TArraySortNaturalIntegerExpr ------------------
+// ------------------
+
+// SetCompareMethod
+//
+procedure TArraySortNaturalIntegerExpr.SetCompareMethod(var qs : TQuickSort; dyn : TScriptDynamicValueArray);
+begin
+   qs.CompareMethod:=dyn.CompareInteger;
+end;
+
+// ------------------
+// ------------------ TArraySortNaturalFloatExpr ------------------
+// ------------------
+
+// SetCompareMethod
+//
+procedure TArraySortNaturalFloatExpr.SetCompareMethod(var qs : TQuickSort; dyn : TScriptDynamicValueArray);
+begin
+   qs.CompareMethod:=dyn.CompareFloat;
 end;
 
 // ------------------
@@ -7549,7 +7692,7 @@ begin
       BoundsCheck(exec, dyn.ArrayLength, index+count-1);
    end else count:=dyn.ArrayLength-index;
 
-   newDyn:=TScriptDynamicArray.Create(dyn.ElementTyp);
+   newDyn:=TScriptDynamicArray.CreateNew(dyn.ElementTyp);
    if count>0 then
       newDyn.Copy(dyn, index, count);
    Result:=newDyn;

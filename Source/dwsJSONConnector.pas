@@ -831,6 +831,7 @@ var
    getSelf : IGetSelf;
    boxedJSON : IBoxedJSONValue;
    scriptObj : IScriptObj;
+   scriptObjSelf : TObject;
    p : PVarData;
 begin
    p:=PVarData(@v);
@@ -851,8 +852,9 @@ begin
             else writer.WriteString('Undefined');
          end else begin
             if unk.QueryInterface(IScriptObj, scriptObj)=0 then begin
-               if scriptObj.GetSelf.ClassType=TScriptDynamicArray then
-                  StringifyDynamicArray(exec, writer, TScriptDynamicArray(scriptObj.GetSelf))
+               scriptObjSelf:=scriptObj.GetSelf;
+               if scriptObjSelf is TScriptDynamicArray then
+                  StringifyDynamicArray(exec, writer, TScriptDynamicArray(scriptObjSelf))
                else StringifyClass(exec, writer, scriptObj.ClassSym, scriptObj);
             end else begin
                if unk.QueryInterface(IGetSelf, getSelf)=0 then

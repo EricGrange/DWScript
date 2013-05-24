@@ -155,26 +155,6 @@ type
          procedure PostCall(exec : TdwsExecution; var Result : Variant); override;
    end;
 
-   TFuncPtrExpr = class sealed (TFuncExpr)
-      private
-         FCodeExpr : TTypedExpr;
-
-      protected
-         function GetSubExpr(i : Integer) : TExprBase; override;
-         function GetSubExprCount : Integer; override;
-
-      public
-         constructor Create(prog : TdwsProgram; const aScriptPos : TScriptPos; codeExpr : TTypedExpr);
-         destructor Destroy; override;
-
-         function Eval(exec : TdwsExecution) : Variant; override;
-         function IsConstant : Boolean; override;
-
-         function Extract : TTypedExpr; // also a destructor
-
-         property CodeExpr : TTypedExpr read FCodeExpr write FCodeExpr;
-   end;
-
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -549,107 +529,6 @@ end;
 procedure TDestructorVirtualExpr.PostCall(exec : TdwsExecution; var Result : Variant);
 begin
    exec.SelfScriptObject^.Destroyed:=True;
-end;
-
-// ------------------
-// ------------------ TFuncPtrExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TFuncPtrExpr.Create(prog : TdwsProgram; const aScriptPos : TScriptPos; codeExpr : TTypedExpr);
-begin
-   inherited Create(prog, aScriptPos, (codeExpr.Typ as TFuncSymbol));
-   FCodeExpr:=codeExpr;
-end;
-
-// Destroy
-//
-destructor TFuncPtrExpr.Destroy;
-begin
-   inherited;
-   FCodeExpr.Free;
-end;
-
-// Extract
-//
-function TFuncPtrExpr.Extract : TTypedExpr;
-begin
-   Result:=FCodeExpr;
-   FCodeExpr:=nil;
-   Free;
-end;
-
-// Eval
-//
-function TFuncPtrExpr.Eval(exec : TdwsExecution) : Variant;
-var
-   funcPointer : IFuncPointer;
-   funcExprBase : TFuncExprBase;
-   funcExpr : TFuncExpr;
-   oldArgs : TExprBaseListRec;
-   i : Integer;
-   val : Variant;
-begin
-   FCodeExpr.EvalAsVariant(exec, val);
-   funcPointer:=IFuncPointer(IUnknown(val));
-   if funcPointer=nil then
-      RaiseScriptError(exec, EScriptError, RTE_FuncPointerIsNil);
-   funcExprBase:=funcPointer.GetFuncExpr;
-
-   if funcExprBase is TMagicFuncExpr then begin
-
-      oldArgs:=funcExprBase.Args;
-      funcExprBase.Args:=Args;
-      try
-         funcExprBase.EvalAsVariant(exec, Result);
-      finally
-         funcExprBase.Args:=oldArgs;
-      end;
-
-   end else begin
-
-      Assert(funcExprBase is TFuncExpr);
-
-      funcExpr:=TFuncExpr(funcExprBase);
-
-      funcExpr.ClearArgs;
-      for i:=0 to FArgs.Count-1 do
-         funcExpr.AddArg(FArgs.ExprBase[i] as TTypedExpr);
-      funcExpr.AddPushExprs((exec as TdwsProgramExecution).Prog);
-      funcExpr.CallerID:=Self;
-
-      try
-         funcExprBase.EvalAsVariant(exec, Result);
-      finally
-         for i:=0 to Args.Count-1 do
-            funcExpr.Args.ExprBase[i]:=nil;
-      end;
-
-   end;
-end;
-
-// IsConstant
-//
-function TFuncPtrExpr.IsConstant : Boolean;
-begin
-   Result:=False;
-end;
-
-// GetSubExpr
-//
-function TFuncPtrExpr.GetSubExpr(i : Integer) : TExprBase;
-begin
-   if i=0 then
-      Result:=FCodeExpr
-   else Result:=inherited GetSubExpr(i-1);
-end;
-
-// GetSubExprCount
-//
-function TFuncPtrExpr.GetSubExprCount : Integer;
-begin
-   Result:=1+inherited GetSubExprCount;
 end;
 
 end.

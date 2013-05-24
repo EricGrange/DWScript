@@ -120,6 +120,9 @@ type
          function _AddRef: Integer; stdcall;
          function _Release: Integer; stdcall;
 
+      protected
+         property DirectData : TData read FData;
+
       public
          function GetSelf : TObject;
 

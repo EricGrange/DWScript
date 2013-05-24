@@ -829,6 +829,29 @@ begin
    end;
 end;
 
+// FastCompareFloat
+//
+function FastCompareFloat(d1, d2 : PDouble) : Integer;
+{$ifdef WIN32_ASM}
+asm
+   fld      qword ptr [edx]
+   fld      qword ptr [eax]
+   xor      eax, eax
+   fcomip   st, st(1)
+   setnbe   cl
+   setb     al
+   and      ecx, 1
+   neg      eax
+   or       eax, ecx
+   fstp     st(0)
+{$else}
+begin
+   if d1^<d2^ then
+      Result:=-1
+   else Result:=Ord(d1^>d2^);
+{$endif}
+end;
+
 // RawByteStringToScriptString
 //
 function RawByteStringToScriptString(const s : RawByteString) : UnicodeString;
@@ -3333,7 +3356,10 @@ begin
             while CompareMethod(j, p)>0 do Dec(j);
             if i<=j then begin
                SwapMethod(i, j);
-               if p=i then p:=j else if p=j then p:=i;
+               if p=i then
+                  p:=j
+               else if p=j then
+                  p:=i;
                Inc(i);
                Dec(j);
             end;

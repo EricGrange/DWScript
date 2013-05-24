@@ -380,7 +380,7 @@ end;
 //
 class function TConstExpr.CreateDynamicArrayValue(prog : TdwsProgram; typ : TTypeSymbol) : TConstExpr;
 begin
-   Result:=TConstExpr.Create(prog, typ, TScriptDynamicArray.Create(typ.Typ) as IScriptObj);
+   Result:=TConstExpr.Create(prog, typ, TScriptDynamicArray.CreateNew(typ.Typ) as IScriptObj);
 end;
 
 // ------------------

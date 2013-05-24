@@ -24,7 +24,7 @@ unit dwsExprs;
 interface
 
 uses
-   Classes, Variants, SysUtils, TypInfo,
+   Classes, Variants, SysUtils, TypInfo, Math,
    dwsSymbols, dwsErrors, dwsUtils, dwsDataContext, dwsExprList,
    dwsStrings, dwsStack, SyncObjs, dwsFileSystem, dwsTokenizer, dwsUnitSymbols,
    dwsJSON, dwsXPlatform;
@@ -1127,12 +1127,22 @@ type
    IFuncPointer = interface
       function GetFuncExpr : TFuncExprBase;
       function SameFunc(const v : Variant) : Boolean;
+      procedure EvalAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
+      function EvalAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Int64;
    end;
+
+   TFuncPointerEvalAsVariant = procedure (exec : TdwsExecution; caller : TFuncExpr; var result : Variant) of object;
+   TFuncPointerEvalAsInteger = procedure (exec : TdwsExecution; caller : TFuncExpr; var result : Int64) of object;
 
    // Encapsulates a function or method pointer
    TFuncPointer = class(TInterfacedObject, IUnknown, IFuncPointer)
       private
          FFuncExpr : TFuncExprBase;
+         FDoEvalAsVariant : TFuncPointerEvalAsVariant;
+
+      protected
+         procedure EvalMagicAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
+         procedure EvalFuncAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
 
       public
          constructor Create(exec : TdwsExecution; funcExpr : TFuncExprBase);
@@ -1140,6 +1150,9 @@ type
 
          function GetFuncExpr : TFuncExprBase;
          function SameFunc(const v : Variant) : Boolean;
+
+         procedure EvalAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
+         function EvalAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Int64;
    end;
 
    // returns an IFuncPointer to the FuncExpr
@@ -1166,6 +1179,28 @@ type
    end;
 
    TFuncRefExpr = class (TAnonymousFuncRefExpr)
+   end;
+
+   TFuncPtrExpr = class sealed (TFuncExpr)
+      private
+         FCodeExpr : TTypedExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(prog : TdwsProgram; const aScriptPos : TScriptPos; codeExpr : TTypedExpr);
+         destructor Destroy; override;
+
+         procedure EvalAsFuncPointer(exec : TdwsExecution; var result : IFuncPointer); inline;
+
+         function Eval(exec : TdwsExecution) : Variant; override;
+         function IsConstant : Boolean; override;
+
+         function Extract : TTypedExpr; // also a destructor
+
+         property CodeExpr : TTypedExpr read FCodeExpr write FCodeExpr;
    end;
 
    TMethodObjExpr = class(TPosDataExpr)
@@ -1603,9 +1638,7 @@ type
          property Destroyed : Boolean read FDestroyed write FDestroyed;
    end;
 
-   TScriptDynamicArrayCompareFunc = function (idx1, idx2 : Integer) : Integer of object;
-
-   TScriptDynamicArray = class(TScriptObj)
+   TScriptDynamicArray = class abstract (TScriptObj)
       private
          FElementTyp : TTypeSymbol;
          FElementSize : Integer;
@@ -1614,19 +1647,17 @@ type
       protected
          procedure SetArrayLength(n : Integer);
 
-         procedure QuickSort(lo, hi : Integer; const compareFunc : TScriptDynamicArrayCompareFunc);
-
       public
-         constructor Create(elemTyp : TTypeSymbol);
+         class function CreateNew(elemTyp : TTypeSymbol) : TScriptDynamicArray; static;
 
          procedure Delete(index, count : Integer);
          procedure Insert(index : Integer);
-         procedure Swap(i1, i2 : Integer);
+         procedure Swap(i1, i2 : Integer); virtual; abstract;
          procedure Reverse;
-         procedure Sort(exec : TdwsExecution; compareExpr : TFuncExpr);
          procedure Copy(src : TScriptDynamicArray; index, count : Integer);
          procedure RawCopy(const src : TData; rawIndex, rawCount : Integer);
          procedure Concat(src : TScriptDynamicArray);
+
          function IndexOfData(const item : IDataContext; fromIndex : Integer) : Integer;
          function IndexOfValue(const item : Variant; fromIndex : Integer) : Integer;
          function IndexOfString(const item : UnicodeString; fromIndex : Integer) : Integer;
@@ -1641,6 +1672,20 @@ type
          property ElementTyp : TTypeSymbol read FElementTyp;
          property ElementSize : Integer read FElementSize;
          property ArrayLength : Integer read FArrayLength write SetArrayLength;
+   end;
+
+   TScriptDynamicDataArray = class (TScriptDynamicArray)
+      public
+         procedure Swap(i1, i2 : Integer); override;
+   end;
+
+   TScriptDynamicValueArray = class (TScriptDynamicArray)
+      public
+         procedure Swap(i1, i2 : Integer); override;
+
+         function CompareString(i1, i2 : Integer) : Integer;
+         function CompareInteger(i1, i2 : Integer) : Integer;
+         function CompareFloat(i1, i2 : Integer) : Integer;
    end;
 
    TScriptInterface = class(TScriptObj)
@@ -4581,6 +4626,13 @@ begin
       FFuncExpr:=CreateFuncExpr(prog, funcExpr.FuncSym, nil, nil);
 
    end;
+
+   if FFuncExpr is TMagicFuncExpr then
+      FDoEvalAsVariant:=EvalMagicAsVariant
+   else begin
+      Assert(FFuncExpr is TFuncExpr);
+      FDoEvalAsVariant:=EvalFuncAsVariant;
+   end;
 end;
 
 // Destroy
@@ -4616,6 +4668,68 @@ begin
       c1:=TMethodExpr(FFuncExpr).BaseExpr as TConstExpr;
       c2:=TMethodExpr(expr).BaseExpr as TConstExpr;
       Result:=c1.SameValueAs(c2);
+   end;
+end;
+
+// EvalMagicAsVariant
+//
+procedure TFuncPointer.EvalMagicAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
+var
+   oldArgs : TExprBaseListRec;
+begin
+   oldArgs:=FFuncExpr.Args;
+   FFuncExpr.Args:=caller.Args;
+   try
+      FFuncExpr.EvalAsVariant(exec, Result);
+   finally
+      FFuncExpr.Args:=oldArgs;
+   end;
+end;
+
+// EvalFuncAsVariant
+//
+procedure TFuncPointer.EvalFuncAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
+var
+   funcExpr : TFuncExpr;
+   i : Integer;
+begin
+   funcExpr:=TFuncExpr(FFuncExpr);
+
+   funcExpr.ClearArgs;
+   for i:=0 to caller.Args.Count-1 do
+      funcExpr.AddArg(caller.Args.ExprBase[i] as TTypedExpr);
+   funcExpr.AddPushExprs((exec as TdwsProgramExecution).Prog);
+   funcExpr.CallerID:=caller;
+
+   try
+      funcExpr.EvalAsVariant(exec, Result);
+   finally
+      for i:=0 to caller.Args.Count-1 do
+         funcExpr.Args.ExprBase[i]:=nil;
+   end;
+end;
+
+// EvalAsVariant
+//
+procedure TFuncPointer.EvalAsVariant(exec : TdwsExecution; caller : TFuncExpr;
+                                     var result : Variant);
+begin
+   FDoEvalAsVariant(exec, caller, result);
+end;
+
+// EvalAsInteger
+//
+function TFuncPointer.EvalAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Int64;
+var
+   v : TVarData;
+begin
+   v.VType:=varInt64;
+   FDoEvalAsVariant(exec, caller, Variant(v));
+   if v.VType=varInt64 then
+      Result:=v.VInt64
+   else begin
+      Result:=Variant(v);
+      VarClear(Variant(v));
    end;
 end;
 
@@ -4692,6 +4806,80 @@ begin
    SetLength(data, 1);
    EvalAsVariant(exec, data[0]);
    exec.DataContext_Create(data, 0, result);
+end;
+
+// ------------------
+// ------------------ TFuncPtrExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TFuncPtrExpr.Create(prog : TdwsProgram; const aScriptPos : TScriptPos; codeExpr : TTypedExpr);
+begin
+   inherited Create(prog, aScriptPos, (codeExpr.Typ as TFuncSymbol));
+   FCodeExpr:=codeExpr;
+end;
+
+// Destroy
+//
+destructor TFuncPtrExpr.Destroy;
+begin
+   inherited;
+   FCodeExpr.Free;
+end;
+
+// Extract
+//
+function TFuncPtrExpr.Extract : TTypedExpr;
+begin
+   Result:=FCodeExpr;
+   FCodeExpr:=nil;
+   Free;
+end;
+
+// EvalAsFuncPointer
+//
+procedure TFuncPtrExpr.EvalAsFuncPointer(exec : TdwsExecution; var result : IFuncPointer);
+var
+   val : Variant;
+begin
+   FCodeExpr.EvalAsVariant(exec, val);
+   result:=IFuncPointer(IUnknown(val));
+end;
+
+// Eval
+//
+function TFuncPtrExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   funcPointer : IFuncPointer;
+begin
+   EvalAsFuncPointer(exec, funcPointer);
+   if funcPointer=nil then
+      RaiseScriptError(exec, EScriptError, RTE_FuncPointerIsNil);
+   funcPointer.EvalAsVariant(exec, Self, Result);
+end;
+
+// IsConstant
+//
+function TFuncPtrExpr.IsConstant : Boolean;
+begin
+   Result:=False;
+end;
+
+// GetSubExpr
+//
+function TFuncPtrExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if i=0 then
+      Result:=FCodeExpr
+   else Result:=inherited GetSubExpr(i-1);
+end;
+
+// GetSubExprCount
+//
+function TFuncPtrExpr.GetSubExprCount : Integer;
+begin
+   Result:=1+inherited GetSubExprCount;
 end;
 
 // ------------------
@@ -5929,62 +6117,30 @@ begin
 end;
 
 // ------------------
-// ------------------ TArraySortComparer ------------------
-// ------------------
-
-type
-   TArraySortComparer = class
-      FExec : TdwsExecution;
-      FDyn : TScriptDynamicArray;
-      FFunc : TFuncExpr;
-      FLeft, FRight : TVarExpr;
-      constructor Create(exec : TdwsExecution; dyn : TScriptDynamicArray; compareFunc : TFuncExpr);
-      function Compare(index1, index2 : Integer) : Integer;
-   end;
-
-// Create
-//
-constructor TArraySortComparer.Create(exec : TdwsExecution; dyn : TScriptDynamicArray; compareFunc : TFuncExpr);
-begin
-   FExec:=exec;
-   FDyn:=dyn;
-   FFunc:=compareFunc;
-   FLeft:=compareFunc.Args[0] as TVarExpr;
-   FRight:=compareFunc.Args[1] as TVarExpr;
-end;
-
-// Compare
-//
-function TArraySortComparer.Compare(index1, index2 : Integer) : Integer;
-begin
-   DWSCopyData(FDyn.AsData, index1*FDyn.ElementSize,
-               FExec.Stack.Data, FExec.Stack.BasePointer+FLeft.StackAddr,
-               FDyn.ElementSize);
-   DWSCopyData(FDyn.AsData, index2*FDyn.ElementSize,
-               FExec.Stack.Data, FExec.Stack.BasePointer+FRight.StackAddr,
-               FDyn.ElementSize);
-   Result:=FFunc.EvalAsInteger(FExec);
-end;
-
-// ------------------
 // ------------------ TScriptDynamicArray ------------------
 // ------------------
 
-// Create
+// CreateNew
 //
-constructor TScriptDynamicArray.Create(elemTyp : TTypeSymbol);
+class function TScriptDynamicArray.CreateNew(elemTyp : TTypeSymbol) : TScriptDynamicArray;
+var
+   size : Integer;
 begin
-   if elemTyp<>nil then begin
-      FElementTyp:=elemTyp;
-      FElementSize:=elemTyp.Size;
-   end;
+   if elemTyp<>nil then
+      size:=elemTyp.Size
+   else size:=0;
+   if size=1 then
+      Result:=TScriptDynamicValueArray.Create
+   else Result:=TScriptDynamicDataArray.Create;
+   Result.FElementTyp:=elemTyp;
+   Result.FElementSize:=size;
 end;
 
 // TScriptDynamicArray_InitData
 //
 procedure TScriptDynamicArray_InitData(elemTyp : TTypeSymbol; var result : Variant);
 begin
-   result:=IScriptObj(TScriptDynamicArray.Create(elemTyp));
+   result:=IScriptObj(TScriptDynamicArray.CreateNew(elemTyp));
 end;
 
 // SetArrayLength
@@ -6041,85 +6197,18 @@ begin
    SetDataLength(FArrayLength*ElementSize);
 end;
 
-// Swap
-//
-procedure TScriptDynamicArray.Swap(i1, i2 : Integer);
-var
-   i : Integer;
-   elem1, elem2 : PVarData;
-   buf : TVarData;
-begin
-   if ElementSize=1 then begin
-      elem1:=PVarData(AsPVariant(i1));
-      elem2:=PVarData(AsPVariant(i2));
-      buf:=elem1^;
-      elem1^:=elem2^;
-      elem2^:=buf;
-   end else begin
-      elem1:=PVarData(AsPVariant(i1*ElementSize));
-      elem2:=PVarData(AsPVariant(i2*ElementSize));
-      for i:=1 to ElementSize do begin
-         buf:=elem1^;
-         elem1^:=elem2^;
-         elem2^:=buf;
-         Inc(elem1);
-         Inc(elem2);
-      end;
-   end;
-end;
-
 // Reverse
 //
 procedure TScriptDynamicArray.Reverse;
 var
-   i : Integer;
+   t, b : Integer;
 begin
-   if ArrayLength>1 then begin
-      for i:=0 to (ArrayLength div 2)-1 do
-         Swap(i, ArrayLength-i-1);
-   end;
-end;
-
-// QuickSort
-//
-procedure TScriptDynamicArray.QuickSort(lo, hi : Integer; const compareFunc : TScriptDynamicArrayCompareFunc);
-var
-   i, j, pivot : Integer;
-begin
-   repeat
-      i:=lo;
-      j:=hi;
-      pivot:=(lo+hi) shr 1;
-      repeat
-         while compareFunc(i, pivot)<0 do
-            Inc(i);
-         while compareFunc(j, pivot)>0 do
-            Dec(j);
-         if i<=j then begin
-            if i<>j then
-               Swap(i, j);
-            Inc(i);
-            Dec(j);
-         end;
-      until i>j;
-      if lo<j then
-         QuickSort(lo, j, compareFunc);
-      lo:=i;
-   until i>=hi;
-end;
-
-// Sort
-//
-procedure TScriptDynamicArray.Sort(exec : TdwsExecution; compareExpr : TFuncExpr);
-var
-   comparer : TArraySortComparer;
-begin
-   if ArrayLength<=1 then Exit;
-   comparer:=TArraySortComparer.Create(exec, Self, compareExpr);
-   try
-      QuickSort(0, ArrayLength-1, comparer.Compare);
-   finally
-      comparer.Free;
+   t:=ArrayLength-1;
+   b:=0;
+   while t>b do begin
+      Swap(t, b);
+      Dec(t);
+      Inc(b);
    end;
 end;
 
@@ -6265,6 +6354,96 @@ begin
    System.SetLength(Result, ArrayLength);
    for i:=0 to ArrayLength-1 do
       EvalAsString(i, Result[i]);
+end;
+
+// ------------------
+// ------------------ TScriptDynamicValueArray ------------------
+// ------------------
+
+// Swap
+//
+procedure TScriptDynamicValueArray.Swap(i1, i2 : Integer);
+var
+   elem1, elem2 : PVarData;
+   buf : TVarData;
+begin
+   elem1:=@DirectData[i1];
+   elem2:=@DirectData[i2];
+   buf.VType:=elem1^.VType;
+   buf.VInt64:=elem1^.VInt64;
+   elem1^.VType:=elem2^.VType;
+   elem1^.VInt64:=elem2^.VInt64;
+   elem2^.VType:=buf.VType;
+   elem2^.VInt64:=buf.VInt64;
+end;
+
+// CompareString
+//
+function TScriptDynamicValueArray.CompareString(i1, i2 : Integer) : Integer;
+var
+   p : PVarDataArray;
+   v1, v2 : PVarData;
+begin
+   p:=@DirectData[0];
+   v1:=@p[i1];
+   v2:=@p[i2];
+   Assert((v1.VType=varUString) and (v2.VType=varUString));
+   Result:=UnicodeCompareStr(UnicodeString(v1.VString), UnicodeString(v2.VString));
+end;
+
+// CompareInteger
+//
+function TScriptDynamicValueArray.CompareInteger(i1, i2 : Integer) : Integer;
+var
+   p : PVarDataArray;
+   v1, v2 : PVarData;
+begin
+   p:=@DirectData[0];
+   v1:=@p[i1];
+   v2:=@p[i2];
+   Assert((v1.VType=varInt64) and (v2.VType=varInt64));
+   if v1.VInt64<v2.VInt64 then
+      Result:=-1
+   else Result:=Ord(v1.VInt64>v2.VInt64);
+end;
+
+// CompareFloat
+//
+function TScriptDynamicValueArray.CompareFloat(i1, i2 : Integer) : Integer;
+var
+   p : PVarDataArray;
+   v1, v2 : PVarData;
+begin
+   p:=@DirectData[0];
+   v1:=@p[i1];
+   v2:=@p[i2];
+   Assert((v1.VType=varDouble) and (v2.VType=varDouble));
+   if v1.VDouble<v2.VDouble then
+      Result:=-1
+   else Result:=Ord(v1.VDouble>v2.VDouble);
+end;
+
+// ------------------
+// ------------------ TScriptDynamicDataArray ------------------
+// ------------------
+
+// Swap
+//
+procedure TScriptDynamicDataArray.Swap(i1, i2 : Integer);
+var
+   i : Integer;
+   elem1, elem2 : PVarData;
+   buf : TVarData;
+begin
+   elem1:=@DirectData[i1*ElementSize];
+   elem2:=@DirectData[i2*ElementSize];
+   for i:=1 to ElementSize do begin
+      buf:=elem1^;
+      elem1^:=elem2^;
+      elem2^:=buf;
+      Inc(elem1);
+      Inc(elem2);
+   end;
 end;
 
 // ------------------

@@ -2,9 +2,7 @@ program LiveScriptingIDE;
 
 uses
   Forms,
-  MainUnit in 'MainUnit.pas' {FrmBasic},
-  Vcl.Themes,
-  Vcl.Styles;
+  MainUnit in 'MainUnit.pas' {FrmBasic};
 
 begin
   Application.Initialize;

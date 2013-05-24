@@ -344,7 +344,7 @@ var
 begin
    arr:=TArrayConstantExpr(Expr);
 
-   dynArray:=TScriptDynamicArray.Create(TDynamicArraySymbol(Typ).Typ);
+   dynArray:=TScriptDynamicArray.CreateNew(TDynamicArraySymbol(Typ).Typ);
    dynArray.ReplaceData(arr.EvalAsTData(exec));
 
    Result:=IUnknown(IScriptObj(dynArray));
