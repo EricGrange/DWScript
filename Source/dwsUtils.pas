@@ -620,6 +620,8 @@ procedure FastInt64ToStr(const val : Int64; var s : UnicodeString);
 
 procedure VariantToString(const v : Variant; var s : UnicodeString);
 
+procedure SuppressH2077ValueAssignedToVariableNeverUsed(const X); inline;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -627,6 +629,12 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+// SuppressH2077ValueAssignedToVariableNeverUsed
+//
+procedure SuppressH2077ValueAssignedToVariableNeverUsed(const X); inline;
+begin
+end;
 
 // SimpleStringHash
 //

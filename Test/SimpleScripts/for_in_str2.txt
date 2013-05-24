@@ -3,10 +3,10 @@ e: 101
 l: 108
 l: 108
 o: 111
-unicode $0D835 len 2
+unicode $1D538 len 2
 unicode $00041 len 1
 unicode $003B1 len 1
-unicode $0D835 len 2
+unicode $1D516 len 2
 t: $00074
 r: $00072
 a: $00061

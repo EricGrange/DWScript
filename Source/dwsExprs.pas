@@ -6604,6 +6604,7 @@ begin
       // remove symList from internal list
       idx:=FSymbolList.Extract(symList);
       Assert(idx>=0);
+      SuppressH2077ValueAssignedToVariableNeverUsed(idx);
       symList.Free;
    end;
 end;

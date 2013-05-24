@@ -4120,11 +4120,25 @@ end;
 function TOrdStrExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 var
    s : UnicodeString;
+   charCode : Integer;
+   surrogate : Integer;
 begin
    FExpr.EvalAsString(exec, s);
-   if s<>'' then
-      Result:=Ord(s[1])
-   else Result:=0;
+   if s='' then
+      charCode:=0
+   else begin
+      charCode:=Ord(s[1]);
+      case charCode of
+         $D800..$DBFF : if (Length(s)>1) then begin
+            surrogate:=Ord(s[2]);
+            case surrogate of
+               $DC00..$DFFF :
+                  charCode:=(charCode-$D800)*$400+(surrogate-$DC00)+$10000;
+            end;
+         end;
+      end;
+   end;
+   Result:=charCode;
 end;
 
 // ------------------
