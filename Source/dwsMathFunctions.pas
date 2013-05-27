@@ -454,14 +454,23 @@ end;
 { TFactorialFunc }
 
 procedure TFactorialFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+const
+   cFactTable : array [2..12] of Integer =
+      (2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 39916800, 479001600 );
 var
-   i : Int64;
+   i : Integer;
 begin
    i:=args.AsInteger[0];
-   Result:=1;
-   while i>1 do begin
-      Result:=Result*i;
-      Dec(i);
+   if i<=1 then
+      Result:=1
+   else if i<=High(cFactTable) then
+      Result:=cFactTable[i]
+   else begin
+      Result:=cFactTable[High(cFactTable)];
+      while i>High(cFactTable) do begin
+         Result:=Result*i;
+         Dec(i);
+      end;
    end;
 end;
 
