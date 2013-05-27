@@ -212,7 +212,8 @@ begin
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
    CheckTrue(sugg.Count>10, 'column 8');
    CheckEquals('Boolean', sugg.Code[0], 'sugg 8, 0');
-   CheckEquals('EAssertionFailed', sugg.Code[1], 'sugg 8, 1');
+   CheckEquals('CompilerVersion', sugg.Code[1], 'sugg 8, 1');
+   CheckEquals('EAssertionFailed', sugg.Code[2], 'sugg 8, 2');
 
    scriptPos.Col:=9;
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);

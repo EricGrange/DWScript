@@ -1640,7 +1640,7 @@ type
 
       public
          constructor Create(aProg: TdwsProgram; const aPos: TScriptPos;
-                            aVarExpr : TVarExpr; aInExpr : TTypedExpr; aDoExpr : TProgramExpr);
+                            aVarExpr : TVarExpr; aInExpr : TTypedExpr);
          destructor Destroy; override;
 
          property DoExpr : TProgramExpr read FDoExpr write FDoExpr;
@@ -1652,7 +1652,7 @@ type
    TForCharCodeInStrExpr = class(TForInStrExpr)
       public
          constructor Create(aProg: TdwsProgram; const aPos: TScriptPos;
-                            aVarExpr : TIntVarExpr; aInExpr : TTypedExpr; aDoExpr : TProgramExpr);
+                            aVarExpr : TIntVarExpr; aInExpr : TTypedExpr);
 
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
@@ -1661,7 +1661,7 @@ type
    TForCharInStrExpr = class(TForInStrExpr)
       public
          constructor Create(aProg: TdwsProgram; const aPos: TScriptPos;
-                            aVarExpr : TStrVarExpr; aInExpr : TTypedExpr; aDoExpr : TProgramExpr);
+                            aVarExpr : TStrVarExpr; aInExpr : TTypedExpr);
 
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
@@ -8115,12 +8115,11 @@ end;
 // Create
 //
 constructor TForInStrExpr.Create(aProg: TdwsProgram; const aPos: TScriptPos;
-         aVarExpr : TVarExpr; aInExpr : TTypedExpr; aDoExpr : TProgramExpr);
+         aVarExpr : TVarExpr; aInExpr : TTypedExpr);
 begin
    inherited Create(aPos);
    FVarExpr:=aVarExpr;
    FInExpr:=aInExpr;
-   FDoExpr:=aDoExpr;
 end;
 
 // Destroy
@@ -8159,9 +8158,9 @@ end;
 // Create
 //
 constructor TForCharCodeInStrExpr.Create(aProg: TdwsProgram; const aPos: TScriptPos;
-         aVarExpr : TIntVarExpr; aInExpr : TTypedExpr; aDoExpr : TProgramExpr);
+         aVarExpr : TIntVarExpr; aInExpr : TTypedExpr);
 begin
-   inherited Create(aProg, aPos, aVarExpr, aInExpr, aDoExpr);
+   inherited Create(aProg, aPos, aVarExpr, aInExpr);
 end;
 
 // EvalNoResult
@@ -8213,9 +8212,9 @@ end;
 // Create
 //
 constructor TForCharInStrExpr.Create(aProg: TdwsProgram; const aPos: TScriptPos;
-         aVarExpr : TStrVarExpr; aInExpr : TTypedExpr; aDoExpr : TProgramExpr);
+         aVarExpr : TStrVarExpr; aInExpr : TTypedExpr);
 begin
-   inherited Create(aProg, aPos, aVarExpr, aInExpr, aDoExpr);
+   inherited Create(aProg, aPos, aVarExpr, aInExpr);
 end;
 
 // EvalNoResult

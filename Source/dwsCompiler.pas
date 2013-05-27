@@ -512,6 +512,8 @@ type
                               loopFirstStatement : TProgramExpr) : TForExpr;
          function ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr;
                             const loopVarName : UnicodeString; const loopVarNamePos : TScriptPos) : TProgramExpr;
+         function ReadForInString(const forPos : TScriptPos; inExpr : TProgramExpr; loopVarExpr : TVarExpr;
+                                  const loopVarName : UnicodeString; const loopVarNamePos : TScriptPos) : TProgramExpr;
          function ReadForInConnector(const forPos : TScriptPos;
                             inExpr : TTypedExpr; const inPos : TScriptPos; loopVarExpr : TVarExpr;
                             const loopVarName : UnicodeString; const loopVarNamePos : TScriptPos) : TProgramExpr;
@@ -5680,45 +5682,7 @@ begin
               or loopVarExpr.Typ.IsOfType(FProg.TypInteger)
               or loopVarExpr.Typ.IsOfType(FProg.TypString)) then begin
 
-         if not FTok.TestDelete(ttDO) then begin
-            inExpr.Free;
-            loopVarExpr.Free;
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
-         end;
-
-         if loopVarExpr=nil then begin
-
-            blockExpr:=TBlockExpr.Create(FProg, forPos);
-
-            loopVarSymbol:=TDataSymbol.Create(loopVarName, FProg.TypString);
-            blockExpr.Table.AddSymbol(loopVarSymbol);
-            RecordSymbolUse(loopVarSymbol, loopVarNamePos, [suDeclaration, suReference, suWrite]);
-            loopVarExpr:=GetVarExpr(loopVarSymbol);
-            FProg.InitExpr.AddStatement(TAssignConstToStringVarExpr.CreateVal(FProg, loopVarNamePos, loopVarExpr, ''));
-            loopVarExpr.IncRefCount;
-
-            Result:=blockExpr;
-            FProg.EnterSubTable(blockExpr.Table);
-            try
-               Result:=TForCharInStrExpr.Create(FProg, forPos, loopVarExpr as TStrVarExpr,
-                                                TTypedExpr(inExpr), ReadBlock)
-            finally
-               FProg.LeaveSubTable;
-               blockExpr.AddStatement(Result);
-               Result:=blockExpr;
-            end;
-
-         end else if loopVarExpr.Typ.IsOfType(FProg.TypInteger) then begin
-
-            Result:=TForCharCodeInStrExpr.Create(FProg, forPos, loopVarExpr as TIntVarExpr,
-                                                 TTypedExpr(inExpr), ReadBlock)
-
-         end else begin
-
-            Result:=TForCharInStrExpr.Create(FProg, forPos, loopVarExpr as TStrVarExpr,
-                                             TTypedExpr(inExpr), ReadBlock);
-
-         end;
+         Result:=ReadForInString(forPos, inExpr, loopVarExpr, loopVarName, loopVarNamePos);
          Exit;
 
       end else if inExpr.Typ is TArraySymbol then begin
@@ -5844,6 +5808,65 @@ begin
       end;
    end;
 
+end;
+
+// ReadForInString
+//
+function TdwsCompiler.ReadForInString(const forPos : TScriptPos; inExpr : TProgramExpr;
+      loopVarExpr : TVarExpr; const loopVarName : UnicodeString; const loopVarNamePos : TScriptPos) : TProgramExpr;
+var
+   loopVarSymbol : TDataSymbol;
+   blockExpr : TBlockExpr;
+   forInExpr : TForInStrExpr;
+begin
+   if not FTok.TestDelete(ttDO) then begin
+      inExpr.Free;
+      loopVarExpr.Free;
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
+   end;
+
+   if loopVarExpr=nil then begin
+
+      blockExpr:=TBlockExpr.Create(FProg, forPos);
+
+      loopVarSymbol:=TDataSymbol.Create(loopVarName, FProg.TypString);
+      blockExpr.Table.AddSymbol(loopVarSymbol);
+      RecordSymbolUse(loopVarSymbol, loopVarNamePos, [suDeclaration, suReference, suWrite]);
+      loopVarExpr:=GetVarExpr(loopVarSymbol);
+      FProg.InitExpr.AddStatement(TAssignConstToStringVarExpr.CreateVal(FProg, loopVarNamePos, loopVarExpr, ''));
+      loopVarExpr.IncRefCount;
+
+      forInExpr:=TForCharInStrExpr.Create(FProg, forPos, loopVarExpr as TStrVarExpr,
+                                          TTypedExpr(inExpr));
+      FProg.EnterSubTable(blockExpr.Table);
+      EnterLoop(forInExpr);
+      try
+         MarkLoopExitable(leBreak);
+         forInExpr.DoExpr:=ReadBlock;
+      finally
+         LeaveLoop;
+         FProg.LeaveSubTable;
+         blockExpr.AddStatement(forInExpr);
+         Result:=blockExpr;
+      end;
+
+   end else begin
+
+      if loopVarExpr.Typ.IsOfType(FProg.TypInteger) then
+         forInExpr:=TForCharCodeInStrExpr.Create(FProg, forPos, loopVarExpr as TIntVarExpr,
+                                                 TTypedExpr(inExpr))
+      else forInExpr:=TForCharInStrExpr.Create(FProg, forPos, loopVarExpr as TStrVarExpr,
+                                               TTypedExpr(inExpr));
+      EnterLoop(forInExpr);
+      try
+         MarkLoopExitable(leBreak);
+         forInExpr.DoExpr:=ReadBlock;
+      finally
+         LeaveLoop;
+      end;
+      Result:=forInExpr;
+
+   end;
 end;
 
 // ReadForInConnector
