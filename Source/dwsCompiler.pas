@@ -12021,7 +12021,7 @@ begin
          skLength : begin
             if argTyp is TArraySymbol then begin
                Result:=CreateArrayLength(argExpr, TArraySymbol(argTyp));
-            end else if ((argTyp=FProg.TypString) or (argTyp=FProg.TypVariant)) and Assigned(argExpr) then begin
+            end else if ((argTyp=FProg.TypString) or (argTyp.IsOfType(FProg.TypVariant))) and Assigned(argExpr) then begin
                Result:=TStringLengthExpr.Create(FProg, argExpr);
             end else begin
                FMsgs.AddCompilerError(argPos, CPE_InvalidArgumentType);
