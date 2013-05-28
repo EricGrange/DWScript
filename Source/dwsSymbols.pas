@@ -71,7 +71,7 @@ type
       procedure LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase);
       function  LastDebugStepExpr : TExprBase;
       procedure DebugMessage(const msg : UnicodeString);
-      procedure NotifyException(const exceptObj : IScriptObj);
+      procedure NotifyException(exec : TdwsExecution; const exceptObj : IScriptObj);
    end;
 
    TProgramState = (psUndefined, psReadyToRun, psRunning, psRunningStopped, psTerminated);
@@ -121,6 +121,25 @@ type
 
    TExprBaseEnumeratorProc = procedure (parent, expr : TExprBase; var abort : Boolean) of object;
 
+   // Is thrown by "raise" statements in script code
+   EScriptException = class(Exception)
+      private
+         FExceptObj : IScriptObj;
+         FScriptPos : TScriptPos;
+         FScriptCallStack : TdwsExprLocationArray;
+
+      public
+         constructor Create(const msgString : UnicodeString; const anExceptionObj : IScriptObj;
+                            const aScriptPos: TScriptPos); overload;
+
+         property ExceptionObj : IScriptObj read FExceptObj;
+         property ScriptPos : TScriptPos read FScriptPos write FScriptPos;
+         property ScriptCallStack : TdwsExprLocationArray read FScriptCallStack write FScriptCallStack;
+   end;
+
+   // Is thrown by failed Assert() statements in script code
+   EScriptAssertionFailed = class(EScriptException)
+   end;
    // Base class for all Exprs
 
    { TExprBase }
@@ -1664,6 +1683,9 @@ type
          property LastScriptCallStack : TdwsExprLocationArray read FLastScriptCallStack;
          property ExceptionObjectStack : TSimpleStack<Variant> read FExceptionObjectStack;
 
+         procedure EnterExceptionBlock(var exceptObj : IScriptObj); virtual;
+         procedure LeaveExceptionBlock;
+
          property ProgramState : TProgramState read FProgramState;
 
          property Debugger : IDebugger read FDebugger write SetDebugger;
@@ -1723,26 +1745,6 @@ type
    EScriptStopped = class (EScriptError)
       public
          class procedure DoRaise(exec : TdwsExecution; stoppedOn : TExprBase); static;
-   end;
-
-   // Is thrown by "raise" statements in script code
-   EScriptException = class(Exception)
-      private
-         FExceptObj : IScriptObj;
-         FScriptPos : TScriptPos;
-         FScriptCallStack : TdwsExprLocationArray;
-
-      public
-         constructor Create(const msgString : UnicodeString; const anExceptionObj : IScriptObj;
-                            const aScriptPos: TScriptPos); overload;
-
-         property ExceptionObj : IScriptObj read FExceptObj;
-         property ScriptPos : TScriptPos read FScriptPos write FScriptPos;
-         property ScriptCallStack : TdwsExprLocationArray read FScriptCallStack write FScriptCallStack;
-   end;
-
-   // Is thrown by failed Assert() statements in script code
-   EScriptAssertionFailed = class(EScriptException)
    end;
 
 const
@@ -6391,6 +6393,21 @@ end;
   {$R+}
   {$UNDEF RANGEON}
 {$ENDIF}
+
+// EnterExceptionBlock
+//
+procedure TdwsExecution.EnterExceptionBlock(var exceptObj : IScriptObj);
+begin
+   ExceptionObjectStack.Push(exceptObj);
+end;
+
+// LeaveExceptionBlock
+//
+procedure TdwsExecution.LeaveExceptionBlock;
+begin
+   ExceptionObjectStack.Peek:=Unassigned;
+   ExceptionObjectStack.Pop;
+end;
 
 // SetRandSeed
 //

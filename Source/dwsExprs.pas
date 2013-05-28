@@ -440,6 +440,7 @@ type
       procedure SetEnvironment(const env : IdwsEnvironment);
       function GetLocalizer : IdwsLocalizer;
       procedure SetLocalizer(const loc : IdwsLocalizer);
+      function GetLastScriptErrorExpr : TExprBase;
 
       procedure Execute(aTimeoutMilliSeconds : Integer = 0); overload;
       procedure ExecuteParam(const params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0); overload;
@@ -545,6 +546,7 @@ type
          function GetObjectCount : Integer;
          function GetLocalizer : IdwsLocalizer;
          procedure SetLocalizer(const val : IdwsLocalizer);
+         function GetLastScriptErrorExpr : TExprBase;
 
          procedure EnterRecursion(caller : TExprBase);
          procedure LeaveRecursion;
@@ -572,8 +574,13 @@ type
          procedure DebuggerNotifyException(const exceptObj : IScriptObj); override;
 
          class function CallStackToString(const callStack : TdwsExprLocationArray) : UnicodeString; static;
-         procedure RaiseAssertionFailed(const msg : UnicodeString; const scriptPos : TScriptPos);
-         procedure RaiseAssertionFailedFmt(const fmt : UnicodeString; const args : array of const; const scriptPos : TScriptPos);
+         procedure RaiseAssertionFailed(fromExpr : TExprBase; const msg : UnicodeString; const scriptPos : TScriptPos);
+         procedure RaiseAssertionFailedFmt(fromExpr : TExprBase; const fmt : UnicodeString; const args : array of const; const scriptPos : TScriptPos);
+
+         function CreateEDelphiObj(const ClassName : String;
+                                   const Message : UnicodeString) : IScriptObj;
+
+         procedure EnterExceptionBlock(var exceptObj : IScriptObj); override;
 
          function AcquireProgramInfo(funcSym : TFuncSymbol) : TProgramInfo;
          procedure ReleaseProgramInfo(info : TProgramInfo);
@@ -1463,6 +1470,7 @@ type
       function GetValueAsBoolean : Boolean;
       function GetValueAsFloat : Double;
       function GetInherited: IInfo;
+      function GetExec : IdwsProgramExecution;
       procedure SetData(const Data: TData);
       procedure SetExternalObject(ExtObject: TObject);
       procedure SetValue(const Value: Variant);
@@ -1474,6 +1482,7 @@ type
       property FieldMemberNames : TStrings read GetFieldMemberNames;
       property Method[const s : UnicodeString]: IInfo read GetMethod;
 
+      property Exec: IdwsProgramExecution read GetExec;
       property ScriptObj: IScriptObj read GetScriptObj;
       property Parameter[const s: UnicodeString]: IInfo read GetParameter;
       property TypeSym: TSymbol read GetTypeSym;
@@ -1999,6 +2008,8 @@ procedure TdwsProgramExecution.RunProgram(aTimeoutMilliSeconds : Integer);
 
    procedure Handle_EScriptAssertionFailed(e : EScriptAssertionFailed);
    begin
+      if IsDebugging then
+         Debugger.NotifyException(Self, e.ExceptionObj);
       Msgs.AddRuntimeError(e.ScriptPos,
                             Copy(e.Message, 1, LastDelimiter('[', e.Message)-2)
                            +StrAfterChar(e.Message, ']'),
@@ -2008,19 +2019,25 @@ procedure TdwsProgramExecution.RunProgram(aTimeoutMilliSeconds : Integer);
    procedure Handle_Exception(e : Exception);
    var
       debugPos : TScriptPos;
+      exceptObj : IScriptObj;
    begin
-      if LastScriptError<>nil then begin
-         if LastScriptError is TFuncExpr then
-            Msgs.AddRuntimeError(LastScriptError.ScriptPos,
-                                 e.Message+' in '+TFuncExpr(LastScriptError).FuncSym.QualifiedName,
-                                 LastScriptCallStack)
-         else Msgs.AddRuntimeError(LastScriptError.ScriptPos, e.Message,
-                                   LastScriptCallStack)
-      end else if (Debugger<>nil) and (Debugger.LastDebugStepExpr<>nil) then begin
-         debugPos:=Debugger.LastDebugStepExpr.ScriptPos;
-         debugPos.Col:=0;
-         Msgs.AddRuntimeError(debugPos, e.Message, LastScriptCallStack)
-      end else Msgs.AddRuntimeError(cNullPos, e.Message, LastScriptCallStack);
+      EnterExceptionBlock(exceptObj);
+      try
+         if LastScriptError<>nil then begin
+            if LastScriptError is TFuncExpr then
+               Msgs.AddRuntimeError(LastScriptError.ScriptPos,
+                                    e.Message+' in '+TFuncExpr(LastScriptError).FuncSym.QualifiedName,
+                                    LastScriptCallStack)
+            else Msgs.AddRuntimeError(LastScriptError.ScriptPos, e.Message,
+                                      LastScriptCallStack)
+         end else if (Debugger<>nil) and (Debugger.LastDebugStepExpr<>nil) then begin
+            debugPos:=Debugger.LastDebugStepExpr.ScriptPos;
+            debugPos.Col:=0;
+            Msgs.AddRuntimeError(debugPos, e.Message, LastScriptCallStack)
+         end else Msgs.AddRuntimeError(cNullPos, e.Message, LastScriptCallStack);
+      finally
+         LeaveExceptionBlock;
+      end;
    end;
 
 var
@@ -2055,8 +2072,11 @@ begin
       except
          on e: EScriptAssertionFailed do
             Handle_EScriptAssertionFailed(e);
-         on e: EScriptException do
+         on e: EScriptException do begin
+            if IsDebugging then
+               Debugger.NotifyException(Self, e.ExceptionObj);
             Msgs.AddRuntimeError(e.ScriptPos, e.Message, e.ScriptCallStack);
+         end;
          on e: EScriptError do
             Msgs.AddRuntimeError(e.ScriptPos, e.Message, e.ScriptCallStack);
          on e: EScriptStackException do
@@ -2066,7 +2086,6 @@ begin
          on e: Exception do
             Handle_Exception(e);
       end;
-
    finally
       if aTimeoutMilliSeconds>0 then
          TdwsGuardianThread.ForgetExecution(Self);
@@ -2132,22 +2151,76 @@ end;
 
 // RaiseAssertionFailed
 //
-procedure TdwsProgramExecution.RaiseAssertionFailed(const msg : UnicodeString; const scriptPos : TScriptPos);
+procedure TdwsProgramExecution.RaiseAssertionFailed(fromExpr : TExprBase; const msg : UnicodeString; const scriptPos : TScriptPos);
 begin
-   RaiseAssertionFailedFmt(RTE_AssertionFailed, [scriptPos.AsInfo, msg], scriptPos);
+   RaiseAssertionFailedFmt(fromExpr, RTE_AssertionFailed, [scriptPos.AsInfo, msg], scriptPos);
 end;
 
 // RaiseAssertionFailedFmt
 //
-procedure TdwsProgramExecution.RaiseAssertionFailedFmt(const fmt : UnicodeString; const args : array of const; const scriptPos : TScriptPos);
+procedure TdwsProgramExecution.RaiseAssertionFailedFmt(fromExpr : TExprBase; const fmt : UnicodeString; const args : array of const; const scriptPos : TScriptPos);
 var
    exceptObj : IScriptObj;
    fmtMsg : UnicodeString;
 begin
+   SetScriptError(fromExpr);
    fmtMsg:=Format(fmt, args);
    exceptObj:=IScriptObj(IUnknown(ProgramInfo.Vars[SYS_EASSERTIONFAILED].Method[SYS_TOBJECT_CREATE].Call([fmtMsg]).Value));
    (exceptObj.ExternalObject as TdwsExceptionContext).Skip(1); // temporary constructor expression
+   if IsDebugging then
+      DebuggerNotifyException(exceptObj);
    raise EScriptAssertionFailed.Create(fmtMsg, exceptObj, scriptPos)
+end;
+
+// CreateEDelphiObj
+//
+function TdwsProgramExecution.CreateEDelphiObj(const ClassName : String;
+                                   const Message : UnicodeString) : IScriptObj;
+begin
+   Result := IScriptObj(IUnknown(
+      ProgramInfo.Vars[SYS_EDELPHI].Method[SYS_TOBJECT_CREATE].Call([ClassName, Message]).Value));
+   (Result.ExternalObject as TdwsExceptionContext).ReplaceTop(LastScriptError); // temporary constructor expression
+end;
+
+// EnterExceptionBlock
+//
+procedure TdwsProgramExecution.EnterExceptionBlock(var exceptObj : IScriptObj);
+var
+   mainException : Exception;
+   err : EScriptError;
+   msg : UnicodeString;
+begin
+   if ExceptionObjectStack.Count>Stack.MaxExceptionDepth then
+      raise EScriptExceptionOverflow.CreateFmt(RTE_MaximalExceptionDepthExceeded,
+                                               [ExceptionObjectStack.Count]);
+
+   {$ifdef FPC}
+   mainException:=SysUtils.ExceptObject as Exception;
+   {$else}
+   mainException:=System.ExceptObject as Exception;
+   {$endif}
+
+   if mainException is EScriptException then begin
+      // a raise-statement created an Exception object
+      exceptObj:=EScriptException(mainException).ExceptionObj
+   end else if mainException is EScriptError then begin
+      msg:=mainException.Message;
+      err:=EScriptError(mainException);
+      if Length(err.ScriptCallStack)>0 then
+         msg:=msg+' in '+(err.ScriptCallStack[High(err.ScriptCallStack)].Expr as TFuncExpr).FuncSym.QualifiedName;
+      if EScriptError(mainException).ScriptPos.Defined then
+         msg:=msg+EScriptError(mainException).ScriptPos.AsInfo;
+      exceptObj:=CreateEDelphiObj(mainException.ClassName, msg);
+   end else if mainException is EScriptStackOverflow then begin
+      exceptObj:=nil
+   end else begin
+      // A Delphi exception. Transform it to a EDelphi-dws exception
+      exceptObj:=CreateEDelphiObj(mainException.ClassName, mainException.Message);
+   end;
+
+   inherited EnterExceptionBlock(exceptObj);
+   if IsDebugging then
+      DebuggerNotifyException(exceptObj);
 end;
 
 // AcquireProgramInfo
@@ -2356,6 +2429,13 @@ begin
    FLocalizer:=val;
 end;
 
+// GetLastScriptErrorExpr
+//
+function TdwsProgramExecution.GetLastScriptErrorExpr : TExprBase;
+begin
+   Result:=LastScriptError;
+end;
+
 // GetMsgs
 //
 function TdwsProgramExecution.GetMsgs : TdwsRuntimeMessageList;
@@ -2487,7 +2567,7 @@ begin
    i:=exceptObj.AsInteger[addr];
    exceptObj.AsInteger[addr]:=i+1;
    if i=0 then
-      Debugger.NotifyException(exceptObj);
+      Debugger.NotifyException(Self, exceptObj);
 end;
 
 // ------------------
@@ -7600,7 +7680,7 @@ var
    msgStr : UnicodeString;
 begin
    msg.EvalAsString(exec, msgStr);
-   (exec as TdwsProgramExecution).RaiseAssertionFailedFmt(
+   (exec as TdwsProgramExecution).RaiseAssertionFailedFmt(nil,
       RTE_PreConditionFailed, [funcSym.QualifiedName, scriptPos.AsInfo, msgStr], scriptPos);
 end;
 
@@ -7616,7 +7696,7 @@ var
    msgStr : UnicodeString;
 begin
    msg.EvalAsString(exec, msgStr);
-   (exec as TdwsProgramExecution).RaiseAssertionFailedFmt(
+   (exec as TdwsProgramExecution).RaiseAssertionFailedFmt(nil,
       RTE_PostConditionFailed, [funcSym.QualifiedName, scriptPos.AsInfo, msgStr], scriptPos);
 end;
 

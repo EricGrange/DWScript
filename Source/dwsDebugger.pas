@@ -26,7 +26,7 @@ interface
 uses
    Classes, SysUtils, Variants,
    dwsExprs, dwsSymbols, dwsXPlatform, dwsCompiler, dwsErrors, dwsDataContext,
-   dwsUtils, dwsXPlatformUI, dwsStrings, dwsUnitSymbols,
+   dwsUtils, dwsXPlatformUI, dwsStrings, dwsUnitSymbols, dwsStack,
    dwsInfo;
 
 type
@@ -35,7 +35,7 @@ type
    TOnDebugStartStopEvent = procedure(exec: TdwsExecution) of object;
    TOnDebugEvent = procedure(exec: TdwsExecution; expr: TExprBase) of object;
    TOnDebugMessageEvent = procedure(const msg : UnicodeString) of object;
-   TOnNotifyExceptionEvent = procedure (const exceptObj : IScriptObj) of object;
+   TOnNotifyExceptionEvent = procedure (const exceptObj : IInfo) of object;
 
    // TdwsSimpleDebugger
    //
@@ -59,7 +59,7 @@ type
          procedure LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase); virtual;
          function  LastDebugStepExpr : TExprBase; virtual;
          procedure DebugMessage(const msg : UnicodeString); virtual;
-         procedure NotifyException(const exceptObj : IScriptObj); virtual;
+         procedure NotifyException(exec : TdwsExecution; const exceptObj : IScriptObj); virtual;
 
       public
          property Debugger : IDebugger read FDebugger write FDebugger;
@@ -307,7 +307,7 @@ type
       protected
          procedure DoDebug(exec : TdwsExecution; expr : TExprBase); override;
          function  LastDebugStepExpr : TExprBase; override;
-         procedure NotifyException(const exceptObj : IScriptObj); override;
+         procedure NotifyException(exec : TdwsExecution; const exceptObj : IScriptObj); override;
 
          procedure StateChanged;
          procedure BreakpointsChanged;
@@ -425,7 +425,7 @@ type
       procedure LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase);
       function  LastDebugStepExpr : TExprBase;
       procedure DebugMessage(const msg : UnicodeString);
-      procedure NotifyException(const exceptObj : IScriptObj);
+      procedure NotifyException(exec : TdwsExecution; const exceptObj : IScriptObj);
    end;
    {$endif}
 
@@ -547,9 +547,9 @@ end;
 
 // NotifyException
 //
-procedure TSynchronizedThreadedDebugger.NotifyException(const exceptObj : IScriptObj);
+procedure TSynchronizedThreadedDebugger.NotifyException(exec : TdwsExecution; const exceptObj : IScriptObj);
 begin
-   Synchronize(procedure begin FMain.NotifyException(exceptObj) end);
+   Synchronize(procedure begin FMain.NotifyException(exec, exceptObj) end);
 end;
 {$endif}
 
@@ -606,10 +606,32 @@ end;
 
 // NotifyException
 //
-procedure TdwsSimpleDebugger.NotifyException(const exceptObj : IScriptObj);
+procedure TdwsSimpleDebugger.NotifyException(exec : TdwsExecution; const exceptObj : IScriptObj);
+
+   procedure DoNotify;
+   var
+      info : TProgramInfo;
+      progExec : TdwsProgramExecution;
+      exceptInfo : IInfo;
+      data : TData;
+      dataContext : IDataContext;
+   begin
+      progExec:=(exec as TdwsProgramExecution);
+      info:=progExec.AcquireProgramInfo(nil);
+      try
+         SetLength(data, 1);
+         data[0]:=exceptObj;
+         exec.DataContext_Create(data, 0, dataContext);
+         exceptInfo:=TInfoClassObj.Create(info, exceptObj.ClassSym, dataContext);
+         FOnNotifyException(exceptInfo);
+      finally
+         progExec.ReleaseProgramInfo(info);
+      end;
+   end;
+
 begin
    if Assigned(FOnNotifyException) then
-      FOnNotifyException(exceptObj);
+      DoNotify;
 end;
 
 // StartDebug
@@ -1004,7 +1026,7 @@ end;
 
 // NotifyException
 //
-procedure TdwsDebugger.NotifyException(const exceptObj : IScriptObj);
+procedure TdwsDebugger.NotifyException(exec : TdwsExecution; const exceptObj : IScriptObj);
 begin
    if SuspendOnException then begin
       if daCanSuspend in AllowedActions then

@@ -1787,12 +1787,6 @@ type
          FHandlerExpr : TProgramExpr;
 
       protected
-         function CreateEDelphiObj(exec : TdwsExecution; const ClassName : String;
-                                   const Message : UnicodeString) : IScriptObj;
-
-         procedure EnterExceptionBlock(exec : TdwsExecution; var exceptObj : IScriptObj);
-         procedure LeaveExceptionBlock(exec : TdwsExecution);
-
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
@@ -4008,7 +4002,7 @@ procedure TAssertExpr.EvalNoResult(exec : TdwsExecution);
          FMessage.EvalAsString(exec, msg);
          msg:=' : '+msg;
       end else msg:='';
-      (exec as TdwsProgramExecution).RaiseAssertionFailed(msg, FScriptPos);
+      (exec as TdwsProgramExecution).RaiseAssertionFailed(Self, msg, FScriptPos);
    end;
 
 begin
@@ -6588,67 +6582,6 @@ begin
   inherited;
 end;
 
-// CreateEDelphiObj
-//
-function TExceptionExpr.CreateEDelphiObj(exec : TdwsExecution; const ClassName : String;
-                                         const Message : UnicodeString) : IScriptObj;
-var
-   info: TProgramInfo;
-begin
-   info := (exec as TdwsProgramExecution).ProgramInfo;
-   Result := IScriptObj(IUnknown(
-      info.Vars[SYS_EDELPHI].Method[SYS_TOBJECT_CREATE].Call([ClassName, Message]).Value));
-   (Result.ExternalObject as TdwsExceptionContext).ReplaceTop(exec.LastScriptError); // temporary constructor expression
-end;
-
-// EnterExceptionBlock
-//
-procedure TExceptionExpr.EnterExceptionBlock(exec : TdwsExecution; var exceptObj : IScriptObj);
-var
-   mainException : Exception;
-   err : EScriptError;
-   msg : UnicodeString;
-begin
-   if exec.ExceptionObjectStack.Count>exec.Stack.MaxExceptionDepth then
-      raise EScriptExceptionOverflow.CreateFmt(RTE_MaximalExceptionDepthExceeded, [exec.ExceptionObjectStack.Count]);
-
-   {$ifdef FPC}
-   mainException:=SysUtils.ExceptObject as Exception;
-   {$else}
-   mainException:=System.ExceptObject as Exception;
-   {$endif}
-
-   if mainException is EScriptException then begin
-      // a raise-statement created an Exception object
-      exceptObj:=EScriptException(mainException).ExceptionObj
-   end else if mainException is EScriptError then begin
-      msg:=mainException.Message;
-      err:=EScriptError(mainException);
-      if Length(err.ScriptCallStack)>0 then
-         msg:=msg+' in '+(err.ScriptCallStack[High(err.ScriptCallStack)].Expr as TFuncExpr).FuncSym.QualifiedName;
-      if EScriptError(mainException).ScriptPos.Defined then
-         msg:=msg+EScriptError(mainException).ScriptPos.AsInfo;
-      exceptObj:=CreateEDelphiObj(exec, mainException.ClassName, msg);
-   end else if mainException is EScriptStackOverflow then begin
-      exceptObj:=nil
-   end else begin
-      // A Delphi exception. Transform it to a EDelphi-dws exception
-      exceptObj:=CreateEDelphiObj(exec, mainException.ClassName, mainException.Message);
-   end;
-
-   exec.ExceptionObjectStack.Push(exceptObj);
-   if exec.IsDebugging then
-      exec.DebuggerNotifyException(exceptObj);
-end;
-
-// LeaveExceptionBlock
-//
-procedure TExceptionExpr.LeaveExceptionBlock(exec : TdwsExecution);
-begin
-   exec.ExceptionObjectStack.Peek:=Unassigned;
-   exec.ExceptionObjectStack.Pop;
-end;
-
 // GetSubExpr
 //
 function TExceptionExpr.GetSubExpr(i : Integer) : TExprBase;
@@ -6699,7 +6632,7 @@ begin
       if    (systemExceptObject.ClassType=EScriptStopped)
          or not (systemExceptObject is Exception) then raise;
 
-      EnterExceptionBlock(exec, exceptObj);
+      exec.EnterExceptionBlock(exceptObj);
       try
 
          isReraise := False;
@@ -6757,7 +6690,7 @@ begin
          end;
 
       finally
-         LeaveExceptionBlock(exec);
+         exec.LeaveExceptionBlock;
       end;
 
       if isReraise then raise;
@@ -6830,12 +6763,12 @@ begin
          {$endif}
          if (systemExceptObj=nil) or (systemExceptObj.ClassType<>EScriptStopped) then begin
             if systemExceptObj is Exception then begin
-               EnterExceptionBlock(exec, exceptObj);
+               exec.EnterExceptionBlock(exceptObj);
                try
                   exec.DoStep(FHandlerExpr);
                   FHandlerExpr.EvalNoResult(exec);
                finally
-                  LeaveExceptionBlock(exec);
+                  exec.LeaveExceptionBlock;
                end;
             end else begin
                exec.DoStep(FHandlerExpr);
@@ -6887,6 +6820,8 @@ begin
    e:=EScriptException.Create(exceptMessage, exceptObj, FScriptPos);
    e.ScriptCallStack:=exec.GetCallStack;
    exec.SetScriptError(Self);
+   if exec.IsDebugging then
+      exec.DebuggerNotifyException(exceptObj);
    raise e;
 end;
 

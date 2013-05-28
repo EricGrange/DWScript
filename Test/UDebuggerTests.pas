@@ -19,6 +19,7 @@ type
          FDebugEvalExpr : String;
          FDebugLastEvalResult : String;
          FDebugLastMessage : String;
+         FDebugLastNotificationPos : TScriptPos;
 
          procedure DoCreateExternal(Info: TProgramInfo; var ExtObject: TObject);
          procedure DoCleanupExternal(externalObject : TObject);
@@ -26,6 +27,7 @@ type
 
          procedure DoDebugEval(exec: TdwsExecution; expr: TExprBase);
          procedure DoDebugMessage(const msg : UnicodeString);
+         procedure DoDebugExceptionNotification(const exceptObj : IInfo);
 
       public
          procedure SetUp; override;
@@ -42,6 +44,8 @@ type
          procedure AttachToScript;
 
          procedure DebugMessage;
+
+         procedure ExceptionNotification;
    end;
 
 // ------------------------------------------------------------------
@@ -80,13 +84,14 @@ var
    meth : TdwsMethod;
 begin
    FCompiler:=TDelphiWebScript.Create(nil);
-   FCompiler.Config.CompilerOptions:=[coContextMap];
+   FCompiler.Config.CompilerOptions:=[coContextMap, coAssertions];
    FUnits:=TdwsUnit.Create(nil);
    FUnits.UnitName:='TestUnit';
    FUnits.Script:=FCompiler;
    FDebugger:=TdwsDebugger.Create(nil);
    FDebugger.OnDebug:=DoDebugEval;
    FDebugger.OnDebugMessage:=DoDebugMessage;
+   FDebugger.OnNotifyException:=DoDebugExceptionNotification;
 
    cls:=FUnits.Classes.Add;
    cls.Name:='TTestClass';
@@ -147,6 +152,20 @@ end;
 procedure TDebuggerTests.DoDebugMessage(const msg : UnicodeString);
 begin
    FDebugLastMessage:=msg;
+end;
+
+// DoDebugExceptionNotification
+//
+procedure TDebuggerTests.DoDebugExceptionNotification(const exceptObj : IInfo);
+var
+   expr : TExprBase;
+begin
+   if exceptObj<>nil then
+      expr:=exceptObj.Exec.GetLastScriptErrorExpr
+   else expr:=nil;
+   if expr<>nil then
+      FDebugLastNotificationPos:=expr.ScriptPos
+   else FDebugLastNotificationPos:=cNullPos;
 end;
 
 // EvaluateSimpleTest
@@ -409,6 +428,41 @@ begin
 
    CheckEquals('', exec.Msgs.AsInfo, 'exec');
    CheckEquals('hello', FDebugLastMessage, 'msg');
+end;
+
+// ExceptionNotification
+//
+procedure TDebuggerTests.ExceptionNotification;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+
+   procedure RunExceptNotification(const source : String);
+   begin
+      prog:=FCompiler.Compile(source);
+      CheckEquals('', prog.Msgs.AsInfo, 'compile '+source);
+
+      FDebugLastNotificationPos:=cNullPos;
+
+      exec:=prog.CreateNewExecution;
+
+      FDebugger.BeginDebug(exec);
+      FDebugger.EndDebug;
+   end;
+
+
+begin
+   RunExceptNotification('var i : Integer;'#13#10'raise Exception.Create("here");');
+   CheckEquals(' [line: 2, column: 31]', FDebugLastNotificationPos.AsInfo, '1');
+
+   RunExceptNotification('var i : Integer; Assert(False);');
+   CheckEquals(' [line: 1, column: 18]', FDebugLastNotificationPos.AsInfo, '2');
+
+   RunExceptNotification('var i : Integer;'#13#10'try i := i div i; except end;');
+   CheckEquals(' [line: 2, column: 12]', FDebugLastNotificationPos.AsInfo, '3');
+
+   RunExceptNotification('procedure Test;'#13#10'begin'#13#10'var i:=0;'#13#10'i := i div i;'#13#10'end;'#13#10'Test');
+   CheckEquals(' [line: 4, column: 8]', FDebugLastNotificationPos.AsInfo, '4');
 end;
 
 // ------------------------------------------------------------------

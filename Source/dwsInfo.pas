@@ -67,6 +67,7 @@ type
          function GetValueAsBoolean : Boolean; virtual;
          function GetValueAsFloat : Double; virtual;
          function GetInherited: IInfo; virtual;
+         function GetExec : IdwsProgramExecution;
          procedure SetData(const Value: TData); virtual;
          procedure SetExternalObject(ExtObject: TObject); virtual;
          procedure SetValue(const Value: Variant); virtual;
@@ -82,6 +83,7 @@ type
          function GetConstructor(const methName : UnicodeString; extObject : TObject) : IInfo; virtual;
 
          property DataPtr : IDataContext read FDataPtr write FDataPtr;
+         property ProgramInfo : TProgramInfo read FProgramInfo;
 
          class procedure SetChild(out result : IInfo; programInfo : TProgramInfo; childTypeSym : TSymbol;
                                   const childDataPtr : IDataContext; const childDataMaster : IDataMaster = nil);
@@ -550,6 +552,13 @@ end;
 function TInfo.GetInherited: IInfo;
 begin
   raise Exception.CreateFmt(RTE_InvalidOp, ['GetInherited', FTypeSym.Caption]);
+end;
+
+// GetExec
+//
+function TInfo.GetExec : IdwsProgramExecution;
+begin
+   Result:=FProgramInfo.Execution;
 end;
 
 { TInfoData }
