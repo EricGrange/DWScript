@@ -21,12 +21,12 @@ unit dwsRelExprs;
 
 interface
 
-uses dwsExprs, dwsSymbols;
+uses dwsExprs, dwsSymbols, dwsErrors;
 
 type
 
    TRelOpExpr = class(TBinaryOpExpr)
-      constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
+      constructor Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
       procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
    TRelOpExprClass = class of TRelOpExpr;
@@ -170,7 +170,7 @@ implementation
 
 // Create
 //
-constructor TRelOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
+constructor TRelOpExpr.Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
 begin
    inherited;
    FTyp:=Prog.TypBoolean;

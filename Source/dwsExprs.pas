@@ -525,6 +525,8 @@ type
 
          FRuntimeMsgs : TdwsRuntimeMessageList;
 
+         FDebuggerFieldAddr : Integer;
+
       protected
          procedure ReleaseObjects;
 
@@ -565,6 +567,9 @@ type
          function CallStackDepth : Integer; override;
          function GetCallStack : TdwsExprLocationArray; override;
          function CallStackLastExpr : TExprBase;
+
+         function  DebuggerFieldAddr : Integer;
+         procedure DebuggerNotifyException(const exceptObj : IScriptObj); override;
 
          class function CallStackToString(const callStack : TdwsExprLocationArray) : UnicodeString; static;
          procedure RaiseAssertionFailed(const msg : UnicodeString; const scriptPos : TScriptPos);
@@ -1367,7 +1372,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); virtual;
+         constructor Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); virtual;
          destructor Destroy; override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
@@ -1384,27 +1389,27 @@ type
    TBinaryOpExprClass = class of TBinaryOpExpr;
 
    TVariantBinOpExpr = class(TBinaryOpExpr)
-     constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
+     constructor Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
    TIntegerBinOpExpr = class(TBinaryOpExpr)
-     constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
+     constructor Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
      function EvalAsFloat(exec : TdwsExecution) : Double; override;
      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
    TStringBinOpExpr = class(TBinaryOpExpr)
-     constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
+     constructor Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
    TFloatBinOpExpr = class(TBinaryOpExpr)
-     constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
+     constructor Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
    TBooleanBinOpExpr = class(TBinaryOpExpr)
-     constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
+     constructor Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
@@ -2455,6 +2460,34 @@ begin
    if n>=0 then
       Result:=(TObject(FCallStack.List[n]) as TExprBase)
    else Result:=nil;
+end;
+
+// DebuggerFieldAddr
+//
+function TdwsProgramExecution.DebuggerFieldAddr : Integer;
+var
+   field : TFieldSymbol;
+begin
+   if FDebuggerFieldAddr=0 then begin
+      field:=TFieldSymbol(Prog.TypException.Members.FindSymbol(SYS_EXCEPTION_DEBUGGER_FIELD, cvMagic, TFieldSymbol));
+      Assert(field<>nil);
+      FDebuggerFieldAddr:=field.Offset;
+   end;
+   Result:=FDebuggerFieldAddr;
+end;
+
+// DebuggerNotifyException
+//
+procedure TdwsProgramExecution.DebuggerNotifyException(const exceptObj : IScriptObj);
+var
+   addr, i : Integer;
+begin
+   if not IsDebugging then Exit;
+   addr:=DebuggerFieldAddr;
+   i:=exceptObj.AsInteger[addr];
+   exceptObj.AsInteger[addr]:=i+1;
+   if i=0 then
+      Debugger.NotifyException(exceptObj);
 end;
 
 // ------------------
@@ -4951,7 +4984,7 @@ end;
 // ------------------ TBinaryOpExpr ------------------
 // ------------------
 
-constructor TBinaryOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
+constructor TBinaryOpExpr.Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
 begin
    FLeft := aLeft;
    FRight := aRight;
@@ -5013,7 +5046,7 @@ end;
 
 // Create
 //
-constructor TVariantBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
+constructor TVariantBinOpExpr.Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
 begin
    inherited;
    FTyp:=Prog.TypVariant;
@@ -5035,7 +5068,7 @@ end;
 
 // Create
 //
-constructor TIntegerBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
+constructor TIntegerBinOpExpr.Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
 begin
    inherited;
    FTyp:=Prog.TypInteger;
@@ -5071,7 +5104,7 @@ end;
 
 // Create
 //
-constructor TStringBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
+constructor TStringBinOpExpr.Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
 begin
    inherited;
    FTyp:=Prog.TypString;
@@ -5106,7 +5139,7 @@ end;
 
 // Create
 //
-constructor TFloatBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
+constructor TFloatBinOpExpr.Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
 begin
    inherited;
    FTyp:=Prog.TypFloat;
@@ -5138,7 +5171,7 @@ end;
 
 // Create
 //
-constructor TBooleanBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
+constructor TBooleanBinOpExpr.Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
 begin
    inherited;
    FTyp:=Prog.TypBoolean;

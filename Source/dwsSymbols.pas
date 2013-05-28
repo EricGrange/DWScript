@@ -71,6 +71,7 @@ type
       procedure LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase);
       function  LastDebugStepExpr : TExprBase;
       procedure DebugMessage(const msg : UnicodeString);
+      procedure NotifyException(const exceptObj : IScriptObj);
    end;
 
    TProgramState = (psUndefined, psReadyToRun, psRunning, psRunningStopped, psTerminated);
@@ -1667,6 +1668,8 @@ type
 
          property Debugger : IDebugger read FDebugger write SetDebugger;
          property IsDebugging : Boolean read FIsDebugging;
+
+         procedure DebuggerNotifyException(const exceptObj : IScriptObj); virtual; abstract;
 
          property Msgs : TdwsRuntimeMessageList read GetMsgs;
 

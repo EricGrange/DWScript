@@ -40,6 +40,7 @@ type
       procedure SetAsFloat(addr : Integer; const value : Double);
       function GetAsBoolean(addr : Integer) : Boolean;
       procedure SetAsBoolean(addr : Integer; const value : Boolean);
+      function GetAsString(addr : Integer) : UnicodeString;
       procedure SetAsString(addr : Integer; const value : UnicodeString);
       function GetAsInterface(addr : Integer) : IUnknown;
       procedure SetAsInterface(addr : Integer; const value : IUnknown);
@@ -59,7 +60,7 @@ type
       property  AsInteger[addr : Integer] : Int64 read GetAsInteger write SetAsInteger;
       property  AsBoolean[addr : Integer] : Boolean read GetAsBoolean write SetAsBoolean;
       property  AsFloat[addr : Integer] : Double read GetAsFloat write SetAsFloat;
-      property  AsString[addr : Integer] : UnicodeString write SetAsString;
+      property  AsString[addr : Integer] : UnicodeString read GetAsString write SetAsString;
       property  AsInterface[addr : Integer] : IUnknown read GetAsInterface write SetAsInterface;
 
       procedure EvalAsVariant(addr : Integer; var result : Variant);
@@ -113,6 +114,7 @@ type
          procedure SetAsFloat(addr : Integer; const value : Double); inline;
          function GetAsBoolean(addr : Integer) : Boolean; inline;
          procedure SetAsBoolean(addr : Integer; const value : Boolean); inline;
+         function GetAsString(addr : Integer) : UnicodeString; inline;
          procedure SetAsString(addr : Integer; const value : UnicodeString); inline;
          function GetAsInterface(addr : Integer) : IUnknown; inline;
          procedure SetAsInterface(addr : Integer; const value : IUnknown); inline;
@@ -427,6 +429,13 @@ begin
    if p^.VType=varBoolean then
       p^.VBoolean:=value
    else PVariant(p)^:=value;
+end;
+
+// GetAsString
+//
+function TDataContext.GetAsString(addr : Integer) : UnicodeString;
+begin
+   EvalAsString(addr, Result);
 end;
 
 // SetAsString

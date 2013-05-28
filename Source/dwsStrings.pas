@@ -50,6 +50,7 @@ const
   SYS_EXCEPTION_MESSAGE = 'Message';
   SYS_EXCEPTION_MESSAGE_FIELD = 'FMessage';
   SYS_EXCEPTION_STACKTRACE = 'StackTrace';
+  SYS_EXCEPTION_DEBUGGER_FIELD = 'FDebuggerField';
   SYS_EASSERTIONFAILED = 'EAssertionFailed';
   SYS_EDELPHI = 'EDelphi';
   SYS_EDELPHI_EXCEPTIONCLASS = 'ExceptionClass';
@@ -437,6 +438,8 @@ const
   CPE_InvalidArgumentType = 'Invalid argument type';
 
   CPE_FieldAlreadySet = 'Field has already been set';
+
+  CPE_DivisionByZero = 'Division by zero';
 
   // Contracts
   CPE_PreconditionsMustBeInRootMethod = 'Preconditions must be defined in the root method only.';

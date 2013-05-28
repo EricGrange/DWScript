@@ -250,6 +250,7 @@ type
 
          function GetCallStack : TdwsExprLocationArray; override;
          function CallStackDepth : Integer; override;
+         procedure DebuggerNotifyException(const exceptObj : IScriptObj); override;
    end;
 
    IdwsEvaluateExpr = interface
@@ -9268,7 +9269,7 @@ begin
                   else if not (   TClassSymbol(rightTyp.Typ).IsOfType(Result.Typ)
                                or TClassSymbol(Result.Typ).IsOfType(rightTyp.Typ)) then
                      IncompatibleTypesWarn(hotPos, CPE_IncompatibleTypes, Result.Typ, rightTyp.Typ);
-                  Result:=TIsOpExpr.Create(FProg, Result, right)
+                  Result:=TIsOpExpr.Create(FProg, hotPos, Result, right)
                end;
                ttAS : begin
                   if Result.Typ is TInterfaceSymbol then begin
@@ -9302,11 +9303,11 @@ begin
                   if not (rightTyp is TInterfaceSymbol) then
                      FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
                   if Result.Typ is TClassOfSymbol then
-                     Result:=TClassImplementsIntfOpExpr.Create(FProg, Result, right)
+                     Result:=TClassImplementsIntfOpExpr.Create(FProg, hotPos, Result, right)
                   else begin
                      if not (Result.Typ is TClassSymbol) then
                         FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected);
-                     Result:=TImplementsIntfOpExpr.Create(FProg, Result, right);
+                     Result:=TImplementsIntfOpExpr.Create(FProg, hotPos, Result, right);
                   end;
                end;
             else
@@ -9326,8 +9327,8 @@ begin
                         else FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
                      if Result.Typ is TClassSymbol then
                         if tt=ttNOTEQ then
-                           Result:=TObjCmpNotEqualExpr.Create(FProg, Result, right)
-                        else Result:=TObjCmpEqualExpr.Create(FProg, Result, right)
+                           Result:=TObjCmpNotEqualExpr.Create(FProg, hotPos, Result, right)
+                        else Result:=TObjCmpEqualExpr.Create(FProg, hotPos, Result, right)
                      else if Result.Typ is TClassOfSymbol then begin
                         Assert(rightTyp=FProg.TypNil);
                         Result:=TAssignedMetaClassExpr.Create(FProg, Result);
@@ -9335,13 +9336,13 @@ begin
                            Result:=TNotBoolExpr.Create(FProg, Result);
                         right.Free;
                      end else begin
-                        Result:=TIntfCmpExpr.Create(FProg, Result, right);
+                        Result:=TIntfCmpExpr.Create(FProg, hotPos, Result, right);
                         if tt=ttNOTEQ then
                            Result:=TNotBoolExpr.Create(FProg, Result);
                      end;
                   end else begin
                      FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
-                     Result:=TRelOpExpr.Create(FProg, Result, right); // keep going
+                     Result:=TRelOpExpr.Create(FProg, hotPos, Result, right); // keep going
                   end;
                end else Result:=opExpr;
             end;
@@ -9407,7 +9408,7 @@ begin
                end;
                if opExpr=nil then begin
                   // fake result to keep compiler going and report further issues
-                  Result:=TBinaryOpExpr.Create(FProg, Result, right);
+                  Result:=TBinaryOpExpr.Create(FProg, hotPos, Result, right);
                   Result.Typ:=FProg.TypVariant;
                end else Result:=opExpr;
             except
@@ -9456,7 +9457,7 @@ begin
                if opExpr=nil then begin
                   FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                   // fake result to keep compiler going and report further issues
-                  Result:=TBinaryOpExpr.Create(FProg, Result, right);
+                  Result:=TBinaryOpExpr.Create(FProg, hotPos, Result, right);
                   Result.Typ:=right.Typ;
                end else Result:=opExpr;
             end;
@@ -9513,7 +9514,7 @@ begin
             end;
 
             Result:=TArrayIndexOfExpr.Create(FProg, hotPos, setExpr, left as TDataExpr, nil);
-            Result:=TRelGreaterEqualIntExpr.Create(FProg, Result,
+            Result:=TRelGreaterEqualIntExpr.Create(FProg, hotPos, Result,
                                                    TConstExpr.CreateIntegerValue(FProg, 0));
 
          end else if not (setExpr is TDataExpr) then begin
@@ -9549,7 +9550,7 @@ begin
             if Result=nil then begin
                FMsgs.AddCompilerError(hotPos, CPE_IncompatibleOperands);
                // fake result to keep compiler going and report further issues
-               Result:=TBinaryOpExpr.Create(FProg, left, setExpr);
+               Result:=TBinaryOpExpr.Create(FProg, hotPos, left, setExpr);
                Result.Typ:=FProg.TypVariant;
             end;
             left:=nil;
@@ -9859,7 +9860,8 @@ begin
    if not FTok.TestDelete(ttBRIGHT) then begin
       OrphanObject(Result);
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
-   end;
+   end else if Optimize then
+      Result:=Result.OptimizeToTypedExpr(FProg, FExec, Result.ScriptPos);
 end;
 
 // ReadNegation
@@ -11775,7 +11777,7 @@ begin
    if opSym=nil then Exit;
 
    if opSym.BinExprClass<>nil then begin
-      Result:=TBinaryOpExprClass(opSym.BinExprClass).Create(FProg, aLeft, aRight)
+      Result:=TBinaryOpExprClass(opSym.BinExprClass).Create(FProg, scriptPos, aLeft, aRight)
    end else if opSym.UsesSym<>nil then begin
       if opSym.UsesSym is TMethodSymbol then
          funcExpr:=CreateMethodExpr(FProg, TMethodSymbol(opSym.UsesSym), aLeft, rkObjRef, scriptPos)
@@ -12667,6 +12669,8 @@ begin
    propSym.ReadSym:=fldSym;
    propSym.WriteSym:=fldSym;
    sysTable.TypException.AddProperty(propSym);
+   fldSym:=TFieldSymbol.Create(SYS_EXCEPTION_DEBUGGER_FIELD, sysTable.TypInteger, cvProtected);
+   sysTable.TypException.AddField(fldSym);
    TExceptionCreateMethod.Create(mkConstructor, [], SYS_TOBJECT_CREATE,
                                  ['Msg', SYS_STRING], '', sysTable.TypException, cvPublic, sysTable);
    TExceptionDestroyMethod.Create(mkDestructor, [maVirtual, maOverride], SYS_TOBJECT_DESTROY,
@@ -13108,6 +13112,13 @@ end;
 function TdwsCompilerExecution.CallStackDepth : Integer;
 begin
    Result:=0;
+end;
+
+// DebuggerNotifyException
+//
+procedure TdwsCompilerExecution.DebuggerNotifyException(const exceptObj : IScriptObj);
+begin
+   // nothing
 end;
 
 // GetMsgs

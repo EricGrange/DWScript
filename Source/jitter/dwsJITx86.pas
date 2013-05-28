@@ -603,7 +603,9 @@ begin
    RegisterJITter(TSubIntExpr,                  Tx86SubInt.Create(Self));
    RegisterJITter(TMultIntExpr,                 Tx86MultInt.Create(Self));
    RegisterJITter(TDivExpr,                     Tx86DivInt.Create(Self));
+   RegisterJITter(TDivConstExpr,                Tx86DivInt.Create(Self));
    RegisterJITter(TModExpr,                     Tx86ModInt.Create(Self));
+   RegisterJITter(TModConstExpr,                Tx86ModInt.Create(Self));
    RegisterJITter(TMultIntPow2Expr,             Tx86MultIntPow2.Create(Self));
    RegisterJITter(TIntAndExpr,                  Tx86InterpretedExpr.Create(Self));
 

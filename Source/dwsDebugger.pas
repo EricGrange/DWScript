@@ -35,6 +35,7 @@ type
    TOnDebugStartStopEvent = procedure(exec: TdwsExecution) of object;
    TOnDebugEvent = procedure(exec: TdwsExecution; expr: TExprBase) of object;
    TOnDebugMessageEvent = procedure(const msg : UnicodeString) of object;
+   TOnNotifyExceptionEvent = procedure (const exceptObj : IScriptObj) of object;
 
    // TdwsSimpleDebugger
    //
@@ -49,6 +50,7 @@ type
          FOnEnterFunc : TOnDebugEvent;
          FOnLeaveFunc : TOnDebugEvent;
          FOnDebugMessage : TOnDebugMessageEvent;
+         FOnNotifyException : TOnNotifyExceptionEvent;
 
          procedure StartDebug(exec : TdwsExecution); virtual;
          procedure DoDebug(exec : TdwsExecution; expr : TExprBase); virtual;
@@ -57,6 +59,7 @@ type
          procedure LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase); virtual;
          function  LastDebugStepExpr : TExprBase; virtual;
          procedure DebugMessage(const msg : UnicodeString); virtual;
+         procedure NotifyException(const exceptObj : IScriptObj); virtual;
 
       public
          property Debugger : IDebugger read FDebugger write FDebugger;
@@ -68,6 +71,7 @@ type
          property OnEnterFunc : TOnDebugEvent read FOnEnterFunc write FOnEnterFunc;
          property OnLeaveFunc : TOnDebugEvent read FOnLeaveFunc write FOnLeaveFunc;
          property OnDebugMessage : TOnDebugMessageEvent read FOnDebugMessage write FOnDebugMessage;
+         property OnNotifyException : TOnNotifyExceptionEvent read FOnNotifyException write FOnNotifyException;
    end;
 
    TdwsDebuggerState = (dsIdle, dsDebugRun,
@@ -295,6 +299,7 @@ type
          FBreakpointsCondition : TdwsDSCBreakpoints;
          FWatches : TdwsDebuggerWatches;
          FLastAutoProcessMessages : Int64;
+         FSuspendOnException : Boolean;
 
          FParams : TVariantDynArray;
          FBeginOptions : TdwsDebugBeginOptions;
@@ -302,6 +307,7 @@ type
       protected
          procedure DoDebug(exec : TdwsExecution; expr : TExprBase); override;
          function  LastDebugStepExpr : TExprBase; override;
+         procedure NotifyException(const exceptObj : IScriptObj); override;
 
          procedure StateChanged;
          procedure BreakpointsChanged;
@@ -344,6 +350,7 @@ type
          property Params : TVariantDynArray read FParams write FParams;
          property BeginOptions : TdwsDebugBeginOptions read FBeginOptions write FBeginOptions;
          property State : TdwsDebuggerState read FState;
+         property SuspendOnException : Boolean read FSuspendOnException write FSuspendOnException;
 
          property CurrentExpression : TExprBase read FCurrentExpression;
          property CurrentScriptPos : TScriptPos read GetCurrentScriptPos;
@@ -418,6 +425,7 @@ type
       procedure LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase);
       function  LastDebugStepExpr : TExprBase;
       procedure DebugMessage(const msg : UnicodeString);
+      procedure NotifyException(const exceptObj : IScriptObj);
    end;
    {$endif}
 
@@ -536,6 +544,13 @@ procedure TSynchronizedThreadedDebugger.DebugMessage(const msg : UnicodeString);
 begin
    Synchronize(procedure begin FMain.DebugMessage(msg) end);
 end;
+
+// NotifyException
+//
+procedure TSynchronizedThreadedDebugger.NotifyException(const exceptObj : IScriptObj);
+begin
+   Synchronize(procedure begin FMain.NotifyException(exceptObj) end);
+end;
 {$endif}
 
 // ------------------
@@ -587,6 +602,14 @@ procedure TdwsSimpleDebugger.DebugMessage(const msg : UnicodeString);
 begin
    if Assigned(FOnDebugMessage) then
       FOnDebugMessage(msg);
+end;
+
+// NotifyException
+//
+procedure TdwsSimpleDebugger.NotifyException(const exceptObj : IScriptObj);
+begin
+   if Assigned(FOnNotifyException) then
+      FOnNotifyException(exceptObj);
 end;
 
 // StartDebug
@@ -977,6 +1000,18 @@ end;
 function TdwsDebugger.LastDebugStepExpr : TExprBase;
 begin
    Result:=FCurrentExpression;
+end;
+
+// NotifyException
+//
+procedure TdwsDebugger.NotifyException(const exceptObj : IScriptObj);
+begin
+   if SuspendOnException then begin
+      if daCanSuspend in AllowedActions then
+         Suspend;
+   end;
+
+   inherited;
 end;
 
 // ------------------

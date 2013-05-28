@@ -999,14 +999,33 @@ type
      function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
+   TPosIntegerBinOpExpr = class(TIntegerBinOpExpr)
+      private
+         FScriptPos : TScriptPos;
+
+      public
+         constructor Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
+         function ScriptPos : TScriptPos; override;
+   end;
+
    // a div b
-   TDivExpr = class(TIntegerBinOpExpr)
-     function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+   TDivExpr = class(TPosIntegerBinOpExpr)
+      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+   end;
+   // a div const b
+   TDivConstExpr = class(TIntegerBinOpExpr)
+      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
    // a mod b
-   TModExpr = class(TIntegerBinOpExpr)
-     function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+   TModExpr = class(TPosIntegerBinOpExpr)
+      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+   end;
+   // a div const b
+   TModConstExpr = class(TIntegerBinOpExpr)
+      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
    // not bool a
@@ -3742,7 +3761,7 @@ end;
 constructor TStringArrayOpExpr.CreatePos(Prog: TdwsProgram; const aScriptPos: TScriptPos;
                                          Left, Right: TTypedExpr);
 begin
-   inherited Create(Prog, Left, Right);
+   inherited Create(Prog, aScriptPos, Left, Right);
    FScriptPos := aScriptPos;
 end;
 
@@ -4470,6 +4489,25 @@ begin
 end;
 
 // ------------------
+// ------------------ TPosIntegerBinOpExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TPosIntegerBinOpExpr.Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+begin
+   inherited;
+   FScriptPos:=aScriptPos;
+end;
+
+// ScriptPos
+//
+function TPosIntegerBinOpExpr.ScriptPos : TScriptPos;
+begin
+   Result:=FScriptPos;
+end;
+
+// ------------------
 // ------------------ TDivExpr ------------------
 // ------------------
 
@@ -4477,7 +4515,38 @@ end;
 //
 function TDivExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
-   Result:=FLeft.EvalAsInteger(exec) div FRight.EvalAsInteger(exec);
+   try
+      Result:=FLeft.EvalAsInteger(exec) div FRight.EvalAsInteger(exec);
+   except
+      exec.SetScriptError(Self);
+      raise;
+   end;
+end;
+
+// Optimize
+//
+function TDivExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   Result:=inherited Optimize(prog, exec);
+   if (Result=Self) and (FRight.ClassType=TConstIntExpr) then begin
+      if TConstIntExpr(Right).Value=0 then
+         prog.CompileMsgs.AddCompilerError(FScriptPos, CPE_DivisionByZero);
+      Result:=TDivConstExpr.Create(prog, FScriptPos, Left, Right);
+      Left:=nil;
+      Right:=nil;
+      Self.Free;
+   end;
+end;
+
+// ------------------
+// ------------------ TDivConstExpr ------------------
+// ------------------
+
+// EvalAsInteger
+//
+function TDivConstExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   Result:=FLeft.EvalAsInteger(exec) div TConstIntExpr(FRight).Value;
 end;
 
 // ------------------
@@ -4488,7 +4557,38 @@ end;
 //
 function TModExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
-   Result:=FLeft.EvalAsInteger(exec) mod FRight.EvalAsInteger(exec);
+   try
+      Result:=FLeft.EvalAsInteger(exec) mod FRight.EvalAsInteger(exec);
+   except
+      exec.SetScriptError(Self);
+      raise;
+   end;
+end;
+
+// Optimize
+//
+function TModExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   Result:=inherited Optimize(prog, exec);
+   if (Result=Self) and (FRight.ClassType=TConstIntExpr) then begin
+      if TConstIntExpr(Right).Value=0 then
+         prog.CompileMsgs.AddCompilerError(FScriptPos, CPE_DivisionByZero);
+      Result:=TModConstExpr.Create(prog, FScriptPos, Left, Right);
+      Left:=nil;
+      Right:=nil;
+      Self.Free;
+   end;
+end;
+
+// ------------------
+// ------------------ TModConstExpr ------------------
+// ------------------
+
+// EvalAsInteger
+//
+function TModConstExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   Result:=FLeft.EvalAsInteger(exec) mod TConstIntExpr(FRight).Value;
 end;
 
 // ------------------
@@ -4716,12 +4816,12 @@ end;
 function TStringInStringExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
    if (Left is TStrVarExpr) and (Right is TConstStringExpr) then begin
-      Result:=TVarStringInConstStringExpr.Create(prog, Left, Right);
+      Result:=TVarStringInConstStringExpr.Create(prog, ScriptPos, Left, Right);
       Left:=nil;
       Right:=nil;
       Free;
    end else if (Left is TConstStringExpr) and (Right is TStrVarExpr) then begin
-      Result:=TConstStringInVarStringExpr.Create(prog, Left, Right);
+      Result:=TConstStringInVarStringExpr.Create(prog, ScriptPos, Left, Right);
       Left:=nil;
       Right:=nil;
       Free;
@@ -6537,6 +6637,8 @@ begin
    end;
 
    exec.ExceptionObjectStack.Push(exceptObj);
+   if exec.IsDebugging then
+      exec.DebuggerNotifyException(exceptObj);
 end;
 
 // LeaveExceptionBlock

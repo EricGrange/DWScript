@@ -186,7 +186,7 @@ begin
       expr := ReadComparisonExpr(compiler, tok);
       try
          while tok.TestDelete(ttOr) do
-            expr := TBoolOrExpr.Create(compiler.CurrentProg, expr, ReadComparisonExpr(compiler, tok));
+            expr := TBoolOrExpr.Create(compiler.CurrentProg, cNullPos, expr, ReadComparisonExpr(compiler, tok));
          List.Add(expr);
          expr := nil;
       except
