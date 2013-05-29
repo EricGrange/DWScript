@@ -475,11 +475,12 @@ object DwsIdeForm: TDwsIdeForm
       ImageIndex = 32
       ShortCut = 16474
     end
-    object actClearMessageWindow: TAction
-      Category = 'Edit'
-      Caption = 'Clear message window'
-      OnExecute = actClearMessageWindowExecute
-      OnUpdate = actClearMessageWindowUpdate
+    object actGotoHomePosition: TAction
+      Category = 'View'
+      Caption = 'Goto Home Position'
+      Hint = 'Go to the file and line number at which the IDE opened'
+      OnExecute = actGotoHomePositionExecute
+      OnUpdate = actGotoHomePositionUpdate
     end
   end
   object EditorPageTabContextMenu: TPopupMenu
@@ -632,9 +633,6 @@ object DwsIdeForm: TDwsIdeForm
       object Clearoutputwindow1: TMenuItem
         Action = actClearOutputWindow
       end
-      object Clearmessagewindow1: TMenuItem
-        Action = actClearMessageWindow
-      end
     end
     object Search1: TMenuItem
       Caption = 'Search'
@@ -652,6 +650,12 @@ object DwsIdeForm: TDwsIdeForm
       end
       object ViewSymbols1: TMenuItem
         Action = actViewSymbols
+      end
+      object N11: TMenuItem
+        Caption = '-'
+      end
+      object GotoHomePosition1: TMenuItem
+        Action = actGotoHomePosition
       end
     end
     object Project1: TMenuItem
@@ -690,7 +694,7 @@ object DwsIdeForm: TDwsIdeForm
     Left = 176
     Top = 256
     Bitmap = {
-      494C010121002500080010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
+      494C010121002500040010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000009000000001002000000000000090
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000

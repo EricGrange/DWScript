@@ -139,6 +139,7 @@ type
 
     procedure ShowExecutableLines;
 
+    function  GotoIdentifier( const AIdentifier : string ) : boolean;
   end;
 
 
@@ -293,8 +294,9 @@ type
     Undo1: TMenuItem;
     SynMacroRecorder: TSynMacroRecorder;
     RunWithoutDebugging1: TMenuItem;
-    actClearMessageWindow: TAction;
-    Clearmessagewindow1: TMenuItem;
+    actGotoHomePosition: TAction;
+    N11: TMenuItem;
+    GotoHomePosition1: TMenuItem;
     procedure EditorChange(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure actOpenFileExecute(Sender: TObject);
@@ -355,8 +357,8 @@ type
     procedure actClearOutputWindowUpdate(Sender: TObject);
     procedure lbMessagesDblClick(Sender: TObject);
     procedure actViewSymbolsUpdate(Sender: TObject);
-    procedure actClearMessageWindowExecute(Sender: TObject);
-    procedure actClearMessageWindowUpdate(Sender: TObject);
+    procedure actGotoHomePositionExecute(Sender: TObject);
+    procedure actGotoHomePositionUpdate(Sender: TObject);
   private
     { Private declarations }
     FScript : TDelphiWebScript;
@@ -376,6 +378,8 @@ type
 
     FCodeProposalForm : TDwsIdeCodeProposalForm;
 
+    FHomePositionCaptionSuffix : string;
+
     FActivePageIndex : Integer;
     FHoveredPageIndex : Integer;
     FBasePageIndex : Integer;
@@ -385,6 +389,8 @@ type
     FTabArrowLeft, FTabArrowRight : TRect;
     FPages : TSimpleList<TEditorPage>;
 
+    procedure GotoHomePosition;
+    function  CanGotoHomePosition : boolean;
     function  TryRunSelection( ADebug : boolean ) : boolean;
     procedure DoDebugMessage(const msg : String);
     procedure CodeSuggest( ACodeSuggestionMode : TCodeSuggestionMode);
@@ -399,7 +405,7 @@ type
     procedure EditorSaveAllIfModified( APromptOverwrite : boolean );
     function  HasProject : boolean;
     function  NameToEditorPageIndex( const AName : string ) : integer;
-
+    function OpenEditorPage( AName : string ) : boolean;
     procedure SetEditorCurrentPageIndex(const Value: integer);
     procedure SetProjectFileName(const Value: string);
     procedure GotoScriptPos(AScriptPos: TScriptPos; AHiddenMainModule : boolean = False);
@@ -409,9 +415,10 @@ type
     procedure SetScriptFolder(const Value: string);
     procedure MakeSettingsRec;
     procedure AddMessage(const AMessage: string; AScriptPos : PScriptPos = nil );
-    procedure ClearMessageWindow;
+    procedure ClearMessagesWindow;
     procedure ClearOutputWindow;
     procedure ListSymbolTable(ATable: TSymbolTable);
+    function UnitMainScript(const AUnitName, AIdentifier: string): string;
     property  EditorCurrentPageIndex : integer
                 read FActivePageIndex
                 write SetEditorCurrentPageIndex;
@@ -782,20 +789,9 @@ end;
 
 
 
-procedure TDwsIdeForm.actClearMessageWindowExecute(Sender: TObject);
-begin
-  ClearMessageWindow;
-end;
-
-procedure TDwsIdeForm.actClearMessageWindowUpdate(Sender: TObject);
-begin
-  With Sender as TAction do
-    Enabled := lbMessages.Count > 0;
-end;
-
 procedure TDwsIdeForm.actClearOutputWindowExecute(Sender: TObject);
 begin
-  ClearMessageWindow;
+  ClearOutputWindow;
 end;
 
 procedure TDwsIdeForm.actClearOutputWindowUpdate(Sender: TObject);
@@ -813,7 +809,7 @@ end;
 
 
 
-procedure TDwsIdeForm.ClearMessageWindow;
+procedure TDwsIdeForm.ClearMessagesWindow;
 begin
   lbMessages.Clear;
 end;
@@ -848,7 +844,7 @@ var
 begin
   if ABuild or not IsCompiled then
     begin
-    ClearMessageWindow;
+    ClearMessagesWindow;
     AddMessage( 'Compile started' );
 
     FScript.Config.CompilerOptions :=
@@ -858,6 +854,9 @@ begin
       sScript := AScript
      else
       sScript := ProjectSourceScript;
+
+    if sScript = '' then
+      sScript := UnitMainScript( CurrentEditorPage.UnitName, '' ); // make a main file that simply uses the current page
 
     FProgram := FScript.Compile( sScript );
 
@@ -990,8 +989,8 @@ var
   sFileName : string;
 begin
   sFileName := Format(
-    '%sUnit1.pas',
-    [IncludeTrailingBackslash(FScriptFolder)] );
+    '%sUnit1%s',
+    [IncludeTrailingBackslash(FScriptFolder), sDwsIdeProjectSourceFileExt2] );
   sFileName := ModifyFileNameToUniqueInProject( sFileName );
 
   EditorPageAddNew( sFileName, False );
@@ -1027,6 +1026,17 @@ procedure TDwsIdeForm.actFileSaveUpdate(Sender: TObject);
 begin
   With Sender as TAction do
     Enabled := HasEditorPage and CurrentEditor.Modified;
+end;
+
+procedure TDwsIdeForm.actGotoHomePositionExecute(Sender: TObject);
+begin
+  GotoHomePosition;
+end;
+
+procedure TDwsIdeForm.actGotoHomePositionUpdate(Sender: TObject);
+begin
+  With Sender as TAction do
+    Enabled := CanGotoHomePosition;
 end;
 
 procedure TDwsIdeForm.actSaveProjectAsExecute(Sender: TObject);
@@ -1179,13 +1189,13 @@ begin
   // Try to get a project name from the supplied project name (which might be a *.dws or *.dwsproj)
   // If there is one, this becomes our project file name.
   if FOptions.ProjectName <> '' then
-    sProjectFileName := ScriptFolder + ChangeFileExt( FOptions.ProjectName, '.dwsproj' );
+    sProjectFileName := ScriptFolder + ChangeFileExt( FOptions.ProjectName, sDwsIdeProjectFileExt {eg '.dws' } );
 
   if FileExists(sProjectFileName) then
     LoadProjectFile( sProjectFileName ) // << load the dwsproj if possible
    else
     begin
-    S := ScriptFolder + ChangeFileExt( FOptions.ProjectName, '.dws' ); // try loading the main dws file...
+    S := ScriptFolder + ChangeFileExt( FOptions.ProjectName, sDwsIdeProjectSourceFileExt {eg '.dwsproj' } ); // try loading the main dws file...
     if FileExists( S ) then
       begin
       // Here we've got a dws (main) file, so load it and make a project file from it too..
@@ -1194,7 +1204,7 @@ begin
       SaveProjectFileAs( FProjectFileName );
       end
      else
-       sProjectFileName := ScriptFolder + '\ExampleScript.dwsproj';
+       sProjectFileName := ScriptFolder + '\ExampleScript' + sDwsIdeProjectFileExt; {eg '.dwsproj'};
        if FileExists(sProjectFileName) then // we've got the example files, so load them...
          LoadProjectFile( sProjectFileName )
          else
@@ -1244,13 +1254,20 @@ end;
 
 
 
-procedure TDwsIdeForm.RunFunctionMethodByName(const AUnit, AName: string; AWithDebugging, APrompt : boolean);
+
+function TDwsIdeForm.UnitMainScript( const AUnitName, AIdentifier : string ) : string;
 const
   sScriptTemplate =
       'uses %s;'#13#10
     + 'begin'#13#10
     + '%s'#13#10
     + 'end;'#13#10;
+begin
+  Result := Format( sScriptTemplate, [AUnitName, AIdentifier] );
+end;
+
+
+procedure TDwsIdeForm.RunFunctionMethodByName(const AUnit, AName: string; AWithDebugging, APrompt : boolean);
 var
   Exec : IdwsProgramExecution;
   Stopwatch : TStopwatch;
@@ -1261,7 +1278,7 @@ begin
 
   EditorSaveAllIfModified( False );
 
-  sScript := Format( sScriptTemplate, [AUnit, AName] );
+  sScript := UnitMainScript( AUnit, AName );
   Compile( True, sScript );
   if not IsCompiled then
     Exit;
@@ -1827,6 +1844,29 @@ begin
 end;
 
 
+procedure TDwsIdeForm.GotoHomePosition;
+begin
+  FHomePositionCaptionSuffix := '';
+  If FOptions.HomePositionFileName <> '' then
+    If OpenEditorPage( FOptions.HomePositionFileName ) then
+      begin
+      FHomePositionCaptionSuffix := FOptions.HomePositionFileName;
+      If FOptions.HomePositionFileIdentifier <> '' then
+        begin
+        CurrentEditorPage.GotoIdentifier( FOptions.HomePositionFileIdentifier );
+        FHomePositionCaptionSuffix := Format( '%s%s [%s]', [
+            FOptions.HomePositionFileName,
+            sDwsIdeProjectSourceFileExt2,
+            FOptions.HomePositionFileIdentifier] );
+        end;
+      end;
+end;
+
+function TDwsIdeForm.CanGotoHomePosition : boolean;
+begin
+  Result := FOptions.HomePositionFileName <> '';
+end;
+
 procedure TDwsIdeForm.GotoScriptPos( AScriptPos : TScriptPos; AHiddenMainModule : boolean = False );
 var
   S : string;
@@ -1908,7 +1948,7 @@ begin
   if IsCompiled then
     begin
     ClearExecutableLines;
-    ClearMessageWindow;
+    ClearMessagesWindow;
     FProgram := nil;
     end;
   //FScript.NotifyScriptModified;
@@ -1982,7 +2022,7 @@ var
    i : Integer;
 begin
   FreeAndNil( FCodeProposalForm );
-  ClearMessageWindow;
+  ClearMessagesWindow;
   dwsDebugger1.Breakpoints.Clean;
   dwsDebugger1.Watches.Clean;
   FProgram := nil;
@@ -1992,10 +2032,36 @@ begin
 end;
 
 procedure TDwsIdeForm.FormShow(Sender: TObject);
+
+  procedure EnsureVisible;
+  var
+    I  : Integer;
+    Ri : TRect;
+  const
+    Margin = 100;  // Number of pixels to be seen, at least
+  begin
+    I := 0;
+    while I < Screen.MonitorCount do begin
+      // Compute the intersection between screen and form
+      Windows.IntersectRect(Ri, BoundsRect, Screen.Monitors[I].BoundsRect);
+      // Check the intersection is large enough
+      if (Ri.Width > Margin) and (Ri.Height > Margin) then
+        break;
+      Inc(I);
+      end;
+      if I >= Screen.MonitorCount then begin
+          // Form is outside of any monitor.
+          // Move to center of main monitor
+          Top  := (Screen.Height - Height) div 2;
+          Left := (Screen.Width  - Width)  div 2;
+      end;
+  end;
+
 var
   I : integer;
 begin
   BoundsRect     := FIDESettingsRec.FormRect;
+  EnsureVisible;
 
   I := Max( FIDESettingsRec.RightPanelWidth, 30 );
   I := Min( I, Width - 30 );
@@ -2005,6 +2071,8 @@ begin
   I := Min( I, Height - 30 );
   pnlBottom.Height := I;
 
+  If CanGotoHomePosition then
+    GotoHomePosition;
 end;
 
 function TDwsIdeForm.GetProjectSourceFileName: string;
@@ -2262,6 +2330,9 @@ procedure TDwsIdeForm.UpdateTimerTimer(Sender: TObject);
 
   procedure UpdateFormCaption;
   begin
+    If FHomePositionCaptionSuffix <> '' then
+      Caption := Format( 'Home: %s', [FHomePositionCaptionSuffix] )
+     else
     If ProjectfileName = '' then
       Caption := '[No project]'
      else
@@ -2378,16 +2449,20 @@ var
   ScriptPos     : TScriptPos;
   ScriptProgram : IdwsProgram;
   ScriptSourceItem : TScriptSourceItem;
+  S : string;
 begin
   if not HasEditorPage then
     Exit;
 
   try
-    ScriptProgram := FScript.Compile( ProjectSourceScript );
+    if HasProject then
+      S := ProjectSourceScript // Use the main file, eg dws
+     else
+      S := UnitMainScript( CurrentEditorPage.UnitName, '' ); // make a main file that simply uses the current page
+
+    ScriptProgram := FScript.Compile( S );
   except
   end;
-
-
 
   if ScriptProgram = nil then
     Exit;
@@ -2587,7 +2662,7 @@ begin
   EditorCloseAllPages;
 
   ClearOutputWindow;
-  ClearMessageWindow;
+  ClearMessagesWindow;
 
   FProjectFileName := AProjectFileName;
 
@@ -2618,13 +2693,31 @@ begin
   EditorCloseAllPages;
 
   ClearOutputWindow;
-  ClearMessageWindow;
+  ClearMessagesWindow;
 
   FProjectFileName := AProjectFileName;
 end;
 
 
 
+
+function TDwsIdeForm.OpenEditorPage(AName: string) : boolean;
+var
+  I : integer;
+  S : string;
+begin
+  I := NameToEditorPageIndex( AName );
+  Result := I <> -1;
+  if Result then
+    EditorCurrentPageIndex := I
+   else
+    begin
+    S := ScriptFolder + ChangeFileExt( AName, sDwsIdeProjectSourceFileExt2 );
+    Result := FileExists( S );
+    If Result then
+      EditorPageAddNew( S, True );
+    end;
+end;
 
 function TDwsIdeForm.ProjectfileNameToProjectSourceFileName( const AProjectfileName : string ): string;
 begin
@@ -2897,6 +2990,34 @@ begin
   Result := FEditor.ReadOnly;
 end;
 
+
+function TEditorPage.GotoIdentifier(const AIdentifier: string): boolean;
+var
+  I : integer;
+  S : string;
+  bImplementation : boolean;
+begin
+  Result := False;
+  S := UpperCase( AIdentifier );
+  bImplementation := False;
+  For I := 0 to FEditor.Lines.Count-1 do
+    begin
+    if Pos( 'IMPLEMENTATION', UpperCase(FEditor.Lines[I]) ) <> 0 then
+      bImplementation := True
+     else
+      if bImplementation then
+        begin
+        Result := Pos( S, UpperCase(FEditor.Lines[I]) ) <> 0;
+        If Result then
+          begin
+          FEditor.CaretY := I+1;
+          FEditor.CaretX := 1;
+          FEditor.SearchReplace( AIdentifier, '', [] ); // << selects the identifier
+          Exit;
+          end;
+        end;
+    end;
+end;
 
 procedure TEditorPage.AddBreakpoint(ALineNum: integer; AEnabled: boolean);
 var

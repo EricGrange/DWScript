@@ -45,11 +45,13 @@ type
   TEditorHighlighterClass = class of TSynCustomHighlighter;
 
   TDwsIdeOptions = record
-    EditorHighlighterClass : TEditorHighlighterClass;
-    EditorFontName         : string;
-    EditorFontSize         : integer;
-    ScriptFolder           : string;
-    ProjectName            : string;
+    EditorHighlighterClass     : TEditorHighlighterClass;
+    EditorFontName             : string;
+    EditorFontSize             : integer;
+    ScriptFolder               : string;
+    ProjectName                : string;
+    HomePositionFileName       : string;
+    HomePositionFileIdentifier : string;
   end;
 
 
