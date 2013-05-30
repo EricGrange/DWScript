@@ -1,0 +1,6 @@
+Syntax Error: Incompatible parameter types - "TMyEnum" expected (instead of "Integer") [line: 6, column: 10]
+Syntax Error: Incompatible parameter types - "TMyEnum" expected (instead of "String") [line: 8, column: 10]
+Syntax Error: Incompatible parameter types - "TMyEnum" expected (instead of "void") [line: 12, column: 10]
+Syntax Error: unexpected "@" [line: 13, column: 12]
+Syntax Error: Incompatible types: "TMyEnum" and "procedure Test" [line: 13, column: 12]
+Syntax Error: Incompatible parameter types - "TMyEnum" expected (instead of "nil") [line: 13, column: 10]

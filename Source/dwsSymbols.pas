@@ -995,14 +995,30 @@ type
          property ConnectorType : IConnectorType read FConnectorType write FConnectorType;
    end;
 
-   TArraySymbol = class abstract(TTypeSymbol)
+   TSetOfSymbol = class abstract (TTypeSymbol)
+      private
+         FMinValue : Integer;
+         FCountValue : Integer;
+
+      public
+         constructor Create(const name : UnicodeString; indexType : TTypeSymbol;
+                            aMin, aMax : Integer);
+
+         procedure InitData(const data : TData; offset : Integer); override;
+
+         function ValueToOffsetMask(value : Integer; var mask : Int64) : Integer; inline;
+
+         property MinValue : Integer read FMinValue write FMinValue;
+         property CountValue : Integer read FCountValue write FCountValue;
+   end;
+
+   TArraySymbol = class abstract (TTypeSymbol)
       private
          FIndexType : TTypeSymbol;
          FSortFunctionType : TFuncSymbol;
 
       protected
          function ElementSize : Integer;
-
 
       public
          constructor Create(const name : UnicodeString; elementType, indexType : TTypeSymbol);
@@ -5685,6 +5701,39 @@ begin
       Inc(DataSize, Size);
       Result:=-DataSize;
    end;
+end;
+
+// ------------------
+// ------------------ TSetOfSymbol ------------------
+// ------------------
+
+// Create
+//
+constructor TSetOfSymbol.Create(const name : UnicodeString; indexType : TTypeSymbol;
+                              aMin, aMax : Integer);
+begin
+   inherited Create(name, indexType);
+   FMinValue:=aMin;
+   FCountValue:=aMax-aMin+1;
+   FSize:=1+(FCountValue shr 6);
+end;
+
+// InitData
+//
+procedure TSetOfSymbol.InitData(const data : TData; offset : Integer);
+var
+   i : Integer;
+begin
+   for i:=offset to offset+Size-1 do
+      data[i]:=0;
+end;
+
+// ValueToOffsetMask
+//
+function TSetOfSymbol.ValueToOffsetMask(value : Integer; var mask : Int64) : Integer;
+begin
+   Result:=(value-MinValue) shr 6;
+   mask:=Int64(1) shl (value and 63);
 end;
 
 // ------------------

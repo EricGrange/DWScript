@@ -1,0 +1,3 @@
+Hint: Result is never used [line: 4, column: 31]
+Syntax Error: Variable expected [line: 6, column: 9]
+Syntax Error: Variable expected [line: 8, column: 6]

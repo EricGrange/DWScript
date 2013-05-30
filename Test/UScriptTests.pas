@@ -75,6 +75,7 @@ begin
    CollectFiles(basePath+'OverloadsPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'HelpersPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'PropertyExpressionsPass'+PathDelim, cFilter, FTests);
+   CollectFiles(basePath+'SetOfPass'+PathDelim, cFilter, FTests);
 
    CollectFiles(basePath+'FailureScripts'+PathDelim, cFilter, FFailures);
    CollectFiles(basePath+'InterfacesFail'+PathDelim, cFilter, FFailures);
@@ -83,6 +84,7 @@ begin
    CollectFiles(basePath+'AttributesFail'+PathDelim, cFilter, FFailures);
    CollectFiles(basePath+'LambdaFail'+PathDelim, cFilter, FFailures);
    CollectFiles(basePath+'PropertyExpressionsFail'+PathDelim, cFilter, FFailures);
+   CollectFiles(basePath+'SetOfFail'+PathDelim, cFilter, FFailures);
 
    FCompiler:=TDelphiWebScript.Create(nil);
    FCompiler.OnInclude:=DoInclude;

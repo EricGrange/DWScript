@@ -29,7 +29,7 @@ uses
   dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors, dwsDataContext, dwsExprList,
   dwsStrings, dwsFunctions, dwsStack,
   dwsCoreExprs, dwsMagicExprs, dwsRelExprs, dwsMethodExprs, dwsConstExprs,
-  dwsConnectorExprs, dwsConvExprs,
+  dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs,
   dwsOperators, dwsPascalTokenizer, dwsSystemOperators,
   dwsUnitSymbols, dwsCompilerUtils;
 
@@ -212,6 +212,7 @@ type
                           skHigh, skLength, skLow,
                           skOrd, skSizeOf, skDefined, skDeclared, skSqr,
                           skInc, skDec, skSucc, skPred,
+                          skInclude, skExclude,
                           skSwap,
                           skConditionalDefined);
 
@@ -465,12 +466,18 @@ type
 
          function GetSelfParamExpr(selfSym : TDataSymbol) : TVarExpr;
          function ReadAssign(token : TTokenType; var left : TDataExpr) : TProgramExpr;
-         function ReadArrayType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TTypeSymbol;
+
+         function ReadSetOfType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TSetOfSymbol;
+
+         function ReadArrayType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TArraySymbol;
          function ReadArrayConstant(closingToken : TTokenType; expecting : TTypeSymbol) : TArrayConstantExpr;
          function ReadArrayMethod(const name : UnicodeString; const namePos : TScriptPos;
                                   baseExpr : TTypedExpr) : TProgramExpr;
          function ReadStringMethod(const name : UnicodeString; const namePos : TScriptPos;
                                    baseExpr : TTypedExpr) : TProgramExpr;
+         function ReadSetOfMethod(const name : UnicodeString; const namePos : TScriptPos;
+                                  baseExpr : TTypedExpr) : TProgramExpr;
+
          function ReadCase : TCaseExpr;
          function ReadCaseConditions(condList : TCaseConditions; valueExpr : TTypedExpr) : Integer;
          function ReadNameSymbol(var namePos : TScriptPos) : TSymbol;
@@ -652,6 +659,9 @@ type
          function ReadScript(sourceFile : TSourceFile; scriptType : TScriptSourceType) : TProgramExpr;
          procedure ReadScriptImplementations;
          function ReadSpecialFunction(const namePos : TScriptPos; specialKind : TSpecialKeywordKind) : TProgramExpr;
+         function ReadIncludeExclude(const namePos : TScriptPos; specialKind : TSpecialKeywordKind;
+                                     var argExpr : TTypedExpr; const argPos : TScriptPos) : TProgramExpr;
+
          function ReadStatement(var action : TdwsStatementAction) : TProgramExpr;
          function ReadResourceStringDecl : TResourceStringSymbol;
          procedure ReadResourceStringDeclBlock(var action : TdwsStatementAction);
@@ -831,7 +841,7 @@ const
    cSpecialKeywords : array [TSpecialKeywordKind] of UnicodeString = (
       '', 'Abs', 'Assert', 'Assigned', 'High', 'Length', 'Low',
       'Ord', 'SizeOf', 'Defined', 'Declared', 'Sqr', 'Inc', 'Dec', 'Succ', 'Pred',
-      'Swap', 'ConditionalDefined'
+      'Include', 'Exclude', 'Swap', 'ConditionalDefined'
    );
 
 // ------------------------------------------------------------------
@@ -5378,6 +5388,12 @@ begin
             Result:=nil;
             Result:=ReadStringMethod(name, namePos, expr as TTypedExpr);
 
+         // "set of" symbol
+         end else if baseType is TSetOfSymbol then begin
+
+            Result:=nil;
+            Result:=ReadSetOfMethod(name, namePos, expr as TTypedExpr);
+
          // Connector symbol
          end else if baseType is TConnectorSymbol then begin
 
@@ -6878,9 +6894,34 @@ begin
    end;
 end;
 
+// ReadSetOfType
+//
+function TdwsCompiler.ReadSetOfType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TSetOfSymbol;
+var
+   elementType : TTypeSymbol;
+   aMin, aMax : Integer;
+   typePos : TScriptPos;
+begin
+   if not FTok.TestDelete(ttOF) then
+      FMsgs.AddCompilerError(FTok.HotPos, CPE_OfExpected);
+
+   typePos:=FTok.HotPos;
+   elementType:=ReadType('', typeContext);
+   aMin:=0;
+   aMax:=0;
+
+   if elementType.UnAliasedType is TEnumerationSymbol then begin
+
+      aMax:=TEnumerationSymbol(elementType.UnAliasedType).HighBound;
+
+   end else FMsgs.AddCompilerError(typePos, CPE_EnumerationExpected);
+
+   Result:=TSetOfSymbol.Create(typeName, elementType, aMin, aMax);
+end;
+
 // ReadArrayType
 //
-function TdwsCompiler.ReadArrayType(const TypeName: UnicodeString; typeContext : TdwsReadTypeContext): TTypeSymbol;
+function TdwsCompiler.ReadArrayType(const TypeName: UnicodeString; typeContext : TdwsReadTypeContext): TArraySymbol;
 var
    hotPos : TScriptPos;
 
@@ -7374,6 +7415,38 @@ begin
 
       if not (coHintsDisabled in FOptions) then
          CheckSpecialNameCase(name, sk, namePos);
+   except
+      OrphanObject(baseExpr);
+      raise;
+   end;
+end;
+
+// ReadSetOfMethod
+//
+function TdwsCompiler.ReadSetOfMethod(const name : UnicodeString; const namePos : TScriptPos;
+                                      baseExpr : TTypedExpr) : TProgramExpr;
+var
+   sk : TSpecialKeywordKind;
+begin
+   try
+      if not FTok.TestDelete(ttBLEFT) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
+
+      sk:=IdentifySpecialName(name);
+
+      case sk of
+         skInclude, skExclude :
+            Result:=ReadIncludeExclude(namePos, sk, baseExpr, namePos);
+      else
+         Result:=nil;
+         FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
+      end;
+
+      if not (coHintsDisabled in FOptions) then
+         CheckSpecialNameCase(name, sk, namePos);
+
+      if not FTok.TestDelete(ttBRIGHT) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
    except
       OrphanObject(baseExpr);
       raise;
@@ -9094,17 +9167,21 @@ var
    sym : TSymbol;
 begin
    hotPos:=FTok.HotPos;
-   tt:=FTok.TestDeleteAny([ttRECORD, ttARRAY, ttCLASS, ttINTERFACE, ttHELPER,
+   tt:=FTok.TestDeleteAny([ttARRAY, ttSET,
+                           ttRECORD, ttCLASS, ttINTERFACE, ttHELPER,
                            ttBLEFT, ttENUM, ttFLAGS, ttPARTIAL, ttSTATIC,
                            ttPROCEDURE, ttFUNCTION, ttREFERENCE]);
    case tt of
+      ttARRAY :
+         Result:=ReadArrayType(typeName, typeContext);
+
+      ttSET :
+         Result:=ReadSetOfType(typeName, typeContext);
+
       ttRECORD :
          if FTok.TestDelete(ttHELPER) then
             Result:=ReadHelperDecl(typeName, ttRECORD)
          else Result:=ReadRecordDecl(typeName, False);
-
-      ttARRAY :
-         Result:=ReadArrayType(typeName, typeContext);
 
       ttCLASS : begin
          tt:=FTok.TestDeleteAny([ttOF, ttHELPER]);
@@ -9516,6 +9593,16 @@ begin
             Result:=TArrayIndexOfExpr.Create(FProg, hotPos, setExpr, left as TDataExpr, nil);
             Result:=TRelGreaterEqualIntExpr.Create(FProg, hotPos, Result,
                                                    TConstExpr.CreateIntegerValue(FProg, 0));
+
+         end else if setExpr.Typ is TSetOfSymbol then begin
+
+            elementType:=TDynamicArraySymbol(setExpr.Typ).Typ;
+            if (left.Typ=nil) or not left.Typ.IsOfType(elementType) then
+               IncompatibleTypes(hotPos, CPE_IncompatibleTypes,
+                                 left.Typ, elementType);
+            if TSetOfSymbol(setExpr.Typ).CountValue<=32 then
+               Result:=TSetOfSmallInExpr.Create(FProg, hotPos, left, setExpr as TDataExpr)
+            else Result:=TSetOfInExpr.Create(FProg, hotPos, left, setExpr as TDataExpr);
 
          end else if not (setExpr is TDataExpr) then begin
 
@@ -10806,6 +10893,8 @@ begin
       end;
       7 : case name[1] of
          'd', 'D' : if ASCIISameText(name, cSpecialKeywords[skDefined]) then Exit(skDefined);
+         'i', 'I' : if ASCIISameText(name, cSpecialKeywords[skInclude]) then Exit(skInclude);
+         'e', 'E' : if ASCIISameText(name, cSpecialKeywords[skExclude]) then Exit(skExclude);
       end;
       8 : case name[1] of
          'a', 'A' : if ASCIISameText(name, cSpecialKeywords[skAssigned]) then Exit(skAssigned);
@@ -12113,6 +12202,11 @@ begin
             Result:=TConditionalDefinedExpr.Create(FProg, argExpr);
             argExpr:=nil;
          end;
+         skInclude, skExclude : begin
+            if not FTok.TestDelete(ttCOMMA) then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_CommaExpected);
+            Result:=ReadIncludeExclude(namePos, specialKind, argExpr, argPos);
+         end;
          skSwap : begin
             if not ((argExpr is TDataExpr) and TDataExpr(argExpr).IsWritable) then begin
                FMsgs.AddCompilerError(argPos, CPE_VariableExpected);
@@ -12169,6 +12263,39 @@ begin
       OrphanObject(msgExpr);
       raise;
    end;
+end;
+
+// ReadIncludeExclude
+//
+function TdwsCompiler.ReadIncludeExclude(const namePos : TScriptPos; specialKind : TSpecialKeywordKind;
+                                         var argExpr : TTypedExpr; const argPos : TScriptPos) : TProgramExpr;
+var
+   operandExpr : TTypedExpr;
+   typ : TTypeSymbol;
+   setType : TSetOfSymbol;
+   operandPos : TScriptPos;
+begin
+   if not ((argExpr is TDataExpr) and TDataExpr(argExpr).IsWritable) then
+      FMsgs.AddCompilerError(argPos, CPE_VariableExpected);
+
+   typ:=argExpr.Typ.UnAliasedType;
+   if typ is TSetOfSymbol then begin
+      setType:=TSetOfSymbol(typ);
+      typ:=setType.Typ;
+   end else begin
+      FMsgs.AddCompilerError(argPos, CPE_SetExpected);
+      typ:=nil;
+   end;
+
+   operandPos:=FTok.HotPos;
+   operandExpr:=ReadExpr(typ);
+   if (typ<>nil) and (operandExpr<>nil) and not operandExpr.IsOfType(typ) then
+      IncompatibleTypes(operandPos, CPE_IncompatibleParameterTypes, typ, operandExpr.Typ);
+
+   if specialKind=skInclude then
+      Result:=TSetOfIncludeExpr.Create(FProg, namePos, TDataExpr(argExpr), operandExpr)
+   else Result:=TSetOfExcludeExpr.Create(FProg, namePos, TDataExpr(argExpr), operandExpr);
+   argExpr:=nil;
 end;
 
 // ReadTypeCast

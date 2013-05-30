@@ -112,6 +112,7 @@ const
   CPE_ProcOrFuncExpected = 'PROCEDURE or FUNCTION expected';
   CPE_EqualityExpected = '"=" expected';
   CPE_InExpected = 'IN expected';
+  CPE_SetExpected = 'Set expected';
   CPE_ArrayExpected = 'Array expected';
   CPE_StringExpected = 'String expected';
   CPE_BeginExpected = 'BEGIN expected';

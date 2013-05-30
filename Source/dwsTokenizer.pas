@@ -746,7 +746,7 @@ const
       ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
       ttRECORD, ttREAD, ttRAISE, ttREINTRODUCE, ttREFERENCE, ttREGISTER,
       ttREPEAT, ttREQUIRE, ttRESOURCESTRING,
-      ttSAFECALL, ttSAR, ttSEALED, ttSHL, ttSHR, ttSTATIC, ttSTDCALL,
+      ttSAFECALL, ttSAR, ttSEALED, ttSET, ttSHL, ttSHR, ttSTATIC, ttSTDCALL,
       ttTHEN, ttTO, ttTRUE, ttTRY, ttTYPE,
       ttUNIT, ttUNTIL, ttUSES,
       ttVAR, ttVIRTUAL,
