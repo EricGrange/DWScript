@@ -2216,7 +2216,7 @@ procedure TStrVarExpr.AssignValueAsWideChar(exec : TdwsExecution; aChar : WideCh
 var
    pstr : PUnicodeString;
 begin
-   pstr:=exec.Stack.PointerToStringValue(exec.Stack.BasePointer + FStackAddr);
+   pstr:=exec.Stack.PointerToStringValue_BaseRelative(FStackAddr);
    if Length(pstr^)=1 then
       pstr^[1]:=aChar
    else pstr^:=aChar;
@@ -4831,7 +4831,7 @@ end;
 function TVarStringInConstStringExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
    Result:=StrContains(TConstStringExpr(Right).Value,
-                       exec.Stack.PointerToStringValue(TStrVarExpr(Left).StackAddr)^);
+                       exec.Stack.PointerToStringValue_BaseRelative(TStrVarExpr(Left).StackAddr)^);
 end;
 
 // ------------------
@@ -4842,7 +4842,7 @@ end;
 //
 function TConstStringInVarStringExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
-   Result:=StrContains(exec.Stack.PointerToStringValue(TStrVarExpr(Right).StackAddr)^,
+   Result:=StrContains(exec.Stack.PointerToStringValue_BaseRelative(TStrVarExpr(Right).StackAddr)^,
                        TConstStringExpr(Left).Value);
 end;
 

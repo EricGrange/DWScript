@@ -995,7 +995,7 @@ type
          property ConnectorType : IConnectorType read FConnectorType write FConnectorType;
    end;
 
-   TSetOfSymbol = class abstract (TTypeSymbol)
+   TSetOfSymbol = class sealed (TTypeSymbol)
       private
          FMinValue : Integer;
          FCountValue : Integer;
@@ -1004,6 +1004,7 @@ type
          constructor Create(const name : UnicodeString; indexType : TTypeSymbol;
                             aMin, aMax : Integer);
 
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          procedure InitData(const data : TData; offset : Integer); override;
 
          function ValueToOffsetMask(value : Integer; var mask : Int64) : Integer; inline;
@@ -1073,7 +1074,7 @@ type
    end;
 
    // static array whose bounds are contextual
-   TOpenArraySymbol = class (TStaticArraySymbol)
+   TOpenArraySymbol = class sealed (TStaticArraySymbol)
       protected
          function GetCaption : UnicodeString; override;
 
@@ -5718,14 +5719,28 @@ begin
    FSize:=1+(FCountValue shr 6);
 end;
 
+// IsCompatible
+//
+function TSetOfSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+begin
+   typSym:=typSym.UnAliasedType;
+   if typSym is TSetOfSymbol then begin
+      Result:=     TSetOfSymbol(typSym).Typ.IsOfType(Typ)
+              and  (TSetOfSymbol(typSym).MinValue=MinValue)
+              and  (TSetOfSymbol(typSym).CountValue=CountValue);
+   end else Result:=False;
+end;
+
 // InitData
 //
 procedure TSetOfSymbol.InitData(const data : TData; offset : Integer);
+const
+   cZero64 : Int64 = 0;
 var
    i : Integer;
 begin
    for i:=offset to offset+Size-1 do
-      data[i]:=0;
+      data[i]:=cZero64;
 end;
 
 // ValueToOffsetMask

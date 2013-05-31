@@ -11685,10 +11685,13 @@ begin
                end else Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
             end else if left.Typ.ClassType=TDynamicArraySymbol then begin
                Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
-            end else if right.InheritsFrom(TDataExpr) and ((right.Typ.Size<>1) or (right.Typ is TArraySymbol)) then begin
+            end else if     right.InheritsFrom(TDataExpr)
+                        and (   (right.Typ.Size<>1)
+                             or (right.Typ is TArraySymbol)
+                             or (right.Typ is TSetOfSymbol)) then begin
                if right.InheritsFrom(TFuncExpr) then
                   TFuncExpr(right).SetResultAddr(FProg, nil);
-               if right.InheritsFrom(TArrayConstantExpr) then
+               if right.InheritsFrom(TArrayConstantExpr) and (left.Typ is TArraySymbol) then
                   Result:=TAssignArrayConstantExpr.Create(FProg, scriptPos, left, TArrayConstantExpr(right))
                else Result:=TAssignDataExpr.Create(FProg, scriptPos, left, right)
             end else if left.Typ.IsFuncSymbol then begin

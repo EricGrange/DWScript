@@ -98,7 +98,7 @@ type
 
          function  PointerToIntValue(addr : Integer) : PInt64;
          function  PointerToFloatValue_BaseRelative(addr : Integer) : PDouble;
-         function  PointerToStringValue(addr : Integer) : PUnicodeString; inline;
+         function  PointerToStringValue_BaseRelative(addr : Integer) : PUnicodeString;// inline;
          function  PointerToInterfaceValue_BaseRelative(addr : Integer) : PIUnknown;
 
          procedure InitDataPtr(var dataPtr : IDataContext; addr : Integer); inline;
@@ -460,9 +460,9 @@ begin
    Result:=@varData.VDouble;
 end;
 
-// PointerToStringValue
+// PointerToStringValue_BaseRelative
 //
-function TStackMixIn.PointerToStringValue(addr : Integer) : PUnicodeString;
+function TStackMixIn.PointerToStringValue_BaseRelative(addr : Integer) : PUnicodeString;
 var
    varData : PVarData;
 begin

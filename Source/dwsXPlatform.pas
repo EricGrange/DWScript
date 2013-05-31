@@ -151,7 +151,9 @@ procedure VarCopy(out dest : Variant; const src : Variant); inline;
 function LoadTextFromBuffer(const buf : TBytes) : UnicodeString;
 function LoadTextFromStream(aStream : TStream) : UnicodeString;
 function LoadTextFromFile(const fileName : UnicodeString) : UnicodeString;
+procedure SaveTextToUTF8File(const fileName, text : UnicodeString);
 function OpenFileForSequentialReadOnly(const fileName : UnicodeString) : THandle;
+function OpenFileForSequentialWriteOnly(const fileName : UnicodeString) : THandle;
 procedure CloseFileHandle(hFile : THandle);
 
 function DirectSet8087CW(newValue : Word) : Word; register;
@@ -512,6 +514,25 @@ begin
    end;
 end;
 
+// SaveTextToUTF8File
+//
+procedure SaveTextToUTF8File(const fileName, text : UnicodeString);
+var
+   hFile : THandle;
+   utf8 : UTF8String;
+   nWrite : DWORD;
+begin
+   utf8:=UTF8Encode(text);
+   hFile:=OpenFileForSequentialWriteOnly(fileName);
+   try
+      if utf8<>'' then
+         if not WriteFile(hFile, utf8[1], Length(utf8), nWrite, nil) then
+            RaiseLastOSError;
+   finally
+      FileClose(hFile);
+   end;
+end;
+
 // OpenFileForSequentialReadOnly
 //
 function OpenFileForSequentialReadOnly(const fileName : UnicodeString) : THandle;
@@ -521,8 +542,17 @@ begin
    if Result=INVALID_HANDLE_VALUE then begin
       if GetLastError<>ERROR_FILE_NOT_FOUND then
          RaiseLastOSError;
-      Exit;
    end;
+end;
+
+// OpenFileForSequentialWriteOnly
+//
+function OpenFileForSequentialWriteOnly(const fileName : UnicodeString) : THandle;
+begin
+   Result:=CreateFileW(PWideChar(fileName), GENERIC_WRITE, 0, nil, CREATE_ALWAYS,
+                       FILE_ATTRIBUTE_NORMAL+FILE_FLAG_SEQUENTIAL_SCAN, 0);
+   if Result=INVALID_HANDLE_VALUE then
+      RaiseLastOSError;
 end;
 
 // CloseFileHandle
