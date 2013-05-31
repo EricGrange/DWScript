@@ -214,7 +214,7 @@ begin
             Result:=TConvStaticArrayToDynamicExpr.Create(prog, arrayConst,
                                                          TDynamicArraySymbol(toTyp))
       end else if toTyp is TSetOfSymbol then begin
-         if arrayConst.Typ.Typ.IsOfType(toTyp.Typ) then
+         if (arrayConst.ElementCount=0) or arrayConst.Typ.Typ.IsOfType(toTyp.Typ) then
             Result:=TConvStaticArrayToSetOfExpr.Create(prog, scriptPos, arrayConst, TSetOfSymbol(toTyp));
       end;
    end else if expr.Typ.UnAliasedType is TBaseVariantSymbol then begin
