@@ -147,7 +147,7 @@ begin
    if Length(parameters)>1 then
       userName:=parameters[1]
    else userName:='SYSDBA';
-   if Length(parameters)>0 then
+   if Length(parameters)>2 then
       pwd:=parameters[2]
    else pwd:='masterkey';
    try
