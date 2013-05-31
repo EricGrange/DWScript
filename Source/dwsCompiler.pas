@@ -5665,13 +5665,26 @@ end;
 //
 function TdwsCompiler.ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr;
                                 const loopVarName : UnicodeString; const loopVarNamePos : TScriptPos) : TProgramExpr;
+
+   function CreateLoopVarExpr(var loopVarExpr : TVarExpr; loopVarTyp : TTypeSymbol) : TBlockExpr;
+   var
+      loopVarSymbol : TDataSymbol;
+   begin
+      Result:=TBlockExpr.Create(FProg, forPos);
+      loopVarSymbol:=TDataSymbol.Create(loopVarName, loopVarTyp);
+      Result.Table.AddSymbol(loopVarSymbol);
+      RecordSymbolUse(loopVarSymbol, loopVarNamePos, [suDeclaration, suReference, suWrite]);
+      loopVarExpr:=GetVarExpr(loopVarSymbol);
+      FProg.InitExpr.AddStatement(TInitDataExpr.Create(FProg, loopVarNamePos, loopVarExpr));
+      loopVarExpr.IncRefCount;
+   end;
+
 var
    iterVarExpr : TIntVarExpr;
    iterVarSym : TDataSymbol;
    initIterVarExpr : TAssignConstToIntegerVarExpr;
    inExpr : TProgramExpr;
    inExprVarSym : TDataSymbol;
-   loopVarSymbol : TDataSymbol;
    fromExpr, toExpr : TTypedExpr;
    forExprClass : TForExprClass;
    arraySymbol : TArraySymbol;
@@ -5727,19 +5740,10 @@ begin
          fromExpr:=CreateArrayLow(inExpr, arraySymbol, False);
          toExpr:=CreateArrayHigh(inExpr, arraySymbol, False);
 
-         if loopVarExpr=nil then begin
-            blockExpr:=TBlockExpr.Create(FProg, forPos);
-            loopVarSymbol:=TDataSymbol.Create(loopVarName, arraySymbol.Typ);
-            blockExpr.Table.AddSymbol(loopVarSymbol);
-            RecordSymbolUse(loopVarSymbol, loopVarNamePos, [suDeclaration, suReference, suWrite]);
-            loopVarExpr:=GetVarExpr(loopVarSymbol);
-            FProg.InitExpr.AddStatement(TInitDataExpr.Create(FProg, loopVarNamePos, loopVarExpr));
-            loopVarExpr.IncRefCount;
-         end;
+         if loopVarExpr=nil then
+            blockExpr:=CreateLoopVarExpr(loopVarExpr, arraySymbol.Typ);
 
          iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
-//         readArrayItemExpr:=TAssignExpr.Create(FProg, FTok.HotPos, loopVarExpr,
-//                                               CreateArrayExpr(FTok.HotPos, (inExpr as TDataExpr), iterVarExpr));
          readArrayItemExpr:=CreateAssign(FTok.HotPos, ttASSIGN, loopVarExpr,
                                          CreateArrayExpr(FTok.HotPos, (inExpr as TDataExpr), iterVarExpr));
 
@@ -5775,7 +5779,9 @@ begin
 
       inExpr.Free;
 
-      if not loopVarExpr.Typ.IsOfType(enumSymbol) then begin
+      if loopVarExpr=nil then
+         blockExpr:=CreateLoopVarExpr(loopVarExpr, enumSymbol)
+      else if not loopVarExpr.Typ.IsOfType(enumSymbol) then begin
          FMsgs.AddCompilerError(inPos, CPE_IncompatibleOperands);
          enumSymbol:=nil;
       end;
@@ -5824,7 +5830,6 @@ begin
          end;
       end;
    end;
-
 end;
 
 // ReadForInString
