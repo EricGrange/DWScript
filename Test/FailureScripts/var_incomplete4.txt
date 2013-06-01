@@ -1,1 +1,2 @@
 Syntax Error: Unknown name "bug" [line: 1, column: 9]
+Syntax Error: ";" expected. [line: 1, column: 9]

@@ -1,0 +1,6 @@
+Errors >>>>
+Hint: "c1" does not match case of declaration ("C1") [line: 12, column: 10]
+Result >>>>
+3
+4
+3

@@ -308,7 +308,7 @@ type
    TdwsReadProcDeclOption = (pdoClassMethod, pdoType, pdoAnonymous);
    TdwsReadProcDeclOptions = set of TdwsReadProcDeclOption;
 
-   TdwsUnitSection = (secMixed, secHeader, secInterface, secImplementation,
+   TdwsUnitSection = (secMixed, secHeader, secProgram, secInterface, secImplementation,
                       secInitialization, secFinalization, secEnd);
    TdwsStatementAction = (saNone, saNoSemiColon, saInterface, saImplementation, saEnd);
 
@@ -652,7 +652,7 @@ type
 
          function ReadRaise : TRaiseBaseExpr;
          function ReadRepeat : TProgramExpr;
-         function ReadRootStatement(var action : TdwsStatementAction) : TProgramExpr;
+         function ReadRootStatement(var action : TdwsStatementAction; initVarBlockExpr : TBlockExpr) : TProgramExpr;
          function ReadRootBlock(const endTokens: TTokenTypes; var finalToken: TTokenType) : TBlockExpr;
          function ReadImplementationBlock : TTokenType;
          procedure ReadSemiColon;
@@ -662,7 +662,7 @@ type
          function ReadIncludeExclude(const namePos : TScriptPos; specialKind : TSpecialKeywordKind;
                                      var argExpr : TTypedExpr; const argPos : TScriptPos) : TProgramExpr;
 
-         function ReadStatement(var action : TdwsStatementAction) : TProgramExpr;
+         function ReadStatement(var action : TdwsStatementAction; initVarBlockExpr : TBlockExpr) : TProgramExpr;
          function ReadResourceStringDecl : TResourceStringSymbol;
          procedure ReadResourceStringDeclBlock(var action : TdwsStatementAction);
          function ReadStringArray(expr : TDataExpr; isWrite : Boolean) : TProgramExpr;
@@ -711,9 +711,11 @@ type
          procedure ReadUses;
          function  ReadUnitHeader : TScriptSourceType;
 
-         function ReadVarDecl(const dataSymbolFactory : IdwsDataSymbolFactory) : TProgramExpr;
-         function ReadNamedVarsDecl(names : TSimpleStringList; const posArray : TScriptPosArray;
-                                    const dataSymbolFactory : IdwsDataSymbolFactory) : TProgramExpr;
+         procedure ReadVarDeclBlock(var action : TdwsStatementAction; initVarBlockExpr : TBlockExprBase);
+         procedure ReadVarDecl(const dataSymbolFactory : IdwsDataSymbolFactory; initVarBlockExpr : TBlockExprBase);
+         procedure ReadNamedVarsDecl(names : TSimpleStringList; const posArray : TScriptPosArray;
+                                     const dataSymbolFactory : IdwsDataSymbolFactory;
+                                     initVarBlockExpr : TBlockExprBase);
          function CreateNamedVarDeclExpr(const dataSymbolFactory : IdwsDataSymbolFactory;
                                          const name : UnicodeString; const scriptPos : TScriptPos;
                                          typ : TTypeSymbol; var initExpr : TTypedExpr;
@@ -1985,18 +1987,16 @@ begin
          if FCompilerAbort then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_CompilationAborted);
 
-         stmt:=ReadRootStatement(action);
+         stmt:=ReadRootStatement(action, Result);
          if Assigned(stmt) then begin
             Result.AddStatement(Stmt);
-            if     (reach=rsReachable)
-               and (   (stmt is TFlowControlExpr)
-                    or (stmt is TRaiseExpr)) then
+            if (reach=rsReachable) and (stmt.InterruptsFlow) then
                reach:=rsUnReachable;
          end;
 
          case action of
             saNone : begin
-               if  not FTok.TestDelete(ttSEMI) then begin
+               if not FTok.TestDelete(ttSEMI) then begin
                   if endTokens<>[] then begin
                      finalToken:=FTok.TestDeleteAny(endTokens);
                      if finalToken=ttNone then
@@ -2067,21 +2067,29 @@ begin
       else FTok.ConditionalDefines:=TAutoStrings.Create(TStringList.Create);
 
       readingMain:=(scriptType=stMain);
-      if readingMain and FTok.Test(ttUNIT) then begin
-         if coContextMap in Options then begin
-            // need to fix the context map
-            // the convoluted code below is required in case the first code content encountered
-            // was an include switch, worst case is a 'UNIT' keyword in a bunch of nested includes
-            contextFix:=FSourceContextMap.Current;
-            while     (contextFix<>nil)
-                  and (contextFix.Token<>ttPROGRAM)
-                  and (contextFix.StartPos.SourceFile<>sourceFile) do
-               contextFix:=contextFix.Parent;
-            if contextFix<>nil then
-               contextFix.Token:=ttUNIT;
+      if readingMain then begin
+         if FTok.Test(ttUNIT) then begin
+            if coContextMap in Options then begin
+               // need to fix the context map
+               // the convoluted code below is required in case the first code content encountered
+               // was an include switch, worst case is a 'UNIT' keyword in a bunch of nested includes
+               contextFix:=FSourceContextMap.Current;
+               while     (contextFix<>nil)
+                     and (contextFix.Token<>ttPROGRAM)
+                     and (contextFix.StartPos.SourceFile<>sourceFile) do
+                  contextFix:=contextFix.Parent;
+               if contextFix<>nil then
+                  contextFix.Token:=ttUNIT;
+            end;
+            scriptType:=stUnit;
+            HandleUnitDependencies(scriptType);
+         end else if FTok.TestDelete(ttPROGRAM) then begin
+            UnitSection:=secProgram;
+            if not FTok.TestName then
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected)
+            else FTok.KillToken;
+            ReadSemiColon;
          end;
-         scriptType:=stUnit;
-         HandleUnitDependencies(scriptType);
       end;
 
       if Assigned(FOnReadScript) then
@@ -2244,7 +2252,7 @@ end;
 
 // ReadRootStatement
 //
-function TdwsCompiler.ReadRootStatement(var action : TdwsStatementAction) : TProgramExpr;
+function TdwsCompiler.ReadRootStatement(var action : TdwsStatementAction; initVarBlockExpr : TBlockExpr) : TProgramExpr;
 var
    hotPos : TScriptPos;
    token : TTokenType;
@@ -2305,13 +2313,13 @@ begin
          end;
       end;
    else
-      Result:=ReadStatement(action);
+      Result:=ReadStatement(action, initVarBlockExpr);
    end;
 end;
 
 // ReadStatement
 //
-function TdwsCompiler.ReadStatement(var action : TdwsStatementAction) : TProgramExpr;
+function TdwsCompiler.ReadStatement(var action : TdwsStatementAction; initVarBlockExpr : TBlockExpr) : TProgramExpr;
 var
    token : TTokenType;
 begin
@@ -2319,7 +2327,7 @@ begin
    token:=FTok.TestDeleteAny([ttVAR, ttCONST, ttOPERATOR, ttRESOURCESTRING]);
    case token of
       ttVAR :
-         Result:=ReadVarDecl(FStandardDataSymbolFactory);
+         ReadVarDeclBlock(action, initVarBlockExpr);
       ttCONST :
          ReadConstDeclBlock(action);
       ttRESOURCESTRING :
@@ -2327,8 +2335,14 @@ begin
       ttOPERATOR :
          ReadOperatorDecl;
    else
-      if (FProg.Level=0) and not (UnitSection in [secMixed, secInitialization, secFinalization]) then
-         FMsgs.AddCompilerError(FTok.HotPos, CPE_UnexpectedStatement);
+      if FProg.Level=0 then begin
+         case UnitSection of
+            secMixed, secInitialization, secFinalization : ;
+            secProgram : UnitSection:=secMixed;
+         else
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_UnexpectedStatement);
+         end;
+      end;
       Result:=ReadBlock
    end;
 end;
@@ -2503,17 +2517,30 @@ begin
    Result:=resultObj;
 end;
 
+// ReadVarDeclBlock
+//
+procedure TdwsCompiler.ReadVarDeclBlock(var action : TdwsStatementAction; initVarBlockExpr : TBlockExprBase);
+begin
+   action:=saNoSemiColon;
+   repeat
+      ReadVarDecl(FStandardDataSymbolFactory, initVarBlockExpr);
+      ReadSemiColon;
+   until not (    (UnitSection in [secProgram, secInterface, secImplementation])
+              and (FProg.Level=0)
+              and FTok.TestName);
+end;
+
 // ReadVarDecl
 //
-function TdwsCompiler.ReadVarDecl(const dataSymbolFactory : IdwsDataSymbolFactory) : TProgramExpr;
+procedure TdwsCompiler.ReadVarDecl(const dataSymbolFactory : IdwsDataSymbolFactory; initVarBlockExpr : TBlockExprBase);
 var
    names : TSimpleStringList;
    posArray : TScriptPosArray;
 begin
-   names := AcquireStringList;
+   names:=AcquireStringList;
    try
       ReadNameList(names, posArray);
-      Result := ReadNamedVarsDecl(names, posArray, dataSymbolFactory);
+      ReadNamedVarsDecl(names, posArray, dataSymbolFactory, initVarBlockExpr);
    finally
       ReleaseStringList(names);
    end;
@@ -2521,16 +2548,17 @@ end;
 
 // ReadNamedVarsDecl
 //
-function TdwsCompiler.ReadNamedVarsDecl(names : TSimpleStringList; const posArray : TScriptPosArray;
-                                        const dataSymbolFactory : IdwsDataSymbolFactory) : TProgramExpr;
+procedure TdwsCompiler.ReadNamedVarsDecl(names : TSimpleStringList; const posArray : TScriptPosArray;
+                                         const dataSymbolFactory : IdwsDataSymbolFactory;
+                                         initVarBlockExpr : TBlockExprBase);
 var
    x : Integer;
    sym : TDataSymbol;
    typ : TTypeSymbol;
    hotPos : TScriptPos;
    initExpr : TTypedExpr;
+   assignExpr : TProgramExpr;
 begin
-   Result := nil;
    initExpr := nil;
    try
       hotPos:=FTok.HotPos;
@@ -2579,8 +2607,11 @@ begin
       else if (typ is TClassSymbol) and TClassSymbol(typ).IsStatic then
          FMsgs.AddCompilerErrorFmt(hotPos, CPE_ClassIsStaticNoInstances, [typ.Name]);
 
-      for x:=0 to names.Count-1 do
-         Result:=CreateNamedVarDeclExpr(dataSymbolFactory, names[x], posArray[x], typ, initExpr, sym);
+      for x:=0 to names.Count-1 do begin
+         assignExpr:=CreateNamedVarDeclExpr(dataSymbolFactory, names[x], posArray[x], typ, initExpr, sym);
+         if assignExpr<>nil then
+            initVarBlockExpr.AddStatement(assignExpr);
+      end;
    finally
       initExpr.Free;
    end;
@@ -2782,7 +2813,7 @@ begin
    repeat
       ReadConstDecl(FStandardDataSymbolFactory);
       ReadSemiColon;
-   until not (    (UnitSection in [secInterface, secImplementation])
+   until not (    (UnitSection in [secProgram, secInterface, secImplementation])
               and (FProg.Level=0)
               and FTok.TestName);
 end;
@@ -3552,9 +3583,7 @@ end;
 procedure TdwsCompiler.ReadProcBody(funcSymbol : TFuncSymbol);
 var
    oldprog : TdwsProgram;
-
    proc : TdwsProcedure;
-   assignExpr : TProgramExpr;
    tt, sectionType, finalToken : TTokenType;
    hotPos : TScriptPos;
    progExpr : TBlockExpr;
@@ -3630,11 +3659,8 @@ begin
                   end;
 
                   case sectionType of
-                     ttVAR : begin
-                        assignExpr:=ReadVarDecl(FStandardDataSymbolFactory);
-                        if assignExpr<>nil then
-                           FProg.InitExpr.AddStatement(assignExpr);
-                     end;
+                     ttVAR :
+                        ReadVarDecl(FStandardDataSymbolFactory, FProg.InitExpr);
                      ttCONST : begin
                         ReadConstDecl(FStandardDataSymbolFactory);
                      end;
@@ -3983,12 +4009,11 @@ begin
             end;
 
             action:=saNone;
-            stmt:=ReadStatement(action);
+            stmt:=ReadStatement(action, blockExpr);
 
             if Assigned(stmt) then begin
                blockExpr.AddStatement(stmt);
-
-               if stmt.InterruptsFlow then
+               if (reach=rsReachable) and stmt.InterruptsFlow then
                   reach:=rsUnReachable;
             end;
 
@@ -8029,13 +8054,10 @@ end;
 //
 procedure TdwsCompiler.ReadClassVars(const ownerSymbol : TCompositeTypeSymbol; aVisibility : TdwsVisibility);
 var
-   assignExpr : TProgramExpr;
    factory : IdwsDataSymbolFactory;
 begin
    factory:=TCompositeTypeSymbolFactory.Create(Self, ownerSymbol, aVisibility);
-   assignExpr:=ReadVarDecl(factory);
-   if assignExpr<>nil then
-      FProg.InitExpr.AddStatement(assignExpr);
+   ReadVarDecl(factory, FProg.InitExpr);
    ReadSemiColon;
 end;
 

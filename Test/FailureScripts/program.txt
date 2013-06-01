@@ -1,0 +1,2 @@
+Syntax Error: Name expected [line: 1, column: 1]
+Syntax Error: ";" expected. [line: 1, column: 1]
