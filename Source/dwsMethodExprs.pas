@@ -25,10 +25,30 @@ interface
 
 uses
    dwsErrors, dwsStrings, dwsUtils,
-   dwsSymbols, dwsDataContext, dwsStack,
+   dwsSymbols, dwsDataContext, dwsStack, dwsFunctions,
    dwsExprs, dwsExprList, dwsMagicExprs;
 
 type
+
+   TObjectClassNameMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
+
+   TObjectClassTypeMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
+
+   TObjectClassParentMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
+
+   TObjectDestroyMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
+
+   TObjectFreeMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
 
    // Call of a method
    TMethodExpr = class abstract (TFuncExpr)
@@ -108,8 +128,9 @@ type
    // Call to a static constructor
    TConstructorStaticExpr = class(TMethodStaticExpr)
       protected
-         procedure PostCall(exec : TdwsExecution; var Result : Variant); override;
+         procedure DoCreate(exec : TdwsExecution); inline;
          function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
+         procedure PostCall(exec : TdwsExecution; var Result : Variant); override;
 
       public
          constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; Func: TMethodSymbol;
@@ -120,13 +141,21 @@ type
    TConstructorVirtualExpr = class(TMethodVirtualExpr)
       private
          FExternalObject: TObject;
+
       protected
          procedure PostCall(exec : TdwsExecution; var Result : Variant); override;
          function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
+
       public
          constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; Func: TMethodSymbol;
                             Base: TTypedExpr);
          property ExternalObject: TObject read FExternalObject write FExternalObject;
+   end;
+
+   // call to default TObject.Create (which is empty)
+   TConstructorStaticDefaultExpr = class(TConstructorStaticExpr)
+      public
+         function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    TConstructorStaticObjExpr = class(TMethodStaticExpr)
@@ -164,6 +193,78 @@ implementation
 // ------------------------------------------------------------------
 
 uses dwsCompilerUtils;
+
+// ------------------
+// ------------------ TObjectClassNameMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TObjectClassNameMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+var
+   classSym : TClassSymbol;
+begin
+   classSym:=info.ValueAsClassSymbol[SYS_SELF];
+   if classSym=nil then
+      raise EScriptError.CreatePosFmt(info.Execution.CallStackLastExpr.ScriptPos, RTE_ClassTypeIsNil, []);
+   Info.ResultAsString:=classSym.Name;
+end;
+
+// ------------------
+// ------------------ TObjectClassTypeMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TObjectClassTypeMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+begin
+   Info.ResultAsInteger:=Int64(info.ValueAsClassSymbol[SYS_SELF]);
+end;
+
+// ------------------
+// ------------------ TObjectClassParentMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TObjectClassParentMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+var
+   p : TClassSymbol;
+begin
+   p:=info.ValueAsClassSymbol[SYS_SELF].Parent;
+   if p=Info.Execution.Prog.TypObject then
+      p:=nil;
+   Info.ResultAsInteger:=Int64(p);
+end;
+
+// ------------------
+// ------------------ TObjectDestroyMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TObjectDestroyMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+var
+   scriptObj : PIScriptObj;
+begin
+   scriptObj:=info.Execution.SelfScriptObject;
+   scriptObj.Destroyed:=True;
+end;
+
+// ------------------
+// ------------------ TObjectFreeMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TObjectFreeMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+var
+   scriptObj : PIScriptObj;
+begin
+   scriptObj:=info.Execution.SelfScriptObject;
+   if (scriptObj^<>nil) then
+      info.Method['Destroy'].Call;
+end;
 
 // ------------------
 // ------------------ TMethodExpr ------------------
@@ -406,9 +507,9 @@ begin
     FTyp := Base.Typ;
 end;
 
-// PreCall
+// DoCreate
 //
-function TConstructorStaticExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
+procedure TConstructorStaticExpr.DoCreate(exec : TdwsExecution);
 var
    classSym : TClassSymbol;
 begin
@@ -419,6 +520,13 @@ begin
    // Create object
    exec.SelfScriptObject^:=TScriptObjInstance.Create(classSym, exec as TdwsProgramExecution);
    exec.SelfScriptObject^.ExternalObject:=exec.ExternalObject;
+end;
+
+// PreCall
+//
+function TConstructorStaticExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
+begin
+   DoCreate(exec);
 
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, exec.SelfScriptObject^);
 
@@ -475,6 +583,29 @@ begin
    // Return Self as Result
    Assert(FResultAddr=-1);
    Result:=exec.SelfScriptObject^;
+end;
+
+// ------------------
+// ------------------ TConstructorStaticDefaultExpr ------------------
+// ------------------
+
+// Eval
+//
+function TConstructorStaticDefaultExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   scriptObj : Pointer;
+   oldSelf : PIScriptObj;
+begin
+   scriptObj:=nil;
+   oldSelf:=exec.SelfScriptObject;
+   try
+      exec.SelfScriptObject:=@scriptObj;
+      DoCreate(exec);
+      Result:=exec.SelfScriptObject^;
+   finally
+      exec.SelfScriptObject:=oldSelf;
+      IScriptObj(scriptObj):=nil;
+   end;
 end;
 
 // ------------------

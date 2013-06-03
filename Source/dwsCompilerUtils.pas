@@ -178,6 +178,8 @@ begin
             if RefKind = rkClassOfRef then begin
                if not ForceStatic and meth.IsVirtual then
                   Result := TConstructorVirtualExpr.Create(prog, scriptPos, meth, expr)
+               else if meth = prog.Root.TypDefaultConstructor then
+                  Result := TConstructorStaticDefaultExpr.Create(prog, scriptPos, meth, expr)
                else Result := TConstructorStaticExpr.Create(prog, scriptPos, meth, expr);
             end else begin
                if not ((prog is TdwsProcedure) and (TdwsProcedure(prog).Func.Kind=fkConstructor)) then

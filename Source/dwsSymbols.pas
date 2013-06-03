@@ -531,8 +531,13 @@ type
 
    // Base class for all types
    TTypeSymbol = class(TSymbol)
+      private
+         FDeprecatedMessage : UnicodeString;
+
       protected
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; virtual;
+
+         function GetIsDeprecated : Boolean; inline;
 
       public
          procedure InitData(const data : TData; offset : Integer); virtual;
@@ -547,6 +552,9 @@ type
          // but identical declarations are
          function SameType(typSym : TTypeSymbol) : Boolean; virtual;
          function HasMetaSymbol : Boolean; virtual;
+
+         property DeprecatedMessage : UnicodeString read FDeprecatedMessage write FDeprecatedMessage;
+         property IsDeprecated : Boolean read GetIsDeprecated;
    end;
 
    TAnyTypeSymbol = class(TTypeSymbol)
@@ -627,7 +635,6 @@ type
          FAddrGenerator : TAddrGeneratorRec;
          FExecutable : IExecutable;
          FInternalParams : TSymbolTable;
-         FDeprecatedMessage : UnicodeString;
          FForwardPosition : PScriptPos;
          FParams : TParamsSymbolTable;
          FResult : TDataSymbol;
@@ -642,7 +649,6 @@ type
          function GetDescription : UnicodeString; override;
          function GetLevel : SmallInt; inline;
          function GetParamSize : Integer; inline;
-         function GetIsDeprecated : Boolean; inline;
          function GetIsStateless : Boolean; inline;
          procedure SetIsStateless(const val : Boolean);
          function GetIsExternal : Boolean; inline;
@@ -693,7 +699,6 @@ type
          property SubExprCount : Integer read GetSourceSubExprCount;
 
          property Executable : IExecutable read FExecutable write FExecutable;
-         property DeprecatedMessage : UnicodeString read FDeprecatedMessage write FDeprecatedMessage;
          property IsDeprecated : Boolean read GetIsDeprecated;
          property IsStateless : Boolean read GetIsStateless write SetIsStateless;
          property IsForwarded : Boolean read GetIsForwarded;
@@ -1135,6 +1140,7 @@ type
          FParent : TCompositeTypeSymbol;
          FMembers : TMembersSymbolTable;
          FDefaultProperty : TPropertySymbol;
+         FFirstField : TFieldSymbol;
 
       protected
          function CreateMembersTable : TMembersSymbolTable; virtual;
@@ -1146,6 +1152,8 @@ type
          function GetIsPartial : Boolean; virtual;
 
          procedure CheckMethodsImplemented(const msgs : TdwsCompileMessageList);
+
+         function PrepareFirstField : TFieldSymbol;
 
       public
          constructor Create(const name : UnicodeString; aUnit : TSymbol);
@@ -1173,6 +1181,8 @@ type
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; virtual; abstract;
          function CreateAnonymousMethod(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
                                         isClassMethod : Boolean) : TMethodSymbol; virtual; abstract;
+
+         function FirstField : TFieldSymbol; inline;
 
          function ExternalRoot : TCompositeTypeSymbol;
 
@@ -1241,6 +1251,7 @@ type
          FDefaultValue : TData;
          FDefaultExpr : TExprBase;
          FExternalName : UnicodeString;
+         FNextField : TFieldSymbol;
 
          function GetExternalName : UnicodeString;
 
@@ -1260,6 +1271,7 @@ type
          property DefaultValue : TData read FDefaultValue write FDefaultValue;
          property DefaultExpr : TExprBase read FDefaultExpr write FDefaultExpr;
          property ExternalName : UnicodeString read GetExternalName write FExternalName;
+         property NextField : TFieldSymbol read FNextField write FNextField;
    end;
 
    TRecordSymbolFlag = (rsfDynamic, rsfFullyDefined);
@@ -2155,6 +2167,7 @@ end;
 //
 procedure TCompositeTypeSymbol.AddField(fieldSym : TFieldSymbol);
 begin
+   Assert(FFirstField=nil);
    FMembers.AddSymbol(fieldSym);
    fieldSym.FStructSymbol:=Self;
 end;
@@ -2300,6 +2313,33 @@ end;
 function TCompositeTypeSymbol.AllowAnonymousMethods : Boolean;
 begin
    Result:=True;
+end;
+
+// PrepareFirstField
+//
+function TCompositeTypeSymbol.PrepareFirstField : TFieldSymbol;
+var
+   member : TSymbol;
+begin
+   if Parent<>nil then
+      Result:=Parent.FirstField
+   else Result:=nil;
+   for member in Members do begin
+      if member is TFieldSymbol then begin
+         TFieldSymbol(member).NextField:=Result;
+         Result:=TFieldSymbol(member);
+      end;
+   end;
+   FFirstField:=Result;
+end;
+
+// FirstField
+//
+function TCompositeTypeSymbol.FirstField : TFieldSymbol;
+begin
+   if FFirstField=nil then
+      PrepareFirstField;
+   Result:=FFirstField;
 end;
 
 // ------------------
@@ -2534,11 +2574,13 @@ end;
 //
 procedure TRecordSymbol.InitData(const data : TData; offset : Integer);
 var
-   sym : TSymbol;
+   field : TFieldSymbol;
 begin
-   for sym in FMembers do
-      if sym.ClassType=TFieldSymbol then
-         TFieldSymbol(sym).InitData(Data, offset);
+   field:=FirstField;
+   while field<>nil do begin
+      field.InitData(data, offset);
+      field:=field.NextField;
+   end;
 end;
 
 // IsCompatible
@@ -3029,13 +3071,6 @@ end;
 function TFuncSymbol.GetParamSize : Integer;
 begin
    Result:=FAddrGenerator.DataSize;
-end;
-
-// GetIsDeprecated
-//
-function TFuncSymbol.GetIsDeprecated : Boolean;
-begin
-   Result:=(FDeprecatedMessage<>'');
 end;
 
 // GetIsStateless
@@ -6185,8 +6220,13 @@ end;
 function TTypeSymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=(Self=typSym.UnAliasedType);
-//   Result:=   (Self=typSym)
-//           or ((typSym<>nil) and (Self=typSym.UnAliasedType));
+end;
+
+// GetIsDeprecated
+//
+function TTypeSymbol.GetIsDeprecated : Boolean;
+begin
+   Result:=(FDeprecatedMessage<>'');
 end;
 
 // IsCompatible

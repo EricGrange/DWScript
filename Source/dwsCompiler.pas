@@ -588,6 +588,7 @@ type
 
          function  ReadDeprecatedMessage : UnicodeString;
          procedure WarnDeprecatedFunc(funcExpr : TFuncExprBase);
+         procedure WarnDeprecatedType(const scriptPos : TScriptPos; typeSymbol : TTypeSymbol);
          procedure WarnDeprecatedSymbol(const scriptPos : TScriptPos; sym : TSymbol; const deprecatedMessage : UnicodeString);
 
          function ResolveUnitNameSpace(unitPrefix : TUnitSymbol) : TUnitSymbol;
@@ -708,6 +709,7 @@ type
 
          procedure ReadTypeDeclBlock;
          function  ReadTypeDecl(firstInBlock : Boolean) : Boolean;
+
          procedure ReadUses;
          function  ReadUnitHeader : TScriptSourceType;
 
@@ -875,26 +877,6 @@ const
 
 type
    TReachStatus = (rsReachable, rsUnReachable, rsUnReachableWarned);
-
-   TObjectClassNameMethod = class(TInternalMethod)
-      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
-   end;
-
-   TObjectClassTypeMethod = class(TInternalMethod)
-      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
-   end;
-
-   TObjectClassParentMethod = class(TInternalMethod)
-      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
-   end;
-
-   TObjectDestroyMethod = class(TInternalMethod)
-      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
-   end;
-
-   TObjectFreeMethod = class(TInternalMethod)
-      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
-   end;
 
    TExceptionCreateMethod = class(TInternalMethod)
       procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
@@ -2267,11 +2249,12 @@ begin
                               ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD, ttCLASS,
                               ttUSES, ttIMPLEMENTATION, ttEND]);
    case token of
-      ttTYPE :
-         if UnitSection in [secInterface, secImplementation] then begin
-            ReadTypeDeclBlock;
-            action:=saNoSemiColon
-         end else ReadTypeDecl(True);
+      ttTYPE : begin
+         if UnitSection in [secInterface, secImplementation] then
+            ReadTypeDeclBlock
+         else ReadTypeDecl(True);
+         action:=saNoSemiColon
+      end;
       ttPROCEDURE, ttFUNCTION, ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD :
          ReadProcBody(ReadProcDecl(token, hotPos));
       ttCLASS : begin
@@ -2827,8 +2810,6 @@ begin
    token:=ttTYPE;
    repeat
       if not ReadTypeDecl(token=ttTYPE) then Break;
-      if not FTok.TestDelete(ttSEMI) then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
       token:=FTok.TestAny([ttINTERFACE, ttIMPLEMENTATION, ttINITIALIZATION, ttFINALIZATION,
                            ttTYPE, ttVAR, ttCONST, ttEND,
                            ttCLASS, ttFUNCTION, ttPROCEDURE, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR,
@@ -2908,6 +2889,10 @@ begin
          // Add symbol position as being the type being declared (works for forwards too)
          RecordSymbolUse(typNew, typePos, [suDeclaration]);
       end;
+
+      ReadSemiColon;
+
+      typNew.DeprecatedMessage:=ReadDeprecatedMessage;
 
    finally
       if coContextMap in FOptions then
@@ -3565,6 +3550,14 @@ begin
    funcSym:=funcExpr.FuncSym;
    if funcSym.IsDeprecated then
       WarnDeprecatedSymbol(funcExpr.ScriptPos, funcSym, funcSym.DeprecatedMessage);
+end;
+
+// WarnDeprecatedType
+//
+procedure TdwsCompiler.WarnDeprecatedType(const scriptPos : TScriptPos; typeSymbol : TTypeSymbol);
+begin
+   if (typeSymbol<>nil) and (typeSymbol.DeprecatedMessage<>'') then
+      WarnDeprecatedSymbol(scriptPos, typeSymbol, typeSymbol.DeprecatedMessage);
 end;
 
 // WarnDeprecatedSymbol
@@ -4460,6 +4453,8 @@ begin
 
       end else if baseType is TStructuredTypeSymbol then begin
 
+         WarnDeprecatedType(namePos, baseType);
+
          if baseType.ClassType=TClassSymbol then begin
 
             Result:=ReadClassSymbolName(TClassSymbol(baseType), isWrite, expecting);
@@ -4539,6 +4534,8 @@ begin
 
       // helpers and generic type casts
       end else if sym.InheritsFrom(TTypeSymbol) then begin
+
+         WarnDeprecatedType(namePos, TTypeSymbol(baseType));
 
          if FTok.TestDelete(ttBLEFT) then
             castExpr:=ReadTypeCast(namePos, TTypeSymbol(sym))
@@ -7075,8 +7072,8 @@ begin
 
             // initialize innermost array
             Result:=TStaticArraySymbol.Create('', typ, min[0].Typ,
-                                                min[0].EvalAsInteger(FExec),
-                                                max[0].EvalAsInteger(FExec));
+                                              min[0].EvalAsInteger(FExec),
+                                              max[0].EvalAsInteger(FExec));
             // add outer arrays
             for x:=1 to min.Count - 1 do begin
                FProg.RootTable.AddToDestructionList(Result);
@@ -7623,6 +7620,8 @@ begin
 
    end;
 
+   WarnDeprecatedType(hotPos, classSym);
+
    if classSym.IsStatic then begin
       baseExpr.Free;
       FMsgs.AddCompilerErrorFmt(hotPos, CPE_ClassIsStaticNoInstantiation, [classSym.Name]);
@@ -7883,6 +7882,7 @@ begin
             RecordSymbolUse(typ, namePos, [suReference]);
 
             ancestorTyp:=TClassSymbol(typ);
+            WarnDeprecatedType(namePos, ancestorTyp);
 
             if ancestorTyp.IsForwarded or (ancestorTyp=Result) then begin
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassNotCompletelyDefined, [ancestorTyp.Name]);
@@ -7951,6 +7951,7 @@ begin
 
          // standard class definition
          if not FTok.Test(ttSEMI) then begin
+
             while not FTok.Test(ttEND) do begin
 
                // Read methods and properties
@@ -9314,6 +9315,8 @@ begin
                end;
             end;
          end else Result:=TTypeSymbol(sym);
+
+         WarnDeprecatedType(hotPos, Result);
 
          // Create name symbol, e. g.: type a = integer;
          if typeName <> '' then
@@ -13007,78 +13010,6 @@ begin
    if FLocalizer<>nil then
       Result:=FLocalizer.GetLocalizer
    else Result:=nil;
-end;
-
-// ------------------
-// ------------------ TObjectClassNameMethod ------------------
-// ------------------
-
-// Execute
-//
-procedure TObjectClassNameMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
-var
-   classSym : TClassSymbol;
-begin
-   classSym:=info.ValueAsClassSymbol[SYS_SELF];
-   if classSym=nil then
-      raise EScriptError.CreatePosFmt(info.Execution.CallStackLastExpr.ScriptPos, RTE_ClassTypeIsNil, []);
-   Info.ResultAsString:=classSym.Name;
-end;
-
-// ------------------
-// ------------------ TObjectClassTypeMethod ------------------
-// ------------------
-
-// Execute
-//
-procedure TObjectClassTypeMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
-begin
-   Info.ResultAsInteger:=Int64(info.ValueAsClassSymbol[SYS_SELF]);
-end;
-
-// ------------------
-// ------------------ TObjectClassParentMethod ------------------
-// ------------------
-
-// Execute
-//
-procedure TObjectClassParentMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
-var
-   p : TClassSymbol;
-begin
-   p:=info.ValueAsClassSymbol[SYS_SELF].Parent;
-   if p=Info.Execution.Prog.TypObject then
-      p:=nil;
-   Info.ResultAsInteger:=Int64(p);
-end;
-
-// ------------------
-// ------------------ TObjectDestroyMethod ------------------
-// ------------------
-
-// Execute
-//
-procedure TObjectDestroyMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
-var
-   scriptObj : PIScriptObj;
-begin
-   scriptObj:=info.Execution.SelfScriptObject;
-   scriptObj.Destroyed:=True;
-end;
-
-// ------------------
-// ------------------ TObjectFreeMethod ------------------
-// ------------------
-
-// Execute
-//
-procedure TObjectFreeMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
-var
-   scriptObj : PIScriptObj;
-begin
-   scriptObj:=info.Execution.SelfScriptObject;
-   if (scriptObj^<>nil) then
-      info.Method['Destroy'].Call;
 end;
 
 // ------------------

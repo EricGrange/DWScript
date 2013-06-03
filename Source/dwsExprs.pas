@@ -713,6 +713,9 @@ type
          FCompiler : TObject;
          FOrphanedObjects : TObjectList<TRefCountedObject>;
 
+         FTypDefaultConstructor : TMethodSymbol;
+         FTypDefaultDestructor : TMethodSymbol;
+
          FDefaultEnvironment : IdwsEnvironment;
          FDefaultLocalizer : IdwsLocalizer;
          FOnExecutionStarted : TdwsExecutionEvent;
@@ -786,6 +789,9 @@ type
          property LineCount : Integer read FLineCount write FLineCount;
          property TimeStamp : TDateTime read FTimeStamp write FTimeStamp;
          property CompileDuration : TDateTime read FCompileDuration write FCompileDuration;
+
+         property TypDefaultConstructor : TMethodSymbol read FTypDefaultConstructor;
+         property TypDefaultDestructor : TMethodSymbol read FTypDefaultDestructor;
 
          property DefaultEnvironment : IdwsEnvironment read FDefaultEnvironment write FDefaultEnvironment;
          property DefaultLocalizer : IdwsLocalizer read FDefaultLocalizer write FDefaultLocalizer;
@@ -1647,6 +1653,7 @@ type
 
          procedure ClearData; override;
 
+         property ClassSym : TClassSymbol read FClassSym;
          property ExecutionContext : TdwsProgramExecution read FExecutionContext write FExecutionContext;
          property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
          property Destroyed : Boolean read FDestroyed write FDestroyed;
@@ -2360,30 +2367,24 @@ end;
 //
 procedure TdwsProgramExecution.DestroyScriptObj(const scriptObj: IScriptObj);
 var
-   sym : TSymbol;
-   func : TMethodSymbol;
+   destroySym : TMethodSymbol;
    expr : TDestructorVirtualExpr;
    oldStatus : TExecutionStatusResult;
 begin
+   if scriptObj.ClassSym.IsExternalRooted then Exit;
    try
-      sym := ScriptObj.ClassSym.Members.FindSymbol(SYS_TOBJECT_DESTROY, cvPublic);
-
-      if sym is TMethodSymbol then begin
-         func := TMethodSymbol(sym);
-         if (func.Kind = fkDestructor) and (func.Params.Count = 0) then begin
-            expr := TDestructorVirtualExpr.Create(FProg, cNullPos, func,
-                                                  TConstExpr.Create(FProg, ScriptObj.ClassSym, ScriptObj));
-            oldStatus:=Status;
-            try
-               Status:=esrNone;
-               scriptObj.Destroyed:=False;
-               expr.EvalNoResult(Self);
-            finally
-               scriptObj.Destroyed:=True;
-               Status:=oldStatus;
-               expr.Free;
-            end;
-         end;
+      destroySym:=Prog.TypDefaultDestructor;
+      expr := TDestructorVirtualExpr.Create(FProg, cNullPos, destroySym,
+                                            TConstExpr.Create(FProg, ScriptObj.ClassSym, ScriptObj));
+      oldStatus:=Status;
+      try
+         Status:=esrNone;
+         scriptObj.Destroyed:=False;
+         expr.EvalNoResult(Self);
+      finally
+         scriptObj.Destroyed:=True;
+         Status:=oldStatus;
+         expr.Free;
       end;
    except
       on e: Exception do
@@ -2776,6 +2777,9 @@ begin
    systemUnitTable:=TLinkedSymbolTable.Create(systemTable.SymbolTable);
    systemUnit:=TUnitMainSymbol.Create(SYS_SYSTEM, systemUnitTable, FUnitMains);
    systemUnit.ReferenceInSymbolTable(FRootTable, True);
+
+   FTypDefaultConstructor:=TypTObject.Members.FindSymbol(SYS_TOBJECT_CREATE, cvPublic) as TMethodSymbol;
+   FTypDefaultDestructor:=TypTObject.Members.FindSymbol(SYS_TOBJECT_DESTROY, cvPublic) as TMethodSymbol;
 
    FRoot:=Self;
 end;
@@ -6109,10 +6113,9 @@ end;
 //
 constructor TScriptObjInstance.Create(aClassSym : TClassSymbol; executionContext : TdwsProgramExecution);
 var
-   i : Integer;
-   classSymIter : TCompositeTypeSymbol;
    externalClass : TClassSymbol;
-   member : TSymbol;
+   fieldIter : TFieldSymbol;
+   instanceData : PData;
 begin
    FClassSym:=aClassSym;
    if aClassSym=nil then Exit;
@@ -6123,14 +6126,11 @@ begin
    SetDataLength(aClassSym.ScriptInstanceSize);
 
    // initialize fields
-   classSymIter:=aClassSym;
-   while classSymIter<>nil do begin
-      for i:=0 to classSymIter.Members.Count-1 do begin
-         member:=classSymIter.Members[i];
-         if member.ClassType=TFieldSymbol then
-            TFieldSymbol(member).InitData(AsData, 0);
-      end;
-      classSymIter := classSymIter.Parent;
+   instanceData:=AsPData;
+   fieldIter:=aClassSym.FirstField;
+   while fieldIter<>nil do begin
+      fieldIter.InitData(instanceData^, 0);
+      fieldIter:=fieldIter.NextField;
    end;
 
    // initialize OnObjectDestroy
@@ -6153,14 +6153,25 @@ end;
 // BeforeDestruction
 //
 procedure TScriptObjInstance.BeforeDestruction;
+
+   procedure CallDestructor;
+   var
+      iso : IScriptObj;
+   begin
+      iso:=TScriptObjectWrapper.Create(Self);
+      ExecutionContext.DestroyScriptObj(iso);
+   end;
+
 var
-   iso : IScriptObj;
+   destroySym : TMethodSymbol;
 begin
    if Assigned(FExecutionContext) then begin
       // we are released, so never do: Self as IScriptObj
       if not FDestroyed then begin
-         iso:=TScriptObjectWrapper.Create(Self);
-         ExecutionContext.DestroyScriptObj(iso);
+         destroySym:=ExecutionContext.Prog.TypDefaultDestructor;
+         if destroySym=ClassSym.VMTMethod(destroySym.VMTIndex) then
+            Destroyed:=True
+         else CallDestructor;
       end;
       ExecutionContext.ScriptObjDestroyed(Self);
    end;

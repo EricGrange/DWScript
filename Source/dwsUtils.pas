@@ -183,7 +183,7 @@ type
          FCapacity : Integer;
       protected
          procedure Grow;
-         function GetItems(const idx : Integer) : T;
+         function GetItems(const idx : Integer) : T; inline;
          procedure SetItems(const idx : Integer; const value : T);
       public
          procedure Add(const item : T);

@@ -1,3 +1,4 @@
 Syntax Error: "Integer" is not a class [line: 1, column: 20]
 Syntax Error: Unknown name "Dummy" [line: 2, column: 20]
 Syntax Error: Name expected [line: 3, column: 20]
+Syntax Error: ";" expected. [line: 3, column: 20]
