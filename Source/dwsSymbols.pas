@@ -706,7 +706,7 @@ type
          property IsExternal : Boolean read GetIsExternal write SetIsExternal;
          property Kind : TFuncKind read FKind write FKind;
          property ExternalName : UnicodeString read GetExternalName write SetExternalName;
-         function HasExternamName : Boolean;
+         function HasExternalName : Boolean;
          property IsLambda : Boolean read GetIsLambda write SetIsLambda;
          property Level : SmallInt read GetLevel;
          property InternalParams : TSymbolTable read FInternalParams;
@@ -1022,6 +1022,7 @@ type
       private
          FIndexType : TTypeSymbol;
          FSortFunctionType : TFuncSymbol;
+         FMapFunctionType : TFuncSymbol;
 
       protected
          function ElementSize : Integer;
@@ -1031,6 +1032,7 @@ type
          destructor Destroy; override;
 
          function SortFunctionType(integerType : TTypeSymbol) : TFuncSymbol;
+         function MapFunctionType(anyType : TTypeSymbol) : TFuncSymbol;
 
          property IndexType : TTypeSymbol read FIndexType write FIndexType;
    end;
@@ -3204,8 +3206,8 @@ begin
    typSym:=typSym.BaseType;
    if (typSym.ClassType=TNilSymbol) or (typSym.ClassType=TAnyFuncSymbol) then
       Result:=True
-   else if typSym.IsType and not IsType then
-      Result:=False
+//   else if typSym.IsType and not IsType then
+//      Result:=False
    else begin
       Result:=False;
       if not typSym.IsFuncSymbol then
@@ -3213,14 +3215,17 @@ begin
       funcSym:=TFuncSymbol(typSym);
       if Params.Count<>funcSym.Params.Count then Exit;
       if not cCompatibleKinds[Kind, funcSym.Kind] then Exit;
-      if Typ<>funcSym.Typ then Exit;
-      for i:=0 to Params.Count-1 do begin
-         param:=Params[i];
-         otherParam:=funcSym.Params[i];
-         if param.ClassType<>otherParam.ClassType then Exit;
-         if param.Typ<>otherParam.Typ then Exit;
+      if    (Typ=funcSym.Typ)
+         or (Typ.IsOfType(funcSym.Typ))
+         or (funcSym.Typ is TAnyTypeSymbol) then begin
+         for i:=0 to Params.Count-1 do begin
+            param:=Params[i];
+            otherParam:=funcSym.Params[i];
+            if param.ClassType<>otherParam.ClassType then Exit;
+            if param.Typ<>otherParam.Typ then Exit;
+         end;
+         Result:=True;
       end;
-      Result:=True;
    end;
 end;
 
@@ -3378,9 +3383,9 @@ begin
    FForwardPosition:=nil;
 end;
 
-// HasExternamName
+// HasExternalName
 //
-function TFuncSymbol.HasExternamName : Boolean;
+function TFuncSymbol.HasExternalName : Boolean;
 begin
    Result:=(FExternalName<>'');
 end;
@@ -5803,6 +5808,7 @@ end;
 destructor TArraySymbol.Destroy;
 begin
    FSortFunctionType.Free;
+   FMapFunctionType.Free;
    inherited;
 end;
 
@@ -5826,6 +5832,18 @@ begin
       FSortFunctionType.AddParam(TParamSymbol.Create('right', Typ));
    end;
    Result:=FSortFunctionType;
+end;
+
+// MapFunctionType
+//
+function TArraySymbol.MapFunctionType(anyType : TTypeSymbol) : TFuncSymbol;
+begin
+   if FMapFunctionType=nil then begin
+      FMapFunctionType:=TFuncSymbol.Create('', fkFunction, 0);
+      FMapFunctionType.Typ:=anyType;
+      FMapFunctionType.AddParam(TParamSymbol.Create('v', Typ));
+   end;
+   Result:=FMapFunctionType;
 end;
 
 // ------------------

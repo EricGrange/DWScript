@@ -119,7 +119,7 @@ type
 
    // TMagicFuncSymbol
    //
-   TMagicFuncSymbol = class(TFuncSymbol)
+   TMagicFuncSymbol = class sealed (TFuncSymbol)
       private
          FInternalFunction : TInternalMagicFunction;
 

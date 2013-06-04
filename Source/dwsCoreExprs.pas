@@ -556,12 +556,17 @@ type
    // TypedExpr for dynamic array
    TArrayTypedExpr = class(TTypedExpr)
       private
+         FBaseExpr : TTypedExpr;
          FScriptPos : TScriptPos;
 
       public
-         constructor Create(prog: TdwsProgram; const scriptPos: TScriptPos);
+         constructor Create(prog: TdwsProgram; const scriptPos: TScriptPos;
+                            aBaseExpr : TTypedExpr);
+         destructor Destroy; override;
 
          function ScriptPos : TScriptPos; override;
+
+         property BaseExpr : TTypedExpr read FBaseExpr;
    end;
 
    // new array[length,...]
@@ -688,6 +693,27 @@ type
          procedure SetCompareMethod(var qs : TQuickSort; dyn : TScriptDynamicValueArray); override;
    end;
 
+   // Map a dynamic array
+   TArrayMapExpr = class(TArrayTypedExpr)
+      private
+         FMapFuncExpr : TFuncPtrExpr;
+         FItem : TDataSymbol;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+                            aBase : TTypedExpr; aMapFunc : TFuncPtrExpr);
+         destructor Destroy; override;
+
+         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+
+         property MapFuncExpr : TFuncPtrExpr read FMapFuncExpr write FMapFuncExpr;
+   end;
+
    // Reverse a dynamic array
    TArrayReverseExpr = class(TArrayPseudoMethodExpr)
       public
@@ -772,7 +798,6 @@ type
    // Shallow-copy of a subset of an array
    TArrayCopyExpr = class(TArrayTypedExpr)
       private
-         FBaseExpr : TTypedExpr;
          FIndexExpr : TTypedExpr;
          FCountExpr : TTypedExpr;
 
@@ -788,7 +813,6 @@ type
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
 
-         property BaseExpr : TTypedExpr read FBaseExpr;
          property IndexExpr : TTypedExpr read FIndexExpr;
          property CountExpr : TTypedExpr read FCountExpr;
    end;
@@ -798,7 +822,6 @@ type
    // Find element in a dynamic array (shallow comparison)
    TArrayIndexOfExpr = class(TArrayTypedExpr)
       private
-         FBaseExpr : TTypedExpr;
          FItemExpr : TTypedExpr;
          FFromIndexExpr : TTypedExpr;
          FMethod : TArrayIndexOfMethod;
@@ -821,7 +844,6 @@ type
          function  Eval(exec : TdwsExecution) : Variant; override;
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
 
-         property BaseExpr : TTypedExpr read FBaseExpr;
          property ItemExpr : TTypedExpr read FItemExpr;
          property FromIndexExpr : TTypedExpr read FFromIndexExpr;
    end;
@@ -2537,9 +2559,19 @@ end;
 
 // Create
 //
-constructor TArrayTypedExpr.Create(prog: TdwsProgram; const scriptPos: TScriptPos);
+constructor TArrayTypedExpr.Create(prog: TdwsProgram; const scriptPos: TScriptPos;
+                                   aBaseExpr : TTypedExpr);
 begin
    FScriptPos:=scriptPos;
+   FBaseExpr:=aBaseExpr;
+end;
+
+// Destroy
+//
+destructor TArrayTypedExpr.Destroy;
+begin
+   inherited;
+   FBaseExpr.Free;
 end;
 
 // ScriptPos
@@ -7422,6 +7454,107 @@ begin
 end;
 
 // ------------------
+// ------------------ TArrayMapExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TArrayMapExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+                                 aBase : TTypedExpr; aMapFunc : TFuncPtrExpr);
+var
+   elemTyp : TTypeSymbol;
+   arrayTyp : TDynamicArraySymbol;
+begin
+   inherited Create(prog, scriptPos, aBase);
+   FMapFuncExpr:=aMapFunc;
+   if aMapFunc<>nil then
+      elemTyp:=aMapFunc.Typ
+   else elemTyp:=nil;
+   if elemTyp=nil then
+      elemTyp:=prog.TypVariant;
+   arrayTyp:=TDynamicArraySymbol.Create('', elemTyp, prog.TypInteger);
+   prog.Table.AddSymbol(arrayTyp);
+   Typ:=arrayTyp;
+
+   if aMapFunc<>nil then begin
+      elemTyp:=aMapFunc.FuncSym.Params[0].Typ;
+      FItem:=TDataSymbol.Create('', elemTyp);
+      prog.Table.AddSymbol(FItem);
+      FMapFuncExpr.AddArg(TVarExpr.CreateTyped(prog, FItem));
+      FMapFuncExpr.SetResultAddr(prog, nil);
+   end;
+end;
+
+// Destroy
+//
+destructor TArrayMapExpr.Destroy;
+begin
+   inherited;
+   FMapFuncExpr.Free;
+end;
+
+// Eval
+//
+function TArrayMapExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   EvalAsVariant(exec, Result);
+end;
+
+// EvalAsVariant
+//
+procedure TArrayMapExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+var
+   newArray : TScriptDynamicArray;
+   base : IScriptObj;
+   dyn : TScriptDynamicValueArray;
+   i, itemAddr : Integer;
+   funcPointer : IFuncPointer;
+   newPData, oldPData : PData;
+   dc : IDataContext;
+begin
+   BaseExpr.EvalAsScriptObj(exec, base);
+   MapFuncExpr.EvalAsFuncPointer(exec, funcPointer);
+
+   dyn:=TScriptDynamicValueArray(base.GetSelf);
+   oldPData:=dyn.AsPData;
+
+   newArray:=TScriptDynamicArray.CreateNew(Typ.Typ);
+   result:=IScriptObj(newArray);
+   newArray.ArrayLength:=dyn.ArrayLength;
+   newPData:=newArray.AsPData;
+
+   itemAddr:=exec.Stack.BasePointer+FItem.StackAddr;
+   if (newArray.ElementSize or dyn.ElementSize)=1 then begin
+      for i:=0 to dyn.ArrayLength-1 do begin
+         exec.Stack.WriteValue(itemAddr, oldPData^[i]);
+         funcPointer.EvalAsVariant(exec, MapFuncExpr, newPData^[i]);
+      end;
+   end else begin
+      for i:=0 to dyn.ArrayLength-1 do begin
+         DWSCopyData(oldPData^, i*dyn.ElementSize, exec.Stack.Data, itemAddr, dyn.ElementSize);
+         dc:=funcPointer.EvalDataPtr(exec,  MapFuncExpr);
+         dc.CopyData(newPData^, i*newArray.ElementSize, newArray.ElementSize);
+      end;
+   end;
+end;
+
+// GetSubExpr
+//
+function TArrayMapExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if i=0 then
+      Result:=BaseExpr
+   else Result:=MapFuncExpr;
+end;
+
+// GetSubExprCount
+//
+function TArrayMapExpr.GetSubExprCount : Integer;
+begin
+   Result:=2;
+end;
+
+// ------------------
 // ------------------ TArrayReverseExpr ------------------
 // ------------------
 
@@ -7695,9 +7828,8 @@ end;
 constructor TArrayCopyExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
                                   aBase, aIndex, aCount : TTypedExpr);
 begin
-   inherited Create(prog, scriptPos);
+   inherited Create(prog, scriptPos, aBase);
    FTyp:=aBase.Typ;
-   FBaseExpr:=aBase;
    FIndexExpr:=aIndex;
    FCountExpr:=aCount;
 end;
@@ -7707,7 +7839,6 @@ end;
 destructor TArrayCopyExpr.Destroy;
 begin
    inherited;
-   FBaseExpr.Free;
    FIndexExpr.Free;
    FCountExpr.Free;
 end;
@@ -7779,8 +7910,7 @@ constructor TArrayIndexOfExpr.Create(prog : TdwsProgram; const scriptPos : TScri
 var
    arrayItemTyp : TTypeSymbol;
 begin
-   inherited Create(prog, scriptPos);
-   FBaseExpr:=aBase;
+   inherited Create(prog, scriptPos, aBase);
    FItemExpr:=aItem;
    FFromIndexExpr:=aFromIndex;
    Typ:=prog.TypInteger;
@@ -7806,7 +7936,6 @@ end;
 destructor TArrayIndexOfExpr.Destroy;
 begin
    inherited;
-   FBaseExpr.Free;
    FItemExpr.Free;
    FFromIndexExpr.Free;
 end;

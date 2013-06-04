@@ -126,6 +126,14 @@ type
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
 
+   TSqrIntFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+   end;
+
+   TSqrFloatFunc = class(TInternalMagicFloatFunction)
+      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+   end;
+
    TSqrtFunc = class(TInternalMagicFloatFunction)
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
@@ -509,6 +517,20 @@ begin
    Result:=LogN(args.AsFloat[0], args.AsFloat[1]);
 end;
 
+{ TSqrIntFunc }
+
+function TSqrIntFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+begin
+   Result:=Sqr(args.AsInteger[0]);
+end;
+
+{ TSqrFloatFunc }
+
+procedure TSqrFloatFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+begin
+   Result:=Sqr(args.AsFloat[0]);
+end;
+
 { TSqrtFunc }
 
 procedure TSqrtFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
@@ -854,6 +876,8 @@ initialization
    RegisterInternalFloatFunction(TLogNFunc, 'LogN', ['n', cFloat, 'x', cFloat], [iffStateLess], 'LogN');
    RegisterInternalFloatFunction(TPowerFunc, 'Power', ['base', cFloat, 'exponent', cFloat], [iffStateLess], 'Power');
    RegisterInternalFloatFunction(TIntPowerFunc, 'IntPower', ['base', cFloat, 'exponent', cInteger], [iffStateLess], 'Power');
+   RegisterInternalIntFunction(TSqrIntFunc, 'Sqr', ['v', cInteger], [iffStateLess, iffOverloaded], 'Sqr');
+   RegisterInternalFloatFunction(TSqrFloatFunc, 'Sqr', ['v', cFloat], [iffStateLess, iffOverloaded], 'Sqr');
    RegisterInternalFloatFunction(TSqrtFunc, 'Sqrt', ['v', cFloat], [iffStateLess], 'Sqrt');
    RegisterInternalFloatFunction(TIntFunc, 'Int', ['v', cFloat], [iffStateLess], 'Int');
    RegisterInternalFloatFunction(TFracFunc, 'Frac', ['v', cFloat], [iffStateLess], 'Fraction');

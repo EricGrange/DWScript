@@ -210,7 +210,7 @@ type
 
    TSpecialKeywordKind = (skNone, skAbs, skAssert, skAssigned,
                           skHigh, skLength, skLow,
-                          skOrd, skSizeOf, skDefined, skDeclared, skSqr,
+                          skOrd, skSizeOf, skDefined, skDeclared,
                           skInc, skDec, skSucc, skPred,
                           skInclude, skExclude,
                           skSwap,
@@ -539,7 +539,8 @@ type
                                            expecting : TTypeSymbol = nil) : TTypedExpr;
 
          function ResolveOverload(var funcExpr : TFuncExprBase; overloads : TFuncSymbolList;
-                                  const argPosArray : TScriptPosArray) : Boolean;
+                                  const argPosArray : TScriptPosArray;
+                                  expecting : TFuncSymbol = nil) : Boolean;
 
          function FuncHasConflictingOverload(funcSym, forwardedSym : TFuncSymbol) : Boolean;
          function MethHasConflictingOverload(methSym : TMethodSymbol) : Boolean;
@@ -844,7 +845,7 @@ type
 const
    cSpecialKeywords : array [TSpecialKeywordKind] of UnicodeString = (
       '', 'Abs', 'Assert', 'Assigned', 'High', 'Length', 'Low',
-      'Ord', 'SizeOf', 'Defined', 'Declared', 'Sqr', 'Inc', 'Dec', 'Succ', 'Pred',
+      'Ord', 'SizeOf', 'Defined', 'Declared', 'Inc', 'Dec', 'Succ', 'Pred',
       'Include', 'Exclude', 'Swap', 'ConditionalDefined'
    );
 
@@ -6429,10 +6430,12 @@ end;
 // ResolveOverload
 //
 function TdwsCompiler.ResolveOverload(var funcExpr : TFuncExprBase; overloads : TFuncSymbolList;
-                                      const argPosArray : TScriptPosArray) : Boolean;
+                                      const argPosArray : TScriptPosArray;
+                                      expecting : TFuncSymbol = nil) : Boolean;
 var
    i : Integer;
    j : Integer;
+   funcExprArgCount : Integer;
    match, bestMatch : TFuncSymbol;
    struct : TCompositeTypeSymbol;
    matchDistance, bestMatchDistance, bestCount : Integer;
@@ -6442,13 +6445,18 @@ begin
    bestMatch:=nil;
    bestCount:=0;
    bestMatchDistance:=MaxInt;
+   if expecting<>nil then
+      funcExprArgCount:=expecting.Params.Count
+   else funcExprArgCount:=funcExpr.Args.Count;
    for i:=0 to overloads.Count-1 do begin
       match:=overloads[i];
-      if funcExpr.Args.Count>match.Params.Count then continue;
+      if funcExprArgCount>match.Params.Count then continue;
       matchDistance:=0;
-      for j:=0 to funcExpr.Args.Count-1 do begin
+      for j:=0 to funcExprArgCount-1 do begin
          matchParamType:=match.GetParamType(j);
-         funcExprParamType:=funcExpr.GetArgType(j);
+         if expecting<>nil then
+            funcExprParamType:=expecting.Params[j].Typ
+         else funcExprParamType:=funcExpr.GetArgType(j);
          if not matchParamType.IsOfType(funcExprParamType) then begin
 
             if funcExprParamType.IsOfType(FProg.TypVariant) then begin
@@ -6516,7 +6524,7 @@ begin
          end;
       end;
       if match=nil then continue;
-      for j:=funcExpr.Args.Count to match.Params.Count-1 do begin
+      for j:=funcExprArgCount to match.Params.Count-1 do begin
          if match.Params[j].ClassType<>TParamSymbolWithDefaultValue then begin
             match:=nil;
             Break;
@@ -6697,13 +6705,21 @@ begin
                 and (funcExpr is TFuncPtrExpr)
                 and not FTok.Test(ttDOT))
             or (    expecting.IsFuncSymbol
-                and expecting.IsCompatible(funcExpr.funcSym)) then begin
+                and funcExpr.funcSym.IsCompatible(expecting)) then begin
             if (funcExpr.FuncSym.Level>1) and not (coAllowClosures in Options) then
                FMsgs.AddCompilerError(funcExpr.ScriptPos, CPE_LocalFunctionAsDelegate);
             Result:=TFuncRefExpr.Create(FProg, funcExpr);
          end else begin
             if overloads<>nil then begin
-               if not ResolveOverload(funcExpr, overloads, argPosArray) then Exit;
+               if (funcExpr.Args.Count=0) and expecting.IsFuncSymbol then begin
+                  if not ResolveOverload(funcExpr, overloads, argPosArray, TFuncSymbol(expecting)) then Exit;
+                  if (funcExpr.FuncSym.Level>1) and not (coAllowClosures in Options) then
+                     FMsgs.AddCompilerError(funcExpr.ScriptPos, CPE_LocalFunctionAsDelegate);
+                  Result:=TFuncRefExpr.Create(FProg, funcExpr);
+                  Exit;
+               end else begin
+                  if not ResolveOverload(funcExpr, overloads, argPosArray) then Exit;
+               end;
                Result:=funcExpr;
             end;
             TypeCheckArgs(funcExpr, nil);
@@ -7143,8 +7159,8 @@ var
    argList : TTypedExprList;
    argPosArray : TScriptPosArray;
    argSymTable : TUnSortedSymbolTable;
-//   delegateSym : TFuncSymbol;
    i : Integer;
+   mapFunctionType : TFuncSymbol;
 
    procedure CheckNotTypeReference;
    begin
@@ -7191,6 +7207,10 @@ begin
       end else if UnicodeSameText(name, 'sort') then begin
 
          argList.DefaultExpected:=TParamSymbol.Create('', arraySym.SortFunctionType(FProg.TypInteger))
+
+      end else if UnicodeSameText(name, 'map') then begin
+
+         argList.DefaultExpected:=TParamSymbol.Create('', arraySym.MapFunctionType(FAnyTypeSymbol))
 
       end;
 
@@ -7389,6 +7409,25 @@ begin
                   end else Result:=TArraySortExpr.Create(FProg, namePos, baseExpr, nil);
                end;
             end else Result:=TArraySortExpr.Create(FProg, namePos, baseExpr, nil);
+
+         end else if UnicodeSameText(name, 'map') then begin
+
+            CheckRestricted;
+            if CheckArguments(1, 1) then begin
+               mapFunctionType:=arraySym.MapFunctionType(FAnyTypeSymbol);
+               if      argList[0].Typ.IsCompatible(mapFunctionType)
+                  and (argList[0].Typ.Typ<>nil) then begin
+                  Result:=TArrayMapExpr.Create(FProg, namePos, baseExpr,
+                                               TFuncPtrExpr.Create(FProg, argPosArray[0], argList[0]))
+               end else begin
+                  IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
+                                    mapFunctionType, argList[0].Typ);
+                  OrphanObject(argList[0]);
+               end;
+               argList.Clear;
+            end;
+            if Result=nil then
+               Result:=TArrayMapExpr.Create(FProg, namePos, baseExpr, nil);
 
          end else if UnicodeSameText(name, 'reverse') then begin
 
@@ -10906,7 +10945,6 @@ begin
          'i', 'I' : if ASCIISameText(name, cSpecialKeywords[skInc]) then Exit(skInc);
          'l', 'L' : if ASCIISameText(name, cSpecialKeywords[skLow]) then Exit(skLow);
          'o', 'O' : if ASCIISameText(name, cSpecialKeywords[skOrd]) then Exit(skOrd);
-         's', 'S' : if ASCIISameText(name, cSpecialKeywords[skSqr]) then Exit(skSqr);
       end;
       4 : case name[1] of
          'h', 'H' : if ASCIISameText(name, cSpecialKeywords[skHigh]) then Exit(skHigh);
@@ -12165,17 +12203,6 @@ begin
                end else begin
                   FMsgs.AddCompilerError(argPos, CPE_InvalidArgumentType);
                end;
-            end;
-            argExpr:=nil;
-         end;
-         skSqr : begin
-            if argTyp=FProg.TypInteger then begin
-               Result:=TSqrIntExpr.Create(FProg, argExpr);
-            end else if argTyp=FProg.TypFloat then begin
-               Result:=TSqrFloatExpr.Create(FProg, argExpr);
-            end else begin
-               FMsgs.AddCompilerError(argPos, CPE_NumericalExpected);
-               argExpr.Free;
             end;
             argExpr:=nil;
          end;

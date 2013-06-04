@@ -458,7 +458,7 @@ var
    meth : TMethodSymbol;
 begin
    if sym.IsFuncSymbol then begin
-      if TFuncSymbol(sym).IsExternal or TFuncSymbol(sym).HasExternamName then
+      if TFuncSymbol(sym).IsExternal or TFuncSymbol(sym).HasExternalName then
          Exit(TFuncSymbol(sym).ExternalName);
       if sym is TMethodSymbol then begin
          meth:=TMethodSymbol(sym);

@@ -1147,6 +1147,7 @@ type
       function SameFunc(const v : Variant) : Boolean;
       procedure EvalAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
       function EvalAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Int64;
+      function EvalDataPtr(exec : TdwsExecution; caller : TFuncExpr) : IDataContext;
    end;
 
    TFuncPointerEvalAsVariant = procedure (exec : TdwsExecution; caller : TFuncExpr; var result : Variant) of object;
@@ -1171,6 +1172,7 @@ type
 
          procedure EvalAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
          function EvalAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Int64;
+         function EvalDataPtr(exec : TdwsExecution; caller : TFuncExpr) : IDataContext;
    end;
 
    // returns an IFuncPointer to the FuncExpr
@@ -4850,6 +4852,29 @@ begin
    end;
 end;
 
+// EvalDataPtr
+//
+function TFuncPointer.EvalDataPtr(exec : TdwsExecution; caller : TFuncExpr) : IDataContext;
+var
+   funcExpr : TFuncExpr;
+   i : Integer;
+begin
+   funcExpr:=TFuncExpr(FFuncExpr);
+
+   funcExpr.ClearArgs;
+   for i:=0 to caller.Args.Count-1 do
+      funcExpr.AddArg(caller.Args.ExprBase[i] as TTypedExpr);
+   funcExpr.AddPushExprs((exec as TdwsProgramExecution).Prog);
+   funcExpr.CallerID:=caller;
+
+   try
+      Result:=funcExpr.DataPtr[exec];
+   finally
+      for i:=0 to caller.Args.Count-1 do
+         funcExpr.Args.ExprBase[i]:=nil;
+   end;
+end;
+
 // ------------------
 // ------------------ TAnonymousFuncRefExpr ------------------
 // ------------------
@@ -6272,10 +6297,12 @@ end;
 procedure TScriptDynamicArray.SetArrayLength(n : Integer);
 var
    i : Integer;
+   p : PData;
 begin
    SetDataLength(n*ElementSize);
+   p:=AsPData;
    for i:=FArrayLength to n-1 do
-      FElementTyp.InitData(AsData, i*ElementSize);
+      FElementTyp.InitData(p^, i*ElementSize);
    FArrayLength:=n;
 end;
 
