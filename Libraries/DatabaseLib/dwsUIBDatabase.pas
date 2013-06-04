@@ -104,8 +104,8 @@ var
    i : Integer;
    p : PVarData;
 begin
-   for i:=1 to Length(params) do begin
-      p:=PVarData(@params[i-1]);
+   for i:=0 to Length(params)-1 do begin
+      p:=PVarData(@params[i]);
       case p.VType of
          varInt64 : rq.Params.AsInt64[i]:=p.VInt64;
          varDouble : rq.Params.AsDouble[i]:=p.VDouble;
@@ -151,7 +151,7 @@ begin
       pwd:=parameters[2]
    else pwd:='masterkey';
    try
-      FDB:=TUIBDataBase.Create(nil);
+      FDB:=TUIBDataBase.Create{$ifndef UIB_NO_COMPONENT}(nil){$endif};
       FDB.DatabaseName:=dbName;
       FDB.UserName:=userName;
       FDB.PassWord:=pwd;
@@ -160,7 +160,7 @@ begin
       RefCount:=0;
       raise;
    end;
-   FTransaction:=TUIBTransaction.Create(nil);
+   FTransaction:=TUIBTransaction.Create{$ifndef UIB_NO_COMPONENT}(nil){$endif};
    FTransaction.DataBase:=FDB;
 end;
 
@@ -207,7 +207,7 @@ procedure TdwsUIBDataBase.Exec(const sql : String; const parameters : TData);
 var
    rq : TUIBQuery;
 begin
-   rq:=TUIBQuery.Create(nil);
+   rq:=TUIBQuery.Create{$ifndef UIB_NO_COMPONENT}(nil){$endif};
    try
       rq.Transaction:=FTransaction;
       rq.SQL.Text:=sql;
@@ -239,11 +239,12 @@ constructor TdwsUIBDataSet.Create(db : TdwsUIBDataBase; const sql : String; cons
 begin
    FDB:=db;
    inherited Create(db);
-   FQuery:=TUIBQuery.Create(nil);
+   FQuery:=TUIBQuery.Create{$ifndef UIB_NO_COMPONENT}(nil){$endif};
    try
       FQuery.FetchBlobs:=True;
       FQuery.Transaction:=db.FTransaction;
       FQuery.SQL.Text:=sql;
+      FQuery.Prepare(True);
       AssignParameters(FQuery, parameters);
       FQuery.Open;
    except
