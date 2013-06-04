@@ -493,20 +493,41 @@ begin
    result := true;
 end;
 
+function TypeSymbol(const compiler: IdwsCompiler; base: TTypedExpr): TFuncSymbol;
+begin
+   result := TFuncSymbol.Create('', fkFunction, 0);
+   result.Typ := compiler.Compiler.AnyTypeSymbol;
+   result.AddParam(TParamSymbol.Create('', base.Typ));
+end;
+
 function TdwsLinqExtension.ReadIntoExpression(const compiler: IdwsCompiler;
   tok : TTokenizer; base: TTypedExpr): TTypedExpr;
 var
    target: TTypedExpr;
+   targetSymbol: TFuncSymbol;
    targetFunc: TFuncPtrExpr;
    aPos: TScriptPos;
 begin
-   aPos := tok.CurrentPos;
-   tok.KillToken;
-   target := compiler.ReadExpr();
-   if not ValidIntoExpr(base, target) then
-      Error(compiler, 'Into expression must be a valid function reference.');
-   targetFunc := TFuncPtrExpr.Create(compiler.CurrentProg, aPos, target);
-   result := FQueryBuilder.Into(base, targetFunc, aPos);
+   try
+      aPos := tok.CurrentPos;
+      tok.KillToken;
+      targetSymbol := TypeSymbol(compiler, base);
+      try
+         target := compiler.ReadExpr(targetSymbol);
+      finally
+         targetSymbol.Free;
+      end;
+      if not ValidIntoExpr(base, target) then
+      begin
+         target.Free;
+         Error(compiler, 'Into expression must be a valid function reference.');
+      end;
+      targetFunc := TFuncPtrExpr.Create(compiler.CurrentProg, aPos, target);
+      result := FQueryBuilder.Into(base, targetFunc, aPos);
+   except
+      base.Free;
+      raise;
+   end;
 end;
 
 function TdwsLinqExtension.ReadUnknownName(compiler: TdwsCompiler) : TTypedExpr;

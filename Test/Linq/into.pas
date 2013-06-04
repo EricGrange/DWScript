@@ -26,6 +26,6 @@ PrintLn('');
 var values2 := from DB.TBL1
                order by ID
                select VALUE_1
-               into @processor2;
+               into processor2;
 for var value2 in values2 do
    printLn(value2);
