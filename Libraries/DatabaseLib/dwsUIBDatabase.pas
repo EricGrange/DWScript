@@ -107,6 +107,7 @@ begin
    for i:=0 to Length(params)-1 do begin
       p:=PVarData(@params[i]);
       case p.VType of
+         varInteger: rq.Params.AsInteger[i]:=p.VInteger;
          varInt64 : rq.Params.AsInt64[i]:=p.VInt64;
          varDouble : rq.Params.AsDouble[i]:=p.VDouble;
          varUString : rq.Params.AsString[i]:=String(p.VUString);
