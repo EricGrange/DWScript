@@ -111,7 +111,7 @@ begin
          varBoolean : stmt.Bind(i, Ord(p.VBoolean));
          varNull : stmt.BindNull(i);
       else
-         raise Exception.CreateFmt('Unsupported VarType %d', [p.VType]);
+         stmt.BindVariant(i, PVariant(p)^, False);
       end;
    end;
 end;
