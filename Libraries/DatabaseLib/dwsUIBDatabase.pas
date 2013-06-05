@@ -35,17 +35,21 @@ type
          FDB : TUIBDataBase;
          FTransaction : TUIBTransaction;
 
+      protected
+         property DB : TUIBDataBase read FDB write FDB;
+         property Transaction : TUIBTransaction read FTransaction write FTransaction;
+
       public
          constructor Create(const parameters : array of String);
          destructor Destroy; override;
 
-         procedure BeginTransaction;
-         procedure Commit;
-         procedure Rollback;
-         function InTransaction : Boolean;
+         procedure BeginTransaction; virtual;
+         procedure Commit; virtual;
+         procedure Rollback; virtual;
+         function InTransaction : Boolean; virtual;
 
-         procedure Exec(const sql : String; const parameters : TData);
-         function Query(const sql : String; const parameters : TData) : IdwsDataSet;
+         procedure Exec(const sql : String; const parameters : TData); virtual;
+         function Query(const sql : String; const parameters : TData) : IdwsDataSet; virtual;
    end;
 
    TdwsUIBDataSet = class (TdwsDataSet)
@@ -144,26 +148,30 @@ constructor TdwsUIBDataBase.Create(const parameters : array of String);
 var
    dbName, userName, pwd : String;
 begin
-   if Length(parameters)>0 then
-      dbName:=TdwsDataBase.ApplyPathVariables(parameters[0]);
-   if Length(parameters)>1 then
-      userName:=parameters[1]
-   else userName:='SYSDBA';
-   if Length(parameters)>2 then
-      pwd:=parameters[2]
-   else pwd:='masterkey';
-   try
-      FDB:=TUIBDataBase.Create{$ifndef UIB_NO_COMPONENT}(nil){$endif};
-      FDB.DatabaseName:=dbName;
-      FDB.UserName:=userName;
-      FDB.PassWord:=pwd;
-      FDB.Connected:=True;
-   except
-      RefCount:=0;
-      raise;
+   if FDB=nil then begin
+      if Length(parameters)>0 then
+         dbName:=TdwsDataBase.ApplyPathVariables(parameters[0]);
+      if Length(parameters)>1 then
+         userName:=parameters[1]
+      else userName:='SYSDBA';
+      if Length(parameters)>2 then
+         pwd:=parameters[2]
+      else pwd:='masterkey';
+      try
+         FDB:=TUIBDataBase.Create{$ifndef UIB_NO_COMPONENT}(nil){$endif};
+         FDB.DatabaseName:=dbName;
+         FDB.UserName:=userName;
+         FDB.PassWord:=pwd;
+         FDB.Connected:=True;
+      except
+         RefCount:=0;
+         raise;
+      end;
    end;
-   FTransaction:=TUIBTransaction.Create{$ifndef UIB_NO_COMPONENT}(nil){$endif};
-   FTransaction.DataBase:=FDB;
+   if FTransaction=nil then begin
+      FTransaction:=TUIBTransaction.Create{$ifndef UIB_NO_COMPONENT}(nil){$endif};
+      FTransaction.DataBase:=FDB;
+   end;
 end;
 
 // Destroy
