@@ -394,13 +394,13 @@ begin
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 3, 3);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
 
-   CheckEquals(10, sugg.Count, 'd.');
+   CheckEquals(11, sugg.Count, 'd.');
    CheckEquals('Clamp', sugg.Code[0], 'd. 0');
    CheckEquals('Factorial', sugg.Code[1], 'd. 1');
    CheckEquals('Hello', sugg.Code[2], 'd. 2');
    CheckEquals('IsPrime', sugg.Code[3], 'd. 3');
    CheckEquals('LeastFactor', sugg.Code[4], 'd. 4');
-   CheckEquals('Next', sugg.Code[5], 'd. 5');
+   CheckEquals('Map', sugg.Code[5], 'd. 5');
 end;
 
 // SuggestAfterCall
