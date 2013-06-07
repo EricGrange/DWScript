@@ -1415,6 +1415,13 @@ type
          property Mask : Integer read FMask write FMask;
    end;
 
+   // name of an enumeration element
+   TEnumerationElementNameExpr = class (TUnaryOpStringExpr)
+      public
+         constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
+         procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
+   end;
+
    // statement; statement; statement;
    TBlockExpr = class(TBlockExprBase)
       private
@@ -3998,6 +4005,32 @@ begin
    i:=Expr.EvalAsInteger(exec);
    Result:=    (UInt64(i)<UInt64(32))
            and (((1 shl i) and Mask)<>0);
+end;
+
+// ------------------
+// ------------------ TEnumerationElementNameExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TEnumerationElementNameExpr.Create(prog : TdwsProgram; expr : TTypedExpr);
+begin
+   inherited;
+   Assert(expr.Typ is TEnumerationSymbol);
+end;
+
+// EvalAsString
+//
+procedure TEnumerationElementNameExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
+var
+   enumeration : TEnumerationSymbol;
+   element : TElementSymbol;
+begin
+   enumeration:=TEnumerationSymbol(Expr.Typ);
+   element:=enumeration.ElementByValue(Expr.EvalAsInteger(exec));
+   if element<>nil then
+      Result:=element.StandardName
+   else Result:='';
 end;
 
 // ------------------

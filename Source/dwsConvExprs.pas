@@ -303,10 +303,13 @@ end;
 function TConvIntegerExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
    // this can happen when an integer was qualifed as a type
-   // but when optimizing we can discard that type info
    if Expr.ClassType=TConstIntExpr then begin
-      Result:=Expr;
-      Expr:=nil;
+      if Expr.Typ=Typ then begin
+         Result:=Expr;
+         Expr:=nil;
+      end else begin
+         Result:=TConstIntExpr.CreateUnified(prog, Typ, TConstIntExpr(Expr).Value);
+      end;
       Free;
    end else Result:=Self;
 end;

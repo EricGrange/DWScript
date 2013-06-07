@@ -1573,9 +1573,12 @@ type
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
+   TEnumerationSymbol = class;
+
    // Element of an enumeration type. E. g. "type DummyEnum = (Elem1, Elem2, Elem3);"
    TElementSymbol = class sealed (TConstSymbol)
       private
+         FEnumeration : TEnumerationSymbol;
          FIsUserDef : Boolean;
 
       protected
@@ -1585,6 +1588,11 @@ type
       public
          constructor Create(const Name: UnicodeString; Typ: TTypeSymbol;
                             const aValue : Int64; isUserDef: Boolean);
+
+         function StandardName : String; inline;
+         function QualifiedName : String; override;
+
+         property Enumeration : TEnumerationSymbol read FEnumeration;
          property IsUserDef : Boolean read FIsUserDef;
          property Value : Int64 read GetValue;
    end;
@@ -1597,6 +1605,7 @@ type
          FElements : TSymbolTable;
          FLowBound, FHighBound : Int64;
          FStyle : TEnumerationSymbolStyle;
+         FContinuous : Boolean;
 
       protected
          function GetCaption : UnicodeString; override;
@@ -1617,6 +1626,7 @@ type
 
          property Elements : TSymbolTable read FElements;
          property Style : TEnumerationSymbolStyle read FStyle;
+         property Continuous : Boolean read FContinuous write FContinuous;
          property LowBound : Int64 read FLowBound write FLowBound;
          property HighBound : Int64 read FHighBound write FHighBound;
          function ShortDescription : UnicodeString;
@@ -6035,6 +6045,22 @@ begin
    FIsUserDef := IsUserDef;
 end;
 
+// StandardName
+//
+function TElementSymbol.StandardName : String;
+begin
+   if Enumeration.Style=enumClassic then
+      Result:=Name
+   else Result:=QualifiedName;
+end;
+
+// QualifiedName
+//
+function TElementSymbol.QualifiedName : String;
+begin
+   Result:=Enumeration.Name+'.'+Name;
+end;
+
 // GetDescription
 //
 function TElementSymbol.GetDescription: UnicodeString;
@@ -6065,6 +6091,7 @@ begin
    FLowBound:=MaxInt;
    FHighBound:=-MaxInt;
    FStyle:=aStyle;
+   FContinuous:=True;
 end;
 
 // Destroy
@@ -6108,13 +6135,17 @@ end;
 
 // AddElement
 //
-procedure TEnumerationSymbol.AddElement(Element: TElementSymbol);
+procedure TEnumerationSymbol.AddElement(element : TElementSymbol);
 begin
-   FElements.AddSymbol(Element);
-   if Element.Value<FLowBound then
-      FLowBound:=Element.Value;
-   if Element.Value>FHighBound then
-      FHighBound:=Element.Value;
+   if FContinuous and (FElements.Count>0) then
+      if element.Value<>FHighBound+1 then
+         FContinuous:=False;
+   if element.Value<FLowBound then
+      FLowBound:=element.Value;
+   if element.Value>FHighBound then
+      FHighBound:=element.Value;
+   FElements.AddSymbol(element);
+   element.FEnumeration:=Self;
 end;
 
 // ElementByValue
@@ -6123,10 +6154,15 @@ function TEnumerationSymbol.ElementByValue(const value : Int64) : TElementSymbol
 var
    i : Integer;
 begin
-   if (value>=FLowBound) and (value<FHighBound) then begin
-      for i:=0 to Elements.Count-1 do begin
-         Result:=TElementSymbol(Elements[i]);
-         if Result.Value=value then Exit;
+   if (value>=FLowBound) and (value<=FHighBound) then begin
+      if Continuous then begin
+         Result:=TElementSymbol(Elements[value-FLowBound]);
+         Exit;
+      end else begin
+         for i:=0 to Elements.Count-1 do begin
+            Result:=TElementSymbol(Elements[i]);
+            if Result.Value=value then Exit;
+         end;
       end;
    end;
    Result:=nil;

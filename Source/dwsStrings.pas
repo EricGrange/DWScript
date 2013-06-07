@@ -341,6 +341,8 @@ const
 
   CPH_CallConventionIsNotSupportedAndIgnored = 'Call convention "%s" is not supported and ignored';
 
+  CPH_UnnamedEnumerationElement = 'Enumeration element is unnamed or out of range';
+
   // TypeCheck
   CPE_BooleanExpected = 'Boolean expected';
   CPE_IntegerExpected = 'Integer expected';

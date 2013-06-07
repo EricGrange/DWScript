@@ -66,6 +66,8 @@ type
          class function CreateFloatValue(prog : TdwsProgram; const value : Int64) : TConstExpr; overload; static;
          class function CreateFloatValue(prog : TdwsProgram; const value : Double) : TConstExpr; overload; static;
 
+         class function CreateStringValue(prog : TdwsProgram; const value : String) : TConstExpr; overload; static;
+
          class function CreateBooleanValue(prog : TdwsProgram; const value : Boolean) : TConstExpr; overload; static;
 
          class function CreateDynamicArrayValue(prog : TdwsProgram; typ : TTypeSymbol) : TConstExpr; overload; static;
@@ -367,6 +369,13 @@ end;
 class function TConstExpr.CreateFloatValue(prog : TdwsProgram; const value : Double) : TConstExpr;
 begin
    Result:=TConstFloatExpr.CreateUnified(prog, prog.TypFloat, value);
+end;
+
+// CreateStringValue
+//
+class function TConstExpr.CreateStringValue(prog : TdwsProgram; const value : String) : TConstExpr;
+begin
+   Result:=TConstStringExpr.CreateUnified(prog, prog.TypString, value);
 end;
 
 // CreateBooleanValue

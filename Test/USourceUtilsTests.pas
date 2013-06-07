@@ -2,7 +2,9 @@ unit USourceUtilsTests;
 
 interface
 
-uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
+uses
+   Classes, SysUtils,
+   dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsDataContext,
    dwsTokenizer, dwsErrors, dwsUtils, Variants, dwsSymbols, dwsSuggestions;
 
 type
@@ -33,6 +35,8 @@ type
          procedure SymDictInherited;
          procedure ReferencesVars;
          procedure InvalidExceptSuggest;
+         procedure EnumerationNamesAndValues;
+         procedure BigEnumerationNamesAndValues;
    end;
 
 // ------------------------------------------------------------------
@@ -595,6 +599,67 @@ begin
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
    CheckEquals(1, sugg.Count, 'column 4');
    CheckEquals('StackTrace', sugg.Code[0], 'sugg 2, 0');
+end;
+
+// EnumerationNamesAndValues
+//
+procedure TSourceUtilsTests.EnumerationNamesAndValues;
+var
+   prog : IdwsProgram;
+   enum : TEnumerationSymbol;
+begin
+   prog:=FCompiler.Compile( 'type TContinuous = (c1, c2, c3);'#13#10
+                           +'type TContinuous2 = (d1 = 1, d2 = 2, d3 = 3);'#13#10
+                           +'type TDiscontinuous = (e1 = 1, e2 = 3, e3 = 4);');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'compiled with errors');
+
+   enum:=(prog.Table.FindTypeSymbol('TContinuous', cvPublic) as TEnumerationSymbol);
+   CheckEquals('c1', enum.ElementByValue(0).Name);
+   CheckEquals('c2', enum.ElementByValue(1).Name);
+   CheckEquals('c3', enum.ElementByValue(2).Name);
+   CheckNull(enum.ElementByValue(3), 'continuous');
+
+   enum:=(prog.Table.FindTypeSymbol('TContinuous2', cvPublic) as TEnumerationSymbol);
+   CheckNull(enum.ElementByValue(0), 'continuous2');
+   CheckEquals('d1', enum.ElementByValue(1).Name);
+   CheckEquals('d2', enum.ElementByValue(2).Name);
+   CheckEquals('d3', enum.ElementByValue(3).Name);
+
+   enum:=(prog.Table.FindTypeSymbol('TDiscontinuous', cvPublic) as TEnumerationSymbol);
+   CheckEquals('e1', enum.ElementByValue(1).Name);
+   CheckNull(enum.ElementByValue(2), 'discontinuous');
+   CheckEquals('e2', enum.ElementByValue(3).Name);
+   CheckEquals('e3', enum.ElementByValue(4).Name);
+end;
+
+// BigEnumerationNamesAndValues
+//
+procedure TSourceUtilsTests.BigEnumerationNamesAndValues;
+var
+   i : Integer;
+   s : String;
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+   enum : TEnumerationSymbol;
+begin
+   s:='type TTest = (';
+   for i:=1 to 100 do begin
+      if i>1 then
+         s:=s+',';
+      s:=s+'v'+IntToStr(i);
+   end;
+   prog:=FCompiler.Compile(s+');');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'compiled with errors');
+
+   enum:=(prog.Table.FindTypeSymbol('TTest', cvPublic) as TEnumerationSymbol);
+
+   for i:=1 to 100 do begin
+      CheckEquals(i-1, (enum.Elements.FindLocal('v'+IntToStr(i)) as TElementSymbol).Value, 'value of '+IntToStr(i-1));
+      CheckEquals('v'+IntToStr(i), enum.ElementByValue(i-1).Name, 'name of '+IntToStr(i-1));
+   end;
 end;
 
 // ------------------------------------------------------------------

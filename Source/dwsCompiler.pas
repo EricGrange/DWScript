@@ -476,6 +476,8 @@ type
                                    baseExpr : TTypedExpr) : TProgramExpr;
          function ReadSetOfMethod(const name : UnicodeString; const namePos : TScriptPos;
                                   baseExpr : TTypedExpr) : TProgramExpr;
+         function ReadElementMethod(const name : UnicodeString; const namePos : TScriptPos;
+                                    baseExpr : TTypedExpr) : TProgramExpr;
 
          function ReadCase : TCaseExpr;
          function ReadCaseConditions(condList : TCaseConditions; valueExpr : TTypedExpr) : Integer;
@@ -4558,11 +4560,11 @@ var
    name : UnicodeString;
    elemPos : TScriptPos;
    elem : TSymbol;
-   elemValue : Int64;
 begin
    if FTok.TestDelete(ttBLEFT) then begin
 
       Result:=ReadTypeCast(elemPos, enumSym);
+      Result:=ReadSymbol(Result, False, nil);
 
    end else if FTok.TestDelete(ttDOT) then begin
 
@@ -4571,10 +4573,10 @@ begin
       elem:=enumSym.Elements.FindLocal(name);
       if elem=nil then begin
          FMsgs.AddCompilerErrorFmt(elemPos, CPE_UnknownNameDotName, [enumSym.Name, name]);
-         elemValue:=0;
-      end else elemValue:=TElementSymbol(elem).Value;
-
-      Result:=TConstExpr.CreateIntegerValue(FProg, enumSym, elemValue);
+         Result:=TConstExpr.CreateIntegerValue(FProg, enumSym, 0);
+      end else begin
+         Result:=ReadConstName(elem as TElementSymbol, False);
+      end;
 
    end else begin
 
@@ -5411,6 +5413,12 @@ begin
 
             Result:=nil;
             Result:=ReadSetOfMethod(name, namePos, expr as TTypedExpr);
+
+         // "set of" symbol
+         end else if expr.Typ.UnAliasedType is TEnumerationSymbol then begin
+
+            Result:=nil;
+            Result:=ReadElementMethod(name, namePos, expr as TTypedExpr);
 
          // Connector symbol
          end else if baseType is TConnectorSymbol then begin
@@ -7513,6 +7521,41 @@ begin
    except
       OrphanObject(baseExpr);
       raise;
+   end;
+end;
+
+// ReadElementMethod
+//
+function TdwsCompiler.ReadElementMethod(const name : UnicodeString; const namePos : TScriptPos;
+                                        baseExpr : TTypedExpr) : TProgramExpr;
+var
+   enumeration : TEnumerationSymbol;
+   element : TElementSymbol;
+begin
+   enumeration:=(baseExpr.Typ as TEnumerationSymbol);
+
+   if SameText(name, 'name') then begin
+
+      if baseExpr.ClassType=TConstIntExpr then begin
+
+         element:=enumeration.ElementByValue(TConstIntExpr(baseExpr).Value);
+         if element=nil then begin
+            FMsgs.AddCompilerHint(namePos, CPH_UnnamedEnumerationElement);
+            Result:=TConstExpr.CreateTypedDefault(FProg, FProg.TypString);
+         end else Result:=TConstExpr.CreateStringValue(FProg, element.StandardName);
+         baseExpr.Free;
+
+      end else begin
+
+         Result:=TEnumerationElementNameExpr.Create(FProg, baseExpr);
+
+      end;
+
+   end else begin
+
+      Result:=nil;
+      FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [name]);
+
    end;
 end;
 
