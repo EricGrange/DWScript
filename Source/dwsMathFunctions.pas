@@ -25,7 +25,7 @@ interface
 
 uses
    Classes, Math,
-   dwsUtils,
+   dwsUtils, dwsStrings,
    dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs, dwsXPlatform, dwsExprList;
 
 type
@@ -280,10 +280,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-const // type constants
-  cFloat = 'Float';
-  cInteger = 'Integer';
 
 // Gcd
 //
@@ -851,81 +847,81 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   RegisterInternalBoolFunction(TOddFunc, 'Odd', ['i', cInteger], [iffStateLess]);
+   RegisterInternalBoolFunction(TOddFunc, 'Odd', ['i', SYS_INTEGER], [iffStateLess]);
 
-   RegisterInternalFloatFunction(TSinFunc, 'Sin', ['a', cFloat], [iffStateLess], 'Sin');
-   RegisterInternalFloatFunction(TSinhFunc, 'Sinh', ['a', cFloat], [iffStateLess], 'Sinh');
-   RegisterInternalFloatFunction(TCosFunc, 'Cos', ['a', cFloat], [iffStateLess], 'Cos');
-   RegisterInternalFloatFunction(TCoshFunc, 'Cosh', ['a', cFloat], [iffStateLess], 'Cosh');
-   RegisterInternalFloatFunction(TTanFunc, 'Tan', ['a', cFloat], [iffStateLess], 'Tan');
-   RegisterInternalFloatFunction(TTanhFunc, 'Tanh', ['a', cFloat], [iffStateLess], 'Tanh');
-   RegisterInternalFloatFunction(TArcSinFunc, 'ArcSin', ['v', cFloat], [iffStateLess], 'ArcSin');
-   RegisterInternalFloatFunction(TArcSinhFunc, 'ArcSinh', ['v', cFloat], [iffStateLess], 'ArcSinh');
-   RegisterInternalFloatFunction(TArcCosFunc, 'ArcCos', ['v', cFloat], [iffStateLess], 'ArcCos');
-   RegisterInternalFloatFunction(TArcCoshFunc, 'ArcCosh', ['v', cFloat], [iffStateLess], 'ArcCosh');
-   RegisterInternalFloatFunction(TArcTanFunc, 'ArcTan', ['v', cFloat], [iffStateLess], 'ArcTan');
-   RegisterInternalFloatFunction(TArcTan2Func, 'ArcTan2', ['y', cFloat, 'x', cFloat], [iffStateLess]);
-   RegisterInternalFloatFunction(TArcTanhFunc, 'ArcTanh', ['v', cFloat], [iffStateLess], 'ArcTanh');
-   RegisterInternalFloatFunction(TCotanFunc, 'Cotan', ['a', cFloat], [iffStateLess], 'Cotan');
-   RegisterInternalFloatFunction(THypotFunc, 'Hypot', ['x', cFloat, 'y', cFloat], [iffStateLess]);
-   RegisterInternalFloatFunction(TFactorialFunc, 'Factorial', ['v', cInteger], [iffStateLess], 'Factorial');
-   RegisterInternalFloatFunction(TExpFunc, 'Exp', ['v', cFloat], [iffStateLess], 'Exp');
-   RegisterInternalFloatFunction(TLnFunc, 'Ln', ['v', cFloat], [iffStateLess], 'Ln');
-   RegisterInternalFloatFunction(TLog2Func, 'Log2', ['v', cFloat], [iffStateLess], 'Log2');
-   RegisterInternalFloatFunction(TLog10Func, 'Log10', ['v', cFloat], [iffStateLess], 'Log10');
-   RegisterInternalFloatFunction(TLogNFunc, 'LogN', ['n', cFloat, 'x', cFloat], [iffStateLess], 'LogN');
-   RegisterInternalFloatFunction(TPowerFunc, 'Power', ['base', cFloat, 'exponent', cFloat], [iffStateLess], 'Power');
-   RegisterInternalFloatFunction(TIntPowerFunc, 'IntPower', ['base', cFloat, 'exponent', cInteger], [iffStateLess], 'Power');
-   RegisterInternalIntFunction(TSqrIntFunc, 'Sqr', ['v', cInteger], [iffStateLess, iffOverloaded], 'Sqr');
-   RegisterInternalFloatFunction(TSqrFloatFunc, 'Sqr', ['v', cFloat], [iffStateLess, iffOverloaded], 'Sqr');
-   RegisterInternalFloatFunction(TSqrtFunc, 'Sqrt', ['v', cFloat], [iffStateLess], 'Sqrt');
-   RegisterInternalFloatFunction(TIntFunc, 'Int', ['v', cFloat], [iffStateLess], 'Int');
-   RegisterInternalFloatFunction(TFracFunc, 'Frac', ['v', cFloat], [iffStateLess], 'Fraction');
-   RegisterInternalIntFunction(TFloorFunc, 'Floor', ['v', cFloat], [iffStateLess], 'Floor');
-   RegisterInternalIntFunction(TCeilFunc, 'Ceil', ['v', cFloat], [iffStateLess], 'Ceiling');
+   RegisterInternalFloatFunction(TSinFunc, 'Sin', ['a', SYS_FLOAT], [iffStateLess], 'Sin');
+   RegisterInternalFloatFunction(TSinhFunc, 'Sinh', ['a', SYS_FLOAT], [iffStateLess], 'Sinh');
+   RegisterInternalFloatFunction(TCosFunc, 'Cos', ['a', SYS_FLOAT], [iffStateLess], 'Cos');
+   RegisterInternalFloatFunction(TCoshFunc, 'Cosh', ['a', SYS_FLOAT], [iffStateLess], 'Cosh');
+   RegisterInternalFloatFunction(TTanFunc, 'Tan', ['a', SYS_FLOAT], [iffStateLess], 'Tan');
+   RegisterInternalFloatFunction(TTanhFunc, 'Tanh', ['a', SYS_FLOAT], [iffStateLess], 'Tanh');
+   RegisterInternalFloatFunction(TArcSinFunc, 'ArcSin', ['v', SYS_FLOAT], [iffStateLess], 'ArcSin');
+   RegisterInternalFloatFunction(TArcSinhFunc, 'ArcSinh', ['v', SYS_FLOAT], [iffStateLess], 'ArcSinh');
+   RegisterInternalFloatFunction(TArcCosFunc, 'ArcCos', ['v', SYS_FLOAT], [iffStateLess], 'ArcCos');
+   RegisterInternalFloatFunction(TArcCoshFunc, 'ArcCosh', ['v', SYS_FLOAT], [iffStateLess], 'ArcCosh');
+   RegisterInternalFloatFunction(TArcTanFunc, 'ArcTan', ['v', SYS_FLOAT], [iffStateLess], 'ArcTan');
+   RegisterInternalFloatFunction(TArcTan2Func, 'ArcTan2', ['y', SYS_FLOAT, 'x', SYS_FLOAT], [iffStateLess]);
+   RegisterInternalFloatFunction(TArcTanhFunc, 'ArcTanh', ['v', SYS_FLOAT], [iffStateLess], 'ArcTanh');
+   RegisterInternalFloatFunction(TCotanFunc, 'Cotan', ['a', SYS_FLOAT], [iffStateLess], 'Cotan');
+   RegisterInternalFloatFunction(THypotFunc, 'Hypot', ['x', SYS_FLOAT, 'y', SYS_FLOAT], [iffStateLess]);
+   RegisterInternalFloatFunction(TFactorialFunc, 'Factorial', ['v', SYS_INTEGER], [iffStateLess], 'Factorial');
+   RegisterInternalFloatFunction(TExpFunc, 'Exp', ['v', SYS_FLOAT], [iffStateLess], 'Exp');
+   RegisterInternalFloatFunction(TLnFunc, 'Ln', ['v', SYS_FLOAT], [iffStateLess], 'Ln');
+   RegisterInternalFloatFunction(TLog2Func, 'Log2', ['v', SYS_FLOAT], [iffStateLess], 'Log2');
+   RegisterInternalFloatFunction(TLog10Func, 'Log10', ['v', SYS_FLOAT], [iffStateLess], 'Log10');
+   RegisterInternalFloatFunction(TLogNFunc, 'LogN', ['n', SYS_FLOAT, 'x', SYS_FLOAT], [iffStateLess], 'LogN');
+   RegisterInternalFloatFunction(TPowerFunc, 'Power', ['base', SYS_FLOAT, 'exponent', SYS_FLOAT], [iffStateLess], 'Power');
+   RegisterInternalFloatFunction(TIntPowerFunc, 'IntPower', ['base', SYS_FLOAT, 'exponent', SYS_INTEGER], [iffStateLess], 'Power');
+   RegisterInternalIntFunction(TSqrIntFunc, 'Sqr', ['v', SYS_INTEGER], [iffStateLess, iffOverloaded], 'Sqr');
+   RegisterInternalFloatFunction(TSqrFloatFunc, 'Sqr', ['v', SYS_FLOAT], [iffStateLess, iffOverloaded], 'Sqr');
+   RegisterInternalFloatFunction(TSqrtFunc, 'Sqrt', ['v', SYS_FLOAT], [iffStateLess], 'Sqrt');
+   RegisterInternalFloatFunction(TIntFunc, 'Int', ['v', SYS_FLOAT], [iffStateLess], 'Int');
+   RegisterInternalFloatFunction(TFracFunc, 'Frac', ['v', SYS_FLOAT], [iffStateLess], 'Fraction');
+   RegisterInternalIntFunction(TFloorFunc, 'Floor', ['v', SYS_FLOAT], [iffStateLess], 'Floor');
+   RegisterInternalIntFunction(TCeilFunc, 'Ceil', ['v', SYS_FLOAT], [iffStateLess], 'Ceiling');
 
-   RegisterInternalFunction(TTruncFunc, 'Trunc', ['v', cFloat], cInteger, [iffStateLess], 'Truncate');
-   RegisterInternalFunction(TRoundFunc, 'Round', ['v', cFloat], cInteger, [iffStateLess], 'Round');
+   RegisterInternalFunction(TTruncFunc, 'Trunc', ['v', SYS_FLOAT], SYS_INTEGER, [iffStateLess], 'Truncate');
+   RegisterInternalFunction(TRoundFunc, 'Round', ['v', SYS_FLOAT], SYS_INTEGER, [iffStateLess], 'Round');
 
-   RegisterInternalFloatFunction(TDegToRadFunc, 'DegToRad', ['a', cFloat], [iffStateLess], 'DegToRad');
-   RegisterInternalFloatFunction(TRadToDegFunc, 'RadToDeg', ['a', cFloat], [iffStateLess], 'RadToDeg');
+   RegisterInternalFloatFunction(TDegToRadFunc, 'DegToRad', ['a', SYS_FLOAT], [iffStateLess], 'DegToRad');
+   RegisterInternalFloatFunction(TRadToDegFunc, 'RadToDeg', ['a', SYS_FLOAT], [iffStateLess], 'RadToDeg');
 
-   RegisterInternalIntFunction(TSignFunc, 'Sign', ['v', cFloat], [iffStateLess, iffOverloaded], 'Sign');
-   RegisterInternalIntFunction(TSignIntFunc, 'Sign', ['v', cInteger], [iffStateLess, iffOverloaded], 'Sign');
+   RegisterInternalIntFunction(TSignFunc, 'Sign', ['v', SYS_FLOAT], [iffStateLess, iffOverloaded], 'Sign');
+   RegisterInternalIntFunction(TSignIntFunc, 'Sign', ['v', SYS_INTEGER], [iffStateLess, iffOverloaded], 'Sign');
 
    RegisterInternalProcedure(TDivModFunc, 'DivMod',
-                             ['dividend', cInteger, 'divisor', cInteger,
-                              '@result', cInteger, '@remainder', cInteger]);
+                             ['dividend', SYS_INTEGER, 'divisor', SYS_INTEGER,
+                              '@result', SYS_INTEGER, '@remainder', SYS_INTEGER]);
 
-   RegisterInternalFloatFunction(TMaxFunc, 'Max', ['v1', cFloat, 'v2', cFloat], [iffStateLess, iffOverloaded]);
-   RegisterInternalIntFunction(TMaxIntFunc, 'Max', ['v1', cInteger, 'v2', cInteger], [iffStateLess, iffOverloaded]);
-   RegisterInternalFloatFunction(TMinFunc, 'Min', ['v1', cFloat, 'v2', cFloat], [iffStateLess, iffOverloaded]);
-   RegisterInternalIntFunction(TMinIntFunc, 'Min', ['v1', cInteger, 'v2', cInteger], [iffStateLess, iffOverloaded]);
-   RegisterInternalFloatFunction(TClampFunc, 'Clamp', ['v', cFloat, 'min', cFloat, 'max', cFloat], [iffStateLess], 'Clamp');
+   RegisterInternalFloatFunction(TMaxFunc, 'Max', ['v1', SYS_FLOAT, 'v2', SYS_FLOAT], [iffStateLess, iffOverloaded]);
+   RegisterInternalIntFunction(TMaxIntFunc, 'Max', ['v1', SYS_INTEGER, 'v2', SYS_INTEGER], [iffStateLess, iffOverloaded]);
+   RegisterInternalFloatFunction(TMinFunc, 'Min', ['v1', SYS_FLOAT, 'v2', SYS_FLOAT], [iffStateLess, iffOverloaded]);
+   RegisterInternalIntFunction(TMinIntFunc, 'Min', ['v1', SYS_INTEGER, 'v2', SYS_INTEGER], [iffStateLess, iffOverloaded]);
+   RegisterInternalFloatFunction(TClampFunc, 'Clamp', ['v', SYS_FLOAT, 'min', SYS_FLOAT, 'max', SYS_FLOAT], [iffStateLess], 'Clamp');
 
    RegisterInternalIntFunction(TMaxIntValueFunc, 'MaxInt', [], [iffStateLess, iffOverloaded]);
-   RegisterInternalIntFunction(TMaxIntFunc, 'MaxInt', ['v1', cInteger, 'v2', cInteger], [iffStateLess, iffOverloaded]);
-   RegisterInternalIntFunction(TMinIntFunc, 'MinInt', ['v1', cInteger, 'v2', cInteger], [iffStateLess]);
-   RegisterInternalIntFunction(TClampIntFunc, 'ClampInt', ['v', cInteger, 'min', cInteger, 'max', cInteger], [iffStateLess], 'Clamp');
+   RegisterInternalIntFunction(TMaxIntFunc, 'MaxInt', ['v1', SYS_INTEGER, 'v2', SYS_INTEGER], [iffStateLess, iffOverloaded]);
+   RegisterInternalIntFunction(TMinIntFunc, 'MinInt', ['v1', SYS_INTEGER, 'v2', SYS_INTEGER], [iffStateLess]);
+   RegisterInternalIntFunction(TClampIntFunc, 'ClampInt', ['v', SYS_INTEGER, 'min', SYS_INTEGER, 'max', SYS_INTEGER], [iffStateLess], 'Clamp');
 
    RegisterInternalFloatFunction(TPiFunc, 'Pi', [], [iffStateLess]);
    RegisterInternalFloatFunction(TInfinityFunc, 'Infinity', [], [iffStateLess]);
    RegisterInternalFloatFunction(TNaNFunc, 'NaN', [], [iffStateLess]);
 
-   RegisterInternalBoolFunction(TIsNaNFunc, 'IsNaN', ['v', cFloat], [iffStateLess], 'IsNaN');
-   RegisterInternalBoolFunction(TIsInfiniteFunc, 'IsInfinite', ['v', cFloat], [iffStateLess], 'IsInfinite');
-   RegisterInternalBoolFunction(TIsFiniteFunc, 'IsFinite', ['v', cFloat], [iffStateLess], 'IsFinite');
+   RegisterInternalBoolFunction(TIsNaNFunc, 'IsNaN', ['v', SYS_FLOAT], [iffStateLess], 'IsNaN');
+   RegisterInternalBoolFunction(TIsInfiniteFunc, 'IsInfinite', ['v', SYS_FLOAT], [iffStateLess], 'IsInfinite');
+   RegisterInternalBoolFunction(TIsFiniteFunc, 'IsFinite', ['v', SYS_FLOAT], [iffStateLess], 'IsFinite');
 
-   RegisterInternalIntFunction(TGcdFunc, 'Gcd', ['a', cInteger, 'b', cInteger], [iffStateLess]);
-   RegisterInternalIntFunction(TLcmFunc, 'Lcm', ['a', cInteger, 'b', cInteger], [iffStateLess]);
-   RegisterInternalBoolFunction(TIsPrimeFunc, 'IsPrime', ['n', cInteger], [iffStateLess], 'IsPrime');
-   RegisterInternalIntFunction(TLeastFactorFunc, 'LeastFactor', ['n', cInteger], [iffStateLess], 'LeastFactor');
+   RegisterInternalIntFunction(TGcdFunc, 'Gcd', ['a', SYS_INTEGER, 'b', SYS_INTEGER], [iffStateLess]);
+   RegisterInternalIntFunction(TLcmFunc, 'Lcm', ['a', SYS_INTEGER, 'b', SYS_INTEGER], [iffStateLess]);
+   RegisterInternalBoolFunction(TIsPrimeFunc, 'IsPrime', ['n', SYS_INTEGER], [iffStateLess], 'IsPrime');
+   RegisterInternalIntFunction(TLeastFactorFunc, 'LeastFactor', ['n', SYS_INTEGER], [iffStateLess], 'LeastFactor');
 
    RegisterInternalFloatFunction(TRandomFunc, 'Random', []);
-   RegisterInternalIntFunction(TRandomIntFunc, 'RandomInt', ['range', cInteger]);
+   RegisterInternalIntFunction(TRandomIntFunc, 'RandomInt', ['range', SYS_INTEGER]);
    RegisterInternalFunction(TRandomizeFunc, 'Randomize', [], '');
-   RegisterInternalFloatFunction(TRandGFunc, 'RandG', ['mean', cFloat, 'stdDev', cFloat]);
+   RegisterInternalFloatFunction(TRandGFunc, 'RandG', ['mean', SYS_FLOAT, 'stdDev', SYS_FLOAT]);
    RegisterInternalIntFunction(TRandSeedFunc, 'RandSeed', [], [iffDeprecated]);
-   RegisterInternalProcedure(TSetRandSeedFunc, 'SetRandSeed', ['seed', cInteger]);
+   RegisterInternalProcedure(TSetRandSeedFunc, 'SetRandSeed', ['seed', SYS_INTEGER]);
 
 end.

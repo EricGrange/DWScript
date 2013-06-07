@@ -409,7 +409,6 @@ type
          FCurrentUnitSymbol : TUnitMainSymbol;
          FCurrentStructure : TCompositeTypeSymbol;
          FAnyFuncSymbol : TAnyFuncSymbol;
-         FAnyTypeSymbol : TAnyTypeSymbol;
          FStandardDataSymbolFactory : IdwsDataSymbolFactory;
          FPendingAttributes : TdwsSymbolAttributes;
          FPooledStringList : TSimpleStringList;
@@ -826,8 +825,6 @@ type
          property TokenizerRules : TTokenizerRules read FTokRules;
          property Tokenizer : TTokenizer read FTok write FTok;
 
-         property AnyTypeSymbol : TAnyTypeSymbol read FAnyTypeSymbol;
-
          property StaticExtensionSymbols : Boolean read FStaticExtensionSymbols write FStaticExtensionSymbols;
          property OnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbolEvent read FOnCreateBaseVariantSymbol write FOnCreateBaseVariantSymbol;
          property OnCreateSystemSymbols : TCompilerCreateSystemSymbolsEvent read FOnCreateSystemSymbols write FOnCreateSystemSymbols;
@@ -1160,7 +1157,6 @@ begin
    FUnitContextStack:=TdwsCompilerUnitContextStack.Create;
 
    FAnyFuncSymbol:=TAnyFuncSymbol.Create('', fkFunction, 0);
-   FAnyTypeSymbol:=TAnyTypeSymbol.Create('', nil);
 
    FPendingAttributes:=TdwsSymbolAttributes.Create;
 
@@ -1186,7 +1182,6 @@ begin
    FPendingAttributes.Free;
 
    FAnyFuncSymbol.Free;
-   FAnyTypeSymbol.Free;
 
    FUnitsFromStack.Free;
    FUnitContextStack.Free;
@@ -4531,7 +4526,7 @@ begin
       // Enumeration type cast or type symbol
       end else if sym.InheritsFrom(TEnumerationSymbol) then begin
 
-         Result:=ReadEnumerationSymbolName(namePos, TEnumerationSymbol(sym), expecting=FAnyTypeSymbol)
+         Result:=ReadEnumerationSymbolName(namePos, TEnumerationSymbol(sym), expecting=FProg.TypAnyType)
 
       // helpers and generic type casts
       end else if sym.InheritsFrom(TTypeSymbol) then begin
@@ -5722,7 +5717,7 @@ begin
 
    inPos:=FTok.HotPos;
 
-   inExpr:=ReadName(False, FAnyTypeSymbol);
+   inExpr:=ReadName(False, FProg.TypAnyType);
 
    readArrayItemExpr:=nil;
    inExprAssignExpr:=nil;
@@ -6552,6 +6547,8 @@ begin
       end;
    end;
    if (bestMatch<>nil) and (bestCount=1) then begin
+      if bestMatch.ClassType=TAliasMethodSymbol then
+         bestMatch:=TAliasMethodSymbol(bestMatch).Alias;
       if bestMatch<>funcExpr.FuncSym then begin
          if coSymbolDictionary in Options then begin
             ReplaceSymbolUse(funcExpr.FuncSym, bestMatch, funcExpr.ScriptPos);
@@ -6999,7 +6996,7 @@ begin
          repeat
             // Lower bound
             hotPos:=FTok.HotPos;
-            lowBound:=ReadExpr(FAnyTypeSymbol);
+            lowBound:=ReadExpr(FProg.TypAnyType);
 
             if lowBound is TTypeReferenceExpr then begin
 
@@ -7210,7 +7207,7 @@ begin
 
       end else if UnicodeSameText(name, 'map') then begin
 
-         argList.DefaultExpected:=TParamSymbol.Create('', arraySym.MapFunctionType(FAnyTypeSymbol))
+         argList.DefaultExpected:=TParamSymbol.Create('', arraySym.MapFunctionType(FProg.TypAnyType))
 
       end;
 
@@ -7414,7 +7411,7 @@ begin
 
             CheckRestricted;
             if CheckArguments(1, 1) then begin
-               mapFunctionType:=arraySym.MapFunctionType(FAnyTypeSymbol);
+               mapFunctionType:=arraySym.MapFunctionType(FProg.TypAnyType);
                if      argList[0].Typ.IsCompatible(mapFunctionType)
                   and (argList[0].Typ.Typ<>nil) then begin
                   Result:=TArrayMapExpr.Create(FProg, namePos, baseExpr,
@@ -12069,7 +12066,7 @@ begin
       skInc, skDec :
          argExpr:=ReadTerm(True);
       skLow, skHigh :
-         argExpr:=ReadExpr(FAnyTypeSymbol);
+         argExpr:=ReadExpr(FProg.TypAnyType);
    else
       argExpr:=ReadExpr;
    end;
@@ -12460,7 +12457,7 @@ begin
    if FTok.Test(ttDOT) then
       Result:=ReadSymbol(typeExpr, isWrite, expecting)
    else begin
-      if     (expecting<>FAnyTypeSymbol)
+      if     (expecting<>FProg.TypAnyType)
          and not (   (typeSym.ClassType=TClassSymbol)
                   or (typeSym.ClassType=TClassOfSymbol)) then
          FMsgs.AddCompilerError(FTok.HotPos, CPE_BrackLeftExpected);

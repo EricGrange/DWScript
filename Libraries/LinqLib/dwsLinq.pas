@@ -496,7 +496,7 @@ end;
 function TypeSymbol(const compiler: IdwsCompiler; base: TTypedExpr): TFuncSymbol;
 begin
    result := TFuncSymbol.Create('', fkFunction, 0);
-   result.Typ := compiler.Compiler.AnyTypeSymbol;
+   result.Typ := compiler.Compiler.CurrentProg.TypAnyType;
    result.AddParam(TParamSymbol.Create('', base.Typ));
 end;
 

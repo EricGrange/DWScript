@@ -616,6 +616,7 @@ type
       FTypVariant : TTypeSymbol;
       FTypException : TClassSymbol;
       FTypInterface : TInterfaceSymbol;
+      FTypAnyType : TAnyTypeSymbol;
    end;
 
    // A script executable program
@@ -678,6 +679,7 @@ type
          property TypVariant: TTypeSymbol read FBaseTypes.FTypVariant;
          property TypException: TClassSymbol read FBaseTypes.FTypException;
          property TypInterface : TInterfaceSymbol read FBaseTypes.FTypInterface;
+         property TypAnyType: TAnyTypeSymbol read FBaseTypes.FTypAnyType;
    end;
 
    // A script main executable program
@@ -2605,6 +2607,7 @@ begin
    FBaseTypes.FTypTObject := sysTable.TypTObject;
    FBaseTypes.FTypException := sysTable.TypException;
    FBaseTypes.FTypInterface := sysTable.TypInterface;
+   FBaseTypes.FTypAnyType := TAnyTypeSymbol.Create('', nil);
 end;
 
 // Destroy
@@ -2615,7 +2618,10 @@ begin
    FInitExpr.Free;
    FRootTable.Free;
    FUnitMains.Free;
+
    FBaseTypes.FTypNil.Free;
+   FBaseTypes.FTypAnyType.Free;
+
    FCompileMsgs.Free;
    FSubTables.Clear;
 

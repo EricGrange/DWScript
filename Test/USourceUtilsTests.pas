@@ -335,7 +335,7 @@ begin
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
 
-   CheckTrue(sugg.Count=17, 'd.');
+   CheckEquals(19, sugg.Count, 'd.');
    CheckEquals('Add', sugg.Code[0], 'd. 0');
    CheckEquals('Clear', sugg.Code[1], 'd. 1');
    CheckEquals('Copy', sugg.Code[2], 'd. 2');
@@ -346,13 +346,15 @@ begin
    CheckEquals('Insert', sugg.Code[7], 'd. 7');
    CheckEquals('Length', sugg.Code[8], 'd. 8');
    CheckEquals('Low', sugg.Code[9], 'd. 9');
-   CheckEquals('Peek', sugg.Code[10], 'd. 10');
-   CheckEquals('Pop', sugg.Code[11], 'd. 11');
-   CheckEquals('Push', sugg.Code[12], 'd. 12');
-   CheckEquals('Remove', sugg.Code[13], 'd. 13');
-   CheckEquals('Reverse', sugg.Code[14], 'd. 14');
-   CheckEquals('SetLength', sugg.Code[15], 'd. 15');
-   CheckEquals('Swap', sugg.Code[16], 'd. 16');
+   CheckEquals('Map', sugg.Code[10], 'd. 10');
+   CheckEquals('Peek', sugg.Code[11], 'd. 11');
+   CheckEquals('Pop', sugg.Code[12], 'd. 12');
+   CheckEquals('Push', sugg.Code[13], 'd. 13');
+   CheckEquals('Remove', sugg.Code[14], 'd. 14');
+   CheckEquals('Reverse', sugg.Code[15], 'd. 15');
+   CheckEquals('SetLength', sugg.Code[16], 'd. 16');
+   CheckEquals('Sort', sugg.Code[17], 'd. 17');
+   CheckEquals('Swap', sugg.Code[18], 'd. 18');
 end;
 
 // ObjectArrayTest
@@ -387,7 +389,8 @@ var
    sugg : IdwsSuggestions;
    scriptPos : TScriptPos;
 begin
-   prog:=FCompiler.Compile( 'type TIntegerHelper = helper for Integer const Hello = 123; function Next : Integer; begin Result:=Self+1; end; end;'#13#10
+   prog:=FCompiler.Compile( 'type TIntegerHelper = helper for Integer const Hello = 123; '
+                              +'function Next : Integer; begin Result:=Self+1; end; end;'#13#10
                            +'var d : Integer;'#13#10
                            +'d.');
 
@@ -400,7 +403,7 @@ begin
    CheckEquals('Hello', sugg.Code[2], 'd. 2');
    CheckEquals('IsPrime', sugg.Code[3], 'd. 3');
    CheckEquals('LeastFactor', sugg.Code[4], 'd. 4');
-   CheckEquals('Map', sugg.Code[5], 'd. 5');
+   CheckEquals('Next', sugg.Code[5], 'd. 5');
 end;
 
 // SuggestAfterCall

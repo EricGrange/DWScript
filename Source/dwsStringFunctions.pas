@@ -169,6 +169,10 @@ type
     procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
+  TTrimNbFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
+  end;
+
   TSameTextFunc = class(TInternalMagicBoolFunction)
     function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
   end;
@@ -626,11 +630,25 @@ end;
 
 { TTrimFunc }
 
-// DoEvalAsString
-//
 procedure TTrimFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=Trim(args.AsString[0]);
+end;
+
+{ TTrimNbFunc }
+
+procedure TTrimNbFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
+var
+   nbLeft, nbRight : Integer;
+begin
+   Result:=args.AsString[0];
+   nbLeft:=args.AsInteger[1];
+   nbRight:=args.AsInteger[2];
+   if Result<>'' then begin
+      if nbLeft<0 then nbLeft:=0;
+      if nbRight<0 then nbRight:=0;
+      Result:=Copy(Result, nbLeft+1, Length(Result)-nbRight-nbLeft);
+   end;
 end;
 
 { TSameTextFunc }
@@ -1042,7 +1060,8 @@ initialization
 
    RegisterInternalStringFunction(TTrimLeftFunc, 'TrimLeft', ['str', SYS_STRING], [iffStateLess], 'TrimLeft');
    RegisterInternalStringFunction(TTrimRightFunc, 'TrimRight', ['str', SYS_STRING], [iffStateLess], 'TrimRight');
-   RegisterInternalStringFunction(TTrimFunc, 'Trim', ['str', SYS_STRING], [iffStateLess], 'Trim');
+   RegisterInternalStringFunction(TTrimFunc, 'Trim', ['str', SYS_STRING], [iffStateLess, iffOverloaded], 'Trim');
+   RegisterInternalStringFunction(TTrimNbFunc, 'Trim', ['str', SYS_STRING, 'nbLeft', SYS_INTEGER, 'nbRight', SYS_INTEGER], [iffStateLess, iffOverloaded], 'Trim');
 
    RegisterInternalBoolFunction(TSameTextFunc, 'SameText', ['str1', SYS_STRING, 'str2', SYS_STRING], [iffStateLess], 'EqualsText');
    RegisterInternalIntFunction(TCompareTextFunc, 'CompareText', ['str1', SYS_STRING, 'str2', SYS_STRING], [iffStateLess], 'CompareText');

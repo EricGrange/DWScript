@@ -277,6 +277,8 @@ begin
    // create helper method symbol
    meth:=TAliasMethodSymbol.Create(name, func.Kind, helper, cvPublic, False);
    meth.SetIsStatic;
+   if func.IsOverloaded then
+      meth.IsOverloaded:=True;
    meth.Typ:=func.Typ;
    for i:=0 to func.Params.Count-1 do
       meth.Params.AddSymbol(func.Params[i].Clone);

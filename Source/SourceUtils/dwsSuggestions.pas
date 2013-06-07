@@ -483,6 +483,8 @@ begin
       FDynArrayHelpers.AddSymbol(CreateHelper('Reverse', nil, []));
       FDynArrayHelpers.AddSymbol(CreateHelper('Swap', nil, ['index1', p.TypInteger, 'index2', p.TypInteger]));
       FDynArrayHelpers.AddSymbol(CreateHelper('Copy', nil, ['startIndex', p.TypInteger, 'count', p.TypInteger]));
+      FDynArrayHelpers.AddSymbol(CreateHelper('Sort', nil, ['comparer', dyn.SortFunctionType(p.TypInteger)]));
+      FDynArrayHelpers.AddSymbol(CreateHelper('Map', nil, ['func', dyn.MapFunctionType(p.TypInteger)]));
    end;
 
    list.AddSymbolTable(FDynArrayHelpers);
