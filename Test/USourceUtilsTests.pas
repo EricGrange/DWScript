@@ -640,8 +640,6 @@ var
    i : Integer;
    s : String;
    prog : IdwsProgram;
-   sugg : IdwsSuggestions;
-   scriptPos : TScriptPos;
    enum : TEnumerationSymbol;
 begin
    s:='type TTest = (';
