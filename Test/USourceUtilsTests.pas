@@ -37,6 +37,7 @@ type
          procedure InvalidExceptSuggest;
          procedure EnumerationNamesAndValues;
          procedure BigEnumerationNamesAndValues;
+         procedure EnumerationSuggest;
    end;
 
 // ------------------------------------------------------------------
@@ -658,6 +659,41 @@ begin
       CheckEquals(i-1, (enum.Elements.FindLocal('v'+IntToStr(i)) as TElementSymbol).Value, 'value of '+IntToStr(i-1));
       CheckEquals('v'+IntToStr(i), enum.ElementByValue(i-1).Name, 'name of '+IntToStr(i-1));
    end;
+end;
+
+// EnumerationSuggest
+//
+procedure TSourceUtilsTests.EnumerationSuggest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile( 'type TTest = (One);'#13#10
+                           +'Print(TTest.One.Name);'#13#10
+                           +'var i : TTest;'#13#10
+                           +'Print(i.Value);'#13#10);
+
+   CheckEquals('', prog.Msgs.AsInfo, 'compiled with errors');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 13);
+
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(1, sugg.Count, 'column 13');
+   CheckEquals('One', sugg.Code[0], 'sugg 2, 13, 0');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 18);
+
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(1, sugg.Count, 'column 18');
+   CheckEquals('Name', sugg.Code[0], 'sugg 2, 18, 0');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 4, 10);
+
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(1, sugg.Count, 'column 10');
+   CheckEquals('Value', sugg.Code[0], 'sugg 4, 10, 0');
+
 end;
 
 // ------------------------------------------------------------------

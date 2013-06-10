@@ -110,6 +110,7 @@ type
          FSymbolClassFilter : TSymbolClass;
          FStaticArrayHelpers : TSymbolTable;
          FDynArrayHelpers : TSymbolTable;
+         FEnumElementHelpers : TSymbolTable;
 
       protected
          function GetCode(i : Integer) : UnicodeString;
@@ -128,6 +129,7 @@ type
 
          function CreateHelper(const name : UnicodeString; resultType : TTypeSymbol;
                                const args : array of const) : TFuncSymbol;
+         procedure AddEnumerationElementHelpers(list : TSimpleSymbolList);
          procedure AddStaticArrayHelpers(list : TSimpleSymbolList);
          procedure AddDynamicArrayHelpers(dyn : TDynamicArraySymbol; list : TSimpleSymbolList);
          procedure AddTypeHelpers(typ : TTypeSymbol; meta : Boolean; list : TSimpleSymbolList);
@@ -219,6 +221,7 @@ begin
    FCleanupList.Clean;
    FStaticArrayHelpers.Free;
    FDynArrayHelpers.Free;
+   FEnumElementHelpers.Free;
    inherited;
 end;
 
@@ -443,6 +446,22 @@ begin
    end;
 end;
 
+// AddEnumerationElementHelpers
+//
+procedure TdwsSuggestions.AddEnumerationElementHelpers(list : TSimpleSymbolList);
+var
+   p : TdwsMainProgram;
+begin
+   if FEnumElementHelpers=nil then begin
+      FEnumElementHelpers:=TSymbolTable.Create;
+      p:=FProg.ProgramObject;
+      FEnumElementHelpers.AddSymbol(CreateHelper('Name', p.TypString, []));
+      FEnumElementHelpers.AddSymbol(CreateHelper('Value', p.TypInteger, []));
+   end;
+
+   list.AddSymbolTable(FEnumElementHelpers);
+end;
+
 // AddStaticArrayHelpers
 //
 procedure TdwsSuggestions.AddStaticArrayHelpers(list : TSimpleSymbolList);
@@ -642,6 +661,11 @@ begin
          end else if FPreviousSymbol is TEnumerationSymbol then begin
 
             list.AddSymbolTable(TEnumerationSymbol(FPreviousSymbol).Elements);
+
+         end else if    (FPreviousSymbol is TElementSymbol)
+                     or (FPreviousSymbol.Typ is TEnumerationSymbol) then begin
+
+            AddEnumerationElementHelpers(list);
 
          end else if list.Count=0 then
 

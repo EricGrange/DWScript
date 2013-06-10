@@ -4579,6 +4579,7 @@ begin
          FMsgs.AddCompilerErrorFmt(elemPos, CPE_UnknownNameDotName, [enumSym.Name, name]);
          Result:=TConstExpr.CreateIntegerValue(FProg, enumSym, 0);
       end else begin
+         RecordSymbolUseReference(elem, elemPos, False);
          Result:=ReadConstName(elem as TElementSymbol, False);
       end;
 
