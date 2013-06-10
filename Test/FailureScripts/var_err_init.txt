@@ -1,0 +1,4 @@
+Syntax Error: Expression expected [line: 1, column: 10]
+Syntax Error: Assignment's right-side-argument has no return type [line: 1, column: 7]
+Syntax Error: ";" expected. [line: 1, column: 10]
+Syntax Error: ";" expected. [line: 1, column: 10]

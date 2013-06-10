@@ -267,12 +267,13 @@ type
       protected
          function GetIndex(exec : TdwsExecution) : Integer; virtual;
 
+         function GetIsConstant : Boolean; override;
+
       public
          constructor Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
                             baseExpr : TDataExpr; indexExpr : TTypedExpr;
                             arraySymbol : TStaticArraySymbol);
 
-         function IsConstant : Boolean; override;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
 
          procedure AssignExpr(exec : TdwsExecution; expr : TTypedExpr); override;
@@ -373,12 +374,12 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
+         function GetIsConstant : Boolean; override;
+
       public
          constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; BaseExpr: TDataExpr;
                             fieldSymbol: TFieldSymbol);
          destructor Destroy; override;
-
-         function IsConstant : Boolean; override;
 
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
          procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
@@ -1388,13 +1389,14 @@ type
 
          function ConstantConditions : Boolean;
 
+         function GetIsConstant : Boolean; override;
+
       public
          constructor Create(Prog: TdwsProgram; Left : TTypedExpr);
          destructor Destroy; override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
-         function IsConstant : Boolean; override;
          procedure AddCaseCondition(cond : TCaseCondition);
 
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
@@ -1509,6 +1511,8 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
+         function GetIsConstant : Boolean; override;
+
       public
          constructor Create(prog : TdwsProgram; const aPos : TScriptPos;
                             aTyp : TTypeSymbol;
@@ -1516,7 +1520,6 @@ type
          destructor Destroy; override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
-         function IsConstant : Boolean; override;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
 
          property CondExpr : TTypedExpr read FCondExpr write FCondExpr;
@@ -1908,8 +1911,8 @@ type
    end;
 
    TSpecialUnaryBoolExpr = class(TUnaryOpBoolExpr)
-      public
-         function IsConstant : Boolean; override;
+      protected
+         function GetIsConstant : Boolean; override;
    end;
 
    TConditionalDefinedExpr = class(TSpecialUnaryBoolExpr)
@@ -2767,9 +2770,9 @@ begin
    FCount:=arraySymbol.HighBound-arraySymbol.LowBound+1;
 end;
 
-// IsConstant
+// GetIsConstant
 //
-function TStaticArrayExpr.IsConstant : Boolean;
+function TStaticArrayExpr.GetIsConstant : Boolean;
 begin
    Result:=BaseExpr.IsConstant and IndexExpr.IsConstant;
 end;
@@ -3170,9 +3173,9 @@ begin
    inherited;
 end;
 
-// IsConstant
+// GetIsConstant
 //
-function TRecordExpr.IsConstant : Boolean;
+function TRecordExpr.GetIsConstant : Boolean;
 begin
    Result:=BaseExpr.IsConstant;
 end;
@@ -3906,9 +3909,9 @@ begin
    Result:=True;
 end;
 
-// IsConstant
+// GetIsConstant
 //
-function TInOpExpr.IsConstant : Boolean;
+function TInOpExpr.GetIsConstant : Boolean;
 begin
    Result:=FLeft.IsConstant and ConstantConditions;
 end;
@@ -7072,9 +7075,9 @@ end;
 // ------------------ TSpecialUnaryBoolExpr ------------------
 // ------------------
 
-// IsConstant
+// GetIsConstant
 //
-function TSpecialUnaryBoolExpr.IsConstant : Boolean;
+function TSpecialUnaryBoolExpr.GetIsConstant : Boolean;
 begin
    Result:=False;
 end;
@@ -8495,9 +8498,9 @@ begin
    else Result:=FFalseExpr.Eval(exec);
 end;
 
-// IsConstant
+// GetIsConstant
 //
-function TIfThenElseValueExpr.IsConstant : Boolean;
+function TIfThenElseValueExpr.GetIsConstant : Boolean;
 begin
    Result:=FCondExpr.IsConstant and FTrueExpr.IsConstant and FFalseExpr.IsConstant;
 end;

@@ -42,9 +42,11 @@ type
    // Just wraps with a typ for an invalid conversion expr
    // this is used only to keep compiling, the resulting program is not executable
    TConvInvalidExpr = class sealed (TConvExpr)
+      protected
+         function GetIsConstant : Boolean; override;
+
       public
          constructor Create(prog : TdwsProgram; expr : TTypedExpr; toTyp : TTypeSymbol); reintroduce;
-         function IsConstant : Boolean; override;
    end;
 
    // Float(x)
@@ -269,9 +271,9 @@ begin
    Typ:=toTyp;
 end;
 
-// IsConstant
+// GetIsConstant
 //
-function TConvInvalidExpr.IsConstant : Boolean;
+function TConvInvalidExpr.GetIsConstant : Boolean;
 begin
    Result:=False;
 end;

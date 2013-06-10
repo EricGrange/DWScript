@@ -149,8 +149,10 @@ type
          function GetSubExpr(i : Integer) : TExprBase; virtual;
          function GetSubExprCount : Integer; virtual;
 
+         function  GetIsConstant : Boolean; virtual;
+
       public
-         function  IsConstant : Boolean; virtual;
+         function  IsConstant : Boolean; inline;
 
          function  Eval(exec : TdwsExecution) : Variant; virtual; abstract;
          function  EvalAsInteger(exec : TdwsExecution) : Int64; virtual; abstract;
@@ -1932,11 +1934,18 @@ begin
    Eval(exec);
 end;
 
+// GetIsConstant
+//
+function TExprBase.GetIsConstant : Boolean;
+begin
+   Result:=False;
+end;
+
 // IsConstant
 //
 function TExprBase.IsConstant : Boolean;
 begin
-   Result:=False;
+   Result:=(Self<>nil) and GetIsConstant;
 end;
 
 // RaiseScriptError

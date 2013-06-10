@@ -1034,6 +1034,8 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
+         function GetIsConstant : Boolean; override;
+
       public
          constructor Create(prog : TdwsProgram; const aScriptPos : TScriptPos; aFunc : TFuncSymbol);
          destructor Destroy; override;
@@ -1043,7 +1045,6 @@ type
          function ExpectedArg : TParamSymbol; virtual; abstract;
          function GetArgType(idx : Integer) : TTypeSymbol;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
-         function IsConstant : Boolean; override;
 
          procedure Initialize(prog : TdwsProgram); virtual;
 
@@ -1211,6 +1212,8 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
+         function GetIsConstant : Boolean; override;
+
       public
          constructor Create(prog : TdwsProgram; const aScriptPos : TScriptPos; codeExpr : TTypedExpr);
          destructor Destroy; override;
@@ -1218,7 +1221,6 @@ type
          procedure EvalAsFuncPointer(exec : TdwsExecution; var result : IFuncPointer); inline;
 
          function Eval(exec : TdwsExecution) : Variant; override;
-         function IsConstant : Boolean; override;
 
          function Extract : TTypedExpr; // also a destructor
 
@@ -1313,11 +1315,12 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
+         function GetIsConstant : Boolean; override;
+
       public
          constructor Create(prog : TdwsProgram; expr : TTypedExpr); virtual;
          destructor Destroy; override;
 
-         function IsConstant : Boolean; override;
          property Expr : TTypedExpr read FExpr write FExpr;
    end;
    TUnaryOpExprClass = class of TUnaryOpExpr;
@@ -1367,12 +1370,13 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
+         function GetIsConstant : Boolean; override;
+
       public
          constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; Expr: TTypedExpr);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
-         function  IsConstant : Boolean; override;
 
          function ScriptPos : TScriptPos; override;
 
@@ -1388,13 +1392,14 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
+         function GetIsConstant : Boolean; override;
+
       public
          constructor Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); virtual;
          destructor Destroy; override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
-         function IsConstant : Boolean; override;
 
          procedure OptimizeConstantOperandsToFloats(prog : TdwsProgram; exec : TdwsExecution);
 
@@ -4160,9 +4165,9 @@ begin
    end;
 end;
 
-// IsConstant
+// GetIsConstant
 //
-function TFuncExprBase.IsConstant : Boolean;
+function TFuncExprBase.GetIsConstant : Boolean;
 var
    i : Integer;
 begin
@@ -5007,9 +5012,9 @@ begin
    funcPointer.EvalAsVariant(exec, Self, Result);
 end;
 
-// IsConstant
+// GetIsConstant
 //
-function TFuncPtrExpr.IsConstant : Boolean;
+function TFuncPtrExpr.GetIsConstant : Boolean;
 begin
    Result:=False;
 end;
@@ -5124,9 +5129,9 @@ begin
    Assert(False);
 end;
 
-// IsConstant
+// GetIsConstant
 //
-function TBinaryOpExpr.IsConstant : Boolean;
+function TBinaryOpExpr.GetIsConstant : Boolean;
 begin
    Result:=FLeft.IsConstant and FRight.IsConstant;
 end;
@@ -5328,9 +5333,9 @@ begin
    inherited;
 end;
 
-// IsConstant
+// GetIsConstant
 //
-function TUnaryOpExpr.IsConstant : Boolean;
+function TUnaryOpExpr.GetIsConstant : Boolean;
 begin
    Result:=FExpr.IsConstant;
 end;
@@ -7552,9 +7557,9 @@ begin
    Expr.EvalNoResult(exec);
 end;
 
-// IsConstant
+// GetIsConstant
 //
-function TNoResultWrapperExpr.IsConstant : Boolean;
+function TNoResultWrapperExpr.GetIsConstant : Boolean;
 begin
    Result:=FExpr.IsConstant;
 end;

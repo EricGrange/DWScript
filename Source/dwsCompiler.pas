@@ -2347,7 +2347,7 @@ begin
 
    expr:=ReadExpr;
    try
-      if (expr=nil) or (not expr.IsConstant) then begin
+      if not expr.IsConstant then begin
          FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
          expr.Free;
          expr:=nil;
@@ -2564,7 +2564,9 @@ begin
          if names.Count<>1 then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
          initExpr:=dataSymbolFactory.ReadExpr(nil);
-         typ:=initExpr.Typ;
+         if initExpr<>nil then
+            typ:=initExpr.Typ
+         else typ:=nil;
 
          if typ=nil then begin
             FMsgs.AddCompilerError(hotPos, CPE_RightSideNeedsReturnType);
@@ -2726,16 +2728,18 @@ begin
             if Assigned(typ) then begin
                if not typ.IsCompatible(expr.typ) then
                   expr:=WrapWithImplicitConversion(expr, typ, FTok.HotPos);
-            end else begin
+            end else if expr<>nil then begin
                typ:=expr.typ;
                detachTyp:=(typ.Name='');
             end;
 
-            if (expr=nil) or (not expr.IsConstant) then begin
+            if not expr.IsConstant then begin
 
-               if expr.ClassType<>TConvInvalidExpr then
+               if not (expr is TConvInvalidExpr) then
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
                // keep compiling
+               if typ=nil then
+                  typ:=FProg.TypVariant;
                constSym:=factory.CreateConstSymbol(name, constPos, typ, nil);
                detachTyp:=False;
 
@@ -9472,15 +9476,19 @@ begin
                      if rightTyp is TInterfaceSymbol then
                         Result:=TObjAsIntfExpr.Create(FProg, hotPos, Result, TInterfaceSymbol(rightTyp))
                      else begin
-                        if not (rightTyp is TClassOfSymbol) then
+                        if not (rightTyp is TClassOfSymbol) then begin
                            FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
+                           rightTyp:=FProg.TypTObject.MetaSymbol;
+                        end;
                         Result:=TObjAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(rightTyp).Typ);
                      end;
                   end else begin
                      if not (Result.Typ is TClassOfSymbol) then
                         FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
-                     else if not (rightTyp is TClassOfSymbol) then
+                     else if not (rightTyp is TClassOfSymbol) then begin
                         FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
+                        rightTyp:=FProg.TypTObject.MetaSymbol;
+                     end;
                      Result:=TClassAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(rightTyp));
                   end;
                   right.Free;
@@ -9683,6 +9691,13 @@ begin
 
       setExpr:=ReadExpr;
       try
+
+         if setExpr=nil then begin
+            // keep compiling
+            Result:=TConvBoolExpr.Create(FProg, left);
+            left:=nil;
+            Exit;
+         end;
 
          if setExpr.Typ is TDynamicArraySymbol then begin
 
@@ -11558,14 +11573,16 @@ begin
                FMsgs.AddCompilerError(FTok.HotPos, CPE_FlagEnumerationCantHaveUserValues);
             constExpr:=ReadExpr;
 
-            if not constExpr.IsConstant then begin
-               constExpr.Free;
-               constExpr:=nil;
-               FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
-            end else if not FProg.TypInteger.IsCompatible(constExpr.Typ) then begin
-               constExpr.Free;
-               constExpr:=nil;
-               FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpressionExpected);
+            if constExpr<>nil then begin
+               if not constExpr.IsConstant then begin
+                  constExpr.Free;
+                  constExpr:=nil;
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
+               end else if not FProg.TypInteger.IsCompatible(constExpr.Typ) then begin
+                  constExpr.Free;
+                  constExpr:=nil;
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpressionExpected);
+               end;
             end;
 
             if Assigned(constExpr) then begin

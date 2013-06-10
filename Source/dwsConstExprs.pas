@@ -37,6 +37,8 @@ type
       protected
          FData : TData;
 
+         function GetIsConstant : Boolean; override;
+
       public
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); overload; virtual;
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData; addr : Integer); overload;
@@ -45,7 +47,6 @@ type
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
 
-         function IsConstant : Boolean; override;
          function IsWritable : Boolean; override;
          function SameValueAs(otherConst : TConstExpr) : Boolean;
          function SameDataExpr(expr : TTypedExpr) : Boolean; override;
@@ -170,6 +171,8 @@ type
          function GetElement(idx : Integer) : TTypedExpr; inline;
          function GetElementCount : Integer; inline;
 
+         function GetIsConstant : Boolean; override;
+
       public
          constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos);
          destructor Destroy; override;
@@ -192,7 +195,6 @@ type
          function EvalAsVarRecArray(exec : TdwsExecution) : TVarRecArrayContainer;
 
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
-         function IsConstant : Boolean; override;
          function IsWritable : Boolean; override;
    end;
 
@@ -254,9 +256,9 @@ begin
    Result := FData[0];
 end;
 
-// IsConstant
+// GetIsConstant
 //
-function TConstExpr.IsConstant : Boolean;
+function TConstExpr.GetIsConstant : Boolean;
 begin
    Result:=True;
 end;
@@ -833,9 +835,9 @@ begin
    end;
 end;
 
-// IsConstant
+// GetIsConstant
 //
-function TArrayConstantExpr.IsConstant : Boolean;
+function TArrayConstantExpr.GetIsConstant : Boolean;
 var
    i : Integer;
 begin
