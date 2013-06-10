@@ -4032,7 +4032,7 @@ begin
    enumeration:=TEnumerationSymbol(Expr.Typ);
    element:=enumeration.ElementByValue(Expr.EvalAsInteger(exec));
    if element<>nil then
-      Result:=element.StandardName
+      Result:=element.Name
    else Result:='';
 end;
 
