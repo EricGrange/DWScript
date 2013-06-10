@@ -17,3 +17,8 @@ PrintLn(IntToStr(eThree));
 PrintLn(Chr(Ord(eAlpha)));
 PrintLn(Chr(eBeta));
 PrintLn(TConvert.Prop[eGamma]);
+
+PrintLn(eOne.Value);
+PrintLn(TEnumOne.eTwo.Value.ToString);
+var three : TEnumOne := eThree;
+PrintLn(three.Value);

@@ -56,7 +56,7 @@ const
    cDefaultStackChunkSize = 4096;  // 64 kB in 32bit Delphi, each stack entry is a Variant
 
    // compiler version is date in YYYYMMDD format, dot subversion number
-   cCompilerVersion = 20130524.0;
+   cCompilerVersion = 20130610.0;
 
 type
    TdwsCompiler = class;
@@ -7552,6 +7552,19 @@ begin
       end else begin
 
          Result:=TEnumerationElementNameExpr.Create(FProg, baseExpr);
+
+      end;
+
+   end else if SameText(name, 'value') then begin
+
+      if baseExpr.ClassType=TConstIntExpr then begin
+
+         Result:=TConstExpr.CreateIntegerValue(FProg, TConstIntExpr(baseExpr).Value);
+         baseExpr.Free;
+
+      end else begin
+
+         Result:=TOrdIntExpr.Create(FProg, baseExpr);
 
       end;
 
