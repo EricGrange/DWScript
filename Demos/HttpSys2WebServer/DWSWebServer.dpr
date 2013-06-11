@@ -2,8 +2,10 @@
     Will serve static content and DWS dynamic content via http.sys
     kernel mode high-performance HTTP server (available since XP SP2).
     See http://blog.synopse.info/post/2011/03/11/HTTP-server-using-fast-http.sys-kernel-mode-server
-    WARNING: you need to first register the server URI and port to the http.sys stack.
-    That is, run the application at least once as administrator.
+
+    WARNING:
+    * you need to first register the server URI and port to the http.sys stack.
+    * or you need to run it as administrator
 
     The executable can be run either as an application or as service.
 
