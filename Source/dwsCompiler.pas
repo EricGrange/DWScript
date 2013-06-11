@@ -2564,9 +2564,10 @@ begin
          if names.Count<>1 then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
          initExpr:=dataSymbolFactory.ReadExpr(nil);
-         if initExpr<>nil then
-            typ:=initExpr.Typ
-         else typ:=nil;
+         if initExpr<>nil then begin
+            typ:=initExpr.Typ;
+            RecordSymbolUseImplicitReference(typ, hotPos, False);
+         end else typ:=nil;
 
          if typ=nil then begin
             FMsgs.AddCompilerError(hotPos, CPE_RightSideNeedsReturnType);
@@ -5004,21 +5005,21 @@ function TdwsCompiler.ReadPropertyArrayAccessor(var expr : TTypedExpr; propertyS
       typedExprList : TTypedExprList; const scriptPos : TScriptPos; isWrite : Boolean) : TFuncExprBase;
 var
    i : Integer;
-   sym : TSymbol;
+   sym : TMethodSymbol;
 begin
    if isWrite then
-      sym:=propertySym.WriteSym
-   else sym:=propertySym.ReadSym;
+      sym:=propertySym.WriteSym as TMethodSymbol
+   else sym:=propertySym.ReadSym as TMethodSymbol;
 
    if expr.Typ is TStructuredTypeMetaSymbol then begin
       // Class properties
-      if not TMethodSymbol(sym).IsClassMethod then begin
+      if not sym.IsClassMethod then begin
          if isWrite then
             FMsgs.AddCompilerError(scriptPos, CPE_StaticPropertyWriteExpected)
          else FMsgs.AddCompilerError(scriptPos, CPE_StaticPropertyReadExpected);
       end;
-      Result:=GetMethodExpr(TMethodSymbol(sym), expr, rkClassOfRef, scriptPos, False);
-   end else Result:=GetMethodExpr(TMethodSymbol(sym), expr, rkObjRef, scriptPos, False);
+      Result:=GetMethodExpr(sym, expr, rkClassOfRef, scriptPos, False);
+   end else Result:=GetMethodExpr(sym, expr, rkObjRef, scriptPos, False);
 
    expr:=nil;
    try
@@ -7553,6 +7554,7 @@ begin
       end else begin
 
          Result:=TEnumerationElementNameExpr.Create(FProg, baseExpr);
+         RecordSymbolUse(baseExpr.Typ, namePos, [suRTTI, suImplicit]);
 
       end;
 

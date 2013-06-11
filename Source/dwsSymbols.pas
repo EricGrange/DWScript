@@ -2957,8 +2957,8 @@ end;
 
 // GenerateParams
 //
-procedure GenerateParams(const name : UnicodeString; table : TSymbolTable;
-                         const funcParams : TParamArray; const addProc : TAddParamSymbolMethod);
+procedure GenerateParams(table : TSymbolTable; const funcParams : TParamArray;
+                         const addProc : TAddParamSymbolMethod);
 var
    i : Integer;
    typSym : TTypeSymbol;
@@ -2975,7 +2975,7 @@ begin
          typSym:=Table.FindTypeSymbol(paramRec.ParamType, cvMagic);
       if not Assigned(typSym) then
          raise Exception.CreateFmt(CPE_TypeForParamNotFound,
-                                   [paramRec.ParamType, paramRec.ParamName, Name]);
+                                   [paramRec.ParamType, paramRec.ParamName]);
 
       if paramRec.HasDefaultValue then begin
 
@@ -3007,7 +3007,7 @@ end;
 //
 procedure TFuncSymbol.GenerateParams(table : TSymbolTable; const funcParams : TParamArray);
 begin
-   dwsSymbols.GenerateParams(name, table, funcParams, addParam);
+   dwsSymbols.GenerateParams(table, funcParams, addParam);
 end;
 
 // GetParamType
@@ -3842,7 +3842,7 @@ end;
 
 procedure TPropertySymbol.GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
 begin
-   dwsSymbols.GenerateParams(Name, Table, FuncParams, AddParam);
+   dwsSymbols.GenerateParams(Table, FuncParams, AddParam);
 end;
 
 function TPropertySymbol.GetCaption: UnicodeString;

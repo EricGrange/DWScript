@@ -1437,7 +1437,7 @@ function TdwsCodeGen.SmartLink(symbol : TSymbol): Boolean;
       list : TSymbolPositionList;
    begin
       list:=FSymbolDictionary.FindSymbolPosList(symbol);
-      Result:=(list<>nil) and (list.FindUsage(suReference)<>nil);
+      Result:=(list<>nil) and (list.FindAnyUsage([suReference, suRTTI])<>nil);
    end;
 
 begin

@@ -4033,7 +4033,7 @@ begin
    element:=enumeration.ElementByValue(Expr.EvalAsInteger(exec));
    if element<>nil then
       Result:=element.Name
-   else Result:='';
+   else Result:='?';
 end;
 
 // ------------------

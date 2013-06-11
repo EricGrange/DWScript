@@ -109,9 +109,10 @@ type
 
    { Describe how the symbol at the position is being used. suReference would be
      a typical usage of the symbol.
-     suImplicit indicates that the symbol was only implicitly present }
+     suImplicit indicates that the symbol was only implicitly present
+     suRTTI indicates explicit RTTI access of the symbol }
    TSymbolUsage = (suForward, suDeclaration, suImplementation, suReference,
-                   suRead, suWrite, suImplicit);
+                   suRead, suWrite, suImplicit, suRTTI );
    TSymbolUsages = set of TSymbolUsage;
 
    // Records a symbol's position in source and usage at that position
@@ -149,6 +150,7 @@ type
          procedure Clear;
 
          function FindUsage(const symbolUse : TSymbolUsage) : TSymbolPosition;
+         function FindAnyUsage(const symbolUses : TSymbolUsages) : TSymbolPosition;
          function IndexOfPosition(const scriptPos : TScriptPos) : Integer;
          procedure RemoveInRange(const startPos, endPos : TScriptPos);
 
@@ -7021,7 +7023,22 @@ begin
    if Self<>nil then begin
       for i:=0 to Count-1 do begin
          Result:=FPosList[i];
-         if SymbolUse in Result.SymbolUsages then Exit;
+         if symbolUse in Result.SymbolUsages then Exit;
+      end;
+   end;
+   Result:=nil;
+end;
+
+// FindAnyUsage
+//
+function TSymbolPositionList.FindAnyUsage(const symbolUses : TSymbolUsages) : TSymbolPosition;
+var
+   i : Integer;
+begin
+   if Self<>nil then begin
+      for i:=0 to Count-1 do begin
+         Result:=FPosList[i];
+         if (symbolUses*Result.SymbolUsages)<>[] then Exit;
       end;
    end;
    Result:=nil;
