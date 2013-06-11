@@ -2045,7 +2045,7 @@ procedure TDwsIdeForm.FormShow(Sender: TObject);
       // Compute the intersection between screen and form
       Windows.IntersectRect(Ri, BoundsRect, Screen.Monitors[I].BoundsRect);
       // Check the intersection is large enough
-      if (Ri.Width > Margin) and (Ri.Height > Margin) then
+      if (Ri.Right-Ri.Left > Margin) and (Ri.Bottom-Ri.Top > Margin) then
         break;
       Inc(I);
       end;
