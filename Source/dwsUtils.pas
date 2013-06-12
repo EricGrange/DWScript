@@ -456,7 +456,7 @@ type
          destructor Destroy; override;
 
          // aString must NOT be empty
-         procedure UnifyAssign(const aString : UnicodeString; var unifiedString : UnicodeString);
+         procedure UnifyAssign(const aString : UnicodeString; h : Cardinal; var unifiedString : UnicodeString);
 
          procedure Lock; inline;
          procedure UnLock; inline;
@@ -611,7 +611,7 @@ function Min(a, b : Integer) : Integer; inline;
 
 function WhichPowerOfTwo(const v : Int64) : Integer;
 
-function SimpleStringHash(const s : UnicodeString) : Cardinal;
+function SimpleStringHash(const s : UnicodeString) : Cardinal; inline;
 
 function RawByteStringToScriptString(const s : RawByteString) : UnicodeString;
 function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString;
@@ -641,7 +641,8 @@ end;
 function SimpleStringHash(const s : UnicodeString) : Cardinal; inline;
 var
    i : Integer;
-begin  // modified FNV-1a using length as seed
+begin
+   // modified FNV-1a using length as seed
    Result:=Length(s);
    for i:=1 to Result do
       Result:=(Result xor Ord(s[i]))*16777619;
@@ -899,15 +900,13 @@ end;
 
 // UnifyAssign
 //
-procedure TStringUnifier.UnifyAssign(const aString : UnicodeString; var unifiedString : UnicodeString);
+procedure TStringUnifier.UnifyAssign(const aString : UnicodeString; h : Cardinal; var unifiedString : UnicodeString);
 var
    i : Integer;
-   h : Cardinal;
    bucket : PStringUnifierBucket;
 begin
    if FGrowth=0 then Grow;
 
-   h:=SimpleStringHash(aString);
    i:=(h and (FCapacity-1));
 
    repeat
@@ -1001,7 +1000,7 @@ type
    {$endif}
 
 var
-   vCharStrings : array [0..127] of TStringUnifier;
+   vUnifiedStrings : array [0..63] of TStringUnifier;
 
 // CompareStrings
 //
@@ -1043,8 +1042,8 @@ procedure InitializeStringsUnifier;
 var
    i : Integer;
 begin
-   for i:=Low(vCharStrings) to High(vCharStrings) do
-      vCharStrings[i]:=TStringUnifier.Create;
+   for i:=Low(vUnifiedStrings) to High(vUnifiedStrings) do
+      vUnifiedStrings[i]:=TStringUnifier.Create;
 end;
 
 // FinalizeStringsUnifier
@@ -1053,9 +1052,9 @@ procedure FinalizeStringsUnifier;
 var
    i : Integer;
 begin
-   for i:=Low(vCharStrings) to High(vCharStrings) do begin
-      vCharStrings[i].Free;
-      vCharStrings[i]:=nil;
+   for i:=Low(vUnifiedStrings) to High(vUnifiedStrings) do begin
+      vUnifiedStrings[i].Free;
+      vUnifiedStrings[i]:=nil;
    end;
 end;
 
@@ -1065,14 +1064,16 @@ procedure UnifyAssignString(const fromStr : UnicodeString; var toStr : UnicodeSt
 var
    i : Integer;
    su : TStringUnifier;
+   h : Cardinal;
 begin
    if fromStr='' then
       toStr:=''
    else begin
-      i:=Ord(fromStr[1]) and High(vCharStrings);
-      su:=vCharStrings[i];
+      h:=SimpleStringHash(fromStr);
+      i:=h and High(vUnifiedStrings);
+      su:=vUnifiedStrings[i];
       su.Lock;
-      su.UnifyAssign(fromStr, toStr);
+      su.UnifyAssign(fromStr, h shr 6, toStr);
       su.UnLock;
    end;
 end;
@@ -1091,8 +1092,8 @@ var
    i : Integer;
    su : TStringUnifier;
 begin
-   for i:=Low(vCharStrings) to High(vCharStrings) do begin
-      su:=vCharStrings[i];
+   for i:=Low(vUnifiedStrings) to High(vUnifiedStrings) do begin
+      su:=vUnifiedStrings[i];
       su.Lock;
       su.Clear;
       su.UnLock;
