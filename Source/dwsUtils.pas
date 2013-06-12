@@ -585,6 +585,7 @@ const
 procedure UnifyAssignString(const fromStr : UnicodeString; var toStr : UnicodeString);
 function  UnifiedString(const fromStr : UnicodeString) : UnicodeString; inline;
 procedure TidyStringsUnifier;
+function  StringUnifierHistogram : TIntegerDynArray;
 
 function UnicodeCompareLen(p1, p2 : PWideChar; n : Integer) : Integer;
 function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
@@ -1098,6 +1099,17 @@ begin
       su.Clear;
       su.UnLock;
    end;
+end;
+
+// StringUnifierHistogram
+//
+function StringUnifierHistogram : TIntegerDynArray;
+var
+   i : Integer;
+begin
+   SetLength(Result, Length(vUnifiedStrings));
+   for i:=Low(vUnifiedStrings) to High(vUnifiedStrings) do
+      Result[i-Low(vUnifiedStrings)]:=vUnifiedStrings[i].Count;
 end;
 
 // UnicodeCompareLen

@@ -22,7 +22,7 @@ interface
 
 uses
    Windows, Forms, Variants, Classes, SysUtils, SysConst, TypInfo, RTTI,
-   dwsComp, dwsSymbols, dwsDataContext,
+   dwsComp, dwsSymbols, dwsDataContext, dwsErrors,
    dwsExprs, dwsStrings, dwsFunctions, dwsStack, dwsOperators,
    dwsUtils, dwsLanguageExtension, dwsCompiler;
 
@@ -116,7 +116,7 @@ type
          constructor Create(environment : TRTTIEnvironment);
 
          procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); virtual; abstract;
-         procedure InitSymbol(symbol : TSymbol);
+         procedure InitSymbol(symbol : TSymbol; const msgs : TdwsCompileMessageList);
          procedure InitExpression(expr : TExprBase);
          function SubExpr(i : Integer) : TExprBase;
          function SubExprCount : Integer;
@@ -926,7 +926,7 @@ end;
 
 // InitSymbol
 //
-procedure TRTTIEnvironmentCallable.InitSymbol(symbol : TSymbol);
+procedure TRTTIEnvironmentCallable.InitSymbol(symbol : TSymbol; const msgs : TdwsCompileMessageList);
 begin
    // nothing
 end;

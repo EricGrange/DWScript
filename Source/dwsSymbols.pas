@@ -201,7 +201,7 @@ type
    // All functions callable from the script implement this interface
    IExecutable = interface (IGetSelf)
       ['{8D534D18-4C6B-11D5-8DCB-0000216D9E86}']
-      procedure InitSymbol(symbol : TSymbol);
+      procedure InitSymbol(symbol : TSymbol; const msgs : TdwsCompileMessageList);
       procedure InitExpression(expr : TExprBase);
       function SubExpr(i : Integer) : TExprBase;
       function SubExprCount : Integer;
@@ -2296,7 +2296,7 @@ begin
          if methSym.ClassType=TAliasMethodSymbol then continue;
          if not methSym.IsAbstract then begin
             if Assigned(methSym.FExecutable) then
-               methSym.FExecutable.InitSymbol(FMembers[i])
+               methSym.FExecutable.InitSymbol(FMembers[i], msgs)
             else if not methSym.IsExternal then begin
                msg:=msgs.AddCompilerErrorFmt((methSym as TSourceMethodSymbol).DeclarationPos, CPE_MethodNotImplemented,
                                              [methSym.Name, methSym.StructSymbol.Caption]);
@@ -3069,11 +3069,10 @@ begin
    if IsExternal then Exit;
    FInternalParams.Initialize(msgs);
    if Assigned(FExecutable) then
-      FExecutable.InitSymbol(Self)
+      FExecutable.InitSymbol(Self, msgs)
    else if Level>=0 then begin
       msg:=msgs.AddCompilerErrorFmt(FForwardPosition^, CPE_ForwardNotImplemented, [Name]);
       afa:=TdwsAFAAddImplementation.Create(msg, AFA_AddImplementation);
-
       afa.Text:= #13#10
                 +TrimRight(StringReplace(GetDescription, '()', ' ', [rfIgnoreCase]))
                 +';'#13#10'begin'#13#10#9'|'#13#10'end;'#13#10;

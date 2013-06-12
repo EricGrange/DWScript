@@ -373,7 +373,7 @@ type
 
       protected
          procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); virtual; abstract;
-         procedure InitSymbol(symbol : TSymbol);
+         procedure InitSymbol(symbol : TSymbol; const msgs : TdwsCompileMessageList);
          procedure InitExpression(expr : TExprBase);
          function SubExpr(i : Integer) : TExprBase;
          function SubExprCount : Integer;
@@ -1189,7 +1189,7 @@ type
     FOnInitExpr: TInitExprEvent;
   public
     procedure Execute(info : TProgramInfo); override;
-    procedure InitSymbol(Symbol: TSymbol); override;
+    procedure InitSymbol(Symbol: TSymbol; const msgs : TdwsCompileMessageList); override;
     procedure InitExpression(Expr: TExprBase); override;
     property OnInstantiate: TInstantiateEvent read FOnInstantiate write FOnInstantiate;
     property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
@@ -2471,11 +2471,11 @@ begin
   end;
 end;
 
-procedure TInstantiateFunc.InitSymbol(Symbol: TSymbol);
+procedure TInstantiateFunc.InitSymbol(Symbol: TSymbol; const msgs : TdwsCompileMessageList);
 begin
-  inherited;
-  if Assigned(FOnInitSymbol) then
-    FOnInitSymbol(Self,Symbol);
+   inherited;
+   if Assigned(FOnInitSymbol) then
+      FOnInitSymbol(Self,Symbol);
 end;
 
 procedure TInstantiateFunc.InitExpression(Expr: TExprBase);
@@ -2605,7 +2605,7 @@ end;
 
 // InitSymbol
 //
-procedure TdwsCallable.InitSymbol(symbol : TSymbol);
+procedure TdwsCallable.InitSymbol(symbol : TSymbol; const msgs : TdwsCompileMessageList);
 begin
    if Assigned(FOnInitSymbol) then
       FOnInitSymbol(FOwner, symbol);

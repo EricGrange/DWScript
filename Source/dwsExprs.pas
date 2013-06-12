@@ -824,7 +824,7 @@ type
 
          procedure AssignTo(sym: TFuncSymbol);
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol);
-         procedure InitSymbol(Symbol: TSymbol);
+         procedure InitSymbol(Symbol: TSymbol; const msgs : TdwsCompileMessageList);
          procedure InitExpression(Expr: TExprBase);
 
          procedure OptimizeConstAssignments(blockExpr : TBlockExprBase);
@@ -1014,7 +1014,7 @@ type
    //
    TExternalFuncHandler = class(TInterfacedSelfObject, IUnknown, ICallable, IExecutable)
       public
-         procedure InitSymbol(symbol: TSymbol);
+         procedure InitSymbol(symbol: TSymbol; const msgs : TdwsCompileMessageList);
          procedure InitExpression(Expr: TExprBase);
          procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol);
          function SubExpr(i : Integer) : TExprBase;
@@ -1248,7 +1248,7 @@ type
          constructor Create(const aScriptPos: TScriptPos; aTest, aMsg : TTypedExpr);
          destructor Destroy; override;
 
-         procedure InitSymbol(symbol: TSymbol);
+         procedure InitSymbol(symbol: TSymbol; const msgs : TdwsCompileMessageList);
          procedure InitExpression(Expr: TExprBase);
          function SubExpr(i : Integer) : TExprBase;
          function SubExprCount : Integer;
@@ -3132,8 +3132,9 @@ begin
    end;
 end;
 
-procedure TdwsProcedure.InitSymbol(Symbol: TSymbol);
+procedure TdwsProcedure.InitSymbol(Symbol: TSymbol; const msgs : TdwsCompileMessageList);
 begin
+   FTable.Initialize(msgs);
 end;
 
 procedure TdwsProcedure.InitExpression(Expr: TExprBase);
@@ -7627,9 +7628,8 @@ end;
 
 // InitSymbol
 //
-procedure TSourceCondition.InitSymbol(symbol: TSymbol);
+procedure TSourceCondition.InitSymbol(symbol: TSymbol; const msgs : TdwsCompileMessageList);
 begin
-
 end;
 
 // InitExpression
@@ -7846,7 +7846,7 @@ end;
 
 // InitSymbol
 //
-procedure TExternalFuncHandler.InitSymbol(symbol: TSymbol);
+procedure TExternalFuncHandler.InitSymbol(symbol: TSymbol; const msgs : TdwsCompileMessageList);
 begin
    // nothing
 end;

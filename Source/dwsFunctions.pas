@@ -25,7 +25,7 @@ interface
 
 uses
   Classes, SysUtils,
-  dwsXPlatform, dwsUtils,
+  dwsXPlatform, dwsUtils, dwsErrors,
   dwsExprs, dwsSymbols, dwsStrings, dwsTokenizer,
   dwsOperators, dwsUnitSymbols;
 
@@ -56,7 +56,7 @@ type
    TEmptyFunc = class sealed (TInterfacedSelfObject, ICallable)
       public
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol);
-         procedure InitSymbol(Symbol: TSymbol);
+         procedure InitSymbol(Symbol: TSymbol; const msgs : TdwsCompileMessageList);
          procedure InitExpression(Expr: TExprBase);
          function SubExpr(i : Integer) : TExprBase;
          function SubExprCount : Integer;
@@ -66,7 +66,7 @@ type
       private
          FFuncSymbol : TFuncSymbol;
       public
-         procedure InitSymbol(Symbol: TSymbol); virtual;
+         procedure InitSymbol(Symbol: TSymbol; const msgs : TdwsCompileMessageList); virtual;
          procedure InitExpression(Expr: TExprBase); virtual;
          function SubExpr(i : Integer) : TExprBase;
          function SubExprCount : Integer;
@@ -367,7 +367,7 @@ procedure TEmptyFunc.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
 begin
 end;
 
-procedure TEmptyFunc.InitSymbol(Symbol: TSymbol);
+procedure TEmptyFunc.InitSymbol(Symbol: TSymbol; const msgs : TdwsCompileMessageList);
 begin
 end;
 
@@ -391,7 +391,7 @@ end;
 
 { TFunctionPrototype }
 
-procedure TFunctionPrototype.InitSymbol(Symbol: TSymbol);
+procedure TFunctionPrototype.InitSymbol(Symbol: TSymbol; const msgs : TdwsCompileMessageList);
 begin
 end;
 
