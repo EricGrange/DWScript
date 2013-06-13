@@ -4893,7 +4893,9 @@ end;
 function TDataSymbol.GetDescription: UnicodeString;
 begin
    if Assigned(Typ) then
-      Result:=Name+': '+Typ.Name
+      if Typ.Name<>'' then
+         Result:=Name+': '+Typ.Name
+      else Result:=Name+': '+Typ.Description
   else Result:=Name+': ???';
 end;
 

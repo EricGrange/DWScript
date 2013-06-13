@@ -610,7 +610,8 @@ begin
             AddTypeHelpers(FPreviousSymbol as TTypeSymbol, True, list);
          end else if (FPreviousSymbol.Typ<>nil) and FPreviousSymbol.Typ.IsType then begin
             AddTypeHelpers(FPreviousSymbol.Typ, False, list);
-         end;
+         end else if FPreviousSymbol is TTypeSymbol then
+            AddTypeHelpers(TTypeSymbol(FPreviousSymbol), False, list);
 
          if FPreviousSymbol is TStructuredTypeMetaSymbol then begin
 
