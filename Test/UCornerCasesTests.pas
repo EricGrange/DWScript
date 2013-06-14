@@ -204,7 +204,7 @@ begin
    prog:=FCompiler.Compile('while true do;');
 
    for i:=1 to 3 do
-      threads[i]:=TScriptThread.Create(prog, i*80);
+      threads[i]:=TScriptThread.Create(prog, i*30);
    for i:=1 to 3 do
       threads[i].Start;
    while (threads[1].FTimeStamp=0) or (threads[2].FTimeStamp=0) or (threads[3].FTimeStamp=0) do
@@ -219,7 +219,7 @@ begin
    end;
 
    for i:=1 to 3 do
-      threads[i]:=TScriptThread.Create(prog, 250-i*80);
+      threads[i]:=TScriptThread.Create(prog, 100-i*30);
    for i:=1 to 3 do
       threads[i].Start;
    while (threads[1].FTimeStamp=0) or (threads[2].FTimeStamp=0) or (threads[3].FTimeStamp=0) do

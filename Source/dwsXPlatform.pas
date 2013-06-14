@@ -174,7 +174,7 @@ var
    fileTime : TFileTime;
 begin
    GetSystemTimeAsFileTime(fileTime);
-   Result:=PInt64(@fileTime)^;
+   Result:=Round(PInt64(@fileTime)^*1e-4); // 181
 end;
 
 // UTCDateTime
