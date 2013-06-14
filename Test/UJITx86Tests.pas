@@ -53,7 +53,9 @@ type
          procedure cmp_reg_int32;
          procedure test_reg_reg;
          procedure test_dword_ptr_reg_int32;
+         procedure test_dword_ptr_reg_byte;
          procedure test_dword_ptr_reg_reg;
+         procedure and_or_byte;
          procedure boolflags;
          procedure movsd_indexed;
          procedure mov_indexed;
@@ -962,15 +964,37 @@ var
    expect : String;
 begin
    for reg:=gprEAX to gprEDI do begin
-      FStream._test_dword_ptr_reg_imm(reg, 0, 0);
-      FStream._test_dword_ptr_reg_imm(reg, $40, 1);
-      FStream._test_dword_ptr_reg_imm(reg, $80, 2);
+      FStream._test_dword_ptr_reg_dword(reg, 0, $101);
+      FStream._test_dword_ptr_reg_dword(reg, $40, $102);
+      FStream._test_dword_ptr_reg_dword(reg, $80, $103);
       if reg=gprEBP then
-         expect:='test dword ptr ['+cgpRegisterName[reg]+'+00h], 00000000h'#13#10
-      else expect:='test dword ptr ['+cgpRegisterName[reg]+'], 00000000h'#13#10;
+         expect:='test dword ptr ['+cgpRegisterName[reg]+'+00h], 00000101h'#13#10
+      else expect:='test dword ptr ['+cgpRegisterName[reg]+'], 00000101h'#13#10;
       expect:= expect
-              +'test dword ptr ['+cgpRegisterName[reg]+'+40h], 00000001h'#13#10
-              +'test dword ptr ['+cgpRegisterName[reg]+'+00000080h], 00000002h'#13#10
+              +'test dword ptr ['+cgpRegisterName[reg]+'+40h], 00000102h'#13#10
+              +'test dword ptr ['+cgpRegisterName[reg]+'+00000080h], 00000103h'#13#10
+              ;
+      CheckEquals(expect, DisasmStream);
+   end;
+end;
+
+// test_dword_ptr_reg_byte
+//
+procedure TJITx86Tests.test_dword_ptr_reg_byte;
+var
+   reg : TgpRegister;
+   expect : String;
+begin
+   for reg:=gprEAX to gprEDI do begin
+      FStream._test_dword_ptr_reg_byte(reg, 0, 0);
+      FStream._test_dword_ptr_reg_byte(reg, $40, 1);
+      FStream._test_dword_ptr_reg_byte(reg, $80, 2);
+      if reg=gprEBP then
+         expect:='test byte ptr ['+cgpRegisterName[reg]+'+00h], 00000000h'#13#10
+      else expect:='test byte ptr ['+cgpRegisterName[reg]+'], 00000000h'#13#10;
+      expect:= expect
+              +'test byte ptr ['+cgpRegisterName[reg]+'+40h], 00000001h'#13#10
+              +'test byte ptr ['+cgpRegisterName[reg]+'+00000080h], 00000002h'#13#10
               ;
       CheckEquals(expect, DisasmStream);
    end;
@@ -1002,6 +1026,35 @@ begin
          end;
          CheckEquals(expect, DisasmStream);
       end;
+   end;
+end;
+
+// and_or_byte
+//
+procedure TJITx86Tests.and_or_byte;
+var
+   reg : TgpRegister;
+   expect : String;
+begin
+   for reg:=gprEAX to gprEDI do begin
+      FStream._and_dword_ptr_reg_byte(reg, 0, 0);
+      FStream._or_dword_ptr_reg_byte(reg, 0, 0);
+      FStream._and_dword_ptr_reg_byte(reg, $40, 1);
+      FStream._or_dword_ptr_reg_byte(reg, $40, 1);
+      FStream._and_dword_ptr_reg_byte(reg, $80, 2);
+      FStream._or_dword_ptr_reg_byte(reg, $80, 2);
+      if reg=gprEBP then
+         expect:= 'and byte ptr ['+cgpRegisterName[reg]+'+00h], 00000000h'#13#10
+                 +'or byte ptr ['+cgpRegisterName[reg]+'+00h], 00000000h'#13#10
+      else expect:='and byte ptr ['+cgpRegisterName[reg]+'], 00000000h'#13#10
+                  +'or byte ptr ['+cgpRegisterName[reg]+'], 00000000h'#13#10;
+      expect:= expect
+              +'and byte ptr ['+cgpRegisterName[reg]+'+40h], 00000001h'#13#10
+              +'or byte ptr ['+cgpRegisterName[reg]+'+40h], 00000001h'#13#10
+              +'and byte ptr ['+cgpRegisterName[reg]+'+00000080h], 00000002h'#13#10
+              +'or byte ptr ['+cgpRegisterName[reg]+'+00000080h], 00000002h'#13#10
+              ;
+      CheckEquals(expect, DisasmStream);
    end;
 end;
 

@@ -1018,6 +1018,7 @@ type
          procedure InitData(const data : TData; offset : Integer); override;
 
          function ValueToOffsetMask(value : Integer; var mask : Int64) : Integer; inline;
+         function ValueToByteOffsetMask(value : Integer; var mask : Byte) : Integer; inline;
 
          property MinValue : Integer read FMinValue write FMinValue;
          property MaxValue : Integer read GetMaxValue;
@@ -5813,6 +5814,14 @@ function TSetOfSymbol.ValueToOffsetMask(value : Integer; var mask : Int64) : Int
 begin
    Result:=(value-MinValue) shr 6;
    mask:=Int64(1) shl (value and 63);
+end;
+
+// ValueToByteOffsetMask
+//
+function TSetOfSymbol.ValueToByteOffsetMask(value : Integer; var mask : Byte) : Integer;
+begin
+   Result:=(value-MinValue) shr 3;
+   mask:=1 shl (value and 7);
 end;
 
 // GetMaxValue

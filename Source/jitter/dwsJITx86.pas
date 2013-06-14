@@ -404,7 +404,13 @@ type
    Tx86IncVarFunc = class (Tx86Inc)
       procedure CompileStatement(expr : TExprBase); override;
    end;
-   Tx86DecIntVar = class (TdwsJITter_x86)
+   Tx86Dec = class (Tx86InterpretedExpr)
+      procedure DoCompileStatement(v : TIntVarExpr; i : TTypedExpr);
+   end;
+   Tx86DecIntVar = class (Tx86Dec)
+      procedure CompileStatement(expr : TExprBase); override;
+   end;
+   Tx86DecVarFunc = class (Tx86Dec)
       procedure CompileStatement(expr : TExprBase); override;
    end;
 
@@ -440,6 +446,16 @@ type
 
    Tx86SetOfInSmallExpr = class (TdwsJITter_x86)
       procedure DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup); override;
+   end;
+   Tx86SetOfFunction = class (TdwsJITter_x86)
+      procedure CompileStatement(expr : TExprBase); override;
+      procedure DoByteOp(reg : TgpRegister; offset : Integer; mask : Byte); virtual; abstract;
+   end;
+   Tx86SetOfInclude = class (Tx86SetOfFunction)
+      procedure DoByteOp(reg : TgpRegister; offset : Integer; mask : Byte); override;
+   end;
+   Tx86SetOfExclude = class (Tx86SetOfFunction)
+      procedure DoByteOp(reg : TgpRegister; offset : Integer; mask : Byte); override;
    end;
 
    Tx86OrdBool = class (Tx86InterpretedExpr)
@@ -628,6 +644,7 @@ begin
    RegisterJITter(TDecIntVarExpr,               Tx86DecIntVar.Create(Self));
 
    RegisterJITter(TIncVarFuncExpr,              Tx86IncVarFunc.Create(Self));
+   RegisterJITter(TDecVarFuncExpr,              Tx86DecVarFunc.Create(Self));
 
    RegisterJITter(TRelEqualIntExpr,             Tx86RelOpInt.Create(Self, flagsNone, flagsNZ, flagsZ));
    RegisterJITter(TRelNotEqualIntExpr,          Tx86RelOpInt.Create(Self, flagsNZ, flagsNone, flagsNZ));
@@ -651,6 +668,8 @@ begin
    RegisterJITter(TBoolAndExpr,                 Tx86BoolAndExpr.Create(Self));
 
    RegisterJITter(TSetOfSmallInExpr,            Tx86SetOfInSmallExpr.Create(Self));
+   RegisterJITter(TSetOfIncludeExpr,            Tx86SetOfInclude.Create(Self));
+   RegisterJITter(TSetOfExcludeExpr,            Tx86SetOfExclude.Create(Self));
 
    RegisterJITter(TOrdBoolExpr,                 Tx86OrdBool.Create(Self));
 
@@ -3172,6 +3191,28 @@ begin
 end;
 
 // ------------------
+// ------------------ Tx86Dec ------------------
+// ------------------
+
+// DoCompileStatement
+//
+procedure Tx86Dec.DoCompileStatement(v : TIntVarExpr; i : TTypedExpr);
+begin
+   if i is TConstIntExpr then begin
+
+      x86._execmem64_dec(v.StackAddr, TConstIntExpr(i).Value);
+
+   end else begin
+
+      jit.CompileInteger(i);
+
+      x86._sub_execmem_reg(v.StackAddr, 0, gprEAX);
+      x86._sbb_execmem_reg(v.StackAddr, 4, gprEDX);
+
+   end;
+end;
+
+// ------------------
 // ------------------ Tx86DecIntVar ------------------
 // ------------------
 
@@ -3180,23 +3221,26 @@ end;
 procedure Tx86DecIntVar.CompileStatement(expr : TExprBase);
 var
    e : TDecIntVarExpr;
-   left : TVarExpr;
 begin
    e:=TDecIntVarExpr(expr);
-   left:=e.Left as TVarExpr;
+   DoCompileStatement(e.Left as TIntVarExpr, e.Right);;
+end;
 
-   if e.Right is TConstIntExpr then begin
+// ------------------
+// ------------------ Tx86DecVarFunc ------------------
+// ------------------
 
-      x86._execmem64_dec((e.Left as TVarExpr).StackAddr, TConstIntExpr(e.Right).Value);
+// CompileStatement
+//
+procedure Tx86DecVarFunc.CompileStatement(expr : TExprBase);
+var
+   e : TDecVarFuncExpr;
+begin
+   e:=TDecVarFuncExpr(expr);
 
-   end else begin
-
-      jit.CompileInteger(e.Right);
-
-      x86._sub_execmem_reg(left.StackAddr, 0, gprEAX);
-      x86._sbb_execmem_reg(left.StackAddr, 4, gprEDX);
-
-   end;
+   if e.Args[0] is TIntVarExpr then
+      DoCompileStatement(TIntVarExpr(e.Args[0]), e.Args[1] as TTypedExpr)
+   else inherited;
 end;
 
 // ------------------
@@ -3472,6 +3516,53 @@ begin
    end;
 
    jit.Fixups.NewConditionalJumps(flagsNZ, targetTrue, targetFalse);
+end;
+
+// ------------------
+// ------------------ Tx86SetOfFunction ------------------
+// ------------------
+
+// CompileStatement
+//
+procedure Tx86SetOfFunction.CompileStatement(expr : TExprBase);
+var
+   e : TSetOfIncludeExpr;
+   offset : Integer;
+   addr : Integer;
+   mask : Byte;
+begin
+   e:=TSetOfIncludeExpr(expr);
+
+   if (e.BaseExpr is TVarExpr) and (e.Operand is TConstIntExpr) then begin
+
+      offset:=e.SetType.ValueToByteOffsetMask(TConstIntExpr(e.Operand).Value, mask);
+      addr:=StackAddrToOffset(TVarExpr(e.BaseExpr).StackAddr)+(offset div 8)*SizeOf(Variant)+(offset and 7);
+
+      DoByteOp(cExecMemGPR, addr, mask);
+
+   end else inherited;
+end;
+
+// ------------------
+// ------------------ Tx86SetOfInclude ------------------
+// ------------------
+
+// DoByteOp
+//
+procedure Tx86SetOfInclude.DoByteOp(reg : TgpRegister; offset : Integer; mask : Byte);
+begin
+   x86._or_dword_ptr_reg_byte(cExecMemGPR, offset, mask);
+end;
+
+// ------------------
+// ------------------ Tx86SetOfExclude ------------------
+// ------------------
+
+// DoByteOp
+//
+procedure Tx86SetOfExclude.DoByteOp(reg : TgpRegister; offset : Integer; mask : Byte);
+begin
+   x86._and_dword_ptr_reg_byte(cExecMemGPR, offset, not mask);
 end;
 
 // ------------------
