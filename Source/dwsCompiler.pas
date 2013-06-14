@@ -523,6 +523,8 @@ type
                             const loopVarName : UnicodeString; const loopVarNamePos : TScriptPos) : TProgramExpr;
          function ReadForInString(const forPos : TScriptPos; inExpr : TProgramExpr; loopVarExpr : TVarExpr;
                                   const loopVarName : UnicodeString; const loopVarNamePos : TScriptPos) : TProgramExpr;
+         function ReadForInSetOf(const forPos : TScriptPos; inExpr : TDataExpr; loopVarExpr : TVarExpr;
+                                 const loopVarName : UnicodeString; const loopVarNamePos : TScriptPos) : TProgramExpr;
          function ReadForInConnector(const forPos : TScriptPos;
                             inExpr : TTypedExpr; const inPos : TScriptPos; loopVarExpr : TVarExpr;
                             const loopVarName : UnicodeString; const loopVarNamePos : TScriptPos) : TProgramExpr;
@@ -754,6 +756,10 @@ type
          function CreateArrayHigh(baseExpr : TProgramExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
          function CreateArrayLength(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
          function CreateArrayExpr(const scriptPos : TScriptPos; baseExpr : TDataExpr; indexExpr : TTypedExpr) : TArrayExpr;
+
+         function EnsureLoopVarExpr(const loopPos : TScriptPos;
+                                    const loopVarName : UnicodeString; const loopVarNamePos : TScriptPos;
+                                    var loopVarExpr : TVarExpr; loopVarTyp : TTypeSymbol) : TBlockExpr;
 
          function ResolveOperatorFor(token : TTokenType; aLeftType, aRightType : TTypeSymbol) : TOperatorSymbol;
          function CreateTypedOperatorExpr(token : TTokenType; const scriptPos : TScriptPos;
@@ -5617,8 +5623,8 @@ end;
 // ReadForStep
 //
 function TdwsCompiler.ReadForStep(const forPos : TScriptPos; forExprClass : TForExprClass;
-                           iterVarExpr : TIntVarExpr; var fromExpr, toExpr : TTypedExpr;
-                           loopFirstStatement : TProgramExpr) : TForExpr;
+                                  iterVarExpr : TIntVarExpr; var fromExpr, toExpr : TTypedExpr;
+                                  loopFirstStatement : TProgramExpr) : TForExpr;
 var
    stepExpr : TTypedExpr;
    stepPos : TScriptPos;
@@ -5697,20 +5703,6 @@ end;
 //
 function TdwsCompiler.ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr;
                                 const loopVarName : UnicodeString; const loopVarNamePos : TScriptPos) : TProgramExpr;
-
-   function CreateLoopVarExpr(var loopVarExpr : TVarExpr; loopVarTyp : TTypeSymbol) : TBlockExpr;
-   var
-      loopVarSymbol : TDataSymbol;
-   begin
-      Result:=TBlockExpr.Create(FProg, forPos);
-      loopVarSymbol:=TDataSymbol.Create(loopVarName, loopVarTyp);
-      Result.Table.AddSymbol(loopVarSymbol);
-      RecordSymbolUse(loopVarSymbol, loopVarNamePos, [suDeclaration, suReference, suWrite]);
-      loopVarExpr:=GetVarExpr(loopVarSymbol);
-      FProg.InitExpr.AddStatement(TInitDataExpr.Create(FProg, loopVarNamePos, loopVarExpr));
-      loopVarExpr.IncRefCount;
-   end;
-
 var
    iterVarExpr : TIntVarExpr;
    iterVarSym : TDataSymbol;
@@ -5747,40 +5739,6 @@ begin
          Result:=ReadForInString(forPos, inExpr, loopVarExpr, loopVarName, loopVarNamePos);
          Exit;
 
-      end else if inExpr.Typ is TArraySymbol then begin
-
-         arraySymbol:=TArraySymbol(inExpr.Typ);
-
-         // if inExpr is an expression, create a temporary variable
-         // so it is evaluated only once
-         if not ((inExpr is TVarExpr) or (inExpr is TConstExpr)) then begin
-            inExprVarSym:=TDataSymbol.Create('', arraySymbol);
-            FProg.Table.AddSymbol(inExprVarSym);
-            inExprVarExpr:=GetVarExpr(inExprVarSym);
-            inExprAssignExpr:=TAssignExpr.Create(FProg, FTok.HotPos, inExprVarExpr, TTypedExpr(inExpr));
-            inExpr:=inExprVarExpr;
-            inExpr.IncRefCount;
-         end;
-
-         // create anonymous iter variables & its initialization expression
-         iterVarSym:=TDataSymbol.Create('', arraySymbol.IndexType);
-         FProg.Table.AddSymbol(iterVarSym);
-         iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
-         initIterVarExpr:=TAssignConstToIntegerVarExpr.CreateVal(FProg, inPos, iterVarExpr, 0);
-         FProg.InitExpr.AddStatement(initIterVarExpr);
-
-         fromExpr:=CreateArrayLow(inExpr, arraySymbol, False);
-         toExpr:=CreateArrayHigh(inExpr, arraySymbol, False);
-
-         if loopVarExpr=nil then
-            blockExpr:=CreateLoopVarExpr(loopVarExpr, arraySymbol.Typ);
-
-         iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
-         readArrayItemExpr:=CreateAssign(FTok.HotPos, ttASSIGN, loopVarExpr,
-                                         CreateArrayExpr(FTok.HotPos, (inExpr as TDataExpr), iterVarExpr));
-
-         iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
-
       end else if inExpr.Typ is TConnectorSymbol then begin
 
          Result:=ReadForInConnector(forPos, inExpr as TTypedExpr, inPos, loopVarExpr, loopVarName, loopVarNamePos);
@@ -5788,12 +5746,54 @@ begin
 
       end else begin
 
-         loopVarExpr.Free;
-         iterVarExpr:=nil;
-         fromExpr:=nil;
-         toExpr:=nil;
-         inExpr.Free;
-         FMsgs.AddCompilerStop(inPos, CPE_ArrayExpected);
+         // if inExpr is an expression, create a temporary variable
+         // so it is evaluated only once
+         if (inExpr.Typ<>nil) and not ((inExpr is TVarExpr) or (inExpr is TConstExpr)) then begin
+            inExprVarSym:=TDataSymbol.Create('', inExpr.Typ);
+            FProg.Table.AddSymbol(inExprVarSym);
+            inExprVarExpr:=GetVarExpr(inExprVarSym);
+            inExprAssignExpr:=TAssignExpr.Create(FProg, FTok.HotPos, inExprVarExpr, TTypedExpr(inExpr));
+            inExpr:=inExprVarExpr;
+            inExpr.IncRefCount;
+         end;
+
+         if inExpr.Typ is TArraySymbol then begin
+
+            arraySymbol:=TArraySymbol(inExpr.Typ);
+
+            // create anonymous iter variables & its initialization expression
+            iterVarSym:=TDataSymbol.Create('', arraySymbol.IndexType);
+            FProg.Table.AddSymbol(iterVarSym);
+            iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
+            initIterVarExpr:=TAssignConstToIntegerVarExpr.CreateVal(FProg, inPos, iterVarExpr, 0);
+            FProg.InitExpr.AddStatement(initIterVarExpr);
+
+            fromExpr:=CreateArrayLow(inExpr, arraySymbol, False);
+            toExpr:=CreateArrayHigh(inExpr, arraySymbol, False);
+
+            blockExpr:=EnsureLoopVarExpr(forPos, loopVarName, loopVarNamePos, loopVarExpr, arraySymbol.Typ);
+
+            iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
+            readArrayItemExpr:=CreateAssign(FTok.HotPos, ttASSIGN, loopVarExpr,
+                                            CreateArrayExpr(FTok.HotPos, (inExpr as TDataExpr), iterVarExpr));
+
+            iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
+
+         end else if inExpr.Typ is TSetOfSymbol then begin
+
+            Result:=ReadForInSetOf(forPos, inExpr as TDataExpr, loopVarExpr, loopVarName, loopVarNamePos);
+            Exit;
+
+         end else begin
+
+            loopVarExpr.Free;
+            iterVarExpr:=nil;
+            fromExpr:=nil;
+            toExpr:=nil;
+            inExpr.Free;
+            FMsgs.AddCompilerStop(inPos, CPE_ArrayExpected);
+
+         end;
 
       end;
 
@@ -5804,19 +5804,13 @@ begin
          if inExpr.Typ.InheritsFrom(TEnumerationSymbol) then
             enumSymbol:=TEnumerationSymbol(inExpr.Typ);
       end;
-      if enumSymbol=nil then begin
-         FMsgs.AddCompilerError(inPos, CPE_EnumerationExpected);
-         enumSymbol:=FProg.TypBoolean;
-      end;
-
       inExpr.Free;
 
-      if loopVarExpr=nil then
-         blockExpr:=CreateLoopVarExpr(loopVarExpr, enumSymbol)
-      else if not loopVarExpr.Typ.IsOfType(enumSymbol) then begin
-         FMsgs.AddCompilerError(inPos, CPE_IncompatibleOperands);
-         enumSymbol:=nil;
+      if enumSymbol=nil then begin
+         FMsgs.AddCompilerError(inPos, CPE_EnumerationExpected);
+         enumSymbol:=FProg.TypInteger;
       end;
+      blockExpr:=EnsureLoopVarExpr(forPos, loopVarName, loopVarNamePos, loopVarExpr, enumSymbol);
 
       RecordSymbolUse(enumSymbol, inPos, [suReference]);
 
@@ -5869,7 +5863,6 @@ end;
 function TdwsCompiler.ReadForInString(const forPos : TScriptPos; inExpr : TProgramExpr;
       loopVarExpr : TVarExpr; const loopVarName : UnicodeString; const loopVarNamePos : TScriptPos) : TProgramExpr;
 var
-   loopVarSymbol : TDataSymbol;
    blockExpr : TBlockExpr;
    forInExpr : TForInStrExpr;
 begin
@@ -5881,14 +5874,7 @@ begin
 
    if loopVarExpr=nil then begin
 
-      blockExpr:=TBlockExpr.Create(FProg, forPos);
-
-      loopVarSymbol:=TDataSymbol.Create(loopVarName, FProg.TypString);
-      blockExpr.Table.AddSymbol(loopVarSymbol);
-      RecordSymbolUse(loopVarSymbol, loopVarNamePos, [suDeclaration, suReference, suWrite]);
-      loopVarExpr:=GetVarExpr(loopVarSymbol);
-      FProg.InitExpr.AddStatement(TAssignConstToStringVarExpr.CreateVal(FProg, loopVarNamePos, loopVarExpr, ''));
-      loopVarExpr.IncRefCount;
+      blockExpr:=EnsureLoopVarExpr(forPos, loopVarName, loopVarNamePos, loopVarExpr, FProg.TypString);
 
       forInExpr:=TForCharInStrExpr.Create(FProg, forPos, loopVarExpr as TStrVarExpr,
                                           TTypedExpr(inExpr));
@@ -5923,6 +5909,59 @@ begin
    end;
 end;
 
+// ReadForInSetOf
+//
+function TdwsCompiler.ReadForInSetOf(const forPos : TScriptPos; inExpr : TDataExpr; loopVarExpr : TVarExpr;
+                                     const loopVarName : UnicodeString; const loopVarNamePos : TScriptPos) : TProgramExpr;
+var
+   setOfSymbol : TSetOfSymbol;
+   elementTyp : TTypeSymbol;
+   blockExpr : TBlockExpr;
+   doBlock : TProgramExpr;
+   loopVarInSetExpr : TSetOfInExpr;
+   ifThenExpr : TIfThenExpr;
+   forExpr : TForUpwardExpr;
+begin
+   setOfSymbol:=(inExpr.Typ as TSetOfSymbol);
+   elementTyp:=setOfSymbol.Typ;
+
+   blockExpr:=EnsureLoopVarExpr(forPos, loopVarName, loopVarNamePos, loopVarExpr, elementTyp);
+
+   if not FTok.TestDelete(ttDO) then
+      FMsgs.AddCompilerError(FTok.HotPos, CPE_DoExpected);
+
+   if blockExpr<>nil then
+      FProg.EnterSubTable(blockExpr.Table);
+
+   try
+      doBlock:=ReadBlock;
+   except
+      OrphanObject(blockExpr);
+      OrphanObject(loopVarExpr);
+      OrphanObject(inExpr);
+      raise;
+   end;
+
+   loopVarInSetExpr:=TSetOfInExpr.CreateOptimal(FProg, forPos, loopVarExpr, inExpr);
+   loopVarExpr.IncRefCount;
+
+   ifThenExpr:=TIfThenExpr.Create(FProg, forPos, loopVarInSetExpr, doBlock);
+
+   forExpr:=TForUpwardExpr.Create(forPos);
+   forExpr.DoExpr:=ifThenExpr;
+   forExpr.FromExpr:=TConstExpr.CreateTypedVariantValue(FProg, elementTyp, setOfSymbol.MinValue);
+   forExpr.ToExpr:=TConstExpr.CreateTypedVariantValue(FProg, elementTyp, setOfSymbol.MaxValue);
+   forExpr.VarExpr:=(loopVarExpr as TIntVarExpr);
+
+   if blockExpr<>nil then begin
+      FProg.LeaveSubTable;
+      blockExpr.AddStatement(forExpr);
+      if Optimize then
+         Result:=blockExpr.Optimize(FProg, FExec)
+      else Result:=blockExpr;
+   end else Result:=forExpr;
+end;
+
 // ReadForInConnector
 //
 function TdwsCompiler.ReadForInConnector(const forPos : TScriptPos;
@@ -5933,7 +5972,6 @@ var
    enumerator : IConnectorEnumerator;
    itemType : TTypeSymbol;
    blockExpr : TBlockExpr;
-   loopVarSymbol : TDataSymbol;
    doBlock : TProgramExpr;
 begin
    connectorSymbol:=(inExpr.Typ as TConnectorSymbol);
@@ -5944,19 +5982,7 @@ begin
       itemType:=FProg.TypVariant;
    end;
 
-   if loopVarExpr=nil then begin
-      blockExpr:=TBlockExpr.Create(FProg, forPos);
-      loopVarSymbol:=TDataSymbol.Create(loopVarName, itemType);
-      blockExpr.Table.AddSymbol(loopVarSymbol);
-      RecordSymbolUse(loopVarSymbol, loopVarNamePos, [suDeclaration, suReference, suWrite]);
-      loopVarExpr:=GetVarExpr(loopVarSymbol);
-      FProg.InitExpr.AddStatement(TInitDataExpr.Create(FProg, loopVarNamePos, loopVarExpr));
-      loopVarExpr.IncRefCount;
-   end else begin
-      blockExpr:=nil;
-      if not loopVarExpr.Typ.IsOfType(itemType) then
-         IncompatibleTypes(loopVarNamePos, CPE_IncompatibleTypes, loopVarExpr.Typ, itemType);
-   end;
+   blockExpr:=EnsureLoopVarExpr(forPos, loopVarName, loopVarNamePos, loopVarExpr, itemType);
 
    if not FTok.TestDelete(ttDO) then
       FMsgs.AddCompilerError(FTok.HotPos, CPE_DoExpected);
@@ -9740,9 +9766,7 @@ begin
             if (left.Typ=nil) or not left.Typ.IsOfType(elementType) then
                IncompatibleTypes(hotPos, CPE_IncompatibleTypes,
                                  left.Typ, elementType);
-            if TSetOfSymbol(setExpr.Typ).CountValue<=32 then
-               Result:=TSetOfSmallInExpr.Create(FProg, hotPos, left, setExpr as TDataExpr)
-            else Result:=TSetOfInExpr.Create(FProg, hotPos, left, setExpr as TDataExpr);
+            Result:=TSetOfInExpr.CreateOptimal(FProg, hotPos, left, setExpr as TDataExpr);
 
          end else if not (setExpr is TDataExpr) then begin
 
@@ -11971,6 +11995,32 @@ begin
                                        TDynamicArraySymbol(baseType));
 
    end;
+end;
+
+// EnsureLoopVarExpr
+//
+function TdwsCompiler.EnsureLoopVarExpr(const loopPos : TScriptPos;
+         const loopVarName : UnicodeString; const loopVarNamePos : TScriptPos;
+         var loopVarExpr : TVarExpr; loopVarTyp : TTypeSymbol) : TBlockExpr;
+var
+   loopVarSymbol : TDataSymbol;
+begin
+   if loopVarExpr<>nil then begin
+
+      if not loopVarExpr.Typ.IsOfType(loopVarTyp) then begin
+         IncompatibleTypes(loopVarNamePos, CPE_IncompatibleTypes, loopVarExpr.Typ, loopVarTyp);
+         OrphanObject(loopVarExpr);
+      end else Exit(nil);
+
+   end;
+
+   Result:=TBlockExpr.Create(FProg, loopPos);
+   loopVarSymbol:=TDataSymbol.Create(loopVarName, loopVarTyp);
+   Result.Table.AddSymbol(loopVarSymbol);
+   RecordSymbolUse(loopVarSymbol, loopVarNamePos, [suDeclaration, suReference, suWrite]);
+   loopVarExpr:=GetVarExpr(loopVarSymbol);
+   FProg.InitExpr.AddStatement(TInitDataExpr.Create(FProg, loopVarNamePos, loopVarExpr));
+   loopVarExpr.IncRefCount;
 end;
 
 // Callback

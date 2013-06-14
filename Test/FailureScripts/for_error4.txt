@@ -1,1 +1,1 @@
-Syntax Error: Incompatible operands [line: 5, column: 7]
+Syntax Error: Incompatible types: "Integer" and "TEnum" [line: 5, column: 7]

@@ -1,0 +1,2 @@
+Syntax Error: DO expected [line: 5, column: 12]
+Syntax Error: DO expected [line: 7, column: 16]

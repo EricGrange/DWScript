@@ -1,2 +1,1 @@
 Syntax Error: Enumeration expected [line: 3, column: 7]
-Syntax Error: Incompatible operands [line: 3, column: 7]

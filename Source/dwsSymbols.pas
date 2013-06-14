@@ -1007,6 +1007,9 @@ type
          FMinValue : Integer;
          FCountValue : Integer;
 
+      protected
+         function GetMaxValue : Integer; inline;
+
       public
          constructor Create(const name : UnicodeString; indexType : TTypeSymbol;
                             aMin, aMax : Integer);
@@ -1017,6 +1020,7 @@ type
          function ValueToOffsetMask(value : Integer; var mask : Int64) : Integer; inline;
 
          property MinValue : Integer read FMinValue write FMinValue;
+         property MaxValue : Integer read GetMaxValue;
          property CountValue : Integer read FCountValue write FCountValue;
    end;
 
@@ -5809,6 +5813,13 @@ function TSetOfSymbol.ValueToOffsetMask(value : Integer; var mask : Int64) : Int
 begin
    Result:=(value-MinValue) shr 6;
    mask:=Int64(1) shl (value and 63);
+end;
+
+// GetMaxValue
+//
+function TSetOfSymbol.GetMaxValue : Integer;
+begin
+   Result:=MinValue+CountValue-1;
 end;
 
 // ------------------
