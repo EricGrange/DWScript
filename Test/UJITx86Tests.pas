@@ -52,6 +52,8 @@ type
          procedure cmp_dword_ptr_reg_reg;
          procedure cmp_reg_int32;
          procedure test_reg_reg;
+         procedure test_dword_ptr_reg_int32;
+         procedure test_dword_ptr_reg_reg;
          procedure boolflags;
          procedure movsd_indexed;
          procedure mov_indexed;
@@ -949,6 +951,57 @@ begin
          expect:=expect+'test '+cgpRegisterName[dest]+', '+cgpRegisterName[src]+#13#10;
       end;
       CheckEquals(expect, DisasmStream);
+   end;
+end;
+
+// test_dword_ptr_reg_int32
+//
+procedure TJITx86Tests.test_dword_ptr_reg_int32;
+var
+   reg : TgpRegister;
+   expect : String;
+begin
+   for reg:=gprEAX to gprEDI do begin
+      FStream._test_dword_ptr_reg_imm(reg, 0, 0);
+      FStream._test_dword_ptr_reg_imm(reg, $40, 1);
+      FStream._test_dword_ptr_reg_imm(reg, $80, 2);
+      if reg=gprEBP then
+         expect:='test dword ptr ['+cgpRegisterName[reg]+'+00h], 00000000h'#13#10
+      else expect:='test dword ptr ['+cgpRegisterName[reg]+'], 00000000h'#13#10;
+      expect:= expect
+              +'test dword ptr ['+cgpRegisterName[reg]+'+40h], 00000001h'#13#10
+              +'test dword ptr ['+cgpRegisterName[reg]+'+00000080h], 00000002h'#13#10
+              ;
+      CheckEquals(expect, DisasmStream);
+   end;
+end;
+
+// test_dword_ptr_reg_reg
+//
+procedure TJITx86Tests.test_dword_ptr_reg_reg;
+var
+   offset : Integer;
+   dest, src : TgpRegister;
+   expect : String;
+begin
+   for dest:=gprEAX to gprEDI do begin
+      for src:=gprEAX to gprEDI do begin
+         expect:='';
+         for offset:=0 to 2 do begin
+            FStream._test_dword_ptr_reg_reg(dest, offset*$40, src);
+            expect:=expect+'test dword ptr ['
+                          +cgpRegisterName[dest];
+            case offset of
+               1 : expect:=expect+'+40h';
+               2 : expect:=expect+'+00000080h';
+            else
+               if dest=gprEBP then
+                  expect:=expect+'+00h';
+            end;
+            expect:=expect+'], '+cgpRegisterName[src]+#13#10;
+         end;
+         CheckEquals(expect, DisasmStream);
+      end;
    end;
 end;
 

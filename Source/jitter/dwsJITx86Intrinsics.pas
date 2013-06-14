@@ -162,6 +162,10 @@ type
          procedure _cmp_reg_dword_ptr_reg(reg : TgpRegister; dest : TgpRegister; offset : Integer);
 
          procedure _test_reg_reg(dest, src : TgpRegister);
+         procedure _test_dword_ptr_reg_imm(dest : TgpRegister; offset : Integer; imm : DWORD);
+         procedure _test_dword_ptr_reg_reg(dest : TgpRegister; offset : Integer; src : TgpRegister);
+         procedure _test_execmem_imm(stackAddr, offset : Integer; imm : DWORD);
+         procedure _test_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
 
          procedure _set_al_flags(flags : TboolFlags);
 
@@ -799,6 +803,36 @@ procedure Tx86WriteOnlyStream._test_reg_reg(dest, src : TgpRegister);
 begin
    WriteByte($85);
    WriteByte($C0+Ord(dest)+Ord(src)*8);
+end;
+
+// _test_dword_ptr_reg_imm
+//
+procedure Tx86WriteOnlyStream._test_dword_ptr_reg_imm(dest : TgpRegister; offset : Integer; imm : DWORD);
+begin
+   WriteByte($F7);
+   _modRMSIB_ptr_reg(0, dest, offset);
+   WriteDWord(imm);
+end;
+
+// _test_dword_ptr_reg_reg
+//
+procedure Tx86WriteOnlyStream._test_dword_ptr_reg_reg(dest : TgpRegister; offset : Integer; src : TgpRegister);
+begin
+   _modRMSIB_regnum_ptr_reg([$85], Ord(src), dest, offset);
+end;
+
+// _test_execmem_imm
+//
+procedure Tx86WriteOnlyStream._test_execmem_imm(stackAddr, offset : Integer; imm : DWORD);
+begin
+   _test_dword_ptr_reg_imm(cExecMemGPR, StackAddrToOffset(stackAddr)+offset, imm);
+end;
+
+// _test_execmem_reg
+//
+procedure Tx86WriteOnlyStream._test_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
+begin
+   _test_dword_ptr_reg_reg(cExecMemGPR, StackAddrToOffset(stackAddr)+offset, reg);
 end;
 
 // _set_al_flags

@@ -29,7 +29,7 @@ uses
    Classes, SysUtils, Math, Windows,
    dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsExprList,
    dwsCoreExprs, dwsRelExprs, dwsMagicExprs, dwsConstExprs,
-   dwsMathFunctions, dwsDataContext, dwsConvExprs,
+   dwsMathFunctions, dwsDataContext, dwsConvExprs, dwsSetOfExprs,
    dwsJIT, dwsJITFixups, dwsJITAllocatorWin, dwsJITx86Intrinsics, dwsVMTOffsets;
 
 type
@@ -304,6 +304,9 @@ type
    Tx86Assign = class (Tx86InterpretedExpr)
       procedure CompileStatement(expr : TExprBase); override;
    end;
+   Tx86AssignData = class (Tx86InterpretedExpr)
+      procedure CompileStatement(expr : TExprBase); override;
+   end;
 
    Tx86OpAssignFloat = class (TdwsJITter_x86)
       public
@@ -433,6 +436,14 @@ type
    end;
    Tx86BoolAndExpr = class (TdwsJITter_x86)
       procedure DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup); override;
+   end;
+
+   Tx86SetOfInSmallExpr = class (TdwsJITter_x86)
+      procedure DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup); override;
+   end;
+
+   Tx86OrdBool = class (Tx86InterpretedExpr)
+      function CompileInteger(expr : TExprBase) : Integer; override;
    end;
 
    Tx86ConvFloat = class (TdwsJITter_x86)
@@ -569,6 +580,7 @@ begin
    RegisterJITter(TAssignConstToFloatVarExpr,   Tx86AssignConstToFloatVar.Create(Self));
    RegisterJITter(TAssignConstToBoolVarExpr,    Tx86AssignConstToBoolVar.Create(Self));
    RegisterJITter(TAssignExpr,                  Tx86Assign.Create(Self));
+   RegisterJITter(TAssignDataExpr,              Tx86AssignData.Create(Self));
 
    RegisterJITter(TPlusAssignFloatExpr,         Tx86OpAssignFloat.Create(Self, xmm_addsd));
    RegisterJITter(TMinusAssignFloatExpr,        Tx86OpAssignFloat.Create(Self, xmm_subsd));
@@ -637,6 +649,10 @@ begin
    RegisterJITter(TNotBoolExpr,                 Tx86NotExpr.Create(Self));
    RegisterJITter(TBoolOrExpr,                  Tx86BoolOrExpr.Create(Self));
    RegisterJITter(TBoolAndExpr,                 Tx86BoolAndExpr.Create(Self));
+
+   RegisterJITter(TSetOfSmallInExpr,            Tx86SetOfInSmallExpr.Create(Self));
+
+   RegisterJITter(TOrdBoolExpr,                 Tx86OrdBool.Create(Self));
 
    RegisterJITter(TConvFloatExpr,               Tx86ConvFloat.Create(Self));
 
@@ -1528,6 +1544,32 @@ begin
 
       jit.CompileInteger(e.Right);
       jit.CompileAssignInteger(e.Left, 0);
+
+   end else inherited;
+end;
+
+// ------------------
+// ------------------ Tx86AssignData ------------------
+// ------------------
+
+// CompileStatement
+//
+procedure Tx86AssignData.CompileStatement(expr : TExprBase);
+var
+   e : TAssignDataExpr;
+   size : Integer;
+begin
+   e:=TAssignDataExpr(expr);
+
+   if e.Right.Typ.UnAliasedType.ClassType=TSetOfSymbol then begin
+
+      size:=e.Right.Typ.Size;
+      if size=1 then begin
+
+         jit.CompileInteger(e.Right);
+         jit.CompileAssignInteger(e.Left, 0);
+
+      end else inherited;
 
    end else inherited;
 end;
@@ -3365,6 +3407,102 @@ begin
    jit.CompileBoolean(e.Left, targetFirstTrue, targetFalse);
    jit.Fixups.AddFixup(targetFirstTrue);
    jit.CompileBoolean(e.Right, targetTrue, targetFalse);
+end;
+
+// ------------------
+// ------------------ Tx86SetOfInSmallExpr ------------------
+// ------------------
+
+// DoCompileBoolean
+//
+procedure Tx86SetOfInSmallExpr.DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup);
+var
+   e : TSetOfSmallInExpr;
+   v : Integer;
+begin
+   e:=TSetOfSmallInExpr(expr);
+
+   if e.Left is TConstIntExpr then begin
+
+      v:=TConstIntExpr(e.Left).Value-e.SetType.MinValue;
+      if v>=e.SetType.CountValue then begin
+         jit.Fixups.NewJump(targetFalse);
+         Exit;
+      end;
+      v:=1 shl v;
+
+      if e.Right is TVarExpr then begin
+
+         x86._test_execmem_imm(TVarExpr(e.Right).StackAddr, 0, v);
+         jit.Fixups.NewConditionalJumps(flagsNZ, targetTrue, targetFalse);
+         Exit;
+
+      end;
+
+      x86._mov_reg_dword(gprEDX, v);
+
+   end else begin
+
+      jit.CompileInteger(e.Left);
+
+      if e.SetType.MinValue<>0 then
+         x86._sub_reg_int32(gprEAX, e.SetType.MinValue);
+
+      x86._cmp_reg_int32(gprEAX, e.SetType.CountValue);
+      jit.Fixups.NewJump(flagsGE, targetFalse);
+
+      x86._mov_reg_reg(gprECX, gprEAX);
+      x86._mov_reg_dword(gprEDX, 1);
+      x86._shift_reg_cl(gpShl, gprEDX);
+
+   end;
+
+   if e.Right is TVarExpr then begin
+
+      x86._test_execmem_reg(TVarExpr(e.Right).StackAddr, 0, gprEDX);
+
+   end else begin
+
+      x86._push_reg(gprEDX);
+      jit.CompileInteger(e.Right);
+      x86._pop_reg(gprEDX);
+
+      x86._test_reg_reg(gprEAX, gprEDX);
+
+   end;
+
+   jit.Fixups.NewConditionalJumps(flagsNZ, targetTrue, targetFalse);
+end;
+
+// ------------------
+// ------------------ Tx86OrdBool ------------------
+// ------------------
+
+// CompileInteger
+//
+function Tx86OrdBool.CompileInteger(expr : TExprBase) : Integer;
+var
+   e : TOrdBoolExpr;
+   targetTrue, targetFalse, targetDone : TFixupTarget;
+begin
+   e:=TOrdBoolExpr(expr);
+
+   targetTrue:=jit.Fixups.NewHangingTarget(False);
+   targetFalse:=jit.Fixups.NewHangingTarget(False);
+
+   jit.CompileBoolean(e.Expr, targetTrue, targetFalse);
+
+   jit.Fixups.AddFixup(targetTrue);
+   x86._mov_reg_dword(gprEAX, 1);
+
+   targetDone:=jit.Fixups.NewHangingTarget(False);
+
+   jit.Fixups.AddFixup(targetFalse);
+   x86._mov_reg_dword(gprEAX, 0);
+
+   jit.Fixups.AddFixup(targetDone);
+
+   Result:=0;
 end;
 
 // ------------------
