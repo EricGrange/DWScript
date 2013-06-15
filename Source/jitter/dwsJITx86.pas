@@ -172,6 +172,7 @@ type
 
          function _store_eaxedx : Integer;
          procedure _restore_eaxedx(addr : Integer);
+         procedure _restore_eax(addr : Integer);
 
          procedure _mov_reg_execInstance(reg : TgpRegister);
          procedure _DoStep(expr : TExprBase);
@@ -444,21 +445,30 @@ type
       procedure DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup); override;
    end;
 
-   Tx86SetOfInSmallExpr = class (TdwsJITter_x86)
+   Tx86SetOfExpr = class (TdwsJITter_x86)
+      procedure NormalizeEnumOperand(setTyp : TSetOfSymbol; operand : TTypedExpr; targetOutOfRange : TFixup);
+   end;
+   Tx86SetOfInSmallExpr = class (Tx86SetOfExpr)
       procedure DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup); override;
    end;
-   Tx86SetOfFunction = class (TdwsJITter_x86)
+   Tx86SetOfFunction = class (Tx86SetOfExpr)
       procedure CompileStatement(expr : TExprBase); override;
       procedure DoByteOp(reg : TgpRegister; offset : Integer; mask : Byte); virtual; abstract;
+      procedure DoWordOp(dest, src : TgpRegister); virtual; abstract;
    end;
    Tx86SetOfInclude = class (Tx86SetOfFunction)
       procedure DoByteOp(reg : TgpRegister; offset : Integer; mask : Byte); override;
+      procedure DoWordOp(dest, src : TgpRegister); override;
    end;
    Tx86SetOfExclude = class (Tx86SetOfFunction)
       procedure DoByteOp(reg : TgpRegister; offset : Integer; mask : Byte); override;
+      procedure DoWordOp(dest, src : TgpRegister); override;
    end;
 
    Tx86OrdBool = class (Tx86InterpretedExpr)
+      function CompileInteger(expr : TExprBase) : Integer; override;
+   end;
+   Tx86OrdInt = class (Tx86InterpretedExpr)
       function CompileInteger(expr : TExprBase) : Integer; override;
    end;
 
@@ -613,6 +623,7 @@ begin
    RegisterJITter(TWhileExpr,                   Tx86While.Create(Self));
 
    RegisterJITter(TForUpwardExpr,               Tx86ForUpward.Create(Self));
+   RegisterJITter(TForUpwardStepExpr,           Tx86ForUpward.Create(Self));
 
    RegisterJITter(TContinueExpr,                Tx86Continue.Create(Self));
    RegisterJITter(TExitExpr,                    Tx86Exit.Create(Self));
@@ -671,7 +682,10 @@ begin
    RegisterJITter(TSetOfIncludeExpr,            Tx86SetOfInclude.Create(Self));
    RegisterJITter(TSetOfExcludeExpr,            Tx86SetOfExclude.Create(Self));
 
+   RegisterJITter(TOrdExpr,                     Tx86InterpretedExpr.Create(Self));
    RegisterJITter(TOrdBoolExpr,                 Tx86OrdBool.Create(Self));
+   RegisterJITter(TOrdIntExpr,                  Tx86OrdInt.Create(Self));
+   RegisterJITter(TOrdStrExpr,                  Tx86InterpretedExpr.Create(Self));
 
    RegisterJITter(TConvFloatExpr,               Tx86ConvFloat.Create(Self));
 
@@ -1025,6 +1039,13 @@ end;
 procedure TdwsJITx86._restore_eaxedx(addr : Integer);
 begin
    x86._mov_eaxedx_qword_ptr_reg(gprEBP, addr);
+end;
+
+// _restore_eax
+//
+procedure TdwsJITx86._restore_eax(addr : Integer);
+begin
+   x86._mov_reg_dword_ptr_reg(gprEAX, gprEBP, addr);
 end;
 
 // _mov_reg_execInstance
@@ -1831,20 +1852,25 @@ end;
 
 // CompileStatement
 //
+var
+   cPtr_TForStepExpr_RaiseForLoopStepShouldBeStrictlyPositive : Pointer = @TForStepExpr.RaiseForLoopStepShouldBeStrictlyPositive;
 procedure Tx86ForUpward.CompileStatement(expr : TExprBase);
 var
-   e : TForUpwardExpr;
+   e : TForExpr;
    jumpIfHiLower : TFixupJump;
    loopStart : TFixupTarget;
    loopContinue : TFixupTarget;
    loopAfter : TFixupTarget;
-   fromValue, toValue : Int64;
+   stepCheckPassed : TFixupJump;
+   fromValue, toValue, stepValue : Int64;
    toValueIsConstant : Boolean;
    toValueIs32bit : Boolean;
    toValueOffset : Integer;
+   stepValueIsConstant : Boolean;
+   stepValueOffset : Integer;
    is32bit : Boolean;
 begin
-   e:=TForUpwardExpr(expr);
+   e:=TForExpr(expr);
 
    jit.ResetXMMReg;
 
@@ -1880,10 +1906,48 @@ begin
    if not toValueIsConstant then begin
 
       jit.CompileInteger(e.ToExpr);
-
       toValueOffset:=jit._store_eaxedx;
 
    end else toValueOffset:=0;
+
+   if e is TForUpwardStepExpr then begin
+
+      if TForUpwardStepExpr(e).StepExpr is TConstIntExpr then begin
+
+         stepValueIsConstant:=True;
+         stepValue:=TConstIntExpr(TForUpwardStepExpr(e).StepExpr).Value;
+         is32bit:=is32bit and (stepValue>=0) and (Integer(stepValue)=stepValue);
+         stepValueOffset:=0;
+
+      end else begin
+
+         stepValueIsConstant:=False;
+         stepValue:=0;
+         is32bit:=False;
+         jit.CompileInteger(TForUpwardStepExpr(e).StepExpr);
+
+         x86._cmp_reg_int32(gprEDX, 0);
+         stepCheckPassed:=jit.Fixups.NewJump(flagsG);
+
+         x86._push_reg(gprEDX);
+         x86._push_reg(gprEAX);
+         jit._mov_reg_execInstance(gprEDX);
+         x86._mov_reg_dword(gprEAX, DWORD(expr));
+         x86._call_absmem(@cPtr_TForStepExpr_RaiseForLoopStepShouldBeStrictlyPositive);
+
+         stepCheckPassed.NewTarget(True);
+
+         stepValueOffset:=jit._store_eaxedx;
+
+      end;
+
+   end else begin
+
+      stepValueIsConstant:=True;
+      stepValue:=1;
+      stepValueOffset:=0;
+
+   end;
 
    loopStart:=jit.Fixups.NewTarget(True);
    loopContinue:=jit.Fixups.NewHangingTarget(False);
@@ -1908,7 +1972,12 @@ begin
 
       jit.Fixups.AddFixup(loopContinue);
 
-      x86._execmem32_inc(e.VarExpr.StackAddr, 1);
+      if stepValueIsConstant then
+         x86._execmem32_inc(e.VarExpr.StackAddr, stepValue)
+      else begin
+         jit._restore_eax(stepValueOffset);
+         x86._add_execmem_reg(e.VarExpr.StackAddr, 0, gprEAX);
+      end;
 
       jit.Fixups.NewJump(flagsNone, loopStart);
 
@@ -1918,7 +1987,7 @@ begin
 
          x86._cmp_execmem_int32(e.VarExpr.StackAddr, 4, Integer(toValue shr 32));
          jit.Fixups.NewJump(flagsG, loopAfter);
-         jumpIfHiLower:=jit.Fixups.NewJump(flagsB);
+         jumpIfHiLower:=jit.Fixups.NewJump(flagsL);
 
          x86._cmp_execmem_int32(e.VarExpr.StackAddr, 0, toValue);
          jit.Fixups.NewJump(flagsG, loopAfter);
@@ -1929,7 +1998,7 @@ begin
 
          x86._cmp_execmem_reg(e.VarExpr.StackAddr, 4, gprEDX);
          jit.Fixups.NewJump(flagsG, loopAfter);
-         jumpIfHiLower:=jit.Fixups.NewJump(flagsB);
+         jumpIfHiLower:=jit.Fixups.NewJump(flagsL);
 
          x86._cmp_execmem_reg(e.VarExpr.StackAddr, 0, gprEAX);
          jit.Fixups.NewJump(flagsG, loopAfter);
@@ -1943,7 +2012,16 @@ begin
 
       jit.Fixups.AddFixup(loopContinue);
 
-      x86._execmem64_inc(e.VarExpr.StackAddr, 1);
+      if stepValueIsConstant then begin
+         x86._execmem64_inc(e.VarExpr.StackAddr, stepValue);
+         if stepValue<>1 then
+            jit.Fixups.NewJump(flagsO, loopAfter);
+      end else begin
+         jit._restore_eaxedx(stepValueOffset);
+         x86._add_execmem_reg(e.VarExpr.StackAddr, 0, gprEAX);
+         x86._adc_execmem_reg(e.VarExpr.StackAddr, 4, gprEDX);
+         jit.Fixups.NewJump(flagsO, loopAfter);
+      end;
 
       jit.Fixups.NewJump(flagsNone, loopStart);
 
@@ -3454,6 +3532,24 @@ begin
 end;
 
 // ------------------
+// ------------------ Tx86SetOfExpr ------------------
+// ------------------
+
+// NormalizeEnumOperand
+//
+procedure Tx86SetOfExpr.NormalizeEnumOperand(setTyp : TSetOfSymbol; operand : TTypedExpr;
+                                             targetOutOfRange : TFixup);
+begin
+   jit.CompileInteger(operand);
+
+   if setTyp.MinValue<>0 then
+      x86._sub_reg_int32(gprEAX, setTyp.MinValue);
+
+   x86._cmp_reg_int32(gprEAX, setTyp.CountValue);
+   jit.Fixups.NewJump(flagsGE, targetOutOfRange);
+end;
+
+// ------------------
 // ------------------ Tx86SetOfInSmallExpr ------------------
 // ------------------
 
@@ -3487,13 +3583,7 @@ begin
 
    end else begin
 
-      jit.CompileInteger(e.Left);
-
-      if e.SetType.MinValue<>0 then
-         x86._sub_reg_int32(gprEAX, e.SetType.MinValue);
-
-      x86._cmp_reg_int32(gprEAX, e.SetType.CountValue);
-      jit.Fixups.NewJump(flagsGE, targetFalse);
+      NormalizeEnumOperand(e.SetType, e.Left, targetFalse);
 
       x86._mov_reg_reg(gprECX, gprEAX);
       x86._mov_reg_dword(gprEDX, 1);
@@ -3526,19 +3616,60 @@ end;
 //
 procedure Tx86SetOfFunction.CompileStatement(expr : TExprBase);
 var
-   e : TSetOfIncludeExpr;
+   e : TSetOfFunctionExpr;
    offset : Integer;
    addr : Integer;
    mask : Byte;
+   targetOutOfRange : TFixupTarget;
+   bitShift32bit : TFixupJump;
 begin
-   e:=TSetOfIncludeExpr(expr);
+   e:=TSetOfFunctionExpr(expr);
 
-   if (e.BaseExpr is TVarExpr) and (e.Operand is TConstIntExpr) then begin
+   if e.BaseExpr is TVarExpr then begin
 
-      offset:=e.SetType.ValueToByteOffsetMask(TConstIntExpr(e.Operand).Value, mask);
-      addr:=StackAddrToOffset(TVarExpr(e.BaseExpr).StackAddr)+(offset div 8)*SizeOf(Variant)+(offset and 7);
+      addr:=StackAddrToOffset(TVarExpr(e.BaseExpr).StackAddr);
 
-      DoByteOp(cExecMemGPR, addr, mask);
+      if e.Operand is TConstIntExpr then begin
+
+         offset:=e.SetType.ValueToByteOffsetMask(TConstIntExpr(e.Operand).Value, mask);
+         addr:=addr+(offset div 8)*SizeOf(Variant)+(offset and 7);
+
+         DoByteOp(cExecMemGPR, addr, mask);
+
+      end else begin
+
+         targetOutOfRange:=jit.Fixups.NewHangingTarget(False);
+
+         NormalizeEnumOperand(e.SetType, e.Operand, targetOutOfRange);
+
+         x86._mov_reg_reg(gprECX, gprEAX);
+
+         x86._shift_reg_imm(gpShr, gprEAX, 6);     // EAX has Int64 offset
+         x86._shift_reg_imm(gpShl, gprEAX, 4);     // EAX has Variant offset
+
+         x86._op_reg_int32(gpOp_and, gprECX, 63);  // ECX has 64bit shift
+         x86._cmp_reg_int32(gprECX, 32);
+
+         bitShift32bit:=jit.Fixups.NewJump(flagsL);
+
+         x86._add_reg_int32(gprEAX, 4);            // normalize to 32bit shift
+         x86._sub_reg_int32(gprECX, 32);
+
+         bitShift32bit.NewTarget(True);
+
+         x86._mov_reg_dword(gprEDX, 1);
+         x86._shift_reg_cl(gpShl, gprEDX);         // EDX has 32bit mask
+
+         x86._add_reg_reg(gprEAX, cExecMemGPR);
+         x86._mov_reg_dword_ptr_reg(gprECX, gprEAX, addr);
+
+         DoWordOp(gprECX, gprEDX);
+
+         x86._mov_dword_ptr_reg_reg(gprEAX, addr, gprECX);
+
+         jit.Fixups.AddFixup(targetOutOfRange);
+
+      end;
 
    end else inherited;
 end;
@@ -3554,6 +3685,13 @@ begin
    x86._or_dword_ptr_reg_byte(cExecMemGPR, offset, mask);
 end;
 
+// DoWordOp
+//
+procedure Tx86SetOfInclude.DoWordOp(dest, src : TgpRegister);
+begin
+   x86._op_reg_reg(gpOp_or, gprECX, gprEDX);
+end;
+
 // ------------------
 // ------------------ Tx86SetOfExclude ------------------
 // ------------------
@@ -3563,6 +3701,14 @@ end;
 procedure Tx86SetOfExclude.DoByteOp(reg : TgpRegister; offset : Integer; mask : Byte);
 begin
    x86._and_dword_ptr_reg_byte(cExecMemGPR, offset, not mask);
+end;
+
+// DoWordOp
+//
+procedure Tx86SetOfExclude.DoWordOp(dest, src : TgpRegister);
+begin
+   x86._not_reg(gprEDX);
+   x86._op_reg_reg(gpOp_and, gprECX, gprEDX);
 end;
 
 // ------------------
@@ -3592,6 +3738,23 @@ begin
    x86._mov_reg_dword(gprEAX, 0);
 
    jit.Fixups.AddFixup(targetDone);
+
+   Result:=0;
+end;
+
+// ------------------
+// ------------------ Tx86OrdInt ------------------
+// ------------------
+
+// CompileInteger
+//
+function Tx86OrdInt.CompileInteger(expr : TExprBase) : Integer;
+var
+   e : TOrdIntExpr;
+begin
+   e:=TOrdIntExpr(expr);
+
+   jit.CompileInteger(e.Expr);
 
    Result:=0;
 end;

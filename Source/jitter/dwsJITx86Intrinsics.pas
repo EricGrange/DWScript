@@ -196,6 +196,7 @@ type
          procedure _imul_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 
          procedure _neg_reg(reg : TgpRegister);
+         procedure _not_reg(reg : TgpRegister);
 
          procedure _shift_reg_imm(shift : TgpShift; reg : TgpRegister; value : Integer);
          procedure _shift_reg_cl(shift : TgpShift; reg : TgpRegister);
@@ -1035,6 +1036,13 @@ end;
 procedure Tx86WriteOnlyStream._neg_reg(reg : TgpRegister);
 begin
    WriteBytes([$F7, $D8+Ord(reg)]);
+end;
+
+// _not_reg
+//
+procedure Tx86WriteOnlyStream._not_reg(reg : TgpRegister);
+begin
+   WriteBytes([$F7, $D0+Ord(reg)]);
 end;
 
 // _shift_reg_imm

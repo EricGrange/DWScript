@@ -37,7 +37,7 @@ type
          procedure add_sub_execmem;
          procedure inc_dword_ptr;
          procedure add_sub_dword_ptr_reg;
-         procedure neg_32;
+         procedure neg_not_32;
          procedure shr_shl_32;
          procedure shr_shl_64;
          procedure xor_and_or_cmp_32;
@@ -611,16 +611,18 @@ begin
    end;
 end;
 
-// neg_32
+// neg_not_32
 //
-procedure TJITx86Tests.neg_32;
+procedure TJITx86Tests.neg_not_32;
 var
    reg : TgpRegister;
    expect : String;
 begin
    for reg:=gprEAX to gprEDI do begin
       FStream._neg_reg(reg);
+      FStream._not_reg(reg);
       expect:=expect+'neg '+cgpRegisterName[reg]+#13#10
+                    +'not '+cgpRegisterName[reg]+#13#10
               ;
    end;
    CheckEquals(expect, DisasmStream);

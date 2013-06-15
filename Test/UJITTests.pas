@@ -205,6 +205,8 @@ begin
             continue;
          end;
 
+         OutputDebugString(FTests[i]);
+
          try
             jit:=TdwsJITx86.Create;
             try

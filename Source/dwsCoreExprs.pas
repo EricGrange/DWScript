@@ -1662,6 +1662,7 @@ type
          destructor Destroy; override;
 
          function EvalStep(exec : TdwsExecution) : Int64;
+         procedure RaiseForLoopStepShouldBeStrictlyPositive(exec : TdwsExecution; index : Int64);
 
          property StepExpr : TTypedExpr read FStepExpr write FStepExpr;
    end;
@@ -6271,7 +6272,14 @@ function TForStepExpr.EvalStep(exec : TdwsExecution) : Int64;
 begin
    Result:=FStepExpr.EvalAsInteger(exec);
    if Result<=0 then
-      RaiseScriptError(exec, EScriptError.CreateFmt(RTE_ForLoopStepShouldBeStrictlyPositive, [Result]));
+      RaiseForLoopStepShouldBeStrictlyPositive(exec, Result);
+end;
+
+// RaiseForLoopStepShouldBeStrictlyPositive
+//
+procedure TForStepExpr.RaiseForLoopStepShouldBeStrictlyPositive(exec : TdwsExecution; index : Int64);
+begin
+   RaiseScriptError(exec, EScriptError.CreateFmt(RTE_ForLoopStepShouldBeStrictlyPositive, [index]));
 end;
 
 // GetSubExpr
