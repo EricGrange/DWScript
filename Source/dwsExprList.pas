@@ -87,7 +87,6 @@ type
          property AsString[const x : Integer] : UnicodeString read GetAsString write SetAsString;
          property AsDataString[const x : Integer] : RawByteString read GetAsDataString;
    end;
-   TExprBaseListExec = TExprBaseList; // Alias - remove?
 
    TSortedExprBaseList = class(TSortedList<TExprBase>);
 

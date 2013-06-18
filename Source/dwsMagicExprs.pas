@@ -520,7 +520,7 @@ end;
 //
 function TMagicVariantFuncExpr.Eval(exec : TdwsExecution) : Variant;
 var
-   execRec : TExprBaseListExec;
+   execRec : TExprBaseList;
 begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
@@ -568,7 +568,7 @@ end;
 //
 procedure TMagicDataFuncExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 var
-   execRec : TExprBaseListExec;
+   execRec : TExprBaseList;
 begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
@@ -612,7 +612,7 @@ end;
 //
 function TMagicIntFuncExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 var
-   execRec : TExprBaseListExec;
+   execRec : TExprBaseList;
 begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
@@ -663,7 +663,7 @@ end;
 //
 procedure TMagicStringFuncExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
 var
-   execRec : TExprBaseListExec;
+   execRec : TExprBaseList;
 begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
@@ -705,7 +705,7 @@ end;
 //
 function TMagicFloatFuncExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 var
-   execRec : TExprBaseListExec;
+   execRec : TExprBaseList;
 begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
@@ -747,7 +747,7 @@ end;
 //
 function TMagicBoolFuncExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
-   execRec : TExprBaseListExec;
+   execRec : TExprBaseList;
 begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
@@ -776,7 +776,7 @@ end;
 //
 procedure TMagicProcedureExpr.EvalNoResult(exec : TdwsExecution);
 var
-   execRec : TExprBaseListExec;
+   execRec : TExprBaseList;
 begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
