@@ -54,7 +54,6 @@ type
 
    // TExprBaseList
    //
-   TExprBaseList = ^TExprBaseListExec;
    TExprBaseListExec = record
       private
          FList : PExprBaseListRec;

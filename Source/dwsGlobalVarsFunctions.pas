@@ -42,29 +42,28 @@ uses
    dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs;
 
 type
-
    TReadGlobalVarFunc = class(TInternalMagicVariantFunction)
-      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
    end;
 
    TReadGlobalVarDefFunc = class(TInternalMagicVariantFunction)
-      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
    end;
 
    TWriteGlobalVarFunc = class(TInternalMagicBoolFunction)
-      function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
 
    TDeleteGlobalVarFunc = class(TInternalMagicBoolFunction)
-      function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
 
    TCleanupGlobalVarsFunc = class(TInternalMagicProcedure)
-      procedure DoEvalProc(args : TExprBaseList); override;
+      procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
    TGlobalVarsNamesCommaText = class(TInternalMagicStringFunction)
-      procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
 
    TSaveGlobalVarsToString = class(TInternalFunction)
@@ -501,42 +500,42 @@ end;
 
 { TReadGlobalVarFunc }
 
-function TReadGlobalVarFunc.DoEvalAsVariant(args : TExprBaseList) : Variant;
+function TReadGlobalVarFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
 begin
    Result:=ReadGlobalVar(args.AsString[0]);
 end;
 
 { TReadGlobalVarDefFunc }
 
-function TReadGlobalVarDefFunc.DoEvalAsVariant(args : TExprBaseList) : Variant;
+function TReadGlobalVarDefFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
 begin
    Result:=ReadGlobalVarDef(args.AsString[0], args.ExprBase[1].Eval(args.Exec));
 end;
 
 { TWriteGlobalVarFunc }
 
-function TWriteGlobalVarFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
+function TWriteGlobalVarFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
    Result:=WriteGlobalVar(args.AsString[0], args.ExprBase[1].Eval(args.Exec));
 end;
 
 { TDeleteGlobalVarFunc }
 
-function TDeleteGlobalVarFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
+function TDeleteGlobalVarFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
    Result:=DeleteGlobalVar(args.AsString[0]);
 end;
 
 { TCleanupGlobalVarsFunc }
 
-procedure TCleanupGlobalVarsFunc.DoEvalProc(args : TExprBaseList);
+procedure TCleanupGlobalVarsFunc.DoEvalProc(const args : TExprBaseListExec);
 begin
    CleanupGlobalVars;
 end;
 
 { TGlobalVarsNamesCommaText }
 
-procedure TGlobalVarsNamesCommaText.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
+procedure TGlobalVarsNamesCommaText.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=GlobalVarsNamesCommaText;
 end;

@@ -27,14 +27,14 @@ uses
 
 type
    TOutputDebugStringFunc = class(TInternalMagicProcedure)
-      procedure DoEvalProc(args : TExprBaseList); override;
+      procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
 implementation
 
 // DoEvalProc
 //
-procedure TOutputDebugStringFunc.DoEvalProc(args : TExprBaseList);
+procedure TOutputDebugStringFunc.DoEvalProc(const args : TExprBaseListExec);
 var
    exec : TdwsExecution;
 begin

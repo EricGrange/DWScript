@@ -304,31 +304,31 @@ type
    TOleConversionFunc = class (TInternalMagicVariantFunction);
 
    TOleInt16Func = class(TOleConversionFunc)
-      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
    end;
 
    TOleInt32Func = class(TOleConversionFunc)
-      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
    end;
 
    TOleInt64Func = class(TOleConversionFunc)
-      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
    end;
 
    TOleCurrencyFunc = class(TOleConversionFunc)
-      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
    end;
 
    TOleDateFunc = class(TOleConversionFunc)
-      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
    end;
 
    TOleSingleFunc = class(TOleConversionFunc)
-      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
    end;
 
    TOleDoubleFunc = class(TOleConversionFunc)
-      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
    end;
 
    TComConnectorType = class(TInterfacedSelfObject, IUnknown, IConnectorType, IConnectorEnumerator)
@@ -576,7 +576,7 @@ end;
 
 // DoEvalAsVariant
 //
-function TOleInt16Func.DoEvalAsVariant(args : TExprBaseList) : Variant;
+function TOleInt16Func.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
 begin
    Result := SmallInt(args.AsInteger[0]);
 end;
@@ -587,7 +587,7 @@ end;
 
 // DoEvalAsVariant
 //
-function TOleInt32Func.DoEvalAsVariant(args : TExprBaseList) : Variant;
+function TOleInt32Func.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
 begin
    Result := Int32(args.AsInteger[0]);
 end;
@@ -598,7 +598,7 @@ end;
 
 // DoEvalAsVariant
 //
-function TOleInt64Func.DoEvalAsVariant(args : TExprBaseList) : Variant;
+function TOleInt64Func.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
 begin
    Result := args.AsInteger[0];
 end;
@@ -609,7 +609,7 @@ end;
 
 // DoEvalAsVariant
 //
-function TOleCurrencyFunc.DoEvalAsVariant(args : TExprBaseList) : Variant;
+function TOleCurrencyFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
 begin
    args.ExprBase[0].EvalAsVariant(args.Exec, Result);
    if VarType(Result)<>varCurrency then
@@ -622,7 +622,7 @@ end;
 
 // DoEvalAsVariant
 //
-function TOleDateFunc.DoEvalAsVariant(args : TExprBaseList) : Variant;
+function TOleDateFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
 begin
    Result := VarFromDateTime(args.AsFloat[0]);
 end;
@@ -633,7 +633,7 @@ end;
 
 // DoEvalAsVariant
 //
-function TOleSingleFunc.DoEvalAsVariant(args : TExprBaseList) : Variant;
+function TOleSingleFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
 begin
    VarClear(Result);
    // Needed so compiler won't generate a double precision variant
@@ -647,7 +647,7 @@ end;
 
 // DoEvalAsVariant
 //
-function TOleDoubleFunc.DoEvalAsVariant(args : TExprBaseList) : Variant;
+function TOleDoubleFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
 begin
    Result := args.AsFloat[0];
 end;

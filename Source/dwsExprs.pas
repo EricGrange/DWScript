@@ -1763,12 +1763,12 @@ type
 
    TPrintFunction = class(TInternalMagicProcedure)
       public
-         procedure DoEvalProc(args : TExprBaseList); override;
+         procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
    TPrintLnFunction = class(TInternalMagicProcedure)
       public
-         procedure DoEvalProc(args : TExprBaseList); override;
+         procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
 { TScriptObjectWrapper }
@@ -3314,7 +3314,7 @@ end;
 
 // DoEvalProc
 //
-procedure TPrintFunction.DoEvalProc(args : TExprBaseList);
+procedure TPrintFunction.DoEvalProc(const args : TExprBaseListExec);
 var
    buf : UnicodeString;
 begin
@@ -3328,7 +3328,7 @@ end;
 
 // DoEvalProc
 //
-procedure TPrintLnFunction.DoEvalProc(args : TExprBaseList);
+procedure TPrintLnFunction.DoEvalProc(const args : TExprBaseListExec);
 var
    buf : UnicodeString;
    result : TdwsResult;

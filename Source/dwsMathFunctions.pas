@@ -31,246 +31,246 @@ uses
 type
 
    TOddFunc = class(TInternalMagicBoolFunction)
-      function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
 
    TSinFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TSinhFunc = class(TInternalMagicFloatFunction)
-     procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+     procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TCosFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TCoshFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TTanFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TTanhFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TArcSinFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TArcSinhFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TArcCosFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TArcCoshFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TArcTanFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TArcTan2Func = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TArcTanhFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TCotanFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    THypotFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TFactorialFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TExpFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TLnFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TLog2Func = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TLog10Func = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TLogNFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TPowerFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TIntPowerFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TSqrIntFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
    TSqrFloatFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TSqrtFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TIntFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TFloorFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
    TCeilFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
    TFracFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TTruncFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
    TRoundFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
    TDegToRadFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TRadToDegFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TSignFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
    TSignIntFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
    TDivModFunc = class(TInternalMagicProcedure)
-      procedure DoEvalProc(args : TExprBaseList); override;
+      procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
    TMaxFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TMinFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TClampFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TMaxIntValueFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
    TMaxIntFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
    TMinIntFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
    TClampIntFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
    TPiFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TInfinityFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TNaNFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TIsNaNFunc = class(TInternalMagicBoolFunction)
-      function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
 
    TIsInfiniteFunc = class(TInternalMagicBoolFunction)
-      function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
 
    TIsFiniteFunc = class(TInternalMagicBoolFunction)
-      function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
 
    TGcdFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
    TLcmFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
    TIsPrimeFunc = class(TInternalMagicBoolFunction)
-      function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
 
    TLeastFactorFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
    TRandomFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TRandomIntFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
    TRandomizeFunc = class(TInternalMagicProcedure)
-      procedure DoEvalProc(args : TExprBaseList); override;
+      procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
    TRandGFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TRandSeedFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
    TSetRandSeedFunc = class(TInternalMagicProcedure)
-      procedure DoEvalProc(args : TExprBaseList); override;
+      procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
 // ------------------------------------------------------------------
@@ -345,119 +345,119 @@ end;
 
 { TOddFunc }
 
-function TOddFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
+function TOddFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
    Result:=Odd(args.AsInteger[0]);
 end;
 
 { TSinFunc }
 
-procedure TSinFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TSinFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Sin(args.AsFloat[0]);
 end;
 
 { TSinhFunc }
 
-procedure TSinhFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TSinhFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Sinh(args.AsFloat[0]);
 end;
 
 { TCosFunc }
 
-procedure TCosFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TCosFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Cos(args.AsFloat[0]);
 end;
 
 { TCoshFunc }
 
-procedure TCoshFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TCoshFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Cosh(args.AsFloat[0]);
 end;
 
 { TTanFunc }
 
-procedure TTanFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TTanFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Tan(args.AsFloat[0]);
 end;
 
 { TTanhFunc }
 
-procedure TTanhFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TTanhFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Tanh(args.AsFloat[0]);
 end;
 
 { TArcSinFunc }
 
-procedure TArcSinFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TArcSinFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=ArcSin(args.AsFloat[0]);
 end;
 
 { TArcSinhFunc }
 
-procedure TArcSinhFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TArcSinhFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=ArcSinh(args.AsFloat[0]);
 end;
 
 { TArcCosFunc }
 
-procedure TArcCosFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TArcCosFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=ArcCos(args.AsFloat[0]);
 end;
 
 { TArcCoshFunc }
 
-procedure TArcCoshFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TArcCoshFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=ArcCosh(args.AsFloat[0]);
 end;
 
 { TArcTanFunc }
 
-procedure TArcTanFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TArcTanFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=ArcTan(args.AsFloat[0]);
 end;
 
 { TArcTan2Func }
 
-procedure TArcTan2Func.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TArcTan2Func.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=ArcTan2(args.AsFloat[0], args.AsFloat[1]);
 end;
 
 { TArcTanhFunc }
 
-procedure TArcTanhFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TArcTanhFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=ArcTanh(args.AsFloat[0]);
 end;
 
 { TCotanFunc }
 
-procedure TCotanFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TCotanFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Cotan(args.AsFloat[0]);
 end;
 
 { THypotFunc }
 
-procedure THypotFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure THypotFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Hypot(args.AsFloat[0], args.AsFloat[1]);
 end;
 
 { TFactorialFunc }
 
-procedure TFactorialFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TFactorialFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 const
    cFactTable : array [2..12] of Integer =
       (2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 39916800, 479001600 );
@@ -480,147 +480,147 @@ end;
 
 { TExpFunc }
 
-procedure TExpFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TExpFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Exp(args.AsFloat[0]);
 end;
 
 { TLnFunc }
 
-procedure TLnFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TLnFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Ln(args.AsFloat[0]);
 end;
 
 { TLog2Func }
 
-procedure TLog2Func.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TLog2Func.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Log2(args.AsFloat[0]);
 end;
 
 { TLog10Func }
 
-procedure TLog10Func.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TLog10Func.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Log10(args.AsFloat[0]);
 end;
 
 { TLogNFunc }
 
-procedure TLogNFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TLogNFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=LogN(args.AsFloat[0], args.AsFloat[1]);
 end;
 
 { TSqrIntFunc }
 
-function TSqrIntFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+function TSqrIntFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=Sqr(args.AsInteger[0]);
 end;
 
 { TSqrFloatFunc }
 
-procedure TSqrFloatFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TSqrFloatFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Sqr(args.AsFloat[0]);
 end;
 
 { TSqrtFunc }
 
-procedure TSqrtFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TSqrtFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Sqrt(args.AsFloat[0]);
 end;
 
 { TIntFunc }
 
-procedure TIntFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TIntFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Int(args.AsFloat[0]);
 end;
 
 { TFloorFunc }
 
-function TFloorFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+function TFloorFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=Floor(args.AsFloat[0]);
 end;
 
 { TCeilFunc }
 
-function TCeilFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+function TCeilFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=Ceil(args.AsFloat[0]);
 end;
 
 { TFracFunc }
 
-procedure TFracFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TFracFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Frac(args.AsFloat[0]);
 end;
 
 { TTruncFunc }
 
-function TTruncFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+function TTruncFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=Trunc(args.AsFloat[0]);
 end;
 
 { TRoundFunc }
 
-function TRoundFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+function TRoundFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=Round(args.AsFloat[0]);
 end;
 
 { TPowerFunc }
 
-procedure TPowerFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TPowerFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Power(args.AsFloat[0], args.AsFloat[1]);
 end;
 
 { TIntPowerFunc }
 
-procedure TIntPowerFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TIntPowerFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=IntPower(args.AsFloat[0], args.AsInteger[1]);
 end;
 
 { TDegToRadFunc }
 
-procedure TDegToRadFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TDegToRadFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=DegToRad(args.AsFloat[0]);
 end;
 
 { TRadToDegFunc }
 
-procedure TRadToDegFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TRadToDegFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=RadToDeg(args.AsFloat[0]);
 end;
 
 { TSignFunc }
 
-function TSignFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+function TSignFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=Sign(args.AsFloat[0]);
 end;
 
 { TSignIntFunc }
 
-function TSignIntFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+function TSignIntFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=Sign(args.AsInteger[0]);
 end;
 
 { TDivModFunc }
 
-procedure TDivModFunc.DoEvalProc(args : TExprBaseList);
+procedure TDivModFunc.DoEvalProc(const args : TExprBaseListExec);
 var
    dividend, divisor, result : Int64;
 begin
@@ -633,21 +633,21 @@ end;
 
 { TMaxFunc }
 
-procedure TMaxFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TMaxFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Max(args.AsFloat[0], args.AsFloat[1]);
 end;
 
 { TMinFunc }
 
-procedure TMinFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TMinFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Math.Min(args.AsFloat[0], args.AsFloat[1]);
 end;
 
 { TClampFunc }
 
-procedure TClampFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TClampFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 var
    r : Double;
 begin
@@ -664,28 +664,28 @@ end;
 
 { TMaxIntBalueFunc }
 
-function TMaxIntValueFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+function TMaxIntValueFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=MaxInt;
 end;
 
 { TMaxIntFunc }
 
-function TMaxIntFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+function TMaxIntFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=Max(args.AsInteger[0], args.AsInteger[1]);
 end;
 
 { TMinIntFunc }
 
-function TMinIntFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+function TMinIntFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=Min(args.AsInteger[0], args.AsInteger[1]);
 end;
 
 { TClampIntFunc }
 
-function TClampIntFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+function TClampIntFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 var
    r : Int64;
 begin
@@ -702,42 +702,42 @@ end;
 
 { TPiFunc }
 
-procedure TPiFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TPiFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=PI;
 end;
 
 { TInfinityFunc }
 
-procedure TInfinityFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TInfinityFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=Infinity;
 end;
 
 { TNaNFunc }
 
-procedure TNaNFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TNaNFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=NaN;
 end;
 
 { IsNaNFunc }
 
-function TIsNaNFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
+function TIsNaNFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
    Result:=IsNan(args.AsFloat[0]);
 end;
 
 { IsInfinite }
 
-function TIsInfiniteFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
+function TIsInfiniteFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
    Result:=IsInfinite(args.AsFloat[0]);
 end;
 
 { IsFinite }
 
-function TIsFiniteFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
+function TIsFiniteFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 var
    v : Double;
 begin
@@ -747,42 +747,42 @@ end;
 
 { TGcdFunc }
 
-function TGcdFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+function TGcdFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=Gcd(args.AsInteger[0], args.AsInteger[1]);
 end;
 
 { TLcmFunc }
 
-function TLcmFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+function TLcmFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=Lcm(args.AsInteger[0], args.AsInteger[1]);
 end;
 
 { TIsPrimeFunc }
 
-function TIsPrimeFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
+function TIsPrimeFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
    Result:=IsPrime(args.AsInteger[0]);
 end;
 
 { TLeastFactorFunc }
 
-function TLeastFactorFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+function TLeastFactorFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=LeastFactor(args.AsInteger[0]);
 end;
 
 { TRandomFunc }
 
-procedure TRandomFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TRandomFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=args.Exec.Random;
 end;
 
 { TRandomIntFunc }
 
-function TRandomIntFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+function TRandomIntFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=Trunc(args.Exec.Random*args.AsInteger[0]);
 end;
@@ -797,7 +797,7 @@ end;
 {$ENDIF}
 var
    vSeedBase : UInt64;
-procedure TRandomizeFunc.DoEvalProc(args : TExprBaseList);
+procedure TRandomizeFunc.DoEvalProc(const args : TExprBaseListExec);
 var
    x : UInt64;
 begin
@@ -812,7 +812,7 @@ end;
 
 { TRandGFunc }
 
-procedure TRandGFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+procedure TRandGFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 var
    x, y, n : Double;
 begin
@@ -827,14 +827,14 @@ end;
 
 { TRandSeedFunc }
 
-function TRandSeedFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+function TRandSeedFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=Int64(args.Exec.RandSeed);
 end;
 
 { TSetRandSeedFunc }
 
-procedure TSetRandSeedFunc.DoEvalProc(args : TExprBaseList);
+procedure TSetRandSeedFunc.DoEvalProc(const args : TExprBaseListExec);
 begin
    args.Exec.RandSeed:=args.AsInteger[0];
 end;

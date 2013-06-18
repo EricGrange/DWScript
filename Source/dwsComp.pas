@@ -361,7 +361,7 @@ type
    end;
 
    TFuncEvalEvent = procedure(info : TProgramInfo) of object;
-   TFuncFastEvalEvent = function(args : TExprBaseList) : Variant of object;
+   TFuncFastEvalEvent = function(const args : TExprBaseListExec) : Variant of object;
    TInitSymbolEvent = procedure(sender : TObject; symbol : TSymbol) of object;
    TInitExprEvent = procedure(sender : TObject; expr : TExprBase) of object;
 
@@ -1283,14 +1283,14 @@ type
       private
          FOnFastEval : TFuncFastEvalEvent;
       public
-         procedure DoEvalProc(args : TExprBaseList); override;
+         procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
    TCustomInternalMagicFunction = class(TInternalMagicVariantFunction)
       private
          FOnFastEval : TFuncFastEvalEvent;
       public
-         function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+         function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
    end;
 
    TCustomInternalMagicDataFunction = class(TInternalMagicDataFunction)
@@ -1298,26 +1298,26 @@ type
          FOnFastEval : TFuncFastEvalEvent;
          FSize : Integer;
       public
-         procedure DoEval(args : TExprBaseList; var result : IDataContext); override;
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
 // DoEvalProc
 //
-procedure TCustomInternalMagicProcedure.DoEvalProc(args : TExprBaseList);
+procedure TCustomInternalMagicProcedure.DoEvalProc(const args : TExprBaseListExec);
 begin
    FOnFastEval(args);
 end;
 
 // DoEvalAsVariant
 //
-function TCustomInternalMagicFunction.DoEvalAsVariant(args : TExprBaseList) : Variant;
+function TCustomInternalMagicFunction.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
 begin
    Result:=FOnFastEval(args);
 end;
 
 // DoEval
 //
-procedure TCustomInternalMagicDataFunction.DoEval(args : TExprBaseList; var result : IDataContext);
+procedure TCustomInternalMagicDataFunction.DoEval(const args : TExprBaseListExec; var result : IDataContext);
 var
    tmp : Variant;
    pvd : PVarData;

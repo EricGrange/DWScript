@@ -34,13 +34,13 @@ type
    TMagicFuncExpr = class;
    TMagicFuncExprClass = class of TMagicFuncExpr;
 
-   TMagicFuncDoEvalEvent = function(args : TExprBaseList) : Variant of object;
-   TMagicProcedureDoEvalEvent = procedure(args : TExprBaseList) of object;
-   TMagicFuncDoEvalDataEvent = procedure(args : TExprBaseList; var result : IDataContext) of object;
-   TMagicFuncDoEvalAsIntegerEvent = function(args : TExprBaseList) : Int64 of object;
-   TMagicFuncDoEvalAsBooleanEvent = function(args : TExprBaseList) : Boolean of object;
-   TMagicFuncDoEvalAsFloatEvent = procedure(args : TExprBaseList; var Result : Double) of object;
-   TMagicFuncDoEvalAsStringEvent = procedure(args : TExprBaseList; var Result : UnicodeString) of object;
+   TMagicFuncDoEvalEvent = function(const args : TExprBaseListExec) : Variant of object;
+   TMagicProcedureDoEvalEvent = procedure(const args : TExprBaseListExec) of object;
+   TMagicFuncDoEvalDataEvent = procedure(const args : TExprBaseListExec; var result : IDataContext) of object;
+   TMagicFuncDoEvalAsIntegerEvent = function(const args : TExprBaseListExec) : Int64 of object;
+   TMagicFuncDoEvalAsBooleanEvent = function(const args : TExprBaseListExec) : Boolean of object;
+   TMagicFuncDoEvalAsFloatEvent = procedure(const args : TExprBaseListExec; var Result : Double) of object;
+   TMagicFuncDoEvalAsStringEvent = procedure(const args : TExprBaseListExec; var Result : UnicodeString) of object;
 
    // TInternalMagicFunction
    //
@@ -59,7 +59,7 @@ type
    //
    TInternalMagicProcedure = class(TInternalMagicFunction)
       public
-         procedure DoEvalProc(args : TExprBaseList); virtual; abstract;
+         procedure DoEvalProc(const args : TExprBaseListExec); virtual; abstract;
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
 
@@ -67,7 +67,7 @@ type
    //
    TInternalMagicDataFunction = class(TInternalMagicFunction)
       public
-         procedure DoEval(args : TExprBaseList; var result : IDataContext); virtual; abstract;
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); virtual; abstract;
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
    TInternalMagicDataFunctionClass = class of TInternalMagicDataFunction;
@@ -76,7 +76,7 @@ type
    //
    TInternalMagicVariantFunction = class(TInternalMagicFunction)
       public
-         function DoEvalAsVariant(args : TExprBaseList) : Variant; virtual; abstract;
+         function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; virtual; abstract;
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
    TInternalMagicVariantFunctionClass = class of TInternalMagicVariantFunction;
@@ -85,7 +85,7 @@ type
    //
    TInternalMagicIntFunction = class(TInternalMagicFunction)
       public
-         function DoEvalAsInteger(args : TExprBaseList) : Int64; virtual; abstract;
+         function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; virtual; abstract;
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
    TInternalMagicIntFunctionClass = class of TInternalMagicIntFunction;
@@ -94,7 +94,7 @@ type
    //
    TInternalMagicBoolFunction = class(TInternalMagicFunction)
       public
-         function DoEvalAsBoolean(args : TExprBaseList) : Boolean; virtual; abstract;
+         function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; virtual; abstract;
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
    TInternalMagicBoolFunctionClass = class of TInternalMagicBoolFunction;
@@ -103,7 +103,7 @@ type
    //
    TInternalMagicFloatFunction = class(TInternalMagicFunction)
       public
-         procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); virtual; abstract;
+         procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); virtual; abstract;
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
    TInternalMagicFloatFunctionClass = class of TInternalMagicFloatFunction;
@@ -112,7 +112,7 @@ type
    //
    TInternalMagicStringFunction = class(TInternalMagicFunction)
       public
-         procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); virtual; abstract;
+         procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); virtual; abstract;
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
    TInternalMagicStringFunctionClass = class of TInternalMagicStringFunction;
@@ -525,7 +525,7 @@ begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
    try
-      Result:=FOnEval(@execRec);
+      Result:=FOnEval(execRec);
    except
       RaiseScriptError(exec);
    end;
@@ -574,7 +574,7 @@ begin
    execRec.Exec:=exec;
    try
       exec.DataContext_CreateBase(FResultAddr, Result);
-      FOnEval(@execRec, Result);
+      FOnEval(execRec, Result);
    except
       RaiseScriptError(exec);
       raise;
@@ -617,7 +617,7 @@ begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
    try
-      Result:=FOnEval(@execRec);
+      Result:=FOnEval(execRec);
    except
       on E: EScriptException do
          raise
@@ -668,7 +668,7 @@ begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
    try
-      FOnEval(@execRec, Result);
+      FOnEval(execRec, Result);
    except
       RaiseScriptError(exec);
    end;
@@ -710,7 +710,7 @@ begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
    try
-      FOnEval(@execRec, Result);
+      FOnEval(execRec, Result);
    except
       RaiseScriptError(exec);
    end;
@@ -752,7 +752,7 @@ begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
    try
-      Result:=FOnEval(@execRec);
+      Result:=FOnEval(execRec);
    except
       Result:=False;
       RaiseScriptError(exec);
@@ -781,7 +781,7 @@ begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
    try
-      FOnEval(@execRec);
+      FOnEval(execRec);
    except
       on E : EScriptError do
          raise

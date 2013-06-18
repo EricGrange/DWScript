@@ -44,8 +44,8 @@ type
          procedure FuncOpenArrayEval(Info: TProgramInfo);
          procedure FuncOverloadIntEval(Info: TProgramInfo);
          procedure FuncOverloadStrEval(Info: TProgramInfo);
-         function  FuncFastEval(args : TExprBaseList) : Variant;
-         function  FuncFastPointEval(args : TExprBaseList) : Variant;
+         function  FuncFastEval(const args : TExprBaseListExec) : Variant;
+         function  FuncFastPointEval(const args : TExprBaseListExec) : Variant;
 
          procedure ClassConstructor(Info: TProgramInfo; var ExtObject: TObject);
          procedure ClassCleanup(ExternalObject: TObject);
@@ -755,14 +755,14 @@ end;
 
 // FuncFastEval
 //
-function TdwsUnitTestsContext.FuncFastEval(args : TExprBaseList) : Variant;
+function TdwsUnitTestsContext.FuncFastEval(const args : TExprBaseListExec) : Variant;
 begin
    Result:=Length(args.AsString[0]);
 end;
 
 // FuncFastPointEval
 //
-function TdwsUnitTestsContext.FuncFastPointEval(args : TExprBaseList) : Variant;
+function TdwsUnitTestsContext.FuncFastPointEval(const args : TExprBaseListExec) : Variant;
 var
    rec : TData;
 begin
