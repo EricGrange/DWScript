@@ -55,9 +55,13 @@ uses
   ULinqJsonTests in 'ULinqJsonTests.pas';
 
 {$R *.res}
+
+var
+   procAffinity, systAffinity : DWORD;
 begin
    DirectSet8087CW($133F);
-   SetProcessAffinityMask(GetCurrentProcessId, Cardinal(-1));
+   GetProcessAffinityMask(GetCurrentProcess, procAffinity, systAffinity);
+   SetProcessAffinityMask(GetCurrentProcess, systAffinity);
    SetDecimalSeparator('.');
    ReportMemoryLeaksOnShutdown:=True;
    Application.Initialize;
