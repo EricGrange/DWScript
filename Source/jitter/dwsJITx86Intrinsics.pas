@@ -1357,3 +1357,7 @@ begin
 end;
 
 end.
+// D2009: if you after a build get:
+// [DCC Fatal Error] dwsJITx86Intrinsics.pas(1361): F2051 Unit dwsJITx86Intrinsics was compiled with a different version of dwsUtils.TWriteOnlyBlockStream.Read
+// Just do a re-compile, and it should go away... - HV
+

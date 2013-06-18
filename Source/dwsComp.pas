@@ -361,7 +361,7 @@ type
    end;
 
    TFuncEvalEvent = procedure(info : TProgramInfo) of object;
-   TFuncFastEvalEvent = function(const args : TExprBaseListExec) : Variant of object;
+   TFuncFastEvalEvent = function(const args : TExprBaseList) : Variant of object;
    TInitSymbolEvent = procedure(sender : TObject; symbol : TSymbol) of object;
    TInitExprEvent = procedure(sender : TObject; expr : TExprBase) of object;
 
@@ -1283,14 +1283,14 @@ type
       private
          FOnFastEval : TFuncFastEvalEvent;
       public
-         procedure DoEvalProc(const args : TExprBaseListExec); override;
+         procedure DoEvalProc(const args : TExprBaseList); override;
    end;
 
    TCustomInternalMagicFunction = class(TInternalMagicVariantFunction)
       private
          FOnFastEval : TFuncFastEvalEvent;
       public
-         function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
+         function DoEvalAsVariant(const args : TExprBaseList) : Variant; override;
    end;
 
    TCustomInternalMagicDataFunction = class(TInternalMagicDataFunction)
@@ -1298,26 +1298,26 @@ type
          FOnFastEval : TFuncFastEvalEvent;
          FSize : Integer;
       public
-         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
+         procedure DoEval(const args : TExprBaseList; var result : IDataContext); override;
    end;
 
 // DoEvalProc
 //
-procedure TCustomInternalMagicProcedure.DoEvalProc(const args : TExprBaseListExec);
+procedure TCustomInternalMagicProcedure.DoEvalProc(const args : TExprBaseList);
 begin
    FOnFastEval(args);
 end;
 
 // DoEvalAsVariant
 //
-function TCustomInternalMagicFunction.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
+function TCustomInternalMagicFunction.DoEvalAsVariant(const args : TExprBaseList) : Variant;
 begin
    Result:=FOnFastEval(args);
 end;
 
 // DoEval
 //
-procedure TCustomInternalMagicDataFunction.DoEval(const args : TExprBaseListExec; var result : IDataContext);
+procedure TCustomInternalMagicDataFunction.DoEval(const args : TExprBaseList; var result : IDataContext);
 var
    tmp : Variant;
    pvd : PVarData;

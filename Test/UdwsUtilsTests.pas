@@ -300,7 +300,7 @@ begin
    CheckEquals(-1, FTightList.IndexOf(nil), 'single search nil');
    CheckEquals(0, FTightList.IndexOf(s), 'single search Self');
 
-   FTightList.Move(0, 0);
+   FTightList.MoveItem(0, 0);
 
    CheckEquals(0, FTightList.IndexOf(s), 'single search Self 2');
 
@@ -309,18 +309,18 @@ begin
    CheckEquals(0, FTightList.IndexOf(s), 'two search Self');
    CheckEquals(-1, FTightList.IndexOf(Pointer(-1)), 'two search -1');
 
-   FTightList.Move(0, 1);
+   FTightList.MoveItem(0, 1);
 
    CheckEquals(0, FTightList.IndexOf(nil), 'two search nil 2');
    CheckEquals(1, FTightList.IndexOf(s), 'two search Self 2');
 
-   FTightList.Move(1, 0);
+   FTightList.MoveItem(1, 0);
 
    CheckEquals(1, FTightList.IndexOf(nil), 'two search nil 3');
    CheckEquals(0, FTightList.IndexOf(s), 'two search Self 3');
 
    FTightList.Add(nil);
-   FTightList.Move(2, 0);
+   FTightList.MoveItem(2, 0);
 
    CheckEquals(0, FTightList.IndexOf(nil), 'three search nil');
    CheckEquals(1, FTightList.IndexOf(s), 'three search Self');

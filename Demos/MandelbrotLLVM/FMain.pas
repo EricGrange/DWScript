@@ -47,12 +47,12 @@ type
    // TSetPixelMagic
    //
    TSetPixelMagic = class (TInternalMagicProcedure)
-      procedure DoEvalProc(args : TExprBaseList); override;
+      procedure DoEvalProc(const args : TExprBaseList); override;
    end;
 
 // DoEvalProc
 //
-procedure TSetPixelMagic.DoEvalProc(args : TExprBaseList);
+procedure TSetPixelMagic.DoEvalProc(const args : TExprBaseList);
 begin
    MainForm.SetPixel(args.AsInteger[0], args.AsInteger[1], args.AsInteger[2]);
 end;

@@ -42,28 +42,29 @@ uses
    dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs;
 
 type
+
    TReadGlobalVarFunc = class(TInternalMagicVariantFunction)
-      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
+      function DoEvalAsVariant(const args : TExprBaseList) : Variant; override;
    end;
 
    TReadGlobalVarDefFunc = class(TInternalMagicVariantFunction)
-      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
+      function DoEvalAsVariant(const args : TExprBaseList) : Variant; override;
    end;
 
    TWriteGlobalVarFunc = class(TInternalMagicBoolFunction)
-      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
+      function DoEvalAsBoolean(const args : TExprBaseList) : Boolean; override;
    end;
 
    TDeleteGlobalVarFunc = class(TInternalMagicBoolFunction)
-      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
+      function DoEvalAsBoolean(const args : TExprBaseList) : Boolean; override;
    end;
 
    TCleanupGlobalVarsFunc = class(TInternalMagicProcedure)
-      procedure DoEvalProc(const args : TExprBaseListExec); override;
+      procedure DoEvalProc(const args : TExprBaseList); override;
    end;
 
    TGlobalVarsNamesCommaText = class(TInternalMagicStringFunction)
-      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+      procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
    end;
 
    TSaveGlobalVarsToString = class(TInternalFunction)
@@ -456,31 +457,30 @@ var
   valType: TValueType;
 begin
   valType := reader.NextValue;
-  with reader do
-    case valType of
-      vaNil, vaNull:
-        begin
-          if ReadValue = vaNil then
-            VarClear(Result)
-          else
-            Result := NULL;
-        end;
-      vaInt8: TVarData(Result).VByte := Byte(ReadInteger);
-      vaInt16: TVarData(Result).VSmallint := Smallint(ReadInteger);
-      vaInt32: TVarData(Result).VInteger := ReadInteger;
-      vaInt64: TVarData(Result).VInt64 := ReadInt64;
-      vaExtended: TVarData(Result).VDouble := ReadFloat;
-      vaSingle: TVarData(Result).VSingle := ReadSingle;
-      vaCurrency: TVarData(Result).VCurrency := ReadCurrency;
-      vaDate: TVarData(Result).VDate := ReadDate;
-      vaString, vaLString, vaUTF8String:
-         Result := UnicodeString(ReadString);
-      vaWString: Result := ReadWideString;
-      vaFalse, vaTrue:
-         TVarData(Result).VBoolean := (ReadValue = vaTrue);
-    else
-      raise EReadError.Create('Invalid variant stream');
-    end;
+  case valType of
+    vaNil, vaNull:
+      begin
+        if ReadValue = vaNil then
+          VarClear(Result)
+        else
+          Result := NULL;
+      end;
+    vaInt8: TVarData(Result).VByte := Byte(reader.ReadInteger);
+    vaInt16: TVarData(Result).VSmallint := Smallint(reader.ReadInteger);
+    vaInt32: TVarData(Result).VInteger := reader.ReadInteger;
+    vaInt64: TVarData(Result).VInt64 := reader.ReadInt64;
+    vaExtended: TVarData(Result).VDouble := reader.ReadFloat;
+    vaSingle: TVarData(Result).VSingle := reader.ReadSingle;
+    vaCurrency: TVarData(Result).VCurrency := reader.ReadCurrency;
+    vaDate: TVarData(Result).VDate := reader.ReadDate;
+    vaString, vaLString, vaUTF8String:
+       Result := UnicodeString(reader.ReadString);
+    vaWString: Result := reader.ReadString;
+    vaFalse, vaTrue:
+       TVarData(Result).VBoolean := (reader.ReadValue = vaTrue);
+  else
+    raise EReadError.Create('Invalid variant stream');
+  end;
   TVarData(Result).VType := cValTtoVarT[ValType];
 end;
 
@@ -500,42 +500,42 @@ end;
 
 { TReadGlobalVarFunc }
 
-function TReadGlobalVarFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
+function TReadGlobalVarFunc.DoEvalAsVariant(const args : TExprBaseList) : Variant;
 begin
    Result:=ReadGlobalVar(args.AsString[0]);
 end;
 
 { TReadGlobalVarDefFunc }
 
-function TReadGlobalVarDefFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
+function TReadGlobalVarDefFunc.DoEvalAsVariant(const args : TExprBaseList) : Variant;
 begin
    Result:=ReadGlobalVarDef(args.AsString[0], args.ExprBase[1].Eval(args.Exec));
 end;
 
 { TWriteGlobalVarFunc }
 
-function TWriteGlobalVarFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+function TWriteGlobalVarFunc.DoEvalAsBoolean(const args : TExprBaseList) : Boolean;
 begin
    Result:=WriteGlobalVar(args.AsString[0], args.ExprBase[1].Eval(args.Exec));
 end;
 
 { TDeleteGlobalVarFunc }
 
-function TDeleteGlobalVarFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+function TDeleteGlobalVarFunc.DoEvalAsBoolean(const args : TExprBaseList) : Boolean;
 begin
    Result:=DeleteGlobalVar(args.AsString[0]);
 end;
 
 { TCleanupGlobalVarsFunc }
 
-procedure TCleanupGlobalVarsFunc.DoEvalProc(const args : TExprBaseListExec);
+procedure TCleanupGlobalVarsFunc.DoEvalProc(const args : TExprBaseList);
 begin
    CleanupGlobalVars;
 end;
 
 { TGlobalVarsNamesCommaText }
 
-procedure TGlobalVarsNamesCommaText.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+procedure TGlobalVarsNamesCommaText.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=GlobalVarsNamesCommaText;
 end;

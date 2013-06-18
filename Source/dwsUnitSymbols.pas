@@ -203,7 +203,7 @@ type
          FInitialized : Boolean;
 
       protected
-         function SymbolTable : TStaticSymbolTable;
+         function SymbolTable : TStaticSymbolTable; overload;
 
       public
          destructor Destroy; override;
@@ -274,7 +274,7 @@ type
          FTypCustomAttribute : TClassSymbol;
 
       protected
-         function SymbolTable : TSystemSymbolTable;
+         function SymbolTable : TSystemSymbolTable; overload;
 
       public
          property TypInteger : TBaseIntegerSymbol read FTypInteger write FTypInteger;

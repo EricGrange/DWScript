@@ -2238,7 +2238,7 @@ end;
 
 function TLLVMExpression.GetInstructionParent: TLLVMBasicBlock;
 begin
-   LLVMGetInstructionParent(FLLVMValue);
+   LLVMGetInstructionParent(FLLVMValue); // HV: Note warning here! (Result not set)
 end;
 
 

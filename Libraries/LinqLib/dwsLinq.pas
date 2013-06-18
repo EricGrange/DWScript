@@ -122,7 +122,7 @@ type
 implementation
 uses
    SysUtils,
-   dwsDatabaseLibModule, dwsUnitSymbols, dwsConvExprs;
+   dwsExprList, dwsDatabaseLibModule, dwsUnitSymbols, dwsConvExprs;
 
 { TdwsLinqFactory }
 

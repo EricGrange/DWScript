@@ -92,7 +92,7 @@ type
          Buffer : TTokenBuffer;
    end;
 
-   TScriptThread = class (TThread)
+   TScriptThread = class (TdwsThread)
       private
          FProg : IdwsProgram;
          FTimeOut : Integer;
@@ -703,7 +703,7 @@ begin
    CheckEquals('TBlockInitExpr'#13#10
                   +#9'TInitDataExpr'#13#10
                      +#9#9'TStrVarExpr'#13#10,
-               MakeSubExprTree((prog as TdwsProgram).InitExpr), 'Main InitExpr');
+               MakeSubExprTree((prog.GetSelf as TdwsProgram).InitExpr), 'Main InitExpr');
    CheckEquals('TBlockExprNoTable3'#13#10
                   +#9'TAssignConstToStringVarExpr'#13#10
                      +#9#9'TStrVarExpr'#13#10
@@ -717,7 +717,7 @@ begin
                      +#9#9'TMagicProcedureExpr'#13#10
                         +#9#9#9'TFuncExpr'#13#10
                            +#9#9#9#9'TConstIntExpr'#13#10,
-               MakeSubExprTree((prog as TdwsProgram).Expr), 'Main Expr');
+               MakeSubExprTree((prog.GetSelf as TdwsProgram).Expr), 'Main Expr');
 end;
 
 // RecompileInContext

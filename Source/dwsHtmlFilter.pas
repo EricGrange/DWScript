@@ -67,12 +67,12 @@ type
 
    TSendFunction = class(TInternalMagicProcedure)
       public
-         procedure DoEvalProc(const args : TExprBaseListExec); override;
+         procedure DoEvalProc(const args : TExprBaseList); override;
   end;
 
   TSendLnFunction = class(TInternalMagicProcedure)
       public
-         procedure DoEvalProc(const args : TExprBaseListExec); override;
+         procedure DoEvalProc(const args : TExprBaseList); override;
   end;
 
   EHTMLFilterException = class (Exception) end;
@@ -219,7 +219,7 @@ end;
 
 // DoEvalProc
 //
-procedure TSendFunction.DoEvalProc(const args : TExprBaseListExec);
+procedure TSendFunction.DoEvalProc(const args : TExprBaseList);
 begin
    (args.Exec as TdwsProgramExecution).Result.AddString(args.AsString[0]);
 end;
@@ -228,7 +228,7 @@ end;
 
 // DoEvalProc
 //
-procedure TSendLnFunction.DoEvalProc(const args : TExprBaseListExec);
+procedure TSendLnFunction.DoEvalProc(const args : TExprBaseList);
 var
    result : TdwsResult;
 begin

@@ -394,7 +394,7 @@ type
    // TdwsGuardianThread
    //
    // Stops the script after given time (Timeout)
-   TdwsGuardianThread = class(TThread)
+   TdwsGuardianThread = class(TdwsThread)
       private
          FEvent : TEvent;
          FExecutions : TdwsGuardedExecution;
@@ -461,7 +461,7 @@ type
       property Localizer : IdwsLocalizer read GetLocalizer write SetLocalizer;
    end;
 
-   IdwsProgram = interface
+   IdwsProgram = interface(IGetSelf)
       ['{AD513983-F033-44AF-9F2B-9CFFF94B9BB3}']
       function GetMsgs : TdwsMessageList;
       function GetConditionalDefines : IAutoStrings;
@@ -1763,12 +1763,12 @@ type
 
    TPrintFunction = class(TInternalMagicProcedure)
       public
-         procedure DoEvalProc(const args : TExprBaseListExec); override;
+         procedure DoEvalProc(const args : TExprBaseList); override;
    end;
 
    TPrintLnFunction = class(TInternalMagicProcedure)
       public
-         procedure DoEvalProc(const args : TExprBaseListExec); override;
+         procedure DoEvalProc(const args : TExprBaseList); override;
    end;
 
 { TScriptObjectWrapper }
@@ -3314,7 +3314,7 @@ end;
 
 // DoEvalProc
 //
-procedure TPrintFunction.DoEvalProc(const args : TExprBaseListExec);
+procedure TPrintFunction.DoEvalProc(const args : TExprBaseList);
 var
    buf : UnicodeString;
 begin
@@ -3328,12 +3328,19 @@ end;
 
 // DoEvalProc
 //
-procedure TPrintLnFunction.DoEvalProc(const args : TExprBaseListExec);
+procedure TPrintLnFunction.DoEvalProc(const args : TExprBaseList);
 var
    buf : UnicodeString;
    result : TdwsResult;
+{$IF CompilerVersion <= 21}
+   ExprBaseListRec: TExprBaseListRec;
+begin
+   ExprBaseListRec := args.List^;
+   ExprBaseListRec.ExprBase[0].EvalAsString(args.Exec, buf);
+{$ELSE}
 begin
    args.List.ExprBase[0].EvalAsString(args.Exec, buf);
+{$IFEND}
    result:=(args.Exec as TdwsProgramExecution).Result;
    result.AddString(buf);
    result.AddCRLF;
@@ -7905,7 +7912,7 @@ begin
    Result:=nil;
    n:=FExpr.FArgs.Count;
    for i:=0 to FOverloads.Count-1 do begin
-      func:=FOverloads[i];
+      func := FOverloads.Items[i];
       if n<func.Params.Count then begin
          if Result=nil then
             Result:=(func.Params[n] as TParamSymbol)

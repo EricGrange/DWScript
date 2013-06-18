@@ -159,10 +159,25 @@ procedure CloseFileHandle(hFile : THandle);
 function DirectSet8087CW(newValue : Word) : Word; register;
 function DirectSetMXCSR(newValue : Word) : Word; register;
 
+// Generics helper functions to handle Delphi 2009 issues - HV
+function TtoObject(const T): TObject; inline;
+function TtoPointer(const T): Pointer; inline;
+procedure GetMemForT(var T; Size: integer); inline;
+
+// Functions missing in D2009
+{$ifndef FPC}
+{$IF RTLVersion < 21}
+function FindDelimiter(const Delimiters, S: string; StartIdx: Integer = 1): Integer;
+{$IFEND}
+{$endif}
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 implementation
+
+//uses Generics.Collections; // Need PObject for D2009 - HV
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -597,6 +612,44 @@ begin
    Result:=newValue;
 {$endif}
 end;
+
+// Delphi 2009 is not able to cast a generic T instance to TObject or Pointer
+function TtoObject(const T): TObject;
+begin
+// Manually inlining the code would require the IF-defs
+//{$IF Compilerversion >= 21}
+   Result := TObject(T);
+//{$ELSE}
+//   Result := PObject(@T)^;
+//{$IFEND}
+end;
+
+function TtoPointer(const T): Pointer;
+begin
+// Manually inlining the code would require the IF-defs
+//{$IF Compilerversion >= 21}
+   Result := Pointer(T);
+//{$ELSE}
+//   Result := PPointer(@T)^;
+//{$IFEND}
+end;
+
+procedure GetMemForT(var T; Size: integer); inline;
+begin
+  GetMem(Pointer(T), Size);
+end;
+
+{$ifndef FPC}
+{$IF RTLVersion < 21}
+function FindDelimiter(const Delimiters, S: string; StartIdx: Integer = 1): Integer;
+begin
+  for Result := StartIdx to Length(S) do
+    if IsDelimiter(Delimiters, S, Result) then
+      Exit;
+  Result := -1;
+end;
+{$IFEND}
+{$endif}
 
 // ------------------
 // ------------------ TFixedCriticalSection ------------------

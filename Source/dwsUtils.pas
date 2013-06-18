@@ -141,7 +141,7 @@ type
          function Remove(item : TRefCountedObject) : Integer;
          procedure Delete(index : Integer);
          procedure Insert(index : Integer; item : TRefCountedObject);
-         procedure Move(curIndex, newIndex : Integer);
+         procedure MoveItem(curIndex, newIndex : Integer); // Note: D2009 fails if this method is called Move (!) - HV
          procedure Exchange(index1, index2 : Integer);
    end;
 
@@ -178,12 +178,14 @@ type
    {: A minimalistic generic list class. }
    TSimpleList<T> = class
       private
-         FItems : array of T;
+      type ArrayT = array of T;
+      var
+         FItems : ArrayT;
          FCount : Integer;
          FCapacity : Integer;
       protected
          procedure Grow;
-         function GetItems(const idx : Integer) : T; inline;
+         function GetItems(const idx : Integer) : T; {$IF CompilerVersion > 21} inline; {$IFEND}
          procedure SetItems(const idx : Integer; const value : T);
       public
          procedure Add(const item : T);
@@ -199,7 +201,9 @@ type
    {: A simple generic object list, owns objects }
    TObjectList<T{$IFNDEF FPC}: TRefCountedObject{$ENDIF}> = class
       private
-         FItems : array of T;
+      type ArrayT = array of T;
+      var
+         FItems : ArrayT;
          FCount : Integer;
       protected
          function GetItem(index : Integer) : T;
@@ -220,7 +224,9 @@ type
    {: List that maintains its elements sorted, subclasses must override Compare }
    TSortedList<T{$IFNDEF FPC}: TRefCountedObject{$ENDIF}> = class
       private
-         FItems : array of T;
+      type ArrayT = array of T;
+      var
+         FItems : ArrayT;
          FCount : Integer;
       protected
          function GetItem(index : Integer) : T;
@@ -247,7 +253,9 @@ type
       you need to clear yourself manually via Peek. }
    TSimpleStack<T> = class
       private
-         FItems : array of T;
+      type ArrayT = array of T;
+      var
+         FItems : ArrayT;
          FCount : Integer;
          FCapacity : Integer;
       protected
@@ -523,7 +531,7 @@ type
          // must be strictly an utf16 UnicodeString
          procedure WriteString(const utf16String : UnicodeString); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos : Integer); overload;
-         procedure WriteSubString(const utf16String : UnicodeString; startPos, length : Integer); overload;
+         procedure WriteSubString(const utf16String : UnicodeString; startPos, Alength : Integer); overload;
          procedure WriteCRLF;
          procedure WriteChar(utf16Char : WideChar); inline;
          procedure WriteDigits(value : Int64; digits : Integer);
@@ -1727,7 +1735,7 @@ end;
 
 // Move
 //
-procedure TTightList.Move(curIndex, newIndex : Integer);
+procedure TTightList.MoveItem(curIndex, newIndex : Integer);
 var
    item : Pointer;
 begin
@@ -1818,7 +1826,7 @@ end;
 function TObjectList<T>.Extract(idx : Integer) : T;
 begin
    Result:=FItems[idx];
-   Move(FItems[idx+1], FItems[idx], SizeOf(T)*(Count-1-idx));
+   System.Move(FItems[idx+1], FItems[idx], SizeOf(T)*(Count-1-idx));
    Dec(FCount);
 end;
 
@@ -1922,7 +1930,7 @@ begin
    Result:=FItems[index];
    n:=FCount-index;
    if n>0 then
-      Move(FItems[index+1], FItems[index], n*SizeOf(T));
+      System.Move(FItems[index+1], FItems[index], n*SizeOf(T));
    SetLength(FItems, FCount);
 end;
 
@@ -2104,7 +2112,7 @@ begin
    while iterator<>nil do begin
       n:=PInteger(@iterator[1])^;
       if n>0 then begin
-         Move(iterator[2], dest^, n);
+         System.Move(iterator[2], dest^, n);
          dest:=@dest[n];
       end;
       iterator:=iterator[0];
@@ -2181,7 +2189,7 @@ begin
       // does not fit in current block
       if FBlockRemaining^>0 then begin
          // current block contains some data, write fraction, allocate new block
-         Move(source^, PByteArray(@FCurrentBlock[2])[FBlockRemaining^], fraction);
+         System.Move(source^, PByteArray(@FCurrentBlock[2])[FBlockRemaining^], fraction);
          Dec(count, fraction);
          source:=@source[fraction];
          FBlockRemaining^:=cWriteOnlyBlockStreamBlockSize;
@@ -2194,7 +2202,7 @@ begin
          newBlock:=GetMemory(count+2*SizeOf(Pointer));
          newBlock[0]:=FCurrentBlock;
          PInteger(@newBlock[1])^:=count;
-         Move(source^, newBlock[2], count);
+         System.Move(source^, newBlock[2], count);
          FCurrentBlock[0]:=newBlock;
          FCurrentBlock:=newBlock;
          AllocateCurrentBlock;
@@ -2215,7 +2223,7 @@ begin
       7 : PSevenBytes(dest)^:=PSevenBytes(source)^;
       8 : PInt64(dest)^:=PInt64(source)^;
    else
-      Move(source^, dest^, count);
+      System.Move(source^, dest^, count);
    end;
    Inc(FBlockRemaining^, count);
 end;
@@ -2362,19 +2370,19 @@ end;
 
 // WriteSubString
 //
-procedure TWriteOnlyBlockStream.WriteSubString(const utf16String : UnicodeString; startPos, length : Integer);
+procedure TWriteOnlyBlockStream.WriteSubString(const utf16String : UnicodeString; startPos, Alength : Integer);
 var
    p, n : Integer;
 begin
    Assert(startPos>=1);
-   if length<=0 then Exit;
-   n:=System.Length(utf16String);
+   if Alength<=0 then Exit;
+   n:={System.}Length(utf16String);
    if startPos>n then Exit;
-   p:=startPos+length-1;
+   p:=startPos+Alength-1;
    if p>n then p:=n;
-   length:=p-startPos+1;
-   if length>0 then
-      Write(utf16String[startPos], length*SizeOf(WideChar));
+   Alength:=p-startPos+1;
+   if Alength>0 then
+      Write(utf16String[startPos], Alength*SizeOf(WideChar));
 end;
 
 // ------------------
@@ -3322,7 +3330,7 @@ end;
 procedure TClassCloneConstructor<T>.Initialize(aTemplate : T);
 begin
    FTemplate:=aTemplate;
-   FSize:=TObject(FTemplate).InstanceSize;
+   FSize:= FTemplate.InstanceSize;
 end;
 
 // Finalize
@@ -3336,8 +3344,8 @@ end;
 //
 function TClassCloneConstructor<T>.Create : T;
 begin
-   GetMem(Pointer(TObject(Result)), FSize);
-   System.Move(Pointer(TObject(FTemplate))^, Pointer(TObject(Result))^, FSize);
+  GetMemForT(Result, FSize);
+  Move(TtoPointer(FTemplate)^, TtoPointer(Result)^, FSize);
 end;
 
 // ------------------

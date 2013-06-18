@@ -32,7 +32,11 @@ implementation
 uses
   Classes, Controls, dwsComp, dwsComConnector, dwsDebugger, dwsGlobalVarsFunctions,
   dwsVCLGUIFunctions, dwsHtmlFilter, dwsClasses, dwsClassesLibModule,
-  dwsFileSystem, dwsSymbolsLibModule, dwsRTTIConnector;
+  dwsFileSystem, dwsSymbolsLibModule
+{$IF RTLVersion >= 21}
+  , dwsRTTIConnector
+{$IFEND}
+  ;
 
 procedure Register;
 begin
@@ -42,7 +46,9 @@ begin
                      [
                      TDelphiWebScript,
                      TdwsComConnector,
+{$IF RTLVersion >= 21}
                      TdwsRttiConnector,
+{$IFEND}
                      TdwsSimpleDebugger,
                      TdwsDebugger,
                      TdwsUnit,

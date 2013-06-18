@@ -169,7 +169,7 @@ type
    // TJSONStringifyMethod
    //
    TJSONStringifyMethod = class (TInternalMagicStringFunction)
-      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+      procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
 
       class procedure StringifyVariant(exec : TdwsExecution; writer : TdwsJSONWriter; const v : Variant); static;
       class procedure StringifySymbol(exec : TdwsExecution; writer : TdwsJSONWriter; sym : TSymbol; const dataPtr : IDataContext); static;
@@ -797,7 +797,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TJSONStringifyMethod.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+procedure TJSONStringifyMethod.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
 var
    writer : TdwsJSONWriter;
    stream : TWriteOnlyBlockStream;

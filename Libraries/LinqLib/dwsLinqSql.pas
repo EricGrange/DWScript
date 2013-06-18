@@ -104,7 +104,7 @@ type
 implementation
 uses
    Sysutils,
-   dwsConvExprs, dwsUnitSymbols;
+   dwsUtils, dwsExprList, dwsConvExprs, dwsUnitSymbols;
 
 { TSqlFromExpr }
 

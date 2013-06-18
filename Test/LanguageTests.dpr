@@ -34,7 +34,6 @@ uses
   dwsMath3DFunctions in '..\Source\dwsMath3DFunctions.pas',
   dwsDebugFunctions in '..\Source\dwsDebugFunctions.pas',
   UBuildTests in 'UBuildTests.pas',
-  URTTIExposeTests in 'URTTIExposeTests.pas',
   USourceUtilsTests in 'USourceUtilsTests.pas',
   ULocalizerTests in 'ULocalizerTests.pas',
   dwsRTTIFunctions,
@@ -47,13 +46,15 @@ uses
   dwsLinq,
   dwsLinqSql in '..\Libraries\LinqLib\dwsLinqSql.pas',
   ULinqTests in 'ULinqTests.pas',
-  dwsSynSQLiteDatabase in '..\Libraries\DatabaseLib\dwsSynSQLiteDatabase.pas',
   dwsLinqJson in '..\Libraries\LinqLib\dwsLinqJson.pas',
-  ULinqJsonTests in 'ULinqJsonTests.pas',
-  USpecialTestsRTTI in 'USpecialTestsRTTI.pas';
+{$IF RTLVersion >= 21}
+  dwsSynSQLiteDatabase in '..\Libraries\DatabaseLib\dwsSynSQLiteDatabase.pas',
+  URTTIExposeTests in 'URTTIExposeTests.pas',
+  USpecialTestsRTTI in 'USpecialTestsRTTI.pas',
+{$IFEND}
+  ULinqJsonTests in 'ULinqJsonTests.pas';
 
 {$R *.res}
-
 begin
    DirectSet8087CW($133F);
    SetProcessAffinityMask(GetCurrentProcessId, Cardinal(-1));

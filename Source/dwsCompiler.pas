@@ -372,6 +372,7 @@ type
 
    // TdwsCompiler
    //
+   TSimpleObjectObjectHash_TDataSymbol_TVarExpr = TSimpleObjectObjectHash<TDataSymbol,TVarExpr>;
    TdwsCompiler = class (TInterfacedObject, IdwsCompiler)
       private
          FOptions : TCompilerOptions;
@@ -417,7 +418,7 @@ type
          // if set we're in a setter write expression or statement
          FPendingSetterValueExpr : TVarExpr;
 
-         FDataSymbolExprReuse : TSimpleObjectObjectHash<TDataSymbol,TVarExpr>;
+         FDataSymbolExprReuse : TSimpleObjectObjectHash_TDataSymbol_TVarExpr;
 
          FStaticExtensionSymbols : Boolean;
          FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbolEvent;
@@ -1455,7 +1456,7 @@ begin
 
    FOnGetDefaultLocalizer := conf.DoGetLocalizer;
 
-   FDataSymbolExprReuse:=TSimpleObjectObjectHash<TDataSymbol,TVarExpr>.Create;
+   FDataSymbolExprReuse:= TSimpleObjectObjectHash_TDataSymbol_TVarExpr.Create;
 
    F8087CW:=DirectSet8087CW($133F);
 end;
@@ -13479,4 +13480,6 @@ begin
 end;
 
 end.
-
+// D2009: if you after a build get:
+// [DCC Fatal Error] dwsCompiler.pas: F2051 Unit dwsCompiler was compiled with a different version of dwsUtils.TSimpleObjectObjectHash`2.GetItemHashCode
+// Just do a re-compile, and it should go away... - HV

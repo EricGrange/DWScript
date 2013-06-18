@@ -76,7 +76,7 @@ type
 
    TProgramState = (psUndefined, psReadyToRun, psRunning, psRunningStopped, psTerminated);
 
-   IdwsExecution = interface (IGetSelf)
+   IdwsExecution = interface (dwsUtils.IGetSelf)
       ['{8F2D1D7E-9954-4391-B919-86EF1EE21C8C}']
       function GetMsgs : TdwsRuntimeMessageList;
       function  GetDebugger : IDebugger;
@@ -5610,7 +5610,7 @@ end;
 //
 procedure TSymbolTable.MoveParent(CurIndex, NewIndex: Integer);
 begin
-   FParents.Move(CurIndex,NewIndex);
+   FParents.MoveItem(CurIndex,NewIndex);
 end;
 
 // MoveNext
@@ -7014,5 +7014,6 @@ begin
    end;
    Result:=False;
 end;
+
 
 end.
