@@ -447,8 +447,9 @@ type
 
    Tx86SetOfExpr = class (TdwsJITter_x86)
       procedure NormalizeEnumOperand(setTyp : TSetOfSymbol; operand : TTypedExpr; targetOutOfRange : TFixup);
+      procedure ComputeFromValueInEAXOffsetInECXMaskInEDX(setTyp : TSetOfSymbol);
    end;
-   Tx86SetOfInSmallExpr = class (Tx86SetOfExpr)
+   Tx86SetOfInExpr = class (Tx86SetOfExpr)
       procedure DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup); override;
    end;
    Tx86SetOfFunction = class (Tx86SetOfExpr)
@@ -624,6 +625,7 @@ begin
 
    RegisterJITter(TForUpwardExpr,               Tx86ForUpward.Create(Self));
    RegisterJITter(TForUpwardStepExpr,           Tx86ForUpward.Create(Self));
+//   RegisterJITter(TForUpwardStepExpr,           Tx86InterpretedExpr.Create(Self));
 
    RegisterJITter(TContinueExpr,                Tx86Continue.Create(Self));
    RegisterJITter(TExitExpr,                    Tx86Exit.Create(Self));
@@ -678,7 +680,8 @@ begin
    RegisterJITter(TBoolOrExpr,                  Tx86BoolOrExpr.Create(Self));
    RegisterJITter(TBoolAndExpr,                 Tx86BoolAndExpr.Create(Self));
 
-   RegisterJITter(TSetOfSmallInExpr,            Tx86SetOfInSmallExpr.Create(Self));
+   RegisterJITter(TSetOfInExpr,                 Tx86SetOfInExpr.Create(Self));
+   RegisterJITter(TSetOfSmallInExpr,            Tx86SetOfInExpr.Create(Self));
    RegisterJITter(TSetOfIncludeExpr,            Tx86SetOfInclude.Create(Self));
    RegisterJITter(TSetOfExcludeExpr,            Tx86SetOfExclude.Create(Self));
 
@@ -1927,7 +1930,7 @@ begin
          jit.CompileInteger(TForUpwardStepExpr(e).StepExpr);
 
          x86._cmp_reg_int32(gprEDX, 0);
-         stepCheckPassed:=jit.Fixups.NewJump(flagsG);
+         stepCheckPassed:=jit.Fixups.NewJump(flagsGE);
 
          x86._push_reg(gprEDX);
          x86._push_reg(gprEAX);
@@ -3549,18 +3552,55 @@ begin
    jit.Fixups.NewJump(flagsGE, targetOutOfRange);
 end;
 
+// ComputeFromValueInEAXOffsetInECXMaskInEDX
+//
+procedure Tx86SetOfExpr.ComputeFromValueInEAXOffsetInECXMaskInEDX(setTyp : TSetOfSymbol);
+begin
+   // this is a bit complicated because of the array of Variant layout
+   // bits are in 64bit packages with 64bit padding and the test is 32bits
+
+   x86._mov_reg_reg(gprECX, gprEAX);            // ECX: value
+   x86._op_reg_int32(gpOp_and, gprECX, 31);     // ECX: value and 31
+   x86._mov_reg_dword(gprEDX, 1);
+   x86._shift_reg_cl(gpShl, gprEDX);            // EDX: 32bit mask
+
+   x86._shift_reg_imm(gpShr, gprEAX, 5);        // EAX: 32bit index
+   x86._mov_reg_reg(gprECX, gprEAX);            // ECX: 32bit index
+
+   x86._op_reg_int32(gpOp_and, gprEAX, 1);      // EAX; 32bit index in 64bit package
+   x86._shift_reg_imm(gpShl, gprEAX, 2);        // EAX; offset in 64bit package
+
+   x86._shift_reg_imm(gpShr, gprECX, 1);        // ECX: 64bit index
+   x86._shift_reg_imm(gpShl, gprECX, 4);        // ECX: SizeOf(Variant) offset
+
+   x86._add_reg_reg(gprECX, gprEAX);            // ECX: offset
+end;
+
 // ------------------
-// ------------------ Tx86SetOfInSmallExpr ------------------
+// ------------------ Tx86SetOfInExpr ------------------
 // ------------------
 
 // DoCompileBoolean
 //
-procedure Tx86SetOfInSmallExpr.DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup);
+procedure Tx86SetOfInExpr.DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup);
 var
-   e : TSetOfSmallInExpr;
+   e : TSetOfInExpr;
+   rightVar : TVarExpr;
+   rightVarOffset : Integer;
    v : Integer;
+   offset : Integer;
+   byteMask : Byte;
+   opAddrRegister : TgpRegister;
 begin
-   e:=TSetOfSmallInExpr(expr);
+   e:=TSetOfInExpr(expr);
+
+   if e.Right is TVarExpr then
+      rightVar:=TVarExpr(e.Right)
+   else begin
+      inherited;
+      Exit;
+   end;
+   rightVarOffset:=StackAddrToOffset(rightVar.StackAddr);
 
    if e.Left is TConstIntExpr then begin
 
@@ -3569,39 +3609,36 @@ begin
          jit.Fixups.NewJump(targetFalse);
          Exit;
       end;
-      v:=1 shl v;
 
-      if e.Right is TVarExpr then begin
+      offset:=e.SetType.ValueToByteOffsetMask(v, byteMask);
+      offset:=(offset and 7)+(offset shr 8)*SizeOf(Variant);
 
-         x86._test_execmem_imm(TVarExpr(e.Right).StackAddr, 0, v);
-         jit.Fixups.NewConditionalJumps(flagsNZ, targetTrue, targetFalse);
-         Exit;
-
-      end;
-
-      x86._mov_reg_dword(gprEDX, v);
+      x86._test_dword_ptr_reg_byte(cExecMemGPR, rightVarOffset+offset, byteMask);
+      jit.Fixups.NewConditionalJumps(flagsNZ, targetTrue, targetFalse);
+      Exit;
 
    end else begin
 
       NormalizeEnumOperand(e.SetType, e.Left, targetFalse);
 
-      x86._mov_reg_reg(gprECX, gprEAX);
-      x86._mov_reg_dword(gprEDX, 1);
-      x86._shift_reg_cl(gpShl, gprEDX);
+      if e.SetType.CountValue<=32 then begin
 
-   end;
+         x86._mov_reg_reg(gprECX, gprEAX);
+         x86._mov_reg_dword(gprEDX, 1);
+         x86._shift_reg_cl(gpShl, gprEDX);
 
-   if e.Right is TVarExpr then begin
+         opAddrRegister:=cExecMemGPR;
 
-      x86._test_execmem_reg(TVarExpr(e.Right).StackAddr, 0, gprEDX);
+      end else begin
 
-   end else begin
+         ComputeFromValueinEAXOffsetInECXMaskInEDX(e.SetType);
+         x86._add_reg_reg(gprECX, cExecMemGPR);
 
-      x86._push_reg(gprEDX);
-      jit.CompileInteger(e.Right);
-      x86._pop_reg(gprEDX);
+         opAddrRegister:=gprECX;
 
-      x86._test_reg_reg(gprEAX, gprEDX);
+      end;
+
+      x86._test_dword_ptr_reg_reg(opAddrRegister, rightVarOffset, gprEDX);
 
    end;
 
@@ -3618,23 +3655,22 @@ procedure Tx86SetOfFunction.CompileStatement(expr : TExprBase);
 var
    e : TSetOfFunctionExpr;
    offset : Integer;
-   addr : Integer;
+   varOffset : Integer;
    mask : Byte;
    targetOutOfRange : TFixupTarget;
-   bitShift32bit : TFixupJump;
 begin
    e:=TSetOfFunctionExpr(expr);
 
    if e.BaseExpr is TVarExpr then begin
 
-      addr:=StackAddrToOffset(TVarExpr(e.BaseExpr).StackAddr);
+      varOffset:=StackAddrToOffset(TVarExpr(e.BaseExpr).StackAddr);
 
       if e.Operand is TConstIntExpr then begin
 
          offset:=e.SetType.ValueToByteOffsetMask(TConstIntExpr(e.Operand).Value, mask);
-         addr:=addr+(offset div 8)*SizeOf(Variant)+(offset and 7);
+         varOffset:=varOffset+(offset div 8)*SizeOf(Variant)+(offset and 7);
 
-         DoByteOp(cExecMemGPR, addr, mask);
+         DoByteOp(cExecMemGPR, varOffset, mask);
 
       end else begin
 
@@ -3642,30 +3678,12 @@ begin
 
          NormalizeEnumOperand(e.SetType, e.Operand, targetOutOfRange);
 
-         x86._mov_reg_reg(gprECX, gprEAX);
+         ComputeFromValueInEAXOffsetInECXMaskInEDX(e.SetType);
+         x86._add_reg_reg(gprECX, cExecMemGPR);
 
-         x86._shift_reg_imm(gpShr, gprEAX, 6);     // EAX has Int64 offset
-         x86._shift_reg_imm(gpShl, gprEAX, 4);     // EAX has Variant offset
-
-         x86._op_reg_int32(gpOp_and, gprECX, 63);  // ECX has 64bit shift
-         x86._cmp_reg_int32(gprECX, 32);
-
-         bitShift32bit:=jit.Fixups.NewJump(flagsL);
-
-         x86._add_reg_int32(gprEAX, 4);            // normalize to 32bit shift
-         x86._sub_reg_int32(gprECX, 32);
-
-         bitShift32bit.NewTarget(True);
-
-         x86._mov_reg_dword(gprEDX, 1);
-         x86._shift_reg_cl(gpShl, gprEDX);         // EDX has 32bit mask
-
-         x86._add_reg_reg(gprEAX, cExecMemGPR);
-         x86._mov_reg_dword_ptr_reg(gprECX, gprEAX, addr);
-
-         DoWordOp(gprECX, gprEDX);
-
-         x86._mov_dword_ptr_reg_reg(gprEAX, addr, gprECX);
+         x86._mov_reg_dword_ptr_reg(gprEAX, gprECX, varOffset);
+         DoWordOp(gprEAX, gprEDX);
+         x86._mov_dword_ptr_reg_reg(gprECX, varOffset, gprEAX);
 
          jit.Fixups.AddFixup(targetOutOfRange);
 
@@ -3689,7 +3707,7 @@ end;
 //
 procedure Tx86SetOfInclude.DoWordOp(dest, src : TgpRegister);
 begin
-   x86._op_reg_reg(gpOp_or, gprECX, gprEDX);
+   x86._op_reg_reg(gpOp_or, dest, src);
 end;
 
 // ------------------
@@ -3707,8 +3725,8 @@ end;
 //
 procedure Tx86SetOfExclude.DoWordOp(dest, src : TgpRegister);
 begin
-   x86._not_reg(gprEDX);
-   x86._op_reg_reg(gpOp_and, gprECX, gprEDX);
+   x86._not_reg(src);
+   x86._op_reg_reg(gpOp_and, dest, src);
 end;
 
 // ------------------
