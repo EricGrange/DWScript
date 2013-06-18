@@ -547,6 +547,7 @@ type
          function IsType : Boolean; override;
          function BaseType : TTypeSymbol; override;
          function UnAliasedType : TTypeSymbol; virtual;
+         function UnAliasedTypeIs(const typeSymbolClass : TTypeSymbolClass) : Boolean; inline;
          function IsOfType(typSym : TTypeSymbol) : Boolean;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; virtual;
          function DistanceTo(typeSym : TTypeSymbol) : Integer; virtual;
@@ -4766,13 +4767,21 @@ end;
 // IsCompatible
 //
 function TBaseVariantSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+var
+   ct : TClass;
 begin
-   Result:=    (typSym<>nil)
-           and (   (typSym.UnAliasedType is TBaseSymbol)
-                or (typSym.UnAliasedType is TEnumerationSymbol)
-                or (typSym.UnAliasedType is TClassSymbol)
-                or (typSym.UnAliasedType is TNilSymbol)
-                or (typSym.UnAliasedType is TInterfaceSymbol));
+   if typSym<>nil then begin
+      typSym:=typSym.UnAliasedType;
+      if typSym.InheritsFrom(TBaseSymbol) then
+         Result:=True
+      else begin
+         ct:=typSym.ClassType;
+         Result:=   (ct=TEnumerationSymbol)
+                 or (ct=TClassSymbol)
+                 or (ct=TNilSymbol)
+                 or (ct=TInterfaceSymbol);
+      end;
+   end else Result:=False;
 end;
 
 // InitData
@@ -6288,6 +6297,13 @@ end;
 function TTypeSymbol.UnAliasedType : TTypeSymbol;
 begin
    Result:=Self;
+end;
+
+// UnAliasedTypeIs
+//
+function TTypeSymbol.UnAliasedTypeIs(const typeSymbolClass : TTypeSymbolClass) : Boolean;
+begin
+   Result:=(Self<>nil) and UnAliasedType.InheritsFrom(typeSymbolClass);
 end;
 
 // IsOfType

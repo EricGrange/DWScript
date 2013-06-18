@@ -219,7 +219,7 @@ begin
          if (arrayConst.ElementCount=0) or arrayConst.Typ.Typ.IsOfType(toTyp.Typ) then
             Result:=TConvStaticArrayToSetOfExpr.Create(prog, scriptPos, arrayConst, TSetOfSymbol(toTyp));
       end;
-   end else if expr.Typ.UnAliasedType is TBaseVariantSymbol then begin
+   end else if expr.Typ.UnAliasedTypeIs(TBaseVariantSymbol) then begin
       if toTyp.IsOfType(prog.TypInteger) then
          Result:=TConvIntegerExpr.Create(prog, expr)
       else if toTyp.IsOfType(prog.TypFloat) then

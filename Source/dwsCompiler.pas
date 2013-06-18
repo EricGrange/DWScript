@@ -5427,7 +5427,7 @@ begin
             Result:=ReadSetOfMethod(name, namePos, expr as TTypedExpr);
 
          // "set of" symbol
-         end else if expr.Typ.UnAliasedType is TEnumerationSymbol then begin
+         end else if expr.Typ.UnAliasedTypeIs(TEnumerationSymbol) then begin
 
             Result:=nil;
             Result:=ReadElementMethod(name, namePos, expr as TTypedExpr);
@@ -6990,7 +6990,7 @@ begin
    aMin:=0;
    aMax:=0;
 
-   if elementType.UnAliasedType is TEnumerationSymbol then begin
+   if elementType.UnAliasedTypeIs(TEnumerationSymbol) then begin
 
       aMax:=TEnumerationSymbol(elementType.UnAliasedType).HighBound;
 

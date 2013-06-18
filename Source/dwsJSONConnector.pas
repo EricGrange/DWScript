@@ -412,7 +412,7 @@ begin
 
       if Length(params)<>1 then
          raise ECompileException.CreateFmt(CPE_BadNumberOfParameters, [1, Length(params)]);
-      if not (params[0].TypSym.UnAliasedType is TBaseIntegerSymbol) then
+      if not params[0].TypSym.UnAliasedTypeIs(TBaseIntegerSymbol) then
          raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_INTEGER, params[0].TypSym.Caption]);
 
       Result:=IJSONElementName(Self);
