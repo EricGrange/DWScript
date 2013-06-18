@@ -596,7 +596,7 @@ type
          procedure WarnDeprecatedType(const scriptPos : TScriptPos; typeSymbol : TTypeSymbol);
          procedure WarnDeprecatedSymbol(const scriptPos : TScriptPos; sym : TSymbol; const deprecatedMessage : UnicodeString);
 
-         function ResolveUnitNameSpace(unitPrefix : TUnitSymbol) : TUnitSymbol;
+         function ResolveUnitNameSpace(const prefixPos : TScriptPos; unitPrefix : TUnitSymbol) : TUnitSymbol;
          function ReadName(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TProgramExpr;
          function ReadEnumerationSymbolName(const enumPos : TScriptPos; enumSym : TEnumerationSymbol; acceptTypeRef : Boolean) : TProgramExpr;
          function ReadClassSymbolName(baseType : TClassSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
@@ -4301,7 +4301,7 @@ end;
 
 // ResolveUnitNameSpace
 //
-function TdwsCompiler.ResolveUnitNameSpace(unitPrefix : TUnitSymbol) : TUnitSymbol;
+function TdwsCompiler.ResolveUnitNameSpace(const prefixPos : TScriptPos; unitPrefix : TUnitSymbol) : TUnitSymbol;
 var
    dottedName, nextDottedName : UnicodeString;
 begin
@@ -4320,7 +4320,11 @@ begin
 
    Result:=unitPrefix.FindNameSpaceUnit(dottedName);
    if Result=nil then
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownName, [dottedName]);
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownName, [dottedName])
+   else begin
+      if coSymbolDictionary in Options then
+         SymbolDictionary.ReplaceSymbolAt(unitPrefix, Result, prefixPos);
+   end;
 end;
 
 
@@ -4406,7 +4410,7 @@ begin
          // Namespace prefix found
          if baseType.ClassType=TUnitSymbol then begin
 
-            baseType:=ResolveUnitNameSpace(TUnitSymbol(baseType));
+            baseType:=ResolveUnitNameSpace(namePos, TUnitSymbol(baseType));
 
             namePos := FTok.HotPos;
             sym := TUnitSymbol(baseType).Table.FindLocal(FTok.GetToken.AsString);
@@ -7851,7 +7855,7 @@ begin
       RecordSymbolUse(Result, namePos, [suReference]);
 
       unitSym:=TUnitSymbol(Result.BaseType);
-      unitSym:=ResolveUnitNameSpace(unitSym);
+      unitSym:=ResolveUnitNameSpace(namePos, unitSym);
 
       namePos:=FTok.HotPos;
       Result:=unitSym.Table.FindLocal(FTok.GetToken.AsString);
