@@ -50,8 +50,8 @@ type
 
       procedure DoInclude(const scriptName: String; var scriptSource: String);
       function  DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
-      function dwsFileIOFunctionsDeleteFileFastEval(args: TExprBaseList): Variant;
-    function dwsFileIOFunctionsFileExistsFastEval(args: TExprBaseList): Variant;
+      function dwsFileIOFunctionsDeleteFileFastEval(args: TExprBaseListExec): Variant;
+    function dwsFileIOFunctionsFileExistsFastEval(args: TExprBaseListExec): Variant;
 
    private
       FScriptTimeoutMilliseconds : Integer;
@@ -464,7 +464,7 @@ begin
 end;
 
 function TSimpleDWScript.dwsFileIOFunctionsDeleteFileFastEval(
-  args: TExprBaseList): Variant;
+  args: TExprBaseListExec): Variant;
 var
    fileName : String;
 begin
@@ -473,7 +473,7 @@ begin
 end;
 
 function TSimpleDWScript.dwsFileIOFunctionsFileExistsFastEval(
-  args: TExprBaseList): Variant;
+  args: TExprBaseListExec): Variant;
 var
    fileName : String;
 begin

@@ -34,13 +34,13 @@ type
    TMagicFuncExpr = class;
    TMagicFuncExprClass = class of TMagicFuncExpr;
 
-   TMagicFuncDoEvalEvent = function(const args : TExprBaseList) : Variant of object;
-   TMagicProcedureDoEvalEvent = procedure(const args : TExprBaseList) of object;
-   TMagicFuncDoEvalDataEvent = procedure(const args : TExprBaseList; var result : IDataContext) of object;
-   TMagicFuncDoEvalAsIntegerEvent = function(const args : TExprBaseList) : Int64 of object;
-   TMagicFuncDoEvalAsBooleanEvent = function(const args : TExprBaseList) : Boolean of object;
-   TMagicFuncDoEvalAsFloatEvent = procedure(const args : TExprBaseList; var Result : Double) of object;
-   TMagicFuncDoEvalAsStringEvent = procedure(const args : TExprBaseList; var Result : UnicodeString) of object;
+   TMagicFuncDoEvalEvent = function(const args : TExprBaseListExec) : Variant of object;
+   TMagicProcedureDoEvalEvent = procedure(const args : TExprBaseListExec) of object;
+   TMagicFuncDoEvalDataEvent = procedure(const args : TExprBaseListExec; var result : IDataContext) of object;
+   TMagicFuncDoEvalAsIntegerEvent = function(const args : TExprBaseListExec) : Int64 of object;
+   TMagicFuncDoEvalAsBooleanEvent = function(const args : TExprBaseListExec) : Boolean of object;
+   TMagicFuncDoEvalAsFloatEvent = procedure(const args : TExprBaseListExec; var Result : Double) of object;
+   TMagicFuncDoEvalAsStringEvent = procedure(const args : TExprBaseListExec; var Result : UnicodeString) of object;
 
    // TInternalMagicFunction
    //
@@ -59,7 +59,7 @@ type
    //
    TInternalMagicProcedure = class(TInternalMagicFunction)
       public
-         procedure DoEvalProc(const args : TExprBaseList); virtual; abstract;
+         procedure DoEvalProc(const args : TExprBaseListExec); virtual; abstract;
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
 
@@ -67,7 +67,7 @@ type
    //
    TInternalMagicDataFunction = class(TInternalMagicFunction)
       public
-         procedure DoEval(const args : TExprBaseList; var result : IDataContext); virtual; abstract;
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); virtual; abstract;
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
    TInternalMagicDataFunctionClass = class of TInternalMagicDataFunction;
@@ -76,7 +76,7 @@ type
    //
    TInternalMagicVariantFunction = class(TInternalMagicFunction)
       public
-         function DoEvalAsVariant(const args : TExprBaseList) : Variant; virtual; abstract;
+         function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; virtual; abstract;
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
    TInternalMagicVariantFunctionClass = class of TInternalMagicVariantFunction;
@@ -85,7 +85,7 @@ type
    //
    TInternalMagicIntFunction = class(TInternalMagicFunction)
       public
-         function DoEvalAsInteger(const args : TExprBaseList) : Int64; virtual; abstract;
+         function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; virtual; abstract;
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
    TInternalMagicIntFunctionClass = class of TInternalMagicIntFunction;
@@ -94,7 +94,7 @@ type
    //
    TInternalMagicBoolFunction = class(TInternalMagicFunction)
       public
-         function DoEvalAsBoolean(const args : TExprBaseList) : Boolean; virtual; abstract;
+         function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; virtual; abstract;
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
    TInternalMagicBoolFunctionClass = class of TInternalMagicBoolFunction;
@@ -103,7 +103,7 @@ type
    //
    TInternalMagicFloatFunction = class(TInternalMagicFunction)
       public
-         procedure DoEvalAsFloat(const args : TExprBaseList; var Result : Double); virtual; abstract;
+         procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); virtual; abstract;
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
    TInternalMagicFloatFunctionClass = class of TInternalMagicFloatFunction;
@@ -112,7 +112,7 @@ type
    //
    TInternalMagicStringFunction = class(TInternalMagicFunction)
       public
-         procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); virtual; abstract;
+         procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); virtual; abstract;
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
    TInternalMagicStringFunctionClass = class of TInternalMagicStringFunction;
@@ -520,7 +520,7 @@ end;
 //
 function TMagicVariantFuncExpr.Eval(exec : TdwsExecution) : Variant;
 var
-   execRec : TExprBaseList;
+   execRec : TExprBaseListExec;
 begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
@@ -568,7 +568,7 @@ end;
 //
 procedure TMagicDataFuncExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 var
-   execRec : TExprBaseList;
+   execRec : TExprBaseListExec;
 begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
@@ -612,7 +612,7 @@ end;
 //
 function TMagicIntFuncExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 var
-   execRec : TExprBaseList;
+   execRec : TExprBaseListExec;
 begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
@@ -663,7 +663,7 @@ end;
 //
 procedure TMagicStringFuncExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
 var
-   execRec : TExprBaseList;
+   execRec : TExprBaseListExec;
 begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
@@ -705,7 +705,7 @@ end;
 //
 function TMagicFloatFuncExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 var
-   execRec : TExprBaseList;
+   execRec : TExprBaseListExec;
 begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
@@ -747,7 +747,7 @@ end;
 //
 function TMagicBoolFuncExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
-   execRec : TExprBaseList;
+   execRec : TExprBaseListExec;
 begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
@@ -776,7 +776,7 @@ end;
 //
 procedure TMagicProcedureExpr.EvalNoResult(exec : TdwsExecution);
 var
-   execRec : TExprBaseList;
+   execRec : TExprBaseListExec;
 begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;

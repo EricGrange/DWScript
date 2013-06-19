@@ -31,11 +31,11 @@ uses
 type
 
   TShowMessageFunc = class(TInternalMagicProcedure)
-    procedure DoEvalProc(const args : TExprBaseList); override;
+    procedure DoEvalProc(const args : TExprBaseListExec); override;
   end;
 
   TInputBoxFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TdwsGUIFunctions = class(TComponent)
@@ -47,7 +47,7 @@ implementation
 
 // DoEvalProc
 //
-procedure TShowMessageFunc.DoEvalProc(const args : TExprBaseList);
+procedure TShowMessageFunc.DoEvalProc(const args : TExprBaseListExec);
 begin
    ShowMessage(args.AsString[0]);
 end;
@@ -56,7 +56,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TInputBoxFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TInputBoxFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=InputBox(args.AsString[0], args.AsString[1], args.AsString[2]);
 end;

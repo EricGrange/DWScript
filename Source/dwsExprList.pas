@@ -29,7 +29,7 @@ uses
 
 type
 
-   // TExprBaseList
+   // TExprBaseListExec
    //
    PExprBaseListRec = ^TExprBaseListRec;
    TExprBaseListRec = record
@@ -52,10 +52,9 @@ type
          property Count : Integer read FList.FCount;
    end;
 
-   // TExprBaseList
+   // TExprBaseListExec
    //
-   PExprBaseList = ^TExprBaseList;
-   TExprBaseList = record
+   TExprBaseListExec = record
       private
          FList : PExprBaseListRec;
          FExec : TdwsExecution;
@@ -159,89 +158,89 @@ begin
 end;
 
 // ------------------
-// ------------------ TExprBaseList ------------------
+// ------------------ TExprBaseListExec ------------------
 // ------------------
 
 // GetExprBase
 //
-function TExprBaseList.GetExprBase(const x: Integer): TExprBase;
+function TExprBaseListExec.GetExprBase(const x: Integer): TExprBase;
 begin
    Result:=FList.ExprBase[x];
 end;
 
 // SetExprBase
 //
-procedure TExprBaseList.SetExprBase(const x : Integer; expr : TExprBase);
+procedure TExprBaseListExec.SetExprBase(const x : Integer; expr : TExprBase);
 begin
    FList.ExprBase[x]:=expr;
 end;
 
 // GetCount
 //
-function TExprBaseList.GetCount : Integer;
+function TExprBaseListExec.GetCount : Integer;
 begin
    Result:=FList.Count;
 end;
 
 // GetAsInteger
 //
-function TExprBaseList.GetAsInteger(const x : Integer) : Int64;
+function TExprBaseListExec.GetAsInteger(const x : Integer) : Int64;
 begin
    Result:=ExprBase[x].EvalAsInteger(Exec);
 end;
 
 // SetAsInteger
 //
-procedure TExprBaseList.SetAsInteger(const x : Integer; const value : Int64);
+procedure TExprBaseListExec.SetAsInteger(const x : Integer; const value : Int64);
 begin
    ExprBase[x].AssignValueAsInteger(Exec, value);
 end;
 
 // GetAsBoolean
 //
-function TExprBaseList.GetAsBoolean(const x : Integer) : Boolean;
+function TExprBaseListExec.GetAsBoolean(const x : Integer) : Boolean;
 begin
    Result:=ExprBase[x].EvalAsBoolean(Exec);
 end;
 
 // SetAsBoolean
 //
-procedure TExprBaseList.SetAsBoolean(const x : Integer; const value : Boolean);
+procedure TExprBaseListExec.SetAsBoolean(const x : Integer; const value : Boolean);
 begin
    ExprBase[x].AssignValueAsBoolean(Exec, value);
 end;
 
 // GetAsFloat
 //
-function TExprBaseList.GetAsFloat(const x : Integer) : Double;
+function TExprBaseListExec.GetAsFloat(const x : Integer) : Double;
 begin
    Result:=ExprBase[x].EvalAsFloat(Exec);
 end;
 
 // SetAsFloat
 //
-procedure TExprBaseList.SetAsFloat(const x : Integer; const value : Double);
+procedure TExprBaseListExec.SetAsFloat(const x : Integer; const value : Double);
 begin
    ExprBase[x].AssignValueAsFloat(Exec, value);
 end;
 
 // GetAsString
 //
-function TExprBaseList.GetAsString(const x : Integer) : UnicodeString;
+function TExprBaseListExec.GetAsString(const x : Integer) : UnicodeString;
 begin
    ExprBase[x].EvalAsString(Exec, Result);
 end;
 
 // SetAsString
 //
-procedure TExprBaseList.SetAsString(const x : Integer; const value : UnicodeString);
+procedure TExprBaseListExec.SetAsString(const x : Integer; const value : UnicodeString);
 begin
    ExprBase[x].AssignValueAsString(Exec, value);
 end;
 
 // GetAsDataString
 //
-function TExprBaseList.GetAsDataString(const x : Integer) : RawByteString;
+function TExprBaseListExec.GetAsDataString(const x : Integer) : RawByteString;
 begin
    Result:=ScriptStringToRawByteString(GetAsString(x));
 end;

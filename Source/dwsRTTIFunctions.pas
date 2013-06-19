@@ -41,7 +41,7 @@ type
    end;
 
    TSameRTTITypeInfoFunc = class(TInternalMagicBoolFunction)
-      function DoEvalAsBoolean(const args : TExprBaseList) : Boolean; override;
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
 
    TRTTISymbolNameMethod = class(TInternalMethod)
@@ -340,7 +340,7 @@ end;
 
 // DoEvalAsBoolean
 //
-function TSameRTTITypeInfoFunc.DoEvalAsBoolean(const args : TExprBaseList) : Boolean;
+function TSameRTTITypeInfoFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
    Result:=(args.ExprBase[0].Eval(args.Exec)=args.ExprBase[1].Eval(args.Exec));
 end;

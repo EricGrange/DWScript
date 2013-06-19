@@ -29,12 +29,12 @@ uses
 type
    TComplexMakeExpr = class(TInternalMagicDataFunction)
       public
-         procedure DoEval(const args : TExprBaseList; var result : IDataContext); override;
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
    TComplexToStrExpr = class(TInternalMagicStringFunction)
       public
-         procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+         procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
 
    TAbsComplexExpr = class(TUnaryOpFloatExpr)
@@ -45,27 +45,27 @@ type
 
    TComplexNegOpExpr = class(TComplexOpExpr)
       public
-         procedure DoEval(const args : TExprBaseList; var result : IDataContext); override;
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
    TComplexAddOpExpr = class(TComplexOpExpr)
       public
-         procedure DoEval(const args : TExprBaseList; var result : IDataContext); override;
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
    TComplexSubOpExpr = class(TComplexOpExpr)
       public
-         procedure DoEval(const args : TExprBaseList; var result : IDataContext); override;
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
    TComplexMultOpExpr = class(TComplexOpExpr)
       public
-         procedure DoEval(const args : TExprBaseList; var result : IDataContext); override;
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
    TComplexDivOpExpr = class(TComplexOpExpr)
       public
-         procedure DoEval(const args : TExprBaseList; var result : IDataContext); override;
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
 const
@@ -126,7 +126,7 @@ end;
 
 // DoEval
 //
-procedure TComplexMakeExpr.DoEval(const args : TExprBaseList; var result : IDataContext);
+procedure TComplexMakeExpr.DoEval(const args : TExprBaseListExec; var result : IDataContext);
 begin
    result.AsFloat[0]:=args.AsFloat[0];
    result.AsFloat[1]:=args.AsFloat[1];
@@ -138,7 +138,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TComplexToStrExpr.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TComplexToStrExpr.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    cmplxData : IDataContext;
    r, i : Double;
@@ -173,7 +173,7 @@ end;
 
 // DoEval
 //
-procedure TComplexNegOpExpr.DoEval(const args : TExprBaseList; var result : IDataContext);
+procedure TComplexNegOpExpr.DoEval(const args : TExprBaseListExec; var result : IDataContext);
 var
    v : IDataContext;
 begin
@@ -189,7 +189,7 @@ end;
 
 // DoEval
 //
-procedure TComplexAddOpExpr.DoEval(const args : TExprBaseList; var result : IDataContext);
+procedure TComplexAddOpExpr.DoEval(const args : TExprBaseListExec; var result : IDataContext);
 var
    leftData, rightData : IDataContext;
 begin
@@ -206,7 +206,7 @@ end;
 
 // DoEval
 //
-procedure TComplexSubOpExpr.DoEval(const args : TExprBaseList; var result : IDataContext);
+procedure TComplexSubOpExpr.DoEval(const args : TExprBaseListExec; var result : IDataContext);
 var
    leftData, rightData : IDataContext;
 begin
@@ -223,7 +223,7 @@ end;
 
 // DoEval
 //
-procedure TComplexMultOpExpr.DoEval(const args : TExprBaseList; var result : IDataContext);
+procedure TComplexMultOpExpr.DoEval(const args : TExprBaseListExec; var result : IDataContext);
 var
    leftData, rightData : IDataContext;
 begin
@@ -240,7 +240,7 @@ end;
 
 // DoEval
 //
-procedure TComplexDivOpExpr.DoEval(const args : TExprBaseList; var result : IDataContext);
+procedure TComplexDivOpExpr.DoEval(const args : TExprBaseListExec; var result : IDataContext);
 var
    leftData, rightData : IDataContext;
    d : Double;

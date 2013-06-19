@@ -29,49 +29,49 @@ uses
 type
    TVectorMakeExpr = class(TInternalMagicDataFunction)
       public
-         procedure DoEval(const args : TExprBaseList; var result : IDataContext); override;
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
    TVectorToStrExpr = class(TInternalMagicStringFunction)
       public
-         procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+         procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
 
    TVectorOpExpr = class(TInternalMagicDataFunction);
 
    TVectorAddOpExpr = class(TVectorOpExpr)
       public
-         procedure DoEval(const args : TExprBaseList; var result : IDataContext); override;
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
    TVectorSubOpExpr = class(TVectorOpExpr)
       public
-         procedure DoEval(const args : TExprBaseList; var result : IDataContext); override;
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
    TVectorScaleLeftOpExpr = class(TVectorOpExpr)
       public
-         procedure DoEval(const args : TExprBaseList; var result : IDataContext); override;
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
    TVectorScaleRightOpExpr = class(TVectorOpExpr)
       public
-         procedure DoEval(const args : TExprBaseList; var result : IDataContext); override;
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
    TVectorCrossProductOpExpr = class(TVectorOpExpr)
       public
-         procedure DoEval(const args : TExprBaseList; var result : IDataContext); override;
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
    TVectorDotProductOpExpr = class(TInternalMagicFloatFunction)
       public
-         procedure DoEvalAsFloat(const args : TExprBaseList; var Result : Double); override;
+         procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TVectorNormalizeExpr = class(TInternalMagicDataFunction)
       public
-         procedure DoEval(const args : TExprBaseList; var result : IDataContext); override;
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
 const
@@ -139,7 +139,7 @@ end;
 
 // DoEval
 //
-procedure TVectorMakeExpr.DoEval(const args : TExprBaseList; var result : IDataContext);
+procedure TVectorMakeExpr.DoEval(const args : TExprBaseListExec; var result : IDataContext);
 begin
    result.AsFloat[0] := args.AsFloat[0];
    result.AsFloat[1] := args.AsFloat[1];
@@ -153,7 +153,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TVectorToStrExpr.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TVectorToStrExpr.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    vectorData : IDataContext;
 begin
@@ -169,7 +169,7 @@ end;
 
 // DoEval
 //
-procedure TVectorAddOpExpr.DoEval(const args : TExprBaseList; var result : IDataContext);
+procedure TVectorAddOpExpr.DoEval(const args : TExprBaseListExec; var result : IDataContext);
 var
    leftData, rightData : PVarDataArray;
 begin
@@ -188,7 +188,7 @@ end;
 
 // DoEval
 //
-procedure TVectorScaleLeftOpExpr.DoEval(const args : TExprBaseList; var result : IDataContext);
+procedure TVectorScaleLeftOpExpr.DoEval(const args : TExprBaseListExec; var result : IDataContext);
 var
    f : Double;
    vec : PVarDataArray;
@@ -208,7 +208,7 @@ end;
 
 // DoEval
 //
-procedure TVectorScaleRightOpExpr.DoEval(const args : TExprBaseList; var result : IDataContext);
+procedure TVectorScaleRightOpExpr.DoEval(const args : TExprBaseListExec; var result : IDataContext);
 var
    f : Double;
    vec : PVarDataArray;
@@ -228,7 +228,7 @@ end;
 
 // DoEval
 //
-procedure TVectorSubOpExpr.DoEval(const args : TExprBaseList; var result : IDataContext);
+procedure TVectorSubOpExpr.DoEval(const args : TExprBaseListExec; var result : IDataContext);
 var
    leftData, rightData : IDataContext;
 begin
@@ -247,7 +247,7 @@ end;
 
 // DoEval
 //
-procedure TVectorCrossProductOpExpr.DoEval(const args : TExprBaseList; var result : IDataContext);
+procedure TVectorCrossProductOpExpr.DoEval(const args : TExprBaseListExec; var result : IDataContext);
 var
    leftData, rightData : IDataContext;
 begin
@@ -266,7 +266,7 @@ end;
 
 // DoEvalAsFloat
 //
-procedure TVectorDotProductOpExpr.DoEvalAsFloat(const args : TExprBaseList; var Result : Double);
+procedure TVectorDotProductOpExpr.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 var
    leftData, rightData : IDataContext;
 begin
@@ -284,7 +284,7 @@ end;
 
 // DoEval
 //
-procedure TVectorNormalizeExpr.DoEval(const args : TExprBaseList; var result : IDataContext);
+procedure TVectorNormalizeExpr.DoEval(const args : TExprBaseListExec; var result : IDataContext);
 var
    n, invN : Double;
    v : IDataContext;

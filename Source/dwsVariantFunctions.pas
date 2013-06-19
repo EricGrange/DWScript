@@ -34,19 +34,19 @@ type
   end;
 
   TVarIsNullFunc = class(TInternalMagicBoolFunction)
-    function DoEvalAsBoolean(const args : TExprBaseList) : Boolean; override;
+    function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
   end;
 
   TVarIsEmptyFunc = class(TInternalMagicBoolFunction)
-    function DoEvalAsBoolean(const args : TExprBaseList) : Boolean; override;
+    function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
   end;
 
   TVarIsClearFunc = class(TInternalMagicBoolFunction)
-    function DoEvalAsBoolean(const args : TExprBaseList) : Boolean; override;
+    function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
   end;
 
   TVarTypeFunc = class(TInternalMagicIntFunction)
-    function DoEvalAsInteger(const args : TExprBaseList) : Int64; override;
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
 
   TVarAsTypeFunc = class(TInternalFunction)
@@ -54,7 +54,7 @@ type
   end;
 
   TVarToStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
 implementation
@@ -68,7 +68,7 @@ end;
 
 { TVarIsNullFunc }
 
-function TVarIsNullFunc.DoEvalAsBoolean(const args : TExprBaseList) : Boolean;
+function TVarIsNullFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 var
    v : Variant;
 begin
@@ -78,7 +78,7 @@ end;
 
 { TVarIsEmptyFunc }
 
-function TVarIsEmptyFunc.DoEvalAsBoolean(const args : TExprBaseList) : Boolean;
+function TVarIsEmptyFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 var
    v : Variant;
 begin
@@ -88,7 +88,7 @@ end;
 
 { TVarIsClearFunc }
 
-function TVarIsClearFunc.DoEvalAsBoolean(const args : TExprBaseList) : Boolean;
+function TVarIsClearFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 var
    v : Variant;
 begin
@@ -98,7 +98,7 @@ end;
 
 { TVarTypeFunc }
 
-function TVarTypeFunc.DoEvalAsInteger(const args : TExprBaseList) : Int64;
+function TVarTypeFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 var
    v : Variant;
 begin
@@ -117,7 +117,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TVarToStrFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TVarToStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    v : Variant;
 begin

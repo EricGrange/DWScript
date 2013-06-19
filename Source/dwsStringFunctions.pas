@@ -34,223 +34,223 @@ type
   EChrConvertError = class (Exception);
 
   TChrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TIntToStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TStrToIntFunc = class(TInternalMagicIntFunction)
-    function DoEvalAsInteger(const args : TExprBaseList) : Int64; override;
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
 
   TStrToIntDefFunc = class(TInternalMagicIntFunction)
-    function DoEvalAsInteger(const args : TExprBaseList) : Int64; override;
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
 
   TIntToHexFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   THexToIntFunc = class(TInternalMagicIntFunction)
-    function DoEvalAsInteger(const args : TExprBaseList) : Int64; override;
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
 
   TIntToBinFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TBoolToStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TStrToBoolFunc = class(TInternalMagicBoolFunction)
-    function DoEvalAsBoolean(const args : TExprBaseList) : Boolean; override;
+    function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
   end;
 
   TFloatToStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TStrToFloatFunc = class(TInternalMagicFloatFunction)
-    procedure DoEvalAsFloat(const args : TExprBaseList; var Result : Double); override;
+    procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
   end;
 
   TStrToFloatDefFunc = class(TInternalMagicFloatFunction)
-    procedure DoEvalAsFloat(const args : TExprBaseList; var Result : Double); override;
+    procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
   end;
 
   TFormatFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TCharAtFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TCopyFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TLeftStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TRightStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TSubStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TSubStringFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TStrDeleteLeftFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TStrDeleteRightFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TDeleteFunc = class(TInternalMagicProcedure)
-    procedure DoEvalProc(const args : TExprBaseList); override;
+    procedure DoEvalProc(const args : TExprBaseListExec); override;
   end;
 
   TInsertFunc = class(TInternalMagicProcedure)
-    procedure DoEvalProc(const args : TExprBaseList); override;
+    procedure DoEvalProc(const args : TExprBaseListExec); override;
   end;
 
   TLowerCaseFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TAnsiLowerCaseFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TUpperCaseFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TAnsiUpperCaseFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TPosFunc = class(TInternalMagicIntFunction)
-    function DoEvalAsInteger(const args : TExprBaseList) : Int64; override;
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
 
   TPosExFunc = class(TInternalMagicIntFunction)
-    function DoEvalAsInteger(const args : TExprBaseList) : Int64; override;
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
 
   TRevPosFunc = class(TInternalMagicIntFunction)
-    function DoEvalAsInteger(const args : TExprBaseList) : Int64; override;
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
 
   TSetLengthFunc = class(TInternalMagicProcedure)
-    procedure DoEvalProc(const args : TExprBaseList); override;
+    procedure DoEvalProc(const args : TExprBaseListExec); override;
   end;
 
   TTrimLeftFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TTrimRightFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TTrimFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TTrimNbFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TSameTextFunc = class(TInternalMagicBoolFunction)
-    function DoEvalAsBoolean(const args : TExprBaseList) : Boolean; override;
+    function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
   end;
 
   TCompareTextFunc = class(TInternalMagicIntFunction)
-    function DoEvalAsInteger(const args : TExprBaseList) : Int64; override;
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
 
   TAnsiCompareTextFunc = class(TInternalMagicIntFunction)
-    function DoEvalAsInteger(const args : TExprBaseList) : Int64; override;
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
 
   TCompareStrFunc = class(TInternalMagicIntFunction)
-    function DoEvalAsInteger(const args : TExprBaseList) : Int64; override;
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
 
   TAnsiCompareStrFunc = class(TInternalMagicIntFunction)
-    function DoEvalAsInteger(const args : TExprBaseList) : Int64; override;
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
 
   TIsDelimiterFunc = class(TInternalMagicBoolFunction)
-    function DoEvalAsBoolean(const args : TExprBaseList) : Boolean; override;
+    function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
   end;
 
   TLastDelimiterFunc = class(TInternalMagicIntFunction)
-    function DoEvalAsInteger(const args : TExprBaseList) : Int64; override;
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
 
   TFindDelimiterFunc = class(TInternalMagicIntFunction)
-    function DoEvalAsInteger(const args : TExprBaseList) : Int64; override;
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
 
   TQuotedStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TStringOfCharFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TStringOfStringFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TStrBeginsWithFunc = class(TInternalMagicBoolFunction)
-    function DoEvalAsBoolean(const args : TExprBaseList) : Boolean; override;
+    function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
   end;
 
   TStrEndsWithFunc = class(TInternalMagicBoolFunction)
-    function DoEvalAsBoolean(const args : TExprBaseList) : Boolean; override;
+    function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
   end;
 
   TStrContainsFunc = class(TInternalMagicBoolFunction)
-    function DoEvalAsBoolean(const args : TExprBaseList) : Boolean; override;
+    function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
   end;
 
   TStrAfterFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TStrBeforeFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TStrSplitFunc = class(TInternalMagicVariantFunction)
-    function DoEvalAsVariant(const args : TExprBaseList) : Variant; override;
+    function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
   end;
 
   TStrJoinFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TReverseStringFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TGetTextFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
 // ------------------------------------------------------------------
@@ -265,7 +265,7 @@ implementation
 
 // DoEvalAsString
 //
-procedure TChrFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TChrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    c : Integer;
 begin
@@ -286,14 +286,14 @@ end;
 
 // DoEvalAsString
 //
-procedure TIntToStrFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TIntToStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    FastInt64ToStr(args.AsInteger[0], Result);
 end;
 
 { TStrToIntFunc }
 
-function TStrToIntFunc.DoEvalAsInteger(const args : TExprBaseList) : Int64;
+function TStrToIntFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    {$ifdef FPC}
    Result:=StrToInt64(UTF8Encode(args.AsString[0]));
@@ -304,7 +304,7 @@ end;
 
 { TStrToIntDefFunc }
 
-function TStrToIntDefFunc.DoEvalAsInteger(const args : TExprBaseList) : Int64;
+function TStrToIntDefFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    {$ifdef FPC}
    Result:=StrToInt64Def(UTF8Encode(args.AsString[0]), args.AsInteger[1]);
@@ -317,7 +317,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TIntToHexFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TIntToHexFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    {$ifdef FPC}
    Result:=UTF8Decode(SysUtils.IntToHex(args.AsInteger[0], args.AsInteger[1]));
@@ -328,7 +328,7 @@ end;
 
 { THexToIntFunc }
 
-function THexToIntFunc.DoEvalAsInteger(const args : TExprBaseList) : Int64;
+function THexToIntFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 var
    buf : UnicodeString;
    err : Integer;
@@ -343,7 +343,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TIntToBinFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TIntToBinFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    v : Int64;
    n : Integer;
@@ -362,7 +362,7 @@ end;
 
 { TBoolToStrFunc }
 
-procedure TBoolToStrFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TBoolToStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 const
    cBoolToStr : array [False..True] of UnicodeString = ( 'False', 'True' );
 begin
@@ -371,7 +371,7 @@ end;
 
 { TStrToBoolFunc }
 
-function TStrToBoolFunc.DoEvalAsBoolean(const args : TExprBaseList) : Boolean;
+function TStrToBoolFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 var
    s : UnicodeString;
 begin
@@ -384,7 +384,7 @@ end;
 
 { TFloatToStrFunc }
 
-procedure TFloatToStrFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TFloatToStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    p : Integer;
    v, p10 : Double;
@@ -408,7 +408,7 @@ end;
 
 { TStrToFloatFunc }
 
-procedure TStrToFloatFunc.DoEvalAsFloat(const args : TExprBaseList; var Result : Double);
+procedure TStrToFloatFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    {$ifdef FPC}
    Result:=StrToFloat(UTF8Encode(args.AsString[0]));
@@ -419,7 +419,7 @@ end;
 
 { TStrToFloatDefFunc }
 
-procedure TStrToFloatDefFunc.DoEvalAsFloat(const args : TExprBaseList; var Result : Double);
+procedure TStrToFloatDefFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    {$ifdef FPC}
    Result:=StrToFloatDef(UTF8Encode(args.AsString[0]), args.AsFloat[1]);
@@ -432,21 +432,21 @@ end;
 
 // DoEvalAsString
 //
-procedure TCopyFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TCopyFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=Copy(args.AsString[0], args.AsInteger[1], args.AsInteger[2]);
 end;
 
 { TLeftStrFunc }
 
-procedure TLeftStrFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TLeftStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=Copy(args.AsString[0], 1, args.AsInteger[1]);
 end;
 
 { TRightStrFunc }
 
-procedure TRightStrFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TRightStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    buf : UnicodeString;
    n : Integer;
@@ -458,14 +458,14 @@ end;
 
 { TSubStrFunc }
 
-procedure TSubStrFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TSubStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=Copy(args.AsString[0], args.AsInteger[1], MaxInt);
 end;
 
 { TSubStringFunc }
 
-procedure TSubStringFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TSubStringFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    s, e : Integer;
 begin
@@ -477,21 +477,21 @@ end;
 
 { TStrDeleteLeftFunc }
 
-procedure TStrDeleteLeftFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TStrDeleteLeftFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=StrDeleteLeft(args.AsString[0], args.AsInteger[1]);
 end;
 
 { TStrDeleteRightFunc }
 
-procedure TStrDeleteRightFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TStrDeleteRightFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=StrDeleteRight(args.AsString[0], args.AsInteger[1]);
 end;
 
 { TDeleteFunc }
 
-procedure TDeleteFunc.DoEvalProc(const args : TExprBaseList);
+procedure TDeleteFunc.DoEvalProc(const args : TExprBaseListExec);
 var
    s : UnicodeString;
 begin
@@ -502,7 +502,7 @@ end;
 
 { TInsertFunc }
 
-procedure TInsertFunc.DoEvalProc(const args : TExprBaseList);
+procedure TInsertFunc.DoEvalProc(const args : TExprBaseListExec);
 var
    s : UnicodeString;
 begin
@@ -513,7 +513,7 @@ end;
 
 { TLowerCaseFunc }
 
-procedure TLowerCaseFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TLowerCaseFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    p : PWideChar;
    i : Integer;
@@ -534,14 +534,14 @@ end;
 
 { TAnsiLowerCaseFunc }
 
-procedure TAnsiLowerCaseFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TAnsiLowerCaseFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=UnicodeLowerCase(args.AsString[0]);
 end;
 
 { TUpperCaseFunc }
 
-procedure TUpperCaseFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TUpperCaseFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    p : PWideChar;
    i : Integer;
@@ -562,28 +562,28 @@ end;
 
 { TAnsiUpperCaseFunc }
 
-procedure TAnsiUpperCaseFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TAnsiUpperCaseFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=UnicodeUpperCase(args.AsString[0]);
 end;
 
 { TPosFunc }
 
-function TPosFunc.DoEvalAsInteger(const args : TExprBaseList) : Int64;
+function TPosFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=Pos(args.AsString[0], args.AsString[1]);
 end;
 
 { TPosExFunc }
 
-function TPosExFunc.DoEvalAsInteger(const args : TExprBaseList) : Int64;
+function TPosExFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=PosEx(args.AsString[0], args.AsString[1], args.AsInteger[2]);
 end;
 
 { TRevPosFunc }
 
-function TRevPosFunc.DoEvalAsInteger(const args : TExprBaseList) : Int64;
+function TRevPosFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 
    function StrRevFind(const stringSearched, stringToFind : UnicodeString; startPos : Integer = 0) : Integer;
    var
@@ -614,7 +614,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TTrimLeftFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TTrimLeftFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=TrimLeft(args.AsString[0]);
 end;
@@ -623,21 +623,21 @@ end;
 
 // DoEvalAsString
 //
-procedure TTrimRightFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TTrimRightFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=TrimRight(args.AsString[0]);
 end;
 
 { TTrimFunc }
 
-procedure TTrimFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TTrimFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=Trim(args.AsString[0]);
 end;
 
 { TTrimNbFunc }
 
-procedure TTrimNbFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TTrimNbFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    nbLeft, nbRight : Integer;
 begin
@@ -653,14 +653,14 @@ end;
 
 { TSameTextFunc }
 
-function TSameTextFunc.DoEvalAsBoolean(const args : TExprBaseList) : Boolean;
+function TSameTextFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
    Result:=UnicodeSameText(args.AsString[0], args.AsString[1]);
 end;
 
 { TCompareTextFunc }
 
-function TCompareTextFunc.DoEvalAsInteger(const args : TExprBaseList) : Int64;
+function TCompareTextFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    {$ifdef FPC}
    Result:=CompareText(UTF8Encode(args.AsString[0]), UTF8Encode(args.AsString[1]));
@@ -671,42 +671,42 @@ end;
 
 { TAnsiCompareTextFunc }
 
-function TAnsiCompareTextFunc.DoEvalAsInteger(const args : TExprBaseList) : Int64;
+function TAnsiCompareTextFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=UnicodeCompareText(args.AsString[0], args.AsString[1]);
 end;
 
 { TCompareStrFunc }
 
-function TCompareStrFunc.DoEvalAsInteger(const args : TExprBaseList) : Int64;
+function TCompareStrFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=UnicodeCompareStr(args.AsString[0], args.AsString[1]);
 end;
 
 { TAnsiCompareStrFunc }
 
-function TAnsiCompareStrFunc.DoEvalAsInteger(const args : TExprBaseList) : Int64;
+function TAnsiCompareStrFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=dwsXPlatform.AnsiCompareStr(args.AsString[0], args.AsString[1]);
 end;
 
 { TIsDelimiterFunc }
 
-function TIsDelimiterFunc.DoEvalAsBoolean(const args : TExprBaseList) : Boolean;
+function TIsDelimiterFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
    Result:=IsDelimiter(args.AsString[0], args.AsString[1], args.AsInteger[2]);
 end;
 
 { TLastDelimiterFunc }
 
-function TLastDelimiterFunc.DoEvalAsInteger(const args : TExprBaseList) : Int64;
+function TLastDelimiterFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=LastDelimiter(args.AsString[0], args.AsString[1]);
 end;
 
 { TFindDelimiterFunc }
 
-function TFindDelimiterFunc.DoEvalAsInteger(const args : TExprBaseList) : Int64;
+function TFindDelimiterFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    {$ifdef FPC}
    {$warning "unsupported"}
@@ -719,7 +719,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TQuotedStrFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TQuotedStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    quoteChar : UnicodeString;
 begin
@@ -733,7 +733,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TCharAtFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TCharAtFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    buf : UnicodeString;
    n : Integer;
@@ -749,7 +749,7 @@ end;
 
 // DoEvalProc
 //
-procedure TSetLengthFunc.DoEvalProc(const args : TExprBaseList);
+procedure TSetLengthFunc.DoEvalProc(const args : TExprBaseListExec);
 var
    i, n : Integer;
    s : UnicodeString;
@@ -771,7 +771,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TStringOfCharFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TStringOfCharFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    ch : UnicodeString;
    charCode : WideChar;
@@ -794,7 +794,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TStringOfStringFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TStringOfStringFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 
    function StringOfString(const str : UnicodeString; count : Integer) : UnicodeString;
    var
@@ -816,7 +816,7 @@ end;
 
 { TStrBeginsWithFunc }
 
-function TStrBeginsWithFunc.DoEvalAsBoolean(const args : TExprBaseList) : Boolean;
+function TStrBeginsWithFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 var
    str, beginStr : UnicodeString;
 begin
@@ -832,7 +832,7 @@ end;
 
 { TStrEndsWithFunc }
 
-function TStrEndsWithFunc.DoEvalAsBoolean(const args : TExprBaseList) : Boolean;
+function TStrEndsWithFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 var
    str, endStr : UnicodeString;
 begin
@@ -848,14 +848,14 @@ end;
 
 { TStrContainsFunc }
 
-function TStrContainsFunc.DoEvalAsBoolean(const args : TExprBaseList) : Boolean;
+function TStrContainsFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
    Result:=StrContains(args.AsString[0], args.AsString[1]);
 end;
 
 { TStrAfterFunc }
 
-procedure TStrAfterFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TStrAfterFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    p : Integer;
    str, delimiter : UnicodeString;
@@ -870,7 +870,7 @@ end;
 
 { TStrBeforeFunc }
 
-procedure TStrBeforeFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TStrBeforeFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    p : Integer;
    str, delimiter : UnicodeString;
@@ -885,14 +885,14 @@ end;
 
 { TReverseStringFunc }
 
-procedure TReverseStringFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TReverseStringFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=ReverseString(args.AsString[0]);
 end;
 
 { TFormatFunc }
 
-procedure TFormatFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TFormatFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    expr : TExprBase;
    varRecs : TVarRecArrayContainer;
@@ -916,7 +916,7 @@ end;
 
 { TStrSplitFunc }
 
-function TStrSplitFunc.DoEvalAsVariant(const args : TExprBaseList) : Variant;
+function TStrSplitFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
 var
    str, delim : UnicodeString;
    dyn : TScriptDynamicArray;
@@ -963,7 +963,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TStrJoinFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TStrJoinFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    delim, item : UnicodeString;
    obj : IScriptObj;
@@ -1008,7 +1008,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TGetTextFunc.DoEvalAsString(const args : TExprBaseList; var Result : UnicodeString);
+procedure TGetTextFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    args.Exec.LocalizeString(args.AsString[0], Result);
 end;
