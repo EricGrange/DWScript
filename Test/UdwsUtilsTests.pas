@@ -55,6 +55,8 @@ type
 
          procedure SortTest;
          procedure SortReverseTest;
+
+         procedure IntToHexTest;
    end;
 
 // ------------------------------------------------------------------
@@ -680,6 +682,17 @@ begin
    finally
       s.Free;
    end;
+end;
+
+// IntToHexTest
+//
+procedure TdwsUtilsTests.IntToHexTest;
+begin
+   CheckEquals(SysUtils.IntToHex(Int64(-1), 1), Int64ToHex(-1, 1));
+   CheckEquals(SysUtils.IntToHex(Int64(0), 3), Int64ToHex(0, 3));
+   CheckEquals(SysUtils.IntToHex(Int64(12345), 3), Int64ToHex(12345, 3));
+   CheckEquals(SysUtils.IntToHex(Int64(12345), 6), Int64ToHex(12345, 6));
+   CheckEquals(SysUtils.IntToHex($123456789, 6), Int64ToHex($123456789, 6));
 end;
 
 // ------------------------------------------------------------------

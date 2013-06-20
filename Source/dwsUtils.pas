@@ -626,6 +626,8 @@ function RawByteStringToScriptString(const s : RawByteString) : UnicodeString;
 function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString;
 
 procedure FastInt64ToStr(const val : Int64; var s : UnicodeString);
+procedure FastInt64ToHex(val : Int64; digits : Integer; var s : UnicodeString);
+function Int64ToHex(val : Int64; digits : Integer) : UnicodeString; inline;
 
 procedure VariantToString(const v : Variant; var s : UnicodeString);
 
@@ -795,6 +797,45 @@ end;
 {$IFDEF RANGEON}
   {$R+}
 {$ENDIF}
+
+// FastInt64ToHex
+//
+procedure FastInt64ToHex(val : Int64; digits : Integer; var s : UnicodeString);
+const
+   cIntToHex : array [0..15] of WideChar = (
+      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
+   );
+var
+   buf : array [0..15] of WideChar;
+   p : PWideChar;
+   d, i : Integer;
+begin
+   if Cardinal(digits)>16 then begin
+      if digits<=0 then
+         digits:=1
+      else digits:=16;
+   end;
+   p:=@buf[15];
+   while val<>0 do begin
+      d:=val and 15;
+      val:=val shr 4;
+      p^:=cIntToHex[d];
+      Dec(p);
+      Dec(digits);
+   end;
+   for i:=1 to digits do begin
+      p^:='0';
+      Dec(p);
+   end;
+   SetString(s, PChar(@p[1]), (NativeUInt(@buf[15])-NativeUInt(p)) div SizeOf(WideChar));
+end;
+
+// Int64ToHex
+//
+function Int64ToHex(val : Int64; digits : Integer) : UnicodeString;
+begin
+   FastInt64ToHex(val, digits, Result);
+end;
 
 // VariantToString
 //

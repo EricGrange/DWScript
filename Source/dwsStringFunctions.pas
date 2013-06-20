@@ -319,11 +319,7 @@ end;
 //
 procedure TIntToHexFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
-   {$ifdef FPC}
-   Result:=UTF8Decode(SysUtils.IntToHex(args.AsInteger[0], args.AsInteger[1]));
-   {$else}
-   Result:=SysUtils.IntToHex(args.AsInteger[0], args.AsInteger[1]);
-   {$endif}
+   FastInt64ToHex(args.AsInteger[0], args.AsInteger[1], Result);
 end;
 
 { THexToIntFunc }
