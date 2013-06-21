@@ -594,6 +594,18 @@ begin
 
    RegisterJITter(TArrayLengthExpr,             Tx86InterpretedExpr.Create(Self));
    RegisterJITter(TArraySetLengthExpr,          Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TArrayAddExpr,                Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TArrayInsertExpr,             Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TArrayIndexOfExpr,            Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TArrayRemoveExpr,             Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TArrayDeleteExpr,             Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TArraySwapExpr,               Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TArraySortExpr,               Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TArraySortNaturalStringExpr,  Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TArraySortNaturalIntegerExpr, Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TArraySortNaturalFloatExpr,   Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TArrayReverseExpr,            Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TArrayMapExpr,                Tx86InterpretedExpr.Create(Self));
 
    RegisterJITter(TBlockExpr,                   Tx86BlockExprNoTable.Create(Self));
    RegisterJITter(TBlockExprNoTable,            Tx86BlockExprNoTable.Create(Self));
@@ -606,18 +618,34 @@ begin
    RegisterJITter(TAssignConstToIntegerVarExpr, Tx86AssignConstToIntegerVar.Create(Self));
    RegisterJITter(TAssignConstToFloatVarExpr,   Tx86AssignConstToFloatVar.Create(Self));
    RegisterJITter(TAssignConstToBoolVarExpr,    Tx86AssignConstToBoolVar.Create(Self));
+   RegisterJITter(TAssignConstToStringVarExpr,  Tx86InterpretedExpr.Create(Self));
    RegisterJITter(TAssignExpr,                  Tx86Assign.Create(Self));
    RegisterJITter(TAssignDataExpr,              Tx86AssignData.Create(Self));
+   RegisterJITter(TAssignClassOfExpr,           Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TAssignFuncExpr,              Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TAssignNilToVarExpr,          Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TAssignArrayConstantExpr,     Tx86InterpretedExpr.Create(Self));
+
+   RegisterJITter(TAssignedInstanceExpr,        Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TAssignedMetaClassExpr,       Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TAssignedFuncPtrExpr,         Tx86InterpretedExpr.Create(Self));
 
    RegisterJITter(TPlusAssignFloatExpr,         Tx86OpAssignFloat.Create(Self, xmm_addsd));
    RegisterJITter(TMinusAssignFloatExpr,        Tx86OpAssignFloat.Create(Self, xmm_subsd));
    RegisterJITter(TMultAssignFloatExpr,         Tx86OpAssignFloat.Create(Self, xmm_multsd));
    RegisterJITter(TDivideAssignExpr,            Tx86OpAssignFloat.Create(Self, xmm_divsd));
 
+   RegisterJITter(TStringLengthExpr,            Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TAppendStringVarExpr,         Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TAppendConstStringVarExpr,    Tx86InterpretedExpr.Create(Self));
+
+   RegisterJITter(TPlusAssignIntExpr,           Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TMinusAssignIntExpr,          Tx86InterpretedExpr.Create(Self));
    RegisterJITter(TMultAssignIntExpr,           Tx86InterpretedExpr.Create(Self));
 
    RegisterJITter(TIfThenExpr,                  Tx86IfThen.Create(Self));
    RegisterJITter(TIfThenElseExpr,              Tx86IfThenElse.Create(Self));
+   RegisterJITter(TCaseExpr,                    Tx86InterpretedExpr.Create(Self));
 
    RegisterJITter(TLoopExpr,                    Tx86Loop.Create(Self));
    RegisterJITter(TRepeatExpr,                  Tx86Repeat.Create(Self));
@@ -625,11 +653,17 @@ begin
 
    RegisterJITter(TForUpwardExpr,               Tx86ForUpward.Create(Self));
    RegisterJITter(TForUpwardStepExpr,           Tx86ForUpward.Create(Self));
-//   RegisterJITter(TForUpwardStepExpr,           Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TForDownwardExpr,             Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TForDownwardStepExpr,         Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TForCharCodeInStrExpr,        Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TForCharInStrExpr,            Tx86InterpretedExpr.Create(Self));
 
    RegisterJITter(TContinueExpr,                Tx86Continue.Create(Self));
    RegisterJITter(TExitExpr,                    Tx86Exit.Create(Self));
    RegisterJITter(TExitValueExpr,               Tx86ExitValue.Create(Self));
+
+//   RegisterJITter(TExceptExpr,                  Tx86InterpretedExpr.Create(Self));
+//   RegisterJITter(TFinallyExpr,                 Tx86InterpretedExpr.Create(Self));
 
    RegisterJITter(TAddFloatExpr,                Tx86FloatBinOp.Create(Self, xmm_addsd));
    RegisterJITter(TSubFloatExpr,                Tx86FloatBinOp.Create(Self, xmm_subsd));
@@ -649,6 +683,8 @@ begin
    RegisterJITter(TModConstExpr,                Tx86ModInt.Create(Self));
    RegisterJITter(TMultIntPow2Expr,             Tx86MultIntPow2.Create(Self));
    RegisterJITter(TIntAndExpr,                  Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TIntXorExpr,                  Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TIntOrExpr,                   Tx86InterpretedExpr.Create(Self));
 
    RegisterJITter(TShrExpr,                     Tx86Shr.Create(Self));
    RegisterJITter(TShlExpr,                     Tx86Shl.Create(Self));
@@ -662,7 +698,7 @@ begin
    RegisterJITter(TRelEqualIntExpr,             Tx86RelOpInt.Create(Self, flagsNone, flagsNZ, flagsZ));
    RegisterJITter(TRelNotEqualIntExpr,          Tx86RelOpInt.Create(Self, flagsNZ, flagsNone, flagsNZ));
    RegisterJITter(TRelGreaterIntExpr,           Tx86RelOpInt.Create(Self, flagsG, flagsL, flagsG));
-   RegisterJITter(TRelGreaterEqualStringExpr,   Tx86RelOpInt.Create(Self, flagsG, flagsL, flagsGE));
+   RegisterJITter(TRelGreaterEqualIntExpr,      Tx86RelOpInt.Create(Self, flagsG, flagsL, flagsGE));
    RegisterJITter(TRelLessIntExpr,              Tx86RelOpInt.Create(Self, flagsL, flagsG, flagsL));
    RegisterJITter(TRelLessEqualIntExpr,         Tx86RelOpInt.Create(Self, flagsL, flagsG, flagsLE));
 
@@ -676,9 +712,25 @@ begin
    RegisterJITter(TRelLessFloatExpr,            Tx86RelOpFloat.Create(Self, flagsB));
    RegisterJITter(TRelLessEqualFloatExpr,       Tx86RelOpFloat.Create(Self, flagsBE));
 
+   RegisterJITter(TRelEqualStringExpr,          Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TRelNotEqualStringExpr,       Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TRelGreaterStringExpr,        Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TRelGreaterEqualStringExpr,   Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TRelLessStringExpr,           Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TRelLessEqualStringExpr,      Tx86InterpretedExpr.Create(Self));
+
+   RegisterJITter(TRelEqualBoolExpr,            Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TRelNotEqualBoolExpr,         Tx86InterpretedExpr.Create(Self));
+
+   RegisterJITter(TIsOpExpr,                    Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TObjCmpEqualExpr,             Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TObjCmpNotEqualExpr,          Tx86InterpretedExpr.Create(Self));
+
    RegisterJITter(TNotBoolExpr,                 Tx86NotExpr.Create(Self));
    RegisterJITter(TBoolOrExpr,                  Tx86BoolOrExpr.Create(Self));
    RegisterJITter(TBoolAndExpr,                 Tx86BoolAndExpr.Create(Self));
+   RegisterJITter(TBoolXorExpr,                 Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TBoolImpliesExpr,             Tx86InterpretedExpr.Create(Self));
 
    RegisterJITter(TSetOfInExpr,                 Tx86SetOfInExpr.Create(Self));
    RegisterJITter(TSetOfSmallInExpr,            Tx86SetOfInExpr.Create(Self));
@@ -690,12 +742,21 @@ begin
    RegisterJITter(TOrdIntExpr,                  Tx86OrdInt.Create(Self));
    RegisterJITter(TOrdStrExpr,                  Tx86InterpretedExpr.Create(Self));
 
+   RegisterJITter(TSwapExpr,                    Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TAssertExpr,                  Tx86InterpretedExpr.Create(Self));
+
+   RegisterJITter(TDeclaredExpr,                Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TDefinedExpr,                 Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TConditionalDefinedExpr,      Tx86InterpretedExpr.Create(Self));
+
    RegisterJITter(TConvFloatExpr,               Tx86ConvFloat.Create(Self));
+   RegisterJITter(TConvIntegerExpr,             Tx86InterpretedExpr.Create(Self));
 
    RegisterJITter(TFuncExpr,                    Tx86InterpretedExpr.Create(Self));
    RegisterJITter(TMagicProcedureExpr,          Tx86InterpretedExpr.Create(Self));
    RegisterJITter(TMagicFloatFuncExpr,          Tx86MagicFunc.Create(Self));
    RegisterJITter(TMagicIntFuncExpr,            Tx86MagicFunc.Create(Self));
+   RegisterJITter(TMagicBoolFuncExpr,           Tx86InterpretedExpr.Create(Self));
 
    RegisterJITter(TSqrtFunc,                    Tx86SqrtFunc.Create(Self));
    RegisterJITter(TMaxFunc,                     Tx86MinMaxFloatFunc.Create(Self, xmm_maxsd));
