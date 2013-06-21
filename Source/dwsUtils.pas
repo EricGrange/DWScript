@@ -816,12 +816,23 @@ begin
       else digits:=16;
    end;
    p:=@buf[15];
-   while val<>0 do begin
-      d:=val and 15;
-      val:=val shr 4;
-      p^:=cIntToHex[d];
-      Dec(p);
-      Dec(digits);
+   if PIntegerArray(@val)[1]=0 then begin
+      i:=PIntegerArray(@val)[0];
+      repeat
+         d:=i and 15;
+         i:=i shr 4;
+         p^:=cIntToHex[d];
+         Dec(p);
+         Dec(digits);
+      until i=0;
+   end else begin
+      repeat
+         d:=val and 15;
+         val:=val shr 4;
+         p^:=cIntToHex[d];
+         Dec(p);
+         Dec(digits);
+      until val=0;
    end;
    for i:=1 to digits do begin
       p^:='0';
