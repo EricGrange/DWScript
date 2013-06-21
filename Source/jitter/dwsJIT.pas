@@ -44,7 +44,7 @@ type
          constructor Create(aJIT : TdwsJIT);
 
          procedure CompileStatement(expr : TExprBase); virtual;
-         function CompileFloat(expr : TExprBase) : Integer; virtual;
+         function CompileFloat(expr : TTypedExpr) : Integer; virtual;
          function CompileInteger(expr : TExprBase) : Integer; virtual;
          procedure CompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup); virtual;
          function CompileScriptObj(expr : TExprBase) : Integer; virtual;
@@ -166,6 +166,8 @@ type
          function CreateOutput : TWriteOnlyBlockStream; virtual;
          function CreateFixupLogic : TFixupLogic; virtual;
 
+         procedure SetOutputFailedOn(e : TExprBase);
+
          procedure StartJIT(expr : TExprBase; exitable : Boolean); virtual;
          procedure EndJIT; virtual;
          procedure EndFloatJIT(resultHandle : Integer); virtual;
@@ -224,7 +226,7 @@ type
          procedure QueueGreed(prog : TdwsProgram); overload;
 
          property Output : TWriteOnlyBlockStream read FOutput;
-         property OutputFailedOn : TExprBase read FOutputFailedOn write FOutputFailedOn;
+         property OutputFailedOn : TExprBase read FOutputFailedOn write SetOutputFailedOn;
    end;
 
 // ------------------------------------------------------------------
@@ -248,7 +250,7 @@ end;
 
 // CompileFloat
 //
-function TdwsJITter.CompileFloat(expr : TExprBase) : Integer;
+function TdwsJITter.CompileFloat(expr : TTypedExpr) : Integer;
 begin
    jit.OutputFailedOn:=expr;
    Result:=0;
@@ -385,6 +387,13 @@ end;
 function TdwsJIT.CreateFixupLogic : TFixupLogic;
 begin
    Result:=TFixupLogic.Create;
+end;
+
+// SetOutputFailedOn
+//
+procedure TdwsJIT.SetOutputFailedOn(e : TExprBase);
+begin
+   FOutputFailedOn:=e;
 end;
 
 // RegisterJITter

@@ -92,6 +92,7 @@ type
       Long1 : Byte;
       LongEAX : Byte;
       RegReg : Byte;
+      RegRegHigh : Byte;
    end;
 
    TgpShift = (gpShr = $E8, gpShl = $E0, gpSar = $F8, gpSal = $F0);
@@ -172,6 +173,8 @@ type
 
          procedure _op_reg_int32(const op : TgpOP; reg : TgpRegister; value : Integer);
          procedure _op_reg_reg(const op : TgpOP; dest, src : TgpRegister);
+         procedure _op_reg_dword_ptr_reg(const op : TgpOP; dest, src : TgpRegister; offset : Integer);
+
          procedure _cmp_reg_int32(reg : TgpRegister; value : Integer);
          procedure _add_reg_reg(dest, src : TgpRegister);
          procedure _adc_reg_reg(dest, src : TgpRegister);
@@ -187,6 +190,9 @@ type
          procedure _adc_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
          procedure _sub_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
          procedure _sbb_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+         procedure _and_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+         procedure _or_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+         procedure _xor_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 
          procedure _inc_dword_ptr_reg(reg : TgpRegister; offset : Integer);
 
@@ -886,6 +892,13 @@ begin
    WriteBytes([op.RegReg, $C0+Ord(dest)+8*Ord(src)])
 end;
 
+// _op_reg_dword_ptr_reg
+//
+procedure Tx86WriteOnlyStream._op_reg_dword_ptr_reg(const op : TgpOP; dest, src : TgpRegister; offset : Integer);
+begin
+   _modRMSIB_regnum_ptr_reg([op.RegReg+2], Ord(dest), src, offset);
+end;
+
 // _cmp_reg_int32
 //
 procedure Tx86WriteOnlyStream._cmp_reg_int32(reg : TgpRegister; value : Integer);
@@ -967,28 +980,49 @@ end;
 //
 procedure Tx86WriteOnlyStream._add_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 begin
-   _modRMSIB_regnum_ptr_reg([$03], Ord(dest), src, offset);
+   _op_reg_dword_ptr_reg(gpOp_add, dest, src, offset);
 end;
 
 // _adc_reg_dword_ptr_reg
 //
 procedure Tx86WriteOnlyStream._adc_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 begin
-   _modRMSIB_regnum_ptr_reg([$13], Ord(dest), src, offset);
+   _op_reg_dword_ptr_reg(gpOp_adc, dest, src, offset);
 end;
 
 // _sub_reg_dword_ptr_reg
 //
 procedure Tx86WriteOnlyStream._sub_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 begin
-   _modRMSIB_regnum_ptr_reg([$2B], Ord(dest), src, offset);
+   _op_reg_dword_ptr_reg(gpOp_sub, dest, src, offset);
 end;
 
 // _sbb_reg_dword_ptr_reg
 //
 procedure Tx86WriteOnlyStream._sbb_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 begin
-   _modRMSIB_regnum_ptr_reg([$1B], Ord(dest), src, offset);
+   _op_reg_dword_ptr_reg(gpOp_sbb, dest, src, offset);
+end;
+
+// _and_reg_dword_ptr_reg
+//
+procedure Tx86WriteOnlyStream._and_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+begin
+   _op_reg_dword_ptr_reg(gpOp_and, dest, src, offset);
+end;
+
+// _or_reg_dword_ptr_reg
+//
+procedure Tx86WriteOnlyStream._or_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+begin
+   _op_reg_dword_ptr_reg(gpOp_or, dest, src, offset);
+end;
+
+// _xor_reg_dword_ptr_reg
+//
+procedure Tx86WriteOnlyStream._xor_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+begin
+   _op_reg_dword_ptr_reg(gpOp_xor, dest, src, offset);
 end;
 
 // _inc_dword_ptr_reg

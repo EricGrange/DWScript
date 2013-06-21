@@ -37,6 +37,7 @@ type
          procedure add_sub_execmem;
          procedure inc_dword_ptr;
          procedure add_sub_dword_ptr_reg;
+         procedure and_or_xor_dword_ptr_reg;
          procedure neg_not_32;
          procedure shr_shl_32;
          procedure shr_shl_64;
@@ -604,6 +605,41 @@ begin
                     +'adc '+cgpRegisterName[dest]+', dword ptr ['+cgpRegisterName[src]+offtextA+']'#13#10
                     +'sub '+cgpRegisterName[dest]+', dword ptr ['+cgpRegisterName[src]+offtextA+']'#13#10
                     +'sbb '+cgpRegisterName[dest]+', dword ptr ['+cgpRegisterName[src]+offtextA+']'#13#10
+                    ;
+         end;
+         CheckEquals(expect, DisasmStream);
+      end;
+   end;
+end;
+
+// and_or_xor_dword_ptr_reg
+//
+procedure TJITx86Tests.and_or_xor_dword_ptr_reg;
+var
+   dest, src : TgpRegister;
+   offset : Integer;
+   expect, offtextA : String;
+begin
+   for dest:=gprEAX to gprEDI do begin
+      for src:=gprEAX to gprEDI do begin
+         expect:='';
+         for offset:=0 to 2 do begin
+            FStream._and_reg_dword_ptr_reg(dest, src, offset*$40);
+            FStream._or_reg_dword_ptr_reg(dest, src, offset*$40);
+            FStream._xor_reg_dword_ptr_reg(dest, src, offset*$40);
+            if offset=0 then begin
+               if src=gprEBP then
+                  offtextA:='+00h'
+               else offtextA:='';
+            end else if offset=1 then begin
+               offtextA:='+40h';
+            end else begin
+               offtextA:='+00000080h';
+            end;
+            expect:= expect
+                    +'and '+cgpRegisterName[dest]+', dword ptr ['+cgpRegisterName[src]+offtextA+']'#13#10
+                    +'or '+cgpRegisterName[dest]+', dword ptr ['+cgpRegisterName[src]+offtextA+']'#13#10
+                    +'xor '+cgpRegisterName[dest]+', dword ptr ['+cgpRegisterName[src]+offtextA+']'#13#10
                     ;
          end;
          CheckEquals(expect, DisasmStream);
