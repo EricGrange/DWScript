@@ -12012,7 +12012,7 @@ var
 begin
    if loopVarExpr<>nil then begin
 
-      if not loopVarExpr.Typ.IsOfType(loopVarTyp) then begin
+      if (not loopVarExpr.Typ.IsCompatible(loopVarTyp) and (not loopVarExpr.Typ.IsOfType(loopVarTyp))) then begin
          IncompatibleTypes(loopVarNamePos, CPE_IncompatibleTypes, loopVarExpr.Typ, loopVarTyp);
          OrphanObject(loopVarExpr);
       end else Exit(nil);

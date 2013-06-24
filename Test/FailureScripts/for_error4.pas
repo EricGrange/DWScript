@@ -1,5 +1,5 @@
 type TEnum = (enOne);
 
-var i : Integer;
+var i : String;
 
 for i in TEnum do ;
