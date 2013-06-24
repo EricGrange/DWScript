@@ -434,7 +434,8 @@ type
    TdwsFunction = class(TdwsFunctionSymbol)
       private
          FOnFastEval : TFuncFastEvalEvent;
-
+         function GetName: UnicodeString;
+         procedure SetName(const val: UnicodeString);
       protected
          function GetOnEval : TFuncEvalEvent;
          procedure SetOnEval(const val : TFuncEvalEvent);
@@ -447,6 +448,7 @@ type
       published
          property OnEval : TFuncEvalEvent read GetOnEval write SetOnEval;
          property OnFastEval : TFuncFastEvalEvent read FOnFastEval write FOnFastEval;
+         property Name: UnicodeString read GetName write SetName;
    end;
 
    TdwsFunctions = class(TdwsCollection)
@@ -2872,6 +2874,141 @@ begin
    end;
 
    Result:=table.FindLocal(Name) as TMagicFuncSymbol;
+end;
+
+//
+function TdwsFunction.GetName: UnicodeString;
+begin
+  Result := inherited Name;
+end;
+
+procedure TdwsFunction.SetName(const val: UnicodeString);
+type
+   TFuncPos = (fpName, fpParamName, fpParamType, fpParamDefault, fpParamEnd,
+      fpResultType);
+
+var
+   FuncPos: TFuncPos;
+   Index: Integer;
+   StartIdx: Integer;
+   Param: TdwsParameter;
+   str: String;
+begin
+   FuncPos := fpName;
+
+   Param := nil;
+   Index := 1;
+   StartIdx := 1;
+   while Index <= Length(val) do
+   begin
+      case val[Index] of
+         '(' :
+            begin
+               // write inherited name
+               inherited Name := Trim(Copy(val, 1, Index - 1));
+
+               // clear yet existing parameters
+               Parameters.Clear;
+
+               // expect parameter name
+               StartIdx := Index + 1;
+               FuncPos := fpParamName;
+            end;
+
+         ')' :
+            begin
+               if Assigned(Param) then
+               begin
+                  case FuncPos of
+                    fpParamType:
+                       Param.DataType := Trim(Copy(val, StartIdx, Index - StartIdx));
+                    fpParamDefault:
+                       begin
+                          str := Trim(Copy(val, StartIdx, Index - StartIdx));
+                          if UnicodeSameText(Param.DataType, 'String') then
+                             str := AnsiDequotedStr(str, '''');
+                          Param.DefaultValue := str;
+                       end;
+                  end;
+                  Param := nil;
+               end;
+
+               StartIdx := Index + 1;
+               FuncPos := fpParamEnd;
+            end;
+
+         ':' :
+            begin
+               // check whether the parameter or result type is meant
+               if FuncPos = fpParamName then
+               begin
+                  // add and name parameter
+                  Param := Parameters.Add;
+                  Param.Name := Trim(Copy(val, StartIdx, Index - StartIdx));
+                  StartIdx := Index + 1;
+                  FuncPos := fpParamType;
+               end
+               else
+               begin
+                  // eventually copy name
+                  if FuncPos = fpName then
+                     inherited Name := Trim(Copy(val, 1, Index - 1));
+
+                  // now look for result type
+                  Assert(FuncPos in [fpName, fpParamEnd]);
+                  StartIdx := Index + 1;
+                  FuncPos := fpResultType;
+               end;
+            end;
+
+         '=' :
+            begin
+               if (FuncPos = fpParamType) and Assigned(Param) then
+                  Param.DataType := Trim(Copy(val, StartIdx, Index - StartIdx));
+
+               StartIdx := Index + 1;
+               FuncPos := fpParamDefault;
+            end;
+
+         ';' :
+            begin
+               if Assigned(Param) then
+               begin
+                  case FuncPos of
+                    fpParamType:
+                      Param.DataType := Trim(Copy(val, StartIdx, Index - StartIdx));
+                    fpParamDefault:
+                      begin
+                        str := Trim(Copy(val, StartIdx, Index - StartIdx));
+                        if UnicodeSameText(Param.DataType, 'String') then
+                           str := AnsiDequotedStr(str, '''');
+                        Param.DefaultValue := str;
+                      end;
+                  end;
+                  Param := nil;
+               end
+               else
+               if FuncPos = fpResultType then
+               begin
+                  ResultType := Trim(Copy(val, StartIdx, Length(val) - StartIdx));
+                  Exit;
+               end;
+
+               StartIdx := Index + 1;
+               FuncPos := fpParamName;
+            end;
+      end;
+
+      Inc(Index);
+   end;
+
+   // some post processing
+   case FuncPos of
+      fpName:
+         inherited Name := val;
+      fpResultType:
+         ResultType := Trim(Copy(val, StartIdx, Length(val) - StartIdx));
+   end;
 end;
 
 // GetOnEval

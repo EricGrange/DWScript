@@ -113,6 +113,7 @@ type
          procedure CallInNested;
          procedure OverloadedFunc;
          procedure FastEvalTest;
+         procedure BuildFunctionFromName;
 
          procedure ExplicitUses;
 
@@ -1117,6 +1118,49 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
    exec:=prog.Execute;
    CheckEquals('876543210', exec.Result.ToString, 'Enums Ord');
+end;
+
+// BuildFunctionFromName
+//
+procedure TdwsUnitTests.BuildFunctionFromName;
+var
+   func: TdwsFunction;
+begin
+   func := FUnit.Functions.Add;
+   func.Name := 'TestRetValue: String;';
+   CheckEquals('TestRetValue', func.Name);
+   CheckEquals('String', func.ResultType);
+   FUnit.Functions.Delete(func.Index);
+
+   func := FUnit.Functions.Add;
+   func.Name := 'TestParam(A: Integer)';
+   CheckEquals('TestParam', func.Name);
+   CheckEquals('A', TdwsParameter(func.Parameters.Items[0]).Name);
+   CheckEquals('Integer', TdwsParameter(func.Parameters.Items[0]).DataType);
+   FUnit.Functions.Delete(func.Index);
+
+   func := FUnit.Functions.Add;
+   func.Name := 'TestParam(A: String = ''Test'');';
+   CheckEquals('TestParam', func.Name);
+   CheckEquals('A', TdwsParameter(func.Parameters.Items[0]).Name);
+   CheckEquals('String', TdwsParameter(func.Parameters.Items[0]).DataType);
+   CheckEquals('Test', TdwsParameter(func.Parameters.Items[0]).DefaultValue);
+   FUnit.Functions.Delete(func.Index);
+
+   func := FUnit.Functions.Add;
+   func.Name := 'TestSeveralParam(A: String = ''Test''; B: Integer);';
+   CheckEquals('TestSeveralParam', func.Name);
+   CheckEquals('A', TdwsParameter(func.Parameters.Items[0]).Name);
+   CheckEquals('String', TdwsParameter(func.Parameters.Items[0]).DataType);
+   CheckEquals('Test', TdwsParameter(func.Parameters.Items[0]).DefaultValue);
+   CheckEquals('B', TdwsParameter(func.Parameters.Items[1]).Name);
+   CheckEquals('Integer', TdwsParameter(func.Parameters.Items[1]).DataType);
+   FUnit.Functions.Delete(func.Index);
+
+   func := FUnit.Functions.Add;
+   func.Name := 'TestNone();';
+   CheckEquals('TestNone', func.Name);
+   FUnit.Functions.Delete(func.Index);
 end;
 
 // CallFunc
