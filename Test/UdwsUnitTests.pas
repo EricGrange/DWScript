@@ -113,6 +113,8 @@ type
          procedure CallInNested;
          procedure OverloadedFunc;
          procedure FastEvalTest;
+         procedure ArrayOfObjects;
+
          procedure BuildFunctionFromName;
 
          procedure ExplicitUses;
@@ -571,6 +573,17 @@ begin
    a.Name:='TPoints';
    a.IsDynamic:=True;
    a.DataType:='TPoint';
+
+   a:=FUnit.Arrays.Add;
+   a.Name:='TDynObjects';
+   a.IsDynamic:=True;
+   a.DataType:='TTestClass';
+
+   a:=FUnit.Arrays.Add;
+   a.Name:='TStaticObjects';
+   a.LowBound:=0;
+   a.HighBound:=1;
+   a.DataType:='TTestClass';
 end;
 
 // DeclareTestRecords
@@ -1793,6 +1806,25 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'Compile 2');
 
    CheckEquals('2'#13#10'3'#13#10, prog.Execute.Result.ToString, 'exec 2');
+end;
+
+// ArrayOfObjects
+//
+procedure TdwsUnitTests.ArrayOfObjects;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'var a : TDynObjects; a.SetLength(1);'#13#10
+                           +'a[0] := nil;'#13#10
+                           +'a.Add(nil);'#13#10
+                           +'var s : TStaticObjects;'#13#10
+                           +'s[0] := nil;'#13#10
+                           );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile 1');
+
+   CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
+   CheckEquals('', prog.Execute.Result.ToString, 'exec result');
 end;
 
 // ExplicitUses
