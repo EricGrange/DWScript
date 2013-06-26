@@ -79,7 +79,7 @@ type
          function  EvalAsPInteger(exec : TdwsExecution) : PInt64; inline;
    end;
 
-   TFloatVarExpr = class (TVarExpr)
+   TFloatVarExpr = class sealed (TVarExpr)
       protected
       public
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;

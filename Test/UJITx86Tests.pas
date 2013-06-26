@@ -53,6 +53,7 @@ type
          procedure cmp_dword_ptr_reg_reg;
          procedure cmp_reg_int32;
          procedure test_reg_reg;
+         procedure test_reg_int32;
          procedure test_dword_ptr_reg_int32;
          procedure test_dword_ptr_reg_byte;
          procedure test_dword_ptr_reg_reg;
@@ -990,6 +991,27 @@ begin
          FStream._test_reg_reg(dest, src);
          expect:=expect+'test '+cgpRegisterName[dest]+', '+cgpRegisterName[src]+#13#10;
       end;
+      CheckEquals(expect, DisasmStream);
+   end;
+end;
+
+// test_reg_int32
+//
+procedure TJITx86Tests.test_reg_int32;
+var
+   reg : TgpRegister;
+   expect : String;
+begin
+   for reg:=gprEAX to gprEDI do begin
+      FStream._test_reg_imm(reg, $40);
+      FStream._test_reg_imm(reg, $180);
+      case reg of
+         gprEAX : expect:='test '+cgpRegister8bitName[reg]+', 40h'#13#10;
+         gprECX..gprEBX : expect:= 'test '+cgpRegister8bitName[reg]+', 00000040h'#13#10;
+      else
+         expect:= 'test '+cgpRegisterName[reg]+', 00000040h'#13#10;
+      end;
+      expect:=expect+'test '+cgpRegisterName[reg]+', 00000180h'#13#10;
       CheckEquals(expect, DisasmStream);
    end;
 end;

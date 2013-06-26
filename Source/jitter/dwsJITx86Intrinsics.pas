@@ -163,6 +163,7 @@ type
          procedure _cmp_reg_dword_ptr_reg(reg : TgpRegister; dest : TgpRegister; offset : Integer);
 
          procedure _test_reg_reg(dest, src : TgpRegister);
+         procedure _test_reg_imm(reg : TgpRegister; imm : DWORD);
          procedure _test_dword_ptr_reg_dword(dest : TgpRegister; offset : Integer; imm : DWORD);
          procedure _test_dword_ptr_reg_byte(dest : TgpRegister; offset : Integer; imm : Byte);
          procedure _test_dword_ptr_reg_reg(dest : TgpRegister; offset : Integer; src : TgpRegister);
@@ -263,6 +264,9 @@ const
    cVariant_DataOffset = 8;
    cgpRegisterName : array [TgpRegister] of String = (
       'eax', 'ecx', 'edx', 'ebx', 'esp', 'ebp', 'esi', 'edi'
+      );
+   cgpRegister8bitName : array [TgpRegister] of String = (
+      'al', 'cl', 'dl', 'bl', '??', '??', '??', '??'
       );
    cExecMemGPR = gprEBX;
 
@@ -814,6 +818,29 @@ procedure Tx86WriteOnlyStream._test_reg_reg(dest, src : TgpRegister);
 begin
    WriteByte($85);
    WriteByte($C0+Ord(dest)+Ord(src)*8);
+end;
+
+// _test_reg_imm
+//
+procedure Tx86WriteOnlyStream._test_reg_imm(reg : TgpRegister; imm : DWORD);
+begin
+   if (imm<=$FF) and (reg in [gprEAX..gprEBX]) then begin
+      if reg=gprEAX then
+         WriteByte($A8)
+      else begin
+         WriteByte($F6);
+         WriteByte($C0+Ord(reg));
+      end;
+      WriteByte(imm);
+   end else begin
+      if reg=gprEAX then
+         WriteByte($A9)
+      else begin
+         WriteByte($F7);
+         WriteByte($C0+Ord(reg));
+      end;
+      WriteInt32(imm);
+   end;
 end;
 
 // _test_dword_ptr_reg_dword

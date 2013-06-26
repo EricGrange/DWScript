@@ -205,7 +205,7 @@ var
 begin
    for i := 0 to cSize-2 do begin
       for j := 0 to cSize-2 do begin
-         x := -0.8 + 3 * i / cSize;
+         x := -0.8 + 3.0 * i / cSize;
          y := -1.4 + 2.8 * j / cSize;
          newColor := 0;
          u := 0;

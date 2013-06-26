@@ -43,6 +43,8 @@ type
       public
          constructor Create(aJIT : TdwsJIT);
 
+         function IncRefCount : TdwsJITter; inline;
+
          procedure CompileStatement(expr : TExprBase); virtual;
          function CompileFloat(expr : TTypedExpr) : Integer; virtual;
          function CompileInteger(expr : TExprBase) : Integer; virtual;
@@ -246,6 +248,14 @@ implementation
 constructor TdwsJITter.Create(aJIT : TdwsJIT);
 begin
    Fjit:=aJIT;
+end;
+
+// IncRefCount
+//
+function TdwsJITter.IncRefCount : TdwsJITter;
+begin
+   inherited IncRefCount;
+   Result:=Self;
 end;
 
 // CompileFloat
@@ -760,16 +770,18 @@ begin
          p:=funcSym.Params[i];
          if p.ClassType<>TParamSymbol then continue;
          argExpr:=funcExpr.Args[i];
-         paramTyp:=p.Typ.UnAliasedType;
-         if paramTyp is TBaseIntegerSymbol then
-            jitted:=JITInteger(argExpr as TTypedExpr)
-         else if paramTyp is TBaseFloatSymbol then
-            jitted:=JITFloat(argExpr as TTypedExpr)
-         else jitted:=nil;
-         if jitted<>nil then begin
-            funcExpr.Args[i].Free;
-            funcExpr.Args[i]:=jitted;
-         end else GreedyJIT(argExpr);
+         if not (argExpr is TJITTedTypedExpr) then begin
+            paramTyp:=p.Typ.UnAliasedType;
+            if paramTyp is TBaseIntegerSymbol then
+               jitted:=JITInteger(argExpr as TTypedExpr)
+            else if paramTyp is TBaseFloatSymbol then
+               jitted:=JITFloat(argExpr as TTypedExpr)
+            else jitted:=nil;
+            if jitted<>nil then begin
+               funcExpr.Args[i].Free;
+               funcExpr.Args[i]:=jitted;
+            end else GreedyJIT(argExpr);
+         end;
       end;
    end;
 end;
