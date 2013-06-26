@@ -4,8 +4,8 @@ interface
 
 uses
    Classes, SysUtils,
-   dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsDataContext, dwsExprList,
-   dwsTokenizer, dwsSymbols, dwsUtils, dwsStack;
+   dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsDataContext,
+   dwsExprList, dwsTokenizer, dwsSymbols, dwsUtils, dwsStack;
 
 type
 
@@ -1146,27 +1146,33 @@ begin
    FUnit.Functions.Delete(func.Index);
 
    func := FUnit.Functions.Add;
-   func.Name := 'TestParam(A: Integer)';
+   func.Name := 'TestRetValue: String';
+   CheckEquals('TestRetValue', func.Name);
+   CheckEquals('String', func.ResultType);
+   FUnit.Functions.Delete(func.Index);
+
+   func := FUnit.Functions.Add;
+   func.Name := 'TestParam(a: Integer)';
    CheckEquals('TestParam', func.Name);
-   CheckEquals('A', TdwsParameter(func.Parameters.Items[0]).Name);
+   CheckEquals('a', TdwsParameter(func.Parameters.Items[0]).Name);
    CheckEquals('Integer', TdwsParameter(func.Parameters.Items[0]).DataType);
    FUnit.Functions.Delete(func.Index);
 
    func := FUnit.Functions.Add;
-   func.Name := 'TestParam(A: String = ''Test'');';
+   func.Name := 'TestParam(a: String = ''Test'');';
    CheckEquals('TestParam', func.Name);
-   CheckEquals('A', TdwsParameter(func.Parameters.Items[0]).Name);
+   CheckEquals('a', TdwsParameter(func.Parameters.Items[0]).Name);
    CheckEquals('String', TdwsParameter(func.Parameters.Items[0]).DataType);
    CheckEquals('Test', TdwsParameter(func.Parameters.Items[0]).DefaultValue);
    FUnit.Functions.Delete(func.Index);
 
    func := FUnit.Functions.Add;
-   func.Name := 'TestSeveralParam(A: String = ''Test''; B: Integer);';
+   func.Name := 'TestSeveralParam(a: Float = 2.5; b: Integer);';
    CheckEquals('TestSeveralParam', func.Name);
-   CheckEquals('A', TdwsParameter(func.Parameters.Items[0]).Name);
-   CheckEquals('String', TdwsParameter(func.Parameters.Items[0]).DataType);
-   CheckEquals('Test', TdwsParameter(func.Parameters.Items[0]).DefaultValue);
-   CheckEquals('B', TdwsParameter(func.Parameters.Items[1]).Name);
+   CheckEquals('a', TdwsParameter(func.Parameters.Items[0]).Name);
+   CheckEquals('Float', TdwsParameter(func.Parameters.Items[0]).DataType);
+   CheckEquals(2.5, TdwsParameter(func.Parameters.Items[0]).DefaultValue);
+   CheckEquals('b', TdwsParameter(func.Parameters.Items[1]).Name);
    CheckEquals('Integer', TdwsParameter(func.Parameters.Items[1]).DataType);
    FUnit.Functions.Delete(func.Index);
 
