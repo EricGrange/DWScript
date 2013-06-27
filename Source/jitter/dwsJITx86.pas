@@ -4163,6 +4163,8 @@ begin
    x86._mov_eaxedx_imm(0);
 
    jit.Fixups.AddFixup(targetDone);
+
+   Result:=0;
 end;
 
 // ------------------
