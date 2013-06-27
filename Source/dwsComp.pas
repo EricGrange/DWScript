@@ -267,12 +267,15 @@ type
          FName: UnicodeString;
          FIsGenerating: Boolean;
          FUnit: TdwsUnit;
+         FParseName: Boolean;
 
+         procedure SetName(const Value : UnicodeString);
       protected
          procedure AssignTo(Dest: TPersistent); override;
          procedure CheckName(aTable : TSymbolTable; const aName : UnicodeString; overloaded : Boolean = False);
          function  GetDataType(aTable : TSymbolTable; const aName : UnicodeString) : TTypeSymbol;
          procedure Reset;
+         function Parse(const Value : UnicodeString): UnicodeString; virtual;
 
          property IsGenerating: Boolean read FIsGenerating;
 
@@ -286,8 +289,10 @@ type
          function GetNamePath: String; override;
          function GetUnit: TdwsUnit;
 
+         property ParseName : Boolean read FParseName write FParseName;
+
       published
-         property Name: UnicodeString read FName write FName;
+         property Name: UnicodeString read FName write SetName;
    end;
 
    TdwsSymbolArray = array of TdwsSymbol;
@@ -419,7 +424,7 @@ type
 
    TdwsFunctionSymbol = class(TdwsSymbol)
       private
-         FFuncType : TDataType;
+         FResultType : TDataType;
          FParameters : TdwsParameters;
          FDeprecated : UnicodeString;
          FCallable : TdwsCallable;
@@ -427,16 +432,14 @@ type
 
       protected
          function GetDisplayName: String; override;
+         procedure SetResultType(const val : TDataType); virtual;
          procedure SetParameters(const Value: TdwsParameters);
          function GetOnInitExpr : TInitExprEvent;
          procedure SetOnInitExpr(const val : TInitExprEvent);
          function GetOnInitSymbol : TInitSymbolEvent;
          procedure SetOnInitSymbol(const val : TInitSymbolEvent);
          function StoreParameters : Boolean;
-
-         procedure ParseFunctionName(const val: UnicodeString);
-         procedure SetName(const val: UnicodeString);
-
+         function Parse(const Value : UnicodeString): UnicodeString; override;
 
       public
          constructor Create(collection : TCollection); override;
@@ -449,12 +452,11 @@ type
 
       published
          property Parameters : TdwsParameters read FParameters write SetParameters stored StoreParameters;
-         property ResultType : TDataType read FFuncType write FFuncType;
+         property ResultType : TDataType read FResultType write SetResultType;
          property OnInitSymbol : TInitSymbolEvent read GetOnInitSymbol write SetOnInitSymbol;
          property OnInitExpr : TInitExprEvent read GetOnInitExpr write SetOnInitExpr;
          property Deprecated : UnicodeString read FDeprecated write FDeprecated;
          property Overloaded : Boolean read FOverloaded write FOverloaded default False;
-         property Name: UnicodeString read FName write SetName;
    end;
 
    TdwsFunction = class(TdwsFunctionSymbol)
@@ -733,14 +735,13 @@ type
       private
          FAttributes : TMethodAttributes;
          FKind : TMethodKind;
-         FResultType : TDataType;
          FVisibility : TdwsVisibility;
 
       protected
          function GetDisplayName: String; override;
          function GetOnEval : TMethodEvalEvent;
          procedure SetOnEval(const val : TMethodEvalEvent);
-         procedure SetResultType(const Value: TDataType);
+         procedure SetResultType(const val : TDataType); override;
          procedure SetAttributes(const attribs : TMethodAttributes);
 
       public
@@ -754,7 +755,6 @@ type
          property OnEval : TMethodEvalEvent read GetOnEval write SetOnEval;
          property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
          property Kind: TMethodKind read FKind write FKind;
-         property ResultType: TDataType read FResultType write SetResultType;
    end;
 
    TdwsMethods = class(TdwsCollection)
@@ -1121,6 +1121,8 @@ type
             override;
    end;
 
+   TdwsParseName = (pnAtDesignTimeOnly, pnAlways, pnNever);
+
    // TdwsUnit
    //
    TdwsUnit = class(TdwsAbstractStaticUnit)
@@ -1139,7 +1141,9 @@ type
         FOperators : TdwsOperators;
         FTable: TUnitSymbolTable;
         FOnAfterInitUnitTable : TNotifyEvent;
+        FParseName : TdwsParseName;
 
+        procedure SetParseName(Value: TdwsParseName);
       protected
         FCollections : array[0..11] of TdwsCollection;
 
@@ -1189,6 +1193,7 @@ type
         procedure AddUnitSymbols(Table: TSymbolTable; operators : TOperators); override;
         procedure InitUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                 operators : TOperators; UnitTable: TUnitSymbolTable); override;
+        procedure ParseNameChanged;
 
         // Method to support get/set property values for dynamicly registered classes
         procedure HandleDynamicCreate(Info: TProgramInfo; var ExtObject: TObject);
@@ -1218,6 +1223,7 @@ type
         property Records : TdwsRecords read FRecords write SetRecords stored StoreRecords;
         property Interfaces : TdwsInterfaces read FInterfaces write SetInterfaces stored StoreInterfaces;
         property Synonyms: TdwsSynonyms read FSynonyms write SetSynonyms stored StoreSynonyms;
+        property ParseName : TdwsParseName read FParseName write SetParseName default pnAtDesignTimeOnly;
         property UnitName;
         property DeprecatedMessage;
         property ImplicitUse stored StoreImplicitUse;
@@ -1729,6 +1735,7 @@ begin
    FCollections[10] := FInstances;
    FCollections[11] := FOperators;
 
+   FParseName := pnAtDesignTimeOnly;
 end;
 
 destructor TdwsUnit.Destroy;
@@ -2083,6 +2090,45 @@ end;
 function TdwsUnit.StoreImplicitUse : Boolean;
 begin
    Result:=ImplicitUse;
+end;
+
+procedure TdwsUnit.SetParseName(Value: TdwsParseName);
+begin
+   if FParseName <> Value then
+   begin
+      FParseName := Value;
+      ParseNameChanged;
+   end;
+end;
+
+procedure TdwsUnit.ParseNameChanged;
+var
+   val: Boolean;
+
+   procedure UpdateCollection(Collection: TdwsCollection);
+   var
+      i: Integer;
+   begin
+      for i := 0 to Collection.Count - 1 do
+         Collection.Items[i].ParseName := val;
+   end;
+
+var
+   i: Integer;
+begin
+   case FParseName of
+      pnAtDesignTimeOnly:
+         val := csDesigning in ComponentState;
+
+      pnAlways:
+         val := True;
+
+      pnNever:
+         val := False;
+   end;
+
+   for i := 0 to Length(FCollections) - 1 do
+      UpdateCollection(FCollections[i]);
 end;
 
 procedure TdwsUnit.HandleDynamicProperty(Info: TProgramInfo; ExtObject: TObject);
@@ -2881,27 +2927,51 @@ begin
       Result:=Result+' deprecated;';
 end;
 
+// SetResultType
+//
+procedure TdwsFunctionSymbol.SetResultType(const val : TDataType);
+begin
+   FResultType:=val;
+end;
+
 // ParseFunctionName
 //
-procedure TdwsFunctionSymbol.ParseFunctionName(const val: UnicodeString);
+function TdwsFunctionSymbol.Parse(const Value : UnicodeString): UnicodeString;
+
+   function CheckSimple: Boolean;
+   var
+      i : Integer;
+   begin
+      for i:=1 to Length(Value) do
+         case Value[i] of
+            ':', '(', ';', ' ' :
+               Exit(False);
+         end;
+      Result := True;
+   end;
+
 var
    param : TdwsParameter;
    rules : TPascalTokenizerStateRules;
    tok : TTokenizer;
    sourceFile : TSourceFile;
+
 begin
+   if CheckSimple then
+      Exit(Value);
+
    rules := TPascalTokenizerStateRules.Create;
    tok := TTokenizer.Create(rules, nil);
    sourceFile := TSourceFile.Create;
    try
-      sourceFile.Code := val;
+      sourceFile.Code := Value;
       tok.BeginSourceFile(sourceFile);
 
       // eventually ignore additional procedure / function
       if tok.TestDeleteAny([ttPROCEDURE, ttFUNCTION]) <> ttNone then begin
          // check if further tokens are available, if not accept name
          if not tok.HasTokens then begin
-            inherited Name := Val;
+            Result := Value;
             Exit;
          end;
       end;
@@ -2909,7 +2979,7 @@ begin
       if not tok.TestName then
          raise Exception.Create('Name expected');
 
-      inherited Name := tok.GetToken.AsString;
+      Result := tok.GetToken.AsString;
       tok.KillToken;
 
       if tok.TestDelete(ttBLEFT) then
@@ -2986,30 +3056,13 @@ begin
    end;
 end;
 
-// SetName
-//
-procedure TdwsFunctionSymbol.SetName(const val: UnicodeString);
-var
-   i : Integer;
-begin
-   for i:=1 to Length(val) do begin
-      case val[i] of
-         ':', '(' : begin
-            ParseFunctionName(val);
-            Exit;
-         end;
-      end;
-   end;
-   inherited Name:=val;
-end;
-
 // Assign
 //
 procedure TdwsFunctionSymbol.Assign(Source: TPersistent);
 begin
    inherited;
    if Source is TdwsFunctionSymbol then begin
-      FFuncType := TdwsFunctionSymbol(Source).ResultType;
+      FResultType := TdwsFunctionSymbol(Source).ResultType;
       FParameters.Assign(TdwsFunctionSymbol(Source).Parameters);
       FDeprecated:=TdwsFunctionSymbol(Source).Deprecated;
       FOverloaded:=TdwsFunctionSymbol(Source).Overloaded;
@@ -3254,23 +3307,26 @@ begin
    TdwsMethodCallable(FCallable).OnEval:=val;
 end;
 
-procedure TdwsMethod.SetResultType(const Value: TDataType);
+// SetResultType
+//
+procedure TdwsMethod.SetResultType(const val: TDataType);
 begin
-  FResultType := Value;
-  if Value <> '' then
-    case FKind of
-      mkProcedure:
-        FKind := mkFunction;
-      mkClassProcedure:
-        FKind := mkClassFunction;
-    end
-  else
-    case FKind of
-      mkFunction:
-        FKind := mkProcedure;
-      mkClassFunction:
-        FKind := mkClassProcedure;
-    end;
+   inherited;
+   if val <> '' then begin
+      case FKind of
+         mkProcedure:
+            FKind := mkFunction;
+         mkClassProcedure:
+            FKind := mkClassFunction;
+      end
+   end else begin
+      case FKind of
+         mkFunction:
+            FKind := mkProcedure;
+         mkClassFunction:
+            FKind := mkClassProcedure;
+      end;
+   end;
 end;
 
 // SetAttributes
@@ -4087,6 +4143,17 @@ constructor TdwsSymbol.Create(Collection: TCollection);
 begin
   inherited;
   FUnit := TdwsCollection(Collection).GetUnit;
+
+  case FUnit.ParseName of
+    pnAtDesignTimeOnly:
+      FParseName := csDesigning in FUnit.ComponentState;
+
+    pnAlways:
+      FParseName := True;
+
+    pnNever:
+      FParseName := False;
+  end;
 end;
 
 function TdwsSymbol.GetUnit: TdwsUnit;
@@ -4097,6 +4164,19 @@ end;
 procedure TdwsSymbol.Reset;
 begin
   FIsGenerating := False;
+end;
+
+procedure TdwsSymbol.SetName(const Value: UnicodeString);
+begin
+   if FParseName then
+      FName := Value
+   else
+      FName := Parse(Value);
+end;
+
+function TdwsSymbol.Parse(const Value: UnicodeString): UnicodeString;
+begin
+   Result := Value;
 end;
 
 function TdwsSymbol.GetNamePath: String;
