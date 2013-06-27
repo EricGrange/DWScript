@@ -1152,9 +1152,11 @@ begin
    FUnit.Functions.Delete(func.Index);
 
    func := FUnit.Functions.Add;
-   func.Name := 'TestParam(a: Integer)';
+   func.Name := 'TestParam(var a: Integer)';
    CheckEquals('TestParam', func.Name);
    CheckEquals('a', TdwsParameter(func.Parameters.Items[0]).Name);
+   CheckEquals(True, TdwsParameter(func.Parameters.Items[0]).IsVarParam);
+   CheckEquals(True, TdwsParameter(func.Parameters.Items[0]).IsWritable);
    CheckEquals('Integer', TdwsParameter(func.Parameters.Items[0]).DataType);
    FUnit.Functions.Delete(func.Index);
 
@@ -1167,12 +1169,14 @@ begin
    FUnit.Functions.Delete(func.Index);
 
    func := FUnit.Functions.Add;
-   func.Name := 'TestSeveralParam(a: Float = 2.5; b: Integer);';
+   func.Name := 'TestSeveralParam(a: Float = 2.5; const b: Integer);';
    CheckEquals('TestSeveralParam', func.Name);
    CheckEquals('a', TdwsParameter(func.Parameters.Items[0]).Name);
    CheckEquals('Float', TdwsParameter(func.Parameters.Items[0]).DataType);
    CheckEquals(2.5, TdwsParameter(func.Parameters.Items[0]).DefaultValue);
    CheckEquals('b', TdwsParameter(func.Parameters.Items[1]).Name);
+   CheckEquals(True, TdwsParameter(func.Parameters.Items[1]).IsVarParam);
+   CheckEquals(False, TdwsParameter(func.Parameters.Items[1]).IsWritable);
    CheckEquals('Integer', TdwsParameter(func.Parameters.Items[1]).DataType);
    FUnit.Functions.Delete(func.Index);
 
