@@ -267,14 +267,15 @@ type
          FName: UnicodeString;
          FIsGenerating: Boolean;
          FUnit: TdwsUnit;
-         FParseName: Boolean;
 
-         procedure SetName(const Value : UnicodeString);
       protected
          procedure AssignTo(Dest: TPersistent); override;
+
          procedure CheckName(aTable : TSymbolTable; const aName : UnicodeString; overloaded : Boolean = False);
          function  GetDataType(aTable : TSymbolTable; const aName : UnicodeString) : TTypeSymbol;
          procedure Reset;
+
+         procedure SetName(const val : UnicodeString);
          function Parse(const Value : UnicodeString): UnicodeString; virtual;
 
          property IsGenerating: Boolean read FIsGenerating;
@@ -288,8 +289,6 @@ type
          function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; virtual; abstract;
          function GetNamePath: String; override;
          function GetUnit: TdwsUnit;
-
-         property ParseName : Boolean read FParseName write FParseName;
 
       published
          property Name: UnicodeString read FName write SetName;
@@ -362,6 +361,7 @@ type
          procedure SetIsLazy(const val : Boolean);
          procedure SetDefaultValue(const Value: Variant);
          function GetDisplayName: String; override;
+         function Parse(const Value : UnicodeString): UnicodeString; override;
 
       public
          constructor Create(Collection: TCollection); override;
@@ -486,7 +486,7 @@ type
          function Add(const name : UnicodeString; const resultType : UnicodeString = '') : TdwsFunction; overload;
    end;
 
-  TdwsFunctionsClass = class of TdwsFunctions;
+   TdwsFunctionsClass = class of TdwsFunctions;
 
    TdwsArray = class(TdwsSymbol)
       private
@@ -575,6 +575,7 @@ type
          function GetDisplayName: String; override;
          procedure SetDefaultValue(const Value: Variant);
          function GetHasDefaultValue : Boolean;
+         function Parse(const Value : UnicodeString): UnicodeString; override;
 
       public
          constructor Create(Collection: TCollection); override;
@@ -606,12 +607,16 @@ type
          FIndexType: TDataType;
          FVisibility : TdwsVisibility;
 
+         procedure SetReadAccess(const Value: UnicodeString);
+         procedure SetWriteAccess(const Value: UnicodeString);
+
       protected
          function GetDisplayName: String; override;
          function GetIsDefault: Boolean;
          procedure SetIsDefault(Value: Boolean);
          procedure SetParameters(const Value: TdwsParameters);
          function StoreParameters : Boolean;
+         function Parse(const Value : UnicodeString): UnicodeString; override;
 
       public
          constructor Create(Collection: TCollection); override;
@@ -624,8 +629,8 @@ type
          property DataType: TDataType read FDataType write FDataType;
          property Deprecated : UnicodeString read FDeprecated write FDeprecated;
          property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
-         property ReadAccess: UnicodeString read FReadAccess write FReadAccess;
-         property WriteAccess: UnicodeString read FWriteAccess write FWriteAccess;
+         property ReadAccess: UnicodeString read FReadAccess write SetReadAccess;
+         property WriteAccess: UnicodeString read FWriteAccess write SetWriteAccess;
          property Parameters: TdwsParameters read FParameters write SetParameters stored StoreParameters;
          property IsDefault: Boolean read GetIsDefault write SetIsDefault default False;
          property IndexType: TDataType read FIndexType write FIndexType;
@@ -1143,7 +1148,6 @@ type
         FOnAfterInitUnitTable : TNotifyEvent;
         FParseName : TdwsParseName;
 
-        procedure SetParseName(Value: TdwsParseName);
       protected
         FCollections : array[0..11] of TdwsCollection;
 
@@ -1193,7 +1197,6 @@ type
         procedure AddUnitSymbols(Table: TSymbolTable; operators : TOperators); override;
         procedure InitUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                 operators : TOperators; UnitTable: TUnitSymbolTable); override;
-        procedure ParseNameChanged;
 
         // Method to support get/set property values for dynamicly registered classes
         procedure HandleDynamicCreate(Info: TProgramInfo; var ExtObject: TObject);
@@ -1202,6 +1205,8 @@ type
       public
         constructor Create(AOwner: TComponent); override;
         destructor Destroy; override;
+
+        function ShouldParseName(const val : UnicodeString) : Boolean;
 
         procedure GetDataTypes(List: TStrings);
         procedure GetClassTypes(List: TStrings);
@@ -1223,7 +1228,7 @@ type
         property Records : TdwsRecords read FRecords write SetRecords stored StoreRecords;
         property Interfaces : TdwsInterfaces read FInterfaces write SetInterfaces stored StoreInterfaces;
         property Synonyms: TdwsSynonyms read FSynonyms write SetSynonyms stored StoreSynonyms;
-        property ParseName : TdwsParseName read FParseName write SetParseName default pnAtDesignTimeOnly;
+        property ParseName : TdwsParseName read FParseName write FParseName default pnAtDesignTimeOnly;
         property UnitName;
         property DeprecatedMessage;
         property ImplicitUse stored StoreImplicitUse;
@@ -1747,6 +1752,29 @@ begin
    inherited;
 end;
 
+// ShouldParseName
+//
+function TdwsUnit.ShouldParseName(const val : UnicodeString) : Boolean;
+var
+   i : Integer;
+begin
+   if csLoading in ComponentState then Exit(False);
+   case ParseName of
+      pnAlways : Result:=True;
+      pnAtDesignTimeOnly : Result:=csDesigning in ComponentState;
+   else
+      Exit(False);
+   end;
+   if Result then begin
+      for i:=1 to Length(val) do begin
+         case val[i] of
+            ':', '(' : Exit;
+         end;
+      end;
+      Result:=False;
+   end;
+end;
+
 procedure TdwsUnit.AddCollectionSymbols(Collection: TdwsCollection;
   Table: TSymbolTable; operators : TOperators);
 var
@@ -1838,6 +1866,12 @@ begin
 end;
 
 function TdwsUnit.GetSymbol(Table: TSymbolTable; const Name: UnicodeString): TSymbol;
+
+   procedure RaiseCircularReference(item : TdwsSymbol);
+   begin
+      raise Exception.CreateFmt(UNT_CircularReference, [item.ClassName+':'+Name]);
+   end;
+
 var
    x, y: Integer;
    item: TdwsSymbol;
@@ -1857,7 +1891,7 @@ begin
 
             // Check for circular references
             if item.IsGenerating then
-               raise Exception.CreateFmt(UNT_CircularReference, [item.ClassName+':'+Name]);
+               RaiseCircularReference(item);
 
             // Generate the symbol now
             try
@@ -2090,45 +2124,6 @@ end;
 function TdwsUnit.StoreImplicitUse : Boolean;
 begin
    Result:=ImplicitUse;
-end;
-
-procedure TdwsUnit.SetParseName(Value: TdwsParseName);
-begin
-   if FParseName <> Value then
-   begin
-      FParseName := Value;
-      ParseNameChanged;
-   end;
-end;
-
-procedure TdwsUnit.ParseNameChanged;
-var
-   val: Boolean;
-
-   procedure UpdateCollection(Collection: TdwsCollection);
-   var
-      i: Integer;
-   begin
-      for i := 0 to Collection.Count - 1 do
-         Collection.Items[i].ParseName := val;
-   end;
-
-var
-   i: Integer;
-begin
-   case FParseName of
-      pnAtDesignTimeOnly:
-         val := csDesigning in ComponentState;
-
-      pnAlways:
-         val := True;
-
-      pnNever:
-         val := False;
-   end;
-
-   for i := 0 to Length(FCollections) - 1 do
-      UpdateCollection(FCollections[i]);
 end;
 
 procedure TdwsUnit.HandleDynamicProperty(Info: TProgramInfo; ExtObject: TObject);
@@ -2679,6 +2674,8 @@ begin
   FHasDefaultValue := Value and not (FIsVarParam and FIsWritable);
 end;
 
+// SetIsVarParam
+//
 procedure TdwsParameter.SetIsVarParam(const Value: Boolean);
 begin
    FIsVarParam := Value;
@@ -2688,6 +2685,8 @@ begin
       FIsLazy:=False;
 end;
 
+// SetIsWritable
+//
 procedure TdwsParameter.SetIsWritable(const Value: Boolean);
 begin
    FIsWritable := Value;
@@ -2705,6 +2704,82 @@ begin
    if FIsLazy then begin
       IsVarParam:=False;
       IsWritable:=False;
+   end;
+end;
+
+// Parse
+//
+function TdwsParameter.Parse(const Value : UnicodeString): UnicodeString;
+var
+   rules : TPascalTokenizerStateRules;
+   tok : TTokenizer;
+   sourceFile : TSourceFile;
+begin
+   rules := TPascalTokenizerStateRules.Create;
+   tok := TTokenizer.Create(rules, nil);
+   sourceFile := TSourceFile.Create;
+   try
+      sourceFile.Code := Value;
+      tok.BeginSourceFile(sourceFile);
+
+      case tok.TestDeleteAny([ttVAR, ttCONST, ttLAZY]) of
+         ttVAR : begin
+            IsVarParam := True;
+            IsWritable := True;
+         end;
+         ttCONST : begin
+            IsVarParam := True;
+            IsWritable := False;
+         end;
+         ttLAZY : begin
+            IsLazy := True;
+            IsWritable := False;
+         end;
+      end;
+
+      if tok.TestName then begin
+         Result := tok.GetToken.AsString;
+         tok.KillToken;
+      end else raise Exception.Create('Parameter name expected');
+
+      // check whether data type is present. Otherwise skip parsing
+      if not tok.TestDelete(ttCOLON) then
+         Exit;
+
+      // set data type
+      if tok.TestName then begin
+         DataType := tok.GetToken.AsString;
+         tok.KillToken;
+      end else raise Exception.Create('Data type expected');
+
+      // check for default value
+      if tok.TestDelete(ttEQ) then begin
+         case tok.TestAny([ttStrVal, ttIntVal, ttFloatVal]) of
+            ttStrVal : begin
+               DefaultValue := tok.GetToken.AsString;
+               tok.KillToken;
+            end;
+            ttIntVal : begin
+               DefaultValue := tok.GetToken.FInteger;
+               tok.KillToken;
+            end;
+            ttFloatVal : begin
+               DefaultValue := tok.GetToken.FFloat;
+               tok.KillToken;
+            end;
+         else
+            if tok.TestName then begin
+               DefaultValue := tok.GetToken.AsString;
+               tok.KillToken;
+            end else raise Exception.Create('Default value expected');
+         end;
+      end;
+
+      tok.EndSourceFile;
+   finally
+      sourceFile.Free;
+      tok.Free;
+      rules.Free;
    end;
 end;
 
@@ -2937,29 +3012,12 @@ end;
 // ParseFunctionName
 //
 function TdwsFunctionSymbol.Parse(const Value : UnicodeString): UnicodeString;
-
-   function CheckSimple: Boolean;
-   var
-      i : Integer;
-   begin
-      for i:=1 to Length(Value) do
-         case Value[i] of
-            ':', '(', ';', ' ' :
-               Exit(False);
-         end;
-      Result := True;
-   end;
-
 var
    param : TdwsParameter;
    rules : TPascalTokenizerStateRules;
    tok : TTokenizer;
    sourceFile : TSourceFile;
-
 begin
-   if CheckSimple then
-      Exit(Value);
-
    rules := TPascalTokenizerStateRules.Create;
    tok := TTokenizer.Create(rules, nil);
    sourceFile := TSourceFile.Create;
@@ -2982,6 +3040,7 @@ begin
       Result := tok.GetToken.AsString;
       tok.KillToken;
 
+      // check for parameters
       if tok.TestDelete(ttBLEFT) then
          while not tok.TestDelete(ttBRIGHT) do begin
             param := Parameters.Add;
@@ -3044,8 +3103,10 @@ begin
 
       // check for return type
       if tok.TestDelete(ttCOLON) then begin
-         if tok.TestName then
+         if tok.TestName then begin
             ResultType := tok.GetToken.AsString;
+            tok.KillToken;
+         end;
       end;
 
       tok.EndSourceFile;
@@ -3181,6 +3242,80 @@ end;
 function TdwsField.GetHasDefaultValue : Boolean;
 begin
    Result:=FHasDefaultValue;
+end;
+
+function TdwsField.Parse(const Value : UnicodeString): UnicodeString;
+var
+   rules : TPascalTokenizerStateRules;
+   tok : TTokenizer;
+   sourceFile : TSourceFile;
+begin
+   rules := TPascalTokenizerStateRules.Create;
+   tok := TTokenizer.Create(rules, nil);
+   sourceFile := TSourceFile.Create;
+   try
+      sourceFile.Code := Value;
+      tok.BeginSourceFile(sourceFile);
+
+      // check for visibility
+      case tok.TestDeleteAny([ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED]) of
+         ttPRIVATE:
+            Visibility := cvPrivate;
+
+         ttPROTECTED:
+            Visibility := cvProtected;
+
+         ttPUBLIC:
+            Visibility := cvPublic;
+
+         ttPUBLISHED:
+            Visibility := cvPublished;
+      end;
+
+      if tok.TestName then
+      begin
+         Result := tok.GetToken.AsString;
+         tok.KillToken;
+      end;
+
+      // check for return type
+      if tok.TestDelete(ttCOLON) then begin
+         if tok.TestName then
+         begin
+            DataType := tok.GetToken.AsString;
+            tok.KillToken;
+         end;
+      end;
+
+      // check for default value
+      if tok.TestDelete(ttEQ) then begin
+         case tok.TestAny([ttStrVal, ttIntVal, ttFloatVal]) of
+            ttStrVal: begin
+               DefaultValue := tok.GetToken.AsString;
+               tok.KillToken;
+            end;
+            ttIntVal: begin
+               DefaultValue := tok.GetToken.FInteger;
+               tok.KillToken;
+            end;
+            ttFloatVal: begin
+               DefaultValue := tok.GetToken.FFloat;
+               tok.KillToken;
+            end;
+         else
+            if tok.TestName then begin
+               DefaultValue := tok.GetToken.AsString;
+               tok.KillToken;
+            end else raise Exception.Create('Default value expected');
+         end;
+      end;
+
+      tok.EndSourceFile;
+   finally
+      sourceFile.Free;
+      tok.Free;
+      rules.Free;
+   end;
 end;
 
 // ------------------
@@ -4066,6 +4201,8 @@ begin
    Result:=FIsDefault and (Parameters.Count>0);
 end;
 
+// SetIsDefault
+//
 procedure TdwsProperty.SetIsDefault(Value: Boolean);
 var
   i: Integer;
@@ -4085,9 +4222,163 @@ begin
   end;
 end;
 
+// Parse
+//
+function TdwsProperty.Parse(const Value : UnicodeString): UnicodeString;
+var
+   rules : TPascalTokenizerStateRules;
+   tok : TTokenizer;
+   sourceFile : TSourceFile;
+begin
+   rules := TPascalTokenizerStateRules.Create;
+   tok := TTokenizer.Create(rules, nil);
+   sourceFile := TSourceFile.Create;
+   try
+      sourceFile.Code := Value;
+      tok.BeginSourceFile(sourceFile);
+
+      // check for visibility
+      case tok.TestDeleteAny([ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED]) of
+         ttPRIVATE:
+            Visibility := cvPrivate;
+
+         ttPROTECTED:
+            Visibility := cvProtected;
+
+         ttPUBLIC:
+            Visibility := cvPublic;
+
+         ttPUBLISHED:
+            Visibility := cvPublished;
+
+         else
+            if not tok.HasTokens then
+               Result := Value;
+      end;
+
+      // delete property or set name to 'property' if this is the only token
+      if tok.TestDelete(ttPROPERTY) then
+      begin
+         if not tok.HasTokens then
+            Result := Value;
+      end;
+
+      // get property name
+      if tok.TestName then begin
+         Result := tok.GetToken.AsString;
+         tok.KillToken;
+      end else raise Exception.Create('Property name expected');
+
+      if tok.TestDelete(ttALEFT) then
+      begin
+         case tok.TestAny([ttIntVal, ttStrVal]) of
+            ttIntVal:
+               IndexValue := tok.GetToken.FInteger;
+            ttStrVal:
+               IndexValue := tok.GetToken.AsString;
+            else
+               raise Exception.Create('Index value expected');
+         end;
+
+         if not tok.TestDelete(ttARIGHT) then
+            raise Exception.Create(''']'' expected!');
+      end;
+
+      // check for data type
+      if not tok.TestDelete(ttCOLON) then
+         Exit;
+
+      if tok.TestName then begin
+         DataType := tok.GetToken.AsString;
+         tok.KillToken;
+      end else raise Exception.Create('Data type expected');
+
+      if tok.TestDelete(ttREAD) then
+      begin
+         if tok.TestName then begin
+            ReadAccess := tok.GetToken.AsString;
+            tok.KillToken;
+         end else raise Exception.Create('ReadAccess expected');
+      end;
+
+      if tok.TestDelete(ttWRITE) then
+      begin
+         if tok.TestName then begin
+            WriteAccess := tok.GetToken.AsString;
+            tok.KillToken;
+         end else raise Exception.Create('WriteAccess expected');
+      end;
+
+      IsDefault := tok.TestDelete(ttDEFAULT);
+
+      tok.EndSourceFile;
+   finally
+      sourceFile.Free;
+      tok.Free;
+      rules.Free;
+   end;
+end;
+
+// SetReadAccess
+//
+procedure TdwsProperty.SetReadAccess(const Value: UnicodeString);
+//var
+//   Obj: TdwsClass;
+//   Meth: TdwsMethod;
+begin
+   FReadAccess := Value;
+
+//   if (csDesigning in FUnit.ComponentState) and ParseName then
+//   begin
+//      Assert(Collection is TdwsProperties);
+//      if TdwsProperties(Collection).Owner is TdwsClass then
+//      begin
+//         Obj := TdwsClass(TdwsProperties(Collection).Owner);
+//         if Obj.FMethods.GetSymbols(FReadAccess) = nil then
+//         begin
+//            Meth := Obj.FMethods.Add;
+//            Meth.FName := FReadAccess;
+//            Meth.Visibility := cvProtected;
+//            Meth.ResultType := DataType;
+//         end;
+//      end
+//   end;
+end;
+
+// SetWriteAccess
+//
+procedure TdwsProperty.SetWriteAccess(const Value: UnicodeString);
+//var
+//   Obj: TdwsClass;
+//   Meth: TdwsMethod;
+//   Param: TdwsParameter;
+begin
+   FWriteAccess := Value;
+//
+//   if (csDesigning in FUnit.ComponentState) and ParseName then
+//   begin
+//      Assert(Collection is TdwsProperties);
+//      if TdwsProperties(Collection).Owner is TdwsClass then
+//      begin
+//         Obj := TdwsClass(TdwsProperties(Collection).Owner);
+//         if Obj.FMethods.GetSymbols(FWriteAccess) = nil then
+//         begin
+//            Meth := Obj.FMethods.Add;
+//            Meth.FName := FWriteAccess;
+//            Meth.Visibility := cvPrivate;
+//            Param := Meth.Parameters.Add;
+//            Param.FName := 'value';
+//            Param.DataType := DataType;
+//         end;
+//      end
+//   end;
+end;
+
+// SetParameters
+//
 procedure TdwsProperty.SetParameters(const Value: TdwsParameters);
 begin
-  FParameters.Assign(Value);
+   FParameters.Assign(Value);
 end;
 
 // StoreParameters
@@ -4143,17 +4434,6 @@ constructor TdwsSymbol.Create(Collection: TCollection);
 begin
   inherited;
   FUnit := TdwsCollection(Collection).GetUnit;
-
-  case FUnit.ParseName of
-    pnAtDesignTimeOnly:
-      FParseName := csDesigning in FUnit.ComponentState;
-
-    pnAlways:
-      FParseName := True;
-
-    pnNever:
-      FParseName := False;
-  end;
 end;
 
 function TdwsSymbol.GetUnit: TdwsUnit;
@@ -4166,12 +4446,11 @@ begin
   FIsGenerating := False;
 end;
 
-procedure TdwsSymbol.SetName(const Value: UnicodeString);
+procedure TdwsSymbol.SetName(const val : UnicodeString);
 begin
-   if FParseName then
-      FName := Value
-   else
-      FName := Parse(Value);
+   if FUnit.ShouldParseName(val) then
+      FName:=Parse(val)
+   else FName:=val;
 end;
 
 function TdwsSymbol.Parse(const Value: UnicodeString): UnicodeString;

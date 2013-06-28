@@ -115,7 +115,7 @@ type
          procedure FastEvalTest;
          procedure ArrayOfObjects;
 
-         procedure BuildFunctionFromName;
+         procedure ParseNameTests;
 
          procedure ExplicitUses;
 
@@ -1133,12 +1133,16 @@ begin
    CheckEquals('876543210', exec.Result.ToString, 'Enums Ord');
 end;
 
-// BuildFunctionFromName
+// ParseNameTests
 //
-procedure TdwsUnitTests.BuildFunctionFromName;
+procedure TdwsUnitTests.ParseNameTests;
 var
    func: TdwsFunction;
+   meth: TdwsMethod;
+   cls: TdwsClass;
 begin
+   FUnit.ParseName:=pnAlways;
+
    func := FUnit.Functions.Add;
    func.Name := 'TestRetValue: String;';
    CheckEquals('TestRetValue', func.Name);
@@ -1184,6 +1188,13 @@ begin
    func.Name := 'TestNone();';
    CheckEquals('TestNone', func.Name);
    FUnit.Functions.Delete(func.Index);
+
+   cls := TdwsClass(FUnit.Classes.Items[0]);
+   meth := cls.Methods.Add;
+   meth.Name := 'TestRetValue: String;';
+   CheckEquals('TestRetValue', meth.Name);
+   CheckEquals('String', meth.ResultType);
+   cls.Methods.Delete(meth.Index);
 end;
 
 // CallFunc
