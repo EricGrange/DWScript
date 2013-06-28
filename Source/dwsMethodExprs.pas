@@ -24,6 +24,7 @@ unit dwsMethodExprs;
 interface
 
 uses
+   Variants,
    dwsErrors, dwsStrings, dwsUtils,
    dwsSymbols, dwsDataContext, dwsStack, dwsFunctions,
    dwsExprs, dwsExprList, dwsMagicExprs;
@@ -60,10 +61,15 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
+         function PreCall(exec : TdwsExecution) : TFuncSymbol; virtual;
+        procedure PostCall(exec : TdwsExecution; var Result : Variant); virtual;
+
       public
          constructor Create(Prog: TdwsProgram; const scriptPos : TScriptPos; Func: TMethodSymbol;
                             BaseExpr: TTypedExpr);
          destructor Destroy; override;
+
+         function Eval(exec : TdwsExecution) : Variant; override;
 
          function MethSym : TMethodSymbol; inline;
 
@@ -288,6 +294,31 @@ begin
    inherited;
 end;
 
+// Eval
+//
+function TMethodExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   func : TFuncSymbol;
+begin
+   // Allocate memory for parameters on the stack
+   try
+      exec.Stack.Push(ParamSize);
+      try
+         func:=PreCall(exec);
+
+         DoEvalCall(exec, func);
+
+         PostCall(exec, Result);
+      finally
+         // Remove parameters from stack
+         exec.Stack.Pop(ParamSize);
+      end;
+   except
+      exec.SetScriptError(Self);
+      raise;
+   end;
+end;
+
 // MethSym
 //
 function TMethodExpr.MethSym : TMethodSymbol;
@@ -331,6 +362,21 @@ end;
 function TMethodExpr.GetSubExprCount : Integer;
 begin
    Result:=FArgs.Count+1;
+end;
+
+// PreCall
+//
+function TMethodExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
+begin
+   Result:=FuncSym;
+end;
+
+// PostCall
+//
+procedure TMethodExpr.PostCall(exec : TdwsExecution; var Result : Variant);
+begin
+   if Typ<>nil then
+      StaticPostCall(exec, Result);
 end;
 
 // ------------------

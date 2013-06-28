@@ -204,6 +204,7 @@ type
 
          procedure _neg_reg(reg : TgpRegister);
          procedure _not_reg(reg : TgpRegister);
+         procedure _neg_eaxedx;
 
          procedure _shift_reg_imm(shift : TgpShift; reg : TgpRegister; value : Integer);
          procedure _shift_reg_cl(shift : TgpShift; reg : TgpRegister);
@@ -1104,6 +1105,15 @@ end;
 procedure Tx86WriteOnlyStream._not_reg(reg : TgpRegister);
 begin
    WriteBytes([$F7, $D0+Ord(reg)]);
+end;
+
+// _neg_eaxedx
+//
+procedure Tx86WriteOnlyStream._neg_eaxedx;
+begin
+   _neg_reg(gprEDX);
+   _neg_reg(gprEAX);
+   _sbb_reg_int32(gprEDX, 0);
 end;
 
 // _shift_reg_imm

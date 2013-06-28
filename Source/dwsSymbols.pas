@@ -714,7 +714,7 @@ type
          property Level : SmallInt read GetLevel;
          property InternalParams : TSymbolTable read FInternalParams;
          property Params : TParamsSymbolTable read FParams;
-         property ParamSize : Integer read FAddrGenerator.DataSize;//GetParamSize;
+         property ParamSize : Integer read FAddrGenerator.DataSize;
          property Result : TDataSymbol read FResult;
          property Typ : TTypeSymbol read FTyp write SetType;
          property Conditions : TConditionsSymbolTable read FConditions;

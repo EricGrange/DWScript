@@ -46,13 +46,19 @@ type
          function IncRefCount : TdwsJITter; inline;
 
          procedure CompileStatement(expr : TExprBase); virtual;
-         function CompileFloat(expr : TTypedExpr) : Integer; virtual;
-         function CompileInteger(expr : TExprBase) : Integer; virtual;
-         procedure CompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup); virtual;
-         function CompileScriptObj(expr : TExprBase) : Integer; virtual;
+
+         function  CompileFloat(expr : TTypedExpr) : Integer; virtual;
+
+         function  CompileInteger(expr : TTypedExpr) : Integer; virtual;
+
+         function  CompileBooleanValue(expr : TTypedExpr) : Integer; virtual;
+         procedure CompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup); virtual;
+
+         function  CompileScriptObj(expr : TTypedExpr) : Integer; virtual;
 
          procedure CompileAssignFloat(expr : TTypedExpr; source : Integer); virtual;
          procedure CompileAssignInteger(expr : TTypedExpr; source : Integer); virtual;
+         procedure CompileAssignBoolean(expr : TTypedExpr; source : Integer); virtual;
    end;
 
    TdwsRegisteredJITter = class (TRefCountedObject)
@@ -194,13 +200,15 @@ type
          function JITInteger(expr : TTypedExpr) : TJITTedIntegerExpr;
 
          procedure CompileStatement(expr : TExprBase);
-         function CompileFloat(expr : TTypedExpr) : Integer;
-         function CompileInteger(expr : TTypedExpr) : Integer;
+         function  CompileFloat(expr : TTypedExpr) : Integer;
+         function  CompileInteger(expr : TTypedExpr) : Integer;
+         function  CompileBooleanValue(expr : TTypedExpr) : Integer;
          procedure CompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup);
-         function CompileScriptObj(expr : TTypedExpr) : Integer;
+         function  CompileScriptObj(expr : TTypedExpr) : Integer;
 
          procedure CompileAssignFloat(expr : TTypedExpr; source : Integer);
          procedure CompileAssignInteger(expr : TTypedExpr; source : Integer);
+         procedure CompileAssignBoolean(expr : TTypedExpr; source : Integer);
 
          function IsFloat(expr : TTypedExpr) : Boolean; overload; inline;
          function IsFloat(typ : TTypeSymbol) : Boolean; overload;
@@ -268,7 +276,15 @@ end;
 
 // CompileInteger
 //
-function TdwsJITter.CompileInteger(expr : TExprBase) : Integer;
+function TdwsJITter.CompileInteger(expr : TTypedExpr) : Integer;
+begin
+   jit.OutputFailedOn:=expr;
+   Result:=0;
+end;
+
+// CompileBooleanValue
+//
+function TdwsJITter.CompileBooleanValue(expr : TTypedExpr) : Integer;
 begin
    jit.OutputFailedOn:=expr;
    Result:=0;
@@ -276,14 +292,14 @@ end;
 
 // CompileBoolean
 //
-procedure TdwsJITter.CompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup);
+procedure TdwsJITter.CompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup);
 begin
    jit.OutputFailedOn:=expr;
 end;
 
 // CompileScriptObj
 //
-function TdwsJITter.CompileScriptObj(expr : TExprBase) : Integer;
+function TdwsJITter.CompileScriptObj(expr : TTypedExpr) : Integer;
 begin
    jit.OutputFailedOn:=expr;
    Result:=0;
@@ -299,6 +315,13 @@ end;
 // CompileAssignInteger
 //
 procedure TdwsJITter.CompileAssignInteger(expr : TTypedExpr; source : Integer);
+begin
+   jit.OutputFailedOn:=expr;
+end;
+
+// CompileAssignBoolean
+//
+procedure TdwsJITter.CompileAssignBoolean(expr : TTypedExpr; source : Integer);
 begin
    jit.OutputFailedOn:=expr;
 end;
@@ -541,6 +564,19 @@ begin
    end;
 end;
 
+// CompileBooleanValue
+//
+function TdwsJIT.CompileBooleanValue(expr : TTypedExpr) : Integer;
+var
+   jit : TdwsJITter;
+begin
+   jit:=FindJITter(expr);
+   if jit=nil then begin
+      OutputFailedOn:=expr;
+      Result:=0;
+   end else Result:=jit.CompileBooleanValue(expr);
+end;
+
 // CompileBoolean
 //
 procedure TdwsJIT.CompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup);
@@ -588,6 +624,18 @@ begin
    if jit=nil then
       OutputFailedOn:=expr
    else jit.CompileAssignInteger(expr, source);
+end;
+
+// CompileAssignBoolean
+//
+procedure TdwsJIT.CompileAssignBoolean(expr : TTypedExpr; source : Integer);
+var
+   jit : TdwsJITter;
+begin
+   jit:=FindJITter(expr);
+   if jit=nil then
+      OutputFailedOn:=expr
+   else jit.CompileAssignBoolean(expr, source);
 end;
 
 // IsFloat

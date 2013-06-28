@@ -715,7 +715,7 @@ begin
                         +#9#9#9'TStrVarExpr'#13#10
                         +#9#9#9'TConstStringExpr'#13#10
                      +#9#9'TMagicProcedureExpr'#13#10
-                        +#9#9#9'TFuncExpr'#13#10
+                        +#9#9#9'TFuncSimpleExpr'#13#10
                            +#9#9#9#9'TConstIntExpr'#13#10,
                MakeSubExprTree((prog.GetSelf as TdwsProgram).Expr), 'Main Expr');
 end;

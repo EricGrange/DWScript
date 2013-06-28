@@ -550,8 +550,6 @@ type
          procedure SetLocalizer(const val : IdwsLocalizer);
          function GetLastScriptErrorExpr : TExprBase;
 
-         procedure EnterRecursion(caller : TExprBase);
-         procedure LeaveRecursion;
          procedure RaiseMaxRecursionReached;
          procedure SetCurrentProg(const val : TdwsProgram); inline;
 
@@ -567,6 +565,9 @@ type
          procedure RunProgram(aTimeoutMilliSeconds : Integer);
          procedure Stop;
          procedure EndProgram; virtual;
+
+         procedure EnterRecursion(caller : TExprBase);
+         procedure LeaveRecursion;
 
          function CallStackDepth : Integer; override;
          function GetCallStack : TdwsExprLocationArray; override;
@@ -962,6 +963,8 @@ type
          procedure AddStatement(expr : TProgramExpr);
          procedure ReplaceStatement(index : Integer; expr : TProgramExpr);
          function ExtractStatement(index : Integer) : TProgramExpr;
+
+         property StatementCount : Integer read FCount;
    end;
 
    // statement; statement; statement;
@@ -1028,6 +1031,7 @@ type
    TFuncExprBase = class(TPosDataExpr)
       private
          FFunc : TFuncSymbol;
+         FParamSize : Integer;
 
       protected
          FArgs : TExprBaseListRec;
@@ -1037,6 +1041,8 @@ type
          function GetSubExprCount : Integer; override;
 
          function GetIsConstant : Boolean; override;
+
+         property ParamSize : Integer read FParamSize;
 
       public
          constructor Create(prog : TdwsProgram; const aScriptPos : TScriptPos; aFunc : TFuncSymbol);
@@ -1124,10 +1130,13 @@ type
          FLevel : SmallInt;
 
       protected
-         function PreCall(exec : TdwsExecution) : TFuncSymbol; virtual;
-         procedure PostCall(exec : TdwsExecution; var Result : Variant); virtual;
+         procedure StaticPostCall(exec : TdwsExecution; var Result : Variant);
+         procedure StaticPostCallInteger(exec : TdwsExecution; var Result : Int64);
+         procedure StaticPostCallFloat(exec : TdwsExecution; var Result : Double);
 
          procedure EvalPushExprs(exec : TdwsExecution); inline;
+
+         procedure DoEvalCall(exec : TdwsExecution; func : TFuncSymbol);
 
       public
          constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos; func : TFuncSymbol);
@@ -1145,6 +1154,15 @@ type
          function FuncSymQualifiedName : UnicodeString; override;
 
          property CallerID : TFuncExpr read FCallerID write FCallerID;
+         property Level : SmallInt read FLevel;
+   end;
+
+   // A simple function/procedure (not a method, not a function pointer);
+   TFuncSimpleExpr = class(TFuncExpr)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
+         function  EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
    IFuncPointer = interface
@@ -1223,6 +1241,7 @@ type
          procedure EvalAsFuncPointer(exec : TdwsExecution; var result : IFuncPointer); inline;
 
          function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
 
          function Extract : TTypedExpr; // also a destructor
 
@@ -3115,8 +3134,10 @@ begin
       if FPreConditions<>nil then
          FPreConditions.EvalNoresult(exec);
 
-      exec.DoStep(FInitExpr);
-      FInitExpr.EvalNoResult(exec);
+      if FInitExpr.StatementCount>0 then begin
+         exec.DoStep(FInitExpr);
+         FInitExpr.EvalNoResult(exec);
+      end;
 
       exec.DoStep(FExpr);
       FExpr.EvalNoResult(exec);
@@ -4113,8 +4134,10 @@ constructor TFuncExprBase.Create(prog : TdwsProgram; const aScriptPos: TScriptPo
 begin
    inherited Create(Prog, aScriptPos, nil);
    FFunc:=aFunc;
-   if Assigned(aFunc) then
+   if Assigned(aFunc) then begin
       FTyp:=aFunc.Typ;
+      FParamSize:=aFunc.ParamSize;
+   end;
 end;
 
 // Destroy
@@ -4227,6 +4250,7 @@ begin
       Free;
    end else begin
       FFunc:=newFuncSym;
+      FParamSize:=newFuncSym.ParamSize;
       if Assigned(newFuncSym) then begin
          // don't update type for a constructor as the "return type" of a constructor
          // isn't specified by the constructor symbol, but by the meta the constructor
@@ -4597,34 +4621,39 @@ begin
    end;
 end;
 
+// DoEvalCall
+//
+procedure TFuncExpr.DoEvalCall(exec : TdwsExecution; func : TFuncSymbol);
+var
+   oldBasePointer : Integer;
+begin
+   EvalPushExprs(exec);
+
+   oldBasePointer:=exec.Stack.SwitchFrame(Level);
+   TdwsProgramExecution(exec).EnterRecursion(CallerID);
+   try
+      ICallable(func.Executable).Call(TdwsProgramExecution(exec), func);
+   finally
+      TdwsProgramExecution(exec).LeaveRecursion;
+      exec.Stack.RestoreFrame(Level, oldBasePointer);
+   end;
+end;
+
 // Eval
 //
 function TFuncExpr.Eval(exec : TdwsExecution) : Variant;
-var
-   oldBasePointer : Integer;
-   func : TFuncSymbol;
 begin
    try
       // Allocate memory for parameters on the stack
-      exec.Stack.Push(FFunc.ParamSize);
+      exec.Stack.Push(ParamSize);
       try
-         func:=PreCall(exec);
+         DoEvalCall(exec, FuncSym);
 
-         EvalPushExprs(exec);
-
-         oldBasePointer:=exec.Stack.SwitchFrame(FLevel);
-         TdwsProgramExecution(exec).EnterRecursion(CallerID);
-         try
-            ICallable(func.Executable).Call(TdwsProgramExecution(exec), func);
-         finally
-            TdwsProgramExecution(exec).LeaveRecursion;
-            exec.Stack.RestoreFrame(FLevel, oldBasePointer);
-         end;
-
-         PostCall(exec, Result);
+         if Typ<>nil then
+            StaticPostCall(exec, Result);
       finally
          // Remove parameters from stack
-         exec.Stack.Pop(FFunc.ParamSize);
+         exec.Stack.Pop(ParamSize);
       end;
    except
       exec.SetScriptError(Self);
@@ -4632,30 +4661,51 @@ begin
    end;
 end;
 
-// PreCall
+// StaticPostCall
 //
-function TFuncExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
-begin
-   Result:=FFunc;
-end;
-
-// PostCall
-//
-procedure TFuncExpr.PostCall(exec : TdwsExecution; var Result : Variant);
+procedure TFuncExpr.StaticPostCall(exec : TdwsExecution; var Result : Variant);
 var
    sourceAddr, destAddr: Integer;
 begin
-   if Assigned(FTyp) then begin
-      // Result.StackAddr is relative to BasePointer of the called function
-      // But the frame is already restored so its relative to the stackpointer here
-      sourceAddr:=exec.Stack.StackPointer+FFunc.Result.StackAddr;
-      // Copy return value
-      exec.Stack.ReadValue(sourceAddr, Result);
+   // Result.StackAddr is relative to BasePointer of the called function
+   // But the frame is already restored so its relative to the stackpointer here
+   sourceAddr:=exec.Stack.StackPointer+FuncSym.Result.StackAddr;
+   // Copy return value
+   exec.Stack.ReadValue(sourceAddr, Result);
 
-      if FResultAddr>=0 then begin
-         destAddr:=exec.Stack.BasePointer+FResultAddr;
-         exec.Stack.CopyData(sourceAddr, destAddr, FFunc.Typ.Size);
-      end;
+   if ResultAddr>=0 then begin
+      destAddr:=exec.Stack.BasePointer+ResultAddr;
+      exec.Stack.CopyData(sourceAddr, destAddr, FFunc.Typ.Size);
+   end;
+end;
+
+// StaticPostCallInteger
+//
+procedure TFuncExpr.StaticPostCallInteger(exec : TdwsExecution; var Result : Int64);
+var
+   sourceAddr, destAddr: Integer;
+begin
+   sourceAddr:=exec.Stack.StackPointer+FuncSym.Result.StackAddr;
+   Result:=exec.Stack.ReadIntValue(sourceAddr);
+
+   if ResultAddr>=0 then begin
+      destAddr:=exec.Stack.BasePointer+ResultAddr;
+      exec.Stack.CopyData(sourceAddr, destAddr, FFunc.Typ.Size);
+   end;
+end;
+
+// StaticPostCallFloat
+//
+procedure TFuncExpr.StaticPostCallFloat(exec : TdwsExecution; var Result : Double);
+var
+   sourceAddr, destAddr: Integer;
+begin
+   sourceAddr:=exec.Stack.StackPointer+FuncSym.Result.StackAddr;
+   Result:=exec.Stack.ReadFloatValue(sourceAddr);
+
+   if ResultAddr>=0 then begin
+      destAddr:=exec.Stack.BasePointer+ResultAddr;
+      exec.Stack.CopyData(sourceAddr, destAddr, FFunc.Typ.Size);
    end;
 end;
 
@@ -4722,6 +4772,63 @@ end;
 function TFuncExpr.FuncSymQualifiedName : UnicodeString;
 begin
    Result:=FuncSym.QualifiedName;
+end;
+
+// ------------------
+// ------------------ TFuncSimpleExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TFuncSimpleExpr.EvalNoResult(exec : TdwsExecution);
+begin
+   try
+      exec.Stack.Push(ParamSize);
+      try
+         DoEvalCall(exec, FuncSym);
+      finally
+         exec.Stack.Pop(ParamSize);
+      end;
+   except
+      exec.SetScriptError(Self);
+      raise;
+   end;
+end;
+
+// EvalAsInteger
+//
+function TFuncSimpleExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   try
+      exec.Stack.Push(ParamSize);
+      try
+         DoEvalCall(exec, FuncSym);
+         StaticPostCallInteger(exec, Result);
+      finally
+         exec.Stack.Pop(ParamSize);
+      end;
+   except
+      exec.SetScriptError(Self);
+      raise;
+   end;
+end;
+
+// EvalAsFloat
+//
+function TFuncSimpleExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+begin
+   try
+      exec.Stack.Push(ParamSize);
+      try
+         DoEvalCall(exec, FuncSym);
+         StaticPostCallFloat(exec, Result);
+      finally
+         exec.Stack.Pop(ParamSize);
+      end;
+   except
+      exec.SetScriptError(Self);
+      raise;
+   end;
 end;
 
 // ------------------
@@ -5020,6 +5127,13 @@ begin
    if funcPointer=nil then
       RaiseScriptError(exec, EScriptError, RTE_FuncPointerIsNil);
    funcPointer.EvalAsVariant(exec, Self, Result);
+end;
+
+// EvalNoResult
+//
+procedure TFuncPtrExpr.EvalNoResult(exec : TdwsExecution);
+begin
+   Eval(exec);
 end;
 
 // GetIsConstant

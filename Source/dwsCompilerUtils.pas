@@ -103,7 +103,7 @@ begin
    end else if funcSym is TMagicFuncSymbol then begin
       Result:=TMagicFuncExpr.CreateMagicFuncExpr(prog, cNullPos, TMagicFuncSymbol(funcSym));
    end else begin
-      Result:=TFuncExpr.Create(prog, cNullPos, funcSym);
+      Result:=TFuncSimpleExpr.Create(prog, cNullPos, funcSym);
    end;
 end;
 
@@ -139,7 +139,7 @@ begin
 
       if meth.IsStatic then begin
 
-         Result:=TFuncExpr.Create(prog, scriptPos, meth);
+         Result:=TFuncSimpleExpr.Create(prog, scriptPos, meth);
          expr.Free;
          Exit;
 
@@ -204,7 +204,7 @@ begin
 
       if meth.IsClassMethod then begin
 
-         Result:=TFuncExpr.Create(prog, scriptPos, meth);
+         Result:=TFuncSimpleExpr.Create(prog, scriptPos, meth);
          expr.Free;
 
       end else begin
@@ -223,7 +223,7 @@ begin
               or not (   (helper.ForType is TStructuredTypeSymbol)
                       or (helper.ForType is TStructuredTypeMetaSymbol))) then begin
 
-         Result:=TFuncExpr.Create(prog, scriptPos, meth);
+         Result:=TFuncSimpleExpr.Create(prog, scriptPos, meth);
          expr.Free;
 
       end else begin

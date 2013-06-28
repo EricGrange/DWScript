@@ -65,8 +65,8 @@ type
          procedure Initialize(const params : TStackParameters);
          procedure Finalize;
 
-         procedure Push(Delta: Integer); inline;
-         procedure Pop(Delta: Integer);
+         procedure Push(delta : Integer); inline;
+         procedure Pop(delta : Integer); inline;
 
          procedure WriteData(sourceAddr, destAddr, size: Integer; const sourceData: TData);
          procedure ReadData(sourceAddr, destAddr, size: Integer; destData: TData);
@@ -90,7 +90,7 @@ type
          function  ReadIntValue(SourceAddr: Integer): Int64; inline;
          function  ReadIntValue_BaseRelative(SourceAddr: Integer) : Int64; inline;
          function  ReadIntAsFloatValue_BaseRelative(SourceAddr: Integer) : Double; inline;
-         function  ReadFloatValue(SourceAddr: Integer) : Double; inline;
+         function  ReadFloatValue(SourceAddr: Integer) : Double; //inline;
          function  ReadFloatValue_BaseRelative(SourceAddr: Integer) : Double; inline;
          procedure ReadStrValue(SourceAddr: Integer; var Result : UnicodeString);
          function  ReadBoolValue(SourceAddr: Integer): Boolean;
@@ -231,29 +231,27 @@ var
    sp : Integer;
 begin
    sp := FStackPointer + Delta;
+   FStackPointer := sp;
 
    // Increase stack size if necessary
    if sp > FSize then
       GrowTo(sp);
-
-   FStackPointer := sp;
 end;
 
 // Pop
 //
 procedure TStackMixIn.Pop(delta : Integer);
 var
-   x, sp : Integer;
+   i : Integer;
    v : PVariant;
 begin
-   sp:=FStackPointer;
-   v:=@Data[sp];
-   sp:=sp-delta;
-   for x:=1 to delta do begin
+   if delta=0 then Exit;
+   v:=@Data[FStackPointer];
+   for i:=1 to delta do begin
       Dec(v);
       VarClear(v^);
    end;
-   FStackPointer:=sp;
+   Dec(FStackPointer, delta);
 end;
 
 // PushBp
@@ -383,8 +381,14 @@ var
    varData : PVarData;
 begin
    varData:=@Data[SourceAddr];
-   Assert(varData.VType=varDouble);
-   Result:=varData.VDouble;
+   if varData.VType=varDouble then
+      Result:=varData.VDouble
+   else begin
+      Assert(varData.VType=varInt64);
+      Result:=varData.VInt64;
+   end;
+//   Assert(varData.VType=varDouble);
+//   Result:=varData.VDouble;
 end;
 
 // ReadFloatValue_BaseRelative

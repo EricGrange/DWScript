@@ -1334,7 +1334,7 @@ begin
          magicFuncSym:=TMagicFuncSymbol(funcSym);
          Result:=TMagicFuncExpr.CreateMagicFuncExpr(FProg, FTok.HotPos, magicFuncSym);
 
-      end else Result:=TFuncExpr.Create(FProg, FTok.HotPos, funcSym);
+      end else Result:=TFuncSimpleExpr.Create(FProg, FTok.HotPos, funcSym);
 
    end else begin
 
@@ -5474,15 +5474,15 @@ begin
             if not Assigned(Sym.WriteFunc) then
                FMsgs.AddCompilerStop(FTok.HotPos,CPE_CantWriteToLeftSide);
             // Transform a := b into a(b)
-            Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.WriteFunc);
+            Result := TFuncSimpleExpr.Create(FProg, FTok.HotPos, Sym.WriteFunc);
             Result.AddArg(ReadExpr);
          end else if (Sym.Typ is TClassSymbol) or (Sym.Typ is TClassOfSymbol) or (Sym.Typ is TConnectorSymbol) then begin
             if not Assigned(Sym.ReadFunc) then
                FMsgs.AddCompilerStop(FTok.HotPos,CPE_RightSideNeedsReturnType);
-            Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.ReadFunc)
+            Result := TFuncSimpleExpr.Create(FProg, FTok.HotPos, Sym.ReadFunc)
          end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_AssignExpected);
       end else if Assigned(Sym.ReadFunc) then
-         Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.ReadFunc)
+         Result := TFuncSimpleExpr.Create(FProg, FTok.HotPos, Sym.ReadFunc)
       else FMsgs.AddCompilerStop(FTok.HotPos,CPE_WriteOnlyProperty); // ??
       TypeCheckArgs(Result, nil);
    except
