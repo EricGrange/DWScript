@@ -184,6 +184,8 @@ type
          procedure Extend(other : TdwsJSONValue);
 
          procedure WriteTo(writer : TdwsJSONWriter); virtual; abstract;
+         procedure WriteToStream(aStream : TStream); overload;
+         procedure WriteToStream(aStream : TWriteOnlyBlockStream); overload;
          function ToString : UnicodeString; reintroduce;
          function ToBeautifiedString(initialTabs : Integer = 0; indentTabs : Integer = 1) : UnicodeString;
          procedure Detach;
@@ -740,6 +742,40 @@ begin
       RaiseJSONException('Cannot extend undefined object')
    else if other<>nil then
       DoExtend(other);
+end;
+
+// WriteToStream
+//
+procedure TdwsJSONValue.WriteToStream(aStream : TStream);
+var
+   writer : TdwsJSONWriter;
+   wobs : TWriteOnlyBlockStream;
+begin
+   if Self=nil then Exit;
+   wobs:=TWriteOnlyBlockStream.Create;
+   writer:=TdwsJSONWriter.Create(wobs);
+   try
+      WriteTo(writer);
+      wobs.StoreUTF8Data(aStream);
+   finally
+      writer.Free;
+      wobs.Free;
+   end;
+end;
+
+// WriteToStream
+//
+procedure TdwsJSONValue.WriteToStream(aStream : TWriteOnlyBlockStream);
+var
+   writer : TdwsJSONWriter;
+begin
+   if Self=nil then Exit;
+   writer:=TdwsJSONWriter.Create(aStream);
+   try
+      WriteTo(writer);
+   finally
+      writer.Free;
+   end;
 end;
 
 // ToString
