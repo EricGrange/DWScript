@@ -1,3 +1,3 @@
-Could not cast variant from "Dispatch" to "Integer" (EVariantTypeCastError)
-Could not cast variant from "Dispatch" to "Float" (EVariantTypeCastError)
-Could not cast variant from "Dispatch" to "Boolean" (EVariantTypeCastError)
+Could not convert variant of type (Dispatch) into type (Boolean)
+Could not convert variant of type (Dispatch) into type (Double)
+Could not convert variant of type (Dispatch) into type (Boolean)

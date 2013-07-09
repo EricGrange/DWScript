@@ -48,7 +48,7 @@ uses
   UJITx86Tests in 'UJITx86Tests.pas',
   ULinqTests in 'ULinqTests.pas',
 {$IF RTLVersion >= 21}
-//  dwsSynSQLiteDatabase in '..\Libraries\DatabaseLib\dwsSynSQLiteDatabase.pas',
+  dwsSynSQLiteDatabase in '..\Libraries\DatabaseLib\dwsSynSQLiteDatabase.pas',
   URTTIExposeTests in 'URTTIExposeTests.pas',
   USpecialTestsRTTI in 'USpecialTestsRTTI.pas',
 {$IFEND}

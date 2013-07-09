@@ -1416,7 +1416,7 @@ begin
       if expr.ClassType=TConstIntExpr then begin
          Result:=TConstExpr.CreateFloatValue(FProg, TConstIntExpr(expr).Value);
          expr.Free;
-      end else Result:=TConvFloatExpr.Create(FProg, expr);
+      end else Result:=TConvIntToFloatExpr.Create(FProg, expr);
 
    end else begin
       // error & keep compiling
@@ -5240,7 +5240,7 @@ begin
                if not baseType.Typ.IsCompatible(valueExpr.Typ) then begin
                   if     valueExpr.Typ.IsOfType(FProg.TypInteger)
                      and baseType.Typ.IsOfType(FProg.TypFloat) then begin
-                     valueExpr:=TConvFloatExpr.Create(FProg, valueExpr)
+                     valueExpr:=TConvIntToFloatExpr.Create(FProg, valueExpr)
                   end else begin
                      IncompatibleTypes(hotPos, CPE_AssignIncompatibleTypes,
                                        valueExpr.Typ, baseType.Typ);
@@ -9741,7 +9741,7 @@ begin
 
          if setExpr=nil then begin
             // keep compiling
-            Result:=TConvBoolExpr.Create(FProg, left);
+            Result:=TConvVarToBoolExpr.Create(FProg, left);
             left:=nil;
             Exit;
          end;
@@ -10199,10 +10199,10 @@ begin
       end else begin
 
          if trueExpr.IsOfType(FProg.TypInteger) and falseExpr.IsOfType(FProg.TypFloat) then begin
-            trueExpr:=TConvFloatExpr.Create(FProg, trueExpr);
+            trueExpr:=TConvIntToFloatExpr.Create(FProg, trueExpr);
             trueTyp:=trueExpr.Typ;
          end else if trueExpr.IsOfType(FProg.TypFloat) and falseExpr.IsOfType(FProg.TypInteger) then begin
-            falseExpr:=TConvFloatExpr.Create(FProg, falseExpr);
+            falseExpr:=TConvIntToFloatExpr.Create(FProg, falseExpr);
             falseTyp:=falseExpr.Typ;
          end;
 
@@ -12292,7 +12292,7 @@ begin
                      FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected)
                   else begin
                      if operandExpr.IsOfType(FProg.TypVariant) then
-                        operandExpr:=TConvIntegerExpr.Create(FProg, operandExpr);
+                        operandExpr:=TConvVarToIntegerExpr.Create(FProg, operandExpr);
                      if not operandExpr.IsOfType(FProg.TypInteger) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
                   end;
@@ -12508,20 +12508,33 @@ begin
       else if typeSym.IsOfType(FProg.TypInteger) then begin
 
          // Cast Integer(...)
-         Result := TConvIntegerExpr.Create(FProg, argExpr);
+         if argExpr.Typ is TEnumerationSymbol then
+            Result := TConvOrdToIntegerExpr.Create(FProg, argExpr)
+         else if argExpr.IsOfType(FProg.TypBoolean) then
+            Result := TConvBoolToIntegerExpr.Create(FProg, argExpr)
+         else if argExpr.IsOfType(FProg.TypInteger) then
+            Result := argExpr
+         else if argExpr.IsOfType(FProg.TypFloat) then
+            Result := TConvVarToIntegerExpr.Create(FProg, argExpr)
+         else begin
+            if not argExpr.IsOfType(FProg.TypVariant) then
+               FMsgs.AddCompilerError(hotPos, CPE_IntegerCastInvalid);
+            Result := TConvVarToIntegerExpr.Create(FProg, argExpr)
+         end;
          Result.Typ:=typeSym;
-         if not (   argExpr.IsOfType(FProg.TypInteger) or argExpr.IsOfType(FProg.TypFloat)
-                 or argExpr.IsOfType(FProg.TypBoolean)
-                 or (argExpr.Typ is TEnumerationSymbol) or argExpr.IsOfType(FProg.TypVariant)) then
-            FMsgs.AddCompilerError(hotPos, CPE_IntegerCastInvalid);
 
       end else if typeSym = FProg.TypFloat then begin
 
          // Cast Float(...)
-         Result := TConvFloatExpr.Create(FProg, argExpr);
-         if not (   argExpr.IsOfType(FProg.TypInteger) or argExpr.IsOfType(FProg.TypFloat)
-                 or argExpr.IsOfType(FProg.TypVariant)) then
-            FMsgs.AddCompilerError(hotPos, CPE_NumericalExpected);
+         if argExpr.IsOfType(FProg.TypInteger) then
+            Result := TConvIntToFloatExpr.Create(FProg, argExpr)
+         else if argExpr.IsOfType(FProg.TypFloat) then
+            Result := argExpr
+         else begin
+            if not argExpr.IsOfType(FProg.TypVariant) then
+               FMsgs.AddCompilerError(hotPos, CPE_NumericalExpected);
+            Result := TConvVarToFloatExpr.Create(FProg, argExpr);
+         end;
 
       end else if typeSym = FProg.TypString then begin
 
@@ -12529,19 +12542,25 @@ begin
          if argExpr.IsOfType(FProg.TypString) then
             Result:=argExpr
          else begin
-            Result:=TConvStringExpr.Create(FProg, argExpr);
             if not argExpr.IsOfType(FProg.TypVariant) then
                FMsgs.AddCompilerError(hotPos, CPE_VariantExpected);
+            Result:=TConvVarToStringExpr.Create(FProg, argExpr);
          end;
 
       end else if typeSym = FProg.TypBoolean then begin
 
          // Cast Boolean(...)
-         Result := TConvBoolExpr.Create(FProg, argExpr);
-         if not (   argExpr.IsOfType(FProg.TypInteger) or argExpr.IsOfType(FProg.TypFloat)
-                 or argExpr.IsOfType(FProg.TypBoolean)
-                 or argExpr.IsOfType(FProg.TypVariant)) then
-            FMsgs.AddCompilerError(hotPos, CPE_BooleanOrIntegerExpected);
+         if argExpr.IsOfType(FProg.TypInteger) then
+            Result := TConvIntToBoolExpr.Create(FProg, argExpr)
+         else if argExpr.IsOfType(FProg.TypFloat) then
+            Result := TConvFloatToBoolExpr.Create(FProg, argExpr)
+         else if argExpr.IsOfType(FProg.TypBoolean) then
+            Result := argExpr
+         else begin
+            if not argExpr.IsOfType(FProg.TypVariant) then
+               FMsgs.AddCompilerError(hotPos, CPE_BooleanOrIntegerExpected);
+            Result := TConvVarToBoolExpr.Create(FProg, argExpr);
+         end;
 
       end else if typeSym = FProg.TypVariant then
 

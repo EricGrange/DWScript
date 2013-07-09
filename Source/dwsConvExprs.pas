@@ -49,24 +49,44 @@ type
          constructor Create(prog : TdwsProgram; expr : TTypedExpr; toTyp : TTypeSymbol); reintroduce;
    end;
 
-   // Float(x)
-   TConvFloatExpr = class (TUnaryOpFloatExpr)
+   // Float(int x)
+   TConvIntToFloatExpr = class (TUnaryOpFloatExpr)
+     function EvalAsFloat(exec : TdwsExecution) : Double; override;
+   end;
+   // Float(variant x)
+   TConvVarToFloatExpr = class (TUnaryOpFloatExpr)
      function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
-   // Integer(x)
-   TConvIntegerExpr = class (TUnaryOpIntExpr)
+   // Integer(variant x)
+   TConvVarToIntegerExpr = class (TUnaryOpIntExpr)
+     function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+   end;
+   // Integer(boolean x)
+   TConvBoolToIntegerExpr = class (TUnaryOpIntExpr)
+     function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+   end;
+   // Integer(ordinal x)
+   TConvOrdToIntegerExpr = class (TUnaryOpIntExpr)
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
-   // String(x)
-   TConvStringExpr = class (TUnaryOpStringExpr)
+   // String(variant x)
+   TConvVarToStringExpr = class (TUnaryOpStringExpr)
      procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
    end;
 
-   // Boolean(x)
-   TConvBoolExpr = class (TUnaryOpBoolExpr)
+   // Boolean(int x)
+   TConvIntToBoolExpr = class (TUnaryOpBoolExpr)
+     function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+   // Boolean(float x)
+   TConvFloatToBoolExpr = class (TUnaryOpBoolExpr)
+     function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+   // Boolean(variant x)
+   TConvVarToBoolExpr = class (TUnaryOpBoolExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
@@ -221,13 +241,13 @@ begin
       end;
    end else if expr.Typ.UnAliasedTypeIs(TBaseVariantSymbol) then begin
       if toTyp.IsOfType(prog.TypInteger) then
-         Result:=TConvIntegerExpr.Create(prog, expr)
+         Result:=TConvVarToIntegerExpr.Create(prog, expr)
       else if toTyp.IsOfType(prog.TypFloat) then
-         Result:=TConvFloatExpr.Create(prog, expr)
+         Result:=TConvVarToFloatExpr.Create(prog, expr)
       else if toTyp.IsOfType(prog.TypString) then
-         Result:=TConvStringExpr.Create(prog, expr)
+         Result:=TConvVarToStringExpr.Create(prog, expr)
       else if toTyp.IsOfType(prog.TypBoolean) then
-         Result:=TConvBoolExpr.Create(prog, expr);
+         Result:=TConvVarToBoolExpr.Create(prog, expr);
    end else if     (toTyp is TStructuredTypeMetaSymbol)
                and (expr.Typ.IsOfType(toTyp.Typ)) then begin
       if toTyp.ClassType=TClassOfSymbol then begin
@@ -244,7 +264,7 @@ begin
          if expr is TConstIntExpr then begin
             Result:=TConstFloatExpr.CreateTypedVariantValue(prog, prog.TypFloat, TConstIntExpr(expr).Value);
             expr.Free;
-         end else Result:=TConvFloatExpr.Create(prog, expr);
+         end else Result:=TConvIntToFloatExpr.Create(prog, expr);
       end;
    end;
    // Look if Types are compatible
@@ -279,30 +299,69 @@ begin
 end;
 
 // ------------------
-// ------------------ TConvFloatExpr ------------------
+// ------------------ TConvIntToFloatExpr ------------------
 // ------------------
 
 // EvalAsFloat
 //
-function TConvFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+function TConvIntToFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
-   Result:=FExpr.EvalAsFloat(exec);
+   Result:=FExpr.EvalAsInteger(exec);
 end;
 
 // ------------------
-// ------------------ TConvIntegerExpr ------------------
+// ------------------ TConvVarToFloatExpr ------------------
+// ------------------
+
+// EvalAsFloat
+//
+function TConvVarToFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+var
+   v : Variant;
+begin
+   FExpr.EvalAsVariant(exec, v);
+   Result:=v;
+end;
+
+// ------------------
+// ------------------ TConvVarToIntegerExpr ------------------
 // ------------------
 
 // EvalAsInteger
 //
-function TConvIntegerExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+function TConvVarToIntegerExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+var
+   v : Variant;
+begin
+   FExpr.EvalAsVariant(exec, v);
+   Result:=v;
+end;
+
+// ------------------
+// ------------------ TConvBoolToIntegerExpr ------------------
+// ------------------
+
+// EvalAsInteger
+//
+function TConvBoolToIntegerExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   Result:=Ord(FExpr.EvalAsBoolean(exec));
+end;
+
+// ------------------
+// ------------------ TConvOrdToIntegerExpr ------------------
+// ------------------
+
+// EvalAsInteger
+//
+function TConvOrdToIntegerExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
    Result:=FExpr.EvalAsInteger(exec);
 end;
 
 // Optimize
 //
-function TConvIntegerExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TConvOrdToIntegerExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
    // this can happen when an integer was qualifed as a type
    if Expr.ClassType=TConstIntExpr then begin
@@ -317,12 +376,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TConvStringExpr ------------------
+// ------------------ TConvVarToStringExpr ------------------
 // ------------------
 
 // EvalAsString
 //
-procedure TConvStringExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
+procedure TConvVarToStringExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
 var
    v : Variant;
 begin
@@ -331,14 +390,39 @@ begin
 end;
 
 // ------------------
-// ------------------ TConvBoolExpr ------------------
+// ------------------ TConvIntToBoolExpr ------------------
 // ------------------
 
 // EvalAsBoolean
 //
-function TConvBoolExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+function TConvIntToBoolExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
-   Result:=FExpr.EvalAsBoolean(exec);
+   Result:=(FExpr.EvalAsInteger(exec)<>0);
+end;
+
+// ------------------
+// ------------------ TConvFloatToBoolExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TConvFloatToBoolExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+begin
+   Result:=(FExpr.EvalAsFloat(exec)<>0);
+end;
+
+// ------------------
+// ------------------ TConvVarToBoolExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TConvVarToBoolExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   v : Variant;
+begin
+   FExpr.EvalAsVariant(exec, v);
+   Result:=v;
 end;
 
 // ------------------

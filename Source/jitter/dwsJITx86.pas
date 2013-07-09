@@ -511,7 +511,7 @@ type
       function CompileInteger(expr : TTypedExpr) : Integer; override;
    end;
 
-   Tx86ConvFloat = class (TdwsJITter_x86)
+   Tx86ConvIntToFloat = class (TdwsJITter_x86)
       function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
    end;
 
@@ -829,8 +829,12 @@ begin
    RegisterJITter(TDefinedExpr,                 FInterpretedJITter.IncRefCount);
    RegisterJITter(TConditionalDefinedExpr,      FInterpretedJITter.IncRefCount);
 
-   RegisterJITter(TConvFloatExpr,               Tx86ConvFloat.Create(Self));
-   RegisterJITter(TConvIntegerExpr,             FInterpretedJITter.IncRefCount);
+   RegisterJITter(TConvIntToFloatExpr,          Tx86ConvIntToFloat.Create(Self));
+   RegisterJITter(TConvVarToFloatExpr,          FInterpretedJITter.IncRefCount);
+   RegisterJITter(TConvBoolToIntegerExpr,       FInterpretedJITter.IncRefCount);
+   RegisterJITter(TConvVarToIntegerExpr,        FInterpretedJITter.IncRefCount);
+   RegisterJITter(TConvOrdToIntegerExpr,        FInterpretedJITter.IncRefCount);
+   RegisterJITter(TConvBoolToIntegerExpr,       FInterpretedJITter.IncRefCount);
 
    RegisterJITter(TConstructorStaticExpr,       FInterpretedJITter.IncRefCount);
    RegisterJITter(TConstructorStaticDefaultExpr,FInterpretedJITter.IncRefCount);
@@ -4205,14 +4209,14 @@ begin
 end;
 
 // ------------------
-// ------------------ Tx86ConvFloat ------------------
+// ------------------ Tx86ConvIntToFloat ------------------
 // ------------------
 
 // DoCompileFloat
 //
-function Tx86ConvFloat.DoCompileFloat(expr : TTypedExpr) : TxmmRegister;
+function Tx86ConvIntToFloat.DoCompileFloat(expr : TTypedExpr) : TxmmRegister;
 begin
-   Result:=jit.CompileFloat(TConvFloatExpr(expr).Expr);
+   Result:=jit.CompileFloat(TConvIntToFloatExpr(expr).Expr);
 end;
 
 // ------------------

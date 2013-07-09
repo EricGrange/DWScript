@@ -35,6 +35,8 @@ type
          procedure FuncIncEval(Info: TProgramInfo);
          procedure FuncIncNEval(Info: TProgramInfo);
          procedure FuncEnumEval(Info: TProgramInfo);
+         procedure FuncVariantEval(Info: TProgramInfo);
+         procedure FuncVariantDateEval(Info: TProgramInfo);
          procedure FuncVarEval(Info: TProgramInfo);
          procedure FuncFloatEval(Info: TProgramInfo);
          procedure FuncPointEval(Info: TProgramInfo);
@@ -114,6 +116,8 @@ type
          procedure OverloadedFunc;
          procedure FastEvalTest;
          procedure ArrayOfObjects;
+         procedure FuncVariantTest;
+         procedure FuncVariantDateTest;
 
          procedure ParseNameTests;
 
@@ -315,6 +319,19 @@ begin
    param.Name:='b';
    param.DataType:='Float';
    param.DefaultValue:='0.5';
+
+   func:=FUnit.Functions.Add;
+   func.Name:='FuncVariant';
+   func.ResultType:='Variant';
+   func.OnEval:=FuncVariantEval;
+   param:=func.Parameters.Add;
+   param.Name:='v';
+   param.DataType:='Variant';
+
+   func:=FUnit.Functions.Add;
+   func.Name:='FuncVariantDate';
+   func.ResultType:='Variant';
+   func.OnEval:=FuncVariantDateEval;
 
    func:=FUnit.Functions.Add;
    func.Name:='FuncPoint';
@@ -668,6 +685,20 @@ end;
 procedure TdwsUnitTestsContext.FuncEnumEval(Info: TProgramInfo);
 begin
    Info.ResultAsInteger:=Info.ValueAsInteger['e'];
+end;
+
+// FuncVariantEval
+//
+procedure TdwsUnitTestsContext.FuncVariantEval(Info: TProgramInfo);
+begin
+   Info.ResultAsVariant:=Info.ParamAsVariant[0];
+end;
+
+// FuncVariantDateEval
+//
+procedure TdwsUnitTestsContext.FuncVariantDateEval(Info: TProgramInfo);
+begin
+   Info.ResultAsVariant:=Now;
 end;
 
 // FuncVarEval
@@ -1960,6 +1991,51 @@ begin
 
    CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
    CheckEquals('', prog.Execute.Result.ToString, 'exec result');
+end;
+
+// FuncVariantTest
+//
+procedure TdwsUnitTests.FuncVariantTest;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'var i : Integer; var f : Float; var s : String; var b : Boolean;'#13#10
+                           +'i:=FuncVariant(123);'#13#10
+                           +'Print(i);'#13#10
+                           +'f:=FuncVariant(12.5);'#13#10
+                           +'Print(f);'#13#10
+                           +'f:=FuncVariant(456);'#13#10
+                           +'Print(f);'#13#10
+                           +'s:=FuncVariant("hello");'#13#10
+                           +'Print(s);'#13#10
+                           +'b:=FuncVariant(True);'#13#10
+                           +'Print(b);'#13#10
+                           );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile 1');
+
+   CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
+   CheckEquals('12312.5456helloTrue', prog.Execute.Result.ToString, 'exec result');
+end;
+
+// FuncVariantDateTest
+//
+procedure TdwsUnitTests.FuncVariantDateTest;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'var f : Float; var s : String;'#13#10
+                           +'f:=FuncVariantDate;'#13#10
+                           +'if Now-f>1/86400 then Print("bug");'#13#10
+                           +'s:=FuncVariantDate;'#13#10
+                           +'if s="" then Print("rebug");'#13#10
+                           );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile 1');
+
+   CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
+   CheckEquals('', prog.Execute.Result.ToString, 'exec result');
+
 end;
 
 // ExplicitUses

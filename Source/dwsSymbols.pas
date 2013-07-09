@@ -2636,7 +2636,9 @@ function TRecordSymbol.GetDescription : UnicodeString;
 var
    member : TSymbol;
 begin
-   Result:=Name+' = record'#13#10;
+   if Name='' then
+      Result := 'anonymous record'#13#10
+   else Result:=Name+' = record'#13#10;
    for member in FMembers do begin
       if member is TFieldSymbol then
          Result:=Result+'   '+member.Name+' : '+member.Typ.Name+';'#13#10;
