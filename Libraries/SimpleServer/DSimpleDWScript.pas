@@ -23,7 +23,7 @@ uses
    dwsFileSystem, dwsGlobalVarsFunctions, dwsExprList,
    dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils, dwsXPlatform,
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
-   dwsDataBase, dwsDataBaseLibModule, dwsSynSQLiteDatabase,
+   dwsDataBase, dwsDataBaseLibModule,
    dwsJSONConnector, dwsJSON, dwsErrors, dwsFunctions, dwsSymbols;
 
 type
@@ -39,6 +39,8 @@ type
          function GetItemHashCode(const item1 : TCompiledProgram) : Integer; override;
    end;
 
+   TLoadSourceCodeEvent = function (const fileName : String) : String of object;
+
    TSimpleDWScript = class(TDataModule)
       DelphiWebScript: TDelphiWebScript;
       dwsHtmlFilter: TdwsHtmlFilter;
@@ -50,8 +52,8 @@ type
 
       procedure DoInclude(const scriptName: String; var scriptSource: String);
       function  DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+      function dwsFileIOFunctionsFileExistsFastEval(args: TExprBaseListExec): Variant;
       function dwsFileIOFunctionsDeleteFileFastEval(args: TExprBaseListExec): Variant;
-    function dwsFileIOFunctionsFileExistsFastEval(args: TExprBaseListExec): Variant;
 
    private
       FScriptTimeoutMilliseconds : Integer;
@@ -73,6 +75,8 @@ type
 
       FFlushMatching : String;
 
+      FOnLoadSourceCode : TLoadSourceCodeEvent;
+
    protected
       procedure TryAcquireDWS(const fileName : String; var prog : IdwsProgram);
       procedure CompileDWS(const fileName : String; var prog : IdwsProgram);
@@ -83,6 +87,8 @@ type
       procedure SetCPUAffinity(const val : Cardinal);
 
       function WaitForCPULimit : Boolean;
+
+      function DoLoadSourceCode(const fileName : String) : String;
 
    public
       procedure HandleDWS(const fileName : String; request : TWebRequest; response : TWebResponse);
@@ -100,6 +106,8 @@ type
       property CPUUsageLimit : Integer read FCPUUsageLimit write SetCPUUsageLimit;
       property CPUAffinity : Cardinal read FCPUAffinity write SetCPUAffinity;
       property PathVariables : TStrings read FPathVariables;
+
+      property OnLoadSourceCode : TLoadSourceCodeEvent read FOnLoadSourceCode write FOnLoadSourceCode;
   end;
 
 const
@@ -334,7 +342,7 @@ var
    code : String;
    cp : TCompiledProgram;
 begin
-   code:=LoadTextFromFile(fileName);
+   code:=DoLoadSourceCode(fileName);
 
    FCompilerLock.Enter;
    try
@@ -373,7 +381,7 @@ end;
 procedure TSimpleDWScript.DoInclude(const scriptName: String; var scriptSource: String);
 begin
    if FHotPath<>'' then
-      scriptSource:=LoadTextFromFile(FHotPath+scriptName);
+      scriptSource:=DoLoadSourceCode(FHotPath+scriptName);
 end;
 
 // DoNeedUnit
@@ -425,6 +433,15 @@ begin
       if i=15 then Exit(False);
    end;
    Result:=True;
+end;
+
+// DoLoadSourceCode
+//
+function TSimpleDWScript.DoLoadSourceCode(const fileName : String) : String;
+begin
+   if Assigned(FOnLoadSourceCode) then
+      Result:=FOnLoadSourceCode(fileName)
+   else Result:=LoadTextFromFile(fileName);
 end;
 
 // ApplyPathVariables

@@ -53,7 +53,6 @@ object SimpleDWScript: TSimpleDWScript
             DataType = 'String'
           end>
         ResultType = 'Boolean'
-        OnFastEval = dwsFileIOFunctionsFileExistsFastEval
       end>
     UnitName = 'File.IO'
     StaticSymbols = True
