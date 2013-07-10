@@ -273,6 +273,12 @@ type
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
+function Gcd(a, b : Int64) : Int64;
+function Lcm(const a, b : Int64) : Int64;
+function LeastFactor(const n : Int64) : Int64;
+function IsPrime(const n : Int64) : Boolean;
+function IsFinite(const v : Double) : Boolean;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -341,6 +347,13 @@ begin
    if n<=3 then
       Result:=(n>=2)
    else Result:=((n and 1)<>0) and (LeastFactor(n)=n);
+end;
+
+// IsFinite
+//
+function IsFinite(const v : Double) : Boolean;
+begin
+   Result:=not (IsNan(v) or IsInfinite(v));
 end;
 
 { TOddFunc }
@@ -738,11 +751,8 @@ end;
 { IsFinite }
 
 function TIsFiniteFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
-var
-   v : Double;
 begin
-   v:=args.AsFloat[0];
-   Result:=not(IsNan(v) or IsInfinite(v));
+   Result:=IsFinite(args.AsFloat[0]);
 end;
 
 { TGcdFunc }
