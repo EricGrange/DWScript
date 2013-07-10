@@ -12511,7 +12511,7 @@ begin
          if argExpr.Typ is TEnumerationSymbol then
             Result := TConvOrdToIntegerExpr.Create(FProg, argExpr)
          else if argExpr.IsOfType(FProg.TypBoolean) then
-            Result := TConvBoolToIntegerExpr.Create(FProg, argExpr)
+            Result := TOrdBoolExpr.Create(FProg, argExpr)
          else if argExpr.IsOfType(FProg.TypInteger) then
             Result := argExpr
          else if argExpr.IsOfType(FProg.TypFloat) then

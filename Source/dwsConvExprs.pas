@@ -62,10 +62,6 @@ type
    TConvVarToIntegerExpr = class (TUnaryOpIntExpr)
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
-   // Integer(boolean x)
-   TConvBoolToIntegerExpr = class (TUnaryOpIntExpr)
-     function EvalAsInteger(exec : TdwsExecution) : Int64; override;
-   end;
    // Integer(ordinal x)
    TConvOrdToIntegerExpr = class (TUnaryOpIntExpr)
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -335,17 +331,6 @@ var
 begin
    FExpr.EvalAsVariant(exec, v);
    Result:=v;
-end;
-
-// ------------------
-// ------------------ TConvBoolToIntegerExpr ------------------
-// ------------------
-
-// EvalAsInteger
-//
-function TConvBoolToIntegerExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
-begin
-   Result:=Ord(FExpr.EvalAsBoolean(exec));
 end;
 
 // ------------------

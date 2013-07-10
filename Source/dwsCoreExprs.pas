@@ -904,8 +904,8 @@ type
    end;
 
    TOrdBoolExpr = class(TOrdExpr)
-   public
-     function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+      public
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
    TOrdStrExpr = class(TOrdExpr)
