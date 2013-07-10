@@ -245,6 +245,7 @@ type
       procedure CompileAssignInteger(expr : TTypedExpr; source : Integer); override;
 
       procedure DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup); override;
+      function CompileBooleanValue(expr : TTypedExpr) : Integer; override;
    end;
 
    Tx86FloatVar = class (TdwsJITter_x86)
@@ -519,6 +520,7 @@ type
       function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
       function CompileInteger(expr : TTypedExpr) : Integer; override;
       procedure DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup); override;
+      function CompileBooleanValue(expr : TTypedExpr) : Integer; override;
    end;
 
    Tx86MagicBoolFunc = class (Tx86MagicFunc)
@@ -532,6 +534,8 @@ type
          function CompileCall(funcSym : TFuncSymbol; const args : TExprBaseListRec) : Boolean;
          function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
          function CompileInteger(expr : TTypedExpr) : Integer; override;
+         procedure DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup); override;
+         function CompileBooleanValue(expr : TTypedExpr) : Integer; override;
    end;
 
    Tx86SqrtFunc = class (Tx86MagicFunc)
@@ -554,6 +558,7 @@ type
 
    Tx86OddFunc = class (Tx86MagicBoolFunc)
       procedure DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup); override;
+      function CompileBooleanValue(expr : TTypedExpr) : Integer; override;
    end;
 
 // ------------------------------------------------------------------
@@ -578,22 +583,26 @@ begin
    Result:=a mod b;
 end;
 
-function double_trunc(v : Double) : Int64;
+function double_trunc(const v : Double) : Int64;
 begin
    Result:=Trunc(v);
 end;
 
-function double_frac(v : Double) : Double;
+function double_frac(const v : Double) : Double;
 begin
    Result:=Frac(v);
 end;
 
 var
    vAddr_Power : function (const base, exponent: Double) : Double = Math.Power;
-   vAddr_Trunc : function (v : Double) : Int64 = double_trunc;
-   vAddr_Frac : function (v : Double) : Double = double_frac;
+   vAddr_Trunc : function (const v : Double) : Int64 = double_trunc;
+   vAddr_Frac : function (const v : Double) : Double = double_frac;
    vAddr_div : function (a, b : Int64) : Int64 = int64_div;
    vAddr_mod : function (a, b : Int64) : Int64 = int64_mod;
+   vAddr_IsNaN : function (const v : Double) : Boolean = Math.IsNan;
+   vAddr_IsInfinite : function (const v : Double) : Boolean = Math.IsInfinite;
+   vAddr_IsFinite : function (const v : Double) : Boolean = dwsMathFunctions.IsFinite;
+   vAddr_IsPrime : function (const n : Int64) : Boolean = dwsMathFunctions.IsPrime;
 
 // ------------------
 // ------------------ TdwsJITx86 ------------------
@@ -831,10 +840,8 @@ begin
 
    RegisterJITter(TConvIntToFloatExpr,          Tx86ConvIntToFloat.Create(Self));
    RegisterJITter(TConvVarToFloatExpr,          FInterpretedJITter.IncRefCount);
-   RegisterJITter(TConvBoolToIntegerExpr,       FInterpretedJITter.IncRefCount);
    RegisterJITter(TConvVarToIntegerExpr,        FInterpretedJITter.IncRefCount);
    RegisterJITter(TConvOrdToIntegerExpr,        FInterpretedJITter.IncRefCount);
-   RegisterJITter(TConvBoolToIntegerExpr,       FInterpretedJITter.IncRefCount);
 
    RegisterJITter(TConstructorStaticExpr,       FInterpretedJITter.IncRefCount);
    RegisterJITter(TConstructorStaticDefaultExpr,FInterpretedJITter.IncRefCount);
@@ -866,6 +873,10 @@ begin
    RegisterJITter(TRoundFunc,                   Tx86RoundFunc.Create(Self));
    RegisterJITter(TTruncFunc,                   Tx86DirectCallFunc.Create(Self, @@vAddr_Trunc));
    RegisterJITter(TFracFunc,                    Tx86DirectCallFunc.Create(Self, @@vAddr_Frac));
+   RegisterJITter(TIsNaNFunc,                   Tx86DirectCallFunc.Create(Self, @@vAddr_IsNaN));
+   RegisterJITter(TIsInfiniteFunc,              Tx86DirectCallFunc.Create(Self, @@vAddr_IsInfinite));
+   RegisterJITter(TIsFiniteFunc,                Tx86DirectCallFunc.Create(Self, @@vAddr_IsFinite));
+   RegisterJITter(TIsPrimeFunc,                 Tx86DirectCallFunc.Create(Self, @@vAddr_IsPrime));
 
    RegisterJITter(TOddFunc,                     Tx86OddFunc.Create(Self));
 end;
@@ -2610,6 +2621,23 @@ begin
    jit.QueueGreed(expr);
 end;
 
+// CompileBooleanValue
+//
+function Tx86InterpretedExpr.CompileBooleanValue(expr : TTypedExpr) : Integer;
+begin
+   jit.SaveXMMRegs;
+
+   DoCallEval(expr, vmt_TExprBase_EvalAsBoolean);
+
+   jit.RestoreXMMRegs;
+
+   x86._op_reg_int32(gpOp_and, gprEAX, 0);
+
+   jit.QueueGreed(expr);
+
+   Result:=0;
+end;
+
 // ------------------
 // ------------------ Tx86FloatVar ------------------
 // ------------------
@@ -4186,8 +4214,12 @@ end;
 // CompileInteger
 //
 function Tx86OrdBool.CompileInteger(expr : TTypedExpr) : Integer;
+var
+   e : TOrdBoolExpr;
 begin
-   Result:=CompileBooleanValue(expr);
+   e:=TOrdBoolExpr(expr);
+
+   Result:=jit.CompileBooleanValue(e.Expr);
    x86._mov_reg_dword(gprEDX, 0);
 end;
 
@@ -4272,6 +4304,26 @@ begin
       jitter.DoCompileBoolean(expr, targetTrue, targetFalse)
 
    else inherited;
+end;
+
+// CompileBooleanValue
+//
+function Tx86MagicFunc.CompileBooleanValue(expr : TTypedExpr) : Integer;
+var
+   jitter : TdwsJITter_x86;
+   e : TMagicFuncExpr;
+begin
+   if ClassType<>Tx86MagicFunc then
+      Exit(inherited);
+
+   e:=(expr as TMagicFuncExpr);
+
+   jitter:=TdwsJITter_x86(jit.FindJITter(TMagicFuncSymbol(e.FuncSym).InternalFunction.ClassType));
+   if jitter<>nil then
+
+      Result:=jitter.CompileBooleanValue(expr)
+
+   else Result:=inherited;
 end;
 
 // ------------------
@@ -4380,6 +4432,36 @@ begin
    Result:=0;
 end;
 
+// DoCompileBoolean
+//
+procedure Tx86DirectCallFunc.DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup);
+var
+   e : TMagicFuncExpr;
+begin
+   e:=TMagicFuncExpr(expr);
+
+   if not CompileCall(e.FuncSym, e.Args) then
+      jit.OutputFailedOn:=expr;
+
+   x86._test_al_al;
+   jit.Fixups.NewConditionalJumps(flagsNZ, targetTrue, targetFalse);
+end;
+
+// CompileBooleanValue
+//
+function Tx86DirectCallFunc.CompileBooleanValue(expr : TTypedExpr) : Integer;
+var
+   e : TMagicFuncExpr;
+begin
+   e:=TMagicFuncExpr(expr);
+
+   if not CompileCall(e.FuncSym, e.Args) then
+      jit.OutputFailedOn:=expr;
+
+   x86._op_reg_int32(gpOp_and, gprEAX, 1);
+   Result:=0;
+end;
+
 // ------------------
 // ------------------ Tx86SqrtFunc ------------------
 // ------------------
@@ -4467,10 +4549,22 @@ procedure Tx86OddFunc.DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFals
 begin
    jit.CompileInteger(TMagicFuncExpr(expr).Args[0] as TTypedExpr);
 
-   if Odd(Integer(Self)) then
    x86._test_reg_imm(gprEax, 1);
 
    jit.Fixups.NewConditionalJumps(flagsNZ, targetTrue, targetFalse);
+end;
+
+// CompileBooleanValue
+//
+function Tx86OddFunc.CompileBooleanValue(expr : TTypedExpr) : Integer;
+begin
+   jit.CompileInteger(TMagicFuncExpr(expr).Args[0] as TTypedExpr);
+
+   x86._test_reg_imm(gprEAX, 1);
+   x86._set_al_flags(flagsNZ);
+   x86._op_reg_int32(gpOp_and, gprEAX, 1);
+
+   Result:=0;
 end;
 
 end.
