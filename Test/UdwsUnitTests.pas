@@ -1180,8 +1180,10 @@ begin
    func := FUnit.Functions.Add;
    try
       func.Name := 'TestRetValue: String;';
-      CheckEquals('TestRetValue', func.Name);
-      CheckEquals('String', func.ResultType);
+      CheckEquals('TestRetValue', func.Name,
+         'Check function name');
+      CheckEquals('String', func.ResultType,
+         'Check function result type');
    finally
       FUnit.Functions.Delete(func.Index);
    end;
@@ -1190,8 +1192,10 @@ begin
    func := FUnit.Functions.Add;
    try
       func.Name := 'TestRetValue: Integer';
-      CheckEquals('TestRetValue', func.Name);
-      CheckEquals('Integer', func.ResultType);
+      CheckEquals('TestRetValue', func.Name,
+         'Check function name');
+      CheckEquals('Integer', func.ResultType,
+         'Check function result type');
    finally
       FUnit.Functions.Delete(func.Index);
    end;
@@ -1200,11 +1204,16 @@ begin
    func := FUnit.Functions.Add;
    try
       func.Name := 'TestParam(var a: Integer)';
-      CheckEquals('TestParam', func.Name);
-      CheckEquals('a', TdwsParameter(func.Parameters.Items[0]).Name);
-      CheckEquals(True, TdwsParameter(func.Parameters.Items[0]).IsVarParam);
-      CheckEquals(True, TdwsParameter(func.Parameters.Items[0]).IsWritable);
-      CheckEquals('Integer', TdwsParameter(func.Parameters.Items[0]).DataType);
+      CheckEquals('TestParam', func.Name,
+         'Check function name');
+      CheckEquals('a', TdwsParameter(func.Parameters.Items[0]).Name,
+         'Check function parameter name');
+      CheckEquals(True, TdwsParameter(func.Parameters.Items[0]).IsVarParam,
+         'Check function parameter is var');
+      CheckEquals(True, TdwsParameter(func.Parameters.Items[0]).IsWritable,
+         'Check function parameter is writable');
+      CheckEquals('Integer', TdwsParameter(func.Parameters.Items[0]).DataType,
+         'Check function parameter data type');
    finally
       FUnit.Functions.Delete(func.Index);
    end;
@@ -1213,10 +1222,14 @@ begin
    func := FUnit.Functions.Add;
    try
       func.Name := 'TestParam(a: String = ''Test'');';
-      CheckEquals('TestParam', func.Name);
-      CheckEquals('a', TdwsParameter(func.Parameters.Items[0]).Name);
-      CheckEquals('String', TdwsParameter(func.Parameters.Items[0]).DataType);
-      CheckEquals('Test', TdwsParameter(func.Parameters.Items[0]).DefaultValue);
+      CheckEquals('TestParam', func.Name,
+         'Check function name');
+      CheckEquals('a', TdwsParameter(func.Parameters.Items[0]).Name,
+         'Check function parameter name');
+      CheckEquals('String', TdwsParameter(func.Parameters.Items[0]).DataType,
+         'Check function parameter data type');
+      CheckEquals('Test', TdwsParameter(func.Parameters.Items[0]).DefaultValue,
+         'Check function parameter default value');
    finally
       FUnit.Functions.Delete(func.Index);
    end;
@@ -1225,14 +1238,22 @@ begin
    func := FUnit.Functions.Add;
    try
       func.Name := 'TestSeveralParam(a: Float = 2.5; const b: Integer);';
-      CheckEquals('TestSeveralParam', func.Name);
-      CheckEquals('a', TdwsParameter(func.Parameters.Items[0]).Name);
-      CheckEquals('Float', TdwsParameter(func.Parameters.Items[0]).DataType);
-      CheckEquals(2.5, TdwsParameter(func.Parameters.Items[0]).DefaultValue);
-      CheckEquals('b', TdwsParameter(func.Parameters.Items[1]).Name);
-      CheckEquals(True, TdwsParameter(func.Parameters.Items[1]).IsVarParam);
-      CheckEquals(False, TdwsParameter(func.Parameters.Items[1]).IsWritable);
-      CheckEquals('Integer', TdwsParameter(func.Parameters.Items[1]).DataType);
+      CheckEquals('TestSeveralParam', func.Name,
+         'Check function name');
+      CheckEquals('a', TdwsParameter(func.Parameters.Items[0]).Name,
+         'Check function parameter data name');
+      CheckEquals('Float', TdwsParameter(func.Parameters.Items[0]).DataType,
+         'Check function parameter data type');
+      CheckEquals(2.5, TdwsParameter(func.Parameters.Items[0]).DefaultValue,
+         'Check function parameter default value');
+      CheckEquals('b', TdwsParameter(func.Parameters.Items[1]).Name,
+         'Check function parameter name');
+      CheckEquals(True, TdwsParameter(func.Parameters.Items[1]).IsVarParam,
+         'Check function parameter is var');
+      CheckEquals(False, TdwsParameter(func.Parameters.Items[1]).IsWritable,
+         'Check function parameter is writable');
+      CheckEquals('Integer', TdwsParameter(func.Parameters.Items[1]).DataType,
+         'Check function parameter data type');
    finally
       FUnit.Functions.Delete(func.Index);
    end;
@@ -1241,7 +1262,7 @@ begin
    func := FUnit.Functions.Add;
    try
       func.Name := 'TestNone();';
-      CheckEquals('TestNone', func.Name);
+      CheckEquals('TestNone', func.Name, 'Check function name');
    finally
       FUnit.Functions.Delete(func.Index);
    end;
@@ -1250,8 +1271,8 @@ begin
    func := FUnit.Functions.Add;
    try
       func.Name := 'function: Integer';
-      CheckEquals('function', func.Name);
-      CheckEquals('Integer', func.ResultType);
+      CheckEquals('function', func.Name, 'Check function name');
+      CheckEquals('Integer', func.ResultType, 'Check function result type');
    finally
       FUnit.Functions.Delete(func.Index);
    end;
@@ -1263,8 +1284,8 @@ begin
    meth := cls.Methods.Add;
    try
       meth.Name := 'TestRetValue: String;';
-      CheckEquals('TestRetValue', meth.Name);
-      CheckEquals('String', meth.ResultType);
+      CheckEquals('TestRetValue', meth.Name, 'Check method name');
+      CheckEquals('String', meth.ResultType, 'Check method result type');
    finally
       cls.Methods.Delete(meth.Index);
    end;
@@ -1274,19 +1295,29 @@ begin
    try
       // test parsing name of a method (procedure)
       meth.Name := 'TestParams(const a: Integer = 2; b: ' + cls.Name + ');';
-      CheckEquals(True, TdwsParameter(meth.Parameters.Items[0]).IsVarParam);
-      CheckEquals(False, TdwsParameter(meth.Parameters.Items[0]).IsWritable);
-      CheckEquals('a', TdwsParameter(meth.Parameters.Items[0]).Name);
-      CheckEquals('Integer', TdwsParameter(meth.Parameters.Items[0]).DataType);
-      CheckEquals(2, TdwsParameter(meth.Parameters.Items[0]).DefaultValue);
-      CheckEquals('b', TdwsParameter(meth.Parameters.Items[1]).Name);
-      CheckEquals(cls.Name, TdwsParameter(meth.Parameters.Items[1]).DataType);
+      CheckEquals(True, TdwsParameter(meth.Parameters.Items[0]).IsVarParam,
+         'Check parameter is var');
+      CheckEquals(False, TdwsParameter(meth.Parameters.Items[0]).IsWritable,
+         'Check parameter is writable');
+      CheckEquals('a', TdwsParameter(meth.Parameters.Items[0]).Name,
+         'Check parameter name');
+      CheckEquals('Integer', TdwsParameter(meth.Parameters.Items[0]).DataType,
+         'Check parameter data type');
+      CheckEquals(2, TdwsParameter(meth.Parameters.Items[0]).DefaultValue,
+         'Check parameter default value');
+      CheckEquals('b', TdwsParameter(meth.Parameters.Items[1]).Name,
+         'Check parameter name');
+      CheckEquals(cls.Name, TdwsParameter(meth.Parameters.Items[1]).DataType,
+         'Check parameter data type');
 
       // test parsing name of a parameter
       TdwsParameter(meth.Parameters.Items[1]).Name := 'a: Integer = 2';
-      CheckEquals('a', TdwsParameter(meth.Parameters.Items[1]).Name);
-      CheckEquals('Integer', TdwsParameter(meth.Parameters.Items[1]).DataType);
-      CheckEquals(2, TdwsParameter(meth.Parameters.Items[1]).DefaultValue);
+      CheckEquals('a', TdwsParameter(meth.Parameters.Items[1]).Name,
+         'Check parameter name');
+      CheckEquals('Integer', TdwsParameter(meth.Parameters.Items[1]).DataType,
+         'Check parameter data type');
+      CheckEquals(2, TdwsParameter(meth.Parameters.Items[1]).DefaultValue,
+         'Check parameter default value');
    finally
      cls.Methods.Delete(meth.Index);
    end;
@@ -1295,10 +1326,10 @@ begin
    fld := cls.Fields.Add;
    try
       fld.Name := 'public field: Integer = 10;';
-      CheckEquals('field', fld.Name);
-      CheckEquals('Integer', fld.DataType);
-      CheckEquals(Integer(cvPublic), Integer(fld.Visibility));
-      CheckEquals(10, fld.DefaultValue);
+      CheckEquals('field', fld.Name, 'Check field name');
+      CheckEquals('Integer', fld.DataType, 'Check field data type');
+      CheckEquals(Integer(cvPublic), Integer(fld.Visibility), 'Check field visibility');
+      CheckEquals(10, fld.DefaultValue, 'Check field default value');
    finally
       cls.Fields.Delete(fld.Index);
    end;
@@ -1307,9 +1338,9 @@ begin
    fld := cls.Fields.Add;
    try
       fld.Name := 'str: String = ''Test'';';
-      CheckEquals('str', fld.Name);
-      CheckEquals('String', fld.DataType);
-      CheckEquals('Test', fld.DefaultValue);
+      CheckEquals('str', fld.Name, 'Check field name');
+      CheckEquals('String', fld.DataType, 'Check field data type');
+      CheckEquals('Test', fld.DefaultValue, 'Check field default value');
    finally
       cls.Fields.Delete(fld.Index);
    end;
@@ -1318,11 +1349,11 @@ begin
    prty := cls.Properties.Add;
    try
       prty.Name := 'public Test: Integer read GetTest write SetTest;';
-      CheckEquals('Test', prty.Name);
-      CheckEquals('Integer', prty.DataType);
-      CheckEquals(Integer(cvPublic), Integer(prty.Visibility));
-      CheckEquals('GetTest', prty.ReadAccess);
-      CheckEquals('SetTest', prty.WriteAccess);
+      CheckEquals('Test', prty.Name, 'Check property name');
+      CheckEquals('Integer', prty.DataType, 'Check property data type');
+      CheckEquals(Integer(cvPublic), Integer(prty.Visibility), 'Check property visibility');
+      CheckEquals('GetTest', prty.ReadAccess, 'Check property read access');
+      CheckEquals('SetTest', prty.WriteAccess, 'Check property write access');
       CheckEquals(False, prty.IsDefault);
    finally
       cls.Properties.Delete(prty.Index);
@@ -1331,12 +1362,26 @@ begin
    // test parsing name of a property
    prty := cls.Properties.Add;
    try
-      prty.Name := 'TestDef: String read GetTest write SetTest; default;';
+      prty.Name := 'TestDef[Index: Integer]: String read GetTest write SetTest; default;';
+      CheckEquals('TestDef', prty.Name, 'Check property name');
+      CheckEquals('String', prty.DataType, 'Check property data type');
+      CheckEquals('GetTest', prty.ReadAccess, 'Check property read access');
+      CheckEquals('SetTest', prty.WriteAccess, 'Check property write access');
+      CheckEquals(True, prty.IsDefault, 'Check property default');
+   finally
+      cls.Properties.Delete(prty.Index);
+   end;
+
+   // test parsing name of a property
+   prty := cls.Properties.Add;
+   try
+      prty.Name := 'TestDef: Float Index 0 read GetTest write SetTest;';
       CheckEquals('TestDef', prty.Name);
-      CheckEquals('String', prty.DataType);
-      CheckEquals('GetTest', prty.ReadAccess);
-      CheckEquals('SetTest', prty.WriteAccess);
-      CheckEquals(True, prty.IsDefault);
+      CheckEquals(0, prty.IndexValue, 'Check index value');
+      CheckEquals('Integer', prty.IndexType, 'Check index type');
+      CheckEquals('Float', prty.DataType, 'Check property data type');
+      CheckEquals('GetTest', prty.ReadAccess, 'Check property read access');
+      CheckEquals('SetTest', prty.WriteAccess, 'Check property write access');
    finally
       cls.Properties.Delete(prty.Index);
    end;

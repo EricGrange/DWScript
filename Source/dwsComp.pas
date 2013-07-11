@@ -4237,6 +4237,7 @@ function TdwsProperty.Parse(const Value : UnicodeString): UnicodeString;
 var
    rules : TPascalTokenizerStateRules;
    tok : TTokenizer;
+   param: TdwsParameter;
    sourceFile : TSourceFile;
 begin
    rules := TPascalTokenizerStateRules.Create;
@@ -4279,19 +4280,26 @@ begin
       end else raise Exception.Create('Property name expected');
 
       if tok.TestDelete(ttALEFT) then
-      begin
-         case tok.TestAny([ttIntVal, ttStrVal]) of
-            ttIntVal:
-               IndexValue := tok.GetToken.FInteger;
-            ttStrVal:
-               IndexValue := tok.GetToken.AsString;
-            else
-               raise Exception.Create('Index value expected');
-         end;
+      repeat
+         if not tok.TestName then
+            raise Exception.Create('Parameter name expected!');
 
-         if not tok.TestDelete(ttARIGHT) then
+         param := Parameters.Add;
+         param.Name := tok.GetToken.AsString;
+         tok.KillToken;
+
+         if not tok.TestDelete(ttCOLON) then
+            raise Exception.Create(''':'' expected!');
+
+         if not tok.TestName then
+            raise Exception.Create('Parameter datatype expected!');
+
+         param.DataType := tok.GetToken.AsString;
+         tok.KillToken;
+
+         if not tok.HasTokens then
             raise Exception.Create(''']'' expected!');
-      end;
+      until tok.TestDelete(ttARIGHT);
 
       // check for data type
       if not tok.TestDelete(ttCOLON) then
@@ -4301,6 +4309,32 @@ begin
          DataType := tok.GetToken.AsString;
          tok.KillToken;
       end else raise Exception.Create('Data type expected');
+
+      if tok.TestDelete(ttINDEX) then
+      begin
+         case tok.TestAny([ttStrVal, ttIntVal, ttFloatVal]) of
+            ttStrVal : begin
+               IndexValue := tok.GetToken.AsString;
+               IndexType := 'String';
+               tok.KillToken;
+            end;
+            ttIntVal : begin
+               IndexValue := tok.GetToken.FInteger;
+               IndexType := 'Integer';
+               tok.KillToken;
+            end;
+            ttFloatVal : begin
+               IndexValue := tok.GetToken.FFloat;
+               IndexType := 'Float';
+               tok.KillToken;
+            end;
+            else
+            if tok.TestName then begin
+               IndexValue := tok.GetToken.AsString;
+               tok.KillToken;
+            end else raise Exception.Create('Index value expected');
+         end;
+      end;
 
       if tok.TestDelete(ttREAD) then
       begin
