@@ -6063,8 +6063,14 @@ end;
 // GetParamAsObject
 //
 function TProgramInfo.GetParamAsObject(index : Integer) : TObject;
+var
+   p : PVarData;
 begin
-   Result:=IScriptObj(IUnknown(GetParamAsPVariant(index)^)).ExternalObject;
+   p:=PVarData(GetParamAsPVariant(index));
+   Assert(p.VType=varUnknown);
+   if p.VUnknown<>nil then
+      Result:=(IUnknown(p.VUnknown) as IScriptObj).ExternalObject
+   else Result:=nil;
 end;
 
 function TProgramInfo.FindClassMatch(AObject: TObject; ExactMatch: Boolean): TClassSymbol;
