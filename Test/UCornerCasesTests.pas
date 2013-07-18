@@ -72,6 +72,7 @@ type
          procedure MultipleHostExceptions;
          procedure OverloadOverrideIndwsUnit;
          procedure PartialClassParent;
+         procedure ConstantAliasing;
    end;
 
    ETestException = class (Exception);
@@ -1493,6 +1494,19 @@ begin
    CheckEquals(2, cls.Members.Count, 'members');
    Check(cls.Parent<>nil, 'Parent not nil');
    CheckEquals('TObject', cls.Parent.Name, 'Parent name');
+end;
+
+// ConstantAliasing
+//
+procedure TCornerCasesTests.ConstantAliasing;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'type TZ = Integer;'#13#10
+                           +'const z = TZ(0);'#13#10
+                           +'var a : array [0..1] of Integer;');
+
+   CheckEquals('', prog.Msgs.AsInfo);
 end;
 
 // ------------------------------------------------------------------

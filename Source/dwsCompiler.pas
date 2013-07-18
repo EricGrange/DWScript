@@ -12513,7 +12513,9 @@ begin
          else if argExpr.IsOfType(FProg.TypBoolean) then
             Result := TOrdBoolExpr.Create(FProg, argExpr)
          else if argExpr.IsOfType(FProg.TypInteger) then
-            Result := argExpr
+            if argExpr.Typ<>typeSym then
+               Result := TConvOrdToIntegerExpr.Create(FProg, argExpr)
+            else Result := argExpr
          else if argExpr.IsOfType(FProg.TypFloat) then
             Result := TConvVarToIntegerExpr.Create(FProg, argExpr)
          else begin
