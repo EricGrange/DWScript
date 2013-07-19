@@ -214,7 +214,8 @@ type
                           skInc, skDec, skSucc, skPred,
                           skInclude, skExclude,
                           skSwap,
-                          skConditionalDefined);
+                          skConditionalDefined,
+                          skDebugBreak);
 
    TSwitchInstruction = (siNone,
                          siIncludeLong, siIncludeShort, siIncludeOnce,
@@ -852,7 +853,7 @@ const
    cSpecialKeywords : array [TSpecialKeywordKind] of UnicodeString = (
       '', 'Abs', 'Assert', 'Assigned', 'High', 'Length', 'Low',
       'Ord', 'SizeOf', 'Defined', 'Declared', 'Inc', 'Dec', 'Succ', 'Pred',
-      'Include', 'Exclude', 'Swap', 'ConditionalDefined'
+      'Include', 'Exclude', 'Swap', 'ConditionalDefined', 'DebugBreak'
    );
 
 // ------------------------------------------------------------------
@@ -11068,7 +11069,12 @@ begin
          'a', 'A' : if ASCIISameText(name, cSpecialKeywords[skAssigned]) then Exit(skAssigned);
          'd', 'D' : if ASCIISameText(name, cSpecialKeywords[skDeclared]) then Exit(skDeclared);
       end;
-      18 : if ASCIISameText(name, cSpecialKeywords[skConditionalDefined]) then Exit(skConditionalDefined);
+      10 : case name[1] of
+         'd', 'D' : if ASCIISameText(name, cSpecialKeywords[skDebugBreak]) then Exit(skDebugBreak);
+      end;
+      18 : case name[1] of
+         'c', 'C' : if ASCIISameText(name, cSpecialKeywords[skConditionalDefined]) then Exit(skConditionalDefined);
+      end;
    end;
    Result:=skNone;
 end;
@@ -12186,30 +12192,47 @@ var
    argTyp : TTypeSymbol;
    argPos : TScriptPos;
 begin
-   if not FTok.TestDelete(ttBLEFT) then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
-
-   FTok.HasTokens;  // get token in buffer for correct argPos below
-   argPos:=FTok.HotPos;
-   case specialKind of
-      skAssigned :
-         argExpr:=ReadExpr(FProg.TypNil);
-      skInc, skDec :
-         argExpr:=ReadTerm(True);
-      skLow, skHigh :
-         argExpr:=ReadExpr(FProg.TypAnyType);
-   else
-      argExpr:=ReadExpr;
-   end;
-   argTyp:=argExpr.Typ;
-   if argTyp<>nil then
-      argTyp:=argTyp.UnAliasedType;
-
    msgExpr:=nil;
-   try
+
+   if specialKind=skDebugBreak then begin
+
+      argExpr:=nil;
+      argTyp:=nil;
+      if FTok.TestDelete(ttBLEFT) then
+         if not FTok.TestDelete(ttBRIGHT) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+
+   end else begin
+
+      if not FTok.TestDelete(ttBLEFT) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
+
+      FTok.HasTokens;  // get token in buffer for correct argPos below
+      argPos:=FTok.HotPos;
+      case specialKind of
+         skAssigned :
+            argExpr:=ReadExpr(FProg.TypNil);
+         skInc, skDec :
+            argExpr:=ReadTerm(True);
+         skLow, skHigh :
+            argExpr:=ReadExpr(FProg.TypAnyType);
+      else
+         argExpr:=ReadExpr;
+      end;
+      if argExpr=nil then
+         argTyp:=nil
+      else begin
+         argTyp:=argExpr.Typ;
+         if argTyp<>nil then
+            argTyp:=argTyp.UnAliasedType;
+      end;
+
       if not Assigned(argTyp) then
          FMsgs.AddCompilerStop(argPos, CPE_InvalidOperands);
 
+   end;
+
+   try
       Result := nil;
 
       case specialKind of
@@ -12384,6 +12407,9 @@ begin
                argExpr:=nil;
             end;
          end;
+         skDebugBreak : begin
+            Result:=TDebugBreakExpr.Create(namePos);
+         end;
          skConditionalDefined : begin
             if not argExpr.IsOfType(FProg.TypString) then
                FMsgs.AddCompilerError(argPos, CPE_StringExpected);
@@ -12438,12 +12464,14 @@ begin
       end else if Optimize then
          Result:=Result.Optimize(FProg, FExec);
 
-      try
-         if not FTok.TestDelete(ttBRIGHT) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
-      except
-         OrphanObject(Result);
-         raise;
+      if specialKind<>skDebugBreak then begin
+         try
+            if not FTok.TestDelete(ttBRIGHT) then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+         except
+            OrphanObject(Result);
+            raise;
+         end;
       end;
 
    except

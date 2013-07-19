@@ -1932,6 +1932,11 @@ type
          class function FindSymbol(symbolTable : TSymbolTable; const name : UnicodeString) : TSymbol; static;
    end;
 
+   TDebugBreakExpr = class(TNoResultExpr)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+
    TSwapExpr = class(TNoResultExpr)
       private
          FArg0 : TDataExpr;
@@ -7171,6 +7176,17 @@ begin
          Result:=nil;
       end;
    end;
+end;
+
+// ------------------
+// ------------------ TDebugBreakExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TDebugBreakExpr.EvalNoResult(exec : TdwsExecution);
+begin
+   // nothing
 end;
 
 // ------------------

@@ -25,7 +25,8 @@ interface
 
 uses
    Classes, SysUtils, Variants,
-   dwsExprs, dwsSymbols, dwsXPlatform, dwsCompiler, dwsErrors, dwsDataContext,
+   dwsSymbols, dwsXPlatform, dwsCompiler, dwsErrors, dwsDataContext,
+   dwsExprs, dwsCoreExprs,
    dwsUtils, dwsXPlatformUI, dwsStrings, dwsUnitSymbols, dwsStack,
    dwsInfo;
 
@@ -999,7 +1000,9 @@ begin
    end;
    FCurrentExpression:=expr;
    inherited;
-   if (FSuspendCondition<>nil) and (FSuspendCondition.SuspendExecution) then begin
+   if    (expr.ClassType=TDebugBreakExpr)
+      or (    (FSuspendCondition<>nil)
+          and (FSuspendCondition.SuspendExecution)) then begin
       FState:=dsDebugSuspended;
       StateChanged;
       while FState=dsDebugSuspended do

@@ -898,7 +898,9 @@ begin
 
    end else if symbol is TSpecialFunctionSymbol then begin
 
-      Result:=symbol.Name+' ( special )';
+      if symbol.Name='DebugBreak' then
+         Result:=symbol.Name
+      else Result:=symbol.Name+' ( special )';
 
    end else Result:=symbol.Name;
 end;
