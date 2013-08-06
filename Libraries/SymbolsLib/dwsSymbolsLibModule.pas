@@ -29,28 +29,24 @@ uses
 
 type
   TdwsSymbolsLib = class(TDataModule)
-    dwsUnit1: TdwsUnit;
-    procedure dwsUnit1ClassesTSymbolsMethodsFirstEval(Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsUnit1ClassesTSymbolsMethodsLastEval(Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsUnit1ClassesTSymbolsMethodsNextEval(Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsUnit1ClassesTSymbolsMethodsPreviousEval(Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsUnit1ClassesTSymbolsMethodsEofEval(Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsUnit1ClassesTSymbolsMethodsCaptionEval(Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsUnit1ClassesTSymbolsMethodsDescriptionEval(Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsUnit1ClassesTSymbolsMethodsGetMembersEval(Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsUnit1ClassesTSymbolsMethodsSymbolTypeEval(Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsUnit1ClassesTSymbolsMethodsDestroyEval(Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsUnit1ClassesTSymbolsMethodsNameEval(Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsUnit1ClassesTSymbolsMethodsLocateEval(Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsUnit1ClassesTSymbolsMethodsGetSuperClassEval(Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsUnit1ClassesTSymbolsMethodsGetParametersEval(
-      Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsUnit1ClassesTSymbolsConstructorsCreateMainEval(
-      Info: TProgramInfo; var ExtObject: TObject);
-    procedure dwsUnit1ClassesTSymbolsConstructorsCreateUidEval(
-      Info: TProgramInfo; var ExtObject: TObject);
-    procedure dwsUnit1ClassesTSymbolsConstructorsCreateUnitEval(
-      Info: TProgramInfo; var ExtObject: TObject);
+    dwsUnit: TdwsUnit;
+    procedure dwsUnitClassesTSymbolsMethodsFirstEval(Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsLastEval(Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsNextEval(Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsPreviousEval(Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsEofEval(Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsCaptionEval(Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsDescriptionEval(Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsGetMembersEval(Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsSymbolTypeEval(Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsDestroyEval(Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsNameEval(Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsLocateEval(Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsGetSuperClassEval(Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsGetParametersEval(Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsConstructorsCreateMainEval(Info: TProgramInfo; var ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsConstructorsCreateUidEval(Info: TProgramInfo; var ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsConstructorsCreateUnitEval(Info: TProgramInfo; var ExtObject: TObject);
   private
     FScript: TDelphiWebScript;
     procedure SetScript(const Value: TDelphiWebScript);
@@ -69,6 +65,9 @@ implementation
 
 uses
   dwsSymbols;
+
+resourcestring
+  RStrUnitSNotFound = 'Unit "%s" not found!';
 
 type
   TSymbols = class
@@ -157,13 +156,13 @@ begin
       TdwsUnit(Components[x]).Script := Value;
 end;
 
-procedure TdwsSymbolsLib.dwsUnit1ClassesTSymbolsConstructorsCreateMainEval(
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsConstructorsCreateMainEval(
   Info: TProgramInfo; var ExtObject: TObject);
 begin
   ExtObject := TSymbols.Create(Info.Execution.Prog.RootTable);
 end;
 
-procedure TdwsSymbolsLib.dwsUnit1ClassesTSymbolsConstructorsCreateUnitEval(
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsConstructorsCreateUnitEval(
   Info: TProgramInfo; var ExtObject: TObject);
 var
   sym: TSymbol;
@@ -172,10 +171,10 @@ begin
   if Assigned(sym) and (sym is TUnitSymbol) then
     ExtObject := TSymbols.Create(TUnitSymbol(sym).Table)
   else
-    raise Exception.CreateFmt('Unit "%s" not found!', [Info.ValueAsString['Name']]);
+    raise Exception.CreateFmt(RStrUnitSNotFound, [Info.ValueAsString['Name']]);
 end;
 
-procedure TdwsSymbolsLib.dwsUnit1ClassesTSymbolsConstructorsCreateUidEval(
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsConstructorsCreateUidEval(
   Info: TProgramInfo; var ExtObject: TObject);
 var
   table: TSymbolTable;
@@ -212,49 +211,49 @@ begin
   ExtObject := TSymbols.Create(sym);
 end;
 
-procedure TdwsSymbolsLib.dwsUnit1ClassesTSymbolsMethodsFirstEval(
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsFirstEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
   TSymbols(ExtObject).SetIndex(0);
 end;
 
-procedure TdwsSymbolsLib.dwsUnit1ClassesTSymbolsMethodsLastEval(
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsLastEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
   TSymbols(ExtObject).SetIndex(TSymbols(ExtObject).Count - 1);
 end;
 
-procedure TdwsSymbolsLib.dwsUnit1ClassesTSymbolsMethodsNextEval(
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsNextEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
   TSymbols(ExtObject).SetIndex(TSymbols(ExtObject).Index + 1);
 end;
 
-procedure TdwsSymbolsLib.dwsUnit1ClassesTSymbolsMethodsPreviousEval(
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsPreviousEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
   TSymbols(ExtObject).SetIndex(TSymbols(ExtObject).Index - 1);
 end;
 
-procedure TdwsSymbolsLib.dwsUnit1ClassesTSymbolsMethodsEofEval(
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsEofEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
   Info.ResultAsBoolean := not Assigned(TSymbols(ExtObject).FCurrentSymbol);
 end;
 
-procedure TdwsSymbolsLib.dwsUnit1ClassesTSymbolsMethodsCaptionEval(
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsCaptionEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
   Info.ResultAsString := TSymbols(ExtObject).CurrentSymbol.Caption;
 end;
 
-procedure TdwsSymbolsLib.dwsUnit1ClassesTSymbolsMethodsDescriptionEval(
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsDescriptionEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
   Info.ResultAsString := TSymbols(ExtObject).CurrentSymbol.Description;
 end;
 
-procedure TdwsSymbolsLib.dwsUnit1ClassesTSymbolsMethodsGetMembersEval(
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsGetMembersEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
   sym: TSymbol;
@@ -271,7 +270,7 @@ begin
       TSymbols.Create(TUnitSymbol(sym).Table)).Call.Value
 end;
 
-procedure TdwsSymbolsLib.dwsUnit1ClassesTSymbolsMethodsSymbolTypeEval(
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsSymbolTypeEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
   sym: TSymbol;
@@ -305,19 +304,19 @@ begin
     Info.ResultAsInteger := stUnknown;
 end;
 
-procedure TdwsSymbolsLib.dwsUnit1ClassesTSymbolsMethodsDestroyEval(
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsDestroyEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
   ExtObject.Free;
 end;
 
-procedure TdwsSymbolsLib.dwsUnit1ClassesTSymbolsMethodsNameEval(
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsNameEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
   Info.ResultAsString := TSymbols(ExtObject).CurrentSymbol.Name;
 end;
 
-procedure TdwsSymbolsLib.dwsUnit1ClassesTSymbolsMethodsLocateEval(
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsLocateEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
   x: Integer;
@@ -338,7 +337,7 @@ begin
   Info.ResultAsBoolean := wasFound;
 end;
 
-procedure TdwsSymbolsLib.dwsUnit1ClassesTSymbolsMethodsGetSuperClassEval(
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsGetSuperClassEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
   sym: TSymbol;
@@ -351,7 +350,7 @@ begin
     Info.ResultAsInteger := 0;
 end;
 
-procedure TdwsSymbolsLib.dwsUnit1ClassesTSymbolsMethodsGetParametersEval(
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsGetParametersEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
   sym: TSymbol;

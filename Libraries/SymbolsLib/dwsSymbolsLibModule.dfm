@@ -1,17 +1,15 @@
 object dwsSymbolsLib: TdwsSymbolsLib
   OldCreateOrder = False
-  Left = 285
-  Top = 161
   Height = 164
   Width = 177
-  object dwsUnit1: TdwsUnit
+  object dwsUnit: TdwsUnit
     Classes = <
       item
         Name = 'TSymbols'
         Constructors = <
           item
             Name = 'CreateMain'
-            OnEval = dwsUnit1ClassesTSymbolsConstructorsCreateMainEval
+            OnEval = dwsUnitClassesTSymbolsConstructorsCreateMainEval
           end
           item
             Name = 'CreateUnit'
@@ -20,7 +18,7 @@ object dwsSymbolsLib: TdwsSymbolsLib
                 Name = 'Name'
                 DataType = 'String'
               end>
-            OnEval = dwsUnit1ClassesTSymbolsConstructorsCreateUnitEval
+            OnEval = dwsUnitClassesTSymbolsConstructorsCreateUnitEval
           end
           item
             Name = 'CreateUid'
@@ -29,81 +27,81 @@ object dwsSymbolsLib: TdwsSymbolsLib
                 Name = 'Uid'
                 DataType = 'String'
               end>
-            OnEval = dwsUnit1ClassesTSymbolsConstructorsCreateUidEval
+            OnEval = dwsUnitClassesTSymbolsConstructorsCreateUidEval
           end>
         Methods = <
           item
             Name = 'Destroy'
             Attributes = [maVirtual, maOverride]
-            OnEval = dwsUnit1ClassesTSymbolsMethodsDestroyEval
+            OnEval = dwsUnitClassesTSymbolsMethodsDestroyEval
             Kind = mkDestructor
           end
           item
             Name = 'First'
-            OnEval = dwsUnit1ClassesTSymbolsMethodsFirstEval
+            OnEval = dwsUnitClassesTSymbolsMethodsFirstEval
             Kind = mkProcedure
           end
           item
             Name = 'Last'
-            OnEval = dwsUnit1ClassesTSymbolsMethodsLastEval
+            OnEval = dwsUnitClassesTSymbolsMethodsLastEval
             Kind = mkProcedure
           end
           item
             Name = 'Next'
-            OnEval = dwsUnit1ClassesTSymbolsMethodsNextEval
+            OnEval = dwsUnitClassesTSymbolsMethodsNextEval
             Kind = mkProcedure
           end
           item
             Name = 'Previous'
-            OnEval = dwsUnit1ClassesTSymbolsMethodsPreviousEval
+            OnEval = dwsUnitClassesTSymbolsMethodsPreviousEval
             Kind = mkProcedure
           end
           item
             Name = 'Eof'
             ResultType = 'Boolean'
-            OnEval = dwsUnit1ClassesTSymbolsMethodsEofEval
+            OnEval = dwsUnitClassesTSymbolsMethodsEofEval
             Kind = mkFunction
           end
           item
             Name = 'Name'
             ResultType = 'String'
-            OnEval = dwsUnit1ClassesTSymbolsMethodsNameEval
+            OnEval = dwsUnitClassesTSymbolsMethodsNameEval
             Kind = mkFunction
           end
           item
             Name = 'Caption'
             ResultType = 'String'
-            OnEval = dwsUnit1ClassesTSymbolsMethodsCaptionEval
+            OnEval = dwsUnitClassesTSymbolsMethodsCaptionEval
             Kind = mkFunction
           end
           item
             Name = 'Description'
             ResultType = 'String'
-            OnEval = dwsUnit1ClassesTSymbolsMethodsDescriptionEval
+            OnEval = dwsUnitClassesTSymbolsMethodsDescriptionEval
             Kind = mkFunction
           end
           item
             Name = 'SymbolType'
             ResultType = 'TSymbolType'
-            OnEval = dwsUnit1ClassesTSymbolsMethodsSymbolTypeEval
+            OnEval = dwsUnitClassesTSymbolsMethodsSymbolTypeEval
             Kind = mkFunction
           end
           item
             Name = 'GetMembers'
             ResultType = 'TSymbols'
-            OnEval = dwsUnit1ClassesTSymbolsMethodsGetMembersEval
+            OnEval = dwsUnitClassesTSymbolsMethodsGetMembersEval
             Kind = mkFunction
           end
           item
             Name = 'GetParameters'
             ResultType = 'TSymbols'
-            OnEval = dwsUnit1ClassesTSymbolsMethodsGetParametersEval
+            OnEval = dwsUnitClassesTSymbolsMethodsGetParametersEval
             Kind = mkFunction
           end
           item
             Name = 'GetSuperClass'
             ResultType = 'TSymbols'
-            OnEval = dwsUnit1ClassesTSymbolsMethodsGetSuperClassEval
+            OnEval = dwsUnitClassesTSymbolsMethodsGetSuperClassEval
             Kind = mkFunction
           end
           item
@@ -114,7 +112,7 @@ object dwsSymbolsLib: TdwsSymbolsLib
                 DataType = 'String'
               end>
             ResultType = 'Boolean'
-            OnEval = dwsUnit1ClassesTSymbolsMethodsLocateEval
+            OnEval = dwsUnitClassesTSymbolsMethodsLocateEval
             Kind = mkFunction
           end>
       end>
