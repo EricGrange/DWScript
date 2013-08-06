@@ -1424,6 +1424,8 @@ type
 
          procedure OptimizeConstantOperandsToFloats(prog : TdwsProgram; exec : TdwsExecution);
 
+         procedure Swap;
+
          property Typ : TTypeSymbol read FTyp write FTyp;
          property Left : TTypedExpr read FLeft write FLeft;
          property Right : TTypedExpr read FRight write FRight;
@@ -5266,6 +5268,17 @@ procedure TBinaryOpExpr.OptimizeConstantOperandsToFloats(prog : TdwsProgram; exe
 begin
    FLeft:=FLeft.OptimizeToFloatConstant(prog, exec);
    FRight:=FRight.OptimizeToFloatConstant(prog, exec);
+end;
+
+// Swap
+//
+procedure TBinaryOpExpr.Swap;
+var
+   t : TTypedExpr;
+begin
+   t:=FLeft;
+   FLeft:=FRight;
+   FRight:=t;
 end;
 
 // GetSubExpr

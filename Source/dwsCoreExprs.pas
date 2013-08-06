@@ -1020,6 +1020,7 @@ type
    // a / b
    TDivideExpr = class(TFloatBinOpExpr)
      function EvalAsFloat(exec : TdwsExecution) : Double; override;
+     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    TPosIntegerBinOpExpr = class(TIntegerBinOpExpr)
@@ -4554,6 +4555,20 @@ end;
 function TDivideExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
    Result:=FLeft.EvalAsFloat(exec)/FRight.EvalAsFloat(exec);
+end;
+
+// Optimize
+//
+function TDivideExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   if FRight is TDivideExpr then begin
+      Result:=TMultFloatExpr.Create(prog, ScriptPos, Left, Right);
+      TDivideExpr(Right).Swap;
+      FLeft:=nil;
+      FRight:=nil;
+      Free;
+      Result:=Result.Optimize(prog, exec);
+   end else Result:=inherited Optimize(prog, exec);
 end;
 
 // ------------------
