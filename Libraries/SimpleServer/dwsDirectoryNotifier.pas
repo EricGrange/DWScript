@@ -131,7 +131,6 @@ type
 constructor TdwsDirectoryNotifier.Create(const aDirectory : String; aMode : TdwsDirectoryNotifierMode);
 begin
    inherited Create(False);
-   NameThreadForDebugging('DirectoryNotifier');
    FDirectory:=aDirectory;
    FMode:=aMode;
 end;
@@ -159,6 +158,7 @@ procedure TdwsDirectoryNotifier.Execute;
 var
    status : Cardinal;
 begin
+   NameThreadForDebugging('DirectoryNotifier');
    FNotifyHandle[0]:=FindFirstChangeNotification(
             PChar(FDirectory),
             (Mode=dnoDirectoryAndSubTree),
