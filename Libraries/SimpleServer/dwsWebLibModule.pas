@@ -52,6 +52,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsRequestAuthenticationEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesWebRequestMethodsHasQueryFieldEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -84,6 +86,12 @@ procedure TdwsWebLib.dwsWebClassesWebRequestMethodsCookiesEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString:=Info.WebRequest.Cookies.Text;
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebRequestMethodsHasQueryFieldEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean:=Info.WebRequest.HasQueryField(Info.ParamAsString[0]);
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsHeaderEval(

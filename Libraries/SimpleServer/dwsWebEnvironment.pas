@@ -99,6 +99,8 @@ type
          property Cookies : TStrings read GetCookies;
          property QueryFields : TStrings read GetQueryFields;
 
+         function HasQueryField(const name : String) : Boolean;
+
          property Authentication : TWebRequestAuthentication read GetAuthentication;
          property AuthenticatedUser : String read GetAuthenticatedUser;
 
@@ -164,6 +166,12 @@ const
    cWebRequestAuthenticationToString : array [TWebRequestAuthentication] of String = (
       'None', 'Failed', 'Basic', 'Digest', 'NTLM', 'Negotiate', 'Kerberos'
    );
+
+const
+   cWebRequestMethodVerbs : array [TWebRequestMethodVerb] of String = (
+      '?', 'OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE',
+      'CONNECT', 'TRACK', 'MOVE', 'COPY', 'PROPFIND', 'PROPPATCH',
+      'MKCOL', 'LOCK', 'UNLOCK', 'SEARCH' );
 
    cHTMTL_UTF8_CONTENT_TYPE = 'text/html; charset=utf-8';
 
@@ -290,6 +298,26 @@ begin
    if FQueryFields=nil then
       FQueryFields:=PrepareQueryFields;
    Result:=FQueryFields;
+end;
+
+// HasQueryField
+//
+function TWebRequest.HasQueryField(const name : String) : Boolean;
+var
+   i, n : Integer;
+   fields : TStrings;
+   elem : String;
+begin
+   fields:=QueryFields;
+   for i:=0 to fields.Count-1 do begin
+      elem:=fields[i];
+      if StrBeginsWith(elem, name) then begin
+         n:=Length(elem);
+         if (n=Length(name)) or (elem[n]='=') then
+            Exit(True);
+      end;
+   end;
+   Result:=False;
 end;
 
 // GetUserAgent

@@ -50,6 +50,18 @@ object dwsWebLib: TdwsWebLib
             Kind = mkClassFunction
           end
           item
+            Name = 'HasQueryField'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end>
+            ResultType = 'Boolean'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebRequestMethodsHasQueryFieldEval
+            Kind = mkClassFunction
+          end
+          item
             Name = 'URL'
             ResultType = 'String'
             Attributes = [maStatic]
@@ -143,7 +155,6 @@ object dwsWebLib: TdwsWebLib
                 Name = 'name'
                 DataType = 'String'
               end>
-            IsDefault = False
           end
           item
             Name = 'Cookie'
@@ -154,7 +165,6 @@ object dwsWebLib: TdwsWebLib
                 Name = 'name'
                 DataType = 'String'
               end>
-            IsDefault = False
           end
           item
             Name = 'QueryField'
@@ -165,7 +175,6 @@ object dwsWebLib: TdwsWebLib
                 Name = 'name'
                 DataType = 'String'
               end>
-            IsDefault = False
           end>
       end
       item
@@ -267,19 +276,16 @@ object dwsWebLib: TdwsWebLib
             Name = 'StatusCode'
             DataType = 'Integer'
             WriteAccess = 'SetStatusCode'
-            IsDefault = False
           end
           item
             Name = 'ContentData'
             DataType = 'String'
             WriteAccess = 'SetContentData'
-            IsDefault = False
           end
           item
             Name = 'ContentType'
             DataType = 'String'
             WriteAccess = 'SetContentType'
-            IsDefault = False
           end
           item
             Name = 'ContentText'
@@ -290,13 +296,11 @@ object dwsWebLib: TdwsWebLib
                 Name = 'textType'
                 DataType = 'String'
               end>
-            IsDefault = False
           end
           item
             Name = 'ContentEncoding'
             DataType = 'String'
             WriteAccess = 'SetContentEncoding'
-            IsDefault = False
           end
           item
             Name = 'Header'
@@ -307,7 +311,6 @@ object dwsWebLib: TdwsWebLib
                 Name = 'name'
                 DataType = 'String'
               end>
-            IsDefault = False
           end>
       end>
     Enumerations = <
