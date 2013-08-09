@@ -94,6 +94,17 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
             OnEval = dwsSystemInfoClassesCPUInfoMethodsProcessUsageEval
             Kind = mkClassFunction
           end>
+      end
+      item
+        Name = 'ApplicationInfo'
+        Methods = <
+          item
+            Name = 'Version'
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesApplicationInfoMethodsVersionEval
+            Kind = mkClassFunction
+          end>
       end>
     Records = <
       item
