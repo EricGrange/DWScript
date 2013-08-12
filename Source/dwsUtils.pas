@@ -604,6 +604,7 @@ function StrNonNilLength(const aString : UnicodeString) : Integer; inline;
 function StrIBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
 function StrBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
 function StrBeginsWithA(const aStr, aBegin : RawByteString) : Boolean;
+function StrIEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
 function StrEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
 function StrContains(const aStr, aSubStr : UnicodeString) : Boolean; overload;
 function StrContains(const aStr : UnicodeString; aChar : WideChar) : Boolean; overload;
@@ -1291,6 +1292,19 @@ begin
    if (n2>n1) or (n2=0) then
       Result:=False
    else Result:=CompareMem(Pointer(aStr), Pointer(aBegin), n2);
+end;
+
+// StrIEndsWith
+//
+function StrIEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
+var
+   n1, n2 : Integer;
+begin
+   n1:=Length(aStr);
+   n2:=Length(aEnd);
+   if (n2>n1) or (n2=0) then
+      Result:=False
+   else Result:=(UnicodeCompareLen(@aStr[n1-n2+1], Pointer(aEnd), n2)=0);
 end;
 
 // StrEndsWith
