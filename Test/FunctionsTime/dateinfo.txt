@@ -7,3 +7,4 @@ FirstDayOfMonth 2011-10-01
 FirstDayOfNextMonth 2011-11-01
 FirstDayOfNextMonth 2 2012-01-01
 FirstDayOfWeek 2011-10-24
+YearOf 2011

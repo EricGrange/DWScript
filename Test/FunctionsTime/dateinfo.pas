@@ -14,3 +14,4 @@ PrintDate('FirstDayOfMonth', FirstDayOfMonth(dt));
 PrintDate('FirstDayOfNextMonth', FirstDayOfNextMonth(dt));
 PrintDate('FirstDayOfNextMonth 2', FirstDayOfNextMonth(IncMonth(dt, 2)));
 PrintDate('FirstDayOfWeek', FirstDayOfWeek(dt));
+PrintLn('YearOf '+YearOf(dt).ToString);

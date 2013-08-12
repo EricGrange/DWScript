@@ -166,6 +166,10 @@ type
     function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
 
+  TYearOfFunc = class(TInternalMagicIntFunction)
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+  end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -559,6 +563,20 @@ begin
    end;
 end;
 
+{ TYearOfFunc }
+
+function TYearOfFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+var
+   dt : TDateTime;
+   y, m, d : Word;
+begin
+   dt:=args.AsFloat[0];
+   if dt=0 then
+      dt:=Now;
+   DecodeDate(dt, y, m, d);
+   Result:=y;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -606,6 +624,7 @@ initialization
    RegisterInternalIntFunction(TDayOfYearFunc, 'DayOfYear', ['dt', cDateTime]);
    RegisterInternalIntFunction(TMonthOfYearFunc, 'MonthOfYear', ['dt', cDateTime]);
    RegisterInternalIntFunction(TDayOfMonthFunc, 'DayOfMonth', ['dt', cDateTime]);
+   RegisterInternalIntFunction(TYearOfFunc, 'YearOf', ['dt', cDateTime]);
 
    RegisterInternalIntFunction(TWeekNumberFunc, 'DateToWeekNumber', ['dt', cDateTime]);
    RegisterInternalIntFunction(TWeekNumberFunc, 'WeekNumber', ['dt', cDateTime]);
