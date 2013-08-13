@@ -270,6 +270,64 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maStatic]
             OnEval = dwsWebClassesWebResponseMethodsRequestAuthenticationEval
             Kind = mkClassProcedure
+          end
+          item
+            Name = 'SetCookie'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end
+              item
+                Name = 'value'
+                DataType = 'String'
+              end
+              item
+                Name = 'expiresGMT'
+                DataType = 'Float'
+                HasDefaultValue = True
+                DefaultValue = '0'
+              end>
+            Overloaded = True
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebResponseMethodsSetCookieEval
+            Kind = mkClassProcedure
+          end
+          item
+            Name = 'SetCookie'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end
+              item
+                Name = 'value'
+                DataType = 'String'
+              end
+              item
+                Name = 'expiresGMT'
+                DataType = 'Float'
+              end
+              item
+                Name = 'path'
+                DataType = 'String'
+              end
+              item
+                Name = 'domain'
+                DataType = 'String'
+                HasDefaultValue = True
+                DefaultValue = ''
+              end
+              item
+                Name = 'flags'
+                DataType = 'Integer'
+                HasDefaultValue = True
+                DefaultValue = 0
+              end>
+            Overloaded = True
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebResponseMethodsSetCookie2Eval
+            Kind = mkClassProcedure
           end>
         Properties = <
           item
@@ -339,6 +397,17 @@ object dwsWebLib: TdwsWebLib
             Name = 'Kerberos'
           end>
         Style = enumScoped
+      end
+      item
+        Name = 'WebCookieFlag'
+        Elements = <
+          item
+            Name = 'Secure'
+          end
+          item
+            Name = 'HttpOnly'
+          end>
+        Style = enumFlags
       end>
     UnitName = 'System.Net'
     StaticSymbols = True

@@ -18,7 +18,9 @@ unit dwsWebEnvironment;
 
 interface
 
-uses Classes, SysUtils, StrUtils, dwsExprs, dwsUtils;
+uses
+   Classes, SysUtils, StrUtils, DateUtils,
+   dwsExprs, dwsUtils;
 
 type
    TWebRequestAuthentication = (
@@ -108,6 +110,26 @@ type
          property Custom : TObject read FCustom write FCustom;
    end;
 
+   TWebResponseCookieFlag = (wrcfSecure = 1, wrcfHttpOnly = 2);
+
+   TWebResponseCookie = class
+      public
+         Name : String;
+         Value : String;
+         ExpiresGMT : TDateTime;
+         Domain : String;
+         Path : String;
+         MaxAge : Integer;
+         Flags : Integer;
+
+         procedure WriteStringLn(dest : TWriteOnlyBlockStream);
+   end;
+
+   TWebResponseCookies = class (TSimpleList<TWebResponseCookie>)
+      public
+         function AddCookie(const name : String) : TWebResponseCookie;
+   end;
+
    TWebResponse = class
       private
          FStatusCode : Integer;
@@ -115,9 +137,11 @@ type
          FContentType : RawByteString;
          FContentEncoding : RawByteString;
          FHeaders : TStrings;
+         FCookies : TWebResponseCookies;  // lazy initialization
 
       protected
          procedure SetContentText(const textType : RawByteString; const text : String);
+         function GetCookies : TWebResponseCookies;
 
       public
          constructor Create;
@@ -126,6 +150,7 @@ type
          procedure Clear; virtual;
 
          function HasHeaders : Boolean; inline;
+         function HasCookies : Boolean; inline;
          function CompiledHeaders : RawByteString;
 
          property StatusCode : Integer read FStatusCode write FStatusCode;
@@ -135,6 +160,7 @@ type
          property ContentEncoding : RawByteString read FContentEncoding write FContentEncoding;
 
          property Headers : TStrings read FHeaders;
+         property Cookies : TWebResponseCookies read GetCookies;
    end;
 
    IWebEnvironment = interface
@@ -376,6 +402,7 @@ end;
 destructor TWebResponse.Destroy;
 begin
    FHeaders.Free;
+   FCookies.Free;
    inherited;
 end;
 
@@ -388,24 +415,49 @@ begin
    FContentData:='';
    FContentEncoding:='';
    FHeaders.Clear;
+   if FCookies<>nil then
+      FCookies.Clear;
 end;
 
 // HasHeaders
 //
 function TWebResponse.HasHeaders : Boolean;
 begin
-   Result:=(FHeaders.Count>0);
+   Result:=(FHeaders.Count>0) or HasCookies;
 end;
 
 // CompiledHeaders
 //
 function TWebResponse.CompiledHeaders : RawByteString;
 var
-   i : Integer;
+   i, p : Integer;
+   wobs : TWriteOnlyBlockStream;
+   buf : String;
 begin
-   Result:='';
-   for i:=0 to Headers.Count-1 do
-      Result:=Result+UTF8Encode(FHeaders.Names[i]+': '+FHeaders.ValueFromIndex[i])+#13#10;
+   wobs:=TWriteOnlyBlockStream.Create;
+   try
+      for i:=0 to Headers.Count-1 do begin
+         buf:=FHeaders[i];
+         p:=Pos('=', buf);
+         wobs.WriteSubString(buf, 1, p-1);
+         wobs.WriteString(': ');
+         wobs.WriteSubString(buf, p+1);
+         wobs.WriteCRLF;
+      end;
+      if HasCookies then
+         for i:=0 to Cookies.Count-1 do
+            FCookies[i].WriteStringLn(wobs);
+      Result:=wobs.ToUTF8String;
+   finally
+      wobs.Free;
+   end;
+end;
+
+// HasCookies
+//
+function TWebResponse.HasCookies : Boolean;
+begin
+   Result:=(FCookies<>nil) and (FCookies.Count>0);
 end;
 
 // SetContentText
@@ -414,6 +466,84 @@ procedure TWebResponse.SetContentText(const textType : RawByteString; const text
 begin
    ContentType:='text/'+textType+'; charset=utf-8';
    ContentData:=UTF8Encode(text);
+end;
+
+// GetCookies
+//
+function TWebResponse.GetCookies : TWebResponseCookies;
+begin
+   if FCookies=nil then
+      FCookies:=TWebResponseCookies.Create;
+   Result:=FCookies;
+end;
+
+// ------------------
+// ------------------ TWebResponseCookies ------------------
+// ------------------
+
+// WriteStringLn
+//
+procedure TWebResponseCookie.WriteStringLn(dest : TWriteOnlyBlockStream);
+const
+   cMonths : array [1..12] of String = (
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' );
+   cWeekDays : array [1..7] of String = ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun' );
+var
+   y, m, d : Word;
+   h, n, s, z : Word;
+begin
+   dest.WriteString('Set-Cookie: ');
+   dest.WriteString(Name);
+   dest.WriteString('=');
+   dest.WriteString(Value);
+
+   if ExpiresGMT<>0 then begin
+      dest.WriteString('; Expires=');
+      if ExpiresGMT<0 then
+         dest.WriteString('Thu, 01 Jan 1970 00:00:01 GMT')
+      else begin
+         dest.WriteString(cWeekDays[DayOfTheWeek(ExpiresGMT)]);
+         DecodeDateTime(ExpiresGMT, y, m, d, h, n, s, z);
+         dest.WriteString(Format(', %.02d %s %d %.02d:%.02d:%.02d GMT',
+                                 [d, cMonths[m], y, h, n, s]));
+      end;
+   end;
+
+   if MaxAge<>0 then begin
+      dest.WriteString('; Max-Age=');
+      dest.WriteString(MaxAge);
+   end;
+
+   if Path<>'' then begin
+      dest.WriteString('; Path=');
+      dest.WriteString(Path);
+   end;
+
+   if Domain<>'' then begin
+      dest.WriteString('; Domain=');
+      dest.WriteString(Domain);
+   end;
+
+   if (Flags and Ord(wrcfSecure))<>0 then
+      dest.WriteString('; Secure');
+
+   if (Flags and Ord(wrcfHttpOnly))<>0 then
+      dest.WriteString('; HttpOnly');
+
+   dest.WriteCRLF;
+end;
+
+// ------------------
+// ------------------ TWebResponseCookie ------------------
+// ------------------
+
+// AddCookie
+//
+function TWebResponseCookies.AddCookie(const name : String) : TWebResponseCookie;
+begin
+   Result:=TWebResponseCookie.Create;
+   Result.Name:=name;
+   Add(Result);
 end;
 
 end.

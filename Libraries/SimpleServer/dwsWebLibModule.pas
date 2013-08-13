@@ -54,6 +54,10 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesWebRequestMethodsHasQueryFieldEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesWebResponseMethodsSetCookieEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesWebResponseMethodsSetCookie2Eval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -192,6 +196,29 @@ procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetContentTextEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.WebResponse.ContentText[Info.ParamAsDataString[0]]:=Info.ParamAsString[1];
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetCookieEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   cookie : TWebResponseCookie;
+begin
+   cookie:=Info.WebResponse.Cookies.AddCookie(Info.ParamAsString[0]);
+   cookie.Value:=Info.ParamAsString[1];
+   cookie.ExpiresGMT:=Info.ParamAsFloat[2];
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetCookie2Eval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   cookie : TWebResponseCookie;
+begin
+   cookie:=Info.WebResponse.Cookies.AddCookie(Info.ParamAsString[0]);
+   cookie.Value:=Info.ParamAsString[1];
+   cookie.ExpiresGMT:=Info.ParamAsFloat[2];
+   cookie.Path:=Info.ParamAsString[3];
+   cookie.Domain:=Info.ParamAsString[4];
+   cookie.Flags:=Info.ParamAsInteger[5];
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetHeaderEval(

@@ -530,6 +530,7 @@ type
 
          // must be strictly an utf16 UnicodeString
          procedure WriteString(const utf16String : UnicodeString); overload;
+         procedure WriteString(const i : Integer); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos : Integer); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos, Alength : Integer); overload;
          procedure WriteCRLF;
@@ -538,6 +539,7 @@ type
 
          // assumes data is an utf16 UnicodeString, spits out utf8 in FPC, utf16 in Delphi
          function ToString : String; override;
+         function ToUTF8String : RawByteString;
          function ToBytes : TBytes;
 
          procedure Clear;
@@ -2351,6 +2353,16 @@ begin
    {$endif}
 end;
 
+// WriteString
+//
+procedure TWriteOnlyBlockStream.WriteString(const i : Integer);
+var
+   s : String;
+begin
+   FastInt64ToStr(i, s);
+   WriteString(s);
+end;
+
 // WriteChar
 //
 procedure TWriteOnlyBlockStream.WriteChar(utf16Char : WideChar);
@@ -2406,6 +2418,13 @@ begin
 
    end else Result:='';
    {$endif}
+end;
+
+// ToUTF8String
+//
+function TWriteOnlyBlockStream.ToUTF8String : RawByteString;
+begin
+   Result:=UTF8Encode(ToString);
 end;
 
 // ToBytes
