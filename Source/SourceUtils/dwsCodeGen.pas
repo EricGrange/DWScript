@@ -468,6 +468,9 @@ begin
             Exit(meth.ExternalName)
          else sym:=meth;
       end;
+   end else if sym is TDataSymbol then begin
+      if TDataSymbol(sym).HasExternalName then
+         Exit(TDataSymbol(sym).ExternalName);
    end else if sym is TClassSymbol then begin
       if TClassSymbol(sym).ExternalRoot<>nil then
          Exit(TClassSymbol(sym).ExternalName);

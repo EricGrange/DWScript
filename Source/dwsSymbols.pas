@@ -458,14 +458,19 @@ type
    // variable: var x: Integer;
    TDataSymbol = class (TValueSymbol)
       protected
+         FExternalName : UnicodeString;
          FStackAddr : Integer;
          FLevel : SmallInt;
 
          function GetDescription : UnicodeString; override;
+         function GetExternalName : UnicodeString;
 
       public
          procedure AllocateStackAddr(generator : TAddrGenerator);
 
+         function HasExternalName : Boolean;
+
+         property ExternalName : UnicodeString read GetExternalName write FExternalName;
          property Level : SmallInt read FLevel write FLevel;
          property StackAddr: Integer read FStackAddr write FStackAddr;
    end;
@@ -663,7 +668,6 @@ type
          function GetSourcePosition : TScriptPos; virtual;
          procedure SetSourcePosition(const val : TScriptPos); virtual;
          function GetExternalName : UnicodeString;
-         procedure SetExternalName(const val : UnicodeString);
 
          function GetSourceSubExpr(i : Integer) : TExprBase;
          function GetSourceSubExprCount : Integer;
@@ -708,7 +712,7 @@ type
          property IsOverloaded : Boolean read GetIsOverloaded write SetIsOverloaded;
          property IsExternal : Boolean read GetIsExternal write SetIsExternal;
          property Kind : TFuncKind read FKind write FKind;
-         property ExternalName : UnicodeString read GetExternalName write SetExternalName;
+         property ExternalName : UnicodeString read GetExternalName write FExternalName;
          function HasExternalName : Boolean;
          property IsLambda : Boolean read GetIsLambda write SetIsLambda;
          property Level : SmallInt read GetLevel;
@@ -3188,13 +3192,6 @@ begin
    else Result:=FExternalName;
 end;
 
-// SetExternalName
-//
-procedure TFuncSymbol.SetExternalName(const val : UnicodeString);
-begin
-   FExternalName:=val;
-end;
-
 // GetSourceSubExpr
 //
 function TFuncSymbol.GetSourceSubExpr(i : Integer) : TExprBase;
@@ -4915,12 +4912,28 @@ begin
   else Result:=Name+': ???';
 end;
 
+// GetExternalName
+//
+function TDataSymbol.GetExternalName : UnicodeString;
+begin
+   if FExternalName='' then
+      Result:=Name
+   else Result:=FExternalName;
+end;
+
 // AllocateStackAddr
 //
 procedure TDataSymbol.AllocateStackAddr(generator : TAddrGenerator);
 begin
    FLevel:=generator.Level;
    FStackAddr:=generator.GetStackAddr(Size);
+end;
+
+// HasExternalName
+//
+function TDataSymbol.HasExternalName : Boolean;
+begin
+   Result:=(FExternalName<>'');
 end;
 
 // ------------------

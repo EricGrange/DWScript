@@ -136,7 +136,9 @@ const
   CPE_UnexpectedEnd = 'Unexpected END';
   CPE_ClassExpected = 'CLASS expected';
   CPE_OnlyOneFieldExpectedForExternal = 'Only one field expected for EXTERNAL name';
-  CPE_ExternalArrayForStaticMethodsOnly = 'Externalarray is supported only for static methods';
+  CPE_ExternalArrayForStaticMethodsOnly = 'External array is supported only for static methods';
+  CPE_ExternalVariablesMustBeGlobal = 'External variables must be global';
+  CPE_ExternalClassVariablesInitializationIsNotSupported = 'External class variables initialization is not supported';
 
   // ReadName
   CPE_UnknownName = 'Unknown name "%s"';

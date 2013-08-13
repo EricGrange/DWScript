@@ -322,7 +322,8 @@ type
 
    IdwsDataSymbolFactory = interface
       procedure CheckName(const name : UnicodeString; const namePos : TScriptPos);
-      function CreateDataSymbol(const name : UnicodeString; const namePos : TScriptPos; typ : TTypeSymbol) : TDataSymbol;
+      function CreateDataSymbol(const name, externalName : UnicodeString;
+                                const namePos : TScriptPos; typ : TTypeSymbol) : TDataSymbol;
       function CreateConstSymbol(const name : UnicodeString; const namePos : TScriptPos; typ : TTypeSymbol;
                                  const data : TData) : TConstSymbol;
       function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
@@ -611,7 +612,8 @@ type
          function ReadNameOld(isWrite : Boolean) : TTypedExpr;
          function ReadNameInherited(isWrite : Boolean) : TProgramExpr;
          procedure ReadNameList(names : TSimpleStringList; var posArray : TScriptPosArray;
-                                const options : TdwsNameListOptions = []);
+                                const options : TdwsNameListOptions = [];
+                                externalNames : TSimpleStringList = nil);
          procedure ReadExternalName(funcSym : TFuncSymbol);
          function  ReadNew(restrictTo : TClassSymbol) : TProgramExpr;
          function  ReadNewArray(elementTyp : TTypeSymbol) : TNewArrayExpr;
@@ -721,11 +723,13 @@ type
 
          procedure ReadVarDeclBlock(var action : TdwsStatementAction; initVarBlockExpr : TBlockExprBase);
          procedure ReadVarDecl(const dataSymbolFactory : IdwsDataSymbolFactory; initVarBlockExpr : TBlockExprBase);
-         procedure ReadNamedVarsDecl(names : TSimpleStringList; const posArray : TScriptPosArray;
+         procedure ReadNamedVarsDecl(names, externalNames : TSimpleStringList;
+                                     const posArray : TScriptPosArray;
                                      const dataSymbolFactory : IdwsDataSymbolFactory;
                                      initVarBlockExpr : TBlockExprBase);
          function CreateNamedVarDeclExpr(const dataSymbolFactory : IdwsDataSymbolFactory;
-                                         const name : UnicodeString; const scriptPos : TScriptPos;
+                                         const name, externalName : UnicodeString;
+                                         const scriptPos : TScriptPos;
                                          typ : TTypeSymbol; var initExpr : TTypedExpr;
                                          var sym : TDataSymbol) : TProgramExpr;
          function ReadWhile : TProgramExpr;
@@ -925,7 +929,8 @@ type
       public
          constructor Create(aCompiler : TdwsCompiler);
          procedure CheckName(const name : UnicodeString; const namePos : TScriptPos); virtual;
-         function CreateDataSymbol(const name : UnicodeString; const namePos : TScriptPos; typ : TTypeSymbol) : TDataSymbol; virtual;
+         function CreateDataSymbol(const name, externalName : UnicodeString;
+                                   const namePos : TScriptPos; typ : TTypeSymbol) : TDataSymbol; virtual;
          function CreateConstSymbol(const name : UnicodeString; const namePos : TScriptPos;
                                     typ : TTypeSymbol; const data : TData) : TConstSymbol; virtual;
          function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr; virtual;
@@ -942,7 +947,8 @@ type
          constructor Create(aCompiler : TdwsCompiler; ownerType : TCompositeTypeSymbol;
                             aVisibility : TdwsVisibility);
          procedure CheckName(const name : UnicodeString; const namePos : TScriptPos); override;
-         function CreateDataSymbol(const name : UnicodeString; const namePos : TScriptPos; typ : TTypeSymbol) : TDataSymbol; override;
+         function CreateDataSymbol(const name, externalName : UnicodeString;
+                                   const namePos : TScriptPos; typ : TTypeSymbol) : TDataSymbol; override;
          function CreateConstSymbol(const name : UnicodeString; const namePos : TScriptPos;
                                     typ : TTypeSymbol; const data : TData) : TConstSymbol; override;
          function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr; override;
@@ -1034,11 +1040,13 @@ end;
 
 // CreateDataSymbol
 //
-function TStandardSymbolFactory.CreateDataSymbol(const name : UnicodeString; const namePos : TScriptPos;
-                                                 typ : TTypeSymbol) : TDataSymbol;
+function TStandardSymbolFactory.CreateDataSymbol(const name, externalName : UnicodeString;
+      const namePos : TScriptPos; typ : TTypeSymbol) : TDataSymbol;
 begin
    CheckName(name, namePos);
    Result:=TDataSymbol.Create(name, typ);
+   if externalName<>'' then
+      Result.ExternalName:=externalName;
    FCompiler.FProg.Table.AddSymbol(Result);
 end;
 
@@ -1110,8 +1118,8 @@ end;
 
 // CreateDataSymbol
 //
-function TCompositeTypeSymbolFactory.CreateDataSymbol(const name : UnicodeString; const namePos : TScriptPos;
-                                                       typ : TTypeSymbol) : TDataSymbol;
+function TCompositeTypeSymbolFactory.CreateDataSymbol(const name, externalName : UnicodeString;
+      const namePos : TScriptPos; typ : TTypeSymbol) : TDataSymbol;
 var
    cvs : TClassVarSymbol;
 begin
@@ -1120,6 +1128,8 @@ begin
    cvs:=TClassVarSymbol.Create(name, typ);
    cvs.Visibility:=FVisibility;
    cvs.AllocateStackAddr(FCompiler.FProg.Table.AddrGenerator);
+   if externalName<>'' then
+      cvs.ExternalName:=externalName;
    FOwnerType.AddClassVar(cvs);
    Result:=cvs;
 end;
@@ -2523,21 +2533,24 @@ end;
 //
 procedure TdwsCompiler.ReadVarDecl(const dataSymbolFactory : IdwsDataSymbolFactory; initVarBlockExpr : TBlockExprBase);
 var
-   names : TSimpleStringList;
+   names, externalNames : TSimpleStringList;
    posArray : TScriptPosArray;
 begin
    names:=AcquireStringList;
+   externalNames:=AcquireStringList;
    try
-      ReadNameList(names, posArray);
-      ReadNamedVarsDecl(names, posArray, dataSymbolFactory, initVarBlockExpr);
+      ReadNameList(names, posArray, [], externalNames);
+      ReadNamedVarsDecl(names, externalNames, posArray, dataSymbolFactory, initVarBlockExpr);
    finally
+      ReleaseStringList(externalNames);
       ReleaseStringList(names);
    end;
 end;
 
 // ReadNamedVarsDecl
 //
-procedure TdwsCompiler.ReadNamedVarsDecl(names : TSimpleStringList; const posArray : TScriptPosArray;
+procedure TdwsCompiler.ReadNamedVarsDecl(names, externalNames : TSimpleStringList;
+                                         const posArray : TScriptPosArray;
                                          const dataSymbolFactory : IdwsDataSymbolFactory;
                                          initVarBlockExpr : TBlockExprBase);
 var
@@ -2547,6 +2560,7 @@ var
    hotPos : TScriptPos;
    initExpr : TTypedExpr;
    assignExpr : TProgramExpr;
+   externalName : String;
 begin
    initExpr := nil;
    try
@@ -2600,7 +2614,10 @@ begin
          FMsgs.AddCompilerErrorFmt(hotPos, CPE_ClassIsStaticNoInstances, [typ.Name]);
 
       for x:=0 to names.Count-1 do begin
-         assignExpr:=CreateNamedVarDeclExpr(dataSymbolFactory, names[x], posArray[x], typ, initExpr, sym);
+         if externalNames<>nil then
+            externalName:=externalNames[x];
+         assignExpr:=CreateNamedVarDeclExpr(dataSymbolFactory, names[x], externalName,
+                                            posArray[x], typ, initExpr, sym);
          if assignExpr<>nil then
             initVarBlockExpr.AddStatement(assignExpr);
       end;
@@ -2612,7 +2629,8 @@ end;
 // CreateNamedVarDeclExpr
 //
 function TdwsCompiler.CreateNamedVarDeclExpr(const dataSymbolFactory : IdwsDataSymbolFactory;
-                                             const name : UnicodeString; const scriptPos : TScriptPos;
+                                             const name, externalName : UnicodeString;
+                                             const scriptPos : TScriptPos;
                                              typ : TTypeSymbol; var initExpr : TTypedExpr;
                                              var sym : TDataSymbol) : TProgramExpr;
 var
@@ -2623,13 +2641,16 @@ var
 begin
    Result:=nil;
 
-   sym:=dataSymbolFactory.CreateDataSymbol(name, scriptPos, typ);
+   sym:=dataSymbolFactory.CreateDataSymbol(name, externalName, scriptPos, typ);
 
    varExpr:=GetVarExpr(sym);
    if Assigned(initExpr) then begin
 
       // Initialize with an expression
       RecordSymbolUse(sym, scriptPos, [suDeclaration, suReference, suWrite]);
+
+      if (externalName<>'') and (sym is TClassVarSymbol) then
+         FMsgs.AddCompilerError(scriptPos, CPE_ExternalClassVariablesInitializationIsNotSupported);
 
       {$ifndef COALESCE_VAR_INITIALIZATION}
       FProg.InitExpr.AddStatement(
@@ -7614,12 +7635,15 @@ end;
 // ReadNameList
 //
 procedure TdwsCompiler.ReadNameList(names : TSimpleStringList; var posArray : TScriptPosArray;
-                                    const options : TdwsNameListOptions = []);
+                                    const options : TdwsNameListOptions = [];
+                                    externalNames : TSimpleStringList = nil);
 var
    n : Integer;
 begin
    n:=0;
    names.Clear;
+   if externalNames<>nil then
+      externalNames.Clear;
    repeat
       if not FTok.TestName then begin
          if not ((nloAllowStrings in Options) and FTok.Test(ttStrVal)) then
@@ -7642,6 +7666,21 @@ begin
          names[names.Count-1]:=names[names.Count-1]+'.'+FTok.GetToken.AsString;
          FTok.KillToken;
       end;
+
+      if externalNames<>nil  then begin
+         if FTok.TestDelete(ttEXTERNAL) then begin
+            if FProg.Level<>0 then
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_ExternalVariablesMustBeGlobal);
+            if FTok.Test(ttStrVal) then begin
+               externalNames.Add(FTok.GetToken.AsString);
+               FTok.KillToken;
+            end else begin
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected);
+               externalNames.Add('');
+            end;
+         end else externalNames.Add('');
+      end;
+
    until not FTok.TestDelete(ttCOMMA);
 end;
 
@@ -8624,7 +8663,7 @@ begin
       if FTok.TestDeleteAny([ttEQ, ttASSIGN])<>ttNone then
          initExpr:=factory.ReadInitExpr(propSym.Typ)
       else initExpr:=nil;
-      assignExpr:=CreateNamedVarDeclExpr(factory, '', FTok.HotPos, propSym.Typ, initExpr, classVar);
+      assignExpr:=CreateNamedVarDeclExpr(factory, '', '', FTok.HotPos, propSym.Typ, initExpr, classVar);
       if assignExpr<>nil then
          FProg.InitExpr.AddStatement(assignExpr);
       sym:=classVar;
@@ -12227,8 +12266,10 @@ begin
             argTyp:=argTyp.UnAliasedType;
       end;
 
-      if not Assigned(argTyp) then
+      if not Assigned(argTyp) then begin
+         argExpr.Free;
          FMsgs.AddCompilerStop(argPos, CPE_InvalidOperands);
+      end;
 
    end;
 
