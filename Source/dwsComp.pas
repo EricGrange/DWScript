@@ -3014,6 +3014,7 @@ end;
 function TdwsFunctionSymbol.Parse(const Value : UnicodeString): UnicodeString;
 var
    param : TdwsParameter;
+   params : TArray<TdwsParameter>;
    rules : TPascalTokenizerStateRules;
    tok : TTokenizer;
    tokenType: TTokenType;
@@ -3074,32 +3075,50 @@ begin
                tok.KillToken;
             end else raise Exception.Create('Parameter name expected');
 
+            SetLength(params, 1);
+            Params[0] := param;
+
+            while tok.TestDelete(ttCOMMA) do
+            begin
+               SetLength(params, length(params) + 1);
+               param := Parameters.Add;
+               param.Assign(params[0]);
+               if tok.TestName then begin
+                  param.Name := tok.GetToken.AsString;
+                  tok.KillToken;
+                  params[high(params)] := param;
+               end else raise Exception.Create('Parameter name expected');
+            end;
+
             if not tok.TestDelete(ttCOLON) then
                raise Exception.Create('Colon expected');
 
             if tok.TestName then begin
-               param.DataType := tok.GetToken.AsString;
+               for param in params do
+                  param.DataType := tok.GetToken.AsString;
                tok.KillToken;
             end else raise Exception.Create('Data type expected');
 
             // check for default value
             if tok.TestDelete(ttEQ) then begin
+               if length(params) > 1 then
+                  raise Exception.Create('Default value not allowed for a list of more than 1 parameter');
                case tok.TestAny([ttStrVal, ttIntVal, ttFloatVal]) of
                   ttStrVal: begin
-                     param.DefaultValue := tok.GetToken.AsString;
+                     params[0].DefaultValue := tok.GetToken.AsString;
                      tok.KillToken;
                   end;
                   ttIntVal: begin
-                     param.DefaultValue := tok.GetToken.FInteger;
+                     params[0].DefaultValue := tok.GetToken.FInteger;
                      tok.KillToken;
                   end;
                   ttFloatVal: begin
-                     param.DefaultValue := tok.GetToken.FFloat;
+                     params[0].DefaultValue := tok.GetToken.FFloat;
                      tok.KillToken;
                   end;
                else
                   if tok.TestName then begin
-                     param.DefaultValue := tok.GetToken.AsString;
+                     params[0].DefaultValue := tok.GetToken.AsString;
                      tok.KillToken;
                   end else raise Exception.Create('Default value expected');
                end;
