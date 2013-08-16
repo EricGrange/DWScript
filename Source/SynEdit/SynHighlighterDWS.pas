@@ -820,7 +820,7 @@ begin
             end;
          end;
          #$0080..#$FFFF :
-            if TCharacter.IsLetterOrDigit(fLine[Run]) then
+            if {$IFDEF SYN_COMPILER_18_UP}Char(fLine[Run]).IsLetterOrDigit{$ELSE}TCharacter.IsLetterOrDigit(fLine[Run]){$ENDIF} then
                IdentProc
             else UnknownProc;
       else
@@ -969,8 +969,9 @@ end;
 function TSynDWSSyn.IsIdentChar(AChar: WideChar): Boolean;
 begin
    if Ord(AChar)<=$7F then
-      Result:=AnsiChar(AChar) in ['_', '0'..'9', 'A'..'Z', 'a'..'z']
-   else Result:=TCharacter.IsLetterOrDigit(AChar);
+      Result := AnsiChar(AChar) in ['_', '0'..'9', 'A'..'Z', 'a'..'z']
+   else
+      Result := {$IFDEF SYN_COMPILER_18_UP}AChar.IsLetterOrDigit{$ELSE}TCharacter.IsLetterOrDigit(AChar){$ENDIF};
 end;
 
 class function TSynDWSSyn.GetFriendlyLanguageName: UnicodeString;
