@@ -1,5 +1,9 @@
 
 empty
+False
+def
+True
+hello
 hello
 world
 world!

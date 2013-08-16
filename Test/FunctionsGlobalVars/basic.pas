@@ -3,7 +3,14 @@ CleanupGlobalVars;
 PrintLn(ReadGlobalVar('test'));
 PrintLn(ReadGlobalVarDef('test', 'empty'));
 
+var v : Variant := 'def';
+PrintLn(TryReadGlobalVar('test', v));
+PrintLn(v);
+
 WriteGlobalVar('test', 'hello');
+
+PrintLn(TryReadGlobalVar('test', v));
+PrintLn(v);
 
 PrintLn(ReadGlobalVarDef('test', 'empty'));
 

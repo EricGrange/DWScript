@@ -338,8 +338,8 @@ begin
    for i:=0 to fields.Count-1 do begin
       elem:=fields[i];
       if StrBeginsWith(elem, name) then begin
-         n:=Length(elem);
-         if (n=Length(name)) or (elem[n]='=') then
+         n:=Length(name);
+         if (Length(elem)=n) or (elem[n+1]='=') then
             Exit(True);
       end;
    end;
@@ -500,7 +500,7 @@ begin
    if ExpiresGMT<>0 then begin
       dest.WriteString('; Expires=');
       if ExpiresGMT<0 then
-         dest.WriteString('Thu, 01 Jan 1970 00:00:01 GMT')
+         dest.WriteString('Sat, 01 Jan 2000 00:00:01 GMT')
       else begin
          dest.WriteString(cWeekDays[DayOfTheWeek(ExpiresGMT)]);
          DecodeDateTime(ExpiresGMT, y, m, d, h, n, s, z);
