@@ -494,7 +494,7 @@ var
 begin
    dest.WriteString('Set-Cookie: ');
    dest.WriteString(Name);
-   dest.WriteString('=');
+   dest.WriteChar('=');
    dest.WriteString(Value);
 
    if ExpiresGMT<>0 then begin
