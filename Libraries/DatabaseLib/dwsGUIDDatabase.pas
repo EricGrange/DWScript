@@ -15,7 +15,7 @@
 {                                                                      }
 {**********************************************************************}
 {
-   This is a pseudo-database where all queries return an infinite datase
+   This is a pseudo-database where all queries return an infinite database
    comprised of a single column whose values are GUIDs
 }
 unit dwsGUIDDatabase;
