@@ -264,7 +264,7 @@ const
   CPE_VarParameterExpected = 'Parameter %d (%s) - Var-parameter expected';
   CPE_ConstParameterExpected = 'Parameter %d (%s) - Const-parameter expected';
   CPE_ValueParameterExpected = 'Parameter %d (%s) - Value-parameter expected';
-  CPE_MismatchingParameterDefaultValues = 'Parameter %d (%s) - mismatching default values';
+  CPE_MismatchingParameterDefaultValues = 'Parameter %d (%s) - default value at implementation does not match declaration or forward';
   CPE_VarParameterForbidden = 'Parameter %d - Var-parameter forbidden';
 
   // Arrays
