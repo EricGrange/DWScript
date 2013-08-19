@@ -38,7 +38,7 @@ interface
 
 uses
    Variants, Windows, Classes, SysUtils,
-   dwsUtils, dwsStrings, dwsExprList,
+   dwsUtils, dwsStrings, dwsExprList, dwsConstExprs,
    dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs;
 
 type
@@ -49,6 +49,10 @@ type
 
    TReadGlobalVarDefFunc = class(TInternalMagicVariantFunction)
       function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
+   end;
+
+   TTryReadGlobalVarFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
 
    TWriteGlobalVarFunc = class(TInternalMagicBoolFunction)
@@ -67,8 +71,8 @@ type
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
 
-   TSaveGlobalVarsToString = class(TInternalFunction)
-      procedure Execute(info : TProgramInfo); override;
+   TSaveGlobalVarsToString = class(TInternalMagicStringFunction)
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
 
    TLoadGlobalVarsFromString = class(TInternalFunction)
@@ -84,9 +88,10 @@ type
 {: Directly write a global var.<p> }
 function WriteGlobalVar(const aName: UnicodeString; const aValue: Variant) : Boolean;
 {: Directly read a global var.<p> }
-function ReadGlobalVar(const aName: UnicodeString): Variant;
+function ReadGlobalVar(const aName: UnicodeString): Variant; inline;
+function TryReadGlobalVar(const aName: UnicodeString; var value: Variant): Boolean;
 {: Directly read a global var, using a default value if variable does not exists.<p> }
-function ReadGlobalVarDef(const aName: UnicodeString; const aDefault: Variant): Variant;
+function ReadGlobalVarDef(const aName: UnicodeString; const aDefault: Variant): Variant; inline;
 {: Delete specified global var if it exists. }
 function DeleteGlobalVar(const aName : UnicodeString) : Boolean;
 {: Resets all global vars.<p> }
@@ -169,21 +174,30 @@ begin
    Result:=ReadGlobalVarDef(aName, Result);
 end;
 
-// ReadGlobalVarDef
+// TryReadGlobalVar
 //
-function ReadGlobalVarDef(const aName : UnicodeString; const aDefault : Variant) : Variant;
+function TryReadGlobalVar(const aName: UnicodeString; var value: Variant): Boolean;
 var
    gv : TGlobalVar;
 begin
    EnterCriticalSection(vGlobalVarsCS);
    try
       gv:=vGlobalVars.Objects[aName];
-      if gv<>nil then
-         Result:=gv.Value
-      else Result:=aDefault;
+      if gv<>nil then begin
+         value:=gv.Value;
+         Result:=True;
+      end else Result:=False;
    finally
       LeaveCriticalSection(vGlobalVarsCS);
    end;
+end;
+
+// ReadGlobalVarDef
+//
+function ReadGlobalVarDef(const aName : UnicodeString; const aDefault : Variant) : Variant;
+begin
+   if not TryReadGlobalVar(aName, Result) then
+      Result:=aDefault;
 end;
 
 // DeleteGlobalVar
@@ -509,7 +523,19 @@ end;
 
 function TReadGlobalVarDefFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
 begin
-   Result:=ReadGlobalVarDef(args.AsString[0], args.ExprBase[1].Eval(args.Exec));
+   if not TryReadGlobalVar(args.AsString[0], Result) then
+      args.ExprBase[1].EvalAsVariant(args.Exec, Result);
+end;
+
+{ TTryReadGlobalVarFunc }
+
+function TTryReadGlobalVarFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+var
+   v : Variant;
+begin
+   Result:=TryReadGlobalVar(args.AsString[0], v);
+   if Result then
+      args.ExprBase[1].AssignValue(args.Exec, v);
 end;
 
 { TWriteGlobalVarFunc }
@@ -542,9 +568,11 @@ end;
 
 { TSaveGlobalVarsToString }
 
-procedure TSaveGlobalVarsToString.Execute;
+// DoEvalAsString
+//
+procedure TSaveGlobalVarsToString.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
-   Info.ResultAsDataString:=SaveGlobalVarsToString;
+   Result:=RawByteStringToScriptString(SaveGlobalVarsToString);
 end;
 
 { TLoadGlobalVarsFromString }
@@ -561,12 +589,13 @@ initialization
 
    RegisterInternalFunction(TReadGlobalVarFunc, 'ReadGlobalVar', ['n', SYS_STRING], SYS_VARIANT);
    RegisterInternalFunction(TReadGlobalVarDefFunc, 'ReadGlobalVarDef', ['n', SYS_STRING, 'd', SYS_VARIANT], SYS_VARIANT);
-   RegisterInternalFunction(TWriteGlobalVarFunc, 'WriteGlobalVar', ['n', SYS_STRING, 'v', SYS_VARIANT], SYS_BOOLEAN);
-   RegisterInternalFunction(TDeleteGlobalVarFunc, 'DeleteGlobalVar', ['n', SYS_STRING], SYS_BOOLEAN);
+   RegisterInternalBoolFunction(TTryReadGlobalVarFunc, 'TryReadGlobalVar', ['n', SYS_STRING, '@v', SYS_VARIANT]);
+   RegisterInternalBoolFunction(TWriteGlobalVarFunc, 'WriteGlobalVar', ['n', SYS_STRING, 'v', SYS_VARIANT]);
+   RegisterInternalBoolFunction(TDeleteGlobalVarFunc, 'DeleteGlobalVar', ['n', SYS_STRING]);
    RegisterInternalFunction(TCleanupGlobalVarsFunc, 'CleanupGlobalVars', [], '');
-   RegisterInternalFunction(TGlobalVarsNamesCommaText, 'GlobalVarsNamesCommaText', [], SYS_STRING);
-   RegisterInternalFunction(TSaveGlobalVarsToString, 'SaveGlobalVarsToString', [], SYS_STRING);
-   RegisterInternalFunction(TLoadGlobalVarsFromString, 'LoadGlobalVarsFromString', ['s', SYS_STRING], '');
+   RegisterInternalStringFunction(TGlobalVarsNamesCommaText, 'GlobalVarsNamesCommaText', []);
+   RegisterInternalStringFunction(TSaveGlobalVarsToString, 'SaveGlobalVarsToString', []);
+   RegisterInternalProcedure(TLoadGlobalVarsFromString, 'LoadGlobalVarsFromString', ['s', SYS_STRING]);
 
 finalization
 
