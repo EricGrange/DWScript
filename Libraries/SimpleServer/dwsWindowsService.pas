@@ -185,7 +185,9 @@ begin
                        +'Parameters:'#13#10
                        +'* none : run as application'#13#10
                        +'* /install & /uninstall : install & uninstall service'#13#10
-                       +'* /start & /stop : start & stop service');
+                       +'* /start & /stop : start & stop service'#13#10
+                       +#13#10
+                       +'For more information, go to http://delphitools.info/');
             end;
          end;
       end;
