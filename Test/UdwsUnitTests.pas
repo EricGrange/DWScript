@@ -21,6 +21,7 @@ type
          destructor Destroy; override;
 
          procedure DeclareTestEnumerate;
+         procedure DeclareTestSet;
          procedure DeclareTestFuncs;
          procedure DeclareTestClasses;
          procedure DeclareTestVars;
@@ -118,6 +119,7 @@ type
          procedure ArrayOfObjects;
          procedure FuncVariantTest;
          procedure FuncVariantDateTest;
+         procedure SetTest;
 
          procedure ParseNameTests;
 
@@ -192,6 +194,7 @@ begin
    FUnit.Script:=FCompiler;
 
    DeclareTestEnumerate;
+   DeclareTestSet;
    DeclareTestRecords;
    DeclareTestClasses;
    DeclareTestVars;
@@ -217,21 +220,32 @@ var
    enum : TdwsEnumeration;
    elem : TdwsElement;
 begin
-   enum:=FUnit.Enumerations.Add as TdwsEnumeration;
+   enum:=FUnit.Enumerations.Add;
    enum.Name:='TMyEnum';
-   elem:=enum.Elements.Add as TdwsElement;
+   elem:=enum.Elements.Add;
    elem.Name:='meOne';
    elem.UserDefValue:=1;
-   elem:=enum.Elements.Add as TdwsElement;
+   elem:=enum.Elements.Add;
    elem.Name:='meTen';
    elem.UserDefValue:=10;
 
-   enum:=FUnit.Enumerations.Add as TdwsEnumeration;
+   enum:=FUnit.Enumerations.Add;
    enum.Name:='TAutoEnum';
    for i:=1 to 9 do begin
-      elem:=enum.Elements.Add as TdwsElement;
+      elem:=enum.Elements.Add;
       elem.Name:='aeVal'+IntToStr(10-i);
    end;
+end;
+
+// DeclareTestSet
+//
+procedure TdwsUnitTestsContext.DeclareTestSet;
+var
+   s : TdwsSet;
+begin
+   s:=FUnit.Sets.Add;
+   s.Name:='TMyEnums';
+   s.BaseType:='TMyEnum';
 end;
 
 // DeclareTestFuncs
@@ -2080,7 +2094,30 @@ begin
 
    CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
    CheckEquals('', prog.Execute.Result.ToString, 'exec result');
+end;
 
+// SetTest
+//
+procedure TdwsUnitTests.SetTest;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'var s : TMyEnums;'#13#10
+                           +'Include(s, meOne);'#13#10
+                           +'if meOne in s then Print("1");'#13#10
+                           +'if meTen in s then Print("A");'#13#10
+                           +'Include(s, meTen);'#13#10
+                           +'if meOne not in s then Print("B");'#13#10
+                           +'if meTen in s then Print("2");'#13#10
+                           +'s.Exclude(meOne);'#13#10
+                           +'if meOne in s then Print("C");'#13#10
+                           +'if meTen in s then Print("3");'#13#10
+                           );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
+   CheckEquals('123', prog.Execute.Result.ToString, 'exec result');
 end;
 
 // ExplicitUses

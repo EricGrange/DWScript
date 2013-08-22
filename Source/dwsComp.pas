@@ -1044,6 +1044,25 @@ type
 
    TdwsEnumerationsClass = class of TdwsEnumerations;
 
+   TdwsSet = class(TdwsSymbol)
+      private
+         FBaseType: TDataType;
+      public
+         function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+      published
+         property BaseType: string read FBaseType write FBaseType;
+   end;
+
+   TdwsSets = class(TdwsCollection)
+      protected
+         class function GetSymbolClass: TdwsSymbolClass; override;
+
+      public
+         function Add : TdwsSet;
+   end;
+
+   TdwsSetsClass = class of TdwsSets;
+
    TdwsCustomInstance = class;
 
    TReadVarEvent = procedure (info: TProgramInfo; var value : Variant) of object;
@@ -1136,6 +1155,7 @@ type
         FClasses: TdwsClasses;
         FConstants: TdwsConstants;
         FEnumerations: TdwsEnumerations;
+        FSets: TdwsSets;
         FForwards: TdwsForwards;
         FFunctions: TdwsFunctions;
         FInstances: TdwsInstances;
@@ -1149,12 +1169,13 @@ type
         FParseName : TdwsParseName;
 
       protected
-        FCollections : array[0..11] of TdwsCollection;
+        FCollections : array[0..12] of TdwsCollection;
 
         class function GetArraysClass : TdwsArraysClass; virtual;
         class function GetClassesClass : TdwsClassesClass; virtual;
         class function GetConstantsClass : TdwsConstantsClass; virtual;
         class function GetEnumerationsClass : TdwsEnumerationsClass; virtual;
+        class function GetSetsClass : TdwsSetsClass; virtual;
         class function GetForwardsClass : TdwsForwardsClass; virtual;
         class function GetFunctionsClass : TdwsFunctionsClass; virtual;
         class function GetInstancesClass : TdwsInstancesClass; virtual;
@@ -1168,6 +1189,7 @@ type
         procedure SetClasses(const Value: TdwsClasses);
         procedure SetConstants(const Value: TdwsConstants);
         procedure SetEnumerations(const Value: TdwsEnumerations);
+        procedure SetSets(const Value: TdwsSets);
         procedure SetForwards(const Value: TdwsForwards);
         procedure SetFunctions(const Value: TdwsFunctions);
         procedure SetRecords(const Value: TdwsRecords);
@@ -1181,6 +1203,7 @@ type
         function StoreClasses : Boolean;
         function StoreConstants : Boolean;
         function StoreEnumerations : Boolean;
+        function StoreSets : Boolean;
         function StoreForwards : Boolean;
         function StoreFunctions : Boolean;
         function StoreRecords : Boolean;
@@ -1221,6 +1244,7 @@ type
         property Constants: TdwsConstants read FConstants write SetConstants stored StoreConstants;
         property Dependencies;
         property Enumerations: TdwsEnumerations read FEnumerations write SetEnumerations stored StoreEnumerations;
+        property Sets: TdwsSets read FSets write SetSets stored StoreSets;
         property Forwards: TdwsForwards read FForwards write SetForwards stored StoreForwards;
         property Functions: TdwsFunctions read FFunctions write SetFunctions stored StoreFunctions;
         property Instances: TdwsInstances read FInstances write SetInstances stored StoreInstances;
@@ -1718,6 +1742,7 @@ begin
    FClasses := GetClassesClass.Create(Self);
    FConstants := GetConstantsClass.Create(Self);
    FEnumerations := GetEnumerationsClass.Create(Self);
+   FSets := GetSetsClass.Create(Self);
    FForwards := GetForwardsClass.Create(Self);
    FFunctions := GetFunctionsClass.Create(Self);
    FRecords := GetRecordsClass.Create(Self);
@@ -1739,6 +1764,7 @@ begin
    FCollections[9] := FConstants;
    FCollections[10] := FInstances;
    FCollections[11] := FOperators;
+   FCollections[12] := FSets;
 
    FParseName := pnAtDesignTimeOnly;
 end;
@@ -1954,6 +1980,11 @@ begin
   FEnumerations.Assign(Value);
 end;
 
+procedure TdwsUnit.SetSets(const Value: TdwsSets);
+begin
+  FSets.Assign(Value);
+end;
+
 procedure TdwsUnit.SetInstances(const Value: TdwsInstances);
 begin
   FInstances.Assign(Value);
@@ -1982,6 +2013,11 @@ end;
 class function TdwsUnit.GetEnumerationsClass: TdwsEnumerationsClass;
 begin
   Result := TdwsEnumerations;
+end;
+
+class function TdwsUnit.GetSetsClass: TdwsSetsClass;
+begin
+  Result := TdwsSets;
 end;
 
 class function TdwsUnit.GetForwardsClass: TdwsForwardsClass;
@@ -2061,6 +2097,13 @@ end;
 function TdwsUnit.StoreEnumerations : Boolean;
 begin
    Result:=FEnumerations.Count>0;
+end;
+
+// StoreSets
+//
+function TdwsUnit.StoreSets : Boolean;
+begin
+   Result:=FSets.Count>0;
 end;
 
 // StoreForwards
@@ -5099,6 +5142,44 @@ end;
 function TdwsEnumerations.Add : TdwsEnumeration;
 begin
    Result:=TdwsEnumeration(inherited Add);
+end;
+
+// ------------------
+// ------------------ TdwsSet ------------------
+// ------------------
+
+// DoGenerate
+//
+function TdwsSet.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
+var
+   base: TTypeSymbol;
+   eBase: TEnumerationSymbol;
+begin
+   FIsGenerating := True;
+   CheckName(Table, Name);
+
+   base := GetDataType(Table, FBaseType);
+   if not (base is TEnumerationSymbol) then
+      raise Exception.CreateFmt('Type "%s" is not an enumeration', [FBaseType]);
+   eBase := TEnumerationSymbol(base);
+   result := TSetOfSymbol.Create(self.Name, eBase, 0, eBase.HighBound);
+   Table.AddSymbol(result);
+end;
+
+// ------------------
+// ------------------ TdwsSets ------------------
+// ------------------
+
+// GetSymbolClass
+//
+class function TdwsSets.GetSymbolClass: TdwsSymbolClass;
+begin
+   result := TdwsSet;
+end;
+
+function TdwsSets.Add: TdwsSet;
+begin
+   result := inherited Add as TdwsSet;
 end;
 
 { TdwsConstants }
