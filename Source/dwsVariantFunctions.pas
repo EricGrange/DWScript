@@ -26,7 +26,7 @@ interface
 uses
    Classes, Variants, SysUtils,
    dwsFunctions, dwsExprs, dwsSymbols, dwsUtils, dwsExprList,
-   dwsMagicExprs, dwsUnitSymbols;
+   dwsMagicExprs, dwsUnitSymbols, dwsXPlatform;
 
 type
   TVarClearFunc = class(TInternalFunction)
@@ -122,7 +122,7 @@ var
    v : Variant;
 begin
    args.ExprBase[0].EvalAsVariant(args.Exec, v);
-   Result:=VarToStr(v);
+   Result:=VarToUnicodeStr(v);
 end;
 
 { InitVariants }

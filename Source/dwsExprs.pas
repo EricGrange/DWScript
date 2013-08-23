@@ -3355,7 +3355,7 @@ procedure TPrintLnFunction.DoEvalProc(const args : TExprBaseListExec);
 var
    buf : UnicodeString;
    result : TdwsResult;
-{$IF CompilerVersion <= 21}
+{$IFDEF DELPHI_2010_MINUS}
    ExprBaseListRec: TExprBaseListRec;
 begin
    ExprBaseListRec := args.List^;
@@ -3363,7 +3363,7 @@ begin
 {$ELSE}
 begin
    args.List.ExprBase[0].EvalAsString(args.Exec, buf);
-{$IFEND}
+{$ENDIF}
    result:=(args.Exec as TdwsProgramExecution).Result;
    result.AddString(buf);
    result.AddCRLF;

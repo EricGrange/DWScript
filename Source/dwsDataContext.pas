@@ -105,9 +105,9 @@ type
          FNext : TDataContext;
          FPool : TDataContextPool;
          FAllNext : TDataContext;
-{$IF CompilerVersion < 21}
+{$IFDEF DELPHI_2010_MINUS}
       protected // D2009 needs protected here to "see" these methods in inherited classes
-{$IFEND}
+{$ENDIF}
          function GetAsVariant(addr : Integer) : Variant; inline;
          procedure SetAsVariant(addr : Integer; const value : Variant); inline;
          function GetAsInteger(addr : Integer) : Int64; inline;

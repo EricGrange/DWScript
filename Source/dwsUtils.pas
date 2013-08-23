@@ -21,7 +21,7 @@ unit dwsUtils;
 interface
 
 uses
-   Classes, SysUtils, Variants, Types,
+   Classes, SysUtils, Variants, Types, StrUtils,
    dwsXPlatform, Math;
 
 type
@@ -185,7 +185,7 @@ type
          FCapacity : Integer;
       protected
          procedure Grow;
-         function GetItems(const idx : Integer) : T; {$IF CompilerVersion > 21} inline; {$IFEND}
+         function GetItems(const idx : Integer) : T; {$IFDEF DELPHI_2010_MINUS}{$ELSE} inline; {$ENDIF}
          procedure SetItems(const idx : Integer; const value : T);
       public
          procedure Add(const item : T);
@@ -633,6 +633,8 @@ procedure FastInt64ToStr(const val : Int64; var s : UnicodeString);
 procedure FastInt64ToHex(val : Int64; digits : Integer; var s : UnicodeString);
 function Int64ToHex(val : Int64; digits : Integer) : UnicodeString; inline;
 
+procedure FastStringReplace(var str : UnicodeString; const sub, newSub : UnicodeString);
+
 procedure VariantToString(const v : Variant; var s : UnicodeString);
 
 procedure SuppressH2077ValueAssignedToVariableNeverUsed(const X); inline;
@@ -850,6 +852,96 @@ end;
 function Int64ToHex(val : Int64; digits : Integer) : UnicodeString;
 begin
    FastInt64ToHex(val, digits, Result);
+end;
+
+// FastStringReplace
+//
+procedure FastStringReplace(var str : UnicodeString; const sub, newSub : UnicodeString);
+
+   procedure FallBack;
+   begin
+      str:=SysUtils.StringReplace(str, sub, newSub, [rfReplaceAll]);
+   end;
+
+   procedure ReplaceChars(pStr : PWideChar; oldChar, newChar : WideChar; n : Integer);
+   begin
+      pStr^:=newChar;
+      for n:=1 to n do begin
+         if pStr[n]=oldChar then
+            pStr[n]:=newChar;
+      end;
+   end;
+
+var
+   p, dp, np : Integer;
+   subLen, newSubLen : Integer;
+   pStr, pNewSub : PWideChar;
+begin
+   if (str='') or (sub='') then Exit;
+
+   p:=Pos(sub, str);
+   if p<=0 then Exit;
+
+   subLen:=Length(sub);
+   newSubLen:=Length(newSub);
+
+   pNewSub:=PWideChar(newSub);
+
+   if subLen=newSubLen then begin
+
+      // same length, replace in-place
+      UniqueString(str);
+      pStr:=PWideChar(Pointer(str));
+
+      if subLen=1 then begin
+
+         // special case of character replacement
+         ReplaceChars(@pStr[p-1], sub[1], pNewSub^, Length(str)-p);
+
+      end else begin
+
+         repeat
+            System.Move(pNewSub^, pStr[p-1], subLen*SizeOf(WideChar));
+            p:=PosEx(sub, str, p+subLen);
+         until p<=0;
+
+      end;
+
+   end else if newSubLen<subLen then begin
+
+      // shorter replacement, replace & pack in-place
+      UniqueString(str);
+      pStr:=PWideChar(Pointer(str));
+
+      dp:=p-1;
+      while True do begin
+         if newSubLen>0 then begin
+            System.Move(pNewSub^, pStr[dp], newSubLen*SizeOf(WideChar));
+            dp:=dp+newSubLen;
+         end;
+         p:=p+subLen;
+         np:=PosEx(sub, str, p);
+         if np>0 then begin
+            if np>p then begin
+               System.Move(pStr[p-1], pStr[dp], (np-p)*SizeOf(WideChar));
+               dp:=dp+np-p;
+            end;
+            p:=np;
+         end else begin
+            np:=Length(str)+1-p;
+            if np>0 then
+               System.Move(pStr[p-1], pStr[dp], np*SizeOf(WideChar));
+            SetLength(str, dp+np);
+            Break;
+         end;
+      end;
+
+   end else begin
+
+      // growth required (not optimized yet, todo)
+      FallBack;
+
+   end;
 end;
 
 // VariantToString
@@ -2357,7 +2449,7 @@ end;
 //
 procedure TWriteOnlyBlockStream.WriteString(const i : Integer);
 var
-   s : String;
+   s : UnicodeString;
 begin
    FastInt64ToStr(i, s);
    WriteString(s);

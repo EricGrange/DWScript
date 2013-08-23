@@ -47,6 +47,8 @@
    {$ENDIF}
    {$IF CompilerVersion>21.0}
       {$DEFINE DELPHI_XE_PLUS}
+   {$ELSE}
+      {$DEFINE DELPHI_2010_MINUS}
    {$IFEND}
    {$IF CompilerVersion>22.0}
       {$DEFINE DELPHI_XE2_PLUS}

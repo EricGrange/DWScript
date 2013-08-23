@@ -1601,8 +1601,8 @@ type
          constructor Create(const Name: UnicodeString; Typ: TTypeSymbol;
                             const aValue : Int64; isUserDef: Boolean);
 
-         function StandardName : String; inline;
-         function QualifiedName : String; override;
+         function StandardName : UnicodeString; inline;
+         function QualifiedName : UnicodeString; override;
 
          property Enumeration : TEnumerationSymbol read FEnumeration;
          property IsUserDef : Boolean read FIsUserDef;
@@ -2299,6 +2299,7 @@ var
    methSym : TMethodSymbol;
    msg : TScriptMessage;
    afa : TdwsAFAAddImplementation;
+   buf : UnicodeString;
 begin
    for i:=0 to FMembers.Count-1 do begin
       if FMembers[i] is TMethodSymbol then begin
@@ -2311,8 +2312,10 @@ begin
                msg:=msgs.AddCompilerErrorFmt((methSym as TSourceMethodSymbol).DeclarationPos, CPE_MethodNotImplemented,
                                              [methSym.Name, methSym.StructSymbol.Caption]);
                afa:=TdwsAFAAddImplementation.Create(msg, AFA_AddImplementation);
+               buf:=methSym.GetDescription;
+               FastStringReplace(buf, '()', ' ');
                afa.Text:= #13#10
-                         +TrimRight(StringReplace(methSym.GetDescription, '()', ' ', [rfIgnoreCase]))
+                         +TrimRight(buf)
                          +';'#13#10'begin'#13#10#9'|'#13#10'end;'#13#10;
                k:=Pos(methSym.Name, afa.Text);
                afa.Text:=Copy(afa.Text, 1, k-1)+methSym.StructSymbol.Name+'.'
@@ -6101,7 +6104,7 @@ end;
 
 // StandardName
 //
-function TElementSymbol.StandardName : String;
+function TElementSymbol.StandardName : UnicodeString;
 begin
    if Enumeration.Style=enumClassic then
       Result:=Name
@@ -6110,7 +6113,7 @@ end;
 
 // QualifiedName
 //
-function TElementSymbol.QualifiedName : String;
+function TElementSymbol.QualifiedName : UnicodeString;
 begin
    Result:=Enumeration.Name+'.'+Name;
 end;

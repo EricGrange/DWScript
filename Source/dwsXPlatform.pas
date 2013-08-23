@@ -146,6 +146,8 @@ function TryTextToFloat(const s : PWideChar; var value : Extended;
 
 {$ifdef FPC}
 procedure VarCopy(out dest : Variant; const src : Variant); inline;
+{$else}
+function VarToUnicodeStr(const v : Variant) : UnicodeString; inline;
 {$endif}
 
 function LoadTextFromBuffer(const buf : TBytes) : UnicodeString;
@@ -165,22 +167,27 @@ function TtoPointer(const T): Pointer; inline;
 procedure GetMemForT(var T; Size: integer); inline;
 
 // Functions missing in D2009
-{$ifndef FPC}
-{$IF RTLVersion < 21}
-function FindDelimiter(const Delimiters, S: string; StartIdx: Integer = 1): Integer;
-{$IFEND}
+{$ifdef FPC}
+   {$define NEED_FindDelimiter}
+{$else}
+   {$IF RTLVersion < 21}{$define NEED_FindDelimiter}{$ifend}
 {$endif}
+{$ifdef NEED_FindDelimiter}
+function FindDelimiter(const Delimiters, S: string; StartIdx: Integer = 1): Integer;
+{$endif}
+
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
-//uses Generics.Collections; // Need PObject for D2009 - HV
-
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
+{$ifndef FPC}
+uses Variants;
+{$endif}
 
 // GetSystemMilliseconds
 //
@@ -451,7 +458,15 @@ procedure VarCopy(out dest : Variant; const src : Variant);
 begin
    dest:=src;
 end;
-{$endif}
+{$else}
+// VarToUnicodeStr
+//
+function VarToUnicodeStr(const v : Variant) : UnicodeString; inline;
+begin
+   Result:=VarToStr(v);
+end;
+{$endif FPC}
+
 
 // TryTextToFloat
 //
@@ -639,8 +654,9 @@ begin
   GetMem(Pointer(T), Size);
 end;
 
-{$ifndef FPC}
-{$IF RTLVersion < 21}
+// FindDelimiter
+//
+{$ifdef NEED_FindDelimiter}
 function FindDelimiter(const Delimiters, S: string; StartIdx: Integer = 1): Integer;
 begin
   for Result := StartIdx to Length(S) do
@@ -648,7 +664,6 @@ begin
       Exit;
   Result := -1;
 end;
-{$IFEND}
 {$endif}
 
 // ------------------

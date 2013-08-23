@@ -257,8 +257,6 @@ type
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
-procedure FastStringReplace(var str : String; const sub, newSub : String);
-
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -266,96 +264,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-// FastStringReplace
-//
-procedure FastStringReplace(var str : String; const sub, newSub : String);
-
-   procedure FallBack;
-   begin
-      str:=SysUtils.StringReplace(str, sub, newSub, [rfReplaceAll]);
-   end;
-
-   procedure ReplaceChars(pStr : PChar; oldChar, newChar : Char; n : Integer);
-   begin
-      pStr^:=newChar;
-      for n:=1 to n do begin
-         if pStr[n]=oldChar then
-            pStr[n]:=newChar;
-      end;
-   end;
-
-var
-   p, dp, np : Integer;
-   subLen, newSubLen : Integer;
-   pStr, pNewSub : PChar;
-begin
-   if (str='') or (sub='') then Exit;
-
-   p:=Pos(sub, str);
-   if p<=0 then Exit;
-
-   subLen:=Length(sub);
-   newSubLen:=Length(newSub);
-
-   pNewSub:=PChar(newSub);
-
-   if subLen=newSubLen then begin
-
-      // same length, replace in-place
-      UniqueString(str);
-      pStr:=PChar(Pointer(str));
-
-      if subLen=1 then begin
-
-         // special case of character replacement
-         ReplaceChars(@pStr[p-1], sub[1], pNewSub^, Length(str)-p);
-
-      end else begin
-
-         repeat
-            System.Move(pNewSub^, pStr[p-1], subLen*SizeOf(Char));
-            p:=PosEx(sub, str, p+subLen);
-         until p<=0;
-
-      end;
-
-   end else if newSubLen<subLen then begin
-
-      // shorter replacement, replace & pack in-place
-      UniqueString(str);
-      pStr:=PChar(Pointer(str));
-
-      dp:=p-1;
-      while True do begin
-         if newSubLen>0 then begin
-            System.Move(pNewSub^, pStr[dp], newSubLen*SizeOf(Char));
-            dp:=dp+newSubLen;
-         end;
-         p:=p+subLen;
-         np:=PosEx(sub, str, p);
-         if np>0 then begin
-            if np>p then begin
-               System.Move(pStr[p-1], pStr[dp], (np-p)*SizeOf(Char));
-               dp:=dp+np-p;
-            end;
-            p:=np;
-         end else begin
-            np:=Length(str)+1-p;
-            if np>0 then
-               System.Move(pStr[p-1], pStr[dp], np*SizeOf(Char));
-            SetLength(str, dp+np);
-            Break;
-         end;
-      end;
-
-   end else begin
-
-      // growth required (not optimized yet, todo)
-      FallBack;
-
-   end;
-end;
 
 { TChrFunc }
 
@@ -808,11 +716,7 @@ end;
 
 function TFindDelimiterFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
-   {$ifdef FPC}
-   {$warning "unsupported"}
-   {$else}
    Result:=FindDelimiter(args.AsString[0], args.AsString[1], args.AsInteger[2]);
-   {$endif}
 end;
 
 { TQuotedStrFunc }
@@ -1113,8 +1017,6 @@ begin
    args.Exec.LocalizeString(args.AsString[0], Result);
 end;
 
-   var s : String;
-
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -1206,9 +1108,6 @@ initialization
    RegisterInternalStringFunction(TReverseStringFunc, 'ReverseString', ['str', SYS_STRING], [iffStateLess], 'Reverse');
 
    RegisterInternalStringFunction(TGetTextFunc, '_', ['str', SYS_STRING], []);
-
-   s:='bacaba';
-   FastStringReplace(s, 'ca', 'z');
 
 end.
 
