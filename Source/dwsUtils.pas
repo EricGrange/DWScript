@@ -178,7 +178,8 @@ type
    {: A minimalistic generic list class. }
    TSimpleList<T> = class
       private
-      type ArrayT = array of T;
+      type
+         ArrayT = array of T;
       var
          FItems : ArrayT;
          FCount : Integer;
@@ -629,6 +630,10 @@ function RawByteStringToScriptString(const s : RawByteString) : UnicodeString; o
 procedure RawByteStringToScriptString(const s : RawByteString; var result : UnicodeString); overload;
 function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString;
 
+type
+   TInt64StringBuffer = array [0..21] of WideChar;
+
+function FastInt64ToBuffer(const val : Int64; var buf : TInt64StringBuffer) : Integer;
 procedure FastInt64ToStr(const val : Int64; var s : UnicodeString);
 procedure FastInt64ToHex(val : Int64; digits : Integer; var s : UnicodeString);
 function Int64ToHex(val : Int64; digits : Integer) : UnicodeString; inline;
@@ -750,7 +755,7 @@ begin
    until i=0;
 end;
 
-// FastInt64ToStr
+// FastInt64ToBuffer
 //
 {$IFOPT R+}
   {$DEFINE RANGEON}
@@ -758,9 +763,8 @@ end;
 {$ELSE}
   {$UNDEF RANGEON}
 {$ENDIF}
-procedure FastInt64ToStr(const val : Int64; var s : UnicodeString);
+function FastInt64ToBuffer(const val : Int64; var buf : TInt64StringBuffer) : Integer;
 var
-   buf : array [0..21] of WideChar;
    n, nd : Integer;
    neg : Boolean;
    i : UInt64;
@@ -773,7 +777,8 @@ begin
       i:=-val;
    end else begin
       if val=0 then begin
-         s:='0';
+         Result:=High(buf);
+         buf[Result]:='0';
          Exit;
       end else i:=val;
       neg:=False;
@@ -798,11 +803,22 @@ begin
    if neg then
       buf[n]:='-'
    else Inc(n);
-   SetString(s, PWideChar(@buf[n]), (High(buf)+1)-n);
+   Result:=n;
 end;
 {$IFDEF RANGEON}
   {$R+}
 {$ENDIF}
+
+// FastInt64ToStr
+//
+procedure FastInt64ToStr(const val : Int64; var s : UnicodeString);
+var
+   buf : TInt64StringBuffer;
+   n : Integer;
+begin
+   n:=FastInt64ToBuffer(val, buf);
+   SetString(s, PWideChar(@buf[n]), (High(buf)+1)-n);
+end;
 
 // FastInt64ToHex
 //
@@ -2449,10 +2465,11 @@ end;
 //
 procedure TWriteOnlyBlockStream.WriteString(const i : Integer);
 var
-   s : UnicodeString;
+   buf : TInt64StringBuffer;
+   n : Integer;
 begin
-   FastInt64ToStr(i, s);
-   WriteString(s);
+   n:=FastInt64ToBuffer(i, buf);
+   Write(buf[n], (High(buf)-n+1)*SizeOf(WideChar));
 end;
 
 // WriteChar

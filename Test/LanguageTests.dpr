@@ -45,6 +45,7 @@ uses
   UTokenizerTests in 'UTokenizerTests.pas',
   ULanguageExtensionTests in 'ULanguageExtensionTests.pas',
   UJITTests in 'UJITTests.pas',
+{$IFDEF WIN32}
   UJITx86Tests in 'UJITx86Tests.pas',
   ULinqTests in 'ULinqTests.pas',
 {$IF RTLVersion >= 21}
@@ -52,6 +53,7 @@ uses
   URTTIExposeTests in 'URTTIExposeTests.pas',
   USpecialTestsRTTI in 'USpecialTestsRTTI.pas',
 {$IFEND}
+{$ENDIF}
   ULinqJsonTests in 'ULinqJsonTests.pas';
 
 {$R *.res}
