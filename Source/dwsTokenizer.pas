@@ -24,7 +24,8 @@ unit dwsTokenizer;
 interface
 
 uses
-  SysUtils, Classes, TypInfo, dwsErrors, dwsStrings, dwsXPlatform, dwsUtils
+  SysUtils, Classes, TypInfo,
+  dwsErrors, dwsStrings, dwsXPlatform, dwsUtils
   {$ifdef FPC},lazutf8{$endif};
 
 type

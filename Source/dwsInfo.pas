@@ -27,7 +27,7 @@ uses
    Classes, SysUtils, Variants,
    dwsUtils, dwsXPlatform,
    dwsSymbols, dwsStack, dwsExprs, dwsFunctions, dwsDataContext, dwsConstExprs,
-   dwsConnectorExprs, dwsConvExprs, dwsMethodExprs,
+   dwsConnectorExprs, dwsConvExprs, dwsMethodExprs, dwsResultFunctions,
    dwsStrings, dwsErrors, dwsCompilerUtils;
 
 type
@@ -288,16 +288,6 @@ type
          procedure Write(exec : TdwsExecution; const Data: TData); override;
    end;
 
-   TPrintFunction = class(TInternalFunction)
-      public
-         procedure Execute(info : TProgramInfo); override;
-   end;
-
-   TPrintLnFunction = class(TInternalFunction)
-      public
-         procedure Execute(info : TProgramInfo); override;
-   end;
-
    TdwsDefaultResultType = class(TdwsResultType)
       public
          procedure AddResultSymbols(SymbolTable: TSymbolTable); override;
@@ -346,28 +336,6 @@ begin
    inherited;
    TPrintFunction.Create(SymbolTable, 'Print',  ['v', 'Variant'], '', []);
    TPrintLnFunction.Create(SymbolTable, 'PrintLn', ['v', 'Variant'], '', []);
-end;
-
-// ------------------
-// ------------------ TPrintFunction ------------------
-// ------------------
-
-procedure TPrintFunction.Execute(info : TProgramInfo);
-begin
-   info.Execution.Result.AddString(info.ValueAsString['v']);
-end;
-
-// ------------------
-// ------------------ TPrintLnFunction ------------------
-// ------------------
-
-procedure TPrintLnFunction.Execute(info : TProgramInfo);
-var
-   result : TdwsResult;
-begin
-   result:=info.Execution.Result;
-   result.AddString(Info.ValueAsString['v']);
-   result.AddString(#13#10);
 end;
 
 // ------------------

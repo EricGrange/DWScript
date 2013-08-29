@@ -1778,19 +1778,7 @@ implementation
 // ------------------------------------------------------------------
 
 uses dwsFunctions, dwsCoreExprs, dwsMagicExprs, dwsMethodExprs,
-   dwsInfo, dwsCompilerUtils, dwsConstExprs;
-
-type
-
-   TPrintFunction = class(TInternalMagicProcedure)
-      public
-         procedure DoEvalProc(const args : TExprBaseListExec); override;
-   end;
-
-   TPrintLnFunction = class(TInternalMagicProcedure)
-      public
-         procedure DoEvalProc(const args : TExprBaseListExec); override;
-   end;
+   dwsInfo, dwsCompilerUtils, dwsConstExprs, dwsResultFunctions;
 
 { TScriptObjectWrapper }
 
@@ -3329,44 +3317,6 @@ begin
    inherited;
    TPrintFunction.Create(SymbolTable, 'Print',  ['v', 'Variant'], '', []);
    TPrintLnFunction.Create(SymbolTable, 'PrintLn', ['v', 'Variant'], '', []);
-end;
-
-// ------------------
-// ------------------ TPrintFunction ------------------
-// ------------------
-
-// DoEvalProc
-//
-procedure TPrintFunction.DoEvalProc(const args : TExprBaseListExec);
-var
-   buf : UnicodeString;
-begin
-   args.ExprBase[0].EvalAsString(args.Exec, buf);
-   (args.Exec as TdwsProgramExecution).Result.AddString(buf);
-end;
-
-// ------------------
-// ------------------ TPrintLnFunction ------------------
-// ------------------
-
-// DoEvalProc
-//
-procedure TPrintLnFunction.DoEvalProc(const args : TExprBaseListExec);
-var
-   buf : UnicodeString;
-   result : TdwsResult;
-{$IFDEF DELPHI_2010_MINUS}
-   ExprBaseListRec: TExprBaseListRec;
-begin
-   ExprBaseListRec := args.List^;
-   ExprBaseListRec.ExprBase[0].EvalAsString(args.Exec, buf);
-{$ELSE}
-begin
-   args.List.ExprBase[0].EvalAsString(args.Exec, buf);
-{$ENDIF}
-   result:=(args.Exec as TdwsProgramExecution).Result;
-   result.AddString(buf);
-   result.AddCRLF;
 end;
 
 // ------------------

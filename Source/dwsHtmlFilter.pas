@@ -31,9 +31,10 @@ unit dwsHtmlFilter;
 interface
 
 uses
-  Variants, Classes, SysUtils,
-  dwsComp, dwsExprs, dwsFunctions, dwsSymbols, dwsExprList,
-  dwsErrors, dwsCompiler, dwsStrings, dwsUtils, StrUtils, dwsMagicExprs;
+   Variants, Classes, SysUtils, StrUtils,
+   dwsComp, dwsExprs, dwsFunctions, dwsSymbols, dwsExprList,
+   dwsErrors, dwsCompiler, dwsStrings, dwsUtils, dwsMagicExprs,
+   dwsResultFunctions;
 
 type
 
@@ -58,24 +59,15 @@ type
          property PatternOpen: UnicodeString read FPatternOpen write FPatternOpen;
    end;
 
-  TdwsHtmlUnit = class(TdwsUnitComponent)
-  protected
-    procedure AddUnitSymbols(SymbolTable: TSymbolTable); override;
-  public
-    constructor Create(AOwner: TComponent); override;
-  end;
+   TdwsHtmlUnit = class(TdwsUnitComponent)
+      protected
+         procedure AddUnitSymbols(SymbolTable: TSymbolTable); override;
 
-   TSendFunction = class(TInternalMagicProcedure)
       public
-         procedure DoEvalProc(const args : TExprBaseListExec); override;
-  end;
+         constructor Create(AOwner: TComponent); override;
+   end;
 
-  TSendLnFunction = class(TInternalMagicProcedure)
-      public
-         procedure DoEvalProc(const args : TExprBaseListExec); override;
-  end;
-
-  EHTMLFilterException = class (Exception) end;
+   EHTMLFilterException = class (Exception) end;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -215,36 +207,14 @@ begin
       raise EHTMLFilterException.Create('Property "PatternEval" must be set!');
 end;
 
-{ TSendFunction }
-
-// DoEvalProc
-//
-procedure TSendFunction.DoEvalProc(const args : TExprBaseListExec);
-begin
-   (args.Exec as TdwsProgramExecution).Result.AddString(args.AsString[0]);
-end;
-
-{ TSendLnFunction }
-
-// DoEvalProc
-//
-procedure TSendLnFunction.DoEvalProc(const args : TExprBaseListExec);
-var
-   result : TdwsResult;
-begin
-   result:=(args.Exec as TdwsProgramExecution).Result;
-   result.AddString(args.AsString[0]);
-   result.AddString(#13#10);
-end;
-
 { TdwsHtmlUnit }
 
 procedure TdwsHtmlUnit.AddUnitSymbols(SymbolTable: TSymbolTable);
 begin
-  TSendFunction.Create(SymbolTable, 'Send', ['s', SYS_VARIANT], '', []);
-  TSendFunction.Create(SymbolTable, 'Print', ['s', SYS_VARIANT], '', []);
-  TSendLnFunction.Create(SymbolTable, 'SendLn', ['s', SYS_VARIANT], '', []);
-  TSendLnFunction.Create(SymbolTable, 'PrintLn', ['s', SYS_VARIANT], '', []);
+   TPrintFunction.Create(SymbolTable, 'Send', ['s', SYS_VARIANT], '', []);
+   TPrintFunction.Create(SymbolTable, 'Print', ['s', SYS_VARIANT], '', []);
+   TPrintLnFunction.Create(SymbolTable, 'SendLn', ['s', SYS_VARIANT], '', []);
+   TPrintLnFunction.Create(SymbolTable, 'PrintLn', ['s', SYS_VARIANT], '', []);
 end;
 
 constructor TdwsHtmlUnit.Create(AOwner: TComponent);
