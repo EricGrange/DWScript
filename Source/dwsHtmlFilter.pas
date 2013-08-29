@@ -211,10 +211,10 @@ end;
 
 procedure TdwsHtmlUnit.AddUnitSymbols(SymbolTable: TSymbolTable);
 begin
-   TPrintFunction.Create(SymbolTable, 'Send', ['s', SYS_VARIANT], '', []);
-   TPrintFunction.Create(SymbolTable, 'Print', ['s', SYS_VARIANT], '', []);
-   TPrintLnFunction.Create(SymbolTable, 'SendLn', ['s', SYS_VARIANT], '', []);
-   TPrintLnFunction.Create(SymbolTable, 'PrintLn', ['s', SYS_VARIANT], '', []);
+   TPrintFunction.Create(SymbolTable, 'Send', ['s', SYS_VARIANT], '', [iffDeprecated]);
+   TPrintLnFunction.Create(SymbolTable, 'SendLn', ['s', SYS_VARIANT], '', [iffDeprecated]);
+
+   RegisterStandardResultFunctions(SymbolTable);
 end;
 
 constructor TdwsHtmlUnit.Create(AOwner: TComponent);

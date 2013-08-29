@@ -337,7 +337,8 @@ type
       public
          constructor Create(resultType : TdwsResultType); virtual;
 
-         procedure AddString(const str : UnicodeString); virtual; abstract;
+         procedure AddString(const str : UnicodeString); overload; virtual; abstract;
+         procedure AddString(const i : Int64); overload; virtual;
          procedure AddCRLF; virtual;
          procedure Clear; virtual; abstract;
 
@@ -355,6 +356,7 @@ type
          destructor Destroy; override;
 
          procedure AddString(const str : UnicodeString); override;
+         procedure AddString(const i : Int64); override;
          procedure AddCRLF; override;
          procedure Clear; override;
          function ToString : String; override;
@@ -513,11 +515,12 @@ type
 
          FFirstObject, FLastObject : TScriptObj;
          FObjectCount : Integer;
+
          FProgramInfo : TProgramInfo;
          FProgInfoPool : TProgramInfo;
 
-         FParameters : TData;
          FResult : TdwsResult;
+         FParameters : TData;
          FFileSystem : IdwsFileSystem;
          FEnvironment : IdwsEnvironment;
          FLocalizer : IdwsLocalizer;
@@ -3299,6 +3302,13 @@ begin
    AddString(#13#10);
 end;
 
+// AddString
+//
+procedure TdwsResult.AddString(const i : Int64);
+begin
+   AddString(IntToStr(i));
+end;
+
 // ------------------
 // ------------------ TdwsDefaultResultType ------------------
 // ------------------
@@ -3315,8 +3325,7 @@ end;
 procedure TdwsDefaultResultType.AddResultSymbols(SymbolTable: TSymbolTable);
 begin
    inherited;
-   TPrintFunction.Create(SymbolTable, 'Print',  ['v', 'Variant'], '', []);
-   TPrintLnFunction.Create(SymbolTable, 'PrintLn', ['v', 'Variant'], '', []);
+   RegisterStandardResultFunctions(SymbolTable);
 end;
 
 // ------------------
@@ -3344,6 +3353,13 @@ end;
 procedure TdwsDefaultResult.AddString(const str : UnicodeString);
 begin
    FTextBuilder.WriteString(str);
+end;
+
+// AddString
+//
+procedure TdwsDefaultResult.AddString(const i : Int64);
+begin
+   FTextBuilder.WriteString(i);
 end;
 
 // AddCRLF

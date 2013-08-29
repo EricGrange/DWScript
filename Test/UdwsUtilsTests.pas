@@ -533,6 +533,8 @@ begin
    CheckEquals('123456789', s);
    FastInt64ToStr(123456789123456789, s);
    CheckEquals('123456789123456789', s);
+   FastInt64ToStr(-8301034833169298228, s);
+   CheckEquals('-8301034833169298228', s);
 
    n:=1;
    for i:=1 to 20 do begin

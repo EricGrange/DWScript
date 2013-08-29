@@ -211,10 +211,11 @@ end;
 procedure TdwsStringResultType.AddResultSymbols(SymbolTable: TSymbolTable);
 begin
    TWriteFunction.Create(SymbolTable, 'WriteStr', ['Str', SYS_VARIANT], '', []);
-   TWriteFunction.Create(SymbolTable, 'Print', ['Str', SYS_VARIANT], '', []);
    TWriteLnFunction.Create(SymbolTable, 'WriteLn', ['Str', SYS_VARIANT], '', []);
-   TWriteLnFunction.Create(SymbolTable, 'PrintLn', ['Str', SYS_VARIANT], '', []);
    TWriteAllFunction.Create(SymbolTable, 'WriteAll', ['Str', SYS_VARIANT], '', []);
+
+   TWriteFunction.Create(SymbolTable, 'Print', ['Str', SYS_VARIANT], '', []);
+   TWriteLnFunction.Create(SymbolTable, 'PrintLn', ['Str', SYS_VARIANT], '', []);
 
    TReadCharFunction.Create(SymbolTable, 'ReadChar', [], SYS_STRING, []);
    TReadLnFunction.Create(SymbolTable, 'ReadLn', [], SYS_STRING, []);

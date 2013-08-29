@@ -531,7 +531,7 @@ type
 
          // must be strictly an utf16 UnicodeString
          procedure WriteString(const utf16String : UnicodeString); overload;
-         procedure WriteString(const i : Integer); overload;
+         procedure WriteString(const i : Int64); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos : Integer); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos, Alength : Integer); overload;
          procedure WriteCRLF;
@@ -964,20 +964,25 @@ end;
 //
 procedure VariantToString(const v : Variant; var s : UnicodeString);
 
-   function DispatchAsString(const disp : Pointer) : UnicodeString;
+   procedure DispatchAsString(const disp : Pointer; var Result : UnicodeString);
    begin
-      Result:=Format('IDispatch (%p)', [disp]);
+      Result:=UnicodeFormat('IDispatch (%p)', [disp]);
    end;
 
-   function UnknownAsString(const unknown : IUnknown) : UnicodeString;
+   procedure UnknownAsString(const unknown : IUnknown; var Result : UnicodeString);
    var
       intf : IGetSelf;
    begin
       if unknown=nil then
-         Exit('nil');
-      if unknown.QueryInterface(IGetSelf, intf)=0 then
+         Result:='nil'
+      else if unknown.QueryInterface(IGetSelf, intf)=0 then
          Result:=intf.ToString
       else Result:='[IUnknown]';
+   end;
+
+   procedure FloatAsString(var v : Double; var Result : UnicodeString);
+   begin
+      Result:=FloatToStr(v);
    end;
 
 var
@@ -995,7 +1000,7 @@ begin
       varInt64 :
          FastInt64ToStr(varData^.VInt64, s);
       varDouble :
-         s:=FloatToStr(varData^.VDouble);
+         FloatAsString(varData^.VDouble, s);
       varBoolean :
          if varData^.VBoolean then
             s:='True'
@@ -1003,9 +1008,9 @@ begin
       varNull :
          s:='Null';
       varDispatch :
-         s:=UnicodeFormat('IDispatch (%p)', [varData^.VDispatch]);
+         DispatchAsString(varData^.VDispatch, s);
       varUnknown :
-         s:=UnknownAsString(IUnknown(varData^.VUnknown));
+         UnknownAsString(IUnknown(varData^.VUnknown), s);
    else
       s:=v;
    end;
@@ -2362,6 +2367,11 @@ var
    newBlock : PPointerArray;
    dest, source : PByteArray;
    fraction : Integer;
+
+   procedure FractionCase;
+   begin
+   end;
+
 begin
    Result:=count;
    if count<=0 then Exit;
@@ -2463,7 +2473,7 @@ end;
 
 // WriteString
 //
-procedure TWriteOnlyBlockStream.WriteString(const i : Integer);
+procedure TWriteOnlyBlockStream.WriteString(const i : Int64);
 var
    buf : TInt64StringBuffer;
    n : Integer;

@@ -20,13 +20,15 @@ interface
 
 {$I dws.inc}
 
-uses dwsExprs, dwsExprList, dwsMagicExprs, dwsSymbols;
+uses
+   dwsExprs, dwsExprList, dwsMagicExprs, dwsSymbols, dwsStrings,
+   dwsFunctions, dwsCoreExprs, dwsConstExprs;
 
 type
 
    TPrintFunction = class(TInternalMagicProcedure)
       public
-         function DoPrint(const args : TExprBaseListExec) : TdwsResult; inline;
+         function DoPrint(const args : TExprBaseListExec) : TdwsResult;// inline;
          procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
@@ -34,6 +36,8 @@ type
       public
          procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
+
+procedure RegisterStandardResultFunctions(table : TSymbolTable);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -43,6 +47,14 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+// RegisterStandardResultFunctions
+//
+procedure RegisterStandardResultFunctions(table : TSymbolTable);
+begin
+   TPrintFunction.Create(table, 'Print', ['s', SYS_VARIANT], '', []);
+   TPrintLnFunction.Create(table, 'PrintLn', ['s', SYS_VARIANT], '', []);
+end;
+
 // ------------------
 // ------------------ TPrintFunction ------------------
 // ------------------
@@ -51,18 +63,35 @@ implementation
 //
 function TPrintFunction.DoPrint(const args : TExprBaseListExec) : TdwsResult;
 var
-   buf : UnicodeString;
+   buf : Pointer;
+   exprBase : TExprBase;
+   exprBaseClass : TClass;
 {$IFDEF DELPHI_2010_MINUS}
-   ExprBaseListRec: TExprBaseListRec;
+   exprBaseListRec : TExprBaseListRec;
 begin
-   ExprBaseListRec := args.List^;
-   ExprBaseListRec.ExprBase[0].EvalAsString(args.Exec, buf);
+   exprBaseListRec:=args.List^;
+   exprbase:=exprBaseListRec.ExprBase[0];
 {$ELSE}
 begin
-   args.List.ExprBase[0].EvalAsString(args.Exec, buf);
+   exprBase:=args.List.ExprBase[0];
 {$ENDIF}
-   Result:=(args.Exec as TdwsProgramExecution).Result;
-   Result.AddString(buf);
+   exprBaseClass:=exprBase.ClassType;
+   if exprBaseClass=TConstStringExpr then begin
+      Result:=TdwsProgramExecution(args.Exec).Result;
+      Result.AddString(TConstStringExpr(exprBase).Value);
+   end else if exprBaseClass=TIntVarExpr then begin
+      Result:=TdwsProgramExecution(args.Exec).Result;
+      Result.AddString(exprBase.EvalAsInteger(args.Exec));
+   end else begin
+      buf:=nil;
+      try
+         exprBase.EvalAsString(args.Exec, String(buf));
+         Result:=TdwsProgramExecution(args.Exec).Result;
+         Result.AddString(String(buf));
+      finally
+         String(buf):='';
+      end;
+   end;
 end;
 
 // DoEvalProc
@@ -85,6 +114,5 @@ begin
    result:=DoPrint(args);
    result.AddCRLF;
 end;
-
 
 end.

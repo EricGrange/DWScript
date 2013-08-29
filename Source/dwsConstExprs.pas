@@ -45,6 +45,7 @@ type
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol); overload;
 
          function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
 
          function IsWritable : Boolean; override;
@@ -247,6 +248,13 @@ end;
 function TConstExpr.Eval(exec : TdwsExecution) : Variant;
 begin
    EvalAsVariant(exec, Result);
+end;
+
+// EvalAsString
+//
+procedure TConstExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
+begin
+   VariantToString(FData[0], Result);
 end;
 
 // EvalAsVariant

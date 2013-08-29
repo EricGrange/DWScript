@@ -191,9 +191,11 @@ type
    TMagicProcedureExpr = class(TMagicFuncExpr)
       private
          FOnEval : TMagicProcedureDoEvalEvent;
+
       public
          constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos;
                             func : TFuncSymbol; internalFunc : TInternalMagicFunction); override;
+
          procedure EvalNoResult(exec : TdwsExecution); override;
          function Eval(exec : TdwsExecution) : Variant; override;
    end;
