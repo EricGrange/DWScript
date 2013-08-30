@@ -40,6 +40,8 @@ program DWSWebServer;
 
 {$APPTYPE CONSOLE}
 
+{$R *.dres}
+
 uses
   Windows,
   SysUtils,

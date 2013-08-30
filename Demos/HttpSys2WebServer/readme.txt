@@ -2,9 +2,14 @@ DWScript Http.sys 2.0 Web Application Server demo
 
 Simple Web Application Server using DWScript, Synopse and Microsoft HTTP.SYS 2.0
 
-This demo requires Windows 2008, Windwos Vista or above.
+This demo requires Windows 2008 R2, Windows Vista or above.
 
-You'll need to start the demo with enough administrative rights or register it as a service.
+****** IMPORTANT ******
+
+You will need to start the demo with enough administrative rights 
+or register it as a service.
+
+***********************
 
 For documentation and options see 
 http://code.google.com/p/dwscript/wiki/WebServer
@@ -18,3 +23,6 @@ http://synopse.info/fossil/wiki?name=SQLite3+Framework
 
 SmoothieCharts is also used
 http://smoothiecharts.org/
+
+SQlite is included as well
+http://sqlite.org/
