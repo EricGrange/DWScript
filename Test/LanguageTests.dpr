@@ -47,8 +47,13 @@ uses
   UJITTests in 'UJITTests.pas',
   UJITx86Tests in 'UJITx86Tests.pas',
   ULinqTests in 'ULinqTests.pas',
-  ULinqJsonTests in 'ULinqJsonTests.pas',
-  dwsResultFunctions in '..\Source\dwsResultFunctions.pas';
+{$IF RTLVersion >= 21}
+  dwsSynSQLiteDatabase in '..\Libraries\DatabaseLib\dwsSynSQLiteDatabase.pas',
+  dwsUIBDataBase,
+  URTTIExposeTests in 'URTTIExposeTests.pas',
+  USpecialTestsRTTI in 'USpecialTestsRTTI.pas',
+{$IFEND}
+  ULinqJsonTests in 'ULinqJsonTests.pas';
 
 {$R *.res}
 
