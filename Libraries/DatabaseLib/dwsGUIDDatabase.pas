@@ -39,6 +39,8 @@ type
 
          procedure Exec(const sql : String; const parameters : TData);
          function Query(const sql : String; const parameters : TData) : IdwsDataSet;
+
+         function VersionInfoText : String;
    end;
 
    TdwsGUIDDataSet = class (TdwsDataSet)
@@ -182,6 +184,13 @@ var
 begin
    ds:=TdwsGUIDDataSet.Create(Self);
    Result:=ds;
+end;
+
+// VersionInfoText
+//
+function TdwsGUIDDataBase.VersionInfoText : String;
+begin
+   Result:='GUID pseudo-database';
 end;
 
 // ------------------

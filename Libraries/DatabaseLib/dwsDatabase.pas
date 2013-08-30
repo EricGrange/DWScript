@@ -50,6 +50,8 @@ type
 
       procedure Exec(const sql : String; const parameters : TData);
       function Query(const sql : String; const parameters : TData) : IdwsDataSet;
+
+      function VersionInfoText : String;
    end;
 
    IdwsDataSet = interface

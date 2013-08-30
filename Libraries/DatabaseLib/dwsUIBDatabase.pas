@@ -50,6 +50,8 @@ type
 
          procedure Exec(const sql : String; const parameters : TData); virtual;
          function Query(const sql : String; const parameters : TData) : IdwsDataSet; virtual;
+
+         function VersionInfoText : String;
    end;
 
    TdwsUIBDataSet = class (TdwsDataSet)
@@ -237,6 +239,13 @@ var
 begin
    ds:=TdwsUIBDataSet.Create(Self, sql, parameters);
    Result:=ds;
+end;
+
+// VersionInfoText
+//
+function TdwsUIBDataBase.VersionInfoText : String;
+begin
+   Result:='UIB '+DB.InfoVersion;
 end;
 
 // ------------------

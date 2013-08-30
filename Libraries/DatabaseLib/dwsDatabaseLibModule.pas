@@ -74,6 +74,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsDatabaseClassesDataSetMethodsFindFieldEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsDatabaseClassesDataBaseMethodsVersionInfoTextEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     procedure SetScript(aScript : TDelphiWebScript);
@@ -325,6 +327,12 @@ procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsRollbackEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    (ExtObject as TDataBase).Intf.Rollback;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsVersionInfoTextEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=(ExtObject as TDataBase).Intf.VersionInfoText;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsAsBooleanEval(

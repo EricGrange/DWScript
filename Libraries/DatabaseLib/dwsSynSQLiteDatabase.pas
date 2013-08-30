@@ -46,6 +46,8 @@ type
 
          procedure Exec(const sql : String; const parameters : TData);
          function Query(const sql : String; const parameters : TData) : IdwsDataSet;
+
+         function VersionInfoText : String;
    end;
 
    TdwsSynSQLiteDataSet = class (TdwsDataSet)
@@ -99,6 +101,20 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+var
+   vSQLite3DynamicCS : TFixedCriticalSection;
+
+procedure InitializeSQLite3Dynamic;
+begin
+   vSQLite3DynamicCS.Enter;
+   try
+      if sqlite3=nil then
+         sqlite3:=TSQLite3LibraryDynamic.Create;
+   finally
+      vSQLite3DynamicCS.Leave;
+   end;
+end;
+
 function SQLiteTypeToDataType(sqliteType : Integer) : TdwsDataFieldType;
 const
    cSQLiteTypeToDataType : array [SQLITE_INTEGER..SQLITE_NULL] of TdwsDataFieldType = (
@@ -139,6 +155,8 @@ function TdwsSynSQLiteDataBaseFactory.CreateDataBase(const parameters : TStringD
 var
    db : TdwsSynSQLiteDataBase;
 begin
+   if sqlite3=nil then
+      InitializeSQLite3Dynamic;
    db:=TdwsSynSQLiteDataBase.Create(parameters);
    Result:=db;
 end;
@@ -224,6 +242,13 @@ var
 begin
    ds:=TdwsSynSQLiteDataSet.Create(Self, sql, parameters);
    Result:=ds;
+end;
+
+// VersionInfoText
+//
+function TdwsSynSQLiteDataBase.VersionInfoText : String;
+begin
+   Result:=UTF8ToString(sqlite3.libversion);
 end;
 
 // ------------------
@@ -362,5 +387,11 @@ initialization
 // ------------------------------------------------------------------
 
    TdwsDatabase.RegisterDriver('SQLite', TdwsSynSQLiteDataBaseFactory.Create);
+
+   vSQLite3DynamicCS:=TFixedCriticalSection.Create;
+
+finalization
+
+   FreeAndNil(vSQLite3DynamicCS);
 
 end.

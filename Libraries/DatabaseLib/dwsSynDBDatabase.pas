@@ -49,6 +49,8 @@ type
 
          procedure Exec(const sql : String; const parameters : TData);
          function Query(const sql : String; const parameters : TData) : IdwsDataSet;
+
+         function VersionInfoText : String;
    end;
 
    TdwsSynDBDataSet = class (TdwsDataSet)
@@ -207,6 +209,13 @@ var
 begin
    ds:=TdwsSynDBDataSet.Create(Self, sql, parameters);
    Result:=ds;
+end;
+
+// VersionInfoText
+//
+function TdwsSynDBDataBase.VersionInfoText : String;
+begin
+   Result:=UTF8ToString(FProps.EngineName);
 end;
 
 // ------------------

@@ -101,6 +101,12 @@ object dwsDatabaseLib: TdwsDatabaseLib
             ResultType = 'DataSet'
             OnEval = dwsDatabaseClassesDataBaseMethodsQueryEval
             Kind = mkFunction
+          end
+          item
+            Name = 'VersionInfoText'
+            ResultType = 'String'
+            OnEval = dwsDatabaseClassesDataBaseMethodsVersionInfoTextEval
+            Kind = mkFunction
           end>
         OnCleanUp = dwsDatabaseClassesDataBaseCleanUp
       end
