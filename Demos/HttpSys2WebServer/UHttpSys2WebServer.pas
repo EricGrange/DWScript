@@ -105,7 +105,7 @@ const
          // Allowed values are "Basic", "Digest", "NTLM", "Negotiate" and "*" for all
          +'"Authentication": [],'
          // Number of WorkerThreads
-         +'"WorkerThreads": 8,'
+         +'"WorkerThreads": 16,'
          // Directory for log files (NCSA)
          // If empty, logs are not active
          +'"LogDirectory": "",'
