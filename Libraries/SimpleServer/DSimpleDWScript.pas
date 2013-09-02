@@ -202,7 +202,7 @@ procedure TSimpleDWScript.HandleDWS(const fileName : String; request : TWebReque
 
    procedure HandleScriptResult(response : TWebResponse; scriptResult : TdwsResult);
    begin
-      if StrBeginsWithA(response.ContentType, 'text/') then
+      if (response.ContentEncoding='') and StrBeginsWithA(response.ContentType, 'text/') then
          response.ContentData:=scriptResult.ToUTF8String
       else response.ContentData:=scriptResult.ToDataString;
    end;

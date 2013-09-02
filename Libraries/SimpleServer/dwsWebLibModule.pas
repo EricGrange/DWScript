@@ -58,6 +58,8 @@ type
       ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsSetCookie2Eval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsWebClassesWebResponseMethodsSetCompressionEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -190,6 +192,12 @@ begin
    wra:=TWebRequestAuthentication(Info.ParamAsInteger[0]);
    Info.WebResponse.Headers.Values['WWW-Authenticate']:=cWebRequestAuthenticationToString[wra];
    Info.WebResponse.StatusCode:=401;
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetCompressionEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.WebResponse.Compression:=Info.ParamAsBoolean[0];
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetContentTextEval(

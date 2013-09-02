@@ -96,6 +96,8 @@ const
          +'"SSLPort": 0,'
          // https relative URI
          +'"SSLRelativeURI": "",'
+         // is HTTP compression activated
+         +'"Compression": true,'
          // Base path for served files,
          // If not defined, assumes a www subfolder of the folder where the exe is
          +'"WWWPath": "",'
@@ -190,7 +192,10 @@ begin
       if FSSLPort<>0 then begin
          FServer.AddUrl('', FSSLPort, True, '+');
       end;
-      FServer.RegisterCompress(CompressDeflate);
+
+      if serverOptions['Compression'].AsBoolean then
+         FServer.RegisterCompress(CompressDeflate);
+
       FServer.OnRequest:=Process;
 
       FServer.ServerName:=serverOptions['Name'].AsString;

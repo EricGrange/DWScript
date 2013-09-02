@@ -138,6 +138,7 @@ type
          FContentEncoding : RawByteString;
          FHeaders : TStrings;
          FCookies : TWebResponseCookies;  // lazy initialization
+         FCompression : Boolean;
 
       protected
          procedure SetContentText(const textType : RawByteString; const text : String);
@@ -161,6 +162,7 @@ type
 
          property Headers : TStrings read FHeaders;
          property Cookies : TWebResponseCookies read GetCookies;
+         property Compression : Boolean read FCompression write FCompression;
    end;
 
    IWebEnvironment = interface
@@ -395,6 +397,7 @@ constructor TWebResponse.Create;
 begin
    inherited;
    FHeaders:=TFastCompareStringList.Create;
+   FCompression:=True;
 end;
 
 // Destroy

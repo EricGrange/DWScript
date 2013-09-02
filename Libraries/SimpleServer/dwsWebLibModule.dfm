@@ -328,6 +328,16 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maStatic]
             OnEval = dwsWebClassesWebResponseMethodsSetCookie2Eval
             Kind = mkClassProcedure
+          end
+          item
+            Name = 'SetCompression'
+            Parameters = <
+              item
+                Name = 'value'
+                DataType = 'Boolean'
+              end>
+            OnEval = dwsWebClassesWebResponseMethodsSetCompressionEval
+            Kind = mkProcedure
           end>
         Properties = <
           item
@@ -369,6 +379,11 @@ object dwsWebLib: TdwsWebLib
                 Name = 'name'
                 DataType = 'String'
               end>
+          end
+          item
+            Name = 'Compression'
+            DataType = 'Boolean'
+            WriteAccess = 'SetCompression'
           end>
       end>
     Enumerations = <

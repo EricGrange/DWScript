@@ -198,6 +198,7 @@ type
          FLogFields : Cardinal;
          FLogRolloverSize : Cardinal;
          FServerName : UTF8String;
+         FServerNameLength : Integer;
          FServiceName : UTF8String;
          FMaxBandwidth : Cardinal;
          FMaxConnections : Cardinal;
@@ -970,6 +971,7 @@ var
    headers : HTTP_UNKNOWN_HEADER_ARRAY;
    dataChunkInMemory : HTTP_DATA_CHUNK_INMEMORY;
    pContentEncoding : PHTTP_KNOWN_HEADER;
+   pRespServer : PHTTP_KNOWN_HEADER;
 begin
    // THttpServerGeneric thread preparation: launch any OnHttpThreadStart event
    inherited Execute;
@@ -1043,10 +1045,11 @@ begin
                FLogFieldsData.ProtocolStatus := FWebResponse.StatusCode;
 
                response^.SetStatus(FWebResponse.StatusCode, FOutStatus);
-               with response^.Headers.KnownHeaders[respServer] do begin
-                  pRawValue:=Pointer(FServerName);
-                  RawValueLength:=Length(FServerName);
-               end;
+
+               pRespServer:=@response^.Headers.KnownHeaders[respServer];
+               pRespServer^.pRawValue:=FLogFieldsData.ServerName;
+               pRespServer^.RawValueLength:=FLogFieldsData.ServerNameLength;
+
                if FLogDataPtr<>nil then begin
                   FLogFieldsData.UserNameLength:=Length(logUserName);
                   FLogFieldsData.UserName:=Pointer(logUserName);
@@ -1059,16 +1062,16 @@ begin
                   SendStaticFile(request, response);
                end else begin
                   // response is in OutContent -> sent it from memory
-                  if FCompress <> nil then begin
+                  if (FCompress<>nil) and FWebResponse.Compression then begin
                      pContentEncoding := @response^.Headers.KnownHeaders[reqContentEncoding];
-                     if pContentEncoding.RawValueLength = 0 then begin
+                     if pContentEncoding^.RawValueLength = 0 then begin
                         // no previous encoding -> try if any compression
                         outContentData := FWebResponse.ContentData;
                         outContentEncoding := CompressDataAndGetHeaders(inCompressAccept,
                            FCompress, FWebResponse.ContentType, outContentData);
                         FWebResponse.ContentData := outContentData;
-                        pContentEncoding.pRawValue := Pointer(outContentEncoding);
-                        pContentEncoding.RawValueLength := Length(outContentEncoding);
+                        pContentEncoding^.pRawValue := Pointer(outContentEncoding);
+                        pContentEncoding^.RawValueLength := Length(outContentEncoding);
                      end;
                   end;
                   response^.SetContent(dataChunkInMemory, FWebResponse.ContentData, FWebResponse.ContentType);
