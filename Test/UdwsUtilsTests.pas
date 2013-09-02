@@ -38,6 +38,7 @@ type
          procedure StackLotsOfIntegerTest;
          procedure WriteOnlyBlockStreamTest;
          procedure WOBSBigFirstTest;
+         procedure WOBSBigSecondTest;
          procedure TightListTest;
          procedure LookupTest;
          procedure SortedListExtract;
@@ -258,6 +259,37 @@ begin
 
    for i:=0 to High(br) do
       if br[i]<>bw[i] then
+         CheckEquals(bw[i], br[i], IntToStr(i));
+
+   buffer.Free;
+end;
+
+// WOBSBigSecondTest
+//
+procedure TdwsUtilsTests.WOBSBigSecondTest;
+var
+   buffer : TWriteOnlyBlockStream;
+   i : Integer;
+   bw, br : TBytes;
+begin
+   buffer:=TWriteOnlyBlockStream.Create;
+
+   SetLength(bw, cWriteOnlyBlockStreamBlockSize*2);
+   for i:=0 to High(bw) do
+      bw[i]:=Byte(i and 255);
+
+   buffer.WriteByte(123);
+
+   buffer.Write(bw[0], Length(bw));
+
+   CheckEquals(Length(bw)+1, buffer.Size, 'size');
+
+   SetLength(br, buffer.Size);
+   buffer.StoreData(br[0]);
+
+   CheckEquals(123, br[0], '0');
+   for i:=1 to High(br) do
+      if br[i]<>bw[i-1] then
          CheckEquals(bw[i], br[i], IntToStr(i));
 
    buffer.Free;

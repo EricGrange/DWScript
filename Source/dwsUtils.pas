@@ -533,7 +533,7 @@ type
          procedure WriteString(const utf16String : UnicodeString); overload;
          procedure WriteString(const i : Int64); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos : Integer); overload;
-         procedure WriteSubString(const utf16String : UnicodeString; startPos, Alength : Integer); overload;
+         procedure WriteSubString(const utf16String : UnicodeString; startPos, aLength : Integer); overload;
          procedure WriteCRLF;
          procedure WriteChar(utf16Char : WideChar); inline;
          procedure WriteDigits(value : Int64; digits : Integer);
@@ -860,7 +860,7 @@ begin
       p^:='0';
       Dec(p);
    end;
-   SetString(s, PChar(@p[1]), (NativeUInt(@buf[15])-NativeUInt(p)) div SizeOf(WideChar));
+   SetString(s, PWideChar(@p[1]), (NativeUInt(@buf[15])-NativeUInt(p)) div SizeOf(WideChar));
 end;
 
 // Int64ToHex
@@ -2367,11 +2367,6 @@ var
    newBlock : PPointerArray;
    dest, source : PByteArray;
    fraction : Integer;
-
-   procedure FractionCase;
-   begin
-   end;
-
 begin
    Result:=count;
    if count<=0 then Exit;
@@ -2583,19 +2578,25 @@ end;
 
 // WriteSubString
 //
-procedure TWriteOnlyBlockStream.WriteSubString(const utf16String : UnicodeString; startPos, Alength : Integer);
+procedure TWriteOnlyBlockStream.WriteSubString(const utf16String : UnicodeString;
+                                               startPos, aLength : Integer);
 var
    p, n : Integer;
 begin
    Assert(startPos>=1);
-   if Alength<=0 then Exit;
-   n:={System.}Length(utf16String);
+
+   if aLength<=0 then Exit;
+   p:=startPos+aLength-1;
+
+   n:=System.Length(utf16String);
    if startPos>n then Exit;
-   p:=startPos+Alength-1;
-   if p>n then p:=n;
-   Alength:=p-startPos+1;
-   if Alength>0 then
-      Write(utf16String[startPos], Alength*SizeOf(WideChar));
+
+   if p>n then
+      n:=n-startPos+1
+   else n:=p-startPos+1;
+
+   if n>0 then
+      Write(utf16String[startPos], n*SizeOf(WideChar));
 end;
 
 // ------------------

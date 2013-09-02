@@ -1044,13 +1044,14 @@ begin
    FExternalObject := ExtObject;
 end;
 
-function TInfoFunc.GetInherited: IInfo;
+// GetInherited
+//
+function TInfoFunc.GetInherited : IInfo;
 begin
-  if FTypeSym is TMethodSymbol then
-    result := TInfoFunc.Create(FProgramInfo,TMethodSymbol(FTypeSym).ParentMeth,
-      FDataPtr,FDataMaster,FScriptObj,FClassSym.Parent,True)
-  else
-    result := inherited GetInherited;
+   if FTypeSym is TMethodSymbol then
+      Result:=TInfoFunc.Create(FProgramInfo, TMethodSymbol(FTypeSym).ParentMeth,
+                               FDataPtr, FDataMaster, FScriptObj, FClassSym.Parent, True)
+   else Result:=inherited GetInherited;
 end;
 
 // CreateTempFuncExpr
