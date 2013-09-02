@@ -1056,6 +1056,8 @@ end;
 // CreateTempFuncExpr
 //
 function TInfoFunc.CreateTempFuncExpr : TFuncExprBase;
+var
+   caller : TExprBase;
 begin
    if FDataPtr.DataLength>0 then begin
       Result:=TFuncPtrExpr.Create(FExec.Prog, cNullPos,
@@ -1063,6 +1065,16 @@ begin
    end else begin
       Result:=CreateFuncExpr(FExec.Prog, TFuncSymbol(FTypeSym), FScriptObj,
                              FClassSym, FForceStatic);
+   end;
+   if Result is TFuncExpr then begin
+      caller:=FExec.CallStackLastExpr;
+      if caller<>nil then begin
+         // called from script
+         TFuncExpr(Result).Level:=(FExec.CallStackLastExpr as TFuncExpr).Level;
+      end else begin
+         // called from Delphi-side outside of script
+         TFuncExpr(Result).Level:=0;
+      end;
    end;
 end;
 

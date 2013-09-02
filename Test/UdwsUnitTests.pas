@@ -49,6 +49,7 @@ type
          procedure FuncOverloadStrEval(Info: TProgramInfo);
          function  FuncFastEval(const args : TExprBaseListExec) : Variant;
          function  FuncFastPointEval(const args : TExprBaseListExec) : Variant;
+         procedure ProcCallLevelsEval(Info: TProgramInfo);
 
          procedure ClassConstructor(Info: TProgramInfo; var ExtObject: TObject);
          procedure ClassCleanup(ExternalObject: TObject);
@@ -128,6 +129,8 @@ type
          procedure UnknownUnit;
          procedure CircularUnit;
          procedure DuplicateUnit;
+
+         procedure CallLevels;
    end;
 
    EDelphiException = class (Exception)
@@ -829,6 +832,13 @@ begin
    rec[0]:=args.AsInteger[0];
    rec[1]:=rec[0]+1;
    Result:=IDataContext(args.Exec.Stack.CreateDataContext(rec, 0));
+end;
+
+// ProcCallLevelsEval
+//
+procedure TdwsUnitTestsContext.ProcCallLevelsEval(Info: TProgramInfo);
+begin
+   Info.Execution.ProgramInfo.Func['CallMe'].Call([]);
 end;
 
 // ClassConstructor
@@ -2201,6 +2211,50 @@ begin
 
       prog:=FCompiler.Compile('');
       CheckEquals('Syntax Error: Unit "Test" redeclared'#13#10, prog.Msgs.AsInfo);
+   finally
+      un.Free;
+   end;
+end;
+
+// CallLevels
+//
+procedure TdwsUnitTests.CallLevels;
+var
+   un : TdwsUnit;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   un:=TdwsUnit.Create(nil);
+   try
+      un.UnitName:='TestCallLevels';
+      un.Script:=FCompiler;
+      with un.Functions.Add do begin
+         Name:='UnitProc';
+         OnEval:=FContext.ProcCallLevelsEval;
+      end;
+
+      prog:=FCompiler.Compile(
+          'var v := "a";'#13#10
+         +'var i := Ord("b");'#13#10
+         +'procedure CallMe; begin v+=Chr(i); i+=1; end;'#13#10
+         +'procedure RunMe; begin CallMe; UnitProc; CallMe; end;');
+      CheckEquals('', prog.Msgs.AsInfo);
+
+      exec:=prog.BeginNewExecution;
+      try
+         exec.RunProgram(0);
+         CheckEquals('a', exec.Info.ValueAsString['v']);
+         exec.Info.Func['CallMe'].Call;
+         CheckEquals('ab', exec.Info.ValueAsString['v']);
+         exec.Info.Func['RunMe'].Call;
+         CheckEquals('abcde', exec.Info.ValueAsString['v']);
+         exec.Info.Func['CallMe'].Call;
+         CheckEquals('abcdef', exec.Info.ValueAsString['v']);
+      finally
+         exec.EndProgram;
+         exec:=nil;
+         prog:=nil;
+      end;
    finally
       un.Free;
    end;

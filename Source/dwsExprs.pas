@@ -1157,7 +1157,7 @@ type
          function FuncSymQualifiedName : UnicodeString; override;
 
          property CallerID : TFuncExpr read FCallerID write FCallerID;
-         property Level : SmallInt read FLevel;
+         property Level : SmallInt read FLevel write FLevel;
    end;
 
    // A simple function/procedure (not a method, not a function pointer);
@@ -1996,7 +1996,7 @@ begin
       FProgramInfo.Execution := Self;
 
       // allocate global stack space
-      Stack.Push(FProg.FGlobalAddrGenerator.DataSize + FProg.DataSize);
+      Stack.Push(FProg.FGlobalAddrGenerator.DataSize+FProg.DataSize);
       Stack.PushBp(0, Stack.BasePointer);
 
       // Initialize Result

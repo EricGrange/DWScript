@@ -60,7 +60,7 @@ type
          procedure SetBasePointer(newBp : Integer); inline;
 
       public
-         Data: TData;
+         Data : TData;
 
          procedure Initialize(const params : TStackParameters);
          procedure Finalize;
@@ -226,15 +226,15 @@ end;
 
 // Push
 //
-procedure TStackMixIn.Push(Delta: Integer);
+procedure TStackMixIn.Push(delta : Integer);
 var
    sp : Integer;
 begin
-   sp := FStackPointer + Delta;
-   FStackPointer := sp;
+   sp:=FStackPointer+delta;
+   FStackPointer:=sp;
 
    // Increase stack size if necessary
-   if sp > FSize then
+   if sp>FSize then
       GrowTo(sp);
 end;
 
@@ -309,10 +309,10 @@ procedure TStackMixIn.Reset;
 var
    i : Integer;
 begin
-   Data := nil;
-   FSize := 0;
-   FStackPointer := 0;
-   FBasePointer := 0;
+   Data:=nil;
+   FSize:=0;
+   FStackPointer:=0;
+   FBasePointer:=0;
    FBaseData:=nil;
    ClearBpStore;
    SetLength(FBpStore, FParams.MaxLevel + 1);
