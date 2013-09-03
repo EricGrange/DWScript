@@ -360,10 +360,7 @@ end;
 procedure THttpSys2WebServer.FileChanged(sender : TdwsFileNotifier; const fileName : String;
                                          changeAction : TFileNotificationAction);
 begin
-   if    StrEndsWith(fileName, '.dws')
-      or StrEndsWith(fileName, '.inc')
-      or StrEndsWith(fileName, '.pas') then
-      FDWS.FlushDWSCache;
+   FDWS.FlushDWSCache(fileName);
    if (not StrContains(fileName, '\.')) and StrContains(fileName, '\index.') then
       FDirectoryIndex.Flush;
    Inc(FCacheCounter);

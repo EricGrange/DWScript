@@ -197,8 +197,8 @@ type
 
       protected
          function GetMsg(Index: Integer): TdwsMessage;
-         function GetMsgCount: Integer;
-         function GetHasErrors : Boolean;
+         function GetMsgCount : Integer; inline;
+         function GetHasErrors : Boolean; inline;
 
       public
          destructor Destroy; override;

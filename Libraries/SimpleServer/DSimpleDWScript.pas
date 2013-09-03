@@ -28,9 +28,16 @@ uses
 
 type
 
+   TProgramList = TSimpleList<IdwsProgram>;
+
    TCompiledProgram = record
       Name : String;
       Prog : IdwsProgram;
+   end;
+
+   TDependenciesHash = class (TSimpleNameObjectHash<TProgramList>)
+      procedure RegisterProg(const cp : TCompiledProgram);
+      procedure AddName(const name : String; const prog : IdwsProgram);
    end;
 
    TCompiledProgramHash = class (TSimpleHash<TCompiledProgram>)
@@ -52,8 +59,8 @@ type
 
       procedure DoInclude(const scriptName: String; var scriptSource: String);
       function  DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
-      function dwsFileIOFunctionsFileExistsFastEval(args: TExprBaseListExec): Variant;
-      function dwsFileIOFunctionsDeleteFileFastEval(args: TExprBaseListExec): Variant;
+      function  dwsFileIOFunctionsFileExistsFastEval(args: TExprBaseListExec): Variant;
+      function  dwsFileIOFunctionsDeleteFileFastEval(args: TExprBaseListExec): Variant;
 
    private
       FScriptTimeoutMilliseconds : Integer;
@@ -70,10 +77,11 @@ type
 
       FCompiledPrograms : TCompiledProgramHash;
       FCompiledProgramsLock : TFixedCriticalSection;
+      FDependenciesHash : TDependenciesHash;
 
       FCompilerLock : TFixedCriticalSection;
 
-      FFlushMatching : String;
+      FFlushProgList : TProgramList;
 
       FOnLoadSourceCode : TLoadSourceCodeEvent;
 
@@ -93,8 +101,7 @@ type
    public
       procedure HandleDWS(const fileName : String; request : TWebRequest; response : TWebResponse);
 
-      // flush the cache of fileName that begin by matchBegin
-      procedure FlushDWSCache(const matchingBegin : String = '');
+      procedure FlushDWSCache(const fileName : String = '');
 
       procedure LoadCPUOptions(options : TdwsJSONValue);
       procedure LoadDWScriptOptions(options : TdwsJSONValue);
@@ -169,6 +176,7 @@ begin
    FCompiledPrograms:=TCompiledProgramHash.Create;
    FCompiledProgramsLock:=TFixedCriticalSection.Create;
    FCompilerLock:=TFixedCriticalSection.Create;
+   FDependenciesHash:=TDependenciesHash.Create;
 
    FScriptTimeoutMilliseconds:=3000;
 end;
@@ -180,6 +188,7 @@ begin
    FCompilerLock.Free;
    FCompiledProgramsLock.Free;
    FCompiledPrograms.Free;
+   FDependenciesHash.Free;
    FPathVariables.Free;
 end;
 
@@ -247,22 +256,26 @@ end;
 
 // FlushDWSCache
 //
-procedure TSimpleDWScript.FlushDWSCache(const matchingBegin : String = '');
+procedure TSimpleDWScript.FlushDWSCache(const fileName : String = '');
 var
    oldHash : TCompiledProgramHash;
 begin
    FCompiledProgramsLock.Enter;
    try
-      if matchingBegin='' then
-         FCompiledPrograms.Clear
-      else begin
-         FFlushMatching:=matchingBegin;
-         oldHash:=FCompiledPrograms;
-         try
-            FCompiledPrograms:=TCompiledProgramHash.Create;
-            oldHash.Enumerate(AddNotMatching);
-         finally
-            oldHash.Free;
+      if fileName='' then begin
+         FDependenciesHash.Clean;
+         FCompiledPrograms.Clear;
+      end else begin
+         FFlushProgList:=FDependenciesHash.Objects[LowerCase(ExtractFileName(fileName))];
+         if (FFlushProgList<>nil) and (FFlushProgList.Count>0) then begin
+            oldHash:=FCompiledPrograms;
+            try
+               FCompiledPrograms:=TCompiledProgramHash.Create;
+               oldHash.Enumerate(AddNotMatching);
+            finally
+               oldHash.Free;
+            end;
+            FFlushProgList.Clear;
          end;
       end;
    finally
@@ -360,6 +373,7 @@ begin
       FCompiledProgramsLock.Enter;
       try
          FCompiledPrograms.Add(cp);
+         FDependenciesHash.RegisterProg(cp);
       finally
          FCompiledProgramsLock.Leave;
       end;
@@ -371,9 +385,16 @@ end;
 // AddNotMatching
 //
 procedure TSimpleDWScript.AddNotMatching(const cp : TCompiledProgram);
+var
+   i : Integer;
 begin
-   if cp.Prog.Msgs.HasErrors or not StrBeginsWith(cp.Name, FFlushMatching) then
-      FCompiledPrograms.Add(cp);
+   if cp.Prog.Msgs.HasErrors then Exit;
+
+   for i:=0 to FFlushProgList.Count-1 do
+      if FFlushProgList[i]=cp.Prog then
+         Exit;
+
+   FCompiledPrograms.Add(cp);
 end;
 
 // DoInclude
@@ -479,6 +500,41 @@ function TCompiledProgramHash.GetItemHashCode(const item1 : TCompiledProgram) : 
 begin
    Result:=SimpleStringHash(item1.Name);
 end;
+
+// ------------------
+// ------------------ TDependenciesHash ------------------
+// ------------------
+
+// RegisterProg
+//
+procedure TDependenciesHash.RegisterProg(const cp : TCompiledProgram);
+var
+   i : Integer;
+   list : TScriptSourceList;
+begin
+   AddName(cp.Name, cp.Prog);
+   list:=cp.Prog.SourceList;
+   for i:=0 to list.Count-1 do
+      AddName(list[i].NameReference, cp.Prog);
+end;
+
+// AddName
+//
+procedure TDependenciesHash.AddName(const name : String; const prog : IdwsProgram);
+var
+   lcName : String;
+   list : TProgramList;
+begin
+   lcName:=LowerCase(ExtractFileName(name));
+   list:=Objects[lcName];
+   if list=nil then begin
+      list:=TProgramList.Create;
+      Objects[lcName]:=list;
+   end;
+   list.Add(prog);
+end;
+
+// following stuff to be moved to own unit
 
 function TSimpleDWScript.dwsFileIOFunctionsDeleteFileFastEval(
   args: TExprBaseListExec): Variant;

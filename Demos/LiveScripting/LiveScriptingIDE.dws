@@ -1,0 +1,2 @@
+type
+  TClassTest =
