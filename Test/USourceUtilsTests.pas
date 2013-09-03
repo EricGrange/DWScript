@@ -1,5 +1,7 @@
 unit USourceUtilsTests;
 
+{$I ..\Source\dws.inc}
+
 interface
 
 uses

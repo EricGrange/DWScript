@@ -1,5 +1,7 @@
 unit UScriptTests;
 
+{$I ..\Source\dws.inc}
+
 interface
 
 uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsUtils,

@@ -85,7 +85,7 @@ begin
    end else begin
       buf:=nil;
       try
-         exprBase.EvalAsString(args.Exec, String(buf));
+         exprBase.EvalAsString(args.Exec, UnicodeString(buf));
          Result:=TdwsProgramExecution(args.Exec).Result;
          Result.AddString(String(buf));
       finally

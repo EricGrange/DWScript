@@ -1516,7 +1516,7 @@ type
       procedure SetExternalObject(ExtObject: TObject);
       procedure SetValue(const Value: Variant);
       procedure SetValueAsInteger(const value : Int64);
-      procedure SetValueAsString(const value : String);
+      procedure SetValueAsString(const value : UnicodeString);
 
       property Data: TData read GetData write SetData;
       property ExternalObject: TObject read GetExternalObject write SetExternalObject;

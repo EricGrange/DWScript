@@ -72,7 +72,7 @@ type
          procedure SetExternalObject(ExtObject: TObject); virtual;
          procedure SetValue(const Value: Variant); virtual;
          procedure SetValueAsInteger(const value : Int64); virtual;
-         procedure SetValueAsString(const value : String); virtual;
+         procedure SetValueAsString(const value : UnicodeString); virtual;
 
       public
          constructor Create(ProgramInfo: TProgramInfo; TypeSym: TSymbol;
@@ -519,7 +519,7 @@ end;
 
 // SetValueAsString
 //
-procedure TInfo.SetValueAsString(const value : String);
+procedure TInfo.SetValueAsString(const value : UnicodeString);
 begin
    SetValue(value);
 end;
