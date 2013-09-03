@@ -94,12 +94,11 @@ implementation
 
 constructor TdwsHtmlFilter.Create(AOwner: TComponent);
 begin
-  inherited;
-//  PrivateDependencies.Add('HTML');
-  
-  FPatternOpen := '<?pas';
-  FPatternClose := '?>';
-  FPatternEval := '=';
+   inherited;
+
+   PatternOpen:='<?pas';
+   PatternClose:='?>';
+   PatternEval:='=';
 end;
 
 // Process
