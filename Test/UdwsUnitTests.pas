@@ -50,6 +50,7 @@ type
          function  FuncFastEval(const args : TExprBaseListExec) : Variant;
          function  FuncFastPointEval(const args : TExprBaseListExec) : Variant;
          procedure ProcCallLevelsEval(Info: TProgramInfo);
+         procedure FuncReturnStrings(Info: TProgramInfo);
 
          procedure ClassConstructor(Info: TProgramInfo; var ExtObject: TObject);
          procedure ClassCleanup(ExternalObject: TObject);
@@ -103,6 +104,7 @@ type
          procedure PredefinedArray;
          procedure PredefinedRecord;
          procedure DynamicArray;
+         procedure DynamicArrayResult;
          procedure ClassPropertyInfo;
          procedure DestructorAndExternalObject;
          procedure ExternalObject;
@@ -411,6 +413,10 @@ begin
    func:=FUnit.Functions.Add('FuncFastPoint', 'TPoint');
    func.Parameters.Add('i', 'Integer');
    func.OnFastEval:=FuncFastPointEval;
+
+   func:=FUnit.Functions.Add('FuncStrings', 'TStringArray');
+   func.Parameters.Add('i', 'Integer');
+   func.OnEval:=FuncReturnStrings;
 end;
 
 // DeclareTestClasses
@@ -618,6 +624,11 @@ begin
    a.LowBound:=0;
    a.HighBound:=1;
    a.DataType:='TTestClass';
+
+   a:=FUnit.Arrays.Add;
+   a.Name:='TStringArray';
+   a.IsDynamic:=True;
+   a.DataType:='String';
 end;
 
 // DeclareTestRecords
@@ -839,6 +850,22 @@ end;
 procedure TdwsUnitTestsContext.ProcCallLevelsEval(Info: TProgramInfo);
 begin
    Info.Execution.ProgramInfo.Func['CallMe'].Call([]);
+end;
+
+// FuncReturnStrings
+//
+procedure TdwsUnitTestsContext.FuncReturnStrings(Info: TProgramInfo);
+var
+   result : IInfo;
+   i : Integer;
+begin
+   result:=Info.ResultVars;
+   i:=Info.ParamAsInteger[0];
+   result.Member['Count'].ValueAsInteger:=i;
+   while i>0 do begin
+      Dec(i);
+      result.Element([i]).ValueAsString:=IntToStr(i);
+   end;
 end;
 
 // ClassConstructor
@@ -1692,6 +1719,35 @@ begin
       exec.Info.Func['MyTest'].Call;
 
       CheckEquals('1byebye', exec.Result.ToString, 'after setdata');
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// DynamicArrayResult
+//
+procedure TdwsUnitTests.DynamicArrayResult;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'var astr := FuncStrings(2);'#13#10
+                           +'PrintLn(astr.Join("-"));'#13#10
+                           +'astr := FuncStrings(0);'#13#10
+                           +'PrintLn(astr.Join("-"));'#13#10
+                           +'astr := FuncStrings(3);'#13#10
+                           +'PrintLn(astr.Join("/"));'#13#10
+                           );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+
+      CheckEquals('', exec.Msgs.AsInfo, 'Run');
+
+      CheckEquals('0-1'#13#10#13#10'0/1/2'#13#10, exec.Result.ToString);
    finally
       exec.EndProgram;
    end;

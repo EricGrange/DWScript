@@ -1516,6 +1516,7 @@ type
       procedure SetExternalObject(ExtObject: TObject);
       procedure SetValue(const Value: Variant);
       procedure SetValueAsInteger(const value : Int64);
+      procedure SetValueAsString(const value : String);
 
       property Data: TData read GetData write SetData;
       property ExternalObject: TObject read GetExternalObject write SetExternalObject;
@@ -1528,7 +1529,7 @@ type
       property Parameter[const s: UnicodeString]: IInfo read GetParameter;
       property TypeSym: TSymbol read GetTypeSym;
       property Value: Variant read GetValue write SetValue;
-      property ValueAsString : UnicodeString read GetValueAsString;
+      property ValueAsString : UnicodeString read GetValueAsString write SetValueAsString;
       property ValueAsDataString : RawByteString read GetValueAsDataString;
       property ValueAsInteger : Int64 read GetValueAsInteger write SetValueAsInteger;
       property ValueAsBoolean : Boolean read GetValueAsBoolean;

@@ -72,6 +72,7 @@ type
          procedure SetExternalObject(ExtObject: TObject); virtual;
          procedure SetValue(const Value: Variant); virtual;
          procedure SetValueAsInteger(const value : Int64); virtual;
+         procedure SetValueAsString(const value : String); virtual;
 
       public
          constructor Create(ProgramInfo: TProgramInfo; TypeSym: TSymbol;
@@ -516,9 +517,18 @@ begin
    SetValue(value);
 end;
 
+// SetValueAsString
+//
+procedure TInfo.SetValueAsString(const value : String);
+begin
+   SetValue(value);
+end;
+
+// GetInherited
+//
 function TInfo.GetInherited: IInfo;
 begin
-  raise Exception.CreateFmt(RTE_InvalidOp, ['GetInherited', FTypeSym.Caption]);
+   raise Exception.CreateFmt(RTE_InvalidOp, ['GetInherited', FTypeSym.Caption]);
 end;
 
 // GetExec
@@ -1287,7 +1297,7 @@ end;
 //
 function TInfoDynamicArray.GetMember(const s: UnicodeString): IInfo;
 begin
-   if UnicodeSameText('length', s) then
+   if UnicodeSameText('length', s) or UnicodeSameText('count', s) then
       Result:=TInfoDynamicArrayLength.Create(FProgramInfo, DataPtr, 0)
    else if UnicodeSameText('low', s) then
       Result:=TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, 0)
