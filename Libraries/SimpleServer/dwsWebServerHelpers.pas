@@ -72,7 +72,7 @@ type
 
    TMIMETypeInfo = class (TRefCountedObject)
       MIMEType : RawByteString;
-      constructor Create(const ext : String);
+      constructor CreateAuto(const ext : String);
    end;
 
    TMIMETypeInfos = TSimpleNameObjectHash<TMIMETypeInfo>;
@@ -80,6 +80,8 @@ type
    TMIMETypeCache = class
       private
          FList : TMIMETypeInfos;
+
+         procedure Prime(const ext : String; const mimeType : RawByteString);
 
       public
          constructor Create;
@@ -321,9 +323,9 @@ end;
 // ------------------ TMIMETypeInfo ------------------
 // ------------------
 
-// Create
+// CreateAuto
 //
-constructor TMIMETypeInfo.Create(const ext : String);
+constructor TMIMETypeInfo.CreateAuto(const ext : String);
 var
    reg : TRegistry;
 begin
@@ -333,6 +335,8 @@ begin
       if     reg.OpenKeyReadOnly(ext)
          and reg.ValueExists('Content Type') then
          MIMEType:=ScriptStringToRawByteString(reg.ReadString('Content Type'));
+      if MIMEType='' then
+         MIMEType:='application/unknown';
    finally
       reg.Free;
    end;
@@ -348,6 +352,17 @@ constructor TMIMETypeCache.Create;
 begin
    inherited;
    FList:=TMIMETypeInfos.Create;
+
+   // prime the cache with common extensions
+
+   Prime('.txt', 'text/plain');
+   Prime('.htm', 'text/html');
+   Prime('.html', 'text/html');
+   Prime('.js', 'text/javascript');
+   Prime('.css', 'text/css');
+   Prime('.png', 'image/png');
+   Prime('.jpg', 'image/jpeg');
+   Prime('.gif', 'image/gif');
 end;
 
 // Destroy
@@ -368,10 +383,21 @@ begin
    ext:=ExtractFileExt(fileName);
    info:=FList.Objects[ext];
    if info=nil then begin
-      info:=TMIMETypeInfo.Create(ext);
+      info:=TMIMETypeInfo.CreateAuto(ext);
       FList.Objects[ext]:=info;
    end;
    Result:=info.MIMEType;
+end;
+
+// Prime
+//
+procedure TMIMETypeCache.Prime(const ext : String; const mimeType : RawByteString);
+var
+   info : TMIMETypeInfo;
+begin
+   info:=TMIMETypeInfo.Create;
+   info.MIMEType:=mimeType;
+   FList.Objects[ext]:=info;
 end;
 
 end.
