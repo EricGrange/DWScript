@@ -134,6 +134,9 @@ function ASCIISameText(const s1, s2 : UnicodeString) : Boolean; inline;
 function InterlockedIncrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} inline; {$endif}
 function InterlockedDecrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} inline; {$endif}
 
+procedure FastInterlockedIncrement(var val : Integer); {$IFDEF PUREPASCAL} inline; {$endif}
+procedure FastInterlockedDecrement(var val : Integer); {$IFDEF PUREPASCAL} inline; {$endif}
+
 procedure SetThreadName(const threadName : PAnsiChar; threadID : Cardinal = Cardinal(-1));
 
 procedure OutputDebugString(const msg : UnicodeString);
@@ -341,6 +344,30 @@ asm
    mov   eax,  -1
    lock  xadd [ecx], eax
    dec   eax
+{$endif}
+end;
+
+// FastInterlockedIncrement
+//
+procedure FastInterlockedIncrement(var val : Integer);
+{$ifndef WIN32_ASM}
+begin
+   InterlockedIncrement(val);
+{$else}
+asm
+   lock  inc [eax]
+{$endif}
+end;
+
+// FastInterlockedDecrement
+//
+procedure FastInterlockedDecrement(var val : Integer);
+{$ifndef WIN32_ASM}
+begin
+   InterlockedDecrement(val);
+{$else}
+asm
+   lock  dec [eax]
 {$endif}
 end;
 
