@@ -24,5 +24,20 @@ http://synopse.info/fossil/wiki?name=SQLite3+Framework
 SmoothieCharts is also used
 http://smoothiecharts.org/
 
-SQlite is included as well
+SQLite is included as well
 http://sqlite.org/
+
+***********************
+
+Changes
+
+2013.09.05
+	Fixed mime type for js/css/html/gif/png for machines where they're
+		misconfigured in the Windows registery
+	Updated to SQLite 3.8.0.2
+
+
+2013.09.03
+	Improved HTML filter performance
+	Smarter script cache invalidation when files are modified
+	Updated to SQLite 3.8.0.1
