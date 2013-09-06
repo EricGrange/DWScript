@@ -188,7 +188,7 @@ end;
 constructor TIOCPWorkerThreadPool.Create(aWorkerCount : Integer);
 begin
    inherited Create;
-   FIOCP:=CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 0);
+   FIOCP:=CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, MaxInt);
    WorkerCount:=aWorkerCount;
 end;
 
