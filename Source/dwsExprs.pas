@@ -1550,7 +1550,9 @@ type
          function GetFunc(const s: UnicodeString): IInfo;
          procedure SetFuncSym(const Value: TFuncSymbol);
          function GetValueAsVariant(const s: UnicodeString): Variant;
+         procedure GetSymbolInfo(sym : TSymbol; var info : IInfo);
          function GetVars(const str: UnicodeString): IInfo;
+         function GetParams(const Index: Integer): IInfo;
          procedure SetData(const s: UnicodeString; const Value: TData);
          procedure SetValueAsVariant(const s: UnicodeString; const Value: Variant);
          function GetResultAsVariant: Variant;
@@ -1617,6 +1619,7 @@ type
          property ResultAsVariant: Variant read GetResultAsVariant write SetResultAsVariant;
          property ResultVars: IInfo read GetResultVars;
          property Vars[const s: UnicodeString]: IInfo read GetVars;
+         property Params[const Index: Integer]: IInfo read GetParams;
 
          property ValueAsVariant[const s : UnicodeString] : Variant read GetValueAsVariant write SetValueAsVariant;
          property ValueAsChar[const s : UnicodeString] : WideChar read GetValueAsChar;
@@ -5598,7 +5601,9 @@ begin
   GetVars(s).Data := Value;
 end;
 
-function TProgramInfo.GetVars(const str : UnicodeString): IInfo;
+// GetSymbolInfo
+//
+procedure TProgramInfo.GetSymbolInfo(sym : TSymbol; var info : IInfo);
 
    procedure GetExternalVarSymbolInfo(sym : TSymbol; var Result : IInfo);
    var
@@ -5675,6 +5680,24 @@ function TProgramInfo.GetVars(const str : UnicodeString): IInfo;
       TInfo.SetChild(Result, Self, sym.Typ, locData);
    end;
 
+begin
+   if sym is TDataSymbol then
+      GetDataSymbol(TDataSymbol(sym), info)
+   else if sym is TConstSymbol then
+      GetConstSymbol(TConstSymbol(sym), info)
+   else if sym is TFieldSymbol then
+      GetFieldSymbol(TFieldSymbol(sym), info)
+   else if sym is TExternalVarSymbol then
+      GetExternalVarSymbolInfo(sym, info)
+   else if sym is TTypeSymbol then
+      GetTypeSymbolInfo(sym, info)
+   else RaiseOnlyVarSymbols(sym);
+end;
+
+// GetVars
+//
+function TProgramInfo.GetVars(const str : UnicodeString): IInfo;
+
 var
    sym : TSymbol;
 begin
@@ -5682,18 +5705,28 @@ begin
 
    if not Assigned(sym) then
       RaiseVariableNotFound(str)
-   else if sym is TDataSymbol then
-      GetDataSymbol(TDataSymbol(sym), Result)
-   else if sym is TConstSymbol then
-      GetConstSymbol(TConstSymbol(sym), Result)
-   else if sym is TFieldSymbol then
-      GetFieldSymbol(TFieldSymbol(sym), Result)
-   else if sym is TExternalVarSymbol then
-      GetExternalVarSymbolInfo(sym, Result)
-   else if sym is TTypeSymbol then
-      GetTypeSymbolInfo(sym, Result)
-   else RaiseOnlyVarSymbols(sym);
+   else GetSymbolInfo(sym, Result);
 end;
+
+// GetParams
+//
+function TProgramInfo.GetParams(const Index: Integer): IInfo;
+var
+   ip : TSymbolTable;
+   sym: TSymbol;
+begin
+   ip:=FuncSym.Params;
+   if Cardinal(index)>=Cardinal(ip.Count) then begin
+      RaiseIncorrectParameterIndex(index);
+      Result:=nil;
+   end else begin
+      sym:=ip[index];
+      if not Assigned(sym) then
+         RaiseVariableNotFound(ip[index].Name)
+      else GetSymbolInfo(sym, Result);
+   end;
+end;
+
 
 function TProgramInfo.GetFunc(const s: UnicodeString): IInfo;
 var
