@@ -1134,18 +1134,20 @@ type
          property OnInitExpr;
    end;
 
-   TdwsSynonyms = class(TdwsCollection)
-      protected
-         class function GetSymbolClass : TdwsSymbolClass; override;
-   end;
-
-   TdwsSynonymsClass = class of TdwsSynonyms;
-
    TdwsSynonym = class(TdwsVariable)
       public
          function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
             override;
    end;
+
+   TdwsSynonyms = class(TdwsCollection)
+      protected
+         class function GetSymbolClass : TdwsSymbolClass; override;
+      public
+         function Add : TdwsSynonym;
+   end;
+
+   TdwsSynonymsClass = class of TdwsSynonyms;
 
    TdwsParseName = (pnAtDesignTimeOnly, pnAlways, pnNever);
 
@@ -5380,6 +5382,13 @@ end;
 class function TdwsSynonyms.GetSymbolClass: TdwsSymbolClass;
 begin
   Result := TdwsSynonym;
+end;
+
+// Add
+//
+function TdwsSynonyms.Add : TdwsSynonym;
+begin
+   Result := TdwsSynonym(inherited Add);
 end;
 
 { TdwsSynonym }
