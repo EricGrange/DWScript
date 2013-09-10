@@ -1074,7 +1074,7 @@ type
      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
    TVariantAndExpr = class(TVariantBinOpExpr)
-     function Eval(exec : TdwsExecution) : Variant; override;
+      procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
    end;
 
    // a or b
@@ -1086,7 +1086,7 @@ type
      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
    TVariantOrExpr = class(TVariantBinOpExpr)
-     function Eval(exec : TdwsExecution) : Variant; override;
+      procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
    end;
 
    // a xor b
@@ -1098,6 +1098,7 @@ type
    end;
    TVariantXorExpr = class(TVariantBinOpExpr)
      function Eval(exec : TdwsExecution) : Variant; override;
+      procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
    end;
 
    // a implies b
@@ -4750,9 +4751,15 @@ end;
 
 { TVariantAndExpr }
 
-function TVariantAndExpr.Eval(exec : TdwsExecution) : Variant;
+// EvalAsVariant
+//
+procedure TVariantAndExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+var
+   leftVal, rightVal : Variant;
 begin
-   Result:=Left.Eval(exec) and Right.Eval(exec);
+   Left.EvalAsVariant(exec, leftVal);
+   Right.EvalAsVariant(exec, rightVal);
+   Result:=leftVal and rightVal;
 end;
 
 { TIntOrExpr }
@@ -4797,9 +4804,15 @@ end;
 
 { TVariantOrExpr }
 
-function TVariantOrExpr.Eval(exec : TdwsExecution) : Variant;
+// EvalAsVariant
+//
+procedure TVariantOrExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+var
+   leftVal, rightVal : Variant;
 begin
-   Result := Left.Eval(exec) or Right.Eval(exec);
+   Left.EvalAsVariant(exec, leftVal);
+   Right.EvalAsVariant(exec, rightVal);
+   Result:=leftVal or rightVal;
 end;
 
 { TIntXorExpr }
@@ -4821,6 +4834,17 @@ end;
 function TVariantXorExpr.Eval(exec : TdwsExecution) : Variant;
 begin
    Result := FLeft.Eval(exec) xor FRight.Eval(exec);
+end;
+
+// EvalAsVariant
+//
+procedure TVariantXorExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+var
+   leftVal, rightVal : Variant;
+begin
+   Left.EvalAsVariant(exec, leftVal);
+   Right.EvalAsVariant(exec, rightVal);
+   Result:=leftVal xor rightVal;
 end;
 
 // ------------------
