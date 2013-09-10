@@ -3,14 +3,15 @@ unit dwsDocBuilder;
 interface
 
 uses
-  System.SysUtils, System.Classes, dwsUnitSymbols, dwsExprs, dwsCompiler,
+  SysUtils, Classes, dwsUnitSymbols, dwsExprs, dwsCompiler,
   dwsComp, dwsHtmlFilter, dwsSymbols, dwsUtils, dwsXPlatform;
 
 type
   TDocumentationBuilder = class;
 
-  TBuildContent = procedure(Sender: TDocumentationBuilder; const FileName
-    : TFileName; const Symbol: TSymbol; var Content: string) of object;
+  TBuildContent = procedure(Sender: TDocumentationBuilder;
+                            const FileName : TFileName; const Symbol: TSymbol;
+                            var Content: string) of object;
 
   TSymbolUnit = class(TdwsUnit)
   private
