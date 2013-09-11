@@ -80,7 +80,7 @@ end;
 //
 procedure TBuildTests.DoInclude(const scriptName: UnicodeString; var scriptSource: UnicodeString);
 var
-   fileName : String;
+   fileName : UnicodeString;
 begin
    fileName:='BuildScripts\'+scriptName;
    if FileExists(fileName) then

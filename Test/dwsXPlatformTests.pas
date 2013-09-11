@@ -29,7 +29,12 @@ uses
 type
 
    {$ifdef FPC}
-   TTestCase = fpcunit.TTestCase;
+   TTestCase = class (fpcunit.TTestCase)
+      public
+         procedure CheckEquals(const expected, actual: UnicodeString; const msg: String = ''); overload;
+         procedure CheckEquals(const expected : String; const actual: UnicodeString; const msg: String = ''); overload;
+   end;
+
    ETestFailure = class (Exception);
    {$else}
    TTestCase = TestFrameWork.TTestCase;
@@ -56,6 +61,19 @@ begin
    TestFrameWork.RegisterTest(testName, aTest.Suite);
    {$endif}
 end;
+
+// CheckEquals
+//
+{$ifdef FPC}
+procedure TTestCase.CheckEquals(const expected, actual: UnicodeString; const msg: String = '');
+begin
+   AssertTrue(msg + ComparisonMsg(Expected, Actual), AnsiCompareStr(Expected, Actual) = 0);
+end;
+procedure TTestCase.CheckEquals(const expected : String; const actual: UnicodeString; const msg: String = '');
+begin
+   AssertTrue(msg + ComparisonMsg(Expected, Actual), AnsiCompareStr(Expected, Actual) = 0);
+end;
+{$endif}
 
 end.
 

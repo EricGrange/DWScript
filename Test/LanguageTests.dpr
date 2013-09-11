@@ -21,6 +21,7 @@ uses
   dwsLinq,
   dwsLinqSql in '..\Libraries\LinqLib\dwsLinqSql.pas',
   dwsLinqJson in '..\Libraries\LinqLib\dwsLinqJson.pas',
+  dwsDocBuilder in '..\Libraries\DocBuilder\dwsDocBuilder.pas',
   UScriptTests in 'UScriptTests.pas',
   UAlgorithmsTests in 'UAlgorithmsTests.pas',
   UdwsUnitTests in 'UdwsUnitTests.pas',

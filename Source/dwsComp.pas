@@ -3061,7 +3061,7 @@ end;
 function TdwsFunctionSymbol.Parse(const Value : UnicodeString): UnicodeString;
 var
    param : TdwsParameter;
-   params : TArray<TdwsParameter>;
+   params : array of TdwsParameter;
    rules : TPascalTokenizerStateRules;
    tok : TTokenizer;
    tokenType: TTokenType;
@@ -3098,7 +3098,7 @@ begin
       end;
 
       // check for parameters
-      if tok.TestDelete(ttBLEFT) then
+      if tok.TestDelete(ttBLEFT) then begin
          while not tok.TestDelete(ttBRIGHT) do begin
             param := Parameters.Add;
 
@@ -3175,6 +3175,7 @@ begin
             if tok.TestDelete(ttSEMI) then
                Continue;
          end;
+      end;
 
       // check for return type
       if tok.TestDelete(ttCOLON) then begin

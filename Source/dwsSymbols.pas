@@ -6835,7 +6835,9 @@ end;
 //
 function TResourceStringSymbol.GetDescription : UnicodeString;
 begin
-   Result:='resourcestring '+Name+' = '''+StringReplace(Value, '''', '''''', [rfReplaceAll])+'''';
+   Result:=Value;
+   FastStringReplace(Result, '''', '''''');
+   Result:='resourcestring '+Name+' = '''+Result+'''';
 end;
 
 // ------------------
