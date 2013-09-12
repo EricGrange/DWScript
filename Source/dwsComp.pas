@@ -1048,6 +1048,9 @@ type
       private
          FBaseType : TDataType;
 
+      protected
+         function GetDisplayName: String; override;
+
       public
          function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
 
@@ -3861,10 +3864,16 @@ end;
 
 function TdwsClass.GetDisplayName: String;
 begin
-  if Ancestor <> '' then
-    Result := Name + ' (' + Ancestor + ')'
-  else
-    Result := Name + ' (TObject)';
+   Result:=Name;
+   if IsAbstract then
+      Result:=Result+' abstract';
+   if IsSealed then
+      Result:=Result+' sealed';
+   if IsStatic then
+      Result:=Result+' static';
+   if Ancestor<>'' then
+      Result:=Result+' ('+Ancestor+')'
+   else Result:=Result+' (TObject)';
 end;
 
 // StoreConstructors
@@ -5169,6 +5178,13 @@ begin
    eBase := TEnumerationSymbol(base);
    result := TSetOfSymbol.Create(self.Name, eBase, 0, eBase.HighBound);
    Table.AddSymbol(result);
+end;
+
+// GetDisplayName
+//
+function TdwsSet.GetDisplayName: String;
+begin
+   Result:=Name+' = set of '+BaseType;
 end;
 
 // ------------------
