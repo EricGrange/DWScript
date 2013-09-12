@@ -60,6 +60,12 @@ type
       ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsSetCompressionEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesWebRequestMethodsContentTypeEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesWebRequestMethodsContentDataEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesWebRequestMethodsContentLengthEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -80,6 +86,24 @@ procedure TdwsWebLib.dwsWebClassesWebRequestMethodsAuthenticationEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsInteger:=Ord(Info.WebRequest.Authentication);
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebRequestMethodsContentDataEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString:=Info.WebRequest.ContentData;
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebRequestMethodsContentLengthEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger:=Length(Info.WebRequest.ContentData);
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebRequestMethodsContentTypeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString:=Info.WebRequest.ContentType;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsCookieEval(

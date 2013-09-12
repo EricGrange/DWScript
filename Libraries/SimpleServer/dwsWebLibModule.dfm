@@ -144,6 +144,27 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maStatic]
             OnEval = dwsWebClassesWebRequestMethodsAuthenticationEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'ContentType'
+            ResultType = 'String'
+            Attributes = [maClassMethod, maStatic]
+            OnEval = dwsWebClassesWebRequestMethodsContentTypeEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'ContentData'
+            ResultType = 'String'
+            Attributes = [maClassMethod, maStatic]
+            OnEval = dwsWebClassesWebRequestMethodsContentDataEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'ContentLength'
+            ResultType = 'Integer'
+            Attributes = [maClassMethod, maStatic]
+            OnEval = dwsWebClassesWebRequestMethodsContentLengthEval
+            Kind = mkClassFunction
           end>
         Properties = <
           item
@@ -423,6 +444,11 @@ object dwsWebLib: TdwsWebLib
             Name = 'HttpOnly'
           end>
         Style = enumFlags
+      end>
+    Sets = <
+      item
+        Name = 'WebAuthentications'
+        BaseType = 'WebAuthentication'
       end>
     UnitName = 'System.Net'
     StaticSymbols = True

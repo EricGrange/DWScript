@@ -32,6 +32,8 @@
 }
 unit UHttpSys2WebServer;
 
+{$I dws.inc}
+
 interface
 
 uses
@@ -39,12 +41,13 @@ uses
   SynZip,
   dwsHTTPSysServer, dwsHTTPSysAPI,
   dwsUtils, dwsWebEnvironment, dwsFileSystem,
-  dwsDirectoryNotifier, dwsJSON, dwsXPlatform, dwsWebServerHelpers,
+  dwsDirectoryNotifier, dwsJSON, dwsXPlatform,
+  dwsWebServerHelpers, dwsWebServerInfo,
   DSimpleDWScript;
 
 type
 
-   THttpSys2WebServer = class
+   THttpSys2WebServer = class (TInterfacedSelfObject)
       protected
          FPath : TFileName;
          FServer : THttpApi2Server;

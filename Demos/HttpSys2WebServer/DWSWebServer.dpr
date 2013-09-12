@@ -56,7 +56,9 @@ uses
   dwsSynODBCDatabase in '..\..\Libraries\DatabaseLib\dwsSynODBCDatabase.pas',
   dwsSynOleDBDatabase in '..\..\Libraries\DatabaseLib\dwsSynOleDBDatabase.pas',
   dwsDatabase in '..\..\Libraries\DatabaseLib\dwsDatabase.pas',
-  dwsGUIDDatabase in '..\..\Libraries\DatabaseLib\dwsGUIDDatabase.pas';
+  dwsGUIDDatabase in '..\..\Libraries\DatabaseLib\dwsGUIDDatabase.pas',
+  dwsWebServerLibModule in '..\..\Libraries\SimpleServer\dwsWebServerLibModule.pas' {dwsWebServerLib: TDataModule},
+  dwsWebServerInfo in '..\..\Libraries\SimpleServer\dwsWebServerInfo.pas';
 
 type
    TWebServerHttpService = class(TdwsWindowsService)

@@ -32,6 +32,7 @@ type
       wraNegotiate,
       wraKerberos
    );
+   TWebRequestAuthentications = set of TWebRequestAuthentication;
 
    TWebRequestMethodVerb = (
       wrmvUnknown,

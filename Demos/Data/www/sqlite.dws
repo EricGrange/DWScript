@@ -52,5 +52,6 @@ end;
 <%
 db.Commit;
 %>
+<p>SQLite version: <%=db.VersionInfoText%></p>
 </body>
 </html>
