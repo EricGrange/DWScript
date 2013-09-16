@@ -6112,7 +6112,7 @@ begin
       Result := TClassSymbol(typeSym);
 
     // Allowed to look through ancestor types
-    if not ExactMatch then
+    if not (ExactMatch or Assigned(typeSym)) then
     begin
       if AObject.ClassInfo <> nil then
       begin
