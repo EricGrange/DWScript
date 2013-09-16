@@ -24,11 +24,11 @@ uses
   ExtCtrls, StdCtrls, Menus, StdActns, ActnList, ExtDlgs, ComCtrls,
   Types, SyncObjs, ImgList, dwsComp, dwsExprs, dwsSymbols, dwsErrors,
   dwsSuggestions, dwsStrings, dwsUnitSymbols, dwsDocBuilder, dwsCompiler,
-  dwsHtmlFilter, dwsSymbolsLibModule, dwsClassesLibModule,
+  dwsHtmlFilter, dwsSymbolsLibModule, dwsClassesLibModule, dwsDebugger,
 
   SynEdit, SynEditHighlighter, SynHighlighterDWS, SynCompletionProposal,
   SynEditMiscClasses, SynEditSearch, SynEditOptionsDialog, SynEditPlugins,
-  SynMacroRecorder, SynHighlighterHtml, SynHighlighterMulti;
+  SynMacroRecorder, SynHighlighterHtml, SynHighlighterMulti, SynEditTypes;
 
 type
   TRescanThread = class(TThread)
@@ -36,8 +36,13 @@ type
     procedure Execute; override;
   end;
 
+  TBreakpointStatus = (bpsNone, bpsBreakpoint, bpsBreakpointDisabled);
+  TLineNumbers = array of Integer;
+
   TFrmBasic = class(TForm)
-    AcnBuildDoc: TAction;
+    AcnBuildBuild: TAction;
+    AcnBuildOptions: TAction;
+    AcnBuildStart: TAction;
     AcnEditCopy: TEditCopy;
     AcnEditCut: TEditCut;
     AcnEditDelete: TEditDelete;
@@ -51,9 +56,18 @@ type
     AcnFileScriptSave: TAction;
     AcnOptions: TAction;
     AcnSearchFind: TSearchFind;
+    AcnViewPreview: TAction;
     ActionList: TActionList;
     DelphiWebScript: TDelphiWebScript;
+    dwsClassesLib: TdwsClassesLib;
+    dwsDebugger: TdwsDebugger;
+    dwsHtmlFilter: TdwsHtmlFilter;
+    dwsSymbolsLib: TdwsSymbolsLib;
+    ListBoxCompiler: TListBox;
     MainMenu: TMainMenu;
+    MnuBuildBuild: TMenuItem;
+    MnuBuildOptions: TMenuItem;
+    MnuBuildStart: TMenuItem;
     MnuEdit: TMenuItem;
     MnuEditCopy: TMenuItem;
     MnuEditCut: TMenuItem;
@@ -68,15 +82,17 @@ type
     MnuSaveMessagesAs: TMenuItem;
     MnuSaveOutputAs: TMenuItem;
     MnuScript: TMenuItem;
-    MnuScriptCompile: TMenuItem;
     MnuScriptExit: TMenuItem;
     MnuScriptOpen: TMenuItem;
     MnuSearch: TMenuItem;
     MnuSelectAll: TMenuItem;
+    MnuView: TMenuItem;
+    MnuViewPreview: TMenuItem;
     N1: TMenuItem;
     N2: TMenuItem;
     N3: TMenuItem;
     N4: TMenuItem;
+    N5: TMenuItem;
     PopupMenuMessages: TPopupMenu;
     PopupMenuOutput: TPopupMenu;
     ProposalImages: TImageList;
@@ -84,27 +100,34 @@ type
     StatusBar: TStatusBar;
     SynCompletionProposal: TSynCompletionProposal;
     SynDWSSyn: TSynDWSSyn;
+    SynEdit: TSynEdit;
     SynEditOptionsDialog: TSynEditOptionsDialog;
     SynEditSearch: TSynEditSearch;
-    SynMacroRecorder: TSynMacroRecorder;
-    SynParameters: TSynCompletionProposal;
-    SynEdit: TSynEdit;
-    SynMultiSyn: TSynMultiSyn;
     SynHTMLSyn: TSynHTMLSyn;
-    dwsHtmlFilter: TdwsHtmlFilter;
-    ListBoxCompiler: TListBox;
-    dwsSymbolsLib: TdwsSymbolsLib;
-    dwsClassesLib: TdwsClassesLib;
+    SynMacroRecorder: TSynMacroRecorder;
+    SynMultiSyn: TSynMultiSyn;
+    SynParameters: TSynCompletionProposal;
+    AcnBuildReset: TAction;
+    AcnBuildStepOver: TAction;
+    AcnBuildTraceInto: TAction;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
-    procedure AcnBuildDocExecute(Sender: TObject);
+    procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure AcnBuildStartExecute(Sender: TObject);
+    procedure AcnBuildDebuggerUpdate(Sender: TObject);
+    procedure AcnBuildResetExecute(Sender: TObject);
+    procedure AcnBuildTraceIntoExecute(Sender: TObject);
+    procedure AcnBuildStepOverExecute(Sender: TObject);
     procedure AcnFileNewExecute(Sender: TObject);
     procedure AcnFileOpenAccept(Sender: TObject);
     procedure AcnFileSaveScriptAsAccept(Sender: TObject);
     procedure AcnFileScriptSaveExecute(Sender: TObject);
     procedure AcnOptionsExecute(Sender: TObject);
+    procedure AcnViewPreviewExecute(Sender: TObject);
+    procedure AcnBuildOptionsExecute(Sender: TObject);
+    procedure AcnBuildBuildExecute(Sender: TObject);
     procedure MnuSaveMessagesAsClick(Sender: TObject);
     procedure MnuScriptExitClick(Sender: TObject);
     procedure SynCompletionProposalExecute(Kind: SynCompletionType; Sender: TObject; var CurrentInput: string; var x, y: Integer; var CanExecute: Boolean);
@@ -113,7 +136,12 @@ type
     procedure SynEditChange(Sender: TObject);
     procedure SynEditGutterPaint(Sender: TObject; aLine, X, Y: Integer);
     procedure SynParametersExecute(Kind: SynCompletionType; Sender: TObject; var CurrentInput: string; var x, y: Integer; var CanExecute: Boolean);
-    procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure SynEditGutterClick(Sender: TObject; Button: TMouseButton; X, Y,
+      Line: Integer; Mark: TSynEditMark);
+    procedure SynEditSpecialLineColors(Sender: TObject; Line: Integer;
+      var Special: Boolean; var FG, BG: TColor);
+    procedure dwsDebuggerStateChanged(Sender: TObject);
+    procedure AcnBuildResetUpdate(Sender: TObject);
   private
     FRecentScriptName: TFileName;
     FRescanThread: TRescanThread;
@@ -122,10 +150,23 @@ type
     FSyncEvent: TEvent;
     FSymbolUnit: TSymbolUnit;
     FAbortBuild: Boolean;
+    FOutputPath: string;
+    FCurrentLine: Integer;
+    FExecutableLines: array of Boolean;
 
     procedure SourceChanged;
     procedure BeforeBuildContent(Sender: TDocumentationBuilder;
       const FileName: TFileName; const Symbol: TSymbol; var Content: string);
+    procedure ClearBreakpoint(ALineNum: Integer);
+    procedure ClearExecutableLines;
+    procedure InitExecutableLines;
+    procedure ShowExecutableLines;
+    function GetBreakpointStatus(ALine: Integer): TBreakpointStatus;
+    function IsExecutableLine(ALine: Integer): Boolean;
+    function GetExecutableLines: TLineNumbers;
+    procedure AddBreakpoint(ALineNum: Integer; AEnabled: Boolean);
+    procedure SetCurrentLine(ALine: Integer; ACol: Integer = 1);
+    procedure ClearCurrentLine;
   public
     procedure CompileScript;
     procedure UpdateCompilerOutput;
@@ -141,7 +182,7 @@ implementation
 {$R *.dfm}
 
 uses
-  Math, Registry, dwsUtils;
+  Math, Registry, dwsUtils, PreviewUnit, OptionsUnit;
 
 { TRescanThread }
 
@@ -161,6 +202,68 @@ begin
 end;
 
 
+{ TEditorPageSynEditPlugin }
+
+type
+  TEditorPageSynEditPlugin = class(TSynEditPlugin)
+  protected
+    FEditor: TSynEdit;
+    procedure LinesInserted(FirstLine, Count: Integer); override;
+    procedure LinesDeleted(FirstLine, Count: Integer); override;
+  public
+    constructor Create(Editor: TSynEdit);
+  end;
+
+constructor TEditorPageSynEditPlugin.Create(Editor: TSynEdit);
+begin
+  inherited Create(Editor);
+  FEditor := Editor;
+end;
+
+procedure TEditorPageSynEditPlugin.LinesInserted(FirstLine, Count: Integer);
+var
+  Index, LineCount : Integer;
+begin
+  // Track the executable lines
+  LineCount := FEditor.Lines.Count;
+  SetLength(FrmBasic.FExecutableLines, LineCount );
+  for Index := LineCount-1 downto FirstLine + Count do
+    FrmBasic.FExecutableLines[Index] := FrmBasic.FExecutableLines[Index - Count];
+  for Index := FirstLine + Count-1 downto FirstLine do
+    FrmBasic.FExecutableLines[Index] := False;
+
+  // Track the breakpoint lines in the debugger
+  for Index := 0 to FrmBasic.dwsDebugger.Breakpoints.Count-1 do
+    if FrmBasic.dwsDebugger.Breakpoints[Index].SourceName = SYS_MainModule then
+      if FrmBasic.dwsDebugger.Breakpoints[Index].Line >= FirstLine then
+         FrmBasic.dwsDebugger.Breakpoints[Index].Line :=
+           FrmBasic.dwsDebugger.Breakpoints[Index].Line + Count;
+
+  // Redraw the gutter for updated icons
+  FEditor.InvalidateGutter;
+end;
+
+procedure TEditorPageSynEditPlugin.LinesDeleted(FirstLine, Count: Integer);
+var
+  Index : Integer;
+begin
+  // Track the executable lines
+  for Index := FirstLine-1 to High(FrmBasic.FExecutableLines) do
+    FrmBasic.FExecutableLines[Index] := FrmBasic.FExecutableLines[Index + Count];
+  SetLength(FrmBasic.FExecutableLines, Length(FrmBasic.FExecutableLines) - Count);
+
+  // Track the breakpoint lines in the debugger
+  for Index := 0 to FrmBasic.dwsDebugger.Breakpoints.Count-1 do
+    if FrmBasic.dwsDebugger.Breakpoints[Index].SourceName = SYS_MainModule then
+      if FrmBasic.dwsDebugger.Breakpoints[Index].Line >= FirstLine then
+         FrmBasic.dwsDebugger.Breakpoints[Index].Line :=
+           FrmBasic.dwsDebugger.Breakpoints[Index].Line - Count;
+
+  // Redraw the gutter for updated icons
+  FEditor.InvalidateGutter;
+end;
+
+
 { TFrmBasic }
 
 procedure TFrmBasic.FormCreate(Sender: TObject);
@@ -170,6 +273,10 @@ begin
   FCriticalSection := TCriticalSection.Create;
   FSyncEvent := TEvent.Create;
   FRescanThread := TRescanThread.Create;
+  FOutputPath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\Docs\');
+  FCurrentLine := -1;
+  TEditorPageSynEditPlugin.Create(SynEdit);
+  SynEdit.ControlStyle := SynEdit.ControlStyle + [csOpaque];
 end;
 
 procedure TFrmBasic.FormDestroy(Sender: TObject);
@@ -214,6 +321,7 @@ begin
     Free;
   end;
 
+  InitExecutableLines;
   SourceChanged;
 end;
 
@@ -247,13 +355,137 @@ begin
   FRescanThread.Synchronize(UpdateCompilerOutput);
 end;
 
+procedure TFrmBasic.dwsDebuggerStateChanged(Sender: TObject);
+begin
+  case dwsDebugger.State of
+    dsDebugRun, dsDebugDone:
+      ClearCurrentLine;
+    dsDebugSuspended :
+      SetCurrentLine(dwsDebugger.CurrentScriptPos.Line,
+        dwsDebugger.CurrentScriptPos.Col);
+  end;
+end;
+
 procedure TFrmBasic.UpdateCompilerOutput;
 begin
   if not Assigned(FCompiledProgram) then
     Exit;
 
+  ShowExecutableLines;
   StatusBar.SimpleText := 'Compiled';
   ListBoxCompiler.Items.Text := FCompiledProgram.Msgs.AsInfo;
+end;
+
+procedure TFrmBasic.ClearExecutableLines;
+var
+  I : Integer;
+begin
+  for I := 0 to High(FExecutableLines) do
+    FExecutableLines[I] := False;
+  SynEdit.InvalidateGutter;
+end;
+
+procedure TFrmBasic.ClearBreakpoint(ALineNum: Integer);
+var
+  Test, Found : TdwsDebuggerBreakpoint;
+  I : Integer;
+begin
+  if dwsDebugger.Breakpoints.Count = 0 then
+    Exit;
+
+  Test := TdwsDebuggerBreakpoint.Create;
+  try
+    Test.Line := ALineNum;
+    Test.SourceName := SYS_MainModule;
+
+    I := dwsDebugger.Breakpoints.IndexOf(Test);
+    if I <> -1 then
+    begin
+      Found := dwsDebugger.Breakpoints[I];
+      dwsDebugger.Breakpoints.Extract(Found);
+      FreeAndNil(Found);
+    end;
+  finally
+    FreeAndNil(Test);
+  end;
+
+  SynEdit.InvalidateGutterLine(ALineNum);
+  SynEdit.InvalidateLine(ALineNum);
+end;
+
+procedure TFrmBasic.SetCurrentLine(ALine: integer; ACol: Integer = 1);
+begin
+  if FCurrentLine <> ALine then
+  begin
+    SynEdit.InvalidateGutterLine(FCurrentLine);
+    SynEdit.InvalidateLine(FCurrentLine);
+    FCurrentLine := ALine;
+    if (FCurrentLine > 0) and (SynEdit.CaretY <> FCurrentLine) then
+      SynEdit.CaretXY := BufferCoord(ACol, FCurrentLine);
+    SynEdit.InvalidateGutterLine(FCurrentLine);
+    SynEdit.InvalidateLine(FCurrentLine);
+  end;
+end;
+
+procedure TFrmBasic.ClearCurrentLine;
+begin
+  SetCurrentLine(-1);
+end;
+
+procedure TFrmBasic.InitExecutableLines;
+begin
+  SetLength(FExecutableLines, 0);
+  SetLength(FExecutableLines, SynEdit.Lines.Count);
+end;
+
+function TFrmBasic.GetExecutableLines: TLineNumbers;
+// Returns the executable line numbers for this unit.
+
+  procedure AppendLineNum(ALineNum: Integer);
+  begin
+    SetLength(Result, Length(Result) + 1);
+    Result[Length(Result) - 1] := ALineNum;
+  end;
+
+var
+  I : Integer;
+  Breakpointables: TdwsBreakpointableLines;
+  Lines : Tbits;
+begin
+  SetLength(Result, 0);
+
+  Breakpointables := TdwsBreakpointableLines.Create(FCompiledProgram);
+  try
+    Lines := Breakpointables.SourceLines[SYS_MainModule];
+    if Lines <> nil then
+    begin
+      for I := 1 to Lines.Size - 1 do
+        if Lines[I] then
+          AppendLineNum(I);
+    end;
+  finally
+    Breakpointables.Free;
+  end;
+end;
+
+procedure TFrmBasic.ShowExecutableLines;
+var
+  LineNumbers: TLineNumbers;
+  I: Integer;
+begin
+  ClearExecutableLines;
+  LineNumbers := GetExecutableLines;
+  for I := 0 to High(LineNumbers) do
+    FExecutableLines[LineNumbers[I]] := True;
+  SynEdit.InvalidateGutter;
+end;
+
+function TFrmBasic.IsExecutableLine(ALine: Integer): Boolean;
+begin
+  if ALine < Length(FExecutableLines) then
+    Result := FExecutableLines[ALine]
+  else
+    Result := False;
 end;
 
 procedure TFrmBasic.MnuSaveMessagesAsClick(Sender: TObject);
@@ -286,18 +518,59 @@ begin
   Application.ProcessMessages;
 end;
 
-procedure TFrmBasic.AcnBuildDocExecute(Sender: TObject);
+procedure TFrmBasic.AcnBuildStartExecute(Sender: TObject);
+begin
+  if dwsDebugger.State = dsDebugSuspended then
+  begin
+    dwsDebugger.Resume;
+    Exit;
+  end;
+
+  AcnBuildBuild.Execute;
+  if not FAbortBuild then
+  begin
+    FrmPreview.Show;
+    FrmPreview.WebBrowser.Navigate(FOutputPath + 'index.html');
+  end;
+end;
+
+procedure TFrmBasic.AcnBuildStepOverExecute(Sender: TObject);
+begin
+  dwsDebugger.StepOver;
+end;
+
+procedure TFrmBasic.AcnBuildTraceIntoExecute(Sender: TObject);
+begin
+  dwsDebugger.StepDetailed;
+end;
+
+procedure TFrmBasic.AcnBuildBuildExecute(Sender: TObject);
 var
   DocBuilder: TDocumentationBuilder;
+  Prog: IdwsProgram;
 begin
   FAbortBuild := False;
   FCriticalSection.Enter;
   try
-    DocBuilder := TDocumentationBuilder.Create(
-      DelphiWebScript.Compile('uses ' + FSymbolUnit.UnitName + ';'));
+    // compile code
+    Prog := DelphiWebScript.Compile('uses ' + FSymbolUnit.UnitName + ';');
+
+    if Prog.Msgs.HasErrors then
+      Exit;
+
+    DocBuilder := TDocumentationBuilder.Create(Prog);
     try
       DocBuilder.OnBeginBuildContent := BeforeBuildContent;
-      DocBuilder.Build(ExtractFilePath(ParamStr(0)) + 'Docs\');
+      DocBuilder.TemplateSource := SynEdit.Text;
+      if dwsDebugger.Breakpoints.Count > 0 then
+        DocBuilder.Debugger := dwsDebugger;
+      DocBuilder.Build(FOutputPath);
+
+      if DocBuilder.Aborted then
+      begin
+        FAbortBuild := True;
+        Exit;
+      end;
     finally
       FreeAndNil(DocBuilder);
     end;
@@ -305,9 +578,20 @@ begin
     FCriticalSection.Leave;
   end;
 
-  with TDocumentationBuilder.Create(FCompiledProgram) do
+  AcnViewPreview.Enabled := True;
+  MnuView.Visible := True;
+end;
+
+procedure TFrmBasic.AcnBuildOptionsExecute(Sender: TObject);
+begin
+  with TFormOptions.Create(nil) do
   try
-    Build(ExtractFilePath(Application.ExeName) + 'Docs\');
+    case ShowModal of
+      mrOk:
+        begin
+          FOutputPath := ExpandFileName(EdtOutputDir.Text);
+        end;
+    end;
   finally
     Free;
   end;
@@ -341,6 +625,26 @@ begin
   SynEditorOptionsContainer.Assign(SynEdit);
   SynEditOptionsDialog.Execute(SynEditorOptionsContainer);
   SynEdit.Assign(SynEditorOptionsContainer);
+end;
+
+procedure TFrmBasic.AcnBuildResetExecute(Sender: TObject);
+begin
+  dwsDebugger.EndDebug;
+end;
+
+procedure TFrmBasic.AcnBuildResetUpdate(Sender: TObject);
+begin
+  TAction(Sender).Enabled := daCanEndDebug in dwsDebugger.AllowedActions;
+end;
+
+procedure TFrmBasic.AcnBuildDebuggerUpdate(Sender: TObject);
+begin
+  TAction(Sender).Enabled := dwsDebugger.State = dsDebugSuspended;
+end;
+
+procedure TFrmBasic.AcnViewPreviewExecute(Sender: TObject);
+begin
+  FrmPreview.Visible := AcnViewPreview.Checked;
 end;
 
 procedure TFrmBasic.SourceChanged;
@@ -381,13 +685,8 @@ begin
   // ok, get the compiled "program" from DWS
   if Assigned(FCompiledProgram) then
   begin
-    SourceFile := TSourceFile.Create;
-    try
-      SourceFile.Code := SynEdit.Lines.Text;
-      ScriptPos := TScriptPos.Create(SourceFile, SynEdit.CaretX, SynEdit.CaretY);
-    finally
-      SourceFile.Free;
-    end;
+    SourceFile := FCompiledProgram.SourceList.MainScript.SourceFile;
+    ScriptPos := TScriptPos.Create(SourceFile, SynEdit.CaretY, SynEdit.CaretX);
     Suggestions := TDWSSuggestions.Create(FCompiledProgram, ScriptPos,
       [soNoReservedWords]);
 
@@ -680,9 +979,73 @@ begin
   end;
 end;
 
+function TFrmBasic.GetBreakpointStatus(ALine: Integer): TBreakpointStatus;
+var
+  Test, Found: TdwsDebuggerBreakpoint;
+  Index: Integer;
+begin
+  Result := bpsNone;
+  if dwsDebugger.Breakpoints.Count = 0 then
+    Exit;
+
+  Test := TdwsDebuggerBreakpoint.Create;
+  try
+    Test.Line := ALine;
+    Test.SourceName := SYS_MainModule;
+
+    Index := dwsDebugger.Breakpoints.IndexOf(Test);
+    if Index <> -1 then
+    begin
+      Found := dwsDebugger.Breakpoints[Index];
+      if Found.Enabled then
+        Result := bpsBreakpoint
+      else
+        Result := bpsBreakpointDisabled;
+    end;
+  finally
+    FreeAndNil(Test);
+  end;
+end;
+
+procedure TFrmBasic.AddBreakpoint(ALineNum: Integer; AEnabled: Boolean);
+var
+  BP: TdwsDebuggerBreakpoint;
+  Added: Boolean;
+  I: Integer;
+begin
+  BP := TdwsDebuggerBreakpoint.Create;
+  BP.Line := ALineNum;
+
+  BP.SourceName := SYS_MainModule;
+
+  I := dwsDebugger.Breakpoints.AddOrFind(BP, Added);
+  if not Added then
+    BP.Free;
+  dwsDebugger.Breakpoints[I].Enabled := AEnabled;
+
+  SynEdit.InvalidateGutterLine(ALineNum);
+  SynEdit.InvalidateLine(ALineNum);
+end;
+
 procedure TFrmBasic.SynEditChange(Sender: TObject);
 begin
   SourceChanged;
+end;
+
+procedure TFrmBasic.SynEditGutterClick(Sender: TObject; Button: TMouseButton; X,
+  Y, Line: Integer; Mark: TSynEditMark);
+var
+  IntLine : Integer;
+begin
+  IntLine := SynEdit.RowToLine(Line);
+  if IntLine < Length(FExecutableLines) then
+  begin
+    if GetBreakpointStatus(Line) <> bpsNone then
+      ClearBreakpoint(IntLine)
+    else
+      AddBreakpoint(IntLine, True);
+    SynEdit.Repaint;
+  end;
 end;
 
 procedure TFrmBasic.SynEditGutterPaint(Sender: TObject; ALine, X, Y: Integer);
@@ -691,11 +1054,47 @@ var
   LineNumberRect: TRect;
   GutterWidth, Offset: Integer;
   OldFont: TFont;
+  ImgIndex: Integer;
 begin
   with TSynEdit(Sender), Canvas do
   begin
     Brush.Style := bsClear;
+    Font.Color := clGray;
+    Pen.Color := clGray;
     GutterWidth := Gutter.Width - 5;
+
+    Offset := (LineHeight - ProposalImages.Height) div 2
+         + LineHeight * (SynEdit.LineToRow(ALine) - SynEdit.TopLine);
+
+    if ALine = FCurrentLine then
+    begin
+      if GetBreakpointStatus(ALine) <> bpsNone then
+        ImgIndex := 10
+      else
+        if dwsDebugger.State = dsDebugSuspended then
+          ImgIndex := 9
+        else
+          ImgIndex := 11
+    end
+    else
+      case GetBreakpointStatus(ALine) of
+        bpsBreakpoint :
+          if IsExecutableLine(ALine) then
+            ImgIndex := 7
+          else
+            ImgIndex := 8;
+        bpsBreakpointDisabled :
+          ImgIndex := 8;
+        else
+          if IsExecutableLine(ALine) then
+            ImgIndex := 11
+          else
+            ImgIndex := -1;
+      end;
+
+    if ImgIndex >= 0 then
+      ProposalImages.Draw(Canvas, X, Offset, ImgIndex);
+
     if (ALine = 1) or (ALine = CaretY) or ((ALine mod 10) = 0) then
     begin
       StrLineNumber := IntToStr(ALine);
@@ -725,5 +1124,29 @@ begin
   end;
 end;
 
-end.
+procedure TFrmBasic.SynEditSpecialLineColors(Sender: TObject; Line: Integer;
+  var Special: Boolean; var FG, BG: TColor);
+const
+  BreakpointColor = TColor($FFC0C0);
+  CurrentLineColor = TColor($A0A0F0);
+  CurrentLineSteppingColor = TColor($A0C0F0);
+begin
+  if Line = FCurrentLine then
+  begin
+    Special := True;
+    FG := clBlack;
+    if dwsDebugger.State = dsDebugSuspended then
+      BG := CurrentLineSteppingColor
+     else
+      BG := CurrentLineColor
+  end
+  else
+  if GetBreakpointStatus(Line) = bpsBreakpoint then
+  begin
+    Special := True;
+    FG := clBlack;
+    BG := BreakpointColor;
+  end;
+end;
 
+end.

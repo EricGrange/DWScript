@@ -3,10 +3,9 @@ unit dwsDocBuilder;
 interface
 
 uses
-   SysUtils, Classes,
-   dwsUnitSymbols, dwsExprs, dwsCompiler, dwsComp, dwsDataContext,
-   dwsHtmlFilter, dwsSymbols, dwsErrors, dwsUtils, dwsXPlatform,
-   dwsSymbolsLibModule;
+  SysUtils, Classes, dwsUnitSymbols, dwsExprs, dwsCompiler, dwsComp,
+  dwsHtmlFilter, dwsSymbols, dwsErrors, dwsUtils, dwsXPlatform,
+  dwsSymbolsLibModule, dwsClassesLibModule, dwsDebugger;
 
 type
   TDocumentationBuilder = class;
@@ -222,10 +221,13 @@ type
     FProgram: IdwsProgram;
     FCompiler: TDelphiWebScript;
     FHtmlFilter: TdwsHtmlFilter;
+    FClassesLib: TdwsClassesLib;
     FSymbolsLib: TdwsSymbolsLib;
     FTemplateSource: string;
     FDirectory: string;
     FFileExtension: string;
+    FDebugger: TdwsDebugger;
+    FAborted: Boolean;
   private
     FOnBeginBuildContent: TBuildContentEvent;
     FOnAfterBuildContent: TBuildContentEvent;
@@ -237,6 +239,7 @@ type
     constructor Create(AProgram: IdwsProgram);
     destructor Destroy; override;
 
+    procedure Abort;
     procedure Build(const Directory: string);
     procedure GenerateTemplate;
     procedure LoadTemplate(const FileName: TFileName; AdaptFileExtension: Boolean = True);
@@ -244,6 +247,8 @@ type
     property TemplateSource: string read FTemplateSource write FTemplateSource;
     property FileExtension: string read FFileExtension write FFileExtension;
 
+    property Aborted: Boolean read FAborted;
+    property Debugger: TdwsDebugger read FDebugger write FDebugger;
     property OnBeginBuildContent: TBuildContentEvent read FOnBeginBuildContent write FOnBeginBuildContent;
     property OnAfterBuildContent: TBuildContentEvent read FOnAfterBuildContent write FOnAfterBuildContent;
   end;
@@ -2151,10 +2156,14 @@ end;
 
 procedure TSymbolUnit.GetSymbol(info: TProgramInfo);
 begin
-  if not Assigned(FScriptObj) then
-    FScriptObj := info.RegisterExternalObject(FSymbol, False, False);
-
-  info.ResultAsVariant := FScriptObj;
+  if Assigned(FSymbol) then
+  begin
+    if not Assigned(FScriptObj) then
+      FScriptObj := info.RegisterExternalObject(FSymbol, False, False);
+    info.ResultAsVariant := FScriptObj;
+  end
+  else
+    info.ResultAsInteger := 0;
 end;
 
 {$REGION 'Eval Implementation for TSymbolTable'}
@@ -2802,7 +2811,9 @@ procedure TSymbolUnit.TClassConstSymbolGetVisibilityEval(info: TProgramInfo;
 begin
   info.ResultAsVariant := Integer(TClassConstSymbol(ExtObject).Visibility);
 end;
+{$ENDREGION}
 
+{$REGION 'Eval Implementation for TClassSymbol'}
 procedure TSymbolUnit.TClassSymbolImplementsInterfaceEval(info: TProgramInfo;
   ExtObject: TObject);
 var
@@ -2844,10 +2855,15 @@ end;
 
 procedure TSymbolUnit.TClassSymbolGetParentEval(info: TProgramInfo;
   ExtObject: TObject);
+var
+  ParentClass: TClassSymbol;
 begin
-  info.ResultAsVariant := info.RegisterExternalObject(TClassSymbol(ExtObject).Parent);
+  ParentClass := TClassSymbol(ExtObject).Parent;
+  info.ResultAsVariant := info.RegisterExternalObject(ParentClass);
 end;
+{$ENDREGION}
 
+{$REGION 'Eval Implementation for TClassVarSymbol'}
 procedure TSymbolUnit.TClassVarSymbolGetOwnerSymbolEval(info: TProgramInfo;
   ExtObject: TObject);
 begin
@@ -3077,6 +3093,8 @@ begin
   FCompiler := TDelphiWebScript.Create(nil);
   FHtmlFilter := TdwsHtmlFilter.Create(nil);
   FCompiler.Config.Filter := FHtmlFilter;
+  FClassesLib := TdwsClassesLib.Create(nil);
+  FClassesLib.Script := FCompiler;
   FSymbolsLib := TdwsSymbolsLib.Create(nil);
   FSymbolsLib.Script := FCompiler;
 
@@ -3085,6 +3103,7 @@ end;
 
 destructor TDocumentationBuilder.Destroy;
 begin
+  FreeAndNil(FClassesLib);
   FreeAndNil(FSymbolsLib);
   FreeAndNil(FHtmlFilter);
   FreeAndNil(FCompiler);
@@ -3138,6 +3157,7 @@ function TDocumentationBuilder.BuildContent(const Template: string; Level: Integ
   const Symbol: TSymbol): string;
 var
   prog: IdwsProgram;
+  exec: IdwsProgramExecution;
   SymbolUnit: TSymbolUnit;
 begin
   SymbolUnit := TSymbolUnit.Create(Symbol, Level);
@@ -3146,7 +3166,21 @@ begin
     prog := FCompiler.Compile(Template);
     try
       if prog.Msgs.HasErrors then
-        Result := prog.Msgs.AsInfo
+      begin
+        Result := prog.Msgs.AsInfo;
+        Exit;
+      end;
+
+      if Assigned(FDebugger) then
+      begin
+        exec := prog.CreateNewExecution;
+        FDebugger.BeginDebug(exec);
+        FDebugger.EndDebug;
+        if (Exec.Msgs.Count = 0) then
+          Result := exec.Result.ToString
+        else
+          Abort;
+      end
       else
         Result := prog.Execute.Result.ToString;
     finally
@@ -3157,11 +3191,20 @@ begin
   end;
 end;
 
+procedure TDocumentationBuilder.Abort;
+begin
+  FAborted := True;
+end;
+
 procedure TDocumentationBuilder.Build(const Directory: string);
 var
   Symbol: TSymbol;
+  FileName: TFileName;
+  Content: string;
   UnitsDir: string;
 begin
+  FAborted := False;
+
   // eventually create directory if not present
   if not DirectoryExists(Directory) then
     CreateDir(Directory);
@@ -3189,6 +3232,36 @@ begin
   for Symbol in FProgram.Table do
     if Symbol is TUnitSymbol then
       BuildUnit(UnitsDir, TUnitSymbol(Symbol));
+
+  // check for abortion
+  if FAborted then
+    Exit;
+
+  FileName := Directory + 'index' + FFileExtension;
+
+  // set content from tempate
+  Content := FTemplateSource;
+
+  // eventually call before build content
+  if Assigned(FOnBeginBuildContent) then
+    FOnBeginBuildContent(Self, FileName, nil, Content);
+
+  // check if content is present at all
+  if FAborted or (Content = '') then
+    Exit;
+
+  // build documentation for unit symbol
+  Content := BuildContent(Content, 0, nil);
+
+  // eventually call after build content
+  if Assigned(FOnAfterBuildContent) then
+    FOnAfterBuildContent(Self, FileName, nil, Content);
+
+  // check if content is present at all
+  if FAborted or (Content = '') then
+    Exit;
+
+  SaveTextToUTF8File(FileName, Content);
 end;
 
 procedure TDocumentationBuilder.BuildUnit(const Directory: string; UnitSymbol: TUnitSymbol);
@@ -3200,6 +3273,10 @@ var
   var
     FileName: TFileName;
   begin
+    // check for abortion
+    if FAborted then
+      Exit;
+
     // create directoy
     if not DirectoryExists(Directory) then
       CreateDir(Directory);
@@ -3215,7 +3292,7 @@ var
       FOnBeginBuildContent(Self, FileName, Symbol, Content);
 
     // check if content is present at all
-    if Content <> '' then
+    if FAborted or (Content = '') then
       Exit;
 
     // build documentation content
@@ -3226,7 +3303,7 @@ var
       FOnAfterBuildContent(Self, FileName, Symbol, Content);
 
     // check if content is present at all
-    if Content = '' then
+    if FAborted or (Content = '') then
       Exit;
 
     // save content to file
@@ -3274,6 +3351,10 @@ begin
     end;
   end;
 
+  // check for abortion
+  if FAborted then
+    Exit;
+
   FileName := UnitDir + 'index' + FFileExtension;
 
   // set content from tempate
@@ -3284,7 +3365,7 @@ begin
     FOnBeginBuildContent(Self, FileName, UnitSymbol, Content);
 
   // check if content is present at all
-  if Content = '' then
+  if FAborted or (Content = '') then
     Exit;
 
   // build documentation for unit symbol
@@ -3295,7 +3376,7 @@ begin
     FOnAfterBuildContent(Self, FileName, UnitSymbol, Content);
 
   // check if content is present at all
-  if Content = '' then
+  if FAborted or (Content = '') then
     Exit;
 
   SaveTextToUTF8File(FileName, Content);
@@ -3311,6 +3392,10 @@ var
   var
     FileName: TFileName;
   begin
+    // check for abortion
+    if FAborted then
+      Exit;
+
     // create directoy
     if not DirectoryExists(Directory) then
       CreateDir(Directory);
@@ -3326,7 +3411,7 @@ var
       FOnBeginBuildContent(Self, FileName, MemberSymbol, Content);
 
     // check if content is present at all
-    if Content = '' then
+    if FAborted or (Content = '') then
       Exit;
 
     // build documentation content
@@ -3337,7 +3422,7 @@ var
       FOnAfterBuildContent(Self, FileName, MemberSymbol, Content);
 
     // check if content is present at all
-    if Content = '' then
+    if FAborted or (Content = '') then
       Exit;
 
     // save content to file
@@ -3362,6 +3447,10 @@ begin
       BuildContentFileSimple(ClassDir + 'Properties\');
   end;
 
+  // check for abortion
+  if FAborted then
+    Exit;
+
   FileName := ClassDir + 'index' + FFileExtension;
 
   // set content from template
@@ -3372,7 +3461,7 @@ begin
     FOnBeginBuildContent(Self, FileName, ClassSymbol, Content);
 
   // check if content is present at all
-  if Content = '' then
+  if FAborted or (Content = '') then
     Exit;
 
   // build documentation for class symbol
@@ -3383,7 +3472,7 @@ begin
     FOnAfterBuildContent(Self, FileName, ClassSymbol, Content);
 
   // check if content is present at all
-  if Content = '' then
+  if FAborted or (Content = '') then
     Exit;
 
   SaveTextToUTF8File(FileName, Content);
