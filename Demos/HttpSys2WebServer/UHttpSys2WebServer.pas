@@ -47,7 +47,7 @@ uses
 
 type
 
-   THttpSys2WebServer = class (TInterfacedSelfObject)
+   THttpSys2WebServer = class (TInterfacedSelfObject, IWebServerInfo)
       protected
          FPath : TFileName;
          FServer : THttpApi2Server;
@@ -68,6 +68,9 @@ type
 
          procedure LoadAuthenticateOptions(authOptions : TdwsJSONValue);
 
+         function HttpPort : Integer;
+         function HttpsPort : Integer;
+
       public
          constructor Create(const basePath : TFileName; options : TdwsJSONValue);
          destructor Destroy; override;
@@ -77,6 +80,10 @@ type
          procedure Redirect301TrailingPathDelimiter(request : TWebRequest; response : TWebResponse);
 
          function FindDirectoryIndex(var pathFileName : String) : Boolean;
+
+         function Name : String;
+
+         function Authentications : TWebRequestAuthentications;
 
          property Port : Integer read FPort;
          property SSLPort : Integer read FSSLPort;
@@ -173,6 +180,7 @@ begin
    FPath:=IncludeTrailingPathDelimiter(ExpandFileName(basePath));
 
    FDWS:=TSimpleDWScript.Create(nil);
+   FDWS.Initialize(Self);
 
    FDWS.PathVariables.Values['www']:=ExcludeTrailingPathDelimiter(FPath);
 
@@ -358,6 +366,33 @@ begin
 
 end;
 
+// Name
+//
+function THttpSys2WebServer.Name : String;
+begin
+   Result:=FServer.ServerName;
+end;
+
+// Authentications
+//
+function THttpSys2WebServer.Authentications : TWebRequestAuthentications;
+var
+   auth : Cardinal;
+begin
+   auth:=FServer.Authentication;
+   Result:=[];
+   if (HTTP_AUTH_ENABLE_BASIC and auth)<>0 then
+      Include(Result, wraBasic);
+   if (HTTP_AUTH_ENABLE_DIGEST and auth)<>0 then
+      Include(Result, wraDigest);
+   if (HTTP_AUTH_ENABLE_NTLM and auth)<>0 then
+      Include(Result, wraNTLM);
+   if (HTTP_AUTH_ENABLE_NEGOTIATE and auth)<>0 then
+      Include(Result, wraNegotiate);
+   if (HTTP_AUTH_ENABLE_KERBEROS and auth)<>0 then
+      Include(Result, wraKerberos);
+end;
+
 // FileChanged
 //
 procedure THttpSys2WebServer.FileChanged(sender : TdwsFileNotifier; const fileName : String;
@@ -397,6 +432,20 @@ begin
    end;
    if authMask<>0 then
       FServer.SetAuthentication(authMask);
+end;
+
+// HttpPort
+//
+function THttpSys2WebServer.HttpPort : Integer;
+begin
+   Result:=Port;
+end;
+
+// HttpsPort
+//
+function THttpSys2WebServer.HttpsPort : Integer;
+begin
+   Result:=SSLPort;
 end;
 
 end.

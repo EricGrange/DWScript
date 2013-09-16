@@ -23,7 +23,7 @@ uses
    dwsFileSystem, dwsGlobalVarsFunctions, dwsExprList,
    dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils, dwsXPlatform,
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
-   dwsDataBase, dwsDataBaseLibModule,
+   dwsDataBase, dwsDataBaseLibModule, dwsWebServerInfo, dwsWebServerLibModule,
    dwsJSONConnector, dwsJSON, dwsErrors, dwsFunctions, dwsSymbols;
 
 type
@@ -99,6 +99,8 @@ type
       function DoLoadSourceCode(const fileName : String) : String;
 
    public
+      procedure Initialize(const serverInfo : IWebServerInfo);
+
       procedure HandleDWS(const fileName : String; request : TWebRequest; response : TWebResponse);
 
       procedure FlushDWSCache(const fileName : String = '');
@@ -463,6 +465,18 @@ begin
    if Assigned(FOnLoadSourceCode) then
       Result:=FOnLoadSourceCode(fileName)
    else Result:=LoadTextFromFile(fileName);
+end;
+
+// Initialize
+//
+procedure TSimpleDWScript.Initialize(const serverInfo : IWebServerInfo);
+var
+   module : TdwsWebServerLib;
+begin
+   module:=TdwsWebServerLib.Create(Self);
+   module.Server:=serverInfo;
+   module.dwsWebServer.Script:=DelphiWebScript;
+
 end;
 
 // ApplyPathVariables

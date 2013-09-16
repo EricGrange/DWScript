@@ -14,11 +14,35 @@ object dwsWebServerLib: TdwsWebServerLib
             Name = 'Name'
             ResultType = 'String'
             Attributes = [maClassMethod, maStatic]
+            OnEval = dwsWebServerClassesWebServerMethodsNameEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'HttpPort'
+            ResultType = 'Integer'
+            Attributes = [maClassMethod, maStatic]
+            OnEval = dwsWebServerClassesWebServerMethodsHttpPortEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'HttpsPort'
+            ResultType = 'Integer'
+            Attributes = [maClassMethod, maStatic]
+            OnEval = dwsWebServerClassesWebServerMethodsHttpsPortEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'Authentications'
+            ResultType = 'WebAuthentications'
+            Attributes = [maClassMethod, maStatic]
+            OnEval = dwsWebServerClassesWebServerMethodsAuthenticationsEval
             Kind = mkClassFunction
           end>
       end>
+    Dependencies.Strings = (
+      'System.Net')
     UnitName = 'System.WebServer'
-    StaticSymbols = False
+    StaticSymbols = True
     Left = 48
     Top = 24
   end
