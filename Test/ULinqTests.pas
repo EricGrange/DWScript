@@ -1,9 +1,10 @@
 unit ULinqTests;
 
 interface
+
 uses
    Classes,
-   dwsXPlatformTests, dwsComp, dwsLinq, dwsDataBaseLibModule;
+   dwsXPlatformTests, dwsComp, dwsLinq, dwsDataBaseLibModule, dwsErrors;
 
 type
    TLinqTests = class(TTestCase)

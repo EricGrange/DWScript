@@ -2,7 +2,9 @@ unit UdwsDataBaseTests;
 
 interface
 
-uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
+uses
+   Classes, SysUtils,
+   dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsDataBaseLibModule, dwsXPlatform, dwsSymbols, dwsUtils,
    dwsGUIDDatabase;
 

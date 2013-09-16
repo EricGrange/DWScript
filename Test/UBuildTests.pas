@@ -2,7 +2,9 @@ unit UBuildTests;
 
 interface
 
-uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsUtils,
+uses
+   Classes, SysUtils,
+   dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsUtils, dwsErrors,
    dwsXPlatform, dwsSymbols, dwsFunctions, dwsJSON;
 
 type

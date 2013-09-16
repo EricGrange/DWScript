@@ -3,9 +3,10 @@ unit dwsDocBuilder;
 interface
 
 uses
-  SysUtils, Classes, dwsUnitSymbols, dwsExprs, dwsCompiler, dwsComp,
-  dwsHtmlFilter, dwsSymbols, dwsErrors, dwsUtils, dwsXPlatform,
-  dwsSymbolsLibModule;
+   SysUtils, Classes,
+   dwsUnitSymbols, dwsExprs, dwsCompiler, dwsComp, dwsDataContext,
+   dwsHtmlFilter, dwsSymbols, dwsErrors, dwsUtils, dwsXPlatform,
+   dwsSymbolsLibModule;
 
 type
   TDocumentationBuilder = class;

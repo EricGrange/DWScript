@@ -2,9 +2,10 @@ unit URTTIExposeTests;
 
 interface
 
-uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer, dwsRTTIExposer, dwsRTTIConnector, TypInfo, Types, RTTI,
-   Forms, StdCtrls, Variants;
+uses
+   Classes, SysUtils, TypInfo, Types, RTTI, Forms, StdCtrls, Variants,
+   dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
+   dwsTokenizer, dwsRTTIExposer, dwsRTTIConnector;
 
 type
 

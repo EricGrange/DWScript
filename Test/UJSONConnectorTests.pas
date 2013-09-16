@@ -2,8 +2,10 @@ unit UJSONConnectorTests;
 
 interface
 
-uses Windows, Classes, SysUtils,dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
-   Variants, dwsXPlatform, dwsUtils, dwsJSONConnector;
+uses
+   Windows, Classes, SysUtils, Variants,
+   dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
+   dwsXPlatform, dwsUtils, dwsJSONConnector;
 
 type
 

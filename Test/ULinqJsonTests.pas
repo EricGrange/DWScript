@@ -3,7 +3,7 @@ unit ULinqJsonTests;
 interface
 uses
    Classes,
-   dwsXPlatformTests, dwsComp, dwsLinq, dwsJSONConnector;
+   dwsXPlatformTests, dwsComp, dwsLinq, dwsJSONConnector, dwsErrors;
 
 type
    TLinqJsonTests = class(TTestCase)

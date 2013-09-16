@@ -8,7 +8,7 @@ try
    b[v] := '56';
 except
    on e: Exception do 
-      PrintLn(e.Message);
+      PrintLn(e.Message.Before(' ('));
 end;
 
 v:=False;

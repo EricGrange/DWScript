@@ -22,7 +22,7 @@ interface
 
 uses
    dwsExprs, dwsExprList, dwsMagicExprs, dwsSymbols, dwsStrings,
-   dwsFunctions, dwsCoreExprs, dwsConstExprs;
+   dwsFunctions, dwsCoreExprs, dwsConstExprs, dwsUtils;
 
 type
 

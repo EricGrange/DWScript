@@ -12,7 +12,7 @@ s:='z';
 try
    StrToInt(s);
 except
-   on e : Exception do PrintLn(e.Message);
+   on e : Exception do PrintLn(e.Message.Replace("''", "'"));
 end;
 
 try

@@ -3,7 +3,8 @@ unit dwsLinqSql;
 interface
 uses
    Classes,
-   dwsLinq, dwsExprs, dwsXPlatform, dwsSymbols, dwsConstExprs, dwsMethodExprs,
+   dwsLinq, dwsExprs, dwsXPlatform, dwsSymbols, dwsDataContext,
+   dwsConstExprs, dwsMethodExprs,
    dwsCompiler, dwsCoreExprs, dwsErrors, dwsRelExprs;
 
 type
