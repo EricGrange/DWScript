@@ -1039,28 +1039,48 @@ end;
 //
 procedure TSimpleSymbolList.AddMetaMembers(struc : TCompositeTypeSymbol; from : TSymbol;
                                            const addToList : TProcAddToList = nil);
+
+   function IsMetaAccessor(sym : TSymbol) : Boolean;
+   var
+      symClass : TClass;
+   begin
+      if sym=nil then Exit(False);
+      symClass:=sym.ClassType;
+      Result:=   (symClass=TClassConstSymbol)
+              or (symClass=TClassVarSymbol)
+              or (symClass.InheritsFrom(TMethodSymbol) and TMethodSymbol(sym).IsClassMethod);
+   end;
+
 var
    sym : TSymbol;
    methSym : TMethodSymbol;
+   propSym : TPropertySymbol;
    scope : TCompositeTypeSymbol;
    visibility : TdwsVisibility;
-   first : Boolean;
+   first, allowConstructors : Boolean;
 begin
    scope:=ScopeStruct(from);
    visibility:=ScopeVisiblity(scope, struc);
    first:=True;
+   allowConstructors:=(from is TClassSymbol) and not TClassSymbol(from).IsStatic;
 
    repeat
       for sym in struc.Members do begin
          if not sym.IsVisibleFor(visibility) then continue;
          if sym is TMethodSymbol then begin
             methSym:=TMethodSymbol(sym);
-            if methSym.IsClassMethod or (methSym.Kind=fkConstructor) then
+            if     methSym.IsClassMethod
+               or (    allowConstructors
+                   and (methSym.Kind=fkConstructor)) then
                Add(Sym);
          end else if sym is TClassConstSymbol then begin
             Add(sym);
          end else if sym is TClassVarSymbol then begin
             Add(sym);
+         end else if sym is TPropertySymbol then begin
+            propSym:=TPropertySymbol(sym);
+            if IsMetaAccessor(propSym.ReadSym) or IsMetaAccessor(propSym.WriteSym) then
+               Add(sym);
          end;
       end;
       if first then begin

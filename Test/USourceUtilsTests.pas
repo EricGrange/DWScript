@@ -40,6 +40,7 @@ type
          procedure EnumerationNamesAndValues;
          procedure BigEnumerationNamesAndValues;
          procedure EnumerationSuggest;
+         procedure StaticClassSuggest;
    end;
 
 // ------------------------------------------------------------------
@@ -695,7 +696,46 @@ begin
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
    CheckEquals(1, sugg.Count, 'column 10');
    CheckEquals('Value', sugg.Code[0], 'sugg 4, 10, 0');
+end;
 
+// StaticClassSuggest
+//
+procedure TSourceUtilsTests.StaticClassSuggest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile( 'type TTest = class static public'#13#10
+                           +'class function GetTest(i : Integer) : String; begin Result:=""; end;'#13#10
+                           +'property Test[i : Integer] : String read GetTest;'#13#10
+                           +'end;'#13#10
+                           +'Print(TTest.GetTest(1));'#13#10
+                           +'Print(TTest.Test[2]);'#13#10);
+
+   CheckEquals('', prog.Msgs.AsInfo, 'compiled with errors');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 5, 13);
+
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(5, sugg.Count, 'column 13');
+   CheckEquals('ClassName', sugg.Code[0], 'sugg 5, 13, 0');
+   CheckEquals('ClassParent', sugg.Code[1], 'sugg 5, 13, 1');
+   CheckEquals('ClassType', sugg.Code[2], 'sugg 5, 13, 2');
+   CheckEquals('GetTest', sugg.Code[3], 'sugg 5, 13, 3');
+   CheckEquals('Test', sugg.Code[4], 'sugg 5, 13, 4');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 5, 14);
+
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(1, sugg.Count, 'column 5,14');
+   CheckEquals('GetTest', sugg.Code[0], 'sugg 5, 14, 0');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 6, 14);
+
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(1, sugg.Count, 'column 6,10');
+   CheckEquals('Test', sugg.Code[0], 'sugg 6, 14, 0');
 end;
 
 // ------------------------------------------------------------------
