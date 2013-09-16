@@ -10,10 +10,11 @@ program dwsRunner;
 
 uses
    Classes, SysUtils, dwsComp, dwsCompiler, dwsExprs, dwsClassesLibModule,
-   dwsMathFunctions, dwsStringFunctions, dwsTimeFunctions, dwsVariantFunctions;
+   dwsMathFunctions, dwsStringFunctions, dwsTimeFunctions, dwsVariantFunctions,
+   dwsXPlatform;
 
 var
-   sl : TStringList;
+   source : string;
    script : TDelphiWebScript;
    classesLibModule : TdwsClassesLib;
    prog : IdwsProgram;
@@ -32,12 +33,11 @@ begin
    try
       script:=TDelphiWebScript.Create(nil);
       classesLibModule:=TdwsClassesLib.Create(nil);
-      sl:=TStringList.Create;
       try
          classesLibModule.Script:=script;
 
-         sl.LoadFromFile(ParamStr(1));
-         prog:=script.Compile(sl.Text);
+         source := LoadTextFromFile(ParamStr(1));
+         prog:=script.Compile(source);
 
          if prog.Msgs.Count>0 then begin
             Writeln(prog.Msgs.AsInfo);
@@ -51,7 +51,6 @@ begin
                Writeln(exec.Msgs.AsInfo);
          end;
       finally
-         sl.Free;
          classesLibModule.Free;
          script.Free;
       end;
