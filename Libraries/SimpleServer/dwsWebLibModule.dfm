@@ -277,6 +277,7 @@ object dwsWebLib: TdwsWebLib
                 Name = 'text'
                 DataType = 'String'
               end>
+            Attributes = [maStatic]
             OnEval = dwsWebClassesWebResponseMethodsSetContentTextEval
             Visibility = cvProtected
             Kind = mkClassProcedure
@@ -357,8 +358,9 @@ object dwsWebLib: TdwsWebLib
                 Name = 'value'
                 DataType = 'Boolean'
               end>
+            Attributes = [maClassMethod, maStatic]
             OnEval = dwsWebClassesWebResponseMethodsSetCompressionEval
-            Kind = mkProcedure
+            Kind = mkClassProcedure
           end>
         Properties = <
           item
