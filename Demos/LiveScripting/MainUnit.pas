@@ -19,7 +19,7 @@ interface
 
 {$I dws.inc}
 
-{$DEFINE JS}
+{-$DEFINE JS}
 {-$DEFINE LLVM}
 {-$DEFINE LLVM_EXECUTE}
 
@@ -408,8 +408,10 @@ end;
 
 procedure TFrmBasic.AcnCodeGenJSExecute(Sender: TObject);
 begin
+  {$IFDEF JS}
   FJSCodeGen.CompileProgram(FCompiledProgram);
   SaveTextToUTF8File('dws.js', FJSCodeGen.CompiledOutput(FCompiledProgram));
+  {$ENDIF}
 end;
 
 procedure TFrmBasic.AcnCodeGenLLVMExecute(Sender: TObject);
