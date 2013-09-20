@@ -97,6 +97,7 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
       end
       item
         Name = 'ApplicationInfo'
+        IsStatic = True
         Methods = <
           item
             Name = 'Version'
@@ -117,6 +118,68 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
             ResultType = 'Boolean'
             Attributes = [maStatic]
             OnEval = dwsSystemInfoClassesApplicationInfoMethodsRunningAsServiceEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'GetEnvironmentVariable'
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesApplicationInfoMethodsGetEnvironmentVariableEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'SetEnvironmentVariable'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end
+              item
+                Name = 'value'
+                DataType = 'String'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesApplicationInfoMethodsSetEnvironmentVariableEval
+            Kind = mkClassProcedure
+          end>
+        Properties = <
+          item
+            Name = 'EnvironmentVariable'
+            DataType = 'String'
+            ReadAccess = 'GetEnvironmentVariable'
+            WriteAccess = 'SetEnvironmentVariable'
+          end>
+      end
+      item
+        Name = 'HostInfo'
+        IsStatic = True
+        Methods = <
+          item
+            Name = 'Name'
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesHostInfoMethodsNameEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'DNSDomain'
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesHostInfoMethodsDNSDomainEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'DNSFullyQualified'
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesHostInfoMethodsDNSFullyQualifiedEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'DNSName'
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesHostInfoMethodsDNSNameEval
             Kind = mkClassFunction
           end>
       end>

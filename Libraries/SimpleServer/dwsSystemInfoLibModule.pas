@@ -40,6 +40,18 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsSystemInfoClassesApplicationInfoMethodsRunningAsServiceEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesHostInfoMethodsNameEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsSystemInfoClassesHostInfoMethodsDNSDomainEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesHostInfoMethodsDNSFullyQualifiedEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesHostInfoMethodsDNSNameEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsSystemInfoClassesApplicationInfoMethodsGetEnvironmentVariableEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesApplicationInfoMethodsSetEnvironmentVariableEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FOSNameVersion : TOSNameVersion;
@@ -119,6 +131,18 @@ begin
    end;
 end;
 
+// GetHostName
+//
+function GetHostName(nameFormat : TComputerNameFormat) : UnicodeString;
+var
+   n : Cardinal;
+begin
+   n:=0;
+   GetComputerNameExW(nameFormat, nil, n);
+   SetLength(Result, n-1);
+   GetComputerNameExW(nameFormat, PWideChar(Pointer(Result)), n);
+end;
+
 procedure TdwsSystemInfoLibModule.DataModuleCreate(Sender: TObject);
 begin
    // limit query rate to 10 Hz
@@ -139,10 +163,22 @@ begin
    Info.ResultAsString:=ParamStr(0);
 end;
 
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsGetEnvironmentVariableEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=GetEnvironmentVariable(Info.ParamAsString[0]);
+end;
+
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsRunningAsServiceEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsBoolean:=RunningAsService;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsSetEnvironmentVariableEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   SetEnvironmentVariableW(PWideChar(Info.ParamAsString[0]), PWideChar(Info.ParamAsString[1]));
 end;
 
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsVersionEval(
@@ -189,6 +225,30 @@ procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesCPUInfoMethodsSystemUsageE
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsFloat:=SystemCPU.Usage;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesHostInfoMethodsDNSDomainEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=GetHostName(ComputerNameDnsDomain);
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesHostInfoMethodsDNSFullyQualifiedEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=GetHostName(ComputerNameDnsFullyQualified);
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesHostInfoMethodsDNSNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=GetHostName(ComputerNameDnsHostname);
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesHostInfoMethodsNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=GetHostName(ComputerNameNetBIOS);
 end;
 
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesMemoryStatusConstructorsCreateEval(
