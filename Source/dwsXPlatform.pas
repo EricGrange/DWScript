@@ -639,7 +639,7 @@ end;
 //
 function FileCopy(const existing, new : String; failIfExists : Boolean) : Boolean;
 begin
-   Windows.CopyFileW(PWideChar(existing), PWideChar(new), failIfExists);
+   result := Windows.CopyFileW(PWideChar(existing), PWideChar(new), failIfExists);
 end;
 
 // DirectSet8087CW
