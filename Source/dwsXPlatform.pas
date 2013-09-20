@@ -162,6 +162,7 @@ procedure SaveTextToUTF8File(const fileName, text : UnicodeString);
 function OpenFileForSequentialReadOnly(const fileName : UnicodeString) : THandle;
 function OpenFileForSequentialWriteOnly(const fileName : UnicodeString) : THandle;
 procedure CloseFileHandle(hFile : THandle);
+function FileCopy(const existing, new : UnicodeString; failIfExists : Boolean) : Boolean;
 
 function DirectSet8087CW(newValue : Word) : Word; register;
 function DirectSetMXCSR(newValue : Word) : Word; register;
@@ -632,6 +633,13 @@ end;
 procedure CloseFileHandle(hFile : THandle);
 begin
    CloseHandle(hFile);
+end;
+
+// FileCopy
+//
+function FileCopy(const existing, new : String; failIfExists : Boolean) : Boolean;
+begin
+   Windows.CopyFileW(PWideChar(existing), PWideChar(new), failIfExists);
 end;
 
 // DirectSet8087CW
