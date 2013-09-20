@@ -9,13 +9,15 @@ uses
   dwsSymbolsLibModule in '..\..\..\Libraries\SymbolsLib\dwsSymbolsLibModule.pas',
   dwsDocBuilder in '..\..\..\Libraries\DocBuilder\dwsDocBuilder.pas',
   PreviewUnit in 'PreviewUnit.pas' {FrmPreview},
-  OptionsUnit in 'OptionsUnit.pas' {FormOptions};
+  OptionsUnit in 'OptionsUnit.pas' {FormOptions},
+  LocalVariables in 'LocalVariables.pas' {FrmLocalVariables};
 
 begin
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
   Application.CreateForm(TFrmBasic, FrmBasic);
   Application.CreateForm(TFrmPreview, FrmPreview);
+  Application.CreateForm(TFrmLocalVariables, FrmLocalVariables);
   Application.Run;
 end.
 

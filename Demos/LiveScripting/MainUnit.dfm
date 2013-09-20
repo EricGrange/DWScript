@@ -57,6 +57,7 @@ object FrmBasic: TFrmBasic
     SearchEngine = SynEditSearch
     OnChange = SynEditChange
     OnGutterPaint = SynEditGutterPaint
+    FontSmoothing = fsmNone
   end
   object StatusBar: TStatusBar
     Left = 0
@@ -391,6 +392,9 @@ object FrmBasic: TFrmBasic
   end
   object SynDWSSyn: TSynDWSSyn
     DefaultFilter = 'DWScript Files (*.dws;*.pas;*.inc)|*.dws;*.pas;*.inc'
+    Options.AutoDetectEnabled = False
+    Options.AutoDetectLineLimit = 0
+    Options.Visible = False
     StringAttri.Foreground = clPurple
     Left = 264
     Top = 16
@@ -517,6 +521,9 @@ object FrmBasic: TFrmBasic
       object MnuCodeGenLLVM: TMenuItem
         Action = AcnCodeGenLLVM
       end
+      object MnuCodeGenJS: TMenuItem
+        Action = AcnCodeGenJS
+      end
     end
   end
   object ActionList: TActionList
@@ -638,6 +645,11 @@ object FrmBasic: TFrmBasic
       Caption = '&LLVM'
       ShortCut = 116
       OnExecute = AcnCodeGenLLVMExecute
+    end
+    object AcnCodeGenJS: TAction
+      Category = 'CodeGen'
+      Caption = '&JS'
+      OnExecute = AcnCodeGenJSExecute
     end
   end
   object PopupMenuOutput: TPopupMenu

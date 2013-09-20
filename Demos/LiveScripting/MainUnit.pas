@@ -19,6 +19,7 @@ interface
 
 {$I dws.inc}
 
+{$DEFINE JS}
 {-$DEFINE LLVM}
 {-$DEFINE LLVM_EXECUTE}
 
@@ -27,10 +28,10 @@ uses
   ExtCtrls, StdCtrls, Menus, StdActns, ActnList, ExtDlgs, ComCtrls,
   Types, SyncObjs, ImgList, dwsComp, dwsExprs, dwsSymbols, dwsErrors,
   dwsSuggestions, dwsRTTIConnector, dwsVCLGUIFunctions, dwsStrings,
-  dwsUnitSymbols, {$IFDEF LLVM}dwsLLVMCodeGen, dwsLLVM, {$ENDIF} SynEdit,
-  SynEditHighlighter, SynHighlighterDWS, SynCompletionProposal,
-  SynEditMiscClasses, SynEditSearch, SynEditOptionsDialog, SynEditPlugins,
-  SynMacroRecorder;
+  dwsUnitSymbols, {$IFDEF LLVM}dwsLLVMCodeGen, dwsLLVM, {$ENDIF}
+  {$IFDEF JS}dwsJSCodeGen, {$ENDIF} SynEdit, SynEditHighlighter,
+  SynHighlighterDWS, SynCompletionProposal, SynEditMiscClasses, SynEditSearch,
+  SynEditOptionsDialog, SynEditPlugins, SynMacroRecorder;
 
 type
   TRescanThread = class(TThread)
@@ -40,6 +41,7 @@ type
 
   TFrmBasic = class(TForm)
     AcnAutoCompile: TAction;
+    AcnCodeGenJS: TAction;
     AcnCodeGenLLVM: TAction;
     AcnEditCopy: TEditCopy;
     AcnEditCut: TEditCut;
@@ -64,6 +66,7 @@ type
     ListBoxOutput: TListBox;
     MainMenu: TMainMenu;
     MnuCodeGen: TMenuItem;
+    MnuCodeGenJS: TMenuItem;
     MnuCodeGenLLVM: TMenuItem;
     MnuEdit: TMenuItem;
     MnuEditCopy: TMenuItem;
@@ -127,6 +130,7 @@ type
     procedure SynEditChange(Sender: TObject);
     procedure SynEditGutterPaint(Sender: TObject; aLine, X, Y: Integer);
     procedure SynParametersExecute(Kind: SynCompletionType; Sender: TObject; var CurrentInput: string; var x, y: Integer; var CanExecute: Boolean);
+    procedure AcnCodeGenJSExecute(Sender: TObject);
   private
     FRecentScriptName: TFileName;
     FRescanThread: TRescanThread;
@@ -135,6 +139,9 @@ type
     {$IFDEF LLVM}
     FLLVMCodeGen: TdwsLLVMCodeGen;
     FErrorLog: TFileStream;
+    {$ENDIF}
+    {$IFDEF JS}
+    FJSCodeGen: TdwsJSCodeGen;
     {$ENDIF}
     FCriticalSection: TCriticalSection;
     FSyncEvent: TEvent;
@@ -156,7 +163,7 @@ implementation
 {$R *.dfm}
 
 uses
-  Math, Registry, dwsUtils;
+  Math, Registry, dwsUtils, dwsXPlatform;
 
 { TRescanThread }
 
@@ -196,6 +203,12 @@ begin
   FSyncEvent := TEvent.Create;
   FRescanThread := TRescanThread.Create;
 
+  AcnCodeGenLLVM.Enabled := False;
+  AcnCodeGenJS.Enabled := False;
+  MnuCodeGenLLVM.Visible := False;
+  MnuCodeGenJS.Visible := False;
+  MnuCodeGen.Visible := False;
+
   {$IFDEF LLVM}
   FLLVMCodeGen := TdwsLLVMCodeGen.Create;
   FLLVMCodeGen.ModuleName := 'dws';
@@ -234,9 +247,16 @@ begin
   SetStdHandle(STD_ERROR_HANDLE, FErrorLog.Handle);
   UnloadLLVM;
   LoadLLVM;
-  {$ELSE}
-  AcnCodeGenLLVM.Enabled := False;
-  MnuCodeGen.Visible := False;
+  MnuCodeGen.Visible := True;
+  MnuCodeGenLLVM.Visible := True;
+  AcnCodeGenLLVM.Enabled := True;
+  {$ENDIF}
+
+  {$IFDEF JS}
+  FJSCodeGen := TdwsJSCodeGen.Create;
+  MnuCodeGen.Visible := True;
+  MnuCodeGenJS.Visible := True;
+  AcnCodeGenJS.Enabled := True;
   {$ENDIF}
 end;
 
@@ -245,6 +265,10 @@ begin
   {$IFDEF LLVM}
   FErrorLog.Free;
   FreeAndNil(FLLVMCodeGen);
+  {$ENDIF}
+
+  {$IFDEF JS}
+  FreeAndNil(FJSCodeGen);
   {$ENDIF}
 
   if Assigned(FRescanThread) then
@@ -380,6 +404,12 @@ begin
 
   if AcnAutoCompile.Checked then
     FRescanThread := TRescanThread.Create;
+end;
+
+procedure TFrmBasic.AcnCodeGenJSExecute(Sender: TObject);
+begin
+  FJSCodeGen.CompileProgram(FCompiledProgram);
+  SaveTextToUTF8File('dws.js', FJSCodeGen.CompiledOutput(FCompiledProgram));
 end;
 
 procedure TFrmBasic.AcnCodeGenLLVMExecute(Sender: TObject);

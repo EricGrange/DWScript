@@ -17,6 +17,10 @@ unit MainUnit;
 
 interface
 
+{$IFNDEF UseDebugger}
+  Error! //-> Please define 'UseDebugger' globally
+{$ENDIF}
+
 {$I dws.inc}
 
 uses
@@ -42,7 +46,10 @@ type
   TFrmBasic = class(TForm)
     AcnBuildBuild: TAction;
     AcnBuildOptions: TAction;
+    AcnBuildReset: TAction;
     AcnBuildStart: TAction;
+    AcnBuildStepOver: TAction;
+    AcnBuildTraceInto: TAction;
     AcnEditCopy: TEditCopy;
     AcnEditCut: TEditCut;
     AcnEditDelete: TEditDelete;
@@ -56,6 +63,7 @@ type
     AcnFileScriptSave: TAction;
     AcnOptions: TAction;
     AcnSearchFind: TSearchFind;
+    AcnViewLocalVariables: TAction;
     AcnViewPreview: TAction;
     ActionList: TActionList;
     DelphiWebScript: TDelphiWebScript;
@@ -78,6 +86,7 @@ type
     MnuEditUndo: TMenuItem;
     MnuFile: TMenuItem;
     MnuFileNew: TMenuItem;
+    mnuLocalVariables: TMenuItem;
     MnuOptions: TMenuItem;
     MnuSaveMessagesAs: TMenuItem;
     MnuSaveOutputAs: TMenuItem;
@@ -93,9 +102,12 @@ type
     N3: TMenuItem;
     N4: TMenuItem;
     N5: TMenuItem;
+    PanelLeft: TPanel;
+    PanelRight: TPanel;
     PopupMenuMessages: TPopupMenu;
     PopupMenuOutput: TPopupMenu;
     ProposalImages: TImageList;
+    SplitterHorizontal: TSplitter;
     SplitterVertical: TSplitter;
     StatusBar: TStatusBar;
     SynCompletionProposal: TSynCompletionProposal;
@@ -107,41 +119,51 @@ type
     SynMacroRecorder: TSynMacroRecorder;
     SynMultiSyn: TSynMultiSyn;
     SynParameters: TSynCompletionProposal;
-    AcnBuildReset: TAction;
-    AcnBuildStepOver: TAction;
-    AcnBuildTraceInto: TAction;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure AcnBuildStartExecute(Sender: TObject);
+    procedure AcnBuildBuildExecute(Sender: TObject);
     procedure AcnBuildDebuggerUpdate(Sender: TObject);
+    procedure AcnBuildOptionsExecute(Sender: TObject);
     procedure AcnBuildResetExecute(Sender: TObject);
-    procedure AcnBuildTraceIntoExecute(Sender: TObject);
+    procedure AcnBuildResetUpdate(Sender: TObject);
+    procedure AcnBuildStartExecute(Sender: TObject);
     procedure AcnBuildStepOverExecute(Sender: TObject);
+    procedure AcnBuildTraceIntoExecute(Sender: TObject);
     procedure AcnFileNewExecute(Sender: TObject);
     procedure AcnFileOpenAccept(Sender: TObject);
     procedure AcnFileSaveScriptAsAccept(Sender: TObject);
     procedure AcnFileScriptSaveExecute(Sender: TObject);
     procedure AcnOptionsExecute(Sender: TObject);
+    procedure AcnViewLocalVariablesExecute(Sender: TObject);
     procedure AcnViewPreviewExecute(Sender: TObject);
-    procedure AcnBuildOptionsExecute(Sender: TObject);
-    procedure AcnBuildBuildExecute(Sender: TObject);
+    procedure dwsDebuggerStateChanged(Sender: TObject);
     procedure MnuSaveMessagesAsClick(Sender: TObject);
     procedure MnuScriptExitClick(Sender: TObject);
-    procedure SynCompletionProposalExecute(Kind: SynCompletionType; Sender: TObject; var CurrentInput: string; var x, y: Integer; var CanExecute: Boolean);
-    procedure SynCompletionProposalPaintItem(Sender: TObject; Index: Integer; TargetCanvas: TCanvas; ItemRect: TRect; var CustomDraw: Boolean);
+    procedure PanelRightDockDrop(Sender: TObject; Source: TDragDockObject; X,
+      Y: Integer);
+    procedure PanelRightDockOver(Sender: TObject; Source: TDragDockObject; X,
+      Y: Integer; State: TDragState; var Accept: Boolean);
+    procedure PanelRightGetSiteInfo(Sender: TObject; DockClient: TControl;
+      var InfluenceRect: TRect; MousePos: TPoint; var CanDock: Boolean);
+    procedure PanelRightUnDock(Sender: TObject; Client: TControl;
+      NewTarget: TWinControl; var Allow: Boolean);
+    procedure SynCompletionProposalExecute(Kind: SynCompletionType;
+      Sender: TObject; var CurrentInput: string; var x, y: Integer;
+      var CanExecute: Boolean);
+    procedure SynCompletionProposalPaintItem(Sender: TObject; Index: Integer;
+      TargetCanvas: TCanvas; ItemRect: TRect; var CustomDraw: Boolean);
     procedure SynCompletionProposalShow(Sender: TObject);
     procedure SynEditChange(Sender: TObject);
-    procedure SynEditGutterPaint(Sender: TObject; aLine, X, Y: Integer);
-    procedure SynParametersExecute(Kind: SynCompletionType; Sender: TObject; var CurrentInput: string; var x, y: Integer; var CanExecute: Boolean);
     procedure SynEditGutterClick(Sender: TObject; Button: TMouseButton; X, Y,
       Line: Integer; Mark: TSynEditMark);
+    procedure SynEditGutterPaint(Sender: TObject; aLine, X, Y: Integer);
     procedure SynEditSpecialLineColors(Sender: TObject; Line: Integer;
       var Special: Boolean; var FG, BG: TColor);
-    procedure dwsDebuggerStateChanged(Sender: TObject);
-    procedure AcnBuildResetUpdate(Sender: TObject);
+    procedure SynParametersExecute(Kind: SynCompletionType; Sender: TObject;
+      var CurrentInput: string; var x, y: Integer; var CanExecute: Boolean);
   private
     FRecentScriptName: TFileName;
     FRescanThread: TRescanThread;
@@ -152,7 +174,7 @@ type
     FAbortBuild: Boolean;
     FOutputPath: string;
     FCurrentLine: Integer;
-    FExecutableLines: array of Boolean;
+    FExecutableLines: TBits;
 
     procedure SourceChanged;
     procedure BeforeBuildContent(Sender: TDocumentationBuilder;
@@ -170,6 +192,7 @@ type
   public
     procedure CompileScript;
     procedure UpdateCompilerOutput;
+    procedure ShowDockPanel(MakeVisible: Boolean);
 
     property SyncEvent: TEvent read FSyncEvent;
   end;
@@ -182,7 +205,8 @@ implementation
 {$R *.dfm}
 
 uses
-  Math, Registry, dwsUtils, PreviewUnit, OptionsUnit;
+  Math, Registry, DockingUtils, dwsUtils, PreviewUnit, OptionsUnit,
+  LocalVariables;
 
 { TRescanThread }
 
@@ -226,18 +250,18 @@ var
 begin
   // Track the executable lines
   LineCount := FEditor.Lines.Count;
-  SetLength(FrmBasic.FExecutableLines, LineCount );
-  for Index := LineCount-1 downto FirstLine + Count do
+  FrmBasic.FExecutableLines.Size := LineCount;
+  for Index := LineCount - 1 downto FirstLine + Count do
     FrmBasic.FExecutableLines[Index] := FrmBasic.FExecutableLines[Index - Count];
-  for Index := FirstLine + Count-1 downto FirstLine do
+  for Index := FirstLine + Count - 1 downto FirstLine do
     FrmBasic.FExecutableLines[Index] := False;
 
   // Track the breakpoint lines in the debugger
-  for Index := 0 to FrmBasic.dwsDebugger.Breakpoints.Count-1 do
-    if FrmBasic.dwsDebugger.Breakpoints[Index].SourceName = SYS_MainModule then
-      if FrmBasic.dwsDebugger.Breakpoints[Index].Line >= FirstLine then
-         FrmBasic.dwsDebugger.Breakpoints[Index].Line :=
-           FrmBasic.dwsDebugger.Breakpoints[Index].Line + Count;
+  with FrmBasic.dwsDebugger do
+    for Index := 0 to Breakpoints.Count - 1 do
+      if Breakpoints[Index].SourceName = SYS_MainModule then
+        if Breakpoints[Index].Line >= FirstLine then
+           Breakpoints[Index].Line := Breakpoints[Index].Line + Count;
 
   // Redraw the gutter for updated icons
   FEditor.InvalidateGutter;
@@ -245,19 +269,19 @@ end;
 
 procedure TEditorPageSynEditPlugin.LinesDeleted(FirstLine, Count: Integer);
 var
-  Index : Integer;
+  Index: Integer;
 begin
   // Track the executable lines
-  for Index := FirstLine-1 to High(FrmBasic.FExecutableLines) do
+  for Index := FirstLine - 1 to FrmBasic.FExecutableLines.Size - Count - 1 do
     FrmBasic.FExecutableLines[Index] := FrmBasic.FExecutableLines[Index + Count];
-  SetLength(FrmBasic.FExecutableLines, Length(FrmBasic.FExecutableLines) - Count);
+  FrmBasic.FExecutableLines.Size := FrmBasic.FExecutableLines.Size - Count;
 
   // Track the breakpoint lines in the debugger
-  for Index := 0 to FrmBasic.dwsDebugger.Breakpoints.Count-1 do
-    if FrmBasic.dwsDebugger.Breakpoints[Index].SourceName = SYS_MainModule then
-      if FrmBasic.dwsDebugger.Breakpoints[Index].Line >= FirstLine then
-         FrmBasic.dwsDebugger.Breakpoints[Index].Line :=
-           FrmBasic.dwsDebugger.Breakpoints[Index].Line - Count;
+  with FrmBasic.dwsDebugger do
+    for Index := 0 to Breakpoints.Count - 1 do
+      if Breakpoints[Index].SourceName = SYS_MainModule then
+        if Breakpoints[Index].Line >= FirstLine then
+           Breakpoints[Index].Line := Breakpoints[Index].Line - Count;
 
   // Redraw the gutter for updated icons
   FEditor.InvalidateGutter;
@@ -268,12 +292,13 @@ end;
 
 procedure TFrmBasic.FormCreate(Sender: TObject);
 begin
-  FSymbolUnit := TSymbolUnit.Create(nil, 0);;
+  FSymbolUnit := TSymbolUnit.Create(nil, 0);
   FSymbolUnit.Script := DelphiWebScript;
   FCriticalSection := TCriticalSection.Create;
   FSyncEvent := TEvent.Create;
   FRescanThread := TRescanThread.Create;
   FOutputPath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\Docs\');
+  FExecutableLines := TBits.Create;
   FCurrentLine := -1;
   TEditorPageSynEditPlugin.Create(SynEdit);
   SynEdit.ControlStyle := SynEdit.ControlStyle + [csOpaque];
@@ -289,6 +314,7 @@ begin
     FreeAndNil(FRescanThread);
   end;
 
+  FreeAndNil(FExecutableLines);
   FreeAndNil(FSyncEvent);
 
   FreeAndNil(FCriticalSection);
@@ -315,11 +341,20 @@ begin
       SynEdit.TopLine := ReadInteger('TopLine');
       SynEdit.CaretX := ReadInteger('CaretX');
       SynEdit.CaretY := ReadInteger('CaretY');
+      Left := ReadInteger('Left');
+      Top := ReadInteger('Top');
+      Width := ReadInteger('Width');
+      Height := ReadInteger('Height');
     end;
     CloseKey;
   finally
     Free;
   end;
+
+  {$IFDEF UseDebugger}
+  FrmLocalVariables.ManualDock(PanelRight);
+  FrmLocalVariables.Show;
+  {$ENDIF}
 
   InitExecutableLines;
   SourceChanged;
@@ -335,10 +370,33 @@ begin
     WriteInteger('TopLine', SynEdit.TopLine);
     WriteInteger('CaretX', SynEdit.CaretX);
     WriteInteger('CaretY', SynEdit.CaretY);
+    WriteInteger('Left', Left);
+    WriteInteger('Top', Top);
+    WriteInteger('Width', Width);
+    WriteInteger('Height', Height);
     CloseKey;
   finally
     Free;
   end;
+end;
+
+procedure TFrmBasic.ShowDockPanel(MakeVisible: Boolean);
+begin
+  //Don't try to hide a panel which has visible dock clients.
+  if not MakeVisible and (PanelRight.VisibleDockClientCount > 1) then
+    Exit;
+
+  SplitterHorizontal.Visible := MakeVisible;
+  if MakeVisible then
+  begin
+    PanelRight.Width := 204;
+    SplitterHorizontal.Left := PanelRight.Width + SplitterHorizontal.Width;
+  end
+  else
+    PanelRight.Width := 0;
+
+  if MakeVisible and (FrmLocalVariables <> nil) then
+    FrmLocalVariables.Show;
 end;
 
 procedure TFrmBasic.CompileScript;
@@ -361,8 +419,11 @@ begin
     dsDebugRun, dsDebugDone:
       ClearCurrentLine;
     dsDebugSuspended :
-      SetCurrentLine(dwsDebugger.CurrentScriptPos.Line,
-        dwsDebugger.CurrentScriptPos.Col);
+      begin
+        SetCurrentLine(dwsDebugger.CurrentScriptPos.Line,
+          dwsDebugger.CurrentScriptPos.Col);
+        FrmLocalVariables.Redraw;
+      end;
   end;
 end;
 
@@ -380,7 +441,7 @@ procedure TFrmBasic.ClearExecutableLines;
 var
   I : Integer;
 begin
-  for I := 0 to High(FExecutableLines) do
+  for I := 0 to FExecutableLines.Size - 1 do
     FExecutableLines[I] := False;
   SynEdit.InvalidateGutter;
 end;
@@ -434,8 +495,7 @@ end;
 
 procedure TFrmBasic.InitExecutableLines;
 begin
-  SetLength(FExecutableLines, 0);
-  SetLength(FExecutableLines, SynEdit.Lines.Count);
+  FrmBasic.FExecutableLines.Size := SynEdit.Lines.Count;
 end;
 
 function TFrmBasic.GetExecutableLines: TLineNumbers;
@@ -453,6 +513,8 @@ var
   Lines : Tbits;
 begin
   SetLength(Result, 0);
+  if (not Assigned(FCompiledProgram)) or FCompiledProgram.Msgs.HasErrors then
+    Exit;
 
   Breakpointables := TdwsBreakpointableLines.Create(FCompiledProgram);
   try
@@ -475,14 +537,14 @@ var
 begin
   ClearExecutableLines;
   LineNumbers := GetExecutableLines;
-  for I := 0 to High(LineNumbers) do
+  for I := 0 to Min(FExecutableLines.Size - 1, High(LineNumbers)) do
     FExecutableLines[LineNumbers[I]] := True;
   SynEdit.InvalidateGutter;
 end;
 
 function TFrmBasic.IsExecutableLine(ALine: Integer): Boolean;
 begin
-  if ALine < Length(FExecutableLines) then
+  if ALine < FExecutableLines.Size then
     Result := FExecutableLines[ALine]
   else
     Result := False;
@@ -503,6 +565,41 @@ end;
 procedure TFrmBasic.MnuScriptExitClick(Sender: TObject);
 begin
   Close;
+end;
+
+procedure TFrmBasic.PanelRightDockDrop(Sender: TObject; Source: TDragDockObject;
+  X, Y: Integer);
+begin
+  if (Sender as TPanel).DockClientCount = 1 then
+    ShowDockPanel(True);
+  (Sender as TPanel).DockManager.ResetBounds(True);
+end;
+
+procedure TFrmBasic.PanelRightDockOver(Sender: TObject; Source: TDragDockObject;
+  X, Y: Integer; State: TDragState; var Accept: Boolean);
+var
+  ARect: TRect;
+begin
+  Accept := Source.Control = FrmLocalVariables;
+  if Accept then
+  begin
+    ARect.TopLeft := PanelRight.ClientToScreen(Point(-FrmLocalVariables.Width, 0));
+    ARect.BottomRight := PanelRight.ClientToScreen(Point(0, PanelRight.Height));
+    Source.DockRect := ARect;
+  end;
+end;
+
+procedure TFrmBasic.PanelRightGetSiteInfo(Sender: TObject; DockClient: TControl;
+  var InfluenceRect: TRect; MousePos: TPoint; var CanDock: Boolean);
+begin
+  CanDock := DockClient is TFrmLocalVariables;
+end;
+
+procedure TFrmBasic.PanelRightUnDock(Sender: TObject; Client: TControl;
+  NewTarget: TWinControl; var Allow: Boolean);
+begin
+  if ((Sender as TPanel).DockClientCount = 1) then
+    ShowDockPanel(False);
 end;
 
 procedure TFrmBasic.BeforeBuildContent(Sender: TDocumentationBuilder;
@@ -562,8 +659,10 @@ begin
     try
       DocBuilder.OnBeginBuildContent := BeforeBuildContent;
       DocBuilder.TemplateSource := SynEdit.Text;
+      {$IFDEF UseDebugger}
       if dwsDebugger.Breakpoints.Count > 0 then
         DocBuilder.Debugger := dwsDebugger;
+      {$ENDIF}
       DocBuilder.Build(FOutputPath);
 
       if DocBuilder.Aborted then
@@ -640,6 +739,12 @@ end;
 procedure TFrmBasic.AcnBuildDebuggerUpdate(Sender: TObject);
 begin
   TAction(Sender).Enabled := dwsDebugger.State = dsDebugSuspended;
+end;
+
+procedure TFrmBasic.AcnViewLocalVariablesExecute(Sender: TObject);
+begin
+  FrmLocalVariables.Visible := AcnViewLocalVariables.Checked;
+  ShowDockPanel(FrmLocalVariables.Visible)
 end;
 
 procedure TFrmBasic.AcnViewPreviewExecute(Sender: TObject);
@@ -1038,7 +1143,7 @@ var
   IntLine : Integer;
 begin
   IntLine := SynEdit.RowToLine(Line);
-  if IntLine < Length(FExecutableLines) then
+  if IntLine < FExecutableLines.Size then
   begin
     if GetBreakpointStatus(Line) <> bpsNone then
       ClearBreakpoint(IntLine)

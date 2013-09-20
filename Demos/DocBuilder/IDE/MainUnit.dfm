@@ -20,13 +20,12 @@ object FrmBasic: TFrmBasic
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
-  object SplitterVertical: TSplitter
-    Left = 0
-    Top = 496
-    Width = 1000
-    Height = 3
-    Cursor = crVSplit
-    Align = alBottom
+  object SplitterHorizontal: TSplitter
+    Left = 997
+    Top = 0
+    Height = 581
+    Align = alRight
+    Visible = False
   end
   object StatusBar: TStatusBar
     Left = 0
@@ -35,61 +34,95 @@ object FrmBasic: TFrmBasic
     Height = 19
     Panels = <>
   end
-  object SynEdit: TSynEdit
+  object PanelLeft: TPanel
     Left = 0
     Top = 0
-    Width = 1000
-    Height = 496
+    Width = 997
+    Height = 581
     Align = alClient
-    Font.Charset = DEFAULT_CHARSET
-    Font.Color = clWindowText
-    Font.Height = -13
-    Font.Name = 'Courier New'
-    Font.Style = []
+    BevelOuter = bvNone
+    ShowCaption = False
     TabOrder = 1
-    OnKeyDown = FormKeyDown
-    Gutter.Font.Charset = DEFAULT_CHARSET
-    Gutter.Font.Color = clWindowText
-    Gutter.Font.Height = -11
-    Gutter.Font.Name = 'Courier New'
-    Gutter.Font.Style = []
-    Gutter.Width = 50
-    Highlighter = SynMultiSyn
-    Lines.Strings = (
-      '<!DOCTYPE html>'
-      '<html>'
-      '<head>'
-      '  <title><?pas=Symbol.Name ?></title>'
-      '</head>'
-      ''
-      '<body>'
-      '<h1 class="Name"><?pas=Symbol.Name ?></h1>'
-      '<p><?pas=Symbol.Description ?></p>'
-      '<h2 class="Description">Description</h2>'
-      '<p>No description available yet!</p>'
-      
-        '<p class="Footer">Copyright DWS Team - Build on <?pas=FormatDate' +
-        'Time('#39'yyyy-mmmm-dd'#39', Now) ?></p>'
-      '</body>'
-      '</html>'
-      '')
-    Options = [eoAutoIndent, eoDragDropEditing, eoEnhanceEndKey, eoGroupUndo, eoShowScrollHint, eoSmartTabDelete, eoSmartTabs, eoTabsToSpaces]
-    SearchEngine = SynEditSearch
-    OnChange = SynEditChange
-    OnGutterClick = SynEditGutterClick
-    OnGutterPaint = SynEditGutterPaint
-    OnSpecialLineColors = SynEditSpecialLineColors
-    FontSmoothing = fsmNone
+    object SplitterVertical: TSplitter
+      Left = 0
+      Top = 496
+      Width = 997
+      Height = 3
+      Cursor = crVSplit
+      Align = alBottom
+    end
+    object SynEdit: TSynEdit
+      Left = 0
+      Top = 0
+      Width = 997
+      Height = 496
+      Align = alClient
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Courier New'
+      Font.Style = []
+      TabOrder = 0
+      OnKeyDown = FormKeyDown
+      Gutter.Font.Charset = DEFAULT_CHARSET
+      Gutter.Font.Color = clWindowText
+      Gutter.Font.Height = -11
+      Gutter.Font.Name = 'Courier New'
+      Gutter.Font.Style = []
+      Gutter.Width = 50
+      Highlighter = SynMultiSyn
+      Lines.Strings = (
+        '<!DOCTYPE html>'
+        '<html>'
+        '<head>'
+        '  <title><?pas=Symbol.Name ?></title>'
+        '</head>'
+        ''
+        '<body>'
+        '<h1 class="Name"><?pas=Symbol.Name ?></h1>'
+        '<p><?pas=Symbol.Description ?></p>'
+        '<h2 class="Description">Description</h2>'
+        '<p>No description available yet!</p>'
+        
+          '<p class="Footer">Copyright DWS Team - Build on <?pas=FormatDate' +
+          'Time('#39'yyyy-mmmm-dd'#39', Now) ?></p>'
+        '</body>'
+        '</html>'
+        '')
+      Options = [eoAutoIndent, eoDragDropEditing, eoEnhanceEndKey, eoGroupUndo, eoShowScrollHint, eoSmartTabDelete, eoSmartTabs, eoTabsToSpaces]
+      SearchEngine = SynEditSearch
+      OnChange = SynEditChange
+      OnGutterClick = SynEditGutterClick
+      OnGutterPaint = SynEditGutterPaint
+      OnSpecialLineColors = SynEditSpecialLineColors
+      FontSmoothing = fsmNone
+    end
+    object ListBoxCompiler: TListBox
+      Left = 0
+      Top = 499
+      Width = 997
+      Height = 82
+      Align = alBottom
+      ItemHeight = 13
+      PopupMenu = PopupMenuMessages
+      TabOrder = 1
+    end
   end
-  object ListBoxCompiler: TListBox
-    Left = 0
-    Top = 499
-    Width = 1000
-    Height = 82
-    Align = alBottom
-    ItemHeight = 13
-    PopupMenu = PopupMenuMessages
+  object PanelRight: TPanel
+    Left = 997
+    Top = 0
+    Width = 0
+    Height = 581
+    Align = alRight
+    BevelOuter = bvNone
+    DockSite = True
+    DragKind = dkDock
+    ShowCaption = False
     TabOrder = 2
+    OnDockDrop = PanelRightDockDrop
+    OnDockOver = PanelRightDockOver
+    OnGetSiteInfo = PanelRightGetSiteInfo
+    OnUnDock = PanelRightUnDock
   end
   object ProposalImages: TImageList
     ColorDepth = cd32Bit
@@ -648,6 +681,7 @@ object FrmBasic: TFrmBasic
     Top = 376
   end
   object SynMacroRecorder: TSynMacroRecorder
+    Editor = SynEdit
     RecordShortCut = 24658
     PlaybackShortCut = 24656
     Left = 200
@@ -763,9 +797,12 @@ object FrmBasic: TFrmBasic
     end
     object MnuView: TMenuItem
       Caption = '&View'
-      Visible = False
       object MnuViewPreview: TMenuItem
         Action = AcnViewPreview
+        AutoCheck = True
+      end
+      object mnuLocalVariables: TMenuItem
+        Action = AcnViewLocalVariables
         AutoCheck = True
       end
     end
@@ -910,6 +947,13 @@ object FrmBasic: TFrmBasic
       OnExecute = AcnBuildTraceIntoExecute
       OnUpdate = AcnBuildDebuggerUpdate
     end
+    object AcnViewLocalVariables: TAction
+      Category = 'View'
+      AutoCheck = True
+      Caption = 'Local Variables'
+      Checked = True
+      OnExecute = AcnViewLocalVariablesExecute
+    end
   end
   object PopupMenuOutput: TPopupMenu
     Left = 64
@@ -1011,7 +1055,7 @@ object FrmBasic: TFrmBasic
   end
   object dwsDebugger: TdwsDebugger
     OnStateChanged = dwsDebuggerStateChanged
-    Left = 296
+    Left = 312
     Top = 40
   end
 end
