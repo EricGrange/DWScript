@@ -3,10 +3,8 @@ unit UDwsIdeCodeProposalForm;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  dwsSuggestions,
-  UDwsIdeDefs,
-  Dialogs, StdCtrls;
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, dwsSuggestions, UDwsIdeDefs;
 
 type
   TCodeSuggestionMode = ( csAutoComplete, csCodeProposal );
@@ -14,13 +12,12 @@ type
   TOnSelectItem = procedure( const AItemText : string ) of object;
 
   TDwsIdeCodeProposalForm = class(TForm)
-    ListBox1: TListBox;
+    ListBox: TListBox;
     procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FormDestroy(Sender: TObject);
-    procedure ListBox1DblClick(Sender: TObject);
+    procedure ListBoxDblClick(Sender: TObject);
   private
-    { Private declarations }
     FSearchString : string;
     FOnSelectItem: TOnSelectItem;
     Fsuggestions  : IDwsSuggestions;
@@ -28,7 +25,6 @@ type
     procedure PerformFilter;
     procedure DoOnSelectItem;
   public
-    { Public declarations }
     procedure CreateParams(var Params: TCreateParams); override;
 
     property OnSelectItem : TOnSelectItem
@@ -57,15 +53,15 @@ var
   S : string;
   I : integer;
 begin
-  If Assigned( FOnSelectItem ) then
-    If (ListBox1.ItemIndex >= 0) and (ListBox1.ItemIndex < ListBox1.Items.Count) then
-      begin
-      S := ListBox1.Items[ListBox1.ItemIndex];
+  if Assigned( FOnSelectItem ) then
+    if (ListBox.ItemIndex >= 0) and (ListBox.ItemIndex < ListBox.Items.Count) then
+    begin
+      S := ListBox.Items[ListBox.ItemIndex];
       I := Pos( ' ', S );
       if I > 0 then
         S := Trim(Copy( S, 1, I-1 ));
       FOnSelectItem( S );
-      end;
+    end;
   Hide;
 end;
 
@@ -94,44 +90,42 @@ procedure TDwsIdeCodeProposalForm.PerformFilter;
 var
   I : integer;
 begin
-  ListBox1.Items.BeginUpdate;
+  ListBox.Items.BeginUpdate;
   try
-    ListBox1.Items.Clear;
+    ListBox.Items.Clear;
 
     for I := 0 to FSuggestions.Count-1 do
-        If (FSearchString = '') or BeginsWith( FSearchString, FSuggestions.Code[I] ) then
-          ListBox1.Items.Add( FormatProposalItem( I ) );
+      if (FSearchString = '') or BeginsWith( FSearchString, FSuggestions.Code[I] ) then
+        ListBox.Items.Add( FormatProposalItem( I ) );
 
   finally
-    ListBox1.Items.EndUpdate;
+    ListBox.Items.EndUpdate;
   end;
 
-  if ListBox1.Items.Count > 0 then
-    ListBox1.ItemIndex := 0;
+  if ListBox.Items.Count > 0 then
+    ListBox.ItemIndex := 0;
 
   if FSearchString = '' then
     Caption := 'Code Proposal'
-   else
+  else
     Caption := Format( 'Code Proposal "%s"', [FSearchString] );
-
 end;
-
 
 
 procedure TDwsIdeCodeProposalForm.FormKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
-  Case Key of
+  case Key of
     Ord('A')..Ord('Z'), Ord('a')..Ord('z'), Ord( '0' )..Ord('9') :
       begin
-      FSearchString := FSearchString + Char( Key );
-      PerformFilter;
+        FSearchString := FSearchString + Char( Key );
+        PerformFilter;
       end;
 
     vk_Left :
       begin
-      FSearchString := '';
-      PerformFilter;
+        FSearchString := '';
+        PerformFilter;
       end;
 
     vk_Up,
@@ -139,22 +133,21 @@ begin
     vk_Prior,
     vk_Next,
     vk_Home,
-    vk_End :
-      begin end;
+    vk_End : ;
 
     vk_Return :
       DoOnSelectItem;
 
     vk_Back :
-      If FSearchString <> '' then
+      if FSearchString <> '' then
         begin
-        Delete( FSearchString, Length( FSearchString ), 1);
-        PerformFilter;
+          Delete( FSearchString, Length( FSearchString ), 1);
+          PerformFilter;
         end;
 
    else
     Hide;
-  End;
+  end;
 end;
 
 procedure TDwsIdeCodeProposalForm.FormShow(Sender: TObject);
@@ -163,7 +156,7 @@ begin
   PerformFilter;
 end;
 
-procedure TDwsIdeCodeProposalForm.ListBox1DblClick(Sender: TObject);
+procedure TDwsIdeCodeProposalForm.ListBoxDblClick(Sender: TObject);
 begin
   DoOnSelectItem;
 end;
@@ -174,8 +167,8 @@ begin
   Left := APoint.X;
   if APoint.Y + Height > Screen.Height then
     Top := APoint.Y - Height - 20
-   else
-     Top := APoint.Y + 20;
+  else
+    Top := APoint.Y + 20;
 
   FSuggestions := ASuggestions;
   FCodeSuggestionMode := ACodeSuggestionMode;

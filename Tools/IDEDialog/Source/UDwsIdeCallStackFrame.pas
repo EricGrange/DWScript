@@ -31,17 +31,13 @@ uses
 
 type
   TDwsIdeCallStackFrame = class(TFrame)
-    Panel1: TPanel;
+    PanelHeader: TPanel;
     memCallStack: TMemo;
   private
-    { Private declarations }
     FDwsIde : IDwsIde;
   public
-    { Public declarations }
     procedure Redraw;
-    property  DwsIde : IDwsIde
-                read FDwsIde
-                write FDwsIde;
+    property  DwsIde : IDwsIde read FDwsIde write FDwsIde;
   end;
 
 implementation
@@ -52,12 +48,7 @@ uses
   dwsSymbols, dwsExprs, dwsDebugger;
 
 
-
-
 { TDwsIdeCallStackFrame }
-
-
-
 
 procedure TDwsIdeCallStackFrame.Redraw;
 
@@ -65,7 +56,7 @@ procedure TDwsIdeCallStackFrame.Redraw;
   begin
     if AExprLocation.prog is TdwsProcedure then
       Result:=TdwsProcedure(AExprLocation.prog).Func.QualifiedName
-     else
+    else
       Result := '';
   end;
 
@@ -82,18 +73,18 @@ begin
     Exec := TdwsProgramExecution( FDwsIde.DwsIde_GetDebugger.Execution );
 
     if Exec.CurrentProg is TdwsProcedure then
-      begin
+    begin
       Proc := TdwsProcedure( Exec.CurrentProg );
       memCallStack.Lines.Add( Proc.Func.Name );
 
       R := Exec.GetCallStack;
-      For I := 0 to Length(R)-1 do
-        begin
+      for I := 0 to Length(R)-1 do
+      begin
         S := GetFunctionName( R[I] );
-        If S <> '' then
+        if S <> '' then
           memCallStack.Lines.Add( S );
-        end;
       end;
+    end;
   finally
     memCallStack.Lines.EndUpdate;
   end;

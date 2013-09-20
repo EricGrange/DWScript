@@ -4,7 +4,7 @@ object DwsIdeLocalVariablesFrame: TDwsIdeLocalVariablesFrame
   Width = 320
   Height = 240
   TabOrder = 0
-  object ListView1: TListView
+  object ListView: TListView
     Left = 0
     Top = 17
     Width = 320
@@ -21,7 +21,7 @@ object DwsIdeLocalVariablesFrame: TDwsIdeLocalVariablesFrame
     TabOrder = 0
     ViewStyle = vsReport
   end
-  object Panel1: TPanel
+  object PanelHeader: TPanel
     Left = 0
     Top = 0
     Width = 320

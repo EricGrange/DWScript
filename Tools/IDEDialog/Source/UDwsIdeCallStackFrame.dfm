@@ -14,7 +14,7 @@ object DwsIdeCallStackFrame: TDwsIdeCallStackFrame
     ScrollBars = ssBoth
     TabOrder = 0
   end
-  object Panel1: TPanel
+  object PanelHeader: TPanel
     Left = 0
     Top = 0
     Width = 506

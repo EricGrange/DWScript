@@ -25,23 +25,17 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  dwsUtils,
-  UDwsIdeDefs,
-  Dialogs, StdCtrls, ComCtrls, ExtCtrls;
+  Dialogs, StdCtrls, ComCtrls, ExtCtrls, dwsUtils, UDwsIdeDefs;
 
 type
   TDwsIdeLocalVariablesFrame = class(TFrame)
-    ListView1: TListView;
-    Panel1: TPanel;
+    ListView: TListView;
+    PanelHeader: TPanel;
   private
     FDwsIde: IDwsIde;
-    { Private declarations }
   public
-    { Public declarations }
     procedure Redraw;
-    property  DwsIde : IDwsIde
-                read FDwsIde
-                write FDwsIde;
+    property  DwsIde: IDwsIde read FDwsIde write FDwsIde;
   end;
 
 implementation
@@ -52,8 +46,9 @@ uses
   dwsSymbols, dwsExprs;
 
 
-procedure TDwsIdeLocalVariablesFrame.Redraw;
+{ TDwsIdeLocalVariablesFrame }
 
+procedure TDwsIdeLocalVariablesFrame.Redraw;
 
   procedure AppendSymbol( const AName : string );
   var
@@ -62,38 +57,35 @@ procedure TDwsIdeLocalVariablesFrame.Redraw;
   begin
     S := DebuggerEvaluate( FDwsIde.DwsIde_GetDebugger, AName );
 
-    Item := ListView1.Items.Add;
+    Item := ListView.Items.Add;
     Item.Caption := AName;
     Item.SubItems.Add( S );
   end;
-
-
 
   procedure AppendSymbolsToDisplay( ATable : TSymbolTable; AExec : TdwsProgramExecution );
   var
     I   : integer;
     Sym : TSymbol;
   begin
-    For I := 0 to ATable.Count-1 do
-      begin
+    for I := 0 to ATable.Count-1 do
+    begin
       Sym := ATable[I];
       if Sym is TDataSymbol then
         AppendSymbol( Sym.Name );
-      end
+    end
   end;
-
 
   procedure AppendParamsToDisplay( AProc : TdwsProcedure; AExec : TdwsProgramExecution );
   var
     I   : integer;
     Sym : TSymbol;
   begin
-    For I := 0 to AProc.Func.Params.Count-1 do
-      begin
+    for I := 0 to AProc.Func.Params.Count-1 do
+    begin
       Sym := AProc.Func.Params[I];
       if Sym is TDataSymbol then
         AppendSymbol( Sym.Name );
-      end;
+    end;
 
     // If it is a function, get the function result
     Sym := AProc.Func.Result;
@@ -101,13 +93,12 @@ procedure TDwsIdeLocalVariablesFrame.Redraw;
       AppendSymbol( Sym.Name );
   end;
 
-
 var
   ProgramExecution : TdwsProgramExecution;
 begin
-  ListView1.Items.BeginUpdate;
+  ListView.Items.BeginUpdate;
   try
-    ListView1.Items.Clear;
+    ListView.Items.Clear;
 
     ProgramExecution := TdwsProgramExecution( FDwsIDE.DwsIde_GetDebugger.Execution );
 
@@ -116,7 +107,7 @@ begin
 
     AppendSymbolsToDisplay( ProgramExecution.CurrentProg.Table, ProgramExecution );
   finally
-    ListView1.Items.EndUpdate;
+    ListView.Items.EndUpdate;
   end;
 end;
 

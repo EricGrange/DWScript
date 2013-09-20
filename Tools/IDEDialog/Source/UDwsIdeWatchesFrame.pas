@@ -25,33 +25,30 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  dwsUtils,
-  UDwsIdeDefs,
-  Dialogs, StdCtrls, ComCtrls, ExtCtrls, Menus, ActnList;
+  Dialogs, StdCtrls, ComCtrls, ExtCtrls, Menus, ActnList,
+  UDwsIdeDefs;
 
 type
   TDwsIdeWatchesFrame = class(TFrame)
-    lvWatches: TListView;
-    Panel1: TPanel;
-    ActionList1: TActionList;
-    actDeleteWatch: TAction;
     actAddWatch: TAction;
+    actDeleteWatch: TAction;
     actEditWatch: TAction;
+    ActionList: TActionList;
+    lvWatches: TListView;
+    MenuItemAddWatch: TMenuItem;
+    MenuItemDeleteWatch: TMenuItem;
+    MenuItemEditWatch: TMenuItem;
+    PanelHeader: TPanel;
     WatchWindowPopupMenu: TPopupMenu;
-    AddWatch1: TMenuItem;
-    DeleteWatch1: TMenuItem;
-    EditWatch1: TMenuItem;
     procedure actDeleteWatchExecute(Sender: TObject);
     procedure actDeleteWatchUpdate(Sender: TObject);
     procedure actAddWatchExecute(Sender: TObject);
     procedure actEditWatchExecute(Sender: TObject);
     procedure actEditWatchUpdate(Sender: TObject);
   private
-    { Private declarations }
     FDwsIde : IDwsIde;
     function  CurrentWatchIndex : integer;
   public
-    { Public declarations }
     procedure Redraw;
     property  DwsIde : IDwsIde
                 read FDwsIde
@@ -63,9 +60,7 @@ implementation
 {$R *.dfm}
 
 uses
-  dwsSymbols, dwsExprs, dwsDebugger;
-
-
+  dwsUtils, dwsSymbols, dwsExprs, dwsDebugger;
 
 
 { TfrmDwsIdeWatchesFrame }
@@ -75,11 +70,11 @@ var
   S : string;
 begin
   S := '';
-  If InputQuery( 'Add Watch', 'Enter watch expression', S ) then
-    begin
+  if InputQuery( 'Add Watch', 'Enter watch expression', S ) then
+  begin
     FDwsIde.DwsIde_GetDebugger.Watches.Add( S );
     Redraw;
-    end;
+  end;
 end;
 
 procedure TDwsIdeWatchesFrame.actDeleteWatchExecute(Sender: TObject);
@@ -88,18 +83,18 @@ var
   Watch : TdwsDebuggerWatch;
 begin
   I := CurrentWatchIndex;
-  If I >= 0 then
-    begin
+  if I >= 0 then
+  begin
     Watch := FDwsIde.DwsIde_GetDebugger.Watches[I];
     FDwsIde.DwsIde_GetDebugger.Watches.Extract( Watch );
     Watch.Free;
     Redraw;
-    end;
+  end;
 end;
 
 procedure TDwsIdeWatchesFrame.actDeleteWatchUpdate(Sender: TObject);
 begin
-  With Sender as TAction do
+  with Sender as TAction do
     Enabled := CurrentWatchIndex >= 0;
 end;
 
@@ -109,31 +104,30 @@ var
   S : string;
 begin
   I := CurrentWatchIndex;
-  If I >= 0 then
-    begin
+  if I >= 0 then
+  begin
     S := FDwsIde.DwsIde_GetDebugger.Watches[I].ExpressionText;
     if InputQuery( 'Edit watch', 'Edit Expression', S ) then
-      begin
+    begin
       FDwsIde.DwsIde_GetDebugger.Watches[I].ExpressionText := S;
       Redraw;
-      end;
     end;
+  end;
 end;
 
 procedure TDwsIdeWatchesFrame.actEditWatchUpdate(Sender: TObject);
 begin
-  With Sender as TAction do
+  with Sender as TAction do
     Enabled := CurrentWatchIndex >= 0;
 end;
 
 function TDwsIdeWatchesFrame.CurrentWatchIndex: integer;
 begin
-  If lvWatches.ItemFocused <> nil then
+  if lvWatches.ItemFocused <> nil then
     Result := lvWatches.ItemFocused.Index
-   else
+  else
     Result := -1;
 end;
-
 
 
 procedure TDwsIdeWatchesFrame.Redraw;
@@ -151,24 +145,24 @@ begin
     FDwsIde.DwsIde_GetDebugger.Watches.Update;
 
     for I  := 0 to FDwsIde.DwsIde_GetDebugger.Watches.Count-1 do
-      begin
+    begin
       Watch := FDwsIde.DwsIde_GetDebugger.Watches[I];
-      If Watch.ValueInfo = nil then
+      if Watch.ValueInfo = nil then
         S := '[Process not accessible]'
-       else
-        begin
+      else
+      begin
         V := Watch.ValueInfo.Value;
         S := VarToStr( V );
         if VarIsStr( V ) then
            S := '''' + S + '''';
-        end;
+      end;
 
       Item := lvWatches.Items.Add;
       Item.Caption := Watch.ExpressionText;
       Item.SubItems.Add( S );
 
       Watch.ClearEvaluator;
-      end;
+    end;
   finally
     lvWatches.Items.EndUpdate;
   end;

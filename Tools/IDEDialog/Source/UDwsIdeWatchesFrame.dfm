@@ -23,7 +23,7 @@ object DwsIdeWatchesFrame: TDwsIdeWatchesFrame
     TabOrder = 0
     ViewStyle = vsReport
   end
-  object Panel1: TPanel
+  object PanelHeader: TPanel
     Left = 0
     Top = 0
     Width = 506
@@ -33,7 +33,7 @@ object DwsIdeWatchesFrame: TDwsIdeWatchesFrame
     Caption = 'Watches'
     TabOrder = 1
   end
-  object ActionList1: TActionList
+  object ActionList: TActionList
     Left = 56
     Top = 80
     object actDeleteWatch: TAction
@@ -55,15 +55,15 @@ object DwsIdeWatchesFrame: TDwsIdeWatchesFrame
     end
   end
   object WatchWindowPopupMenu: TPopupMenu
-    Left = 128
+    Left = 168
     Top = 80
-    object AddWatch1: TMenuItem
+    object MenuItemAddWatch: TMenuItem
       Action = actAddWatch
     end
-    object DeleteWatch1: TMenuItem
+    object MenuItemDeleteWatch: TMenuItem
       Action = actDeleteWatch
     end
-    object EditWatch1: TMenuItem
+    object MenuItemEditWatch: TMenuItem
       Action = actEditWatch
     end
   end

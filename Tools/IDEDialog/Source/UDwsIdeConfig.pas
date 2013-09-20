@@ -24,7 +24,8 @@ unit UDwsIdeConfig;
 
 interface
 
-uses xmldom, XMLDoc, XMLIntf;
+uses
+  XmlDom, XMLDoc, XMLIntf;
 
 type
 

@@ -2,8 +2,8 @@ object DwsIdeDemoForm: TDwsIdeDemoForm
   Left = 0
   Top = 0
   Caption = 'DwsIdeDemoForm'
-  ClientHeight = 192
-  ClientWidth = 281
+  ClientHeight = 127
+  ClientWidth = 205
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -14,25 +14,25 @@ object DwsIdeDemoForm: TDwsIdeDemoForm
   OnDestroy = FormDestroy
   PixelsPerInch = 96
   TextHeight = 13
-  object Button1: TButton
-    Left = 40
-    Top = 32
+  object ButtonOpenIDE: TButton
+    Left = 8
+    Top = 8
     Width = 75
     Height = 25
     Caption = 'Open IDE'
     TabOrder = 0
-    OnClick = Button1Click
+    OnClick = ButtonOpenIDEClick
   end
-  object DelphiWebScript1: TDelphiWebScript
+  object DelphiWebScript: TDelphiWebScript
     Config.CompilerOptions = [coOptimize, coSymbolDictionary, coContextMap, coAssertions]
     Config.ScriptPaths.Strings = (
       'c:\scratch')
-    Config.OnNeedUnit = DelphiWebScript1NeedUnit
-    Left = 168
-    Top = 32
+    Config.OnNeedUnit = DelphiWebScriptNeedUnit
+    Left = 120
+    Top = 16
   end
   object DemoUnit: TdwsUnit
-    Script = DelphiWebScript1
+    Script = DelphiWebScript
     Classes = <
       item
         Name = 'TDemoUnitObj'
@@ -100,7 +100,7 @@ object DwsIdeDemoForm: TDwsIdeDemoForm
       end>
     UnitName = 'uDemoUnit'
     StaticSymbols = False
-    Left = 168
-    Top = 96
+    Left = 120
+    Top = 72
   end
 end

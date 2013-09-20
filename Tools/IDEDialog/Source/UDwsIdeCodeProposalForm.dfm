@@ -18,7 +18,7 @@ object DwsIdeCodeProposalForm: TDwsIdeCodeProposalForm
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
-  object ListBox1: TListBox
+  object ListBox: TListBox
     Left = 0
     Top = 0
     Width = 645
@@ -27,6 +27,6 @@ object DwsIdeCodeProposalForm: TDwsIdeCodeProposalForm
     ItemHeight = 13
     TabOrder = 0
     TabWidth = 40
-    OnDblClick = ListBox1DblClick
+    OnDblClick = ListBoxDblClick
   end
 end

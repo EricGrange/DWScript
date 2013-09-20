@@ -29,8 +29,6 @@ object DwsIdeForm: TDwsIdeForm
     Cursor = crVSplit
     Align = alBottom
     ResizeStyle = rsUpdate
-    ExplicitTop = 0
-    ExplicitWidth = 107
   end
   object pnlBottom: TPanel
     Left = 0
@@ -101,8 +99,6 @@ object DwsIdeForm: TDwsIdeForm
       Height = 660
       Align = alRight
       ResizeStyle = rsUpdate
-      ExplicitLeft = 637
-      ExplicitHeight = 867
     end
     object pnlRight: TPanel
       Left = 676
@@ -124,17 +120,12 @@ object DwsIdeForm: TDwsIdeForm
         Align = alTop
         ParentBackground = False
         TabOrder = 0
-        ExplicitLeft = 5
-        ExplicitTop = 5
-        ExplicitWidth = 251
-        inherited ListView1: TListView
+        inherited ListView: TListView
           Width = 251
-          ExplicitWidth = 251
         end
-        inherited Panel1: TPanel
+        inherited PanelHeader: TPanel
           Width = 251
           ParentBackground = False
-          ExplicitWidth = 251
         end
       end
       inline DwsIdeWatchesFrame: TDwsIdeWatchesFrame
@@ -145,22 +136,15 @@ object DwsIdeForm: TDwsIdeForm
         Align = alTop
         ParentBackground = False
         TabOrder = 1
-        ExplicitLeft = 5
-        ExplicitTop = 245
-        ExplicitWidth = 251
-        ExplicitHeight = 224
         inherited lvWatches: TListView
           Width = 251
           Height = 207
           ReadOnly = True
           RowSelect = True
-          ExplicitWidth = 251
-          ExplicitHeight = 207
         end
-        inherited Panel1: TPanel
+        inherited PanelHeader: TPanel
           Width = 251
           ParentBackground = False
-          ExplicitWidth = 251
         end
       end
       inline DwsIdeCallStackFrame: TDwsIdeCallStackFrame
@@ -171,20 +155,13 @@ object DwsIdeForm: TDwsIdeForm
         Align = alClient
         ParentBackground = False
         TabOrder = 2
-        ExplicitLeft = 5
-        ExplicitTop = 469
-        ExplicitWidth = 251
-        ExplicitHeight = 186
         inherited memCallStack: TMemo
           Width = 251
           Height = 169
-          ExplicitWidth = 251
-          ExplicitHeight = 169
         end
-        inherited Panel1: TPanel
+        inherited PanelHeader: TPanel
           Width = 251
           ParentBackground = False
-          ExplicitWidth = 251
         end
       end
     end
@@ -208,9 +185,6 @@ object DwsIdeForm: TDwsIdeForm
         OnMouseDown = pcEditorMouseDown
         OnMouseLeave = imgTabsMouseLeave
         OnMouseMove = imgTabsMouseMove
-        ExplicitLeft = 2
-        ExplicitTop = 0
-        ExplicitWidth = 627
       end
       object StatusBar: TStatusBar
         Left = 5
@@ -250,10 +224,10 @@ object DwsIdeForm: TDwsIdeForm
       end
     end
   end
-  object ActionList1: TActionList
+  object ActionList: TActionList
     Images = SmallImages
-    Left = 176
-    Top = 200
+    Left = 168
+    Top = 40
     object actOpenFile: TAction
       Category = 'File'
       Caption = 'Open File'
@@ -485,9 +459,9 @@ object DwsIdeForm: TDwsIdeForm
   end
   object EditorPageTabContextMenu: TPopupMenu
     Images = SmallImages
-    Left = 176
-    Top = 32
-    object CloseFile1: TMenuItem
+    Left = 168
+    Top = 184
+    object MenuItemCloseFile: TMenuItem
       Action = actClosePage
     end
     object miPages: TMenuItem
@@ -548,151 +522,151 @@ object DwsIdeForm: TDwsIdeForm
       end>
     Options = [fdoAllowMultiSelect]
     Title = 'Open Editor File'
-    Left = 176
-    Top = 88
+    Left = 56
+    Top = 40
   end
   object MainMenu: TMainMenu
     Images = SmallImages
-    Left = 368
-    Top = 32
-    object File1: TMenuItem
+    Left = 168
+    Top = 88
+    object MenuItemFile: TMenuItem
       Caption = 'File'
-      object New1: TMenuItem
+      object MenuItemFileNew: TMenuItem
         Caption = 'New ...'
-        object NewProject2: TMenuItem
+        object MenuItemFileNewProject: TMenuItem
           Action = actFileNewProject
         end
-        object FileNewUnit1: TMenuItem
+        object MenuItemFileNewUnit: TMenuItem
           Action = actFileNewUnit
         end
-        object NewIncludeFile1: TMenuItem
+        object MenuItemFileNewInclude: TMenuItem
           Action = actFileNewIncludeFile
         end
       end
-      object OpenFile1: TMenuItem
+      object MenuItemFileOpen: TMenuItem
         Action = actOpenFile
         Caption = 'Open ...'
       end
-      object OpenProject1: TMenuItem
+      object MenuItemFileOpenProject: TMenuItem
         Action = actOpenProject
       end
-      object Save1: TMenuItem
+      object MenuItemFileSave: TMenuItem
         Action = actFileSave
       end
-      object SaveAs1: TMenuItem
+      object MenuItemFileSaveAs: TMenuItem
         Action = actFileSaveAs
       end
       object N3: TMenuItem
         Caption = '-'
       end
-      object SaveProjectAs1: TMenuItem
+      object MenuItemFileSaveProjectAs: TMenuItem
         Action = actSaveProjectAs
       end
-      object ClosePage1: TMenuItem
+      object MenuItemFileClosePage: TMenuItem
         Action = actClosePage
       end
-      object CloseAll1: TMenuItem
+      object MenuItemFileCloseAll: TMenuItem
         Action = actFileCloseAll
       end
       object N2: TMenuItem
         Caption = '-'
       end
-      object Exit1: TMenuItem
+      object MenuItemFileExit: TMenuItem
         Action = actExit
       end
     end
-    object Edit1: TMenuItem
+    object MenuItemEdit: TMenuItem
       Caption = 'Edit'
-      object Cut2: TMenuItem
+      object MenuItemEditCut: TMenuItem
         Action = actEditorCut
       end
-      object Copy2: TMenuItem
+      object MenuItemEditCopy: TMenuItem
         Action = actEditorCopyToClipboard
       end
-      object Paste2: TMenuItem
+      object MenuItemEditPaste: TMenuItem
         Action = actEditorPaste
       end
-      object Delete1: TMenuItem
+      object MenuItemEditDelete: TMenuItem
         Action = actEditorDelete
       end
-      object SelectAll2: TMenuItem
+      object MenuItemEditSelectAll: TMenuItem
         Action = actEditorSelectAll
       end
-      object Undo1: TMenuItem
+      object MenuItemEditUndo: TMenuItem
         Action = actEditorUndo
       end
       object N8: TMenuItem
         Caption = '-'
       end
-      object ReadOnly2: TMenuItem
+      object MenuItemEditReadOnly: TMenuItem
         Action = actToggleReadOnly
       end
       object N10: TMenuItem
         Caption = '-'
       end
-      object Clearoutputwindow1: TMenuItem
+      object MenuItemEditClearOutputWindow: TMenuItem
         Action = actClearOutputWindow
       end
     end
     object Search1: TMenuItem
       Caption = 'Search'
-      object Find1: TMenuItem
+      object MenuItemSearchFind: TMenuItem
         Action = actSearchFind
       end
-      object Replace1: TMenuItem
+      object MenuItemSearchReplace: TMenuItem
         Action = actSearchReplace
       end
     end
-    object View1: TMenuItem
+    object MenuItemView: TMenuItem
       Caption = 'View'
-      object ViewProjectSource1: TMenuItem
+      object MenuItemViewProjectSource: TMenuItem
         Action = actViewProjectSource
       end
-      object ViewSymbols1: TMenuItem
+      object MenuItemViewSymbols: TMenuItem
         Action = actViewSymbols
       end
       object N11: TMenuItem
         Caption = '-'
       end
-      object GotoHomePosition1: TMenuItem
+      object MenuItemViewGotoHomePosition: TMenuItem
         Action = actGotoHomePosition
       end
     end
-    object Project1: TMenuItem
+    object MenuItemProject: TMenuItem
       Caption = 'Project'
-      object Build1: TMenuItem
+      object MenuItemProjectBuild: TMenuItem
         Action = actBuild
       end
     end
-    object Run1: TMenuItem
+    object MenuItemRun: TMenuItem
       Caption = 'Run'
-      object Run2: TMenuItem
+      object MenuItemRunStart: TMenuItem
         Action = actRun
       end
-      object StepOver1: TMenuItem
+      object MenuItemRunStepOver: TMenuItem
         Action = actStepOver
       end
-      object raceInto1: TMenuItem
+      object MenuItemRunTraceInto: TMenuItem
         Action = actTraceInto
       end
-      object Reset1: TMenuItem
+      object MenuItemRunReset: TMenuItem
         Action = actProgramReset
       end
-      object ShowExecutionPoint1: TMenuItem
+      object MenuItemRunShowExecutionPoint: TMenuItem
         Action = actShowExecutionPoint
       end
       object N5: TMenuItem
         Caption = '-'
       end
-      object ClearAllBreakpoints1: TMenuItem
+      object MenuItemRunClearAllBreakpoints: TMenuItem
         Action = actClearAllBreakpoints
       end
     end
   end
   object SmallImages: TImageList
     ColorDepth = cd32Bit
-    Left = 176
-    Top = 256
+    Left = 384
+    Top = 88
     Bitmap = {
       494C010121002500040010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000009000000001002000000000000090
@@ -1899,8 +1873,8 @@ object DwsIdeForm: TDwsIdeForm
       end>
     Options = [fdoOverWritePrompt, fdoStrictFileTypes]
     Title = 'Save Project File'
-    Left = 368
-    Top = 88
+    Left = 56
+    Top = 136
   end
   object OpenProjectDialog: TFileOpenDialog
     DefaultExtension = '*.dwsproj'
@@ -1928,24 +1902,24 @@ object DwsIdeForm: TDwsIdeForm
       end>
     Options = []
     Title = 'Open Editor File'
-    Left = 272
+    Left = 56
     Top = 88
   end
   object UpdateTimer: TTimer
     Interval = 300
     OnTimer = UpdateTimerTimer
-    Left = 272
-    Top = 144
+    Left = 384
+    Top = 40
   end
-  object dwsDebugger1: TdwsDebugger
-    OnDebug = dwsDebugger1Debug
-    OnDebugStart = dwsDebugger1DebugStart
-    OnDebugStop = dwsDebugger1DebugStop
-    OnEnterFunc = dwsDebugger1EnterFunc
-    OnLeaveFunc = dwsDebugger1LeaveFunc
-    OnStateChanged = dwsDebugger1StateChanged
+  object dwsDebugger: TdwsDebugger
+    OnDebug = dwsDebuggerDebug
+    OnDebugStart = dwsDebuggerDebugStart
+    OnDebugStop = dwsDebuggerDebugStop
+    OnEnterFunc = dwsDebuggerEnterFunc
+    OnLeaveFunc = dwsDebuggerLeaveFunc
+    OnStateChanged = dwsDebuggerStateChanged
     Left = 272
-    Top = 200
+    Top = 136
   end
   object SaveSourceDialog: TFileSaveDialog
     DefaultExtension = 'pas'
@@ -1961,76 +1935,76 @@ object DwsIdeForm: TDwsIdeForm
       end>
     Options = [fdoOverWritePrompt, fdoStrictFileTypes]
     Title = 'Save File As'
-    Left = 368
-    Top = 144
+    Left = 56
+    Top = 184
   end
   object EditorPagePopupMenu: TPopupMenu
     Images = SmallImages
-    Left = 176
-    Top = 144
+    Left = 168
+    Top = 136
     object Run3: TMenuItem
       Action = actRun
     end
-    object RunWithoutDebugging1: TMenuItem
+    object MenuItemRunWithoutDebugging: TMenuItem
       Action = actRunWithoutDebugging
     end
-    object Build2: TMenuItem
+    object MenuItemBuild: TMenuItem
       Action = actBuild
     end
     object N9: TMenuItem
       Caption = '-'
     end
-    object Cut1: TMenuItem
+    object MenuItemCut: TMenuItem
       Action = actEditorCut
     end
-    object Copy1: TMenuItem
+    object MenuItemCopy: TMenuItem
       Action = actEditorCopyToClipboard
     end
-    object Paste1: TMenuItem
+    object MenuItemPaste: TMenuItem
       Action = actEditorPaste
     end
-    object Delete2: TMenuItem
+    object MenuItemDelete: TMenuItem
       Action = actEditorDelete
     end
-    object SelectAll1: TMenuItem
+    object MenuItemSelectAll: TMenuItem
       Action = actEditorSelectAll
     end
     object N6: TMenuItem
       Caption = '-'
     end
-    object MenuItem1: TMenuItem
+    object MenuItemClosePage: TMenuItem
       Action = actClosePage
     end
-    object MenuItem4: TMenuItem
+    object MenuItemCloseAllOtherPages: TMenuItem
       Action = actCloseAllOtherPages
     end
-    object MenuItem5: TMenuItem
+    object N12: TMenuItem
       Caption = '-'
     end
-    object MenuItem6: TMenuItem
+    object MenuItemSave: TMenuItem
       Action = actFileSave
     end
-    object MenuItem7: TMenuItem
+    object MenuItemSaveAs: TMenuItem
       Action = actFileSaveAs
     end
-    object MenuItem8: TMenuItem
+    object N13: TMenuItem
       Caption = '-'
     end
-    object MenuItem9: TMenuItem
+    object MenuItemReadOnly: TMenuItem
       Action = actToggleReadOnly
     end
-    object Suggest1: TMenuItem
+    object MenuItemCodeSuggest: TMenuItem
       Action = actCodeProposalInvoke
     end
   end
-  object SynEditSearch1: TSynEditSearch
+  object SynEditSearch: TSynEditSearch
     Left = 272
-    Top = 32
+    Top = 40
   end
   object SynMacroRecorder: TSynMacroRecorder
     RecordShortCut = 24658
     PlaybackShortCut = 24656
-    Left = 368
-    Top = 200
+    Left = 272
+    Top = 88
   end
 end

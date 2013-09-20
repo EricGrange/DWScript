@@ -100,7 +100,6 @@ const
   sDwsIdeProjectFileExt         = '.dwsproj'; // ext of the project file (like Delphi dproj)
 
 
-
 // Utility routines
 function BeginsWith( const AFragment, AStr : string; AMatchCase : boolean = False ) : boolean;
 // Returns TRUE if AStr begins with AFragment
@@ -112,12 +111,11 @@ function IsValidIdentifier( const AName : string ) : boolean;
 // a word starting with a letter and having chars 2..n as letters or numbers.
 
 
-
 implementation
 
 uses
   SysUtils,
-  variants,
+  Variants,
   dwsCompiler;
 
 function DebuggerEvaluate( ADebugger : TDwsDebugger; const AExpression : string) : String;
@@ -125,21 +123,21 @@ var
   expr : IdwsEvaluateExpr;
   V    : variant;
 begin
-   try
-      expr:= ADebugger.Evaluate(AExpression);
-      try
-         Result:='(no result)';
-         expr.Expression.EvalAsVariant( ADebugger.Execution.ExecutionObject, V );
-         Result := VarToStr( V );
-         if VarIsStr( V ) then
-           Result := '''' + Result + '''';
-      finally
-         expr:=nil;
-      end;
-   except
-      on E : Exception do
-         Result:=E.Message;
-   end;
+  try
+    expr := ADebugger.Evaluate(AExpression);
+    try
+      Result := '(no result)';
+      expr.Expression.EvalAsVariant( ADebugger.Execution.ExecutionObject, V );
+      Result := VarToStr( V );
+      if VarIsStr( V ) then
+        Result := '''' + Result + '''';
+    finally
+      expr := nil;
+    end;
+  except
+    on E : Exception do
+      Result := E.Message;
+  end;
 end;
 
 
@@ -149,28 +147,27 @@ var
   I : integer;
 begin
   Result := False;
-  If AFragment = '' then
+  if AFragment = '' then
     Exit;
 
-  If AStr = '' then
+  if AStr = '' then
     Exit;
 
   if Length( AStr ) < Length( AFragment ) then
     Exit;
 
   if AMatchCase then
-    begin
+  begin
     for I := 1 to Length( AFragment ) do
-      If AFragment[I] <> AStr[I] then
+      if AFragment[I] <> AStr[I] then
         Exit;
-    end
-   else
+  end
+  else
     for I := 1 to Length( AFragment ) do
-      If UpCase(AFragment[I]) <> UpCase(AStr[I]) then
+      if UpCase(AFragment[I]) <> UpCase(AStr[I]) then
         Exit;
 
   Result := True;
-
 end;
 
 
@@ -185,20 +182,18 @@ var
 begin
   Result := False;
 
-  If Length( AName ) < 1 then
+  if Length( AName ) < 1 then
     Exit;
 
-  If not CharInSet(AName[1], AllowedFirstChar ) then
+  if not CharInSet(AName[1], AllowedFirstChar ) then
     Exit;
 
-  For I := 2 to Length( AName ) do
-    If not CharInSet(AName[I], AllowedSubsequentChars) then
+  for I := 2 to Length( AName ) do
+    if not CharInSet(AName[I], AllowedSubsequentChars) then
       Exit;
 
   Result := True;
-
 end;
-
 
 
 
