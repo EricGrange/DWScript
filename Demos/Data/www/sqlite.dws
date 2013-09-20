@@ -4,7 +4,7 @@
 <link rel="stylesheet" type="text/css" href="systemInfo.css">
 </head>
 <body>
-<%
+<?pas
 var db := new DataBase('SQLite', ['%www%\.db\test.sql3']);
 
 db.BeginTransaction;
@@ -21,37 +21,37 @@ const SqlQuery = #"
                   order by rowid desc 
                   limit 10";
 
-%>
+?>
 <h3>Last 10 IP that queried this page</h3>
-<pre><%=SqlQuery%></pre>
+<pre><?pas=SqlQuery?></pre>
 <table>
    <tr>
       <th>Request time</th>
       <th>Request IP</th>
       <th>User Agent</th>
    </tr>
-<%
+<?pas
 var ds := db.Query(SqlQuery);
 
 // using different methods below for each for illustration purposes
       
 while not ds.Eof do begin
-   %>
+   ?>
    <tr>
-      <td><%=FormatDateTime('hh:nn:ss.zzz', ds.Fields[0].AsFloat)%></td>
-      <td><%="xxx.xxx."+StrAfter(StrAfter(ds.AsString(1), '.'), '.')%></td>
-      <td><%=ds.AsString('ua')%></td>
+      <td><?pas=FormatDateTime('hh:nn:ss.zzz', ds.Fields[0].AsFloat)?></td>
+      <td><?pas="xxx.xxx."+StrAfter(StrAfter(ds.AsString(1), '.'), '.')?></td>
+      <td><?pas=ds.AsString('ua')?></td>
    </tr>
-   <%
+   <?pas
    ds.Next;
 end;
-%>
+?>
 </table>
 
-<h5><%=db.Query("select count(*) from ip_log").AsInteger(0)%> requests in the last 24 hours</h5>
-<%
+<h5><?pas=db.Query("select count(*) from ip_log").AsInteger(0)?> requests in the last 24 hours</h5>
+<?pas
 db.Commit;
-%>
-<p>SQLite version: <%=db.VersionInfoText%></p>
+?>
+<p>SQLite version: <?pas=db.VersionInfoText?></p>
 </body>
 </html>

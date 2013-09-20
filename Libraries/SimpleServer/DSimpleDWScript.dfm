@@ -7,9 +7,9 @@ object SimpleDWScript: TSimpleDWScript
   Height = 307
   Width = 341
   object dwsHtmlFilter: TdwsHtmlFilter
-    PatternClose = '%>'
+    PatternOpen = '<?pas'
+    PatternClose = '?>'
     PatternEval = '='
-    PatternOpen = '<%'
     Left = 208
     Top = 32
   end

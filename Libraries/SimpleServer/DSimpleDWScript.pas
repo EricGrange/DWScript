@@ -24,7 +24,8 @@ uses
    dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils, dwsXPlatform,
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
    dwsDataBase, dwsDataBaseLibModule, dwsWebServerInfo, dwsWebServerLibModule,
-   dwsJSONConnector, dwsJSON, dwsErrors, dwsFunctions, dwsSymbols;
+   dwsJSONConnector, dwsJSON, dwsErrors, dwsFunctions, dwsSymbols,
+   dwsJIT, dwsJITx86;
 
 type
 
@@ -74,12 +75,14 @@ type
       FWebEnv : TdwsWebLib;
       FDataBase : TdwsDatabaseLib;
       FJSON : TdwsJSONLibModule;
+      FWebServerLib : TdwsWebServerLib;
 
       FCompiledPrograms : TCompiledProgramHash;
       FCompiledProgramsLock : TFixedCriticalSection;
       FDependenciesHash : TDependenciesHash;
 
       FCompilerLock : TFixedCriticalSection;
+      FUseJIT : Boolean;
 
       FFlushProgList : TProgramList;
 
@@ -100,6 +103,7 @@ type
 
    public
       procedure Initialize(const serverInfo : IWebServerInfo);
+      procedure Finalize;
 
       procedure HandleDWS(const fileName : String; request : TWebRequest; response : TWebResponse);
 
@@ -145,7 +149,13 @@ const
          +'"MaxRecursionDepth": 512,'
          // Library paths (outside of www folder)
          // By default, assumes a '.lib' subfolder of the folder where the exe is
-         +'"LibraryPaths": ["%www%\\.lib"]'
+         +'"LibraryPaths": ["%www%\\.lib"],'
+         // HTML Filter patterns
+         +'"PatternOpen": "<?pas",'
+         +'"PatternEval": "=",'
+         +'"PatternClose": "?>",'
+         // Turns on/off JIT compilation
+         +'"JIT": false'
       +'}';
 
 // ------------------------------------------------------------------
@@ -329,6 +339,11 @@ begin
          end;
       end;
 
+      dwsHtmlFilter.PatternOpen:=dws['PatternOpen'].AsString;
+      dwsHtmlFilter.PatternClose:=dws['PatternClose'].AsString;
+      dwsHtmlFilter.PatternEval:=dws['PatternEval'].AsString;
+
+      FUseJIT:=dws['JIT'].AsBoolean;
    finally
       dws.Free;
    end;
@@ -356,6 +371,7 @@ procedure TSimpleDWScript.CompileDWS(const fileName : String; var prog : IdwsPro
 var
    code : String;
    cp : TCompiledProgram;
+   jit : TdwsJITx86;
 begin
    code:=DoLoadSourceCode(fileName);
 
@@ -368,6 +384,16 @@ begin
       FHotPath:=ExtractFilePath(fileName);
 
       prog:=DelphiWebScript.Compile(code);
+
+      if not prog.Msgs.HasErrors then begin
+         jit:=TdwsJITx86.Create;
+         try
+            jit.Options:=[jitoDoStep, jitoRangeCheck];
+            jit.GreedyJIT(prog.ProgramObject);
+         finally
+            jit.Free;
+         end;
+      end;
 
       cp.Name:=fileName;
       cp.Prog:=prog;
@@ -470,13 +496,17 @@ end;
 // Initialize
 //
 procedure TSimpleDWScript.Initialize(const serverInfo : IWebServerInfo);
-var
-   module : TdwsWebServerLib;
 begin
-   module:=TdwsWebServerLib.Create(Self);
-   module.Server:=serverInfo;
-   module.dwsWebServer.Script:=DelphiWebScript;
+   FWebServerLib:=TdwsWebServerLib.Create(Self);
+   FWebServerLib.Server:=serverInfo;
+   FWebServerLib.dwsWebServer.Script:=DelphiWebScript;
+end;
 
+// Finalize
+//
+procedure TSimpleDWScript.Finalize;
+begin
+   FreeAndNil(FWebServerLib);
 end;
 
 // ApplyPathVariables

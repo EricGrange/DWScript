@@ -1,4 +1,4 @@
-<%
+<?pas
 if WebRequest.Authentication=WebAuthentication.None then
 
    if WebRequest.Header['Authorization']<>'' then
@@ -31,4 +31,4 @@ else begin
    end;
    
 end;
-%>
+?>

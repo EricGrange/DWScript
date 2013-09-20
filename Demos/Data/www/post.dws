@@ -4,8 +4,8 @@
 </head>
 <body>
 
-Raw post data (<%=WebRequest.ContentLength%> bytes, <%=WebRequest.ContentType%>) :
-<pre><%=WebRequest.ContentData %></pre>
+Raw post data (<?pas=WebRequest.ContentLength?> bytes, <?pas=WebRequest.ContentType?>) :
+<pre><?pas=WebRequest.ContentData ?></pre>
 
 </body>
 </html>

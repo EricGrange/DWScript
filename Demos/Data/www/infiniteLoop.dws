@@ -1,6 +1,6 @@
-<%
+<?pas
 var i : Integer;
 
 while i<10 do
    Dec(i);  
-%>
+?>

@@ -1,14 +1,14 @@
 <html>
 <head>
 <title>Hello DWS</title>
-<style><%
+<style><?pas
 {$F "res\index.css"}
 uses System.WebServer;
 
 var auths : array of String;
 for var a in WebServer.Authentications do
 	auths.Add(a.Name);
-%>
+?>
 </style>
 </head>
 <body>
@@ -16,8 +16,8 @@ for var a in WebServer.Authentications do
 <tr><td align="center" class="info">
 	<a href="https://code.google.com/p/dwscript/"><img src="res/DWS_server.jpg" width=262 height=177 /></a><br />
 	<a href="http://delphitools.info">DelphiTools.info</a> - <a href="https://code.google.com/p/dwscript/">Get the code!</a><br />
-	Compiler Version <%=CompilerVersion%><br />
-	This page was generated at <%=FormatDateTime('hh:nn:ss.zzz', Now)%>.
+	Compiler Version <?pas=CompilerVersion?><br />
+	This page was generated at <?pas=FormatDateTime('hh:nn:ss.zzz', Now)?>.
 </tr></td>
 <tr><td>
 	<hr>
@@ -29,11 +29,11 @@ for var a in WebServer.Authentications do
 	<li>request info: <a href="requestInfo.dws">blank</a> or <a href="requestInfo.dws?p=alpha&b=beta&c=gamma+delta">parameterized</a></li>
 	<li><a href="formpost.dws">Form Post</a> test</li>
 	<li><a href="infiniteLoop.dws">infinite loop script</a> (auto-abort after 3 sec)</li>
-	<li><a href="authenticated.dws">authentication</a> (<%=if auths.Count=0 then 'not enabled' else auths.join(',')%>)</li>
+	<li><a href="authenticated.dws">authentication</a> (<?pas=if auths.Count=0 then 'not enabled' else auths.join(',')?>)</li>
 	<li><a href="uses.dws">uses Test</a></li>
 	<li><a href="sqlite.dws">SQLite Test</a></li>
 	</ul></p>
-	<p>Some facts:<ul><%
+	<p>Some facts:<ul><?pas
 	procedure PrintFacts(i : Integer);
 	begin
 		Print(Format('%0:d + %0:d = %1:d', [i, i+i]));
@@ -45,7 +45,7 @@ for var a in WebServer.Authentications do
 		PrintFacts(RandomInt(100)+1);   
 		PrintLn('</li>');
 	end;
-	%></ul></p>
+	?></ul></p>
 </tr></td>
 </table>
 </body>

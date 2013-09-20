@@ -6,23 +6,23 @@
 </head>
 <body>
 <style>
-<%
+<?pas
 // this will include the css inline via the Filter import
 {$F "systemInfo.css"}
-%>
+?>
 </style>
 
 <div style="width: 450px; float:left">
 <p>
-<b><%=OSVersionInfo.Name%> (<%=OSVersionInfo.Version%>)</b><br>
-<i><%=CPUInfo.Name%>, 
-<%=CPUInfo.Count%> core<%=if CPUInfo.Count>1 then "s"%> 
-@ <%=Format("%.1f", [CPUInfo.FrequencyMHz*0.001])%> GHz</i>
+<b><?pas=OSVersionInfo.Name?> (<?pas=OSVersionInfo.Version?>)</b><br>
+<i><?pas=CPUInfo.Name?>, 
+<?pas=CPUInfo.Count?> core<?pas=if CPUInfo.Count>1 then "s"?> 
+@ <?pas=Format("%.1f", [CPUInfo.FrequencyMHz*0.001])?> GHz</i>
 </p>
 <div id="memory">
-<%
+<?pas
 {$F 'systemMemoryInfo.dws'}
-%>
+?>
 </div>
 </div>
 
