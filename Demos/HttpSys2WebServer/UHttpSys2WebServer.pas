@@ -46,8 +46,14 @@ uses
   DSimpleDWScript;
 
 type
+   IHttpSys2WebServer = interface
+      procedure Shutdown;
 
-   THttpSys2WebServer = class (TInterfacedSelfObject, IWebServerInfo)
+      function HttpPort : Integer;
+      function HttpsPort : Integer;
+   end;
+
+   THttpSys2WebServer = class (TInterfacedSelfObject, IHttpSys2WebServer, IWebServerInfo)
       protected
          FPath : TFileName;
          FServer : THttpApi2Server;
@@ -75,6 +81,8 @@ type
          constructor Create(const basePath : TFileName; options : TdwsJSONValue);
          destructor Destroy; override;
 
+         procedure Shutdown;
+
          procedure Process(request : TWebRequest; response : TWebResponse);
 
          procedure Redirect301TrailingPathDelimiter(request : TWebRequest; response : TWebResponse);
@@ -91,6 +99,8 @@ type
          property SSLRelativeURI : String read FSSLRelativeURI;
          property AutoRedirectFolders : Boolean read FAutoRedirectFolders;
          property FileAccessInfoCacheSize : Integer read FFileAccessInfoCacheSize write FFileAccessInfoCacheSize;
+
+         property DWS : TSimpleDWScript read FDWS;
   end;
 
 const
@@ -253,6 +263,13 @@ begin
    FDWS.Free;
    FDirectoryIndex.Free;
    inherited;
+end;
+
+// Shutdown
+//
+procedure THttpSys2WebServer.Shutdown;
+begin
+   FDWS.Finalize;
 end;
 
 // Process

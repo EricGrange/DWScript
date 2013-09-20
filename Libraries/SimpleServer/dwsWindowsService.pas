@@ -124,7 +124,7 @@ begin
    ctrl:=TServiceController.CreateOpenService('', '', ServiceName);
    try
       if ctrl.State=ssErrorRetrievingState then
-         writeln('Errior retrieving state')
+         writeln('Error retrieving state')
       else begin
          for i:=1 to ParamCount do begin
             param:=ParamStr(i);

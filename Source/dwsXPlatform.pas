@@ -137,6 +137,8 @@ function InterlockedDecrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} 
 procedure FastInterlockedIncrement(var val : Integer); {$IFDEF PUREPASCAL} inline; {$endif}
 procedure FastInterlockedDecrement(var val : Integer); {$IFDEF PUREPASCAL} inline; {$endif}
 
+function InterlockedExchangePointer(var target : Pointer; val : Pointer) : Pointer; {$IFDEF PUREPASCAL} inline; {$endif}
+
 procedure SetThreadName(const threadName : PAnsiChar; threadID : Cardinal = Cardinal(-1));
 
 procedure OutputDebugString(const msg : UnicodeString);
@@ -368,6 +370,19 @@ begin
 {$else}
 asm
    lock  dec [eax]
+{$endif}
+end;
+
+// InterlockedExchangePointer
+//
+function InterlockedExchangePointer(var target : Pointer; val : Pointer) : Pointer;
+{$ifndef WIN32_ASM}
+begin
+   Result:=Windows.InterlockedExchangePointer(target, val);
+{$else}
+asm
+   lock  xchg dword ptr [eax], edx
+   mov   eax, edx
 {$endif}
 end;
 

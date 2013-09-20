@@ -130,7 +130,7 @@ type
 constructor TdwsStringResult.Create(resultType : TdwsResultType);
 begin
    inherited;
-   FStrBuilder:=TWriteOnlyBlockStream.Create;
+   FStrBuilder:=TWriteOnlyBlockStream.AllocFromPool;
 end;
 
 // Destroy
@@ -138,7 +138,7 @@ end;
 destructor TdwsStringResult.Destroy;
 begin
    inherited;
-   FStrBuilder.Free;
+   FStrBuilder.ReturnToPool;
 end;
 
 // AddString

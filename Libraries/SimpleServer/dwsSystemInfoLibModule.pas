@@ -36,12 +36,18 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsSystemInfoClassesApplicationInfoMethodsVersionEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesApplicationInfoMethodsExeNameEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesApplicationInfoMethodsRunningAsServiceEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FOSNameVersion : TOSNameVersion;
     FGlobalMemory : TThreadCached<TMemoryStatusEx>;
+    class var FRunningAsService : Boolean;
   public
     { Public declarations }
+    class property RunningAsService : Boolean read FRunningAsService write FRunningAsService;
   end;
 
 implementation
@@ -125,6 +131,18 @@ end;
 procedure TdwsSystemInfoLibModule.DataModuleDestroy(Sender: TObject);
 begin
    FGlobalMemory.Free;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsExeNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=ParamStr(0);
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsRunningAsServiceEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean:=RunningAsService;
 end;
 
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsVersionEval(

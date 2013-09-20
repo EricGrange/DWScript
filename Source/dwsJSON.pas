@@ -512,7 +512,7 @@ begin
          end;
          if localBufferPtr=@localBuffer[High(localBuffer)] then begin
             if wobs=nil then
-               wobs:=TWriteOnlyBlockStream.Create;
+               wobs:=TWriteOnlyBlockStream.AllocFromPool;
             wobs.Write(localBuffer[0], Length(localBuffer)*SizeOf(WideChar));
             localBufferPtr:=@localBuffer[0];
          end else Inc(localBufferPtr);
@@ -532,7 +532,7 @@ begin
          end else Result:='';
       end;
    finally
-      wobs.Free;
+      wobs.ReturnToPool;
    end;
 end;
 
@@ -754,14 +754,14 @@ var
    wobs : TWriteOnlyBlockStream;
 begin
    if Self=nil then Exit;
-   wobs:=TWriteOnlyBlockStream.Create;
+   wobs:=TWriteOnlyBlockStream.AllocFromPool;
    writer:=TdwsJSONWriter.Create(wobs);
    try
       WriteTo(writer);
       wobs.StoreUTF8Data(aStream);
    finally
       writer.Free;
-      wobs.Free;
+      wobs.ReturnToPool;
    end;
 end;
 
@@ -2066,7 +2066,7 @@ begin
    inherited Create;
    FOwnsStream:=(aStream=nil);
    if FOwnsStream then
-      FStream:=TWriteOnlyBlockStream.Create
+      FStream:=TWriteOnlyBlockStream.AllocFromPool
    else FStream:=aStream;
 end;
 
@@ -2075,7 +2075,7 @@ end;
 destructor TdwsJSONWriter.Destroy;
 begin
    if FOwnsStream then
-      FStream.Free;
+      FStream.ReturnToPool;
    FStateStack.Free;
    inherited;
 end;

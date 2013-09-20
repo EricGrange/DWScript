@@ -50,6 +50,7 @@ uses
   dwsJSON,
   dwsXPlatform,
   DSimpleDWScript,
+  dwsSystemInfoLibModule,
   UHttpSys2WebServer in 'UHttpSys2WebServer.pas',
   dwsDatabaseLibModule in '..\..\Libraries\DatabaseLib\dwsDatabaseLibModule.pas' {dwsDatabaseLib: TDataModule},
   dwsSynSQLiteDatabase in '..\..\Libraries\DatabaseLib\dwsSynSQLiteDatabase.pas',
@@ -63,7 +64,7 @@ uses
 type
    TWebServerHttpService = class(TdwsWindowsService)
       public
-         Server: THttpSys2WebServer;
+         Server: IHttpSys2WebServer;
 
          procedure DoStart(Sender: TService);
          procedure DoStop(Sender: TService);
@@ -128,13 +129,14 @@ end;
 
 procedure TWebServerHttpService.DoStop(Sender: TService);
 begin
-   if Server=nil then
-      exit;
-   FreeAndNil(Server);
+   if Server<>nil then begin
+      Server.Shutdown;
+      Server:=nil;
+   end;
 end;
 
 var
-   optionsFileName : String;
+   optionsFileName, url : String;
    options : TdwsJSONValue;
    service : TWebServerHttpService;
 begin
@@ -168,6 +170,7 @@ begin
 
          // started as service
          ServicesRun;
+         TdwsSystemInfoLibModule.RunningAsService:=True;
 
       end else begin
 
@@ -175,17 +178,24 @@ begin
          service.DoStart(service);
 
          writeln('Server is now running on');
-         if service.Server.Port>0 then
-            writeln('http://localhost:', service.Server.Port, '/');
-         if service.Server.SSLPort>0 then
-            writeln('https://localhost:', service.Server.SSLPort, '/');
+         if service.Server.HttpPort>0 then
+            writeln('http://localhost:', service.Server.HttpPort, '/');
+         if service.Server.HttpsPort>0 then
+            writeln('https://localhost:', service.Server.HttpsPort, '/');
          writeln;
          writeln('Press [Enter] to quit');
          readln;
 
       end;
    finally
-      service.Free;
-      options.Free;
+      try
+         service.Free;
+         options.Free;
+      except
+         on E: Exception do begin
+            WriteLn(E.ClassName, ': ', E.Message);
+            ReadLn;
+         end;
+      end;
    end;
 end.

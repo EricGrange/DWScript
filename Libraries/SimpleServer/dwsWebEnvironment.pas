@@ -423,6 +423,13 @@ begin
       FCookies.Clear;
 end;
 
+// HasCookies
+//
+function TWebResponse.HasCookies : Boolean;
+begin
+   Result:=(FCookies<>nil) and (FCookies.Count>0);
+end;
+
 // HasHeaders
 //
 function TWebResponse.HasHeaders : Boolean;
@@ -438,7 +445,7 @@ var
    wobs : TWriteOnlyBlockStream;
    buf : String;
 begin
-   wobs:=TWriteOnlyBlockStream.Create;
+   wobs:=TWriteOnlyBlockStream.AllocFromPool;
    try
       for i:=0 to Headers.Count-1 do begin
          buf:=FHeaders[i];
@@ -453,15 +460,8 @@ begin
             FCookies[i].WriteStringLn(wobs);
       Result:=wobs.ToUTF8String;
    finally
-      wobs.Free;
+      wobs.ReturnToPool;
    end;
-end;
-
-// HasCookies
-//
-function TWebResponse.HasCookies : Boolean;
-begin
-   Result:=(FCookies<>nil) and (FCookies.Count>0);
 end;
 
 // SetContentText

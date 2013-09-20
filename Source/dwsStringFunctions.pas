@@ -990,7 +990,7 @@ begin
          end;
       end;
    else
-      wobs:=TWriteOnlyBlockStream.Create;
+      wobs:=TWriteOnlyBlockStream.AllocFromPool;
       try
          dyn.EvalAsString(0, item);
          wobs.WriteString(item);
@@ -1001,7 +1001,7 @@ begin
          end;
          Result:=wobs.ToString;
       finally
-         wobs.Free;
+         wobs.ReturnToPool;
       end;
    end;
 end;

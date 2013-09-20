@@ -216,6 +216,7 @@ end;
 destructor TDirectoryIndexCache.Destroy;
 begin
    inherited;
+   FHash.Clean;
    FHash.Free;
    FLock.Free;
    FIndexFileNames.Free;
@@ -252,6 +253,7 @@ procedure TDirectoryIndexCache.Flush;
 begin
    FLock.Enter;
    try
+      FHash.Clean;
       FHash.Free;
       FHash:=TSimpleNameObjectHash<TDirectoryIndexInfo>.Create;
    finally
@@ -296,6 +298,7 @@ end;
 //
 destructor TFileAccessInfoCache.Destroy;
 begin
+   FHash.Clean;
    FHash.Free;
    inherited;
 end;
@@ -323,6 +326,7 @@ end;
 //
 procedure TFileAccessInfoCache.Flush;
 begin
+   FHash.Clean;
    FHash.Free;
    FHash:=TSimpleNameObjectHash<TFileAccessInfo>.Create;
    FSize:=0;
@@ -379,6 +383,7 @@ end;
 destructor TMIMETypeCache.Destroy;
 begin
    inherited;
+   FList.Clean;
    FList.Free;
 end;
 

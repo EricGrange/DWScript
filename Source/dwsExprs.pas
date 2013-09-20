@@ -3341,7 +3341,7 @@ end;
 constructor TdwsDefaultResult.Create(resultType: TdwsResultType);
 begin
    inherited;
-   FTextBuilder:=TWriteOnlyBlockStream.Create;
+   FTextBuilder:=TWriteOnlyBlockStream.AllocFromPool;
 end;
 
 // Destroy
@@ -3349,7 +3349,7 @@ end;
 destructor TdwsDefaultResult.Destroy;
 begin
    inherited;
-   FTextBuilder.Free;
+   FTextBuilder.ReturnToPool;
 end;
 
 // AddString

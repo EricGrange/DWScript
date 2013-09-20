@@ -31,6 +31,14 @@ http://sqlite.org/
 
 Changes
 
+2013.09.19
+	Improved installer with production installation options
+	Minor performance improvements
+
+2013.09.17
+	Added form post mini demo
+
+
 2013.09.05
 	Fixed mime type for js/css/html/gif/png for machines where they're
 		misconfigured in the Windows registery

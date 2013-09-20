@@ -827,7 +827,7 @@ var
    dataExpr : TDataExpr;
    v : Variant;
 begin
-   stream:=TWriteOnlyBlockStream.Create;
+   stream:=TWriteOnlyBlockStream.AllocFromPool;
    writer:=TdwsJSONWriter.Create(stream);
    try
       expr:=(args.ExprBase[0] as TTypedExpr);
@@ -841,7 +841,7 @@ begin
       Result:=stream.ToString;
    finally
       writer.Free;
-      stream.Free;
+      stream.ReturnToPool;
    end;
 end;
 

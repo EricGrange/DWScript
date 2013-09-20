@@ -104,6 +104,20 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
             Attributes = [maStatic]
             OnEval = dwsSystemInfoClassesApplicationInfoMethodsVersionEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'ExeName'
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesApplicationInfoMethodsExeNameEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'RunningAsService'
+            ResultType = 'Boolean'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesApplicationInfoMethodsRunningAsServiceEval
+            Kind = mkClassFunction
           end>
       end>
     Records = <

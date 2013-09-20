@@ -198,7 +198,7 @@ begin
    input:=inherited Process(aText, Msgs);
    inputPtr:=PWideChar(Pointer(input));
 
-   output:=TWriteOnlyBlockStream.Create;
+   output:=TWriteOnlyBlockStream.AllocFromPool;
    try
 
       stop:=1;
@@ -232,7 +232,7 @@ begin
       Result:=output.ToString;
 
    finally
-      output.Free;
+      output.ReturnToPool;
    end;
 end;
 

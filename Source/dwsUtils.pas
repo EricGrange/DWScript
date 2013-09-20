@@ -520,6 +520,9 @@ type
          constructor Create;
          destructor Destroy; override;
 
+         class function AllocFromPool : TWriteOnlyBlockStream; static;
+         procedure ReturnToPool;
+
          function Seek(Offset: Longint; Origin: Word): Longint; override;
          function Read(var Buffer; Count: Longint): Longint; override;
          function Write(const buffer; count: Longint): Longint; override;
@@ -2247,6 +2250,33 @@ begin
    FreeBlocks;
 end;
 
+var
+   vWOBSPool : Pointer;
+
+// AllocFromPool
+//
+class function TWriteOnlyBlockStream.AllocFromPool : TWriteOnlyBlockStream;
+begin
+   Result:=InterlockedExchangePointer(vWOBSPool, nil);
+   if Result=nil then
+      Result:=TWriteOnlyBlockStream.Create;
+end;
+
+// ReturnToPool
+//
+procedure TWriteOnlyBlockStream.ReturnToPool;
+var
+   wobs : TWriteOnlyBlockStream;
+begin
+   if Self=nil then Exit;
+   Clear;
+   if vWOBSPool=nil then begin
+      wobs:=InterlockedExchangePointer(vWOBSPool, Self);
+      if wobs<>nil then
+         wobs.Destroy;
+   end else Destroy;
+end;
+
 // FreeBlocks
 //
 procedure TWriteOnlyBlockStream.FreeBlocks;
@@ -3629,6 +3659,7 @@ finalization
 
    FinalizeStringsUnifier;
    TSimpleIntegerStack.vTemplate.Free;
+   TObject(vWOBSPool).Free;
 
 end.
 
