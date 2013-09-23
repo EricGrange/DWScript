@@ -1372,7 +1372,8 @@ begin
       Result:=False
    else begin
       Result:=(Abs(FixedLocation-Target.JumpLocation)<120);
-      FLongJump:=not Result;
+      if (FixedLocation<>0) and (Target.FixedLocation<>0) then
+         FLongJump:=not Result;
    end;
 end;
 
