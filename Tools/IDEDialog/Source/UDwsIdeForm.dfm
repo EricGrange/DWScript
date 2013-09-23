@@ -30,28 +30,28 @@ object DwsIdeForm: TDwsIdeForm
     Align = alBottom
     ResizeStyle = rsUpdate
   end
-  object pnlBottom: TPanel
+  object PanelBottom: TPanel
     Left = 0
     Top = 663
     Width = 937
     Height = 107
     Align = alBottom
     BevelOuter = bvNone
-    Caption = 'pnlBottom'
+    Caption = 'PanelBottom'
     ParentBackground = False
     ShowCaption = False
     TabOrder = 0
-    object pcBottomWindows: TPageControl
+    object PageControlBottomWindows: TPageControl
       Left = 0
       Top = 0
       Width = 937
       Height = 107
-      ActivePage = tsMessages
+      ActivePage = TabSheetMessages
       Align = alClient
       TabOrder = 0
-      object tsMessages: TTabSheet
+      object TabSheetMessages: TTabSheet
         Caption = 'Messages'
-        object lbMessages: TListBox
+        object ListBoxMessages: TListBox
           Left = 0
           Top = 0
           Width = 929
@@ -60,13 +60,13 @@ object DwsIdeForm: TDwsIdeForm
           BorderStyle = bsNone
           ItemHeight = 13
           TabOrder = 0
-          OnDblClick = lbMessagesDblClick
+          OnDblClick = ListBoxMessagesDblClick
         end
       end
-      object tsOutput: TTabSheet
+      object TabSheetOutput: TTabSheet
         Caption = 'Output'
         ImageIndex = 1
-        object memOutputWindow: TMemo
+        object MemoOutputWindow: TMemo
           Left = 0
           Top = 0
           Width = 929
@@ -81,14 +81,14 @@ object DwsIdeForm: TDwsIdeForm
       end
     end
   end
-  object pnlMain: TPanel
+  object PanelMain: TPanel
     Left = 0
     Top = 0
     Width = 937
     Height = 660
     Align = alClient
     BevelOuter = bvNone
-    Caption = 'pnlMain'
+    Caption = 'PanelMain'
     DoubleBuffered = True
     ParentDoubleBuffered = False
     ShowCaption = False
@@ -100,7 +100,7 @@ object DwsIdeForm: TDwsIdeForm
       Align = alRight
       ResizeStyle = rsUpdate
     end
-    object pnlRight: TPanel
+    object PanelRight: TPanel
       Left = 676
       Top = 0
       Width = 261
@@ -165,7 +165,7 @@ object DwsIdeForm: TDwsIdeForm
         end
       end
     end
-    object pnlEditor: TPanel
+    object PanelEditor: TPanel
       Left = 0
       Top = 0
       Width = 673
@@ -176,15 +176,15 @@ object DwsIdeForm: TDwsIdeForm
       FullRepaint = False
       ParentBackground = False
       TabOrder = 1
-      object imgTabs: TImage
+      object ImageTabs: TImage
         Left = 5
         Top = 5
         Width = 663
         Height = 22
         Align = alTop
         OnMouseDown = pcEditorMouseDown
-        OnMouseLeave = imgTabsMouseLeave
-        OnMouseMove = imgTabsMouseMove
+        OnMouseLeave = ImageTabsMouseLeave
+        OnMouseMove = ImageTabsMouseMove
       end
       object StatusBar: TStatusBar
         Left = 5
@@ -228,203 +228,202 @@ object DwsIdeForm: TDwsIdeForm
     Images = SmallImages
     Left = 168
     Top = 40
-    object actOpenFile: TAction
+    object ActionOpenFile: TAction
       Category = 'File'
       Caption = 'Open File'
       Hint = 'Opens a file for editing'
       ImageIndex = 0
-      OnExecute = actOpenFileExecute
+      OnExecute = ActionOpenFileExecute
     end
-    object actClosePage: TAction
+    object ActionClosePage: TAction
       Category = 'File'
       Caption = 'Close Page'
       ImageIndex = 2
       ShortCut = 16499
-      OnExecute = actClosePageExecute
-      OnUpdate = actClosePageUpdate
+      OnExecute = ActionClosePageExecute
+      OnUpdate = ActionClosePageUpdate
     end
-    object actCloseAllOtherPages: TAction
+    object ActionCloseAllOtherPages: TAction
       Category = 'File'
       Caption = 'Close All Other Pages'
       ImageIndex = 1
       ShortCut = 24691
-      OnExecute = actCloseAllOtherPagesExecute
-      OnUpdate = actCloseAllOtherPagesUpdate
+      OnExecute = ActionCloseAllOtherPagesExecute
+      OnUpdate = ActionCloseAllOtherPagesUpdate
     end
-    object actExit: TAction
+    object ActionExit: TAction
       Category = 'File'
       Caption = 'Exit'
       ImageIndex = 3
-      OnExecute = actExitExecute
+      OnExecute = ActionExitExecute
     end
-    object actSaveProjectAs: TAction
+    object ActionFileSaveProjectAs: TAction
       Category = 'File'
       Caption = 'Save Project As'
       ImageIndex = 4
-      OnExecute = actSaveProjectAsExecute
+      OnExecute = ActionFileSaveProjectAsExecute
     end
-    object actFileNewProject: TAction
+    object ActionFileNewProject: TAction
       Category = 'File'
       Caption = 'New Project'
       ImageIndex = 6
-      OnExecute = actFileNewProjectExecute
+      OnExecute = ActionFileNewProjectExecute
     end
-    object actFileNewUnit: TAction
+    object ActionFileNewUnit: TAction
       Category = 'File'
       Caption = 'New Unit'
       ImageIndex = 7
-      OnExecute = actFileNewUnitExecute
+      OnExecute = ActionFileNewUnitExecute
     end
-    object actFileNewIncludeFile: TAction
+    object ActionFileNewIncludeFile: TAction
       Category = 'File'
       Caption = 'New Include File'
       ImageIndex = 5
-      OnExecute = actFileNewIncludeFileExecute
+      OnExecute = ActionFileNewIncludeFileExecute
     end
-    object actFileSave: TAction
+    object ActionFileSave: TAction
       Category = 'File'
       Caption = 'Save'
       ImageIndex = 8
-      OnExecute = actFileSaveExecute
-      OnUpdate = actFileSaveUpdate
+      OnExecute = ActionFileSaveExecute
+      OnUpdate = ActionFileSaveUpdate
     end
-    object actViewProjectSource: TAction
+    object ActionViewProjectSource: TAction
       Category = 'View'
       Caption = 'View Project Source'
       ImageIndex = 9
-      OnExecute = actViewProjectSourceExecute
-      OnUpdate = actViewProjectSourceUpdate
+      OnExecute = ActionViewProjectSourceExecute
+      OnUpdate = ActionViewProjectSourceUpdate
     end
-    object actFileCloseAll: TAction
+    object ActionFileCloseAll: TAction
       Category = 'File'
       Caption = 'Close All'
-      OnExecute = actFileCloseAllExecute
+      OnExecute = ActionFileCloseAllExecute
     end
-    object actOpenProject: TAction
+    object ActionFileOpenProject: TAction
       Category = 'File'
       Caption = 'Open Project'
       ImageIndex = 10
-      OnExecute = actOpenProjectExecute
+      OnExecute = ActionFileOpenProjectExecute
     end
-    object actToggleReadOnly: TAction
+    object ActionEditToggleReadOnly: TAction
       Category = 'Edit'
       Caption = 'Read Only'
-      OnExecute = actToggleReadOnlyExecute
-      OnUpdate = actToggleReadOnlyUpdate
+      OnExecute = ActionEditToggleReadOnlyExecute
+      OnUpdate = ActionEditToggleReadOnlyUpdate
     end
-    object actRun: TAction
+    object ActionRun: TAction
       Category = 'Run'
       Caption = 'Run'
       ImageIndex = 20
       ShortCut = 120
-      OnExecute = actRunExecute
-      OnUpdate = actRunUpdate
+      OnExecute = ActionRunExecute
+      OnUpdate = ActionRunUpdate
     end
-    object actBuild: TAction
+    object ActionBuild: TAction
       Category = 'Project'
       Caption = 'Build'
       ShortCut = 16504
-      OnExecute = actBuildExecute
+      OnExecute = ActionBuildExecute
     end
-    object actClearAllBreakpoints: TAction
+    object ActionClearAllBreakpoints: TAction
       Category = 'Run'
       Caption = 'Clear All Breakpoints'
       ImageIndex = 19
-      OnExecute = actClearAllBreakpointsExecute
+      OnExecute = ActionClearAllBreakpointsExecute
     end
-    object actProgramReset: TAction
+    object ActionProgramReset: TAction
       Category = 'Run'
       Caption = 'Program Reset'
       ShortCut = 16497
-      OnExecute = actProgramResetExecute
-      OnUpdate = actProgramResetUpdate
+      OnExecute = ActionProgramResetExecute
+      OnUpdate = ActionProgramResetUpdate
     end
-    object actStepOver: TAction
+    object ActionStepOver: TAction
       Category = 'Run'
       Caption = 'Step Over'
       ImageIndex = 18
       ShortCut = 119
-      OnExecute = actStepOverExecute
-      OnUpdate = actStepOverUpdate
+      OnExecute = ActionStepOverExecute
+      OnUpdate = ActionStepOverUpdate
     end
-    object actTraceInto: TAction
+    object ActionTraceInto: TAction
       Category = 'Run'
       Caption = 'Trace Into'
       ImageIndex = 17
       ShortCut = 118
-      OnExecute = actTraceIntoExecute
-      OnUpdate = actTraceIntoUpdate
+      OnExecute = ActionTraceIntoExecute
+      OnUpdate = ActionTraceIntoUpdate
     end
-    object actRunWithoutDebugging: TAction
+    object ActionRunWithoutDebugging: TAction
       Category = 'Run'
       Caption = 'Run Without Debugging'
       ImageIndex = 11
       ShortCut = 24696
-      OnExecute = actRunWithoutDebuggingExecute
-      OnUpdate = actRunWithoutDebuggingUpdate
+      OnExecute = ActionRunWithoutDebuggingExecute
+      OnUpdate = ActionRunWithoutDebuggingUpdate
     end
-    object actFileSaveAs: TAction
+    object ActionFileSaveAs: TAction
       Category = 'File'
       Caption = 'Save As'
-      OnExecute = actFileSaveAsExecute
-      OnUpdate = actFileSaveAsUpdate
+      OnExecute = ActionFileSaveAsExecute
+      OnUpdate = ActionFileSaveAsUpdate
     end
-    object actShowExecutionPoint: TAction
+    object ActionShowExecutionPoint: TAction
       Category = 'Run'
       Caption = 'Show Execution Point'
       ImageIndex = 21
-      OnExecute = actShowExecutionPointExecute
-      OnUpdate = actShowExecutionPointUpdate
+      OnExecute = ActionShowExecutionPointExecute
+      OnUpdate = ActionShowExecutionPointUpdate
     end
-    object actViewSymbols: TAction
+    object ActionViewSymbols: TAction
       Category = 'View'
       Caption = 'View Symbols'
-      OnExecute = actViewSymbolsExecute
-      OnUpdate = actViewSymbolsUpdate
+      OnExecute = ActionViewSymbolsExecute
+      OnUpdate = ActionViewSymbolsUpdate
     end
-    object actEditorSelectAll: TEditSelectAll
+    object ActionEditSelectAll: TEditSelectAll
       Category = 'Edit'
       Caption = 'Select &All'
       Hint = 'Select All|Selects the entire document'
+      ImageIndex = 33
       ShortCut = 16449
     end
-    object actEditorCopyToClipboard: TEditCopy
+    object ActionEditCopyToClipboard: TEditCopy
       Category = 'Edit'
       Caption = '&Copy'
       Hint = 'Copy|Copies the selection and puts it on the Clipboard'
+      ImageIndex = 22
       ShortCut = 16451
     end
-    object actEditorCut: TEditCut
+    object ActionEditCut: TEditCut
       Category = 'Edit'
       Caption = 'Cu&t'
       Hint = 'Cut|Cuts the selection and puts it on the Clipboard'
+      ImageIndex = 23
       ShortCut = 16472
     end
-    object actEditorPaste: TEditPaste
+    object ActionEditPaste: TEditPaste
       Category = 'Edit'
       Caption = '&Paste'
       Hint = 'Paste|Inserts Clipboard contents'
+      ImageIndex = 24
       ShortCut = 16470
     end
-    object actEditorDelete: TEditDelete
+    object ActionEditDelete: TEditDelete
       Category = 'Edit'
       Caption = '&Delete'
       Hint = 'Delete|Erases the selection'
+      ImageIndex = 25
       ShortCut = 16430
     end
-    object actCodeProposalInvoke: TAction
-      Category = 'Project'
-      Caption = 'Code Proposal'
-      ShortCut = 16416
-      OnExecute = actCodeProposalInvokeExecute
-    end
-    object actClearOutputWindow: TAction
+    object ActionEditClearOutputWindow: TAction
       Category = 'Edit'
       Caption = 'Clear output window'
-      OnExecute = actClearOutputWindowExecute
-      OnUpdate = actClearOutputWindowUpdate
+      OnExecute = ActionEditClearOutputWindowExecute
+      OnUpdate = ActionEditClearOutputWindowUpdate
     end
-    object actSearchFind: TSearchFind
+    object ActionSearchFind: TSearchFind
       Category = 'Search'
       Caption = '&Find...'
       Hint = 'Find|Finds the specified text'
@@ -433,7 +432,7 @@ object DwsIdeForm: TDwsIdeForm
       SecondaryShortCuts.Strings = (
         'Ctrl+Q+F')
     end
-    object actSearchReplace: TSearchReplace
+    object ActionSearchReplace: TSearchReplace
       Category = 'Search'
       Caption = '&Replace'
       Hint = 'Replace|Replaces specific text with different text'
@@ -442,51 +441,58 @@ object DwsIdeForm: TDwsIdeForm
       SecondaryShortCuts.Strings = (
         'Ctrl+Q+R')
     end
-    object actEditorUndo: TEditUndo
+    object ActionEditUndo: TEditUndo
       Category = 'Edit'
       Caption = '&Undo'
       Hint = 'Undo|Reverts the last action'
       ImageIndex = 32
       ShortCut = 16474
     end
-    object actGotoHomePosition: TAction
+    object ActionGotoHomePosition: TAction
       Category = 'View'
       Caption = 'Goto Home Position'
       Hint = 'Go to the file and line number at which the IDE opened'
-      OnExecute = actGotoHomePositionExecute
-      OnUpdate = actGotoHomePositionUpdate
+      OnExecute = ActionGotoHomePositionExecute
+      OnUpdate = ActionGotoHomePositionUpdate
+    end
+    object ActionGotoLineNumber: TAction
+      Category = 'Search'
+      Caption = 'Go to Line Number'
+      ShortCut = 32839
+      OnExecute = ActionGotoLineNumberExecute
+      OnUpdate = ActionGotoLineNumberUpdate
     end
   end
   object EditorPageTabContextMenu: TPopupMenu
     Images = SmallImages
     Left = 168
     Top = 184
-    object MenuItemCloseFile: TMenuItem
-      Action = actClosePage
+    object MenuItemPageTabCloseFile: TMenuItem
+      Action = ActionClosePage
     end
-    object miPages: TMenuItem
+    object MenuItemPageTabPages: TMenuItem
       Caption = 'Pages ...'
     end
     object N1: TMenuItem
       Caption = '-'
     end
-    object CloseAllOtherPages1: TMenuItem
-      Action = actCloseAllOtherPages
+    object MenuItemPageTabCloseAllOtherPages: TMenuItem
+      Action = ActionCloseAllOtherPages
     end
     object N4: TMenuItem
       Caption = '-'
     end
-    object Save2: TMenuItem
-      Action = actFileSave
+    object MenuItemPageTabSave: TMenuItem
+      Action = ActionFileSave
     end
-    object SaveAs2: TMenuItem
-      Action = actFileSaveAs
+    object MenuItemPageTabSaveAs: TMenuItem
+      Action = ActionFileSaveAs
     end
     object N7: TMenuItem
       Caption = '-'
     end
-    object ReadOnly1: TMenuItem
-      Action = actToggleReadOnly
+    object MenuItemPageTabReadOnly: TMenuItem
+      Action = ActionEditToggleReadOnly
     end
   end
   object OpenFileDialog: TFileOpenDialog
@@ -534,141 +540,141 @@ object DwsIdeForm: TDwsIdeForm
       object MenuItemFileNew: TMenuItem
         Caption = 'New ...'
         object MenuItemFileNewProject: TMenuItem
-          Action = actFileNewProject
+          Action = ActionFileNewProject
         end
         object MenuItemFileNewUnit: TMenuItem
-          Action = actFileNewUnit
+          Action = ActionFileNewUnit
         end
         object MenuItemFileNewInclude: TMenuItem
-          Action = actFileNewIncludeFile
+          Action = ActionFileNewIncludeFile
         end
       end
       object MenuItemFileOpen: TMenuItem
-        Action = actOpenFile
+        Action = ActionOpenFile
         Caption = 'Open ...'
       end
       object MenuItemFileOpenProject: TMenuItem
-        Action = actOpenProject
+        Action = ActionFileOpenProject
       end
       object MenuItemFileSave: TMenuItem
-        Action = actFileSave
+        Action = ActionFileSave
       end
       object MenuItemFileSaveAs: TMenuItem
-        Action = actFileSaveAs
+        Action = ActionFileSaveAs
       end
       object N3: TMenuItem
         Caption = '-'
       end
       object MenuItemFileSaveProjectAs: TMenuItem
-        Action = actSaveProjectAs
+        Action = ActionFileSaveProjectAs
       end
       object MenuItemFileClosePage: TMenuItem
-        Action = actClosePage
+        Action = ActionClosePage
       end
       object MenuItemFileCloseAll: TMenuItem
-        Action = actFileCloseAll
+        Action = ActionFileCloseAll
       end
       object N2: TMenuItem
         Caption = '-'
       end
       object MenuItemFileExit: TMenuItem
-        Action = actExit
+        Action = ActionExit
       end
     end
     object MenuItemEdit: TMenuItem
       Caption = 'Edit'
       object MenuItemEditCut: TMenuItem
-        Action = actEditorCut
+        Action = ActionEditCut
       end
       object MenuItemEditCopy: TMenuItem
-        Action = actEditorCopyToClipboard
+        Action = ActionEditCopyToClipboard
       end
       object MenuItemEditPaste: TMenuItem
-        Action = actEditorPaste
+        Action = ActionEditPaste
       end
       object MenuItemEditDelete: TMenuItem
-        Action = actEditorDelete
+        Action = ActionEditDelete
       end
       object MenuItemEditSelectAll: TMenuItem
-        Action = actEditorSelectAll
+        Action = ActionEditSelectAll
       end
       object MenuItemEditUndo: TMenuItem
-        Action = actEditorUndo
+        Action = ActionEditUndo
       end
       object N8: TMenuItem
         Caption = '-'
       end
       object MenuItemEditReadOnly: TMenuItem
-        Action = actToggleReadOnly
+        Action = ActionEditToggleReadOnly
       end
       object N10: TMenuItem
         Caption = '-'
       end
       object MenuItemEditClearOutputWindow: TMenuItem
-        Action = actClearOutputWindow
+        Action = ActionEditClearOutputWindow
       end
     end
-    object Search1: TMenuItem
+    object MenuItemSearch: TMenuItem
       Caption = 'Search'
       object MenuItemSearchFind: TMenuItem
-        Action = actSearchFind
+        Action = ActionSearchFind
       end
       object MenuItemSearchReplace: TMenuItem
-        Action = actSearchReplace
+        Action = ActionSearchReplace
       end
     end
     object MenuItemView: TMenuItem
       Caption = 'View'
       object MenuItemViewProjectSource: TMenuItem
-        Action = actViewProjectSource
+        Action = ActionViewProjectSource
       end
       object MenuItemViewSymbols: TMenuItem
-        Action = actViewSymbols
+        Action = ActionViewSymbols
       end
       object N11: TMenuItem
         Caption = '-'
       end
       object MenuItemViewGotoHomePosition: TMenuItem
-        Action = actGotoHomePosition
+        Action = ActionGotoHomePosition
       end
     end
     object MenuItemProject: TMenuItem
       Caption = 'Project'
       object MenuItemProjectBuild: TMenuItem
-        Action = actBuild
+        Action = ActionBuild
       end
     end
     object MenuItemRun: TMenuItem
       Caption = 'Run'
       object MenuItemRunStart: TMenuItem
-        Action = actRun
+        Action = ActionRun
       end
       object MenuItemRunStepOver: TMenuItem
-        Action = actStepOver
+        Action = ActionStepOver
       end
       object MenuItemRunTraceInto: TMenuItem
-        Action = actTraceInto
+        Action = ActionTraceInto
       end
       object MenuItemRunReset: TMenuItem
-        Action = actProgramReset
+        Action = ActionProgramReset
       end
       object MenuItemRunShowExecutionPoint: TMenuItem
-        Action = actShowExecutionPoint
+        Action = ActionShowExecutionPoint
       end
       object N5: TMenuItem
         Caption = '-'
       end
       object MenuItemRunClearAllBreakpoints: TMenuItem
-        Action = actClearAllBreakpoints
+        Action = ActionClearAllBreakpoints
       end
     end
   end
   object SmallImages: TImageList
     ColorDepth = cd32Bit
-    Left = 384
+    Left = 424
     Top = 88
     Bitmap = {
-      494C010121002500040010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
+      494C010122002500040010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000009000000001002000000000000090
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -680,113 +686,113 @@ object DwsIdeForm: TDwsIdeForm
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000000000000F5A3EFF0F5A3EFFBDDC
+      CEFF0F5A3EFF0F5A3EFFBDDCCEFF0F5A3EFF0F5A3EFFBDDCCEFF0F5A3EFF0F5A
+      3EFFBDDCCEFF0F5A3EFF0F5A3EFF000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      00000000000000000000000000000000000000000000135F42FFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFF135F42FF000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      00000000000000000000000000000000000000000000BDDCCEFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFFBDDCCEFF000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000000000001E6A4CFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFF1E6A4CFF000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
+      00000000000000000000000000000000000000000000247151FFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFF247151FF000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000663300006633
       0000663300006633000066330000000000000000000000000000000000000000
-      0000000000006666000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
+      00000000000066660000000000000000000000000000BDDCCEFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFFBDDCCEFF000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000996600006666
       0000666600009966000000000000000000000000000000000000000000000000
-      0000000000006666000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000006666000000000000000000000000000031805EFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFF31805EFF000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000996600006666
       000099660000CC99660000000000000000000000000000000000000000000000
-      0000000000006666000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
+      00000000000066660000000000000000000000000000388764FFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFF388764FF000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000996600009966
       0000CC99660066660000CC996600000000000000000000000000000000000000
-      0000CC9966006666000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
+      0000CC99660066660000000000000000000000000000BDDCCEFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFFBDDCCEFF000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000996600000000
       000000000000CC9966006666000066660000CC9966000000000000000000CC99
-      660066660000CC99660000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
+      660066660000CC99660000000000000000000000000044946FFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFF44946FFF000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000CC9966006666000066660000666600006666
-      0000CC9966000000000000000000000000000000000000000000000000000000
+      0000CC996600000000000000000000000000000000004A9A75FFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFF4A9A75FF000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      00000000000000000000000000000000000000000000BDDCCEFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFFBDDCCEFF000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000053A47DFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDCCEFFBDDC
+      CEFFBDDCCEFFBDDCCEFF53A47DFF000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000056A781FF56A781FFBDDC
+      CEFF56A781FF56A781FFBDDCCEFF56A781FF56A781FFBDDCCEFF56A781FF56A7
+      81FFBDDCCEFF56A781FF56A781FF000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -1908,17 +1914,17 @@ object DwsIdeForm: TDwsIdeForm
   object UpdateTimer: TTimer
     Interval = 300
     OnTimer = UpdateTimerTimer
-    Left = 384
+    Left = 424
     Top = 40
   end
-  object dwsDebugger: TdwsDebugger
-    OnDebug = dwsDebuggerDebug
-    OnDebugStart = dwsDebuggerDebugStart
-    OnDebugStop = dwsDebuggerDebugStop
-    OnEnterFunc = dwsDebuggerEnterFunc
-    OnLeaveFunc = dwsDebuggerLeaveFunc
-    OnStateChanged = dwsDebuggerStateChanged
-    Left = 272
+  object Debugger: TdwsDebugger
+    OnDebug = DebuggerDebug
+    OnDebugStart = DebuggerDebugStart
+    OnDebugStop = DebuggerDebugStop
+    OnEnterFunc = DebuggerEnterFunc
+    OnLeaveFunc = DebuggerLeaveFunc
+    OnStateChanged = DebuggerStateChanged
+    Left = 296
     Top = 136
   end
   object SaveSourceDialog: TFileSaveDialog
@@ -1942,69 +1948,111 @@ object DwsIdeForm: TDwsIdeForm
     Images = SmallImages
     Left = 168
     Top = 136
-    object Run3: TMenuItem
-      Action = actRun
+    object MenuItemRun1: TMenuItem
+      Action = ActionRun
     end
     object MenuItemRunWithoutDebugging: TMenuItem
-      Action = actRunWithoutDebugging
+      Action = ActionRunWithoutDebugging
     end
     object MenuItemBuild: TMenuItem
-      Action = actBuild
+      Action = ActionBuild
     end
     object N9: TMenuItem
       Caption = '-'
     end
     object MenuItemCut: TMenuItem
-      Action = actEditorCut
+      Action = ActionEditCut
     end
     object MenuItemCopy: TMenuItem
-      Action = actEditorCopyToClipboard
+      Action = ActionEditCopyToClipboard
     end
     object MenuItemPaste: TMenuItem
-      Action = actEditorPaste
+      Action = ActionEditPaste
     end
     object MenuItemDelete: TMenuItem
-      Action = actEditorDelete
+      Action = ActionEditDelete
     end
     object MenuItemSelectAll: TMenuItem
-      Action = actEditorSelectAll
+      Action = ActionEditSelectAll
     end
     object N6: TMenuItem
       Caption = '-'
     end
     object MenuItemClosePage: TMenuItem
-      Action = actClosePage
+      Action = ActionClosePage
     end
     object MenuItemCloseAllOtherPages: TMenuItem
-      Action = actCloseAllOtherPages
+      Action = ActionCloseAllOtherPages
     end
     object N12: TMenuItem
       Caption = '-'
     end
     object MenuItemSave: TMenuItem
-      Action = actFileSave
+      Action = ActionFileSave
     end
     object MenuItemSaveAs: TMenuItem
-      Action = actFileSaveAs
+      Action = ActionFileSaveAs
     end
     object N13: TMenuItem
       Caption = '-'
     end
     object MenuItemReadOnly: TMenuItem
-      Action = actToggleReadOnly
-    end
-    object MenuItemCodeSuggest: TMenuItem
-      Action = actCodeProposalInvoke
+      Action = ActionEditToggleReadOnly
     end
   end
   object SynEditSearch: TSynEditSearch
-    Left = 272
+    Left = 296
     Top = 40
   end
   object SynMacroRecorder: TSynMacroRecorder
     RecordShortCut = 24658
     PlaybackShortCut = 24656
-    Left = 272
+    Left = 296
     Top = 88
+  end
+  object SynCodeCompletion: TSynCompletionProposal
+    Options = [scoLimitToMatchedText, scoUseInsertList, scoUsePrettyText, scoUseBuiltInTimer, scoEndCharCompletion, scoCompleteWithTab, scoCompleteWithEnter]
+    NbLinesInWindow = 6
+    EndOfTokenChr = '()[]. '
+    TriggerChars = '.'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = []
+    TitleFont.Charset = DEFAULT_CHARSET
+    TitleFont.Color = clBtnText
+    TitleFont.Height = -11
+    TitleFont.Name = 'MS Sans Serif'
+    TitleFont.Style = [fsBold]
+    Columns = <>
+    OnExecute = SynCodeCompletionExecute
+    OnShow = SynCodeCompletionShow
+    ShortCut = 16416
+    Left = 296
+    Top = 184
+  end
+  object SynParameters: TSynCompletionProposal
+    DefaultType = ctParams
+    Options = [scoLimitToMatchedText, scoUsePrettyText, scoUseBuiltInTimer]
+    ClBackground = clInfoBk
+    Width = 262
+    EndOfTokenChr = '()[]. '
+    TriggerChars = '('
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = []
+    TitleFont.Charset = DEFAULT_CHARSET
+    TitleFont.Color = clBtnText
+    TitleFont.Height = -11
+    TitleFont.Name = 'MS Sans Serif'
+    TitleFont.Style = [fsBold]
+    Columns = <>
+    OnExecute = SynParametersExecute
+    ShortCut = 24608
+    Left = 296
+    Top = 232
   end
 end

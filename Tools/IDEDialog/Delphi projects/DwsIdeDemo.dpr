@@ -32,7 +32,7 @@ uses
   UDwsIdeWatchesFrame in '..\Source\UDwsIdeWatchesFrame.pas' {DwsIdeWatchesFrame: TFrame},
   UDwsIdeDefs in '..\Source\UDwsIdeDefs.pas',
   UDwsIdeCallStackFrame in '..\Source\UDwsIdeCallStackFrame.pas' {DwsIdeCallStackFrame: TFrame},
-  UDwsIdeCodeProposalForm in '..\Source\UDwsIdeCodeProposalForm.pas' {DwsIdeCodeProposalForm},
+  UDwsIdeGotoLine in '..\Source\UDwsIdeGotoLine.pas' {DwsIdeGotoLineNumber},
   SynHighlighterDWS in '..\..\..\Source\SynEdit\SynHighlighterDWS.pas';
 
 {$R *.res}

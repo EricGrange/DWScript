@@ -132,8 +132,6 @@ end;
 
 
 
-
-
 procedure TDwsIdeDemoForm.DemoUnitClassesTDemoUnitObjCleanUp(
   ExternalObject: TObject);
 begin

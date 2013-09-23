@@ -37,157 +37,157 @@ uses
 
   SynEdit, SynEditHighlighter, SynHighlighterDWS, SynEditTypes,
   SynEditKeyCmds, SynEditMiscClasses, SynEditSearch, SynEditPlugins,
-  SynMacroRecorder,
+  SynMacroRecorder, SynCompletionProposal,
 
-  UDwsIdeDefs, UDwsIdeConfig, UDwsIdeCodeProposalForm,
-  UDwsIdeLocalVariablesFrame, UDwsIdeWatchesFrame, UDwsIdeCallStackFrame;
+  UDwsIdeDefs, UDwsIdeConfig, UDwsIdeLocalVariablesFrame, UDwsIdeWatchesFrame,
+  UDwsIdeCallStackFrame, UDwsIdeGotoLine;
 
 const
-  WM_CodeSuggest = 1024;
+  ecOpenFileUnderCursor = ecUserFirst;
+  ecToggleDeclImpl = ecUserFirst + 1;
 
 type
-  EDwsIde      = class( Exception );
+  EDwsIde      = class(Exception);
 
   TDwsIdeForm  = class;
   TEditorPage  = class;
 
-  TBreakpointStatus = (bpsNone, bpsBreakpoint, bpsBreakpointDisabled );
+  TBreakpointStatus = (bpsNone, bpsBreakpoint, bpsBreakpointDisabled);
 
-  TExecutableLines = array of boolean;
+  TLineNumbers = array of Integer;
 
-  TLineNumbers = array of integer;
-
-  TEditorPage = class( TWinControl )
+  TEditorPage = class(TWinControl)
   private
-    FEditor : TSynEdit;
-    FForm   : TDwsIdeForm;
-    FExecutableLines : TExecutableLines;
-    FTabLeft : Integer;
-    FTabWidth : Integer;
-    FCurrentLine : integer;
+    FEditor: TSynEdit;
+    FForm: TDwsIdeForm;
+    FExecutableLines: TBits;
+    FTabLeft: Integer;
+    FTabWidth: Integer;
+    FCurrentLine: Integer;
+    FUnderLine: Integer;
 
-    function TabRight : Integer;
-    function CloseButtonRect : TRect;
+    function TabRight: Integer;
+    function CloseButtonRect: TRect;
 
     function  GetFilename: TFileName;
     procedure SetFileName(const Value: TFileName);
 
-    procedure PaintGutterGlyphs(ACanvas: TCanvas; AClip: TRect;
-                      FirstLine, LastLine: integer);
-    procedure SetCurrentLine(ALine: integer; ACol : integer = 1);
+    procedure SetCurrentLine(ALine: Integer; ACol: Integer = 1);
+    procedure SynEditGutterPaint(Sender: TObject; aLine, X, Y: Integer);
     procedure SynEditorClick(Sender: TObject);
-    procedure SynEditorKeyDown( Sender: TObject; var Key: Word;  Shift: TShiftState );
+    procedure SynEditorKeyDown(Sender: TObject; var Key: Word;  Shift: TShiftState);
     procedure SynEditorSpecialLineColors(Sender: TObject;
                  Line: Integer; var Special: Boolean; var FG, BG: TColor);
     procedure SynEditorGutterClick(Sender: TObject; Button: TMouseButton; X, Y,
       Line: Integer; Mark: TSynEditMark);
+    procedure SynEditorMouseMove(Sender: TObject; Shift: TShiftState; X,
+      Y: Integer);
     procedure SynEditorCommandProcessed(Sender: TObject;
       var Command: TSynEditorCommand; var AChar: Char; Data: Pointer);
-    function GetIsReadOnly: boolean;
-    procedure SetIsReadOnly(const Value: boolean);
-    function GetIsProjectSourcefile: boolean;
-    function GetBreakpointStatus(ALine: integer): TBreakpointStatus;
-    function IsExecutableLine(ALine: integer): boolean;
+    function GetIsReadOnly: Boolean;
+    procedure SetIsReadOnly(const Value: Boolean);
+    function GetIsProjectSourcefile: Boolean;
     procedure DoOnEditorChange(ASender: TObject);
-    procedure AddBreakpoint( ALineNum : integer; AEnabled : boolean );
-    procedure ClearBreakpoint( ALineNum : integer );
+
+    procedure AddBreakpoint(ALineNum: Integer; AEnabled: Boolean);
+    procedure ClearBreakpoint(ALineNum: Integer);
+    function GetBreakpointStatus(ALine: Integer): TBreakpointStatus;
+
     procedure ClearExecutableLines;
     procedure InitExecutableLines;
+    function IsExecutableLine(ALine: Integer): Boolean;
   public
     constructor Create(AOwner: TDwsIdeForm;
-                 const AFileName : TFileName;
-                       ALoadFile : boolean); reintroduce;
+                 const AFileName: TFileName;
+                       ALoadFile: Boolean); reintroduce;
     destructor  Destroy; override;
 
-    procedure SaveToFile( APromptOverwrite : boolean );
-    procedure SaveIfModified( APromptOverwrite : boolean );
+    procedure SaveToFile(APromptOverwrite: Boolean);
+    procedure SaveIfModified(APromptOverwrite: Boolean);
     procedure SaveAs;
 
-    function  UnitName : string;
+    procedure ToggleDeclImpl;
+    procedure GotoLineNumber;
+    procedure OpenFileUnderCursor;
 
+    function  GotoIdentifier(const AIdentifier: string): Boolean;
     procedure ShowExecutableLines;
 
-    function  GotoIdentifier( const AIdentifier : string ) : boolean;
-
-    property Editor : TSynEdit read FEditor;
-    property FileName : TFileName read GetFilename write SetFileName;
-    property IsReadOnly : boolean read GetIsReadOnly write SetIsReadOnly;
-    property IsProjectSourcefile : boolean read GetIsProjectSourcefile;
+    function UnitName: string;
+    property Editor: TSynEdit read FEditor;
+    property FileName: TFileName read GetFilename write SetFileName;
+    property IsReadOnly: Boolean read GetIsReadOnly write SetIsReadOnly;
+    property IsProjectSourcefile: Boolean read GetIsProjectSourcefile;
   end;
 
 
   TOutputWindowStringResultType = class (TdwsStringResultType)
-    constructor Create( AOwner : TComponent; ADwsIdeForm : TDwsIdeForm ); reintroduce;
+    constructor Create(AOwner: TComponent; ADwsIdeForm: TDwsIdeForm); reintroduce;
   private
     FDwsIdeForm: TDwsIdeForm;
   protected
-    procedure DoAddString(result : TdwsStringResult; var str : String); override;
-    procedure DoReadLn(result : TdwsStringResult; var str : String); override;
-    procedure DoReadChar(result : TdwsStringResult; var str : String); override;
+    procedure DoAddString(Result: TdwsStringResult; var str: string); override;
+    procedure DoReadLn(Result: TdwsStringResult; var str: string); override;
+    procedure DoReadChar(Result: TdwsStringResult; var str: string); override;
   end;
 
 
   TIDESettingsRec = record
-    FormRect : TRect;
+    FormRect: TRect;
     RightPanelWidth,
-    BottomPanelHeight : integer;
+    BottomPanelHeight: Integer;
   end;
 
 
   TDwsIdeForm = class(TForm, IDwsIde)
-    actBuild: TAction;
-    actClearAllBreakpoints: TAction;
-    actClearOutputWindow: TAction;
-    actCloseAllOtherPages: TAction;
-    actClosePage: TAction;
-    actCodeProposalInvoke: TAction;
-    actEditorCopyToClipboard: TEditCopy;
-    actEditorCut: TEditCut;
-    actEditorDelete: TEditDelete;
-    actEditorPaste: TEditPaste;
-    actEditorSelectAll: TEditSelectAll;
-    actEditorUndo: TEditUndo;
-    actExit: TAction;
-    actFileCloseAll: TAction;
-    actFileNewIncludeFile: TAction;
-    actFileNewProject: TAction;
-    actFileNewUnit: TAction;
-    actFileSave: TAction;
-    actFileSaveAs: TAction;
-    actGotoHomePosition: TAction;
+    ActionBuild: TAction;
+    ActionClearAllBreakpoints: TAction;
+    ActionCloseAllOtherPages: TAction;
+    ActionClosePage: TAction;
+    ActionEditClearOutputWindow: TAction;
+    ActionEditCopyToClipboard: TEditCopy;
+    ActionEditCut: TEditCut;
+    ActionEditDelete: TEditDelete;
+    ActionEditPaste: TEditPaste;
+    ActionEditSelectAll: TEditSelectAll;
+    ActionEditToggleReadOnly: TAction;
+    ActionEditUndo: TEditUndo;
+    ActionExit: TAction;
+    ActionFileCloseAll: TAction;
+    ActionFileNewIncludeFile: TAction;
+    ActionFileNewProject: TAction;
+    ActionFileNewUnit: TAction;
+    ActionFileOpenProject: TAction;
+    ActionFileSave: TAction;
+    ActionFileSaveAs: TAction;
+    ActionFileSaveProjectAs: TAction;
+    ActionGotoHomePosition: TAction;
+    ActionGotoLineNumber: TAction;
     ActionList: TActionList;
-    actOpenFile: TAction;
-    actOpenProject: TAction;
-    actProgramReset: TAction;
-    actRun: TAction;
-    actRunWithoutDebugging: TAction;
-    actSaveProjectAs: TAction;
-    actSearchFind: TSearchFind;
-    actSearchReplace: TSearchReplace;
-    actShowExecutionPoint: TAction;
-    actStepOver: TAction;
-    actToggleReadOnly: TAction;
-    actTraceInto: TAction;
-    actViewProjectSource: TAction;
-    actViewSymbols: TAction;
-    CloseAllOtherPages1: TMenuItem;
-    dwsDebugger: TdwsDebugger;
+    ActionOpenFile: TAction;
+    ActionProgramReset: TAction;
+    ActionRun: TAction;
+    ActionRunWithoutDebugging: TAction;
+    ActionSearchFind: TSearchFind;
+    ActionSearchReplace: TSearchReplace;
+    ActionShowExecutionPoint: TAction;
+    ActionStepOver: TAction;
+    ActionTraceInto: TAction;
+    ActionViewProjectSource: TAction;
+    ActionViewSymbols: TAction;
+    Debugger: TdwsDebugger;
     DwsIdeCallStackFrame: TDwsIdeCallStackFrame;
     DwsIdeLocalVariablesFrame: TDwsIdeLocalVariablesFrame;
     DwsIdeWatchesFrame: TDwsIdeWatchesFrame;
     EditorPagePopupMenu: TPopupMenu;
     EditorPageTabContextMenu: TPopupMenu;
-    imgTabs: TImage;
-    lbMessages: TListBox;
+    ImageTabs: TImage;
+    ListBoxMessages: TListBox;
     MainMenu: TMainMenu;
-    memOutputWindow: TMemo;
-    N12: TMenuItem;
-    N13: TMenuItem;
+    MemoOutputWindow: TMemo;
     MenuItemBuild: TMenuItem;
     MenuItemCloseAllOtherPages: TMenuItem;
-    MenuItemCloseFile: TMenuItem;
     MenuItemClosePage: TMenuItem;
-    MenuItemCodeSuggest: TMenuItem;
     MenuItemCopy: TMenuItem;
     MenuItemCut: TMenuItem;
     MenuItemDelete: TMenuItem;
@@ -213,11 +213,18 @@ type
     MenuItemFileSave: TMenuItem;
     MenuItemFileSaveAs: TMenuItem;
     MenuItemFileSaveProjectAs: TMenuItem;
+    MenuItemPageTabCloseAllOtherPages: TMenuItem;
+    MenuItemPageTabCloseFile: TMenuItem;
+    MenuItemPageTabPages: TMenuItem;
+    MenuItemPageTabReadOnly: TMenuItem;
+    MenuItemPageTabSave: TMenuItem;
+    MenuItemPageTabSaveAs: TMenuItem;
     MenuItemPaste: TMenuItem;
     MenuItemProject: TMenuItem;
     MenuItemProjectBuild: TMenuItem;
     MenuItemReadOnly: TMenuItem;
     MenuItemRun: TMenuItem;
+    MenuItemRun1: TMenuItem;
     MenuItemRunClearAllBreakpoints: TMenuItem;
     MenuItemRunReset: TMenuItem;
     MenuItemRunShowExecutionPoint: TMenuItem;
@@ -227,6 +234,7 @@ type
     MenuItemRunWithoutDebugging: TMenuItem;
     MenuItemSave: TMenuItem;
     MenuItemSaveAs: TMenuItem;
+    MenuItemSearch: TMenuItem;
     MenuItemSearchFind: TMenuItem;
     MenuItemSearchReplace: TMenuItem;
     MenuItemSelectAll: TMenuItem;
@@ -234,10 +242,11 @@ type
     MenuItemViewGotoHomePosition: TMenuItem;
     MenuItemViewProjectSource: TMenuItem;
     MenuItemViewSymbols: TMenuItem;
-    miPages: TMenuItem;
     N1: TMenuItem;
     N10: TMenuItem;
     N11: TMenuItem;
+    N12: TMenuItem;
+    N13: TMenuItem;
     N2: TMenuItem;
     N3: TMenuItem;
     N4: TMenuItem;
@@ -248,219 +257,217 @@ type
     N9: TMenuItem;
     OpenFileDialog: TFileOpenDialog;
     OpenProjectDialog: TFileOpenDialog;
-    pcBottomWindows: TPageControl;
-    pnlBottom: TPanel;
-    pnlEditor: TPanel;
-    pnlMain: TPanel;
+    PageControlBottomWindows: TPageControl;
+    PanelBottom: TPanel;
+    PanelEditor: TPanel;
+    PanelMain: TPanel;
+    PanelRight: TPanel;
     pnlPageControl: TPanel;
-    pnlRight: TPanel;
-    ReadOnly1: TMenuItem;
-    Run3: TMenuItem;
-    Save2: TMenuItem;
-    SaveAs2: TMenuItem;
     SaveProjectDialog: TFileSaveDialog;
     SaveSourceDialog: TFileSaveDialog;
-    Search1: TMenuItem;
     SmallImages: TImageList;
     SplitterBottom: TSplitter;
     SplitterRight: TSplitter;
     StatusBar: TStatusBar;
+    SynCodeCompletion: TSynCompletionProposal;
     SynEditSearch: TSynEditSearch;
     SynMacroRecorder: TSynMacroRecorder;
-    tsMessages: TTabSheet;
-    tsOutput: TTabSheet;
+    SynParameters: TSynCompletionProposal;
+    TabSheetMessages: TTabSheet;
+    TabSheetOutput: TTabSheet;
     UpdateTimer: TTimer;
-    constructor Create( AOwner : TComponent; const AOptions : TDwsIdeOptions ); reintroduce;
+    constructor Create(AOwner: TComponent; const AOptions: TDwsIdeOptions); reintroduce;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormShow(Sender: TObject);
-    procedure actBuildExecute(Sender: TObject);
-    procedure actClearAllBreakpointsExecute(Sender: TObject);
-    procedure actClearOutputWindowExecute(Sender: TObject);
-    procedure actClearOutputWindowUpdate(Sender: TObject);
-    procedure actCloseAllOtherPagesExecute(Sender: TObject);
-    procedure actCloseAllOtherPagesUpdate(Sender: TObject);
-    procedure actClosePageExecute(Sender: TObject);
-    procedure actClosePageUpdate(Sender: TObject);
-    procedure actCodeProposalInvokeExecute(Sender: TObject);
-    procedure actExitExecute(Sender: TObject);
-    procedure actFileCloseAllExecute(Sender: TObject);
-    procedure actFileNewIncludeFileExecute(Sender: TObject);
-    procedure actFileNewProjectExecute(Sender: TObject);
-    procedure actFileNewUnitExecute(Sender: TObject);
-    procedure actFileSaveAsExecute(Sender: TObject);
-    procedure actFileSaveAsUpdate(Sender: TObject);
-    procedure actFileSaveExecute(Sender: TObject);
-    procedure actFileSaveUpdate(Sender: TObject);
-    procedure actGotoHomePositionExecute(Sender: TObject);
-    procedure actGotoHomePositionUpdate(Sender: TObject);
-    procedure actOpenFileExecute(Sender: TObject);
-    procedure actOpenProjectExecute(Sender: TObject);
-    procedure actProgramResetExecute(Sender: TObject);
-    procedure actProgramResetUpdate(Sender: TObject);
-    procedure actRunExecute(Sender: TObject);
-    procedure actRunUpdate(Sender: TObject);
-    procedure actRunWithoutDebuggingExecute(Sender: TObject);
-    procedure actRunWithoutDebuggingUpdate(Sender: TObject);
-    procedure actSaveProjectAsExecute(Sender: TObject);
-    procedure actShowExecutionPointExecute(Sender: TObject);
-    procedure actShowExecutionPointUpdate(Sender: TObject);
-    procedure actStepOverExecute(Sender: TObject);
-    procedure actStepOverUpdate(Sender: TObject);
-    procedure actToggleReadOnlyExecute(Sender: TObject);
-    procedure actToggleReadOnlyUpdate(Sender: TObject);
-    procedure actTraceIntoExecute(Sender: TObject);
-    procedure actTraceIntoUpdate(Sender: TObject);
-    procedure actViewProjectSourceExecute(Sender: TObject);
-    procedure actViewProjectSourceUpdate(Sender: TObject);
-    procedure actViewSymbolsExecute(Sender: TObject);
-    procedure actViewSymbolsUpdate(Sender: TObject);
-    procedure dwsDebuggerDebug(exec: TdwsExecution; expr: TExprBase);
-    procedure dwsDebuggerDebugStart(exec: TdwsExecution);
-    procedure dwsDebuggerDebugStop(exec: TdwsExecution);
-    procedure dwsDebuggerEnterFunc(exec: TdwsExecution; expr: TExprBase);
-    procedure dwsDebuggerLeaveFunc(exec: TdwsExecution; expr: TExprBase);
-    procedure dwsDebuggerStateChanged(Sender: TObject);
+    procedure ActionBuildExecute(Sender: TObject);
+    procedure ActionClearAllBreakpointsExecute(Sender: TObject);
+    procedure ActionEditClearOutputWindowExecute(Sender: TObject);
+    procedure ActionEditClearOutputWindowUpdate(Sender: TObject);
+    procedure ActionCloseAllOtherPagesExecute(Sender: TObject);
+    procedure ActionCloseAllOtherPagesUpdate(Sender: TObject);
+    procedure ActionClosePageExecute(Sender: TObject);
+    procedure ActionClosePageUpdate(Sender: TObject);
+    procedure ActionExitExecute(Sender: TObject);
+    procedure ActionFileCloseAllExecute(Sender: TObject);
+    procedure ActionFileNewIncludeFileExecute(Sender: TObject);
+    procedure ActionFileNewProjectExecute(Sender: TObject);
+    procedure ActionFileNewUnitExecute(Sender: TObject);
+    procedure ActionFileSaveAsExecute(Sender: TObject);
+    procedure ActionFileSaveAsUpdate(Sender: TObject);
+    procedure ActionFileSaveExecute(Sender: TObject);
+    procedure ActionFileSaveUpdate(Sender: TObject);
+    procedure ActionGotoHomePositionExecute(Sender: TObject);
+    procedure ActionGotoHomePositionUpdate(Sender: TObject);
+    procedure ActionOpenFileExecute(Sender: TObject);
+    procedure ActionFileOpenProjectExecute(Sender: TObject);
+    procedure ActionProgramResetExecute(Sender: TObject);
+    procedure ActionProgramResetUpdate(Sender: TObject);
+    procedure ActionRunExecute(Sender: TObject);
+    procedure ActionRunUpdate(Sender: TObject);
+    procedure ActionRunWithoutDebuggingExecute(Sender: TObject);
+    procedure ActionRunWithoutDebuggingUpdate(Sender: TObject);
+    procedure ActionFileSaveProjectAsExecute(Sender: TObject);
+    procedure ActionShowExecutionPointExecute(Sender: TObject);
+    procedure ActionShowExecutionPointUpdate(Sender: TObject);
+    procedure ActionStepOverExecute(Sender: TObject);
+    procedure ActionStepOverUpdate(Sender: TObject);
+    procedure ActionEditToggleReadOnlyExecute(Sender: TObject);
+    procedure ActionEditToggleReadOnlyUpdate(Sender: TObject);
+    procedure ActionTraceIntoExecute(Sender: TObject);
+    procedure ActionTraceIntoUpdate(Sender: TObject);
+    procedure ActionViewProjectSourceExecute(Sender: TObject);
+    procedure ActionViewProjectSourceUpdate(Sender: TObject);
+    procedure ActionViewSymbolsExecute(Sender: TObject);
+    procedure ActionViewSymbolsUpdate(Sender: TObject);
+    procedure DebuggerDebug(exec: TdwsExecution; expr: TExprBase);
+    procedure DebuggerDebugStart(exec: TdwsExecution);
+    procedure DebuggerDebugStop(exec: TdwsExecution);
+    procedure DebuggerEnterFunc(exec: TdwsExecution; expr: TExprBase);
+    procedure DebuggerLeaveFunc(exec: TdwsExecution; expr: TExprBase);
+    procedure DebuggerStateChanged(Sender: TObject);
     procedure EditorChange(Sender: TObject);
-    procedure imgTabsMouseLeave(Sender: TObject);
-    procedure imgTabsMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
-    procedure lbMessagesDblClick(Sender: TObject);
+    procedure ImageTabsMouseLeave(Sender: TObject);
+    procedure ImageTabsMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+    procedure ListBoxMessagesDblClick(Sender: TObject);
     procedure pcEditorMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure pnlPageControlResize(Sender: TObject);
     procedure UpdateTimerTimer(Sender: TObject);
-    procedure WMCodeSuggest( var AMessage : TMessage ); message WM_CodeSuggest;
+    procedure SynCodeCompletionExecute(Kind: SynCompletionType; Sender: TObject;
+      var CurrentInput: string; var x, y: Integer; var CanExecute: Boolean);
+    procedure SynCodeCompletionShow(Sender: TObject);
+    procedure SynParametersExecute(Kind: SynCompletionType; Sender: TObject;
+      var CurrentInput: string; var x, y: Integer; var CanExecute: Boolean);
+    procedure ActionGotoLineNumberExecute(Sender: TObject);
+    procedure ActionGotoLineNumberUpdate(Sender: TObject);
   private
-    FScript : TDelphiWebScript;
+    FScript: TDelphiWebScript;
 
-    FpcEditorLastMouseButton : TMouseButton;
-    FpcEditorLastMouseXY     : TPoint;
+    FpcEditorLastMouseButton: TMouseButton;
+    FpcEditorLastMouseXY: TPoint;
 
-    FProjectFileName : string;
+    FProjectFileName: TFileName;
 
-    FProgram : IdwsProgram;
+    FProgram: IdwsProgram;
 
     FScriptFolder: string;
 
-    FOptions : TDwsIdeOptions;
+    FOptions: TDwsIdeOptions;
+    FGotoForm: TDwsIdeGotoLineNumber;
 
-    FIDESettingsRec : TIDESettingsRec;
+    FIDESettingsRec: TIDESettingsRec;
 
-    FCodeProposalForm : TDwsIdeCodeProposalForm;
+    FHomePositionCaptionSuffix: string;
 
-    FHomePositionCaptionSuffix : string;
-
-    FActivePageIndex : Integer;
-    FHoveredPageIndex : Integer;
-    FBasePageIndex : Integer;
-    FHoveredCloseButton : Boolean;
-    FHoveredLeftArrow, FHoveredRightArrow : Boolean;
-    FLeftArrowActive, FRightArrowActive : Boolean;
-    FTabArrowLeft, FTabArrowRight : TRect;
-    FPages : TSimpleList<TEditorPage>;
+    FActivePageIndex: Integer;
+    FHoveredPageIndex: Integer;
+    FBasePageIndex: Integer;
+    FHoveredCloseButton: Boolean;
+    FHoveredLeftArrow, FHoveredRightArrow: Boolean;
+    FLeftArrowActive, FRightArrowActive: Boolean;
+    FTabArrowLeft, FTabArrowRight: TRect;
+    FPages: TSimpleList<TEditorPage>;
 
     procedure GotoHomePosition;
-    function  CanGotoHomePosition : boolean;
-    function  TryRunSelection( ADebug : boolean ) : boolean;
-    procedure DoDebugMessage(const msg : String);
-    procedure CodeSuggest( ACodeSuggestionMode : TCodeSuggestionMode);
-    procedure DoOnCodeSuggestionFormSelectItem( const AItemText : string );
-    procedure EditorPageAddNew( const AFileName : TFileName; ALoadfile : boolean  );
-    function  ProjectSourceScript : string;
-    function  EditorPageCount : integer;
-    function  EditorPage(AIndex: integer) : TEditorPage;
-    function  CurrentEditorPage : TEditorPage;
-    procedure EditorPageClose( AIndex : integer );
-    procedure EditorCloseAllPages( AExceptIndex : integer = -1 );
-    procedure EditorSaveAllIfModified( APromptOverwrite : boolean );
-    function  HasProject : boolean;
-    function  NameToEditorPageIndex( const AName : string ) : integer;
-    function OpenEditorPage( AName : string ) : boolean;
-    procedure SetEditorCurrentPageIndex(const Value: integer);
-    procedure SetProjectFileName(const Value: string);
-    procedure GotoScriptPos(AScriptPos: TScriptPos; AHiddenMainModule : boolean = False);
+    function  CanGotoHomePosition: Boolean;
+    function  TryRunSelection(ADebug: Boolean): Boolean;
+    procedure DoDebugMessage(const msg: string);
+    procedure EditorPageAddNew(const AFileName: TFileName; ALoadfile: Boolean );
+    function  ProjectSourceScript: string;
+    function  EditorPageCount: Integer;
+    function  EditorPage(AIndex: Integer): TEditorPage;
+    function  CurrentEditorPage: TEditorPage;
+    procedure EditorPageClose(AIndex: Integer);
+    procedure EditorCloseAllPages(AExceptIndex: Integer = -1);
+    procedure EditorSaveAllIfModified(APromptOverwrite: Boolean);
+    function  HasProject: Boolean;
+    function  NameToEditorPageIndex(const AName: string): Integer;
+    function OpenEditorPage(AName: string): Boolean;
+    procedure SetEditorCurrentPageIndex(const Value: Integer);
+    procedure SetProjectFileName(const Value: TFileName);
+    procedure GotoScriptPos(AScriptPos: TScriptPos; AHiddenMainModule: Boolean = False);
     procedure ResetProgram;
     function  GetExecutableLines(const AUnitName: string): TLineNumbers;
     procedure SetScript(const Value: TDelphiWebScript);
     procedure SetScriptFolder(const Value: string);
     procedure MakeSettingsRec;
-    procedure AddMessage(const AMessage: string; AScriptPos : PScriptPos = nil );
+    procedure AddMessage(const AMessage: string; AScriptPos: PScriptPos = nil);
     procedure ClearMessagesWindow;
     procedure ClearOutputWindow;
     procedure ListSymbolTable(ATable: TSymbolTable);
     function UnitMainScript(const AUnitName, AIdentifier: string): string;
-    property  EditorCurrentPageIndex : integer
-                read FActivePageIndex
-                write SetEditorCurrentPageIndex;
-    function  CurrentEditor : TSynEdit;
-    function  HasEditorPage : boolean;
-    function  GetProjectSourceFileName: string;
-    procedure SetProjectSourceFileName(const Value: string);
-    property  ProjectSourceFileName : string
-                read GetProjectSourceFileName
-                write SetProjectSourceFileName;
 
-    function  FileIsOpenInEditor( const AFileName : string ) : boolean;
-    function  FileIsProjectSource( const AFileName : string ) : boolean;
-    function  ProjectSourceFileIndex : integer;
-    function  ModifyFileNameToUniqueInProject( const AFileName : string ) : string;
-    function  SaveProjectAs : boolean;
-    function  ProjectfileNameToProjectSourceFileName( const AProjectfileName : string ) : string;
+    function  CurrentEditor: TSynEdit;
+    function  HasEditorPage: Boolean;
+    function  GetProjectSourceFileName: TFileName;
+    procedure SetProjectSourceFileName(const Value: TFileName);
 
-    procedure DoOnClickEditorPageTabContextMenuPageItem( ASender : TObject );
+    function  FileIsOpenInEditor(const AFileName: TFileName): Boolean;
+    function  FileIsProjectSource(const AFileName: TFileName): Boolean;
+    function  ProjectSourceFileIndex: Integer;
+    function  ModifyFileNameToUniqueInProject(const AFileName: TFileName): string;
+    function  SaveProjectAs: Boolean;
+    function  ProjectFileNameToProjectSourceFileName(const AProjectfileName: TFileName): string;
 
-    procedure LoadProjectFile( const AProjectFileName : string );
-    procedure NewProjectFile( const AProjectFileName : string );
-    procedure SaveProjectFileAs(const AProjectFileName: string);
+    procedure DoOnClickEditorPageTabContextMenuPageItem(ASender: TObject);
+
+    procedure LoadProjectFile(const AProjectFileName: TFileName);
+    procedure NewProjectFile(const AProjectFileName: TFileName);
+    procedure SaveProjectFileAs(const AProjectFileName: TFileName);
 
     procedure ShowExecutableLines;
     procedure ClearCurrentLine;
     procedure ClearAllBreakpoints;
     procedure ClearExecutableLines;
-    procedure AddStatusMessage( const AStr : string );
-    procedure Compile( ABuild : boolean; const AScript : string = '' );
-    function  IsCompiled: boolean;
-    property  ScriptFolder : string
-                read FScriptFolder
-                write SetScriptFolder;
+    procedure AddStatusMessage(const AStr: string);
+    procedure Compile(ABuild: Boolean; const AScript: string = '');
+    function  IsCompiled: Boolean;
+
     procedure ListSymbols;
 
     procedure LoadSettings(
-           var AProjectFileName : TFileName;
-           var AIDESettingsRec : TIDESettingsRec );
+           var AProjectFileName: TFileName;
+           var AIDESettingsRec: TIDESettingsRec);
     procedure SaveSettings(
-         const AProjectFileName : TFileName;
-         const AIDESettingsRec : TIDESettingsRec );
+         const AProjectFileName: TFileName;
+         const AIDESettingsRec: TIDESettingsRec);
 
-    procedure RunFunctionMethodByName( const AUnit, AName : string; AWithDebugging, APrompt : boolean );
+    procedure RunFunctionMethodByName(const AUnit, AName: string; AWithDebugging, APrompt: Boolean);
 
     procedure RefreshTabs;
     procedure RefreshTabArrows;
 
-    function  IndexOfTab(x : Integer) : Integer;
+    function  IndexOfTab(x: Integer): Integer;
+    function GetCompiledScript: IdwsProgram;
+    function GetGotoForm: TDwsIdeGotoLineNumber;
 
+    property EditorCurrentPageIndex: Integer read FActivePageIndex write SetEditorCurrentPageIndex;
+    property ProjectSourceFileName: TFileName read GetProjectSourceFileName write SetProjectSourceFileName;
+    property ScriptFolder: string read FScriptFolder write SetScriptFolder;
+    property GotoForm: TDwsIdeGotoLineNumber read GetGotoForm;
   public
     // IDwsIde
     // -------------------------------------------------------------------------
-    function  DwsIde_GetDebugger : TdwsDebugger;
+    function  DwsIde_GetDebugger: TdwsDebugger;
     // -------------------------------------------------------------------------
 
     procedure AfterConstruction; override;
     procedure BeforeDestruction; override;
 
 
-    property ProjectFileName : string
+    property ProjectFileName: TFileName
                read FProjectFileName
                write SetProjectFileName;
 
-    property Script : TDelphiWebScript
+    property Script: TDelphiWebScript
                read FScript
                write SetScript;
   end;
 
 
-procedure DwsIDE_ShowModal( AScript : TDelphiWebScript ); overload;
-procedure DwsIDE_ShowModal( AScript : TDelphiWebScript; const AOptions : TDwsIdeOptions ); overload;
+procedure DwsIDE_ShowModal(AScript: TDelphiWebScript); overload;
+procedure DwsIDE_ShowModal(AScript: TDelphiWebScript; const AOptions: TDwsIdeOptions); overload;
 
 implementation
 
@@ -472,7 +479,7 @@ uses
   dwsXPlatform,
   dwsSuggestions,
   dwsDebugFunctions,
-  SynHighlighterPas,
+  dwsTokenizer,
   ShlObj;
 
 resourcestring
@@ -483,26 +490,36 @@ resourcestring
   RStrScriptCannotBeNil = 'Script cannot be nil - the IDE requires a script '
     + 'to debug';
   RStrScriptDoesNotDefineMainPath = 'Script does not define a main path';
+  RStrFileAlreadyExistsOverwrite = 'File "%s" already exists. Overwrite it?';
+  RStrFileHasChanged = 'File "%s" has changed. Save it now?';
+  RStrAbandonDebugging = 'Abandon debugging?';
+  RStrCompileStarted = 'Compile started';
+  RStrCompileCompleteWarnHints = 'Compile complete with hints/warnings';
+  RStrRunFunctionMethod = 'Run function/method "%s"?';
+  RStrRunning = 'Running';
+  RStrPaused = 'Paused';
+  RStrErrors = 'Errors';
+  RStrNoParametersRequired = '"<no parameters required>"';
+  RStrProjectFileDoesNotExist = 'Project file does not exist (%s)';
+  RStrCannotRunWithoutProjectFile = 'Cannot run without a project file';
+  RStrProgramCompleted = 'Program completed';
 
 
 const
-  iiExecutableLine        = 13;
-  iiForwardArrow          = 16;
-  iiCurrentLineBreakpoint = 15;
-  iiBreakpoint            = 12;
-  iiBreakpointDisabled    = 14;
+  CImageIndexExecutableLine = 13;
+  CImageIndexForwardArrow = 16;
+  CImageIndexCurrentLineBreakpoint = 15;
+  CImageIndexBreakpoint = 12;
+  CImageIndexBreakpointDisabled = 14;
+  CImageIndex_ProjectSourceFile = 28;
+  CImageIndex_Script = 26;
+  CImageIndex_NonScript = 6;
+  CImageIndex_IncludeFile = 29;
 
-const
-  cMargin = 4;
-  cSlantMargin = 10;
-  cCloseButtonSize = 12;
-  cArrowButtonSize = 15;
-
-  cTabImageIndex_ProjectSourceFile = 28;
-  cTabImageIndex_Script = 26;
-  cTabImageIndex_NonScript = 6;
-  cTabImageIndex_IncludeFile = 29;
-
+  CMargin = 4;
+  CSlantMargin = 10;
+  CCloseButtonSize = 12;
+  CArrowButtonSize = 15;
 
 // Utility routines
 // -----------------------------------------------------------------------------
@@ -520,26 +537,26 @@ begin
 end;
 
 
-function Lighten( AColor: TColor; AFactor: Byte): TColor;
+function Lighten(AColor: TColor; AFactor: Byte): TColor;
 // Lightens a color by this amount
 var
   R, G, B: Byte;
 begin
-  AColor := ColorToRGB( AColor );
+  AColor := ColorToRGB(AColor);
 
   R := GetRValue(AColor);
   G := GetGValue(AColor);
   B := GetBValue(AColor);
 
-  Inc( R, AFactor );
-  Inc( G, AFactor );
-  Inc( B, AFactor );
+  Inc(R, AFactor);
+  Inc(G, AFactor);
+  Inc(B, AFactor);
 
   Result := RGB(R, G, B);
 end;
 
 
-function IsHostedControl( AControl : TControl ) : boolean;
+function IsHostedControl(AControl: TControl): Boolean;
 // Returns TRUE if this control is hosted within another control
 begin
   Result := AControl.Parent <> nil;
@@ -559,30 +576,30 @@ end;
 {$ENDIF}
 
 
-procedure DwsIDE_ShowModal( AScript : TDelphiWebScript );
+procedure DwsIDE_ShowModal(AScript: TDelphiWebScript);
 var
-  DwsIdeOptions : TDwsIdeOptions;
+  DwsIdeOptions: TDwsIdeOptions;
 begin
   if SysUtils.Win32MajorVersion >= 6 then // Vista or later...
     DwsIdeOptions := IdeOptions_VistaOrLater
   else
     DwsIdeOptions := IdeOptions_Legacy;
 
-  DwsIDE_ShowModal( AScript, DwsIdeOptions );
+  DwsIDE_ShowModal(AScript, DwsIdeOptions);
 end;
 
 
-procedure DwsIDE_ShowModal( AScript : TDelphiWebScript; const AOptions : TDwsIdeOptions );
+procedure DwsIDE_ShowModal(AScript: TDelphiWebScript; const AOptions: TDwsIdeOptions);
 var
-  Frm : TDwsIdeForm;
-  SaveResultType : TdwsResultType;
+  Frm: TDwsIdeForm;
+  SaveResultType: TdwsResultType;
 begin
-  if Assigned( AScript ) then
+  if Assigned(AScript) then
     SaveResultType := AScript.Config.ResultType
    else
      SaveResultType := nil;
   try
-    Frm := TDwsIdeForm.Create( Application, AOptions );
+    Frm := TDwsIdeForm.Create(Application, AOptions);
     try
       Frm.Script := AScript;
       Frm.ShowModal;
@@ -590,62 +607,64 @@ begin
       Frm.Free;
     end;
   finally
-    if Assigned( AScript ) then
+    if Assigned(AScript) then
       AScript.Config.ResultType := SaveResultType;
   end;
 end;
 
 
-function JustFileName( const AFileName : TFileName ) : string;
+function JustFileName(const AFileName: TFileName): string;
 // Returns only the file name without dir or ext
 begin
-  Result := ChangeFileExt( ExtractFileName( AFileName ), '' );
+  Result := ChangeFileExt(ExtractFileName(AFileName), '');
 end;
 
 
 procedure ErrorDlg(const AStr: string);
 begin
-  TaskMessageDlg( 'Error', AStr, mtError, [mbok], 0 );
+  TaskMessageDlg('Error', AStr, mtError, [mbok], 0);
 end;
 
-function ConfirmDlg(const AStr: string): boolean;
+function ConfirmDlg(const AStr: string): Boolean;
 begin
-  Result := TaskMessageDlg( 'Confirm', AStr, mtConfirmation, [mbYes, mbNo], 0 ) = idYes;
+  Result := TaskMessageDlg('Confirm', AStr, mtConfirmation, [mbYes, mbNo], 0) = idYes;
 end;
 
-function ConfirmDlgYesNoAbort(const AStr: string): boolean;
+function ConfirmDlgYesNoAbort(const AStr: string): Boolean;
 begin
   Result := False;
-  case TaskMessageDlg( 'Confirm', AStr, mtError, [mbYes, mbNo, mbCancel], 0 ) of
-    idYes : Result := True;
-    idNo  : Exit;
-   else
-     Abort;
+  case TaskMessageDlg('Confirm', AStr, mtError, [mbYes, mbNo, mbCancel], 0) of
+    idYes:
+      Result := True;
+    idNo:
+      Exit;
+    else
+      Abort;
   end;
 end;
 
 
 
-procedure SymbolsToStrings( ATable : TSymbolTable; AStrings: TStrings);
+procedure SymbolsToStrings(ATable: TSymbolTable; AStrings: TStrings);
 // Dumps this table symbol names to AStrings recursively.
 
-  procedure AddSymbolTable( ATable : TSymbolTable );
+  procedure AddSymbolTable(ATable: TSymbolTable);
   var
-    I : integer;
-    Sym : TSymbol;
+    I: Integer;
+    Sym: TSymbol;
   begin
     for I := 0 to ATable.Count - 1 do
       begin
       Sym := ATable.Symbols[I];
       if Sym is TUnitSymbol then
-        AddSymbolTable( TUnitSymbol(Sym).Table )
+        AddSymbolTable(TUnitSymbol(Sym).Table)
        else
-        AStrings.Add( Sym.Name + '   ' + Sym.ToString +  '  (' + Sym.ClassName + ')' );
+        AStrings.Add(Sym.Name + '   ' + Sym.ToString +  '  (' + Sym.ClassName + ')');
       end;
   end;
 
 begin
-  AddSymbolTable( ATable );
+  AddSymbolTable(ATable);
 end;
 
 
@@ -655,42 +674,36 @@ end;
 type
   TEditorPageSynEditPlugin = class(TSynEditPlugin)
   protected
-    FPage : TEditorPage;
-    procedure AfterPaint(ACanvas: TCanvas; const AClip: TRect;
-      FirstLine, LastLine: integer); override;
-    procedure LinesInserted(FirstLine, Count: integer); override;
-    procedure LinesDeleted(FirstLine, Count: integer); override;
+    FPage: TEditorPage;
+    procedure LinesInserted(FirstLine, Count: Integer); override;
+    procedure LinesDeleted(FirstLine, Count: Integer); override;
+    procedure PaintTransient(ACanvas: TCanvas; ATransientType: TTransientType);
+      override;
   public
-    constructor Create(APage : TEditorPage);
+    constructor Create(APage: TEditorPage);
   end;
 
-constructor TEditorPageSynEditPlugin.Create(APage : TEditorPage);
+constructor TEditorPageSynEditPlugin.Create(APage: TEditorPage);
 begin
-  inherited Create( APage.Editor);
+  inherited Create(APage.Editor);
   FPage := APage;
 end;
 
-procedure TEditorPageSynEditPlugin.AfterPaint(ACanvas: TCanvas; const AClip: TRect;
-  FirstLine, LastLine: integer);
-begin
-  FPage.PaintGutterGlyphs(ACanvas, AClip, FirstLine, LastLine);
-end;
-
-procedure TEditorPageSynEditPlugin.LinesInserted(FirstLine, Count: integer);
+procedure TEditorPageSynEditPlugin.LinesInserted(FirstLine, Count: Integer);
 var
-  I, iLineCount : integer;
+  I, iLineCount: Integer;
 begin
   // Track the executable lines
   iLineCount := FPage.Editor.Lines.Count;
-  SetLength( FPage.FExecutableLines, iLineCount );
+  FPage.FExecutableLines.Size := iLineCount;
   for I := iLineCount - 1 downto FirstLine + Count do
     FPage.FExecutableLines[i] := FPage.FExecutableLines[I-Count];
   for I := FirstLine + Count - 1 downto FirstLine do
     FPage.FExecutableLines[i] := False;
 
   // Track the breakpoint lines in the debugger
-  with FPage.FForm.dwsDebugger do
-    for I := 0 to FPage.FForm.dwsDebugger.Breakpoints.Count - 1 do
+  with FPage.FForm.Debugger do
+    for I := 0 to Breakpoints.Count - 1 do
       if Breakpoints[I].SourceName = FPage.UnitName then
         if Breakpoints[I].Line >= FirstLine then
            Breakpoints[I].Line := Breakpoints[I].Line + Count;
@@ -699,17 +712,64 @@ begin
   FPage.Editor.InvalidateGutter;
 end;
 
-procedure TEditorPageSynEditPlugin.LinesDeleted(FirstLine, Count: integer);
+procedure TEditorPageSynEditPlugin.PaintTransient(ACanvas: TCanvas;
+  ATransientType: TTransientType);
+
 var
-  I : integer;
+  Pt: TPoint;
+  Rct: TRect;
+  MouseBufferCoord: TBufferCoord;
+  Attri: TSynHighlighterAttributes;
+  TokenType, Start: Integer;
+  TokenName: String;
+  OldFont: TFont;
+begin
+  // only handle after transient
+  if ATransientType <> ttAfter then
+    Exit;
+
+  // only continue if [CTRL] is pressed
+  if not (ssCtrl in KeyboardStateToShiftState) then
+    Exit;
+
+  Pt := Editor.ScreenToClient(Mouse.CursorPos);
+  MouseBufferCoord := Editor.DisplayToBufferPos(
+    Editor.PixelsToRowColumn(Pt.X, Pt.Y));
+  Editor.GetHighlighterAttriAtRowColEx(MouseBufferCoord, TokenName, TokenType,
+    Start, Attri);
+
+  if TtkTokenKind(TokenType) <> tkIdentifier then
+    Exit;
+
+  with Editor do
+    Pt := RowColumnToPixels(BufferToDisplayPos(WordStartEx(MouseBufferCoord)));
+
+  Rct := Rect(Pt.X, Pt.Y, Pt.X + Editor.CharWidth * Length(TokenName),
+    Pt.Y + Editor.LineHeight);
+
+  OldFont := TFont.Create;
+  try
+    OldFont.Assign(ACanvas.Font);
+    ACanvas.Font.Color := clBlue;
+    ACanvas.Font.Style := [fsUnderline];
+    ACanvas.TextRect(Rct, Pt.X, Pt.Y, TokenName);
+    ACanvas.Font := OldFont;
+  finally
+    OldFont.Free;
+  end;
+end;
+
+procedure TEditorPageSynEditPlugin.LinesDeleted(FirstLine, Count: Integer);
+var
+  I: Integer;
 begin
   // Track the executable lines
-  for I := FirstLine - 1 to Length( FPage.FExecutableLines ) - Count - 1 do
+  for I := FirstLine - 1 to FPage.FExecutableLines.Size - Count - 1 do
     FPage.FExecutableLines[i] := FPage.FExecutableLines[I + Count];
-  SetLength( FPage.FExecutableLines, Length( FPage.FExecutableLines ) - Count );
+  FPage.FExecutableLines.Size := FPage.FExecutableLines.Size - Count;
 
   // Track the breakpoint lines in the debugger
-  with FPage.FForm.dwsDebugger do
+  with FPage.FForm.Debugger do
     for I := 0 to Breakpoints.Count - 1 do
       if Breakpoints[I].SourceName = FPage.UnitName then
         if Breakpoints[I].Line >= FirstLine then
@@ -723,11 +783,11 @@ end;
 { TEditorPage }
 
 constructor TEditorPage.Create(AOwner: TDwsIdeForm; const AFileName: TFileName;
-                    ALoadFile : boolean);
+  ALoadFile: Boolean);
 
   procedure InitEditor;
   begin
-    FEditor := TSynEdit.Create( Self );
+    FEditor := TSynEdit.Create(Self);
     FEditor.OnChange := DoOnEditorChange;
     FEditor.Parent  := Self;
     FEditor.Align   := alClient;
@@ -737,10 +797,8 @@ constructor TEditorPage.Create(AOwner: TDwsIdeForm; const AFileName: TFileName;
     FEditor.WantTabs := True;
     FEditor.FontSmoothing := fsmClearType;
 
-    FForm.SynMacroRecorder.AddEditor( FEditor );
-
-    if Assigned( AOwner.FOptions.EditorHighlighterClass ) then
-      FEditor.Highlighter := AOwner.FOptions.EditorHighlighterClass.Create( Self );
+    if Assigned(AOwner.FOptions.EditorHighlighterClass) then
+      FEditor.Highlighter := AOwner.FOptions.EditorHighlighterClass.Create(Self);
     if AOwner.FOptions.EditorFontName <> '' then
     begin
       FEditor.Font.Name := AOwner.FOptions.EditorFontName;
@@ -766,8 +824,49 @@ constructor TEditorPage.Create(AOwner: TDwsIdeForm; const AFileName: TFileName;
       eoSmartTabDelete
       ];
 
+    with FEditor.Keystrokes.Add do
+    begin
+      Command := ecGotoXY;
+      Key := 47;
+      Shift := [ssAlt];
+    end;
+
+    with FEditor.Keystrokes.Add do
+    begin
+      Command := ecOpenFileUnderCursor;
+      Key := VK_RETURN;
+      Shift := [ssCtrl];
+    end;
+
+    with FEditor.Keystrokes.Add do
+    begin
+      Command := ecToggleDeclImpl;
+      Key := VK_UP;
+      Shift := [ssCtrl, ssShift];
+    end;
+
+    with FEditor.Keystrokes.Add do
+    begin
+      Command := ecToggleDeclImpl;
+      Key := VK_DOWN;
+      Shift := [ssCtrl, ssShift];
+    end;
+
+    FForm.SynMacroRecorder.AddEditor(FEditor);
+    FForm.SynParameters.AddEditor(FEditor);
+    FForm.SynCodeCompletion.AddEditor(FEditor);
+    with FForm.SynCodeCompletion.Columns.Add do
+    begin
+      // eventually uncomment this line with older SynEdit code versions
+      ColumnWidth := 50;
+    end;
+    with FForm.SynCodeCompletion.Columns.Add do
+      DefaultFontStyle := [fsBold];
+
     FEditor.OnSpecialLineColors := SynEditorSpecialLineColors;
     FEditor.OnGutterClick := SynEditorGutterClick;
+    FEditor.OnGutterPaint := SynEditGutterPaint;
+    FEditor.OnMouseMove := SynEditorMouseMove;
     FEditor.OnCommandProcessed := SynEditorCommandProcessed;
     FEditor.OnClick := SynEditorClick;
     FEditor.OnKeyDown := SynEditorKeyDown;
@@ -776,20 +875,21 @@ constructor TEditorPage.Create(AOwner: TDwsIdeForm; const AFileName: TFileName;
   end;
 
 begin
-  inherited Create( AOwner );
+  inherited Create(AOwner);
 
   FForm := AOwner;
   FCurrentLine := -1;
+  FExecutableLines := TBits.Create;
 
   FileName := AFileName;
 
   InitEditor;
 
-  if ALoadFile and FileExists( AFileName ) then
+  if ALoadFile and FileExists(AFileName) then
   begin
-    FEditor.Lines.Text := LoadTextFromFile( AFileName );
+    FEditor.Lines.Text := LoadTextFromFile(AFileName);
     InitExecutableLines;
-    FEditor.ReadOnly  := FileIsReadOnly( AFileName );
+    FEditor.ReadOnly  := FileIsReadOnly(AFileName);
   end;
 
   FEditor.Modified := False;
@@ -797,7 +897,10 @@ end;
 
 destructor TEditorPage.Destroy;
 begin
-  FForm.SynMacroRecorder.RemoveEditor( FEditor );
+  FForm.SynParameters.RemoveEditor(FEditor);
+  FForm.SynCodeCompletion.RemoveEditor(FEditor);
+  FForm.SynMacroRecorder.RemoveEditor(FEditor);
+  FExecutableLines.Free;
   FEditor.Free;
 
   inherited;
@@ -805,7 +908,7 @@ end;
 
 procedure TEditorPage.DoOnEditorChange(ASender: TObject);
 begin
-  FForm.EditorChange( ASender );
+  FForm.EditorChange(ASender);
 end;
 
 function TEditorPage.GetFilename: TFileName;
@@ -813,81 +916,74 @@ begin
   Result := Hint;
 end;
 
-function TEditorPage.GetIsProjectSourcefile: boolean;
+function TEditorPage.GetIsProjectSourceFile: Boolean;
 begin
-  Result := SameText( ExtractFileExt( FileName ), sDwsIdeProjectSourceFileExt );
+  Result := SameText(ExtractFileExt(FileName), sDwsIdeProjectSourceFileExt);
 end;
 
-function TEditorPage.GetIsReadOnly: boolean;
+function TEditorPage.GetIsReadOnly: Boolean;
 begin
   Result := FEditor.ReadOnly;
 end;
 
-function TEditorPage.GotoIdentifier(const AIdentifier: string): boolean;
+function TEditorPage.GotoIdentifier(const AIdentifier: string): Boolean;
 var
-  I : integer;
-  S : string;
-  bImplementation : boolean;
+  I: Integer;
+  S: string;
+  bImplementation: Boolean;
 begin
   Result := False;
-  S := UpperCase( AIdentifier );
+  S := UpperCase(AIdentifier);
   bImplementation := False;
   for I := 0 to FEditor.Lines.Count - 1 do
   begin
-    if Pos( 'IMPLEMENTATION', UpperCase(FEditor.Lines[I]) ) <> 0 then
+    if Pos('IMPLEMENTATION', UpperCase(FEditor.Lines[I])) <> 0 then
       bImplementation := True
     else
     if bImplementation then
     begin
-      Result := Pos( S, UpperCase(FEditor.Lines[I]) ) <> 0;
+      Result := Pos(S, UpperCase(FEditor.Lines[I])) <> 0;
       if Result then
       begin
-        FEditor.CaretY := I+1;
+        FEditor.CaretY := I + 1;
         FEditor.CaretX := 1;
-        FEditor.SearchReplace( AIdentifier, '', [] ); // << selects the identifier
+        FEditor.SearchReplace(AIdentifier, '', []); // << selects the identifier
         Exit;
       end;
     end;
   end;
 end;
 
-procedure TEditorPage.AddBreakpoint(ALineNum: integer; AEnabled: boolean);
+// AddBreakpoint
+//
+procedure TEditorPage.AddBreakpoint(ALineNum: Integer; AEnabled: Boolean);
 var
-  BP : TdwsDebuggerBreakpoint;
-  bAdded : boolean;
-  I : integer;
+  BP: TdwsDebuggerBreakpoint;
+  bAdded: Boolean;
+  I: Integer;
 begin
   BP := TdwsDebuggerBreakpoint.Create;
   BP.Line := ALineNum;
 
   BP.SourceName := UnitName;
 
-  I := FForm.dwsDebugger.Breakpoints.AddOrFind( BP, bAdded );
+  I := FForm.Debugger.Breakpoints.AddOrFind(BP, bAdded);
   if not bAdded then
     BP.Free;
-  FForm.dwsDebugger.Breakpoints[I].Enabled := AEnabled;
+  FForm.Debugger.Breakpoints[I].Enabled := AEnabled;
 
-  Editor.InvalidateGutterLine( ALineNum );
-  Editor.InvalidateLine( ALineNum );
+  Editor.InvalidateGutterLine(ALineNum);
+  Editor.InvalidateLine(ALineNum);
 end;
 
-
-procedure TEditorPage.ClearExecutableLines;
+// ClearBreakpoint
+//
+procedure TEditorPage.ClearBreakpoint(ALineNum: Integer);
 var
-  I : integer;
+  Test, Found: TdwsDebuggerBreakpoint;
+  I: Integer;
 begin
-  for I := 0 to Length( FExecutableLines ) - 1 do
-    FExecutableLines[I] := False;
-
-  Editor.InvalidateGutter;
-end;
-
-procedure TEditorPage.ClearBreakpoint(ALineNum: integer);
-var
-  Test, Found : TdwsDebuggerBreakpoint;
-  I : integer;
-begin
-  if FForm.dwsDebugger.Breakpoints.Count = 0 then
+  if FForm.Debugger.Breakpoints.Count = 0 then
     Exit;
 
   Test := TdwsDebuggerBreakpoint.Create;
@@ -895,155 +991,110 @@ begin
     Test.Line := ALineNum;
     Test.SourceName := UnitName;
 
-    I := FForm.dwsDebugger.Breakpoints.IndexOf( Test );
+    I := FForm.Debugger.Breakpoints.IndexOf(Test);
     if I <> -1 then
     begin
-      Found := FForm.dwsDebugger.Breakpoints[I];
-      FForm.dwsDebugger.Breakpoints.Extract( Found );
-      FreeAndNil( Found );
+      Found := FForm.Debugger.Breakpoints[I];
+      FForm.Debugger.Breakpoints.Extract(Found);
+      FreeAndNil(Found);
     end;
   finally
-    FreeAndNil( Test );
+    FreeAndNil(Test);
   end;
 
-  Editor.InvalidateGutterLine( ALineNum );
-  Editor.InvalidateLine( ALineNum );
+  Editor.InvalidateGutterLine(ALineNum);
+  Editor.InvalidateLine(ALineNum);
 end;
 
+// GetBreakpointStatus
+//
+function TEditorPage.GetBreakpointStatus(ALine: Integer): TBreakpointStatus;
+var
+  Test, Found: TdwsDebuggerBreakpoint;
+  I: Integer;
+begin
+  Result := bpsNone;
+  if FForm.Debugger.Breakpoints.Count = 0 then
+    Exit;
 
+  Test := TdwsDebuggerBreakpoint.Create;
+  try
+    Test.Line := ALine;
+    Test.SourceName := UnitName;
+
+    I := FForm.Debugger.Breakpoints.IndexOf(Test);
+    if I <> -1 then
+    begin
+      Found := FForm.Debugger.Breakpoints[I];
+      if Found.Enabled then
+        Result := bpsBreakpoint
+      else
+        Result := bpsBreakpointDisabled;
+    end;
+  finally
+    FreeAndNil(Test);
+  end;
+end;
+
+// ClearExecutableLines
+//
+procedure TEditorPage.ClearExecutableLines;
+var
+  I: Integer;
+begin
+  for I := 0 to FExecutableLines.Size do
+    FExecutableLines[I] := False;
+
+  Editor.InvalidateGutter;
+end;
+
+// InitExecutableLines
+//
 procedure TEditorPage.InitExecutableLines;
 begin
-  SetLength( FExecutableLines, 0 );
-  SetLength( FExecutableLines, Editor.Lines.Count );
+  FExecutableLines.Size := 0;
+  FExecutableLines.Size := Editor.Lines.Count;
 end;
 
-
+// ShowExecutableLines
+//
 procedure TEditorPage.ShowExecutableLines;
 var
-  LineNumbers : TLineNumbers;
-  I           : integer;
+  LineNumbers: TLineNumbers;
+  I: Integer;
 begin
   ClearExecutableLines;
-  LineNumbers := FForm.GetExecutableLines( UnitName );
-  for I := 0 to Length( LineNumbers ) - 1 do
+  LineNumbers := FForm.GetExecutableLines(UnitName);
+  for I := 0 to Length(LineNumbers) - 1 do
     FExecutableLines[ LineNumbers[I] ] := True;
   Editor.InvalidateGutter;
 end;
 
-procedure TEditorPage.PaintGutterGlyphs(ACanvas: TCanvas; AClip: TRect;
-  FirstLine, LastLine: integer);
-var
-  iLineHeight, iGutterWidth : integer;
-
-  procedure DrawRuler( ALine, X, Y : integer );
-  var
-    S : string;
-    R : TRect;
-    I : integer;
-  begin
-    if (ALine = 1) or (ALine = Editor.CaretY) or (ALine mod 10 = 0) then
-    begin
-      S := IntToStr( ALine );
-      R := Rect( X,Y, iGutterWidth-2, Y + iLineHeight );
-      DrawText(
-        ACanvas.Handle,
-        S,
-        Length(S),
-        R,
-        DT_RIGHT );
-    end
-    else
-    begin
-      if ALine mod 5 = 0 then
-        I := 5
-      else
-        I := 2;
-      Inc( Y, iLineHeight div 2 );
-      ACanvas.MoveTo( iGutterWidth-I, Y);
-      ACanvas.LineTo( iGutterWidth, Y);
-    end;
-  end;
-
-var
-  X, Y: integer;
-  ImgIndex: integer;
-  R : TRect;
-begin
-  iLineHeight := Editor.LineHeight;
-  iGutterWidth := Editor.Gutter.Width;
-
-  // Ruler background
-  ACanvas.Brush.Color := Lighten( clBtnFace, 6 );
-  R := Rect( 24, 0, iGutterWidth, Editor.Height );
-  ACanvas.FillRect( R );
-
-  // Ruler cosmetics..
-  ACanvas.Brush.Style := bsClear;
-  ACanvas.Font.Color := clGray;
-  ACanvas.Pen.Color := clGray;
-
-  FirstLine := Editor.RowToLine(FirstLine);
-  LastLine := Editor.RowToLine(LastLine);
-  X := 4;
-  while FirstLine <= LastLine do
-  begin
-    Y := (iLineHeight - FForm.SmallImages.Height) div 2
-         + iLineHeight * (Editor.LineToRow(FirstLine) - Editor.TopLine);
-
-    if FirstLine = FCurrentLine then
-    begin
-      if GetBreakpointStatus( FirstLine ) <> bpsNone then
-        ImgIndex := iiCurrentLineBreakpoint
-      else
-        if FForm.dwsDebugger.State = dsDebugSuspended then
-          ImgIndex := iiForwardArrow
-        else
-          ImgIndex := iiExecutableLine
-    end
-    else
-      case GetBreakpointStatus( FirstLine ) of
-        bpsBreakpoint :
-          if IsExecutableLine( FirstLine ) then
-            ImgIndex := iiBreakpoint
-           else
-            ImgIndex := iiBreakpointDisabled;
-        bpsBreakpointDisabled :
-          ImgIndex := iiBreakpointDisabled;
-       else
-         if IsExecutableLine( FirstLine ) then
-           ImgIndex := iiExecutableLine
-          else
-           ImgIndex := -1;
-      end;
-
-    if ImgIndex >= 0 then
-      FForm.SmallImages.Draw(ACanvas, X, Y, ImgIndex);
-
-    DrawRuler( FirstLine, X, Y );
-
-    Inc(FirstLine);
-  end;
-end;
-
+// SetFileName
+//
 procedure TEditorPage.SetFileName(const Value: TFileName);
 begin
   Hint := Value; // << where file name is stored
-  Caption := JustFileName( Value );
-  if FForm.FileIsProjectSource( Value ) then
+  Caption := JustFileName(Value);
+  if FForm.FileIsProjectSource(Value) then
     Caption := Caption + ' *';
 end;
 
-procedure TEditorPage.SetIsReadOnly(const Value: boolean);
+// SetIsReadOnly
+//
+procedure TEditorPage.SetIsReadOnly(const Value: Boolean);
 begin
   if Value <> IsReadOnly then
   begin
     FEditor.ReadOnly := Value;
-    if FileExists( FileName ) then
-      FileSetReadOnly( Filename, Value );
+    if FileExists(FileName) then
+      FileSetReadOnly(Filename, Value);
   end;
 end;
 
-procedure TEditorPage.SetCurrentLine(ALine: integer; ACol : integer = 1);
+// SetCurrentLine
+//
+procedure TEditorPage.SetCurrentLine(ALine: Integer; ACol: Integer = 1);
 begin
   if FCurrentLine <> ALine then
   begin
@@ -1057,40 +1108,24 @@ begin
   end;
 end;
 
-function TEditorPage.IsExecutableLine( ALine : integer ) : boolean;
+// IsExecutableLine
+//
+function TEditorPage.IsExecutableLine(ALine: Integer): Boolean;
 begin
-  if ALine < Length( FExecutableLines ) then
+  if ALine < FExecutableLines.Size then
     Result := FExecutableLines[ALine]
   else
     Result := False;
 end;
 
-function TEditorPage.GetBreakpointStatus( ALine : integer ) : TBreakpointStatus;
-var
-  Test, Found : TdwsDebuggerBreakpoint;
-  I : integer;
+// UnitName
+//
+function TEditorPage.UnitName: string;
 begin
-  Result := bpsNone;
-  if FForm.dwsDebugger.Breakpoints.Count = 0 then
-    Exit;
-
-  Test := TdwsDebuggerBreakpoint.Create;
-  try
-    Test.Line := ALine;
-    Test.SourceName := UnitName;
-
-    I := FForm.dwsDebugger.Breakpoints.IndexOf( Test );
-    if I <> -1 then
-    begin
-      Found := FForm.dwsDebugger.Breakpoints[I];
-      if Found.Enabled then
-        Result := bpsBreakpoint
-      else
-        Result := bpsBreakpointDisabled;
-    end;
-  finally
-    FreeAndNil( Test );
-  end;
+  if IsProjectSourceFile then
+    Result := SYS_MainModule
+  else
+    Result := JustFileName(FileName);
 end;
 
 // SynEditorSpecialLineColors
@@ -1106,13 +1141,13 @@ begin
   begin
     Special := TRUE;
     FG := clBlack;
-    if FForm.dwsDebugger.State = dsDebugSuspended then
+    if FForm.Debugger.State = dsDebugSuspended then
       BG := CurrentLineSteppingColor
     else
       BG := CurrentLineColor
   end
   else
-  if GetBreakpointStatus( Line ) = bpsBreakpoint then
+  if GetBreakpointStatus(Line) = bpsBreakpoint then
   begin
     Special := TRUE;
     FG := clBlack;
@@ -1120,35 +1155,161 @@ begin
   end;
 end;
 
-// UnitName
+// SynEditGutterPaint
 //
-function TEditorPage.UnitName: string;
+procedure TEditorPage.SynEditGutterPaint(Sender: TObject; aLine, X,
+  Y: Integer);
+
+var
+  GutterWidth: Integer;
+
+  procedure DrawRuler(Canvas: TCanvas; aLine, x, y: Integer);
+  var
+    LineNumText: string;
+    LineNumTextRect: TRect;
+    Wdth: Integer;
+  begin
+    if (ALine = 1) or (aLine = FEditor.CaretY) or (ALine mod 10 = 0) then
+    begin
+      LineNumText := IntToStr(aLine);
+      LineNumTextRect := Rect(x, y, GutterWidth, y + FEditor.LineHeight);
+      Canvas.TextRect(LineNumTextRect, LineNumText, [tfVerticalCenter,
+        tfSingleLine, tfRight]);
+    end
+    else
+    begin
+      Canvas.Pen.Color := FEditor.Gutter.Font.Color;
+      if (aLine mod 5) = 0 then
+        Wdth := 5
+      else
+        Wdth := 2;
+      Inc(y, FEditor.LineHeight div 2);
+      Canvas.MoveTo(GutterWidth - Wdth, y);
+      Canvas.LineTo(GutterWidth, y);
+    end;
+  end;
+
+var
+  ImgIndex: Integer;
+  R: TRect;
 begin
-  if IsProjectSourceFile then
-    Result := SYS_MainModule
+  GutterWidth := FEditor.Gutter.Width - 5;
+
+  // Ruler background
+  if Y = 0 then
+  begin
+    FEditor.Canvas.Brush.Color := Lighten(clBtnFace, 6);
+    R := Rect(24, 0, GutterWidth, FEditor.Height);
+    FEditor.Canvas.FillRect(R);
+  end;
+
+  // Ruler cosmetics..
+  FEditor.Canvas.Brush.Style := bsClear;
+  FEditor.Canvas.Font.Color := clGray;
+  FEditor.Canvas.Pen.Color := clGray;
+
+  if ALine = FCurrentLine then
+  begin
+    if GetBreakpointStatus(ALine) <> bpsNone then
+      ImgIndex := CImageIndexCurrentLineBreakpoint
+    else
+      if FForm.Debugger.State = dsDebugSuspended then
+        ImgIndex := CImageIndexForwardArrow
+      else
+        ImgIndex := CImageIndexExecutableLine
+  end
   else
-    Result := JustFileName( FileName );
+    case GetBreakpointStatus(ALine) of
+      bpsBreakpoint :
+        if IsExecutableLine(ALine) then
+          ImgIndex := CImageIndexBreakpoint
+         else
+          ImgIndex := CImageIndexBreakpointDisabled;
+      bpsBreakpointDisabled :
+        ImgIndex := CImageIndexBreakpointDisabled;
+     else
+       if IsExecutableLine(ALine) then
+         ImgIndex := CImageIndexExecutableLine
+        else
+         ImgIndex := -1;
+    end;
+
+  if ImgIndex >= 0 then
+    FForm.SmallImages.Draw(FEditor.Canvas, X, Y, ImgIndex);
+
+  DrawRuler(FEditor.Canvas, ALine, X, Y);
 end;
 
 // SynEditorClick
 //
 procedure TEditorPage.SynEditorClick(Sender: TObject);
+var
+  ScriptProgram: IdwsProgram;
+  CursorPos: TBufferCoord;
+  Symbol: TSymbol;
+  SymbolPosList: TSymbolPositionList;
 begin
-  TSynEdit( Sender).InvalidateGutter;
+  TSynEdit(Sender).InvalidateGutter;
+
+  if not (ssCTRL in KeyboardStateToShiftState) then
+    Exit;
+
+  ScriptProgram := FForm.GetCompiledScript;
+  if not Assigned(ScriptProgram) then
+    Exit;
+
+  if not FEditor.GetPositionOfMouse(CursorPos) then
+    Exit;
+
+  CursorPos := Editor.WordStartEx(CursorPos);
+  Symbol := ScriptProgram.SymbolDictionary.FindSymbolAtPosition(
+    CursorPos.Char, CursorPos.Line, UnitName);
+
+  if not Assigned(Symbol) then
+    Exit;
+
+  SymbolPosList := ScriptProgram.SymbolDictionary.FindSymbolPosList(Symbol);
+
+  if not Assigned(SymbolPosList) or (SymbolPosList.Count = 0) then
+    Exit;
+
+  FForm.OpenEditorPage(SymbolPosList[0].ScriptPos.SourceFile.Name);
+  FForm.CurrentEditor.CaretX := SymbolPosList[0].ScriptPos.Col;
+  FForm.CurrentEditor.CaretY := SymbolPosList[0].ScriptPos.Line;
 end;
 
 // SynEditorKeyDown
 //
-procedure TEditorPage.SynEditorKeyDown( Sender: TObject; var Key: Word;  Shift: TShiftState );
+procedure TEditorPage.SynEditorKeyDown(Sender: TObject; var Key: Word;  Shift: TShiftState);
 begin
   inherited;
 
   SetCurrentLine(-1);
+end;
 
-  //  Exit; << activate this to suppress code suggestion
+// SynEditorMouseMove
+//
+procedure TEditorPage.SynEditorMouseMove(Sender: TObject; Shift: TShiftState; X,
+  Y: Integer);
+var
+  MouseCoord: TDisplayCoord;
+  UnderLine: Integer;
+begin
+  if FUnderLine > 0 then
+    FEditor.InvalidateLine(FUnderLine);
 
-  if Key = VK_OEM_PERIOD then
-    PostMessage( FForm.Handle, WM_CodeSuggest,  0, 0 );
+  if ssCtrl in Shift then
+  begin
+    MouseCoord := FEditor.PixelsToRowColumn(X, Y);
+    UnderLine := FEditor.DisplayToBufferPos(MouseCoord).Line;
+    if UnderLine <> FUnderLine then
+    begin
+      FUnderLine := UnderLine;
+      FEditor.InvalidateLine(FUnderLine);
+    end;
+  end
+  else
+    FUnderLine := -1;
 end;
 
 // SynEditorCommandProcessed
@@ -1157,8 +1318,12 @@ procedure TEditorPage.SynEditorCommandProcessed(Sender: TObject;
   var Command: TSynEditorCommand; var AChar: Char; Data: Pointer);
 begin
   case Command of
-    ecUp, ecDown :
-      TSynEdit(Sender).InvalidateGutter;
+    ecGotoXY:
+      GotoLineNumber;
+    ecOpenFileUnderCursor:
+      OpenFileUnderCursor;
+    ecToggleDeclImpl:
+      ToggleDeclImpl;
   end;
 end;
 
@@ -1167,43 +1332,41 @@ end;
 procedure TEditorPage.SynEditorGutterClick(Sender: TObject;
   Button: TMouseButton; X, Y, Line: Integer; Mark: TSynEditMark);
 var
-  iLine : integer;
+  iLine: Integer;
 begin
   iLine := Editor.RowToLine(Line);
-  if iLine < Length( FExecutableLines) then
+  if iLine < FExecutableLines.Size then
   begin
-    if GetBreakpointStatus( Line ) <> bpsNone then
-      ClearBreakpoint( iLine )
+    if GetBreakpointStatus(Line) <> bpsNone then
+      ClearBreakpoint(iLine)
     else
-      AddBreakpoint( iLine, True );
+      AddBreakpoint(iLine, True);
     Editor.Repaint;
   end;
 end;
 
 // SaveToFile
 //
-procedure TEditorPage.SaveToFile( APromptOverwrite : boolean );
+procedure TEditorPage.SaveToFile(APromptOverwrite: Boolean);
 begin
-  if not FileExists( FileName ) or
+  if not FileExists(FileName) or
     not APromptOverwrite or ConfirmDlgYesNoAbort(
-      Format( 'File "%s" already exists. Overwrite it?', [FileName] )) then
+      Format(RStrFileAlreadyExistsOverwrite, [FileName])) then
   begin
-    SaveTextToUTF8File(
-      FileName,
-      Editor.Lines.Text );
+    SaveTextToUTF8File(FileName, Editor.Lines.Text);
     Editor.Modified := False;
   end;
 end;
 
 // SaveIfModified
 //
-procedure TEditorPage.SaveIfModified( APromptOverwrite : boolean );
+procedure TEditorPage.SaveIfModified(APromptOverwrite: Boolean);
 begin
   if Editor.Modified then
-    if not APromptOverwrite or (IsProjectSourceFile and not FileExists( FileName)) or
+    if not APromptOverwrite or (IsProjectSourceFile and not FileExists(FileName)) or
      ConfirmDlgYesNoAbort(
-      Format( 'File "%s" has changed. Save it now?',  [ ExtractFileName( FileName ) ] )) then
-        SavetoFile( False );
+      Format(RStrFileHasChanged,  [ ExtractFileName(FileName) ])) then
+        SavetoFile(False);
   Editor.Modified := False;
 end;
 
@@ -1211,29 +1374,116 @@ end;
 //
 procedure TEditorPage.SaveAs;
 begin
-  FForm.SaveSourceDialog.FileName := ExtractFileName( FileName );
+  FForm.SaveSourceDialog.FileName := ExtractFileName(FileName);
   if FForm.SaveSourceDialog.Execute then
   begin
     Filename := FForm.SaveSourceDialog.FileName;
-    SavetoFile( False );
+    SavetoFile(False);
   end;
 end;
 
 // TabRight
 //
-function TEditorPage.TabRight : Integer;
+function TEditorPage.TabRight: Integer;
 begin
   Result := FTabLeft + FTabWidth;
 end;
 
 // CloseButtonRect
 //
-function TEditorPage.CloseButtonRect : TRect;
+function TEditorPage.CloseButtonRect: TRect;
 begin
-  Result.Right := FTabLeft + FTabWidth - cMargin - cSlantMargin;
-  Result.Left := Result.Right - cCloseButtonSize;
-  Result.Top := 1 + (FForm.imgTabs.Height - cCloseButtonSize) div 2;
-  Result.Bottom := Result.Top + cCloseButtonSize;
+  Result.Right := FTabLeft + FTabWidth - CMargin - CSlantMargin;
+  Result.Left := Result.Right - CCloseButtonSize;
+  Result.Top := 1 + (FForm.ImageTabs.Height - CCloseButtonSize) div 2;
+  Result.Bottom := Result.Top + CCloseButtonSize;
+end;
+
+// ToggleDeclImpl
+//
+procedure TEditorPage.ToggleDeclImpl;
+var
+  ScriptProgram: IdwsProgram;
+  ScriptPos: TScriptPos;
+  Symbol: TSymbol;
+  SymDict: TdwsSymbolDictionary;
+  Context: TdwsSourceContext;
+  SymbolPositionList: TSymbolPositionList;
+  SymbolPosition: TSymbolPosition;
+begin
+  ScriptProgram := FForm.GetCompiledScript;
+  if not Assigned(ScriptProgram) then
+    Exit;
+
+  SymDict := ScriptProgram.SymbolDictionary;
+  Assert(Assigned(SymDict));
+
+  Context := ScriptProgram.SourceContextMap.FindContext(FEditor.CaretX,
+    FEditor.CaretY, UnitName);
+
+  repeat
+    Symbol := Context.ParentSym;
+    if Symbol is TFuncSymbol then
+    begin
+      // retrieve symbol position list
+      SymbolPositionList := SymDict.FindSymbolPosList(Symbol);
+      if SymbolPositionList <> nil then
+      begin
+        // get declaration position
+        SymbolPosition := SymbolPositionList.FindUsage(suDeclaration);
+        if Assigned(SymbolPosition) then
+        begin
+          ScriptPos := SymbolPosition.ScriptPos;
+
+          // check if current position is declaration
+          if Context.IsPositionInContext(ScriptPos) then
+            ScriptPos := TFuncSymbol(Symbol).SourcePosition;
+
+          if (ScriptPos.Line > 0) and (ScriptPos.Col > 0) then
+          begin
+            FEditor.CaretXY := BufferCoord(ScriptPos.Col, ScriptPos.Line);
+            Exit;
+          end;
+        end;
+      end;
+    end;
+
+    Context := Context.Parent;
+  until Context = nil;
+end;
+
+// GotoLineNumber
+//
+procedure TEditorPage.GotoLineNumber;
+begin
+  with FForm.GotoForm do
+    case ShowModal of
+      mrOk:
+        FEditor.GotoLineAndCenter(LineNumber);
+    end;
+end;
+
+// OpenFileUnderCursor
+//
+procedure TEditorPage.OpenFileUnderCursor;
+var
+  ScriptProgram: IdwsProgram;
+  Symbol: TSymbol;
+  WordStart: TBufferCoord;
+begin
+  ScriptProgram := FForm.GetCompiledScript;
+  if not Assigned(ScriptProgram) then
+    Exit;
+
+  WordStart := FEditor.WordStart;
+  Symbol := ScriptProgram.SymbolDictionary.FindSymbolAtPosition(
+    WordStart.Char, WordStart.Line, UnitName);
+
+  if (Symbol is TUnitMainSymbol) then
+  begin
+    FForm.OpenEditorPage(TUnitMainSymbol(Symbol).Name);
+    // eventually move caret position here...
+  end;
 end;
 
 
@@ -1242,9 +1492,9 @@ end;
 
 { TDwsIdeForm }
 
-constructor TDwsIdeForm.Create(AOwner: TComponent; const AOptions : TDwsIdeOptions );
+constructor TDwsIdeForm.Create(AOwner: TComponent; const AOptions: TDwsIdeOptions);
 begin
-  inherited Create( AOwner );
+  inherited Create(AOwner);
 
   FOptions := AOptions;
 end;
@@ -1252,87 +1502,82 @@ end;
 procedure TDwsIdeForm.AfterConstruction;
 var
   sProjectFileName: TFileName;
-  S : string;
+  S: string;
 begin
   inherited;
 
   // Set up callback links
   DwsIdeLocalVariablesFrame.DwsIde := Self;
-  DwsIdeWatchesFrame.DwsIde       := Self;
-  DwsIdeCallStackFrame.DwsIde     := Self;
+  DwsIdeWatchesFrame.DwsIde := Self;
+  DwsIdeCallStackFrame.DwsIde := Self;
 
   ClearOutputWindow;
 
   // Set the script folder
   if FOptions.ScriptFolder <> '' then // we have a supplied script folder..
   begin
-    ScriptFolder := IncludeTrailingBackslash( FOptions.ScriptFolder );
-    if not DirectoryExists( ScriptFolder ) then
-      raise Exception.CreateFmt( RStrScriptFolderNotFound, [ScriptFolder] );
+    ScriptFolder := IncludeTrailingBackslash(FOptions.ScriptFolder);
+    if not DirectoryExists(ScriptFolder) then
+      raise Exception.CreateFmt(RStrScriptFolderNotFound, [ScriptFolder]);
   end
   else
   begin
     // Use the default folder - the desktop for demo
     ScriptFolder := IncludeTrailingBackslash(GetDesktopPath) + 'DWS Script Files';
-    if not DirectoryExists( ScriptFolder ) then
-      raise Exception.Create( RStrIdeDesktopCopy );
+    if not DirectoryExists(ScriptFolder) then
+      raise Exception.Create(RStrIdeDesktopCopy);
   end;
 
   // Get the previously saved project settings from registry...
   MakeSettingsRec;
-  LoadSettings( sProjectFileName, FIDESettingsRec );
+  LoadSettings(sProjectFileName, FIDESettingsRec);
 
   // Try to get a project name from the supplied project name (which might be a *.dws or *.dwsproj)
   // if there is one, this becomes our project file name.
   if FOptions.ProjectName <> '' then
-    sProjectFileName := ScriptFolder + ChangeFileExt( FOptions.ProjectName, sDwsIdeProjectFileExt {eg '.dws' } );
+    sProjectFileName := ScriptFolder + ChangeFileExt(FOptions.ProjectName, sDwsIdeProjectFileExt {eg '.dws' });
 
   if FileExists(sProjectFileName) then
-    LoadProjectFile( sProjectFileName ) // << load the dwsproj if possible
+    LoadProjectFile(sProjectFileName) // << load the dwsproj if possible
   else
   begin
-    S := ScriptFolder + ChangeFileExt( FOptions.ProjectName, sDwsIdeProjectSourceFileExt {eg '.dwsproj' } ); // try loading the main dws file...
-    if FileExists( S ) then
+    S := ScriptFolder + ChangeFileExt(FOptions.ProjectName, sDwsIdeProjectSourceFileExt {eg '.dwsproj' }); // try loading the main dws file...
+    if FileExists(S) then
     begin
       // Here we've got a dws (main) file, so load it and make a project file from it too..
-      FProjectFileName := ChangeFileExt( S, sDwsIdeProjectFileExt );
-      EditorPageAddNew( S, True );
-      SaveProjectFileAs( FProjectFileName );
+      FProjectFileName := ChangeFileExt(S, sDwsIdeProjectFileExt);
+      EditorPageAddNew(S, True);
+      SaveProjectFileAs(FProjectFileName);
     end
     else
        sProjectFileName := ScriptFolder + '\ExampleScript' + sDwsIdeProjectFileExt; {eg '.dwsproj'};
 
     if FileExists(sProjectFileName) then // we've got the example files, so load them...
-      LoadProjectFile( sProjectFileName )
+      LoadProjectFile(sProjectFileName)
     else
-      actFileNewProjectExecute( nil ); // could not find anything, make a new blank project
+      ActionFileNewProjectExecute(nil); // could not find anything, make a new blank project
   end;
 end;
 
 procedure TDwsIdeForm.BeforeDestruction;
 begin
   MakeSettingsRec;
-  SaveSettings(
-    ProjectFileName,
-    FIDESettingsRec );
+  SaveSettings(ProjectFileName, FIDESettingsRec);
 
   inherited;
 end;
 
 procedure TDwsIdeForm.FormCreate(Sender: TObject);
 var
-   bmp : TBitmap;
+   bmp: TBitmap;
 begin
-  dwsDebugger.OnDebugMessage := DoDebugMessage;
-
-  FCodeProposalForm := TDwsIdeCodeProposalForm.Create( Self );
-  FCodeProposalForm.OnSelectItem := DoOnCodeSuggestionFormSelectItem;
+  Debugger.OnDebugMessage := DoDebugMessage;
 
   bmp := TBitmap.Create;
   try
-    bmp.Height := imgTabs.Height;
-    bmp.Width := imgTabs.Width;
-    imgTabs.Picture.Bitmap := bmp;
+    bmp.Height := ImageTabs.Height;
+    bmp.Width := ImageTabs.Width;
+    ImageTabs.Picture.Bitmap := bmp;
   finally
     bmp.Free;
   end;
@@ -1344,24 +1589,26 @@ end;
 
 procedure TDwsIdeForm.FormDestroy(Sender: TObject);
 var
-   i : Integer;
+   i: Integer;
 begin
-  FreeAndNil( FCodeProposalForm );
   ClearMessagesWindow;
-  dwsDebugger.Breakpoints.Clean;
-  dwsDebugger.Watches.Clean;
+  Debugger.Breakpoints.Clean;
+  Debugger.Watches.Clean;
   FProgram := nil;
   for i := 0 to FPages.Count - 1 do
     FPages[i].Free;
   FPages.Free;
+
+  if Assigned(FGotoForm) then
+    FGotoForm.Free;
 end;
 
 procedure TDwsIdeForm.FormShow(Sender: TObject);
 
   procedure EnsureVisible;
   var
-    I  : Integer;
-    Ri : TRect;
+    I: Integer;
+    Ri: TRect;
   const
     Margin = 100;  // Number of pixels to be seen, at least
   begin
@@ -1370,9 +1617,10 @@ procedure TDwsIdeForm.FormShow(Sender: TObject);
     begin
       // Compute the intersection between screen and form
       Windows.IntersectRect(Ri, BoundsRect, Screen.Monitors[I].BoundsRect);
+
       // Check the intersection is large enough
-      if (Ri.Right-Ri.Left > Margin) and (Ri.Bottom-Ri.Top > Margin) then
-        break;
+      if (Ri.Right - Ri.Left > Margin) and (Ri.Bottom - Ri.Top > Margin) then
+        Break;
       Inc(I);
     end;
 
@@ -1386,18 +1634,18 @@ procedure TDwsIdeForm.FormShow(Sender: TObject);
   end;
 
 var
-  I : integer;
+  I: Integer;
 begin
   BoundsRect := FIDESettingsRec.FormRect;
   EnsureVisible;
 
-  I := Max( FIDESettingsRec.RightPanelWidth, 30 );
-  I := Min( I, Width - 30 );
-  pnlRight.Width := I;
+  I := Max(FIDESettingsRec.RightPanelWidth, 30);
+  I := Min(I, Width - 30);
+  PanelRight.Width := I;
 
-  I := Max( FIDESettingsRec.BottomPanelHeight, 30 );
-  I := Min( I, Height - 30 );
-  pnlBottom.Height := I;
+  I := Max(FIDESettingsRec.BottomPanelHeight, 30);
+  I := Min(I, Height - 30);
+  PanelBottom.Height := I;
 
   if CanGotoHomePosition then
     GotoHomePosition;
@@ -1406,8 +1654,8 @@ end;
 procedure TDwsIdeForm.FormCloseQuery(Sender: TObject;
   var CanClose: Boolean);
 begin
-  if dwsDebugger.State = dsDebugSuspended then
-    if ConfirmDlg( 'Abandon debugging?' ) then
+  if Debugger.State = dsDebugSuspended then
+    if ConfirmDlg(RStrAbandonDebugging) then
       ResetProgram
     else
       Exit;
@@ -1415,8 +1663,8 @@ begin
   if ProjectFilename = '' then
     Exit;
 
-  if FileExists( ProjectFilename ) then
-    SaveProjectFileAs( ProjectFileName )
+  if FileExists(ProjectFilename) then
+    SaveProjectFileAs(ProjectFileName)
   else
     if not SaveProjectAs then
       Abort;
@@ -1429,135 +1677,132 @@ begin
   StatusBar.Panels[3].Text := AStr;
 end;
 
-procedure TDwsIdeForm.AddMessage( const AMessage : string; AScriptPos : PScriptPos = nil );
+procedure TDwsIdeForm.AddMessage(const AMessage: string; AScriptPos: PScriptPos = nil);
 begin
-  lbMessages.Items.AddObject( AMessage, TObject(AScriptPos) );
-  pcBottomWindows.ActivePage := tsMessages;
+  ListboxMessages.Items.AddObject(AMessage, TObject(AScriptPos));
+  PageControlBottomWindows.ActivePage := TabSheetMessages;
 end;
 
 procedure TDwsIdeForm.ClearMessagesWindow;
 begin
-  lbMessages.Clear;
+  ListboxMessages.Clear;
 end;
 
 procedure TDwsIdeForm.ClearOutputWindow;
 begin
-  memOutputWindow.Clear;
+  MemoOutputWindow.Clear;
 end;
 
-procedure TDwsIdeForm.Compile( ABuild : boolean; const AScript : string = '' );
+procedure TDwsIdeForm.Compile(ABuild: Boolean; const AScript: string = '');
 
   procedure AddMessageInfo;
   var
-    I : integer;
-    sPos : PScriptPos;
+    I: Integer;
+    sPos: PScriptPos;
   begin
-    For I := 0 to FProgram.Msgs.Count - 1 do
-      begin
+    for I := 0 to FProgram.Msgs.Count - 1 do
+    begin
       if FProgram.Msgs[I] is TScriptMessage then
-        sPos := @TScriptMessage( FProgram.Msgs[I] ).ScriptPos
+         sPos := @TScriptMessage(FProgram.Msgs[I]).ScriptPos
        else
          sPos := nil;
-      AddMessage( '  ' + FProgram.Msgs[I].AsInfo, sPos );
-      end;
+      AddMessage('  ' + FProgram.Msgs[I].AsInfo, sPos);
+    end;
   end;
 
 var
-  sScript : string;
+  sScript: string;
 begin
   if ABuild or not IsCompiled then
-    begin
+  begin
     ClearMessagesWindow;
-    AddMessage( 'Compile started' );
+    AddMessage(RStrCompileStarted);
 
     FScript.Config.CompilerOptions :=
       FScript.Config.CompilerOptions + [coSymbolDictionary];
 
     if AScript <> '' then
       sScript := AScript
-     else
+    else
       sScript := ProjectSourceScript;
 
     if sScript = '' then
-      sScript := UnitMainScript( CurrentEditorPage.UnitName, '' ); // make a main file that simply uses the current page
+      sScript := UnitMainScript(CurrentEditorPage.UnitName, ''); // make a main file that simply uses the current page
 
-    FProgram := FScript.Compile( sScript );
+    FProgram := FScript.Compile(sScript);
 
     if FProgram.Msgs.HasErrors then // did not compile - errors
-       begin
-       AddStatusMessage( 'Error(s)' );
-       AddMessageInfo;
-       AddMessage( 'Compile complete - error(s)' );
-       GotoScriptPos( FProgram.Msgs.LastMessagePos, AScript <> '' );
-       ErrorDlg( FProgram.Msgs[ FProgram.Msgs.Count - 1 ].AsInfo );
-       end
-     else
-        if FProgram.Msgs.Count = 0 then // perfect compile!
-          begin
-          AddStatusMessage( 'Compiled' );
-          AddMessage( 'Compile complete - success' );
-          end
-        else // hints or warnings...
-          begin
-          AddStatusMessage( 'Compiled' );
-          AddMessageInfo;
-          AddMessage( 'Compile complete with hints/warnings' );
-          end;
-    end;
+    begin
+      AddStatusMessage('Error(s)');
+      AddMessageInfo;
+      AddMessage('Compile complete - error(s)');
+      GotoScriptPos(FProgram.Msgs.LastMessagePos, AScript <> '');
+      ErrorDlg(FProgram.Msgs[ FProgram.Msgs.Count - 1 ].AsInfo);
+    end
+    else
+      AddStatusMessage('Compiled');
+      if FProgram.Msgs.Count = 0 then // perfect compile!
+        AddMessage('Compile complete - success')
+      else // hints or warnings...
+      begin
+        AddMessageInfo;
+        AddMessage(RStrCompileCompleteWarnHints);
+      end;
+  end;
 end;
 
-function TDwsIdeForm.NameToEditorPageIndex( const AName : string ) : integer;
+function TDwsIdeForm.NameToEditorPageIndex(const AName: string): Integer;
 begin
   for Result := 0 to EditorPageCount - 1 do
-    if SameText( EditorPage( Result ).UnitName, AName ) then
+    if SameText(EditorPage(Result).UnitName, AName) then
       Exit;
   Result := -1;
 end;
 
-procedure TDwsIdeForm.EditorCloseAllPages( AExceptIndex : integer = -1 );
+procedure TDwsIdeForm.EditorCloseAllPages(AExceptIndex: Integer = -1);
 var
-  I : integer;
+  I: Integer;
 begin
   for I := EditorPageCount - 1 downto 0 do
     if I <> AExceptIndex then
-      EditorPageClose( I );
+      EditorPageClose(I);
 end;
 
-procedure TDwsIdeForm.EditorSaveAllIfModified( APromptOverwrite : boolean );
+procedure TDwsIdeForm.EditorSaveAllIfModified(APromptOverwrite: Boolean);
 var
-  I : integer;
+  I: Integer;
 begin
   for I := 0 to EditorPageCount - 1 do
-    EditorPage( I ).SaveIfModified( APromptOverwrite );
+    EditorPage(I).SaveIfModified(APromptOverwrite);
 end;
 
-function TDwsIdeForm.SaveProjectAs : boolean;
+function TDwsIdeForm.SaveProjectAs: Boolean;
 var
-  sFilename : TFileName;
+  sFilename: TFileName;
 begin
   SaveProjectDialog.FileName := ExtractFileName(FProjectFileName);
   Result := SaveProjectDialog.Execute;
   if Result then
   begin
     sFilename := SaveProjectDialog.FileName;
-    ProjectSourceFileName := ProjectfileNameToProjectSourceFileName( SaveProjectDialog.FileName );
-    SaveProjectFileAs( sFileName );
+    ProjectSourceFileName := ProjectfileNameToProjectSourceFileName(SaveProjectDialog.FileName);
+    SaveProjectFileAs(sFileName);
   end;
 end;
 
 procedure TDwsIdeForm.MakeSettingsRec;
 begin
   FIDESettingsRec.FormRect := BoundsRect;
-  FIDESettingsRec.RightPanelWidth := pnlRight.Width;
-  FIDESettingsRec.BottomPanelHeight := pnlBottom.Height;
+  FIDESettingsRec.RightPanelWidth := PanelRight.Width;
+  FIDESettingsRec.BottomPanelHeight := PanelBottom.Height;
 end;
 
 procedure TDwsIdeForm.ResetProgram;
 begin
-  dwsDebugger.EndDebug;
+  Debugger.EndDebug;
 end;
 
-function TDwsIdeForm.UnitMainScript( const AUnitName, AIdentifier : string ) : string;
+function TDwsIdeForm.UnitMainScript(const AUnitName, AIdentifier: string): string;
 const
   sScriptTemplate =
       'uses %s;'#13#10
@@ -1565,32 +1810,32 @@ const
     + '%s'#13#10
     + 'end;'#13#10;
 begin
-  Result := Format( sScriptTemplate, [AUnitName, AIdentifier] );
+  Result := Format(sScriptTemplate, [AUnitName, AIdentifier]);
 end;
 
-procedure TDwsIdeForm.DoDebugMessage(const msg : String);
+procedure TDwsIdeForm.DoDebugMessage(const msg: string);
 begin
-  memOutputWindow.Lines.Add( 'ODS: ' + msg );
-  pcBottomWindows.ActivePage := tsOutput;
+  MemoOutputWindow.Lines.Add('ODS: ' + msg);
+  PageControlBottomWindows.ActivePage := TabSheetOutput;
 end;
 
-procedure TDwsIdeForm.RunFunctionMethodByName(const AUnit, AName: string; AWithDebugging, APrompt : boolean);
+procedure TDwsIdeForm.RunFunctionMethodByName(const AUnit, AName: string; AWithDebugging, APrompt: Boolean);
 var
-  Exec : IdwsProgramExecution;
-  Stopwatch : TStopwatch;
-  sScript : string;
+  Exec: IdwsProgramExecution;
+  Stopwatch: TStopwatch;
+  sScript: string;
 begin
-  if APrompt and not ConfirmDlg( Format( 'Run function/method "%s"?', [AName] )) then
+  if APrompt and not ConfirmDlg(Format(RStrRunFunctionMethod, [AName])) then
     Exit;
 
-  EditorSaveAllIfModified( False );
+  EditorSaveAllIfModified(False);
 
-  sScript := UnitMainScript( AUnit, AName );
-  Compile( True, sScript );
+  sScript := UnitMainScript(AUnit, AName);
+  Compile(True, sScript);
   if not IsCompiled then
     Exit;
 
-  AddStatusMessage( 'Running' );
+  AddStatusMessage(RStrRunning);
   Application.ProcessMessages;
   ShowExecutableLines;
 
@@ -1599,31 +1844,31 @@ begin
   Stopwatch.Start;
   try
     if AWithDebugging then
-      dwsDebugger.BeginDebug( Exec )
+      Debugger.BeginDebug(Exec)
     else
     begin
       Exec.BeginProgram;
-      Exec.RunProgram( 0 );
+      Exec.RunProgram(0);
     end;
   finally
     Stopwatch.Stop;
     if AWithDebugging then
-      dwsDebugger.EndDebug
+      Debugger.EndDebug
     else
       Exec.EndProgram;
 
     ClearExecutableLines;
     if Exec.Msgs.Count > 0 then
     begin
-      AddStatusMessage( 'Errors' );
-      GotoScriptPos( Exec.Msgs.LastMessagePos, True );
+      AddStatusMessage('Errors');
+      GotoScriptPos(Exec.Msgs.LastMessagePos, True);
       ErrorDlg(Exec.Msgs.AsInfo);
     end
     else
       if Stopwatch.Elapsed.TotalSeconds < 1.0 then
-        AddStatusMessage( Format( 'Completed in %0.3f ms', [Stopwatch.Elapsed.TotalMilliseconds] ))
+        AddStatusMessage(Format('Completed in %0.3f ms', [Stopwatch.Elapsed.TotalMilliseconds]))
       else
-        AddStatusMessage( Format( 'Completed in %0.3f s', [Stopwatch.Elapsed.TotalSeconds] ));
+        AddStatusMessage(Format('Completed in %0.3f s', [Stopwatch.Elapsed.TotalSeconds]));
   end;
 end;
 
@@ -1631,9 +1876,9 @@ end;
 //
 procedure TDwsIdeForm.RefreshTabs;
 
-  function ColorLerp(col1, col2 : TColor; f : Single) : TColor;
+  function ColorLerp(col1, col2: TColor; f: Single): TColor;
   var
-    invF : Single;
+    invF: Single;
   begin
     f := EnsureRange(f, 0, 1);
     invF := 1 - f;
@@ -1648,9 +1893,9 @@ procedure TDwsIdeForm.RefreshTabs;
 
   procedure GradVertical(Canvas: TCanvas; Rect: TRect; FromColor, ToColor: TColor);
   var
-    mx, Y : integer;
-    invHeight : Single;
-    cnt : Integer;
+    mx, Y: Integer;
+    invHeight: Single;
+    cnt: Integer;
   begin
     Canvas.Brush.Style := bsSolid;
 
@@ -1665,9 +1910,9 @@ procedure TDwsIdeForm.RefreshTabs;
     begin
       Canvas.Brush.Color := ColorLerp(FromColor, ToColor, cnt*invHeight);
 
-      Rect.Right := mx+cnt;
+      Rect.Right := mx + cnt;
       Rect.Top := Y;
-      Rect.Bottom := Y+1;
+      Rect.Bottom := Y + 1;
 
       Canvas.FillRect(Rect);
 
@@ -1675,36 +1920,36 @@ procedure TDwsIdeForm.RefreshTabs;
     end;
   end;
 
-  procedure RenderTab(canvas : TCanvas; page : TEditorPage;
-    active, hovered, hoveredClose : Boolean);
+  procedure RenderTab(canvas: TCanvas; page: TEditorPage;
+    active, hovered, hoveredClose: Boolean);
 
-    function GetImageIndexFromContent : integer;
+    function GetImageIndexFromContent: Integer;
     var
-      sExt : string;
+      sExt: string;
     begin
-      sExt := ExtractFileExt( Page.FileName );
+      sExt := ExtractFileExt(Page.FileName);
 
       if Page.IsProjectSourcefile then
-        Result := cTabImageIndex_ProjectSourceFile
+        Result := CImageIndex_ProjectSourceFile
       else
-        if SameText( sExt, sDwsIdeProjectSourceFileExt ) {eg DWS}
-          or SameText( sExt, sDwsIdeProjectSourceFileExt2 ) {eg PAS} then
-          Result := cTabImageIndex_Script
+        if SameText(sExt, sDwsIdeProjectSourceFileExt) {eg DWS}
+          or SameText(sExt, sDwsIdeProjectSourceFileExt2) {eg PAS} then
+          Result := CImageIndex_Script
         else
-          if SameText( sExt, '.INC' ) then
-            Result := cTabImageIndex_IncludeFile
+          if SameText(sExt, '.INC') then
+            Result := CImageIndex_IncludeFile
           else
-            Result := cTabImageIndex_NonScript;
+            Result := CImageIndex_NonScript;
     end;
 
   var
-    tabRect : TRect;
-    r : TRect;
-    txt : String;
-    closeBtnDrawDetails : TThemedElementDetails;
+    tabRect: TRect;
+    r: TRect;
+    txt: string;
+    closeBtnDrawDetails: TThemedElementDetails;
   begin
     tabRect := Rect(page.FTabLeft, canvas.ClipRect.Top,
-      page.FTabLeft+page.FTabWidth, canvas.ClipRect.Bottom);
+      page.FTabLeft + page.FTabWidth, canvas.ClipRect.Bottom);
     if    (tabRect.Right<canvas.ClipRect.Left)
       or (tabRect.Left>canvas.ClipRect.Right) then Exit;
 
@@ -1723,18 +1968,18 @@ procedure TDwsIdeForm.RefreshTabs;
 
     canvas.Brush.Style := bsClear;
 
-    SmallImages.Draw(canvas, tabRect.Left + cMargin, (tabRect.Bottom -
+    SmallImages.Draw(canvas, tabRect.Left + CMargin, (tabRect.Bottom -
       tabRect.Top - SmallImages.Height) div 2, GetImageIndexFromContent, True);
 
     txt := page.Caption;
     r := tabRect;
-    r.Left := r.Left+cMargin+SmallImages.Width+cMargin;
+    r.Left := r.Left + CMargin + SmallImages.Width + CMargin;
     Canvas.TextRect(r, txt, [tfLeft, tfVerticalCenter, tfSingleLine, tfNoPrefix, tfEndEllipsis]);
 
     if not UseThemes then
     begin
       Windows.DrawFrameControl(canvas.Handle, page.CloseButtonRect,
-        DFC_CAPTION, DFCS_CAPTIONCLOSE+DFCS_FLAT);
+        DFC_CAPTION, DFCS_CAPTIONCLOSE + DFCS_FLAT);
     end
     else
     begin
@@ -1756,22 +2001,22 @@ procedure TDwsIdeForm.RefreshTabs;
       Canvas.MoveTo(tabRect.Left, tabRect.Bottom);
     Canvas.LineTo(tabRect.Left, tabRect.Top);
     Canvas.LineTo(tabRect.Right-cSlantMargin, tabRect.Top);
-    Canvas.LineTo(tabRect.Right-cSlantMargin+tabRect.Bottom-tabRect.Top, tabRect.Bottom);
+    Canvas.LineTo(tabRect.Right-cSlantMargin + tabRect.Bottom-tabRect.Top, tabRect.Bottom);
     if active then
     begin
-      Canvas.MoveTo(tabRect.Right - cSlantMargin + tabRect.Bottom - tabRect.Top, tabRect.Bottom - 1);
+      Canvas.MoveTo(tabRect.Right - CSlantMargin + tabRect.Bottom - tabRect.Top, tabRect.Bottom - 1);
       Canvas.LineTo(canvas.ClipRect.Right, tabRect.Bottom - 1);
     end;
   end;
 
 var
-  bmp : TBitmap;
-  canvas : TCanvas;
-  i, x : Integer;
-  availableWidth : Integer;
-  page : TEditorPage;
+  bmp: TBitmap;
+  canvas: TCanvas;
+  i, x: Integer;
+  availableWidth: Integer;
+  page: TEditorPage;
 begin
-  bmp := imgTabs.Picture.Bitmap;
+  bmp := ImageTabs.Picture.Bitmap;
   canvas := bmp.Canvas;
   canvas.Brush.Style := bsSolid;
   canvas.Font := Self.Font;
@@ -1790,15 +2035,15 @@ begin
   for i := 0 to FPages.Count - 1 do
   begin
     page := FPages[i];
-    page.FTabWidth :=  cMargin + SmallImages.Width
-      + cMargin + canvas.TextWidth(page.Caption)
-      + cMargin + cCloseButtonSize + 2*cMargin + cSlantMargin;
+    page.FTabWidth :=  CMargin + SmallImages.Width
+      + CMargin + canvas.TextWidth(page.Caption)
+      + CMargin + CCloseButtonSize + 2*CMargin + CSlantMargin;
   end;
 
   if FBasePageIndex>=FPages.Count then
     FBasePageIndex := FPages.Count - 1;
 
-  availableWidth := bmp.Width - 2 * cArrowButtonSize;
+  availableWidth := bmp.Width - 2 * CArrowButtonSize;
 
   while True do
   begin
@@ -1808,7 +2053,7 @@ begin
     begin
       page := FPages[i];
       page.FTabLeft := x;
-      x := x+page.FTabWidth;
+      x := x + page.FTabWidth;
     end;
 
     x := 0;
@@ -1844,35 +2089,35 @@ end;
 //
 procedure TDwsIdeForm.RefreshTabArrows;
 var
-  dc : THandle;
-  sbElement : TThemedScrollBar;
+  dc: THandle;
+  sbElement: TThemedScrollBar;
 begin
   if FPages.Count <= 1 then Exit;
 
   FLeftArrowActive := (FBasePageIndex > 0);
   FRightArrowActive :=    (FBasePageIndex < FPages.Count - 1)
-    and (FPages[FPages.Count - 1].TabRight > imgTabs.Width - 2 * cArrowButtonSize);
+    and (FPages[FPages.Count - 1].TabRight > ImageTabs.Width - 2 * CArrowButtonSize);
 
   if not (FLeftArrowActive or FRightArrowActive) then
     Exit;
 
-  dc := imgTabs.Picture.Bitmap.Canvas.Handle;
+  dc := ImageTabs.Picture.Bitmap.Canvas.Handle;
 
-  FTabArrowLeft.Top := (imgTabs.Height-cArrowButtonSize) div 2;
-  FTabArrowLeft.Bottom := FTabArrowLeft.Top+cArrowButtonSize;
-  FTabArrowLeft.Left := imgTabs.Width-2*cArrowButtonSize;
-  FTabArrowLeft.Right := imgTabs.Width-cArrowButtonSize;
+  FTabArrowLeft.Top := (ImageTabs.Height - cArrowButtonSize) div 2;
+  FTabArrowLeft.Bottom := FTabArrowLeft.Top + CArrowButtonSize;
+  FTabArrowLeft.Left := ImageTabs.Width - 2 * CArrowButtonSize;
+  FTabArrowLeft.Right := ImageTabs.Width - cArrowButtonSize;
   FTabArrowRight := FTabArrowLeft;
-  OffsetRect(FTabArrowRight, cArrowButtonSize, 0);
+  OffsetRect(FTabArrowRight, CArrowButtonSize, 0);
 
   if not UseThemes then
   begin
     Windows.DrawFrameControl(dc, FTabArrowLeft, DFC_SCROLL,
-      DFCS_SCROLLLEFT+DFCS_FLAT
+      DFCS_SCROLLLEFT + DFCS_FLAT
       + Ord(not FLeftArrowActive)*DFCS_INACTIVE
       + Ord(FHoveredLeftArrow)*DFCS_HOT);
     Windows.DrawFrameControl(dc, FTabArrowRight, DFC_SCROLL,
-      DFCS_SCROLLRIGHT+DFCS_FLAT
+      DFCS_SCROLLRIGHT + DFCS_FLAT
       + Ord(not FRightArrowActive)*DFCS_INACTIVE
       + Ord(FHoveredRightArrow)*DFCS_HOT);
   end
@@ -1897,91 +2142,90 @@ begin
     IDEStyleServices.DrawElement(dc, IDEStyleServices.GetElementDetails(sbElement), FTabArrowRight);
   end;
 
-  imgTabs.Invalidate;
+  ImageTabs.Invalidate;
 end;
 
 // IndexOfTab
 //
-function TDwsIdeForm.IndexOfTab(x : Integer) : Integer;
+function TDwsIdeForm.IndexOfTab(x: Integer): Integer;
 var
-  i : Integer;
-  page : TEditorPage;
+  i: Integer;
+  page: TEditorPage;
 begin
-  if x < imgTabs.Width - cArrowButtonSize * 2 then
-  begin
+  if x < ImageTabs.Width - CArrowButtonSize * 2 then
     for i := FBasePageIndex to FPages.Count - 1 do
     begin
       page := FPages[i];
-      if (x>=page.FTabLeft) and (x<page.FTabLeft+page.FTabWidth) then
+      if (x>=page.FTabLeft) and (x<page.FTabLeft + page.FTabWidth) then
         Exit(i);
     end;
-  end;
+
   Result := -1;
 end;
 
 
-function TDwsIdeForm.TryRunSelection( ADebug : boolean ) : boolean;
+function TDwsIdeForm.TryRunSelection(ADebug: Boolean): Boolean;
 var
-  S : string;
+  S: string;
 begin
   Result := CurrentEditor.SelAvail;
   if Result then
   begin
     S := CurrentEditor.SelText;
-    if IsValidIdentifier( S ) then
-      RunFunctionMethodByName( CurrentEditorPage.UnitName, S, ADebug, True {prompt} );
+    if IsValidIdentifier(S) then
+      RunFunctionMethodByName(CurrentEditorPage.UnitName, S, ADebug, True {prompt});
   end;
 end;
 
-procedure TDwsIdeForm.EditorPageAddNew(const AFileName: TFileName; ALoadFile : boolean );
+procedure TDwsIdeForm.EditorPageAddNew(const AFileName: TFileName; ALoadFile: Boolean);
 begin
-  FPages.Add( TEditorPage.Create( Self, AFileName, ALoadFile ) );
+  FPages.Add(TEditorPage.Create(Self, AFileName, ALoadFile));
   SetEditorCurrentPageIndex(FPages.Count - 1);
 end;
 
 procedure TDwsIdeForm.ListSymbols;
 begin
-  ListSymbolTable( FProgram.Table );
+  ListSymbolTable(FProgram.Table);
 end;
 
 procedure TDwsIdeForm.ClearCurrentLine;
 var
-  I : integer;
+  I: Integer;
 begin
   for I := 0 to EditorPageCount - 1 do
-    EditorPage( I ).SetCurrentLine( -1 );
+    EditorPage(I).SetCurrentLine(-1);
 end;
 
 procedure TDwsIdeForm.ClearAllBreakpoints;
 var
-  I : integer;
+  I: Integer;
 begin
-  dwsDebugger.Breakpoints.Clean;
+  Debugger.Breakpoints.Clean;
   for I := 0 to EditorPageCount - 1 do
-    EditorPage( I ).Editor.Invalidate;
+    EditorPage(I).Editor.Invalidate;
 end;
 
 function TDwsIdeForm.CurrentEditor: TSynEdit;
 begin
   if HasEditorPage then
-    Result := EditorPage( EditorCurrentPageIndex ).Editor
+    Result := EditorPage(EditorCurrentPageIndex).Editor
   else
      Result := nil;
 end;
 
 function TDwsIdeForm.CurrentEditorPage: TEditorPage;
 begin
-  Result := EditorPage( FActivePageIndex );
+  Result := EditorPage(FActivePageIndex);
 end;
 
 function TDwsIdeForm.ProjectSourceScript: string;
 var
-  sFileName : TFileName;
+  sFileName: TFileName;
 begin
-  EditorSaveAllIfModified( False );
+  EditorSaveAllIfModified(False);
   sFileName := ProjectSourceFileName;
-  if FileExists( sFileName ) then
-    Result := LoadTextFromFile( sFileName )
+  if FileExists(sFileName) then
+    Result := LoadTextFromFile(sFileName)
   else
      Result := '';
 end;
@@ -1993,54 +2237,43 @@ begin
     EditorCurrentPageIndex := Tag;
 end;
 
-procedure TDwsIdeForm.DoOnCodeSuggestionFormSelectItem(const AItemText: string);
-var
-  S : string;
-begin
-  S := CurrentEditor.LineText;
-  Insert( AItemText, S, CurrentEditor.CaretX );
-  CurrentEditor.Linetext := S;
-  CurrentEditor.CaretX := CurrentEditor.CaretX + Length( AItemText );
-  CurrentEditor.Modified := true;
-end;
-
-procedure TDwsIdeForm.dwsDebuggerDebug(exec: TdwsExecution;
+procedure TDwsIdeForm.DebuggerDebug(exec: TdwsExecution;
   expr: TExprBase);
 begin
-  OutputDebugString( 'dwsDebugger: Debug' );
+  OutputDebugString('dwsDebugger: Debug');
 end;
 
-procedure TDwsIdeForm.dwsDebuggerDebugStart(exec: TdwsExecution);
+procedure TDwsIdeForm.DebuggerDebugStart(exec: TdwsExecution);
 begin
-  OutputDebugString( 'dwsDebugger: Start' );
+  OutputDebugString('dwsDebugger: Start');
 end;
 
-procedure TDwsIdeForm.dwsDebuggerDebugStop(exec: TdwsExecution);
+procedure TDwsIdeForm.DebuggerDebugStop(exec: TdwsExecution);
 begin
-  OutputDebugString( 'dwsDebugger: Paused' );
+  OutputDebugString('dwsDebugger: Paused');
 end;
 
-procedure TDwsIdeForm.dwsDebuggerEnterFunc(exec: TdwsExecution;
+procedure TDwsIdeForm.DebuggerEnterFunc(exec: TdwsExecution;
   expr: TExprBase);
 //var
-//  R : TdwsExprLocationArray;
-//  I : integer;
+//  R: TdwsExprLocationArray;
+//  I: Integer;
 begin
 //  R := Exec.GetCallStack;
 //  I := Length(R);
 //  if I > 0 then
-//    ShowMessage( R[0].Location );
+//    ShowMessage(R[0].Location);
 
-  OutputDebugString( 'dwsDebugger: EnterFunc' );
+  OutputDebugString('dwsDebugger: EnterFunc');
 end;
 
-procedure TDwsIdeForm.dwsDebuggerLeaveFunc(exec: TdwsExecution;
+procedure TDwsIdeForm.DebuggerLeaveFunc(exec: TdwsExecution;
   expr: TExprBase);
 begin
-  OutputDebugString( 'dwsDebugger: LeaveFunc' );
+  OutputDebugString('dwsDebugger: LeaveFunc');
 end;
 
-procedure TDwsIdeForm.dwsDebuggerStateChanged(Sender: TObject);
+procedure TDwsIdeForm.DebuggerStateChanged(Sender: TObject);
 
   procedure UpdateDebugWindows;
   begin
@@ -2050,18 +2283,18 @@ procedure TDwsIdeForm.dwsDebuggerStateChanged(Sender: TObject);
   end;
 
 begin
-  case dwsDebugger.State of
+  case Debugger.State of
     dsIdle:;
     dsDebugRun :
       begin
         ClearCurrentLine;
-        AddStatusMessage( 'Running' );
+        AddStatusMessage(RStrRunning);
       end;
     dsDebugSuspending :;
     dsDebugSuspended :
       begin
-        AddStatusMessage( 'Paused' );
-        GotoScriptPos( dwsDebugger.CurrentScriptPos );
+        AddStatusMessage(RStrPaused);
+        GotoScriptPos(Debugger.CurrentScriptPos);
         UpdateDebugWindows;
       end;
     dsDebugResuming :;
@@ -2078,29 +2311,29 @@ procedure TDwsIdeForm.GotoHomePosition;
 begin
   FHomePositionCaptionSuffix := '';
   if FOptions.HomePositionFileName <> '' then
-    if OpenEditorPage( FOptions.HomePositionFileName ) then
+    if OpenEditorPage(FOptions.HomePositionFileName) then
     begin
       FHomePositionCaptionSuffix := FOptions.HomePositionFileName;
       if FOptions.HomePositionFileIdentifier <> '' then
       begin
-        CurrentEditorPage.GotoIdentifier( FOptions.HomePositionFileIdentifier );
-        FHomePositionCaptionSuffix := Format( '%s%s [%s]', [
+        CurrentEditorPage.GotoIdentifier(FOptions.HomePositionFileIdentifier);
+        FHomePositionCaptionSuffix := Format('%s%s [%s]', [
           FOptions.HomePositionFileName,
           sDwsIdeProjectSourceFileExt2,
-          FOptions.HomePositionFileIdentifier] );
+          FOptions.HomePositionFileIdentifier]);
       end;
     end;
 end;
 
-function TDwsIdeForm.CanGotoHomePosition : boolean;
+function TDwsIdeForm.CanGotoHomePosition: Boolean;
 begin
   Result := FOptions.HomePositionFileName <> '';
 end;
 
-procedure TDwsIdeForm.GotoScriptPos( AScriptPos : TScriptPos; AHiddenMainModule : boolean = False );
+procedure TDwsIdeForm.GotoScriptPos(AScriptPos: TScriptPos; AHiddenMainModule: Boolean = False);
 var
-  S : string;
-  I : integer;
+  S: string;
+  I: Integer;
 begin
   if AScriptPos.SourceFile <> nil then
   begin
@@ -2113,11 +2346,11 @@ begin
         I := ProjectSourceFileIndex
     end
     else
-      I := NameToEditorPageIndex( S );
+      I := NameToEditorPageIndex(S);
     if I <> -1 then
     begin
       EditorCurrentPageIndex := I;
-      CurrentEditorPage.SetCurrentLine( AScriptPos.Line, AScriptPos.Col );
+      CurrentEditorPage.SetCurrentLine(AScriptPos.Line, AScriptPos.Col);
       CurrentEditor.SetFocus;
     end;
   end;
@@ -2125,7 +2358,7 @@ end;
 
 function TDwsIdeForm.DwsIde_GetDebugger: TdwsDebugger;
 begin
-  Result := dwsDebugger;
+  Result := Debugger;
 end;
 
 procedure TDwsIdeForm.EditorChange(Sender: TObject);
@@ -2139,27 +2372,25 @@ begin
   //FScript.NotifyScriptModified;
 end;
 
-function TDwsIdeForm.FileIsOpenInEditor(
-  const AFileName: string): boolean;
+function TDwsIdeForm.FileIsOpenInEditor(const AFileName: TFileName): Boolean;
 var
   I: Integer;
 begin
   Result := True;
   for I := 0 to EditorPageCount - 1 do
-    if SameText( AFileName, EditorPage(I).FileName) then
+    if SameText(AFileName, EditorPage(I).FileName) then
       Exit;
   Result := False;
 end;
 
-function TDwsIdeForm.FileIsProjectSource(
-  const AFileName: string): boolean;
+function TDwsIdeForm.FileIsProjectSource(const AFileName: TFileName): Boolean;
 begin
-  Result := SameText( ExtractFileExt( AFileName ), sDwsIdeProjectSourceFileExt );
+  Result := SameText(ExtractFileExt(AFileName), sDwsIdeProjectSourceFileExt);
 end;
 
-function TDwsIdeForm.GetProjectSourceFileName: string;
+function TDwsIdeForm.GetProjectSourceFileName: TFileName;
 var
-  I : integer;
+  I: Integer;
 begin
   I := ProjectSourceFileIndex;
   if I >= 0 then
@@ -2168,17 +2399,17 @@ begin
     Result := '';
 end;
 
-function TDwsIdeForm.HasEditorPage: boolean;
+function TDwsIdeForm.HasEditorPage: Boolean;
 begin
   Result := EditorCurrentPageIndex <> -1;
 end;
 
-function TDwsIdeForm.HasProject: boolean;
+function TDwsIdeForm.HasProject: Boolean;
 begin
-  Result := (ProjectFileName <> '') and ((ProjectSourceFileIndex <> -1) or FileExists( ProjectSourceFileName ));
+  Result := (ProjectFileName <> '') and ((ProjectSourceFileIndex <> -1) or FileExists(ProjectSourceFileName));
 end;
 
-procedure TDwsIdeForm.imgTabsMouseLeave(Sender: TObject);
+procedure TDwsIdeForm.ImageTabsMouseLeave(Sender: TObject);
 begin
   if FHoveredPageIndex >= 0 then
   begin
@@ -2187,12 +2418,12 @@ begin
   end;
 end;
 
-procedure TDwsIdeForm.imgTabsMouseMove(Sender: TObject; Shift: TShiftState; X,
+procedure TDwsIdeForm.ImageTabsMouseMove(Sender: TObject; Shift: TShiftState; X,
   Y: Integer);
 var
-  newHover : Integer;
-  newHoverCloseButton, needRefresh, needRefreshArrows : Boolean;
-  newHoverArrow : Boolean;
+  newHover: Integer;
+  newHoverCloseButton, needRefresh, needRefreshArrows: Boolean;
+  newHoverArrow: Boolean;
 begin
   needRefresh := False;
   newHover := IndexOfTab(x);
@@ -2202,9 +2433,9 @@ begin
     needRefresh := True;
     Application.CancelHint;
     if newHover >= 0 then
-      imgTabs.Hint := FPages[newHover].Hint
+      ImageTabs.Hint := FPages[newHover].Hint
     else
-      imgTabs.Hint := '';
+      ImageTabs.Hint := '';
   end;
 
   if newHover >= 0 then
@@ -2239,22 +2470,22 @@ begin
     RefreshTabArrows;
 end;
 
-function TDwsIdeForm.IsCompiled: boolean;
+function TDwsIdeForm.IsCompiled: Boolean;
 begin
-  Result := Assigned( FProgram ) and not FProgram.Msgs.HasErrors;
+  Result := Assigned(FProgram) and not FProgram.Msgs.HasErrors;
 end;
 
-procedure TDwsIdeForm.lbMessagesDblClick(Sender: TObject);
+procedure TDwsIdeForm.ListBoxMessagesDblClick(Sender: TObject);
 var
-  I : integer;
-  sPos : PScriptPos;
+  I: Integer;
+  sPos: PScriptPos;
 begin
-  I := lbMessages.ItemIndex;
+  I := ListBoxMessages.ItemIndex;
   if I < 0 then
     Exit;
-  sPos := PScriptPos(lbMessages.Items.Objects[I]);
-  if Assigned( FProgram ) and Assigned( sPos ) then
-    GotoScriptPos( sPos^ );
+  sPos := PScriptPos(ListBoxMessages.Items.Objects[I]);
+  if Assigned(FProgram) and Assigned(sPos) then
+    GotoScriptPos(sPos^);
 end;
 
 procedure TDwsIdeForm.pcEditorMouseDown(Sender: TObject;
@@ -2262,18 +2493,18 @@ procedure TDwsIdeForm.pcEditorMouseDown(Sender: TObject;
 
   procedure AddPageList;
   var
-    PageItem : TMenuItem;
-    Page : TEditorPage;
-    I : integer;
-    S : string;
+    PageItem: TMenuItem;
+    Page: TEditorPage;
+    I: Integer;
+    S: string;
   begin
-    miPages.Clear;
+    MenuItemPageTabPages.Clear;
     for I := 0 to EditorPageCount - 1 do
     begin
-      PageItem := TMenuItem.Create( EditorPageTabContextMenu );
-      miPages.Add( PageItem );
+      PageItem := TMenuItem.Create(EditorPageTabContextMenu);
+      MenuItemPageTabPages.Add(PageItem);
       Page := EditorPage(I);
-      S := Format( '%s (%s)', [Page.Caption, Page.FileName] );
+      S := Format('%s (%s)', [Page.Caption, Page.FileName]);
       PageItem.Caption := S;
       PageItem.OnClick := DoOnClickEditorPageTabContextMenuPageItem;
       PageItem.Tag    := I;
@@ -2282,11 +2513,11 @@ procedure TDwsIdeForm.pcEditorMouseDown(Sender: TObject;
   end;
 
 var
-  P : TPoint;
-  tabIndex : Integer;
+  P: TPoint;
+  tabIndex: Integer;
 begin
   FpcEditorLastMouseButton := Button;
-  FpcEditorLastMouseXY := Point( X, Y );
+  FpcEditorLastMouseXY := Point(X, Y);
 
   tabIndex := IndexOfTab(X);
   if (tabIndex>=0) then
@@ -2302,8 +2533,8 @@ begin
   if FpcEditorLastMouseButton = mbRight then
   begin
     AddPageList;
-    P := imgTabs.ClientToScreen( FpcEditorLastMouseXY );
-    EditorPageTabContextMenu.Popup( P.X, P.Y );
+    P := ImageTabs.ClientToScreen(FpcEditorLastMouseXY);
+    EditorPageTabContextMenu.Popup(P.X, P.Y);
   end;
 
   if FHoveredLeftArrow then
@@ -2320,17 +2551,17 @@ end;
 
 procedure TDwsIdeForm.pnlPageControlResize(Sender: TObject);
 begin
-  imgTabs.Picture.Bitmap.Width := imgTabs.Width;
+  ImageTabs.Picture.Bitmap.Width := ImageTabs.Width;
   RefreshTabs;
 end;
 
-function TDwsIdeForm.ProjectSourceFileIndex: integer;
+function TDwsIdeForm.ProjectSourceFileIndex: Integer;
 var
-  S : string;
+  S: string;
 begin
-  S := ExtractFileName(ProjectfileNameToProjectSourceFileName( ProjectFileName ));
+  S := ExtractFileName(ProjectfileNameToProjectSourceFileName(ProjectFileName));
   for Result := 0 to EditorPageCount - 1 do
-    if SameText( S, ExtractFileName( EditorPage(Result).FileName)) then
+    if SameText(S, ExtractFileName(EditorPage(Result).FileName)) then
       Exit;
   Result := -1;
 end;
@@ -2339,18 +2570,18 @@ procedure TDwsIdeForm.SetScript(const Value: TDelphiWebScript);
 begin
   FScript := Value;
 
-  if not Assigned( FScript ) then
-    raise EDwsIde.Create( RStrScriptCannotBeNil );
+  if not Assigned(FScript) then
+    raise EDwsIde.Create(RStrScriptCannotBeNil);
 
   if FScript.Config.ScriptPaths.Count = 0 then
-    raise EDwsIde.Create( RStrScriptDoesNotDefineMainPath );
+    raise EDwsIde.Create(RStrScriptDoesNotDefineMainPath);
 
-  if FScript.Config.ScriptPaths.IndexOf( FScriptFolder ) = -1 then
-    FScript.Config.ScriptPaths.Add( FScriptFolder );
+  if FScript.Config.ScriptPaths.IndexOf(FScriptFolder) = -1 then
+    FScript.Config.ScriptPaths.Add(FScriptFolder);
 
   // Script result type has been saved before calling the IDE form
   // so we can load an 'output window' connection here..
-  FScript.Config.ResultType := TOutputWindowStringResultType.Create( FScript, Self );
+  FScript.Config.ResultType := TOutputWindowStringResultType.Create(FScript, Self);
 end;
 
 procedure TDwsIdeForm.SetScriptFolder(const Value: string);
@@ -2362,9 +2593,9 @@ begin
   SaveProjectDialog.DefaultFolder := FScriptFolder;
 end;
 
-procedure TDwsIdeForm.SetEditorCurrentPageIndex(const Value: integer);
+procedure TDwsIdeForm.SetEditorCurrentPageIndex(const Value: Integer);
 var
-  page : TEditorPage;
+  page: TEditorPage;
 begin
   if Value = FActivePageIndex then
     Exit;
@@ -2376,23 +2607,23 @@ begin
   try
     if FActivePageIndex>=0 then
     begin
-      page := EditorPage( Value );
+      page := EditorPage(Value);
       page.Visible := False;
       page.Parent := nil;
 
       // Disconnect search items
       page.Editor.SearchEngine := nil;
-      if actSearchFind.Dialog <> nil then
-        actSearchFind.Dialog.CloseDialog;
-      if actSearchReplace.Dialog <> nil then
-        actSearchReplace.Dialog.CloseDialog;
+      if ActionSearchFind.Dialog <> nil then
+        ActionSearchFind.Dialog.CloseDialog;
+      if ActionSearchReplace.Dialog <> nil then
+        ActionSearchReplace.Dialog.CloseDialog;
     end;
 
     if (Value >= 0) and (Value < FPages.Count) then
     begin
       FActivePageIndex := Value;
       RefreshTabs;
-      page := EditorPage( Value );
+      page := EditorPage(Value);
       page.Align := alClient;
       page.Parent := pnlPageControl;
       page.Visible := True;
@@ -2409,12 +2640,12 @@ begin
   end;
 end;
 
-procedure TDwsIdeForm.SetProjectFileName(const Value: string);
+procedure TDwsIdeForm.SetProjectFileName(const Value: TFileName);
 begin
-  if FileExists( Value ) then
+  if FileExists(Value) then
   begin
     FProjectFileName := Value;
-    LoadProjectFile( FProjectFileName );
+    LoadProjectFile(FProjectFileName);
   end
   else
     FProjectFileName := '';
@@ -2425,12 +2656,12 @@ procedure TDwsIdeForm.UpdateTimerTimer(Sender: TObject);
   procedure UpdateFormCaption;
   begin
     if FHomePositionCaptionSuffix <> '' then
-      Caption := Format( 'Home: %s', [FHomePositionCaptionSuffix] )
+      Caption := Format('Home: %s', [FHomePositionCaptionSuffix])
     else
     if ProjectfileName = '' then
       Caption := '[No project]'
     else
-      Caption := Format( '%s  (%s)', [ExtractFileName(ProjectFilename), ExtractfileDir(ProjectFilename)] );
+      Caption := Format('%s  (%s)', [ExtractFileName(ProjectFilename), ExtractfileDir(ProjectFilename)]);
   end;
 
   procedure UpdateStatusBarPanels;
@@ -2440,11 +2671,11 @@ procedure TDwsIdeForm.UpdateTimerTimer(Sender: TObject);
     SOverwrite = 'Overwrite';
     SReadOnly  = 'Read Only';
   const
-    MacroRecorderStates : array[ TSynMacroState ] of string = (
-      'Stopped', 'Recording', 'Playing', 'Paused' );
+    MacroRecorderStates: array[ TSynMacroState ] of string = (
+      'Stopped', 'Recording', 'Playing', 'Paused');
   var
     ptCaret: TPoint;
-    Editor : TSynEdit;
+    Editor: TSynEdit;
   begin
     Editor := CurrentEditor;
     if Editor <> nil then
@@ -2487,105 +2718,395 @@ begin
   UpdateFormCaption;
 end;
 
-procedure TDwsIdeForm.WMCodeSuggest(var AMessage: TMessage);
-begin
-  CodeSuggest( csAutoComplete );
-end;
-
-procedure TDwsIdeForm.SetProjectSourceFileName(const Value: string);
+procedure TDwsIdeForm.SetProjectSourceFileName(const Value: TFileName);
 var
-  I : integer;
+  I: Integer;
 begin
   I := ProjectSourceFileIndex;
   if I >= 0 then
   begin
-    EditorPage( I ).FileName := Value;
-    FPages[i].Caption := ChangeFileExt( ExtractFileName( Value ), '' ) + ' *' ;
+    EditorPage(I).FileName := Value;
+    FPages[i].Caption := ChangeFileExt(ExtractFileName(Value), '') + ' *' ;
   end;
 end;
 
 procedure TDwsIdeForm.ShowExecutableLines;
 var
-  I : integer;
+  I: Integer;
 begin
   for I := 0 to EditorPageCount - 1 do
     EditorPage(I).ShowExecutableLines;
 end;
 
-procedure TDwsIdeForm.ListSymbolTable( ATable : TSymbolTable );
+procedure TDwsIdeForm.SynCodeCompletionExecute(Kind: SynCompletionType;
+  Sender: TObject; var CurrentInput: string; var x, y: Integer;
+  var CanExecute: Boolean);
 var
-  SL : TStringList;
-  S : string;
+  SuggestionIndex: Integer;
+  Proposal: TSynCompletionProposal;
+  SourceFile: TSourceFile;
+  ScriptPos: TScriptPos;
+  ScriptProgram: IdwsProgram;
+  Suggestions: IdwsSuggestions;
+  Item, AddOn: string;
+begin
+  CanExecute := False;
+
+  Assert(Sender is TSynCompletionProposal);
+
+  // check the proposal type
+  Proposal := TSynCompletionProposal(Sender);
+  Proposal.InsertList.Clear;
+  Proposal.ItemList.Clear;
+
+  if Assigned(Proposal.Form) then
+  begin
+    Proposal.Form.DoubleBuffered := True;
+    Proposal.Resizeable := True;
+    Proposal.Form.Resizeable := True;
+    Proposal.Form.BorderStyle := bsSizeToolWin;
+  end;
+
+  // use this handler only in case the kind is set to ctCode!
+  Assert(Kind = ctCode);
+
+  // get script program
+  ScriptProgram := GetCompiledScript;
+  if ScriptProgram = nil then
+    Exit;
+
+  // ok, get the compiled "program" from DWS
+  SourceFile := ScriptProgram.SourceList.MainScript.SourceFile;
+  ScriptPos := TScriptPos.Create(SourceFile, CurrentEditor.CaretY, CurrentEditor.CaretX);
+  Suggestions := TDWSSuggestions.Create(ScriptProgram, ScriptPos,
+    [soNoReservedWords]);
+
+  // now populate the suggestion box
+  for SuggestionIndex := 0 to Suggestions.Count - 1 do
+  begin
+    // discard empty suggestions
+    if Suggestions.Caption[SuggestionIndex] = '' then
+      Continue;
+
+    with CurrentEditor.Highlighter.KeywordAttribute do
+      Item := '\color{' + ColorToString(Foreground) + '}';
+
+    case Suggestions.Category[SuggestionIndex] of
+      scUnit:
+        Item := Item + 'unit';
+      scType:
+        Item := Item + 'type';
+      scClass:
+        Item := Item + 'class';
+      scRecord:
+        Item := Item + 'record';
+      scInterface:
+        Item := Item + 'interface';
+      scFunction:
+        Item := Item + 'function';
+      scProcedure:
+        Item := Item + 'procedure';
+      scMethod:
+        Item := Item + 'method';
+      scConstructor:
+        Item := Item + 'constructor';
+      scDestructor:
+        Item := Item + 'destructor';
+      scProperty:
+        Item := Item + 'property';
+      scEnum:
+        Item := Item + 'enum';
+      scElement:
+        Item := Item + 'element';
+      scParameter:
+        Item := Item + 'param';
+      scVariable:
+        Item := Item + 'var';
+      scConst:
+        Item := Item + 'const';
+      scReservedWord:
+        Item := Item + 'reserved';
+    end;
+
+    Item := Item + ' \column{}';
+    with CurrentEditor.Highlighter.IdentifierAttribute do
+      Item := Item + '\color{' + ColorToString(Foreground) + '}';
+    Item := Item + Suggestions.Code[SuggestionIndex];
+    AddOn := Suggestions.Caption[SuggestionIndex];
+    Delete(AddOn, 1, Length(Suggestions.Code[SuggestionIndex]));
+    Item := Item + '\style{-B}' + AddOn;
+    Proposal.ItemList.Add(Item);
+    Proposal.InsertList.Add(Suggestions.Code[SuggestionIndex]);
+  end;
+
+  CanExecute := True;
+end;
+
+procedure TDwsIdeForm.SynCodeCompletionShow(Sender: TObject);
+var
+  CompletionProposalForm: TSynBaseCompletionProposalForm;
+begin
+  inherited;
+
+  if (Sender <> nil) and (Sender is TSynBaseCompletionProposalForm) then
+  begin
+    CompletionProposalForm := TSynBaseCompletionProposalForm(Sender);
+    try
+      CompletionProposalForm.DoubleBuffered := True;
+
+      if CompletionProposalForm.Height > 300 then
+        CompletionProposalForm.Height := 300
+    except
+      on Exception do;
+    end;
+  end;
+end;
+
+procedure TDwsIdeForm.SynParametersExecute(Kind: SynCompletionType;
+  Sender: TObject; var CurrentInput: string; var x, y: Integer;
+  var CanExecute: Boolean);
+
+  procedure GetParameterInfosForCursor(const AProgram: IdwsProgram; Col,
+    Line: Integer; var ParameterInfos: TStrings; InfoPosition: Integer = 0);
+
+    procedure ParamsToInfo(const AParams: TParamsSymbolTable);
+    var
+      y: Integer;
+      ParamsStr: string;
+    begin
+      ParamsStr := '';
+      if (AParams <> nil) and (AParams.Count > 0) then
+      begin
+        if InfoPosition >= AParams.Count then
+          Exit;
+
+        ParamsStr := '"' + AParams[0].Description + ';"';
+        for y := 1 to AParams.Count - 1 do
+          ParamsStr := ParamsStr + ',"' + AParams[y].Description + ';"';
+      end else
+      if InfoPosition > 0 then
+        Exit;
+
+      if (ParameterInfos.IndexOf(ParamsStr) < 0) then
+        ParameterInfos.Add(ParamsStr);
+    end;
+
+  var
+    Overloads: TFuncSymbolList;
+
+    procedure CollectMethodOverloads(methSym: TMethodSymbol);
+    var
+      Member: TSymbol;
+      Struct: TCompositeTypeSymbol;
+      LastOverloaded: TMethodSymbol;
+    begin
+      LastOverloaded := methSym;
+      Struct := methSym.StructSymbol;
+      repeat
+        for Member in Struct.Members do
+        begin
+          if not UnicodeSameText(Member.Name, methSym.Name) then
+            Continue;
+          if not (Member is TMethodSymbol) then
+            Continue;
+
+          LastOverloaded := TMethodSymbol(Member);
+          if not Overloads.ContainsChildMethodOf(LastOverloaded) then
+            Overloads.Add(LastOverloaded);
+        end;
+
+        Struct := Struct.Parent;
+      until (Struct = nil) or not LastOverloaded.IsOverloaded;
+    end;
+
+  var
+    ItemIndex: Integer;
+    FuncSymbol: TFuncSymbol;
+
+    SymbolDictionary: TdwsSymbolDictionary;
+    Symbol, TestSymbol: TSymbol;
+  begin
+    // make sure the string list is present
+    Assert(Assigned(ParameterInfos));
+
+    // ensure a compiled program is assigned
+    if not Assigned(AProgram) then
+      Exit;
+
+    SymbolDictionary := AProgram.SymbolDictionary;
+    Symbol := SymbolDictionary.FindSymbolAtPosition(Col, Line, MSG_MainModule);
+
+    if (Symbol is TSourceMethodSymbol) then
+    begin
+      Overloads := TFuncSymbolList.Create;
+      try
+        CollectMethodOverloads(TSourceMethodSymbol(Symbol));
+        for ItemIndex := 0 to Overloads.Count - 1 do
+        begin
+          FuncSymbol := Overloads[ItemIndex];
+          ParamsToInfo(FuncSymbol.Params);
+        end;
+      finally
+        Overloads.Free;
+      end;
+    end else
+    if (Symbol is TFuncSymbol) then
+    begin
+      ParamsToInfo(TFuncSymbol(Symbol).Params);
+
+      if TFuncSymbol(Symbol).IsOverloaded then
+      begin
+        for ItemIndex := 0 to SymbolDictionary.Count - 1 do
+        begin
+          TestSymbol := SymbolDictionary.Items[ItemIndex].Symbol;
+
+          if (TestSymbol.ClassType = Symbol.ClassType) and
+            SameText(TFuncSymbol(TestSymbol).Name, TFuncSymbol(Symbol).Name) and
+            (TestSymbol <> Symbol) then
+            ParamsToInfo(TFuncSymbol(TestSymbol).Params);
+        end;
+      end
+    end;
+
+    // check if no parameters at all is an option, if so: replace and move to top
+    ItemIndex := ParameterInfos.IndexOf('');
+    if ItemIndex >= 0 then
+    begin
+      ParameterInfos.Delete(ItemIndex);
+      ParameterInfos.Insert(0, RStrNoParametersRequired);
+    end;
+  end;
+
+
+var
+  LineText: string;
+  Proposal: TSynCompletionProposal;
+  LocLine: string;
+  TmpX: Integer;
+  TmpLocation, StartX, ParenCounter: Integer;
+  ParameterInfoList: TStrings;
+  ScriptProgram: IdwsProgram;
+begin
+  CanExecute := False;
+  Assert(Kind = ctParams);
+
+  // get script program
+  ScriptProgram := GetCompiledScript;
+  if ScriptProgram = nil then
+    Exit;
+
+  // check the proposal type
+  if Sender is TSynCompletionProposal then
+  begin
+    Proposal := TSynCompletionProposal(Sender);
+    Proposal.InsertList.Clear;
+    Proposal.ItemList.Clear;
+    ParameterInfoList := TStrings(Proposal.ItemList);
+
+    // get current line
+    LineText := CurrentEditor.LineText;
+
+    with CurrentEditor do
+    begin
+      // get current compiled program
+      if not Assigned(ScriptProgram) then
+        Exit;
+
+      LocLine := LineText;
+
+      //go back from the cursor and find the first open paren
+      TmpX := CaretX;
+      if TmpX > Length(LocLine) then
+        TmpX := Length(LocLine)
+      else Dec(TmpX);
+      TmpLocation := 0;
+
+      while (TmpX > 0) and not CanExecute do
+      begin
+        if LocLine[TmpX] = ',' then
+        begin
+          Inc(TmpLocation);
+          Dec(TmpX);
+        end else if LocLine[TmpX] = ')' then
+        begin
+          // we found a close, go till it's opening paren
+          ParenCounter := 1;
+          Dec(TmpX);
+          while (TmpX > 0) and (ParenCounter > 0) do
+          begin
+            if LocLine[TmpX] = ')' then
+              Inc(ParenCounter)
+            else
+            if LocLine[TmpX] = '(' then
+              Dec(ParenCounter);
+            Dec(TmpX);
+          end;
+          if TmpX > 0 then Dec(TmpX);  // eat the open paren
+        end else if LocLine[TmpX] = '(' then
+        begin
+          // we have a valid open paren, lets see what the word before it is
+          StartX := TmpX;
+          while (TmpX > 0) and not IsIdentChar(LocLine[TmpX])do
+            Dec(TmpX);
+          if TmpX > 0 then
+          begin
+            while (TmpX > 0) and IsIdentChar(LocLine[TmpX]) do
+              Dec(TmpX);
+            Inc(TmpX);
+
+            GetParameterInfosForCursor(ScriptProgram, TmpX,
+              CurrentEditor.CaretY, ParameterInfoList, TmpLocation);
+
+            CanExecute := ParameterInfoList.Count > 0;
+
+            if not CanExecute then
+            begin
+              TmpX := StartX;
+              Dec(TmpX);
+            end
+            else
+              TSynCompletionProposal(Sender).Form.CurrentIndex := TmpLocation;
+          end;
+        end else Dec(TmpX)
+      end;
+    end;
+  end;
+end;
+
+procedure TDwsIdeForm.ListSymbolTable(ATable: TSymbolTable);
+var
+  SL: TStringList;
+  S: string;
 begin
   SL := TStringList.Create;
   try
-    SymbolsToStrings( ATable, SL );
+    SymbolsToStrings(ATable, SL);
 
     S := SL.Text;
-    ShowMessage( S );
+    ShowMessage(S);
   finally
     SL.Free
   end;
 end;
 
-procedure TDwsIdeForm.CodeSuggest( ACodeSuggestionMode : TCodeSuggestionMode );
-var
-  Suggestions   : IDwsSuggestions;
-  ScriptPos     : TScriptPos;
-  ScriptProgram : IdwsProgram;
-  ScriptSourceItem : TScriptSourceItem;
-  S : string;
-begin
-  if not HasEditorPage then
-    Exit;
-
-  try
-    if HasProject then
-      S := ProjectSourceScript // Use the main file, eg dws
-    else
-      S := UnitMainScript( CurrentEditorPage.UnitName, '' ); // make a main file that simply uses the current page
-
-    ScriptProgram := FScript.Compile( S );
-  except
-  end;
-
-  if ScriptProgram = nil then
-    Exit;
-
-  //ListSymbolTable( ScriptProgram.Table ); // << for debugging if required
-
-  ScriptSourceItem := ScriptProgram.SourceList.FindScriptSourceItem( CurrentEditorPage.UnitName );
-  if Assigned( ScriptSourceItem ) then
-  begin
-    ScriptPos := TScriptPos.Create( ScriptSourceItem.SourceFile, CurrentEditor.CaretY, CurrentEditor.CaretX );
-    Suggestions := TdwsSuggestions.Create( ScriptProgram, ScriptPos );
-
-    if (ACodeSuggestionMode = csCodeProposal) or (Suggestions.PreviousSymbol <> nil) then
-      FCodeProposalForm.Open(
-        CurrentEditor.ClientToScreen( CurrentEditor.RowColumnToPixels( CurrentEditor.DisplayXY )),
-        ACodeSuggestionMode,
-        Suggestions );
-  end;
-end;
-
 procedure TDwsIdeForm.ClearExecutableLines;
 var
-  I : integer;
+  I: Integer;
 begin
   for I := 0 to EditorPageCount - 1 do
     EditorPage(I).ClearExecutableLines;
 end;
 
-procedure TDwsIdeForm.EditorPageClose(AIndex: integer);
+procedure TDwsIdeForm.EditorPageClose(AIndex: Integer);
 var
-  Page : TEditorPage;
+  Page: TEditorPage;
 begin
   if AIndex = -1 then
     Exit;
 
-  Page := EditorPage( AIndex );
+  Page := EditorPage(AIndex);
 
-  Page.SaveIfModified( True );
+  Page.SaveIfModified(True);
 
   if EditorCurrentPageIndex>0 then
      EditorCurrentPageIndex := EditorCurrentPageIndex - 1
@@ -2602,135 +3123,135 @@ begin
   RefreshTabs;
 end;
 
-function TDwsIdeForm.EditorPageCount: integer;
+function TDwsIdeForm.EditorPageCount: Integer;
 begin
   Result := FPages.Count;
 end;
 
-function TDwsIdeForm.EditorPage(AIndex: integer) : TEditorPage;
+function TDwsIdeForm.EditorPage(AIndex: Integer): TEditorPage;
 begin
   Result := FPages[AIndex];
 end;
 
-procedure TDwsIdeForm.SaveProjectFileAs( const AProjectFileName : string );
+procedure TDwsIdeForm.SaveProjectFileAs(const AProjectFileName: TFileName);
 
-  procedure SaveBreakpoints( AData : IXMLProjectConfigType );
+  procedure SaveBreakpoints(AData: IXMLProjectConfigType);
   var
-    I : integer;
-    Breakpoint : IXMLBreakpointType;
+    I: Integer;
+    Breakpoint: IXMLBreakpointType;
   begin
     AData.Breakpoints.Clear;
-    for I := 0 to dwsDebugger.Breakpoints.Count - 1 do
+    for I := 0 to Debugger.Breakpoints.Count - 1 do
     begin
       Breakpoint := AData.Breakpoints.Add;
-      Breakpoint.SourceName := dwsDebugger.Breakpoints[I].SourceName;
-      Breakpoint.LineNum   := dwsDebugger.Breakpoints[I].Line;
-      Breakpoint.Enabled   := dwsDebugger.Breakpoints[I].Enabled;
+      Breakpoint.SourceName := Debugger.Breakpoints[I].SourceName;
+      Breakpoint.LineNum := Debugger.Breakpoints[I].Line;
+      Breakpoint.Enabled := Debugger.Breakpoints[I].Enabled;
     end;
   end;
 
-  procedure SaveWatches( AData : IXMLProjectConfigType );
+  procedure SaveWatches(AData: IXMLProjectConfigType);
   var
-    I : integer;
-    Watch : IXMLWatchType;
+    I: Integer;
+    Watch: IXMLWatchType;
   begin
     AData.Watches.Clear;
-    for I := 0 to dwsDebugger.Watches.Count - 1 do
+    for I := 0 to Debugger.Watches.Count - 1 do
     begin
       Watch := AData.Watches.Add;
-      Watch.Expression := dwsDebugger.Watches[I].ExpressionText;
+      Watch.Expression := Debugger.Watches[I].ExpressionText;
     end;
   end;
 
 var
-  I : integer;
-  XMLPage          : IXMLEditorPageType;
-  XMLDocument      : IXMLDocument;
-  Data             : IXMLProjectConfigType;
-  Page             : TEditorPage;
-  S                : string;
+  I: Integer;
+  XMLPage: IXMLEditorPageType;
+  XMLDocument: IXMLDocument;
+  Data: IXMLProjectConfigType;
+  Page: TEditorPage;
+  S: string;
 begin
   XMLDocument := NewXMLDocument;
-  Data := XMLDocument.GetDocBinding('ProjectConfig',TXMLProjectConfigType) as IXMLProjectConfigType;
+  Data := XMLDocument.GetDocBinding('ProjectConfig', TXMLProjectConfigType) as IXMLProjectConfigType;
 
   // Make an empty project source file if required
-  S := ProjectfileNameToProjectSourceFileName( AProjectFilename );
+  S := ProjectfileNameToProjectSourceFileName(AProjectFilename);
   if not FileExists(S) then
-    SaveTextToUTF8File( S, '' );
+    SaveTextToUTF8File(S, '');
 
   for I := 0 to EditorPageCount - 1 do
   begin
-    Page := EditorPage( I );
+    Page := EditorPage(I);
 
-    Page.SaveIfModified( True );
+    Page.SaveIfModified(True);
 
     XMLPage := Data.EditorPages.EditorPage.Add;
 
     XMLPage.FileName := ExtractRelativePath(
       IncludeTrailingBackslash(FScriptFolder),
-      Page.FileName );
-    XMLPage.Name    := JustFileName( Page.FileName );
+      Page.FileName);
+    XMLPage.Name := JustFileName(Page.FileName);
   end;
 
   Data.EditorPages.ActivePageIndex := EditorCurrentPageIndex;
 
-  SaveBreakpoints( Data );
-  SaveWatches( Data );
+  SaveBreakpoints(Data);
+  SaveWatches(Data);
 
-  XMLDocument.XML.Text := FormatXMLData( XMLDocument.XML.Text);
+  XMLDocument.XML.Text := FormatXMLData(XMLDocument.XML.Text);
   XMLDocument.Active := True;
 
-  XMLDocument.SaveToFile( AProjectFileName );
+  XMLDocument.SaveToFile(AProjectFileName);
 
   FProjectFileName := AProjectFileName;
 end;
 
-procedure TDwsIdeForm.LoadProjectFile( const AProjectFileName : string );
+procedure TDwsIdeForm.LoadProjectFile(const AProjectFileName: TFileName);
 
-  procedure LoadBreakpoints( AData : IXMLProjectConfigType );
+  procedure LoadBreakpoints(AData: IXMLProjectConfigType);
   var
-    I, iEditorPage : integer;
-    Breakpoint : IXMLBreakpointType;
+    I, iEditorPage: Integer;
+    Breakpoint: IXMLBreakpointType;
   begin
-    dwsDebugger.Breakpoints.Clean;
+    Debugger.Breakpoints.Clean;
     for I := 0 to AData.Breakpoints.Count - 1 do
     begin
       Breakpoint := AData.Breakpoints[I];
 
-      iEditorPage := NameToEditorPageIndex( Breakpoint.SourceName );
+      iEditorPage := NameToEditorPageIndex(Breakpoint.SourceName);
       if iEditorPage <> -1 then
         if (BreakPoint.LineNum >= 1) then
-          if BreakPoint.LineNum <= EditorPage( iEditorPage ).FEditor.Lines.Count then
+          if BreakPoint.LineNum <= EditorPage(iEditorPage).FEditor.Lines.Count then
           begin
-            dwsDebugger.Breakpoints.Add( Breakpoint.LineNum, Breakpoint.SourceName );
-            dwsDebugger.Breakpoints[I].Enabled := Breakpoint.Enabled;
+            Debugger.Breakpoints.Add(Breakpoint.LineNum, Breakpoint.SourceName);
+            Debugger.Breakpoints[I].Enabled := Breakpoint.Enabled;
           end;
     end;
   end;
 
-  procedure LoadWatches( AData : IXMLProjectConfigType );
+  procedure LoadWatches(AData: IXMLProjectConfigType);
   var
-    I : integer;
-    Watch : IXMLWatchType;
+    I: Integer;
+    Watch: IXMLWatchType;
   begin
-    dwsDebugger.Watches.Clean;
+    Debugger.Watches.Clean;
     for I := 0 to AData.Watches.Count - 1 do
     begin
       Watch := AData.Watches[I];
-      dwsDebugger.Watches.Add( Watch.Expression );
+      Debugger.Watches.Add(Watch.Expression);
     end;
 
     DwsIdeWatchesFrame.Redraw;
   end;
 
 var
-  I : integer;
-  sFileName : string;
-  XMLDocument   : IXMLDocument;
-  Data          : IXMLProjectConfigType;
+  I: Integer;
+  sFileName: TFileName;
+  XMLDocument: IXMLDocument;
+  Data: IXMLProjectConfigType;
 begin
-  if not FileExists( AProjectFileName) then
-    raise EDwsIde.CreateFmt( 'Project file does not exist (%s)', [AProjectFileName]);
+  if not FileExists(AProjectFileName) then
+    raise EDwsIde.CreateFmt(RStrProjectFileDoesNotExist, [AProjectFileName]);
 
   EditorCloseAllPages;
 
@@ -2741,24 +3262,24 @@ begin
 
   FProgram := nil;
 
-  XMLDocument := LoadXMLDocument( AProjectFileName );
-  Data := XMLDocument.GetDocBinding('ProjectConfig',TXMLProjectConfigType) as IXMLProjectConfigType;
+  XMLDocument := LoadXMLDocument(AProjectFileName);
+  Data := XMLDocument.GetDocBinding('ProjectConfig', TXMLProjectConfigType) as IXMLProjectConfigType;
   for I := 0 to Data.EditorPages.EditorPage.Count - 1 do
   begin
-    sFileName :=
-      IncludeTrailingBackslash( FScriptFolder ) + Data.EditorPages.EditorPage[I].FileName;
-    if FileExists( sFileName ) and not FileIsOpenInEditor( sFileName ) then
-      EditorPageAddNew( sFileName, True );
+    sFileName := IncludeTrailingBackslash(FScriptFolder)
+      + Data.EditorPages.EditorPage[I].FileName;
+    if FileExists(sFileName) and not FileIsOpenInEditor(sFileName) then
+      EditorPageAddNew(sFileName, True);
   end;
   EditorCurrentPageIndex := Data.EditorPages.ActivePageIndex;
 
-  LoadBreakpoints( Data );
-  LoadWatches( Data );
+  LoadBreakpoints(Data);
+  LoadWatches(Data);
 
   ClearExecutableLines;
 end;
 
-procedure TDwsIdeForm.NewProjectFile( const AProjectFileName : string );
+procedure TDwsIdeForm.NewProjectFile(const AProjectFileName: TFileName);
 begin
   EditorCloseAllPages;
 
@@ -2768,96 +3289,125 @@ begin
   FProjectFileName := AProjectFileName;
 end;
 
-function TDwsIdeForm.OpenEditorPage(AName: string) : boolean;
+function TDwsIdeForm.OpenEditorPage(AName: string): Boolean;
 var
-  I : integer;
-  S : string;
+  I: Integer;
+  S: string;
 begin
-  I := NameToEditorPageIndex( AName );
+  I := NameToEditorPageIndex(AName);
   Result := I <> -1;
   if Result then
     EditorCurrentPageIndex := I
   else
   begin
-    S := ScriptFolder + ChangeFileExt( AName, sDwsIdeProjectSourceFileExt2 );
-    Result := FileExists( S );
+    S := ScriptFolder + ChangeFileExt(AName, sDwsIdeProjectSourceFileExt2);
+    Result := FileExists(S);
     if Result then
-      EditorPageAddNew( S, True );
+      EditorPageAddNew(S, True);
   end;
 end;
 
-function TDwsIdeForm.ProjectfileNameToProjectSourceFileName( const AProjectfileName : string ): string;
+function TDwsIdeForm.ProjectfileNameToProjectSourceFileName(const AProjectfileName: TFileName): string;
 begin
   if AProjectFileName = '' then
     Result := ''
   else
-    Result := ChangeFileExt( AProjectFileName, sDwsIdeProjectSourceFileExt );
+    Result := ChangeFileExt(AProjectFileName, sDwsIdeProjectSourceFileExt);
 end;
 
 function TDwsIdeForm.ModifyFileNameToUniqueInProject(
-           const AFileName : string ) : string;
+           const AFileName: TFileName): string;
 // if exists, increments any trailing number after the file name
 // until the name is unique in the name's folder. if no trailing number
 // adds '1'.
 var
-  I          : integer;
-  sD, sF, sE : string;
+  I: Integer;
+  sD, sF, sE: string;
 begin
   Result := AFileName;
   I := 0;
-  while FileIsOpenInEditor( Result ) do
+  while FileIsOpenInEditor(Result) do
   begin
     Inc(I);
-    sD := ExtractFileDir( Result ) + '\';
-    sF := JustFileName( Result );
-    while (sF <> '') and CharInSet( sF[Length(sF) - 1], ['0'..'9']) do
-      Delete( sF, Length(sF) - 1, 1 );
+    sD := ExtractFileDir(Result) + '\';
+    sF := JustFileName(Result);
+    while (sF <> '') and CharInSet(sF[Length(sF) - 1], ['0'..'9']) do
+      Delete(sF, Length(sF) - 1, 1);
 
-    sE := ExtractFileExt( Result );
+    sE := ExtractFileExt(Result);
     Result := sD + sF + IntToStr(I) + sE;
   end;
 end;
 
-function TDwsIdeForm.GetExecutableLines( const AUnitName : string ) : TLineNumbers;
+function TDwsIdeForm.GetCompiledScript: IdwsProgram;
+var
+  Code: string;
+begin
+  Result := nil;
+
+  if not HasEditorPage then
+    Exit;
+
+  try
+    if HasProject then
+      Code := ProjectSourceScript // Use the main file, eg dws
+    else
+      Code := UnitMainScript(CurrentEditorPage.UnitName, ''); // make a main file that simply uses the current page
+
+    Result := FScript.Compile(Code);
+  except
+    Result := nil;
+  end;
+end;
+
+function TDwsIdeForm.GetExecutableLines(const AUnitName: string): TLineNumbers;
 // Returns the executable line numbers for this unit.
 
-  procedure AppendLineNum( ALineNum : integer );
+  procedure AppendLineNum(ALineNum: Integer);
   begin
-    SetLength( Result, Length(Result) + 1 );
+    SetLength(Result, Length(Result) + 1);
     Result[Length(Result) - 1] := ALineNum;
   end;
 
 var
-  I : integer;
-  Breakpointables : TdwsBreakpointableLines;
-  Lines : Tbits;
+  I: Integer;
+  Breakpointables: TdwsBreakpointableLines;
+  Lines: Tbits;
 begin
-  SetLength( Result, 0 );
+  SetLength(Result, 0);
 
-  Compile( False );
+  Compile(False);
   if not IsCompiled then
     Exit;
 
-  Breakpointables := TdwsBreakpointableLines.Create( FProgram );
+  Breakpointables := TdwsBreakpointableLines.Create(FProgram);
   try
     Lines := Breakpointables.SourceLines[ AUnitName ];
     if Lines <> nil then
     begin
       for I := 1 to Lines.Size - 1 do
         if Lines[I] then
-          AppendLineNum( I );
+          AppendLineNum(I);
     end;
   finally
     Breakpointables.Free;
   end;
 end;
 
+function TDwsIdeForm.GetGotoForm: TDwsIdeGotoLineNumber;
+begin
+  if not Assigned(FGotoForm) then
+    FGotoForm := TDwsIdeGotoLineNumber.Create(Self);
+
+  Result := FGotoForm;
+end;
+
 {$REGION 'Load/Save Settings'}
 procedure TDwsIdeForm.SaveSettings(
-      const AProjectFileName : TFileName;
-      const AIDESettingsRec  : TIDESettingsRec );
+      const AProjectFileName: TFileName;
+      const AIDESettingsRec: TIDESettingsRec);
 var
-  Reg : TRegistry;
+  Reg: TRegistry;
 begin
   Reg := TRegistry.Create;
   try
@@ -2865,18 +3415,21 @@ begin
 
     if Reg.OpenKey('SOFTWARE\DwsIde\', TRUE) then
     begin
-      Reg.WriteString(  'WorkingProjectFileName', AProjectFileName);
+      Reg.WriteString('WorkingProjectFileName', AProjectFileName);
 
-      if not IsHostedControl( Self ) then
+      if not IsHostedControl(Self) then
       begin
-        Reg.WriteInteger( 'IDEFormRect_Left',       AIDESettingsRec.FormRect.Left);
-        Reg.WriteInteger( 'IDEFormRect_Top',        AIDESettingsRec.FormRect.Top);
-        Reg.WriteInteger( 'IDEFormRect_Right',      AIDESettingsRec.FormRect.Right);
-        Reg.WriteInteger( 'IDEFormRect_Bottom',     AIDESettingsRec.FormRect.Bottom);
+        Reg.WriteInteger('IDEFormRect_Left',   AIDESettingsRec.FormRect.Left);
+        Reg.WriteInteger('IDEFormRect_Top',    AIDESettingsRec.FormRect.Top);
+        Reg.WriteInteger('IDEFormRect_Right',  AIDESettingsRec.FormRect.Right);
+        Reg.WriteInteger('IDEFormRect_Bottom', AIDESettingsRec.FormRect.Bottom);
       end;
 
-      Reg.WriteInteger( 'RightPanelWidth',        AIDESettingsRec.RightPanelWidth);
-      Reg.WriteInteger( 'BottomPanelHeight',      AIDESettingsRec.BottomPanelHeight);
+      Reg.WriteInteger('RightPanelWidth',      AIDESettingsRec.RightPanelWidth);
+      Reg.WriteInteger('BottomPanelHeight',    AIDESettingsRec.BottomPanelHeight);
+
+      if Assigned(FGotoForm) then
+        Reg.WriteInteger('Recent Goto Position', FGotoForm.LineNumber);
     end;
   finally
     Reg.Free;
@@ -2884,21 +3437,21 @@ begin
 end;
 
 procedure TDwsIdeForm.LoadSettings(
-           var AProjectFileName : TFileName;
-           var AIDESettingsRec : TIDESettingsRec );
+           var AProjectFileName: TFileName;
+           var AIDESettingsRec: TIDESettingsRec);
 var
-  Reg : TRegistry;
+  Reg: TRegistry;
 
-  procedure ReadString( const AName : string; var AValue : string );
+  procedure ReadString(const AName: string; var AValue: string);
   begin
-    if Reg.ValueExists( AName ) then
-      AValue := Reg.ReadString( AName )
+    if Reg.ValueExists(AName) then
+      AValue := Reg.ReadString(AName)
   end;
 
-  procedure ReadInteger( const AName : string; var AValue : integer );
+  procedure ReadInteger(const AName: string; var AValue: Integer);
   begin
-    if Reg.ValueExists( AName ) then
-      AValue := Reg.ReadInteger( AName )
+    if Reg.ValueExists(AName) then
+      AValue := Reg.ReadInteger(AName)
   end;
 
 begin
@@ -2909,18 +3462,18 @@ begin
     Reg.RootKey := HKEY_CURRENT_USER;
     if Reg.OpenKey('SOFTWARE\DwsIde\', False) then
     begin
-      ReadString(  'WorkingProjectFileName', string(AProjectFileName));
+      ReadString('WorkingProjectFileName', string(AProjectFileName));
 
-      if not IsHostedControl( Self ) then
+      if not IsHostedControl(Self) then
       begin
-        ReadInteger( 'IDEFormRect_Left',   AIDESettingsRec.FormRect.Left);
-        ReadInteger( 'IDEFormRect_Top',    AIDESettingsRec.FormRect.Top);
-        ReadInteger( 'IDEFormRect_Right',  AIDESettingsRec.FormRect.Right);
-        ReadInteger( 'IDEFormRect_Bottom', AIDESettingsRec.FormRect.Bottom);
+        ReadInteger('IDEFormRect_Left',   AIDESettingsRec.FormRect.Left);
+        ReadInteger('IDEFormRect_Top',    AIDESettingsRec.FormRect.Top);
+        ReadInteger('IDEFormRect_Right',  AIDESettingsRec.FormRect.Right);
+        ReadInteger('IDEFormRect_Bottom', AIDESettingsRec.FormRect.Bottom);
       end;
 
-      ReadInteger( 'RightPanelWidth',      AIDESettingsRec.RightPanelWidth );
-      ReadInteger( 'BottomPanelHeight',    AIDESettingsRec.BottomPanelHeight );
+      ReadInteger('RightPanelWidth',      AIDESettingsRec.RightPanelWidth);
+      ReadInteger('BottomPanelHeight',    AIDESettingsRec.BottomPanelHeight);
     end;
   finally
     Reg.Free;
@@ -2929,146 +3482,148 @@ end;
 {$ENDREGION}
 
 {$REGION 'Action Handler'}
-procedure TDwsIdeForm.actBuildExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionGotoLineNumberExecute(Sender: TObject);
 begin
-  Compile( True );
+  CurrentEditorPage.GotoLineNumber;
+end;
+
+procedure TDwsIdeForm.ActionGotoLineNumberUpdate(Sender: TObject);
+begin
+  TAction(Sender).Enabled := CurrentEditor <> nil;
+end;
+
+procedure TDwsIdeForm.ActionBuildExecute(Sender: TObject);
+begin
+  Compile(True);
   if IsCompiled then
     ShowExecutableLines;
 end;
 
-procedure TDwsIdeForm.actClearAllBreakpointsExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionClearAllBreakpointsExecute(Sender: TObject);
 begin
   ClearAllBreakpoints;
 end;
 
-procedure TDwsIdeForm.actClearOutputWindowExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionEditClearOutputWindowExecute(Sender: TObject);
 begin
   ClearOutputWindow;
 end;
 
-procedure TDwsIdeForm.actClearOutputWindowUpdate(Sender: TObject);
+procedure TDwsIdeForm.ActionEditClearOutputWindowUpdate(Sender: TObject);
 begin
   with Sender as TAction do
-    Enabled := memOutputWindow.Text <> '';
+    Enabled := MemoOutputWindow.Text <> '';
 end;
 
-procedure TDwsIdeForm.actCloseAllOtherPagesExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionCloseAllOtherPagesExecute(Sender: TObject);
 begin
-  EditorCloseAllPages( EditorCurrentPageIndex );
+  EditorCloseAllPages(EditorCurrentPageIndex);
 end;
 
-procedure TDwsIdeForm.actCloseAllOtherPagesUpdate(Sender: TObject);
+procedure TDwsIdeForm.ActionCloseAllOtherPagesUpdate(Sender: TObject);
 begin
   with Sender as TAction do
     Enabled := EditorPageCount > 1;
 end;
 
-procedure TDwsIdeForm.actClosePageExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionClosePageExecute(Sender: TObject);
 begin
-  EditorPageClose( EditorCurrentPageIndex );
+  EditorPageClose(EditorCurrentPageIndex);
 end;
 
-procedure TDwsIdeForm.actClosePageUpdate(Sender: TObject);
+procedure TDwsIdeForm.ActionClosePageUpdate(Sender: TObject);
 begin
   with Sender as TAction do
     Enabled := EditorCurrentPageIndex <> -1;
 end;
 
-procedure TDwsIdeForm.actCodeProposalInvokeExecute(Sender: TObject);
-begin
-  CodeSuggest( csCodeProposal );
-end;
-
-procedure TDwsIdeForm.actExitExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionExitExecute(Sender: TObject);
 begin
   Close;
 end;
 
-procedure TDwsIdeForm.actFileCloseAllExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionFileCloseAllExecute(Sender: TObject);
 begin
   EditorCloseAllPages;
   ProjectFileName := '';
 end;
 
-procedure TDwsIdeForm.actFileNewIncludeFileExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionFileNewIncludeFileExecute(Sender: TObject);
 var
-  sFileName : string;
+  sFileName: TFileName;
 begin
-  sFileName := Format(
-    '%sIncludeFile1.inc',
-    [IncludeTrailingBackslash(FScriptFolder)] );
-  sFileName := ModifyFileNameToUniqueInProject( sFileName );
+  sFileName := Format('%sIncludeFile1.inc',
+    [IncludeTrailingBackslash(FScriptFolder)]);
+  sFileName := ModifyFileNameToUniqueInProject(sFileName);
 
-  EditorPageAddNew( sFileName, False );
+  EditorPageAddNew(sFileName, False);
 end;
 
-procedure TDwsIdeForm.actFileNewProjectExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionFileNewProjectExecute(Sender: TObject);
 var
-  sFileName : string;
+  sFileName: TFileName;
 begin
-  sFileName := Format(
-    '%sProject1%s',
-    [IncludeTrailingBackslash(FScriptFolder), sDwsIdeProjectFileExt] );
-  sFileName := ModifyFileNameToUniqueInProject( sFileName );
+  sFileName := Format('%sProject1%s',
+    [IncludeTrailingBackslash(FScriptFolder), sDwsIdeProjectFileExt]);
+  sFileName := ModifyFileNameToUniqueInProject(sFileName);
 
-  NewProjectFile( sFileName );
+  NewProjectFile(sFileName);
 
-  sFileName := ProjectfileNameToProjectSourceFileName( sFileName );
-  EditorPageAddNew( sFileName, False );
+  sFileName := ProjectfileNameToProjectSourceFileName(sFileName);
+  EditorPageAddNew(sFileName, False);
 
 end;
 
-procedure TDwsIdeForm.actFileNewUnitExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionFileNewUnitExecute(Sender: TObject);
 var
-  sFileName : string;
+  sFileName: TFileName;
 begin
-  sFileName := Format(
-    '%sUnit1%s',
-    [IncludeTrailingBackslash(FScriptFolder), sDwsIdeProjectSourceFileExt2] );
-  sFileName := ModifyFileNameToUniqueInProject( sFileName );
+  sFileName := Format('%sUnit1%s',
+    [IncludeTrailingBackslash(FScriptFolder), sDwsIdeProjectSourceFileExt2]);
+  sFileName := ModifyFileNameToUniqueInProject(sFileName);
 
-  EditorPageAddNew( sFileName, False );
+  EditorPageAddNew(sFileName, False);
 end;
 
-procedure TDwsIdeForm.actFileSaveAsExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionFileSaveAsExecute(Sender: TObject);
 begin
   if HasEditorPage then
     CurrentEditorPage.SaveAs;
 end;
 
-procedure TDwsIdeForm.actFileSaveAsUpdate(Sender: TObject);
+procedure TDwsIdeForm.ActionFileSaveAsUpdate(Sender: TObject);
 begin
   with Sender as TAction do
     Enabled := HasEditorPage;
 end;
 
-procedure TDwsIdeForm.actFileSaveExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionFileSaveExecute(Sender: TObject);
 begin
   if HasEditorPage then
-    CurrentEditorPage.SaveToFile( False {dont prompt} );
+    CurrentEditorPage.SaveToFile(False {dont prompt});
 end;
 
-procedure TDwsIdeForm.actFileSaveUpdate(Sender: TObject);
+procedure TDwsIdeForm.ActionFileSaveUpdate(Sender: TObject);
 begin
   with Sender as TAction do
     Enabled := HasEditorPage and CurrentEditor.Modified;
 end;
 
-procedure TDwsIdeForm.actGotoHomePositionExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionGotoHomePositionExecute(Sender: TObject);
 begin
   GotoHomePosition;
 end;
 
-procedure TDwsIdeForm.actGotoHomePositionUpdate(Sender: TObject);
+procedure TDwsIdeForm.ActionGotoHomePositionUpdate(Sender: TObject);
 begin
   with Sender as TAction do
     Enabled := CanGotoHomePosition;
 end;
 
-procedure TDwsIdeForm.actOpenFileExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionOpenFileExecute(Sender: TObject);
 var
-  FileName : TFileName;
-  I : integer;
+  FileName: TFileName;
+  I: Integer;
 begin
   if not OpenFileDialog.Execute then
     Exit;
@@ -3076,39 +3631,39 @@ begin
   for I := 0 to OpenFileDialog.Files.Count - 1 do
   begin
     FileName := OpenFileDialog.Files[I];
-    if (FileName <> '') and not FileIsOpenInEditor( FileName ) then
-      EditorPageAddNew( FileName, True );
+    if (FileName <> '') and not FileIsOpenInEditor(FileName) then
+      EditorPageAddNew(FileName, True);
   end;
 end;
 
-procedure TDwsIdeForm.actOpenProjectExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionFileOpenProjectExecute(Sender: TObject);
 begin
   if OpenProjectDialog.Execute then
-    LoadProjectfile( OpenProjectDialog.FileName );
+    LoadProjectfile(OpenProjectDialog.FileName);
 end;
 
-procedure TDwsIdeForm.actProgramResetExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionProgramResetExecute(Sender: TObject);
 begin
   ResetProgram;
-  //InformationDlg( 'Program Aborted' );
+  //InformationDlg('Program Aborted');
 end;
 
-procedure TDwsIdeForm.actProgramResetUpdate(Sender: TObject);
+procedure TDwsIdeForm.ActionProgramResetUpdate(Sender: TObject);
 begin
   with Sender as TAction do
-    Enabled := daCanEndDebug in dwsDebugger.AllowedActions;
+    Enabled := daCanEndDebug in Debugger.AllowedActions;
 end;
 
-procedure TDwsIdeForm.actRunExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionRunExecute(Sender: TObject);
 
   procedure NewRun;
   var
-    Exec : IdwsProgramExecution;
+    Exec: IdwsProgramExecution;
   begin
     if not HasProject then
-      raise EDwsIde.Create( 'Cannot run without a project file');
+      raise EDwsIde.Create(RStrCannotRunWithoutProjectFile);
 
-    Compile( False );
+    Compile(False);
     if not IsCompiled then
       Exit;
 
@@ -3116,54 +3671,54 @@ procedure TDwsIdeForm.actRunExecute(Sender: TObject);
 
     Exec := FProgram.CreateNewExecution;
     try
-      dwsDebugger.BeginDebug( Exec );
+      Debugger.BeginDebug(Exec);
     finally
-      dwsDebugger.EndDebug;
+      Debugger.EndDebug;
       ClearExecutableLines;
       if Exec.Msgs.Count > 0 then
       begin
-        AddStatusMessage( 'Errors' );
-        GotoScriptPos( Exec.Msgs.LastMessagePos );
+        AddStatusMessage(RStrErrors);
+        GotoScriptPos(Exec.Msgs.LastMessagePos);
         ErrorDlg(Exec.Msgs.AsInfo);
       end
       else
-        AddStatusMessage( 'Program completed' );
+        AddStatusMessage(RStrProgramCompleted);
     end;
 
   end;
 
 begin
   try
-    if dwsDebugger.State = dsDebugSuspended then
-      dwsDebugger.Resume
+    if Debugger.State = dsDebugSuspended then
+      Debugger.Resume
     else
-      if not TryRunSelection( True ) then
+      if not TryRunSelection(True) then
         NewRun;
   except
     on E:Exception do
-      ErrorDlg( E.Message );
+      ErrorDlg(E.Message);
   end;
 end;
 
-procedure TDwsIdeForm.actRunUpdate(Sender: TObject);
+procedure TDwsIdeForm.ActionRunUpdate(Sender: TObject);
 begin
   with Sender as TAction do
     Enabled := HasEditorPage;
 end;
 
-procedure TDwsIdeForm.actRunWithoutDebuggingExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionRunWithoutDebuggingExecute(Sender: TObject);
 
   procedure RunAll;
   var
-    Exec : IdwsProgramExecution;
-    Stopwatch : TStopwatch;
+    Exec: IdwsProgramExecution;
+    Stopwatch: TStopwatch;
   begin
     if not HasProject then
-      raise EDwsIde.Create( 'Cannot run without a project file');
+      raise EDwsIde.Create(RStrCannotRunWithoutProjectFile);
 
-    AddStatusMessage( 'Running' );
+    AddStatusMessage(RStrRunning);
     Application.ProcessMessages;
-    Compile( False );
+    Compile(False);
     if not IsCompiled then
       Exit;
 
@@ -3172,7 +3727,7 @@ procedure TDwsIdeForm.actRunWithoutDebuggingExecute(Sender: TObject);
     Stopwatch := TStopwatch.Create;
     Stopwatch.Start;
     try
-      Exec.RunProgram( 0 );
+      Exec.RunProgram(0);
       Exec.EndProgram;
     finally
       Stopwatch.Stop;
@@ -3180,137 +3735,137 @@ procedure TDwsIdeForm.actRunWithoutDebuggingExecute(Sender: TObject);
 
     if Exec.Msgs.Count > 0 then
     begin
-      AddStatusMessage( 'Errors' );
+      AddStatusMessage(RStrErrors);
       ShowMessage(Exec.Msgs.AsInfo)
     end
     else
       if Stopwatch.Elapsed.TotalSeconds < 1.0 then
-        AddStatusMessage( Format( 'Completed in %0.3f ms', [Stopwatch.Elapsed.TotalMilliseconds] ))
+        AddStatusMessage(Format('Completed in %0.3f ms', [Stopwatch.Elapsed.TotalMilliseconds]))
       else
-        AddStatusMessage( Format( 'Completed in %0.3f s', [Stopwatch.Elapsed.TotalSeconds] ));
+        AddStatusMessage(Format('Completed in %0.3f s', [Stopwatch.Elapsed.TotalSeconds]));
   end;
 
 begin
-  if not TryRunSelection( False ) then
+  if not TryRunSelection(False) then
     RunAll;
 end;
 
-procedure TDwsIdeForm.actRunWithoutDebuggingUpdate(Sender: TObject);
+procedure TDwsIdeForm.ActionRunWithoutDebuggingUpdate(Sender: TObject);
 begin
   with Sender as TAction do
     Enabled := HasEditorPage;
 end;
 
-procedure TDwsIdeForm.actSaveProjectAsExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionFileSaveProjectAsExecute(Sender: TObject);
 begin
   SaveProjectAs;
 end;
 
-procedure TDwsIdeForm.actShowExecutionPointExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionShowExecutionPointExecute(Sender: TObject);
 begin
-  GotoScriptPos( dwsDebugger.CurrentScriptPos );
+  GotoScriptPos(Debugger.CurrentScriptPos);
 end;
 
-procedure TDwsIdeForm.actShowExecutionPointUpdate(Sender: TObject);
-begin
-  with Sender as TAction do
-    Enabled := dwsDebugger.State = dsDebugSuspended;
-end;
-
-procedure TDwsIdeForm.actStepOverExecute(Sender: TObject);
-begin
-  dwsDebugger.StepOver;
-end;
-
-procedure TDwsIdeForm.actStepOverUpdate(Sender: TObject);
+procedure TDwsIdeForm.ActionShowExecutionPointUpdate(Sender: TObject);
 begin
   with Sender as TAction do
-    Enabled := daCanStep in dwsDebugger.AllowedActions;
+    Enabled := Debugger.State = dsDebugSuspended;
 end;
 
-procedure TDwsIdeForm.actToggleReadOnlyExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionStepOverExecute(Sender: TObject);
+begin
+  Debugger.StepOver;
+end;
+
+procedure TDwsIdeForm.ActionStepOverUpdate(Sender: TObject);
+begin
+  with Sender as TAction do
+    Enabled := daCanStep in Debugger.AllowedActions;
+end;
+
+procedure TDwsIdeForm.ActionEditToggleReadOnlyExecute(Sender: TObject);
 var
-  Page : TEditorPage;
+  Page: TEditorPage;
 begin
   Page := CurrentEditorPage;
   Page.IsReadOnly := not Page.IsReadOnly;
 end;
 
-procedure TDwsIdeForm.actToggleReadOnlyUpdate(Sender: TObject);
+procedure TDwsIdeForm.ActionEditToggleReadOnlyUpdate(Sender: TObject);
 begin
   with Sender as TAction do
-    begin
+  begin
     Enabled := HasEditorPage;
     Checked := Enabled and CurrentEditorPage.IsReadOnly;
-    end;
+  end;
 end;
 
-procedure TDwsIdeForm.actTraceIntoExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionTraceIntoExecute(Sender: TObject);
 begin
-  dwsDebugger.StepDetailed;
+  Debugger.StepDetailed;
 end;
 
-procedure TDwsIdeForm.actTraceIntoUpdate(Sender: TObject);
+procedure TDwsIdeForm.ActionTraceIntoUpdate(Sender: TObject);
 begin
   with Sender as TAction do
-    Enabled := daCanStep in dwsDebugger.AllowedActions;
+    Enabled := daCanStep in Debugger.AllowedActions;
 end;
 
-procedure TDwsIdeForm.actViewProjectSourceExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionViewProjectSourceExecute(Sender: TObject);
 var
-  I : integer;
+  I: Integer;
 begin
   I := ProjectSourceFileIndex;
   if I >= 0 then
     EditorCurrentPageIndex := I
-   else
-    EditorPageAddNew( ProjectfileNameToProjectSourceFileName( ProjectFileName ), True );
+  else
+    EditorPageAddNew(ProjectfileNameToProjectSourceFileName(ProjectFileName), True);
 end;
 
-procedure TDwsIdeForm.actViewProjectSourceUpdate(Sender: TObject);
+procedure TDwsIdeForm.ActionViewProjectSourceUpdate(Sender: TObject);
 begin
   with Sender as TAction do
     Enabled := ProjectFileName <> '';
 end;
 
-procedure TDwsIdeForm.actViewSymbolsExecute(Sender: TObject);
+procedure TDwsIdeForm.ActionViewSymbolsExecute(Sender: TObject);
 begin
   ListSymbols;
 end;
 
-procedure TDwsIdeForm.actViewSymbolsUpdate(Sender: TObject);
+procedure TDwsIdeForm.ActionViewSymbolsUpdate(Sender: TObject);
 begin
   with Sender as TAction do
-    Enabled := Assigned( FProgram ) and (FProgram.Table.Count > 0);
+    Enabled := Assigned(FProgram) and (FProgram.Table.Count > 0);
 end;
 {$ENDREGION}
 
 
 { TOutputWindowsStringResultType }
 
-constructor TOutputWindowStringResultType.Create(AOwner : TComponent; ADwsIdeForm: TDwsIdeForm);
+constructor TOutputWindowStringResultType.Create(AOwner: TComponent; ADwsIdeForm: TDwsIdeForm);
 begin
-  inherited Create( AOwner );
+  inherited Create(AOwner);
   FDwsIDEForm := ADwsIdeForm;
 end;
 
 procedure TOutputWindowStringResultType.DoAddString(result: TdwsStringResult;
-  var str: String);
+  var str: string);
 begin
-  FDwsIdeForm.memOutputWindow.Lines.Add( 'STD: ' + str );
+  FDwsIdeForm.MemoOutputWindow.Lines.Add('STD: ' + str);
 end;
 
 procedure TOutputWindowStringResultType.DoReadChar(result: TdwsStringResult;
-  var str: String);
+  var str: string);
 var
-  c : Char;
+  c: Char;
 begin
   Read(c);
   str := c;
 end;
 
 procedure TOutputWindowStringResultType.DoReadLn(result: TdwsStringResult;
-  var str: String);
+  var str: string);
 begin
   ReadLn(str);
 end;
