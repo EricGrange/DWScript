@@ -170,7 +170,7 @@ end;
 destructor TdwsFileHandle.Destroy;
 begin
    if FHandle<>0 then
-      FileClose(FHandle);
+      CloseFileHandle(FHandle);
 end;
 
 // SetHandle
@@ -320,7 +320,6 @@ procedure TFileCloseFunc.DoEvalProc(const args : TExprBaseListExec);
 var
    v : Variant;
    i : IdwsFileHandle;
-   h : THandle;
 begin
    args.ExprBase[0].EvalAsVariant(args.Exec, v);
    if (TVarData(v).VType=varUnknown) and (TVarData(v).VUnknown<>nil) then begin
@@ -360,7 +359,7 @@ end;
 //
 function TDeleteFileFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
-   Result:=DeleteFile(args.AsString[0]);
+   Result:=FileDelete(args.AsString[0]);
 end;
 
 // ------------------
@@ -382,7 +381,7 @@ end;
 //
 function TRenameFileFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
-   Result:=RenameFile(args.AsString[0], args.AsString[1]);
+   Result:=FileRename(args.AsString[0], args.AsString[1]);
 end;
 
 // ------------------

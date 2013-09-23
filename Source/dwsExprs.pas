@@ -228,7 +228,8 @@ type
                             aParentSymbol : TSymbol; aToken : TTokenType);
          destructor Destroy; override;
 
-         function IsPositionInContext(aCol, aLine : Integer; const sourceName : UnicodeString) : Boolean;
+         function IsPositionInContext(const aPos : TScriptPos) : Boolean; overload;
+         function IsPositionInContext(aCol, aLine : Integer; const sourceName : UnicodeString) : Boolean; overload;
          function HasParentSymbolOfClass(SymbolType: TSymbolClass; SearchParents: Boolean): Boolean;
 
          function FindContext(parentSymbol : TSymbol) : TdwsSourceContext;
@@ -7339,6 +7340,13 @@ begin
    writer.EndArray;
 
    writer.EndObject;
+end;
+
+// IsPositionInContext
+//
+function TdwsSourceContext.IsPositionInContext(const aPos : TScriptPos) : Boolean;
+begin
+   Result := IsPositionInContext(aPos.Col, aPos.Line, aPos.SourceFile.Name);
 end;
 
 // IsPositionInContext

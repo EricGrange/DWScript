@@ -163,6 +163,8 @@ function OpenFileForSequentialReadOnly(const fileName : UnicodeString) : THandle
 function OpenFileForSequentialWriteOnly(const fileName : UnicodeString) : THandle;
 procedure CloseFileHandle(hFile : THandle);
 function FileCopy(const existing, new : UnicodeString; failIfExists : Boolean) : Boolean;
+function FileDelete(const fileName : String) : Boolean;
+function FileRename(const oldName, newName : String) : Boolean;
 
 function DirectSet8087CW(newValue : Word) : Word; register;
 function DirectSetMXCSR(newValue : Word) : Word; register;
@@ -639,7 +641,21 @@ end;
 //
 function FileCopy(const existing, new : String; failIfExists : Boolean) : Boolean;
 begin
-   result := Windows.CopyFileW(PWideChar(existing), PWideChar(new), failIfExists);
+   Result:=Windows.CopyFileW(PWideChar(existing), PWideChar(new), failIfExists);
+end;
+
+// FileDelete
+//
+function FileDelete(const fileName : String) : Boolean;
+begin
+   Result:=DeleteFile(fileName);
+end;
+
+// FileRename
+//
+function FileRename(const oldName, newName : String) : Boolean;
+begin
+   Result:=RenameFile(oldName, newName);
 end;
 
 // DirectSet8087CW
