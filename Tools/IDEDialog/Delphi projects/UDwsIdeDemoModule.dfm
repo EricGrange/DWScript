@@ -1,39 +1,8 @@
-object DwsIdeDemoForm: TDwsIdeDemoForm
-  Left = 0
-  Top = 0
-  Caption = 'DWS IDE Dialog Demo'
-  ClientHeight = 97
-  ClientWidth = 176
-  Color = clBtnFace
-  Font.Charset = DEFAULT_CHARSET
-  Font.Color = clWindowText
-  Font.Height = -11
-  Font.Name = 'Tahoma'
-  Font.Style = []
+object DwsIdeDemoModule: TDwsIdeDemoModule
   OldCreateOrder = False
-  OnDestroy = FormDestroy
-  PixelsPerInch = 96
-  TextHeight = 13
-  object LabelInfo: TLabel
-    Left = 8
-    Top = 39
-    Width = 154
-    Height = 52
-    Alignment = taCenter
-    Caption = 
-      'To load the demo project, it is mandatory that a copy of '#39'DWS Sc' +
-      'ript Files'#39' is present on the Desktop!'
-    WordWrap = True
-  end
-  object ButtonOpenIDE: TButton
-    Left = 8
-    Top = 8
-    Width = 161
-    Height = 25
-    Caption = 'Open IDE'
-    TabOrder = 0
-    OnClick = ButtonOpenIDEClick
-  end
+  OnCreate = DataModuleCreate
+  Height = 150
+  Width = 215
   object DelphiWebScript: TDelphiWebScript
     Config.CompilerOptions = [coOptimize, coSymbolDictionary, coContextMap, coAssertions]
     Config.ScriptPaths.Strings = (

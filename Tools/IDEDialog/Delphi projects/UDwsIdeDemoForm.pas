@@ -30,7 +30,7 @@ uses
 type
   TBaseObj = class( TObject )
   private
-   FScriptObj : Variant;
+    FScriptObj : Variant;
   end;
 
 
@@ -54,6 +54,7 @@ type
     ButtonOpenIDE: TButton;
     DelphiWebScript: TDelphiWebScript;
     DemoUnit: TdwsUnit;
+    LabelInfo: TLabel;
     procedure ButtonOpenIDEClick(Sender: TObject);
     function DelphiWebScriptNeedUnit(const unitName: string;
       var unitSource: string): IdwsUnit;
@@ -87,6 +88,7 @@ implementation
 
 uses
   SynHighlighterDWS,
+  dwsXPlatform,
   UDwsIdeDefs,
   UDwsIdeForm;
 
@@ -106,22 +108,15 @@ end;
 function TDwsIdeDemoForm.DelphiWebScriptNeedUnit(const unitName: string;
   var unitSource: string): IdwsUnit;
 var
-  SL : TStrings;
   sFileName : TFileName;
   I : integer;
 begin
   for I := 0 to DelphiWebScript.Config.ScriptPaths.Count - 1 do
   begin
     sFileName := DelphiWebScript.Config.ScriptPaths[I] + '\' + UnitName + '.pas';
-    if FileExists( sFileName ) then
+    if FileExists(sFileName) then
     begin
-      SL := TStringList.Create;
-      try
-        SL.LoadFromFile( sFileName );
-        UnitSource := SL.Text;
-      finally
-        SL.Free;
-      end;
+      UnitSource := LoadTextFromFile(sFileName);
       Exit;
     end;
   end;

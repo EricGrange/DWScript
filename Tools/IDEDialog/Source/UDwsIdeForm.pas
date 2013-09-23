@@ -714,7 +714,6 @@ end;
 
 procedure TEditorPageSynEditPlugin.PaintTransient(ACanvas: TCanvas;
   ATransientType: TTransientType);
-
 var
   Pt: TPoint;
   Rct: TRect;

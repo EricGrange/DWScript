@@ -21,19 +21,19 @@
 {**********************************************************************}
 
 
-program DwsIdeDemo;
+program DwsIdeDialogDemo;
 
 uses
   Forms,
-  SynHighlighterDWS in '..\..\..\Source\SynEdit\SynHighlighterDWS.pas',
   UDwsIdeConfig in '..\Source\UDwsIdeConfig.pas',
   UDwsIdeForm in '..\Source\UDwsIdeForm.pas' {DwsIdeForm},
+  UDwsIdeDemoForm in 'UDwsIdeDemoForm.pas' {DwsIdeDemoForm},
   UDwsIdeLocalVariablesFrame in '..\Source\UDwsIdeLocalVariablesFrame.pas' {DwsIdeLocalVariablesFrame: TFrame},
   UDwsIdeWatchesFrame in '..\Source\UDwsIdeWatchesFrame.pas' {DwsIdeWatchesFrame: TFrame},
   UDwsIdeDefs in '..\Source\UDwsIdeDefs.pas',
   UDwsIdeCallStackFrame in '..\Source\UDwsIdeCallStackFrame.pas' {DwsIdeCallStackFrame: TFrame},
   UDwsIdeGotoLine in '..\Source\UDwsIdeGotoLine.pas' {DwsIdeGotoLineNumber},
-  UDwsIdeDemoModule in 'UDwsIdeDemoModule.pas' {DwsIdeDemoModule: TDwsIdeDemoModule};
+  SynHighlighterDWS in '..\..\..\Source\SynEdit\SynHighlighterDWS.pas';
 
 {$R *.res}
 
@@ -42,6 +42,6 @@ begin
 
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
-  Application.CreateForm(TDwsIdeDemoModule, DwsIdeDemoModule);
+  Application.CreateForm(TDwsIdeDemoForm, DwsIdeDemoForm);
   Application.Run;
 end.
