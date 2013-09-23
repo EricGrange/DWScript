@@ -228,41 +228,6 @@ object DwsIdeForm: TDwsIdeForm
     Images = SmallImages
     Left = 168
     Top = 40
-    object ActionOpenFile: TAction
-      Category = 'File'
-      Caption = 'Open File'
-      Hint = 'Opens a file for editing'
-      ImageIndex = 0
-      OnExecute = ActionOpenFileExecute
-    end
-    object ActionClosePage: TAction
-      Category = 'File'
-      Caption = 'Close Page'
-      ImageIndex = 2
-      ShortCut = 16499
-      OnExecute = ActionClosePageExecute
-      OnUpdate = ActionClosePageUpdate
-    end
-    object ActionCloseAllOtherPages: TAction
-      Category = 'File'
-      Caption = 'Close All Other Pages'
-      ImageIndex = 1
-      ShortCut = 24691
-      OnExecute = ActionCloseAllOtherPagesExecute
-      OnUpdate = ActionCloseAllOtherPagesUpdate
-    end
-    object ActionExit: TAction
-      Category = 'File'
-      Caption = 'Exit'
-      ImageIndex = 3
-      OnExecute = ActionExitExecute
-    end
-    object ActionFileSaveProjectAs: TAction
-      Category = 'File'
-      Caption = 'Save Project As'
-      ImageIndex = 4
-      OnExecute = ActionFileSaveProjectAsExecute
-    end
     object ActionFileNewProject: TAction
       Category = 'File'
       Caption = 'New Project'
@@ -281,10 +246,25 @@ object DwsIdeForm: TDwsIdeForm
       ImageIndex = 5
       OnExecute = ActionFileNewIncludeFileExecute
     end
+    object ActionOpenFile: TAction
+      Category = 'File'
+      Caption = 'Open File'
+      Hint = 'Opens a file for editing'
+      ImageIndex = 0
+      OnExecute = ActionOpenFileExecute
+    end
+    object ActionFileOpenProject: TAction
+      Category = 'File'
+      Caption = 'Open Project...'
+      ImageIndex = 10
+      ShortCut = 16506
+      OnExecute = ActionFileOpenProjectExecute
+    end
     object ActionFileSave: TAction
       Category = 'File'
       Caption = 'Save'
       ImageIndex = 8
+      ShortCut = 16467
       OnExecute = ActionFileSaveExecute
       OnUpdate = ActionFileSaveUpdate
     end
@@ -295,16 +275,38 @@ object DwsIdeForm: TDwsIdeForm
       OnExecute = ActionViewProjectSourceExecute
       OnUpdate = ActionViewProjectSourceUpdate
     end
+    object ActionFileSaveAs: TAction
+      Category = 'File'
+      Caption = 'Save As...'
+      OnExecute = ActionFileSaveAsExecute
+      OnUpdate = ActionFileSaveAsUpdate
+    end
+    object ActionFileSaveProjectAs: TAction
+      Category = 'File'
+      Caption = 'Save Project As...'
+      ImageIndex = 4
+      OnExecute = ActionFileSaveProjectAsExecute
+    end
+    object ActionClosePage: TAction
+      Category = 'File'
+      Caption = 'Close Page'
+      ImageIndex = 2
+      ShortCut = 16499
+      OnExecute = ActionClosePageExecute
+      OnUpdate = ActionClosePageUpdate
+    end
+    object ActionCloseAllOtherPages: TAction
+      Category = 'File'
+      Caption = 'Close All Other Pages'
+      ImageIndex = 1
+      ShortCut = 24691
+      OnExecute = ActionCloseAllOtherPagesExecute
+      OnUpdate = ActionCloseAllOtherPagesUpdate
+    end
     object ActionFileCloseAll: TAction
       Category = 'File'
       Caption = 'Close All'
       OnExecute = ActionFileCloseAllExecute
-    end
-    object ActionFileOpenProject: TAction
-      Category = 'File'
-      Caption = 'Open Project'
-      ImageIndex = 10
-      OnExecute = ActionFileOpenProjectExecute
     end
     object ActionEditToggleReadOnly: TAction
       Category = 'Edit'
@@ -362,12 +364,6 @@ object DwsIdeForm: TDwsIdeForm
       ShortCut = 24696
       OnExecute = ActionRunWithoutDebuggingExecute
       OnUpdate = ActionRunWithoutDebuggingUpdate
-    end
-    object ActionFileSaveAs: TAction
-      Category = 'File'
-      Caption = 'Save As'
-      OnExecute = ActionFileSaveAsExecute
-      OnUpdate = ActionFileSaveAsUpdate
     end
     object ActionShowExecutionPoint: TAction
       Category = 'Run'
@@ -461,6 +457,12 @@ object DwsIdeForm: TDwsIdeForm
       ShortCut = 32839
       OnExecute = ActionGotoLineNumberExecute
       OnUpdate = ActionGotoLineNumberUpdate
+    end
+    object ActionExit: TFileExit
+      Category = 'File'
+      Caption = 'Exit'
+      Hint = 'Exit|Closes Application'
+      ImageIndex = 3
     end
   end
   object EditorPageTabContextMenu: TPopupMenu
@@ -556,17 +558,20 @@ object DwsIdeForm: TDwsIdeForm
       object MenuItemFileOpenProject: TMenuItem
         Action = ActionFileOpenProject
       end
+      object N3: TMenuItem
+        Caption = '-'
+      end
       object MenuItemFileSave: TMenuItem
         Action = ActionFileSave
       end
       object MenuItemFileSaveAs: TMenuItem
         Action = ActionFileSaveAs
       end
-      object N3: TMenuItem
-        Caption = '-'
-      end
       object MenuItemFileSaveProjectAs: TMenuItem
         Action = ActionFileSaveProjectAs
+      end
+      object N14: TMenuItem
+        Caption = '-'
       end
       object MenuItemFileClosePage: TMenuItem
         Action = ActionClosePage

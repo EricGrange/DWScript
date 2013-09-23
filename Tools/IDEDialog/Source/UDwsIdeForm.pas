@@ -54,6 +54,7 @@ type
 
   TBreakpointStatus = (bpsNone, bpsBreakpoint, bpsBreakpointDisabled);
 
+  TLineChangedState = (csOriginal, csModified, csSaved);
   TLineNumbers = array of Integer;
 
   TEditorPage = class(TWinControl)
@@ -61,6 +62,7 @@ type
     FEditor: TSynEdit;
     FForm: TDwsIdeForm;
     FExecutableLines: TBits;
+    FLineChangedState: array of TLineChangedState;
     FTabLeft: Integer;
     FTabWidth: Integer;
     FCurrentLine: Integer;
@@ -95,7 +97,11 @@ type
 
     procedure ClearExecutableLines;
     procedure InitExecutableLines;
-    function IsExecutableLine(ALine: Integer): Boolean;
+    function IsExecutableLine(ALine: Integer): Boolean; inline;
+
+    procedure ClearLineChangeStates;
+    procedure InitLineChangeStates;
+    function GetLineChangeState(ALine: Integer): TLineChangedState; inline;
   public
     constructor Create(AOwner: TDwsIdeForm;
                  const AFileName: TFileName;
@@ -112,6 +118,7 @@ type
 
     function  GotoIdentifier(const AIdentifier: string): Boolean;
     procedure ShowExecutableLines;
+    procedure ToggleLineChangedStates;
 
     function UnitName: string;
     property Editor: TSynEdit read FEditor;
@@ -152,7 +159,7 @@ type
     ActionEditSelectAll: TEditSelectAll;
     ActionEditToggleReadOnly: TAction;
     ActionEditUndo: TEditUndo;
-    ActionExit: TAction;
+    ActionExit: TFileExit;
     ActionFileCloseAll: TAction;
     ActionFileNewIncludeFile: TAction;
     ActionFileNewProject: TAction;
@@ -247,6 +254,7 @@ type
     N11: TMenuItem;
     N12: TMenuItem;
     N13: TMenuItem;
+    N14: TMenuItem;
     N2: TMenuItem;
     N3: TMenuItem;
     N4: TMenuItem;
@@ -289,7 +297,6 @@ type
     procedure ActionCloseAllOtherPagesUpdate(Sender: TObject);
     procedure ActionClosePageExecute(Sender: TObject);
     procedure ActionClosePageUpdate(Sender: TObject);
-    procedure ActionExitExecute(Sender: TObject);
     procedure ActionFileCloseAllExecute(Sender: TObject);
     procedure ActionFileNewIncludeFileExecute(Sender: TObject);
     procedure ActionFileNewProjectExecute(Sender: TObject);
@@ -420,6 +427,7 @@ type
     procedure ClearCurrentLine;
     procedure ClearAllBreakpoints;
     procedure ClearExecutableLines;
+    procedure ClearLinesChangedState;
     procedure AddStatusMessage(const AStr: string);
     procedure Compile(ABuild: Boolean; const AScript: string = '');
     function  IsCompiled: Boolean;
@@ -697,9 +705,15 @@ begin
   iLineCount := FPage.Editor.Lines.Count;
   FPage.FExecutableLines.Size := iLineCount;
   for I := iLineCount - 1 downto FirstLine + Count do
-    FPage.FExecutableLines[i] := FPage.FExecutableLines[I-Count];
+    FPage.FExecutableLines[i] := FPage.FExecutableLines[I - Count];
   for I := FirstLine + Count - 1 downto FirstLine do
     FPage.FExecutableLines[i] := False;
+
+  SetLength(FPage.FLineChangedState, iLineCount);
+  for I := iLineCount - 1 downto FirstLine + Count do
+    FPage.FLineChangedState[i] := FPage.FLineChangedState[I - Count];
+  for I := FirstLine + Count - 1 downto FirstLine - 1 do
+    FPage.FLineChangedState[i] := csModified;
 
   // Track the breakpoint lines in the debugger
   with FPage.FForm.Debugger do
@@ -767,6 +781,11 @@ begin
     FPage.FExecutableLines[i] := FPage.FExecutableLines[I + Count];
   FPage.FExecutableLines.Size := FPage.FExecutableLines.Size - Count;
 
+  // Track the executable lines
+  for I := FirstLine - 1 to Length(FPage.FLineChangedState) - Count - 1 do
+    FPage.FLineChangedState[i] := FPage.FLineChangedState[I + Count];
+  SetLength(FPage.FLineChangedState, Length(FPage.FLineChangedState) - Count);
+
   // Track the breakpoint lines in the debugger
   with FPage.FForm.Debugger do
     for I := 0 to Breakpoints.Count - 1 do
@@ -791,7 +810,7 @@ constructor TEditorPage.Create(AOwner: TDwsIdeForm; const AFileName: TFileName;
     FEditor.Parent  := Self;
     FEditor.Align   := alClient;
     FEditor.BorderStyle := bsNone;
-    FEditor.Gutter.Width := 50;
+    FEditor.Gutter.Width := 64;
     FEditor.PopupMenu := AOwner.EditorPagePopupMenu;
     FEditor.WantTabs := True;
     FEditor.FontSmoothing := fsmClearType;
@@ -888,6 +907,7 @@ begin
   begin
     FEditor.Lines.Text := LoadTextFromFile(AFileName);
     InitExecutableLines;
+    InitLineChangeStates;
     FEditor.ReadOnly  := FileIsReadOnly(AFileName);
   end;
 
@@ -907,6 +927,7 @@ end;
 
 procedure TEditorPage.DoOnEditorChange(ASender: TObject);
 begin
+  FLineChangedState[FEditor.CaretY - 1] := csModified;
   FForm.EditorChange(ASender);
 end;
 
@@ -1069,6 +1090,39 @@ begin
   Editor.InvalidateGutter;
 end;
 
+// ClearLineStates
+//
+procedure TEditorPage.ClearLineChangeStates;
+var
+  I: Integer;
+begin
+  for I := 0 to Length(FLineChangedState) do
+    FLineChangedState[I] := csOriginal;
+
+  Editor.InvalidateGutter;
+end;
+
+// InitLineStates
+//
+procedure TEditorPage.InitLineChangeStates;
+begin
+  SetLength(FLineChangedState, 0);
+  SetLength(FLineChangedState, Editor.Lines.Count);
+end;
+
+// ToggleLineChangedStates
+//
+procedure TEditorPage.ToggleLineChangedStates;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(FLineChangedState) do
+    if FLineChangedState[Index] = csModified then
+      FLineChangedState[Index] := csSaved;
+
+  FEditor.InvalidateGutter;
+end;
+
 // SetFileName
 //
 procedure TEditorPage.SetFileName(const Value: TFileName);
@@ -1117,6 +1171,16 @@ begin
     Result := False;
 end;
 
+// GetLineChangeState
+//
+function TEditorPage.GetLineChangeState(ALine: Integer): TLineChangedState;
+begin
+  if ALine < Length(FLineChangedState) then
+    Result := FLineChangedState[ALine]
+  else
+    Result := csOriginal;
+end;
+
 // UnitName
 //
 function TEditorPage.UnitName: string;
@@ -1158,39 +1222,15 @@ end;
 //
 procedure TEditorPage.SynEditGutterPaint(Sender: TObject; aLine, X,
   Y: Integer);
-
 var
   GutterWidth: Integer;
-
-  procedure DrawRuler(Canvas: TCanvas; aLine, x, y: Integer);
-  var
-    LineNumText: string;
-    LineNumTextRect: TRect;
-    Wdth: Integer;
-  begin
-    if (ALine = 1) or (aLine = FEditor.CaretY) or (ALine mod 10 = 0) then
-    begin
-      LineNumText := IntToStr(aLine);
-      LineNumTextRect := Rect(x, y, GutterWidth, y + FEditor.LineHeight);
-      Canvas.TextRect(LineNumTextRect, LineNumText, [tfVerticalCenter,
-        tfSingleLine, tfRight]);
-    end
-    else
-    begin
-      Canvas.Pen.Color := FEditor.Gutter.Font.Color;
-      if (aLine mod 5) = 0 then
-        Wdth := 5
-      else
-        Wdth := 2;
-      Inc(y, FEditor.LineHeight div 2);
-      Canvas.MoveTo(GutterWidth - Wdth, y);
-      Canvas.LineTo(GutterWidth, y);
-    end;
-  end;
-
-var
   ImgIndex: Integer;
   R: TRect;
+  LineNumText: string;
+  LineNumTextRect: TRect;
+  Wdth: Integer;
+label
+  DrawGutter;
 begin
   GutterWidth := FEditor.Gutter.Width - 5;
 
@@ -1236,7 +1276,36 @@ begin
   if ImgIndex >= 0 then
     FForm.SmallImages.Draw(FEditor.Canvas, X, Y, ImgIndex);
 
-  DrawRuler(FEditor.Canvas, ALine, X, Y);
+  case GetLineChangeState(aLine - 1) of
+    csModified: FEditor.Canvas.Brush.Color := clYellow;
+    csSaved: FEditor.Canvas.Brush.Color := clLime;
+    csOriginal: goto DrawGutter;
+  end;
+
+  R := Rect(GutterWidth - 3, y, GutterWidth, y + FEditor.LineHeight);
+  FEditor.Canvas.FillRect(R);
+  FEditor.Canvas.Brush.Style := bsClear;
+
+DrawGutter:
+  Dec(GutterWidth, 4);
+  if (ALine = 1) or (aLine = FEditor.CaretY) or (ALine mod 10 = 0) then
+  begin
+    LineNumText := IntToStr(aLine);
+    LineNumTextRect := Rect(x, y, GutterWidth, y + FEditor.LineHeight);
+    FEditor.Canvas.TextRect(LineNumTextRect, LineNumText, [tfVerticalCenter,
+      tfSingleLine, tfRight]);
+  end
+  else
+  begin
+    FEditor.Canvas.Pen.Color := FEditor.Gutter.Font.Color;
+    if (aLine mod 5) = 0 then
+      Wdth := 5
+    else
+      Wdth := 2;
+    Inc(y, FEditor.LineHeight div 2);
+    FEditor.Canvas.MoveTo(GutterWidth - Wdth, y);
+    FEditor.Canvas.LineTo(GutterWidth, y);
+  end;
 end;
 
 // SynEditorClick
@@ -1353,6 +1422,7 @@ begin
       Format(RStrFileAlreadyExistsOverwrite, [FileName])) then
   begin
     SaveTextToUTF8File(FileName, Editor.Lines.Text);
+    ToggleLineChangedStates;
     Editor.Modified := False;
   end;
 end;
@@ -1365,7 +1435,7 @@ begin
     if not APromptOverwrite or (IsProjectSourceFile and not FileExists(FileName)) or
      ConfirmDlgYesNoAbort(
       Format(RStrFileHasChanged,  [ ExtractFileName(FileName) ])) then
-        SavetoFile(False);
+        SaveToFile(False);
   Editor.Modified := False;
 end;
 
@@ -1378,6 +1448,7 @@ begin
   begin
     Filename := FForm.SaveSourceDialog.FileName;
     SavetoFile(False);
+    ToggleLineChangedStates;
   end;
 end;
 
@@ -3096,6 +3167,14 @@ begin
     EditorPage(I).ClearExecutableLines;
 end;
 
+procedure TDwsIdeForm.ClearLinesChangedState;
+var
+  I: Integer;
+begin
+  for I := 0 to EditorPageCount - 1 do
+    EditorPage(I).ClearLineChangeStates;
+end;
+
 procedure TDwsIdeForm.EditorPageClose(AIndex: Integer);
 var
   Page: TEditorPage;
@@ -3534,11 +3613,6 @@ procedure TDwsIdeForm.ActionClosePageUpdate(Sender: TObject);
 begin
   with Sender as TAction do
     Enabled := EditorCurrentPageIndex <> -1;
-end;
-
-procedure TDwsIdeForm.ActionExitExecute(Sender: TObject);
-begin
-  Close;
 end;
 
 procedure TDwsIdeForm.ActionFileCloseAllExecute(Sender: TObject);
