@@ -35,6 +35,7 @@ type
          procedure IncludeViaFileRestricted;
          procedure IncludeCommentStart;
          procedure IncludeStringStart;
+         procedure IncludeInSections;
          procedure StackMaxRecursion;
          procedure StackOverFlow;
          procedure StackOverFlowOnFuncPtr;
@@ -244,6 +245,8 @@ begin
       scriptSource:='{'
    else if scriptName='string.inc' then
       scriptSource:='"he'
+   else if scriptName='define.test' then
+      scriptSource:='{$DEFINE TEST}'
    else begin
       CheckEquals('test.dummy', scriptName, 'DoOnInclude');
       scriptSource:='Print(''hello'');';
@@ -454,6 +457,71 @@ begin
    CheckEquals( 'Syntax Error: End of string constant not found (end of file) '
                +'[line: 2, column: 1, file: string.inc]'#13#10,
                prog.Msgs.AsInfo);
+end;
+
+// IncludeInSections
+//
+procedure TCornerCasesTests.IncludeInSections;
+const
+   cCode : String = 'unit Hello;'#13#10
+                   +'//1'#13#10
+                   +'interface'#13#10
+                   +'//2'#13#10
+                   +'{$ifdef TEST}procedure World;{$endif}'#13#10
+                   +'//3'#13#10
+                   +'implementation'#13#10
+                   +'//4'#13#10
+                   +'{$ifdef TEST}procedure World; begin end;{$endif}'#13#10
+                   +'//5'#13#10;
+var
+   prog : IdwsProgram;
+   opts : TCompilerOptions;
+   buf : String;
+begin
+   opts:=FCompiler.Config.CompilerOptions;
+   FCompiler.Config.CompilerOptions:=opts+[coSymbolDictionary];
+   FCompiler.OnInclude:=DoOnInclude;
+   try
+      prog:=FCompiler.Compile(cCode);
+      CheckEquals('', prog.Msgs.AsInfo, 'Compile default');
+      Check(prog.SymbolDictionary.FindSymbolUsage('World', suDeclaration)=nil, 'Check default');
+
+      buf:=cCode;
+      FastStringReplace(buf, '//1', '{$include "define.test"}');
+      prog:=FCompiler.Compile(buf);
+      CheckEquals('', prog.Msgs.AsInfo, 'Compile 1');
+      Check(prog.SymbolDictionary.FindSymbolUsage('World', suDeclaration)<>nil, 'Check 1');
+      CheckEquals(5, prog.SymbolDictionary.FindSymbolUsage('World', suDeclaration).ScriptPos.Line, 'Line 1');
+
+      buf:=cCode;
+      FastStringReplace(buf, '//2', '{$include "define.test"}');
+      prog:=FCompiler.Compile(buf);
+      CheckEquals('', prog.Msgs.AsInfo, 'Compile 2');
+      Check(prog.SymbolDictionary.FindSymbolUsage('World', suDeclaration)<>nil, 'Check 2');
+      CheckEquals(5, prog.SymbolDictionary.FindSymbolUsage('World', suDeclaration).ScriptPos.Line, 'Line 2');
+
+      buf:=cCode;
+      FastStringReplace(buf, '//3', '{$include "define.test"}');
+      prog:=FCompiler.Compile(buf);
+      CheckEquals('', prog.Msgs.AsInfo, 'Compile 3');
+      Check(prog.SymbolDictionary.FindSymbolUsage('World', suDeclaration)<>nil, 'Check 3');
+      CheckEquals(9, prog.SymbolDictionary.FindSymbolUsage('World', suDeclaration).ScriptPos.Line, 'Line 3');
+
+      buf:=cCode;
+      FastStringReplace(buf, '//4', '{$include "define.test"}');
+      prog:=FCompiler.Compile(buf);
+      CheckEquals('', prog.Msgs.AsInfo, 'Compile 4');
+      Check(prog.SymbolDictionary.FindSymbolUsage('World', suDeclaration)<>nil, 'Check 4');
+      CheckEquals(9, prog.SymbolDictionary.FindSymbolUsage('World', suDeclaration).ScriptPos.Line, 'Line 4');
+
+      buf:=cCode;
+      FastStringReplace(buf, '//5', '{$include "define.test"}');
+      prog:=FCompiler.Compile(buf);
+      CheckEquals('', prog.Msgs.AsInfo, 'Compile 5');
+      Check(prog.SymbolDictionary.FindSymbolUsage('World', suDeclaration)=nil, 'Check 5');
+   finally
+      FCompiler.Config.CompilerOptions:=opts;
+   end;
 end;
 
 // StackMaxRecursion
