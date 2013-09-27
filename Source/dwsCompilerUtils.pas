@@ -62,15 +62,15 @@ type
 constructor TCheckAbstractClassConstruction.Create(msgs: TdwsMessageList; const text : UnicodeString; const p : TScriptPos;
                                                    classSym : TClassSymbol);
 begin
-   inherited Create(msgs, UnicodeFormat(MSG_Error, [text]), p);
    FClassSym:=classSym;
+   inherited Create(msgs, UnicodeFormat(MSG_Error, [text]), p);
 end;
 
 // IsValid
 //
 function TCheckAbstractClassConstruction.IsValid : Boolean;
 begin
-   Result:=FClassSym.IsAbstract;
+   Result:=FClassSym.IsAbstract and (MessageList.State=mlsCompleted);
 end;
 
 // CreateFuncExpr

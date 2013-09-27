@@ -90,6 +90,9 @@ type
          FMsgs : TdwsMessageList;
          FText : UnicodeString;
 
+      protected
+         property MessageList : TdwsMessageList read FMsgs;
+
       public
          constructor Create(aMessageList : TdwsMessageList; const Text: UnicodeString);
 
@@ -187,6 +190,8 @@ type
       function AsInfo: UnicodeString; override;
    end;
 
+   TdwsMessageListState = (mlsInProgress, mlsStopped, mlsCompleted);
+
    // TdwsMessageList
    //
    TdwsMessageList = class
@@ -194,6 +199,7 @@ type
          FMessageList : TTightList;
          FSourceFiles : TTightList;
          FErrorsCount : Integer;
+         FState : TdwsMessageListState;
 
       protected
          function GetMsg(Index: Integer): TdwsMessage;
@@ -216,6 +222,7 @@ type
          property Msgs[index : Integer] : TdwsMessage read GetMsg; default;
          property Count : Integer read GetMsgCount;
          property HasErrors : Boolean read GetHasErrors;
+         property State : TdwsMessageListState read FState write FState;
    end;
 
    TdwsHintsLevel = (hlDisabled, hlNormal, hlStrict, hlPedantic);
@@ -515,14 +522,14 @@ var
    i : Integer;
    msg : TdwsMessage;
 begin
+   FErrorsCount:=0;
    for i:=FMessageList.Count-1 downto 0 do begin
       msg:=GetMsg(i);
       if not msg.IsValid then begin
-         if msg.IsError then
-            Dec(FErrorsCount);
          msg.Free;
          FMessageList.Delete(i);
-      end;
+      end else if msg.IsError then
+         Inc(FErrorsCount);
    end;
 end;
 
@@ -553,7 +560,8 @@ procedure TdwsMessageList.AddMessage(aMessage: TdwsMessage);
 begin
    FMessageList.Add(aMessage);
    if aMessage.IsError then
-      Inc(FErrorsCount);
+      if aMessage.IsValid then
+         Inc(FErrorsCount);
 end;
 
 // AddMsgs
@@ -859,6 +867,7 @@ procedure TdwsCompileMessageList.AddCompilerStop(const aScriptPos: TScriptPos;
       const Text: UnicodeString; messageClass : TScriptMessageClass);
 begin
    AddCompilerError(aScriptPos, Text, messageClass);
+   State:=mlsStopped;
    raise ECompileError.Create(Text);
 end;
 

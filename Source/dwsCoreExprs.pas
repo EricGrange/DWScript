@@ -1091,13 +1091,13 @@ type
 
    // a xor b
    TIntXorExpr = class(TIntegerBinOpExpr)
-     function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
    TBoolXorExpr = class(TBooleanBinOpExpr)
-     function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
    TVariantXorExpr = class(TVariantBinOpExpr)
-     function Eval(exec : TdwsExecution) : Variant; override;
+      function Eval(exec : TdwsExecution) : Variant; override;
       procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
    end;
 
@@ -1113,7 +1113,8 @@ type
 
    // a shr b
    TShrExpr = class(TIntegerBinOpExpr)
-     function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // a sar b
@@ -4878,6 +4879,17 @@ end;
 function TShrExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
    Result := FLeft.EvalAsInteger(exec) shr FRight.EvalAsInteger(exec);
+end;
+
+// Optimize
+//
+function TShrExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   if Right.IsConstant and (Right.EvalAsInteger(exec)=0) then begin
+      Result:=Right;
+      FRight:=nil;
+      Free;
+   end else Result:=Self;
 end;
 
 // ------------------

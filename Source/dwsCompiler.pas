@@ -1604,8 +1604,6 @@ begin
       if Assigned(FOnGetDefaultLocalizer) then
          FMainProg.DefaultLocalizer:=FOnGetDefaultLocalizer();
 
-      FMsgs.RemoveInvalidDeferred;
-
    except
       on e: ECompileError do
          ;
@@ -1614,6 +1612,10 @@ begin
       on e: Exception do
          FMsgs.AddCompilerError(cNullPos, e.Message);
    end;
+
+   if FMsgs.State=mlsInProgress then
+      FMsgs.State:=mlsCompleted;
+   FMsgs.RemoveInvalidDeferred;
 
    FMainProg.TimeStamp:=compileStartTime;
    FMainProg.CompileDuration:=Now-compileStartTime;
@@ -2855,7 +2857,7 @@ function TdwsCompiler.ReadTypeDecl(firstInBlock : Boolean) : Boolean;
 var
    name : UnicodeString;
    typNew, typOld : TTypeSymbol;
-   typePos : TScriptPos;
+   typePos, endPos : TScriptPos;
    oldSymPos : TSymbolPosition; // Mark *where* the old declaration was
    typContext : TdwsSourceContext;
    attributesBag : ISymbolAttributesBag;
@@ -2923,12 +2925,15 @@ begin
       end;
 
       ReadSemiColon;
+      endPos:=FTok.HotPos;
 
       typNew.DeprecatedMessage:=ReadDeprecatedMessage;
+      if typNew.DeprecatedMessage<>'' then
+         endPos:=FTok.HotPos;
 
    finally
       if coContextMap in FOptions then
-         FSourceContextMap.CloseContext(FTok.CurrentPos);
+         FSourceContextMap.CloseContext(endPos);
    end;
 end;
 
