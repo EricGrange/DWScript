@@ -1512,7 +1512,7 @@ var
   MailMessage: TIdMessage;
 begin
   with TIdSMTP.Create(nil) do
-  begin
+  try
     // setup SMTP
     Host := Info.ParamAsString[0];
     Port := 25;
@@ -1540,36 +1540,44 @@ begin
     finally
       FreeAndNil(MailMessage);
     end;
+  finally
+    Free;
   end;
 end;
 
 procedure TdwsIndyLib.dwsUploadEval(info: TProgramInfo);
 begin
-(*
-  IdFtp.Host := info.ValueAsString['Host'];
-  IdFtp.Username := info.ValueAsString['Username'];
-  IdFtp.Password := info.ValueAsString['Password'];
-  IdFtp.AutoLogin := True;
-  IdFtp.Connect;
-  IdFtp.ChangeDir(info.ValueAsString['Path']);
-  IdFtp.Put(info.ValueAsString['Filemame']);
-  IdFtp.Disconnect;
-*)
+  with TIdFtp.Create(nil) do
+  try
+    Host := info.ValueAsString['Host'];
+    Username := info.ValueAsString['Username'];
+    Password := info.ValueAsString['Password'];
+    AutoLogin := True;
+    Connect;
+    ChangeDir(info.ValueAsString['Path']);
+    Put(info.ValueAsString['Filemame']);
+    Disconnect;
+  finally
+    Free;
+  end;
 end;
 
 procedure TdwsIndyLib.dwsUploadPortEval(info: TProgramInfo);
 begin
-(*
-  IdFtp.Host := info.ValueAsString['Host'];
-  IdFtp.Port := info.ValueAsInteger['Port'];
-  IdFtp.Username := info.ValueAsString['Username'];
-  IdFtp.Password := info.ValueAsString['Password'];
-  IdFtp.AutoLogin := True;
-  IdFtp.Connect;
-  IdFtp.ChangeDir(info.ValueAsString['Path']);
-  IdFtp.Put(info.ValueAsString['Filemame']);
-  IdFtp.Disconnect;
-*)
+  with TIdFtp.Create(nil) do
+  try
+    Host := info.ValueAsString['Host'];
+    Port := info.ValueAsInteger['Port'];
+    Username := info.ValueAsString['Username'];
+    Password := info.ValueAsString['Password'];
+    AutoLogin := True;
+    Connect;
+    ChangeDir(info.ValueAsString['Path']);
+    Put(info.ValueAsString['Filemame']);
+    Disconnect;
+  finally
+    Free;
+  end;
 end;
 
 end.
