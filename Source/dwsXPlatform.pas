@@ -72,7 +72,8 @@ type
 procedure SetDecimalSeparator(c : Char);
 function GetDecimalSeparator : Char;
 
-procedure CollectFiles(const directory, fileMask : UnicodeString; list : TStrings);
+procedure CollectFiles(const directory, fileMask : UnicodeString;
+   list : TStrings; recurseSubdirectories: Boolean = False);
 
 type
    {$IFNDEF FPC}
@@ -481,19 +482,37 @@ end;
 
 // CollectFiles
 //
-procedure CollectFiles(const directory, fileMask : UnicodeString; list : TStrings);
+procedure CollectFiles(const directory, fileMask : UnicodeString; list : TStrings;
+   recurseSubdirectories: Boolean = False);
 var
    searchRec : TSearchRec;
-   found : Integer;
+   dirList : TStringList;
+   dir : String;
 begin
-   found:=FindFirst(directory+fileMask, faArchive or faReadOnly or faHidden, searchRec);
-   while found=0 do begin
-      if (searchRec.Attr and faDirectory)=0 then begin
+   if FindFirst(directory+fileMask, faArchive or faReadOnly or faHidden, searchRec) = 0 then
+   repeat
+      if (searchRec.Attr and faDirectory)=0 then
          list.Add(directory+searchRec.Name);
-      end;
-      found:=FindNext(searchRec);
-   end;
+   until FindNext(searchRec) <> 0;
    FindClose(searchRec);
+
+   if not recurseSubdirectories then
+      Exit;
+
+   dirList := TStringList.Create;
+   try
+      if FindFirst(directory+'*', faDirectory, searchRec) = 0 then
+      repeat
+         if ((searchRec.Attr and faDirectory) <> 0) and (searchRec.Name[1] <> '.') then
+            dirList.Add(IncludeTrailingPathDelimiter(directory+searchRec.Name));
+      until FindNext(searchRec) <> 0;
+      FindClose(searchRec);
+
+      for dir in dirList do
+        CollectFiles(dir, fileMask, list, recurseSubdirectories);
+   finally
+      dirList.Free
+   end;
 end;
 
 {$ifdef FPC}
