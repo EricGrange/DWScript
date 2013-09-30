@@ -903,10 +903,10 @@ initialization
                              ['dividend', SYS_INTEGER, 'divisor', SYS_INTEGER,
                               '@result', SYS_INTEGER, '@remainder', SYS_INTEGER]);
 
-   RegisterInternalFloatFunction(TMaxFunc, 'Max', ['v1', SYS_FLOAT, 'v2', SYS_FLOAT], [iffStateLess, iffOverloaded]);
-   RegisterInternalIntFunction(TMaxIntFunc, 'Max', ['v1', SYS_INTEGER, 'v2', SYS_INTEGER], [iffStateLess, iffOverloaded]);
-   RegisterInternalFloatFunction(TMinFunc, 'Min', ['v1', SYS_FLOAT, 'v2', SYS_FLOAT], [iffStateLess, iffOverloaded]);
-   RegisterInternalIntFunction(TMinIntFunc, 'Min', ['v1', SYS_INTEGER, 'v2', SYS_INTEGER], [iffStateLess, iffOverloaded]);
+   RegisterInternalFloatFunction(TMaxFunc, 'Max', ['v1', SYS_FLOAT, 'v2', SYS_FLOAT], [iffStateLess, iffOverloaded], 'Max');
+   RegisterInternalIntFunction(TMaxIntFunc, 'Max', ['v1', SYS_INTEGER, 'v2', SYS_INTEGER], [iffStateLess, iffOverloaded], 'Max');
+   RegisterInternalFloatFunction(TMinFunc, 'Min', ['v1', SYS_FLOAT, 'v2', SYS_FLOAT], [iffStateLess, iffOverloaded], 'Min');
+   RegisterInternalIntFunction(TMinIntFunc, 'Min', ['v1', SYS_INTEGER, 'v2', SYS_INTEGER], [iffStateLess, iffOverloaded], 'Min');
    RegisterInternalFloatFunction(TClampFunc, 'Clamp', ['v', SYS_FLOAT, 'min', SYS_FLOAT, 'max', SYS_FLOAT], [iffStateLess], 'Clamp');
 
    RegisterInternalIntFunction(TMaxIntValueFunc, 'MaxInt', [], [iffStateLess, iffOverloaded]);
