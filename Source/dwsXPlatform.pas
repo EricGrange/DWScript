@@ -73,7 +73,7 @@ procedure SetDecimalSeparator(c : Char);
 function GetDecimalSeparator : Char;
 
 procedure CollectFiles(const directory, fileMask : UnicodeString;
-   list : TStrings; recurseSubdirectories: Boolean = False);
+                       list : TStrings; recurseSubdirectories: Boolean = False);
 
 type
    {$IFNDEF FPC}
@@ -482,36 +482,51 @@ end;
 
 // CollectFiles
 //
+type
+   TFindDataRec = record
+      Handle : THandle;
+      Data : TWin32FindData;
+   end;
+
 procedure CollectFiles(const directory, fileMask : UnicodeString; list : TStrings;
-   recurseSubdirectories: Boolean = False);
+                       recurseSubdirectories: Boolean = False);
+const
+   // contant defined in Windows.pas is incorrect
+   FindExInfoBasic = 1;
 var
-   searchRec : TSearchRec;
-   dirList : TStringList;
-   dir : String;
+   searchRec : TFindDataRec;
 begin
-   if FindFirst(directory+fileMask, faArchive or faReadOnly or faHidden, searchRec) = 0 then
-   repeat
-      if (searchRec.Attr and faDirectory)=0 then
-         list.Add(directory+searchRec.Name);
-   until FindNext(searchRec) <> 0;
-   FindClose(searchRec);
+   searchRec.Handle:=FindFirstFileEx(PChar(directory+fileMask), FIndex_Info_Levels(FindExInfoBasic),
+                                     @searchRec.Data, FINDEX_SEARCH_OPS.FindExSearchNameMatch,
+                                     nil, 0);
+   if searchRec.Handle<>INVALID_HANDLE_VALUE then begin
+      repeat
+         if (searchRec.Data.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY)=0 then
+            list.Add(directory+searchRec.Data.cFileName);
+      until not FindNextFile(searchRec.Handle, searchRec.Data);
+      Windows.FindClose(searchRec.Handle);
+   end;
 
    if not recurseSubdirectories then
       Exit;
 
-   dirList := TStringList.Create;
-   try
-      if FindFirst(directory+'*', faDirectory, searchRec) = 0 then
+   searchRec.Handle:=FindFirstFileEx(PChar(directory+'*'), FIndex_Info_Levels(FindExInfoBasic),
+                                     @searchRec.Data, FINDEX_SEARCH_OPS.FindExSearchLimitToDirectories,
+                                     nil, 0);
+   if searchRec.Handle<>INVALID_HANDLE_VALUE then begin
       repeat
-         if ((searchRec.Attr and faDirectory) <> 0) and (searchRec.Name[1] <> '.') then
-            dirList.Add(IncludeTrailingPathDelimiter(directory+searchRec.Name));
-      until FindNext(searchRec) <> 0;
-      FindClose(searchRec);
-
-      for dir in dirList do
-        CollectFiles(dir, fileMask, list, recurseSubdirectories);
-   finally
-      dirList.Free
+         if (searchRec.Data.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY)<>0 then begin
+            // filter '.' and '..' pseudo-directories
+            if searchRec.Data.cFileName[0]='.' then begin
+               if searchRec.Data.cFileName[1]='.' then begin
+                  if searchRec.Data.cFileName[2]=#0 then continue;
+               end else if searchRec.Data.cFileName[1]=#0 then continue;
+            end;
+            CollectFiles(IncludeTrailingPathDelimiter(directory+searchRec.Data.cFileName),
+                         fileMask, list, True);
+         end;
+      until not FindNextFile(searchRec.Handle, searchRec.Data);
+      Windows.FindClose(searchRec.Handle);
    end;
 end;
 
