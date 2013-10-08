@@ -51,13 +51,14 @@ type
    IJSONLength = interface(IConnectorCall) end;
    IJSONClone = interface(IConnectorCall) end;
    IJSONExtend = interface(IConnectorCall) end;
+   IJSONAdd = interface(IConnectorCall) end;
 
    // TdwsJSONConnectorType
    //
    TdwsJSONConnectorType = class (TInterfacedSelfObject, IConnectorType,
                                   IJSONTypeName, IJSONElementName,
                                   IJSONLow, IJSONHigh, IJSONLength,
-                                  IJSONClone, IJSONExtend)
+                                  IJSONClone, IJSONExtend, IJSONAdd)
       private
          FTable : TSymbolTable;
          FLowValue : TData;
@@ -82,6 +83,7 @@ type
          function LengthCall(const base : Variant; const args : TConnectorArgs) : TData;
          function CloneCall(const base : Variant; const args : TConnectorArgs) : TData;
          function ExtendCall(const base : Variant; const args : TConnectorArgs) : TData;
+         function AddCall(const base : Variant; const args : TConnectorArgs) : TData;
 
          function IJSONTypeName.Call = TypeNameCall;
          function IJSONElementName.Call = ElementNameCall;
@@ -90,6 +92,7 @@ type
          function IJSONLength.Call = LengthCall;
          function IJSONClone.Call = CloneCall;
          function IJSONExtend.Call = ExtendCall;
+         function IJSONAdd.Call = AddCall;
 
       public
          constructor Create(table : TSymbolTable);
@@ -412,7 +415,9 @@ end;
 // HasMethod
 //
 function TdwsJSONConnectorType.HasMethod(const methodName : UnicodeString; const params : TConnectorParamArray;
-                                       var typSym : TTypeSymbol) : IConnectorCall;
+                                         var typSym : TTypeSymbol) : IConnectorCall;
+var
+   paramTyp : TTypeSymbol;
 begin
    if UnicodeSameText(methodName, 'typename') then begin
 
@@ -426,8 +431,9 @@ begin
 
       if Length(params)<>1 then
          raise ECompileException.CreateFmt(CPE_BadNumberOfParameters, [1, Length(params)]);
-      if not params[0].TypSym.UnAliasedTypeIs(TBaseIntegerSymbol) then
-         raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_INTEGER, params[0].TypSym.Caption]);
+      paramTyp:=params[0].TypSym;
+      if not paramTyp.UnAliasedTypeIs(TBaseIntegerSymbol) then
+         raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_INTEGER, paramTyp.Caption]);
 
       Result:=IJSONElementName(Self);
       typSym:=FTable.FindTypeSymbol(SYS_STRING, cvMagic);
@@ -436,11 +442,22 @@ begin
 
       if Length(params)<>1 then
          raise ECompileException.CreateFmt(CPE_BadNumberOfParameters, [1, Length(params)]);
-      if params[0].TypSym.UnAliasedType<>FTable.FindTypeSymbol(SYS_JSONVARIANT, cvMagic) then
-         raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_JSONVARIANT, params[0].TypSym.Caption]);
+      paramTyp:=params[0].TypSym;
+      if paramTyp.UnAliasedType<>FTable.FindTypeSymbol(SYS_JSONVARIANT, cvMagic) then
+         raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_JSONVARIANT, paramTyp.Caption]);
 
       Result:=IJSONExtend(Self);
       typSym:=nil;
+
+   end else if UnicodeSameText(methodName, 'add') then begin
+
+      if Length(params)<>1 then
+         raise ECompileException.CreateFmt(CPE_BadNumberOfParameters, [1, Length(params)]);
+      if not params[0].TypSym.UnAliasedType.IsBaseType then
+         raise ECompileException.CreateFmt(CPE_InvalidParameterType, [0, SYS_JSONVARIANT, params[0].TypSym.Caption]);
+
+      Result:=IJSONAdd(Self);
+      typSym:=FTable.FindTypeSymbol(SYS_INTEGER, cvMagic);
 
    end else begin
 
@@ -594,9 +611,38 @@ begin
    Result:=nil;
    pBase:=PVarData(@base);
    if pBase^.VType=varUnknown then begin
-      pParam:=PVarData(@args[0]);
+      pParam:=PVarData(@args[0][0]);
       if (pParam^.VType=varUnknown) and (pParam.VUnknown<>nil) then
          IBoxedJSONValue(pBase^.VUnknown).Value.Extend(IBoxedJSONValue(pParam^.VUnknown).Value);
+   end;
+end;
+
+// AddCall
+//
+function TdwsJSONConnectorType.AddCall(const base : Variant; const args : TConnectorArgs) : TData;
+var
+   pBase, pParam : PVarData;
+   baseValue : TdwsJSONValue;
+   baseArray : TdwsJSONArray;
+begin
+   Result:=nil;
+   pBase:=PVarData(@base);
+   if pBase^.VType=varUnknown then begin
+      baseValue:=IBoxedJSONValue(pBase^.VUnknown).Value;
+      if baseValue.ValueType=jvtArray then begin
+         baseArray:=TdwsJSONArray(baseValue);
+         pParam:=PVarData(@args[0][0]);
+         case pParam^.VType of
+            varInt64 : baseArray.Add(pParam^.VInt64);
+            varDouble : baseArray.Add(pParam^.VDouble);
+            varUString : baseArray.Add(String(pParam^.VUString));
+            varBoolean : baseArray.Add(pParam^.VBoolean);
+         else
+            raise EdwsJSONException.Create('JSON Array Add unsupported type');
+         end;
+         if (pParam^.VType=varUnknown) and (pParam.VUnknown<>nil) then
+            baseArray.Add(IBoxedJSONValue(pParam^.VUnknown).Value);
+      end else raise EdwsJSONException.Create('JSON Array required for Add method');
    end;
 end;
 

@@ -315,7 +315,11 @@ type
 
          procedure Clear;
 
-         procedure Add(aValue : TdwsJSONValue);
+         procedure Add(aValue : TdwsJSONValue); overload;
+         procedure Add(const aValue : Int64); overload;
+         procedure Add(const aValue : Double); overload;
+         procedure Add(const aValue : String); overload;
+         procedure Add(const aValue : Boolean); overload;
          function AddObject : TdwsJSONObject;
          function AddArray : TdwsJSONArray;
          function AddValue : TdwsJSONImmediate;
@@ -1558,7 +1562,7 @@ begin
    FCapacity:=0;
 end;
 
-// Add
+// Add (value)
 //
 procedure TdwsJSONArray.Add(aValue : TdwsJSONValue);
 begin
@@ -1571,6 +1575,50 @@ begin
    if FCount=FCapacity then Grow;
    FElements^[FCount]:=aValue;
    Inc(FCount);
+end;
+
+// Add (int)
+//
+procedure TdwsJSONArray.Add(const aValue : Int64);
+var
+   v : TdwsJSONImmediate;
+begin
+   v:=TdwsJSONImmediate.Create;
+   v.AsInteger:=aValue;
+   Add(v);
+end;
+
+// Add (float)
+//
+procedure TdwsJSONArray.Add(const aValue : Double);
+var
+   v : TdwsJSONImmediate;
+begin
+   v:=TdwsJSONImmediate.Create;
+   v.AsNumber:=aValue;
+   Add(v);
+end;
+
+// Add (str)
+//
+procedure TdwsJSONArray.Add(const aValue : String);
+var
+   v : TdwsJSONImmediate;
+begin
+   v:=TdwsJSONImmediate.Create;
+   v.AsString:=aValue;
+   Add(v);
+end;
+
+// Add (bool)
+//
+procedure TdwsJSONArray.Add(const aValue : Boolean);
+var
+   v : TdwsJSONImmediate;
+begin
+   v:=TdwsJSONImmediate.Create;
+   v.AsBoolean:=aValue;
+   Add(v);
 end;
 
 // AddObject
