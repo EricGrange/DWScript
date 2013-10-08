@@ -392,10 +392,17 @@ end;
 // HelperSuggestTest
 //
 procedure TSourceUtilsTests.HelperSuggestTest;
+const
+   cSugg : array [0..12] of String = (
+      'Clamp', 'Factorial', 'Hello', 'IsPrime', 'LeastFactor', 'Max',
+      'Min', 'Next', 'Sign', 'Sqr', 'ToBin', 'ToHexString', 'ToString'
+      );
+
 var
    prog : IdwsProgram;
    sugg : IdwsSuggestions;
    scriptPos : TScriptPos;
+   i : Integer;
 begin
    prog:=FCompiler.Compile( 'type TIntegerHelper = helper for Integer const Hello = 123; '
                               +'function Next : Integer; begin Result:=Self+1; end; end;'#13#10
@@ -405,13 +412,9 @@ begin
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 3, 3);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
 
-   CheckEquals(11, sugg.Count, 'd.');
-   CheckEquals('Clamp', sugg.Code[0], 'd. 0');
-   CheckEquals('Factorial', sugg.Code[1], 'd. 1');
-   CheckEquals('Hello', sugg.Code[2], 'd. 2');
-   CheckEquals('IsPrime', sugg.Code[3], 'd. 3');
-   CheckEquals('LeastFactor', sugg.Code[4], 'd. 4');
-   CheckEquals('Next', sugg.Code[5], 'd. 5');
+   CheckEquals(Length(cSugg), sugg.Count, 'd.');
+   for i:=0 to High(cSugg) do
+      CheckEquals(cSugg[i], sugg.Code[i], 'd. '+IntToStr(i));
 end;
 
 // SuggestAfterCall

@@ -416,6 +416,7 @@ type
          FPendingAttributes : TdwsSymbolAttributes;
          FPooledStringList : TSimpleStringList;
          FOperatorResolver : TOperatorResolver;
+         FDefaultConditionals : IAutoStrings;
 
          // if set we're in a setter write expression or statement
          FPendingSetterValueExpr : TVarExpr;
@@ -1467,7 +1468,9 @@ begin
 
    FOnGetDefaultLocalizer := conf.DoGetLocalizer;
 
-   FDataSymbolExprReuse:= TSimpleObjectObjectHash_TDataSymbol_TVarExpr.Create;
+   FDataSymbolExprReuse := TSimpleObjectObjectHash_TDataSymbol_TVarExpr.Create;
+
+   FDefaultConditionals := TAutoStrings.CreateClone(conf.Conditionals);
 
    F8087CW:=DirectSet8087CW($133F);
 end;
@@ -2064,7 +2067,7 @@ begin
       FTok.SwitchProcessor:=ReadInstrSwitch;
       if scriptType=stMain then
          FTok.ConditionalDefines:=FMainProg.ConditionalDefines
-      else FTok.ConditionalDefines:=TAutoStrings.Create(TStringList.Create);
+      else FTok.ConditionalDefines:=FDefaultConditionals.Clone;
 
       readingMain:=(scriptType=stMain);
       if readingMain then begin

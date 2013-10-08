@@ -1,0 +1,23 @@
+
+{$ifdef CONDITION}
+PrintLn('main ok');
+{$else}
+PrintLn('main not ok');
+{$endif}
+
+{$undef CONDITION}
+
+{$ifndef CONDITION}
+PrintLn('main undef ok');
+{$else}
+PrintLn('main undef not ok');
+{$endif}
+
+uses conditionalsUnit;
+Test;
+
+{$ifndef CONDITION}
+PrintLn('main after uses ok');
+{$else}
+PrintLn('main after uses not ok');
+{$endif}

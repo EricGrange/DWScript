@@ -70,19 +70,23 @@ type
    // IAutoStrings
    //
    IAutoStrings = interface
-      function GetValue : TStrings;
-      property Value : TStrings read GetValue;
+      function GetValue : TStringList;
+      property Value : TStringList read GetValue;
+      function Clone : IAutoStrings;
    end;
 
    // TAutoStrings
    //
    TAutoStrings = class(TInterfacedSelfObject, IAutoStrings)
       private
-         FValue : TStrings;
+         FValue : TStringList;
       protected
-         function GetValue : TStrings;
+         function GetValue : TStringList;
+         function Clone : IAutoStrings;
       public
-         constructor Create(value : TStrings);
+         constructor Create;
+         constructor CreateCapture(value : TStringList);
+         constructor CreateClone(value : TStringList);
          destructor Destroy; override;
    end;
 
@@ -3010,18 +3014,11 @@ end;
 // ------------------ TAutoStrings ------------------
 // ------------------
 
-// GetValue
-//
-function TAutoStrings.GetValue : TStrings;
-begin
-   Result:=FValue;
-end;
-
 // Create
 //
-constructor TAutoStrings.Create(value : TStrings);
+constructor TAutoStrings.Create;
 begin
-   FValue:=value;
+   FValue:=TStringList.Create;
 end;
 
 // Destroy
@@ -3029,6 +3026,40 @@ end;
 destructor TAutoStrings.Destroy;
 begin
    FValue.Free;
+end;
+
+// CreateCapture
+//
+constructor TAutoStrings.CreateCapture(value : TStringList);
+begin
+   FValue:=value;
+end;
+
+// CreateClone
+//
+constructor TAutoStrings.CreateClone(value : TStringList);
+var
+   sl : TStringList;
+begin
+   sl:=TStringList.Create;
+   FValue:=sl;
+   sl.Assign(value);
+   sl.CaseSensitive:=value.CaseSensitive;
+   sl.Sorted:=value.Sorted;
+end;
+
+// GetValue
+//
+function TAutoStrings.GetValue : TStringList;
+begin
+   Result:=FValue;
+end;
+
+// Clone
+//
+function TAutoStrings.Clone : IAutoStrings;
+begin
+   Result:=TAutoStrings.CreateClone(FValue);
 end;
 
 // ------------------

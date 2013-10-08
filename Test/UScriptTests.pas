@@ -80,13 +80,13 @@ begin
    CollectFiles(basePath+'SetOfPass'+PathDelim, cFilter, FTests);
 
    CollectFiles(basePath+'FailureScripts'+PathDelim, cFilter, FFailures);
-//   CollectFiles(basePath+'InterfacesFail'+PathDelim, cFilter, FFailures);
-//   CollectFiles(basePath+'OverloadsFail'+PathDelim, cFilter, FFailures);
-//   CollectFiles(basePath+'HelpersFail'+PathDelim, cFilter, FFailures);
-//   CollectFiles(basePath+'AttributesFail'+PathDelim, cFilter, FFailures);
-//   CollectFiles(basePath+'LambdaFail'+PathDelim, cFilter, FFailures);
-//   CollectFiles(basePath+'PropertyExpressionsFail'+PathDelim, cFilter, FFailures);
-//   CollectFiles(basePath+'SetOfFail'+PathDelim, cFilter, FFailures);
+   CollectFiles(basePath+'InterfacesFail'+PathDelim, cFilter, FFailures);
+   CollectFiles(basePath+'OverloadsFail'+PathDelim, cFilter, FFailures);
+   CollectFiles(basePath+'HelpersFail'+PathDelim, cFilter, FFailures);
+   CollectFiles(basePath+'AttributesFail'+PathDelim, cFilter, FFailures);
+   CollectFiles(basePath+'LambdaFail'+PathDelim, cFilter, FFailures);
+   CollectFiles(basePath+'PropertyExpressionsFail'+PathDelim, cFilter, FFailures);
+   CollectFiles(basePath+'SetOfFail'+PathDelim, cFilter, FFailures);
 
    FCompiler:=TDelphiWebScript.Create(nil);
    FCompiler.OnInclude:=DoInclude;

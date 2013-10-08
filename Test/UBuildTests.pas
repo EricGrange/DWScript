@@ -67,6 +67,7 @@ begin
    FCompiler:=TDelphiWebScript.Create(nil);
    FCompiler.OnInclude:=DoInclude;
    FCompiler.OnNeedUnit:=DoNeedUnit;
+   FCompiler.Config.Conditionals.Add('CONDITION');
 end;
 
 // TearDown

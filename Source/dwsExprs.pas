@@ -2769,7 +2769,6 @@ constructor TdwsMainProgram.Create(const systemTable : ISystemSymbolTable;
 var
    systemUnitTable : TLinkedSymbolTable;
    systemUnit : TUnitMainSymbol;
-   sl : TStringList;
 begin
    inherited Create(systemTable);
 
@@ -2788,11 +2787,7 @@ begin
 
    FAttributes:=TdwsSymbolAttributes.Create;
 
-   sl:=TStringList.Create;
-   sl.Sorted:=True;
-   sl.CaseSensitive:=False;
-   sl.Duplicates:=dupIgnore;
-   FConditionalDefines:=TAutoStrings.Create(sl);
+   FConditionalDefines:=TAutoStrings.Create;
 
    FSourceList:=TScriptSourceList.Create;
 
