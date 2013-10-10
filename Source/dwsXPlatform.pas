@@ -495,8 +495,13 @@ const
    FindExInfoBasic = 1;
 var
    searchRec : TFindDataRec;
+   infoLevel : TFindexInfoLevels;
 begin
-   searchRec.Handle:=FindFirstFileEx(PChar(directory+fileMask), FIndex_Info_Levels(FindExInfoBasic),
+   // 6.1 required for FindExInfoBasic (Win 2008 R2 or Win 7)
+   if ((Win32MajorVersion shl 16) or Win32MinorVersion)>=$60001 then
+      infoLevel:=TFindexInfoLevels(FindExInfoBasic)
+   else infoLevel:=FindExInfoStandard;
+   searchRec.Handle:=FindFirstFileEx(PChar(directory+fileMask), infoLevel,
                                      @searchRec.Data, FINDEX_SEARCH_OPS.FindExSearchNameMatch,
                                      nil, 0);
    if searchRec.Handle<>INVALID_HANDLE_VALUE then begin
