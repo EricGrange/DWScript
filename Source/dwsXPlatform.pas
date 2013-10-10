@@ -35,7 +35,7 @@ unit dwsXPlatform;
 
 interface
 
-uses Windows, Classes, SysUtils
+uses Windows, Classes, SysUtils, Masks
    {$IFNDEF VER200}, IOUtils{$ENDIF}
    ;
 
@@ -488,50 +488,68 @@ type
       Data : TWin32FindData;
    end;
 
-procedure CollectFiles(const directory, fileMask : UnicodeString; list : TStrings;
-                       recurseSubdirectories: Boolean = False);
+// CollectFilesMasked
+//
+procedure CollectFilesMasked(const directory : UnicodeString;
+                             mask : TMask; list : TStrings;
+                             recurseSubdirectories: Boolean = False);
 const
    // contant defined in Windows.pas is incorrect
    FindExInfoBasic = 1;
 var
    searchRec : TFindDataRec;
    infoLevel : TFindexInfoLevels;
+   fileName : String;
 begin
    // 6.1 required for FindExInfoBasic (Win 2008 R2 or Win 7)
-   if ((Win32MajorVersion shl 16) or Win32MinorVersion)>=$60001 then
+   if ((Win32MajorVersion shl 8) or Win32MinorVersion)>=$601 then
       infoLevel:=TFindexInfoLevels(FindExInfoBasic)
    else infoLevel:=FindExInfoStandard;
-   searchRec.Handle:=FindFirstFileEx(PChar(directory+fileMask), infoLevel,
+
+   fileName:=directory+'*';
+   searchRec.Handle:=FindFirstFileEx(PChar(Pointer(fileName)), infoLevel,
                                      @searchRec.Data, FINDEX_SEARCH_OPS.FindExSearchNameMatch,
                                      nil, 0);
    if searchRec.Handle<>INVALID_HANDLE_VALUE then begin
       repeat
-         if (searchRec.Data.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY)=0 then
-            list.Add(directory+searchRec.Data.cFileName);
-      until not FindNextFile(searchRec.Handle, searchRec.Data);
-      Windows.FindClose(searchRec.Handle);
-   end;
-
-   if not recurseSubdirectories then
-      Exit;
-
-   searchRec.Handle:=FindFirstFileEx(PChar(directory+'*'), FIndex_Info_Levels(FindExInfoBasic),
-                                     @searchRec.Data, FINDEX_SEARCH_OPS.FindExSearchLimitToDirectories,
-                                     nil, 0);
-   if searchRec.Handle<>INVALID_HANDLE_VALUE then begin
-      repeat
-         if (searchRec.Data.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY)<>0 then begin
-            // filter '.' and '..' pseudo-directories
+         if (searchRec.Data.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY)=0 then begin
+            // check file against mask
+            fileName:=searchRec.Data.cFileName;
+            if mask.Matches(fileName) then begin
+               fileName:=directory+fileName;
+               list.Add(fileName);
+            end;
+         end else if recurseSubdirectories then begin
+            // dive in subdirectory
             if searchRec.Data.cFileName[0]='.' then begin
                if searchRec.Data.cFileName[1]='.' then begin
                   if searchRec.Data.cFileName[2]=#0 then continue;
                end else if searchRec.Data.cFileName[1]=#0 then continue;
             end;
-            CollectFiles(IncludeTrailingPathDelimiter(directory+searchRec.Data.cFileName),
-                         fileMask, list, True);
+            // decomposed cast and concatenation to avoid implicit string variable
+            fileName:=searchRec.Data.cFileName;
+            fileName:=directory+fileName+PathDelim;
+            CollectFilesMasked(fileName, mask, list, True);
          end;
       until not FindNextFile(searchRec.Handle, searchRec.Data);
       Windows.FindClose(searchRec.Handle);
+   end;
+end;
+
+// CollectFiles
+//
+procedure CollectFiles(const directory, fileMask : UnicodeString; list : TStrings;
+                       recurseSubdirectories: Boolean = False);
+var
+   mask : TMask;
+begin
+   // Windows can match 3 character filters with old DOS filenames
+   // Mask confirmation is necessary
+   mask:=TMask.Create(fileMask);
+   try
+      CollectFilesMasked(directory, mask, list, recurseSubdirectories);
+   finally
+      mask.Free;
    end;
 end;
 
