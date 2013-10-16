@@ -1,4 +1,4 @@
 var music : String = #$266B' Music!';
 
 PrintLn(music);
-PrintLn(IntToHex(Ord(music[1]), 4));
+PrintLn(UpperCase(IntToHex(Ord(music[1]), 4)));

@@ -11,7 +11,7 @@ var i : Integer;
 for i:=1 to 10 do begin
    var buf : TRec;
    buf.V:=i*2;
-   buf.N:=IntToHex(buf.V, 2);
+   buf.N:=UpperCase(IntToHex(buf.V, 2));
    r.Push(buf);
    a.Push(i);
 end;

@@ -10,5 +10,5 @@ PrintLn('12.5'.ToFloat+1);
 PrintLn(StrToFloatDef('', 45.6));
 PrintLn(StrToFloatDef('A', 7.89));
 
-PrintLn(IntToHex(123, 4));
+PrintLn(UpperCase(IntToHex(123, 4)));
 PrintLn(HexToInt('123'));

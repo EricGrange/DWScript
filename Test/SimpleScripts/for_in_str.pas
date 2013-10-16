@@ -9,12 +9,12 @@ for c in cHello do
 s:=#$1D538#$3B1#$1D516;
 
 for c in s do
-   PrintLn('unicode $'+IntToHex(c, 5));
+   PrintLn('unicode $'+UpperCase(IntToHex(c, 5)));
   
 var i : Integer;
 for i:=Low(s) to High(s) do begin
    c:=Ord(s[i]);
-   PrintLn('ord $'+IntToHex(c, 5));
+   PrintLn('ord $'+UpperCase(IntToHex(c, 5)));
 end;
    
 var trap := 'trap';
@@ -25,4 +25,4 @@ begin
 end;
 
 for c in TrapIt do
-   PrintLn(Chr(c)+': $'+IntToHex(c, 5));
+   PrintLn(Chr(c)+': $'+UpperCase(IntToHex(c, 5)));

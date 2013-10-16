@@ -8,7 +8,7 @@ for c in cHello do
 s:=#$1D538'A'#$3B1#$1D516;
 
 for c in s do
-   PrintLn('unicode $'+IntToHex(Ord(c), 5)+' len '+IntToStr(Length(c)));
+   PrintLn('unicode $'+UpperCase(IntToHex(Ord(c), 5))+' len '+IntToStr(Length(c)));
   
    
 var trap := 'trap';
@@ -19,4 +19,4 @@ begin
 end;
 
 for c in TrapIt do
-   PrintLn(c+': $'+IntToHex(Ord(c), 5));
+   PrintLn(c+': $'+UpperCase(IntToHex(Ord(c), 5)));
