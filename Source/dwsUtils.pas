@@ -635,7 +635,8 @@ function SimpleStringHash(const s : UnicodeString) : Cardinal; inline;
 
 function RawByteStringToScriptString(const s : RawByteString) : UnicodeString; overload; inline;
 procedure RawByteStringToScriptString(const s : RawByteString; var result : UnicodeString); overload;
-function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString;
+function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString; overload; inline;
+procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
 
 type
    TInt64StringBuffer = array [0..21] of WideChar;
@@ -680,14 +681,21 @@ end;
 // ScriptStringToRawByteString
 //
 function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString;
+begin
+   ScriptStringToRawByteString(s, Result);
+end;
+
+// ScriptStringToRawByteString
+//
+procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
 var
    i, n : Integer;
    pSrc : PWideChar;
    pDest : PByteArray;
 begin
-   if s='' then Exit('');
    n:=Length(s);
    SetLength(Result, n);
+   if n=0 then Exit;
    pSrc:=PWideChar(Pointer(s));
    pDest:=PByteArray(NativeUInt(Result));
    for i:=0 to n-1 do
