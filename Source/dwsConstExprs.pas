@@ -43,6 +43,7 @@ type
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); overload; virtual;
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData; addr : Integer); overload;
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol); overload;
+         constructor CreateRef(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData);
 
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
@@ -130,6 +131,18 @@ type
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
          property Value : UnicodeString read FValue write FValue;
+   end;
+
+   // TConstArrayExpr
+   //
+   TConstArrayExpr = class (TConstExpr)
+      private
+         FSymbol : TConstSymbol;
+
+      public
+         constructor Create(prog : TdwsProgram; symbol : TConstSymbol);
+
+         property Symbol : TConstSymbol read FSymbol;
    end;
 
    TStandardIntegersConstIntExprArray = array [-1..2] of TUnifiedConstExpr;
@@ -243,6 +256,14 @@ begin
    SetLength(FData, Typ.Size);
 end;
 
+// CreateRef
+//
+constructor TConstExpr.CreateRef(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData);
+begin
+   inherited Create(Prog, Typ);
+   FData:=Data;
+end;
+
 // Eval
 //
 function TConstExpr.Eval(exec : TdwsExecution) : Variant;
@@ -350,7 +371,9 @@ end;
 class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; constSymbol : TConstSymbol) : TConstExpr;
 begin
    Assert(constSymbol<>nil);
-   Result:=CreateTyped(Prog, Typ, constSymbol.Data);
+   if constSymbol.Typ is TArraySymbol then
+      Result:=TConstArrayExpr.Create(Prog, constSymbol)
+   else Result:=CreateTyped(Prog, Typ, constSymbol.Data);
 end;
 
 // CreateIntegerValue
@@ -543,6 +566,18 @@ asm
    mov   eax, ecx
    call  System.@UStrAsg;
 {$endif}
+end;
+
+// ------------------
+// ------------------ TConstArrayExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TConstArrayExpr.Create(prog : TdwsProgram; symbol : TConstSymbol);
+begin
+   inherited CreateRef(prog, symbol.Typ, symbol.Data);
+   FSymbol:=symbol;
 end;
 
 // ------------------

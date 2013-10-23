@@ -199,6 +199,7 @@ type
 
          procedure DeVirtualize;
 
+         procedure DoCompileCompositeSymbolInternals(struct : TCompositeTypeSymbol); virtual;
          procedure DoCompileHelperSymbol(helper : THelperSymbol); virtual;
          procedure DoCompileRecordSymbol(rec : TRecordSymbol); virtual;
          procedure DoCompileClassSymbol(cls : TClassSymbol); virtual;
@@ -740,6 +741,8 @@ begin
 
 //...   SmartLinkFilterStructSymbol(helper, changed);
 
+   DoCompileCompositeSymbolInternals(helper);
+
    DoCompileHelperSymbol(helper);
 end;
 
@@ -753,6 +756,9 @@ begin
 
    SmartLinkFilterStructSymbol(rec, changed);
 
+   if SmartLink(rec) then
+      DoCompileCompositeSymbolInternals(rec);
+
    DoCompileRecordSymbol(rec);
 end;
 
@@ -765,6 +771,9 @@ begin
    if cls.IsExternal then Exit;
 
    SmartLinkFilterStructSymbol(cls, changed);
+
+   if SmartLink(cls) then
+      DoCompileCompositeSymbolInternals(cls);
 
    EnterScope(cls);
    try
@@ -830,6 +839,13 @@ begin
 
    MapPrioritySymbolNames(table);
    MapNormalSymbolNames(table);
+end;
+
+// DoCompileCompositeSymbolInternals
+//
+procedure TdwsCodeGen.DoCompileCompositeSymbolInternals(struct : TCompositeTypeSymbol);
+begin
+   // nothing by default
 end;
 
 // DoCompileHelperSymbol

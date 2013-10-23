@@ -4709,7 +4709,7 @@ var
    typ : TTypeSymbol;
 begin
    typ:=constSym.Typ;
-   Result := ReadSymbol(TConstExpr.CreateTyped(FProg, typ, constSym), IsWrite)
+   Result:=ReadSymbol(TConstExpr.CreateTyped(FProg, typ, constSym), IsWrite)
 end;
 
 // ReadDataSymbolName
@@ -9387,7 +9387,13 @@ begin
       ttRECORD :
          if FTok.TestDelete(ttHELPER) then
             Result:=ReadHelperDecl(typeName, ttRECORD)
-         else Result:=ReadRecordDecl(typeName, False);
+         else begin
+            Result:=ReadRecordDecl(typeName, False);
+            if typeName='' then begin
+               FProg.Table.AddSymbol(Result);
+               Result.IncRefCount;
+            end;
+         end;
 
       ttCLASS : begin
          tt:=FTok.TestDeleteAny([ttOF, ttHELPER]);
