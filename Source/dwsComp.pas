@@ -4444,13 +4444,15 @@ end;
 // SetReadAccess
 //
 procedure TdwsProperty.SetReadAccess(const Value: UnicodeString);
-var
-   cs: TComponentState;
-   Obj: TdwsClass;
-   Meth: TdwsMethod;
+//var
+//   cs: TComponentState;
+//   Obj: TdwsClass;
+//   Meth: TdwsMethod;
 begin
    FReadAccess := Value;
 
+   // See SetWriteAccess comment for why this was deactivated
+   (*
    cs := FUnit.ComponentState;
    if (csDesigning in cs) and not (csLoading in cs) then
    begin
@@ -4467,19 +4469,25 @@ begin
          end;
       end
    end;
+   *)
 end;
 
 // SetWriteAccess
 //
 procedure TdwsProperty.SetWriteAccess(const Value: UnicodeString);
-var
-   cs: TComponentState;
-   Obj: TdwsClass;
-   Meth: TdwsMethod;
-   Param: TdwsParameter;
+//var
+//   cs: TComponentState;
+//   Obj: TdwsClass;
+//   Meth: TdwsMethod;
+//   Param: TdwsParameter;
 begin
    FWriteAccess := Value;
 
+   // deactivated by EG because when editing the write access field manually
+   // at design-time, it will create all "intermediate" methods
+   // f.i. if you type "SetProp", it will create methods "S", "Se", "Set", "SetP", etc.
+   // if anyone has a solution for that, let me know
+   (*
    cs := FUnit.ComponentState;
    if (csDesigning in cs) and not (csLoading in cs) then
    begin
@@ -4501,6 +4509,7 @@ begin
          end;
       end
    end;
+   *)
 end;
 
 // SetParameters
