@@ -2632,7 +2632,7 @@ begin
 
    jit.RestoreXMMRegs;
 
-   x86._op_reg_int32(gpOp_and, gprEAX, 0);
+   x86._op_reg_int32(gpOp_and, gprEAX, 255);
 
    jit.QueueGreed(expr);
 
