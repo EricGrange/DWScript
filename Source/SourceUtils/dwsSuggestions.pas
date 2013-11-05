@@ -701,8 +701,8 @@ begin
       while context<>nil do begin
          list.AddSymbolTable(context.LocalTable);
 
-         if context.ParentSym.IsFuncSymbol then begin
-            funcSym:=TFuncSymbol(Context.ParentSym);
+         funcSym:=context.ParentSym.AsFuncSymbol;
+         if funcSym<>nil then begin
             list.AddDirectSymbolTable(funcSym.Params);
             list.AddDirectSymbolTable(funcSym.InternalParams);
 
@@ -865,9 +865,9 @@ var
    alias : TAliasSymbol;
 begin
    symbol:=FList[i];
-   if symbol.IsFuncSymbol then begin
+   funcSym:=symbol.AsFuncSymbol;
+   if funcSym<>nil then begin
 
-      funcSym:=TFuncSymbol(symbol);
       Result:=funcSym.Name+' '+funcSym.ParamsDescription;
       if funcSym.Result<>nil then
          Result:=Result+' : '+SafeSymbolName(funcSym.Result.Typ);

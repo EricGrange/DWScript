@@ -457,12 +457,14 @@ function TdwsCodeGen.SymbolMappedName(sym : TSymbol; scope : TdwsCodeGenSymbolSc
 var
    i : Integer;
    meth : TMethodSymbol;
+   funcSym : TFuncSymbol;
 begin
-   if sym.IsFuncSymbol then begin
-      if TFuncSymbol(sym).IsExternal or TFuncSymbol(sym).HasExternalName then
-         Exit(TFuncSymbol(sym).ExternalName);
-      if sym is TMethodSymbol then begin
-         meth:=TMethodSymbol(sym);
+   funcSym:=sym.AsFuncSymbol;
+   if funcSym<>nil then begin
+      if funcSym.IsExternal or funcSym.HasExternalName then
+         Exit(funcSym.ExternalName);
+      if funcSym is TMethodSymbol then begin
+         meth:=TMethodSymbol(funcSym);
          while meth.IsOverride do
             meth:=meth.ParentMeth;
          if meth.StructSymbol.IsExternalRooted then
@@ -796,10 +798,14 @@ end;
 procedure TdwsCodeGen.CompileInterfaceSymbol(intf : TInterfaceSymbol);
 var
    sym : TSymbol;
+   funcSym : TFuncSymbol;
 begin
    for sym in intf.Members do begin
-      if (sym.Name='') and sym.IsFuncSymbol then
-         CompileFuncSymbol(TFuncSymbol(sym), True);
+      if sym.Name='' then begin
+         funcSym:=sym.AsFuncSymbol;
+         if funcSym<>nil then
+            CompileFuncSymbol(funcSym, True);
+      end;
    end;
 end;
 
@@ -1008,6 +1014,7 @@ procedure TdwsCodeGen.MapInternalSymbolNames(progTable, systemTable : TSymbolTab
    var
       i : Integer;
       sym : TSymbol;
+      funcSym : TFuncSymbol;
    begin
       if table.ClassType=TLinkedSymbolTable then
          table:=TLinkedSymbolTable(table).ParentSymbolTable;
@@ -1019,10 +1026,13 @@ procedure TdwsCodeGen.MapInternalSymbolNames(progTable, systemTable : TSymbolTab
             end else if sym is TInterfaceSymbol then
                SymbolMap.MapSymbol(sym, cgssGlobal, False)
             else Assert(False);
-         end else if sym.IsFuncSymbol then
-            SymbolMap.MapSymbol(sym, cgssGlobal, False)
-         else if sym is TDataSymbol then
-            SymbolMap.MapSymbol(sym, cgssGlobal, False);
+         end else begin
+            funcSym:=sym.AsFuncSymbol;
+            if funcSym<>nil then
+               SymbolMap.MapSymbol(funcSym, cgssGlobal, False)
+            else if sym is TDataSymbol then
+               SymbolMap.MapSymbol(sym, cgssGlobal, False);
+         end;
       end;
    end;
 
@@ -1044,6 +1054,7 @@ procedure TdwsCodeGen.MapPrioritySymbolNames(table : TSymbolTable);
 var
    sym : TSymbol;
    unitSym : TUnitSymbol;
+   funcSym : TFuncSymbol;
 begin
    for sym in table do begin
       if sym is TUnitSymbol then begin
@@ -1054,9 +1065,11 @@ begin
          if TClassSymbol(sym).IsExternal then begin
             SymbolMap.ReserveExternalName(sym);
          end;
-      end else if sym.IsFuncSymbol then begin
-         if TFuncSymbol(sym).IsExternal then
-            SymbolMap.ReserveExternalName(sym);
+      end else begin
+         funcSym:=sym.AsFuncSymbol;
+         if funcSym<>nil then
+            if funcSym.IsExternal then
+               SymbolMap.ReserveExternalName(funcSym);
       end;
    end;
 end;
@@ -1067,6 +1080,7 @@ procedure TdwsCodeGen.MapNormalSymbolNames(table : TSymbolTable);
 var
    sym : TSymbol;
    unitSym : TUnitMainSymbol;
+   funcSym : TFuncSymbol;
 begin
    for sym in table do begin
       if sym is TUnitSymbol then begin
@@ -1085,13 +1099,16 @@ begin
          MapStructuredSymbol(TStructuredTypeSymbol(sym), True);
       end else if sym is TInterfaceSymbol then begin
          SymbolMap.MapSymbol(sym, cgssGlobal, True);
-      end else if sym.IsFuncSymbol then begin
-         SymbolMap.MapSymbol(sym, cgssGlobal, True);
-         if     (TFuncSymbol(sym).Executable<>nil)
-            and (TFuncSymbol(sym).Executable.GetSelf is TdwsProcedure) then
-            MapNormalSymbolNames((TFuncSymbol(sym).Executable.GetSelf as TdwsProcedure).Table);
-      end else if sym is TDataSymbol then begin
-         SymbolMap.MapSymbol(sym, cgssGlobal, True);
+      end else begin
+         funcSym:=sym.AsFuncSymbol;
+         if funcSym<>nil then begin
+            SymbolMap.MapSymbol(funcSym, cgssGlobal, True);
+            if     (funcSym.Executable<>nil)
+               and (funcSym.Executable.GetSelf is TdwsProcedure) then
+               MapNormalSymbolNames((funcSym.Executable.GetSelf as TdwsProcedure).Table);
+         end else if sym is TDataSymbol then begin
+            SymbolMap.MapSymbol(sym, cgssGlobal, True);
+         end;
       end;
    end;
 end;
@@ -1556,16 +1573,20 @@ begin
             else if not (sym is THelperSymbol) then
                SmartLinkFilterStructSymbol(TStructuredTypeSymbol(sym), localChanged);
 
-         end else if sym.IsFuncSymbol then begin
+         end else begin
 
-            funcSym:=TFuncSymbol(sym);
-            if funcSym.IsExternal or funcSym.IsType then continue;
-            if not SmartLink(funcSym) then begin
-               if FSymbolDictionary.FindSymbolPosList(funcSym)<>nil then begin
-                  RemoveReferencesInContextMap(funcSym);
-                  FSymbolDictionary.Remove(funcSym);
-                  localChanged:=True;
+            funcSym:=sym.AsFuncSymbol;
+            if funcSym<>nil then begin
+
+               if funcSym.IsExternal or funcSym.IsType then continue;
+               if not SmartLink(funcSym) then begin
+                  if FSymbolDictionary.FindSymbolPosList(funcSym)<>nil then begin
+                     RemoveReferencesInContextMap(funcSym);
+                     FSymbolDictionary.Remove(funcSym);
+                     localChanged:=True;
+                  end;
                end;
+
             end;
 
          end;
@@ -2010,7 +2031,7 @@ var
    n : String;
    existing : TSymbol;
 begin
-   if sym.IsFuncSymbol then
+   if sym is TFuncSymbol then
       n:=TFuncSymbol(sym).ExternalName
    else n:=sym.Name;
    if not FNames.AddObject(n, sym) then begin

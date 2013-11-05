@@ -742,7 +742,7 @@ begin
       if typ is TArraySymbol then
          if not (typ is TDynamicArraySymbol) then
             Exit(False);
-      if typ.IsFuncSymbol then
+      if typ.AsFuncSymbol<>nil then
          Exit(False);
    end;
    Result:=True;

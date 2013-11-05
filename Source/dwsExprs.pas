@@ -5054,7 +5054,7 @@ end;
 //
 constructor TFuncPtrExpr.Create(prog : TdwsProgram; const aScriptPos : TScriptPos; codeExpr : TTypedExpr);
 begin
-   inherited Create(prog, aScriptPos, (codeExpr.Typ as TFuncSymbol));
+   inherited Create(prog, aScriptPos, (codeExpr.Typ.UnAliasedType as TFuncSymbol));
    FCodeExpr:=codeExpr;
 end;
 
@@ -5733,7 +5733,7 @@ begin
   if not Assigned(sym) then
     raise Exception.CreateFmt(RTE_FunctionNotFound, [s]);
 
-  if sym.IsFuncSymbol then
+  if sym.AsFuncSymbol<>nil then
   begin
     if Assigned(FScriptObj) then
       Result := TInfoFunc.Create(Self, sym, Execution.DataContext_Nil,
@@ -6884,11 +6884,13 @@ procedure TdwsSymbolDictionary.Remove(sym: TSymbol);
 var
    idx, i : Integer;
    symList : TSymbolPositionList;
+   funcSym : TFuncSymbol;
 begin
    // TFuncSymbol - remove params
-   if sym.IsFuncSymbol then begin
-      for i := 0 to TFuncSymbol(sym).Params.Count - 1 do
-         Remove(TFuncSymbol(sym).Params[i]);
+   funcSym:=sym.AsFuncSymbol;
+   if funcSym<>nil then begin
+      for i := 0 to funcSym.Params.Count - 1 do
+         Remove(funcSym.Params[i]);
    // TPropertySymbol - remove array indices
    end else if sym is TPropertySymbol then begin
       for i := 0 to TPropertySymbol(sym).ArrayIndices.Count - 1 do

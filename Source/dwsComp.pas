@@ -4636,6 +4636,7 @@ procedure TdwsSymbol.CheckName(aTable : TSymbolTable; const aName : UnicodeStrin
                                overloaded : Boolean = False);
 var
    sym : TSymbol;
+   funcSym : TFuncSymbol;
 begin
    if aName='' then
       raise Exception.Create(UNT_NameIsEmpty);
@@ -4643,8 +4644,8 @@ begin
    sym:=aTable.FindLocal(aName);
    if Assigned(sym) then begin
       if overloaded then begin
-         if not (    (sym.IsFuncSymbol)
-                 and TFuncSymbol(sym).IsOverloaded) then
+         funcSym:=sym.AsFuncSymbol;
+         if (funcSym=nil) or not funcSym.IsOverloaded then
             raise Exception.CreateFmt(UNT_PreviousNotOverloaded, [aName]);
       end else raise Exception.CreateFmt(UNT_NameAlreadyExists, [aName]);
    end;
@@ -5719,9 +5720,9 @@ begin
          RaiseError;
       op.Typ:=typ;
       sym:=Table.FindTypeSymbol(UsesAccess, cvMagic);
-      if (sym=nil) or sym.IsType or not (sym.IsFuncSymbol) then
+      if (sym=nil) or sym.IsType or (sym.AsFuncSymbol=nil) then
          raise Exception.CreateFmt(UNT_UsesAccessNotFound, [UsesAccess]);
-      op.UsesSym:=TFuncSymbol(sym);
+      op.UsesSym:=sym.AsFuncSymbol;
       Table.AddSymbol(op);
    except
       op.Free;

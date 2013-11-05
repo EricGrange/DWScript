@@ -1604,9 +1604,12 @@ end;
 // ProcessSymbol
 //
 procedure TdwsBreakpointableLines.ProcessSymbol(sym : TSymbol);
+var
+   funcSym : TFuncSymbol;
 begin
-   if sym.IsFuncSymbol then
-      ProcessFuncSymbol(TFuncSymbol(sym))
+   funcSym:=sym.AsFuncSymbol;
+   if funcSym<>nil then
+      ProcessFuncSymbol(funcSym)
    else if sym is TStructuredTypeSymbol then
       ProcessSymbolTable(TStructuredTypeSymbol(sym).Members);
 end;

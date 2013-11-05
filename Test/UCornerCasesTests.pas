@@ -75,6 +75,7 @@ type
          procedure PartialClassParent;
          procedure ConstantAliasing;
          procedure ExternalVariables;
+         procedure TypeOfProperty;
    end;
 
    ETestException = class (Exception);
@@ -1608,6 +1609,35 @@ begin
    CheckEquals(TDataSymbol.ClassName, sym.ClassType.ClassName, 'c');
    CheckFalse(TDataSymbol(sym).HasExternalName, 'c');
    CheckEquals('c', TDataSymbol(sym).ExternalName, 'c');
+end;
+
+// TypeOfProperty
+//
+procedure TCornerCasesTests.TypeOfProperty;
+var
+   prog : IdwsProgram;
+   sym : TSymbol;
+   cls : TClassSymbol;
+begin
+   prog:=FCompiler.Compile( 'type TColor = Integer;'#13#10
+                           +'type TTest = class'#13#10
+                           +'Field : TColor;'#13#10
+                           +'property Prop : TColor read Field;'#13#10
+                           +'property Prop2 : TColor;'#13#10
+                           +'end;');
+
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   sym:=prog.Table.FindSymbol('TTest', cvMagic);
+   CheckTrue(sym is TClassSymbol, 'is class');
+
+   cls:=TClassSymbol(sym);
+
+   sym:=cls.Members.FindSymbol('Prop', cvMagic);
+   CheckEquals('TColor', sym.Typ.Name, 'Prop');
+
+   sym:=cls.Members.FindSymbol('Prop2', cvMagic);
+   CheckEquals('TColor', sym.Typ.Name, 'Prop2');
 end;
 
 // ------------------------------------------------------------------

@@ -179,6 +179,7 @@ procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsConstructorsCreateUidEval(
 var
   table: TSymbolTable;
   sym: TSymbol;
+  funcSym : TFuncSymbol;
   uid, name: string;
   p: Integer;
 begin
@@ -204,8 +205,11 @@ begin
       table := TUnitSymbol(sym).Table
     else if sym is TStructuredTypeSymbol then
       table := TClassSymbol(sym).Members
-    else if sym.IsFuncSymbol then
-      table := TFuncSymbol(sym).Params;
+    else begin
+      funcSym:=sym.AsFuncSymbol;
+      if funcSym<>nil then
+         table := funcSym.Params;
+    end;
   end;
 
   ExtObject := TSymbols.Create(sym);
@@ -286,7 +290,7 @@ begin
     Info.ResultAsInteger := stConstant
   else if sym is TFieldSymbol then
     Info.ResultAsInteger := stField
-  else if sym.IsFuncSymbol then
+  else if sym.AsFuncSymbol<>nil then
     Info.ResultAsInteger := stFunction
   else if sym is TParamSymbol then
     Info.ResultAsInteger := stParam

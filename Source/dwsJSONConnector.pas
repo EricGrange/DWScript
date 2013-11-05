@@ -805,7 +805,7 @@ end;
 function TJSONConnectorSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=   inherited IsCompatible(typSym)
-           or typSym.IsFuncSymbol
+           or (typSym.AsFuncSymbol<>nil)
            or (typSym is TRecordSymbol);
 end;
 

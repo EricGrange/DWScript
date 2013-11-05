@@ -8026,7 +8026,7 @@ begin
    FFromIndexExpr:=aFromIndex;
    Typ:=prog.TypInteger;
    // resolve internal method depending on array and item type
-   if (FItemExpr<>nil) and FItemExpr.Typ.IsFuncSymbol then
+   if (FItemExpr<>nil) and (FItemExpr.Typ.AsFuncSymbol<>nil) then
       FMethod:=DoEvalFuncPtr
    else if (FBaseExpr<>nil) and (FBaseExpr.Typ<>nil) then begin
       arrayItemTyp:=FBaseExpr.Typ.Typ;

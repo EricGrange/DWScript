@@ -2420,7 +2420,7 @@ end;
 
 procedure TSymbolUnit.TSymbolIsFuncSymbolEval(info: TProgramInfo; ExtObject: TObject);
 begin
-  info.ResultAsBoolean := TSymbol(ExtObject).IsFuncSymbol;
+  info.ResultAsBoolean := (TSymbol(ExtObject).AsFuncSymbol<>nil);
 end;
 
 procedure TSymbolUnit.TSymbolIsTypeEval(info: TProgramInfo; ExtObject: TObject);
@@ -3350,7 +3350,7 @@ var
   Symbol: TSymbol;
   UnitDir: string;
 
-  procedure BuildContentFileMember(const Directory: string);
+  procedure BuildContentFileMember(Directory: string);
   var
     FileName: TFileName;
   begin
@@ -3359,6 +3359,7 @@ var
       Exit;
 
     // create directoy
+    Directory := UnitDir + Directory;
     if not DirectoryExists(Directory) then
       CreateDir(Directory);
 
@@ -3371,7 +3372,7 @@ var
 
 begin
   // check if unit is empty
-  if (UnitSymbol.Table.Count) = 0 then
+  if (UnitSymbol.Table = nil) or (UnitSymbol.Table.Count = 0) then
     Exit;
 
   UnitDir := Directory + UnitSymbol.Name + '\';
@@ -3393,17 +3394,17 @@ begin
     else if Symbol is TConstSymbol then
     begin
       // build documentation for constant symbol
-      BuildContentFileMember(UnitDir + 'Constants\');
+      BuildContentFileMember('Constants\');
     end
     else if Symbol is TFuncSymbol then
     begin
       // build documentation for function symbol
-      BuildContentFileMember(UnitDir + 'Routines\');
+      BuildContentFileMember('Routines\');
     end
     else if Symbol is TTypeSymbol then
     begin
       // build documentation for function symbol
-      BuildContentFileMember(UnitDir + 'Types\');
+      BuildContentFileMember('Types\');
     end;
   end;
 

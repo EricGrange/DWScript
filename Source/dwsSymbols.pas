@@ -241,6 +241,8 @@ type
    TdwsVisibility = (cvMagic, cvPrivate, cvProtected, cvPublic, cvPublished);
    TdwsVisibilities = set of TdwsVisibility;
 
+   TFuncSymbol = class;
+
    // TSymbol
    //
    // Named item in the script
@@ -255,7 +257,7 @@ type
          function SafeGetCaption : UnicodeString;
          function GetCaption : UnicodeString; virtual;
          function GetDescription : UnicodeString; virtual;
-         function GetIsFuncSymbol : Boolean; virtual;
+         function GetAsFuncSymbol : TFuncSymbol; virtual;
 
       public
          constructor Create(const aName : UnicodeString; aType : TTypeSymbol);
@@ -266,7 +268,8 @@ type
 
          class function IsBaseType : Boolean; virtual;
          function IsType : Boolean; virtual;
-         function IsFuncSymbol : Boolean;
+         function AsFuncSymbol : TFuncSymbol; overload;
+         function AsFuncSymbol(var funcSym : TFuncSymbol) : Boolean; overload;
 
          function QualifiedName : UnicodeString; virtual;
 
@@ -683,7 +686,7 @@ type
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function  IsType : Boolean; override;
          procedure SetIsType;
-         function  GetIsFuncSymbol : Boolean; override;
+         function  GetAsFuncSymbol : TFuncSymbol; override;
          procedure SetInline;
          procedure AddParam(param : TParamSymbol);
          procedure AddParams(params : TParamsSymbolTable);
@@ -889,6 +892,7 @@ type
    TAliasSymbol = class sealed (TTypeSymbol)
       protected
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+         function GetAsFuncSymbol : TFuncSymbol; override;
 
       public
          function BaseType : TTypeSymbol; override;
@@ -2083,18 +2087,30 @@ begin
    Result:=False;
 end;
 
-// GetIsFuncSymbol
+// GetAsFuncSymbol
 //
-function TSymbol.GetIsFuncSymbol : Boolean;
+function TSymbol.GetAsFuncSymbol : TFuncSymbol;
 begin
-   Result:=False;
+   Result:=nil;
 end;
 
-// IsFuncSymbol
+// AsFuncSymbol
 //
-function TSymbol.IsFuncSymbol : Boolean;
+function TSymbol.AsFuncSymbol : TFuncSymbol;
 begin
-   Result:=(Self<>nil) and GetIsFuncSymbol;
+   if Self<>nil then
+      Result:=GetAsFuncSymbol
+   else Result:=nil;
+end;
+
+// AsFuncSymbol
+//
+function TSymbol.AsFuncSymbol(var funcSym : TFuncSymbol) : Boolean;
+begin
+   if Self<>nil then
+      funcSym:=GetAsFuncSymbol
+   else funcSym:=nil;
+   Result:=(funcSym<>nil);
 end;
 
 // QualifiedName
@@ -3236,9 +3252,9 @@ begin
 //      Result:=False
    else begin
       Result:=False;
-      if not typSym.IsFuncSymbol then
+      funcSym:=typSym.AsFuncSymbol;
+      if funcSym=nil then
          Exit;
-      funcSym:=TFuncSymbol(typSym);
       if Params.Count<>funcSym.Params.Count then Exit;
       if not cCompatibleKinds[Kind, funcSym.Kind] then Exit;
       if    (Typ=funcSym.Typ)
@@ -3262,11 +3278,10 @@ var
    i : Integer;
    funcSym : TFuncSymbol;
 begin
-   Result:=    (typSym<>nil)
-           and typSym.IsFuncSymbol;
-   if not Result then Exit;
+   funcSym:=typSym.AsFuncSymbol;
+   if funcSym=nil then
+      Exit(False);
 
-   funcSym:=TFuncSymbol(typSym);
    Result:=    (Kind=funcSym.Kind)
            and (Params.Count=funcSym.Params.Count);
    if not Result then Exit;
@@ -3298,11 +3313,11 @@ begin
    Include(FFlags, fsfType);
 end;
 
-// GetIsFuncSymbol
+// GetAsFuncSymbol
 //
-function TFuncSymbol.GetIsFuncSymbol : Boolean;
+function TFuncSymbol.GetAsFuncSymbol : TFuncSymbol;
 begin
-   Result:=True;
+   Result:=Self;
 end;
 
 // SetInline
@@ -5485,7 +5500,7 @@ var
 begin
    ptrList:=FSymbols.List;
    for i:=FSymbols.Count-1 downto 0 do begin
-      if TSymbol(ptrList[i]).IsFuncSymbol then
+      if TSymbol(ptrList[i]).AsFuncSymbol<>nil then
          Exit(True);
    end;
    Result:=False;
@@ -6299,6 +6314,13 @@ begin
    Result:=Typ.DoIsOfType(typSym);
 end;
 
+// GetAsFuncSymbol
+//
+function TAliasSymbol.GetAsFuncSymbol : TFuncSymbol;
+begin
+   Result:=Typ.GetAsFuncSymbol;
+end;
+
 // ------------------
 // ------------------ TTypeSymbol ------------------
 // ------------------
@@ -6808,7 +6830,7 @@ end;
 //
 function TAnyFuncSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-   Result:=typSym.IsFuncSymbol;
+   Result:=(typSym.AsFuncSymbol<>nil);
 end;
 
 // ------------------
@@ -7024,13 +7046,14 @@ function TPerfectMatchEnumerator.Callback(sym : TSymbol) : Boolean;
 var
    locSym : TFuncSymbol;
 begin
-   if sym.IsFuncSymbol then begin
-      locSym:=TFuncSymbol(sym);
-      if locSym.Level=FuncSym.Level then
+   locSym:=sym.AsFuncSymbol;
+   if locSym<>nil then begin
+      if locSym.Level=FuncSym.Level then begin
          if FuncSym.IsSameOverloadOf(locSym) then begin
             Match:=locSym;
             Exit(True);
          end;
+      end;
    end;
    Result:=False;
 end;

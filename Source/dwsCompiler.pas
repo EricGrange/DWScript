@@ -485,6 +485,7 @@ type
 
          function ReadCase : TCaseExpr;
          function ReadCaseConditions(condList : TCaseConditions; valueExpr : TTypedExpr) : Integer;
+         function ReadAliasedNameSymbol(var namePos : TScriptPos) : TSymbol;
          function ReadNameSymbol(var namePos : TScriptPos) : TSymbol;
          function ReadClassName : TClassSymbol;
          function ReadClassOf(const typeName : UnicodeString) : TClassOfSymbol;
@@ -2691,7 +2692,7 @@ begin
             assignExpr:=TAssignNilToVarExpr.CreateVal(FProg, scriptPos, varExpr)
          else if varExpr.Typ.ClassType=TClassOfSymbol then
             assignExpr:=TAssignNilClassToVarExpr.CreateVal(FProg, scriptPos, varExpr)
-         else if varExpr.Typ.IsFuncSymbol then
+         else if varExpr.Typ.AsFuncSymbol<>nil then
             assignExpr:=TAssignNilToVarExpr.CreateVal(FProg, scriptPos, varExpr)
          else begin
             initData := nil;
@@ -2734,7 +2735,7 @@ begin
       if FTok.TestDelete(ttCOLON) then begin
 
          typ:=ReadType('', tcConstant);
-         if typ.IsFuncSymbol then
+         if typ.AsFuncSymbol<>nil then
             FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_InvalidConstType, [typ.Caption]);
 
       end else typ:=nil;
@@ -3011,8 +3012,8 @@ begin
 
       forwardedSym:=nil;
       overloadFuncSym:=nil;
-      if sym.IsFuncSymbol then begin
-         existingFuncSym:=TFuncSymbol(sym);
+      existingFuncSym:=sym.AsFuncSymbol;
+      if existingFuncSym<>nil then begin
          if existingFuncSym.IsOverloaded then
             overloadFuncSym:=existingFuncSym;
          if     existingFuncSym.IsForwarded
@@ -3020,7 +3021,7 @@ begin
             // There was already a (forward) declaration
             forwardedSym:=existingFuncSym;
          end;
-      end else existingFuncSym:=nil;
+      end;
 
       if (forwardedSym=nil) and (overloadFuncSym=nil) then
          CheckName(name, funcPos);
@@ -3871,8 +3872,8 @@ var
    funcSym : TFuncSymbol;
 begin
    Result:=False;
-   if symbol.IsFuncSymbol and (not symbol.IsType) then begin
-      funcSym:=TFuncSymbol(symbol);
+   funcSym:=symbol.AsFuncSymbol;
+   if (funcSym<>nil) and (not symbol.IsType) then begin
       if     (funcSym.Params.Count=2) and (funcSym.Typ<>nil)
          and funcSym.Typ.IsOfType(opSymbol.Typ)
          and funcSym.Params[0].Typ.IsOfType(opSymbol.Params[0])
@@ -3963,9 +3964,9 @@ begin
                sym:=fromTable.FindTypeSymbol(usesName, cvPublic);
             end;
          end;
-         if (sym=nil) or sym.IsType or not sym.IsFuncSymbol then
-            FMsgs.AddCompilerError(usesPos, CPE_FunctionMethodExpected)
-         else usesSym:=TFuncSymbol(sym);
+         usesSym:=sym.AsFuncSymbol;
+         if (usesSym=nil) or sym.IsType then
+            FMsgs.AddCompilerError(usesPos, CPE_FunctionMethodExpected);
       end;
 
       if usesSym<>nil then begin
@@ -4116,6 +4117,7 @@ var
    hotPos : TScriptPos;
    msgsCount : Integer;
    tryExpr : TExceptionExpr;
+   funcSym : TFuncSymbol;
 begin
    if Assigned(FOnReadInstr) then begin
       Result:=FOnReadInstr(Self);
@@ -4200,8 +4202,11 @@ begin
                   Result := ReadAssign(token, TDataExpr(locExpr));
                end;
             end else begin
-               if (locExpr is TDataExpr) and locExpr.Typ.IsFuncSymbol then
-                  locExpr:=ReadFunc(TFuncSymbol(locExpr.Typ), locExpr as TDataExpr);
+               if locExpr is TDataExpr then begin
+                  funcSym:=locExpr.Typ.AsFuncSymbol;
+                  if funcSym<>nil then
+                     locExpr:=ReadFunc(funcSym, locExpr as TDataExpr);
+               end;
 
                if locExpr is TAssignExpr then
                   Result:=TAssignExpr(locExpr)
@@ -4735,14 +4740,14 @@ begin
    codeExprTyp:=codeExpr.Typ;
    if codeExprTyp=nil then Exit(nil);
 
-   if codeExprTyp.IsFuncSymbol then begin
+   funcSym:=codeExprTyp.AsFuncSymbol;
+   if funcSym<>nil then begin
       if     FTok.Test(ttASSIGN)
          or  (    (expecting<>nil)
               and codeExprTyp.IsOfType(expecting)
               and not FTok.Test(ttBLEFT)) then
          Result:=codeExpr
       else begin
-         funcSym:=(codeExprTyp as TFuncSymbol);
          Assert(not funcSym.IsOverloaded);
          // Result:=ReadFuncOverloaded(funcSym, fromTable, varExpr, expecting)
          Result:=ReadFunc(funcSym, codeExpr, expecting);
@@ -4989,7 +4994,7 @@ begin
 
       end else begin
 
-         if    FTok.Test(ttDOT) or (propertySym.Typ.IsFuncSymbol) then begin
+         if    FTok.Test(ttDOT) or (propertySym.Typ.AsFuncSymbol<>nil) then begin
 
             sym:=propertySym.ReadSym;
 
@@ -5104,6 +5109,7 @@ var
    baseType : TTypeSymbol;
    dataExpr : TDataExpr;
    codeExpr : TTypedExpr;
+   funcSym : TFuncSymbol;
 begin
    Result := Expr;
    try
@@ -5168,11 +5174,12 @@ begin
 
             ttBLEFT : begin
 
-               baseType := Result.BaseType;
-               if baseType.IsFuncSymbol then begin
+               baseType:=Result.BaseType;
+               funcSym:=baseType.AsFuncSymbol;
+               if funcSym<>nil then begin
                   codeExpr:=Result as TTypedExpr;
                   Result:=nil;
-                  Result:=ReadFunc(TFuncSymbol(baseType), codeExpr);
+                  Result:=ReadFunc(funcSym, codeExpr);
                end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMethodExpected);
 
             end;
@@ -6381,8 +6388,8 @@ function TFuncAtLevelSymbolList.Callback(sym : TSymbol) : Boolean;
 var
    locFuncSym : TFuncSymbol;
 begin
-   if sym.IsFuncSymbol then begin
-      locFuncSym:=TFuncSymbol(sym);
+   locFuncSym:=sym.AsFuncSymbol;
+   if locFuncSym<>nil then begin
       if locFuncSym.Level=Level then
          Add(locFuncSym);
    end;
@@ -6657,11 +6664,12 @@ function TFuncConflictEnumerator.Callback(sym : TSymbol) : Boolean;
 var
    locSym : TFuncSymbol;
 begin
-   if (sym<>ForwardedSym) and sym.IsFuncSymbol then begin
-      locSym:=TFuncSymbol(sym);
-      if locSym.Level=FuncSym.Level then
-         if not FuncSym.IsValidOverloadOf(locSym) then
-            Exit(True);
+   if sym<>ForwardedSym then begin
+      locSym:=sym.AsFuncSymbol;
+      if locSym<>nil then
+         if locSym.Level=FuncSym.Level then
+            if not FuncSym.IsValidOverloadOf(locSym) then
+               Exit(True);
    end;
    Result:=False;
 end;
@@ -6776,15 +6784,15 @@ begin
          if    (    (expecting is TNilSymbol)
                 and (funcExpr is TFuncPtrExpr)
                 and not FTok.Test(ttDOT))
-            or (    expecting.IsFuncSymbol
+            or (    (expecting.AsFuncSymbol<>nil)
                 and funcExpr.funcSym.IsCompatible(expecting)) then begin
             if (funcExpr.FuncSym.Level>1) and not (coAllowClosures in Options) then
                FMsgs.AddCompilerError(funcExpr.ScriptPos, CPE_LocalFunctionAsDelegate);
             Result:=TFuncRefExpr.Create(FProg, funcExpr);
          end else begin
             if overloads<>nil then begin
-               if (funcExpr.Args.Count=0) and expecting.IsFuncSymbol then begin
-                  if not ResolveOverload(funcExpr, overloads, argPosArray, TFuncSymbol(expecting)) then Exit;
+               if (funcExpr.Args.Count=0) and (expecting.AsFuncSymbol<>nil) then begin
+                  if not ResolveOverload(funcExpr, overloads, argPosArray, expecting.AsFuncSymbol) then Exit;
                   if (funcExpr.FuncSym.Level>1) and not (coAllowClosures in Options) then
                      FMsgs.AddCompilerError(funcExpr.ScriptPos, CPE_LocalFunctionAsDelegate);
                   Result:=TFuncRefExpr.Create(FProg, funcExpr);
@@ -6965,6 +6973,7 @@ var
    argSym : TParamSymbol;
    argPos : TScriptPos;
    expectedType : TTypeSymbol;
+   funcSym : TFuncSymbol;
    n : Integer;
 begin
    if FTok.TestDelete(leftDelim) then begin
@@ -6988,10 +6997,12 @@ begin
                if Optimize then
                   arg:=arg.OptimizeToTypedExpr(FProg, FExec, argPos);
 
-               if     (expectedType<>nil)
-                  and (arg.Typ.IsFuncSymbol)
-                  and not (expectedType.IsFuncSymbol) then begin
-                  arg:=ReadFunc(TFuncSymbol(arg.Typ), arg as TDataExpr, nil);
+               if expectedType<>nil then begin
+                  funcSym:=arg.Typ.AsFuncSymbol;
+                  if    (funcSym<>nil)
+                     and (expectedType.AsFuncSymbol=nil) then begin
+                     arg:=ReadFunc(funcSym, arg as TDataExpr, nil);
+                  end;
                end;
 
                AddArgProc(arg);
@@ -7876,9 +7887,9 @@ begin
    Result:=newExpr;
 end;
 
-// ReadNameSymbol
+// ReadAliasedNameSymbol
 //
-function TdwsCompiler.ReadNameSymbol(var namePos : TScriptPos) : TSymbol;
+function TdwsCompiler.ReadAliasedNameSymbol(var namePos : TScriptPos) : TSymbol;
 var
    name : UnicodeString;
    unitSym : TUnitSymbol;
@@ -7914,7 +7925,13 @@ begin
 
       FTok.KillToken;
    end;
+end;
 
+// ReadNameSymbol
+//
+function TdwsCompiler.ReadNameSymbol(var namePos : TScriptPos) : TSymbol;
+begin
+   Result:=ReadAliasedNameSymbol(namePos);
    if (Result<>nil) and (Result.ClassType=TAliasSymbol) then
       Result:=TAliasSymbol(Result).UnAliasedType;
 end;
@@ -9080,7 +9097,7 @@ begin
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_ForExpected);
    hotPos:=FTok.HotPos;
    forType:=ReadType('', tcHelper);
-   if forType.IsFuncSymbol then
+   if forType.AsFuncSymbol<>nil then
       FMsgs.AddCompilerError(hotPos, CPE_HelpersNotAllowedForDelegates);
    case qualifierToken of
       ttNone : ;
@@ -9465,7 +9482,7 @@ begin
 
       if FTok.TestName then begin
 
-         sym:=ReadNameSymbol(namePos);
+         sym:=ReadAliasedNameSymbol(namePos);
 
          if not Assigned(sym) then begin
             // keep compiling
@@ -9963,6 +9980,7 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
    function ReadLambda(funcType : TTokenType; const hotPos : TScriptPos) : TAnonymousFuncRefExpr;
    var
       funcSym : TFuncSymbol;
+      expectingFuncSym : TFuncSymbol;
       expectingParams : TParamsSymbolTable;
       resultExpr : TTypedExpr;
       resultVar : TVarExpr;
@@ -9970,15 +9988,16 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       procPos : TScriptPos;
       oldProg : TdwsProgram;
    begin
-      if expecting.IsFuncSymbol then
-         expectingParams:=TFuncSymbol(expecting).Params
+      expectingFuncSym:=expecting.AsFuncSymbol;
+      if expectingFuncSym<>nil then
+         expectingParams:=expectingFuncSym.Params
       else expectingParams:=nil;
 
       funcSym:=ReadProcDecl(funcType, hotPos, [pdoAnonymous], expectingParams);
       FProg.Table.AddSymbol(funcSym);
 
-      if (funcSym.Typ=nil) and (expecting.IsFuncSymbol) then
-         funcSym.Typ:=TFuncSymbol(expecting).Typ;
+      if (funcSym.Typ=nil) and (expectingFuncSym<>nil) then
+         funcSym.Typ:=expectingFuncSym.Typ;
 
       if FTok.TestDelete(ttEQGTR) then begin
 
@@ -10058,12 +10077,12 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       hotPos:=FTok.HotPos;
       if expecting=nil then
          expecting:=FAnyFuncSymbol
-      else if not (expecting.IsFuncSymbol) then
+      else if expecting.AsFuncSymbol=nil then
          FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
       else if expecting=FAnyFuncSymbol then
          FMsgs.AddCompilerStop(hotPos, CPE_UnexpectedAt);
       Result:=ReadTerm(isWrite, expecting);
-      if (Result.Typ=nil) or not Result.Typ.IsFuncSymbol then begin
+      if (Result.Typ=nil) or (Result.Typ.AsFuncSymbol=nil) then begin
          if (expecting=FAnyFuncSymbol) or (Result is TConstExpr) then
             FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
          else ReportIncompatibleAt(hotPos, Result);
@@ -10571,7 +10590,7 @@ begin
 
                      if (not constParam) and (typ is TOpenArraySymbol) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamMustBeConst);
-                     if lazyParam and typ.IsFuncSymbol then
+                     if lazyParam and (typ.AsFuncSymbol<>nil) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_LazyParamCantBeFunctionPointer);
 
                      if FTok.TestDelete(ttEQ) then begin
@@ -11923,8 +11942,8 @@ begin
                if right.InheritsFrom(TArrayConstantExpr) and (left.Typ is TArraySymbol) then
                   Result:=TAssignArrayConstantExpr.Create(FProg, scriptPos, left, TArrayConstantExpr(right))
                else Result:=TAssignDataExpr.Create(FProg, scriptPos, left, right)
-            end else if left.Typ.IsFuncSymbol then begin
-               if right.Typ.IsFuncSymbol or (right.Typ is TNilSymbol) then begin
+            end else if left.Typ.AsFuncSymbol<>nil then begin
+               if (right.Typ.AsFuncSymbol<>nil) or (right.Typ is TNilSymbol) then begin
                   if right is TFuncRefExpr then begin
                      right:=TFuncRefExpr(right).Extract;
                      if right is TFuncPtrExpr then begin
@@ -12330,7 +12349,7 @@ begin
                Result:=TAssignedInstanceExpr.Create(FProg, argExpr)
             else if argTyp is TClassOfSymbol then
                Result:=TAssignedMetaClassExpr.Create(FProg, argExpr)
-            else if argTyp.IsFuncSymbol then
+            else if argTyp.AsFuncSymbol<>nil then
                Result:=TAssignedFuncPtrExpr.Create(FProg, argExpr)
             else begin
                FMsgs.AddCompilerError(argPos, CPE_InvalidArgumentType);

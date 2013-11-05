@@ -155,8 +155,8 @@ begin
 
    for i:=0 to symDict.Count-1 do begin
       sym:=symDict.Items[i].Symbol;
-      if not sym.IsFuncSymbol then continue;
-      funcSym:=TFuncSymbol(sym);
+      funcSym:=sym.AsFuncSymbol;
+      if funcSym=nil then continue;
       if funcSym.IsType then continue;
       if (funcSym is TSourceFuncSymbol) or (funcSym is TSourceMethodSymbol) then begin
          Evaluate(aProg, funcSym);
