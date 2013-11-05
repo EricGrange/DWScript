@@ -72,8 +72,12 @@ type
 procedure SetDecimalSeparator(c : Char);
 function GetDecimalSeparator : Char;
 
+type
+   TCollectFileProgressEvent = procedure (const directory : String; var shouldAbort : Boolean) of object;
+
 procedure CollectFiles(const directory, fileMask : UnicodeString;
-                       list : TStrings; recurseSubdirectories: Boolean = False);
+                       list : TStrings; recurseSubdirectories: Boolean = False;
+                       onProgress : TCollectFileProgressEvent = nil);
 
 type
    {$IFNDEF FPC}
@@ -492,7 +496,8 @@ type
 //
 procedure CollectFilesMasked(const directory : UnicodeString;
                              mask : TMask; list : TStrings;
-                             recurseSubdirectories: Boolean = False);
+                             recurseSubdirectories: Boolean = False;
+                             onProgress : TCollectFileProgressEvent = nil);
 const
    // contant defined in Windows.pas is incorrect
    FindExInfoBasic = 1;
@@ -500,11 +505,18 @@ var
    searchRec : TFindDataRec;
    infoLevel : TFindexInfoLevels;
    fileName : String;
+   shouldAbort : Boolean;
 begin
    // 6.1 required for FindExInfoBasic (Win 2008 R2 or Win 7)
    if ((Win32MajorVersion shl 8) or Win32MinorVersion)>=$601 then
       infoLevel:=TFindexInfoLevels(FindExInfoBasic)
    else infoLevel:=FindExInfoStandard;
+
+   if Assigned(onProgress) then begin
+      shouldAbort:=False;
+      onProgress(directory, shouldAbort);
+      if shouldAbort then exit;
+   end;
 
    fileName:=directory+'*';
    searchRec.Handle:=FindFirstFileEx(PChar(Pointer(fileName)), infoLevel,
@@ -529,7 +541,7 @@ begin
             // decomposed cast and concatenation to avoid implicit string variable
             fileName:=searchRec.Data.cFileName;
             fileName:=directory+fileName+PathDelim;
-            CollectFilesMasked(fileName, mask, list, True);
+            CollectFilesMasked(fileName, mask, list, True, onProgress);
          end;
       until not FindNextFile(searchRec.Handle, searchRec.Data);
       Windows.FindClose(searchRec.Handle);
@@ -539,7 +551,8 @@ end;
 // CollectFiles
 //
 procedure CollectFiles(const directory, fileMask : UnicodeString; list : TStrings;
-                       recurseSubdirectories: Boolean = False);
+                       recurseSubdirectories: Boolean = False;
+                       onProgress : TCollectFileProgressEvent = nil);
 var
    mask : TMask;
 begin
@@ -547,7 +560,7 @@ begin
    // Mask confirmation is necessary
    mask:=TMask.Create(fileMask);
    try
-      CollectFilesMasked(directory, mask, list, recurseSubdirectories);
+      CollectFilesMasked(directory, mask, list, recurseSubdirectories, onProgress);
    finally
       mask.Free;
    end;
