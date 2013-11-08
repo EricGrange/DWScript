@@ -76,6 +76,7 @@ type
          procedure ConstantAliasing;
          procedure ExternalVariables;
          procedure TypeOfProperty;
+         procedure MethodFree;
    end;
 
    ETestException = class (Exception);
@@ -1638,6 +1639,26 @@ begin
 
    sym:=cls.Members.FindSymbol('Prop2', cvMagic);
    CheckEquals('TColor', sym.Typ.Name, 'Prop2');
+end;
+
+// MethodFree
+//
+procedure TCornerCasesTests.MethodFree;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'var toto : string = "test";'#13#10
+                           +'type tobj = class(Tobject)'#13#10
+                           +'Destructor destroy;override;'#13#10
+                           +'begin Print(toto) end;'#13#10
+                           +'end;'#13#10
+                           +'tobj.create.free;');
+
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   exec:=prog.Execute;
+   CheckEquals('test', exec.Result.ToString);
 end;
 
 // ------------------------------------------------------------------

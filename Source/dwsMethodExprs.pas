@@ -268,6 +268,7 @@ var
    scriptObj : PIScriptObj;
 begin
    scriptObj:=info.Execution.SelfScriptObject;
+
    if (scriptObj^<>nil) then
       info.Method['Destroy'].Call;
 end;
