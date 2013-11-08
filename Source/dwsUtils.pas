@@ -516,6 +516,7 @@ type
 
       protected
          const cCRLF : array [0..1] of WideChar = (#13, #10);
+         const cAsciiCRLF : array [0..1] of AnsiChar = (#13, #10);
 
          function GetSize: Int64; override;
 
@@ -548,7 +549,9 @@ type
          procedure WriteString(const i : Int64); overload; inline;
          procedure WriteSubString(const utf16String : UnicodeString; startPos : Integer); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos, aLength : Integer); overload;
+         procedure WriteUTF8String(const utf8String : RawByteString); overload; inline;
          procedure WriteCRLF; inline;
+         procedure WriteAsciiCRLF; inline;
          procedure WriteChar(utf16Char : WideChar); inline;
          procedure WriteDigits(value : Int64; digits : Integer);
 
@@ -656,6 +659,8 @@ procedure FastInt64ToStr(const val : Int64; var s : UnicodeString);
 procedure FastInt64ToHex(val : Int64; digits : Integer; var s : UnicodeString);
 function Int64ToHex(val : Int64; digits : Integer) : UnicodeString; inline;
 
+function DivMod100(var dividend : Cardinal) : Cardinal;
+
 procedure FastStringReplace(var str : UnicodeString; const sub, newSub : UnicodeString);
 
 procedure VariantToString(const v : Variant; var s : UnicodeString);
@@ -715,6 +720,8 @@ end;
 // DivMod100
 //
 function DivMod100(var dividend : Cardinal) : Cardinal;
+const
+   c100 : Cardinal = 100;
 {$ifndef WIN32_ASM}
 var
    divided : Cardinal;
@@ -724,18 +731,14 @@ begin
    dividend:=divided;
 {$else}
 asm
-   push  ebx
-   mov   ebx, eax
+   mov   ecx, eax
 
    mov   eax, [eax]
    xor   edx, edx
+   div   c100
 
-   mov   ecx, 100
-   div   ecx
-
-   mov   [ebx], eax
+   mov   [ecx], eax
    mov   eax, edx
-   pop   ebx
 {$endif}
 end;
 
@@ -761,7 +764,12 @@ begin
    Result:=0;
    Dec(p);
    repeat
-      r:=DivMod100(i);
+      if i<100 then begin
+         r:=i;
+         i:=0;
+      end else begin
+         r:=DivMod100(i);
+      end;
       if r>=10 then begin
          PTwoChars(p)^:=cDigits[r];
          Dec(p, 2);
@@ -2498,13 +2506,12 @@ var
    dest : PByteArray;
    fraction : Integer;
 begin
-   if count<=0 then Exit;
-
    Inc(FTotalSize, count);
 
    fraction:=cWriteOnlyBlockStreamBlockSize-FBlockRemaining^;
    if count>fraction then begin
       // does not fit in current block
+      // was current block started?
       if FBlockRemaining^>0 then begin
          WriteSpanning(source, fraction);
          Dec(count, fraction);
@@ -2737,11 +2744,25 @@ begin
       WriteBuf(@utf16String[startPos], n*SizeOf(WideChar));
 end;
 
+// WriteUTF8String
+//
+procedure TWriteOnlyBlockStream.WriteUTF8String(const utf8String : RawByteString);
+begin
+   WriteBuf(Pointer(utf8String), Length(utf8String));
+end;
+
 // WriteCRLF
 //
 procedure TWriteOnlyBlockStream.WriteCRLF;
 begin
    WriteBuf(@cCRLF[0], 2*SizeOf(WideChar));
+end;
+
+// WriteAsciiCRLF
+//
+procedure TWriteOnlyBlockStream.WriteAsciiCRLF;
+begin
+   WriteBuf(@cAsciiCRLF[0], 2*SizeOf(AnsiChar));
 end;
 
 // ------------------
