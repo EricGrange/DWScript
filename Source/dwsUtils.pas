@@ -515,10 +515,16 @@ type
          FTotalSize : Integer;
 
       protected
-          function GetSize: Int64; override;
+         const cCRLF : array [0..1] of WideChar = (#13, #10);
 
-          procedure AllocateCurrentBlock;
-          procedure FreeBlocks;
+         function GetSize: Int64; override;
+
+         procedure AllocateCurrentBlock;
+         procedure FreeBlocks;
+
+         procedure WriteSpanning(source : PByteArray; count : Integer);
+         procedure WriteLarge(source : PByteArray; count : Integer);
+         procedure WriteBuf(source : PByteArray; count : Integer);
 
       public
          constructor Create;
@@ -531,17 +537,18 @@ type
          function Read(var Buffer; Count: Longint): Longint; override;
          function Write(const buffer; count: Longint): Longint; override;
 
-         procedure WriteByte(b : Byte);
+         procedure WriteByte(b : Byte); inline;
          procedure WriteBytes(const b : array of Byte);
-         procedure WriteInt32(const i : Integer);
-         procedure WriteDWord(const dw : DWORD);
+         procedure WriteInt32(const i : Integer); inline;
+         procedure WriteDWord(const dw : DWORD); inline;
 
          // must be strictly an utf16 UnicodeString
-         procedure WriteString(const utf16String : UnicodeString); overload;
-         procedure WriteString(const i : Int64); overload;
+         procedure WriteString(const utf16String : UnicodeString); overload; inline;
+         procedure WriteString(const i : Int32); overload; inline;
+         procedure WriteString(const i : Int64); overload; inline;
          procedure WriteSubString(const utf16String : UnicodeString; startPos : Integer); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos, aLength : Integer); overload;
-         procedure WriteCRLF;
+         procedure WriteCRLF; inline;
          procedure WriteChar(utf16Char : WideChar); inline;
          procedure WriteDigits(value : Int64; digits : Integer);
 
@@ -549,6 +556,7 @@ type
          function ToString : String; override;
          function ToUTF8String : RawByteString;
          function ToBytes : TBytes;
+         function ToRawBytes : RawByteString;
 
          procedure Clear;
 
@@ -640,7 +648,9 @@ procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawB
 
 type
    TInt64StringBuffer = array [0..21] of WideChar;
+   TInt32StringBuffer = array [0..11] of WideChar;
 
+function FastInt32ToBuffer(const val : Int32; var buf : TInt32StringBuffer) : Integer;
 function FastInt64ToBuffer(const val : Int64; var buf : TInt64StringBuffer) : Integer;
 procedure FastInt64ToStr(const val : Int64; var s : UnicodeString);
 procedure FastInt64ToHex(val : Int64; digits : Integer; var s : UnicodeString);
@@ -770,6 +780,59 @@ begin
    until i=0;
 end;
 
+// FastInt32ToBuffer
+//
+{$IFOPT R+}
+  {$DEFINE RANGEON}
+  {$R-}
+{$ELSE}
+  {$UNDEF RANGEON}
+{$ENDIF}
+function FastInt32ToBuffer(const val : Int32; var buf : TInt32StringBuffer) : Integer;
+var
+   n, nd : Integer;
+   neg : Boolean;
+   i, next : UInt32;
+begin
+   if val<0 then begin
+      neg:=True;
+//range checking is off here because the code causes range check errors
+//code here...
+      i:=-val;
+   end else begin
+      if val=0 then begin
+         Result:=High(buf);
+         buf[Result]:='0';
+         Exit;
+      end else i:=val;
+      neg:=False;
+   end;
+   nd:=High(buf);
+   n:=nd;
+   while True do begin
+      if i>100000000 then begin
+         next:=i div 100000000;
+         n:=n-EightDigits(i-next*100000000, @buf[n]);
+         i:=next;
+      end else begin
+         n:=n-EightDigits(i, @buf[n]);
+         Break;
+      end;
+      Dec(nd, 8);
+      while n>nd do begin
+         buf[n]:='0';
+         Dec(n);
+      end;
+   end;
+   if neg then
+      buf[n]:='-'
+   else Inc(n);
+   Result:=n;
+end;
+{$IFDEF RANGEON}
+  {$R+}
+{$ENDIF}
+
 // FastInt64ToBuffer
 //
 {$IFOPT R+}
@@ -782,8 +845,7 @@ function FastInt64ToBuffer(const val : Int64; var buf : TInt64StringBuffer) : In
 var
    n, nd : Integer;
    neg : Boolean;
-   i : UInt64;
-   next : Int64;
+   i, next : UInt64;
 begin
    if val<0 then begin
       neg:=True;
@@ -2393,9 +2455,36 @@ begin
    raise EStreamError.Create('not allowed');
 end;
 
-// Write
+// WriteSpanning
 //
-function TWriteOnlyBlockStream.Write(const buffer; count: Longint): Longint;
+procedure TWriteOnlyBlockStream.WriteSpanning(source : PByteArray; count : Integer);
+begin
+   // current block contains some data, write fraction, allocate new block
+   System.Move(source^, PByteArray(@FCurrentBlock[2])[FBlockRemaining^], count);
+   FBlockRemaining^:=cWriteOnlyBlockStreamBlockSize;
+
+   AllocateCurrentBlock;
+end;
+
+// WriteLarge
+//
+procedure TWriteOnlyBlockStream.WriteLarge(source : PByteArray; count : Integer);
+var
+   newBlock : PPointerArray;
+begin
+   // large amount still to be written, insert specific block
+   newBlock:=GetMemory(count+2*SizeOf(Pointer));
+   newBlock[0]:=FCurrentBlock;
+   PInteger(@newBlock[1])^:=count;
+   System.Move(source^, newBlock[2], count);
+   FCurrentBlock[0]:=newBlock;
+   FCurrentBlock:=newBlock;
+   AllocateCurrentBlock;
+end;
+
+// WriteBuf
+//
+procedure TWriteOnlyBlockStream.WriteBuf(source : PByteArray; count : Integer);
 type
    TThreeBytes = packed array [1..3] of Byte;
    PThreeBytes = ^TThreeBytes;
@@ -2406,44 +2495,30 @@ type
    TSevenBytes = packed array [1..7] of Byte;
    PSevenBytes = ^TSevenBytes;
 var
-   newBlock : PPointerArray;
-   dest, source : PByteArray;
+   dest : PByteArray;
    fraction : Integer;
 begin
-   Result:=count;
    if count<=0 then Exit;
 
    Inc(FTotalSize, count);
-   source:=@Buffer;
 
    fraction:=cWriteOnlyBlockStreamBlockSize-FBlockRemaining^;
    if count>fraction then begin
       // does not fit in current block
       if FBlockRemaining^>0 then begin
-         // current block contains some data, write fraction, allocate new block
-         System.Move(source^, PByteArray(@FCurrentBlock[2])[FBlockRemaining^], fraction);
+         WriteSpanning(source, fraction);
          Dec(count, fraction);
          source:=@source[fraction];
-         FBlockRemaining^:=cWriteOnlyBlockStreamBlockSize;
-
-         AllocateCurrentBlock;
       end;
-
       if count>cWriteOnlyBlockStreamBlockSize div 2 then begin
-         // large amount still to be written, insert specific block
-         newBlock:=GetMemory(count+2*SizeOf(Pointer));
-         newBlock[0]:=FCurrentBlock;
-         PInteger(@newBlock[1])^:=count;
-         System.Move(source^, newBlock[2], count);
-         FCurrentBlock[0]:=newBlock;
-         FCurrentBlock:=newBlock;
-         AllocateCurrentBlock;
+         WriteLarge(source, count);
          Exit;
       end;
    end;
 
    // if we reach here, everything fits in current block
    dest:=@PByteArray(@FCurrentBlock[2])[FBlockRemaining^];
+   Inc(FBlockRemaining^, count);
    case Cardinal(count) of
       0 : ;
       1 : dest[0]:=source[0];
@@ -2457,14 +2532,21 @@ begin
    else
       System.Move(source^, dest^, count);
    end;
-   Inc(FBlockRemaining^, count);
+end;
+
+// Write
+//
+function TWriteOnlyBlockStream.Write(const buffer; count: Longint): Longint;
+begin
+   WriteBuf(@buffer, count);
+   Result:=count;
 end;
 
 // WriteByte
 //
 procedure TWriteOnlyBlockStream.WriteByte(b : Byte);
 begin
-   Write(b, 1);
+   WriteBuf(@b, 1);
 end;
 
 // WriteBytes
@@ -2475,40 +2557,51 @@ var
 begin
    n:=Length(b);
    if n>0 then
-      Write(b[0], Length(b));
+      WriteBuf(@b[0], Length(b));
 end;
 
 // WriteInt32
 //
 procedure TWriteOnlyBlockStream.WriteInt32(const i : Integer);
 begin
-   Write(i, 4);
+   WriteBuf(@i, 4);
 end;
 
 // WriteDWord
 //
 procedure TWriteOnlyBlockStream.WriteDWord(const dw : DWORD);
 begin
-   Write(dw, 4);
+   WriteBuf(@dw, 4);
 end;
 
 // WriteString
 //
 procedure TWriteOnlyBlockStream.WriteString(const utf16String : UnicodeString);
 var
-   stringCracker : NativeInt;
+   stringCracker : NativeUInt;
 begin
    {$ifdef FPC}
    if utf16String<>'' then
-      Write(utf16String[1], Length(utf16String)*SizeOf(WideChar));
+      WriteBuf(utf16String[1], Length(utf16String)*SizeOf(WideChar));
    {$else}
-   stringCracker:=NativeInt(utf16String);
+   stringCracker:=NativeUInt(utf16String);
    if stringCracker<>0 then
-      Write(Pointer(stringCracker)^, PInteger(stringCracker-SizeOf(Integer))^*SizeOf(WideChar));
+      WriteBuf(Pointer(stringCracker), PInteger(stringCracker-SizeOf(Integer))^*SizeOf(WideChar));
    {$endif}
 end;
 
-// WriteString
+// WriteString (Int32)
+//
+procedure TWriteOnlyBlockStream.WriteString(const i : Int32);
+var
+   buf : TInt32StringBuffer;
+   n : Integer;
+begin
+   n:=FastInt32ToBuffer(i, buf);
+   WriteBuf(@buf[n], (High(buf)+1-n)*SizeOf(WideChar));
+end;
+
+// WriteString (Int64)
 //
 procedure TWriteOnlyBlockStream.WriteString(const i : Int64);
 var
@@ -2516,14 +2609,14 @@ var
    n : Integer;
 begin
    n:=FastInt64ToBuffer(i, buf);
-   Write(buf[n], (High(buf)-n+1)*SizeOf(WideChar));
+   WriteBuf(@buf[n], (High(buf)+1-n)*SizeOf(WideChar));
 end;
 
 // WriteChar
 //
 procedure TWriteOnlyBlockStream.WriteChar(utf16Char : WideChar);
 begin
-   Write(utf16Char, SizeOf(WideChar));
+   WriteBuf(@utf16Char, SizeOf(WideChar));
 end;
 
 // WriteDigits
@@ -2546,7 +2639,7 @@ begin
       Dec(digits);
    end;
 
-   Write(buf[n], (Length(buf)-n)*SizeOf(WideChar));
+   WriteBuf(@buf[n], (Length(buf)-n)*SizeOf(WideChar));
 end;
 
 // ToString
@@ -2595,6 +2688,18 @@ begin
       StoreData(Result[0]);
 end;
 
+// ToRawBytes
+//
+function TWriteOnlyBlockStream.ToRawBytes : RawByteString;
+var
+   s : Int64;
+begin
+   s:=Size;
+   SetLength(Result, s);
+   if s>0 then
+      StoreData(Result[1]);
+end;
+
 // GetSize
 //
 function TWriteOnlyBlockStream.GetSize: Int64;
@@ -2607,15 +2712,6 @@ end;
 procedure TWriteOnlyBlockStream.WriteSubString(const utf16String : UnicodeString; startPos : Integer);
 begin
    WriteSubString(utf16String, startPos, Length(utf16String)-startPos+1);
-end;
-
-// WriteCRLF
-//
-procedure TWriteOnlyBlockStream.WriteCRLF;
-const
-   cCRLF : array [0..1] of WideChar = (#13, #10);
-begin
-   Write(cCRLF[0], 2*SizeOf(WideChar));
 end;
 
 // WriteSubString
@@ -2638,7 +2734,14 @@ begin
    else n:=p-startPos+1;
 
    if n>0 then
-      Write(utf16String[startPos], n*SizeOf(WideChar));
+      WriteBuf(@utf16String[startPos], n*SizeOf(WideChar));
+end;
+
+// WriteCRLF
+//
+procedure TWriteOnlyBlockStream.WriteCRLF;
+begin
+   WriteBuf(@cCRLF[0], 2*SizeOf(WideChar));
 end;
 
 // ------------------
