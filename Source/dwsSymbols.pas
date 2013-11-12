@@ -1367,6 +1367,7 @@ type
          FArrayIndices : TParamsSymbolTable;
          FIndexSym : TTypeSymbol;
          FIndexValue: TData;
+         FDefaultSym : TConstSymbol;
          FVisibility : TdwsVisibility;
          FDeprecatedMessage : UnicodeString;
 
@@ -1398,6 +1399,7 @@ type
          property IsDefault : Boolean read GetIsDefault;
          property IndexValue : TData read FIndexValue;
          property IndexSym : TTypeSymbol read FIndexSym;
+         property DefaultSym : TConstSymbol read FDefaultSym write FDefaultSym;
          property DeprecatedMessage : UnicodeString read FDeprecatedMessage write FDeprecatedMessage;
          property IsDeprecated : Boolean read GetIsDeprecated;
    end;
@@ -3836,6 +3838,7 @@ end;
 destructor TPropertySymbol.Destroy;
 begin
   FArrayIndices.Free;
+  FDefaultSym.Free;
   inherited;
 end;
 

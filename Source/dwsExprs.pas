@@ -7253,6 +7253,15 @@ begin
    inherited;
 end;
 
+// GetSubContext
+//
+function TdwsSourceContext.GetSubContext(index : Integer) : TdwsSourceContext;
+begin
+   Result:=TdwsSourceContext(FSubContexts.List[index]);
+end;
+
+// HasParentSymbolOfClass
+//
 function TdwsSourceContext.HasParentSymbolOfClass(SymbolType: TSymbolClass;
   SearchParents: Boolean): Boolean;
 begin
@@ -7378,13 +7387,6 @@ begin
          end;
       end;
    end;
-end;
-
-// GetSubContext
-//
-function TdwsSourceContext.GetSubContext(index : Integer) : TdwsSourceContext;
-begin
-   Result:=TdwsSourceContext(FSubContexts.List[index]);
 end;
 
 // ------------------

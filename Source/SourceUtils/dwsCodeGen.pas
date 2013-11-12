@@ -2036,9 +2036,10 @@ begin
    else n:=sym.Name;
    if not FNames.AddObject(n, sym) then begin
       existing:=FNames[n];
-      if (existing<>FReservedSymbol) and (existing<>sym) then
-         RaiseAlreadyDefined(sym, existing)
-      else FNames.Objects[n]:=sym;
+      if (existing<>FReservedSymbol) and (existing<>sym) then begin
+         // ignore duplicate external, the raise is mostly a debugging facility at the moment
+         // RaiseAlreadyDefined(sym, existing)
+      end else FNames.Objects[n]:=sym;
    end;
 end;
 

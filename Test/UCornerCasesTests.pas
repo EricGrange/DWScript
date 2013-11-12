@@ -77,6 +77,7 @@ type
          procedure ExternalVariables;
          procedure TypeOfProperty;
          procedure MethodFree;
+         procedure PropertyDefault;
    end;
 
    ETestException = class (Exception);
@@ -1659,6 +1660,29 @@ begin
 
    exec:=prog.Execute;
    CheckEquals('test', exec.Result.ToString);
+end;
+
+// PropertyDefault
+//
+procedure TCornerCasesTests.PropertyDefault;
+var
+   prog : IdwsProgram;
+   cls : TClassSymbol;
+   prop : TPropertySymbol;
+begin
+   prog:=FCompiler.Compile( 'type tobj = class(Tobject)'#13#10
+                           +'Field : String;'#13#10
+                           +'property Prop : String read Field default "hello";'#13#10
+                           +'end;');
+
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   cls:=prog.Table.FindTypeLocal('tobj') as TClassSymbol;
+
+   prop:=cls.Members.FindSymbol('Prop', cvMagic) as TPropertySymbol;
+
+   CheckEquals('String', prop.DefaultSym.Typ.Name);
+   CheckEquals('hello', prop.DefaultSym.Data[0]);
 end;
 
 // ------------------------------------------------------------------

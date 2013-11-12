@@ -492,14 +492,20 @@ type
          function ReadClass(const typeName : UnicodeString; const flags : TClassSymbolFlags) : TClassSymbol;
          procedure ReadClassVars(const ownerSymbol : TCompositeTypeSymbol; aVisibility : TdwsVisibility);
          procedure ReadClassConst(const ownerSymbol : TCompositeTypeSymbol; aVisibility : TdwsVisibility);
+         function ReadClassConstSymbol(const constPos : TScriptPos;
+                                        typ : TTypeSymbol;
+                                        const ownerSymbol : TCompositeTypeSymbol;
+                                        aVisibility : TdwsVisibility) : TConstSymbol;
          function ReadInterface(const typeName : UnicodeString) : TInterfaceSymbol;
          function ReadConnectorSym(const name : UnicodeString; baseExpr : TTypedExpr;
                                    const connectorType : IConnectorType; isWrite: Boolean) : TProgramExpr;
          function ReadConnectorArray(const name : UnicodeString; baseExpr : TTypedExpr;
                                      const connectorType : IConnectorType; isWrite: Boolean) : TConnectorCallExpr;
+         function ReadConstSymbol(const name : UnicodeString; const constPos : TScriptPos;
+                                  typ : TTypeSymbol; const factory : IdwsDataSymbolFactory) : TConstSymbol;
          procedure ReadConstDecl(const factory : IdwsDataSymbolFactory);
          procedure ReadConstDeclBlock(var action : TdwsStatementAction);
-         function ReadConstValue : TConstExpr;
+         function ReadConstImmediateValue : TConstExpr;
          function ReadConstRecord(symbol : TRecordSymbol) : TData;
          function ReadBlock : TProgramExpr;
          function ReadBlocks(const endTokens : TTokenTypes; var finalToken : TTokenType) : TProgramExpr;
@@ -1057,7 +1063,7 @@ end;
 function TStandardSymbolFactory.CreateConstSymbol(const name : UnicodeString; const namePos : TScriptPos;
                                                   typ : TTypeSymbol; const data : TData) : TConstSymbol;
 begin
-   if Length(data)>0 then
+   if data<>nil then
       Result:=TConstSymbol.CreateData(name, typ, data)
    else Result:=TConstSymbol.Create(name, typ);
    FCompiler.FProg.Table.AddSymbol(Result);
@@ -1143,7 +1149,9 @@ function TCompositeTypeSymbolFactory.CreateConstSymbol(const name : UnicodeStrin
 var
    classConstSym : TClassConstSymbol;
 begin
-   classConstSym:=TClassConstSymbol.CreateData(name, typ, data);
+   if data<>nil then
+      classConstSym:=TClassConstSymbol.CreateData(name, typ, data)
+   else classConstSym:=TClassConstSymbol.Create(name, typ);
    classConstSym.Visibility:=FVisibility;
    FOwnerType.AddConst(classConstSym);
    Result:=classConstSym;
@@ -2709,18 +2717,105 @@ begin
    end;
 end;
 
+// ReadConstSymbol
+//
+function TdwsCompiler.ReadConstSymbol(const name : UnicodeString; const constPos : TScriptPos;
+                                     typ : TTypeSymbol;
+                                     const factory : IdwsDataSymbolFactory) : TConstSymbol;
+var
+   expr : TTypedExpr;
+   dataExpr : TDataExpr;
+   sas : TStaticArraySymbol;
+   detachTyp : Boolean;
+   recordData : TData;
+begin
+   if typ is TRecordSymbol then begin
+
+      recordData:=ReadConstRecord(TRecordSymbol(typ));
+      Result:=factory.CreateConstSymbol(name, constPos, typ, recordData);
+
+   end else begin
+
+      detachTyp:=False;
+      if typ is TArraySymbol then begin
+         case FTok.TestDeleteAny([ttALEFT, ttBLEFT]) of
+            ttALEFT : expr:=factory.ReadArrayConstantExpr(ttARIGHT, TArraySymbol(typ).Typ);
+            ttBLEFT : expr:=factory.ReadArrayConstantExpr(ttBRIGHT, TArraySymbol(typ).Typ);
+         else
+            expr:=factory.ReadExpr(nil);
+         end;
+      end else expr:=factory.ReadExpr(nil);
+      try
+         if Assigned(typ) then begin
+            if not typ.IsCompatible(expr.typ) then
+               expr:=WrapWithImplicitConversion(expr, typ, FTok.HotPos);
+         end else if expr<>nil then begin
+            typ:=expr.typ;
+            detachTyp:=(typ.Name='');
+         end;
+
+         if not expr.IsConstant then begin
+
+            if not (expr is TConvInvalidExpr) then
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
+            // keep compiling
+            if typ=nil then
+               typ:=FProg.TypVariant;
+            Result:=factory.CreateConstSymbol(name, constPos, typ, nil);
+            detachTyp:=False;
+
+         end else begin
+
+            if typ is TArraySymbol then begin
+
+               if typ is TStaticArraySymbol then
+                  sas:=TStaticArraySymbol(typ)
+               else begin
+                  sas:=TStaticArraySymbol.Create('', typ.Typ, FProg.TypInteger, 0, TArraySymbol(typ).typ.Size-1);
+                  FProg.Table.AddSymbol(sas);
+               end;
+               if expr is TConstExpr then begin
+                  Result:=factory.CreateConstSymbol(name, constPos, sas, TConstExpr(expr).Data);
+                  detachTyp:=False;
+               end else Result:=factory.CreateConstSymbol(name, constPos, sas,
+                                                          (expr as TArrayConstantExpr).EvalAsTData(FExec));
+            end else begin
+               if typ.Size=1 then begin
+                  SetLength(recordData, 1);
+                  expr.EvalAsVariant(FExec, recordData[0]);
+                  Result:=factory.CreateConstSymbol(name, constPos, typ, recordData);
+               end else begin
+                  dataExpr:=(expr as TDataExpr);
+                  FExec.Stack.Push(FProg.DataSize);
+                  try
+                     SetLength(recordData, typ.Size);
+                     dataExpr.DataPtr[FExec].CopyData(recordData, 0, typ.Size);
+                     Result:=factory.CreateConstSymbol(name, constPos, typ, recordData);
+                  finally
+                     FExec.Stack.Pop(FProg.DataSize);
+                  end;
+               end;
+            end;
+
+         end;
+
+      finally
+         if detachTyp then begin
+            FProg.Table.AddSymbol(typ);
+            expr.Typ:=nil;
+         end;
+         expr.Free;
+      end;
+   end;
+end;
+
 // ReadConstDecl
 //
 procedure TdwsCompiler.ReadConstDecl(const factory : IdwsDataSymbolFactory);
 var
    name : UnicodeString;
-   expr : TTypedExpr;
-   dataExpr : TDataExpr;
    typ : TTypeSymbol;
-   sas : TStaticArraySymbol;
-   detachTyp : Boolean;
    constPos : TScriptPos;
-   recordData : TData;
    constSym : TConstSymbol;
 begin
    if not FTok.TestDeleteNamePos(name, constPos) then begin
@@ -2740,87 +2835,10 @@ begin
 
       end else typ:=nil;
 
-
       if not FTok.TestDelete(ttEQ) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
 
-      if typ is TRecordSymbol then begin
-
-         recordData:=ReadConstRecord(TRecordSymbol(typ));
-         constSym:=factory.CreateConstSymbol(name, constPos, typ, recordData);
-
-      end else begin
-
-         detachTyp:=False;
-         if typ is TArraySymbol then begin
-            case FTok.TestDeleteAny([ttALEFT, ttBLEFT]) of
-               ttALEFT : expr:=factory.ReadArrayConstantExpr(ttARIGHT, TArraySymbol(typ).Typ);
-               ttBLEFT : expr:=factory.ReadArrayConstantExpr(ttBRIGHT, TArraySymbol(typ).Typ);
-            else
-               expr:=factory.ReadExpr(nil);
-            end;
-         end else expr:=factory.ReadExpr(nil);
-         try
-            if Assigned(typ) then begin
-               if not typ.IsCompatible(expr.typ) then
-                  expr:=WrapWithImplicitConversion(expr, typ, FTok.HotPos);
-            end else if expr<>nil then begin
-               typ:=expr.typ;
-               detachTyp:=(typ.Name='');
-            end;
-
-            if not expr.IsConstant then begin
-
-               if not (expr is TConvInvalidExpr) then
-                  FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
-               // keep compiling
-               if typ=nil then
-                  typ:=FProg.TypVariant;
-               constSym:=factory.CreateConstSymbol(name, constPos, typ, nil);
-               detachTyp:=False;
-
-            end else begin
-
-               if typ is TArraySymbol then begin
-                  if typ is TStaticArraySymbol then
-                     sas:=TStaticArraySymbol(typ)
-                  else begin
-                     sas:=TStaticArraySymbol.Create('', typ.Typ, FProg.TypInteger, 0, TArraySymbol(typ).typ.Size-1);
-                     FProg.Table.AddSymbol(sas);
-                  end;
-                  if expr is TConstExpr then begin
-                     constSym:=factory.CreateConstSymbol(name, constPos, sas, TConstExpr(expr).Data);
-                     detachTyp:=False;
-                  end else constSym:=factory.CreateConstSymbol(name, constPos, sas,
-                                                               (expr as TArrayConstantExpr).EvalAsTData(FExec));
-               end else begin
-                  if typ.Size=1 then begin
-                     SetLength(recordData, 1);
-                     expr.EvalAsVariant(FExec, recordData[0]);
-                     constSym:=factory.CreateConstSymbol(name, constPos, typ, recordData);
-                  end else begin
-                     dataExpr:=(expr as TDataExpr);
-                     FExec.Stack.Push(FProg.DataSize);
-                     try
-                        SetLength(recordData, typ.Size);
-                        dataExpr.DataPtr[FExec].CopyData(recordData, 0, typ.Size);
-                        constSym:=factory.CreateConstSymbol(name, constPos, typ, recordData);
-                     finally
-                        FExec.Stack.Pop(FProg.DataSize);
-                     end;
-                  end;
-               end;
-
-            end;
-
-         finally
-            if detachTyp then begin
-               FProg.Table.AddSymbol(typ);
-               expr.Typ:=nil;
-            end;
-            expr.Free;
-         end;
-      end;
+      constSym:=ReadConstSymbol(name, constPos, typ, factory);
 
       RecordSymbolUse(constSym, constPos, [suDeclaration]);
    end;
@@ -8268,6 +8286,18 @@ begin
    ReadSemiColon;
 end;
 
+// ReadClassConstSymbol
+//
+function TdwsCompiler.ReadClassConstSymbol(
+      const constPos : TScriptPos; typ : TTypeSymbol;
+      const ownerSymbol : TCompositeTypeSymbol; aVisibility : TdwsVisibility) : TConstSymbol;
+var
+   factory : IdwsDataSymbolFactory;
+begin
+   factory:=TCompositeTypeSymbolFactory.Create(Self, ownerSymbol, aVisibility);
+   Result:=ReadConstSymbol('', constPos, typ, factory);
+end;
+
 // ReadInterface
 //
 function TdwsCompiler.ReadInterface(const typeName : UnicodeString) : TInterfaceSymbol;
@@ -8646,6 +8676,14 @@ begin
 
    if not gotReadOrWrite then
       FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ReadOrWriteExpected, [name]);
+
+   if FTok.TestDelete(ttDEFAULT) then begin
+
+      propSym.DefaultSym:=ReadClassConstSymbol(FTok.HotPos, propSym.Typ, ownerSym, aVisibility);
+      if propSym.DefaultSym<>nil then
+         propSym.DefaultSym.IncRefCount;
+
+   end;
 
    ReadSemiColon;
 
@@ -10170,7 +10208,7 @@ begin
             Result:=ReadNull(expecting);
          end else Result:=TTypedExpr(nameExpr);
       end else begin // Constant values in the code
-         Result := ReadConstValue;
+         Result := ReadConstImmediateValue;
          if (Result<>nil) and FTok.Test(ttDOT) then
             Result:=(ReadSymbol(Result, isWrite) as TTypedExpr);
       end;
@@ -10317,9 +10355,9 @@ begin
    end;
 end;
 
-// ReadConstValue
+// ReadConstImmediateValue
 //
-function TdwsCompiler.ReadConstValue: TConstExpr;
+function TdwsCompiler.ReadConstImmediateValue: TConstExpr;
 var
    tt : TTokenType;
    unifiedList : TUnifiedConstList;
