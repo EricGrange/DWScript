@@ -77,6 +77,7 @@ type
          procedure ExternalVariables;
          procedure TypeOfProperty;
          procedure MethodFree;
+         procedure MethodDestroy;
          procedure PropertyDefault;
    end;
 
@@ -1655,6 +1656,27 @@ begin
                            +'begin Print(toto) end;'#13#10
                            +'end;'#13#10
                            +'tobj.create.free;');
+
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   exec:=prog.Execute;
+   CheckEquals('test', exec.Result.ToString);
+end;
+
+// MethodDestroy
+//
+procedure TCornerCasesTests.MethodDestroy;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'var toto : string = "test";'#13#10
+                           +'type tobj = class(Tobject)'#13#10
+                           +'Destructor destroy;override;'#13#10
+                           +'begin Print(toto) end;'#13#10
+                           +'end;'#13#10
+                           +'procedure Test; begin var o := tobj.create; end;'#13#10
+                           +'Test');
 
    CheckEquals('', prog.Msgs.AsInfo);
 

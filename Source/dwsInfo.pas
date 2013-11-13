@@ -1084,7 +1084,7 @@ begin
       caller:=FExec.CallStackLastExpr;
       if caller<>nil then begin
          // called from script
-         TFuncExpr(Result).Level:=(FExec.CallStackLastExpr as TFuncExpr).Level;
+         TFuncExpr(Result).Level:=(caller as TFuncExpr).Level;
          if TFuncExpr(Result).Level=0 then
             TFuncExpr(Result).Level:=1;
       end else begin

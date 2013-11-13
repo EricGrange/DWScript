@@ -2398,12 +2398,25 @@ var
    destroySym : TMethodSymbol;
    expr : TDestructorVirtualExpr;
    oldStatus : TExecutionStatusResult;
+   caller : TExprBase;
 begin
    if scriptObj.ClassSym.IsExternalRooted then Exit;
    try
       destroySym:=Prog.TypDefaultDestructor;
       expr := TDestructorVirtualExpr.Create(FProg, cNullPos, destroySym,
                                             TConstExpr.Create(FProg, ScriptObj.ClassSym, ScriptObj));
+
+      caller:=CallStackLastExpr;
+      if caller<>nil then begin
+         // called from script
+         expr.Level:=(caller as TFuncExpr).Level;
+         if expr.Level=0 then
+            expr.Level:=1;
+      end else begin
+         // called from Delphi-side outside of script
+         expr.Level:=0;
+      end;
+
       oldStatus:=Status;
       try
          Status:=esrNone;
