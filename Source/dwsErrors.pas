@@ -170,8 +170,21 @@ type
 
    TScriptMessageClass = class of TScriptMessage;
 
+   TdwsHintsLevel = (hlDisabled, hlNormal, hlStrict, hlPedantic);
+
+   // THintMessage
+   //
    THintMessage = class(TScriptMessage)
-      function AsInfo: UnicodeString; override;
+      private
+         FLevel : TdwsHintsLevel;
+
+      public
+         constructor Create(msgs: TdwsMessageList; const text : UnicodeString; const p : TScriptPos;
+                            aLevel : TdwsHintsLevel);
+
+         function AsInfo: UnicodeString; override;
+
+         property Level : TdwsHintsLevel read FLevel;
    end;
 
    TWarningMessage = class(TScriptMessage)
@@ -224,8 +237,6 @@ type
          property HasErrors : Boolean read GetHasErrors;
          property State : TdwsMessageListState read FState write FState;
    end;
-
-   TdwsHintsLevel = (hlDisabled, hlNormal, hlStrict, hlPedantic);
 
    // TdwsCompileMessageList
    //
@@ -722,6 +733,15 @@ end;
 // ------------------ THintMessage ------------------
 // ------------------
 
+// Create
+//
+constructor THintMessage.Create(msgs: TdwsMessageList; const text : UnicodeString;
+                                const p : TScriptPos; aLevel : TdwsHintsLevel);
+begin
+   inherited Create(msgs, text, p);
+   FLevel:=aLevel;
+end;
+
 // AsInfo
 //
 function THintMessage.AsInfo: UnicodeString;
@@ -790,7 +810,7 @@ function TdwsCompileMessageList.AddCompilerHint(const aScriptPos: TScriptPos;
       const Text: UnicodeString; const aLevel : TdwsHintsLevel = hlNormal) : TScriptMessage;
 begin
    if aLevel<=HintsLevel then
-      Result:=THintMessage.Create(Self, Text, aScriptPos)
+      Result:=THintMessage.Create(Self, Text, aScriptPos, aLevel)
    else Result:=nil;
 end;
 
