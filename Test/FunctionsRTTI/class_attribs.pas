@@ -1,14 +1,19 @@
 type
-   MyAttrib = class (TCustomAttribute);
+   MyAttribute = class (TCustomAttribute);
    
 type   
-   [MyAttrib]
+   [MyAttribute]
    TTest1 = class
    end;
 
 type   
    [TCustomAttribute]
    TTest2 = class
+   end;
+
+type   
+   [My]
+   TTest3 = class
    end;
 
    
@@ -23,3 +28,4 @@ end;
 
 PrintAttributesForType(TypeOf(TTest1));
 PrintAttributesForType(TypeOf(TTest2));
+PrintAttributesForType(TypeOf(TTest3));

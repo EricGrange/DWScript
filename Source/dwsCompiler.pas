@@ -623,7 +623,7 @@ type
                                 const options : TdwsNameListOptions = [];
                                 externalNames : TSimpleStringList = nil);
          procedure ReadExternalName(funcSym : TFuncSymbol);
-         function  ReadNew(restrictTo : TClassSymbol) : TProgramExpr;
+         function  ReadNew(restrictTo : TClassSymbol; asAttribute : Boolean) : TProgramExpr;
          function  ReadNewArray(elementTyp : TTypeSymbol) : TNewArrayExpr;
          procedure ReadArrayParams(ArrayIndices: TSymbolTable);
          // Don't want to add param symbols to dictionary when a method implementation (they get thrown away)
@@ -4402,7 +4402,7 @@ begin
       Exit(ReadNameOld(isWrite));
 
    if FTok.TestDelete(ttNEW) then begin
-      Result:=ReadNew(nil);
+      Result:=ReadNew(nil, False);
       Result:=ReadSymbol(Result, isWrite);
       Exit;
    end;
@@ -7747,7 +7747,18 @@ end;
 
 // ReadNew
 //
-function TdwsCompiler.ReadNew(restrictTo : TClassSymbol) : TProgramExpr;
+function TdwsCompiler.ReadNew(restrictTo : TClassSymbol; asAttribute : Boolean) : TProgramExpr;
+
+   function FindAsAttribute(table : TSymbolTable; const name : String) : TSymbol;
+   begin
+      Result:=table.FindSymbol(name+'Attribute', cvPrivate);
+      if Result<>nil then begin
+         if (Result is TClassSymbol) and TClassSymbol(Result).IsAttribute then
+            exit
+         else Result:=nil;
+      end;
+   end;
+
 var
    sym : TSymbol;
    typSym : TTypeSymbol;
@@ -7787,10 +7798,13 @@ begin
       if not FTok.TestName then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ClassRefExpected);
 
-      nameToken := FTok.GetToken;
-      hotPos := FTok.HotPos;
-
-      sym:=FProg.Table.FindSymbol(nameToken.AsString, cvPrivate);
+      nameToken:=FTok.GetToken;
+      hotPos:=FTok.HotPos;
+      if asAttribute then
+         sym:=FindAsAttribute(FProg.Table, nameToken.AsString)
+      else sym:=nil;
+      if sym=nil then
+         sym:=FProg.Table.FindSymbol(nameToken.AsString, cvPrivate);
       FTok.KillToken;
 
       if FTok.TestDelete(ttALEFT) then begin
@@ -12771,7 +12785,7 @@ begin
 
    repeat
       hotPos:=FTok.HotPos;
-      expr:=ReadNew(customAttribute);
+      expr:=ReadNew(customAttribute, True);
       if not ((expr is TMethodExpr) and (TMethodExpr(expr).MethSym.Kind=fkConstructor)) then
          FMsgs.AddCompilerError(hotPos, CPE_AttributeConstructorExpected);
       FPendingAttributes.Add(TdwsSymbolAttribute.Create(hotPos, TMethodExpr(expr)));
@@ -13177,6 +13191,7 @@ begin
    // Create TCustomAttribute
    sysTable.TypCustomAttribute := TClassSymbol.Create(SYS_TCUSTOMATTRIBUTE, nil);
    sysTable.TypCustomAttribute.InheritFrom(sysTable.TypTObject);
+   sysTable.TypCustomAttribute.IsAttribute := True;
    sysTable.AddSymbol(sysTable.TypCustomAttribute);
 
    // ExceptObj function

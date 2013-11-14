@@ -1456,7 +1456,8 @@ type
                        csfStatic, csfExternal, csfPartial,
                        csfNoVirtualMembers, csfNoOverloads,
                        csfExternalRooted,
-                       csfInitialized);
+                       csfInitialized,
+                       csfAttribute);
    TClassSymbolFlags = set of TClassSymbolFlag;
 
    // type X = class ... end;
@@ -1482,6 +1483,8 @@ type
          procedure SetIsExternal(const val : Boolean); inline;
          function GetIsExternalRooted : Boolean; override;
          function GetIsPartial : Boolean; override;
+         function GetIsAttribute : Boolean; inline;
+         procedure SetIsAttribute(const val : Boolean); inline;
 
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
@@ -1542,6 +1545,7 @@ type
          property IsStatic : Boolean read GetIsStatic write SetIsStatic;
          property IsExternal : Boolean read GetIsExternal write SetIsExternal;
          property IsPartial : Boolean read GetIsPartial;
+         property IsAttribute : Boolean read GetIsAttribute write SetIsAttribute;
 
          property OnObjectDestroy : TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
    end;
@@ -4016,6 +4020,128 @@ begin
    inherited;
 end;
 
+// GetIsExplicitAbstract
+//
+function TClassSymbol.GetIsExplicitAbstract : Boolean;
+begin
+   Result:=(csfExplicitAbstract in FFlags);
+end;
+
+// SetIsExplicitAbstract
+//
+procedure TClassSymbol.SetIsExplicitAbstract(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, csfExplicitAbstract)
+   else Exclude(FFlags, csfExplicitAbstract);
+end;
+
+// GetIsAbstract
+//
+function TClassSymbol.GetIsAbstract : Boolean;
+begin
+   Result:=(([csfAbstract, csfExplicitAbstract]*FFlags)<>[]);
+end;
+
+// GetIsSealed
+//
+function TClassSymbol.GetIsSealed : Boolean;
+begin
+   Result:=(csfSealed in FFlags);
+end;
+
+// SetIsSealed
+//
+procedure TClassSymbol.SetIsSealed(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, csfSealed)
+   else Exclude(FFlags, csfSealed);
+end;
+
+// GetIsStatic
+//
+function TClassSymbol.GetIsStatic : Boolean;
+begin
+   Result:=(csfStatic in FFlags);
+end;
+
+// SetIsStatic
+//
+procedure TClassSymbol.SetIsStatic(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, csfStatic)
+   else Exclude(FFlags, csfStatic);
+end;
+
+// GetIsExternal
+//
+function TClassSymbol.GetIsExternal : Boolean;
+begin
+   Result:=(csfExternal in FFlags);
+end;
+
+// SetIsExternal
+//
+procedure TClassSymbol.SetIsExternal(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, csfExternal)
+   else Exclude(FFlags, csfExternal);
+end;
+
+// GetIsExternalRooted
+//
+function TClassSymbol.GetIsExternalRooted : Boolean;
+begin
+   Result:=IsExternal or (csfExternalRooted in FFlags);
+end;
+
+// GetIsPartial
+//
+function TClassSymbol.GetIsPartial : Boolean;
+begin
+   Result:=(csfPartial in FFlags);
+end;
+
+// GetIsAttribute
+//
+function TClassSymbol.GetIsAttribute : Boolean;
+begin
+   Result:=(csfAttribute in FFlags);
+end;
+
+// SetIsAttribute
+//
+procedure TClassSymbol.SetIsAttribute(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, csfAttribute)
+   else Exclude(FFlags, csfAttribute);
+end;
+
+// SetIsPartial
+//
+procedure TClassSymbol.SetIsPartial;
+begin
+   Include(FFlags, csfPartial);
+end;
+
+// SetNoVirtualMembers
+//
+procedure TClassSymbol.SetNoVirtualMembers;
+begin
+   Include(FFlags, csfNoVirtualMembers);
+end;
+
+// SetNoOverloads
+//
+procedure TClassSymbol.SetNoOverloads;
+begin
+   Include(FFlags, csfNoOverloads);
+end;
+
 // AddField
 //
 procedure TClassSymbol.AddField(fieldSym : TFieldSymbol);
@@ -4275,6 +4401,9 @@ begin
 
    IsStatic:=IsStatic or ancestorClassSym.IsStatic;
 
+   if ancestorClassSym.IsAttribute then
+      Include(FFlags, csfAttribute);
+
    if [csfExternalRooted, csfExternal]*ancestorClassSym.Flags<>[] then
       Include(FFlags, csfExternalRooted);
 
@@ -4344,112 +4473,6 @@ begin
     Result := Result + '   ' + Members.Symbols[i].Description + ';'#13#10;
 
   Result := Result + 'end';
-end;
-
-// GetIsExplicitAbstract
-//
-function TClassSymbol.GetIsExplicitAbstract : Boolean;
-begin
-   Result:=(csfExplicitAbstract in FFlags);
-end;
-
-// SetIsExplicitAbstract
-//
-procedure TClassSymbol.SetIsExplicitAbstract(const val : Boolean);
-begin
-   if val then
-      Include(FFlags, csfExplicitAbstract)
-   else Exclude(FFlags, csfExplicitAbstract);
-end;
-
-// GetIsAbstract
-//
-function TClassSymbol.GetIsAbstract : Boolean;
-begin
-   Result:=(([csfAbstract, csfExplicitAbstract]*FFlags)<>[]);
-end;
-
-// GetIsSealed
-//
-function TClassSymbol.GetIsSealed : Boolean;
-begin
-   Result:=(csfSealed in FFlags);
-end;
-
-// SetIsSealed
-//
-procedure TClassSymbol.SetIsSealed(const val : Boolean);
-begin
-   if val then
-      Include(FFlags, csfSealed)
-   else Exclude(FFlags, csfSealed);
-end;
-
-// GetIsStatic
-//
-function TClassSymbol.GetIsStatic : Boolean;
-begin
-   Result:=(csfStatic in FFlags);
-end;
-
-// SetIsStatic
-//
-procedure TClassSymbol.SetIsStatic(const val : Boolean);
-begin
-   if val then
-      Include(FFlags, csfStatic)
-   else Exclude(FFlags, csfStatic);
-end;
-
-// GetIsExternal
-//
-function TClassSymbol.GetIsExternal : Boolean;
-begin
-   Result:=(csfExternal in FFlags);
-end;
-
-// SetIsExternal
-//
-procedure TClassSymbol.SetIsExternal(const val : Boolean);
-begin
-   if val then
-      Include(FFlags, csfExternal)
-   else Exclude(FFlags, csfExternal);
-end;
-
-// GetIsExternalRooted
-//
-function TClassSymbol.GetIsExternalRooted : Boolean;
-begin
-   Result:=IsExternal or (csfExternalRooted in FFlags);
-end;
-
-// GetIsPartial
-//
-function TClassSymbol.GetIsPartial : Boolean;
-begin
-   Result:=(csfPartial in FFlags);
-end;
-
-// SetIsPartial
-//
-procedure TClassSymbol.SetIsPartial;
-begin
-   Include(FFlags, csfPartial);
-end;
-
-// SetNoVirtualMembers
-//
-procedure TClassSymbol.SetNoVirtualMembers;
-begin
-   Include(FFlags, csfNoVirtualMembers);
-end;
-
-// SetNoOverloads
-//
-procedure TClassSymbol.SetNoOverloads;
-begin
-   Include(FFlags, csfNoOverloads);
 end;
 
 // FindClassOperatorStrict
