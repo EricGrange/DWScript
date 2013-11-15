@@ -99,8 +99,8 @@ type
     procedure InitExecutableLines;
     function IsExecutableLine(ALine: Integer): Boolean; inline;
 
-    procedure ClearLineChangeStates;
     procedure InitLineChangeStates;
+    procedure ToggleLineChangedStates;
     function GetLineChangeState(ALine: Integer): TLineChangedState; inline;
   public
     constructor Create(AOwner: TDwsIdeForm;
@@ -118,7 +118,6 @@ type
 
     function  GotoIdentifier(const AIdentifier: string): Boolean;
     procedure ShowExecutableLines;
-    procedure ToggleLineChangedStates;
 
     function UnitName: string;
     property Editor: TSynEdit read FEditor;
@@ -427,7 +426,6 @@ type
     procedure ClearCurrentLine;
     procedure ClearAllBreakpoints;
     procedure ClearExecutableLines;
-    procedure ClearLinesChangedState;
     procedure AddStatusMessage(const AStr: string);
     procedure Compile(ABuild: Boolean; const AScript: string = '');
     function  IsCompiled: Boolean;
@@ -782,7 +780,7 @@ begin
   FPage.FExecutableLines.Size := FPage.FExecutableLines.Size - Count;
 
   // Track the executable lines
-  for I := FirstLine - 1 to Length(FPage.FLineChangedState) - Count - 1 do
+  for I := FirstLine - 1 to High(FPage.FLineChangedState) - Count do
     FPage.FLineChangedState[i] := FPage.FLineChangedState[I + Count];
   SetLength(FPage.FLineChangedState, Length(FPage.FLineChangedState) - Count);
 
@@ -1085,20 +1083,8 @@ var
 begin
   ClearExecutableLines;
   LineNumbers := FForm.GetExecutableLines(UnitName);
-  for I := 0 to Length(LineNumbers) - 1 do
+  for I := 0 to High(LineNumbers) do
     FExecutableLines[ LineNumbers[I] ] := True;
-  Editor.InvalidateGutter;
-end;
-
-// ClearLineStates
-//
-procedure TEditorPage.ClearLineChangeStates;
-var
-  I: Integer;
-begin
-  for I := 0 to Length(FLineChangedState) do
-    FLineChangedState[I] := csOriginal;
-
   Editor.InvalidateGutter;
 end;
 
@@ -3165,14 +3151,6 @@ var
 begin
   for I := 0 to EditorPageCount - 1 do
     EditorPage(I).ClearExecutableLines;
-end;
-
-procedure TDwsIdeForm.ClearLinesChangedState;
-var
-  I: Integer;
-begin
-  for I := 0 to EditorPageCount - 1 do
-    EditorPage(I).ClearLineChangeStates;
 end;
 
 procedure TDwsIdeForm.EditorPageClose(AIndex: Integer);
