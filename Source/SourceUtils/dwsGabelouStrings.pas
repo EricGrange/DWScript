@@ -47,6 +47,9 @@ const
    GAB_PascalCaseTypes_Name = 'PascalCase types';
    GAB_PascalCaseTypes_Description = 'Type names should follow PascalCase and start with an upper-case character';
 
+   GAB_AttributeClassNaming_Name = 'Attribute class names';
+   GAB_AttributeClassNaming_Description = 'Attribute class names should end with "Attribute" and not "T" prefix';
+
 implementation
 
 end.
