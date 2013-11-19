@@ -705,7 +705,7 @@ type
          FResultType : TdwsResultType;
          FRuntimeFileSystem : TdwsCustomFileSystem;
          FExecutions : TTightList;
-         FExecutionsLock : TCriticalSection;
+         FExecutionsLock : TFixedCriticalSection;
          FTimeoutMilliseconds : Integer;
 
          FSourceContextMap : TdwsSourceContextMap;
@@ -2787,7 +2787,7 @@ begin
 
    FResultType:=ResultType;
 
-   FExecutionsLock:=TCriticalSection.Create;
+   FExecutionsLock:=TFixedCriticalSection.Create;
 
    FStackParameters:=stackParameters;
    FStackParameters.MaxLevel:=1;
