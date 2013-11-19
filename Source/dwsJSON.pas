@@ -623,24 +623,24 @@ begin
    p:=PWideChar(Pointer(str));
    if p<>nil then while True do begin
       c:=p^;
-      case c of
-         #0..#31 :
-            case c of
-               #0 : Break;
-               #8 : destStream.WriteString('\b');
-               #9 : destStream.WriteString('\t');
-               #10 : destStream.WriteString('\n');
-               #12 : destStream.WriteString('\f');
-               #13 : destStream.WriteString('\r');
+      case Ord(c) of
+         0..31 :
+            case Ord(c) of
+               0 : Break;
+               8 : destStream.WriteString('\b');
+               9 : destStream.WriteString('\t');
+               10 : destStream.WriteString('\n');
+               12 : destStream.WriteString('\f');
+               13 : destStream.WriteString('\r');
             else
                WriteUTF16(destStream, Ord(c));
             end;
-         '"' :
+         Ord('"') :
             destStream.WriteString('\"');
-         '\' :
+         Ord('\') :
             destStream.WriteString('\\');
          {$ifndef FPC}
-         #255..#65535 :
+         $100..$FFFF :
             WriteUTF16(destStream, Ord(c));
          {$endif}
       else
