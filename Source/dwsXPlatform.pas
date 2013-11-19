@@ -66,8 +66,24 @@ type
 
          function TryEnter : Boolean;
    end;
-   {$HINTS ON}
 
+   TMultiReadSingleWrite = class
+      private
+         FCS : TFixedCriticalSection; // used as fallback
+         FSRWLock : Pointer;
+         FDummy : array [0..95-4*SizeOf(Pointer)] of Byte; // padding
+
+      public
+         constructor Create(forceFallBack : Boolean = False);
+         destructor Destroy; override;
+
+         procedure BeginRead;
+         procedure EndRead;
+
+         procedure BeginWrite;
+         procedure EndWrite;
+   end;
+   {$HINTS ON}
 
 procedure SetDecimalSeparator(c : Char);
 function GetDecimalSeparator : Char;
@@ -188,7 +204,6 @@ procedure GetMemForT(var T; Size: integer); inline;
 {$ifdef NEED_FindDelimiter}
 function FindDelimiter(const Delimiters, S: string; StartIdx: Integer = 1): Integer;
 {$endif}
-
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -908,5 +923,85 @@ end;
 
 {$ENDIF}
 {$ENDIF}
+
+// ------------------
+// ------------------ TMultiReadSingleWrite ------------------
+// ------------------
+
+// light-weight SRW is supported on Vista and above
+// we detect by feature rather than OS Version
+type
+   SRWLOCK = Pointer;
+var vSupportsSRWChecked : Boolean;
+var AcquireSRWLockExclusive : procedure (var SRWLock : SRWLOCK); stdcall;
+var ReleaseSRWLockExclusive : procedure (var SRWLock : SRWLOCK); stdcall;
+var AcquireSRWLockShared : procedure(var SRWLock : SRWLOCK); stdcall;
+var ReleaseSRWLockShared : procedure (var SRWLock : SRWLOCK); stdcall;
+
+function SupportsSRW : Boolean;
+var
+   h : Integer;
+begin
+   if not vSupportsSRWChecked then begin
+      vSupportsSRWChecked:=True;
+      h:=GetModuleHandle('kernel32');
+      AcquireSRWLockExclusive:=GetProcAddress(h, 'AcquireSRWLockExclusive');
+      ReleaseSRWLockExclusive:=GetProcAddress(h, 'ReleaseSRWLockExclusive');
+      AcquireSRWLockShared:=GetProcAddress(h, 'AcquireSRWLockShared');
+      ReleaseSRWLockShared:=GetProcAddress(h, 'ReleaseSRWLockShared');
+   end;
+   Result:=Assigned(AcquireSRWLockExclusive);
+end;
+
+// Create
+//
+constructor TMultiReadSingleWrite.Create(forceFallBack : Boolean = False);
+begin
+   if forceFallBack or not SupportsSRW then
+      FCS:=TFixedCriticalSection.Create;
+end;
+
+// Destroy
+//
+destructor TMultiReadSingleWrite.Destroy;
+begin
+   FCS.Free;
+end;
+
+// BeginRead
+//
+procedure TMultiReadSingleWrite.BeginRead;
+begin
+   if Assigned(FCS) then
+      FCS.Enter
+   else AcquireSRWLockShared(FSRWLock);
+end;
+
+// EndRead
+//
+procedure TMultiReadSingleWrite.EndRead;
+begin
+   if Assigned(FCS) then
+      FCS.Leave
+   else ReleaseSRWLockShared(FSRWLock)
+end;
+
+// BeginWrite
+//
+procedure TMultiReadSingleWrite.BeginWrite;
+begin
+   if Assigned(FCS) then
+      FCS.Enter
+   else AcquireSRWLockExclusive(FSRWLock);
+end;
+
+// EndWrite
+//
+procedure TMultiReadSingleWrite.EndWrite;
+begin
+   if Assigned(FCS) then
+      FCS.Leave
+   else ReleaseSRWLockExclusive(FSRWLock)
+end;
 
 end.
