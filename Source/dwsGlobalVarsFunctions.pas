@@ -38,7 +38,7 @@ interface
 
 uses
    Variants, Windows, Classes, SysUtils,
-   dwsUtils, dwsStrings, dwsExprList, dwsConstExprs,
+   dwsXPlatform, dwsUtils, dwsStrings, dwsExprList, dwsConstExprs,
    dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs;
 
 type
@@ -134,7 +134,7 @@ type
    TNameGlobalVarHash = TSimpleNameObjectHash<TGlobalVar>;
 
 var
-   vGlobalVarsCS : TRTLCriticalSection;
+   vGlobalVarsCS : TMultiReadSingleWrite;
    vGlobalVars : TNameGlobalVarHash;
    vGlobalVarsNamesCache : UnicodeString;
 
@@ -147,7 +147,7 @@ function WriteGlobalVar(const aName : UnicodeString; const aValue : Variant) : B
 var
    gv : TGlobalVar;
 begin
-   EnterCriticalSection(vGlobalVarsCS);
+   vGlobalVarsCS.BeginWrite;
    try
       gv:=vGlobalVars.Objects[aName];
       if gv=nil then begin
@@ -162,33 +162,7 @@ begin
             gv.Value:=aValue;
       end;
    finally
-      LeaveCriticalSection(vGlobalVarsCS);
-   end;
-end;
-
-// ReadGlobalVar
-//
-function ReadGlobalVar(const aName : UnicodeString) : Variant;
-begin
-   // Result (empty) is our default value when calling...
-   Result:=ReadGlobalVarDef(aName, Result);
-end;
-
-// TryReadGlobalVar
-//
-function TryReadGlobalVar(const aName: UnicodeString; var value: Variant): Boolean;
-var
-   gv : TGlobalVar;
-begin
-   EnterCriticalSection(vGlobalVarsCS);
-   try
-      gv:=vGlobalVars.Objects[aName];
-      if gv<>nil then begin
-         value:=gv.Value;
-         Result:=True;
-      end else Result:=False;
-   finally
-      LeaveCriticalSection(vGlobalVarsCS);
+      vGlobalVarsCS.EndWrite;
    end;
 end;
 
@@ -200,13 +174,40 @@ begin
       Result:=aDefault;
 end;
 
+// ReadGlobalVar
+//
+function ReadGlobalVar(const aName : UnicodeString) : Variant;
+begin
+   // Result (empty) is our default value when calling...
+   if not TryReadGlobalVar(aName, Result) then
+      VarClear(Result);
+end;
+
+// TryReadGlobalVar
+//
+function TryReadGlobalVar(const aName: UnicodeString; var value: Variant): Boolean;
+var
+   gv : TGlobalVar;
+begin
+   vGlobalVarsCS.BeginRead;
+   try
+      gv:=vGlobalVars.Objects[aName];
+      if gv<>nil then begin
+         value:=gv.Value;
+         Result:=True;
+      end else Result:=False;
+   finally
+      vGlobalVarsCS.EndRead;
+   end;
+end;
+
 // DeleteGlobalVar
 //
 function DeleteGlobalVar(const aName : UnicodeString) : Boolean;
 var
    gv : TGlobalVar;
 begin
-   EnterCriticalSection(vGlobalVarsCS);
+   vGlobalVarsCS.BeginWrite;
    try
       gv:=vGlobalVars.Objects[aName];
       if gv<>nil then begin
@@ -216,7 +217,7 @@ begin
          Result:=True;
       end else Result:=False;
    finally
-      LeaveCriticalSection(vGlobalVarsCS);
+      vGlobalVarsCS.EndWrite;
    end;
 end;
 
@@ -224,12 +225,12 @@ end;
 //
 procedure CleanupGlobalVars;
 begin
-   EnterCriticalSection(vGlobalVarsCS);
+   vGlobalVarsCS.BeginWrite;
    try
       vGlobalVars.Clean;
       vGlobalVarsNamesCache:='';
    finally
-      LeaveCriticalSection(vGlobalVarsCS);
+      vGlobalVarsCS.EndWrite;
    end;
 end;
 
@@ -237,16 +238,14 @@ end;
 //
 function SaveGlobalVarsToString : RawByteString;
 var
-   ms : TMemoryStream;
+   wobs : TWriteOnlyBlockStream;
 begin
-   ms:=TMemoryStream.Create;
+   wobs:=TWriteOnlyBlockStream.Create;
    try
-      SaveGlobalVarsToStream(ms);
-      SetLength(Result, ms.Position);
-      if Result<>'' then
-         Move(ms.Memory^, Result[1], Length(Result));
+      SaveGlobalVarsToStream(wobs);
+      Result:=wobs.ToRawBytes;
    finally
-      ms.Free;
+      wobs.Free;
    end;
 end;
 
@@ -309,7 +308,7 @@ begin
       writer.Write(cGlobalVarsFiles[1], Length(cGlobalVarsFiles));
       writer.WriteListBegin;
 
-      EnterCriticalSection(vGlobalVarsCS);
+      vGlobalVarsCS.BeginRead;
       try
          vGlobalVars.Enumerate(list);
          for i:=0 to list.Count-1 do begin
@@ -318,7 +317,7 @@ begin
                gv.WriteToFiler(writer, list[i]);
          end;
       finally
-         LeaveCriticalSection(vGlobalVarsCS);
+         vGlobalVarsCS.EndRead;
       end;
 
       writer.WriteListEnd;
@@ -346,7 +345,7 @@ begin
       if fileTag<>cGlobalVarsFiles then
          raise EGlobalVarError.Create('Invalid file tag');
 
-      EnterCriticalSection(vGlobalVarsCS);
+      vGlobalVarsCS.BeginWrite;
       try
          CleanupGlobalVars;
 
@@ -360,7 +359,7 @@ begin
 
          vGlobalVarsNamesCache:='';
       finally
-         LeaveCriticalSection(vGlobalVarsCS);
+         vGlobalVarsCS.EndWrite;
       end;
    finally
       reader.Free;
@@ -374,7 +373,7 @@ var
    i : Integer;
    list : TStringList;
 begin
-   EnterCriticalSection(vGlobalVarsCS);
+   vGlobalVarsCS.BeginWrite;
    try
       if vGlobalVarsNamesCache='' then begin
          list:=TStringList.Create;
@@ -391,7 +390,7 @@ begin
       end;
       Result:=vGlobalVarsNamesCache;
    finally
-      LeaveCriticalSection(vGlobalVarsCS);
+      vGlobalVarsCS.EndWrite;
    end;
 end;
 
@@ -516,7 +515,8 @@ end;
 
 function TReadGlobalVarFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
 begin
-   Result:=ReadGlobalVar(args.AsString[0]);
+   if not TryReadGlobalVar(args.AsString[0], Result) then
+      VarClear(Result);
 end;
 
 { TReadGlobalVarDefFunc }
@@ -584,7 +584,7 @@ end;
 
 initialization
 
-   InitializeCriticalSection(vGlobalVarsCS);
+   vGlobalVarsCS:=TMultiReadSingleWrite.Create;
    vGlobalVars:=TNameGlobalVarHash.Create;
 
    RegisterInternalFunction(TReadGlobalVarFunc, 'ReadGlobalVar', ['n', SYS_STRING], SYS_VARIANT);
@@ -600,7 +600,6 @@ initialization
 finalization
 
    CleanupGlobalVars;
-   DeleteCriticalSection(vGlobalVarsCS);
    vGlobalVars.Clean;
    vGlobalVars.Free;
    vGlobalVars:=nil;
