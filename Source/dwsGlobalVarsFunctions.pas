@@ -347,7 +347,8 @@ begin
 
       vGlobalVarsCS.BeginWrite;
       try
-         CleanupGlobalVars;
+         vGlobalVars.Clean;
+         vGlobalVarsNamesCache:='';
 
          reader.ReadListBegin;
          while not reader.EndOfList do begin
@@ -600,6 +601,8 @@ initialization
 finalization
 
    CleanupGlobalVars;
+   vGlobalVarsCS.Free;
+   vGlobalVarsCS:=nil;
    vGlobalVars.Clean;
    vGlobalVars.Free;
    vGlobalVars:=nil;
