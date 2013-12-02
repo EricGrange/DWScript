@@ -77,8 +77,11 @@ type
          function HttpPort : Integer;
          function HttpsPort : Integer;
 
+         procedure Initialize(const basePath : TFileName; options : TdwsJSONValue); virtual;
+
       public
-         constructor Create(const basePath : TFileName; options : TdwsJSONValue);
+         constructor Create; overload;
+         class function Create(const basePath : TFileName; options : TdwsJSONValue) : THttpSys2WebServer; overload;
          destructor Destroy; override;
 
          procedure Shutdown;
@@ -181,7 +184,16 @@ end;
 // ------------------ THttpSys2WebServer ------------------
 // ------------------
 
-constructor THttpSys2WebServer.Create(const basePath : TFileName; options : TdwsJSONValue);
+// Create
+//
+constructor THttpSys2WebServer.Create;
+begin
+   inherited;
+end;
+
+// Initialize
+//
+procedure THttpSys2WebServer.Initialize(const basePath : TFileName; options : TdwsJSONValue);
 var
    logPath : TdwsJSONValue;
    serverOptions : TdwsJSONValue;
@@ -197,16 +209,16 @@ begin
    FDirectoryIndex:=TDirectoryIndexCache.Create;
    FDirectoryIndex.IndexFileNames.CommaText:='"index.dws","index.htm","index.html"';
 
+   FServer:=THttpApi2Server.Create(False);
+
    serverOptions:=TdwsJSONValue.ParseString(cDefaultServerOptions);
    try
       serverOptions.Extend(options['Server']);
 
-      FServer:=THttpApi2Server.Create(False);
-
       FRelativeURI:=serverOptions['RelativeURI'].AsString;
       FPort:=serverOptions['Port'].AsInteger;
       if FPort<>0 then
-         FServer.AddUrl(FRelativeURI, FPort, False, '+');
+         FServer.AddUrl(FRelativeURI, FPort, False, '++');
 
       FSSLRelativeURI:=serverOptions['SSLRelativeURI'].AsString;
       FSSLPort:=serverOptions['SSLPort'].AsInteger;
@@ -254,6 +266,12 @@ begin
 
    if nbThreads>1 then
       FServer.Clone(nbThreads-1);
+end;
+
+class function THttpSys2WebServer.Create(const basePath : TFileName; options : TdwsJSONValue) : THttpSys2WebServer;
+begin
+   Result:=Self.Create;
+   Result.Initialize(basePath, options);
 end;
 
 destructor THttpSys2WebServer.Destroy;
