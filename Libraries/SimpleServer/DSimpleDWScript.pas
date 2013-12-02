@@ -54,7 +54,6 @@ type
       dwsHtmlFilter: TdwsHtmlFilter;
       dwsGlobalVarsFunctions: TdwsGlobalVarsFunctions;
       dwsRestrictedFileSystem: TdwsRestrictedFileSystem;
-      dwsFileIO: TdwsUnit;
       procedure DataModuleCreate(Sender: TObject);
       procedure DataModuleDestroy(Sender: TObject);
 

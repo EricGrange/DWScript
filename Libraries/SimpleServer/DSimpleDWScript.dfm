@@ -32,31 +32,4 @@ object SimpleDWScript: TSimpleDWScript
     Left = 72
     Top = 96
   end
-  object dwsFileIO: TdwsUnit
-    Script = DelphiWebScript
-    Functions = <
-      item
-        Name = 'DeleteFile'
-        Parameters = <
-          item
-            Name = 'fileName'
-            DataType = 'String'
-          end>
-        ResultType = 'Boolean'
-        OnFastEval = dwsFileIOFunctionsDeleteFileFastEval
-      end
-      item
-        Name = 'FileExists'
-        Parameters = <
-          item
-            Name = 'fileName'
-            DataType = 'String'
-          end>
-        ResultType = 'Boolean'
-      end>
-    UnitName = 'File.IO'
-    StaticSymbols = True
-    Left = 72
-    Top = 168
-  end
 end

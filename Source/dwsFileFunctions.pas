@@ -66,6 +66,10 @@ type
       function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
    end;
 
+   TFileOpenReadFunc = class(TInternalMagicVariantFunction)
+      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
+   end;
+
    TFileCreateFunc = class(TInternalMagicVariantFunction)
       function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
    end;
@@ -75,6 +79,10 @@ type
    end;
 
    TFileRead2Func = class(TInternalMagicStringFunction)
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+   end;
+
+   TFileRead3Func = class(TInternalMagicStringFunction)
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
 
@@ -96,6 +104,16 @@ type
 
    TDirectoryExistsFunc = class(TInternalMagicBoolFunction)
       function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
+   end;
+
+   TExpandFileNameFunc = class(TInternalMagicStringFunction)
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+   end;
+   TExtractFilePathFunc = class(TInternalMagicStringFunction)
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+   end;
+   TExtractFileNameFunc = class(TInternalMagicStringFunction)
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
 
    TDeleteFileFunc = class(TInternalMagicBoolFunction)
@@ -229,6 +247,22 @@ begin
 end;
 
 // ------------------
+// ------------------ TFileOpenReadFunc ------------------
+// ------------------
+
+// DoEvalAsVariant
+//
+function TFileOpenReadFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
+var
+   h : THandle;
+   i : IdwsFileHandle;
+begin
+   h:=FileOpen(args.AsString[0], fmOpenRead+fmShareDenyNone);
+   i:=TdwsFileHandle.Create(h);
+   Result:=IUnknown(i);
+end;
+
+// ------------------
 // ------------------ TFileCreateFunc ------------------
 // ------------------
 
@@ -259,7 +293,9 @@ begin
    SetLength(buf, n);
    if n>0 then begin
       n:=FileRead(GetFileHandle(args, 0), Pointer(buf)^, n);
-      SetLength(buf, n);
+      if n<0 then
+         RaiseLastOSError
+      else SetLength(buf, n);
    end;
    args.AsDataString[1]:=buf;
    Result:=n;
@@ -280,7 +316,35 @@ begin
    SetLength(buf, n);
    if n>0 then begin
       n:=FileRead(GetFileHandle(args, 0), Pointer(buf)^, n);
-      SetLength(buf, n);
+      if n<0 then
+         RaiseLastOSError
+      else SetLength(buf, n);
+   end;
+   RawByteStringToScriptString(buf, Result);
+end;
+
+// ------------------
+// ------------------ TFileRead2Func ------------------
+// ------------------
+
+// DoEvalAsString
+//
+procedure TFileRead3Func.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+var
+   buf : RawByteString;
+   p, n : Int64;
+   f : Integer;
+begin
+   f:=GetFileHandle(args, 0);
+   p:=FileSeek(f, 0, 1);
+   n:=FileSeek(f, 0, 2)-p;
+   FileSeek(f, p, 0);
+   SetLength(buf, n);
+   if n>0 then begin
+      n:=FileRead(f, Pointer(buf)^, n);
+      if n<0 then
+         RaiseLastOSError
+      else SetLength(buf, n);
    end;
    RawByteStringToScriptString(buf, Result);
 end;
@@ -349,6 +413,39 @@ end;
 function TDirectoryExistsFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
    Result:=DirectoryExists(args.AsString[0]);
+end;
+
+// ------------------
+// ------------------ TExpandFileNameFunc ------------------
+// ------------------
+
+// DoEvalAsString
+//
+procedure TExpandFileNameFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+begin
+   Result:=ExpandFileName(args.AsString[0]);
+end;
+
+// ------------------
+// ------------------ TExtractFilePathFunc ------------------
+// ------------------
+
+// DoEvalAsString
+//
+procedure TExtractFilePathFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+begin
+   Result:=ExtractFilePath(args.AsString[0]);
+end;
+
+// ------------------
+// ------------------ TExtractFileNameFunc ------------------
+// ------------------
+
+// DoEvalAsString
+//
+procedure TExtractFileNameFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+begin
+   Result:=ExtractFileName(args.AsString[0]);
 end;
 
 // ------------------
@@ -428,17 +525,23 @@ initialization
    dwsInternalUnit.AddSymbolsRegistrationProc(RegisterFileTypes);
 
    RegisterInternalFunction(TFileOpenFunc, 'FileOpen', ['name', SYS_STRING, 'mode', SYS_INTEGER], SYS_FILE, []);
-   RegisterInternalFunction(TFileOpenFunc, 'FileCreate', ['name', SYS_STRING], SYS_FILE, []);
+   RegisterInternalFunction(TFileOpenReadFunc, 'FileOpenRead', ['name', SYS_STRING], SYS_FILE, []);
+   RegisterInternalFunction(TFileCreateFunc, 'FileCreate', ['name', SYS_STRING], SYS_FILE, []);
 
    RegisterInternalIntFunction(TFileRead1Func, 'FileRead', ['f', SYS_FILE, '@buf', SYS_STRING, 'n', SYS_INTEGER], [iffOverloaded]);
    RegisterInternalStringFunction(TFileRead2Func, 'FileRead', ['f', SYS_FILE, 'n', SYS_INTEGER], [iffOverloaded]);
+   RegisterInternalStringFunction(TFileRead3Func, 'FileRead', ['f', SYS_FILE], [iffOverloaded]);
    RegisterInternalIntFunction(TFileWriteFunc, 'FileWrite', ['f', SYS_FILE, 'buf', SYS_STRING], []);
    RegisterInternalIntFunction(TFileSeekFunc, 'FileSeek', ['f', SYS_FILE, 'offset', SYS_INTEGER, 'origin', SYS_INTEGER], []);
 
-   RegisterInternalProcedure(TFileSeekFunc, 'FileClose', ['f', SYS_FILE]);
+   RegisterInternalProcedure(TFileCloseFunc, 'FileClose', ['f', SYS_FILE]);
 
    RegisterInternalBoolFunction(TFileExistsFunc, 'FileExists', ['name', SYS_STRING], []);
    RegisterInternalBoolFunction(TDirectoryExistsFunc, 'DirectoryExists', ['name', SYS_STRING], []);
+
+   RegisterInternalStringFunction(TExpandFileNameFunc, 'ExpandFileName', ['pathName', SYS_STRING], []);
+   RegisterInternalStringFunction(TExtractFilePathFunc, 'ExtractFilePath', ['pathName', SYS_STRING], []);
+   RegisterInternalStringFunction(TExtractFileNameFunc, 'ExtractFileName', ['pathName', SYS_STRING], []);
 
    RegisterInternalBoolFunction(TDeleteFileFunc, 'DeleteFile', ['name', SYS_STRING], []);
    RegisterInternalBoolFunction(TCopyFileFunc, 'CopyFile', ['existingName', SYS_STRING, 'newName', SYS_STRING, 'failIfExist', SYS_BOOLEAN], []);
