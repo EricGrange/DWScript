@@ -177,11 +177,22 @@ end;
 // SetRequest
 //
 procedure THttpSysWebRequest.SetRequest(val : PHTTP_REQUEST_V2);
+var
+   p : PChar;
+   n : Integer;
 begin
    FRequest:=val;
 
    SetString(FPathInfo, FRequest.CookedUrl.pAbsPath, FRequest.CookedUrl.AbsPathLength div SizeOf(Char));
-   SetString(FQueryString, FRequest.CookedUrl.pQueryString, FRequest.CookedUrl.QueryStringLength div SizeOf(Char));
+
+   // eliminate leading '?'
+   p:=FRequest.CookedUrl.pQueryString;
+   n:=FRequest.CookedUrl.QueryStringLength;
+   if (p<>nil) and (p^='?') then begin
+      Inc(p);
+      Dec(n);
+   end;
+   SetString(FQueryString, p, n div SizeOf(Char));
 
    FPrepared:=[];
 end;
