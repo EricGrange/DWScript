@@ -163,6 +163,7 @@ type
          FIndentSize : Integer;
          FOptions : TdwsCodeGenOptions;
          FVerbosity : TdwsCodeGenOutputVerbosity;
+         FTryDepth : Integer;
 
          FDataContextPool : IDataContextPool;
 
@@ -279,6 +280,10 @@ type
          function LocationString(e : TExprBase) : String;
          function IncTempSymbolCounter : Integer;
          function GetNewTempSymbol : String; virtual;
+
+         procedure EnterTry; inline;
+         procedure LeaveTry; inline;
+         property TryDepth : Integer read FTryDepth;
 
          procedure WriteCompiledOutput(dest : TWriteOnlyBlockStream; const prog : IdwsProgram); virtual;
          function  CompiledOutput(const prog : IdwsProgram) : String;
@@ -1284,6 +1289,21 @@ function TdwsCodeGen.GetNewTempSymbol : String;
 begin
    Inc(FTempSymbolCounter);
    Result:=IntToStr(FTempSymbolCounter);
+end;
+
+// EnterTry
+//
+procedure TdwsCodeGen.EnterTry;
+begin
+   Inc(FTryDepth);
+end;
+
+// LeaveTry
+//
+procedure TdwsCodeGen.LeaveTry;
+begin
+   Dec(FTryDepth);
+   Assert(FTryDepth>=0);
 end;
 
 // WriteCompiledOutput
