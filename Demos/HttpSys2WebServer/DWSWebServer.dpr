@@ -59,7 +59,8 @@ uses
   dwsDatabase in '..\..\Libraries\DatabaseLib\dwsDatabase.pas',
   dwsGUIDDatabase in '..\..\Libraries\DatabaseLib\dwsGUIDDatabase.pas',
   dwsWebServerLibModule in '..\..\Libraries\SimpleServer\dwsWebServerLibModule.pas' {dwsWebServerLib: TDataModule},
-  dwsWebServerInfo in '..\..\Libraries\SimpleServer\dwsWebServerInfo.pas';
+  dwsWebServerInfo in '..\..\Libraries\SimpleServer\dwsWebServerInfo.pas',
+  dwsGraphicLibrary in '..\..\Libraries\GraphicsLib\dwsGraphicLibrary.pas';
 
 type
    TWebServerHttpService = class(TdwsWindowsService)
@@ -175,19 +176,26 @@ begin
       end else begin
 
          // started as application
-         service.DoStart(service);
+         try
+            service.DoStart(service);
+         except
+            on E: Exception do begin
+               Writeln(E.ClassName, ': ', E.Message);
+               Exit;
+            end;
+         end;
 
          writeln('Server is now running on');
          if service.Server.HttpPort>0 then
-            writeln('http://localhost:', service.Server.HttpPort, '/');
+            writeln('http://', service.Server.HttpDomainName, ':', service.Server.HttpPort, '/');
          if service.Server.HttpsPort>0 then
-            writeln('https://localhost:', service.Server.HttpsPort, '/');
+            writeln('https://', service.Server.HttpsDomainName, ':', service.Server.HttpsPort, '/');
          writeln;
          writeln('Press [Enter] to quit');
          readln;
 
       end;
-   finally
+   finally
       try
          service.Free;
          options.Free;
