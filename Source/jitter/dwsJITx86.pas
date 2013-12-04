@@ -611,6 +611,30 @@ begin
 {$endif}
 end;
 
+function double_log2(const v : Double) : Double;
+{$ifdef WIN32_ASM}
+asm
+   fld1
+   fld   v
+   fyl2x
+{$else}
+begin
+   Result:=Log2(v);
+{$endif}
+end;
+
+function double_log10(const v : Double) : Double;
+{$ifdef WIN32_ASM}
+asm
+   fldlg2
+   fld   v
+   fyl2x
+{$else}
+begin
+   Result:=Log10(v);
+{$endif}
+end;
+
 function double_cos(const v : Double) : Double;
 {$ifdef WIN32_ASM}
 asm
@@ -633,11 +657,23 @@ begin
 {$endif}
 end;
 
+function double_tan(const v : Double) : Double;
+{$ifdef WIN32_ASM}
+asm
+   fld v
+   fptan
+   fstp st(0)
+{$else}
+begin
+   Result:=Tan(v);
+{$endif}
+end;
+
 var
    vAddr_Exp : function (const v : Double) : Double = double_exp;
    vAddr_Ln : function (const v : Double) : Double = double_ln;
-   vAddr_Log2 : function (const v : Double) : Double = Math.Log2;
-   vAddr_Log10 : function (const v : Double) : Double = Math.Log10;
+   vAddr_Log2 : function (const v : Double) : Double = double_log2;
+   vAddr_Log10 : function (const v : Double) : Double = double_log10;
    vAddr_Power : function (const base, exponent: Double) : Double = Math.Power;
    vAddr_Trunc : function (const v : Double) : Int64 = double_trunc;
    vAddr_Frac : function (const v : Double) : Double = double_frac;
@@ -649,7 +685,7 @@ var
    vAddr_IsPrime : function (const n : Int64) : Boolean = dwsMathFunctions.IsPrime;
    vAddr_Cos : function (const v : Double) : Double = double_cos;
    vAddr_Sin : function (const v : Double) : Double = double_sin;
-   vAddr_Tan : function (const v : Double) : Double = Math.Tan;
+   vAddr_Tan : function (const v : Double) : Double = double_tan;
 
 // ------------------
 // ------------------ TdwsJITx86 ------------------
