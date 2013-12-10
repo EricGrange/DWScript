@@ -601,7 +601,8 @@ begin
    // Mask confirmation is necessary
    mask:=TMask.Create(fileMask);
    try
-      CollectFilesMasked(directory, mask, list, recurseSubdirectories, onProgress);
+      CollectFilesMasked(IncludeTrailingPathDelimiter(directory), mask,
+                         list, recurseSubdirectories, onProgress);
    finally
       mask.Free;
    end;

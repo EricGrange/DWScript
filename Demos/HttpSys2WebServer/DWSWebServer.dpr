@@ -60,6 +60,7 @@ uses
   dwsGUIDDatabase in '..\..\Libraries\DatabaseLib\dwsGUIDDatabase.pas',
   dwsWebServerLibModule in '..\..\Libraries\SimpleServer\dwsWebServerLibModule.pas' {dwsWebServerLib: TDataModule},
   dwsWebServerInfo in '..\..\Libraries\SimpleServer\dwsWebServerInfo.pas',
+  dwsFileFunctions in '..\..\Source\dwsFileFunctions.pas',
   dwsGraphicLibrary in '..\..\Libraries\GraphicsLib\dwsGraphicLibrary.pas';
 
 type
@@ -195,7 +196,7 @@ begin
          readln;
 
       end;
-   finally
+   finally
       try
          service.Free;
          options.Free;

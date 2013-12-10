@@ -7535,7 +7535,7 @@ end;
 //
 function TdwsSourceContextMap.FindContext(const scriptPos : TScriptPos): TdwsSourceContext;
 begin
-   Result:=FindContext(scriptPos.Col, scriptPos.Line, scriptPos.SourceFile.Name);
+   Result:=FindContext(scriptPos.Col, scriptPos.Line, scriptPos.SourceName);
 end;
 
 // OpenContext

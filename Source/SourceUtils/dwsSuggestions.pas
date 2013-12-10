@@ -318,7 +318,8 @@ begin
 
    sl:=TStringList.Create;
    try
-      sl.Text:=FSourceFile.Code;
+      if FSourceFile<>nil then
+         sl.Text:=FSourceFile.Code;
       if Cardinal(FSourcePos.Line-1)>=Cardinal(sl.Count) then begin
          lineNumber:=0;
          codeLine:='';

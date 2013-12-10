@@ -53,6 +53,7 @@ type
          procedure FuncReturnStrings(Info: TProgramInfo);
 
          procedure ClassConstructor(Info: TProgramInfo; var ExtObject: TObject);
+         procedure ClassConstructorInit(Info: TProgramInfo; var ExtObject: TObject);
          procedure ClassCleanup(ExternalObject: TObject);
          procedure ClassDestructor(Info: TProgramInfo; ExtObject: TObject);
          procedure MethodPrintEval(Info: TProgramInfo; ExtObject: TObject);
@@ -106,6 +107,7 @@ type
          procedure DynamicArray;
          procedure DynamicArrayResult;
          procedure ClassPropertyInfo;
+         procedure ClassInit;
          procedure DestructorAndExternalObject;
          procedure ExternalObject;
          procedure CustomDestructor;
@@ -442,6 +444,10 @@ begin
    param.DataType:='String';
    param.Name:='v';
    cst.OnEval:=ClassConstructor;
+
+   cst:=cls.Constructors.Add;
+   cst.Name:='MyCreateInit';
+   cst.OnEval:=ClassConstructorInit;
 
    meth:=cls.Methods.Add;
    meth.Name:='MyDestroy';
@@ -874,6 +880,14 @@ procedure TdwsUnitTestsContext.ClassConstructor(Info: TProgramInfo; var ExtObjec
 begin
    FMagicVar:=Info.ParamAsString[0];
    ExtObject:=TObject.Create;
+end;
+
+// ClassConstructorInit
+//
+procedure TdwsUnitTestsContext.ClassConstructorInit(Info: TProgramInfo; var ExtObject: TObject);
+begin
+   ExtObject:=TObject.Create;
+   Info.ValueAsInteger['FField']:=789456;
 end;
 
 // ClassCleanup
@@ -1792,6 +1806,23 @@ begin
 
       p.Method['Free'].Call;
       CheckEquals('destroyed TTestClass', p.ValueAsString, 'ClassInfo after destroy');
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// ClassInit
+//
+procedure TdwsUnitTests.ClassInit;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'var o := TTestClass.MyCreateInit; Print(o.FField);');
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+      CheckEquals('789456', exec.Result.ToString);
    finally
       exec.EndProgram;
    end;
