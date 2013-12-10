@@ -35,18 +35,9 @@ unit dwsXPlatform;
 
 interface
 
-uses
-  Classes, SysUtils, Types, Masks,
-  {$IFDEF FPC}
-  {$IFDEF Windows}
-  Windows
-  {$ELSE}
-  LCLIntf
-  {$ENDIF}
-  {$ELSE}
-  Windows {$IFNDEF VER200}, IOUtils{$ENDIF}
-  {$ENDIF}
-  ;
+uses Windows, Classes, SysUtils, Masks
+   {$IFNDEF VER200}, IOUtils{$ENDIF}
+   ;
 
 const
 {$IFDEF UNIX}
@@ -226,23 +217,14 @@ implementation
 uses Variants;
 {$endif}
 
-{$ifdef FPC}
-type
-   TFindExInfoLevels = FINDEX_INFO_LEVELS;
-{$endif}
-
 // GetSystemMilliseconds
 //
 function GetSystemMilliseconds : Int64;
 var
    fileTime : TFileTime;
 begin
-{$IFDEF Windows}
    GetSystemTimeAsFileTime(fileTime);
    Result:=Round(PInt64(@fileTime)^*1e-4); // 181
-{$ELSE}
-   Not yet implemented!
-{$ENDIF}
 end;
 
 // UTCDateTime
@@ -251,15 +233,11 @@ function UTCDateTime : TDateTime;
 var
    systemTime : TSystemTime;
 begin
-{$IFDEF Windows}
    FillChar(systemTime, SizeOf(systemTime), 0);
    GetSystemTime(systemTime);
    with systemTime do
       Result:= EncodeDate(wYear, wMonth, wDay)
               +EncodeTime(wHour, wMinute, wSecond, wMilliseconds);
-{$ELSE}
-   Not yet implemented!
-{$ENDIF}
 end;
 
 {$ifndef FPC}
@@ -423,11 +401,7 @@ end;
 function InterlockedExchangePointer(var target : Pointer; val : Pointer) : Pointer;
 {$ifndef WIN32_ASM}
 begin
-   {$ifdef FPC}
-   Result:=InterlockedExchangePointer(target, val);
-   {$else}
    Result:=Windows.InterlockedExchangePointer(target, val);
-   {$endif}
 {$else}
 asm
    lock  xchg dword ptr [eax], edx
@@ -751,7 +725,7 @@ end;
 
 // FileCopy
 //
-function FileCopy(const existing, new : UnicodeString; failIfExists : Boolean) : Boolean;
+function FileCopy(const existing, new : String; failIfExists : Boolean) : Boolean;
 begin
    Result:=Windows.CopyFileW(PWideChar(existing), PWideChar(new), failIfExists);
 end;
@@ -760,7 +734,7 @@ end;
 //
 function FileDelete(const fileName : String) : Boolean;
 begin
-   Result:=SysUtils.DeleteFile(fileName);
+   Result:=DeleteFile(fileName);
 end;
 
 // FileRename

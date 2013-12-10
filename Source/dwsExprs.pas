@@ -105,16 +105,6 @@ type
 
          property Items[Index: Integer] : TScriptSourceItem read GetSourceItem; default;
          property MainScript: TScriptSourceItem read FMainScript;
-
-         type
-            TScriptSourceListEnumerator = record
-               Index : Integer;
-               List : TScriptSourceList;
-               function MoveNext : Boolean;
-               function GetCurrent : TScriptSourceItem;
-               property Current : TScriptSourceItem read GetCurrent;
-            end;
-         function GetEnumerator : TScriptSourceListEnumerator;
    end;
 
    { Describe how the symbol at the position is being used. suReference would be
@@ -7689,8 +7679,6 @@ begin
    else Result:=nil;
 end;
 
-// IndexOf
-//
 function TScriptSourceList.IndexOf(const SourceFileName: UnicodeString): Integer;
 var
    x: Integer;
@@ -7699,34 +7687,6 @@ begin
       if UnicodeSameText(Items[x].NameReference, SourceFileName) then
          Exit(x);
    Result:=-1;
-end;
-
-// GetEnumerator
-//
-function TScriptSourceList.GetEnumerator: TScriptSourceListEnumerator;
-begin
-   if Self=nil then begin
-      Result.List:=nil;
-      Result.Index:=0;
-   end else begin
-      Result.List:=Self;
-      Result.Index:=Count;
-   end;
-end;
-
-// ------------------
-// ------------------ TScriptSourceList.TScriptSourceListEnumerator ------------
-// ------------------
-
-function TScriptSourceList.TScriptSourceListEnumerator.GetCurrent: TScriptSourceItem;
-begin
-   Result:=List[Index];
-end;
-
-function TScriptSourceList.TScriptSourceListEnumerator.MoveNext: Boolean;
-begin
-   Dec(Index);
-   Result:=(Index>=0);
 end;
 
 // ------------------

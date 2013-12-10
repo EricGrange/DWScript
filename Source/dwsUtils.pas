@@ -1276,7 +1276,7 @@ var
 // CompareStrings
 //
 {$ifdef FPC}
-function TFastCompareStringList.DoCompareText(const S1, S2: String): PtrInt;
+function TFastCompareStringList.DoCompareText(const S1, S2: String): Integer;
 begin
    Result:=CompareStr(S1, S2);
 end;
@@ -1624,7 +1624,7 @@ end;
 // CompareStrings
 //
 {$ifdef FPC}
-function TFastCompareTextList.DoCompareText(const S1, S2: String): PtrInt;
+function TFastCompareTextList.DoCompareText(const S1, S2: String): Integer;
 begin
    Result:=UnicodeCompareText(s1, s2);
 end;
@@ -2589,7 +2589,7 @@ var
 begin
    {$ifdef FPC}
    if utf16String<>'' then
-      WriteBuf(@utf16String[1], Length(utf16String)*SizeOf(WideChar));
+      WriteBuf(utf16String[1], Length(utf16String)*SizeOf(WideChar));
    {$else}
    stringCracker:=NativeUInt(utf16String);
    if stringCracker<>0 then
