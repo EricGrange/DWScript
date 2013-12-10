@@ -1126,6 +1126,8 @@ begin
          knownHeader := respWwwAuthenticate
       else if IdemPChar(P, 'SET-COOKIE:') then
          knownHeader := respSetCookie
+      else if IdemPChar(P, 'UPGRADE:') then
+         knownHeader := reqUpgrade
       else knownHeader := reqCacheControl; // mark not found
 
       if knownHeader<>reqCacheControl then begin
