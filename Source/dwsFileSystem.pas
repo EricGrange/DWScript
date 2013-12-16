@@ -48,6 +48,7 @@ type
       ['{D49F19A9-46C6-43E1-AF29-BDB8602A098C}']
       function FileExists(const fileName : String) : Boolean;
       function OpenFileStream(const fileName : String; const mode : TdwsFileOpenMode) : TStream;
+      function ValidateFileName(const fileName : String) : String;
    end;
 
    // TdwsBaseFileSystem
@@ -59,6 +60,7 @@ type
 
          function FileExists(const fileName : String) : Boolean; virtual; abstract;
          function OpenFileStream(const fileName : String; const mode : TdwsFileOpenMode) : TStream; virtual; abstract;
+         function ValidateFileName(const fileName : String) : String; virtual; abstract;
    end;
 
    // TdwsNullFileSystem
@@ -68,6 +70,7 @@ type
       public
          function FileExists(const fileName : String) : Boolean; override;
          function OpenFileStream(const fileName : String; const mode : TdwsFileOpenMode) : TStream; override;
+         function ValidateFileName(const fileName : String) : String; override;
    end;
 
    // TdwsOSFileSystem
@@ -75,7 +78,7 @@ type
    {: Gives access to the whole OS FileSystem. }
    TdwsOSFileSystem = class (TdwsBaseFileSystem)
       public
-         function ValidateFileName(const fileName : String) : String; virtual;
+         function ValidateFileName(const fileName : String) : String; override;
 
          function FileExists(const fileName : String) : Boolean; override;
          function OpenFileStream(const fileName : String; const mode : TdwsFileOpenMode) : TStream; override;
@@ -186,6 +189,13 @@ begin
    Result:=nil;
 end;
 
+// ValidateFileName
+//
+function TdwsNullFileSystem.ValidateFileName(const fileName : String) : String;
+begin
+   Result:='';
+end;
+
 // ------------------
 // ------------------ TdwsOSFileSystem ------------------
 // ------------------
@@ -195,7 +205,7 @@ end;
 function TdwsOSFileSystem.ValidateFileName(const fileName : String) : String;
 begin
    // accept all
-   Result:=fileName;
+   Result:=ExpandFileName(fileName);
 end;
 
 // FileExists
@@ -304,8 +314,10 @@ var
 begin
    for i:=0 to FPaths.Count-1 do begin
       path:=FPaths[i];
-      Result:=ExpandFileName(path+fileName);
-      if UnicodeSameText(path, Copy(Result, 1, Length(path))) then Exit;
+      if StrContains(fileName, ':') then
+         Result:=ExpandFileName(fileName)
+      else Result:=ExpandFileName(path+fileName);
+      if StrIBeginsWith(Result, path) then Exit;
    end;
    Result:='';
 end;

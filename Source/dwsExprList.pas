@@ -73,6 +73,7 @@ type
          procedure SetAsString(const x : Integer; const value : UnicodeString);
          function GetAsDataString(const x : Integer) : RawByteString;
          procedure SetAsDataString(const x : Integer; const value : RawByteString);
+         function GetAsFileName(const x : Integer) : UnicodeString;
 
       public
          property List : PExprBaseListRec read FList write FList;
@@ -86,6 +87,8 @@ type
          property AsFloat[const x : Integer] : Double read GetAsFloat write SetAsFloat;
          property AsString[const x : Integer] : UnicodeString read GetAsString write SetAsString;
          property AsDataString[const x : Integer] : RawByteString read GetAsDataString write SetAsDataString;
+
+         property AsFileName[const x : Integer] : UnicodeString read GetAsFileName;
    end;
 
    TSortedExprBaseList = class(TSortedList<TExprBase>);
@@ -251,6 +254,13 @@ end;
 procedure TExprBaseListExec.SetAsDataString(const x : Integer; const value : RawByteString);
 begin
    ExprBase[x].AssignValueAsString(Exec, RawByteStringToScriptString(value));
+end;
+
+// GetAsFileName
+//
+function TExprBaseListExec.GetAsFileName(const x : Integer) : UnicodeString;
+begin
+   Result:=Exec.ValidateFileName(AsString[x]);
 end;
 
 end.

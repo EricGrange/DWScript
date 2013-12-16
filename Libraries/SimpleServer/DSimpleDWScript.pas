@@ -53,14 +53,13 @@ type
       DelphiWebScript: TDelphiWebScript;
       dwsHtmlFilter: TdwsHtmlFilter;
       dwsGlobalVarsFunctions: TdwsGlobalVarsFunctions;
-      dwsRestrictedFileSystem: TdwsRestrictedFileSystem;
+    dwsCompileSystem: TdwsRestrictedFileSystem;
+    dwsRuntimeFileSystem: TdwsRestrictedFileSystem;
       procedure DataModuleCreate(Sender: TObject);
       procedure DataModuleDestroy(Sender: TObject);
 
       procedure DoInclude(const scriptName: String; var scriptSource: String);
       function  DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
-      function  dwsFileIOFunctionsFileExistsFastEval(args: TExprBaseListExec): Variant;
-      function  dwsFileIOFunctionsDeleteFileFastEval(args: TExprBaseListExec): Variant;
 
    private
       FScriptTimeoutMilliseconds : Integer;
@@ -112,6 +111,7 @@ type
       procedure LoadDWScriptOptions(options : TdwsJSONValue);
 
       function ApplyPathVariables(const aPath : String) : String;
+      procedure ApplyPathsVariables(paths : TdwsJSONValue; dest : TStrings);
 
       property ScriptTimeoutMilliseconds : Integer read FScriptTimeoutMilliseconds write FScriptTimeoutMilliseconds;
 
@@ -149,6 +149,8 @@ const
          // Library paths (outside of www folder)
          // By default, assumes a '.lib' subfolder of the folder where the exe is
          +'"LibraryPaths": ["%www%\\.lib"],'
+         // Paths which scripts are allowed to perform file operations on
+         +'"WorkPaths": ["%www%"],'
          // HTML Filter patterns
          +'"PatternOpen": "<?pas",'
          +'"PatternEval": "=",'
@@ -270,6 +272,7 @@ end;
 procedure TSimpleDWScript.FlushDWSCache(const fileName : String = '');
 var
    oldHash : TCompiledProgramHash;
+   unitName : String;
 begin
    FCompiledProgramsLock.Enter;
    try
@@ -277,7 +280,8 @@ begin
          FDependenciesHash.Clean;
          FCompiledPrograms.Clear;
       end else begin
-         FFlushProgList:=FDependenciesHash.Objects[LowerCase(ExtractFileName(fileName))];
+         unitName:=ChangeFileExt(ExtractFileName(fileName), '');
+         FFlushProgList:=FDependenciesHash.Objects[LowerCase(unitName)];
          if (FFlushProgList<>nil) and (FFlushProgList.Count>0) then begin
             oldHash:=FCompiledPrograms;
             try
@@ -315,9 +319,7 @@ end;
 //
 procedure TSimpleDWScript.LoadDWScriptOptions(options : TdwsJSONValue);
 var
-   dws, libs : TdwsJSONValue;
-   i : Integer;
-   path : String;
+   dws : TdwsJSONValue;
 begin
    dws:=TdwsJSONValue.ParseString(cDefaultDWScriptOptions);
    try
@@ -328,15 +330,11 @@ begin
       DelphiWebScript.Config.MaxDataSize:=dws['StackMaxSize'].AsInteger;
       DelphiWebScript.Config.MaxRecursionDepth:=dws['MaxRecursionDepth'].AsInteger;
 
-      libs:=dws['LibraryPaths'];
-      dwsRestrictedFileSystem.Paths.Clear;
-      for i:=0 to libs.ElementCount-1 do begin
-         path:=libs.Elements[i].AsString;
-         if path<>'' then begin
-            path:=ApplyPathVariables(path);
-            dwsRestrictedFileSystem.Paths.Add(IncludeTrailingPathDelimiter(path));
-         end;
-      end;
+      dwsCompileSystem.Paths.Clear;
+      ApplyPathsVariables(dws['LibraryPaths'], dwsCompileSystem.Paths);
+
+      dwsRuntimeFileSystem.Paths.Clear;
+      ApplyPathsVariables(dws['WorkPaths'], dwsRuntimeFileSystem.Paths);
 
       dwsHtmlFilter.PatternOpen:=dws['PatternOpen'].AsString;
       dwsHtmlFilter.PatternClose:=dws['PatternClose'].AsString;
@@ -526,6 +524,22 @@ begin
    end;
 end;
 
+// ApplyPathsVariables
+//
+procedure TSimpleDWScript.ApplyPathsVariables(paths : TdwsJSONValue; dest : TStrings);
+var
+   i : Integer;
+   path : String;
+begin
+   for i:=0 to paths.ElementCount-1 do begin
+      path:=paths.Elements[i].AsString;
+      if path<>'' then begin
+         path:=ApplyPathVariables(path);
+         dest.Add(IncludeTrailingPathDelimiter(path));
+      end;
+   end;
+end;
+
 // ------------------
 // ------------------ TCompiledProgramHash ------------------
 // ------------------
@@ -575,26 +589,6 @@ begin
       Objects[lcName]:=list;
    end;
    list.Add(prog);
-end;
-
-// following stuff to be moved to own unit
-
-function TSimpleDWScript.dwsFileIOFunctionsDeleteFileFastEval(
-  args: TExprBaseListExec): Variant;
-var
-   fileName : String;
-begin
-   fileName:=ApplyPathVariables(args.AsString[0]);
-   Result:=DeleteFile(fileName);
-end;
-
-function TSimpleDWScript.dwsFileIOFunctionsFileExistsFastEval(
-  args: TExprBaseListExec): Variant;
-var
-   fileName : String;
-begin
-   fileName:=ApplyPathVariables(args.AsString[0]);
-   Result:=FileExists(fileName);
 end;
 
 end.

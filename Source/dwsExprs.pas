@@ -595,6 +595,8 @@ type
          procedure LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : UnicodeString); override;
          procedure LocalizeString(const aString : UnicodeString; var Result : UnicodeString); override;
 
+         function ValidateFileName(const path : String) : String; override;
+
          property Prog : TdwsMainProgram read FProg;
          property CurrentProg : TdwsProgram read FCurrentProg write SetCurrentProg;
          property ProgramInfo : TProgramInfo read FProgramInfo;
@@ -2303,6 +2305,17 @@ begin
    else Result:=aString;
 end;
 
+// ValidateFileName
+//
+function TdwsProgramExecution.ValidateFileName(const path : String) : String;
+begin
+   if Assigned(FileSystem) then
+      Result:=FileSystem.ValidateFileName(path)
+   else Result:='';
+   if Result='' then
+      Result:=inherited ValidateFileName(path);
+end;
+
 // ReleaseObjects
 //
 procedure TdwsProgramExecution.ReleaseObjects;
@@ -2644,7 +2657,7 @@ begin
    FBaseTypes.FTypTObject := sysTable.TypTObject;
    FBaseTypes.FTypException := sysTable.TypException;
    FBaseTypes.FTypInterface := sysTable.TypInterface;
-   FBaseTypes.FTypAnyType := TAnyTypeSymbol.Create('', nil);
+   FBaseTypes.FTypAnyType := sysTable.TypAnyType;
 end;
 
 // Destroy
@@ -2657,7 +2670,6 @@ begin
    FUnitMains.Free;
 
    FBaseTypes.FTypNil.Free;
-   FBaseTypes.FTypAnyType.Free;
 
    FCompileMsgs.Free;
    FSubTables.Clear;

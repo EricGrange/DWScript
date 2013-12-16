@@ -1740,6 +1740,8 @@ type
          procedure LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : UnicodeString); virtual;
          procedure LocalizeString(const aString : UnicodeString; var Result : UnicodeString); virtual;
 
+         function ValidateFileName(const path : String) : String; virtual;
+
          function Random : Double;
 
          property LastScriptError : TExprBase read FLastScriptError;
@@ -6700,6 +6702,13 @@ end;
 procedure TdwsExecution.LocalizeString(const aString : UnicodeString; var Result : UnicodeString);
 begin
    Result:=aString;
+end;
+
+// ValidateFileName
+//
+function TdwsExecution.ValidateFileName(const path : String) : String;
+begin
+   raise EScriptException.CreateFmt(RTE_UnauthorizedFilePath, [path]);
 end;
 
 // DataContext_Create
