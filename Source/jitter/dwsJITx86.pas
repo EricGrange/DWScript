@@ -722,6 +722,7 @@ begin
    RegisterJITter(TIntVarExpr,                  Tx86IntVar.Create(Self));
    RegisterJITter(TBoolVarExpr,                 Tx86BoolVar.Create(Self));
    RegisterJITter(TObjectVarExpr,               Tx86ObjectVar.Create(Self));
+   RegisterJITter(TSelfObjectVarExpr,           Tx86ObjectVar.Create(Self));
    RegisterJITter(TVarParentExpr,               FInterpretedJITter.IncRefCount);
 
    RegisterJITter(TFieldExpr,                   FInterpretedJITter.IncRefCount);

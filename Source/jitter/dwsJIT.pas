@@ -157,7 +157,7 @@ type
          FTempReg : TdwsRegisteredJITter;
          FOutput : TWriteOnlyBlockStream;
          FOutputFailedOn : TExprBase;
-         FSeenByGreedy : TSimpleObjectHash<TFuncSymbol>;
+         FSeenByGreedy : TSimpleObjectHash<TSymbol>;
          FQueuedGreed : TQueuedJITGreed;
 
          FFixups : TFixupLogic;
@@ -389,7 +389,7 @@ begin
    FRegistered:=TdwsRegisteredJITterList.Create;
    FTempReg:=TdwsRegisteredJITter.Create;
    FOutput:=CreateOutput;
-   FSeenByGreedy:=TSimpleObjectHash<TFuncSymbol>.Create;
+   FSeenByGreedy:=TSimpleObjectHash<TSymbol>.Create;
 
    FFixups:=CreateFixupLogic;
    FFixups.OnNeedLocation:=GetLocation;
@@ -753,6 +753,7 @@ var
    executable : IExecutable;
    execObject : TObject;
    assignExpr : TAssignExpr;
+   composite : TCompositeTypeSymbol;
 begin
    if expr is TBlockExprBase then begin
       block:=TBlockExprBase(expr);
@@ -788,6 +789,23 @@ begin
             execObject:=executable.GetSelf;
             if execObject is TdwsProgram then
                QueueGreed(TdwsProgram(execObject));
+         end;
+      end else if funcSym is TSourceMethodSymbol then begin
+         composite:=TSourceMethodSymbol(funcSym).StructSymbol;
+         while (composite<>nil) and not FSeenByGreedy.Contains(composite) do begin
+            FSeenByGreedy.Add(composite);
+            for i:=0 to composite.Members.Count-1 do begin
+               if composite.Members[i] is TSourceMethodSymbol then begin
+                  funcSym:=TSourceMethodSymbol(composite.Members[i]);
+                  executable:=funcSym.Executable;
+                  if executable<>nil then begin
+                     execObject:=executable.GetSelf;
+                     if execObject is TdwsProgram then
+                        QueueGreed(TdwsProgram(execObject));
+                  end;
+               end;
+            end;
+            composite:=composite.Parent;
          end;
       end;
       GreedyJITParameters(funcExpr);
@@ -830,6 +848,12 @@ begin
                funcExpr.Args[i]:=jitted;
             end else GreedyJIT(argExpr);
          end;
+      end;
+   end else begin
+      for i:=0 to funcExpr.SubExprCount-1 do begin
+         argExpr:=funcExpr.SubExpr[i];
+         if argExpr is TFuncExprBase then
+            QueueGreed(argExpr);
       end;
    end;
 end;

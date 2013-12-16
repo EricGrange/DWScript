@@ -79,3 +79,9 @@
   {$ENDIF}
 {$ENDIF}
 
+{$IF Defined(WIN32)}
+   {$DEFINE WINDOWS}
+{$ELSEIF Defined(WIN64)}
+   {$DEFINE WINDOWS}
+{$IFEND}
+
