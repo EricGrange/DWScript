@@ -272,11 +272,14 @@ type
          FTypException : TClassSymbol;
          FTypInterface : TInterfaceSymbol;
          FTypCustomAttribute : TClassSymbol;
+         FTypAnyType : TAnyTypeSymbol;
 
       protected
          function SymbolTable : TSystemSymbolTable; overload;
 
       public
+         destructor Destroy; override;
+
          property TypInteger : TBaseIntegerSymbol read FTypInteger write FTypInteger;
          property TypBoolean : TBaseBooleanSymbol read FTypBoolean write FTypBoolean;
          property TypFloat : TBaseFloatSymbol read FTypFloat write FTypFloat;
@@ -290,6 +293,8 @@ type
          property TypException : TClassSymbol read FTypException write FTypException;
 
          property TypInterface : TInterfaceSymbol read FTypInterface write FTypInterface;
+
+         property TypAnyType : TAnyTypeSymbol read FTypAnyType write FTypAnyType;
 
          property TypCustomAttribute : TClassSymbol read FTypCustomAttribute write FTypCustomAttribute;
    end;
@@ -863,6 +868,14 @@ end;
 // ------------------
 // ------------------ TSystemSymbolTable ------------------
 // ------------------
+
+// Destroy
+//
+destructor TSystemSymbolTable.Destroy;
+begin
+   inherited;
+   FTypAnyType.Free;
+end;
 
 // SymbolTable
 //

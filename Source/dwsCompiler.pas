@@ -7311,7 +7311,7 @@ begin
 
       end else if UnicodeSameText(name, 'map') then begin
 
-         argList.DefaultExpected:=TParamSymbol.Create('', arraySym.MapFunctionType(FProg.TypAnyType))
+         argList.DefaultExpected:=TParamSymbol.Create('', arraySym.MapFunctionType(FProg.TypAnyType));
 
       end;
 
@@ -13115,6 +13115,8 @@ begin
 
    sysTable.TypInterface:=TInterfaceSymbol.Create(SYS_IINTERFACE, nil);
    sysTable.AddSymbol(sysTable.TypInterface);
+
+   sysTable.TypAnyType:=TAnyTypeSymbol.Create('', nil);
 
    // Create "root" class Object
    sysTable.TypObject:=TClassSymbol.Create(SYS_OBJECT, nil);
