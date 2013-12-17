@@ -222,6 +222,12 @@ begin
    FDirectoryIndex:=TDirectoryIndexCache.Create;
    FDirectoryIndex.IndexFileNames.CommaText:='"index.dws","index.htm","index.html"';
 
+   FDWS.LoadCPUOptions(options['CPU']);
+
+   FDWS.LoadDWScriptOptions(options['DWScript']);
+
+   FDWS.Startup;
+
    FServer:=THttpApi2Server.Create(False);
 
    serverOptions:=TdwsJSONValue.ParseString(cDefaultServerOptions);
@@ -272,10 +278,6 @@ begin
       serverOptions.Free;
    end;
 
-   FDWS.LoadCPUOptions(options['CPU']);
-
-   FDWS.LoadDWScriptOptions(options['DWScript']);
-
    FNotifier:=TdwsFileNotifier.Create(FPath, dnoDirectoryAndSubTree);
    FNotifier.OnFileChanged:=FileChanged;
 
@@ -302,6 +304,9 @@ end;
 //
 procedure THttpSys2WebServer.Shutdown;
 begin
+   FServer.Free;
+   FServer:=nil;
+   FDWS.Shutdown;
    FDWS.Finalize;
 end;
 

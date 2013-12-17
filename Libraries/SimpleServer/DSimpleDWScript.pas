@@ -86,6 +86,9 @@ type
 
       FOnLoadSourceCode : TLoadSourceCodeEvent;
 
+      FStartupScriptName : String;
+      FShutdownScriptName : String;
+
    protected
       procedure TryAcquireDWS(const fileName : String; var prog : IdwsProgram);
       procedure CompileDWS(const fileName : String; var prog : IdwsProgram);
@@ -113,6 +116,9 @@ type
       function ApplyPathVariables(const aPath : String) : String;
       procedure ApplyPathsVariables(paths : TdwsJSONValue; dest : TStrings);
 
+      procedure Startup;
+      procedure Shutdown;
+
       property ScriptTimeoutMilliseconds : Integer read FScriptTimeoutMilliseconds write FScriptTimeoutMilliseconds;
 
       property CPUUsageLimit : Integer read FCPUUsageLimit write SetCPUUsageLimit;
@@ -120,6 +126,9 @@ type
       property PathVariables : TStrings read FPathVariables;
 
       property OnLoadSourceCode : TLoadSourceCodeEvent read FOnLoadSourceCode write FOnLoadSourceCode;
+
+      property StartupScriptName : String read FStartupScriptName write FStartupScriptName;
+      property ShutdownScriptName : String read FShutdownScriptName write FShutdownScriptName;
   end;
 
 const
@@ -155,6 +164,10 @@ const
          +'"PatternOpen": "<?pas",'
          +'"PatternEval": "=",'
          +'"PatternClose": "?>",'
+         // Startup Script Name
+         +'"Startup": "%www%\\.startup.pas",'
+         // Shutdown Script Name
+         +'"Shutdown": "%www%\\.shutdown.pas",'
          // Turns on/off JIT compilation
          +'"JIT": false'
       +'}';
@@ -218,8 +231,10 @@ procedure TSimpleDWScript.HandleDWS(const fileName : String; request : TWebReque
 
    procedure Handle500(response : TWebResponse; msgs : TdwsMessageList);
    begin
-      response.StatusCode:=500;
-      response.ContentText['plain']:=msgs.AsInfo;
+      if response<>nil then begin
+         response.StatusCode:=500;
+         response.ContentText['plain']:=msgs.AsInfo;
+      end else OutputDebugString(msgs.AsInfo);
    end;
 
    procedure HandleScriptResult(response : TWebResponse; scriptResult : TdwsResult);
@@ -262,7 +277,7 @@ begin
 
       if exec.Msgs.Count>0 then
          Handle500(response, exec.Msgs)
-      else if response.ContentData='' then
+      else if (response<>nil) and (response.ContentData='') then
          HandleScriptResult(response, exec.Result);
    end;
 end;
@@ -341,6 +356,9 @@ begin
       dwsHtmlFilter.PatternEval:=dws['PatternEval'].AsString;
 
       FUseJIT:=dws['JIT'].AsBoolean;
+
+      FStartupScriptName:=ApplyPathVariables(dws['Startup'].AsString);
+      FShutdownScriptName:=ApplyPathVariables(dws['Shutdown'].AsString);
    finally
       dws.Free;
    end;
@@ -379,6 +397,10 @@ begin
       if prog<>nil then Exit;
 
       FHotPath:=ExtractFilePath(fileName);
+
+      if StrIEndsWith(fileName, '.pas') then
+         DelphiWebScript.Config.Filter:=nil
+      else DelphiWebScript.Config.Filter:=dwsHtmlFilter;
 
       prog:=DelphiWebScript.Compile(code);
 
@@ -538,6 +560,22 @@ begin
          dest.Add(IncludeTrailingPathDelimiter(path));
       end;
    end;
+end;
+
+// Startup
+//
+procedure TSimpleDWScript.Startup;
+begin
+   if StartupScriptName<>'' then
+      HandleDWS(StartupScriptName, nil, nil);
+end;
+
+// Shutdown
+//
+procedure TSimpleDWScript.Shutdown;
+begin
+   if ShutdownScriptName<>'' then
+      HandleDWS(ShutdownScriptName, nil, nil);
 end;
 
 // ------------------
