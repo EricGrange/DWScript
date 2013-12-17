@@ -131,8 +131,8 @@ type
 
       protected
          procedure InitSystemTable;
-         procedure SetResultType(const Value : TdwsResultType);
-         procedure SetFilter(const Value : TdwsFilter);
+         procedure SetResultType(const value : TdwsResultType);
+         procedure SetFilter(const value : TdwsFilter);
          procedure SetTimeOut(const val : Integer);
          procedure SetCompileFileSystem(const val : TdwsCustomFileSystem);
          procedure SetRuntimeFileSystem(const val : TdwsCustomFileSystem);
@@ -13094,6 +13094,7 @@ begin
 
    sysTable.TypInteger:=TBaseIntegerSymbol.Create;
    sysTable.AddSymbol(sysTable.TypInteger);
+   sysTable.AddSymbol(TDynamicArraySymbol.Create('array of integer', sysTable.TypInteger, sysTable.TypInteger));
 
    sysTable.TypString:=TBaseStringSymbol.Create;
    sysTable.AddSymbol(sysTable.TypString);
@@ -13216,8 +13217,10 @@ end;
 
 // SetFilter
 //
-procedure TdwsConfiguration.SetFilter(const Value: TdwsFilter);
+procedure TdwsConfiguration.SetFilter(const value : TdwsFilter);
 begin
+   if FFilter=value then Exit;
+
    if Assigned(FFilter) then
       FFilter.RemoveFreeNotification(FOwner);
 

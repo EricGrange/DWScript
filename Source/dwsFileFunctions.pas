@@ -148,6 +148,10 @@ type
       function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
 
+   TEnumerateDirFunc = class(TInternalMagicVariantFunction)
+      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -544,6 +548,31 @@ begin
    Result:=RemoveDir(args.AsFileName[0]);
 end;
 
+// ------------------
+// ------------------ TEnumerateDirFunc ------------------
+// ------------------
+
+// DoEvalAsVariant
+//
+function TEnumerateDirFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
+var
+   sl : TStringList;
+   newArray : TScriptDynamicArray;
+   i : Integer;
+begin
+   sl:=TStringList.Create;
+   try
+      CollectFiles(args.AsFileName[0], args.AsString[1], sl, args.AsBoolean[2]);
+      newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).Prog.SystemTable.SymbolTable.TypString);
+      Result:=IScriptObj(newArray);
+      newArray.ArrayLength:=sl.Count;
+      for i:=0 to newArray.ArrayLength-1 do
+         newArray.AsString[i]:=sl[i];
+   finally
+      sl.Free;
+   end;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -583,6 +612,8 @@ initialization
    RegisterInternalBoolFunction(TForceDirectoriesFunc, 'ForceDirectories', ['path', SYS_STRING], []);
    RegisterInternalBoolFunction(TCreateDirFunc, 'CreateDir', ['path', SYS_STRING], []);
    RegisterInternalBoolFunction(TRemoveDirFunc, 'RemoveDir', ['path', SYS_STRING], []);
+
+   RegisterInternalFunction(TEnumerateDirFunc, 'EnumerateDir', ['path', SYS_STRING, 'mask', SYS_STRING, 'recursive', SYS_BOOLEAN], 'array of integer', []);
 
 end.
 

@@ -37,7 +37,7 @@ unit dwsGlobalVarsFunctions;
 interface
 
 uses
-   Variants, Windows, Classes, SysUtils,
+   Variants, Windows, Classes, SysUtils, Masks,
    dwsXPlatform, dwsUtils, dwsStrings, dwsExprList, dwsConstExprs,
    dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs;
 
@@ -59,12 +59,20 @@ type
       function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
 
+   TIncrementGlobalVarFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+   end;
+
    TDeleteGlobalVarFunc = class(TInternalMagicBoolFunction)
       function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
 
    TCleanupGlobalVarsFunc = class(TInternalMagicProcedure)
       procedure DoEvalProc(const args : TExprBaseListExec); override;
+   end;
+
+   TGlobalVarsNamesFunc = class(TInternalMagicVariantFunction)
+      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
    end;
 
    TGlobalVarsNamesCommaText = class(TInternalMagicStringFunction)
@@ -77,6 +85,26 @@ type
 
    TLoadGlobalVarsFromString = class(TInternalFunction)
       procedure Execute(info : TProgramInfo); override;
+   end;
+
+   TGlobalQueuePushFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+   end;
+
+   TGlobalQueueInsertFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+   end;
+
+   TGlobalQueuePullFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
+   end;
+
+   TGlobalQueuePopFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
+   end;
+
+   TCleanupGlobalQueuesFunc = class(TInternalMagicProcedure)
+      procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
    TdwsGlobalVarsFunctions = class(TComponent)
@@ -92,6 +120,9 @@ function ReadGlobalVar(const aName: UnicodeString): Variant; inline;
 function TryReadGlobalVar(const aName: UnicodeString; var value: Variant): Boolean;
 {: Directly read a global var, using a default value if variable does not exists.<p> }
 function ReadGlobalVarDef(const aName: UnicodeString; const aDefault: Variant): Variant; inline;
+{: Increments an integer global var. If not an integer, conversion is attempted.<p>
+   Returns the value after the incrementation }
+function IncrementGlobalVar(const aName : UnicodeString; const delta : Int64) : Int64;
 {: Delete specified global var if it exists. }
 function DeleteGlobalVar(const aName : UnicodeString) : Boolean;
 {: Resets all global vars.<p> }
@@ -111,7 +142,17 @@ procedure SaveGlobalVarsToStream(destStream : TStream);
 procedure LoadGlobalVarsFromStream(srcStream : TStream);
 
 {: CommaText of the names of all global vars. }
+procedure CollectGlobalVarsNames(const filter : String; dest : TStrings);
+{: CommaText of the names of all global vars. }
 function GlobalVarsNamesCommaText : UnicodeString;
+
+{: Push to global queue and return count (after push) }
+function GlobalQueuePush(const aName : String; const aValue : Variant) : Integer;
+{: Insert to global queue and return count (after insert) }
+function GlobalQueueInsert(const aName : String; const aValue : Variant) : Integer;
+function GlobalQueuePull(const aName : String; var aValue : Variant) : Boolean;
+function GlobalQueuePop(const aName : String; var aValue : Variant) : Boolean;
+procedure CleanupGlobalQueues;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -133,10 +174,18 @@ type
 
    TNameGlobalVarHash = TSimpleNameObjectHash<TGlobalVar>;
 
+   TGlobalQueue = TSimpleQueue<Variant>;
+
+   TNameGlobalQueueHash = class(TSimpleNameObjectHash<TGlobalQueue>)
+      function GetOrCreate(const aName : String) : TGlobalQueue;
+   end;
+
 var
    vGlobalVarsCS : TMultiReadSingleWrite;
    vGlobalVars : TNameGlobalVarHash;
    vGlobalVarsNamesCache : UnicodeString;
+   vGlobalQueuesCS : TMultiReadSingleWrite;
+   vGlobalQueues : TNameGlobalQueueHash;
 
 const
    cGlobalVarsFiles : AnsiString = 'GBF 2.0';
@@ -172,6 +221,30 @@ function ReadGlobalVarDef(const aName : UnicodeString; const aDefault : Variant)
 begin
    if not TryReadGlobalVar(aName, Result) then
       Result:=aDefault;
+end;
+
+// IncrementGlobalVar
+//
+function IncrementGlobalVar(const aName : UnicodeString; const delta : Int64) : Int64;
+var
+   gv : TGlobalVar;
+begin
+   vGlobalVarsCS.BeginWrite;
+   try
+      gv:=vGlobalVars.Objects[aName];
+      if gv=nil then begin
+         vGlobalVarsNamesCache:='';
+         gv:=TGlobalVar.Create;
+         vGlobalVars.Objects[aName]:=gv;
+         gv.Value:=delta;
+         Result:=delta;
+      end else begin
+         Result:=delta+gv.Value;
+         gv.Value:=Result;
+      end;
+   finally
+      vGlobalVarsCS.EndWrite;
+   end;
 end;
 
 // ReadGlobalVar
@@ -367,6 +440,28 @@ begin
    end;
 end;
 
+// CollectGlobalVarsNames
+//
+procedure CollectGlobalVarsNames(const filter : String; dest : TStrings);
+var
+   list : TStringList;
+   mask : TMask;
+   item : String;
+begin
+   mask:=TMask.Create(filter);
+   list:=TStringList.Create;
+   try
+      list.CommaText:=GlobalVarsNamesCommaText;
+      for item in list do begin
+         if mask.Matches(item) then
+            dest.Add(item);
+      end;
+   finally
+      list.Free;
+      mask.Free;
+   end;
+end;
+
 // GlobalVarsNamesCommaText
 //
 function GlobalVarsNamesCommaText : UnicodeString;
@@ -392,6 +487,95 @@ begin
       Result:=vGlobalVarsNamesCache;
    finally
       vGlobalVarsCS.EndWrite;
+   end;
+end;
+
+// GetOrCreate
+//
+function TNameGlobalQueueHash.GetOrCreate(const aName : String) : TGlobalQueue;
+begin
+   Result:=Objects[aName];
+   if Result=nil then begin
+      Result:=TGlobalQueue.Create;
+      Objects[aName]:=Result;
+   end;
+end;
+
+// GlobalQueuePush
+//
+function GlobalQueuePush(const aName : String; const aValue : Variant) : Integer;
+var
+   gq : TGlobalQueue;
+begin
+   vGlobalQueuesCS.BeginWrite;
+   try
+      gq:=vGlobalQueues.GetOrCreate(aName);
+      gq.Push(aValue);
+      Result:=gq.Count;
+   finally
+      vGlobalQueuesCS.EndWrite;
+   end;
+end;
+
+// GlobalQueueInsert
+//
+function GlobalQueueInsert(const aName : String; const aValue : Variant) : Integer;
+var
+   gq : TGlobalQueue;
+begin
+   vGlobalQueuesCS.BeginWrite;
+   try
+      gq:=vGlobalQueues.GetOrCreate(aName);
+      gq.Insert(aValue);
+      Result:=gq.Count;
+   finally
+      vGlobalQueuesCS.EndWrite;
+   end;
+end;
+
+// GlobalQueuePull
+//
+function GlobalQueuePull(const aName : String; var aValue : Variant) : Boolean;
+var
+   gq : TGlobalQueue;
+begin
+   vGlobalQueuesCS.BeginWrite;
+   try
+      gq:=vGlobalQueues.Objects[aName];
+      if gq<>nil then
+         Result:=gq.Pull(aValue)
+      else Result:=False;
+   finally
+      vGlobalQueuesCS.EndWrite;
+   end;
+end;
+
+// GlobalQueuePop
+//
+function GlobalQueuePop(const aName : String; var aValue : Variant) : Boolean;
+var
+   gq : TGlobalQueue;
+begin
+   vGlobalQueuesCS.BeginWrite;
+   try
+      gq:=vGlobalQueues.Objects[aName];
+      if gq<>nil then
+         Result:=gq.Pop(aValue)
+      else Result:=False;
+   finally
+      vGlobalQueuesCS.EndWrite;
+   end;
+end;
+
+// CleanupGlobalQueues
+//
+procedure CleanupGlobalQueues;
+begin
+   vGlobalQueuesCS.BeginWrite;
+   try
+      vGlobalQueues.Clean;
+   finally
+      vGlobalQueuesCS.EndWrite;
    end;
 end;
 
@@ -546,6 +730,13 @@ begin
    Result:=WriteGlobalVar(args.AsString[0], args.ExprBase[1].Eval(args.Exec));
 end;
 
+{ TIncrementGlobalVarFunc }
+
+function TIncrementGlobalVarFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+begin
+   Result:=IncrementGlobalVar(args.AsString[0], args.AsInteger[1]);
+end;
+
 { TDeleteGlobalVarFunc }
 
 function TDeleteGlobalVarFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
@@ -558,6 +749,31 @@ end;
 procedure TCleanupGlobalVarsFunc.DoEvalProc(const args : TExprBaseListExec);
 begin
    CleanupGlobalVars;
+end;
+
+// ------------------
+// ------------------ TGlobalVarsNamesFunc ------------------
+// ------------------
+
+// DoEvalAsVariant
+//
+function TGlobalVarsNamesFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
+var
+   sl : TStringList;
+   newArray : TScriptDynamicArray;
+   i : Integer;
+begin
+   sl:=TStringList.Create;
+   try
+      CollectGlobalVarsNames(args.AsString[0], sl);
+      newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).Prog.SystemTable.SymbolTable.TypString);
+      Result:=IScriptObj(newArray);
+      newArray.ArrayLength:=sl.Count;
+      for i:=0 to newArray.ArrayLength-1 do
+         newArray.AsString[i]:=sl[i];
+   finally
+      sl.Free;
+   end;
 end;
 
 { TGlobalVarsNamesCommaText }
@@ -583,20 +799,99 @@ begin
    LoadGlobalVarsFromString(Info.ValueAsDataString['s']);
 end;
 
+// ------------------
+// ------------------ TGlobalQueuePushFunc ------------------
+// ------------------
+
+// DoEvalAsInteger
+//
+function TGlobalQueuePushFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+begin
+   Result:=GlobalQueuePush(args.AsString[0], args.ExprBase[1].Eval(args.Exec));
+end;
+
+// ------------------
+// ------------------ TGlobalQueueInsertFunc ------------------
+// ------------------
+
+// DoEvalAsInteger
+//
+function TGlobalQueueInsertFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+begin
+   Result:=GlobalQueueInsert(args.AsString[0], args.ExprBase[1].Eval(args.Exec));
+end;
+
+// ------------------
+// ------------------ TGlobalQueuePullFunc ------------------
+// ------------------
+
+// DoEvalAsBoolean
+//
+function TGlobalQueuePullFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+var
+   v : Variant;
+begin
+   Result:=GlobalQueuePull(args.AsString[0], v);
+   if Result then
+      args.ExprBase[1].AssignValue(args.Exec, v);
+end;
+
+// ------------------
+// ------------------ TGlobalQueuePopFunc ------------------
+// ------------------
+
+// DoEvalAsBoolean
+//
+function TGlobalQueuePopFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+var
+   v : Variant;
+begin
+   Result:=GlobalQueuePop(args.AsString[0], v);
+   if Result then
+      args.ExprBase[1].AssignValue(args.Exec, v);
+end;
+
+// ------------------
+// ------------------ TCleanupGlobalQueuesFunc ------------------
+// ------------------
+
+// DoEvalProc
+//
+procedure TCleanupGlobalQueuesFunc.DoEvalProc(const args : TExprBaseListExec);
+begin
+   CleanupGlobalQueues;
+end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
    vGlobalVarsCS:=TMultiReadSingleWrite.Create;
    vGlobalVars:=TNameGlobalVarHash.Create;
+   vGlobalQueuesCS:=TMultiReadSingleWrite.Create;
+   vGlobalQueues:=TNameGlobalQueueHash.Create;
 
    RegisterInternalFunction(TReadGlobalVarFunc, 'ReadGlobalVar', ['n', SYS_STRING], SYS_VARIANT);
    RegisterInternalFunction(TReadGlobalVarDefFunc, 'ReadGlobalVarDef', ['n', SYS_STRING, 'd', SYS_VARIANT], SYS_VARIANT);
    RegisterInternalBoolFunction(TTryReadGlobalVarFunc, 'TryReadGlobalVar', ['n', SYS_STRING, '@v', SYS_VARIANT]);
    RegisterInternalBoolFunction(TWriteGlobalVarFunc, 'WriteGlobalVar', ['n', SYS_STRING, 'v', SYS_VARIANT]);
+   RegisterInternalIntFunction(TIncrementGlobalVarFunc, 'IncrementGlobalVar', ['n', SYS_STRING, 'i=1', SYS_INTEGER]);
    RegisterInternalBoolFunction(TDeleteGlobalVarFunc, 'DeleteGlobalVar', ['n', SYS_STRING]);
-   RegisterInternalFunction(TCleanupGlobalVarsFunc, 'CleanupGlobalVars', [], '');
+   RegisterInternalProcedure(TCleanupGlobalVarsFunc, 'CleanupGlobalVars', []);
    RegisterInternalStringFunction(TGlobalVarsNamesCommaText, 'GlobalVarsNamesCommaText', []);
+   RegisterInternalFunction(TGlobalVarsNamesFunc, 'GlobalVarsNames', ['filter', SYS_STRING], 'array of string');
    RegisterInternalStringFunction(TSaveGlobalVarsToString, 'SaveGlobalVarsToString', []);
    RegisterInternalProcedure(TLoadGlobalVarsFromString, 'LoadGlobalVarsFromString', ['s', SYS_STRING]);
+
+   RegisterInternalIntFunction(TGlobalQueuePushFunc, 'GlobalQueuePush', ['n', SYS_STRING, 'v', SYS_VARIANT]);
+   RegisterInternalIntFunction(TGlobalQueueInsertFunc, 'GlobalQueueInsert', ['n', SYS_STRING, 'v', SYS_VARIANT]);
+   RegisterInternalBoolFunction(TGlobalQueuePullFunc, 'GlobalQueuePull', ['n', SYS_STRING, '@v', SYS_VARIANT]);
+   RegisterInternalBoolFunction(TGlobalQueuePopFunc, 'GlobalQueuePop', ['n', SYS_STRING, '@v', SYS_VARIANT]);
+   RegisterInternalProcedure(TCleanupGlobalQueuesFunc, 'CleanupGlobalQueues', []);
 
 finalization
 
@@ -606,5 +901,12 @@ finalization
    vGlobalVars.Clean;
    vGlobalVars.Free;
    vGlobalVars:=nil;
+
+   CleanupGlobalQueues;
+   vGlobalQueuesCS.Free;
+   vGlobalQueuesCS:=nil;
+   vGlobalQueues.Clean;
+   vGlobalQueues.Free;
+   vGlobalQueues:=nil;
   
 end.

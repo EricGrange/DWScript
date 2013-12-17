@@ -58,6 +58,8 @@ type
          procedure SortReverseTest;
 
          procedure IntToHexTest;
+
+         procedure QueueTest;
    end;
 
 // ------------------------------------------------------------------
@@ -727,6 +729,43 @@ begin
    CheckEquals(SysUtils.IntToHex(Int64(12345), 3), Int64ToHex(12345, 3));
    CheckEquals(SysUtils.IntToHex(Int64(12345), 6), Int64ToHex(12345, 6));
    CheckEquals(SysUtils.IntToHex($123456789, 6), Int64ToHex($123456789, 6));
+end;
+
+// QueueTest
+//
+procedure TdwsUtilsTests.QueueTest;
+var
+   q : TSimpleQueue<Variant>;
+   v : Variant;
+begin
+   q:=TSimpleQueue<Variant>.Create;
+   try
+      CheckEquals(0, q.Count);
+
+      CheckFalse(q.Pop(v), 'pop');
+      CheckFalse(q.Pull(v), 'pull');
+
+      q.Push(1);
+      q.Push('two');
+      CheckEquals(2, q.Count);
+      CheckEquals('two', q.Pop);
+      CheckEquals(1, q.Pop);
+
+      q.Insert(2);
+      q.Insert('three');
+      CheckEquals('three', q.Pull);
+      CheckEquals(2, q.Pull);
+
+      q.Push(3);
+      q.Push('four');
+      CheckEquals(2, q.Count);
+      CheckEquals(3, q.Pull);
+      CheckEquals('four', q.Pull);
+
+      CheckEquals(0, q.Count);
+   finally
+      q.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------

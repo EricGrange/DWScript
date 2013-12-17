@@ -499,6 +499,48 @@ type
          property Value : T read GetValue write SetValue;
    end;
 
+   // TSimpleQueue<T>
+   //
+   {: A minimalistic generic queue.
+      Based on a linked list with an items pool, supports both FIFO & LIFO. }
+   TSimpleQueue<T> = class
+      private
+      type
+         PItemT = ^ItemT;
+         ItemT = record
+            Prev, Next : PItemT;
+            Value : T;
+         end;
+      var
+         FFirst, FLast : PItemT;
+         FCount : Integer;
+         FPool : PItemT;
+         FPoolLeft : Integer;
+
+      protected
+         function Alloc : PItemT;
+         procedure Release(i : PItemT);
+
+      public
+         constructor Create(poolSize : Integer = 8);
+         destructor Destroy; override;
+
+         // Adds to the end of the queue
+         procedure Push(const v : T);
+         // Removes from the end of the queue
+         function  Pop(var v : T) : Boolean; overload;
+         function  Pop : T; overload;
+         // Adds to the beginning of the queue
+         procedure Insert(const v : T);
+         // Removes from the beginning of the queue
+         function  Pull(var v : T) : Boolean; overload;
+         function  Pull : T; overload;
+
+         procedure Clear;
+
+         property Count : Integer read FCount;
+   end;
+
 const
    cWriteOnlyBlockStreamBlockSize = $2000 - 2*SizeOf(Pointer);
 
@@ -3805,6 +3847,159 @@ begin
          minIndex:=i;
       until i>=maxIndex;
    end;
+end;
+
+// ------------------
+// ------------------ TSimpleQueue<T> ------------------
+// ------------------
+
+// Create
+//
+constructor TSimpleQueue<T>.Create(poolSize: Integer);
+begin
+   FPoolLeft:=poolSize;
+end;
+
+// Destroy
+//
+destructor TSimpleQueue<T>.Destroy;
+var
+   next : PItemT;
+begin
+   Clear;
+   while FPool<>nil do begin
+      next:=FPool.Next;
+      FreeMem(FPool);
+      FPool:=next;
+   end;
+   inherited;
+end;
+
+// Alloc
+//
+function TSimpleQueue<T>.Alloc: PItemT;
+begin
+   if FPool=nil then
+      Result:=AllocMem(SizeOf(ItemT))
+   else begin
+      Result:=FPool;
+      FPool:=Result.Next;
+      Result.Next:=nil;
+      Inc(FPoolLeft);
+   end;
+   Inc(FCount);
+end;
+
+// Release
+//
+procedure TSimpleQueue<T>.Release(i: PItemT);
+begin
+   i.Value:=Default(T);
+   if FPoolLeft>0 then begin
+      Dec(FPoolLeft);
+      i.Prev:=nil;
+      i.Next:=FPool;
+      FPool:=i;
+   end else FreeMem(i);
+   Dec(FCount);
+end;
+
+// Push
+//
+procedure TSimpleQueue<T>.Push(const v: T);
+var
+   p : PItemT;
+begin
+   p:=Alloc;
+   p.Value:=v;
+   if FLast<>nil then begin
+      p.Prev:=FLast;
+      FLast.Next:=p;
+   end else FFirst:=p;
+   FLast:=p;
+end;
+
+// Pop
+//
+function TSimpleQueue<T>.Pop(var v: T) : Boolean;
+var
+   p : PItemT;
+begin
+   if FCount=0 then Exit(False);
+
+   p:=FLast;
+   FLast:=p.Prev;
+   v:=p.Value;
+   Release(p);
+   if FLast<>nil then
+      FLast.Next:=nil
+   else FFirst:=FLast;
+   Result:=True;
+end;
+
+// Pop
+//
+function TSimpleQueue<T>.Pop : T;
+begin
+   Assert(Count>0);
+   Pop(Result);
+end;
+
+// Insert
+//
+procedure TSimpleQueue<T>.Insert(const v: T);
+var
+   p : PItemT;
+begin
+   p:=Alloc;
+   p.Value:=v;
+   if FFirst<>nil then begin
+      p.Next:=FFirst;
+      FFirst.Prev:=p;
+   end else FLast:=p;
+   FFirst:=p;
+end;
+
+// Pull
+//
+function TSimpleQueue<T>.Pull(var v: T) : Boolean;
+var
+   p : PItemT;
+begin
+   if FCount=0 then Exit(False);
+
+   p:=FFirst;
+   FFirst:=p.Next;
+   v:=p.Value;
+   Release(p);
+   if FFirst<>nil then
+      FFirst.Prev:=nil
+   else FLast:=FFirst;
+   Result:=True;
+end;
+
+// Pull
+//
+function TSimpleQueue<T>.Pull : T;
+begin
+   Assert(Count>0);
+   Pull(Result);
+end;
+
+// Clear
+//
+procedure TSimpleQueue<T>.Clear;
+var
+   p, pNext : PItemT;
+begin
+   p:=FFirst;
+   while p<>nil do begin
+      pNext:=p.Next;
+      Release(p);
+      p:=pNext;
+   end;
+   FFirst:=nil;
+   FLast:=nil;
 end;
 
 // ------------------------------------------------------------------
