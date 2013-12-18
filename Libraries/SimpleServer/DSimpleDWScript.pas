@@ -25,7 +25,7 @@ uses
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
    dwsDataBase, dwsDataBaseLibModule, dwsWebServerInfo, dwsWebServerLibModule,
    dwsJSONConnector, dwsJSON, dwsErrors, dwsFunctions, dwsSymbols,
-   dwsJIT, dwsJITx86;
+   dwsJIT, dwsJITx86, dwsBackgroundWorkersLibModule;
 
 type
 
@@ -74,6 +74,7 @@ type
       FDataBase : TdwsDatabaseLib;
       FJSON : TdwsJSONLibModule;
       FWebServerLib : TdwsWebServerLib;
+      FBkgndWorkers : TdwsBackgroundWorkersLib;
 
       FCompiledPrograms : TCompiledProgramHash;
       FCompiledProgramsLock : TFixedCriticalSection;
@@ -88,6 +89,7 @@ type
 
       FStartupScriptName : String;
       FShutdownScriptName : String;
+      FBackgroundFileSystem : IdwsFileSystem;
 
    protected
       procedure TryAcquireDWS(const fileName : String; var prog : IdwsProgram);
@@ -101,6 +103,8 @@ type
       function WaitForCPULimit : Boolean;
 
       function DoLoadSourceCode(const fileName : String) : String;
+
+      procedure DoBackgroundWork(const request : TWebRequest);
 
    public
       procedure Initialize(const serverInfo : IWebServerInfo);
@@ -512,6 +516,19 @@ begin
    else Result:=LoadTextFromFile(fileName);
 end;
 
+// DoBackgroundWork
+//
+procedure TSimpleDWScript.DoBackgroundWork(const request : TWebRequest);
+var
+   name : String;
+begin
+   if Assigned(FBackgroundFileSystem) then begin
+      name:=FBackgroundFileSystem.ValidateFileName(request.URL);
+      if name<>'' then
+         HandleDWS(name, request, nil);
+   end;
+end;
+
 // Initialize
 //
 procedure TSimpleDWScript.Initialize(const serverInfo : IWebServerInfo);
@@ -519,12 +536,17 @@ begin
    FWebServerLib:=TdwsWebServerLib.Create(Self);
    FWebServerLib.Server:=serverInfo;
    FWebServerLib.dwsWebServer.Script:=DelphiWebScript;
+
+   FBkgndWorkers:=TdwsBackgroundWorkersLib.Create(Self);
+   FBkgndWorkers.dwsBackgroundWorkers.Script:=DelphiWebScript;
+   FBkgndWorkers.OnBackgroundWork:=DoBackgroundWork;
 end;
 
 // Finalize
 //
 procedure TSimpleDWScript.Finalize;
 begin
+   FreeAndNil(FBkgndWorkers);
    FreeAndNil(FWebServerLib);
 end;
 
@@ -566,6 +588,8 @@ end;
 //
 procedure TSimpleDWScript.Startup;
 begin
+   FBackgroundFileSystem:=dwsRuntimeFileSystem.AllocateFileSystem;
+
    if StartupScriptName<>'' then
       HandleDWS(StartupScriptName, nil, nil);
 end;
@@ -574,6 +598,8 @@ end;
 //
 procedure TSimpleDWScript.Shutdown;
 begin
+   FBackgroundFileSystem:=nil;
+
    if ShutdownScriptName<>'' then
       HandleDWS(ShutdownScriptName, nil, nil);
 end;

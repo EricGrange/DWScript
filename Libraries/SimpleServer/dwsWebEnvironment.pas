@@ -89,7 +89,7 @@ type
          function URL : String; virtual; abstract;
          function Method : String; virtual; abstract;
          function MethodVerb : TWebRequestMethodVerb; virtual; abstract;
-         function Security : String; virtual; abstract;
+         function Security : String; virtual;
 
          function ContentData : RawByteString; virtual; abstract;
          function ContentType : RawByteString; virtual; abstract;
@@ -309,6 +309,13 @@ end;
 function TWebRequest.Header(const headerName : String) : String;
 begin
    Result:=Headers.Values[headerName];
+end;
+
+// Security
+//
+function TWebRequest.Security : String;
+begin
+   Result:='';
 end;
 
 // GetCookies

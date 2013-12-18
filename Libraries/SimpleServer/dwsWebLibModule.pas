@@ -1,9 +1,27 @@
+{**********************************************************************}
+{                                                                      }
+{    "The contents of this file are subject to the Mozilla Public      }
+{    License Version 1.1 (the "License"); you may not use this         }
+{    file except in compliance with the License. You may obtain        }
+{    a copy of the License at http://www.mozilla.org/MPL/              }
+{                                                                      }
+{    Software distributed under the License is distributed on an       }
+{    "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express       }
+{    or implied. See the License for the specific language             }
+{    governing rights and limitations under the License.               }
+{                                                                      }
+{    Copyright Creative IT.                                            }
+{    Current maintainer: Eric Grange                                   }
+{                                                                      }
+{**********************************************************************}
 unit dwsWebLibModule;
 
 interface
 
 uses
-  SysUtils, Classes, dwsComp, dwsExprs, dwsWebEnvironment;
+  SysUtils, Classes, UStandardCRCs,
+  dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList,
+  SynZip;
 
 type
   TdwsWebLib = class(TDataModule)
@@ -66,6 +84,10 @@ type
       ExtObject: TObject);
     procedure dwsWebClassesWebRequestMethodsContentLengthEval(
       Info: TProgramInfo; ExtObject: TObject);
+    function dwsWebFunctionsDeflateCompressFastEval(
+      const args: TExprBaseListExec): Variant;
+    function dwsWebFunctionsDeflateDecompressionFastEval(
+      const args: TExprBaseListExec): Variant;
   private
     { Private declarations }
   public
@@ -263,6 +285,26 @@ procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetStatusCodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.WebResponse.StatusCode:=Info.ParamAsInteger[0];
+end;
+
+function TdwsWebLib.dwsWebFunctionsDeflateCompressFastEval(
+  const args: TExprBaseListExec): Variant;
+var
+   data : RawByteString;
+begin
+   data:=args.AsDataString[0];
+   CompressDeflate(data, True);
+   Result:=RawByteStringToScriptString(data);
+end;
+
+function TdwsWebLib.dwsWebFunctionsDeflateDecompressionFastEval(
+  const args: TExprBaseListExec): Variant;
+var
+   data : RawByteString;
+begin
+   data:=args.AsDataString[0];
+   CompressDeflate(data, False);
+   Result:=RawByteStringToScriptString(data);
 end;
 
 end.

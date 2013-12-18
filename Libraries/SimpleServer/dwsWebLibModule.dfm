@@ -452,6 +452,27 @@ object dwsWebLib: TdwsWebLib
         Name = 'WebAuthentications'
         BaseType = 'WebAuthentication'
       end>
+    Functions = <
+      item
+        Name = 'DeflateCompress'
+        Parameters = <
+          item
+            Name = 'data'
+            DataType = 'String'
+          end>
+        ResultType = 'String'
+        OnFastEval = dwsWebFunctionsDeflateCompressFastEval
+      end
+      item
+        Name = 'DeflateDecompress'
+        Parameters = <
+          item
+            Name = 'data'
+            DataType = 'String'
+          end>
+        ResultType = 'String'
+        OnFastEval = dwsWebFunctionsDeflateDecompressionFastEval
+      end>
     UnitName = 'System.Net'
     StaticSymbols = True
     Left = 56
