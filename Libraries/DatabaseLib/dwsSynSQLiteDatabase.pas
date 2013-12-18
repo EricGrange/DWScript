@@ -82,6 +82,7 @@ type
          function AsString : String; override;
          function AsInteger : Int64; override;
          function AsFloat : Double; override;
+         function AsBlob : RawByteString; override;
    end;
 
 //   IdwsBlob = interface
@@ -139,6 +140,7 @@ begin
          varUString : rq.BindS(i, String(p.VUString));
          varBoolean : rq.Bind(i, Ord(p.VBoolean));
          varNull : rq.BindNull(i);
+         varString : rq.Bind(i, p.VString, Length(RawByteString(p.VString)));
       else
          raise Exception.CreateFmt('Unsupported VarType %d', [p.VType]);
       end;
@@ -376,6 +378,13 @@ end;
 function TdwsSynSQLiteDataField.AsFloat : Double;
 begin
    Result:=TdwsSynSQLiteDataSet(DataSet).FQuery.FieldDouble(Index);
+end;
+
+// AsBlob
+//
+function TdwsSynSQLiteDataField.AsBlob : RawByteString;
+begin
+   Result:=TdwsSynSQLiteDataSet(DataSet).FQuery.FieldBlob(Index);
 end;
 
 // ------------------------------------------------------------------

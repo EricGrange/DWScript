@@ -75,6 +75,7 @@ type
       function AsInteger : Int64;
       function AsFloat : Double;
       function AsBoolean : Boolean;
+      function AsBlob : RawByteString;
    end;
 
    IdwsBlob = interface
@@ -157,6 +158,7 @@ type
          function AsInteger : Int64; virtual; abstract;
          function AsFloat : Double; virtual; abstract;
          function AsBoolean : Boolean; virtual;
+         function AsBlob : RawByteString; virtual; abstract;
    end;
 
 // ------------------------------------------------------------------

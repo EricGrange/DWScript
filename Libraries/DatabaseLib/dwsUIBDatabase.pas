@@ -86,6 +86,7 @@ type
          function AsInteger : Int64; override;
          function AsFloat : Double; override;
          function AsBoolean : Boolean; override;
+         function AsBlob : RawByteString; override;
    end;
 
 //   IdwsBlob = interface
@@ -401,6 +402,13 @@ end;
 function TdwsUIBDataField.AsBoolean : Boolean;
 begin
    Result:=TdwsUIBDataSet(DataSet).FQuery.Fields.AsBoolean[Index];
+end;
+
+// AsBlob
+//
+function TdwsUIBDataField.AsBlob : RawByteString;
+begin
+   Result:=TdwsUIBDataSet(DataSet).FQuery.Fields.AsRawByteString[Index];
 end;
 
 // ------------------------------------------------------------------

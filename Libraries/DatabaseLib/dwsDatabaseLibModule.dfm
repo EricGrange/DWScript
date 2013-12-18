@@ -264,6 +264,30 @@ object dwsDatabaseLib: TdwsDatabaseLib
             Kind = mkFunction
           end
           item
+            Name = 'AsBlob'
+            Parameters = <
+              item
+                Name = 'fieldName'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Overloaded = True
+            OnEval = dwsDatabaseClassesDataSetMethodsAsBlobByNameEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'AsBlob'
+            Parameters = <
+              item
+                Name = 'index'
+                DataType = 'Integer'
+              end>
+            ResultType = 'String'
+            Overloaded = True
+            OnEval = dwsDatabaseClassesDataSetMethodsAsBlobByIndexEval
+            Kind = mkFunction
+          end
+          item
             Name = 'Stringify'
             ResultType = 'String'
             OnEval = dwsDatabaseClassesDataSetMethodsStringifyEval
@@ -338,6 +362,12 @@ object dwsDatabaseLib: TdwsDatabaseLib
             ResultType = 'Boolean'
             OnEval = dwsDatabaseClassesDataFieldMethodsAsBooleanEval
             Kind = mkFunction
+          end
+          item
+            Name = 'AsBlob'
+            ResultType = 'String'
+            OnEval = dwsDatabaseClassesDataFieldMethodsAsBlobEval
+            Kind = mkFunction
           end>
         OnCleanUp = dwsDatabaseClassesDataBaseCleanUp
       end
@@ -374,6 +404,17 @@ object dwsDatabaseLib: TdwsDatabaseLib
             Name = 'Blob'
           end>
         Style = enumScoped
+      end>
+    Functions = <
+      item
+        Name = 'BlobParameter'
+        Parameters = <
+          item
+            Name = 'data'
+            DataType = 'String'
+          end>
+        ResultType = 'Variant'
+        OnFastEval = dwsDatabaseFunctionsBlobParameterFastEval
       end>
     UnitName = 'System.Data'
     StaticSymbols = True

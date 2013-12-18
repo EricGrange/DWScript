@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, Classes,
-  dwsStrings, dwsUtils,
+  dwsStrings, dwsUtils, dwsExprList,
   dwsComp, dwsExprs, dwsSymbols, dwsStack, dwsDatabase, dwsJSON, dwsErrors;
 
 type
@@ -76,6 +76,14 @@ type
       ExtObject: TObject);
     procedure dwsDatabaseClassesDataBaseMethodsVersionInfoTextEval(
       Info: TProgramInfo; ExtObject: TObject);
+    function dwsDatabaseFunctionsBlobParameterFastEval(
+      const args: TExprBaseListExec): Variant;
+    procedure dwsDatabaseClassesDataFieldMethodsAsBlobEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsAsBlobByNameEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsAsBlobByIndexEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
     procedure SetScript(aScript : TDelphiWebScript);
@@ -335,6 +343,12 @@ begin
    Info.ResultAsString:=(ExtObject as TDataBase).Intf.VersionInfoText;
 end;
 
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsAsBlobEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString:=(ExtObject as TDataField).Intf.AsBlob;
+end;
+
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsAsBooleanEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
@@ -405,6 +419,18 @@ procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsAsIntegerByIndexEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsInteger:=(ExtObject as TDataSet).Intf.GetField(Info.ParamAsInteger[0]).AsInteger;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsAsBlobByNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString:=(ExtObject as TDataSet).FieldByName(Info).AsBlob;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsAsBlobByIndexEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString:=(ExtObject as TDataSet).Intf.GetField(Info.ParamAsInteger[0]).AsBlob;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsAsFloatByNameEval(
@@ -502,6 +528,12 @@ procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsStringifyEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString:=(ExtObject as TDataSet).Stringify;
+end;
+
+function TdwsDatabaseLib.dwsDatabaseFunctionsBlobParameterFastEval(
+  const args: TExprBaseListExec): Variant;
+begin
+   Result:=args.AsDataString[0];
 end;
 
 end.

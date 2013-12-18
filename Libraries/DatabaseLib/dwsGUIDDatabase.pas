@@ -70,6 +70,7 @@ type
          function AsString : String; override;
          function AsInteger : Int64; override;
          function AsFloat : Double; override;
+         function AsBlob : RawByteString; override;
    end;
 
 //   IdwsBlob = interface
@@ -297,6 +298,13 @@ end;
 // AsFloat
 //
 function TdwsGUIDDataField.AsFloat : Double;
+begin
+   raise Exception.Create('Not supported');
+end;
+
+// AsBlob
+//
+function TdwsGUIDDataField.AsBlob : RawByteString;
 begin
    raise Exception.Create('Not supported');
 end;

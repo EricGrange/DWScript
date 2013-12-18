@@ -85,6 +85,7 @@ type
          function AsString : String; override;
          function AsInteger : Int64; override;
          function AsFloat : Double; override;
+         function AsBlob : RawByteString; override;
    end;
 
 //   IdwsBlob = interface
@@ -347,6 +348,13 @@ end;
 function TdwsSynDBDataField.AsFloat : Double;
 begin
    Result:=TdwsSynDBDataSet(DataSet).FStmt.ColumnDouble(Index);
+end;
+
+// AsBlob
+//
+function TdwsSynDBDataField.AsBlob : RawByteString;
+begin
+   Result:=TdwsSynDBDataSet(DataSet).FStmt.ColumnBlob(Index);
 end;
 
 end.
