@@ -49,6 +49,7 @@
       {$DEFINE DELPHI_XE_PLUS}
    {$ELSE}
       {$DEFINE DELPHI_2010_MINUS}
+      {$DEFINE WINDOWS}
    {$IFEND}
    {$IF CompilerVersion>22.0}
       {$DEFINE DELPHI_XE2_PLUS}
