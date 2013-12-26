@@ -20,7 +20,7 @@ interface
 
 uses
    SysUtils,
-   dwsExprs, dwsUtils, dwsStack, dwsXplatform, dwsDataContext;
+   dwsExprs, dwsUtils, dwsStack, dwsXPlatform, dwsDataContext;
 
 // Simple database abstraction interfaces and optional base classes for DWS
 // exposes transaction & forward-only cursor, which are all one really needs :p
@@ -221,7 +221,6 @@ constructor TdwsDataSet.Create(db : TdwsDataBase);
 begin
    inherited Create;
    FDataBase:=db;
-   FDataBase.IncRefCount;
 end;
 
 // Destroy
@@ -229,7 +228,6 @@ end;
 destructor TdwsDataSet.Destroy;
 begin
    SetLength(FFields, 0);
-   FDataBase.DecRefCount;
    inherited;
 end;
 
