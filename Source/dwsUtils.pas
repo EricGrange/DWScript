@@ -392,6 +392,9 @@ type
 
          function GetObjects(const aName : UnicodeString) : T;
          procedure SetObjects(const aName : UnicodeString; obj : T);
+         function GetBucketObject(index : Integer) : T;
+         procedure SetBucketObject(index : Integer; obj : T);
+         function GetBucketName(index : Integer) : String;
 
       public
          function AddObject(const aName : UnicodeString; aObj : T; replace : Boolean = False) : Boolean;
@@ -400,9 +403,12 @@ type
          procedure Clear;
 
          property Objects[const aName : UnicodeString] : T read GetObjects write SetObjects; default;
-         property Count : Integer read FCount;
 
-         procedure Enumerate(destinationList : TStrings);
+         property BucketObject[index : Integer] : T read GetBucketObject write SetBucketObject;
+         property BucketName[index : Integer] : String read GetBucketName;
+
+         property Count : Integer read FCount;
+         property Capacity : Integer read FCapacity;
    end;
 
    TObjectObjectHashBucket<TKey, TValue{$IFNDEF FPC}: TRefCountedObject{$ENDIF}> = record
@@ -3380,16 +3386,25 @@ begin
    FCapacity:=0;
 end;
 
-// Enumerate
+// GetBucketName
 //
-procedure TSimpleNameObjectHash<T>.Enumerate(destinationList : TStrings);
-var
-   i : Integer;
+function TSimpleNameObjectHash<T>.GetBucketName(index : Integer) : String;
 begin
-   for i:=0 to FCapacity-1 do begin
-      if FBuckets[i].HashCode<>0 then
-         destinationList.AddObject(FBuckets[i].Name, FBuckets[i].Obj);
-   end;
+   Result:=FBuckets[index].Name;
+end;
+
+// GetBucketObject
+//
+function TSimpleNameObjectHash<T>.GetBucketObject(index : Integer) : T;
+begin
+   Result:=FBuckets[index].Obj;
+end;
+
+// SetBucketObject
+//
+procedure TSimpleNameObjectHash<T>.SetBucketObject(index : Integer; obj : T);
+begin
+   FBuckets[index].Obj:=obj;
 end;
 
 // ------------------

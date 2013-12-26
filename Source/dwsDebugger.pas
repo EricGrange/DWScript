@@ -1496,8 +1496,12 @@ end;
 // Enumerate
 //
 procedure TdwsBreakpointableLines.Enumerate(destinationList : TStrings);
+var
+   i : Integer;
 begin
-   FSources.Enumerate(destinationList);
+   for i:=0 to FSources.Capacity-1 do
+      if FSources.BucketObject[i]<>nil then
+         destinationList.AddObject(FSources.BucketName[i], FSources.BucketObject[i]);
 end;
 
 // GetSourceLines
