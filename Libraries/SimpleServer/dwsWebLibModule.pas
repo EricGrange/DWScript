@@ -20,7 +20,7 @@ interface
 
 uses
   SysUtils, Classes, UStandardCRCs,
-  dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList,
+  dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList, dwsSymbols,
   SynZip;
 
 type
@@ -190,8 +190,13 @@ end;
 
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsRemoteIPEval(
   Info: TProgramInfo; ExtObject: TObject);
+var
+   cloudflareIP : String;
 begin
-   Info.ResultAsString:=Info.WebRequest.RemoteIP;
+   cloudflareIP:=Info.WebRequest.Header('CF-Connecting-IP');
+   if cloudflareIP<>'' then
+      Info.ResultAsString:=cloudflareIP
+   else Info.ResultAsString:=Info.WebRequest.RemoteIP;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsSecureEval(
@@ -287,13 +292,74 @@ begin
    Info.WebResponse.StatusCode:=Info.ParamAsInteger[0];
 end;
 
+// DeflateCompress
+//
+procedure DeflateCompress(var data : RawByteString; compressionLevel : Integer);
+var
+   strm : TZStream;
+   tmp : RawByteString;
+begin
+   strm.Init;
+   strm.next_in := Pointer(data);
+   strm.avail_in := Length(data);
+   SetString(tmp, nil, strm.avail_in+256+strm.avail_in shr 3); // max mem required
+   strm.next_out := Pointer(tmp);
+   strm.avail_out := Length(tmp);
+   if deflateInit2_(strm, compressionLevel, Z_DEFLATED, -MAX_WBITS, DEF_MEM_LEVEL,
+                    Z_DEFAULT_STRATEGY, ZLIB_VERSION, SizeOf(strm))<0 then
+      raise Exception.Create('deflateInit2_ failed');
+   try
+      Check(deflate(strm,Z_FINISH),[Z_STREAM_END]);
+   finally
+      deflateEnd(strm);
+   end;
+   SetString(data, PAnsiChar(Pointer(tmp)), strm.total_out);
+end;
+
+// DeflateDecompress
+//
+procedure DeflateDecompress(var data : RawByteString);
+var
+   strm : TZStream;
+   code, len : integer;
+   tmp : RawByteString;
+begin
+   strm.Init;
+   strm.next_in := Pointer(data);
+   strm.avail_in := Length(data);
+   len := (strm.avail_in*20) shr 3; // initial chunk size = comp. ratio of 60%
+   SetString(tmp,nil,len);
+   strm.next_out := Pointer(tmp);
+   strm.avail_out := len;
+   if inflateInit2_(strm, -MAX_WBITS, ZLIB_VERSION, SizeOf(strm))<0 then
+      raise Exception.Create('inflateInit2_ failed');
+   try
+      repeat
+         code := Check(inflate(strm, Z_FINISH),[Z_OK,Z_STREAM_END,Z_BUF_ERROR]);
+         if strm.avail_out=0 then begin
+            // need to increase buffer by chunk
+            SetLength(tmp,length(tmp)+len);
+            strm.next_out := PAnsiChar(pointer(tmp))+length(tmp)-len;
+            strm.avail_out := len;
+         end;
+      until code=Z_STREAM_END;
+   finally
+      inflateEnd(strm);
+   end;
+   SetString(data, PAnsiChar(Pointer(tmp)), strm.total_out);
+end;
+
 function TdwsWebLib.dwsWebFunctionsDeflateCompressFastEval(
   const args: TExprBaseListExec): Variant;
 var
    data : RawByteString;
+   lvl : Integer;
 begin
    data:=args.AsDataString[0];
-   CompressDeflate(data, True);
+   lvl := args.AsInteger[1];
+   if (lvl<0) or (lvl>9) then
+      raise Exception.CreateFmt('Invalid deflate compression level %d', [lvl]);
+   DeflateCompress(data, lvl);
    Result:=RawByteStringToScriptString(data);
 end;
 
@@ -303,7 +369,7 @@ var
    data : RawByteString;
 begin
    data:=args.AsDataString[0];
-   CompressDeflate(data, False);
+   DeflateDecompress(data);
    Result:=RawByteStringToScriptString(data);
 end;
 

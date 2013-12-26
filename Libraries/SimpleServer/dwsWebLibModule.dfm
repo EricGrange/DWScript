@@ -459,6 +459,12 @@ object dwsWebLib: TdwsWebLib
           item
             Name = 'data'
             DataType = 'String'
+          end
+          item
+            Name = 'level'
+            DataType = 'Integer'
+            HasDefaultValue = True
+            DefaultValue = '1'
           end>
         ResultType = 'String'
         OnFastEval = dwsWebFunctionsDeflateCompressFastEval
