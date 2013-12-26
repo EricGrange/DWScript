@@ -178,6 +178,7 @@ begin
    else dbName:=':memory:';
    try
       FDB:=TSQLDatabase.Create(dbName);
+      FDB.BusyTimeout:=1500;
    except
       RefCount:=0;
       raise;
