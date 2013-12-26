@@ -81,6 +81,9 @@ type
          constructor Create;
          destructor Destroy; override;
 
+         procedure ResetCookies; inline;
+         procedure ResetQueryFields;
+
          function Header(const headerName : String) : String;
 
          function RemoteIP : String; virtual; abstract;
@@ -250,6 +253,26 @@ begin
    FCookies.Free;
    FCustom.Free;
    inherited;
+end;
+
+// ResetCookies
+//
+procedure TWebRequest.ResetCookies;
+begin
+   if FCookies<>nil then begin
+      FCookies.Free;
+      FCookies:=nil;
+   end;
+end;
+
+// ResetQueryFields
+//
+procedure TWebRequest.ResetQueryFields;
+begin
+   if FQueryFields<>nil then begin
+      FQueryFields.Free;
+      FQueryFields:=nil;
+   end;
 end;
 
 // PrepareCookies

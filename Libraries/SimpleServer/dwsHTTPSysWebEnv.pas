@@ -195,6 +195,9 @@ begin
    SetString(FQueryString, p, n div SizeOf(Char));
 
    FPrepared:=[];
+
+   ResetCookies;
+   ResetQueryFields;
 end;
 
 // PrepareAuthenticationInfo
