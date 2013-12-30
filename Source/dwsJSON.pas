@@ -594,26 +594,48 @@ begin
          Break;
       end;
    until False;
-   if bufPtr=@buf[1] then begin
-      // special case of single-character number
-      case buf[0] of
-         '0'..'9' : begin
-            result:=Ord(buf[0])-Ord('0');
-            exit;
+   case NativeUInt(bufPtr)-NativeUInt(@buf[0]) of
+      SizeOf(WideChar) : // special case of single-character number
+         case buf[0] of
+            '0'..'9' : begin
+               result:=Ord(buf[0])-Ord('0');
+               exit;
+            end;
          end;
-      end;
-   end else if bufPtr=@buf[2] then begin
-      // special case of two-characters number
-      case buf[0] of
-         '1'..'9' : begin
-            case buf[1] of
-               '0'..'9' : begin
-                  result:=Ord(buf[0])*10+Ord(buf[1])-Ord('0')*11;
-                  exit;
+      2*SizeOf(WideChar) : // special case of two-characters number
+         case buf[0] of
+            '1'..'9' : begin
+               case buf[1] of
+                  '0'..'9' : begin
+                     result:=Ord(buf[0])*10+Ord(buf[1])-Ord('0')*11;
+                     exit;
+                  end;
                end;
             end;
          end;
-      end;
+      3*SizeOf(WideChar) : // special case of three-characters number
+         case buf[0] of
+            '0'..'9' : begin
+               case buf[1] of
+                  '0'..'9' : begin
+                     case buf[2] of
+                        '0'..'9' : begin
+                           result:=Ord(buf[0])*100+Ord(buf[1])*10+Ord(buf[2])-Ord('0')*111;
+                           exit;
+                        end;
+                     end;
+                  end;
+                  '.' : begin
+                     case buf[2] of
+                        '0'..'9' : begin
+                           result:=(Ord(buf[0])-Ord('0'))+(Ord(buf[2])-Ord('0'))*0.1;
+                           exit;
+                        end;
+                     end;
+                  end;
+               end;
+            end;
+         end;
    end;
    bufPtr^:=#0;
    TryTextToFloat(PWideChar(@buf[0]), resultBuf, vJSONFormatSettings);
@@ -2336,12 +2358,9 @@ end;
 // WriteInteger
 //
 procedure TdwsJSONWriter.WriteInteger(const n : Int64);
-var
-   s : UnicodeString;
 begin
    BeforeWriteImmediate;
-   FastInt64ToStr(n, s);
-   FStream.WriteString(s);
+   FStream.WriteString(n);
    AfterWriteImmediate;
 end;
 
