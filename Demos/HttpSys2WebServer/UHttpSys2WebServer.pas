@@ -73,6 +73,7 @@ type
          // Used to implement a lazy flush on FileAccessInfoCaches
          FCacheCounter : Cardinal;
          FFileAccessInfoCacheSize : Integer;
+         FDWSExtensions : array of String;
 
          procedure FileChanged(sender : TdwsFileNotifier; const fileName : String;
                                changeAction : TFileNotificationAction);
@@ -157,7 +158,9 @@ const
          +'"MaxInputLength": 0,'
          // If true folder requests that don't include the trailing path delimiter
          // will automatically be redirected with a 301 error
-         +'"AutoRedirectFolders": true'
+         +'"AutoRedirectFolders": true,'
+         // List of extensions that go through the script filter
+         +'"ScriptedExtensions": [".dws"]'
       +'}';
 
 // ------------------------------------------------------------------
@@ -210,7 +213,8 @@ procedure THttpSys2WebServer.Initialize(const basePath : TFileName; options : Td
 var
    logPath : TdwsJSONValue;
    serverOptions : TdwsJSONValue;
-   nbThreads : Integer;
+   scriptedExtensions : TdwsJSONValue;
+   i, nbThreads : Integer;
 begin
    FPath:=IncludeTrailingPathDelimiter(ExpandFileName(basePath));
 
@@ -233,6 +237,11 @@ begin
    serverOptions:=TdwsJSONValue.ParseString(cDefaultServerOptions);
    try
       serverOptions.Extend(options['Server']);
+
+      scriptedExtensions:=serverOptions['ScriptedExtensions'];
+      SetLength(FDWSExtensions, scriptedExtensions.ElementCount);
+      for i:=0 to scriptedExtensions.ElementCount-1 do
+         FDWSExtensions[i]:=scriptedExtensions.Elements[i].AsString;
 
       FRelativeURI:=serverOptions['RelativeURI'].AsString;
       FDomainName:=serverOptions['DomainName'].AsString;
@@ -314,6 +323,7 @@ end;
 //
 procedure THttpSys2WebServer.Process(request : TWebRequest; response : TWebResponse);
 var
+   i : Integer;
    noTrailingPathDelimiter : Boolean;
    infoCache : TFileAccessInfoCache;
    fileInfo : TFileAccessInfo;
@@ -366,8 +376,13 @@ begin
          end;
          {$WARN SYMBOL_PLATFORM ON}
 
-         fileInfo.DWScript := StrEndsWith(fileInfo.CookedPathName, '.dws');
-
+         fileInfo.DWScript:=False;
+         for i:=0 to High(FDWSExtensions) do begin
+            if StrEndsWith(fileInfo.CookedPathName, FDWSExtensions[i]) then begin
+               fileInfo.DWScript:=True;
+               Break;
+            end;
+         end;
       end;
 
    end;
