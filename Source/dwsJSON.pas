@@ -102,13 +102,13 @@ type
 
    // TdwsJSONParserState
    //
-   // Internal utility parser for TdwsJSON
+   // Internal utility parser for TdwsJSON, a "light" tokenizer
    TdwsJSONParserState = class
       private
          Str : UnicodeString;
          Ptr, ColStart : PWideChar;
          Line : Integer;
-         TrailCharacter : WideChar;
+         FTrailCharacter : WideChar;
          DuplicatesOption : TdwsJSONDuplicatesOptions;
 
       public
@@ -116,12 +116,18 @@ type
 
          function Location : UnicodeString;
 
+         property TrailCharacter : WideChar read FTrailCharacter write FTrailCharacter;
          function NeedChar : WideChar; inline;
          function SkipBlanks(currentChar : WideChar) : WideChar; inline;
 
          procedure ParseJSONString(initialChar : WideChar; var result : UnicodeString);
          procedure ParseHugeJSONNumber(initialChars : PWideChar; initialCharCount : Integer; var result : Double);
          procedure ParseJSONNumber(initialChar : WideChar; var result : Double);
+
+         // reads from [ to ]
+         procedure ParseIntegerArray(dest : TSimpleInt64List);
+         procedure ParseNumberArray(dest : TSimpleDoubleList);
+         procedure ParseStringArray(dest : TStringList);
    end;
 
    TdwsJSONValueType = (jvtUndefined, jvtNull, jvtObject, jvtArray, jvtString, jvtNumber, jvtBoolean);
@@ -588,9 +594,126 @@ begin
          Break;
       end;
    until False;
+   if bufPtr=@buf[1] then begin
+      // special case of single-character number
+      case buf[0] of
+         '0'..'9' : begin
+            result:=Ord(buf[0])-Ord('0');
+            exit;
+         end;
+      end;
+   end else if bufPtr=@buf[2] then begin
+      // special case of two-characters number
+      case buf[0] of
+         '1'..'9' : begin
+            case buf[1] of
+               '0'..'9' : begin
+                  result:=Ord(buf[0])*10+Ord(buf[1])-Ord('0')*11;
+                  exit;
+               end;
+            end;
+         end;
+      end;
+   end;
    bufPtr^:=#0;
    TryTextToFloat(PWideChar(@buf[0]), resultBuf, vJSONFormatSettings);
    Result:=resultBuf;
+end;
+
+// ParseIntegerArray
+//
+procedure TdwsJSONParserState.ParseIntegerArray(dest : TSimpleInt64List);
+var
+   c : Char;
+   num : Double;
+begin
+   c:=SkipBlanks(' ');
+   if c<>'[' then
+      raise EdwsJSONParseError.CreateFmt('"[" expected but U+%.04x encountered', [Ord(c)]);
+   c:=SkipBlanks(NeedChar);
+   if c=']' then
+      Exit;
+   repeat
+      case c of
+         '0'..'9', '-' : begin
+            ParseJSONNumber(c, num);
+            dest.Add(Round(num));
+         end;
+      else
+         raise EdwsJSONParseError.CreateFmt('Unexpected character U+%.04x', [Ord(c)]);
+      end;
+      c:=SkipBlanks(TrailCharacter);
+      case c of
+         ',' : c:=SkipBlanks(NeedChar);
+         ']' : break;
+      else
+         raise EdwsJSONParseError.CreateFmt('"," expected but U+%.04x encountered', [Ord(c)]);
+      end;
+   until False;
+end;
+
+// ParseNumberArray
+//
+procedure TdwsJSONParserState.ParseNumberArray(dest : TSimpleDoubleList);
+var
+   c : Char;
+   num : Double;
+begin
+   c:=SkipBlanks(' ');
+   if c<>'[' then
+      raise EdwsJSONParseError.CreateFmt('"[" expected but U+%.04x encountered', [Ord(c)]);
+   c:=SkipBlanks(NeedChar);
+   if c=']' then
+      Exit;
+   repeat
+      case c of
+         '0'..'9', '-' : begin
+            ParseJSONNumber(c, num);
+            dest.Add(num);
+         end;
+      else
+         raise EdwsJSONParseError.CreateFmt('Unexpected character U+%.04x', [Ord(c)]);
+      end;
+      c:=SkipBlanks(TrailCharacter);
+      case c of
+         ',' : c:=SkipBlanks(NeedChar);
+         ']' : break;
+      else
+         raise EdwsJSONParseError.CreateFmt('"," expected but U+%.04x encountered', [Ord(c)]);
+      end;
+   until False;
+end;
+
+// ParseStringArray
+//
+procedure TdwsJSONParserState.ParseStringArray(dest : TStringList);
+var
+   c : Char;
+   buf : String;
+begin
+   c:=SkipBlanks(' ');
+   if c<>'[' then
+      raise EdwsJSONParseError.CreateFmt('"[" expected but U+%.04x encountered', [Ord(c)]);
+   c:=SkipBlanks(NeedChar);
+   if c=']' then
+      Exit;
+   repeat
+      case c of
+         '0'..'9', '-' : begin
+            ParseJSONString(c, buf);
+            dest.Add(buf);
+         end;
+      else
+         raise EdwsJSONParseError.CreateFmt('Unexpected character U+%.04x', [Ord(c)]);
+      end;
+      c:=SkipBlanks(TrailCharacter);
+      case c of
+         ',' : c:=SkipBlanks(NeedChar);
+         ']' : break;
+      else
+         raise EdwsJSONParseError.CreateFmt('"," expected but U+%.04x encountered', [Ord(c)]);
+      end;
+   until False;
 end;
 
 // WriteJavaScriptString

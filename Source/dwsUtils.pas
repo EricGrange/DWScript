@@ -616,6 +616,12 @@ type
          procedure StoreUTF8Data(destStream : TStream); overload;
    end;
 
+   TSimpleInt64List = class(TSimpleList<Int64>)
+   end;
+
+   TSimpleDoubleList = class(TSimpleList<Double>)
+   end;
+
    TFastCompareStringList = class (TStringList)
       {$ifdef FPC}
       function DoCompareText(const s1,s2 : string) : PtrInt; override;

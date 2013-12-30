@@ -13089,12 +13089,13 @@ begin
    sysTable.TypBoolean:=TBaseBooleanSymbol.Create;
    sysTable.AddSymbol(sysTable.TypBoolean);
 
-   sysTable.TypFloat:=TBaseFloatSymbol.Create;
-   sysTable.AddSymbol(sysTable.TypFloat);
-
    sysTable.TypInteger:=TBaseIntegerSymbol.Create;
    sysTable.AddSymbol(sysTable.TypInteger);
    sysTable.AddSymbol(TDynamicArraySymbol.Create('array of integer', sysTable.TypInteger, sysTable.TypInteger));
+
+   sysTable.TypFloat:=TBaseFloatSymbol.Create;
+   sysTable.AddSymbol(sysTable.TypFloat);
+   sysTable.AddSymbol(TDynamicArraySymbol.Create('array of float', sysTable.TypFloat, sysTable.TypInteger));
 
    sysTable.TypString:=TBaseStringSymbol.Create;
    sysTable.AddSymbol(sysTable.TypString);

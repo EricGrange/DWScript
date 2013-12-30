@@ -157,6 +157,24 @@ type
       procedure Execute(info : TProgramInfo); override;
    end;
 
+   // TJSONParseIntegerArrayMethod
+   //
+   TJSONParseIntegerArrayMethod = class(TInternalStaticMethod)
+      procedure Execute(info : TProgramInfo); override;
+   end;
+
+   // TJSONParseFloatArrayMethod
+   //
+   TJSONParseFloatArrayMethod = class(TInternalStaticMethod)
+      procedure Execute(info : TProgramInfo); override;
+   end;
+
+   // TJSONParseStringArrayMethod
+   //
+   TJSONParseStringArrayMethod = class(TInternalStaticMethod)
+      procedure Execute(info : TProgramInfo); override;
+   end;
+
    // TJSONNewObject
    //
    TJSONNewObject = class(TInternalStaticMethod)
@@ -208,6 +226,9 @@ const
    SYS_JSONVARIANT = 'JSONVariant';
    SYS_JSON_STRINGIFY = 'Stringify';
    SYS_JSON_PARSE = 'Parse';
+   SYS_JSON_PARSE_INTEGER_ARRAY = 'ParseIntegerArray';
+   SYS_JSON_PARSE_FLOAT_ARRAY = 'ParseFloatArray';
+   SYS_JSON_PARSE_STRING_ARRAY = 'ParseStringArray';
    SYS_JSON_NEWOBJECT = 'NewObject';
    SYS_JSON_NEWARRAY = 'NewArray';
 
@@ -360,6 +381,16 @@ begin
    TJSONParseMethod.Create(mkClassFunction, [maStatic], SYS_JSON_PARSE,
                            ['str', SYS_STRING], SYS_JSONVARIANT,
                            jsonObject, cvPublic, table);
+   TJSONParseIntegerArrayMethod.Create(mkClassFunction, [maStatic], SYS_JSON_PARSE_INTEGER_ARRAY,
+                           ['str', SYS_STRING], 'array of integer',
+                           jsonObject, cvPublic, table);
+   TJSONParseFloatArrayMethod.Create(mkClassFunction, [maStatic], SYS_JSON_PARSE_FLOAT_ARRAY,
+                           ['str', SYS_STRING], 'array of float',
+                           jsonObject, cvPublic, table);
+   TJSONParseStringArrayMethod.Create(mkClassFunction, [maStatic], SYS_JSON_PARSE_STRING_ARRAY,
+                           ['str', SYS_STRING], 'array of string',
+                           jsonObject, cvPublic, table);
+
    TJSONNewObject.Create(mkClassFunction, [maStatic], SYS_JSON_NEWOBJECT,
                          [], SYS_JSONVARIANT,
                          jsonObject, cvPublic, table);
@@ -825,6 +856,111 @@ begin
       box:=TBoxedJSONValue.Create(TdwsJSONObject.Create)
    else box:=TBoxedJSONValue.Create(v);
    Info.ResultAsVariant:=IBoxedJSONValue(box);
+end;
+
+// ------------------
+// ------------------ TJSONParseIntegerArrayMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TJSONParseIntegerArrayMethod.Execute(info : TProgramInfo);
+var
+   tokenizer : TdwsJSONParserState;
+   values : TSimpleInt64List;
+   i : Integer;
+   newArray : TScriptDynamicArray;
+   newPData : PData;
+   s : String;
+begin
+   s:=info.ParamAsString[0];
+
+   tokenizer:=TdwsJSONParserState.Create(s);
+   values:=TSimpleInt64List.Create;
+   try
+      tokenizer.ParseIntegerArray(values);
+
+      newArray:=TScriptDynamicArray.CreateNew(info.Execution.Prog.TypInteger);
+      Info.ResultAsVariant:=IScriptObj(newArray);
+      newArray.ArrayLength:=values.Count;
+      newPData:=newArray.AsPData;
+
+      for i:=0 to newArray.ArrayLength-1 do
+         newPData^[i]:=values[i];
+   finally
+      values.Free;
+      tokenizer.Free;
+   end;
+end;
+
+// ------------------
+// ------------------ TJSONParseFloatArrayMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TJSONParseFloatArrayMethod.Execute(info : TProgramInfo);
+var
+   tokenizer : TdwsJSONParserState;
+   values : TSimpleDoubleList;
+   i : Integer;
+   newArray : TScriptDynamicArray;
+   newPData : PData;
+   s : String;
+begin
+   s:=info.ParamAsString[0];
+
+   tokenizer:=TdwsJSONParserState.Create(s);
+   values:=TSimpleDoubleList.Create;
+   try
+      tokenizer.ParseNumberArray(values);
+
+      newArray:=TScriptDynamicArray.CreateNew(info.Execution.Prog.TypInteger);
+      Info.ResultAsVariant:=IScriptObj(newArray);
+      newArray.ArrayLength:=values.Count;
+      newPData:=newArray.AsPData;
+
+      for i:=0 to newArray.ArrayLength-1 do
+         newPData^[i]:=values[i];
+   finally
+      values.Free;
+      tokenizer.Free;
+   end;
+end;
+
+// ------------------
+// ------------------ TJSONParseStringArrayMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TJSONParseStringArrayMethod.Execute(info : TProgramInfo);
+var
+   tokenizer : TdwsJSONParserState;
+   values : TStringList;
+   i : Integer;
+   newArray : TScriptDynamicArray;
+   newPData : PData;
+   s : String;
+begin
+   s:=info.ParamAsString[0];
+
+   tokenizer:=TdwsJSONParserState.Create(s);
+   values:=TStringList.Create;
+   try
+      tokenizer.ParseStringArray(values);
+
+      newArray:=TScriptDynamicArray.CreateNew(info.Execution.Prog.TypInteger);
+      Info.ResultAsVariant:=IScriptObj(newArray);
+      newArray.ArrayLength:=values.Count;
+      newPData:=newArray.AsPData;
+
+      for i:=0 to newArray.ArrayLength-1 do
+         newPData^[i]:=values[i];
+   finally
+      values.Free;
+      tokenizer.Free;
+   end;
 end;
 
 // ------------------
