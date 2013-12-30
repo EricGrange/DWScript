@@ -19,7 +19,7 @@ unit dwsWebLibModule;
 interface
 
 uses
-  SysUtils, Classes, UStandardCRCs,
+  SysUtils, Classes,
   dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList, dwsSymbols,
   SynZip;
 
