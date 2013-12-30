@@ -35,6 +35,8 @@ uses
 
 const
    SYS_PIXMAP = 'TPixmap';
+   SYS_TJPEGOption = 'TJPEGOption';
+   SYS_TJPEGOptions = 'TJPEGOptions';
 
 type
 
@@ -56,10 +58,20 @@ procedure RegisterGraphicsTypes(systemTable : TSystemSymbolTable; unitSyms : TUn
                                 unitTable : TSymbolTable);
 var
    typPixmap : TDynamicArraySymbol;
+   jpgOption : TEnumerationSymbol;
+   jpgOptions : TSetOfSymbol;
 begin
    typPixmap:=TDynamicArraySymbol.Create(SYS_PIXMAP, systemTable.TypInteger, systemTable.TypInteger);
-
    unitTable.AddSymbol(typPixmap);
+
+   jpgOption:=TEnumerationSymbol.Create(SYS_TJPEGOption, systemTable.TypInteger, enumScoped);
+   unitTable.AddSymbol(jpgOption);
+   jpgOption.AddElement(TElementSymbol.Create('Optimize', jpgOption, Ord(jpgoOptimize), False));
+   jpgOption.AddElement(TElementSymbol.Create('NoJFIFHeader', jpgOption, Ord(jpgoNoJFIFHeader), False));
+   jpgOption.AddElement(TElementSymbol.Create('Progressive', jpgOption, Ord(jpgoProgressive), False));
+
+   jpgOptions:=TSetOfSymbol.Create(SYS_TJPEGOptions, jpgOption, jpgOption.LowBound, jpgOption.HighBound);
+   unitTable.AddSymbol(jpgOptions);
 end;
 
 // ------------------
@@ -75,6 +87,7 @@ type
 var
    w, h : Integer;
    dynArray : TScriptDynamicArray;
+   jpegOptions : TJPEGOptions;
 
    {$ifdef USE_LIB_JPEG}
    procedure CompressWithLibJPEG(var Result : UnicodeString);
@@ -92,7 +105,7 @@ var
             Inc(i);
          end;
       end;
-      outBuf:=CompressJPEG(Pointer(buf), w, h, 90);
+      outBuf:=CompressJPEG(Pointer(buf), w, h, 90, jpegOptions);
       SetLength(buf, 0);
       Result:=RawByteStringToScriptString(outBuf);
    end;
@@ -125,6 +138,7 @@ var
          try
             jpg.Assign(bmp);
             jpg.CompressionQuality:=90;
+            if jpgoOp
             jpg.SaveToStream(buf);
             Result:=RawByteStringToScriptString(buf.ToRawBytes);
          finally
@@ -139,6 +153,8 @@ var
 
 var
    pixmap : IScriptObj;
+   opts : Integer;
+   jpegOption : TJPEGOption;
 begin
    args.ExprBase[0].EvalAsScriptObj(args.Exec, pixmap);
    dynArray:=(pixmap.GetSelf as TScriptDynamicArray);
@@ -146,6 +162,11 @@ begin
    h:=args.AsInteger[2];
    if w*h>dynArray.DataLength then
       raise Exception.Create('Not enough data in pixmap');
+   opts:=StrToIntDef(args.AsString[3], 0);
+   jpegOptions:=[];
+   for jpegOption:=Low(TJPEGOption) to High(TJPEGOption) do
+      if (opts and (1 shl Ord(jpegOption)))<>0 then
+         Include(jpegOptions, jpegOption);
    {$ifdef USE_LIB_JPEG}
    CompressWithLibJPEG(Result);
    {$else}
@@ -164,7 +185,8 @@ initialization
    dwsInternalUnit.AddSymbolsRegistrationProc(RegisterGraphicsTypes);
 
    RegisterInternalStringFunction(TPixmapToJPEGDataFunc, 'PixmapToJPEGData',
-         ['pixmap', SYS_PIXMAP, 'width', SYS_INTEGER, 'height', SYS_INTEGER], []);
+         ['pixmap', SYS_PIXMAP, 'width', SYS_INTEGER, 'height', SYS_INTEGER,
+          'options=', SYS_TJPEGOptions], []);
 
 end.
 

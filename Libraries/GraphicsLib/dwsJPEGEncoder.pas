@@ -26,7 +26,16 @@ uses
    dwsUtils,
    libJPEG;
 
+type
+   TJPEGOption = (
+      jpgoOptimize,        // optimize Huffman tables
+      jpgoNoJFIFHeader,    // don't write JFIF header
+      jpgoProgressive      // progressive JPEG
+      );
+   TJPEGOptions = set of TJPEGOption;
+
 function CompressJPEG(rgbData : Pointer; width, height, quality : Integer;
+                      const options : TJPEGOptions = [];
                       const comment : RawByteString = '') : RawByteString;
 
 // ------------------------------------------------------------------
@@ -113,6 +122,7 @@ end;
 // CompressJPEG
 //
 function CompressJPEG(rgbData : Pointer; width, height, quality : Integer;
+                      const options : TJPEGOptions = [];
                       const comment : RawByteString = '') : RawByteString;
 var
    wobs : TWriteOnlyBlockStream;
@@ -164,6 +174,13 @@ begin
 
       // setting defaults
       jpeg_set_defaults(@jpeg);
+
+      if jpgoOptimize in options then
+         jpeg.optimize_coding := 1;
+      if jpgoNoJFIFHeader in options then
+         jpeg.write_JFIF_header := 0; //!!!!!!!!!!!!
+      if jpgoProgressive in options then
+         jpeg_simple_progression(@jpeg);
 
       // compression quality
       jpeg_set_quality(@jpeg, quality, True);
