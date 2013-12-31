@@ -172,12 +172,22 @@ end;
 constructor TdwsSynSQLiteDataBase.Create(const parameters : array of String);
 var
    dbName : String;
+   i, flags : Integer;
 begin
    if Length(parameters)>0 then
       dbName:=TdwsDataBase.ApplyPathVariables(parameters[0])
    else dbName:=':memory:';
+
+   flags:=SQLITE_OPEN_READWRITE or SQLITE_OPEN_CREATE;
+   for i:=1 to High(parameters) do begin
+      if UnicodeSameText(parameters[i], 'read_only') then
+         flags:=SQLITE_OPEN_READONLY
+      else if UnicodeSameText(parameters[i], 'shared_cache') then
+         flags:=flags or SQLITE_OPEN_SHAREDCACHE;
+   end;
+
    try
-      FDB:=TSQLDatabase.Create(dbName);
+      FDB:=TSQLDatabase.Create(dbName, '', flags);
       FDB.BusyTimeout:=1500;
    except
       RefCount:=0;
