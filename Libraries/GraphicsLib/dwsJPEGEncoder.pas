@@ -57,16 +57,16 @@ type
 
 procedure error_exit(cinfo: j_common_ptr); cdecl;
 var
-   Msg: String;
+   msg: String;
 begin
-   SetLength(Msg, 256);
-   cinfo^.err^.format_message(cinfo, pChar(Msg));
+   SetLength(msg, 256);
+   cinfo^.err^.format_message(cinfo, PChar(msg));
 
    cinfo^.global_state := 0;
 
    jpeg_abort(cinfo);
 
-   raise Exception.CreateFmt('ERROR [%d] %s', [cinfo^.err^.msg_code, Msg]);
+   raise Exception.CreateFmt('ERROR [%d] %s', [cinfo^.err^.msg_code, msg]);
 end;
 
 
@@ -101,22 +101,20 @@ end;
 
 procedure term_destination(cinfo: j_compress_ptr); cdecl;
 var
-  Idx: Integer;
-  dest: my_dest_mgr_ptr;
+   i: Integer;
+   dest: my_dest_mgr_ptr;
 begin
-  dest := my_dest_mgr_ptr(cinfo^.dest);
+   dest := my_dest_mgr_ptr(cinfo^.dest);
 
-  for Idx := low(dest^.DestBuffer) to High(dest^.DestBuffer) do begin
-    // check for endblock
-    if (dest^.DestBuffer[Idx] = $FF) and (dest^.DestBuffer[Idx +1] = JPEG_EOI) then begin
-      // write endblock
-      dest^.DestStream.Write(dest^.DestBuffer[Idx], 2);
-
-      // leave
-      Break;
-    end else
-      dest^.DestStream.Write(dest^.DestBuffer[Idx], 1);
-  end;
+   for i := low(dest^.DestBuffer) to High(dest^.DestBuffer) do begin
+      // check for endblock
+      if (dest^.DestBuffer[i] = $FF) and (dest^.DestBuffer[i +1] = JPEG_EOI) then begin
+         // write endblock
+         dest^.DestStream.Write(dest^.DestBuffer[i], 2);
+         // leave
+         Break;
+      end else dest^.DestStream.Write(dest^.DestBuffer[i], 1);
+   end;
 end;
 
 // CompressJPEG
