@@ -29,6 +29,7 @@ uses
    {$else}
    JPEG,
    {$endif}
+   SynGdiPlus,
    dwsXPlatform, dwsUtils, dwsStrings,
    dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList, dwsUnitSymbols,
    dwsConstExprs, dwsMagicExprs, dwsDataContext;
@@ -41,6 +42,9 @@ const
 type
 
    TPixmapToJPEGDataFunc = class(TInternalMagicStringFunction)
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+   end;
+   TPixmapToPNGDataFunc = class(TInternalMagicStringFunction)
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
 
@@ -75,7 +79,7 @@ begin
 end;
 
 // ------------------
-// ------------------ TFileOpenFunc ------------------
+// ------------------ TPixmapToJPEGDataFunc ------------------
 // ------------------
 
 // DoEvalAsString
@@ -85,7 +89,7 @@ type
    TRGB24 = record r, g, b : Byte; end;
    PRGB24 = ^TRGB24;
 var
-   w, h : Integer;
+   w, h, quality : Integer;
    dynArray : TScriptDynamicArray;
    jpegOptions : TJPEGOptions;
 
@@ -105,7 +109,7 @@ var
             Inc(i);
          end;
       end;
-      outBuf:=CompressJPEG(Pointer(buf), w, h, 90, jpegOptions);
+      outBuf:=CompressJPEG(Pointer(buf), w, h, quality, jpegOptions);
       SetLength(buf, 0);
       Result:=RawByteStringToScriptString(outBuf);
    end;
@@ -137,7 +141,7 @@ var
          buf:=TWriteOnlyBlockStream.AllocFromPool;
          try
             jpg.Assign(bmp);
-            jpg.CompressionQuality:=90;
+            jpg.CompressionQuality:=quality;
             if jpgoOp
             jpg.SaveToStream(buf);
             Result:=RawByteStringToScriptString(buf.ToRawBytes);
@@ -162,7 +166,8 @@ begin
    h:=args.AsInteger[2];
    if w*h>dynArray.DataLength then
       raise Exception.Create('Not enough data in pixmap');
-   opts:=StrToIntDef(args.AsString[3], 0);
+   quality:=args.AsInteger[3];
+   opts:=StrToIntDef(args.AsString[4], 0);
    jpegOptions:=[];
    for jpegOption:=Low(TJPEGOption) to High(TJPEGOption) do
       if (opts and (1 shl Ord(jpegOption)))<>0 then
@@ -172,6 +177,70 @@ begin
    {$else}
    CompressWithTJPEGImage(Result);
    {$endif}
+end;
+
+// ------------------
+// ------------------ TPixmapToPNGDataFunc ------------------
+// ------------------
+
+// DoEvalAsString
+//
+procedure TPixmapToPNGDataFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+type
+   TRGB24 = record r, g, b : Byte; end;
+   PRGB24 = ^TRGB24;
+var
+   w, h : Integer;
+   dynArray : TScriptDynamicArray;
+
+   procedure CompressWithGDIPlus(var Result : UnicodeString);
+   var
+      i, x, y, c : Integer;
+      bmp : TBitmap;
+      scanLine : PRGB24;
+      buf : TWriteOnlyBlockStream;
+   begin
+      if Gdip=nil then
+         Gdip := TGDIPlus.Create('gdiplus.dll');
+      bmp:=TBitmap.Create;
+      try
+         bmp.PixelFormat:=pf24bit;
+         bmp.Width:=w;
+         bmp.Height:=h;
+         i:=0;
+         for y:=0 to h-1 do begin
+            scanLine:=bmp.ScanLine[y];
+            for x:=0 to w-1 do begin
+               c:=dynArray.AsInteger[i];
+               scanLine^.r:=PRGB24(@c)^.b;
+               scanLine^.g:=PRGB24(@c)^.g;
+               scanLine^.b:=PRGB24(@c)^.r;
+               Inc(i);
+               Inc(scanLine);
+            end;
+         end;
+         buf:=TWriteOnlyBlockStream.AllocFromPool;
+         try
+            SaveAs(bmp, buf, gptPNG);
+            Result:=RawByteStringToScriptString(buf.ToRawBytes);
+         finally
+            buf.ReturnToPool;
+         end;
+      finally
+         bmp.Free;
+      end;
+   end;
+
+var
+   pixmap : IScriptObj;
+begin
+   args.ExprBase[0].EvalAsScriptObj(args.Exec, pixmap);
+   dynArray:=(pixmap.GetSelf as TScriptDynamicArray);
+   w:=args.AsInteger[1];
+   h:=args.AsInteger[2];
+   if w*h>dynArray.DataLength then
+      raise Exception.Create('Not enough data in pixmap');
+   CompressWithGDIPlus(Result);
 end;
 
 // ------------------------------------------------------------------
@@ -186,7 +255,9 @@ initialization
 
    RegisterInternalStringFunction(TPixmapToJPEGDataFunc, 'PixmapToJPEGData',
          ['pixmap', SYS_PIXMAP, 'width', SYS_INTEGER, 'height', SYS_INTEGER,
-          'options=', SYS_TJPEGOptions], []);
+          'quality=90', SYS_INTEGER, 'options=', SYS_TJPEGOptions], []);
+   RegisterInternalStringFunction(TPixmapToPNGDataFunc, 'PixmapToPNGData',
+         ['pixmap', SYS_PIXMAP, 'width', SYS_INTEGER, 'height', SYS_INTEGER], []);
 
 end.
 
