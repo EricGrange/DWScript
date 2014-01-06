@@ -59,6 +59,10 @@ type
       function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
 
+   TWriteGlobalVarExpireFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
+   end;
+
    TIncrementGlobalVarFunc = class(TInternalMagicIntFunction)
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
@@ -118,7 +122,7 @@ type
    end;
 
 {: Directly write a global var.<p> }
-function WriteGlobalVar(const aName: UnicodeString; const aValue: Variant) : Boolean;
+function WriteGlobalVar(const aName: UnicodeString; const aValue: Variant; expirationSeconds : Double) : Boolean;
 {: Directly read a global var.<p> }
 function ReadGlobalVar(const aName: UnicodeString): Variant; inline;
 function TryReadGlobalVar(const aName: UnicodeString; var value: Variant): Boolean;
@@ -172,6 +176,7 @@ type
    TGlobalVar = class(TObject)
       private
          Value: Variant;
+         Expire: Int64;
 
          procedure WriteToFiler(writer: TWriter; const Name : UnicodeString);
          procedure ReadFromFiler(reader: TReader; var Name : UnicodeString);
@@ -194,13 +199,18 @@ var
 
 const
    cGlobalVarsFiles : AnsiString = 'GBF 2.0';
+   cGlobalVarsLarge = 1024;
 
 // WriteGlobalVar
 //
-function WriteGlobalVar(const aName : UnicodeString; const aValue : Variant) : Boolean;
+function WriteGlobalVar(const aName : UnicodeString; const aValue : Variant; expirationSeconds : Double) : Boolean;
 var
    gv : TGlobalVar;
+   expire : Int64;
 begin
+   if expirationSeconds>0 then
+      expire:=GetSystemMilliseconds+Round(expirationSeconds*1000)
+   else expire:=0;
    vGlobalVarsCS.BeginWrite;
    try
       gv:=vGlobalVars.Objects[aName];
@@ -215,6 +225,7 @@ begin
          if Result then
             gv.Value:=aValue;
       end;
+      gv.Expire:=expire;
    finally
       vGlobalVarsCS.EndWrite;
    end;
@@ -244,7 +255,9 @@ begin
          gv.Value:=delta;
          Result:=delta;
       end else begin
-         Result:=delta+gv.Value;
+         if (gv.Expire=0) or (gv.Expire>GetSystemMilliseconds) then
+            Result:=delta+gv.Value
+         else Result:=delta;
          gv.Value:=Result;
       end;
    finally
@@ -270,7 +283,8 @@ begin
    vGlobalVarsCS.BeginRead;
    try
       gv:=vGlobalVars.Objects[aName];
-      if gv<>nil then begin
+      if     (gv<>nil)
+         and ((gv.Expire=0) or (gv.Expire>GetSystemMilliseconds)) then begin
          value:=gv.Value;
          Result:=True;
       end else Result:=False;
@@ -289,7 +303,6 @@ begin
    try
       gv:=vGlobalVars.Objects[aName];
       if gv<>nil then begin
-         gv.Free;
          vGlobalVars.Objects[aName]:=nil;
          vGlobalVarsNamesCache:='';
          Result:=True;
@@ -297,6 +310,7 @@ begin
    finally
       vGlobalVarsCS.EndWrite;
    end;
+   gv.Free;
 end;
 
 // CleanupGlobalVars
@@ -307,6 +321,7 @@ var
    mask : TMask;
    gv : TGlobalVar;
    rehash : TNameGlobalVarHash;
+   expire : Int64;
 begin
    if filter='*' then begin
       vGlobalVarsCS.BeginWrite;
@@ -317,7 +332,10 @@ begin
          vGlobalVarsCS.EndWrite;
       end;
    end else begin
-      mask:=TMask.Create(filter);
+      expire:=GetSystemMilliseconds;
+      if filter='' then
+         mask:=nil
+      else mask:=TMask.Create(filter);
       vGlobalVarsCS.BeginWrite;
       try
          n:=0;
@@ -325,22 +343,32 @@ begin
             gv:=vGlobalVars.BucketObject[i];
             if gv=nil then
                Inc(n)
-            else if mask.Matches(vGlobalVars.BucketName[i]) then begin
+            else if    ((gv.Expire>0) and (gv.Expire<expire))
+                    or ((mask<>nil) and mask.Matches(vGlobalVars.BucketName[i])) then begin
                gv.Free;
                vGlobalVars.BucketObject[i]:=nil;
                Inc(n);
             end;
          end;
-         // if 4/5 of the hash are nil, then rehash
-         if 5*n>=4*vGlobalVars.Capacity then begin
-            rehash:=TNameGlobalVarHash.Create;
-            for i:=0 to vGlobalVars.Capacity-1 do begin
-               gv:=vGlobalVars.BucketObject[i];
-               if gv<>nil then
-                  rehash.Objects[vGlobalVars.BucketName[i]]:=gv;
+         // if hash is large and 75% or more of the hash slots are nil, then rehash
+         if (vGlobalVars.Capacity>cGlobalVarsLarge) and (4*n>3*vGlobalVars.Capacity) then begin
+            // compute required capacity after rehash taking into account a 25% margin
+            // (or 33%, depending on which way you look at the percentage)
+            n:=vGlobalVars.Capacity-n;
+            n:=2*(n+n div 3)+1;
+            i:=vGlobalVars.Capacity;
+            while i>n do
+               i:=i shr 1;
+            if i<vGlobalVars.Capacity then begin
+               rehash:=TNameGlobalVarHash.Create(i);
+               for i:=0 to vGlobalVars.Capacity-1 do begin
+                  gv:=vGlobalVars.BucketObject[i];
+                  if gv<>nil then
+                     rehash.Objects[vGlobalVars.BucketName[i]]:=gv;
+               end;
+               vGlobalVars.Free;
+               vGlobalVars:=rehash;
             end;
-            vGlobalVars.Free;
-            vGlobalVars:=rehash;
          end;
          vGlobalVarsNamesCache:='';
       finally
@@ -416,7 +444,9 @@ var
    i : Integer;
    writer : TWriter;
    gv : TGlobalVar;
+   expire : Int64;
 begin
+   expire:=GetSystemMilliseconds;
    writer:=TWriter.Create(destStream, 16384);
    try
       writer.Write(cGlobalVarsFiles[1], Length(cGlobalVarsFiles));
@@ -426,7 +456,8 @@ begin
       try
          for i:=0 to vGlobalVars.Capacity-1 do begin
             gv:=vGlobalVars.BucketObject[i];
-            if gv<>nil then
+            if     (gv<>nil)
+               and ((gv.Expire=0) or (gv.Expire<expire)) then
                gv.WriteToFiler(writer, vGlobalVars.BucketName[i]);
          end;
       finally
@@ -804,7 +835,14 @@ end;
 
 function TWriteGlobalVarFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
-   Result:=WriteGlobalVar(args.AsString[0], args.ExprBase[1].Eval(args.Exec));
+   Result:=WriteGlobalVar(args.AsString[0], args.ExprBase[1].Eval(args.Exec), 0);
+end;
+
+{ TWriteGlobalVarExpireFunc }
+
+function TWriteGlobalVarExpireFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+begin
+   Result:=WriteGlobalVar(args.AsString[0], args.ExprBase[1].Eval(args.Exec), args.AsFloat[2]);
 end;
 
 { TIncrementGlobalVarFunc }
@@ -966,7 +1004,8 @@ initialization
    RegisterInternalFunction(TReadGlobalVarFunc, 'ReadGlobalVar', ['n', SYS_STRING], SYS_VARIANT);
    RegisterInternalFunction(TReadGlobalVarDefFunc, 'ReadGlobalVarDef', ['n', SYS_STRING, 'd', SYS_VARIANT], SYS_VARIANT);
    RegisterInternalBoolFunction(TTryReadGlobalVarFunc, 'TryReadGlobalVar', ['n', SYS_STRING, '@v', SYS_VARIANT]);
-   RegisterInternalBoolFunction(TWriteGlobalVarFunc, 'WriteGlobalVar', ['n', SYS_STRING, 'v', SYS_VARIANT]);
+   RegisterInternalBoolFunction(TWriteGlobalVarFunc, 'WriteGlobalVar', ['n', SYS_STRING, 'v', SYS_VARIANT], [iffOverloaded]);
+   RegisterInternalBoolFunction(TWriteGlobalVarExpireFunc, 'WriteGlobalVar', ['n', SYS_STRING, 'v', SYS_VARIANT, 'e', SYS_FLOAT], [iffOverloaded]);
    RegisterInternalIntFunction(TIncrementGlobalVarFunc, 'IncrementGlobalVar', ['n', SYS_STRING, 'i=1', SYS_INTEGER]);
    RegisterInternalBoolFunction(TDeleteGlobalVarFunc, 'DeleteGlobalVar', ['n', SYS_STRING]);
    RegisterInternalProcedure(TCleanupGlobalVarsFunc, 'CleanupGlobalVars', ['filter=*', SYS_STRING]);

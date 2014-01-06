@@ -397,6 +397,8 @@ type
          function GetBucketName(index : Integer) : String;
 
       public
+         constructor Create(initialCapacity : Integer = 0);
+
          function AddObject(const aName : UnicodeString; aObj : T; replace : Boolean = False) : Boolean;
 
          procedure Clean;
@@ -3251,6 +3253,19 @@ end;
 // ------------------
 // ------------------ TSimpleNameObjectHash<T> ------------------
 // ------------------
+
+// Create
+//
+constructor TSimpleNameObjectHash<T>.Create(initialCapacity : Integer = 0);
+begin
+   if initialCapacity>0 then begin
+      // check if initial capacity is a power of two
+      Assert((initialCapacity and (initialCapacity-1))=0);
+
+      FCapacity:=initialCapacity;
+      SetLength(FBuckets, FCapacity);
+   end;
+end;
 
 // Grow
 //
