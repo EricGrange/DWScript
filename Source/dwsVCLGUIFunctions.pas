@@ -24,7 +24,7 @@ unit dwsVCLGUIFunctions;
 interface
 
 uses
-   Windows, Forms, Dialogs, Classes,
+   Windows, Forms, Dialogs, Classes, Controls,
    dwsUtils, dwsStrings,
    dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs, dwsExprList;
 
@@ -36,6 +36,10 @@ type
 
   TInputBoxFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+  end;
+
+  TConfirmDlgFunc = class(TInternalMagicBoolFunction)
+    function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
   end;
 
   TdwsGUIFunctions = class(TComponent)
@@ -61,9 +65,17 @@ begin
    Result:=InputBox(args.AsString[0], args.AsString[1], args.AsString[2]);
 end;
 
+{ TConfirmDlgFunc }
+
+function TConfirmDlgFunc.DoEvalAsBoolean(const args: TExprBaseListExec): Boolean;
+begin
+  Result := MessageDlg(args.AsString[0], mtConfirmation, [mbYes, mbNo], 0) = mrYes;
+end;
+
 initialization
 
    RegisterInternalProcedure(TShowMessageFunc, 'ShowMessage', ['msg', SYS_STRING]);
    RegisterInternalStringFunction(TInputBoxFunc, 'InputBox', ['aCaption', SYS_STRING, 'aPrompt', SYS_STRING, 'aDefault', SYS_STRING]);
-  
+   RegisterInternalBoolFunction(TConfirmDlgFunc, 'ConfirmDialog', ['msg', SYS_STRING]);
+
 end.
