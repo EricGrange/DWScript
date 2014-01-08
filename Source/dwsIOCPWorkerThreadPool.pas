@@ -85,8 +85,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-function GetTickCount64: Int64; StdCall; external 'Kernel32.dll' name 'GetTickCount64';
-
 const
    WORK_UNIT_TERMINATE = 0;
    WORK_UNIT_ANONYMOUS = 1;
@@ -212,9 +210,9 @@ var
 begin
    WorkerCount:=0;
 
-   t:=GetTickCount64;
+   t:=GetSystemMilliseconds;
 
-   while (LiveWorkerCount>0) and (GetTickCount64-t<timeoutMilliSeconds) do
+   while (LiveWorkerCount>0) and (GetSystemMilliseconds-t<timeoutMilliSeconds) do
       Sleep(10);
 end;
 

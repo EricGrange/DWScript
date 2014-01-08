@@ -142,6 +142,7 @@ type
       {$ENDIF}
    end;
 
+// 64bit system clock reference in milliseconds, absolute value is maningless
 function GetSystemMilliseconds : Int64;
 function UTCDateTime : TDateTime;
 
@@ -234,9 +235,9 @@ type
    TFindExInfoLevels = FINDEX_INFO_LEVELS;
 {$endif}
 
-// GetSystemMilliseconds
+// GetSystemTimeMilliseconds
 //
-function GetSystemMilliseconds : Int64;
+function GetSystemTimeMilliseconds : Int64; stdcall;
 var
    fileTime : TFileTime;
 begin
@@ -246,6 +247,34 @@ begin
 {$ELSE}
    Not yet implemented!
 {$ENDIF}
+end;
+
+// GetSystemMilliseconds
+//
+var
+   vGetSystemMilliseconds : function : Int64; stdcall;
+function GetSystemMilliseconds : Int64;
+{$ifdef WIN32_ASM}
+asm
+   jmp [vGetSystemMilliseconds]
+{$else}
+begin
+   Result:=vGetSystemMilliseconds;
+{$endif}
+end;
+
+// InitializeGetSystemMilliseconds
+//
+procedure InitializeGetSystemMilliseconds;
+var
+   h : THandle;
+begin
+   {$IFDEF WINDOWS}
+   h:=LoadLibrary('kernel32.dll');
+   vGetSystemMilliseconds:=GetProcAddress(h, 'GetTickCount64');
+   {$ENDIF}
+   if not Assigned(vGetSystemMilliseconds) then
+      vGetSystemMilliseconds:=@GetSystemTimeMilliseconds;
 end;
 
 // UTCDateTime
@@ -1057,5 +1086,15 @@ begin
       FCS.Leave
    else ReleaseSRWLockExclusive(FSRWLock)
 end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   InitializeGetSystemMilliseconds;
 
 end.
