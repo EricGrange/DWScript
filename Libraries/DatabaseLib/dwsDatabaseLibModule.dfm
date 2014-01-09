@@ -1,5 +1,7 @@
 object dwsDatabaseLib: TdwsDatabaseLib
   OldCreateOrder = False
+  OnCreate = DataModuleCreate
+  OnDestroy = DataModuleDestroy
   Left = 646
   Top = 86
   Height = 150
@@ -374,6 +376,58 @@ object dwsDatabaseLib: TdwsDatabaseLib
       item
         Name = 'EDBException'
         Ancestor = 'Exception'
+      end
+      item
+        Name = 'DataBasePool'
+        IsStatic = True
+        Methods = <
+          item
+            Name = 'Acquire'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end>
+            ResultType = 'DataBase'
+            Attributes = [maStatic]
+            OnEval = dwsDatabaseClassesDataBasePoolMethodsAcquireEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'Release'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end
+              item
+                Name = 'db'
+                DataType = 'DataBase'
+                IsVarParam = True
+              end
+              item
+                Name = 'poolSize'
+                DataType = 'Integer'
+                HasDefaultValue = True
+                DefaultValue = 3
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsDatabaseClassesDataBasePoolMethodsReleaseEval
+            Kind = mkClassProcedure
+          end
+          item
+            Name = 'Cleanup'
+            Parameters = <
+              item
+                Name = 'filter'
+                DataType = 'String'
+                HasDefaultValue = True
+                DefaultValue = '*'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsDatabaseClassesDataBasePoolMethodsCleanupEval
+            Kind = mkClassProcedure
+          end>
       end>
     Enumerations = <
       item

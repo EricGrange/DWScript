@@ -3,8 +3,8 @@ unit dwsDatabaseLibModule;
 interface
 
 uses
-  SysUtils, Classes,
-  dwsStrings, dwsUtils, dwsExprList,
+  SysUtils, Classes, Masks,
+  dwsStrings, dwsUtils, dwsExprList, dwsXPlatform,
   dwsComp, dwsExprs, dwsSymbols, dwsStack, dwsDatabase, dwsJSON, dwsErrors;
 
 type
@@ -84,12 +84,23 @@ type
       ExtObject: TObject);
     procedure dwsDatabaseClassesDataSetMethodsAsBlobByIndexEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsDatabaseClassesDataBasePoolMethodsAcquireEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure DataModuleCreate(Sender: TObject);
+    procedure DataModuleDestroy(Sender: TObject);
+    procedure dwsDatabaseClassesDataBasePoolMethodsReleaseEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsDatabaseClassesDataBasePoolMethodsCleanupEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     procedure SetScript(aScript : TDelphiWebScript);
     procedure RaiseDBException(Info: TProgramInfo; const msg : String);
+
   public
     { Public declarations }
+    procedure CleanupDataBasePool(const filter : String = '*');
+
     property Script : TDelphiWebScript write SetScript;
   end;
 
@@ -120,6 +131,11 @@ type
    TDataField = class
       Intf : IdwsDataField;
    end;
+
+var
+   vPools : TSimpleNameObjectHash<TSimpleQueue<IdwsDataBase>>;
+   vPoolsCS : TMultiReadSingleWrite;
+   vPoolsCount : Integer;
 
 // IndexOfField
 //
@@ -220,6 +236,27 @@ begin
    end;
 end;
 
+procedure TdwsDatabaseLib.DataModuleCreate(Sender: TObject);
+begin
+   vPoolsCS.BeginWrite;
+   if vPoolsCount=0 then
+      vPools:=TSimpleNameObjectHash<TSimpleQueue<IdwsDataBase>>.Create;
+   Inc(vPoolsCount);
+   vPoolsCS.EndWrite;
+end;
+
+procedure TdwsDatabaseLib.DataModuleDestroy(Sender: TObject);
+begin
+   vPoolsCS.BeginWrite;
+   Dec(vPoolsCount);
+   if vPoolsCount=0 then begin
+      vPools.Clean;
+      vPools.Free;
+      vPools:=nil;
+   end;
+   vPoolsCS.EndWrite;
+end;
+
 // SetScript
 //
 procedure TdwsDatabaseLib.SetScript(aScript : TDelphiWebScript);
@@ -236,6 +273,105 @@ begin
    exceptObj:=Info.Vars['EDBException'].Method[SYS_TOBJECT_CREATE].Call([msg]).ScriptObj;
    (exceptObj.ExternalObject as TdwsExceptionContext).Skip(1); // temporary constructor expression
    Info.RaiseExceptObj(msg, exceptObj);
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBasePoolMethodsAcquireEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   name : String;
+   db : IdwsDataBase;
+   dbo : TDataBase;
+   q : TSimpleQueue<IdwsDataBase>;
+   obj : TScriptObjInstance;
+begin
+   name:=Info.ParamAsString[0];
+   vPoolsCS.BeginWrite;
+   try
+      q:=vPools[name];
+      if q<>nil then
+         q.Pull(db);
+   finally
+      vPoolsCS.EndWrite;
+   end;
+   if Assigned(db) then begin
+      obj:=TScriptObjInstance.Create(Info.FuncSym.Typ as TClassSymbol, Info.Execution);
+      dbo:=TDataBase.Create;
+      obj.ExternalObject:=dbo;
+      dbo.Intf:=db;
+      Info.ResultAsVariant:=IScriptObj(obj);
+   end else Info.ResultAsVariant:=IScriptObj(nil);
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBasePoolMethodsReleaseEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   name : String;
+   obj : TObject;
+   nb : Integer;
+   db : IdwsDataBase;
+   q : TSimpleQueue<IdwsDataBase>;
+begin
+   name:=Info.ParamAsString[0];
+   obj:=Info.ParamAsObject[1];
+   nb:=Info.ParamAsInteger[2];
+   if obj is TDataBase then
+      db:=TDataBase(obj).Intf;
+   Info.ParamAsVariant[1]:=IUnknown(nil);
+   vPoolsCS.BeginWrite;
+   try
+      q:=vPools[name];
+      if q=nil then begin
+         if db=nil then Exit;
+         q:=TSimpleQueue<IdwsDataBase>.Create;
+         vPools[name]:=q;
+      end;
+      if db<>nil then
+         q.Push(db);
+      while q.Count>nb do
+         q.Pull(db);
+   finally
+      vPoolsCS.EndWrite;
+   end;
+end;
+
+procedure TdwsDatabaseLib.CleanupDataBasePool(const filter : String = '*');
+var
+   i : Integer;
+   mask : TMask;
+   q, detached : TSimpleQueue<IdwsDataBase>;
+   db : IdwsDataBase;
+begin
+   detached:=TSimpleQueue<IdwsDataBase>.Create;
+   mask:=TMask.Create(filter);
+   try
+      vPoolsCS.BeginWrite;
+      try
+         for i:=0 to vPools.Capacity-1 do begin
+            q:=vPools.BucketObject[i];
+            if q=nil then continue;
+            if mask.Matches(vPools.BucketName[i]) then begin
+               while q.Pull(db) do
+                  detached.Push(db);
+            end;
+            if q.Count=0 then begin
+               q.Free;
+               vPools.BucketObject[i]:=nil;
+            end;
+         end;
+      finally
+         vPoolsCS.EndWrite;
+      end;
+      while detached.Pull(db) do ;
+   finally
+      mask.Free;
+      detached.Free;
+   end;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBasePoolMethodsCleanupEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   CleanupDataBasePool(Info.ParamAsString[0]);
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseCleanUp(
@@ -295,6 +431,7 @@ var
    scriptObj : IScriptObj;
    dynArray : TScriptDynamicArray;
    ids : IdwsDataSet;
+   dbo : TDataBase;
    dataFieldConstructor : IInfo;
    dataSetInfo, dataFieldInfo : IInfo;
    dataSet : TDataSet;
@@ -306,7 +443,8 @@ begin
    scriptObj:=Info.Vars['parameters'].ScriptObj;
    dynArray:=(scriptObj.GetSelf as TScriptDynamicArray);
 
-   ids:=(ExtObject as TDataBase).Intf.Query(Info.ParamAsString[0], dynArray.AsData);
+   dbo:=(ExtObject as TDataBase);
+   ids:=dbo.Intf.Query(Info.ParamAsString[0], dynArray.AsData);
 
    dataSetInfo:=Info.Vars['DataSet'].Method['Create'].Call;
 
@@ -535,5 +673,20 @@ function TdwsDatabaseLib.dwsDatabaseFunctionsBlobParameterFastEval(
 begin
    Result:=args.AsDataString[0];
 end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   vPoolsCS:=TMultiReadSingleWrite.Create;
+
+finalization
+
+   vPoolsCS.Free;
+   vPoolsCS:=nil;
 
 end.
