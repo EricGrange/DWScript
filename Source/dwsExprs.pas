@@ -1587,6 +1587,7 @@ type
 
          function GetParamAsPVariant(index : Integer) : PVariant;
          function GetParamAsVariant(index : Integer) : Variant;
+         procedure SetParamAsVariant(index : Integer; const v : Variant);
          function GetParamAsInteger(index : Integer) : Int64;
          procedure SetParamAsInteger(index : Integer; const v : Int64);
          function GetParamAsString(index : Integer) : UnicodeString;
@@ -1636,7 +1637,7 @@ type
          property ValueAsTStrings[const s : UnicodeString] : TStrings read GetValueAsTStrings;
 
          property ParamAsPVariant[index : Integer] : PVariant read GetParamAsPVariant;
-         property ParamAsVariant[index : Integer] : Variant read GetParamAsVariant;
+         property ParamAsVariant[index : Integer] : Variant read GetParamAsVariant write SetParamAsVariant;
          property ParamAsInteger[index : Integer] : Int64 read GetParamAsInteger write SetParamAsInteger;
          property ParamAsString[index : Integer] : UnicodeString read GetParamAsString;
          property ParamAsDataString[index : Integer] : RawByteString read GetParamAsDataString write SetParamAsDataString;
@@ -1668,6 +1669,7 @@ type
       public
          property NextObject : TScriptObj read FNextObject write FNextObject;
          property PrevObject : TScriptObj read FPrevObject write FPrevObject;
+         property ExternalObject : TObject read GetExternalObject write SetExternalObject;
    end;
 
    TScriptObjInstance = class (TScriptObj, IScriptObj)
@@ -6013,6 +6015,16 @@ end;
 function TProgramInfo.GetParamAsVariant(index : Integer) : Variant;
 begin
    Result:=GetParamAsPVariant(index)^;
+end;
+
+// SetParamAsVariant
+//
+procedure TProgramInfo.SetParamAsVariant(index : Integer; const v : Variant);
+var
+   p : PVariant;
+begin
+   p:=GetParamAsPVariant(index);
+   p^:=v;
 end;
 
 // GetParamAsInteger
