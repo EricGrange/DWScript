@@ -488,6 +488,46 @@ type
 
    TdwsFunctionsClass = class of TdwsFunctions;
 
+  // It would have better sense to derive both TdwsFunctionSymbol and TdwsDelegate
+  // from a common ancestor.
+  TdwsDelegate = class(TdwsSymbol)
+  private
+    FResultType : TDataType;
+    FParameters : TdwsParameters;
+    FDeprecated : UnicodeString;
+
+  protected
+    function GetDisplayName: String; override;
+    procedure SetResultType(const Value: TDataType); virtual;
+    procedure SetParameters(const Value: TdwsParameters);
+    function StoreParameters : Boolean;
+    function Parse(const Value : UnicodeString): UnicodeString; override;
+
+  public
+    constructor Create(Collection: TCollection); override;
+    destructor Destroy; override;
+
+    procedure Assign(Source: TPersistent); override;
+
+    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+    function GetParameters(Table: TSymbolTable): TParamArray;
+
+  published
+    property Parameters : TdwsParameters read FParameters write SetParameters stored StoreParameters;
+    property ResultType : TDataType read FResultType write SetResultType;
+    property Deprecated : UnicodeString read FDeprecated write FDeprecated;
+  end;
+
+  TdwsDelegates = class(TdwsCollection)
+  protected
+    class function GetSymbolClass : TdwsSymbolClass; override;
+  public
+    function Add: TdwsDelegate; overload; inline;
+    function Add(const Name: UnicodeString; const ResultType: UnicodeString = '') : TdwsDelegate; overload;
+  end;
+
+  TdwsDelegatesClass = class of TdwsDelegates;
+
    TdwsArray = class(TdwsSymbol)
       private
          FDataType: TDataType;
@@ -1165,6 +1205,7 @@ type
         FSets: TdwsSets;
         FForwards: TdwsForwards;
         FFunctions: TdwsFunctions;
+        FDelegates: TdwsDelegates;
         FInstances: TdwsInstances;
         FRecords: TdwsRecords;
         FInterfaces : TdwsInterfaces;
@@ -1176,7 +1217,7 @@ type
         FParseName : TdwsParseName;
 
       protected
-        FCollections : array[0..12] of TdwsCollection;
+        FCollections : array[0..13] of TdwsCollection;
 
         class function GetArraysClass : TdwsArraysClass; virtual;
         class function GetClassesClass : TdwsClassesClass; virtual;
@@ -1185,6 +1226,7 @@ type
         class function GetSetsClass : TdwsSetsClass; virtual;
         class function GetForwardsClass : TdwsForwardsClass; virtual;
         class function GetFunctionsClass : TdwsFunctionsClass; virtual;
+        class function GetDelegatesClass : TdwsDelegatesClass; virtual;
         class function GetInstancesClass : TdwsInstancesClass; virtual;
         class function GetRecordsClass : TdwsRecordsClass; virtual;
         class function GetInterfacesClass : TdwsInterfacesClass; virtual;
@@ -1199,6 +1241,7 @@ type
         procedure SetSets(const Value: TdwsSets);
         procedure SetForwards(const Value: TdwsForwards);
         procedure SetFunctions(const Value: TdwsFunctions);
+        procedure SetDelegates(const Value: TdwsDelegates);
         procedure SetRecords(const Value: TdwsRecords);
         procedure SetInterfaces(const value : TdwsInterfaces);
         procedure SetVariables(const Value: TdwsVariables);
@@ -1213,6 +1256,7 @@ type
         function StoreSets : Boolean;
         function StoreForwards : Boolean;
         function StoreFunctions : Boolean;
+        function StoreDelegates : Boolean;
         function StoreRecords : Boolean;
         function StoreInterfaces : Boolean;
         function StoreVariables : Boolean;
@@ -1254,6 +1298,7 @@ type
         property Sets: TdwsSets read FSets write SetSets stored StoreSets;
         property Forwards: TdwsForwards read FForwards write SetForwards stored StoreForwards;
         property Functions: TdwsFunctions read FFunctions write SetFunctions stored StoreFunctions;
+        property Delegates: TdwsDelegates read FDelegates write SetDelegates stored StoreDelegates;
         property Instances: TdwsInstances read FInstances write SetInstances stored StoreInstances;
         property Operators : TdwsOperators read FOperators write SetOperators stored StoreOperators;
         property Records : TdwsRecords read FRecords write SetRecords stored StoreRecords;
@@ -1752,6 +1797,7 @@ begin
    FSets := GetSetsClass.Create(Self);
    FForwards := GetForwardsClass.Create(Self);
    FFunctions := GetFunctionsClass.Create(Self);
+   FDelegates := GetDelegatesClass.Create(Self);
    FRecords := GetRecordsClass.Create(Self);
    FInterfaces := GetInterfacesClass.Create(Self);
    FVariables := GetVariablesClass.Create(Self);
@@ -1772,6 +1818,7 @@ begin
    FCollections[10] := FInstances;
    FCollections[11] := FOperators;
    FCollections[12] := FSets;
+   FCollections[13] := FDelegates;
 
    FParseName := pnAtDesignTimeOnly;
 end;
@@ -1896,6 +1943,15 @@ begin
     for y := 0 to coll.Count - 1 do
       List.Add(coll.Items[y].Name);
   end;
+  // ...and delegates
+  coll := FCollections[13];
+  for y := 0 to coll.Count - 1 do
+    List.Add(coll.Items[y].Name);
+end;
+
+class function TdwsUnit.GetDelegatesClass: TdwsDelegatesClass;
+begin
+  Result := TdwsDelegates;
 end;
 
 function TdwsUnit.GetSymbol(Table: TSymbolTable; const Name: UnicodeString): TSymbol;
@@ -1953,6 +2009,11 @@ end;
 procedure TdwsUnit.SetConstants(const Value: TdwsConstants);
 begin
   FConstants.Assign(Value);
+end;
+
+procedure TdwsUnit.SetDelegates(const Value: TdwsDelegates);
+begin
+  FDelegates.Assign(Value);
 end;
 
 procedure TdwsUnit.SetForwards(const Value: TdwsForwards);
@@ -2097,6 +2158,11 @@ end;
 function TdwsUnit.StoreConstants : Boolean;
 begin
    Result:=FConstants.Count>0;
+end;
+
+function TdwsUnit.StoreDelegates: Boolean;
+begin
+  Result := (FDelegates.Count > 0);
 end;
 
 // StoreEnumerations
@@ -5789,6 +5855,281 @@ begin
    if Assigned(FOnGetLocalizer) then
       FOnGetLocalizer(Self, Result);
 end;
+
+// -----------------------------------------------------------------------------
+//
+//          TdwsDelegate
+//
+// -----------------------------------------------------------------------------
+
+procedure TdwsDelegate.Assign(Source: TPersistent);
+begin
+  inherited;
+  if (Source is TdwsDelegate) then
+  begin
+    FResultType := TdwsDelegate(Source).ResultType;
+    FParameters.Assign(TdwsDelegate(Source).Parameters);
+    FDeprecated := TdwsDelegate(Source).Deprecated;
+  end;
+end;
+
+// -----------------------------------------------------------------------------
+
+constructor TdwsDelegate.Create(Collection: TCollection);
+begin
+  inherited;
+  FParameters := TdwsParameters.Create(Self);
+end;
+
+// -----------------------------------------------------------------------------
+
+destructor TdwsDelegate.Destroy;
+begin
+  FParameters.Free;
+  inherited;
+end;
+
+// -----------------------------------------------------------------------------
+
+function TdwsDelegate.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol): TSymbol;
+var
+  FuncSym: TFuncSymbol;
+  FuncKind: TFuncKind;
+  Params: TParamArray;
+begin
+  FIsGenerating := True;
+  CheckName(Table, Name);
+
+  if (ResultType <> '') then
+  begin
+    GetDataType(Table, ResultType);
+    FuncKind := fkFunction;
+  end else
+    FuncKind := fkProcedure;
+
+  FuncSym := TFuncSymbol.Create('', FuncKind, -1);
+//  FuncSym := TFuncSymbol.Generate(Table, Name, GetParameters(Table), ResultType);
+  try
+    Params := GetParameters(Table);
+    FuncSym.GenerateParams(Table, Params);
+    FuncSym.Params.AddParent(Table);
+
+    FuncSym.SetName(Name);
+    FuncSym.SetIsType;
+    FuncSym.DeprecatedMessage := Deprecated;
+    GetUnit.Table.AddSymbol(FuncSym);
+  except
+    FuncSym.Free;
+    raise;
+  end;
+  Result := FuncSym;
+end;
+
+// -----------------------------------------------------------------------------
+
+function TdwsDelegate.GetDisplayName: String;
+var
+  Params: string;
+begin
+  Params := Parameters.GetDisplayName;
+  if (Params <> '') then
+    Params := '(' + Params + ')';
+
+  if (ResultType = '') then
+    Result := Format('%s = procedure%s;', [Name, Params])
+  else
+    Result := Format('%s = function%s: %s;', [Name, Params, ResultType]);
+  if (Deprecated <> '') then
+    Result := Result + ' deprecated;';
+end;
+
+// -----------------------------------------------------------------------------
+
+function TdwsDelegate.GetParameters(Table: TSymbolTable): TParamArray;
+begin
+  Result := dwsComp.GetParameters(Self, Parameters, Table);
+end;
+
+// -----------------------------------------------------------------------------
+
+function TdwsDelegate.Parse(const Value: UnicodeString): UnicodeString;
+var
+  param : TdwsParameter;
+  params : array of TdwsParameter;
+  rules : TPascalTokenizerStateRules;
+  tok : TTokenizer;
+  tokenType: TTokenType;
+  sourceFile : TSourceFile;
+begin
+  (*
+  ** identifier ( parameters ) [: returntype]
+  *)
+  rules := TPascalTokenizerStateRules.Create;
+  tok := TTokenizer.Create(rules, nil);
+  sourceFile := TSourceFile.Create;
+  try
+    sourceFile.Code := Value;
+    tok.BeginSourceFile(sourceFile);
+
+    // check whether tokens are available at all
+    if not tok.HasTokens then
+      raise Exception.Create('Token expected');
+
+    tokenType := tok.GetToken.FTyp;
+
+    // check for name
+    if not (tok.TestName or (tokenType <> ttNone)) then
+      raise Exception.Create('Name expected');
+
+    // get name and kill token
+    Result := tok.GetToken.AsString;
+    tok.KillToken;
+
+    // kill token and eventually ignore additional procedure / function
+    if tokenType <> ttNone then
+    begin
+      // check if further tokens are available, if not accept name
+      if not tok.HasTokens then begin
+        Result := Value;
+        Exit;
+      end;
+    end;
+
+    // check for parameters
+    if tok.TestDelete(ttBLEFT) then
+    begin
+      while not tok.TestDelete(ttBRIGHT) do
+      begin
+        param := Parameters.Add;
+
+        case tok.TestDeleteAny([ttVAR, ttCONST, ttLAZY]) of
+          ttVAR:
+            begin
+              param.IsVarParam := True;
+              param.IsWritable := True;
+            end;
+          ttCONST:
+            begin
+              param.IsVarParam := True;
+              param.IsWritable := False;
+            end;
+          ttLAZY:
+            begin
+              param.IsLazy := True;
+              param.IsWritable := False;
+            end;
+        end;
+
+        if tok.TestName then
+        begin
+          param.Name := tok.GetToken.AsString;
+          tok.KillToken;
+        end else
+          raise Exception.Create('Parameter name expected');
+
+        SetLength(params, 1);
+        Params[0] := param;
+
+        while tok.TestDelete(ttCOMMA) do
+        begin
+          SetLength(params, length(params) + 1);
+          param := Parameters.Add;
+          param.Assign(params[0]);
+          if tok.TestName then
+          begin
+            param.Name := tok.GetToken.AsString;
+            tok.KillToken;
+            params[high(params)] := param;
+          end else
+            raise Exception.Create('Parameter name expected');
+        end;
+
+        if not tok.TestDelete(ttCOLON) then
+          raise Exception.Create('Colon expected');
+
+        if tok.TestName then
+        begin
+          for param in params do
+            param.DataType := tok.GetToken.AsString;
+          tok.KillToken;
+        end else
+          raise Exception.Create('Data type expected');
+
+
+        // eventually head over to next parameter
+        if tok.TestDelete(ttSEMI) then
+         Continue;
+      end;
+    end;
+
+    // check for return type
+    if tok.TestDelete(ttCOLON) then
+    begin
+      if tok.TestName then
+      begin
+        ResultType := tok.GetToken.AsString;
+        tok.KillToken;
+      end;
+    end;
+
+    tok.EndSourceFile;
+  finally
+    sourceFile.Free;
+    tok.Free;
+    rules.Free;
+  end;
+end;
+
+// -----------------------------------------------------------------------------
+
+procedure TdwsDelegate.SetParameters(const Value: TdwsParameters);
+begin
+  FParameters.Assign(Value);
+end;
+
+// -----------------------------------------------------------------------------
+
+procedure TdwsDelegate.SetResultType(const Value: TDataType);
+begin
+  FResultType := Value;
+end;
+
+// -----------------------------------------------------------------------------
+
+function TdwsDelegate.StoreParameters: Boolean;
+begin
+  Result := (FParameters.Count > 0);
+end;
+
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+//
+//          TdwsDelegates
+//
+// -----------------------------------------------------------------------------
+function TdwsDelegates.Add: TdwsDelegate;
+begin
+  Result := TdwsDelegate(inherited Add);
+end;
+
+// -----------------------------------------------------------------------------
+
+function TdwsDelegates.Add(const Name, ResultType: UnicodeString): TdwsDelegate;
+begin
+  Result := Add;
+  Result.Name := Name;
+  Result.ResultType := ResultType;
+end;
+
+// -----------------------------------------------------------------------------
+
+class function TdwsDelegates.GetSymbolClass: TdwsSymbolClass;
+begin
+  Result := TdwsDelegate;
+end;
+
+// -----------------------------------------------------------------------------
 
 end.
 
