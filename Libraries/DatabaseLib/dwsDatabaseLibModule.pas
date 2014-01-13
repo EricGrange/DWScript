@@ -305,7 +305,7 @@ end;
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBasePoolMethodsReleaseEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
-   name : String;
+   name, checkRelease : String;
    obj : TObject;
    nb : Integer;
    db : IdwsDataBase;
@@ -313,9 +313,15 @@ var
 begin
    name:=Info.ParamAsString[0];
    obj:=Info.ParamAsObject[1];
-   nb:=Info.ParamAsInteger[2];
-   if obj is TDataBase then
+   if obj is TDataBase then begin
       db:=TDataBase(obj).Intf;
+      checkRelease:=db.CanReleaseToPool;
+      if checkRelease<>'' then begin
+         checkRelease:='Releasing to pool not allowed: '+checkRelease;
+         RaiseDBException(Info, checkRelease);
+      end;
+   end;
+   nb:=Info.ParamAsInteger[2];
    Info.ParamAsVariant[1]:=IUnknown(nil);
    vPoolsCS.BeginWrite;
    try

@@ -34,6 +34,7 @@ type
    TdwsSynSQLiteDataBase = class (TdwsDataBase, IdwsDataBase)
       private
          FDB : TSQLDatabase;
+         FDataSets : Integer;
 
       public
          constructor Create(const parameters : array of String);
@@ -43,6 +44,7 @@ type
          procedure Commit;
          procedure Rollback;
          function InTransaction : Boolean;
+         function CanReleaseToPool : String;
 
          procedure Exec(const sql : String; const parameters : TData);
          function Query(const sql : String; const parameters : TData) : IdwsDataSet;
@@ -231,6 +233,17 @@ begin
    Result:=FDB.TransactionActive;
 end;
 
+// CanReleaseToPool
+//
+function TdwsSynSQLiteDataBase.CanReleaseToPool : String;
+begin
+   if FDB.TransactionActive then
+      Result:='in transaction'
+   else if FDataSets>0 then  // need to check as they could maintain a lock
+      Result:='has opened datasets'
+   else Result:='';
+end;
+
 // Exec
 //
 procedure TdwsSynSQLiteDataBase.Exec(const sql : String; const parameters : TData);
@@ -279,6 +292,7 @@ begin
       try
          AssignParameters(FQuery, parameters);
          FEOFReached:=(FQuery.Step=SQLITE_DONE);
+         Inc(FDB.FDataSets);
       except
          FQuery.Close;
          raise;
@@ -293,6 +307,7 @@ end;
 //
 destructor TdwsSynSQLiteDataSet.Destroy;
 begin
+   Dec(FDB.FDataSets);
    if FQuery.Request<>0 then
       FQuery.Close;
    inherited;

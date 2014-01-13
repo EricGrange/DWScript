@@ -37,6 +37,7 @@ type
       private
          FProps : TSQLDBConnectionProperties;
          FConn : TSQLDBConnection;
+         FDataSets : Integer;
 
       public
          constructor Create(connPropsClass : TSQLDBConnectionPropertiesClass; const parameters : array of String); reintroduce;
@@ -46,6 +47,7 @@ type
          procedure Commit;
          procedure Rollback;
          function InTransaction : Boolean;
+         function CanReleaseToPool : String;
 
          procedure Exec(const sql : String; const parameters : TData);
          function Query(const sql : String; const parameters : TData) : IdwsDataSet;
@@ -186,6 +188,17 @@ begin
    Result:=(FConn.TransactionCount>0);
 end;
 
+// CanReleaseToPool
+//
+function TdwsSynDBDataBase.CanReleaseToPool : String;
+begin
+   if InTransaction then
+      Result:='in transaction'
+   else if FDataSets>0 then // just to be safe, some drivers may not support it
+      Result:='has opened datasets'
+   else Result:='';
+end;
+
 // Exec
 //
 procedure TdwsSynDBDataBase.Exec(const sql : String; const parameters : TData);
@@ -235,6 +248,7 @@ begin
       AssignParameters(FStmt, parameters);
       FStmt.ExecutePrepared;
       FEOFReached:=not FStmt.Step;
+      Inc(FDB.FDataSets);
    except
       RefCount:=0;
       raise;
@@ -245,6 +259,7 @@ end;
 //
 destructor TdwsSynDBDataSet.Destroy;
 begin
+   Dec(FDB.FDataSets);
    FStmt.Free;
    inherited;
 end;

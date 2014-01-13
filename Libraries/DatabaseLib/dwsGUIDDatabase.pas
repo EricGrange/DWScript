@@ -36,6 +36,7 @@ type
          procedure Commit;
          procedure Rollback;
          function InTransaction : Boolean;
+         function CanReleaseToPool : String;
 
          procedure Exec(const sql : String; const parameters : TData);
          function Query(const sql : String; const parameters : TData) : IdwsDataSet;
@@ -168,6 +169,13 @@ end;
 function TdwsGUIDDataBase.InTransaction : Boolean;
 begin
    Result:=False;
+end;
+
+// CanReleaseToPool
+//
+function TdwsGUIDDataBase.CanReleaseToPool : String;
+begin
+   Result:='';
 end;
 
 // Exec
