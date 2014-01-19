@@ -31,7 +31,7 @@ uses
   dwsCoreExprs, dwsMagicExprs, dwsRelExprs, dwsMethodExprs, dwsConstExprs,
   dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs,
   dwsOperators, dwsPascalTokenizer, dwsSystemOperators,
-  dwsUnitSymbols, dwsCompilerUtils;
+  dwsUnitSymbols, dwsCompilerUtils, dwsExternalFunctions;
 
 type
    TCompilerOption = (
@@ -368,6 +368,7 @@ type
       property CurrentProg : TdwsProgram read GetCurrentProg;
       property Msgs : TdwsCompileMessageList read GetMsgs;
       property Tokenizer : TTokenizer read GetTokenizer;
+      procedure RegisterExternalFunction(const name: UnicodeString; address: pointer);
 
       function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
    end;
@@ -422,6 +423,7 @@ type
          FPendingSetterValueExpr : TVarExpr;
 
          FDataSymbolExprReuse : TSimpleObjectObjectHash_TDataSymbol_TVarExpr;
+         FExternalRoutines: TSimpleNameObjectHash<TInternalFunction>;
 
          FStaticExtensionSymbols : Boolean;
          FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbolEvent;
@@ -632,7 +634,7 @@ type
                               forwardedParams : TParamsSymbolTable;
                               expectedLambdaParams : TParamsSymbolTable;
                               var posArray : TScriptPosArray);
-         procedure SkipProcCallQualifiers;
+         procedure ReadProcCallQualifiers(funcSymbol : TFuncSymbol);
          procedure AdaptParametersSymPos(guess, actual : TFuncSymbol; const useTypes : TSymbolUsages;
                                          var posArray : TScriptPosArray);
          function ReadProcDecl(funcToken : TTokenType; const hotPos : TScriptPos;
@@ -742,7 +744,8 @@ type
                                          var sym : TDataSymbol) : TProgramExpr;
          function ReadWhile : TProgramExpr;
          function ResolveUnitReferences(scriptType : TScriptSourceType) : TIdwsUnitList;
-
+         function CreateExternalFunction(funcSymbol: TFuncSymbol): IExternalRoutine;
+         function ConvertToMagicSymbol(value: TFuncSymbol): TFuncSymbol;
       protected
          procedure EnterLoop(loopExpr : TProgramExpr);
          procedure MarkLoopExitable(level : TLoopExitable);
@@ -836,6 +839,7 @@ type
          function OpenStreamForFile(const fileName : UnicodeString) : TStream;
          function GetScriptSource(const scriptName : UnicodeString) : UnicodeString;
          function GetIncludeScriptSource(const scriptName : UnicodeString) : UnicodeString;
+         procedure RegisterExternalFunction(const name: UnicodeString; address: pointer);
 
          property CurrentProg : TdwsProgram read FProg write FProg;
          property Msgs : TdwsCompileMessageList read FMsgs;
@@ -1185,7 +1189,7 @@ begin
    FFinallyExprs:=TSimpleStack<Boolean>.Create;
    FUnitsFromStack:=TSimpleStack<UnicodeString>.Create;
    FUnitContextStack:=TdwsCompilerUnitContextStack.Create;
-
+   FExternalRoutines:=TSimpleNameObjectHash<TInternalFunction>.Create;
    FAnyFuncSymbol:=TAnyFuncSymbol.Create('', fkFunction, 0);
 
    FPendingAttributes:=TdwsSymbolAttributes.Create;
@@ -1205,6 +1209,7 @@ end;
 //
 destructor TdwsCompiler.Destroy;
 begin
+   FExternalRoutines.Free;
    FOperatorResolver.Free;
 
    ReleaseStringListPool;
@@ -1563,6 +1568,7 @@ begin
    // Create the TdwsProgram
    FMainProg:=CreateProgram(aConf.SystemSymbols, aConf.ResultType, stackParams);
    FSystemTable:=FMainProg.SystemTable.SymbolTable;
+   FExternalRoutines.Clear;
 
    FMsgs:=FMainProg.CompileMsgs;
    SetupMsgsOptions(aConf);
@@ -1888,6 +1894,19 @@ begin
    if isWrite then
       RecordSymbolUse(sym, scriptPos, [suReference, suWrite])
    else RecordSymbolUse(sym, scriptPos, [suReference, suRead]);
+end;
+
+procedure TdwsCompiler.RegisterExternalFunction(const name: UnicodeString;
+  address: pointer);
+var
+   func: TInternalFunction;
+   ext: IExternalRoutine;
+begin
+   func := FExternalRoutines.Objects[name];
+   if func = nil then
+      raise Exception.CreateFmt('No external function named "%s" is registered', [name]);
+   assert(supports(func, IExternalRoutine, ext));
+   ext.SetExternalPointer(address);
 end;
 
 // RecordSymbolUseImplicitReference
@@ -2959,6 +2978,17 @@ begin
    end;
 end;
 
+function TdwsCompiler.ConvertToMagicSymbol(value: TFuncSymbol): TFuncSymbol;
+var
+   i: integer;
+begin
+   result := TMagicFuncSymbol.Create(value.Name, value.Kind, value.Level);
+   result.Typ := value.typ;
+   for i := 0 to value.ParamSize - 1 do
+      result.AddParam(value.Params[i].Clone);
+   value.Free;
+end;
+
 // ReadProcDecl
 //
 function TdwsCompiler.ReadProcDecl(funcToken : TTokenType; const hotPos : TScriptPos;
@@ -3061,7 +3091,7 @@ begin
             Result.Typ:=ReadFuncResultType(funcKind);
 
          if not (pdoAnonymous in declOptions) then begin
-                
+
             if pdoType in declOptions then begin
 
                if FTok.TestDelete(ttOF) then begin
@@ -3069,7 +3099,7 @@ begin
                      FMsgs.AddCompilerHint(FTok.HotPos, CPH_OfObjectIsLegacy, hlPedantic)
                   else FMsgs.AddCompilerError(FTok.HotPos, CPE_OfObjectExpected);
                end;
-               SkipProcCallQualifiers;
+               ReadProcCallQualifiers(result);
 
             end else begin
 
@@ -3115,6 +3145,7 @@ begin
                   // forward & external declarations
 
                   if FTok.TestDelete(ttEXTERNAL) then begin
+                     result := ConvertToMagicSymbol(result);
                      Result.IsExternal:=True;
                      ReadExternalName(Result);
                   end;
@@ -3143,7 +3174,7 @@ begin
 
                end;
 
-               SkipProcCallQualifiers;
+               ReadProcCallQualifiers(result);
 
                if FTok.TestDelete(ttINLINE) then begin
                   Result.SetInline;
@@ -3470,7 +3501,7 @@ begin
          ReadExternalName(funcResult);
       end;
 
-      SkipProcCallQualifiers;
+      ReadProcCallQualifiers(funcResult);
 
       if FTok.Test(ttDEPRECATED) then
          funcResult.DeprecatedMessage:=ReadDeprecatedMessage;
@@ -3628,6 +3659,15 @@ begin
       FMsgs.AddCompilerWarningFmt(scriptPos, CPW_DeprecatedWithMessage,
                                   [sym.Name, deprecatedMessage])
    else FMsgs.AddCompilerWarningFmt(scriptPos, CPW_Deprecated, [sym.Name]);
+end;
+
+function TdwsCompiler.CreateExternalFunction(funcSymbol : TFuncSymbol): IExternalRoutine;
+begin
+   if funcSymbol.IsType then
+      result := TExternalFunction.Create(funcSymbol, FMainProg)
+   else result := TExternalProcedure.Create(funcSymbol, FMainProg);
+   if not FExternalRoutines.AddObject(funcSymbol.Name, result.GetSelf as TInternalFunction) then
+      FMsgs.AddCompilerError(FTok.HotPos, format(CPE_DuplicateExternal, [funcSymbol.Name]));
 end;
 
 // ReadProcBody
@@ -6772,11 +6812,18 @@ function TdwsCompiler.ReadFunc(funcSym : TFuncSymbol; codeExpr : TTypedExpr = ni
 var
    funcExpr : TFuncExprBase;
 begin
+   if funcSym.IsExternal then
+   begin
+      funcSym.Executable := CreateExternalFunction(funcSym);
+      if funcSym is TMagicFuncSymbol then
+      begin
+         TMagicFuncSymbol(funcSym).InternalFunction := funcSym.Executable.GetSelf as TInternalMagicFunction;
+         TMagicFuncSymbol(funcSym).InternalFunction.IncRefCount;
+      end;
+   end;
+
    funcExpr:=GetFuncExpr(funcSym, codeExpr);
    Result:=WrapUpFunctionRead(funcExpr, expecting, overloads);
-
-   if funcSym.IsExternal then
-      funcSym.Executable:=TExternalFuncHandler.Create;
 
    if Optimize then
       Result:=Result.OptimizeToTypedExpr(FProg, FExec, Result.ScriptPos);
@@ -10712,14 +10759,20 @@ begin
    end;
 end;
 
-// SkipProcCallQualifiers
+// ReadProcCallQualifiers
 //
-procedure TdwsCompiler.SkipProcCallQualifiers;
+procedure TdwsCompiler.ReadProcCallQualifiers(funcSymbol : TFuncSymbol);
 var
    tt : TTokenType;
 begin
    tt:=FTok.TestDeleteAny([ttSAFECALL, ttSTDCALL, ttCDECL, ttREGISTER, ttPASCAL]);
-   if tt<>ttNone then begin
+   if funcSymbol.IsExternal then
+   begin
+      if tt = ttNone then
+         tt := ttREGISTER;
+      funcSymbol.ExternalConvention := tt;
+   end
+   else if tt<>ttNone then begin
       FMsgs.AddCompilerHintFmt(FTok.HotPos, CPH_CallConventionIsNotSupportedAndIgnored,
                                [cTokenStrings[tt]], hlStrict);
       ReadSemiColon;

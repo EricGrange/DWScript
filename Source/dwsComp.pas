@@ -134,6 +134,7 @@ type
 
          function Compile(const Text: UnicodeString): IdwsProgram; virtual;
          procedure RecompileInContext(const prog : IdwsProgram; const text : UnicodeString); virtual;
+         procedure RegisterExternalFunction(const name: UnicodeString; address: pointer);
 
          procedure AbortCompilation;
 
@@ -1596,6 +1597,13 @@ begin
    finally
       UnLock;
    end;
+end;
+
+// RegisterExternalFunction
+//
+procedure TDelphiWebScript.RegisterExternalFunction(const name: UnicodeString; address: pointer);
+begin
+   FCompiler.RegisterExternalFunction(name, address);
 end;
 
 // RecompileInContext
@@ -6132,6 +6140,3 @@ end;
 // -----------------------------------------------------------------------------
 
 end.
-
-
-
