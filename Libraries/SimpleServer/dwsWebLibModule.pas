@@ -88,6 +88,10 @@ type
       const args: TExprBaseListExec): Variant;
     function dwsWebFunctionsDeflateDecompressionFastEval(
       const args: TExprBaseListExec): Variant;
+    procedure dwsWebClassesWebRequestMethodsGetContentFieldEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesWebRequestMethodsHasContentFieldEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -138,6 +142,18 @@ procedure TdwsWebLib.dwsWebClassesWebRequestMethodsCookiesEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString:=Info.WebRequest.Cookies.Text;
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebRequestMethodsGetContentFieldEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=Info.WebRequest.ContentFields.Values[Info.ParamAsString[0]];
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebRequestMethodsHasContentFieldEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean:=Info.WebRequest.HasContentField(Info.ParamAsString[0]);
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsHasQueryFieldEval(

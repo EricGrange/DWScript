@@ -197,7 +197,7 @@ begin
    FPrepared:=[];
 
    ResetCookies;
-   ResetQueryFields;
+   ResetFields;
 end;
 
 // PrepareAuthenticationInfo

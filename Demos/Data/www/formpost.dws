@@ -4,6 +4,8 @@
 </head>
 <body>
 
+<h2>multipart/form-data</h2>
+
 <form action="post.dws" method="post" enctype="multipart/form-data">
 <ul>
 	<li>Text field <input type="text" name="text" value="hello"></li>
@@ -12,6 +14,18 @@
 	<li><input type="submit" value="submit" name="action"></li>
 </ul>
 </form>
+
+<h2>application/x-www-form-urlencoded</h2>
+
+<form action="post.dws" method="post" enctype="application/x-www-form-urlencoded">
+<ul>
+	<li>Text field <input type="text" name="text" value="hello"></li>
+	<li>TextArea <textarea rows="4" cols="50" name="area" style="vertical-align: top">Some sample text with a € (Euro) character
+	on two lines.</textarea></li>
+	<li><input type="submit" value="submit" name="action"></li>
+</ul>
+</form>
+
 
 </body>
 </html>

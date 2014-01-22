@@ -4,8 +4,20 @@
 </head>
 <body>
 
-Raw post data (<?pas=WebRequest.ContentLength?> bytes, <?pas=WebRequest.ContentType?>) :
+<h4>Raw post data (<?pas=WebRequest.ContentLength?> bytes, <?pas=WebRequest.ContentType?>)</h4>
 <pre><?pas=WebRequest.ContentData ?></pre>
+
+<h4>ContentFields</h4>
+<table border="1" style="border-collapse:collapse" cellpadding="4">
+   <tr>
+      <td>text</td>
+      <td><pre><?pas=WebRequest.ContentField['text']?></pre></td>
+   </tr>
+   <tr>
+      <td>area</td>
+      <td><pre><?pas=WebRequest.ContentField['area']?></pre></td>
+   </tr>
+</table>
 
 </body>
 </html>

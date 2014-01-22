@@ -62,6 +62,31 @@ object dwsWebLib: TdwsWebLib
             Kind = mkClassFunction
           end
           item
+            Name = 'GetContentField'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebRequestMethodsGetContentFieldEval
+            Visibility = cvProtected
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'HasContentField'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end>
+            ResultType = 'Boolean'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebRequestMethodsHasContentFieldEval
+            Kind = mkClassFunction
+          end
+          item
             Name = 'URL'
             ResultType = 'String'
             Attributes = [maStatic]
@@ -191,6 +216,16 @@ object dwsWebLib: TdwsWebLib
             Name = 'QueryField'
             DataType = 'String'
             ReadAccess = 'GetQueryField'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end>
+          end
+          item
+            Name = 'ContentField'
+            DataType = 'String'
+            ReadAccess = 'GetContentField'
             Parameters = <
               item
                 Name = 'name'
