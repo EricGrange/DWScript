@@ -192,15 +192,15 @@ type
    TJSONStringifyMethod = class (TInternalMagicStringFunction)
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
 
-      class procedure StringifyVariant(exec : TdwsProgramExecution; writer : TdwsJSONWriter; const v : Variant); static;
-      class procedure StringifySymbol(exec : TdwsProgramExecution; writer : TdwsJSONWriter; sym : TSymbol; const dataPtr : IDataContext); static;
-      class procedure StringifyDynamicArray(exec : TdwsProgramExecution; writer : TdwsJSONWriter; dynArray : TScriptDynamicArray); static;
-      class procedure StringifyArray(exec : TdwsProgramExecution; writer : TdwsJSONWriter; elemSym : TTypeSymbol;
+      class procedure StringifyVariant(exec : TdwsExecution; writer : TdwsJSONWriter; const v : Variant); static;
+      class procedure StringifySymbol(exec : TdwsExecution; writer : TdwsJSONWriter; sym : TSymbol; const dataPtr : IDataContext); static;
+      class procedure StringifyDynamicArray(exec : TdwsExecution; writer : TdwsJSONWriter; dynArray : TScriptDynamicArray); static;
+      class procedure StringifyArray(exec : TdwsExecution; writer : TdwsJSONWriter; elemSym : TTypeSymbol;
                                      const dataPtr : IDataContext; nb : Integer); static;
-      class procedure StringifyComposite(exec : TdwsProgramExecution; writer : TdwsJSONWriter;
+      class procedure StringifyComposite(exec : TdwsExecution; writer : TdwsJSONWriter;
                                          compSym : TCompositeTypeSymbol;
                                          const dataPtr : IDataContext); static;
-      class procedure StringifyClass(exec : TdwsProgramExecution; writer : TdwsJSONWriter;
+      class procedure StringifyClass(exec : TdwsExecution; writer : TdwsJSONWriter;
                                      clsSym : TClassSymbol; const obj : IScriptObj); static;
    end;
 
@@ -1015,7 +1015,7 @@ begin
       expr:=(args.ExprBase[0] as TTypedExpr);
       if expr.Typ.Size=1 then begin
          expr.EvalAsVariant(args.Exec, v);
-         StringifyVariant(args.Exec as TdwsProgramExecution, writer, v);
+         StringifyVariant(args.Exec, writer, v);
       end else begin
          dataExpr:=(expr as TDataExpr);
          StringifySymbol(args.Exec as TdwsProgramExecution, writer, expr.Typ, dataExpr.DataPtr[args.Exec]);
@@ -1029,7 +1029,7 @@ end;
 
 // StringifyVariant
 //
-class procedure TJSONStringifyMethod.StringifyVariant(exec : TdwsProgramExecution; writer : TdwsJSONWriter; const v : Variant);
+class procedure TJSONStringifyMethod.StringifyVariant(exec : TdwsExecution; writer : TdwsJSONWriter; const v : Variant);
 var
    unk : IUnknown;
    getSelf : IGetSelf;
@@ -1074,7 +1074,7 @@ end;
 
 // StringifySymbol
 //
-class procedure TJSONStringifyMethod.StringifySymbol(exec : TdwsProgramExecution; writer : TdwsJSONWriter; sym : TSymbol; const dataPtr : IDataContext);
+class procedure TJSONStringifyMethod.StringifySymbol(exec : TdwsExecution; writer : TdwsJSONWriter; sym : TSymbol; const dataPtr : IDataContext);
 var
    ct : TClass;
 begin
@@ -1095,19 +1095,25 @@ end;
 
 // StringifyArray
 //
-class procedure TJSONStringifyMethod.StringifyArray(exec : TdwsProgramExecution;
+class procedure TJSONStringifyMethod.StringifyArray(exec : TdwsExecution;
    writer : TdwsJSONWriter; elemSym : TTypeSymbol; const dataPtr : IDataContext; nb : Integer);
 var
    i, s : Integer;
    locData : IDataContext;
-   sysTable : TSystemSymbolTable;
+   unaliasedClassType : TClass;
 begin
    s:=elemSym.Size;
-   sysTable:=exec.Prog.SystemTable.SymbolTable;
    writer.BeginArray;
-   if elemSym.IsOfType(sysTable.TypInteger) then begin
+   unaliasedClassType:=elemSym.UnAliasedType.ClassType;
+   if unaliasedClassType=TBaseIntegerSymbol then begin
       for i:=0 to nb-1 do
          writer.WriteInteger(dataPtr.AsInteger[i]);
+   end else if unaliasedClassType=TBaseFloatSymbol then begin
+      for i:=0 to nb-1 do
+         writer.WriteNumber(dataPtr.AsFloat[i]);
+   end else if unaliasedClassType=TBaseStringSymbol then begin
+      for i:=0 to nb-1 do
+         writer.WriteString(dataPtr.AsString[i]);
    end else begin
       for i:=0 to nb-1 do begin
          dataPtr.CreateOffset(i*s, locData);
@@ -1119,7 +1125,7 @@ end;
 
 // StringifyDynamicArray
 //
-class procedure TJSONStringifyMethod.StringifyDynamicArray(exec : TdwsProgramExecution;
+class procedure TJSONStringifyMethod.StringifyDynamicArray(exec : TdwsExecution;
    writer : TdwsJSONWriter; dynArray : TScriptDynamicArray);
 var
    locData : IDataContext;
@@ -1130,7 +1136,7 @@ end;
 
 // StringifyComposite
 //
-class procedure TJSONStringifyMethod.StringifyComposite(exec : TdwsProgramExecution;
+class procedure TJSONStringifyMethod.StringifyComposite(exec : TdwsExecution;
    writer : TdwsJSONWriter; compSym : TCompositeTypeSymbol; const dataPtr : IDataContext);
 var
    i : Integer;
@@ -1169,7 +1175,7 @@ end;
 
 // StringifyClass
 //
-class procedure TJSONStringifyMethod.StringifyClass(exec : TdwsProgramExecution;
+class procedure TJSONStringifyMethod.StringifyClass(exec : TdwsExecution;
    writer : TdwsJSONWriter; clsSym : TClassSymbol; const obj : IScriptObj);
 begin
    if (obj=nil) or (obj.Destroyed) then
