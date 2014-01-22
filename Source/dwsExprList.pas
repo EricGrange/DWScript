@@ -56,12 +56,14 @@ type
    //
    TExprBaseListExec = record
       private
-         FList : PExprBaseListRec;
+         FList : PObjectTightList;
+         FCount : Integer;
          FExec : TdwsExecution;
+
+         procedure SetListRec(const lr : TExprBaseListRec); inline;
 
          function GetExprBase(const x : Integer): TExprBase; {$IFNDEF VER200}inline;{$ENDIF} // D2009 Compiler bug workaround
          procedure SetExprBase(const x : Integer; expr : TExprBase); inline;
-         function GetCount : Integer; inline;
 
          function GetAsInteger(const x : Integer) : Int64; inline;
          procedure SetAsInteger(const x : Integer; const value : Int64);
@@ -76,11 +78,12 @@ type
          function GetAsFileName(const x : Integer) : UnicodeString;
 
       public
-         property List : PExprBaseListRec read FList write FList;
+         property ListRec : TExprBaseListRec write SetListRec;
+         property List : PObjectTightList read FList;
+         property Count : Integer read FCount;
          property Exec : TdwsExecution read FExec write FExec;
 
          property ExprBase[const x : Integer] : TExprBase read GetExprBase write SetExprBase; default;
-         property Count : Integer read GetCount;
 
          property AsInteger[const x : Integer] : Int64 read GetAsInteger write SetAsInteger;
          property AsBoolean[const x : Integer] : Boolean read GetAsBoolean write SetAsBoolean;
@@ -165,25 +168,26 @@ end;
 // ------------------ TExprBaseListExec ------------------
 // ------------------
 
+// SetListRec
+//
+procedure TExprBaseListExec.SetListRec(const lr : TExprBaseListRec);
+begin
+   FCount:=lr.FList.Count;
+   FList:=lr.FList.List;
+end;
+
 // GetExprBase
 //
 function TExprBaseListExec.GetExprBase(const x: Integer): TExprBase;
 begin
-   Result:=FList.ExprBase[x];
+   Result:=TExprBase(FList[x]);
 end;
 
 // SetExprBase
 //
 procedure TExprBaseListExec.SetExprBase(const x : Integer; expr : TExprBase);
 begin
-   FList.ExprBase[x]:=expr;
-end;
-
-// GetCount
-//
-function TExprBaseListExec.GetCount : Integer;
-begin
-   Result:=FList.Count;
+   FList[x]:=expr;
 end;
 
 // GetAsInteger
