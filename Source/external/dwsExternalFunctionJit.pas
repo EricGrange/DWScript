@@ -11,7 +11,7 @@ type
       offset: integer;
    end;
 
-   TTryFrame = array[0..1] of integer;
+   TTryFrame = array[0..3] of integer;
 
    IExternalFunctionJit = interface
       procedure BeginProcedure(paramCount: integer);
@@ -21,6 +21,7 @@ type
       procedure PostCall;
       function GetBytes: TBytes;
       function GetCalls: TArray<TFunctionCall>;
+      function HasTryFrame: boolean;
       function GetTryFrame: TTryFrame;
    end;
 

@@ -1080,7 +1080,7 @@ begin
    WriteDWord(0);
 
    WriteByte($EB); //relative jump, 1 byte
-   WriteByte(shortint(self.size - (beginResult + sizeof(pointer))));
+   WriteByte(shortint((beginResult + sizeof(pointer)) - (self.size + 1)));
 end;
 
 // _or_reg_dword_ptr_reg
