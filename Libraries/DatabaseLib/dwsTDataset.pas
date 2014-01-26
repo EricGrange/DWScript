@@ -52,11 +52,14 @@ type
       function AsInteger : Int64;
       function AsFloat : Double;
       function AsBoolean : Boolean;
+      function AsBlob : RawByteString;
    public
       constructor Create(field: TField);
    end;
 
 implementation
+uses
+   SysUtils;
 
 { TdwsTDataset }
 
@@ -133,6 +136,11 @@ end;
 function TdwsTField.Name: String;
 begin
    result := FField.FieldName;
+end;
+
+function TdwsTField.AsBlob: RawByteString;
+begin
+   result := FField.AsAnsiString;
 end;
 
 function TdwsTField.AsBoolean: Boolean;

@@ -134,6 +134,8 @@ begin
     TdwsDataTypeProperty);
   RegisterPropertyEditor(TypeInfo(TDataType), TdwsArray, 'DataType',
     TdwsDataTypeProperty);
+  RegisterPropertyEditor(TypeInfo(TDataType), TdwsSet, 'BaseType',
+    TdwsDataTypeProperty);
   RegisterPropertyEditor(TypeInfo(TDataType), TdwsClass, 'Ancestor',
     TdwsAncestorProperty);
 end;
