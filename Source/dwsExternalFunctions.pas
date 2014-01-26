@@ -18,6 +18,7 @@ type
       FBuffer: TBytes;
       FStub: TStub;
       FCalls: TArray<TFunctionCall>;
+      FTryFrame: TTryFrame;
 
       procedure SetExternalPointer(value: pointer);
    public
@@ -33,6 +34,7 @@ type
       FBuffer: TBytes;
       FStub: TStub;
       FCalls: TArray<TFunctionCall>;
+      FTryFrame: TTryFrame;
 
       procedure SetExternalPointer(value: pointer);
    public
@@ -59,7 +61,8 @@ type
       procedure Eval(funcSymbol: TFuncSymbol; prog: TdwsProgram);
    end;
 
-function MakeExecutable(const value: TBytes; calls: TArray<TFunctionCall>; call: pointer): pointer;
+function MakeExecutable(const value: TBytes; calls: TArray<TFunctionCall>; call: pointer;
+   const tryFrame: TTryFrame): pointer;
 var
    oldprotect: cardinal;
    lCall, lOffset: nativeInt;
@@ -76,6 +79,18 @@ begin
       else lCall := fixup.call;
       lOffset := (lCall - nativeInt(ptr)) - sizeof(pointer);
       PNativeInt(ptr)^ := lOffset;
+   end;
+   if tryFrame[0] <> 0 then
+   begin
+      ptr := @PByte(result)[tryFrame[0]];
+      if PPointer(ptr)^ <> nil then
+         asm int 3 end;
+      PPointer(ptr)^ := @PByte(result)[tryFrame[2] - 1];
+
+      ptr := @PByte(result)[tryFrame[1]];
+      if PPointer(ptr)^ <> nil then
+         asm int 3 end;
+      PPointer(ptr)^ := @PByte(result)[tryFrame[3]];
    end;
 
    if not VirtualProtect(result, length(value), PAGE_EXECUTE_READ, oldProtect) then
@@ -104,6 +119,8 @@ begin
       jit.Eval(funcSymbol, prog);
       FBuffer := jit.FBuffer;
       FCalls := jit.FInternalJit.GetCalls;
+      if jit.FInternalJit.HasTryFrame then
+         FTryFrame := jit.FInternalJit.GetTryFrame;
    finally
       jit.Free;
    end;
@@ -126,7 +143,7 @@ procedure TExternalProcedure.SetExternalPointer(value: pointer);
 begin
    if assigned(FStub) then
       raise Exception.Create('External function cannot be assigned twice');
-   FStub := MakeExecutable(FBuffer, FCalls, value);
+   FStub := MakeExecutable(FBuffer, FCalls, value, FTryFrame);
 end;
 
 { TExternalFunction }
@@ -144,6 +161,8 @@ begin
       jit.Eval(funcSymbol, prog);
       FBuffer := jit.FBuffer;
       FCalls := jit.FInternalJit.GetCalls;
+      if jit.FInternalJit.HasTryFrame then
+         FTryFrame := jit.FInternalJit.GetTryFrame;
    finally
       jit.Free;
    end;
@@ -166,7 +185,7 @@ procedure TExternalFunction.SetExternalPointer(value: pointer);
 begin
    if assigned(FStub) then
       raise Exception.Create('External function cannot be assigned twice');
-   FStub := MakeExecutable(FBuffer, FCalls, value);
+   FStub := MakeExecutable(FBuffer, FCalls, value, FTryFrame);
 end;
 
 { TdwsExternalStubJit }
@@ -197,7 +216,6 @@ begin
    FInternalJit.Call;
    FInternalJit.PostCall;
    FBuffer := FInternalJit.GetBytes;
-
 end;
 
 end.

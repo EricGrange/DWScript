@@ -14,6 +14,12 @@ uses
 
 type
    Tx86RegisterJit = class(TinterfacedObject, IExternalFunctionJit)
+   private type
+      TCleanup = record
+         typ: TTypeSymbol;
+         depth: shortint;
+         constructor Create(typ: TTypeSymbol; depth: shortint);
+      end;
    private
       FProgram: TdwsProgram;
       FInitStream: Tx86WriteOnlyStream;
@@ -23,6 +29,8 @@ type
       FRegParams: integer;
       FRegParamDepth: array[0..2] of byte;
       FCalls: TList<TFunctionCall>;
+      FTryFrame: TTryFrame;
+      FCleanups: TList<TCleanup>;
 
       function GetDepth(depth: byte): shortint;
 
@@ -31,7 +39,10 @@ type
       procedure WriteCall(loc: pointer);
       procedure PushParam(param: TParamSymbol; pType: TTypeSymbol);
       procedure RegPassParam(param: TParamSymbol; pType: TTypeSymbol);
+      function CallGetParam(pType: TTypeSymbol; index: integer): shortint;
       procedure WriteLoadVarParam(depth: shortint);
+      procedure AddCleanup(depth: shortint; pType: TTypeSymbol);
+      procedure WriteCleanup;
    private //IExternalFunctionJit implementation
       procedure BeginProcedure(paramCount: integer);
       procedure BeginFunction(retval: TTypeSymbol; paramCount: integer);
@@ -40,7 +51,8 @@ type
       procedure PostCall;
       function GetBytes: TBytes;
       function GetCalls: TArray<TFunctionCall>;
-      function CallGetParam(pType: TTypeSymbol; index: integer): shortint;
+      function HasTryFrame: boolean;
+      function GetTryFrame: TTryFrame;
    public
       constructor Create(prog: TdwsProgram);
       destructor Destroy; override;
@@ -62,10 +74,12 @@ begin
    FInitStream := Tx86WriteOnlyStream.Create;
    FStream := Tx86WriteOnlyStream.Create;
    FCalls := TList<TFunctionCall>.Create;
+   FCleanups := TList<TCleanup>.Create;
 end;
 
 destructor Tx86RegisterJit.Destroy;
 begin
+   FCleanups.Free;
    FCalls.Free;
    FStream.Free;
    FInitStream.Free;
@@ -131,20 +145,37 @@ begin
 end;
 
 function Tx86RegisterJit.GetDepth(depth: byte): shortint;
-const OVERHEAD_SLOTS = 3;
+const OVERHEAD_SLOTS = 1;
 begin
    result := ((depth + OVERHEAD_SLOTS) * sizeof(pointer));
    result := ($FF - result) + 1;
 end;
 
+function Tx86RegisterJit.GetTryFrame: TTryFrame;
+begin
+   result := FTryFrame;
+end;
+
+function Tx86RegisterJit.HasTryFrame: boolean;
+begin
+   result := FTryFrame[0] <> 0;
+end;
+
 procedure Tx86RegisterJit.WriteLoadVarParam(depth: shortint);
 const
-   LEA_PARAM:   array[0..1] of byte = ($8D, $4D);      //lea ecx,[ebp - ??]
+   LEA_PARAM: array[0..1] of byte = ($8D, $4D);      //lea ecx,[ebp - ??]
 begin
+   if FTryFrame[0] = 0 then
+      FTryFrame[0] := FInitStream._begin_tryf_frame;
    FInitStream._xor_reg_reg(gprECX, gprECX);                  //zero ECX
    FInitStream._mov_dword_ptr_reg_reg(gprEBP, depth, gprECX); //zero stack location
    FStream.WriteBytes(LEA_PARAM);                             //load stack to ECX
    FStream.WriteByte(depth);
+end;
+
+procedure Tx86RegisterJit.AddCleanup(depth: shortint; pType: TTypeSymbol);
+begin
+   FCleanups.Add(TCleanup.Create(pType, depth));
 end;
 
 function Tx86RegisterJit.CallGetParam(pType: TTypeSymbol; index: integer): shortint;
@@ -168,7 +199,10 @@ begin
    FStream._mov_reg_dword_ptr_reg(gprEAX, gprESI, index * sizeof(pointer)); //load param to EAX
    FStream._mov_reg_dword_ptr_reg(gprEDX, gprEBX, 8); //load exec to EDX
    if resultAsVar then
+   begin
       WriteLoadVarParam(result);
+      AddCleanup(result, pType);
+   end;
    FStream._mov_reg_dword_ptr_reg(gprEDI, gprEAX);    //load VMT to EDI
    FStream._call_reg(gprEDI, vmtSlot);                //virtual method call
 
@@ -219,11 +253,35 @@ begin
    writeCall(nil);
 end;
 
+procedure Tx86RegisterJit.WriteCleanup;
+var
+   item: TCleanup;
+   initSize: integer;
+begin
+   initSize := FInitStream.Size;
+   FTryFrame[1] := FStream._begin_finally_block + initSize;
+   for item in FCleanups do
+   begin
+      if item.typ = FProgram.TypString then
+      begin
+         FStream.WriteBytes([$8D, $45]); //lea eax,[ebp - ??]
+         FStream.WriteByte(item.depth);
+         WriteCall(func_ustr_clear);
+      end
+      else raise Exception.CreateFmt('Unknown type for cleanup: %s', [item.typ.Name]);
+   end;
+   FTryFrame[2] := FStream._end_finally_block(FTryFrame[1] - initSize) + initSize;
+   AddCall(func_handle_finally, FTryFrame[2]);
+   FTryFrame[3] := FStream.Size + initSize;
+end;
+
 procedure Tx86RegisterJit.PostCall;
 const
    RESTORE_STACK: array[0..5] of byte = ($5F, $5E, $5B, $59, $8B, $E5); //pop edi, pop esi, pop ebx,
                                                                         //pop ecx, mov esp,ebp
 begin
+   if FTryFrame[0] <> 0 then
+      WriteCleanup;
    if FParams > 0 then
       FStream.WriteBytes(RESTORE_STACK);
    FStream.WriteByte($5D); //pop ebp
@@ -239,6 +297,14 @@ end;
 function Tx86RegisterJit.GetCalls: TArray<TFunctionCall>;
 begin
    result := FCalls.ToArray;
+end;
+
+{ Tx86RegisterJit.TCleanup }
+
+constructor Tx86RegisterJit.TCleanup.Create(typ: TTypeSymbol; depth: shortint);
+begin
+   self.typ := typ;
+   self.depth := depth;
 end;
 
 end.

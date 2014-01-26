@@ -61,10 +61,21 @@ procedure Ints3(a, b, c: integer);
 begin
 end;
 
+procedure TestString(a: integer; b: string);
+begin
+end;
+
+procedure TestStringExc(a: integer; b: string);
+begin
+   Abort;
+end;
+
 procedure TExternalFunctionTests.RegisterExternalRoutines(compiler: TDelphiWebScript);
 begin
    compiler.RegisterExternalFunction('Blank', @Blank);
    compiler.RegisterExternalFunction('Ints3', @Ints3);
+   compiler.RegisterExternalFunction('TestString', @TestString);
+   compiler.RegisterExternalFunction('TestStringExc', @TestStringExc);
 end;
 
 procedure TExternalFunctionTests.Execution;

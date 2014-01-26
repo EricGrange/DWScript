@@ -249,6 +249,16 @@ type
          procedure _test_al_al;
          procedure _nop(nb : Integer);
          procedure _ret;
+
+         //at result, insert literal address of return value from _end_finally_block, *minus 1*
+         function  _begin_tryf_frame: integer;
+
+          //at result, insert literal address of code after _end_finally_block
+         function  _begin_finally_block: integer;
+
+          //must pass return value of _begin_finally_block
+          //at result, insert relative address to @HandleFinally
+         function _end_finally_block(beginResult: integer): integer;
    end;
 
 const
@@ -1037,6 +1047,40 @@ end;
 procedure Tx86WriteOnlyStream._and_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 begin
    _op_reg_dword_ptr_reg(gpOp_and, dest, src, offset);
+end;
+
+function Tx86WriteOnlyStream._begin_tryf_frame: integer;
+begin
+   _xor_reg_reg(gprEAX, gprEAX);
+   _push_reg(gprEBP);
+   WriteByte($68); //push dword literal
+   result := self.Size;
+   WriteDWord(0);
+   WriteBytes([$64, $FF, $30]); //push dword ptr fs:[eax]
+   WriteBytes([$64, $89, $20]); //mov fs:[eax],esp
+end;
+
+function Tx86WriteOnlyStream._begin_finally_block: integer;
+begin
+   _xor_reg_reg(gprEAX, gprEAX);
+   _pop_reg(gprEDX);
+   _pop_reg(gprECX);
+   _pop_reg(gprECX);
+   WriteBytes([$64, $89, $10]); //mov fs:[eax],edx
+   WriteByte($68); //push dword literal
+   result := self.Size;
+   WriteDWord(0);
+end;
+
+function Tx86WriteOnlyStream._end_finally_block(beginResult: integer): integer;
+begin
+   _ret;
+   WriteByte($E9); //push dword literal
+   result := self.Size;
+   WriteDWord(0);
+
+   WriteByte($EB); //relative jump, 1 byte
+   WriteByte(shortint(self.size - (beginResult + sizeof(pointer))));
 end;
 
 // _or_reg_dword_ptr_reg
