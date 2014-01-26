@@ -30,11 +30,15 @@ var
    vmt_TExprBase_EvalAsInteger : Integer;
    vmt_TExprBase_EvalAsFloat : Integer;
    vmt_TExprBase_EvalAsBoolean : Integer;
+   vmt_TExprBase_EvalAsString: Integer;
    vmt_TExprBase_AssignValueAsFloat : Integer;
    vmt_TExprBase_AssignValueAsInteger : Integer;
 
    vmt_ScriptDynamicArray_IScriptObj_To_FData : Integer;
    vmt_ScriptObjInstance_IScriptObj_To_FData : Integer;
+
+   func_ustr_clear: pointer;
+   func_handle_finally: pointer;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -56,8 +60,11 @@ asm
    mov vmt_TExprBase_EvalAsInteger, VMTOFFSET TExprBase.EvalAsInteger
    mov vmt_TExprBase_EvalAsFloat, VMTOFFSET TExprBase.EvalAsFloat
    mov vmt_TExprBase_EvalAsBoolean, VMTOFFSET TExprBase.EvalAsBoolean
+   mov vmt_TExprBase_EvalAsString, VMTOFFSET TExprBase.EvalAsString
    mov vmt_TExprBase_AssignValueAsFloat, VMTOFFSET TExprBase.AssignValueAsFloat
    mov vmt_TExprBase_AssignValueAsInteger, VMTOFFSET TExprBase.AssignValueAsInteger
+   mov func_ustr_clear, offset System.@UStrClr
+   mov func_handle_finally, offset System.@HandleFinally
 end;
 
 procedure PrepareDynArrayIDataContextToFDataOffset;
