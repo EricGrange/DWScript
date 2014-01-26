@@ -70,12 +70,17 @@ begin
    Abort;
 end;
 
+procedure TestBool(a: integer; b: boolean);
+begin
+end;
+
 procedure TExternalFunctionTests.RegisterExternalRoutines(compiler: TDelphiWebScript);
 begin
    compiler.RegisterExternalFunction('Blank', @Blank);
    compiler.RegisterExternalFunction('Ints3', @Ints3);
    compiler.RegisterExternalFunction('TestString', @TestString);
    compiler.RegisterExternalFunction('TestStringExc', @TestStringExc);
+   compiler.RegisterExternalFunction('TestBool', @TestBool);
 end;
 
 procedure TExternalFunctionTests.Execution;

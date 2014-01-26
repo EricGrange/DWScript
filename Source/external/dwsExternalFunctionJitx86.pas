@@ -188,6 +188,8 @@ begin
    resultAsVar := false;
    if pType = FProgram.TypInteger then
       vmtSlot := vmt_TExprBase_EvalAsInteger
+   else if pType = FProgram.TypBoolean then
+      vmtSlot := vmt_TExprBase_EvalAsBoolean
    else if pType = FProgram.TypString then
    begin
       vmtSlot := vmt_TExprBase_EvalAsString;
