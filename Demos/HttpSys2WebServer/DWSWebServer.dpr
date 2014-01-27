@@ -62,7 +62,8 @@ uses
   dwsWebServerInfo in '..\..\Libraries\SimpleServer\dwsWebServerInfo.pas',
   dwsFileFunctions in '..\..\Source\dwsFileFunctions.pas',
   dwsGraphicLibrary in '..\..\Libraries\GraphicsLib\dwsGraphicLibrary.pas',
-  dwsBackgroundWorkersLibModule in '..\..\Libraries\SimpleServer\dwsBackgroundWorkersLibModule.pas' {dwsBackgroundWorkersLib: TDataModule};
+  dwsBackgroundWorkersLibModule in '..\..\Libraries\SimpleServer\dwsBackgroundWorkersLibModule.pas' {dwsBackgroundWorkersLib: TDataModule},
+  dwsWebUtils in '..\..\Libraries\SimpleServer\dwsWebUtils.pas';
 
 type
    TWebServerHttpService = class(TdwsWindowsService)

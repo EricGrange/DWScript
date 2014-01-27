@@ -20,7 +20,7 @@ interface
 
 uses
    Classes, SysUtils, StrUtils, DateUtils,
-   dwsExprs, dwsUtils;
+   dwsExprs, dwsUtils, dwsWebUtils;
 
 type
    TWebRequestAuthentication = (
@@ -54,15 +54,6 @@ type
       wrmvUNLOCK,
       wrmvSEARCH
    );
-
-   WebUtils = class
-      public
-         class procedure ParseURLEncoded(const data : RawByteString; dest : TStrings); static;
-         class function DecodeURLEncoded(const src : RawByteString; start, count : Integer) : String; overload; static;
-         class function DecodeURLEncoded(const src : RawByteString; start : Integer) : String; overload; static;
-         class function DecodeHex2(p : PAnsiChar) : Integer; static;
-         class function HasFieldName(const list : TStrings; const name : String) : Boolean; static;
-   end;
 
    TWebRequest = class
       private
@@ -612,128 +603,6 @@ begin
    Result:=TWebResponseCookie.Create;
    Result.Name:=name;
    Add(Result);
-end;
-
-
-// ------------------
-// ------------------ WebUtils ------------------
-// ------------------
-
-// ParseURLEncoded
-//
-class procedure WebUtils.ParseURLEncoded(const data : RawByteString; dest : TStrings);
-var
-   base, next, last : Integer;
-begin
-   last:=Length(data);
-   base:=1;
-   while True do begin
-      next:=base;
-      repeat
-         if next>last then begin
-            next:=-1;
-            break;
-         end else if data[next]='&' then
-            break
-         else Inc(next);
-      until False;
-      if next>base then begin
-         dest.Add(DecodeURLEncoded(data, base, next-base));
-         base:=next+1;
-      end else begin
-         if base<Length(data) then
-            dest.Add(DecodeURLEncoded(data, base));
-         Break;
-      end;
-   end;
-end;
-
-// DecodeURLEncoded
-//
-class function WebUtils.DecodeURLEncoded(const src : RawByteString; start, count : Integer) : String;
-var
-   raw : UTF8String;
-   pSrc, pDest : PAnsiChar;
-   c : AnsiChar;
-begin
-   SetLength(raw, count);
-   pSrc:=@src[start];
-   pDest:=PAnsiChar(Pointer(raw));
-   while count>0 do begin
-      Dec(count);
-      c:=AnsiChar(pSrc^);
-      case c of
-         '+' :
-            pDest^:=' ';
-         '%' : begin
-            if count<2 then break;
-            pDest^:=AnsiChar(DecodeHex2(@pSrc[1]));
-            Inc(pSrc, 2);
-            Dec(count, 2);
-         end;
-      else
-         pDest^:=c;
-      end;
-      Inc(pDest);
-      Inc(pSrc);
-   end;
-   SetLength(raw, NativeUInt(pDest)-NativeUInt(Pointer(raw)));
-   Result:=UTF8ToUnicodeString(raw);
-end;
-
-// DecodeURLEncoded
-//
-class function WebUtils.DecodeURLEncoded(const src : RawByteString; start : Integer) : String;
-var
-   n : Integer;
-begin
-   n:=Length(src)-start+1;
-   if n>=0 then
-      Result:=DecodeURLEncoded(src, start, n)
-   else Result:='';
-end;
-
-// DecodeHex2
-//
-class function WebUtils.DecodeHex2(p : PAnsiChar) : Integer;
-var
-   c : AnsiChar;
-begin
-   c:=p[0];
-   case c of
-      '0'..'9' : Result:=Ord(c)-Ord('0');
-      'A'..'F' : Result:=Ord(c)+(10-Ord('A'));
-      'a'..'f' : Result:=Ord(c)+(10-Ord('a'));
-   else
-      Exit(-1);
-   end;
-   c:=p[1];
-   case c of
-      '0'..'9' : Result:=(Result shl 4)+Ord(c)-Ord('0');
-      'A'..'F' : Result:=(Result shl 4)+Ord(c)+(10-Ord('A'));
-      'a'..'f' : Result:=(Result shl 4)+Ord(c)+(10-Ord('a'));
-   else
-      Exit(-1);
-   end;
-end;
-
-
-// HasFieldName
-//
-class function WebUtils.HasFieldName(const list : TStrings; const name : String) : Boolean;
-var
-   i, n : Integer;
-   elem : String;
-begin
-   for i:=0 to list.Count-1 do begin
-      elem:=list[i];
-      if StrBeginsWith(elem, name) then begin
-         n:=Length(name);
-         if (Length(elem)=n) or (elem[n+1]='=') then
-            Exit(True);
-      end;
-   end;
-   Result:=False;
 end;
 
 end.

@@ -22,10 +22,11 @@ uses
    Windows, SysUtils, Classes, StrUtils,
    dwsFileSystem, dwsGlobalVarsFunctions, dwsExprList,
    dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils, dwsXPlatform,
+   dwsJSONConnector, dwsJSON, dwsErrors, dwsFunctions, dwsSymbols,
+   dwsJIT, dwsJITx86,
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
    dwsDataBase, dwsDataBaseLibModule, dwsWebServerInfo, dwsWebServerLibModule,
-   dwsJSONConnector, dwsJSON, dwsErrors, dwsFunctions, dwsSymbols,
-   dwsJIT, dwsJITx86, dwsBackgroundWorkersLibModule;
+   dwsBackgroundWorkersLibModule, dwsSynapseLibModule;
 
 type
 
@@ -73,6 +74,7 @@ type
       FWebEnv : TdwsWebLib;
       FDataBase : TdwsDatabaseLib;
       FJSON : TdwsJSONLibModule;
+      FSynapse : TdwsSynapseLib;
       FWebServerLib : TdwsWebServerLib;
       FBkgndWorkers : TdwsBackgroundWorkersLib;
 
@@ -202,6 +204,9 @@ begin
 
    FJSON:=TdwsJSONLibModule.Create(Self);
    FJSON.Script:=DelphiWebScript;
+
+   FSynapse:=TdwsSynapseLib.Create(Self);
+   FSynapse.Script:=DelphiWebScript;
 
    FCompiledPrograms:=TCompiledProgramHash.Create;
    FCompiledProgramsLock:=TFixedCriticalSection.Create;
