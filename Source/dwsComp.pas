@@ -141,6 +141,7 @@ type
          procedure Lock;
          procedure UnLock;
 
+         property Compiler : IdwsCompiler read FCompiler;
          property Extensions : TdwsLanguageExtensionAggregator read FExtensions;
 
       published
