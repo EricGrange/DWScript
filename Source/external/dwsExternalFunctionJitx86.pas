@@ -1,25 +1,27 @@
 unit dwsExternalFunctionJitx86;
 
 interface
+
 uses
-   Generics.Collections,
-   dwsTokenizer, dwsExternalFunctionJit, dwsExprs, dwsJITx86Intrinsics;
+   dwsTokenizer,
+   dwsExternalFunctionJit, dwsExprs, dwsJITx86Intrinsics;
 
 function JitFactory(conv: TTokenType; prog: TdwsProgram): IExternalFunctionJit;
 
 implementation
+
 uses
    SysUtils,
-   dwsUtils, dwsSymbols, dwsExprList, dwsVMTOffsets;
+   dwsUtils,
+   dwsSymbols, dwsExprList, dwsVMTOffsets;
 
 type
+   TCleanup = record
+      typ: TTypeSymbol;
+      depth: shortint;
+   end;
+
    Tx86RegisterJit = class(TinterfacedObject, IExternalFunctionJit)
-   private type
-      TCleanup = record
-         typ: TTypeSymbol;
-         depth: shortint;
-         constructor Create(typ: TTypeSymbol; depth: shortint);
-      end;
    private
       FProgram: TdwsProgram;
       FInitStream: Tx86WriteOnlyStream;
@@ -28,9 +30,9 @@ type
       FParams: integer;
       FRegParams: integer;
       FRegParamDepth: array[0..2] of byte;
-      FCalls: TList<TFunctionCall>;
+      FCalls: TFunctionCallArray;
       FTryFrame: TTryFrame;
-      FCleanups: TList<TCleanup>;
+      FCleanups: array of TCleanup;
 
       function GetDepth(depth: byte): shortint;
 
@@ -43,6 +45,7 @@ type
       procedure WriteLoadVarParam(depth: shortint);
       procedure AddCleanup(depth: shortint; pType: TTypeSymbol);
       procedure WriteCleanup;
+
    private //IExternalFunctionJit implementation
       procedure BeginProcedure(paramCount: integer);
       procedure BeginFunction(retval: TTypeSymbol; paramCount: integer);
@@ -50,9 +53,10 @@ type
       procedure Call;
       procedure PostCall;
       function GetBytes: TBytes;
-      function GetCalls: TArray<TFunctionCall>;
+      function GetCalls: TFunctionCallArray;
       function HasTryFrame: boolean;
       function GetTryFrame: TTryFrame;
+
    public
       constructor Create(prog: TdwsProgram);
       destructor Destroy; override;
@@ -73,14 +77,10 @@ begin
    FProgram := prog;
    FInitStream := Tx86WriteOnlyStream.Create;
    FStream := Tx86WriteOnlyStream.Create;
-   FCalls := TList<TFunctionCall>.Create;
-   FCleanups := TList<TCleanup>.Create;
 end;
 
 destructor Tx86RegisterJit.Destroy;
 begin
-   FCleanups.Free;
-   FCalls.Free;
    FStream.Free;
    FInitStream.Free;
    inherited;
@@ -120,10 +120,13 @@ end;
 procedure Tx86RegisterJit.AddCall(call: pointer; offset: integer);
 var
    newCall: TFunctionCall;
+   n : Integer;
 begin
    newCall.call := NativeUInt(call);
    newCall.offset := offset;
-   FCalls.Add(newCall);
+   n:=Length(FCalls);
+   SetLength(FCalls, n+1);
+   FCalls[n]:=newCall;
 end;
 
 procedure Tx86RegisterJit.BeginFunction(retval: TTypeSymbol; paramCount: integer);
@@ -174,8 +177,13 @@ begin
 end;
 
 procedure Tx86RegisterJit.AddCleanup(depth: shortint; pType: TTypeSymbol);
+var
+   n : Integer;
 begin
-   FCleanups.Add(TCleanup.Create(pType, depth));
+   n:=Length(FCleanups);
+   SetLength(FCleanups, n+1);
+   FCleanups[n].typ:=pType;
+   FCleanups[n].depth:=depth;
 end;
 
 function Tx86RegisterJit.CallGetParam(pType: TTypeSymbol; index: integer): shortint;
@@ -296,17 +304,9 @@ begin
    result := FInitStream.ToBytes;
 end;
 
-function Tx86RegisterJit.GetCalls: TArray<TFunctionCall>;
+function Tx86RegisterJit.GetCalls: TFunctionCallArray;
 begin
-   result := FCalls.ToArray;
-end;
-
-{ Tx86RegisterJit.TCleanup }
-
-constructor Tx86RegisterJit.TCleanup.Create(typ: TTypeSymbol; depth: shortint);
-begin
-   self.typ := typ;
-   self.depth := depth;
+   Result:=Copy(FCalls);
 end;
 
 end.

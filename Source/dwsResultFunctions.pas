@@ -66,15 +66,8 @@ var
    buf : Pointer;
    exprBase : TExprBase;
    exprBaseClass : TClass;
-{$IFDEF DELPHI_2010_MINUS}
-   exprBaseListRec : TExprBaseListRec;
-begin
-   exprBaseListRec:=args.List^;
-   exprbase:=exprBaseListRec.ExprBase[0];
-{$ELSE}
 begin
    exprBase:=args.ExprBase[0];
-{$ENDIF}
    exprBaseClass:=exprBase.ClassType;
    if exprBaseClass=TConstStringExpr then begin
       Result:=TdwsProgramExecution(args.Exec).Result;

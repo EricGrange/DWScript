@@ -818,6 +818,13 @@ type
       procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol);
    end;
 
+   IExternalRoutine = interface (ICallable)
+      ['{1595278A-94F5-4B46-8173-C3604C93959C}']
+      procedure SetExternalPointer(value : Pointer);
+   end;
+
+   TExternalRoutineFactory = function (funcSymbol : TFuncSymbol; mainProg : TdwsMainProgram) : IExternalRoutine;
+
    // A script procedure
    TdwsProcedure = class sealed (TdwsProgram, IUnknown, ICallable)
       private

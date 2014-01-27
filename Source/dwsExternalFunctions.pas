@@ -1,52 +1,56 @@
 unit dwsExternalFunctions;
 
 interface
+
 uses
    SysUtils,
-   dwsExprList, dwsExprs, dwsMagicExprs, dwsSymbols, dwsUtils, dwsExternalFunctionJit;
+   dwsXPlatform,
+   dwsExprList, dwsExprs, dwsMagicExprs, dwsSymbols, dwsUtils, dwsExternalFunctionJIT;
 
 type
-   IExternalRoutine = interface(ICallable)
-   ['{1595278A-94F5-4B46-8173-C3604C93959C}']
-      procedure SetExternalPointer(value: pointer);
-   end;
 
    TExternalProcedure = class(TInternalMagicProcedure, IExternalRoutine)
    private
-      type TStub = procedure(const args : TExprBaseListExec);
+      type TProcedureStub = procedure(const args : TExprBaseListExec);
+
    private
       FBuffer: TBytes;
-      FStub: TStub;
-      FCalls: TArray<TFunctionCall>;
+      FStub: TProcedureStub;
+      FCalls: TFunctionCallArray;
       FTryFrame: TTryFrame;
 
       procedure SetExternalPointer(value: pointer);
+
    public
-      constructor Create(funcSymbol : TFuncSymbol; prog: TdwsProgram);
+      constructor Create(aFuncSymbol : TFuncSymbol; prog: TdwsProgram);
       destructor Destroy; override;
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
    TExternalFunction = class(TInternalMagicVariantFunction, IExternalRoutine)
    private
-      type TStub = function (const args : TExprBaseListExec): Variant;
+      type TVariantFunctionStub = function (const args : TExprBaseListExec): Variant;
+
    private
       FBuffer: TBytes;
-      FStub: TStub;
-      FCalls: TArray<TFunctionCall>;
+      FStub: TVariantFunctionStub;
+      FCalls: TFunctionCallArray;
       FTryFrame: TTryFrame;
 
       procedure SetExternalPointer(value: pointer);
+
    public
-      constructor Create(funcSymbol : TFuncSymbol; prog: TdwsProgram);
+      constructor Create(aFuncSymbol : TFuncSymbol; prog: TdwsProgram);
       destructor Destroy; override;
 
       function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
    end;
 
 implementation
+
 uses
    Windows,
+   dwsCompiler, dwsStrings,
    dwsTokenizer{$IFDEF CPU386}, dwsExternalFunctionJitx86{$ENDIF};
 
 type
@@ -61,7 +65,20 @@ type
       procedure Eval(funcSymbol: TFuncSymbol; prog: TdwsProgram);
    end;
 
-function MakeExecutable(const value: TBytes; calls: TArray<TFunctionCall>; call: pointer;
+function ExternalRoutineFactory(funcSymbol : TFuncSymbol; mainProg : TdwsMainProgram) : IExternalRoutine;
+begin
+   if funcSymbol.IsType then
+      result := TExternalFunction.Create(funcSymbol, mainProg)
+   else result := TExternalProcedure.Create(funcSymbol, mainProg);
+end;
+
+procedure RaiseUnHandledExternalCall(exec : TdwsExecution; func : TFuncSymbol);
+begin
+   raise EdwsExternalFuncHandler.CreateFmt(RTE_UnHandledExternalCall,
+                                           [func.Name, '']);
+end;
+
+function MakeExecutable(const value: TBytes; const calls: TFunctionCallArray; call: pointer;
    const tryFrame: TTryFrame): pointer;
 var
    oldprotect: cardinal;
@@ -77,7 +94,7 @@ begin
       if fixup.call = 0 then
          lCall := nativeInt(call)
       else lCall := fixup.call;
-      lOffset := (lCall - nativeInt(ptr)) - sizeof(pointer);
+      lOffset := (lCall - NativeInt(ptr)) - sizeof(pointer);
       PNativeInt(ptr)^ := lOffset;
    end;
    if tryFrame[0] <> 0 then
@@ -106,17 +123,14 @@ end;
 
 { TExternalProcedure }
 
-constructor TExternalProcedure.Create(funcSymbol: TFuncSymbol; prog: TdwsProgram);
+constructor TExternalProcedure.Create(aFuncSymbol: TFuncSymbol; prog: TdwsProgram);
 var
    jit: TdwsExternalStubJit;
 begin
-   assert(assigned(funcSymbol));
-   assert(not funcSymbol.IsType);
-   assert(funcSymbol.Executable = nil);
-   assert(funcSymbol.ExternalConvention in [ttREGISTER..ttSTDCALL]);
+   FuncSymbol:=aFuncSymbol;
    jit := TdwsExternalStubJit.Create;
    try
-      jit.Eval(funcSymbol, prog);
+      jit.Eval(aFuncSymbol, prog);
       FBuffer := jit.FBuffer;
       FCalls := jit.FInternalJit.GetCalls;
       if jit.FInternalJit.HasTryFrame then
@@ -134,8 +148,8 @@ end;
 
 procedure TExternalProcedure.DoEvalProc(const args: TExprBaseListExec);
 begin
-   if not assigned(FStub) then
-      raise Exception.Create('No external function assigned');
+   if not Assigned(FStub) then
+      RaiseUnHandledExternalCall(args.Exec, FuncSymbol);
    FStub(args);
 end;
 
@@ -148,17 +162,19 @@ end;
 
 { TExternalFunction }
 
-constructor TExternalFunction.Create(funcSymbol: TFuncSymbol; prog: TdwsProgram);
+constructor TExternalFunction.Create(aFuncSymbol: TFuncSymbol; prog: TdwsProgram);
 var
    jit: TdwsExternalStubJit;
 begin
-   assert(assigned(funcSymbol));
-   assert(funcSymbol.IsType);
-   assert(funcSymbol.Executable = nil);
-   assert(funcSymbol.ExternalConvention in [ttREGISTER..ttSTDCALL]);
+   FuncSymbol:=aFuncSymbol;
+
+   assert(assigned(aFuncSymbol));
+   assert(aFuncSymbol.IsType);
+   assert(aFuncSymbol.Executable = nil);
+   assert(aFuncSymbol.ExternalConvention in [ttREGISTER..ttSTDCALL]);
    jit := TdwsExternalStubJit.Create;
    try
-      jit.Eval(funcSymbol, prog);
+      jit.Eval(aFuncSymbol, prog);
       FBuffer := jit.FBuffer;
       FCalls := jit.FInternalJit.GetCalls;
       if jit.FInternalJit.HasTryFrame then
@@ -176,8 +192,8 @@ end;
 
 function TExternalFunction.DoEvalAsVariant(const args: TExprBaseListExec): Variant;
 begin
-   if not assigned(FStub) then
-      raise Exception.Create('No external function assigned');
+   if not Assigned(FStub) then
+      RaiseUnHandledExternalCall(args.Exec, FuncSymbol);
    result := FStub(args);
 end;
 
@@ -211,11 +227,21 @@ begin
    if funcSymbol.IsType then
       FInternalJit.BeginFunction(funcSymbol.typ, funcSymbol.ParamSize - 1)
    else FInternalJit.BeginProcedure(funcSymbol.ParamSize - 1);
-   for i := 0 to funcSymbol.ParamSize - 1 do
+   for i := 0 to funcSymbol.Params.Count - 1 do
       FInternalJit.PassParam(funcSymbol.Params[i]);
    FInternalJit.Call;
    FInternalJit.PostCall;
    FBuffer := FInternalJit.GetBytes;
 end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   TdwsCompiler.RegisterExternalRoutineFactory(ExternalRoutineFactory);
 
 end.

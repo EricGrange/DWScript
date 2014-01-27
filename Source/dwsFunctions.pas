@@ -71,7 +71,7 @@ type
          function SubExpr(i : Integer) : TExprBase;
          function SubExprCount : Integer;
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); virtual; abstract;
-         property FuncSymbol : TFuncSymbol read FFuncSymbol;
+         property FuncSymbol : TFuncSymbol read FFuncSymbol write FFuncSymbol;
    end;
 
    TAnonymousFunction = class(TFunctionPrototype, IUnknown, ICallable)
