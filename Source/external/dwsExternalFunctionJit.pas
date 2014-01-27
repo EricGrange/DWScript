@@ -16,8 +16,8 @@ type
    TTryFrame = array[0..3] of integer;
 
    IExternalFunctionJit = interface
-      procedure BeginProcedure(paramCount: integer);
-      procedure BeginFunction(retval: TTypeSymbol; paramCount: integer);
+      procedure BeginProcedure(params: TParamsSymbolTable);
+      procedure BeginFunction(retval: TTypeSymbol; params: TParamsSymbolTable);
       procedure PassParam(param: TParamSymbol);
       procedure Call;
       procedure PostCall;

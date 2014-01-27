@@ -225,8 +225,8 @@ begin
    Clear;
    FInternalJit := JitFactory(funcSymbol.ExternalConvention, prog);
    if funcSymbol.IsType then
-      FInternalJit.BeginFunction(funcSymbol.typ, funcSymbol.ParamSize - 1)
-   else FInternalJit.BeginProcedure(funcSymbol.ParamSize - 1);
+      FInternalJit.BeginFunction(funcSymbol.typ, funcSymbol.Params)
+   else FInternalJit.BeginProcedure(funcSymbol.Params);
    for i := 0 to funcSymbol.Params.Count - 1 do
       FInternalJit.PassParam(funcSymbol.Params[i]);
    FInternalJit.Call;

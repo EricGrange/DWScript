@@ -22,6 +22,11 @@ type
    end;
 
    Tx86RegisterJit = class(TinterfacedObject, IExternalFunctionJit)
+   type
+      TStackLoc = record
+         depth, size: integer;
+         constructor Create(depth, size: integer);
+      end;
    private
       FProgram: TdwsProgram;
       FInitStream: Tx86WriteOnlyStream;
@@ -30,6 +35,7 @@ type
       FParams: integer;
       FRegParams: integer;
       FRegParamDepth: array[0..2] of byte;
+      FStackParams: array of TStackLoc;
       FCalls: TFunctionCallArray;
       FTryFrame: TTryFrame;
       FCleanups: array of TCleanup;
@@ -47,8 +53,8 @@ type
       procedure WriteCleanup;
 
    private //IExternalFunctionJit implementation
-      procedure BeginProcedure(paramCount: integer);
-      procedure BeginFunction(retval: TTypeSymbol; paramCount: integer);
+      procedure BeginProcedure(params: TParamsSymbolTable);
+      procedure BeginFunction(retval: TTypeSymbol; params: TParamsSymbolTable);
       procedure PassParam(param: TParamSymbol);
       procedure Call;
       procedure PostCall;
@@ -86,19 +92,29 @@ begin
    inherited;
 end;
 
-procedure Tx86RegisterJit.BeginProcedure(paramCount: integer);
+procedure Tx86RegisterJit.BeginProcedure(params: TParamsSymbolTable);
 const
    SETUP_STACK:   array[0..5] of byte = ($51, $53, $56, $57, $8B, $DA); //push ECX; push EBX;
                                                                         //push ESI; push EDI;
                                                                         //mov ebx,edx
+var
+   i, paramDepth: integer;
 begin
    FParams := 0;
    FRegParams := 0;
    FInitStream._push_reg(gprEBP);
    FInitStream._mov_reg_reg(gprEBP, gprESP); //begin stack frame
-   if ParamCount > 0 then
+   if Params.Count > 0 then
    begin
-      FInitStream._add_reg_int32(gprESP, GetDepth(paramCount)); //reserve stack space
+      paramDepth := 0;
+      for i := 0 to params.Count - 1 do
+      begin
+         inc(paramDepth);
+         //float type is 2 dwords long
+         if params[i].Typ = FProgram.TypFloat then
+            inc(paramDepth);
+      end;
+      FInitStream._add_reg_int32(gprESP, GetDepth(paramDepth)); //reserve stack space
       FInitStream.WriteBytes(SETUP_STACK);
    end;
 end;
@@ -129,9 +145,9 @@ begin
    FCalls[n]:=newCall;
 end;
 
-procedure Tx86RegisterJit.BeginFunction(retval: TTypeSymbol; paramCount: integer);
+procedure Tx86RegisterJit.BeginFunction(retval: TTypeSymbol; params: TParamsSymbolTable);
 begin
-   BeginProcedure(paramCount);
+   BeginProcedure(params);
    FReturnValue := retval;
 end;
 
@@ -148,7 +164,7 @@ begin
 end;
 
 function Tx86RegisterJit.GetDepth(depth: byte): shortint;
-const OVERHEAD_SLOTS = 1;
+const OVERHEAD_SLOTS = 0;
 begin
    result := ((depth + OVERHEAD_SLOTS) * sizeof(pointer));
    result := ($FF - result) + 1;
@@ -307,6 +323,14 @@ end;
 function Tx86RegisterJit.GetCalls: TFunctionCallArray;
 begin
    Result:=Copy(FCalls);
+end;
+
+{ Tx86RegisterJit.TStackLoc }
+
+constructor Tx86RegisterJit.TStackLoc.Create(depth, size: integer);
+begin
+   self.depth := depth;
+   self.size := size;
 end;
 
 end.
