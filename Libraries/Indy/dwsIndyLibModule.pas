@@ -85,7 +85,6 @@ type
     procedure dwsTIdFTPMethodsGetReadTimeoutEval(Info: TProgramInfo; ExtObject: TObject);
     procedure dwsTIdFTPMethodsGetResumeSupportedEval(Info: TProgramInfo; ExtObject: TObject);
     procedure dwsTIdFTPMethodsGetReuseSocketEval(Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsTIdFTPMethodsGetServerHOSTEval(Info: TProgramInfo; ExtObject: TObject);
     procedure dwsTIdFTPMethodsGetSupportsTLSEval(Info: TProgramInfo; ExtObject: TObject);
     procedure dwsTIdFTPMethodsGetTransferTimeoutEval(Info: TProgramInfo; ExtObject: TObject);
     procedure dwsTIdFTPMethodsGetTransferTypeEval(Info: TProgramInfo; ExtObject: TObject);
@@ -126,7 +125,6 @@ type
     procedure dwsTIdFTPMethodsSetProxySettingsEval(Info: TProgramInfo; ExtObject: TObject);
     procedure dwsTIdFTPMethodsSetReadTimeoutEval(Info: TProgramInfo; ExtObject: TObject);
     procedure dwsTIdFTPMethodsSetReuseSocketEval(Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsTIdFTPMethodsSetServerHOSTEval(Info: TProgramInfo; ExtObject: TObject);
     procedure dwsTIdFTPMethodsSetTransferTimeoutEval(Info: TProgramInfo; ExtObject: TObject);
     procedure dwsTIdFTPMethodsSetTransferTypeEval(Info: TProgramInfo; ExtObject: TObject);
     procedure dwsTIdFTPMethodsSetTryNATFastTrackEval(Info: TProgramInfo; ExtObject: TObject);
@@ -237,13 +235,12 @@ type
     procedure dwsUploadEval(info: TProgramInfo);
     procedure dwsUploadPortEval(info: TProgramInfo);
     procedure dwsSendEmailEval(info: TProgramInfo);
+
   private
-    FScript: TDelphiWebScript;
-    procedure SetScript(const Value: TDelphiWebScript);
-  protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-  published
-    property Script: TDelphiWebScript read FScript write SetScript;
+    procedure SetScript(aScript : TDelphiWebScript);
+
+  public
+    property Script : TDelphiWebScript write SetScript;
   end;
 
 implementation
@@ -255,27 +252,9 @@ uses
 
 { TdwsIndyLib }
 
-procedure TdwsIndyLib.Notification(AComponent: TComponent;
-  Operation: TOperation);
+procedure TdwsIndyLib.SetScript(aScript : TDelphiWebScript);
 begin
-  inherited;
-  if (Operation = opRemove) and (AComponent = Script) then
-    SetScript(nil)
-end;
-
-procedure TdwsIndyLib.SetScript(const Value: TDelphiWebScript);
-var
-  x: Integer;
-begin
-  if Assigned(FScript) then
-    FScript.RemoveFreeNotification(Self);
-  if Assigned(Value) then
-    Value.FreeNotification(Self);
-
-  FScript := Value;
-  for x := 0 to ComponentCount - 1 do
-    if Components[x] is TdwsUnit then
-      TdwsUnit(Components[x]).Script := Value;
+   dwsUnitIndy.Script:=aScript;
 end;
 
 procedure TdwsIndyLib.dwsTIdEMailAddressListMethodsSetItemEval(
@@ -466,12 +445,6 @@ begin
   Info.ResultAsInteger := Integer(TIdFTP(ExtObject).ReuseSocket);
 end;
 
-procedure TdwsIndyLib.dwsTIdFTPMethodsGetServerHOSTEval(
-  Info: TProgramInfo; ExtObject: TObject);
-begin
-  Info.ResultAsString := TIdFTP(ExtObject).ServerHOST;
-end;
-
 procedure TdwsIndyLib.dwsTIdFTPMethodsGetSupportsTLSEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
@@ -644,12 +617,6 @@ procedure TdwsIndyLib.dwsTIdFTPMethodsSetReuseSocketEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
   TIdFTP(ExtObject).ReuseSocket := TIdReuseSocket(Info.ParamAsInteger[0]);
-end;
-
-procedure TdwsIndyLib.dwsTIdFTPMethodsSetServerHOSTEval(
-  Info: TProgramInfo; ExtObject: TObject);
-begin
-  TIdFTP(ExtObject).ServerHOST := Info.ParamAsString[0];
 end;
 
 procedure TdwsIndyLib.dwsTIdFTPMethodsSetTransferTimeoutEval(
@@ -1456,7 +1423,7 @@ procedure TdwsIndyLib.dwsTIdFTPMethodsPutEval(Info: TProgramInfo;
   ExtObject: TObject);
 begin
   TIdFTP(ExtObject).Put(Info.ParamAsString[0], Info.ParamAsString[1],
-    Info.ParamAsBoolean[2], Info.ParamAsInteger[3]);
+                        Info.ParamAsBoolean[2]);
 end;
 
 procedure TdwsIndyLib.dwsTIdFTPMethodsRemoveDirEval(

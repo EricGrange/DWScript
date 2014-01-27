@@ -1,5 +1,7 @@
 object dwsIndyLib: TdwsIndyLib
   OldCreateOrder = False
+  Left = 769
+  Top = 189
   Height = 129
   Width = 183
   object dwsUnitIndy: TdwsUnit
@@ -10,7 +12,7 @@ object dwsIndyLib: TdwsIndyLib
         Methods = <
           item
             Name = 'GetProxyType'
-            ResultType = 'TFtpProxySettings'
+            ResultType = 'TFtpProxyType'
             OnEval = dwsTIdFtpProxySettingsMethodsGetProxyTypeEval
             Visibility = cvPrivate
             Kind = mkFunction
@@ -20,7 +22,7 @@ object dwsIndyLib: TdwsIndyLib
             Parameters = <
               item
                 Name = 'Value'
-                DataType = 'TFtpProxySettings'
+                DataType = 'TFtpProxyType'
               end>
             OnEval = dwsTIdFtpProxySettingsMethodsSetProxyTypeEval
             Visibility = cvPrivate
@@ -101,7 +103,7 @@ object dwsIndyLib: TdwsIndyLib
         Properties = <
           item
             Name = 'ProxyType'
-            DataType = 'TFtpProxySettings'
+            DataType = 'TFtpProxyType'
             ReadAccess = 'GetProxyType'
             WriteAccess = 'SetProxyType'
           end
@@ -622,7 +624,7 @@ object dwsIndyLib: TdwsIndyLib
           end
           item
             Name = 'GetProxySettings'
-            ResultType = 'TFtpProxySettings'
+            ResultType = 'TIdFtpProxySettings'
             OnEval = dwsTIdFtpMethodsGetProxySettingsEval
             Visibility = cvPrivate
             Kind = mkFunction
@@ -632,7 +634,7 @@ object dwsIndyLib: TdwsIndyLib
             Parameters = <
               item
                 Name = 'value'
-                DataType = 'TFtpProxySettings'
+                DataType = 'TIdFtpProxySettings'
                 IsVarParam = True
                 IsWritable = False
               end>
@@ -677,26 +679,6 @@ object dwsIndyLib: TdwsIndyLib
                 IsWritable = False
               end>
             OnEval = dwsTIdFtpMethodsSetUseHOSTEval
-            Visibility = cvPrivate
-            Kind = mkProcedure
-          end
-          item
-            Name = 'GetServerHOST'
-            ResultType = 'String'
-            OnEval = dwsTIdFtpMethodsGetServerHOSTEval
-            Visibility = cvPrivate
-            Kind = mkFunction
-          end
-          item
-            Name = 'SetServerHOST'
-            Parameters = <
-              item
-                Name = 'value'
-                DataType = 'String'
-                IsVarParam = True
-                IsWritable = False
-              end>
-            OnEval = dwsTIdFtpMethodsSetServerHOSTEval
             Visibility = cvPrivate
             Kind = mkProcedure
           end
@@ -923,12 +905,6 @@ object dwsIndyLib: TdwsIndyLib
                 DataType = 'Boolean'
                 HasDefaultValue = True
                 DefaultValue = False
-              end
-              item
-                Name = 'StartPos'
-                DataType = 'Integer'
-                HasDefaultValue = True
-                DefaultValue = -1
               end>
             OnEval = dwsTIdFtpMethodsPutEval
             Kind = mkProcedure
@@ -1205,7 +1181,7 @@ object dwsIndyLib: TdwsIndyLib
           end
           item
             Name = 'ProxySettings'
-            DataType = 'TFtpProxySettings'
+            DataType = 'TIdFtpProxySettings'
             Visibility = cvPublished
             ReadAccess = 'GetProxySettings'
             WriteAccess = 'SetProxySettings'
@@ -1223,13 +1199,6 @@ object dwsIndyLib: TdwsIndyLib
             Visibility = cvPublished
             ReadAccess = 'GetUseHOST'
             WriteAccess = 'SetUseHOST'
-          end
-          item
-            Name = 'ServerHOST'
-            DataType = 'String'
-            Visibility = cvPublished
-            ReadAccess = 'GetServerHOST'
-            WriteAccess = 'SetServerHOST'
           end
           item
             Name = 'UseTLS'
@@ -1420,7 +1389,7 @@ object dwsIndyLib: TdwsIndyLib
                 IsVarParam = True
                 IsWritable = False
               end>
-            ResultType = 'TEMailAddressItem'
+            ResultType = 'TIdEMailAddressItem'
             OnEval = dwsTIdEMailAddressListMethodsGetItemEval
             Visibility = cvPrivate
             Kind = mkFunction
@@ -1436,7 +1405,7 @@ object dwsIndyLib: TdwsIndyLib
               end
               item
                 Name = 'value'
-                DataType = 'TEMailAddressItem'
+                DataType = 'TIdEMailAddressItem'
                 IsVarParam = True
                 IsWritable = False
               end>
@@ -1451,7 +1420,7 @@ object dwsIndyLib: TdwsIndyLib
           end
           item
             Name = 'Add'
-            ResultType = 'TEMailAddressItem'
+            ResultType = 'TIdEMailAddressItem'
             OnEval = dwsTIdEMailAddressListMethodsAddEval
             Kind = mkFunction
           end>
@@ -1464,7 +1433,7 @@ object dwsIndyLib: TdwsIndyLib
           end
           item
             Name = 'Items'
-            DataType = 'TEMailAddressItem'
+            DataType = 'TIdEMailAddressItem'
             ReadAccess = 'GetItem'
             WriteAccess = 'SetItem'
             IndexType = 'Integer'
@@ -2343,7 +2312,7 @@ object dwsIndyLib: TdwsIndyLib
             Parameters = <
               item
                 Name = 'MailMessage'
-                DataType = 'TMailMessage'
+                DataType = 'TIdMailMessage'
               end>
             OnEval = dwsTIdSMTPMethodsSendEval
             Kind = mkProcedure
@@ -2428,64 +2397,67 @@ object dwsIndyLib: TdwsIndyLib
         Name = 'TSMTPAuthenticationType'
         Elements = <
           item
-            Name = 'satNone'
+            Name = 'None'
           end
           item
-            Name = 'satDefault'
+            Name = 'Default'
           end
           item
-            Name = 'satSASL'
+            Name = 'SASL'
           end>
+        Style = enumScoped
       end
       item
         Name = 'TUseTls'
         Elements = <
           item
-            Name = 'utNoTLSSupport'
+            Name = 'NoSupport'
           end
           item
-            Name = 'utUseImplicitTLS'
+            Name = 'UseImplicit'
           end
           item
-            Name = 'utUseRequireTLS'
+            Name = 'UseRequire'
           end
           item
-            Name = 'utUseExplicitTLS'
+            Name = 'UseExplicit'
           end>
+        Style = enumScoped
       end
       item
         Name = 'TMessageEncoding'
         Elements = <
           item
-            Name = 'meDefault'
+            Name = 'Default'
           end
           item
-            Name = 'meMIME'
+            Name = 'MIME'
           end
           item
-            Name = 'mePlainText'
+            Name = 'PlainText'
           end>
+        Style = enumScoped
       end
       item
         Name = 'TMessageFlags'
         Elements = <
           item
-            Name = 'mfAnswered'
+            Name = 'Answered'
           end
           item
-            Name = 'mfFlagged'
+            Name = 'Flagged'
           end
           item
-            Name = 'mfDeleted'
+            Name = 'Deleted'
           end
           item
-            Name = 'mfDraft'
+            Name = 'Draft'
           end
           item
-            Name = 'mfSeen'
+            Name = 'Seen'
           end
           item
-            Name = 'mfRecent'
+            Name = 'Recent'
           end>
         Style = enumFlags
       end
@@ -2493,54 +2465,56 @@ object dwsIndyLib: TdwsIndyLib
         Name = 'TFtpProxyType'
         Elements = <
           item
-            Name = 'fpcmNone'
+            Name = 'None'
           end
           item
-            Name = 'fpcmUserSite'
+            Name = 'UserSite'
           end
           item
-            Name = 'fpcmSite'
+            Name = 'Site'
           end
           item
-            Name = 'fpcmOpen'
+            Name = 'Open'
           end
           item
-            Name = 'fpcmUserPass'
+            Name = 'UserPass'
           end
           item
-            Name = 'fpcmTransparent'
+            Name = 'Transparent'
           end
           item
-            Name = 'fpcmUserHostFireWallID'
+            Name = 'UserHostFireWallID'
           end
           item
-            Name = 'fpcmNovellBorder'
+            Name = 'NovellBorder'
           end
           item
-            Name = 'fpcmHttpProxyWithFtp'
+            Name = 'HttpProxyWithFtp'
           end
           item
-            Name = 'fpcmCustomProxy'
+            Name = 'CustomProxy'
           end>
+        Style = enumScoped
       end
       item
         Name = 'TAuthCmd'
         Elements = <
           item
-            Name = 'tAuto'
+            Name = 'Auto'
           end
           item
-            Name = 'tAuthTLS'
+            Name = 'TLS'
           end
           item
-            Name = 'tAuthSSL'
+            Name = 'SSL'
           end
           item
-            Name = 'tAuthTLSC'
+            Name = 'TLSC'
           end
           item
-            Name = 'tAuthTLSP'
+            Name = 'TLSP'
           end>
+        Style = enumScoped
       end
       item
         Name = 'TIPVersion'
@@ -2551,12 +2525,13 @@ object dwsIndyLib: TdwsIndyLib
           item
             Name = 'IPv6'
           end>
+        Style = enumScoped
       end
       item
         Name = 'TReuseSocket'
         Elements = <
           item
-            Name = 'rsOSDependent'
+            Name = 'OSDependent'
           end
           item
             Name = 'rsTrue'
@@ -2564,49 +2539,54 @@ object dwsIndyLib: TdwsIndyLib
           item
             Name = 'rsFalse'
           end>
+        Style = enumScoped
       end
       item
         Name = 'TFTPDataPortSecurity'
         Elements = <
           item
-            Name = 'ftpdpsClear'
+            Name = 'Clear'
           end
           item
-            Name = 'ftpdpsPrivate'
+            Name = 'Private'
           end>
+        Style = enumScoped
       end
       item
         Name = 'TFTPTransferType'
         Elements = <
           item
-            Name = 'ftASCII'
+            Name = 'ASCII'
           end
           item
-            Name = 'ftBinary'
+            Name = 'Binary'
           end>
+        Style = enumScoped
       end
       item
         Name = 'TFTPDataStructure'
         Elements = <
           item
-            Name = 'dsFile'
+            Name = 'File'
           end
           item
-            Name = 'dsRecord'
+            Name = 'Record'
           end
           item
-            Name = 'dsPage'
+            Name = 'Page'
           end>
+        Style = enumScoped
       end
       item
         Name = 'TFTPTransferMode'
         Elements = <
           item
-            Name = 'dmStream'
+            Name = 'Stream'
           end
           item
-            Name = 'dmDeflate'
+            Name = 'Deflate'
           end>
+        Style = enumScoped
       end>
     Functions = <
       item
@@ -2708,9 +2688,9 @@ object dwsIndyLib: TdwsIndyLib
           end>
         OnEval = dwsSendEmailEval
       end>
-    UnitName = 'Indy'
-    StaticSymbols = False
-    Left = 40
-    Top = 32
+    UnitName = 'Networkink.Indy'
+    StaticSymbols = True
+    Left = 64
+    Top = 24
   end
 end
