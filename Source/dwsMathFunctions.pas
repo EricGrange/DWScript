@@ -162,6 +162,10 @@ type
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
+   TUnsigned32Func = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+   end;
+
    TDegToRadFunc = class(TInternalMagicFloatFunction)
       procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
@@ -589,6 +593,13 @@ begin
    Result:=Round(args.AsFloat[0]);
 end;
 
+{ TUnsignedFunc }
+
+function TUnsigned32Func.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+begin
+   Result:=Cardinal(args.AsInteger[0]);
+end;
+
 { TPowerFunc }
 
 procedure TPowerFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
@@ -890,8 +901,10 @@ initialization
    RegisterInternalIntFunction(TFloorFunc, 'Floor', ['v', SYS_FLOAT], [iffStateLess], 'Floor');
    RegisterInternalIntFunction(TCeilFunc, 'Ceil', ['v', SYS_FLOAT], [iffStateLess], 'Ceiling');
 
-   RegisterInternalFunction(TTruncFunc, 'Trunc', ['v', SYS_FLOAT], SYS_INTEGER, [iffStateLess], 'Truncate');
-   RegisterInternalFunction(TRoundFunc, 'Round', ['v', SYS_FLOAT], SYS_INTEGER, [iffStateLess], 'Round');
+   RegisterInternalIntFunction(TTruncFunc, 'Trunc', ['v', SYS_FLOAT], [iffStateLess], 'Truncate');
+   RegisterInternalIntFunction(TRoundFunc, 'Round', ['v', SYS_FLOAT], [iffStateLess], 'Round');
+
+   RegisterInternalIntFunction(TUnsigned32Func, 'Unsigned32', ['v', SYS_INTEGER], [iffStateLess], 'Unsigned32');
 
    RegisterInternalFloatFunction(TDegToRadFunc, 'DegToRad', ['a', SYS_FLOAT], [iffStateLess], 'DegToRad');
    RegisterInternalFloatFunction(TRadToDegFunc, 'RadToDeg', ['a', SYS_FLOAT], [iffStateLess], 'RadToDeg');
