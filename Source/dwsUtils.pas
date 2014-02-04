@@ -701,7 +701,8 @@ function WhichPowerOfTwo(const v : Int64) : Integer;
 function SimpleStringHash(const s : UnicodeString) : Cardinal; inline;
 
 function RawByteStringToScriptString(const s : RawByteString) : UnicodeString; overload; inline;
-procedure RawByteStringToScriptString(const s : RawByteString; var result : UnicodeString); overload;
+procedure RawByteStringToScriptString(const s : RawByteString; var result : UnicodeString); inline; overload;
+procedure BytesToScriptString(const p : PByte; n : Integer; var result : UnicodeString);
 function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString; overload; inline;
 procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
 
@@ -1187,19 +1188,27 @@ begin
    RawByteStringToScriptString(s, Result);
 end;
 
+// RawByteStringToScriptString
+//
 procedure RawByteStringToScriptString(const s : RawByteString; var result : UnicodeString); overload;
-var
-   i, n : Integer;
-   pSrc : PByteArray;
-   pDest : PWordArray;
 begin
    if s='' then begin
       result:='';
       exit;
    end;
-   n:=Length(s);
+   BytesToScriptString(Pointer(s), Length(s), result)
+end;
+
+// BytesToScriptString
+//
+procedure BytesToScriptString(const p : PByte; n : Integer; var result : UnicodeString); overload;
+var
+   i : Integer;
+   pSrc : PByteArray;
+   pDest : PWordArray;
+begin
    SetLength(result, n);
-   pSrc:=PByteArray(Pointer(s));
+   pSrc:=PByteArray(p);
    pDest:=PWordArray(Pointer(result));
    for i:=0 to n-1 do
       pDest[i]:=Word(PByte(@pSrc[i])^);

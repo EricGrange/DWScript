@@ -1598,6 +1598,7 @@ type
          function GetParamAsInteger(index : Integer) : Int64;
          procedure SetParamAsInteger(index : Integer; const v : Int64);
          function GetParamAsString(index : Integer) : UnicodeString;
+         procedure SetParamAsString(index : Integer; const v : UnicodeString);
          function GetParamAsDataString(index : Integer) : RawByteString;
          procedure SetParamAsDataString(index : Integer; const v : RawByteString);
          function GetParamAsFloat(index : Integer) : Double;
@@ -1646,7 +1647,7 @@ type
          property ParamAsPVariant[index : Integer] : PVariant read GetParamAsPVariant;
          property ParamAsVariant[index : Integer] : Variant read GetParamAsVariant write SetParamAsVariant;
          property ParamAsInteger[index : Integer] : Int64 read GetParamAsInteger write SetParamAsInteger;
-         property ParamAsString[index : Integer] : UnicodeString read GetParamAsString;
+         property ParamAsString[index : Integer] : UnicodeString read GetParamAsString write SetParamAsString;
          property ParamAsDataString[index : Integer] : RawByteString read GetParamAsDataString write SetParamAsDataString;
          property ParamAsFloat[index : Integer] : Double read GetParamAsFloat;
          property ParamAsBoolean[index : Integer] : Boolean read GetParamAsBoolean;
@@ -6073,6 +6074,13 @@ begin
       Result:=UnicodeString(p.VUString)
    {$endif}
    else VariantToString(PVariant(p)^, Result);
+end;
+
+// SetParamAsString
+//
+procedure TProgramInfo.SetParamAsString(index : Integer; const v : UnicodeString);
+begin
+   GetParamAsPVariant(index)^:=v;
 end;
 
 // GetParamAsDataString
