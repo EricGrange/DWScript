@@ -35,7 +35,7 @@ type
       FParams: integer;
       FRegParams: integer;
       FRegParamDepth: array[0..2] of byte;
-      FStackParams: array of TStackLoc;
+      //FStackParams: array of TStackLoc;
       FCalls: TFunctionCallArray;
       FTryFrame: TTryFrame;
       FCleanups: array of TCleanup;

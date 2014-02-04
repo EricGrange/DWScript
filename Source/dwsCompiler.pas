@@ -3159,9 +3159,10 @@ begin
                   // forward & external declarations
 
                   if FTok.TestDelete(ttEXTERNAL) then begin
-                     result := ConvertToMagicSymbol(result);
-                     Result.IsExternal:=True;
                      ReadExternalName(Result);
+                     if FExternalRoutines.Objects[Result.ExternalName]<>nil then
+                        Result:=ConvertToMagicSymbol(Result);
+                     Result.IsExternal:=True;
                   end;
 
                   if UnitSection=secInterface then begin
@@ -6827,13 +6828,15 @@ function TdwsCompiler.ReadFunc(funcSym : TFuncSymbol; codeExpr : TTypedExpr = ni
 var
    funcExpr : TFuncExprBase;
 begin
-   if funcSym.IsExternal then
-   begin
-      funcSym.Executable := CreateExternalFunction(funcSym);
-      if funcSym is TMagicFuncSymbol then
-      begin
+   if funcSym.IsExternal then begin
+      if funcSym is TMagicFuncSymbol then begin
+         // jitted external call
+         funcSym.Executable := CreateExternalFunction(funcSym);
          TMagicFuncSymbol(funcSym).InternalFunction := funcSym.Executable.GetSelf as TInternalMagicFunction;
          TMagicFuncSymbol(funcSym).InternalFunction.IncRefCount;
+      end else begin
+         // abstract external call
+         funcSym.Executable:=TExternalFuncHandler.Create;
       end;
    end;
 
