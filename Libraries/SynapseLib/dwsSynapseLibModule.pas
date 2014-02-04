@@ -7,13 +7,17 @@ uses
   dwsStrings, dwsUtils, dwsExprList, dwsXPlatform,
   dwsComp, dwsExprs, dwsSymbols, dwsStack, dwsDatabase, dwsJSON, dwsErrors,
   dwsWebUtils,
-  smtpsend;
+  smtpsend, httpsend;
 
 type
 
   TdwsSynapseLib = class(TDataModule)
     dwsSynapse: TdwsUnit;
     procedure dwsSynapseClassesSMTPMailMethodsSendEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsSynapseClassesHttpQueryMethodsGetTextEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsSynapseClassesHttpQueryMethodsGetDataEval(Info: TProgramInfo;
       ExtObject: TObject);
   private
     { Private declarations }
@@ -53,6 +57,50 @@ end;
 procedure TdwsSynapseLib.RaiseSMTPException(Info: TProgramInfo; smtp : TSMTPSend; const action : String);
 begin
    RaiseSynapseException(Info, 'SMTP, '+action+': '+smtp.EnhCodeString+','+smtp.ResultString);
+end;
+
+// SynapseHttpQuery
+//
+function SynapseHttpQuery(const url : String; var data : String; asText : Boolean) : Integer;
+var
+   query : THTTPSend;
+   n : Integer;
+   buf : RawByteString;
+begin
+   query := THTTPSend.Create;
+   try
+      if query.HTTPMethod('GET', url) then begin
+         n := query.Document.Size;
+         SetLength(buf, n);
+         System.Move(query.Document.Memory^, Pointer(buf)^, n);
+         if asText and StrIEndsWith(query.MimeType, 'charset=utf-8') then
+            data := UTF8ToUnicodeString(buf)
+         else RawByteStringToScriptString(buf, data);
+         Result := query.ResultCode;
+      end else begin
+         Result := 0;
+      end;
+  finally
+      query.Free;
+  end;
+end;
+
+procedure TdwsSynapseLib.dwsSynapseClassesHttpQueryMethodsGetDataEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   buf : String;
+begin
+   Info.ResultAsInteger := SynapseHttpQuery(Info.ParamAsString[0], buf, False);
+   Info.ParamAsString[1] := buf;
+end;
+
+procedure TdwsSynapseLib.dwsSynapseClassesHttpQueryMethodsGetTextEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   buf : String;
+begin
+   Info.ResultAsInteger := SynapseHttpQuery(Info.ParamAsString[0], buf, True);
+   Info.ParamAsString[1] := buf;
 end;
 
 procedure TdwsSynapseLib.dwsSynapseClassesSMTPMailMethodsSendEval(

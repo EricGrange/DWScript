@@ -43,10 +43,49 @@ object dwsSynapseLib: TdwsSynapseLib
       item
         Name = 'ESynapseException'
         Ancestor = 'Exception'
+      end
+      item
+        Name = 'HttpQuery'
+        IsStatic = True
+        Methods = <
+          item
+            Name = 'GetText'
+            Parameters = <
+              item
+                Name = 'url'
+                DataType = 'String'
+              end
+              item
+                Name = 'data'
+                DataType = 'String'
+                IsVarParam = True
+              end>
+            ResultType = 'Integer'
+            Attributes = [maStatic]
+            OnEval = dwsSynapseClassesHttpQueryMethodsGetTextEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'GetData'
+            Parameters = <
+              item
+                Name = 'url'
+                DataType = 'String'
+              end
+              item
+                Name = 'data'
+                DataType = 'String'
+                IsVarParam = True
+              end>
+            ResultType = 'Integer'
+            Attributes = [maStatic]
+            OnEval = dwsSynapseClassesHttpQueryMethodsGetDataEval
+            Kind = mkClassFunction
+          end>
       end>
     UnitName = 'Networking.Synapse'
     StaticSymbols = True
     Left = 72
-    Top = 16
+    Top = 24
   end
 end
