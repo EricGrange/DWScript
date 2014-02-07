@@ -19,9 +19,9 @@ unit dwsWebLibModule;
 interface
 
 uses
-  SysUtils, Classes,
+  SysUtils, Classes, StrUtils,
   dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList, dwsSymbols,
-  SynZip;
+  SynZip, SynCrtSock, SynCommons;
 
 type
   TdwsWebLib = class(TDataModule)
@@ -92,6 +92,10 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesWebRequestMethodsHasContentFieldEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsGetDataEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsGetTextEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -101,6 +105,55 @@ type
 implementation
 
 {$R *.dfm}
+
+function HttpQuery(const url : RawByteString; var data : String; asText : Boolean) : Integer;
+const
+   cContentType : RawUTF8 = 'Content-Type:';
+var
+   query : TWinHTTP;
+   uri : TURI;
+   headers, buf, mimeType : RawByteString;
+   p1, p2 : Integer;
+begin
+   if uri.From(url) then begin
+      query:=TWinHTTP.Create(uri.Server, uri.Port, uri.Https);
+      try
+         Result:=query.Request(uri.Address, 'GET', 0, '', '', '', headers, buf);
+         if asText then begin
+            p1:=Pos(cContentType, RawUTF8(headers));
+            if p1>0 then begin
+               Inc(p1, Length(cContentType));
+               p2:=PosEx(#13, headers, p1);
+               if p2>p1 then
+                  mimeType:=Copy(headers, p1, p2-p1);
+            end;
+            if StrIEndsWith(mimeType, 'charset=utf-8') then
+               data:=UTF8DecodeToUnicodeString(buf)
+            else RawByteStringToScriptString(buf, data);
+         end else RawByteStringToScriptString(buf, data);
+      finally
+         query.Free;
+      end;
+   end else Result:=0;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsGetDataEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   buf : String;
+begin
+   Info.ResultAsInteger:=HttpQuery(Info.ParamAsDataString[0], buf, False);
+   Info.ParamAsString[1]:=buf;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsGetTextEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   buf : String;
+begin
+   Info.ResultAsInteger:=HttpQuery(Info.ParamAsDataString[0], buf, True);
+   Info.ParamAsString[1]:=buf;
+end;
 
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsAuthenticatedUserEval(
   Info: TProgramInfo; ExtObject: TObject);

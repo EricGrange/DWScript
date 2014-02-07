@@ -675,6 +675,7 @@ function  StringUnifierHistogram : TIntegerDynArray;
 function UnicodeCompareLen(p1, p2 : PWideChar; n : Integer) : Integer;
 function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
 function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
+function AsciiCompareLen(p1, p2 : PAnsiChar; n : Integer) : Integer;
 
 function StrNonNilLength(const aString : UnicodeString) : Integer; inline;
 
@@ -682,6 +683,7 @@ function StrIBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
 function StrBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
 function StrBeginsWithA(const aStr, aBegin : RawByteString) : Boolean;
 function StrIEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
+function StrIEndsWithA(const aStr, aEnd : RawByteString) : Boolean;
 function StrEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
 function StrContains(const aStr, aSubStr : UnicodeString) : Boolean; overload;
 function StrContains(const aStr : UnicodeString; aChar : WideChar) : Boolean; overload;
@@ -1513,6 +1515,31 @@ begin
    Result:=(Length(s1)=Length(s2)) and (UnicodeCompareText(s1, s2)=0)
 end;
 
+// AsciiCompareLen
+//
+function AsciiCompareLen(p1, p2 : PAnsiChar; n : Integer) : Integer;
+var
+   c1, c2 : Integer;
+begin
+   for n:=n downto 1 do begin
+      c1:=Ord(p1^);
+      c2:=Ord(p2^);
+      if (c1<>c2) then begin
+         if c1 in [Ord('a')..Ord('z')] then
+            c1:=c1+(Ord('A')-Ord('a'));
+         if c2 in [Ord('a')..Ord('z')] then
+            c2:=c2+(Ord('A')-Ord('a'));
+         if c1<>c2 then begin
+            Result:=c1-c2;
+            Exit;
+         end;
+      end;
+      Inc(p1);
+      Inc(p2);
+   end;
+   Result:=0;
+end;
+
 // StrNonNilLength
 //
 function StrNonNilLength(const aString : UnicodeString) : Integer;
@@ -1570,6 +1597,19 @@ begin
    if (n2>n1) or (n2=0) then
       Result:=False
    else Result:=(UnicodeCompareLen(@aStr[n1-n2+1], Pointer(aEnd), n2)=0);
+end;
+
+// StrIEndsWithA
+//
+function StrIEndsWithA(const aStr, aEnd : RawByteString) : Boolean;
+var
+   n1, n2 : Integer;
+begin
+   n1:=Length(aStr);
+   n2:=Length(aEnd);
+   if (n2>n1) or (n2=0) then
+      Result:=False
+   else Result:=(AsciiCompareLen(@aStr[n1-n2+1], Pointer(aEnd), n2)=0);
 end;
 
 // StrEndsWith

@@ -443,6 +443,45 @@ object dwsWebLib: TdwsWebLib
             DataType = 'Boolean'
             WriteAccess = 'SetCompression'
           end>
+      end
+      item
+        Name = 'HttpQuery'
+        IsStatic = True
+        Methods = <
+          item
+            Name = 'GetText'
+            Parameters = <
+              item
+                Name = 'url'
+                DataType = 'String'
+              end
+              item
+                Name = 'data'
+                DataType = 'String'
+                IsVarParam = True
+              end>
+            ResultType = 'Integer'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsGetTextEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'GetData'
+            Parameters = <
+              item
+                Name = 'url'
+                DataType = 'String'
+              end
+              item
+                Name = 'data'
+                DataType = 'String'
+                IsVarParam = True
+              end>
+            ResultType = 'Integer'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsGetDataEval
+            Kind = mkClassFunction
+          end>
       end>
     Enumerations = <
       item
