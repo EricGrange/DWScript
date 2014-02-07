@@ -127,7 +127,7 @@ begin
                if p2>p1 then
                   mimeType:=Copy(headers, p1, p2-p1);
             end;
-            if StrIEndsWith(mimeType, 'charset=utf-8') then
+            if StrIEndsWithA(mimeType, 'charset=utf-8') then
                data:=UTF8DecodeToUnicodeString(buf)
             else RawByteStringToScriptString(buf, data);
          end else RawByteStringToScriptString(buf, data);
