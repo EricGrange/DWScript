@@ -46,6 +46,10 @@ type
     procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
   end;
 
+  TSleepFunc = class(TInternalMagicProcedure)
+    procedure DoEvalProc(const args : TExprBaseListExec); override;
+  end;
+
   TDateTimeToStrFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
@@ -577,6 +581,30 @@ begin
    Result:=y;
 end;
 
+// ------------------
+// ------------------ TSleepFunc ------------------
+// ------------------
+
+// DoEvalProc
+//
+procedure TSleepFunc.DoEvalProc(const args : TExprBaseListExec);
+var
+   stopTicks, t, d : Int64;
+begin
+   // this is an abortable sleep with a granulosity of 50 ms
+   d:=args.AsInteger[0];
+   if d<0 then Exit;
+   t:=GetSystemMilliseconds;
+   stopTicks:=t+args.AsInteger[0];
+   Sleep(0); // yeld at least once
+   repeat
+      d:=stopTicks-GetSystemMilliseconds;
+      if d<=0 then break;
+      if d>50 then d:=50;
+      Sleep(d);
+   until args.Exec.ProgramState<>psRunning;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -588,6 +616,8 @@ initialization
    RegisterInternalFloatFunction(TNowFunc, 'Now', []);
    RegisterInternalFloatFunction(TDateFunc, 'Date', []);
    RegisterInternalFloatFunction(TTimeFunc, 'Time', []);
+
+   RegisterInternalProcedure(TSleepFunc, 'Sleep', ['msec', SYS_INTEGER]);
 
    RegisterInternalFloatFunction(TUTCDateTimeFunc, 'UTCDateTime', []);
 
