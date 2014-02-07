@@ -38,7 +38,7 @@ interface
 
 uses
   Windows, SysUtils, Classes,
-  SynZip,
+  SynZip, SynCommons,
   dwsHTTPSysServer, dwsHTTPSysAPI,
   dwsUtils, dwsWebEnvironment, dwsFileSystem,
   dwsDirectoryNotifier, dwsJSON, dwsXPlatform,
@@ -95,6 +95,7 @@ type
          procedure Shutdown;
 
          procedure Process(request : TWebRequest; response : TWebResponse);
+         procedure ProcessStaticFile(const pathName : String; request : TWebRequest; response : TWebResponse);
 
          procedure Redirect301TrailingPathDelimiter(request : TWebRequest; response : TWebResponse);
 
@@ -406,12 +407,45 @@ begin
 
       end else begin
 
-         // http.sys will send the specified file from kernel mode
-         // THttpApiServer.Execute will return 404 if not found
-         response.ContentData:=UTF8Encode(fileInfo.CookedPathName);
-         response.ContentType:=HTTP_RESP_STATICFILE;
+         ProcessStaticFile(fileInfo.CookedPathName, request, response);
 
       end;
+   end;
+end;
+
+// ProcessStaticFile
+//
+procedure THttpSys2WebServer.ProcessStaticFile(const pathName : String; request : TWebRequest; response : TWebResponse);
+var
+   ifModifiedSinceStr : String;
+   ifModifiedSince : TDateTime;
+   lastModified : TDateTime;
+begin
+   lastModified:=FileDateTime(pathName);
+   if lastModified=0 then begin
+      response.ContentData:='<h1>Not found</h1>';
+      response.StatusCode:=404;
+      Exit;
+   end;
+
+   ifModifiedSinceStr:=request.Header('If-Modified-Since');
+   if ifModifiedSinceStr<>'' then
+      ifModifiedSince:=RFC822ToDateTime(ifModifiedSinceStr)
+   else ifModifiedSince:=0;
+
+   // compare with a precision to the second and no more
+   if Round(lastModified*86400)>Round(ifModifiedSince*86400) then begin
+
+      // http.sys will send the specified file from kernel mode
+
+      response.ContentData:=UnicodeStringToUtf8(pathName);
+      response.ContentType:=HTTP_RESP_STATICFILE;
+      response.Headers.Add('Last-Modified='+DateTimeToRFC822(lastModified));
+
+   end else begin
+
+      response.StatusCode:=304;
+
    end;
 end;
 
