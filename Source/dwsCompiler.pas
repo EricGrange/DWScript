@@ -13490,15 +13490,25 @@ end;
 { TParamFunc }
 
 procedure TParamFunc.Execute(info : TProgramInfo);
+var
+   idx : Integer;
 begin
-  Info.ResultAsVariant := Info.Execution.Parameters[Info.ValueAsInteger['Index']];
+   idx:=Info.ParamAsInteger[0];
+   if Cardinal(idx)<Cardinal(Length(Info.Execution.Parameters)) then
+      Info.ResultAsVariant:=Info.Execution.Parameters[idx]
+   else Info.ResultAsVariant:=Unassigned;
 end;
 
 { TParamStrFunc }
 
 procedure TParamStrFunc.Execute(info : TProgramInfo);
+var
+   idx : Integer;
 begin
-  Info.ResultAsString := Info.Execution.Parameters[Info.ValueAsInteger['Index']];
+   idx:=Info.ParamAsInteger[0];
+   if Cardinal(idx)<Cardinal(Length(Info.Execution.Parameters)) then
+      Info.ResultAsString:=Info.Execution.Parameters[idx]
+   else Info.ResultAsString:='';
 end;
 
 { TParamCount }
