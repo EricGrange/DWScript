@@ -1064,6 +1064,7 @@ type
 
       protected
          function GetDisplayName: String; override;
+         function Parse(const Value : UnicodeString): UnicodeString; override;
 
       public
          constructor Create(Collection: TCollection); override;
@@ -5056,6 +5057,69 @@ begin
       Result:=Result+TdwsElement(FElements.Items[i]).GetDisplayName;
    end;
    Result:=Result+');';
+end;
+
+// Parse
+//
+function TdwsEnumeration.Parse(const Value : UnicodeString): UnicodeString;
+var
+   element: TdwsElement;
+   rules : TPascalTokenizerStateRules;
+   tok : TTokenizer;
+   tokenType: TTokenType;
+   sourceFile : TSourceFile;
+begin
+   rules := TPascalTokenizerStateRules.Create;
+   tok := TTokenizer.Create(rules, nil);
+   sourceFile := TSourceFile.Create;
+   try
+      sourceFile.Code := Value;
+      tok.BeginSourceFile(sourceFile);
+
+      // check whether tokens are available at all
+      if not tok.HasTokens then
+         raise Exception.Create('Token expected');
+
+      tokenType := tok.GetToken.FTyp;
+
+      // check for name
+      if not (tok.TestName or (tokenType <> ttNone)) then
+         raise Exception.Create('Name expected');
+
+      // get name and kill token
+      Result := tok.GetToken.AsString;
+      tok.KillToken;
+
+      // kill token and eventually ignore additional procedure / function
+      if tokenType <> ttNone then begin
+         // check if further tokens are available, if not accept name
+         if not tok.HasTokens then begin
+            Result := Value;
+            Exit;
+         end;
+      end;
+
+      // check for parameters
+      if tok.TestDelete(ttEQ) then
+      begin
+         if tok.TestDelete(ttBLEFT) then
+         repeat
+
+            if tok.TestName then begin
+               element := FElements.Add;
+               element.Name := tok.GetToken.AsString;
+               tok.KillToken;
+            end else raise Exception.Create('Element name expected');
+
+         until not tok.TestDelete(ttCOMMA);
+         if not tok.TestDelete(ttBRIGHT) then
+            raise Exception.Create('")" expected');
+      end;
+   finally
+      sourceFile.Free;
+      tok.Free;
+      rules.Free;
+   end;
 end;
 
 { TdwsElement }
