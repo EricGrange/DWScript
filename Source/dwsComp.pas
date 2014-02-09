@@ -5099,9 +5099,10 @@ begin
          end;
       end;
 
-      // check for parameters
+      // check for elements
       if tok.TestDelete(ttEQ) then
       begin
+         FElements.Clear;
          if tok.TestDelete(ttBLEFT) then
          repeat
 
