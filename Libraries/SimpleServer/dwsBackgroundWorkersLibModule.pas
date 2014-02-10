@@ -22,6 +22,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure DataModuleCreate(Sender: TObject);
     procedure DataModuleDestroy(Sender: TObject);
+    procedure dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueSizeEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FOnBackgroundWork : TBackgroundWorkEvent;
@@ -195,6 +197,26 @@ begin
    Info.ResultAsBoolean:=(pool<>nil);
    if pool<>nil then
       pool.Free;
+end;
+
+procedure TdwsBackgroundWorkersLib.dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueSizeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   name : String;
+   pool : TIOCPWorkerThreadPool;
+   n : Integer;
+begin
+   n:=0;
+   name:=Info.ParamAsString[0];
+   FPoolsCS.BeginRead;
+   try
+      pool:=FPools[name];
+      if pool<>nil then
+         n:=pool.QueueSize;
+   finally
+      FPoolsCS.EndRead;
+   end;
+   Info.ResultAsInteger:=n;
 end;
 
 procedure TdwsBackgroundWorkersLib.dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueWorkEval(

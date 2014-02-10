@@ -56,6 +56,18 @@ object dwsBackgroundWorkersLib: TdwsBackgroundWorkersLib
             Attributes = [maStatic]
             OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueWorkEval
             Kind = mkClassProcedure
+          end
+          item
+            Name = 'QueueSize'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end>
+            ResultType = 'Integer'
+            Attributes = [maStatic]
+            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueSizeEval
+            Kind = mkClassFunction
           end>
       end>
     UnitName = 'System.Workers'
