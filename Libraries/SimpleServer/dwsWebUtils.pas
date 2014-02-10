@@ -19,7 +19,7 @@ unit dwsWebUtils;
 interface
 
 uses
-   Classes,
+   Classes, SysUtils,
    dwsUtils;
 
 type
@@ -33,6 +33,9 @@ type
          class function HasFieldName(const list : TStrings; const name : String) : Boolean; static;
 
          class function EncodeEncodedWord(const s : String) : String; static;
+
+         class function DateTimeToRFC822(const dt : TDateTime) : String; static;
+         class function RFC822ToDateTime(const str : String) : TDateTime; static;
    end;
 
 
@@ -212,6 +215,159 @@ begin
       FlushLine;
    if StrEndsWith(Result, #13#10#9) then
       SetLength(Result, Length(Result)-3);
+end;
+
+const
+   cRFC822Months : array[1..12] of String = (
+      'Jan','Feb','Mar','Apr', 'May','Jun','Jul','Aug', 'Sep','Oct','Nov','Dec'
+   );
+   cRFC822Days : array[1..7] of String = (
+      'Sun','Mon','Tue','Wed','Thu', 'Fri','Sat'
+   );
+
+// DateTimeToRFC822
+//
+class function WebUtils.DateTimeToRFC822(const dt : TDateTime) : String;
+var
+   a, m, j, hh, mn, ss, ms : Word;
+   dow : Integer;
+begin
+   DecodeDate(dt, a, m, j);
+   DecodeTime(dt, hh, mn, ss, ms);
+   dow:=DayOfWeek(dt);
+   Result:=Format('%s, %.2d %s %.4d %.2d:%.2d:%.2d GMT',
+                  [cRFC822Days[dow], j, cRFC822Months[m], a, hh, mn, ss]);
+end;
+
+// RFC822ToDateTime
+//
+class function WebUtils.RFC822ToDateTime(const str : String) : TDateTime;
+const
+   cMaxItems = 6;
+type
+   TStringArray = array of String;
+var
+   list : array [0..cMaxItems+1] of String;
+   count : Integer;
+   y, mo, d : Word;
+   h, mi, s : Word;
+   deltaHours, deltaDays, p : Integer;
+   deltaTime : TDateTime;
+
+   procedure SplitStr(const str : String; const delim : Char; start : Integer);
+   var
+      lookup : integer;
+   begin
+      count:=0;
+      if str='' then Exit;
+      lookup:=start;
+      while lookup<=Length(str) do begin
+         if str[lookup]=delim then begin
+            if lookup>start then begin
+               list[count]:=Copy(str, start, lookup-start);
+               Inc(count);
+               if count>=cMaxItems then break;
+            end;
+            start:=lookup+1;
+         end;
+         Inc(lookup);
+      end;
+      if lookup>start then begin
+         list[count]:=Copy(str, start, lookup-start);
+         Inc(count);
+      end;
+   end;
+
+   function ParseTwoDigits(p : PChar; offset : Integer) : Integer; inline;
+   begin
+      Result:=Ord(p[offset])*10+Ord(p[offset+1])-11*Ord('0')
+   end;
+
+   function ParseFourDigits(p : PChar; offset : Integer) : Integer; inline;
+   begin
+      Result:=ParseTwoDigits(p, 0)*100+ParseTwoDigits(p, 2);
+   end;
+
+   procedure ParseHMS(const str : String);
+   var
+      p : PChar;
+   begin
+      p:=PChar(Pointer(str));
+      h:=65535;
+      case Length(str) of
+         5 : begin // hh:nn
+            if p[2]<>':' then exit;
+            h:=ParseTwoDigits(p, 0);
+            mi:=ParseTwoDigits(p, 3);
+            s:=0;
+         end;
+         8 : begin // hh:nn:ss
+            if p[2]<>':' then exit;
+            if p[5]<>':' then exit;
+            h:=ParseTwoDigits(p, 0);
+            mi:=ParseTwoDigits(p, 3);
+            s:=ParseTwoDigits(p, 6);
+         end;
+      end;
+   end;
+
+   procedure ParseYear(const str : String);
+   begin
+      case Length(str) of
+         2 : y:=ParseTwoDigits(Pointer(str), 0)+2000;
+         4 : y:=ParseFourDigits(Pointer(str), 0);
+      else
+         y:=65535;
+      end;
+   end;
+
+   procedure ParseMonth(const str : String);
+   begin
+      mo:=1;
+      while (mo<=12) and not SameText(str, cRFC822Months[mo]) do
+         Inc(mo);
+   end;
+
+begin
+   Result:=0;
+   if str='' then Exit;
+
+   p:=Pos(',', str);
+   if p>0 then
+      SplitStr(str, ' ', p+1)
+   else SplitStr(str, ' ', 1);
+   if count<5 then // invalid date
+      Exit;
+   if (count>5) and (Pos(':', list[4])>0) and StrBeginsWith(list[5], 'GMT+') then begin
+      // Thu Oct 08 2009 00:00:00 GMT+0200 (Romance Daylight Time)
+      ParseMonth(list[1]);
+      if Length(list[2])=2 then
+         d:=ParseTwoDigits(Pointer(list[2]), 0)
+      else d:=0;
+      ParseYear(list[3]);
+      ParseHMS(list[4]);
+      deltaHours:=0;
+      deltaDays:=0;
+   end else begin
+      // Thu, 08 Oct 2009 00:00:00 GMT
+      if Length(list[0])=2 then
+         d:=ParseTwoDigits(Pointer(list[0]), 0)
+      else d:=0;
+      ParseMonth(list[1]);
+      ParseYear(list[2]);
+      ParseHMS(list[3]);
+      deltaHours:=StrToIntDef(list[4], 0);
+      deltaDays:=0;
+      while h>=24 do begin
+         Dec(h, 24);
+         Inc(deltaDays);
+      end;
+   end;
+   if not TryEncodeDate(y, mo, d, Result) then
+      Result:=0
+   else if TryEncodeTime(h, mi, s, 0, deltaTime) then
+      Result:=Result+deltaTime-deltaHours*(1/100/24)+deltaDays
+   else Result:=0;
 end;
 
 end.
