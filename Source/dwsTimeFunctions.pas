@@ -184,6 +184,7 @@ implementation
 
 const
   cDateTime = SYS_FLOAT;
+  cSleepGranulosity = 200;
 
 { TNowFunc }
 
@@ -591,16 +592,15 @@ procedure TSleepFunc.DoEvalProc(const args : TExprBaseListExec);
 var
    stopTicks, t, d : Int64;
 begin
-   // this is an abortable sleep with a granulosity of 50 ms
+   // this is an abortable sleep with a granulosity
    d:=args.AsInteger[0];
    if d<0 then Exit;
    t:=GetSystemMilliseconds;
    stopTicks:=t+args.AsInteger[0];
-   Sleep(0); // yeld at least once
    repeat
       d:=stopTicks-GetSystemMilliseconds;
-      if d<=0 then break;
-      if d>50 then d:=50;
+      if d<0 then break;
+      if d>cSleepGranulosity then d:=cSleepGranulosity;
       Sleep(d);
    until args.Exec.ProgramState<>psRunning;
 end;
