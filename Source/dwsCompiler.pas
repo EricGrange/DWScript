@@ -351,6 +351,19 @@ type
          function Callback(opSym : TOperatorSymbol) : Boolean;
    end;
 
+   IdwsCompiler = interface;
+
+   IdwsExternalFunctionsManager = interface
+      ['{6365B0E4-4BEA-4AD4-8DDE-C37758A63FEF}']
+      procedure BeginCompilation(const compiler : IdwsCompiler);
+      procedure EndCompilation(const compiler : IdwsCompiler);
+
+      function ConvertToMagicSymbol(value: TFuncSymbol) : TFuncSymbol;
+      function CreateExternalFunction(funcSymbol : TFuncSymbol) : IExternalRoutine;
+
+      procedure RegisterExternalFunction(const name: UnicodeString; address: Pointer);
+   end;
+
    IdwsCompiler = interface
       // direct access to the underlying instance, use with caution!!!
       function Compiler : TdwsCompiler;
@@ -365,10 +378,12 @@ type
       function GetMsgs : TdwsCompileMessageList;
       function GetTokenizer : TTokenizer;
 
+      procedure SetExternalFunctionsManager(const value : IdwsExternalFunctionsManager);
+
       property CurrentProg : TdwsProgram read GetCurrentProg;
       property Msgs : TdwsCompileMessageList read GetMsgs;
       property Tokenizer : TTokenizer read GetTokenizer;
-      procedure RegisterExternalFunction(const name: UnicodeString; address: pointer);
+      property ExternalFunctionsManager : IdwsExternalFunctionsManager write SetExternalFunctionsManager;
 
       function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
    end;
@@ -423,7 +438,8 @@ type
          FPendingSetterValueExpr : TVarExpr;
 
          FDataSymbolExprReuse : TSimpleObjectObjectHash_TDataSymbol_TVarExpr;
-         FExternalRoutines: TSimpleNameObjectHash<TInternalFunction>;
+
+         FExternalRoutinesManager : IdwsExternalFunctionsManager;
 
          FStaticExtensionSymbols : Boolean;
          FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbolEvent;
@@ -744,8 +760,6 @@ type
                                          var sym : TDataSymbol) : TProgramExpr;
          function ReadWhile : TProgramExpr;
          function ResolveUnitReferences(scriptType : TScriptSourceType) : TIdwsUnitList;
-         function CreateExternalFunction(funcSymbol: TFuncSymbol) : IExternalRoutine;
-         function ConvertToMagicSymbol(value: TFuncSymbol) : TFuncSymbol;
 
       protected
          procedure EnterLoop(loopExpr : TProgramExpr);
@@ -814,6 +828,7 @@ type
          function GetCurrentProg : TdwsProgram;
          function GetMsgs : TdwsCompileMessageList;
          function GetTokenizer : TTokenizer;
+         procedure SetExternalFunctionsManager(const value : IdwsExternalFunctionsManager);
 
       public
          constructor Create;
@@ -840,9 +855,6 @@ type
          function OpenStreamForFile(const fileName : UnicodeString) : TStream;
          function GetScriptSource(const scriptName : UnicodeString) : UnicodeString;
          function GetIncludeScriptSource(const scriptName : UnicodeString) : UnicodeString;
-         procedure RegisterExternalFunction(const name: UnicodeString; address: pointer);
-
-         class procedure RegisterExternalRoutineFactory(const factory : TExternalRoutineFactory);
 
          property CurrentProg : TdwsProgram read FProg write FProg;
          property Msgs : TdwsCompileMessageList read FMsgs;
@@ -901,9 +913,6 @@ const
       cvPrivate, cvProtected, cvPublic, cvPublished );
    cTokenToFuncKind : array [ttFUNCTION..ttLAMBDA] of TFuncKind = (
       fkFunction, fkProcedure, fkConstructor, fkDestructor, fkMethod, fkLambda );
-
-var
-   vExternalRoutineFactory : TExternalRoutineFactory;
 
 type
    TReachStatus = (rsReachable, rsUnReachable, rsUnReachableWarned);
@@ -1195,7 +1204,6 @@ begin
    FFinallyExprs:=TSimpleStack<Boolean>.Create;
    FUnitsFromStack:=TSimpleStack<UnicodeString>.Create;
    FUnitContextStack:=TdwsCompilerUnitContextStack.Create;
-   FExternalRoutines:=TSimpleNameObjectHash<TInternalFunction>.Create;
    FAnyFuncSymbol:=TAnyFuncSymbol.Create('', fkFunction, 0);
 
    FPendingAttributes:=TdwsSymbolAttributes.Create;
@@ -1215,7 +1223,6 @@ end;
 //
 destructor TdwsCompiler.Destroy;
 begin
-   FExternalRoutines.Free;
    FOperatorResolver.Free;
 
    ReleaseStringListPool;
@@ -1574,7 +1581,6 @@ begin
    // Create the TdwsProgram
    FMainProg:=CreateProgram(aConf.SystemSymbols, aConf.ResultType, stackParams);
    FSystemTable:=FMainProg.SystemTable.SymbolTable;
-   FExternalRoutines.Clear;
 
    FMsgs:=FMainProg.CompileMsgs;
    SetupMsgsOptions(aConf);
@@ -1594,6 +1600,9 @@ begin
 
    FOperators:=aConf.SystemSymbols.Operators;
    FMainProg.Operators:=FOperators;
+
+   if Assigned(FExternalRoutinesManager) then
+      FExternalRoutinesManager.BeginCompilation(Self);
 
    try
       CheckFilterDependencies(aConf.Units);
@@ -1636,6 +1645,9 @@ begin
       on e: Exception do
          FMsgs.AddCompilerError(cNullPos, e.Message);
    end;
+
+   if Assigned(FExternalRoutinesManager) then
+      FExternalRoutinesManager.EndCompilation(Self);
 
    if FMsgs.State=mlsInProgress then
       FMsgs.State:=mlsCompleted;
@@ -1875,6 +1887,13 @@ begin
    Result:=Tokenizer;
 end;
 
+// SetExternalFunctionsManager
+//
+procedure TdwsCompiler.SetExternalFunctionsManager(const value : IdwsExternalFunctionsManager);
+begin
+   FExternalRoutinesManager:=value;
+end;
+
 // CheckMatchingDeclarationCase
 //
 procedure TdwsCompiler.CheckMatchingDeclarationCase(const nameString : UnicodeString; sym : TSymbol;
@@ -1900,27 +1919,6 @@ begin
    if isWrite then
       RecordSymbolUse(sym, scriptPos, [suReference, suWrite])
    else RecordSymbolUse(sym, scriptPos, [suReference, suRead]);
-end;
-
-procedure TdwsCompiler.RegisterExternalFunction(const name: UnicodeString;
-  address: pointer);
-var
-   func: TInternalFunction;
-   ext: IExternalRoutine;
-begin
-   func := FExternalRoutines.Objects[name];
-   if func = nil then
-      raise Exception.CreateFmt('No external function named "%s" is registered', [name]);
-   assert(supports(func, IExternalRoutine, ext));
-   ext.SetExternalPointer(address);
-end;
-
-// RegisterExternalRoutineFactory
-//
-class procedure TdwsCompiler.RegisterExternalRoutineFactory(const factory : TExternalRoutineFactory);
-begin
-   Assert(not Assigned(vExternalRoutineFactory));
-   vExternalRoutineFactory:=factory;
 end;
 
 // RecordSymbolUseImplicitReference
@@ -2992,17 +2990,6 @@ begin
    end;
 end;
 
-function TdwsCompiler.ConvertToMagicSymbol(value: TFuncSymbol): TFuncSymbol;
-var
-   i: integer;
-begin
-   result := TMagicFuncSymbol.Create(value.Name, value.Kind, value.Level);
-   result.Typ := value.typ;
-   for i := 0 to value.Params.Count - 1 do
-      result.AddParam(value.Params[i].Clone);
-   value.Free;
-end;
-
 // ReadProcDecl
 //
 function TdwsCompiler.ReadProcDecl(funcToken : TTokenType; const hotPos : TScriptPos;
@@ -3160,8 +3147,8 @@ begin
 
                   if FTok.TestDelete(ttEXTERNAL) then begin
                      ReadExternalName(Result);
-                     if FExternalRoutines.Objects[Result.ExternalName]<>nil then
-                        Result:=ConvertToMagicSymbol(Result);
+                     if Assigned(FExternalRoutinesManager) then
+                        Result:=FExternalRoutinesManager.ConvertToMagicSymbol(Result);
                      Result.IsExternal:=True;
                   end;
 
@@ -3674,16 +3661,6 @@ begin
       FMsgs.AddCompilerWarningFmt(scriptPos, CPW_DeprecatedWithMessage,
                                   [sym.Name, deprecatedMessage])
    else FMsgs.AddCompilerWarningFmt(scriptPos, CPW_Deprecated, [sym.Name]);
-end;
-
-// CreateExternalFunction
-//
-function TdwsCompiler.CreateExternalFunction(funcSymbol : TFuncSymbol): IExternalRoutine;
-begin
-   Assert(Assigned(vExternalRoutineFactory));
-   Result:=vExternalRoutineFactory(funcSymbol, FMainProg);
-   if not FExternalRoutines.AddObject(funcSymbol.Name, result.GetSelf as TInternalFunction) then
-      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_DuplicateExternal, [funcSymbol.Name]);
 end;
 
 // ReadProcBody
@@ -6831,7 +6808,8 @@ begin
    if funcSym.IsExternal then begin
       if funcSym is TMagicFuncSymbol then begin
          // jitted external call
-         funcSym.Executable := CreateExternalFunction(funcSym);
+         Assert(Assigned(FExternalRoutinesManager));
+         funcSym.Executable := FExternalRoutinesManager.CreateExternalFunction(funcSym);
          TMagicFuncSymbol(funcSym).InternalFunction := funcSym.Executable.GetSelf as TInternalMagicFunction;
          TMagicFuncSymbol(funcSym).InternalFunction.IncRefCount;
       end else begin

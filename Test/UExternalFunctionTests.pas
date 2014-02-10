@@ -4,14 +4,16 @@ interface
 
 uses
    Classes,
-   dwsXPlatformTests, dwsComp, dwsErrors, dwsExprList;
+   dwsXPlatformTests, dwsComp, dwsErrors, dwsExprList, dwsCompiler,
+   dwsExternalFunctions;
 
 type
    TExternalFunctionTests = class(TTestCase)
       private
-         FTests: TStringList;
-         FCompiler: TDelphiWebScript;
-         procedure RegisterExternalRoutines(compiler: TDelphiWebScript);
+         FTests : TStringList;
+         FCompiler : TDelphiWebScript;
+         procedure RegisterExternalRoutines(const manager : IdwsExternalFunctionsManager);
+
       public
          procedure SetUp; override;
          procedure TearDown; override;
@@ -23,6 +25,7 @@ type
    end;
 
 implementation
+
 uses
    SysUtils,
    dwsXPlatform, dwsExprs,
@@ -74,13 +77,13 @@ procedure TestBool(a: integer; b: boolean);
 begin
 end;
 
-procedure TExternalFunctionTests.RegisterExternalRoutines(compiler: TDelphiWebScript);
+procedure TExternalFunctionTests.RegisterExternalRoutines(const manager : IdwsExternalFunctionsManager);
 begin
-   compiler.RegisterExternalFunction('Blank', @Blank);
-   compiler.RegisterExternalFunction('Ints3', @Ints3);
-   compiler.RegisterExternalFunction('TestString', @TestString);
-   compiler.RegisterExternalFunction('TestStringExc', @TestStringExc);
-   compiler.RegisterExternalFunction('TestBool', @TestBool);
+   manager.RegisterExternalFunction('Blank', @Blank);
+   manager.RegisterExternalFunction('Ints3', @Ints3);
+   manager.RegisterExternalFunction('TestString', @TestString);
+   manager.RegisterExternalFunction('TestStringExc', @TestStringExc);
+   manager.RegisterExternalFunction('TestBool', @TestBool);
 end;
 
 procedure TExternalFunctionTests.Execution;
@@ -89,6 +92,7 @@ var
    i : Integer;
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
+   manager : IdwsExternalFunctionsManager;
    resultText, resultsFileName : String;
 begin
    source:=TStringList.Create;
@@ -99,10 +103,24 @@ begin
 
          source.LoadFromFile(FTests[i]);
 
+         manager:=TExternalFunctionManager.Create;
+
+         // TODO: IdwsExternalFunctionsManager being low-level
+         // it shouldn't be exposed at the TDelphiWebScript level
+         // (need to have a TComponent property be exposed there)
+         FCompiler.Compiler.ExternalFunctionsManager:=manager;
+
          prog:=FCompiler.Compile(source.Text);
          CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
-         RegisterExternalRoutines(FCompiler);
+
+         // TODO: ideally should happen before compilation
+         // and registration should be able to be program-independent
+         RegisterExternalRoutines(manager);
+
          exec:=prog.Execute;
+
+         // TODO: make compiler program independent from manager
+         FCompiler.Compiler.ExternalFunctionsManager:=nil;
 
          resultText:=exec.Result.ToString;
          if exec.Msgs.Count>0 then

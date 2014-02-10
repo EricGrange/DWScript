@@ -4,10 +4,33 @@ interface
 
 uses
    SysUtils,
-   dwsXPlatform,
-   dwsExprList, dwsExprs, dwsMagicExprs, dwsSymbols, dwsUtils, dwsExternalFunctionJIT;
+   dwsXPlatform, dwsExprList, dwsUtils,
+   dwsCompiler, dwsExprs, dwsMagicExprs, dwsSymbols, dwsFunctions,
+   dwsExternalFunctionJIT;
 
 type
+
+   TExternalFunctionManager = class(TInterfacedObject, IdwsExternalFunctionsManager)
+      private
+         FCompiler : IdwsCompiler;
+         FRoutines: TSimpleNameObjectHash<TInternalFunction>;
+
+      protected
+         procedure BeginCompilation(const compiler : IdwsCompiler);
+         procedure EndCompilation(const compiler : IdwsCompiler);
+
+         function ConvertToMagicSymbol(value: TFuncSymbol) : TFuncSymbol;
+         function CreateExternalFunction(funcSymbol : TFuncSymbol) : IExternalRoutine;
+
+      public
+         constructor Create;
+         destructor Destroy; override;
+
+         procedure RegisterExternalFunction(const name: UnicodeString; address: pointer);
+
+         property Compiler : IdwsCompiler read FCompiler;
+
+   end;
 
    TExternalProcedure = class(TInternalMagicProcedure, IExternalRoutine)
    private
@@ -50,7 +73,7 @@ implementation
 
 uses
    Windows,
-   dwsCompiler, dwsStrings,
+   dwsStrings,
    dwsTokenizer{$IFDEF CPU386}, dwsExternalFunctionJitx86{$ENDIF};
 
 type
@@ -64,13 +87,6 @@ type
       destructor Destroy; override;
       procedure Eval(funcSymbol: TFuncSymbol; prog: TdwsProgram);
    end;
-
-function ExternalRoutineFactory(funcSymbol : TFuncSymbol; mainProg : TdwsMainProgram) : IExternalRoutine;
-begin
-   if funcSymbol.IsType then
-      result := TExternalFunction.Create(funcSymbol, mainProg)
-   else result := TExternalProcedure.Create(funcSymbol, mainProg);
-end;
 
 procedure RaiseUnHandledExternalCall(exec : TdwsExecution; func : TFuncSymbol);
 begin
@@ -234,14 +250,81 @@ begin
    FBuffer := FInternalJit.GetBytes;
 end;
 
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-initialization
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
+// ------------------
+// ------------------ TExternalFunctionManager ------------------
+// ------------------
 
-   TdwsCompiler.RegisterExternalRoutineFactory(ExternalRoutineFactory);
+// Create
+//
+constructor TExternalFunctionManager.Create;
+begin
+   inherited;
+   FRoutines:=TSimpleNameObjectHash<TInternalFunction>.Create;
+end;
+
+// Destroy
+//
+destructor TExternalFunctionManager.Destroy;
+begin
+   inherited;
+   FRoutines.Free;
+end;
+
+// BeginCompilation
+//
+procedure TExternalFunctionManager.BeginCompilation(const compiler : IdwsCompiler);
+begin
+   Assert(FCompiler=nil, 'Only one session supported right now');
+   FCompiler:=compiler;
+   FRoutines.Clear;
+end;
+
+// EndCompilation
+//
+procedure TExternalFunctionManager.EndCompilation(const compiler : IdwsCompiler);
+begin
+   Assert(FCompiler=compiler);
+   FCompiler:=nil;
+end;
+
+// ConvertToMagicSymbol
+//
+function TExternalFunctionManager.ConvertToMagicSymbol(value: TFuncSymbol) : TFuncSymbol;
+var
+   i: integer;
+begin
+   // TODO: add check that value really is supported as an external symbol
+   // (parameter types, etc.)
+   result := TMagicFuncSymbol.Create(value.Name, value.Kind, value.Level);
+   result.Typ := value.typ;
+   for i := 0 to value.Params.Count - 1 do
+      result.AddParam(value.Params[i].Clone);
+   value.Free;
+end;
+
+// CreateExternalFunction
+//
+function TExternalFunctionManager.CreateExternalFunction(funcSymbol : TFuncSymbol) : IExternalRoutine;
+begin
+   if funcSymbol.IsType then
+      result := TExternalFunction.Create(funcSymbol, Compiler.CurrentProg.Root)
+   else result := TExternalProcedure.Create(funcSymbol, Compiler.CurrentProg.Root);
+   if not FRoutines.AddObject(funcSymbol.Name, result.GetSelf as TInternalFunction) then
+      Compiler.Msgs.AddCompilerErrorFmt(Compiler.Tokenizer.HotPos, CPE_DuplicateExternal, [funcSymbol.Name]);
+end;
+
+// RegisterExternalFunction
+//
+procedure TExternalFunctionManager.RegisterExternalFunction(const name: UnicodeString; address: pointer);
+var
+   func: TInternalFunction;
+   ext: IExternalRoutine;
+begin
+   func := FRoutines.Objects[name];
+   if func = nil then
+      raise Exception.CreateFmt('No external function named "%s" is registered', [name]);
+   assert(supports(func, IExternalRoutine, ext));
+   ext.SetExternalPointer(address);
+end;
 
 end.
