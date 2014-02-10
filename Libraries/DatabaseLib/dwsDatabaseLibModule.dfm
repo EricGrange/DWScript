@@ -427,6 +427,20 @@ object dwsDatabaseLib: TdwsDatabaseLib
             Attributes = [maStatic]
             OnEval = dwsDatabaseClassesDataBasePoolMethodsCleanupEval
             Kind = mkClassProcedure
+          end
+          item
+            Name = 'Count'
+            Parameters = <
+              item
+                Name = 'filter'
+                DataType = 'String'
+                HasDefaultValue = True
+                DefaultValue = '*'
+              end>
+            ResultType = 'Integer'
+            Attributes = [maStatic]
+            OnEval = dwsDatabaseClassesDataBasePoolMethodsCountEval
+            Kind = mkClassFunction
           end>
       end>
     Enumerations = <

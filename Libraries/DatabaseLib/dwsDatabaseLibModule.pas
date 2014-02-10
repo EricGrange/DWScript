@@ -92,6 +92,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsDatabaseClassesDataBasePoolMethodsCleanupEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsDatabaseClassesDataBasePoolMethodsCountEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
     procedure SetScript(aScript : TDelphiWebScript);
@@ -100,6 +102,7 @@ type
   public
     { Public declarations }
     procedure CleanupDataBasePool(const filter : String = '*');
+    function CountPooledDataBases(const filter : String = '*') : Integer;
 
     property Script : TDelphiWebScript write SetScript;
   end;
@@ -374,10 +377,43 @@ begin
    end;
 end;
 
+// CountPooledDataBases
+//
+function TdwsDatabaseLib.CountPooledDataBases(const filter : String = '*') : Integer;
+var
+   i : Integer;
+   mask : TMask;
+   q : TSimpleQueue<IdwsDataBase>;
+begin
+   Result:=0;
+   mask:=TMask.Create(filter);
+   try
+      vPoolsCS.BeginRead;
+      try
+         for i:=0 to vPools.Capacity-1 do begin
+            q:=vPools.BucketObject[i];
+            if q=nil then continue;
+            if mask.Matches(vPools.BucketName[i]) then
+               Inc(Result);
+         end;
+      finally
+         vPoolsCS.EndRead;
+      end;
+   finally
+      mask.Free;
+   end;
+end;
+
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBasePoolMethodsCleanupEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    CleanupDataBasePool(Info.ParamAsString[0]);
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBasePoolMethodsCountEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger:=CountPooledDataBases(Info.ParamAsString[0]);
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseCleanUp(
