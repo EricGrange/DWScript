@@ -1788,6 +1788,7 @@ var
    i : Integer;
    rankedUnits : array of TUnitMainSymbol;
    ums : TUnitMainSymbol;
+   unitInitExpr : TBlockExprBase;
 begin
    // collect and rank all units with an initialization or finalization sections
    // NOTE: UnitMains order may change arbitrarily in the future, hence the need to reorder
@@ -1802,7 +1803,11 @@ begin
    for i:=0 to High(rankedUnits) do begin
       ums:=rankedUnits[i];
       if (ums<>nil) and (ums.InitializationExpr<>nil) then begin
-         FMainProg.InitExpr.AddStatement(ums.InitializationExpr as TBlockExprBase);
+         unitInitExpr:=ums.InitializationExpr as TBlockExprBase;
+         if coOptimize in Options then begin
+            if unitInitExpr.StatementCount=0 then continue;
+         end;
+         FMainProg.InitExpr.AddStatement(unitInitExpr);
          ums.InitializationExpr.IncRefCount;
       end;
    end;
@@ -2244,18 +2249,36 @@ begin
       if coContextMap in Options then
          FSourceContextMap.CloseAllContexts(FTok.CurrentPos);
 
-      if unitBlock.SubExprCount>0 then begin
+      if unitBlock.StatementCount>0 then begin
          FProg.InitExpr.AddStatement(unitBlock);
          unitBlock:=nil;
       end;
 
+      if coOptimize in Options then begin
+         if (initializationBlock<>nil) and (initializationBlock.StatementCount=0) then
+            FreeAndNil(initializationBlock);
+         if (finalizationBlock<>nil) and (finalizationBlock.StatementCount=0) then
+            FreeAndNil(finalizationBlock);
+      end;
+
       if FCurrentUnitSymbol<>nil then begin
-         if (initializationBlock<>nil) and (initializationBlock.SubExprCount>0) then begin
+         // this is a normal unit
+         if initializationBlock<>nil then begin
             FCurrentUnitSymbol.InitializationExpr:=initializationBlock;
             initializationBlock:=nil;
          end;
-         if (finalizationBlock<>nil) and (finalizationBlock.SubExprCount>0) then begin
+         if finalizationBlock<>nil then begin
             FCurrentUnitSymbol.FinalizationExpr:=finalizationBlock;
+            finalizationBlock:=nil;
+         end;
+      end else begin
+         // special case of main program
+         if initializationBlock<>nil then begin
+            FProg.InitExpr.AddStatement(initializationBlock);
+            initializationBlock:=nil;
+         end;
+         if finalizationBlock<>nil then begin
+            FMainProg.FinalExpr.AddStatement(finalizationBlock);
             finalizationBlock:=nil;
          end;
       end;
