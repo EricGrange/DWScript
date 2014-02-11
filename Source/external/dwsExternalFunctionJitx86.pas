@@ -164,7 +164,7 @@ begin
 end;
 
 function Tx86RegisterJit.GetDepth(depth: byte): shortint;
-const OVERHEAD_SLOTS = 0;
+const OVERHEAD_SLOTS = 1;
 begin
    result := ((depth + OVERHEAD_SLOTS) * sizeof(pointer));
    result := ($FF - result) + 1;
