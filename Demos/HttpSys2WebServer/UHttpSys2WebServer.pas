@@ -42,7 +42,7 @@ uses
   dwsHTTPSysServer, dwsHTTPSysAPI,
   dwsUtils, dwsWebEnvironment, dwsFileSystem,
   dwsDirectoryNotifier, dwsJSON, dwsXPlatform,
-  dwsWebServerHelpers, dwsWebServerInfo,
+  dwsWebServerHelpers, dwsWebServerInfo, dwsWebUtils,
   DSimpleDWScript;
 
 type
@@ -430,7 +430,7 @@ begin
 
    ifModifiedSinceStr:=request.Header('If-Modified-Since');
    if ifModifiedSinceStr<>'' then
-      ifModifiedSince:=RFC822ToDateTime(ifModifiedSinceStr)
+      ifModifiedSince:=WebUtils.RFC822ToDateTime(ifModifiedSinceStr)
    else ifModifiedSince:=0;
 
    // compare with a precision to the second and no more
@@ -440,7 +440,7 @@ begin
 
       response.ContentData:=UnicodeStringToUtf8(pathName);
       response.ContentType:=HTTP_RESP_STATICFILE;
-      response.Headers.Add('Last-Modified='+DateTimeToRFC822(lastModified));
+      response.Headers.Add('Last-Modified='+WebUtils.DateTimeToRFC822(lastModified));
 
    end else begin
 
