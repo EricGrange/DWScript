@@ -11,6 +11,9 @@ function JitFactory(conv: TTokenType; prog: TdwsProgram): IExternalFunctionJit;
 implementation
 
 uses
+   {$ifdef WIN32}
+   Windows,
+   {$endif}
    SysUtils,
    dwsUtils,
    dwsSymbols, dwsExprList, dwsVMTOffsets;
@@ -333,4 +336,10 @@ begin
    self.size := size;
 end;
 
+{$ifdef WIN32}
+
+function SetProcessDEPPolicy(dwFlags: DWORD): BOOL; stdcall; external kernel32 name 'SetProcessDEPPolicy';
+initialization
+   SetProcessDEPPolicy(0);
+{$endif}
 end.
