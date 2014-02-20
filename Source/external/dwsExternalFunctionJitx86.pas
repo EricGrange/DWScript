@@ -72,7 +72,7 @@ type
    end;
 
 
-function JitFactory(conv: TTokenType; prog: TdwsProgram): IExternalFunctionJit;
+function JitFactory(conv: dwsTokenizer.TTokenType; prog: TdwsProgram): IExternalFunctionJit;
 begin
    if conv = ttREGISTER then
       result := Tx86RegisterJit.Create(prog)
