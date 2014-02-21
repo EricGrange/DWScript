@@ -1938,9 +1938,9 @@ begin
    if BeginProgram then begin
       if ProgramState=psRunning then
          RunProgram(aTimeoutMilliSeconds);
-      if ProgramState in [psRunning, psRunningStopped] then
-         EndProgram;
    end;
+   if ProgramState in [psRunning, psRunningStopped] then
+      EndProgram;
 end;
 
 // ExecuteParam
