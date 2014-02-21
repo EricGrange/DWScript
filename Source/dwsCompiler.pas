@@ -4695,10 +4695,22 @@ begin
 
       if not FTok.TestDeleteNamePos(name, elemPos) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-      elem:=enumSym.Elements.FindLocal(name);
+      if FTok.TestDelete(ttBLEFT) then begin
+         if not FTok.TestDelete(ttBRIGHT) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+         elem:=nil;
+      end else begin
+         elem:=enumSym.Elements.FindLocal(name);
+      end;
       if elem=nil then begin
-         FMsgs.AddCompilerErrorFmt(elemPos, CPE_UnknownNameDotName, [enumSym.Name, name]);
-         Result:=TConstExpr.CreateIntegerValue(FProg, enumSym, 0);
+         if UnicodeSameText(name, 'low') then
+            Result:=TConstExpr.CreateIntegerValue(FProg, enumSym, enumSym.LowBound)
+         else if UnicodeSameText(name, 'high') then
+            Result:=TConstExpr.CreateIntegerValue(FProg, enumSym, enumSym.HighBound)
+         else begin
+            FMsgs.AddCompilerErrorFmt(elemPos, CPE_UnknownNameDotName, [enumSym.Name, name]);
+            Result:=TConstExpr.CreateIntegerValue(FProg, enumSym, 0);
+         end;
       end else begin
          RecordSymbolUseReference(elem, elemPos, False);
          Result:=ReadConstName(elem as TElementSymbol, False);
@@ -5542,7 +5554,7 @@ begin
             Result:=nil;
             Result:=ReadSetOfMethod(name, namePos, expr as TTypedExpr);
 
-         // "set of" symbol
+         // enumeration element symbol
          end else if expr.Typ.UnAliasedTypeIs(TEnumerationSymbol) then begin
 
             Result:=nil;
