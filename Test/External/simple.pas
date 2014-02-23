@@ -5,6 +5,8 @@ procedure TestStringExc(a: integer; b: string); external;
 procedure TestBool(a: integer; b: boolean); external;
 procedure TestStack (a, b, c, d: integer); external;
 procedure TestFloat(a: integer; b: float); external;
+procedure TestObject(a: integer; b: TBoxedString); external;
+procedure TestObjectExc(a: integer; b: TBoxedString); external;
 
 Blank();
 
@@ -23,3 +25,10 @@ TestBool(b, true);
 TestStack(a, b, 12, -57);
 
 TestFloat(1, 0.5);
+
+var box := GetBoxedString;
+TestObject(1, box);
+try
+  TestObjectExc(1, box);
+except
+end;

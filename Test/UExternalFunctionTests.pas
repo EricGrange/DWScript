@@ -4,7 +4,7 @@ interface
 
 uses
    Classes,
-   dwsXPlatformTests, dwsComp, dwsErrors, dwsExprList, dwsCompiler,
+   dwsXPlatformTests, dwsComp, dwsErrors, dwsExprList, dwsCompiler, dwsExprs,
    dwsExternalFunctions;
 
 type
@@ -12,7 +12,10 @@ type
       private
          FTests : TStringList;
          FCompiler : TDelphiWebScript;
+         FUnit: TdwsUnit;
          procedure RegisterExternalRoutines(const manager : IdwsExternalFunctionsManager);
+         procedure GetBoxedStringEval(info : TProgramInfo);
+    procedure FreeBoxedString(ExternalObject: TObject);
 
       public
          procedure SetUp; override;
@@ -28,7 +31,7 @@ implementation
 
 uses
    SysUtils,
-   dwsXPlatform, dwsExprs,
+   dwsXPlatform,
    dwsSymbols, dwsUtils;
 
 { TExternalFunctionTests }
@@ -55,6 +58,11 @@ begin
       source.Free;
    end;
 end;
+
+type
+   TBoxedString = class
+      value: string;
+   end;
 
 procedure Blank;
 begin
@@ -99,6 +107,18 @@ begin
    assert(b = 0.5);
 end;
 
+procedure TestObject(a: integer; b: TBoxedString);
+begin
+   assert(a = 1);
+   assert(b.value = 'Boxed String');
+end;
+
+procedure TestObjectExc(a: integer; b: TBoxedString);
+begin
+   TestObject(a, b);
+   Abort;
+end;
+
 procedure TExternalFunctionTests.RegisterExternalRoutines(const manager : IdwsExternalFunctionsManager);
 begin
    manager.RegisterExternalFunction('Blank', @Blank);
@@ -108,6 +128,8 @@ begin
    manager.RegisterExternalFunction('TestBool', @TestBool);
    manager.RegisterExternalFunction('TestStack', @TestStack);
    manager.RegisterExternalFunction('TestFloat', @TestFloat);
+   manager.RegisterExternalFunction('TestObject', @TestObject);
+   manager.RegisterExternalFunction('TestObjectExc', @TestObjectExc);
 end;
 
 procedure TExternalFunctionTests.Execution;
@@ -166,12 +188,28 @@ begin
 end;
 
 procedure TExternalFunctionTests.SetUp;
+var
+   fun: TdwsFunction;
+   tbs: TdwsClass;
 begin
    FTests:=TStringList.Create;
 
    CollectFiles(ExtractFilePath(ParamStr(0))+'External'+PathDelim, '*.pas', FTests);
 
    FCompiler:=TDelphiWebScript.Create(nil);
+   FUnit := TdwsUnit.Create(FCompiler);
+   FUnit.ParseName := pnAlways;
+   FUnit.UnitName := 'Helper';
+   FUnit.script := FCompiler;
+
+   tbs := FUnit.Classes.Add;
+   tbs.Name := 'TBoxedString';
+   tbs.OnCleanUp := self.FreeBoxedString;
+
+   fun := FUnit.Functions.Add;
+   fun.Name := 'GetBoxedString: TBoxedString';
+   fun.OnEval := self.GetBoxedStringEval;
+   FUnit.ImplicitUse := true;
 end;
 
 procedure TExternalFunctionTests.TearDown;
@@ -179,6 +217,20 @@ begin
    FCompiler.Free;
 
    FTests.Free;
+end;
+
+procedure TExternalFunctionTests.GetBoxedStringEval(info : TProgramInfo);
+var
+   str: TBoxedString;
+begin
+   str := TBoxedString.Create;
+   str.value := 'Boxed String';
+   info.ResultAsVariant := info.RegisterExternalObject(str, true);
+end;
+
+procedure TExternalFunctionTests.FreeBoxedString(ExternalObject: TObject);
+begin
+   ExternalObject.free;
 end;
 
 procedure TExternalFunctionTests.Test;

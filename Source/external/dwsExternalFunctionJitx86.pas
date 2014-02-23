@@ -30,7 +30,7 @@ type
          depth, size: integer;
          constructor Create(depth, size: integer);
       end;
-      TResultStyle = (rsNormal, rsVar, rsFloat);
+      TResultStyle = (rsNormal, rsVar, rsFloat, rsObj);
    private
       FProgram: TdwsProgram;
       FInitStream: Tx86WriteOnlyStream;
@@ -51,6 +51,7 @@ type
       procedure AddCall(call: pointer; offset: integer);
       procedure WriteCall(loc: pointer);
       function typeSize(value: TTypeSymbol): integer;
+      procedure WriteExtractObject(depth: shortint);
       procedure PushParam(param: TParamSymbol; pType: TTypeSymbol);
       procedure RegPassParam(param: TParamSymbol; pType: TTypeSymbol);
       function GetVmtSlot(pType: TTypeSymbol; out resultStyle: TResultStyle): byte;
@@ -102,6 +103,8 @@ end;
 function Tx86RegisterJit.typeSize(value: TTypeSymbol): integer;
 begin
    if value = FProgram.TypFloat then
+      result := 2
+   else if value is TClassSymbol then
       result := 2
    else result := 1;
 end;
@@ -233,7 +236,20 @@ begin
       result := vmt_TExprBase_EvalAsFloat;
       resultStyle := rsFloat;
    end
+   else if pType is TClassSymbol then
+   begin
+      result := vmt_TExprBase_EvalAsScriptObj;
+      resultStyle := rsObj;
+   end
    else raise Exception.CreateFmt('Unsupported parameter type: %s', [pType.Name]);
+end;
+
+procedure Tx86RegisterJit.WriteExtractObject(depth: shortint);
+begin
+   FStream._mov_reg_dword_ptr_reg(gprEAX, gprEBP, depth - sizeof(pointer));
+   FStream._mov_reg_dword_ptr_reg(gprEDX, gprEAX);
+   FStream._call_reg(gprEDX, vmt_IScriptObj_ExternalObject);
+   FStream._mov_dword_ptr_reg_reg(gprEBP, depth, gprEAX);
 end;
 
 function Tx86RegisterJit.CallGetParam(pType: TTypeSymbol; size: integer): shortint;
@@ -247,7 +263,7 @@ begin
    result := GetDepth(FStackDepth);
    FStream._mov_reg_dword_ptr_reg(gprEAX, gprESI, FParams * sizeof(pointer)); //load param to EAX
    FStream._mov_reg_dword_ptr_reg(gprEDX, gprEBX, 8); //load exec to EDX
-   if resultStyle = rsVar then
+   if resultStyle in [rsVar, rsObj] then
    begin
       WriteLoadVarParam(result);
       AddCleanup(result, pType);
@@ -261,6 +277,11 @@ begin
    begin
       FStream.WriteBytes([$DD, $5D]); //fstp qword ptr [ebp - ??]
       FStream.WriteByte(byte(result));
+   end
+   else if resultStyle = rsObj then
+   begin
+      inc(result, sizeof(pointer));
+      WriteExtractObject(result);
    end;
 end;
 
@@ -325,20 +346,22 @@ var
    alignment: integer;
 begin
    initSize := FInitStream.Size;
-   alignment := (initSize + FStream.Size) mod ALIGN_BOUNDS;
-   if alignment > 0 then
-      FStream._nop(alignment);
    FTryFrame[1] := FStream._begin_finally_block + initSize;
    for item in FCleanups do
    begin
+      FStream.WriteBytes([$8D, $45]); //lea eax,[ebp - ??]
+      FStream.WriteByte(byte(item.depth));
       if item.typ = FProgram.TypString then
-      begin
-         FStream.WriteBytes([$8D, $45]); //lea eax,[ebp - ??]
-         FStream.WriteByte(byte(item.depth));
-         WriteCall(func_ustr_clear);
-      end
+         WriteCall(func_ustr_clear)
+      else if item.typ is TClassSymbol then
+         WriteCall(func_intf_clear)
       else raise Exception.CreateFmt('Unknown type for cleanup: %s', [item.typ.Name]);
    end;
+
+   //+1 for 1-byte RET that _end_finally_block inserts
+   alignment := (initSize + FStream.Size + 1) mod ALIGN_BOUNDS;
+   if alignment > 0 then
+      FStream._nop(alignment);
    FTryFrame[2] := FStream._end_finally_block(FTryFrame[1] - initSize) + initSize;
    AddCall(func_handle_finally, FTryFrame[2]);
    FTryFrame[3] := FStream.Size + initSize;
