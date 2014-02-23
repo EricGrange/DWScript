@@ -101,8 +101,11 @@ var
    lCall, lOffset: nativeInt;
    ptr: pointer;
    fixup: TFunctionCall;
+   info: _MEMORY_BASIC_INFORMATION;
 begin
    result := VirtualAlloc(nil, length(value), MEM_RESERVE or MEM_COMMIT, PAGE_READWRITE);
+   if result = nil then
+      OutOfMemoryError;
    system.Move(value[0], result^, length(value));
    for fixup in calls do
    begin
@@ -126,8 +129,11 @@ begin
       PPointer(ptr)^ := @PByte(result)[tryFrame[3]];
    end;
 
-   if not VirtualProtect(result, length(value), PAGE_EXECUTE_READ, oldProtect) then
+   if not VirtualProtect(result, length(value), PAGE_EXECUTE, oldProtect) then
       RaiseLastOSError;
+   VirtualQuery(result, info, sizeof(info));
+   if info.Protect <> PAGE_EXECUTE then
+      raise Exception.Create('VirtualProtect failed');
 end;
 
 procedure MakeNotExecutable(value: pointer);

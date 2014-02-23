@@ -25,20 +25,22 @@ type
    end;
 
    Tx86RegisterJit = class(TinterfacedObject, IExternalFunctionJit)
-   type
+   private type
       TStackLoc = record
          depth, size: integer;
          constructor Create(depth, size: integer);
       end;
+      TResultStyle = (rsNormal, rsVar, rsFloat);
    private
       FProgram: TdwsProgram;
       FInitStream: Tx86WriteOnlyStream;
       FStream: Tx86WriteOnlyStream;
       FReturnValue: TTypeSymbol;
       FParams: integer;
+      FStackDepth: integer;
       FRegParams: integer;
       FRegParamDepth: array[0..2] of byte;
-      //FStackParams: array of TStackLoc;
+      FStackParams: array of TStackLoc;
       FCalls: TFunctionCallArray;
       FTryFrame: TTryFrame;
       FCleanups: array of TCleanup;
@@ -48,9 +50,11 @@ type
       procedure InitParams;
       procedure AddCall(call: pointer; offset: integer);
       procedure WriteCall(loc: pointer);
+      function typeSize(value: TTypeSymbol): integer;
       procedure PushParam(param: TParamSymbol; pType: TTypeSymbol);
       procedure RegPassParam(param: TParamSymbol; pType: TTypeSymbol);
-      function CallGetParam(pType: TTypeSymbol; index: integer): shortint;
+      function GetVmtSlot(pType: TTypeSymbol; out resultStyle: TResultStyle): byte;
+      function CallGetParam(pType: TTypeSymbol; size: integer): shortint;
       procedure WriteLoadVarParam(depth: shortint);
       procedure AddCleanup(depth: shortint; pType: TTypeSymbol);
       procedure WriteCleanup;
@@ -95,6 +99,13 @@ begin
    inherited;
 end;
 
+function Tx86RegisterJit.typeSize(value: TTypeSymbol): integer;
+begin
+   if value = FProgram.TypFloat then
+      result := 2
+   else result := 1;
+end;
+
 procedure Tx86RegisterJit.BeginProcedure(params: TParamsSymbolTable);
 const
    SETUP_STACK:   array[0..5] of byte = ($51, $53, $56, $57, $8B, $DA); //push ECX; push EBX;
@@ -111,12 +122,7 @@ begin
    begin
       paramDepth := 0;
       for i := 0 to params.Count - 1 do
-      begin
-         inc(paramDepth);
-         //float type is 2 dwords long
-         if params[i].Typ = FProgram.TypFloat then
-            inc(paramDepth);
-      end;
+         inc(paramDepth, typeSize(params[i].typ));
       FInitStream._add_reg_int32(gprESP, GetDepth(paramDepth)); //reserve stack space
       FInitStream.WriteBytes(SETUP_STACK);
    end;
@@ -155,8 +161,13 @@ begin
 end;
 
 procedure Tx86RegisterJit.PushParam(param: TParamSymbol; pType: TTypeSymbol);
+var
+   i, size: integer;
 begin
-   raise Exception.Create('Stack params are not suported yet');
+   i := length(FStackParams);
+   setLength(FStackParams, i + 1);
+   size := typeSize(pType);
+   FStackParams[i] := TStackLoc.Create(CallGetParam(pType, size), size);
 end;
 
 procedure Tx86RegisterJit.WriteCall(loc: pointer);
@@ -170,7 +181,7 @@ function Tx86RegisterJit.GetDepth(depth: byte): shortint;
 const OVERHEAD_SLOTS = 1;
 begin
    result := ((depth + OVERHEAD_SLOTS) * sizeof(pointer));
-   result := ($FF - result) + 1;
+   result := shortint(($FF - result) + 1);
 end;
 
 function Tx86RegisterJit.GetTryFrame: TTryFrame;
@@ -192,7 +203,7 @@ begin
    FInitStream._xor_reg_reg(gprECX, gprECX);                  //zero ECX
    FInitStream._mov_dword_ptr_reg_reg(gprEBP, depth, gprECX); //zero stack location
    FStream.WriteBytes(LEA_PARAM);                             //load stack to ECX
-   FStream.WriteByte(depth);
+   FStream.WriteByte(byte(depth));
 end;
 
 procedure Tx86RegisterJit.AddCleanup(depth: shortint; pType: TTypeSymbol);
@@ -205,29 +216,38 @@ begin
    FCleanups[n].depth:=depth;
 end;
 
-function Tx86RegisterJit.CallGetParam(pType: TTypeSymbol; index: integer): shortint;
-const
-   STORE_VALUE:  array[0..1] of byte = ($89, $45);      //mov [ebp - ??],eax
-var
-   vmtSlot: byte;
-   resultAsVar: boolean;
+function Tx86RegisterJit.GetVmtSlot(pType: TTypeSymbol; out resultStyle: TResultStyle): byte;
 begin
-   resultAsVar := false;
+   resultStyle := rsNormal;
    if pType = FProgram.TypInteger then
-      vmtSlot := vmt_TExprBase_EvalAsInteger
+      result := vmt_TExprBase_EvalAsInteger
    else if pType = FProgram.TypBoolean then
-      vmtSlot := vmt_TExprBase_EvalAsBoolean
+      result := vmt_TExprBase_EvalAsBoolean
    else if pType = FProgram.TypString then
    begin
-      vmtSlot := vmt_TExprBase_EvalAsString;
-      resultAsVar := true;
+      result := vmt_TExprBase_EvalAsString;
+      resultStyle := rsVar;
+   end
+   else if pType = FProgram.TypFloat then
+   begin
+      result := vmt_TExprBase_EvalAsFloat;
+      resultStyle := rsFloat;
    end
    else raise Exception.CreateFmt('Unsupported parameter type: %s', [pType.Name]);
+end;
 
-   result := GetDepth(index);
-   FStream._mov_reg_dword_ptr_reg(gprEAX, gprESI, index * sizeof(pointer)); //load param to EAX
+function Tx86RegisterJit.CallGetParam(pType: TTypeSymbol; size: integer): shortint;
+var
+   vmtSlot: byte;
+   resultStyle: TResultStyle;
+begin
+   vmtSlot := GetVmtSlot(ptype, resultStyle);
+
+   inc(FStackDepth, size);
+   result := GetDepth(FStackDepth);
+   FStream._mov_reg_dword_ptr_reg(gprEAX, gprESI, FParams * sizeof(pointer)); //load param to EAX
    FStream._mov_reg_dword_ptr_reg(gprEDX, gprEBX, 8); //load exec to EDX
-   if resultAsVar then
+   if resultStyle = rsVar then
    begin
       WriteLoadVarParam(result);
       AddCleanup(result, pType);
@@ -235,13 +255,18 @@ begin
    FStream._mov_reg_dword_ptr_reg(gprEDI, gprEAX);    //load VMT to EDI
    FStream._call_reg(gprEDI, vmtSlot);                //virtual method call
 
-   if not resultAsVar then
-      FStream._mov_dword_ptr_reg_reg(gprEBP, result, gprEAX);
+   if resultStyle = rsNormal then
+      FStream._mov_dword_ptr_reg_reg(gprEBP, result, gprEAX)
+   else if resultStyle = rsFloat then
+   begin
+      FStream.WriteBytes([$DD, $5D]); //fstp qword ptr [ebp - ??]
+      FStream.WriteByte(byte(result));
+   end;
 end;
 
 procedure Tx86RegisterJit.RegPassParam(param: TParamSymbol; pType: TTypeSymbol);
 begin
-   FRegParamDepth[FRegParams] := CallGetParam(pType, FParams);
+   FRegParamDepth[FRegParams] := byte(CallGetParam(pType, typeSize(pType)));
    inc(FRegParams);
 end;
 
@@ -270,8 +295,18 @@ procedure Tx86RegisterJit.Call;
 const
    REG_OPS: array[1..3] of byte = ($45, $55, $4D);
 var
-   i: integer;
+   i, depth: integer;
+   loc: TStackLoc;
 begin
+   for loc in FStackParams do
+   begin
+      depth := loc.depth;
+      for i := 1 to loc.size do
+      begin
+         FStream.WriteBytes([$FF, $75]); //push dword ptr
+         FStream.WriteByte(byte(depth + ((loc.size - i) * 4)));
+      end;
+   end;
    for i := FRegParams downto 1 do
    begin
       FStream.WriteByte($8B);
@@ -283,18 +318,23 @@ begin
 end;
 
 procedure Tx86RegisterJit.WriteCleanup;
+const ALIGN_BOUNDS = sizeof(pointer);
 var
    item: TCleanup;
    initSize: integer;
+   alignment: integer;
 begin
    initSize := FInitStream.Size;
+   alignment := (initSize + FStream.Size) mod ALIGN_BOUNDS;
+   if alignment > 0 then
+      FStream._nop(alignment);
    FTryFrame[1] := FStream._begin_finally_block + initSize;
    for item in FCleanups do
    begin
       if item.typ = FProgram.TypString then
       begin
          FStream.WriteBytes([$8D, $45]); //lea eax,[ebp - ??]
-         FStream.WriteByte(item.depth);
+         FStream.WriteByte(byte(item.depth));
          WriteCall(func_ustr_clear);
       end
       else raise Exception.CreateFmt('Unknown type for cleanup: %s', [item.typ.Name]);

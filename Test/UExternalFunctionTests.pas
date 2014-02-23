@@ -62,19 +62,41 @@ end;
 
 procedure Ints3(a, b, c: integer);
 begin
+   assert(a = 1);
+   assert(b = 5);
+   assert(c = 6);
 end;
 
 procedure TestString(a: integer; b: string);
 begin
+   assert(a = 5);
+   assert(b = 'Testing');
 end;
 
 procedure TestStringExc(a: integer; b: string);
 begin
+   TestString(a, b);
    Abort;
 end;
 
 procedure TestBool(a: integer; b: boolean);
 begin
+   assert(a = 5);
+   assert(b = true);
+end;
+
+procedure TestStack(a, b, c, d: integer);
+begin
+   assert(a = 1);
+   assert(b = 5);
+   assert(c = 12);
+   assert(d = -57);
+end;
+
+procedure TestFloat(a: integer; b: double);
+begin
+   assert(a = 1);
+   assert(b = 0.5);
 end;
 
 procedure TExternalFunctionTests.RegisterExternalRoutines(const manager : IdwsExternalFunctionsManager);
@@ -84,6 +106,8 @@ begin
    manager.RegisterExternalFunction('TestString', @TestString);
    manager.RegisterExternalFunction('TestStringExc', @TestStringExc);
    manager.RegisterExternalFunction('TestBool', @TestBool);
+   manager.RegisterExternalFunction('TestStack', @TestStack);
+   manager.RegisterExternalFunction('TestFloat', @TestFloat);
 end;
 
 procedure TExternalFunctionTests.Execution;

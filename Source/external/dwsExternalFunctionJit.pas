@@ -29,6 +29,4 @@ type
 
 implementation
 
-{ TFunctionCall }
-
 end.

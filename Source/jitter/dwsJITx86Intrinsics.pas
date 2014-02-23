@@ -292,6 +292,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+{$R-}
+
 // StackAddrToOffset
 //
 function StackAddrToOffset(addr : Integer) : Integer;
