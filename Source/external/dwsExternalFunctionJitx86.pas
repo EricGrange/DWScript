@@ -58,6 +58,7 @@ type
       function CallGetParam(pType: TTypeSymbol; size: integer): shortint;
       procedure WriteLoadVarParam(depth: shortint);
       procedure WriteStoreIntResult;
+      procedure WriteStoreObjResult;
       procedure WriteStoreResultBase;
       procedure WriteStoreResult;
       procedure AddCleanup(depth: shortint; pType: TTypeSymbol);
@@ -120,17 +121,22 @@ begin
    FRegParams := 0;
    FInitStream._push_reg(gprEBP);
    FInitStream._mov_reg_reg(gprEBP, gprESP); //begin stack frame
-   if Params.Count > 0 then
+   if (Params.Count > 0) or assigned(FReturnValue) then
    begin
       paramDepth := 0;
       for i := 0 to params.Count - 1 do
          inc(paramDepth, typeSize(params[i].typ));
-      FInitStream._add_reg_int32(gprESP, GetDepth(paramDepth)); //reserve stack space
-      FInitStream._push_reg(gprECX); FInitStream._push_reg(gprEBX);
-      FInitStream._push_reg(gprESI); FInitStream._push_reg(gprEDI);
-      FInitStream._mov_reg_reg(gprEBX, gprEAX);
-      if assigned(FReturnValue) then
-         FInitStream._mov_dword_ptr_reg_reg(gprEBP, -2 * sizeof(pointer), gprEDX);
+      if assigned(FReturnValue) and (FReturnValue is TClassSymbol) then
+         inc(paramDepth);
+      if paramDepth > 0 then
+      begin
+         FInitStream._add_reg_int32(gprESP, GetDepth(paramDepth)); //reserve stack space
+         FInitStream._push_reg(gprECX); FInitStream._push_reg(gprEBX);
+         FInitStream._push_reg(gprESI); FInitStream._push_reg(gprEDI);
+         FInitStream._mov_reg_reg(gprEBX, gprEAX);
+         if assigned(FReturnValue) then
+            FInitStream._mov_dword_ptr_reg_reg(gprEBP, -2 * sizeof(pointer), gprEDX);
+      end;
    end;
 end;
 
@@ -231,7 +237,7 @@ end;
 function Tx86RegisterJit.GetVmtSlot(pType: TTypeSymbol; out resultStyle: TResultStyle): byte;
 begin
    resultStyle := rsNormal;
-   if pType = FProgram.TypInteger then
+   if (pType = FProgram.TypInteger) or (ptype is TEnumerationSymbol) then
       result := vmt_TExprBase_EvalAsInteger
    else if pType = FProgram.TypBoolean then
       result := vmt_TExprBase_EvalAsBoolean
@@ -334,16 +340,27 @@ begin
    WriteCall(func_var_from_int);
 end;
 
+procedure Tx86RegisterJit.WriteStoreObjResult;
+begin
+   WriteStoreResultBase;
+   FStream.WriteBytes([$6A, $01]); // push $01
+   FStream._push_reg(gprEAX);
+   FStream._mov_reg_reg(gprEAX, gprEBX);
+   FStream.WriteBytes([$B1, $01]); //mov CL, 1
+   WriteCall(@TExprBaseListExec.RegisterExternalObject);
+end;
+
 procedure Tx86RegisterJit.WriteStoreResult;
 begin
-   if FReturnValue = FProgram.TypInteger then
+   if (FReturnValue = FProgram.TypInteger) or (FReturnValue is TEnumerationSymbol) then
       WriteStoreIntResult
 {
    else if FReturnValue = FProgram.TypBoolean then
    else if FReturnValue = FProgram.TypString then
    else if FReturnValue = FProgram.TypFloat then
-   else if FReturnValue is TClassSymbol then
 }   
+   else if FReturnValue is TClassSymbol then
+      WriteStoreObjResult
    else raise Exception.CreateFmt('Unsupported result type: %s', [FReturnValue.Name]);   
 end;
 
@@ -411,7 +428,7 @@ const
 begin
    if FTryFrame[0] <> 0 then
       WriteCleanup;
-   if FParams > 0 then
+   if (FParams > 0) or (assigned(FReturnValue) and (FReturnValue is TClassSymbol)) then
       FStream.WriteBytes(RESTORE_STACK);
    FStream.WriteByte($5D); //pop ebp
    FStream.WriteByte($C3); //ret

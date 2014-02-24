@@ -8,6 +8,7 @@ procedure TestFloat(a: integer; b: float); external;
 procedure TestObject(a: integer; b: TBoxedString); external;
 procedure TestObjectExc(a: integer; b: TBoxedString); external;
 function  TestReturnInt(a, b: integer): integer; external;
+function  TestReturnObject: TBoxedString; external;
 
 Blank();
 
@@ -27,7 +28,7 @@ TestStack(a, b, 12, -57);
 
 TestFloat(1, 0.5);
 
-var box := GetBoxedString;
+var box := TestReturnObject;
 TestObject(1, box);
 try
   TestObjectExc(1, box);
