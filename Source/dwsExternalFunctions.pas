@@ -150,6 +150,11 @@ var
    jit: TdwsExternalStubJit;
 begin
    FuncSymbol:=aFuncSymbol;
+
+   assert(assigned(aFuncSymbol));
+   assert(aFuncSymbol.Result = nil);
+   assert(aFuncSymbol.Executable = nil);
+   assert(aFuncSymbol.ExternalConvention in [ttREGISTER..ttSTDCALL]);
    jit := TdwsExternalStubJit.Create;
    try
       jit.Eval(aFuncSymbol, prog);
@@ -191,7 +196,7 @@ begin
    FuncSymbol:=aFuncSymbol;
 
    assert(assigned(aFuncSymbol));
-   assert(aFuncSymbol.IsType);
+   assert(assigned(aFuncSymbol.Result));
    assert(aFuncSymbol.Executable = nil);
    assert(aFuncSymbol.ExternalConvention in [ttREGISTER..ttSTDCALL]);
    jit := TdwsExternalStubJit.Create;
@@ -246,8 +251,8 @@ var
 begin
    Clear;
    FInternalJit := JitFactory(funcSymbol.ExternalConvention, prog);
-   if funcSymbol.IsType then
-      FInternalJit.BeginFunction(funcSymbol.typ, funcSymbol.Params)
+   if assigned(funcSymbol.Result) then
+      FInternalJit.BeginFunction(funcSymbol.Result.Typ, funcSymbol.Params)
    else FInternalJit.BeginProcedure(funcSymbol.Params);
    for i := 0 to funcSymbol.Params.Count - 1 do
       FInternalJit.PassParam(funcSymbol.Params[i]);
@@ -312,7 +317,7 @@ end;
 //
 function TExternalFunctionManager.CreateExternalFunction(funcSymbol : TFuncSymbol) : IExternalRoutine;
 begin
-   if funcSymbol.IsType then
+   if assigned(funcSymbol.Result) then
       result := TExternalFunction.Create(funcSymbol, Compiler.CurrentProg.Root)
    else result := TExternalProcedure.Create(funcSymbol, Compiler.CurrentProg.Root);
    if not FRoutines.AddObject(funcSymbol.Name, result.GetSelf as TInternalFunction) then

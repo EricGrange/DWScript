@@ -7,6 +7,7 @@ procedure TestStack (a, b, c, d: integer); external;
 procedure TestFloat(a: integer; b: float); external;
 procedure TestObject(a: integer; b: TBoxedString); external;
 procedure TestObjectExc(a: integer; b: TBoxedString); external;
+function  TestReturnInt(a, b: integer): integer; external;
 
 Blank();
 
@@ -32,3 +33,7 @@ try
   TestObjectExc(1, box);
 except
 end;
+
+var intReturn := TestReturnInt(a, b);
+if intReturn <> 6 then
+   raise Exception.Create(format('Expected TestReturnInt to return 6 but got %d', [intReturn]));

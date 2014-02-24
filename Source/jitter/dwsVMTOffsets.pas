@@ -42,6 +42,7 @@ var
    func_ustr_clear: pointer;
    func_handle_finally: pointer;
    func_intf_clear: pointer;
+   func_var_from_int: pointer;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -50,6 +51,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses Variants;
 
 // PrepareVMTOffsets
 //
@@ -71,6 +74,7 @@ asm
    mov func_ustr_clear, offset System.@UStrClr
    mov func_intf_clear, offset System.@IntfClear
    mov func_handle_finally, offset System.@HandleFinally
+   mov func_var_from_int, offset Variants.@VarFromInt
 end;
 
 procedure PrepareDynArrayIDataContextToFDataOffset;

@@ -57,6 +57,9 @@ type
       function GetVmtSlot(pType: TTypeSymbol; out resultStyle: TResultStyle): byte;
       function CallGetParam(pType: TTypeSymbol; size: integer): shortint;
       procedure WriteLoadVarParam(depth: shortint);
+      procedure WriteStoreIntResult;
+      procedure WriteStoreResultBase;
+      procedure WriteStoreResult;
       procedure AddCleanup(depth: shortint; pType: TTypeSymbol);
       procedure WriteCleanup;
 
@@ -110,10 +113,6 @@ begin
 end;
 
 procedure Tx86RegisterJit.BeginProcedure(params: TParamsSymbolTable);
-const
-   SETUP_STACK:   array[0..5] of byte = ($51, $53, $56, $57, $8B, $DA); //push ECX; push EBX;
-                                                                        //push ESI; push EDI;
-                                                                        //mov ebx,edx
 var
    i, paramDepth: integer;
 begin
@@ -127,7 +126,11 @@ begin
       for i := 0 to params.Count - 1 do
          inc(paramDepth, typeSize(params[i].typ));
       FInitStream._add_reg_int32(gprESP, GetDepth(paramDepth)); //reserve stack space
-      FInitStream.WriteBytes(SETUP_STACK);
+      FInitStream._push_reg(gprECX); FInitStream._push_reg(gprEBX);
+      FInitStream._push_reg(gprESI); FInitStream._push_reg(gprEDI);
+      FInitStream._mov_reg_reg(gprEBX, gprEAX);
+      if assigned(FReturnValue) then
+         FInitStream._mov_dword_ptr_reg_reg(gprEBP, -2 * sizeof(pointer), gprEDX);
    end;
 end;
 
@@ -159,8 +162,8 @@ end;
 
 procedure Tx86RegisterJit.BeginFunction(retval: TTypeSymbol; params: TParamsSymbolTable);
 begin
-   BeginProcedure(params);
    FReturnValue := retval;
+   BeginProcedure(params);
 end;
 
 procedure Tx86RegisterJit.PushParam(param: TParamSymbol; pType: TTypeSymbol);
@@ -182,8 +185,14 @@ end;
 
 function Tx86RegisterJit.GetDepth(depth: byte): shortint;
 const OVERHEAD_SLOTS = 1;
+var
+   slots: integer;
 begin
-   result := ((depth + OVERHEAD_SLOTS) * sizeof(pointer));
+   slots := OVERHEAD_SLOTS;
+   if assigned(FReturnValue) then
+      inc(slots);
+   
+   result := ((depth + slots) * sizeof(pointer));
    result := shortint(($FF - result) + 1);
 end;
 
@@ -312,6 +321,32 @@ begin
    inc(FParams);
 end;
 
+procedure Tx86RegisterJit.WriteStoreResultBase;
+begin
+   FStream._mov_reg_reg(gprEDX, gprEAX);
+   FStream._mov_reg_dword_ptr_reg(gprEAX, gprEBP, -2 * sizeof(pointer));
+end;
+
+procedure Tx86RegisterJit.WriteStoreIntResult;
+begin
+   WriteStoreResultBase;
+   FStream.WriteBytes([$B1, $FC]); //mov CL, $FC (-4 for 3rd param)
+   WriteCall(func_var_from_int);
+end;
+
+procedure Tx86RegisterJit.WriteStoreResult;
+begin
+   if FReturnValue = FProgram.TypInteger then
+      WriteStoreIntResult
+{
+   else if FReturnValue = FProgram.TypBoolean then
+   else if FReturnValue = FProgram.TypString then
+   else if FReturnValue = FProgram.TypFloat then
+   else if FReturnValue is TClassSymbol then
+}   
+   else raise Exception.CreateFmt('Unsupported result type: %s', [FReturnValue.Name]);   
+end;
+
 procedure Tx86RegisterJit.Call;
 const
    REG_OPS: array[1..3] of byte = ($45, $55, $4D);
@@ -336,6 +371,8 @@ begin
    end;
 
    writeCall(nil);
+   if assigned(FReturnValue) then
+      WriteStoreResult;      
 end;
 
 procedure Tx86RegisterJit.WriteCleanup;
