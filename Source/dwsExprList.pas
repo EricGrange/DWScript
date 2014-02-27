@@ -78,7 +78,6 @@ type
          function GetAsFileName(const x : Integer) : UnicodeString;
 
       public
-         function RegisterExternalObject(AObject: TObject; AutoFree: Boolean=False; ExactClassMatch: Boolean=True): variant;
          property ListRec : TExprBaseListRec write SetListRec;
          property List : PObjectTightList read FList;
          property Count : Integer read FCount;
@@ -104,9 +103,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-uses
-   dwsExprs;
 
 // ------------------
 // ------------------ TExprBaseListRec ------------------
@@ -178,15 +174,6 @@ procedure TExprBaseListExec.SetListRec(const lr : TExprBaseListRec);
 begin
    FCount:=lr.FList.Count;
    FList:=lr.FList.List;
-end;
-
-function TExprBaseListExec.RegisterExternalObject(AObject: TObject; AutoFree,
-  ExactClassMatch: Boolean): variant;
-var
-   info: TProgramInfo;
-begin
-   info := (self.Exec as TdwsProgramExecution).ProgramInfo;
-   result := info.RegisterExternalObject(AObject, AutoFree, ExactClassMatch);
 end;
 
 // GetExprBase

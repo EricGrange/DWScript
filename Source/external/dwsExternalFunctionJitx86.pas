@@ -4,19 +4,16 @@ interface
 
 uses
    dwsTokenizer,
-   dwsExternalFunctionJit, dwsExprs, dwsJITx86Intrinsics;
+   dwsExternalFunctionJit, dwsExprs, dwsJITx86Intrinsics, dwsExprList;
 
 function JitFactory(conv: TTokenType; prog: TdwsProgram): IExternalFunctionJit;
 
 implementation
 
 uses
-   {$ifdef WIN32}
-   Windows,
-   {$endif}
    SysUtils,
    dwsUtils,
-   dwsSymbols, dwsExprList, dwsVMTOffsets;
+   dwsSymbols, dwsVMTOffsets;
 
 type
    TCleanup = record
@@ -80,13 +77,22 @@ type
       destructor Destroy; override;
    end;
 
-
-function JitFactory(conv: dwsTokenizer.TTokenType; prog: TdwsProgram): IExternalFunctionJit;
+function JitFactory(conv: TTokenType; prog: TdwsProgram): IExternalFunctionJit;
 begin
    if conv = ttREGISTER then
       result := Tx86RegisterJit.Create(prog)
    else raise Exception.Create('Only REGISTER calling convention is supported so far');
 end;
+
+function RegisterExternalObject(const self : TExprBaseListExec; AObject: TObject; AutoFree,
+  ExactClassMatch: Boolean): variant;
+var
+   info: TProgramInfo;
+begin
+   info := (self.Exec as TdwsProgramExecution).ProgramInfo;
+   result := info.RegisterExternalObject(AObject, AutoFree, ExactClassMatch);
+end;
+
 
 { Tx86RegisterJit }
 
@@ -347,7 +353,7 @@ begin
    FStream._push_reg(gprEAX);
    FStream._mov_reg_reg(gprEAX, gprEBX);
    FStream.WriteBytes([$B1, $01]); //mov CL, 1
-   WriteCall(@TExprBaseListExec.RegisterExternalObject);
+   WriteCall(@RegisterExternalObject);
 end;
 
 procedure Tx86RegisterJit.WriteStoreResult;
@@ -453,10 +459,4 @@ begin
    self.size := size;
 end;
 
-{$ifdef WIN32}
-
-function SetProcessDEPPolicy(dwFlags: DWORD): BOOL; stdcall; external kernel32 name 'SetProcessDEPPolicy';
-initialization
-   SetProcessDEPPolicy(0);
-{$endif}
 end.
