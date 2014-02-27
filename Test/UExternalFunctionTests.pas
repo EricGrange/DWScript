@@ -201,7 +201,6 @@ end;
 
 procedure TExternalFunctionTests.SetUp;
 var
-   fun: TdwsFunction;
    tbs: TdwsClass;
 begin
    FTests:=TStringList.Create;
