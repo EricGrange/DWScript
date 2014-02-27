@@ -1,5 +1,7 @@
 unit dwsExternalFunctionJitx86;
 
+{.$define UNSAFE_DEP_OFF}
+
 interface
 
 uses
@@ -11,6 +13,9 @@ function JitFactory(conv: TTokenType; prog: TdwsProgram): IExternalFunctionJit;
 implementation
 
 uses
+   {$ifdef UNSAFE_DEP_OFF}
+   Windows,
+   {$endif}
    SysUtils,
    dwsUtils,
    dwsSymbols, dwsVMTOffsets;
@@ -458,5 +463,13 @@ begin
    self.depth := depth;
    self.size := size;
 end;
+
+{$ifdef UNSAFE_DEP_OFF}
+
+function SetProcessDEPPolicy(dwFlags: DWORD): BOOL; stdcall; external kernel32 name 'SetProcessDEPPolicy';
+initialization
+   SetProcessDEPPolicy(0);
+
+{$endif}
 
 end.
