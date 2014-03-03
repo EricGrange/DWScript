@@ -26,7 +26,7 @@ uses
    dwsJIT, dwsJITx86,
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
    dwsDataBase, dwsDataBaseLibModule, dwsWebServerInfo, dwsWebServerLibModule,
-   dwsBackgroundWorkersLibModule, dwsSynapseLibModule;
+   dwsBackgroundWorkersLibModule, dwsSynapseLibModule, dwsCryptoLibModule;
 
 type
 
@@ -207,6 +207,8 @@ begin
 
    FSynapse:=TdwsSynapseLib.Create(Self);
    FSynapse.Script:=DelphiWebScript;
+
+   TdwsCryptoLib.Create(Self).dwsCrypto.Script:=DelphiWebScript;
 
    FCompiledPrograms:=TCompiledProgramHash.Create;
    FCompiledProgramsLock:=TFixedCriticalSection.Create;
