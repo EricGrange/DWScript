@@ -134,6 +134,8 @@ const
          +'"SSLDomainName": "+",'
          // https relative URI
          +'"SSLRelativeURI": "",'
+         // supplemental domains array of {Port, Name, RelativeURI, SSL}
+         +'"Domains": [],'
          // is HTTP compression activated
          +'"Compression": true,'
          // Base path for served files,
@@ -215,6 +217,7 @@ var
    logPath : TdwsJSONValue;
    serverOptions : TdwsJSONValue;
    scriptedExtensions : TdwsJSONValue;
+   extraDomains, domain : TdwsJSONValue;
    i, nbThreads : Integer;
 begin
    FPath:=IncludeTrailingPathDelimiter(ExpandFileName(basePath));
@@ -255,6 +258,15 @@ begin
       FSSLPort:=serverOptions['SSLPort'].AsInteger;
       if FSSLPort<>0 then begin
          FServer.AddUrl(FSSLRelativeURI, FSSLPort, True, FSSLDomainName);
+      end;
+
+      extraDomains:=serverOptions['Domains'];
+      for i:=0 to extraDomains.ElementCount-1 do begin
+         domain:=extraDomains.Elements[i];
+         FServer.AddUrl(domain['RelativeURI'].AsString,
+                        domain['Port'].AsInteger,
+                        domain['SSL'].AsBoolean,
+                        domain['Name'].AsString);
       end;
 
       if serverOptions['Compression'].AsBoolean then
