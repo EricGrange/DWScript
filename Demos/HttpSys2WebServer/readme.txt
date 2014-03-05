@@ -31,6 +31,9 @@ http://sqlite.org/
 
 Changes
 
+2014.03.05
+	Latest version from SVN sources
+
 2013.09.19
 	Improved installer with production installation options
 	Minor performance improvements

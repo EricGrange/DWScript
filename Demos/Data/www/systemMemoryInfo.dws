@@ -1,126 +1,40 @@
-<html>
-<head>
-   <title>System Info</title>
-   <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-   <script type="text/javascript" src="smoothie.min.js"></script>
-</head>
-<body>
-<style>
 <?pas
-// this will include the css inline via the Filter import
-{$F "systemInfo.css"}
+uses System.Info;
+
+function Pretty(i : Integer) : String;
+begin
+   Result:=Format('%.1f MiB', [i/(1024*1024)]);
+end;
+
+function Bar(const d : MemoryStatusDetail) : String;
+begin
+   Result:= '<div class="bar"><div class="barfill" style="width:'
+           +IntToStr(100-Round(100*d.Available/d.Total))
+           +'%">'
+end;
+
+var ms := new MemoryStatus;
+
 ?>
-</style>
-
-<div style="width: 450px; float:left">
-<p>
-<b><?pas=OSVersionInfo.Name?> (<?pas=OSVersionInfo.Version?>)</b><br>
-<i><?pas=CPUInfo.Name?>, 
-<?pas=CPUInfo.Count?> core<?pas=if CPUInfo.Count>1 then "s"?> 
-@ <?pas=Format("%.1f", [CPUInfo.FrequencyMHz*0.001])?> GHz</i>
-</p>
-<div id="memory">
-<?pas
-{$F 'systemMemoryInfo.dws'}
-?>
-</div>
-</div>
-
-<div style="float:left;position:relative">
-
-   <canvas id="mycanvas" width="400" height="190"></canvas>
-   <div id="connect" style="display:none">Connection lost</div>
-   <div class="usage">
-      <span style="float:left;color:#0F0">Process <span id="process">xx</span>%</span>&nbsp;
-      <span style="float:right;color:#F0F">System <span id="system">xx</span>%</span>
-   </div>
-
-</div>
-
-<script type="text/javascript">
- 
- var line1 = new TimeSeries();
- var line2 = new TimeSeries();
- 
- function fmtPercent(v) {
-   if (v<10) return '&nbsp;&nbsp;'+v.toFixed(1);
-   if (v<100) return '&nbsp;'+v.toFixed(1);
-   return v;
- }
- 
- $.ajaxSetup({timeout: 1000});
- 
- function tickCPU() {
-   $.ajax("/cpuUsage.dws")
-     .done(
-       function (data) {
-         var dt = new Date().getTime();
-         data = data.split('/').map(function (v) { return parseFloat(v) });
-         line1.append(dt, data[0]);
-         $('#process').html(fmtPercent(data[0]));
-         line2.append(dt, data[1]);
-         $('#system').html(fmtPercent(data[1]));
-         $('#connect').hide();
-       }
-     ).error(
-       function () {
-         var dt = new Date().getTime();
-         line1.append(dt, null);
-         line2.append(dt, null);
-         $('#connect').show();
-       }
-     ).complete(
-       function () {
-         setTimeout(tickCPU, 950);
-       }
-     )       
- };
- tickCPU();
- 
- function tickMemory() {
-   $.ajax("/systemMemoryInfo.dws")
-     .done(
-       function (data) {
-         $('#memory').html(data);
-       }
-     ).complete(
-       function () {
-         setTimeout(tickMemory, 5000);
-       }
-     )       
- };
-tickMemory();
- 
- var smoothie = new SmoothieChart(
-   { 
-     grid: { 
-       strokeStyle: 'rgb(125, 0, 0)', 
-       fillStyle: '#400', 
-       lineWidth: 1, 
-       millisPerLine: 1000, 
-       verticalSections: 10,
-     },
-     interpolation: 'line',
-     millisPerPixel: 50,
-     minValue: 0,
-     maxValue: 100
-   });
- smoothie.addTimeSeries(line1, 
-                        {
-                          strokeStyle: 'rgb(0, 255, 0)',
-                          fillStyle: 'rgba(0, 255, 0, 0.4)', 
-                          lineWidth: 2 
-                        });
- smoothie.addTimeSeries(line2, 
-                        { 
-                          strokeStyle: 'rgb(255, 0, 255)', 
-                          fillStyle: 'rgba(255, 0, 255, 0.3)', 
-                          lineWidth: 2
-                        });
- 
- smoothie.streamTo(document.getElementById("mycanvas"), 1000);
- 
-</script>
-
-</body>
-</html>
+<table cellspacing="0" cellpadding="6">
+   <tr>
+      <th>Memory
+      <th>Available
+      <th>Total
+      <th>Ratio
+   <tr>
+      <td>Physical
+      <td><?pas=Pretty(ms.Physical.Available)?>
+      <td><?pas=Pretty(ms.Physical.Total)?>
+      <td><?pas=Bar(ms.Physical)?>
+   <tr>
+      <td>Virtual
+      <td><?pas=Pretty(ms.Virtual.Available)?>
+      <td><?pas=Pretty(ms.Virtual.Total)?>
+      <td><?pas=Bar(ms.Virtual)?>
+   <tr>
+      <td>PageFile
+      <td><?pas=Pretty(ms.PageFile.Available)?>
+      <td><?pas=Pretty(ms.PageFile.Total)?>
+      <td><?pas=Bar(ms.PageFile)?>
+</table>

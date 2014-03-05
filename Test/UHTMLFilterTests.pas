@@ -26,6 +26,7 @@ type
       procedure TestPatterns;
       procedure TestSpecialChars;
       procedure TestNotClosed;
+      procedure TestIncludeFiltered;
 
    end;
 
@@ -161,19 +162,25 @@ begin
    CheckEquals('world', exec.Result.ToString, 'hello eval');
 end;
 
+// TestIncludeFiltered
+//
+procedure THTMLFilterTests.TestIncludeFiltered;
+var
+   prog: IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile('a<?pas'#13#10'{$F "B"}'#13#10'?>c');
+   exec:=prog.Execute;
+   CheckEquals('aBc', exec.Result.ToString, 'include filtered 1');
+end;
+
 // DoInclude
 //
 procedure THTMLFilterTests.DoInclude(const scriptName: UnicodeString; var scriptSource: UnicodeString);
-var
-  sl: TStringList;
 begin
-  sl := TStringList.Create;
-  try
-    sl.LoadFromFile('SimpleScripts\' + scriptName);
-    scriptSource := sl.Text;
-  finally
-    sl.Free;
-  end;
+   if scriptName='B' then
+      scriptSource:='B'
+   else scriptSource:=LoadTextFromFile('SimpleScripts\'+scriptName);
 end;
 
 // ------------------------------------------------------------------

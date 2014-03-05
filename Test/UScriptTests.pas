@@ -61,7 +61,7 @@ end;
 //
 procedure TScriptTests.SetUp;
 const
-   cFilter = 'enum_b*.pas';
+   cFilter = '*.pas';
 var
    basePath : String;
 begin
