@@ -5120,22 +5120,27 @@ end;
 function TdwsElement.DoGenerate(Table: TSymbolTable;
   ParentSym: TSymbol): TSymbol;
 var
-  enumInt: Integer;
-  enumSym: TEnumerationSymbol;
+   enumInt: Integer;
+   enumSym: TEnumerationSymbol;
 begin
-  FIsGenerating := True;
-  enumSym := TEnumerationSymbol(ParentSym);
+   FIsGenerating := True;
+   enumSym := TEnumerationSymbol(ParentSym);
 
-  CheckName(enumSym.Elements, Name);
+   CheckName(enumSym.Elements, Name);
 
-  if FIsUserDef then
-    enumInt := FUserDefValue
-  else if enumSym.Elements.Count > 0 then
-    enumInt := TElementSymbol(enumSym.Elements[enumSym.Elements.Count - 1]).Value + 1
-  else
-    enumInt := 0;
+   if FIsUserDef then
+      enumInt := FUserDefValue
+   else if enumSym.Style=enumFlags then begin
+      if enumSym.Elements.Count > 0 then
+         enumInt := TElementSymbol(enumSym.Elements[enumSym.Elements.Count - 1]).Value * 2
+      else enumInt := 1;
+   end else begin
+      if enumSym.Elements.Count > 0 then
+         enumInt := TElementSymbol(enumSym.Elements[enumSym.Elements.Count - 1]).Value + 1
+      else enumInt := 0;
+   end;
 
-  Result := TElementSymbol.Create(Name, enumSym, enumInt, FIsUserDef);
+   Result := TElementSymbol.Create(Name, enumSym, enumInt, FIsUserDef);
 end;
 
 function TdwsElement.GetDisplayName: String;
