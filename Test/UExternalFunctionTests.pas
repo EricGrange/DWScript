@@ -31,7 +31,7 @@ implementation
 uses
    SysUtils,
    dwsXPlatform,
-   dwsSymbols, dwsUtils;
+   dwsSymbols, dwsUtils, dwsDataContext;
 
 { TExternalFunctionTests }
 
@@ -129,6 +129,15 @@ begin
    result.value := 'Boxed String';
 end;
 
+procedure TestArray(a: integer; b: TStringDynArray);
+begin
+   assert(a = 1);
+   assert(length(b) = 3);
+   assert(b[0] = 'Testing');
+   assert(b[1] = 'testing');
+   assert(b[2] = '123');
+end;
+
 procedure TExternalFunctionTests.RegisterExternalRoutines(const manager : IdwsExternalFunctionsManager);
 begin
    manager.RegisterExternalFunction('Blank', @Blank);
@@ -142,6 +151,17 @@ begin
    manager.RegisterExternalFunction('TestObjectExc', @TestObjectExc);
    manager.RegisterExternalFunction('TestReturnInt', @TestReturnInt);
    manager.RegisterExternalFunction('TestReturnObject', @TestReturnObject);
+   manager.RegisterExternalFunction('TestArray', @TestArray);
+end;
+
+procedure ExtractStringArray(const source: IDataContext; var output {TStringDynArray});
+var
+   i: integer;
+   result: TStringDynArray absolute output;
+begin
+   SetLength(result, source.DataLength);
+   for i := 0 to source.DataLength - 1 do
+      result[i] := source.AsString[i];
 end;
 
 procedure TExternalFunctionTests.Execution;
@@ -167,6 +187,7 @@ begin
          // it shouldn't be exposed at the TDelphiWebScript level
          // (need to have a TComponent property be exposed there)
          FCompiler.Compiler.ExternalFunctionsManager:=manager;
+         manager.RegisterTypeMapping('TStringDynArray', TTypeLookupData.Create(@ExtractStringArray, TypeInfo(TStringDynArray)));
 
          prog:=FCompiler.Compile(source.Text);
          CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
@@ -202,6 +223,7 @@ end;
 procedure TExternalFunctionTests.SetUp;
 var
    tbs: TdwsClass;
+   arr: TdwsArray;
 begin
    FTests:=TStringList.Create;
 
@@ -216,6 +238,11 @@ begin
    tbs := FUnit.Classes.Add;
    tbs.Name := 'TBoxedString';
    tbs.OnCleanUp := self.FreeBoxedString;
+
+   arr := FUnit.Arrays.Add;
+   arr.Name := 'TStringDynArray';
+   arr.IsDynamic := true;
+   arr.DataType := 'string';
 
    FUnit.ImplicitUse := true;
 end;

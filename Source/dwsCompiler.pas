@@ -24,7 +24,7 @@ unit dwsCompiler;
 interface
 
 uses
-  Variants, Classes, SysUtils,
+  Variants, Classes, SysUtils, TypInfo,
   dwsFileSystem, dwsUtils, dwsXPlatform,
   dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors, dwsDataContext, dwsExprList,
   dwsStrings, dwsFunctions, dwsStack,
@@ -353,6 +353,14 @@ type
 
    IdwsCompiler = interface;
 
+   TTypeConvertEvent = procedure (const source: IDataContext; var output);
+
+   TTypeLookupData = record
+      event: TTypeConvertEvent;
+      info: PTypeInfo;
+      constructor Create(event: TTypeConvertEvent; info: PTypeInfo);
+   end;
+
    IdwsExternalFunctionsManager = interface
       ['{6365B0E4-4BEA-4AD4-8DDE-C37758A63FEF}']
       procedure BeginCompilation(const compiler : IdwsCompiler);
@@ -361,7 +369,8 @@ type
       function ConvertToMagicSymbol(value: TFuncSymbol) : TFuncSymbol;
       function CreateExternalFunction(funcSymbol : TFuncSymbol) : IExternalRoutine;
 
-      procedure RegisterExternalFunction(const name: UnicodeString; address: Pointer);
+      procedure RegisterExternalFunction(const name: UnicodeString; address: pointer);
+      procedure RegisterTypeMapping(const name: UnicodeString; const typ: TTypeLookupData);
    end;
 
    IdwsCompiler = interface
@@ -5274,6 +5283,71 @@ begin
    except
       OrphanObject(Result);
       raise;
+   end;
+end;
+
+// ReadRange
+//
+function TdwsCompiler.ReadRange(left: TTypedExpr): TRangeExpr;
+var
+   right: TTypedExpr;
+   rightPos: TScriptPos;
+begin
+   rightPos := FTok.CurrentPos;
+   right := ReadExpr;
+   if not left.Typ.IsCompatible(right.Typ) then
+      IncompatibleTypes(rightPos, CPE_IncompatibleTypes, left.Typ, right.Typ);
+   result := TRangeExpr.Create(left, right);
+end;
+
+function TdwsCompiler.CreateDynSliceFuncSymbol(arraySymbol: TArraySymbol): TMagicFuncSymbol;
+var
+   slice: TSliceArrayFunc;
+   sym: TMagicFuncSymbol;
+begin
+   slice := TDynSliceArrayFunc.Create;
+   sym := TMagicFuncSymbol.Create('slice$' + IntToStr(slice.GetHashCode), fkFunction, 1);
+   sym.Params.AddParent(FProg.Table);
+   sym.InternalFunction := slice;
+   sym.IsStateless := true;
+   FProg.Table.AddSymbol(sym);
+   sym.Typ := arraySymbol;
+   sym.AddParam(TParamSymbol.Create('arr', arraySymbol));
+   sym.AddParam(TParamSymbol.Create('low', arraySymbol.IndexType));
+   sym.AddParam(TParamSymbol.Create('high', arraySymbol.IndexType));
+
+   result := sym;
+end;
+
+function TdwsCompiler.CreateStaticSliceFuncSymbol(arraySymbol: TStaticArraySymbol): TMagicFuncSymbol;
+var
+   slice: TSliceArrayFunc;
+   sym: TMagicFuncSymbol;
+begin
+   slice := TStaticSliceArrayFunc.Create(arraySymbol);
+   sym := TMagicFuncSymbol.Create('slice$' + IntToStr(slice.GetHashCode), fkFunction, 1);
+   sym.Params.AddParent(FProg.Table);
+   sym.InternalFunction := slice;
+   sym.IsStateless := true;
+   FProg.Table.AddSymbol(sym);
+   sym.Typ := TDynamicArraySymbol.Create('', arraySymbol.Typ, arraySymbol.IndexType);
+   FProg.Table.AddSymbol(sym.typ);
+   sym.AddParam(TParamSymbol.Create('arr', arraySymbol));
+   sym.AddParam(TParamSymbol.Create('low', arraySymbol.IndexType));
+   sym.AddParam(TParamSymbol.Create('high', arraySymbol.IndexType));
+
+   result := sym;
+end;
+
+function TdwsCompiler.CreateSliceFuncSymbol(arraySymbol: TArraySymbol): TMagicFuncSymbol;
+begin
+   if arraySymbol is TStaticArraySymbol then
+      result := CreateStaticSliceFuncSymbol(TStaticArraySymbol(arraySymbol))
+   else if arraySymbol is TDynamicArraySymbol then
+      result := CreateDynSliceFuncSymbol(arraySymbol)
+   else begin //should not see this case
+      FProg.CompileMsgs.AddCompilerStop(FTok.CurrentPos, 'Slicing is not supported for this type');
+      result := nil; //go away, stupd compiler warnings
    end;
 end;
 
@@ -13755,6 +13829,14 @@ begin
    for Result:=0 to Count-1 do
       if Items[Result]=s then Exit;
    Result:=-1;
+end;
+
+{ TTypeLookupData }
+
+constructor TTypeLookupData.Create(event: TTypeConvertEvent; info: PTypeInfo);
+begin
+   self.event := event;
+   self.info := info;
 end;
 
 end.

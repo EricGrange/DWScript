@@ -9,19 +9,30 @@ uses
    dwsExternalFunctionJIT;
 
 type
+   TBoxedTypeConverter = class
+   private
+      FValue: TTypeLookupData;
+   public
+      constructor Create(value: TTypeLookupData);
+      property value: TTypeLookupData read FValue;
+   end;
 
    TExternalFunctionManager = class(TInterfacedObject, IdwsExternalFunctionsManager)
       private
          FCompiler : IdwsCompiler;
          FRoutines: TSimpleNameObjectHash<TInternalFunction>;
-
+      class var
+         FTypeMap: TSimpleNameObjectHash<TBoxedTypeConverter>;
+         class constructor Create;
+         class destructor Destroy;
+         class function LookupType(const name: UnicodeString) : TTypeLookupData;
       protected
          procedure BeginCompilation(const compiler : IdwsCompiler);
          procedure EndCompilation(const compiler : IdwsCompiler);
 
          function ConvertToMagicSymbol(value: TFuncSymbol) : TFuncSymbol;
          function CreateExternalFunction(funcSymbol : TFuncSymbol) : IExternalRoutine;
-
+         procedure RegisterTypeMapping(const name: UnicodeString; const typ: TTypeLookupData);
       public
          constructor Create;
          destructor Destroy; override;
@@ -250,7 +261,7 @@ var
    i: integer;
 begin
    Clear;
-   FInternalJit := JitFactory(funcSymbol.ExternalConvention, prog);
+   FInternalJit := JitFactory(funcSymbol.ExternalConvention, prog, TExternalFunctionManager.LookupType);
    if assigned(funcSymbol.Result) then
       FInternalJit.BeginFunction(funcSymbol.Result.Typ, funcSymbol.Params)
    else FInternalJit.BeginProcedure(funcSymbol.Params);
@@ -264,6 +275,17 @@ end;
 // ------------------
 // ------------------ TExternalFunctionManager ------------------
 // ------------------
+
+class constructor TExternalFunctionManager.Create;
+begin
+   FTypeMap:=TSimpleNameObjectHash<TBoxedTypeConverter>.Create;
+end;
+
+class destructor TExternalFunctionManager.Destroy;
+begin
+   FTypeMap.Clean;
+   FTypeMap.Free;
+end;
 
 // Create
 //
@@ -296,6 +318,16 @@ procedure TExternalFunctionManager.EndCompilation(const compiler : IdwsCompiler)
 begin
    Assert(FCompiler=compiler);
    FCompiler:=nil;
+end;
+
+class function TExternalFunctionManager.LookupType(const name: UnicodeString): TTypeLookupData;
+var
+   conv: TBoxedTypeConverter;
+begin
+   conv := FTypeMap.Objects[name];
+   if conv = nil then
+      raise Exception.CreateFmt('No type info is registered for %s.', [name]);
+   result := conv.value;
 end;
 
 // ConvertToMagicSymbol
@@ -336,6 +368,18 @@ begin
       raise Exception.CreateFmt('No external function named "%s" is registered', [name]);
    assert(supports(func, IExternalRoutine, ext));
    ext.SetExternalPointer(address);
+end;
+
+procedure TExternalFunctionManager.RegisterTypeMapping(const name: UnicodeString; const typ: TTypeLookupData);
+begin
+   FTypeMap.AddObject(name, TBoxedTypeConverter.Create(typ));
+end;
+
+{ TBoxedTypeConverter }
+
+constructor TBoxedTypeConverter.Create(value: TTypeLookupData);
+begin
+   FValue := value;
 end;
 
 end.

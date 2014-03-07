@@ -1,6 +1,6 @@
 unit dwsExternalFunctionJitx86;
 
-{.$define UNSAFE_DEP_OFF}
+{$define UNSAFE_DEP_OFF}
 
 interface
 
@@ -8,7 +8,8 @@ uses
    dwsTokenizer,
    dwsExternalFunctionJit, dwsExprs, dwsJITx86Intrinsics, dwsExprList;
 
-function JitFactory(conv: TTokenType; prog: TdwsProgram): IExternalFunctionJit;
+function JitFactory(conv: TTokenType; prog: TdwsProgram;
+   OnLookupType: TTypeLookupEvent): IExternalFunctionJit;
 
 implementation
 
@@ -16,7 +17,7 @@ uses
    {$ifdef UNSAFE_DEP_OFF}
    Windows,
    {$endif}
-   SysUtils,
+   SysUtils, Variants,
    dwsUtils,
    dwsSymbols, dwsVMTOffsets;
 
@@ -32,7 +33,7 @@ type
          depth, size: integer;
          constructor Create(depth, size: integer);
       end;
-      TResultStyle = (rsNormal, rsVar, rsFloat, rsObj);
+      TResultStyle = (rsNormal, rsVar, rsFloat, rsObj, rsArray);
    private
       FProgram: TdwsProgram;
       FInitStream: Tx86WriteOnlyStream;
@@ -46,6 +47,8 @@ type
       FCalls: TFunctionCallArray;
       FTryFrame: TTryFrame;
       FCleanups: array of TCleanup;
+      FOnLookupType: TTypeLookupEvent;
+      FEcxClear: boolean;
 
       function GetDepth(depth: byte): shortint;
 
@@ -54,10 +57,12 @@ type
       procedure WriteCall(loc: pointer);
       function typeSize(value: TTypeSymbol): integer;
       procedure WriteExtractObject(depth: shortint);
+      procedure WriteExtractArray(pType: TTypeSymbol; depth: shortint);
       procedure PushParam(param: TParamSymbol; pType: TTypeSymbol);
       procedure RegPassParam(param: TParamSymbol; pType: TTypeSymbol);
       function GetVmtSlot(pType: TTypeSymbol; out resultStyle: TResultStyle): byte;
       function CallGetParam(pType: TTypeSymbol; size: integer): shortint;
+      procedure InitClearECX;
       procedure WriteLoadVarParam(depth: shortint);
       procedure WriteStoreIntResult;
       procedure WriteStoreObjResult;
@@ -78,14 +83,16 @@ type
       function GetTryFrame: TTryFrame;
 
    public
-      constructor Create(prog: TdwsProgram);
+      constructor Create(prog: TdwsProgram; OnLookupType: TTypeLookupEvent);
       destructor Destroy; override;
    end;
 
-function JitFactory(conv: TTokenType; prog: TdwsProgram): IExternalFunctionJit;
+
+function JitFactory(conv: dwsTokenizer.TTokenType; prog: TdwsProgram;
+  OnLookupType: TTypeLookupEvent): IExternalFunctionJit;
 begin
    if conv = ttREGISTER then
-      result := Tx86RegisterJit.Create(prog)
+      result := Tx86RegisterJit.Create(prog, OnLookupType)
    else raise Exception.Create('Only REGISTER calling convention is supported so far');
 end;
 
@@ -101,11 +108,12 @@ end;
 
 { Tx86RegisterJit }
 
-constructor Tx86RegisterJit.Create(prog: TdwsProgram);
+constructor Tx86RegisterJit.Create(prog: TdwsProgram; OnLookupType: TTypeLookupEvent);
 begin
    FProgram := prog;
    FInitStream := Tx86WriteOnlyStream.Create;
    FStream := Tx86WriteOnlyStream.Create;
+   FOnLookupType := OnLookupType;
 end;
 
 destructor Tx86RegisterJit.Destroy;
@@ -119,7 +127,7 @@ function Tx86RegisterJit.typeSize(value: TTypeSymbol): integer;
 begin
    if value = FProgram.TypFloat then
       result := 2
-   else if value is TClassSymbol then
+   else if (value is TClassSymbol) or (value is TDynamicArraySymbol) then
       result := 2
    else result := 1;
 end;
@@ -130,6 +138,7 @@ var
 begin
    FParams := 0;
    FRegParams := 0;
+   FEcxClear := false;
    FInitStream._push_reg(gprEBP);
    FInitStream._mov_reg_reg(gprEBP, gprESP); //begin stack frame
    if (Params.Count > 0) or assigned(FReturnValue) then
@@ -223,13 +232,22 @@ begin
    result := FTryFrame[0] <> 0;
 end;
 
+procedure Tx86RegisterJit.InitClearECX;
+begin
+   if not FEcxClear then
+   begin
+      FInitStream._xor_reg_reg(gprECX, gprECX);
+      FEcxClear := true;
+   end;
+end;
+
 procedure Tx86RegisterJit.WriteLoadVarParam(depth: shortint);
 const
    LEA_PARAM: array[0..1] of byte = ($8D, $4D);      //lea ecx,[ebp - ??]
 begin
    if FTryFrame[0] = 0 then
       FTryFrame[0] := FInitStream._begin_tryf_frame;
-   FInitStream._xor_reg_reg(gprECX, gprECX);                  //zero ECX
+   InitClearECX;
    FInitStream._mov_dword_ptr_reg_reg(gprEBP, depth, gprECX); //zero stack location
    FStream.WriteBytes(LEA_PARAM);                             //load stack to ECX
    FStream.WriteByte(byte(depth));
@@ -267,6 +285,11 @@ begin
       result := vmt_TExprBase_EvalAsScriptObj;
       resultStyle := rsObj;
    end
+   else if pType is TDynamicArraySymbol then
+   begin
+      result := vmt_TExprBase_EvalAsDataContext;
+      resultStyle := rsArray;
+   end
    else raise Exception.CreateFmt('Unsupported parameter type: %s', [pType.Name]);
 end;
 
@@ -276,6 +299,17 @@ begin
    FStream._mov_reg_dword_ptr_reg(gprEDX, gprEAX);
    FStream._call_reg(gprEDX, vmt_IScriptObj_ExternalObject);
    FStream._mov_dword_ptr_reg_reg(gprEBP, depth, gprEAX);
+end;
+
+procedure Tx86RegisterJit.WriteExtractArray(pType: TTypeSymbol; depth: shortint);
+begin
+   InitClearECX;
+   FInitStream._mov_dword_ptr_reg_reg(gprEBP, depth, gprECX); //zero stack location
+   FStream.WriteBytes([$8D, $55]); //lea edx, [ebp - $??]
+   FStream.WriteByte(byte(depth));
+   FStream._mov_reg_dword_ptr_reg(gprEAX, gprEBP, depth - sizeof(pointer));
+   WriteCall(@FOnLookupType(pType.QualifiedName).event);
+   AddCleanup(depth, pType);
 end;
 
 function Tx86RegisterJit.CallGetParam(pType: TTypeSymbol; size: integer): shortint;
@@ -289,10 +323,12 @@ begin
    result := GetDepth(FStackDepth);
    FStream._mov_reg_dword_ptr_reg(gprEAX, gprESI, FParams * sizeof(pointer)); //load param to EAX
    FStream._mov_reg_dword_ptr_reg(gprEDX, gprEBX, 8); //load exec to EDX
-   if resultStyle in [rsVar, rsObj] then
+   if resultStyle in [rsVar, rsObj, rsArray] then
    begin
       WriteLoadVarParam(result);
-      AddCleanup(result, pType);
+      if resultStyle = rsArray then
+         AddCleanup(result, FProgram.TypInterface)
+      else AddCleanup(result, pType);
    end;
    FStream._mov_reg_dword_ptr_reg(gprEDI, gprEAX);    //load VMT to EDI
    FStream._call_reg(gprEDI, vmtSlot);                //virtual method call
@@ -308,6 +344,11 @@ begin
    begin
       inc(result, sizeof(pointer));
       WriteExtractObject(result);
+   end
+   else if resultStyle = rsArray then
+   begin
+      inc(result, sizeof(pointer));
+      WriteExtractArray(pType, result);
    end;
 end;
 
@@ -372,7 +413,7 @@ begin
 }   
    else if FReturnValue is TClassSymbol then
       WriteStoreObjResult
-   else raise Exception.CreateFmt('Unsupported result type: %s', [FReturnValue.Name]);   
+   else raise Exception.CreateFmt('Unsupported result type: %s', [FReturnValue.Name]);
 end;
 
 procedure Tx86RegisterJit.Call;
@@ -418,8 +459,15 @@ begin
       FStream.WriteByte(byte(item.depth));
       if item.typ = FProgram.TypString then
          WriteCall(func_ustr_clear)
-      else if item.typ is TClassSymbol then
+      else if item.typ = FProgram.TypVariant then
+         WriteCall(func_var_clr)
+      else if (item.typ is TClassSymbol) or (item.typ = FProgram.TypInterface) then
          WriteCall(func_intf_clear)
+      else if item.typ is TDynamicArraySymbol then
+      begin
+         FStream._mov_reg_dword(gprEDX, NativeUInt(FOnLookupType(item.typ.QualifiedName).info));
+         WriteCall(func_dyn_array_clear)
+      end
       else raise Exception.CreateFmt('Unknown type for cleanup: %s', [item.typ.Name]);
    end;
 

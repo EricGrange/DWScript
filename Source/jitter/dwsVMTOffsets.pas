@@ -33,6 +33,8 @@ var
    vmt_TExprBase_EvalAsBoolean : Integer;
    vmt_TExprBase_EvalAsString: Integer;
    vmt_TExprBase_EvalAsScriptObj: Integer;
+   vmt_TExprBase_EvalAsVariant: Integer;
+   vmt_TExprBase_EvalAsDataContext: Integer;
    vmt_TExprBase_AssignValueAsFloat : Integer;
    vmt_TExprBase_AssignValueAsInteger : Integer;
 
@@ -42,6 +44,8 @@ var
    func_ustr_clear: pointer;
    func_handle_finally: pointer;
    func_intf_clear: pointer;
+   func_var_clr: pointer;
+   func_dyn_array_clear: pointer;
    func_var_from_int: pointer;
 
 // ------------------------------------------------------------------
@@ -69,10 +73,14 @@ asm
    mov vmt_TExprBase_EvalAsBoolean, VMTOFFSET TExprBase.EvalAsBoolean
    mov vmt_TExprBase_EvalAsString, VMTOFFSET TExprBase.EvalAsString
    mov vmt_TExprBase_EvalAsScriptObj, VMTOFFSET TExprBase.EvalAsScriptObj
+   mov vmt_TExprBase_EvalAsVariant, VMTOFFSET TExprBase.EvalAsVariant
+   mov vmt_TExprBase_EvalAsDataContext,  VMTOFFSET TExprBase.EvalAsDataContext
    mov vmt_TExprBase_AssignValueAsFloat, VMTOFFSET TExprBase.AssignValueAsFloat
    mov vmt_TExprBase_AssignValueAsInteger, VMTOFFSET TExprBase.AssignValueAsInteger
    mov func_ustr_clear, offset System.@UStrClr
    mov func_intf_clear, offset System.@IntfClear
+   mov func_var_clr, offset variants.@VarClr
+   mov func_dyn_array_clear, offset system.@DynArrayClear
    mov func_handle_finally, offset System.@HandleFinally
    mov func_var_from_int, offset Variants.@VarFromInt
 end;
@@ -106,4 +114,3 @@ initialization
    PrepareDynArrayIDataContextToFDataOffset;
 
 end.
-

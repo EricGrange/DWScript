@@ -2,8 +2,8 @@ unit dwsExternalFunctionJit;
 
 interface
 uses
-   SysUtils,
-   dwsUtils, dwsSymbols;
+   SysUtils, TypInfo,
+   dwsSymbols, dwsDataContext, dwsCompiler;
 
 type
    TFunctionCall = record
@@ -14,6 +14,8 @@ type
    TFunctionCallArray = array of TFunctionCall;
 
    TTryFrame = array[0..3] of integer;
+
+   TTypeLookupEvent = function(const name: string): TTypeLookupData of object;
 
    IExternalFunctionJit = interface
       procedure BeginProcedure(params: TParamsSymbolTable);
