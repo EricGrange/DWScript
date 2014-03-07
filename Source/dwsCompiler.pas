@@ -1815,9 +1815,7 @@ begin
    for i:=High(rankedUnits) downto 0 do begin
       ums:=rankedUnits[i];
       if (ums<>nil) and (ums.FinalizationExpr<>nil) then begin
-         if FMainProg.FinalExpr=nil then
-            FMainProg.FinalExpr:=TBlockFinalExpr.Create(cNullPos);
-         FMainProg.FinalExpr.AddStatement(ums.FinalizationExpr as TBlockExprBase);
+         FMainProg.AddFinalExpr(ums.FinalizationExpr as TBlockExprBase);
          ums.FinalizationExpr.IncRefCount;
       end;
    end;
@@ -2278,7 +2276,7 @@ begin
             initializationBlock:=nil;
          end;
          if finalizationBlock<>nil then begin
-            FMainProg.FinalExpr.AddStatement(finalizationBlock);
+            FMainProg.AddFinalExpr(finalizationBlock);
             finalizationBlock:=nil;
          end;
       end;

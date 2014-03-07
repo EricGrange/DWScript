@@ -780,6 +780,8 @@ type
 
          property FinalExpr : TBlockFinalExpr read FFinalExpr write FFinalExpr;
 
+         procedure AddFinalExpr(expr : TProgramExpr);
+
          property TimeoutMilliseconds : Integer read FTimeoutMilliseconds write FTimeoutMilliseconds;
          property MaxRecursionDepth : Integer read FStackParameters.MaxRecursionDepth write FStackParameters.MaxRecursionDepth;
          property MaxExceptionDepth : Integer read FStackParameters.MaxExceptionDepth write FStackParameters.MaxExceptionDepth;
@@ -3091,6 +3093,15 @@ begin
    if FOrphanedObjects=nil then
       FOrphanedObjects:=TObjectList<TRefCountedObject>.Create;
    FOrphanedObjects.Add(obj);
+end;
+
+// AddFinalExpr
+//
+procedure TdwsMainProgram.AddFinalExpr(expr : TProgramExpr);
+begin
+   if FFinalExpr=nil then
+      FFinalExpr:=TBlockFinalExpr.Create(cNullPos);
+   FFinalExpr.AddStatement(expr);
 end;
 
 // GetConditionalDefines
