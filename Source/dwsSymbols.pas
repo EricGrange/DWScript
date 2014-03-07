@@ -160,6 +160,7 @@ type
          function  EvalAsFloat(exec : TdwsExecution) : Double; virtual; abstract;
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); overload; virtual; abstract;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); overload; virtual; abstract;
+         procedure EvalAsDataContext(exec : TdwsExecution; var Result : IDataContext); virtual;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); virtual; abstract;
          procedure EvalNoResult(exec : TdwsExecution); virtual;
 
@@ -1953,6 +1954,15 @@ end;
 
 // EvalNoResult
 //
+procedure TExprBase.EvalAsDataContext(exec: TdwsExecution;
+  var Result: IDataContext);
+var
+   temp: Variant;
+begin
+   EvalAsVariant(exec, temp);
+   result := IInterface(temp) as IDataContext;
+end;
+
 procedure TExprBase.EvalNoResult(exec : TdwsExecution);
 begin
    Eval(exec);
