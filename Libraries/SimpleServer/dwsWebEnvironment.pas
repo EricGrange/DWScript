@@ -287,9 +287,9 @@ end;
 //
 procedure TWebRequest.ResetContentFields;
 begin
-   if FQueryFields<>nil then begin
-      FQueryFields.Free;
-      FQueryFields:=nil;
+   if FContentFields<>nil then begin
+      FContentFields.Free;
+      FContentFields:=nil;
    end;
 end;
 
