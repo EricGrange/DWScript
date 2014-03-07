@@ -18,12 +18,12 @@ object dwsCryptoLib: TdwsCryptoLib
                 DataType = 'String'
               end>
             ResultType = 'String'
-            Attributes = [maVirtual]
+            Attributes = [maVirtual, maAbstract]
             Kind = mkClassFunction
           end>
       end
       item
-        Name = 'SHA256'
+        Name = 'HashSHA256'
         Ancestor = 'HashAlgorithm'
         Methods = <
           item
@@ -40,7 +40,7 @@ object dwsCryptoLib: TdwsCryptoLib
           end>
       end
       item
-        Name = 'SHA1'
+        Name = 'HashSHA1'
         Ancestor = 'HashAlgorithm'
         IsStatic = True
         Methods = <
@@ -58,7 +58,7 @@ object dwsCryptoLib: TdwsCryptoLib
           end>
       end
       item
-        Name = 'MD5'
+        Name = 'HashMD5'
         Ancestor = 'HashAlgorithm'
         IsStatic = True
         Methods = <
@@ -72,6 +72,78 @@ object dwsCryptoLib: TdwsCryptoLib
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
             OnEval = dwsCryptoClassesMD5MethodsHashDataEval
+            Kind = mkClassFunction
+          end>
+      end
+      item
+        Name = 'EncryptionAlgorithm'
+        IsAbstract = True
+        Methods = <
+          item
+            Name = 'EncryptData'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end
+              item
+                Name = 'key'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maAbstract]
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'DecryptData'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end
+              item
+                Name = 'key'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maAbstract]
+            Kind = mkClassFunction
+          end>
+      end
+      item
+        Name = 'EncryptionAESSHA256Full'
+        Ancestor = 'EncryptionAlgorithm'
+        Methods = <
+          item
+            Name = 'EncryptData'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end
+              item
+                Name = 'key'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsCryptoClassesEncryptionAESSHA256FullMethodsEncryptDataEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'DecryptData'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end
+              item
+                Name = 'key'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsCryptoClassesEncryptionAESSHA256FullMethodsDecryptDataEval
             Kind = mkClassFunction
           end>
       end>
