@@ -96,6 +96,8 @@ type
       ExtObject: TObject);
     procedure dwsWebClassesHttpQueryMethodsGetTextEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsPostDataEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -106,7 +108,13 @@ implementation
 
 {$R *.dfm}
 
-function HttpQuery(const url : RawByteString; var data : String; asText : Boolean) : Integer;
+type
+   THttpQueryMethod = (hqmGET, hqmPOST);
+
+function HttpQuery(method : THttpQueryMethod; const url : RawByteString;
+                   const requestData : RawByteString;
+                   const requestContentType : RawByteString;
+                   var replyData : String; asText : Boolean) : Integer; overload;
 const
    cContentType : RawUTF8 = 'Content-Type:';
 var
@@ -118,7 +126,18 @@ begin
    if uri.From(url) then begin
       query:=TWinHTTP.Create(uri.Server, uri.Port, uri.Https);
       try
-         Result:=query.Request(uri.Address, 'GET', 0, '', '', '', headers, buf);
+         case method of
+            hqmGET : begin
+               Assert(requestData='');
+               Result:=query.Request(uri.Address, 'GET', 0, '', '', '', headers, buf);
+            end;
+            hqmPOST : begin
+               Result:=query.Request(uri.Address, 'POST', 0, '', requestData, requestContentType, headers, buf);
+            end;
+         else
+            Result:=0;
+            Assert(False);
+         end;
          if asText then begin
             p1:=Pos(cContentType, RawUTF8(headers));
             if p1>0 then begin
@@ -128,21 +147,28 @@ begin
                   mimeType:=Copy(headers, p1, p2-p1);
             end;
             if StrIEndsWithA(mimeType, 'charset=utf-8') then
-               data:=UTF8DecodeToUnicodeString(buf)
-            else RawByteStringToScriptString(buf, data);
-         end else RawByteStringToScriptString(buf, data);
+               replyData:=UTF8DecodeToUnicodeString(buf)
+            else RawByteStringToScriptString(buf, replyData);
+         end else RawByteStringToScriptString(buf, replyData);
       finally
          query.Free;
       end;
    end else Result:=0;
 end;
 
+function HttpQuery(method : THttpQueryMethod; const url : RawByteString;
+                   var replyData : String; asText : Boolean) : Integer; overload;
+begin
+   Result:=HttpQuery(method, url, '', '', replyData, asText);
+end;
+
+
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsGetDataEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    buf : String;
 begin
-   Info.ResultAsInteger:=HttpQuery(Info.ParamAsDataString[0], buf, False);
+   Info.ResultAsInteger:=HttpQuery(hqmGET, Info.ParamAsDataString[0], buf, False);
    Info.ParamAsString[1]:=buf;
 end;
 
@@ -151,8 +177,18 @@ procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsGetTextEval(
 var
    buf : String;
 begin
-   Info.ResultAsInteger:=HttpQuery(Info.ParamAsDataString[0], buf, True);
+   Info.ResultAsInteger:=HttpQuery(hqmGET, Info.ParamAsDataString[0], buf, True);
    Info.ParamAsString[1]:=buf;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsPostDataEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   buf : String;
+begin
+   Info.ResultAsInteger:=HttpQuery(hqmPOST, Info.ParamAsDataString[0],
+      Info.ParamAsDataString[1], Info.ParamAsDataString[2], buf, False);
+   Info.ParamAsString[3]:=buf;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsAuthenticatedUserEval(

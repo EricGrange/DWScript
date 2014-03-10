@@ -481,6 +481,31 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maStatic]
             OnEval = dwsWebClassesHttpQueryMethodsGetDataEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'PostData'
+            Parameters = <
+              item
+                Name = 'url'
+                DataType = 'String'
+              end
+              item
+                Name = 'requestData'
+                DataType = 'String'
+              end
+              item
+                Name = 'requestContentType'
+                DataType = 'String'
+              end
+              item
+                Name = 'replyData'
+                DataType = 'String'
+                IsVarParam = True
+              end>
+            ResultType = 'Integer'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsPostDataEval
+            Kind = mkClassFunction
           end>
       end>
     Enumerations = <
