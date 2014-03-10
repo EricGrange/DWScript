@@ -32,7 +32,7 @@ uses
 {$IFNDEF DWS_NO_BUILTIN_FUNCTIONS}
   dwsMathFunctions, dwsStringFunctions, dwsTimeFunctions, dwsVariantFunctions,
 {$ENDIF}
-  dwsErrors;
+  dwsMagicExprs, dwsErrors;
 
 type
    TDelphiWebScript = class;
@@ -279,7 +279,7 @@ type
          procedure SetName(const val : UnicodeString);
          function Parse(const Value : UnicodeString): UnicodeString; virtual;
 
-         property IsGenerating: Boolean read FIsGenerating;
+         property IsGenerating: Boolean read FIsGenerating write FIsGenerating;
 
       public
          constructor Create(Collection: TCollection); override;
@@ -441,6 +441,7 @@ type
          procedure SetOnInitSymbol(const val : TInitSymbolEvent);
          function StoreParameters : Boolean;
          function Parse(const Value : UnicodeString): UnicodeString; override;
+         procedure SetMethodType(const value: TTokenType); virtual;
 
       public
          constructor Create(collection : TCollection); override;
@@ -701,7 +702,7 @@ type
 
       published
          property DataType: TDataType read FDataType write FDataType;
-         property Operator : TTokenType read FOperator write FOperator;
+         property &Operator : TTokenType read FOperator write FOperator;
          property UsesAccess : UnicodeString read FUsesAccess write FUsesAccess;
    end;
 
@@ -749,7 +750,7 @@ type
       published
          property ResultType : TDataType read FResultType write FResultType;
          property Params : TdwsTypeSymbols read FParams write FParams;
-         property Operator : TTokenType read FOperator write FOperator;
+         property &Operator : TTokenType read FOperator write FOperator;
          property UsesAccess : UnicodeString read FUsesAccess write FUsesAccess;
    end;
 
@@ -789,6 +790,7 @@ type
          procedure SetOnEval(const val : TMethodEvalEvent);
          procedure SetResultType(const val : TDataType); override;
          procedure SetAttributes(const attribs : TMethodAttributes);
+         procedure SetMethodType(const value: TTokenType); override;
 
       public
          constructor Create(collection : TCollection); override;
@@ -1092,6 +1094,7 @@ type
 
       protected
          function GetDisplayName: String; override;
+         function Parse(const Value : UnicodeString): UnicodeString; override;
 
       public
          function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
@@ -1120,6 +1123,8 @@ type
       private
          FOnReadVar: TReadVarEvent;
          FOnWriteVar: TWriteVarEvent;
+      protected
+         function Parse(const Value : UnicodeString): UnicodeString; override;
       public
          function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
          procedure Assign(Source: TPersistent); override;
@@ -1267,6 +1272,7 @@ type
         function StoreOperators : Boolean;
         function StoreImplicitUse : Boolean;
 
+        function InternalTypeDefined(const name : UnicodeString; visited: TStringList): Boolean;
       protected
         function GetSymbol(Table: TSymbolTable; const Name: UnicodeString): TSymbol;
         procedure AddCollectionSymbols(Collection: TdwsCollection; Table: TSymbolTable; operators : TOperators); virtual;
@@ -1283,6 +1289,7 @@ type
         destructor Destroy; override;
 
         function ShouldParseName(const val : UnicodeString) : Boolean;
+        function TypeDefined(const name : UnicodeString) : Boolean;
 
         procedure GetDataTypes(List: TStrings);
         procedure GetClassTypes(List: TStrings);
@@ -1390,6 +1397,28 @@ type
          procedure Execute(info : TProgramInfo); override;
    end;
 
+   TCustomInternalMagicProcedure = class(TInternalMagicProcedure)
+      private
+         FOnFastEval : TFuncFastEvalEvent;
+      public
+         procedure DoEvalProc(const args : TExprBaseListExec); override;
+   end;
+
+   TCustomInternalMagicFunction = class(TInternalMagicVariantFunction)
+      private
+         FOnFastEval : TFuncFastEvalEvent;
+      public
+         function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
+   end;
+
+   TCustomInternalMagicDataFunction = class(TInternalMagicDataFunction)
+      private
+         FOnFastEval : TFuncFastEvalEvent;
+         FSize : Integer;
+      public
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
+   end;
+
 // Return the external object for a variable name.
 function GetExternalObjForID(Info: TProgramInfo; const AVarName: UnicodeString): TObject;
 
@@ -1408,7 +1437,7 @@ implementation
 // ------------------------------------------------------------------
 
 uses
-  dwsMagicExprs, dwsPascalTokenizer;
+  dwsPascalTokenizer;
 
 type
    EGenerationError = class(Exception);
@@ -1437,29 +1466,6 @@ begin
   // Get param "Source" as object in Source_Obj
   Result := IScriptObj(IUnknown(Info.ValueAsVariant[AVarName])).ExternalObject;
 end;
-
-type
-   TCustomInternalMagicProcedure = class(TInternalMagicProcedure)
-      private
-         FOnFastEval : TFuncFastEvalEvent;
-      public
-         procedure DoEvalProc(const args : TExprBaseListExec); override;
-   end;
-
-   TCustomInternalMagicFunction = class(TInternalMagicVariantFunction)
-      private
-         FOnFastEval : TFuncFastEvalEvent;
-      public
-         function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
-   end;
-
-   TCustomInternalMagicDataFunction = class(TInternalMagicDataFunction)
-      private
-         FOnFastEval : TFuncFastEvalEvent;
-         FSize : Integer;
-      public
-         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
-   end;
 
 // DoEvalProc
 //
@@ -1850,7 +1856,7 @@ begin
    if Result then begin
       for i:=1 to Length(val) do begin
          case val[i] of
-            ':', '(' : Exit;
+            ':', '(', '=' : Exit;
          end;
       end;
       Result:=False;
@@ -1939,16 +1945,20 @@ begin
   end;
 
   // Only return array-, record- and class symbols, synonyms and enums
-  for x := 1 to 5 do
+  for x := 1 to 6 do
   begin
     coll := FCollections[x];
     for y := 0 to coll.Count - 1 do
       List.Add(coll.Items[y].Name);
   end;
-  // ...and delegates
-  coll := FCollections[13];
-  for y := 0 to coll.Count - 1 do
-    List.Add(coll.Items[y].Name);
+
+  // ...and sets and delegates
+  for x := 12 to 13 do
+  begin
+    coll := FCollections[x];
+    for y := 0 to coll.Count - 1 do
+      List.Add(coll.Items[y].Name);
+  end;
 end;
 
 class function TdwsUnit.GetDelegatesClass: TdwsDelegatesClass;
@@ -2214,6 +2224,44 @@ end;
 function TdwsUnit.StoreVariables : Boolean;
 begin
    Result:=FVariables.Count>0;
+end;
+
+function TdwsUnit.InternalTypeDefined(const name: UnicodeString; visited: TStringList): Boolean;
+var
+   dep: string;
+   depIdx: integer;
+   list: TStringList;
+begin
+   visited.Add(self.UnitName);
+   list := TStringList.Create;
+   try
+      self.GetDataTypes(list);
+      result := list.IndexOf(name) > -1;
+   finally
+      list.Free;
+   end;
+   for dep in self.Dependencies do
+   begin
+      if visited.IndexOf(dep) > -1 then
+         continue;
+      depIdx := FScript.FConfig.Units.IndexOfName(dep);
+      if depIdx > -1 then
+         result := TdwsUnit(FScript.FConfig.Units.Items[depIdx]).InternalTypeDefined(name, visited);
+      if result then
+         exit;
+   end;
+end;
+
+function TdwsUnit.TypeDefined(const name: UnicodeString): Boolean;
+var
+   list: TStringList;
+begin
+   list := TStringList.Create;
+   try
+      result := InternalTypeDefined(name, list);
+   finally
+      list.Free;
+   end;
 end;
 
 // StoreInstances
@@ -2603,6 +2651,40 @@ begin
 end;
 
 { TdwsGlobal }
+
+function TdwsGlobal.Parse(const Value : UnicodeString): UnicodeString;
+var
+   rules : TPascalTokenizerStateRules;
+   tok : TTokenizer;
+   sourceFile : TSourceFile;
+begin
+   rules := TPascalTokenizerStateRules.Create;
+   tok := TTokenizer.Create(rules, nil);
+   sourceFile := TSourceFile.Create;
+   try
+      sourceFile.Code := Value;
+      tok.BeginSourceFile(sourceFile);
+      if tok.TestName then begin
+         Result := tok.GetToken.AsString;
+         tok.KillToken;
+      end else raise Exception.Create('name expected');
+
+      // check whether data type is present. Otherwise skip parsing
+      if not tok.TestDelete(ttCOLON) then
+         Exit;
+
+      // set data type
+      if tok.TestName then begin
+         DataType := tok.GetToken.AsString;
+         tok.KillToken;
+      end else raise Exception.Create('Data type expected');
+      tok.EndSourceFile;
+   finally
+      sourceFile.Free;
+      tok.Free;
+      rules.Free;
+   end;
+end;
 
 function TdwsGlobal.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil):
   TSymbol;
@@ -3127,6 +3209,11 @@ begin
    FResultType:=val;
 end;
 
+procedure TdwsFunctionSymbol.SetMethodType(const value : TTokenType);
+begin
+   raise Exception.Create('Only methods of a class can be constructors or destructors');
+end;
+
 // ParseFunctionName
 //
 function TdwsFunctionSymbol.Parse(const Value : UnicodeString): UnicodeString;
@@ -3136,7 +3223,9 @@ var
    rules : TPascalTokenizerStateRules;
    tok : TTokenizer;
    tokenType: TTokenType;
+   methodType: TTokenType;
    sourceFile : TSourceFile;
+   hasName: boolean;
 begin
    rules := TPascalTokenizerStateRules.Create;
    tok := TTokenizer.Create(rules, nil);
@@ -3149,10 +3238,14 @@ begin
       if not tok.HasTokens then
          raise Exception.Create('Token expected');
 
+      methodType := tok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR]);
+      if methodType in [ttCONSTRUCTOR, ttDestructor] then
+         self.SetMethodType(methodType);
+      hasName := tok.TestName;
       tokenType := tok.GetToken.FTyp;
 
       // check for name
-      if not (tok.TestName or (tokenType <> ttNone)) then
+      if not (hasName or (tokenType <> ttNone)) then
          raise Exception.Create('Name expected');
 
       // get name and kill token
@@ -3619,6 +3712,14 @@ begin
    // normalize attributes
    if maOverride in attribs then
       Include(FAttributes, maVirtual);
+end;
+
+procedure TdwsMethod.SetMethodType(const value: TTokenType);
+begin
+   case value of
+      ttCONSTRUCTOR: FKind := mkConstructor;
+      ttDESTRUCTOR: FKind := mkDestructor;
+   end;
 end;
 
 procedure TdwsMethod.Assign(Source: TPersistent);
@@ -5332,6 +5433,61 @@ end;
 function TdwsSet.GetDisplayName: String;
 begin
    Result:=Name+' = set of '+BaseType;
+end;
+
+function TdwsSet.Parse(const Value : UnicodeString): UnicodeString;
+var
+   rules : TPascalTokenizerStateRules;
+   tok : TTokenizer;
+   tokenType: TTokenType;
+   sourceFile : TSourceFile;
+begin
+   rules := TPascalTokenizerStateRules.Create;
+   tok := TTokenizer.Create(rules, nil);
+   sourceFile := TSourceFile.Create;
+   try
+      sourceFile.Code := Value;
+      tok.BeginSourceFile(sourceFile);
+
+      // check whether tokens are available at all
+      if not tok.HasTokens then
+         raise Exception.Create('Token expected');
+
+      tokenType := tok.GetToken.FTyp;
+
+      // check for name
+      if not (tok.TestName or (tokenType <> ttNone)) then
+         raise Exception.Create('Name expected');
+
+      // get name and kill token
+      Result := tok.GetToken.AsString;
+      tok.KillToken;
+
+      // kill token and eventually ignore additional procedure / function
+      if tokenType <> ttNone then begin
+         // check if further tokens are available, if not accept name
+         if not tok.HasTokens then begin
+            Result := Value;
+            Exit;
+         end;
+      end;
+
+      // check for base type
+      if tok.TestDelete(ttEQ) then
+      begin
+         if tok.TestDelete(ttSET) and tok.TestDelete(ttOF) then
+         begin
+            if tok.TestName then
+               FBaseType := tok.GetToken.AsString
+            else raise Exception.Create('Base type name expected');
+         end
+         else raise Exception.Create('"set of" expected');
+      end;
+   finally
+      sourceFile.Free;
+      tok.Free;
+      rules.Free;
+   end;
 end;
 
 // ------------------

@@ -388,11 +388,12 @@ type
       function GetTokenizer : TTokenizer;
 
       procedure SetExternalFunctionsManager(const value : IdwsExternalFunctionsManager);
+      function  GetExternalFunctionsManager : IdwsExternalFunctionsManager;
 
       property CurrentProg : TdwsProgram read GetCurrentProg;
       property Msgs : TdwsCompileMessageList read GetMsgs;
       property Tokenizer : TTokenizer read GetTokenizer;
-      property ExternalFunctionsManager : IdwsExternalFunctionsManager write SetExternalFunctionsManager;
+      property ExternalFunctionsManager : IdwsExternalFunctionsManager read GetExternalFunctionsManager write SetExternalFunctionsManager;
 
       function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
    end;
@@ -837,6 +838,7 @@ type
          function GetCurrentProg : TdwsProgram;
          function GetMsgs : TdwsCompileMessageList;
          function GetTokenizer : TTokenizer;
+         function  GetExternalFunctionsManager : IdwsExternalFunctionsManager;
          procedure SetExternalFunctionsManager(const value : IdwsExternalFunctionsManager);
 
       public
@@ -1901,6 +1903,13 @@ end;
 
 // SetExternalFunctionsManager
 //
+function TdwsCompiler.GetExternalFunctionsManager: IdwsExternalFunctionsManager;
+begin
+   result := FExternalRoutinesManager;
+end;
+
+// SetExternalFunctionsManager
+//
 procedure TdwsCompiler.SetExternalFunctionsManager(const value : IdwsExternalFunctionsManager);
 begin
    FExternalRoutinesManager:=value;
@@ -2160,7 +2169,9 @@ begin
          end;
       end;
 
-      Result:=ReadRootBlock([], finalToken);
+      if FUnitSection = secProgram then
+         Result:=ReadRootBlock([ttDOT], finalToken)
+      else Result:=ReadRootBlock([], finalToken);
 
       case scriptType of
          stUnit : begin
