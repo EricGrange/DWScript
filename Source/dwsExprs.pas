@@ -97,13 +97,13 @@ type
          procedure Clear;
          function Add(const nameReference, code: UnicodeString; sourceType: TScriptSourceType) : TSourceFile;
 
-         function FindScriptSourceItem(const SourceFileName: UnicodeString): TScriptSourceItem; overload;
+         function FindScriptSourceItem(const sourceFileName: UnicodeString): TScriptSourceItem; overload;
 
-         function IndexOf(const SourceFileName: UnicodeString): Integer; overload;
+         function IndexOf(const sourceFileName: UnicodeString): Integer; overload;
 
          property Count : Integer read FSourceList.FCount;
 
-         property Items[Index: Integer] : TScriptSourceItem read GetSourceItem; default;
+         property Items[index: Integer] : TScriptSourceItem read GetSourceItem; default;
          property MainScript: TScriptSourceItem read FMainScript;
    end;
 
