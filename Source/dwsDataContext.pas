@@ -34,7 +34,6 @@ type
    PIUnknown = ^IUnknown;
 
    IDataContext = interface (IGetSelf)
-   ['{9DC90916-66E8-45DC-9702-E6D8B8847999}']
       function GetAsVariant(addr : Integer) : Variant;
       procedure SetAsVariant(addr : Integer; const value : Variant);
       function GetAsInteger(addr : Integer) : Int64;
