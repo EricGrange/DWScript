@@ -1954,13 +1954,12 @@ end;
 
 // EvalNoResult
 //
-procedure TExprBase.EvalAsDataContext(exec: TdwsExecution;
-  var Result: IDataContext);
+procedure TExprBase.EvalAsDataContext(exec: TdwsExecution; var Result: IDataContext);
 var
-   temp: Variant;
+   temp : IScriptObj;
 begin
-   EvalAsVariant(exec, temp);
-   result := IInterface(temp) as IDataContext;
+   EvalAsScriptObj(exec, temp);
+   Result := temp;
 end;
 
 procedure TExprBase.EvalNoResult(exec : TdwsExecution);
