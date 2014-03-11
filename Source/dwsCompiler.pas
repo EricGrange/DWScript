@@ -2169,9 +2169,7 @@ begin
          end;
       end;
 
-      if FUnitSection = secProgram then
-         Result:=ReadRootBlock([ttDOT], finalToken)
-      else Result:=ReadRootBlock([], finalToken);
+      Result:=ReadRootBlock([], finalToken);
 
       case scriptType of
          stUnit : begin
