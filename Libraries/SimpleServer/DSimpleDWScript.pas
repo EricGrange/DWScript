@@ -18,12 +18,17 @@ unit DSimpleDWScript;
 
 interface
 
+{.$define EnablePas2Js}
+
 uses
    Windows, SysUtils, Classes, StrUtils,
    dwsFileSystem, dwsGlobalVarsFunctions, dwsExprList,
    dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils, dwsXPlatform,
    dwsJSONConnector, dwsJSON, dwsErrors, dwsFunctions, dwsSymbols,
    dwsJIT, dwsJITx86,
+{$ifdef EnablePas2Js}
+   dwsJSFilter, dwsJSLibModule, dwsCodeGen,
+{$endif}
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
    dwsDataBase, dwsDataBaseLibModule, dwsWebServerInfo, dwsWebServerLibModule,
    dwsBackgroundWorkersLibModule, dwsSynapseLibModule, dwsCryptoLibModule;
@@ -54,8 +59,8 @@ type
       DelphiWebScript: TDelphiWebScript;
       dwsHtmlFilter: TdwsHtmlFilter;
       dwsGlobalVarsFunctions: TdwsGlobalVarsFunctions;
-    dwsCompileSystem: TdwsRestrictedFileSystem;
-    dwsRuntimeFileSystem: TdwsRestrictedFileSystem;
+      dwsCompileSystem: TdwsRestrictedFileSystem;
+      dwsRuntimeFileSystem: TdwsRestrictedFileSystem;
       procedure DataModuleCreate(Sender: TObject);
       procedure DataModuleDestroy(Sender: TObject);
 
@@ -189,6 +194,11 @@ implementation
 {$R *.dfm}
 
 procedure TSimpleDWScript.DataModuleCreate(Sender: TObject);
+{$ifdef EnablePas2Js}
+var
+   jsCompiler : TDelphiWebScript;
+   jsFilter : TdwsJSFilter;
+{$endif}
 begin
    FPathVariables:=TFastCompareTextList.Create;
 
@@ -216,6 +226,25 @@ begin
    FDependenciesHash:=TDependenciesHash.Create;
 
    FScriptTimeoutMilliseconds:=3000;
+
+{$ifdef EnablePas2Js}
+   jsFilter:=TdwsJSFilter.Create(Self);
+   dwsHtmlFilter.SubFilter:=jsFilter;
+   jsCompiler:=TDelphiWebScript.Create(Self);
+   jsFilter.Compiler:=jsCompiler;
+   TdwsJSLibModule.Create(Self).Script:=jsCompiler;
+   jsCompiler.OnNeedUnit:=DoNeedUnit;
+   jsCompiler.OnInclude:=DoInclude;
+   jsCompiler.Config.CompilerOptions:=[
+      coOptimize, coAssertions, coSymbolDictionary, coContextMap, coExplicitUnitUses,
+      coVariablesAsVarOnly, coAllowClosures
+   ];
+   jsFilter.CodeGenOptions:=[
+      cgoNoRangeChecks, cgoNoCheckInstantiated, cgoNoCheckLoopStep,
+      cgoNoConditions, cgoObfuscate, cgoNoSourceLocations,
+      cgoSmartLink, cgoDeVirtualize
+   ];
+{$endif}
 end;
 
 procedure TSimpleDWScript.DataModuleDestroy(Sender: TObject);
@@ -306,8 +335,10 @@ begin
          FDependenciesHash.Clean;
          FCompiledPrograms.Clear;
       end else begin
-         unitName:=ChangeFileExt(ExtractFileName(fileName), '');
-         FFlushProgList:=FDependenciesHash.Objects[LowerCase(unitName)];
+         unitName:=LowerCase(ExtractFileName(fileName));
+         FFlushProgList:=FDependenciesHash.Objects[unitName];
+         if FFlushProgList=nil then
+            FFlushProgList:=FDependenciesHash.Objects[ChangeFileExt(unitName, '')];
          if (FFlushProgList<>nil) and (FFlushProgList.Count>0) then begin
             oldHash:=FCompiledPrograms;
             try
@@ -639,11 +670,15 @@ procedure TDependenciesHash.RegisterProg(const cp : TCompiledProgram);
 var
    i : Integer;
    list : TScriptSourceList;
+   item : TScriptSourceItem;
 begin
    AddName(cp.Name, cp.Prog);
    list:=cp.Prog.SourceList;
-   for i:=0 to list.Count-1 do
-      AddName(list[i].NameReference, cp.Prog);
+   for i:=0 to list.Count-1 do begin
+      item:=list[i];
+      if not StrBeginsWith(item.NameReference, '*') then
+         AddName(item.NameReference, cp.Prog);
+   end;
 end;
 
 // AddName

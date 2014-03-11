@@ -4,7 +4,7 @@ object SimpleDWScript: TSimpleDWScript
   OnDestroy = DataModuleDestroy
   Left = 745
   Top = 94
-  Height = 307
+  Height = 282
   Width = 341
   object dwsHtmlFilter: TdwsHtmlFilter
     PatternOpen = '<?pas'
