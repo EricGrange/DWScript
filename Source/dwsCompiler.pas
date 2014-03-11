@@ -2338,6 +2338,7 @@ function TdwsCompiler.ReadRootStatement(var action : TdwsStatementAction; initVa
 var
    hotPos : TScriptPos;
    token : TTokenType;
+   rootBlock : Boolean;
 begin
    action:=saNone;
    Result:=nil;
@@ -2396,7 +2397,10 @@ begin
          end;
       end;
    else
+      rootBlock:=FTok.Test(ttBEGIN);
       Result:=ReadStatement(action, initVarBlockExpr);
+      if rootBlock and FTok.TestDelete(ttDOT) then
+         action:=saEnd;
    end;
 end;
 
