@@ -59,7 +59,8 @@ uses
   dwsExternalFunctions,
   dwsExternalFunctionJit,
   dwsExternalFunctionJitx86,
-  UExternalFunctionTests in 'UExternalFunctionTests.pas';
+  UExternalFunctionTests in 'UExternalFunctionTests.pas',
+  UdwsCryptoTests in 'UdwsCryptoTests.pas';
 
 {$R *.res}
 

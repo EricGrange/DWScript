@@ -575,7 +575,8 @@ type
 
          function CallStackDepth : Integer; override;
          function GetCallStack : TdwsExprLocationArray; override;
-         function CallStackLastExpr : TExprBase;
+         function CallStackLastExpr : TExprBase; override;
+         function CallStackLastProg : TObject; override;
 
          function  DebuggerFieldAddr : Integer;
          procedure DebuggerNotifyException(const exceptObj : IScriptObj); override;
@@ -2606,6 +2607,18 @@ begin
    n:=FCallStack.Count-2;
    if n>=0 then
       Result:=(TObject(FCallStack.List[n]) as TExprBase)
+   else Result:=nil;
+end;
+
+// CallStackLastProg
+//
+function TdwsProgramExecution.CallStackLastProg : TObject;
+var
+   n : Integer;
+begin
+   n:=FCallStack.Count-1;
+   if n>=0 then
+      Result:=TObject(FCallStack.List[n])
    else Result:=nil;
 end;
 
@@ -5710,7 +5723,11 @@ procedure TProgramInfo.GetSymbolInfo(sym : TSymbol; var info : IInfo);
       locData : IDataContext;
    begin
       // Field of the Self object
-      Execution.DataContext_Create(FScriptObj.AsData, sym.Offset, locData);
+      if sym.StructSymbol is TRecordSymbol then begin
+         Execution.DataContext_Create(Self.GetData(SYS_SELF), sym.Offset, locData);
+      end else begin
+         Execution.DataContext_Create(FScriptObj.AsData, sym.Offset, locData);
+      end;
       TInfo.SetChild(Result, Self, sym.Typ, locData);
    end;
 

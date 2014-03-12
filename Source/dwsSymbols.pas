@@ -1733,6 +1733,8 @@ type
          procedure ClearScriptError;
 
          function GetCallStack : TdwsExprLocationArray; virtual; abstract;
+         function CallStackLastExpr : TExprBase; virtual; abstract;
+         function CallStackLastProg : TObject; virtual; abstract;
          function CallStackDepth : Integer; virtual; abstract;
 
          procedure DataContext_Create(const data : TData; addr : Integer; var Result : IDataContext); inline;

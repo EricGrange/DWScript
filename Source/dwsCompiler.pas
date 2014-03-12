@@ -251,6 +251,8 @@ type
          destructor Destroy; override;
 
          function GetCallStack : TdwsExprLocationArray; override;
+         function CallStackLastExpr : TExprBase; override;
+         function CallStackLastProg : TObject; override;
          function CallStackDepth : Integer; override;
          procedure DebuggerNotifyException(const exceptObj : IScriptObj); override;
    end;
@@ -13644,6 +13646,20 @@ end;
 function TdwsCompilerExecution.GetCallStack : TdwsExprLocationArray;
 begin
    Result:=nil;
+end;
+
+// CallStackLastExpr
+//
+function TdwsCompilerExecution.CallStackLastExpr : TExprBase;
+begin
+   Result:=nil;
+end;
+
+// CallStackLastProg
+//
+function TdwsCompilerExecution.CallStackLastProg : TObject;
+begin
+   Result:=FCompiler.FProg;
 end;
 
 // CallStackDepth

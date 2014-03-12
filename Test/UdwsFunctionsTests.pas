@@ -81,6 +81,11 @@ type
          procedure SetUp; override;
    end;
 
+   TdwsFuncFunctionsTestsDebug = class (TdwsFunctionsTestsBase)
+      public
+         procedure SetUp; override;
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -195,7 +200,7 @@ end;
 //
 procedure TdwsFunctionsTestsBase.ExecutionNonOptimized;
 begin
-   FCompiler.Config.CompilerOptions:=[coAssertions];
+   FCompiler.Config.CompilerOptions:=[coSymbolDictionary, coContextMap, coAssertions];
    Execution;
 end;
 
@@ -328,6 +333,18 @@ begin
    inherited;
 end;
 
+// ------------------
+// ------------------ TdwsFuncFunctionsTestsDebug ------------------
+// ------------------
+
+// SetUp
+//
+procedure TdwsFuncFunctionsTestsDebug.SetUp;
+begin
+   FFolder:='FunctionsDebug';
+   inherited;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -344,5 +361,6 @@ initialization
    RegisterTest('FunctionsVariant', TdwsFuncFunctionsTestsVariant);
    RegisterTest('FunctionsGlobalVars', TdwsFuncFunctionsTestsGlobalVars);
    RegisterTest('FunctionsRTTI', TdwsFuncFunctionsTestsRTTI);
+   RegisterTest('FunctionsDebug', TdwsFuncFunctionsTestsDebug);
 
 end.
