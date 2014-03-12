@@ -21,7 +21,7 @@ unit dwsUtils;
 interface
 
 uses
-   Classes, SysUtils, Variants, Types, StrUtils,
+   Classes, SysUtils, Variants, Types, StrUtils, Masks,
    dwsXPlatform, Math;
 
 type
@@ -687,6 +687,8 @@ function StrIEndsWithA(const aStr, aEnd : RawByteString) : Boolean;
 function StrEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
 function StrContains(const aStr, aSubStr : UnicodeString) : Boolean; overload;
 function StrContains(const aStr : UnicodeString; aChar : WideChar) : Boolean; overload;
+
+function StrMatches(const aStr, aMask : UnicodeString) : Boolean;
 
 function StrDeleteLeft(const aStr : UnicodeString; n : Integer) : UnicodeString;
 function StrDeleteRight(const aStr : UnicodeString; n : Integer) : UnicodeString;
@@ -1634,6 +1636,20 @@ begin
    else if StrNonNilLength(aSubStr)=1 then
       Result:=StrContains(aStr, aSubStr[1])
    else Result:=(Pos(aSubStr, aStr)>0);
+end;
+
+// StrMatches
+//
+function StrMatches(const aStr, aMask : UnicodeString) : Boolean;
+var
+   mask : TMask;
+begin
+   mask:=TMask.Create(aMask);
+   try
+      Result:=mask.Matches(aStr);
+   finally
+      mask.Free;
+   end;
 end;
 
 // StrContains (sub char)
