@@ -2355,6 +2355,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   RegisterTest('dwsUnitTests', TdwsUnitTests);
+   RegisterTest('dwsUnit', TdwsUnitTests);
 
 end.

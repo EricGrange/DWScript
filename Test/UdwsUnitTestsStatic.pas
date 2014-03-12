@@ -63,7 +63,7 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   RegisterTest('dwsUnitTestsStatic', TdwsUnitTestsStatic);
+   RegisterTest('dwsUnit', TdwsUnitTestsStatic);
 
 finalization
 
