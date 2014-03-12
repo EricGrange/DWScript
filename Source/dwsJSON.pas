@@ -720,15 +720,13 @@ begin
    if c=']' then
       Exit;
    repeat
-      case c of
-         '0'..'9', '-' : begin
-            ParseJSONString(c, buf);
-            dest.Add(buf);
-         end;
-      else
+      if c='"' then begin
+         ParseJSONString(c, buf);
+         dest.Add(buf);
+      end else begin
          raise EdwsJSONParseError.CreateFmt('Unexpected character U+%.04x', [Ord(c)]);
       end;
-      c:=SkipBlanks(TrailCharacter);
+      c:=SkipBlanks(NeedChar);
       case c of
          ',' : c:=SkipBlanks(NeedChar);
          ']' : break;
