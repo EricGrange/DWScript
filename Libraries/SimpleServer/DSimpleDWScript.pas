@@ -31,7 +31,8 @@ uses
 {$endif}
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
    dwsDataBase, dwsDataBaseLibModule, dwsWebServerInfo, dwsWebServerLibModule,
-   dwsBackgroundWorkersLibModule, dwsSynapseLibModule, dwsCryptoLibModule;
+   dwsBackgroundWorkersLibModule, dwsSynapseLibModule, dwsCryptoLibModule,
+   dwsEncodingLibModule;
 
 type
 
@@ -219,6 +220,8 @@ begin
    FSynapse.Script:=DelphiWebScript;
 
    TdwsCryptoLib.Create(Self).dwsCrypto.Script:=DelphiWebScript;
+
+   TdwsEncodingLib.Create(Self).dwsEncoding.Script:=DelphiWebScript;
 
    FCompiledPrograms:=TCompiledProgramHash.Create;
    FCompiledProgramsLock:=TFixedCriticalSection.Create;

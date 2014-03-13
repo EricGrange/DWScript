@@ -48,19 +48,14 @@ uses
   UJITTests in 'UJITTests.pas',
   UJITx86Tests in 'UJITx86Tests.pas',
   ULinqTests in 'ULinqTests.pas',
-{$IF RTLVersion >= 21}
-  dwsSynSQLiteDatabase in '..\Libraries\DatabaseLib\dwsSynSQLiteDatabase.pas',
-  dwsUIBDataBase,
-  URTTIExposeTests in 'URTTIExposeTests.pas',
-  USpecialTestsRTTI in 'USpecialTestsRTTI.pas',
-{$IFEND}
   ULinqJsonTests in 'ULinqJsonTests.pas',
   dwsSymbolsLibModule in '..\Libraries\SymbolsLib\dwsSymbolsLibModule.pas',
   dwsExternalFunctions,
   dwsExternalFunctionJit,
   dwsExternalFunctionJitx86,
   UExternalFunctionTests in 'UExternalFunctionTests.pas',
-  UdwsCryptoTests in 'UdwsCryptoTests.pas';
+  UdwsCryptoTests in 'UdwsCryptoTests.pas',
+  UdwsEncodingTests in 'UdwsEncodingTests.pas';
 
 {$R *.res}
 

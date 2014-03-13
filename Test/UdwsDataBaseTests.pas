@@ -175,6 +175,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   RegisterTest('dwsDatabaseLibTests', TdwsDataBaseTests);
+   RegisterTest('LibModules', TdwsDataBaseTests);
 
 end.

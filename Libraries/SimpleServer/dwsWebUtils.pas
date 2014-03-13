@@ -29,6 +29,8 @@ type
          class procedure ParseURLEncoded(const data : RawByteString; dest : TStrings); static;
          class function DecodeURLEncoded(const src : RawByteString; start, count : Integer) : String; overload; static;
          class function DecodeURLEncoded(const src : RawByteString; start : Integer) : String; overload; static;
+         class function EncodeURLEncoded(const src : String) : String; static;
+
          class function DecodeHex2(p : PAnsiChar) : Integer; static;
          class function HasFieldName(const list : TStrings; const name : String) : Boolean; static;
 
@@ -46,6 +48,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+const
+   cToHex : String = '0123456789ABCDEF';
 
 // ------------------
 // ------------------ WebUtils ------------------
@@ -113,6 +118,42 @@ begin
    Result:=UTF8ToUnicodeString(raw);
 end;
 
+// EncodeURLEncoded
+//
+class function WebUtils.EncodeURLEncoded(const src : String) : String;
+var
+   raw : UTF8String;
+   pSrc : PAnsiChar;
+   pDest : PChar;
+begin
+   if src='' then Exit('');
+
+   raw := UTF8Encode(src);
+   SetLength(Result, Length(src)*3); // worst-case all special chars
+
+   pSrc := Pointer(raw);
+   pDest := Pointer(Result);
+
+   // we are slightly more aggressive on the special characters than strictly required
+   repeat
+      case pSrc^ of
+         #0 : break;
+         #1..'/',  '['..']', ':'..'@' : begin
+            pDest[0] := '%';
+            pDest[1] := cToHex[1+(Ord(pSrc^) shr 4)];
+            pDest[2] := cToHex[1+(Ord(pSrc^) and 15)];
+            Inc(pDest, 3);
+         end;
+      else
+         pDest^ := Char(pSrc^);
+         Inc(pDest);
+      end;
+      Inc(pSrc);
+   until False;
+
+   SetLength(Result, (NativeUInt(PDest)-NativeUInt(Pointer(Result))) div SizeOf(Char));
+end;
+
 // DecodeURLEncoded
 //
 class function WebUtils.DecodeURLEncoded(const src : RawByteString; start : Integer) : String;
@@ -171,8 +212,6 @@ end;
 // EncodeEncodedWord
 //
 class function WebUtils.EncodeEncodedWord(const s : String) : String;
-const
-   cToHex : String = '0123456789ABCDEF';
 var
    p, n : Integer;
    line : array [0..100] of Char;

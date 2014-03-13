@@ -1,19 +1,19 @@
-unit UdwsCryptoTests;
+unit UdwsEncodingTests;
 
 interface
 
 uses
    Classes, SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
-   dwsCryptoLibModule, dwsXPlatform;
+   dwsEncodingLibModule, dwsXPlatform;
 
 type
 
-   TdwsCryptoTests = class (TTestCase)
+   TdwsEncodingTests = class (TTestCase)
       private
          FTests : TStringList;
          FCompiler : TDelphiWebScript;
-         FCryptoLib : TdwsCryptoLib;
+         FEncodingLib : TdwsEncodingLib;
 
       public
          procedure SetUp; override;
@@ -39,28 +39,28 @@ implementation
 // ------------------------------------------------------------------
 
 // ------------------
-// ------------------ TdwsCryptoTests ------------------
+// ------------------ TdwsEncodingTests ------------------
 // ------------------
 
 // SetUp
 //
-procedure TdwsCryptoTests.SetUp;
+procedure TdwsEncodingTests.SetUp;
 begin
    FTests:=TStringList.Create;
 
-   CollectFiles(ExtractFilePath(ParamStr(0))+'CryptoLib'+PathDelim, '*.pas', FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'EncodingLib'+PathDelim, '*.pas', FTests);
 
    FCompiler:=TDelphiWebScript.Create(nil);
 
-   FCryptoLib:=TdwsCryptoLib.Create(nil);
-   FCryptoLib.dwsCrypto.Script:=FCompiler;
+   FEncodingLib:=TdwsEncodingLib.Create(nil);
+   FEncodingLib.dwsEncoding.Script:=FCompiler;
 end;
 
 // TearDown
 //
-procedure TdwsCryptoTests.TearDown;
+procedure TdwsEncodingTests.TearDown;
 begin
-   FCryptoLib.Free;
+   FEncodingLib.Free;
 
    FCompiler.Free;
 
@@ -69,7 +69,7 @@ end;
 
 // Compilation
 //
-procedure TdwsCryptoTests.Compilation;
+procedure TdwsEncodingTests.Compilation;
 var
    source : TStringList;
    i : Integer;
@@ -94,7 +94,7 @@ end;
 
 // CompilationNormal
 //
-procedure TdwsCryptoTests.CompilationNormal;
+procedure TdwsEncodingTests.CompilationNormal;
 begin
    FCompiler.Config.CompilerOptions:=[coOptimize];
    Compilation;
@@ -102,7 +102,7 @@ end;
 
 // CompilationWithMapAndSymbols
 //
-procedure TdwsCryptoTests.CompilationWithMapAndSymbols;
+procedure TdwsEncodingTests.CompilationWithMapAndSymbols;
 begin
    FCompiler.Config.CompilerOptions:=[coSymbolDictionary, coContextMap, coAssertions];
    Compilation;
@@ -110,7 +110,7 @@ end;
 
 // ExecutionNonOptimized
 //
-procedure TdwsCryptoTests.ExecutionNonOptimized;
+procedure TdwsEncodingTests.ExecutionNonOptimized;
 begin
    FCompiler.Config.CompilerOptions:=[coAssertions];
    Execution;
@@ -118,7 +118,7 @@ end;
 
 // ExecutionOptimized
 //
-procedure TdwsCryptoTests.ExecutionOptimized;
+procedure TdwsEncodingTests.ExecutionOptimized;
 begin
    FCompiler.Config.CompilerOptions:=[coOptimize, coAssertions];
    Execution;
@@ -126,7 +126,7 @@ end;
 
 // Execution
 //
-procedure TdwsCryptoTests.Execution;
+procedure TdwsEncodingTests.Execution;
 var
    source, expectedResult : TStringList;
    i : Integer;
@@ -174,6 +174,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   RegisterTest('LibModules', TdwsCryptoTests);
+   RegisterTest('LibModules', TdwsEncodingTests);
 
 end.
