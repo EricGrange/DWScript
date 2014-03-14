@@ -94,6 +94,10 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsDatabaseClassesDataBasePoolMethodsCountEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsIsNullByNameEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsIsNullByIndexEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
     procedure SetScript(aScript : TDelphiWebScript);
@@ -623,6 +627,18 @@ procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsAsFloatByIndexEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsFloat:=(ExtObject as TDataSet).Intf.GetField(Info.ParamAsInteger[0]).AsFloat;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsIsNullByNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean:=(ExtObject as TDataSet).FieldByName(Info).IsNull;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsIsNullByIndexEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean:=(ExtObject as TDataSet).Intf.GetField(Info.ParamAsInteger[0]).IsNull;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsEofEval(

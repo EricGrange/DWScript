@@ -290,6 +290,28 @@ object dwsDatabaseLib: TdwsDatabaseLib
             Kind = mkFunction
           end
           item
+            Name = 'IsNull'
+            Parameters = <
+              item
+                Name = 'fieldName'
+                DataType = 'String'
+              end>
+            ResultType = 'Boolean'
+            Overloaded = True
+            Kind = mkFunction
+          end
+          item
+            Name = 'IsNull'
+            Parameters = <
+              item
+                Name = 'index'
+                DataType = 'Integer'
+              end>
+            ResultType = 'Boolean'
+            Overloaded = True
+            Kind = mkFunction
+          end
+          item
             Name = 'Stringify'
             ResultType = 'String'
             OnEval = dwsDatabaseClassesDataSetMethodsStringifyEval
