@@ -24,7 +24,7 @@ unit dwsStringFunctions;
 interface
 
 uses
-   Classes, SysUtils, Variants, StrUtils, Math, Masks, RegularExpressionsCore,
+   Classes, SysUtils, Variants, StrUtils, Math, Masks,
    dwsXPlatform, dwsUtils, dwsStrings,
    dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList,
    dwsConstExprs, dwsMagicExprs, dwsDataContext;
