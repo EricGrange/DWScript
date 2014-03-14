@@ -177,7 +177,7 @@ type
          /// the internal request queue
          FReqQueue : THandle;
          /// contain clones list
-         FClones : TList;
+         FClones : TSimpleList<THttpApi2Server>;
          /// list of all registered URL (Unicode-encoded)
          FRegisteredUrl : array of String;
          FMaxInputCountLength : Cardinal;
@@ -544,7 +544,7 @@ begin
                                   @bindInfo, SizeOf(bindInfo)),
       hSetUrlGroupProperty);
 
-   FClones := TList.Create;
+   FClones := TSimpleList<THttpApi2Server>.Create;
    if not CreateSuspended then
       Suspended := False;
 end;
@@ -553,11 +553,10 @@ destructor THttpApi2Server.Destroy;
 var
    i : Integer;
 begin
-   FMimeInfos.Free;
-   FWebRequest.Free;
-   FWebResponse.Free;
-
    if FClones<>nil then begin  // FClones=nil for clone threads
+
+      for i := FClones.Count-1 downto 0 do
+         FClones[i].Terminate;
 
       if FReqQueue<>0 then begin
 
@@ -577,10 +576,14 @@ begin
       end;
 
       for i := FClones.Count-1 downto 0 do
-         TObject(FClones[i]).Free;
+         FClones[i].Free;
       FClones.Free;
 
    end;
+
+   FMimeInfos.Free;
+   FWebRequest.Free;
+   FWebResponse.Free;
 
    inherited Destroy;
 end;
@@ -840,7 +843,7 @@ begin
 
    if FClones<>nil then begin
       for i:=0 to FClones.Count-1 do begin
-         clone:=THttpApi2Server(FClones[i]);
+         clone:=FClones[i];
          if val then
             clone.FLogDataPtr:=@clone.FLogFieldsData
          else clone.FLogDataPtr:=nil;
@@ -1114,7 +1117,7 @@ begin
    inherited;
    if FClones<>nil then
       for i := 0 to FClones.Count-1 do
-         THttpApi2Server(FClones.List[i]).RegisterCompress(aFunction);
+         FClones[i].RegisterCompress(aFunction);
 end;
 
 // GetRequestContentBody

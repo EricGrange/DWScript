@@ -326,6 +326,7 @@ end;
 //
 procedure THttpSys2WebServer.Shutdown;
 begin
+   FDWS.StopDWS;
    FServer.Free;
    FServer:=nil;
    FDWS.Shutdown;
