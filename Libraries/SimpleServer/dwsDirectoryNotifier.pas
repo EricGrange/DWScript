@@ -202,7 +202,7 @@ begin
    FDirectory:=IncludeTrailingPathDelimiter(aDirectory);
    FMode:=aMode;
    FNotifyFilter:=   FILE_NOTIFY_CHANGE_FILE_NAME  or FILE_NOTIFY_CHANGE_DIR_NAME
-                  or FILE_NOTIFY_CHANGE_ATTRIBUTES or FILE_NOTIFY_CHANGE_SIZE
+                  or FILE_NOTIFY_CHANGE_ATTRIBUTES
                   or FILE_NOTIFY_CHANGE_LAST_WRITE or FILE_NOTIFY_CHANGE_SECURITY;
    FDirectoryHandle:=CreateFile(PChar(FDirectory), FILE_LIST_DIRECTORY,
          FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil,
