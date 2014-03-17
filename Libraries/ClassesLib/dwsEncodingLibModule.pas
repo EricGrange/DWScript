@@ -18,6 +18,14 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsEncodingClassesURLEncodedEncoderMethodsDecodeEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesBase64EncoderMethodsEncodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesBase64EncoderMethodsDecodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesHTMLTextEncoderMethodsEncodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesHTMLTextEncoderMethodsDecodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -27,6 +35,30 @@ type
 implementation
 
 {$R *.dfm}
+
+procedure TdwsEncodingLib.dwsEncodingClassesBase64EncoderMethodsDecodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString := Base64ToBin(Info.ParamAsDataString[0]);
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesBase64EncoderMethodsEncodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString := BinToBase64(Info.ParamAsDataString[0]);
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesHTMLTextEncoderMethodsDecodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   raise Exception.Create('Not supported... yet');
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesHTMLTextEncoderMethodsEncodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := WebUtils.HTMLTextEncode(Info.ParamAsString[0]);
+end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesURLEncodedEncoderMethodsDecodeEval(
   Info: TProgramInfo; ExtObject: TObject);

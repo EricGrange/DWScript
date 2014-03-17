@@ -38,6 +38,8 @@ type
 
          class function DateTimeToRFC822(const dt : TDateTime) : String; static;
          class function RFC822ToDateTime(const str : String) : TDateTime; static;
+
+         class function HTMLTextEncode(const s : String) : String; static;
    end;
 
 
@@ -407,6 +409,63 @@ begin
    else if TryEncodeTime(h, mi, s, 0, deltaTime) then
       Result:=Result+deltaTime-deltaHours*(1/100/24)+deltaDays
    else Result:=0;
+end;
+
+// HTMLTextEncode
+//
+class function WebUtils.HTMLTextEncode(const s : String) : String;
+var
+   capacity : Integer;
+   pSrc, pDest : PChar;
+
+   procedure Grow;
+   var
+      nr, dnr : Integer;
+      k : NativeUInt;
+   begin
+      k := NativeUInt(pDest)-NativeUInt(Pointer(Result));
+      nr := Length(Result);
+      dnr := (nr div 4) + 8;
+      SetLength(Result, nr + dnr);
+      Inc(capacity, dnr);
+      pDest := Pointer(NativeUInt(Pointer(Result))+k);
+   end;
+
+   procedure Append(const a : String);
+   var
+      n : Integer;
+   begin
+      n := Length(a);
+      if n>capacity then Grow;
+      System.Move(Pointer(a)^, pDest^, n*SizeOf(Char));
+      Inc(pDest, n);
+      Dec(capacity, n);
+   end;
+
+begin
+   if s='' then exit;
+   capacity:=Length(s);
+   SetLength(Result, capacity);
+   pSrc:=Pointer(s);
+   pDest:=Pointer(Result);
+   repeat
+      case pSrc^ of
+         #0 : break;
+         '<' : Append('&lt;');
+         '>' : Append('&gt;');
+         '&' : Append('&amp;');
+         '"' : Append('&quot;');
+      else
+         if capacity=0 then
+            Grow;
+         pDest^ := pSrc^;
+         Inc(pDest);
+         Dec(capacity);
+      end;
+      Inc(pSrc);
+   until False;
+   if capacity>0 then
+      SetLength(Result, Length(Result)-capacity);
 end;
 
 end.

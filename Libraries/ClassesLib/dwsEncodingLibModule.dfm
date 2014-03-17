@@ -90,6 +90,64 @@ object dwsEncodingLib: TdwsEncodingLib
             OnEval = dwsEncodingClassesURLEncodedEncoderMethodsDecodeEval
             Kind = mkClassFunction
           end>
+      end
+      item
+        Name = 'Base64Encoder'
+        Ancestor = 'Encoder'
+        Methods = <
+          item
+            Name = 'Encode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsEncodingClassesBase64EncoderMethodsEncodeEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'Decode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsEncodingClassesBase64EncoderMethodsDecodeEval
+            Kind = mkClassFunction
+          end>
+      end
+      item
+        Name = 'HTMLTextEncoder'
+        Ancestor = 'Encoder'
+        Methods = <
+          item
+            Name = 'Encode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsEncodingClassesHTMLTextEncoderMethodsEncodeEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'Decode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsEncodingClassesHTMLTextEncoderMethodsDecodeEval
+            Kind = mkClassFunction
+          end>
       end>
     UnitName = 'System.Encoding'
     StaticSymbols = False
