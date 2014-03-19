@@ -190,6 +190,13 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maClassMethod, maStatic]
             OnEval = dwsWebClassesWebRequestMethodsContentLengthEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'IfModifiedSince'
+            ResultType = 'Float'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebRequestMethodsIfModifiedSinceEval
+            Kind = mkClassFunction
           end>
         Properties = <
           item
@@ -396,6 +403,17 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maClassMethod, maStatic]
             OnEval = dwsWebClassesWebResponseMethodsSetCompressionEval
             Kind = mkClassProcedure
+          end
+          item
+            Name = 'SetLastModified'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'Float'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebResponseMethodsSetLastModifiedEval
+            Kind = mkClassProcedure
           end>
         Properties = <
           item
@@ -442,6 +460,11 @@ object dwsWebLib: TdwsWebLib
             Name = 'Compression'
             DataType = 'Boolean'
             WriteAccess = 'SetCompression'
+          end
+          item
+            Name = 'LastModified'
+            DataType = 'Float'
+            WriteAccess = 'SetLastModified'
           end>
       end
       item

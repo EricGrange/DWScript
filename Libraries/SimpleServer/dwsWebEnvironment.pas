@@ -114,6 +114,8 @@ type
          function HasQueryField(const name : String) : Boolean;
          function HasContentField(const name : String) : Boolean;
 
+         function IfModifiedSince : TDateTime;
+
          property Authentication : TWebRequestAuthentication read GetAuthentication;
          property AuthenticatedUser : String read GetAuthenticatedUser;
 
@@ -153,6 +155,7 @@ type
 
       protected
          procedure SetContentText(const textType : RawByteString; const text : String);
+         procedure SetLastModified(v : TDateTime);
          function GetCookies : TWebResponseCookies;
 
       public
@@ -174,6 +177,7 @@ type
          property Headers : TStrings read FHeaders;
          property Cookies : TWebResponseCookies read GetCookies;
          property Compression : Boolean read FCompression write FCompression;
+         property LastModified : TDateTime write SetLastModified;
    end;
 
    IWebEnvironment = interface
@@ -404,6 +408,18 @@ begin
    Result:=WebUtils.HasFieldName(ContentFields, name);
 end;
 
+// IfModifiedSince
+//
+function TWebRequest.IfModifiedSince : TDateTime;
+var
+   v : String;
+begin
+   v:=Header('If-Modified-Since');
+   if v<>'' then
+      Result:=WebUtils.RFC822ToDateTime(v)
+   else Result:=0;
+end;
+
 // GetUserAgent
 //
 function TWebRequest.GetUserAgent : String;
@@ -517,6 +533,13 @@ begin
    finally
       wobs.ReturnToPool;
    end;
+end;
+
+// SetLastModified
+//
+procedure TWebResponse.SetLastModified(v : TDateTime);
+begin
+   Headers.Add('Last-Modified='+WebUtils.DateTimeToRFC822(v));
 end;
 
 // SetContentText

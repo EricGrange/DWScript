@@ -98,6 +98,10 @@ type
       ExtObject: TObject);
     procedure dwsWebClassesHttpQueryMethodsPostDataEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsWebClassesWebRequestMethodsIfModifiedSinceEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesWebResponseMethodsSetLastModifiedEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -263,6 +267,12 @@ begin
    Info.ResultAsString:=Info.WebRequest.Headers.Text;
 end;
 
+procedure TdwsWebLib.dwsWebClassesWebRequestMethodsIfModifiedSinceEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsFloat:=Info.WebRequest.IfModifiedSince;
+end;
+
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsMethodEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
@@ -389,6 +399,12 @@ procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetHeaderEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.WebResponse.Headers.Values[Info.ParamAsString[0]]:=Info.ParamAsString[1];
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetLastModifiedEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.WebResponse.LastModified:=Info.ParamAsFloat[0];
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetStatusCodeEval(

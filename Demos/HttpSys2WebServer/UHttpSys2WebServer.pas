@@ -430,7 +430,6 @@ end;
 //
 procedure THttpSys2WebServer.ProcessStaticFile(const pathName : String; request : TWebRequest; response : TWebResponse);
 var
-   ifModifiedSinceStr : String;
    ifModifiedSince : TDateTime;
    lastModified : TDateTime;
 begin
@@ -441,10 +440,7 @@ begin
       Exit;
    end;
 
-   ifModifiedSinceStr:=request.Header('If-Modified-Since');
-   if ifModifiedSinceStr<>'' then
-      ifModifiedSince:=WebUtils.RFC822ToDateTime(ifModifiedSinceStr)
-   else ifModifiedSince:=0;
+   ifModifiedSince:=request.IfModifiedSince;
 
    // compare with a precision to the second and no more
    if Round(lastModified*86400)>Round(ifModifiedSince*86400) then begin
@@ -453,7 +449,7 @@ begin
 
       response.ContentData:=UnicodeStringToUtf8(pathName);
       response.ContentType:=HTTP_RESP_STATICFILE;
-      response.Headers.Add('Last-Modified='+WebUtils.DateTimeToRFC822(lastModified));
+      response.LastModified:=lastModified;
 
    end else begin
 
