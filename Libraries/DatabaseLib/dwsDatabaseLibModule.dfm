@@ -298,6 +298,7 @@ object dwsDatabaseLib: TdwsDatabaseLib
               end>
             ResultType = 'Boolean'
             Overloaded = True
+            OnEval = dwsDatabaseClassesDataSetMethodsIsNullByNameEval
             Kind = mkFunction
           end
           item
@@ -309,6 +310,7 @@ object dwsDatabaseLib: TdwsDatabaseLib
               end>
             ResultType = 'Boolean'
             Overloaded = True
+            OnEval = dwsDatabaseClassesDataSetMethodsIsNullByIndexEval
             Kind = mkFunction
           end
           item

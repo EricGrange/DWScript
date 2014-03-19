@@ -62,7 +62,7 @@ type
          function GetSubExprCount : Integer; override;
 
          function PreCall(exec : TdwsExecution) : TFuncSymbol; virtual;
-        procedure PostCall(exec : TdwsExecution; var Result : Variant); virtual;
+         procedure PostCall(exec : TdwsExecution; var Result : Variant); virtual;
 
       public
          constructor Create(Prog: TdwsProgram; const scriptPos : TScriptPos; Func: TMethodSymbol;
