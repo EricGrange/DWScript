@@ -1121,12 +1121,23 @@ function TStandardSymbolFactory.ReadInitExpr(expecting : TTypeSymbol = nil) : TT
 var
    recSym : TRecordSymbol;
 begin
-   if (expecting is TRecordSymbol) and FCompiler.FTok.Test(ttBLEFT) then begin
-      recSym:=TRecordSymbol(expecting);
-      Result:=TConstExpr.Create(FCompiler.FProg, expecting, FCompiler.ReadConstRecord(recSym), 0);
-   end else begin
-      Result:=ReadExpr(expecting)
+   if expecting<>nil then begin
+      case FCompiler.Tokenizer.TestAny([ttBLEFT, ttALEFT]) of
+         ttBLEFT :
+            if expecting.ClassType=TRecordSymbol then begin
+               recSym:=TRecordSymbol(expecting);
+               Result:=TConstExpr.Create(FCompiler.FProg, expecting, FCompiler.ReadConstRecord(recSym), 0);
+               Exit;
+            end;
+         ttALEFT :
+            if expecting is TArraySymbol then begin
+               FCompiler.Tokenizer.KillToken;
+               Result := ReadArrayConstantExpr(ttARIGHT, expecting);
+               Exit;
+            end;
+      end;
    end;
+   Result:=ReadExpr(expecting)
 end;
 
 // ------------------
@@ -2815,8 +2826,8 @@ begin
       detachTyp:=False;
       if typ is TArraySymbol then begin
          case FTok.TestDeleteAny([ttALEFT, ttBLEFT]) of
-            ttALEFT : expr:=factory.ReadArrayConstantExpr(ttARIGHT, TArraySymbol(typ).Typ);
-            ttBLEFT : expr:=factory.ReadArrayConstantExpr(ttBRIGHT, TArraySymbol(typ).Typ);
+            ttALEFT : expr:=factory.ReadArrayConstantExpr(ttARIGHT, typ);
+            ttBLEFT : expr:=factory.ReadArrayConstantExpr(ttBRIGHT, typ);
          else
             expr:=factory.ReadExpr(nil);
          end;
@@ -7322,13 +7333,19 @@ function TdwsCompiler.ReadArrayConstant(closingToken : TTokenType;
                                         expecting : TTypeSymbol) : TArrayConstantExpr;
 var
    expr : TTypedExpr;
+   factory : IdwsDataSymbolFactory;
+   itemExpecting : TTypeSymbol;
 begin
+   factory:=TStandardSymbolFactory.Create(Self);
    Result:=TArrayConstantExpr.Create(FProg, FTok.HotPos);
    try
+      if expecting<>nil then
+         itemExpecting:=expecting.Typ
+      else itemExpecting:=nil;
       if not FTok.TestDelete(closingToken) then begin
          // At least one argument was found
          repeat
-            expr:=ReadExpr;
+            expr:=factory.ReadInitExpr(itemExpecting);
             if expr<>nil then
                TArrayConstantExpr(Result).AddElementExpr(FProg, expr);
          until not FTok.TestDelete(ttCOMMA);
