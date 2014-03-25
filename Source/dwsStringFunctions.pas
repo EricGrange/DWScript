@@ -957,7 +957,7 @@ begin
       for k:=1 to Length(str) do
          if str[k]=c then Inc(n);
       dyn.ArrayLength:=n+1;
-      if n=1 then
+      if n=0 then
          dyn.AsString[0]:=str
       else begin
          n:=0;
