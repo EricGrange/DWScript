@@ -1,0 +1,9 @@
+Errors >>>>
+Hint: "C" does not match case of declaration ("c") [line: 16, column: 12]
+Result >>>>
+1
+One
+True
+2
+two
+False

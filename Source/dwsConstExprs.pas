@@ -840,8 +840,10 @@ begin
    p:=offset;
    for i:=0 to FElementExprs.Count-1 do begin
       expr:=TTypedExpr(FElementExprs.List[i]);
-      if expr is TArrayConstantExpr then
+      if expr.ClassType=TArrayConstantExpr then
          TArrayConstantExpr(expr).EvalToTData(exec, result, p)
+      else if expr is TConstExpr then
+         DWSCopyData(TConstExpr(expr).Data, 0, result, p, expr.Typ.Size)
       else expr.EvalAsVariant(exec, result[p]);
       Inc(p, expr.Typ.Size);
    end;
