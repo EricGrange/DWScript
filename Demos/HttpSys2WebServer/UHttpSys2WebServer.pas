@@ -416,7 +416,7 @@ begin
    else
       if fileInfo.DWScript then begin
 
-         FDWS.HandleDWS(fileInfo.CookedPathName, request, response);
+         FDWS.HandleDWS(fileInfo.CookedPathName, request, response, []);
 
       end else begin
 
