@@ -76,6 +76,7 @@ type
         base: TTypedExpr): TTypedExpr;
       function ValidIntoExpr(from, target: TTypedExpr): boolean;
    public
+      function StaticSymbols : Boolean; override;
       procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                            scriptType : TScriptSourceType); override;
       function ReadUnknownName(compiler: TdwsCompiler) : TTypedExpr; override;
@@ -161,6 +162,11 @@ class procedure TdwsLinqExtension.Error(const compiler: IdwsCompiler; const msg:
   const args: array of const);
 begin
    error(compiler, format(msg, args));
+end;
+
+function TdwsLinqExtension.StaticSymbols: Boolean;
+begin
+   result := true;
 end;
 
 function TdwsLinqExtension.ReadComparisonExpr(const compiler: IdwsCompiler; tok: TTokenizer): TRelOpExpr;
@@ -329,6 +335,7 @@ begin
    until not tok.TestDelete(ttCOMMA);
    from := FQueryBuilder.Order(from, list);
 end;
+
 
 procedure TdwsLinqExtension.ReadGroupByExprs(const compiler: IdwsCompiler; tok: TTokenizer; var from: TTypedExpr);
 var
