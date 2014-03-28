@@ -323,7 +323,7 @@ begin
       if (p>base) and (next>p) then begin
          Result.Add(Trim(Copy(cookieField, base, p-base))
                     +'='
-                    +Copy(cookieField, p+1, next-p));
+                    +Copy(cookieField, p+1, pred(next-p)));
          base:=next+1;
       end else Break;
    end;
