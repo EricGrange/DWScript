@@ -66,7 +66,12 @@ type
          property DataSym : TDataSymbol read FDataSym write FDataSym;
    end;
 
-   TIntVarExpr = class (TVarExpr)
+   TBaseTypeVarExpr = class (TVarExpr)
+      public
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+   end;
+
+   TIntVarExpr = class (TBaseTypeVarExpr)
       public
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
          procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
@@ -79,7 +84,7 @@ type
          function  EvalAsPInteger(exec : TdwsExecution) : PInt64; inline;
    end;
 
-   TFloatVarExpr = class sealed (TVarExpr)
+   TFloatVarExpr = class sealed (TBaseTypeVarExpr)
       protected
       public
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
@@ -88,7 +93,7 @@ type
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
-   TStrVarExpr = class sealed (TVarExpr)
+   TStrVarExpr = class sealed (TBaseTypeVarExpr)
       protected
       public
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
@@ -100,7 +105,7 @@ type
          procedure Append(exec : TdwsExecution; const value : UnicodeString);
    end;
 
-   TBoolVarExpr = class (TVarExpr)
+   TBoolVarExpr = class (TBaseTypeVarExpr)
       protected
       public
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
@@ -110,10 +115,9 @@ type
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
-   TObjectVarExpr = class (TVarExpr)
+   TObjectVarExpr = class (TBaseTypeVarExpr)
       public
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
-         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
          function EvalAsPIScriptObj(exec : TdwsExecution) : PIScriptObj; inline;
    end;
@@ -2136,6 +2140,17 @@ begin
 end;
 
 // ------------------
+// ------------------ TBaseTypeVarExpr ------------------
+// ------------------
+
+// EvalAsVariant
+//
+procedure TBaseTypeVarExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+begin
+   exec.Stack.ReadValue(exec.Stack.BasePointer + FStackAddr, Result);
+end;
+
+// ------------------
 // ------------------ TIntVarExpr ------------------
 // ------------------
 
@@ -2340,13 +2355,6 @@ end;
 procedure TObjectVarExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
 begin
    Expr.EvalAsVariant(exec, exec.Stack.Data[exec.Stack.BasePointer+FStackAddr]);
-end;
-
-// EvalAsVariant
-//
-procedure TObjectVarExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
-begin
-   exec.Stack.ReadValue(exec.Stack.BasePointer + FStackAddr, Result);
 end;
 
 // EvalAsScriptObj
