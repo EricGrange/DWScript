@@ -124,9 +124,10 @@ type
 
    // TdwsJSONIndexWriteCall
    //
-   TdwsJSONIndexWriteCall = class(TdwsJSONIndexCall)
+   TdwsJSONIndexWriteCall = class(TdwsJSONIndexCall, IConnectorFastCall)
       protected
          function Call(const base : Variant; const args : TConnectorArgs) : TData; override;
+         procedure FastCall(const base : Variant; const args : TData; var result : Variant);
    end;
 
    // TdwsJSONConnectorMember
@@ -821,6 +822,52 @@ begin
          raise Exception.Create('Unsupported assignment');
       end;
       baseValue.Values[args[0][0]]:=argValue;
+   end else begin
+      raise Exception.CreateFmt('Invalid JSON write to %s', [FMethodName]);
+   end;
+end;
+
+// FastCall
+//
+procedure TdwsJSONIndexWriteCall.FastCall(const base : Variant; const args : TData; var result : Variant);
+var
+   pBase, pVal : PVarData;
+   baseValue, argValue : TdwsJSONValue;
+begin
+   pBase:=PVarData(@base);
+   if pBase^.VType=varUnknown then begin
+      baseValue:=TBoxedJSONValue.UnBox(pBase);
+      if FMethodName<>'' then
+         baseValue:=baseValue.Items[FMethodName];
+      pVal:=PVarData(@args[1]);
+      case pVal^.VType of
+         varUnknown : begin
+            argValue:=TBoxedJSONValue.UnBox(pVal);
+            if argValue=nil then
+               argValue:=TdwsJSONImmediate.FromVariant(Null)
+            else if argValue.Owner=nil then
+               argValue.IncRefCount;
+         end;
+         varInt64 : begin
+            argValue:=TdwsJSONImmediate.Create;
+            argValue.AsNumber:=pVal^.VInt64;
+         end;
+         varDouble : begin
+            argValue:=TdwsJSONImmediate.Create;
+            argValue.AsNumber:=pVal^.VDouble;
+         end;
+         varUString : begin
+            argValue:=TdwsJSONImmediate.Create;
+            argValue.AsString:=UnicodeString(pVal^.VUString);
+         end;
+         varBoolean : begin
+            argValue:=TdwsJSONImmediate.Create;
+            argValue.AsBoolean:=pVal^.VBoolean;
+         end;
+      else
+         raise Exception.Create('Unsupported assignment');
+      end;
+      baseValue.Values[args[0]]:=argValue;
    end else begin
       raise Exception.CreateFmt('Invalid JSON write to %s', [FMethodName]);
    end;
