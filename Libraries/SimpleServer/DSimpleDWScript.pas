@@ -62,6 +62,9 @@ type
 
    TLoadSourceCodeEvent = function (const fileName : String) : String of object;
 
+   TDWSHandlingOption = (optWorker);
+   TDWSHandlingOptions = set of TDWSHandlingOption;
+
    TSimpleDWScript = class(TDataModule)
       DelphiWebScript: TDelphiWebScript;
       dwsHtmlFilter: TdwsHtmlFilter;
@@ -76,6 +79,7 @@ type
 
    private
       FScriptTimeoutMilliseconds : Integer;
+      FWorkerTimeoutMilliseconds : Integer;
       FCPUUsageLimit : Integer;
       FCPUAffinity : Cardinal;
 
@@ -127,7 +131,8 @@ type
       procedure Initialize(const serverInfo : IWebServerInfo);
       procedure Finalize;
 
-      procedure HandleDWS(const fileName : String; request : TWebRequest; response : TWebResponse);
+      procedure HandleDWS(const fileName : String; request : TWebRequest; response : TWebResponse;
+                          const options : TDWSHandlingOptions);
       procedure StopDWS;
 
       procedure FlushDWSCache(const fileName : String = '');
@@ -142,6 +147,7 @@ type
       procedure Shutdown;
 
       property ScriptTimeoutMilliseconds : Integer read FScriptTimeoutMilliseconds write FScriptTimeoutMilliseconds;
+      property WorkerTimeoutMilliseconds : Integer read FWorkerTimeoutMilliseconds write FWorkerTimeoutMilliseconds;
 
       property CPUUsageLimit : Integer read FCPUUsageLimit write SetCPUUsageLimit;
       property CPUAffinity : Cardinal read FCPUAffinity write SetCPUAffinity;
@@ -171,6 +177,7 @@ const
          // Script timeout in milliseconds
          // zero = no limit (not recommended)
          +'"TimeoutMSec": 3000,'
+         +'"WorkerTimeoutMSec": 30000,'
          // Size of stack growth chunks
          +'"StackChunkSize": 300,'
          // Maximum stack size per script
@@ -241,6 +248,7 @@ begin
    FExecutingScriptsLock:=TMultiReadSingleWrite.Create;
 
    FScriptTimeoutMilliseconds:=3000;
+   FWorkerTimeoutMilliseconds:=30000;
 
 {$ifdef EnablePas2Js}
    jsFilter:=TdwsJSFilter.Create(Self);
@@ -277,7 +285,8 @@ end;
 
 // HandleDWS
 //
-procedure TSimpleDWScript.HandleDWS(const fileName : String; request : TWebRequest; response : TWebResponse);
+procedure TSimpleDWScript.HandleDWS(const fileName : String; request : TWebRequest; response : TWebResponse;
+                                    const options : TDWSHandlingOptions);
 
    procedure Handle503(response : TWebResponse);
    begin
@@ -336,7 +345,9 @@ begin
          FExecutingScripts:=@executing;
          FExecutingScriptsLock.EndWrite;
 
-         executing.Exec.RunProgram(ScriptTimeoutMilliseconds);
+         if optWorker in options then
+            executing.Exec.RunProgram(WorkerTimeoutMilliseconds)
+         else executing.Exec.RunProgram(ScriptTimeoutMilliseconds);
 
          // extract from executing queue
          FExecutingScriptsLock.BeginWrite;
@@ -440,6 +451,7 @@ begin
       dws.Extend(options);
 
       ScriptTimeoutMilliseconds:=dws['TimeoutMSec'].AsInteger;
+      WorkerTimeoutMilliseconds:=dws['WorkerTimeoutMSec'].AsInteger;
 
       DelphiWebScript.Config.MaxDataSize:=dws['StackMaxSize'].AsInteger;
       DelphiWebScript.Config.MaxRecursionDepth:=dws['MaxRecursionDepth'].AsInteger;
@@ -620,7 +632,7 @@ begin
    if Assigned(FBackgroundFileSystem) then begin
       name:=FBackgroundFileSystem.ValidateFileName(request.URL);
       if name<>'' then
-         HandleDWS(name, request, nil);
+         HandleDWS(name, request, nil, [optWorker]);
    end;
 end;
 
@@ -686,7 +698,7 @@ begin
    FBackgroundFileSystem:=dwsRuntimeFileSystem.AllocateFileSystem;
 
    if StartupScriptName<>'' then
-      HandleDWS(StartupScriptName, nil, nil);
+      HandleDWS(StartupScriptName, nil, nil, [optWorker]);
 end;
 
 // Shutdown
@@ -698,7 +710,7 @@ begin
    StopDWS;
 
    if ShutdownScriptName<>'' then
-      HandleDWS(ShutdownScriptName, nil, nil);
+      HandleDWS(ShutdownScriptName, nil, nil, [optWorker]);
 end;
 
 // ------------------
