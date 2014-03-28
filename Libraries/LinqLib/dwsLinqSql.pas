@@ -66,6 +66,8 @@ type
       procedure BuildOrderClause(list: TStringList; prog: TdwsProgram);
       procedure WriteCommaList(exprs: TSqlList; list: TStringList; prog: TdwsProgram);
       procedure BuildGroupClause(list: TStringList; prog: TdwsProgram);
+      function GetIdentifierName(ident: TSqlIdentifier;
+        prog: TdwsProgram): string;
    public
       constructor Create(tableName: TSqlIdentifier; const symbol: TDataSymbol);
       destructor Destroy; override;
@@ -128,6 +130,13 @@ begin
    inherited Destroy;
 end;
 
+function TSqlFromExpr.GetIdentifierName(ident: TSqlIdentifier; prog: TdwsProgram): string;
+begin
+   result := ident.GetValue(FParams, prog, self.NewParam);
+   if ident.rename <> '' then
+      result := format('%s as %s', [result, ident.rename]);
+end;
+
 procedure TSqlFromExpr.WriteCommaList(exprs: TSqlList; list: TStringList; prog: TdwsProgram);
 var
    i: integer;
@@ -135,7 +144,7 @@ var
 begin
    for i := 0 to exprs.Count - 1 do
    begin
-      item := (exprs[i] as TSqlIdentifier).GetValue(FParams, prog, self.NewParam);
+      item := GetIdentifierName(exprs[i] as TSqlIdentifier, prog);
       if i < exprs.Count - 1 then
          item := item + ',';
       list.Add(item)
