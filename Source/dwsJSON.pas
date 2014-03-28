@@ -329,6 +329,7 @@ type
          function AddObject : TdwsJSONObject;
          function AddArray : TdwsJSONArray;
          function AddValue : TdwsJSONImmediate;
+         procedure AddNull;
 
          procedure Sort(const aCompareMethod : TdwsJSONValueCompareMethod);
          procedure Swap(index1, index2 : Integer);
@@ -1786,6 +1787,17 @@ function TdwsJSONArray.AddValue : TdwsJSONImmediate;
 begin
    Result:=vImmediate.Create;
    Add(Result);
+end;
+
+// AddNull
+//
+procedure TdwsJSONArray.AddNull;
+var
+   v : TdwsJSONImmediate;
+begin
+   v:=vImmediate.Create;
+   v.IsNull:=True;
+   Add(v);
 end;
 
 // Sort

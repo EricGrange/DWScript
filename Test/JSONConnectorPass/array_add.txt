@@ -1,0 +1,5 @@
+[]
+[1]
+[1,"two"]
+[1,"two",true,3.5,null]
+[[1,null],{"hello":"World"}]

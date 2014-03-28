@@ -484,8 +484,9 @@ begin
 
       if Length(params)<>1 then
          raise ECompileException.CreateFmt(CPE_BadNumberOfParameters, [1, Length(params)]);
-      if not params[0].TypSym.UnAliasedType.IsBaseType then
-         raise ECompileException.CreateFmt(CPE_InvalidParameterType, [0, SYS_JSONVARIANT, params[0].TypSym.Caption]);
+      paramTyp:=params[0].TypSym;
+      if (not paramTyp.UnAliasedType.IsBaseType) and (paramTyp.ClassType<>TNilSymbol) then
+         raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_JSONVARIANT, params[0].TypSym.Caption]);
 
       Result:=IJSONAdd(Self);
       typSym:=FTable.FindTypeSymbol(SYS_INTEGER, cvMagic);
@@ -653,7 +654,7 @@ end;
 function TdwsJSONConnectorType.AddCall(const base : Variant; const args : TConnectorArgs) : TData;
 var
    pBase, pParam : PVarData;
-   baseValue : TdwsJSONValue;
+   baseValue, boxedValue : TdwsJSONValue;
    baseArray : TdwsJSONArray;
 begin
    Result:=nil;
@@ -668,6 +669,17 @@ begin
             varDouble : baseArray.Add(pParam^.VDouble);
             varUString : baseArray.Add(String(pParam^.VUString));
             varBoolean : baseArray.Add(pParam^.VBoolean);
+            varUnknown : begin
+               if pParam.VUnknown<>nil then begin
+                  boxedValue := IBoxedJSONValue(pParam^.VUnknown).Value;
+                  if boxedValue.Owner = nil then
+                     boxedValue.IncRefCount;
+                  baseArray.Add(boxedValue)
+               end else begin
+                  baseArray.AddNull;
+               end;
+            end;
+            varNull : baseArray.AddNull;
          else
             raise EdwsJSONException.Create('JSON Array Add unsupported type');
          end;
@@ -676,6 +688,40 @@ begin
       end else raise EdwsJSONException.Create('JSON Array required for Add method');
    end;
 end;
+
+{
+function TdwsJSONConnectorType.AddCall(const base : Variant; const args : TConnectorArgs) : TData;
+var
+   pBase, pParam : PVarData;
+   baseValue, boxedValue : TdwsJSONValue;
+   baseArray : TdwsJSONArray;
+begin
+   Result:=nil;
+   pBase:=PVarData(@base);
+   if pBase^.VType=varUnknown then begin
+      baseValue:=IBoxedJSONValue(pBase^.VUnknown).Value;
+      if baseValue.ValueType=jvtArray then begin
+         baseArray:=TdwsJSONArray(baseValue);
+         pParam:=PVarData(@args[0][0]);
+         if (pParam^.VType=varUnknown) and (pParam.VUnknown<>nil) then
+         begin
+            boxedValue := IBoxedJSONValue(pParam^.VUnknown).Value;
+            if boxedValue.Owner = nil then
+               boxedValue.IncRefCount;
+            baseArray.Add(boxedValue)
+         end
+         else case pParam^.VType of
+            varInt64 : baseArray.Add(pParam^.VInt64);
+            varDouble : baseArray.Add(pParam^.VDouble);
+            varUString : baseArray.Add(String(pParam^.VUString));
+            varBoolean : baseArray.Add(pParam^.VBoolean);
+         else
+            raise EdwsJSONException.Create('JSON Array Add unsupported type');
+         end;
+      end else raise EdwsJSONException.Create('JSON Array required for Add method');
+   end;
+end;
+}
 
 // ------------------
 // ------------------ TdwsJSONIndexCall ------------------
