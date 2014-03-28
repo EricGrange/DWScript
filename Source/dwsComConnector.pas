@@ -340,6 +340,7 @@ type
          function ComVariantSymbol : TTypeSymbol;
 
          function ConnectorCaption : UnicodeString;
+         function AutoVarParams : Boolean;
          function AcceptsParams(const params: TConnectorParamArray) : Boolean;
          function HasMethod(const aMethodName: UnicodeString; const aParams: TConnectorParamArray;
                             var TypSym: TTypeSymbol): IConnectorCall;
@@ -450,6 +451,7 @@ type
 
          { IConnectorType }
          function ConnectorCaption: UnicodeString;
+         function AutoVarParams : Boolean;
          function AcceptsParams(const params: TConnectorParamArray) : Boolean;
          function HasMethod(const MethodName: UnicodeString; const Params: TConnectorParamArray;
                             var TypSym: TTypeSymbol): IConnectorCall;
@@ -668,6 +670,13 @@ begin
   Result := COM_ConnectorCaption;
 end;
 
+// AutoVarParams
+//
+function TComConnectorType.AutoVarParams : Boolean;
+begin
+   Result:=True;
+end;
+
 constructor TComConnectorType.Create(Table: TSymbolTable);
 begin
   FTable := Table;
@@ -877,6 +886,13 @@ end;
 function TComVariantArrayType.ConnectorCaption: UnicodeString;
 begin
   Result := 'ComVariantArray';
+end;
+
+// AutoVarParams
+//
+function TComVariantArrayType.AutoVarParams : Boolean;
+begin
+   Result:=True;
 end;
 
 constructor TComVariantArrayType.Create(Table: TSymbolTable);

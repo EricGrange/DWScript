@@ -65,6 +65,7 @@ type
 
       protected
          function ConnectorCaption : UnicodeString;
+         function AutoVarParams : Boolean;
          function AcceptsParams(const params : TConnectorParamArray) : Boolean;
          function NeedDirectReference : Boolean;
 
@@ -427,6 +428,13 @@ end;
 function TdwsJSONConnectorType.ConnectorCaption : UnicodeString;
 begin
    Result:='JSON Connector 1.0';
+end;
+
+// AutoVarParams
+//
+function TdwsJSONConnectorType.AutoVarParams : Boolean;
+begin
+   Result:=False;
 end;
 
 // AcceptsParams

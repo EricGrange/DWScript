@@ -990,6 +990,7 @@ type
    IConnectorType = interface
      ['{8D534D1D-4C6B-11D5-8DCB-0000216D9E86}']
      function ConnectorCaption: UnicodeString;
+     function AutoVarParams : Boolean;
      function AcceptsParams(const params: TConnectorParamArray) : Boolean;
      function HasMethod(const MethodName: UnicodeString; const Params: TConnectorParamArray;
                         var TypSym: TTypeSymbol): IConnectorCall;
