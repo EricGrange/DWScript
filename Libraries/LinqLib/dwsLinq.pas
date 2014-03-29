@@ -346,7 +346,7 @@ function TdwsLinqExtension.ReadRenamableSqlIdentifier(
   acceptStar: boolean): TSqlIdentifier;
 begin
    result := ReadSqlIdentifier(compiler, tok, acceptStar);
-   if tok.TestDelete(ttAs) or tok.TestName then
+   if tok.TestDelete(ttAs) then
    begin
       if not tok.TestName then
          Error(compiler, 'Identifier expected');
@@ -518,14 +518,12 @@ begin
    if base.GetParamType(0) <> from.Typ then
       Exit;
    returnType := base.Typ;
-   if returnType = nil then
-      Exit;
    result := true;
 end;
 
 function TypeSymbol(const compiler: IdwsCompiler; base: TTypedExpr): TFuncSymbol;
 begin
-   result := TFuncSymbol.Create('', fkFunction, 0);
+   result := TFuncSymbol.Create('', fkMethod, 0);
    result.Typ := compiler.Compiler.CurrentProg.TypAnyType;
    result.AddParam(TParamSymbol.Create('', base.Typ));
 end;
@@ -539,24 +537,29 @@ var
    aPos: TScriptPos;
 begin
    try
-      aPos := tok.CurrentPos;
-      tok.KillToken;
-      targetSymbol := TypeSymbol(compiler, base);
       try
-         target := compiler.ReadExpr(targetSymbol);
-      finally
-         targetSymbol.Free;
+         aPos := tok.CurrentPos;
+         tok.KillToken;
+         targetSymbol := TypeSymbol(compiler, base);
+         try
+            target := compiler.ReadExpr(targetSymbol);
+         finally
+            targetSymbol.Free;
+         end;
+         if not ValidIntoExpr(base, target) then
+         begin
+            target.Free;
+            Error(compiler, 'Into expression must be a valid function reference.');
+         end;
+         targetFunc := TFuncPtrExpr.Create(compiler.CurrentProg, aPos, target);
+         result := FQueryBuilder.Into(base, targetFunc, aPos);
+      except
+         base.Free;
+         raise;
       end;
-      if not ValidIntoExpr(base, target) then
-      begin
-         target.Free;
-         Error(compiler, 'Into expression must be a valid function reference.');
-      end;
-      targetFunc := TFuncPtrExpr.Create(compiler.CurrentProg, aPos, target);
-      result := FQueryBuilder.Into(base, targetFunc, aPos);
    except
-      base.Free;
-      raise;
+      on EAbort do
+         compiler.Msgs.AddCompilerStop(tok.GetToken.FScriptPos, 'Invalid LINQ expression');
    end;
 end;
 

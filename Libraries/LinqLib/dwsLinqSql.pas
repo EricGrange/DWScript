@@ -88,20 +88,38 @@ type
    end;
 
    TLinqIntoSingleExpr = class(TLinqIntoExpr)
-   private
+   protected
       FStep: TMethodStaticExpr;
    public
       constructor Create(base: TSqlFromExpr; into: TFuncPtrExpr;
         const compiler: IdwsCompiler; const aPos: TScriptPos; dsSymbol: TClassSymbol);
       destructor Destroy; override;
+   end;
+
+   TLinqIntoSingleValExpr = class(TLinqIntoSingleExpr)
+   public
       function Eval(exec : TdwsExecution) : Variant; override;
+   end;
+
+   TLinqIntoSingleProcExpr = class(TLinqIntoSingleExpr)
+   public
+      function Eval(exec : TdwsExecution): variant; override;
    end;
 
    TLinqIntoSetExpr = class(TLinqIntoExpr)
    public
       constructor Create(base: TSqlFromExpr; into: TFuncPtrExpr;
         const compiler: IdwsCompiler; const aPos: TScriptPos);
-      function  Eval(exec : TdwsExecution) : Variant; override;
+   end;
+
+   TLinqIntoSetValExpr = class(TLinqIntoSetExpr)
+   public
+      function Eval(exec : TdwsExecution) : Variant; override;
+   end;
+
+   TLinqIntoSetProcExpr = class(TLinqIntoSetExpr)
+   public
+      function Eval(exec : TdwsExecution): variant; override;
    end;
 
 implementation
@@ -368,7 +386,8 @@ constructor TLinqIntoSingleExpr.Create(base: TSqlFromExpr; into: TFuncPtrExpr;
   const compiler: IdwsCompiler; const aPos: TScriptPos; dsSymbol: TClassSymbol);
 begin
    inherited Create(base, into, compiler, aPos);
-   self.Typ := TDynamicArraySymbol.Create('', into.FuncSym.Result.Typ, compiler.CurrentProg.TypInteger);
+   if assigned(into.FuncSym.Result) then
+      self.Typ := TDynamicArraySymbol.Create('', into.FuncSym.Result.Typ, compiler.CurrentProg.TypInteger);
    FAssign.Left.IncRefCount;
    FStep := TMethodStaticExpr.Create(compiler.CurrentProg, aPos,
      dsSymbol.Members.FindSymbol('Step', cvMagic) as TMethodSymbol, FAssign.Left);
@@ -380,7 +399,9 @@ begin
    inherited Destroy;
 end;
 
-function TLinqIntoSingleExpr.Eval(exec: TdwsExecution): Variant;
+{ TLinqIntoSingleValExpr }
+
+function TLinqIntoSingleValExpr.Eval(exec: TdwsExecution): Variant;
 var
    dyn: TScriptDynamicArray;
    n: integer;
@@ -399,6 +420,16 @@ begin
    FFree.Eval(exec);
 end;
 
+{ TLinqIntoSingleProcExpr }
+
+function TLinqIntoSingleProcExpr.Eval(exec: TdwsExecution): Variant;
+begin
+   FAssign.EvalNoResult(exec);
+   while FStep.EvalAsBoolean(exec) do
+      FInto.EvalNoResult(exec);
+   FFree.Eval(exec);
+end;
+
 { TLinqIntoSetExpr }
 
 constructor TLinqIntoSetExpr.Create(base: TSqlFromExpr; into: TFuncPtrExpr;
@@ -409,10 +440,21 @@ begin
    self.Typ.IncRefCount;
 end;
 
-function TLinqIntoSetExpr.Eval(exec: TdwsExecution): Variant;
+{ TLinqIntoSetValExpr }
+
+function TLinqIntoSetValExpr.Eval(exec: TdwsExecution): Variant;
 begin
    FAssign.EvalNoResult(exec);
    FInto.EvalAsVariant(exec, result);
+   FFree.Eval(exec);
+end;
+
+{ TLinqIntoSetProcExpr }
+
+function TLinqIntoSetProcExpr.Eval(exec: TdwsExecution): variant;
+begin
+   FAssign.EvalNoResult(exec);
+   FInto.EvalNoResult(exec);
    FFree.Eval(exec);
 end;
 
@@ -455,9 +497,16 @@ var
    from: TSqlFromExpr;
 begin
    from := base as TSqlFromExpr;
-   if targetFunc.FuncSym.Typ is TArraySymbol then
-      result := TLinqIntoSetExpr.Create(from, targetFunc, FCompiler, aPos)
-   else result := TLinqIntoSingleExpr.Create(from, targetFunc, FCompiler, aPos, from.Typ as TClassSymbol);
+   if targetFunc.FuncSym.Typ = nil then
+   begin
+      if targetFunc.FuncSym.Typ is TArraySymbol then
+         result := TLinqIntoSetProcExpr.Create(from, targetFunc, FCompiler, aPos)
+      else result := TLinqIntoSingleProcExpr.Create(from, targetFunc, FCompiler,
+                     aPos, from.Typ as TClassSymbol)
+   end
+   else if targetFunc.FuncSym.Typ is TArraySymbol then
+      result := TLinqIntoSetValExpr.Create(from, targetFunc, FCompiler, aPos)
+   else result := TLinqIntoSingleValExpr.Create(from, targetFunc, FCompiler, aPos, from.Typ as TClassSymbol);
 end;
 
 function TLinqSqlFactory.Join(base: TTypedExpr; value: TSqlJoinExpr): TTypedExpr;
