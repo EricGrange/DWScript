@@ -22,7 +22,7 @@ interface
 
 uses
    Windows, Forms, Variants, Classes, SysUtils, SysConst, TypInfo, RTTI,
-   dwsComp, dwsSymbols, dwsDataContext, dwsErrors,
+   dwsComp, dwsSymbols, dwsDataContext, dwsErrors, dwsUnitSymbols,
    dwsExprs, dwsStrings, dwsFunctions, dwsStack, dwsOperators,
    dwsUtils, dwsLanguageExtension, dwsCompiler;
 
@@ -40,7 +40,7 @@ type
 
       protected
          function GetUnitName : String; override;
-         procedure AddUnitSymbols(table : TSymbolTable; operators : TOperators); override;
+         procedure AddUnitSymbols(systemTable : TSystemSymbolTable; table : TSymbolTable; operators : TOperators); override;
 
       published
          property StaticSymbols;
@@ -207,6 +207,7 @@ type
       protected
          function ConnectorCaption : String;
          function AcceptsParams(const params : TConnectorParamArray) : Boolean;
+         function AutoVarParams : Boolean;
          function HasMethod(const methodName : String; const params : TConnectorParamArray;
                             var typSym : TTypeSymbol) : IConnectorCall;
          function HasMember(const memberName : String; var typSym : TTypeSymbol;
@@ -382,7 +383,7 @@ end;
 
 // AddUnitSymbols
 //
-procedure TdwsRTTIConnector.AddUnitSymbols(table : TSymbolTable; operators : TOperators);
+procedure TdwsRTTIConnector.AddUnitSymbols(systemTable : TSystemSymbolTable; table : TSymbolTable; operators : TOperators);
 var
    rttiVariantSym: TTypeSymbol;
 begin
@@ -559,6 +560,13 @@ begin
       if not (typ is TBaseSymbol) then
          Exit(False);
    end;
+   Result:=True;
+end;
+
+// AutoVarParams
+//
+function TdwsRTTIConnectorType.AutoVarParams : Boolean;
+begin
    Result:=True;
 end;
 

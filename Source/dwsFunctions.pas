@@ -39,7 +39,7 @@ type
       ['{8D534D12-4C6B-11D5-8DCB-0000216D9E86}']
       function GetUnitName : UnicodeString;
       function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
-                            operators : TOperators) : TUnitSymbolTable;
+                            operators : TOperators; rootTable : TSymbolTable) : TUnitSymbolTable;
       function GetDependencies : TStrings;
       function GetUnitFlags : TIdwsUnitFlags;
       function GetDeprecatedMessage : UnicodeString;
@@ -174,7 +174,7 @@ type
          procedure InitUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                  unitTable : TSymbolTable);
          function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
-                               operators : TOperators) : TUnitSymbolTable;
+                               operators : TOperators; rootTable : TSymbolTable) : TUnitSymbolTable;
          function GetUnitFlags : TIdwsUnitFlags;
 
       public
@@ -213,7 +213,7 @@ type
 
          function GetUnitName : UnicodeString;
          function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
-                               operators : TOperators) : TUnitSymbolTable;
+                               operators : TOperators; rootTable : TSymbolTable) : TUnitSymbolTable;
          function GetDependencies : TStrings;
          function GetUnitFlags : TIdwsUnitFlags;
          function GetDeprecatedMessage : UnicodeString;
@@ -789,7 +789,7 @@ end;
 // GetUnitTable
 //
 function TInternalUnit.GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
-                                    operators : TOperators) : TUnitSymbolTable;
+                                    operators : TOperators; rootTable : TSymbolTable) : TUnitSymbolTable;
 var
    i : Integer;
 begin
@@ -962,7 +962,7 @@ end;
 // GetUnitTable
 //
 function TSourceUnit.GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
-                                  operators : TOperators) : TUnitSymbolTable;
+                                  operators : TOperators; rootTable : TSymbolTable) : TUnitSymbolTable;
 begin
    Result:=(Symbol.Table as TUnitSymbolTable);
 end;

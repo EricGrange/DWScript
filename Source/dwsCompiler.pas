@@ -1719,7 +1719,7 @@ begin
    try
       // Get the symboltables of the units
       for i:=0 to unitsResolved.Count-1 do begin
-         unitTable:=unitsResolved[i].GetUnitTable(FSystemTable, FMainProg.UnitMains, FOperators);
+         unitTable:=unitsResolved[i].GetUnitTable(FSystemTable, FMainProg.UnitMains, FOperators, FMainProg.RootTable);
          unitSymbol:=TUnitMainSymbol.Create(unitsResolved[i].GetUnitName, unitTable, FMainProg.UnitMains);
          unitSymbol.DeprecatedMessage:=unitsResolved[i].GetDeprecatedMessage;
          unitSymbol.ReferenceInSymbolTable(FProg.Table, True);
@@ -1793,7 +1793,7 @@ begin
    if unitMain=nil then begin
       unitTable:=nil;
       try
-         unitTable:=unitResolved.GetUnitTable(FSystemTable, FProg.UnitMains, FOperators);
+         unitTable:=unitResolved.GetUnitTable(FSystemTable, FProg.UnitMains, FOperators, FProg.RootTable);
          unitMain:=TUnitMainSymbol.Create(unitName, unitTable, FProg.UnitMains);
          unitMain.DeprecatedMessage:=unitResolved.GetDeprecatedMessage;
       except

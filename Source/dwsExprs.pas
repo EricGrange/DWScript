@@ -192,6 +192,7 @@ type
          procedure ChangeUsageAt(const scriptPos : TScriptPos; const addUsages, removeUsages : TSymbolUsages);
 
          function FindSymbolAtPosition(aCol, aLine: Integer; const sourceFile : UnicodeString): TSymbol; overload;
+         function FindSymbolAtPosition(aScriptPos: TScriptPos): TSymbol; overload;
          function FindSymbolPosList(sym: TSymbol): TSymbolPositionList; overload;  // return list of symbol
          function FindSymbolPosList(const symName: UnicodeString): TSymbolPositionList; overload;  // return list of symbol
          function FindSymbolPosListOfType(const symName: UnicodeString; symbolType: TSymbolClass): TSymbolPositionList; // return list of symbol given the desired type
@@ -6916,6 +6917,13 @@ begin
       Result:=FSymbolList[i].FindSymbolAtPosition(aCol, aLine, sourceFile);
       if Assigned(Result) then Break;
    end;
+end;
+
+// FindSymbolAtPosition
+//
+function TdwsSymbolDictionary.FindSymbolAtPosition(aScriptPos: TScriptPos): TSymbol;
+begin
+   Result:=FindSymbolAtPosition(aScriptPos.Col, aScriptPos.Line, aScriptPos.SourceName);
 end;
 
 // GetList

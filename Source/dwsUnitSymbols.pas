@@ -93,23 +93,13 @@ type
          function Find(const unitName : UnicodeString) : TUnitMainSymbol;
    end;
 
-   IObjectOwner = interface
-      procedure ReleaseObject;
-   end;
-
    // TUnitSymbolTable
    //
    TUnitSymbolTable = class (TSymbolTable)
       private
-         FObjects : TTightList;
          FUnitMainSymbol : TUnitMainSymbol;
 
       public
-         destructor Destroy; override;
-
-         procedure AddObjectOwner(const AOwner : IObjectOwner);
-         procedure ClearObjectOwners;
-
          class function IsUnitTable : Boolean; override;
 
          property UnitMainSymbol : TUnitMainSymbol read FUnitMainSymbol write FUnitMainSymbol;
@@ -664,38 +654,6 @@ end;
 // ------------------
 // ------------------ TUnitSymbolTable ------------------
 // ------------------
-
-// Destroy
-//
-destructor TUnitSymbolTable.Destroy;
-begin
-   ClearObjectOwners;
-   inherited;
-   FObjects.Free;
-end;
-
-// AddObjectOwner
-//
-procedure TUnitSymbolTable.AddObjectOwner(const AOwner : IObjectOwner);
-begin
-   AOwner._AddRef;
-   FObjects.Add(Pointer(AOwner));
-end;
-
-// ClearObjectOwners
-//
-procedure TUnitSymbolTable.ClearObjectOwners;
-var
-   i : Integer;
-   objOwner : Pointer;
-begin
-   for i:=0 to FObjects.Count-1 do begin
-      objOwner:=FObjects.List[i];
-      IObjectOwner(objOwner).ReleaseObject;
-      IObjectOwner(objOwner)._Release;
-   end;
-   FObjects.Clear;
-end;
 
 // IsUnitTable
 //

@@ -27,7 +27,7 @@ uses
    Variants, SysUtils, ComObj, ActiveX,
    dwsUtils, dwsDataContext, dwsExprList,
    dwsStrings, dwsFunctions, dwsStack, dwsMagicExprs,
-   dwsExprs, dwsComp, dwsSymbols, dwsOperators;
+   dwsExprs, dwsComp, dwsSymbols, dwsOperators, dwsUnitSymbols;
 
 const
    COM_ConnectorCaption = 'COM Connector 1.0';
@@ -42,7 +42,7 @@ type
 
       protected
          function GetUnitName: UnicodeString; override;
-         procedure AddUnitSymbols(Table: TSymbolTable; operators : TOperators); override;
+         procedure AddUnitSymbols(systemTable : TSystemSymbolTable; Table: TSymbolTable; operators : TOperators); override;
 
       published
          property StaticSymbols;
@@ -507,39 +507,36 @@ begin
   Result := COM_UnitName;
 end;
 
-procedure TdwsComConnector.AddUnitSymbols(Table: TSymbolTable; operators : TOperators);
+procedure TdwsComConnector.AddUnitSymbols(systemTable : TSystemSymbolTable; Table: TSymbolTable; operators : TOperators);
 var
-  v: Variant;
-  VariantSym: TTypeSymbol;
-  ComVariantSym: TTypeSymbol;
+   v : Variant;
+   comVariantSym : TTypeSymbol;
 begin
-  VariantSym := Table.FindTypeSymbol('Variant', cvMagic);
+   // Datatype of com-objects
+   comVariantSym := TConnectorSymbol.Create('ComVariant', TComConnectorType.Create(Table));
+   Table.AddSymbol(comVariantSym);
+   Table.AddSymbol(TAliasSymbol.Create('OleVariant', comVariantSym));
 
-  // Datatype of com-objects
-  ComVariantSym := TConnectorSymbol.Create('ComVariant', TComConnectorType.Create(Table));
-  Table.AddSymbol(ComVariantSym);
-  Table.AddSymbol(TAliasSymbol.Create('OleVariant', ComVariantSym));
+   // Optional parameter for dispatch interfaces with unnamed arguments
+   v := 0;
+   PVarData(@v).VType := varError;
+   Table.AddSymbol(TConstSymbol.CreateValue('ComOpt', systemTable.TypVariant, v));
 
-  // Optional parameter for dispatch interfaces with unnamed arguments
-  v := 0;
-  PVarData(@v).VType := varError;
-  Table.AddSymbol(TConstSymbol.CreateValue('ComOpt', VariantSym, v));
+   // Function to create a new COM-Object
+   TCreateOleObjectFunc.Create(Table, 'CreateOleObject', ['ClassName', SYS_STRING], 'ComVariant');
 
-  // Function to create a new COM-Object
-  TCreateOleObjectFunc.Create(Table, 'CreateOleObject', ['ClassName', SYS_STRING], 'ComVariant');
+   TClassIDToProgIDFunc.Create(Table, 'ClassIDToProgID', ['ClassID', SYS_STRING], SYS_STRING);
+   TGetActiveOleObjectFunc.Create(Table, 'GetActiveOleObject', ['ClassName', SYS_STRING], 'ComVariant');
 
-  TClassIDToProgIDFunc.Create(Table, 'ClassIDToProgID', ['ClassID', SYS_STRING], SYS_STRING);
-  TGetActiveOleObjectFunc.Create(Table, 'GetActiveOleObject', ['ClassName', SYS_STRING], 'ComVariant');
+   TOleInt16Func.Create(Table, 'OleInt16', ['v', SYS_INTEGER], 'ComVariant', [iffStateLess]);
+   TOleInt32Func.Create(Table, 'OleInt32', ['v', SYS_INTEGER], 'ComVariant', [iffStateLess]);
+   TOleInt64Func.Create(Table, 'OleInt64', ['v', SYS_INTEGER], 'ComVariant', [iffStateLess]);
+   TOleCurrencyFunc.Create(Table, 'OleCurrency', ['v', SYS_VARIANT], 'ComVariant', [iffStateLess]);
+   TOleDateFunc.Create(Table, 'OleDate', ['v', SYS_FLOAT], 'ComVariant', [iffStateLess]);
+   TOleSingleFunc.Create(Table, 'OleSingle', ['v', SYS_FLOAT], 'ComVariant', [iffStateLess]);
+   TOleDoubleFunc.Create(Table, 'OleDouble', ['v', SYS_FLOAT], 'ComVariant', [iffStateLess]);
 
-  TOleInt16Func.Create(Table, 'OleInt16', ['v', SYS_INTEGER], 'ComVariant', [iffStateLess]);
-  TOleInt32Func.Create(Table, 'OleInt32', ['v', SYS_INTEGER], 'ComVariant', [iffStateLess]);
-  TOleInt64Func.Create(Table, 'OleInt64', ['v', SYS_INTEGER], 'ComVariant', [iffStateLess]);
-  TOleCurrencyFunc.Create(Table, 'OleCurrency', ['v', SYS_VARIANT], 'ComVariant', [iffStateLess]);
-  TOleDateFunc.Create(Table, 'OleDate', ['v', SYS_FLOAT], 'ComVariant', [iffStateLess]);
-  TOleSingleFunc.Create(Table, 'OleSingle', ['v', SYS_FLOAT], 'ComVariant', [iffStateLess]);
-  TOleDoubleFunc.Create(Table, 'OleDouble', ['v', SYS_FLOAT], 'ComVariant', [iffStateLess]);
-
-  Table.AddSymbol(TComVariantArraySymbol.Create('ComVariantArray', TComVariantArrayType.Create(Table), VariantSym));
+   Table.AddSymbol(TComVariantArraySymbol.Create('ComVariantArray', TComVariantArrayType.Create(Table), systemTable.TypVariant));
 end;
 
 // ------------------
