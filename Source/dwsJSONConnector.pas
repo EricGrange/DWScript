@@ -25,7 +25,7 @@ uses
    dwsLanguageExtension, dwsComp, dwsCompiler, dwsDataContext, dwsExprList,
    dwsExprs, dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs, dwsStack,
    dwsStrings, dwsXPlatform, dwsUtils, dwsOperators, dwsUnitSymbols,
-   dwsFunctions, dwsJSON, dwsMagicExprs;
+   dwsFunctions, dwsJSON, dwsMagicExprs, dwsConnectorSymbols;
 
 type
 

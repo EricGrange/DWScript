@@ -24,7 +24,7 @@ uses
    Windows, Forms, Variants, Classes, SysUtils, SysConst, TypInfo, RTTI,
    dwsComp, dwsSymbols, dwsDataContext, dwsErrors, dwsUnitSymbols,
    dwsExprs, dwsStrings, dwsFunctions, dwsStack, dwsOperators,
-   dwsUtils, dwsLanguageExtension, dwsCompiler;
+   dwsUtils, dwsLanguageExtension, dwsCompiler, dwsConnectorSymbols;
 
 const
    RTTI_ConnectorCaption = 'RTTI Connector 1.0';

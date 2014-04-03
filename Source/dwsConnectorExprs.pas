@@ -26,7 +26,8 @@ interface
 uses
    Variants, SysUtils,
    dwsUtils, dwsDataContext, dwsStack, dwsXPlatform, dwsErrors, dwsStrings,
-   dwsExprs, dwsExprList, dwsSymbols, dwsUnitSymbols, dwsCoreExprs;
+   dwsExprs, dwsExprList, dwsSymbols, dwsUnitSymbols, dwsConnectorSymbols,
+   dwsCoreExprs;
 
 type
    TConnectorCallFlag = (ccfIsInstruction, ccfIsIndex, ccfHasVarParams,

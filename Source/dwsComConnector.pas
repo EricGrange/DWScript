@@ -25,7 +25,7 @@ interface
 
 uses
    Variants, SysUtils, ComObj, ActiveX,
-   dwsUtils, dwsDataContext, dwsExprList,
+   dwsUtils, dwsDataContext, dwsExprList, dwsConnectorSymbols,
    dwsStrings, dwsFunctions, dwsStack, dwsMagicExprs,
    dwsExprs, dwsComp, dwsSymbols, dwsOperators, dwsUnitSymbols;
 

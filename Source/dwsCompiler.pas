@@ -27,7 +27,7 @@ uses
   Variants, Classes, SysUtils, TypInfo,
   dwsFileSystem, dwsUtils, dwsXPlatform,
   dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors, dwsDataContext, dwsExprList,
-  dwsStrings, dwsFunctions, dwsStack,
+  dwsStrings, dwsFunctions, dwsStack, dwsConnectorSymbols,
   dwsCoreExprs, dwsMagicExprs, dwsRelExprs, dwsMethodExprs, dwsConstExprs,
   dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs,
   dwsOperators, dwsPascalTokenizer, dwsSystemOperators,
