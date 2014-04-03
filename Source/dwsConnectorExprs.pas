@@ -426,8 +426,12 @@ end;
 // GetDataPtr
 //
 procedure TConnectorCallExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
+var
+   data : TData;
 begin
-   result.AsVariant[0]:=Eval(exec);
+   SetLength(data, 1);
+   data[0]:=Eval(exec);
+   result:=exec.Stack.CreateDataContext(data, 0);
 end;
 
 // IsWritable
