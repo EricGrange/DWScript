@@ -40,7 +40,7 @@ uses
   UBuildTests in 'UBuildTests.pas',
   USourceUtilsTests in 'USourceUtilsTests.pas',
   ULocalizerTests in 'ULocalizerTests.pas',
-  dwsRTTIFunctions,
+  dwsRTTIFunctions, dwsRTTIConnector,
   UJSONTests in 'UJSONTests.pas',
   UJSONConnectorTests in 'UJSONConnectorTests.pas',
   UTokenizerTests in 'UTokenizerTests.pas',
@@ -55,7 +55,8 @@ uses
   dwsExternalFunctionJitx86,
   UExternalFunctionTests in 'UExternalFunctionTests.pas',
   UdwsCryptoTests in 'UdwsCryptoTests.pas',
-  UdwsEncodingTests in 'UdwsEncodingTests.pas';
+  UdwsEncodingTests in 'UdwsEncodingTests.pas',
+  UInstantiateTests in 'UInstantiateTests.pas';
 
 {$R *.res}
 

@@ -3291,7 +3291,10 @@ begin
             param:=Params[i];
             otherParam:=funcSym.Params[i];
             if param.ClassType<>otherParam.ClassType then Exit;
-            if param.Typ<>otherParam.Typ then Exit;
+            if param.Typ<>otherParam.Typ then begin
+               if not param.Typ.IsCompatible(otherParam.Typ) then Exit;
+               if not otherParam.Typ.IsCompatible(param.Typ) then Exit;
+            end;
          end;
          Result:=True;
       end;
