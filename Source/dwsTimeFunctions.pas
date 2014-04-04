@@ -621,19 +621,19 @@ initialization
 
    RegisterInternalFloatFunction(TUTCDateTimeFunc, 'UTCDateTime', []);
 
-   RegisterInternalStringFunction(TDateTimeToStrFunc, 'DateTimeToStr', ['dt', cDateTime]);
+   RegisterInternalStringFunction(TDateTimeToStrFunc, 'DateTimeToStr', ['dt', cDateTime], [iffStateLess]);
    RegisterInternalFloatFunction(TStrToDateTimeFunc, 'StrToDateTime', ['str', SYS_STRING]);
    RegisterInternalFloatFunction(TStrToDateTimeDefFunc, 'StrToDateTimeDef', ['str', SYS_STRING, 'def', cDateTime]);
 
    RegisterInternalStringFunction(TDateToStrFunc, 'DateToStr', ['dt', cDateTime]);
-   RegisterInternalFloatFunction(TStrToDateFunc, 'StrToDate', ['str', SYS_STRING]);
+   RegisterInternalFloatFunction(TStrToDateFunc, 'StrToDate', ['str', SYS_STRING], [iffStateLess]);
    RegisterInternalFloatFunction(TStrToDateDefFunc, 'StrToDateDef', ['str', SYS_STRING, 'def', cDateTime]);
 
    RegisterInternalStringFunction(TDateToISO8601Func, 'DateToISO8601', ['dt', cDateTime]);
    RegisterInternalStringFunction(TDateTimeToISO8601Func, 'DateTimeToISO8601', ['dt', cDateTime]);
 
    RegisterInternalStringFunction(TTimeToStrFunc, 'TimeToStr', ['dt', cDateTime]);
-   RegisterInternalFloatFunction(TStrToTimeFunc, 'StrToTime', ['str', SYS_STRING]);
+   RegisterInternalFloatFunction(TStrToTimeFunc, 'StrToTime', ['str', SYS_STRING], [iffStateLess]);
    RegisterInternalFloatFunction(TStrToTimeDefFunc, 'StrToTimeDef', ['str', SYS_STRING, 'def', cDateTime]);
 
    RegisterInternalIntFunction(TDayOfWeekFunc, 'DayOfWeek', ['dt', cDateTime]);
@@ -642,9 +642,9 @@ initialization
    RegisterInternalBoolFunction(TIsLeapYearFunc, 'IsLeapYear', ['year', SYS_INTEGER]);
    RegisterInternalFloatFunction(TIncMonthFunc, 'IncMonth', ['dt', cDateTime, 'nb', SYS_INTEGER]);
    RegisterInternalProcedure(TDecodeDateFunc, 'DecodeDate', ['dt', cDateTime, '@y', SYS_INTEGER, '@m', SYS_INTEGER, '@d', SYS_INTEGER]);
-   RegisterInternalFloatFunction(TEncodeDateFunc, 'EncodeDate', ['y', SYS_INTEGER, 'm', SYS_INTEGER, 'd', SYS_INTEGER]);
+   RegisterInternalFloatFunction(TEncodeDateFunc, 'EncodeDate', ['y', SYS_INTEGER, 'm', SYS_INTEGER, 'd', SYS_INTEGER], [iffStateLess]);
    RegisterInternalProcedure(TDecodeTimeFunc, 'DecodeTime', ['dt', cDateTime, '@h', SYS_INTEGER, '@m', SYS_INTEGER, '@s', SYS_INTEGER, '@ms', SYS_INTEGER]);
-   RegisterInternalFloatFunction(TEncodeTimeFunc, 'EncodeTime', ['h', SYS_INTEGER, 'm', SYS_INTEGER, 's', SYS_INTEGER, 'ms', SYS_INTEGER]);
+   RegisterInternalFloatFunction(TEncodeTimeFunc, 'EncodeTime', ['h', SYS_INTEGER, 'm', SYS_INTEGER, 's', SYS_INTEGER, 'ms', SYS_INTEGER], [iffStateLess]);
 
    RegisterInternalFloatFunction(TFirstDayOfYearFunc, 'FirstDayOfYear', ['dt', cDateTime]);
    RegisterInternalFloatFunction(TFirstDayOfNextYearFunc, 'FirstDayOfNextYear', ['dt', cDateTime]);
