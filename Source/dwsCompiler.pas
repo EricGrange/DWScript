@@ -11716,8 +11716,8 @@ function TdwsCompiler.ReadConnectorSym(const name : UnicodeString; baseExpr : TT
   end;
 
 var
-   connWrite : TConnectorWriteExpr;
-   connRead : TConnectorReadExpr;
+   connWrite : TConnectorWriteMemberExpr;
+   connRead : TConnectorReadMemberExpr;
 begin
    if FTok.Test(ttALEFT) then begin
 
@@ -11731,10 +11731,8 @@ begin
 
    end else if not isWrite then begin
 
-      Result:=TConnectorReadExpr.Create(FProg, FTok.HotPos, name, baseExpr);
-
-      if not TConnectorReadExpr(Result).AssignConnectorSym(connectorType) then begin
-         OrphanObject(Result);
+      Result:=TConnectorReadMemberExpr.CreateNew(FProg, FTok.HotPos, name, baseExpr, connectorType);
+      if Result=nil then begin
          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorMember,
                                   [name, connectorType.ConnectorCaption]);
       end;
@@ -11743,10 +11741,8 @@ begin
 
       // An assignment of the form "connector.member := expr" was found
       // and is transformed into "connector.member(expr)"
-      connWrite:=TConnectorWriteExpr.Create(FProg, FTok.HotPos, name, baseExpr, ReadExpr);
-
-      if not connWrite.AssignConnectorSym(FProg, connectorType) then begin
-         connWrite.Free;
+      connWrite:=TConnectorWriteMemberExpr.CreateNew(FProg, FTok.HotPos, name, baseExpr, ReadExpr, connectorType);
+      if connWrite=nil then begin
          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorMember,
                                   [name, connectorType.ConnectorCaption]);
       end;
@@ -11756,19 +11752,14 @@ begin
 
       // It's possible that we should read a connector member or
       // call a connector function without arguments.
-      connRead:=TConnectorReadExpr.Create(FProg, FTok.HotPos, name, baseExpr);
+      connRead:=TConnectorReadMemberExpr.CreateNew(FProg, FTok.HotPos, name, baseExpr, connectorType);
 
-      if not connRead.AssignConnectorSym(connectorType) then begin
-         // Don't destroy BaseExpr!
-         connRead.baseExpr:=nil;
-         connRead.Free;
-
+      if connRead=nil then begin
          // Try to read a connector call
          Result:=TryConnectorCall;
          if not Assigned(Result) then
             FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorMember,
                                      [name, connectorType.ConnectorCaption]);
-
       end else Result:=connRead;
 
    end;

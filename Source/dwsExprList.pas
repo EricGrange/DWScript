@@ -85,6 +85,8 @@ type
 
          property ExprBase[const x : Integer] : TExprBase read GetExprBase write SetExprBase; default;
 
+         procedure EvalAsVariant(const x : Integer; var result : Variant); inline;
+
          property AsInteger[const x : Integer] : Int64 read GetAsInteger write SetAsInteger;
          property AsBoolean[const x : Integer] : Boolean read GetAsBoolean write SetAsBoolean;
          property AsFloat[const x : Integer] : Double read GetAsFloat write SetAsFloat;
@@ -265,6 +267,13 @@ end;
 function TExprBaseListExec.GetAsFileName(const x : Integer) : UnicodeString;
 begin
    Result:=Exec.ValidateFileName(AsString[x]);
+end;
+
+// EvalAsVariant
+//
+procedure TExprBaseListExec.EvalAsVariant(const x : Integer; var result : Variant);
+begin
+   ExprBase[x].EvalAsVariant(Exec, result);
 end;
 
 end.

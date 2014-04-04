@@ -44,30 +44,24 @@ type
          function StaticSymbols : Boolean; override;
    end;
 
-   IJSONTypeName = interface(IConnectorCall) end;
-   IJSONElementName = interface(IConnectorCall) end;
-   IJSONLow = interface(IConnectorFastCall) end;
-   IJSONHigh = interface(IConnectorCall) end;
-   IJSONLength = interface(IConnectorCall) end;
-   IJSONClone = interface(IConnectorCall) end;
-   IJSONExtend = interface(IConnectorCall) end;
-   IJSONAdd = interface(IConnectorCall) end;
-
    // TdwsJSONConnectorType
    //
-   TdwsJSONConnectorType = class (TInterfacedSelfObject, IConnectorType,
-                                  IJSONTypeName, IJSONElementName,
-                                  IJSONLow, IJSONHigh, IJSONLength,
-                                  IJSONClone, IJSONExtend, IJSONAdd)
+   TdwsJSONConnectorType = class (TInterfacedSelfObject, IConnectorType)
       private
-         FTable : TSymbolTable;
-         FLowValue : TData;
+         FTable : TSystemSymbolTable;
+         FTypJSONVariant : TConnectorSymbol;
+         FLowCall, FHighCall, FLengthCall : IConnectorCall;
+         FIndexReadCall, FIndexWriteCall : IConnectorCall;
+         FTypeNameCall : IConnectorCall;
+         FElementNameCall : IConnectorCall;
+         FCloneCall : IConnectorCall;
+         FExtendCall : IConnectorCall;
+         FAddCall : IConnectorCall;
 
       protected
          function ConnectorCaption : UnicodeString;
          function AutoVarParams : Boolean;
          function AcceptsParams(const params : TConnectorParamArray) : Boolean;
-         function NeedDirectReference : Boolean;
 
          function HasMethod(const methodName : UnicodeString; const params : TConnectorParamArray;
                             var typSym : TTypeSymbol) : IConnectorCall;
@@ -77,71 +71,89 @@ type
                            var typSym : TTypeSymbol; isWrite : Boolean) : IConnectorCall;
          function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
 
-         function Call(const base : Variant; const args : TConnectorArgs) : TData;
-
-         function TypeNameCall(const base : Variant; const args : TConnectorArgs) : TData;
-         function ElementNameCall(const base : Variant; const args : TConnectorArgs) : TData;
-         function LowCall(const base : Variant; const args : TConnectorArgs) : TData;
-         procedure LowFastCall(const base : TExprBase; const args : TExprBaseListExec; var result : Variant);
-         function HighCall(const base : Variant; const args : TConnectorArgs) : TData;
-         function LengthCall(const base : Variant; const args : TConnectorArgs) : TData;
-         function CloneCall(const base : Variant; const args : TConnectorArgs) : TData;
-         function ExtendCall(const base : Variant; const args : TConnectorArgs) : TData;
-         function AddCall(const base : Variant; const args : TConnectorArgs) : TData;
-
-         function IJSONTypeName.Call = TypeNameCall;
-         function IJSONElementName.Call = ElementNameCall;
-         procedure IJSONLow.FastCall = LowFastCall;
-         function IJSONLow.Call = LowCall;
-         function IJSONHigh.Call = HighCall;
-         function IJSONLength.Call = LengthCall;
-         function IJSONClone.Call = CloneCall;
-         function IJSONExtend.Call = ExtendCall;
-         function IJSONAdd.Call = AddCall;
-
       public
-         constructor Create(table : TSymbolTable);
+         constructor Create(table : TSystemSymbolTable);
+
+         property TypJSONVariant : TConnectorSymbol read FTypJSONVariant write FTypJSONVariant;
    end;
 
-   // TdwsJSONIndexCall
-   //
-   TdwsJSONIndexCall = class(TInterfacedSelfObject, IConnectorCall)
-      private
-         FMethodName : UnicodeString;
-
+   TdwsJSONFastCallBase = class (TInterfacedSelfObject, IConnectorCall)
       protected
          function Call(const base : Variant; const args : TConnectorArgs) : TData;
          function NeedDirectReference : Boolean;
+   end;
+
+   TdwsJSONLowCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
+      public
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+   end;
+
+   TdwsJSONHighCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
+      public
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+   end;
+
+   TdwsJSONLengthCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
+      public
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+   end;
+
+   TdwsJSONTypeNameCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
+      public
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+   end;
+
+   TdwsJSONElementNameCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
+      public
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+   end;
+
+   TdwsJSONCloneCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
+      public
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+   end;
+
+   TdwsJSONExtendCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
+      public
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+   end;
+
+   TdwsJSONAddCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
+      public
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+   end;
+
+   TdwsJSONIndexCall = class(TdwsJSONFastCallBase)
+      private
+         FPropName : UnicodeString;
 
       public
-         constructor Create(const methodName : UnicodeString);
+         constructor Create(const propName : UnicodeString);
 
-         property CallMethodName : UnicodeString read FMethodName write FMethodName;
+         property CallPropName : UnicodeString read FPropName write FPropName;
    end;
 
-   // TdwsJSONIndexReadCall
-   //
    TdwsJSONIndexReadCall = class(TdwsJSONIndexCall, IConnectorFastCall)
       protected
-         procedure FastCall(const base : TExprBase; const args : TExprBaseListExec; var result : Variant);
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
    end;
 
-   // TdwsJSONIndexWriteCall
-   //
    TdwsJSONIndexWriteCall = class(TdwsJSONIndexCall, IConnectorFastCall)
       protected
-         procedure FastCall(const base : TExprBase; const args : TExprBaseListExec; var result : Variant);
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
    end;
 
    // TdwsJSONConnectorMember
    //
-   TdwsJSONConnectorMember = class(TInterfacedSelfObject, IUnknown, IConnectorMember)
+   TdwsJSONConnectorMember = class(TInterfacedSelfObject, IConnectorMember, IConnectorFastMember)
       private
          FMemberName : UnicodeString;
 
       protected
          function Read(const base : Variant) : TData;
          procedure Write(const base : Variant; const data : TData);
+         procedure FastRead(const exec : TdwsExecution; const base : TExprBase; var result : Variant);
+         procedure FastWrite(const exec : TdwsExecution; const base, value : TExprBase);
 
       public
          constructor Create(const memberName : UnicodeString);
@@ -238,7 +250,7 @@ const
    SYS_JSON_NEWARRAY = 'NewArray';
 
 type
-   TBoxedJSONValue = class (TInterfacedSelfObject, IBoxedJSONValue, IUNknown)
+   TBoxedJSONValue = class (TInterfacedSelfObject, IBoxedJSONValue, IUnknown)
       FValue : TdwsJSONValue;
 
       constructor Create(wrapped : TdwsJSONValue);
@@ -252,7 +264,7 @@ type
       class procedure Allocate(wrapped : TdwsJSONValue; var v : Variant); static;
       class procedure AllocateOrGetImmediate(wrapped : TdwsJSONValue; var v : Variant); static;
 
-      class function UnBox(p : PVarData) : TdwsJSONValue; static;
+      class function UnBox(const v : Variant) : TdwsJSONValue; static; inline;
    end;
 
    TBoxedNilJSONValue = class (TInterfacedSelfObject, IBoxedJSONValue)
@@ -325,11 +337,11 @@ end;
 
 // UnBox
 //
-class function TBoxedJSONValue.UnBox(p : PVarData) : TdwsJSONValue;
+class function TBoxedJSONValue.UnBox(const v : Variant) : TdwsJSONValue;
 var
    boxed : IBoxedJSONValue;
 begin
-   boxed:=(IUnknown(p^.VUnknown) as IBoxedJSONValue);
+   boxed:=(IUnknown(PVarData(@v)^.VUnknown) as IBoxedJSONValue);
    if boxed<>nil then
       Result:=boxed.Value
    else Result:=nil;
@@ -373,12 +385,15 @@ end;
 //
 procedure TdwsJSONLanguageExtension.CreateSystemSymbols(table : TSystemSymbolTable);
 var
+   connType : TdwsJSONConnectorType;
    connSym : TJSONConnectorSymbol;
    jsonObject : TClassSymbol;
    anyType : TAnyTypeSymbol;
 begin
-   connSym:=TJSONConnectorSymbol.Create(SYS_JSONVARIANT, TdwsJSONConnectorType.Create(table));
+   connType:=TdwsJSONConnectorType.Create(table);
+   connSym:=TJSONConnectorSymbol.Create(SYS_JSONVARIANT, connType);
    table.AddSymbol(connSym);
+   connType.TypJSONVariant:=connSym;
 
    jsonObject:=TClassSymbol.Create(SYS_JSON, nil);
    jsonObject.InheritFrom(table.TypObject);
@@ -429,21 +444,29 @@ end;
 
 // Create
 //
-constructor TdwsJSONConnectorType.Create(table : TSymbolTable);
+constructor TdwsJSONConnectorType.Create(table : TSystemSymbolTable);
 begin
    inherited Create;
 
    FTable:=table;
 
-   SetLength(FLowValue, 1);
-   FLowValue[0]:=0;
+   FLowCall:=TdwsJSONLowCall.Create;
+   FHighCall:=TdwsJSONHighCall.Create;
+   FLengthCall:=TdwsJSONLengthCall.Create;
+   FIndexReadCall:=TdwsJSONIndexReadCall.Create('');
+   FIndexWriteCall:=TdwsJSONIndexWriteCall.Create('');
+   FTypeNameCall:=TdwsJSONTypeNameCall.Create;
+   FElementNameCall:=TdwsJSONElementNameCall.Create;
+   FCloneCall:=TdwsJSONCloneCall.Create;
+   FExtendCall:=TdwsJSONExtendCall.Create;
+   FAddCall:=TdwsJSONAddCall.Create;
 end;
 
 // ConnectorCaption
 //
 function TdwsJSONConnectorType.ConnectorCaption : UnicodeString;
 begin
-   Result:='JSON Connector 1.0';
+   Result:='JSON Connector 2.0';
 end;
 
 // AutoVarParams
@@ -460,13 +483,6 @@ begin
    Result:=True;
 end;
 
-// NeedDirectReference
-//
-function TdwsJSONConnectorType.NeedDirectReference : Boolean;
-begin
-   Result:=False;
-end;
-
 // HasMethod
 //
 function TdwsJSONConnectorType.HasMethod(const methodName : UnicodeString; const params : TConnectorParamArray;
@@ -476,8 +492,8 @@ var
 begin
    if UnicodeSameText(methodName, 'typename') then begin
 
-      Result:=IJSONTypeName(Self);
-      typSym:=FTable.FindTypeSymbol(SYS_STRING, cvMagic);
+      Result:=FTypeNameCall;
+      typSym:=FTable.TypString;
 
       if Length(params)<>0 then
          raise ECompileException.Create(CPE_NoParamsExpected);
@@ -490,18 +506,18 @@ begin
       if not paramTyp.UnAliasedTypeIs(TBaseIntegerSymbol) then
          raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_INTEGER, paramTyp.Caption]);
 
-      Result:=IJSONElementName(Self);
-      typSym:=FTable.FindTypeSymbol(SYS_STRING, cvMagic);
+      Result:=FElementNameCall;
+      typSym:=FTable.TypString;
 
    end else if UnicodeSameText(methodName, 'extend') then begin
 
       if Length(params)<>1 then
          raise ECompileException.CreateFmt(CPE_BadNumberOfParameters, [1, Length(params)]);
       paramTyp:=params[0].TypSym;
-      if paramTyp.UnAliasedType<>FTable.FindTypeSymbol(SYS_JSONVARIANT, cvMagic) then
+      if paramTyp.UnAliasedType<>TypJSONVariant then
          raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_JSONVARIANT, paramTyp.Caption]);
 
-      Result:=IJSONExtend(Self);
+      Result:=FExtendCall;
       typSym:=nil;
 
    end else if UnicodeSameText(methodName, 'add') then begin
@@ -512,8 +528,8 @@ begin
       if (not paramTyp.UnAliasedType.IsBaseType) and (paramTyp.ClassType<>TNilSymbol) then
          raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_JSONVARIANT, params[0].TypSym.Caption]);
 
-      Result:=IJSONAdd(Self);
-      typSym:=FTable.FindTypeSymbol(SYS_INTEGER, cvMagic);
+      Result:=FAddCall;
+      typSym:=FTable.TypInteger;
 
    end else begin
 
@@ -522,18 +538,18 @@ begin
 
       if UnicodeSameText(methodName, 'clone') then begin
 
-         typSym:=FTable.FindTypeSymbol(SYS_JSONVARIANT, cvMagic);
-         Result:=IJSONClone(Self);
+         typSym:=TypJSONVariant;
+         Result:=FCloneCall;
 
       end else begin
 
-         typSym:=FTable.FindTypeSymbol(SYS_INTEGER, cvMagic);
+         typSym:=FTable.TypInteger;
          if UnicodeSameText(methodName, 'length') then
-            Result:=IJSONLength(Self)
+            Result:=FLengthCall
          else if UnicodeSameText(methodName, 'low') then
-            Result:=IJSONLow(Self)
+            Result:=FLowCall
          else if UnicodeSameText(methodName, 'high') then
-            Result:=IJSONHigh(Self)
+            Result:=FHighCall
          else Result:=nil;
 
       end;
@@ -546,19 +562,25 @@ end;
 function TdwsJSONConnectorType.HasMember(const memberName : UnicodeString; var typSym : TTypeSymbol;
                                          isWrite : Boolean) : IConnectorMember;
 begin
-   typSym:=FTable.FindTypeSymbol(SYS_JSONVARIANT, cvMagic);
+   typSym:=TypJSONVariant;
    Result:=TdwsJSONConnectorMember.Create(memberName);
 end;
 
 // HasIndex
 //
 function TdwsJSONConnectorType.HasIndex(const propName : UnicodeString; const params : TConnectorParamArray;
-                                      var typSym : TTypeSymbol; isWrite : Boolean) : IConnectorCall;
+                                        var typSym : TTypeSymbol; isWrite : Boolean) : IConnectorCall;
 begin
-   typSym:=FTable.FindTypeSymbol(SYS_JSONVARIANT, cvMagic);
-   if isWrite then
-      Result:=TdwsJSONIndexWriteCall.Create(propName)
-   else Result:=TdwsJSONIndexReadCall.Create(propName);
+   typSym:=TypJSONVariant;
+   if propName='' then begin
+      if isWrite then
+         Result:=FIndexWriteCall
+      else Result:=FIndexReadCall;
+   end else begin
+      if isWrite then
+         Result:=TdwsJSONIndexWriteCall.Create(propName)
+      else Result:=TdwsJSONIndexReadCall.Create(propName);
+   end;
 end;
 
 // HasEnumerator
@@ -568,161 +590,190 @@ begin
    Result:=nil;
 end;
 
+// ------------------
+// ------------------ TdwsJSONFastCallBase ------------------
+// ------------------
+
 // Call
 //
-function TdwsJSONConnectorType.Call(const base : Variant; const args : TConnectorArgs) : TData;
+function TdwsJSONFastCallBase.Call(const base : Variant; const args : TConnectorArgs) : TData;
 begin
-   Assert(False);
+   Assert(False); // we shouldn't ever get here, except in case of bug
 end;
 
-// TypeNameCall
+// NeedDirectReference
 //
-function TdwsJSONConnectorType.TypeNameCall(const base : Variant; const args : TConnectorArgs) : TData;
+function TdwsJSONFastCallBase.NeedDirectReference : Boolean;
+begin
+   Result:=False;
+end;
+
+// ------------------
+// ------------------ TdwsJSONLowCall ------------------
+// ------------------
+
+// FastCall
+//
+procedure TdwsJSONLowCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+begin
+   result:=0;
+end;
+
+// ------------------
+// ------------------ TdwsJSONHighCall ------------------
+// ------------------
+
+// FastCall
+//
+procedure TdwsJSONHighCall.FastCall(const args : TExprBaseListExec; var result : Variant);
 var
-   box : IBoxedJSONValue;
-begin
-   SetLength(Result, 1);
-   case PVarData(@base)^.VType of
-      varUnknown : begin
-         box:=IBoxedJSONValue(IUnknown(base));
-         Result[0]:=TdwsJSONValue.ValueTypeStrings[box.Value.ValueType];
-      end;
-      varUString :
-         Result[0]:=TdwsJSONValue.ValueTypeStrings[jvtString];
-      varDouble :
-         Result[0]:=TdwsJSONValue.ValueTypeStrings[jvtNumber];
-      varBoolean :
-         Result[0]:=TdwsJSONValue.ValueTypeStrings[jvtBoolean];
-      varNull :
-         Result[0]:=TdwsJSONValue.ValueTypeStrings[jvtNull];
-   else
-      Result[0]:=TdwsJSONValue.ValueTypeStrings[jvtUndefined];
-   end;
-end;
-
-// ElementNameCall
-//
-function TdwsJSONConnectorType.ElementNameCall(const base : Variant; const args : TConnectorArgs) : TData;
-var
-   box : IBoxedJSONValue;
-begin
-   SetLength(Result, 1);
-   if PVarData(@base)^.VType=varUnknown then begin
-      box:=IBoxedJSONValue(IUnknown(base));
-      Result[0]:=box.Value.Names[args[0][0]];
-   end else Result[0]:='';
-end;
-
-// LowCall
-//
-function TdwsJSONConnectorType.LowCall(const base : Variant; const args : TConnectorArgs) : TData;
-begin
-   Result:=FLowValue;
-end;
-
-// LowFastCall
-//
-procedure TdwsJSONConnectorType.LowFastCall(const base : TExprBase; const args : TExprBaseListExec; var result : Variant);
-begin
-   result:=FLowValue;
-end;
-
-// HighCall
-//
-function TdwsJSONConnectorType.HighCall(const base : Variant; const args : TConnectorArgs) : TData;
-var
-   p : PVarData;
-   n : Integer;
-begin
-   p:=PVarData(@base);
-   if p^.VType=varUnknown then
-      n:=IBoxedJSONValue(IUnknown(p^.VUnknown)).Value.ElementCount
-   else n:=0;
-   SetLength(Result, 1);
-   Result[0]:=n-1;
-end;
-
-// LengthCall
-//
-function TdwsJSONConnectorType.LengthCall(const base : Variant; const args : TConnectorArgs) : TData;
-var
-   p : PVarData;
-   n : Integer;
-begin
-   p:=PVarData(@base);
-   if p^.VType=varUnknown then
-      n:=IBoxedJSONValue(IUnknown(p^.VUnknown)).Value.ElementCount
-   else n:=0;
-   SetLength(Result, 1);
-   Result[0]:=n;
-end;
-
-// CloneCall
-//
-function TdwsJSONConnectorType.CloneCall(const base : Variant; const args : TConnectorArgs) : TData;
-var
-   p : PVarData;
+   base : Variant;
    v : TdwsJSONValue;
 begin
-   SetLength(Result, 1);
-   p:=PVarData(@base);
-   if p^.VType=varUnknown then begin
-      v:=IBoxedJSONValue(p^.VUnknown).Value.Clone;
-      Result[0]:=IBoxedJSONValue(TBoxedJSONValue.Create(v));
-   end else Result[0]:=vNilJSONValue;
+   args.EvalAsVariant(0, base);
+   v:=TBoxedJSONValue.UnBox(base);
+   result:=v.ElementCount-1;
 end;
 
-// ExtendCall
+// ------------------
+// ------------------ TdwsJSONLengthCall ------------------
+// ------------------
+
+// FastCall
 //
-function TdwsJSONConnectorType.ExtendCall(const base : Variant; const args : TConnectorArgs) : TData;
+procedure TdwsJSONLengthCall.FastCall(const args : TExprBaseListExec; var result : Variant);
 var
-   pBase, pParam : PVarData;
+   base : Variant;
+   v : TdwsJSONValue;
 begin
-   Result:=nil;
-   pBase:=PVarData(@base);
-   if pBase^.VType=varUnknown then begin
-      pParam:=PVarData(@args[0][0]);
-      if (pParam^.VType=varUnknown) and (pParam.VUnknown<>nil) then
-         IBoxedJSONValue(pBase^.VUnknown).Value.Extend(IBoxedJSONValue(pParam^.VUnknown).Value);
+   args.EvalAsVariant(0, base);
+   v:=TBoxedJSONValue.UnBox(base);
+   result:=v.ElementCount;
+end;
+
+// ------------------
+// ------------------ TdwsJSONTypeNameCall ------------------
+// ------------------
+
+// FastCall
+//
+procedure TdwsJSONTypeNameCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+var
+   base : Variant;
+   vt : TdwsJSONValueType;
+begin
+   args.EvalAsVariant(0, base);
+   case PVarData(@base)^.VType of
+      varUnknown :
+         vt:=TBoxedJSONValue.UnBox(base).ValueType;
+      varUString :
+         vt:=jvtString;
+      varDouble :
+         vt:=jvtNumber;
+      varBoolean :
+         vt:=jvtBoolean;
+      varNull :
+         vt:=jvtNull;
+   else
+      vt:=jvtUndefined;
+   end;
+   result:=TdwsJSONValue.ValueTypeStrings[vt];
+end;
+
+// ------------------
+// ------------------ TdwsJSONElementNameCall ------------------
+// ------------------
+
+// FastCall
+//
+procedure TdwsJSONElementNameCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+var
+   base : Variant;
+   v : TdwsJSONValue;
+begin
+   args.EvalAsVariant(0, base);
+   v:=TBoxedJSONValue.UnBox(base);
+   if v<>nil then
+      result:=v.Names[args.AsInteger[1]]
+   else result:='';
+end;
+
+// ------------------
+// ------------------ TdwsJSONCloneCall ------------------
+// ------------------
+
+// FastCall
+//
+procedure TdwsJSONCloneCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+var
+   base : Variant;
+   v : TdwsJSONValue;
+begin
+   args.EvalAsVariant(0, base);
+   v:=TBoxedJSONValue.UnBox(base);
+   if v<>nil then
+      result:=IBoxedJSONValue(TBoxedJSONValue.Create(v.Clone))
+   else result:=vNilJSONValue;
+end;
+
+// ------------------
+// ------------------ TdwsJSONExtendCall ------------------
+// ------------------
+
+// FastCall
+//
+procedure TdwsJSONExtendCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+var
+   base, param : Variant;
+   v : TdwsJSONValue;
+begin
+   args.EvalAsVariant(0, base);
+   v:=TBoxedJSONValue.UnBox(base);
+   if v<>nil then begin
+      args.EvalAsVariant(1, param);
+      v.Extend(TBoxedJSONValue.UnBox(param));
    end;
 end;
 
-// AddCall
+// ------------------
+// ------------------ TdwsJSONAddCall ------------------
+// ------------------
+
+// FastCall
 //
-function TdwsJSONConnectorType.AddCall(const base : Variant; const args : TConnectorArgs) : TData;
+procedure TdwsJSONAddCall.FastCall(const args : TExprBaseListExec; var result : Variant);
 var
-   pBase, pParam : PVarData;
-   baseValue, boxedValue : TdwsJSONValue;
+   base, param : Variant;
+   baseValue, paramValue : TdwsJSONValue;
+   pParam : PVarData;
    baseArray : TdwsJSONArray;
 begin
-   Result:=nil;
-   pBase:=PVarData(@base);
-   if pBase^.VType=varUnknown then begin
-      baseValue:=IBoxedJSONValue(pBase^.VUnknown).Value;
+   args.EvalAsVariant(0, base);
+   baseValue:=TBoxedJSONValue.UnBox(base);
+   if baseValue<>nil then begin
       if baseValue.ValueType=jvtArray then begin
          baseArray:=TdwsJSONArray(baseValue);
-         pParam:=PVarData(@args[0][0]);
+         args.EvalAsVariant(1, param);
+         pParam:=PVarData(@param);
          case pParam^.VType of
             varInt64 : baseArray.Add(pParam^.VInt64);
             varDouble : baseArray.Add(pParam^.VDouble);
-            varUString : baseArray.Add(String(pParam^.VUString));
+            varUString : baseArray.Add(UnicodeString(pParam^.VUString));
             varBoolean : baseArray.Add(pParam^.VBoolean);
             varUnknown : begin
                if pParam.VUnknown<>nil then begin
-                  boxedValue := IBoxedJSONValue(pParam^.VUnknown).Value;
-                  if boxedValue.Owner = nil then
-                     boxedValue.IncRefCount;
-                  baseArray.Add(boxedValue)
+                  paramValue:=TBoxedJSONValue.UnBox(param);
+                  if paramValue.Owner = nil then
+                     paramValue.IncRefCount;
+                  baseArray.Add(paramValue)
                end else begin
                   baseArray.AddNull;
                end;
             end;
             varNull : baseArray.AddNull;
          else
-            raise EdwsJSONException.Create('JSON Array Add unsupported type');
+            raise EdwsJSONException.Create('JSON Array Add() unsupported type');
          end;
-         if (pParam^.VType=varUnknown) and (pParam.VUnknown<>nil) then
-            baseArray.Add(IBoxedJSONValue(pParam^.VUnknown).Value);
       end else raise EdwsJSONException.Create('JSON Array required for Add method');
    end;
 end;
@@ -733,24 +784,10 @@ end;
 
 // Create
 //
-constructor TdwsJSONIndexCall.Create(const methodName : UnicodeString);
+constructor TdwsJSONIndexCall.Create(const propName : UnicodeString);
 begin
    inherited Create;
-   FMethodName:=methodName;
-end;
-
-// NeedDirectReference
-//
-function TdwsJSONIndexCall.NeedDirectReference : Boolean;
-begin
-   Result:=False;
-end;
-
-// Call
-//
-function TdwsJSONIndexCall.Call(const base : Variant; const args : TConnectorArgs) : TData;
-begin
-   Assert(False);
+   FPropName:=propName;
 end;
 
 // ------------------
@@ -759,20 +796,18 @@ end;
 
 // FastCall
 //
-procedure TdwsJSONIndexReadCall.FastCall(const base : TExprBase; const args : TExprBaseListExec; var result : Variant);
+procedure TdwsJSONIndexReadCall.FastCall(const args : TExprBaseListExec; var result : Variant);
 var
-   p : PVarData;
    v : TdwsJSONValue;
    b, idx : Variant;
 begin
-   base.EvalAsVariant(args.Exec, b);
-   p:=PVarData(@b);
-   if p^.VType=varUnknown then begin
-      v:=TBoxedJSONValue.UnBox(p);
+   args.ExprBase[0].EvalAsVariant(args.Exec, b);
+   if PVarData(@b)^.VType=varUnknown then begin
+      v:=TBoxedJSONValue.UnBox(b);
       if v<>nil then begin
-         if FMethodName<>'' then
-            v:=v.Items[FMethodName];
-         args.ExprBase[0].EvalAsVariant(args.Exec, idx);
+         if FPropName<>'' then
+            v:=v.Items[FPropName];
+         args.ExprBase[1].EvalAsVariant(args.Exec, idx);
          v:=v.Values[idx];
          TBoxedJSONValue.AllocateOrGetImmediate(v, Result);
          Exit;
@@ -787,23 +822,22 @@ end;
 
 // FastCall
 //
-procedure TdwsJSONIndexWriteCall.FastCall(const base : TExprBase; const args : TExprBaseListExec; var result : Variant);
+procedure TdwsJSONIndexWriteCall.FastCall(const args : TExprBaseListExec; var result : Variant);
 var
    b, val : Variant;
-   pBase, pVal : PVarData;
+   pVal : PVarData;
    baseValue, argValue : TdwsJSONValue;
 begin
-   base.EvalAsVariant(args.Exec, b);
-   pBase:=PVarData(@b);
-   if pBase^.VType=varUnknown then begin
-      baseValue:=TBoxedJSONValue.UnBox(pBase);
-      if FMethodName<>'' then
-         baseValue:=baseValue.Items[FMethodName];
-      args.ExprBase[1].EvalAsVariant(args.Exec, val);
+   args.ExprBase[0].EvalAsVariant(args.Exec, b);
+   if PVarData(@b)^.VType=varUnknown then begin
+      baseValue:=TBoxedJSONValue.UnBox(b);
+      if FPropName<>'' then
+         baseValue:=baseValue.Items[FPropName];
+      args.ExprBase[2].EvalAsVariant(args.Exec, val);
       pVal:=@val;
       case pVal^.VType of
          varUnknown : begin
-            argValue:=TBoxedJSONValue.UnBox(pVal);
+            argValue:=TBoxedJSONValue.UnBox(val);
             if argValue=nil then
                argValue:=TdwsJSONImmediate.FromVariant(Null)
             else if argValue.Owner=nil then
@@ -828,10 +862,10 @@ begin
       else
          raise Exception.Create('Unsupported assignment');
       end;
-      args.ExprBase[0].EvalAsVariant(args.Exec, val);
+      args.ExprBase[1].EvalAsVariant(args.Exec, val);
       baseValue.Values[val]:=argValue;
    end else begin
-      raise Exception.CreateFmt('Invalid JSON write to %s', [FMethodName]);
+      raise Exception.CreateFmt('Invalid JSON write to %s', [FPropName]);
    end;
 end;
 
@@ -850,41 +884,54 @@ end;
 // Read
 //
 function TdwsJSONConnectorMember.Read(const base : Variant) : TData;
-var
-   p : PVarData;
-   v : TdwsJSONValue;
 begin
-   SetLength(Result, 1);
-   p:=PVarData(@base);
-   if p^.VType=varUnknown then begin
-      v:=TBoxedJSONValue.UnBox(p).Items[FMemberName];
-      TBoxedJSONValue.AllocateOrGetImmediate(v, Result[0])
-   end else Result[0]:=vNilJSONValue;
+   Assert(False);
 end;
 
 // Write
 //
 procedure TdwsJSONConnectorMember.Write(const base : Variant; const data : TData);
+begin
+   Assert(False);
+end;
+
+// FastRead
+//
+procedure TdwsJSONConnectorMember.FastRead(
+      const exec : TdwsExecution; const base : TExprBase; var result : Variant);
 var
-   p : PVarData;
+   b : Variant;
+   v : TdwsJSONValue;
+begin
+   base.EvalAsVariant(exec, b);
+   v:=TBoxedJSONValue.UnBox(b);
+   if v<>nil then begin
+      v:=v.Items[FMemberName];
+      TBoxedJSONValue.AllocateOrGetImmediate(v, result)
+   end else result:=vNilJSONValue;
+end;
+
+// FastWrite
+//
+procedure TdwsJSONConnectorMember.FastWrite(
+      const exec : TdwsExecution; const base, value : TExprBase);
+var
+   b, v : Variant;
    baseValue, dataValue : TdwsJSONValue;
 begin
-   p:=PVarData(@base);
-   if p^.VType=varUnknown then
-      baseValue:=IBoxedJSONValue(IUnknown(p^.VUnknown)).Value
-   else baseValue:=nil;
-
+   base.EvalAsVariant(exec, b);
+   baseValue := TBoxedJSONValue.UnBox(b);
    if baseValue<>nil then begin
-      p:=PVarData(@data[0]);
-      if p^.VType=varUnknown then begin
-         dataValue:=TBoxedJSONValue.UnBox(p);
+      value.EvalAsVariant(exec, v);
+      if PVarData(@v)^.VType=varUnknown then begin
+         dataValue := TBoxedJSONValue.UnBox(v);
          if dataValue=nil then
             dataValue:=TdwsJSONImmediate.FromVariant(Null)
          else begin
             if dataValue.Owner=nil then
                dataValue.IncRefCount;
          end;
-      end else dataValue:=TdwsJSONImmediate.FromVariant(Variant(p^));
+      end else dataValue:=TdwsJSONImmediate.FromVariant(v);
    end else dataValue:=nil;
 
    baseValue.Items[FMemberName]:=dataValue;
@@ -1203,7 +1250,7 @@ class procedure TJSONStringifyMethod.StringifyComposite(exec : TdwsExecution;
    writer : TdwsJSONWriter; compSym : TCompositeTypeSymbol; const dataPtr : IDataContext);
 var
    i : Integer;
-   bufData : TData;
+//   bufData : TData;
    sym : TSymbol;
    fieldSym : TFieldSymbol;
    propSym : TPropertySymbol;
@@ -1229,8 +1276,8 @@ begin
          dataPtr.CreateOffset(fieldSym.Offset, locData);
          StringifySymbol(exec, writer, fieldSym.Typ, locData);
       end else begin
-         SetLength(bufData, sym.Typ.Size);
-         Assert(False, 'Unsupported yet');
+//         SetLength(bufData, sym.Typ.Size);
+         Assert(False, 'published method getters not supported yet');
       end;
    end;
    writer.EndObject;

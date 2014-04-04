@@ -36,13 +36,14 @@ type
 
    TBaseConnectorCallExpr = class(TPosDataExpr)
       private
-         FArgs : TExprBaseListRec;
-         FBaseExpr : TTypedExpr;
+         FArguments : TExprBaseListRec;
          FName : UnicodeString;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
+         function GetBaseExpr : TTypedExpr; inline;
+         procedure SetBaseExpr(expr : TTypedExpr);
 
       public
          constructor Create(aProg: TdwsProgram; const aScriptPos: TScriptPos;
@@ -51,7 +52,7 @@ type
 
          procedure AddArg(expr : TTypedExpr);
 
-         property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
+         property BaseExpr : TTypedExpr read GetBaseExpr write SetBaseExpr;
    end;
 
    // TODO : split between Complex & Fast classes
@@ -85,35 +86,59 @@ type
          property ConnectorCall : IConnectorCall read FConnectorCall write FConnectorCall;
    end;
 
-   TConnectorReadExpr = class sealed (TPosDataExpr)
+   // TConnectorReadMemberExpr
+   //
+   TConnectorReadMemberExpr = class (TPosDataExpr)
       private
-         FBaseExpr: TTypedExpr;
-         FConnectorMember: IConnectorMember;
-         FName: UnicodeString;
+         FBaseExpr : TTypedExpr;
+         FName : UnicodeString;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; const Name: UnicodeString;
-                            BaseExpr: TTypedExpr);
+         class function CreateNew(aProg: TdwsProgram;
+                                  const aScriptPos: TScriptPos; const aName: UnicodeString;
+                                  aBaseExpr: TTypedExpr; const aConnectorType : IConnectorType
+                                  ) : TConnectorReadMemberExpr; static;
          destructor Destroy; override;
 
-         function AssignConnectorSym(ConnectorType : IConnectorType) : Boolean;
+         property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
+         property Name : UnicodeString read FName write FName;
+   end;
 
+   // TConnectorReadExpr
+   //
+   TConnectorReadExpr = class sealed (TConnectorReadMemberExpr)
+      private
+         FConnectorMember : IConnectorMember;
+
+      public
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
-         property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
-
          property ConnectorMember : IConnectorMember read FConnectorMember write FConnectorMember;
-  end;
+   end;
 
-   TConnectorWriteExpr = class sealed (TTypedExpr)
+   // TConnectorFastReadExpr
+   //
+   TConnectorFastReadExpr = class sealed (TConnectorReadMemberExpr)
+      private
+         FConnectorMember : IConnectorFastMember;
+
+      public
+         procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
+         function Eval(exec : TdwsExecution) : Variant; override;
+
+         property ConnectorMember : IConnectorFastMember read FConnectorMember write FConnectorMember;
+   end;
+
+   // TConnectorWriteMemberExpr
+   //
+   TConnectorWriteMemberExpr = class (TTypedExpr)
       private
          FBaseExpr: TTypedExpr;
          FValueExpr: TTypedExpr;
-         FConnectorMember: IConnectorMember;
          FName: UnicodeString;
          FScriptPos : TScriptPos;
 
@@ -122,18 +147,38 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const scriptPos: TScriptPos; const Name: UnicodeString;
-                            BaseExpr, ValueExpr: TTypedExpr);
+         class function CreateNew(aProg: TdwsProgram; const scriptPos: TScriptPos;
+                                  const aName: UnicodeString;
+                                  aBaseExpr, aValueExpr: TTypedExpr;
+                                  const connectorType : IConnectorType) : TConnectorWriteMemberExpr;
          destructor Destroy; override;
 
-         function ScriptPos : TScriptPos; override;
-         function AssignConnectorSym(prog : TdwsProgram; const connectorType : IConnectorType) : Boolean;
+         function  ScriptPos : TScriptPos; override;
          function  Eval(exec : TdwsExecution) : Variant; override;
+
+         property Name : UnicodeString read FName write FName;
+         property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
+         property ValueExpr : TTypedExpr read FValueExpr write FValueExpr;
+   end;
+
+   TConnectorWriteExpr = class sealed (TConnectorWriteMemberExpr)
+      private
+         FConnectorMember : IConnectorMember;
+
+      public
          procedure EvalNoResult(exec : TdwsExecution); override;
 
          property ConnectorMember : IConnectorMember read FConnectorMember write FConnectorMember;
-         property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
-         property ValueExpr : TTypedExpr read FValueExpr write FValueExpr;
+   end;
+
+   TConnectorFastWriteExpr = class sealed (TConnectorWriteMemberExpr)
+      private
+         FConnectorMember : IConnectorFastMember;
+
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
+
+         property ConnectorMember : IConnectorFastMember read FConnectorMember write FConnectorMember;
    end;
 
    TConnectorForInExpr = class sealed (TNoResultExpr)
@@ -180,15 +225,14 @@ constructor TBaseConnectorCallExpr.Create(aProg: TdwsProgram; const aScriptPos: 
 begin
    inherited Create(aProg, aScriptPos, nil);
    FName:=aName;
-   FBaseExpr:=aBaseExpr;
+   FArguments.Add(aBaseExpr);
 end;
 
 // Destroy
 //
 destructor TBaseConnectorCallExpr.Destroy;
 begin
-   FBaseExpr.Free;
-   FArgs.Clean;
+   FArguments.Clean;
    inherited;
 end;
 
@@ -196,23 +240,35 @@ end;
 //
 function TBaseConnectorCallExpr.GetSubExpr(i : Integer) : TExprBase;
 begin
-   if i=0 then
-      Result:=BaseExpr
-   else Result:=FArgs.ExprBase[i-1];
+   Result:=FArguments.ExprBase[i];
 end;
 
 // GetSubExprCount
 //
 function TBaseConnectorCallExpr.GetSubExprCount : Integer;
 begin
-   Result:=FArgs.Count+1;
+   Result:=FArguments.Count;
+end;
+
+// GetBaseExpr
+//
+function TBaseConnectorCallExpr.GetBaseExpr : TTypedExpr;
+begin
+   Result:=TTypedExpr(FArguments.ExprBase[0]);
+end;
+
+// SetBaseExpr
+//
+procedure TBaseConnectorCallExpr.SetBaseExpr(expr : TTypedExpr);
+begin
+   FArguments.ExprBase[0]:=expr;
 end;
 
 // AddArg
 //
 procedure TBaseConnectorCallExpr.AddArg(expr : TTypedExpr);
 begin
-   FArgs.Add(expr);
+   FArguments.Add(expr);
 end;
 
 // ------------------
@@ -242,14 +298,14 @@ var
    autoVarParams, hasVarParams : Boolean;
 begin
    // Prepare the parameter information array to query the connector symbol
-   if FArgs.Count>64 then
-      prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_ConnectorTooManyArguments, [FArgs.Count]);
+   if FArguments.Count>63 then
+      prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_ConnectorTooManyArguments, [FArguments.Count-1]);
 
    autoVarParams:=connectorType.AutoVarParams;
    hasVarParams:=False;
-   SetLength(FConnectorParams, FArgs.Count);
-   for i:=0 to FArgs.Count-1 do begin
-      arg:=TTypedExpr(FArgs.ExprBase[i]);
+   SetLength(FConnectorParams, FArguments.Count-1);
+   for i:=0 to FArguments.Count-2 do begin
+      arg:=TTypedExpr(FArguments.ExprBase[i+1]);
       FConnectorParams[i].IsVarParam:=     autoVarParams
                                        and (arg is TDataExpr)
                                        and TDataExpr(arg).IsWritable
@@ -321,8 +377,8 @@ var
       obj : IScriptObj;
       sourcePtr : IDataContext;
    begin
-      for i:=0 to FArgs.Count-1 do begin
-         arg:=TTypedExpr(FArgs.ExprBase[i]);
+      for i:=0 to FArguments.Count-2 do begin
+         arg:=TTypedExpr(FArguments.ExprBase[i+1]);
          argTyp:=FConnectorParams[i].TypSym;
          SetLength(callArgs[i], argTyp.Size);
          if argTyp.Size=1 then begin
@@ -342,10 +398,10 @@ var
       i : Integer;
       locData : IDataContext;
    begin
-      for i:=0 to FArgs.Count-1 do begin
+      for i:=0 to High(FConnectorParams) do begin
          if FConnectorParams[i].IsVarParam then begin
             exec.DataContext_Create(callArgs[i], 0, locData);
-            TDataExpr(FArgs.ExprBase[i]).AssignData(exec, locData);
+            TDataExpr(FArguments.ExprBase[i+1]).AssignData(exec, locData);
          end;
       end;
    end;
@@ -361,13 +417,13 @@ begin
 
    // Call function
    try
-      SetLength(callArgs, FArgs.Count);
+      SetLength(callArgs, FArguments.Count-1);
       if ccfComplexArgs in FFlags then
          EvalComplexArgs
       else begin
-         for i:=0 to FArgs.Count-1 do begin
+         for i:=0 to FArguments.Count-2 do begin
             SetLength(callArgs[i], 1);
-            arg:=FArgs.ExprBase[i];
+            arg:=FArguments.ExprBase[i+1];
             arg.EvalAsVariant(exec, callArgs[i][0]);
          end;
       end;
@@ -375,9 +431,9 @@ begin
       try
          // The call itself
          if FConnectorCall.NeedDirectReference then
-            resultData := FConnectorCall.Call(TDataExpr(FBaseExpr).DataPtr[exec].AsPVariant(0)^, callArgs)
+            resultData := FConnectorCall.Call(TDataExpr(BaseExpr).DataPtr[exec].AsPVariant(0)^, callArgs)
          else begin
-            FBaseExpr.EvalAsVariant(exec, buf);
+            BaseExpr.EvalAsVariant(exec, buf);
             resultData := FConnectorCall.Call(buf, callArgs);
          end;
       except
@@ -411,9 +467,9 @@ begin
    if exec.IsDebugging then
       exec.Debugger.EnterFunc(exec, Self);
    try
-      callArgs.ListRec:=FArgs;
+      callArgs.ListRec:=FArguments;
       callArgs.Exec:=exec;
-      FConnectorFastCall.FastCall(FBaseExpr, callArgs, result);
+      FConnectorFastCall.FastCall(callArgs, result);
    finally
       if exec.IsDebugging then
          exec.Debugger.LeaveFunc(exec, Self);
@@ -446,29 +502,66 @@ begin
 end;
 
 // ------------------
-// ------------------ TConnectorReadExpr ------------------
+// ------------------ TConnectorReadMemberExpr ------------------
 // ------------------
 
-constructor TConnectorReadExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
-  const Name: UnicodeString; BaseExpr: TTypedExpr);
+// Create
+//
+class function TConnectorReadMemberExpr.CreateNew(
+      aProg: TdwsProgram; const aScriptPos: TScriptPos; const aName: UnicodeString;
+      aBaseExpr: TTypedExpr; const aConnectorType : IConnectorType) : TConnectorReadMemberExpr;
+var
+   connMember : IConnectorMember;
+   connFastMember : IConnectorFastMember;
+   typSym : TTypeSymbol;
 begin
-  inherited Create(Prog, aScriptPos, nil);
-  FName := Name;
-  FBaseExpr := BaseExpr;
+   typSym := nil;
+   connMember := aConnectorType.HasMember(aName, typSym, False);
+   if connMember = nil then Exit(nil);
+
+   connMember.QueryInterface(IConnectorFastMember, connFastMember);
+
+   if Assigned(connFastMember) then begin
+
+      Result := TConnectorFastReadExpr.Create(aProg, aScriptPos, typSym);
+      TConnectorFastReadExpr(Result).ConnectorMember := connFastMember;
+
+   end else begin
+
+      Result := TConnectorReadExpr.Create(aProg, aScriptPos, typSym);
+      TConnectorReadExpr(Result).ConnectorMember := connMember;
+
+   end;
+
+   Result.Name := aName;
+   Result.BaseExpr := aBaseExpr;
 end;
 
-destructor TConnectorReadExpr.Destroy;
+// Destroy
+//
+destructor TConnectorReadMemberExpr.Destroy;
 begin
-  FBaseExpr.Free;
-  inherited;
+   FBaseExpr.Free;
+   inherited;
 end;
 
-function TConnectorReadExpr.AssignConnectorSym(
-  ConnectorType: IConnectorType): Boolean;
+// GetSubExpr
+//
+function TConnectorReadMemberExpr.GetSubExpr(i : Integer) : TExprBase;
 begin
-  FConnectorMember := ConnectorType.HasMember(FName, FTyp,False);
-  Result := Assigned(FConnectorMember);
+   Result:=FBaseExpr
 end;
+
+// GetSubExprCount
+//
+function TConnectorReadMemberExpr.GetSubExprCount : Integer;
+begin
+   Result:=1;
+end;
+
+// ------------------
+// ------------------ TConnectorReadExpr ------------------
+// ------------------
 
 // GetDataPtr
 //
@@ -482,7 +575,7 @@ begin
       resultData:=FConnectorMember.Read(base);
    except
       on e: EScriptError do begin
-         EScriptError(e).ScriptPos:=ScriptPos;
+         EScriptError(e).ScriptPos:=FScriptPos;
          raise;
       end
    else
@@ -493,37 +586,91 @@ begin
    exec.DataContext_Create(resultData, 0, result);
 end;
 
-// GetSubExpr
+// ------------------
+// ------------------ TConnectorFastReadExpr ------------------
+// ------------------
+
+// GetDataPtr
 //
-function TConnectorReadExpr.GetSubExpr(i : Integer) : TExprBase;
+procedure TConnectorFastReadExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
+var
+   resultData : TData;
 begin
-   Result:=FBaseExpr
+   SetLength(resultData, 1);
+   resultData[1]:=Eval(exec);
+   exec.DataContext_Create(resultData, 0, result);
 end;
 
-// GetSubExprCount
+// Eval
 //
-function TConnectorReadExpr.GetSubExprCount : Integer;
+function TConnectorFastReadExpr.Eval(exec : TdwsExecution) : Variant;
 begin
-   Result:=1;
+   try
+      FConnectorMember.FastRead(exec, BaseExpr, Result);
+   except
+      on e: EScriptError do begin
+         EScriptError(e).ScriptPos:=FScriptPos;
+         raise;
+      end
+   else
+      exec.SetScriptError(Self);
+      raise;
+   end;
 end;
 
 // ------------------
-// ------------------ TConnectorWriteExpr ------------------
+// ------------------ TConnectorWriteMemberExpr ------------------
 // ------------------
 
-constructor TConnectorWriteExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
-  const Name: UnicodeString; BaseExpr, ValueExpr: TTypedExpr);
+// CreateNew
+//
+class function TConnectorWriteMemberExpr.CreateNew(
+      aProg: TdwsProgram; const scriptPos: TScriptPos;
+      const aName: UnicodeString;
+      aBaseExpr, aValueExpr: TTypedExpr;
+      const connectorType : IConnectorType) : TConnectorWriteMemberExpr;
+var
+   connMember : IConnectorMember;
+   connFastMember : IConnectorFastMember;
+   typSym : TTypeSymbol;
 begin
-   inherited Create;
-   FScriptPos:=scriptPos;
-   FName:=Name;
-   FBaseExpr:=BaseExpr;
-   FValueExpr:=ValueExpr;
+   connMember := ConnectorType.HasMember(aName, typSym, True);
+   if connMember<>nil then begin
+
+      if not (Assigned(typSym) and Assigned(aValueExpr.Typ) and typSym.IsCompatible(aValueExpr.Typ)) then
+         aProg.CompileMsgs.AddCompilerError(scriptPos, CPE_ConnectorTypeMismatch);
+
+      connMember.QueryInterface(IConnectorFastMember, connFastMember);
+
+      if connFastMember<>nil then begin
+
+         Result := TConnectorFastWriteExpr.Create;
+         TConnectorFastWriteExpr(Result).ConnectorMember := connFastMember;
+
+      end else begin
+
+         Result := TConnectorWriteExpr.Create;
+         TConnectorWriteExpr(Result).ConnectorMember := connMember;
+
+      end;
+
+      Result.FScriptPos := scriptPos;
+      Result.FName := aName;
+      Result.FBaseExpr := aBaseExpr;
+      Result.FValueExpr := aValueExpr;
+
+   end else begin
+
+      aBaseExpr.Free;
+      aValueExpr.Free;
+      Result := nil;
+
+   end;
 end;
 
 // Destroy
 //
-destructor TConnectorWriteExpr.Destroy;
+destructor TConnectorWriteMemberExpr.Destroy;
 begin
    FBaseExpr.Free;
    FValueExpr.Free;
@@ -532,29 +679,37 @@ end;
 
 // ScriptPos
 //
-function TConnectorWriteExpr.ScriptPos : TScriptPos;
+function TConnectorWriteMemberExpr.ScriptPos : TScriptPos;
 begin
    Result:=FScriptPos;
 end;
 
-// AssignConnectorSym
-//
-function TConnectorWriteExpr.AssignConnectorSym(prog : TdwsProgram; const connectorType : IConnectorType) : Boolean;
-var
-   memberTyp : TTypeSymbol;
-begin
-   FConnectorMember := ConnectorType.HasMember(FName, memberTyp, True);
-   Result := Assigned(FConnectorMember);
-   if Result and not (Assigned(memberTyp) and Assigned(FValueExpr.Typ) and memberTyp.IsCompatible(FValueExpr.Typ)) then
-      Prog.CompileMsgs.AddCompilerError(FScriptPos, CPE_ConnectorTypeMismatch);
-end;
-
 // Eval
 //
-function TConnectorWriteExpr.Eval(exec : TdwsExecution) : Variant;
+function TConnectorWriteMemberExpr.Eval(exec : TdwsExecution) : Variant;
 begin
    EvalNoResult(exec);
 end;
+
+// GetSubExpr
+//
+function TConnectorWriteMemberExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if i=0 then
+      Result:=FBaseExpr
+   else Result:=FValueExpr;
+end;
+
+// GetSubExprCount
+//
+function TConnectorWriteMemberExpr.GetSubExprCount : Integer;
+begin
+   Result:=2;
+end;
+
+// ------------------
+// ------------------ TConnectorWriteExpr ------------------
+// ------------------
 
 // EvalNoResult
 //
@@ -571,19 +726,14 @@ begin
       base:=@tmp;
    end;
 
-//  if FValueExpr is TDataExpr then
-//    dat := TDataExpr(FValueExpr).GetData(exec)
-//  else
-//  begin
-    SetLength(dat, 1);
-    FValueExpr.EvalAsVariant(exec, dat[0]);
-//  end;
+   SetLength(dat, 1);
+   FValueExpr.EvalAsVariant(exec, dat[0]);
 
    try
       FConnectorMember.Write(base^, dat);
    except
       on e: EScriptError do begin
-         EScriptError(e).ScriptPos:=ScriptPos;
+         EScriptError(e).ScriptPos:=FScriptPos;
          raise;
       end
    else
@@ -592,20 +742,25 @@ begin
    end;
 end;
 
-// GetSubExpr
-//
-function TConnectorWriteExpr.GetSubExpr(i : Integer) : TExprBase;
-begin
-   if i=0 then
-      Result:=FBaseExpr
-   else Result:=FValueExpr;
-end;
+// ------------------
+// ------------------ TConnectorFastWriteExpr ------------------
+// ------------------
 
-// GetSubExprCount
+// EvalNoResult
 //
-function TConnectorWriteExpr.GetSubExprCount : Integer;
+procedure TConnectorFastWriteExpr.EvalNoResult(exec : TdwsExecution);
 begin
-   Result:=2;
+   try
+      FConnectorMember.FastWrite(exec, BaseExpr, ValueExpr);
+   except
+      on e: EScriptError do begin
+         EScriptError(e).ScriptPos:=FScriptPos;
+         raise;
+      end
+   else
+      exec.SetScriptError(Self);
+      raise;
+   end;
 end;
 
 // ------------------

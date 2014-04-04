@@ -47,13 +47,19 @@ type
 
    IConnectorFastCall = interface (IConnectorCall)
       ['{64CE8F29-6FC3-4595-BB42-B7FDB84582C2}']
-      procedure FastCall(const base : TExprBase; const args : TExprBaseListExec; var result : Variant);
+      procedure FastCall(const args : TExprBaseListExec; var result : Variant);
    end;
 
    IConnectorMember = interface (IGetSelf)
       ['{8D534D1C-4C6B-11D5-8DCB-0000216D9E86}']
       function Read(const base : Variant) : TData;
       procedure Write(const base : Variant; const data : TData);
+   end;
+
+   IConnectorFastMember = interface (IConnectorMember)
+      ['{857F6EE6-347E-45FB-BC49-0557960F8381}']
+      procedure FastRead(const exec : TdwsExecution; const base : TExprBase; var result : Variant);
+      procedure FastWrite(const exec : TdwsExecution; const base, value : TExprBase);
    end;
 
    IConnectorEnumerator = interface (IGetSelf)

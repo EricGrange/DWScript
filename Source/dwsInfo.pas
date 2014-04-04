@@ -1700,34 +1700,45 @@ end;
 
 procedure TConnectorMemberDataMaster.Read(exec : TdwsExecution; const Data: TData);
 var
-  readExpr: TConnectorReadExpr;
-  dataSource: TData;
+   readExpr: TConnectorReadMemberExpr;
+   dataSource: TData;
+   baseExpr : TConstExpr;
 begin
-  dataSource := nil;
-  readExpr := TConnectorReadExpr.Create(FCaller.Prog, cNullPos, FName,
-    TConstExpr.Create(FCaller.Prog, FCaller.Prog.TypVariant, FBaseValue));
-
-  if readExpr.AssignConnectorSym(TConnectorSymbol(FSym).ConnectorType) then
-  begin
-    dataSource := readExpr.DataPtr[exec].AsPData^;
-    DWSCopyData(dataSource, 0, Data, 0, readExpr.Typ.Size);
-  end
-  else
-    raise Exception.Create(RTE_ConnectorReadError);
+   dataSource := nil;
+   baseExpr := TConstExpr.Create(FCaller.Prog, FCaller.Prog.TypVariant, FBaseValue);
+   readExpr := TConnectorReadMemberExpr.CreateNew(
+      FCaller.Prog, cNullPos, FName, baseExpr, TConnectorSymbol(FSym).ConnectorType
+   );
+   try
+      if readExpr<>nil then begin
+         dataSource := readExpr.DataPtr[exec].AsPData^;
+         DWSCopyData(dataSource, 0, Data, 0, readExpr.Typ.Size);
+      end else begin
+         baseExpr.Free;
+         raise Exception.Create(RTE_ConnectorReadError);
+      end;
+   finally
+      readExpr.Free;
+   end;
 end;
 
 procedure TConnectorMemberDataMaster.Write(exec : TdwsExecution; const Data: TData);
 var
-  writeExpr: TConnectorWriteExpr;
+   baseExpr, valueExpr : TConstExpr;
+   writeExpr: TConnectorWriteMemberExpr;
 begin
-  writeExpr := TConnectorWriteExpr.Create(FCaller.Prog, cNullPos, FName,
-    TConstExpr.Create(FCaller.Prog, FCaller.Prog.TypVariant, FBaseValue),
-    TConstExpr.Create(FCaller.Prog, FCaller.Prog.TypVariant, Data));
-
-  if writeExpr.AssignConnectorSym(TdwsProgramExecution(exec).Prog, TConnectorSymbol(FSym).ConnectorType) then
-    writeExpr.EvalNoResult(exec)
-  else
-    raise Exception.Create(RTE_ConnectorWriteError);
+   baseExpr := TConstExpr.Create(FCaller.Prog, FCaller.Prog.TypVariant, FBaseValue);
+   valueExpr := TConstExpr.Create(FCaller.Prog, FCaller.Prog.TypVariant, Data);
+   writeExpr := TConnectorWriteExpr.CreateNew(
+      FCaller.Prog, cNullPos, FName,
+      baseExpr, valueExpr, TConnectorSymbol(FSym).ConnectorType
+   );
+   try
+      if writeExpr<>nil then
+          writeExpr.EvalNoResult(exec);
+   finally
+      writeExpr.Free;
+   end;
 end;
 
 end.

@@ -2045,6 +2045,8 @@ begin
       else Result:=TSelfVarExpr.Create(prog, dataSym)
    else if (typ is TClassSymbol) or (typ is TDynamicArraySymbol) then
       Result:=TObjectVarExpr.Create(prog, dataSym)
+   else if typ.Size=1 then
+      Result:=TBaseTypeVarExpr.Create(prog, dataSym)
    else Result:=TVarExpr.Create(prog, dataSym);
 end;
 
