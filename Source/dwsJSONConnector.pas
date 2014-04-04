@@ -774,8 +774,10 @@ begin
          else
             raise EdwsJSONException.Create('JSON Array Add() unsupported type');
          end;
-      end else raise EdwsJSONException.Create('JSON Array required for Add method');
+         Exit;
+      end;
    end;
+   raise EdwsJSONException.Create('JSON Array required for Add method');
 end;
 
 // ------------------
@@ -859,6 +861,12 @@ begin
             argValue:=TdwsJSONImmediate.Create;
             argValue.AsBoolean:=pVal^.VBoolean;
          end;
+         varNull : begin
+            argValue:=TdwsJSONImmediate.FromVariant(Null);
+         end;
+         varEmpty : begin
+            argValue:=nil;
+         end;
       else
          raise Exception.Create('Unsupported assignment');
       end;
@@ -923,16 +931,22 @@ begin
    baseValue := TBoxedJSONValue.UnBox(b);
    if baseValue<>nil then begin
       value.EvalAsVariant(exec, v);
-      if PVarData(@v)^.VType=varUnknown then begin
-         dataValue := TBoxedJSONValue.UnBox(v);
-         if dataValue=nil then
-            dataValue:=TdwsJSONImmediate.FromVariant(Null)
-         else begin
-            if dataValue.Owner=nil then
-               dataValue.IncRefCount;
+      case PVarData(@v)^.VType of
+         varUnknown : begin
+            dataValue := TBoxedJSONValue.UnBox(v);
+            if dataValue=nil then
+               dataValue := TdwsJSONImmediate.FromVariant(Null)
+            else begin
+               if dataValue.Owner=nil then
+                  dataValue.IncRefCount;
+            end;
          end;
-      end else dataValue:=TdwsJSONImmediate.FromVariant(v);
-   end else dataValue:=nil;
+         varEmpty :
+            dataValue := nil;
+      else
+         dataValue := TdwsJSONImmediate.FromVariant(v);
+      end;
+   end else dataValue := nil;
 
    baseValue.Items[FMemberName]:=dataValue;
 end;
