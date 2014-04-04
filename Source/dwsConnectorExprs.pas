@@ -36,7 +36,7 @@ type
 
    TBaseConnectorCallExpr = class(TPosDataExpr)
       private
-         FArgs : TTightList;
+         FArgs : TExprBaseListRec;
          FBaseExpr : TTypedExpr;
          FName : UnicodeString;
 
@@ -198,7 +198,7 @@ function TBaseConnectorCallExpr.GetSubExpr(i : Integer) : TExprBase;
 begin
    if i=0 then
       Result:=BaseExpr
-   else Result:=TExprBase(FArgs.List[i-1]);
+   else Result:=FArgs.ExprBase[i-1];
 end;
 
 // GetSubExprCount
@@ -249,7 +249,7 @@ begin
    hasVarParams:=False;
    SetLength(FConnectorParams, FArgs.Count);
    for i:=0 to FArgs.Count-1 do begin
-      arg:=TTypedExpr(FArgs.List[i]);
+      arg:=TTypedExpr(FArgs.ExprBase[i]);
       FConnectorParams[i].IsVarParam:=     autoVarParams
                                        and (arg is TDataExpr)
                                        and TDataExpr(arg).IsWritable
@@ -290,6 +290,7 @@ begin
    Result := Assigned(FConnectorCall);
    if Result then begin
       FTyp:=typSym;
+//      Supp
       FConnectorCall.QueryInterface(IConnectorFastCall, FConnectorFastCall);
    end else begin
       prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_ConnectorCall,
@@ -321,7 +322,7 @@ var
       sourcePtr : IDataContext;
    begin
       for i:=0 to FArgs.Count-1 do begin
-         arg:=TTypedExpr(FArgs.List[i]);
+         arg:=TTypedExpr(FArgs.ExprBase[i]);
          argTyp:=FConnectorParams[i].TypSym;
          SetLength(callArgs[i], argTyp.Size);
          if argTyp.Size=1 then begin
@@ -344,14 +345,14 @@ var
       for i:=0 to FArgs.Count-1 do begin
          if FConnectorParams[i].IsVarParam then begin
             exec.DataContext_Create(callArgs[i], 0, locData);
-            TDataExpr(FArgs.List[i]).AssignData(exec, locData);
+            TDataExpr(FArgs.ExprBase[i]).AssignData(exec, locData);
          end;
       end;
    end;
 
 var
    i : Integer;
-   arg : TTypedExpr;
+   arg : TExprBase;
    buf : Variant;
    resultData : TData;
 begin
@@ -365,8 +366,8 @@ begin
          EvalComplexArgs
       else begin
          for i:=0 to FArgs.Count-1 do begin
-            arg:=TTypedExpr(FArgs.List[i]);
             SetLength(callArgs[i], 1);
+            arg:=FArgs.ExprBase[i];
             arg.EvalAsVariant(exec, callArgs[i][0]);
          end;
       end;
@@ -405,19 +406,14 @@ end;
 //
 procedure TConnectorCallExpr.FastEvalAsVariant(exec : TdwsExecution; var result : Variant);
 var
-   i : Integer;
-   callArgs : TData;
-   arg : TTypedExpr;
+   callArgs : TExprBaseListExec;
 begin
    if exec.IsDebugging then
       exec.Debugger.EnterFunc(exec, Self);
    try
-      SetLength(callArgs, FArgs.Count);
-      for i:=0 to FArgs.Count-1 do begin
-         arg:=TTypedExpr(FArgs.List[i]);
-         arg.EvalAsVariant(exec, callArgs[i]);
-      end;
-      FConnectorFastCall.FastCall(FBaseExpr.Eval(exec), callArgs, result);
+      callArgs.ListRec:=FArgs;
+      callArgs.Exec:=exec;
+      FConnectorFastCall.FastCall(FBaseExpr, callArgs, result);
    finally
       if exec.IsDebugging then
          exec.Debugger.LeaveFunc(exec, Self);

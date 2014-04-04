@@ -24,7 +24,7 @@ unit dwsConnectorSymbols;
 interface
 
 uses
-   dwsUtils, dwsDataContext, dwsSymbols;
+   dwsUtils, dwsDataContext, dwsSymbols, dwsExprList;
 
 type
 
@@ -47,7 +47,7 @@ type
 
    IConnectorFastCall = interface (IConnectorCall)
       ['{64CE8F29-6FC3-4595-BB42-B7FDB84582C2}']
-      procedure FastCall(const base : Variant; const args : TData; var result : Variant);
+      procedure FastCall(const base : TExprBase; const args : TExprBaseListExec; var result : Variant);
    end;
 
    IConnectorMember = interface (IGetSelf)
