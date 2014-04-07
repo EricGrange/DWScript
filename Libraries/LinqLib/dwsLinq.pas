@@ -77,6 +77,7 @@ type
       function ReadIntoExpression(const compiler: IdwsCompiler; tok: TTokenizer;
         base: TTypedExpr): TTypedExpr;
       function ValidIntoExpr(from, target: TTypedExpr): boolean;
+      function BuildInExpr(const compiler: IdwsCompiler; expr: TRelGreaterEqualIntExpr): TRelOpExpr;
    public
       function StaticSymbols : Boolean; override;
       procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
@@ -119,6 +120,11 @@ type
       property JoinType: TJoinType read FJoinType;
       property JoinExpr: TSqlIdentifier read FJoinExpr;
       property Criteria: TSqlList read FCriteria;
+   end;
+
+   TSqlInExpr = class(TRelOpExpr)
+   public
+      procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
    end;
 
    type TRelOp = (roEq, roNeq, roGt, roLt, roGte, roLte, roIn, roNin);
@@ -174,6 +180,25 @@ begin
    result := true;
 end;
 
+function TdwsLinqExtension.BuildInExpr(const compiler: IdwsCompiler; expr: TRelGreaterEqualIntExpr): TRelOpExpr;
+var
+   idx: TArrayIndexOfExpr;
+   base: TTypedExpr;
+   ident: TSqlIdentifier;
+begin
+   idx := expr.Left as TArrayIndexOfExpr;
+   if not ((idx.ItemExpr is TConvVarToIntegerExpr)
+           and (TConvVarToIntegerExpr(idx.ItemExpr).expr is TSqlIdentifier)) then
+      exit(expr);
+   base := idx.baseExpr;
+   assert(base.typ.classtype = TDynamicArraySymbol);
+   ident := TSqlIdentifier(TConvVarToIntegerExpr(idx.ItemExpr).expr);
+   result := TSqlInExpr.Create(compiler.CurrentProg, compiler.Tokenizer.HotPos, ident, base);
+   base.IncRefCount;
+   ident.IncRefCount;
+   expr.Free;
+end;
+
 function TdwsLinqExtension.ReadComparisonExpr(const compiler: IdwsCompiler; tok: TTokenizer): TRelOpExpr;
 var
    expr: TTypedExpr;
@@ -182,7 +207,9 @@ begin
    try
       if not(expr is TRelOpExpr) then
          Error(compiler, 'Comparison expected');
-      result := TRelOpExpr(expr);
+      if (expr.classtype = TRelGreaterEqualIntExpr) and (TRelOpExpr(expr).left.classtype = TArrayIndexOfExpr) then
+         result := BuildInExpr(compiler, TRelGreaterEqualIntExpr(expr))
+      else result := TRelOpExpr(expr);
    except
       expr.Free;
       raise;
@@ -317,6 +344,7 @@ begin
    join := TSqlJoinExpr.Create(pos, jt, TSqlIdentifier(joinExpr), list);
    from := FQueryBuilder.Join(from, join)
 end;
+
 
 procedure TdwsLinqExtension.ReadOrderExprs(const compiler: IdwsCompiler; tok: TTokenizer; var from: TTypedExpr);
 var
@@ -673,7 +701,18 @@ begin
       result := roGt
    else if expr.ClassType = TRelGreaterEqualVariantExpr then
       result := roGte
+   else if expr.classType = TRelGreaterEqualIntExpr then
+      result := roGte
+   else if expr.classType = TSqlInExpr then
+      result := roIn
    else raise Exception.CreateFmt('Unknown op type: %s.', [expr.ClassName]);
+end;
+
+{ TSqlInExpr }
+
+procedure TSqlInExpr.EvalAsString(exec: TdwsExecution; var Result: UnicodeString);
+begin
+//
 end;
 
 end.
