@@ -5033,7 +5033,7 @@ begin
    if FRight.ClassType=TArrayConstantExpr then
       TArrayConstantExpr(FRight).Prepare(Prog, FLeft.Typ.Typ);
 
-   FRight:=TConvExpr.WrapWithConvCast(prog, ScriptPos, FLeft.Typ, FRight, True);
+   FRight:=TConvExpr.WrapWithConvCast(prog, ScriptPos, FLeft.Typ, FRight, CPE_AssignIncompatibleTypes);
 end;
 
 // Optimize

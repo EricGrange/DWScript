@@ -35,7 +35,7 @@ type
       public
          class function WrapWithConvCast(prog : TdwsProgram; const scriptPos : TScriptPos;
                                          toTyp : TTypeSymbol; expr : TTypedExpr;
-                                         reportError : Boolean) : TTypedExpr; static;
+                                         const reportError : String) : TTypedExpr; static;
          function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
@@ -197,20 +197,20 @@ uses dwsCoreExprs;
 //
 class function TConvExpr.WrapWithConvCast(prog : TdwsProgram; const scriptPos : TScriptPos;
                                           toTyp : TTypeSymbol; expr : TTypedExpr;
-                                          reportError : Boolean) : TTypedExpr;
+                                          const reportError : String) : TTypedExpr;
 
    procedure ReportIncompatibleTypes;
    var
       cleft, cright: UnicodeString;
    begin
-      if not reportError then Exit;
+      if reportError='' then Exit;
       if toTyp = nil then
          cleft := SYS_VOID
       else cleft := toTyp.Caption;
       if expr.Typ = nil then
          cright := SYS_VOID
       else cright := expr.Typ.Caption;
-      prog.CompileMsgs.AddCompilerErrorFmt(scriptPos, CPE_AssignIncompatibleTypes, [cright, cleft]);
+      prog.CompileMsgs.AddCompilerErrorFmt(scriptPos, reportError, [cright, cleft]);
    end;
 
 var
@@ -225,6 +225,7 @@ begin
    if expr.Typ=toTyp then Exit;
 
    if expr.ClassType=TArrayConstantExpr then begin
+
       arrayConst:=TArrayConstantExpr(expr);
       if toTyp is TDynamicArraySymbol then begin
          if    (toTyp.Typ.IsOfType(expr.Typ.Typ))
@@ -235,7 +236,9 @@ begin
          if (arrayConst.ElementCount=0) or arrayConst.Typ.Typ.IsOfType(toTyp.Typ) then
             Result:=TConvStaticArrayToSetOfExpr.Create(prog, scriptPos, arrayConst, TSetOfSymbol(toTyp));
       end;
+
    end else if expr.Typ.UnAliasedTypeIs(TBaseVariantSymbol) then begin
+
       if toTyp.IsOfType(prog.TypInteger) then
          Result:=TConvVarToIntegerExpr.Create(prog, expr)
       else if toTyp.IsOfType(prog.TypFloat) then
@@ -244,8 +247,10 @@ begin
          Result:=TConvVarToStringExpr.Create(prog, expr)
       else if toTyp.IsOfType(prog.TypBoolean) then
          Result:=TConvVarToBoolExpr.Create(prog, expr);
+
    end else if     (toTyp is TStructuredTypeMetaSymbol)
                and (expr.Typ.IsOfType(toTyp.Typ)) then begin
+
       if toTyp.ClassType=TClassOfSymbol then begin
          Result:=TObjToClassTypeExpr.Create(prog, expr);
          if toTyp.Typ<>expr.Typ then
@@ -254,7 +259,9 @@ begin
          Assert(False);
          Result:=nil;
       end;
+
    end else begin
+
       if     toTyp.IsOfType(prog.TypFloat)
          and expr.IsOfType(prog.TypInteger) then begin
          if expr is TConstIntExpr then begin
@@ -262,6 +269,7 @@ begin
             expr.Free;
          end else Result:=TConvIntToFloatExpr.Create(prog, expr);
       end;
+
    end;
    // Look if Types are compatible
    if not toTyp.IsCompatible(Result.Typ) then

@@ -7049,7 +7049,7 @@ begin
       argTyp:=arg.Typ;
       // Wrap-convert arguments if necessary and possible
       if paramSymbol.ClassType<>TVarParamSymbol then begin
-         arg:=TConvExpr.WrapWithConvCast(FProg, argPos, paramSymbol.Typ, arg, False);
+         arg:=TConvExpr.WrapWithConvCast(FProg, argPos, paramSymbol.Typ, arg, '');
       end;
       funcExpr.Args.ExprBase[x]:=arg;
 
@@ -9995,13 +9995,16 @@ begin
                   if left is TFuncPtrExpr then
                      left:=TFuncPtrExpr(left).Extract
                   else left:=TFuncRefExpr.Create(FProg, TFuncExpr(left));
+               end else begin
+                  left:=TConvExpr.WrapWithConvCast(FProg, hotPos, elementType,
+                                                   left, CPE_IncompatibleTypes);
                end;
-               if (left.Typ=nil) or not elementType.IsCompatible(left.Typ) then
-                  IncompatibleTypes(hotPos, CPE_IncompatibleTypes,
-                                    left.Typ, elementType);
+//               if (left.Typ=nil) or not elementType.IsCompatible(left.Typ) then
+//                  IncompatibleTypes(hotPos, CPE_IncompatibleTypes,
+//                                    left.Typ, elementType);    CPE_AssignIncompatibleTypes
             end;
 
-            Result:=TArrayIndexOfExpr.Create(FProg, hotPos, setExpr, left as TDataExpr, nil);
+            Result:=TArrayIndexOfExpr.Create(FProg, hotPos, setExpr, left, nil);
             Result:=TRelGreaterEqualIntExpr.Create(FProg, hotPos, Result,
                                                    TConstExpr.CreateIntegerValue(FProg, 0));
 

@@ -1,7 +1,6 @@
 Syntax Error: Incompatible types: "Float" and "Integer" [line: 14, column: 6]
 Syntax Error: Incompatible types: "TObject" and "Integer" [line: 15, column: 6]
 Syntax Error: Incompatible types: "TMyObject" and "Integer" [line: 16, column: 6]
-Syntax Error: Incompatible types: "Integer" and "Float" [line: 18, column: 6]
 Syntax Error: Incompatible types: "TObject" and "Float" [line: 20, column: 6]
 Syntax Error: Incompatible types: "TMyObject" and "Float" [line: 21, column: 6]
 Syntax Error: Incompatible types: "Integer" and "TObject" [line: 23, column: 6]
