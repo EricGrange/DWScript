@@ -218,6 +218,7 @@ var
    serverOptions : TdwsJSONValue;
    scriptedExtensions : TdwsJSONValue;
    extraDomains, domain : TdwsJSONValue;
+   env: TdwsJSONObject;
    i, nbThreads : Integer;
 begin
    FPath:=IncludeTrailingPathDelimiter(ExpandFileName(basePath));
@@ -226,6 +227,10 @@ begin
    FDWS.Initialize(Self);
 
    FDWS.PathVariables.Values['www']:=ExcludeTrailingPathDelimiter(FPath);
+   env := options['Server']['Environment'] as TdwsJSONObject;
+   if assigned(env) then
+      for i := 0 to env.ElementCount - 1 do
+         fDWS.PathVariables.Values[env.Names[i]] := env.Elements[i].AsString;
 
    FDirectoryIndex:=TDirectoryIndexCache.Create;
    FDirectoryIndex.IndexFileNames.CommaText:='"index.dws","index.htm","index.html"';
