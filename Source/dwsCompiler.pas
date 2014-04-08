@@ -6629,7 +6629,7 @@ function TdwsCompiler.ResolveOverload(var funcExpr : TFuncExprBase; overloads : 
                                       const argPosArray : TScriptPosArray;
                                       expecting : TFuncSymbol = nil) : Boolean;
 var
-   i : Integer;
+   i, delta : Integer;
    j : Integer;
    funcExprArgCount : Integer;
    match, bestMatch : TFuncSymbol;
@@ -6637,6 +6637,7 @@ var
    matchDistance, bestMatchDistance, bestCount : Integer;
    matchParamType, funcExprParamType : TTypeSymbol;
    wasVarParam, nowVarParam : Boolean;
+   funcExprArg : TExprBase;
 begin
    bestMatch:=nil;
    bestCount:=0;
@@ -6753,13 +6754,17 @@ begin
       if bestMatch<>funcExpr.FuncSym then begin
          if coSymbolDictionary in Options then begin
             ReplaceSymbolUse(funcExpr.FuncSym, bestMatch, funcExpr.ScriptPos);
-            for i:=0 to Min(bestMatch.Params.Count, funcExpr.FuncSym.Params.Count)-1 do begin
-               nowVarParam:=(bestMatch.Params[i] is TVarParamSymbol);
-               wasVarParam:=(funcExpr.FuncSym.Params[i] is TVarParamSymbol);
-               if wasVarParam<>nowVarParam then begin
-                  if wasVarParam then
-                     FSymbolDictionary.ChangeUsageAt(argPosArray[i], [], [suWrite])
-                  else FSymbolDictionary.ChangeUsageAt(argPosArray[i], [suWrite], []);
+            delta:=funcExpr.Args.Count-funcExpr.FuncSym.Params.Count;
+            if delta>=0 then begin
+               for i:=0 to Min(bestMatch.Params.Count, funcExpr.Args.Count-delta)-1 do begin
+                  nowVarParam:=(bestMatch.Params[i].ClassType=TVarParamSymbol);
+                  funcExprArg:=funcExpr.Args[i+delta];
+                  wasVarParam:=(funcExprArg is TByRefParamExpr) and TByRefParamExpr(funcExprArg).IsWritable;
+                  if wasVarParam<>nowVarParam then begin
+                     if wasVarParam then
+                        FSymbolDictionary.ChangeUsageAt(argPosArray[i], [], [suWrite])
+                     else FSymbolDictionary.ChangeUsageAt(argPosArray[i], [suWrite], []);
+                  end;
                end;
             end;
          end;
@@ -11090,14 +11095,17 @@ begin
 
       end;
       siWarnings : begin
+
          if not FTok.TestDeleteNamePos(name, condPos) then
             name:='';
          conditionalTrue:=ASCIISameText(name, 'ON');
          if conditionalTrue or ASCIISameText(name, 'OFF') then
             FMsgs.WarningsDisabled:=not conditionalTrue
          else FMsgs.AddCompilerError(FTok.HotPos, CPE_OnOffExpected);
+
       end;
       siHints : begin
+
          if not FTok.TestDeleteNamePos(name, condPos) then
             name:='';
          if ASCIISameText(name, 'OFF') then
@@ -11111,6 +11119,7 @@ begin
          else if ASCIISameText(name, 'PEDANTIC') then
             FMsgs.HintsLevel:=hlPedantic
          else FMsgs.AddCompilerError(FTok.HotPos, CPE_OnOffExpected);
+
       end;
    end;
 
