@@ -1480,7 +1480,7 @@ end;
 //
 procedure TdwsCodeGen.RaiseUnknowExpression(expr : TExprBase);
 begin
-   raise ECodeGenUnknownExpression.CreateFmt('%s: unknown expression class %s:%s',
+   raise ECodeGenUnknownExpression.CreateFmt('%s: unknown expression class %s at %s',
                                              [ClassName, expr.ClassName, expr.ScriptLocation(Context)]);
 end;
 
