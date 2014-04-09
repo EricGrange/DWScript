@@ -1611,6 +1611,7 @@ type
 
          function CreateUnitList : TList;
          function FindSymbolInUnits(AUnitList: TList; const Name: UnicodeString): TSymbol; overload;
+         function GetSystemTable : TSystemSymbolTable;
 
       public
          procedure PrepareScriptObj;
@@ -1625,6 +1626,7 @@ type
          procedure RaiseExceptObj(const msg : UnicodeString; const obj : IScriptObj);
 
          property Table : TSymbolTable read FTable write FTable;
+         property SystemTable : TSystemSymbolTable read GetSystemTable;
          property Execution : TdwsProgramExecution read FExecution write FExecution;
          property Level : Integer read FLevel write FLevel;
          property Data[const s: UnicodeString]: TData read GetData write SetData;
@@ -6270,6 +6272,13 @@ begin
     if Assigned(Result) then
       Break;
   end;
+end;
+
+// GetSystemTable
+//
+function TProgramInfo.GetSystemTable : TSystemSymbolTable;
+begin
+   Result:=Execution.Prog.SystemTable.SymbolTable;
 end;
 
 // PrepareScriptObj
