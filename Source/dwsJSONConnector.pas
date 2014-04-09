@@ -57,6 +57,7 @@ type
          FCloneCall : IConnectorCall;
          FExtendCall : IConnectorCall;
          FAddCall : IConnectorCall;
+         FToStringCall : IConnectorCall;
 
       protected
          function ConnectorCaption : UnicodeString;
@@ -119,6 +120,11 @@ type
    end;
 
    TdwsJSONAddCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
+      public
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+   end;
+
+   TdwsJSONToStringCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
       public
          procedure FastCall(const args : TExprBaseListExec; var result : Variant);
    end;
@@ -208,6 +214,8 @@ type
    //
    TJSONStringifyMethod = class (TInternalMagicStringFunction)
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+
+      class procedure Stringify(const args : TExprBaseListExec; var Result : UnicodeString); static;
 
       class procedure StringifyVariant(exec : TdwsExecution; writer : TdwsJSONWriter; const v : Variant); static;
       class procedure StringifySymbol(exec : TdwsExecution; writer : TdwsJSONWriter; sym : TSymbol; const dataPtr : IDataContext); static;
@@ -460,6 +468,7 @@ begin
    FCloneCall:=TdwsJSONCloneCall.Create;
    FExtendCall:=TdwsJSONExtendCall.Create;
    FAddCall:=TdwsJSONAddCall.Create;
+   FToStringCall:=TdwsJSONToStringCall.Create;
 end;
 
 // ConnectorCaption
@@ -489,6 +498,7 @@ function TdwsJSONConnectorType.HasMethod(const methodName : UnicodeString; const
                                          var typSym : TTypeSymbol) : IConnectorCall;
 var
    paramTyp : TTypeSymbol;
+   i : Integer;
 begin
    if UnicodeSameText(methodName, 'typename') then begin
 
@@ -520,13 +530,15 @@ begin
       Result:=FExtendCall;
       typSym:=nil;
 
-   end else if UnicodeSameText(methodName, 'add') then begin
+   end else if UnicodeSameText(methodName, 'add') or UnicodeSameText(methodName, 'push') then begin
 
-      if Length(params)<>1 then
+      if Length(params)<1 then
          raise ECompileException.CreateFmt(CPE_BadNumberOfParameters, [1, Length(params)]);
-      paramTyp:=params[0].TypSym;
-      if (not paramTyp.UnAliasedType.IsBaseType) and (paramTyp.ClassType<>TNilSymbol) then
-         raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_JSONVARIANT, params[0].TypSym.Caption]);
+      for i:=0 to High(params) do begin
+         paramTyp:=params[i].TypSym;
+         if (not paramTyp.UnAliasedType.IsBaseType) and (paramTyp.ClassType<>TNilSymbol) then
+            raise ECompileException.CreateFmt(CPE_BadParameterType, [i, SYS_JSONVARIANT, paramTyp.Caption]);
+      end;
 
       Result:=FAddCall;
       typSym:=FTable.TypInteger;
@@ -540,6 +552,11 @@ begin
 
          typSym:=TypJSONVariant;
          Result:=FCloneCall;
+
+      end else if UnicodeSameText(methodName, 'tostring') then begin
+
+         typSym:=FTable.TypString;
+         Result:=FToStringCall;
 
       end else begin
 
@@ -743,6 +760,7 @@ end;
 //
 procedure TdwsJSONAddCall.FastCall(const args : TExprBaseListExec; var result : Variant);
 var
+   i : Integer;
    base, param : Variant;
    baseValue, paramValue : TdwsJSONValue;
    pParam : PVarData;
@@ -753,31 +771,46 @@ begin
    if baseValue<>nil then begin
       if baseValue.ValueType=jvtArray then begin
          baseArray:=TdwsJSONArray(baseValue);
-         args.EvalAsVariant(1, param);
-         pParam:=PVarData(@param);
-         case pParam^.VType of
-            varInt64 : baseArray.Add(pParam^.VInt64);
-            varDouble : baseArray.Add(pParam^.VDouble);
-            varUString : baseArray.Add(UnicodeString(pParam^.VUString));
-            varBoolean : baseArray.Add(pParam^.VBoolean);
-            varUnknown : begin
-               if pParam.VUnknown<>nil then begin
-                  paramValue:=TBoxedJSONValue.UnBox(param);
-                  if paramValue.Owner = nil then
-                     paramValue.IncRefCount;
-                  baseArray.Add(paramValue)
-               end else begin
-                  baseArray.AddNull;
+         for i:=1 to args.Count-1 do begin
+            args.EvalAsVariant(i, param);
+            pParam:=PVarData(@param);
+            case pParam^.VType of
+               varInt64 : baseArray.Add(pParam^.VInt64);
+               varDouble : baseArray.Add(pParam^.VDouble);
+               varUString : baseArray.Add(UnicodeString(pParam^.VUString));
+               varBoolean : baseArray.Add(pParam^.VBoolean);
+               varUnknown : begin
+                  if pParam.VUnknown<>nil then begin
+                     paramValue:=TBoxedJSONValue.UnBox(param);
+                     if paramValue.Owner = nil then
+                        paramValue.IncRefCount;
+                     baseArray.Add(paramValue)
+                  end else begin
+                     baseArray.AddNull;
+                  end;
                end;
+               varNull : baseArray.AddNull;
+            else
+               raise EdwsJSONException.Create('JSON Array Add() unsupported type');
             end;
-            varNull : baseArray.AddNull;
-         else
-            raise EdwsJSONException.Create('JSON Array Add() unsupported type');
          end;
+         result:=baseArray.ElementCount;
          Exit;
       end;
    end;
    raise EdwsJSONException.Create('JSON Array required for Add method');
+end;
+
+// ------------------
+// ------------------ TdwsJSONToStringCall ------------------
+// ------------------
+
+// FastCall
+//
+procedure TdwsJSONToStringCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+begin
+   result:='';
+   TJSONStringifyMethod.Stringify(args, UnicodeString(PVarData(@Result)^.VString));
 end;
 
 // ------------------
@@ -977,7 +1010,7 @@ var
 begin
    v:=TdwsJSONValue.ParseString(info.ParamAsString[0]);
    if v=nil then
-      box:=TBoxedJSONValue.Create(TdwsJSONObject.Create)
+      box:=nil
    else box:=TBoxedJSONValue.Create(v);
    Info.ResultAsVariant:=IBoxedJSONValue(box);
 end;
@@ -1126,6 +1159,13 @@ end;
 // DoEvalAsString
 //
 procedure TJSONStringifyMethod.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+begin
+   Stringify(args, Result);
+end;
+
+// Stringify
+//
+class procedure TJSONStringifyMethod.Stringify(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    writer : TdwsJSONWriter;
    stream : TWriteOnlyBlockStream;

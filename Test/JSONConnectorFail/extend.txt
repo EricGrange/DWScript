@@ -1,0 +1,2 @@
+Syntax Error: Expected 1 parameters (instead of 0) [line: 3, column: 9]
+Syntax Error: Parameter 0 - Type "JSONVariant" expected (instead of "Integer") [line: 4, column: 9]

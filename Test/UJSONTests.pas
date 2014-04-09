@@ -732,6 +732,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   RegisterTest('JSONTests', TdwsJSONTests);
+   RegisterTest('JSON', TdwsJSONTests);
 
 end.

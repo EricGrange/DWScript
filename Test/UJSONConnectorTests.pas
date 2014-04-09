@@ -217,6 +217,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   RegisterTest('JSONConnectorTests', TJSONConnectorTests);
+   RegisterTest('JSON', TJSONConnectorTests);
 
 end.
