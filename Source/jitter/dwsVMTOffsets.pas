@@ -41,12 +41,14 @@ var
    vmt_ScriptDynamicArray_IScriptObj_To_FData : Integer;
    vmt_ScriptObjInstance_IScriptObj_To_FData : Integer;
 
+{$IF Defined(WIN32)}
    func_ustr_clear: pointer;
    func_handle_finally: pointer;
    func_intf_clear: pointer;
    func_var_clr: pointer;
    func_dyn_array_clear: pointer;
    func_var_from_int: pointer;
+{$IFEND}
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -77,12 +79,14 @@ asm
    mov vmt_TExprBase_EvalAsDataContext,  VMTOFFSET TExprBase.EvalAsDataContext
    mov vmt_TExprBase_AssignValueAsFloat, VMTOFFSET TExprBase.AssignValueAsFloat
    mov vmt_TExprBase_AssignValueAsInteger, VMTOFFSET TExprBase.AssignValueAsInteger
+{$IF Defined(WIN32)}
    mov func_ustr_clear, offset System.@UStrClr
    mov func_intf_clear, offset System.@IntfClear
    mov func_var_clr, offset variants.@VarClr
    mov func_dyn_array_clear, offset system.@DynArrayClear
    mov func_handle_finally, offset System.@HandleFinally
    mov func_var_from_int, offset Variants.@VarFromInt
+{$IFEND}
 end;
 
 procedure PrepareDynArrayIDataContextToFDataOffset;

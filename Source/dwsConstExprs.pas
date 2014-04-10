@@ -557,7 +557,7 @@ end;
 // EvalAsString
 //
 procedure TConstStringExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
-{$ifdef PUREPASCAL}
+{$ifndef WIN32_ASM}
 begin
    Result:=FValue;
 {$else}

@@ -1023,7 +1023,7 @@ var ReleaseSRWLockShared : procedure (var SRWLock : SRWLOCK); stdcall;
 
 function SupportsSRW : Boolean;
 var
-   h : Integer;
+   h : HMODULE;
 begin
    if not vSupportsSRWChecked then begin
       vSupportsSRWChecked:=True;

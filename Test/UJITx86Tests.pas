@@ -2,6 +2,8 @@ unit UJITx86Tests;
 
 interface
 
+{$IF Defined(WIN32)}
+
 uses
    Classes, SysUtils, Variants,
    dwsXPlatformTests, dwsJITx86Intrinsics,
@@ -1270,5 +1272,9 @@ initialization
 // ------------------------------------------------------------------
 
    RegisterTest('jitx86Tests', TJITx86Tests);
+
+{$else}
+implementation
+{$ifend}
 
 end.

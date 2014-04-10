@@ -2,6 +2,8 @@ unit UExternalFunctionTests;
 
 interface
 
+{$IF Defined(WIN32)}
+
 uses
    Classes,
    dwsXPlatformTests, dwsComp, dwsErrors, dwsExprList, dwsCompiler, dwsExprs,
@@ -274,5 +276,9 @@ initialization
 // ------------------------------------------------------------------
 
    RegisterTest('dwsExternalFunctionTests', TExternalFunctionTests);
+
+{$else}
+implementation
+{$ifend}
 
 end.
