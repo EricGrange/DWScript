@@ -715,12 +715,6 @@ begin
          else if Len=2 then
             if Buffer[1]='|' then
                Result := ttPIPEPIPE;
-      '&':
-         if Len=1 then
-            Result := ttAMP
-         else if Len=2 then
-            if Buffer[1]='&' then
-               Result := ttAMPAMP;
    else
       if CaseSensitive then
          Result:=ToAlphaTypeCaseSensitive
