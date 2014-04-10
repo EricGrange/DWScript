@@ -58,6 +58,7 @@ type
          FExtendCall : IConnectorCall;
          FAddCall : IConnectorCall;
          FToStringCall : IConnectorCall;
+         FLengthMember : IConnectorMember;
 
       protected
          function ConnectorCaption : UnicodeString;
@@ -79,9 +80,6 @@ type
    end;
 
    TdwsJSONFastCallBase = class (TInterfacedSelfObject, IConnectorCall)
-      protected
-         function Call(const base : Variant; const args : TConnectorArgs) : TData;
-         function NeedDirectReference : Boolean;
    end;
 
    TdwsJSONLowCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
@@ -158,7 +156,7 @@ type
       protected
          function Read(const base : Variant) : TData;
          procedure Write(const base : Variant; const data : TData);
-         procedure FastRead(const exec : TdwsExecution; const base : TExprBase; var result : Variant);
+         procedure FastRead(const exec : TdwsExecution; const base : TExprBase; var result : Variant); virtual;
          procedure FastWrite(const exec : TdwsExecution; const base, value : TExprBase);
 
       public
@@ -167,11 +165,18 @@ type
          property MemberName : UnicodeString read FMemberName write FMemberName;
    end;
 
+   TdwsJSONConnectorLengthMember = class(TdwsJSONConnectorMember)
+      protected
+         procedure FastRead(const exec : TdwsExecution; const base : TExprBase; var result : Variant); override;
+   end;
+
    // TJSONConnectorSymbol
    //
    TJSONConnectorSymbol = class(TConnectorSymbol)
       public
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function CreateAssignExpr(prog : TdwsProgram; const aScriptPos: TScriptPos;
+                                   left : TDataExpr; right : TTypedExpr) : TProgramExpr; override;
    end;
 
    // TJSONParseMethod
@@ -234,6 +239,11 @@ type
       function Value : TdwsJSONValue;
    end;
 
+   TAssignBoxJSONExpr = class(TAssignExpr)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+
 function BoxedJSONValue(value : TdwsJSONValue): IBoxedJSONValue;
 
 // ------------------------------------------------------------------
@@ -272,7 +282,7 @@ type
       class procedure Allocate(wrapped : TdwsJSONValue; var v : Variant); static;
       class procedure AllocateOrGetImmediate(wrapped : TdwsJSONValue; var v : Variant); static;
 
-      class function UnBox(const v : Variant) : TdwsJSONValue; static; inline;
+      class function UnBox(const v : Variant) : TdwsJSONValue; static;
    end;
 
    TBoxedNilJSONValue = class (TInterfacedSelfObject, IBoxedJSONValue)
@@ -349,10 +359,20 @@ class function TBoxedJSONValue.UnBox(const v : Variant) : TdwsJSONValue;
 var
    boxed : IBoxedJSONValue;
 begin
-   boxed:=(IUnknown(PVarData(@v)^.VUnknown) as IBoxedJSONValue);
-   if boxed<>nil then
-      Result:=boxed.Value
-   else Result:=nil;
+   case PVarData(@v)^.VType of
+      varUnknown : begin
+         boxed:=(IUnknown(PVarData(@v)^.VUnknown) as IBoxedJSONValue);
+         if boxed<>nil then
+            Result:=boxed.Value
+         else Result:=nil;
+      end;
+      varEmpty :
+         Result:=nil;
+      varNull :
+         Result:=vNilJSONValue.Value;
+   else
+      raise EdwsJSONException.Create('Unsupported JSONVariant type');
+   end;
 end;
 
 function BoxedJsonValue(Value : TdwsJSONValue): IBoxedJSONValue;
@@ -469,6 +489,8 @@ begin
    FExtendCall:=TdwsJSONExtendCall.Create;
    FAddCall:=TdwsJSONAddCall.Create;
    FToStringCall:=TdwsJSONToStringCall.Create;
+
+   FLengthMember:=TdwsJSONConnectorLengthMember.Create('length');
 end;
 
 // ConnectorCaption
@@ -580,7 +602,9 @@ function TdwsJSONConnectorType.HasMember(const memberName : UnicodeString; var t
                                          isWrite : Boolean) : IConnectorMember;
 begin
    typSym:=TypJSONVariant;
-   Result:=TdwsJSONConnectorMember.Create(memberName);
+   if memberName='length' then
+      Result:=FLengthMember
+   else Result:=TdwsJSONConnectorMember.Create(memberName);
 end;
 
 // HasIndex
@@ -605,24 +629,6 @@ end;
 function TdwsJSONConnectorType.HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
 begin
    Result:=nil;
-end;
-
-// ------------------
-// ------------------ TdwsJSONFastCallBase ------------------
-// ------------------
-
-// Call
-//
-function TdwsJSONFastCallBase.Call(const base : Variant; const args : TConnectorArgs) : TData;
-begin
-   Assert(False); // we shouldn't ever get here, except in case of bug
-end;
-
-// NeedDirectReference
-//
-function TdwsJSONFastCallBase.NeedDirectReference : Boolean;
-begin
-   Result:=False;
 end;
 
 // ------------------
@@ -985,6 +991,30 @@ begin
 end;
 
 // ------------------
+// ------------------ TdwsJSONConnectorLengthMember ------------------
+// ------------------
+
+// FastRead
+//
+procedure TdwsJSONConnectorLengthMember.FastRead(const exec : TdwsExecution; const base : TExprBase; var result : Variant);
+var
+   b : Variant;
+   v : TdwsJSONValue;
+begin
+   base.EvalAsVariant(exec, b);
+   v:=TBoxedJSONValue.UnBox(b);
+   if v<>nil then begin
+      case v.ValueType of
+         jvtArray : result:=v.ElementCount;
+         jvtString : result:=Length(v.AsString)
+      else
+         v:=v.Items[FMemberName];
+         TBoxedJSONValue.AllocateOrGetImmediate(v, result)
+      end;
+   end else result:=vNilJSONValue;
+end;
+
+// ------------------
 // ------------------ TJSONConnectorSymbol ------------------
 // ------------------
 
@@ -995,6 +1025,30 @@ begin
    Result:=   inherited IsCompatible(typSym)
            or (typSym.AsFuncSymbol<>nil)
            or (typSym is TRecordSymbol);
+end;
+
+// CreateAssignExpr
+//
+function TJSONConnectorSymbol.CreateAssignExpr(prog : TdwsProgram; const aScriptPos: TScriptPos;
+                                               left : TDataExpr; right : TTypedExpr) : TProgramExpr;
+var
+   rightTyp : TTypeSymbol;
+   rightTypClass : TClass;
+begin
+   Result:=nil;
+   rightTyp:=right.Typ.BaseType;
+   if rightTyp=nil then Exit;
+
+   rightTypClass:=rightTyp.ClassType;
+   if rightTypClass=TJSONConnectorSymbol then
+      Result:=TAssignExpr.Create(prog, aScriptPos, left, right)
+   else if rightTypClass.InheritsFrom(TBaseSymbol) then
+      Result:=TAssignBoxJSONExpr.Create(prog, aScriptPos, left, right);
+
+   if Result=nil then begin
+      left.Free;
+      right.Free;
+   end;
 end;
 
 // ------------------
@@ -1345,6 +1399,24 @@ begin
    if (obj=nil) or (obj.Destroyed) then
       writer.WriteNull
    else StringifyComposite(exec, writer, clsSym, obj);
+end;
+
+// ------------------
+// ------------------ TAssignBoxJSONExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TAssignBoxJSONExpr.EvalNoResult(exec : TdwsExecution);
+var
+   rv : Variant;
+   v : TdwsJSONValue;
+   box : TBoxedJSONValue;
+begin
+   Right.EvalAsVariant(exec, rv);
+   v:=TdwsJSONImmediate.FromVariant(rv);
+   box:=TBoxedJSONValue.Create(v);
+   Left.AssignValue(exec, IBoxedJSONValue(box));
 end;
 
 // ------------------------------------------------------------------

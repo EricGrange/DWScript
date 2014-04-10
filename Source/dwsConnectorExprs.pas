@@ -59,7 +59,7 @@ type
    // (has structual implication because of the late binding)
    TConnectorCallExpr = class(TBaseConnectorCallExpr)
       private
-         FConnectorCall : IConnectorCall;
+         FConnectorArgsCall : IConnectorArgsCall;
          FConnectorFastCall : IConnectorFastCall;
          FConnectorParams : TConnectorParamArray;
          FIsWritable : Boolean;
@@ -81,9 +81,10 @@ type
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
+         function ConnectorCall : IConnectorCall;
+
          property IsWrite : Boolean read FIsWritable write FIsWritable;
          property IsIndex : Boolean read GetIsIndex;
-         property ConnectorCall : IConnectorCall read FConnectorCall write FConnectorCall;
    end;
 
    // TConnectorReadMemberExpr
@@ -112,12 +113,12 @@ type
    //
    TConnectorReadExpr = class sealed (TConnectorReadMemberExpr)
       private
-         FConnectorMember : IConnectorMember;
+         FConnectorMember : IConnectorDataMember;
 
       public
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
-         property ConnectorMember : IConnectorMember read FConnectorMember write FConnectorMember;
+         property ConnectorMember : IConnectorDataMember read FConnectorMember write FConnectorMember;
    end;
 
    // TConnectorFastReadExpr
@@ -163,12 +164,12 @@ type
 
    TConnectorWriteExpr = class sealed (TConnectorWriteMemberExpr)
       private
-         FConnectorMember : IConnectorMember;
+         FConnectorMember : IConnectorDataMember;
 
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
 
-         property ConnectorMember : IConnectorMember read FConnectorMember write FConnectorMember;
+         property ConnectorMember : IConnectorDataMember read FConnectorMember write FConnectorMember;
    end;
 
    TConnectorFastWriteExpr = class sealed (TConnectorWriteMemberExpr)
@@ -296,6 +297,7 @@ var
    typSym : TTypeSymbol;
    arg : TTypedExpr;
    autoVarParams, hasVarParams : Boolean;
+   call : IConnectorCall;
 begin
    // Prepare the parameter information array to query the connector symbol
    if FArguments.Count>63 then
@@ -331,10 +333,10 @@ begin
    // Ask the connector symbol if such a method exists
    try
       if ccfIsIndex in FFlags then
-         FConnectorCall := ConnectorType.HasIndex(FName, FConnectorParams, typSym, FIsWritable)
+         call := ConnectorType.HasIndex(FName, FConnectorParams, typSym, FIsWritable)
       else begin
          FIsWritable := False;
-         FConnectorCall := ConnectorType.HasMethod(FName, FConnectorParams, typSym);
+         call := ConnectorType.HasMethod(FName, FConnectorParams, typSym);
       end;
    except
       on E: ECompileException do begin
@@ -343,12 +345,14 @@ begin
       end else raise;
    end;
 
-   Result := Assigned(FConnectorCall);
+   Result := Assigned(call);
    if Result then begin
       FTyp:=typSym;
-//      Supp
-      FConnectorCall.QueryInterface(IConnectorFastCall, FConnectorFastCall);
-   end else begin
+      call.QueryInterface(IConnectorFastCall, FConnectorFastCall);
+      if FConnectorFastCall=nil then
+         call.QueryInterface(IConnectorArgsCall, FConnectorArgsCall)
+   end;
+   if (FConnectorArgsCall=nil) and (FConnectorFastCall=nil) then begin
       prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_ConnectorCall,
                                            [FName, connectorType.ConnectorCaption])
    end;
@@ -430,11 +434,11 @@ begin
 
       try
          // The call itself
-         if FConnectorCall.NeedDirectReference then
-            resultData := FConnectorCall.Call(TDataExpr(BaseExpr).DataPtr[exec].AsPVariant(0)^, callArgs)
+         if FConnectorArgsCall.NeedDirectReference then
+            resultData := FConnectorArgsCall.Call(TDataExpr(BaseExpr).DataPtr[exec].AsPVariant(0)^, callArgs)
          else begin
             BaseExpr.EvalAsVariant(exec, buf);
-            resultData := FConnectorCall.Call(buf, callArgs);
+            resultData := FConnectorArgsCall.Call(buf, callArgs);
          end;
       except
          on e: EScriptError do begin
@@ -487,6 +491,15 @@ begin
    result:=exec.Stack.CreateDataContext(data, 0);
 end;
 
+// ConnectorCall
+//
+function TConnectorCallExpr.ConnectorCall : IConnectorCall;
+begin
+   if FConnectorFastCall<>nil then
+      Result:=FConnectorFastCall
+   else Result:=FConnectorArgsCall;
+end;
+
 // IsWritable
 //
 function TConnectorCallExpr.IsWritable : Boolean;
@@ -513,6 +526,7 @@ class function TConnectorReadMemberExpr.CreateNew(
 var
    connMember : IConnectorMember;
    connFastMember : IConnectorFastMember;
+   connDataMember : IConnectorDataMember;
    typSym : TTypeSymbol;
 begin
    typSym := nil;
@@ -528,8 +542,10 @@ begin
 
    end else begin
 
+      connMember.QueryInterface(IConnectorDataMember, connDataMember);
+
       Result := TConnectorReadExpr.Create(aProg, aScriptPos, typSym);
-      TConnectorReadExpr(Result).ConnectorMember := connMember;
+      TConnectorReadExpr(Result).ConnectorMember := connDataMember;
 
    end;
 
@@ -632,6 +648,7 @@ class function TConnectorWriteMemberExpr.CreateNew(
 var
    connMember : IConnectorMember;
    connFastMember : IConnectorFastMember;
+   connDataMember : IConnectorDataMember;
    typSym : TTypeSymbol;
 begin
    connMember := ConnectorType.HasMember(aName, typSym, True);
@@ -649,8 +666,13 @@ begin
 
       end else begin
 
+         connMember.QueryInterface(IConnectorDataMember, connDataMember);
+
          Result := TConnectorWriteExpr.Create;
-         TConnectorWriteExpr(Result).ConnectorMember := connMember;
+         TConnectorWriteExpr(Result).ConnectorMember := connDataMember;
+         if connDataMember=nil then
+            aProg.CompileMsgs.AddCompilerErrorFmt(scriptPos, CPE_ConnectorMember,
+                                                  [aName, connectorType.ConnectorCaption]);
 
       end;
 

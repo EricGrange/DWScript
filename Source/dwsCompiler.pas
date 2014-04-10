@@ -12088,58 +12088,68 @@ var
    assignOpExpr : TAssignExpr;
    classSymbol : TClassSymbol;
    intfSymbol : TInterfaceSymbol;
+   leftTyp : TTypeSymbol;
 begin
    if (right<>nil) and (right.Typ<>nil) then begin
 
       case token of
          ttASSIGN : begin
-            if left.Typ=nil then begin
+            leftTyp:=left.Typ;
+            if leftTyp=nil then begin
                // error assumed to have already been reported
                left.Free;
                right.Free;
                Result:=TNullExpr.Create(scriptPos);
-            end else if left.Typ.ClassType=TClassOfSymbol then begin
-               Result:=TAssignClassOfExpr.Create(FProg, scriptPos, left, right);
-            end else if left.Typ.ClassType=TInterfaceSymbol then begin
-               if right.Typ is TClassSymbol then begin
-                  classSymbol:=TClassSymbol(right.Typ);
-                  intfSymbol:=TInterfaceSymbol(left.Typ);
-                  if not classSymbol.ImplementsInterface(intfSymbol) then
-                     FMsgs.AddCompilerErrorFmt(scriptPos, RTE_ObjCastToIntfFailed,
-                                               [classSymbol.Name, intfSymbol.Name]);
-                  Result:=TAssignExpr.Create(FProg, scriptPos, left, TObjAsIntfExpr.Create(FProg, scriptPos, right, intfSymbol));
-               end else Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
-            end else if left.Typ.ClassType=TDynamicArraySymbol then begin
-               Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
-            end else if     right.InheritsFrom(TDataExpr)
-                        and (   (right.Typ.Size<>1)
-                             or (right.Typ is TArraySymbol)
-                             or (right.Typ is TSetOfSymbol)) then begin
-               if right.InheritsFrom(TFuncExpr) then
-                  TFuncExpr(right).SetResultAddr(FProg, nil);
-               if right.InheritsFrom(TArrayConstantExpr) and (left.Typ is TArraySymbol) then
-                  Result:=TAssignArrayConstantExpr.Create(FProg, scriptPos, left, TArrayConstantExpr(right))
-               else Result:=TAssignDataExpr.Create(FProg, scriptPos, left, right)
-            end else if left.Typ.AsFuncSymbol<>nil then begin
-               if (right.Typ.AsFuncSymbol<>nil) or (right.Typ is TNilSymbol) then begin
-                  if right is TFuncRefExpr then begin
-                     right:=TFuncRefExpr(right).Extract;
-                     if right is TFuncPtrExpr then begin
-                        right:=TFuncPtrExpr(right).Extract;
-                        Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
+            end else begin
+               leftTyp:=leftTyp.UnAliasedType;
+               if leftTyp.ClassType=TClassOfSymbol then begin
+                  Result:=TAssignClassOfExpr.Create(FProg, scriptPos, left, right);
+               end else if leftTyp.ClassType=TInterfaceSymbol then begin
+                  if right.Typ is TClassSymbol then begin
+                     classSymbol:=TClassSymbol(right.Typ);
+                     intfSymbol:=TInterfaceSymbol(left.Typ);
+                     if not classSymbol.ImplementsInterface(intfSymbol) then
+                        FMsgs.AddCompilerErrorFmt(scriptPos, RTE_ObjCastToIntfFailed,
+                                                  [classSymbol.Name, intfSymbol.Name]);
+                     Result:=TAssignExpr.Create(FProg, scriptPos, left, TObjAsIntfExpr.Create(FProg, scriptPos, right, intfSymbol));
+                  end else Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
+               end else if leftTyp.ClassType=TDynamicArraySymbol then begin
+                  Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
+               end else if     right.InheritsFrom(TDataExpr)
+                           and (   (right.Typ.Size<>1)
+                                or (right.Typ is TArraySymbol)
+                                or (right.Typ is TSetOfSymbol)) then begin
+                  if right.InheritsFrom(TFuncExpr) then
+                     TFuncExpr(right).SetResultAddr(FProg, nil);
+                  if right.InheritsFrom(TArrayConstantExpr) and (left.Typ is TArraySymbol) then
+                     Result:=TAssignArrayConstantExpr.Create(FProg, scriptPos, left, TArrayConstantExpr(right))
+                  else Result:=TAssignDataExpr.Create(FProg, scriptPos, left, right)
+               end else if leftTyp.AsFuncSymbol<>nil then begin
+                  if (right.Typ.AsFuncSymbol<>nil) or (right.Typ is TNilSymbol) then begin
+                     if right is TFuncRefExpr then begin
+                        right:=TFuncRefExpr(right).Extract;
+                        if right is TFuncPtrExpr then begin
+                           right:=TFuncPtrExpr(right).Extract;
+                           Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
+                        end else begin
+                           Assert(right is TFuncExprBase);
+                           Result:=TAssignFuncExpr.Create(FProg, scriptPos, left, right);
+                        end;
                      end else begin
-                        Assert(right is TFuncExprBase);
-                        Result:=TAssignFuncExpr.Create(FProg, scriptPos, left, right);
+                        Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
                      end;
                   end else begin
-                     Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
+                     FMsgs.AddCompilerError(scriptPos, CPE_IncompatibleOperands);
+                     Result:=TAssignExpr.Create(FProg, scriptPos, left, right); // keep going
                   end;
+               end else if leftTyp is TConnectorSymbol then begin
+                  Result:=TConnectorSymbol(leftTyp).CreateAssignExpr(FProg, scriptPos, left, right);
+                  if Result=nil then
+                     IncompatibleTypes(scriptPos, CPE_AssignIncompatibleTypes,
+                                       right.Typ, left.Typ);
                end else begin
-                  FMsgs.AddCompilerError(scriptPos, CPE_IncompatibleOperands);
-                  Result:=TAssignExpr.Create(FProg, scriptPos, left, right); // keep going
+                  Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
                end;
-            end else begin
-               Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
             end;
          end;
          ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN, ttCARET_ASSIGN : begin

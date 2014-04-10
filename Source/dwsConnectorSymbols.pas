@@ -24,7 +24,7 @@ unit dwsConnectorSymbols;
 interface
 
 uses
-   dwsUtils, dwsDataContext, dwsSymbols, dwsExprList;
+   dwsUtils, dwsDataContext, dwsSymbols, dwsExprList, dwsExprs, dwsErrors;
 
 type
 
@@ -40,6 +40,10 @@ type
    TConnectorArgs = array of TData;
 
    IConnectorCall = interface (IGetSelf)
+      ['{F9D86D4E-B48C-4B0A-8CB9-988D46278A19}']
+   end;
+
+   IConnectorArgsCall = interface (IConnectorCall)
       ['{8D534D1B-4C6B-11D5-8DCB-0000216D9E86}']
       function Call(const base : Variant; const args : TConnectorArgs) : TData;
       function NeedDirectReference : Boolean;
@@ -51,6 +55,10 @@ type
    end;
 
    IConnectorMember = interface (IGetSelf)
+      ['{10BB11D1-557B-4EAC-B9C2-6D45FCB8FAB6}']
+   end;
+
+   IConnectorDataMember = interface (IConnectorMember)
       ['{8D534D1C-4C6B-11D5-8DCB-0000216D9E86}']
       function Read(const base : Variant) : TData;
       procedure Write(const base : Variant; const data : TData);
@@ -88,7 +96,7 @@ type
      function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
    end;
 
-   TConnectorSymbol = class(TBaseVariantSymbol)
+   TConnectorSymbol = class (TBaseVariantSymbol)
       private
          FConnectorType : IConnectorType;
 
@@ -99,6 +107,9 @@ type
          constructor Create(const name : UnicodeString; const connectorType : IConnectorType);
 
          function Specialize(table : TSymbolTable; const qualifier : UnicodeString) : TConnectorSymbol; virtual;
+         function CreateAssignExpr(prog : TdwsProgram; const aScriptPos: TScriptPos;
+                                   left : TDataExpr; right : TTypedExpr) : TProgramExpr; virtual;
+
 
          property ConnectorType : IConnectorType read FConnectorType write FConnectorType;
    end;
@@ -110,6 +121,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsCoreExprs;
 
 // ------------------
 // ------------------ TConnectorSymbol ------------------
@@ -136,6 +149,14 @@ end;
 function TConnectorSymbol.Specialize(table : TSymbolTable; const qualifier : UnicodeString) : TConnectorSymbol;
 begin
    Result:=Self;
+end;
+
+// CreateAssignExpr
+//
+function TConnectorSymbol.CreateAssignExpr(prog : TdwsProgram; const aScriptPos: TScriptPos;
+                                           left : TDataExpr; right : TTypedExpr) : TProgramExpr;
+begin
+   Result:=TAssignExpr.Create(prog, aScriptPos, left, right);
 end;
 
 end.

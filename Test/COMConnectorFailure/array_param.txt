@@ -1,1 +1,1 @@
-Syntax Error: Method "methodCall" of connector "COM Connector 1.0" does not accepts those parameters [line: 8, column: 28]
+Syntax Error: Method "methodCall" of connector "COM Connector 2.0" does not accepts those parameters [line: 8, column: 28]

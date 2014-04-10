@@ -1,0 +1,2 @@
+Syntax Error: Incompatible types: Cannot assign "procedure " to "JSONVariant" [line: 8, column: 3]
+Syntax Error: Incompatible types: Cannot assign "class of TObject" to "JSONVariant" [line: 9, column: 3]
