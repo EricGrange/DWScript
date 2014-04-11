@@ -9444,7 +9444,7 @@ var
    exceptExpr : TTypedExpr;
    exceptObjTyp : TSymbol;
 begin
-   if FIsExcept and (FTok.Test(ttSEMI) or FTok.Test(ttEND)) then
+   if FIsExcept and (FTok.TestAny([ttSEMI, ttEND, ttELSE, ttUNTIL, ttFINALLY, ttEXCEPT])<>ttNone) then
       Result:=TReraiseExpr.Create(FTok.HotPos)
    else begin
       exceptExpr:=ReadExpr;
