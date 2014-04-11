@@ -398,7 +398,7 @@ begin
             q:=vPools.BucketObject[i];
             if q=nil then continue;
             if mask.Matches(vPools.BucketName[i]) then
-               Inc(Result);
+               Inc(Result, q.Count);
          end;
       finally
          vPoolsCS.EndRead;
