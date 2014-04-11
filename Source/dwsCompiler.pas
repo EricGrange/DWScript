@@ -7734,8 +7734,10 @@ begin
       if not (coHintsDisabled in FOptions) then
          CheckSpecialNameCase(name, sk, namePos);
 
-      if not FTok.TestDelete(ttBRIGHT) then
+      if not FTok.TestDelete(ttBRIGHT) then begin
+         OrphanObject(Result);
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+      end;
    except
       OrphanObject(baseExpr);
       raise;
@@ -7786,6 +7788,7 @@ begin
    end else begin
 
       Result:=nil;
+      OrphanObject(baseExpr);
       FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [name]);
 
    end;

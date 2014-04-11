@@ -1,0 +1,1 @@
+Syntax Error: Class method or constructor expected [line: 10, column: 3]
