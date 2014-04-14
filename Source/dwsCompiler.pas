@@ -10704,9 +10704,9 @@ var
                             scriptPos, [suReference]);
          end;
          // record field's type symbol
-         if typScriptPos.Defined then
-            RecordSymbolUse(paramType, typScriptPos, [suReference])
-         else RecordSymbolUse(paramType, scriptPos, [suReference, suImplicit])
+         if not typScriptPos.Defined then
+            RecordSymbolUse(paramType, scriptPos, [suReference, suImplicit])
+//            RecordSymbolUse(paramType, typScriptPos, [suReference])
       end;
    end;
 

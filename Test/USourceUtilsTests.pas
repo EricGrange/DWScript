@@ -35,6 +35,8 @@ type
          procedure SuggestAcrossLines;
          procedure SymDictFunctionForward;
          procedure SymDictInherited;
+         procedure SymDictParamExplicit;
+         procedure SymDictParamImplicit;
          procedure ReferencesVars;
          procedure InvalidExceptSuggest;
          procedure EnumerationNamesAndValues;
@@ -559,6 +561,72 @@ begin
 
    CheckEquals(3, symPosList[1].ScriptPos.Line, 'TDerivedClass Line 3');
    Check(symPosList[1].SymbolUsages=[suImplementation], 'TDerivedClass Line 3 usage');
+end;
+
+// SymDictParamExplicit
+//
+procedure TSourceUtilsTests.SymDictParamExplicit;
+var
+   prog : IdwsProgram;
+   sym : TTypeSymbol;
+   spl : TSymbolPositionList;
+begin
+   prog:=FCompiler.Compile( 'type TTest = class end;'#13#10
+                           +'procedure Test(a : TTest); begin end;'#13#10
+                           +'Test(nil);'#13#10);
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   sym := prog.Table.FindTypeSymbol('TTest', cvMagic);
+
+   spl := prog.SymbolDictionary.FindSymbolPosList(sym);
+
+   CheckEquals(2, spl.Count, 'TTest');
+   CheckEquals(' [line: 1, column: 6]', spl.Items[0].ScriptPos.AsInfo);
+   CheckEquals(' [line: 2, column: 20]', spl.Items[1].ScriptPos.AsInfo);
+
+   spl := prog.SymbolDictionary.FindSymbolPosList('a');
+
+   CheckEquals(1, spl.Count, 'a');
+   CheckEquals(' [line: 2, column: 16]', spl.Items[0].ScriptPos.AsInfo);
+
+   spl := prog.SymbolDictionary.FindSymbolPosList('Test');
+
+   CheckEquals(2, spl.Count, 'Test');
+   CheckEquals(' [line: 2, column: 11]', spl.Items[0].ScriptPos.AsInfo);
+   CheckEquals(' [line: 3, column: 1]', spl.Items[1].ScriptPos.AsInfo);
+end;
+
+// SymDictParamImplicit
+//
+procedure TSourceUtilsTests.SymDictParamImplicit;
+var
+   prog : IdwsProgram;
+   sym : TTypeSymbol;
+   spl : TSymbolPositionList;
+begin
+   prog:=FCompiler.Compile( 'type TTest = class end;'#13#10
+                           +'procedure Test(a : TTest = nil); begin end;'#13#10
+                           +'Test();'#13#10);
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   sym := prog.Table.FindTypeSymbol('TTest', cvMagic);
+
+   spl := prog.SymbolDictionary.FindSymbolPosList(sym);
+
+   CheckEquals(2, spl.Count, 'TTest');
+   CheckEquals(' [line: 1, column: 6]', spl.Items[0].ScriptPos.AsInfo);
+   CheckEquals(' [line: 2, column: 20]', spl.Items[1].ScriptPos.AsInfo);
+
+   spl := prog.SymbolDictionary.FindSymbolPosList('a');
+
+   CheckEquals(1, spl.Count, 'a');
+   CheckEquals(' [line: 2, column: 16]', spl.Items[0].ScriptPos.AsInfo);
+
+   spl := prog.SymbolDictionary.FindSymbolPosList('Test');
+
+   CheckEquals(2, spl.Count, 'Test');
+   CheckEquals(' [line: 2, column: 11]', spl.Items[0].ScriptPos.AsInfo);
+   CheckEquals(' [line: 3, column: 1]', spl.Items[1].ScriptPos.AsInfo);
 end;
 
 // ReferencesVars
