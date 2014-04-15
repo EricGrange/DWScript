@@ -40,7 +40,8 @@ uses
   UBuildTests in 'UBuildTests.pas',
   USourceUtilsTests in 'USourceUtilsTests.pas',
   ULocalizerTests in 'ULocalizerTests.pas',
-  dwsRTTIFunctions, dwsRTTIConnector,
+  dwsRTTIFunctions,
+  dwsRTTIConnector,
   UJSONTests in 'UJSONTests.pas',
   UJSONConnectorTests in 'UJSONConnectorTests.pas',
   UTokenizerTests in 'UTokenizerTests.pas',
@@ -50,13 +51,11 @@ uses
   ULinqTests in 'ULinqTests.pas',
   ULinqJsonTests in 'ULinqJsonTests.pas',
   dwsSymbolsLibModule in '..\Libraries\SymbolsLib\dwsSymbolsLibModule.pas',
-  dwsExternalFunctions,
-  dwsExternalFunctionJit,
-  dwsExternalFunctionJitx86,
   UExternalFunctionTests in 'UExternalFunctionTests.pas',
   UdwsCryptoTests in 'UdwsCryptoTests.pas',
   UdwsEncodingTests in 'UdwsEncodingTests.pas',
-  UInstantiateTests in 'UInstantiateTests.pas';
+  UInstantiateTests in 'UInstantiateTests.pas',
+  UdwsWebUtilsTests in 'UdwsWebUtilsTests.pas';
 
 {$R *.res}
 

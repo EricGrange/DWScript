@@ -72,9 +72,12 @@ begin
          if next>last then begin
             next:=-1;
             break;
-         end else if data[next]='&' then
-            break
-         else Inc(next);
+         end else case data[next] of
+            '&', ';' :
+               break
+         else
+            Inc(next);
+         end;
       until False;
       if next>base then begin
          dest.Add(DecodeURLEncoded(data, base, next-base));
