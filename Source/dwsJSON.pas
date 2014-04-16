@@ -220,6 +220,16 @@ type
          const ValueTypeStrings : array [TdwsJSONValueType] of UnicodeString = (
             'Undefined', 'Null', 'Object', 'Array', 'String', 'Number', 'Boolean'
             );
+
+         type
+            TElementEnumerator = record
+               Index : Integer;
+               Owner: TdwsJSONValue;
+               function MoveNext : Boolean;
+               function GetCurrent : TdwsJSONValue;
+               property Current : TdwsJSONValue read GetCurrent;
+            end;
+         function GetEnumerator : TElementEnumerator;
    end;
 
    TdwsJSONPair = record
@@ -1228,6 +1238,35 @@ begin
       raise EdwsJSONParseError.CreateFmt(msg, ['U+'+IntToHex(Ord(c), 4)])
    else raise EdwsJSONParseError.CreateFmt(msg, [UnicodeString(c)]);
 end;
+
+// TdwsJSONValue.GetEnumerator: TElementEnumerator;
+//
+function TdwsJSONValue.GetEnumerator: TElementEnumerator;
+begin
+   if Self=nil then begin
+      Result.Owner:=nil;
+      Result.Index:=0;
+   end else begin
+      Result.Owner:=Self;
+      Result.Index:=ElementCount;
+   end;
+end;
+
+// TdwsJSONValue.TElementEnumerator.GetCurrent
+//
+function TdwsJSONValue.TElementEnumerator.GetCurrent: TdwsJSONValue;
+begin
+   Result:=Owner.Elements[Index];
+end;
+
+// TdwsJSONValue.TElementEnumerator.MoveNext
+//
+function TdwsJSONValue.TElementEnumerator.MoveNext: Boolean;
+begin
+   Dec(Index);
+   Result:=(Index>=0);
+end;
+
 
 // ------------------
 // ------------------ TdwsJSONObject ------------------
