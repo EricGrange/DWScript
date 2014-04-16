@@ -1609,8 +1609,8 @@ type
          function GetParamAsBoolean(index : Integer) : Boolean;
          function GetParamAsObject(index : Integer) : TObject;
 
-         function CreateUnitList : TList;
-         function FindSymbolInUnits(AUnitList: TList; const Name: UnicodeString): TSymbol; overload;
+         function CreateUnitList : TUnitSymbolRefList;
+         function FindSymbolInUnits(aUnitList: TUnitSymbolRefList; const aName: UnicodeString) : TSymbol; overload;
          function GetSystemTable : TSystemSymbolTable;
 
       public
@@ -1620,7 +1620,7 @@ type
          function GetExternalObjForVar(const s: UnicodeString): TObject;
          // cycle ancestry hierarchy and find the nearest matching type
          function FindClassMatch(AObject: TObject; ExactMatch: Boolean=True): TClassSymbol;
-         function FindSymbolInUnits(const Name: UnicodeString): TSymbol; overload;
+         function FindSymbolInUnits(const aName : UnicodeString) : TSymbol; overload;
          function GetTemp(const DataType: UnicodeString): IInfo;
 
          procedure RaiseExceptObj(const msg : UnicodeString; const obj : IScriptObj);
@@ -6172,7 +6172,7 @@ var
   {$else}
   ParentRTTI: PPTypeInfo;
   {$endif}
-  unitList: TList;      // build the list once, may search for many symbols
+  unitList: TUnitSymbolRefList;      // build the list once, may search for many symbols
   typeSym: TSymbol;
 begin
   Result := nil;
@@ -6260,18 +6260,21 @@ begin
     Result := nil;
 end;
 
-function TProgramInfo.FindSymbolInUnits(AUnitList: TList; const Name: UnicodeString): TSymbol;
+function TProgramInfo.FindSymbolInUnits(aUnitList: TUnitSymbolRefList; const aName: UnicodeString) : TSymbol;
 var
-  i: Integer;
+   i : Integer;
+   table : TUnitSymbolTable;
 begin
-  // Search all units for the symbol
-  Result := nil;
-  for i := 0 to AUnitList.Count - 1 do
-  begin
-    Result := TUnitSymbol(AUnitList[i]).Table.FindLocal(Name);
-    if Assigned(Result) then
-      Break;
-  end;
+   // Search all units for the symbol
+   for i := 0 to aUnitList.Count-1 do begin
+      table := aUnitList[i].Table;
+      if table <> nil then begin
+         Result := table.FindLocal(aName);
+         if Assigned(Result) then
+            Exit;
+      end;
+   end;
+   Result := nil;
 end;
 
 // GetSystemTable
@@ -6288,40 +6291,51 @@ begin
    FScriptObj:=FExecution.SelfScriptObject^;
 end;
 
-function TProgramInfo.FindSymbolInUnits(const Name: UnicodeString): TSymbol;
+// FindSymbolInUnits
+//
+function TProgramInfo.FindSymbolInUnits(const aName : UnicodeString) : TSymbol;
 var
-  list: TList;
+   list : TUnitSymbolRefList;
 begin
-  list := CreateUnitList;
-  try
-    Result := FindSymbolInUnits(list, Name);
-  finally
-    list.Free;
-  end;
+   list := CreateUnitList;
+   try
+      Result := FindSymbolInUnits(list, aName);
+   finally
+      list.Free;
+   end;
 end;
 
-function TProgramInfo.CreateUnitList: TList;
+// CreateUnitList
+//
+function TProgramInfo.CreateUnitList : TUnitSymbolRefList;
 var
-  root: TSymbolTable;
-  i: Integer;
+   root : TSymbolTable;
+   sym : TSymbol;
+   unitSym : TUnitSymbol;
+   i : Integer;
 begin
-  // Find the root table for the full compiled program (not just the function)
-  if Assigned(Execution) then
-    root := Execution.Prog.RootTable
-  else
-  // if no caller provided, make a 'best effort' to find a root.
-  begin
-    root := FTable;
-    while root.ParentCount > 0 do
-      root := root.Parents[0];
-  end;
+   // Find the root table for the full compiled program (not just the function)
+   if Assigned(Execution) then
+      root := Execution.Prog.RootTable
+   else begin
+      // if no caller provided, make a 'best effort' to find a root.
+      root := FTable;
+      while root.ParentCount > 0 do
+         root := root.Parents[0];
+   end;
 
-  Result := TList.Create;                         // caller reponsible for freeing
-  // Add all unit symbols to a list
-  for i := 0 to root.Count - 1 do
-    if root.Symbols[i].ClassType=TUnitSymbol then        // if a unit symbol
-      if Result.IndexOf(root.Symbols[i]) < 0 then // and not already in list (units may reuse others)
-        Result.Add(root.Symbols[i]);
+   // caller reponsible for freeing
+   Result := TUnitSymbolRefList.Create;
+
+   // Add all unit symbols to a list
+   for i := 0 to root.Count-1 do begin
+      sym := root.Symbols[i];
+      if sym.ClassType = TUnitSymbol then begin
+         unitSym := TUnitSymbol(sym);
+         if Result.IndexOf(unitSym) < 0 then  // (units may reuse others)
+            Result.Add(unitSym);
+      end;
+   end;
 end;
 
 // ------------------

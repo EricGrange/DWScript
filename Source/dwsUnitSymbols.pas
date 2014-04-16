@@ -166,6 +166,10 @@ type
    end;
 
    TUnitSymbolList = class(TObjectList<TUnitSymbol>);
+   TUnitSymbolRefList = class(TUnitSymbolList)
+      public
+         destructor Destroy; override;
+   end;
 
    // unit namespaces, aggregate unit symbols
    TUnitNamespaceSymbol = class (TSourceSymbol)
@@ -885,6 +889,18 @@ end;
 destructor TUnitNamespaceSymbol.Destroy;
 begin
    FUnitSymbols.Free;
+   inherited;
+end;
+
+// ------------------
+// ------------------ TUnitSymbolRefList ------------------
+// ------------------
+
+// Destroy
+//
+destructor TUnitSymbolRefList.Destroy;
+begin
+   ExtractAll;
    inherited;
 end;
 
