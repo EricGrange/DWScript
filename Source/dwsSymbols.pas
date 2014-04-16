@@ -1368,6 +1368,7 @@ type
    TClassOfSymbol = class sealed (TStructuredTypeMetaSymbol)
       protected
          function GetCaption : UnicodeString; override;
+         function GetDescription : UnicodeString; override;
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
       public
@@ -4597,10 +4598,18 @@ end;
 
 function TClassOfSymbol.GetCaption: UnicodeString;
 begin
-  if Typ <> nil then
-    Result := 'class of ' + Typ.Name
-  else
-    Result := 'class of ???';
+   if Name <> '' then
+      Result := Name
+   else Result := GetDescription;
+end;
+
+// GetDescription
+//
+function TClassOfSymbol.GetDescription : UnicodeString;
+begin
+   if Typ <> nil then
+      Result := 'class of ' + Typ.Name
+   else Result := 'class of ???';
 end;
 
 function TClassOfSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
