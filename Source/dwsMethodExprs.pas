@@ -145,9 +145,6 @@ type
 
    // Call to a virtual constructor
    TConstructorVirtualExpr = class(TMethodVirtualExpr)
-      private
-         FExternalObject: TObject;
-
       protected
          procedure PostCall(exec : TdwsExecution; var Result : Variant); override;
          function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
@@ -155,7 +152,6 @@ type
       public
          constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; Func: TMethodSymbol;
                             Base: TTypedExpr);
-         property ExternalObject: TObject read FExternalObject write FExternalObject;
    end;
 
    // call to default TObject.Create (which is empty)
@@ -618,7 +614,7 @@ begin
 
   // Create object
   exec.SelfScriptObject^ := TScriptObjInstance.Create(classSym, exec as TdwsProgramExecution);
-  exec.SelfScriptObject^.ExternalObject := ExternalObject;
+  exec.SelfScriptObject^.ExternalObject := exec.ExternalObject;
 
   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer + FSelfAddr, exec.SelfScriptObject^);
 end;
