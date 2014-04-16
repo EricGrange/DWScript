@@ -1243,12 +1243,11 @@ end;
 //
 function TdwsJSONValue.GetEnumerator: TElementEnumerator;
 begin
-   if Self=nil then begin
+   Result.Index:=-1;
+   if Self=nil then
       Result.Owner:=nil;
-      Result.Index:=0;
-   end else begin
+   else
       Result.Owner:=Self;
-      Result.Index:=ElementCount;
    end;
 end;
 
@@ -1263,8 +1262,8 @@ end;
 //
 function TdwsJSONValue.TElementEnumerator.MoveNext: Boolean;
 begin
-   Dec(Index);
-   Result:=(Index>=0);
+   Inc(Index);
+   Result:=(Index<Owner.ElementCount);
 end;
 
 
@@ -2627,6 +2626,7 @@ end;
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
 initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
