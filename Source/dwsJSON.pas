@@ -1245,10 +1245,9 @@ function TdwsJSONValue.GetEnumerator: TElementEnumerator;
 begin
    Result.Index:=-1;
    if Self=nil then
-      Result.Owner:=nil;
+      Result.Owner:=nil
    else
       Result.Owner:=Self;
-   end;
 end;
 
 // TdwsJSONValue.TElementEnumerator.GetCurrent
