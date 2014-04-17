@@ -78,6 +78,7 @@ type
         base: TTypedExpr): TTypedExpr;
       function ValidIntoExpr(from, target: TTypedExpr): boolean;
       function BuildInExpr(const compiler: IdwsCompiler; expr: TRelGreaterEqualIntExpr): TRelOpExpr;
+      function IsLinqKeyword(tok: TTokenizer): boolean;
    public
       function StaticSymbols : Boolean; override;
       procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
@@ -237,7 +238,7 @@ end;
 function TdwsLinqExtension.ReadExpression(const compiler: IdwsCompiler; tok: TTokenizer): TTypedExpr;
 begin
    if tok.TestDelete(ttAMP) then
-      result := self.ReadSqlIdentifier(compiler, tok, true)
+      result := self.ReadRenamableSqlIdentifier(compiler, tok, true)
    else result := compiler.ReadExpr();
 end;
 
@@ -369,12 +370,22 @@ begin
    from := FQueryBuilder.Order(from, list);
 end;
 
+function TdwsLinqExtension.IsLinqKeyword(tok: TTokenizer): boolean;
+const WORDS: array [1..11] of string = ('from', 'on', 'join', 'left', 'right', 'cross', 'where', 'order', 'select', 'into', 'group');
+var
+   keyword: string;
+begin
+   result := false;
+   for keyword in WORDS do
+      result := result or TokenEquals(tok, keyword)
+end;
+
 function TdwsLinqExtension.ReadRenamableSqlIdentifier(
   const compiler: IdwsCompiler; tok: TTokenizer;
   acceptStar: boolean): TSqlIdentifier;
 begin
    result := ReadSqlIdentifier(compiler, tok, acceptStar);
-   if tok.TestDelete(ttAs) then
+   if tok.TestDelete(ttAs) or (tok.TestName and not IsLinqKeyword(tok)) then
    begin
       if not tok.TestName then
          Error(compiler, 'Identifier expected');
@@ -535,7 +546,6 @@ end;
 function TdwsLinqExtension.ValidIntoExpr(from, target: TTypedExpr): boolean;
 var
    base: TFuncSymbol;
-   returnType: TTypeSymbol;
 begin
    result := false;
    if not (target is TFuncRefExpr) then
@@ -545,7 +555,6 @@ begin
       Exit;
    if base.GetParamType(0) <> from.Typ then
       Exit;
-   returnType := base.Typ;
    result := true;
 end;
 
@@ -587,7 +596,10 @@ begin
       end;
    except
       on EAbort do
+      begin
          compiler.Msgs.AddCompilerStop(tok.GetToken.FScriptPos, 'Invalid LINQ expression');
+         result := nil;
+      end;
    end;
 end;
 
@@ -605,7 +617,7 @@ begin
       if TokenEquals(tok, 'into') then
          result := ReadIntoExpression(compiler, tok, result);
    end
-   else result := ReadSqlIdentifier(compiler, tok);
+   else result := ReadRenamableSqlIdentifier(compiler, tok);
 end;
 
 procedure TdwsLinqExtension.ReadScript(compiler: TdwsCompiler;

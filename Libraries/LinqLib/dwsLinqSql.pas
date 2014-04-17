@@ -268,7 +268,7 @@ begin
    for i := 0 to FJoinList.Count - 1 do
    begin
       join := FJoinList[i] as TSqlJoinExpr;
-      joinLine := JOINS[join.JoinType] + 'join ' + join.JoinExpr.Value;
+      joinLine := JOINS[join.JoinType] + 'join ' + GetIdentifierName(join.JoinExpr, compiler.CurrentProg);
       if assigned(join.Criteria) then
          joinLine := joinLine + ' on';
       list.Add(joinLine);
@@ -558,6 +558,7 @@ begin
    result := TSqlFromExpr.Create(TSqlIdentifier(value), base);
    result.Typ := FDatasetSymbol;
 end;
+
 
 function TLinqSqlFactory.Group(from: TTypedExpr; list: TSqlList): TTypedExpr;
 begin
