@@ -94,6 +94,10 @@ type
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
+  TISO8601ToDateTimeFunc = class(TInternalMagicFloatFunction)
+    procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+  end;
+
   TDayOfWeekFunc = class(TInternalMagicIntFunction)
     function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
@@ -293,11 +297,15 @@ end;
 { TDateTimeToISO8601Func }
 
 procedure TDateTimeToISO8601Func.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
-var
-   dt : TDateTime;
 begin
-   dt:=args.AsFloat[0];
-   Result:=FormatDateTime('yyyy-mm-dd', dt)+'T'+FormatDateTime('hh:nn', dt)+'Z';
+   Result:=DateTimeToISO8601(args.AsFloat[0], True);
+end;
+
+{ TISO8601ToDateTimeFunc }
+
+procedure TISO8601ToDateTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result:=ISO8601ToDateTime(args.AsString[0]);
 end;
 
 { TDayOfWeekFunc }
@@ -631,6 +639,7 @@ initialization
 
    RegisterInternalStringFunction(TDateToISO8601Func, 'DateToISO8601', ['dt', cDateTime]);
    RegisterInternalStringFunction(TDateTimeToISO8601Func, 'DateTimeToISO8601', ['dt', cDateTime]);
+   RegisterInternalFloatFunction(TISO8601ToDateTimeFunc, 'ISO8601ToDateTime', ['s', SYS_STRING]);
 
    RegisterInternalStringFunction(TTimeToStrFunc, 'TimeToStr', ['dt', cDateTime]);
    RegisterInternalFloatFunction(TStrToTimeFunc, 'StrToTime', ['str', SYS_STRING], [iffStateLess]);
