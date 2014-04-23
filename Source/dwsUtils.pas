@@ -726,6 +726,13 @@ procedure FastStringReplace(var str : UnicodeString; const sub, newSub : Unicode
 
 procedure VariantToString(const v : Variant; var s : UnicodeString);
 
+type
+   EISO8601Exception = class (Exception);
+
+function TryISO8601ToDateTime(const v : String; var aResult : TDateTime) : Boolean;
+function ISO8601ToDateTime(const v : String) : TDateTime;
+function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : String;
+
 procedure SuppressH2077ValueAssignedToVariableNeverUsed(const X); inline;
 
 // ------------------------------------------------------------------
@@ -803,12 +810,12 @@ asm
 {$endif}
 end;
 
-function EightDigits(i : Cardinal; p : PWideChar) : Integer;
 type
    TTwoChars = packed array [0..1] of WideChar;
    PTwoChars = ^TTwoChars;
 const
-   cDigits : packed array [10..99] of TTwoChars = (
+   cTwoDigits : packed array [0..99] of TTwoChars = (
+      ('0','0'), ('0','1'), ('0','2'), ('0','3'), ('0','4'), ('0','5'), ('0','6'), ('0','7'), ('0','8'), ('0','9'),
       ('1','0'), ('1','1'), ('1','2'), ('1','3'), ('1','4'), ('1','5'), ('1','6'), ('1','7'), ('1','8'), ('1','9'),
       ('2','0'), ('2','1'), ('2','2'), ('2','3'), ('2','4'), ('2','5'), ('2','6'), ('2','7'), ('2','8'), ('2','9'),
       ('3','0'), ('3','1'), ('3','2'), ('3','3'), ('3','4'), ('3','5'), ('3','6'), ('3','7'), ('3','8'), ('3','9'),
@@ -819,6 +826,7 @@ const
       ('8','0'), ('8','1'), ('8','2'), ('8','3'), ('8','4'), ('8','5'), ('8','6'), ('8','7'), ('8','8'), ('8','9'),
       ('9','0'), ('9','1'), ('9','2'), ('9','3'), ('9','4'), ('9','5'), ('9','6'), ('9','7'), ('9','8'), ('9','9')
       );
+function EightDigits(i : Cardinal; p : PWideChar) : Integer;
 var
    r : Integer;
 begin
@@ -832,7 +840,7 @@ begin
          r:=DivMod100(i);
       end;
       if r>=10 then begin
-         PTwoChars(p)^:=cDigits[r];
+         PTwoChars(p)^:=cTwoDigits[r];
          Dec(p, 2);
          Inc(Result, 2);
       end else begin
@@ -1159,6 +1167,167 @@ begin
          UnknownAsString(IUnknown(varData^.VUnknown), s);
    else
       s:=v;
+   end;
+end;
+
+// DateTimeToISO8601
+//
+function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : String;
+var
+   buf : array [0..31] of Char;
+   p : PChar;
+
+   procedure WriteChar(c : Char);
+   begin
+      p^:=c;
+      Inc(p);
+   end;
+
+   procedure Write2Digits(v : Integer);
+   begin
+      PTwoChars(p)^:=cTwoDigits[v];
+      Inc(p, 2);
+   end;
+
+var
+   y, m, d, h, n, s, z : Word;
+begin
+   p:=@buf;
+   DecodeDate(dt, y, m, d);
+   Write2Digits((y div 100) mod 100);
+   Write2Digits(y mod 100);
+   if extendedFormat then
+      WriteChar('-');
+   Write2Digits(m);
+   if extendedFormat then
+      WriteChar('-');
+   Write2Digits(d);
+   DecodeTime(dt, h, n, s, z);
+
+   WriteChar('T');
+   Write2Digits(h);
+   if extendedFormat then
+      WriteChar(':');
+   Write2Digits(n);
+   if s<>0 then begin
+      if extendedFormat then
+         WriteChar(':');
+      Write2Digits(s);
+   end;
+   WriteChar('Z');
+
+   p^:=#0;
+   Result:=buf;
+end;
+
+// ISO8601ToDateTime
+//
+function ISO8601ToDateTime(const v : String) : TDateTime;
+var
+   p : PChar;
+
+   function ReadDigit : Integer;
+   var
+      c : Char;
+   begin
+      c := p^;
+      case c of
+         '0'..'9' : Result:=Ord(c)-Ord('0');
+      else
+         raise EISO8601Exception.CreateFmt('Unexpected character (%d) instead of digit', [Ord(c)]);
+      end;
+      Inc(p);
+   end;
+
+   function Read2Digits : Integer; inline;
+   begin
+      Result:=ReadDigit*10;
+      Result:=Result+ReadDigit;
+   end;
+
+   function Read4Digits : Integer; inline;
+   begin
+      Result:=Read2Digits*100;
+      Result:=Result+Read2Digits;
+   end;
+
+var
+   y, m, d, h, n, s : Integer;
+   separator : Boolean;
+begin
+   if v='' then begin
+      Result:=0;
+      Exit;
+   end;
+   p:=Pointer(v);
+
+   // parsing currently limited to basic Z variations with limited validation
+
+   y:=Read4Digits;
+   separator:=(p^='-');
+   if separator then
+      Inc(p);
+   m:=Read2Digits;
+   if separator then begin
+      if p^<>'-' then
+         raise EISO8601Exception.Create('"-" expected after month');
+      Inc(p);
+   end;
+   d:=Read2Digits;
+   try
+      Result:=EncodeDate(y, m, d);
+   except
+      on E: Exception do
+         raise EISO8601Exception.Create(E.Message);
+   end;
+
+   if p^=#0 then Exit;
+   case p^ of
+      'T', ' ' : Inc(p);
+   else
+      raise EISO8601Exception.Create('"T" expected after date');
+   end;
+
+   h:=Read2Digits;
+   separator:=(p^=':');
+   if separator then
+      Inc(p);
+   n:=Read2Digits;
+   case p^ of
+      ':', '0'..'9' : begin
+         if (p^=':')<>separator then begin
+            if separator then
+               raise EISO8601Exception.Create('":" expected after minutes')
+            else raise EISO8601Exception.Create('Unexpected ":" after minutes');
+         end;
+         Inc(p);
+         s:=Read2Digits;
+      end;
+   else
+      s:=0;
+   end;
+
+   Result:=Result+EncodeTime(h, n, s, 0);
+
+   if p^<>'Z' then
+      raise EISO8601Exception.Create('Unsupported ISO8601 time zone');
+   Inc(p);
+
+   if p^<>#0 then
+      raise EISO8601Exception.Create('Unsupported or invalid ISO8601 format');
+end;
+
+// TryISO8601ToDateTime
+//
+function TryISO8601ToDateTime(const v : String; var aResult : TDateTime) : Boolean;
+begin
+   try
+      aResult:=ISO8601ToDateTime(v);
+      Result:=True;
+   except
+      on E : EISO8601Exception do
+         Result:=False;
+      else raise
    end;
 end;
 
