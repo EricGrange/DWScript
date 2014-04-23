@@ -227,8 +227,8 @@ type
                   FIndex : Integer;
                   FOwner : TdwsJSONValue;
                public
-                  function MoveNext : Boolean;
-                  function GetCurrent : TdwsJSONValue;
+                  function MoveNext : Boolean; inline;
+                  function GetCurrent : TdwsJSONValue; inline;
                   property Current : TdwsJSONValue read GetCurrent;
             end;
          function GetEnumerator : TElementEnumerator;
@@ -1260,8 +1260,8 @@ end;
 //
 function TdwsJSONValue.TElementEnumerator.MoveNext: Boolean;
 begin
-   Inc(FIndex);
-   Result:=(FIndex<FOwner.ElementCount);
+   Result:=(FIndex+1<FOwner.ElementCount);
+   Inc(FIndex, Integer(Result));
 end;
 
 
