@@ -224,7 +224,7 @@ type
          type
             TElementEnumerator = record
                private
-                  FIndex : Integer;
+                  FIndex, FCountMinus1 : Integer;
                   FOwner : TdwsJSONValue;
                public
                   function MoveNext : Boolean; inline;
@@ -1243,24 +1243,25 @@ end;
 
 // GetEnumerator
 //
-function TdwsJSONValue.GetEnumerator: TElementEnumerator;
+function TdwsJSONValue.GetEnumerator : TElementEnumerator;
 begin
    Result.FIndex:=-1;
    Result.FOwner:=Self;
+   Result.FCountMinus1:=ElementCount-1;
 end;
 
 // TElementEnumerator.GetCurrent
 //
-function TdwsJSONValue.TElementEnumerator.GetCurrent: TdwsJSONValue;
+function TdwsJSONValue.TElementEnumerator.GetCurrent : TdwsJSONValue;
 begin
    Result:=FOwner.Elements[FIndex];
 end;
 
 // TElementEnumerator.MoveNext
 //
-function TdwsJSONValue.TElementEnumerator.MoveNext: Boolean;
+function TdwsJSONValue.TElementEnumerator.MoveNext : Boolean;
 begin
-   Result:=(FIndex+1<FOwner.ElementCount);
+   Result:=(FIndex<FCountMinus1);
    Inc(FIndex, Integer(Result));
 end;
 
