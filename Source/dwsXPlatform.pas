@@ -100,6 +100,7 @@ function GetDecimalSeparator : Char;
 
 type
    TCollectFileProgressEvent = procedure (const directory : String; var skipScan : Boolean) of object;
+
 procedure CollectFiles(const directory, fileMask : UnicodeString;
                        list : TStrings; recurseSubdirectories: Boolean = False;
                        onProgress : TCollectFileProgressEvent = nil);
