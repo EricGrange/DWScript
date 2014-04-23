@@ -1309,9 +1309,12 @@ begin
 
    Result:=Result+EncodeTime(h, n, s, 0);
 
-   if p^<>'Z' then
+   case p^ of
+      #0 : exit;
+      'Z' : Inc(p);
+   else
       raise EISO8601Exception.Create('Unsupported ISO8601 time zone');
-   Inc(p);
+   end;
 
    if p^<>#0 then
       raise EISO8601Exception.Create('Unsupported or invalid ISO8601 format');
