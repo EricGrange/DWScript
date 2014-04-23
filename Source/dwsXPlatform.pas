@@ -99,8 +99,7 @@ procedure SetDecimalSeparator(c : Char);
 function GetDecimalSeparator : Char;
 
 type
-   TCollectFileProgressEvent = procedure (const directory : String; var shouldAbort : Boolean) of object;
-
+   TCollectFileProgressEvent = procedure (const directory : String; var skipScan : Boolean) of object;
 procedure CollectFiles(const directory, fileMask : UnicodeString;
                        list : TStrings; recurseSubdirectories: Boolean = False;
                        onProgress : TCollectFileProgressEvent = nil);
@@ -578,7 +577,7 @@ var
    searchRec : TFindDataRec;
    infoLevel : TFindexInfoLevels;
    fileName : String;
-   shouldAbort : Boolean;
+   skipScan : Boolean;
 begin
    // 6.1 required for FindExInfoBasic (Win 2008 R2 or Win 7)
    if ((Win32MajorVersion shl 8) or Win32MinorVersion)>=$601 then
@@ -586,9 +585,9 @@ begin
    else infoLevel:=FindExInfoStandard;
 
    if Assigned(onProgress) then begin
-      shouldAbort:=False;
-      onProgress(directory, shouldAbort);
-      if shouldAbort then exit;
+      skipScan:=False;
+      onProgress(directory, skipScan);
+      if skipScan then exit;
    end;
 
    fileName:=directory+'*';
