@@ -65,6 +65,8 @@ type
          procedure RepositionInArray;
          procedure CloneAndDetach;
          procedure SortArray;
+         procedure EnumerateNil;
+         procedure EnumerateArray;
    end;
 
 // ------------------------------------------------------------------
@@ -721,6 +723,52 @@ begin
       CheckEquals('["alpha","hello","some","stuff","world"]', a.ToString);
    finally
       a.Free;
+   end;
+end;
+
+// EnumerateNil
+//
+procedure TdwsJSONTests.EnumerateNil;
+var
+   v, i : TdwsJSONValue;
+   n : Integer;
+begin
+   n:=0;
+   v:=nil;
+   for i in v do begin
+      Inc(n);
+      Assert(i=nil); // dummy test to shut up the compiler warning
+   end;
+   CheckEquals(0, n, 'nil');
+
+   v:=TdwsJSONImmediate.Create;
+   try
+      v.AsString:='hello';
+      for i in v do begin
+         Inc(n);
+         Assert(i=nil); // dummy test to shut up the compiler warning
+      end;
+      CheckEquals(0, n, 'immediate');
+   finally
+      v.Free;
+   end;
+end;
+
+// EnumerateArray
+//
+procedure TdwsJSONTests.EnumerateArray;
+var
+   v, i : TdwsJSONValue;
+   s : String;
+begin
+   v:=TdwsJSONValue.ParseString('[1,"a",true]');
+   try
+      for i in v do begin
+         s:=s+';'+i.AsString;
+      end;
+      CheckEquals(';1;a;true', s);
+   finally
+      v.Free;
    end;
 end;
 

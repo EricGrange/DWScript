@@ -223,11 +223,13 @@ type
 
          type
             TElementEnumerator = record
-               Index : Integer;
-               Owner: TdwsJSONValue;
-               function MoveNext : Boolean;
-               function GetCurrent : TdwsJSONValue;
-               property Current : TdwsJSONValue read GetCurrent;
+               private
+                  FIndex : Integer;
+                  FOwner : TdwsJSONValue;
+               public
+                  function MoveNext : Boolean;
+                  function GetCurrent : TdwsJSONValue;
+                  property Current : TdwsJSONValue read GetCurrent;
             end;
          function GetEnumerator : TElementEnumerator;
    end;
@@ -1239,30 +1241,27 @@ begin
    else raise EdwsJSONParseError.CreateFmt(msg, [UnicodeString(c)]);
 end;
 
-// TdwsJSONValue.GetEnumerator: TElementEnumerator;
+// GetEnumerator
 //
 function TdwsJSONValue.GetEnumerator: TElementEnumerator;
 begin
-   Result.Index:=-1;
-   if Self=nil then
-      Result.Owner:=nil
-   else
-      Result.Owner:=Self;
+   Result.FIndex:=-1;
+   Result.FOwner:=Self;
 end;
 
-// TdwsJSONValue.TElementEnumerator.GetCurrent
+// TElementEnumerator.GetCurrent
 //
 function TdwsJSONValue.TElementEnumerator.GetCurrent: TdwsJSONValue;
 begin
-   Result:=Owner.Elements[Index];
+   Result:=FOwner.Elements[FIndex];
 end;
 
-// TdwsJSONValue.TElementEnumerator.MoveNext
+// TElementEnumerator.MoveNext
 //
 function TdwsJSONValue.TElementEnumerator.MoveNext: Boolean;
 begin
-   Inc(Index);
-   Result:=(Index<Owner.ElementCount);
+   Inc(FIndex);
+   Result:=(FIndex<FOwner.ElementCount);
 end;
 
 
@@ -2625,7 +2624,6 @@ end;
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
 initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
