@@ -379,7 +379,8 @@ type
       // direct access to the underlying instance, use with caution!!!
       function Compiler : TdwsCompiler;
 
-      function Compile(const aCodeText : UnicodeString; aConf : TdwsConfiguration) : IdwsProgram;
+      function Compile(const aCodeText : UnicodeString; aConf : TdwsConfiguration;
+                       const mainFileName : String = '') : IdwsProgram;
       procedure RecompileInContext(const context : IdwsProgram; const aCodeText : UnicodeString;
                                    aConf : TdwsConfiguration);
 
@@ -792,7 +793,8 @@ type
 
          function CreateProgram(const systemTable : ISystemSymbolTable;
                                 resultType : TdwsResultType;
-                                const stackParams : TStackParameters) : TdwsMainProgram;
+                                const stackParams : TStackParameters;
+                                const mainFileName : String) : TdwsMainProgram;
          function CreateAssign(const scriptPos : TScriptPos; token : TTokenType;
                                left : TDataExpr; right : TTypedExpr) : TProgramExpr;
 
@@ -847,7 +849,8 @@ type
          constructor Create;
          destructor Destroy; override;
 
-         function Compile(const aCodeText : UnicodeString; aConf : TdwsConfiguration) : IdwsProgram;
+         function Compile(const aCodeText : UnicodeString; aConf : TdwsConfiguration;
+                          const mainFileName : String = '') : IdwsProgram;
          procedure RecompileInContext(const context : IdwsProgram; const aCodeText : UnicodeString; aConf : TdwsConfiguration);
 
          procedure AbortCompilation;
@@ -1579,7 +1582,8 @@ end;
 
 // Compile
 //
-function TdwsCompiler.Compile(const aCodeText : UnicodeString; aConf : TdwsConfiguration) : IdwsProgram;
+function TdwsCompiler.Compile(const aCodeText : UnicodeString; aConf : TdwsConfiguration;
+                              const mainFileName : String = '') : IdwsProgram;
 var
    stackParams : TStackParameters;
    codeText : UnicodeString;
@@ -1603,7 +1607,7 @@ begin
    FLineCount:=0;
 
    // Create the TdwsProgram
-   FMainProg:=CreateProgram(aConf.SystemSymbols, aConf.ResultType, stackParams);
+   FMainProg:=CreateProgram(aConf.SystemSymbols, aConf.ResultType, stackParams, mainFileName);
    FSystemTable:=FMainProg.SystemTable.SymbolTable;
 
    FMsgs:=FMainProg.CompileMsgs;
@@ -11137,11 +11141,15 @@ end;
 //
 function TdwsCompiler.ReadExprSwitch(const switchPos : TScriptPos) : Boolean;
 var
+   asNum : Boolean;
    name, value : UnicodeString;
+   numValue : Integer;
    hotPos : TScriptPos;
    funcSym : TFuncSymbol;
 begin
    Result:=False;
+   asNum:=False;
+   numValue:=0;
    hotPos:=FTok.HotPos;
 
    hotPos:=FTok.HotPos;
@@ -11157,9 +11165,14 @@ begin
       FMsgs.AddCompilerError(hotPos, CPE_IncludeItemExpected)
    else if ASCIISameText(name, 'FILE') then
       value:=hotPos.SourceFile.Name
+   else if ASCIISameText(name, 'MAINFILE') then
+      value:=FMainProg.MainFileName
    else if ASCIISameText(name, 'LINE') then
       value:=IntToStr(hotPos.Line)
-   else if ASCIISameText(name, 'DATE') then
+   else if ASCIISameText(name, 'LINENUM') then begin
+      numValue:=hotPos.Line;
+      asNum:=True;
+   end else if ASCIISameText(name, 'DATE') then
       value:=FormatDateTime('yyyy-mm-dd', Date)
    else if ASCIISameText(name, 'TIME') then
       value:=FormatDateTime('hh:nn:ss', Time)
@@ -11175,7 +11188,9 @@ begin
    if not FTok.TestDelete(ttCRIGHT) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_CurlyRightExpected);
 
-   FTok.SimulateStringToken(switchPos, value);
+   if asNum then
+      FTok.SimulateIntegerToken(switchPos, numValue)
+   else FTok.SimulateStringToken(switchPos, value);
 end;
 
 // SkipUntilToken
@@ -11842,9 +11857,10 @@ end;
 //
 function TdwsCompiler.CreateProgram(const systemTable : ISystemSymbolTable;
                                     resultType : TdwsResultType;
-                                    const stackParams : TStackParameters) : TdwsMainProgram;
+                                    const stackParams : TStackParameters;
+                                    const mainFileName : String) : TdwsMainProgram;
 begin
-   Result:=TdwsMainProgram.Create(systemTable, resultType, stackParams);
+   Result:=TdwsMainProgram.Create(systemTable, resultType, stackParams, mainFileName);
 end;
 
 // ReadEnumeration

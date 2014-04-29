@@ -513,7 +513,7 @@ begin
          DelphiWebScript.Config.Filter:=nil
       else DelphiWebScript.Config.Filter:=dwsHtmlFilter;
 
-      prog:=DelphiWebScript.Compile(code);
+      prog:=DelphiWebScript.Compile(code, fileName);
 
       if not prog.Msgs.HasErrors then begin
          jit:=TdwsJITx86.Create;

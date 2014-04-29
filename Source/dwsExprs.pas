@@ -729,6 +729,7 @@ type
          FTypDefaultConstructor : TMethodSymbol;
          FTypDefaultDestructor : TMethodSymbol;
 
+         FMainFileName : String;
          FDefaultEnvironment : IdwsEnvironment;
          FDefaultLocalizer : IdwsLocalizer;
          FOnExecutionStarted : TdwsExecutionEvent;
@@ -761,7 +762,8 @@ type
       public
          constructor Create(const systemTable : ISystemSymbolTable;
                             resultType : TdwsResultType;
-                            const stackParameters : TStackParameters);
+                            const stackParameters : TStackParameters;
+                            const mainFileName : String);
          destructor Destroy; override;
 
          function CreateNewExecution : IdwsProgramExecution;
@@ -784,6 +786,7 @@ type
 
          procedure AddFinalExpr(expr : TProgramExpr);
 
+         property MainFileName : String read FMainFileName write FMainFileName;
          property TimeoutMilliseconds : Integer read FTimeoutMilliseconds write FTimeoutMilliseconds;
          property MaxRecursionDepth : Integer read FStackParameters.MaxRecursionDepth write FStackParameters.MaxRecursionDepth;
          property MaxExceptionDepth : Integer read FStackParameters.MaxExceptionDepth write FStackParameters.MaxExceptionDepth;
@@ -2818,7 +2821,8 @@ end;
 //
 constructor TdwsMainProgram.Create(const systemTable : ISystemSymbolTable;
                                    resultType : TdwsResultType;
-                                   const stackParameters : TStackParameters);
+                                   const stackParameters : TStackParameters;
+                                   const mainFileName : String);
 var
    systemUnitTable : TLinkedSymbolTable;
    systemUnit : TUnitMainSymbol;
@@ -2826,6 +2830,8 @@ begin
    inherited Create(systemTable);
 
    FResultType:=ResultType;
+
+   FMainFileName:=mainFileName;
 
    FExecutionsLock:=TFixedCriticalSection.Create;
 

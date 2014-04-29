@@ -277,6 +277,7 @@ type
 
          procedure SimulateToken(t : TTokenType; const scriptPos : TScriptPos);
          procedure SimulateStringToken(const scriptPos : TScriptPos; const str : UnicodeString);
+         procedure SimulateIntegerToken(const scriptPos : TScriptPos; const i : Int64);
          procedure SimulateNameToken(const scriptPos : TScriptPos; const name : UnicodeString);
 
          property PosPtr : PWideChar read FSource.FPosPtr;
@@ -1261,6 +1262,14 @@ procedure TTokenizer.SimulateStringToken(const scriptPos : TScriptPos; const str
 begin
    SimulateToken(ttStrVal, scriptPos);
    FToken.FString:=str;
+end;
+
+// SimulateIntegerToken
+//
+procedure TTokenizer.SimulateIntegerToken(const scriptPos : TScriptPos; const i : Int64);
+begin
+   SimulateToken(ttIntVal, scriptPos);
+   FToken.FInteger:=i;
 end;
 
 // SimulateNameToken

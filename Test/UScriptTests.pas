@@ -136,7 +136,7 @@ begin
 
          source.LoadFromFile(FTests[i]);
 
-         prog:=FCompiler.Compile(source.Text);
+         prog:=FCompiler.Compile(source.Text, 'Test\'+ExtractFileName(FTests[i]));
 
          CheckEquals(False, prog.Msgs.HasErrors, FTests[i]+#13#10+prog.Msgs.AsInfo);
 
@@ -180,7 +180,7 @@ begin
 
          source.LoadFromFile(FTests[i]);
 
-         prog:=FCompiler.Compile(source.Text);
+         prog:=FCompiler.Compile(source.Text, 'Test\'+ExtractFileName(FTests[i]));
 
          CheckEquals(False, prog.Msgs.HasErrors, FTests[i]+#13#10+prog.Msgs.AsInfo);
          try

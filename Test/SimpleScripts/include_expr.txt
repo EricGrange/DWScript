@@ -1,7 +1,10 @@
 *MainModule*,1
 *MainModule*,2
+Test\include_expr.pas,1003
 include_expr.inc,1
 include_expr.inc,2
+3
+Test\include_expr.pas
 *Main*
 MyFunc
 TMyClass.MyMethod

@@ -1,5 +1,6 @@
 PrintLn({$I %FILE%}+','+{$INCLUDE %LINE%});
 PrintLn({$I %FILE%}+','+{$INCLUDE %LINE%});
+PrintLn({$I %MAINFILE%}+','+IntToStr(1000+{$INCLUDE %LINENUM%}));
 
 {$INCLUDE 'include_expr.inc'}
 

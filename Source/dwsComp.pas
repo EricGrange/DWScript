@@ -133,7 +133,7 @@ type
          procedure AddUnit(const Un: IdwsUnit);
          function RemoveUnit(const Un: IdwsUnit): Boolean;
 
-         function Compile(const Text: UnicodeString): IdwsProgram; virtual;
+         function Compile(const text : UnicodeString; const mainFileName : String = '') : IdwsProgram; virtual;
          procedure RecompileInContext(const prog : IdwsProgram; const text : UnicodeString); virtual;
 
          procedure AbortCompilation;
@@ -1620,12 +1620,12 @@ end;
 
 // Compile
 //
-function TDelphiWebScript.Compile(const Text: UnicodeString): IdwsProgram;
+function TDelphiWebScript.Compile(const Text: UnicodeString; const mainFileName : String = ''): IdwsProgram;
 begin
    Lock;
    try
       SetupExtensions;
-      Result:=FCompiler.Compile(Text, FConfig);
+      Result:=FCompiler.Compile(Text, FConfig, mainFileName);
    finally
       UnLock;
    end;
