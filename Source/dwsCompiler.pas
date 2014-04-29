@@ -1566,6 +1566,7 @@ begin
    FUnitContextStack.Clean;
    FUnitsFromStack.Clear;
    FCurrentUnitSymbol:=nil;
+   FCurrentSourceUnit:=nil;
 
    FProg:=nil;
    FMainProg:=nil;
@@ -2011,6 +2012,7 @@ begin
 
       FMainProg.ResetExprs;
       FCurrentUnitSymbol:=nil;
+      FCurrentSourceUnit:=nil;
       FUnitSection:=secMixed;
 
       // Start compilation
@@ -2265,7 +2267,7 @@ begin
       if Result=ttINITIALIZATION then begin
          FUnitSection:=secInitialization;
          if coContextMap in Options then
-            FSourceContextMap.OpenContext(FTok.HotPos, FCurrentUnitSymbol, ttINITIALIZATION);
+            FSourceContextMap.OpenContext(FTok.HotPos, CurrentUnitSymbol, ttINITIALIZATION);
          initializationBlock:=ReadRootBlock([ttFINALIZATION, ttEND], Result);
          if coContextMap in Options then
             FSourceContextMap.CloseContext(FTok.HotPos);
@@ -2273,7 +2275,7 @@ begin
       if Result=ttFINALIZATION then begin
          FUnitSection:=secFinalization;
          if coContextMap in Options then
-            FSourceContextMap.OpenContext(FTok.HotPos, FCurrentUnitSymbol, ttFINALIZATION);
+            FSourceContextMap.OpenContext(FTok.HotPos, CurrentUnitSymbol, ttFINALIZATION);
          finalizationBlock:=ReadRootBlock([ttEND], Result);
          if coContextMap in Options then
             FSourceContextMap.CloseContext(FTok.HotPos);
@@ -2294,14 +2296,14 @@ begin
             FreeAndNil(finalizationBlock);
       end;
 
-      if FCurrentUnitSymbol<>nil then begin
+      if CurrentUnitSymbol<>nil then begin
          // this is a normal unit
          if initializationBlock<>nil then begin
-            FCurrentUnitSymbol.InitializationExpr:=initializationBlock;
+            CurrentUnitSymbol.InitializationExpr:=initializationBlock;
             initializationBlock:=nil;
          end;
          if finalizationBlock<>nil then begin
-            FCurrentUnitSymbol.FinalizationExpr:=finalizationBlock;
+            CurrentUnitSymbol.FinalizationExpr:=finalizationBlock;
             finalizationBlock:=nil;
          end;
       end else begin
@@ -12039,7 +12041,6 @@ var
    name, part : UnicodeString;
    namePos, partPos : TScriptPos;
    contextFix : TdwsSourceContext;
-   srcUnit : TSourceUnit;
 begin
    if not FTok.TestDelete(ttUNIT) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_UnitExpected);
@@ -12058,11 +12059,11 @@ begin
    end;
 
    if CurrentUnitSymbol=nil then begin
-      // special case of a unit compiled directly (not through main program)
-      srcUnit:=TSourceUnit.Create(name, FProg.Root.RootTable, FProg.UnitMains);
-      srcUnit.Symbol.InitializationRank:=FUnits.Count;
-      FUnits.Add(srcUnit);
-      FCurrentUnitSymbol:=srcUnit.Symbol;
+      // special case of a unit compiled directly (not through a main program)
+      FCurrentSourceUnit:=TSourceUnit.Create(name, FProg.Root.RootTable, FProg.UnitMains);
+      CurrentSourceUnit.Symbol.InitializationRank:=FUnits.Count;
+      FUnits.Add(FCurrentSourceUnit);
+      FCurrentUnitSymbol:=CurrentSourceUnit.Symbol;
    end;
 
    if coContextMap in Options then begin
@@ -12408,20 +12409,20 @@ begin
    oldSrcUnit:=FCurrentSourceUnit;
    FCurrentSourceUnit:=srcUnit;
 
-   FCurrentUnitSymbol.StoreParents;
+   CurrentUnitSymbol.StoreParents;
    FCurrentUnitSymbol:=srcUnit.Symbol;
-   FCurrentUnitSymbol.RestoreParents;
+   CurrentUnitSymbol.RestoreParents;
 end;
 
 // LeaveUnit
 //
 procedure TdwsCompiler.LeaveUnit(oldSrcUnit : TSourceUnit);
 begin
-   FCurrentUnitSymbol.StoreParents;
+   CurrentUnitSymbol.StoreParents;
    if oldSrcUnit<>nil then
       FCurrentUnitSymbol:=oldSrcUnit.Symbol
    else FCurrentUnitSymbol:=nil;
-   FCurrentUnitSymbol.RestoreParents;
+   CurrentUnitSymbol.RestoreParents;
    FCurrentSourceUnit:=oldSrcUnit;
 end;
 

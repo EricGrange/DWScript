@@ -39,7 +39,7 @@ interface
 uses
    Variants, Windows, Classes, SysUtils, Masks,
    dwsXPlatform, dwsUtils, dwsStrings, dwsExprList, dwsConstExprs,
-   dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs;
+   dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs, dwsDataContext;
 
 type
 

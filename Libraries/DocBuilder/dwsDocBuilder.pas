@@ -8,7 +8,7 @@ uses
   {$IFDEF UseDebugger}
   dwsDebugger,
   {$ENDIF}
-  dwsSymbolsLibModule, dwsClassesLibModule;
+  dwsSymbolsLibModule, dwsClassesLibModule, dwsDataContext;
 
 type
   TDocumentationBuilder = class;

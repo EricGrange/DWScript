@@ -1,0 +1,16 @@
+unit ImplUsesA;
+
+interface
+
+type 
+	TTest = class
+		procedure P;
+	end;
+
+implementation
+
+uses ImplUsesB;
+
+procedure TTest.P;
+begin
+end;
