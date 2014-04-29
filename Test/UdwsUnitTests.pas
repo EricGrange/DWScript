@@ -36,6 +36,7 @@ type
          procedure FuncIncEval(Info: TProgramInfo);
          procedure FuncIncNEval(Info: TProgramInfo);
          procedure FuncEnumEval(Info: TProgramInfo);
+         procedure FuncSetEval(Info: TProgramInfo);
          procedure FuncVariantEval(Info: TProgramInfo);
          procedure FuncVariantDateEval(Info: TProgramInfo);
          procedure FuncVarEval(Info: TProgramInfo);
@@ -161,6 +162,8 @@ const
       +'if FuncTrue<>True then PrintLn(''FuncTrue failed'');'#13#10
       +'if FuncEnum<>1 then PrintLn(''FuncEnum default failed'');'#13#10
       +'if FuncEnum(meTen)<>10 then PrintLn(''FuncEnum meTen failed'');'#13#10
+      +'if FuncSet([meOne])<>2 then PrintLn(''FuncSet default failed'');'#13#10
+      +'if FuncSet([meOne, meTen])<>1026 then PrintLn(''FuncSet default failed'');'#13#10
       +'var i=1; FuncVar(i); if i<>2 then PrintLn(''FuncVar def failed'');'#13#10
       +'FuncVar(i, 10); if i<>12 then PrintLn(''FuncVar 10 failed'');'#13#10
       +'FuncVar(i, i); if i<>24 then PrintLn(''FuncVar i failed'');'#13#10
@@ -320,6 +323,14 @@ begin
    param.Name:='e';
    param.DataType:='TMyEnum';
    param.DefaultValue:='meOne';
+
+   func:=FUnit.Functions.Add;
+   func.Name:='FuncSet';
+   func.ResultType:='Integer';
+   func.OnEval:=FuncSetEval;
+   param:=func.Parameters.Add;
+   param.Name:='s';
+   param.DataType:='TMyEnums';
 
    func:=FUnit.Functions.Add;
    func.Name:='FuncVar';
@@ -910,6 +921,13 @@ end;
 procedure TdwsUnitTestsContext.FuncReturnVirtCreate(Info: TProgramInfo);
 begin
    Info.ResultAsVariant := Info.Vars['TTestClass'].GetConstructor('VirtCreate', Pointer(-1)).Call.Value;
+
+   end;
+// FuncSetEval
+//
+procedure TdwsUnitTestsContext.FuncSetEval(Info: TProgramInfo);
+begin
+   Info.ResultAsInteger:=Info.ValueAsInteger['s'];
 end;
 
 // ClassConstructor

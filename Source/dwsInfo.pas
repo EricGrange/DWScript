@@ -466,6 +466,7 @@ begin
 
    if    (baseType is TBaseSymbol)
       or (baseType is TEnumerationSymbol)
+      or (baseType is TSetOfSymbol)
       or (baseType is TConnectorSymbol) then
          Result := TInfoData.Create(ProgramInfo, ChildTypeSym, childDataPtr,
                                     ChildDataMaster)
