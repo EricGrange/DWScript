@@ -386,6 +386,7 @@ begin
       tmp.Capacity:=aList.Count;
       for i:=0 to aList.Count-1 do begin
          sym:=aList[i];
+         if sym.Name='' then continue;
          if FPartialToken<>'' then begin
             if not StrIBeginsWith(sym.Name, FPartialToken) then continue;
          end;
