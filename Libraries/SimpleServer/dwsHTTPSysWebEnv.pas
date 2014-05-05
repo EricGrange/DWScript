@@ -147,7 +147,7 @@ begin
       r := getnameinfo(@sin, SizeOfVarSin(sin), host, hostlen,
                        nil, servlen, NI_NUMERICHOST + NI_NUMERICSERV);
       if r=0 then begin
-         hostlen := StrLen(@host);
+         hostlen := StrLen(PAnsiChar(@host));
          SetLength(Result, hostlen);
          Move(host, Pointer(Result)^, hostlen);
       end else Result := '';
