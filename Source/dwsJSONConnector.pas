@@ -1264,6 +1264,8 @@ begin
          writer.WriteNumber(p^.VDouble);
       varBoolean :
          writer.WriteBoolean(p^.VBoolean);
+      varNull :
+         writer.WriteNull;
       varUnknown : begin
          unk:=IUnknown(p^.VUnknown);
          if unk=nil then
