@@ -1,0 +1,3 @@
+uses Empty;
+
+PrintLn('hello');

@@ -2192,7 +2192,7 @@ begin
 
       case scriptType of
          stUnit : begin
-            if (finalToken=ttNone) or (finalToken=ttEND) then begin
+            if finalToken in [ttNone, ttEND, ttINITIALIZATION, ttFINALIZATION] then begin
                if coContextMap in Options then
                   FSourceContextMap.CloseAllContexts(FTok.CurrentPos);
             end;
