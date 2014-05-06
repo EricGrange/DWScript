@@ -1310,6 +1310,7 @@ procedure TdwsDebuggerWatch.Update(debugger : TdwsDebugger);
 var
    expr : TTypedExpr;
    exec : TdwsExecution;
+   scriptPos : TScriptPos;
 begin
    FEvaluationError:=dweeNone;
    if debugger.State<>dsDebugSuspended then begin
@@ -1319,8 +1320,10 @@ begin
       Exit;
    end;
 
-   if (Evaluator=nil) or (not Evaluator.ContextIsValid) then
-      Evaluator:=TdwsCompiler.Evaluate(debugger.Execution, ExpressionText);
+   if (Evaluator=nil) or (not Evaluator.ContextIsValid) then begin
+      scriptPos:=debugger.GetCurrentScriptPos;
+      Evaluator:=TdwsCompiler.Evaluate(debugger.Execution, ExpressionText, [], @scriptPos);
+   end;
 
    expr:=Evaluator.Expression;
    if expr.Typ=nil then begin

@@ -38,6 +38,7 @@ type
          procedure EvaluateOutsideOfExec;
          procedure EvaluateContextTest;
          procedure EvaluateLocalVar;
+         procedure EvaluateBlockVar;
 
          procedure ExecutableLines;
 
@@ -294,6 +295,38 @@ begin
          FDebugger.BeginDebug(exec);
          try
             CheckEquals('1', FDebugLastEvalResult, 'i at line 2');
+         finally
+            FDebugger.EndDebug;
+         end;
+      finally
+         exec:=nil;
+      end;
+   finally
+      prog:=nil;
+   end;
+end;
+
+// EvaluateBlockVar
+//
+procedure TDebuggerTests.EvaluateBlockVar;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'begin'#13#10
+                           +'var i := 123;'#13#10
+                           +'Print(i);'#13#10
+                           +'end');
+   try
+      exec:=prog.CreateNewExecution;
+      try
+         FDebugEvalExpr:='i';
+
+         FDebugEvalAtLine:=3;
+         FDebugLastEvalResult:='';
+         FDebugger.BeginDebug(exec);
+         try
+            CheckEquals('123', FDebugLastEvalResult, 'i at line 3');
          finally
             FDebugger.EndDebug;
          end;
