@@ -80,6 +80,8 @@ type
       public
          constructor Create(dataSet : TdwsSynSQLiteDataSet; fieldIndex : Integer);
 
+         function DataType : TdwsDataFieldType; override;
+
          function IsNull : Boolean; override;
          function AsString : String; override;
          function AsInteger : Int64; override;
@@ -355,6 +357,13 @@ end;
 constructor TdwsSynSQLiteDataField.Create(dataSet : TdwsSynSQLiteDataSet; fieldIndex : Integer);
 begin
    inherited Create(dataSet, fieldIndex);
+end;
+
+// DataType
+//
+function TdwsSynSQLiteDataField.DataType : TdwsDataFieldType;
+begin
+   Result:=GetDataType;
 end;
 
 // IsNull

@@ -152,7 +152,7 @@ type
          property Index : Integer read FIndex;
 
          function Name : String;
-         function DataType : TdwsDataFieldType;
+         function DataType : TdwsDataFieldType; virtual;
          function DeclaredType : String;
 
          function IsNull : Boolean; virtual; abstract;
