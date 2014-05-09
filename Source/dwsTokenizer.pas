@@ -43,7 +43,7 @@ type
      ttENSURE, ttREQUIRE, ttINVARIANTS, ttOLD,
      ttINTERFACE, ttIMPLEMENTATION, ttINITIALIZATION, ttFINALIZATION, ttHELPER,
      ttASM, ttBEGIN, ttEND, ttBREAK, ttCONTINUE, ttEXIT,
-     ttIF, ttTHEN, ttELSE, ttWHILE, ttREPEAT, ttUNTIL, ttFOR, ttTO, ttDOWNTO, ttDO,
+     ttIF, ttTHEN, ttELSE, ttWITH, ttWHILE, ttREPEAT, ttUNTIL, ttFOR, ttTO, ttDOWNTO, ttDO,
      ttCASE,
      ttTRUE, ttFALSE,
      ttAND, ttOR, ttXOR, ttIMPLIES, ttDIV, ttMOD, ttNOT, ttSHL, ttSHR, ttSAR,
@@ -310,7 +310,7 @@ const
      'ENSURE', 'REQUIRE', 'INVARIANTS', 'OLD',
      'INTERFACE', 'IMPLEMENTATION', 'INITIALIZATION', 'FINALIZATION', 'HELPER',
      'ASM', 'BEGIN', 'END', 'BREAK', 'CONTINUE', 'EXIT',
-     'IF', 'THEN', 'ELSE', 'WHILE', 'REPEAT', 'UNTIL', 'FOR', 'TO', 'DOWNTO', 'DO',
+     'IF', 'THEN', 'ELSE', 'WITH', 'WHILE', 'REPEAT', 'UNTIL', 'FOR', 'TO', 'DOWNTO', 'DO',
      'CASE',
      'TRUE', 'FALSE',
      'AND', 'OR', 'XOR', 'IMPLIES', 'DIV', 'MOD', 'NOT', 'SHL', 'SHR', 'SAR',
@@ -748,7 +748,7 @@ const
       ttTHEN, ttTO, ttTRUE, ttTRY, ttTYPE,
       ttUNIT, ttUNTIL, ttUSES,
       ttVAR, ttVIRTUAL,
-      ttWHILE, ttWRITE,
+      ttWHILE, ttWITH, ttWRITE,
       ttXOR ];
 type
    TTokenAlphaLookup = record

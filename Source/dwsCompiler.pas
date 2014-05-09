@@ -772,6 +772,7 @@ type
                                          typ : TTypeSymbol; var initExpr : TTypedExpr;
                                          var sym : TDataSymbol) : TProgramExpr;
          function ReadWhile : TProgramExpr;
+         function ReadWith : TProgramExpr;
          function ResolveUnitReferences(scriptType : TScriptSourceType) : TIdwsUnitList;
 
       protected
@@ -4239,7 +4240,7 @@ begin
 
    // Decide which instruction to read
    case FTok.TestDeleteAny([ttIF, ttCASE, ttFOR, ttWHILE, ttREPEAT, ttBREAK,
-                            ttEXIT, ttTRY, ttRAISE, ttCONTINUE]) of
+                            ttEXIT, ttTRY, ttRAISE, ttCONTINUE, ttWITH]) of
       ttIF :
          Result := ReadIf;
       ttCASE : begin
@@ -4286,6 +4287,8 @@ begin
       end;
       ttRAISE :
          Result := ReadRaise;
+      ttWITH :
+         Result := ReadWith;
    else
       // Try to read a function call, method call or an assignment
       if (FTok.TestAny([ttBLEFT, ttINHERITED, ttNEW])<>ttNone) or FTok.TestName then begin // !! TestName must be the last !!
@@ -6374,6 +6377,57 @@ begin
 
    if Optimize then
       Result:=Result.Optimize(FProg, FExec);
+end;
+
+// ReadWith
+//
+function TdwsCompiler.ReadWith : TProgramExpr;
+var
+   doExpr : TProgramExpr;
+   closePos : TScriptPos; // Position at which the ending token was found (for context)
+   blockExpr : TBlockExpr;
+begin
+   // Read a block of instructions enclosed in "begin" and "end"
+   blockExpr:=TBlockExpr.Create(FProg, FTok.HotPos);
+   try
+      if coContextMap in FOptions then begin
+         FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttWRITE);
+         closePos:=FTok.CurrentPos;     // default to close context where it opened (used on errors)
+      end;
+
+      FProg.EnterSubTable(blockExpr.Table);
+      try
+
+         repeat
+            ReadVarDecl(FStandardDataSymbolFactory, blockExpr);
+            if not FTok.TestDelete(ttCOMMA) then break;
+         until False;
+
+         if not FTok.TestDelete(ttDO) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_DoExpected);
+
+         doExpr:=ReadBlock;
+         blockExpr.AddStatement(doExpr);
+
+         HintUnusedSymbols;
+      finally
+         FProg.LeaveSubTable;
+      end;
+
+      if Optimize then
+         Result:=blockExpr.Optimize(FProg, FExec)
+      else Result:=blockExpr;
+
+      if coContextMap in FOptions then begin
+         if Result is TBlockExpr then
+            FSourceContextMap.Current.LocalTable:=TBlockExpr(Result).Table;
+         FSourceContextMap.CloseContext(closePos);
+      end;
+
+   except
+      OrphanObject(blockExpr);
+      raise;
+   end;
 end;
 
 // ReadRepeat
