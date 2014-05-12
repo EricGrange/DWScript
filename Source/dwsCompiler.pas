@@ -4966,7 +4966,7 @@ var
    typedExpr : TTypedExpr;
 begin
    try
-      typedExpr:=(expr as TDataExpr);
+      typedExpr:=(expr as TTypedExpr);
       Result:=ReadPropertyExpr(typedExpr, propertySym, isWrite);
    finally
       expr:=typedExpr;
