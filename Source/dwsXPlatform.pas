@@ -664,7 +664,7 @@ function TryTextToFloat(const s : PWideChar; var value : Extended; const formatS
 var
    cw : Word;
 begin
-   cw:=Get8087CW;;
+   cw:=Get8087CW;
    Set8087CW($133F);
    if TryStrToFloat(s, value, formatSettings) then
       Result:=(value>-1.7e308) and (value<1.7e308);
@@ -682,14 +682,29 @@ end;
 //
 function LoadTextFromBuffer(const buf : TBytes) : UnicodeString;
 var
-   n : Integer;
+   n, sourceLen, len : Integer;
    encoding : TEncoding;
 begin
-   encoding:=nil;
-   n:=TEncoding.GetBufferEncoding(buf, encoding, TEncoding.UTF8);
-   if not Assigned(encoding) then
-      encoding:=TEncoding.UTF8;
-   Result:=encoding.GetString(buf, n, Length(buf)-n);
+   if buf=nil then
+      Result:=''
+   else begin
+      encoding:=nil;
+      n:=TEncoding.GetBufferEncoding(buf, encoding, TEncoding.UTF8);
+      if encoding.CodePage=65001 then begin
+         // handle UTF-8 directly, encoding.GetString returns an empty string
+         // whenever a non-utf-8 character is detected, the implementation below
+         // will return a '?' for non-utf8 characters instead
+         sourceLen := Length(buf)-n;
+         SetLength(Result, sourceLen);
+         len := Utf8ToUnicode(Pointer(Result), sourceLen+1, PAnsiChar(buf), sourceLen)-1;
+         if len>0 then begin
+            if len<>sourceLen then
+               SetLength(Result, len);
+         end else Result:=''
+      end else begin
+         Result:=encoding.GetString(buf, n, Length(buf)-n);
+      end;
+   end;
 end;
 
 // LoadTextFromStream
