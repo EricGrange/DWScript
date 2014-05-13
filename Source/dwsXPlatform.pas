@@ -686,7 +686,7 @@ var
    encoding : TEncoding;
 begin
    encoding:=nil;
-   n:=TEncoding.GetBufferEncoding(buf, encoding);
+   n:=TEncoding.GetBufferEncoding(buf, encoding, TEncoding.UTF8);
    if not Assigned(encoding) then
       encoding:=TEncoding.UTF8;
    Result:=encoding.GetString(buf, n, Length(buf)-n);
