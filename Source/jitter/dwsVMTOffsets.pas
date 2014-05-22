@@ -43,6 +43,8 @@ var
    vmt_ScriptDynamicArray_IScriptObj_To_FData : Integer;
    vmt_ScriptObjInstance_IScriptObj_To_FData : Integer;
 
+   fld_TdwsExecution_Status : Integer;
+
 {$IF Defined(WIN32)}
    func_ustr_clear: pointer;
    func_handle_finally: pointer;

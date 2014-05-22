@@ -177,6 +177,7 @@ type
          procedure _restore_eax(addr : Integer);
 
          procedure _mov_reg_execInstance(reg : TgpRegister);
+         procedure _mov_reg_execStatus(reg : TgpRegister);
          procedure _DoStep(expr : TExprBase);
          procedure _RangeCheck(expr : TExprBase; reg : TgpRegister;
                                delta, miniInclusive, maxiExclusive : Integer);
@@ -1332,6 +1333,14 @@ begin
    FPreamble.PreserveExec:=True;
 
    x86._mov_reg_dword_ptr_reg(reg, gprEBP, cExecInstanceEBPoffset);
+end;
+
+// _mov_reg_execStatus
+//
+procedure TdwsJITx86._mov_reg_execStatus(reg : TgpRegister);
+begin
+   _mov_reg_execInstance(reg);
+   x86._mov_reg_dword_ptr_reg(reg, reg, TdwsExecution.Status_Offset);
 end;
 
 // _DoStep
@@ -2637,6 +2646,12 @@ end;
 procedure Tx86InterpretedExpr.CompileStatement(expr : TExprBase);
 begin
    DoCallEval(expr, vmt_TExprBase_EvalNoResult);
+
+   jit._mov_reg_execStatus(gprEAX);
+   x86._cmp_reg_int32(gprEAX, Ord(esrExit));
+   if jit.ExitTarget<>nil then
+      jit.Fixups.NewJump(flagsE, jit.ExitTarget)
+   else jit.OutputFailedOn:=expr;
 end;
 
 // DoCompileFloat

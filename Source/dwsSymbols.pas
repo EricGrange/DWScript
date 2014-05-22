@@ -1667,6 +1667,8 @@ type
          property SelfScriptObject : PIScriptObj read FSelfScriptObject write FSelfScriptObject;
          property SelfScriptClassSymbol : TClassSymbol read FSelfScriptClassSymbol write FSelfScriptClassSymbol;
 
+         class function Status_Offset : Integer;
+
          procedure SetScriptError(expr : TExprBase);
          procedure ClearScriptError;
 
@@ -6481,6 +6483,18 @@ begin
       EScriptStopped.DoRaise(Self, expr)
    else if IsDebugging then
       DoDebug(Self, expr);
+end;
+
+// Status_Offset
+//
+class function TdwsExecution.Status_Offset : Integer;
+{$ifdef WIN32_ASM}
+asm
+   mov eax, OFFSET FStatus
+{$else}
+begin
+   Result:=0;
+{$endif}
 end;
 
 // SetScriptError
