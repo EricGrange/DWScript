@@ -195,6 +195,7 @@ function OpenFileForSequentialReadOnly(const fileName : UnicodeString) : THandle
 function OpenFileForSequentialWriteOnly(const fileName : UnicodeString) : THandle;
 procedure CloseFileHandle(hFile : THandle);
 function FileCopy(const existing, new : UnicodeString; failIfExists : Boolean) : Boolean;
+function FileMove(const existing, new : UnicodeString) : Boolean;
 function FileDelete(const fileName : String) : Boolean;
 function FileRename(const oldName, newName : String) : Boolean;
 function FileSize(const name : String) : Int64;
@@ -801,6 +802,13 @@ end;
 function FileCopy(const existing, new : UnicodeString; failIfExists : Boolean) : Boolean;
 begin
    Result:=Windows.CopyFileW(PWideChar(existing), PWideChar(new), failIfExists);
+end;
+
+// FileMove
+//
+function FileMove(const existing, new : UnicodeString) : Boolean;
+begin
+   Result:=Windows.MoveFileW(PWideChar(existing), PWideChar(new));
 end;
 
 // FileDelete
