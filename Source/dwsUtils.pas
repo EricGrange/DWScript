@@ -1148,6 +1148,8 @@ begin
       varString :
          s:=UnicodeString(varData^.VString);
       {$else}
+      varString :
+         s:=RawByteStringToScriptString(RawByteString(varData^.VString));
       varUString :
          s:=UnicodeString(varData^.VUString);
       {$endif}
