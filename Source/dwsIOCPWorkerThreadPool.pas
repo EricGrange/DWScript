@@ -92,10 +92,15 @@ const
 
 type
 
+   {$IFNDEF VER270}
+   ULONG_PTR = {$IFDEF VER230}NativeUInt{$ELSE}DWORD{$ENDIF};
+   {$ENDIF}
+
    TIOCPData = packed record
       case Integer of
          0 : (
-            lpNumberOfBytesTransferred, lpCompletionKey : {$IFDEF VER230}NativeUInt{$ELSE}DWORD{$ENDIF};
+            lpNumberOfBytesTransferred : DWORD;
+            lpCompletionKey : ULONG_PTR;
             lpOverlapped : POverlapped;
          );
          1 : (
