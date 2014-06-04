@@ -26,6 +26,10 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsEncodingClassesHTMLTextEncoderMethodsDecodeEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesHexadecimalEncoderMethodsEncodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesHexadecimalEncoderMethodsDecodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -46,6 +50,36 @@ procedure TdwsEncodingLib.dwsEncodingClassesBase64EncoderMethodsEncodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsDataString := BinToBase64(Info.ParamAsDataString[0]);
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesHexadecimalEncoderMethodsDecodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   hex, buf : RawByteString;
+   n : Integer;
+begin
+   hex:=Info.ParamAsDataString[0];
+   n:=Length(hex);
+   if (n and 1)<>0 then
+      raise Exception.Create('Expect even hexadecimal character count');
+   n:=n div 2;
+   SetLength(buf, n);
+   if n<>Classes.HexToBin(PAnsiChar(hex), PAnsiChar(buf), n) then
+      raise Exception.Create('Invalid characters in hexadecimal');
+   Info.ResultAsDataString := buf;
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesHexadecimalEncoderMethodsEncodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   hex, buf : RawByteString;
+   n : Integer;
+begin
+   buf:=Info.ParamAsDataString[0];
+   n:=Length(buf);
+   SetLength(hex, n*2);
+   Classes.BinToHex(PAnsiChar(buf), PAnsiChar(hex), n);
+   Info.ResultAsDataString := hex;
 end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesHTMLTextEncoderMethodsDecodeEval(

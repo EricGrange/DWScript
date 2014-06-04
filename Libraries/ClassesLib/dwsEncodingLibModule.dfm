@@ -121,6 +121,35 @@ object dwsEncodingLib: TdwsEncodingLib
           end>
       end
       item
+        Name = 'HexadecimalEncoder'
+        Ancestor = 'Encoder'
+        Methods = <
+          item
+            Name = 'Encode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsEncodingClassesHexadecimalEncoderMethodsEncodeEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'Decode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsEncodingClassesHexadecimalEncoderMethodsDecodeEval
+            Kind = mkClassFunction
+          end>
+      end
+      item
         Name = 'HTMLTextEncoder'
         Ancestor = 'Encoder'
         Methods = <
