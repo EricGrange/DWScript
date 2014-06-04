@@ -98,6 +98,8 @@ type
       ExtObject: TObject);
     procedure dwsDatabaseClassesDataSetMethodsIsNullByIndexEval(Info: TProgramInfo;
       ExtObject: TObject);
+    function dwsDatabaseFunctionsBlobHexParameterFastEval(
+      const args: TExprBaseListExec): Variant;
   private
     { Private declarations }
     procedure SetScript(aScript : TDelphiWebScript);
@@ -724,6 +726,23 @@ procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsStringifyEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString:=(ExtObject as TDataSet).Stringify;
+end;
+
+function TdwsDatabaseLib.dwsDatabaseFunctionsBlobHexParameterFastEval(
+  const args: TExprBaseListExec): Variant;
+var
+   hex, buf : RawByteString;
+   n : Integer;
+begin
+   hex:=args.AsDataString[0];
+   n:=Length(hex);
+   if (n and 1)<>0 then
+      hex:=hex+'0';
+   n:=n div 2;
+   SetLength(buf, n);
+   if n<>HexToBin(PAnsiChar(hex), PAnsiChar(buf), n) then
+      raise Exception.Create('Invalid characters in hexadecimal');
+   Result:=buf;
 end;
 
 function TdwsDatabaseLib.dwsDatabaseFunctionsBlobParameterFastEval(

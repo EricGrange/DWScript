@@ -507,6 +507,16 @@ object dwsDatabaseLib: TdwsDatabaseLib
           end>
         ResultType = 'Variant'
         OnFastEval = dwsDatabaseFunctionsBlobParameterFastEval
+      end
+      item
+        Name = 'BlobHexParameter'
+        Parameters = <
+          item
+            Name = 'hexData'
+            DataType = 'String'
+          end>
+        ResultType = 'Variant'
+        OnFastEval = dwsDatabaseFunctionsBlobHexParameterFastEval
       end>
     UnitName = 'System.Data'
     StaticSymbols = True
