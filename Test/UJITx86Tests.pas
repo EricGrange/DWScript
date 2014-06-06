@@ -6,7 +6,7 @@ interface
 
 uses
    Classes, SysUtils, Variants,
-   dwsXPlatformTests, dwsJITx86Intrinsics,
+   dwsXPlatformTests, dwsJITx86Intrinsics, dwsUtils,
    BeaEngineDelphi;
 
 type

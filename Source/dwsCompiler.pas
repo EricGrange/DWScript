@@ -532,14 +532,20 @@ type
                                    const connectorType : IConnectorType; isWrite: Boolean) : TProgramExpr;
          function ReadConnectorArray(const name : UnicodeString; baseExpr : TTypedExpr;
                                      const connectorType : IConnectorType; isWrite: Boolean) : TConnectorCallExpr;
+
          function ReadConstSymbol(const name : UnicodeString; const constPos : TScriptPos;
                                   typ : TTypeSymbol; const factory : IdwsDataSymbolFactory) : TConstSymbol;
          procedure ReadConstDecl(const factory : IdwsDataSymbolFactory);
          procedure ReadConstDeclBlock(var action : TdwsStatementAction);
          function ReadConstImmediateValue : TConstExpr;
          function ReadConstRecord(symbol : TRecordSymbol) : TData;
+
          function ReadBlock : TProgramExpr;
          function ReadBlocks(const endTokens : TTokenTypes; var finalToken : TTokenType) : TProgramExpr;
+         function ReadRootStatement(var action : TdwsStatementAction; initVarBlockExpr : TBlockExpr) : TProgramExpr;
+         function ReadRootBlock(const endTokens: TTokenTypes; var finalToken: TTokenType) : TBlockExpr;
+         procedure UnexpectedBlockTokenError(const endTokens : TTokenTypes);
+
          function ReadEnumeration(const typeName : UnicodeString; aStyle : TEnumerationSymbolStyle) : TEnumerationSymbol;
          function ReadExit : TNoResultExpr;
          function ReadClassExpr(ownerSymbol : TCompositeTypeSymbol; expecting : TTypeSymbol = nil) : TTypedExpr;
@@ -700,8 +706,6 @@ type
 
          function ReadRaise : TRaiseBaseExpr;
          function ReadRepeat : TProgramExpr;
-         function ReadRootStatement(var action : TdwsStatementAction; initVarBlockExpr : TBlockExpr) : TProgramExpr;
-         function ReadRootBlock(const endTokens: TTokenTypes; var finalToken: TTokenType) : TBlockExpr;
          function ReadImplementationBlock : TTokenType;
          procedure ReadSemiColon;
          function ReadScript(sourceFile : TSourceFile; scriptType : TScriptSourceType) : TProgramExpr;
@@ -2084,11 +2088,11 @@ begin
                   if endTokens<>[] then begin
                      finalToken:=FTok.TestDeleteAny(endTokens);
                      if finalToken=ttNone then
-                        FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+                        UnexpectedBlockTokenError(endTokens);
                      Break;
                   end else begin
                      if FTok.HasTokens then
-                        FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+                        UnexpectedBlockTokenError(endTokens);
                   end;
                end;
             end;
@@ -4116,6 +4120,24 @@ begin
    end;
 end;
 
+// UnexpectedBlockTokenError
+//
+procedure TdwsCompiler.UnexpectedBlockTokenError(const endTokens : TTokenTypes);
+var
+   msg : String;
+   found : String;
+begin
+   msg:=TokenTypesToString(endTokens);
+   if FTok.HasTokens then
+      found:=cTokenStrings[FTok.GetToken.FTyp];
+   if msg='' then
+      if found='' then
+         msg:=CPE_SemiExpected
+      else msg:=Format(CPE_Unexpected_X, [found])
+   else msg:=msg+CPE_XxxExpected;
+   FMsgs.AddCompilerStop(FTok.HotPos, msg);
+end;
+
 // ReadBlocks
 //
 function TdwsCompiler.ReadBlocks(const endTokens : TTokenTypes; var finalToken : TTokenType) : TProgramExpr;
@@ -4170,14 +4192,8 @@ begin
                saNone : begin
                   if not FTok.TestDelete(ttSEMI) then begin
                      token:=FTok.GetToken;
-                     if (token=nil) or (not (token.FTyp in EndTokens)) then begin
-                        if closePos.SamePosAs(FTok.HotPos) then
-                           FMsgs.AddCompilerStop(closePos, CPE_SemiExpected)
-                        else begin
-                           closePos:=FTok.HotPos;
-                           FMsgs.AddCompilerError(closePos, CPE_SemiExpected);
-                        end;
-                     end;
+                     if (token=nil) or (not (token.FTyp in EndTokens)) then
+                        UnexpectedBlockTokenError(endTokens);
                   end;
                end;
             else

@@ -298,7 +298,7 @@ type
 
 const
    cTokenStrings : array [TTokenType] of UnicodeString = (
-     '', 'StrVal', 'IntVal', 'FloatVal', 'NAME', 'SWITCH',
+     '', 'String Literal', 'Integer Literal', 'Float Literal', 'NAME', 'SWITCH',
      'LAZY', 'VAR', 'CONST', 'RESOURCESTRING',
      'TYPE', 'RECORD', 'ARRAY', 'SET', '.', '..', 'OF', 'ENUM', 'FLAGS',
      'TRY', 'EXCEPT', 'RAISE', 'FINALLY', 'ON', 'READ', 'WRITE', 'PROPERTY',
@@ -328,6 +328,8 @@ const
      'REGISTER', 'PASCAL', 'CDECL', 'SAFECALL', 'STDCALL', 'FASTCALL', 'REFERENCE'
      );
 
+function TokenTypesToString(const tt : TTokenTypes) : String;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -338,6 +340,24 @@ implementation
 
 const
    cFormatSettings : TFormatSettings = ( DecimalSeparator : '.' );
+
+// TokenTypesToString
+//
+function TokenTypesToString(const tt : TTokenTypes) : String;
+var
+   t : TTokenType;
+begin
+   for t in tt do begin
+      if Result<>'' then
+         Result:=Result+' or ';
+      case t of
+         ttIntVal, ttStrVal, ttFloatVal :
+            Result:=Result+cTokenStrings[t];
+      else
+         Result:=Result+'"'+cTokenStrings[t]+'"';
+      end;
+   end;
+end;
 
 // EmptyString
 //

@@ -97,6 +97,9 @@ const
 const
 
   // Missing Tokens
+  CPE_XxxExpected = ' expected.';
+  CPE_Unexpected_X = 'Unexpected "%s".';
+  CPE_X_ExpectedBut_Y_Found = '%s expected but %s found.';
   CPE_CommaExpected = '"," expected.';
   CPE_SemiExpected = '";" expected.';
   CPE_BrackLeftExpected = '"(" expected.';

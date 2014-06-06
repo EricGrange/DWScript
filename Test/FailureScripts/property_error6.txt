@@ -1,2 +1,2 @@
 Syntax Error: Cannot set a value for a read-only property [line: 8, column: 3]
-Syntax Error: ";" expected. [line: 8, column: 9]
+Syntax Error: Unexpected "Integer Literal". [line: 8, column: 9]

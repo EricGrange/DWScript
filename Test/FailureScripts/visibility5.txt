@@ -1,3 +1,3 @@
 Syntax Error: Field/method "Field" not found [line: 9, column: 39]
 Syntax Error: Cannot set a value for a read-only property [line: 14, column: 3]
-Syntax Error: ";" expected. [line: 14, column: 9]
+Syntax Error: Unexpected "Integer Literal". [line: 14, column: 9]
