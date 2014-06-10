@@ -1136,6 +1136,10 @@ begin
                recSym:=TRecordSymbol(expecting);
                Result:=TConstExpr.Create(FCompiler.FProg, expecting, FCompiler.ReadConstRecord(recSym), 0);
                Exit;
+            end else if expecting is TArraySymbol then begin
+               FCompiler.Tokenizer.KillToken;
+               Result := ReadArrayConstantExpr(ttBRIGHT, expecting);
+               Exit;
             end;
          ttALEFT :
             if expecting is TArraySymbol then begin
