@@ -33,8 +33,6 @@ uses
 
 type
 
-   TCaseCondition = class;
-
    TVarExpr = class (TDataExpr)
       protected
          FStackAddr : Integer;
@@ -1393,47 +1391,6 @@ type
          property AppendString : UnicodeString read FAppendString;
    end;
 
-   // val in [case conditions list]
-   TInOpExpr = class(TTypedExpr)
-      private
-         FLeft : TTypedExpr;
-         FCaseConditions : TTightList;
-
-      protected
-         function GetSubExpr(i : Integer) : TExprBase; override;
-         function GetSubExprCount : Integer; override;
-         function GetCaseConditions(idx : Integer) : TCaseCondition;
-
-         function ConstantConditions : Boolean;
-
-         function GetIsConstant : Boolean; override;
-
-      public
-         constructor Create(Prog: TdwsProgram; Left : TTypedExpr);
-         destructor Destroy; override;
-
-         function Eval(exec : TdwsExecution) : Variant; override;
-         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
-         procedure AddCaseCondition(cond : TCaseCondition);
-
-         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
-
-         property Left : TTypedExpr read FLeft;
-         property CaseConditions[idx : Integer] : TCaseCondition read GetCaseConditions; default;
-         property Count : Integer read FCaseConditions.FCount;
-   end;
-
-   // bitwise val in [case conditions list]
-   TBitwiseInOpExpr = class(TUnaryOpBoolExpr)
-      private
-         FMask : Integer;
-
-      public
-         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
-
-         property Mask : Integer read FMask write FMask;
-   end;
-
    // name of an enumeration element
    TEnumerationElementNameExpr = class (TUnaryOpStringExpr)
       public
@@ -1560,9 +1517,13 @@ type
          function GetSubExpr(i : Integer) : TExprBase; virtual; abstract;
          function GetSubExprCount : Integer; virtual; abstract;
 
-         function IsTrue(exec : TdwsExecution; const value: Variant) : Boolean; virtual; abstract;
+         function IsTrue(exec : TdwsExecution; const value : Variant) : Boolean; virtual; abstract;
+         function StringIsTrue(const value : String) : Boolean; virtual; abstract;
+         function IntegerIsTrue(const value : Int64) : Boolean; virtual; abstract;
+
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); virtual; abstract;
          function IsConstant : Boolean; virtual; abstract;
+         function IsExpr(aClass : TClass) : Boolean; virtual; abstract;
 
          property ScriptPos : TScriptPos read FScriptPos;
 
@@ -1584,8 +1545,12 @@ type
          function GetSubExprCount : Integer; override;
 
          function IsTrue(exec : TdwsExecution; const value : Variant) : Boolean; override;
+         function StringIsTrue(const value : String) : Boolean; override;
+         function IntegerIsTrue(const value : Int64) : Boolean; override;
+
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
          function IsConstant : Boolean; override;
+         function IsExpr(aClass : TClass) : Boolean; override;
 
          property CompareExpr : TTypedExpr read FCompareExpr;
    end;
@@ -1603,8 +1568,12 @@ type
          function GetSubExprCount : Integer; override;
 
          function IsTrue(exec : TdwsExecution; const Value: Variant): Boolean; override;
+         function StringIsTrue(const value : String) : Boolean; override;
+         function IntegerIsTrue(const value : Int64) : Boolean; override;
+
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
          function IsConstant : Boolean; override;
+         function IsExpr(aClass : TClass) : Boolean; override;
 
          property FromExpr : TTypedExpr read FFromExpr;
          property ToExpr : TTypedExpr read FToExpr;
@@ -1624,13 +1593,66 @@ type
       public
          destructor Destroy; override;
 
-         procedure EvalNoResult(exec : TdwsExecution); override;
          procedure AddCaseCondition(cond : TCaseCondition);
+
+         procedure EvalNoResult(exec : TdwsExecution); override;
+
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
 
          property CaseConditions : TTightList read FCaseConditions;
          property ValueExpr: TTypedExpr read FValueExpr write FValueExpr;
          property ElseExpr: TProgramExpr read FElseExpr write FElseExpr;
+   end;
+
+   TCaseStringExpr = class(TCaseExpr)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+
+   TCaseIntegerExpr = class(TCaseExpr)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+
+   // val in [case conditions list]
+   TInOpExpr = class(TTypedExpr)
+      private
+         FLeft : TTypedExpr;
+         FCaseConditions : TTightList;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+         function GetCaseConditions(idx : Integer) : TCaseCondition;
+
+         function ConstantConditions : Boolean;
+
+         function GetIsConstant : Boolean; override;
+
+      public
+         constructor Create(Prog: TdwsProgram; Left : TTypedExpr);
+         destructor Destroy; override;
+
+         function Eval(exec : TdwsExecution) : Variant; override;
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+         procedure AddCaseCondition(cond : TCaseCondition);
+
+         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+
+         property Left : TTypedExpr read FLeft;
+         property CaseConditions[idx : Integer] : TCaseCondition read GetCaseConditions; default;
+         property Count : Integer read FCaseConditions.FCount;
+   end;
+
+   // bitwise val in [case conditions list]
+   TBitwiseInOpExpr = class(TUnaryOpBoolExpr)
+      private
+         FMask : Integer;
+
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+
+         property Mask : Integer read FMask write FMask;
    end;
 
    // for FVarExpr := FFromExpr to FToExpr do FDoExpr;
@@ -6068,7 +6090,7 @@ end;
 procedure TCaseExpr.EvalNoResult(exec : TdwsExecution);
 var
    x : Integer;
-   value: Variant;
+   value : Variant;
    cc : TCaseCondition;
 begin
    FValueExpr.EvalAsVariant(exec, value);
@@ -6097,14 +6119,55 @@ end;
 // Optimize
 //
 function TCaseExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+
+   function CanOptimizeToTyped(exprClass : TClass) : Boolean;
+   var
+      i : Integer;
+      cc : TCaseCondition;
+   begin
+      Result:=True;
+      for i:=0 to CaseConditions.Count-1 do begin
+         cc:=(CaseConditions.List[i] as TCaseCondition);
+         if cc.IsExpr(exprClass) then
+            Continue;
+         Exit(False);
+      end;
+   end;
+
+   procedure TransferFieldsAndFree(dest : TCaseExpr);
+   begin
+      dest.FCaseConditions.Assign(FCaseConditions);
+      dest.FElseExpr:=FElseExpr;
+      dest.FValueExpr:=FValueExpr;
+      FCaseConditions.Clear;
+      FElseExpr:=nil;
+      FValueExpr:=nil;
+      Free;
+   end;
+
 var
    cond : array [0..1] of TCompareCaseCondition;
    trueIndex : Integer;
+   cse : TCaseStringExpr;
+   cie : TCaseIntegerExpr;
 begin
-   if     ValueExpr.Typ.IsOfType(prog.TypBoolean)
-      and (CaseConditions.Count=2)
-      and (CaseConditions.List[0] is TCompareCaseCondition)
-      and (CaseConditions.List[1] is TCompareCaseCondition) then begin
+   if ValueExpr.Typ.IsOfType(prog.TypString) then begin
+      if CanOptimizeToTyped(TConstStringExpr) then begin
+         cse:=TCaseStringExpr.Create(ScriptPos);
+         TransferFieldsAndFree(cse);
+         Exit(cse);
+      end;
+   end else if ValueExpr.Typ.IsOfType(prog.TypInteger) then begin
+      if CanOptimizeToTyped(TConstIntExpr) then begin
+         cie:=TCaseIntegerExpr.Create(ScriptPos);
+         TransferFieldsAndFree(cie);
+         Exit(cie);
+      end;
+   end else if     ValueExpr.Typ.IsOfType(prog.TypBoolean)
+               and (CaseConditions.Count=2)
+               and (CaseConditions.List[0] is TCompareCaseCondition)
+               and (CaseConditions.List[1] is TCompareCaseCondition) then begin
+      // "case boolean of" to if/then/else
       cond[0]:=TCompareCaseCondition(CaseConditions.List[0]);
       cond[1]:=TCompareCaseCondition(CaseConditions.List[1]);
       if     (cond[0].CompareExpr is TConstBooleanExpr)
@@ -6157,6 +6220,62 @@ begin
    Result:=2;
    for i:=0 to FCaseConditions.Count-1 do
       Inc(Result, TCaseCondition(FCaseConditions.List[i]).GetSubExprCount);
+end;
+
+// ------------------
+// ------------------ TCaseStringExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TCaseStringExpr.EvalNoResult(exec : TdwsExecution);
+var
+   x : Integer;
+   value : String;
+   cc : TCaseCondition;
+begin
+   FValueExpr.EvalAsString(exec, value);
+   for x := 0 to FCaseConditions.Count - 1 do begin
+      cc:=TCaseCondition(FCaseConditions.List[x]);
+      if cc.StringIsTrue(value) then begin
+         exec.DoStep(cc.TrueExpr);
+         cc.TrueExpr.EvalNoResult(exec);
+         Exit;
+      end;
+   end;
+
+   if Assigned(FElseExpr) then begin
+      exec.DoStep(FElseExpr);
+      FElseExpr.EvalNoResult(exec);
+   end;
+end;
+
+// ------------------
+// ------------------ TCaseIntegerExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TCaseIntegerExpr.EvalNoResult(exec : TdwsExecution);
+var
+   x : Integer;
+   value : int64;
+   cc : TCaseCondition;
+begin
+   value:=FValueExpr.EvalAsInteger(exec);
+   for x:=0 to FCaseConditions.Count-1 do begin
+      cc:=TCaseCondition(FCaseConditions.List[x]);
+      if cc.IntegerIsTrue(value) then begin
+         exec.DoStep(cc.TrueExpr);
+         cc.TrueExpr.EvalNoResult(exec);
+         Exit;
+      end;
+   end;
+
+   if Assigned(FElseExpr) then begin
+      exec.DoStep(FElseExpr);
+      FElseExpr.EvalNoResult(exec);
+   end;
 end;
 
 // ------------------
@@ -6234,6 +6353,20 @@ begin
    Result:=(buf=Value);
 end;
 
+// StringIsTrue
+//
+function TCompareCaseCondition.StringIsTrue(const value : String) : Boolean;
+begin
+   Result:=(value=TConstStringExpr(FCompareExpr).Value);
+end;
+
+// IntegerIsTrue
+//
+function TCompareCaseCondition.IntegerIsTrue(const value : Int64) : Boolean;
+begin
+   Result:=(value=TConstIntExpr(FCompareExpr).Value);
+end;
+
 // TypeCheck
 //
 procedure TCompareCaseCondition.TypeCheck(prog : TdwsProgram; typ : TTypeSymbol);
@@ -6249,6 +6382,13 @@ end;
 function TCompareCaseCondition.IsConstant : Boolean;
 begin
    Result:=FCompareExpr.IsConstant;
+end;
+
+// IsExpr
+//
+function TCompareCaseCondition.IsExpr(aClass : TClass) : Boolean;
+begin
+   Result:=FCompareExpr.IsConstant and FCompareExpr.InheritsFrom(aClass);
 end;
 
 // ------------------
@@ -6305,6 +6445,22 @@ begin
    end else Result:=False;
 end;
 
+// StringIsTrue
+//
+function TRangeCaseCondition.StringIsTrue(const value : String) : Boolean;
+begin
+   Result:=    (value>=TConstStringExpr(FFromExpr).Value)
+           and (value<=TConstStringExpr(FToExpr).Value);
+end;
+
+// IntegerIsTrue
+//
+function TRangeCaseCondition.IntegerIsTrue(const value : Int64) : Boolean;
+begin
+   Result:=    (value>=TConstIntExpr(FFromExpr).Value)
+           and (value<=TConstIntExpr(FToExpr).Value);
+end;
+
 // TypeCheck
 //
 procedure TRangeCaseCondition.TypeCheck(prog : TdwsProgram; typ : TTypeSymbol);
@@ -6332,6 +6488,14 @@ end;
 function TRangeCaseCondition.IsConstant : Boolean;
 begin
    Result:=FFromExpr.IsConstant and FToExpr.IsConstant;
+end;
+
+// IsExpr
+//
+function TRangeCaseCondition.IsExpr(aClass : TClass) : Boolean;
+begin
+   Result:=    FFromExpr.IsConstant and FToExpr.IsConstant
+           and FFromExpr.InheritsFrom(aClass) and FToExpr.InheritsFrom(aClass);
 end;
 
 // ------------------

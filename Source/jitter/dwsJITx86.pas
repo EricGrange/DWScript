@@ -811,6 +811,8 @@ begin
    RegisterJITter(TIfThenExpr,                  Tx86IfThen.Create(Self));
    RegisterJITter(TIfThenElseExpr,              Tx86IfThenElse.Create(Self));
    RegisterJITter(TCaseExpr,                    FInterpretedJITter.IncRefCount);
+   RegisterJITter(TCaseStringExpr,              FInterpretedJITter.IncRefCount);
+   RegisterJITter(TCaseIntegerExpr,             FInterpretedJITter.IncRefCount);
 
    RegisterJITter(TLoopExpr,                    Tx86Loop.Create(Self));
    RegisterJITter(TRepeatExpr,                  Tx86Repeat.Create(Self));
