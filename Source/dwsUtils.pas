@@ -963,6 +963,20 @@ end;
   {$R+}
 {$ENDIF}
 
+// InitializeSmallIntegers
+//
+var
+   vSmallIntegers : array [0..39] of String;
+procedure InitializeSmallIntegers;
+var
+   i : Integer;
+begin
+   // we can't use a constant array here, as obtaining a string from a constant
+   // array implies a memory allocations, which would defeat the whole purpose
+   for i := 0 to High(vSmallIntegers) do
+      vSmallIntegers[i] := IntToStr(i);
+end;
+
 // FastInt64ToStr
 //
 procedure FastInt64ToStr(const val : Int64; var s : UnicodeString);
@@ -970,8 +984,12 @@ var
    buf : TInt64StringBuffer;
    n : Integer;
 begin
-   n:=FastInt64ToBuffer(val, buf);
-   SetString(s, PWideChar(@buf[n]), (High(buf)+1)-n);
+   if (Int64Rec(val).Hi=0) and (Int64Rec(val).Lo<=High(vSmallIntegers)) then
+      s:=vSmallIntegers[Int64Rec(val).Lo]
+   else begin
+      n:=FastInt64ToBuffer(val, buf);
+      SetString(s, PWideChar(@buf[n]), (High(buf)+1)-n);
+   end;
 end;
 
 // FastInt64ToHex
@@ -4285,6 +4303,7 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+   InitializeSmallIntegers;
    InitializeStringsUnifier;
    TSimpleIntegerStack.vTemplate:=TSimpleIntegerStack.Create;
 
