@@ -21,6 +21,7 @@ type
          procedure IgnoreDecimalSeparator;
          procedure TokenizerSpecials;
          procedure NoCurlyComments;
+         procedure DollarNames;
    end;
 
 // ------------------------------------------------------------------
@@ -172,6 +173,46 @@ begin
       t.BeginSourceFile(FSourceFile);
       CheckFalse(t.HasTokens, 'skip curly comment');
       t.EndSourceFile;
+   finally
+      t.Free;
+      rules.Free;
+   end;
+end;
+
+// DollarNames
+//
+procedure TTokenizerTests.DollarNames;
+var
+   rules : TPascalTokenizerStateRules;
+   t : TTokenizer;
+   name : String;
+begin
+   FSourceFile.Code:='$a a$ $a$';
+   rules:=TPascalTokenizerStateRules.Create;
+   t:=rules.CreateTokenizer(FMsgs);
+   try
+      CheckFalse(rules.DollarNames, 'dollar names by default');
+
+      rules.DollarNames:=True;
+      CheckTrue(rules.DollarNames, 'dollar names set');
+
+      t.BeginSourceFile(FSourceFile);
+      CheckTrue(t.TestName, '$a');
+      CheckEquals(t.GetToken.AsString, '$a');
+      t.KillToken;
+
+      CheckTrue(t.TestName, 'a$');
+      CheckEquals(t.GetToken.AsString, 'a$');
+      t.KillToken;
+
+      CheckTrue(t.TestName, '$a$');
+      CheckEquals(t.GetToken.AsString, '$a$');
+      t.KillToken;
+
+      t.EndSourceFile;
+
+      rules.DollarNames:=False;
+      CheckFalse(rules.DollarNames, 'dollar names set');
    finally
       t.Free;
       rules.Free;

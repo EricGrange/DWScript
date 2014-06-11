@@ -40,17 +40,22 @@ type
          sGreaterF, sSmallerF, sEqualF, sDotDot: TState;
 
          FCurlyCommentTransition : TTransition;
+         FDollarNamesTransition : TTransition;
 
       protected
          function StartState : TState; override;
 
-         procedure SetCurlyComments(const val : Boolean);
          function GetCurlyComments : Boolean; inline;
+         procedure SetCurlyComments(const val : Boolean);
+
+         function GetDollarNames : Boolean; inline;
+         procedure SetDollarNames(const val : Boolean);
 
       public
          constructor Create; override;
 
          property CurlyComments : Boolean read GetCurlyComments write SetCurlyComments;
+         property DollarNames : Boolean read GetDollarNames write SetDollarNames;
    end;
 
 const
@@ -371,6 +376,13 @@ begin
    Result:=sStart;
 end;
 
+// GetCurlyComments
+//
+function TPascalTokenizerStateRules.GetCurlyComments : Boolean;
+begin
+   Result:=(FCurlyCommentTransition=nil);
+end;
+
 // SetCurlyComments
 //
 procedure TPascalTokenizerStateRules.SetCurlyComments(const val : Boolean);
@@ -385,11 +397,27 @@ begin
    end;
 end;
 
-// GetCurlyComments
+// GetDollarNames
 //
-function TPascalTokenizerStateRules.GetCurlyComments : Boolean;
+function TPascalTokenizerStateRules.GetDollarNames : Boolean;
 begin
-   Result:=(FCurlyCommentTransition=nil);
+   Result:=(FDollarNamesTransition<>nil);
+end;
+
+// SetDollarNames
+//
+procedure TPascalTokenizerStateRules.SetDollarNames(const val : Boolean);
+begin
+   if val=DollarNames then Exit;
+   if val then begin
+      FDollarNamesTransition:=sStart.FindTransition('$');
+      sStart.SetTransition('$', sStart.FindTransition('A'));
+      sNameF.SetTransition('$', sNameF.FindTransition('A'));
+   end else begin
+      sStart.SetTransition('$', FDollarNamesTransition);
+      sNameF.SetTransition('$', sNameF.FindTransition(#0));
+      FDollarNamesTransition:=nil;
+   end;
 end;
 
 end.
