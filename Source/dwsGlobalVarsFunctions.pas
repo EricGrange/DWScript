@@ -280,6 +280,7 @@ function TryReadGlobalVar(const aName: UnicodeString; var value: Variant): Boole
 var
    gv : TGlobalVar;
 begin
+   Result:=False;
    vGlobalVarsCS.BeginRead;
    try
       gv:=vGlobalVars.Objects[aName];
@@ -287,7 +288,7 @@ begin
          and ((gv.Expire=0) or (gv.Expire>GetSystemMilliseconds)) then begin
          value:=gv.Value;
          Result:=True;
-      end else Result:=False;
+      end;
    finally
       vGlobalVarsCS.EndRead;
    end;
@@ -299,6 +300,7 @@ function DeleteGlobalVar(const aName : UnicodeString) : Boolean;
 var
    gv : TGlobalVar;
 begin
+   Result:=False;
    vGlobalVarsCS.BeginWrite;
    try
       gv:=vGlobalVars.Objects[aName];
@@ -306,7 +308,7 @@ begin
          vGlobalVars.Objects[aName]:=nil;
          vGlobalVarsNamesCache:='';
          Result:=True;
-      end else Result:=False;
+      end;
    finally
       vGlobalVarsCS.EndWrite;
    end;
