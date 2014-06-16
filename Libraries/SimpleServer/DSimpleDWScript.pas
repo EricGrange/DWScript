@@ -45,6 +45,7 @@ type
 
    TDependenciesHash = class (TSimpleNameObjectHash<TProgramList>)
       procedure RegisterProg(const cp : TCompiledProgram);
+      procedure DeregisterProg(const prog : IdwsProgram);
       procedure AddName(const name : String; const prog : IdwsProgram);
    end;
 
@@ -389,6 +390,7 @@ end;
 //
 procedure TSimpleDWScript.FlushDWSCache(const fileName : String = '');
 var
+   i : Integer;
    oldHash : TCompiledProgramHash;
    unitName : String;
 begin
@@ -415,6 +417,8 @@ begin
             finally
                oldHash.Free;
             end;
+            for i:=0 to FFlushProgList.Count-1 do
+               FDependenciesHash.DeregisterProg(FFlushProgList[i]);
             FFlushProgList.Clear;
          end;
       end;
@@ -749,6 +753,22 @@ begin
       item:=list[i];
       if not StrBeginsWith(item.NameReference, '*') then
          AddName(item.NameReference, cp.Prog);
+   end;
+end;
+
+// DeregisterProg
+//
+procedure TDependenciesHash.DeregisterProg(const prog : IdwsProgram);
+var
+   i, j : Integer;
+   list : TProgramList;
+begin
+   for i:=0 to Capacity-1 do begin
+      list:=BucketObject[i];
+      if list<>nil then begin
+         for j:=list.Count-1 downto 0 do
+            list.Extract(j);
+      end;
    end;
 end;
 
