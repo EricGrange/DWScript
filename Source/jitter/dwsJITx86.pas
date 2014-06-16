@@ -862,6 +862,9 @@ begin
    RegisterJITter(TShlExpr,                     Tx86Shl.Create(Self));
 
    RegisterJITter(TInOpExpr,                    FInterpretedJITter.IncRefCount);
+   RegisterJITter(TStringInOpExpr,              FInterpretedJITter.IncRefCount);
+   RegisterJITter(TIntegerInOpExpr,             FInterpretedJITter.IncRefCount);
+   RegisterJITter(TBitwiseInOpExpr,             FInterpretedJITter.IncRefCount);
 
    RegisterJITter(TIncIntVarExpr,               Tx86IncIntVar.Create(Self));
    RegisterJITter(TDecIntVarExpr,               Tx86DecIntVar.Create(Self));

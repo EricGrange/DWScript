@@ -185,7 +185,6 @@ procedure TTokenizerTests.DollarNames;
 var
    rules : TPascalTokenizerStateRules;
    t : TTokenizer;
-   name : String;
 begin
    FSourceFile.Code:='$a a$ $a$';
    rules:=TPascalTokenizerStateRules.Create;

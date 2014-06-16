@@ -1551,9 +1551,16 @@ end;
 
 // CleanupAfterCompile
 //
+var
+   vCompileTidy : Integer = 8;
 procedure TdwsCompiler.CleanupAfterCompile;
 begin
    DirectSet8087CW(F8087CW);
+
+   if InterlockedDecrement(vCompileTidy)=0 then begin
+      TidyStringsUnifier;
+      vCompileTidy:=8;
+   end;
 
    FPendingAttributes.Clear;
 
@@ -5949,6 +5956,7 @@ begin
 
          if inExpr.Typ is TArraySymbol then begin
 
+
             arraySymbol:=TArraySymbol(inExpr.Typ);
 
             // create anonymous iter variables & its initialization expression
@@ -5971,11 +5979,13 @@ begin
 
          end else if inExpr.Typ is TSetOfSymbol then begin
 
+            inExprAssignExpr.Free;
             Result:=ReadForInSetOf(forPos, inExpr as TDataExpr, loopVarExpr, loopVarName, loopVarNamePos);
             Exit;
 
          end else begin
 
+            inExprAssignExpr.Free;
             loopVarExpr.Free;
             iterVarExpr:=nil;
             fromExpr:=nil;
@@ -10087,9 +10097,6 @@ begin
                   left:=TConvExpr.WrapWithConvCast(FProg, hotPos, elementType,
                                                    left, CPE_IncompatibleTypes);
                end;
-//               if (left.Typ=nil) or not elementType.IsCompatible(left.Typ) then
-//                  IncompatibleTypes(hotPos, CPE_IncompatibleTypes,
-//                                    left.Typ, elementType);    CPE_AssignIncompatibleTypes
             end;
 
             Result:=TArrayIndexOfExpr.Create(FProg, hotPos, setExpr, left, nil);

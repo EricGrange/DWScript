@@ -1533,6 +1533,11 @@ type
 
    TCaseConditions = TObjectList<TCaseCondition>;
 
+   TCaseConditionsHelper = class
+      public
+         class function CanOptimizeToTyped(const conditions : TTightList; exprClass : TClass) : Boolean;
+   end;
+
    TCompareCaseCondition = class(TCaseCondition)
       private
          FCompareExpr : TTypedExpr;
@@ -1642,6 +1647,16 @@ type
          property Left : TTypedExpr read FLeft;
          property CaseConditions[idx : Integer] : TCaseCondition read GetCaseConditions; default;
          property Count : Integer read FCaseConditions.FCount;
+   end;
+
+   TStringInOpExpr = class (TInOpExpr)
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
+   TIntegerInOpExpr = class (TInOpExpr)
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
    // bitwise val in [case conditions list]
@@ -3970,11 +3985,22 @@ end;
 // Optimize
 //
 function TInOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+
+   procedure TransferFieldsAndFree(dest : TInOpExpr);
+   begin
+      FLeft:=nil;
+      dest.FCaseConditions.Assign(FCaseConditions);
+      FCaseConditions.Clear;
+      Free;
+   end;
+
 var
    enumSym : TEnumerationSymbol;
    value : Variant;
    i, k, mask : Integer;
    cc : TCaseCondition;
+   sioe : TStringInOpExpr;
+   iioe : TIntegerInOpExpr;
 begin
    Result:=Self;
    // if left is an enumeration with 31 or less symbols (31 is limit for JS)
@@ -3997,6 +4023,18 @@ begin
       TBitwiseInOpExpr(Result).Mask:=mask;
       FLeft:=nil;
       Free;
+   end else if FLeft.IsOfType(prog.TypString) then begin
+      if TCaseConditionsHelper.CanOptimizeToTyped(FCaseConditions, TConstStringExpr) then begin
+         sioe:=TStringInOpExpr.Create(prog, Left);
+         TransferFieldsAndFree(sioe);
+         Exit(sioe);
+      end;
+   end else if FLeft.IsOfType(prog.TypInteger) then begin
+      if TCaseConditionsHelper.CanOptimizeToTyped(FCaseConditions, TConstIntExpr) then begin
+         iioe:=TIntegerInOpExpr.Create(prog, Left);
+         TransferFieldsAndFree(iioe);
+         Exit(iioe);
+      end;
    end;
 end;
 
@@ -4044,6 +4082,48 @@ end;
 function TInOpExpr.GetCaseConditions(idx : Integer) : TCaseCondition;
 begin
    Result:=TCaseCondition(FCaseConditions.List[idx]);
+end;
+
+// ------------------
+// ------------------ TStringInOpExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TStringInOpExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   i : Integer;
+   value : String;
+   cc : TCaseCondition;
+begin
+   FLeft.EvalAsString(exec, value);
+   for i:=0 to FCaseConditions.Count-1 do begin
+      cc:=TCaseCondition(FCaseConditions.List[i]);
+      if cc.StringIsTrue(value) then
+         Exit(True);
+   end;
+   Result:=False;
+end;
+
+// ------------------
+// ------------------ TIntegerInOpExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TIntegerInOpExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   i : Integer;
+   value : Int64;
+   cc : TCaseCondition;
+begin
+   value:=FLeft.EvalAsInteger(exec);
+   for i:=0 to FCaseConditions.Count-1 do begin
+      cc:=TCaseCondition(FCaseConditions.List[i]);
+      if cc.IntegerIsTrue(value) then
+         Exit(True);
+   end;
+   Result:=False;
 end;
 
 // ------------------
@@ -6120,20 +6200,6 @@ end;
 //
 function TCaseExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 
-   function CanOptimizeToTyped(exprClass : TClass) : Boolean;
-   var
-      i : Integer;
-      cc : TCaseCondition;
-   begin
-      Result:=True;
-      for i:=0 to CaseConditions.Count-1 do begin
-         cc:=(CaseConditions.List[i] as TCaseCondition);
-         if cc.IsExpr(exprClass) then
-            Continue;
-         Exit(False);
-      end;
-   end;
-
    procedure TransferFieldsAndFree(dest : TCaseExpr);
    begin
       dest.FCaseConditions.Assign(FCaseConditions);
@@ -6152,13 +6218,13 @@ var
    cie : TCaseIntegerExpr;
 begin
    if ValueExpr.Typ.IsOfType(prog.TypString) then begin
-      if CanOptimizeToTyped(TConstStringExpr) then begin
+      if TCaseConditionsHelper.CanOptimizeToTyped(FCaseConditions, TConstStringExpr) then begin
          cse:=TCaseStringExpr.Create(ScriptPos);
          TransferFieldsAndFree(cse);
          Exit(cse);
       end;
    end else if ValueExpr.Typ.IsOfType(prog.TypInteger) then begin
-      if CanOptimizeToTyped(TConstIntExpr) then begin
+      if TCaseConditionsHelper.CanOptimizeToTyped(FCaseConditions, TConstIntExpr) then begin
          cie:=TCaseIntegerExpr.Create(ScriptPos);
          TransferFieldsAndFree(cie);
          Exit(cie);
@@ -6305,6 +6371,26 @@ begin
    Result:=   typ.IsOfType(prog.TypInteger) or typ.IsOfType(prog.TypFloat)
            or typ.IsOfType(prog.TypVariant)
            or (typ is TEnumerationSymbol);
+end;
+
+// ------------------
+// ------------------ TCaseConditionsHelper ------------------
+// ------------------
+
+// CanOptimizeToTyped
+//
+class function TCaseConditionsHelper.CanOptimizeToTyped(const conditions : TTightList; exprClass : TClass) : Boolean;
+var
+   i : Integer;
+   cc : TCaseCondition;
+begin
+   Result:=True;
+   for i:=0 to conditions.Count-1 do begin
+      cc:=(conditions.List[i] as TCaseCondition);
+      if cc.IsExpr(exprClass) then
+         Continue;
+      Exit(False);
+   end;
 end;
 
 // ------------------
