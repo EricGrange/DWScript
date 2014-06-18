@@ -3,8 +3,8 @@ unit dwsSystemInfoLibModule;
 interface
 
 uses
-  Windows, SysUtils, Classes, Registry,
-  dwsComp, dwsExprs, dwsUtils, dwsCPUUsage;
+  Windows, SysUtils, Classes, Registry, PsAPI,
+  dwsDataContext, dwsComp, dwsExprs, dwsUtils, dwsCPUUsage;
 
 type
    TOSNameVersion = record
@@ -51,6 +51,8 @@ type
     procedure dwsSystemInfoClassesApplicationInfoMethodsGetEnvironmentVariableEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsSystemInfoClassesApplicationInfoMethodsSetEnvironmentVariableEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesApplicationInfoMethodsMemoryCountersEval(
       Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
@@ -167,6 +169,25 @@ procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsGetE
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString:=GetEnvironmentVariable(Info.ParamAsString[0]);
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsMemoryCountersEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   pmc : PROCESS_MEMORY_COUNTERS;
+   data : TData;
+begin
+   pmc.cb := SizeOf(pmc);
+   if not GetProcessMemoryInfo(GetCurrentProcess, @pmc, pmc.cb) then
+      RaiseLastOSError;
+
+   SetLength(data, 4);
+   data[0]:=Int64(pmc.WorkingSetSize);
+   data[1]:=Int64(pmc.PeakWorkingSetSize);
+   data[2]:=Int64(pmc.PagefileUsage);
+   data[3]:=Int64(pmc.PeakPagefileUsage);
+
+   Info.ResultVars.Data:=data;
 end;
 
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsRunningAsServiceEval(
