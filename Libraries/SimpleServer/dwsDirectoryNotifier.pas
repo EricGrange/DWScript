@@ -69,6 +69,8 @@ type
          property OnDirectoryChanged : TdwsDirectoryChangedEvent read FOnDirectoryChanged write FOnDirectoryChanged;
    end;
 
+   TdwsFileNotifierBuffer = array [0..63*1024-1] of Byte; // limit at 64kb for network drives
+
    // TdwsFileNotifier
    //
    TdwsFileNotifier = class (TThread)
@@ -78,7 +80,8 @@ type
          FOnFileChanged : TdwsFileChangedEvent;
          FMode : TdwsDirectoryNotifierMode;
          FDirectoryHandle : THandle;
-         FNotificationBuffer : array[0..4096] of Byte;
+         FNotificationBuffers : array [0..1] of TdwsFileNotifierBuffer;
+         FActiveBuffer : Integer;
          FNotifyFilter : DWORD;
          FOverlapped : TOverlapped;
          FPOverlapped : POverlapped;
@@ -211,7 +214,7 @@ begin
       RaiseLastOSError;
    FCompletionPort:=CreateIoCompletionPort(FDirectoryHandle, 0, 1, 0);
    FBytesWritten:=0;
-   if not ReadDirectoryChanges(FDirectoryHandle, @FNotificationBuffer, SizeOf(FNotificationBuffer),
+   if not ReadDirectoryChanges(FDirectoryHandle, @FNotificationBuffers[FActiveBuffer], SizeOf(TdwsFileNotifierBuffer),
                                (FMode=dnoDirectoryAndSubTree), FNotifyFilter, @FBytesWritten,
                                @FOverlapped, nil) then
       RaiseLastOSError;
@@ -243,13 +246,22 @@ var
    fileOpNotification : PFileNotifyInformation;
    offset : Longint;
    fileName : String;
+   parseBuffer : Integer;
 begin
    FActive:=True;
    NameThreadForDebugging('FileNotifier');
    while not Terminated do begin
       GetQueuedCompletionStatus(FCompletionPort, numBytes, completionKey, FPOverlapped, INFINITE);
       if completionKey<>0 then begin
-         fileOpNotification:=@FNotificationBuffer;
+
+         parseBuffer:=FActiveBuffer;
+         FActiveBuffer:=1-FActiveBuffer;
+         if not ReadDirectoryChanges(FDirectoryHandle, @FNotificationBuffers[FActiveBuffer], SizeOf(TdwsFileNotifierBuffer),
+                                     (FMode=dnoDirectoryAndSubTree), FNotifyFilter,
+                                     @FBytesWritten, @FOverlapped, nil) then
+            Terminate;
+
+         fileOpNotification:=@FNotificationBuffers[parseBuffer];
          repeat
             offset:=fileOpNotification^.NextEntryOffset;
             if Assigned(FOnFileChanged) then begin
@@ -260,11 +272,8 @@ begin
             fileOpNotification:=@PAnsiChar(fileOpNotification)[offset];
          until offset=0;
          FBytesWritten:=0;
-         FillChar(FNotificationBuffer, 0, SizeOf(FNotificationBuffer));
-         if not ReadDirectoryChanges(FDirectoryHandle, @FNotificationBuffer, SizeOf(FNotificationBuffer),
-                                     (FMode=dnoDirectoryAndSubTree), FNotifyFilter,
-                                     @FBytesWritten, @FOverlapped, nil) then
-            Terminate;
+         FillChar(FNotificationBuffers[parseBuffer], 0, SizeOf(TdwsFileNotifierBuffer));
+
       end else Terminate;
    end;
    FActive:=False;
