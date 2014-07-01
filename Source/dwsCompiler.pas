@@ -1534,6 +1534,7 @@ begin
    FDataSymbolExprReuse := TSimpleObjectObjectHash_TDataSymbol_TVarExpr.Create;
 
    FDefaultConditionals := TAutoStrings.CreateClone(conf.Conditionals);
+   FDefaultConditionals.Value.Add('DWSCRIPT');
 
    F8087CW:=DirectSet8087CW($133F);
 end;
@@ -1633,8 +1634,7 @@ begin
    FMainProg.Compiler:=Self;
    FMainProg.TimeoutMilliseconds:=aConf.TimeoutMilliseconds;
    FMainProg.RuntimeFileSystem:=aConf.RuntimeFileSystem;
-   FMainProg.ConditionalDefines.Value.Assign(aConf.Conditionals);
-   FMainProg.ConditionalDefines.Value.Add('DWSCRIPT');
+   FMainProg.ConditionalDefines.Value.Assign(FDefaultConditionals.Value);
    FMainProg.OnExecutionStarted:=FOnExecutionStarted;
    FMainProg.OnExecutionEnded:=FOnExecutionEnded;
    FSourceContextMap:=FMainProg.SourceContextMap;

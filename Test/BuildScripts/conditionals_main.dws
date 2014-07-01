@@ -21,3 +21,8 @@ PrintLn('main after uses ok');
 {$else}
 PrintLn('main after uses not ok');
 {$endif}
+
+{$ifndef DWSCRIPT}
+PrintLn('DWSCRIPT missing');
+{$endif}
+

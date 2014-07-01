@@ -2,6 +2,10 @@ unit conditionalsUnit;
 
 procedure Test;
 begin
+	{$ifndef DWSCRIPT}
+	PrintLn('DWSCRIPT missing');
+	{$endif}
+
 	{$ifdef CONDITION}
 	PrintLn('unit ok');
 	{$else}
