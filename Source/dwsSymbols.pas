@@ -4377,12 +4377,16 @@ end;
 //
 function TClassSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-   typSym:=typSym.UnAliasedType;
-   if typSym is TNilSymbol then
-      Result:=True
-   else if typSym is TClassSymbol then
-      Result:=(NthParentOf(TClassSymbol(typSym))>=0)
-   else Result:=False;
+   if typSym=nil then
+      Result:=False
+   else begin
+      typSym:=typSym.UnAliasedType;
+      if typSym is TNilSymbol then
+         Result:=True
+      else if typSym is TClassSymbol then
+         Result:=(NthParentOf(TClassSymbol(typSym))>=0)
+      else Result:=False;
+   end;
 end;
 
 // HasMetaSymbol
