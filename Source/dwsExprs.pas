@@ -1814,12 +1814,6 @@ type
          property VMT : TMethodSymbolArray read FVMT write FVMT;
    end;
 
-   EdwsVariantTypeCastError = class(EVariantTypeCastError)
-      public
-         constructor Create(const v : Variant; const desiredType : UnicodeString;
-                            originalException : Exception);
-   end;
-
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -3763,15 +3757,7 @@ var
    v : Variant;
 begin
    v:=Eval(exec);
-   try
-      Result:=v;
-   except
-      // workaround for RTL bug that will sometimes report a failed cast to Int64
-      // as being a failed cast to Boolean
-      on E : EVariantError do begin
-         raise EdwsVariantTypeCastError.Create(v, 'Integer', E);
-      end else raise;
-   end;
+   VariantToInt64(v, Result);
 end;
 
 // EvalAsBoolean
@@ -8185,20 +8171,6 @@ begin
       end;
       methSym:=methSym.ParentMeth;
    end;
-end;
-
-// ------------------
-// ------------------ EdwsVariantTypeCastError ------------------
-// ------------------
-
-// Create
-//
-constructor EdwsVariantTypeCastError.Create(const v : Variant;
-      const desiredType : UnicodeString; originalException : Exception);
-begin
-   inherited CreateFmt(RTE_VariantCastFailed,
-                       [VarTypeAsText(VarType(v)), desiredType, originalException.ClassName])
-
 end;
 
 // ------------------

@@ -22,7 +22,7 @@ interface
 
 uses
    Classes, SysUtils, Variants, Types, StrUtils, Masks,
-   dwsXPlatform, Math;
+   dwsStrings, dwsXPlatform, Math;
 
 type
 
@@ -664,6 +664,12 @@ type
          procedure Sort(minIndex, maxIndex : Integer);
    end;
 
+   EdwsVariantTypeCastError = class(EVariantTypeCastError)
+      public
+         constructor Create(const v : Variant; const desiredType : UnicodeString;
+                            originalException : Exception);
+   end;
+
 const
    cMSecToDateTime : Double = 1/(24*3600*1000);
 
@@ -725,6 +731,7 @@ function DivMod100(var dividend : Cardinal) : Cardinal;
 procedure FastStringReplace(var str : UnicodeString; const sub, newSub : UnicodeString);
 
 procedure VariantToString(const v : Variant; var s : UnicodeString);
+procedure VariantToInt64(const v : Variant; var r : Int64);
 
 type
    EISO8601Exception = class (Exception);
@@ -1187,6 +1194,38 @@ begin
          UnknownAsString(IUnknown(varData^.VUnknown), s);
    else
       s:=v;
+   end;
+end;
+
+// VariantToInt64
+//
+procedure VariantToInt64(const v : Variant; var r : Int64);
+
+   procedure DefaultCast;
+   begin
+      try
+         r:=v;
+      except
+         // workaround for RTL bug that will sometimes report a failed cast to Int64
+         // as being a failed cast to Boolean
+         on E : EVariantError do begin
+            raise EdwsVariantTypeCastError.Create(v, 'Integer', E);
+         end else raise;
+      end;
+   end;
+
+begin
+   case TVarData(v).VType of
+      varInt64 :
+         r:=TVarData(v).VInt64;
+      varBoolean :
+         r:=Ord(TVarData(v).VBoolean);
+      varUnknown :
+         if TVarData(v).VUnknown=nil then
+            r:=0
+         else DefaultCast;
+   else
+      DefaultCast;
    end;
 end;
 
@@ -4293,6 +4332,20 @@ begin
    end;
    FFirst:=nil;
    FLast:=nil;
+end;
+
+// ------------------
+// ------------------ EdwsVariantTypeCastError ------------------
+// ------------------
+
+// Create
+//
+constructor EdwsVariantTypeCastError.Create(const v : Variant;
+      const desiredType : UnicodeString; originalException : Exception);
+begin
+   inherited CreateFmt(RTE_VariantCastFailed,
+                       [VarTypeAsText(VarType(v)), desiredType, originalException.ClassName])
+
 end;
 
 // ------------------------------------------------------------------

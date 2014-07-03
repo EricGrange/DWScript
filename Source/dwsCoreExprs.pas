@@ -3054,7 +3054,7 @@ begin
    p:=PVarData(EvalItem(exec));
    if p.VType=varInt64 then
       Result:=p.VInt64
-   else Result:=PVariant(p)^;
+   else VariantToInt64(PVariant(p)^, Result);
 end;
 
 // EvalAsFloat
