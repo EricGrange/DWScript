@@ -152,7 +152,8 @@ begin
             if classSymbol.IsAbstract then begin
                if meth.Kind=fkConstructor then
                   TCheckAbstractClassConstruction.Create(prog.CompileMsgs, RTE_InstanceOfAbstractClass, scriptPos, classSymbol)
-               else TCheckAbstractClassConstruction.Create(prog.CompileMsgs, CPE_AbstractClassUsage, scriptPos, classSymbol);
+               else if meth.IsAbstract then
+                  TCheckAbstractClassConstruction.Create(prog.CompileMsgs, CPE_AbstractClassUsage, scriptPos, classSymbol);
             end;
          end;
 

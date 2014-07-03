@@ -18,6 +18,7 @@ type
 var o : TStatic;
 
 PrintLn(TStatic.Func);
+TStatic.Virt;
 PrintLn(TSub.Func);
 PrintLn(TSub.Prop);
 
