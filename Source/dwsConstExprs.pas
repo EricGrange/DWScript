@@ -929,6 +929,15 @@ begin
                      Exit;
                   end;
                until elemTyp.IsCompatible(expr.Typ);
+            end else if (expr.Typ is TStructuredTypeMetaSymbol) and (elemTyp is TStructuredTypeMetaSymbol) then begin
+               repeat
+                  elemTyp:=TStructuredTypeMetaSymbol(elemTyp).Parent;
+                  if elemTyp=nil then begin
+                     prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_AssignIncompatibleTypes,
+                                                          [expr.Typ.Caption, Elements[0].Typ.Caption]);
+                     Exit;
+                  end;
+               until elemTyp.IsCompatible(expr.Typ);
             end else if prog.TypVariant.IsCompatible(expr.Typ) and prog.TypVariant.IsCompatible(elemTyp) then
                elemTyp:=prog.TypVariant
             else begin

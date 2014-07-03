@@ -1190,7 +1190,7 @@ type
    end;
 
    // class of, record of
-   TStructuredTypeMetaSymbol = class(TTypeSymbol)
+   TStructuredTypeMetaSymbol = class (TTypeSymbol)
       public
          constructor Create(const name : UnicodeString; typ : TStructuredTypeSymbol);
 
@@ -1198,6 +1198,8 @@ type
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
          function StructSymbol : TStructuredTypeSymbol; inline;
+
+         function Parent : TStructuredTypeMetaSymbol;
    end;
 
    // field of a script object
@@ -2511,6 +2513,18 @@ end;
 function TStructuredTypeMetaSymbol.StructSymbol : TStructuredTypeSymbol;
 begin
    Result:=TStructuredTypeSymbol(Typ);
+end;
+
+// Parent
+//
+function TStructuredTypeMetaSymbol.Parent : TStructuredTypeMetaSymbol;
+var
+   p : TCompositeTypeSymbol;
+begin
+   p:=StructSymbol.Parent;
+   if (p=nil) or not (p is TStructuredTypeSymbol) then
+      Result:=nil
+   else Result:=TStructuredTypeSymbol(p).MetaSymbol;
 end;
 
 // ------------------
