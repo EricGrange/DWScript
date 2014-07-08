@@ -130,6 +130,15 @@ type
 
    {Re-list every symbol (pointer to it) and every position it is in in the script }
    TSymbolPositionList = class (TRefCountedObject)
+      type
+         TSymbolPositionListEnumerator = record
+            Index : Integer;
+            PosList : TSymbolPositionList;
+            function MoveNext : Boolean; inline;
+            function GetCurrent : TSymbolPosition; inline;
+            property Current : TSymbolPosition read GetCurrent;
+         end;
+
       private
          FSymbol : TSymbol;                        // pointer to the symbol
          FPosList : TSimpleList<TSymbolPosition>;  // list of positions where symbol is declared and used
@@ -154,6 +163,8 @@ type
          function IndexOfPosition(const scriptPos : TScriptPos) : Integer;
          procedure RemoveInRange(const startPos, endPos : TScriptPos);
 
+         function GetEnumerator : TSymbolPositionListEnumerator;
+
          property Items[index : Integer] : TSymbolPosition read GetPosition; default;
          function Count : Integer; inline;
 
@@ -166,10 +177,20 @@ type
    end;
 
    TdwsSymbolDictionaryProc = procedure (sym : TSymbol) of object;
+   TdwsSymbolDictionaryRef = reference to procedure (sym : TSymbol);
 
    { List all symbols in the script. Each symbol list contains a list of the
      positions where it was used. }
    TdwsSymbolDictionary = class
+      type
+         TdwsSymbolDictionaryEnumerator = record
+            Index : Integer;
+            Dict : TdwsSymbolDictionary;
+            function MoveNext : Boolean; inline;
+            function GetCurrent : TSymbolPositionList; inline;
+            property Current : TSymbolPositionList read GetCurrent;
+         end;
+
       protected
          FSymbolList : TSymbolPositionListList;
          FSearchSymbolPositionList : TSymbolPositionList;
@@ -186,7 +207,8 @@ type
          // remove all references to the symbol
          procedure Remove(sym : TSymbol);
          procedure RemoveInRange(const startPos, endPos : TScriptPos);
-         procedure EnumerateInRange(const startPos, endPos : TScriptPos; const callBack : TdwsSymbolDictionaryProc);
+         procedure EnumerateInRange(const startPos, endPos : TScriptPos; const callBack : TdwsSymbolDictionaryProc); overload;
+         procedure EnumerateInRange(const startPos, endPos : TScriptPos; const callBack : TdwsSymbolDictionaryRef); overload;
 
          procedure ReplaceSymbolAt(oldSym, newSym : TSymbol; const scriptPos : TScriptPos);
          procedure ChangeUsageAt(const scriptPos : TScriptPos; const addUsages, removeUsages : TSymbolUsages);
@@ -200,6 +222,8 @@ type
          function FindSymbolUsage(const symName : UnicodeString; symbolUse: TSymbolUsage) : TSymbolPosition; overload;
          function FindSymbolUsageOfType(const symName : UnicodeString; symbolType : TSymbolClass; symbolUse : TSymbolUsage) : TSymbolPosition;
          function FindSymbolByUsageAtLine(const scriptPos : TScriptPos; symbolUse : TSymbolUsage) : TSymbol;
+
+         function GetEnumerator : TdwsSymbolDictionaryEnumerator;
 
          function Count : Integer; inline;
          property Items[Index: Integer] : TSymbolPositionList read GetList; default;
@@ -6941,6 +6965,19 @@ begin
    Result:=FindSymbolAtPosition(aScriptPos.Col, aScriptPos.Line, aScriptPos.SourceName);
 end;
 
+// GetEnumerator
+//
+function TdwsSymbolDictionary.GetEnumerator: TdwsSymbolDictionaryEnumerator;
+begin
+   if Self=nil then begin
+      Result.Dict:=nil;
+      Result.Index:=0;
+   end else begin
+      Result.Dict:=Self;
+      Result.Index:=Count;
+   end;
+end;
+
 // GetList
 //
 function TdwsSymbolDictionary.GetList(Index: Integer): TSymbolPositionList;
@@ -7034,6 +7071,29 @@ end;
 // EnumerateInRange
 //
 procedure TdwsSymbolDictionary.EnumerateInRange(const startPos, endPos : TScriptPos; const callBack : TdwsSymbolDictionaryProc);
+var
+   i, j : Integer;
+   list : TSymbolPositionList;
+   symPos : TSymbolPosition;
+begin
+   if startPos.SourceFile<>endPos.SourceFile then Exit;
+
+   for i:=0 to FSymbolList.Count-1 do begin
+      list:=FSymbolList[i];
+      for j:=list.Count-1 downto 0 do begin
+         symPos:=list[j];
+         if     startPos.IsBeforeOrEqual(symPos.ScriptPos)
+            and symPos.ScriptPos.IsBeforeOrEqual(endPos) then begin
+            callBack(list.Symbol);
+            Break;
+         end;
+      end;
+   end;
+end;
+
+// EnumerateInRange
+//
+procedure TdwsSymbolDictionary.EnumerateInRange(const startPos, endPos : TScriptPos; const callBack : TdwsSymbolDictionaryRef);
 var
    i, j : Integer;
    list : TSymbolPositionList;
@@ -7163,6 +7223,17 @@ begin
       Result := Self.Items[x];
       Break;
     end;
+end;
+
+function TdwsSymbolDictionary.TdwsSymbolDictionaryEnumerator.GetCurrent: TSymbolPositionList;
+begin
+   Result:=Dict[Index];
+end;
+
+function TdwsSymbolDictionary.TdwsSymbolDictionaryEnumerator.MoveNext: Boolean;
+begin
+   Dec(Index);
+   Result:=(Index>=0);
 end;
 
 // ------------------
@@ -7316,6 +7387,34 @@ begin
          FPosList.Extract(i);
       end;
    end;
+end;
+
+// GetEnumerator
+//
+function TSymbolPositionList.GetEnumerator: TSymbolPositionListEnumerator;
+begin
+   if Self=nil then begin
+      Result.PosList:=nil;
+      Result.Index:=0;
+   end else begin
+      Result.PosList:=Self;
+      Result.Index:=Count;
+   end;
+end;
+
+// TSymbolPositionListEnumerator.GetCurrent
+//
+function TSymbolPositionList.TSymbolPositionListEnumerator.GetCurrent: TSymbolPosition;
+begin
+   Result:=PosList[Index];
+end;
+
+// TSymbolPositionListEnumerator.MoveNext
+//
+function TSymbolPositionList.TSymbolPositionListEnumerator.MoveNext: Boolean;
+begin
+   Dec(Index);
+   Result:=(Index>=0);
 end;
 
 // ------------------

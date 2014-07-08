@@ -11928,7 +11928,11 @@ begin
          end;
          if Expr is TStrVarExpr then
             Result:=TVarStringArraySetExpr.Create(FProg, scriptPos, expr, indexExpr, valueExpr)
-         else Result := TStringArraySetExpr.Create(FProg, scriptPos, expr, indexExpr, valueExpr);
+         else begin
+            if not expr.IsWritable then
+               FMsgs.AddCompilerError(scriptPos, CPE_CantWriteToLeftSide);
+            Result := TStringArraySetExpr.Create(FProg, scriptPos, expr, indexExpr, valueExpr);
+         end;
       end else Result := TStringArrayOpExpr.CreatePos(FProg, scriptPos, expr, indexExpr);
    except
       OrphanObject(indexExpr);
