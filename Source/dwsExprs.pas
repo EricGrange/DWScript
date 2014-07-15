@@ -4836,7 +4836,8 @@ end;
 //
 procedure TFuncExpr.CompileTimeCheck(prog : TdwsProgram);
 begin
-   ICallable(FuncSym.Executable).CompileTimeCheck(prog, Self);
+   if FuncSym.Executable<>nil then
+      ICallable(FuncSym.Executable).CompileTimeCheck(prog, Self);
 end;
 
 // FuncSymQualifiedName
