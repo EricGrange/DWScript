@@ -105,7 +105,7 @@ type
    TdwsCodeGenOption = (cgoNoRangeChecks, cgoNoCheckInstantiated, cgoNoCheckLoopStep,
                         cgoNoConditions, cgoNoInlineMagics, cgoObfuscate, cgoNoSourceLocations,
                         cgoOptimizeForSize, cgoSmartLink, cgoDeVirtualize,
-                        cgoNoRTTI, cgoNoFinalizations );
+                        cgoNoRTTI, cgoNoFinalizations, cgoIgnorePublishedInImplementation );
    TdwsCodeGenOptions = set of TdwsCodeGenOption;
 
    TdwsCodeGenOutputVerbosity = (cgovNone, cgovNormal, cgovVerbose);

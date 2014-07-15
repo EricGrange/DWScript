@@ -102,6 +102,10 @@ type
       public
          class function IsUnitTable : Boolean; override;
 
+         procedure CollectPublishedSymbols(tableList : TSimpleRefCountedObjectHash;
+                                           symbolList : TSimpleSymbolList;
+                                           ignoreImplementationPublished : Boolean); override;
+
          property UnitMainSymbol : TUnitMainSymbol read FUnitMainSymbol write FUnitMainSymbol;
    end;
 
@@ -664,6 +668,17 @@ end;
 class function TUnitSymbolTable.IsUnitTable : Boolean;
 begin
    Result:=True;
+end;
+
+// CollectPublishedSymbols
+//
+procedure TUnitSymbolTable.CollectPublishedSymbols(tableList : TSimpleRefCountedObjectHash;
+                                                   symbolList : TSimpleSymbolList;
+                                                   ignoreImplementationPublished : Boolean);
+begin
+   inherited CollectPublishedSymbols(tableList, symbolList, ignoreImplementationPublished);
+   if (UnitMainSymbol<>nil) and not ignoreImplementationPublished then
+      UnitMainSymbol.ImplementationTable.CollectPublishedSymbols(tableList, symbolList, ignoreImplementationPublished);
 end;
 
 // ------------------

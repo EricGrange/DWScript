@@ -231,7 +231,7 @@ begin
    rttiPropertyAttributeCreate:=Info.Vars[SYS_RTTIPROPERTYATTRIBUTE].Method[SYS_TOBJECT_CREATE];
    rttiMethodAttributeCreate:=Info.Vars[SYS_RTTIMETHODATTRIBUTE].Method[SYS_TOBJECT_CREATE];
 
-   publishedSymbols:=info.Execution.Prog.CollectAllPublishedSymbols;
+   publishedSymbols:=info.Execution.Prog.CollectAllPublishedSymbols(False);
    try
 
       attributes:=info.Execution.Prog.Attributes;

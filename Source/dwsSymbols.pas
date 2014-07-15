@@ -360,7 +360,8 @@ type
          function HasOperators : Boolean; inline;
 
          procedure CollectPublishedSymbols(tableList : TSimpleRefCountedObjectHash;
-                                           symbolList : TSimpleSymbolList);
+                                           symbolList : TSimpleSymbolList;
+                                           ignoreImplementationPublished : Boolean); virtual;
 
          function HasClass(const aClass : TSymbolClass) : Boolean;
          function HasSymbol(sym : TSymbol) : Boolean;
@@ -5422,7 +5423,8 @@ end;
 // CollectPublishedSymbols
 //
 procedure TSymbolTable.CollectPublishedSymbols(tableList : TSimpleRefCountedObjectHash;
-                                               symbolList : TSimpleSymbolList);
+                                               symbolList : TSimpleSymbolList;
+                                               ignoreImplementationPublished : Boolean);
 var
    i : Integer;
    parent : TSymbolTable;
@@ -5432,7 +5434,7 @@ begin
    for i:=0 to ParentCount-1 do begin
       parent:=Parents[i];
       if not tableList.Contains(parent) then
-         parent.CollectPublishedSymbols(tableList, symbolList);
+         parent.CollectPublishedSymbols(tableList, symbolList, ignoreImplementationPublished);
    end;
    for sym in Self do begin
       if sym.ClassType=TClassSymbol then begin

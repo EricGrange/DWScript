@@ -802,7 +802,7 @@ type
 
          procedure DropMapAndDictionary;
 
-         function CollectAllPublishedSymbols : TSimpleSymbolList;
+         function CollectAllPublishedSymbols(ignoreImplementationPublished : Boolean) : TSimpleSymbolList;
 
          procedure OrphanObject(obj : TRefCountedObject);
 
@@ -3113,14 +3113,14 @@ end;
 
 // CollectAllPublishedSymbols
 //
-function TdwsMainProgram.CollectAllPublishedSymbols : TSimpleSymbolList;
+function TdwsMainProgram.CollectAllPublishedSymbols(ignoreImplementationPublished : Boolean) : TSimpleSymbolList;
 var
    tableList : TSimpleRefCountedObjectHash;
 begin
    Result:=TSimpleSymbolList.Create;
    tableList:=TSimpleRefCountedObjectHash.Create;
    try
-      RootTable.CollectPublishedSymbols(tableList, Result);
+      RootTable.CollectPublishedSymbols(tableList, Result, ignoreImplementationPublished);
    finally
       tableList.Free;
    end;
