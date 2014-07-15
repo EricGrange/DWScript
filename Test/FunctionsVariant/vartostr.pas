@@ -9,3 +9,5 @@ PrintLn(s);
 s:=VarToStr(v);
 
 PrintLn(s);
+
+PrintLn(VarToStr(s));

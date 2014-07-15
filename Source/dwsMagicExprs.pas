@@ -173,6 +173,8 @@ type
          function IsWritable : Boolean; override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
+
+         procedure CompileTimeCheck(prog : TdwsProgram); override;
    end;
 
    // TMagicVariantFuncExpr
@@ -505,6 +507,13 @@ end;
 procedure TMagicFuncExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    exec.DataContext_CreateBase(FResultAddr, Result);
+end;
+
+// CompileTimeCheck
+//
+procedure TMagicFuncExpr.CompileTimeCheck(prog : TdwsProgram);
+begin
+   TMagicFuncSymbol(FuncSym).InternalFunction.CompileTimeCheck(prog, Self);
 end;
 
 // ------------------

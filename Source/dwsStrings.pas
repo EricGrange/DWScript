@@ -333,6 +333,7 @@ const
   CPH_PrivateVirtualMethodCantBeOverridden = 'Private virtual methods cannot be overridden';
   CPH_ResultNotUsed = 'Result is never used';
   CPH_RedundantVisibilitySpecifier = 'Redundant specifier, visibility is already "%s"';
+  CPH_RedundantFunctionCall = 'Redundant function call';
   CPH_NameAmbiguousInScopeContext = 'Name "%s" could be ambiguous in its scope context';
   CPH_ReferenceTypeParamAsVarButNeverWrittenTo = '"%s" parameter is a reference type passed as VAR, but never written to';
   CPH_ReferenceTypeParamAsConst = '"%s" parameter is a reference type passed as CONST';

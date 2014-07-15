@@ -56,6 +56,7 @@ type
    TEmptyFunc = class sealed (TInterfacedSelfObject, ICallable)
       public
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol);
+         procedure CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
          procedure InitSymbol(Symbol: TSymbol; const msgs : TdwsCompileMessageList);
          procedure InitExpression(Expr: TExprBase);
          function SubExpr(i : Integer) : TExprBase;
@@ -71,6 +72,7 @@ type
          function SubExpr(i : Integer) : TExprBase;
          function SubExprCount : Integer;
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); virtual; abstract;
+         procedure CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase); virtual;
          property FuncSymbol : TFuncSymbol read FFuncSymbol write FFuncSymbol;
    end;
 
@@ -363,8 +365,18 @@ end;
 
 { TEmptyFunc }
 
+// Call
+//
 procedure TEmptyFunc.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
 begin
+   // nothing
+end;
+
+// CompileTimeCheck
+//
+procedure TEmptyFunc.CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
+begin
+   // nothing
 end;
 
 procedure TEmptyFunc.InitSymbol(Symbol: TSymbol; const msgs : TdwsCompileMessageList);
@@ -411,6 +423,13 @@ end;
 function TFunctionPrototype.SubExprCount : Integer;
 begin
    Result:=0;
+end;
+
+// CompileTimeCheck
+//
+procedure TFunctionPrototype.CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
+begin
+   // nothing yet
 end;
 
 // ------------------

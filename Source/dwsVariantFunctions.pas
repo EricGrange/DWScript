@@ -26,36 +26,37 @@ interface
 uses
    Classes, Variants, SysUtils,
    dwsFunctions, dwsExprs, dwsSymbols, dwsUtils, dwsExprList,
-   dwsMagicExprs, dwsUnitSymbols, dwsXPlatform;
+   dwsMagicExprs, dwsUnitSymbols, dwsXPlatform, dwsStrings;
 
 type
-  TVarClearFunc = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
-  end;
+   TVarClearFunc = class(TInternalFunction)
+      procedure Execute(info : TProgramInfo); override;
+   end;
 
-  TVarIsNullFunc = class(TInternalMagicBoolFunction)
-    function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
-  end;
+   TVarIsNullFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
+   end;
 
-  TVarIsEmptyFunc = class(TInternalMagicBoolFunction)
-    function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
-  end;
+   TVarIsEmptyFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
+   end;
 
-  TVarIsClearFunc = class(TInternalMagicBoolFunction)
-    function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
-  end;
+   TVarIsClearFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
+   end;
 
-  TVarTypeFunc = class(TInternalMagicIntFunction)
-    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
-  end;
+   TVarTypeFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+   end;
 
-  TVarAsTypeFunc = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
-  end;
+   TVarAsTypeFunc = class(TInternalFunction)
+      procedure Execute(info : TProgramInfo); override;
+   end;
 
-  TVarToStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
-  end;
+   TVarToStrFunc = class(TInternalMagicStringFunction)
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+      procedure CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase); override;
+   end;
 
 implementation
 
@@ -125,6 +126,14 @@ begin
    Result:=VarToUnicodeStr(v);
 end;
 
+// CompileTimeCheck
+//
+procedure TVarToStrFunc.CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
+begin
+   if expr.GetArgType(0).IsOfType(prog.TypString) then
+      prog.CompileMsgs.AddCompilerHint(expr.ScriptPos, CPH_RedundantFunctionCall);
+end;
+
 { InitVariants }
 
 procedure InitVariants(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
@@ -156,7 +165,13 @@ begin
       UnitTable.AddSymbol(TElementSymbol.Create('var'+cVarTypes[i].n, E, cVarTypes[i].v, True));
 end;
 
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
    RegisterInternalSymbolsProc(InitVariants);
 

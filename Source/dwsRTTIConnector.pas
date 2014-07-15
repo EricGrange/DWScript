@@ -116,6 +116,7 @@ type
          constructor Create(environment : TRTTIEnvironment);
 
          procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); virtual; abstract;
+         procedure CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
          procedure InitSymbol(symbol : TSymbol; const msgs : TdwsCompileMessageList);
          procedure InitExpression(expr : TExprBase);
          function SubExpr(i : Integer) : TExprBase;
@@ -959,6 +960,13 @@ function TRTTIEnvironmentCallable.SubExprCount : Integer;
 begin
    Result:=0;
 
+end;
+
+// CompileTimeCheck
+//
+procedure TRTTIEnvironmentCallable.CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
+begin
+   // nothing yet
 end;
 
 // ------------------

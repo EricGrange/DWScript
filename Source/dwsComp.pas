@@ -401,6 +401,7 @@ type
 
       protected
          procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); virtual; abstract;
+         procedure CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase); virtual;
          procedure InitSymbol(symbol : TSymbol; const msgs : TdwsCompileMessageList);
          procedure InitExpression(expr : TExprBase);
          function SubExpr(i : Integer) : TExprBase;
@@ -3112,6 +3113,13 @@ end;
 function TdwsCallable.SubExprCount : Integer;
 begin
    Result:=0;
+end;
+
+// CompileTimeCheck
+//
+procedure TdwsCallable.CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
+begin
+   // nothing yet
 end;
 
 // ------------------

@@ -847,6 +847,7 @@ type
    ICallable = interface (IExecutable)
       ['{8D534D15-4C6B-11D5-8DCB-0000216D9E86}']
       procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol);
+      procedure CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
    end;
 
    IExternalRoutine = interface (ICallable)
@@ -869,6 +870,7 @@ type
 
          procedure AssignTo(sym: TFuncSymbol);
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol);
+         procedure CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
          procedure InitSymbol(Symbol: TSymbol; const msgs : TdwsCompileMessageList);
          procedure InitExpression(Expr: TExprBase);
 
@@ -1064,6 +1066,7 @@ type
          procedure InitSymbol(symbol: TSymbol; const msgs : TdwsCompileMessageList);
          procedure InitExpression(Expr: TExprBase);
          procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol);
+         procedure CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
          function SubExpr(i : Integer) : TExprBase;
          function SubExprCount : Integer;
    end;
@@ -1097,6 +1100,7 @@ type
          function ExpectedArg : TParamSymbol; virtual; abstract;
          function GetArgType(idx : Integer) : TTypeSymbol;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         procedure CompileTimeCheck(prog : TdwsProgram); virtual;
 
          procedure Initialize(prog : TdwsProgram); virtual;
 
@@ -1194,6 +1198,7 @@ type
 
          procedure Initialize(prog : TdwsProgram); override;
          function IsWritable : Boolean; override;
+         procedure CompileTimeCheck(prog : TdwsProgram); override;
 
          function FuncSymQualifiedName : UnicodeString; override;
 
@@ -3232,6 +3237,13 @@ begin
    end;
 end;
 
+// CompileTimeCheck
+//
+procedure TdwsProcedure.CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
+begin
+   // nothing yet
+end;
+
 procedure TdwsProcedure.InitSymbol(Symbol: TSymbol; const msgs : TdwsCompileMessageList);
 begin
    FTable.Initialize(msgs);
@@ -4244,6 +4256,13 @@ begin
    end;
 end;
 
+// CompileTimeCheck
+//
+procedure TFuncExprBase.CompileTimeCheck(prog : TdwsProgram);
+begin
+   // nothing here
+end;
+
 // GetIsConstant
 //
 function TFuncExprBase.GetIsConstant : Boolean;
@@ -4811,6 +4830,13 @@ end;
 function TFuncExpr.IsWritable : Boolean;
 begin
    Result:=False;
+end;
+
+// CompileTimeCheck
+//
+procedure TFuncExpr.CompileTimeCheck(prog : TdwsProgram);
+begin
+   ICallable(FuncSym.Executable).CompileTimeCheck(prog, Self);
 end;
 
 // FuncSymQualifiedName
@@ -8202,6 +8228,13 @@ begin
    locArray:=exec.GetCallStack;
    raise EdwsExternalFuncHandler.CreateFmt(RTE_UnHandledExternalCall,
                                            [func.Name, locArray[High(locArray)].Location]);
+end;
+
+// CompileTimeCheck
+//
+procedure TExternalFuncHandler.CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
+begin
+   // nothing yet
 end;
 
 // SubExpr

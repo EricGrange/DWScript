@@ -7183,6 +7183,8 @@ begin
          FMsgs.AddCompilerError(funcExpr.ScriptPos, CPE_TooFewArguments);
    end;
 
+   funcExpr.CompileTimeCheck(FProg);
+
    funcExpr.Initialize(FProg);
 end;
 
