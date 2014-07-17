@@ -37,6 +37,12 @@ object dwsWebServerLib: TdwsWebServerLib
             Attributes = [maClassMethod, maStatic]
             OnEval = dwsWebServerClassesWebServerMethodsAuthenticationsEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'FlushCompiledPrograms'
+            Attributes = [maStatic]
+            OnEval = dwsWebServerClassesWebServerMethodsFlushCompiledProgramsEval
+            Kind = mkClassProcedure
           end>
       end>
     Dependencies.Strings = (

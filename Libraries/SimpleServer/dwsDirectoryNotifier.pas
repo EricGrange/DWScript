@@ -71,6 +71,8 @@ type
 
    TdwsFileNotifierBuffer = array [0..63*1024-1] of Byte; // limit at 64kb for network drives
 
+   TdwsFileNotifierPaths = array of String;
+
    // TdwsFileNotifier
    //
    TdwsFileNotifier = class (TThread)
@@ -89,10 +91,12 @@ type
          FCompletionPort : THandle;
          FLastChange : TDateTime;
          FActive : Boolean;
+         FIgnoredPaths : TdwsFileNotifierPaths;
 
       protected
          { Protected Declarations }
          procedure Shutdown;
+         procedure SetIgnoredPaths(const val : TdwsFileNotifierPaths);
 
       public
          { Public Declarations }
@@ -102,6 +106,7 @@ type
          procedure Execute; override;
 
          property Directory : String read FDirectory;
+         property IgnoredPaths : TdwsFileNotifierPaths read FIgnoredPaths write SetIgnoredPaths;
          property Mode : TdwsDirectoryNotifierMode read FMode;
          property LastChange : TDateTime read FLastChange write FLastChange;
 
@@ -246,7 +251,8 @@ var
    fileOpNotification : PFileNotifyInformation;
    offset : Longint;
    fileName : String;
-   parseBuffer : Integer;
+   parseBuffer, i : Integer;
+   notify : Boolean;
 begin
    FActive:=True;
    NameThreadForDebugging('FileNotifier');
@@ -256,7 +262,8 @@ begin
 
          parseBuffer:=FActiveBuffer;
          FActiveBuffer:=1-FActiveBuffer;
-         if not ReadDirectoryChanges(FDirectoryHandle, @FNotificationBuffers[FActiveBuffer], SizeOf(TdwsFileNotifierBuffer),
+         if not ReadDirectoryChanges(FDirectoryHandle, @FNotificationBuffers[FActiveBuffer],
+                                     SizeOf(TdwsFileNotifierBuffer),
                                      (FMode=dnoDirectoryAndSubTree), FNotifyFilter,
                                      @FBytesWritten, @FOverlapped, nil) then
             Terminate;
@@ -265,9 +272,20 @@ begin
          repeat
             offset:=fileOpNotification^.NextEntryOffset;
             if Assigned(FOnFileChanged) then begin
-               SetString(fileName, fileOpNotification^.FileName,
-                         fileOpNotification^.FileNameLength div SizeOf(Char));
-               FOnFileChanged(Self, FDirectory+fileName, fileOpNotification^.Action);
+               notify:=True;
+               for i:=0 to High(FIgnoredPaths) do begin
+                  if StrLComp(@fileOpNotification^.FileName[0],
+                              PWideChar(Pointer(FIgnoredPaths[i])),
+                              Length(FIgnoredPaths[i]))=0 then begin
+                     notify:=False;
+                     Break;
+                  end;
+               end;
+               if notify then begin
+                  SetString(fileName, fileOpNotification^.FileName,
+                            fileOpNotification^.FileNameLength div SizeOf(Char));
+                  FOnFileChanged(Self, FDirectory+fileName, fileOpNotification^.Action);
+               end;
             end;
             fileOpNotification:=@PAnsiChar(fileOpNotification)[offset];
          until offset=0;
@@ -289,6 +307,13 @@ begin
          PostQueuedCompletionStatus(FCompletionPort, 0, 0, nil);
       WaitFor;
    end;
+end;
+
+// SetIgnoredPaths
+//
+procedure TdwsFileNotifier.SetIgnoredPaths(const val : TdwsFileNotifierPaths);
+begin
+   FIgnoredPaths:=Copy(val, 0, Length(val));
 end;
 
 end.

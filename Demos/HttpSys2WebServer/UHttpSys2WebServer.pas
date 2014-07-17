@@ -105,6 +105,8 @@ type
 
          function Authentications : TWebRequestAuthentications;
 
+         procedure FlushCompiledPrograms;
+
          property Port : Integer read FPort;
          property SSLPort : Integer read FSSLPort;
          property DomainName : String read FDomainName;
@@ -146,6 +148,9 @@ const
          +'"Authentication": [],'
          // Number of WorkerThreads
          +'"WorkerThreads": 16,'
+         // Directory for DWScript error log files
+         // If empty, DWS error logs are not active
+         +'"DWSErrorLogDirectory": "",'
          // Directory for log files (NCSA)
          // If empty, logs are not active
          +'"LogDirectory": "",'
@@ -214,12 +219,13 @@ end;
 //
 procedure THttpSys2WebServer.Initialize(const basePath : TFileName; options : TdwsJSONValue);
 var
-   logPath : TdwsJSONValue;
+   logPath, errorLogPath : TdwsJSONValue;
    serverOptions : TdwsJSONValue;
    scriptedExtensions : TdwsJSONValue;
    extraDomains, domain : TdwsJSONValue;
    env: TdwsJSONObject;
    i, nbThreads : Integer;
+   ignoredPaths : TdwsFileNotifierPaths;
 begin
    FPath:=IncludeTrailingPathDelimiter(ExpandFileName(basePath));
 
@@ -283,6 +289,13 @@ begin
 
       nbThreads:=serverOptions['WorkerThreads'].AsInteger;
 
+      FServer.LogRolloverSize:=1024*1024;
+
+      errorLogPath:=serverOptions['DWSErrorLogDirectory'];
+      if (errorLogPath.ValueType=jvtString) and (errorLogPath.AsString<>'') then begin
+         FDWS.ErrorLogDirectory:=IncludeTrailingPathDelimiter(FDWS.ApplyPathVariables(errorLogPath.AsString));
+      end;
+
       logPath:=serverOptions['LogDirectory'];
       if (logPath.ValueType=jvtString) and (logPath.AsString<>'') then begin
          FServer.LogDirectory:=IncludeTrailingPathDelimiter(FDWS.ApplyPathVariables(logPath.AsString));
@@ -306,6 +319,7 @@ begin
    end;
 
    FNotifier:=TdwsFileNotifier.Create(FPath, dnoDirectoryAndSubTree);
+   FNotifier.IgnoredPaths:=TdwsFileNotifierPaths.Create('.db\');
    FNotifier.OnFileChanged:=FileChanged;
 
    if nbThreads>1 then
@@ -509,6 +523,13 @@ begin
       Include(Result, wraNegotiate);
    if (HTTP_AUTH_ENABLE_KERBEROS and auth)<>0 then
       Include(Result, wraKerberos);
+end;
+
+// FlushCompiledPrograms
+//
+procedure THttpSys2WebServer.FlushCompiledPrograms;
+begin
+   FDWS.FlushDWSCache;
 end;
 
 // FileChanged

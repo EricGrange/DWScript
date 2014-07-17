@@ -30,6 +30,7 @@ type
       function HttpPort : Integer;
       function HttpsPort : Integer;
       function Authentications : TWebRequestAuthentications;
+      procedure FlushCompiledPrograms;
    end;
 
 implementation
