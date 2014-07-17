@@ -1,0 +1,3 @@
+Syntax Error: Function type expected [line: 14, column: 48]
+Syntax Error: Declaration should be "procedure" [line: 14, column: 48]
+Syntax Error: Unexpected method implementation [line: 17, column: 1]

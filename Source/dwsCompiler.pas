@@ -3121,7 +3121,7 @@ begin
       if compositeSym.IsPartial or (compositeSym.UnitSymbol=CurrentUnitSymbol) then begin
 
          if FProg.Level<>0 then
-            FMsgs.AddCompilerError(hotPos, CPE_UnexpectedMethodImplementation);
+            FMsgs.AddCompilerStop(hotPos, CPE_UnexpectedMethodImplementation);
 
          // Store reference to class in dictionary
          RecordSymbolUse(sym, funcPos, [suReference]);

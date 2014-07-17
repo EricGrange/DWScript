@@ -5225,6 +5225,7 @@ function TSymbolTable.FindSymbol(const aName : UnicodeString; minVisibility : Td
                                  ofClass : TSymbolClass = nil) : TSymbol;
 var
    i : Integer;
+   parentSymTable : TSymbolTable;
 begin
    // Find Symbol in the local List
    Result:=FindLocal(aName, ofClass);
@@ -5236,7 +5237,8 @@ begin
 
    // Find Symbol in all parent lists
    for i:=0 to ParentCount-1 do begin
-      Result:=Parents[i].FindSymbol(aName, minVisibility, ofClass);
+      parentSymTable:=Parents[i];
+      Result:=parentSymTable.FindSymbol(aName, minVisibility, ofClass);
       if Assigned(Result) then Break;
    end;
 end;
