@@ -1,0 +1,6 @@
+Syntax Error: Constant expression expected [line: 5, column: 11]
+Syntax Error: Constant expression expected [line: 6, column: 9]
+Syntax Error: Ordinal expression expected [line: 8, column: 19]
+Syntax Error: Ordinal expression expected [line: 8, column: 26]
+Syntax Error: Ordinal expression expected [line: 10, column: 26]
+Syntax Error: Range is too large [line: 12, column: 22]

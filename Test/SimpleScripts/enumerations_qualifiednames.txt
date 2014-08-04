@@ -1,0 +1,11 @@
+TEnum.enOne
+TEnum.enTwo
+TEnum.enThree
+TEnum.enOne
+TEnum.enTwo
+TEnum.enThree
+TDisj.d0
+TDisj.?
+TDisj.d6
+TDisj.?
+TDisj.d12

@@ -1393,8 +1393,17 @@ type
 
    // name of an enumeration element
    TEnumerationElementNameExpr = class (TUnaryOpStringExpr)
+      protected
+         function EvalElement(exec : TdwsExecution) : TElementSymbol;
+
       public
          constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
+         procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
+   end;
+
+   // qualified name of an enumeration element
+   TEnumerationElementQualifiedNameExpr = class (TEnumerationElementNameExpr)
+      public
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
    end;
 
@@ -3383,7 +3392,7 @@ end;
 //
 function TRecordExpr.IsWritable : Boolean;
 begin
-   Result:=FBaseExpr.IsWritable;
+   Result:=FBaseExpr.IsWritable and not FieldSymbol.StructSymbol.IsImmutable;
 end;
 
 // ------------------
@@ -4153,19 +4162,44 @@ begin
    Assert(expr.Typ is TEnumerationSymbol);
 end;
 
+// EvalElement
+//
+function TEnumerationElementNameExpr.EvalElement(exec : TdwsExecution) : TElementSymbol;
+var
+   enumeration : TEnumerationSymbol;
+begin
+   enumeration:=TEnumerationSymbol(Expr.Typ);
+   Result:=enumeration.ElementByValue(Expr.EvalAsInteger(exec));
+end;
+
 // EvalAsString
 //
 procedure TEnumerationElementNameExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
 var
-   enumeration : TEnumerationSymbol;
    element : TElementSymbol;
 begin
-   enumeration:=TEnumerationSymbol(Expr.Typ);
-   element:=enumeration.ElementByValue(Expr.EvalAsInteger(exec));
+   element:=EvalElement(exec);
    if element<>nil then
       Result:=element.Name
    else Result:='?';
 end;
+
+// ------------------
+// ------------------ TEnumerationElementQualifiedNameExpr ------------------
+// ------------------
+
+// EvalAsString
+//
+procedure TEnumerationElementQualifiedNameExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
+var
+   element : TElementSymbol;
+begin
+   element:=EvalElement(exec);
+   if element<>nil then
+      Result:=element.QualifiedName
+   else Result:=TEnumerationSymbol(Expr.Typ).Name+'.?';
+end;
+
 
 // ------------------
 // ------------------ TAssertExpr ------------------

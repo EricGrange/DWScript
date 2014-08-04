@@ -127,6 +127,7 @@ var
    field : TFieldSymbol;
 begin
    typTypInfo:=TRecordSymbol.Create(SYS_TRTTITYPEINFO, nil);
+   typTypInfo.IsImmutable:=True;
    systemTable.AddSymbol(typTypInfo);
    typTypInfo.AddField(TFieldSymbol.Create('ID', systemTable.TypInteger, cvPrivate));
    TRTTITypeInfoNameMethod.Create(mkFunction, [], 'Name',
@@ -134,6 +135,7 @@ begin
                                   typTypInfo, cvPublic, systemTable);
 
    typRawAttribute:=TRecordSymbol.Create(SYS_TRTTIRAWATTRIBUTE, nil);
+   typRawAttribute.IsImmutable:=True;
    systemTable.AddSymbol(typRawAttribute);
    field:=TFieldSymbol.Create('T', typTypInfo, cvPublic);
    field.ExternalName:=field.Name;

@@ -368,6 +368,7 @@ const
   CPE_AssignIncompatibleTypes = 'Incompatible types: Cannot assign "%s" to "%s"';
   CPE_RangeIncompatibleTypes = 'Range start and range stop are of incompatible types: "%s" and "%s"';
   CPE_TypeCouldNotBeInferenced = 'Type could not be inferenced';
+  CPE_RangeTooLarge = 'Range is too large';
 
   CPE_LocalFunctionAsDelegate = 'Local procedure/function cannot be used as delegate';
 
@@ -390,6 +391,7 @@ const
 
   CPE_ConstantExpressionExpected = 'Constant expression expected';
   CPE_IntegerExpressionExpected = 'Integer expression expected';
+  CPE_OrdinalExpressionExpected = 'Ordinal expression expected';
   CPE_InvalidConstType = 'Invalid const type "%s"';
   CPE_ConstantCannotBeWrittenTo = 'Constant "%s" cannot be written to';
 

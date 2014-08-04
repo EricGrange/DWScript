@@ -1,0 +1,3 @@
+Syntax Error: Range start and range stop are of incompatible types: "TAlpha" and "Integer" [line: 4, column: 19]
+Syntax Error: Range start and range stop are of incompatible types: "Integer" and "TNum" [line: 5, column: 17]
+Syntax Error: Range start and range stop are of incompatible types: "TAlpha" and "TNum" [line: 7, column: 21]

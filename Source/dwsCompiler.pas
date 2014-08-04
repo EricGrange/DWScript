@@ -935,6 +935,8 @@ const
    cTokenToFuncKind : array [ttFUNCTION..ttLAMBDA] of TFuncKind = (
       fkFunction, fkProcedure, fkConstructor, fkDestructor, fkMethod, fkLambda );
 
+   cMaxArrayItemRange = 1024;
+
 type
    TReachStatus = (rsReachable, rsUnReachable, rsUnReachableWarned);
 
@@ -7429,9 +7431,51 @@ end;
 function TdwsCompiler.ReadArrayConstant(closingToken : TTokenType;
                                         expecting : TTypeSymbol) : TArrayConstantExpr;
 var
-   expr : TTypedExpr;
    factory : IdwsDataSymbolFactory;
    itemExpecting : TTypeSymbol;
+
+   procedure ReadArrayConstantRange(result : TArrayConstantExpr; expr1 : TTypedExpr);
+   var
+      expr2 : TTypedExpr;
+      range1, range2 : Int64;
+      boundsOk : Integer;
+   begin
+      boundsOk:=0;
+      expr2:=nil;
+      try
+         if not expr1.IsOfType(FProg.TypInteger) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_OrdinalExpressionExpected)
+         else if not expr1.IsConstant then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected)
+         else boundsOk:=1;
+
+         expr2:=factory.ReadInitExpr(itemExpecting);
+
+         if (expr2=nil) or not expr2.IsOfType(FProg.TypInteger) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_OrdinalExpressionExpected)
+         else if not expr2.IsConstant then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected)
+         else Inc(boundsOk);
+
+         if boundsOk=2 then begin
+            if expr1.Typ.SameType(expr2.Typ) then begin
+               range1:=expr1.EvalAsInteger(FExec);
+               range2:=expr2.EvalAsInteger(FExec);
+               if Abs(range2-range1)>cMaxArrayItemRange then
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_RangeTooLarge)
+               else result.AddElementRange(FProg, range1, range2, expr1.Typ);
+            end else begin
+               IncompatibleTypes(FTok.HotPos, CPE_RangeIncompatibleTypes, expr1.Typ, expr2.Typ);
+            end;
+         end;
+      finally
+         OrphanObject(expr1);
+         OrphanObject(expr2);
+      end;
+   end;
+
+var
+   expr : TTypedExpr;
 begin
    factory:=TStandardSymbolFactory.Create(Self);
    Result:=TArrayConstantExpr.Create(FProg, FTok.HotPos);
@@ -7443,8 +7487,11 @@ begin
          // At least one argument was found
          repeat
             expr:=factory.ReadInitExpr(itemExpecting);
-            if expr<>nil then
-               TArrayConstantExpr(Result).AddElementExpr(FProg, expr);
+            if expr<>nil then begin
+               if FTok.TestDelete(ttDOTDOT) then
+                  ReadArrayConstantRange(TArrayConstantExpr(Result), expr)
+               else TArrayConstantExpr(Result).AddElementExpr(FProg, expr);
+            end;
          until not FTok.TestDelete(ttCOMMA);
 
          if not FTok.TestDelete(closingToken) then
@@ -7840,44 +7887,62 @@ end;
 //
 function TdwsCompiler.ReadElementMethod(const name : UnicodeString; const namePos : TScriptPos;
                                         baseExpr : TTypedExpr) : TProgramExpr;
+type
+   TElementMethod = (emInvalid, emName, emQualifiedName, emValue);
 var
    enumeration : TEnumerationSymbol;
    element : TElementSymbol;
+   meth : TElementMethod;
 begin
    enumeration:=(baseExpr.Typ as TEnumerationSymbol);
 
-   if SameText(name, 'name') then begin
+   if SameText(name, 'name') then
+      meth:=emName
+   else if SameText(name, 'qualifiedname') then
+      meth:=emQualifiedName
+   else if SameText(name, 'value') then
+      meth:=emValue
+   else meth:=emInvalid;
 
-      if baseExpr.ClassType=TConstIntExpr then begin
+   case meth of
+      emName, emQualifiedName : begin
 
-         element:=enumeration.ElementByValue(TConstIntExpr(baseExpr).Value);
-         if element=nil then begin
-            FMsgs.AddCompilerHint(namePos, CPH_UnnamedEnumerationElement);
-            Result:=TConstExpr.CreateTypedDefault(FProg, FProg.TypString);
-         end else Result:=TConstExpr.CreateStringValue(FProg, element.StandardName);
-         baseExpr.Free;
+         if baseExpr.ClassType=TConstIntExpr then begin
 
-      end else begin
+            element:=enumeration.ElementByValue(TConstIntExpr(baseExpr).Value);
+            if element=nil then begin
+               FMsgs.AddCompilerHint(namePos, CPH_UnnamedEnumerationElement);
+               Result:=TConstExpr.CreateTypedDefault(FProg, FProg.TypString);
+            end else if meth=emName then
+               Result:=TConstExpr.CreateStringValue(FProg, element.Name)
+            else Result:=TConstExpr.CreateStringValue(FProg, element.QualifiedName);
+            baseExpr.Free;
 
-         Result:=TEnumerationElementNameExpr.Create(FProg, baseExpr);
-         RecordSymbolUse(baseExpr.Typ, namePos, [suRTTI, suImplicit]);
+         end else begin
+
+            if meth=emName then
+               Result:=TEnumerationElementNameExpr.Create(FProg, baseExpr)
+            else Result:=TEnumerationElementQualifiedNameExpr.Create(FProg, baseExpr);
+            RecordSymbolUse(baseExpr.Typ, namePos, [suRTTI, suImplicit]);
+
+         end;
 
       end;
+      emValue : begin
 
-   end else if SameText(name, 'value') then begin
+         if baseExpr.ClassType=TConstIntExpr then begin
 
-      if baseExpr.ClassType=TConstIntExpr then begin
+            Result:=TConstExpr.CreateIntegerValue(FProg, TConstIntExpr(baseExpr).Value);
+            baseExpr.Free;
 
-         Result:=TConstExpr.CreateIntegerValue(FProg, TConstIntExpr(baseExpr).Value);
-         baseExpr.Free;
+         end else begin
 
-      end else begin
+            Result:=TOrdIntExpr.Create(FProg, baseExpr);
 
-         Result:=TOrdIntExpr.Create(FProg, baseExpr);
+         end;
 
       end;
-
-   end else begin
+   else
 
       Result:=nil;
       OrphanObject(baseExpr);

@@ -196,6 +196,7 @@ type
          property Elements[idx : Integer] : TTypedExpr read GetElement;
          property ElementCount : Integer read GetElementCount;
          procedure AddElementExpr(Prog: TdwsProgram; ElementExpr: TTypedExpr);
+         procedure AddElementRange(prog : TdwsProgram; const range1, range2 : Int64; typ : TTypeSymbol);
          procedure Prepare(Prog: TdwsProgram; ElementTyp : TTypeSymbol);
          procedure TypeCheckElements(prog : TdwsProgram);
          procedure ElementsFromIntegerToFloat(prog : TdwsProgram);
@@ -687,7 +688,7 @@ end;
 
 // AddElementExpr
 //
-procedure TArrayConstantExpr.AddElementExpr(Prog: TdwsProgram; ElementExpr: TTypedExpr);
+procedure TArrayConstantExpr.AddElementExpr(prog: TdwsProgram; ElementExpr: TTypedExpr);
 var
    arraySymbol : TStaticArraySymbol;
 begin
@@ -706,6 +707,24 @@ begin
    end;
    FElementExprs.Add(ElementExpr);
    arraySymbol.AddElement;
+end;
+
+// AddElementRange
+//
+procedure TArrayConstantExpr.AddElementRange(prog : TdwsProgram; const range1, range2 : Int64; typ : TTypeSymbol);
+var
+   i : Int64;
+   d : Integer;
+begin
+   if range1<range2 then
+      d:=1
+   else d:=-1;
+   i:=range1;
+   repeat
+      AddElementExpr(prog, TConstIntExpr.CreateUnified(prog, typ, i));
+      if i=range2 then break;
+      Inc(i, d);
+   until False;
 end;
 
 // Prepare

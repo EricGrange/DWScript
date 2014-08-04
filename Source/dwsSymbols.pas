@@ -1109,6 +1109,7 @@ type
          function GetIsExternalRooted : Boolean; virtual;
          function GetExternalName : UnicodeString; virtual;
          function GetIsPartial : Boolean; virtual;
+         function GetIsImmutable : Boolean; virtual;
 
          procedure CheckMethodsImplemented(const msgs : TdwsCompileMessageList);
 
@@ -1155,6 +1156,7 @@ type
          property IsExternal : Boolean read GetIsExternal;
          property IsExternalRooted : Boolean read GetIsExternalRooted;
          property ExternalName : UnicodeString read GetExternalName;
+         property IsImmutable : Boolean read GetIsImmutable;
    end;
 
    // class, record, interface
@@ -1235,7 +1237,7 @@ type
          property NextField : TFieldSymbol read FNextField write FNextField;
    end;
 
-   TRecordSymbolFlag = (rsfDynamic, rsfFullyDefined);
+   TRecordSymbolFlag = (rsfDynamic, rsfFullyDefined, rsfImmutable);
    TRecordSymbolFlags = set of TRecordSymbolFlag;
 
    // record member1: Integer; member2: Integer end;
@@ -1249,6 +1251,8 @@ type
 
          function GetIsDynamic : Boolean; inline;
          procedure SetIsDynamic(const val : Boolean);
+         function GetIsImmutable : Boolean; override;
+         procedure SetIsImmutable(const val : Boolean);
          function GetIsFullyDefined : Boolean; inline;
          procedure SetIsFullyDefined(const val : Boolean);
 
@@ -1269,6 +1273,7 @@ type
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
          property IsDynamic : Boolean read GetIsDynamic write SetIsDynamic;
+         property IsImmutable : Boolean read GetIsImmutable write SetIsImmutable;
          property IsFullyDefined : Boolean read GetIsFullyDefined write SetIsFullyDefined;
    end;
 
@@ -2255,6 +2260,13 @@ begin
    Result:=False;
 end;
 
+// GetIsImmutable
+//
+function TCompositeTypeSymbol.GetIsImmutable : Boolean;
+begin
+   Result:=False;
+end;
+
 // FindDefaultConstructor
 //
 function TCompositeTypeSymbol.FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol;
@@ -2659,6 +2671,22 @@ begin
    if val then
       Include(FFlags, rsfDynamic)
    else Exclude(FFlags, rsfDynamic);
+end;
+
+// GetIsImmutable
+//
+function TRecordSymbol.GetIsImmutable : Boolean;
+begin
+   Result:=(rsfImmutable in FFlags);
+end;
+
+// SetIsImmutable
+//
+procedure TRecordSymbol.SetIsImmutable(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, rsfImmutable)
+   else Exclude(FFlags, rsfImmutable);
 end;
 
 // GetIsFullyDefined
