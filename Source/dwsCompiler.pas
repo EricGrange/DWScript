@@ -8063,9 +8063,9 @@ begin
       hotPos:=FTok.HotPos;
       typedExpr:=ReadExpr;
       try
-         if (typedExpr.Typ is TClassOfSymbol) and (typedExpr is TDataExpr) then begin
+         if typedExpr.Typ.UnAliasedTypeIs(TClassOfSymbol) and (typedExpr is TDataExpr) then begin
             baseExpr:=TDataExpr(typedExpr);
-            classSym:=TClassOfSymbol(typedExpr.Typ).TypClassSymbol;
+            classSym:=TClassOfSymbol(typedExpr.Typ.UnAliasedType).TypClassSymbol;
          end else FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
          if not FTok.TestDelete(ttBRIGHT) then
             FMsgs.AddCompilerStop(hotPos, CPE_BrackRightExpected);
@@ -8105,17 +8105,24 @@ begin
          end;
          Exit;
 
-      end else if sym is TClassSymbol then begin
+      end else begin
 
-         classSym:=TClassSymbol(sym);
-         RecordSymbolUse(classSym, hotPos, [suReference]);
+         if sym is TAliasSymbol then
+            sym:=TAliasSymbol(sym).UnAliasedType;
 
-      end else if (sym is TDataSymbol) and (sym.Typ is TClassOfSymbol) then begin
+         if sym is TClassSymbol then begin
 
-         classSym:=TClassOfSymbol(sym.Typ).TypClassSymbol;
-         RecordSymbolUseReference(sym, hotPos, False);
+            classSym:=TClassSymbol(sym);
+            RecordSymbolUse(classSym, hotPos, [suReference]);
 
-      end else FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
+         end else if (sym is TDataSymbol) and (sym.Typ is TClassOfSymbol) then begin
+
+            classSym:=TClassOfSymbol(sym.Typ).TypClassSymbol;
+            RecordSymbolUseReference(sym, hotPos, False);
+
+         end else FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
+
+      end;
 
       if sym is TClassSymbol then
          baseExpr:=TConstExpr.CreateTypedVariantValue(FProg, classSym.MetaSymbol, Int64(classSym))
