@@ -9319,9 +9319,9 @@ begin
          Include(options, nloNoCheckSpecials);
       ReadNameList(names, posArray, options);
 
-      if FTok.TestDelete(ttCOLON) then
-         typ:=ReadType('', tcConstant)
-      else typ:=nil;
+      if FTok.TestDelete(ttCOLON) then begin
+         typ:=ReadType('', tcConstant);
+      end else typ:=nil;
 
       exprDyn:=nil;
       if FTok.TestDeleteAny([ttEQ, ttASSIGN])<>ttNone then begin
@@ -9738,11 +9738,15 @@ begin
                            ttBLEFT, ttENUM, ttFLAGS, ttPARTIAL, ttSTATIC,
                            ttPROCEDURE, ttFUNCTION, ttREFERENCE]);
    case tt of
-      ttARRAY :
+      ttARRAY : begin
          Result:=ReadArrayType(typeName, typeContext);
+         RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
+      end;
 
-      ttSET :
+      ttSET : begin
          Result:=ReadSetOfType(typeName, typeContext);
+         RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
+      end;
 
       ttRECORD :
          if FTok.TestDelete(ttHELPER) then
@@ -9753,6 +9757,7 @@ begin
                FProg.Table.AddSymbol(Result);
                Result.IncRefCount;
             end;
+            RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
          end;
 
       ttCLASS : begin
@@ -9770,6 +9775,7 @@ begin
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_TypeExpected);
             end;
          end;
+         RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
       end;
 
       ttPARTIAL, ttSTATIC :
