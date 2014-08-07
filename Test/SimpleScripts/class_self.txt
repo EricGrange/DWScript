@@ -1,3 +1,7 @@
+Errors >>>>
+Hint: "Myproc" does not match case of declaration ("MyProc") [line: 40, column: 7]
+Hint: "Myproc" does not match case of declaration ("MyProc") [line: 41, column: 8]
+Result >>>>
 Object not instantiated [line: 31, column: 6]
 TBase
 base_TBase

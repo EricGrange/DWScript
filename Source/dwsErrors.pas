@@ -392,7 +392,7 @@ end;
 //
 function TScriptPos.IsSourceFile(const name : UnicodeString) : Boolean;
 begin
-   Result:=(SourceFile<>nil) and (SourceFile.Name=name);
+   Result:=(SourceFile<>nil) and UnicodeSameText(SourceFile.Name, name);
 end;
 
 // SourceName

@@ -5562,9 +5562,11 @@ begin
          end else if baseType is TStructuredTypeMetaSymbol then begin
 
             member:=TStructuredTypeSymbol(baseType.Typ).Members.FindSymbolFromScope(Name, CurrentStruct);
-            if member<>nil then
-               memberClassType:=member.ClassType
-            else memberClassType:=nil;
+            if member<>nil then begin
+               memberClassType:=member.ClassType;
+               if not (coHintsDisabled in FOptions) then
+                  CheckMatchingDeclarationCase(name, member, namePos);
+            end else memberClassType:=nil;
 
             RecordSymbolUseReference(member, namePos, isWrite);
 

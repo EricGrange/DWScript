@@ -7590,7 +7590,7 @@ function TdwsSourceContext.IsPositionInContext(aCol, aLine : Integer; const sour
 begin
    // check if the position is in the same SourceFile
    if sourceName<>'' then begin // if empty, don't check it
-      if not UnicodeSameText(sourceName, FStartPos.SourceFile.Name) then begin
+      if not FStartPos.IsSourceFile(sourceName) then begin
          Result:=False;
          Exit;
       end;
