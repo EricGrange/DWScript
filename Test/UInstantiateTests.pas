@@ -29,6 +29,7 @@ type
          procedure Basic;
          procedure TwoExecs;
          procedure NilTest;
+         procedure InfoAccess;
    end;
 
 // ------------------------------------------------------------------
@@ -193,6 +194,26 @@ begin
    CheckEquals('', exec.Msgs.AsInfo, 'exec');
 
    CheckEquals('nil', exec.Result.ToString, 'Result');
+end;
+
+// InfoAccess
+//
+procedure TInstantiateTests.InfoAccess;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile('Print(test.ClassName);');
+
+   exec:=prog.CreateNewExecution;
+
+   exec.BeginProgram;
+
+   exec.RunProgram(0);
+
+   CheckEquals('TTestObj', exec.Info.Vars['test'].ExternalObject.ClassName);
+
+   exec.EndProgram;
 end;
 
 
