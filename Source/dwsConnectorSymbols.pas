@@ -76,6 +76,11 @@ type
       function Step(const enumerator : IInterface; var data : TData) : Boolean;
    end;
 
+   IConnectorCast = interface (IGetSelf)
+      ['{DCFCCC15-585C-4F48-99E1-547628C55696}']
+      function CastVariant(const base : Variant) : Variant;
+   end;
+
    TConnectorParam = record
       IsVarParam : Boolean;
       TypSym : TTypeSymbol;
@@ -94,6 +99,7 @@ type
      function HasIndex(const PropName: UnicodeString; const Params: TConnectorParamArray;
                        var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
      function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
+     function HasCast(typSym: TTypeSymbol) : IConnectorCast;
    end;
 
    TConnectorSymbol = class (TBaseVariantSymbol)

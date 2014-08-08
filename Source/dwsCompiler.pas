@@ -9742,12 +9742,14 @@ begin
    case tt of
       ttARRAY : begin
          Result:=ReadArrayType(typeName, typeContext);
-         RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
+         if typeName='' then
+            RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
       end;
 
       ttSET : begin
          Result:=ReadSetOfType(typeName, typeContext);
-         RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
+         if typeName='' then
+            RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
       end;
 
       ttRECORD :
@@ -9759,7 +9761,8 @@ begin
                FProg.Table.AddSymbol(Result);
                Result.IncRefCount;
             end;
-            RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
+            if typeName='' then
+               RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
          end;
 
       ttCLASS : begin
@@ -9777,7 +9780,8 @@ begin
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_TypeExpected);
             end;
          end;
-         RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
+         if typeName='' then
+            RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
       end;
 
       ttPARTIAL, ttSTATIC :
@@ -12971,6 +12975,7 @@ function TdwsCompiler.ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSy
 var
    argExpr : TTypedExpr;
    hotPos : TScriptPos;
+   connCast : IConnectorCast;
 begin
    hotPos:=FTok.CurrentPos;
    argExpr:=ReadExpr;
@@ -13056,6 +13061,14 @@ begin
          else if argExpr.Typ is TClassOfSymbol then
             Result:=TClassAsClassExpr.Create(FProg, hotPos, argExpr, typeSym)
          else FMsgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
+
+      end else if argExpr.Typ is TConnectorSymbol then begin
+
+         connCast:=TConnectorSymbol(argExpr.Typ).ConnectorType.HasCast(typeSym);
+         if connCast=nil then
+            FMsgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
+         Result:=TConnectorCastExpr.CreateCast(FProg, argExpr, connCast);
+         Result.Typ:=typeSym;
 
       end else FMsgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
 

@@ -216,6 +216,7 @@ type
          function HasIndex(const propName : String; const params : TConnectorParamArray;
                            var typSym : TTypeSymbol; isWrite : Boolean) : IConnectorCall;
          function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
+         function HasCast(typSym: TTypeSymbol) : IConnectorCast;
       public
          constructor Create(table : TSymbolTable; rttiType : TRttiType);
    end;
@@ -483,6 +484,13 @@ end;
 // HasEnumerator
 //
 function TdwsRTTIConnectorType.HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
+begin
+   Result:=nil;
+end;
+
+// HasCast
+//
+function TdwsRTTIConnectorType.HasCast(typSym: TTypeSymbol) : IConnectorCast;
 begin
    Result:=nil;
 end;

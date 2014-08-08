@@ -203,7 +203,7 @@ var
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
 begin
-   prog:=FCompiler.Compile('Print(test.ClassName);');
+   prog:=FCompiler.Compile('');
 
    exec:=prog.CreateNewExecution;
 

@@ -348,6 +348,7 @@ type
          function HasIndex(const aPropName: UnicodeString; const aParams: TConnectorParamArray;
                            var typSym: TTypeSymbol; isWrite: Boolean): IConnectorCall;
          function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
+         function HasCast(typSym: TTypeSymbol) : IConnectorCast;
 
          function NewEnumerator(const base : Variant; const args : TConnectorArgs) : IUnknown;
          function Step(const enumerator : IInterface; var data : TData) : Boolean;
@@ -467,6 +468,7 @@ type
          function HasIndex(const PropName: UnicodeString; const Params: TConnectorParamArray;
                          var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
          function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
+         function HasCast(typSym: TTypeSymbol) : IConnectorCast;
 
          { IConnectorEnumerator }
          function IConnectorEnumerator.NewEnumerator = NewEnumerator;
@@ -690,6 +692,13 @@ function TComConnectorType.HasEnumerator(var typSym: TTypeSymbol) : IConnectorEn
 begin
    typSym:=ComVariantSymbol;
    Result:=IConnectorEnumerator(Self);
+end;
+
+// HasCast
+//
+function TComConnectorType.HasCast(typSym: TTypeSymbol) : IConnectorCast;
+begin
+   Result:=nil;
 end;
 
 // NewEnumerator
@@ -950,6 +959,13 @@ function TComVariantArrayType.HasEnumerator(var typSym: TTypeSymbol) : IConnecto
 begin
    typSym := FTable.TypVariant;
    Result := IConnectorEnumerator(Self);
+end;
+
+// HasCast
+//
+function TComVariantArrayType.HasCast(typSym: TTypeSymbol) : IConnectorCast;
+begin
+   Result:=nil;
 end;
 
 function TComVariantArrayType.HasMember(const MemberName: UnicodeString;

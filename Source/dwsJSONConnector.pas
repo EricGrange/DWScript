@@ -72,6 +72,7 @@ type
          function HasIndex(const propName : UnicodeString; const params : TConnectorParamArray;
                            var typSym : TTypeSymbol; isWrite : Boolean) : IConnectorCall;
          function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
+         function HasCast(typSym: TTypeSymbol) : IConnectorCast;
 
       public
          constructor Create(table : TSystemSymbolTable);
@@ -627,6 +628,13 @@ end;
 // HasEnumerator
 //
 function TdwsJSONConnectorType.HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
+begin
+   Result:=nil;
+end;
+
+// HasCast
+//
+function TdwsJSONConnectorType.HasCast(typSym: TTypeSymbol) : IConnectorCast;
 begin
    Result:=nil;
 end;

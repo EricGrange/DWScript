@@ -207,6 +207,18 @@ type
          property DoExpr : TProgramExpr read FDoExpr write FDoExpr;
    end;
 
+   TConnectorCastExpr = class sealed (TUnaryOpExpr)
+      private
+         FConnectorCast : IConnectorCast;
+
+      public
+         constructor CreateCast(prog : TdwsProgram; expr : TTypedExpr; const cast : IConnectorCast);
+
+         function Eval(exec : TdwsExecution) : Variant; override;
+
+         property ConnectorCast : IConnectorCast read FConnectorCast write FConnectorCast;
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -862,6 +874,25 @@ begin
          exec.DoStep(Self);
       end;
    end;
+end;
+
+// ------------------
+// ------------------ TConnectorCastExpr ------------------
+// ------------------
+
+// CreateCast
+//
+constructor TConnectorCastExpr.CreateCast(prog : TdwsProgram; expr : TTypedExpr; const cast : IConnectorCast);
+begin
+   inherited Create(prog, expr);
+   FConnectorCast:=cast;
+end;
+
+// Eval
+//
+function TConnectorCastExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Result:=FConnectorCast.CastVariant(Expr.Eval(exec));
 end;
 
 end.
