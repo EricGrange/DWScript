@@ -5307,7 +5307,9 @@ begin
                   end else begin
 
                      // Type "array"
-                     dataExpr:=(Result as TDataExpr);
+                     if Result is TDataExpr then
+                        dataExpr:=TDataExpr(Result)
+                     else dataExpr:=nil;
                      if baseType is TArraySymbol then
                         Result := ReadSymbolArrayExpr(dataExpr)
                      else if baseType is TConnectorSymbol then
