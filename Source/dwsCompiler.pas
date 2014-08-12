@@ -9330,51 +9330,55 @@ begin
          detachTyp:=False;
          if factory=nil then
             factory:=TCompositeTypeSymbolFactory.Create(Self, struct, cvPrivate);
-         expr:=factory.ReadExpr(nil);
-         try
-            if Assigned(typ) then begin
-               if not typ.IsCompatible(expr.typ) then
-                  expr:=WrapWithImplicitConversion(expr, typ, FTok.HotPos);
-            end else begin
-               typ:=expr.typ;
-               detachTyp:=(typ.Name='');
-            end;
-            if typ=FProg.TypNil then
-               if not (expr is TBogusConstExpr) then
-                  FMsgs.AddCompilerError(FTok.HotPos, CPE_TypeCouldNotBeInferenced);
+         if (typ is TRecordSymbol) and FTok.Test(ttBLEFT) then begin
+            exprData:=ReadConstRecord(TRecordSymbol(typ));
+         end else begin
+            expr:=factory.ReadExpr(typ);
+            try
+               if Assigned(typ) then begin
+                  if not typ.IsCompatible(expr.typ) then
+                     expr:=WrapWithImplicitConversion(expr, typ, FTok.HotPos);
+               end else begin
+                  typ:=expr.typ;
+                  detachTyp:=(typ.Name='');
+               end;
+               if typ=FProg.TypNil then
+                  if not (expr is TBogusConstExpr) then
+                     FMsgs.AddCompilerError(FTok.HotPos, CPE_TypeCouldNotBeInferenced);
 
-            if (typ=nil) or (expr=nil) then begin
-               FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
-               if typ=nil then
-                  typ:=FProg.TypVariant;
-            end else if expr.IsConstant then begin
-               if not FMsgs.HasErrors then begin
-                  SetLength(exprData, typ.Size);
-                  if typ.Size=1 then begin
-                     expr.EvalAsVariant(FExec, exprData[0]);
-                  end else begin
-                     FExec.Stack.Push(typ.Size);
-                     try
-                        (expr as TDataExpr).DataPtr[FExec].CopyData(exprData, 0, typ.Size);
-                     finally
-                        FExec.Stack.Pop(typ.Size);
+               if (typ=nil) or (expr=nil) then begin
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
+                  if typ=nil then
+                     typ:=FProg.TypVariant;
+               end else if expr.IsConstant then begin
+                  if not FMsgs.HasErrors then begin
+                     SetLength(exprData, typ.Size);
+                     if typ.Size=1 then begin
+                        expr.EvalAsVariant(FExec, exprData[0]);
+                     end else begin
+                        FExec.Stack.Push(typ.Size);
+                        try
+                           (expr as TDataExpr).DataPtr[FExec].CopyData(exprData, 0, typ.Size);
+                        finally
+                           FExec.Stack.Pop(typ.Size);
+                        end;
                      end;
                   end;
+               end else if not allowNonConstExpressions then begin
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
+               end else begin
+                  exprDyn:=expr;
+                  expr:=nil;
+                  detachTyp:=False;
                end;
-            end else if not allowNonConstExpressions then begin
-               FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
-            end else begin
-               exprDyn:=expr;
-               expr:=nil;
-               detachTyp:=False;
+            finally
+               if detachTyp then begin
+                  if not FProg.Table.HasSymbol(typ) then
+                     FProg.Table.AddSymbol(typ);
+                  expr.Typ:=nil;
+               end;
+               expr.Free;
             end;
-         finally
-            if detachTyp then begin
-               if not FProg.Table.HasSymbol(typ) then
-                  FProg.Table.AddSymbol(typ);
-               expr.Typ:=nil;
-            end;
-            expr.Free;
          end;
       end else begin
          exprData:=nil;
