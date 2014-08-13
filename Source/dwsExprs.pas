@@ -3119,16 +3119,10 @@ end;
 // CollectAllPublishedSymbols
 //
 function TdwsMainProgram.CollectAllPublishedSymbols(ignoreImplementationPublished : Boolean) : TSimpleSymbolList;
-var
-   tableList : TSimpleRefCountedObjectHash;
 begin
    Result:=TSimpleSymbolList.Create;
-   tableList:=TSimpleRefCountedObjectHash.Create;
-   try
-      RootTable.CollectPublishedSymbols(tableList, Result, ignoreImplementationPublished);
-   finally
-      tableList.Free;
-   end;
+   UnitMains.CollectPublishedSymbols(Result, ignoreImplementationPublished);
+   FRootTable.CollectPublishedSymbols(Result);
 end;
 
 // OrphanObject

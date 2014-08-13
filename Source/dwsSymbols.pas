@@ -359,9 +359,7 @@ type
          function HasSameLocalOperator(anOpSym : TOperatorSymbol) : Boolean; virtual;
          function HasOperators : Boolean; inline;
 
-         procedure CollectPublishedSymbols(tableList : TSimpleRefCountedObjectHash;
-                                           symbolList : TSimpleSymbolList;
-                                           ignoreImplementationPublished : Boolean); virtual;
+         procedure CollectPublishedSymbols(symbolList : TSimpleSymbolList); virtual;
 
          function HasClass(const aClass : TSymbolClass) : Boolean;
          function HasSymbol(sym : TSymbol) : Boolean;
@@ -5452,20 +5450,10 @@ end;
 
 // CollectPublishedSymbols
 //
-procedure TSymbolTable.CollectPublishedSymbols(tableList : TSimpleRefCountedObjectHash;
-                                               symbolList : TSimpleSymbolList;
-                                               ignoreImplementationPublished : Boolean);
+procedure TSymbolTable.CollectPublishedSymbols(symbolList : TSimpleSymbolList);
 var
-   i : Integer;
-   parent : TSymbolTable;
    sym, member : TSymbol;
 begin
-   tableList.Add(Self);
-   for i:=0 to ParentCount-1 do begin
-      parent:=Parents[i];
-      if not tableList.Contains(parent) then
-         parent.CollectPublishedSymbols(tableList, symbolList, ignoreImplementationPublished);
-   end;
    for sym in Self do begin
       if sym.ClassType=TClassSymbol then begin
          for member in TClassSymbol(sym).Members do begin

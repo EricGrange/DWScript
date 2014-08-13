@@ -91,6 +91,9 @@ type
          procedure Initialize(const msgs : TdwsCompileMessageList);
 
          function Find(const unitName : UnicodeString) : TUnitMainSymbol;
+
+         procedure CollectPublishedSymbols(symbolList : TSimpleSymbolList;
+                                           ignoreImplementationPublished : Boolean);
    end;
 
    // TUnitSymbolTable
@@ -101,10 +104,6 @@ type
 
       public
          class function IsUnitTable : Boolean; override;
-
-         procedure CollectPublishedSymbols(tableList : TSimpleRefCountedObjectHash;
-                                           symbolList : TSimpleSymbolList;
-                                           ignoreImplementationPublished : Boolean); override;
 
          property UnitMainSymbol : TUnitMainSymbol read FUnitMainSymbol write FUnitMainSymbol;
    end;
@@ -649,6 +648,23 @@ begin
    Result:=nil;
 end;
 
+// CollectPublishedSymbols
+//
+procedure TUnitMainSymbols.CollectPublishedSymbols(symbolList : TSimpleSymbolList;
+                                                   ignoreImplementationPublished : Boolean);
+var
+   i : Integer;
+   ums : TUnitMainSymbol;
+begin
+   for i:=0 to Count-1 do begin
+      ums:=items[i];
+      if ums.Table<>nil then
+         ums.Table.CollectPublishedSymbols(symbolList);
+      if (not ignoreImplementationPublished) and (ums.ImplementationTable<>nil) then
+         ums.ImplementationTable.CollectPublishedSymbols(symbolList);
+   end;
+end;
+
 // Initialize
 //
 procedure TUnitMainSymbols.Initialize(const msgs : TdwsCompileMessageList);
@@ -668,17 +684,6 @@ end;
 class function TUnitSymbolTable.IsUnitTable : Boolean;
 begin
    Result:=True;
-end;
-
-// CollectPublishedSymbols
-//
-procedure TUnitSymbolTable.CollectPublishedSymbols(tableList : TSimpleRefCountedObjectHash;
-                                                   symbolList : TSimpleSymbolList;
-                                                   ignoreImplementationPublished : Boolean);
-begin
-   inherited CollectPublishedSymbols(tableList, symbolList, ignoreImplementationPublished);
-   if (UnitMainSymbol<>nil) and not ignoreImplementationPublished then
-      UnitMainSymbol.ImplementationTable.CollectPublishedSymbols(tableList, symbolList, ignoreImplementationPublished);
 end;
 
 // ------------------
