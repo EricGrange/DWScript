@@ -5929,6 +5929,9 @@ function TBlockExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgra
 var
    i : Integer;
 begin
+   if FTable.HasChildTables then
+      Exit(Self);
+
    for i:=FCount-1 downto 0 do begin
       if FStatements[i].ClassType=TNullExpr then begin
          FStatements[i].Free;

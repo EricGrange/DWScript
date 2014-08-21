@@ -39,6 +39,7 @@ type
          procedure EvaluateContextTest;
          procedure EvaluateLocalVar;
          procedure EvaluateBlockVar;
+         procedure EvaluateAfterBlock;
 
          procedure ExecutableLines;
 
@@ -334,6 +335,43 @@ begin
          exec:=nil;
       end;
    finally
+      prog:=nil;
+   end;
+end;
+
+// EvaluateAfterBlock
+//
+procedure TDebuggerTests.EvaluateAfterBlock;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   FCompiler.Config.CompilerOptions := FCompiler.Config.CompilerOptions + [coOptimize];
+   prog:=FCompiler.Compile( 'var a := 0;'#13#10
+                           +'var b := 0;'#13#10
+                           +'repeat'#13#10
+                           +'   begin'#13#10
+                           +'      var x :=0;'#13#10
+                           +'   end'#13#10
+                           +'until  (a=b) ;');
+   try
+      exec:=prog.CreateNewExecution;
+      try
+         FDebugEvalExpr:='a';
+
+         FDebugEvalAtLine:=7;
+         FDebugLastEvalResult:='';
+         FDebugger.BeginDebug(exec);
+         try
+            CheckEquals('0', FDebugLastEvalResult, 'a at line 7');
+         finally
+            FDebugger.EndDebug;
+         end;
+      finally
+         exec:=nil;
+      end;
+   finally
+      FCompiler.Config.CompilerOptions := FCompiler.Config.CompilerOptions - [coOptimize];
       prog:=nil;
    end;
 end;

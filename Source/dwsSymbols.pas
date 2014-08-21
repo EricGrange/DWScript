@@ -292,7 +292,9 @@ type
 
    TOperatorSymbolEnumerationCallback = function (opSym : TOperatorSymbol) : Boolean of object;
 
-   TSymbolTableFlag = (stfSorted, stfHasHelpers, stfHasLocalOperators, stfHasParentOperators, stfHasOperators);
+   TSymbolTableFlag = (stfSorted,
+                       stfHasChildTables, stfHasHelpers,
+                       stfHasLocalOperators, stfHasParentOperators, stfHasOperators);
    TSymbolTableFlags = set of TSymbolTableFlag;
 
    TSimpleSymbolList = TSimpleList<TSymbol>;
@@ -361,6 +363,7 @@ type
 
          procedure CollectPublishedSymbols(symbolList : TSimpleSymbolList); virtual;
 
+         function HasChildTables : Boolean; inline;
          function HasClass(const aClass : TSymbolClass) : Boolean;
          function HasSymbol(sym : TSymbol) : Boolean;
          function HasMethods : Boolean;
@@ -5472,6 +5475,13 @@ begin
    end;
 end;
 
+// HasChildTables
+//
+function TSymbolTable.HasChildTables : Boolean;
+begin
+   Result:=stfHasChildTables in FFlags;
+end;
+
 // HasClass
 //
 function TSymbolTable.HasClass(const aClass : TSymbolClass) : Boolean;
@@ -5602,6 +5612,7 @@ end;
 //
 procedure TSymbolTable.InsertParent(Index: Integer; Parent: TSymbolTable);
 begin
+   Include(Parent.FFlags, stfHasChildTables);
    FParents.Insert(Index, Parent);
    if stfHasOperators in Parent.FFlags then
       FFlags:=FFlags+[stfHasOperators, stfHasParentOperators];
