@@ -1033,7 +1033,7 @@ type
          function GetDataPtrFunc(exec : TdwsExecution) : IDataContext; inline;
 
       public
-         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol);
+         constructor Create(aTyp: TTypeSymbol);
 
          procedure AssignData(exec : TdwsExecution; const source : IDataContext); virtual;
          procedure AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr); virtual;
@@ -1054,7 +1054,7 @@ type
          FScriptPos : TScriptPos;
 
       public
-         constructor Create(Prog: TdwsProgram; const scriptPos : TScriptPos; Typ: TTypeSymbol);
+         constructor Create(Prog: TdwsProgram; const scriptPos : TScriptPos; aTyp: TTypeSymbol);
 
          function ScriptPos : TScriptPos; override;
    end;
@@ -1443,7 +1443,7 @@ type
          function GetIsConstant : Boolean; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; Expr: TTypedExpr);
+         constructor Create(const aScriptPos: TScriptPos; Expr: TTypedExpr);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -3980,9 +3980,9 @@ end;
 
 // Create
 //
-constructor TPosDataExpr.Create(Prog: TdwsProgram; const scriptPos : TScriptPos; Typ: TTypeSymbol);
+constructor TPosDataExpr.Create(Prog: TdwsProgram; const scriptPos : TScriptPos; aTyp: TTypeSymbol);
 begin
-   inherited Create(Prog, Typ);
+   inherited Create(aTyp);
    FScriptPos:=scriptPos;
 end;
 
@@ -4121,9 +4121,9 @@ end;
 // ------------------ TDataExpr ------------------
 // ------------------
 
-constructor TDataExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol);
+constructor TDataExpr.Create(aTyp: TTypeSymbol);
 begin
-   FTyp := Typ;
+   FTyp := aTyp;
 end;
 
 // Eval
@@ -7924,7 +7924,7 @@ end;
 
 // Create
 //
-constructor TNoResultWrapperExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; Expr: TTypedExpr);
+constructor TNoResultWrapperExpr.Create(const aScriptPos: TScriptPos; Expr: TTypedExpr);
 begin
    inherited Create(aScriptPos);
    FExpr := Expr;

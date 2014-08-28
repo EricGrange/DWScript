@@ -26,7 +26,7 @@ type
       function NeedsDot: boolean;
    end;
 
-   TLinqQueryBuilderFactory = function(compiler: TdwsCompiler; symbol: TTypeSymbol): ILinqQueryBuilder;
+   TLinqQueryBuilderFactory = function(compiler: IdwsCompiler; symbol: TTypeSymbol): ILinqQueryBuilder;
 
    TJoinType = (jtFull, jtLeft, jtRight, jtFullOuter, jtCross);
 

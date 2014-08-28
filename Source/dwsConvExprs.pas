@@ -34,6 +34,7 @@ type
    TConvExpr = class(TUnaryOpExpr)
       public
          class function WrapWithConvCast(prog : TdwsProgram; const scriptPos : TScriptPos;
+                                         exec : TdwsExecution;
                                          toTyp : TTypeSymbol; expr : TTypedExpr;
                                          const reportError : String) : TTypedExpr; static;
          function Eval(exec : TdwsExecution) : Variant; override;
@@ -106,12 +107,15 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
+         function  GetIsConstant : Boolean; override;
+
       public
          constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos;
                             expr : TArrayConstantExpr; toTyp : TSetOfSymbol);
          destructor Destroy; override;
 
          procedure EvalAsTData(exec : TdwsExecution; var data : TData);
+         function ToConstExpr(exec : TdwsExecution) : TConstExpr;
 
          function IsWritable: Boolean; override;
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
@@ -196,6 +200,7 @@ uses dwsCoreExprs;
 // WrapWithConvCast
 //
 class function TConvExpr.WrapWithConvCast(prog : TdwsProgram; const scriptPos : TScriptPos;
+                                          exec : TdwsExecution;
                                           toTyp : TTypeSymbol; expr : TTypedExpr;
                                           const reportError : String) : TTypedExpr;
 
@@ -215,6 +220,7 @@ class function TConvExpr.WrapWithConvCast(prog : TdwsProgram; const scriptPos : 
 
 var
    arrayConst : TArrayConstantExpr;
+   staticArrayToSetOf : TConvStaticArrayToSetOfExpr;
 begin
    Result:=expr;
    if (toTyp=nil) or (expr.Typ=nil) then begin
@@ -233,8 +239,16 @@ begin
             Result:=TConvStaticArrayToDynamicExpr.Create(prog, arrayConst,
                                                          TDynamicArraySymbol(toTyp))
       end else if toTyp is TSetOfSymbol then begin
-         if (arrayConst.ElementCount=0) or arrayConst.Typ.Typ.IsOfType(toTyp.Typ) then
-            Result:=TConvStaticArrayToSetOfExpr.Create(prog, scriptPos, arrayConst, TSetOfSymbol(toTyp));
+         if arrayConst.ElementCount=0 then begin
+            Result:=TConstExpr.Create(toTyp);
+            expr.Free;
+         end else if arrayConst.Typ.Typ.IsOfType(toTyp.Typ) then begin
+            staticArrayToSetOf:=TConvStaticArrayToSetOfExpr.Create(prog, scriptPos, arrayConst, TSetOfSymbol(toTyp));
+            if staticArrayToSetOf.IsConstant then begin
+               Result:=staticArrayToSetOf.ToConstExpr(exec);
+               staticArrayToSetOf.Free;
+            end else Result:=staticArrayToSetOf;
+         end;
       end;
 
    end else if expr.Typ.UnAliasedTypeIs(TBaseVariantSymbol) then begin
@@ -690,6 +704,16 @@ begin
    end;
 end;
 
+// ToConstExpr
+//
+function TConvStaticArrayToSetOfExpr.ToConstExpr(exec : TdwsExecution) : TConstExpr;
+var
+   data : TData;
+begin
+   EvalAsTData(exec, data);
+   Result:=TConstExpr.Create(Typ, data, 0);
+end;
+
 // IsWritable
 //
 function TConvStaticArrayToSetOfExpr.IsWritable: Boolean;
@@ -719,6 +743,13 @@ end;
 function TConvStaticArrayToSetOfExpr.GetSubExprCount : Integer;
 begin
    Result:=1;
+end;
+
+// GetIsConstant
+//
+function TConvStaticArrayToSetOfExpr.GetIsConstant : Boolean;
+begin
+   Result:=FExpr.IsConstant;
 end;
 
 end.

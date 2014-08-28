@@ -1177,7 +1177,9 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog : TdwsProgram; const aScriptPos: TScriptPos; left : TDataExpr; right : TTypedExpr); virtual;
+         constructor Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
+                            exec : TdwsExecution;
+                            left : TDataExpr; right : TTypedExpr); virtual;
          destructor Destroy; override;
 
          property Left : TDataExpr read FLeft;
@@ -1185,7 +1187,7 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
 
-         procedure TypeCheckAssign(prog : TdwsProgram); virtual;
+         procedure TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution); virtual;
          function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
          function  OptimizeConstAssignment(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
    end;
@@ -1203,14 +1205,16 @@ type
    protected
      FSize: Integer;
    public
-     constructor Create(prog : TdwsProgram; const aScriptPos: TScriptPos; left : TDataExpr; right : TTypedExpr); override;
+     constructor Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
+                        exec : TdwsExecution;
+                        left : TDataExpr; right : TTypedExpr); override;
      procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // left := right; (var, func)
    TAssignFuncExpr = class(TAssignExpr)
       public
-         procedure TypeCheckAssign(prog : TdwsProgram); override;
+         procedure TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution); override;
          procedure EvalNoResult(exec : TdwsExecution); override;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
@@ -1219,15 +1223,17 @@ type
    TAssignArrayConstantExpr = class(TAssignDataExpr)
       public
          constructor Create(prog : TdwsProgram; const aScriptPos : TScriptPos;
+                            exec : TdwsExecution;
                             left : TDataExpr; right : TTypedExpr); override;
          procedure EvalNoResult(exec : TdwsExecution); override;
-         procedure TypeCheckAssign(prog : TdwsProgram); override;
+         procedure TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution); override;
    end;
 
    // var left := const right;
    TAssignConstDataToVarExpr = class(TAssignDataExpr)
       public
          constructor Create(prog : TdwsProgram; const aScriptPos : TScriptPos;
+                            exec : TdwsExecution;
                             left : TDataExpr; right : TTypedExpr); override;
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
@@ -1235,7 +1241,7 @@ type
    // left := const right;
    TAssignConstExpr = class (TAssignExpr)
       public
-         procedure TypeCheckAssign(prog : TdwsProgram); override;
+         procedure TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution); override;
          function RightValue : Variant; virtual; abstract;
    end;
 
@@ -1244,7 +1250,9 @@ type
       protected
          FRight : Int64;
       public
-         constructor CreateVal(Prog: TdwsProgram; const aScriptPos: TScriptPos; Left : TDataExpr; const rightValue : Int64);
+         constructor CreateVal(Prog: TdwsProgram; const aScriptPos: TScriptPos;
+                               exec : TdwsExecution;
+                               Left : TDataExpr; const rightValue : Int64);
          procedure EvalNoResult(exec : TdwsExecution); override;
          function RightValue : Variant; override;
          property Right : Int64 read FRight write FRight;
@@ -1255,7 +1263,8 @@ type
       protected
          FRight : Double;
       public
-         constructor CreateVal(Prog: TdwsProgram; const aScriptPos: TScriptPos; Left : TDataExpr; const rightValue : Double);
+         constructor CreateVal(Prog: TdwsProgram; const aScriptPos: TScriptPos; exec : TdwsExecution;
+                               Left : TDataExpr; const rightValue : Double);
          procedure EvalNoResult(exec : TdwsExecution); override;
          function RightValue : Variant; override;
          property Right : Double read FRight write FRight;
@@ -1266,7 +1275,8 @@ type
       protected
          FRight : Boolean;
       public
-         constructor CreateVal(Prog: TdwsProgram; const aScriptPos: TScriptPos; Left : TDataExpr; const rightValue : Boolean);
+         constructor CreateVal(Prog: TdwsProgram; const aScriptPos: TScriptPos; exec : TdwsExecution;
+                               Left : TDataExpr; const rightValue : Boolean);
          procedure EvalNoResult(exec : TdwsExecution); override;
          function RightValue : Variant; override;
          property Right : Boolean read FRight write FRight;
@@ -1277,7 +1287,8 @@ type
       protected
          FRight : UnicodeString;
       public
-         constructor CreateVal(Prog: TdwsProgram; const aScriptPos: TScriptPos; Left : TDataExpr; const rightValue : UnicodeString);
+         constructor CreateVal(Prog: TdwsProgram; const aScriptPos: TScriptPos; exec : TdwsExecution;
+                               Left : TDataExpr; const rightValue : UnicodeString);
          procedure EvalNoResult(exec : TdwsExecution); override;
          function RightValue : Variant; override;
          property Right : UnicodeString read FRight write FRight;
@@ -1286,7 +1297,8 @@ type
    // left := nil (instance)
    TAssignNilToVarExpr = class(TAssignConstExpr)
       public
-         constructor CreateVal(prog : TdwsProgram; const aScriptPos: TScriptPos; left : TDataExpr);
+         constructor CreateVal(prog : TdwsProgram; const aScriptPos: TScriptPos;
+                               exec : TdwsExecution; left : TDataExpr);
          function RightValue : Variant; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
@@ -1386,7 +1398,9 @@ type
       private
          FAppendString : UnicodeString;
       public
-         constructor Create(prog : TdwsProgram; const aScriptPos: TScriptPos; left : TDataExpr; right : TTypedExpr); override;
+         constructor Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
+                            exec : TdwsExecution;
+                            left : TDataExpr; right : TTypedExpr); override;
          procedure EvalNoResult(exec : TdwsExecution); override;
          property AppendString : UnicodeString read FAppendString;
    end;
@@ -2065,7 +2079,7 @@ end;
 //
 constructor TVarExpr.Create(prog : TdwsProgram; dataSym : TDataSymbol);
 begin
-   inherited Create(prog, dataSym.Typ);
+   inherited Create(dataSym.Typ);
    FStackAddr:=dataSym.StackAddr;
    FDataSym:=dataSym;
 end;
@@ -5136,12 +5150,13 @@ end;
 // ------------------
 
 constructor TAssignExpr.Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
+                               exec : TdwsExecution;
                                left : TDataExpr; right : TTypedExpr);
 begin
   inherited Create(aScriptPos);
   FLeft := Left;
   FRight := Right;
-  TypeCheckAssign(Prog);
+  TypeCheckAssign(Prog, exec);
 end;
 
 // Destroy
@@ -5162,14 +5177,15 @@ end;
 
 // TypeCheckAssign
 //
-procedure TAssignExpr.TypeCheckAssign(prog : TdwsProgram);
+procedure TAssignExpr.TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution);
 begin
    if FLeft=nil then Exit;
 
    if FRight.ClassType=TArrayConstantExpr then
       TArrayConstantExpr(FRight).Prepare(Prog, FLeft.Typ.Typ);
 
-   FRight:=TConvExpr.WrapWithConvCast(prog, ScriptPos, FLeft.Typ, FRight, CPE_AssignIncompatibleTypes);
+   FRight:=TConvExpr.WrapWithConvCast(prog, ScriptPos, exec,
+                                      FLeft.Typ, FRight, CPE_AssignIncompatibleTypes);
 end;
 
 // Optimize
@@ -5208,7 +5224,7 @@ begin
          if rightClassType=TAddIntExpr then begin
             addIntExpr:=TAddIntExpr(FRight);
             if addIntExpr.Left.SameDataExpr(leftVarExpr) then begin
-               Result:=TIncIntVarExpr.Create(Prog, FScriptPos, FLeft, addIntExpr.Right);
+               Result:=TIncIntVarExpr.Create(Prog, FScriptPos, exec, FLeft, addIntExpr.Right);
                FLeft:=nil;
                addIntExpr.Right:=nil;
                Free;
@@ -5217,7 +5233,7 @@ begin
          end else if rightClassType=TSubIntExpr then begin
             subIntExpr:=TSubIntExpr(FRight);
             if subIntExpr.Left.SameDataExpr(leftVarExpr) then begin
-               Result:=TDecIntVarExpr.Create(Prog, FScriptPos, FLeft, subIntExpr.Right);
+               Result:=TDecIntVarExpr.Create(Prog, FScriptPos, exec, FLeft, subIntExpr.Right);
                FLeft:=nil;
                subIntExpr.Right:=nil;
                Free;
@@ -5229,9 +5245,9 @@ begin
             addStrExpr:=TAddStrExpr(FRight);
             if (addStrExpr.Left is TVarExpr) and (addStrExpr.Left.ReferencesVariable(leftVarExpr.DataSym)) then begin
                if addStrExpr.Right.InheritsFrom(TConstStringExpr) then begin
-                  Result:=TAppendConstStringVarExpr.Create(Prog, FScriptPos, FLeft, addStrExpr.Right);
+                  Result:=TAppendConstStringVarExpr.Create(Prog, FScriptPos, exec, FLeft, addStrExpr.Right);
                end else begin
-                  Result:=TAppendStringVarExpr.Create(Prog, FScriptPos, FLeft, addStrExpr.Right);
+                  Result:=TAppendStringVarExpr.Create(Prog, FScriptPos, exec, FLeft, addStrExpr.Right);
                end;
                FLeft:=nil;
                addStrExpr.Right:=nil;
@@ -5244,7 +5260,7 @@ begin
    if (Right is TBinaryOpExpr) and Left.SameDataExpr(TBinaryOpExpr(Right).Left) then begin
       for i:=Low(cCombinedOps) to High(cCombinedOps) do begin
          if rightClassType=cCombinedOps[i].Op then begin
-            Result:=cCombinedOps[i].Comb.Create(Prog, FScriptPos, FLeft, TBinaryOpExpr(Right).Right);
+            Result:=cCombinedOps[i].Comb.Create(Prog, FScriptPos, exec, FLeft, TBinaryOpExpr(Right).Right);
             FLeft:=nil;
             TBinaryOpExpr(Right).Right:=nil;
             Free;
@@ -5266,27 +5282,27 @@ begin
 
    if FRight.IsOfType(prog.TypInteger) then begin
 
-      Result:=TAssignConstToIntegerVarExpr.CreateVal(prog, FScriptPos, FLeft, FRight.EvalAsInteger(exec));
+      Result:=TAssignConstToIntegerVarExpr.CreateVal(prog, FScriptPos, exec, FLeft, FRight.EvalAsInteger(exec));
 
    end else if FRight.IsOfType(prog.TypFloat) then begin
 
-      Result:=TAssignConstToFloatVarExpr.CreateVal(prog, FScriptPos, FLeft, FRight.EvalAsFloat(exec));
+      Result:=TAssignConstToFloatVarExpr.CreateVal(prog, FScriptPos, exec, FLeft, FRight.EvalAsFloat(exec));
 
    end else if FRight.IsOfType(prog.TypBoolean) then begin
 
-      Result:=TAssignConstToBoolVarExpr.CreateVal(prog, FScriptPos, FLeft, FRight.EvalAsBoolean(exec));
+      Result:=TAssignConstToBoolVarExpr.CreateVal(prog, FScriptPos, exec, FLeft, FRight.EvalAsBoolean(exec));
 
    end else if FRight.IsOfType(prog.TypString) then begin
 
       FRight.EvalAsString(exec, stringBuf);
-      Result:=TAssignConstToStringVarExpr.CreateVal(prog, FScriptPos, FLeft, stringBuf);
+      Result:=TAssignConstToStringVarExpr.CreateVal(prog, FScriptPos, exec, FLeft, stringBuf);
 
    end else if FRight.IsOfType(prog.TypNil) then begin
 
       if FLeft.Typ.UnAliasedType.ClassType=TClassSymbol then
-         Result:=TAssignNilToVarExpr.CreateVal(prog, FScriptPos, FLeft)
+         Result:=TAssignNilToVarExpr.CreateVal(prog, FScriptPos, exec, FLeft)
       else if FLeft.Typ.UnAliasedType.ClassType=TClassOfSymbol then
-         Result:=TAssignNilClassToVarExpr.CreateVal(prog, FScriptPos, FLeft);
+         Result:=TAssignNilClassToVarExpr.CreateVal(prog, FScriptPos, exec, FLeft);
 
    end;
    if Result<>Self then begin
@@ -5335,9 +5351,10 @@ end;
 
 { TAssignDataExpr }
 
-constructor TAssignDataExpr.Create(prog : TdwsProgram; const aScriptPos: TScriptPos; left : TDataExpr; right : TTypedExpr);
+constructor TAssignDataExpr.Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
+                                   exec : TdwsExecution; left : TDataExpr; right : TTypedExpr);
 begin
-  inherited Create(Prog, aScriptPos, Left, Right);
+  inherited Create(Prog, aScriptPos, exec, Left, Right);
   FSize := FLeft.Typ.Size;
 end;
 
@@ -5352,7 +5369,7 @@ end;
 
 // TypeCheckAssign
 //
-procedure TAssignFuncExpr.TypeCheckAssign(prog : TdwsProgram);
+procedure TAssignFuncExpr.TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution);
 begin
    if not FLeft.Typ.IsCompatible((FRight as TFuncExprBase).FuncSym) then
       prog.CompileMsgs.AddCompilerError(ScriptPos, CPE_IncompatibleOperands);
@@ -5382,9 +5399,10 @@ end;
 // ------------------
 
 constructor TAssignArrayConstantExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
+                                            exec : TdwsExecution;
                                             Left : TDataExpr; Right: TTypedExpr);
 begin
-  inherited Create(Prog, aScriptPos, Left, Right as TArrayConstantExpr); // typecheck Right
+  inherited Create(Prog, aScriptPos, exec, Left, Right as TArrayConstantExpr); // typecheck Right
 end;
 
 procedure TAssignArrayConstantExpr.EvalNoResult(exec : TdwsExecution);
@@ -5415,7 +5433,7 @@ end;
 
 // TypeCheckAssign
 //
-procedure TAssignArrayConstantExpr.TypeCheckAssign(prog : TdwsProgram);
+procedure TAssignArrayConstantExpr.TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution);
 var
    leftItemTyp : TTypeSymbol;
 begin
@@ -5437,9 +5455,10 @@ end;
 // ------------------
 
 constructor TAssignConstDataToVarExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
+                                             exec : TdwsExecution;
                                              Left : TDataExpr; Right: TTypedExpr);
 begin
-   inherited Create(Prog, aScriptPos, Left, Right);
+   inherited Create(Prog, aScriptPos, exec, Left, Right);
    Assert(Left is TVarExpr);
    if Right=nil then
       Assert(ClassType<>TAssignConstDataToVarExpr)
@@ -5457,7 +5476,7 @@ end;
 
 // TypeCheckAssign
 //
-procedure TAssignConstExpr.TypeCheckAssign(prog : TdwsProgram);
+procedure TAssignConstExpr.TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution);
 begin
    // nothing, checked during optimize
 end;
@@ -5468,9 +5487,10 @@ end;
 
 // Create
 //
-constructor TAssignConstToIntegerVarExpr.CreateVal(Prog: TdwsProgram; const aScriptPos: TScriptPos; Left : TDataExpr; const rightValue : Int64);
+constructor TAssignConstToIntegerVarExpr.CreateVal(Prog: TdwsProgram; const aScriptPos: TScriptPos; exec : TdwsExecution;
+                                                   Left : TDataExpr; const rightValue : Int64);
 begin
-   inherited Create(Prog, aScriptPos, Left, nil);
+   inherited Create(Prog, aScriptPos, exec, Left, nil);
    FRight:=rightValue;
 end;
 
@@ -5495,9 +5515,9 @@ end;
 // Create
 //
 constructor TAssignConstToFloatVarExpr.CreateVal(Prog: TdwsProgram;
-      const aScriptPos: TScriptPos; Left : TDataExpr; const rightValue : Double);
+      const aScriptPos: TScriptPos; exec : TdwsExecution; Left : TDataExpr; const rightValue : Double);
 begin
-   inherited Create(Prog, aScriptPos, Left, nil);
+   inherited Create(Prog, aScriptPos, exec, Left, nil);
    FRight:=rightValue;
 end;
 
@@ -5522,9 +5542,10 @@ end;
 // Create
 //
 constructor TAssignConstToBoolVarExpr.CreateVal(Prog: TdwsProgram;
-      const aScriptPos: TScriptPos; Left : TDataExpr; const rightValue : Boolean);
+      const aScriptPos: TScriptPos; exec : TdwsExecution;
+      Left : TDataExpr; const rightValue : Boolean);
 begin
-   inherited Create(Prog, aScriptPos, Left, nil);
+   inherited Create(Prog, aScriptPos, exec, Left, nil);
    FRight:=rightValue;
 end;
 
@@ -5549,9 +5570,10 @@ end;
 // Create
 //
 constructor TAssignConstToStringVarExpr.CreateVal(Prog: TdwsProgram;
-      const aScriptPos: TScriptPos; Left : TDataExpr; const rightValue : UnicodeString);
+      const aScriptPos: TScriptPos; exec : TdwsExecution;
+      Left : TDataExpr; const rightValue : UnicodeString);
 begin
-   inherited Create(Prog, aScriptPos, Left, nil);
+   inherited Create(Prog, aScriptPos, exec, Left, nil);
    FRight:=rightValue;
 end;
 
@@ -5575,9 +5597,10 @@ end;
 
 // CreateVal
 //
-constructor TAssignNilToVarExpr.CreateVal(prog : TdwsProgram; const aScriptPos: TScriptPos; left : TDataExpr);
+constructor TAssignNilToVarExpr.CreateVal(prog : TdwsProgram;
+   const aScriptPos: TScriptPos; exec : TdwsExecution; left : TDataExpr);
 begin
-   inherited Create(prog, aScriptPos, left, nil);
+   inherited Create(prog, aScriptPos, exec, left, nil);
 end;
 
 // RightValue
@@ -5648,7 +5671,7 @@ function TPlusAssignIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) :
 begin
    Result:=Self;
    if FLeft is TIntVarExpr then begin
-      Result:=TIncIntVarExpr.Create(Prog, FScriptPos, FLeft, FRight);
+      Result:=TIncIntVarExpr.Create(Prog, FScriptPos, exec, FLeft, FRight);
       FLeft:=nil;
       FRight:=nil;
       Free;
@@ -5687,7 +5710,7 @@ function TPlusAssignStrExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) :
 begin
    Result:=Self;
    if FLeft is TStrVarExpr then begin
-      Result:=TAppendStringVarExpr.Create(Prog, FScriptPos, FLeft, FRight);
+      Result:=TAppendStringVarExpr.Create(Prog, FScriptPos, exec, FLeft, FRight);
       FLeft:=nil;
       FRight:=nil;
       Free;
@@ -5726,7 +5749,7 @@ function TMinusAssignIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) 
 begin
    Result:=Self;
    if FLeft is TIntVarExpr then begin
-      Result:=TDecIntVarExpr.Create(Prog, FScriptPos, FLeft, FRight);
+      Result:=TDecIntVarExpr.Create(Prog, FScriptPos, exec, FLeft, FRight);
       FLeft:=nil;
       FRight:=nil;
       Free;
@@ -5869,9 +5892,11 @@ end;
 
 // Create
 //
-constructor TAppendConstStringVarExpr.Create(prog : TdwsProgram; const aScriptPos: TScriptPos; left : TDataExpr; right : TTypedExpr);
+constructor TAppendConstStringVarExpr.Create(prog : TdwsProgram;
+      const aScriptPos: TScriptPos;
+      exec : TdwsExecution; left : TDataExpr; right : TTypedExpr);
 begin
-   inherited Create(Prog, aScriptPos, Left, Right);
+   inherited Create(Prog, aScriptPos, exec, Left, Right);
    FAppendString:=(right as TConstStringExpr).Value;
 end;
 

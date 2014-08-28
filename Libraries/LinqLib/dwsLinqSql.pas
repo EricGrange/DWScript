@@ -443,7 +443,7 @@ begin
    FData.AllocateStackAddr(prog.Table.AddrGenerator);
    dsVar := TObjectVarExpr.Create(prog, FData);
    FBase.IncRefCount;
-   FAssign := TAssignExpr.Create(prog, aPos, dsVar, FBase);
+   FAssign := TAssignExpr.Create(prog, aPos, compiler.CompileTimeExecution, dsVar, FBase);
    dsVar.IncRefCount;
    FInto.AddArg(dsVar);
    FInto.Initialize(prog);

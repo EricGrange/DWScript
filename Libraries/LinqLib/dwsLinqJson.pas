@@ -19,7 +19,7 @@ type
    TLinqJsonFactory = class(TInterfacedObject, ILinqQueryBuilder)
    private
       FJsonSymbol: TTypeSymbol;
-      FCompiler: TdwsCompiler;
+      FCompiler: IdwsCompiler;
 
       function From(value: TTypedExpr; base: TDataSymbol): TTypedExpr;
       function Join(base: TTypedExpr; value: TSqlJoinExpr): TTypedExpr;
@@ -32,7 +32,7 @@ type
       procedure Finalize(From: TTypedExpr);
       function NeedsDot: boolean;
    public
-      constructor Create(compiler: TdwsCompiler);
+      constructor Create(compiler: IdwsCompiler);
    end;
 
    TJsonExpr = class(TTypedExpr)
@@ -109,7 +109,7 @@ type
       FData: TDataSymbol;
       FAssign: TAssignExpr;
    public
-      constructor Create(base: TJsonExpr; targetFunc: TFuncPtrExpr; compiler: TdwsCompiler; aPos: TScriptPos);
+      constructor Create(base: TJsonExpr; targetFunc: TFuncPtrExpr; compiler: IdwsCompiler; aPos: TScriptPos);
       destructor Destroy; override;
       function Eval(exec : TdwsExecution): variant; override;
    end;
@@ -121,7 +121,7 @@ uses
 
 { TLinqJsonFactory }
 
-constructor TLinqJsonFactory.Create(compiler: TdwsCompiler);
+constructor TLinqJsonFactory.Create(compiler: IdwsCompiler);
 begin
    FCompiler := compiler;
    FJsonSymbol := compiler.CurrentProg.Table.FindTypeSymbol('JSONVariant', cvMagic);
@@ -609,7 +609,7 @@ end;
 { TJsonIntoFilter }
 
 constructor TJsonIntoFilter.Create(base: TJsonExpr; targetFunc: TFuncPtrExpr;
-  compiler: TdwsCompiler; aPos: TScriptPos);
+  compiler: IdwsCompiler; aPos: TScriptPos);
 var
    prog: TdwsProgram;
    jsonVar: TVarExpr;
@@ -623,7 +623,7 @@ begin
    FData.AllocateStackAddr(prog.Table.AddrGenerator);
    jsonVar := TVarExpr.Create(prog, FData);
    FBase.IncRefCount;
-   FAssign := TAssignExpr.Create(prog, aPos, jsonVar, FBase);
+   FAssign := TAssignExpr.Create(prog, aPos, compiler.CompileTimeExecution, jsonVar, FBase);
    jsonVar.IncRefCount;
    FInto.AddArg(jsonVar);
    FInto.Initialize(prog);
@@ -646,7 +646,7 @@ end;
 
 { Classless }
 
-function LinqJsonFactory(compiler: TdwsCompiler; symbol: TTypeSymbol): ILinqQueryBuilder;
+function LinqJsonFactory(compiler: IdwsCompiler; symbol: TTypeSymbol): ILinqQueryBuilder;
 var
    factory: TLinqJsonFactory;
 begin

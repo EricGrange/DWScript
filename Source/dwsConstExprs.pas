@@ -40,10 +40,10 @@ type
          function GetIsConstant : Boolean; override;
 
       public
-         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); overload; virtual;
-         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData; addr : Integer); overload;
-         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol); overload;
-         constructor CreateRef(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData);
+         constructor Create(Prog: TdwsProgram; aTyp: TTypeSymbol; const Value: Variant); overload; virtual;
+         constructor Create(aTyp: TTypeSymbol; const Data: TData; addr : Integer); overload;
+         constructor Create(aTyp: TTypeSymbol); overload;
+         constructor CreateRef(aTyp: TTypeSymbol; const Data: TData);
 
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
@@ -229,11 +229,11 @@ uses dwsConvExprs;
 
 // Create
 //
-constructor TConstExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant);
+constructor TConstExpr.Create(Prog: TdwsProgram; aTyp: TTypeSymbol; const Value: Variant);
 begin
-   inherited Create(Prog, Typ);
-   SetLength(FData, Typ.Size);
-   case Typ.Size of
+   inherited Create(aTyp);
+   SetLength(FData, aTyp.Size);
+   case aTyp.Size of
       0 : ;
       1 : FData[0] := Value;
    else
@@ -243,25 +243,25 @@ end;
 
 // Create
 //
-constructor TConstExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData; addr : Integer);
+constructor TConstExpr.Create(aTyp: TTypeSymbol; const Data: TData; addr : Integer);
 begin
-   Create(Prog, Typ);
-   DWSCopyData(Data, addr, FData, 0, Typ.Size);
+   Create(aTyp);
+   DWSCopyData(Data, addr, FData, 0, aTyp.Size);
 end;
 
 // Create
 //
-constructor TConstExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol);
+constructor TConstExpr.Create(aTyp: TTypeSymbol);
 begin
-   inherited Create(Prog, Typ);
-   SetLength(FData, Typ.Size);
+   inherited Create(aTyp);
+   SetLength(FData, aTyp.Size);
 end;
 
 // CreateRef
 //
-constructor TConstExpr.CreateRef(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData);
+constructor TConstExpr.CreateRef(aTyp: TTypeSymbol; const Data: TData);
 begin
-   inherited Create(Prog, Typ);
+   inherited Create(aTyp);
    FData:=Data;
 end;
 
@@ -348,7 +348,7 @@ begin
       0 : Result:=TConstExpr.Create(Prog, Typ, Null);
       1 : Result:=TConstExpr.CreateTypedVariantValue(Prog, Typ, Data[addr]);
    else
-      Result:=TConstExpr.Create(Prog, Typ, Data, addr);
+      Result:=TConstExpr.Create(Typ, Data, addr);
    end;
 end;
 
@@ -577,7 +577,7 @@ end;
 //
 constructor TConstArrayExpr.Create(prog : TdwsProgram; symbol : TConstSymbol);
 begin
-   inherited CreateRef(prog, symbol.Typ, symbol.Data);
+   inherited CreateRef(symbol.Typ, symbol.Data);
    FSymbol:=symbol;
 end;
 

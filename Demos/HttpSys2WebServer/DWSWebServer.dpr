@@ -31,10 +31,8 @@
 }
 program DWSWebServer;
 
-{$SetPEFlags $0001}
-
 {$IFNDEF VER200} // delphi 2009
-   {$WEAKLINKRTTI ON}
+   {$WEAKLINKRTTI ON}
    {$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
 {$ENDIF}
 
@@ -65,6 +63,8 @@ uses
   dwsBackgroundWorkersLibModule in '..\..\Libraries\SimpleServer\dwsBackgroundWorkersLibModule.pas' {dwsBackgroundWorkersLib: TDataModule},
   dwsWebUtils in '..\..\Libraries\SimpleServer\dwsWebUtils.pas',
   dwsEncodingLibModule in '..\..\Libraries\ClassesLib\dwsEncodingLibModule.pas' {dwsEncodingLib: TDataModule};
+
+{$SetPEFlags IMAGE_FILE_LARGE_ADDRESS_AWARE or IMAGE_FILE_RELOCS_STRIPPED}
 
 type
    TWebServerHttpService = class(TdwsWindowsService)

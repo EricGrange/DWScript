@@ -177,6 +177,7 @@ type
       public
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function CreateAssignExpr(prog : TdwsProgram; const aScriptPos: TScriptPos;
+                                   exec : TdwsExecution;
                                    left : TDataExpr; right : TTypedExpr) : TProgramExpr; override;
    end;
 
@@ -1038,6 +1039,7 @@ end;
 // CreateAssignExpr
 //
 function TJSONConnectorSymbol.CreateAssignExpr(prog : TdwsProgram; const aScriptPos: TScriptPos;
+                                               exec : TdwsExecution;
                                                left : TDataExpr; right : TTypedExpr) : TProgramExpr;
 var
    rightTyp : TTypeSymbol;
@@ -1049,9 +1051,9 @@ begin
 
    rightTypClass:=rightTyp.ClassType;
    if rightTypClass=TJSONConnectorSymbol then
-      Result:=TAssignExpr.Create(prog, aScriptPos, left, right)
+      Result:=TAssignExpr.Create(prog, aScriptPos, exec, left, right)
    else if rightTypClass.InheritsFrom(TBaseSymbol) then
-      Result:=TAssignBoxJSONExpr.Create(prog, aScriptPos, left, right);
+      Result:=TAssignBoxJSONExpr.Create(prog, aScriptPos, exec, left, right);
 
    if Result=nil then begin
       left.Free;
