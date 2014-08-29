@@ -1578,7 +1578,7 @@ var
   resultData: TData;
   locData : IDataContext;
 begin
-  expr := TConnectorCallExpr.Create(FExec.Prog, cNullPos, FName,
+  expr := TConnectorCallExpr.Create(cNullPos, FName,
     TConstExpr.Create(FExec.Prog, FExec.Prog.TypVariant, FDataPtr[0]));
 
   try

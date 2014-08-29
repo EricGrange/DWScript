@@ -483,7 +483,7 @@ end;
 constructor TMagicFuncExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos;
                                   func : TFuncSymbol; internalFunc : TInternalMagicFunction);
 begin
-   inherited Create(prog, scriptPos, func);
+   inherited Create(scriptPos, func);
 end;
 
 // ExpectedArg

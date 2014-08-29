@@ -1054,7 +1054,7 @@ type
          FScriptPos : TScriptPos;
 
       public
-         constructor Create(Prog: TdwsProgram; const scriptPos : TScriptPos; aTyp: TTypeSymbol);
+         constructor Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol);
 
          function ScriptPos : TScriptPos; override;
    end;
@@ -1092,7 +1092,7 @@ type
          property ParamSize : Integer read FParamSize;
 
       public
-         constructor Create(prog : TdwsProgram; const aScriptPos : TScriptPos; aFunc : TFuncSymbol);
+         constructor Create(const aScriptPos : TScriptPos; aFunc : TFuncSymbol);
          destructor Destroy; override;
 
          procedure AddArg(arg : TTypedExpr);
@@ -1187,7 +1187,7 @@ type
          procedure DoEvalCall(exec : TdwsExecution; func : TFuncSymbol);
 
       public
-         constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos; func : TFuncSymbol);
+         constructor Create(aProg : TdwsProgram; const scriptPos : TScriptPos; func : TFuncSymbol);
          destructor Destroy; override;
 
          function ExpectedArg : TParamSymbol; override;
@@ -3980,7 +3980,7 @@ end;
 
 // Create
 //
-constructor TPosDataExpr.Create(Prog: TdwsProgram; const scriptPos : TScriptPos; aTyp: TTypeSymbol);
+constructor TPosDataExpr.Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol);
 begin
    inherited Create(aTyp);
    FScriptPos:=scriptPos;
@@ -4182,9 +4182,9 @@ end;
 
 // Create
 //
-constructor TFuncExprBase.Create(prog : TdwsProgram; const aScriptPos: TScriptPos; aFunc : TFuncSymbol);
+constructor TFuncExprBase.Create(const aScriptPos: TScriptPos; aFunc : TFuncSymbol);
 begin
-   inherited Create(Prog, aScriptPos, nil);
+   inherited Create(aScriptPos, nil);
    FFunc:=aFunc;
    if Assigned(aFunc) then begin
       FTyp:=aFunc.Typ;
@@ -4641,11 +4641,11 @@ end;
 
 // Create
 //
-constructor TFuncExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos; func : TFuncSymbol);
+constructor TFuncExpr.Create(aProg : TdwsProgram; const scriptPos : TScriptPos; func : TFuncSymbol);
 begin
-   inherited Create(Prog, scriptPos, Func);
+   inherited Create(scriptPos, Func);
    FCallerID:=Self;
-   FLevel:=Prog.Level;
+   FLevel:=aProg.Level;
    FResultAddr:=-1;
 end;
 
@@ -7907,7 +7907,7 @@ constructor TMethodObjExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPo
                                   BaseExpr: TDataExpr);
 begin
    Assert(BaseExpr.Typ is TMethodSymbol);
-   inherited Create(Prog, aScriptPos, TMethodSymbol(BaseExpr.Typ).StructSymbol);
+   inherited Create(aScriptPos, TMethodSymbol(BaseExpr.Typ).StructSymbol);
    FBaseExpr := BaseExpr;
 end;
 

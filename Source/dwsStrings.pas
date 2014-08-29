@@ -279,6 +279,9 @@ const
   CPE_ArrayMethodRestrictedToDynamicArrays = 'Array method "%s" is restricted to dynamic arrays';
   CPE_ArrayDoesNotHaveNaturalSortOrder = 'Array does not have a natural sort order';
 
+  // Sets
+  CPE_SetTooLargeForCastToInteger = 'Set has too many elements for cast to integer';
+
   // Assign
   CPE_RightSideNeedsReturnType = 'Assignment''s right-side-argument has no return type';
   CPE_CantWriteToLeftSide = 'Cannot assign a value to the left-side argument';

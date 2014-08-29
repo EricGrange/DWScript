@@ -245,7 +245,7 @@ type
          function GetBaseType : TTypeSymbol; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
+         constructor Create(const aScriptPos: TScriptPos;
                             BaseExpr: TDataExpr; IndexExpr: TTypedExpr;
                             arraySymbol : TArraySymbol);
          destructor Destroy; override;
@@ -272,7 +272,7 @@ type
          function GetIsConstant : Boolean; override;
 
       public
-         constructor Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
+         constructor Create(const aScriptPos: TScriptPos;
                             baseExpr : TDataExpr; indexExpr : TTypedExpr;
                             arraySymbol : TStaticArraySymbol);
 
@@ -379,7 +379,7 @@ type
          function GetIsConstant : Boolean; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; BaseExpr: TDataExpr;
+         constructor Create(const aScriptPos: TScriptPos; BaseExpr: TDataExpr;
                             fieldSymbol: TFieldSymbol);
          destructor Destroy; override;
 
@@ -414,7 +414,7 @@ type
          FVarPlusMemberOffset : Integer;
 
       public
-         constructor Create(prog : TdwsProgram; const aScriptPos: TScriptPos; baseExpr: TVarExpr;
+         constructor Create(const aScriptPos: TScriptPos; baseExpr: TVarExpr;
                             fieldSymbol : TFieldSymbol);
 
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -474,7 +474,7 @@ type
          function GetScriptObj(exec : TdwsExecution) : IScriptObj; inline;
 
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
+         constructor Create(const aScriptPos: TScriptPos;
                             fieldSym : TFieldSymbol; objExpr: TTypedExpr);
          destructor Destroy; override;
 
@@ -2689,7 +2689,7 @@ end;
 constructor TNewArrayExpr.Create(prog: TdwsProgram; const scriptPos: TScriptPos;
                                  elementTyp : TTypeSymbol);
 begin
-   inherited Create(prog, scriptPos, TDynamicArraySymbol.Create('', elementTyp, prog.TypInteger));
+   inherited Create(scriptPos, TDynamicArraySymbol.Create('', elementTyp, prog.TypInteger));
    FTyps.Add(FTyp);
 end;
 
@@ -2786,11 +2786,11 @@ end;
 
 // Create
 //
-constructor TArrayExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
+constructor TArrayExpr.Create(const aScriptPos: TScriptPos;
                               BaseExpr: TDataExpr; IndexExpr: TTypedExpr;
                               arraySymbol : TArraySymbol);
 begin
-   inherited Create(Prog, aScriptPos, arraySymbol.Typ);
+   inherited Create(aScriptPos, arraySymbol.Typ);
    FBaseExpr := BaseExpr;
    FIndexExpr := IndexExpr;
    FElementSize := FTyp.Size; // Necessary because of arrays of records!
@@ -2850,11 +2850,11 @@ end;
 
 // Create
 //
-constructor TStaticArrayExpr.Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
+constructor TStaticArrayExpr.Create(const aScriptPos: TScriptPos;
                                     baseExpr : TDataExpr; indexExpr : TTypedExpr;
                                     arraySymbol : TStaticArraySymbol);
 begin
-   inherited Create(Prog, aScriptPos, BaseExpr, IndexExpr, arraySymbol);
+   inherited Create(aScriptPos, BaseExpr, IndexExpr, arraySymbol);
    FLowBound:=arraySymbol.LowBound;
    FCount:=arraySymbol.HighBound-arraySymbol.LowBound+1;
 end;
@@ -3245,10 +3245,10 @@ end;
 
 // Create
 //
-constructor TRecordExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
+constructor TRecordExpr.Create(const aScriptPos: TScriptPos;
                                BaseExpr: TDataExpr; fieldSymbol: TFieldSymbol);
 begin
-   inherited Create(Prog, aScriptPos, fieldSymbol.Typ);
+   inherited Create(aScriptPos, fieldSymbol.Typ);
    FBaseExpr := BaseExpr;
    FMemberOffset := fieldSymbol.Offset;
    FFieldSymbol := fieldSymbol;
@@ -3415,10 +3415,10 @@ end;
 
 // Create
 //
-constructor TRecordVarExpr.Create(prog : TdwsProgram; const aScriptPos: TScriptPos; baseExpr: TVarExpr;
-                            fieldSymbol : TFieldSymbol);
+constructor TRecordVarExpr.Create(const aScriptPos: TScriptPos; baseExpr: TVarExpr;
+                                  fieldSymbol : TFieldSymbol);
 begin
-   inherited Create(prog, aScriptPos, baseExpr, fieldSymbol);
+   inherited Create(aScriptPos, baseExpr, fieldSymbol);
    FVarPlusMemberOffset:=MemberOffset+baseExpr.StackAddr;
 end;
 
@@ -3510,7 +3510,7 @@ end;
 constructor TDynamicRecordExpr.Create(aProg : TdwsProgram; const aPos : TScriptPos;
                                       recordTyp : TRecordSymbol);
 begin
-   inherited Create(aProg, aPos, recordTyp);
+   inherited Create(aPos, recordTyp);
    FAddr:=aProg.GetTempAddr(recordTyp.Size);
 end;
 
@@ -3594,10 +3594,10 @@ end;
 
 // Create
 //
-constructor TFieldExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
+constructor TFieldExpr.Create(const aScriptPos: TScriptPos;
                               fieldSym: TFieldSymbol; objExpr: TTypedExpr);
 begin
-   inherited Create(Prog, aScriptPos, fieldSym.Typ);
+   inherited Create(aScriptPos, fieldSym.Typ);
    FObjectExpr := objExpr;
    FFieldSym := fieldSym;
 end;
@@ -8156,7 +8156,7 @@ end;
 constructor TArrayDataExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
                             aBase :  TTypedExpr);
 begin
-   inherited Create(prog, scriptPos, (aBase.Typ as TDynamicArraySymbol).Typ);
+   inherited Create(scriptPos, (aBase.Typ as TDynamicArraySymbol).Typ);
    FBaseExpr:=aBase;
    FResultAddr:=prog.GetTempAddr(Typ.Size);
 end;

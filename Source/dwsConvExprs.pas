@@ -98,10 +98,15 @@ type
       function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
-   // Static Array to set of
-   TConvStaticArrayToSetOfExpr = class (TPosDataExpr)
+   // ExternalClass(x)
+   TConvExternalExpr = class (TUnaryOpVariantExpr)
+      procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+   end;
+
+   // convert to data expr
+   TConvDataExpr = class (TPosDataExpr)
       private
-         FExpr : TArrayConstantExpr;
+         FExpr : TTypedExpr;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
@@ -110,22 +115,37 @@ type
          function  GetIsConstant : Boolean; override;
 
       public
-         constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos;
-                            expr : TArrayConstantExpr; toTyp : TSetOfSymbol);
+         constructor Create(const scriptPos : TScriptPos; expr : TTypedExpr; aTyp : TTypeSymbol);
          destructor Destroy; override;
+
+         function IsWritable: Boolean; override;
+
+         property Expr : TTypedExpr read FExpr write FExpr;
+   end;
+
+   // Static Array to set of
+   TConvStaticArrayToSetOfExpr = class (TConvDataExpr)
+      public
+         constructor Create(const scriptPos : TScriptPos;
+                            expr : TArrayConstantExpr; toTyp : TSetOfSymbol);
 
          procedure EvalAsTData(exec : TdwsExecution; var data : TData);
          function ToConstExpr(exec : TdwsExecution) : TConstExpr;
 
-         function IsWritable: Boolean; override;
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
-
-         property Expr : TArrayConstantExpr read FExpr write FExpr;
    end;
 
-   // ExternalClass(x)
-   TConvExternalExpr = class (TUnaryOpVariantExpr)
-      procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+   // Integer(x)
+   TConvSetOfToIntegerExpr = class (TUnaryOpIntExpr)
+      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+   end;
+
+   // set of (Integer)
+   TConvIntegerToSetOfExpr = class (TConvDataExpr)
+      public
+         constructor Create(const scriptPos : TScriptPos; expr : TTypedExpr; toTyp : TSetOfSymbol);
+
+         procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
    end;
 
    // cast something as Typ
@@ -243,7 +263,7 @@ begin
             Result:=TConstExpr.Create(toTyp);
             expr.Free;
          end else if arrayConst.Typ.Typ.IsOfType(toTyp.Typ) then begin
-            staticArrayToSetOf:=TConvStaticArrayToSetOfExpr.Create(prog, scriptPos, arrayConst, TSetOfSymbol(toTyp));
+            staticArrayToSetOf:=TConvStaticArrayToSetOfExpr.Create(scriptPos, arrayConst, TSetOfSymbol(toTyp));
             if staticArrayToSetOf.IsConstant then begin
                Result:=staticArrayToSetOf.ToConstExpr(exec);
                staticArrayToSetOf.Free;
@@ -483,6 +503,17 @@ begin
 end;
 
 // ------------------
+// ------------------ TConvSetOfToIntegerExpr ------------------
+// ------------------
+
+// EvalAsInteger
+//
+function TConvSetOfToIntegerExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   Result:=TDataExpr(Expr).DataPtr[exec].AsInteger[0];
+end;
+
+// ------------------
 // ------------------ TAsCastExpr ------------------
 // ------------------
 
@@ -665,24 +696,63 @@ begin
 end;
 
 // ------------------
-// ------------------ TConvStaticArrayToSetOfExpr ------------------
+// ------------------ TConvDataExpr ------------------
 // ------------------
 
 // Create
 //
-constructor TConvStaticArrayToSetOfExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos;
-                                               expr : TArrayConstantExpr; toTyp : TSetOfSymbol);
+constructor TConvDataExpr.Create(const scriptPos : TScriptPos; expr : TTypedExpr; aTyp : TTypeSymbol);
 begin
-   inherited Create(prog, scriptPos, toTyp);
+   inherited Create(scriptPos, aTyp);
    FExpr:=expr;
 end;
 
 // Destroy
 //
-destructor TConvStaticArrayToSetOfExpr.Destroy;
+destructor TConvDataExpr.Destroy;
 begin
    inherited;
    FExpr.Free;
+end;
+
+// IsWritable
+//
+function TConvDataExpr.IsWritable: Boolean;
+begin
+   Result:=False;
+end;
+
+// GetSubExpr
+//
+function TConvDataExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FExpr;
+end;
+
+// GetSubExprCount
+//
+function TConvDataExpr.GetSubExprCount : Integer;
+begin
+   Result:=1;
+end;
+
+// GetIsConstant
+//
+function TConvDataExpr.GetIsConstant : Boolean;
+begin
+   Result:=FExpr.IsConstant;
+end;
+
+// ------------------
+// ------------------ TConvStaticArrayToSetOfExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TConvStaticArrayToSetOfExpr.Create(const scriptPos : TScriptPos;
+                                               expr : TArrayConstantExpr; toTyp : TSetOfSymbol);
+begin
+   inherited Create(scriptPos, expr, toTyp);
 end;
 
 // EvalAsTData
@@ -691,14 +761,16 @@ procedure TConvStaticArrayToSetOfExpr.EvalAsTData(exec : TdwsExecution; var data
 var
    i, v : Integer;
    setOfSym : TSetOfSymbol;
+   arrayExpr : TArrayConstantExpr;
 begin
    setOfSym:=TSetOfSymbol(Typ);
 
    SetLength(data, setOfSym.Size);
    Typ.InitData(data, 0);
 
-   for i:=0 to Expr.ElementCount-1 do begin
-      v:=Expr.Elements[i].EvalAsInteger(exec)-setOfSym.MinValue;
+   arrayExpr:=TArrayConstantExpr(Expr);
+   for i:=0 to arrayExpr.ElementCount-1 do begin
+      v:=arrayExpr.Elements[i].EvalAsInteger(exec)-setOfSym.MinValue;
       if Cardinal(v)<Cardinal(setOfSym.CountValue) then
          data[v shr 6]:=data[v shr 6] or (Int64(1) shl (v and 63));
    end;
@@ -714,13 +786,6 @@ begin
    Result:=TConstExpr.Create(Typ, data, 0);
 end;
 
-// IsWritable
-//
-function TConvStaticArrayToSetOfExpr.IsWritable: Boolean;
-begin
-   Result:=False;
-end;
-
 // GetDataPtr
 //
 procedure TConvStaticArrayToSetOfExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
@@ -731,25 +796,28 @@ begin
    result:=exec.Stack.CreateDataContext(data, 0);
 end;
 
-// GetSubExpr
+// ------------------
+// ------------------ TConvIntegerToSetOfExpr ------------------
+// ------------------
+
+// Create
 //
-function TConvStaticArrayToSetOfExpr.GetSubExpr(i : Integer) : TExprBase;
+constructor TConvIntegerToSetOfExpr.Create(
+      const scriptPos : TScriptPos; expr : TTypedExpr; toTyp : TSetOfSymbol);
 begin
-   Result:=FExpr;
+   inherited Create(scriptPos, expr, toTyp);
+   Assert(toTyp.Size=1);
 end;
 
-// GetSubExprCount
+// GetDataPtr
 //
-function TConvStaticArrayToSetOfExpr.GetSubExprCount : Integer;
+procedure TConvIntegerToSetOfExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
+var
+   data : TData;
 begin
-   Result:=1;
-end;
-
-// GetIsConstant
-//
-function TConvStaticArrayToSetOfExpr.GetIsConstant : Boolean;
-begin
-   Result:=FExpr.IsConstant;
+   SetLength(data, 1);
+   data[0]:=Expr.EvalAsInteger(exec);
+   result:=exec.Stack.CreateDataContext(data, 0);
 end;
 
 end.

@@ -65,7 +65,7 @@ type
          procedure PostCall(exec : TdwsExecution; var Result : Variant); virtual;
 
       public
-         constructor Create(Prog: TdwsProgram; const scriptPos : TScriptPos; Func: TMethodSymbol;
+         constructor Create(aProg : TdwsProgram;const scriptPos : TScriptPos; Func: TMethodSymbol;
                             BaseExpr: TTypedExpr);
          destructor Destroy; override;
 
@@ -85,7 +85,7 @@ type
    // Call of a helper method
    THelperMethodExpr = class (TFuncExpr)
       public
-         constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos; func : TFuncSymbol);
+         constructor Create(aProg : TdwsProgram; const scriptPos : TScriptPos; func : TFuncSymbol);
    end;
 
    // Call of static methods (not virtual)
@@ -139,7 +139,7 @@ type
          procedure PostCall(exec : TdwsExecution; var Result : Variant); override;
 
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; Func: TMethodSymbol;
+         constructor Create(aProg : TdwsProgram; const aScriptPos: TScriptPos; Func: TMethodSymbol;
                             Base: TTypedExpr);
    end;
 
@@ -150,7 +150,7 @@ type
          function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; Func: TMethodSymbol;
+         constructor Create(aProg : TdwsProgram; const aScriptPos: TScriptPos; Func: TMethodSymbol;
                             Base: TTypedExpr);
    end;
 
@@ -164,7 +164,7 @@ type
       protected
          procedure PostCall(exec : TdwsExecution; var Result : Variant); override;
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; Func: TMethodSymbol;
+         constructor Create(aProg : TdwsProgram; const aScriptPos: TScriptPos; Func: TMethodSymbol;
                             BaseExpr: TTypedExpr);
    end;
 
@@ -172,7 +172,7 @@ type
       protected
          procedure PostCall(exec : TdwsExecution; var Result : Variant); override;
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; Func: TMethodSymbol;
+         constructor Create(aProg : TdwsProgram; const aScriptPos: TScriptPos; Func: TMethodSymbol;
                             Base: TTypedExpr);
    end;
 
@@ -275,10 +275,10 @@ end;
 
 // Create
 //
-constructor TMethodExpr.Create(Prog: TdwsProgram; const scriptPos: TScriptPos;
-  Func: TMethodSymbol; BaseExpr: TTypedExpr);
+constructor TMethodExpr.Create(aProg : TdwsProgram;const scriptPos: TScriptPos;
+                               Func: TMethodSymbol; BaseExpr: TTypedExpr);
 begin
-   inherited Create(Prog, scriptPos, Func);
+   inherited Create(aProg, scriptPos, Func);
    FBaseExpr:=BaseExpr;
    FSelfAddr:=Func.SelfSym.StackAddr;
 end;
@@ -382,11 +382,11 @@ end;
 
 // Create
 //
-constructor THelperMethodExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos; func : TFuncSymbol);
+constructor THelperMethodExpr.Create(aProg : TdwsProgram; const scriptPos : TScriptPos; func : TFuncSymbol);
 begin
    if func.ClassType=TAliasMethodSymbol then
       func:=TAliasMethodSymbol(func).Alias;
-   inherited Create(prog, scriptPos, func);
+   inherited Create(aProg, scriptPos, func);
 
 end;
 
@@ -540,14 +540,13 @@ end;
 // ------------------ TConstructorStaticExpr ------------------
 // ------------------
 
-constructor TConstructorStaticExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
-   Func: TMethodSymbol; Base: TTypedExpr);
+constructor TConstructorStaticExpr.Create(aProg : TdwsProgram; const aScriptPos: TScriptPos;
+                                          Func: TMethodSymbol; Base: TTypedExpr);
 begin
-  inherited Create(Prog, aScriptPos, Func, Base);
-  if Base.Typ is TClassOfSymbol then
-    FTyp := Base.Typ.Typ
-  else
-    FTyp := Base.Typ;
+   inherited Create(aProg, aScriptPos, Func, Base);
+   if Base.Typ is TClassOfSymbol then
+      FTyp := Base.Typ.Typ
+   else FTyp := Base.Typ;
 end;
 
 // DoCreate
@@ -588,10 +587,10 @@ end;
 // ------------------ TConstructorVirtualExpr ------------------
 // ------------------
 
-constructor TConstructorVirtualExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
+constructor TConstructorVirtualExpr.Create(aProg : TdwsProgram; const aScriptPos: TScriptPos;
    Func: TMethodSymbol; Base: TTypedExpr);
 begin
-  inherited Create(Prog, aScriptPos, Func, Base);
+  inherited Create(aProg, aScriptPos, Func, Base);
   FTyp := Base.Typ.Typ;
 end;
 
@@ -655,10 +654,10 @@ end;
 // ------------------ TConstructorStaticObjExpr ------------------
 // ------------------
 
-constructor TConstructorStaticObjExpr.Create(Prog: TdwsProgram;
-  const aScriptPos: TScriptPos; Func: TMethodSymbol; BaseExpr: TTypedExpr);
+constructor TConstructorStaticObjExpr.Create(aProg : TdwsProgram;
+      const aScriptPos: TScriptPos; Func: TMethodSymbol; BaseExpr: TTypedExpr);
 begin
-   inherited Create(Prog, aScriptPos, Func, BaseExpr);
+   inherited Create(aProg, aScriptPos, Func, BaseExpr);
    Typ := BaseExpr.Typ;
 end;
 
@@ -671,10 +670,10 @@ end;
 // ------------------ TConstructorVirtualObjExpr ------------------
 // ------------------
 
-constructor TConstructorVirtualObjExpr.Create(Prog: TdwsProgram;
-  const aScriptPos: TScriptPos; Func: TMethodSymbol; Base: TTypedExpr);
+constructor TConstructorVirtualObjExpr.Create(aProg : TdwsProgram;
+      const aScriptPos: TScriptPos; Func: TMethodSymbol; Base: TTypedExpr);
 begin
-   inherited Create(Prog, aScriptPos, Func, Base);
+   inherited Create(aProg, aScriptPos, Func, Base);
    Typ := Base.Typ;
 end;
 

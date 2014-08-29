@@ -46,7 +46,7 @@ type
          procedure SetBaseExpr(expr : TTypedExpr);
 
       public
-         constructor Create(aProg: TdwsProgram; const aScriptPos: TScriptPos;
+         constructor Create(const aScriptPos: TScriptPos;
                             const aName: UnicodeString; aBaseExpr: TTypedExpr);
          destructor Destroy; override;
 
@@ -72,7 +72,7 @@ type
          procedure FastEvalAsVariant(exec : TdwsExecution; var result : Variant);
 
       public
-         constructor Create(aProg: TdwsProgram; const aScriptPos: TScriptPos; const aName: UnicodeString;
+         constructor Create(const aScriptPos: TScriptPos; const aName: UnicodeString;
                             aBaseExpr: TTypedExpr; isWrite: Boolean = True; isIndex: Boolean = False);
 
          function AssignConnectorSym(prog : TdwsProgram; const connectorType : IConnectorType) : Boolean;
@@ -233,10 +233,10 @@ implementation
 
 // Create
 //
-constructor TBaseConnectorCallExpr.Create(aProg: TdwsProgram; const aScriptPos: TScriptPos;
+constructor TBaseConnectorCallExpr.Create(const aScriptPos: TScriptPos;
                                           const aName: UnicodeString; aBaseExpr: TTypedExpr);
 begin
-   inherited Create(aProg, aScriptPos, nil);
+   inherited Create(aScriptPos, nil);
    FName:=aName;
    FArguments.Add(aBaseExpr);
 end;
@@ -290,10 +290,10 @@ end;
 
 // Create
 //
-constructor TConnectorCallExpr.Create(aProg: TdwsProgram; const aScriptPos: TScriptPos;
+constructor TConnectorCallExpr.Create(const aScriptPos: TScriptPos;
   const aName: UnicodeString; aBaseExpr: TTypedExpr; isWrite: Boolean; isIndex: Boolean);
 begin
-   inherited Create(aProg, aScriptPos, aName, aBaseExpr);
+   inherited Create(aScriptPos, aName, aBaseExpr);
    if isWrite then
       Include(FFlags, ccfIsInstruction);
    FIsWritable := isWrite;
@@ -549,14 +549,14 @@ begin
 
    if Assigned(connFastMember) then begin
 
-      Result := TConnectorFastReadExpr.Create(aProg, aScriptPos, typSym);
+      Result := TConnectorFastReadExpr.Create(aScriptPos, typSym);
       TConnectorFastReadExpr(Result).ConnectorMember := connFastMember;
 
    end else begin
 
       connMember.QueryInterface(IConnectorDataMember, connDataMember);
 
-      Result := TConnectorReadExpr.Create(aProg, aScriptPos, typSym);
+      Result := TConnectorReadExpr.Create(aScriptPos, typSym);
       TConnectorReadExpr(Result).ConnectorMember := connDataMember;
 
    end;

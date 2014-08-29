@@ -4693,7 +4693,7 @@ begin
          if (selfSym=nil) or (selfSym.Typ is TStructuredTypeMetaSymbol) then begin
 
             FMsgs.AddCompilerError(FTok.HotPos, CPE_ObjectReferenceExpected);
-            fieldExpr:=TFieldExpr.Create(FProg, namePos, TFieldSymbol(sym), nil);
+            fieldExpr:=TFieldExpr.Create(namePos, TFieldSymbol(sym), nil);
 
          end else begin
 
@@ -4996,11 +4996,11 @@ begin
       varExpr:=GetSelfParamExpr(selfSym);
    if fieldSym.StructSymbol.ClassType=TRecordSymbol then begin
       if varExpr.ClassType=TVarExpr then
-         Result:=TRecordVarExpr.Create(FProg, scriptPos, TVarExpr(varExpr), fieldSym)
-      else Result:=TRecordExpr.Create(FProg, scriptPos, (varExpr as TDataExpr), fieldSym)
+         Result:=TRecordVarExpr.Create(scriptPos, TVarExpr(varExpr), fieldSym)
+      else Result:=TRecordExpr.Create(scriptPos, (varExpr as TDataExpr), fieldSym)
    end else if varExpr is TObjectVarExpr then
-      Result:=TFieldVarExpr.Create(FProg, FTok.HotPos, fieldSym, varExpr)
-   else Result:=TFieldExpr.Create(FProg, FTok.HotPos, fieldSym, varExpr);
+      Result:=TFieldVarExpr.Create(FTok.HotPos, fieldSym, varExpr)
+   else Result:=TFieldExpr.Create(FTok.HotPos, fieldSym, varExpr);
    varExpr:=nil;
 end;
 
@@ -5183,7 +5183,7 @@ begin
                   expr.Free;
                   expr:=nil;
                end;
-               Result:=TReadOnlyFieldExpr.Create(FProg, FTok.HotPos, TFieldSymbol(sym), expr);
+               Result:=TReadOnlyFieldExpr.Create(FTok.HotPos, TFieldSymbol(sym), expr);
                expr:=nil;
 
             end else if sym is TClassVarSymbol then begin
@@ -5415,18 +5415,18 @@ begin
          arraySymbol:=TStaticArraySymbol(baseType);
          if arraySymbol is TOpenArraySymbol then begin
 
-            newBaseExpr := TOpenArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, arraySymbol)
+            newBaseExpr := TOpenArrayExpr.Create(FTok.HotPos, baseExpr, indexExpr, arraySymbol)
 
          end else begin
 
             if arraySymbol.IndexType.IsOfType(FProg.TypBoolean) then begin
 
-               newBaseExpr:=TStaticArrayBoolExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
+               newBaseExpr:=TStaticArrayBoolExpr.Create(FTok.HotPos, baseExpr, indexExpr,
                                                         arraySymbol);
 
             end else begin
 
-               newBaseExpr:=TStaticArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
+               newBaseExpr:=TStaticArrayExpr.Create(FTok.HotPos, baseExpr, indexExpr,
                                                     arraySymbol);
                if indexExpr.IsConstant and (FMsgs.Count=errCount) then begin
                   idx:=indexExpr.EvalAsInteger(FExec);
@@ -5444,7 +5444,7 @@ begin
          Assert(baseType is TDynamicArraySymbol);
 
          if FTok.Test(ttCOMMA) then
-            newBaseExpr:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
+            newBaseExpr:=TDynamicArrayExpr.Create(FTok.HotPos, baseExpr, indexExpr,
                                                   TDynamicArraySymbol(baseType))
          else if FTok.TestDelete(ttARIGHT) then begin
             if FTok.TestDelete(ttASSIGN) then begin
@@ -5467,10 +5467,10 @@ begin
                else Result:=TDynamicArraySetDataExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr);
             end else begin
                if baseExpr is TObjectVarExpr then begin
-                  Result:=TDynamicArrayVarExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
+                  Result:=TDynamicArrayVarExpr.Create(FTok.HotPos, baseExpr, indexExpr,
                                                       TDynamicArraySymbol(baseType));
                end else begin
-                  Result:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
+                  Result:=TDynamicArrayExpr.Create(FTok.HotPos, baseExpr, indexExpr,
                                                    TDynamicArraySymbol(baseType));
                end;
             end;
@@ -11924,7 +11924,7 @@ function TdwsCompiler.ReadConnectorSym(const name : UnicodeString; baseExpr : TT
       argPosArray : TScriptPosArray;
    begin
       // Try to read the call of a connector function
-      Result:=TConnectorCallExpr.Create(FProg, FTok.HotPos, Name, BaseExpr, IsWrite);
+      Result:=TConnectorCallExpr.Create(FTok.HotPos, Name, BaseExpr, IsWrite);
       try
          ReadArguments(Result.AddArg, ttBLEFT, ttBRIGHT, argPosArray);
          if not Result.AssignConnectorSym(FProg, connectorType) then begin
@@ -11994,7 +11994,7 @@ function TdwsCompiler.ReadConnectorArray(const Name: UnicodeString; BaseExpr: TT
 var
    argPosArray : TScriptPosArray;
 begin
-   Result:=TConnectorCallExpr.Create(FProg, FTok.HotPos, Name, BaseExpr, IsWrite, True);
+   Result:=TConnectorCallExpr.Create(FTok.HotPos, Name, BaseExpr, IsWrite, True);
    try
       ReadArguments(Result.AddArg, ttALEFT, ttARIGHT, argPosArray);
 
@@ -12466,10 +12466,10 @@ begin
    if baseType is TStaticArraySymbol then begin
 
       if baseType is TOpenArraySymbol then
-         Result:=TOpenArrayExpr.Create(FProg, scriptPos, baseExpr, indexExpr,
+         Result:=TOpenArrayExpr.Create(scriptPos, baseExpr, indexExpr,
                                        TOpenArraySymbol(baseType))
       else begin
-         Result:=TStaticArrayExpr.Create(FProg, scriptPos, baseExpr, indexExpr,
+         Result:=TStaticArrayExpr.Create(scriptPos, baseExpr, indexExpr,
                                          TStaticArraySymbol(baseType));
       end;
 
@@ -12477,7 +12477,7 @@ begin
 
       Assert(baseType.ClassType=TDynamicArraySymbol);
 
-      Result:=TDynamicArrayExpr.Create(FProg, scriptPos, baseExpr, indexExpr,
+      Result:=TDynamicArrayExpr.Create(scriptPos, baseExpr, indexExpr,
                                        TDynamicArraySymbol(baseType));
 
    end;
@@ -12997,6 +12997,7 @@ end;
 function TdwsCompiler.ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
 var
    argExpr : TTypedExpr;
+   argTyp : TTypeSymbol;
    hotPos : TScriptPos;
    connCast : IConnectorCast;
 begin
@@ -13008,14 +13009,21 @@ begin
       if not FTok.TestDelete(ttBRIGHT) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
 
-      if argExpr=nil then
+      if argExpr=nil then begin
 
-         Result:=TConstExpr.CreateTypedDefault(FProg, typeSym)
+         Result:=TConstExpr.CreateTypedDefault(FProg, typeSym);
+         Exit;
 
-      else if typeSym.IsOfType(FProg.TypInteger) then begin
+      end;
+
+      argTyp:=argExpr.Typ;
+      if argTyp<>nil then
+         argTyp:=argTyp.UnAliasedType;
+
+      if typeSym.IsOfType(FProg.TypInteger) then begin
 
          // Cast Integer(...)
-         if argExpr.Typ is TEnumerationSymbol then
+         if argTyp is TEnumerationSymbol then
             Result := TConvOrdToIntegerExpr.Create(FProg, argExpr)
          else if argExpr.IsOfType(FProg.TypBoolean) then
             Result := TOrdBoolExpr.Create(FProg, argExpr)
@@ -13025,7 +13033,11 @@ begin
             else Result := argExpr
          else if argExpr.IsOfType(FProg.TypFloat) then
             Result := TConvVarToIntegerExpr.Create(FProg, argExpr)
-         else begin
+         else if argTyp is TSetOfSymbol then begin
+            if TSetOfSymbol(argTyp).CountValue>31 then
+               FMsgs.AddCompilerError(hotPos, CPE_SetTooLargeForCastToInteger);
+            Result := TConvSetOfToIntegerExpr.Create(FProg, argExpr)
+         end else begin
             if not argExpr.IsOfType(FProg.TypVariant) then
                FMsgs.AddCompilerError(hotPos, CPE_IntegerCastInvalid);
             Result := TConvVarToIntegerExpr.Create(FProg, argExpr)
@@ -13079,11 +13091,22 @@ begin
       else if typeSym is TClassOfSymbol then begin
 
          // Cast Class(...)
-         if argExpr.Typ is TClassSymbol then
+         if argTyp is TClassSymbol then
             Result:=TObjAsClassExpr.Create(FProg, hotPos, argExpr, typeSym)
-         else if argExpr.Typ is TClassOfSymbol then
+         else if argTyp is TClassOfSymbol then
             Result:=TClassAsClassExpr.Create(FProg, hotPos, argExpr, typeSym)
          else FMsgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
+
+      end else if typeSym is TSetOfSymbol then begin
+
+         // Cast Set of ( ... )
+         if argExpr.IsOfType(FProg.TypInteger) then begin
+
+            if TSetOfSymbol(typeSym).CountValue>31 then
+               FMsgs.AddCompilerError(hotPos, CPE_SetTooLargeForCastToInteger);
+            Result:=TConvIntegerToSetOfExpr.Create(hotPos, argExpr, TSetOfSymbol(typeSym));
+
+         end else FMsgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
 
       end else if argExpr.Typ is TConnectorSymbol then begin
 

@@ -1,0 +1,2 @@
+Syntax Error: Set has too many elements for cast to integer [line: 6, column: 18]
+Syntax Error: Set has too many elements for cast to integer [line: 8, column: 11]

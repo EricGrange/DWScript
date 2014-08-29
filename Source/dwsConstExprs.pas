@@ -673,7 +673,7 @@ end;
 //
 constructor TArrayConstantExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos);
 begin
-   inherited Create(prog, aScriptPos,
+   inherited Create(aScriptPos,
       TStaticArraySymbol.Create('', prog.TypNil, prog.TypInteger, 0, -1));
 end;
 
