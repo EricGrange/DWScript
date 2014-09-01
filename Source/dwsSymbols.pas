@@ -144,6 +144,8 @@ type
 
    { TExprBase }
 
+   TExprBaseClass = class of TExprBase;
+
    TExprBase = class (TRefCountedObject)
       protected
          function GetSubExpr(i : Integer) : TExprBase; virtual;
@@ -196,8 +198,6 @@ type
          procedure RaiseObjectNotInstantiated(exec : TdwsExecution);
          procedure RaiseObjectAlreadyDestroyed(exec : TdwsExecution);
    end;
-
-   TExprBaseClass = class of TExprBase;
 
    // All functions callable from the script implement this interface
    IExecutable = interface (IGetSelf)

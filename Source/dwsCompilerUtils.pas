@@ -35,6 +35,23 @@ type
                                        unitSymbol : TUnitMainSymbol); static;
    end;
 
+   IRecursiveHasSubExprClass = interface
+      function Check(expr : TExprBase) : Boolean;
+   end;
+
+   TRecursiveHasSubExprClass = class (TInterfacedObject, IRecursiveHasSubExprClass)
+      private
+         FClass : TExprBaseClass;
+
+      protected
+         procedure Callback(parent, expr : TExprBase; var abort : Boolean);
+
+      public
+         constructor Create(aClass : TExprBaseClass);
+
+         function Check(expr : TExprBase) : Boolean;
+   end;
+
 function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
                         const scriptObj : IScriptObj; structSym : TCompositeTypeSymbol;
                         forceStatic : Boolean = False) : TFuncExprBase;
@@ -287,6 +304,31 @@ begin
       meth.Params.AddSymbol(func.Params[i].Clone);
    meth.Alias:=func;
    helper.AddMethod(meth);
+end;
+
+// ------------------
+// ------------------ TRecursiveHasSubExprClass ------------------
+// ------------------
+
+// Create
+//
+constructor TRecursiveHasSubExprClass.Create(aClass : TExprBaseClass);
+begin
+   FClass:=aClass;
+end;
+
+// Check
+//
+function TRecursiveHasSubExprClass.Check(expr : TExprBase) : Boolean;
+begin
+   Result:=expr.RecursiveEnumerateSubExprs(CallBack);
+end;
+
+// Callback
+//
+procedure TRecursiveHasSubExprClass.Callback(parent, expr : TExprBase; var abort : Boolean);
+begin
+   abort:=abort or (expr is FClass);
 end;
 
 end.
