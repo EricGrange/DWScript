@@ -2653,10 +2653,24 @@ begin
    DoCallEval(expr, vmt_TExprBase_EvalNoResult);
 
    jit._mov_reg_execStatus(gprEAX);
+
    x86._cmp_reg_int32(gprEAX, Ord(esrExit));
    if jit.ExitTarget<>nil then
       jit.Fixups.NewJump(flagsE, jit.ExitTarget)
    else jit.OutputFailedOn:=expr;
+
+   if jit.LoopContext<>nil then begin
+
+      jit._mov_reg_execInstance(gprEDX);
+      x86._mov_reg_dword(gprECX, 0);
+      x86._mov_dword_ptr_reg_reg(gprEDX, TdwsExecution.Status_Offset, gprECX);
+
+      x86._cmp_reg_int32(gprEAX, Ord(esrBreak));
+      jit.Fixups.NewJump(flagsE, jit.LoopContext.TargetExit);
+      x86._cmp_reg_int32(gprEAX, Ord(esrContinue));
+      jit.Fixups.NewJump(flagsE, jit.LoopContext.TargetContinue);
+
+   end;
 end;
 
 // DoCompileFloat

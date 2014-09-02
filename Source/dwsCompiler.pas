@@ -552,7 +552,7 @@ type
          function ReadClassExpr(ownerSymbol : TCompositeTypeSymbol; expecting : TTypeSymbol = nil) : TTypedExpr;
          function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
          function ReadExprAdd(expecting : TTypeSymbol = nil; leftExpr : TTypedExpr = nil) : TTypedExpr;
-         function ReadExprMult(expecting : TTypeSymbol = nil) : TTypedExpr;
+         function ReadExprMult(expecting : TTypeSymbol = nil; leftExpr : TTypedExpr = nil) : TTypedExpr;
          function ReadExprIn(var left : TTypedExpr) : TTypedExpr;
          function ReadExprInConditions(var left : TTypedExpr) : TInOpExpr;
          function ReadExternalVar(sym : TExternalVarSymbol; isWrite : Boolean) : TFuncExpr;
@@ -4345,7 +4345,7 @@ begin
          else locExpr:=ReadName(True);
          if locExpr is TTypedExpr then begin
             if (FTok.TestAny([ttLESSLESS, ttGTRGTR])<>ttNone) then
-               locExpr:=ReadExprAdd(nil, TTypedExpr(locExpr));
+               locExpr:=ReadExprMult(nil, TTypedExpr(locExpr));
          end;
          try
             token:=FTok.TestDeleteAny(cAssignmentTokens);
@@ -9933,110 +9933,93 @@ begin
       // Read operator
       repeat
          tt:=FTok.TestDeleteAny([ttEQ, ttNOTEQ, ttLESS, ttLESSEQ, ttGTR, ttGTREQ,
-                                 ttIS, ttAS, ttIMPLEMENTS]);
-         if tt=ttNone then Break;
+                                 ttIN, ttIS, ttIMPLEMENTS, ttIMPLIES]);
+         case tt of
+            ttNone :
+               Break;
+            ttIN :
+               Result := ReadExprIn(Result);
+         else
 
-         hotPos := FTok.HotPos;
+            hotPos := FTok.HotPos;
 
-         // Read right argument
-         right:=ReadExprAdd;
-         if right=nil then
-            rightTyp:=nil
-         else rightTyp:=right.Typ;
-         try
-            case tt of
-               ttIS : begin
-                  if not (Result.Typ is TClassSymbol) then
-                     FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
-                  else if not (rightTyp is TClassOfSymbol) then
-                     FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected)
-                  else if not (   TClassSymbol(rightTyp.Typ).IsOfType(Result.Typ)
-                               or TClassSymbol(Result.Typ).IsOfType(rightTyp.Typ)) then
-                     IncompatibleTypesWarn(hotPos, CPE_IncompatibleTypes, Result.Typ, rightTyp.Typ);
-                  Result:=TIsOpExpr.Create(FProg, hotPos, Result, right)
-               end;
-               ttAS : begin
-                  if Result.Typ is TInterfaceSymbol then begin
-                     if rightTyp is TInterfaceSymbol then begin
-                        Result:=TIntfAsIntfExpr.Create(FProg, hotPos, Result, TInterfaceSymbol(rightTyp));
-                     end else begin
-                        if not (rightTyp is TClassOfSymbol) then begin
-                           FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
-                           rightTyp:=FProg.TypTObject.MetaSymbol;
-                        end;
-                        Result:=TIntfAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(rightTyp).Typ);
-                     end;
-                  end else if Result.Typ is TClassSymbol then begin
-                     if rightTyp is TInterfaceSymbol then
-                        Result:=TObjAsIntfExpr.Create(FProg, hotPos, Result, TInterfaceSymbol(rightTyp))
-                     else begin
-                        if not (rightTyp is TClassOfSymbol) then begin
-                           FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
-                           rightTyp:=FProg.TypTObject.MetaSymbol;
-                        end;
-                        Result:=TObjAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(rightTyp).Typ);
-                     end;
-                  end else begin
-                     if not (Result.Typ is TClassOfSymbol) then
-                        FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
-                     else if not (rightTyp is TClassOfSymbol) then begin
-                        FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
-                        rightTyp:=FProg.TypTObject.MetaSymbol;
-                     end;
-                     Result:=TClassAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(rightTyp));
+            // Read right argument
+            right:=ReadExprAdd;
+            if right=nil then
+               rightTyp:=nil
+            else rightTyp:=right.Typ;
+            try
+               case tt of
+                  ttIN : begin
+
+                     Result := ReadExprIn(Result);
+
                   end;
-                  right.Free;
-               end;
-               ttIMPLEMENTS : begin
-                  if not (rightTyp is TInterfaceSymbol) then
-                     FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
-                  if Result.Typ is TClassOfSymbol then
-                     Result:=TClassImplementsIntfOpExpr.Create(FProg, hotPos, Result, right)
-                  else begin
+                  ttIS : begin
+
                      if not (Result.Typ is TClassSymbol) then
-                        FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected);
-                     Result:=TImplementsIntfOpExpr.Create(FProg, hotPos, Result, right);
+                        FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
+                     else if not (rightTyp is TClassOfSymbol) then
+                        FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected)
+                     else if not (   TClassSymbol(rightTyp.Typ).IsOfType(Result.Typ)
+                                  or TClassSymbol(Result.Typ).IsOfType(rightTyp.Typ)) then
+                        IncompatibleTypesWarn(hotPos, CPE_IncompatibleTypes, Result.Typ, rightTyp.Typ);
+                     Result:=TIsOpExpr.Create(FProg, hotPos, Result, right)
+
                   end;
-               end;
-            else
-               opExpr:=CreateTypedOperatorExpr(tt, hotPos, Result, right);
-               if opExpr=nil then begin
-                  if     ((tt=ttEQ) or (tt=ttNOTEQ))
-                     and (rightTyp<>nil)
-                     and (
-                             (Result.Typ is TClassSymbol)
-                          or (Result.Typ is TInterfaceSymbol)
-                          or (Result.Typ is TClassOfSymbol)
-                          or (Result.Typ=FProg.TypNil)
-                          ) then begin
-                     if not ((rightTyp.ClassType=Result.Typ.ClassType) or (rightTyp=FProg.TypNil)) then
-                        if Result.Typ is TClassSymbol then
-                           FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
-                        else FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
-                     if Result.Typ is TClassSymbol then
-                        if tt=ttNOTEQ then
-                           Result:=TObjCmpNotEqualExpr.Create(FProg, hotPos, Result, right)
-                        else Result:=TObjCmpEqualExpr.Create(FProg, hotPos, Result, right)
-                     else if Result.Typ is TClassOfSymbol then begin
-                        Assert(rightTyp=FProg.TypNil);
-                        Result:=TAssignedMetaClassExpr.Create(FProg, Result);
-                        if tt=ttEQ then
-                           Result:=TNotBoolExpr.Create(FProg, Result);
-                        right.Free;
-                     end else begin
-                        Result:=TIntfCmpExpr.Create(FProg, hotPos, Result, right);
-                        if tt=ttNOTEQ then
-                           Result:=TNotBoolExpr.Create(FProg, Result);
+                  ttIMPLEMENTS : begin
+
+                     if not (rightTyp is TInterfaceSymbol) then
+                        FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
+                     if Result.Typ is TClassOfSymbol then
+                        Result:=TClassImplementsIntfOpExpr.Create(FProg, hotPos, Result, right)
+                     else begin
+                        if not (Result.Typ is TClassSymbol) then
+                           FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected);
+                        Result:=TImplementsIntfOpExpr.Create(FProg, hotPos, Result, right);
                      end;
-                  end else begin
-                     FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
-                     Result:=TRelOpExpr.Create(FProg, hotPos, Result, right); // keep going
+
                   end;
-               end else Result:=opExpr;
+               else
+                  opExpr:=CreateTypedOperatorExpr(tt, hotPos, Result, right);
+                  if opExpr=nil then begin
+                     if     ((tt=ttEQ) or (tt=ttNOTEQ))
+                        and (rightTyp<>nil)
+                        and (
+                                (Result.Typ is TClassSymbol)
+                             or (Result.Typ is TInterfaceSymbol)
+                             or (Result.Typ is TClassOfSymbol)
+                             or (Result.Typ=FProg.TypNil)
+                             ) then begin
+                        if not ((rightTyp.ClassType=Result.Typ.ClassType) or (rightTyp=FProg.TypNil)) then
+                           if Result.Typ is TClassSymbol then
+                              FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
+                           else FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
+                        if Result.Typ is TClassSymbol then
+                           if tt=ttNOTEQ then
+                              Result:=TObjCmpNotEqualExpr.Create(FProg, hotPos, Result, right)
+                           else Result:=TObjCmpEqualExpr.Create(FProg, hotPos, Result, right)
+                        else if Result.Typ is TClassOfSymbol then begin
+                           Assert(rightTyp=FProg.TypNil);
+                           Result:=TAssignedMetaClassExpr.Create(FProg, Result);
+                           if tt=ttEQ then
+                              Result:=TNotBoolExpr.Create(FProg, Result);
+                           right.Free;
+                        end else begin
+                           Result:=TIntfCmpExpr.Create(FProg, hotPos, Result, right);
+                           if tt=ttNOTEQ then
+                              Result:=TNotBoolExpr.Create(FProg, Result);
+                        end;
+                     end else begin
+                        FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
+                        Result:=TRelOpExpr.Create(FProg, hotPos, Result, right); // keep going
+                     end;
+                  end else Result:=opExpr;
+               end;
+            except
+               OrphanObject(right);
+               raise;
             end;
-         except
-            OrphanObject(right);
-            raise;
          end;
       until False;
    except
@@ -10061,9 +10044,8 @@ begin
    try
 
       repeat
-         tt:=FTok.TestDeleteAny([ttPLUS, ttMINUS, ttOR, ttAND, ttXOR, ttIMPLIES,
-                                 ttSHL, ttSHR, ttSAR, ttIN, ttNOT,
-                                 ttLESSLESS, ttGTRGTR]);
+         tt:=FTok.TestDeleteAny([ttPLUS, ttMINUS, ttOR, ttXOR,
+                                 ttNOT]);
          if tt=ttNone then Break;
 
          hotPos := FTok.HotPos;
@@ -10075,11 +10057,7 @@ begin
             Result:=ReadExprIn(Result);
             Result:=TNotBoolExpr.Create(FProg, Result);
 
-         end else if tt = ttIN then
-
-            Result := ReadExprIn(Result)
-
-         else begin
+         end else begin
             // Read right argument
             right := ReadExprMult;
             try
@@ -10116,18 +10094,23 @@ end;
 
 // ReadExprMult
 //
-function TdwsCompiler.ReadExprMult(expecting : TTypeSymbol = nil) : TTypedExpr;
+function TdwsCompiler.ReadExprMult(expecting : TTypeSymbol = nil; leftExpr : TTypedExpr = nil) : TTypedExpr;
 var
    right : TTypedExpr;
    tt : TTokenType;
    hotPos : TScriptPos;
    opExpr : TTypedExpr;
+   rightTyp : TTypeSymbol;
 begin
    // Read left argument
-   Result := ReadTerm(False, expecting);
+   if leftExpr=nil then
+      Result:=ReadTerm(False, expecting)
+   else Result:=leftExpr;
    try
       repeat
-         tt:=FTok.TestDeleteAny([ttTIMES, ttDIVIDE, ttMOD, ttDIV, ttCARET]);
+         tt:=FTok.TestDeleteAny([ttTIMES, ttDIVIDE, ttMOD, ttDIV, ttAND,
+                                 ttCARET, ttAS, ttLESSLESS, ttGTRGTR,
+                                 ttSHL, ttSHR, ttSAR]);
          if tt=ttNone then Break;
 
          // Save position of the operator
@@ -10136,11 +10119,43 @@ begin
          // Read right argument
          right := ReadTerm;
          try
-
-            // Generate function and add left and right argument
             if (Result.Typ=nil) or (right=nil) or(right.Typ=nil) then
-               FMsgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands)
-            else begin
+               FMsgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands);
+            case tt of
+               ttAS : begin
+                  rightTyp:=right.Typ;
+                  if Result.Typ is TInterfaceSymbol then begin
+                     if rightTyp is TInterfaceSymbol then begin
+                        Result:=TIntfAsIntfExpr.Create(FProg, hotPos, Result, TInterfaceSymbol(rightTyp));
+                     end else begin
+                        if not (rightTyp is TClassOfSymbol) then begin
+                           FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
+                           rightTyp:=FProg.TypTObject.MetaSymbol;
+                        end;
+                        Result:=TIntfAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(rightTyp).Typ);
+                     end;
+                  end else if Result.Typ is TClassSymbol then begin
+                     if rightTyp is TInterfaceSymbol then
+                        Result:=TObjAsIntfExpr.Create(FProg, hotPos, Result, TInterfaceSymbol(rightTyp))
+                     else begin
+                        if not (rightTyp is TClassOfSymbol) then begin
+                           FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
+                           rightTyp:=FProg.TypTObject.MetaSymbol;
+                        end;
+                        Result:=TObjAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(rightTyp).Typ);
+                     end;
+                  end else begin
+                     if not (Result.Typ is TClassOfSymbol) then
+                        FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
+                     else if not (rightTyp is TClassOfSymbol) then begin
+                        FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
+                        rightTyp:=FProg.TypTObject.MetaSymbol;
+                     end;
+                     Result:=TClassAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(rightTyp));
+                  end;
+                  right.Free;
+               end;
+            else
                opExpr:=CreateTypedOperatorExpr(tt, hotPos, Result, right);
                if opExpr=nil then begin
                   FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
