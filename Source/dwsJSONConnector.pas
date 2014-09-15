@@ -1102,7 +1102,7 @@ begin
       tokenizer.ParseIntegerArray(values);
 
       newArray:=TScriptDynamicArray.CreateNew(info.Execution.Prog.TypInteger);
-      Info.ResultAsVariant:=IScriptObj(newArray);
+      Info.ResultAsVariant:=IScriptDynArray(newArray);
       newArray.ArrayLength:=values.Count;
       newPData:=newArray.AsPData;
 
@@ -1137,7 +1137,7 @@ begin
       tokenizer.ParseNumberArray(values);
 
       newArray:=TScriptDynamicArray.CreateNew(info.Execution.Prog.TypInteger);
-      Info.ResultAsVariant:=IScriptObj(newArray);
+      Info.ResultAsVariant:=IScriptDynArray(newArray);
       newArray.ArrayLength:=values.Count;
       newPData:=newArray.AsPData;
 
@@ -1172,7 +1172,7 @@ begin
       tokenizer.ParseStringArray(values);
 
       newArray:=TScriptDynamicArray.CreateNew(info.Execution.Prog.TypInteger);
-      Info.ResultAsVariant:=IScriptObj(newArray);
+      Info.ResultAsVariant:=IScriptDynArray(newArray);
       newArray.ArrayLength:=values.Count;
       newPData:=newArray.AsPData;
 
@@ -1261,9 +1261,9 @@ class procedure TJSONStringifyMethod.StringifyVariant(exec : TdwsExecution; writ
 var
    unk : IUnknown;
    getSelf : IGetSelf;
+   selfObj : TObject;
    boxedJSON : IBoxedJSONValue;
    scriptObj : IScriptObj;
-   scriptObjSelf : TObject;
    p : PVarData;
 begin
    p:=PVarData(@v);
@@ -1281,20 +1281,33 @@ begin
          if unk=nil then
             writer.WriteNull
          else if unk.QueryInterface(IBoxedJSONValue, boxedJSON)=0 then begin
+
             if boxedJSON.Value<>nil then
                boxedJSON.Value.WriteTo(writer)
             else writer.WriteString('Undefined');
+
          end else begin
-            if unk.QueryInterface(IScriptObj, scriptObj)=0 then begin
-               scriptObjSelf:=scriptObj.GetSelf;
-               if scriptObjSelf is TScriptDynamicArray then
-                  StringifyDynamicArray(exec, writer, TScriptDynamicArray(scriptObjSelf))
-               else StringifyClass(exec, writer, scriptObj.ClassSym, scriptObj);
-            end else begin
-               if unk.QueryInterface(IGetSelf, getSelf)=0 then
-                  writer.WriteString(getSelf.ToString)
-               else writer.WriteString('IUnknown');
-            end;
+
+            if unk.QueryInterface(IGetSelf, getSelf)=0 then begin
+
+               selfObj:=getSelf.GetSelf;
+               if selfObj is TScriptObjInstance then begin
+
+                  scriptObj:=TScriptObjInstance(selfObj);
+                  StringifyClass(exec, writer, scriptObj.ClassSym, scriptObj);
+
+               end else if selfObj is TScriptDynamicArray then begin
+
+                  StringifyDynamicArray(exec, writer, TScriptDynamicArray(selfObj))
+
+               end else if selfObj<>nil then begin
+
+                  writer.WriteString(selfObj.ToString)
+
+               end else writer.WriteString('null');
+
+            end else writer.WriteString('IUnknown');
+
          end;
       end;
    else

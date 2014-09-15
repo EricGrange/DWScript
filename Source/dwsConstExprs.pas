@@ -48,6 +48,8 @@ type
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+         procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
+         procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
 
          function IsWritable : Boolean; override;
          function SameValueAs(otherConst : TConstExpr) : Boolean;
@@ -286,6 +288,20 @@ begin
    Result := FData[0];
 end;
 
+// EvalAsScriptObj
+//
+procedure TConstExpr.EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj);
+begin
+   result := IScriptObj(IUnknown(FData[0]));
+end;
+
+// EvalAsScriptDynArray
+//
+procedure TConstExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
+begin
+   result := IScriptDynArray(IUnknown(FData[0]));
+end;
+
 // GetIsConstant
 //
 function TConstExpr.GetIsConstant : Boolean;
@@ -423,7 +439,7 @@ end;
 //
 class function TConstExpr.CreateDynamicArrayValue(prog : TdwsProgram; typ : TTypeSymbol) : TConstExpr;
 begin
-   Result:=TConstExpr.Create(prog, typ, TScriptDynamicArray.CreateNew(typ.Typ) as IScriptObj);
+   Result:=TConstExpr.Create(prog, typ, TScriptDynamicArray.CreateNew(typ.Typ) as IScriptDynArray);
 end;
 
 // ------------------

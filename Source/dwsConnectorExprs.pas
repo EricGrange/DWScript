@@ -390,7 +390,7 @@ var
       i : Integer;
       arg : TTypedExpr;
       argTyp : TTypeSymbol;
-      obj : IScriptObj;
+      dyn : IScriptDynArray;
       sourcePtr : IDataContext;
    begin
       for i:=0 to FArguments.Count-2 do begin
@@ -399,8 +399,8 @@ var
          SetLength(callArgs[i], argTyp.Size);
          if argTyp.Size=1 then begin
             if argTyp.ClassType=TDynamicArraySymbol then begin
-               arg.EvalAsScriptObj(exec, obj);
-               callArgs[i][0]:=VarArrayOf(TScriptDynamicArray(obj.GetSelf).AsData);
+               arg.EvalAsScriptDynArray(exec, dyn);
+               callArgs[i][0]:=VarArrayOf(dyn.AsPData^);
             end else arg.EvalAsVariant(exec, callArgs[i][0]);
          end else begin
             sourcePtr:=TDataExpr(arg).DataPtr[exec];

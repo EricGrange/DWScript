@@ -100,7 +100,7 @@ type
    end;
    PDataPtrPool= ^TDataContextPool;
 
-   TDataContext = class(TInterfacedObject, IDataContext)
+   TDataContext = class(TInterfacedObject, IDataContext, IGetSelf)
       private
          FAddr : Integer;
          FData : TData;

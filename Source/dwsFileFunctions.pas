@@ -620,7 +620,7 @@ begin
    try
       CollectFiles(args.AsFileName[0], args.AsString[1], sl, args.AsBoolean[2]);
       newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).Prog.SystemTable.SymbolTable.TypString);
-      Result:=IScriptObj(newArray);
+      Result:=IScriptDynArray(newArray);
       newArray.ArrayLength:=sl.Count;
       for i:=0 to newArray.ArrayLength-1 do
          newArray.AsString[i]:=sl[i];

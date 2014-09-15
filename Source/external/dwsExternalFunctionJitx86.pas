@@ -287,7 +287,7 @@ begin
    end
    else if pType is TDynamicArraySymbol then
    begin
-      result := vmt_TExprBase_EvalAsDataContext;
+      result := vmt_TExprBase_EvalAsDynArray;
       resultStyle := rsArray;
    end
    else raise Exception.CreateFmt('Unsupported parameter type: %s', [pType.Name]);

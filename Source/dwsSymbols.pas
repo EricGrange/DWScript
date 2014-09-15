@@ -31,6 +31,7 @@ uses SysUtils, Variants, Classes,
 type
 
    IScriptObj = interface;
+   IScriptDynArray = interface;
    PIScriptObj = ^IScriptObj;
    TdwsExecution = class;
    TExprBase = class;
@@ -160,10 +161,10 @@ type
          function  EvalAsInteger(exec : TdwsExecution) : Int64; virtual; abstract;
          function  EvalAsBoolean(exec : TdwsExecution) : Boolean; virtual; abstract;
          function  EvalAsFloat(exec : TdwsExecution) : Double; virtual; abstract;
-         procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); overload; virtual; abstract;
-         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); overload; virtual; abstract;
-         procedure EvalAsDataContext(exec : TdwsExecution; var Result : IDataContext); virtual;
-         procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); virtual; abstract;
+         procedure EvalAsString(exec : TdwsExecution; var result : UnicodeString); overload; virtual; abstract;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); overload; virtual; abstract;
+         procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); virtual; abstract;
+         procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); virtual; abstract;
          procedure EvalNoResult(exec : TdwsExecution); virtual;
 
          procedure AssignValue(exec : TdwsExecution; const value : Variant); virtual; abstract;
@@ -172,6 +173,7 @@ type
          procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); virtual; abstract;
          procedure AssignValueAsString(exec : TdwsExecution; const value : UnicodeString); virtual; abstract;
          procedure AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj); virtual; abstract;
+         procedure AssignValueAsScriptDynArray(exec : TdwsExecution; const value : IScriptDynArray); virtual; abstract;
 
          property SubExpr[i : Integer] : TExprBase read GetSubExpr;
          property SubExprCount : Integer read GetSubExprCount;
@@ -1739,6 +1741,16 @@ type
       property Destroyed : Boolean read GetDestroyed write SetDestroyed;
    end;
 
+   // IScriptDynArray
+   //
+   IScriptDynArray = interface (IDataContext)
+      ['{29767B6E-05C0-40E1-A41A-94DF54142312}']
+      function GetArrayLength : Integer;
+      procedure SetArrayLength(n : Integer);
+
+      property ArrayLength : Integer read GetArrayLength write SetArrayLength;
+   end;
+
    TPerfectMatchEnumerator = class
       FuncSym, Match : TFuncSymbol;
       function Callback(sym : TSymbol) : Boolean;
@@ -1901,16 +1913,6 @@ end;
 function TExprBase.GetSubExprCount : Integer;
 begin
    Result:=0;
-end;
-
-// EvalNoResult
-//
-procedure TExprBase.EvalAsDataContext(exec: TdwsExecution; var Result: IDataContext);
-var
-   temp : IScriptObj;
-begin
-   EvalAsScriptObj(exec, temp);
-   Result := temp;
 end;
 
 procedure TExprBase.EvalNoResult(exec : TdwsExecution);

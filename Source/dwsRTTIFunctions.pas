@@ -208,7 +208,7 @@ end;
 
 // PrepareRTTIRawAttributes
 //
-procedure PrepareRTTIRawAttributes(info : TProgramInfo; var scriptObj : IScriptObj);
+procedure PrepareRTTIRawAttributes(info : TProgramInfo; var scriptDynArray : IScriptDynArray);
 var
    typRawAttribute : TRecordSymbol;
    dynArray : TScriptDynamicArray;
@@ -227,8 +227,8 @@ var
 begin
    typRawAttribute:=info.Execution.Prog.Table.FindTypeSymbol(SYS_TRTTIRAWATTRIBUTE, cvPublic) as TRecordSymbol;
    dynArray:=TScriptDynamicArray.CreateNew(typRawAttribute);
-   scriptObj:=dynArray;
-   info.Execution.RTTIRawAttributes:=scriptObj;
+   scriptDynArray:=dynArray;
+   info.Execution.RTTIRawAttributes:=scriptDynArray;
 
    rttiPropertyAttributeCreate:=Info.Vars[SYS_RTTIPROPERTYATTRIBUTE].Method[SYS_TOBJECT_CREATE];
    rttiMethodAttributeCreate:=Info.Vars[SYS_RTTIMETHODATTRIBUTE].Method[SYS_TOBJECT_CREATE];
@@ -290,12 +290,12 @@ end;
 //
 procedure TRTTIRawAttributesFunc.Execute(info : TProgramInfo);
 var
-   scriptObj : IScriptObj;
+   scriptDynArray : IScriptDynArray;
 begin
-   scriptObj:=info.Execution.RTTIRawAttributes;
-   if not Assigned(scriptObj) then
-      PrepareRTTIRawAttributes(info, scriptObj);
-   info.Vars[SYS_RESULT].Value:=scriptObj;
+   scriptDynArray:=info.Execution.RTTIRawAttributes;
+   if not Assigned(scriptDynArray) then
+      PrepareRTTIRawAttributes(info, scriptDynArray);
+   info.Vars[SYS_RESULT].Value:=scriptDynArray;
 end;
 
 // ------------------

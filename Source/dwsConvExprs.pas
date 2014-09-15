@@ -488,7 +488,7 @@ begin
    dynArray:=TScriptDynamicArray.CreateNew(TDynamicArraySymbol(Typ).Typ);
    dynArray.ReplaceData(arr.EvalAsTData(exec));
 
-   Result:=IUnknown(IScriptObj(dynArray));
+   Result:=IScriptDynArray(dynArray);
 end;
 
 // ------------------

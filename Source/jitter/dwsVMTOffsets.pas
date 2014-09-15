@@ -36,7 +36,7 @@ var
    vmt_TExprBase_EvalAsString: Integer;
    vmt_TExprBase_EvalAsScriptObj: Integer;
    vmt_TExprBase_EvalAsVariant: Integer;
-   vmt_TExprBase_EvalAsDataContext: Integer;
+   vmt_TExprBase_EvalAsDynArray: Integer;
    vmt_TExprBase_AssignValueAsFloat : Integer;
    vmt_TExprBase_AssignValueAsInteger : Integer;
 
@@ -80,7 +80,7 @@ asm
    mov vmt_TExprBase_EvalAsString, VMTOFFSET TExprBase.EvalAsString
    mov vmt_TExprBase_EvalAsScriptObj, VMTOFFSET TExprBase.EvalAsScriptObj
    mov vmt_TExprBase_EvalAsVariant, VMTOFFSET TExprBase.EvalAsVariant
-   mov vmt_TExprBase_EvalAsDataContext,  VMTOFFSET TExprBase.EvalAsDataContext
+   mov vmt_TExprBase_EvalAsDynArray,  VMTOFFSET TExprBase.EvalAsScriptDynArray
    mov vmt_TExprBase_AssignValueAsFloat, VMTOFFSET TExprBase.AssignValueAsFloat
    mov vmt_TExprBase_AssignValueAsInteger, VMTOFFSET TExprBase.AssignValueAsInteger
 {$IF Defined(WIN32)}
@@ -97,17 +97,18 @@ procedure PrepareDynArrayIDataContextToFDataOffset;
 var
    sda : TScriptDynamicArray;
    soi : TScriptObjInstance;
-   i : IScriptObj;
+   ia : IScriptDynArray;
+   io : IScriptObj;
 begin
    sda:=TScriptDynamicArray.CreateNew(nil);
-   i:=IScriptObj(sda);
+   ia:=IScriptDynArray(sda);
 
-   vmt_ScriptDynamicArray_IScriptObj_To_FData:=NativeInt(i.AsPData)-NativeInt(i);
+   vmt_ScriptDynamicArray_IScriptObj_To_FData:=NativeInt(ia.AsPData)-NativeInt(ia);
 
    soi:=TScriptObjInstance.Create(nil);
-   i:=IScriptObj(soi);
+   io:=IScriptObj(soi);
 
-   vmt_ScriptObjInstance_IScriptObj_To_FData:=NativeInt(i.AsPData)-NativeInt(i);
+   vmt_ScriptObjInstance_IScriptObj_To_FData:=NativeInt(io.AsPData)-NativeInt(io);
 end;
 
 // ------------------------------------------------------------------

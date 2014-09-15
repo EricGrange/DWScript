@@ -884,7 +884,7 @@ begin
    try
       CollectGlobalVarsNames(args.AsString[0], sl);
       newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).Prog.SystemTable.SymbolTable.TypString);
-      Result:=IScriptObj(newArray);
+      Result:=IScriptDynArray(newArray);
       newArray.ArrayLength:=sl.Count;
       for i:=0 to newArray.ArrayLength-1 do
          newArray.AsString[i]:=sl[i];

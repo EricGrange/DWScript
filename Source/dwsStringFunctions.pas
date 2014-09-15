@@ -1018,33 +1018,33 @@ end;
 procedure TStrJoinFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    delim, item : UnicodeString;
-   obj : IScriptObj;
-   dyn : TScriptDynamicArray;
+   dynIntf : IScriptDynArray;
+   dynObj : TScriptDynamicArray;
    i : Integer;
    wobs : TWriteOnlyBlockStream;
 begin
-   args.ExprBase[0].EvalAsScriptObj(args.Exec, obj);
-   dyn:=obj.GetSelf as TScriptDynamicArray;
+   args.ExprBase[0].EvalAsScriptDynArray(args.Exec, dynIntf);
+   dynObj:=dynIntf.GetSelf as TScriptDynamicArray;
 
    delim:=args.AsString[1];
 
-   case dyn.ArrayLength of
+   case dynObj.ArrayLength of
       0 : Result:='';
       1..5 : begin
-         dyn.EvalAsString(0, Result);
-         for i:=1 to dyn.ArrayLength-1 do begin
-            dyn.EvalAsString(i, item);
+         dynObj.EvalAsString(0, Result);
+         for i:=1 to dynObj.ArrayLength-1 do begin
+            dynObj.EvalAsString(i, item);
             Result:=Result+delim+item;
          end;
       end;
    else
       wobs:=TWriteOnlyBlockStream.AllocFromPool;
       try
-         dyn.EvalAsString(0, item);
+         dynObj.EvalAsString(0, item);
          wobs.WriteString(item);
-         for i:=1 to dyn.ArrayLength-1 do begin
+         for i:=1 to dynObj.ArrayLength-1 do begin
             wobs.WriteString(delim);
-            dyn.EvalAsString(i, item);
+            dynObj.EvalAsString(i, item);
             wobs.WriteString(item);
          end;
          Result:=wobs.ToString;

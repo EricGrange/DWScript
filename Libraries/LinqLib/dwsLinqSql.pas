@@ -499,7 +499,7 @@ begin
       dyn.AsPVariant(n)^ := FInto.Eval(exec);
       inc(n);
    end;
-   result := IScriptObj(dyn);
+   result := IScriptDynArray(dyn);
    FFree.Eval(exec);
 end;
 

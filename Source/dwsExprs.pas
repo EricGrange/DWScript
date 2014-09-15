@@ -550,7 +550,7 @@ type
          FFileSystem : IdwsFileSystem;
          FEnvironment : IdwsEnvironment;
          FLocalizer : IdwsLocalizer;
-         FRTTIRawAttributes : IScriptObj;
+         FRTTIRawAttributes : IScriptDynArray;
 
          FOnExecutionStarted : TdwsExecutionEvent;
          FOnExecutionEnded : TdwsExecutionEvent;
@@ -632,7 +632,7 @@ type
          property FileSystem : IdwsFileSystem read FFileSystem;
          property Environment : IdwsEnvironment read GetEnvironment write SetEnvironment;
          property Localizer : IdwsLocalizer read FLocalizer write FLocalizer;
-         property RTTIRawAttributes : IScriptObj read FRTTIRawAttributes write FRTTIRawAttributes;
+         property RTTIRawAttributes : IScriptDynArray read FRTTIRawAttributes write FRTTIRawAttributes;
 
          property ObjectCount : Integer read FObjectCount;
 
@@ -908,9 +908,10 @@ type
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
-         procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
-         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
-         procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
+         procedure EvalAsString(exec : TdwsExecution; var result : UnicodeString); override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+         procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
+         procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
 
          procedure AssignValue(exec : TdwsExecution; const value : Variant); override;
          procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
@@ -918,6 +919,7 @@ type
          procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); override;
          procedure AssignValueAsString(exec : TdwsExecution; const value: UnicodeString); override;
          procedure AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj); override;
+         procedure AssignValueAsScriptDynArray(exec : TdwsExecution; const value : IScriptDynArray); override;
 
          procedure RaiseUpperExceeded(exec : TdwsExecution; index : Integer);
          procedure RaiseLowerExceeded(exec : TdwsExecution; index : Integer);
@@ -1699,7 +1701,7 @@ type
   end;
 
    // An instance of a script class FClassSym. Instance data in FData,
-   TScriptObj = class(TDataContext, IScriptObj)
+   TScriptObj = class (TDataContext)
       private
          FNextObject, FPrevObject : TScriptObj;
 
@@ -1749,7 +1751,7 @@ type
          property Destroyed : Boolean read FDestroyed write FDestroyed;
    end;
 
-   TScriptDynamicArray = class abstract (TScriptObj)
+   TScriptDynamicArray = class abstract (TScriptObj, IScriptDynArray)
       private
          FElementTyp : TTypeSymbol;
          FElementSize : Integer;
@@ -1757,6 +1759,7 @@ type
 
       protected
          procedure SetArrayLength(n : Integer);
+         function GetArrayLength : Integer;
 
       public
          class function CreateNew(elemTyp : TTypeSymbol) : TScriptDynamicArray; static;
@@ -1799,7 +1802,7 @@ type
          function CompareFloat(i1, i2 : Integer) : Integer;
    end;
 
-   TScriptInterface = class(TScriptObj)
+   TScriptInterface = class(TScriptObj, IScriptObj)
       private
          FTyp : TInterfaceSymbol;
          FInstance : IScriptObj;
@@ -3713,7 +3716,14 @@ end;
 //
 procedure TProgramExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
 begin
-   Result:=IScriptObj(IUnknown(Eval(exec)));
+   Result:=(IUnknown(Eval(exec)) as IScriptObj);
+end;
+
+// EvalAsScriptDynArray
+//
+procedure TProgramExpr.EvalAsScriptDynArray(exec : TdwsExecution; var Result : IScriptDynArray);
+begin
+   Result:=(IUnknown(Eval(exec)) as IScriptDynArray);
 end;
 
 // AssignValue
@@ -3754,6 +3764,13 @@ end;
 // AssignValueAsScriptObj
 //
 procedure TProgramExpr.AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj);
+begin
+   AssignValue(exec, value);
+end;
+
+// AssignValueAsScriptDynArray
+//
+procedure TProgramExpr.AssignValueAsScriptDynArray(exec : TdwsExecution; const value : IScriptDynArray);
 begin
    AssignValue(exec, value);
 end;
@@ -6580,7 +6597,7 @@ end;
 //
 procedure TScriptDynamicArray_InitData(elemTyp : TTypeSymbol; var result : Variant);
 begin
-   result:=IScriptObj(TScriptDynamicArray.CreateNew(elemTyp));
+   result:=IScriptDynArray(TScriptDynamicArray.CreateNew(elemTyp));
 end;
 
 // SetArrayLength
@@ -6595,6 +6612,13 @@ begin
    for i:=FArrayLength to n-1 do
       FElementTyp.InitData(p^, i*ElementSize);
    FArrayLength:=n;
+end;
+
+// GetArrayLength
+//
+function TScriptDynamicArray.GetArrayLength : Integer;
+begin
+   Result:=FArrayLength;
 end;
 
 // ReplaceData
