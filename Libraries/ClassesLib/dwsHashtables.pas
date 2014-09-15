@@ -143,6 +143,8 @@ begin
     end;
     FItems[x] := nil;
   end;
+  FSize:=0;
+  Rehash(InitCapacity);
 end;
 
 function THashTable.InternalGet(Item: THashItem): ValueType;
