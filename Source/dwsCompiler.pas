@@ -7679,7 +7679,7 @@ begin
                   if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
                      FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
                   Result:=TArrayIndexOfExpr.Create(FProg, namePos, baseExpr,
-                                                   argList[0] as TDataExpr, argList[1]);
+                                                   argList[0], argList[1]);
                end else Result:=TArrayIndexOfExpr.Create(FProg, namePos, baseExpr,
                                                          argList[0], nil);
                argList.Clear;
@@ -7696,9 +7696,9 @@ begin
                   if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
                      FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
                   Result:=TArrayRemoveExpr.Create(FProg, namePos, baseExpr,
-                                                   argList[0] as TDataExpr, argList[1]);
+                                                  argList[0], argList[1]);
                end else Result:=TArrayRemoveExpr.Create(FProg, namePos, baseExpr,
-                                                         argList[0] as TDataExpr, nil);
+                                                        argList[0], nil);
                argList.Clear;
             end else Result:=TArrayRemoveExpr.Create(FProg, namePos, baseExpr, nil, nil);
 
@@ -7712,7 +7712,7 @@ begin
                   IncompatibleTypes(argPosArray[1], CPE_IncompatibleParameterTypes,
                                     arraySym.Typ, argList[1].Typ);
                Result:=TArrayInsertExpr.Create(FProg, namePos, baseExpr,
-                                               argList[0], argList[1] as TDataExpr);
+                                               argList[0], argList[1]);
                argList.Clear;
             end else Result:=TArrayInsertExpr.Create(FProg, namePos, baseExpr, nil, nil);
 

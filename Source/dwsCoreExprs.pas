@@ -861,7 +861,7 @@ type
    TArrayInsertExpr = class(TArrayPseudoMethodExpr)
       private
          FIndexExpr : TTypedExpr;
-         FItemExpr : TDataExpr;
+         FItemExpr : TTypedExpr;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
@@ -869,12 +869,12 @@ type
 
       public
          constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
-                            aBase, aIndex : TTypedExpr; aItem : TDataExpr);
+                            aBase, aIndex : TTypedExpr; aItem : TTypedExpr);
          destructor Destroy; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
 
          property IndexExpr : TTypedExpr read FIndexExpr;
-         property ItemExpr : TDataExpr read FItemExpr;
+         property ItemExpr : TTypedExpr read FItemExpr;
    end;
 
    TAssignedExpr = class(TUnaryOpBoolExpr)
@@ -8556,7 +8556,7 @@ end;
 // Create
 //
 constructor TArrayInsertExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
-                                    aBase, aIndex : TTypedExpr; aItem : TDataExpr);
+                                    aBase, aIndex : TTypedExpr; aItem : TTypedExpr);
 begin
    inherited Create(prog, scriptPos, aBase);
    FIndexExpr:=aIndex;
@@ -8594,7 +8594,7 @@ begin
    end;
 
    if ItemExpr.Typ.Size>1 then begin
-      ItemExpr.DataPtr[exec].CopyData(dyn.AsData, index*dyn.ElementSize, dyn.ElementSize);
+      (ItemExpr as TDataExpr).DataPtr[exec].CopyData(dyn.AsData, index*dyn.ElementSize, dyn.ElementSize);
    end else ItemExpr.EvalAsVariant(exec, dyn.AsPVariant(index)^);
 end;
 

@@ -223,7 +223,12 @@ end;
 // DoEvalAsString
 //
 procedure TDateTimeToStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+var
+   dt : Double;
 begin
+   dt:=args.AsFloat[0];
+   if (dt<-693592) or (dt>2146790052) then
+      raise EConvertError.Create('Invalid date/time');
    Result:=DateTimeToStr(args.AsFloat[0]);
 end;
 

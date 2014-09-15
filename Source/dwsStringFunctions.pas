@@ -72,6 +72,9 @@ type
   TFloatToStrFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
+  TFloatToStrPFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+  end;
 
   TStrToFloatFunc = class(TInternalMagicFloatFunction)
     procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
@@ -387,6 +390,17 @@ end;
 { TFloatToStrFunc }
 
 procedure TFloatToStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+begin
+   {$ifdef FPC}
+   Result:=UTF8Decode(FloatToStr(args.AsFloat[0]))
+   {$else}
+   Result:=FloatToStr(args.AsFloat[0])
+   {$endif}
+end;
+
+{ TFloatToStrPFunc }
+
+procedure TFloatToStrPFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    p : Integer;
    v, p10 : Double;
@@ -1073,7 +1087,8 @@ initialization
    RegisterInternalStringFunction(TBoolToStrFunc, 'BoolToStr', ['b', SYS_BOOLEAN], [iffStateLess], 'ToString');
    RegisterInternalBoolFunction(TStrToBoolFunc, 'StrToBool', ['str', SYS_STRING], [iffStateLess], 'ToBoolean');
 
-   RegisterInternalStringFunction(TFloatToStrFunc, 'FloatToStr', ['f', SYS_FLOAT, 'p=99', SYS_INTEGER], [iffStateLess], 'ToString');
+   RegisterInternalStringFunction(TFloatToStrFunc, 'FloatToStr', ['f', SYS_FLOAT], [iffStateLess, iffOverloaded], 'ToString');
+   RegisterInternalStringFunction(TFloatToStrPFunc, 'FloatToStr', ['f', SYS_FLOAT, 'p', SYS_INTEGER], [iffStateLess, iffOverloaded], 'ToString');
    RegisterInternalFloatFunction(TStrToFloatFunc, 'StrToFloat', ['str', SYS_STRING], [iffStateLess], 'ToFloat');
    RegisterInternalFloatFunction(TStrToFloatDefFunc, 'StrToFloatDef', ['str', SYS_STRING, 'def', SYS_FLOAT], [iffStateLess], 'ToFloatDef');
    RegisterInternalFloatFunction(TStrToFloatDefFunc, 'VarToFloatDef', ['val', SYS_VARIANT, 'def', SYS_FLOAT], [iffStateLess]);
