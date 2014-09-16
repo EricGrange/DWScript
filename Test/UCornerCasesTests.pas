@@ -79,6 +79,7 @@ type
          procedure MethodFree;
          procedure MethodDestroy;
          procedure PropertyDefault;
+         procedure SimpleStringListIndexOf;
    end;
 
    ETestException = class (Exception);
@@ -1705,6 +1706,26 @@ begin
 
    CheckEquals('String', prop.DefaultSym.Typ.Name);
    CheckEquals('hello', prop.DefaultSym.Data[0]);
+end;
+
+// SimpleStringListIndexOf
+//
+procedure TCornerCasesTests.SimpleStringListIndexOf;
+var
+   ssl : TSimpleStringList;
+begin
+   ssl:=TSimpleStringList.Create;
+   try
+      Check(ssl.IndexOf('a')<0, 'empty');
+      ssl.Add('a');
+      CheckEquals(0, ssl.IndexOf('a'), 'a 1');
+      ssl.Add('b');
+      CheckEquals(0, ssl.IndexOf('a'), 'a 2');
+      CheckEquals(1, ssl.IndexOf('b'), 'b 2');
+      Check(ssl.IndexOf('c')<0, 'c 3');
+   finally
+      ssl.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------
