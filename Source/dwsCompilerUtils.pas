@@ -55,6 +55,8 @@ type
 function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
                         const scriptObj : IScriptObj; structSym : TCompositeTypeSymbol;
                         forceStatic : Boolean = False) : TFuncExprBase;
+function CreateIntfExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
+                        const scriptObjIntf : IScriptObjInterface) : TFuncExprBase;
 function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; var expr : TTypedExpr; RefKind: TRefKind;
                           const scriptPos: TScriptPos; ForceStatic : Boolean = False) : TFuncExprBase;
 
@@ -126,6 +128,20 @@ begin
    end;
 end;
 
+// CreateIntfExpr
+//
+function CreateIntfExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
+                        const scriptObjIntf : IScriptObjInterface) : TFuncExprBase;
+var
+   instanceExpr : TTypedExpr;
+   scriptIntf : TScriptInterface;
+begin
+   scriptIntf:=(scriptObjIntf.GetSelf as TScriptInterface);
+   instanceExpr:=TConstExpr.Create(Prog, scriptIntf.Typ, scriptObjIntf);
+   Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
+                            instanceExpr, rkIntfRef, cNullPos)
+end;
+
 // CreateMethodExpr
 //
 function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; var expr: TTypedExpr; RefKind: TRefKind;
@@ -186,7 +202,7 @@ begin
                   Result := TClassMethodVirtualExpr.Create(prog, scriptPos, meth, expr)
                else Result := TClassMethodStaticExpr.Create(prog, scriptPos, meth, expr)
             end else begin
-               if RefKind<>rkObjRef then
+               if RefKind=rkClassOfRef then
                   prog.CompileMsgs.AddCompilerError(scriptPos, CPE_StaticMethodExpected)
                else if expr.Typ is TClassOfSymbol then
                   prog.CompileMsgs.AddCompilerError(scriptPos, CPE_ClassMethodExpected);
@@ -210,7 +226,7 @@ begin
             end;
          fkDestructor:
             begin
-               if RefKind<>rkObjRef then
+               if RefKind=rkClassOfRef then
                   prog.CompileMsgs.AddCompilerError(scriptPos, CPE_UnexpectedDestructor);
                if not ForceStatic and meth.IsVirtual then
                   Result := TDestructorVirtualExpr.Create(prog, scriptPos, meth, expr)

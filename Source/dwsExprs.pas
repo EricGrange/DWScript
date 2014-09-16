@@ -32,7 +32,7 @@ uses
 type
    TRelOps = (roEqual, roUnEqual, roLess, roLessEqual, roMore, roMoreEqual);
 
-   TRefKind = (rkObjRef, rkClassOfRef);
+   TRefKind = (rkObjRef, rkIntfRef, rkClassOfRef);
 
    TTypedExpr = class;
    TNoResultExpr = class;
@@ -911,6 +911,7 @@ type
          procedure EvalAsString(exec : TdwsExecution; var result : UnicodeString); override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
+         procedure EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface); override;
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
 
          procedure AssignValue(exec : TdwsExecution; const value : Variant); override;
@@ -948,7 +949,8 @@ type
 
          function ScriptPos : TScriptPos; override;
 
-         procedure CheckInterface(exec : TdwsExecution; const scriptObj : IScriptObj); inline;
+         procedure CheckInterface(exec : TdwsExecution; const scriptObj : IScriptObj); overload; inline;
+         procedure CheckInterface(exec : TdwsExecution; const intf : IScriptObjInterface); overload; inline;
          procedure RaiseInterfaceIsNil(exec : TdwsExecution);
 
          function IsOfType(typSym : TTypeSymbol) : Boolean;
@@ -1802,7 +1804,7 @@ type
          function CompareFloat(i1, i2 : Integer) : Integer;
    end;
 
-   TScriptInterface = class(TScriptObj, IScriptObj)
+   TScriptInterface = class(TScriptObj, IScriptObjInterface)
       private
          FTyp : TInterfaceSymbol;
          FInstance : IScriptObj;
@@ -1810,6 +1812,7 @@ type
          FExecutionContext : TdwsProgramExecution;
 
       protected
+         function GetScriptObj : IScriptObj;
 
       public
          constructor Create(const instance : IScriptObj;
@@ -3719,6 +3722,13 @@ begin
    Result:=(IUnknown(Eval(exec)) as IScriptObj);
 end;
 
+// EvalAsScriptObjInterface
+//
+procedure TProgramExpr.EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface);
+begin
+   Result:=(IUnknown(Eval(exec)) as IScriptObjInterface);
+end;
+
 // EvalAsScriptDynArray
 //
 procedure TProgramExpr.EvalAsScriptDynArray(exec : TdwsExecution; var Result : IScriptDynArray);
@@ -3923,6 +3933,14 @@ end;
 procedure TTypedExpr.CheckInterface(exec : TdwsExecution; const scriptObj : IScriptObj);
 begin
    if scriptObj=nil then
+      RaiseInterfaceIsNil(exec)
+end;
+
+// CheckInterface
+//
+procedure TTypedExpr.CheckInterface(exec : TdwsExecution; const intf : IScriptObjInterface);
+begin
+   if intf=nil then
       RaiseInterfaceIsNil(exec)
 end;
 
@@ -4926,6 +4944,7 @@ var
    prog : TdwsMainProgram;
    baseExpr : TTypedExpr;
    scriptObj : IScriptObj;
+   scriptObjIntf : IScriptObjInterface;
    classSym : TClassSymbol;
    magicFuncSym : TMagicFuncSymbol;
    baseTyp : TTypeSymbol;
@@ -4939,10 +4958,11 @@ begin
          classSym:=TClassSymbol(baseExpr.EvalAsInteger(exec));
          FFuncExpr:=CreateFuncExpr(prog, funcExpr.FuncSym, nil, classSym);
       end else begin
-         baseExpr.EvalAsScriptObj(exec, scriptObj);
          if baseTyp is TInterfaceSymbol then begin
-            FFuncExpr:=CreateFuncExpr(prog, funcExpr.FuncSym, scriptObj, (scriptObj.GetSelf as TScriptInterface).Typ);
+            baseExpr.EvalAsScriptObjInterface(exec, scriptObjIntf);
+            FFuncExpr:=CreateIntfExpr(prog, funcExpr.FuncSym, scriptObjIntf);
          end else begin
+            baseExpr.EvalAsScriptObj(exec, scriptObj);
             FFuncExpr:=CreateFuncExpr(prog, funcExpr.FuncSym, scriptObj, scriptObj.ClassSym);
          end;
       end;
@@ -6946,6 +6966,13 @@ end;
 function TScriptInterface.ToString : String;
 begin
    Result:=FTyp.ClassName;
+end;
+
+// GetScriptObj
+//
+function TScriptInterface.GetScriptObj : IScriptObj;
+begin
+   Result:=Instance;
 end;
 
 // ------------------

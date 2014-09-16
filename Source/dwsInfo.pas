@@ -1204,9 +1204,9 @@ end;
 //
 function TInfoDynamicArrayBase.SelfDynArray : TScriptDynamicArray;
 var
-   obj : IScriptObj;
+   obj : IScriptDynArray;
 begin
-   obj:=IScriptObj(FDataPtr.AsInterface[0]);
+   obj:=IScriptDynArray(FDataPtr.AsInterface[0]);
    if obj<>nil then
       Result:=obj.GetSelf as TScriptDynamicArray
    else Result:=nil;

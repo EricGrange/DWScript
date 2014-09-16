@@ -12764,8 +12764,10 @@ begin
             msgExpr:=nil;
          end;
          skAssigned : begin
-            if (argTyp is TClassSymbol) or (argTyp is TInterfaceSymbol) then
+            if argTyp is TClassSymbol then
                Result:=TAssignedInstanceExpr.Create(FProg, argExpr)
+            else if argTyp is TInterfaceSymbol then
+               Result:=TAssignedInterfaceExpr.Create(FProg, argExpr)
             else if argTyp is TClassOfSymbol then
                Result:=TAssignedMetaClassExpr.Create(FProg, argExpr)
             else if argTyp.AsFuncSymbol<>nil then

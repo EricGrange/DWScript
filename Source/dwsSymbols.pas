@@ -31,8 +31,11 @@ uses SysUtils, Variants, Classes,
 type
 
    IScriptObj = interface;
+   IScriptObjInterface = interface;
    IScriptDynArray = interface;
+
    PIScriptObj = ^IScriptObj;
+
    TdwsExecution = class;
    TExprBase = class;
    TSymbol = class;
@@ -164,6 +167,7 @@ type
          procedure EvalAsString(exec : TdwsExecution; var result : UnicodeString); overload; virtual; abstract;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); overload; virtual; abstract;
          procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); virtual; abstract;
+         procedure EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface); virtual; abstract;
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); virtual; abstract;
          procedure EvalNoResult(exec : TdwsExecution); virtual;
 
@@ -1739,6 +1743,13 @@ type
       property ClassSym : TClassSymbol read GetClassSym;
       property ExternalObject : TObject read GetExternalObject write SetExternalObject;
       property Destroyed : Boolean read GetDestroyed write SetDestroyed;
+   end;
+
+   // IScriptObjInterface
+   //
+   IScriptObjInterface = interface (IDataContext)
+      ['{86B77C28-C396-4D53-812B-8FF1867A6128}']
+      function GetScriptObj : IScriptObj;
    end;
 
    // IScriptDynArray

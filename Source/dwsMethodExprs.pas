@@ -435,12 +435,12 @@ end;
 //
 function TMethodInterfaceExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
 var
-   scriptObj : IScriptObj;
+   scriptIntf : IScriptObjInterface;
    intfObj : TScriptInterface;
 begin
-   FBaseExpr.EvalAsScriptObj(exec, scriptObj);
-   CheckInterface(exec, scriptObj);
-   intfObj:=TScriptInterface(scriptObj.GetSelf);
+   FBaseExpr.EvalAsScriptObjInterface(exec, scriptIntf);
+   CheckInterface(exec, scriptIntf);
+   intfObj:=TScriptInterface(scriptIntf.GetSelf);
    exec.SelfScriptObject^:=intfObj.Instance;
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, intfObj.Instance);
    Result:=intfObj.VMT[TMethodSymbol(FuncSym).VMTIndex];

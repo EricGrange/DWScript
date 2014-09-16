@@ -188,19 +188,19 @@ type
    // obj as Interface
    TObjAsIntfExpr = class(TAsCastExpr)
       public
-         procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
+         function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // interface as Interface
    TIntfAsIntfExpr = class(TAsCastExpr)
       public
-         procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
+         function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // interface as class
    TIntfAsClassExpr = class(TAsCastExpr)
       public
-         procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
+         function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
 // ------------------------------------------------------------------
@@ -614,85 +614,89 @@ end;
 // ------------------ TObjAsIntfExpr ------------------
 // ------------------
 
-// EvalAsScriptObj
+// Eval
 //
-procedure TObjAsIntfExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
+function TObjAsIntfExpr.Eval(exec : TdwsExecution) : Variant;
 
-   procedure RaiseIntfCastFailed;
+   procedure RaiseIntfCastFailed(const obj : IScriptObj);
    begin
       RaiseScriptError(exec, EClassCast.CreatePosFmt(ScriptPos, RTE_ObjCastToIntfFailed,
-                                                     [Result.ClassSym.Caption, FTyp.Caption]))
+                                                     [obj.ClassSym.Caption, FTyp.Caption]))
    end;
 
 var
    intf : TScriptInterface;
    resolved : TResolvedInterface;
+   obj : IScriptObj;
 begin
-   Expr.EvalAsScriptObj(exec, Result);
+   Expr.EvalAsScriptObj(exec, obj);
 
-   if Assigned(Result) then begin
-      if not Result.ClassSym.ResolveInterface(TInterfaceSymbol(Typ), resolved) then
-         RaiseIntfCastFailed;
-      intf:=TScriptInterface.Create(Result, resolved);
-      Result:=intf;
-   end;
+   if Assigned(obj) then begin
+      if not obj.ClassSym.ResolveInterface(TInterfaceSymbol(Typ), resolved) then
+         RaiseIntfCastFailed(obj);
+      intf:=TScriptInterface.Create(obj, resolved);
+   end else intf:=nil;
+   Result:=IScriptObjInterface(intf);
 end;
 
 // ------------------
 // ------------------ TIntfAsIntfExpr ------------------
 // ------------------
 
-// EvalAsScriptObj
+// Eval
 //
-procedure TIntfAsIntfExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
+function TIntfAsIntfExpr.Eval(exec : TdwsExecution) : Variant;
 
-   procedure RaiseIntfCastFailed;
+   procedure RaiseIntfCastFailed(const obj : IScriptObj);
    begin
       RaiseScriptError(exec, EClassCast.CreatePosFmt(ScriptPos, RTE_IntfCastToIntfFailed,
-                                                     [Result.ClassSym.Caption, FTyp.Caption]))
+                                                     [obj.ClassSym.Caption, FTyp.Caption]))
    end;
 
 var
+   scriptIntf : IScriptObjInterface;
    intf : TScriptInterface;
    instance : IScriptObj;
    resolved : TResolvedInterface;
 begin
-   Expr.EvalAsScriptObj(exec, Result);
+   Expr.EvalAsScriptObjInterface(exec, scriptIntf);
 
-   if Assigned(Result) then begin
-      instance:=TScriptInterface(Result.GetSelf).Instance;
+   if Assigned(scriptIntf) then begin
+      instance:=TScriptInterface(scriptIntf.GetSelf).Instance;
       if not instance.ClassSym.ResolveInterface(TInterfaceSymbol(Typ), resolved) then
-         RaiseIntfCastFailed;
+         RaiseIntfCastFailed(instance);
       intf:=TScriptInterface.Create(instance, resolved);
-      Result:=intf;
-   end;
+   end else intf:=nil;
+   Result:=IUnknown(intf);
 end;
 
 // ------------------
 // ------------------ TIntfAsClassExpr ------------------
 // ------------------
 
-// EvalAsScriptObj
+// Eval
 //
-procedure TIntfAsClassExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
+function TIntfAsClassExpr.Eval(exec : TdwsExecution) : Variant;
 
-   procedure RaiseIntfCastFailed;
+   procedure RaiseIntfCastFailed(const obj : IScriptObj);
    begin
       RaiseScriptError(exec, EClassCast.CreatePosFmt(ScriptPos, RTE_IntfCastToObjFailed,
-                                                     [Result.ClassSym.Caption, FTyp.Caption]))
+                                                     [obj.ClassSym.Caption, FTyp.Caption]))
    end;
 
 var
+   scriptIntf : IScriptObjInterface;
+   obj : IScriptObj;
    intf : TScriptInterface;
 begin
-   Expr.EvalAsScriptObj(exec, Result);
+   Expr.EvalAsScriptObjInterface(exec, scriptIntf);
 
-   if Assigned(Result) then begin
-      intf:=TScriptInterface(Result.GetSelf);
-      Result:=intf.Instance;
-      if not Result.ClassSym.IsCompatible(FTyp) then
-         RaiseIntfCastFailed;
-   end;
+   if Assigned(scriptIntf) then begin
+      intf:=TScriptInterface(scriptIntf.GetSelf);
+      obj:=intf.Instance;
+      if not obj.ClassSym.IsCompatible(FTyp) then
+         RaiseIntfCastFailed(obj);
+   end else Result:=IUnknown(nil);
 end;
 
 // ------------------

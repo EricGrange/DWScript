@@ -49,6 +49,7 @@ type
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
+         procedure EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface); override;
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
 
          function IsWritable : Boolean; override;
@@ -86,6 +87,17 @@ type
    TUnifiedConstExpr = class (TConstExpr)
       public
          class function CreateUnified(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant) : TUnifiedConstExpr;
+   end;
+
+   // TConstNilExpr
+   //
+   TConstNilExpr = class(TConstExpr)
+      public
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
+         procedure EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface); override;
+         procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
    end;
 
    // TConstBooleanExpr
@@ -157,7 +169,7 @@ type
          FIntegers : TStandardIntegersConstIntExprArray;
          FZeroFloat : TUnifiedConstExpr;
          FTrue, FFalse : TUnifiedConstExpr;
-         FNil : TUnifiedConstExpr;
+         FNil : TConstNilExpr;
 
       protected
          function Compare(const item1, item2 : TExprBase) : Integer; override;
@@ -172,7 +184,7 @@ type
          property ZeroFloat : TUnifiedConstExpr read FZeroFloat;
          property TrueConst : TUnifiedConstExpr read FTrue;
          property FalseConst : TUnifiedConstExpr read FFalse;
-         property NilConst : TUnifiedConstExpr read FNil;
+         property NilConst : TConstNilExpr read FNil;
    end;
 
    TArrayConstantExpr = class sealed (TPosDataExpr)
@@ -293,6 +305,13 @@ end;
 procedure TConstExpr.EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj);
 begin
    result := IScriptObj(IUnknown(FData[0]));
+end;
+
+// EvalAsScriptObjInterface
+//
+procedure TConstExpr.EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface);
+begin
+   result := IScriptObjInterface(IUnknown(FData[0]));
 end;
 
 // EvalAsScriptDynArray
@@ -462,6 +481,45 @@ begin
       Result:=TUnifiedConstExpr(Prog.Root.UnifiedConstList[i]);
    end;
    Result.IncRefCount;
+end;
+
+// ------------------
+// ------------------ TConstNilExpr ------------------
+// ------------------
+
+// EvalAsInteger
+//
+function TConstNilExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   Result := 0;
+end;
+
+// Eval
+//
+function TConstNilExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Result := FData[0];
+end;
+
+// EvalAsScriptObj
+//
+procedure TConstNilExpr.EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj);
+begin
+   result := nil;
+end;
+
+// EvalAsScriptObjInterface
+//
+procedure TConstNilExpr.EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface);
+begin
+   result := nil;
+end;
+
+// EvalAsScriptDynArray
+//
+procedure TConstNilExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
+begin
+   result := nil;
 end;
 
 // ------------------
@@ -637,7 +695,7 @@ begin
    FZeroFloat:=TConstFloatExpr.CreateUnified(prog, systemTable.TypFloat, cZeroFloat);
    FTrue:=TConstBooleanExpr.CreateUnified(prog, systemTable.TypBoolean, True);
    FFalse:=TConstBooleanExpr.CreateUnified(prog, systemTable.TypBoolean, False);
-   FNil:=TUnifiedConstExpr.CreateUnified(prog, prog.TypNil, cNilIntf);
+   FNil:=TConstNilExpr.Create(prog, prog.TypNil, cNilIntf);
 end;
 
 // Compare

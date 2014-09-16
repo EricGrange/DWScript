@@ -885,6 +885,11 @@ type
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
+   TAssignedInterfaceExpr = class(TAssignedExpr)
+   public
+     function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
    TAssignedMetaClassExpr = class(TAssignedExpr)
    public
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
@@ -4296,6 +4301,20 @@ var
 begin
    FExpr.EvalAsScriptObj(exec, obj);
    Result:=(obj<>nil);
+end;
+
+// ------------------
+// ------------------ TAssignedInterfaceExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TAssignedInterfaceExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   intf : IScriptObjInterface;
+begin
+   FExpr.EvalAsScriptObjInterface(exec, intf);
+   Result:=(intf<>nil);
 end;
 
 // ------------------

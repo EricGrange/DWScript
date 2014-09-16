@@ -787,6 +787,7 @@ begin
    RegisterJITter(TAssignArrayConstantExpr,     FInterpretedJITter.IncRefCount);
 
    RegisterJITter(TAssignedInstanceExpr,        FInterpretedJITter.IncRefCount);
+   RegisterJITter(TAssignedInterfaceExpr,       FInterpretedJITter.IncRefCount);
    RegisterJITter(TAssignedMetaClassExpr,       FInterpretedJITter.IncRefCount);
    RegisterJITter(TAssignedFuncPtrExpr,         FInterpretedJITter.IncRefCount);
 
