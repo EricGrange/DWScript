@@ -452,7 +452,7 @@ begin
       table.AddSymbol(sym);
       self.FuncSymbol := sym;
       if helperName<>'' then
-         TdwsCompilerUtils.AddProcHelper(helperName, table, sym, nil);
+         CompilerUtils.AddProcHelper(helperName, table, sym, nil);
    end;
 end;
 

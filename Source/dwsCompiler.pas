@@ -793,10 +793,6 @@ type
          procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : UnicodeString; typ1, typ2 : TTypeSymbol);
          procedure IncompatibleTypesWarn(const scriptPos : TScriptPos; const fmt : UnicodeString; typ1, typ2 : TTypeSymbol);
 
-         function WrapWithImplicitConversion(expr : TTypedExpr; toTyp : TTypeSymbol;
-                                             const hotPos : TScriptPos;
-                                             const msg : String = CPE_IncompatibleTypes) : TTypedExpr;
-
          function CreateProgram(const systemTable : ISystemSymbolTable;
                                 resultType : TdwsResultType;
                                 const stackParams : TStackParameters;
@@ -1484,33 +1480,6 @@ end;
 procedure TdwsCompiler.IncompatibleTypesWarn(const scriptPos : TScriptPos; const fmt : UnicodeString; typ1, typ2 : TTypeSymbol);
 begin
    FMsgs.AddCompilerWarningFmt(scriptPos, fmt, [typ1.Caption, typ2.Caption]);
-end;
-
-// WrapWithImplicitConversion
-//
-function TdwsCompiler.WrapWithImplicitConversion(expr : TTypedExpr; toTyp : TTypeSymbol;
-                                                 const hotPos : TScriptPos;
-                                                 const msg : String = CPE_IncompatibleTypes) : TTypedExpr;
-var
-   exprTyp : TTypeSymbol;
-begin
-   if expr<>nil then
-      exprTyp:=expr.Typ
-   else exprTyp:=nil;
-
-   if exprTyp.IsOfType(FProg.TypInteger) and toTyp.IsOfType(FProg.TypFloat) then begin
-
-      if expr.ClassType=TConstIntExpr then begin
-         Result:=TConstExpr.CreateFloatValue(FProg, TConstIntExpr(expr).Value);
-         expr.Free;
-      end else Result:=TConvIntToFloatExpr.Create(FProg, expr);
-
-   end else begin
-      // error & keep compiling
-      IncompatibleTypes(hotPos, msg, toTyp, exprTyp);
-      Result:=TConvInvalidExpr.Create(FProg, expr, toTyp);
-      Exit;
-   end;
 end;
 
 // SetupCompileOptions
@@ -2876,7 +2845,7 @@ begin
       try
          if Assigned(typ) then begin
             if not typ.IsCompatible(expr.typ) then
-               expr:=WrapWithImplicitConversion(expr, typ, FTok.HotPos);
+               expr:=CompilerUtils.WrapWithImplicitConversion(FProg, expr, typ, FTok.HotPos);
          end else if expr<>nil then begin
             typ:=expr.typ;
             detachTyp:=(typ.Name='');
@@ -7629,8 +7598,9 @@ begin
                              or (    (argList[i].Typ is TStaticArraySymbol)
                                  and (   arraySym.Typ.IsCompatible(argList[i].Typ.Typ)
                                       or (argList[i].Typ.Size=0)))) then begin
-                     argList[i]:=WrapWithImplicitConversion(argList[i], arraySym.Typ, argPosArray[i],
-                                                            CPE_IncompatibleParameterTypes);
+                     argList[i]:=CompilerUtils.WrapWithImplicitConversion(
+                                          FProg, argList[i], arraySym.Typ, argPosArray[i],
+                                          CPE_IncompatibleParameterTypes);
                      Break;
                   end else if argList[i].ClassType=TArrayConstantExpr then begin
                      TArrayConstantExpr(argList[i]).Prepare(FProg, arraySym.Typ);
@@ -9354,7 +9324,7 @@ begin
             try
                if Assigned(typ) then begin
                   if not typ.IsCompatible(expr.typ) then
-                     expr:=WrapWithImplicitConversion(expr, typ, FTok.HotPos);
+                     expr:=CompilerUtils.WrapWithImplicitConversion(FProg, expr, typ, FTok.HotPos);
                end else begin
                   typ:=expr.typ;
                   detachTyp:=(typ.Name='');
@@ -10058,6 +10028,7 @@ begin
             Result:=TNotBoolExpr.Create(FProg, Result);
 
          end else begin
+
             // Read right argument
             right := ReadExprMult;
             try
@@ -11002,7 +10973,7 @@ begin
                               defaultExpr.Free;
                               defaultExpr:=nil;
                            end else if not typ.IsCompatible(defaultExpr.Typ) then begin
-                              defaultExpr:=WrapWithImplicitConversion(defaultExpr, Typ, exprPos);
+                              defaultExpr:=CompilerUtils.WrapWithImplicitConversion(FProg, defaultExpr, Typ, exprPos);
                               if defaultExpr.ClassType=TConvInvalidExpr then
                                  FreeAndNil(defaultExpr);
                            end;
@@ -12396,10 +12367,20 @@ begin
             end else begin
 
                assignOpExpr:=CreateAssignOperatorExpr(token, scriptPos, FExec, left, right);
-               if assignOpExpr=nil then begin
+               if assignOpExpr<>nil then
+
+                  Result:=assignOpExpr
+
+               else if left.Typ is TDynamicArraySymbol then begin
+
+                  Result:=CompilerUtils.DynamicArrayAdd(FProg, left, scriptPos, right);
+
+               end else begin
+
                   FMsgs.AddCompilerError(scriptPos, CPE_IncompatibleOperands);
                   Result:=TAssignExpr.Create(FProg, scriptPos, FExec, left, right);
-               end else Result:=assignOpExpr;
+
+               end;
 
             end;
          end;
@@ -13268,7 +13249,7 @@ begin
 
    if param=nil then Exit;
 
-   TdwsCompilerUtils.AddProcHelper(name, FProg.Table, func, CurrentUnitSymbol);
+   CompilerUtils.AddProcHelper(name, FProg.Table, func, CurrentUnitSymbol);
 end;
 
 // EnumerateHelpers

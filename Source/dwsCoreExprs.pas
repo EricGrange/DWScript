@@ -8133,13 +8133,14 @@ begin
       end else begin
 
          Assert(arg.Typ is TStaticArraySymbol);
-         argData:=(arg as TDataExpr);
 
-         k:=argData.Typ.Size div dyn.ElementSize;
+         k:=arg.Typ.Size div dyn.ElementSize;
          if k>0 then begin
             n:=dyn.ArrayLength;
             dyn.ArrayLength:=n+k;
-            argData.DataPtr[exec].CopyData(dyn.AsData, n*dyn.ElementSize, k*dyn.ElementSize);
+            if arg is TArrayConstantExpr then
+               TArrayConstantExpr(arg).EvalToTData(exec, dyn.AsPData^, n*dyn.ElementSize)
+            else (arg as TDataExpr).DataPtr[exec].CopyData(dyn.AsData, n*dyn.ElementSize, k*dyn.ElementSize);
          end;
 
       end;

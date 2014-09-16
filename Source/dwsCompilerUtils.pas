@@ -24,15 +24,31 @@ uses
    SysUtils,
    dwsErrors, dwsStrings, dwsXPlatform,
    dwsSymbols, dwsUnitSymbols,
-   dwsExprs, dwsCoreExprs, dwsConstExprs, dwsMethodExprs, dwsMagicExprs;
+   dwsExprs, dwsCoreExprs, dwsConstExprs, dwsMethodExprs, dwsMagicExprs,
+   dwsConvExprs;
 
 type
 
-   TdwsCompilerUtils = class
+   CompilerUtils = class
       public
+         class procedure IncompatibleTypes(
+                        aProg : TdwsProgram; const scriptPos : TScriptPos;
+                        const fmt : UnicodeString; typ1, typ2 : TTypeSymbol); static;
+
+         class function WrapWithImplicitConversion(
+                        aProg : TdwsProgram; expr : TTypedExpr; toTyp : TTypeSymbol;
+                        const hotPos : TScriptPos;
+                        const msg : String = CPE_IncompatibleTypes) : TTypedExpr; static;
+
          class procedure AddProcHelper(const name : UnicodeString;
                                        table : TSymbolTable; func : TFuncSymbol;
                                        unitSymbol : TUnitMainSymbol); static;
+
+         class function DynamicArrayAdd(aProg : TdwsProgram; baseExpr : TTypedExpr;
+                                        const namePos : TScriptPos;
+                                        argList : TTypedExprList; const argPosArray : TScriptPosArray) : TArrayAddExpr; overload; static;
+         class function DynamicArrayAdd(aProg : TdwsProgram; baseExpr : TTypedExpr;
+                                        const scriptPos : TScriptPos; argExpr : TTypedExpr) : TArrayAddExpr; overload; static;
    end;
 
    IRecursiveHasSubExprClass = interface
@@ -276,12 +292,21 @@ begin
 end;
 
 // ------------------
-// ------------------ TdwsCompilerUtils ------------------
+// ------------------ CompilerUtils ------------------
 // ------------------
+
+// IncompatibleTypes
+//
+class procedure CompilerUtils.IncompatibleTypes(
+                        aProg : TdwsProgram; const scriptPos : TScriptPos;
+                        const fmt : UnicodeString; typ1, typ2 : TTypeSymbol);
+begin
+   aProg.CompileMsgs.AddCompilerErrorFmt(scriptPos, fmt, [typ1.Caption, typ2.Caption]);
+end;
 
 // AddProcHelper
 //
-class procedure TdwsCompilerUtils.AddProcHelper(const name : UnicodeString;
+class procedure CompilerUtils.AddProcHelper(const name : UnicodeString;
                                                 table : TSymbolTable; func : TFuncSymbol;
                                                 unitSymbol : TUnitMainSymbol);
 var
@@ -320,6 +345,83 @@ begin
       meth.Params.AddSymbol(func.Params[i].Clone);
    meth.Alias:=func;
    helper.AddMethod(meth);
+end;
+
+// DynamicArrayAdd
+//
+class function CompilerUtils.DynamicArrayAdd(
+      aProg : TdwsProgram; baseExpr : TTypedExpr;
+      const namePos : TScriptPos;
+      argList : TTypedExprList; const argPosArray : TScriptPosArray) : TArrayAddExpr;
+var
+   i : Integer;
+   arraySym : TDynamicArraySymbol;
+begin
+   arraySym:=(baseExpr.Typ.UnAliasedType as TDynamicArraySymbol);
+   for i:=0 to argList.Count-1 do begin
+      if    (argList[i].Typ=nil)
+         or not (   arraySym.Typ.IsCompatible(argList[i].Typ)
+                 or arraySym.IsCompatible(argList[i].Typ)
+                 or (    (argList[i].Typ is TStaticArraySymbol)
+                     and (   arraySym.Typ.IsCompatible(argList[i].Typ.Typ)
+                          or (argList[i].Typ.Size=0)))) then begin
+         argList[i]:=WrapWithImplicitConversion(aProg, argList[i], arraySym.Typ, argPosArray[i],
+                                                CPE_IncompatibleParameterTypes);
+         Break;
+      end else if argList[i].ClassType=TArrayConstantExpr then begin
+         TArrayConstantExpr(argList[i]).Prepare(aProg, arraySym.Typ);
+      end;
+   end;
+   Result:=TArrayAddExpr.Create(aProg, namePos, baseExpr, argList);
+   argList.Clear;
+end;
+
+// DynamicArrayAdd
+//
+class function CompilerUtils.DynamicArrayAdd(aProg : TdwsProgram; baseExpr : TTypedExpr;
+      const scriptPos : TScriptPos; argExpr : TTypedExpr) : TArrayAddExpr;
+var
+   argList : TTypedExprList;
+   argPosArray : TScriptPosArray;
+begin
+   argList:=TTypedExprList.Create;
+   try
+      argList.AddExpr(argExpr);
+      SetLength(argPosArray, 1);
+      argPosArray[0]:=scriptPos;
+      Result:=DynamicArrayAdd(aProg, baseExpr, scriptPos, argList, argPosArray);
+   finally
+      argList.Free;
+   end;
+end;
+
+
+// WrapWithImplicitConversion
+//
+class function CompilerUtils.WrapWithImplicitConversion(
+      aProg : TdwsProgram; expr : TTypedExpr; toTyp : TTypeSymbol;
+      const hotPos : TScriptPos;
+      const msg : String = CPE_IncompatibleTypes) : TTypedExpr;
+var
+   exprTyp : TTypeSymbol;
+begin
+   if expr<>nil then
+      exprTyp:=expr.Typ
+   else exprTyp:=nil;
+
+   if exprTyp.IsOfType(aProg.TypInteger) and toTyp.IsOfType(aProg.TypFloat) then begin
+
+      if expr.ClassType=TConstIntExpr then begin
+         Result:=TConstExpr.CreateFloatValue(aProg, TConstIntExpr(expr).Value);
+         expr.Free;
+      end else Result:=TConvIntToFloatExpr.Create(aProg, expr);
+
+   end else begin
+      // error & keep compiling
+      IncompatibleTypes(aProg, hotPos, msg, toTyp, exprTyp);
+      Result:=TConvInvalidExpr.Create(aProg, expr, toTyp);
+      Exit;
+   end;
 end;
 
 // ------------------

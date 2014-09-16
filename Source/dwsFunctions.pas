@@ -455,7 +455,7 @@ begin
    table.AddSymbol(sym);
 
    if helperName<>'' then
-      TdwsCompilerUtils.AddProcHelper(helperName, table, sym, nil);
+      CompilerUtils.AddProcHelper(helperName, table, sym, nil);
 end;
 
 // Create
