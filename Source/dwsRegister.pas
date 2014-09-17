@@ -32,7 +32,7 @@ implementation
 uses
   Classes, Controls, dwsComp, dwsComConnector, dwsDebugger, dwsGlobalVarsFunctions,
   dwsVCLGUIFunctions, dwsHtmlFilter, dwsClasses, dwsClassesLibModule,
-  dwsFileSystem, dwsSymbolsLibModule
+  dwsFileSystem, dwsSymbolsLibModule, dwsJSONConnector
 {$IF RTLVersion >= 21}
   , dwsRTTIConnector
 {$IFEND}
@@ -59,7 +59,8 @@ begin
                      TdwsRestrictedFileSystem,
                      TdwsNoFileSystem,
                      TdwsClassesLib,
-                     TdwsCustomLocalizer
+                     TdwsCustomLocalizer,
+                     TdwsJSONLibModule
                      ]);
 end;
 
