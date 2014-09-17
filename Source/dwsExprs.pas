@@ -1708,34 +1708,27 @@ type
          FNextObject, FPrevObject : TScriptObj;
 
       protected
-         function GetClassSym : TClassSymbol; virtual;
-
-         function GetDestroyed : Boolean; virtual;
-         procedure SetDestroyed(const val : Boolean); virtual;
-         function GetExternalObject: TObject; virtual;
-         procedure SetExternalObject(Value: TObject); virtual;
          procedure SetExecutionContext(exec : TdwsProgramExecution); virtual;
 
       public
          property NextObject : TScriptObj read FNextObject write FNextObject;
          property PrevObject : TScriptObj read FPrevObject write FPrevObject;
-         property ExternalObject : TObject read GetExternalObject write SetExternalObject;
    end;
 
    TScriptObjInstance = class (TScriptObj, IScriptObj)
       private
          FClassSym : TClassSymbol;
-         FExternalObj : TObject;
+         FExternalObject : TObject;
          FExecutionContext : TdwsProgramExecution;
          FOnObjectDestroy: TObjectDestroyEvent;
          FDestroyed : Boolean;
 
       protected
-         function GetClassSym: TClassSymbol; override;
-         function GetExternalObject: TObject; override;
-         procedure SetExternalObject(Value: TObject); override;
-         function GetDestroyed : Boolean; override;
-         procedure SetDestroyed(const val : Boolean); override;
+         function GetClassSym: TClassSymbol;
+         function GetExternalObject: TObject;
+         procedure SetExternalObject(Value: TObject);
+         function GetDestroyed : Boolean;
+         procedure SetDestroyed(const val : Boolean);
          procedure SetExecutionContext(exec : TdwsProgramExecution); override;
 
       public
@@ -1751,6 +1744,7 @@ type
          property ExecutionContext : TdwsProgramExecution read FExecutionContext write FExecutionContext;
          property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
          property Destroyed : Boolean read FDestroyed write FDestroyed;
+         property ExternalObject : TObject read FExternalObject write FExternalObject;
    end;
 
    TScriptDynamicArray = class abstract (TScriptObj, IScriptDynArray)
@@ -6416,46 +6410,11 @@ end;
 // ------------------ TScriptObj ------------------
 // ------------------
 
-// GetClassSym
-//
-function TScriptObj.GetClassSym: TClassSymbol;
-begin
-   Result:=nil;
-end;
-
-// GetExternalObject
-//
-function TScriptObj.GetExternalObject: TObject;
-begin
-   Result:=nil;
-end;
-
-// SetExternalObject
-//
-procedure TScriptObj.SetExternalObject(Value: TObject);
-begin
-   Assert(False);
-end;
-
 // SetExecutionContext
 //
 procedure TScriptObj.SetExecutionContext(exec : TdwsProgramExecution);
 begin
    // ignore
-end;
-
-// GetDestroyed
-//
-function TScriptObj.GetDestroyed : Boolean;
-begin
-   Result:=False;
-end;
-
-// SetDestroyed
-//
-procedure TScriptObj.SetDestroyed(const val : Boolean);
-begin
-   Assert(False);
 end;
 
 // ------------------
@@ -6499,7 +6458,7 @@ end;
 destructor TScriptObjInstance.Destroy;
 begin
    if Assigned(FOnObjectDestroy) then
-      FOnObjectDestroy(FExternalObj);
+      FOnObjectDestroy(FExternalObject);
    inherited;
 end;
 
@@ -6557,14 +6516,14 @@ end;
 //
 function TScriptObjInstance.GetExternalObject: TObject;
 begin
-   Result:=FExternalObj;
+   Result:=FExternalObject;
 end;
 
 // SetExternalObject
 //
 procedure TScriptObjInstance.SetExternalObject(Value: TObject);
 begin
-   FExternalObj:=Value;
+   FExternalObject:=Value;
 end;
 
 // GetDestroyed
@@ -6579,9 +6538,9 @@ end;
 procedure TScriptObjInstance.SetDestroyed(const val : Boolean);
 begin
    if Assigned(FOnObjectDestroy) then begin
-      FOnObjectDestroy(FExternalObj);
+      FOnObjectDestroy(FExternalObject);
       FOnObjectDestroy:=nil;
-      FExternalObj:=nil;
+      FExternalObject:=nil;
    end;
    FDestroyed:=True;
 end;
