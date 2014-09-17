@@ -487,6 +487,10 @@ type
          property StackAddr: Integer read FStackAddr write FStackAddr;
    end;
 
+   // used for script engine internal purposes
+   TScriptDataSymbol = class (TDataSymbol)
+   end;
+
    // parameter: procedure P(x: Integer);
    TParamSymbol = class (TDataSymbol)
       public

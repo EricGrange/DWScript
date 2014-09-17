@@ -556,24 +556,15 @@ type
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
-   // TypedExpr for dynamic array
-   TArrayTypedExpr = class(TTypedExpr)
-      private
-         FBaseExpr : TTypedExpr;
-         FScriptPos : TScriptPos;
-
+   // returns a dynamic array
+   TDynamicArrayDataExpr = class(TPosDataExpr)
       public
-         constructor Create(prog: TdwsProgram; const scriptPos: TScriptPos;
-                            aBaseExpr : TTypedExpr);
-         destructor Destroy; override;
-
-         function ScriptPos : TScriptPos; override;
-
-         property BaseExpr : TTypedExpr read FBaseExpr;
+         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
    end;
 
    // new array[length,...]
-   TNewArrayExpr = class(TPosDataExpr)
+   TNewArrayExpr = class(TDynamicArrayDataExpr)
       private
          FLengthExprs : TTightList;
          FTyps : TTightList;
@@ -586,13 +577,11 @@ type
 
       public
          constructor Create(prog: TdwsProgram; const scriptPos: TScriptPos;
-                            elementTyp : TTypeSymbol);
+                            elementTyp : TTypeSymbol); overload;
+         constructor Create(const scriptPos: TScriptPos; arrayTyp : TDynamicArraySymbol); overload;
          destructor Destroy; override;
 
-         function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var Result : IScriptDynArray); override;
-
-         procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
          procedure AddLengthExpr(expr : TTypedExpr; indexTyp : TTypeSymbol);
          property LengthExpr[idx : Integer] : TTypedExpr read GetLengthExpr;
@@ -609,8 +598,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
-                            aBase : TTypedExpr);
+         constructor Create(const scriptPos: TScriptPos; aBase : TTypedExpr);
          destructor Destroy; override;
 
          property BaseExpr : TTypedExpr read FBaseExpr;
@@ -626,8 +614,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
-                            aBase, aLength : TTypedExpr);
+         constructor Create(const scriptPos: TScriptPos; aBase, aLength : TTypedExpr);
          destructor Destroy; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
 
@@ -645,8 +632,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
-                            aBase, aIndex1, aIndex2 : TTypedExpr);
+         constructor Create(const scriptPos: TScriptPos; aBase, aIndex1, aIndex2 : TTypedExpr);
          destructor Destroy; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
 
@@ -696,6 +682,22 @@ type
          procedure SetCompareMethod(var qs : TQuickSort; dyn : TScriptDynamicValueArray); override;
    end;
 
+   // TypedExpr for dynamic array
+   TArrayTypedExpr = class(TTypedExpr)
+      private
+         FBaseExpr : TTypedExpr;
+         FScriptPos : TScriptPos;
+
+      public
+         constructor Create(prog: TdwsProgram; const scriptPos: TScriptPos;
+                            aBaseExpr : TTypedExpr);
+         destructor Destroy; override;
+
+         function ScriptPos : TScriptPos; override;
+
+         property BaseExpr : TTypedExpr read FBaseExpr;
+   end;
+
    // Map a dynamic array
    TArrayMapExpr = class(TArrayTypedExpr)
       private
@@ -732,15 +734,20 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
-         function GetItemExpr(idx : Integer) : TDataExpr;
+         function GetItemExpr(idx : Integer) : TTypedExpr;
+
+         procedure DoEval(exec : TdwsExecution; var base : IScriptDynArray);
 
       public
-         constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+         constructor Create(const scriptPos: TScriptPos;
                             aBase :  TTypedExpr; argExprs : TTypedExprList);
          destructor Destroy; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
 
-         property ArgExpr[idx : Integer] : TDataExpr read GetItemExpr;
+         procedure AddArg(expr : TTypedExpr);
+         procedure ExtractArgs(destination : TArrayAddExpr);
+
+         property ArgExpr[idx : Integer] : TTypedExpr read GetItemExpr;
          property ArgCount : Integer read FArgs.FCount;
    end;
 
@@ -789,7 +796,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+         constructor Create(const scriptPos: TScriptPos;
                             aBase, aIndex, aCount : TTypedExpr);
          destructor Destroy; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -868,13 +875,37 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+         constructor Create(const scriptPos: TScriptPos;
                             aBase, aIndex : TTypedExpr; aItem : TTypedExpr);
          destructor Destroy; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
 
          property IndexExpr : TTypedExpr read FIndexExpr;
          property ItemExpr : TTypedExpr read FItemExpr;
+   end;
+
+   // Concatenates two or more arrays
+   TArrayConcatExpr = class(TDynamicArrayDataExpr)
+      private
+         FAddExpr : TArrayAddExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+         function GetArgs(index : Integer) : TTypedExpr; inline;
+
+      public
+         constructor Create(const scriptPos : TScriptPos; aTyp: TDynamicArraySymbol);
+         destructor Destroy; override;
+
+         procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
+
+         procedure AddArg(arg : TTypedExpr);
+
+         property AddExpr : TArrayAddExpr read FAddExpr;
+         property ArgExpr[index : Integer] : TTypedExpr read GetArgs;
+         function ArgCount : Integer; inline;
    end;
 
    TAssignedExpr = class(TUnaryOpBoolExpr)
@@ -2686,6 +2717,31 @@ begin
 end;
 
 // ------------------
+// ------------------ TDynamicArrayDataExpr ------------------
+// ------------------
+
+// Eval
+//
+function TDynamicArrayDataExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   dyn : IScriptDynArray;
+begin
+   EvalAsScriptDynArray(exec, dyn);
+   Result:=dyn;
+end;
+
+// GetDataPtr
+//
+procedure TDynamicArrayDataExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
+var
+   data : TData;
+begin
+   SetLength(data, 1);
+   data[0]:=Eval(exec);
+   result:=exec.Stack.CreateDataContext(data, 0);
+end;
+
+// ------------------
 // ------------------ TNewArrayExpr ------------------
 // ------------------
 
@@ -2698,6 +2754,13 @@ begin
    FTyps.Add(FTyp);
 end;
 
+// Create
+//
+constructor TNewArrayExpr.Create(const scriptPos: TScriptPos; arrayTyp : TDynamicArraySymbol);
+begin
+   inherited Create(scriptPos, arrayTyp);
+end;
+
 // Destroy
 //
 destructor TNewArrayExpr.Destroy;
@@ -2707,19 +2770,9 @@ begin
    FLengthExprs.Clean;
 end;
 
-// Eval
-//
-function TNewArrayExpr.Eval(exec : TdwsExecution) : Variant;
-var
-   dyn : IScriptDynArray;
-begin
-   EvalAsScriptDynArray(exec, dyn);
-   Result:=dyn;
-end;
-
 // EvalAsScriptDynArray
 //
-procedure TNewArrayExpr.EvalAsScriptDynArray(exec : TdwsExecution; var Result : IScriptDynArray);
+procedure TNewArrayExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 
    function CreateDimension(d : Integer) : TScriptDynamicArray;
    var
@@ -2739,18 +2792,9 @@ procedure TNewArrayExpr.EvalAsScriptDynArray(exec : TdwsExecution; var Result : 
    end;
 
 begin
-   Result:=CreateDimension(0);
-end;
-
-// GetDataPtr
-//
-procedure TNewArrayExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
-var
-   data : TData;
-begin
-   SetLength(data, 1);
-   data[0]:=Eval(exec);
-   result:=exec.Stack.CreateDataContext(data, 0);
+   if LengthExprCount>0 then
+      result:=CreateDimension(0)
+   else result:=TScriptDynamicArray.CreateNew(Typ.Typ);
 end;
 
 // AddLengthExpr
@@ -7636,8 +7680,7 @@ end;
 
 // Create
 //
-constructor TArrayPseudoMethodExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
-                                          aBase : TTypedExpr);
+constructor TArrayPseudoMethodExpr.Create(const scriptPos: TScriptPos; aBase : TTypedExpr);
 begin
    inherited Create(scriptPos);
    FBaseExpr:=aBase;
@@ -7671,10 +7714,10 @@ end;
 
 // Create
 //
-constructor TArraySetLengthExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+constructor TArraySetLengthExpr.Create(const scriptPos: TScriptPos;
                                        aBase, aLength : TTypedExpr);
 begin
-   inherited Create(prog, scriptPos, aBase);
+   inherited Create(scriptPos, aBase);
    FLengthExpr:=aLength;
 end;
 
@@ -7722,10 +7765,10 @@ end;
 
 // Create
 //
-constructor TArraySwapExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+constructor TArraySwapExpr.Create(const scriptPos: TScriptPos;
                                   aBase, aIndex1, aIndex2 : TTypedExpr);
 begin
-   inherited Create(prog, scriptPos, aBase);
+   inherited Create(scriptPos, aBase);
    FIndex1Expr:=aIndex1;
    FIndex2Expr:=aIndex2;
 end;
@@ -7835,13 +7878,13 @@ constructor TArraySortExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPo
 var
    elemTyp : TTypeSymbol;
 begin
-   inherited Create(prog, scriptPos, aBase);
+   inherited Create(scriptPos, aBase);
    FCompareExpr:=aCompare;
    if aCompare<>nil then begin
       elemTyp:=aCompare.FuncSym.Params[0].Typ;
-      FLeft:=TDataSymbol.Create('', elemTyp);
+      FLeft:=TScriptDataSymbol.Create('', elemTyp);
       prog.Table.AddSymbol(FLeft);
-      FRight:=TDataSymbol.Create('', elemTyp);
+      FRight:=TScriptDataSymbol.Create('', elemTyp);
       prog.Table.AddSymbol(FRight);
       FCompareExpr.AddArg(TVarExpr.CreateTyped(prog, FLeft));
       FCompareExpr.AddArg(TVarExpr.CreateTyped(prog, FRight));
@@ -7979,7 +8022,7 @@ begin
 
    if aMapFunc<>nil then begin
       elemTyp:=aMapFunc.FuncSym.Params[0].Typ;
-      FItem:=TDataSymbol.Create('', elemTyp);
+      FItem:=TScriptDataSymbol.Create('', elemTyp);
       prog.Table.AddSymbol(FItem);
       FMapFuncExpr.AddArg(TVarExpr.CreateTyped(prog, FItem));
       FMapFuncExpr.SetResultAddr(prog, nil);
@@ -8080,14 +8123,15 @@ end;
 
 // Create
 //
-constructor TArrayAddExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+constructor TArrayAddExpr.Create(const scriptPos: TScriptPos;
                                  aBase :  TTypedExpr; argExprs : TTypedExprList);
 var
    i : Integer;
 begin
-   inherited Create(prog, scriptPos, aBase);
-   for i:=0 to argExprs.Count-1 do
-      FArgs.Add(argExprs[i]);
+   inherited Create(scriptPos, aBase);
+   if argExprs<>nil then
+      for i:=0 to argExprs.Count-1 do
+         FArgs.Add(argExprs[i]);
 end;
 
 // Destroy
@@ -8098,11 +8142,11 @@ begin
    FArgs.Clean;
 end;
 
-// EvalNoResult
+// DoEval
 //
-procedure TArrayAddExpr.EvalNoResult(exec : TdwsExecution);
+procedure TArrayAddExpr.DoEval(exec : TdwsExecution; var base : IScriptDynArray);
 var
-   base, src : IScriptDynArray;
+   src : IScriptDynArray;
    dyn, dynSrc : TScriptDynamicArray;
    i, n, k : Integer;
    arg : TTypedExpr;
@@ -8147,6 +8191,33 @@ begin
    end;
 end;
 
+// EvalNoResult
+//
+procedure TArrayAddExpr.EvalNoResult(exec : TdwsExecution);
+var
+   base : IScriptDynArray;
+begin
+   DoEval(exec, base);
+end;
+
+// AddArg
+//
+procedure TArrayAddExpr.AddArg(expr : TTypedExpr);
+begin
+   FArgs.Add(expr);
+end;
+
+// ExtractArgs
+//
+procedure TArrayAddExpr.ExtractArgs(destination : TArrayAddExpr);
+var
+   i : Integer;
+begin
+   for i:=0 to FArgs.Count-1 do
+      destination.FArgs.Add(FArgs.List[i]);
+   FArgs.Clear;
+end;
+
 // GetSubExpr
 //
 function TArrayAddExpr.GetSubExpr(i : Integer) : TExprBase;
@@ -8165,9 +8236,9 @@ end;
 
 // GetItemExpr
 //
-function TArrayAddExpr.GetItemExpr(idx : Integer) : TDataExpr;
+function TArrayAddExpr.GetItemExpr(idx : Integer) : TTypedExpr;
 begin
-   Result:=TDataExpr(FArgs.List[idx]);
+   Result:=TTypedExpr(FArgs.List[idx]);
 end;
 
 // ------------------
@@ -8267,10 +8338,10 @@ end;
 
 // Create
 //
-constructor TArrayDeleteExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+constructor TArrayDeleteExpr.Create(const scriptPos: TScriptPos;
                                     aBase, aIndex, aCount : TTypedExpr);
 begin
-   inherited Create(prog, scriptPos, aBase);
+   inherited Create(scriptPos, aBase);
    FIndexExpr:=aIndex;
    FCountExpr:=aCount;
 end;
@@ -8578,10 +8649,10 @@ end;
 
 // Create
 //
-constructor TArrayInsertExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+constructor TArrayInsertExpr.Create(const scriptPos: TScriptPos;
                                     aBase, aIndex : TTypedExpr; aItem : TTypedExpr);
 begin
-   inherited Create(prog, scriptPos, aBase);
+   inherited Create(scriptPos, aBase);
    FIndexExpr:=aIndex;
    FItemExpr:=aItem;
 end;
@@ -9021,6 +9092,80 @@ end;
 function TIfThenElseValueExpr.GetSubExprCount : Integer;
 begin
    Result:=3;
+end;
+
+// ------------------
+// ------------------ TArrayConcatExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TArrayConcatExpr.Create(const scriptPos : TScriptPos; aTyp: TDynamicArraySymbol);
+var
+   newArray : TNewArrayExpr;
+begin
+   inherited Create(scriptPos, aTyp);
+   newArray:=TNewArrayExpr.Create(scriptPos, aTyp);
+   FAddExpr:=TArrayAddExpr.Create(scriptPos, newArray, nil);
+end;
+
+// Destroy
+//
+destructor TArrayConcatExpr.Destroy;
+begin
+   inherited;
+   FAddExpr.Free;
+end;
+
+// EvalAsScriptDynArray
+//
+procedure TArrayConcatExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
+begin
+   FAddExpr.DoEval(exec, result);
+end;
+
+// AddArg
+//
+procedure TArrayConcatExpr.AddArg(arg : TTypedExpr);
+var
+   concat : TArrayConcatExpr;
+begin
+   if arg is TArrayConcatExpr then begin
+
+      // coalesce
+      concat:=TArrayConcatExpr(arg);
+      concat.FAddExpr.ExtractArgs(FAddExpr);
+      concat.Free;
+
+   end else FAddExpr.AddArg(arg);
+end;
+
+// ArgCount
+//
+function TArrayConcatExpr.ArgCount : Integer;
+begin
+   Result:=FAddExpr.SubExprCount-1
+end;
+
+// GetSubExpr
+//
+function TArrayConcatExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FAddExpr.SubExpr[i+1];
+end;
+
+// GetSubExprCount
+//
+function TArrayConcatExpr.GetSubExprCount : Integer;
+begin
+   Result:=FAddExpr.SubExprCount-1;
+end;
+
+// GetArgs
+//
+function TArrayConcatExpr.GetArgs(index : Integer) : TTypedExpr;
+begin
+   Result:=FAddExpr.ArgExpr[index];
 end;
 
 end.

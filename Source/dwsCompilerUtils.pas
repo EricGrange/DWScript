@@ -49,6 +49,9 @@ type
                                         argList : TTypedExprList; const argPosArray : TScriptPosArray) : TArrayAddExpr; overload; static;
          class function DynamicArrayAdd(aProg : TdwsProgram; baseExpr : TTypedExpr;
                                         const scriptPos : TScriptPos; argExpr : TTypedExpr) : TArrayAddExpr; overload; static;
+
+         class function ArrayConcat(aProg : TdwsProgram; const hotPos : TScriptPos;
+                                    left, right : TTypedExpr) : TArrayConcatExpr; static;
    end;
 
    IRecursiveHasSubExprClass = interface
@@ -372,8 +375,30 @@ begin
          TArrayConstantExpr(argList[i]).Prepare(aProg, arraySym.Typ);
       end;
    end;
-   Result:=TArrayAddExpr.Create(aProg, namePos, baseExpr, argList);
+   Result:=TArrayAddExpr.Create(namePos, baseExpr, argList);
    argList.Clear;
+end;
+
+// ArrayConcat
+//
+class function CompilerUtils.ArrayConcat(aProg : TdwsProgram; const hotPos : TScriptPos;
+                                         left, right : TTypedExpr) : TArrayConcatExpr;
+var
+   typ : TDynamicArraySymbol;
+   leftTyp, rightTyp : TArraySymbol;
+begin
+   leftTyp:=left.Typ.UnAliasedType as TArraySymbol;
+   rightTyp:=left.Typ.UnAliasedType as TArraySymbol;
+
+   if leftTyp.Typ<>rightTyp.Typ then
+      IncompatibleTypes(aProg, hotPos, CPE_IncompatibleTypes, left.Typ, right.Typ);
+
+   typ:=TDynamicArraySymbol.Create('', leftTyp.Typ, aProg.TypInteger);
+   aProg.Table.AddSymbol(typ);
+
+   Result:=TArrayConcatExpr.Create(hotPos, typ);
+   Result.AddArg(left);
+   Result.AddArg(right);
 end;
 
 // DynamicArrayAdd

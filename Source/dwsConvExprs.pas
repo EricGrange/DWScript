@@ -68,6 +68,10 @@ type
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
+   // Integer(float x)
+   TConvFloatToIntegerExpr = class (TUnaryOpIntExpr)
+     function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+   end;
 
    // String(variant x)
    TConvVarToStringExpr = class (TUnaryOpStringExpr)
@@ -400,6 +404,17 @@ begin
       end;
       Free;
    end else Result:=Self;
+end;
+
+// ------------------
+// ------------------ TConvFloatToIntegerExpr ------------------
+// ------------------
+
+// EvalAsInteger
+//
+function TConvFloatToIntegerExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   Result:=Round(Expr.EvalAsFloat(exec));
 end;
 
 // ------------------

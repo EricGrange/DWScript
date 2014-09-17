@@ -7606,9 +7606,9 @@ begin
                      TArrayConstantExpr(argList[i]).Prepare(FProg, arraySym.Typ);
                   end;
                end;
-               Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, argList);
+               Result:=TArrayAddExpr.Create(namePos, baseExpr, argList);
                argList.Clear;
-            end else Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, argList);
+            end else Result:=TArrayAddExpr.Create(namePos, baseExpr, argList);
 
          end else if UnicodeSameText(name, 'pop') then begin
 
@@ -7631,12 +7631,12 @@ begin
                if argList.Count>1 then begin
                   if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
                      FMsgs.AddCompilerError(argPosArray[1], CPE_IntegerExpressionExpected);
-                  Result:=TArrayDeleteExpr.Create(FProg, namePos, baseExpr,
+                  Result:=TArrayDeleteExpr.Create(namePos, baseExpr,
                                                   argList[0], argList[1]);
-               end else Result:=TArrayDeleteExpr.Create(FProg, namePos, baseExpr,
+               end else Result:=TArrayDeleteExpr.Create(namePos, baseExpr,
                                                         argList[0], nil);
                argList.Clear;
-            end else Result:=TArrayDeleteExpr.Create(FProg, namePos, baseExpr, nil, nil);
+            end else Result:=TArrayDeleteExpr.Create(namePos, baseExpr, nil, nil);
 
          end else if UnicodeSameText(name, 'indexof') then begin
 
@@ -7681,10 +7681,10 @@ begin
                if (argList[1].Typ=nil) or not arraySym.Typ.IsCompatible(argList[1].Typ) then
                   IncompatibleTypes(argPosArray[1], CPE_IncompatibleParameterTypes,
                                     arraySym.Typ, argList[1].Typ);
-               Result:=TArrayInsertExpr.Create(FProg, namePos, baseExpr,
+               Result:=TArrayInsertExpr.Create(namePos, baseExpr,
                                                argList[0], argList[1]);
                argList.Clear;
-            end else Result:=TArrayInsertExpr.Create(FProg, namePos, baseExpr, nil, nil);
+            end else Result:=TArrayInsertExpr.Create(namePos, baseExpr, nil, nil);
 
          end else if UnicodeSameText(name, 'setlength') then begin
 
@@ -7692,15 +7692,15 @@ begin
             if CheckArguments(1, 1) then begin
                if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
                   FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
-               Result:=TArraySetLengthExpr.Create(FProg, namePos, baseExpr, argList[0]);
+               Result:=TArraySetLengthExpr.Create(namePos, baseExpr, argList[0]);
                argList.Clear;
-            end else Result:=TArraySetLengthExpr.Create(FProg, namePos, baseExpr, nil);
+            end else Result:=TArraySetLengthExpr.Create(namePos, baseExpr, nil);
 
          end else if UnicodeSameText(name, 'clear') then begin
 
             CheckRestricted;
             CheckArguments(0, 0);
-            Result:=TArraySetLengthExpr.Create(FProg, namePos, baseExpr, TConstIntExpr.CreateIntegerValue(FProg, 0));
+            Result:=TArraySetLengthExpr.Create(namePos, baseExpr, TConstIntExpr.CreateIntegerValue(FProg, 0));
 
          end else if UnicodeSameText(name, 'swap') then begin
 
@@ -7710,10 +7710,10 @@ begin
                   FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
                if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
                   FMsgs.AddCompilerError(argPosArray[1], CPE_IntegerExpressionExpected);
-               Result:=TArraySwapExpr.Create(FProg, namePos, baseExpr,
+               Result:=TArraySwapExpr.Create(namePos, baseExpr,
                                              argList[0], argList[1]);
                argList.Clear;
-            end else Result:=TArraySwapExpr.Create(FProg, namePos, baseExpr, nil, nil);
+            end else Result:=TArraySwapExpr.Create(namePos, baseExpr, nil, nil);
 
          end else if UnicodeSameText(name, 'copy') then begin
 
@@ -7739,14 +7739,14 @@ begin
             if CheckArguments(0, 1) then begin
                if argList.Count=0 then begin
                   if arraySym.Typ.IsOfType(FProg.TypString) then
-                     Result:=TArraySortNaturalStringExpr.Create(FProg, namePos, baseExpr)
+                     Result:=TArraySortNaturalStringExpr.Create(namePos, baseExpr)
                   else if arraySym.Typ.IsOfType(FProg.TypInteger) then
-                     Result:=TArraySortNaturalIntegerExpr.Create(FProg, namePos, baseExpr)
+                     Result:=TArraySortNaturalIntegerExpr.Create(namePos, baseExpr)
                   else if arraySym.Typ.IsOfType(FProg.TypFloat) then
-                     Result:=TArraySortNaturalFloatExpr.Create(FProg, namePos, baseExpr)
+                     Result:=TArraySortNaturalFloatExpr.Create(namePos, baseExpr)
                   else begin
                      FMsgs.AddCompilerError(namePos, CPE_ArrayDoesNotHaveNaturalSortOrder);
-                     Result:=TArraySortNaturalExpr.Create(FProg, namePos, baseExpr);
+                     Result:=TArraySortNaturalExpr.Create(namePos, baseExpr);
                   end;
                end else begin
                   if not argList[0].Typ.IsCompatible(arraySym.SortFunctionType(FProg.TypInteger)) then begin
@@ -7786,7 +7786,7 @@ begin
 
             CheckRestricted;
             CheckArguments(0, 0);
-            Result:=TArrayReverseExpr.Create(FProg, namePos, baseExpr);
+            Result:=TArrayReverseExpr.Create(namePos, baseExpr);
 
          end else FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
       except
@@ -10040,8 +10040,15 @@ begin
                   opExpr:=nil;
                end else begin
                   opExpr:=CreateTypedOperatorExpr(tt, hotPos, Result, right);
-                  if opExpr=nil then
-                     FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
+                  if opExpr=nil then begin
+                     if     (tt=ttPLUS)
+                        and Result.Typ.UnAliasedTypeIs(TArraySymbol)
+                        and right.Typ.UnAliasedTypeIs(TArraySymbol) then begin
+                        opExpr:=CompilerUtils.ArrayConcat(FProg, hotPos, Result, right);
+                     end else begin
+                        FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
+                     end;
+                  end;
                end;
                if opExpr=nil then begin
                   // fake result to keep compiler going and report further issues

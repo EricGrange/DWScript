@@ -4,7 +4,7 @@ i := i + Integer(i);
 PrintLn(i);
 
 var f := Float(1.25);
-f := f + Float(f);
+f := 0.25 + Float(f);
 
 PrintLn(f);
 
