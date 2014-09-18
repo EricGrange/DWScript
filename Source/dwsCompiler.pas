@@ -6621,13 +6621,16 @@ var
    member : TSymbol;
    struct : TCompositeTypeSymbol;
    lastOverloaded : TMethodSymbol;
+   visibility : TdwsVisibility;
 begin
    lastOverloaded:=methSym;
    struct:=methSym.StructSymbol;
+   visibility:=struct.Members.VisibilityFromScope(CurrentStruct);
    repeat
       for member in struct.Members do begin
          if not UnicodeSameText(member.Name, methSym.Name) then continue;
          if not (member is TMethodSymbol) then continue;
+         if not member.IsVisibleFor(visibility) then continue;
          lastOverloaded:=TMethodSymbol(member);
          if not overloads.ContainsChildMethodOf(lastOverloaded) then
             overloads.Add(lastOverloaded);

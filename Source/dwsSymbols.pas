@@ -1067,6 +1067,7 @@ type
       public
          procedure AddParent(parent : TMembersSymbolTable);
          function FindSymbol(const aName : UnicodeString; minVisibility : TdwsVisibility; ofClass : TSymbolClass = nil) : TSymbol; override;
+         function VisibilityFromScope(scopeSym : TCompositeTypeSymbol) : TdwsVisibility;
          function FindSymbolFromScope(const aName : UnicodeString; scopeSym : TCompositeTypeSymbol) : TSymbol; reintroduce;
          function Visibilities : TdwsVisibilities;
 
@@ -5725,8 +5726,14 @@ var
 begin
    // Find Symbol in the local List
    Result:=FindLocal(aName, ofClass);
-   if Assigned(Result) and Result.IsVisibleFor(minVisibility) then
-      Exit;
+   if Assigned(Result) then begin
+      if Result.IsVisibleFor(minVisibility) then Exit;
+      // try harder in case of overload with different visibility
+      for Result in Self do begin
+         if     (UnicodeCompareText(Result.Name, aName)=0)
+            and Result.IsVisibleFor(minVisibility) then Exit;
+      end;
+   end;
    Result:=nil;
 
    // Find Symbol in all parent lists
@@ -5739,19 +5746,26 @@ begin
    end;
 end;
 
+// VisibilityFromScope
+//
+function TMembersSymbolTable.VisibilityFromScope(scopeSym : TCompositeTypeSymbol) : TdwsVisibility;
+begin
+   if scopeSym=nil then
+      Result:=cvPublic
+   else if    (scopeSym=Owner)
+           or (    (scopeSym.UnitSymbol<>nil)
+               and (scopeSym.UnitSymbol=Owner.UnitSymbol)) then
+      Result:=cvPrivate
+   else if scopeSym.DoIsOfType(Owner) then
+      Result:=cvProtected
+   else Result:=cvPublic;
+end;
+
 // FindSymbolFromScope
 //
 function TMembersSymbolTable.FindSymbolFromScope(const aName : UnicodeString; scopeSym : TCompositeTypeSymbol) : TSymbol;
 begin
-   if scopeSym=nil then
-      Result:=FindSymbol(aName, cvPublic)
-   else if    (scopeSym=Owner)
-           or (    (scopeSym.UnitSymbol<>nil)
-               and (scopeSym.UnitSymbol=Owner.UnitSymbol)) then
-      Result:=FindSymbol(aName, cvPrivate)
-   else if scopeSym.DoIsOfType(Owner) then
-      Result:=FindSymbol(aName, cvProtected)
-   else Result:=FindSymbol(aName, cvPublic);
+   Result:=FindSymbol(aName, VisibilityFromScope(scopeSym));
 end;
 
 // Visibilities

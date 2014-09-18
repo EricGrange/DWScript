@@ -1,0 +1,4 @@
+Syntax Error: There is no overloaded version of "Foo" that can be called with these arguments [line: 27, column: 3]
+Syntax Error: There is no overloaded version of "Bar" that can be called with these arguments [line: 31, column: 3]
+Hint: Private method "Foo" declared but never used [line: 4, column: 13]
+Hint: Private method "Bar" declared but never used [line: 20, column: 14]
