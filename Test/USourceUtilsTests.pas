@@ -7,13 +7,16 @@ interface
 uses
    Classes, SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsDataContext,
-   dwsTokenizer, dwsErrors, dwsUtils, Variants, dwsSymbols, dwsSuggestions;
+   dwsTokenizer, dwsErrors, dwsUtils, Variants, dwsSymbols, dwsSuggestions,
+   dwsFunctions;
 
 type
 
    TSourceUtilsTests = class (TTestCase)
       private
          FCompiler : TDelphiWebScript;
+
+         function NeedUnitHandler(const unitName : UnicodeString; var unitSource : UnicodeString) : IdwsUnit;
 
       public
          procedure SetUp; override;
@@ -31,6 +34,7 @@ type
          procedure DynamicArrayTest;
          procedure ObjectArrayTest;
          procedure HelperSuggestTest;
+         procedure SuggestInUsesSection;
          procedure SuggestAfterCall;
          procedure SuggestAcrossLines;
          procedure SymDictFunctionForward;
@@ -63,6 +67,7 @@ procedure TSourceUtilsTests.SetUp;
 begin
    FCompiler:=TDelphiWebScript.Create(nil);
    FCompiler.Config.CompilerOptions:=FCompiler.Config.CompilerOptions+[coSymbolDictionary, coContextMap];
+   FCompiler.OnNeedUnit:=NeedUnitHandler;
 end;
 
 // TearDown
@@ -264,6 +269,13 @@ begin
    CheckEquals('Create', sugg.Code[3], 'v. 3');
 end;
 
+function TSourceUtilsTests.NeedUnitHandler(const unitName: UnicodeString;
+  var unitSource: UnicodeString): IdwsUnit;
+begin
+  CheckEquals('SomeUnit', unitName, 'Only the unit ''SomeUnit'' is handled properly!');
+  unitSource := 'unit SomeUnit;';
+end;
+
 // EmptyOptimizedLocalTable
 //
 procedure TSourceUtilsTests.EmptyOptimizedLocalTable;
@@ -450,6 +462,43 @@ begin
    CheckEquals(2, sugg.Count, '.Le');
    CheckEquals('Left', sugg.Code[0], '.Le 0');
    CheckEquals('Length', sugg.Code[1], '.Le 1');
+end;
+
+procedure TSourceUtilsTests.SuggestInUsesSection;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile('uses SomeUnit;'#13#10'So');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 6);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+
+   CheckEquals(4, sugg.Count, 'There should be four units in the suggestions');
+   CheckEquals('Default', sugg.Code[0], 'Unit ''Default'' not found');
+   CheckEquals('Internal', sugg.Code[1], 'Unit ''Internal'' not found');
+   CheckEquals('SomeUnit', sugg.Code[2], 'Unit ''SomeUnit'' not found');
+   CheckEquals('System', sugg.Code[3], 'Unit ''System'' not found');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+
+   CheckEquals(1, sugg.Count, 'Should be only one suggestion');
+   CheckEquals('SomeUnit', sugg.Code[0], 'The suggestion should be the unit ''SomeUnit''');
+
+   // now check the same example without including units at all
+   prog:=FCompiler.Compile('uses SomeUnit;'#13#10'So');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 6);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords, soNoUnits]);
+
+   CheckEquals(0, sugg.Count, 'There shouldn''t be units in the suggestions at all');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords, soNoUnits]);
+
+   CheckEquals(0, sugg.Count, 'There shouldn''t be units in the suggestions at all');
 end;
 
 // SuggestAcrossLines
