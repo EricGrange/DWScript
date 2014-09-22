@@ -56,7 +56,7 @@ const
    cDefaultStackChunkSize = 4096;  // 64 kB in 32bit Delphi, each stack entry is a Variant
 
    // compiler version is date in YYYYMMDD format, dot subversion number
-   cCompilerVersion = 20140903.0;
+   cCompilerVersion = 20140918.0;
 
 type
    TdwsCompiler = class;
@@ -3216,6 +3216,12 @@ begin
                      if Assigned(FExternalRoutinesManager) then
                         Result:=FExternalRoutinesManager.ConvertToMagicSymbol(Result);
                      Result.IsExternal:=True;
+                     if FTok.TestDelete(ttPROPERTY) then begin
+                        Result.IsProperty:=True;
+                        if Result.Params.Count>0 then
+                           FMsgs.AddCompilerError(FTok.HotPos, CPE_ExternalPropertyNoArguments);
+                     end;
+                     ReadSemiColon;
                   end;
 
                   if UnitSection=secInterface then begin
@@ -3567,6 +3573,7 @@ begin
          if not ownerSym.IsExternal then
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_StructureIsNotExternal, [funcResult.QualifiedName]);
          ReadExternalName(funcResult);
+         ReadSemiColon;
       end;
 
       ReadProcCallQualifiers(funcResult);
@@ -8002,7 +8009,7 @@ end;
 procedure TdwsCompiler.ReadExternalName(funcSym : TFuncSymbol);
 begin
    FTok.KillToken;
-   if not FTok.Test(ttSEMI) then begin
+   if FTok.TestAny([ttSEMI, ttPROPERTY])=ttNone then begin
       if FTok.TestDelete(ttARRAY) then begin
          if     (funcSym is TMethodSymbol)
             and (not TMethodSymbol(funcSym).IsVirtual)
@@ -8018,7 +8025,6 @@ begin
          end;
       end;
    end;
-   ReadSemiColon;
 end;
 
 // ReadNew

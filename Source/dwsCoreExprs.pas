@@ -313,7 +313,7 @@ type
    // Array expressions: x[index0] for dynamic arrays
    TDynamicArrayExpr = class(TArrayExpr)
       protected
-         function EvalItem(exec : TdwsExecution) : PVariant; virtual;
+         function EvalItem(exec : TdwsExecution; var dyn : IScriptDynArray) : PVariant; virtual;
 
       public
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
@@ -327,8 +327,6 @@ type
 
    // Array expressions: x[index0] for dynamic arrays where BaseExpr is a TObjectVarExpr
    TDynamicArrayVarExpr = class(TDynamicArrayExpr)
-      protected
-         function EvalItem(exec : TdwsExecution) : PVariant; override;
    end;
 
    // array[index]:=val for dynamic arrays
@@ -3095,14 +3093,13 @@ end;
 
 // EvalItem
 //
-function TDynamicArrayExpr.EvalItem(exec : TdwsExecution) : PVariant;
+function TDynamicArrayExpr.EvalItem(exec : TdwsExecution; var dyn : IScriptDynArray) : PVariant;
 var
    dynArray : TScriptDynamicArray;
-   base : IScriptDynArray;
    index : Integer;
 begin
-   FBaseExpr.EvalAsScriptDynArray(exec, base);
-   dynArray:=TScriptDynamicArray(base.GetSelf);
+   FBaseExpr.EvalAsScriptDynArray(exec, dyn);
+   dynArray:=TScriptDynamicArray(dyn.GetSelf);
 
    index:=IndexExpr.EvalAsInteger(exec);
    BoundsCheck(exec, dynArray.ArrayLength, index);
@@ -3113,17 +3110,20 @@ end;
 // Eval
 //
 function TDynamicArrayExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   dyn : IScriptDynArray;
 begin
-   result:=EvalItem(exec)^;
+   result:=EvalItem(exec, dyn)^;
 end;
 
 // EvalAsInteger
 //
 function TDynamicArrayExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 var
+   dyn : IScriptDynArray;
    p : PVarData;
 begin
-   p:=PVarData(EvalItem(exec));
+   p:=PVarData(EvalItem(exec, dyn));
    if p.VType=varInt64 then
       Result:=p.VInt64
    else VariantToInt64(PVariant(p)^, Result);
@@ -3133,9 +3133,10 @@ end;
 //
 function TDynamicArrayExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 var
+   dyn : IScriptDynArray;
    p : PVarData;
 begin
-   p:=PVarData(EvalItem(exec));
+   p:=PVarData(EvalItem(exec, dyn));
    if p.VType=varDouble then
       Result:=p.VDouble
    else Result:=PVariant(p)^;
@@ -3144,17 +3145,20 @@ end;
 // EvalAsVariant
 //
 procedure TDynamicArrayExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+var
+   dyn : IScriptDynArray;
 begin
-   result:=EvalItem(exec)^;
+   result:=EvalItem(exec, dyn)^;
 end;
 
 // EvalAsString
 //
 procedure TDynamicArrayExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
 var
+   dyn : IScriptDynArray;
    p : PVarData;
 begin
-   p:=PVarData(EvalItem(exec));
+   p:=PVarData(EvalItem(exec, dyn));
    {$ifdef FPC}
    if p.VType=varString then
       Result:=UnicodeString(p.VString)
@@ -3164,28 +3168,6 @@ begin
    {$endif}
    else Result:=PVariant(p)^;
 end;
-
-// ------------------
-// ------------------ TDynamicArrayVarExpr ------------------
-// ------------------
-
-// EvalItem
-//
-function TDynamicArrayVarExpr.EvalItem(exec : TdwsExecution) : PVariant;
-var
-   dynArray : TScriptDynamicArray;
-   base : PIScriptObj;
-   index : Integer;
-begin
-   base:=TObjectVarExpr(FBaseExpr).EvalAsPIScriptObj(exec);
-   dynArray:=TScriptDynamicArray(base^.GetSelf);
-
-   index:=IndexExpr.EvalAsInteger(exec);
-   BoundsCheck(exec, dynArray.ArrayLength, index);
-
-   Result:=dynArray.AsPVariant(index*FElementSize);
-end;
-
 
 // ------------------
 // ------------------ TDynamicArraySetExpr ------------------

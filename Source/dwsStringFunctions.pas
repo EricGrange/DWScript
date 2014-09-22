@@ -1006,7 +1006,7 @@ begin
 
    end;
 
-   Result:=IDataContext(dyn);
+   Result:=IScriptDynArray(dyn);
 end;
 
 // ------------------

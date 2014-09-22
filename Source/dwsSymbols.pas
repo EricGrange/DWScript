@@ -650,7 +650,8 @@ type
    TResultSymbol = class(TDataSymbol)
    end;
 
-   TFuncSymbolFlag = (fsfStateless, fsfExternal, fsfType, fsfOverloaded, fsfLambda, fsfInline);
+   TFuncSymbolFlag = (fsfStateless, fsfExternal, fsfType, fsfOverloaded, fsfLambda,
+                      fsfInline, fsfProperty);
    TFuncSymbolFlags = set of TFuncSymbolFlag;
 
    // A script function / procedure: procedure X(param: Integer);
@@ -678,6 +679,8 @@ type
          procedure SetIsStateless(const val : Boolean);
          function GetIsExternal : Boolean; inline;
          procedure SetIsExternal(const val : Boolean);
+         function GetIsProperty : Boolean; inline;
+         procedure SetIsProperty(const val : Boolean);
          function GetIsOverloaded : Boolean; inline;
          procedure SetIsOverloaded(const val : Boolean);
          function GetIsLambda : Boolean; inline;
@@ -728,6 +731,7 @@ type
          property IsForwarded : Boolean read GetIsForwarded;
          property IsOverloaded : Boolean read GetIsOverloaded write SetIsOverloaded;
          property IsExternal : Boolean read GetIsExternal write SetIsExternal;
+         property IsProperty : Boolean read GetIsProperty write SetIsProperty;
          property Kind : TFuncKind read FKind write FKind;
          property ExternalName : UnicodeString read GetExternalName write FExternalName;
          function HasExternalName : Boolean;
@@ -3177,6 +3181,22 @@ begin
    if val then
       Include(FFlags, fsfExternal)
    else Exclude(FFlags, fsfExternal);
+end;
+
+// GetIsProperty
+//
+function TFuncSymbol.GetIsProperty : Boolean;
+begin
+   Result:=(fsfProperty in FFlags);
+end;
+
+// SetIsProperty
+//
+procedure TFuncSymbol.SetIsProperty(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, fsfProperty)
+   else Exclude(FFlags, fsfProperty);
 end;
 
 // GetIsOverloaded

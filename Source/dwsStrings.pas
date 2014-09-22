@@ -142,6 +142,7 @@ const
   CPE_ExternalArrayForStaticMethodsOnly = 'External array is supported only for static methods';
   CPE_ExternalVariablesMustBeGlobal = 'External variables must be global';
   CPE_ExternalClassVariablesInitializationIsNotSupported = 'External class variables initialization is not supported';
+  CPE_ExternalPropertyNoArguments = 'External properties cannot have arguments';
 
   // ReadName
   CPE_UnknownName = 'Unknown name "%s"';
