@@ -262,6 +262,10 @@ begin
    dwsHtmlFilter.SubFilter:=jsFilter;
    jsCompiler:=TDelphiWebScript.Create(Self);
    jsFilter.Compiler:=jsCompiler;
+   jsFilter.PatternOpen:='<script type="pascal">';
+   jsFilter.PatternClose:='</script>';
+   jsFilter.CodeGenPrefix:='<script>'#13#10;
+   jsFilter.CodeGenPostfix:=#13#10'</script>';
    TdwsJSLibModule.Create(Self).Script:=jsCompiler;
    jsCompiler.OnNeedUnit:=DoNeedUnit;
    jsCompiler.OnInclude:=DoInclude;
@@ -271,8 +275,9 @@ begin
    ];
    jsFilter.CodeGenOptions:=[
       cgoNoRangeChecks, cgoNoCheckInstantiated, cgoNoCheckLoopStep,
-      cgoNoConditions, cgoObfuscate, cgoNoSourceLocations,
-      cgoSmartLink, cgoDeVirtualize
+      cgoNoConditions, cgoNoSourceLocations,
+      // cgoObfuscate, cgoOptimizeForSize,
+      cgoSmartLink, cgoDeVirtualize, cgoNoRTTI
    ];
 {$endif}
 end;

@@ -417,6 +417,11 @@ type
          property Symbols[x : Integer] : TParamSymbol read GetSymbol; default;
    end;
 
+   // TExpressionSymbolTable
+   //
+   TExpressionSymbolTable = class (TSymbolTable)
+   end;
+
    // A resource string (hybrid between a constant and a function)
    TResourceStringSymbol = class sealed (TSymbol)
       private
@@ -5394,10 +5399,10 @@ begin
    for i:=0 to ParentCount-1 do begin
       p:=Parents[i];
       if p.IsUnitTable then begin
-         if p.EnumerateLocalHelpers(helpedType, callback) then Exit(True)
-      end else begin
-         if p.EnumerateHelpers(helpedType, callback) then Exit(True);
+         if p.EnumerateLocalHelpers(helpedType, callback) then
+            Exit(True)
       end;
+      if p.EnumerateHelpers(helpedType, callback) then Exit(True);
    end;
    Result:=False;
 end;

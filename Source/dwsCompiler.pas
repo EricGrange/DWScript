@@ -9671,15 +9671,15 @@ end;
 //
 function TdwsCompiler.ReadClassExpr(ownerSymbol : TCompositeTypeSymbol; expecting : TTypeSymbol = nil) : TTypedExpr;
 var
-   membersTable : TSymbolTable;
+   exprTable : TExpressionSymbolTable;
    oldStructure : TCompositeTypeSymbol;
 begin
-   membersTable:=TSymbolTable.Create(ownerSymbol.Members);
+   exprTable:=TExpressionSymbolTable.Create(ownerSymbol.Members);
    oldStructure:=FCurrentStructure;
    try
       FCurrentStructure:=ownerSymbol;
-      membersTable.AddParent(FProg.Table);
-      FProg.EnterSubTable(membersTable);
+      exprTable.AddParent(FProg.Table);
+      FProg.EnterSubTable(exprTable);
       try
          Result:=ReadExpr(expecting);
       finally
@@ -9687,11 +9687,11 @@ begin
       end;
       // anonymous and implicit symbols might have been created,
       // transfer them to the regular table
-      if membersTable.Count>0 then
-         membersTable.TransferSymbolsTo(FProg.Table);
+      if exprTable.Count>0 then
+         exprTable.TransferSymbolsTo(FProg.Table);
    finally
       FCurrentStructure:=oldStructure;
-      membersTable.Free;
+      exprTable.Free;
    end;
 end;
 

@@ -29,26 +29,3 @@ http://sqlite.org/
 
 ***********************
 
-Changes
-
-2014.03.05
-	Latest version from SVN sources
-
-2013.09.19
-	Improved installer with production installation options
-	Minor performance improvements
-
-2013.09.17
-	Added form post mini demo
-
-
-2013.09.05
-	Fixed mime type for js/css/html/gif/png for machines where they're
-		misconfigured in the Windows registery
-	Updated to SQLite 3.8.0.2
-
-
-2013.09.03
-	Improved HTML filter performance
-	Smarter script cache invalidation when files are modified
-	Updated to SQLite 3.8.0.1
