@@ -2125,7 +2125,7 @@ function TdwsCompiler.ReadScript(sourceFile : TSourceFile; scriptType : TScriptS
 var
    oldTok : TTokenizer;
    oldSection : TdwsUnitSection;
-   finalToken : TTokenType;
+   initialToken, finalToken : TTokenType;
    unitBlock : TBlockExpr;
    readingMain : Boolean;
    contextFix : TdwsSourceContext;
@@ -2170,12 +2170,20 @@ begin
             end;
             scriptType:=stUnit;
             HandleUnitDependencies(scriptType);
-         end else if FTok.TestDelete(ttPROGRAM) then begin
-            UnitSection:=secProgram;
-            if not FTok.TestName then
-               FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected)
-            else FTok.KillToken;
-            ReadSemiColon;
+         end else begin
+            initialToken:=FTok.TestDeleteAny([ttPROGRAM, ttLIBRARY]);
+            if initialToken<>ttNone then begin
+               if initialToken=ttPROGRAM then
+                  FMainProg.ProgramType:=ptProgram
+               else FMainProg.ProgramType:=ptLibrary;
+               UnitSection:=secProgram;
+               if not FTok.TestName then
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected)
+               else FTok.KillToken;
+               ReadSemiColon;
+            end else begin
+               FMainProg.ProgramType:=ptScript;
+            end;
          end;
       end;
 
@@ -5144,7 +5152,7 @@ begin
 
       end else begin
 
-         if    FTok.Test(ttDOT) or (propertySym.Typ.AsFuncSymbol<>nil) then begin
+         if (FTok.TestAny([ttDOT, ttALEFT])<>ttNone) or (propertySym.Typ.AsFuncSymbol<>nil) then begin
 
             sym:=propertySym.ReadSym;
 
@@ -11142,15 +11150,16 @@ begin
                         FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoFilterAvailable);
                      // Include file is processed by the filter
                      scriptSource := GetIncludeScriptSource(name);
-                     scriptSource:=FFilter.Process(scriptSource, FMsgs);
+                     scriptSource := FFilter.Process(scriptSource, FMsgs);
                   end else begin
-                     // Include file is included as-is
                      scriptSource := GetIncludeScriptSource(name);
                   end;
 
                   if not FTok.TestDelete(ttCRIGHT) then
                      FMsgs.AddCompilerStop(FTok.HotPos, CPE_CurlyRightExpected);
 
+                  if StrContains(FTok.PathName, '\') then
+                     name:=Copy(FTok.PathName, 1, LastDelimiter('\', FTok.PathName))+name;
                   sourceFile:=FMainProg.SourceList.Add(name, scriptSource, stInclude);
                   FTok.BeginSourceFile(sourceFile);
                   if coContextMap in Options then begin

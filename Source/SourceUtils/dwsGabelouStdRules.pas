@@ -239,10 +239,15 @@ end;
 // EvaluateSymbol
 //
 procedure TGR_PrefixedFields.EvaluateSymbol(const aSymbolList : TSymbolPositionList; msgs : TdwsMessageList);
+var
+   fld : TFieldSymbol;
 begin
    if aSymbolList.Symbol.ClassType<>TFieldSymbol then Exit;
 
-   if not (TFieldSymbol(aSymbolList.Symbol).Visibility in [cvPublic, cvPublished]) then begin
+   fld:=TFieldSymbol(aSymbolList.Symbol);
+   if fld.StructSymbol.IsExternal then Exit;
+
+   if not (fld.Visibility in [cvPublic, cvPublished]) then begin
       if    (Length(aSymbolList.Symbol.Name)<2)
          or (aSymbolList.Symbol.Name[1]<>'F') or TCharacter.IsLower(aSymbolList.Symbol.Name[2]) then
          TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);

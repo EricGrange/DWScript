@@ -57,7 +57,7 @@ type
      ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCLEFT, ttCRIGHT,
      ttDEFAULT, ttUSES, ttUNIT, ttNAMESPACE,
      ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
-     ttPROGRAM,
+     ttPROGRAM, ttLIBRARY,
 
      // Tokens for compatibility to Delphi
      ttREGISTER, ttPASCAL, ttCDECL, ttSAFECALL, ttSTDCALL, ttFASTCALL, ttREFERENCE);
@@ -324,7 +324,7 @@ const
      '(', ')', '[', ']', '{', '}',
      'DEFAULT', 'USES', 'UNIT', 'NAMESPACE',
      'PRIVATE', 'PROTECTED', 'PUBLIC', 'PUBLISHED',
-     'PROGRAM',
+     'PROGRAM', 'LIBRARY',
      'REGISTER', 'PASCAL', 'CDECL', 'SAFECALL', 'STDCALL', 'FASTCALL', 'REFERENCE'
      );
 
@@ -756,7 +756,7 @@ const
       ttFORWARD, ttFUNCTION, ttHELPER,
       ttIF, ttIMPLIES, ttIMPLEMENTS, ttIN, ttINITIALIZATION, ttINLINE, ttINVARIANTS,
       ttIS, ttINHERITED, ttINDEX, ttINTERFACE, ttIMPLEMENTATION,
-      ttLAMBDA, ttLAZY,
+      ttLAMBDA, ttLAZY, ttLIBRARY,
       ttMETHOD, ttMOD,
       ttNAMESPACE, ttNEW, ttNIL, ttNOT,
       ttOBJECT, ttOF, ttOLD, ttON, ttOPERATOR, ttOR, ttOVERLOAD, ttOVERRIDE,

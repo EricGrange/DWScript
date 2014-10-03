@@ -654,6 +654,8 @@ type
       FTypAnyType : TAnyTypeSymbol;
    end;
 
+   TdwsProgramType = (ptScript, ptProgram, ptLibrary);
+
    // A script executable program
    TdwsProgram = class (TInterfacedSelfObject)
       private
@@ -761,6 +763,8 @@ type
 
          FExecutionsClass : TdwsProgramExecutionClass;
 
+         FProgramType : TdwsProgramType;
+
       protected
          function GetConditionalDefines : IAutoStrings;
          function GetDefaultUserObject : TObject;
@@ -841,6 +845,8 @@ type
 
          property OnExecutionStarted : TdwsExecutionEvent read FOnExecutionStarted write FOnExecutionStarted;
          property OnExecutionEnded : TdwsExecutionEvent read FOnExecutionEnded write FOnExecutionEnded;
+
+         property ProgramType : TdwsProgramType read FProgramType write FProgramType;
    end;
 
    // Functions callable from a script program implement this interfaces
