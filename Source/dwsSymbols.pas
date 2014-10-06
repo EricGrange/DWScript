@@ -1246,6 +1246,7 @@ type
 
          function QualifiedName : UnicodeString; override;
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
+         function HasExternalName : Boolean; inline;
 
          procedure InitData(const data : TData; structOffset : Integer);
 
@@ -2876,6 +2877,13 @@ end;
 function TFieldSymbol.IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean;
 begin
    Result:=(FVisibility>=aVisibility);
+end;
+
+// HasExternalName
+//
+function TFieldSymbol.HasExternalName : Boolean;
+begin
+   Result:=(FExternalName<>'');
 end;
 
 // InitData

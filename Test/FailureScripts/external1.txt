@@ -1,1 +1,1 @@
-Syntax Error: END expected [line: 2, column: 29]
+Syntax Error: Name expected [line: 2, column: 29]

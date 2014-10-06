@@ -154,10 +154,18 @@ type
                             Base: TTypedExpr);
    end;
 
-   // call to default TObject.Create (which is empty)
+   // Call to default TObject.Create (which is empty)
    TConstructorStaticDefaultExpr = class(TConstructorStaticExpr)
       public
          function Eval(exec : TdwsExecution) : Variant; override;
+   end;
+
+   // Instantiates an anonymous class
+   TConstructorAnonymousExpr = class(TPosDataExpr)
+      public
+         constructor Create(const aScriptPos: TScriptPos; aClass : TClassSymbol);
+
+         procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
    end;
 
    TConstructorStaticObjExpr = class(TMethodStaticExpr)
@@ -702,6 +710,25 @@ end;
 procedure TDestructorVirtualExpr.PostCall(exec : TdwsExecution; var Result : Variant);
 begin
    exec.SelfScriptObject^.Destroyed:=True;
+end;
+
+// ------------------
+// ------------------ TConstructorAnonymousExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TConstructorAnonymousExpr.Create(const aScriptPos: TScriptPos;
+                                             aClass : TClassSymbol);
+begin
+   inherited Create(aScriptPos, aClass);
+end;
+
+// GetDataPtr
+//
+procedure TConstructorAnonymousExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
+begin
+   Assert(False, 'Anonymous class construction not supported in scripts, yet.');
 end;
 
 end.

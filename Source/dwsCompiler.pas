@@ -521,7 +521,8 @@ type
          function ReadNameSymbol(var namePos : TScriptPos) : TSymbol;
          function ReadClassName : TClassSymbol;
          function ReadClassOf(const typeName : UnicodeString) : TClassOfSymbol;
-         function ReadClass(const typeName : UnicodeString; const flags : TClassSymbolFlags) : TClassSymbol;
+         function ReadClassDecl(const typeName : UnicodeString; const flags : TClassSymbolFlags;
+                                allowNonConstExpressions : Boolean) : TClassSymbol;
          procedure ReadClassVars(const ownerSymbol : TCompositeTypeSymbol; aVisibility : TdwsVisibility);
          procedure ReadClassConst(const ownerSymbol : TCompositeTypeSymbol; aVisibility : TdwsVisibility);
          function ReadClassConstSymbol(const constPos : TScriptPos;
@@ -2801,6 +2802,8 @@ begin
             assignExpr:=TAssignConstToBoolVarExpr.CreateVal(FProg, scriptPos, FExec, varExpr, False)
          else if varExpr.Typ=FProg.TypString then
             assignExpr:=TAssignConstToStringVarExpr.CreateVal(FProg, scriptPos, FExec, varExpr, '')
+         else if varExpr.Typ=FProg.TypVariant then
+            assignExpr:=TAssignConstToVariantVarExpr.CreateVal(FProg, scriptPos, FExec, varExpr, Unassigned)
          else if varExpr.Typ.ClassType=TClassSymbol then
             assignExpr:=TAssignNilToVarExpr.CreateVal(FProg, scriptPos, FExec, varExpr)
          else if varExpr.Typ.ClassType=TClassOfSymbol then
@@ -8298,9 +8301,10 @@ begin
    else Result:=(classTyp.MetaSymbol as TClassOfSymbol);
 end;
 
-// ReadClass
+// ReadClassDeck
 //
-function TdwsCompiler.ReadClass(const typeName : UnicodeString; const flags : TClassSymbolFlags) : TClassSymbol;
+function TdwsCompiler.ReadClassDecl(const typeName : UnicodeString; const flags : TClassSymbolFlags;
+                                    allowNonConstExpressions : Boolean) : TClassSymbol;
 var
    namePos, hotPos : TScriptPos;
    sym, typ : TSymbol;
@@ -8314,27 +8318,30 @@ var
    tt : TTokenType;
    i : Integer;
 begin
-   // Check for a forward declaration of this class
-   if csfPartial in flags then
-      sym:=FProg.Table.FindTypeSymbol(typeName, cvMagic)
-   else sym:=FProg.Table.FindTypeLocal(typeName);
    Result:=nil;
 
-   if Assigned(sym) then begin
-      if sym is TClassSymbol then begin
-         Result:=TClassSymbol(sym);
-         if Result.IsForwarded or Result.IsPartial then
-            Result:=TClassSymbol(sym)
-         else begin
-            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassAlreadyDefined, [sym.Name]);
-            Result:=nil;
+   // Check for a forward declaration of this class
+   if typeName<>'' then begin
+      if csfPartial in flags then
+         sym:=FProg.Table.FindTypeSymbol(typeName, cvMagic)
+      else sym:=FProg.Table.FindTypeLocal(typeName);
+
+      if Assigned(sym) then begin
+         if sym is TClassSymbol then begin
+            Result:=TClassSymbol(sym);
+            if Result.IsForwarded or Result.IsPartial then
+               Result:=TClassSymbol(sym)
+            else begin
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassAlreadyDefined, [sym.Name]);
+               Result:=nil;
+            end;
+         end else begin
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameAlreadyExists, [sym.Name]);
          end;
-      end else begin
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameAlreadyExists, [sym.Name]);
+         if Result=nil then // make anonymous to keep compiling
+            Result:=TClassSymbol.Create('', CurrentUnitSymbol);
       end;
-      if Result=nil then // make anonymous to keep compiling
-         Result:=TClassSymbol.Create('', CurrentUnitSymbol);
-   end;
+   end else sym:=nil;
 
    isInSymbolTable:=Assigned(Result);
 
@@ -8351,6 +8358,8 @@ begin
 
    // forwarded declaration
    if FTok.Test(ttSEMI) then begin
+      if typeName='' then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_AnonymousClassesMustBeFullyDefined);
       if Result.IsForwarded then
          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassForwardAlreadyExists, [sym.Name])
       else if csfPartial in flags then
@@ -8443,7 +8452,7 @@ begin
 
             if (csfPartial in previousClassFlags) and (Result.Parent<>nil) then
                ancestorTyp:=Result.Parent
-            else if Result.IsExternal then begin
+            else if Result.IsExternal or (typeName='') then begin
                if Assigned(FOnRootExternalClass) then
                   ancestorTyp:=FOnRootExternalClass(Self, Result.ExternalName)
                else ancestorTyp:=FProg.TypObject;
@@ -8540,11 +8549,9 @@ begin
 
                else
 
-                  if FTok.TestName then begin
-                     ReadFieldsDecl(Result, visibility, False);
-                     if not (FTok.TestDelete(ttSEMI) or FTok.Test(ttEND)) then
-                        Break;
-                  end else Break;
+                  ReadFieldsDecl(Result, visibility, allowNonConstExpressions);
+                  if not (FTok.TestDelete(ttSEMI) or FTok.Test(ttEND)) then
+                     Break;
 
                end;
 
@@ -9718,7 +9725,7 @@ function TdwsCompiler.ReadType(const typeName : UnicodeString; typeContext : Tdw
          flags:=[];
       end;
       if FTok.TestDelete(ttCLASS) and (typeContext=tcDeclaration) then
-         Result:=ReadClass(typeName, flags)
+         Result:=ReadClassDecl(typeName, flags, False)
       else begin
          Result:=nil;
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ClassExpected);
@@ -9782,7 +9789,7 @@ begin
                Result:=ReadHelperDecl(typeName, ttCLASS);
          else
             if typeContext=tcDeclaration then
-               Result:=ReadClass(typeName, [])
+               Result:=ReadClassDecl(typeName, [], False)
             else begin
                Result:=nil;
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_TypeExpected);
@@ -10441,6 +10448,20 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       end;
    end;
 
+   function ReadAnonymousClass : TTypedExpr;
+   var
+      scriptPos : TScriptPos;
+      classType : TClassSymbol;
+   begin
+      scriptPos:=FTok.HotPos;
+      classType:=ReadClassDecl('', [csfExternal], True);
+      FProg.Table.AddSymbol(classType);
+
+      RecordSymbolUseImplicitReference(classType, scriptPos, False);
+
+      Result:=TConstructorAnonymousExpr.Create(scriptPos, classType);
+   end;
+
    procedure ReportIncompatibleAt(const scriptPos : TScriptPos; expr : TTypedExpr);
    var
       exprTyp : UnicodeString;
@@ -10486,7 +10507,8 @@ begin
    tt:=FTok.TestAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT, ttAT,
                      ttTRUE, ttFALSE, ttNIL, ttIF,
                      ttFUNCTION, ttPROCEDURE, ttLAMBDA,
-                     ttRECORD, ttBRIGHT]);
+                     ttRECORD, ttCLASS,
+                     ttBRIGHT]);
    if tt<>ttNone then begin
       // special logic for property write expressions
       if tt=ttBRIGHT then begin
@@ -10543,6 +10565,11 @@ begin
       end;
       ttRECORD :
          Result:=ReadAnonymousRecord;
+      ttCLASS : begin
+         if not (coAllowClosures in Options) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_AnonymousClassNotAllowed);
+         Result:=ReadAnonymousClass;
+      end;
    else
       if (FTok.TestAny([ttINHERITED, ttNEW])<>ttNone) or FTok.TestName then begin
          // Variable or Function

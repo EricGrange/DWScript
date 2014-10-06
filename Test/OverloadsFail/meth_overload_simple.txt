@@ -3,4 +3,4 @@ Syntax Error: Overload of "Test" will be ambiguous with a previously declared ve
 Syntax Error: Record has no field members [line: 9, column: 4]
 Syntax Error: Overload of "Test" will be ambiguous with a previously declared version [line: 14, column: 7]
 Syntax Error: Overload of "Test" will be ambiguous with a previously declared version [line: 18, column: 7]
-Syntax Error: END expected [line: 19, column: 32]
+Syntax Error: Name expected [line: 19, column: 32]

@@ -1328,6 +1328,18 @@ type
          property Right : UnicodeString read FRight write FRight;
    end;
 
+   // left := const Variant;
+   TAssignConstToVariantVarExpr = class(TAssignConstExpr)
+      protected
+         FRight : Variant;
+      public
+         constructor CreateVal(Prog: TdwsProgram; const aScriptPos: TScriptPos; exec : TdwsExecution;
+                               Left : TDataExpr; const rightValue : Variant);
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         function RightValue : Variant; override;
+         property Right : Variant read FRight write FRight;
+   end;
+
    // left := nil (instance)
    TAssignNilToVarExpr = class(TAssignConstExpr)
       public
@@ -5632,6 +5644,34 @@ end;
 // RightValue
 //
 function TAssignConstToStringVarExpr.RightValue : Variant;
+begin
+   Result:=FRight;
+end;
+
+// ------------------
+// ------------------ TAssignConstToVariantVarExpr ------------------
+// ------------------
+
+// CreateVal
+//
+constructor TAssignConstToVariantVarExpr.CreateVal(Prog: TdwsProgram;
+      const aScriptPos: TScriptPos; exec : TdwsExecution;
+      Left : TDataExpr; const rightValue : Variant);
+begin
+   inherited Create(Prog, aScriptPos, exec, Left, nil);
+   FRight:=rightValue;
+end;
+
+// EvalNoResult
+//
+procedure TAssignConstToVariantVarExpr.EvalNoResult(exec : TdwsExecution);
+begin
+   TVarExpr(FLeft).AssignValue(exec, FRight);
+end;
+
+// RightValue
+//
+function TAssignConstToVariantVarExpr.RightValue : Variant;
 begin
    Result:=FRight;
 end;

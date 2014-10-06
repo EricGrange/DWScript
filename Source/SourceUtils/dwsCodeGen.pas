@@ -71,6 +71,8 @@ type
          procedure ReserveName(const name : String); inline;
          procedure ReserveExternalName(sym : TSymbol);
 
+         function IsReserved(const name : String) : Boolean; inline;
+
          function MapSymbol(symbol : TSymbol; scope : TdwsCodeGenSymbolScope; canObfuscate : Boolean) : String;
 
          property CodeGen : TdwsCodeGen read FCodeGen;
@@ -463,6 +465,7 @@ var
    i : Integer;
    meth : TMethodSymbol;
    funcSym : TFuncSymbol;
+   fieldSym : TFieldSymbol;
 begin
    funcSym:=sym.AsFuncSymbol;
    if funcSym<>nil then begin
@@ -483,7 +486,8 @@ begin
       if TClassSymbol(sym).ExternalRoot<>nil then
          Exit(TClassSymbol(sym).ExternalName);
    end else if sym is TFieldSymbol then begin
-      if TFieldSymbol(sym).StructSymbol.IsExternalRooted then
+      fieldSym:=TFieldSymbol(sym);
+      if fieldSym.HasExternalName or fieldSym.StructSymbol.IsExternalRooted then
          Exit(TFieldSymbol(sym).ExternalName);
    end else if sym is TBaseSymbol then begin
       if sym.ClassType=TBaseIntegerSymbol then
@@ -2061,6 +2065,13 @@ begin
          // RaiseAlreadyDefined(sym, existing)
       end else FNames.Objects[n]:=sym;
    end;
+end;
+
+// IsReserved
+//
+function TdwsCodeGenSymbolMap.IsReserved(const name : String) : Boolean;
+begin
+   Result:=(FNames.Objects[name]<>nil);
 end;
 
 // MapSymbol
