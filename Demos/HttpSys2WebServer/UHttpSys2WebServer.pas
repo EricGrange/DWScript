@@ -225,7 +225,6 @@ var
    extraDomains, domain : TdwsJSONValue;
    env: TdwsJSONObject;
    i, nbThreads : Integer;
-   ignoredPaths : TdwsFileNotifierPaths;
 begin
    FPath:=IncludeTrailingPathDelimiter(ExpandFileName(basePath));
 

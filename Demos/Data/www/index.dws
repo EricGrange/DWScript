@@ -14,7 +14,7 @@ for var a in WebServer.Authentications do
 <body>
 <table align="center" border=0>
 <tr><td align="center" class="info">
-	<a href="https://code.google.com/p/dwscript/"><img src="res/DWS_server.jpg" width=262 height=177 /></a><br />
+	<a href="https://code.google.com/p/dwscript/"><img src="res/DWS_server.png" width=306 height=200></a><br />
 	<a href="http://delphitools.info">DelphiTools.info</a> - <a href="https://code.google.com/p/dwscript/">Get the code!</a><br />
 	Compiler Version <?pas=CompilerVersion?><br />
 	This page was generated at <?pas=FormatDateTime('hh:nn:ss.zzz', Now)?>.
@@ -32,6 +32,7 @@ for var a in WebServer.Authentications do
 	<li><a href="authenticated.dws">authentication</a> (<?pas=if auths.Count=0 then 'not enabled' else auths.join(',')?>)</li>
 	<li><a href="uses.dws">uses Test</a></li>
 	<li><a href="sqlite.dws">SQLite Test</a></li>
+	<li><a href="op4js.dws">Object Pascal to JavaScript</a></li>
 	</ul></p>
 	<p>Some facts:<ul><?pas
 	procedure PrintFacts(i : Integer);

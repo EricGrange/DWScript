@@ -1,0 +1,32 @@
+<html><body>
+
+<h3 style="color:blue">Hello OP4JS!</h3>
+<div id="count">???</div>
+
+<?pas
+// executed server-side when generating page
+var i : Integer;
+for i := 1 to 5 do
+   PrintLn(Format('Test %d<br/>', [i]));
+?>
+
+<script type="pascal">
+// compiled into javascript
+var 
+   doc external "document",
+   win external "window" : Variant;
+
+var counter : Integer;
+
+procedure IncrementCounter;
+begin
+   var countDiv := doc.getElementById('count');
+   countDiv.innerHTML := IntToStr(counter);
+   Inc(counter);
+   win.setTimeout(@IncrementCounter, 1000);
+end;
+
+IncrementCounter;
+</script>
+
+</body></html>
