@@ -398,13 +398,11 @@ begin
             continue;
          if StrContains(sym.Name, ' ') then continue;
 
-         if sym is TUnitSymbol then
-            if (soNoUnits in FOptions) then
-               Continue
-            else
-         else
-            if FLocalContext.Token=ttUSES then
-               Continue;
+         if (FLocalContext<>nil) and (FLocalContext.Token=ttUSES) then begin
+            if not (sym is TUnitSymbol) then continue;
+         end else begin
+            if (soNoUnits in FOptions) and (sym is TUnitSymbol) then continue;
+         end;
 
          if FListLookup.IndexOf(sym)<0 then begin
             FListLookup.Add(sym);
