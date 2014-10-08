@@ -458,6 +458,7 @@ begin
          '>' : Append('&gt;');
          '&' : Append('&amp;');
          '"' : Append('&quot;');
+         '''' : Append('&#39;');
       else
          if capacity=0 then
             Grow;

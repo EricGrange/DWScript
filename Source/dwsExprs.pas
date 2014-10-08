@@ -1604,6 +1604,7 @@ type
       protected
          function GetData(const s: UnicodeString): TData;
          function GetFunc(const s: UnicodeString): IInfo;
+         function GetFuncBySym(funcSym : TFuncSymbol): IInfo;
          procedure SetFuncSym(const Value: TFuncSymbol);
          function GetValueAsVariant(const s: UnicodeString): Variant;
          procedure GetSymbolInfo(sym : TSymbol; var info : IInfo);
@@ -1673,6 +1674,7 @@ type
          property Level : Integer read FLevel write FLevel;
          property Data[const s: UnicodeString]: TData read GetData write SetData;
          property Func[const s: UnicodeString]: IInfo read GetFunc;
+         property FuncBySym[funcSym: TFuncSymbol]: IInfo read GetFuncBySym;
          property FuncSym: TFuncSymbol read FFuncSym write SetFuncSym;
          property Method[const s: UnicodeString]: IInfo read GetFunc;
          property ScriptObj: IScriptObj read FScriptObj write FScriptObj;
@@ -5863,26 +5865,34 @@ begin
    end;
 end;
 
-
+// GetFunc
+//
 function TProgramInfo.GetFunc(const s: UnicodeString): IInfo;
 var
-  sym: TSymbol;
+   sym : TSymbol;
+   funcSym : TFuncSymbol;
 begin
-  sym := FTable.FindSymbol(s, cvMagic);
+   sym := FTable.FindSymbol(s, cvMagic);
 
-  if not Assigned(sym) then
-    raise Exception.CreateFmt(RTE_FunctionNotFound, [s]);
+   if not Assigned(sym) then
+      raise Exception.CreateFmt(RTE_FunctionNotFound, [s]);
 
-  if sym.AsFuncSymbol<>nil then
-  begin
-    if Assigned(FScriptObj) then
-      Result := TInfoFunc.Create(Self, sym, Execution.DataContext_Nil,
+   funcSym := sym.AsFuncSymbol;
+   if funcSym <> nil then
+      Result := GetFuncBySym(funcSym)
+   else raise Exception.CreateFmt(RTE_OnlyFuncSymbols, [sym.Caption]);
+end;
+
+// GetFuncBySym
+//
+function TProgramInfo.GetFuncBySym(funcSym : TFuncSymbol): IInfo;
+begin
+   if Assigned(FScriptObj) then begin
+      Result := TInfoFunc.Create(Self, funcSym, Execution.DataContext_Nil,
                                  nil, FScriptObj, FScriptObj.ClassSym)
-    else
-      Result := TInfoFunc.Create(Self, sym, Execution.DataContext_Nil, nil, nil, nil)
-  end
-  else
-    raise Exception.CreateFmt(RTE_OnlyFuncSymbols, [sym.Caption]);
+   end else begin
+      Result := TInfoFunc.Create(Self, funcSym, Execution.DataContext_Nil, nil, nil, nil)
+   end;
 end;
 
 function TProgramInfo.GetTemp(const DataType: UnicodeString): IInfo;

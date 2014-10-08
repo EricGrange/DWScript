@@ -6196,40 +6196,43 @@ begin
   inherited;
 end;
 
-// -----------------------------------------------------------------------------
-
+// DoGenerate
+//
 function TdwsDelegate.DoGenerate(systemTable : TSystemSymbolTable; Table: TSymbolTable; ParentSym: TSymbol): TSymbol;
 var
-  FuncSym: TFuncSymbol;
-  FuncKind: TFuncKind;
-  Params: TParamArray;
+   funcSym : TFuncSymbol;
+   funcKind : TFuncKind;
+   params : TParamArray;
+   typ : TTypeSymbol;
 begin
-  FIsGenerating := True;
-  CheckName(Table, Name);
+   FIsGenerating := True;
+   CheckName(Table, Name);
 
-  if (ResultType <> '') then
-  begin
-    GetDataType(systemTable, Table, ResultType);
-    FuncKind := fkFunction;
-  end else
-    FuncKind := fkProcedure;
+   if ResultType <> '' then begin
+      typ := GetDataType(systemTable, Table, ResultType);
+      funcKind := fkFunction;
+   end else begin
+      typ := nil;
+      funcKind := fkProcedure;
+   end;
 
-  FuncSym := TFuncSymbol.Create('', FuncKind, -1);
-//  FuncSym := TFuncSymbol.Generate(Table, Name, GetParameters(Table), ResultType);
-  try
-    Params := GetParameters(systemTable, Table);
-    FuncSym.GenerateParams(Table, Params);
-    FuncSym.Params.AddParent(Table);
+   funcSym := TFuncSymbol.Create('', funcKind, -1);
+   try
+      funcSym.Typ := typ;
 
-    FuncSym.SetName(Name);
-    FuncSym.SetIsType;
-    FuncSym.DeprecatedMessage := Deprecated;
-    GetUnit.Table.AddSymbol(FuncSym);
-  except
-    FuncSym.Free;
-    raise;
-  end;
-  Result := FuncSym;
+      params := GetParameters(systemTable, Table);
+      funcSym.GenerateParams(Table, params);
+      funcSym.params.AddParent(Table);
+
+      funcSym.SetName(Name);
+      funcSym.SetIsType;
+      funcSym.DeprecatedMessage := Deprecated;
+      GetUnit.Table.AddSymbol(funcSym);
+   except
+      funcSym.Free;
+      raise;
+   end;
+   Result := funcSym;
 end;
 
 // -----------------------------------------------------------------------------

@@ -27,7 +27,7 @@ uses
    Classes, SysUtils, Variants, StrUtils, Math, Masks,
    dwsXPlatform, dwsUtils, dwsStrings,
    dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList,
-   dwsConstExprs, dwsMagicExprs, dwsDataContext;
+   dwsConstExprs, dwsMagicExprs, dwsDataContext, dwsWebUtils;
 
 type
 
@@ -82,6 +82,10 @@ type
 
   TStrToFloatDefFunc = class(TInternalMagicFloatFunction)
     procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+  end;
+
+  TStrToHtmlFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
   TFormatFunc = class(TInternalMagicStringFunction)
@@ -444,10 +448,15 @@ begin
    {$endif}
 end;
 
+{ TStrToHtmlFunc }
+
+procedure TStrToHtmlFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+begin
+   Result:=WebUtils.HTMLTextEncode(args.AsString[0]);
+end;
+
 { TCopyFunc }
 
-// DoEvalAsString
-//
 procedure TCopyFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=Copy(args.AsString[0], args.AsInteger[1], args.AsInteger[2]);
@@ -1092,6 +1101,8 @@ initialization
    RegisterInternalFloatFunction(TStrToFloatFunc, 'StrToFloat', ['str', SYS_STRING], [iffStateLess], 'ToFloat');
    RegisterInternalFloatFunction(TStrToFloatDefFunc, 'StrToFloatDef', ['str', SYS_STRING, 'def', SYS_FLOAT], [iffStateLess], 'ToFloatDef');
    RegisterInternalFloatFunction(TStrToFloatDefFunc, 'VarToFloatDef', ['val', SYS_VARIANT, 'def', SYS_FLOAT], [iffStateLess]);
+
+   RegisterInternalStringFunction(TStrToHtmlFunc, 'StrToHtml', ['str', SYS_STRING], [iffStateLess], 'ToHtml');
 
    RegisterInternalStringFunction(TFormatFunc, 'Format', ['fmt', SYS_STRING, 'args', 'array of const'], [iffStateLess], 'Format');
 

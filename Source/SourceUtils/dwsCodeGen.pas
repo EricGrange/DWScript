@@ -128,6 +128,8 @@ type
          property List : TStringList read FList;
    end;
 
+   TdwsCustomCodeGenEvent = function (expr : TExprBase) : TdwsExprCodeGen of object;
+
    TdwsCodeGen = class
       private
          FCodeGenList : TdwsRegisteredCodeGenList;
@@ -168,6 +170,8 @@ type
          FTryDepth : Integer;
 
          FDataContextPool : IDataContextPool;
+
+         FOnCustomCodeGen : TdwsCustomCodeGenEvent;
 
       protected
          property SymbolDictionary : TdwsSymbolDictionary read FSymbolDictionary;
@@ -212,6 +216,8 @@ type
          procedure CompileRTTIRawAttributes(attributes : TdwsSymbolAttributes); virtual;
 
          procedure MapStructuredSymbol(structSym : TCompositeTypeSymbol; canObfuscate : Boolean);
+
+         function DoCustomCodeGen(expr : TExprBase) : TdwsExprCodeGen; virtual;
 
          property Output : TWriteOnlyBlockStream read FOutput write FOutput;
 
@@ -310,6 +316,8 @@ type
 
          property Dependencies : TdwsCodeGenDependencies read FDependencies;
          property FlushedDependencies : TStringList read FFlushedDependencies;
+
+         property OnCustomCodeGen : TdwsCustomCodeGenEvent read FOnCustomCodeGen write FOnCustomCodeGen;
    end;
 
    TdwsExprCodeGen = class abstract
@@ -425,6 +433,9 @@ function TdwsCodeGen.FindCodeGen(expr : TExprBase) : TdwsExprCodeGen;
 var
    i : Integer;
 begin
+   Result:=DoCustomCodeGen(expr);
+   if Result<>nil then Exit;
+
    FTempReg.Expr:=TExprBaseClass(expr.ClassType);
    if FCodeGenList.Find(FTempReg, i) then
       Result:=FCodeGenList.Items[i].CodeGen
@@ -1013,6 +1024,16 @@ begin
          SymbolMap.MapSymbol(sym, cgssGlobal, canObfuscate);
    end;
    LeaveScopes(n);
+end;
+
+// DoCustomCodeGen
+//
+function TdwsCodeGen.DoCustomCodeGen(expr : TExprBase) : TdwsExprCodeGen;
+begin
+   if Assigned(FOnCustomCodeGen) then begin
+      Result:=FOnCustomCodeGen(expr);
+      if Result<>nil then Exit;
+   end else Result:=nil;
 end;
 
 // MapInternalSymbolNames

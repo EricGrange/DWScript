@@ -62,9 +62,10 @@ type
    TdwsCompiler = class;
    TdwsFilter = class;
 
-   TIncludeEvent = procedure(const scriptName: UnicodeString; var scriptSource: UnicodeString) of object;
-   TdwsOnNeedUnitEvent = function(const unitName : UnicodeString; var unitSource : UnicodeString) : IdwsUnit of object;
-   TdwsResourceEvent = procedure(compiler : TdwsCompiler; const resourceName : UnicodeString) of object;
+   TIncludeEvent = procedure (const scriptName: UnicodeString; var scriptSource: UnicodeString) of object;
+   TdwsOnNeedUnitEvent = function (const unitName : UnicodeString; var unitSource : UnicodeString) : IdwsUnit of object;
+   TdwsResourceEvent = procedure (compiler : TdwsCompiler; const resourceName : UnicodeString) of object;
+   TdwsCodeGenEvent = procedure (compiler : TdwsCompiler; const switchPos : TScriptPos; const code : UnicodeString) of object;
 
    TCompilerCreateBaseVariantSymbolEvent = function (table : TSystemSymbolTable) : TBaseVariantSymbol of object;
    TCompilerCreateSystemSymbolsEvent = procedure (table : TSystemSymbolTable) of object;
@@ -113,6 +114,7 @@ type
          FOnInclude : TIncludeEvent;
          FOnNeedUnit : TdwsOnNeedUnitEvent;
          FOnResource : TdwsResourceEvent;
+         FOnCodeGen : TdwsCodeGenEvent;
          FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbolEvent;
          FOnCreateSystemSymbols : TCompilerCreateSystemSymbolsEvent;
          FOnExecutionStarted : TdwsExecutionEvent;
@@ -175,6 +177,7 @@ type
          property OnInclude : TIncludeEvent read FOnInclude write FOnInclude;
          property OnNeedUnit : TdwsOnNeedUnitEvent read FOnNeedUnit write FOnNeedUnit;
          property OnResource : TdwsResourceEvent read FOnResource write FOnResource;
+         property OnCodeGen : TdwsCodeGenEvent read FOnCodeGen write FOnCodeGen;
          property OnExecutionStarted : TdwsExecutionEvent read FOnExecutionStarted write FOnExecutionStarted;
          property OnExecutionEnded : TdwsExecutionEvent read FOnExecutionEnded write FOnExecutionEnded;
    end;
@@ -191,13 +194,13 @@ type
          procedure SetSubFilter(const filter : TdwsFilter); virtual;
          procedure Notification(aComponent : TComponent; operation: TOperation); override;
 
-         property PrivateDependencies: TStrings read FPrivateDependencies;
+         property PrivateDependencies : TStrings read FPrivateDependencies;
 
       public
          constructor Create(AOwner: TComponent); override;
          destructor Destroy; override;
 
-         function Process(const Text: UnicodeString; Msgs: TdwsMessageList): UnicodeString; virtual;
+         function Process(const aText : UnicodeString; aMsgs : TdwsMessageList) : UnicodeString; virtual;
 
          property Dependencies: TStrings read GetDependencies;
 
@@ -224,7 +227,8 @@ type
                          siDefine, siUndef,
                          siIfDef, siIfNDef, siIf, siEndIf, siElse,
                          siHint, siHints, siWarning, siWarnings,
-                         siError, siFatal );
+                         siError, siFatal,
+                         siCodeGen );
 
    TLoopExitable = (leNotExitable, leBreak, leExit);
 
@@ -427,6 +431,7 @@ type
          FOnInclude : TIncludeEvent;
          FOnNeedUnit : TdwsOnNeedUnitEvent;
          FOnResource : TdwsResourceEvent;
+         FOnCodeGen : TdwsCodeGenEvent;
          FUnits : TIdwsUnitList;
          FSystemTable : TSystemSymbolTable;
          FScriptPaths : TStrings;
@@ -924,7 +929,8 @@ const
       SWI_RESOURCE_LONG, SWI_RESOURCE_SHORT,
       SWI_DEFINE, SWI_UNDEF,
       SWI_IFDEF, SWI_IFNDEF, SWI_IF, SWI_ENDIF, SWI_ELSE,
-      SWI_HINT, SWI_HINTS, SWI_WARNING, SWI_WARNINGS, SWI_ERROR, SWI_FATAL
+      SWI_HINT, SWI_HINTS, SWI_WARNING, SWI_WARNINGS, SWI_ERROR, SWI_FATAL,
+      SWI_CODEGEN
       );
 
    cAssignmentTokens : TTokenTypes = [ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN,
@@ -1497,6 +1503,7 @@ begin
    FOnInclude := conf.OnInclude;
    FOnNeedUnit := conf.OnNeedUnit;
    FOnResource := conf.OnResource;
+   FOnCodeGen := conf.OnCodeGen;
    FScriptPaths := conf.ScriptPaths;
 
    FOnExecutionStarted := conf.OnExecutionStarted;
@@ -11314,6 +11321,15 @@ begin
          FTok.KillToken;
 
       end;
+      siCodeGen : begin
+
+         if not FTok.Test(ttStrVal) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected);
+         if Assigned(FOnCodeGen) then
+            FOnCodeGen(Self, switchPos, FTok.GetToken.AsString);
+         FTok.KillToken;
+
+      end;
       siHint, siWarning, siError, siFatal : begin
 
          if not FTok.Test(ttStrVal) then
@@ -13850,7 +13866,9 @@ begin
    else info.ResultAsVariant:=IScriptObj(nil);
 end;
 
-{ TParamFunc }
+// ------------------
+// ------------------ TParamFunc ------------------
+// ------------------
 
 procedure TParamFunc.Execute(info : TProgramInfo);
 var
@@ -13862,7 +13880,9 @@ begin
    else Info.ResultAsVariant:=Unassigned;
 end;
 
-{ TParamStrFunc }
+// ------------------
+// ------------------ TParamStrFunc ------------------
+// ------------------
 
 procedure TParamStrFunc.Execute(info : TProgramInfo);
 var
@@ -13874,14 +13894,18 @@ begin
    else Info.ResultAsString:='';
 end;
 
-{ TParamCount }
+// ------------------
+// ------------------ TParamCountFunc ------------------
+// ------------------
 
 procedure TParamCountFunc.Execute(info : TProgramInfo);
 begin
   Info.ResultAsInteger := Length(Info.Execution.Parameters);
 end;
 
-{ TdwsFilter }
+// ------------------
+// ------------------ TdwsFilter ------------------
+// ------------------
 
 constructor TdwsFilter.Create(AOwner: TComponent);
 begin
@@ -13916,12 +13940,13 @@ begin
     SetSubFilter(nil);
 end;
 
-function TdwsFilter.Process(const Text: UnicodeString; Msgs: TdwsMessageList): UnicodeString;
+// Process
+//
+function TdwsFilter.Process(const aText : UnicodeString; aMsgs : TdwsMessageList) : UnicodeString;
 begin
-  if Assigned(FSubFilter) then
-    Result := FSubFilter.Process(Text, Msgs)
-  else
-    Result := Text;
+   if Assigned(FSubFilter) then
+      Result := FSubFilter.Process(aText, aMsgs)
+   else Result := aText;
 end;
 
 procedure TdwsFilter.SetSubFilter(const Filter: TdwsFilter);
