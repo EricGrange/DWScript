@@ -219,6 +219,8 @@ type
          function GetMsgCount : Integer; inline;
          function GetHasErrors : Boolean; inline;
 
+         function GetSourceFile(const scriptPos : TScriptPos) : TSourceFile;
+
       public
          destructor Destroy; override;
 
@@ -565,6 +567,19 @@ begin
    Result:=(FErrorsCount>0);
 end;
 
+// GetSourceFile
+//
+function TdwsMessageList.GetSourceFile(const scriptPos : TScriptPos) : TSourceFile;
+var
+   i : Integer;
+begin
+   for i:=0 to FSourceFiles.Count-1 do begin
+      Result:=TSourceFile(FSourceFiles.List[i]);
+      if Result.Name=scriptPos.SourceName then Exit;
+   end;
+   Result:=nil;
+end;
+
 // AddMessage
 //
 procedure TdwsMessageList.AddMessage(aMessage: TdwsMessage);
@@ -581,22 +596,29 @@ procedure TdwsMessageList.AddMsgs(src : TdwsMessageList; lineOffset, colOffset :
 var
    i, col : Integer;
    msg : TdwsMessage;
-   srcMsg : TScriptMessage;
+   scriptMsg : TScriptMessage;
    sf : TSourceFile;
 begin
    for i:=0 to src.Count-1 do begin
       msg:=src.Msgs[i];
       if msg is TScriptMessage then begin
-         srcMsg:=TScriptMessage(msg);
-         sf:=TSourceFile.Create;
-         sf.Name:=srcMsg.ScriptPos.SourceName;
-         sf.Code:=srcMsg.ScriptPos.SourceCode;
-         FSourceFiles.Add(sf);
-         srcMsg.FScriptPos.SourceFile:=sf;
-         if srcMsg.ScriptPos.Line=1 then
-            col:=srcMsg.ScriptPos.Col+colOffset
-         else col:=srcMsg.ScriptPos.Col;
-         srcMsg.ScriptPos.SetColLine(col, srcMsg.ScriptPos.Line+lineOffset);
+         scriptMsg:=TScriptMessage(msg);
+         sf:=GetSourceFile(scriptMsg.ScriptPos);
+         if sf=nil then begin
+            sf:=TSourceFile.Create;
+            sf.Name:=scriptMsg.ScriptPos.SourceName;
+            sf.Code:=scriptMsg.ScriptPos.SourceCode;
+            FSourceFiles.Add(sf);
+         end;
+         scriptMsg.FScriptPos.SourceFile:=sf;
+         if scriptMsg.SourceName=MSG_MainModule then begin
+            if scriptMsg.ScriptPos.Line=1 then
+               col:=scriptMsg.ScriptPos.Col+colOffset
+            else col:=scriptMsg.ScriptPos.Col;
+            scriptMsg.ScriptPos.SetColLine(col, scriptMsg.ScriptPos.Line+lineOffset);
+         end else begin
+            scriptMsg.ScriptPos.SetColLine(scriptMsg.ScriptPos.Col, scriptMsg.ScriptPos.Line);
+         end;
       end;
       AddMessage(msg);
    end;
