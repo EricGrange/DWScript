@@ -37,6 +37,7 @@ object FrmBasic: TFrmBasic
     Font.Height = -13
     Font.Name = 'Courier New'
     Font.Style = []
+    ParentBackground = False
     TabOrder = 0
     Gutter.Font.Charset = DEFAULT_CHARSET
     Gutter.Font.Color = clWindowText
@@ -90,6 +91,10 @@ object FrmBasic: TFrmBasic
     object TabSheetOutput: TTabSheet
       Caption = '&Output'
       ImageIndex = 1
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object ListBoxOutput: TListBox
         Left = 0
         Top = 0

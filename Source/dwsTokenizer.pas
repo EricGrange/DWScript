@@ -287,6 +287,8 @@ type
          property CurrentPos : TScriptPos read FSource.FCurPos;
          property PathName : String read FSource.FPathName;
 
+         function SafePathName : String; inline;
+
          property ConditionalDepth : TSimpleStack<TTokenizerConditionalInfo> read FConditionalDepth;
          property Rules : TTokenizerRules read FRules;
 
@@ -1298,6 +1300,15 @@ procedure TTokenizer.SimulateNameToken(const scriptPos : TScriptPos; const name 
 begin
    SimulateToken(ttNAME, scriptPos);
    FToken.FString:=name;
+end;
+
+// SafePathName
+//
+function TTokenizer.SafePathName : String;
+begin
+   if Self<>nil then
+      Result:=PathName
+   else Result:='';
 end;
 
 // HasTokens

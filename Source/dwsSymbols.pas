@@ -275,6 +275,7 @@ type
 
          class function IsBaseType : Boolean; virtual;
          function IsType : Boolean; virtual;
+         function IsPointerType : Boolean; virtual;
          function AsFuncSymbol : TFuncSymbol; overload;
          function AsFuncSymbol(var funcSym : TFuncSymbol) : Boolean; overload;
 
@@ -506,7 +507,7 @@ type
    THasParamSymbolMethod = function (param : TParamSymbol) : Boolean of object;
    TAddParamSymbolMethod = procedure (param : TParamSymbol) of object;
 
-   TParamSymbolWithDefaultValue = class(TParamSymbol)
+   TParamSymbolWithDefaultValue = class sealed (TParamSymbol)
       private
          FDefaultValue : TData;
 
@@ -884,6 +885,8 @@ type
          function GetSourcePosition : TScriptPos; override;
 
       public
+         function IsPointerType : Boolean; override;
+
          function ParamsDescription : UnicodeString; override;
 
          property Alias : TFuncSymbol read FAlias write FAlias;
@@ -923,6 +926,7 @@ type
          function UnAliasedType : TTypeSymbol; override;
          procedure InitData(const data : TData; offset : Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function IsPointerType : Boolean; override;
    end;
 
    // integer/UnicodeString/float/boolean/variant
@@ -1026,6 +1030,7 @@ type
          constructor Create(const name : UnicodeString; elementType, indexType : TTypeSymbol);
          procedure InitData(const Data: TData; Offset: Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function IsPointerType : Boolean; override;
          function SameType(typSym : TTypeSymbol) : Boolean; override;
 
          class procedure SetInitDynamicArrayProc(const aProc : TInitDynamicArrayProc);
@@ -1319,6 +1324,7 @@ type
          procedure InitData(const Data: TData; Offset: Integer); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function IsPointerType : Boolean; override;
 
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
          function CreateAnonymousMethod(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
@@ -1484,6 +1490,7 @@ type
          procedure InitData(const Data: TData; Offset: Integer); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function  IsPointerType : Boolean; override;
          function  HasMetaSymbol : Boolean; override;
 
          function VMTMethod(index : Integer) : TMethodSymbol;
@@ -1613,6 +1620,7 @@ type
          function DefaultValue : Int64;
          procedure InitData(const data : TData; offset : Integer); override;
          function BaseType : TTypeSymbol; override;
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
          procedure AddElement(element : TElementSymbol);
          function ElementByValue(const value : Int64) : TElementSymbol;
@@ -2081,6 +2089,13 @@ end;
 // IsType
 //
 function TSymbol.IsType : Boolean;
+begin
+   Result:=False;
+end;
+
+// IsPointerType
+//
+function TSymbol.IsPointerType : Boolean;
 begin
    Result:=False;
 end;
@@ -2809,6 +2824,13 @@ begin
    else if typSym is TInterfaceSymbol then
       Result:=(NthParentOf(TInterfaceSymbol(typSym))>=0)
    else Result:=False;
+end;
+
+// IsPointerType
+//
+function TInterfaceSymbol.IsPointerType : Boolean;
+begin
+   Result:=True;
 end;
 
 // CreateSelfParameter
@@ -4484,6 +4506,13 @@ begin
    end;
 end;
 
+// IsPointerType
+//
+function TClassSymbol.IsPointerType : Boolean;
+begin
+   Result:=True;
+end;
+
 // HasMetaSymbol
 //
 function TClassSymbol.HasMetaSymbol : Boolean;
@@ -6053,6 +6082,13 @@ begin
                 and TStaticArraySymbol(typSym).IsEmptyArray));
 end;
 
+// IsPointerType
+//
+function TDynamicArraySymbol.IsPointerType : Boolean;
+begin
+   Result:=True;
+end;
+
 // SameType
 //
 function TDynamicArraySymbol.SameType(typSym : TTypeSymbol) : Boolean;
@@ -6275,6 +6311,13 @@ begin
    Result:=Typ;
 end;
 
+// IsCompatible
+//
+function TEnumerationSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+begin
+   Result:=(typSym.UnAliasedType=Self);
+end;
+
 // DoIsOfType
 //
 function TEnumerationSymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
@@ -6383,6 +6426,13 @@ end;
 function TAliasSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=Typ.IsCompatible(typSym);
+end;
+
+// IsPointerType
+//
+function TAliasSymbol.IsPointerType : Boolean;
+begin
+   Result:=Typ.IsPointerType;
 end;
 
 // DoIsOfType
@@ -7117,6 +7167,13 @@ end;
 function TAliasMethodSymbol.GetSourcePosition : TScriptPos;
 begin
    Result:=Alias.GetSourcePosition;
+end;
+
+// IsPointerType
+//
+function TAliasMethodSymbol.IsPointerType : Boolean;
+begin
+   Result:=Alias.IsPointerType;
 end;
 
 // ParamsDescription

@@ -494,7 +494,7 @@ var
 begin
   SynEditorOptionsContainer := TSynEditorOptionsContainer.Create(nil);
   SynEditorOptionsContainer.Assign(SynEdit);
-  SynEditOptionsDialog.Execute(SynEditorOptionsContainer);
+  SynEditOptionsDialog.Execute(SynEditorOptionsContainer, nil);
   SynEdit.Assign(SynEditorOptionsContainer);
 end;
 

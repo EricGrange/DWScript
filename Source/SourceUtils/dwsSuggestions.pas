@@ -200,7 +200,8 @@ begin
    if customSuggestions<>nil then
       AddToList(customSuggestions);
    AddContextSuggestions;
-   AddUnitSuggestions;
+   if not (soNoUnits in options) then
+      AddUnitSuggestions;
    AddGlobalSuggestions;
 
    if not FAfterDot then begin

@@ -18,7 +18,7 @@ unit DSimpleDWScript;
 
 interface
 
-{.$define EnablePas2Js}
+{$define EnablePas2Js}
 
 uses
    Windows, SysUtils, Classes, StrUtils,

@@ -3241,6 +3241,7 @@ var
    name, enumValue : UnicodeString;
    paramSym, elemSym : TSymbol;
    param : TdwsParameter;
+   paramRec : PParamRec;
 begin
    SetLength(Result, Parameters.Count);
    for i := 0 to Parameters.Count - 1 do begin
@@ -3253,15 +3254,17 @@ begin
             raise Exception.CreateFmt(UNT_ParameterNameAlreadyExists, [name]);
       end;
 
-      Result[i].IsVarParam := param.IsVarParam and param.IsWritable;
-      Result[i].IsConstParam := param.IsVarParam and not param.IsWritable;
-      Result[i].ParamName := name;
-      Result[i].ParamType := param.DataType;
+      paramRec := @Result[i];
 
-      Result[i].HasDefaultValue := param.HasDefaultValue;
-      if Result[i].HasDefaultValue then begin
-         SetLength(Result[i].DefaultValue, 1);
-         paramSym:=Symbol.GetDataType(systemTable, Table, Result[i].ParamType);
+      paramRec.IsVarParam := param.IsVarParam and param.IsWritable;
+      paramRec.IsConstParam := param.IsVarParam and not param.IsWritable;
+      paramRec.ParamName := name;
+      paramRec.ParamType := param.DataType;
+
+      paramRec.HasDefaultValue := param.HasDefaultValue;
+      if paramRec.HasDefaultValue then begin
+         SetLength(paramRec.DefaultValue, 1);
+         paramSym:=Symbol.GetDataType(systemTable, Table, paramRec.ParamType);
          if paramSym is TEnumerationSymbol then begin
             enumValue:=param.DefaultValue;
             if UnicodeSameText(StrBeforeChar(enumValue, '.'), paramSym.Name) then
@@ -3270,11 +3273,13 @@ begin
             if elemSym=nil then
                elemValue:=param.DefaultValue
             else elemValue:=TElementSymbol(elemSym).Value;
-            Result[i].DefaultValue[0] := elemValue;
-         end else Result[i].DefaultValue[0] := param.DefaultValue;
-      end else Result[i].DefaultValue := nil;
+            paramRec.DefaultValue[0] := elemValue;
+         end else if paramSym.IsPointerType and VarIsNull(param.DefaultValue) then
+            paramRec.DefaultValue[0] := IUnknown(nil)
+         else paramRec.DefaultValue[0] := param.DefaultValue;
+      end else paramRec.DefaultValue := nil;
 
-      Symbol.GetUnit.GetSymbol(systemTable, Table, Result[i].ParamType);
+      Symbol.GetUnit.GetSymbol(systemTable, Table, paramRec.ParamType);
   end;
 end;
 
