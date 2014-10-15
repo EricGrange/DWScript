@@ -657,7 +657,7 @@ type
    end;
 
    TFuncSymbolFlag = (fsfStateless, fsfExternal, fsfType, fsfOverloaded, fsfLambda,
-                      fsfInline, fsfProperty);
+                      fsfInline, fsfProperty, fsfExport);
    TFuncSymbolFlags = set of TFuncSymbolFlag;
 
    // A script function / procedure: procedure X(param: Integer);
@@ -685,6 +685,8 @@ type
          procedure SetIsStateless(const val : Boolean);
          function GetIsExternal : Boolean; inline;
          procedure SetIsExternal(const val : Boolean);
+         function GetIsExport : Boolean; inline;
+         procedure SetIsExport(const val : Boolean);
          function GetIsProperty : Boolean; inline;
          procedure SetIsProperty(const val : Boolean);
          function GetIsOverloaded : Boolean; inline;
@@ -737,6 +739,7 @@ type
          property IsForwarded : Boolean read GetIsForwarded;
          property IsOverloaded : Boolean read GetIsOverloaded write SetIsOverloaded;
          property IsExternal : Boolean read GetIsExternal write SetIsExternal;
+         property IsExport : Boolean read GetIsExport write SetIsExport;
          property IsProperty : Boolean read GetIsProperty write SetIsProperty;
          property Kind : TFuncKind read FKind write FKind;
          property ExternalName : UnicodeString read GetExternalName write FExternalName;
@@ -3216,6 +3219,22 @@ begin
    if val then
       Include(FFlags, fsfExternal)
    else Exclude(FFlags, fsfExternal);
+end;
+
+// GetIsExport
+//
+function TFuncSymbol.GetIsExport : Boolean;
+begin
+   Result:=(fsfExport in FFlags);
+end;
+
+// SetIsExport
+//
+procedure TFuncSymbol.SetIsExport(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, fsfExport)
+   else Exclude(FFlags, fsfExport);
 end;
 
 // GetIsProperty

@@ -56,6 +56,11 @@ type
 
    end;
 
+   TDWSExtension = record
+      Str : String;
+      Typ : TFileAccessType;
+   end;
+
    THttpSys2WebServer = class (TInterfacedSelfObject, IHttpSys2WebServer, IWebServerInfo)
       protected
          FPath : TFileName;
@@ -73,7 +78,7 @@ type
          // Used to implement a lazy flush on FileAccessInfoCaches
          FCacheCounter : Cardinal;
          FFileAccessInfoCacheSize : Integer;
-         FDWSExtensions : array of String;
+         FDWSExtensions : array of TDWSExtension;
 
          procedure FileChanged(sender : TdwsFileNotifier; const fileName : String;
                                changeAction : TFileNotificationAction);
@@ -84,6 +89,8 @@ type
          function HttpDomainName : String;
          function HttpsPort : Integer;
          function HttpsDomainName : String;
+
+         procedure RegisterExtensions(list : TdwsJSONValue; typ : TFileAccessType);
 
          procedure Initialize(const basePath : TFileName; options : TdwsJSONValue); virtual;
 
@@ -168,7 +175,9 @@ const
          // will automatically be redirected with a 301 error
          +'"AutoRedirectFolders": true,'
          // List of extensions that go through the script filter
-         +'"ScriptedExtensions": [".dws"]'
+         +'"ScriptedExtensions": [".dws"],'
+         // List of extensions that go through the Pascal To JavaScript  filter
+         +'"P2JSExtensions": [".p2js"]'
       +'}';
 
 // ------------------------------------------------------------------
@@ -215,16 +224,29 @@ begin
    inherited;
 end;
 
+// RegisterExtensions
+//
+procedure THttpSys2WebServer.RegisterExtensions(list : TdwsJSONValue; typ : TFileAccessType);
+var
+   i, n : Integer;
+begin
+   n:=Length(FDWSExtensions);
+   SetLength(FDWSExtensions, n+list.ElementCount);
+   for i:=0 to list.ElementCount-1 do begin
+      FDWSExtensions[n+i].Str:=list.Elements[i].AsString;
+      FDWSExtensions[n+i].Typ:=typ;
+   end;
+end;
+
 // Initialize
 //
 procedure THttpSys2WebServer.Initialize(const basePath : TFileName; options : TdwsJSONValue);
 var
    logPath, errorLogPath : TdwsJSONValue;
    serverOptions : TdwsJSONValue;
-   scriptedExtensions : TdwsJSONValue;
    extraDomains, domain : TdwsJSONValue;
    env: TdwsJSONObject;
-   i, nbThreads : Integer;
+   i, k, nbThreads : Integer;
 begin
    FPath:=IncludeTrailingPathDelimiter(ExpandFileName(basePath));
 
@@ -252,10 +274,8 @@ begin
    try
       serverOptions.Extend(options['Server']);
 
-      scriptedExtensions:=serverOptions['ScriptedExtensions'];
-      SetLength(FDWSExtensions, scriptedExtensions.ElementCount);
-      for i:=0 to scriptedExtensions.ElementCount-1 do
-         FDWSExtensions[i]:=scriptedExtensions.Elements[i].AsString;
+      RegisterExtensions(serverOptions['ScriptedExtensions'], fatDWS);
+      RegisterExtensions(serverOptions['P2JSExtensions'], fatP2JS);
 
       FRelativeURI:=serverOptions['RelativeURI'].AsString;
       FDomainName:=serverOptions['DomainName'].AsString;
@@ -408,10 +428,10 @@ begin
          end;
          {$WARN SYMBOL_PLATFORM ON}
 
-         fileInfo.DWScript:=False;
+         fileInfo.Typ:=fatRAW;
          for i:=0 to High(FDWSExtensions) do begin
-            if StrEndsWith(fileInfo.CookedPathName, FDWSExtensions[i]) then begin
-               fileInfo.DWScript:=True;
+            if StrEndsWith(fileInfo.CookedPathName, FDWSExtensions[i].Str) then begin
+               fileInfo.Typ:=FDWSExtensions[i].Typ;
                Break;
             end;
          end;
@@ -432,14 +452,13 @@ begin
       FILE_ATTRIBUTE_DIRECTORY :
          Redirect301TrailingPathDelimiter(request, response);
    else
-      if fileInfo.DWScript then begin
-
-         FDWS.HandleDWS(fileInfo.CookedPathName, request, response, []);
-
-      end else begin
-
-         ProcessStaticFile(fileInfo.CookedPathName, request, response);
-
+      case fileInfo.Typ of
+         fatRAW :
+            ProcessStaticFile(fileInfo.CookedPathName, request, response);
+         fatP2JS :
+            FDWS.HandleP2JS(fileInfo.CookedPathName, request, response);
+      else
+         FDWS.HandleDWS(fileInfo.CookedPathName, fileInfo.Typ, request, response, []);
       end;
    end;
 end;

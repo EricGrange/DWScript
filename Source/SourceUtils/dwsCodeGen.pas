@@ -712,7 +712,9 @@ begin
    execSelf:=func.Executable.GetSelf;
    if not (execSelf is TdwsProcedure) then Exit;
 
-   if (func.Name<>'') and not SmartLink(func) then Exit;
+   if     (func.Name<>'')
+      and (not func.IsExport)
+      and not SmartLink(func) then Exit;
 
    proc:=TdwsProcedure(execSelf);
 

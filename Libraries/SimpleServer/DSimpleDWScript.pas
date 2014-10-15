@@ -30,6 +30,7 @@ uses
    dwsJSFilter, dwsJSLibModule, dwsCodeGen,
 {$endif}
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
+   dwsWebServerHelpers,
    dwsDataBase, dwsDataBaseLibModule, dwsWebServerInfo, dwsWebServerLibModule,
    dwsBackgroundWorkersLibModule, dwsSynapseLibModule, dwsCryptoLibModule,
    dwsEncodingLibModule;
@@ -100,7 +101,7 @@ type
       FDependenciesHash : TDependenciesHash;
 
       FCompilerLock : TFixedCriticalSection;
-      FUseJIT : Boolean;
+      FEnableJIT : Boolean;
 
       FExecutingScripts : PExecutingScript;
       FExecutingScriptsLock : TMultiReadSingleWrite;
@@ -116,8 +117,14 @@ type
       FErrorLogDirectory : String;
 
    protected
+      {$ifdef EnablePas2Js}
+      FJSCompiler : TDelphiWebScript;
+      FJSFilter : TdwsJSFilter;
+      {$endif}
+
       procedure TryAcquireDWS(const fileName : String; var prog : IdwsProgram);
-      procedure CompileDWS(const fileName : String; var prog : IdwsProgram);
+      procedure CompileDWS(const fileName : String; var prog : IdwsProgram;
+                           typ : TFileAccessType);
 
       procedure LogCompileErrors(const fileName : String; const msgs : TdwsMessageList);
 
@@ -132,13 +139,19 @@ type
 
       procedure DoBackgroundWork(const request : TWebRequest);
 
+      class procedure Handle500(response : TWebResponse; msgs : TdwsMessageList); static;
+      class procedure Handle503(response : TWebResponse); static;
+
    public
       procedure Initialize(const serverInfo : IWebServerInfo);
       procedure Finalize;
 
-      procedure HandleDWS(const fileName : String; request : TWebRequest; response : TWebResponse;
+      procedure HandleDWS(const fileName : String; typ : TFileAccessType;
+                          request : TWebRequest; response : TWebResponse;
                           const options : TDWSHandlingOptions);
       procedure StopDWS;
+
+      procedure HandleP2JS(const fileName : String; request : TWebRequest; response : TWebResponse);
 
       procedure FlushDWSCache(const fileName : String = '');
 
@@ -205,7 +218,7 @@ const
          // Shutdown Script Name
          +'"Shutdown": "%www%\\.shutdown.pas",'
          // Turns on/off JIT compilation
-         +'"JIT": false'
+         +'"JIT": true'
       +'}';
 
 // ------------------------------------------------------------------
@@ -219,11 +232,6 @@ implementation
 {$R *.dfm}
 
 procedure TSimpleDWScript.DataModuleCreate(Sender: TObject);
-{$ifdef EnablePas2Js}
-var
-   jsCompiler : TDelphiWebScript;
-   jsFilter : TdwsJSFilter;
-{$endif}
 begin
    FPathVariables:=TFastCompareTextList.Create;
 
@@ -258,22 +266,22 @@ begin
    FWorkerTimeoutMilliseconds:=30000;
 
 {$ifdef EnablePas2Js}
-   jsFilter:=TdwsJSFilter.Create(Self);
-   dwsHtmlFilter.SubFilter:=jsFilter;
-   jsCompiler:=TDelphiWebScript.Create(Self);
-   jsFilter.Compiler:=jsCompiler;
-   jsFilter.PatternOpen:='<script type="pascal">';
-   jsFilter.PatternClose:='</script>';
-   jsFilter.CodeGenPrefix:='<script>'#13#10;
-   jsFilter.CodeGenPostfix:=#13#10'</script>';
-   TdwsJSLibModule.Create(Self).Script:=jsCompiler;
-   jsCompiler.OnNeedUnit:=DoNeedUnit;
-   jsCompiler.OnInclude:=DoInclude;
-   jsCompiler.Config.CompilerOptions:=[
+   FJSFilter:=TdwsJSFilter.Create(Self);
+   dwsHtmlFilter.SubFilter:=FJSFilter;
+   FJSCompiler:=TDelphiWebScript.Create(Self);
+   FJSFilter.Compiler:=FJSCompiler;
+   FJSFilter.PatternOpen:='<script type="pascal">';
+   FJSFilter.PatternClose:='</script>';
+   FJSFilter.CodeGenPrefix:='<script>'#13#10;
+   FJSFilter.CodeGenPostfix:=#13#10'</script>';
+   TdwsJSLibModule.Create(Self).Script:=FJSCompiler;
+   FJSCompiler.OnNeedUnit:=DoNeedUnit;
+   FJSCompiler.OnInclude:=DoInclude;
+   FJSCompiler.Config.CompilerOptions:=[
       coOptimize, coAssertions, coSymbolDictionary, coContextMap, coExplicitUnitUses,
       coVariablesAsVarOnly, coAllowClosures
    ];
-   jsFilter.CodeGenOptions:=[
+   FJSFilter.CodeGenOptions:=[
       cgoNoRangeChecks, cgoNoCheckInstantiated, cgoNoCheckLoopStep,
       cgoNoConditions, cgoNoSourceLocations,
       // cgoObfuscate, cgoOptimizeForSize,
@@ -297,23 +305,9 @@ end;
 
 // HandleDWS
 //
-procedure TSimpleDWScript.HandleDWS(const fileName : String; request : TWebRequest; response : TWebResponse;
+procedure TSimpleDWScript.HandleDWS(const fileName : String; typ : TFileAccessType;
+                                    request : TWebRequest; response : TWebResponse;
                                     const options : TDWSHandlingOptions);
-
-   procedure Handle503(response : TWebResponse);
-   begin
-      response.StatusCode:=503;
-      response.ContentData:='CPU Usage limit reached, please try again later';
-      response.ContentType:='text/plain';
-   end;
-
-   procedure Handle500(response : TWebResponse; msgs : TdwsMessageList);
-   begin
-      if response<>nil then begin
-         response.StatusCode:=500;
-         response.ContentText['plain']:=msgs.AsInfo;
-      end else OutputDebugString(msgs.AsInfo);
-   end;
 
    procedure HandleScriptResult(response : TWebResponse; scriptResult : TdwsResult);
    begin
@@ -334,7 +328,7 @@ begin
 
    TryAcquireDWS(fileName, prog);
    if prog=nil then
-      CompileDWS(fileName, prog);
+      CompileDWS(fileName, prog, typ);
 
    if prog.Msgs.HasErrors then
       Handle500(response, prog.Msgs)
@@ -395,6 +389,33 @@ begin
       p:=p.Next;
    end;
    FExecutingScriptsLock.EndRead;
+end;
+
+// HandleP2JS
+//
+procedure TSimpleDWScript.HandleP2JS(const fileName : String; request : TWebRequest; response : TWebResponse);
+var
+   code, js : String;
+   prog : IdwsProgram;
+begin
+   if (CPUUsageLimit>0) and not WaitForCPULimit then begin
+      Handle503(response);
+      Exit;
+   end;
+
+   TryAcquireDWS(fileName, prog);
+   if prog=nil then begin
+      code:=DoLoadSourceCode(fileName);
+      js:=FJSFilter.CompileToJS(prog, code);
+   end else begin
+      js:=FJSFilter.CompileToJS(prog, '');
+   end;
+   if prog.Msgs.HasErrors then
+      Handle500(response, prog.Msgs)
+   else begin
+      response.ContentData:='(function(){'#13#10+UTF8Encode(js)+'})();'#13#10;
+      response.ContentType:='text/javascript; charset=UTF-8';
+   end;
 end;
 
 // FlushDWSCache
@@ -481,7 +502,7 @@ begin
       dwsHtmlFilter.PatternClose:=dws['PatternClose'].AsString;
       dwsHtmlFilter.PatternEval:=dws['PatternEval'].AsString;
 
-      FUseJIT:=dws['JIT'].AsBoolean;
+      FEnableJIT:=dws['JIT'].AsBoolean;
 
       FStartupScriptName:=ApplyPathVariables(dws['Startup'].AsString);
       FShutdownScriptName:=ApplyPathVariables(dws['Shutdown'].AsString);
@@ -508,7 +529,8 @@ end;
 
 // CompileDWS
 //
-procedure TSimpleDWScript.CompileDWS(const fileName : String; var prog : IdwsProgram);
+procedure TSimpleDWScript.CompileDWS(const fileName : String; var prog : IdwsProgram;
+                                     typ : TFileAccessType);
 var
    code : String;
    cp : TCompiledProgram;
@@ -524,19 +546,21 @@ begin
 
       FHotPath:=ExtractFilePath(fileName);
 
-      if StrIEndsWith(fileName, '.pas') then
-         DelphiWebScript.Config.Filter:=nil
-      else DelphiWebScript.Config.Filter:=dwsHtmlFilter;
+      if typ=fatDWS then
+         DelphiWebScript.Config.Filter:=dwsHtmlFilter
+      else DelphiWebScript.Config.Filter:=nil;
 
       prog:=DelphiWebScript.Compile(code, fileName);
 
       if not prog.Msgs.HasErrors then begin
-         jit:=TdwsJITx86.Create;
-         try
-            jit.Options:=[jitoDoStep, jitoRangeCheck];
-            jit.GreedyJIT(prog.ProgramObject);
-         finally
-            jit.Free;
+         if FEnableJIT and (typ in [fatDWS, fatPAS]) then begin
+            jit:=TdwsJITx86.Create;
+            try
+               jit.Options:=[jitoDoStep, jitoRangeCheck];
+               jit.GreedyJIT(prog.ProgramObject);
+            finally
+               jit.Free;
+            end;
          end;
       end else if ErrorLogDirectory<>'' then begin
          LogCompileErrors(fileName, prog.Msgs);
@@ -673,8 +697,27 @@ begin
    if Assigned(FBackgroundFileSystem) then begin
       name:=FBackgroundFileSystem.ValidateFileName(request.URL);
       if name<>'' then
-         HandleDWS(name, request, nil, [optWorker]);
+         HandleDWS(name, fatPAS, request, nil, [optWorker]);
    end;
+end;
+
+// Handle500
+//
+class procedure TSimpleDWScript.Handle500(response : TWebResponse; msgs : TdwsMessageList);
+begin
+   if response<>nil then begin
+      response.StatusCode:=500;
+      response.ContentText['plain']:=msgs.AsInfo;
+   end else OutputDebugString(msgs.AsInfo);
+end;
+
+// Handle503
+//
+class procedure TSimpleDWScript.Handle503(response : TWebResponse);
+begin
+   response.StatusCode:=503;
+   response.ContentData:='CPU Usage limit reached, please try again later';
+   response.ContentType:='text/plain';
 end;
 
 // Initialize
@@ -739,7 +782,7 @@ begin
    FBackgroundFileSystem:=dwsRuntimeFileSystem.AllocateFileSystem;
 
    if StartupScriptName<>'' then
-      HandleDWS(StartupScriptName, nil, nil, [optWorker]);
+      HandleDWS(StartupScriptName, fatPAS, nil, nil, [optWorker]);
 end;
 
 // Shutdown
@@ -751,7 +794,7 @@ begin
    StopDWS;
 
    if ShutdownScriptName<>'' then
-      HandleDWS(ShutdownScriptName, nil, nil, [optWorker]);
+      HandleDWS(ShutdownScriptName, fatPAS, nil, nil, [optWorker]);
 end;
 
 // ------------------

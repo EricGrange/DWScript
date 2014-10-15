@@ -53,11 +53,13 @@ type
          property IndexFileNames : TStrings read FIndexFileNames;
    end;
 
+   TFileAccessType = (fatRAW, fatDWS, fatPAS, fatP2JS);
+
    TFileAccessInfo = class(TRefCountedObject)
       public
          CookedPathName : String;
          FileAttribs : Cardinal;
-         DWScript : Boolean;
+         Typ : TFileAccessType;
    end;
 
    // this class is not thread safe, use from a single thread

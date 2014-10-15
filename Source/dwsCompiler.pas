@@ -56,7 +56,7 @@ const
    cDefaultStackChunkSize = 4096;  // 64 kB in 32bit Delphi, each stack entry is a Variant
 
    // compiler version is date in YYYYMMDD format, dot subversion number
-   cCompilerVersion = 20140918.0;
+   cCompilerVersion = 20141015.0;
 
 type
    TdwsCompiler = class;
@@ -3227,7 +3227,7 @@ begin
 
                end else begin
 
-                  // forward & external declarations
+                  // forward, external, export & helper declarations
 
                   if FTok.TestDelete(ttEXTERNAL) then begin
                      ReadExternalName(Result);
@@ -3257,6 +3257,11 @@ begin
                         Result.SetForwardedPos(funcPos);
                         ReadSemiColon;
                      end;
+                  end;
+
+                  if FTok.TestDelete(ttEXPORT) then begin
+                     Result.IsExport:=True;
+                     ReadSemiColon;
                   end;
 
                   // helper anonymous declaration

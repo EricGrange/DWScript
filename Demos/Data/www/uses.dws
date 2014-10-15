@@ -2,7 +2,8 @@
 <head>
 <title>Uses test</title>
 </head>
-<body><?pasuses TestUnit;
+<body><?pas
+uses TestUnit;
 TestIt('hello');
 ?></body>
 </html>
