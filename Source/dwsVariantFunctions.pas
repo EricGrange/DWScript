@@ -45,6 +45,10 @@ type
       function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
 
+   TVarIsArrayFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
+   end;
+
    TVarTypeFunc = class(TInternalMagicIntFunction)
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
@@ -95,6 +99,16 @@ var
 begin
    args.ExprBase[0].EvalAsVariant(args.Exec, v);
    Result:=VarIsClear(v);
+end;
+
+{ TVarIsClearFunc }
+
+function TVarIsArrayFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+var
+   v : Variant;
+begin
+   args.ExprBase[0].EvalAsVariant(args.Exec, v);
+   Result:=VarIsArray(v);
 end;
 
 { TVarTypeFunc }
@@ -179,6 +193,7 @@ initialization
    RegisterInternalBoolFunction(TVarIsNullFunc, 'VarIsNull', ['v', 'Variant']);
    RegisterInternalBoolFunction(TVarIsEmptyFunc, 'VarIsEmpty', ['v', 'Variant']);
    RegisterInternalBoolFunction(TVarIsClearFunc, 'VarIsClear', ['v', 'Variant']);
+   RegisterInternalBoolFunction(TVarIsArrayFunc, 'VarIsArray', ['v', 'Variant']);
    RegisterInternalFunction(TVarTypeFunc, 'VarType', ['v', 'Variant'], 'TVarType');
    RegisterInternalFunction(TVarAsTypeFunc, 'VarAsType', ['v', 'Variant', 'VarType', 'TVarType'], 'Variant');
    RegisterInternalStringFunction(TVarToStrFunc, 'VarToStr', ['v', 'Variant']);
