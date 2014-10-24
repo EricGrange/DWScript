@@ -8549,10 +8549,10 @@ end;
 //
 function TArrayIndexOfExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 var
-   base : IScriptObj;
+   base : IScriptDynArray;
    dyn : TScriptDynamicArray;
 begin
-   BaseExpr.EvalAsScriptObj(exec, base);
+   BaseExpr.EvalAsScriptDynArray(exec, base);
    dyn:=TScriptDynamicArray(base.GetSelf);
    Result:=FMethod(exec, dyn);
 end;

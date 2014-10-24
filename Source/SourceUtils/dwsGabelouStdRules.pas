@@ -216,11 +216,16 @@ end;
 // EvaluateSymbol
 //
 procedure TGR_PrefixedClassVariables.EvaluateSymbol(const aSymbolList : TSymbolPositionList; msgs : TdwsMessageList);
+var
+   sym : TClassVarSymbol;
 begin
    if aSymbolList.Symbol.ClassType<>TClassVarSymbol then Exit;
 
-   if    (Length(aSymbolList.Symbol.Name)<2)
-      or (aSymbolList.Symbol.Name[1]<>'v') or TCharacter.IsLower(aSymbolList.Symbol.Name[2]) then
+   sym:=TClassVarSymbol(aSymbolList.Symbol);
+   if sym.OwnerSymbol.IsStatic then Exit;
+
+   if    (Length(sym.Name)<2)
+      or (sym.Name[1]<>'v') or TCharacter.IsLower(sym.Name[2]) then
       TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
 end;
 
