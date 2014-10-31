@@ -386,9 +386,19 @@ var
 begin
    s:=args.AsString[0];
 
-   Result:=   UnicodeSameText(s, 'True') or UnicodeSameText(s, 'T')
-           or UnicodeSameText(s, 'Yes') or UnicodeSameText(s, 'Y')
-           or UnicodeSameText(s, '1');
+   case Length(s) of
+      1 : begin
+         case s[1] of
+            '1', 'T', 't', 'Y', 'y' : Result:=True;
+         else
+            Result:=False;
+         end;
+      end;
+      3 : Result:=UnicodeSameText(s, 'Yes');
+      4 : Result:=UnicodeSameText(s, 'True');
+   else
+      Result:=False;
+   end;
 end;
 
 { TFloatToStrFunc }
