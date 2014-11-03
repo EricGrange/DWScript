@@ -584,9 +584,13 @@ type
    TdwsConstants = class(TdwsCollection)
       protected
          class function GetSymbolClass : TdwsSymbolClass; override;
+         function GetValues(const name : String) : Variant;
+         procedure SetValues(const name : String; const v : Variant);
 
       public
          function Add : TdwsConstant; inline;
+
+         property Values[const name : String] : Variant read GetValues write SetValues;
    end;
 
    TdwsConstantsClass = class of TdwsConstants;
@@ -5617,11 +5621,42 @@ begin
    result := inherited Add as TdwsSet;
 end;
 
-{ TdwsConstants }
+// ------------------
+// ------------------ TdwsConstants ------------------
+// ------------------
 
+// GetSymbolClass
+//
 class function TdwsConstants.GetSymbolClass: TdwsSymbolClass;
 begin
-  Result := TdwsConstant;
+   Result := TdwsConstant;
+end;
+
+// GetValues
+//
+function TdwsConstants.GetValues(const name : String) : Variant;
+var
+   i : Integer;
+begin
+   // returns Unassigned if not present
+   i:=IndexOf(name);
+   if i>=0 then
+      Result:=TdwsConstant(Items[i]).Value;
+end;
+
+// SetValues
+//
+procedure TdwsConstants.SetValues(const name : String; const v : Variant);
+var
+   i : Integer;
+   c : TdwsConstant;
+begin
+   i:=IndexOf(name);
+   if i<0 then begin
+      c:=Add;
+      c.Name:=name;
+   end else c:=TdwsConstant(Items[i]);
+   c.Value:=v;
 end;
 
 // Add
@@ -5631,11 +5666,15 @@ begin
    Result:=TdwsConstant(inherited Add);
 end;
 
-{ TdwsClasses }
+// ------------------
+// ------------------ TdwsClasses ------------------
+// ------------------
 
+// GetSymbolClass
+//
 class function TdwsClasses.GetSymbolClass: TdwsSymbolClass;
 begin
-  Result := TdwsClass;
+   Result:=TdwsClass;
 end;
 
 // Add
@@ -5645,7 +5684,9 @@ begin
    Result:=TdwsClass(inherited Add);
 end;
 
-{ TdwsArrays }
+// ------------------
+// ------------------ TdwsArrays ------------------
+// ------------------
 
 class function TdwsArrays.GetSymbolClass: TdwsSymbolClass;
 begin
@@ -5657,7 +5698,9 @@ begin
   Result := TdwsArray(inherited Add);
 end;
 
-{ TdwsRecords }
+// ------------------
+// ------------------ TdwsRecords ------------------
+// ------------------
 
 class function TdwsRecords.GetSymbolClass: TdwsSymbolClass;
 begin
@@ -5671,7 +5714,9 @@ begin
    Result:=TdwsRecord(inherited Add);
 end;
 
-{ TdwsParameters }
+// ------------------
+// ------------------ TdwsParameters ------------------
+// ------------------
 
 class function TdwsParameters.GetSymbolClass: TdwsSymbolClass;
 begin
