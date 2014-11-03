@@ -904,10 +904,10 @@ begin
   if ALoadFile and FileExists(AFileName) then
   begin
     FEditor.Lines.Text := LoadTextFromFile(AFileName);
-    InitExecutableLines;
-    InitLineChangeStates;
     FEditor.ReadOnly  := FileIsReadOnly(AFileName);
   end;
+  InitExecutableLines;
+  InitLineChangeStates;
 
   FEditor.Modified := False;
 end;
@@ -1071,7 +1071,10 @@ end;
 procedure TEditorPage.InitExecutableLines;
 begin
   FExecutableLines.Size := 0;
-  FExecutableLines.Size := Editor.Lines.Count;
+  if Editor.Lines.Count = 0 then
+    FExecutableLines.Size := 1
+  else
+    FExecutableLines.Size := Editor.Lines.Count;
 end;
 
 // ShowExecutableLines
@@ -1093,7 +1096,10 @@ end;
 procedure TEditorPage.InitLineChangeStates;
 begin
   SetLength(FLineChangedState, 0);
-  SetLength(FLineChangedState, Editor.Lines.Count);
+  if Editor.Lines.Count = 0 then
+    SetLength(FLineChangedState, 1)
+  else
+    SetLength(FLineChangedState, Editor.Lines.Count);
 end;
 
 // ToggleLineChangedStates
