@@ -1491,6 +1491,37 @@ begin
    end;
 end;
 
+// VariantTypeToDataType
+//
+function VariantTypeToDataType(const value : Variant) : TDataType;
+begin
+   //TODO: Extend with arrays, records, etc:
+   // varEmpty
+   // varNull
+   // varDate
+   // varVariant
+   // varRecord
+   // varStrArg
+   // varObject
+   // varUStrArg
+   // varAny
+   case VarType(value) of
+      varSmallInt, varInteger, varShortInt, varByte, varWord, varLongWord,
+      varInt64, varUInt64 :
+         Result := SYS_INTEGER;
+      varSingle, varDouble, varCurrency :
+         Result := SYS_FLOAT;
+      varOleStr, varString, varUString :
+         Result := SYS_STRING;
+      varBoolean :
+         Result := SYS_BOOLEAN;
+      varVariant :
+         Result := SYS_VARIANT;
+   else
+      Result := '';
+   end;
+end;
+
 function GetExternalObjForID(Info: TProgramInfo; const AVarName: UnicodeString): TObject;
 begin
   // Get param "Source" as object in Source_Obj
@@ -5655,6 +5686,7 @@ begin
    if i<0 then begin
       c:=Add;
       c.Name:=name;
+      c.DataType:=VariantTypeToDataType(v);
    end else c:=TdwsConstant(Items[i]);
    c.Value:=v;
 end;
