@@ -282,7 +282,7 @@ begin
    dispParams.rgdispidNamedArgs:=@dispIDNamedArgs;
    dispParams.cArgs:=1;
    dispParams.cNamedArgs:=1;
-   err:=disp.Invoke(dispID, GUID_NULL, 0, DISPATCH_PROPERTYPUT, dispParams,
+   err:=disp.Invoke(dispID, GUID_NULL, 0, DISPATCH_PROPERTYPUT or DISPATCH_PROPERTYPUTREF, dispParams,
                     nil, @excepInfo, nil);
    if err<>S_OK then
       RaiseOleError(err, excepInfo);
