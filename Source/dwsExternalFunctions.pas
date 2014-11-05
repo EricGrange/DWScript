@@ -1,5 +1,7 @@
 unit dwsExternalFunctions;
 
+{$I dws.inc}
+
 interface
 
 uses

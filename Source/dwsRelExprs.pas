@@ -19,6 +19,8 @@
 {**********************************************************************}
 unit dwsRelExprs;
 
+{$I dws.inc}
+
 interface
 
 uses dwsExprs, dwsSymbols, dwsErrors;
