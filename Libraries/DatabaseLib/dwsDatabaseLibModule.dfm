@@ -321,6 +321,13 @@ object dwsDatabaseLib: TdwsDatabaseLib
           end
           item
             Name = 'StringifyAll'
+            Parameters = <
+              item
+                Name = 'maxRows'
+                DataType = 'Integer'
+                HasDefaultValue = True
+                DefaultValue = '0'
+              end>
             ResultType = 'String'
             OnEval = dwsDatabaseClassesDataSetMethodsStringifyAllEval
             Kind = mkFunction

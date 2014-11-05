@@ -134,7 +134,7 @@ type
       class procedure WriteValueToJSON(wr : TdwsJSONWriter; const fld : IdwsDataField); static;
       procedure WriteToJSON(wr : TdwsJSONWriter);
       function Stringify : String;
-      function StringifyAll : String;
+      function StringifyAll(maxRows : Integer) : String;
    end;
 
    TDataField = class
@@ -227,7 +227,7 @@ end;
 
 // StringifyAll
 //
-function TDataSet.StringifyAll : String;
+function TDataSet.StringifyAll(maxRows : Integer) : String;
 var
    wr : TdwsJSONWriter;
 begin
@@ -237,6 +237,8 @@ begin
       while not Intf.EOF do begin
          WriteToJSON(wr);
          Intf.Next;
+         Dec(maxRows);
+         if maxRows=0 then break;
       end;
       wr.EndArray;
       Result:=wr.ToString;
@@ -719,7 +721,7 @@ end;
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsStringifyAllEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsString:=(ExtObject as TDataSet).StringifyAll;
+   Info.ResultAsString:=(ExtObject as TDataSet).StringifyAll(Info.ParamAsInteger[0]);
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsStringifyEval(
