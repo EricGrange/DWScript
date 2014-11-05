@@ -73,6 +73,7 @@ type
          procedure DoReadVar(info: TProgramInfo; var value : Variant);
          procedure DoWriteVar(info: TProgramInfo; const value : Variant);
          procedure DoReadVar42(info: TProgramInfo; var value : Variant);
+         procedure DoReadVarIncMagic(info: TProgramInfo; var value : Variant);
    end;
 
 
@@ -631,9 +632,13 @@ begin
    v:=FUnit.Variables.Add;
    v.Name:='magicVar';
    v.DataType:='String';
-
    v.OnReadVar:=DoReadVar;
    v.OnWriteVar:=DoWriteVar;
+
+   v:=FUnit.Variables.Add;
+   v.Name:='magicVarInc';
+   v.DataType:='String';
+   v.OnReadVar:=DoReadVarIncMagic;
 
    v:=FUnit.Variables.Add;
    v.Name:='LifeUniverseEverything';
@@ -1051,6 +1056,14 @@ end;
 procedure TdwsUnitTestsContext.DoReadVar42(info: TProgramInfo; var value : Variant);
 begin
    value:=Int64(42);
+end;
+
+// DoReadVarIncMagic
+//
+procedure TdwsUnitTestsContext.DoReadVarIncMagic(info: TProgramInfo; var value : Variant);
+begin
+   FMagicVar:=FMagicVar+'+1';
+   value:=FMagicVar;
 end;
 
 // ------------------
@@ -1659,6 +1672,7 @@ var
 begin
    prog:=FCompiler.Compile( 'PrintLn(xyzVar); xyzVar:=''XYZ''; PrintLn(xyzVar);'#13#10
                            +'PrintLn(magicVar); magicVar:=''MAGIC''; PrintLn(magicVar);'#13#10
+                           +'PrintLn(magicVarInc);'#13#10
                            +'PrintLn(LifeUniverseEverything);'#13#10
                            );
 
@@ -1673,9 +1687,10 @@ begin
 
       CheckEquals( 'xyz'#13#10'XYZ'#13#10
                   +'magic'#13#10'MAGIC'#13#10
+                  +'MAGIC+1'#13#10
                   +'42'#13#10, exec.Result.ToString, 'Result');
       CheckEquals('XYZ', exec.Info.ValueAsString['xyzVar'], 'xyz var value');
-      CheckEquals('MAGIC', FContext.FMagicVar, 'magic var value');
+      CheckEquals('MAGIC+1', FContext.FMagicVar, 'magic var value');
       CheckEquals(42, exec.Info.ValueAsInteger['LifeUniverseEverything'], '42 var value');
    finally
       exec.EndProgram;

@@ -582,6 +582,8 @@ type
          procedure RaiseMaxRecursionReached;
          procedure SetCurrentProg(const val : TdwsProgram); inline;
 
+         procedure RunProgramExpr(expr : TProgramExpr);
+
       public
          constructor Create(aProgram : TdwsMainProgram; const stackParams : TStackParameters); virtual;
          destructor Destroy; override;
@@ -2070,28 +2072,22 @@ begin
 
       // Initialize global variables
       Status:=esrNone;
-      FProg.FInitExpr.EvalNoResult(Self);
+      RunProgramExpr(FProg.FInitExpr);
 
       if not (FProg.Expr is TBlockExprBase) then
          DoStep(FProg.FExpr);
 
       Result:=True;
-
    except
-      on e: EScriptError do begin
-         GetMsgs.AddRuntimeError(e.ScriptPos, e.Message, e.ScriptCallStack);
-         FProgramState:=psRunningStopped;
-      end;
-      on e: Exception do begin
-         GetMsgs.AddRuntimeError(LastScriptError.ScriptPos, e.Message, LastScriptCallStack);
-         FProgramState:=psRunningStopped;
-      end;
+      // we should never end up here
+      FProgramState:=psRunningStopped;
+      raise;
    end;
 end;
 
-// RunProgram
+// RunProgramExpr
 //
-procedure TdwsProgramExecution.RunProgram(aTimeoutMilliSeconds : Integer);
+procedure TdwsProgramExecution.RunProgramExpr(expr : TProgramExpr);
 
    procedure Handle_EScriptAssertionFailed(e : EScriptAssertionFailed);
    begin
@@ -2127,6 +2123,40 @@ procedure TdwsProgramExecution.RunProgram(aTimeoutMilliSeconds : Integer);
       end;
    end;
 
+begin
+   Status:=esrNone;
+   try
+      // Run the script
+      expr.EvalNoResult(Self);
+
+      if status<>esrNone then begin
+         case status of
+            esrBreak : Msgs.AddRuntimeError(RTE_InvalidBreak);
+            esrContinue : Msgs.AddRuntimeError(RTE_InvalidContinue);
+         end;
+      end;
+   except
+      on e: EScriptAssertionFailed do
+         Handle_EScriptAssertionFailed(e);
+      on e: EScriptException do begin
+         if IsDebugging then
+            Debugger.NotifyException(Self, e.ExceptionObj);
+         Msgs.AddRuntimeError(e.ScriptPos, e.Message, e.ScriptCallStack);
+      end;
+      on e: EScriptError do
+         Msgs.AddRuntimeError(e.ScriptPos, e.Message, e.ScriptCallStack);
+      on e: EScriptStackException do
+         Msgs.AddRuntimeError(LastScriptError.ScriptPos,
+                              e.Message,
+                              LastScriptCallStack);
+      on e: Exception do
+         Handle_Exception(e);
+   end;
+end;
+
+// RunProgram
+//
+procedure TdwsProgramExecution.RunProgram(aTimeoutMilliSeconds : Integer);
 var
    stackBaseReqSize : Integer;
 begin
@@ -2145,34 +2175,7 @@ begin
       Stack.FixBaseStack(stackBaseReqSize);
 
    try
-      Status:=esrNone;
-      try
-         // Run the script
-         FProg.FExpr.EvalNoResult(Self);
-
-         if status<>esrNone then begin
-            case status of
-               esrBreak : Msgs.AddRuntimeError(RTE_InvalidBreak);
-               esrContinue : Msgs.AddRuntimeError(RTE_InvalidContinue);
-            end;
-         end;
-      except
-         on e: EScriptAssertionFailed do
-            Handle_EScriptAssertionFailed(e);
-         on e: EScriptException do begin
-            if IsDebugging then
-               Debugger.NotifyException(Self, e.ExceptionObj);
-            Msgs.AddRuntimeError(e.ScriptPos, e.Message, e.ScriptCallStack);
-         end;
-         on e: EScriptError do
-            Msgs.AddRuntimeError(e.ScriptPos, e.Message, e.ScriptCallStack);
-         on e: EScriptStackException do
-            Msgs.AddRuntimeError(LastScriptError.ScriptPos,
-                                 e.Message,
-                                 LastScriptCallStack);
-         on e: Exception do
-            Handle_Exception(e);
-      end;
+      RunProgramExpr(FProg.FExpr);
    finally
       if aTimeoutMilliSeconds>0 then
          TdwsGuardianThread.ForgetExecution(Self);
@@ -2197,7 +2200,7 @@ begin
       raise Exception.Create('Program was not started!');
 
    if FProg.FinalExpr<>nil then
-      FProg.FinalExpr.EvalNoResult(Self);
+      RunProgramExpr(FProg.FFinalExpr);
 
    FProgramState:=psTerminated;
    try

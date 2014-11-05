@@ -80,6 +80,8 @@ type
          procedure MethodDestroy;
          procedure PropertyDefault;
          procedure SimpleStringListIndexOf;
+         procedure ExceptionInInitialization;
+         procedure ExceptionInFinalization;
    end;
 
    ETestException = class (Exception);
@@ -1726,6 +1728,42 @@ begin
    finally
       ssl.Free;
    end;
+end;
+
+// ExceptionInInitialization
+//
+procedure TCornerCasesTests.ExceptionInInitialization;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'unit Dummy; interface implementation initialization'#13#10
+                           +'Assert(False);'#13#10
+                           +'finalization'#13#10
+                           +'PrintLn("here");'#13#10
+                           +'end.');
+
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   exec:=prog.Execute;
+   CheckEquals('here'#13#10, exec.Result.ToString);
+   CheckEquals('Runtime Error: Assertion failed [line: 2, column: 1]'#13#10, exec.Msgs.AsInfo);
+end;
+
+// ExceptionInFinalization
+//
+procedure TCornerCasesTests.ExceptionInFinalization;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'unit Dummy; interface implementation initialization finalization'#13#10
+                           +'Assert(False);');
+
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   exec:=prog.Execute;
+   CheckEquals('Runtime Error: Assertion failed [line: 2, column: 1]'#13#10, exec.Msgs.AsInfo);
 end;
 
 // ------------------------------------------------------------------
