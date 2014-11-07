@@ -44,11 +44,11 @@ uses
 type
 
    TReadGlobalVarFunc = class(TInternalMagicVariantFunction)
-      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TReadGlobalVarDefFunc = class(TInternalMagicVariantFunction)
-      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TTryReadGlobalVarFunc = class(TInternalMagicBoolFunction)
@@ -76,7 +76,7 @@ type
    end;
 
    TGlobalVarsNamesFunc = class(TInternalMagicVariantFunction)
-      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TGlobalVarsNamesCommaText = class(TInternalMagicStringFunction)
@@ -280,18 +280,18 @@ function TryReadGlobalVar(const aName: UnicodeString; var value: Variant): Boole
 var
    gv : TGlobalVar;
 begin
-   Result:=False;
    vGlobalVarsCS.BeginRead;
    try
       gv:=vGlobalVars.Objects[aName];
       if     (gv<>nil)
          and ((gv.Expire=0) or (gv.Expire>GetSystemMilliseconds)) then begin
          value:=gv.Value;
-         Result:=True;
+         Exit(True);
       end;
    finally
       vGlobalVarsCS.EndRead;
    end;
+   Result:=False;
 end;
 
 // DeleteGlobalVar
@@ -299,20 +299,26 @@ end;
 function DeleteGlobalVar(const aName : UnicodeString) : Boolean;
 var
    gv : TGlobalVar;
+   i : Integer;
 begin
-   Result:=False;
+   gv:=nil;
    vGlobalVarsCS.BeginWrite;
    try
-      gv:=vGlobalVars.Objects[aName];
-      if gv<>nil then begin
-         vGlobalVars.Objects[aName]:=nil;
-         vGlobalVarsNamesCache:='';
-         Result:=True;
-      end;
+      i:=vGlobalVars.BucketIndex[aName];
+      if i>=0 then begin
+         gv:=vGlobalVars.BucketObject[i];
+         if gv<>nil then begin
+            vGlobalVars.BucketObject[i]:=nil;
+            vGlobalVarsNamesCache:='';
+         end;
+      end
    finally
       vGlobalVarsCS.EndWrite;
    end;
-   gv.Free;
+   if gv<>nil then begin
+      gv.Destroy;
+      Result:=True;
+   end else Result:=False;
 end;
 
 // CleanupGlobalVars
@@ -341,7 +347,7 @@ begin
       vGlobalVarsCS.BeginWrite;
       try
          n:=0;
-         for i:=0 to vGlobalVars.Capacity-1 do begin
+         for i:=0 to vGlobalVars.HighIndex do begin
             gv:=vGlobalVars.BucketObject[i];
             if gv=nil then
                Inc(n)
@@ -353,17 +359,17 @@ begin
             end;
          end;
          // if hash is large and 75% or more of the hash slots are nil, then rehash
-         if (vGlobalVars.Capacity>cGlobalVarsLarge) and (4*n>3*vGlobalVars.Capacity) then begin
+         if (vGlobalVars.HighIndex>cGlobalVarsLarge) and (4*n>3*vGlobalVars.HighIndex) then begin
             // compute required capacity after rehash taking into account a 25% margin
             // (or 33%, depending on which way you look at the percentage)
-            n:=vGlobalVars.Capacity-n;
+            n:=vGlobalVars.HighIndex-n;
             n:=2*(n+n div 3)+1;
-            i:=vGlobalVars.Capacity;
+            i:=vGlobalVars.HighIndex+1;
             while i>n do
                i:=i shr 1;
-            if i<vGlobalVars.Capacity then begin
+            if i<=vGlobalVars.HighIndex then begin
                rehash:=TNameGlobalVarHash.Create(i);
-               for i:=0 to vGlobalVars.Capacity-1 do begin
+               for i:=0 to vGlobalVars.HighIndex do begin
                   gv:=vGlobalVars.BucketObject[i];
                   if gv<>nil then
                      rehash.Objects[vGlobalVars.BucketName[i]]:=gv;
@@ -456,7 +462,7 @@ begin
 
       vGlobalVarsCS.BeginRead;
       try
-         for i:=0 to vGlobalVars.Capacity-1 do begin
+         for i:=0 to vGlobalVars.HighIndex do begin
             gv:=vGlobalVars.BucketObject[i];
             if     (gv<>nil)
                and ((gv.Expire=0) or (gv.Expire<expire)) then
@@ -549,7 +555,7 @@ begin
    vGlobalVarsCS.BeginWrite;
    try
       if vGlobalVarsNamesCache='' then begin
-         for i:=0 to vGlobalVars.Capacity-1 do begin
+         for i:=0 to vGlobalVars.HighIndex do begin
             if vGlobalVars.BucketObject[i]<>nil then
                list.Add(vGlobalVars.BucketName[i]);
          end;
@@ -675,7 +681,7 @@ begin
       mask:=TMask.Create(filter);
       vGlobalQueuesCS.BeginWrite;
       try
-         for i:=0 to vGlobalQueues.Capacity-1 do begin
+         for i:=0 to vGlobalQueues.HighIndex do begin
             gq:=vGlobalQueues.BucketObject[i];
             if (gq<>nil) and mask.Matches(vGlobalQueues.BucketName[i]) then begin
                gq.Free;
@@ -808,7 +814,7 @@ end;
 
 { TReadGlobalVarFunc }
 
-function TReadGlobalVarFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
+procedure TReadGlobalVarFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 begin
    if not TryReadGlobalVar(args.AsString[0], Result) then
       VarClear(Result);
@@ -816,7 +822,7 @@ end;
 
 { TReadGlobalVarDefFunc }
 
-function TReadGlobalVarDefFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
+procedure TReadGlobalVarDefFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 begin
    if not TryReadGlobalVar(args.AsString[0], Result) then
       args.ExprBase[1].EvalAsVariant(args.Exec, Result);
@@ -874,7 +880,7 @@ end;
 
 // DoEvalAsVariant
 //
-function TGlobalVarsNamesFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
+procedure TGlobalVarsNamesFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    sl : TStringList;
    newArray : TScriptDynamicArray;

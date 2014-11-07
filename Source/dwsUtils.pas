@@ -383,18 +383,17 @@ type
          FBuckets : TNameObjectHashBuckets;
          FCount : Integer;
          FGrowth : Integer;
-         FCapacity : Integer;
+         FHighIndex : Integer;
 
       protected
          procedure Grow;
-         function SameItem(const item1, item2 : TNameObjectHashBucket) : Boolean;
-         function GetItemHashCode(const item1 : TNameObjectHashBucket) : Integer;
 
-         function GetObjects(const aName : UnicodeString) : T;
-         procedure SetObjects(const aName : UnicodeString; obj : T);
-         function GetBucketObject(index : Integer) : T;
-         procedure SetBucketObject(index : Integer; obj : T);
-         function GetBucketName(index : Integer) : String;
+         function GetIndex(const aName : UnicodeString) : Integer;
+         function GetObjects(const aName : UnicodeString) : T; inline;
+         procedure SetObjects(const aName : UnicodeString; obj : T); inline;
+         function GetBucketObject(index : Integer) : T; inline;
+         procedure SetBucketObject(index : Integer; obj : T); inline;
+         function GetBucketName(index : Integer) : String; inline;
 
       public
          constructor Create(initialCapacity : Integer = 0);
@@ -408,9 +407,10 @@ type
 
          property BucketObject[index : Integer] : T read GetBucketObject write SetBucketObject;
          property BucketName[index : Integer] : String read GetBucketName;
+         property BucketIndex[const aName : UnicodeString] : Integer read GetIndex;
 
          property Count : Integer read FCount;
-         property Capacity : Integer read FCapacity;
+         property HighIndex : Integer read FHighIndex;
    end;
 
    TObjectObjectHashBucket<TKey, TValue{$IFNDEF FPC}: TRefCountedObject{$ENDIF}> = record
@@ -3227,8 +3227,8 @@ function TSimpleHash<T>.LinearFind(const item : T; var index : Integer) : Boolea
 begin
    repeat
       if FBuckets[index].HashCode=0 then
-         Exit(False);
-      if SameItem(item, FBuckets[index].Value) then
+         Exit(False)
+      else if SameItem(item, FBuckets[index].Value) then
          Exit(True);
       index:=(index+1) and (FCapacity-1);
    until False;
@@ -3557,86 +3557,103 @@ begin
    if initialCapacity>0 then begin
       // check if initial capacity is a power of two
       Assert((initialCapacity and (initialCapacity-1))=0);
-
-      FCapacity:=initialCapacity;
-      SetLength(FBuckets, FCapacity);
+      SetLength(FBuckets, initialCapacity);
    end;
+   FHighIndex:=initialCapacity-1;
 end;
 
 // Grow
 //
 procedure TSimpleNameObjectHash<T>.Grow;
 var
-   i, j, n : Integer;
+   i, j : Integer;
    hashCode : Integer;
    oldBuckets : TNameObjectHashBuckets;
 begin
-   if FCapacity=0 then
-      FCapacity:=32
-   else FCapacity:=FCapacity*2;
-   FGrowth:=(FCapacity*3) div 4;
+   if FHighIndex<0 then
+      FHighIndex:=31
+   else FHighIndex:=FHighIndex*2+1;
+   FGrowth:=(FHighIndex*3) div 4;
 
    oldBuckets:=FBuckets;
    FBuckets:=nil;
-   SetLength(FBuckets, FCapacity);
+   SetLength(FBuckets, FHighIndex+1);
 
-   n:=FCapacity-1;
    for i:=0 to High(oldBuckets) do begin
       if oldBuckets[i].HashCode=0 then continue;
-      j:=(oldBuckets[i].HashCode and (FCapacity-1));
+      j:=(oldBuckets[i].HashCode and FHighIndex);
       while FBuckets[j].HashCode<>0 do
-         j:=(j+1) and n;
+         j:=(j+1) and FHighIndex;
       FBuckets[j]:=oldBuckets[i];
    end;
 end;
 
-// SameItem
+// GetIndex
 //
-function TSimpleNameObjectHash<T>.SameItem(const item1, item2 : TNameObjectHashBucket) : Boolean;
+function TSimpleNameObjectHash<T>.GetIndex(const aName : UnicodeString) : Integer;
+var
+   h : Cardinal;
+   i : Integer;
 begin
-   Result:=(item1.Name=item2.Name);
-end;
+   if FCount=0 then Exit(-1);
 
-// GetItemHashCode
-//
-function TSimpleNameObjectHash<T>.GetItemHashCode(const item1 : TNameObjectHashBucket) : Integer;
-begin
-   Result:=SimpleStringHash(item1.Name);
+   h:=SimpleStringHash(aName);
+   i:=h and FHighIndex;
+
+   repeat
+      with FBuckets[i] do begin
+         if HashCode=0 then
+            Exit(-1)
+         else if (HashCode=h) and (Name=aName) then
+            Exit(i);
+      end;
+      i:=(i+1) and FHighIndex;
+   until False;
 end;
 
 // GetObjects
 //
 function TSimpleNameObjectHash<T>.GetObjects(const aName : UnicodeString) : T;
 var
-   h : Cardinal;
    i : Integer;
 begin
-   if FCount=0 then
+   i:=GetIndex(aName);
+   if i<0 then begin
       {$ifdef VER200}
       Exit(default(T));  // D2009 support
       {$else}
       Exit(T(TObject(nil)));  // workaround for D2010 compiler bug
       {$endif}
-
-   h:=SimpleStringHash(aName);
-   i:=(h and (FCapacity-1));
-
-   repeat
-      with FBuckets[i] do begin
-         if HashCode=0 then
-            {$ifdef VER200}
-            Exit(default(T)); // D2009 support
-            {$else}
-            Exit(T(TObject(nil)));  // workaround for D2010 compiler bug
-            {$endif}
-         if (HashCode=h) and (Name=aName) then begin
-            Result:=Obj;
-            Exit;
-         end;
-      end;
-      i:=(i+1) and (FCapacity-1);
-   until False;
+   end else Result:=FBuckets[i].Obj
 end;
+//var
+//   h : Cardinal;
+//   i : Integer;
+//begin
+//   if FCount=0 then
+//      {$ifdef VER200}
+//      Exit(default(T));  // D2009 support
+//      {$else}
+//      Exit(T(TObject(nil)));  // workaround for D2010 compiler bug
+//      {$endif}
+//
+//   h:=SimpleStringHash(aName);
+//   i:=h and FHighIndex;
+//
+//   repeat
+//      with FBuckets[i] do begin
+//         if HashCode=0 then begin
+//            {$ifdef VER200}
+//            Exit(default(T)); // D2009 support
+//            {$else}
+//            Exit(T(TObject(nil)));  // workaround for D2010 compiler bug
+//            {$endif}
+//         end else if (HashCode=h) and (Name=aName) then
+//            Exit(Obj);
+//      end;
+//      i:=(i+1) and FHighIndex;
+//   until False;
+//end;
 
 // SetObjects
 //
@@ -3656,7 +3673,7 @@ begin
    if FCount>=FGrowth then Grow;
 
    h:=SimpleStringHash(aName);
-   i:=(h and (FCapacity-1));
+   i:=h and FHighIndex;
 
    repeat
       with FBuckets[i] do begin
@@ -3668,7 +3685,7 @@ begin
             Exit(False);
          end;
       end;
-      i:=(i+1) and (FCapacity-1);
+      i:=(i+1) and FHighIndex;
    until False;
 
    with FBuckets[i] do begin
@@ -3686,7 +3703,7 @@ procedure TSimpleNameObjectHash<T>.Clean;
 var
    i : Integer;
 begin
-   for i:=0 to FCapacity-1 do begin
+   for i:=0 to FHighIndex do begin
       if FBuckets[i].HashCode<>0 then
          FreeAndNil(FBuckets[i].Obj);
    end;
@@ -3700,7 +3717,7 @@ begin
    SetLength(FBuckets, 0);
    FGrowth:=0;
    FCount:=0;
-   FCapacity:=0;
+   FHighIndex:=-1;
 end;
 
 // GetBucketName
@@ -3866,8 +3883,8 @@ function TSimpleObjectObjectHash<TKey, TValue>.LinearFind(const item : TObjectOb
 begin
    repeat
       if FBuckets[index].HashCode=0 then
-         Exit(False);
-      if item.Key=FBuckets[index].Key then
+         Exit(False)
+      else if item.Key=FBuckets[index].Key then
          Exit(True);
       index:=(index+1) and (FCapacity-1);
    until False;

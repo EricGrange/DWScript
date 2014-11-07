@@ -63,15 +63,15 @@ type
    end;
 
    TFileOpenFunc = class(TInternalMagicVariantFunction)
-      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TFileOpenReadFunc = class(TInternalMagicVariantFunction)
-      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TFileCreateFunc = class(TInternalMagicVariantFunction)
-      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TFileRead1Func = class(TInternalMagicIntFunction)
@@ -160,7 +160,7 @@ type
    end;
 
    TEnumerateDirFunc = class(TInternalMagicVariantFunction)
-      function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
 // ------------------------------------------------------------------
@@ -271,7 +271,7 @@ end;
 
 // DoEvalAsVariant
 //
-function TFileOpenFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
+procedure TFileOpenFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    h : THandle;
    i : IdwsFileHandle;
@@ -287,7 +287,7 @@ end;
 
 // DoEvalAsVariant
 //
-function TFileOpenReadFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
+procedure TFileOpenReadFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    h : THandle;
    i : IdwsFileHandle;
@@ -303,7 +303,7 @@ end;
 
 // DoEvalAsVariant
 //
-function TFileCreateFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
+procedure TFileCreateFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    h : THandle;
    i : IdwsFileHandle;
@@ -610,7 +610,7 @@ end;
 
 // DoEvalAsVariant
 //
-function TEnumerateDirFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
+procedure TEnumerateDirFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    sl : TStringList;
    newArray : TScriptDynamicArray;

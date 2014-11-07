@@ -253,7 +253,7 @@ type
   end;
 
   TStrSplitFunc = class(TInternalMagicVariantFunction)
-    function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
+    procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
   end;
 
   TStrJoinFunc = class(TInternalMagicStringFunction)
@@ -962,7 +962,7 @@ end;
 
 { TStrSplitFunc }
 
-function TStrSplitFunc.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
+procedure TStrSplitFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    str, delim : UnicodeString;
    dyn : TScriptDynamicArray;

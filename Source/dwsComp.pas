@@ -1438,7 +1438,7 @@ type
       private
          FOnFastEval : TFuncFastEvalEvent;
       public
-         function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; override;
+         procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TCustomInternalMagicDataFunction = class(TInternalMagicDataFunction)
@@ -1537,7 +1537,7 @@ end;
 
 // DoEvalAsVariant
 //
-function TCustomInternalMagicFunction.DoEvalAsVariant(const args : TExprBaseListExec) : Variant;
+procedure TCustomInternalMagicFunction.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 begin
    Result:=FOnFastEval(args);
 end;

@@ -363,7 +363,7 @@ begin
    try
       vPoolsCS.BeginWrite;
       try
-         for i:=0 to vPools.Capacity-1 do begin
+         for i:=0 to vPools.HighIndex do begin
             q:=vPools.BucketObject[i];
             if q=nil then continue;
             if mask.Matches(vPools.BucketName[i]) then begin
@@ -398,7 +398,7 @@ begin
    try
       vPoolsCS.BeginRead;
       try
-         for i:=0 to vPools.Capacity-1 do begin
+         for i:=0 to vPools.HighIndex do begin
             q:=vPools.BucketObject[i];
             if q=nil then continue;
             if mask.Matches(vPools.BucketName[i]) then

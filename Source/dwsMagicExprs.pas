@@ -34,7 +34,7 @@ type
    TMagicFuncExpr = class;
    TMagicFuncExprClass = class of TMagicFuncExpr;
 
-   TMagicFuncDoEvalEvent = function(const args : TExprBaseListExec) : Variant of object;
+   TMagicFuncDoEvalEvent = procedure(const args : TExprBaseListExec; var result : Variant) of object;
    TMagicProcedureDoEvalEvent = procedure(const args : TExprBaseListExec) of object;
    TMagicFuncDoEvalDataEvent = procedure(const args : TExprBaseListExec; var result : IDataContext) of object;
    TMagicFuncDoEvalAsIntegerEvent = function(const args : TExprBaseListExec) : Int64 of object;
@@ -76,7 +76,7 @@ type
    //
    TInternalMagicVariantFunction = class(TInternalMagicFunction)
       public
-         function DoEvalAsVariant(const args : TExprBaseListExec) : Variant; virtual; abstract;
+         procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); virtual; abstract;
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
    TInternalMagicVariantFunctionClass = class of TInternalMagicVariantFunction;
@@ -538,7 +538,7 @@ begin
    execRec.ListRec:=FArgs;
    execRec.Exec:=exec;
    try
-      Result:=FOnEval(execRec);
+      FOnEval(execRec, Result);
    except
       RaiseScriptError(exec);
    end;

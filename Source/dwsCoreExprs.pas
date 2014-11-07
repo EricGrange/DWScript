@@ -118,6 +118,7 @@ type
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
          function EvalAsPIScriptObj(exec : TdwsExecution) : PIScriptObj; inline;
+         procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
    end;
 
    TSelfVarExpr = class (TVarExpr)
@@ -2479,6 +2480,15 @@ end;
 function TObjectVarExpr.EvalAsPIScriptObj(exec : TdwsExecution) : PIScriptObj;
 begin
    Result:=PIScriptObj(exec.Stack.PointerToInterfaceValue_BaseRelative(FStackAddr));
+end;
+
+// EvalAsScriptDynArray
+//
+procedure TObjectVarExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
+type
+   PUnknown = ^IUnknown;
+begin
+   exec.Stack.ReadInterfaceValue(exec.Stack.BasePointer + FStackAddr, PUnknown(@Result)^);
 end;
 
 // ------------------

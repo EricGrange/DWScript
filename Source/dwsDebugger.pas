@@ -1502,7 +1502,7 @@ procedure TdwsBreakpointableLines.Enumerate(destinationList : TStrings);
 var
    i : Integer;
 begin
-   for i:=0 to FSources.Capacity-1 do
+   for i:=0 to FSources.HighIndex do
       if FSources.BucketObject[i]<>nil then
          destinationList.AddObject(FSources.BucketName[i], FSources.BucketObject[i]);
 end;
