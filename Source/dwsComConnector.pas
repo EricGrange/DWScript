@@ -25,7 +25,7 @@ interface
 
 uses
    Variants, SysUtils, ComObj, ActiveX,
-   dwsUtils, dwsDataContext, dwsExprList, dwsConnectorSymbols,
+   dwsUtils, dwsDataContext, dwsExprList, dwsConnectorSymbols, dwsXPlatform,
    dwsStrings, dwsFunctions, dwsStack, dwsMagicExprs,
    dwsExprs, dwsComp, dwsSymbols, dwsOperators, dwsUnitSymbols;
 
@@ -286,6 +286,32 @@ begin
                     nil, @excepInfo, nil);
    if err<>S_OK then
       RaiseOleError(err, excepInfo);
+end;
+
+// Connection to
+//
+var
+   vWbemLocator : OleVariant;
+   vWbemLocatorMRSW : TMultiReadSingleWrite;
+function WbemLocatorConnect(const path : String; const user : String = ''; const pass : String = '') : OleVariant;
+var
+   p : Integer;
+   server, namespace : String;
+begin
+   p:=Pos(':\\', path);
+   server:=Copy(path, p+3, MaxInt);
+   p:=Pos('\', server);
+   namespace:=Copy(server, p+1, MaxInt);
+   SetLength(server, p-1);
+
+   vWbemLocatorMRSW.BeginWrite;
+   try
+      if VarIsClear(vWbemLocator) then
+         vWbemLocator:=CreateOleObject('WbemScripting.SWbemLocator');
+      Result:=vWbemLocator.ConnectServer(server, namespace, user, pass);
+   finally
+      vWbemLocatorMRSW.EndWrite;
+   end;
 end;
 
 type
@@ -560,8 +586,13 @@ end;
 // ------------------
 
 procedure TGetActiveOleObjectFunc.Execute(info : TProgramInfo);
+var
+   n : String;
 begin
-   Info.ResultAsVariant := GetActiveOleObject(Info.ParamAsString[0]);
+   n:=info.ParamAsString[0];
+   if StrIBeginsWith(n, 'winmgmts:') then
+      Info.ResultAsVariant := WbemLocatorConnect(n)
+   else Info.ResultAsVariant := GetActiveOleObject(n);
 end;
 
 // ------------------
@@ -1169,6 +1200,20 @@ begin
 
    end else Result:=False;
 end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   vWbemLocatorMRSW:=TMultiReadSingleWrite.Create;
+
+finalization
+
+   FreeAndNil(vWbemLocatorMRSW);
 
 end.
 

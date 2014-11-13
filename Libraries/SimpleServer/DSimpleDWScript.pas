@@ -843,7 +843,7 @@ var
    i, j : Integer;
    list : TProgramList;
 begin
-   for i:=0 to Capacity-1 do begin
+   for i:=0 to HighIndex-1 do begin
       list:=BucketObject[i];
       if list<>nil then begin
          for j:=list.Count-1 downto 0 do
