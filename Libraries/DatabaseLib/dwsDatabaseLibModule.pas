@@ -434,12 +434,10 @@ procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseConstructorsCreateEval(
   Info: TProgramInfo; var ExtObject: TObject);
 var
    db : IdwsDataBase;
-   scriptObj : IScriptObj;
-   dynArray : TScriptDynamicArray;
+   scriptDyn : IScriptDynArray;
 begin
-   scriptObj:=Info.Vars['parameters'].ScriptObj;
-   dynArray:=(scriptObj.GetSelf as TScriptDynamicArray);
-   db:=TdwsDatabase.CreateDataBase(Info.ParamAsString[0], dynArray.ToStringArray);
+   scriptDyn:=Info.Vars['parameters'].ScriptDynArray;
+   db:=TdwsDatabase.CreateDataBase(Info.ParamAsString[0], scriptDyn.ToStringArray);
 
    ExtObject:=TDataBase.Create;
    TDataBase(ExtObject).Intf:=db;
@@ -460,13 +458,10 @@ end;
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsExecEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
-   scriptObj : IScriptObj;
-   dynArray : TScriptDynamicArray;
+   scriptDyn : IScriptDynArray;
 begin
-   scriptObj:=Info.Vars['parameters'].ScriptObj;
-   dynArray:=(scriptObj.GetSelf as TScriptDynamicArray);
-
-   (ExtObject as TDataBase).Intf.Exec(Info.ParamAsString[0], dynArray.AsData);
+   scriptDyn:=Info.Vars['parameters'].ScriptDynArray;
+   (ExtObject as TDataBase).Intf.Exec(Info.ParamAsString[0], scriptDyn.AsData);
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsInTransactionEval(
@@ -478,23 +473,21 @@ end;
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsQueryEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
-   scriptObj : IScriptObj;
-   dynArray : TScriptDynamicArray;
+   scriptDyn : IScriptDynArray;
    ids : IdwsDataSet;
    dbo : TDataBase;
    dataFieldConstructor : IInfo;
    dataSetInfo, dataFieldInfo : IInfo;
    dataSet : TDataSet;
    dataFieldsInfo : IInfo;
-   dataFieldsArray : TScriptDynamicArray;
+   dataFieldsArray : IScriptDynArray;
    dataFieldObj : TDataField;
    i : Integer;
 begin
-   scriptObj:=Info.Vars['parameters'].ScriptObj;
-   dynArray:=(scriptObj.GetSelf as TScriptDynamicArray);
+   scriptDyn:=Info.Vars['parameters'].ScriptDynArray;
 
    dbo:=(ExtObject as TDataBase);
-   ids:=dbo.Intf.Query(Info.ParamAsString[0], dynArray.AsData);
+   ids:=dbo.Intf.Query(Info.ParamAsString[0], scriptDyn.AsData);
 
    dataSetInfo:=Info.Vars['DataSet'].Method['Create'].Call;
 
@@ -504,7 +497,7 @@ begin
    dataSetInfo.ExternalObject:=dataSet;
 
    dataFieldsInfo:=dataSetInfo.Member['FFields'];
-   dataFieldsArray:=(dataFieldsInfo.ScriptObj.GetSelf as TScriptDynamicArray);
+   dataFieldsArray:=dataFieldsInfo.ScriptDynArray;
    dataFieldsArray.ArrayLength:=ids.FieldCount;
 
    dataFieldConstructor:=Info.Vars['DataField'].Method['Create'];

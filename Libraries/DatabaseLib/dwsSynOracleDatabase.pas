@@ -26,7 +26,8 @@ interface
 
 uses
    SynDB, SynDBOracle,
-   dwsSynDBDatabase, dwsDatabase, dwsExprs;
+   dwsUtils, dwsDatabase, dwsExprs,
+   dwsSynDBDatabase;
 
 type
 

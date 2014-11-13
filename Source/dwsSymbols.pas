@@ -1782,10 +1782,16 @@ type
    //
    IScriptDynArray = interface (IDataContext)
       ['{29767B6E-05C0-40E1-A41A-94DF54142312}']
+      function GetElementSize : Integer;
+      property ElementSize : Integer read GetElementSize;
+
       function GetArrayLength : Integer;
       procedure SetArrayLength(n : Integer);
-
       property ArrayLength : Integer read GetArrayLength write SetArrayLength;
+
+      function ToStringArray : TStringDynArray;
+
+      procedure ReplaceData(const v : TData);
    end;
 
    TPerfectMatchEnumerator = class

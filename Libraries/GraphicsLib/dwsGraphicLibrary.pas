@@ -29,7 +29,7 @@ uses
    {$else}
    JPEG,
    {$endif}
-   SynGdiPlus,
+   PNGImage,
    dwsXPlatform, dwsUtils, dwsStrings,
    dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList, dwsUnitSymbols,
    dwsConstExprs, dwsMagicExprs, dwsDataContext;
@@ -90,8 +90,8 @@ type
    PRGB24 = ^TRGB24;
 var
    w, h, quality : Integer;
-   dynArray : TScriptDynamicArray;
    jpegOptions : TJPEGOptions;
+   pixmap : IScriptDynArray;
 
    {$ifdef USE_LIB_JPEG}
    procedure CompressWithLibJPEG(var Result : UnicodeString);
@@ -104,7 +104,7 @@ var
       i:=0;
       for y:=0 to h-1 do begin
          for x:=0 to w-1 do begin
-            c:=dynArray.AsInteger[i];
+            c:=pixmap.AsInteger[i];
             buf[i]:=PRGB24(@c)^;
             Inc(i);
          end;
@@ -156,15 +156,13 @@ var
    {$endif}
 
 var
-   pixmap : IScriptObj;
    opts : Integer;
    jpegOption : TJPEGOption;
 begin
-   args.ExprBase[0].EvalAsScriptObj(args.Exec, pixmap);
-   dynArray:=(pixmap.GetSelf as TScriptDynamicArray);
+   args.ExprBase[0].EvalAsScriptDynArray(args.Exec, pixmap);
    w:=args.AsInteger[1];
    h:=args.AsInteger[2];
-   if w*h>dynArray.DataLength then
+   if w*h>pixmap.ArrayLength then
       raise Exception.Create('Not enough data in pixmap');
    quality:=args.AsInteger[3];
    opts:=StrToIntDef(args.AsString[4], 0);
@@ -189,58 +187,77 @@ procedure TPixmapToPNGDataFunc.DoEvalAsString(const args : TExprBaseListExec; va
 type
    TRGB24 = record r, g, b : Byte; end;
    PRGB24 = ^TRGB24;
+   TRGB32 = record r, g, b, a : Byte; end;
+   PRGB32 = ^TRGB32;
 var
    w, h : Integer;
-   dynArray : TScriptDynamicArray;
+   pixmap : IScriptDynArray;
 
-   procedure CompressWithGDIPlus(var Result : UnicodeString);
+   procedure CompressWithPNGImage(var Result : UnicodeString; withAlpha : Boolean);
    var
-      i, x, y, c : Integer;
+      i, x, y : Integer;
       bmp : TBitmap;
-      scanLine : PRGB24;
+      scanLine24 : PRGB24;
+      c : TRGB32;
+      alphaChannel : array of Byte;
+      alphaPtr : PByte;
       buf : TWriteOnlyBlockStream;
+      png : TPngImage;
    begin
-      if Gdip=nil then
-         Gdip := TGDIPlus.Create('gdiplus.dll');
-      bmp:=TBitmap.Create;
+      buf:=TWriteOnlyBlockStream.AllocFromPool;
       try
-         bmp.PixelFormat:=pf24bit;
-         bmp.Width:=w;
-         bmp.Height:=h;
-         i:=0;
-         for y:=0 to h-1 do begin
-            scanLine:=bmp.ScanLine[y];
-            for x:=0 to w-1 do begin
-               c:=dynArray.AsInteger[i];
-               scanLine^.r:=PRGB24(@c)^.b;
-               scanLine^.g:=PRGB24(@c)^.g;
-               scanLine^.b:=PRGB24(@c)^.r;
-               Inc(i);
-               Inc(scanLine);
-            end;
-         end;
-         buf:=TWriteOnlyBlockStream.AllocFromPool;
+         png:=TPngImage.Create;
          try
-            SaveAs(bmp, buf, gptPNG);
-            Result:=RawByteStringToScriptString(buf.ToRawBytes);
+            bmp:=TBitmap.Create;
+            try
+               bmp.PixelFormat:=pf24bit;
+               bmp.Width:=w;
+               bmp.Height:=h;
+               if withAlpha then
+                  SetLength(alphaChannel, w*h);
+               alphaPtr:=PByte(alphaChannel);
+               i:=0;
+               for y:=0 to h-1 do begin
+                  scanLine24:=bmp.ScanLine[y];
+                  for x:=0 to w-1 do begin
+                     PInteger(@c)^:=pixmap.AsInteger[i];
+                     scanLine24^.r:=c.b;
+                     scanLine24^.g:=c.g;
+                     scanLine24^.b:=c.r;
+                     Inc(i);
+                     Inc(scanLine24);
+                     if withAlpha then begin
+                        alphaPtr^:=c.a;
+                        Inc(alphaPtr);
+                     end;
+                  end;
+               end;
+               png.Assign(bmp);
+            finally
+               bmp.Free;
+            end;
+            if withAlpha then begin
+               png.CreateAlpha;
+               for y:=0 to h-1 do
+                  System.Move(alphaChannel[y*w], png.AlphaScanline[y]^, w);
+            end;
+            png.SaveToStream(buf);
          finally
-            buf.ReturnToPool;
+            png.Free;
          end;
+         Result:=RawByteStringToScriptString(buf.ToRawBytes);
       finally
-         bmp.Free;
+         buf.ReturnToPool;
       end;
    end;
 
-var
-   pixmap : IScriptObj;
 begin
-   args.ExprBase[0].EvalAsScriptObj(args.Exec, pixmap);
-   dynArray:=(pixmap.GetSelf as TScriptDynamicArray);
+   args.ExprBase[0].EvalAsScriptDynArray(args.Exec, pixmap);
    w:=args.AsInteger[1];
    h:=args.AsInteger[2];
-   if w*h>dynArray.DataLength then
+   if w*h>pixmap.ArrayLength then
       raise Exception.Create('Not enough data in pixmap');
-   CompressWithGDIPlus(Result);
+   CompressWithPNGImage(Result, args.AsBoolean[3]);
 end;
 
 // ------------------------------------------------------------------
@@ -257,7 +274,7 @@ initialization
          ['pixmap', SYS_PIXMAP, 'width', SYS_INTEGER, 'height', SYS_INTEGER,
           'quality=90', SYS_INTEGER, 'options=', SYS_TJPEGOptions], []);
    RegisterInternalStringFunction(TPixmapToPNGDataFunc, 'PixmapToPNGData',
-         ['pixmap', SYS_PIXMAP, 'width', SYS_INTEGER, 'height', SYS_INTEGER], []);
+         ['pixmap', SYS_PIXMAP, 'width', SYS_INTEGER, 'height', SYS_INTEGER, 'withAlpha', SYS_BOOLEAN], []);
 
 end.
 

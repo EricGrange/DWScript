@@ -26,6 +26,8 @@ uses
 
 type
 
+   TStringDynArray = array of UnicodeString;
+
    // TRefCountedObject
    //
    // Uses Monitor hidden field to store refcount, so not compatible with monitor use

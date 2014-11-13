@@ -1326,7 +1326,7 @@ begin
    if ct.InheritsFrom(TBaseSymbol) then
       StringifyVariant(exec, writer, dataPtr[0])
    else if ct=TDynamicArraySymbol then
-      StringifyDynamicArray(exec, writer, IScriptObj(dataPtr.AsInterface[0]).GetSelf as TScriptDynamicArray)
+      StringifyDynamicArray(exec, writer, IScriptDynArray(dataPtr.AsInterface[0]).GetSelf as TScriptDynamicArray)
    else if ct.InheritsFrom(TStaticArraySymbol) then
       StringifyArray(exec, writer, TStaticArraySymbol(sym).Typ, dataPtr, TStaticArraySymbol(sym).ElementCount)
    else if ct=TRecordSymbol then

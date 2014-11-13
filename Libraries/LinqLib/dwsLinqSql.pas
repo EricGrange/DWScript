@@ -346,11 +346,11 @@ function TSqlFromExpr.Interpolate(exec: TdwsExecution; list: TObjectVarExpr; par
 var
    i, high: integer;
    paramList: TStringList;
-   obj: IScriptObj;
+   obj: IScriptDynArray;
    prog: TdwsProgram;
 begin
-   list.EvalAsScriptObj(exec, obj);
-   high := (obj.GetSelf as TScriptDynamicArray).ArrayLength - 1;
+   list.EvalAsScriptDynArray(exec, obj);
+   high := obj.ArrayLength - 1;
    prog := TdwsProgramExecution(exec).Prog;
    paramList := TStringList.Create;
    try

@@ -22,7 +22,6 @@ uses
   dwsLinqSql in '..\Libraries\LinqLib\dwsLinqSql.pas',
   dwsLinqJson in '..\Libraries\LinqLib\dwsLinqJson.pas',
   dwsDocBuilder in '..\Libraries\DocBuilder\dwsDocBuilder.pas',
-
   UScriptTests in 'UScriptTests.pas',
   UAlgorithmsTests in 'UAlgorithmsTests.pas',
   UdwsUnitTests in 'UdwsUnitTests.pas',
@@ -49,14 +48,13 @@ uses
   ULanguageExtensionTests in 'ULanguageExtensionTests.pas',
   UJITTests in 'UJITTests.pas',
   UJITx86Tests in 'UJITx86Tests.pas',
-  //ULinqTests in 'ULinqTests.pas',
-  //ULinqJsonTests in 'ULinqJsonTests.pas',
   dwsSymbolsLibModule in '..\Libraries\SymbolsLib\dwsSymbolsLibModule.pas',
   UExternalFunctionTests in 'UExternalFunctionTests.pas',
   UdwsCryptoTests in 'UdwsCryptoTests.pas',
   UdwsEncodingTests in 'UdwsEncodingTests.pas',
   UInstantiateTests in 'UInstantiateTests.pas',
-  UdwsWebUtilsTests in 'UdwsWebUtilsTests.pas';
+  UdwsWebUtilsTests in 'UdwsWebUtilsTests.pas',
+  UdwsGraphicsTests in 'UdwsGraphicsTests.pas';
 
 {$R *.res}
 

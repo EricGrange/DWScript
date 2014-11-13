@@ -55,7 +55,6 @@ type
    TProgramExpr = class;
 
    TVariantDynArray = array of Variant;
-   TStringDynArray = array of UnicodeString;
 
    TProgramExprList = array[0..MaxInt shr 4] of TProgramExpr;
    PProgramExprList = ^TProgramExprList;
@@ -1560,6 +1559,7 @@ type
       function GetFieldMemberNames : TStrings;
       function GetMethod(const s: UnicodeString): IInfo;
       function GetScriptObj: IScriptObj;
+      function GetScriptDynArray: IScriptDynArray;
       function GetParameter(const s: UnicodeString): IInfo;
       function GetTypeSym: TSymbol;
       function GetValue : Variant;
@@ -1584,6 +1584,7 @@ type
 
       property Exec: IdwsProgramExecution read GetExec;
       property ScriptObj: IScriptObj read GetScriptObj;
+      property ScriptDynArray: IScriptDynArray read GetScriptDynArray;
       property Parameter[const s: UnicodeString]: IInfo read GetParameter;
       property TypeSym: TSymbol read GetTypeSym;
       property Value: Variant read GetValue write SetValue;
@@ -1764,6 +1765,7 @@ type
          FArrayLength : Integer;
 
       protected
+         function GetElementSize : Integer;
          procedure SetArrayLength(n : Integer);
          function GetArrayLength : Integer;
 
@@ -6818,6 +6820,13 @@ begin
    System.SetLength(Result, ArrayLength);
    for i:=0 to ArrayLength-1 do
       EvalAsString(i, Result[i]);
+end;
+
+// GetElementSize
+//
+function TScriptDynamicArray.GetElementSize : Integer;
+begin
+   Result:=FElementSize;
 end;
 
 // ------------------

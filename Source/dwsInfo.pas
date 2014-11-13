@@ -58,6 +58,7 @@ type
          function GetFieldMemberNames : TStrings; virtual;
          function GetMethod(const s : UnicodeString) : IInfo; virtual;
          function GetScriptObj : IScriptObj; virtual;
+         function GetScriptDynArray: IScriptDynArray; virtual;
          function GetParameter(const s : UnicodeString) : IInfo; virtual;
          function GetTypeSym : TSymbol;
          function GetValue : Variant; virtual;
@@ -107,6 +108,7 @@ type
          function GetValueAsFloat : Double; override;
          function GetData : TData; override;
          function GetScriptObj: IScriptObj; override;
+         function GetScriptDynArray: IScriptDynArray; override;
          procedure SetData(const Value: TData); override;
          procedure SetValue(const Value: Variant); override;
          procedure SetValueAsInteger(const Value: Int64); override;
@@ -161,7 +163,7 @@ type
 
    TInfoDynamicArrayBase = class (TInfoData)
       protected
-         function SelfDynArray : TScriptDynamicArray;
+         function SelfDynArray : IScriptDynArray;
    end;
 
    TInfoDynamicArrayLength = class (TInfoDynamicArrayBase)
@@ -179,6 +181,7 @@ type
    TInfoDynamicArray = class(TInfoDynamicArrayBase)
       protected
          function GetScriptObj : IScriptObj; override;
+         function GetScriptDynArray: IScriptDynArray; override;
 
       public
          function Element(const indices : array of Integer) : IInfo; override;
@@ -407,6 +410,13 @@ begin
   raise Exception.CreateFmt(RTE_InvalidOp, ['Obj', FTypeSym.Caption]);
 end;
 
+// GetScriptDynArray
+//
+function TInfo.GetScriptDynArray: IScriptDynArray;
+begin
+  raise Exception.CreateFmt(RTE_InvalidOp, ['DynArray', FTypeSym.Caption]);
+end;
+
 function TInfo.GetParameter(const s: UnicodeString): IInfo;
 begin
   raise Exception.CreateFmt(RTE_InvalidOp, ['Parameter', FTypeSym.Caption]);
@@ -566,6 +576,22 @@ begin
       end;
    end;
    Result:=inherited GetScriptObj;
+end;
+
+// GetScriptDynArray
+//
+function TInfoData.GetScriptDynArray: IScriptDynArray;
+var
+   v : Variant;
+begin
+   if FTypeSym.Size=1 then begin
+      v:=GetValue;
+      if VarType(v)=varUnknown then begin
+         Result:=IScriptDynArray(IUnknown(v));
+         Exit;
+      end;
+   end;
+   Result:=inherited GetScriptDynArray;
 end;
 
 function TInfoData.GetValue : Variant;
@@ -1202,14 +1228,9 @@ end;
 
 // SelfDynArray
 //
-function TInfoDynamicArrayBase.SelfDynArray : TScriptDynamicArray;
-var
-   obj : IScriptDynArray;
+function TInfoDynamicArrayBase.SelfDynArray : IScriptDynArray;
 begin
-   obj:=IScriptDynArray(FDataPtr.AsInterface[0]);
-   if obj<>nil then
-      Result:=obj.GetSelf as TScriptDynamicArray
-   else Result:=nil;
+   Result:=IScriptDynArray(FDataPtr.AsInterface[0]);
 end;
 
 // ------------------
@@ -1263,7 +1284,7 @@ var
    x : Integer;
    elemTyp : TSymbol;
    elemOff : Integer;
-   dynArray : TScriptDynamicArray;
+   dynArray : IScriptDynArray;
    p : PVarData;
    locData : IDataContext;
 begin
@@ -1291,7 +1312,7 @@ begin
          p:=PVarData(dynArray.AsPVariant(elemOff));
          if p.VType<>varUnknown then
             raise Exception.Create(RTE_TooManyIndices);
-         dynArray:=IScriptObj(p.VUnknown).GetSelf as TScriptDynamicArray;
+         dynArray:=IScriptDynArray(p.VUnknown);
       end;
    end;
 
@@ -1322,28 +1343,29 @@ end;
 // GetData
 //
 function TInfoDynamicArray.GetData : TData;
-var
-   dynArray : TScriptDynamicArray;
 begin
-   dynArray:=SelfDynArray;
-   Result:=dynArray.AsData;
+   Result:=SelfDynArray.AsData;
 end;
 
 // SetData
 //
 procedure TInfoDynamicArray.SetData(const Value: TData);
-var
-   dynArray : TScriptDynamicArray;
 begin
-   dynArray:=SelfDynArray;
-   dynArray.ReplaceData(value);
+   SelfDynArray.ReplaceData(value);
 end;
 
 // GetScriptObj
 //
 function TInfoDynamicArray.GetScriptObj : IScriptObj;
 begin
-   Result:=IScriptObj(FDataPtr.AsInterface[0]);
+   Result:=(FDataPtr.AsInterface[0] as IScriptObj);
+end;
+
+// GetScriptDynArray
+//
+function TInfoDynamicArray.GetScriptDynArray: IScriptDynArray;
+begin
+   Result:=IScriptDynArray(FDataPtr.AsInterface[0]);
 end;
 
 // ------------------
