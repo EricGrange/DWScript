@@ -215,7 +215,7 @@ begin
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
    CheckTrue(sugg.Count>2, 'column 11');
    CheckEquals('Pi', sugg.Code[0], 'sugg 11, 0');
-   CheckEquals('Pos', sugg.Code[1], 'sugg 11, 1');
+   CheckEquals('PixmapToJPEGData', sugg.Code[1], 'sugg 11, 1');
 
    scriptPos.Col:=12;
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);

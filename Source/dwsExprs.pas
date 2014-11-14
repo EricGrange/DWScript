@@ -5437,7 +5437,9 @@ end;
 constructor TIntegerBinOpExpr.Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
 begin
    inherited;
-   FTyp:=Prog.TypInteger;
+   if aLeft.Typ=aRight.Typ then
+      FTyp:=aLeft.Typ
+   else FTyp:=Prog.TypInteger;
 end;
 
 // EvalAsVariant
@@ -5459,7 +5461,7 @@ end;
 function TIntegerBinOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
    if IsConstant then begin
-      Result:=TConstIntExpr.CreateUnified(Prog, nil, EvalAsInteger(exec));
+      Result:=TConstIntExpr.CreateUnified(Prog, Typ, EvalAsInteger(exec));
       Free;
    end else Result:=Self;
 end;

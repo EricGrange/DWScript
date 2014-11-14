@@ -1,0 +1,12 @@
+int 1
+int 2
+int 4
+enum 1
+enum 2
+enum 4
+int 5
+int 6
+int 0
+enum 5
+enum 6
+enum 0

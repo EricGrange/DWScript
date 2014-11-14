@@ -274,7 +274,7 @@ initialization
          ['pixmap', SYS_PIXMAP, 'width', SYS_INTEGER, 'height', SYS_INTEGER,
           'quality=90', SYS_INTEGER, 'options=', SYS_TJPEGOptions], []);
    RegisterInternalStringFunction(TPixmapToPNGDataFunc, 'PixmapToPNGData',
-         ['pixmap', SYS_PIXMAP, 'width', SYS_INTEGER, 'height', SYS_INTEGER, 'withAlpha', SYS_BOOLEAN], []);
+         ['pixmap', SYS_PIXMAP, 'width', SYS_INTEGER, 'height', SYS_INTEGER, 'withAlpha=False', SYS_BOOLEAN], []);
 
 end.
 
