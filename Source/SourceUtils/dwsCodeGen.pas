@@ -1627,7 +1627,7 @@ begin
             funcSym:=sym.AsFuncSymbol;
             if funcSym<>nil then begin
 
-               if funcSym.IsExternal or funcSym.IsType then continue;
+               if funcSym.IsExternal or funcSym.IsType or funcSym.IsExport then continue;
                if not SmartLink(funcSym) then begin
                   if FSymbolDictionary.FindSymbolPosList(funcSym)<>nil then begin
                      RemoveReferencesInContextMap(funcSym);
