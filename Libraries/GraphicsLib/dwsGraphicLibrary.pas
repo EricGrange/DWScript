@@ -65,6 +65,8 @@ var
    jpgOption : TEnumerationSymbol;
    jpgOptions : TSetOfSymbol;
 begin
+   if unitTable.FindLocal(SYS_PIXMAP)<>nil then exit;
+
    typPixmap:=TDynamicArraySymbol.Create(SYS_PIXMAP, systemTable.TypInteger, systemTable.TypInteger);
    unitTable.AddSymbol(typPixmap);
 

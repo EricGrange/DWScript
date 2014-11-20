@@ -126,6 +126,8 @@ var
    clsMethAttribute : TClassSymbol;
    field : TFieldSymbol;
 begin
+   if systemTable.FindLocal(SYS_TRTTITYPEINFO)<>nil then exit;
+
    typTypInfo:=TRecordSymbol.Create(SYS_TRTTITYPEINFO, nil);
    typTypInfo.IsImmutable:=True;
    systemTable.AddSymbol(typTypInfo);

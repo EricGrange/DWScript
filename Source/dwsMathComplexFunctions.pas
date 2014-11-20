@@ -86,6 +86,8 @@ procedure RegisterComplexType(systemTable : TSystemSymbolTable; unitSyms : TUnit
 var
    typComplex : TRecordSymbol;
 begin
+   if systemTable.FindLocal(SYS_COMPLEX)<>nil then exit;
+
    typComplex:=TRecordSymbol.Create(SYS_COMPLEX, nil);
    typComplex.AddField(TFieldSymbol.Create('Re', systemTable.TypFloat, cvPublic));
    typComplex.AddField(TFieldSymbol.Create('Im', systemTable.TypFloat, cvPublic));

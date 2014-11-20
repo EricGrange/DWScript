@@ -178,6 +178,8 @@ procedure RegisterFileTypes(systemTable : TSystemSymbolTable; unitSyms : TUnitMa
 var
    typFile : TBaseVariantSymbol;
 begin
+   if systemTable.FindLocal(SYS_FILE)<>nil then exit;
+
    typFile:=TBaseFileSymbol.Create;
 
    systemTable.AddSymbol(typFile);

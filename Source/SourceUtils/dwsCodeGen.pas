@@ -548,6 +548,7 @@ begin
    FCompiledUnits.Clear;
    FMappedUnits.Clear;
 
+   FSymbolMapStack.Clear;
    FSymbolMap:=nil;
    FSymbolMaps.Clear;
    EnterScope(nil);

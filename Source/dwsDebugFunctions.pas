@@ -55,6 +55,8 @@ procedure RegisterDebugTypes(systemTable : TSystemSymbolTable; unitSyms : TUnitM
 var
    typLocation : TRecordSymbol;
 begin
+   if systemTable.FindLocal(SYS_TSOURCECODELOCATION)<>nil then exit;
+
    typLocation:=TRecordSymbol.Create(SYS_TSOURCECODELOCATION, nil);
    typLocation.AddField(TFieldSymbol.Create('Name', systemTable.TypString, cvPublic));
    typLocation.AddField(TFieldSymbol.Create('File', systemTable.TypString, cvPublic));

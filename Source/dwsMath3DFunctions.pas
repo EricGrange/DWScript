@@ -95,6 +95,8 @@ var
    typVector : TRecordSymbol;
 //   methSym : TMagicMethodSymbol;
 begin
+   if systemTable.FindLocal(SYS_VECTOR)<>nil then Exit;
+
    typVector:=TRecordSymbol.Create(SYS_VECTOR, nil);
    typVector.AddField(TFieldSymbol.Create('X', systemTable.TypFloat, cvPublic));
    typVector.AddField(TFieldSymbol.Create('Y', systemTable.TypFloat, cvPublic));
