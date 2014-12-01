@@ -795,6 +795,8 @@ begin
             destStream.WriteString('\"');
          Ord('\') :
             destStream.WriteString('\\');
+         Ord('/') : // XSS protection when used for inline scripts in HTML
+            destStream.WriteString('\/');
          {$ifndef FPC}
          $100..$FFFF :
             WriteUTF16(destStream, Ord(c));
