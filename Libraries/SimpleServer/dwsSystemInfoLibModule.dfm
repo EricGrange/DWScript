@@ -155,6 +155,11 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
             DataType = 'String'
             ReadAccess = 'GetEnvironmentVariable'
             WriteAccess = 'SetEnvironmentVariable'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end>
           end>
       end
       item
