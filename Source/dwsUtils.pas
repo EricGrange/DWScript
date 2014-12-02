@@ -184,16 +184,18 @@ type
    {: A minimalistic generic list class. }
    TSimpleList<T> = class
       private
-      type
-         ArrayT = array of T;
-      var
-         FItems : ArrayT;
-         FCount : Integer;
-         FCapacity : Integer;
+         type
+            ArrayT = array of T;
+         var
+            FItems : ArrayT;
+            FCount : Integer;
+            FCapacity : Integer;
+
       protected
          procedure Grow;
          function GetItems(const idx : Integer) : T; {$IFDEF DELPHI_2010_MINUS}{$ELSE} inline; {$ENDIF}
          procedure SetItems(const idx : Integer; const value : T);
+
       public
          procedure Add(const item : T);
          procedure Extract(idx : Integer);
@@ -208,13 +210,16 @@ type
    {: A simple generic object list, owns objects }
    TObjectList<T{$IFNDEF FPC}: TRefCountedObject{$ENDIF}> = class
       private
-      type ArrayT = array of T;
-      var
-         FItems : ArrayT;
-         FCount : Integer;
+         type
+            ArrayT = array of T;
+         var
+            FItems : ArrayT;
+            FCount : Integer;
+
       protected
-         function GetItem(index : Integer) : T;
+         function GetItem(index : Integer) : T; {$IFDEF DELPHI_2010_MINUS}{$ELSE} inline; {$ENDIF}
          procedure SetItem(index : Integer; const item : T);
+
       public
          destructor Destroy; override;
          function Add(const anItem : T) : Integer;
@@ -231,15 +236,18 @@ type
    {: List that maintains its elements sorted, subclasses must override Compare }
    TSortedList<T{$IFNDEF FPC}: TRefCountedObject{$ENDIF}> = class
       private
-      type ArrayT = array of T;
-      var
-         FItems : ArrayT;
-         FCount : Integer;
+         type
+            ArrayT = array of T;
+         var
+            FItems : ArrayT;
+            FCount : Integer;
+
       protected
          function GetItem(index : Integer) : T;
          function Find(const item : T; var index : Integer) : Boolean;
          function Compare(const item1, item2 : T) : Integer; virtual; abstract;
          procedure InsertItem(index : Integer; const anItem : T);
+
       public
          function Add(const anItem : T) : Integer;
          function AddOrFind(const anItem : T; var added : Boolean) : Integer;
@@ -291,9 +299,7 @@ type
 
    // TSimpleIntegerStack
    //
-   {: A minimalistic chunked integer stack.
-      Note that internal array items are NOT cleared on Pop, for refcounted types,
-      you need to clear yourself manually via Peek. }
+   {: A minimalistic chunked integer stack. }
    TSimpleIntegerStack = class
       private
          FChunk : PSimpleIntegerStackChunk;
@@ -2418,6 +2424,7 @@ end;
 //
 function TObjectList<T>.GetItem(index : Integer) : T;
 begin
+   Assert(Cardinal(index)<Cardinal(FCount), 'Index out of range');
    Result:=FItems[index];
 end;
 
@@ -2425,6 +2432,7 @@ end;
 //
 procedure TObjectList<T>.SetItem(index : Integer; const item : T);
 begin
+   Assert(Cardinal(index)<Cardinal(FCount), 'Index out of range');
    FItems[index]:=item;
 end;
 
@@ -2453,10 +2461,15 @@ end;
 // Extract
 //
 function TObjectList<T>.Extract(idx : Integer) : T;
+var
+   n : Integer;
 begin
-   Result:=FItems[idx];
-   System.Move(FItems[idx+1], FItems[idx], SizeOf(T)*(Count-1-idx));
+   Assert(Cardinal(idx)<Cardinal(FCount), 'Index out of range');
+   n:=Count-1-idx;
    Dec(FCount);
+   if n>0 then
+      System.Move(FItems[idx+1], FItems[idx], SizeOf(T)*n);
+   Result:=FItems[idx];
 end;
 
 // ExtractAll
