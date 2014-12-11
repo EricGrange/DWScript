@@ -561,7 +561,6 @@ const
    cWriteOnlyBlockStreamBlockSize = $2000 - 2*SizeOf(Pointer);
 
 type
-
    // TWriteOnlyBlockStream
    //
    {: Provides a write-only block-based stream. }
@@ -624,6 +623,34 @@ type
          procedure StoreData(var buffer); overload;
          procedure StoreData(destStream : TStream); overload;
          procedure StoreUTF8Data(destStream : TStream); overload;
+   end;
+
+   IWriteOnlyBlockStream = interface
+      function Stream : TWriteOnlyBlockStream;
+
+      procedure WriteString(const utf16String : UnicodeString); overload;
+      procedure WriteChar(utf16Char : WideChar);
+      procedure WriteCRLF;
+
+      function ToString : String;
+   end;
+
+   TAutoWriteOnlyBlockStream = class (TInterfacedSelfObject, IWriteOnlyBlockStream)
+      private
+         FStream : TWriteOnlyBlockStream;
+
+      protected
+         function Stream : TWriteOnlyBlockStream;
+
+         procedure WriteString(const utf16String : UnicodeString); overload;
+         procedure WriteChar(utf16Char : WideChar);
+         procedure WriteCRLF;
+
+      public
+         constructor Create;
+         destructor Destroy; override;
+
+         function ToString : String; override;
    end;
 
    TSimpleInt64List = class(TSimpleList<Int64>)
@@ -4378,6 +4405,59 @@ begin
    inherited CreateFmt(RTE_VariantCastFailed,
                        [VarTypeAsText(VarType(v)), desiredType, originalException.ClassName])
 
+end;
+
+// ------------------
+// ------------------ TAutoWriteOnlyBlockStream ------------------
+// ------------------
+
+// Create
+//
+constructor TAutoWriteOnlyBlockStream.Create;
+begin
+   FStream:=TWriteOnlyBlockStream.AllocFromPool;
+end;
+
+// Destroy
+//
+destructor TAutoWriteOnlyBlockStream.Destroy;
+begin
+   FStream.ReturnToPool;
+end;
+
+// Stream
+//
+function TAutoWriteOnlyBlockStream.Stream : TWriteOnlyBlockStream;
+begin
+   Result:=FStream;
+end;
+
+// WriteString
+//
+procedure TAutoWriteOnlyBlockStream.WriteString(const utf16String : UnicodeString);
+begin
+   FStream.WriteString(utf16String);
+end;
+
+// WriteChar
+//
+procedure TAutoWriteOnlyBlockStream.WriteChar(utf16Char : WideChar);
+begin
+   FStream.WriteChar(utf16Char);
+end;
+
+// WriteCRLF
+//
+procedure TAutoWriteOnlyBlockStream.WriteCRLF;
+begin
+   FStream.WriteCRLF;
+end;
+
+// ToString
+//
+function TAutoWriteOnlyBlockStream.ToString : String;
+begin
+   Result:=FStream.ToString;
 end;
 
 // ------------------------------------------------------------------
