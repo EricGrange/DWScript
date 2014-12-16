@@ -33,7 +33,7 @@ type
 
   EChrConvertError = class (Exception);
 
-  TChrFunc = class(TInternalMagicStringFunction)
+  TChrFunc = class sealed (TInternalMagicStringFunction)
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 

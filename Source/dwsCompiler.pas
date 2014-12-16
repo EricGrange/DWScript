@@ -2157,11 +2157,14 @@ begin
       end;
       FTok.SwitchHandler:=ReadSwitch;
       FTok.SwitchProcessor:=ReadInstrSwitch;
-      if scriptType=stMain then
-         FTok.ConditionalDefines:=FMainProg.ConditionalDefines
-      else FTok.ConditionalDefines:=FDefaultConditionals.Clone;
+      if scriptType in [stMain, stRecompile] then begin
+         FTok.ConditionalDefines:=FMainProg.ConditionalDefines;
+         readingMain:=True;
+      end else begin
+         FTok.ConditionalDefines:=FDefaultConditionals.Clone;
+         readingMain:=False;
+      end;
 
-      readingMain:=(scriptType=stMain);
       if readingMain then begin
          if FTok.Test(ttUNIT) then begin
             if coContextMap in Options then begin
@@ -2219,10 +2222,9 @@ begin
             FProg.InitExpr.AddStatement(Result);
             Result:=nil;
          end;
-         stMain : begin
+         stMain, stRecompile : begin
             if coContextMap in Options then begin
-               if scriptType=stMain then
-                  FSourceContextMap.CloseAllContexts(FTok.CurrentPos);
+               FSourceContextMap.CloseAllContexts(FTok.CurrentPos);
             end;
          end;
          stUnitNamespace : begin
@@ -2254,15 +2256,14 @@ begin
             end;
             FLineCount:=FLineCount+FTok.CurrentPos.Line-2;
             FTok.Free;
-         end else FUnitContextStack.PushContext(Self);
+         end else begin
+            FUnitContextStack.PushContext(Self);
+         end;
       end else begin
          FLineCount:=FLineCount+FTok.CurrentPos.Line-2;
          FTok.Free;
       end;
       FTok:=nil;
-
-//      if scriptType=stMain then
-//         ReadScriptImplementations;
 
       if (Result<>nil) and Optimize then
          Result:=Result.Optimize(FProg, FExec);
@@ -12094,9 +12095,14 @@ begin
             if n<>1 then
                FMsgs.AddCompilerErrorFmt(scriptPos, RTE_InvalidInputDataSize, [n, 1]);
          end;
-         if Expr is TStrVarExpr then
-            Result:=TVarStringArraySetExpr.Create(FProg, scriptPos, expr, indexExpr, valueExpr)
-         else begin
+         if Expr is TStrVarExpr then begin
+            if (valueExpr is TMagicStringFuncExpr) and (TMagicStringFuncExpr(valueExpr).FuncSym.Name='Chr') then begin
+               Result:=TVarStringArraySetChrExpr.Create(FProg, scriptPos, expr, indexExpr,
+                                                        TMagicStringFuncExpr(valueExpr).Args[0] as TTypedExpr);
+               TMagicStringFuncExpr(valueExpr).Args.Clear;
+               FreeAndNil(valueExpr);
+            end else Result:=TVarStringArraySetExpr.Create(FProg, scriptPos, expr, indexExpr, valueExpr);
+         end else begin
             if not expr.IsWritable then
                FMsgs.AddCompilerError(scriptPos, CPE_CantWriteToLeftSide);
             Result := TStringArraySetExpr.Create(FProg, scriptPos, expr, indexExpr, valueExpr);
@@ -12912,7 +12918,9 @@ begin
             end else if argTyp=FProg.TypBoolean then begin
                Result:=TOrdBoolExpr.Create(FProg, argExpr);
             end else if argTyp=FProg.TypString then begin
-               Result:=TOrdStrExpr.Create(FProg, argExpr);
+               if argExpr is TStringArrayOpExpr then
+                  Result:=TOrdIntExpr.Create(FProg, argExpr)
+               else Result:=TOrdStrExpr.Create(FProg, argExpr);
             end else if argTyp=FProg.TypVariant then begin
                Result:=TOrdExpr.Create(FProg, argExpr);
             end else begin

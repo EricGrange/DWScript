@@ -547,6 +547,7 @@ type
       public
          constructor CreatePos(Prog: TdwsProgram; const aScriptPos: TScriptPos; Left, Right: TTypedExpr);
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function ScriptPos : TScriptPos; override;
    end;
 
@@ -2030,9 +2031,17 @@ type
          property ValueExpr : TTypedExpr read FValueExpr;
    end;
 
-   TVarStringArraySetExpr = class(TStringArraySetExpr)
+   TVarStringArraySetExpr = class (TStringArraySetExpr)
+      protected
+         function EvalValueAsWideChar(exec : TdwsExecution) : WideChar; virtual;
+
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+
+   TVarStringArraySetChrExpr = class (TVarStringArraySetExpr)
+      protected
+         function EvalValueAsWideChar(exec : TdwsExecution) : WideChar; override;
    end;
 
    TSpecialUnaryBoolExpr = class(TUnaryOpBoolExpr)
@@ -3957,6 +3966,22 @@ begin
    else if i<1 then
       RaiseLowerExceeded(exec, i);
    Result:=buf[i];
+end;
+
+// EvalAsInteger
+//
+function TStringArrayOpExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+var
+   i : Integer;
+   buf : UnicodeString;
+begin
+   FLeft.EvalAsString(exec, buf);
+   i:=FRight.EvalAsInteger(exec);
+   if i>Length(buf) then
+      RaiseUpperExceeded(exec, i)
+   else if i<1 then
+      RaiseLowerExceeded(exec, i);
+   Result:=Ord(buf[i]);
 end;
 
 // ScriptPos
@@ -7586,19 +7611,41 @@ procedure TVarStringArraySetExpr.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
    c : WideChar;
-   buf : UnicodeString;
 begin
    i:=FIndexExpr.EvalAsInteger(exec);
    if i<1 then
-      RaiseLowerExceeded(exec, i)
-   else begin
-      FValueExpr.EvalAsString(exec, buf);
-      if Length(buf)<>1 then
-         RaiseScriptError(exec, EScriptError.CreateFmt(RTE_InvalidInputDataSize, [Length(buf), 1]));
-      c:=buf[1];
-      if not TStrVarExpr(FStringExpr).SetChar(exec, i, c) then
-         RaiseUpperExceeded(exec, i);
-   end;
+      RaiseLowerExceeded(exec, i);
+   c:=EvalValueAsWideChar(exec);
+   if not TStrVarExpr(FStringExpr).SetChar(exec, i, c) then
+      RaiseUpperExceeded(exec, i);
+end;
+
+// EvalValueAsWideChar
+//
+function TVarStringArraySetExpr.EvalValueAsWideChar(exec : TdwsExecution) : WideChar;
+var
+   buf : UnicodeString;
+begin
+   FValueExpr.EvalAsString(exec, buf);
+   if Length(buf)<>1 then
+      RaiseScriptError(exec, EScriptError.CreateFmt(RTE_InvalidInputDataSize, [Length(buf), 1]));
+   Result:=buf[1];
+end;
+
+// ------------------
+// ------------------ TVarStringArraySetChrExpr ------------------
+// ------------------
+
+// EvalValueAsWideChar
+//
+function TVarStringArraySetChrExpr.EvalValueAsWideChar(exec : TdwsExecution) : WideChar;
+var
+   i : Integer;
+begin
+   i:=FValueExpr.EvalAsInteger(exec);
+   if i>$FFFF then
+      RaiseScriptError(exec, EScriptError.CreateFmt(RTE_InvalidInputDataSize, [2, 1]));
+   Result:=WideChar(i);
 end;
 
 // ------------------
