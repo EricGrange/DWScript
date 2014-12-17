@@ -28,5 +28,9 @@ WriteValue('Cookies', WebRequest.Cookies);
 WriteValue('QueryFields', WebRequest.QueryFields);
 ?>
 </table>
+<h3>Raw Headers</h3>
+<pre>
+<?pas= WebRequest.Headers ?>
+</pre>
 </body>
 </html>

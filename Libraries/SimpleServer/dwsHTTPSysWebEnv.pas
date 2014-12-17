@@ -272,6 +272,7 @@ begin
               +'='
               +UTF8DecodeToString(PUTF8Char(p.pRawValue), p.RawValueLength);
          FHeaders.Add(buf);
+         Inc(p);
       end;
    end;
 end;
