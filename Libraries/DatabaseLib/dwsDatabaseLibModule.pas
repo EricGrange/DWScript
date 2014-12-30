@@ -725,19 +725,8 @@ end;
 
 function TdwsDatabaseLib.dwsDatabaseFunctionsBlobHexParameterFastEval(
   const args: TExprBaseListExec): Variant;
-var
-   hex, buf : RawByteString;
-   n : Integer;
 begin
-   hex:=args.AsDataString[0];
-   n:=Length(hex);
-   if (n and 1)<>0 then
-      hex:=hex+'0';
-   n:=n div 2;
-   SetLength(buf, n);
-   if n<>HexToBin(PAnsiChar(hex), PAnsiChar(buf), n) then
-      raise Exception.Create('Invalid characters in hexadecimal');
-   Result:=buf;
+   Result:=dwsUtils.HexToBin(args.AsString[0]);
 end;
 
 function TdwsDatabaseLib.dwsDatabaseFunctionsBlobParameterFastEval(

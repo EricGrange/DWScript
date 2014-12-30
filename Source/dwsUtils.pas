@@ -751,6 +751,11 @@ procedure BytesToScriptString(const p : PByte; n : Integer; var result : Unicode
 function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString; overload; inline;
 procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
 
+function BinToHex(const data; n : Integer) : String; overload;
+function BinToHex(const data : RawByteString) : String; overload; inline;
+
+function HexToBin(const data : String) : RawByteString;
+
 type
    TInt64StringBuffer = array [0..21] of WideChar;
    TInt32StringBuffer = array [0..11] of WideChar;
@@ -813,6 +818,9 @@ end;
 // ScriptStringToRawByteString
 //
 procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
+type
+  PByteArray = ^TByteArray;
+  TByteArray = array[0..maxInt shr 1] of Byte;
 var
    i, n : Integer;
    pSrc : PWideChar;
@@ -825,6 +833,79 @@ begin
    pDest:=PByteArray(NativeUInt(Result));
    for i:=0 to n-1 do
       pDest[i]:=PByte(@pSrc[i])^;
+end;
+
+// BinToHex
+//
+function BinToHex(const data; n : Integer) : String;
+const
+   cHexDigits : array [0..15] of Char = (
+      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+      'a', 'b', 'c', 'd', 'e', 'f'
+   );
+var
+   i : Integer;
+   pDest : PLongWord;
+   p : PByte;
+begin
+   if n=0 then Exit;
+
+   SetLength(Result, n*2);
+
+   pDest:=Pointer(Result);
+   p:=@data;
+   for i:=1 to n do begin
+      pDest^ := Ord(cHexDigits[p^ shr 4]) + (Ord(cHexDigits[p^ and 15]) shl 16);
+      Inc(pDest);
+      Inc(p);
+   end;
+end;
+
+// BinToHex
+//
+function BinToHex(const data : RawByteString) : String; overload;
+begin
+   Result:=BinToHex(Pointer(data)^, Length(data));
+end;
+
+// HexToBin
+//
+function HexToBin(const data : String) : RawByteString;
+var
+   i, n, b : Integer;
+   c : Char;
+   pSrc : PChar;
+   pDest : PByte;
+begin
+   n:=Length(data);
+   if (n and 1)<>0 then
+      raise Exception.Create('Even hexadecimal character count expected');
+
+   n:=n shr 1;
+   SetLength(Result, n);
+   pSrc:=PChar(Pointer(data));
+   pDest:=PByte(Result);
+   for i:=1 to n do begin
+      c:=pSrc[0];
+      case c of
+         '0'..'9' : b := (Ord(c) shl 4)-(Ord('0') shl 4);
+         'A'..'F' : b := (Ord(c) shl 4)+(160-(Ord('A') shl 4));
+         'a'..'f' : b := (Ord(c) shl 4)+(160-(Ord('a') shl 4));
+      else
+         raise Exception.Create('Invalid characters in hexadecimal');
+      end;
+      c:=pSrc[1];
+      case c of
+         '0'..'9' : b := b + Ord(c) - Ord('0');
+         'A'..'F' : b := b + Ord(c) + (10-Ord('A'));
+         'a'..'f' : b := b + Ord(c) + (10-Ord('a'));
+      else
+         raise Exception.Create('Invalid characters in hexadecimal');
+      end;
+      pDest^ := b;
+      Inc(pDest);
+      pSrc := @pSrc[2];
+   end;
 end;
 
 // DivMod100

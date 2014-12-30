@@ -76,6 +76,24 @@ object dwsCryptoLib: TdwsCryptoLib
           end>
       end
       item
+        Name = 'HashRIPEMD160'
+        Ancestor = 'HashAlgorithm'
+        IsStatic = True
+        Methods = <
+          item
+            Name = 'HashData'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsCryptoClassesHashRIPEMD160MethodsHashDataEval
+            Kind = mkClassFunction
+          end>
+      end
+      item
         Name = 'EncryptionAlgorithm'
         IsAbstract = True
         Methods = <

@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, Classes,
-  dwsExprs, dwsComp, dwsWebUtils,
+  dwsExprs, dwsComp, dwsWebUtils, dwsUtils,
   SynCommons;
 
 type
@@ -30,6 +30,10 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsEncodingClassesHexadecimalEncoderMethodsDecodeEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesBase58EncoderMethodsEncodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesBase58EncoderMethodsDecodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -39,6 +43,117 @@ type
 implementation
 
 {$R *.dfm}
+
+const
+   cBase58 : String = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+function Base58Encode(const data : RawByteString) : String;
+var
+   i, j, carry, n : Integer;
+   digits : array of Integer;
+begin
+   if data = '' then exit;
+
+   Result := '';
+   n := -1;
+   for j := 1 to Length(data) do begin
+      if data[j] = #0 then
+         Result := Result + cBase58[1]
+      else begin
+         SetLength(digits, 1);
+         digits[0] := 0;
+         n := 0;
+         break;
+      end;
+   end;
+
+   for i := Length(Result)+1 to Length(data) do begin
+
+      for j := 0 to n do
+         digits[j] := digits[j] shl 8;
+
+      digits[0] := digits[0] + Ord(data[i]);
+
+      carry := 0;
+
+      for j := 0 to n do begin
+         digits[j] := digits[j] + carry;
+         carry := digits[j] div 58;
+         digits[j] := digits[j] mod 58;
+      end;
+
+      while carry > 0 do begin
+         Inc(n);
+         SetLength(digits, n+1);
+         digits[n] := carry mod 58;
+         carry := carry div 58;
+      end;
+   end;
+
+   for j := n downto 0 do
+      Result := Result + cBase58[digits[j]+1];
+end;
+
+function Base58Decode(const data : String) : RawByteString;
+var
+   i, j, carry, n, d : Integer;
+   bytes : array of Integer;
+begin
+   if data = '' then exit;
+
+   Result := '';
+   n := -1;
+   for j := 1 to Length(data) do begin
+      if data[j] = '1' then
+         Result := Result + #0
+      else begin
+         SetLength(bytes, 1);
+         bytes[0] := 0;
+         n := 0;
+         break;
+      end;
+   end;
+
+   for i := Length(Result)+1 to Length(data) do begin
+      d := Pos(data[i], cBase58)-1;
+      if d<0 then
+         raise Exception.Create('Non-base58 character');
+
+      for j := 0 to n do
+         bytes[j] := bytes[j]*58;
+
+      bytes[0] := bytes[0]+d;
+
+      carry := 0;
+      for j := 0 to n do begin
+         bytes[j] := bytes[j] + carry;
+         carry := bytes[j] shr 8;
+         bytes[j] := bytes[j] and $FF;
+      end;
+
+      while carry > 0 do begin
+         Inc(n);
+         SetLength(bytes, n+1);
+         bytes[n] := carry and $FF;
+         carry := carry shr 8;
+      end;
+   end;
+
+   for j := n downto 0 do
+      Result := Result + AnsiChar(bytes[j]);
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesBase58EncoderMethodsDecodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString := Base58Decode(Info.ParamAsString[0]);
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesBase58EncoderMethodsEncodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := Base58Encode(Info.ParamAsDataString[0]);
+end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesBase64EncoderMethodsDecodeEval(
   Info: TProgramInfo; ExtObject: TObject);
@@ -54,32 +169,14 @@ end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesHexadecimalEncoderMethodsDecodeEval(
   Info: TProgramInfo; ExtObject: TObject);
-var
-   hex, buf : RawByteString;
-   n : Integer;
 begin
-   hex:=Info.ParamAsDataString[0];
-   n:=Length(hex);
-   if (n and 1)<>0 then
-      raise Exception.Create('Expect even hexadecimal character count');
-   n:=n div 2;
-   SetLength(buf, n);
-   if n<>Classes.HexToBin(PAnsiChar(hex), PAnsiChar(buf), n) then
-      raise Exception.Create('Invalid characters in hexadecimal');
-   Info.ResultAsDataString := buf;
+   Info.ResultAsDataString := dwsUtils.HexToBin(Info.ParamAsString[0]);
 end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesHexadecimalEncoderMethodsEncodeEval(
   Info: TProgramInfo; ExtObject: TObject);
-var
-   hex, buf : RawByteString;
-   n : Integer;
 begin
-   buf:=Info.ParamAsDataString[0];
-   n:=Length(buf);
-   SetLength(hex, n*2);
-   Classes.BinToHex(PAnsiChar(buf), PAnsiChar(hex), n);
-   Info.ResultAsDataString := hex;
+   Info.ResultAsString := dwsUtils.BinToHex(Info.ParamAsDataString[0]);
 end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesHTMLTextEncoderMethodsDecodeEval(
