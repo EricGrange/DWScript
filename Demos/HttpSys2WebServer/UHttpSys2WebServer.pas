@@ -246,7 +246,7 @@ var
    serverOptions : TdwsJSONValue;
    extraDomains, domain : TdwsJSONValue;
    env: TdwsJSONObject;
-   i, k, nbThreads : Integer;
+   i, nbThreads : Integer;
 begin
    FPath:=IncludeTrailingPathDelimiter(ExpandFileName(basePath));
 
