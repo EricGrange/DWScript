@@ -1,3 +1,5 @@
+CleanupGlobalVars;
+
 var backup = SaveGlobalVarsToString;
 
 WriteGlobalVar('test', 'hello world');

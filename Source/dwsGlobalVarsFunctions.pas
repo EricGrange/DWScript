@@ -67,6 +67,10 @@ type
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
+   TCompareExchangeGlobalVarFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
+   end;
+
    TDeleteGlobalVarFunc = class(TInternalMagicBoolFunction)
       function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
@@ -131,6 +135,8 @@ function ReadGlobalVarDef(const aName: UnicodeString; const aDefault: Variant): 
 {: Increments an integer global var. If not an integer, conversion is attempted.<p>
    Returns the value after the incrementation }
 function IncrementGlobalVar(const aName : UnicodeString; const delta : Int64) : Int64;
+{: Compares aName with comparand, if equal exchanges with value, returns initial value of aName }
+function CompareExchangeGlobalVar(const aName : UnicodeString; const value, comparand : Variant) : Variant;
 {: Delete specified global var if it exists. }
 function DeleteGlobalVar(const aName : UnicodeString) : Boolean;
 {: Resets all global vars.<p> }
@@ -252,13 +258,38 @@ begin
          vGlobalVarsNamesCache:='';
          gv:=TGlobalVar.Create;
          vGlobalVars.Objects[aName]:=gv;
-         gv.Value:=delta;
          Result:=delta;
       end else begin
          if (gv.Expire=0) or (gv.Expire>GetSystemMilliseconds) then
             Result:=delta+gv.Value
          else Result:=delta;
-         gv.Value:=Result;
+      end;
+      gv.Value:=Result;
+   finally
+      vGlobalVarsCS.EndWrite;
+   end;
+end;
+
+// CompareExchangeGlobalVar
+//
+function CompareExchangeGlobalVar(const aName : UnicodeString; const value, comparand : Variant) : Variant;
+var
+   gv : TGlobalVar;
+begin
+   vGlobalVarsCS.BeginWrite;
+   try
+      gv:=vGlobalVars.Objects[aName];
+      if (gv<>nil) and ((gv.Expire=0) or (gv.Expire>GetSystemMilliseconds)) then
+         Result:=gv.Value
+      else Result:=Unassigned;
+
+      if (VarType(Result)=VarType(comparand)) and (Result=comparand) then begin
+         if gv=nil then begin
+            vGlobalVarsNamesCache:='';
+            gv:=TGlobalVar.Create;
+            vGlobalVars.Objects[aName]:=gv;
+         end;
+         gv.Value:=value;
       end;
    finally
       vGlobalVarsCS.EndWrite;
@@ -853,11 +884,27 @@ begin
    Result:=WriteGlobalVar(args.AsString[0], args.ExprBase[1].Eval(args.Exec), args.AsFloat[2]);
 end;
 
-{ TIncrementGlobalVarFunc }
+// ------------------
+// ------------------ TIncrementGlobalVarFunc ------------------
+// ------------------
 
+// DoEvalAsInteger
+//
 function TIncrementGlobalVarFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=IncrementGlobalVar(args.AsString[0], args.AsInteger[1]);
+end;
+
+// ------------------
+// ------------------ TCompareExchangeGlobalVarFunc ------------------
+// ------------------
+
+// DoEvalAsVariant
+//
+procedure TCompareExchangeGlobalVarFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
+begin
+   result:=CompareExchangeGlobalVar(args.AsString[0],
+      args.ExprBase[1].Eval(args.Exec), args.ExprBase[2].Eval(args.Exec));
 end;
 
 { TDeleteGlobalVarFunc }
@@ -1015,6 +1062,7 @@ initialization
    RegisterInternalBoolFunction(TWriteGlobalVarFunc, 'WriteGlobalVar', ['n', SYS_STRING, 'v', SYS_VARIANT], [iffOverloaded]);
    RegisterInternalBoolFunction(TWriteGlobalVarExpireFunc, 'WriteGlobalVar', ['n', SYS_STRING, 'v', SYS_VARIANT, 'e', SYS_FLOAT], [iffOverloaded]);
    RegisterInternalIntFunction(TIncrementGlobalVarFunc, 'IncrementGlobalVar', ['n', SYS_STRING, 'i=1', SYS_INTEGER]);
+   RegisterInternalFunction(TCompareExchangeGlobalVarFunc, 'CompareExchangeGlobalVar', ['n', SYS_STRING, 'v', SYS_VARIANT, 'c', SYS_VARIANT], SYS_VARIANT);
    RegisterInternalBoolFunction(TDeleteGlobalVarFunc, 'DeleteGlobalVar', ['n', SYS_STRING]);
    RegisterInternalProcedure(TCleanupGlobalVarsFunc, 'CleanupGlobalVars', ['filter=*', SYS_STRING]);
    RegisterInternalStringFunction(TGlobalVarsNamesCommaText, 'GlobalVarsNamesCommaText', []);
