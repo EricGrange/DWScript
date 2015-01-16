@@ -1,0 +1,2 @@
+near "bug": syntax error
+near "nope": syntax error
