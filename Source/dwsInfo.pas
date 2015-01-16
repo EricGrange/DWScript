@@ -465,44 +465,48 @@ begin
    Result:=GetValue;
 end;
 
-class procedure TInfo.SetChild(out Result : IInfo; ProgramInfo: TProgramInfo;
-  ChildTypeSym: TSymbol; const ChildDataPtr: IDataContext;
-  const ChildDataMaster: IDataMaster = nil);
+class procedure TInfo.SetChild(out result : IInfo; programInfo: TProgramInfo;
+  childTypeSym: TSymbol; const childDataPtr: IDataContext;
+  const childDataMaster: IDataMaster = nil);
 var
    baseType : TTypeSymbol;
+   baseTypeClass : TClass;
 begin
-   Assert(Assigned(ChildTypeSym));
-   baseType := ChildTypeSym.baseType;
+   Assert(Assigned(childTypeSym));
+   baseType := childTypeSym.baseType;
+   baseTypeClass := baseType.ClassType;
 
    if    (baseType is TBaseSymbol)
-      or (baseType is TEnumerationSymbol)
-      or (baseType is TSetOfSymbol)
-      or (baseType is TConnectorSymbol) then
-         Result := TInfoData.Create(ProgramInfo, ChildTypeSym, childDataPtr,
-                                    ChildDataMaster)
-   else if ChildTypeSym.AsFuncSymbol<>nil then
-      Result := TInfoFunc.Create(ProgramInfo, ChildTypeSym, childDataPtr,
-                                 ChildDataMaster, nil, nil)
-   else if baseType is TRecordSymbol then
-      Result := TInfoRecord.Create(ProgramInfo, ChildTypeSym, childDataPtr,
-                                   ChildDataMaster)
+      or (baseTypeClass=TEnumerationSymbol)
+      or (baseTypeClass=TSetOfSymbol) then
+         result := TInfoData.Create(programInfo, childTypeSym, childDataPtr,
+                                    childDataMaster)
+   else if childTypeSym.AsFuncSymbol<>nil then
+      result := TInfoFunc.Create(programInfo, childTypeSym, childDataPtr,
+                                 childDataMaster, nil, nil)
+   else if baseTypeClass=TRecordSymbol then
+      result := TInfoRecord.Create(programInfo, childTypeSym, childDataPtr,
+                                   childDataMaster)
    else if baseType is TStaticArraySymbol then begin
       if baseType is TOpenArraySymbol then begin
-         Result := TInfoOpenArray.Create(ProgramInfo, ChildTypeSym, childDataPtr,
-                                         ChildDataMaster);
+         result := TInfoOpenArray.Create(programInfo, childTypeSym, childDataPtr,
+                                          childDataMaster);
       end else begin
-         Result := TInfoStaticArray.Create(ProgramInfo, ChildTypeSym, childDataPtr,
-                                           ChildDataMaster);
+         result := TInfoStaticArray.Create(programInfo, childTypeSym, childDataPtr,
+                                            childDataMaster);
       end;
-   end else if baseType is TDynamicArraySymbol then
-      Result := TInfoDynamicArray.Create(ProgramInfo, ChildTypeSym, childDataPtr,
-                                         ChildDataMaster)
-   else if baseType is TClassSymbol then
-      Result := TInfoClassObj.Create(ProgramInfo, ChildTypeSym, childDataPtr,
-                                     ChildDataMaster)
-   else if baseType is TClassOfSymbol then
-      Result := TInfoClassOf.Create(ProgramInfo, ChildTypeSym, childDataPtr,
-                                    ChildDataMaster)
+   end else if baseTypeClass=TDynamicArraySymbol then
+      result := TInfoDynamicArray.Create(programInfo, childTypeSym, childDataPtr,
+                                          childDataMaster)
+   else if baseTypeClass=TClassSymbol then
+      result := TInfoClassObj.Create(programInfo, childTypeSym, childDataPtr,
+                                      childDataMaster)
+   else if baseTypeClass=TClassOfSymbol then
+      result := TInfoClassOf.Create(programInfo, childTypeSym, childDataPtr,
+                                     childDataMaster)
+   else if baseType is TConnectorSymbol then
+      result := TInfoData.Create(programInfo, childTypeSym, childDataPtr,
+                                  childDataMaster)
    else Assert(False); // Shouldn't be ever executed
 end;
 
