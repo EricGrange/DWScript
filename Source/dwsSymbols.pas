@@ -1824,6 +1824,7 @@ type
 const
    cFuncKindToString : array [Low(TFuncKind)..High(TFuncKind)] of UnicodeString = (
       'function', 'procedure', 'constructor', 'destructor', 'method', 'lambda' );
+   cFirstFieldUnprepared : TFieldSymbol = Pointer(-1);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -2182,6 +2183,7 @@ begin
    inherited Create(name, nil);
    FUnitSymbol:=aUnit;
    FMembers:=CreateMembersTable;
+   FFirstField:=cFirstFieldUnprepared;
 end;
 
 // Destroy
@@ -2236,7 +2238,7 @@ end;
 //
 procedure TCompositeTypeSymbol.AddField(fieldSym : TFieldSymbol);
 begin
-   Assert(FFirstField=nil);
+   Assert(FFirstField=cFirstFieldUnprepared);
    FMembers.AddSymbol(fieldSym);
    fieldSym.FStructSymbol:=Self;
 end;
@@ -2416,7 +2418,7 @@ end;
 //
 function TCompositeTypeSymbol.FirstField : TFieldSymbol;
 begin
-   if FFirstField=nil then
+   if FFirstField=cFirstFieldUnprepared then
       PrepareFirstField;
    Result:=FFirstField;
 end;
