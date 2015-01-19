@@ -30,32 +30,17 @@ uses
    dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform, dwsDataContext;
 
 type
-
-   TdwsSynSQLiteRequest = class
-      private
-         FRequest : TSQLRequest;
-         FSQL : String;
-
-      public
-         destructor Destroy; override;
-
-         procedure Prepare(db : TSQLite3DB; const sql : String);
-
-         procedure AssignParameters(const params : TData);
-
-         property Request : TSQLRequest read FRequest;
-         property SQL : String read FSQL;
-   end;
+   TdwsSynSQLiteDataSet = class;
 
    TdwsSynSQLiteDataBase = class (TdwsDataBase, IdwsDataBase)
       private
          FDB : TSQLDatabase;
          FDataSets : Integer;
-         FRequest : TdwsSynSQLiteRequest;
+         FExecRequest : TSQLRequest;
+         FExecSQL : String;
+         FPooledDataSet : TdwsSynSQLiteDataSet;
 
       protected
-         function AcquireRequest(const sql : String) : TdwsSynSQLiteRequest;
-         procedure ReleaseRequest(var r : TdwsSynSQLiteRequest);
 
       public
          constructor Create(const parameters : array of String);
@@ -76,8 +61,9 @@ type
    TdwsSynSQLiteDataSet = class (TdwsDataSet)
       private
          FDB : TdwsSynSQLiteDataBase;
-         FQuery : TdwsSynSQLiteRequest;
+         FRequest : TSQLRequest;
          FEOFReached : Boolean;
+         FSQL : String;
 
       protected
          procedure DoPrepareFields; override;
@@ -90,6 +76,8 @@ type
          procedure Next; override;
 
          function FieldCount : Integer; override;
+
+         property SQL : String read FSQL;
    end;
 
    TdwsSynSQLiteDataField = class (TdwsDataField)
@@ -152,6 +140,28 @@ begin
    else Result:=dftUnknown;
 end;
 
+// SQLAssignParameters
+//
+procedure SQLAssignParameters(var rq : TSQLRequest; const params : TData);
+var
+   i : Integer;
+   p : PVarData;
+begin
+   for i:=1 to Length(params) do begin
+      p:=PVarData(@params[i-1]);
+      case p.VType of
+         varInt64 : rq.Bind(i, p.VInt64);
+         varDouble : rq.Bind(i, p.VDouble);
+         varUString : rq.BindS(i, String(p.VUString));
+         varBoolean : rq.Bind(i, Ord(p.VBoolean));
+         varNull : rq.BindNull(i);
+         varString : rq.Bind(i, p.VString, Length(RawByteString(p.VString)));
+      else
+         raise Exception.CreateFmt('Unsupported VarType %d', [p.VType]);
+      end;
+   end;
+end;
+
 // ------------------
 // ------------------ TdwsSynSQLiteDataBaseFactory ------------------
 // ------------------
@@ -204,7 +214,8 @@ end;
 //
 destructor TdwsSynSQLiteDataBase.Destroy;
 begin
-   FreeAndNil(FRequest);
+   FPooledDataSet.Free;
+   FExecRequest.Close;
    FDB.Free;
    inherited;
 end;
@@ -245,24 +256,35 @@ begin
       Result:='in transaction'
    else if FDataSets>0 then  // need to check as they could maintain a lock
       Result:='has opened datasets'
-   else Result:='';
+   else begin
+      FExecRequest.Close;
+      FreeAndNil(FPooledDataSet);
+      Result:='';
+   end;
 end;
 
 // Exec
 //
 procedure TdwsSynSQLiteDataBase.Exec(const sql : String; const parameters : TData);
-var
-   rq : TdwsSynSQLiteRequest;
 begin
-   rq:=AcquireRequest(sql);
+   if sql='' then
+      raise ESQLite3Exception.CreateFmt('Empty query', []);
+   if FExecRequest.Request<>0 then begin
+      if FExecSQL<>sql then
+         FExecRequest.Close;
+   end;
+   if FExecRequest.Request=0 then begin
+      FExecRequest.Prepare(FDB.DB, StringToUTF8(sql));
+      FExecSQL:=sql;
+   end;
    try
-      if rq.Request.Request<>0 then begin
-         rq.AssignParameters(parameters);
-         while rq.Request.Step=SQLITE_ROW do ;
-      end;
-      ReleaseRequest(rq);
+      SQLAssignParameters(FExecRequest, parameters);
+      while FExecRequest.Step=SQLITE_ROW do ;
+      if FExecRequest.Reset=SQLITE_OK then
+         FExecRequest.BindReset
+      else FExecRequest.Close;
    except
-      rq.Free;
+      FExecRequest.Close;
       raise;
    end;
 end;
@@ -273,6 +295,8 @@ function TdwsSynSQLiteDataBase.Query(const sql : String; const parameters : TDat
 var
    ds : TdwsSynSQLiteDataSet;
 begin
+   if sql='' then
+      raise ESQLite3Exception.CreateFmt('Empty query', []);
    ds:=TdwsSynSQLiteDataSet.Create(Self, sql, parameters);
    Result:=ds;
 end;
@@ -284,33 +308,6 @@ begin
    Result:=UTF8ToString(sqlite3.libversion);
 end;
 
-// AcquireRequest
-//
-function TdwsSynSQLiteDataBase.AcquireRequest(const sql : String) : TdwsSynSQLiteRequest;
-begin
-   if FRequest=nil then
-      FRequest:=TdwsSynSQLiteRequest.Create;
-   if FRequest.SQL<>sql then
-      FRequest.Prepare(FDB.DB, sql);
-   Result:=FRequest;
-   FRequest:=nil;
-end;
-
-// ReleaseRequest
-//
-procedure TdwsSynSQLiteDataBase.ReleaseRequest(var r : TdwsSynSQLiteRequest);
-begin
-   if FRequest=nil then begin
-      if r.Request.Request<>0 then begin
-         if r.Request.Reset=SQLITE_OK then
-            r.Request.BindReset
-         else FreeAndNil(r);
-      end;
-      FRequest:=r
-   end else r.Free;
-   r:=nil;
-end;
-
 // ------------------
 // ------------------ TdwsSynSQLiteDataSet ------------------
 // ------------------
@@ -319,18 +316,19 @@ end;
 //
 constructor TdwsSynSQLiteDataSet.Create(db : TdwsSynSQLiteDataBase; const sql : String; const parameters : TData);
 begin
+   FSQL:=sql;
    FDB:=db;
    inherited Create(db);
    try
-      FQuery:=db.AcquireRequest(sql);
+      FRequest.Prepare(db.FDB.DB, StringToUTF8(sql));
       try
-         if FQuery.Request.Request<>0 then begin
-            FQuery.AssignParameters(parameters);
-            FEOFReached:=(FQuery.Request.Step=SQLITE_DONE);
+         if FRequest.Request<>0 then begin
+            SQLAssignParameters(FRequest, parameters);
+            FEOFReached:=(FRequest.Step=SQLITE_DONE);
          end else FEOFReached:=True;
          Inc(FDB.FDataSets);
       except
-         FQuery.Free;
+         FRequest.Close;
          raise;
       end;
    except
@@ -344,7 +342,7 @@ end;
 destructor TdwsSynSQLiteDataSet.Destroy;
 begin
    Dec(FDB.FDataSets);
-   FDB.ReleaseRequest(FQuery);
+   FRequest.Close;
    inherited;
 end;
 
@@ -359,14 +357,14 @@ end;
 //
 procedure TdwsSynSQLiteDataSet.Next;
 begin
-   FEOFReached:=(FQuery.Request.Step=SQLITE_DONE);
+   FEOFReached:=(FRequest.Step=SQLITE_DONE);
 end;
 
 // FieldCount
 //
 function TdwsSynSQLiteDataSet.FieldCount : Integer;
 begin
-   Result:=FQuery.Request.FieldCount;
+   Result:=FRequest.FieldCount;
 end;
 
 // DoPrepareFields
@@ -375,7 +373,7 @@ procedure TdwsSynSQLiteDataSet.DoPrepareFields;
 var
    i, n : Integer;
 begin
-   n:=FQuery.Request.FieldCount;
+   n:=FRequest.FieldCount;
    SetLength(FFields, n);
    for i:=0 to n-1 do
       FFields[i]:=TdwsSynSQLiteDataField.Create(Self, i);
@@ -403,98 +401,56 @@ end;
 //
 function TdwsSynSQLiteDataField.IsNull : Boolean;
 begin
-   Result:=TdwsSynSQLiteDataSet(DataSet).FQuery.Request.FieldNull(Index);
+   Result:=TdwsSynSQLiteDataSet(DataSet).FRequest.FieldNull(Index);
 end;
 
 // GetName
 //
 function TdwsSynSQLiteDataField.GetName : String;
 begin
-   Result:=UTF8ToString(TdwsSynSQLiteDataSet(DataSet).FQuery.Request.FieldName(Index));
+   Result:=UTF8ToString(TdwsSynSQLiteDataSet(DataSet).FRequest.FieldName(Index));
 end;
 
 // GetDataType
 //
 function TdwsSynSQLiteDataField.GetDataType : TdwsDataFieldType;
 begin
-   Result:=SQLiteTypeToDataType(TdwsSynSQLiteDataSet(DataSet).FQuery.Request.FieldType(Index));
+   Result:=SQLiteTypeToDataType(TdwsSynSQLiteDataSet(DataSet).FRequest.FieldType(Index));
 end;
 
 // GetDeclaredType
 //
 function TdwsSynSQLiteDataField.GetDeclaredType : String;
 begin
-   Result:=TdwsSynSQLiteDataSet(DataSet).FQuery.Request.FieldDeclaredTypeS(Index);
+   Result:=TdwsSynSQLiteDataSet(DataSet).FRequest.FieldDeclaredTypeS(Index);
 end;
 
 // AsString
 //
 function TdwsSynSQLiteDataField.AsString : String;
 begin
-   Result:=TdwsSynSQLiteDataSet(DataSet).FQuery.Request.FieldS(Index);
+   Result:=TdwsSynSQLiteDataSet(DataSet).FRequest.FieldS(Index);
 end;
 
 // AsInteger
 //
 function TdwsSynSQLiteDataField.AsInteger : Int64;
 begin
-   Result:=TdwsSynSQLiteDataSet(DataSet).FQuery.Request.FieldInt(Index);
+   Result:=TdwsSynSQLiteDataSet(DataSet).FRequest.FieldInt(Index);
 end;
 
 // AsFloat
 //
 function TdwsSynSQLiteDataField.AsFloat : Double;
 begin
-   Result:=TdwsSynSQLiteDataSet(DataSet).FQuery.Request.FieldDouble(Index);
+   Result:=TdwsSynSQLiteDataSet(DataSet).FRequest.FieldDouble(Index);
 end;
 
 // AsBlob
 //
 function TdwsSynSQLiteDataField.AsBlob : RawByteString;
 begin
-   Result:=TdwsSynSQLiteDataSet(DataSet).FQuery.Request.FieldBlob(Index);
-end;
-
-// ------------------
-// ------------------ TdwsSynSQLiteRequest ------------------
-// ------------------
-
-// Destroy
-//
-destructor TdwsSynSQLiteRequest.Destroy;
-begin
-   if FRequest.Request<>0 then
-      FRequest.Close;
-end;
-
-// Prepare
-//
-procedure TdwsSynSQLiteRequest.Prepare(db : TSQLite3DB; const sql : String);
-begin
-   FRequest.Prepare(db, StringToUTF8(sql));
-   FSQL:=sql;
-end;
-
-// AssignParameters
-//
-procedure TdwsSynSQLiteRequest.AssignParameters(const params : TData);
-var
-   i : Integer;
-   p : PVarData;
-begin
-   for i:=1 to Length(params) do begin
-      p:=PVarData(@params[i-1]);
-      case p.VType of
-         varInt64 : Request.Bind(i, p.VInt64);
-         varDouble : Request.Bind(i, p.VDouble);
-         varUString : Request.BindS(i, String(p.VUString));
-         varBoolean : Request.Bind(i, Ord(p.VBoolean));
-         varNull : Request.BindNull(i);
-         varString : Request.Bind(i, p.VString, Length(RawByteString(p.VString)));
-      else
-         raise Exception.CreateFmt('Unsupported VarType %d', [p.VType]);
-      end;
-   end;
+   Result:=TdwsSynSQLiteDataSet(DataSet).FRequest.FieldBlob(Index);
 end;
 
 // ------------------------------------------------------------------

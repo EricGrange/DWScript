@@ -1,2 +1,4 @@
+Empty query
 near "bug": syntax error
+Empty query
 near "nope": syntax error

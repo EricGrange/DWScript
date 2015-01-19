@@ -29,7 +29,7 @@ except
 end;
 
 if db.InTransaction then
-	PrintLn('bug');
+	PrintLn('bug tx');
 try
 	db.Commit;
 except
@@ -39,6 +39,6 @@ end;
 
 db.StartTransaction;
 if not db.InTransaction then
-	PrintLn('rebug');
+	PrintLn('rebug tx');
 db.Rollback;
 
