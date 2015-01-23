@@ -38,7 +38,6 @@ type
          FDataSets : Integer;
          FExecRequest : TSQLRequest;
          FExecSQL : String;
-         FPooledDataSet : TdwsSynSQLiteDataSet;
 
       protected
 
@@ -214,7 +213,6 @@ end;
 //
 destructor TdwsSynSQLiteDataBase.Destroy;
 begin
-   FPooledDataSet.Free;
    FExecRequest.Close;
    FDB.Free;
    inherited;
@@ -258,7 +256,6 @@ begin
       Result:='has opened datasets'
    else begin
       FExecRequest.Close;
-      FreeAndNil(FPooledDataSet);
       Result:='';
    end;
 end;
