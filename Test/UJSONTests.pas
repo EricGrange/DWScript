@@ -19,7 +19,7 @@ interface
 
 uses
    Classes, SysUtils, Math,
-   dwsXPlatformTests, dwsJSON, dwsXPlatform, dwsUtils;
+   dwsXPlatformTests, dwsJSON, dwsXPlatform, dwsUtils, dwsJSONPath;
 
 type
 
@@ -67,6 +67,8 @@ type
          procedure SortArray;
          procedure EnumerateNil;
          procedure EnumerateArray;
+
+         procedure JSONPathBasic;
    end;
 
 // ------------------------------------------------------------------
@@ -76,6 +78,14 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+const
+   cJSONbooks =
+        '{ "books" : ['
+         + '{ "id"     : 1,  "title"  : "Clean Code", "author" : { "name" : "Robert C. Martin" }, "price"  : 17.96  },'
+         + '{ "id"     : 2, "title"  : "Maintainable JavaScript", "author" : { "name" : "Nicholas C. Zakas" }, "price"  : 10 },'
+         + '{ "id"     : 3, "title"  : "JavaScript: The Good Parts", "author" : { "name" : "Douglas Crockford" }, "price"  : 15.67 }'
+      + '] }';
 
 // ------------------
 // ------------------ TdwsJSONTests ------------------
@@ -769,6 +779,66 @@ begin
       CheckEquals(';1;a;true', s);
    finally
       v.Free;
+   end;
+end;
+
+// JSONPathBasic
+//
+procedure TdwsJSONTests.JSONPathBasic;
+var
+   js : TdwsJSONValue;
+
+   procedure CheckPath(const query, expected : String);
+   var
+      list : TdwsJSONValueList;
+   begin
+      list := JSONPath.Query(query, js);
+      try
+         CheckEquals(expected, list.ToString, query);
+      finally
+         list.Free;
+      end;
+   end;
+
+begin
+   js := TdwsJSONValue.ParseString(cJSONbooks);
+   try
+
+      CheckPath('.books.author',
+                '[{"name":"Robert C. Martin"},{"name":"Nicholas C. Zakas"},{"name":"Douglas Crockford"}]');
+
+      CheckPath('.books.author.name',
+                '["Robert C. Martin","Nicholas C. Zakas","Douglas Crockford"]');
+
+      CheckPath('.books..name',
+                '["Robert C. Martin","Nicholas C. Zakas","Douglas Crockford"]');
+
+      CheckPath('.id',
+                '[]');
+
+      CheckPath('..id',
+                '[1,2,3]');
+
+      CheckPath('.*.id',
+                '[1,2,3]');
+
+      CheckPath('.books.1.price',
+                '[10]');
+
+      CheckPath('.books[1].price',
+                '[10]');
+
+      CheckPath('.books[-1]..name',
+                '["Douglas Crockford"]');
+
+      CheckPath('.books[*].price',
+                '[17.96,10,15.67]');
+
+      CheckPath('.books[].id',
+                '[1,2,3]');
+
+   finally
+      js.Free;
    end;
 end;
 

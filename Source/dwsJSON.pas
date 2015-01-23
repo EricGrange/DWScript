@@ -234,6 +234,13 @@ type
          function GetEnumerator : TElementEnumerator;
    end;
 
+   // does not own its elements
+   TdwsJSONValueList = class(TSimpleList<TdwsJSONValue>)
+      public
+         procedure WriteTo(writer : TdwsJSONWriter);
+         function ToString : String; override;
+   end;
+
    TdwsJSONPair = record
       Name : UnicodeString;
       Hash : Cardinal;
@@ -2622,6 +2629,41 @@ begin
    WriteJavaScriptString(FStream, aName);
    FStream.WriteString(' : ');
    FState:=wsObjectValue;
+end;
+
+// ------------------
+// ------------------ TdwsJSONValueList ------------------
+// ------------------
+
+// ToString
+//
+function TdwsJSONValueList.ToString : String;
+var
+   wr : TdwsJSONWriter;
+   wobs : TWriteOnlyBlockStream;
+begin
+   if Count=0 then Exit('[]');
+   wobs:=TWriteOnlyBlockStream.AllocFromPool;
+   wr:=TdwsJSONWriter.Create(wobs);
+   try
+      WriteTo(wr);
+      Result:=wobs.ToString;
+   finally
+      wr.Free;
+      wobs.ReturnToPool;
+   end;
+end;
+
+// WriteTo
+//
+procedure TdwsJSONValueList.WriteTo(writer : TdwsJSONWriter);
+var
+   i : Integer;
+begin
+   writer.BeginArray;
+   for i:=0 to Count-1 do
+      Items[i].WriteTo(writer);
+   writer.EndArray;
 end;
 
 // ------------------------------------------------------------------
