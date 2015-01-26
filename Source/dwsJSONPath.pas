@@ -168,6 +168,7 @@ end;
 //
 constructor TdwsJSONPathOperatorIndex.Create(iter : TStringIterator);
 begin
+   iter.SkipWhiteSpace;
    case iter.Current of
       '0'..'9', '-' :
          FIndex:=iter.CollectInteger;
@@ -288,12 +289,7 @@ end;
 function TdwsJSONPathQuery.Apply(value : TdwsJSONValue) : TdwsJSONValueList;
 begin
    Result:=TdwsJSONValueList.Create;
-   try
-      FOperators.Apply(value, Result);
-   except
-      Result.Free;
-      raise;
-   end;
+   FOperators.Apply(value, Result);
 end;
 
 // Parse
@@ -366,7 +362,7 @@ begin
       iter.Free;
    end;
    if tail=nil then
-      FOperators:=TdwsJSONPathOperatorSelect.Create
+      raise EJSONPathException.Create('Empty query')
    else tail.Child:=TdwsJSONPathOperatorSelect.Create;
 end;
 

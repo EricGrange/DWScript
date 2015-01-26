@@ -4607,7 +4607,7 @@ end;
 //
 procedure TStringIterator.SkipWhiteSpace;
 begin
-   while (FPosition<FLength) and (Ord(FPStr[FPosition])<Ord(' ')) do
+   while (FPosition<FLength) and (Ord(FPStr[FPosition])<=Ord(' ')) do
       Inc(FPosition);
 end;
 
@@ -4624,7 +4624,10 @@ begin
          Inc(FPosition);
          if EOF or (FPstr[FPosition]<>quoteChar) then Exit;
          Result:=Result+quoteChar;
-      end else Result:=Result+FPstr[FPosition];
+      end else begin
+         Result:=Result+FPstr[FPosition];
+         Inc(FPosition);
+      end;
    end;
    raise EStringIterator.Create('Unfinished quoted string');
 end;

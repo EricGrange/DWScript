@@ -40,6 +40,14 @@ type
 
          function CompareStringArray(v1, v2 : TdwsJSONValue) : Integer;
 
+         procedure JSONPathFailEmpty;
+         procedure JSONPathFailSyntax;
+         procedure JSONPathFailIndex;
+         procedure JSONPathFailIndexUnfinished;
+         procedure JSONPathFailProperty;
+         procedure JSONPathFailPropertyUnfinished;
+         procedure JSONPathFailDeepPropertyUnfinished;
+
       published
          procedure JSONTest;
          procedure ParseJSON;
@@ -69,6 +77,7 @@ type
          procedure EnumerateArray;
 
          procedure JSONPathBasic;
+         procedure JSONPathFails;
    end;
 
 // ------------------------------------------------------------------
@@ -85,7 +94,9 @@ const
          + '{ "id"     : 1,  "title"  : "Clean Code", "author" : { "name" : "Robert C. Martin" }, "price"  : 17.96  },'
          + '{ "id"     : 2, "title"  : "Maintainable JavaScript", "author" : { "name" : "Nicholas C. Zakas" }, "price"  : 10 },'
          + '{ "id"     : 3, "title"  : "JavaScript: The Good Parts", "author" : { "name" : "Douglas Crockford" }, "price"  : 15.67 }'
-      + '] }';
+         + '], "nums" :  {"1" : "one", "2" : "two", "3" : 3 },'
+         + '"leaf" :  [11, 22]'
+      + ' }';
 
 // ------------------
 // ------------------ TdwsJSONTests ------------------
@@ -395,6 +406,55 @@ end;
 function TdwsJSONTests.CompareStringArray(v1, v2 : TdwsJSONValue) : Integer;
 begin
    Result:=UnicodeCompareText(v1.AsString, v2.AsString);
+end;
+
+// JSONPathFailEmpty
+//
+procedure TdwsJSONTests.JSONPathFailEmpty;
+begin
+   TdwsJSONPathQuery.Create('');
+end;
+
+// JSONPathFailSyntax
+//
+procedure TdwsJSONTests.JSONPathFailSyntax;
+begin
+   TdwsJSONPathQuery.Create('!');
+end;
+
+// JSONPathFailIndex
+//
+procedure TdwsJSONTests.JSONPathFailIndex;
+begin
+   TdwsJSONPathQuery.Create('.bug[=]');
+end;
+
+// JSONPathFailIndexUnfinished
+//
+procedure TdwsJSONTests.JSONPathFailIndexUnfinished;
+begin
+   TdwsJSONPathQuery.Create('.bug[ 1 ');
+end;
+
+// JSONPathFailProperty
+//
+procedure TdwsJSONTests.JSONPathFailProperty;
+begin
+   TdwsJSONPathQuery.Create('.=');
+end;
+
+// JSONPathFailPropertyUnfinished
+//
+procedure TdwsJSONTests.JSONPathFailPropertyUnfinished;
+begin
+   TdwsJSONPathQuery.Create('.');
+end;
+
+// JSONPathFailDeepPropertyUnfinished
+//
+procedure TdwsJSONTests.JSONPathFailDeepPropertyUnfinished;
+begin
+   TdwsJSONPathQuery.Create('..');
 end;
 
 // JSONEmptyObject
@@ -837,9 +897,43 @@ begin
       CheckPath('.books[].id',
                 '[1,2,3]');
 
+      CheckPath('.books..title',
+                '["Clean Code","Maintainable JavaScript","JavaScript: The Good Parts"]');
+
+      CheckPath('..leaf',
+                '[[11,22]]');
+      CheckPath('..leaf[1]',
+                '[22]');
+      CheckPath('..leaf.."0"',
+                '[11]');
+      CheckPath('.leaf..nope',
+                '[]');
+
+      CheckPath('.nums[1]',
+                '["one"]');
+      CheckPath('.nums.2',
+                '["two"]');
+      CheckPath('.nums."3"',
+                '[3]');
+
+      CheckPath(' .books [ 2 ] .title ',
+                '["JavaScript: The Good Parts"]');
    finally
       js.Free;
    end;
+end;
+
+// JSONPathFails
+//
+procedure TdwsJSONTests.JSONPathFails;
+begin
+   CheckException(JSONPathFailEmpty, EJSONPathException);
+   CheckException(JSONPathFailSyntax, EJSONPathException);
+   CheckException(JSONPathFailIndex, EJSONPathException);
+   CheckException(JSONPathFailIndexUnfinished, EJSONPathException);
+   CheckException(JSONPathFailProperty, EJSONPathException);
+   CheckException(JSONPathFailPropertyUnfinished, EJSONPathException);
+   CheckException(JSONPathFailDeepPropertyUnfinished, EJSONPathException);
 end;
 
 // ------------------------------------------------------------------
