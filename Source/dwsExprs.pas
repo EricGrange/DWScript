@@ -532,6 +532,23 @@ type
       property ExecutionsClass : TdwsProgramExecutionClass write SetExecutionsClass;
    end;
 
+   TdwsCustomState = record
+      Key : TGUID;
+      Value : Variant;
+   end;
+
+   TdwsCustomStates = class (TSimpleHash<TdwsCustomState>)
+      protected
+         function SameItem(const item1, item2 : TdwsCustomState) : Boolean; override;
+         function GetItemHashCode(const item1 : TdwsCustomState) : Integer; override;
+
+         function GetState(const index : TGUID) : Variant;
+         procedure SetState(const index : TGUID; const v : Variant);
+
+      public
+         property States[const index : TGUID] : Variant read GetState write SetState; default;
+   end;
+
    // holds execution context for a script
    TdwsProgramExecution = class (TdwsExecution, IdwsProgramExecution)
       private
@@ -551,6 +568,8 @@ type
          FLocalizer : IdwsLocalizer;
          FRTTIRawAttributes : IScriptDynArray;
 
+         FCustomStates : TdwsCustomStates;
+
          FOnExecutionStarted : TdwsExecutionEvent;
          FOnExecutionEnded : TdwsExecutionEvent;
 
@@ -568,6 +587,8 @@ type
          function GetMsgs : TdwsRuntimeMessageList; override;
          function GetEnvironment : IdwsEnvironment;
          procedure SetEnvironment(const val : IdwsEnvironment);
+
+         function GetCustomStates : TdwsCustomStates;
 
          // for interface only, script exprs use direct properties
          function GetProg : IdwsProgram;
@@ -632,6 +653,7 @@ type
          property Result : TdwsResult read FResult;
          property FileSystem : IdwsFileSystem read FFileSystem;
          property Environment : IdwsEnvironment read GetEnvironment write SetEnvironment;
+         property CustomStates : TdwsCustomStates read GetCustomStates;
          property Localizer : IdwsLocalizer read FLocalizer write FLocalizer;
          property RTTIRawAttributes : IScriptDynArray read FRTTIRawAttributes write FRTTIRawAttributes;
 
@@ -2213,6 +2235,10 @@ begin
       // Object Cycles
       ReleaseObjects;
 
+      // Custom states
+      FCustomStates.Free;
+      FCustomStates:=nil;
+
       // Debugger
       StopDebug;
 
@@ -2567,6 +2593,15 @@ end;
 procedure TdwsProgramExecution.SetEnvironment(const val : IdwsEnvironment);
 begin
    FEnvironment:=val;
+end;
+
+// GetCustomStates
+//
+function TdwsProgramExecution.GetCustomStates : TdwsCustomStates;
+begin
+   if FCustomStates=nil then
+      FCustomStates:=TdwsCustomStates.Create;
+   Result:=FCustomStates;
 end;
 
 // GetProg
@@ -8360,6 +8395,53 @@ begin
          Inc(n);
       end;
    end;
+end;
+
+// ------------------
+// ------------------ TdwsCustomStates ------------------
+// ------------------
+
+// SameItem
+//
+function TdwsCustomStates.SameItem(const item1, item2 : TdwsCustomState) : Boolean;
+begin
+   Result:=(item1.Key=item2.Key);
+end;
+
+// GetItemHashCode
+//
+function TdwsCustomStates.GetItemHashCode(const item1 : TdwsCustomState) : Integer;
+type
+   TInteger4 = array [0..3] of Integer;
+   PInteger4 = ^TInteger4;
+var
+   p : PInteger4;
+begin
+   p:=PInteger4(@item1.Key);
+   Result:=p[0] xor p[1] xor p[2] xor p[3];
+end;
+
+// GetState
+//
+function TdwsCustomStates.GetState(const index : TGUID) : Variant;
+var
+   s : TdwsCustomState;
+begin
+   s.Key:=index;
+   if Match(s) then
+      Result:=s.Value
+   else Result:=Unassigned;
+end;
+
+// SetState
+//
+procedure TdwsCustomStates.SetState(const index : TGUID; const v : Variant);
+var
+   s : TdwsCustomState;
+begin
+   s.Key:=index;
+   s.Value:=v;
+   Replace(s);
 end;
 
 // ------------------------------------------------------------------
