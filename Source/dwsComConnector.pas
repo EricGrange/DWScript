@@ -277,12 +277,17 @@ var
    excepInfo : TExcepInfo;
    dispParams : TDispParams;
    err : HResult;
+   flags : Word;
 begin
    dispParams.rgvarg:=@value;
    dispParams.rgdispidNamedArgs:=@dispIDNamedArgs;
    dispParams.cArgs:=1;
    dispParams.cNamedArgs:=1;
-   err:=disp.Invoke(dispID, GUID_NULL, 0, DISPATCH_PROPERTYPUT or DISPATCH_PROPERTYPUTREF, dispParams,
+   if VarType(value)=varDispatch then
+      flags:=DISPATCH_PROPERTYPUT or DISPATCH_PROPERTYPUTREF
+   else flags:=DISPATCH_PROPERTYPUT;
+   err:=disp.Invoke(dispID, GUID_NULL, 0, flags,
+                    dispParams,
                     nil, @excepInfo, nil);
    if err<>S_OK then
       RaiseOleError(err, excepInfo);
