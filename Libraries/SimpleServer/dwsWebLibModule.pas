@@ -19,9 +19,10 @@ unit dwsWebLibModule;
 interface
 
 uses
-  SysUtils, Classes, StrUtils,
-  dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList, dwsSymbols,
-  SynZip, SynCrtSock, SynCommons;
+   Windows, WinInet, Variants,
+   SysUtils, Classes, StrUtils,
+   dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList, dwsSymbols,
+   SynZip, SynCrtSock, SynCommons;
 
 type
   TdwsWebLib = class(TDataModule)
@@ -102,6 +103,14 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsSetLastModifiedEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsSetCredentialsEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsClearCredentialsEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsPutDataEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsDeleteEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -113,23 +122,75 @@ implementation
 {$R *.dfm}
 
 type
-   THttpQueryMethod = (hqmGET, hqmPOST);
+   THttpQueryMethod = (hqmGET, hqmPOST, hqmPUT, hqmDELETE);
+
+   TdwsWinHTTP = class (TWinHTTP)
+      FAuthScheme : TWebRequestAuthentication;
+      FUserName : String;
+      FPassword : String;
+      procedure InternalSendRequest(const aData: RawByteString); override;
+   end;
+
+function WinHttpSetCredentials(hRequest: HINTERNET;
+   AuthTargets: DWORD; AuthScheme: DWORD;
+   pwszUserName: PWideChar; pwszPassword: PWideChar;
+   pAuthParams: Pointer) : BOOL; stdcall; external 'winhttp.dll';
+
+const
+   WINHTTP_AUTH_TARGET_SERVER    = 0;
+   WINHTTP_AUTH_TARGET_PROXY     = 1;
+
+   WINHTTP_AUTH_SCHEME_BASIC     = $00000001;
+   WINHTTP_AUTH_SCHEME_NTLM      = $00000002;
+   WINHTTP_AUTH_SCHEME_PASSPORT  = $00000004;
+   WINHTTP_AUTH_SCHEME_DIGEST    = $00000008;
+   WINHTTP_AUTH_SCHEME_NEGOTIATE = $00000010;
+
+   cWinHttpCredentials : TGUID = '{FB60EB3D-1085-4A88-9923-DE895B5CAB76}';
+
+// InternalSendRequest
+//
+procedure TdwsWinHTTP.InternalSendRequest(const aData: RawByteString);
+var
+   winAuth : DWORD;
+begin
+   if FAuthScheme<>wraNone then begin
+      case FAuthScheme of
+         wraBasic : winAuth := WINHTTP_AUTH_SCHEME_BASIC;
+         wraDigest : winAuth := WINHTTP_AUTH_SCHEME_DIGEST;
+         wraNegotiate : winAuth := WINHTTP_AUTH_SCHEME_NEGOTIATE;
+      else
+         raise EWinHTTP.CreateFmt('Unsupported request authentication scheme (%d)',
+                                  [Ord(FAuthScheme)]);
+      end;
+      if not WinHttpSetCredentials(fRequest, WINHTTP_AUTH_TARGET_SERVER,
+                                   winAuth, PChar(FUserName), PChar(FPassword), nil) then
+         RaiseLastOSError;
+   end;
+   inherited InternalSendRequest(aData);
+end;
 
 function HttpQuery(method : THttpQueryMethod; const url : RawByteString;
                    const requestData : RawByteString;
                    const requestContentType : RawByteString;
-                   var replyData : String; asText : Boolean) : Integer; overload;
+                   var replyData : String; asText : Boolean;
+                   const credentials : Variant) : Integer; overload;
 const
    cContentType : RawUTF8 = 'Content-Type:';
 var
-   query : TWinHTTP;
+   query : TdwsWinHTTP;
    uri : TURI;
    headers, buf, mimeType : RawByteString;
    p1, p2 : Integer;
 begin
    if uri.From(url) then begin
-      query:=TWinHTTP.Create(uri.Server, uri.Port, uri.Https);
+      query:=TdwsWinHTTP.Create(uri.Server, uri.Port, uri.Https);
       try
+         if VarIsArray(credentials, False) then begin
+            query.FAuthScheme:=TWebRequestAuthentication(credentials[0]);
+            query.FUserName:=credentials[1];
+            query.FPassword:=credentials[2];
+         end;
          case method of
             hqmGET : begin
                Assert(requestData='');
@@ -137,6 +198,12 @@ begin
             end;
             hqmPOST : begin
                Result:=query.Request(uri.Address, 'POST', 0, '', requestData, requestContentType, headers, buf);
+            end;
+            hqmPUT : begin
+               Result:=query.Request(uri.Address, 'PUT', 0, '', requestData, requestContentType, headers, buf);
+            end;
+            hqmDELETE : begin
+               Result:=query.Request(uri.Address, 'PUT', 0, '', '', '', headers, buf);
             end;
          else
             Result:=0;
@@ -161,18 +228,28 @@ begin
 end;
 
 function HttpQuery(method : THttpQueryMethod; const url : RawByteString;
-                   var replyData : String; asText : Boolean) : Integer; overload;
+                   var replyData : String; asText : Boolean;
+                   const credentials : Variant) : Integer; overload;
 begin
-   Result:=HttpQuery(method, url, '', '', replyData, asText);
+   Result:=HttpQuery(method, url, '', '', replyData, asText, credentials);
 end;
 
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsDeleteEval(Info: TProgramInfo;
+  ExtObject: TObject);
+var
+   buf : String;
+begin
+   Info.ResultAsInteger:=HttpQuery(hqmDELETE, Info.ParamAsDataString[0], buf, False,
+                                   Info.Execution.CustomStates[cWinHttpCredentials]);
+end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsGetDataEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    buf : String;
 begin
-   Info.ResultAsInteger:=HttpQuery(hqmGET, Info.ParamAsDataString[0], buf, False);
+   Info.ResultAsInteger:=HttpQuery(hqmGET, Info.ParamAsDataString[0], buf, False,
+                                   Info.Execution.CustomStates[cWinHttpCredentials]);
    Info.ParamAsString[1]:=buf;
 end;
 
@@ -181,7 +258,8 @@ procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsGetTextEval(
 var
    buf : String;
 begin
-   Info.ResultAsInteger:=HttpQuery(hqmGET, Info.ParamAsDataString[0], buf, True);
+   Info.ResultAsInteger:=HttpQuery(hqmGET, Info.ParamAsDataString[0], buf, True,
+                                   Info.Execution.CustomStates[cWinHttpCredentials]);
    Info.ParamAsString[1]:=buf;
 end;
 
@@ -190,9 +268,40 @@ procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsPostDataEval(
 var
    buf : String;
 begin
-   Info.ResultAsInteger:=HttpQuery(hqmPOST, Info.ParamAsDataString[0],
-      Info.ParamAsDataString[1], Info.ParamAsDataString[2], buf, False);
+   Info.ResultAsInteger:=HttpQuery(
+      hqmPOST, Info.ParamAsDataString[0],
+      Info.ParamAsDataString[1], Info.ParamAsDataString[2], buf, False,
+      Info.Execution.CustomStates[cWinHttpCredentials]);
    Info.ParamAsString[3]:=buf;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsPutDataEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   buf : String;
+begin
+   Info.ResultAsInteger:=HttpQuery(
+      hqmPUT, Info.ParamAsDataString[0],
+      Info.ParamAsDataString[1], Info.ParamAsDataString[2], buf, False,
+      Info.Execution.CustomStates[cWinHttpCredentials]);
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetCredentialsEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   v : Variant;
+begin
+   v:=VarArrayCreate([0, 2], varVariant);
+   v[0]:=Info.ParamAsInteger[0];
+   v[1]:=Info.ParamAsString[1];
+   v[2]:=Info.ParamAsString[2];
+   Info.Execution.CustomStates[cWinHttpCredentials]:=v;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsClearCredentialsEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.Execution.CustomStates[cWinHttpCredentials]:=Unassigned;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsAuthenticatedUserEval(

@@ -529,6 +529,63 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maStatic]
             OnEval = dwsWebClassesHttpQueryMethodsPostDataEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'PutData'
+            Parameters = <
+              item
+                Name = 'url'
+                DataType = 'String'
+              end
+              item
+                Name = 'data'
+                DataType = 'String'
+              end
+              item
+                Name = 'dataType'
+                DataType = 'String'
+              end>
+            ResultType = 'Integer'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsPutDataEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'Delete'
+            Parameters = <
+              item
+                Name = 'url'
+                DataType = 'String'
+              end>
+            ResultType = 'Integer'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsDeleteEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'SetCredentials'
+            Parameters = <
+              item
+                Name = 'authScheme'
+                DataType = 'WebAuthentication'
+              end
+              item
+                Name = 'userName'
+                DataType = 'String'
+              end
+              item
+                Name = 'password'
+                DataType = 'String'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsSetCredentialsEval
+            Kind = mkClassProcedure
+          end
+          item
+            Name = 'ClearCredentials'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsClearCredentialsEval
+            Kind = mkClassProcedure
           end>
       end>
     Enumerations = <
