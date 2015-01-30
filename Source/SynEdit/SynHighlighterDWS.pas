@@ -755,21 +755,27 @@ end;
 
 procedure TSynDWSSyn.StringQuoteProc;
 begin
-  fTokenID := tkString;
-  if (Run>0) or IsLineEnd(Run+1) then
-     Inc(Run);
-  fRange := rsHereDocDouble;
-  while not IsLineEnd(Run) do
-  begin
-    if fLine[Run] = '"' then begin
+   fTokenID := tkString;
+   if fRange <> rsHereDocDouble then begin
+      fRange := rsHereDocDouble;
       Inc(Run);
-      if fLine[Run] <> '"' then begin
-        fRange := rsUnknown;
-        break;
+   end else begin
+      if IsLineEnd(Run) then begin
+         Inc(Run);
+         Exit;
       end;
-    end;
-    Inc(Run);
-  end;
+   end;
+
+   while not IsLineEnd(Run) do begin
+      if fLine[Run] = '"' then begin
+         Inc(Run);
+         if fLine[Run] <> '"' then begin
+            fRange := rsUnknown;
+            break;
+         end;
+      end;
+      Inc(Run);
+   end;
 end;
 
 procedure TSynDWSSyn.SymbolProc;
