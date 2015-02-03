@@ -64,12 +64,12 @@ const
 
       ttDOT, ttDOTDOT,
       ttPLUS, ttMINUS,
-      ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttDOLLAR,
+      ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttDOLLAR, ttTILDE,
       ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
       ttLESSLESS, ttGTRGTR, ttEQGTR,
       ttSEMI, ttCOMMA, ttCOLON,
       ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
-      ttPERCENT_ASSIGN, ttCARET_ASSIGN, ttAT_ASSIGN,
+      ttPERCENT_ASSIGN, ttCARET_ASSIGN, ttAT_ASSIGN, ttTILDE_ASSIGN,
       ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCRIGHT
    ];
 
@@ -171,7 +171,7 @@ begin
    sStart.AddTransition([''''], TSeekTransition.Create(sStringSingle, [toStart], caNone));
    sStart.AddTransition(['"'], TSeekTransition.Create(sStringDouble, [toStart], caNone));
    sStart.AddTransition(['#'], TSeekTransition.Create(sChar0, [toStart], caNone));
-   sStart.AddTransition([':', '+', '-', '*', '@', '%', '^', '|'], TConsumeTransition.Create(sAssign0, [toStart], caNone));
+   sStart.AddTransition([':', '+', '-', '*', '@', '%', '^', '|', '~'], TConsumeTransition.Create(sAssign0, [toStart], caNone));
    sStart.AddTransition(['='], TConsumeTransition.Create(sEqualF, [toStart], caNone));
    sStart.AddTransition(cSPEC-['('], TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
    sStart.AddTransition(['('], TConsumeTransition.Create(sBracketLeft, [toStart], caNone));

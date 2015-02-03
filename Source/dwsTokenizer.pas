@@ -48,12 +48,13 @@ type
      ttTRUE, ttFALSE,
      ttAND, ttOR, ttXOR, ttIMPLIES, ttDIV, ttMOD, ttNOT, ttSHL, ttSHR, ttSAR,
      ttPLUS, ttMINUS,
-     ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttDOLLAR, ttEXCLAMATION, ttQUESTION,
+     ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttTILDE,
+     ttDOLLAR, ttEXCLAMATION, ttQUESTION,
      ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ, ttEQGTR,
      ttLESSLESS, ttGTRGTR, ttPIPE, ttPIPEPIPE, ttAMP, ttAMPAMP,
      ttSEMI, ttCOMMA, ttCOLON,
      ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
-     ttPERCENT_ASSIGN, ttCARET_ASSIGN, ttAT_ASSIGN,
+     ttPERCENT_ASSIGN, ttCARET_ASSIGN, ttAT_ASSIGN, ttTILDE_ASSIGN,
      ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCLEFT, ttCRIGHT,
      ttDEFAULT, ttUSES, ttUNIT, ttNAMESPACE,
      ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
@@ -317,12 +318,12 @@ const
      'TRUE', 'FALSE',
      'AND', 'OR', 'XOR', 'IMPLIES', 'DIV', 'MOD', 'NOT', 'SHL', 'SHR', 'SAR',
      '+', '-',
-     '*', '/', '%', '^', '@', '$', '!', '?',
+     '*', '/', '%', '^', '@', '~', '$', '!', '?',
      '=', '<>', '>', '>=', '<', '<=', '=>',
      '<<', '>>', '|', '||', '&', '&&',
      ';', ',', ':',
      ':=', '+=', '-=', '*=', '/=',
-     '%=', '^=', '@=',
+     '%=', '^=', '@=', '~=',
      '(', ')', '[', ']', '{', '}',
      'DEFAULT', 'USES', 'UNIT', 'NAMESPACE',
      'PRIVATE', 'PROTECTED', 'PUBLIC', 'PUBLISHED',
@@ -689,6 +690,12 @@ begin
          else if Len=2 then
             if Buffer[1]='=' then
                Result := ttCARET_ASSIGN; // '^='
+      '~':
+         if Len=1 then
+            Result := ttTILDE
+         else if Len=2 then
+            if Buffer[1]='=' then
+               Result := ttTILDE_ASSIGN; // '~='
       ';': Result := ttSEMI;
       '(': Result := ttBLEFT;
       ')': Result := ttBRIGHT;

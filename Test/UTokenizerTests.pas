@@ -117,7 +117,7 @@ var
    t : TTokenizer;
 begin
    FMsgs.Clear;
-   FSourceFile.Code:='@ @= %= ^ ^= $( ? | || & &&';
+   FSourceFile.Code:='@ @= %= ^ ^= $( ? | || & && ~ ~=';
    rules:=TPascalTokenizerStateRules.Create;
    t:=rules.CreateTokenizer(FMsgs);
    try
@@ -135,6 +135,8 @@ begin
       CheckTrue(t.TestDelete(ttPIPEPIPE), '||');
       CheckTrue(t.TestDelete(ttAMP), '&');
       CheckTrue(t.TestDelete(ttAMPAMP), '&&');
+      CheckTrue(t.TestDelete(ttTILDE), '~');
+      CheckTrue(t.TestDelete(ttTILDE_ASSIGN), '~=');
 
       CheckTrue(t.TestAny([ttNAME])=ttNone, 'Any at end');
       CheckTrue(t.TestDeleteAny([ttNAME])=ttNone, 'DeleteAny at end');
