@@ -422,6 +422,8 @@ const
   CPE_UnexpectedEndOfFileForUnfinishedComment = 'Unexpected end of file (unfinished comment)';
   CPE_UnexpectedEndOfFileForUnfinishedDirective = 'Unexpected end of file (unfinished directive)';
 
+  CPE_UnexpectedEqGtrForLambdaStatement = 'Unexpected "=>" for a lambda statement';
+
   CPE_TypeIsUnknown = 'Type "%s" unknown';
   CPE_TypeForParamNotFound = 'Type "%s" not found for parameter "%s"';
   CPE_LazyParamCantBeVarOrConst = 'lazy parameter cannot be var or const';

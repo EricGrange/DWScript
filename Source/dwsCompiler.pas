@@ -10424,8 +10424,13 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
          if funcSym.Typ=nil then
             funcSym.Typ:=resultExpr.Typ;
 
-         resultVar:=TVarExpr.CreateTyped(FProg, proc.Func.Result);
-         proc.Expr:=CreateAssign(procPos, ttASSIGN, resultVar, resultExpr);
+         if funcSym.Typ=nil then begin
+            FMsgs.AddCompilerError(procPos, CPE_UnexpectedEqGtrForLambdaStatement);
+            proc.Expr:=resultExpr;
+         end else begin
+            resultVar:=TVarExpr.CreateTyped(FProg, proc.Func.Result);
+            proc.Expr:=CreateAssign(procPos, ttASSIGN, resultVar, resultExpr);
+         end;
 
       end else begin
 
