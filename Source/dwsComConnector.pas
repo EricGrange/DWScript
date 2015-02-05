@@ -362,6 +362,10 @@ type
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
+   TComVarClearFunc = class(TInternalFunction)
+      procedure Execute(info : TProgramInfo); override;
+   end;
+
    TComConnectorType = class(TInterfacedSelfObject, IUnknown, IConnectorType, IConnectorEnumerator)
       private
          FTable : TSymbolTable;
@@ -561,6 +565,7 @@ begin
    TOleDateFunc.Create(Table, 'OleDate', ['v', SYS_FLOAT], 'ComVariant', [iffStateLess]);
    TOleSingleFunc.Create(Table, 'OleSingle', ['v', SYS_FLOAT], 'ComVariant', [iffStateLess]);
    TOleDoubleFunc.Create(Table, 'OleDouble', ['v', SYS_FLOAT], 'ComVariant', [iffStateLess]);
+   TComVarClearFunc.Create(Table, 'VarClear', ['@v', 'ComVariant'], '', [iffOverloaded]);
 
    Table.AddSymbol(TComVariantArraySymbol.Create('ComVariantArray', TComVariantArrayType.Create(systemTable), systemTable.TypVariant));
 end;
@@ -680,6 +685,17 @@ end;
 procedure TOleDoubleFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 begin
    Result := args.AsFloat[0];
+end;
+
+// ------------------
+// ------------------ TComVarClearFunc ------------------
+// ------------------
+
+// Execute
+//
+procedure TComVarClearFunc.Execute(info : TProgramInfo);
+begin
+   Info.ValueAsVariant['v'] := Unassigned;
 end;
 
 // ------------------

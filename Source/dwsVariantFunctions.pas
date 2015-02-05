@@ -68,7 +68,7 @@ implementation
 
 procedure TVarClearFunc.Execute(info : TProgramInfo);
 begin
-  Info.ValueAsVariant['v'] := Unassigned;
+   Info.ValueAsVariant['v'] := Unassigned;
 end;
 
 { TVarIsNullFunc }
@@ -189,7 +189,7 @@ initialization
 
    RegisterInternalSymbolsProc(InitVariants);
 
-   RegisterInternalFunction(TVarClearFunc, 'VarClear', ['@v', 'Variant'], '');
+   RegisterInternalFunction(TVarClearFunc, 'VarClear', ['@v', 'Variant'], '', [iffOverloaded]);
    RegisterInternalBoolFunction(TVarIsNullFunc, 'VarIsNull', ['v', 'Variant']);
    RegisterInternalBoolFunction(TVarIsEmptyFunc, 'VarIsEmpty', ['v', 'Variant']);
    RegisterInternalBoolFunction(TVarIsClearFunc, 'VarIsClear', ['v', 'Variant']);
