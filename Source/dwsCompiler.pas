@@ -7549,6 +7549,7 @@ var
    argSymTable : TUnSortedSymbolTable;
    i : Integer;
    mapFunctionType : TFuncSymbol;
+   methodKind : TArrayMethodKind;
 
    procedure CheckNotTypeReference;
    begin
@@ -7582,249 +7583,254 @@ begin
    try
       arraySym:=baseExpr.Typ as TArraySymbol;
 
-      if UnicodeSameText(name, 'add') or UnicodeSameText(name, 'push') then begin
+      methodKind:=NameToArrayMethod(name, FMsgs, namePos);
 
-         argList.DefaultExpected:=TParamSymbol.Create('', arraySym.Typ)
+      case methodKind of
 
-      end else if UnicodeSameText(name, 'indexof') or UnicodeSameText(name, 'remove') then begin
+         amkAdd, amkPush :
+            argList.DefaultExpected:=TParamSymbol.Create('', arraySym.Typ);
 
-         argSymTable:=TUnSortedSymbolTable.Create;
-         argSymTable.AddSymbol(TParamSymbol.Create('', arraySym.Typ));
-         argList.Table:=argSymTable;
+         amkIndexOf, amkRemove : begin
+            argSymTable:=TUnSortedSymbolTable.Create;
+            argSymTable.AddSymbol(TParamSymbol.Create('', arraySym.Typ));
+            argList.Table:=argSymTable;
+         end;
 
-      end else if UnicodeSameText(name, 'sort') then begin
+         amkSort :
+            argList.DefaultExpected:=TParamSymbol.Create('', arraySym.SortFunctionType(FProg.TypInteger));
 
-         argList.DefaultExpected:=TParamSymbol.Create('', arraySym.SortFunctionType(FProg.TypInteger))
-
-      end else if UnicodeSameText(name, 'map') then begin
-
-         argList.DefaultExpected:=TParamSymbol.Create('', arraySym.MapFunctionType(FProg.TypAnyType));
+         amkMap :
+            argList.DefaultExpected:=TParamSymbol.Create('', arraySym.MapFunctionType(FProg.TypAnyType));
 
       end;
 
       ReadArguments(argList.AddExpr, ttBLEFT, ttBRIGHT, argPosArray, argList.ExpectedArg);
 
       try
-         if UnicodeSameText(name, 'low') then begin
+         case methodKind of
 
-            CheckArguments(0, 0);
-            Result:=CreateArrayLow(baseExpr, arraySym, True);
+            amkLow : begin
+               CheckArguments(0, 0);
+               Result:=CreateArrayLow(baseExpr, arraySym, True);
+            end;
 
-         end else if UnicodeSameText(name, 'high') then begin
+            amkHigh : begin
+               CheckArguments(0, 0);
+               if not (arraySym is TStaticArraySymbol) then
+                  CheckNotTypeReference;
+               Result:=CreateArrayHigh(baseExpr, arraySym, True);
+            end;
 
-            CheckArguments(0, 0);
-            if not (arraySym is TStaticArraySymbol) then
+            amkLength, amkCount : begin
+               CheckArguments(0, 0);
                CheckNotTypeReference;
-            Result:=CreateArrayHigh(baseExpr, arraySym, True);
+               Result:=CreateArrayLength(baseExpr, arraySym);
+            end;
 
-         end else if UnicodeSameText(name, 'length') or UnicodeSameText(name, 'count') then begin
-
-            CheckArguments(0, 0);
-            CheckNotTypeReference;
-            Result:=CreateArrayLength(baseExpr, arraySym);
-
-         end else if UnicodeSameText(name, 'add') or UnicodeSameText(name, 'push') then begin
-
-            CheckRestricted;
-            if CheckArguments(1, 99) then begin
-               for i:=0 to argList.Count-1 do begin
-                  if    (argList[i].Typ=nil)
-                     or not (   arraySym.Typ.IsCompatible(argList[i].Typ)
-                             or arraySym.IsCompatible(argList[i].Typ)
-                             or (    (argList[i].Typ is TStaticArraySymbol)
-                                 and (   arraySym.Typ.IsCompatible(argList[i].Typ.Typ)
-                                      or (argList[i].Typ.Size=0)))) then begin
-                     argList[i]:=CompilerUtils.WrapWithImplicitConversion(
-                                          FProg, argList[i], arraySym.Typ, argPosArray[i],
-                                          CPE_IncompatibleParameterTypes);
-                     Break;
-                  end else if argList[i].ClassType=TArrayConstantExpr then begin
-                     TArrayConstantExpr(argList[i]).Prepare(FProg, arraySym.Typ);
+            amkAdd, amkPush : begin
+               CheckRestricted;
+               if CheckArguments(1, 99) then begin
+                  for i:=0 to argList.Count-1 do begin
+                     if    (argList[i].Typ=nil)
+                        or not (   arraySym.Typ.IsCompatible(argList[i].Typ)
+                                or arraySym.IsCompatible(argList[i].Typ)
+                                or (    (argList[i].Typ is TStaticArraySymbol)
+                                    and (   arraySym.Typ.IsCompatible(argList[i].Typ.Typ)
+                                         or (argList[i].Typ.Size=0)))) then begin
+                        argList[i]:=CompilerUtils.WrapWithImplicitConversion(
+                                             FProg, argList[i], arraySym.Typ, argPosArray[i],
+                                             CPE_IncompatibleParameterTypes);
+                        Break;
+                     end else if argList[i].ClassType=TArrayConstantExpr then begin
+                        TArrayConstantExpr(argList[i]).Prepare(FProg, arraySym.Typ);
+                     end;
                   end;
-               end;
-               Result:=TArrayAddExpr.Create(namePos, baseExpr, argList);
-               argList.Clear;
-            end else Result:=TArrayAddExpr.Create(namePos, baseExpr, argList);
+                  Result:=TArrayAddExpr.Create(namePos, baseExpr, argList);
+                  argList.Clear;
+               end else Result:=TArrayAddExpr.Create(namePos, baseExpr, argList);
+            end;
 
-         end else if UnicodeSameText(name, 'pop') then begin
+            amkPop : begin
+               CheckRestricted;
+               CheckArguments(0, 0);
+               Result:=TArrayPopExpr.Create(FProg, namePos, baseExpr);
+            end;
 
-            CheckRestricted;
-            CheckArguments(0, 0);
-            Result:=TArrayPopExpr.Create(FProg, namePos, baseExpr);
+            amkPeek : begin
+               CheckRestricted;
+               CheckArguments(0, 0);
+               Result:=TArrayPeekExpr.Create(FProg, namePos, baseExpr);
+            end;
 
-         end else if UnicodeSameText(name, 'peek') then begin
-
-            CheckRestricted;
-            CheckArguments(0, 0);
-            Result:=TArrayPeekExpr.Create(FProg, namePos, baseExpr);
-
-         end else if UnicodeSameText(name, 'delete') then begin
-
-            CheckRestricted;
-            if CheckArguments(1, 2) then begin
-               if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
-                  FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
-               if argList.Count>1 then begin
-                  if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
-                     FMsgs.AddCompilerError(argPosArray[1], CPE_IntegerExpressionExpected);
-                  Result:=TArrayDeleteExpr.Create(namePos, baseExpr,
-                                                  argList[0], argList[1]);
-               end else Result:=TArrayDeleteExpr.Create(namePos, baseExpr,
-                                                        argList[0], nil);
-               argList.Clear;
-            end else Result:=TArrayDeleteExpr.Create(namePos, baseExpr, nil, nil);
-
-         end else if UnicodeSameText(name, 'indexof') then begin
-
-            CheckRestricted;
-            if CheckArguments(1, 2) then begin
-               if (argList[0].Typ=nil) or not arraySym.Typ.IsCompatible(argList[0].Typ) then
-                  IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
-                                    arraySym.Typ, argList[0].Typ);
-               if argList.Count>1 then begin
-                  if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
-                     FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
-                  Result:=TArrayIndexOfExpr.Create(FProg, namePos, baseExpr,
-                                                   argList[0], argList[1]);
-               end else Result:=TArrayIndexOfExpr.Create(FProg, namePos, baseExpr,
-                                                         argList[0], nil);
-               argList.Clear;
-            end else Result:=TArrayIndexOfExpr.Create(FProg, namePos, baseExpr, nil, nil);
-
-         end else if UnicodeSameText(name, 'remove') then begin
-
-            CheckRestricted;
-            if CheckArguments(1, 2) then begin
-               if (argList[0].Typ=nil) or not arraySym.Typ.IsCompatible(argList[0].Typ) then
-                  IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
-                                    arraySym.Typ, argList[0].Typ);
-               if argList.Count>1 then begin
-                  if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
-                     FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
-                  Result:=TArrayRemoveExpr.Create(FProg, namePos, baseExpr,
-                                                  argList[0], argList[1]);
-               end else Result:=TArrayRemoveExpr.Create(FProg, namePos, baseExpr,
-                                                        argList[0], nil);
-               argList.Clear;
-            end else Result:=TArrayRemoveExpr.Create(FProg, namePos, baseExpr, nil, nil);
-
-         end else if UnicodeSameText(name, 'insert') then begin
-
-            CheckRestricted;
-            if CheckArguments(2, 2) then begin
-               if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
-                  FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
-               if (argList[1].Typ=nil) or not arraySym.Typ.IsCompatible(argList[1].Typ) then
-                  IncompatibleTypes(argPosArray[1], CPE_IncompatibleParameterTypes,
-                                    arraySym.Typ, argList[1].Typ);
-               Result:=TArrayInsertExpr.Create(namePos, baseExpr,
-                                               argList[0], argList[1]);
-               argList.Clear;
-            end else Result:=TArrayInsertExpr.Create(namePos, baseExpr, nil, nil);
-
-         end else if UnicodeSameText(name, 'setlength') then begin
-
-            CheckRestricted;
-            if CheckArguments(1, 1) then begin
-               if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
-                  FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
-               Result:=TArraySetLengthExpr.Create(namePos, baseExpr, argList[0]);
-               argList.Clear;
-            end else Result:=TArraySetLengthExpr.Create(namePos, baseExpr, nil);
-
-         end else if UnicodeSameText(name, 'clear') then begin
-
-            CheckRestricted;
-            CheckArguments(0, 0);
-            Result:=TArraySetLengthExpr.Create(namePos, baseExpr, TConstIntExpr.CreateIntegerValue(FProg, 0));
-
-         end else if UnicodeSameText(name, 'swap') then begin
-
-            CheckRestricted;
-            if CheckArguments(2, 2) then begin
-               if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
-                  FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
-               if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
-                  FMsgs.AddCompilerError(argPosArray[1], CPE_IntegerExpressionExpected);
-               Result:=TArraySwapExpr.Create(namePos, baseExpr,
-                                             argList[0], argList[1]);
-               argList.Clear;
-            end else Result:=TArraySwapExpr.Create(namePos, baseExpr, nil, nil);
-
-         end else if UnicodeSameText(name, 'copy') then begin
-
-            CheckRestricted;
-            if CheckArguments(0, 2) then begin
-               if argList.Count>0 then begin
+            amkDelete : begin
+               CheckRestricted;
+               if CheckArguments(1, 2) then begin
                   if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
                      FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
                   if argList.Count>1 then begin
                      if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
                         FMsgs.AddCompilerError(argPosArray[1], CPE_IntegerExpressionExpected);
-                     Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr,
-                                                   argList[0], argList[1]);
-                  end else Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr,
-                                                         argList[0], nil);
-               end else Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr, nil, nil);
-               argList.Clear;
-            end else Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr, nil, nil);
-
-         end else if UnicodeSameText(name, 'sort') then begin
-
-            CheckRestricted;
-            if CheckArguments(0, 1) then begin
-               if argList.Count=0 then begin
-                  if arraySym.Typ.IsOfType(FProg.TypString) then
-                     Result:=TArraySortNaturalStringExpr.Create(namePos, baseExpr)
-                  else if arraySym.Typ.IsOfType(FProg.TypInteger) then
-                     Result:=TArraySortNaturalIntegerExpr.Create(namePos, baseExpr)
-                  else if arraySym.Typ.IsOfType(FProg.TypFloat) then
-                     Result:=TArraySortNaturalFloatExpr.Create(namePos, baseExpr)
-                  else begin
-                     FMsgs.AddCompilerError(namePos, CPE_ArrayDoesNotHaveNaturalSortOrder);
-                     Result:=TArraySortNaturalExpr.Create(namePos, baseExpr);
-                  end;
-               end else begin
-                  if not argList[0].Typ.IsCompatible(arraySym.SortFunctionType(FProg.TypInteger)) then begin
-                     IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
-                                       arraySym.SortFunctionType(FProg.TypBoolean), argList[0].Typ);
-                     OrphanObject(argList[0]);
-                     argList.Clear;
-                  end;
-                  if argList.Count>0 then begin
-                     Result:=TArraySortExpr.Create(FProg, namePos, baseExpr,
-                                                   TFuncPtrExpr.Create(FProg, argPosArray[0], argList[0]));
-                     argList.Clear;
-                  end else Result:=TArraySortExpr.Create(FProg, namePos, baseExpr, nil);
-               end;
-            end else Result:=TArraySortExpr.Create(FProg, namePos, baseExpr, nil);
-
-         end else if UnicodeSameText(name, 'map') then begin
-
-            CheckRestricted;
-            if CheckArguments(1, 1) then begin
-               mapFunctionType:=arraySym.MapFunctionType(FProg.TypAnyType);
-               if      argList[0].Typ.IsCompatible(mapFunctionType)
-                  and (argList[0].Typ.Typ<>nil) then begin
-                  Result:=TArrayMapExpr.Create(FProg, namePos, baseExpr,
-                                               TFuncPtrExpr.Create(FProg, argPosArray[0], argList[0]))
-               end else begin
-                  IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
-                                    mapFunctionType, argList[0].Typ);
-                  OrphanObject(argList[0]);
-               end;
-               argList.Clear;
+                     Result:=TArrayDeleteExpr.Create(namePos, baseExpr,
+                                                     argList[0], argList[1]);
+                  end else Result:=TArrayDeleteExpr.Create(namePos, baseExpr,
+                                                           argList[0], nil);
+                  argList.Clear;
+               end else Result:=TArrayDeleteExpr.Create(namePos, baseExpr, nil, nil);
             end;
-            if Result=nil then
-               Result:=TArrayMapExpr.Create(FProg, namePos, baseExpr, nil);
 
-         end else if UnicodeSameText(name, 'reverse') then begin
+            amkIndexOf : begin
+               CheckRestricted;
+               if CheckArguments(1, 2) then begin
+                  if (argList[0].Typ=nil) or not arraySym.Typ.IsCompatible(argList[0].Typ) then
+                     IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
+                                       arraySym.Typ, argList[0].Typ);
+                  if argList.Count>1 then begin
+                     if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
+                        FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
+                     Result:=TArrayIndexOfExpr.Create(FProg, namePos, baseExpr,
+                                                      argList[0], argList[1]);
+                  end else Result:=TArrayIndexOfExpr.Create(FProg, namePos, baseExpr,
+                                                            argList[0], nil);
+                  argList.Clear;
+               end else Result:=TArrayIndexOfExpr.Create(FProg, namePos, baseExpr, nil, nil);
+            end;
 
-            CheckRestricted;
-            CheckArguments(0, 0);
-            Result:=TArrayReverseExpr.Create(namePos, baseExpr);
+            amkRemove : begin
+               CheckRestricted;
+               if CheckArguments(1, 2) then begin
+                  if (argList[0].Typ=nil) or not arraySym.Typ.IsCompatible(argList[0].Typ) then
+                     IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
+                                       arraySym.Typ, argList[0].Typ);
+                  if argList.Count>1 then begin
+                     if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
+                        FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
+                     Result:=TArrayRemoveExpr.Create(FProg, namePos, baseExpr,
+                                                     argList[0], argList[1]);
+                  end else Result:=TArrayRemoveExpr.Create(FProg, namePos, baseExpr,
+                                                           argList[0], nil);
+                  argList.Clear;
+               end else Result:=TArrayRemoveExpr.Create(FProg, namePos, baseExpr, nil, nil);
+            end;
 
-         end else FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
+            amkInsert : begin
+               CheckRestricted;
+               if CheckArguments(2, 2) then begin
+                  if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
+                     FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
+                  if (argList[1].Typ=nil) or not arraySym.Typ.IsCompatible(argList[1].Typ) then
+                     IncompatibleTypes(argPosArray[1], CPE_IncompatibleParameterTypes,
+                                       arraySym.Typ, argList[1].Typ);
+                  Result:=TArrayInsertExpr.Create(namePos, baseExpr,
+                                                  argList[0], argList[1]);
+                  argList.Clear;
+               end else Result:=TArrayInsertExpr.Create(namePos, baseExpr, nil, nil);
+            end;
+
+            amkSetLength : begin
+               CheckRestricted;
+               if CheckArguments(1, 1) then begin
+                  if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
+                     FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
+                  Result:=TArraySetLengthExpr.Create(namePos, baseExpr, argList[0]);
+                  argList.Clear;
+               end else Result:=TArraySetLengthExpr.Create(namePos, baseExpr, nil);
+            end;
+
+            amkClear : begin
+               CheckRestricted;
+               CheckArguments(0, 0);
+               Result:=TArraySetLengthExpr.Create(namePos, baseExpr, TConstIntExpr.CreateIntegerValue(FProg, 0));
+            end;
+
+            amkSwap : begin
+               CheckRestricted;
+               if CheckArguments(2, 2) then begin
+                  if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
+                     FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
+                  if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
+                     FMsgs.AddCompilerError(argPosArray[1], CPE_IntegerExpressionExpected);
+                  Result:=TArraySwapExpr.Create(namePos, baseExpr,
+                                                argList[0], argList[1]);
+                  argList.Clear;
+               end else Result:=TArraySwapExpr.Create(namePos, baseExpr, nil, nil);
+            end;
+
+            amkCopy : begin
+               CheckRestricted;
+               if CheckArguments(0, 2) then begin
+                  if argList.Count>0 then begin
+                     if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
+                        FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
+                     if argList.Count>1 then begin
+                        if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
+                           FMsgs.AddCompilerError(argPosArray[1], CPE_IntegerExpressionExpected);
+                        Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr,
+                                                      argList[0], argList[1]);
+                     end else Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr,
+                                                            argList[0], nil);
+                  end else Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr, nil, nil);
+                  argList.Clear;
+               end else Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr, nil, nil);
+            end;
+
+            amkSort : begin
+               CheckRestricted;
+               if CheckArguments(0, 1) then begin
+                  if argList.Count=0 then begin
+                     if arraySym.Typ.IsOfType(FProg.TypString) then
+                        Result:=TArraySortNaturalStringExpr.Create(namePos, baseExpr)
+                     else if arraySym.Typ.IsOfType(FProg.TypInteger) then
+                        Result:=TArraySortNaturalIntegerExpr.Create(namePos, baseExpr)
+                     else if arraySym.Typ.IsOfType(FProg.TypFloat) then
+                        Result:=TArraySortNaturalFloatExpr.Create(namePos, baseExpr)
+                     else begin
+                        FMsgs.AddCompilerError(namePos, CPE_ArrayDoesNotHaveNaturalSortOrder);
+                        Result:=TArraySortNaturalExpr.Create(namePos, baseExpr);
+                     end;
+                  end else begin
+                     if not argList[0].Typ.IsCompatible(arraySym.SortFunctionType(FProg.TypInteger)) then begin
+                        IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
+                                          arraySym.SortFunctionType(FProg.TypBoolean), argList[0].Typ);
+                        OrphanObject(argList[0]);
+                        argList.Clear;
+                     end;
+                     if argList.Count>0 then begin
+                        Result:=TArraySortExpr.Create(FProg, namePos, baseExpr,
+                                                      TFuncPtrExpr.Create(FProg, argPosArray[0], argList[0]));
+                        argList.Clear;
+                     end else Result:=TArraySortExpr.Create(FProg, namePos, baseExpr, nil);
+                  end;
+               end else Result:=TArraySortExpr.Create(FProg, namePos, baseExpr, nil);
+            end;
+
+            amkMap : begin
+               CheckRestricted;
+               if CheckArguments(1, 1) then begin
+                  mapFunctionType:=arraySym.MapFunctionType(FProg.TypAnyType);
+                  if      argList[0].Typ.IsCompatible(mapFunctionType)
+                     and (argList[0].Typ.Typ<>nil) then begin
+                     Result:=TArrayMapExpr.Create(FProg, namePos, baseExpr,
+                                                  TFuncPtrExpr.Create(FProg, argPosArray[0], argList[0]))
+                  end else begin
+                     IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
+                                       mapFunctionType, argList[0].Typ);
+                     OrphanObject(argList[0]);
+                  end;
+                  argList.Clear;
+               end;
+               if Result=nil then
+                  Result:=TArrayMapExpr.Create(FProg, namePos, baseExpr, nil);
+            end;
+
+            amkReverse : begin
+               CheckRestricted;
+               CheckArguments(0, 0);
+               Result:=TArrayReverseExpr.Create(namePos, baseExpr);
+            end;
+
+         else
+            FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
+         end;
       except
          OrphanObject(Result);
          for i:=0 to argList.Count-1 do

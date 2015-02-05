@@ -1,3 +1,6 @@
+Hint: "remove" does not match case of declaration ("Remove") [line: 3, column: 3]
 Syntax Error: Incompatible parameter types - "Boolean" expected (instead of "String") [line: 3, column: 10]
+Hint: "remove" does not match case of declaration ("Remove") [line: 5, column: 3]
 Syntax Error: More arguments expected [line: 5, column: 10]
+Hint: "remove" does not match case of declaration ("Remove") [line: 7, column: 3]
 Syntax Error: Integer expression expected [line: 7, column: 10]

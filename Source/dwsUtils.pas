@@ -457,6 +457,17 @@ type
          procedure CleanValues;
    end;
 
+   TNameValueHashBucket<T> = record
+      Name : String;
+      Value : T;
+   end;
+
+   TCaseInsensitiveNameValueHash<T> = class (TSimpleHash<TNameValueHashBucket<T>>)
+      protected
+         function SameItem(const item1, item2 : TNameValueHashBucket<T>) : Boolean; override;
+         function GetItemHashCode(const item1 : TNameValueHashBucket<T>) : Integer; override;
+   end;
+
    TObjectsLookup = class (TSortedList<TRefCountedObject>)
       protected
          function Compare(const item1, item2 : TRefCountedObject) : Integer; override;
@@ -4674,6 +4685,25 @@ begin
    end;
    if neg then
       Result:=-Result;
+end;
+
+
+// ------------------
+// ------------------ TCaseInsensitiveNameValueHash<T> ------------------
+// ------------------
+
+// SameItem
+//
+function TCaseInsensitiveNameValueHash<T>.SameItem(const item1, item2 : TNameValueHashBucket<T>) : Boolean;
+begin
+   Result:=UnicodeSameText(item1.Name, item2.Name);
+end;
+
+// GetItemHashCode
+//
+function TCaseInsensitiveNameValueHash<T>.GetItemHashCode(const item1 : TNameValueHashBucket<T>) : Integer;
+begin
+   Result:=SimpleStringHash(UnicodeLowerCase(item1.Name));
 end;
 
 // ------------------------------------------------------------------

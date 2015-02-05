@@ -1,3 +1,6 @@
+Hint: "add" does not match case of declaration ("Add") [line: 5, column: 3]
 Syntax Error: unexpected "@" [line: 5, column: 7]
+Hint: "add" does not match case of declaration ("Add") [line: 6, column: 3]
 Syntax Error: Function expected [line: 6, column: 7]
+Hint: "add" does not match case of declaration ("Add") [line: 7, column: 3]
 Syntax Error: More arguments expected [line: 7, column: 7]

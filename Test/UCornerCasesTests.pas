@@ -82,6 +82,7 @@ type
          procedure SimpleStringListIndexOf;
          procedure ExceptionInInitialization;
          procedure ExceptionInFinalization;
+         procedure CaseOfBuiltinHelper;
    end;
 
    ETestException = class (Exception);
@@ -1764,6 +1765,43 @@ begin
 
    exec:=prog.Execute;
    CheckEquals('Runtime Error: Assertion failed [line: 2, column: 1]'#13#10, exec.Msgs.AsInfo);
+end;
+
+// CaseOfBuiltinHelper
+//
+procedure TCornerCasesTests.CaseOfBuiltinHelper;
+var
+   prog : IdwsProgram;
+begin
+   FCompiler.Config.HintsLevel:=hlPedantic;
+
+   prog:=FCompiler.Compile( 'var a : array of Integer;'#13#10
+                           +'a.cleaR;');
+
+   CheckEquals('Hint: "cleaR" does not match case of declaration ("Clear") [line: 2, column: 3]'#13#10, prog.Msgs.AsInfo, 'array');
+
+(*
+   TODO
+
+   prog:=FCompiler.Compile( 'var s : String;'#13#10
+                           +'s.lengtH;'#13#10
+                           +'type TEnum = (One);'#13#10
+                           +'s := One.Name;'#13#10
+                           +'var se : set of TEnum;'#13#10
+                           +'se.includE(one);'#13#10
+                           );
+
+   CheckEquals('bbb', prog.Msgs.AsInfo, 'string');
+
+   prog:=FCompiler.Compile( 'type TEnum = (One);'#13#10
+                           +'s := One.Name;'#13#10
+                           +'var se : set of TEnum;'#13#10
+                           +'se.includE(one);'#13#10
+                           );
+
+   CheckEquals('bbb', prog.Msgs.AsInfo, 'enums & sets');
+*)
+   FCompiler.Config.HintsLevel:=hlNormal;
 end;
 
 // ------------------------------------------------------------------

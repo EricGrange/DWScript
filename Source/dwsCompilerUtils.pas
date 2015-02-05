@@ -21,8 +21,8 @@ unit dwsCompilerUtils;
 interface
 
 uses
-   SysUtils,
-   dwsErrors, dwsStrings, dwsXPlatform,
+   SysUtils, TypInfo,
+   dwsErrors, dwsStrings, dwsXPlatform, dwsUtils,
    dwsSymbols, dwsUnitSymbols,
    dwsExprs, dwsCoreExprs, dwsConstExprs, dwsMethodExprs, dwsMagicExprs,
    dwsConvExprs;
@@ -71,6 +71,21 @@ type
          function Check(expr : TExprBase) : Boolean;
    end;
 
+   TStringToEnum = class (TCaseInsensitiveNameValueHash<Integer>)
+      public
+         constructor Create(typ : PTypeInfo; low, high, prefixLength : Integer);
+   end;
+
+   TArrayMethodKind = (
+      amkNone,
+      amkAdd, amkPush, amkIndexOf, amkRemove, amkSort, amkMap, amkHigh, amkLow,
+      amkLength, amkCount, amkPop, amkPeek, amkDelete, amkInsert, amkSetLength,
+      amkClear, amkSwap, amkCopy, amkReverse
+   );
+
+function NameToArrayMethod(const name : String; msgs : TdwsCompileMessageList;
+                           const namePos : TScriptPos) : TArrayMethodKind;
+
 function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
                         const scriptObj : IScriptObj; structSym : TCompositeTypeSymbol;
                         forceStatic : Boolean = False) : TFuncExprBase;
@@ -86,6 +101,25 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+// NameToArrayMethod
+//
+var
+   vArrayMethodsHash : TStringToEnum;
+function NameToArrayMethod(const name : String; msgs : TdwsCompileMessageList;
+                           const namePos : TScriptPos) : TArrayMethodKind;
+var
+   bucket : TNameValueHashBucket<Integer>;
+begin
+   bucket.Name:=name;
+   if vArrayMethodsHash.Match(bucket) then begin
+      Result:=TArrayMethodKind(bucket.Value);
+      if name<>bucket.Name then begin
+         msgs.AddCompilerHintFmt(namePos, CPH_CaseDoesNotMatchDeclaration,
+                                 [name, bucket.Name], hlPedantic);
+      end;
+   end else Result:=amkNone;
+end;
 
 type
    TCheckAbstractClassConstruction = class (TErrorMessage)
@@ -473,5 +507,40 @@ procedure TRecursiveHasSubExprClass.Callback(parent, expr : TExprBase; var abort
 begin
    abort:=abort or (expr is FClass);
 end;
+
+// ------------------
+// ------------------ TStringToEnum ------------------
+// ------------------
+
+// Create
+//
+constructor TStringToEnum.Create(typ : PTypeInfo; low, high, prefixLength : Integer);
+var
+   i : Integer;
+   bucket : TNameValueHashBucket<Integer>;
+begin
+   for i:=low to high do begin
+      bucket.Name:=Copy(GetEnumName(typ, i), prefixLength+1, 99);
+      bucket.Value:=i;
+      Add(bucket);
+   end;
+end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   vArrayMethodsHash := TStringToEnum.Create(
+      TypeInfo(TArrayMethodKind),
+      Ord(Low(TArrayMethodKind)), Ord(High(TArrayMethodKind)), 3
+   );
+
+finalization
+
+   FreeAndNil(vArrayMethodsHash);
 
 end.

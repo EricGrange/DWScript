@@ -1,3 +1,4 @@
+Hint: "indexOf" does not match case of declaration ("IndexOf") [line: 15, column: 14]
 Syntax Error: Incompatible parameter types - "Integer" expected (instead of "String") [line: 15, column: 22]
 Syntax Error: Incompatible parameter types - "Integer" expected (instead of "Float") [line: 16, column: 22]
 Syntax Error: Incompatible parameter types - "TObject" expected (instead of "Integer") [line: 17, column: 22]
