@@ -47,6 +47,7 @@ type
          procedure BigEnumerationNamesAndValues;
          procedure EnumerationSuggest;
          procedure StaticClassSuggest;
+         procedure SuggestInBlockWithError;
    end;
 
 // ------------------------------------------------------------------
@@ -858,6 +859,29 @@ begin
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
    CheckEquals(1, sugg.Count, 'column 6,10');
    CheckEquals('Test', sugg.Code[0], 'sugg 6, 14, 0');
+end;
+
+// SuggestInBlockWithError
+//
+procedure TSourceUtilsTests.SuggestInBlockWithError;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile( 'begin'#13#10
+                           +'var xyz := "";'#13#10
+                           +'x');
+
+   CheckNotEquals('', prog.Msgs.AsInfo, 'should have compiled with errors');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 3, 2);
+
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(2, sugg.Count, 'line 3 col 2');
+   CheckEquals('xyz', sugg.Code[0], '3,2,0');
+   CheckEquals('xor', sugg.Code[1], '3,2,1');
+
 end;
 
 // ------------------------------------------------------------------

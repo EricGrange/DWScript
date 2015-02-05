@@ -1,0 +1,2 @@
+Syntax Error: Local procedure/function cannot be used as delegate [line: 3, column: 7]
+Syntax Error: Unexpected "=>" for a lambda statement [line: 3, column: 21]

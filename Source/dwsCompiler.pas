@@ -4185,7 +4185,7 @@ begin
    try
       if coContextMap in FOptions then begin
          FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttBEGIN);
-         closePos:=FTok.CurrentPos;     // default to close context where it opened (used on errors)
+         closePos.Clear;
       end;
 
       FProg.EnterSubTable(blockExpr.Table);
@@ -4233,20 +4233,22 @@ begin
          until False;
 
          HintUnusedSymbols;
+
+         if Optimize then begin
+            Result:=blockExpr.Optimize(FProg, FExec);
+            blockExpr:=nil;
+         end else Result:=blockExpr;
       finally
          FProg.LeaveSubTable;
+
+         if coContextMap in FOptions then begin
+            if blockExpr<>nil then
+               FSourceContextMap.Current.LocalTable:=blockExpr.Table;
+            if not closePos.Defined then
+               closePos:=FTok.CurrentPos; // means an error occured
+            FSourceContextMap.CloseContext(closePos);
+         end;
       end;
-
-      if Optimize then
-         Result:=blockExpr.Optimize(FProg, FExec)
-      else Result:=blockExpr;
-
-      if coContextMap in FOptions then begin
-         if Result is TBlockExpr then
-            FSourceContextMap.Current.LocalTable:=TBlockExpr(Result).Table;
-         FSourceContextMap.CloseContext(closePos);
-      end;
-
    except
       OrphanObject(blockExpr);
       raise;
