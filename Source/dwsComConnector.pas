@@ -26,8 +26,9 @@ interface
 uses
    Variants, SysUtils, ComObj, ActiveX,
    dwsUtils, dwsDataContext, dwsExprList, dwsConnectorSymbols, dwsXPlatform,
-   dwsStrings, dwsFunctions, dwsStack, dwsMagicExprs,
-   dwsExprs, dwsComp, dwsSymbols, dwsOperators, dwsUnitSymbols;
+   dwsStrings, dwsFunctions, dwsStack, dwsMagicExprs, dwsErrors,
+   dwsExprs, dwsComp, dwsSymbols, dwsOperators, dwsUnitSymbols,
+   dwsCompilerUtils;
 
 const
    COM_ConnectorCaption = 'COM Connector 2.0';
@@ -497,9 +498,10 @@ type
          function ConnectorCaption: UnicodeString;
          function AutoVarParams : Boolean;
          function AcceptsParams(const params: TConnectorParamArray) : Boolean;
-         function HasMethod(const MethodName: UnicodeString; const Params: TConnectorParamArray;
-                            var TypSym: TTypeSymbol): IConnectorCall;
-         function HasMember(const MemberName: UnicodeString; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
+         function HasMethod(const methodName: UnicodeString; const params: TConnectorParamArray;
+                            var typSym: TTypeSymbol): IConnectorCall;
+         function HasMember(const memberName: UnicodeString; var typSym: TTypeSymbol;
+                            isWrite: Boolean): IConnectorMember;
          function HasIndex(const PropName: UnicodeString; const Params: TConnectorParamArray;
                          var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
          function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
@@ -1020,36 +1022,37 @@ begin
    Result:=nil;
 end;
 
-function TComVariantArrayType.HasMember(const MemberName: UnicodeString;
-  var typSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
+// HasMember
+//
+function TComVariantArrayType.HasMember(const memberName: UnicodeString;
+      var typSym: TTypeSymbol; isWrite: Boolean): IConnectorMember;
+var
+   methodKind : TArrayMethodKind;
 begin
-  if UnicodeSameText(MemberName, 'high') then
-  begin
-    Result := FHighBoundMember;
-    typSym := FTable.TypInteger;
-  end
-  else if IsWrite then
-    Result := nil
-  else
-  begin
-    if UnicodeSameText(MemberName, 'length') then
-    begin
-      Result := FLengthMember;
+   methodKind:=NameToArrayMethod(memberName, nil, cNullPos);
+   if methodKind=amkHigh then begin
+      Result := FHighBoundMember;
       typSym := FTable.TypInteger;
-    end
-    else if UnicodeSameText(MemberName, 'low') then
-    begin
-      Result := FLowBoundMember;
-      typSym := FTable.TypInteger;
-    end
-    else if UnicodeSameText(MemberName, 'dimcount') then
-    begin
-      Result := FDimCountMember;
-      typSym := FTable.TypInteger;
-    end
-    else
-      Result := nil;
-  end;
+   end else if isWrite then
+      Result := nil
+   else begin
+      case methodKind of
+         amkLength, amkCount : begin
+            Result := FLengthMember;
+            typSym := FTable.TypInteger;
+         end;
+         amkLow : begin
+            Result := FLowBoundMember;
+            typSym := FTable.TypInteger;
+         end;
+         amkDimCount : begin
+            Result := FDimCountMember;
+            typSym := FTable.TypInteger;
+         end;
+      else
+         Result := nil;
+      end;
+   end;
 end;
 
 // AcceptsParams
@@ -1060,19 +1063,30 @@ begin
           and FTable.FindTypeSymbol(SYS_INTEGER, cvMagic).IsCompatible(params[0].typSym);
 end;
 
-function TComVariantArrayType.HasMethod(Const methodName: UnicodeString;
-  const params: TConnectorParamArray; var typSym: TTypeSymbol): IConnectorCall;
+// HasMethod
+//
+function TComVariantArrayType.HasMethod(const methodName: UnicodeString;
+      const params: TConnectorParamArray; var typSym: TTypeSymbol): IConnectorCall;
+var
+   methodKind : TArrayMethodKind;
 begin
-   if UnicodeSameText(methodName, 'length') then begin
-      Result := FLengthCall;
-      typSym := FTable.TypInteger;
-   end else if UnicodeSameText(methodName, 'low') then begin
-      Result := FLowBoundCall;
-      typSym := FTable.TypInteger;
-   end else if UnicodeSameText(methodName, 'high') then begin
-      Result := FHighBoundCall;
-      typSym := FTable.TypInteger;
-   end else Result := nil;
+   methodKind:=NameToArrayMethod(methodName, nil, cNullPos);
+   case methodKind of
+      amkLength, amkCount : begin
+         Result := FLengthCall;
+         typSym := FTable.TypInteger;
+      end;
+      amkLow : begin
+         Result := FLowBoundCall;
+         typSym := FTable.TypInteger;
+      end;
+      amkHigh : begin
+         Result := FHighBoundCall;
+         typSym := FTable.TypInteger;
+      end;
+   else
+      Result := nil;
+   end;
 end;
 
 // NewEnumerator

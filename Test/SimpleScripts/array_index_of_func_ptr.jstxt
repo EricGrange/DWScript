@@ -1,3 +1,6 @@
+Errors >>>>
+Hint: "add" does not match case of declaration ("Add") [line: 21, column: 3]
+Result >>>>
 0
 -1
 0

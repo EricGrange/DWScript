@@ -7862,8 +7862,7 @@ end;
 //
 procedure TdwsSourceContextMap.ResumeContext(aContext : TdwsSourceContext);
 begin
-   if FCurrentContext<>nil then
-      Assert(FCurrentContext=nil);
+   Assert((FCurrentContext=nil) or (FCurrentContext.Token=ttUNIT));
    FCurrentContext:=aContext;
 end;
 

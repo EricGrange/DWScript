@@ -17,7 +17,7 @@ unit UdwsUtilsTests;
 
 interface
 
-uses Classes, SysUtils, Math, dwsXPlatformTests, dwsUtils;
+uses Classes, SysUtils, Math, dwsXPlatformTests, dwsUtils, dwsXPlatform;
 
 type
 
@@ -60,6 +60,8 @@ type
          procedure IntToHexTest;
 
          procedure QueueTest;
+
+         procedure StringHash;
    end;
 
 // ------------------------------------------------------------------
@@ -766,6 +768,16 @@ begin
    finally
       q.Free;
    end;
+end;
+
+// StringHash
+//
+procedure TdwsUtilsTests.StringHash;
+begin
+   CheckEquals(SimpleLowerCaseStringHash(''), SimpleStringHash(''), 'empty');
+   CheckEquals(SimpleLowerCaseStringHash('abc'), SimpleStringHash('abc'), 'abc');
+   CheckEquals(SimpleLowerCaseStringHash('ABC'), SimpleStringHash(LowerCase('ABC')), 'ABC');
+   CheckEquals(SimpleLowerCaseStringHash('ÈRic'), SimpleStringHash(UnicodeLowerCase('ÈRic')), 'ÈRic');
 end;
 
 // ------------------------------------------------------------------

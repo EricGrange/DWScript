@@ -80,7 +80,7 @@ type
       amkNone,
       amkAdd, amkPush, amkIndexOf, amkRemove, amkSort, amkMap, amkHigh, amkLow,
       amkLength, amkCount, amkPop, amkPeek, amkDelete, amkInsert, amkSetLength,
-      amkClear, amkSwap, amkCopy, amkReverse
+      amkClear, amkSwap, amkCopy, amkReverse, amkDimCount
    );
 
 function NameToArrayMethod(const name : String; msgs : TdwsCompileMessageList;
@@ -114,7 +114,7 @@ begin
    bucket.Name:=name;
    if vArrayMethodsHash.Match(bucket) then begin
       Result:=TArrayMethodKind(bucket.Value);
-      if name<>bucket.Name then begin
+      if (msgs<>nil) and (name<>bucket.Name) then begin
          msgs.AddCompilerHintFmt(namePos, CPH_CaseDoesNotMatchDeclaration,
                                  [name, bucket.Name], hlPedantic);
       end;

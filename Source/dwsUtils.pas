@@ -780,6 +780,7 @@ function Min(a, b : Integer) : Integer; inline;
 function WhichPowerOfTwo(const v : Int64) : Integer;
 
 function SimpleStringHash(const s : UnicodeString) : Cardinal; inline;
+function SimpleLowerCaseStringHash(const s : UnicodeString) : Cardinal;
 
 function RawByteStringToScriptString(const s : RawByteString) : UnicodeString; overload; inline;
 procedure RawByteStringToScriptString(const s : RawByteString; var result : UnicodeString); inline; overload;
@@ -842,6 +843,31 @@ begin
    Result:=Length(s);
    for i:=1 to Result do
       Result:=(Result xor Ord(s[i]))*16777619;
+end;
+
+// SimpleLowerCaseStringHash
+//
+function SimpleLowerCaseStringHash(const s : UnicodeString) : Cardinal;
+
+   function Fallback(const s : UnicodeString) : Cardinal;
+   begin
+      Result:=SimpleStringHash(UnicodeLowerCase(s));
+   end;
+
+var
+   i : Integer;
+   c : Word;
+begin
+   // modified FNV-1a using length as seed
+   Result:=Length(s);
+   for i:=1 to Result do begin
+      c:=Ord(s[i]);
+      if c>127 then
+         Exit(Fallback(s))
+      else if c in [Ord('A')..Ord('Z')] then
+         c:=c+(Ord('a')-Ord('A'));
+      Result:=(Result xor c)*16777619;
+   end;
 end;
 
 // ScriptStringToRawByteString
@@ -4703,7 +4729,7 @@ end;
 //
 function TCaseInsensitiveNameValueHash<T>.GetItemHashCode(const item1 : TNameValueHashBucket<T>) : Integer;
 begin
-   Result:=SimpleStringHash(UnicodeLowerCase(item1.Name));
+   Result:=SimpleLowerCaseStringHash(item1.Name);
 end;
 
 // ------------------------------------------------------------------
