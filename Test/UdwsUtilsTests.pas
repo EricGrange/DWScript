@@ -62,6 +62,8 @@ type
          procedure QueueTest;
 
          procedure StringHash;
+
+         procedure LoadTextFromBufferTest;
    end;
 
 // ------------------------------------------------------------------
@@ -778,6 +780,34 @@ begin
    CheckEquals(SimpleLowerCaseStringHash('abc'), SimpleStringHash('abc'), 'abc');
    CheckEquals(SimpleLowerCaseStringHash('ABC'), SimpleStringHash(LowerCase('ABC')), 'ABC');
    CheckEquals(SimpleLowerCaseStringHash('ÈRic'), SimpleStringHash(UnicodeLowerCase('ÈRic')), 'ÈRic');
+end;
+
+// LoadTextFromBufferTest
+//
+procedure TdwsUtilsTests.LoadTextFromBufferTest;
+
+   function Buffer(const a : array of const) : TBytes;
+   var
+      i : Integer;
+   begin
+      SetLength(Result, Length(a));
+      for i:=0 to High(a) do begin
+         case a[i].VType of
+            vtInteger : Result[i]:=a[i].VInteger;
+            vtChar : Result[i]:=Ord(a[i].VChar);
+            vtWideChar : Result[i]:=Ord(a[i].VWideChar);
+         else
+            Assert(False);
+         end;
+      end;
+   end;
+
+begin
+   CheckEquals('hello', LoadTextFromBuffer(Buffer(['h', 'e', 'l', 'l', 'o'])), 'hello');
+   CheckEquals('hÈl', LoadTextFromBuffer(Buffer(['h', $C3, $A9, 'l'])), 'hÈl');
+   CheckEquals('utf8È', LoadTextFromBuffer(Buffer([$EF, $BB, $BF, 'u', 't', 'f', '8', $C3, $A9])), 'utf8È');
+   CheckEquals('BÈ', LoadTextFromBuffer(Buffer([$FE, $FF, 0, 'B', 0, $E9])), 'BÈ');
+   CheckEquals('LÈ', LoadTextFromBuffer(Buffer([$FF, $FE, 'L', 0, $E9, 0])), 'LÈ');
 end;
 
 // ------------------------------------------------------------------

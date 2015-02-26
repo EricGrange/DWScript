@@ -697,7 +697,7 @@ begin
          // will return a '?' for non-utf8 characters instead
          sourceLen := Length(buf)-n;
          SetLength(Result, sourceLen);
-         len := Utf8ToUnicode(Pointer(Result), sourceLen+1, PAnsiChar(buf), sourceLen)-1;
+         len := Utf8ToUnicode(Pointer(Result), sourceLen+1, PAnsiChar(buf)+n, sourceLen)-1;
          if len>0 then begin
             if len<>sourceLen then
                SetLength(Result, len);
