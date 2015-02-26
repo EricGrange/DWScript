@@ -452,6 +452,7 @@ type
          FPooledStringList : TSimpleStringList;
          FOperatorResolver : TOperatorResolver;
          FDefaultConditionals : IAutoStrings;
+         FHelperMemberNames : TSimpleStringHash;
 
          // if set we're in a setter write expression or statement
          FPendingSetterValueExpr : TVarExpr;
@@ -1268,12 +1269,16 @@ begin
    FExec:=TdwsCompilerExecution.Create(stackParams, Self);
 
    FOperatorResolver:=TOperatorResolver.Create;
+
+   FHelperMemberNames:=TSimpleStringHash.Create;
 end;
 
 // Destroy
 //
 destructor TdwsCompiler.Destroy;
 begin
+   FHelperMemberNames.Free;
+
    FOperatorResolver.Free;
 
    ReleaseStringListPool;
@@ -1585,6 +1590,8 @@ begin
    FLoopExprs.Clear;
    FLoopExitable.Clear;
    FFinallyExprs.Clear;
+
+   FHelperMemberNames.Clear;
 end;
 
 // Compile
@@ -1600,6 +1607,10 @@ begin
    compileStartTime:=Now;
 
    SetupCompileOptions(aConf);
+
+   // prepare Helper Member names lookup
+   FHelperMemberNames.Clear;
+   dwsInternalUnit.EnumerateHelperMemberNames(FHelperMemberNames);
 
    stackParams.MaxByteSize:=aConf.MaxDataSize;
    if stackParams.MaxByteSize<=0 then
@@ -5514,7 +5525,7 @@ begin
 
          baseType:=expr.BaseType;
 
-         if baseType<>nil then begin
+         if (baseType<>nil) and FHelperMemberNames.Contains(name) then begin
             helperExpr:=ReadTypeHelper(expr as TTypedExpr,
                                        name, namePos, expecting, isWrite, False);
             if helperExpr<>nil then begin
@@ -9473,6 +9484,7 @@ var
    visibility : TdwsVisibility;
    tt : TTokenType;
    forType : TTypeSymbol;
+   member : TSymbol;
 begin
    if not FTok.TestDelete(ttFOR) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_ForExpected);
@@ -9540,6 +9552,9 @@ begin
       if not FTok.TestDelete(ttEND) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
       CheckNoPendingAttributes;
+
+      for member in Result.Members do
+         FHelperMemberNames.Add(member.Name);
 
    except
       OrphanObject(Result);
@@ -13344,6 +13359,7 @@ begin
    if param=nil then Exit;
 
    CompilerUtils.AddProcHelper(name, FProg.Table, func, CurrentUnitSymbol);
+   FHelperMemberNames.Add(name);
 end;
 
 // EnumerateHelpers

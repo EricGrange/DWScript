@@ -197,6 +197,8 @@ type
                                      operators : TOperators);
          procedure ReleaseStaticSymbols;
 
+         procedure EnumerateHelperMemberNames(hash : TSimpleStringHash);
+
          property StaticTable : IStaticSymbolTable read FStaticTable;
          property StaticSymbols : Boolean read FStaticSymbols write SetStaticSymbols;
    end;
@@ -803,6 +805,20 @@ procedure TInternalUnit.ReleaseStaticSymbols;
 begin
    FStaticSystemTable:=nil;
    FStaticTable:=nil;
+end;
+
+// EnumerateHelperMemberNames
+//
+procedure TInternalUnit.EnumerateHelperMemberNames(hash : TSimpleStringHash);
+var
+   i : Integer;
+   p : PRegisteredInternalFunction;
+begin
+   for i:=0 to FRegisteredInternalFunctions.Count-1 do begin
+      p:=PRegisteredInternalFunction(FRegisteredInternalFunctions[i]);
+      if p.HelperName<>'' then
+         hash.Add(p.HelperName);
+   end;
 end;
 
 // GetUnitTable

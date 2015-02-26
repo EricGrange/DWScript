@@ -670,6 +670,12 @@ type
    TSimpleDoubleList = class(TSimpleList<Double>)
    end;
 
+   TSimpleStringHash = class(TSimpleHash<String>)
+      protected
+         function SameItem(const item1, item2 : String) : Boolean; override;
+         function GetItemHashCode(const item1 : String) : Integer; override;
+   end;
+
    TFastCompareStringList = class (TStringList)
       {$ifdef FPC}
       function DoCompareText(const s1,s2 : string) : PtrInt; override;
@@ -4730,6 +4736,24 @@ end;
 function TCaseInsensitiveNameValueHash<T>.GetItemHashCode(const item1 : TNameValueHashBucket<T>) : Integer;
 begin
    Result:=SimpleLowerCaseStringHash(item1.Name);
+end;
+
+// ------------------
+// ------------------ TSimpleStringHash ------------------
+// ------------------
+
+// SameItem
+//
+function TSimpleStringHash.SameItem(const item1, item2 : String) : Boolean;
+begin
+   Result:=UnicodeSameText(item1, item2);
+end;
+
+// GetItemHashCode
+//
+function TSimpleStringHash.GetItemHashCode(const item1 : String) : Integer;
+begin
+   Result:=SimpleLowerCaseStringHash(item1);
 end;
 
 // ------------------------------------------------------------------
