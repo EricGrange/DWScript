@@ -1,1 +1,1 @@
-Syntax Error: Argument 0 expects type "array of TestParent" instead of "array of TestEnfant" [line: 11, column: 6]
+Syntax Error: Argument 0 expects type "array of TestEnfant" instead of "array of TestParent" [line: 11, column: 6]

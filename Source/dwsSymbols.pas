@@ -6104,7 +6104,8 @@ end;
 function TDynamicArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   Result :=    (    (typSym is TDynamicArraySymbol)
-                and (typSym.Typ.IsCompatible(Typ) or (typSym.Typ is TNilSymbol))
+//                and (typSym.Typ.IsCompatible(Typ) or (typSym.Typ is TNilSymbol))
+                and (Typ.IsCompatible(typSym.Typ) or (typSym.Typ is TNilSymbol))
             or (    (typSym is TStaticArraySymbol)
                 and TStaticArraySymbol(typSym).IsEmptyArray));
 end;

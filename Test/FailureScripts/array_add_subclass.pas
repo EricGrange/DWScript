@@ -3,10 +3,10 @@ end;
 type TestEnfant=class(TestParent)
 end;
 
-procedure Test(tab : array of TestParent);
+procedure Test(tab : array of TestEnfant);
 begin
 end;
 
-var a: array of TestEnfant;
+var a: array of TestParent;
 Test(a);
 

@@ -1,0 +1,1 @@
+Syntax Error: Argument 0 expects type "array of TFrame" instead of "array of TObject" [line: 15, column: 9]

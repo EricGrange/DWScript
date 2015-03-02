@@ -136,9 +136,15 @@ type
    //
    TdwsJSONValue = class (TRefCountedObject)
       private
-         FOwner : TdwsJSONValue;
+         FRawOwner : NativeUInt; // 3 low order bytes are reserved for immediates
 
       protected
+         function GetOwner : TdwsJSONValue; inline;
+         procedure SetOwner(aOwner : TdwsJSONValue); inline;
+         procedure ClearOwner; inline;
+
+         property FOwner : TdwsJSONValue read GetOwner write SetOwner;
+
          procedure DetachChild(child : TdwsJSONValue); virtual;
 
          function GetValueType : TdwsJSONValueType; virtual; abstract;
@@ -198,7 +204,7 @@ type
          function ToBeautifiedString(initialTabs : Integer = 0; indentTabs : Integer = 1) : UnicodeString;
          procedure Detach;
 
-         property Owner : TdwsJSONValue read FOwner;
+         property Owner : TdwsJSONValue read GetOwner;
          property Items[const name : UnicodeString] : TdwsJSONValue read GetItem write SetItem;
          property Names[index : Integer] : UnicodeString read GetName;
          property Elements[index : Integer] : TdwsJSONValue read GetElement write SetElement;
@@ -361,9 +367,12 @@ type
    TdwsJSONImmediate = class sealed (TdwsJSONValue)
       private
          FData : Double;
-         FType : TdwsJSONValueType;
 
       protected
+         function GetType : TdwsJSONValueType; inline;
+         procedure SetType(t : TdwsJSONValueType); inline;
+         property FType : TdwsJSONValueType read GetType write SetType;
+
          procedure DoSetItem(const name : UnicodeString; const value : TdwsJSONValue); override;
          procedure DoSetElement(index : Integer; const value : TdwsJSONValue); override;
 
@@ -820,6 +829,27 @@ end;
 // ------------------ TdwsJSONValue ------------------
 // ------------------
 
+// GetOwner
+//
+function TdwsJSONValue.GetOwner : TdwsJSONValue;
+begin
+   Result:=TdwsJSONValue(FRawOwner and -8);
+end;
+
+// SetOwner
+//
+procedure TdwsJSONValue.SetOwner(aOwner : TdwsJSONValue);
+begin
+   FRawOwner:=(FRawOwner and $7) or NativeUInt(aOwner);
+end;
+
+// ClearOwner
+//
+procedure TdwsJSONValue.ClearOwner;
+begin
+   FRawOwner:=(FRawOwner and $7);
+end;
+
 // Destroy
 //
 destructor TdwsJSONValue.Destroy;
@@ -989,7 +1019,7 @@ var
 begin
    oldOwner:=FOwner;
    if oldOwner<>nil then begin
-      FOwner:=nil;
+      ClearOwner;
       oldOwner.DetachChild(Self);
    end;
 end;
@@ -1274,7 +1304,6 @@ begin
    Inc(FIndex, Integer(Result));
 end;
 
-
 // ------------------
 // ------------------ TdwsJSONObject ------------------
 // ------------------
@@ -1326,7 +1355,7 @@ var
 begin
    for i:=0 to FCount-1 do begin
       v:=FItems^[i].Value;
-      v.FOwner:=nil;
+      v.ClearOwner;
       v.DecRefCount;
       FItems^[i].Name:='';
    end;
@@ -1448,8 +1477,8 @@ var
    child : TdwsJSONValue;
 begin
    child:=FItems[i].Value;
-   if child.FOwner=Self then begin
-      child.FOwner:=nil;
+   if child.Owner=Self then begin
+      child.ClearOwner;
       child.DecRefCount;
    end;
    Finalize(FItems[i]);
@@ -1496,7 +1525,7 @@ begin
       if value<>nil then begin
 
          member:=FItems^[index].Value;
-         member.FOwner:=nil;
+         member.ClearOwner;
          member.DecRefCount;
 
          FItems^[index].Value:=value;
@@ -1604,7 +1633,7 @@ begin
       k:=IndexOfName(otherObj.FItems[i].Name);
       if k>=0 then begin
          member:=FItems[k].Value;
-         member.FOwner:=nil;
+         member.ClearOwner;
          member.DecRefCount;
          member:=otherObj.FItems[i].Value.Clone;
          member.FOwner:=Self;
@@ -1713,7 +1742,7 @@ var
 begin
    child:=FElements[idx];
    if child.FOwner=Self then begin
-      child.FOwner:=nil;
+      child.ClearOwner;
       child.DecRefCount;
    end;
    Move(FElements[idx+1], FElements[idx], (FCount-1-idx)*SizeOf(Pointer));
@@ -1743,7 +1772,7 @@ var
 begin
    for i:=0 to FCount-1 do begin
       v:=FElements^[i];
-      v.FOwner:=nil;
+      v.ClearOwner;
       v.DecRefCount;
    end;
    FreeMem(FElements);
@@ -1931,7 +1960,7 @@ begin
          end else v:=TdwsJSONImmediate.Create
       else v:=value;
 
-      FElements[index].FOwner:=nil;
+      FElements[index].ClearOwner;
       FElements[index].DecRefCount;
       FElements[index]:=v;
       v.FOwner:=Self;
@@ -2014,6 +2043,20 @@ end;
 // ------------------
 // ------------------ TdwsJSONImmediate ------------------
 // ------------------
+
+// GetType
+//
+function TdwsJSONImmediate.GetType : TdwsJSONValueType;
+begin
+   Result:=TdwsJSONValueType(FRawOwner and $7);
+end;
+
+// SetType
+//
+procedure TdwsJSONImmediate.SetType(t : TdwsJSONValueType);
+begin
+   FRawOwner:=(FRawOwner and -8) or NativeUInt(t);
+end;
 
 // Destroy
 //
