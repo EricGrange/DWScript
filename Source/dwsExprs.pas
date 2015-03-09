@@ -8404,7 +8404,7 @@ end;
 //
 function TdwsCustomStates.SameItem(const item1, item2 : TdwsCustomState) : Boolean;
 begin
-   Result:=(item1.Key=item2.Key);
+   Result:=IsEqualGUID(item1.Key, item2.Key);
 end;
 
 // GetItemHashCode
