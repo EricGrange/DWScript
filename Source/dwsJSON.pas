@@ -54,7 +54,7 @@ type
          procedure BeginArray; virtual;
          procedure EndArray; virtual;
 
-         procedure WriteName(const aName : UnicodeString); virtual;
+         function  WriteName(const aName : UnicodeString) : TdwsJSONWriter; virtual;
          procedure WriteString(const str : UnicodeString);
          procedure WriteNumber(const n : Double);
          procedure WriteInteger(const n : Int64);
@@ -95,7 +95,7 @@ type
          procedure BeginArray; override;
          procedure EndArray; override;
 
-         procedure WriteName(const aName : UnicodeString); override;
+         function  WriteName(const aName : UnicodeString) : TdwsJSONWriter; override;
    end;
 
    TdwsJSONDuplicatesOptions = (jdoAccept, jdoOverwrite);
@@ -2421,7 +2421,7 @@ end;
 
 // WriteName
 //
-procedure TdwsJSONWriter.WriteName(const aName : UnicodeString);
+function TdwsJSONWriter.WriteName(const aName : UnicodeString) : TdwsJSONWriter;
 begin
    case FState of
       wsObject : ;
@@ -2434,6 +2434,7 @@ begin
    WriteJavaScriptString(FStream, aName);
    FStream.WriteChar(':');
    FState:=wsObjectValue;
+   Result:=Self;
 end;
 
 // WriteString
@@ -2658,7 +2659,7 @@ end;
 
 // WriteName
 //
-procedure TdwsJSONBeautifiedWriter.WriteName(const aName : UnicodeString);
+function TdwsJSONBeautifiedWriter.WriteName(const aName : UnicodeString) : TdwsJSONWriter;
 begin
    case FState of
       wsObject :
@@ -2672,6 +2673,7 @@ begin
    WriteJavaScriptString(FStream, aName);
    FStream.WriteString(' : ');
    FState:=wsObjectValue;
+   Result:=Self;
 end;
 
 // ------------------
