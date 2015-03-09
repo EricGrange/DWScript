@@ -1,0 +1,2 @@
+Syntax Error: Incompatible parameter types - "record " expected (instead of "Integer") [line: 7, column: 12]
+Syntax Error: Expression expected [line: 7, column: 14]

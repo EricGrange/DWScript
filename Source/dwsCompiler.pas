@@ -10393,7 +10393,7 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
 
    function ReadNull(expecting : TTypeSymbol) : TConstExpr;
    begin
-      Result:=TConstExpr.Create(FProg, expecting, Null);
+      Result:=TConstExpr.CreateNull(expecting);
    end;
 
    function ReadAnonymousMethod(funcType : TTokenType; const hotPos : TScriptPos) : TAnonymousFuncRefExpr;

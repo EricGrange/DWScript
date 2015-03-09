@@ -44,6 +44,7 @@ type
          constructor Create(aTyp: TTypeSymbol; const Data: TData; addr : Integer); overload;
          constructor Create(aTyp: TTypeSymbol); overload;
          constructor CreateRef(aTyp: TTypeSymbol; const Data: TData);
+         constructor CreateNull(aTyp: TTypeSymbol);
 
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
@@ -277,6 +278,18 @@ constructor TConstExpr.CreateRef(aTyp: TTypeSymbol; const Data: TData);
 begin
    inherited Create(aTyp);
    FData:=Data;
+end;
+
+// CreateNull
+//
+constructor TConstExpr.CreateNull(aTyp: TTypeSymbol);
+var
+   i : Integer;
+begin
+   inherited Create(aTyp);
+   SetLength(FData, aTyp.Size);
+   for i:=0 to aTyp.Size-1 do
+      FData[i]:=Null;
 end;
 
 // Eval
