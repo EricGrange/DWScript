@@ -48,18 +48,24 @@ type
          constructor Create(aStream : TWriteOnlyBlockStream);
          destructor Destroy; override;
 
-         procedure BeginObject; virtual;
+         procedure BeginObject; overload; virtual;
+         procedure BeginObject(const aName : UnicodeString); overload; inline;
          procedure EndObject; virtual;
 
-         procedure BeginArray; virtual;
+         procedure BeginArray; overload; virtual;
+         procedure BeginArray(const aName : UnicodeString); overload; inline;
          procedure EndArray; virtual;
 
          function  WriteName(const aName : UnicodeString) : TdwsJSONWriter; virtual;
-         procedure WriteString(const str : UnicodeString);
-         procedure WriteNumber(const n : Double);
-         procedure WriteInteger(const n : Int64);
-         procedure WriteBoolean(b : Boolean);
-         procedure WriteNull;
+         procedure WriteString(const str : UnicodeString); overload;
+         procedure WriteString(const name, str : UnicodeString); overload; inline;
+         procedure WriteNumber(const n : Double); overload;
+         procedure WriteNumber(const name : UnicodeString; const n : Double); overload; inline;
+         procedure WriteInteger(const n : Int64); overload;
+         procedure WriteInteger(const name : UnicodeString; const n : Int64); overload; inline;
+         procedure WriteBoolean(b : Boolean); overload;
+         procedure WriteBoolean(const name : UnicodeString; b : Boolean); overload; inline;
+         procedure WriteNull; overload;
 
          // ISO 8601 Date Time
          procedure WriteDate(dt : TDateTime); overload;
@@ -2383,6 +2389,13 @@ begin
    FStream.WriteChar('{');
 end;
 
+// BeginObject
+//
+procedure TdwsJSONWriter.BeginObject(const aName : UnicodeString);
+begin
+   WriteName(aName).BeginObject;
+end;
+
 // EndObject
 //
 procedure TdwsJSONWriter.EndObject;
@@ -2405,6 +2418,13 @@ begin
    BeforeWriteImmediate;
    FState:=wsArray;
    FStream.WriteChar('[');
+end;
+
+// BeginArray
+//
+procedure TdwsJSONWriter.BeginArray(const aName : UnicodeString);
+begin
+   WriteName(aName).BeginArray;
 end;
 
 // EndArray
@@ -2446,6 +2466,13 @@ begin
    AfterWriteImmediate;
 end;
 
+// WriteString
+//
+procedure TdwsJSONWriter.WriteString(const name, str : UnicodeString);
+begin
+   WriteName(name).WriteString(str);
+end;
+
 // WriteNumber
 //
 procedure TdwsJSONWriter.WriteNumber(const n : Double);
@@ -2453,6 +2480,13 @@ begin
    BeforeWriteImmediate;
    FStream.WriteString(FloatToStr(n, vJSONFormatSettings));
    AfterWriteImmediate;
+end;
+
+// WriteNumber
+//
+procedure TdwsJSONWriter.WriteNumber(const name : UnicodeString; const n : Double);
+begin
+   WriteName(name).WriteNumber(n);
 end;
 
 // WriteInteger
@@ -2464,6 +2498,13 @@ begin
    AfterWriteImmediate;
 end;
 
+// WriteInteger
+//
+procedure TdwsJSONWriter.WriteInteger(const name : UnicodeString; const n : Int64);
+begin
+   WriteName(name).WriteInteger(n);
+end;
+
 // WriteBoolean
 //
 procedure TdwsJSONWriter.WriteBoolean(b : Boolean);
@@ -2473,6 +2514,13 @@ begin
       FStream.WriteString('true')
    else FStream.WriteString('false');
    AfterWriteImmediate;
+end;
+
+// WriteBoolean
+//
+procedure TdwsJSONWriter.WriteBoolean(const name : UnicodeString; b : Boolean);
+begin
+   WriteName(name).WriteBoolean(b);
 end;
 
 // WriteNull
