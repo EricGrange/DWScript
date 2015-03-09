@@ -88,9 +88,11 @@ type
          destructor Destroy; override;
 
          procedure BeginRead;
+         function  TryBeginRead : Boolean;
          procedure EndRead;
 
          procedure BeginWrite;
+         function  TryBeginWrite : Boolean;
          procedure EndWrite;
    end;
    {$HINTS ON}
@@ -1041,9 +1043,13 @@ end;
 type
    SRWLOCK = Pointer;
 var vSupportsSRWChecked : Boolean;
+
 var AcquireSRWLockExclusive : procedure (var SRWLock : SRWLOCK); stdcall;
+var TryAcquireSRWLockExclusive : function (var SRWLock : SRWLOCK) : BOOL; stdcall;
 var ReleaseSRWLockExclusive : procedure (var SRWLock : SRWLOCK); stdcall;
+
 var AcquireSRWLockShared : procedure(var SRWLock : SRWLOCK); stdcall;
+var TryAcquireSRWLockShared : function (var SRWLock : SRWLOCK) : BOOL; stdcall;
 var ReleaseSRWLockShared : procedure (var SRWLock : SRWLOCK); stdcall;
 
 function SupportsSRW : Boolean;
@@ -1054,8 +1060,10 @@ begin
       vSupportsSRWChecked:=True;
       h:=GetModuleHandle('kernel32');
       AcquireSRWLockExclusive:=GetProcAddress(h, 'AcquireSRWLockExclusive');
+      TryAcquireSRWLockExclusive:=GetProcAddress(h, 'TryAcquireSRWLockExclusive');
       ReleaseSRWLockExclusive:=GetProcAddress(h, 'ReleaseSRWLockExclusive');
       AcquireSRWLockShared:=GetProcAddress(h, 'AcquireSRWLockShared');
+      TryAcquireSRWLockShared:=GetProcAddress(h, 'TryAcquireSRWLockShared');
       ReleaseSRWLockShared:=GetProcAddress(h, 'ReleaseSRWLockShared');
    end;
    Result:=Assigned(AcquireSRWLockExclusive);
@@ -1085,6 +1093,15 @@ begin
    else AcquireSRWLockShared(FSRWLock);
 end;
 
+// TryBeginRead
+//
+function TMultiReadSingleWrite.TryBeginRead : Boolean;
+begin
+   if Assigned(FCS) then
+      Result:=FCS.TryEnter
+   else Result:=TryAcquireSRWLockShared(FSRWLock);
+end;
+
 // EndRead
 //
 procedure TMultiReadSingleWrite.EndRead;
@@ -1101,6 +1118,15 @@ begin
    if Assigned(FCS) then
       FCS.Enter
    else AcquireSRWLockExclusive(FSRWLock);
+end;
+
+// TryBeginWrite
+//
+function TMultiReadSingleWrite.TryBeginWrite : Boolean;
+begin
+   if Assigned(FCS) then
+      Result:=FCS.TryEnter
+   else Result:=TryAcquireSRWLockExclusive(FSRWLock);
 end;
 
 // EndWrite
