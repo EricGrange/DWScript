@@ -690,8 +690,10 @@ begin
       Result:=''
    else begin
       encoding:=nil;
-      n:=TEncoding.GetBufferEncoding(buf, encoding, TEncoding.UTF8);
-      if encoding.CodePage=65001 then begin
+      n:=TEncoding.GetBufferEncoding(buf, encoding);
+      if n=0 then
+         encoding:=TEncoding.UTF8;
+      if encoding=TEncoding.UTF8 then begin
          // handle UTF-8 directly, encoding.GetString returns an empty string
          // whenever a non-utf-8 character is detected, the implementation below
          // will return a '?' for non-utf8 characters instead
