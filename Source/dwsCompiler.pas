@@ -5792,7 +5792,7 @@ begin
       end;
 
       fromExpr:=ReadExpr;
-      if not fromExpr.IsOfType(FProg.TypInteger) then
+      if not (fromExpr.IsOfType(FProg.TypInteger) or fromExpr.IsOfType(FProg.TypVariant)) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_IntegerExpected);
 
       if loopVarExpr=nil then begin
@@ -5823,7 +5823,7 @@ begin
       end;
       try
          toExpr:=ReadExpr;
-         if not toExpr.IsOfType(FProg.TypInteger) then
+         if not (toExpr.IsOfType(FProg.TypInteger) or toExpr.IsOfType(FProg.TypVariant)) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
 
          loopVarExpr:=nil;
