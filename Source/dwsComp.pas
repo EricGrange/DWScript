@@ -4368,13 +4368,13 @@ begin
       if ancestorSym <> nil then
          intfSym.InheritFrom(ancestorSym);
 
+      GetUnit.Table.AddSymbol(intfSym);
+
       for x := 0 to FMethods.Count - 1 do
          intfSym.AddMethod(TMethodSymbol(TdwsMethod(FMethods.Items[x]).Generate(systemTable, Table, intfSym)));
 
       for x := 0 to FProperties.Count - 1 do
          intfSym.AddProperty(TPropertySymbol(TdwsProperty(FProperties.Items[x]).Generate(systemTable, Table, intfSym)));
-
-      GetUnit.Table.AddSymbol(intfSym);
    except
       if not intfSym.IsForwarded then
          intfSym.Free;
