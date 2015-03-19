@@ -77,6 +77,8 @@ type
          function TryEnter : Boolean;
    end;
 
+   TMultiReadSingleWriteState = (mrswUnlocked, mrswReadLock, mrswWriteLock);
+
    TMultiReadSingleWrite = class
       private
          FCS : TFixedCriticalSection; // used as fallback
@@ -94,6 +96,9 @@ type
          procedure BeginWrite;
          function  TryBeginWrite : Boolean;
          procedure EndWrite;
+
+         // use for diagnostic only
+         function State : TMultiReadSingleWriteState;
    end;
    {$HINTS ON}
 
@@ -1136,6 +1141,24 @@ begin
    if Assigned(FCS) then
       FCS.Leave
    else ReleaseSRWLockExclusive(FSRWLock)
+end;
+
+// State
+//
+function TMultiReadSingleWrite.State : TMultiReadSingleWriteState;
+begin
+   // Attempt to guess the state of the lock without making assumptions
+   // about implementation details
+   // This is only for diagnosing locking issues
+   if TryBeginWrite then begin
+      EndWrite;
+      Result:=mrswUnlocked;
+   end else if TryBeginRead then begin
+      EndRead;
+      Result:=mrswReadLock;
+   end else begin
+      Result:=mrswWriteLock;
+   end;
 end;
 
 // ------------------------------------------------------------------
