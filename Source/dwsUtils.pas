@@ -668,6 +668,14 @@ type
    end;
 
    TSimpleDoubleList = class(TSimpleList<Double>)
+      protected
+         procedure DoExchange(index1, index2 : Integer); inline;
+         procedure QuickSort(minIndex, maxIndex : Integer);
+
+      public
+         procedure Sort;
+         // Kahan summation
+         function Sum : Double;
    end;
 
    TSimpleStringHash = class(TSimpleHash<String>)
@@ -4719,7 +4727,6 @@ begin
       Result:=-Result;
 end;
 
-
 // ------------------
 // ------------------ TCaseInsensitiveNameValueHash<T> ------------------
 // ------------------
@@ -4754,6 +4761,94 @@ end;
 function TSimpleStringHash.GetItemHashCode(const item1 : String) : Integer;
 begin
    Result:=SimpleLowerCaseStringHash(item1);
+end;
+
+// ------------------
+// ------------------ TSimpleDoubleList ------------------
+// ------------------
+
+// Sort
+//
+procedure TSimpleDoubleList.Sort;
+begin
+   QuickSort(0, Count-1);
+end;
+
+// Sum
+//
+function TSimpleDoubleList.Sum : Double;
+var
+   c, y, t : Double;
+   i : Integer;
+begin
+   if Count=0 then Exit(0);
+   Result:=FItems[0];
+   c:=0;
+   for i:=1 to Count-1 do begin
+      y:=FItems[i]-c;
+      t:=Result+y;
+      c:=(t-Result)-y;
+      Result:=t;
+   end;
+end;
+
+// DoExchange
+//
+procedure TSimpleDoubleList.DoExchange(index1, index2 : Integer);
+var
+   buf : Double;
+begin
+   buf:=FItems[index1];
+   FItems[index1]:=FItems[index2];
+   FItems[index2]:=buf;
+end;
+
+// QuickSort
+//
+procedure TSimpleDoubleList.QuickSort(minIndex, maxIndex : Integer);
+var
+   i, j, p, n : Integer;
+begin
+   n:=maxIndex-minIndex;
+   case n of
+      1 : begin
+         if FItems[minIndex]>FItems[maxIndex] then
+            DoExchange(minIndex, maxIndex);
+      end;
+      2 : begin
+         i:=minIndex+1;
+         if FItems[minIndex]>FItems[i] then
+            DoExchange(minIndex, i);
+         if FItems[i]>FItems[maxIndex] then begin
+            DoExchange(i, maxIndex);
+            if FItems[minIndex]>FItems[i] then
+               DoExchange(minIndex, i);
+         end;
+      end;
+   else
+      if n<=0 then Exit;
+      repeat
+         i:=minIndex;
+         j:=maxIndex;
+         p:=((i+j) shr 1);
+         repeat
+            while FItems[i]>FItems[p] do Inc(i);
+            while Fitems[j]>FItems[p] do Dec(j);
+            if i<=j then begin
+               DoExchange(i, j);
+               if p=i then
+                  p:=j
+               else if p=j then
+                  p:=i;
+               Inc(i);
+               Dec(j);
+            end;
+         until i>j;
+         if minIndex<j then
+            QuickSort(minIndex, j);
+         minIndex:=i;
+      until i>=maxIndex;
+   end;
 end;
 
 // ------------------------------------------------------------------
