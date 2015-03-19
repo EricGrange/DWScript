@@ -4107,6 +4107,7 @@ begin
    // if left is an enumeration with 31 or less symbols (31 is limit for JS)
    // and conditions are constants, then it can be optimized to a bitwise test
    if (FLeft.Typ is TEnumerationSymbol) and ConstantConditions then begin
+
       enumSym:=TEnumerationSymbol(FLeft.Typ);
       if (enumSym.LowBound<0) or (enumSym.HighBound>31) then Exit;
       mask:=0;
@@ -4124,18 +4125,23 @@ begin
       TBitwiseInOpExpr(Result).Mask:=mask;
       FLeft:=nil;
       Free;
+
    end else if FLeft.IsOfType(prog.TypString) then begin
+
       if TCaseConditionsHelper.CanOptimizeToTyped(FCaseConditions, TConstStringExpr) then begin
          sioe:=TStringInOpExpr.Create(prog, Left);
          TransferFieldsAndFree(sioe);
          Exit(sioe);
       end;
+
    end else if FLeft.IsOfType(prog.TypInteger) then begin
+
       if TCaseConditionsHelper.CanOptimizeToTyped(FCaseConditions, TConstIntExpr) then begin
          iioe:=TIntegerInOpExpr.Create(prog, Left);
          TransferFieldsAndFree(iioe);
          Exit(iioe);
       end;
+
    end;
 end;
 

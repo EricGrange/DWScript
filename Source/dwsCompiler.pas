@@ -10319,6 +10319,8 @@ begin
       end;
 
    end;
+   if Optimize then
+      Result:=Result.OptimizeToTypedExpr(FProg, FExec, hotPos);
 end;
 
 // ReadExprInConditions
