@@ -8374,9 +8374,9 @@ end;
 //
 function TArrayDataExpr.GetBaseDynArray(exec : TdwsExecution) : TScriptDynamicArray;
 var
-   base : IScriptObj;
+   base : IScriptDynArray;
 begin
-   BaseExpr.EvalAsScriptObj(exec, base);
+   BaseExpr.EvalAsScriptDynArray(exec, base);
    Result:=TScriptDynamicArray(base.GetSelf);
 end;
 
