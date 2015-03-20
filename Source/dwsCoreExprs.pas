@@ -4531,10 +4531,10 @@ end;
 //
 function TIntfCmpExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
-   iLeft, iRight : IScriptObj;
+   iLeft, iRight : IScriptObjInterface;
 begin
-   FLeft.EvalAsScriptObj(exec, iLeft);
-   FRight.EvalAsScriptObj(exec, iRight);
+   FLeft.EvalAsScriptObjInterface(exec, iLeft);
+   FRight.EvalAsScriptObjInterface(exec, iRight);
    Result:=(iLeft=iRight);
 end;
 
