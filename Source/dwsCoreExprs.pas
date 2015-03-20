@@ -101,6 +101,7 @@ type
          function  SetChar(exec : TdwsExecution; index : Integer; c : WideChar) : Boolean;
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
          procedure Append(exec : TdwsExecution; const value : UnicodeString);
+         function EvalAsPString(exec : TdwsExecution) : PUnicodeString; inline;
    end;
 
    TBoolVarExpr = class (TBaseTypeVarExpr)
@@ -1602,6 +1603,8 @@ type
          property OwnsTrueExpr : Boolean read FOwnsTrueExpr write FOwnsTrueExpr;
    end;
 
+   TCaseConditionClass = class of TCaseCondition;
+
    TCaseConditions = TObjectList<TCaseCondition>;
 
    TCaseConditionsHelper = class
@@ -1725,8 +1728,21 @@ type
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
-   TIntegerInOpExpr = class (TInOpExpr)
+   TIntegerInOpExpr = class (TStringInOpExpr)
       public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
+   // special case of disjointed strings
+   TStringInOpStaticSetExpr = class (TStringInOpExpr)
+      private
+         FSortedStrings : TFastCompareStringList;
+
+         procedure PrepareSortedStrings;
+
+      public
+         destructor Destroy; override;
+
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
@@ -2425,6 +2441,13 @@ end;
 procedure TStrVarExpr.Append(exec : TdwsExecution; const value : UnicodeString);
 begin
    exec.Stack.AppendStringValue_BaseRelative(FStackAddr, value);
+end;
+
+// EvalAsPString
+//
+function TStrVarExpr.EvalAsPString(exec : TdwsExecution) : PUnicodeString;
+begin
+   Result:=exec.Stack.PointerToStringValue_BaseRelative(FStackAddr);
 end;
 
 // ------------------
@@ -4129,7 +4152,9 @@ begin
    end else if FLeft.IsOfType(prog.TypString) then begin
 
       if TCaseConditionsHelper.CanOptimizeToTyped(FCaseConditions, TConstStringExpr) then begin
-         sioe:=TStringInOpExpr.Create(prog, Left);
+         if FCaseConditions.ItemsAllOfClass(TCompareCaseCondition) then
+            sioe:=TStringInOpStaticSetExpr.Create(prog, Left)
+         else sioe:=TStringInOpExpr.Create(prog, Left);
          TransferFieldsAndFree(sioe);
          Exit(sioe);
       end;
@@ -4200,7 +4225,7 @@ end;
 function TStringInOpExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
    i : Integer;
-   value : String;
+   value : UnicodeString;
    cc : TCaseCondition;
 begin
    FLeft.EvalAsString(exec, value);
@@ -4231,6 +4256,46 @@ begin
          Exit(True);
    end;
    Result:=False;
+end;
+
+// ------------------
+// ------------------ TStringInOpStaticSetExpr ------------------
+// ------------------
+
+// Destroy
+//
+destructor TStringInOpStaticSetExpr.Destroy;
+begin
+   inherited;
+   FSortedStrings.Free;
+end;
+
+// PrepareSortedStrings
+//
+procedure TStringInOpStaticSetExpr.PrepareSortedStrings;
+var
+   i : Integer;
+   cc : TCompareCaseCondition;
+begin
+   FSortedStrings:=TFastCompareStringList.Create;
+   for i:=0 to FCaseConditions.Count-1 do begin
+      cc:=(FCaseConditions.List[i] as TCompareCaseCondition);
+      FSortedStrings.AddObject((cc.FCompareExpr as TConstStringExpr).Value, cc);
+   end;
+   FSortedStrings.Sorted:=True;
+end;
+
+// EvalAsBoolean
+//
+function TStringInOpStaticSetExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   i : Integer;
+   value : UnicodeString;
+begin
+   if FSortedStrings=nil then
+      PrepareSortedStrings;
+   FLeft.EvalAsString(exec, value);
+   Result:=FSortedStrings.Find(value, i);
 end;
 
 // ------------------
@@ -4297,7 +4362,6 @@ begin
       Result:=element.QualifiedName
    else Result:=TEnumerationSymbol(Expr.Typ).Name+'.?';
 end;
-
 
 // ------------------
 // ------------------ TAssertExpr ------------------

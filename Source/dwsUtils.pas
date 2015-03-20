@@ -149,6 +149,7 @@ type
          procedure Insert(index : Integer; item : TRefCountedObject);
          procedure MoveItem(curIndex, newIndex : Integer); // Note: D2009 fails if this method is called Move (!) - HV
          procedure Exchange(index1, index2 : Integer);
+         function ItemsAllOfClass(aClass : TClass) : Boolean;
    end;
 
    // TTightStack
@@ -2583,6 +2584,17 @@ begin
       FList[index1]:=FList[index2];
       FList[index2]:=item;
    end;
+end;
+
+// ItemsAllOfClass
+//
+function TTightList.ItemsAllOfClass(aClass : TClass) : Boolean;
+var
+   i : Integer;
+begin
+   for i:=0 to FCount-1 do
+      if List[i].ClassType<>aClass then Exit(False);
+   Result:=True;
 end;
 
 // RaiseIndexOutOfBounds

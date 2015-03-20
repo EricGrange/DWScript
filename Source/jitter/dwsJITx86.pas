@@ -865,6 +865,7 @@ begin
 
    RegisterJITter(TInOpExpr,                    FInterpretedJITter.IncRefCount);
    RegisterJITter(TStringInOpExpr,              FInterpretedJITter.IncRefCount);
+   RegisterJITter(TStringInOpStaticSetExpr,     FInterpretedJITter.IncRefCount);
    RegisterJITter(TIntegerInOpExpr,             FInterpretedJITter.IncRefCount);
    RegisterJITter(TBitwiseInOpExpr,             FInterpretedJITter.IncRefCount);
 
