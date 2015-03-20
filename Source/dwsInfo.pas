@@ -135,6 +135,10 @@ type
     procedure SetExternalObject(ExtObject: TObject); override;
   end;
 
+  TInfoInterfaceObj = class(TInfoData)
+    // Todo
+  end;
+
    TTempParam = class(TParamSymbol)
       private
          FData : TData;
@@ -506,7 +510,10 @@ begin
                                      childDataMaster)
    else if baseType is TConnectorSymbol then
       result := TInfoData.Create(programInfo, childTypeSym, childDataPtr,
-                                  childDataMaster)
+                                    ChildDataMaster)
+   else if baseType is TInterfaceSymbol then
+      Result := TInfoInterfaceObj.Create(ProgramInfo, ChildTypeSym, childDataPtr,
+                                     ChildDataMaster)
    else Assert(False); // Shouldn't be ever executed
 end;
 

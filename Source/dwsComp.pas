@@ -4368,13 +4368,13 @@ begin
       if ancestorSym <> nil then
          intfSym.InheritFrom(ancestorSym);
 
+      GetUnit.Table.AddSymbol(intfSym);
+
       for x := 0 to FMethods.Count - 1 do
          intfSym.AddMethod(TMethodSymbol(TdwsMethod(FMethods.Items[x]).Generate(systemTable, Table, intfSym)));
 
       for x := 0 to FProperties.Count - 1 do
          intfSym.AddProperty(TPropertySymbol(TdwsProperty(FProperties.Items[x]).Generate(systemTable, Table, intfSym)));
-
-      GetUnit.Table.AddSymbol(intfSym);
    except
       if not intfSym.IsForwarded then
          intfSym.Free;
@@ -4592,6 +4592,17 @@ begin
    Result:=FIsDefault and (Parameters.Count>0);
 end;
 
+function GetProperties(const Symbol: TObject): TdwsProperties;
+begin
+  if Symbol is TdwsInterface then
+    Exit((Symbol as TdwsInterface).Properties);
+
+  if Symbol is TdwsClass then
+    Exit((Symbol as TdwsClass).Properties);
+
+  Exit(nil);
+end;
+
 // SetIsDefault
 //
 procedure TdwsProperty.SetIsDefault(Value: Boolean);
@@ -4605,7 +4616,7 @@ begin
     FIsDefault := Value;
     if FIsDefault then
     begin
-      properties := TdwsClass(TdwsCollection(Collection).GetOwner).Properties;
+      properties := GetProperties(TdwsCollection(Collection).GetOwner); // GetOwner can return a TdwsClass as well as a TdwsInterface, so GetProperties is used to distinguish.
       for i := 0 to properties.Count - 1 do
         if properties.Items[i] <> Self then
           TdwsProperty(properties.Items[i]).FIsDefault := False;
