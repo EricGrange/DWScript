@@ -24,9 +24,10 @@ unit dwsTimeFunctions;
 interface
 
 uses
-   Classes, SysUtils,
-   dwsUtils, dwsStrings, dwsXPlatform,
-   dwsFunctions, dwsExprs, dwsSymbols, dwsExprList, dwsMagicExprs;
+   Classes, SysUtils, Variants,
+   dwsUtils, dwsStrings, dwsXPlatform, dwsDateTime,
+   dwsFunctions, dwsExprs, dwsSymbols, dwsUnitSymbols, dwsExprList,
+   dwsMagicExprs, dwsExternalSymbols;
 
 type
 
@@ -59,6 +60,10 @@ type
   end;
 
   TStrToDateTimeDefFunc = class(TInternalMagicFloatFunction)
+    procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+  end;
+
+  TParseDateTimeFunc = class(TInternalMagicFloatFunction)
     procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
   end;
 
@@ -190,6 +195,133 @@ const
   cDateTime = SYS_FLOAT;
   cSleepGranulosity = 200;
 
+  SYS_FORMAT_SETTINGS = 'FormatSettings';
+  SYS_DATE_TIME_ZONE = 'DateTimeZone';
+
+type
+   TFormatSettingsHandler = class (TInterfacedObject, IExternalSymbolHandler)
+      procedure Assign(exec : TdwsExecution; symbol : TDataSymbol; expr : TTypedExpr; var handled : Boolean);
+      procedure Eval(exec : TdwsExecution; symbol : TDataSymbol; var handled : Boolean; var result : Variant);
+   end;
+
+// RegisterFormatSettings
+//
+procedure RegisterFormatSettings(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
+                                 unitTable : TSymbolTable);
+
+   function AddClassVar(owner : TClassSymbol; const name : String; const h : IExternalSymbolHandler; typ : TTypeSymbol) : TClassVarSymbol;
+   begin
+      Result:=TClassVarSymbol.Create(name, typ, cvPublic);
+      Result.ExternalName:='$fmt.'+name;
+      owner.AddClassVar(Result);
+      TExternalSymbolHandler.Register(Result, h);
+   end;
+
+var
+   typFormatSettings : TClassSymbol;
+   typDTZ : TEnumerationSymbol;
+   handler : IExternalSymbolHandler;
+begin
+   if systemTable.FindLocal(SYS_FORMAT_SETTINGS)<>nil then exit;
+
+   typDTZ:=TEnumerationSymbol.Create(SYS_DATE_TIME_ZONE, systemTable.TypInteger, enumScoped);
+   typDTZ.AddElement(TElementSymbol.Create('Default', typDTZ, 0, False));
+   typDTZ.AddElement(TElementSymbol.Create('Local', typDTZ, 1, False));
+   typDTZ.AddElement(TElementSymbol.Create('UTC', typDTZ, 2, False));
+   systemTable.AddSymbol(typDTZ);
+
+   handler:=TFormatSettingsHandler.Create;
+
+   typFormatSettings:=TClassSymbol.Create(SYS_FORMAT_SETTINGS, nil);
+   typFormatSettings.IsExternal:=True;
+   typFormatSettings.IsStatic:=True;
+   AddClassVar(typFormatSettings, 'ShortDateFormat', handler, systemTable.TypString);
+   AddClassVar(typFormatSettings, 'LongDateFormat', handler, systemTable.TypString);
+   AddClassVar(typFormatSettings, 'ShortTimeFormat', handler, systemTable.TypString);
+   AddClassVar(typFormatSettings, 'LongTimeFormat', handler, systemTable.TypString);
+   AddClassVar(typFormatSettings, 'Zone', handler, typDTZ).ExternalName:='$TZ';
+
+   systemTable.AddSymbol(typFormatSettings);
+end;
+
+// DateTimeConversionError
+//
+procedure DateTimeConversionError(const str : String);
+begin
+   raise EConvertError.CreateFmt('Date/time parsing error for "%s"', [str]);
+end;
+
+// ------------------
+// ------------------ TFormatSettingsHandler ------------------
+// ------------------
+
+// Assign
+//
+procedure TFormatSettingsHandler.Assign(exec : TdwsExecution; symbol : TDataSymbol; expr : TTypedExpr; var handled : Boolean);
+
+   procedure EvalAsString(var s : String);
+   begin
+      expr.EvalAsString(exec, s);
+      handled:=True;
+   end;
+
+begin
+   handled:=False;
+   if symbol.Name='' then Exit;
+
+   case symbol.Name[1] of
+      'S' :
+         if symbol.Name='ShortDateFormat' then
+            EvalAsString(exec.FormatSettings.Settings.ShortDateFormat)
+         else if symbol.Name='ShortTimeFormat' then
+            EvalAsString(exec.FormatSettings.Settings.ShortTimeFormat);
+      'L' :
+         if symbol.Name='LongDateFormat' then
+            EvalAsString(exec.FormatSettings.Settings.LongDateFormat)
+         else if symbol.Name='LongTimeFormat' then
+            EvalAsString(exec.FormatSettings.Settings.LongTimeFormat);
+      'T' :
+         if symbol.Name='TimeAMString' then
+            EvalAsString(exec.FormatSettings.Settings.TimeAMString)
+         else if symbol.Name='TimePMString' then
+            EvalAsString(exec.FormatSettings.Settings.TimePMString);
+      'Z' :
+         if symbol.Name='Zone' then
+            exec.FormatSettings.TimeZone:=TdwsTimeZone(expr.EvalAsInteger(exec));
+   end;
+end;
+
+// Eval
+//
+procedure TFormatSettingsHandler.Eval(exec : TdwsExecution; symbol : TDataSymbol; var handled : Boolean; var result : Variant);
+begin
+   handled:=False;
+   if symbol.Name='' then Exit;
+
+   VarClear(result);
+   case symbol.Name[1] of
+      'S' :
+         if symbol.Name='ShortDateFormat' then
+            result:=exec.FormatSettings.Settings.ShortDateFormat
+         else if symbol.Name='ShortTimeFormat' then
+            result:=exec.FormatSettings.Settings.ShortTimeFormat;
+      'L' :
+         if symbol.Name='LongDateFormat' then
+            result:=exec.FormatSettings.Settings.LongDateFormat
+         else if symbol.Name='LongTimeFormat' then
+            result:=exec.FormatSettings.Settings.LongTimeFormat;
+      'T' :
+         if symbol.Name='TimeAMString' then
+            result:=exec.FormatSettings.Settings.TimeAMString
+         else if symbol.Name='TimePMString' then
+            result:=exec.FormatSettings.Settings.TimePMString;
+      'Z' :
+         if symbol.Name='Zone' then
+            result:=Integer(exec.FormatSettings.TimeZone);
+   end;
+   handled:=VarType(result)<>varEmpty;
+end;
+
 { TNowFunc }
 
 procedure TNowFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
@@ -223,73 +355,96 @@ end;
 // DoEvalAsString
 //
 procedure TDateTimeToStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
-var
-   dt : Double;
 begin
-   dt:=args.AsFloat[0];
-   if (dt<-693592) or (dt>2146790052) then
-      raise EConvertError.Create('Invalid date/time');
-   Result:=DateTimeToStr(args.AsFloat[0]);
+   Result:=args.FormatSettings.DateTimeToStr(args.AsFloat[0], TdwsTimeZone(args.AsInteger[1]));
 end;
 
 { TStrToDateTimeFunc }
 
 procedure TStrToDateTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+var
+   s : String;
 begin
-   Result:=StrToDateTime(args.AsString[0]);
+   s:=args.AsString[0];
+   if not args.FormatSettings.TryStrToDateTime(s, Result, TdwsTimeZone(args.AsInteger[1])) then
+      DateTimeConversionError(s);
 end;
 
 { TStrToDateTimeDefFunc }
 
 procedure TStrToDateTimeDefFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+var
+   def : Double;
 begin
-   Result:=StrToDateTimeDef(args.AsString[0], args.AsFloat[1]);
+   def:=args.AsFloat[1];
+   if not args.FormatSettings.TryStrToDateTime(args.AsString[0], Result, TdwsTimeZone(args.AsInteger[2])) then
+      Result:=def;
+end;
+
+{ TParseDateTimeFunc }
+
+procedure TParseDateTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   if not args.FormatSettings.TryStrToDateTime(args.AsString[0], args.AsString[1], Result, TdwsTimeZone(args.AsInteger[2])) then
+      Result:=0;
 end;
 
 { TDateToStrFunc }
 
-// DoEvalAsString
-//
 procedure TDateToStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
-   Result:=DateToStr(args.AsFloat[0]);
+   Result:=args.FormatSettings.DateToStr(args.AsFloat[0], TdwsTimeZone(args.AsInteger[1]));
 end;
 
 { TStrToDateFunc }
 
 procedure TStrToDateFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+var
+   s : String;
 begin
-   Result:=StrToDate(args.AsString[0]);
+   s:=args.AsString[0];
+   if not args.FormatSettings.TryStrToDate(args.AsString[0], Result, TdwsTimeZone(args.AsInteger[1])) then
+      DateTimeConversionError(s);
 end;
 
 { TStrToDateDefFunc }
 
 procedure TStrToDateDefFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+var
+   def : Double;
 begin
-   Result:=StrToDateDef(args.AsString[0], args.AsFloat[1]);
+   def:=args.AsFloat[1];
+   if not args.FormatSettings.TryStrToDate(args.AsString[0], Result, TdwsTimeZone(args.AsInteger[2])) then
+      Result:=def;
 end;
 
 { TTimeToStrFunc }
 
-// DoEvalAsString
-//
 procedure TTimeToStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
-   Result:=TimeToStr(args.AsFloat[0]);
+   Result:=args.FormatSettings.TimeToStr(args.AsFloat[0], TdwsTimeZone(args.AsInteger[1]));
 end;
 
 { TStrToTimeFunc }
 
 procedure TStrToTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+var
+   s : String;
 begin
-   Result:=StrToTime(args.AsString[0]);
+   s:=args.AsString[0];
+   if not args.FormatSettings.TryStrToTime(s, Result, TdwsTimeZone(args.AsInteger[1])) then
+      DateTimeConversionError(s);
 end;
 
 { TStrToTimeDefFunc }
 
 procedure TStrToTimeDefFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+var
+   def : Double;
 begin
-   Result:=StrToTimeDef(args.AsString[0], args.AsFloat[1]);
+   def:=args.AsFloat[1];
+   if not args.FormatSettings.TryStrToTime(args.AsString[0], Result, TdwsTimeZone(args.AsInteger[2])) then
+      Result:=def;
 end;
 
 { TDateToISO8601Func }
@@ -333,7 +488,7 @@ end;
 //
 procedure TFormatDateTimeFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
-   Result:=FormatDateTime(args.AsString[0], args.AsFloat[1]);
+   Result:=args.FormatSettings.FormatDateTime(args.AsString[0], args.AsFloat[1], TdwsTimeZone(args.AsInteger[2]));
 end;
 
 { TIsLeapYearFunc }
@@ -368,7 +523,8 @@ end;
 
 procedure TEncodeDateFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
-   Result:=EncodeDate(args.AsInteger[0], args.AsInteger[1], args.AsInteger[2]);
+   Result:=args.FormatSettings.EncodeDate(args.AsInteger[0], args.AsInteger[1], args.AsInteger[2],
+                                          TdwsTimeZone(args.AsInteger[3]));
 end;
 
 { TDecodeTimeFunc }
@@ -626,6 +782,8 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+   dwsInternalUnit.AddSymbolsRegistrationProc(RegisterFormatSettings);
+
    RegisterInternalFloatFunction(TNowFunc, 'Now', []);
    RegisterInternalFloatFunction(TDateFunc, 'Date', []);
    RegisterInternalFloatFunction(TTimeFunc, 'Time', []);
@@ -634,30 +792,32 @@ initialization
 
    RegisterInternalFloatFunction(TUTCDateTimeFunc, 'UTCDateTime', []);
 
-   RegisterInternalStringFunction(TDateTimeToStrFunc, 'DateTimeToStr', ['dt', cDateTime], [iffStateLess]);
-   RegisterInternalFloatFunction(TStrToDateTimeFunc, 'StrToDateTime', ['str', SYS_STRING]);
-   RegisterInternalFloatFunction(TStrToDateTimeDefFunc, 'StrToDateTimeDef', ['str', SYS_STRING, 'def', cDateTime]);
+   RegisterInternalFloatFunction(TParseDateTimeFunc, 'ParseDateTime', ['fmt', SYS_STRING, 'str', SYS_STRING, 'utc=0', SYS_DATE_TIME_ZONE]);
 
-   RegisterInternalStringFunction(TDateToStrFunc, 'DateToStr', ['dt', cDateTime]);
-   RegisterInternalFloatFunction(TStrToDateFunc, 'StrToDate', ['str', SYS_STRING], [iffStateLess]);
-   RegisterInternalFloatFunction(TStrToDateDefFunc, 'StrToDateDef', ['str', SYS_STRING, 'def', cDateTime]);
+   RegisterInternalStringFunction(TDateTimeToStrFunc, 'DateTimeToStr', ['dt', cDateTime, 'utc=0', SYS_DATE_TIME_ZONE]);
+   RegisterInternalFloatFunction(TStrToDateTimeFunc, 'StrToDateTime', ['str', SYS_STRING, 'utc=0', SYS_DATE_TIME_ZONE]);
+   RegisterInternalFloatFunction(TStrToDateTimeDefFunc, 'StrToDateTimeDef', ['str', SYS_STRING, 'def', cDateTime, 'utc=0', SYS_DATE_TIME_ZONE]);
+
+   RegisterInternalStringFunction(TDateToStrFunc, 'DateToStr', ['dt', cDateTime, 'utc=0', SYS_DATE_TIME_ZONE]);
+   RegisterInternalFloatFunction(TStrToDateFunc, 'StrToDate', ['str', SYS_STRING, 'utc=0', SYS_DATE_TIME_ZONE]);
+   RegisterInternalFloatFunction(TStrToDateDefFunc, 'StrToDateDef', ['str', SYS_STRING, 'def', cDateTime, 'utc=0', SYS_DATE_TIME_ZONE]);
 
    RegisterInternalStringFunction(TDateToISO8601Func, 'DateToISO8601', ['dt', cDateTime]);
    RegisterInternalStringFunction(TDateTimeToISO8601Func, 'DateTimeToISO8601', ['dt', cDateTime]);
    RegisterInternalFloatFunction(TISO8601ToDateTimeFunc, 'ISO8601ToDateTime', ['s', SYS_STRING]);
 
-   RegisterInternalStringFunction(TTimeToStrFunc, 'TimeToStr', ['dt', cDateTime]);
-   RegisterInternalFloatFunction(TStrToTimeFunc, 'StrToTime', ['str', SYS_STRING], [iffStateLess]);
-   RegisterInternalFloatFunction(TStrToTimeDefFunc, 'StrToTimeDef', ['str', SYS_STRING, 'def', cDateTime]);
+   RegisterInternalStringFunction(TTimeToStrFunc, 'TimeToStr', ['dt', cDateTime, 'utc=0', SYS_DATE_TIME_ZONE]);
+   RegisterInternalFloatFunction(TStrToTimeFunc, 'StrToTime', ['str', SYS_STRING, 'utc=0', SYS_DATE_TIME_ZONE]);
+   RegisterInternalFloatFunction(TStrToTimeDefFunc, 'StrToTimeDef', ['str', SYS_STRING, 'def', cDateTime, 'utc=0', SYS_DATE_TIME_ZONE]);
 
    RegisterInternalIntFunction(TDayOfWeekFunc, 'DayOfWeek', ['dt', cDateTime]);
    RegisterInternalIntFunction(TDayOfTheWeekFunc, 'DayOfTheWeek', ['dt', cDateTime]);
-   RegisterInternalStringFunction(TFormatDateTimeFunc, 'FormatDateTime', ['frm', SYS_STRING, 'dt', cDateTime]);
+   RegisterInternalStringFunction(TFormatDateTimeFunc, 'FormatDateTime', ['frm', SYS_STRING, 'dt', cDateTime, 'utc=0', SYS_DATE_TIME_ZONE]);
    RegisterInternalBoolFunction(TIsLeapYearFunc, 'IsLeapYear', ['year', SYS_INTEGER]);
-   RegisterInternalFloatFunction(TIncMonthFunc, 'IncMonth', ['dt', cDateTime, 'nb', SYS_INTEGER]);
-   RegisterInternalProcedure(TDecodeDateFunc, 'DecodeDate', ['dt', cDateTime, '@y', SYS_INTEGER, '@m', SYS_INTEGER, '@d', SYS_INTEGER]);
-   RegisterInternalFloatFunction(TEncodeDateFunc, 'EncodeDate', ['y', SYS_INTEGER, 'm', SYS_INTEGER, 'd', SYS_INTEGER], [iffStateLess]);
-   RegisterInternalProcedure(TDecodeTimeFunc, 'DecodeTime', ['dt', cDateTime, '@h', SYS_INTEGER, '@m', SYS_INTEGER, '@s', SYS_INTEGER, '@ms', SYS_INTEGER]);
+   RegisterInternalFloatFunction(TIncMonthFunc, 'IncMonth', ['dt', cDateTime, 'nb', SYS_INTEGER, 'utc=0', SYS_DATE_TIME_ZONE]);
+   RegisterInternalProcedure(TDecodeDateFunc, 'DecodeDate', ['dt', cDateTime, '@y', SYS_INTEGER, '@m', SYS_INTEGER, '@d', SYS_INTEGER, 'utc=0', SYS_DATE_TIME_ZONE]);
+   RegisterInternalFloatFunction(TEncodeDateFunc, 'EncodeDate', ['y', SYS_INTEGER, 'm', SYS_INTEGER, 'd', SYS_INTEGER, 'utc=0', SYS_DATE_TIME_ZONE]);
+   RegisterInternalProcedure(TDecodeTimeFunc, 'DecodeTime', ['dt', cDateTime, '@h', SYS_INTEGER, '@m', SYS_INTEGER, '@s', SYS_INTEGER, '@ms', SYS_INTEGER, 'utc=0', SYS_DATE_TIME_ZONE]);
    RegisterInternalFloatFunction(TEncodeTimeFunc, 'EncodeTime', ['h', SYS_INTEGER, 'm', SYS_INTEGER, 's', SYS_INTEGER, 'ms', SYS_INTEGER], [iffStateLess]);
 
    RegisterInternalFloatFunction(TFirstDayOfYearFunc, 'FirstDayOfYear', ['dt', cDateTime]);

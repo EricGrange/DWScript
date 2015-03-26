@@ -214,9 +214,10 @@ begin
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 11);
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
-   CheckTrue(sugg.Count>2, 'column 11');
-   CheckEquals('Pi', sugg.Code[0], 'sugg 11, 0');
-   CheckEquals('PixmapToJPEGData', sugg.Code[1], 'sugg 11, 1');
+   CheckTrue(sugg.Count>3, 'column 11');
+   CheckEquals('ParseDateTime', sugg.Code[0], 'sugg 11, 0');
+   CheckEquals('Pi', sugg.Code[1], 'sugg 11, 1');
+   CheckEquals('PixmapToJPEGData', sugg.Code[2], 'sugg 11, 2');
 
    scriptPos.Col:=12;
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
@@ -229,7 +230,7 @@ begin
    CheckTrue(sugg.Count>10, 'column 8');
    CheckEquals('Boolean', sugg.Code[0], 'sugg 8, 0');
    CheckEquals('CompilerVersion', sugg.Code[1], 'sugg 8, 1');
-   CheckEquals('EAssertionFailed', sugg.Code[2], 'sugg 8, 2');
+   CheckEquals('DateTimeZone', sugg.Code[2], 'sugg 8, 2');
 
    scriptPos.Col:=9;
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);

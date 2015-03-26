@@ -24,7 +24,7 @@ unit dwsSymbols;
 interface
 
 uses SysUtils, Variants, Classes,
-   dwsStrings, dwsErrors, dwsUtils,
+   dwsStrings, dwsErrors, dwsUtils, dwsDateTime,
    dwsTokenizer, dwsStack, dwsXPlatform, dwsDataContext
    {$ifdef FPC},LazUTF8{$endif};
 
@@ -1114,6 +1114,8 @@ type
          FVisibility : TdwsVisibility;
 
       public
+         constructor Create(const aName : UnicodeString; aType : TTypeSymbol; aVisibility :  TdwsVisibility);
+
          function QualifiedName : UnicodeString; override;
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
 
@@ -1679,6 +1681,8 @@ type
 
          FRandSeed : UInt64;
 
+         FFormatSettings : TdwsFormatSettings;
+
       protected
          function  GetDebugger : IDebugger;
          procedure SetDebugger(const aDebugger : IDebugger);
@@ -1696,6 +1700,8 @@ type
          function GetStack : TStack;
 
          function GetProgramState : TProgramState;
+
+         function GetFormatSettings : TdwsFormatSettings;
 
       public
          constructor Create(const stackParams : TStackParameters);
@@ -1721,7 +1727,7 @@ type
          procedure DataContext_Create(const data : TData; addr : Integer; var Result : IDataContext); inline;
          procedure DataContext_CreateBase(addr : Integer; var Result : IDataContext); inline;
          procedure DataContext_CreateLevel(level, addr : Integer; var Result : IDataContext); inline;
-         function DataContext_Nil : IDataContext; inline;
+         function  DataContext_Nil : IDataContext; inline;
 
          procedure LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : UnicodeString); virtual;
          procedure LocalizeString(const aString : UnicodeString; var Result : UnicodeString); virtual;
@@ -1748,6 +1754,8 @@ type
 
          // per-execution randseed
          property RandSeed : UInt64 read FRandSeed write SetRandSeed;
+
+         property FormatSettings : TdwsFormatSettings read GetFormatSettings;
 
          // specifies an external object for IInfo constructors, temporary
          property ExternalObject : TObject read FExternalObject write FExternalObject;
@@ -2958,6 +2966,14 @@ end;
 // ------------------
 // ------------------ TClassVarSymbol ------------------
 // ------------------
+
+// Create
+//
+constructor TClassVarSymbol.Create(const aName : UnicodeString; aType : TTypeSymbol; aVisibility :  TdwsVisibility);
+begin
+   inherited Create(aName, aType);
+   Visibility:=aVisibility;
+end;
 
 // QualifiedName
 //
@@ -6655,6 +6671,7 @@ begin
    FExceptionObjectStack.Free;
    FStack.Finalize;
    FCallStack.Free;
+   FFormatSettings.Free;
    inherited;
 end;
 
@@ -6767,6 +6784,15 @@ end;
 function TdwsExecution.GetProgramState : TProgramState;
 begin
    Result:=FProgramState;
+end;
+
+// GetFormatSettings
+//
+function TdwsExecution.GetFormatSettings : TdwsFormatSettings;
+begin
+   if FFormatSettings=nil then
+      FFormatSettings:=TdwsFormatSettings.Create;
+   Result:=FFormatSettings;
 end;
 
 // GetExecutionObject

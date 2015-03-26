@@ -24,3 +24,4 @@
 /Demos/ISAPI
 /Demos/SynopseWebServer/www
 /Test/SimpleScripts/*.jstxt
+*.jstxt

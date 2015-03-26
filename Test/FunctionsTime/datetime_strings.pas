@@ -1,3 +1,5 @@
+FormatSettings.Zone := DateTimeZone.UTC;
+
 var d = EncodeDate(2011, 2, 21) + EncodeTime(13, 34, 45, 567);
 
 if Abs(StrToDate(DateToStr(d))-Int(d))<>0 then PrintLn('Date roundtrip failed');

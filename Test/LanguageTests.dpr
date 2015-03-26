@@ -55,7 +55,8 @@ uses
   UInstantiateTests in 'UInstantiateTests.pas',
   UdwsWebUtilsTests in 'UdwsWebUtilsTests.pas',
   UdwsGraphicsTests in 'UdwsGraphicsTests.pas',
-  dwsJSONPath in '..\Source\dwsJSONPath.pas';
+  dwsJSONPath in '..\Source\dwsJSONPath.pas',
+  dwsDateTime in '..\Source\dwsDateTime.pas';
 
 {$R *.res}
 

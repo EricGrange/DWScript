@@ -59,6 +59,7 @@ type
          function ReferencesVariable(varSymbol : TDataSymbol) : Boolean; override;
 
          function SameDataExpr(expr : TTypedExpr) : Boolean; override;
+         function DataSymbol : TDataSymbol; override;
 
          property StackAddr : Integer read FStackAddr;
          property DataSym : TDataSymbol read FDataSym write FDataSym;
@@ -145,6 +146,12 @@ type
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
 
          property Level : Integer read FLevel;
+   end;
+
+   TExternalVarExpr = class(TVarExpr)
+      public
+         function IsExternal : Boolean; override;
+         function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // Encapsulates a lazy parameter
@@ -1256,6 +1263,13 @@ type
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
+   // external left := right
+   TAssignExternalExpr = class(TAssignExpr)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+   end;
+
    // left := [constant array];
    TAssignArrayConstantExpr = class(TAssignDataExpr)
       public
@@ -1724,6 +1738,9 @@ type
    end;
 
    TStringInOpExpr = class (TInOpExpr)
+      private
+         procedure PrepareSortedStrings; virtual;
+
       public
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
@@ -1738,7 +1755,7 @@ type
       private
          FSortedStrings : TFastCompareStringList;
 
-         procedure PrepareSortedStrings;
+         procedure PrepareSortedStrings; override;
 
       public
          destructor Destroy; override;
@@ -2116,7 +2133,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsStringFunctions;
+uses dwsStringFunctions, dwsExternalSymbols;
 
 type
    // this needs to be in a helper (or more precisely implemented at the top of this unit)
@@ -2201,6 +2218,13 @@ end;
 function TVarExpr.ReferencesVariable(varSymbol : TDataSymbol) : Boolean;
 begin
    Result:=(FDataSym=varSymbol);
+end;
+
+// DataSymbol
+//
+function TVarExpr.DataSymbol : TDataSymbol;
+begin
+   Result:=FDataSym;
 end;
 
 // SameDataExpr
@@ -4156,6 +4180,7 @@ begin
             sioe:=TStringInOpStaticSetExpr.Create(prog, Left)
          else sioe:=TStringInOpExpr.Create(prog, Left);
          TransferFieldsAndFree(sioe);
+         sioe.PrepareSortedStrings;
          Exit(sioe);
       end;
 
@@ -4237,6 +4262,13 @@ begin
    Result:=False;
 end;
 
+// PrepareSortedStrings
+//
+procedure TStringInOpExpr.PrepareSortedStrings;
+begin
+   // nothing here (yet)
+end;
+
 // ------------------
 // ------------------ TIntegerInOpExpr ------------------
 // ------------------
@@ -4292,8 +4324,6 @@ var
    i : Integer;
    value : UnicodeString;
 begin
-   if FSortedStrings=nil then
-      PrepareSortedStrings;
    FLeft.EvalAsString(exec, value);
    Result:=FSortedStrings.Find(value, i);
 end;
@@ -5375,12 +5405,13 @@ var
    subIntExpr : TSubIntExpr;
    rightClassType : TClass;
 begin
-   if FRight.IsConstant then
+   if FRight.IsConstant then begin
       Exit(OptimizeConstAssignment(prog, exec));
+   end;
 
    Result:=Self;
    rightClassType:=FRight.ClassType;
-   if FLeft.InheritsFrom(TVarExpr) then begin
+   if FLeft.InheritsFrom(TVarExpr)then begin
       leftVarExpr:=TVarExpr(FLeft);
       if leftVarExpr.ClassType=TIntVarExpr then begin
          if rightClassType=TAddIntExpr then begin
@@ -5403,6 +5434,9 @@ begin
             end;
          end;
       end else if leftVarExpr.ClassType=TStrVarExpr then begin
+         if (leftVarExpr.DataSym is TClassVarSymbol) and TClassVarSymbol(leftVarExpr.DataSym).OwnerSymbol.IsExternal then begin
+            Exit;
+         end;
          if rightClassType=TAddStrExpr then begin
             addStrExpr:=TAddStrExpr(FRight);
             if (addStrExpr.Left is TVarExpr) and (addStrExpr.Left.ReferencesVariable(leftVarExpr.DataSym)) then begin
@@ -9315,6 +9349,56 @@ end;
 function TArrayConcatExpr.GetArgs(index : Integer) : TTypedExpr;
 begin
    Result:=FAddExpr.ArgExpr[index];
+end;
+
+// ------------------
+// ------------------ TExternalVarExpr ------------------
+// ------------------
+
+// IsExternal
+//
+function TExternalVarExpr.IsExternal : Boolean;
+begin
+   Result:=True;
+end;
+
+// Eval
+//
+function TExternalVarExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   handled : Boolean;
+begin
+   handled:=False;
+   TExternalSymbolHandler.HandleEval(exec, dataSym, handled, Result);
+   if not handled then
+      raise EdwsExternalFuncHandler.Create('Unsupported external variable access');
+end;
+
+// ------------------
+// ------------------ TAssignExternalExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TAssignExternalExpr.EvalNoResult(exec : TdwsExecution);
+var
+   handled : Boolean;
+   dataSym : TDataSymbol;
+begin
+   dataSym:=Left.DataSymbol;
+   if dataSym<>nil then begin
+      handled:=False;
+      TExternalSymbolHandler.HandleAssign(exec, dataSym, Right, handled);
+      if handled then exit;
+   end;
+   raise EdwsExternalFuncHandler.Create('Unsupported external variable assignment');
+end;
+
+// Optimize
+//
+function TAssignExternalExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   Result:=Self;
 end;
 
 end.

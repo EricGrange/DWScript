@@ -53,6 +53,7 @@ type
    TSourcePostConditions = class;
    TBlockExprBase = class;
    TProgramExpr = class;
+   TDataExpr = class;
 
    TVariantDynArray = array of Variant;
 
@@ -1074,7 +1075,10 @@ type
          procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
-         function IsWritable: Boolean; virtual;
+         function IsWritable : Boolean; virtual;
+         function IsExternal : Boolean; virtual;
+
+         function DataSymbol : TDataSymbol; virtual;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); virtual; abstract;
 
@@ -4215,6 +4219,20 @@ end;
 function TDataExpr.IsWritable: Boolean;
 begin
    Result:=True;
+end;
+
+// IsExternal
+//
+function TDataExpr.IsExternal : Boolean;
+begin
+   Result:=False;
+end;
+
+// DataSymbol
+//
+function TDataExpr.DataSymbol : TDataSymbol;
+begin
+   Result:=nil;
 end;
 
 // GetDataPtrFunc

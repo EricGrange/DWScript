@@ -152,6 +152,8 @@ type
 // 64bit system clock reference in milliseconds, absolute value is maningless
 function GetSystemMilliseconds : Int64;
 function UTCDateTime : TDateTime;
+// UTC = LocalTime + Bias
+function LocalTimeBias : TDateTime;
 
 {$ifndef FPC}
 function UnicodeFormat(const fmt : UnicodeString; const args : array of const) : UnicodeString;
@@ -299,6 +301,21 @@ begin
               +EncodeTime(wHour, wMinute, wSecond, wMilliseconds);
 {$ELSE}
    Not yet implemented!
+{$ENDIF}
+end;
+
+// LocalTimeBias
+//
+function LocalTimeBias : TDateTime;
+{$IFDEF Windows}
+var
+   tzInfo : TTimeZoneInformation;
+begin
+   GetTimeZoneInformation(tzInfo);
+   Result:=tzInfo.Bias*(1/24/60);
+{$ELSE}
+begin
+   Result:=0; // TODO!
 {$ENDIF}
 end;
 

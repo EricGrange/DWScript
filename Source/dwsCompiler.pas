@@ -1204,8 +1204,7 @@ var
 begin
    CheckName(name, namePos);
 
-   cvs:=TClassVarSymbol.Create(name, typ);
-   cvs.Visibility:=FVisibility;
+   cvs:=TClassVarSymbol.Create(name, typ, FVisibility);
    cvs.AllocateStackAddr(FCompiler.FProg.Table.AddrGenerator);
    if externalName<>'' then
       cvs.ExternalName:=externalName;
@@ -11719,7 +11718,9 @@ end;
 //
 function TdwsCompiler.GetVarExpr(dataSym: TDataSymbol): TVarExpr;
 begin
-   if FProg.Level=dataSym.Level then begin
+   if (dataSym.ClassType=TClassVarSymbol) and (TClassVarSymbol(dataSym).OwnerSymbol.IsExternal) then
+      Result:=TExternalVarExpr.Create(FProg, dataSym)
+   else if FProg.Level=dataSym.Level then begin
       if FDataSymbolExprReuse<>nil then begin
          Result:=FDataSymbolExprReuse.GetValue(dataSym);
          if Result=nil then begin
@@ -12458,7 +12459,9 @@ begin
                      IncompatibleTypes(scriptPos, CPE_AssignIncompatibleTypes,
                                        right.Typ, left.Typ);
                end else begin
-                  Result:=TAssignExpr.Create(FProg, scriptPos, FExec, left, right);
+                  if left.IsExternal then
+                     Result:=TAssignExternalExpr.Create(FProg, scriptPos, FExec, left, right)
+                  else Result:=TAssignExpr.Create(FProg, scriptPos, FExec, left, right);
                end;
             end;
          end;

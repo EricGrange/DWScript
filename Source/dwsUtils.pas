@@ -756,6 +756,8 @@ type
                             originalException : Exception);
    end;
 
+   PFormatSettings = ^TFormatSettings;
+
 const
    cMSecToDateTime : Double = 1/(24*3600*1000);
 
@@ -787,6 +789,8 @@ function StrDeleteRight(const aStr : UnicodeString; n : Integer) : UnicodeString
 
 function StrAfterChar(const aStr : UnicodeString; aChar : WideChar) : UnicodeString;
 function StrBeforeChar(const aStr : UnicodeString; aChar : WideChar) : UnicodeString;
+
+function StrReplaceChar(const aStr : UnicodeString; oldChar, newChar : WideChar) : UnicodeString;
 
 function StrCountChar(const aStr : UnicodeString; c : WideChar) : Integer;
 
@@ -2123,6 +2127,18 @@ begin
    if p>0 then
       Result:=Copy(aStr, 1, p-1)
    else Result:=aStr;
+end;
+
+// StrReplaceChar
+//
+function StrReplaceChar(const aStr : UnicodeString; oldChar, newChar : WideChar) : UnicodeString;
+var
+   i : Integer;
+begin
+   Result:=aStr;
+   for i:=1 to Length(Result) do
+      if Result[i]=oldChar then
+         Result[i]:=newChar;
 end;
 
 // StrCountChar

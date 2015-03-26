@@ -24,7 +24,7 @@ unit dwsExprList;
 interface
 
 uses
-   dwsUtils,
+   dwsUtils, dwsXPlatform, dwsDateTime,
    dwsSymbols;
 
 type
@@ -76,12 +76,14 @@ type
          function GetAsDataString(const x : Integer) : RawByteString;
          procedure SetAsDataString(const x : Integer; const value : RawByteString);
          function GetAsFileName(const x : Integer) : UnicodeString;
+         function GetFormatSettings : TdwsFormatSettings; inline;
 
       public
          property ListRec : TExprBaseListRec write SetListRec;
          property List : PObjectTightList read FList;
          property Count : Integer read FCount;
          property Exec : TdwsExecution read FExec write FExec;
+         property FormatSettings : TdwsFormatSettings read GetFormatSettings;
 
          property ExprBase[const x : Integer] : TExprBase read GetExprBase write SetExprBase; default;
 
@@ -267,6 +269,13 @@ end;
 function TExprBaseListExec.GetAsFileName(const x : Integer) : UnicodeString;
 begin
    Result:=Exec.ValidateFileName(AsString[x]);
+end;
+
+// GetFormatSettings
+//
+function TExprBaseListExec.GetFormatSettings : TdwsFormatSettings;
+begin
+   Result:=Exec.FormatSettings;
 end;
 
 // EvalAsVariant
