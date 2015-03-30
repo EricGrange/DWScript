@@ -1,3 +1,6 @@
+Errors >>>>
+Hint: Empty THEN block [line: 27, column: 11]
+Result >>>>
 False
 True
 True

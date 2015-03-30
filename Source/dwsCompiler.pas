@@ -6291,16 +6291,23 @@ begin
       if not FTok.TestDelete(ttTHEN) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ThenExpected);
 
+      if FTok.Test(ttSEMI) then
+         FMsgs.AddCompilerHint(FTok.HotPos, CPH_EmptyThenBlock);
+
       if FTok.TestDelete(ttELSE) then begin // if () then else;
 
+         FMsgs.AddCompilerHint(FTok.HotPos, CPH_EmptyThenBlock);
          condExpr:=TNotBoolExpr.Create(FProg, condExpr);
          thenExpr:=ReadBlock;
 
       end else begin
 
          thenExpr:=ReadBlock;
-         if FTok.TestDelete(ttELSE) then
+         if FTok.TestDelete(ttELSE) then begin
+               if FTok.Test(ttSEMI) then
+               FMsgs.AddCompilerHint(FTok.HotPos, CPH_EmptyElseBlock);
             elseExpr:=ReadBlock;
+         end;
 
       end;
 
@@ -12654,7 +12661,7 @@ begin
    if opSym=nil then Exit;
 
    if opSym.BinExprClass<>nil then begin
-      Result:=TBinaryOpExprClass(opSym.BinExprClass).Create(FProg, scriptPos, aLeft, aRight)
+      Result:=TBinaryOpExprClass(opSym.BinExprClass).Create(FProg, scriptPos, aLeft, aRight);
    end else if opSym.UsesSym<>nil then begin
       if opSym.UsesSym is TMethodSymbol then
          funcExpr:=CreateMethodExpr(FProg, TMethodSymbol(opSym.UsesSym), aLeft, rkObjRef, scriptPos)

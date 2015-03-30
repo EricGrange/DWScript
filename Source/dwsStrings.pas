@@ -357,6 +357,9 @@ const
 
   CPH_UnnamedEnumerationElement = 'Enumeration element is unnamed or out of range';
 
+  CPH_EmptyThenBlock = 'Empty THEN block';
+  CPH_EmptyElseBlock = 'Empty ELSE block';
+
   // TypeCheck
   CPE_BooleanExpected = 'Boolean expected';
   CPE_IntegerExpected = 'Integer expected';

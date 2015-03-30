@@ -1,0 +1,6 @@
+Errors >>>>
+Hint: Empty THEN block [line: 1, column: 14]
+Hint: Empty THEN block [line: 2, column: 15]
+Hint: Empty THEN block [line: 3, column: 14]
+Hint: Empty THEN block [line: 4, column: 15]
+Result >>>>

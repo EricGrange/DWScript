@@ -1,2 +1,4 @@
 Syntax Error: Object expected [line: 2, column: 6]
+Hint: Empty THEN block [line: 2, column: 20]
 Syntax Error: Object expected [line: 3, column: 17]
+Hint: Empty THEN block [line: 3, column: 31]

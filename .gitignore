@@ -25,3 +25,5 @@
 /Demos/SynopseWebServer/www
 /Test/SimpleScripts/*.jstxt
 *.jstxt
+/Test/Algorithms/debug
+/Libraries/SimpleServer/Test
