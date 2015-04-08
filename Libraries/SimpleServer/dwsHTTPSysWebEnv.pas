@@ -70,6 +70,7 @@ type
          property Request : PHTTP_REQUEST_V2 read FRequest write SetRequest;
 
          function RemoteIP : String; override;
+         procedure GetRemoteIP(var ip : RawByteString);
          function RemoteIP_UTF8 : PAnsiChar;
          function RemoteIP_UTF8_Length : Integer;
 
@@ -79,6 +80,7 @@ type
          function MethodVerb : TWebRequestMethodVerb; override;
          function Security : String; override;
 
+         function ContentSize : Integer; override;
          function ContentData : RawByteString; override;
          function ContentType : RawByteString; override;
 
@@ -330,13 +332,22 @@ begin
    Result:=UTF8ToString(RemoteIP_UTF8);
 end;
 
+// GetRemoteIP
+//
+procedure THttpSysWebRequest.GetRemoteIP(var ip : RawByteString);
+begin
+   if not (prepIP_UTF8 in FPrepared) then
+      PrepareIP_UTF8;
+
+   ip:=FIP_UTF8;
+end;
+
 // RemoteIP_UTF8
 //
 function THttpSysWebRequest.RemoteIP_UTF8 : PAnsiChar;
 begin
    if not (prepIP_UTF8 in FPrepared) then
       PrepareIP_UTF8;
-
    Result:=Pointer(FIP_UTF8);
 end;
 
@@ -400,6 +411,13 @@ begin
    if request^.pSslInfo<>nil then
       Result:=Format('SSL, %d bits', [request^.pSslInfo^.ConnectionKeySize*8])
    else Result:='';
+end;
+
+// ContentSize
+//
+function THttpSysWebRequest.ContentSize : Integer;
+begin
+   Result:=Length(InContent);
 end;
 
 // ContentData

@@ -99,6 +99,7 @@ type
          function MethodVerb : TWebRequestMethodVerb; virtual; abstract;
          function Security : String; virtual;
 
+         function ContentSize : Integer; virtual; abstract;
          function ContentData : RawByteString; virtual; abstract;
          function ContentType : RawByteString; virtual; abstract;
 
@@ -152,6 +153,7 @@ type
          FHeaders : TStrings;
          FCookies : TWebResponseCookies;  // lazy initialization
          FCompression : Boolean;
+         FProcessingTime : Integer;
 
       protected
          procedure SetContentText(const textType : RawByteString; const text : String);
@@ -178,6 +180,9 @@ type
          property Cookies : TWebResponseCookies read GetCookies;
          property Compression : Boolean read FCompression write FCompression;
          property LastModified : TDateTime write SetLastModified;
+
+         // optional, informative, time it took to process the response in microseconds
+         property ProcessingTime : Integer read FProcessingTime write FProcessingTime;
    end;
 
    IWebEnvironment = interface
