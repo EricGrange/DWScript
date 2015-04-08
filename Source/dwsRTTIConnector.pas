@@ -223,7 +223,7 @@ type
 
    TdwsRTTIMethodType = (mtMethod, mtPropertyGet, mtPropertySet);
 
-   TdwsRTTIConnectorCall = class(TInterfacedSelfObject, IUnknown, IConnectorCall)
+   TdwsRTTIConnectorCall = class(TInterfacedSelfObject, IUnknown, IConnectorCall, IConnectorArgsCall)
       private
          FMethodName : String;
          FMethodType : TdwsRTTIMethodType;
@@ -237,7 +237,7 @@ type
                             methodType : TdwsRTTIMethodType);
    end;
 
-   TdwsRTTIConnectorMember = class(TInterfacedSelfObject, IUnknown, IConnectorMember)
+   TdwsRTTIConnectorMember = class(TInterfacedSelfObject, IUnknown, IConnectorMember, IConnectorDataMember)
       protected
          FMemberName : String;
 
@@ -248,7 +248,7 @@ type
          constructor Create(const memberName : String);
    end;
 
-   TdwsRTTIConnectorIndexedProperty = class(TInterfacedSelfObject, IUnknown, IConnectorCall)
+   TdwsRTTIConnectorIndexedProperty = class(TInterfacedSelfObject, IUnknown, IConnectorCall, IConnectorArgsCall)
       private
          FPropertyName : String;
          FMethodType : TdwsRTTIMethodType;
