@@ -758,6 +758,28 @@ type
 
    PFormatSettings = ^TFormatSettings;
 
+   TPooledObject = class
+      private
+         FNext : TPooledObject;
+
+      public
+         constructor Create; virtual;
+         destructor Destroy; override;
+   end;
+
+   TPool<T:TPooledObject,constructor> = record
+      private
+         FRoot : T;
+         FLock : TMultiReadSingleWrite;
+
+      public
+         procedure Initialize;
+         procedure Finalize;
+
+         function Acquire : T;
+         procedure Release(const obj : T);
+   end;
+
 const
    cMSecToDateTime : Double = 1/(24*3600*1000);
 
@@ -4876,6 +4898,79 @@ begin
             QuickSort(minIndex, j);
          minIndex:=i;
       until i>=maxIndex;
+   end;
+end;
+
+// ------------------
+// ------------------ TPooledObject ------------------
+// ------------------
+
+// Create
+//
+constructor TPooledObject.Create;
+begin
+   // nothing, just to introduce virtual construction
+end;
+
+// Destroy
+//
+destructor TPooledObject.Destroy;
+begin
+   inherited;
+   FreeAndNil(FNext);
+end;
+
+// ------------------
+// ------------------ TPool<T> ------------------
+// ------------------
+
+// Initialize
+//
+procedure TPool<T>.Initialize;
+begin
+   FRoot:=nil;
+   FLock:=TMultiReadSingleWrite.Create;
+end;
+
+// Finalize
+//
+procedure TPool<T>.Finalize;
+var
+   next : T;
+begin
+   FreeAndNil(FRoot);
+   FreeAndNil(FLock);
+end;
+
+// Acquire
+//
+function TPool<T>.Acquire : T;
+begin
+   Result:=nil;
+   FLock.BeginWrite;
+   try
+      if FRoot<>nil then begin
+         Result:=FRoot;
+         FRoot:=T(Result.FNext);
+      end;
+   finally
+      FLock.EndWrite;
+   end;
+   if Result=nil then
+      Result:=T.Create
+   else Result.FNext:=nil;
+end;
+
+// Release
+//
+procedure TPool<T>.Release(const obj : T);
+begin
+   FLock.BeginWrite;
+   try
+      obj.FNext:=FRoot;
+      FRoot:=obj;
+   finally
+      FLock.EndWrite;
    end;
 end;
 
