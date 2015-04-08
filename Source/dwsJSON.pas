@@ -57,8 +57,9 @@ type
          procedure EndArray; virtual;
 
          function  WriteName(const aName : UnicodeString) : TdwsJSONWriter; virtual;
-         procedure WriteString(const str : UnicodeString); overload;
+         procedure WriteString(const str : UnicodeString); overload; inline;
          procedure WriteString(const name, str : UnicodeString); overload; inline;
+         procedure WriteString(const p : PWideChar); overload;
          procedure WriteNumber(const n : Double); overload;
          procedure WriteNumber(const name : UnicodeString; const n : Double); overload; inline;
          procedure WriteInteger(const n : Int64); overload;
@@ -425,7 +426,8 @@ type
    EdwsJSONParseError = class (EdwsJSONException);
    EdwsJSONWriterError = class (EdwsJSONException);
 
-procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : UnicodeString);
+procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : UnicodeString); overload; inline;
+procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; p : PWideChar); overload;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -774,6 +776,13 @@ end;
 // WriteJavaScriptString
 //
 procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : UnicodeString);
+begin
+   WriteJavaScriptString(destStream, PWideChar(Pointer(str)));
+end;
+
+// WriteJavaScriptString
+//
+procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; p : PWideChar); overload;
 
    procedure WriteUTF16(destStream : TWriteOnlyBlockStream; c : Integer);
    const
@@ -795,10 +804,8 @@ const
    cQUOTE : WideChar = '"';
 var
    c : WideChar;
-   p : PWideChar;
 begin
    destStream.Write(cQUOTE, SizeOf(WideChar));
-   p:=PWideChar(Pointer(str));
    if p<>nil then while True do begin
       c:=p^;
       case Ord(c) of
@@ -2461,9 +2468,7 @@ end;
 //
 procedure TdwsJSONWriter.WriteString(const str : UnicodeString);
 begin
-   BeforeWriteImmediate;
-   WriteJavaScriptString(FStream, str);
-   AfterWriteImmediate;
+   WriteString(PWideChar(Pointer(str)));
 end;
 
 // WriteString
@@ -2471,6 +2476,15 @@ end;
 procedure TdwsJSONWriter.WriteString(const name, str : UnicodeString);
 begin
    WriteName(name).WriteString(str);
+end;
+
+// WriteString
+//
+procedure TdwsJSONWriter.WriteString(const p : PWideChar);
+begin
+   BeforeWriteImmediate;
+   WriteJavaScriptString(FStream, p);
+   AfterWriteImmediate;
 end;
 
 // WriteNumber
