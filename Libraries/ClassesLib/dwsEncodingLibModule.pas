@@ -40,6 +40,9 @@ type
     { Public declarations }
   end;
 
+function Base58Encode(const data : RawByteString) : String;
+function Base58Decode(const data : String) : RawByteString;
+
 implementation
 
 {$R *.dfm}
