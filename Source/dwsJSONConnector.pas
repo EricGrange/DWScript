@@ -1056,6 +1056,8 @@ begin
       Result:=TAssignBoxJSONExpr.Create(prog, aScriptPos, exec, left, right);
 
    if Result=nil then begin
+      prog.CompileMsgs.AddCompilerErrorFmt(aScriptPos, CPE_AssignIncompatibleTypes,
+                                           [right.Typ.Caption, left.Typ.Caption]);
       left.Free;
       right.Free;
    end;

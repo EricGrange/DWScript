@@ -12462,9 +12462,6 @@ begin
                   end;
                end else if leftTyp is TConnectorSymbol then begin
                   Result:=TConnectorSymbol(leftTyp).CreateAssignExpr(FProg, scriptPos, FExec, left, right);
-                  if Result=nil then
-                     IncompatibleTypes(scriptPos, CPE_AssignIncompatibleTypes,
-                                       right.Typ, left.Typ);
                end else begin
                   if left.IsExternal then
                      Result:=TAssignExternalExpr.Create(FProg, scriptPos, FExec, left, right)
