@@ -61,6 +61,8 @@ type
          FQueryFields : TStrings;
          FContentFields : TStrings;
          FCustom : TObject;
+         FID : Int64;
+         FAppUser : String;
 
       protected
          FPathInfo : String;
@@ -120,6 +122,10 @@ type
          property Authentication : TWebRequestAuthentication read GetAuthentication;
          property AuthenticatedUser : String read GetAuthenticatedUser;
 
+         // custom request ID
+         property ID : Int64 read FID write FID;
+         // custom Application User
+         property AppUser : String read FAppUser write FAppUser;
          // custom object field, freed with the request
          property Custom : TObject read FCustom write FCustom;
    end;
