@@ -508,9 +508,9 @@ type
 
    TThreadCached<T> = class
       private
-         FLock : TFixedCriticalSection;
-         FExpiresAt : TDateTime;
-         FMaxAge : TDateTime;
+         FLock : TMultiReadSingleWrite;
+         FExpiresAt : Int64;
+         FMaxAge : Int64;
          FOnNeedValue : TSimpleCallback<T>;
          FValue : T;
 
@@ -525,6 +525,7 @@ type
          procedure Invalidate;
 
          property Value : T read GetValue write SetValue;
+         property MaxAge : Int64 read FMaxAge;
    end;
 
    // TSimpleQueue<T>
@@ -4206,9 +4207,9 @@ end;
 //
 constructor TThreadCached<T>.Create(const aNeedValue : TSimpleCallback<T>; maxAgeMSec : Integer);
 begin
-   FLock:=TFixedCriticalSection.Create;
+   FLock:=TMultiReadSingleWrite.Create;
    FOnNeedValue:=aNeedValue;
-   FMaxAge:=maxAgeMSec*cMSecToDateTime;
+   FMaxAge:=maxAgeMSec;
 end;
 
 // Destroy
@@ -4229,18 +4230,25 @@ end;
 //
 function TThreadCached<T>.GetValue : T;
 var
-   ts : TDateTime;
+   ts : Int64;
 begin
-   FLock.Enter;
-   try
-      ts:=Now;
-      if ts>=FExpiresAt then begin
+   ts:=GetSystemMilliseconds;
+   if ts>=FExpiresAt then begin
+      FLock.BeginWrite;
+      try
          if FOnNeedValue(FValue)=csContinue then
             FExpiresAt:=ts+FMaxAge;
+         Result:=FValue;
+      finally
+         FLock.EndWrite;
       end;
-      Result:=FValue;
-   finally
-      FLock.Leave;
+   end else begin
+      FLock.BeginRead;
+      try
+         Result:=FValue;
+      finally
+         FLock.EndRead;
+      end;
    end;
 end;
 
@@ -4248,12 +4256,12 @@ end;
 //
 procedure TThreadCached<T>.SetValue(const v : T);
 begin
-   FLock.Enter;
+   FLock.BeginWrite;
    try
-      FExpiresAt:=Now+FMaxAge;
+      FExpiresAt:=GetSystemMilliseconds+FMaxAge;
       FValue:=v;
    finally
-      FLock.Leave;
+      FLock.EndWrite;
    end;
 end;
 
