@@ -766,18 +766,20 @@ type
          constructor Create; virtual;
          destructor Destroy; override;
    end;
+   TPooledObjectClass = class of TPooledObject;
 
-   TPool<T:TPooledObject,constructor> = record
+   TPool = record
       private
-         FRoot : T;
+         FRoot : TPooledObject;
+         FPoolClass : TPooledObjectClass;
          FLock : TMultiReadSingleWrite;
 
       public
-         procedure Initialize;
+         procedure Initialize(aClass : TPooledObjectClass);
          procedure Finalize;
 
-         function Acquire : T;
-         procedure Release(const obj : T);
+         function Acquire : TPooledObject;
+         procedure Release(const obj : TPooledObject);
    end;
 
 const
@@ -4921,49 +4923,49 @@ begin
 end;
 
 // ------------------
-// ------------------ TPool<T> ------------------
+// ------------------ TPool ------------------
 // ------------------
 
 // Initialize
 //
-procedure TPool<T>.Initialize;
+procedure TPool.Initialize(aClass : TPooledObjectClass);
 begin
    FRoot:=nil;
+   FPoolClass:=aClass;
    FLock:=TMultiReadSingleWrite.Create;
 end;
 
 // Finalize
 //
-procedure TPool<T>.Finalize;
-var
-   next : T;
+procedure TPool.Finalize;
 begin
    FreeAndNil(FRoot);
    FreeAndNil(FLock);
+   FPoolClass:=nil;
 end;
 
 // Acquire
 //
-function TPool<T>.Acquire : T;
+function TPool.Acquire : TPooledObject;
 begin
    Result:=nil;
    FLock.BeginWrite;
    try
       if FRoot<>nil then begin
          Result:=FRoot;
-         FRoot:=T(Result.FNext);
+         FRoot:=Result.FNext;
       end;
    finally
       FLock.EndWrite;
    end;
    if Result=nil then
-      Result:=T.Create
+      Result:=FPoolClass.Create
    else Result.FNext:=nil;
 end;
 
 // Release
 //
-procedure TPool<T>.Release(const obj : T);
+procedure TPool.Release(const obj : TPooledObject);
 begin
    FLock.BeginWrite;
    try
