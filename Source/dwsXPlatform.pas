@@ -218,6 +218,8 @@ function TtoObject(const T): TObject; inline;
 function TtoPointer(const T): Pointer; inline;
 procedure GetMemForT(var T; Size: integer); inline;
 
+procedure InitializeWithDefaultFormatSettings(var fmt : TFormatSettings);
+
 // Functions missing in D2009
 {$ifdef FPC}
    {$define NEED_FindDelimiter}
@@ -935,6 +937,17 @@ end;
 procedure GetMemForT(var T; Size: integer); inline;
 begin
   GetMem(Pointer(T), Size);
+end;
+
+// InitializeWithDefaultFormatSettings
+//
+procedure InitializeWithDefaultFormatSettings(var fmt : TFormatSettings);
+begin
+   {$ifdef DELPHI_XE_PLUS}
+   fmt:=SysUtils.FormatSettings;
+   {$else}
+   fmt:=SysUtils.TFormatSettings((@CurrencyString)^);
+   {$endif}
 end;
 
 // FindDelimiter

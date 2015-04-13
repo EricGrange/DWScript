@@ -71,7 +71,7 @@ implementation
 constructor TdwsFormatSettings.Create;
 begin
    inherited;
-   Self.Settings:=SysUtils.FormatSettings;
+   InitializeWithDefaultFormatSettings(Self.Settings);
    TimeZone:=tzLocal;
 end;
 
