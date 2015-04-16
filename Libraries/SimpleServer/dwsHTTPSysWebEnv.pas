@@ -44,6 +44,8 @@ type
          FAuthentication : TWebRequestAuthentication;
          FAuthenticatedUser : String;
 
+         FURL : String;
+
          FHeaders : TStrings;
 
          FIP_UTF8 : RawByteString;
@@ -57,6 +59,7 @@ type
          function  GetHeaders : TStrings; override;
 
          procedure PrepareAuthenticationInfo;
+         procedure PrepareURL;
          procedure PrepareHeaders;
          procedure PrepareIP_UTF8;
 
@@ -80,7 +83,7 @@ type
          function MethodVerb : TWebRequestMethodVerb; override;
          function Security : String; override;
 
-         function ContentSize : Integer; override;
+         function ContentLength : Integer; override;
          function ContentData : RawByteString; override;
          function ContentType : RawByteString; override;
 
@@ -197,7 +200,7 @@ begin
    SetString(FQueryString, p, n div SizeOf(Char));
 
    FPrepared:=[];
-
+   FURL:='';
    ResetCookies;
    ResetFields;
 end;
@@ -228,6 +231,13 @@ begin
             FAuthentication:=wraFailed;
       end;
    end;
+end;
+
+// PrepareURL
+//
+procedure THttpSysWebRequest.PrepareURL;
+begin
+   FURL:=UTF8ToString(UrlDecode(Request^.pRawUrl));
 end;
 
 // PrepareHeaders
@@ -372,7 +382,9 @@ end;
 //
 function THttpSysWebRequest.URL : String;
 begin
-   Result:=UTF8ToString(UrlDecode(Request^.pRawUrl));
+   if FURL='' then
+      PrepareURL;
+   Result:=FURL;
 end;
 
 // Method
@@ -413,9 +425,9 @@ begin
    else Result:='';
 end;
 
-// ContentSize
+// ContentLength
 //
-function THttpSysWebRequest.ContentSize : Integer;
+function THttpSysWebRequest.ContentLength : Integer;
 begin
    Result:=Length(InContent);
 end;

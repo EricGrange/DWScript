@@ -100,8 +100,9 @@ type
          function Method : String; virtual; abstract;
          function MethodVerb : TWebRequestMethodVerb; virtual; abstract;
          function Security : String; virtual;
+         function Host : String; virtual;
 
-         function ContentSize : Integer; virtual; abstract;
+         function ContentLength : Integer; virtual; abstract;
          function ContentData : RawByteString; virtual; abstract;
          function ContentType : RawByteString; virtual; abstract;
 
@@ -378,6 +379,13 @@ begin
    Result:='';
 end;
 
+// Host
+//
+function TWebRequest.Host : String;
+begin
+   Result:=Headers.Values['Host'];
+end;
+
 // GetCookies
 //
 function TWebRequest.GetCookies : TStrings;
@@ -602,7 +610,7 @@ begin
       end;
    end;
 
-   if MaxAge<>0 then begin
+   if MaxAge>0 then begin
       dest.WriteString('; Max-Age=');
       dest.WriteString(MaxAge);
    end;

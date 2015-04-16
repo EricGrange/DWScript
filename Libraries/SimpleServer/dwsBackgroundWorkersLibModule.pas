@@ -59,7 +59,7 @@ type
          function Method : String; override;
          function MethodVerb : TWebRequestMethodVerb; override;
 
-         function ContentSize : Integer; override;
+         function ContentLength : Integer; override;
          function ContentData : RawByteString; override;
          function ContentType : RawByteString; override;
 
@@ -118,9 +118,9 @@ begin
    Result:=wrmvPOST
 end;
 
-// ContentSize
+// ContentLength
 //
-function TWorkWebRequest.ContentSize : Integer;
+function TWorkWebRequest.ContentLength : Integer;
 begin
    Result:=Length(Data);
 end;
