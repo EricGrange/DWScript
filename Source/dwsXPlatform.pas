@@ -77,9 +77,19 @@ type
          function TryEnter : Boolean;
    end;
 
+   IMultiReadSingleWrite = interface
+      procedure BeginRead;
+      function  TryBeginRead : Boolean;
+      procedure EndRead;
+
+      procedure BeginWrite;
+      function  TryBeginWrite : Boolean;
+      procedure EndWrite;
+   end;
+
    TMultiReadSingleWriteState = (mrswUnlocked, mrswReadLock, mrswWriteLock);
 
-   TMultiReadSingleWrite = class
+   TMultiReadSingleWrite = class (TInterfacedObject, IMultiReadSingleWrite)
       private
          FCS : TFixedCriticalSection; // used as fallback
          FSRWLock : Pointer;
