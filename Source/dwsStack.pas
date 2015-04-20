@@ -383,12 +383,9 @@ begin
    varData:=@Data[SourceAddr];
    if varData.VType=varDouble then
       Result:=varData.VDouble
-   else begin
-      Assert(varData.VType=varInt64);
-      Result:=varData.VInt64;
-   end;
-//   Assert(varData.VType=varDouble);
-//   Result:=varData.VDouble;
+   else if varData.VType=varInt64 then
+      Result:=varData.VInt64
+   else Result:=PVariant(varData)^;
 end;
 
 // ReadFloatValue_BaseRelative
@@ -400,10 +397,9 @@ begin
    varData:=@FBaseData[SourceAddr];
    if varData.VType=varDouble then
       Result:=varData.VDouble
-   else begin
-      Assert(varData.VType=varInt64);
-      Result:=varData.VInt64;
-   end;
+   else if varData.VType=varInt64 then
+      Result:=varData.VInt64
+   else Result:=PVariant(varData)^;
 end;
 
 // ReadStrValue

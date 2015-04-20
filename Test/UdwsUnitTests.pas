@@ -74,6 +74,7 @@ type
          procedure DoWriteVar(info: TProgramInfo; const value : Variant);
          procedure DoReadVar42(info: TProgramInfo; var value : Variant);
          procedure DoReadVarIncMagic(info: TProgramInfo; var value : Variant);
+         procedure DoReadVarDateTime(info: TProgramInfo; var value : Variant);
    end;
 
 
@@ -107,6 +108,7 @@ type
          procedure CallFuncPointVarParam;
          procedure CallFuncPointArray;
          procedure PredefinedVar;
+         procedure VarDateTime;
          procedure AssignTest;
          procedure PredefinedArray;
          procedure PredefinedRecord;
@@ -644,6 +646,11 @@ begin
    v.Name:='LifeUniverseEverything';
    v.DataType:='Integer';
    v.OnReadVar:=DoReadVar42;
+
+   v:=FUnit.Variables.Add;
+   v.Name:='vDateTime';
+   v.DataType:='Variant';
+   v.OnReadVar:=DoReadVarDateTime;
 end;
 
 // DeclareTestArrays
@@ -1064,6 +1071,16 @@ procedure TdwsUnitTestsContext.DoReadVarIncMagic(info: TProgramInfo; var value :
 begin
    FMagicVar:=FMagicVar+'+1';
    value:=FMagicVar;
+end;
+
+// DoReadVarDateTime
+//
+procedure TdwsUnitTestsContext.DoReadVarDateTime(info: TProgramInfo; var value : Variant);
+var
+   t : TDateTime;
+begin
+   t:=Now;
+   value:=t;
 end;
 
 // ------------------
@@ -1695,6 +1712,30 @@ begin
    finally
       exec.EndProgram;
    end;
+end;
+
+// VarDateTime
+//
+procedure TdwsUnitTests.VarDateTime;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'var t := Now;'#13#10
+                           +'PrintLn(Round(t-vDateTime));'#13#10
+                           +'if vDateTime>t+1 then PrintLn("bug1");'#13#10
+                           +'if vDateTime<t-1 then PrintLn("bug2");'#13#10
+                           +'var v := vDateTime;'#13#10
+                           +'PrintLn(Round(t-v));'#13#10
+                           +'if v>t+1 then PrintLn("bug3");'#13#10
+                           +'if v<t-1 then PrintLn("bug4");'#13#10
+                           );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.Execute;
+
+   CheckEquals('0'#13#10'0'#13#10, exec.Result.ToString, 'Result');
 end;
 
 // AssignTest
