@@ -75,6 +75,7 @@ type
          procedure PartialClassParent;
          procedure ConstantAliasing;
          procedure ExternalVariables;
+         procedure ExternalClassVariable;
          procedure TypeOfProperty;
          procedure MethodFree;
          procedure MethodDestroy;
@@ -83,6 +84,9 @@ type
          procedure ExceptionInInitialization;
          procedure ExceptionInFinalization;
          procedure CaseOfBuiltinHelper;
+         procedure CompilerInternals;
+         procedure CompilerAbort;
+         procedure InitializationFinalization;
    end;
 
    ETestException = class (Exception);
@@ -267,7 +271,9 @@ procedure TCornerCasesTests.DoOnResource(compiler : TdwsCompiler; const resName 
 begin
    FLastResource:=resName;
    if resName='missing' then
-      compiler.Msgs.AddCompilerError(compiler.Tokenizer.HotPos, 'Missing resource');
+      compiler.Msgs.AddCompilerError(compiler.Tokenizer.HotPos, 'Missing resource')
+   else if resName='abort' then
+      compiler.AbortCompilation;
 end;
 
 // ReExec
@@ -1618,6 +1624,27 @@ begin
    CheckEquals('c', TDataSymbol(sym).ExternalName, 'c');
 end;
 
+// ExternalClassVariable
+//
+procedure TCornerCasesTests.ExternalClassVariable;
+var
+   prog : IdwsProgram;
+   sym : TSymbol;
+begin
+   prog:=FCompiler.Compile('type TTest = class'#13#10
+                           +'class var a external "alpha" : String;'#13#10
+                           +'end;');
+
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   sym:=prog.Table.FindSymbol('TTest', cvMagic);
+   CheckEquals(TClassSymbol.ClassName, sym.ClassType.ClassName, 'TTest');
+
+   sym:=TClassSymbol(sym).Members.FindSymbol('a', cvMagic);
+   CheckEquals(TClassVarSymbol.ClassName, sym.ClassType.ClassName, 'a');
+   Check(TClassVarSymbol(sym).HasExternalName, 'alpha');
+end;
+
 // TypeOfProperty
 //
 procedure TCornerCasesTests.TypeOfProperty;
@@ -1802,6 +1829,57 @@ begin
    CheckEquals('bbb', prog.Msgs.AsInfo, 'enums & sets');
 *)
    FCompiler.Config.HintsLevel:=hlNormal;
+end;
+
+// CompilerInternals
+//
+procedure TCornerCasesTests.CompilerInternals;
+var
+   c : IdwsCompiler;
+begin
+   c:=FCompiler.Compiler;
+
+   // this test is most meaningful when run after other tests
+
+   CheckTrue(c.Msgs=nil, 'Msgs');
+   CheckTrue(c.Tokenizer=nil, 'Tokenizer');
+   CheckTrue(c.ExternalFunctionsManager=nil, 'External');
+   CheckEquals(TdwsCompilerExecution.ClassName, c.CompileTimeExecution.ClassName, 'Exec');
+end;
+
+// CompilerAbort
+//
+procedure TCornerCasesTests.CompilerAbort;
+var
+   prog : IdwsProgram;
+begin
+   FCompiler.OnResource:=DoOnResource;
+
+   prog:=FCompiler.Compile( 'var a := 1;'#13#10
+                           +'{$R "abort"}'#13#10
+                           +'bug bug bug');
+
+   CheckEquals('Syntax Error: Compilation aborted [line: 3, column: 1]'#13#10, prog.Msgs.AsInfo, 'array');
+
+   FCompiler.OnResource:=nil;
+end;
+
+// InitializationFinalization
+//
+procedure TCornerCasesTests.InitializationFinalization;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'unit Test; '#13#10
+                           +'interface'#13#10
+                           +'implementation'#13#10
+                           +'initialization'#13#10
+                           +'Print("hello");'#13#10
+                           +'finalization');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'no finalization compile');
+
+   CheckEquals('hello', prog.Execute.Result.ToString, 'no finalization exec');
 end;
 
 // ------------------------------------------------------------------

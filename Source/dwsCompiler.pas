@@ -2330,6 +2330,7 @@ begin
       if CurrentUnitSymbol<>nil then begin
          // this is a normal unit
          if initializationBlock<>nil then begin
+            Assert(CurrentUnitSymbol<>nil);
             CurrentUnitSymbol.InitializationExpr:=initializationBlock;
             initializationBlock:=nil;
          end;
@@ -9986,11 +9987,6 @@ begin
             else rightTyp:=right.Typ;
             try
                case tt of
-                  ttIN : begin
-
-                     Result := ReadExprIn(Result);
-
-                  end;
                   ttIS : begin
 
                      if not (Result.Typ is TClassSymbol) then
