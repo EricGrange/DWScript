@@ -20,6 +20,7 @@ interface
 
 uses
    Classes, SysUtils, StrUtils, DateUtils,
+   SynCrtSock,
    dwsExprs, dwsUtils, dwsWebUtils;
 
 type

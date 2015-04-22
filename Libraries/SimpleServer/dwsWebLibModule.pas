@@ -21,8 +21,8 @@ interface
 uses
    Windows, WinInet, Variants,
    SysUtils, Classes, StrUtils,
-   dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList, dwsSymbols,
-   SynZip, SynCrtSock, SynCommons;
+   SynZip, SynCrtSock, SynCommons,
+   dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList, dwsSymbols;
 
 type
   TdwsWebLib = class(TDataModule)
@@ -125,10 +125,11 @@ type
    THttpQueryMethod = (hqmGET, hqmPOST, hqmPUT, hqmDELETE);
 
    TdwsWinHTTP = class (TWinHTTP)
-      FAuthScheme : TWebRequestAuthentication;
-      FUserName : String;
-      FPassword : String;
-      procedure InternalSendRequest(const aData: RawByteString); override;
+      protected
+         FAuthScheme : TWebRequestAuthentication;
+         FUserName : String;
+         FPassword : String;
+         procedure InternalSendRequest(const aData: SockString); override;
    end;
 
 function WinHttpSetCredentials(hRequest: HINTERNET;
@@ -150,7 +151,7 @@ const
 
 // InternalSendRequest
 //
-procedure TdwsWinHTTP.InternalSendRequest(const aData: RawByteString);
+procedure TdwsWinHTTP.InternalSendRequest(const aData: SockString);
 var
    winAuth : DWORD;
 begin
@@ -180,7 +181,7 @@ const
 var
    query : TdwsWinHTTP;
    uri : TURI;
-   headers, buf, mimeType : RawByteString;
+   headers, buf, mimeType : SockString;
    p1, p2 : Integer;
 begin
    if uri.From(url) then begin
@@ -529,7 +530,7 @@ var
    strm : TZStream;
    tmp : RawByteString;
 begin
-   strm.Init;
+   StreamInit(strm);
    strm.next_in := Pointer(data);
    strm.avail_in := Length(data);
    SetString(tmp, nil, strm.avail_in+256+strm.avail_in shr 3); // max mem required
@@ -554,7 +555,7 @@ var
    code, len : integer;
    tmp : RawByteString;
 begin
-   strm.Init;
+   StreamInit(strm);
    strm.next_in := Pointer(data);
    strm.avail_in := Length(data);
    len := (strm.avail_in*20) shr 3; // initial chunk size = comp. ratio of 60%

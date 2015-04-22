@@ -63,7 +63,7 @@ type
    // - to be used with THttpSocket.RegisterCompress method
    // - type is a generic AnsiString, which should be in practice a
    // RawByteString or a RawByteString
-   THttpSocketCompress = function(var Data : RawByteString; Compress : boolean) : RawByteString;
+   THttpSocketCompress = function(var DataRawByteString; Compress : boolean) : AnsiString;
 
    /// used to maintain a list of known compression algorithms
    THttpSocketCompressRec = record
