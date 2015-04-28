@@ -177,7 +177,7 @@ const
          // List of extensions that go through the script filter
          +'"ScriptedExtensions": [".dws"],'
          // List of extensions that go through the Pascal To JavaScript  filter
-         +'"P2JSExtensions": [".p2js"]'
+         +'"P2JSExtensions": [".p2js",".pas.js"]'
       +'}';
 
 // ------------------------------------------------------------------

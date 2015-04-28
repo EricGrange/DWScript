@@ -25,7 +25,7 @@ uses
    dwsJSON;
 
 type
-   TdwsWindowsService = class (TService)
+   TdwsWindowsService = class (TServiceSingle)
       private
          FOptions : TdwsJSONValue;
 

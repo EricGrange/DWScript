@@ -1,0 +1,22 @@
+<html><body>
+
+<h3 style="color:blue">Hello OP4JS with Uses!</h3>
+
+<div>
+   <h4>Table goes here</h4>
+   <div id='inject'></div>
+</div>
+
+<script type="pascal">
+uses WebAPI;
+
+Document.writeln('Hello Document.writeln');
+</script>
+
+<script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js'></script>
+<script src='js/JqTable.p2js'></script>
+<script>
+makeTable('#inject');
+</script>
+
+</body></html>

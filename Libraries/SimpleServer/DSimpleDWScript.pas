@@ -277,6 +277,7 @@ begin
    TdwsJSLibModule.Create(Self).Script:=FJSCompiler;
    FJSCompiler.OnNeedUnit:=DoNeedUnit;
    FJSCompiler.OnInclude:=DoInclude;
+   FJSCompiler.Config.CompileFileSystem:=dwsCompileSystem;
    FJSCompiler.Config.CompilerOptions:=[
       coOptimize, coAssertions, coSymbolDictionary, coContextMap, coExplicitUnitUses,
       coVariablesAsVarOnly, coAllowClosures
@@ -410,7 +411,7 @@ begin
    end else begin
       js:=FJSFilter.CompileToJS(prog, '');
    end;
-   if prog.Msgs.HasErrors then
+   if (prog<>nil) and prog.Msgs.HasErrors then
       Handle500(response, prog.Msgs)
    else begin
       response.ContentData:='(function(){'#13#10+UTF8Encode(js)+'})();'#13#10;
@@ -585,24 +586,12 @@ end;
 //
 procedure TSimpleDWScript.LogCompileErrors(const fileName : String;const msgs : TdwsMessageList);
 var
-   fs : TFileStream;
-   logFile, buf : String;
-   bufUTF8 : RawByteString;
+   buf : String;
 begin
    buf := #13#10+FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', Now)
          +' in '+fileName+#13#10
          +msgs.AsInfo+#13#10;
-   bufUTF8 := UTF8Encode(buf);
-   logFile := ErrorLogDirectory+'error.log';
-   if FileExists(logFile) then
-      fs:=TFileStream.Create(logFile, fmOpenWrite or fmShareDenyNone)
-   else fs:=TFileStream.Create(logFile, fmCreate);
-   try
-      fs.Seek(0, soFromEnd);
-      fs.Write(bufUTF8[1], Length(bufUTF8));
-   finally
-      fs.Free;
-   end;
+   AppendTextToUTF8File(ErrorLogDirectory+'error.log', UTF8Encode(buf));
 end;
 
 // AddNotMatching

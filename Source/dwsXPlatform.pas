@@ -210,6 +210,7 @@ function LoadTextFromBuffer(const buf : TBytes) : UnicodeString;
 function LoadTextFromStream(aStream : TStream) : UnicodeString;
 function LoadTextFromFile(const fileName : UnicodeString) : UnicodeString;
 procedure SaveTextToUTF8File(const fileName, text : UnicodeString);
+procedure AppendTextToUTF8File(const fileName : String; const text : UTF8String);
 function OpenFileForSequentialReadOnly(const fileName : UnicodeString) : THandle;
 function OpenFileForSequentialWriteOnly(const fileName : UnicodeString) : THandle;
 procedure CloseFileHandle(hFile : THandle);
@@ -803,6 +804,24 @@ begin
             RaiseLastOSError;
    finally
       FileClose(hFile);
+   end;
+end;
+
+// AppendTextToUTF8File
+//
+procedure AppendTextToUTF8File(const fileName : String; const text : UTF8String);
+var
+   fs : TFileStream;
+begin
+   if text='' then Exit;
+   if FileExists(fileName) then
+      fs:=TFileStream.Create(fileName, fmOpenWrite or fmShareDenyNone)
+   else fs:=TFileStream.Create(fileName, fmCreate);
+   try
+      fs.Seek(0, soFromEnd);
+      fs.Write(text[1], Length(text));
+   finally
+      fs.Free;
    end;
 end;
 

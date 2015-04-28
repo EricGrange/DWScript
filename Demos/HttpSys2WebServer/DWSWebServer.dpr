@@ -140,13 +140,38 @@ begin
    end;
 end;
 
+procedure LogServiceError(options : TdwsJSONValue; const msg : String); overload;
 var
-   optionsFileName, url : String;
+   log : String;
+begin
+   if options<>nil then begin
+      log:=options['Server']['DWSErrorLogDirectory'].AsString;
+      if log<>'' then begin
+         log:=IncludeTrailingPathDelimiter(log)+'service.log';
+         AppendTextToUTF8File(log, UTF8Encode(FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz ', Now)+msg+#13#10));
+      end;
+   end;
+   case GetStdHandle(STD_ERROR_HANDLE) of
+      0, INVALID_HANDLE_VALUE : ;
+   else
+      WriteLn(ErrOutput, msg);
+   end;
+end;
+
+procedure LogServiceError(options : TdwsJSONValue; E: Exception); overload;
+begin
+   LogServiceError(options, E.ClassName+': '+E.Message);
+end;
+
+
+var
+   optionsFileName, url, log : String;
    options : TdwsJSONValue;
    service : TWebServerHttpService;
 begin
+   options:=nil;
    if Win32MajorVersion<6 then begin
-      writeln('This program requires at least Windows 2008 or Vista');
+      LogServiceError(options, 'This program requires at least Windows 2008 or Vista');
       exit;
    end;
 
@@ -158,56 +183,58 @@ begin
          options:=TdwsJSONValue.ParseFile(optionsFileName);
       except
          on E: Exception do begin
-            Writeln('Invalid options.json:');
-            Writeln(E.Message);
-            exit;
+            LogServiceError(options, 'Invalid options.json '+E.Message);
+            Exit;
          end;
       end;
    end else options:=TdwsJSONObject.Create;
    service:=TWebServerHttpService.Create(options);
    try
-      if ParamCount<>0 then begin
-         service.ExecuteCommandLineParameters;
-         Exit;
-      end;
-
-      if service.LaunchedBySCM then begin
-
-         // started as service
-         ServicesRun;
-         TdwsSystemInfoLibModule.RunningAsService:=True;
-
-      end else begin
-
-         // started as application
-         try
-            service.DoStart(service);
-         except
-            on E: Exception do begin
-               Writeln(E.ClassName, ': ', E.Message);
-               Exit;
-            end;
+      try
+         if ParamCount<>0 then begin
+            service.ExecuteCommandLineParameters;
+            Exit;
          end;
 
-         writeln('Server is now running on');
-         if service.Server.HttpPort>0 then
-            writeln('http://', service.Server.HttpDomainName, ':', service.Server.HttpPort, '/');
-         if service.Server.HttpsPort>0 then
-            writeln('https://', service.Server.HttpsDomainName, ':', service.Server.HttpsPort, '/');
-         writeln;
-         writeln('Press [Enter] to quit');
-         readln;
+         if service.LaunchedBySCM then begin
 
+            // started as service
+            TdwsSystemInfoLibModule.RunningAsService:=True;
+            ServicesRun;
+
+         end else begin
+
+            // started as application
+            try
+               service.DoStart(service);
+            except
+               on E: Exception do begin
+                  LogServiceError(options, E);
+                  Exit;
+               end;
+            end;
+
+            writeln('Server is now running on');
+            if service.Server.HttpPort>0 then
+               writeln('http://', service.Server.HttpDomainName, ':', service.Server.HttpPort, '/');
+            if service.Server.HttpsPort>0 then
+               writeln('https://', service.Server.HttpsDomainName, ':', service.Server.HttpsPort, '/');
+            writeln;
+            writeln('Press [Enter] to quit');
+            readln;
+
+         end;
+      except
+         on E: Exception do
+            LogServiceError(options, E);
       end;
-   finally
+   finally
       try
          service.Free;
          options.Free;
       except
-         on E: Exception do begin
-            WriteLn(E.ClassName, ': ', E.Message);
-            ReadLn;
-         end;
+         on E: Exception do
+            LogServiceError(options, E);
       end;
    end;
 end.

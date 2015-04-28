@@ -2330,7 +2330,6 @@ begin
       if CurrentUnitSymbol<>nil then begin
          // this is a normal unit
          if initializationBlock<>nil then begin
-            Assert(CurrentUnitSymbol<>nil);
             CurrentUnitSymbol.InitializationExpr:=initializationBlock;
             initializationBlock:=nil;
          end;

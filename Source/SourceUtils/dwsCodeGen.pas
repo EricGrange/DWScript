@@ -228,7 +228,8 @@ type
          destructor Destroy; override;
 
          procedure RegisterCodeGen(expr : TExprBaseClass; codeGen : TdwsExprCodeGen);
-         function  FindCodeGen(expr : TExprBase) : TdwsExprCodeGen;
+         function  FindCodeGen(expr : TExprBase) : TdwsExprCodeGen; overload;
+         function  FindCodeGen(exprClass : TExprBaseClass) : TdwsExprCodeGen; overload;
          function  FindSymbolAtStackAddr(stackAddr, level : Integer) : TDataSymbol; deprecated;
          function  SymbolMappedName(sym : TSymbol; scope : TdwsCodeGenSymbolScope) : String; virtual;
 
@@ -323,11 +324,16 @@ type
    end;
 
    TdwsExprCodeGen = class abstract
+      private
+         FOwner : TdwsCodeGen;
+
       public
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); virtual;
          procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); virtual;
 
          class function ExprIsConstantInteger(expr : TExprBase; value : Integer) : Boolean; static;
+
+         property Owner : TdwsCodeGen read FOwner;
    end;
 
    ECodeGenException = class (Exception);
@@ -427,18 +433,26 @@ begin
    reg.Expr:=expr;
    reg.CodeGen:=codeGen;
    FCodeGenList.Add(reg);
+   codeGen.FOwner:=Self;
 end;
 
 // FindCodeGen
 //
 function TdwsCodeGen.FindCodeGen(expr : TExprBase) : TdwsExprCodeGen;
-var
-   i : Integer;
 begin
    Result:=DoCustomCodeGen(expr);
    if Result<>nil then Exit;
 
-   FTempReg.Expr:=TExprBaseClass(expr.ClassType);
+   Result:=FindCodeGen(TExprBaseClass(expr.ClassType));
+end;
+
+// FindCodeGen
+//
+function TdwsCodeGen.FindCodeGen(exprClass : TExprBaseClass) : TdwsExprCodeGen;
+var
+   i : Integer;
+begin
+   FTempReg.Expr:=exprClass;
    if FCodeGenList.Find(FTempReg, i) then
       Result:=FCodeGenList.Items[i].CodeGen
    else Result:=nil;
