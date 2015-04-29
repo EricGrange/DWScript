@@ -10148,7 +10148,7 @@ begin
    try
       repeat
          tt:=FTok.TestDeleteAny([ttTIMES, ttDIVIDE, ttMOD, ttDIV, ttAND,
-                                 ttCARET, ttAS, ttLESSLESS, ttGTRGTR,
+                                 ttCARET, ttAS, ttLESSLESS, ttGTRGTR, ttQUESTIONQUESTION,
                                  ttSHL, ttSHR, ttSAR]);
          if tt=ttNone then Break;
 
@@ -10193,6 +10193,25 @@ begin
                      Result:=TClassAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(rightTyp));
                   end;
                   right.Free;
+               end;
+               ttQUESTIONQUESTION : begin
+                  rightTyp:=right.Typ;
+                  if not Result.Typ.IsCompatible(rightTyp) then begin
+                     IncompatibleTypes(hotPos, CPE_IncompatibleTypes, Result.Typ, rightTyp);
+                     // fake result to keep compiler going and report further issues
+                     Result:=TBinaryOpExpr.Create(FProg, hotPos, Result, right);
+                     Result.Typ:=FProg.TypVariant;
+                  end else if Result.Typ.IsOfType(FProg.TypVariant) then begin
+                     Result:=TCoalesceExpr.Create(FProg, hotPos, Result, right);
+                     Result.Typ:=FProg.TypVariant;
+                  end else if Result.Typ.IsOfType(FProg.TypString) then begin
+                     Result:=TCoalesceStrExpr.Create(FProg, hotPos, Result, right);
+                  end else begin
+                     FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
+                     // fake result to keep compiler going and report further issues
+                     Result:=TBinaryOpExpr.Create(FProg, hotPos, Result, right);
+                     Result.Typ:=FProg.TypVariant;
+                  end;
                end;
             else
                opExpr:=CreateTypedOperatorExpr(tt, hotPos, Result, right);

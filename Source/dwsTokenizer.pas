@@ -49,7 +49,7 @@ type
      ttAND, ttOR, ttXOR, ttIMPLIES, ttDIV, ttMOD, ttNOT, ttSHL, ttSHR, ttSAR,
      ttPLUS, ttMINUS,
      ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttTILDE,
-     ttDOLLAR, ttEXCLAMATION, ttQUESTION,
+     ttDOLLAR, ttEXCLAMATION, ttQUESTION, ttQUESTIONQUESTION, ttQUESTIONDOT,
      ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ, ttEQGTR,
      ttLESSLESS, ttGTRGTR, ttPIPE, ttPIPEPIPE, ttAMP, ttAMPAMP,
      ttSEMI, ttCOMMA, ttCOLON,
@@ -318,7 +318,7 @@ const
      'TRUE', 'FALSE',
      'AND', 'OR', 'XOR', 'IMPLIES', 'DIV', 'MOD', 'NOT', 'SHL', 'SHR', 'SAR',
      '+', '-',
-     '*', '/', '%', '^', '@', '~', '$', '!', '?',
+     '*', '/', '%', '^', '@', '~', '$', '!', '?', '??', '?.',
      '=', '<>', '>', '>=', '<', '<=', '=>',
      '<<', '>>', '|', '||', '&', '&&',
      ';', ',', ':',
@@ -702,7 +702,13 @@ begin
       '[': Result := ttALEFT;
       ']': Result := ttARIGHT;
       '!': Result := ttEXCLAMATION;
-      '?': Result := ttQUESTION;
+      '?':
+         if Len=1 then
+            Result := ttQUESTION
+         else if Len=2 then case Buffer[1] of
+            '?' : Result:= ttQUESTIONQUESTION;  // ??
+            '.' : Result:= ttQUESTIONDOT;       // ?.
+         end;
       '=':
          if Len=1 then
             Result := ttEQ

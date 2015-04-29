@@ -37,7 +37,7 @@ type
          sStringDouble, sStringDoubleF : TState;
          sStringIndentDouble, sStringIndentDoubleF : TState;
          sStringIndentSingle, sStringIndentSingleF : TState;
-         sGreaterF, sSmallerF, sEqualF, sDotDot: TState;
+         sGreaterF, sSmallerF, sEqualF, sDotDot, sQuestion : TState;
 
          FCurlyCommentTransition : TTransition;
          FDollarNamesTransition : TTransition;
@@ -163,6 +163,7 @@ begin
    sSmallerF:=CreateState;
    sEqualF:=CreateState;
    sDotDot:=CreateState;
+   sQuestion:=CreateState;
 
    sStart.AddTransition(cSPACE, TSeekTransition.Create(sStart, [], caNone));
    sStart.AddTransition(cNAM, TConsumeTransition.Create(sNameF, [toStart], caNone));
@@ -173,7 +174,8 @@ begin
    sStart.AddTransition(['#'], TSeekTransition.Create(sChar0, [toStart], caNone));
    sStart.AddTransition([':', '+', '-', '*', '@', '%', '^', '|', '~'], TConsumeTransition.Create(sAssign0, [toStart], caNone));
    sStart.AddTransition(['='], TConsumeTransition.Create(sEqualF, [toStart], caNone));
-   sStart.AddTransition(cSPEC-['('], TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
+   sStart.AddTransition(cSPEC-['(', '?'], TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
+   sStart.AddTransition(['?'], TConsumeTransition.Create(sQuestion, [toStart], caNone));
    sStart.AddTransition(['('], TConsumeTransition.Create(sBracketLeft, [toStart], caNone));
    sStart.AddTransition(['/'], TConsumeTransition.Create(sSlashComment0, [toStart], caNone));
    sStart.AddTransition(['<'], TConsumeTransition.Create(sSmallerF, [toStart], caNone));
@@ -365,6 +367,9 @@ begin
 
    sDotDot.AddTransition(['.'], TConsumeTransition.Create(sStart, [toFinal], caDotDot));
    sDotDot.SetElse(TCheckTransition.Create(sStart, [toFinal], caName));
+
+   sQuestion.AddTransition(['?', '.'], TConsumeTransition.Create(sStart, [toFinal], caName));
+   sQuestion.SetElse(TCheckTransition.Create(sStart, [toFinal], caName));
 
    PrepareStates;
 end;

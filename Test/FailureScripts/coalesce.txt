@@ -1,0 +1,5 @@
+Syntax Error: Incompatible types: "Variant" and "class of TObject" [line: 3, column: 11]
+Syntax Error: Incompatible types: "class of TObject" and "Integer" [line: 5, column: 17]
+Syntax Error: Incompatible types: "String" and "Integer" [line: 9, column: 11]
+Syntax Error: Incompatible types: "String" and "Variant" [line: 10, column: 11]
+Syntax Error: Incompatible operands [line: 14, column: 11]

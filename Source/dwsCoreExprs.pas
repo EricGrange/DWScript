@@ -1191,6 +1191,19 @@ type
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
+   // left variant ?? right
+   TCoalesceExpr = class(TBinaryOpExpr)
+      public
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+   end;
+
+   // left ?? right (strings)
+   TCoalesceStrExpr = class(TStringBinOpExpr)
+      public
+         procedure EvalAsString(exec : TdwsExecution; var result : UnicodeString); override;
+        function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+   end;
+
    // Assert(condition, message);
    TAssertExpr = class(TNoResultExpr)
       protected
@@ -5335,6 +5348,67 @@ function TConstStringInVarStringExpr.EvalAsBoolean(exec : TdwsExecution) : Boole
 begin
    Result:=StrContains(exec.Stack.PointerToStringValue_BaseRelative(TStrVarExpr(Right).StackAddr)^,
                        TConstStringExpr(Left).Value);
+end;
+
+// ------------------
+// ------------------ TCoalesceExpr ------------------
+// ------------------
+
+// EvalAsVariant
+//
+procedure TCoalesceExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+begin
+   result:=left.Eval(exec);
+   case VarType(result) of
+      varEmpty, varNull :
+         ;
+      varByte, varSmallint, varShortInt, varWord, varLongWord, varInt64, varUInt64,
+      varSingle, varCurrency, varDouble :
+         if result<>0 then Exit;
+      varString, varUString :
+         if TVarData(result).VString<>nil then Exit;
+      varUnknown :
+         if TVarData(result).VUnknown<>nil then Exit;
+      varBoolean :
+         if TVarData(result).VBoolean then Exit;
+   else
+      Exit;
+   end;
+   result:=Right.Eval(exec);
+end;
+
+// ------------------
+// ------------------ TCoalesceStrExpr ------------------
+// ------------------
+
+// EvalAsString
+//
+procedure TCoalesceStrExpr.EvalAsString(exec : TdwsExecution; var result : UnicodeString);
+begin
+   Left.EvalAsString(exec, result);
+   if result='' then
+      Right.EvalAsString(exec, result);
+end;
+
+// Optimize
+//
+function TCoalesceStrExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+var
+   s : String;
+begin
+   if Left.IsConstant then begin
+      Left.EvalAsString(exec, s);
+      if s='' then begin
+         Result:=Right;
+         FRight:=nil;
+         Free;
+      end else begin
+         Result:=Left;
+         FLeft:=nil;
+         Free;
+      end;
+      Exit;
+   end else Result:=inherited Optimize(prog, exec);
 end;
 
 // ------------------
