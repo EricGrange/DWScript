@@ -189,6 +189,8 @@ type
          function DoClone : TdwsJSONValue; virtual; abstract;
          procedure DoExtend(other : TdwsJSONValue); virtual; abstract;
 
+         function DoIsFalsey : Boolean; virtual;
+
          class procedure RaiseJSONException(const msg : UnicodeString); static;
          class procedure RaiseJSONParseError(const msg : UnicodeString; c : WideChar = #0); static;
 
@@ -221,6 +223,8 @@ type
          function IsImmediateValue : Boolean; inline;
          function Value : TdwsJSONImmediate; inline;
          function ValueType : TdwsJSONValueType; inline;
+
+         function IsFalsey : Boolean;
 
          property AsString : UnicodeString read GetAsString write SetAsString;
          property IsNull : Boolean read GetIsNull write SetIsNull;
@@ -403,6 +407,8 @@ type
 
          function DoClone : TdwsJSONValue; override;
          procedure DoExtend(other : TdwsJSONValue); override;
+
+         function DoIsFalsey : Boolean; override;
 
       public
          destructor Destroy; override;
@@ -1078,6 +1084,13 @@ begin
    else Result:=jvtUndefined;
 end;
 
+// IsFalsey
+//
+function TdwsJSONValue.IsFalsey : Boolean;
+begin
+   Result:=(not Assigned(Self)) or DoIsFalsey;
+end;
+
 // GetValue
 //
 function TdwsJSONValue.GetValue(const index : Variant) : TdwsJSONValue;
@@ -1315,6 +1328,13 @@ function TdwsJSONValue.TElementEnumerator.MoveNext : Boolean;
 begin
    Result:=(FIndex<FCountMinus1);
    Inc(FIndex, Integer(Result));
+end;
+
+// DoIsFalsey
+//
+function TdwsJSONValue.DoIsFalsey : Boolean;
+begin
+   Result:=false;
 end;
 
 // ------------------
@@ -2254,6 +2274,24 @@ end;
 procedure TdwsJSONImmediate.DoExtend(other : TdwsJSONValue);
 begin
    RaiseJSONException('Cannot extend immediate values');
+end;
+
+// DoIsFalsey
+//
+function TdwsJSONImmediate.DoIsFalsey : Boolean;
+begin
+   case FType of
+      jvtUndefined, jvtNull :
+         Result:=True;
+      jvtString :
+         Result:=PString(@FData)^='';
+      jvtNumber :
+         Result:=FData=0;
+      jvtBoolean :
+         Result:=not PBoolean(@FData)^;
+   else
+      Result:=False;
+   end;
 end;
 
 // Clone

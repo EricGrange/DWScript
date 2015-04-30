@@ -1201,7 +1201,23 @@ type
    TCoalesceStrExpr = class(TStringBinOpExpr)
       public
          procedure EvalAsString(exec : TdwsExecution; var result : UnicodeString); override;
-        function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+   end;
+
+   // left ?? right (class)
+   TCoalesceClassExpr = class(TBinaryOpExpr)
+      public
+         constructor Create(aProg: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+         procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
+   end;
+
+   // left ?? right (dyn array)
+   TCoalesceDynArrayExpr = class(TBinaryOpExpr)
+      public
+         constructor Create(aProg: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+         procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
    end;
 
    // Assert(condition, message);
@@ -5357,24 +5373,48 @@ end;
 // EvalAsVariant
 //
 procedure TCoalesceExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+
+   function CoalesceableIsFalsey(const unk : IUnknown) : Boolean;
+   var
+      c : ICoalesceable;
+   begin
+      Result:=(unk.QueryInterface(ICoalesceable, c)=S_OK) and c.IsFalsey;
+   end;
+
+var
+   i : Int64;
 begin
-   result:=left.Eval(exec);
+   Left.EvalAsVariant(exec, result);
    case VarType(result) of
       varEmpty, varNull :
          ;
-      varByte, varSmallint, varShortInt, varWord, varLongWord, varInt64, varUInt64,
-      varSingle, varCurrency, varDouble :
-         if result<>0 then Exit;
+      varSmallint, varShortInt, varInteger,
+      varByte, varWord, varLongWord,
+      varInt64, varUInt64 : begin
+         i:=result;
+         if i<>0 then Exit;
+      end;
+      varSingle, varCurrency, varDouble, varDate :
+         if Double(Result)<>0 then Exit;
       varString, varUString :
          if TVarData(result).VString<>nil then Exit;
-      varUnknown :
-         if TVarData(result).VUnknown<>nil then Exit;
+      varUnknown : begin
+         if TVarData(result).VUnknown<>nil then begin
+            if not CoalesceableIsFalsey(IUnknown(TVarData(result).VUnknown)) then Exit;
+         end;
+      end;
+      varDispatch :
+         if TVarData(result).VDispatch<>nil then Exit;
+      varOleStr : begin
+         if TVarData(result).VOleStr<>nil then Exit;
+         if TVarData(result).VOleStr^<>#0 then Exit;
+      end;
       varBoolean :
          if TVarData(result).VBoolean then Exit;
    else
       Exit;
    end;
-   result:=Right.Eval(exec);
+   Right.EvalAsVariant(exec, result);
 end;
 
 // ------------------
@@ -5409,6 +5449,68 @@ begin
       end;
       Exit;
    end else Result:=inherited Optimize(prog, exec);
+end;
+
+// ------------------
+// ------------------ TCoalesceClassExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TCoalesceClassExpr.Create(aProg: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+begin
+   inherited Create(aProg, aScriptPos, aLeft, aRight);
+   Typ:=aLeft.Typ;
+end;
+
+// EvalAsVariant
+//
+procedure TCoalesceClassExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+var
+   obj : IScriptObj;
+begin
+   EvalAsScriptObj(exec, obj);
+   result:=IUnknown(obj);
+end;
+
+// EvalAsScriptObj
+//
+procedure TCoalesceClassExpr.EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj);
+begin
+   Left.EvalAsScriptObj(exec, result);
+   if result=nil then
+      Right.EvalAsScriptObj(exec, result);
+end;
+
+// ------------------
+// ------------------ TCoalesceDynArrayExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TCoalesceDynArrayExpr.Create(aProg: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+begin
+   inherited Create(aProg, aScriptPos, aLeft, aRight);
+   Typ:=aLeft.Typ;
+end;
+
+// EvalAsVariant
+//
+procedure TCoalesceDynArrayExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+var
+   a : IScriptDynArray;
+begin
+   EvalAsScriptDynArray(exec, a);
+   result:=IUnknown(a);
+end;
+
+// EvalAsScriptDynArray
+//
+procedure TCoalesceDynArrayExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
+begin
+   Left.EvalAsScriptDynArray(exec, result);
+   if (result=nil) or (result.ArrayLength=0) then
+      Right.EvalAsScriptDynArray(exec, result);
 end;
 
 // ------------------

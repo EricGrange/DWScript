@@ -10200,17 +10200,21 @@ begin
                      IncompatibleTypes(hotPos, CPE_IncompatibleTypes, Result.Typ, rightTyp);
                      // fake result to keep compiler going and report further issues
                      Result:=TBinaryOpExpr.Create(FProg, hotPos, Result, right);
-                     Result.Typ:=FProg.TypVariant;
+                     Result.Typ:=TBinaryOpExpr(Result).Left.Typ;
                   end else if Result.Typ.IsOfType(FProg.TypVariant) then begin
                      Result:=TCoalesceExpr.Create(FProg, hotPos, Result, right);
                      Result.Typ:=FProg.TypVariant;
                   end else if Result.Typ.IsOfType(FProg.TypString) then begin
                      Result:=TCoalesceStrExpr.Create(FProg, hotPos, Result, right);
+                  end else if Result.Typ.UnAliasedType.ClassType=TClassSymbol then begin
+                     Result:=TCoalesceClassExpr.Create(FProg, hotPos, Result, right);
+                  end else if Result.Typ.UnAliasedType.ClassType=TDynamicArraySymbol then begin
+                     Result:=TCoalesceDynArrayExpr.Create(FProg, hotPos, Result, right);
                   end else begin
                      FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                      // fake result to keep compiler going and report further issues
                      Result:=TBinaryOpExpr.Create(FProg, hotPos, Result, right);
-                     Result.Typ:=FProg.TypVariant;
+                     Result.Typ:=TBinaryOpExpr(Result).Left.Typ;
                   end;
                end;
             else

@@ -919,6 +919,8 @@ begin
 
    RegisterJITter(TCoalesceExpr,                FInterpretedJITter.IncRefCount);
    RegisterJITter(TCoalesceStrExpr,             FInterpretedJITter.IncRefCount);
+   RegisterJITter(TCoalesceClassExpr,           FInterpretedJITter.IncRefCount);
+   RegisterJITter(TCoalesceDynArrayExpr,        FInterpretedJITter.IncRefCount);
 
    RegisterJITter(TSetOfInExpr,                 Tx86SetOfInExpr.Create(Self));
    RegisterJITter(TSetOfSmallInExpr,            Tx86SetOfInExpr.Create(Self));

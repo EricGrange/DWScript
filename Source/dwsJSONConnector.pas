@@ -270,7 +270,7 @@ const
    SYS_JSON_NEWARRAY = 'NewArray';
 
 type
-   TBoxedJSONValue = class (TInterfacedSelfObject, IBoxedJSONValue, IUnknown)
+   TBoxedJSONValue = class (TInterfacedSelfObject, IBoxedJSONValue, ICoalesceable, IUnknown)
       FValue : TdwsJSONValue;
 
       constructor Create(wrapped : TdwsJSONValue);
@@ -281,15 +281,18 @@ type
       function Value : TdwsJSONValue;
       function ToString : UnicodeString; override;
 
+      function IsFalsey : Boolean;
+
       class procedure Allocate(wrapped : TdwsJSONValue; var v : Variant); static;
       class procedure AllocateOrGetImmediate(wrapped : TdwsJSONValue; var v : Variant); static;
 
       class function UnBox(const v : Variant) : TdwsJSONValue; static;
    end;
 
-   TBoxedNilJSONValue = class (TInterfacedSelfObject, IBoxedJSONValue)
+   TBoxedNilJSONValue = class (TInterfacedSelfObject, IBoxedJSONValue, ICoalesceable)
       function Value : TdwsJSONValue;
       function ToString : UnicodeString; override;
+      function IsFalsey : Boolean;
    end;
 
 var
@@ -330,7 +333,16 @@ end;
 //
 function TBoxedJSONValue.ToString : UnicodeString;
 begin
-   Result:=FValue.ToString;
+   if FValue.ValueType=jvtString then
+      Result:=FValue.AsString
+   else Result:=FValue.ToString;
+end;
+
+// IsFalsey
+//
+function TBoxedJSONValue.IsFalsey : Boolean;
+begin
+   Result:=FValue.IsFalsey;
 end;
 
 // Allocate
@@ -394,6 +406,13 @@ end;
 function TBoxedNilJSONValue.ToString;
 begin
    Result:='';
+end;
+
+// IsFalsey
+//
+function TBoxedNilJSONValue.IsFalsey : Boolean;
+begin
+   Result:=True;
 end;
 
 // ------------------
