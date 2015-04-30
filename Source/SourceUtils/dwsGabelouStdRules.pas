@@ -255,7 +255,7 @@ begin
    if aSymbolList.Symbol.ClassType<>TFieldSymbol then Exit;
 
    fld:=TFieldSymbol(aSymbolList.Symbol);
-   if fld.StructSymbol.IsExternal then Exit;
+   if fld.StructSymbol.IsExternal or (fld.StructSymbol.Name='') then Exit;
 
    if not (fld.Visibility in [cvPublic, cvPublished]) then begin
       if    (Length(aSymbolList.Symbol.Name)<2)
