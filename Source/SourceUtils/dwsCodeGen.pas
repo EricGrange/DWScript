@@ -269,8 +269,8 @@ type
 
          procedure WriteIndent;
          procedure WriteIndentIfNeeded;
-         procedure Indent;
-         procedure UnIndent;
+         procedure Indent(needIndent : Boolean = True);
+         procedure UnIndent(needIndent : Boolean = True);
 
          procedure WriteString(const s : String); overload;
          procedure WriteString(const c : WideChar); overload;
@@ -1202,20 +1202,20 @@ end;
 
 // Indent
 //
-procedure TdwsCodeGen.Indent;
+procedure TdwsCodeGen.Indent(needIndent : Boolean = True);
 begin
    Inc(FIndent);
    FIndentString:=StringOfChar(' ', FIndent*FIndentSize);
-   FNeedIndent:=True;
+   FNeedIndent:=needIndent;
 end;
 
 // UnIndent
 //
-procedure TdwsCodeGen.UnIndent;
+procedure TdwsCodeGen.UnIndent(needIndent : Boolean = True);
 begin
    Dec(FIndent);
    FIndentString:=StringOfChar(' ', FIndent*FIndentSize);
-   FNeedIndent:=True;
+   FNeedIndent:=needIndent;
 end;
 
 // WriteString
