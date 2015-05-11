@@ -196,7 +196,7 @@ type
       public
          constructor Create(const scriptPos : TScriptPos;
                             const enumerator : IConnectorEnumerator;
-                            loopVarExpr, inExpr : TTypedExpr; doExpr : TProgramExpr);
+                            loopVarExpr, inExpr : TTypedExpr);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -805,14 +805,13 @@ end;
 //
 constructor TConnectorForInExpr.Create(const scriptPos : TScriptPos;
              const enumerator : IConnectorEnumerator;
-             loopVarExpr, inExpr : TTypedExpr; doExpr : TProgramExpr);
+             loopVarExpr, inExpr : TTypedExpr);
 begin
    inherited Create(scriptPos);
    Assert(loopVarExpr is TVarExpr);
    FConnectorEnumerator:=enumerator;
    FLoopVarExpr:=loopVarExpr;
    FInExpr:=inExpr;
-   FDoExpr:=doExpr;
 end;
 
 // Destroy
@@ -853,6 +852,7 @@ var
    enumData : IUnknown;
 begin
    FInExpr.EvalAsVariant(exec, base);
+   if VarIsClear(base) then Exit;
    enumData:=ConnectorEnumerator.NewEnumerator(base, nil);
    if enumData<>nil then begin
       SetLength(item, 1);

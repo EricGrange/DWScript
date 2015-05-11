@@ -6207,7 +6207,7 @@ var
    enumerator : IConnectorEnumerator;
    itemType : TTypeSymbol;
    blockExpr : TBlockExpr;
-   doBlock : TProgramExpr;
+   forInExpr : TConnectorForInExpr;
 begin
    connectorSymbol:=(inExpr.Typ as TConnectorSymbol);
 
@@ -6222,21 +6222,23 @@ begin
    if not FTok.TestDelete(ttDO) then
       FMsgs.AddCompilerError(FTok.HotPos, CPE_DoExpected);
 
+   forInExpr:=TConnectorForInExpr.Create(forPos, enumerator, loopVarExpr, inExpr);
+   Result:=forInExpr;
+
    if blockExpr<>nil then
       FProg.EnterSubTable(blockExpr.Table);
-   Result:=blockExpr;
+   EnterLoop(forInExpr);
    try
+      MarkLoopExitable(leBreak);
       try
-         doBlock:=ReadBlock;
+         forInExpr.DoExpr:=ReadBlock;
       except
-         OrphanObject(loopVarExpr);
-         OrphanObject(inExpr);
+         OrphanObject(forInExpr);
          raise;
       end;
-      Result:=TConnectorForInExpr.Create(forPos, enumerator, loopVarExpr, inExpr, doBlock);
-      if Optimize then
-         Result:=Result.Optimize(FProg, FExec);
    finally
+      LeaveLoop;
+
       if blockExpr<>nil then begin
          FProg.LeaveSubTable;
          blockExpr.AddStatement(Result);
