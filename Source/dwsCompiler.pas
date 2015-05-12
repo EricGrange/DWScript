@@ -228,6 +228,7 @@ type
                          siIfDef, siIfNDef, siIf, siEndIf, siElse,
                          siHint, siHints, siWarning, siWarnings,
                          siError, siFatal,
+                         siRegion, siEndRegion,
                          siCodeGen );
 
    TLoopExitable = (leNotExitable, leBreak, leExit);
@@ -931,6 +932,7 @@ const
       SWI_DEFINE, SWI_UNDEF,
       SWI_IFDEF, SWI_IFNDEF, SWI_IF, SWI_ENDIF, SWI_ELSE,
       SWI_HINT, SWI_HINTS, SWI_WARNING, SWI_WARNINGS, SWI_ERROR, SWI_FATAL,
+      SWI_REGION, SWI_ENDREGION,
       SWI_CODEGEN
       );
 
