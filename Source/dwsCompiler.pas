@@ -11438,6 +11438,11 @@ begin
          else FMsgs.AddCompilerError(FTok.HotPos, CPE_OnOffExpected);
 
       end;
+      siRegion, siEndRegion : begin
+
+         SkipUntilToken(ttCRIGHT);
+
+      end;
    end;
 
    if not FTok.Test(ttCRIGHT) then
