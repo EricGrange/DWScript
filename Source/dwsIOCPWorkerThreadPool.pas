@@ -21,7 +21,7 @@ interface
 {$I dws.inc}
 
 uses
-   Windows, Classes, SysUtils,
+   Windows, Classes, SysUtils, ActiveX,
    dwsXPlatform, dwsUtils;
 
 type
@@ -156,6 +156,8 @@ procedure TIOCPWorkerThread.Execute;
 var
    data : TIOCPData;
 begin
+   CoInitialize(nil);
+
    while not Terminated do begin
       if not GetQueuedCompletionStatus(FIOCP,
                                        data.lpNumberOfBytesTransferred,
@@ -180,6 +182,8 @@ begin
          end;
       end;
    end;
+
+   CoUninitialize;
 end;
 
 // ------------------
