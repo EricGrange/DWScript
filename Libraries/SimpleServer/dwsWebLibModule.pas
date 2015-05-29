@@ -126,48 +126,19 @@ type
 
    TdwsWinHTTP = class (TWinHTTP)
       protected
-         FAuthScheme : TWebRequestAuthentication;
-         FUserName : String;
-         FPassword : String;
          procedure InternalSendRequest(const aData: SockString); override;
    end;
 
-function WinHttpSetCredentials(hRequest: HINTERNET;
-   AuthTargets: DWORD; AuthScheme: DWORD;
-   pwszUserName: PWideChar; pwszPassword: PWideChar;
-   pAuthParams: Pointer) : BOOL; stdcall; external 'winhttp.dll';
+//function WinHttpSetOption(hInternet: HINTERNET; dwOption: DWORD;
+//  lpBuffer: Pointer; dwBufferLength: DWORD): BOOL; stdcall; external 'winhttp.dll';
 
 const
-   WINHTTP_AUTH_TARGET_SERVER    = 0;
-   WINHTTP_AUTH_TARGET_PROXY     = 1;
-
-   WINHTTP_AUTH_SCHEME_BASIC     = $00000001;
-   WINHTTP_AUTH_SCHEME_NTLM      = $00000002;
-   WINHTTP_AUTH_SCHEME_PASSPORT  = $00000004;
-   WINHTTP_AUTH_SCHEME_DIGEST    = $00000008;
-   WINHTTP_AUTH_SCHEME_NEGOTIATE = $00000010;
-
    cWinHttpCredentials : TGUID = '{FB60EB3D-1085-4A88-9923-DE895B5CAB76}';
 
 // InternalSendRequest
 //
 procedure TdwsWinHTTP.InternalSendRequest(const aData: SockString);
-var
-   winAuth : DWORD;
 begin
-   if FAuthScheme<>wraNone then begin
-      case FAuthScheme of
-         wraBasic : winAuth := WINHTTP_AUTH_SCHEME_BASIC;
-         wraDigest : winAuth := WINHTTP_AUTH_SCHEME_DIGEST;
-         wraNegotiate : winAuth := WINHTTP_AUTH_SCHEME_NEGOTIATE;
-      else
-         raise EWinHTTP.CreateFmt('Unsupported request authentication scheme (%d)',
-                                  [Ord(FAuthScheme)]);
-      end;
-      if not WinHttpSetCredentials(fRequest, WINHTTP_AUTH_TARGET_SERVER,
-                                   winAuth, PChar(FUserName), PChar(FPassword), nil) then
-         RaiseLastOSError;
-   end;
    inherited InternalSendRequest(aData);
 end;
 
@@ -188,9 +159,15 @@ begin
       query:=TdwsWinHTTP.Create(uri.Server, uri.Port, uri.Https);
       try
          if VarIsArray(credentials, False) then begin
-            query.FAuthScheme:=TWebRequestAuthentication(credentials[0]);
-            query.FUserName:=credentials[1];
-            query.FPassword:=credentials[2];
+            case TWebRequestAuthentication(credentials[0]) of
+               wraBasic : query.AuthScheme := THttpRequestAuthentication.wraBasic;
+               wraDigest : query.AuthScheme := THttpRequestAuthentication.wraDigest;
+               wraNegotiate : query.AuthScheme := THttpRequestAuthentication.wraNegotiate;
+            else
+               query.AuthScheme := THttpRequestAuthentication.wraNone;
+            end;
+            query.AuthUserName:=credentials[1];
+            query.AuthPassword:=credentials[2];
          end;
          case method of
             hqmGET : begin
