@@ -1536,6 +1536,8 @@ type
          property IsPartial : Boolean read GetIsPartial;
          property IsAttribute : Boolean read GetIsAttribute write SetIsAttribute;
 
+         function IsPureStatic : Boolean;
+
          property OnObjectDestroy : TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
    end;
 
@@ -4743,6 +4745,33 @@ end;
 function TClassSymbol.Parent : TClassSymbol;
 begin
    Result:=TClassSymbol(FParent);
+end;
+
+// IsPureStatic
+//
+function TClassSymbol.IsPureStatic : Boolean;
+var
+   sym : TSymbol;
+   symClass : TClass;
+   meth : TMethodSymbol;
+begin
+   Result:=IsStatic and IsSealed;
+   if not Result then Exit;
+
+   for sym in FMembers do begin
+      symClass:=sym.ClassType;
+      if symClass=TFieldSymbol then exit;
+      if symClass=TClassConstSymbol then continue;
+      if symClass=TClassVarSymbol then continue;
+      if symClass=TPropertySymbol then continue;
+      if symClass.InheritsFrom(TMethodSymbol) then begin
+         meth:=TMethodSymbol(symClass);
+         if not meth.IsStatic then exit;
+         if not meth.IsClassMethod then exit;
+      end;
+      exit;
+   end;
+   Result:=True;
 end;
 
 // ------------------
