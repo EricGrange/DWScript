@@ -33,7 +33,7 @@ uses
    dwsWebServerHelpers,
    dwsDataBase, dwsDataBaseLibModule, dwsWebServerInfo, dwsWebServerLibModule,
    dwsBackgroundWorkersLibModule, dwsSynapseLibModule, dwsCryptoLibModule,
-   dwsEncodingLibModule;
+   dwsEncodingLibModule, dwsComConnector;
 
 type
 
@@ -73,6 +73,7 @@ type
       dwsGlobalVarsFunctions: TdwsGlobalVarsFunctions;
       dwsCompileSystem: TdwsRestrictedFileSystem;
       dwsRuntimeFileSystem: TdwsRestrictedFileSystem;
+    dwsComConnector: TdwsComConnector;
       procedure DataModuleCreate(Sender: TObject);
       procedure DataModuleDestroy(Sender: TObject);
 
@@ -218,7 +219,9 @@ const
          // Shutdown Script Name
          +'"Shutdown": "%www%\\.shutdown.pas",'
          // Turns on/off JIT compilation
-         +'"JIT": true'
+         +'"JIT": true,'
+         // Turns on/off COM support (breaks sandboxing!)
+         +'"COM": false'
       +'}';
 
 // ------------------------------------------------------------------
@@ -507,6 +510,9 @@ begin
 
       FStartupScriptName:=ApplyPathVariables(dws['Startup'].AsString);
       FShutdownScriptName:=ApplyPathVariables(dws['Shutdown'].AsString);
+
+      if dws['COM'].AsBoolean then
+         dwsComConnector.Script:=DelphiWebScript;
    finally
       dws.Free;
    end;

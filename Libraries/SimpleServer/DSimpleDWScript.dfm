@@ -37,4 +37,9 @@ object SimpleDWScript: TSimpleDWScript
     Left = 72
     Top = 160
   end
+  object dwsComConnector: TdwsComConnector
+    StaticSymbols = False
+    Left = 208
+    Top = 160
+  end
 end

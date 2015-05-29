@@ -980,8 +980,6 @@ begin
    inherited Execute;
    CoInitialize(nil);
 
-   OutputDebugString(PChar('SAMPLING THREAD '+IntToStr(GetCurrentThreadId)));
-
    FWebRequest:=THttpSysWebRequest.Create;
    FWebResponse:=THttpSysWebResponse.Create;
    FMimeInfos:=TMIMETypeCache.Create;
@@ -1283,7 +1281,6 @@ end;
 
 procedure THttpServerGeneric.Execute;
 begin
-   OutputDebugString(PChar('SAMPLING THREAD '+IntToStr(GetCurrentThreadId)));
    if Assigned(FOnHttpThreadStart) then
       FOnHttpThreadStart(self);
 end;
