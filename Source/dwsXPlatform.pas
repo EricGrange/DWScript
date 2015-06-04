@@ -214,12 +214,14 @@ procedure AppendTextToUTF8File(const fileName : String; const text : UTF8String)
 function OpenFileForSequentialReadOnly(const fileName : UnicodeString) : THandle;
 function OpenFileForSequentialWriteOnly(const fileName : UnicodeString) : THandle;
 procedure CloseFileHandle(hFile : THandle);
+function FileWrite(hFile : THandle; buffer : Pointer; byteCount : Integer) : Cardinal;
 function FileCopy(const existing, new : UnicodeString; failIfExists : Boolean) : Boolean;
 function FileMove(const existing, new : UnicodeString) : Boolean;
 function FileDelete(const fileName : String) : Boolean;
 function FileRename(const oldName, newName : String) : Boolean;
 function FileSize(const name : String) : Int64;
 function FileDateTime(const name : String) : TDateTime;
+function DeleteDirectory(const path : String) : Boolean;
 
 function DirectSet8087CW(newValue : Word) : Word; register;
 function DirectSetMXCSR(newValue : Word) : Word; register;
@@ -854,6 +856,14 @@ begin
    CloseHandle(hFile);
 end;
 
+// FileWrite
+//
+function FileWrite(hFile : THandle; buffer : Pointer; byteCount : Integer) : Cardinal;
+begin
+   if not WriteFile(hFile, buffer^, byteCount, Result, nil) then
+      RaiseLastOSError;
+end;
+
 // FileCopy
 //
 function FileCopy(const existing, new : UnicodeString; failIfExists : Boolean) : Boolean;
@@ -898,12 +908,26 @@ end;
 function FileDateTime(const name : String) : TDateTime;
 var
    info : TWin32FileAttributeData;
+   localTime : TFileTime;
    systemTime : TSystemTime;
 begin
    if GetFileAttributesEx(PChar(Pointer(name)), GetFileExInfoStandard, @info) then begin
-      FileTimeToSystemTime(info.ftLastWriteTime, systemTime);
+      FileTimeToLocalFileTime(info.ftLastWriteTime, localTime);
+      FileTimeToSystemTime(localTime, systemTime);
       Result:=SystemTimeToDateTime(systemTime);
    end else Result:=0;
+end;
+
+// DeleteDirectory
+//
+function DeleteDirectory(const path : String) : Boolean;
+begin
+   try
+      TDirectory.Delete(path, True);
+   except
+      Exit(False);
+   end;
+   Result := not TDirectory.Exists(path);
 end;
 
 // DirectSet8087CW
