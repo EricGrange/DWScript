@@ -976,6 +976,8 @@ var
    pContentEncoding : PHTTP_KNOWN_HEADER;
    pRespServer : PHTTP_KNOWN_HEADER;
 begin
+   NameThreadForDebugging('THttpApi2Server');
+
    // THttpServerGeneric thread preparation: launch any OnHttpThreadStart event
    inherited Execute;
    CoInitialize(nil);

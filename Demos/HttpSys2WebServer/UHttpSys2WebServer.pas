@@ -224,6 +224,25 @@ begin
    inherited;
 end;
 
+// Create
+//
+class function THttpSys2WebServer.Create(const basePath : TFileName; options : TdwsJSONValue) : THttpSys2WebServer;
+begin
+   Result:=Self.Create;
+   Result.Initialize(basePath, options);
+end;
+
+// Destroy
+//
+destructor THttpSys2WebServer.Destroy;
+begin
+   FNotifier.Free;
+   FServer.Free;
+   FDWS.Free;
+   FDirectoryIndex.Free;
+   inherited;
+end;
+
 // RegisterExtensions
 //
 procedure THttpSys2WebServer.RegisterExtensions(list : TdwsJSONValue; typ : TFileAccessType);
@@ -343,21 +362,6 @@ begin
 
    if nbThreads>1 then
       FServer.Clone(nbThreads-1);
-end;
-
-class function THttpSys2WebServer.Create(const basePath : TFileName; options : TdwsJSONValue) : THttpSys2WebServer;
-begin
-   Result:=Self.Create;
-   Result.Initialize(basePath, options);
-end;
-
-destructor THttpSys2WebServer.Destroy;
-begin
-   FNotifier.Free;
-   FServer.Free;
-   FDWS.Free;
-   FDirectoryIndex.Free;
-   inherited;
 end;
 
 // Shutdown
