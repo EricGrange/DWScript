@@ -602,8 +602,13 @@ end;
 // DoEvalAsBoolean
 //
 function TRemoveDirFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+var
+   path : String;
 begin
-   Result:=RemoveDir(args.AsFileName[0]);
+   path:=args.AsFileName[0];
+   if args.AsBoolean[1] then
+      Result:=DeleteDirectory(path)
+   else Result:=RemoveDir(path);
 end;
 
 // ------------------
@@ -672,7 +677,7 @@ initialization
 
    RegisterInternalBoolFunction(TForceDirectoriesFunc, 'ForceDirectories', ['path', SYS_STRING], []);
    RegisterInternalBoolFunction(TCreateDirFunc, 'CreateDir', ['path', SYS_STRING], []);
-   RegisterInternalBoolFunction(TRemoveDirFunc, 'RemoveDir', ['path', SYS_STRING], []);
+   RegisterInternalBoolFunction(TRemoveDirFunc, 'RemoveDir', ['path', SYS_STRING, 'evenIfNotEmpty=False', SYS_BOOLEAN], []);
 
    RegisterInternalFunction(TEnumerateDirFunc, 'EnumerateDir', ['path', SYS_STRING, 'mask', SYS_STRING, 'recursive', SYS_BOOLEAN], 'array of string', []);
 
