@@ -796,6 +796,8 @@ function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
 function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
 function AsciiCompareLen(p1, p2 : PAnsiChar; n : Integer) : Integer;
 
+function StrIsASCII(const s : String) : Boolean;
+
 function StrNonNilLength(const aString : UnicodeString) : Integer; inline;
 
 function StrIBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
@@ -1993,6 +1995,22 @@ begin
       Inc(p2);
    end;
    Result:=0;
+end;
+
+// StrIsASCII
+//
+function StrIsASCII(const s : String) : Boolean;
+var
+   i : Integer;
+begin
+   for i:=1 to Length(s)-1 do begin
+      case s[i] of
+         #0..#127 :;
+      else
+         Exit(False);
+      end;
+   end;
+   Result:=True;
 end;
 
 // StrNonNilLength
