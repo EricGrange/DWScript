@@ -905,6 +905,9 @@ begin
    RegisterJITter(TRelEqualMetaExpr,            Tx86RelEqualInt.Create(Self));
    RegisterJITter(TRelNotEqualMetaExpr,         Tx86RelNotEqualInt.Create(Self));
 
+   RegisterJITter(TRelVarEqualNilExpr,          FInterpretedJITter.IncRefCount);
+   RegisterJITter(TRelVarNotEqualNilExpr,       FInterpretedJITter.IncRefCount);
+
    RegisterJITter(TIsOpExpr,                    FInterpretedJITter.IncRefCount);
    RegisterJITter(TImplementsIntfOpExpr,        FInterpretedJITter.IncRefCount);
    RegisterJITter(TObjCmpEqualExpr,             FInterpretedJITter.IncRefCount);
