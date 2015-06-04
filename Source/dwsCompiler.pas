@@ -10045,6 +10045,13 @@ begin
                            if tt=ttNOTEQ then
                               Result:=TNotBoolExpr.Create(FProg, Result);
                         end;
+                     end else if     ((tt=ttEQ) or (tt=ttNOTEQ))
+                                 and (rightTyp=FProg.TypNil)
+                                 and (Result.Typ.IsOfType(FProg.TypVariant)) then begin
+                        if tt=ttEQ then
+                           Result:=TRelVarEqualNilExpr.Create(FProg, Result)
+                        else Result:=TRelVarNotEqualNilExpr.Create(FProg, Result);
+                        right.Free;
                      end else begin
                         FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                         Result:=TRelOpExpr.Create(FProg, hotPos, Result, right); // keep going

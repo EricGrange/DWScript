@@ -23,7 +23,7 @@ unit dwsRelExprs;
 
 interface
 
-uses dwsExprs, dwsSymbols, dwsErrors;
+uses dwsExprs, dwsSymbols, dwsErrors, Variants;
 
 type
 
@@ -148,6 +148,13 @@ type
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
    TRelGreaterEqualVariantExpr = class(TRelVariantOpExpr)
+     function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
+   TRelVarEqualNilExpr = class(TUnaryOpBoolExpr)
+     function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+   TRelVarNotEqualNilExpr = class(TRelVarEqualNilExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
@@ -581,6 +588,36 @@ end;
 function TRelIntIsNotZeroExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
    Result:=(Expr.EvalAsInteger(exec)<>0);
+end;
+
+// ------------------
+// ------------------ TRelVarEqualNilExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TRelVarEqualNilExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   v : Variant;
+begin
+   FExpr.EvalAsVariant(exec, v);
+   case VarType(v) of
+      varNull, varEmpty : Result := True;
+      varDispatch : Result := (TVarData(v).VDispatch=nil);
+   else
+      Result := False;
+   end;
+end;
+
+// ------------------
+// ------------------ TRelVarNotEqualNilExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TRelVarNotEqualNilExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+begin
+   Result := not inherited EvalAsBoolean(exec);
 end;
 
 end.
