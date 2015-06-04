@@ -30,7 +30,7 @@ uses
    dwsJSFilter, dwsJSLibModule, dwsCodeGen,
 {$endif}
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
-   dwsWebServerHelpers,
+   dwsWebServerHelpers, dwsZipLibModule,
    dwsDataBase, dwsDataBaseLibModule, dwsWebServerInfo, dwsWebServerLibModule,
    dwsBackgroundWorkersLibModule, dwsSynapseLibModule, dwsCryptoLibModule,
    dwsEncodingLibModule, dwsComConnector;
@@ -257,6 +257,8 @@ begin
    TdwsCryptoLib.Create(Self).dwsCrypto.Script:=DelphiWebScript;
 
    TdwsEncodingLib.Create(Self).dwsEncoding.Script:=DelphiWebScript;
+
+   TdwsZipLib.Create(Self).dwsZip.Script:=DelphiWebScript;
 
    FCompiledPrograms:=TCompiledProgramHash.Create;
    FCompiledProgramsLock:=TFixedCriticalSection.Create;
