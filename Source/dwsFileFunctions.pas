@@ -397,7 +397,7 @@ var
    buf : RawByteString;
 begin
    buf:=args.AsDataString[1];
-   Result:=FileWrite(GetFileHandle(args, 0), Pointer(buf)^, Length(buf));
+   Result:=dwsXPlatform.FileWrite(GetFileHandle(args, 0), Pointer(buf), Length(buf));
 end;
 
 // ------------------
