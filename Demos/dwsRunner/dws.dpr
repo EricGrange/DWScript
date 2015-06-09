@@ -1,4 +1,4 @@
-program dwsRunner;
+program dws;
 
 {$SetPEFlags $0001}
 
@@ -8,7 +8,7 @@ program dwsRunner;
 {$ENDIF}
 {$APPTYPE CONSOLE}
 
-
+{$r *.dres}
 
 uses
   Windows,
