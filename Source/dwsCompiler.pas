@@ -4192,6 +4192,7 @@ var
    action : TdwsStatementAction;
 begin
    // Read a block of instructions enclosed in "begin" and "end"
+   Result:=nil;
    reach:=rsReachable;
    blockExpr:=TBlockExpr.Create(FProg, FTok.HotPos);
    try
