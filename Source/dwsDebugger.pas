@@ -1568,7 +1568,8 @@ begin
    if (prog.InitExpr.ScriptPos.SourceFile<>nil) and (prog.InitExpr.SubExprCount>0) then
       prog.InitExpr.RecursiveEnumerateSubExprs(EnumeratorCallback);
 
-   RegisterScriptPos(prog.Expr.ScriptPos);
+   if not (prog.Expr is TBlockExprBase) then
+      RegisterScriptPos(prog.Expr.ScriptPos);
 
    prog.Expr.RecursiveEnumerateSubExprs(EnumeratorCallback);
 

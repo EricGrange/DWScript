@@ -4255,7 +4255,9 @@ begin
 
          if coContextMap in FOptions then begin
             if blockExpr<>nil then
-               FSourceContextMap.Current.LocalTable:=blockExpr.Table;
+               FSourceContextMap.Current.LocalTable:=blockExpr.Table
+            else if Result is TBlockExpr then
+               FSourceContextMap.Current.LocalTable:=TBlockExpr(Result).Table;
             if not closePos.Defined then
                closePos:=FTok.CurrentPos; // means an error occured
             FSourceContextMap.CloseContext(closePos);
