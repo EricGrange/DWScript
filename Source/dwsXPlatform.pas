@@ -207,6 +207,7 @@ function VarToUnicodeStr(const v : Variant) : UnicodeString; inline;
 {$endif}
 
 function LoadTextFromBuffer(const buf : TBytes) : UnicodeString;
+function LoadTextFromRawBytes(const buf : RawByteString) : UnicodeString;
 function LoadTextFromStream(aStream : TStream) : UnicodeString;
 function LoadTextFromFile(const fileName : UnicodeString) : UnicodeString;
 procedure SaveTextToUTF8File(const fileName, text : UnicodeString);
@@ -747,6 +748,18 @@ begin
          Result:=encoding.GetString(buf, n, Length(buf)-n);
       end;
    end;
+end;
+
+// LoadTextFromRawBytes
+//
+function LoadTextFromRawBytes(const buf : RawByteString) : UnicodeString;
+var
+   b : TBytes;
+begin
+   if buf='' then Exit('');
+   SetLength(b, Length(buf));
+   System.Move(buf[1], b[0], Length(buf));
+   Result:=LoadTextFromBuffer(b);
 end;
 
 // LoadTextFromStream
