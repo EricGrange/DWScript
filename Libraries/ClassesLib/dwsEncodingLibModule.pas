@@ -185,7 +185,7 @@ end;
 procedure TdwsEncodingLib.dwsEncodingClassesHTMLTextEncoderMethodsDecodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   raise Exception.Create('Not supported... yet');
+   Info.ResultAsString := WebUtils.HTMLTextDecode(Info.ParamAsString[0]);
 end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesHTMLTextEncoderMethodsEncodeEval(

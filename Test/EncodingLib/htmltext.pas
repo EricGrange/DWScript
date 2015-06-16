@@ -9,6 +9,13 @@ var u := HTMLTextEncoder.Encode(s);
 
 PrintLn(u);
 
-//var encoder := HTMLTextEncoder;
+var encoder := HTMLTextEncoder;
 
-//PrintLn(encoder.Decode(u)); 
+PrintLn(encoder.Decode(u));
+
+PrintLn(encoder.Decode('&amp;&lt;&#43;&gt;&apos;&quot;')); 
+
+PrintLn(encoder.Decode('&num;&#x00023;&#35;'));
+
+PrintLn(encoder.Decode('&&&bug;&;'));
+
