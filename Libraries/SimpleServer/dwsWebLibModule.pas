@@ -195,6 +195,15 @@ begin
                if p2>p1 then
                   mimeType:=Copy(headers, p1, p2-p1);
             end;
+            if StrEndsWithA(mimeType, '/xml') then begin
+               // unqualified xml content, may still be utf-8, check data header
+               p1:=PosA('?>', buf);
+               if     (p1>0)
+                  and (PosA('encoding="utf-8"', LowerCaseA(Copy(buf, 1, p1)))>0) then begin
+                  mimeType := 'text/xml; charset=utf-8';
+               end;
+            end;
+
             if StrIEndsWithA(mimeType, 'charset=utf-8') then
                replyData:=UTF8DecodeToUnicodeString(buf)
             else RawByteStringToScriptString(buf, replyData);
