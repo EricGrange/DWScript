@@ -794,7 +794,9 @@ function  StringUnifierHistogram : TIntegerDynArray;
 function UnicodeCompareLen(p1, p2 : PWideChar; n : Integer) : Integer;
 function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
 function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
-function AsciiCompareLen(p1, p2 : PAnsiChar; n : Integer) : Integer;
+function AsciiCompareLen(p1, p2 : PAnsiChar; n : Integer) : Integer; overload;
+function AsciiCompareText(p : PAnsiChar; const s : RawByteString) : Integer;
+function AsciiSameText(p : PAnsiChar; const s : RawByteString) : Boolean;
 
 function PosA(const sub, main : RawByteString) : Integer; inline;
 
@@ -1999,6 +2001,28 @@ begin
       Inc(p2);
    end;
    Result:=0;
+end;
+
+// AsciiCompareText
+//
+function AsciiCompareText(p : PAnsiChar; const s : RawByteString) : Integer;
+var
+   n : Integer;
+begin
+   n:=Length(s);
+   if n>0 then
+      Result:=AsciiCompareLen(p, Pointer(s), n)
+   else Result:=0;
+   if Result=0 then
+      if p[n]<>#0 then
+         Result:=1;
+end;
+
+// AsciiSameText
+//
+function AsciiSameText(p : PAnsiChar; const s : RawByteString) : Boolean;
+begin
+   Result:=(AsciiCompareText(p, s)=0);
 end;
 
 // PosA
