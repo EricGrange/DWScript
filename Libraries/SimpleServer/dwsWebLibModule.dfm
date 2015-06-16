@@ -612,6 +612,9 @@ object dwsWebLib: TdwsWebLib
           end
           item
             Name = 'Kerberos'
+          end
+          item
+            Name = 'Authorization'
           end>
         Style = enumScoped
       end

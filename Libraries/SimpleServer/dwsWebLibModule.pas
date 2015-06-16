@@ -126,6 +126,7 @@ type
 
    TdwsWinHTTP = class (TWinHTTP)
       protected
+         AuthorizationHeader : RawByteString;
          procedure InternalSendRequest(const aData: SockString); override;
    end;
 
@@ -139,6 +140,8 @@ const
 //
 procedure TdwsWinHTTP.InternalSendRequest(const aData: SockString);
 begin
+   if AuthorizationHeader<>'' then
+      InternalAddHeader('Authorization: '+AuthorizationHeader);
    inherited InternalSendRequest(aData);
 end;
 
@@ -163,6 +166,7 @@ begin
                wraBasic : query.AuthScheme := THttpRequestAuthentication.wraBasic;
                wraDigest : query.AuthScheme := THttpRequestAuthentication.wraDigest;
                wraNegotiate : query.AuthScheme := THttpRequestAuthentication.wraNegotiate;
+               wraAuthorization : query.AuthorizationHeader := UTF8Encode(credentials[1]);
             else
                query.AuthScheme := THttpRequestAuthentication.wraNone;
             end;
@@ -200,7 +204,7 @@ begin
                p1:=PosA('?>', buf);
                if     (p1>0)
                   and (PosA('encoding="utf-8"', LowerCaseA(Copy(buf, 1, p1)))>0) then begin
-                  mimeType := 'text/xml; charset=utf-8';
+                  mimeType := mimeType + '; charset=utf-8';
                end;
             end;
 

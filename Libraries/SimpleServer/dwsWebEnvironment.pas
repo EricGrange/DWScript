@@ -31,7 +31,8 @@ type
       wraDigest,
       wraNTLM,
       wraNegotiate,
-      wraKerberos
+      wraKerberos,
+      wraAuthorization
    );
    TWebRequestAuthentications = set of TWebRequestAuthentication;
 
@@ -220,7 +221,7 @@ type
 
 const
    cWebRequestAuthenticationToString : array [TWebRequestAuthentication] of String = (
-      'None', 'Failed', 'Basic', 'Digest', 'NTLM', 'Negotiate', 'Kerberos'
+      'None', 'Failed', 'Basic', 'Digest', 'NTLM', 'Negotiate', 'Kerberos', 'Header'
    );
 
 const
