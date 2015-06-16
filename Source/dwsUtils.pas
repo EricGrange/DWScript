@@ -796,6 +796,8 @@ function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
 function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
 function AsciiCompareLen(p1, p2 : PAnsiChar; n : Integer) : Integer;
 
+function PosA(const sub, main : RawByteString) : Integer; inline;
+
 function StrIsASCII(const s : String) : Boolean;
 
 function StrNonNilLength(const aString : UnicodeString) : Integer; inline;
@@ -806,8 +808,10 @@ function StrBeginsWithA(const aStr, aBegin : RawByteString) : Boolean;
 function StrIEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
 function StrIEndsWithA(const aStr, aEnd : RawByteString) : Boolean;
 function StrEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
+function StrEndsWithA(const aStr, aEnd : RawByteString) : Boolean;
 function StrContains(const aStr, aSubStr : UnicodeString) : Boolean; overload;
 function StrContains(const aStr : UnicodeString; aChar : WideChar) : Boolean; overload;
+function LowerCaseA(const aStr : RawByteString) : RawByteString;
 
 function StrMatches(const aStr, aMask : UnicodeString) : Boolean;
 
@@ -1997,6 +2001,13 @@ begin
    Result:=0;
 end;
 
+// PosA
+//
+function PosA(const sub, main : RawByteString) : Integer; inline;
+begin
+   Result:=Pos(sub, main);
+end;
+
 // StrIsASCII
 //
 function StrIsASCII(const s : String) : Boolean;
@@ -2098,6 +2109,19 @@ begin
    else Result:=CompareMem(@aStr[n1-n2+1], Pointer(aEnd), n2*SizeOf(WideChar));
 end;
 
+// StrEndsWithA
+//
+function StrEndsWithA(const aStr, aEnd : RawByteString) : Boolean;
+var
+   n1, n2 : Integer;
+begin
+   n1:=Length(aStr);
+   n2:=Length(aEnd);
+   if (n2>n1) or (n2=0) then
+      Result:=False
+   else Result:=CompareMem(@aStr[n1-n2+1], Pointer(aEnd), n2);
+end;
+
 // StrContains (sub string)
 //
 function StrContains(const aStr, aSubStr : UnicodeString) : Boolean;
@@ -2107,6 +2131,30 @@ begin
    else if StrNonNilLength(aSubStr)=1 then
       Result:=StrContains(aStr, aSubStr[1])
    else Result:=(Pos(aSubStr, aStr)>0);
+end;
+
+// LowerCaseA
+//
+function LowerCaseA(const aStr : RawByteString) : RawByteString;
+var
+   i, n : Integer;
+   dst, src : PByte;
+   c : Byte;
+begin
+   n:=Length(aStr);
+   SetLength(Result, n);
+   if n<=0 then Exit;
+
+   dst:=Pointer(Result);
+   src:=Pointer(aStr);
+   for i:=1 to n do begin
+      c:=src^;
+      if c in [Ord('A')..Ord('Z')] then
+         c:=c or $20;
+      dst^:=c;
+      Inc(src);
+      Inc(dst);
+   end;
 end;
 
 // StrMatches
