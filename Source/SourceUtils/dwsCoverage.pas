@@ -33,6 +33,7 @@ type
       Runnable : Integer;
       NonCovered : Integer;
    end;
+   PdwsCodeCoverageReportEntry = ^TdwsCodeCoverageReportEntry;
    TdwsCodeCoverageReportEntries = array of TdwsCodeCoverageReportEntry;
 
    TdwsCodeCoverageReport = class
