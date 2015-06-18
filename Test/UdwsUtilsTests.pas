@@ -17,7 +17,7 @@ unit UdwsUtilsTests;
 
 interface
 
-uses Classes, SysUtils, Math, dwsXPlatformTests, dwsUtils, dwsXPlatform;
+uses Classes, SysUtils, Math, dwsXPlatformTests, dwsUtils, dwsXPlatform, dwsWebUtils;
 
 type
 
@@ -64,6 +64,8 @@ type
          procedure StringHash;
 
          procedure LoadTextFromBufferTest;
+
+         procedure URLEncodedEncoder;
    end;
 
 // ------------------------------------------------------------------
@@ -808,6 +810,16 @@ begin
    CheckEquals('utf8é', LoadTextFromBuffer(Buffer([$EF, $BB, $BF, 'u', 't', 'f', '8', $C3, $A9])), 'utf8é');
    CheckEquals('Bé', LoadTextFromBuffer(Buffer([$FE, $FF, 0, 'B', 0, $E9])), 'Bé');
    CheckEquals('Lé', LoadTextFromBuffer(Buffer([$FF, $FE, 'L', 0, $E9, 0])), 'Lé');
+end;
+
+// URLEncodedEncoder
+//
+procedure TdwsUtilsTests.URLEncodedEncoder;
+begin
+   CheckEquals('', WebUtils.EncodeURLEncoded(''), 'empty');
+   CheckEquals('a', WebUtils.EncodeURLEncoded('a'), 'a');
+   CheckEquals('a%3D', WebUtils.EncodeURLEncoded('a='), 'a=');
+   CheckEquals('%3D%3D%3D%3D%3D%3D', WebUtils.EncodeURLEncoded('======'), '======');
 end;
 
 // ------------------------------------------------------------------

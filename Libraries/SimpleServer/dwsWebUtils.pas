@@ -375,7 +375,7 @@ begin
    if src='' then Exit('');
 
    raw := UTF8Encode(src);
-   SetLength(Result, Length(src)*3); // worst-case all special chars
+   SetLength(Result, Length(raw)*3); // worst-case all special chars
 
    pSrc := Pointer(raw);
    pDest := Pointer(Result);
@@ -384,7 +384,7 @@ begin
    repeat
       case pSrc^ of
          #0 : break;
-         #1..'/',  '['..']', ':'..'@' : begin
+         #1..'/',  '['..']', ':'..'@', #127..#255 : begin
             pDest[0] := '%';
             pDest[1] := cToHex[1+(Ord(pSrc^) shr 4)];
             pDest[2] := cToHex[1+(Ord(pSrc^) and 15)];
@@ -700,6 +700,7 @@ begin
          '&' : Append('&amp;');
          '"' : Append('&quot;');
          '''' : Append('&#39;');
+         #$00A0 : Append('&nbsp;');
       else
          if capacity=0 then
             Grow;
