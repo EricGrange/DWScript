@@ -325,6 +325,17 @@ object dwsWebLib: TdwsWebLib
             Kind = mkClassProcedure
           end
           item
+            Name = 'SetContentJSON'
+            Parameters = <
+              item
+                Name = 'j'
+                DataType = 'JSONVariant'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebResponseMethodsSetContentJSONEval
+            Kind = mkClassProcedure
+          end
+          item
             Name = 'RequestAuthentication'
             Parameters = <
               item

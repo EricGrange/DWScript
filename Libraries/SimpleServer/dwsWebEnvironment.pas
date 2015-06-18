@@ -20,7 +20,7 @@ interface
 
 uses
    Classes, SysUtils, StrUtils, DateUtils,
-   SynCrtSock,
+   SynCrtSock, SynCommons,
    dwsExprs, dwsUtils, dwsWebUtils;
 
 type
@@ -166,6 +166,7 @@ type
 
       protected
          procedure SetContentText(const textType : RawByteString; const text : String);
+         procedure SetContentJSON(const json : String);
          procedure SetLastModified(v : TDateTime);
          function GetCookies : TWebResponseCookies;
 
@@ -181,6 +182,7 @@ type
 
          property StatusCode : Integer read FStatusCode write FStatusCode;
          property ContentText[const textType : RawByteString] : String write SetContentText;
+         property ContentJSON : String write SetContentJSON;
          property ContentData : RawByteString read FContentData write FContentData;
          property ContentType : RawByteString read FContentType write FContentType;
          property ContentEncoding : RawByteString read FContentEncoding write FContentEncoding;
@@ -332,17 +334,17 @@ begin
    p:=0;
    base:=1;
    while True do begin
-      p:=PosEx('=', cookieField, base);
-      next:=PosEx(';', cookieField, p);
+      p:=StrUtils.PosEx('=', cookieField, base);
+      next:=StrUtils.PosEx(';', cookieField, p);
       if (p>base) and (next>p) then begin
-         Result.Add(Trim(Copy(cookieField, base, p-base))
+         Result.Add(SysUtils.Trim(Copy(cookieField, base, p-base))
                     +'='
                     +Copy(cookieField, p+1, pred(next-p)));
          base:=next+1;
       end else Break;
    end;
    if (p>base) and (base<Length(cookieField)) then
-      Result.Add(Trim(Copy(cookieField, base, p-base))
+      Result.Add(SysUtils.Trim(Copy(cookieField, base, p-base))
                  +'='
                  +Copy(cookieField, p+1));
 end;
@@ -568,7 +570,15 @@ end;
 procedure TWebResponse.SetContentText(const textType : RawByteString; const text : String);
 begin
    ContentType:='text/'+textType+'; charset=utf-8';
-   ContentData:=UTF8Encode(text);
+   ContentData:=StringToUTF8(text);
+end;
+
+// SetContentJSON
+//
+procedure TWebResponse.SetContentJSON(const json : String);
+begin
+   ContentType:='application/json';
+   ContentData:=StringToUTF8(json);
 end;
 
 // GetCookies

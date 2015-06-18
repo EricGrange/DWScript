@@ -807,6 +807,7 @@ function StrNonNilLength(const aString : UnicodeString) : Integer; inline;
 function StrIBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
 function StrBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
 function StrBeginsWithA(const aStr, aBegin : RawByteString) : Boolean;
+function StrBeginsWithBytes(const aStr : RawByteString; const bytes : array of Byte) : Boolean;
 function StrIEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
 function StrIEndsWithA(const aStr, aEnd : RawByteString) : Boolean;
 function StrEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
@@ -2092,6 +2093,22 @@ begin
    if (n2>n1) or (n2=0) then
       Result:=False
    else Result:=CompareMem(Pointer(aStr), Pointer(aBegin), n2);
+end;
+
+// StrBeginsWithBytes
+//
+function StrBeginsWithBytes(const aStr : RawByteString; const bytes : array of Byte) : Boolean;
+var
+   i, n : Integer;
+begin
+   n:=Length(bytes);
+   if Length(aStr)<n then
+      Result:=False
+   else begin
+      for i:=0 to n-1 do
+         if Ord(PAnsiChar(Pointer(aStr))[i])<>bytes[i] then Exit(False);
+      Result:=True;
+   end;
 end;
 
 // StrIEndsWith

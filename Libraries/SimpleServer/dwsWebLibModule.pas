@@ -22,7 +22,8 @@ uses
    Windows, WinInet, Variants,
    SysUtils, Classes, StrUtils,
    SynZip, SynCrtSock, SynCommons,
-   dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList, dwsSymbols;
+   dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList, dwsSymbols,
+   dwsJSONConnector;
 
 type
   TdwsWebLib = class(TDataModule)
@@ -111,6 +112,8 @@ type
       ExtObject: TObject);
     procedure dwsWebClassesHttpQueryMethodsDeleteEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsWebClassesWebResponseMethodsSetContentJSONEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -208,9 +211,12 @@ begin
                end;
             end;
 
-            if StrIEndsWithA(mimeType, 'charset=utf-8') then
-               replyData:=UTF8DecodeToUnicodeString(buf)
-            else RawByteStringToScriptString(buf, replyData);
+            if StrIEndsWithA(mimeType, 'charset=utf-8') then begin
+               // strip BOM if present
+               if StrBeginsWithBytes(buf, [$EF, $BB, $BF]) then
+                  Delete(buf, 1, 3);
+               replyData:=UTF8DecodeToUnicodeString(buf);
+            end else RawByteStringToScriptString(buf, replyData);
          end else RawByteStringToScriptString(buf, replyData);
       finally
          query.Free;
@@ -464,6 +470,19 @@ procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetCompressionEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.WebResponse.Compression:=Info.ParamAsBoolean[0];
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetContentJSONEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   intf : IUnknown;
+   json : String;
+begin
+   intf := IUnknown(Info.ParamAsVariant[0]);
+   if intf <> nil then
+      json := (intf as IBoxedJSONValue).Value.ToString
+   else json := '';
+   Info.WebResponse.ContentJSON := json;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetContentTextEval(
