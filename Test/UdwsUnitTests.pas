@@ -53,6 +53,7 @@ type
          function  FuncFastPointEval(const args : TExprBaseListExec) : Variant;
          procedure ProcCallLevelsEval(Info: TProgramInfo);
          procedure FuncReturnStrings(Info: TProgramInfo);
+         procedure FuncReturnStrings2(Info: TProgramInfo);
          procedure FuncReturnVirtCreate(Info: TProgramInfo);
 
          procedure ClassConstructor(Info: TProgramInfo; var ExtObject: TObject);
@@ -114,6 +115,7 @@ type
          procedure PredefinedRecord;
          procedure DynamicArray;
          procedure DynamicArrayResult;
+         procedure DynamicArrayResult2;
          procedure ClassPropertyInfo;
          procedure ClassInit;
          procedure DestructorAndExternalObject;
@@ -447,6 +449,10 @@ begin
    func:=FUnit.Functions.Add('FuncStrings', 'TStringArray');
    func.Parameters.Add('i', 'Integer');
    func.OnEval:=FuncReturnStrings;
+
+   func:=FUnit.Functions.Add('FuncStrings2', 'TStringArray');
+   func.Parameters.Add('i', 'Integer');
+   func.OnEval:=FuncReturnStrings2;
 
    func:=FUnit.Functions.Add('FuncReturnVirtCreate', 'TTestClass');
    func.OnEval:=FuncReturnVirtCreate;
@@ -932,6 +938,20 @@ begin
       Dec(i);
       result.Element([i]).ValueAsString:=IntToStr(i);
    end;
+end;
+
+// FuncReturnStrings2
+//
+procedure TdwsUnitTestsContext.FuncReturnStrings2(Info: TProgramInfo);
+var
+   a : TStringDynArray;
+   i, n : Integer;
+begin
+   n:=Info.ParamAsInteger[0];
+   SetLength(a, n);
+   for i:=0 to n-1 do
+      a[i]:=IntToStr(i*2);
+   Info.ResultAsStringArray:=a;
 end;
 
 // FuncReturnVirtCreate
@@ -1903,6 +1923,35 @@ begin
       CheckEquals('', exec.Msgs.AsInfo, 'Run');
 
       CheckEquals('0-1'#13#10#13#10'0/1/2'#13#10, exec.Result.ToString);
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// DynamicArrayResult2
+//
+procedure TdwsUnitTests.DynamicArrayResult2;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'var astr := FuncStrings2(2);'#13#10
+                           +'PrintLn(astr.Join("-"));'#13#10
+                           +'astr := FuncStrings2(0);'#13#10
+                           +'PrintLn(astr.Join("-"));'#13#10
+                           +'astr := FuncStrings2(3);'#13#10
+                           +'PrintLn(astr.Join("/"));'#13#10
+                           );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+
+      CheckEquals('', exec.Msgs.AsInfo, 'Run');
+
+      CheckEquals('0-2'#13#10#13#10'0/2/4'#13#10, exec.Result.ToString);
    finally
       exec.EndProgram;
    end;

@@ -1668,6 +1668,8 @@ type
          procedure SetResultAsBoolean(const value : Boolean);
          procedure SetResultAsFloat(const value : Double);
 
+         procedure SetResultAsStringArray(const a : TStringDynArray);
+
          function GetParamAsPVariant(index : Integer) : PVariant;
          function GetParamAsVariant(index : Integer) : Variant;
          procedure SetParamAsVariant(index : Integer; const v : Variant);
@@ -1737,6 +1739,8 @@ type
          property ResultAsBoolean : Boolean write SetResultAsBoolean;
          property ResultAsInteger : Int64 write SetResultAsInteger;
          property ResultAsFloat : Double write SetResultAsFloat;
+
+         property ResultAsStringArray : TStringDynArray write SetResultAsStringArray;
   end;
 
    // An instance of a script class FClassSym. Instance data in FData,
@@ -6156,6 +6160,20 @@ end;
 procedure TProgramInfo.SetResultAsFloat(const value : Double);
 begin
    GetResultAsPVariant^:=value;
+end;
+
+// SetResultAsStringArray
+//
+procedure TProgramInfo.SetResultAsStringArray(const a : TStringDynArray);
+var
+   i, n : Integer;
+   result : IScriptDynArray;
+begin
+   result:=ResultVars.ScriptDynArray;
+   n:=Length(a);
+   result.ArrayLength:=n;
+   for i:=0 to n-1 do
+      result.AsString[i]:=a[i];
 end;
 
 // GetParamAsPVariant
