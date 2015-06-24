@@ -239,6 +239,7 @@ const
   CPE_NoParamsExpected = 'No parameters expected';
   CPE_NoProtectedVisibilityForHelpers = 'Helpers do not supported "protected" visibility specifier';
   CPE_HelpersNotAllowedForDelegates = 'Helpers not allowed for delegates or function pointers';
+  CPE_HelperExpected = '"helper" expected';
   CPE_AnonymousMethodsNotAllowedHere = 'Anonymous methods not allowed here';
   CPE_AnonymousClassesMustBeFullyDefined = 'Anonymous classes must be fully defined';
   CPE_AnonymousClassNotAllowed = 'Anonymous class not allowed by compiler options';

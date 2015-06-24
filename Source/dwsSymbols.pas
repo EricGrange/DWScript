@@ -1548,6 +1548,7 @@ type
          FUnAliasedForType : TTypeSymbol;
          FMetaForType : TTypeSymbol;
          FPriority : Integer;
+         FStrict : Boolean;
 
       protected
 
@@ -1568,6 +1569,7 @@ type
 
          property ForType : TTypeSymbol read FForType;
          property Priority : Integer read FPriority;
+         property Strict : Boolean read FStrict write FStrict;
    end;
 
    THelperSymbols = class(TSimpleList<THelperSymbol>)
@@ -7224,10 +7226,10 @@ end;
 //
 function THelperSymbol.HelpsType(typ : TTypeSymbol) : Boolean;
 begin
-   if typ=nil then
-      Result:=False
-   else if typ=ForType then
+   if typ=ForType then
       Result:=True
+   else if (typ=nil) or Strict then
+      Result:=False
    else if typ.IsOfType(FUnAliasedForType) then
       Result:=True
    else if FMetaForType<>nil then

@@ -711,7 +711,9 @@ type
          procedure ReadFieldsDecl(struct : TStructuredTypeSymbol; visibility : TdwsVisibility;
                                   allowNonConstExpressions : Boolean);
 
-         function ReadHelperDecl(const typeName : UnicodeString; qualifierToken : TTokenType) : THelperSymbol;
+         function ReadHelperDecl(const typeName : UnicodeString;
+                                 qualifierToken : TTokenType;
+                                 isStrict : Boolean) : THelperSymbol;
 
          function ReadRaise : TRaiseBaseExpr;
          function ReadRepeat : TProgramExpr;
@@ -9491,7 +9493,8 @@ end;
 
 // ReadHelperDecl
 //
-function TdwsCompiler.ReadHelperDecl(const typeName : UnicodeString; qualifierToken : TTokenType) : THelperSymbol;
+function TdwsCompiler.ReadHelperDecl(const typeName : UnicodeString; qualifierToken : TTokenType;
+                                     isStrict : Boolean) : THelperSymbol;
 var
    hotPos : TScriptPos;
    visibility : TdwsVisibility;
@@ -9522,6 +9525,7 @@ begin
 
    Result:=THelperSymbol.Create(typeName, CurrentUnitSymbol, forType, FProg.Table.Count);
    try
+      Result.Strict:=isStrict;
       visibility:=cvPublic;
 
       repeat
@@ -9801,7 +9805,7 @@ begin
    hotPos:=FTok.HotPos;
    tt:=FTok.TestDeleteAny([ttARRAY, ttSET,
                            ttRECORD, ttCLASS, ttINTERFACE, ttHELPER,
-                           ttBLEFT, ttENUM, ttFLAGS, ttPARTIAL, ttSTATIC,
+                           ttBLEFT, ttENUM, ttFLAGS, ttPARTIAL, ttSTATIC, ttSTRICT,
                            ttPROCEDURE, ttFUNCTION, ttREFERENCE]);
    case tt of
       ttARRAY : begin
@@ -9818,7 +9822,7 @@ begin
 
       ttRECORD :
          if FTok.TestDelete(ttHELPER) then
-            Result:=ReadHelperDecl(typeName, ttRECORD)
+            Result:=ReadHelperDecl(typeName, ttRECORD, False)
          else begin
             Result:=ReadRecordDecl(typeName, False);
             if typeName='' then begin
@@ -9835,7 +9839,7 @@ begin
             ttOF :
                Result:=ReadClassOf(typeName);
             ttHELPER :
-               Result:=ReadHelperDecl(typeName, ttCLASS);
+               Result:=ReadHelperDecl(typeName, ttCLASS, False);
          else
             if typeContext=tcDeclaration then
                Result:=ReadClassDecl(typeName, [], False)
@@ -9854,7 +9858,7 @@ begin
       ttINTERFACE : begin
          hotPos:=FTok.HotPos;
          if FTok.TestDelete(ttHELPER) then
-            Result:=ReadHelperDecl(typeName, ttINTERFACE)
+            Result:=ReadHelperDecl(typeName, ttINTERFACE, False)
          else begin
             if typeContext=tcDeclaration then
                Result:=ReadInterface(typeName)
@@ -9866,7 +9870,13 @@ begin
       end;
 
       ttHELPER :
-         Result:=ReadHelperDecl(typeName, ttNone);
+         Result:=ReadHelperDecl(typeName, ttNone, False);
+
+      ttSTRICT : begin
+         if not FTok.TestDelete(ttHELPER) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_HelperExpected);
+         Result:=ReadHelperDecl(typeName, ttNone, True);
+      end;
 
       ttENUM, ttFLAGS : begin
          // explicitly scoped enum
