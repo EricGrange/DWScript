@@ -21,6 +21,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsCryptoClassesHashRIPEMD160MethodsHashDataEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsCryptoClassesHashCRC32MethodsHashDataEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -31,7 +33,7 @@ implementation
 
 {$R *.dfm}
 
-uses SynCrypto;
+uses SynCrypto, SynZip;
 
 type
    TRipe160Digest = array [0..4] of LongWord;
@@ -291,6 +293,12 @@ procedure TdwsCryptoLib.dwsCryptoClassesEncryptionAESSHA256FullMethodsEncryptDat
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsDataString := DoAESFull(Info.ParamAsDataString[0], Info.ParamAsDataString[1], True);
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesHashCRC32MethodsHashDataEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := IntToHex(CRC32string(Info.ParamAsDataString[0]), 8);
 end;
 
 procedure TdwsCryptoLib.dwsCryptoClassesHashRIPEMD160MethodsHashDataEval(
