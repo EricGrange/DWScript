@@ -2,7 +2,7 @@ object dwsCryptoLib: TdwsCryptoLib
   OldCreateOrder = False
   Left = 810
   Top = 86
-  Height = 172
+  Height = 215
   Width = 195
   object dwsCrypto: TdwsUnit
     Classes = <
@@ -182,10 +182,47 @@ object dwsCryptoLib: TdwsCryptoLib
             OnEval = dwsCryptoClassesEncryptionAESSHA256FullMethodsDecryptDataEval
             Kind = mkClassFunction
           end>
+      end
+      item
+        Name = 'EncryptionCryptProtect'
+        Ancestor = 'EncryptionAlgorithm'
+        Methods = <
+          item
+            Name = 'EncryptData'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end
+              item
+                Name = 'key'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsCryptoClassesEncryptionCryptProtectMethodsEncryptDataEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'DecryptData'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end
+              item
+                Name = 'key'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsCryptoClassesEncryptionCryptProtectMethodsDecryptDataEval
+            Kind = mkClassFunction
+          end>
       end>
     UnitName = 'System.Crypto'
     StaticSymbols = True
-    Left = 72
+    Left = 64
     Top = 32
   end
 end
