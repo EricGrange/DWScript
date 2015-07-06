@@ -1,1 +1,1 @@
-Syntax Error: "UNTIL" expected. [line: 2, column: 2]
+Syntax Error: "UNTIL" expected but "ELSE" found. [line: 2, column: 2]

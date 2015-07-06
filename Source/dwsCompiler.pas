@@ -4169,16 +4169,26 @@ end;
 procedure TdwsCompiler.UnexpectedBlockTokenError(const endTokens : TTokenTypes);
 var
    msg : String;
+   foundTyp : TTokenType;
    found : String;
 begin
    msg:=TokenTypesToString(endTokens);
-   if FTok.HasTokens then
-      found:=cTokenStrings[FTok.GetToken.FTyp];
+   if FTok.HasTokens then begin
+      foundTyp:=FTok.GetToken.FTyp;
+      found:=cTokenStrings[foundTyp];
+   end else foundTyp:=ttNone;
    if msg='' then
       if found='' then
          msg:=CPE_SemiExpected
       else msg:=Format(CPE_Unexpected_X, [found])
-   else msg:=msg+CPE_XxxExpected;
+   else case foundTyp of
+      ttNAME :
+         msg:=Format(CPE_X_ExpectedBut_Y_Found, [msg, 'identifier']);
+      ttNone :
+         msg:=msg+CPE_XxxExpected;
+   else
+      msg:=Format(CPE_X_ExpectedBut_Y_Found, [msg, '"'+found+'"']);
+   end;
    FMsgs.AddCompilerStop(FTok.HotPos, msg);
 end;
 
