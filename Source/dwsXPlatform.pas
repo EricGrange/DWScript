@@ -206,6 +206,11 @@ procedure VarCopy(out dest : Variant; const src : Variant); inline;
 function VarToUnicodeStr(const v : Variant) : UnicodeString; inline;
 {$endif}
 
+function RawByteStringToBytes(const buf : RawByteString) : TBytes;
+function BytesToRawByteString(const buf : TBytes; index : Integer = 0) : RawByteString;
+
+function LoadDataFromFile(const fileName : UnicodeString) : TBytes;
+
 function LoadTextFromBuffer(const buf : TBytes) : UnicodeString;
 function LoadTextFromRawBytes(const buf : RawByteString) : UnicodeString;
 function LoadTextFromStream(aStream : TStream) : UnicodeString;
@@ -697,6 +702,32 @@ begin
 end;
 {$endif FPC}
 
+// RawByteStringToBytes
+//
+function RawByteStringToBytes(const buf : RawByteString) : TBytes;
+var
+   n : Integer;
+begin
+   n:=Length(buf);
+   SetLength(Result, n);
+   if n>0 then
+      System.Move(buf[1], Result[0], n);
+end;
+
+// BytesToRawByteString
+//
+function BytesToRawByteString(const buf : TBytes; index : Integer = 0) : RawByteString;
+var
+   n : Integer;
+begin
+   n:=Length(buf)-index;
+   if n<=0 then
+      Result:=''
+   else begin
+      SetLength(Result, n);
+      System.Move(buf[0], Result[1], n);
+   end;
+end;
 
 // TryTextToFloat
 //
@@ -778,26 +809,34 @@ end;
 // LoadTextFromFile
 //
 function LoadTextFromFile(const fileName : UnicodeString) : UnicodeString;
+var
+   buf : TBytes;
+begin
+   buf:=LoadDataFromFile(fileName);
+   Result:=LoadTextFromBuffer(buf);
+end;
+
+// LoadDataFromFile
+//
+function LoadDataFromFile(const fileName : UnicodeString) : TBytes;
 const
    INVALID_FILE_SIZE = DWORD($FFFFFFFF);
 var
    hFile : THandle;
    n, nRead : Cardinal;
-   buf : TBytes;
 begin
+   if fileName='' then Exit(nil);
    hFile:=OpenFileForSequentialReadOnly(fileName);
-   if hFile=INVALID_HANDLE_VALUE then
-      Exit('');
+   if hFile=INVALID_HANDLE_VALUE then Exit(nil);
    try
       n:=GetFileSize(hFile, nil);
       if n=INVALID_FILE_SIZE then
          RaiseLastOSError;
       if n>0 then begin
-         SetLength(buf, n);
-         if not ReadFile(hFile, buf[0], n, nRead, nil) then
+         SetLength(Result, n);
+         if not ReadFile(hFile, Result[0], n, nRead, nil) then
             RaiseLastOSError;
-         Result:=LoadTextFromBuffer(buf);
-      end else Result:='';
+      end else Result:=nil;
    finally
       FileClose(hFile);
    end;
