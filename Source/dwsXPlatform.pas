@@ -725,7 +725,7 @@ begin
       Result:=''
    else begin
       SetLength(Result, n);
-      System.Move(buf[0], Result[1], n);
+      System.Move(buf[index], Result[1], n);
    end;
 end;
 
