@@ -87,6 +87,7 @@ type
          procedure CompilerInternals;
          procedure CompilerAbort;
          procedure InitializationFinalization;
+         procedure IsAbstractFlag;
    end;
 
    ETestException = class (Exception);
@@ -1880,6 +1881,25 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'no finalization compile');
 
    CheckEquals('hello', prog.Execute.Result.ToString, 'no finalization exec');
+end;
+
+// IsAbstractFlag
+//
+procedure TCornerCasesTests.IsAbstractFlag;
+var
+   prog : IdwsProgram;
+   sym : TTypeSymbol;
+begin
+   prog:=FCompiler.Compile( 'type TA = class procedure A; virtual; abstract; end;'#13#10
+                           +'type TS = class (TA) procedure A; override; begin end; end;');
+
+   sym:=prog.Table.FindTypeSymbol('TA', cvMagic);
+   Check(sym is TClassSymbol, 'TA class');
+   Check(TClassSymbol(sym).IsAbstract, 'TA abstract');
+
+   sym:=prog.Table.FindTypeSymbol('TS', cvMagic);
+   Check(sym is TClassSymbol, 'TS class');
+   Check(not TClassSymbol(sym).IsAbstract, 'TS not abstract');
 end;
 
 // ------------------------------------------------------------------
