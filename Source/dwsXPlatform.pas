@@ -207,9 +207,12 @@ function VarToUnicodeStr(const v : Variant) : UnicodeString; inline;
 {$endif}
 
 function RawByteStringToBytes(const buf : RawByteString) : TBytes;
-function BytesToRawByteString(const buf : TBytes; index : Integer = 0) : RawByteString;
+function BytesToRawByteString(const buf : TBytes; startIndex : Integer = 0) : RawByteString;
 
 function LoadDataFromFile(const fileName : UnicodeString) : TBytes;
+procedure SaveDataToFile(const fileName : UnicodeString; const data : TBytes);
+
+procedure SaveRawBytesToFile(const fileName : UnicodeString; const data : RawByteString);
 
 function LoadTextFromBuffer(const buf : TBytes) : UnicodeString;
 function LoadTextFromRawBytes(const buf : RawByteString) : UnicodeString;
@@ -716,16 +719,16 @@ end;
 
 // BytesToRawByteString
 //
-function BytesToRawByteString(const buf : TBytes; index : Integer = 0) : RawByteString;
+function BytesToRawByteString(const buf : TBytes; startIndex : Integer = 0) : RawByteString;
 var
    n : Integer;
 begin
-   n:=Length(buf)-index;
+   n:=Length(buf)-startIndex;
    if n<=0 then
       Result:=''
    else begin
       SetLength(Result, n);
-      System.Move(buf[index], Result[1], n);
+      System.Move(buf[startIndex], Result[1], n);
    end;
 end;
 
@@ -842,23 +845,46 @@ begin
    end;
 end;
 
-// SaveTextToUTF8File
+// SaveDataToFile
 //
-procedure SaveTextToUTF8File(const fileName, text : UnicodeString);
+procedure SaveDataToFile(const fileName : UnicodeString; const data : TBytes);
 var
    hFile : THandle;
-   utf8 : UTF8String;
-   nWrite : DWORD;
+   n, nWrite : DWORD;
 begin
-   utf8:=UTF8Encode(text);
    hFile:=OpenFileForSequentialWriteOnly(fileName);
    try
-      if utf8<>'' then
-         if not WriteFile(hFile, utf8[1], Length(utf8), nWrite, nil) then
+      n:=Length(data);
+      if n>0 then
+         if not WriteFile(hFile, data[0], n, nWrite, nil) then
             RaiseLastOSError;
    finally
       FileClose(hFile);
    end;
+end;
+
+// SaveRawBytesToFile
+//
+procedure SaveRawBytesToFile(const fileName : UnicodeString; const data : RawByteString);
+var
+   hFile : THandle;
+   nWrite : DWORD;
+begin
+   hFile:=OpenFileForSequentialWriteOnly(fileName);
+   try
+      if data<>'' then
+         if not WriteFile(hFile, data[1], Length(data), nWrite, nil) then
+            RaiseLastOSError;
+   finally
+      FileClose(hFile);
+   end;
+end;
+
+// SaveTextToUTF8File
+//
+procedure SaveTextToUTF8File(const fileName, text : UnicodeString);
+begin
+   SaveRawBytesToFile(fileName, UTF8Encode(text));
 end;
 
 // AppendTextToUTF8File
