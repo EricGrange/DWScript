@@ -212,6 +212,7 @@ function BytesToRawByteString(const buf : TBytes; startIndex : Integer = 0) : Ra
 function LoadDataFromFile(const fileName : UnicodeString) : TBytes;
 procedure SaveDataToFile(const fileName : UnicodeString; const data : TBytes);
 
+function LoadRawBytesFromFile(const fileName : UnicodeString) : RawByteString;
 procedure SaveRawBytesToFile(const fileName : UnicodeString; const data : RawByteString);
 
 function LoadTextFromBuffer(const buf : TBytes) : UnicodeString;
@@ -858,6 +859,32 @@ begin
       if n>0 then
          if not WriteFile(hFile, data[0], n, nWrite, nil) then
             RaiseLastOSError;
+   finally
+      FileClose(hFile);
+   end;
+end;
+
+// LoadRawBytesFromFile
+//
+function LoadRawBytesFromFile(const fileName : UnicodeString) : RawByteString;
+const
+   INVALID_FILE_SIZE = DWORD($FFFFFFFF);
+var
+   hFile : THandle;
+   n, nRead : Cardinal;
+begin
+   if fileName='' then Exit;
+   hFile:=OpenFileForSequentialReadOnly(fileName);
+   if hFile=INVALID_HANDLE_VALUE then Exit;
+   try
+      n:=GetFileSize(hFile, nil);
+      if n=INVALID_FILE_SIZE then
+         RaiseLastOSError;
+      if n>0 then begin
+         SetLength(Result, n);
+         if not ReadFile(hFile, Result[1], n, nRead, nil) then
+            RaiseLastOSError;
+      end;
    finally
       FileClose(hFile);
    end;
