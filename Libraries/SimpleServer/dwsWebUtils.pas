@@ -384,7 +384,7 @@ begin
    repeat
       case pSrc^ of
          #0 : break;
-         #1..'/',  '['..']', ':'..'@', #127..#255 : begin
+         #1..'/',  '['..']', ':'..'@', #127..AnsiChar(255) : begin
             pDest[0] := '%';
             pDest[1] := cToHex[1+(Ord(pSrc^) shr 4)];
             pDest[2] := cToHex[1+(Ord(pSrc^) and 15)];
