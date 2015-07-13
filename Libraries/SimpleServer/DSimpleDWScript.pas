@@ -18,7 +18,7 @@ unit DSimpleDWScript;
 
 interface
 
-{$define EnablePas2Js}
+{.$define EnablePas2Js}
 
 uses
    Windows, SysUtils, Classes, StrUtils,
@@ -152,7 +152,9 @@ type
                           const options : TDWSHandlingOptions);
       procedure StopDWS;
 
+      {$ifdef EnablePas2Js}
       procedure HandleP2JS(const fileName : String; request : TWebRequest; response : TWebResponse);
+      {$endif}
 
       procedure FlushDWSCache(const fileName : String = '');
 
@@ -399,6 +401,7 @@ end;
 
 // HandleP2JS
 //
+{$ifdef EnablePas2Js}
 procedure TSimpleDWScript.HandleP2JS(const fileName : String; request : TWebRequest; response : TWebResponse);
 var
    code, js : String;
@@ -423,6 +426,7 @@ begin
       response.ContentType:='text/javascript; charset=UTF-8';
    end;
 end;
+{$endif}
 
 // FlushDWSCache
 //

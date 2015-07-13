@@ -459,8 +459,10 @@ begin
       case fileInfo.Typ of
          fatRAW :
             ProcessStaticFile(fileInfo.CookedPathName, request, response);
+         {$ifdef EnablePas2Js}
          fatP2JS :
             FDWS.HandleP2JS(fileInfo.CookedPathName, request, response);
+         {$endif}
       else
          FDWS.HandleDWS(fileInfo.CookedPathName, fileInfo.Typ, request, response, []);
       end;
