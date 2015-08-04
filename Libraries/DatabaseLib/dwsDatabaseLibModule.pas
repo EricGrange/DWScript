@@ -107,7 +107,7 @@ type
 
   public
     { Public declarations }
-    procedure CleanupDataBasePool(const filter : String = '*');
+    class procedure CleanupDataBasePool(const filter : String = '*');
     function CountPooledDataBases(const filter : String = '*') : Integer;
 
     property Script : TDelphiWebScript write SetScript;
@@ -351,7 +351,7 @@ begin
    end;
 end;
 
-procedure TdwsDatabaseLib.CleanupDataBasePool(const filter : String = '*');
+class procedure TdwsDatabaseLib.CleanupDataBasePool(const filter : String = '*');
 var
    i : Integer;
    mask : TMask;

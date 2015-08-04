@@ -3956,7 +3956,9 @@ var
 begin
    if FCount=0 then Exit(-1);
 
-   h:=SimpleStringHash(aName);
+   if aName='' then
+      h:=1
+   else h:=SimpleStringHash(aName);
    i:=h and FHighIndex;
 
    repeat
@@ -4031,7 +4033,9 @@ var
 begin
    if FCount>=FGrowth then Grow;
 
-   h:=SimpleStringHash(aName);
+   if aName='' then
+      h:=1
+   else h:=SimpleStringHash(aName);
    i:=h and FHighIndex;
 
    repeat
