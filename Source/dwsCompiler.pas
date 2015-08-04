@@ -10685,8 +10685,15 @@ begin
          end else Result:=TTypedExpr(nameExpr);
       end else begin // Constant values in the code
          Result := ReadConstImmediateValue;
-         if (Result<>nil) and FTok.Test(ttDOT) then
-            Result:=(ReadSymbol(Result, isWrite) as TTypedExpr);
+         if Result<>nil then begin
+            try
+               if FTok.Test(ttDOT) then
+                  Result:=(ReadSymbol(Result, isWrite) as TTypedExpr);
+            except
+               Result.Free;
+               raise;
+            end;
+         end;
       end;
    end;
 
