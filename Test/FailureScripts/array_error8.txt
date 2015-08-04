@@ -1,0 +1,3 @@
+Syntax Error: Expression expected [line: 2, column: 38]
+Syntax Error: ";" expected. [line: 2, column: 38]
+Syntax Error: Unexpected ")". [line: 2, column: 38]

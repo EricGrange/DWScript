@@ -2877,7 +2877,10 @@ begin
       end else expr:=factory.ReadExpr(nil);
       try
          if Assigned(typ) then begin
-            if not typ.IsCompatible(expr.typ) then
+            if expr=nil then begin
+               // keep compiling
+               expr := TConvInvalidExpr.Create(FProg, nil, typ);
+            end else if not typ.IsCompatible(expr.Typ) then
                expr:=CompilerUtils.WrapWithImplicitConversion(FProg, expr, typ, FTok.HotPos);
          end else if expr<>nil then begin
             typ:=expr.typ;
