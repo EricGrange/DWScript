@@ -40,9 +40,16 @@ object dwsWebServerLib: TdwsWebServerLib
           end
           item
             Name = 'FlushCompiledPrograms'
-            Attributes = [maStatic]
+            Attributes = [maClassMethod, maStatic]
             OnEval = dwsWebServerClassesWebServerMethodsFlushCompiledProgramsEval
             Kind = mkClassProcedure
+          end
+          item
+            Name = 'LiveQueries'
+            ResultType = 'String'
+            Attributes = [maClassMethod, maStatic]
+            OnEval = dwsWebServerClassesWebServerMethodsLiveQueriesEval
+            Kind = mkClassFunction
           end>
       end>
     Dependencies.Strings = (

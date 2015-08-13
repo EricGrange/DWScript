@@ -56,16 +56,19 @@ type
          function GetItemHashCode(const item1 : TCompiledProgram) : Integer; override;
    end;
 
+   TDWSHandlingOption = (optWorker);
+   TDWSHandlingOptions = set of TDWSHandlingOption;
+
    PExecutingScript = ^TExecutingScript;
    TExecutingScript = record
+      ID : Integer;
       Exec : IdwsProgramExecution;
+      Start : Int64;
+      Options : TDWSHandlingOptions;
       Prev, Next : PExecutingScript;
    end;
 
    TLoadSourceCodeEvent = function (const fileName : String) : String of object;
-
-   TDWSHandlingOption = (optWorker);
-   TDWSHandlingOptions = set of TDWSHandlingOption;
 
    TSimpleDWScript = class(TDataModule)
       DelphiWebScript: TDelphiWebScript;
@@ -104,6 +107,7 @@ type
       FCompilerLock : TFixedCriticalSection;
       FEnableJIT : Boolean;
 
+      FExecutingID : Integer;
       FExecutingScripts : PExecutingScript;
       FExecutingScriptsLock : TMultiReadSingleWrite;
 
@@ -166,6 +170,8 @@ type
 
       procedure Startup;
       procedure Shutdown;
+
+      function LiveQueries : String;
 
       property ScriptTimeoutMilliseconds : Integer read FScriptTimeoutMilliseconds write FScriptTimeoutMilliseconds;
       property WorkerTimeoutMilliseconds : Integer read FWorkerTimeoutMilliseconds write FWorkerTimeoutMilliseconds;
@@ -238,6 +244,9 @@ implementation
 
 procedure TSimpleDWScript.DataModuleCreate(Sender: TObject);
 begin
+   // attempt to minimize probability of ID collisions between server restarts
+   FExecutingID:=SimpleIntegerHash(GetTickCount);
+
    FPathVariables:=TFastCompareTextList.Create;
 
    FSystemInfo:=TdwsSystemInfoLibModule.Create(Self);
@@ -341,7 +350,10 @@ begin
    if prog.Msgs.HasErrors then
       Handle500(response, prog.Msgs)
    else begin
+      executing.Start:=GetSystemMilliseconds;
       executing.Exec:=prog.CreateNewExecution;
+      executing.Options:=options;
+      executing.ID:=InterlockedIncrement(FExecutingID);
 
       webenv:=TWebEnvironment.Create;
       webenv.WebRequest:=request;
@@ -796,6 +808,52 @@ begin
 
    if ShutdownScriptName<>'' then
       HandleDWS(ShutdownScriptName, fatPAS, nil, nil, [optWorker]);
+end;
+
+// LiveQueries
+//
+function TSimpleDWScript.LiveQueries : String;
+var
+   wr : TdwsJSONWriter;
+   exec : PExecutingScript;
+   webEnv : TWebEnvironment;
+   t : Int64;
+begin
+   wr := TdwsJSONWriter.Create(nil);
+   try
+      wr.BeginArray;
+      FExecutingScriptsLock.BeginRead;
+      try
+         t := GetSystemMilliseconds;
+         exec := FExecutingScripts;
+         while exec <> nil do begin
+            webEnv := exec.Exec.Environment.GetSelf as TWebEnvironment;
+            wr.BeginObject;
+            wr.WriteName('id').WriteInteger(Cardinal(exec.ID));
+            if optWorker in exec.Options then begin
+               wr.WriteName('path').WriteString(webEnv.WebRequest.URL);
+               wr.WriteName('query').WriteString(UTF8ToString(webEnv.WebRequest.ContentData));
+            end else begin
+               wr.WriteName('path').WriteString(webEnv.WebRequest.PathInfo);
+               wr.WriteName('query').WriteString(webEnv.WebRequest.QueryString);
+            end;
+            wr.WriteName('ip').WriteString(webEnv.WebRequest.RemoteIP);
+            wr.WriteName('ms').WriteInteger(t-exec.Start);
+            wr.WriteName('sleeping').WriteBoolean(exec.Exec.Sleeping);
+            wr.WriteName('options').BeginArray;
+               if optWorker in exec.Options then wr.WriteString('worker');
+            wr.EndArray;
+            wr.EndObject;
+            exec := exec.Next;
+         end;
+      finally
+         FExecutingScriptsLock.EndRead;
+      end;
+      wr.EndArray;
+      Result := wr.ToString;
+   finally
+      wr.Free;
+   end;
 end;
 
 // ------------------

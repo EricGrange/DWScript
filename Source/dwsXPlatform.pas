@@ -164,6 +164,7 @@ function GetSystemMilliseconds : Int64;
 function UTCDateTime : TDateTime;
 // UTC = LocalTime + Bias
 function LocalTimeBias : TDateTime;
+procedure SystemSleep(msec : Integer);
 
 {$ifndef FPC}
 function UnicodeFormat(const fmt : UnicodeString; const args : array of const) : UnicodeString;
@@ -182,7 +183,7 @@ function UnicodeUpperCase(const s : UnicodeString) : UnicodeString;
 function ASCIICompareText(const s1, s2 : UnicodeString) : Integer; inline;
 function ASCIISameText(const s1, s2 : UnicodeString) : Boolean; inline;
 
-function InterlockedIncrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} inline; {$endif}
+function InterlockedIncrement(var val : Integer) : Integer; overload; {$IFDEF PUREPASCAL} inline; {$endif}
 function InterlockedDecrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} inline; {$endif}
 
 procedure FastInterlockedIncrement(var val : Integer); {$IFDEF PUREPASCAL} inline; {$endif}
@@ -342,6 +343,14 @@ begin
 begin
    Result:=0; // TODO!
 {$ENDIF}
+end;
+
+// SystemSleep
+//
+procedure SystemSleep(msec : Integer);
+begin
+   if msec>=0 then
+      Windows.Sleep(msec);
 end;
 
 {$ifndef FPC}

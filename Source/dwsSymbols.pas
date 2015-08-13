@@ -96,10 +96,12 @@ type
       procedure SetUserObject(const value : TObject);
       function GetStack : TStack;
       function GetProgramState : TProgramState;
+      function GetSleeping : Boolean;
 
       function GetCallStack : TdwsExprLocationArray;
 
       property ProgramState : TProgramState read GetProgramState;
+      property Sleeping : Boolean read GetSleeping;
       property Stack : TStack read GetStack;
       property Msgs : TdwsRuntimeMessageList read GetMsgs;
       property Debugger : IDebugger read GetDebugger write SetDebugger;
@@ -1678,6 +1680,9 @@ type
          FDebugger : IDebugger;
          FIsDebugging : Boolean;
 
+         FSleepTime : Integer;
+         FSleeping : Boolean;
+
       protected
          FProgramState : TProgramState;  // here to reduce its offset
 
@@ -1710,6 +1715,8 @@ type
          function GetStack : TStack;
 
          function GetProgramState : TProgramState;
+
+         function GetSleeping : Boolean;
 
          function GetFormatSettings : TdwsFormatSettings;
 
@@ -1745,6 +1752,10 @@ type
          function ValidateFileName(const path : String) : String; virtual;
 
          function Random : Double;
+
+         // interruptible sleep (in case program is stopped)
+         procedure Sleep(msec, sleepCycle : Integer);
+         property Sleeping : Boolean read FSleeping;
 
          property LastScriptError : TExprBase read FLastScriptError;
          property LastScriptCallStack : TdwsExprLocationArray read FLastScriptCallStack;
@@ -6868,6 +6879,42 @@ end;
   {$R+}
   {$UNDEF RANGEON}
 {$ENDIF}
+
+// Sleep
+//
+procedure TdwsExecution.Sleep(msec, sleepCycle : Integer);
+var
+   stopTicks, tStart, tNow : Int64;
+begin
+   // this is an abortable sleep with a granulosity
+   if msec<0 then Exit;
+   FSleeping:=True;
+   tStart:=GetSystemMilliseconds;
+   if msec=0 then begin
+      // special case of relinquishing current time slice
+      SystemSleep(0);
+      tNow:=GetSystemMilliseconds;
+   end else begin
+      tNow:=tStart;
+      stopTicks:=tStart+msec;
+      repeat
+         msec:=stopTicks-tNow;
+         if msec<0 then break;
+         if msec>sleepCycle then msec:=sleepCycle;
+         SystemSleep(msec);
+         tNow:=GetSystemMilliseconds;
+      until ProgramState<>psRunning;
+   end;
+   FSleepTime:=tNow-tStart;
+   FSleeping:=False;
+end;
+
+// GetSleeping
+//
+function TdwsExecution.GetSleeping : Boolean;
+begin
+   Result:=FSleeping;
+end;
 
 // EnterExceptionBlock
 //

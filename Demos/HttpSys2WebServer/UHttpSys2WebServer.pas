@@ -112,6 +112,8 @@ type
 
          function Authentications : TWebRequestAuthentications;
 
+         function LiveQueries : String;
+
          procedure FlushCompiledPrograms;
 
          property Port : Integer read FPort;
@@ -547,6 +549,13 @@ begin
       Include(Result, wraNegotiate);
    if (HTTP_AUTH_ENABLE_KERBEROS and auth)<>0 then
       Include(Result, wraKerberos);
+end;
+
+// LiveQueries
+//
+function THttpSys2WebServer.LiveQueries : String;
+begin
+   Result:=FDWS.LiveQueries;
 end;
 
 // FlushCompiledPrograms

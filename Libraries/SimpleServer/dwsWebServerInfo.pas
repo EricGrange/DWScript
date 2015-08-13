@@ -21,6 +21,7 @@ unit dwsWebServerInfo;
 interface
 
 uses
+   dwsUtils,
    dwsWebEnvironment;
 
 type
@@ -30,6 +31,7 @@ type
       function HttpPort : Integer;
       function HttpsPort : Integer;
       function Authentications : TWebRequestAuthentications;
+      function LiveQueries : String;
       procedure FlushCompiledPrograms;
    end;
 

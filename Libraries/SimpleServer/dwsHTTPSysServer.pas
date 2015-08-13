@@ -1042,8 +1042,8 @@ begin
                   exit;
 
                if FWebResponse.HasHeaders then
-                  outCustomHeader:=FWebResponse.CompiledHeaders
-               else outCustomHeader:='';
+                  outCustomHeader := FWebResponse.CompiledHeaders
+               else outCustomHeader := '';
 
                FLogFieldsData.ProtocolStatus := FWebResponse.StatusCode;
 
@@ -1085,8 +1085,9 @@ begin
                end;
             except
                // handle any exception raised during process: show must go on!
-               on E : Exception do
+               on E : Exception do begin
                   SendError(request, response, 500, E.Message);
+               end;
             end;
             // reset Request ID to handle the next pending request
             requestID := 0;

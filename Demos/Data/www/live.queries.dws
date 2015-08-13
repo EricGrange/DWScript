@@ -1,0 +1,5 @@
+<?pas
+uses System.WebServer;
+
+Print(WebServer.LiveQueries);
+?>
