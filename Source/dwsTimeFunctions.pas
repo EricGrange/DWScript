@@ -364,10 +364,13 @@ end;
 procedure TStrToDateTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 var
    s : String;
+   utc : TdwsTimeZone;
 begin
    s:=args.AsString[0];
-   if not args.FormatSettings.TryStrToDateTime(s, Result, TdwsTimeZone(args.AsInteger[1])) then
-      DateTimeConversionError(s);
+   utc:=TdwsTimeZone(args.AsInteger[1]);
+   if not args.FormatSettings.TryStrToDateTime(s, Result, utc) then
+      if not args.FormatSettings.TryStrToDate(s, Result, utc) then
+         DateTimeConversionError(s);
 end;
 
 { TStrToDateTimeDefFunc }
@@ -758,20 +761,8 @@ end;
 // DoEvalProc
 //
 procedure TSleepFunc.DoEvalProc(const args : TExprBaseListExec);
-var
-   stopTicks, t, d : Int64;
 begin
-   // this is an abortable sleep with a granulosity
-   d:=args.AsInteger[0];
-   if d<0 then Exit;
-   t:=GetSystemMilliseconds;
-   stopTicks:=t+args.AsInteger[0];
-   repeat
-      d:=stopTicks-GetSystemMilliseconds;
-      if d<0 then break;
-      if d>cSleepGranulosity then d:=cSleepGranulosity;
-      Sleep(d);
-   until args.Exec.ProgramState<>psRunning;
+   args.Exec.Sleep(args.AsInteger[0], cSleepGranulosity);
 end;
 
 // ------------------------------------------------------------------
