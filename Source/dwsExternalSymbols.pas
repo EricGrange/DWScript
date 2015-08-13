@@ -103,7 +103,7 @@ var
    lo, hi, mid : Integer;
 begin
    lo:=0;
-   hi:=FCount-1;
+   hi:=Count-1;
    while lo<=hi do begin
       mid:=(lo+hi) shr 1;
       Result:=GetItem(mid);
