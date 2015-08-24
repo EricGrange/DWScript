@@ -112,6 +112,24 @@ object dwsCryptoLib: TdwsCryptoLib
           end>
       end
       item
+        Name = 'HashSHA3_256'
+        Ancestor = 'HashAlgorithm'
+        IsStatic = True
+        Methods = <
+          item
+            Name = 'HashData'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsCryptoClassesHashSHA3_256MethodsHashDataEval
+            Kind = mkClassFunction
+          end>
+      end
+      item
         Name = 'EncryptionAlgorithm'
         IsAbstract = True
         Methods = <

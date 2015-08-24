@@ -43,6 +43,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsCryptoClassesEncryptionCryptProtectMethodsDecryptDataEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsCryptoClassesHashSHA3_256MethodsHashDataEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -53,7 +55,7 @@ implementation
 
 {$R *.dfm}
 
-uses SynCrypto, SynZip, dwsRipeMD160, dwsCryptProtect;
+uses SynCrypto, SynZip, dwsRipeMD160, dwsCryptProtect, dwsSHA3;
 
 function DoAESFull(const data, key : RawByteString; encrypt : Boolean) : RawByteString;
 var
@@ -119,6 +121,22 @@ begin
    RipeMD160Final(digest, p, remaining, Length(data));
 
    Info.ResultAsString := BinToHex(digest, SizeOf(digest));
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesHashSHA3_256MethodsHashDataEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   data : RawByteString;
+   sponge : TSpongeState;
+   hash : array [0..256 div 8-1] of Byte;
+begin
+   data := Info.ParamAsDataString[0];
+
+   SHA3_Init(sponge, SHA3_256);
+   SHA3_Update(sponge, Pointer(data), Length(data));
+   SHA3_FinalHash(sponge, @hash);
+
+   Info.ResultAsString := BinToHex(hash, SizeOf(hash));
 end;
 
 procedure TdwsCryptoLib.dwsCryptoClassesMD5MethodsHashDataEval(
