@@ -82,6 +82,7 @@ type
          function Method : String; override;
          function MethodVerb : TWebRequestMethodVerb; override;
          function Security : String; override;
+         function Secure : Boolean; override;
 
          function ContentLength : Integer; override;
          function ContentData : RawByteString; override;
@@ -423,6 +424,13 @@ begin
    if request^.pSslInfo<>nil then
       Result:=Format('SSL, %d bits', [request^.pSslInfo^.ConnectionKeySize*8])
    else Result:='';
+end;
+
+// Secure
+//
+function THttpSysWebRequest.Secure : Boolean;
+begin
+   Result:=(request^.pSslInfo<>nil);
 end;
 
 // ContentLength

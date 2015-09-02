@@ -101,7 +101,8 @@ type
          function URL : String; virtual; abstract;
          function Method : String; virtual; abstract;
          function MethodVerb : TWebRequestMethodVerb; virtual; abstract;
-         function Security : String; virtual;
+         function Security : String; virtual; abstract;
+         function Secure : Boolean; virtual; abstract;
          function Host : String; virtual;
 
          function ContentLength : Integer; virtual; abstract;
@@ -374,13 +375,6 @@ end;
 function TWebRequest.Header(const headerName : String) : String;
 begin
    Result:=Headers.Values[headerName];
-end;
-
-// Security
-//
-function TWebRequest.Security : String;
-begin
-   Result:='';
 end;
 
 // Host
