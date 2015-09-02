@@ -22,6 +22,7 @@ type
          procedure TokenizerSpecials;
          procedure NoCurlyComments;
          procedure DollarNames;
+         procedure NoBreakSpace;
    end;
 
 // ------------------------------------------------------------------
@@ -216,6 +217,34 @@ begin
 
       rules.DollarNames:=False;
       CheckFalse(rules.DollarNames, 'dollar names set');
+   finally
+      t.Free;
+      rules.Free;
+   end;
+end;
+
+// NoBreakSpace
+//
+procedure TTokenizerTests.NoBreakSpace;
+var
+   rules : TPascalTokenizerStateRules;
+   t : TTokenizer;
+begin
+   FSourceFile.Code:='" "'#$00A0'"'#$00A0'"';
+   rules:=TPascalTokenizerStateRules.Create;
+   t:=rules.CreateTokenizer(FMsgs);
+   try
+      t.BeginSourceFile(FSourceFile);
+
+      CheckTrue(t.Test(ttStrVal), '1st string');
+      CheckEquals(' ', t.GetToken.AsString, '1st string value');
+      t.KillToken;
+
+      CheckTrue(t.Test(ttStrVal), '2nd string');
+      CheckEquals(#$00A0, t.GetToken.AsString, '2nd string value');
+      t.KillToken;
+
+      t.EndSourceFile;
    finally
       t.Free;
       rules.Free;

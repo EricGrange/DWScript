@@ -1571,7 +1571,9 @@ begin
 
       // Find next state
       if pch^>#127 then
-         trns:=state.FTransitions[#127]
+         if Ord(pch^)=160 then  // treat no-break space as regular space
+            trns:=state.FTransitions[#32]
+         else trns:=state.FTransitions[#127]
       else trns:=state.FTransitions[pch^];
 
       // Handle Errors
