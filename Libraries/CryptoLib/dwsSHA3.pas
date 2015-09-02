@@ -42,6 +42,8 @@
 *)
 unit dwsSHA3;
 
+{$I dws.inc}
+
 interface
 
 uses SysUtils;
@@ -119,9 +121,22 @@ const
       UInt64($0000000080000001), UInt64($8000000080008008)
    );
 
-function RotL(x: UInt64; c: Integer): UInt64; inline;
+function RotL(const x: UInt64; c: Integer): UInt64; inline;
 begin
-   RotL := (x shl c) or (x shr (64-c));
+   Result := (x shl c) or (x shr (64-c));
+end;
+
+function RotL1(var x: UInt64): UInt64;
+{$ifdef WIN32_ASM}
+asm
+   mov   edx, [eax+4]
+   mov   eax, [eax]
+   add   eax, eax
+   adc   edx, edx
+   adc   al, 0
+{$else}
+   Result := (x shl 1) or (x shr (64-1));
+{$endif}
 end;
 
 procedure KeccakPermutation(var state: TState_L);
@@ -139,11 +154,11 @@ begin
       C3 := A[03] xor A[08] xor A[13] xor A[18] xor A[23];
       C4 := A[04] xor A[09] xor A[14] xor A[19] xor A[24];
 
-      D0 := RotL(C0, 1) xor C3;
-      D1 := RotL(C1, 1) xor C4;
-      D2 := RotL(C2, 1) xor C0;
-      D3 := RotL(C3, 1) xor C1;
-      D4 := RotL(C4, 1) xor C2;
+      D0 := RotL1(C0) xor C3;
+      D1 := RotL1(C1) xor C4;
+      D2 := RotL1(C2) xor C0;
+      D3 := RotL1(C3) xor C1;
+      D4 := RotL1(C4) xor C2;
 
       B[00] := A[00] xor D1;
       B[01] := RotL(A[06] xor D2, 44);
