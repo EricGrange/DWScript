@@ -56,7 +56,8 @@ type
          procedure BeginArray(const aName : UnicodeString); overload; inline;
          procedure EndArray; virtual;
 
-         function  WriteName(const aName : UnicodeString) : TdwsJSONWriter; virtual;
+         function  WriteName(const aName : UnicodeString) : TdwsJSONWriter; overload; inline;
+         function  WriteName(const aName : PWideChar) : TdwsJSONWriter; overload; virtual;
          procedure WriteString(const str : UnicodeString); overload; inline;
          procedure WriteString(const name, str : UnicodeString); overload; inline;
          procedure WriteString(const p : PWideChar); overload;
@@ -102,7 +103,7 @@ type
          procedure BeginArray; override;
          procedure EndArray; override;
 
-         function  WriteName(const aName : UnicodeString) : TdwsJSONWriter; override;
+         function  WriteName(const aName : PWideChar) : TdwsJSONWriter; override;
    end;
 
    TdwsJSONDuplicatesOptions = (jdoAccept, jdoOverwrite);
@@ -2488,6 +2489,13 @@ end;
 //
 function TdwsJSONWriter.WriteName(const aName : UnicodeString) : TdwsJSONWriter;
 begin
+   Result:=WriteName(PWideChar(aName));
+end;
+
+// WriteName
+//
+function TdwsJSONWriter.WriteName(const aName : PWideChar) : TdwsJSONWriter;
+begin
    case FState of
       wsObject : ;
       wsObjectName : begin
@@ -2759,7 +2767,7 @@ end;
 
 // WriteName
 //
-function TdwsJSONBeautifiedWriter.WriteName(const aName : UnicodeString) : TdwsJSONWriter;
+function TdwsJSONBeautifiedWriter.WriteName(const aName : PWideChar) : TdwsJSONWriter;
 begin
    case FState of
       wsObject :
