@@ -37,6 +37,7 @@ type
    // Interface for units
    IdwsUnit = interface
       ['{8D534D12-4C6B-11D5-8DCB-0000216D9E86}']
+      procedure BeforeAdditionTo(dwscript : TObject);
       function GetUnitName : UnicodeString;
       function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                             operators : TOperators; rootTable : TSymbolTable) : TUnitSymbolTable;
@@ -170,6 +171,7 @@ type
          function _Release : Integer; stdcall;
          function QueryInterface({$ifdef FPC}constref{$else}const{$endif} IID: TGUID; out Obj): HResult; stdcall;
          function GetDependencies : TStrings;
+         procedure BeforeAdditionTo(dwscript : TObject);
          function GetUnitName : UnicodeString;
          function GetDeprecatedMessage : UnicodeString;
 
@@ -215,6 +217,7 @@ type
                             unitSyms : TUnitMainSymbols);
          destructor Destroy; override;
 
+         procedure BeforeAdditionTo(dwscript : TObject);
          function GetUnitName : UnicodeString;
          function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                operators : TOperators; rootTable : TSymbolTable) : TUnitSymbolTable;
@@ -768,6 +771,13 @@ begin
    Result:=FDependencies;
 end;
 
+// BeforeAdditionTo
+//
+procedure TInternalUnit.BeforeAdditionTo(dwscript : TObject);
+begin
+   // nothing
+end;
+
 // GetUnitName
 //
 function TInternalUnit.GetUnitName : UnicodeString;
@@ -985,6 +995,13 @@ destructor TSourceUnit.Destroy;
 begin
    FDependencies.Free;
    inherited;
+end;
+
+// BeforeAdditionTo
+//
+procedure TSourceUnit.BeforeAdditionTo(dwscript : TObject);
+begin
+   // nothing
 end;
 
 // GetUnitName

@@ -6,7 +6,7 @@ uses
    Windows, Classes, SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsDataContext,
    dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, Variants,
-   dwsSymbols, dwsPascalTokenizer, dwsStrings, dwsJSON;
+   dwsSymbols, dwsPascalTokenizer, dwsStrings, dwsJSON, dwsFunctions;
 
 type
 
@@ -24,6 +24,8 @@ type
 
          procedure ReExec(info : TProgramInfo);
          procedure HostExcept(info : TProgramInfo);
+
+         procedure InvalidAddUnit;
 
       published
          procedure TokenizerErrorTransition;
@@ -88,6 +90,7 @@ type
          procedure CompilerAbort;
          procedure InitializationFinalization;
          procedure IsAbstractFlag;
+         procedure UnitOwnedByCompiler;
    end;
 
    ETestException = class (Exception);
@@ -1900,6 +1903,57 @@ begin
    sym:=prog.Table.FindTypeSymbol('TS', cvMagic);
    Check(sym is TClassSymbol, 'TS class');
    Check(not TClassSymbol(sym).IsAbstract, 'TS not abstract');
+end;
+
+// InvalidAddUnit
+//
+procedure TCornerCasesTests.InvalidAddUnit;
+var
+   i : IdwsUnit;
+   u : TdwsUnit;
+   s : TDelphiWebScript;
+begin
+   try
+      s:=TDelphiWebScript.Create(nil);
+      try
+         u:=TdwsUnit.Create(s);
+         i:=u;
+         s.AddUnit(u);
+      finally
+         s.Free;
+      end;
+   finally
+      // recover the leak from the above exception (cf. TdwsAbstractUnit.BeforeAdditionTo)
+      i:=nil;
+      u.Free;
+   end;
+end;
+
+// UnitOwnedByCompiler
+//
+procedure TCornerCasesTests.UnitOwnedByCompiler;
+var
+   u : TdwsUnit;
+   s : TDelphiWebScript;
+begin
+   // owned but not used
+   s:=TDelphiWebScript.Create(nil);
+   try
+      TdwsUnit.Create(s);
+   finally
+      s.Free;
+   end;
+
+   // owned and referred
+   s:=TDelphiWebScript.Create(nil);
+   try
+      u:=TdwsUnit.Create(s);
+      u.Script:=s;
+   finally
+      s.Free;
+   end;
+
+   CheckException(InvalidAddUnit, EdwsInvalidUnitAddition, 'TdwsUnit AddUnit');
 end;
 
 // ------------------------------------------------------------------

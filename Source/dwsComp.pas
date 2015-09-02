@@ -62,6 +62,7 @@ type
 
    TdwsEmptyUnit = class(TComponent, IUnknown, IdwsUnit)
       private
+         procedure BeforeAdditionTo(dwscript : TObject);
          function GetUnitName: UnicodeString;
          function GetDependencies: TStrings;
          function GetUnitTable(systemTable : TSystemSymbolTable;
@@ -130,8 +131,8 @@ type
          constructor Create(AOwner: TComponent); override;
          destructor Destroy; override;
 
-         procedure AddUnit(const Un: IdwsUnit);
-         function RemoveUnit(const Un: IdwsUnit): Boolean;
+         procedure AddUnit(const aUnit : IdwsUnit); overload;
+         function RemoveUnit(const aUnit : IdwsUnit): Boolean;
 
          function Compile(const text : UnicodeString; const mainFileName : String = '') : IdwsProgram; virtual;
          procedure RecompileInContext(const prog : IdwsProgram; const text : UnicodeString); virtual;
@@ -208,6 +209,7 @@ type
       protected
          procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
+         procedure BeforeAdditionTo(dwscript : TObject);
          function GetUnitName: UnicodeString; virtual;
          function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                operators : TOperators; rootTable : TSymbolTable) : TUnitSymbolTable; virtual; abstract;
@@ -1449,6 +1451,8 @@ type
          procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
+   EdwsInvalidUnitAddition = class (Exception);
+
 // Return the external object for a variable name.
 function GetExternalObjForID(Info: TProgramInfo; const AVarName: UnicodeString): TObject;
 
@@ -1689,25 +1693,28 @@ end;
 
 // AddUnit
 //
-procedure TDelphiWebScript.AddUnit(const Un: IdwsUnit);
+procedure TDelphiWebScript.AddUnit(const aUnit : IdwsUnit);
 begin
-   RemoveUnit(Un);
-   if Assigned(Un) then
-      FConfig.Units.Add(Un);
+   if not Assigned(aUnit) then Exit;
+
+   aUnit.BeforeAdditionTo(Self);
+
+   RemoveUnit(aUnit);
+   FConfig.Units.Add(aUnit);
 end;
 
 // RemoveUnit
 //
-function TDelphiWebScript.RemoveUnit(const Un: IdwsUnit): Boolean;
+function TDelphiWebScript.RemoveUnit(const aUnit : IdwsUnit): Boolean;
 var
    i : Integer;
 begin
-   i := FConfig.Units.IndexOf(Un);
-   if i >= 0 then begin
+   i:=FConfig.Units.IndexOf(aUnit);
+   Result:=(i>=0);
+   if Result then begin
       FConfig.Units[i]:=nil;
       FConfig.Units.Extract(i);
    end;
-   Result := i >= 0;
 end;
 
 // Lock
@@ -5088,6 +5095,24 @@ begin
       SetScript(nil);
 end;
 
+// BeforeAdditionTo
+//
+procedure TdwsAbstractUnit.BeforeAdditionTo(dwscript : TObject);
+begin
+   if dwscript<>FScript then begin
+      // at this point an interface was likeley acquired and its ref-counter will be off
+      // so the folowing exception is likely to be hidden by another exception in the implicit
+      // exception frame, since the code is kaput, which just detach ourselves which will
+      // cause a memory leak but no other exception (code is incorrect anyway,
+      // so no point in avoiding the leak)
+      if Owner<>nil then
+         Owner.RemoveComponent(Self);
+      raise EdwsInvalidUnitAddition.Create('Do not use AddUnit method but Script property instead');
+   end;
+end;
+
+// SetDependencies
+//
 procedure TdwsAbstractUnit.SetDependencies(const Value: TStrings);
 begin
   FDependencies.Assign(Value);
@@ -5194,6 +5219,13 @@ end;
 function TdwsEmptyUnit.GetDeprecatedMessage : UnicodeString;
 begin
    Result:='';
+end;
+
+// BeforeAdditionTo
+//
+procedure TdwsEmptyUnit.BeforeAdditionTo(dwscript : TObject);
+begin
+   // nothing
 end;
 
 { TdwsEmptyUnit }
