@@ -718,6 +718,8 @@ type
 
          function ContextMethodSymbol : TMethodSymbol;
 
+         function IsEmpty : Boolean; virtual;
+
          property Expr : TProgramExpr read FExpr write FExpr;
          property InitExpr : TBlockInitExpr read FInitExpr;
          property Level : Integer read GetLevel;
@@ -825,6 +827,8 @@ type
          function ExecuteParam(const params : OleVariant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
 
          function GetSourceFile(const aSourceFile : UnicodeString) : TSourceFile;
+
+         function IsEmpty : Boolean; override;
 
          function NextStackLevel(level : Integer) : Integer;
 
@@ -2892,6 +2896,14 @@ begin
    Result:=nil;
 end;
 
+// IsEmpty
+//
+function TdwsProgram.IsEmpty : Boolean;
+begin
+   Result:=    ((FExpr=nil) or (FExpr is TNullExpr))
+           and (FInitExpr.SubExprCount=0);
+end;
+
 // ------------------
 // ------------------ TdwsMainProgram ------------------
 // ------------------
@@ -3109,6 +3121,13 @@ begin
    if i>=0 then
       Result:=FSourceList[i].SourceFile
    else Result:=nil;
+end;
+
+// IsEmpty
+//
+function TdwsMainProgram.IsEmpty : Boolean;
+begin
+   Result:=(inherited IsEmpty) and ((FFinalExpr=nil) or (FinalExpr.SubExprCount=0));
 end;
 
 // GetSourceList
