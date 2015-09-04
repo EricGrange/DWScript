@@ -59,7 +59,7 @@ end;
 //
 procedure TScriptTests.SetUp;
 const
-   cFilter = '*.pas';
+   cFilter = 'var_param_nested*.pas';
 var
    basePath : String;
 begin

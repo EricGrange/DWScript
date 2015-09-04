@@ -213,6 +213,11 @@ type
          constructor Create(prog : TdwsProgram; dataSym : TDataSymbol);
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
+
+         procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
+
+         function  Eval(exec : TdwsExecution) : Variant; override;
+         function  EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
    TVarParamParentExpr = class(TByRefParentParamExpr)
@@ -2780,6 +2785,27 @@ end;
 procedure TByRefParentParamExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    Result:=IDataContext(IUnknown(exec.Stack.Data[exec.Stack.GetSavedBp(FLevel) + FStackAddr]));
+end;
+
+// AssignExpr
+//
+procedure TByRefParentParamExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
+begin
+   expr.EvalAsVariant(exec, DataPtr[exec].AsPVariant(0)^);
+end;
+
+// Eval
+//
+function TByRefParentParamExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Result:=DataPtr[exec].AsVariant[0];
+end;
+
+// EvalAsFloat
+//
+function TByRefParentParamExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+begin
+   Result:=DataPtr[exec].AsFloat[0];
 end;
 
 // ------------------
