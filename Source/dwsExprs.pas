@@ -5163,7 +5163,7 @@ begin
       Result:=v.VInt64
    else begin
       Result:=Variant(v);
-      VarClear(Variant(v));
+      VarClearSafe(Variant(v));
    end;
 end;
 
@@ -5843,7 +5843,7 @@ procedure TProgramInfo.GetSymbolInfo(sym : TSymbol; var info : IInfo);
    begin
       if sym.BaseType is TClassSymbol then begin
          SetLength(dat, 1);
-         VarClear(dat[0]);
+         VarClearSafe(dat[0]);
          Execution.DataContext_Create(dat, 0, locData);
          Result := TInfoClassObj.Create(Self, sym, locData);
       end else Result:=nil;
@@ -6577,6 +6577,11 @@ end;
 
 // BeforeDestruction
 //
+type
+   TInterfaceObjectCracker = class (TObject)
+      FRefCount : Integer;
+   end;
+
 procedure TScriptObjInstance.BeforeDestruction;
 
    procedure CallDestructor;
@@ -6747,7 +6752,7 @@ begin
    index:=index*ElementSize;
    count:=count*ElementSize;
    for i:=index to index+count-1 do
-      VarClear(AsPVariant(i)^);
+      VarClearSafe(AsPVariant(i)^);
    d:=(FArrayLength-1)*ElementSize+count-index;
    if d>0 then
       System.Move(AsData[index+count], AsData[index], d*SizeOf(Variant));

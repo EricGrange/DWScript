@@ -5014,7 +5014,6 @@ procedure TReadVarEventFunc.Execute(info : TProgramInfo);
 var
   Value: Variant;
 begin
-  VarClear(Value);
   if Assigned(FOnReadVar) then
     FOnReadVar(info, Value);
   Info.ResultAsVariant := Value;

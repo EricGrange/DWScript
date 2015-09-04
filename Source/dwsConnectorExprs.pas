@@ -471,7 +471,7 @@ begin
 
    if Length(resultData)>0 then
       Result := resultData[0]
-   else VarClear(Result);
+   else VarClearSafe(Result);
 end;
 
 // FastEvalAsVariant

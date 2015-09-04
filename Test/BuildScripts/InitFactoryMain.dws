@@ -1,0 +1,15 @@
+unit InitFactoryMain;
+
+interface
+
+uses
+  InitFactoryUnit;
+
+implementation
+
+initialization
+
+  MyStuff;
+finalization
+
+end;

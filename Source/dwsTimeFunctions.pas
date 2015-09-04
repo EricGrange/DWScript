@@ -298,7 +298,7 @@ begin
    handled:=False;
    if symbol.Name='' then Exit;
 
-   VarClear(result);
+   VarClearSafe(result);
    case symbol.Name[1] of
       'S' :
          if symbol.Name='ShortDateFormat' then

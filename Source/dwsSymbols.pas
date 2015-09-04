@@ -5016,7 +5016,7 @@ end;
 //
 procedure TBaseVariantSymbol.InitData(const data : TData; offset : Integer);
 begin
-   VarClear(data[offset]);
+   VarClearSafe(data[offset]);
 end;
 
 // SupportsEmptyParam

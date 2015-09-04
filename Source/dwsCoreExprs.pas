@@ -7562,7 +7562,7 @@ begin
                         on E : EReraise do isReraise := True;
                      end;
                      if isReraise then break;
-                     VarClear(exec.Stack.Data[exec.Stack.BasePointer+exceptVar.StackAddr]);
+                     VarClearSafe(exec.Stack.Data[exec.Stack.BasePointer+exceptVar.StackAddr]);
                      isCaught := True;
                      Break;
                   end;

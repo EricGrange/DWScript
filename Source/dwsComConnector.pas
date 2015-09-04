@@ -672,7 +672,7 @@ end;
 //
 procedure TOleSingleFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 begin
-   VarClear(Result);
+   VarClearSafe(Result);
    // Needed so compiler won't generate a double precision variant
    PVarData(@Result)^.VType := varSingle;
    PVarData(@Result)^.VSingle := args.AsFloat[0];

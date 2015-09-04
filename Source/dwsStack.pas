@@ -193,7 +193,7 @@ var
 begin
    p:=@Data[addr];
    for i:=1 to size do begin
-      VarClear(p^);
+      VarClearSafe(p^);
       Inc(p);
    end;
 end;
@@ -249,7 +249,7 @@ begin
    v:=@Data[FStackPointer];
    for i:=1 to delta do begin
       Dec(v);
-      VarClear(v^);
+      VarClearSafe(v^);
    end;
    Dec(FStackPointer, delta);
 end;

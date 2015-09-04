@@ -865,6 +865,8 @@ procedure FastStringReplace(var str : UnicodeString; const sub, newSub : Unicode
 procedure VariantToString(const v : Variant; var s : UnicodeString);
 procedure VariantToInt64(const v : Variant; var r : Int64);
 
+procedure VarClearSafe(var v : Variant);
+
 type
    EISO8601Exception = class (Exception);
 
@@ -1469,6 +1471,33 @@ begin
          else DefaultCast;
    else
       DefaultCast;
+   end;
+end;
+
+// VarClearSafe
+//
+procedure VarClearSafe(var v : Variant);
+// This procedure exists because of a bug in Variants / Windows where if you clear
+// a varUnknown, the _Release method will be called before the variable is niled
+// So if _Release's code assigns a nil to the same variable, it will result in
+// an invalid refcount. _IntfClear does not suffer from that issue
+begin
+   case TVarData(v).VType of
+      varEmpty : ;
+      varNull..varDate, varBoolean, varShortInt..varUInt64 : begin
+         TVarData(v).VType:=varEmpty;
+         TVarData(v).VUInt64:=0;
+      end;
+      varUnknown : begin
+         TVarData(v).VType:=varEmpty;
+         IUnknown(TVarData(v).VString):=nil;
+      end;
+      varString : begin
+         TVarData(v).VType:=varEmpty;
+         String(TVarData(v).VString):='';
+      end;
+   else
+      VarClear(v);
    end;
 end;
 

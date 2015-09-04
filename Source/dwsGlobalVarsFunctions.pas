@@ -302,7 +302,7 @@ function ReadGlobalVar(const aName : UnicodeString) : Variant;
 begin
    // Result (empty) is our default value when calling...
    if not TryReadGlobalVar(aName, Result) then
-      VarClear(Result);
+      VarClearSafe(Result);
 end;
 
 // TryReadGlobalVar
@@ -806,7 +806,7 @@ begin
     vaNil, vaNull:
       begin
         if ReadValue = vaNil then
-          VarClear(Result)
+          VarClearSafe(Result)
         else
           Result := NULL;
       end;
@@ -848,7 +848,7 @@ end;
 procedure TReadGlobalVarFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 begin
    if not TryReadGlobalVar(args.AsString[0], Result) then
-      VarClear(Result);
+      VarClearSafe(Result);
 end;
 
 { TReadGlobalVarDefFunc }
