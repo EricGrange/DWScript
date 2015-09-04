@@ -1913,6 +1913,7 @@ var
    u : TdwsUnit;
    s : TDelphiWebScript;
 begin
+   u:=nil;
    try
       s:=TDelphiWebScript.Create(nil);
       try
