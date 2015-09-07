@@ -2626,7 +2626,7 @@ end;
 //
 procedure TVarParentExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
-   Result:=exec.Stack.Data[exec.Stack.GetSavedBp(FLevel)+FStackAddr];
+   VarCopySafe(Result, exec.Stack.Data[exec.Stack.GetSavedBp(FLevel)+FStackAddr]);
 end;
 
 // EvalAsInteger

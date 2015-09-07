@@ -866,6 +866,8 @@ procedure VariantToString(const v : Variant; var s : UnicodeString);
 procedure VariantToInt64(const v : Variant; var r : Int64);
 
 procedure VarClearSafe(var v : Variant);
+procedure VarCopySafe(var dest : Variant; const src : Variant); overload;
+procedure VarCopySafe(var dest : Variant; const src : IUnknown); overload;
 
 type
    EISO8601Exception = class (Exception);
@@ -1484,7 +1486,7 @@ procedure VarClearSafe(var v : Variant);
 begin
    case TVarData(v).VType of
       varEmpty : ;
-      varNull..varDate, varBoolean, varShortInt..varUInt64 : begin
+      varBoolean, varInt64, varDouble : begin
          TVarData(v).VType:=varEmpty;
          TVarData(v).VUInt64:=0;
       end;
@@ -1499,6 +1501,50 @@ begin
    else
       VarClear(v);
    end;
+end;
+
+// VarCopySafe
+//
+procedure VarCopySafe(var dest : Variant; const src : Variant);
+begin
+   if @dest=@src then Exit;
+
+   VarClearSafe(dest);
+
+   case TVarData(src).VType of
+      varBoolean : begin
+         TVarData(dest).VType:=varBoolean;
+         TVarData(dest).VBoolean:=TVarData(src).VBoolean;
+      end;
+      varInt64 : begin
+         TVarData(dest).VType:=varInt64;
+         TVarData(dest).VInt64:=TVarData(src).VInt64;
+      end;
+      varDouble : begin
+         TVarData(dest).VType:=varDouble;
+         TVarData(dest).VDouble:=TVarData(src).VDouble;
+      end;
+      varUnknown : begin
+         TVarData(dest).VType:=varUnknown;
+         IUnknown(TVarData(dest).VUnknown):=IUnknown(TVarData(src).VUnknown);
+      end;
+      varString : begin
+         TVarData(dest).VType:=varString;
+         String(TVarData(dest).VString):=String(TVarData(src).VString);
+      end;
+   else
+      dest:=src;
+   end;
+end;
+
+// VarCopySafe
+//
+procedure VarCopySafe(var dest : Variant; const src : IUnknown);
+begin
+   VarClearSafe(dest);
+
+   TVarData(dest).VType:=varUnknown;
+   IUnknown(TVarData(dest).VUnknown):=src;
 end;
 
 // DateTimeToISO8601
