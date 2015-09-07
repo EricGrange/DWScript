@@ -114,6 +114,10 @@ type
       ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsSetContentJSONEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsSetIgnoreSSLCertificateErrorsEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsGetIgnoreSSLCertificateErrorsEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -138,6 +142,7 @@ type
 
 const
    cWinHttpCredentials : TGUID = '{FB60EB3D-1085-4A88-9923-DE895B5CAB76}';
+   cWinHttpIgnoreSSLCertificateErrors : TGUID = '{42AC8563-761B-4E3D-9767-A21F8F32201C}';
 
 // InternalSendRequest
 //
@@ -152,7 +157,7 @@ function HttpQuery(method : THttpQueryMethod; const url : RawByteString;
                    const requestData : RawByteString;
                    const requestContentType : RawByteString;
                    var replyData : String; asText : Boolean;
-                   const credentials : Variant) : Integer; overload;
+                   const customStates : TdwsCustomStates) : Integer; overload;
 const
    cContentType : RawUTF8 = 'Content-Type:';
 var
@@ -160,10 +165,17 @@ var
    uri : TURI;
    headers, buf, mimeType : SockString;
    p1, p2 : Integer;
+   credentials, ignoreSSLErrors : Variant;
 begin
    if uri.From(url) then begin
       query:=TdwsWinHTTP.Create(uri.Server, uri.Port, uri.Https);
       try
+         ignoreSSLErrors:=customStates[cWinHttpIgnoreSSLCertificateErrors];
+         // may be empty, and that fails direct boolean casting, hence casting & boolean check
+         if (VarType(ignoreSSLErrors)=varBoolean) and TVarData(ignoreSSLErrors).VBoolean then
+            query.IgnoreSSLCertificateErrors:=True;
+
+         credentials:=customStates[cWinHttpCredentials];
          if VarIsArray(credentials, False) then begin
             case TWebRequestAuthentication(credentials[0]) of
                wraBasic : query.AuthScheme := THttpRequestAuthentication.wraBasic;
@@ -226,9 +238,9 @@ end;
 
 function HttpQuery(method : THttpQueryMethod; const url : RawByteString;
                    var replyData : String; asText : Boolean;
-                   const credentials : Variant) : Integer; overload;
+                   const customStates : TdwsCustomStates) : Integer; overload;
 begin
-   Result:=HttpQuery(method, url, '', '', replyData, asText, credentials);
+   Result:=HttpQuery(method, url, '', '', replyData, asText, customStates);
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsDeleteEval(Info: TProgramInfo;
@@ -237,7 +249,7 @@ var
    buf : String;
 begin
    Info.ResultAsInteger:=HttpQuery(hqmDELETE, Info.ParamAsDataString[0], buf, False,
-                                   Info.Execution.CustomStates[cWinHttpCredentials]);
+                                   Info.Execution.CustomStates);
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsGetDataEval(
@@ -246,7 +258,7 @@ var
    buf : String;
 begin
    Info.ResultAsInteger:=HttpQuery(hqmGET, Info.ParamAsDataString[0], buf, False,
-                                   Info.Execution.CustomStates[cWinHttpCredentials]);
+                                   Info.Execution.CustomStates);
    Info.ParamAsString[1]:=buf;
 end;
 
@@ -256,7 +268,7 @@ var
    buf : String;
 begin
    Info.ResultAsInteger:=HttpQuery(hqmGET, Info.ParamAsDataString[0], buf, True,
-                                   Info.Execution.CustomStates[cWinHttpCredentials]);
+                                   Info.Execution.CustomStates);
    Info.ParamAsString[1]:=buf;
 end;
 
@@ -268,7 +280,7 @@ begin
    Info.ResultAsInteger:=HttpQuery(
       hqmPOST, Info.ParamAsDataString[0],
       Info.ParamAsDataString[1], Info.ParamAsDataString[2], buf, False,
-      Info.Execution.CustomStates[cWinHttpCredentials]);
+      Info.Execution.CustomStates);
    Info.ParamAsString[3]:=buf;
 end;
 
@@ -280,7 +292,7 @@ begin
    Info.ResultAsInteger:=HttpQuery(
       hqmPUT, Info.ParamAsDataString[0],
       Info.ParamAsDataString[1], Info.ParamAsDataString[2], buf, False,
-      Info.Execution.CustomStates[cWinHttpCredentials]);
+      Info.Execution.CustomStates);
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetCredentialsEval(
@@ -299,6 +311,23 @@ procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsClearCredentialsEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.Execution.CustomStates[cWinHttpCredentials]:=Unassigned;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetIgnoreSSLCertificateErrorsEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.Execution.CustomStates[cWinHttpIgnoreSSLCertificateErrors]:=Info.ParamAsBoolean[0];
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsGetIgnoreSSLCertificateErrorsEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   v : Variant;
+begin
+   v:=Info.Execution.CustomStates[cWinHttpIgnoreSSLCertificateErrors];
+   if VarType(v)<>varBoolean then
+      v:=False;
+   Info.ResultAsBoolean:=v;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsAuthenticatedUserEval(

@@ -597,6 +597,31 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maStatic]
             OnEval = dwsWebClassesHttpQueryMethodsClearCredentialsEval
             Kind = mkClassProcedure
+          end
+          item
+            Name = 'SetIgnoreSSLCertificateErrors'
+            Parameters = <
+              item
+                Name = 'val'
+                DataType = 'Boolean'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsSetIgnoreSSLCertificateErrorsEval
+            Kind = mkClassProcedure
+          end
+          item
+            Name = 'GetIgnoreSSLCertificateErrors'
+            ResultType = 'Boolean'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsGetIgnoreSSLCertificateErrorsEval
+            Kind = mkClassFunction
+          end>
+        Properties = <
+          item
+            Name = 'IgnoreSSLCertificateErrors'
+            DataType = 'Boolean'
+            ReadAccess = 'GetIgnoreSSLCertificateErrors'
+            WriteAccess = 'SetIgnoreSSLCertificateErrors'
           end>
       end>
     Enumerations = <
