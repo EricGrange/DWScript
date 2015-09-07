@@ -46,7 +46,6 @@ type
          constructor CreateRef(aTyp: TTypeSymbol; const Data: TData);
          constructor CreateNull(aTyp: TTypeSymbol);
 
-         function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
@@ -95,7 +94,7 @@ type
    TConstNilExpr = class(TConstExpr)
       public
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
          procedure EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface); override;
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
@@ -218,7 +217,7 @@ type
 
          function Size : Integer; inline;
 
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          function EvalAsTData(exec : TdwsExecution) : TData; overload; inline;
          procedure EvalAsTData(exec : TdwsExecution; var result : TData); overload;
          procedure EvalToTData(exec : TdwsExecution; var result : TData; offset : Integer);
@@ -290,13 +289,6 @@ begin
    SetLength(FData, aTyp.Size);
    for i:=0 to aTyp.Size-1 do
       FData[i]:=Null;
-end;
-
-// Eval
-//
-function TConstExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   EvalAsVariant(exec, Result);
 end;
 
 // EvalAsString
@@ -510,9 +502,9 @@ begin
    Result := 0;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TConstNilExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TConstNilExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
    Result := FData[0];
 end;
@@ -887,9 +879,9 @@ begin
    Result:=ElementCount*Typ.Typ.Size;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TArrayConstantExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TArrayConstantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 
    procedure DoEval;
    var

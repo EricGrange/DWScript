@@ -76,7 +76,7 @@ type
                             aBaseExpr: TTypedExpr; isWrite: Boolean = True; isIndex: Boolean = False);
 
          function AssignConnectorSym(prog : TdwsProgram; const connectorType : IConnectorType) : Boolean;
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          function IsWritable : Boolean; override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
@@ -129,7 +129,7 @@ type
 
       public
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
 
          property ConnectorMember : IConnectorFastMember read FConnectorMember write FConnectorMember;
    end;
@@ -370,9 +370,9 @@ begin
    end;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TConnectorCallExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TConnectorCallExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
    if FConnectorFastCall<>nil then
       FastEvalAsVariant(exec, Result)
@@ -629,9 +629,9 @@ begin
    exec.DataContext_Create(resultData, 0, result);
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TConnectorFastReadExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TConnectorFastReadExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
    try
       FConnectorMember.FastRead(exec, BaseExpr, Result);

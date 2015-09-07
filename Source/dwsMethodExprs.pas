@@ -69,7 +69,7 @@ type
                             BaseExpr: TTypedExpr);
          destructor Destroy; override;
 
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
 
          function MethSym : TMethodSymbol; inline;
 
@@ -94,7 +94,6 @@ type
          function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
 
       public
-         function Eval(exec : TdwsExecution) : Variant; override; final;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
@@ -300,9 +299,9 @@ begin
    inherited;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TMethodExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TMethodExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 var
    func : TFuncSymbol;
 begin
@@ -314,7 +313,7 @@ begin
 
          DoEvalCall(exec, func);
 
-         PostCall(exec, Result);
+         PostCall(exec, result);
       finally
          // Remove parameters from stack
          exec.Stack.Pop(ParamSize);
@@ -403,13 +402,6 @@ end;
 // ------------------ TMethodStaticExpr ------------------
 // ------------------
 
-// Eval
-//
-function TMethodStaticExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   EvalAsVariant(exec, Result);
-end;
-
 // EvalAsVariant
 //
 procedure TMethodStaticExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
@@ -421,7 +413,7 @@ begin
    oldSelf:=exec.SelfScriptObject;
    try
       exec.SelfScriptObject:=@scriptObj;
-      Result:=inherited Eval(exec);
+      inherited EvalAsVariant(exec, Result);
    finally
       exec.SelfScriptObject:=oldSelf;
       IScriptObj(scriptObj):=nil;

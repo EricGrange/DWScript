@@ -1078,7 +1078,8 @@ type
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); virtual;
          procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
 
-         function Eval(exec : TdwsExecution) : Variant; override;
+         function Eval(exec : TdwsExecution) : Variant; override; final;
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          function IsWritable : Boolean; virtual;
          function IsExternal : Boolean; virtual;
 
@@ -1235,7 +1236,7 @@ type
 
          procedure AddPushExprs(prog : TdwsProgram);
 
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
 
          procedure Initialize(prog : TdwsProgram); override;
          function IsWritable : Boolean; override;
@@ -1301,7 +1302,6 @@ type
          constructor Create(prog : TdwsProgram; funcExpr : TFuncExprBase);
          destructor Destroy; override;
 
-         function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
 
          function Extract : TFuncExprBase; // also a destructor
@@ -1330,7 +1330,7 @@ type
 
          procedure EvalAsFuncPointer(exec : TdwsExecution; var result : IFuncPointer); inline;
 
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          procedure EvalNoResult(exec : TdwsExecution); override;
 
          function Extract : TTypedExpr; // also a destructor
@@ -4234,6 +4234,13 @@ end;
 //
 function TDataExpr.Eval(exec : TdwsExecution) : Variant;
 begin
+   EvalAsVariant(exec, Result);
+end;
+
+// EvalAsVariant
+//
+procedure TDataExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+begin
    DataPtr[exec].EvalAsVariant(0, Result);
 end;
 
@@ -4816,9 +4823,9 @@ begin
    end;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TFuncExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TFuncExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
    try
       // Allocate memory for parameters on the stack
@@ -4827,7 +4834,7 @@ begin
          DoEvalCall(exec, FuncSym);
 
          if Typ<>nil then
-            StaticPostCall(exec, Result);
+            StaticPostCall(exec, result);
       finally
          // Remove parameters from stack
          exec.Stack.Pop(ParamSize);
@@ -5219,13 +5226,6 @@ begin
    Free;
 end;
 
-// Eval
-//
-function TAnonymousFuncRefExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   EvalAsVariant(exec, Result);
-end;
-
 // EvalAsVariant
 //
 procedure TAnonymousFuncRefExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
@@ -5236,7 +5236,7 @@ begin
       TFuncPtrExpr(FFuncExpr).CodeExpr.EvalAsVariant(exec, Result)
    else begin
       funcPtr:=TFuncPointer.Create(exec, FFuncExpr);
-      Result:=IFuncPointer(funcPtr);
+      VarCopySafe(Result, IFuncPointer(funcPtr));
    end;
 end;
 
@@ -5304,23 +5304,25 @@ begin
    result:=IFuncPointer(IUnknown(val));
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TFuncPtrExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TFuncPtrExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 var
    funcPointer : IFuncPointer;
 begin
    EvalAsFuncPointer(exec, funcPointer);
    if funcPointer=nil then
       RaiseScriptError(exec, EScriptError, RTE_FuncPointerIsNil);
-   funcPointer.EvalAsVariant(exec, Self, Result);
+   funcPointer.EvalAsVariant(exec, Self, result);
 end;
 
 // EvalNoResult
 //
 procedure TFuncPtrExpr.EvalNoResult(exec : TdwsExecution);
+var
+   buf : Variant;
 begin
-   Eval(exec);
+   EvalAsVariant(exec, buf);
 end;
 
 // GetIsConstant
