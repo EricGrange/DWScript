@@ -1431,7 +1431,7 @@ var
    locData : IDataContext;
 begin
   SetLength(FData, TypeSym.Size);
-  VarCopy(FData[0], Value);
+  VarCopySafe(FData[0], Value);
   ProgramInfo.Execution.DataContext_Create(FData, 0, locData);
   inherited Create(ProgramInfo, TypeSym, locData);
 end;

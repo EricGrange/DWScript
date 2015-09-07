@@ -177,7 +177,7 @@ end;
 procedure TStackMixIn.CopyData(SourceAddr, DestAddr, Size: Integer);
 begin
    while Size > 0 do begin
-      VarCopy(Data[DestAddr], Data[SourceAddr]);
+      VarCopySafe(Data[DestAddr], Data[SourceAddr]);
       Inc(SourceAddr);
       Inc(DestAddr);
       Dec(Size);
@@ -327,7 +327,7 @@ procedure TStackMixIn.ReadData(SourceAddr, DestAddr, Size: Integer; DestData: TD
 begin
   while Size > 0 do
   begin
-    VarCopy(DestData[DestAddr], Data[SourceAddr]);
+    VarCopySafe(DestData[DestAddr], Data[SourceAddr]);
     Inc(SourceAddr);
     Inc(DestAddr);
     Dec(Size);
@@ -541,7 +541,7 @@ end;
 //
 procedure TStackMixIn.WriteValue(DestAddr: Integer; const Value: Variant);
 begin
-   VarCopy(Data[destAddr], Value);
+   VarCopySafe(Data[destAddr], Value);
 end;
 
 // WriteIntValue

@@ -187,7 +187,7 @@ begin
    src:=@sourceData[sourceAddr];
    dest:=@destData[destAddr];
    while size > 0 do begin
-      VarCopy(dest^, src^);
+      VarCopySafe(dest^, src^);
       Inc(src);
       Inc(dest);
       Dec(size);

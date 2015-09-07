@@ -5072,7 +5072,7 @@ begin
    inherited Create(Name, Typ);
    Assert(Typ.Size=1);
    SetLength(FData, 1);
-   VarCopy(FData[0], Value);
+   VarCopySafe(FData[0], Value);
 end;
 
 // CreateData
