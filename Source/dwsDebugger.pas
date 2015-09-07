@@ -362,7 +362,14 @@ type
          property OnStateChanged : TNotifyEvent read FOnStateChanged write FOnStateChanged;
    end;
 
-   TNamesBitsHash = TSimpleNameObjectHash<TBits>;
+   TBreakpointBits = class(TBits)
+      private
+         FSourceName : String;
+      public
+         property SourceName : String read FSourceName write FSourceName;
+   end;
+
+   TNamesBitsHash = TSimpleNameObjectHash<TBreakpointBits>;
 
    TdwsBreakpointableLines = class
       private
@@ -371,7 +378,7 @@ type
          // Valid only during construction
          FProcessedProgs : TObjectsLookup;
          FLastSourceFile : TSourceFile;
-         FLastBreakpointLines : TBits;
+         FLastBreakpointLines : TBreakpointBits;
 
       protected
          function GetSourceLines(const sourceName : UnicodeString) : TBits; inline;
@@ -392,7 +399,7 @@ type
          property SourceLines[const sourceName : UnicodeString] : TBits read GetSourceLines;
          function Count : Integer; inline;
 
-         function IsExecutable(sourceName : UnicodeString; line : Integer) : Boolean;
+         function IsExecutable(const sourceName : UnicodeString; line : Integer) : Boolean;
 
          procedure Enumerate(destinationList : TStrings);
    end;
@@ -1486,7 +1493,7 @@ end;
 
 // IsExecutable
 //
-function TdwsBreakpointableLines.IsExecutable(sourceName : UnicodeString; line : Integer) : Boolean;
+function TdwsBreakpointableLines.IsExecutable(const sourceName : UnicodeString; line : Integer) : Boolean;
 var
    bits : TBits;
 begin
@@ -1501,17 +1508,21 @@ end;
 procedure TdwsBreakpointableLines.Enumerate(destinationList : TStrings);
 var
    i : Integer;
+   bits : TBreakpointBits;
 begin
-   for i:=0 to FSources.HighIndex do
-      if FSources.BucketObject[i]<>nil then
-         destinationList.AddObject(FSources.BucketName[i], FSources.BucketObject[i]);
+   for i:=0 to FSources.HighIndex do begin
+      if FSources.BucketObject[i]<>nil then begin
+         bits:=(FSources.BucketObject[i] as TBreakpointBits);
+         destinationList.AddObject(bits.SourceName, bits);
+      end;
+   end;
 end;
 
 // GetSourceLines
 //
 function TdwsBreakpointableLines.GetSourceLines(const sourceName : UnicodeString) : TBits;
 begin
-   Result:=FSources.Objects[sourceName];
+   Result:=FSources.Objects[UnicodeLowerCase(sourceName)];
 end;
 
 // EnumeratorCallback
@@ -1544,10 +1555,11 @@ begin
    if scriptPos.SourceFile=nil then Exit;
    if scriptPos.SourceFile<>FLastSourceFile then begin
       FLastSourceFile:=scriptPos.SourceFile;
-      FLastBreakpointLines:=FSources.Objects[FLastSourceFile.Name];
+      FLastBreakpointLines:=FSources.Objects[UnicodeLowerCase(FLastSourceFile.Name)];
       if FLastBreakpointLines=nil then begin
-         FLastBreakpointLines:=TBits.Create;
-         FSources.AddObject(scriptPos.SourceFile.Name, FLastBreakpointLines);
+         FLastBreakpointLines:=TBreakpointBits.Create;
+         FLastBreakpointLines.SourceName:=scriptPos.SourceFile.Name;
+         FSources.AddObject(UnicodeLowerCase(scriptPos.SourceFile.Name), FLastBreakpointLines);
          FLastBreakpointLines.Size:=CountLines(scriptPos.SourceFile.Code)+1;
       end;
    end;
