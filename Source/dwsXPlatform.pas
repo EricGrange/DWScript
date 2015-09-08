@@ -851,7 +851,7 @@ begin
             RaiseLastOSError;
       end else Result:=nil;
    finally
-      FileClose(hFile);
+      CloseHandle(hFile);
    end;
 end;
 
@@ -869,7 +869,7 @@ begin
          if not WriteFile(hFile, data[0], n, nWrite, nil) then
             RaiseLastOSError;
    finally
-      FileClose(hFile);
+      CloseHandle(hFile);
    end;
 end;
 
@@ -895,7 +895,7 @@ begin
             RaiseLastOSError;
       end;
    finally
-      FileClose(hFile);
+      CloseHandle(hFile);
    end;
 end;
 
@@ -912,7 +912,7 @@ begin
          if not WriteFile(hFile, data[1], Length(data), nWrite, nil) then
             RaiseLastOSError;
    finally
-      FileClose(hFile);
+      CloseHandle(hFile);
    end;
 end;
 
