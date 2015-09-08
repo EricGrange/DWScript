@@ -1,4 +1,4 @@
-Hello InitUnit2
 InitUnit1 Start
-InitUnit1 End
+Hello InitUnit2
 Byebye InitUnit2
+InitUnit1 End

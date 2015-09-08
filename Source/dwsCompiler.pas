@@ -1848,7 +1848,7 @@ begin
       end;
    end;
    // append initializations to InitExpr of the main prog
-   for i:=0 to High(rankedUnits) do begin
+   for i:=High(rankedUnits) downto 0 do begin
       ums:=rankedUnits[i];
       if (ums<>nil) and (ums.InitializationExpr<>nil) then begin
          unitInitExpr:=ums.InitializationExpr as TBlockExprBase;
@@ -1860,7 +1860,7 @@ begin
       end;
    end;
    // append initializations to FinalExpr of the main prog in reverse order
-   for i:=High(rankedUnits) downto 0 do begin
+   for i:=0 to High(rankedUnits) do begin
       ums:=rankedUnits[i];
       if (ums<>nil) and (ums.FinalizationExpr<>nil) then begin
          FMainProg.AddFinalExpr(ums.FinalizationExpr as TBlockExprBase);
