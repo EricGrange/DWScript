@@ -155,7 +155,7 @@ type
          destructor Destroy; override;
 
          function  ScriptPos : TScriptPos; override;
-         function  Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
 
          property Name : UnicodeString read FName write FName;
          property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
@@ -214,7 +214,7 @@ type
       public
          constructor CreateCast(prog : TdwsProgram; expr : TTypedExpr; const cast : IConnectorCast);
 
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
 
          property ConnectorCast : IConnectorCast read FConnectorCast write FConnectorCast;
    end;
@@ -718,9 +718,9 @@ begin
    Result:=FScriptPos;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TConnectorWriteMemberExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TConnectorWriteMemberExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
    EvalNoResult(exec);
 end;
@@ -888,11 +888,14 @@ begin
    FConnectorCast:=cast;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TConnectorCastExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TConnectorCastExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+var
+   buf : Variant;
 begin
-   Result:=FConnectorCast.CastVariant(Expr.Eval(exec));
+   Expr.EvalAsVariant(exec, buf);
+   VarCopySafe(Result, FConnectorCast.CastVariant(buf));
 end;
 
 end.

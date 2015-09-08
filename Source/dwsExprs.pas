@@ -1004,7 +1004,7 @@ type
       public
          constructor Create(aTyp : TTypeSymbol; const aScriptPos : TScriptPos);
 
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          function ScriptPos : TScriptPos; override;
   end;
 
@@ -1016,7 +1016,7 @@ type
       public
          constructor Create(const aPos: TScriptPos);
 
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure EvalNoResult(exec : TdwsExecution); override;
 
          function ScriptPos : TScriptPos; override;
@@ -1078,7 +1078,6 @@ type
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); virtual;
          procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
 
-         function Eval(exec : TdwsExecution) : Variant; override; final;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          function IsWritable : Boolean; virtual;
          function IsExternal : Boolean; virtual;
@@ -1440,14 +1439,14 @@ type
    TUnaryOpBoolExpr = class(TUnaryOpExpr)
       public
          constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
    // int unary result
    TUnaryOpIntExpr = class(TUnaryOpExpr)
       public
          constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
@@ -1455,7 +1454,7 @@ type
    TUnaryOpFloatExpr = class(TUnaryOpExpr)
       public
          constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
@@ -1463,14 +1462,13 @@ type
    TUnaryOpStringExpr = class(TUnaryOpExpr)
       public
          constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
    // variant unary result
    TUnaryOpVariantExpr = class(TUnaryOpExpr)
       public
          constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
-         function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // wraps an expression with a result into a no-result one and discard the result
@@ -1509,7 +1507,6 @@ type
          constructor Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); virtual;
          destructor Destroy; override;
 
-         function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
 
          procedure OptimizeConstantOperandsToFloats(prog : TdwsProgram; exec : TdwsExecution);
@@ -4064,9 +4061,9 @@ begin
    FScriptPos:=aScriptPos;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TTypeReferenceExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TTypeReferenceExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
    Assert(False);
 end;
@@ -4108,9 +4105,9 @@ begin
    FScriptPos:=aPos;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TNoResultExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TNoResultExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
    EvalNoResult(exec);
    Assert(exec.Status=esrNone);
@@ -4228,13 +4225,6 @@ end;
 constructor TDataExpr.Create(aTyp: TTypeSymbol);
 begin
    FTyp := aTyp;
-end;
-
-// Eval
-//
-function TDataExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   EvalAsVariant(exec, Result);
 end;
 
 // EvalAsVariant
@@ -5430,11 +5420,6 @@ begin
   inherited;
 end;
 
-function TBinaryOpExpr.Eval(exec : TdwsExecution): Variant;
-begin
-   EvalAsVariant(exec, Result);
-end;
-
 // EvalAsVariant
 //
 procedure TBinaryOpExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
@@ -5692,11 +5677,11 @@ begin
    Typ:=Prog.TypBoolean;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TUnaryOpBoolExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TUnaryOpBoolExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
-   Result:=EvalAsBoolean(exec);
+   VarCopySafe(Result, EvalAsBoolean(exec));
 end;
 
 // ------------------
@@ -5711,11 +5696,11 @@ begin
    Typ:=Prog.TypInteger;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TUnaryOpIntExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TUnaryOpIntExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
-   Result:=EvalAsInteger(exec);
+   VarCopySafe(Result, EvalAsInteger(exec));
 end;
 
 // Optimize
@@ -5740,11 +5725,11 @@ begin
    Typ:=Prog.TypFloat;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TUnaryOpFloatExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TUnaryOpFloatExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
-   Result:=EvalAsFloat(exec);
+   VarCopySafe(Result, EvalAsFloat(exec));
 end;
 
 // Optimize
@@ -5769,14 +5754,14 @@ begin
    Typ:=Prog.TypString;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TUnaryOpStringExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TUnaryOpStringExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 var
    buf : UnicodeString;
 begin
    EvalAsString(exec, buf);
-   Result:=buf;
+   VarCopySafe(Result, buf);
 end;
 
 // ------------------
@@ -5789,13 +5774,6 @@ constructor TUnaryOpVariantExpr.Create(prog : TdwsProgram; expr : TTypedExpr);
 begin
    inherited;
    Typ:=Prog.TypVariant;
-end;
-
-// Eval
-//
-function TUnaryOpVariantExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   EvalAsVariant(exec, Result);
 end;
 
 { TProgramInfo }

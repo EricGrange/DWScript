@@ -217,6 +217,7 @@ type
 
          function Size : Integer; inline;
 
+         procedure EvalNoResult(exec : TdwsExecution); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          function EvalAsTData(exec : TdwsExecution) : TData; overload; inline;
          procedure EvalAsTData(exec : TdwsExecution; var result : TData); overload;
@@ -840,7 +841,7 @@ end;
 //
 procedure TArrayConstantExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   Eval(exec);
+   EvalNoResult(exec);
    exec.DataContext_Create(exec.Stack.Data, FArrayAddr, Result);
 end;
 
@@ -879,9 +880,9 @@ begin
    Result:=ElementCount*Typ.Typ.Size;
 end;
 
-// EvalAsVariant
+// EvalNoResult
 //
-procedure TArrayConstantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+procedure TArrayConstantExpr.EvalNoResult(exec : TdwsExecution);
 
    procedure DoEval;
    var
@@ -889,6 +890,7 @@ procedure TArrayConstantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Va
       elemSize : Integer;
       elemExpr : TTypedExpr;
       dataExpr : TDataExpr;
+      buf : Variant;
    begin
       exec.Stack.WriteValue(FArrayAddr, FElementExprs.Count);
 
@@ -897,7 +899,8 @@ procedure TArrayConstantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Va
       for x:=0 to FElementExprs.Count-1 do begin
          elemExpr:=TTypedExpr(FElementExprs.List[x]);
          if elemSize=1 then begin
-            exec.Stack.WriteValue(addr, elemExpr.Eval(exec));
+            elemExpr.EvalAsVariant(exec, buf);
+            exec.Stack.WriteValue(addr, buf);
          end else begin
             dataExpr:=elemExpr as TDataExpr;
             dataExpr.DataPtr[exec].CopyData(exec.Stack.Data, addr, elemSize);
@@ -911,8 +914,15 @@ begin
       FArrayEvaled:=True;
       DoEval;
    end;
+end;
 
-   Result:=FArrayAddr;
+// EvalAsVariant
+//
+procedure TArrayConstantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+
+begin
+   EvalNoResult(exec);
+   VarCopySafe(Result, FArrayAddr);
 end;
 
 // EvalAsTData

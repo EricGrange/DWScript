@@ -168,7 +168,7 @@ type
       public
          function  IsConstant : Boolean; inline;
 
-         function  Eval(exec : TdwsExecution) : Variant; virtual; abstract;
+         function  Eval(exec : TdwsExecution) : Variant;
          function  EvalAsInteger(exec : TdwsExecution) : Int64; virtual; abstract;
          function  EvalAsBoolean(exec : TdwsExecution) : Boolean; virtual; abstract;
          function  EvalAsFloat(exec : TdwsExecution) : Double; virtual; abstract;
@@ -1989,8 +1989,10 @@ begin
 end;
 
 procedure TExprBase.EvalNoResult(exec : TdwsExecution);
+var
+   buf : Variant;
 begin
-   Eval(exec);
+   EvalAsVariant(exec, buf);
 end;
 
 // GetIsConstant
@@ -2005,6 +2007,13 @@ end;
 function TExprBase.IsConstant : Boolean;
 begin
    Result:=(Self<>nil) and GetIsConstant;
+end;
+
+// Eval
+//
+function TExprBase.Eval(exec : TdwsExecution) : Variant;
+begin
+   EvalAsVariant(exec, Result);
 end;
 
 // RaiseScriptError

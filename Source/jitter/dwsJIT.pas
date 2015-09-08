@@ -124,14 +124,12 @@ type
 
    TJITTedFloatExpr = class (TJITTedTypedExpr)
       public
-         function  Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
    end;
    TJITTedFloatExprClass = class of TJITTedFloatExpr;
 
    TJITTedIntegerExpr = class (TJITTedTypedExpr)
       public
-         function  Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
    end;
    TJITTedIntegerExprClass = class of TJITTedIntegerExpr;
@@ -1013,13 +1011,6 @@ end;
 // ------------------ TJITTedFloatExpr ------------------
 // ------------------
 
-// Eval
-//
-function TJITTedFloatExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   Result:=EvalAsFloat(exec);
-end;
-
 // EvalAsVariant
 //
 procedure TJITTedFloatExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
@@ -1030,13 +1021,6 @@ end;
 // ------------------
 // ------------------ TJITTedIntegerExpr ------------------
 // ------------------
-
-// Eval
-//
-function TJITTedIntegerExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   Result:=EvalAsInteger(exec);
-end;
 
 // EvalAsVariant
 //

@@ -37,7 +37,7 @@ type
                                          exec : TdwsExecution;
                                          toTyp : TTypeSymbol; expr : TTypedExpr;
                                          const reportError : String) : TTypedExpr; static;
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
    // Just wraps with a typ for an invalid conversion expr
@@ -98,8 +98,9 @@ type
 
    // Static Array to Dynamic Array
    TConvStaticArrayToDynamicExpr = class (TUnaryOpExpr)
-      constructor Create(prog : TdwsProgram; expr : TArrayConstantExpr; toTyp : TDynamicArraySymbol); reintroduce;
-      function Eval(exec : TdwsExecution) : Variant; override;
+      public
+         constructor Create(prog : TdwsProgram; expr : TArrayConstantExpr; toTyp : TDynamicArraySymbol); reintroduce;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
    // ExternalClass(x)
@@ -160,7 +161,7 @@ type
       public
          constructor Create(prog : TdwsProgram; const aPos : TScriptPos;
                             expr : TTypedExpr; toTyp : TTypeSymbol); reintroduce;
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
    // class as TMyClass
@@ -169,7 +170,7 @@ type
          procedure RaiseMetaClassCastFailed(exec : TdwsExecution; classSym : TClassSymbol);
 
       public
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
    // obj as TMyClass
@@ -186,25 +187,25 @@ type
       public
          constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
 
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
    // obj as Interface
    TObjAsIntfExpr = class(TAsCastExpr)
       public
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
    // interface as Interface
    TIntfAsIntfExpr = class(TAsCastExpr)
       public
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
    // interface as class
    TIntfAsClassExpr = class(TAsCastExpr)
       public
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
 // ------------------------------------------------------------------
@@ -314,9 +315,9 @@ begin
       ReportIncompatibleTypes;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TConvExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TConvExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
    Assert(False);
 end;
@@ -491,9 +492,9 @@ begin
    Typ:=toTyp;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TConvStaticArrayToDynamicExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TConvStaticArrayToDynamicExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 var
    arr : TArrayConstantExpr;
    dynArray : TScriptDynamicArray;
@@ -503,7 +504,7 @@ begin
    dynArray:=TScriptDynamicArray.CreateNew(TDynamicArraySymbol(Typ).Typ);
    dynArray.ReplaceData(arr.EvalAsTData(exec));
 
-   Result:=IScriptDynArray(dynArray);
+   VarCopySafe(Result, IScriptDynArray(dynArray));
 end;
 
 // ------------------
@@ -542,14 +543,14 @@ begin
    FTyp:=toTyp;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TAsCastExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TAsCastExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 var
    scriptObj : IScriptObj;
 begin
    EvalAsScriptObj(exec, scriptObj);
-   Result:=scriptObj;
+   VarCopySafe(Result, scriptObj);
 end;
 
 // ------------------
@@ -564,14 +565,14 @@ begin
                                                   [classSym.Caption, FTyp.Name]))
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TClassAsClassExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TClassAsClassExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 var
    ref : TClassSymbol;
 begin
    ref:=TClassSymbol(Expr.EvalAsInteger(exec));
-   Result:=Int64(ref);
+   VarCopySafe(Result, Int64(ref));
 
    if ref<>nil then begin
       if not FTyp.IsCompatible(ref.MetaSymbol) then
@@ -613,25 +614,25 @@ begin
    Typ:=(expr.Typ as TStructuredTypeSymbol).MetaSymbol;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TObjToClassTypeExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TObjToClassTypeExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 var
    obj : IScriptObj;
 begin
    Expr.EvalAsScriptObj(exec, obj);
    if obj=nil then
-      Result:=Int64(0)
-   else Result:=Int64(obj.ClassSym);
+      VarCopySafe(Result, Int64(0))
+   else VarCopySafe(Result, Int64(obj.ClassSym));
 end;
 
 // ------------------
 // ------------------ TObjAsIntfExpr ------------------
 // ------------------
 
-// Eval
+// EvalAsVariant
 //
-function TObjAsIntfExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TObjAsIntfExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 
    procedure RaiseIntfCastFailed(const obj : IScriptObj);
    begin
@@ -651,16 +652,16 @@ begin
          RaiseIntfCastFailed(obj);
       intf:=TScriptInterface.Create(obj, resolved);
    end else intf:=nil;
-   Result:=IScriptObjInterface(intf);
+   VarCopySafe(Result, IScriptObjInterface(intf));
 end;
 
 // ------------------
 // ------------------ TIntfAsIntfExpr ------------------
 // ------------------
 
-// Eval
+// EvalAsVariant
 //
-function TIntfAsIntfExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TIntfAsIntfExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 
    procedure RaiseIntfCastFailed(const obj : IScriptObj);
    begin
@@ -682,16 +683,16 @@ begin
          RaiseIntfCastFailed(instance);
       intf:=TScriptInterface.Create(instance, resolved);
    end else intf:=nil;
-   Result:=IUnknown(intf);
+   VarCopySafe(Result, IUnknown(intf));
 end;
 
 // ------------------
 // ------------------ TIntfAsClassExpr ------------------
 // ------------------
 
-// Eval
+// EvalAsVariant
 //
-function TIntfAsClassExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TIntfAsClassExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 
    procedure RaiseIntfCastFailed(const obj : IScriptObj);
    begin
@@ -711,7 +712,7 @@ begin
       obj:=intf.Instance;
       if not obj.ClassSym.IsCompatible(FTyp) then
          RaiseIntfCastFailed(obj);
-   end else Result:=IUnknown(nil);
+   end else VarCopySafe(Result, nil);
 end;
 
 // ------------------

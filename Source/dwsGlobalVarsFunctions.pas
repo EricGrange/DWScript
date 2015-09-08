@@ -873,15 +873,21 @@ end;
 { TWriteGlobalVarFunc }
 
 function TWriteGlobalVarFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+var
+   buf : Variant;
 begin
-   Result:=WriteGlobalVar(args.AsString[0], args.ExprBase[1].Eval(args.Exec), 0);
+   args.ExprBase[1].EvalAsVariant(args.Exec, buf);
+   Result:=WriteGlobalVar(args.AsString[0], buf, 0);
 end;
 
 { TWriteGlobalVarExpireFunc }
 
 function TWriteGlobalVarExpireFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+var
+   buf : Variant;
 begin
-   Result:=WriteGlobalVar(args.AsString[0], args.ExprBase[1].Eval(args.Exec), args.AsFloat[2]);
+   args.ExprBase[1].EvalAsVariant(args.Exec, buf);
+   Result:=WriteGlobalVar(args.AsString[0], buf, args.AsFloat[2]);
 end;
 
 // ------------------
@@ -902,9 +908,12 @@ end;
 // DoEvalAsVariant
 //
 procedure TCompareExchangeGlobalVarFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
+var
+   value, comparand : Variant;
 begin
-   result:=CompareExchangeGlobalVar(args.AsString[0],
-      args.ExprBase[1].Eval(args.Exec), args.ExprBase[2].Eval(args.Exec));
+   args.ExprBase[1].EvalAsVariant(args.Exec, value);
+   args.ExprBase[2].EvalAsVariant(args.Exec, comparand);
+   result:=CompareExchangeGlobalVar(args.AsString[0], value, comparand);
 end;
 
 { TDeleteGlobalVarFunc }
@@ -976,8 +985,11 @@ end;
 // DoEvalAsInteger
 //
 function TGlobalQueuePushFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+var
+   buf : Variant;
 begin
-   Result:=GlobalQueuePush(args.AsString[0], args.ExprBase[1].Eval(args.Exec));
+   args.ExprBase[1].EvalAsVariant(args.Exec, buf);
+   Result:=GlobalQueuePush(args.AsString[0], buf);
 end;
 
 // ------------------
@@ -987,8 +999,11 @@ end;
 // DoEvalAsInteger
 //
 function TGlobalQueueInsertFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+var
+   buf : Variant;
 begin
-   Result:=GlobalQueueInsert(args.AsString[0], args.ExprBase[1].Eval(args.Exec));
+   args.ExprBase[1].EvalAsVariant(args.Exec, buf);
+   Result:=GlobalQueueInsert(args.AsString[0], buf);
 end;
 
 // ------------------
