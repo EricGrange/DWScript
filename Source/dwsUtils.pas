@@ -1516,6 +1516,8 @@ begin
    VarClearSafe(dest);
 
    case TVarData(src).VType of
+      varEmpty : ;
+      varNull : TVarData(dest).VType:=varNull;
       varBoolean : begin
          TVarData(dest).VType:=varBoolean;
          TVarData(dest).VBoolean:=TVarData(src).VBoolean;
@@ -1532,9 +1534,15 @@ begin
          TVarData(dest).VType:=varUnknown;
          IUnknown(TVarData(dest).VUnknown):=IUnknown(TVarData(src).VUnknown);
       end;
-      varString : begin
+      varUString : begin
          TVarData(dest).VType:=varUString;
-         UnicodeString(TVarData(dest).VString):=String(TVarData(src).VString);
+         UnicodeString(TVarData(dest).VUString):=String(TVarData(src).VUString);
+      end;
+      varSmallint..varSingle, varCurrency..varDate, varError, varShortInt..varLongWord, varUInt64 : begin
+         TVarData(dest).RawData[0]:=TVarData(src).RawData[0];
+         TVarData(dest).RawData[1]:=TVarData(src).RawData[1];
+         TVarData(dest).RawData[2]:=TVarData(src).RawData[2];
+         TVarData(dest).RawData[3]:=TVarData(src).RawData[3];
       end;
    else
       dest:=src;

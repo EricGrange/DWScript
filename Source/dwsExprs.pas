@@ -943,7 +943,6 @@ type
          function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
          procedure EvalAsString(exec : TdwsExecution; var result : UnicodeString); override;
-         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
          procedure EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface); override;
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
@@ -3774,32 +3773,37 @@ begin
    Result:=nil;
 end;
 
-// EvalAsVariant
-//
-procedure TProgramExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
-begin
-   Result:=Eval(exec);
-end;
-
 // EvalAsScriptObj
 //
 procedure TProgramExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
+var
+   buf : Variant;
 begin
-   Result:=(IUnknown(Eval(exec)) as IScriptObj);
+   EvalAsVariant(exec, buf);
+   Assert(VarType(buf)=varUnknown);
+   Result:=(IUnknown(TVarData(buf).VUnknown) as IScriptObj);
 end;
 
 // EvalAsScriptObjInterface
 //
 procedure TProgramExpr.EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface);
+var
+   buf : Variant;
 begin
-   Result:=(IUnknown(Eval(exec)) as IScriptObjInterface);
+   EvalAsVariant(exec, buf);
+   Assert(VarType(buf)=varUnknown);
+   Result:=(IUnknown(TVarData(buf).VUnknown) as IScriptObjInterface);
 end;
 
 // EvalAsScriptDynArray
 //
 procedure TProgramExpr.EvalAsScriptDynArray(exec : TdwsExecution; var Result : IScriptDynArray);
+var
+   buf : Variant;
 begin
-   Result:=(IUnknown(Eval(exec)) as IScriptDynArray);
+   EvalAsVariant(exec, buf);
+   Assert(VarType(buf)=varUnknown);
+   Result:=(IUnknown(TVarData(buf).VUnknown) as IScriptDynArray);
 end;
 
 // AssignValue
@@ -3857,7 +3861,7 @@ function TProgramExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 var
    v : Variant;
 begin
-   v:=Eval(exec);
+   EvalAsVariant(exec, v);
    VariantToInt64(v, Result);
 end;
 
@@ -3867,7 +3871,7 @@ function TProgramExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
    v : Variant;
 begin
-   v:=Eval(exec);
+   EvalAsVariant(exec, v);
    try
       Result:=v;
    except
@@ -3884,7 +3888,7 @@ function TProgramExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 var
    v : Variant;
 begin
-   v:=Eval(exec);
+   EvalAsVariant(exec, v);
    try
       Result:=v;
    except
@@ -3902,7 +3906,7 @@ var
    v : Variant;
    p : PVarData;
 begin
-   v:=Eval(exec);
+   EvalAsVariant(exec, v);
    try
       p:=PVarData(@v);
       {$ifdef FPC}
@@ -4332,17 +4336,20 @@ end;
 // Optimize
 //
 function TFuncExprBase.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+var
+   buf : Variant;
 begin
    Result:=Self;
    if IsConstant then begin
       Initialize(prog);
       try
-         if (Typ=nil) or (Typ.Size<=1) then
-            Result:=TConstExpr.CreateTypedVariantValue(prog, typ, Eval(exec))
-         else begin
+         if (Typ=nil) or (Typ.Size<=1) then begin
+            EvalAsVariant(exec, buf);
+            Result:=TConstExpr.CreateTypedVariantValue(prog, typ, buf)
+         end else begin
             exec.Stack.Push(prog.DataSize);
             try
-               Eval(exec);
+               EvalAsVariant(exec, buf);
                Result:=TConstExpr.CreateTyped(prog, typ, exec.Stack.Data, FResultAddr);
             finally
                exec.Stack.Pop(prog.DataSize);
@@ -4439,8 +4446,10 @@ end;
 // GetDataPtr
 //
 procedure TFuncExprBase.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
+var
+   buf : Variant;
 begin
-   Eval(exec);
+   EvalAsVariant(exec, buf);
    exec.DataContext_CreateBase(FResultAddr, result);
 end;
 
@@ -5484,9 +5493,12 @@ end;
 // Optimize
 //
 function TVariantBinOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+var
+   v : Variant;
 begin
    if IsConstant then begin
-      Result:=TUnifiedConstExpr.CreateUnified(Prog, Prog.TypVariant, Eval(exec));
+      EvalAsVariant(exec, v);
+      Result:=TUnifiedConstExpr.CreateUnified(Prog, Prog.TypVariant, v);
       Free;
    end else Result:=Self;
 end;
@@ -6123,14 +6135,14 @@ end;
 
 procedure TProgramInfo.SetResultAsVariant(const Value: Variant);
 begin
-   GetResultAsPVariant^:=value;
+   VarCopySafe(GetResultAsPVariant^, value);
 end;
 
 // SetResultAsString
 //
 procedure TProgramInfo.SetResultAsString(const value : UnicodeString);
 begin
-   GetResultAsPVariant^:=value;
+   VarCopySafe(GetResultAsPVariant^, value);
 end;
 
 // SetResultAsDataString
@@ -6144,21 +6156,21 @@ end;
 //
 procedure TProgramInfo.SetResultAsInteger(const value : Int64);
 begin
-   GetResultAsPVariant^:=value;
+   VarCopySafe(GetResultAsPVariant^, value);
 end;
 
 // SetResultAsBoolean
 //
 procedure TProgramInfo.SetResultAsBoolean(const value : Boolean);
 begin
-   GetResultAsPVariant^:=value;
+   VarCopySafe(GetResultAsPVariant^, value);
 end;
 
 // SetResultAsFloat
 //
 procedure TProgramInfo.SetResultAsFloat(const value : Double);
 begin
-   GetResultAsPVariant^:=value;
+   VarCopySafe(GetResultAsPVariant^, value);
 end;
 
 // SetResultAsStringArray

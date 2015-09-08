@@ -250,7 +250,7 @@ begin
    SetLength(FData, aTyp.Size);
    case aTyp.Size of
       0 : ;
-      1 : FData[0] := Value;
+      1 : VarCopySafe(FData[0], Value);
    else
       Assert(False);
    end;
@@ -303,7 +303,7 @@ end;
 //
 procedure TConstExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
-   Result := FData[0];
+   VarCopySafe(Result, FData[0]);
 end;
 
 // EvalAsScriptObj
@@ -507,7 +507,7 @@ end;
 //
 procedure TConstNilExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
-   Result := FData[0];
+   VarCopySafe(Result, FData[0]);
 end;
 
 // EvalAsScriptObj

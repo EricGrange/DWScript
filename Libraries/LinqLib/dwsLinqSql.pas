@@ -500,11 +500,11 @@ begin
    while FStep.EvalAsBoolean(exec) do
    begin
       dyn.ArrayLength := n + 1;
-      dyn.AsPVariant(n)^ := FInto.Eval(exec);
+      FInto.EvalAsVariant(exec, dyn.AsPVariant(n)^);
       inc(n);
    end;
    result := IScriptDynArray(dyn);
-   FFree.Eval(exec);
+   FFree.EvalNoResult(exec);
 end;
 
 { TLinqIntoSingleProcExpr }
@@ -516,7 +516,7 @@ begin
    FAssign.EvalNoResult(exec);
    while FStep.EvalAsBoolean(exec) do
       FInto.EvalNoResult(exec);
-   FFree.Eval(exec);
+   FFree.EvalNoResult(exec);
 end;
 
 { TLinqIntoSetExpr }
@@ -537,7 +537,7 @@ procedure TLinqIntoSetValExpr.EvalAsVariant(exec : TdwsExecution; var Result : V
 begin
    FAssign.EvalNoResult(exec);
    FInto.EvalAsVariant(exec, result);
-   FFree.Eval(exec);
+   FFree.EvalNoResult(exec);
 end;
 
 { TLinqSqlFactory }

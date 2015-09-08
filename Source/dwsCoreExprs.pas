@@ -4799,7 +4799,7 @@ var
 begin
    FLeft.EvalAsVariant(exec, lv);
    FRight.EvalAsVariant(exec, rv);
-   Result:=lv*rv;
+   VarCopySafe(Result, lv*rv);
 end;
 
 // ------------------
@@ -5081,7 +5081,14 @@ end;
 procedure TNotVariantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
    FExpr.EvalAsVariant(exec, Result);
-   Result:=not Result;
+   case VarType(Result) of
+      varBoolean :
+         TVarData(Result).VBoolean := not TVarData(Result).VBoolean;
+      varInt64 :
+         TVarData(Result).VInt64 := not TVarData(Result).VInt64;
+   else
+      Result := not Result;
+   end;
 end;
 
 { TIntAndExpr }
@@ -5952,7 +5959,7 @@ constructor TAssignConstToVariantVarExpr.CreateVal(Prog: TdwsProgram;
       Left : TDataExpr; const rightValue : Variant);
 begin
    inherited Create(Prog, aScriptPos, exec, Left, nil);
-   FRight:=rightValue;
+   VarCopySafe(FRight, rightValue);
 end;
 
 // EvalNoResult
@@ -8199,8 +8206,8 @@ end;
 //
 function TArraySortComparer.CompareValue(index1, index2 : Integer) : Integer;
 begin
-   FExec.Stack.Data[FLeftAddr]:=FData[index1];
-   FExec.Stack.Data[FRightAddr]:=FData[index2];
+   VarCopySafe(FExec.Stack.Data[FLeftAddr], FData[index1]);
+   VarCopySafe(FExec.Stack.Data[FRightAddr], FData[index2]);
    Result:=FFuncPointer.EvalAsInteger(FExec, FFunc);
 end;
 

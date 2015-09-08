@@ -780,6 +780,7 @@ end;
 procedure TConvStaticArrayToSetOfExpr.EvalAsTData(exec : TdwsExecution; var data : TData);
 var
    i, v : Integer;
+   i64 : Int64;
    setOfSym : TSetOfSymbol;
    arrayExpr : TArrayConstantExpr;
 begin
@@ -791,8 +792,10 @@ begin
    arrayExpr:=TArrayConstantExpr(Expr);
    for i:=0 to arrayExpr.ElementCount-1 do begin
       v:=arrayExpr.Elements[i].EvalAsInteger(exec)-setOfSym.MinValue;
-      if Cardinal(v)<Cardinal(setOfSym.CountValue) then
-         data[v shr 6]:=data[v shr 6] or (Int64(1) shl (v and 63));
+      if Cardinal(v)<Cardinal(setOfSym.CountValue) then begin
+         i64 := data[v shr 6];
+         data[v shr 6] := i64 or (Int64(1) shl (v and 63));
+      end;
    end;
 end;
 

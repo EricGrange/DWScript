@@ -214,9 +214,11 @@ end;
 
 function TJsonFromExpr.EvalAsJson(exec: TdwsExecution): TdwsJsonValue;
 var
+   buf : Variant;
    value: IBoxedJsonValue;
 begin
-   value := IUnknown(FBase.Eval(exec)) as IBoxedJsonValue;
+   FBase.EvalAsVariant(exec, buf);
+   value := IUnknown(buf) as IBoxedJsonValue;
    result := value.Value.Clone;
 end;
 
@@ -242,7 +244,7 @@ function TJsonWhereFilter.HalfFilterValue(filter: TTypedExpr; value: TdwsJsonVal
 begin
    if filter is TSqlIdentifier then
       result := value.Items[TSqlIdentifier(filter).Value].Value.AsVariant
-   else result := filter.Eval(exec);
+   else filter.EvalAsVariant(exec, result);
 end;
 
 function TJsonWhereFilter.MatchFilter(filter: TTypedExpr; value: TdwsJsonValue; exec: TdwsExecution): boolean;

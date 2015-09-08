@@ -247,7 +247,7 @@ begin
          symbolClassType:=attrib.Symbol.ClassType;
          if symbolClassType=TClassSymbol then begin
             dynArray.AsInteger[i*2]:=Int64(attrib.Symbol);
-            dynArray.AsVariant[i*2+1]:=attrib.AttributeConstructor.Eval(info.Execution);
+            attrib.AttributeConstructor.EvalAsVariant(info.Execution, dynArray.AsPVariant(i*2+1)^);
          end else Assert(False);
       end;
 
@@ -345,8 +345,12 @@ end;
 // DoEvalAsBoolean
 //
 function TSameRTTITypeInfoFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+var
+   v1, v2 : Variant;
 begin
-   Result:=(args.ExprBase[0].Eval(args.Exec)=args.ExprBase[1].Eval(args.Exec));
+   args.ExprBase[0].EvalAsVariant(args.Exec, v1);
+   args.ExprBase[1].EvalAsVariant(args.Exec, v2);
+   Result:=(v1=v2);
 end;
 
 // ------------------

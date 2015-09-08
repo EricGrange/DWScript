@@ -338,7 +338,7 @@ end;
 //
 procedure TStackMixIn.ReadValue(sourceAddr : Integer; var result : Variant);
 begin
-   result:=Data[sourceAddr];
+   VarCopySafe(result, Data[sourceAddr]);
 end;
 
 // ReadIntValue
