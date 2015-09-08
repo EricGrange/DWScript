@@ -1829,24 +1829,100 @@ begin
    Result:=unitMain.ReferenceInSymbolTable(FProg.Table, False);
 end;
 
+type
+   TUnitMainSymbolArray = array of TUnitMainSymbol;
+
+   TRankedUnits = class
+      Ranked : TUnitMainSymbolArray;
+      function Compare(index1, index2 : Integer) : Integer;
+      procedure Swap(index1, index2 : Integer);
+   end;
+
+function TRankedUnits.Compare(index1, index2 : Integer) : Integer;
+begin
+   Result:=Ranked[index1].InitializationRank-Ranked[index2].InitializationRank;
+end;
+
+// Swap
+//
+procedure TRankedUnits.Swap(index1, index2 : Integer);
+var
+   t : TUnitMainSymbol;
+begin
+   t:=Ranked[index1];
+   Ranked[index1]:=Ranked[index2];
+   Ranked[index2]:=t;
+end;
+
 // SetupInitializationFinalization
 //
 procedure TdwsCompiler.SetupInitializationFinalization;
 var
-   i : Integer;
-   rankedUnits : array of TUnitMainSymbol;
+   rankedUnits : TUnitMainSymbolArray;
+
+   procedure RankUnits(rankLow : Integer);
+   var
+      r : Integer;
+      ums, dep : TUnitMainSymbol;
+      change : Boolean;
+   begin
+      change:=False;
+      for ums in rankedUnits do begin
+         r:=ums.InitializationRank+1;
+         if r>=rankLow then begin
+            for dep in ums.Dependencies do begin
+               if dep.InitializationRank<r then begin
+                  dep.InitializationRank:=r;
+                  change:=True;
+               end;
+            end;
+         end;
+      end;
+      if change and (rankLow<High(rankedUnits)) then
+         RankUnits(rankLow+1);
+   end;
+
+   procedure SortRankedUnits;
+   var
+      ranked : TRankedUnits;
+      sorter : TQuickSort;
+   begin
+      ranked:=TRankedUnits.Create;
+      try
+         ranked.Ranked:=rankedUnits;
+         sorter.CompareMethod:=ranked.Compare;
+         sorter.SwapMethod:=ranked.Swap;
+         sorter.Sort(0, High(rankedUnits));
+         rankedUnits:=ranked.Ranked;
+      finally
+         ranked.Free;
+      end;
+   end;
+
+var
+   i, k : Integer;
    ums : TUnitMainSymbol;
    unitInitExpr : TBlockExprBase;
 begin
    // collect and rank all units with an initialization or finalization sections
    // NOTE: UnitMains order may change arbitrarily in the future, hence the need to reorder
    SetLength(rankedUnits, FProg.UnitMains.Count);
+   k:=0;
    for i:=0 to FProg.UnitMains.Count-1 do begin
       ums:=FProg.UnitMains[i];
       if (ums.InitializationExpr<>nil) or (ums.FinalizationExpr<>nil) then begin
-         rankedUnits[i]:=ums;
+         rankedUnits[k]:=ums;
+         Inc(k);
+         ums.InitializationRank:=0;
       end;
    end;
+   if k=0 then Exit;
+
+   // compute dependency graph rank & sort accordingly
+   SetLength(rankedUnits, k);
+   RankUnits(0);
+   SortRankedUnits;
+
    // append initializations to InitExpr of the main prog
    for i:=High(rankedUnits) downto 0 do begin
       ums:=rankedUnits[i];
@@ -12388,9 +12464,16 @@ begin
                   rt.MoveParent(z, u);
             end;
          end;
-         if coSymbolDictionary in Options then begin
-            rSym:=FProg.UnitMains.Find(names[x]);
-            RecordSymbolUse(rSym, posArray[x], [suReference]);
+         rSym:=FProg.UnitMains.Find(names[x]);
+         if rSym<>nil then begin
+            if coSymbolDictionary in Options then
+               RecordSymbolUse(rSym, posArray[x], [suReference]);
+            if CurrentUnitSymbol<>nil then begin
+               if rSym.ClassType=TUnitSymbol then
+                  rSym:=TUnitSymbol(rSym).Main;
+               Assert(rSym.ClassType=TUnitMainSymbol);
+               CurrentUnitSymbol.AddDependency(TUnitMainSymbol(rSym));
+            end;
          end;
       end;
    finally

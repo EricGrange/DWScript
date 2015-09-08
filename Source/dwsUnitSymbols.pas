@@ -33,6 +33,7 @@ type
    TSystemSymbolTable = class;
    TUnitSymbolTable = class;
    TUnitImplementationTable = class;
+   TUnitMainSymbol = class;
    TUnitMainSymbols = class;
    TUnitSymbol = class;
 
@@ -40,6 +41,8 @@ type
    TSourceSymbol = class (TSymbol)
       public
    end;
+
+   TUnitMainSymbolArray = array of TUnitMainSymbol;
 
    // Invisible symbol for units (e. g. for TdwsUnit)
    TUnitMainSymbol = class sealed (TSourceSymbol)
@@ -52,6 +55,7 @@ type
          FInitializationExpr : TExprBase;
          FFinalizationExpr : TExprBase;
          FDeprecatedMessage : UnicodeString;
+         FDependencies : TUnitMainSymbolArray;
 
       public
          constructor Create(const name : UnicodeString; table : TUnitSymbolTable;
@@ -70,6 +74,8 @@ type
 
          function HasSymbol(sym : TSymbol) : Boolean;
 
+         procedure AddDependency(ums : TUnitMainSymbol);
+
          property Table : TUnitSymbolTable read FTable;
 
          property InterfaceTable : TSymbolTable read FInterfaceTable;
@@ -79,6 +85,7 @@ type
          property InitializationExpr : TExprBase read FInitializationExpr write FInitializationExpr;
          property FinalizationExpr : TExprBase read FFinalizationExpr write FFinalizationExpr;
          property DeprecatedMessage : UnicodeString read FDeprecatedMessage write FDeprecatedMessage;
+         property Dependencies : TUnitMainSymbolArray read FDependencies;
    end;
 
    // list of unit main symbols (one per prog)
@@ -584,6 +591,17 @@ begin
    if Self=nil then
       Result:=False
    else Result:=Table.HasSymbol(sym) or ImplementationTable.HasSymbol(sym);
+end;
+
+// AddDependency
+//
+procedure TUnitMainSymbol.AddDependency(ums : TUnitMainSymbol);
+var
+   n : Integer;
+begin
+   n:=Length(FDependencies);
+   SetLength(FDependencies, n+1);
+   FDependencies[n]:=ums;
 end;
 
 // ReferenceInSymbolTable
