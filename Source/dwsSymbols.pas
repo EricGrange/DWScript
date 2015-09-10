@@ -168,7 +168,7 @@ type
       public
          function  IsConstant : Boolean; inline;
 
-         function  Eval(exec : TdwsExecution) : Variant; deprecated;
+         function  Eval(exec : TdwsExecution) : Variant; deprecated 'Use appropriate EvalAsXxx instead';
          function  EvalAsInteger(exec : TdwsExecution) : Int64; virtual; abstract;
          function  EvalAsBoolean(exec : TdwsExecution) : Boolean; virtual; abstract;
          function  EvalAsFloat(exec : TdwsExecution) : Double; virtual; abstract;
