@@ -47,6 +47,14 @@ type
     procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
   end;
 
+  TUnixTimeFunc = class(TInternalMagicIntFunction)
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+  end;
+
+  TUnixTimeToDateTimeFunc = class(TInternalMagicFloatFunction)
+    procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+  end;
+
   TSleepFunc = class(TInternalMagicProcedure)
     procedure DoEvalProc(const args : TExprBaseListExec); override;
   end;
@@ -348,6 +356,25 @@ end;
 procedure TUTCDateTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=UTCDateTime;
+end;
+
+{ TUnixTimeFunc }
+
+function TUnixTimeFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+var
+   t : TDateTime;
+begin
+   if args.Count>0 then
+      t:=args.AsFloat[0]
+   else t:=UTCDateTime;
+   Result:=Trunc(t*86400)-Int64(25569)*86400;
+end;
+
+{ TUnixTimeToDateTimeFunc }
+
+procedure TUnixTimeToDateTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result:=args.AsInteger[0]/86400+25569;
 end;
 
 { TDateTimeToStrFunc }
@@ -782,6 +809,10 @@ initialization
    RegisterInternalProcedure(TSleepFunc, 'Sleep', ['msec', SYS_INTEGER]);
 
    RegisterInternalFloatFunction(TUTCDateTimeFunc, 'UTCDateTime', []);
+
+   RegisterInternalIntFunction(TUnixTimeFunc, 'UnixTime', []);
+   RegisterInternalIntFunction(TUnixTimeFunc, 'DateTimeToUnixTime', ['utc', cDateTime]);
+   RegisterInternalFloatFunction(TUnixTimeToDateTimeFunc, 'UnixTimeToDateTime', ['utc=0', cDateTime]);
 
    RegisterInternalFloatFunction(TParseDateTimeFunc, 'ParseDateTime', ['fmt', SYS_STRING, 'str', SYS_STRING, 'utc=0', SYS_DATE_TIME_ZONE]);
 
