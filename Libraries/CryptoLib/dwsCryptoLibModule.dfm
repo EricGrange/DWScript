@@ -20,6 +20,21 @@ object dwsCryptoLib: TdwsCryptoLib
             ResultType = 'String'
             Attributes = [maVirtual, maAbstract]
             Kind = mkClassFunction
+          end
+          item
+            Name = 'HMAC'
+            Parameters = <
+              item
+                Name = 'key'
+                DataType = 'String'
+              end
+              item
+                Name = 'message'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maAbstract]
+            Kind = mkClassFunction
           end>
       end
       item
@@ -36,6 +51,22 @@ object dwsCryptoLib: TdwsCryptoLib
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
             OnEval = dwsCryptoClassesSHA256MethodsHashDataEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'HMAC'
+            Parameters = <
+              item
+                Name = 'key'
+                DataType = 'String'
+              end
+              item
+                Name = 'message'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsCryptoClassesHashSHA256MethodsHMACEval
             Kind = mkClassFunction
           end>
       end
@@ -55,6 +86,22 @@ object dwsCryptoLib: TdwsCryptoLib
             Attributes = [maVirtual, maOverride]
             OnEval = dwsCryptoClassesSHA1MethodsHashDataEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'HMAC'
+            Parameters = <
+              item
+                Name = 'key'
+                DataType = 'String'
+              end
+              item
+                Name = 'message'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsCryptoClassesHashSHA1MethodsHMACEval
+            Kind = mkClassFunction
           end>
       end
       item
@@ -72,6 +119,22 @@ object dwsCryptoLib: TdwsCryptoLib
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
             OnEval = dwsCryptoClassesMD5MethodsHashDataEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'HMAC'
+            Parameters = <
+              item
+                Name = 'key'
+                DataType = 'String'
+              end
+              item
+                Name = 'message'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsCryptoClassesHashMD5MethodsHMACEval
             Kind = mkClassFunction
           end>
       end
@@ -91,6 +154,22 @@ object dwsCryptoLib: TdwsCryptoLib
             Attributes = [maVirtual, maOverride]
             OnEval = dwsCryptoClassesHashRIPEMD160MethodsHashDataEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'HMAC'
+            Parameters = <
+              item
+                Name = 'key'
+                DataType = 'String'
+              end
+              item
+                Name = 'message'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsCryptoClassesHashRIPEMD160MethodsHMACEval
+            Kind = mkClassFunction
           end>
       end
       item
@@ -109,6 +188,22 @@ object dwsCryptoLib: TdwsCryptoLib
             Attributes = [maVirtual, maOverride]
             OnEval = dwsCryptoClassesHashCRC32MethodsHashDataEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'HMAC'
+            Parameters = <
+              item
+                Name = 'key'
+                DataType = 'String'
+              end
+              item
+                Name = 'message'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsCryptoClassesHashCRC32MethodsHMACEval
+            Kind = mkClassFunction
           end>
       end
       item
@@ -126,6 +221,22 @@ object dwsCryptoLib: TdwsCryptoLib
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
             OnEval = dwsCryptoClassesHashSHA3_256MethodsHashDataEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'HMAC'
+            Parameters = <
+              item
+                Name = 'key'
+                DataType = 'String'
+              end
+              item
+                Name = 'message'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsCryptoClassesHashSHA3_256MethodsHMACEval
             Kind = mkClassFunction
           end>
       end
