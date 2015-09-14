@@ -115,6 +115,7 @@ begin
          varUString : stmt.BindTextS(i, String(p.VUString));
          varBoolean : stmt.Bind(i, Ord(p.VBoolean));
          varNull : stmt.BindNull(i);
+         varDate : stmt.BindDateTime(i, p.VDate);
       else
          stmt.BindVariant(i, PVariant(p)^, False);
       end;
