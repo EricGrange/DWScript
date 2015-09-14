@@ -1696,6 +1696,7 @@ type
          function FindClassMatch(AObject: TObject; ExactMatch: Boolean=True): TClassSymbol;
          function FindSymbolInUnits(const aName : UnicodeString) : TSymbol; overload;
          function GetTemp(const DataType: UnicodeString): IInfo;
+         function RootInfo(const aName : UnicodeString) : IInfo; overload;
 
          procedure RaiseExceptObj(const msg : UnicodeString; const obj : IScriptObj);
 
@@ -5071,6 +5072,10 @@ begin
       FDoEvalAsVariant:=EvalMagicAsVariant
    else begin
       Assert(FFuncExpr is TFuncExpr);
+      // handled as Level 1 in the context it will be called from,
+      // which may be different from the context in which it was acquired
+      TFuncExpr(FFuncExpr).Level:=1;
+
       FDoEvalAsVariant:=EvalFuncAsVariant;
    end;
 end;
@@ -5918,6 +5923,24 @@ begin
 
    if not Assigned(sym) then
       RaiseVariableNotFound(str)
+   else GetSymbolInfo(sym, Result);
+end;
+
+// RootInfo
+//
+function TProgramInfo.RootInfo(const aName : UnicodeString) : IInfo;
+var
+   sym : TSymbol;
+   funcSym : TFuncSymbol;
+begin
+   sym:=FExecution.FProg.FTable.FindSymbol(aName, cvMagic);
+
+   if not Assigned(sym) then
+      RaiseVariableNotFound(aName);
+
+   funcSym:=sym.AsFuncSymbol;
+   if funcSym<>nil then
+      Result:=GetFuncBySym(funcSym)
    else GetSymbolInfo(sym, Result);
 end;
 
