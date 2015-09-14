@@ -483,7 +483,7 @@ type
 
    TStringUnifier = class
       private
-         FLock : TFixedCriticalSection;
+         FLock : TMultiReadSingleWrite;
          FBuckets : TStringUnifierBuckets;
          FCount : Integer;
          FGrowth : Integer;
@@ -1828,7 +1828,7 @@ end;
 constructor TStringUnifier.Create;
 begin
    inherited;
-   FLock:=TFixedCriticalSection.Create;
+   FLock:=TMultiReadSingleWrite.Create;
 end;
 
 // Destroy
@@ -1871,14 +1871,14 @@ end;
 //
 procedure TStringUnifier.Lock;
 begin
-   FLock.Enter;
+   FLock.BeginWrite;
 end;
 
 // UnLock
 //
 procedure TStringUnifier.UnLock;
 begin
-   FLock.Leave;
+   FLock.EndWrite;
 end;
 
 // Clear
