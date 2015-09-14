@@ -1532,6 +1532,8 @@ begin
   Result := IScriptObj(IUnknown(Info.ValueAsVariant[AVarName])).ExternalObject;
 end;
 
+{ TCustomInternalMagicProcedure }
+
 // DoEvalProc
 //
 procedure TCustomInternalMagicProcedure.DoEvalProc(const args : TExprBaseListExec);
@@ -1539,12 +1541,16 @@ begin
    FOnFastEval(args);
 end;
 
+{ TCustomInternalMagicFunction }
+
 // DoEvalAsVariant
 //
 procedure TCustomInternalMagicFunction.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 begin
    Result:=FOnFastEval(args);
 end;
+
+{ TCustomInternalMagicDataFunction }
 
 // DoEval
 //

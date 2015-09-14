@@ -8535,3 +8535,4 @@ finalization
    TdwsGuardianThread.vExecutionsPool.FreeAll;
 
 end.
+
