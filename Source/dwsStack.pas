@@ -530,7 +530,7 @@ end;
 procedure TStackMixIn.WriteData(SourceAddr, DestAddr, Size: Integer; const SourceData: TData);
 begin
    while Size>0 do begin
-      Data[DestAddr]:=SourceData[SourceAddr];
+      VarCopySafe(Data[DestAddr], SourceData[SourceAddr]);
       Inc(SourceAddr);
       Inc(DestAddr);
       Dec(Size);
@@ -553,7 +553,7 @@ begin
    varData:=@Data[DestAddr];
    if varData.VType=varInt64 then
       varData.VInt64:=Value
-   else PVariant(varData)^:=Value;
+   else VarCopySafe(PVariant(varData)^, Value);
 end;
 
 // WriteIntValue_BaseRelative
@@ -565,7 +565,7 @@ begin
    varData:=@FBaseData[DestAddr];
    if varData.VType=varInt64 then
       varData.VInt64:=Value
-   else PVariant(varData)^:=Value;
+   else VarCopySafe(PVariant(varData)^, Value);
 end;
 
 // WriteFloatValue
@@ -577,7 +577,7 @@ begin
    varData:=@Data[DestAddr];
    if varData.VType=varDouble then
       varData.VDouble:=Value
-   else PVariant(varData)^:=Value;
+   else VarCopySafe(PVariant(varData)^, Value);
 end;
 
 // WriteFloatValue_BaseRelative
@@ -589,7 +589,7 @@ begin
    varData:=@FBaseData[DestAddr];
    if varData.VType=varDouble then
       varData.VDouble:=Value
-   else PVariant(varData)^:=Value;
+   else VarCopySafe(PVariant(varData)^, Value);
 end;
 
 // WriteStrValue
@@ -601,7 +601,7 @@ begin
    varData:=@Data[DestAddr];
    if varData.VType=varUString then
       UnicodeString(varData.VString):=Value
-   else PVariant(varData)^:=Value;
+   else VarCopySafe(PVariant(varData)^, Value);
 end;
 
 // WriteStrValue_BaseRelative
@@ -613,7 +613,7 @@ begin
    varData:=@FBaseData[DestAddr];
    if varData.VType=varUString then
       UnicodeString(varData.VString):=Value
-   else PVariant(varData)^:=Value;
+   else VarCopySafe(PVariant(varData)^, Value);
 end;
 
 // WriteBoolValue
@@ -625,7 +625,7 @@ begin
    varData:=@Data[DestAddr];
    if varData.VType=varBoolean then
       varData.VBoolean:=Value
-   else PVariant(varData)^:=Value;
+   else VarCopySafe(PVariant(varData)^, Value);
 end;
 
 // WriteInterfaceValue
@@ -637,7 +637,7 @@ begin
    varData:=@Data[DestAddr];
    if varData.VType=varUnknown then
       PUnknown(@varData.VUnknown)^:=intf
-   else PVariant(varData)^:=intf;
+   else VarCopySafe(PVariant(varData)^, intf);
 end;
 
 // SetStrChar
