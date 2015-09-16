@@ -342,6 +342,8 @@ type
          property Text : UnicodeString read FText write FText;
    end;
 
+procedure ConcatScriptPosArray(var dest : TScriptPosarray; const src : TScriptPosarray; nb : Integer);
+
 const
    cNullPos: TScriptPos = (Line: 0; Col: 0; SourceFile: nil);
 
@@ -352,6 +354,18 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+// ConcatScriptPosArray
+//
+procedure ConcatScriptPosArray(var dest : TScriptPosarray; const src : TScriptPosarray; nb : Integer);
+var
+   nd : Integer;
+begin
+   if nb=0 then Exit;
+   nd:=Length(dest);
+   SetLength(dest, nd+nb);
+   System.Move(src[0], dest[nd], SizeOf(TScriptPos)*nb);
+end;
 
 // ------------------
 // ------------------ TScriptPos ------------------

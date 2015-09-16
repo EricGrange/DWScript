@@ -56,8 +56,8 @@ uses
   UdwsWebUtilsTests in 'UdwsWebUtilsTests.pas',
   UdwsGraphicsTests in 'UdwsGraphicsTests.pas',
   dwsJSONPath in '..\Source\dwsJSONPath.pas',
-  dwsDateTime in '..\Source\dwsDateTime.pas',
-  UDelegateTests in 'UDelegateTests.pas';
+  // UDelegateTests in 'UDelegateTests.pas',  // memory leak
+  dwsDateTime in '..\Source\dwsDateTime.pas';
 
 {$R *.res}
 

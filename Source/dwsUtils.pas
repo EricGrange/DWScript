@@ -868,6 +868,7 @@ procedure VariantToInt64(const v : Variant; var r : Int64);
 procedure VarClearSafe(var v : Variant);
 procedure VarCopySafe(var dest : Variant; const src : Variant); overload;
 procedure VarCopySafe(var dest : Variant; const src : IUnknown); overload;
+procedure VarCopySafe(var dest : Variant; const src : IDispatch); overload;
 procedure VarCopySafe(var dest : Variant; const src : Int64); overload;
 procedure VarCopySafe(var dest : Variant; const src : UnicodeString); overload;
 procedure VarCopySafe(var dest : Variant; const src : Double); overload;
@@ -1439,8 +1440,6 @@ begin
          else s:='False';
       varNull :
          s:='Null';
-      varDispatch :
-         DispatchAsString(varData^.VDispatch, s);
       varUnknown :
          UnknownAsString(IUnknown(varData^.VUnknown), s);
    else
@@ -1498,6 +1497,10 @@ begin
          TVarData(v).VType:=varEmpty;
          IUnknown(TVarData(v).VUnknown):=nil;
       end;
+      varDispatch : begin
+         TVarData(v).VType:=varEmpty;
+         IDispatch(TVarData(v).VDispatch):=nil;
+      end;
       varUString : begin
          TVarData(v).VType:=varEmpty;
          UnicodeString(TVarData(v).VString):='';
@@ -1534,6 +1537,10 @@ begin
          TVarData(dest).VType:=varUnknown;
          IUnknown(TVarData(dest).VUnknown):=IUnknown(TVarData(src).VUnknown);
       end;
+      varDispatch : begin
+         TVarData(dest).VType:=varDispatch;
+         IDispatch(TVarData(dest).VDispatch):=IDispatch(TVarData(src).VDispatch);
+      end;
       varUString : begin
          TVarData(dest).VType:=varUString;
          UnicodeString(TVarData(dest).VUString):=String(TVarData(src).VUString);
@@ -1557,6 +1564,16 @@ begin
 
    TVarData(dest).VType:=varUnknown;
    IUnknown(TVarData(dest).VUnknown):=src;
+end;
+
+// VarCopySafe (idispatch)
+//
+procedure VarCopySafe(var dest : Variant; const src : IDispatch);
+begin
+   VarClearSafe(dest);
+
+   TVarData(dest).VType:=varDispatch;
+   IDispatch(TVarData(dest).VDispatch):=src;
 end;
 
 // VarCopySafe (int64)

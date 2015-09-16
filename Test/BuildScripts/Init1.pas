@@ -9,7 +9,7 @@ uses
 implementation
 
 initialization
-  PrintLn('Init '+CurrentSourceCodeLocation.File);
+	PrintLn('Init Init1');
 finalization
-	PrintLn(CurrentSourceCodeLocation.File);
+	PrintLn('Init1');
 end;

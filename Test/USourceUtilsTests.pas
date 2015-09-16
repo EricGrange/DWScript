@@ -8,7 +8,7 @@ uses
    Classes, SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsDataContext,
    dwsTokenizer, dwsErrors, dwsUtils, Variants, dwsSymbols, dwsSuggestions,
-   dwsFunctions;
+   dwsFunctions, dwsCaseNormalizer;
 
 type
 
@@ -48,6 +48,7 @@ type
          procedure EnumerationSuggest;
          procedure StaticClassSuggest;
          procedure SuggestInBlockWithError;
+         procedure NormalizeOverload;
    end;
 
 // ------------------------------------------------------------------
@@ -883,6 +884,50 @@ begin
    CheckEquals('xyz', sugg.Code[0], '3,2,0');
    CheckEquals('xor', sugg.Code[1], '3,2,1');
 
+end;
+
+// NormalizeOverload
+//
+type
+   TTestNormalizer = class (TStringList)
+      procedure Normalize(line, col : Integer; const name : String);
+   end;
+procedure TTestNormalizer.Normalize(line, col : Integer; const name : String);
+begin
+   Add(Format('%d, %d, %s', [line, col, name]));
+end;
+procedure TSourceUtilsTests.NormalizeOverload;
+var
+   prog : IdwsProgram;
+   lines : TStringList;
+   normalizer : TTestNormalizer;
+begin
+   lines:=TStringList.Create;
+   try
+      lines.Text:= 'unit Unit1;'#13#10
+                  +'interface'#13#10
+                  +'procedure Test(const A, Blah: string; const C: string); overload;'#13#10
+                  +'procedure Test; overload;'#13#10
+                  +'implementation'#13#10
+                  +'procedure Test(const A, Blah: string; const C: string);'#13#10
+                  +'begin end;'#13#10
+                  +'procedure Test;'#13#10
+                  +'begin end;';
+
+      prog:=FCompiler.Compile(lines.Text);
+
+      CheckEquals('', prog.Msgs.AsInfo, 'should have compiled without errors');
+
+      normalizer:=TTestNormalizer.Create;
+      try
+         NormalizeSymbolsCase(lines, prog.SourceList[0].SourceFile, prog.SymbolDictionary,
+                              normalizer.Normalize);
+      finally
+         normalizer.Free;
+      end;
+   finally
+      lines.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------

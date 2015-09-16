@@ -3432,6 +3432,7 @@ var
    symPos : TSymbolPosition;
 begin
    if not (coSymbolDictionary in Options) then Exit;
+
    d:=actual.Params.Count-Length(posArray);
    // params can have been mislocated in guess and must be reassigned to actual
    for i:=0 to actual.Params.Count-1 do begin
@@ -3446,6 +3447,20 @@ begin
          if guessSymPosList<>nil then begin
             symPos:=guessSymPosList.Items[guessSymPosList.Count-1];
             if symPos.ScriptPos.SamePosAs(posArray[i-d]) then
+               guessSymPosList.Delete(guessSymPosList.Count-1);
+         end;
+      end;
+   end;
+   d:=guess.Params.Count;
+   if d>Length(posArray) then
+      d:=Length(posArray);
+   for i:=actual.Params.Count to d-1 do begin
+      guessParam:=guess.Params.FindLocal(guess.Params[i].Name);
+      if guessParam<>nil then begin
+         guessSymPosList:=SymbolDictionary.FindSymbolPosList(guessParam);
+         if guessSymPosList<>nil then begin
+            symPos:=guessSymPosList.Items[guessSymPosList.Count-1];
+            if symPos.ScriptPos.SamePosAs(posArray[i]) then
                guessSymPosList.Delete(guessSymPosList.Count-1);
          end;
       end;
@@ -11138,6 +11153,7 @@ var
    typScriptPos, exprPos : TScriptPos;
    defaultExpr : TTypedExpr;
    expectedParam : TParamSymbol;
+   localPosArray : TScriptPosArray;
 begin
    if FTok.TestDelete(ttBLEFT) then begin
 
@@ -11157,7 +11173,8 @@ begin
                if lazyParam and (varParam or constParam) then
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_LazyParamCantBeVarOrConst);
 
-               ReadNameList(names, posArray);
+               ReadNameList(names, localPosArray);
+               ConcatScriptPosArray(posArray, localPosArray, names.Count);
 
                if not FTok.TestDelete(ttCOLON) then begin
 
@@ -11171,7 +11188,7 @@ begin
                            varParam:=(expectedParam.ClassType=TVarParamSymbol);
                            constParam:=(expectedParam.ClassType=TConstParamSymbol);
                         end;
-                        GenerateParam(names[i], posArray[i], expectedParam.Typ, cNullPos, defaultExpr);
+                        GenerateParam(names[i], localPosArray[i], expectedParam.Typ, cNullPos, defaultExpr);
                      end;
 
                   end else begin
@@ -11224,7 +11241,7 @@ begin
                         defaultExpr:=defaultExpr.OptimizeToTypedExpr(Fprog, FExec, exprPos);
 
                      for i:=0 to names.Count-1 do
-                        GenerateParam(names[i], posArray[i], typ, typScriptPos, defaultExpr);
+                        GenerateParam(names[i], localPosArray[i], typ, typScriptPos, defaultExpr);
 
                   finally
                      defaultExpr.Free;

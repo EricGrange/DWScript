@@ -18,6 +18,8 @@ Type
   // Custom method
   Function Call(Const AParams : Array Of Variant) : Variant;
 
+  destructor Destroy; override;
+
  End;
  //
 
@@ -194,6 +196,18 @@ Begin
  Info.ResultAsVariant := TDispItem.Create As IDispatch;
 End;
 //
+
+// ------------------
+// ------------------ TDispItem ------------------
+// ------------------
+
+// Destroy
+//
+destructor TDispItem.Destroy;
+begin
+   inherited;
+
+end;
 
 initialization
 

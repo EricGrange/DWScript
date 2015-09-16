@@ -8,7 +8,7 @@ uses
 implementation
 
 initialization
-	PrintLn('Init '+CurrentSourceCodeLocation.File);
+	PrintLn('Init Init2');
 finalization
-	PrintLn(CurrentSourceCodeLocation.File);
+	PrintLn('Init2');
 end;

@@ -1,3 +1,4 @@
 Could not convert variant of type (Dispatch) into type (Boolean)
+Could not convert variant of type (Dispatch) into type (OleStr)
 Could not convert variant of type (Dispatch) into type (Double)
 Could not convert variant of type (Dispatch) into type (Boolean)

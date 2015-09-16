@@ -5,7 +5,7 @@ interface
 implementation
 
 initialization
-  PrintLn('Init '+CurrentSourceCodeLocation.File);
+	PrintLn('Init Init3');
 finalization
-	PrintLn(CurrentSourceCodeLocation.File);
+	PrintLn('Init3');
 end;
