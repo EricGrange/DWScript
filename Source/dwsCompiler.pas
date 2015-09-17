@@ -1366,7 +1366,8 @@ begin
    until not changed;
 
    if Result.Count<>expectedUnitCount then begin
-      FreeAndNil(Result);
+      Result.Free;
+      Result:=nil;
       FMsgs.AddCompilerStop(cNullPos, CPE_UnitCircularReference);
    end;
 end;
@@ -2322,13 +2323,14 @@ begin
                if coContextMap in Options then
                   FSourceContextMap.CloseAllContexts(FTok.CurrentPos);
             end;
-            for i:=0 to CurrentUnitSymbol.Table.Count-1 do
+            for i:=0 to CurrentUnitSymbol.Table.Count-1 do begin
                if CurrentUnitSymbol.Table[i] is TUnitSymbol then begin
                   unitSymbol:=TUnitSymbol(CurrentUnitSymbol.Table[i]);
                   if unitSymbol.Main<>nil then
                      CurrentSourceUnit.GetDependencies.Add(unitSymbol.Name);
                end;
-            FreeAndNil(Result);
+            end;
+            Result.Free;
             Result:=nil;
          end;
       end;
@@ -2401,10 +2403,14 @@ begin
       end;
 
       if coOptimize in Options then begin
-         if (initializationBlock<>nil) and (initializationBlock.StatementCount=0) then
-            FreeAndNil(initializationBlock);
-         if (finalizationBlock<>nil) and (finalizationBlock.StatementCount=0) then
-            FreeAndNil(finalizationBlock);
+         if (initializationBlock<>nil) and (initializationBlock.StatementCount=0) then begin
+            initializationBlock.Free;
+            initializationBlock:=nil;
+         end;
+         if (finalizationBlock<>nil) and (finalizationBlock.StatementCount=0) then begin
+            finalizationBlock.Free;
+            finalizationBlock:=nil;
+         end;
       end;
 
       if CurrentUnitSymbol<>nil then begin
@@ -5404,7 +5410,6 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
 var
    defaultProperty : TPropertySymbol;
    baseType : TTypeSymbol;
-   dataExpr : TDataExpr;
    codeExpr : TTypedExpr;
    funcSym : TFuncSymbol;
 begin
@@ -5447,17 +5452,18 @@ begin
                   end else begin
 
                      // Type "array"
-                     if Result is TDataExpr then
-                        dataExpr:=TDataExpr(Result)
-                     else dataExpr:=nil;
-                     if baseType is TArraySymbol then
-                        Result := ReadSymbolArrayExpr(dataExpr)
-                     else if baseType is TConnectorSymbol then
-                        Result := ReadConnectorArray('', Result as TTypedExpr,
-                                                     TConnectorSymbol(baseType).ConnectorType, IsWrite)
-                     else if dataExpr.IsOfType(FProg.TypString) then begin
+                     if not (Result is TTypedExpr) then begin
+                        Result.Free;
+                        Result:=nil;
+                     end;
+                     if (baseType is TArraySymbol) and (Result is TDataExpr) then begin
+                        Result := ReadSymbolArrayExpr(TDataExpr(Result))
+                     end else if TTypedExpr(Result).IsOfType(FProg.TypString) and (Result is TDataExpr) then begin
                         FTok.KillToken;
-                        Result := ReadStringArray(dataExpr, IsWrite)
+                        Result := ReadStringArray(TDataExpr(Result), IsWrite);
+                     end else if baseType is TConnectorSymbol then begin
+                        Result := ReadConnectorArray('', TTypedExpr(Result),
+                                                     TConnectorSymbol(baseType).ConnectorType, IsWrite)
                      end else begin
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_ArrayExpected);
                         SkipUntilToken(ttARIGHT);
@@ -5507,6 +5513,7 @@ begin
    FTok.KillToken;
 
    newBaseExpr:=nil;
+   indexExpr:=nil;
 
    if FTok.TestDelete(ttARIGHT) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
@@ -5514,99 +5521,120 @@ begin
    errCount:=FMsgs.Count;
 
    // There is at least one index expression
-   repeat
-      hotPos:=FTok.HotPos;
-      indexExpr := ReadExpr;
-      if not (baseExpr.BaseType is TArraySymbol) then begin
-         FMsgs.AddCompilerError(hotPos, RTE_TooManyIndices);
-         indexExpr.Free;
-         Continue;
-      end else if indexExpr=nil then begin
-         continue;
-      end;
-
-      baseType := TArraySymbol(baseExpr.BaseType);
-
-      if    (indexExpr.Typ=nil)
-         or not (   (indexExpr.Typ.UnAliasedType=baseType.IndexType.UnAliasedType)
-                 or indexExpr.Typ.IsOfType(FProg.TypVariant)) then
-         IncompatibleTypes(hotPos, CPE_ArrayIndexMismatch,
-                           baseType.IndexType, indexExpr.Typ);
-
-      if baseType is TStaticArraySymbol then begin
-
-         arraySymbol:=TStaticArraySymbol(baseType);
-         if arraySymbol is TOpenArraySymbol then begin
-
-            newBaseExpr := TOpenArrayExpr.Create(FTok.HotPos, baseExpr, indexExpr, arraySymbol)
-
-         end else begin
-
-            if arraySymbol.IndexType.IsOfType(FProg.TypBoolean) then begin
-
-               newBaseExpr:=TStaticArrayBoolExpr.Create(FTok.HotPos, baseExpr, indexExpr,
-                                                        arraySymbol);
-
-            end else begin
-
-               newBaseExpr:=TStaticArrayExpr.Create(FTok.HotPos, baseExpr, indexExpr,
-                                                    arraySymbol);
-               if indexExpr.IsConstant and (FMsgs.Count=errCount) then begin
-                  idx:=indexExpr.EvalAsInteger(FExec);
-                  if idx<arraySymbol.LowBound then
-                     FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ArrayLowerBoundExceeded, [idx])
-                  else if idx>arraySymbol.HighBound then
-                     FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ArrayUpperBoundExceeded, [idx]);
-               end;
-
-            end;
-         end;
-
-      end else begin
-
-         Assert(baseType is TDynamicArraySymbol);
-
-         if FTok.Test(ttCOMMA) then
-            newBaseExpr:=TDynamicArrayExpr.Create(FTok.HotPos, baseExpr, indexExpr,
-                                                  TDynamicArraySymbol(baseType))
-         else if FTok.TestDelete(ttARIGHT) then begin
-            if FTok.TestDelete(ttASSIGN) then begin
-               hotPos:=FTok.HotPos;
-               valueExpr:=ReadExpr(baseType.Typ);
-               if not baseType.Typ.IsCompatible(valueExpr.Typ) then begin
-                  if     valueExpr.Typ.IsOfType(FProg.TypInteger)
-                     and baseType.Typ.IsOfType(FProg.TypFloat) then begin
-                     valueExpr:=TConvIntToFloatExpr.Create(FProg, valueExpr)
-                  end else begin
-                     IncompatibleTypes(hotPos, CPE_AssignIncompatibleTypes,
-                                       valueExpr.Typ, baseType.Typ);
-                  end;
-               end;
-
-               if baseType.Typ.Size=1 then
-                  if baseExpr is TObjectVarExpr then
-                     Result:=TDynamicArraySetVarExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr)
-                  else Result:=TDynamicArraySetExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr)
-               else Result:=TDynamicArraySetDataExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr);
-            end else begin
-               if baseExpr is TObjectVarExpr then begin
-                  Result:=TDynamicArrayVarExpr.Create(FTok.HotPos, baseExpr, indexExpr,
-                                                      TDynamicArraySymbol(baseType));
-               end else begin
-                  Result:=TDynamicArrayExpr.Create(FTok.HotPos, baseExpr, indexExpr,
-                                                   TDynamicArraySymbol(baseType));
-               end;
-            end;
-            Exit;
-         end else begin
-            baseExpr.Free;
+   try
+      repeat
+         hotPos:=FTok.HotPos;
+         indexExpr := ReadExpr;
+         if not (baseExpr.BaseType is TArraySymbol) then begin
+            FMsgs.AddCompilerError(hotPos, RTE_TooManyIndices);
             indexExpr.Free;
+            indexExpr:=nil;
+            Continue;
+         end else if indexExpr=nil then begin
+            continue;
          end;
 
-      end;
+         baseType := TArraySymbol(baseExpr.BaseType);
 
-      baseExpr := newBaseExpr;
-   until not FTok.TestDelete(ttCOMMA);
+         if    (indexExpr.Typ=nil)
+            or not (   (indexExpr.Typ.UnAliasedType=baseType.IndexType.UnAliasedType)
+                    or indexExpr.Typ.IsOfType(FProg.TypVariant)) then
+            IncompatibleTypes(hotPos, CPE_ArrayIndexMismatch,
+                              baseType.IndexType, indexExpr.Typ);
+
+         if baseType is TStaticArraySymbol then begin
+
+            arraySymbol:=TStaticArraySymbol(baseType);
+            if arraySymbol is TOpenArraySymbol then begin
+
+               newBaseExpr := TOpenArrayExpr.Create(FTok.HotPos, baseExpr, indexExpr, arraySymbol);
+               indexExpr := nil;
+
+            end else begin
+
+               if arraySymbol.IndexType.IsOfType(FProg.TypBoolean) then begin
+
+                  newBaseExpr:=TStaticArrayBoolExpr.Create(FTok.HotPos, baseExpr, indexExpr,
+                                                           arraySymbol);
+                  indexExpr := nil;
+
+               end else begin
+
+                  newBaseExpr:=TStaticArrayExpr.Create(FTok.HotPos, baseExpr, indexExpr,
+                                                       arraySymbol);
+                  if indexExpr.IsConstant and (FMsgs.Count=errCount) then begin
+                     idx:=indexExpr.EvalAsInteger(FExec);
+                     if idx<arraySymbol.LowBound then
+                        FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ArrayLowerBoundExceeded, [idx])
+                     else if idx>arraySymbol.HighBound then
+                        FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ArrayUpperBoundExceeded, [idx]);
+                  end;
+                  indexExpr := nil;
+
+               end;
+            end;
+
+         end else begin
+
+            Assert(baseType is TDynamicArraySymbol);
+
+            if FTok.Test(ttCOMMA) then begin
+
+               newBaseExpr:=TDynamicArrayExpr.Create(FTok.HotPos, baseExpr, indexExpr,
+                                                     TDynamicArraySymbol(baseType));
+               indexExpr:=nil;
+
+            end else if FTok.TestDelete(ttARIGHT) then begin
+
+               if FTok.TestDelete(ttASSIGN) then begin
+                  hotPos:=FTok.HotPos;
+                  valueExpr:=ReadExpr(baseType.Typ);
+                  if not baseType.Typ.IsCompatible(valueExpr.Typ) then begin
+                     if     valueExpr.Typ.IsOfType(FProg.TypInteger)
+                        and baseType.Typ.IsOfType(FProg.TypFloat) then begin
+                        valueExpr:=TConvIntToFloatExpr.Create(FProg, valueExpr)
+                     end else begin
+                        IncompatibleTypes(hotPos, CPE_AssignIncompatibleTypes,
+                                          valueExpr.Typ, baseType.Typ);
+                     end;
+                  end;
+
+                  if baseType.Typ.Size=1 then
+                     if baseExpr is TObjectVarExpr then
+                        Result:=TDynamicArraySetVarExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr)
+                     else Result:=TDynamicArraySetExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr)
+                  else Result:=TDynamicArraySetDataExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr);
+                  indexExpr:=nil;
+               end else begin
+                  if baseExpr is TObjectVarExpr then begin
+                     Result:=TDynamicArrayVarExpr.Create(FTok.HotPos, baseExpr, indexExpr,
+                                                         TDynamicArraySymbol(baseType));
+                  end else begin
+                     Result:=TDynamicArrayExpr.Create(FTok.HotPos, baseExpr, indexExpr,
+                                                      TDynamicArraySymbol(baseType));
+                  end;
+                  indexExpr:=nil;
+               end;
+               Exit;
+
+            end else begin
+
+               indexExpr.Free;
+               indexExpr:=nil;
+               break;
+
+            end;
+
+         end;
+
+         baseExpr := newBaseExpr;
+         newBaseExpr := nil;
+      until not FTok.TestDelete(ttCOMMA);
+   except
+      indexExpr.Free;
+      newBaseExpr.Free;
+      raise;
+   end;
 
    Result:=baseExpr;
 
@@ -11014,7 +11042,8 @@ begin
                expr:=expr.OptimizeToTypedExpr(FProg, FExec, exprPos)
             else begin
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
-               FreeAndNil(expr);
+               expr.Free;
+               expr:=nil;
             end;
          end;
          if (expr<>nil) and (memberSym<>nil) then begin
@@ -11229,8 +11258,10 @@ begin
                               defaultExpr:=nil;
                            end else if not typ.IsCompatible(defaultExpr.Typ) then begin
                               defaultExpr:=CompilerUtils.WrapWithImplicitConversion(FProg, defaultExpr, Typ, exprPos);
-                              if defaultExpr.ClassType=TConvInvalidExpr then
-                                 FreeAndNil(defaultExpr);
+                              if defaultExpr.ClassType=TConvInvalidExpr then begin
+                                 defaultExpr.Free;
+                                 defaultExpr:=nil;
+                              end;
                            end;
                         end;
                      end else if onlyDefaultParamsNow then begin
@@ -12298,7 +12329,7 @@ begin
                Result:=TVarStringArraySetChrExpr.Create(FProg, scriptPos, expr, indexExpr,
                                                         TMagicStringFuncExpr(valueExpr).Args[0] as TTypedExpr);
                TMagicStringFuncExpr(valueExpr).Args.Clear;
-               FreeAndNil(valueExpr);
+               valueExpr.Free;
             end else Result:=TVarStringArraySetExpr.Create(FProg, scriptPos, expr, indexExpr, valueExpr);
          end else begin
             if not expr.IsWritable then

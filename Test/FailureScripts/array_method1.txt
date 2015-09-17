@@ -1,2 +1,3 @@
 Syntax Error: More arguments expected [line: 2, column: 14]
 Syntax Error: Array expected [line: 2, column: 14]
+Syntax Error: Invalid Instruction - function or assignment expected [line: 2, column: 1]

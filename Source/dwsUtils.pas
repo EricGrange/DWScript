@@ -883,6 +883,8 @@ function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : String;
 
 procedure SuppressH2077ValueAssignedToVariableNeverUsed(const X); inline;
 
+procedure FreeAndNil(var O);
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -895,6 +897,19 @@ implementation
 //
 procedure SuppressH2077ValueAssignedToVariableNeverUsed(const X); inline;
 begin
+end;
+
+// FreeAndNil
+//
+procedure FreeAndNil(var o);
+var
+   obj : TObject;
+begin
+   obj:=TObject(o);
+   if obj is TRefCountedObject then
+      TRefCountedObject(obj).Free
+   else obj.Free;
+   Pointer(o):=nil;
 end;
 
 // SimpleStringHash
