@@ -110,7 +110,9 @@ begin
          // Windows service display name
          +'"DisplayName": "DWScript WebServer",'
          // Windows service description
-         +'"Description": "DWScript WebServer Service"'
+         +'"Description": "DWScript WebServer Service",'
+         // folder for log
+         +'"DWSErrorLogDirectory": ""'
       +'}';
 end;
 
@@ -146,7 +148,7 @@ var
    log : String;
 begin
    if options<>nil then begin
-      log:=options['Server']['DWSErrorLogDirectory'].AsString;
+      log:=options['Service']['DWSErrorLogDirectory'].AsString;
       if log<>'' then begin
          log:=IncludeTrailingPathDelimiter(log)+'service.log';
          AppendTextToUTF8File(log, UTF8Encode(FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz ', Now)+msg+#13#10));
