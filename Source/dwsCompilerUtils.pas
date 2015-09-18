@@ -210,7 +210,7 @@ begin
    if meth is TMagicMethodSymbol then begin
 
       if meth is TMagicStaticMethodSymbol then begin
-         FreeAndNil(expr);
+         dwsFreeAndNil(expr);
          internalFunc:=TMagicStaticMethodSymbol(meth).InternalFunction;
          Result:=internalFunc.MagicFuncExprClass.Create(prog, scriptPos, meth, internalFunc);
       end else Assert(False, 'not supported yet');

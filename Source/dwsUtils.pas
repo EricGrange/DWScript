@@ -705,7 +705,7 @@ type
       {$endif}
    end;
 
-   TClassCloneConstructor<T: class> = record
+   TClassCloneConstructor<T: TRefCountedObject> = record
       private
          FTemplate : T;
          FSize : Integer;
@@ -883,7 +883,7 @@ function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : String;
 
 procedure SuppressH2077ValueAssignedToVariableNeverUsed(const X); inline;
 
-procedure FreeAndNil(var O);
+procedure dwsFreeAndNil(var O); // transitional function, do not use
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -899,17 +899,17 @@ procedure SuppressH2077ValueAssignedToVariableNeverUsed(const X); inline;
 begin
 end;
 
-// FreeAndNil
+// dwsFreeAndNil
 //
-procedure FreeAndNil(var o);
+procedure dwsFreeAndNil(var o);
 var
    obj : TObject;
 begin
    obj:=TObject(o);
+   Pointer(o):=nil;
    if obj is TRefCountedObject then
       TRefCountedObject(obj).Free
    else obj.Free;
-   Pointer(o):=nil;
 end;
 
 // SimpleStringHash
@@ -4239,7 +4239,7 @@ var
 begin
    for i:=0 to FHighIndex do begin
       if FBuckets[i].HashCode<>0 then
-         FreeAndNil(FBuckets[i].Obj);
+         dwsFreeAndNil(FBuckets[i].Obj);
    end;
    Clear;
 end;
@@ -4676,7 +4676,8 @@ end;
 //
 procedure TClassCloneConstructor<T>.Finalize;
 begin
-   FreeAndNil(FTemplate);
+   FTemplate.Free;
+   FTemplate:=nil;
 end;
 
 // Create
@@ -5209,7 +5210,7 @@ end;
 destructor TPooledObject.Destroy;
 begin
    inherited;
-   FreeAndNil(FNext);
+   FNext.Free;
 end;
 
 // ------------------
@@ -5229,8 +5230,10 @@ end;
 //
 procedure TPool.Finalize;
 begin
-   FreeAndNil(FRoot);
-   FreeAndNil(FLock);
+   FRoot.Free;
+   FRoot:=nil;
+   FLock.Free;
+   FLock:=nil;
    FPoolClass:=nil;
 end;
 
