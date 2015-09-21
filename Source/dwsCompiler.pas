@@ -3536,7 +3536,7 @@ function TdwsCompiler.ReadMethodDecl(const hotPos : TScriptPos; ownerSym : TComp
 var
    name : UnicodeString;
    sym : TSymbol;
-   meth, defaultConstructor, match : TMethodSymbol;
+   meth, defaultConstructor : TMethodSymbol;
    isReintroduced : Boolean;
    methPos: TScriptPos;
    qualifier : TTokenType;
@@ -3601,24 +3601,26 @@ begin
 
          funcResult.SetOverlap(meth);
          if meth<>nil then begin
-            if MethPerfectMatchOverload(funcResult, False)<>nil then
-               MemberSymbolWithNameAlreadyExists(sym, Ftok.HotPos)
-            else if meth.StructSymbol=ownerSym then begin
-               if FTok.Test(ttOVERRIDE) then begin
-                  // this could actually be an override of an inherited method
-                  // and not just an overload of a local method
-                  // in that case 'overload' is optional
-                  match:=MethPerfectMatchOverload(funcResult, True);
-                  if match<>nil then
-                     funcResult.IsOverloaded:=True;
-               end;
-               if not funcResult.IsOverloaded then begin
+            if FTok.Test(ttOVERRIDE) then begin
+               // this could actually be an override of an inherited method
+               // and not just an overload of a local method
+               // in that case 'overload' is optional (but recommand it)
+               if meth.IsOverloaded then begin
+                  FMsgs.AddCompilerHintFmt(hotPos, CPH_ShouldExplicitOverload, [name], hlStrict);
+                  funcResult.IsOverloaded:=True;
+               end else if meth.StructSymbol=ownerSym then begin
                   // name conflict or fogotten overload keyword
                   FMsgs.AddCompilerErrorFmt(hotPos, CPE_MustExplicitOverloads, [name]);
                   // keep compiling, mark overloaded
                   funcResult.IsOverloaded:=True;
                end;
-            end;
+            end else if meth.StructSymbol=ownerSym then begin
+               // name conflict or fogotten overload keyword
+               FMsgs.AddCompilerErrorFmt(hotPos, CPE_MustExplicitOverloads, [name]);
+               // keep compiling, mark overloaded
+               funcResult.IsOverloaded:=True;
+            end else if MethPerfectMatchOverload(funcResult, False)<>nil then
+               MemberSymbolWithNameAlreadyExists(sym, Ftok.HotPos)
          end;
 
       end;

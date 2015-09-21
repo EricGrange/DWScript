@@ -1,4 +1,4 @@
-Syntax Error: There is already a method with name "PrintMe" [line: 9, column: 26]
+Syntax Error: Overloaded procedure "PrintMe" must be marked with the "overload" directive [line: 9, column: 7]
 Syntax Error: Class "TTest" isn't defined completely [line: 13, column: 27]
 Syntax Error: There is already a field with name "Field" [line: 15, column: 16]
 Syntax Error: There is already a field with name "Field" [line: 20, column: 7]
