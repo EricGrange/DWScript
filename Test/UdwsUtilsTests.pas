@@ -66,6 +66,8 @@ type
          procedure LoadTextFromBufferTest;
 
          procedure URLEncodedEncoder;
+
+         procedure VariantClearAssignString;
    end;
 
 // ------------------------------------------------------------------
@@ -820,6 +822,34 @@ begin
    CheckEquals('a', WebUtils.EncodeURLEncoded('a'), 'a');
    CheckEquals('a%3D', WebUtils.EncodeURLEncoded('a='), 'a=');
    CheckEquals('%3D%3D%3D%3D%3D%3D', WebUtils.EncodeURLEncoded('======'), '======');
+end;
+
+// VariantClearAssignString
+//
+procedure TdwsUtilsTests.VariantClearAssignString;
+var
+   v : Variant;
+begin
+   VarCopySafe(v, 'a');
+   CheckEquals('a', v, 'a');
+   VarClearSafe(v);
+   CheckEquals('', v, 'a clear');
+
+   VarCopySafe(v, 'b');
+   CheckEquals('b', v, 'b');
+   VarCopySafe(v, 'c');
+   CheckEquals('c', v, 'c');
+
+   VarCopySafe(v, 1);
+   CheckEquals(1, v, '1');
+
+   VarCopySafe(v, 'd');
+   CheckEquals('d', v, 'd');
+
+   v:=123;
+   CheckEquals(123, v, '123');
+   VarCopySafe(v, 'e');
+   CheckEquals('e', v, 'e');
 end;
 
 // ------------------------------------------------------------------

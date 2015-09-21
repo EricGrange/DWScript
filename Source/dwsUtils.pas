@@ -1503,7 +1503,9 @@ procedure VarClearSafe(var v : Variant);
 // an invalid refcount. _IntfClear does not suffer from that issue
 begin
    case TVarData(v).VType of
-      varEmpty : ;
+      varEmpty : begin
+         TVarData(v).VUInt64:=0;
+      end;
       varBoolean, varInt64, varDouble : begin
          TVarData(v).VType:=varEmpty;
          TVarData(v).VUInt64:=0;
@@ -1522,6 +1524,7 @@ begin
       end;
    else
       VarClear(v);
+      TVarData(v).VUInt64:=0;
    end;
 end;
 
@@ -1549,14 +1552,17 @@ begin
          TVarData(dest).VDouble:=TVarData(src).VDouble;
       end;
       varUnknown : begin
+         {$ifdef DEBUG} Assert(TVarData(dest).VUnknown=nil); {$endif}
          TVarData(dest).VType:=varUnknown;
          IUnknown(TVarData(dest).VUnknown):=IUnknown(TVarData(src).VUnknown);
       end;
       varDispatch : begin
+         {$ifdef DEBUG} Assert(TVarData(dest).VDispatch=nil); {$endif}
          TVarData(dest).VType:=varDispatch;
          IDispatch(TVarData(dest).VDispatch):=IDispatch(TVarData(src).VDispatch);
       end;
       varUString : begin
+         {$ifdef DEBUG} Assert(TVarData(dest).VUString=nil); {$endif}
          TVarData(dest).VType:=varUString;
          UnicodeString(TVarData(dest).VUString):=String(TVarData(src).VUString);
       end;
