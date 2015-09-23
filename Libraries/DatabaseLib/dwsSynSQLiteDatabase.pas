@@ -80,6 +80,9 @@ type
    end;
 
    TdwsSynSQLiteDataField = class (TdwsDataField)
+      private
+         FDataSet : TdwsSynSQLiteDataSet;
+
       protected
          function GetName : String; override;
          function GetDataType : TdwsDataFieldType; override;
@@ -142,6 +145,15 @@ end;
 // SQLAssignParameters
 //
 procedure SQLAssignParameters(var rq : TSQLRequest; const params : TData);
+
+   procedure BindDateTime(var rq : TSQLRequest; i : Integer; p : PVarData);
+   var
+      dtStr : String;
+   begin
+      dtStr:=DateTimeToISO8601(p.VDate, True);
+      rq.BindS(i, dtStr);
+   end;
+
 var
    i : Integer;
    p : PVarData;
@@ -155,6 +167,7 @@ begin
          varBoolean : rq.Bind(i, Ord(p.VBoolean));
          varNull : rq.BindNull(i);
          varString : rq.Bind(i, p.VString, Length(RawByteString(p.VString)));
+         varDate : BindDateTime(rq, i, p);
       else
          raise Exception.CreateFmt('Unsupported VarType %d', [p.VType]);
       end;
@@ -384,6 +397,7 @@ end;
 //
 constructor TdwsSynSQLiteDataField.Create(dataSet : TdwsSynSQLiteDataSet; fieldIndex : Integer);
 begin
+   FDataSet:=dataSet;
    inherited Create(dataSet, fieldIndex);
 end;
 
@@ -398,6 +412,8 @@ end;
 //
 function TdwsSynSQLiteDataField.IsNull : Boolean;
 begin
+   if FDataSet.FEOFReached then
+      RaiseNoActiveRecord;
    Result:=TdwsSynSQLiteDataSet(DataSet).FRequest.FieldNull(Index);
 end;
 
@@ -426,6 +442,8 @@ end;
 //
 function TdwsSynSQLiteDataField.AsString : String;
 begin
+   if FDataSet.FEOFReached then
+      RaiseNoActiveRecord;
    Result:=TdwsSynSQLiteDataSet(DataSet).FRequest.FieldS(Index);
 end;
 
@@ -433,6 +451,8 @@ end;
 //
 function TdwsSynSQLiteDataField.AsInteger : Int64;
 begin
+   if FDataSet.FEOFReached then
+      RaiseNoActiveRecord;
    Result:=TdwsSynSQLiteDataSet(DataSet).FRequest.FieldInt(Index);
 end;
 
@@ -440,6 +460,8 @@ end;
 //
 function TdwsSynSQLiteDataField.AsFloat : Double;
 begin
+   if FDataSet.FEOFReached then
+      RaiseNoActiveRecord;
    Result:=TdwsSynSQLiteDataSet(DataSet).FRequest.FieldDouble(Index);
 end;
 
@@ -447,6 +469,8 @@ end;
 //
 function TdwsSynSQLiteDataField.AsBlob : RawByteString;
 begin
+   if FDataSet.FEOFReached then
+      RaiseNoActiveRecord;
    Result:=TdwsSynSQLiteDataSet(DataSet).FRequest.FieldBlob(Index);
 end;
 

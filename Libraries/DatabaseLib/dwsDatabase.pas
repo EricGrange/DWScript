@@ -145,6 +145,8 @@ type
          function GetDataType : TdwsDataFieldType; virtual; abstract;
          function GetDeclaredType : String; virtual; abstract;
 
+         procedure RaiseNoActiveRecord;
+
       public
          constructor Create(dataSet : TdwsDataSet; fieldIndex : Integer);
 
@@ -162,6 +164,8 @@ type
          function AsBoolean : Boolean; virtual;
          function AsBlob : RawByteString; virtual; abstract;
    end;
+
+   EDWSDataBase = class (Exception);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -309,6 +313,13 @@ end;
 function TdwsDataField.AsBoolean : Boolean;
 begin
    Result:=(AsInteger<>0);
+end;
+
+// RaiseNoActiveRecord
+//
+procedure TdwsDataField.RaiseNoActiveRecord;
+begin
+   raise EDWSDataBase.Create('No active record');
 end;
 
 end.

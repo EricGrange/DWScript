@@ -75,6 +75,9 @@ type
    end;
 
    TdwsSynDBDataField = class (TdwsDataField)
+      private
+         FDataSet : TdwsSynDBDataSet;
+
       protected
          function GetName : String; override;
          function GetDataType : TdwsDataFieldType; override;
@@ -116,6 +119,7 @@ begin
          varBoolean : stmt.Bind(i, Ord(p.VBoolean));
          varNull : stmt.BindNull(i);
          varDate : stmt.BindDateTime(i, p.VDate);
+         varString : stmt.BindBlob(i, p.VString, Length(RawByteString(p.VString)));
       else
          stmt.BindVariant(i, PVariant(p)^, False);
       end;
@@ -306,6 +310,7 @@ end;
 //
 constructor TdwsSynDBDataField.Create(dataSet : TdwsSynDBDataSet; fieldIndex : Integer);
 begin
+   FDataSet:=dataSet;
    inherited Create(dataSet, fieldIndex);
 end;
 
@@ -313,6 +318,8 @@ end;
 //
 function TdwsSynDBDataField.IsNull : Boolean;
 begin
+   if FDataSet.FEOFReached then
+      RaiseNoActiveRecord;
    Result:=TdwsSynDBDataSet(DataSet).FStmt.ColumnNull(Index);
 end;
 
@@ -349,6 +356,8 @@ end;
 //
 function TdwsSynDBDataField.AsString : String;
 begin
+   if FDataSet.FEOFReached then
+      RaiseNoActiveRecord;
    Result:=TdwsSynDBDataSet(DataSet).FStmt.ColumnString(Index);
 end;
 
@@ -356,6 +365,8 @@ end;
 //
 function TdwsSynDBDataField.AsInteger : Int64;
 begin
+   if FDataSet.FEOFReached then
+      RaiseNoActiveRecord;
    Result:=TdwsSynDBDataSet(DataSet).FStmt.ColumnInt(Index);
 end;
 
@@ -363,6 +374,8 @@ end;
 //
 function TdwsSynDBDataField.AsFloat : Double;
 begin
+   if FDataSet.FEOFReached then
+      RaiseNoActiveRecord;
    Result:=TdwsSynDBDataSet(DataSet).FStmt.ColumnDouble(Index);
 end;
 
@@ -370,6 +383,8 @@ end;
 //
 function TdwsSynDBDataField.AsBlob : RawByteString;
 begin
+   if FDataSet.FEOFReached then
+      RaiseNoActiveRecord;
    Result:=TdwsSynDBDataSet(DataSet).FStmt.ColumnBlob(Index);
 end;
 
