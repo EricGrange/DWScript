@@ -10,6 +10,6 @@ Syntax Error: Assignment's right-side-argument has no return type [line: 36, col
 Syntax Error: More arguments expected [line: 37, column: 4]
 Syntax Error: Assignment's right-side-argument has no return type [line: 37, column: 2]
 Syntax Error: Incompatible operands [line: 39, column: 2]
-Syntax Error: Incompatible types: Cannot assign "String" to "procedure TMyProc" [line: 39, column: 2]
+Syntax Error: Incompatible types: Cannot assign "String" to "procedure TMyProc" [line: 39, column: 4]
 Syntax Error: Incompatible operands [line: 40, column: 2]
-Syntax Error: Incompatible types: Cannot assign "String" to "procedure TMyProc" [line: 40, column: 2]
+Syntax Error: Incompatible types: Cannot assign "String" to "procedure TMyProc" [line: 40, column: 4]

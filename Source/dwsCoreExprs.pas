@@ -5531,13 +5531,19 @@ end;
 // TypeCheckAssign
 //
 procedure TAssignExpr.TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution);
+var
+   rightScriptPos : TScriptPos;
 begin
    if FLeft=nil then Exit;
 
    if FRight.ClassType=TArrayConstantExpr then
       TArrayConstantExpr(FRight).Prepare(Prog, FLeft.Typ.Typ);
 
-   FRight:=TConvExpr.WrapWithConvCast(prog, ScriptPos, exec,
+   rightScriptPos:=Right.ScriptPos;
+   if not rightScriptPos.Defined then
+      rightScriptPos:=Self.ScriptPos;
+
+   FRight:=TConvExpr.WrapWithConvCast(prog, rightScriptPos, exec,
                                       FLeft.Typ, FRight, CPE_AssignIncompatibleTypes);
 end;
 

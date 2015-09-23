@@ -1,5 +1,5 @@
 Syntax Error: Integer expression expected [line: 1, column: 22]
 Syntax Error: Integer expression expected [line: 1, column: 28]
-Syntax Error: Incompatible types: Cannot assign "array of String" to "array of array of String" [line: 5, column: 3]
-Syntax Error: Incompatible types: Cannot assign "array of array of array of String" to "array of array of String" [line: 7, column: 3]
-Syntax Error: Incompatible types: Cannot assign "array of array of Integer" to "array of array of String" [line: 9, column: 3]
+Syntax Error: Incompatible types: Cannot assign "array of String" to "array of array of String" [line: 5, column: 16]
+Syntax Error: Incompatible types: Cannot assign "array of array of array of String" to "array of array of String" [line: 7, column: 16]
+Syntax Error: Incompatible types: Cannot assign "array of array of Integer" to "array of array of String" [line: 9, column: 17]
