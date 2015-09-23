@@ -55,6 +55,7 @@ type
          procedure FuncReturnStrings(Info: TProgramInfo);
          procedure FuncReturnStrings2(Info: TProgramInfo);
          procedure FuncReturnVirtCreate(Info: TProgramInfo);
+         procedure FuncNil(Info: TProgramInfo);
 
          procedure ClassConstructor(Info: TProgramInfo; var ExtObject: TObject);
          procedure ClassVirtConstructor(Info: TProgramInfo; var ExtObject: TObject);
@@ -134,6 +135,7 @@ type
          procedure ArrayOfObjects;
          procedure FuncVariantTest;
          procedure FuncVariantDateTest;
+         procedure FuncNilTest;
          procedure SetTest;
          procedure ClassNameTest;
          procedure VirtCreateFunc;
@@ -456,6 +458,9 @@ begin
 
    func:=FUnit.Functions.Add('FuncReturnVirtCreate', 'TTestClass');
    func.OnEval:=FuncReturnVirtCreate;
+
+   func:=FUnit.Functions.Add('FuncNil', 'TObject');
+   func.OnEval:=FuncNil;
 end;
 
 // DeclareTestClasses
@@ -966,6 +971,13 @@ begin
 procedure TdwsUnitTestsContext.FuncSetEval(Info: TProgramInfo);
 begin
    Info.ResultAsInteger:=Info.ValueAsInteger['s'];
+end;
+
+// FuncNil
+//
+procedure TdwsUnitTestsContext.FuncNil(Info: TProgramInfo);
+begin
+   Info.ResultAsVariant:=IScriptObj(nil);
 end;
 
 // ClassConstructor
@@ -2378,6 +2390,24 @@ begin
                            );
 
    CheckEquals('', prog.Msgs.AsInfo, 'Compile 1');
+
+   CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
+   CheckEquals('', prog.Execute.Result.ToString, 'exec result');
+end;
+
+// FuncNilTest
+//
+procedure TdwsUnitTests.FuncNilTest;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'var o := TObject.Create;'#13#10
+                           +'if o=nil then Print("bug");'#13#10
+                           +'o:=FuncNil;'#13#10
+                           +'if o<>nil then Print("rebug");'#13#10
+                           );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
 
    CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
    CheckEquals('', prog.Execute.Result.ToString, 'exec result');
