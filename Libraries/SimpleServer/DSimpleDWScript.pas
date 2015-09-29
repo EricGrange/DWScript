@@ -105,6 +105,7 @@ type
       FDependenciesHash : TDependenciesHash;
 
       FCompilerLock : TFixedCriticalSection;
+      FCodeGenLock : TFixedCriticalSection;
       FEnableJIT : Boolean;
 
       FExecutingID : Integer;
@@ -274,6 +275,7 @@ begin
    FCompiledPrograms:=TCompiledProgramHash.Create;
    FCompiledProgramsLock:=TFixedCriticalSection.Create;
    FCompilerLock:=TFixedCriticalSection.Create;
+   FCodeGenLock:=TFixedCriticalSection.Create;
    FDependenciesHash:=TDependenciesHash.Create;
 
    FExecutingScriptsLock:=TMultiReadSingleWrite.Create;
@@ -311,6 +313,7 @@ procedure TSimpleDWScript.DataModuleDestroy(Sender: TObject);
 begin
    FlushDWSCache;
 
+   FCodeGenLock.Free;
    FCompilerLock.Free;
    FCompiledProgramsLock.Free;
    FCompiledPrograms.Free;
@@ -425,11 +428,16 @@ begin
    end;
 
    TryAcquireDWS(fileName, prog);
-   if prog=nil then begin
-      code:=DoLoadSourceCode(fileName);
-      js:=FJSFilter.CompileToJS(prog, code);
-   end else begin
-      js:=FJSFilter.CompileToJS(prog, '');
+   FCodeGenLock.Enter;
+   try
+      if prog=nil then begin
+         code:=DoLoadSourceCode(fileName);
+         js:=FJSFilter.CompileToJS(prog, code);
+      end else begin
+         js:=FJSFilter.CompileToJS(prog, '');
+      end;
+   finally
+      FCodeGenLock.Leave;
    end;
    if (prog<>nil) and prog.Msgs.HasErrors then
       Handle500(response, prog.Msgs)
