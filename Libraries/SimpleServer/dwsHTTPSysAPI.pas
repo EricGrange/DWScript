@@ -1087,14 +1087,14 @@ procedure HTTP_RESPONSE_V2.SetContent(var dataChunk : HTTP_DATA_CHUNK_INMEMORY;
    const Content, ContentType : RawByteString);
 begin
    fillchar(dataChunk, sizeof(dataChunk), 0);
-   if Content = '' then
-      exit;
-   dataChunk.DataChunkType := hctFromMemory;
-   dataChunk.pBuffer := pointer(Content);
-   dataChunk.BufferLength := length(Content);
-   EntityChunkCount := 1;
-   pEntityChunks := @dataChunk;
-   Headers.KnownHeaders[reqContentType].RawValueLength := length(ContentType);
+   if Content <> '' then begin
+      dataChunk.DataChunkType := hctFromMemory;
+      dataChunk.pBuffer := pointer(Content);
+      dataChunk.BufferLength := length(Content);
+      EntityChunkCount := 1;
+      pEntityChunks := @dataChunk;
+      Headers.KnownHeaders[reqContentType].RawValueLength := length(ContentType);
+   end;
    Headers.KnownHeaders[reqContentType].pRawValue := pointer(ContentType);
 end;
 
