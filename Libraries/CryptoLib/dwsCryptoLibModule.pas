@@ -20,7 +20,7 @@ interface
 
 uses
    SysUtils, Classes, Types,
-   dwsComp, dwsExprs, dwsUtils;
+   dwsComp, dwsExprs, dwsUtils, dwsXPlatform;
 
 type
   TdwsCryptoLib = class(TDataModule)
@@ -57,6 +57,7 @@ type
       ExtObject: TObject);
     procedure dwsCryptoClassesHashCRC32MethodsHMACEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsCryptoFunctionsCryptographicRandomEval(info: TProgramInfo);
   private
     { Private declarations }
   public
@@ -67,7 +68,7 @@ implementation
 
 {$R *.dfm}
 
-uses SynCrypto, SynZip, dwsRipeMD160, dwsCryptProtect, dwsSHA3;
+uses SynCrypto, SynZip, dwsRipeMD160, dwsCryptProtect, dwsSHA3, wcrypt2;
 
 type THashFunction = function (const data : RawByteString) : RawByteString;
 
@@ -291,5 +292,82 @@ procedure TdwsCryptoLib.dwsCryptoClassesHashSHA256MethodsHMACEval(Info: TProgram
 begin
    PerformHMAC(Info, HashSHA256, 64);
 end;
+
+var
+   hProv : THandle;
+   hProvLock : TMultiReadSingleWrite;
+
+procedure TdwsCryptoLib.dwsCryptoFunctionsCryptographicRandomEval(
+  info: TProgramInfo);
+
+   function RDTSC : UInt64;
+   asm
+      RDTSC;
+   end;
+
+   function XorShift(var seed : UInt64) : Cardinal; inline;
+   var
+      buf : UInt64;
+   begin
+      buf:=seed xor (seed shl 13);
+      buf:=buf xor (buf shr 17);
+      buf:=buf xor (buf shl 5);
+      seed:=buf;
+      Result:=seed and $FFFFFFFF;
+   end;
+
+var
+   i, nb : Integer;
+   buf : RawByteString;
+   seed : Int64;
+   p : PCardinal;
+begin
+   nb:=info.ParamAsInteger[0];
+   if nb<0 then nb:=0;
+   SetLength(buf, nb);
+
+   if nb>0 then begin
+      hProvLock.BeginWrite;
+      try
+         if hProv=0 then begin
+            if not CryptAcquireContext(@hProv, nil, MS_ENHANCED_PROV, PROV_RSA_FULL,
+                                       CRYPT_VERIFYCONTEXT) then begin
+               CryptAcquireContext(@hProv, nil, MS_ENHANCED_PROV, PROV_RSA_FULL,
+                                   CRYPT_NEWKEYSET + CRYPT_VERIFYCONTEXT);
+            end;
+         end;
+         CryptGenRandom(hProv, nb, Pointer(buf));
+      finally
+         hProvLock.EndWrite;
+      end;
+   end;
+
+   // further muddy things, in case Windows generator is later found vulnerable,
+   // this will protect us from "generic" exploits
+   seed:=RDTSC;
+   p:=PCardinal(buf);
+   for i:=0 to (nb div 4)-1 do begin
+      p^:=p^ xor XorShift(UInt64(seed));
+      Inc(p);
+   end;
+
+   info.ResultAsDataString:=buf;
+end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   hProvLock := TMultiReadSingleWrite.Create;
+
+finalization
+
+   FreeAndNil(hProvLock);
+   if hProv>0 then
+      CryptReleaseContext(hProv, 0);
 
 end.

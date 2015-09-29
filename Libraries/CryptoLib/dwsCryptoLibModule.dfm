@@ -349,6 +349,17 @@ object dwsCryptoLib: TdwsCryptoLib
             Kind = mkClassFunction
           end>
       end>
+    Functions = <
+      item
+        Name = 'CryptographicRandom'
+        Parameters = <
+          item
+            Name = 'nbBytes'
+            DataType = 'Integer'
+          end>
+        ResultType = 'String'
+        OnEval = dwsCryptoFunctionsCryptographicRandomEval
+      end>
     UnitName = 'System.Crypto'
     StaticSymbols = True
     Left = 64
