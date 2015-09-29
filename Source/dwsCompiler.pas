@@ -8753,7 +8753,8 @@ begin
 
       except
          // Set Result to nil to prevent auto-forward removal then re-reraise
-         Result:=nil;
+         if not isInSymbolTable then
+            Result:=nil;
          raise;
       end;
    finally
@@ -10724,6 +10725,25 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       end;
    end;
 
+   function ReadImmediate : TTypedExpr;
+   var
+      constExpr : TConstExpr;
+      hasDot : Boolean;
+   begin
+      constExpr := ReadConstImmediateValue;
+      if constExpr<>nil then begin
+         try
+            hasDot := FTok.Test(ttDOT);
+         except
+            constExpr.Free;
+            raise;
+         end;
+         if hasDot then
+            Result := (ReadSymbol(constExpr, isWrite) as TTypedExpr)
+         else Result := constExpr;
+      end else Result := nil;
+   end;
+
 var
    tt : TTokenType;
    nameExpr : TProgramExpr;
@@ -10808,16 +10828,7 @@ begin
             Result:=ReadNull(expecting);
          end else Result:=TTypedExpr(nameExpr);
       end else begin // Constant values in the code
-         Result := ReadConstImmediateValue;
-         if Result<>nil then begin
-            try
-               if FTok.Test(ttDOT) then
-                  Result:=(ReadSymbol(Result, isWrite) as TTypedExpr);
-            except
-               Result.Free;
-               raise;
-            end;
-         end;
+         Result:=ReadImmediate;
       end;
    end;
 
