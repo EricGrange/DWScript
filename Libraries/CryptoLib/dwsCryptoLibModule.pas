@@ -296,6 +296,7 @@ end;
 var
    hProv : THandle;
    hProvLock : TMultiReadSingleWrite;
+   vXorShiftSeedMask : Int64;
 
 procedure TdwsCryptoLib.dwsCryptoFunctionsCryptographicRandomEval(
   info: TProgramInfo);
@@ -335,6 +336,7 @@ begin
                CryptAcquireContext(@hProv, nil, MS_ENHANCED_PROV, PROV_RSA_FULL,
                                    CRYPT_NEWKEYSET + CRYPT_VERIFYCONTEXT);
             end;
+            CryptGenRandom(hProv, SizeOf(vXorShiftSeedMask), @vXorShiftSeedMask);
          end;
          CryptGenRandom(hProv, nb, Pointer(buf));
       finally
@@ -344,7 +346,7 @@ begin
 
    // further muddy things, in case Windows generator is later found vulnerable,
    // this will protect us from "generic" exploits
-   seed:=RDTSC;
+   seed:=RDTSC xor vXorShiftSeedMask;
    p:=PCardinal(buf);
    for i:=0 to (nb div 4)-1 do begin
       p^:=p^ xor XorShift(UInt64(seed));
