@@ -696,6 +696,16 @@ object dwsWebLib: TdwsWebLib
           end>
         ResultType = 'String'
         OnFastEval = dwsWebFunctionsDeflateDecompressionFastEval
+      end
+      item
+        Name = 'GetHostByAddr'
+        Parameters = <
+          item
+            Name = 'addr'
+            DataType = 'String'
+          end>
+        ResultType = 'String'
+        OnEval = dwsWebFunctionsGetHostByAddrEval
       end>
     UnitName = 'System.Net'
     StaticSymbols = True

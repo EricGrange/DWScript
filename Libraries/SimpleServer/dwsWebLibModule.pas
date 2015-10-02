@@ -21,7 +21,7 @@ interface
 uses
    Windows, WinInet, Variants,
    SysUtils, Classes, StrUtils,
-   SynZip, SynCrtSock, SynCommons,
+   SynZip, SynCrtSock, SynCommons, SynWinSock,
    dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList, dwsSymbols,
    dwsJSONConnector;
 
@@ -118,6 +118,7 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesHttpQueryMethodsGetIgnoreSSLCertificateErrorsEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebFunctionsGetHostByAddrEval(info: TProgramInfo);
   private
     { Private declarations }
   public
@@ -640,6 +641,16 @@ begin
    data:=args.AsDataString[0];
    DeflateDecompress(data);
    Result:=RawByteStringToScriptString(data);
+end;
+
+procedure TdwsWebLib.dwsWebFunctionsGetHostByAddrEval(info: TProgramInfo);
+var
+   addr : RawByteString;
+begin
+   addr := info.ParamAsDataString[0];
+   if (addr = '127.0.0.1') or (addr = '::1') then
+      info.ResultAsString := 'localhost'
+   else info.ResultAsDataString := ResolveIPToName(addr, 0, 0, SOCK_STREAM);
 end;
 
 end.
