@@ -5806,7 +5806,7 @@ begin
             Result:=ReadElementMethod(name, namePos, expr as TTypedExpr);
 
          // Connector symbol
-         end else if baseType is TConnectorSymbol then begin
+         end else if (baseType is TConnectorSymbol) and not (Result is TTypeReferenceExpr) then begin
 
             try
                Result:=ReadConnectorSym(Name, Result as TTypedExpr,
@@ -8087,7 +8087,7 @@ var
    element : TElementSymbol;
    meth : TElementMethod;
 begin
-   enumeration:=(baseExpr.Typ as TEnumerationSymbol);
+   enumeration:=(baseExpr.Typ.UnAliasedType as TEnumerationSymbol);
 
    if SameText(name, 'name') then
       meth:=emName
