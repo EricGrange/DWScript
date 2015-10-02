@@ -2903,6 +2903,11 @@ var
       extObj : TObject;
       info : TProgramInfo;
    begin
+      scriptObj := TScriptObjInstance.Create(ClassSym);
+      scriptObj.OnObjectDestroy := OnObjectDestroy;
+      p^ := IScriptObj(scriptObj);
+      exec.Stack.WriteValue(DataSym.StackAddr, p^);
+
       extObj:=nil;
       if Assigned(FOnInstantiate) then begin
          info:=exec.AcquireProgramInfo(func);
@@ -2917,11 +2922,8 @@ var
             Exit;
          end;
       end;
-      scriptObj := TScriptObjInstance.Create(ClassSym);
-      scriptObj.OnObjectDestroy := OnObjectDestroy;
+
       scriptObj.ExternalObject := extObj;
-      p^ := IScriptObj(scriptObj);
-      exec.Stack.WriteValue(DataSym.StackAddr, p^);
    end;
 
 begin
