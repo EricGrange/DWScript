@@ -128,6 +128,7 @@ type
    TDataSet = class
       Intf : IdwsDataSet;
       FirstDone : Boolean;
+      ScriptFieldsPrepared : Boolean;
       function IndexOfField(const aName : String) : Integer;
       function FieldByName(Info : TProgramInfo) : IdwsDataField;
       function Step : Boolean;
@@ -135,6 +136,8 @@ type
       procedure WriteToJSON(wr : TdwsJSONWriter);
       function Stringify : String;
       function StringifyAll(maxRows : Integer) : String;
+      procedure PrepareScriptFields(programInfo : TProgramInfo; var fieldsInfo : IInfo);
+      class procedure NeedScriptFields(programInfo : TProgramInfo; extObject: TObject; var fieldsInfo : IInfo);
    end;
 
    TDataField = class
@@ -245,6 +248,47 @@ begin
    finally
       wr.Free;
    end;
+end;
+
+// PrepareScriptFields
+//
+procedure TDataSet.PrepareScriptFields(programInfo : TProgramInfo; var fieldsInfo : IInfo);
+var
+   i : Integer;
+   dataSetInfo : IInfo;
+   dataFieldInfo : IInfo;
+   dataFieldsArray : IScriptDynArray;
+   dataFieldConstructor : IInfo;
+   dataFieldObj : TDataField;
+begin
+   dataSetInfo:=programInfo.Vars[SYS_SELF];
+
+   fieldsInfo:=dataSetInfo.Member['FFields'];
+
+   dataFieldsArray:=fieldsInfo.ScriptDynArray;
+   dataFieldsArray.ArrayLength:=Intf.FieldCount;
+
+   dataFieldConstructor:=programInfo.Vars['DataField'].Method['Create'];
+   for i:=0 to Intf.FieldCount-1 do begin
+      dataFieldInfo:=dataFieldConstructor.Call;
+      dataFieldObj:=TDataField.Create;
+      dataFieldObj.Intf:=Intf.Fields[i];
+      dataFieldInfo.ExternalObject:=dataFieldObj;
+      dataFieldsArray.AsData[i]:=dataFieldInfo.Value;
+   end;
+end;
+
+// NeedScriptFields
+//
+class procedure TDataSet.NeedScriptFields(programInfo : TProgramInfo; extObject : TObject; var fieldsInfo : IInfo);
+var
+   dataSet : TDataSet;
+begin
+   dataSet:=(extObject as TDataSet);
+   if not dataSet.ScriptFieldsPrepared then begin
+      dataSet.PrepareScriptFields(programInfo, fieldsInfo);
+      dataSet.ScriptFieldsPrepared:=True;
+   end else fieldsInfo:=programInfo.Vars['FFields'];
 end;
 
 procedure TdwsDatabaseLib.DataModuleCreate(Sender: TObject);
@@ -436,7 +480,7 @@ var
    db : IdwsDataBase;
    scriptDyn : IScriptDynArray;
 begin
-   scriptDyn:=Info.Vars['parameters'].ScriptDynArray;
+   scriptDyn:=Info.ParamAsScriptDynArray[1];
    db:=TdwsDatabase.CreateDataBase(Info.ParamAsString[0], scriptDyn.ToStringArray);
 
    ExtObject:=TDataBase.Create;
@@ -460,7 +504,7 @@ procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsExecEval(
 var
    scriptDyn : IScriptDynArray;
 begin
-   scriptDyn:=Info.Vars['parameters'].ScriptDynArray;
+   scriptDyn:=Info.ParamAsScriptDynArray[1];
    (ExtObject as TDataBase).Intf.Exec(Info.ParamAsString[0], scriptDyn.AsData);
 end;
 
@@ -476,15 +520,10 @@ var
    scriptDyn : IScriptDynArray;
    ids : IdwsDataSet;
    dbo : TDataBase;
-   dataFieldConstructor : IInfo;
-   dataSetInfo, dataFieldInfo : IInfo;
+   dataSetInfo : IInfo;
    dataSet : TDataSet;
-   dataFieldsInfo : IInfo;
-   dataFieldsArray : IScriptDynArray;
-   dataFieldObj : TDataField;
-   i : Integer;
 begin
-   scriptDyn:=Info.Vars['parameters'].ScriptDynArray;
+   scriptDyn:=Info.ParamAsScriptDynArray[1];
 
    dbo:=(ExtObject as TDataBase);
    ids:=dbo.Intf.Query(Info.ParamAsString[0], scriptDyn.AsData);
@@ -495,19 +534,6 @@ begin
    dataSet.Intf:=ids;
 
    dataSetInfo.ExternalObject:=dataSet;
-
-   dataFieldsInfo:=dataSetInfo.Member['FFields'];
-   dataFieldsArray:=dataFieldsInfo.ScriptDynArray;
-   dataFieldsArray.ArrayLength:=ids.FieldCount;
-
-   dataFieldConstructor:=Info.Vars['DataField'].Method['Create'];
-   for i:=0 to ids.FieldCount-1 do begin
-      dataFieldInfo:=dataFieldConstructor.Call;
-      dataFieldObj:=TDataField.Create;
-      dataFieldObj.Intf:=ids.Fields[i];
-      dataFieldInfo.ExternalObject:=dataFieldObj;
-      dataFieldsArray.AsData[i]:=dataFieldInfo.Value;
-   end;
 
    Info.ResultAsVariant:=dataSetInfo.Value;
 end;
@@ -656,7 +682,7 @@ begin
    if index<0 then
       RaiseDBException(Info, Format(FIELD_NOT_FOUND, [fieldName]))
    else begin
-      fieldsInfo:=Info.Vars['FFields'];
+      TDataSet.NeedScriptFields(Info, ExtObject, fieldsInfo);
       Info.ResultAsVariant:=fieldsInfo.Element([index]).Value;
    end;
 end;
@@ -671,7 +697,7 @@ begin
    if index<0 then
       Info.ResultAsVariant:=IUnknown(nil)
    else begin
-      fieldsInfo:=Info.Vars['FFields'];
+      TDataSet.NeedScriptFields(Info, ExtObject, fieldsInfo);
       Info.ResultAsVariant:=fieldsInfo.Element([index]).Value;
    end;
 end;
@@ -688,7 +714,7 @@ var
    fieldsInfo : IInfo;
    index : Integer;
 begin
-   fieldsInfo:=Info.Vars['FFields'];
+   TDataSet.NeedScriptFields(Info, ExtObject, fieldsInfo);
    index:=Info.ParamAsInteger[0];
    Info.ResultAsVariant:=fieldsInfo.Element([index]).Value;
 end;
