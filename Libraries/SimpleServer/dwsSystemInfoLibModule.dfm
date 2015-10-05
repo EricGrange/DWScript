@@ -67,6 +67,13 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
             Kind = mkClassFunction
           end
           item
+            Name = 'FrequencyMHz'
+            ResultType = 'Integer'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesCPUInfoMethodsFrequencyMHzEval
+            Kind = mkClassFunction
+          end
+          item
             Name = 'SystemUsage'
             ResultType = 'Float'
             Attributes = [maStatic]
@@ -81,17 +88,31 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
             Kind = mkClassFunction
           end
           item
-            Name = 'FrequencyMHz'
-            ResultType = 'Integer'
-            Attributes = [maStatic]
-            OnEval = dwsSystemInfoClassesCPUInfoMethodsFrequencyMHzEval
-            Kind = mkClassFunction
-          end
-          item
             Name = 'ProcessUsage'
             ResultType = 'Float'
             Attributes = [maStatic]
             OnEval = dwsSystemInfoClassesCPUInfoMethodsProcessUsageEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'SystemTime'
+            ResultType = 'Float'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesCPUInfoMethodsSystemTimeEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'KernelTime'
+            ResultType = 'Float'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesCPUInfoMethodsKernelTimeEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'ProcessTime'
+            ResultType = 'Float'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesCPUInfoMethodsProcessTimeEval
             Kind = mkClassFunction
           end>
       end

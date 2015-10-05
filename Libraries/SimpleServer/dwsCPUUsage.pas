@@ -40,6 +40,9 @@ type
       class function Category(cat : SystemCPUCategory) : Single; static;
       class function ProcessCategory(cat : SystemCPUCategory) : Single; static;
 
+      class function SystemTimes(cat : SystemCPUCategory) : Double; static;
+      class function ProcessTimes(cat : SystemCPUCategory) : Double; static;
+
       class property User : Single index cpuUser read Category;
       class property Kernel : Single index cpuKernel read Category;
       class property Idle : Single index cpuIdle read Category;
@@ -65,7 +68,7 @@ var
    vProcessorFreq : Integer;
 
    vCPUUsageScaleFactor : Double;
-   vCPUUsageLock : TFixedCriticalSection;
+   vCPUUsageLock : TMultiReadSingleWrite;
 
    vCycleSystem, vCycleProcess : TCPUUsage;
    vLastSystem, vLastProcess : TCPUUsage;
@@ -77,10 +80,9 @@ var
 //
 function FileTimeToDateTime(const fileTime : TFileTime) : TDateTime;
 const
-   cFileTimeBase : Double = -109205.0;
-   cFileTimeStep : Double = 24*3000 * 1e7;
+   cFileTimeStep : Double = 24*3600 * 1e7;
 begin
-   Result:=Int64(fileTime)/cFileTimeStep+cFileTimeBase;
+   Result:=Int64(fileTime)/cFileTimeStep;
 end;
 
 // GetCurrentSystemTimes
@@ -125,7 +127,7 @@ begin
    systemCurrent:=GetCurrentSystemTimes;
    processCurrent:=GetCurrentProcessTimes(GetCurrentProcess);
 
-   vCPUUsageLock.Enter;
+   vCPUUsageLock.BeginWrite;
    try
       for cat:=Low(SystemCPUCategory) to High(SystemCPUCategory) do begin
          vCycleSystem[cat]:=systemCurrent[cat]-vLastSystem[cat];
@@ -134,7 +136,7 @@ begin
       vLastSystem:=systemCurrent;
       vLastProcess:=processCurrent;
    finally
-      vCPUUsageLock.Leave;
+      vCPUUsageLock.EndWrite;
    end;
 
    vAnalyzingCPUUsage:=False;
@@ -240,11 +242,11 @@ class function SystemCPU.Usage : Single;
 begin
    if vCPUUsageTimerID=0 then Exit(0);
 
-   vCPUUsageLock.Enter;
+   vCPUUsageLock.BeginRead;
    try
       Result:=(vCycleSystem[cpuKernel]+vCycleSystem[cpuUser]-vCycleSystem[cpuIdle])*vCPUUsageScaleFactor;
    finally
-      vCPUUsageLock.Leave;
+      vCPUUsageLock.EndRead;
    end;
 end;
 
@@ -254,11 +256,11 @@ class function SystemCPU.ProcessUsage : Single;
 begin
    if vCPUUsageTimerID=0 then Exit(0);
 
-   vCPUUsageLock.Enter;
+   vCPUUsageLock.BeginRead;
    try
       Result:=(vCycleProcess[cpuKernel]+vCycleProcess[cpuUser])*vCPUUsageScaleFactor;
    finally
-      vCPUUsageLock.Leave;
+      vCPUUsageLock.EndRead;
    end;
 end;
 
@@ -268,11 +270,11 @@ class function SystemCPU.Category(cat : SystemCPUCategory) : Single;
 begin
    if vCPUUsageTimerID=0 then Exit(0);
 
-   vCPUUsageLock.Enter;
+   vCPUUsageLock.BeginRead;
    try
       Result:=vCycleSystem[cat]*vCPUUsageScaleFactor;
    finally
-      vCPUUsageLock.Leave;
+      vCPUUsageLock.EndRead;
    end;
 end;
 
@@ -282,11 +284,39 @@ class function SystemCPU.ProcessCategory(cat : SystemCPUCategory) : Single;
 begin
    if vCPUUsageTimerID=0 then Exit(0);
 
-   vCPUUsageLock.Enter;
+   vCPUUsageLock.BeginRead;
    try
       Result:=vCycleProcess[cat]*vCPUUsageScaleFactor;
    finally
-      vCPUUsageLock.Leave;
+      vCPUUsageLock.EndRead;
+   end;
+end;
+
+// SystemTimes
+//
+class function SystemCPU.SystemTimes(cat : SystemCPUCategory) : Double;
+begin
+   if vCPUUsageTimerID=0 then Exit(0);
+
+   vCPUUsageLock.BeginRead;
+   try
+      Result:=vLastSystem[cat];
+   finally
+      vCPUUsageLock.EndRead;
+   end;
+end;
+
+// ProcessTimes
+//
+class function SystemCPU.ProcessTimes(cat : SystemCPUCategory) : Double;
+begin
+   if vCPUUsageTimerID=0 then Exit(0);
+
+   vCPUUsageLock.BeginRead;
+   try
+      Result:=vLastProcess[cat];
+   finally
+      vCPUUsageLock.EndRead;
    end;
 end;
 
@@ -298,7 +328,7 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   vCPUUsageLock:=TFixedCriticalSection.Create;
+   vCPUUsageLock:=TMultiReadSingleWrite.Create;
 
 finalization
 
