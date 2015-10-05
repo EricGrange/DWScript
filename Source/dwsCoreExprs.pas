@@ -6910,6 +6910,7 @@ end;
 //
 procedure TCompareCaseCondition.TypeCheck(prog : TdwsProgram; typ : TTypeSymbol);
 begin
+   if FCompareExpr=nil then Exit;
    if (FCompareExpr.Typ=nil) or not (typ.IsCompatible(FCompareExpr.Typ) or FCompareExpr.Typ.IsCompatible(typ)) then
       if not (IsOfTypeNumber(prog, FCompareExpr.Typ) and IsOfTypeNumber(prog, typ)) then
          prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_IncompatibleTypes,
