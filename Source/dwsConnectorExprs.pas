@@ -625,7 +625,7 @@ var
    resultData : TData;
 begin
    SetLength(resultData, 1);
-   EvalAsVariant(exec, resultData[1]);
+   EvalAsVariant(exec, resultData[0]);
    exec.DataContext_Create(resultData, 0, result);
 end;
 
