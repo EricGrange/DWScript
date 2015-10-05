@@ -1682,6 +1682,8 @@ type
          function GetParamAsFloat(index : Integer) : Double;
          function GetParamAsBoolean(index : Integer) : Boolean;
          function GetParamAsObject(index : Integer) : TObject;
+         function GetParamAsScriptObj(index : Integer) : IScriptObj;
+         function GetParamAsScriptDynArray(index : Integer) : IScriptDynArray;
 
          function CreateUnitList : TUnitSymbolRefList;
          function FindSymbolInUnits(aUnitList: TUnitSymbolRefList; const aName: UnicodeString) : TSymbol; overload;
@@ -1734,6 +1736,8 @@ type
          property ParamAsFloat[index : Integer] : Double read GetParamAsFloat;
          property ParamAsBoolean[index : Integer] : Boolean read GetParamAsBoolean;
          property ParamAsObject[index : Integer] : TObject read GetParamAsObject;
+         property ParamAsScriptObj[index : Integer] : IScriptObj read GetParamAsScriptObj;
+         property ParamAsScriptDynArray[index : Integer] : IScriptDynArray read GetParamAsScriptDynArray;
 
          property ResultAsString : UnicodeString write SetResultAsString;
          property ResultAsDataString : RawByteString write SetResultAsDataString;
@@ -6358,6 +6362,32 @@ begin
    Assert(p.VType=varUnknown);
    if p.VUnknown<>nil then
       Result:=(IUnknown(p.VUnknown) as IScriptObj).ExternalObject
+   else Result:=nil;
+end;
+
+// GetParamAsScriptObj
+//
+function TProgramInfo.GetParamAsScriptObj(index : Integer) : IScriptObj;
+var
+   p : PVarData;
+begin
+   p:=PVarData(GetParamAsPVariant(index));
+   Assert(p.VType=varUnknown);
+   if p.VUnknown<>nil then
+      Result:=IUnknown(p.VUnknown) as IScriptObj
+   else Result:=nil;
+end;
+
+// GetParamAsScriptDynArray
+//
+function TProgramInfo.GetParamAsScriptDynArray(index : Integer) : IScriptDynArray;
+var
+   p : PVarData;
+begin
+   p:=PVarData(GetParamAsPVariant(index));
+   Assert(p.VType=varUnknown);
+   if p.VUnknown<>nil then
+      Result:=IUnknown(p.VUnknown) as IScriptDynArray
    else Result:=nil;
 end;
 
