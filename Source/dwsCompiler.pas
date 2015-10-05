@@ -6712,7 +6712,7 @@ begin
       else if progMeth.IsStatic then begin
          structSym:=progMeth.StructSymbol;
          Result:=GetMethodExpr(methodSym,
-                               TConstExpr.Create(FProg, (structSym as TStructuredTypeSymbol).MetaSymbol, Int64(structSym)),
+                               TConstExpr.Create(FProg, structSym.MetaSymbol, Int64(structSym)),
                                rkClassOfRef, FTok.HotPos, forceStatic);
       end else if progMeth.SelfSym is TConstParamSymbol then begin
          Result:=GetMethodExpr(methodSym,
@@ -6728,7 +6728,7 @@ begin
    end else begin
       structSym:=methodSym.StructSymbol;
       Result:=GetMethodExpr(methodSym,
-                            TConstExpr.Create(FProg, (structSym as TStructuredTypeSymbol).MetaSymbol, Int64(structSym)),
+                            TConstExpr.Create(FProg, structSym.MetaSymbol, Int64(structSym)),
                             rkClassOfRef, FTok.HotPos, True);
    end;
 
@@ -13722,7 +13722,7 @@ begin
    if progMeth<>nil then begin
       if progMeth.IsStatic then begin
          structSym:=progMeth.StructSymbol;
-         selfExpr:=TConstExpr.Create(FProg, (structSym as TStructuredTypeSymbol).MetaSymbol, Int64(structSym));
+         selfExpr:=TConstExpr.Create(FProg, structSym.MetaSymbol, Int64(structSym));
       end else if progMeth.SelfSym is TConstParamSymbol then
          selfExpr:=GetConstParamExpr(TConstParamSymbol(progMeth.SelfSym))
       else if progMeth.SelfSym=nil then

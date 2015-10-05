@@ -1154,6 +1154,8 @@ type
 
          function PrepareFirstField : TFieldSymbol;
 
+         function GetMetaSymbol : TStructuredTypeMetaSymbol; virtual; abstract;
+
       public
          constructor Create(const name : UnicodeString; aUnit : TSymbol);
          destructor Destroy; override;
@@ -1189,6 +1191,7 @@ type
          property Parent : TCompositeTypeSymbol read FParent;
          property Members : TMembersSymbolTable read FMembers;
          property DefaultProperty : TPropertySymbol read FDefaultProperty write FDefaultProperty;
+         property MetaSymbol : TStructuredTypeMetaSymbol read GetMetaSymbol;
 
          property IsStatic : Boolean read GetIsStatic;
          property IsPartial : Boolean read GetIsPartial;
@@ -1209,6 +1212,8 @@ type
          function GetIsForwarded : Boolean; inline;
          function GetIsExternal : Boolean; override;
          function GetExternalName : UnicodeString; override;
+
+         function GetMetaSymbol : TStructuredTypeMetaSymbol; override;
 
          procedure DoInheritFrom(ancestor : TStructuredTypeSymbol);
 
@@ -1548,11 +1553,12 @@ type
       private
          FForType : TTypeSymbol;
          FUnAliasedForType : TTypeSymbol;
-         FMetaForType : TTypeSymbol;
+         FMetaForType : TStructuredTypeMetaSymbol;
          FPriority : Integer;
          FStrict : Boolean;
 
       protected
+         function GetMetaSymbol : TStructuredTypeMetaSymbol; override;
 
       public
          constructor Create(const name : UnicodeString; aUnit : TSymbol;
@@ -2586,6 +2592,13 @@ begin
    if FExternalName='' then
       Result:=Name
    else Result:=FExternalName;
+end;
+
+// GetMetaSymbol
+//
+function TStructuredTypeSymbol.GetMetaSymbol : TStructuredTypeMetaSymbol;
+begin
+   Result:=FMetaSymbol;
 end;
 
 // ------------------
@@ -7291,6 +7304,13 @@ begin
    else if FMetaForType<>nil then
       Result:=typ.IsOfType(FMetaForType)
    else Result:=False;
+end;
+
+// GetMetaSymbol
+//
+function THelperSymbol.GetMetaSymbol : TStructuredTypeMetaSymbol;
+begin
+   Result:=FMetaForType;
 end;
 
 // ------------------

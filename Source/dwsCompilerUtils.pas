@@ -159,14 +159,14 @@ begin
          Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
                                   instanceExpr, rkObjRef, cNullPos, ForceStatic)
       end else if structSym<>nil then begin
-         instanceExpr:=TConstExpr.Create(prog, (structSym as TClassSymbol).MetaSymbol, Int64(structSym));
+         instanceExpr:=TConstExpr.Create(prog, structSym.MetaSymbol, Int64(structSym));
          Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
                                   instanceExpr, rkClassOfRef, cNullPos, ForceStatic)
       end else begin
          // static method
          structSym:=TMethodSymbol(funcSym).StructSymbol;
          if structSym is TStructuredTypeSymbol then begin
-            instanceExpr:=TConstExpr.Create(prog, TStructuredTypeSymbol(structSym).MetaSymbol, Int64(structSym));
+            instanceExpr:=TConstExpr.Create(prog, structSym.MetaSymbol, Int64(structSym));
             Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
                                      instanceExpr, rkClassOfRef, cNullPos, ForceStatic)
          end else begin
