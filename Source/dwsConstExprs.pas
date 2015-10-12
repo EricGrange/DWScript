@@ -919,10 +919,13 @@ end;
 // EvalAsVariant
 //
 procedure TArrayConstantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
-
+var
+   data : TData;
 begin
-   EvalNoResult(exec);
-   VarCopySafe(Result, FArrayAddr);
+   EvalAsTData(exec, data);
+   if Length(data)>0 then
+      VarCopySafe(Result, data[0])
+   else VarClearSafe(Result);
 end;
 
 // EvalAsTData

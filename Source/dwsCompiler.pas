@@ -2148,7 +2148,7 @@ end;
 //
 function TdwsCompiler.Optimize : Boolean;
 begin
-   Result:=(coOptimize in FOptions) and (not FMsgs.HasErrors);
+   Result:=(coOptimize in FOptions) and (not FMsgs.HasErrors) and not (coSymbolDictionary in FOptions);
 end;
 
 // ReadRootBlock
@@ -9546,9 +9546,10 @@ begin
                end else if expr.IsConstant then begin
                   if not FMsgs.HasErrors then begin
                      SetLength(exprData, typ.Size);
-                     if typ.Size=1 then begin
-                        expr.EvalAsVariant(FExec, exprData[0]);
-                     end else begin
+                     case typ.Size of
+                        0 : FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantInstruction);
+                        1 : expr.EvalAsVariant(FExec, exprData[0]);
+                     else
                         FExec.Stack.Push(typ.Size);
                         try
                            (expr as TDataExpr).DataPtr[FExec].CopyData(exprData, 0, typ.Size);

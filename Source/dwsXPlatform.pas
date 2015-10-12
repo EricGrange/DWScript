@@ -159,7 +159,7 @@ type
       {$ENDIF}
    end;
 
-// 64bit system clock reference in milliseconds, absolute value is maningless
+// 64bit system clock reference in milliseconds since boot
 function GetSystemMilliseconds : Int64;
 function UTCDateTime : TDateTime;
 // UTC = LocalTime + Bias

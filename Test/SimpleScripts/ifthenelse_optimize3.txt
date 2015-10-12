@@ -1,0 +1,14 @@
+Errors >>>>
+Hint: Name "b" could be ambiguous in its scope context [line: 10, column: 6]
+Hint: Name "b" could be ambiguous in its scope context [line: 18, column: 6]
+Result >>>>
+2
+1
+6
+8
+6
+7
+3
+5
+3
+4

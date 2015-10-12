@@ -49,6 +49,7 @@ type
          procedure StaticClassSuggest;
          procedure SuggestInBlockWithError;
          procedure NormalizeOverload;
+         procedure OptimizedIfThenBlockSymbol;
    end;
 
 // ------------------------------------------------------------------
@@ -927,6 +928,49 @@ begin
       end;
    finally
       lines.Free;
+   end;
+end;
+
+// OptimizedIfThenBlockSymbol
+//
+procedure TSourceUtilsTests.OptimizedIfThenBlockSymbol;
+
+   procedure CheckSymbols(dic : TdwsSymbolDictionary);
+   var
+      i : Integer;
+      sym : TSymbol;
+   begin
+      CheckEquals(1, dic.Count);
+      sym := dic.Items[0].Symbol;
+      if sym.Name = 'xyz' then
+         CheckEquals(1, dic.Items[i].Count, '1 usage of xyz');
+   end;
+
+var
+   prog : IdwsProgram;
+   options : TCompilerOptions;
+begin
+   options:=FCompiler.Config.CompilerOptions;
+   try
+      FCompiler.Config.CompilerOptions := options + [coOptimize];
+
+      prog:=FCompiler.Compile( 'if False then begin'#13#10
+                              +'var xyz := "";'#13#10
+                              +'end;');
+      CheckEquals('', prog.Msgs.AsInfo, 'should have compiled without errors 1');
+
+      CheckSymbols(prog.SymbolDictionary);
+
+      FCompiler.Config.CompilerOptions := options;
+
+      prog:=FCompiler.Compile( 'if False then begin'#13#10
+                              +'var xyz := "";'#13#10
+                              +'end;');
+      CheckEquals('', prog.Msgs.AsInfo, 'should have compiled without errors 2');
+
+      CheckSymbols(prog.SymbolDictionary);
+   finally
+      FCompiler.Config.CompilerOptions := options;
    end;
 end;
 
