@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, SysUtils, Classes, Registry, PsAPI,
-  dwsDataContext, dwsComp, dwsExprs, dwsUtils, dwsCPUUsage;
+  dwsDataContext, dwsComp, dwsExprs, dwsUtils, dwsCPUUsage, dwsXPlatform;
 
 type
    TOSNameVersion = record
@@ -60,6 +60,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsSystemInfoClassesCPUInfoMethodsProcessTimeEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesCPUInfoMethodsUpTimeEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
     FOSNameVersion : TOSNameVersion;
@@ -270,6 +272,12 @@ procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesCPUInfoMethodsSystemUsageE
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsFloat:=SystemCPU.Usage;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesCPUInfoMethodsUpTimeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsFloat:=GetSystemMilliseconds*(1/864e5);
 end;
 
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesHostInfoMethodsDNSDomainEval(

@@ -2,8 +2,8 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
   OldCreateOrder = False
   OnCreate = DataModuleCreate
   OnDestroy = DataModuleDestroy
-  Left = 712
-  Top = 139
+  Left = 726
+  Top = 113
   Height = 135
   Width = 165
   object dwsSystemInfo: TdwsUnit
@@ -92,27 +92,6 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
             ResultType = 'Float'
             Attributes = [maStatic]
             OnEval = dwsSystemInfoClassesCPUInfoMethodsProcessUsageEval
-            Kind = mkClassFunction
-          end
-          item
-            Name = 'SystemTime'
-            ResultType = 'Float'
-            Attributes = [maStatic]
-            OnEval = dwsSystemInfoClassesCPUInfoMethodsSystemTimeEval
-            Kind = mkClassFunction
-          end
-          item
-            Name = 'KernelTime'
-            ResultType = 'Float'
-            Attributes = [maStatic]
-            OnEval = dwsSystemInfoClassesCPUInfoMethodsKernelTimeEval
-            Kind = mkClassFunction
-          end
-          item
-            Name = 'ProcessTime'
-            ResultType = 'Float'
-            Attributes = [maStatic]
-            OnEval = dwsSystemInfoClassesCPUInfoMethodsProcessTimeEval
             Kind = mkClassFunction
           end>
       end
@@ -213,6 +192,34 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
             ResultType = 'String'
             Attributes = [maStatic]
             OnEval = dwsSystemInfoClassesHostInfoMethodsDNSNameEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'SystemTime'
+            ResultType = 'Float'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesCPUInfoMethodsSystemTimeEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'KernelTime'
+            ResultType = 'Float'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesCPUInfoMethodsKernelTimeEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'ProcessTime'
+            ResultType = 'Float'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesCPUInfoMethodsProcessTimeEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'Uptime'
+            ResultType = 'Float'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesCPUInfoMethodsUpTimeEval
             Kind = mkClassFunction
           end>
       end>
