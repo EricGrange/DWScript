@@ -140,7 +140,7 @@ begin
       c:=lineText[i];
       case c of
          #9 : FEditor.ExecuteCommand(ecTab, #0, nil);
-         '|' : FMark:=FEditor.CaretPosition;
+         '|' : FMark:=FEditor.TextCaretPosition;
       else
          FEditor.ExecuteCommand(ecChar, c, nil);
       end;
