@@ -381,9 +381,6 @@ type
          constructor Create(jit : TdwsJITx86; op : TxmmOp);
          function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
    end;
-   Tx86ModFloat = class (TdwsJITter_x86)
-      function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
-   end;
    Tx86SqrFloat = class (TdwsJITter_x86)
       function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
       function CompileFloatOperand(sqrExpr, operand : TTypedExpr) : TxmmRegister;
@@ -416,6 +413,9 @@ type
    end;
    Tx86ModInt = class (Tx86InterpretedExpr)
       function CompileInteger(expr : TTypedExpr) : Integer; override;
+   end;
+   Tx86ModFloat = class (TdwsJITter_x86)
+      function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
    end;
    Tx86IntegerBinOpExpr = class (TdwsJITter_x86)
       FOpLow, FOpHigh : TgpOp;
@@ -2483,6 +2483,7 @@ function Tx86ModFloat.DoCompileFloat(expr : TTypedExpr) : TxmmRegister;
 var
    e : TModFloatExpr;
    regLeft, regRight : TxmmRegister;
+   loop : TFixupTarget;
 begin
    e:=TModFloatExpr(expr);
 
@@ -2498,8 +2499,11 @@ begin
    x86._fld_esp;
    jit.ReleaseXMMReg(regLeft);
 
-   // fprem
-   x86.WriteBytes([$D9, $F8]);
+   loop:=jit.Fixups.NewTarget(False);
+   x86.WriteBytes([$D9, $F8]); // fprem
+   x86.WriteBytes([$DF, $E0]); // fnstsw ax
+   x86.WriteByte($9E);         // sahf
+   jit.Fixups.NewJump(flagsP, loop);
 
    x86._ffree(1);
 

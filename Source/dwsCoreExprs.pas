@@ -4965,7 +4965,11 @@ function TModFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
    asm
       fld d
       fld f
+   @@loop:
       fprem
+      fnstsw
+      sahf
+      jp @@loop
       ffree st(1)
    end;
 {$else}
