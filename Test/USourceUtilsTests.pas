@@ -937,13 +937,12 @@ procedure TSourceUtilsTests.OptimizedIfThenBlockSymbol;
 
    procedure CheckSymbols(dic : TdwsSymbolDictionary);
    var
-      i : Integer;
       sym : TSymbol;
    begin
       CheckEquals(1, dic.Count);
       sym := dic.Items[0].Symbol;
       if sym.Name = 'xyz' then
-         CheckEquals(1, dic.Items[i].Count, '1 usage of xyz');
+         CheckEquals(1, dic.Items[0].Count, '1 usage of xyz');
    end;
 
 var
