@@ -237,6 +237,7 @@ type
          procedure _fistp_esp;
          procedure _fld_esp;
          procedure _fstp_esp;
+         procedure _ffree(n : Integer);
 
          procedure _push_reg(reg : TgpRegister);
          procedure _pop_reg(reg : TgpRegister);
@@ -1406,6 +1407,15 @@ procedure Tx86WriteOnlyStream._fstp_esp;
 begin
    // fstp qword ptr [esp]
    WriteBytes([$DD, $1C, $24]);
+end;
+
+// _ffree
+//
+procedure Tx86WriteOnlyStream._ffree(n : Integer);
+begin
+   // ffree st(n)
+   Assert(n in [0..7]);
+   WriteBytes([$DD, $C0+n]);
 end;
 
 // _push_reg

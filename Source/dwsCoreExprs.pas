@@ -1069,6 +1069,11 @@ type
      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
+   // a mod b  (float)
+   TModFloatExpr = class(TFloatBinOpExpr)
+     function EvalAsFloat(exec : TdwsExecution) : Double; override;
+   end;
+
    TPosIntegerBinOpExpr = class(TIntegerBinOpExpr)
       private
          FScriptPos : TScriptPos;
@@ -4945,6 +4950,32 @@ begin
       Free;
       Result:=Result.Optimize(prog, exec);
    end else Result:=inherited Optimize(prog, exec);
+end;
+
+// ------------------
+// ------------------ TModFloatExpr ------------------
+// ------------------
+
+// EvalAsFloat
+//
+function TModFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+
+   function fmod(f, d : Double) : Double;
+{$if Defined(WIN32_ASM)}
+   asm
+      fld d
+      fld f
+      fprem
+      ffree st(1)
+   end;
+{$else}
+   begin
+      Result := Frac(f / d) * d;
+   end;
+{$ifend}
+
+begin
+   Result := fmod(Left.EvalAsFloat(exec), Right.EvalAsFloat(exec));
 end;
 
 // ------------------

@@ -135,6 +135,12 @@ begin
    RegisterOperator(ttMOD,    TModExpr,         typVariant,  typInteger);
    RegisterOperator(ttMOD,    TModExpr,         typVariant,  typVariant);
 
+   RegisterOperator(ttMOD,    TModFloatExpr,    typInteger,  typFloat);
+   RegisterOperator(ttMOD,    TModFloatExpr,    typFloat,    typInteger);
+   RegisterOperator(ttMOD,    TModFloatExpr,    typFloat,    typFloat);
+   RegisterOperator(ttMOD,    TModFloatExpr,    typFloat,    typVariant);
+   RegisterOperator(ttMOD,    TModFloatExpr,    typVariant,  typFloat);
+
    RegisterOperator(ttOR,     TBoolOrExpr,      typBoolean,  typBoolean);
    RegisterOperator(ttOR,     TBoolOrExpr,      typBoolean,  typVariant);
    RegisterOperator(ttOR,     TBoolOrExpr,      typVariant,  typBoolean);

@@ -381,6 +381,9 @@ type
          constructor Create(jit : TdwsJITx86; op : TxmmOp);
          function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
    end;
+   Tx86ModFloat = class (TdwsJITter_x86)
+      function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
+   end;
    Tx86SqrFloat = class (TdwsJITter_x86)
       function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
       function CompileFloatOperand(sqrExpr, operand : TTypedExpr) : TxmmRegister;
@@ -841,6 +844,7 @@ begin
    RegisterJITter(TMultFloatExpr,               Tx86FloatBinOp.Create(Self, xmm_multsd));
    RegisterJITter(TSqrFloatExpr,                Tx86SqrFloat.Create(Self));
    RegisterJITter(TDivideExpr,                  Tx86FloatBinOp.Create(Self, xmm_divsd));
+   RegisterJITter(TModFloatExpr,                Tx86ModFloat.Create(Self));
    RegisterJITter(TAbsFloatExpr,                Tx86AbsFloat.Create(Self));
    RegisterJITter(TNegFloatExpr,                Tx86NegFloat.Create(Self));
 
@@ -2467,6 +2471,41 @@ begin
    jit._xmm_reg_expr(OP, Result, e.Right);
 
    jit.ContainsXMMReg(Result, expr);
+end;
+
+// ------------------
+// ------------------ Tx86ModFloat ------------------
+// ------------------
+
+// DoCompileFloat
+//
+function Tx86ModFloat.DoCompileFloat(expr : TTypedExpr) : TxmmRegister;
+var
+   e : TModFloatExpr;
+   regLeft, regRight : TxmmRegister;
+begin
+   e:=TModFloatExpr(expr);
+
+   jit.FPreamble.NeedTempSpace(SizeOf(Double));
+
+   regRight:=jit.CompileFloat(e.Right);
+   x86._movsd_esp_reg(regRight);
+   x86._fld_esp;
+   jit.ReleaseXMMReg(regRight);
+
+   regLeft:=jit.CompileFloat(e.Left);
+   x86._movsd_esp_reg(regLeft);
+   x86._fld_esp;
+   jit.ReleaseXMMReg(regLeft);
+
+   // fprem
+   x86.WriteBytes([$D9, $F8]);
+
+   x86._ffree(1);
+
+   x86._fstp_esp;
+   Result:=jit.AllocXMMReg(expr);
+   x86._movsd_reg_esp(Result);
 end;
 
 // ------------------
