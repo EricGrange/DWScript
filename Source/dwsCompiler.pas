@@ -12243,6 +12243,7 @@ function TdwsCompiler.ReadConnectorSym(const name : UnicodeString; baseExpr : TT
 var
    connWrite : TConnectorWriteMemberExpr;
    connRead : TConnectorReadMemberExpr;
+   rightExpr : TTypedExpr;
 begin
    if FTok.Test(ttALEFT) then begin
 
@@ -12266,12 +12267,20 @@ begin
 
       // An assignment of the form "connector.member := expr" was found
       // and is transformed into "connector.member(expr)"
-      connWrite:=TConnectorWriteMemberExpr.CreateNew(FProg, FTok.HotPos, name, baseExpr, ReadExpr, connectorType);
-      if connWrite=nil then begin
-         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorMember,
+      try
+         rightExpr:=ReadExpr;
+         connWrite:=TConnectorWriteMemberExpr.CreateNew(FProg, FTok.HotPos, name, baseExpr, rightExpr, connectorType);
+         baseExpr:=nil;
+         if connWrite=nil then begin
+            OrphanObject(connWrite);
+            FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorMember,
                                   [name, connectorType.ConnectorCaption]);
+         end;
+         Result:=connWrite;
+      except
+         OrphanObject(baseExpr);
+         raise;
       end;
-      Result:=connWrite;
 
    end else begin
 
@@ -12310,10 +12319,10 @@ begin
       if not Result.AssignConnectorSym(FProg, connectorType) then
          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorIndex, [ConnectorType.ConnectorCaption]);
    except
-      Result.BaseExpr:=nil;
+//      Result.BaseExpr:=nil;
       OrphanObject(Result);
       raise;
-  end;
+   end;
 end;
 
 function TdwsCompiler.ReadStringArray(expr : TDataExpr; IsWrite: Boolean): TProgramExpr;
