@@ -359,6 +359,11 @@ object dwsCryptoLib: TdwsCryptoLib
           end>
         ResultType = 'String'
         OnEval = dwsCryptoFunctionsCryptographicRandomEval
+      end
+      item
+        Name = 'ProcessUniqueRandom'
+        ResultType = 'String'
+        OnEval = dwsCryptoFunctionsProcessUniqueRandomEval
       end>
     UnitName = 'System.Crypto'
     StaticSymbols = True

@@ -58,6 +58,7 @@ type
     procedure dwsCryptoClassesHashCRC32MethodsHMACEval(Info: TProgramInfo;
       ExtObject: TObject);
     procedure dwsCryptoFunctionsCryptographicRandomEval(info: TProgramInfo);
+    procedure dwsCryptoFunctionsProcessUniqueRandomEval(info: TProgramInfo);
   private
     { Private declarations }
   public
@@ -298,8 +299,7 @@ var
    hProvLock : TMultiReadSingleWrite;
    vXorShiftSeedMask : Int64;
 
-procedure TdwsCryptoLib.dwsCryptoFunctionsCryptographicRandomEval(
-  info: TProgramInfo);
+function CryptographicRandom(nb : Integer) : RawByteString;
 
    function RDTSC : UInt64;
    asm
@@ -318,42 +318,73 @@ procedure TdwsCryptoLib.dwsCryptoFunctionsCryptographicRandomEval(
    end;
 
 var
-   i, nb : Integer;
-   buf : RawByteString;
+   i : Integer;
    seed : Int64;
    p : PCardinal;
 begin
-   nb:=info.ParamAsInteger[0];
-   if nb<0 then nb:=0;
-   SetLength(buf, nb);
+   if nb<=0 then Exit('');
 
-   if nb>0 then begin
-      hProvLock.BeginWrite;
-      try
-         if hProv=0 then begin
-            if not CryptAcquireContext(@hProv, nil, MS_ENHANCED_PROV, PROV_RSA_FULL,
-                                       CRYPT_VERIFYCONTEXT) then begin
-               CryptAcquireContext(@hProv, nil, MS_ENHANCED_PROV, PROV_RSA_FULL,
-                                   CRYPT_NEWKEYSET + CRYPT_VERIFYCONTEXT);
-            end;
-            CryptGenRandom(hProv, SizeOf(vXorShiftSeedMask), @vXorShiftSeedMask);
+   SetLength(Result, nb);
+
+   hProvLock.BeginWrite;
+   try
+      if hProv=0 then begin
+         if not CryptAcquireContext(@hProv, nil, MS_ENHANCED_PROV, PROV_RSA_FULL,
+                                    CRYPT_VERIFYCONTEXT) then begin
+            CryptAcquireContext(@hProv, nil, MS_ENHANCED_PROV, PROV_RSA_FULL,
+                                CRYPT_NEWKEYSET + CRYPT_VERIFYCONTEXT);
          end;
-         CryptGenRandom(hProv, nb, Pointer(buf));
-      finally
-         hProvLock.EndWrite;
+         CryptGenRandom(hProv, SizeOf(vXorShiftSeedMask), @vXorShiftSeedMask);
       end;
+      CryptGenRandom(hProv, nb, Pointer(Result));
+   finally
+      hProvLock.EndWrite;
    end;
 
    // further muddy things, in case Windows generator is later found vulnerable,
    // this will protect us from "generic" exploits
    seed:=RDTSC xor vXorShiftSeedMask;
-   p:=PCardinal(buf);
+   p:=PCardinal(Result);
    for i:=0 to (nb div 4)-1 do begin
       p^:=p^ xor XorShift(UInt64(seed));
       Inc(p);
    end;
+end;
 
-   info.ResultAsDataString:=buf;
+
+procedure TdwsCryptoLib.dwsCryptoFunctionsCryptographicRandomEval(
+  info: TProgramInfo);
+begin
+   info.ResultAsDataString:=CryptographicRandom(info.ParamAsInteger[0]);
+end;
+
+var
+   vProcessUniqueRandom : String;
+procedure TdwsCryptoLib.dwsCryptoFunctionsProcessUniqueRandomEval(
+  info: TProgramInfo);
+
+   procedure GenerateUniqueRandom;
+   const
+      // uri-safe base64 table (RFC 4648)
+      cChars : AnsiString = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+   var
+      i : Integer;
+      buf : String;
+      rand : RawByteString;
+   begin
+      // 6 bits per character, 42 characters, 252 bits of random
+      rand:=CryptographicRandom(42);
+      SetLength(buf, 42);
+      for i:=1 to 42 do
+         buf[i]:=Char(cChars[(Ord(rand[i]) and 63)+1]);
+      Pointer(buf):=InterlockedCompareExchangePointer(Pointer(vProcessUniqueRandom),
+                                                      Pointer(buf), nil);
+   end;
+
+begin
+   if vProcessUniqueRandom='' then
+      GenerateUniqueRandom;
+   info.ResultAsString:=vProcessUniqueRandom;
 end;
 
 // ------------------------------------------------------------------
