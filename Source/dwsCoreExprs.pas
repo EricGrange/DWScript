@@ -1017,8 +1017,9 @@ type
       function EvalAsInteger(exec : TdwsExecution) : Int64; override;
       function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
-   TAddFloatExpr = class(TFloatBinOpExpr)
+   TAddFloatExpr = class sealed (TFloatBinOpExpr)
       function EvalAsFloat(exec : TdwsExecution) : Double; override;
+      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // a - b
@@ -4746,6 +4747,22 @@ end;
 function TAddFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
    Result:=FLeft.EvalAsFloat(exec)+FRight.EvalAsFloat(exec);
+end;
+
+// Optimize
+//
+function TAddFloatExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   Result:=inherited Optimize(prog, exec);
+   if     (Result=Self)
+      and (Left.ClassType=TAddFloatExpr)
+      and (TAddFloatExpr(Left).Right.ClassType<>TAddFloatExpr) then begin
+
+      Result:=Left;
+      Left:=TAddFloatExpr(Result).Right;
+      TAddFloatExpr(Result).Right:=Self;
+
+   end;
 end;
 
 // ------------------
