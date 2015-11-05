@@ -11016,9 +11016,11 @@ var
    sym : TSymbol;
    memberSym : TFieldSymbol;
    memberSet : array of Boolean;
+   memberTyp : TTypeSymbol;
    expr : TTypedExpr;
    constExpr : TConstExpr;
    exprPos : TScriptPos;
+   factory : IdwsDataSymbolFactory;
 begin
    if not FTok.TestDelete(ttBLEFT) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
@@ -11027,6 +11029,8 @@ begin
 
    SetLength(Result, symbol.Size);
    symbol.InitData(Result, 0);
+
+   factory:=TCompositeTypeSymbolFactory.Create(Self, symbol, cvPublic);
 
    while not FTok.Test(ttBRIGHT) do begin
       if not FTok.TestName then
@@ -11038,18 +11042,22 @@ begin
       end;
       memberSym:=TFieldSymbol(sym);
       if memberSym<>nil then begin
+         memberTyp:=memberSym.Typ;
          if memberSym.Visibility<cvPublic then
             FMsgs.AddCompilerErrorFmt(FTok.GetToken.FScriptPos, CPE_MemberSymbolNotVisible, [FTok.GetToken.AsString]);
          if memberSet[memberSym.Offset] then
             FMsgs.AddCompilerError(FTok.GetToken.FScriptPos, CPE_FieldAlreadySet);
          memberSet[memberSym.Offset]:=True;
          RecordSymbolUseReference(memberSym, FTok.GetToken.FScriptPos, True);
+      end else begin
+         memberTyp:=nil;
       end;
       FTok.KillToken;
       if not FTok.TestDelete(ttCOLON) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
       exprPos:=FTok.HotPos;
-      expr:=ReadExpr;
+//      expr:=ReadExpr;
+      expr:=factory.ReadInitExpr(memberTyp);
       try
          if not (expr is TConstExpr) then begin
             if expr.IsConstant then
