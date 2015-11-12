@@ -210,7 +210,9 @@ begin
       if UnicodeSameText(parameters[i], 'read_only') then
          flags:=SQLITE_OPEN_READONLY
       else if UnicodeSameText(parameters[i], 'shared_cache') then
-         flags:=flags or SQLITE_OPEN_SHAREDCACHE;
+         flags:=flags or SQLITE_OPEN_SHAREDCACHE
+      else if UnicodeSameText(parameters[i], 'open_uri') then
+         flags:=flags or SQLITE_OPEN_URI;
    end;
 
    try
