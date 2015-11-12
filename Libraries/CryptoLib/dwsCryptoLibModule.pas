@@ -297,7 +297,7 @@ end;
 var
    hProv : THandle;
    hProvLock : TMultiReadSingleWrite;
-   vXorShiftSeedMask : Int64;
+   vXorShiftSeedMask : UInt64;
 
 function CryptographicRandom(nb : Integer) : RawByteString;
 
@@ -319,7 +319,7 @@ function CryptographicRandom(nb : Integer) : RawByteString;
 
 var
    i : Integer;
-   seed : Int64;
+   seed : UInt64;
    p : PCardinal;
 begin
    if nb<=0 then Exit('');
@@ -341,12 +341,14 @@ begin
       hProvLock.EndWrite;
    end;
 
+   FillChar(Result[1], nb, 0);
+
    // further muddy things, in case Windows generator is later found vulnerable,
    // this will protect us from "generic" exploits
    seed:=RDTSC xor vXorShiftSeedMask;
    p:=PCardinal(Result);
    for i:=0 to (nb div 4)-1 do begin
-      p^:=p^ xor XorShift(UInt64(seed));
+      p^:=p^ xor XorShift(seed);
       Inc(p);
    end;
 end;
