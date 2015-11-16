@@ -784,8 +784,11 @@ begin
             arraySymbol.Typ:=ElementExpr.Typ
          else if (arraySymbol.Typ=Prog.TypInteger) and (ElementExpr.Typ=Prog.TypFloat) then
             arraySymbol.Typ:=Prog.TypFloat
-         else if not ((arraySymbol.Typ=Prog.TypFloat) and (ElementExpr.Typ=Prog.TypInteger)) then
-            arraySymbol.Typ:=Prog.TypVariant;
+         else if not ((arraySymbol.Typ=Prog.TypFloat) and (ElementExpr.Typ=Prog.TypInteger)) then begin
+            if ElementExpr.Typ is TBaseSymbol then
+               arraySymbol.Typ:=Prog.TypVariant
+            else Assert(False);
+         end;
       end;
    end;
    FElementExprs.Add(ElementExpr);
