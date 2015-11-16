@@ -209,7 +209,7 @@ type
 
          property Elements[idx : Integer] : TTypedExpr read GetElement;
          property ElementCount : Integer read GetElementCount;
-         procedure AddElementExpr(Prog: TdwsProgram; ElementExpr: TTypedExpr);
+         procedure AddElementExpr(const scriptPos : TScriptPos; prog: TdwsProgram; ElementExpr: TTypedExpr);
          procedure AddElementRange(prog : TdwsProgram; const range1, range2 : Int64; typ : TTypeSymbol);
          procedure Prepare(Prog: TdwsProgram; ElementTyp : TTypeSymbol);
          procedure TypeCheckElements(prog : TdwsProgram);
@@ -771,10 +771,11 @@ end;
 
 // AddElementExpr
 //
-procedure TArrayConstantExpr.AddElementExpr(prog: TdwsProgram; ElementExpr: TTypedExpr);
+procedure TArrayConstantExpr.AddElementExpr(const scriptPos : TScriptPos; prog: TdwsProgram; ElementExpr: TTypedExpr);
 var
    arraySymbol : TStaticArraySymbol;
 begin
+   FElementExprs.Add(ElementExpr);
    arraySymbol:=(FTyp as TStaticArraySymbol);
    if arraySymbol.Typ<>Prog.TypVariant then begin
       if arraySymbol.Typ=Prog.TypNil then
@@ -784,14 +785,15 @@ begin
             arraySymbol.Typ:=ElementExpr.Typ
          else if (arraySymbol.Typ=Prog.TypInteger) and (ElementExpr.Typ=Prog.TypFloat) then
             arraySymbol.Typ:=Prog.TypFloat
-         else if not ((arraySymbol.Typ=Prog.TypFloat) and (ElementExpr.Typ=Prog.TypInteger)) then begin
-            if ElementExpr.Typ is TBaseSymbol then
-               arraySymbol.Typ:=Prog.TypVariant
-            else Assert(False);
+         else if ElementExpr.Typ.Size=1 then begin
+            if not ((arraySymbol.Typ=Prog.TypFloat) and (ElementExpr.Typ=Prog.TypInteger)) then
+               arraySymbol.Typ:=Prog.TypVariant;
+         end else if not ElementExpr.Typ.IsCompatible(Typ.Typ) then begin
+            prog.Root.CompileMsgs.AddCompilerStopFmt(scriptPos, CPE_IncompatibleTypes,
+                                                     [ElementExpr.Typ.Caption, Typ.Typ.Caption]);
          end;
       end;
    end;
-   FElementExprs.Add(ElementExpr);
    arraySymbol.AddElement;
 end;
 
@@ -807,7 +809,7 @@ begin
    else d:=-1;
    i:=range1;
    repeat
-      AddElementExpr(prog, TConstIntExpr.CreateUnified(prog, typ, i));
+      AddElementExpr(cNullPos, prog, TConstIntExpr.CreateUnified(prog, typ, i));
       if i=range2 then break;
       Inc(i, d);
    until False;

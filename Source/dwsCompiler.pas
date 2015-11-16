@@ -511,10 +511,14 @@ type
 
          function ReadSetOfType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TSetOfSymbol;
 
-         function ReadArrayType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TArraySymbol;
+         function ReadArrayType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TTypeSymbol;
+         function ReadAssociativeArrayType(const typeName : UnicodeString; keyType : TTypeSymbol;
+                                           typeContext : TdwsReadTypeContext) : TAssociativeArraySymbol;
          function ReadArrayConstant(closingToken : TTokenType; expecting : TTypeSymbol) : TArrayConstantExpr;
          function ReadArrayMethod(const name : UnicodeString; const namePos : TScriptPos;
                                   baseExpr : TTypedExpr) : TProgramExpr;
+         function ReadAssociativeArrayMethod(const name : UnicodeString; const namePos : TScriptPos;
+                                             baseExpr : TTypedExpr) : TProgramExpr;
          function ReadStringMethod(const name : UnicodeString; const namePos : TScriptPos;
                                    baseExpr : TTypedExpr) : TProgramExpr;
          function ReadSetOfMethod(const name : UnicodeString; const namePos : TScriptPos;
@@ -738,6 +742,7 @@ type
          function ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
                              expecting : TTypeSymbol = nil) : TProgramExpr;
          function ReadSymbolArrayExpr(var baseExpr : TDataExpr) : TProgramExpr;
+         function ReadSymbolAssociativeArrayExpr(var baseExpr : TDataExpr) : TProgramExpr;
          function ReadSymbolMemberExpr(var expr : TProgramExpr;
                                        isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
 
@@ -5463,6 +5468,8 @@ begin
                      end else if TTypedExpr(Result).IsOfType(FProg.TypString) and (Result is TDataExpr) then begin
                         FTok.KillToken;
                         Result := ReadStringArray(TDataExpr(Result), IsWrite);
+                     end else if baseType is TAssociativeArraySymbol then begin
+                        Result := ReadSymbolAssociativeArrayExpr(TDataExpr(Result))
                      end else if baseType is TConnectorSymbol then begin
                         Result := ReadConnectorArray('', TTypedExpr(Result),
                                                      TConnectorSymbol(baseType).ConnectorType, IsWrite)
@@ -5644,6 +5651,67 @@ begin
       FMsgs.AddCompilerError(FTok.HotPos, CPE_ArrayBracketRightExpected);
 end;
 
+// ReadSymbolAssociativeArrayExpr
+//
+function TdwsCompiler.ReadSymbolAssociativeArrayExpr(var baseExpr : TDataExpr) : TProgramExpr;
+var
+   baseType : TAssociativeArraySymbol;
+   keyExpr, valueExpr : TTypedExpr;
+   hotPos : TScriptPos;
+begin
+   FTok.KillToken;
+
+   if FTok.TestDelete(ttARIGHT) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
+
+   baseType := (baseExpr.BaseType as TAssociativeArraySymbol);
+
+   keyExpr:=nil;
+   try
+      hotPos := FTok.HotPos;
+      keyExpr := ReadExpr;
+
+      if    (keyExpr.Typ=nil)
+         or not (   (keyExpr.Typ.UnAliasedType=baseType.KeyType.UnAliasedType)
+                 or keyExpr.Typ.IsOfType(FProg.TypVariant)) then
+         IncompatibleTypes(hotPos, CPE_ArrayIndexMismatch,
+                           baseType.KeyType, keyExpr.Typ);
+
+      if not FTok.TestDelete(ttARIGHT) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBracketRightExpected);
+
+      if FTok.TestDelete(ttASSIGN) then begin
+
+         valueExpr:=ReadExpr(baseType.Typ);
+         if not baseType.Typ.IsCompatible(valueExpr.Typ) then begin
+            if     valueExpr.Typ.IsOfType(FProg.TypInteger)
+               and baseType.Typ.IsOfType(FProg.TypFloat) then begin
+               valueExpr:=TConvIntToFloatExpr.Create(FProg, valueExpr)
+            end else begin
+               IncompatibleTypes(hotPos, CPE_AssignIncompatibleTypes,
+                                 valueExpr.Typ, baseType.Typ);
+            end;
+         end;
+
+         Result := TAssociativeArraySetExpr.Create(FTok.HotPos, baseExpr, keyExpr, valueExpr);
+         keyExpr := nil;
+         Exit;
+
+      end else begin
+
+         baseExpr := TAssociativeArrayGetExpr.Create(FTok.HotPos, baseExpr, keyExpr, baseType);
+         keyExpr := nil;
+
+      end;
+
+   except
+      keyExpr.Free;
+      raise;
+   end;
+
+   Result := baseExpr;
+end;
+
 // ReadSymbolMemberExpr
 //
 function TdwsCompiler.ReadSymbolMemberExpr(var expr : TProgramExpr;
@@ -5792,6 +5860,11 @@ begin
 
             Result:=nil;
             Result:=ReadStringMethod(name, namePos, expr as TTypedExpr);
+
+         // Associative Array symbol
+         end else if baseType is TAssociativeArraySymbol then begin
+
+            Result:=ReadAssociativeArrayMethod(name, namePos, Result as TTypedExpr);
 
          // "set of" symbol
          end else if baseType is TSetOfSymbol then begin
@@ -7461,7 +7534,7 @@ end;
 
 // ReadArrayType
 //
-function TdwsCompiler.ReadArrayType(const TypeName: UnicodeString; typeContext : TdwsReadTypeContext): TArraySymbol;
+function TdwsCompiler.ReadArrayType(const TypeName: UnicodeString; typeContext : TdwsReadTypeContext): TTypeSymbol;
 var
    hotPos : TScriptPos;
 
@@ -7500,27 +7573,30 @@ begin
 
             if lowBound is TTypeReferenceExpr then begin
 
-               // handle "array [TEnum] of" special case
+               // handle "array [someType] of" special cases
 
                if TTypeReferenceExpr(lowBound).Typ is TBaseBooleanSymbol then begin
 
                   min.Insert0(TConstExpr.CreateBooleanValue(FProg, False));
                   max.Insert0(TConstExpr.CreateBooleanValue(FProg, True));
 
+               end else if TTypeReferenceExpr(lowBound).Typ is TEnumerationSymbol then begin
+
+                  enumSymbol:=TEnumerationSymbol(TTypeReferenceExpr(lowBound).Typ);
+
+                  min.Insert0(TConstExpr.CreateIntegerValue(FProg, enumSymbol, enumSymbol.LowBound));
+                  max.Insert0(TConstExpr.CreateIntegerValue(FProg, enumSymbol, enumSymbol.HighBound));
+
+               end else if (min.Count=0) and FTok.TestDelete(ttARIGHT) then begin
+
+                  Result:=ReadAssociativeArrayType(typeName, TTypeReferenceExpr(lowBound).Typ, typeContext);
+                  lowBound.Free;
+                  Exit;
+
                end else begin
 
-                  if not (TTypeReferenceExpr(lowBound).Typ is TEnumerationSymbol) then
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_ArrayBoundNotOrdinal)
 
-                     FMsgs.AddCompilerError(FTok.HotPos, CPE_ArrayBoundNotOrdinal)
-
-                  else begin
-
-                     enumSymbol:=TEnumerationSymbol(TTypeReferenceExpr(lowBound).Typ);
-
-                     min.Insert0(TConstExpr.CreateIntegerValue(FProg, enumSymbol, enumSymbol.LowBound));
-                     max.Insert0(TConstExpr.CreateIntegerValue(FProg, enumSymbol, enumSymbol.HighBound));
-
-                  end;
                end;
                lowBound.Free;
 
@@ -7612,6 +7688,20 @@ begin
    end;
 end;
 
+// ReadAssociativeArrayType
+//
+function TdwsCompiler.ReadAssociativeArrayType(const typeName : UnicodeString; keyType : TTypeSymbol;
+                                               typeContext : TdwsReadTypeContext) : TAssociativeArraySymbol;
+var
+   elementType : TTypeSymbol;
+begin
+   if not FTok.TestDelete(ttOF) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_OfExpected);
+
+   elementType:=ReadType('', typeContext);
+   Result:=TAssociativeIntegerArraySymbol.Create(typeName, elementType, keyType);
+end;
+
 // ReadArrayConstant
 //
 function TdwsCompiler.ReadArrayConstant(closingToken : TTokenType;
@@ -7662,6 +7752,7 @@ var
 
 var
    expr : TTypedExpr;
+   hotPos : TScriptPos;
 begin
    factory:=TStandardSymbolFactory.Create(Self);
    Result:=TArrayConstantExpr.Create(FProg, FTok.HotPos);
@@ -7672,11 +7763,14 @@ begin
       if not FTok.TestDelete(closingToken) then begin
          // At least one argument was found
          repeat
+            hotPos:=FTok.CurrentPos;
             expr:=factory.ReadInitExpr(itemExpecting);
             if expr<>nil then begin
                if FTok.TestDelete(ttDOTDOT) then
                   ReadArrayConstantRange(TArrayConstantExpr(Result), expr)
-               else TArrayConstantExpr(Result).AddElementExpr(FProg, expr);
+               else begin
+                  TArrayConstantExpr(Result).AddElementExpr(hotPos, FProg, expr);
+               end;
             end;
          until not FTok.TestDelete(ttCOMMA);
 
@@ -7986,6 +8080,67 @@ begin
                CheckRestricted;
                CheckArguments(0, 0);
                Result:=TArrayReverseExpr.Create(namePos, baseExpr);
+            end;
+
+         else
+            FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
+         end;
+      except
+         OrphanObject(Result);
+         for i:=0 to argList.Count-1 do
+            OrphanObject(argList[i]);
+         argList.Clear;
+         raise;
+      end;
+   finally
+      argSymTable.Free;
+      argList.Free;
+   end;
+end;
+
+// ReadAssociativeArrayMethod
+//
+function TdwsCompiler.ReadAssociativeArrayMethod(const name : UnicodeString; const namePos : TScriptPos;
+                                                 baseExpr : TTypedExpr) : TProgramExpr;
+var
+   argList : TTypedExprList;
+   argPosArray : TScriptPosArray;
+   argSymTable : TUnSortedSymbolTable;
+   i : Integer;
+   methodKind : TArrayMethodKind;
+
+   function CheckArguments(expectedMin, expectedMax : Integer) : Boolean;
+   begin
+      Result:=argList.Count in [expectedMin..expectedMax];
+      if not Result then begin
+         if expectedMax=0 then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_NoArgumentsExpected)
+         else if argList.Count>expectedMax then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_TooManyArguments)
+         else FMsgs.AddCompilerError(FTok.HotPos, CPE_TooFewArguments);
+      end;
+   end;
+
+begin
+   Result:=nil;
+   argSymTable:=nil;
+   argList:=TTypedExprList.Create;
+   try
+      methodKind:=NameToArrayMethod(name, FMsgs, namePos);
+
+      ReadArguments(argList.AddExpr, ttBLEFT, ttBRIGHT, argPosArray, argList.ExpectedArg);
+
+      try
+         case methodKind of
+
+            amkLength, amkCount : begin
+               CheckArguments(0, 0);
+               Result:=TAssociativeArrayLengthExpr.Create(FProg, baseExpr);
+            end;
+
+            amkClear : begin
+               CheckArguments(0, 0);
+               Result:=TAssociativeArrayClearExpr.Create(namePos, baseExpr);
             end;
 
          else
@@ -12660,8 +12815,14 @@ begin
                      Result:=TAssignExpr.Create(FProg, scriptPos, FExec, left,
                                                 TObjAsIntfExpr.Create(FProg, scriptPos, right, intfSymbol));
                   end else Result:=TAssignExpr.Create(FProg, scriptPos, FExec, left, right);
-               end else if leftTyp.ClassType=TDynamicArraySymbol then begin
-                  Result:=TAssignExpr.Create(FProg, scriptPos, FExec, left, right);
+               end else if    (leftTyp.ClassType=TDynamicArraySymbol)
+                           or (leftTyp is TAssociativeArraySymbol) then begin
+                  if right.ClassType=TConstNilExpr then begin
+                     right.Free;
+                     Result:=TAssignNilAsResetExpr.CreateVal(FProg, scriptPos, FExec, left);
+                  end else begin
+                     Result:=TAssignExpr.Create(FProg, scriptPos, FExec, left, right);
+                  end;
                end else if     right.InheritsFrom(TDataExpr)
                            and (   (right.Typ.Size<>1)
                                 or (right.Typ is TArraySymbol)

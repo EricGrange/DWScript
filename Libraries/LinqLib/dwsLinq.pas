@@ -690,7 +690,7 @@ begin
             sl.Add(TsqlIdentifier(arg).GetValue(params, prog, newParam))
          else begin
             sl.Add(newParam());
-            params.AddElementExpr(prog, arg as TTypedExpr);
+            params.AddElementExpr(cNullPos, prog, arg as TTypedExpr);
          end;
       end;
       result := self.Value + '(' + sl.CommaText + ')';

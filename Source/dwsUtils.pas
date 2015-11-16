@@ -834,8 +834,10 @@ function WhichPowerOfTwo(const v : Int64) : Integer;
 
 function SimpleStringHash(const s : UnicodeString) : Cardinal; inline;
 function SimpleLowerCaseStringHash(const s : UnicodeString) : Cardinal;
+function SimpleByteHash(p : PByte; n : Integer) : Cardinal;
 
 function SimpleIntegerHash(x : Cardinal) : Cardinal;
+function SimpleInt64Hash(x : Int64) : Cardinal;
 
 function RawByteStringToScriptString(const s : RawByteString) : UnicodeString; overload; inline;
 procedure RawByteStringToScriptString(const s : RawByteString; var result : UnicodeString); inline; overload;
@@ -949,14 +951,41 @@ begin
    end;
 end;
 
+// SimpleByteHash
+//
+function SimpleByteHash(p : PByte; n : Integer) : Cardinal;
+begin
+   Result:=2166136261;
+   for n:=n downto 1 do begin
+      Result:=(Result xor p^)*16777619;
+      Inc(p);
+   end;
+end;
+
 // SimpleIntegerHash
 //
 function SimpleIntegerHash(x : Cardinal) : Cardinal;
 begin
-   // cf. http://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
-    x := ((x shr 16) xor x) * $45d9f3b;
-    x := ((x shr 16) xor x) * $45d9f3b;
-    Result := ((x shr 16) xor x);
+   // simplified MurmurHash 3
+   Result := x * $cc9e2d51;
+   Result := (Result shl 15) or (Result shr 17);
+   Result := Result * $1b873593 + $e6546b64;
+end;
+
+// SimpleInt64Hash
+//
+function SimpleInt64Hash(x : Int64) : Cardinal;
+var
+   k : Cardinal;
+begin
+   // simplified MurmurHash 3
+   Result := Cardinal(x) * $cc9e2d51;
+   Result := (Result shl 15) or (Result shr 17);
+   Result := Result * $1b873593 + $e6546b64;
+
+   k := (x shr 32) * $cc9e2d51;
+   k := (k shl 15) or (k shr 17);
+   Result := k * $1b873593 xor Result;
 end;
 
 // ScriptStringToRawByteString

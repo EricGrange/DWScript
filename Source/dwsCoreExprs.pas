@@ -375,6 +375,54 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
+   // Associative array x[key] for expressions
+   TAssociativeArrayGetExpr = class (TPosDataExpr)
+      protected
+         FBaseExpr : TDataExpr;
+         FKeyExpr : TTypedExpr;
+         FElementSize : Integer;
+
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+         function GetBaseType : TTypeSymbol; override;
+
+      public
+         constructor Create(const aScriptPos: TScriptPos;
+                            baseExpr: TDataExpr; keyExpr: TTypedExpr;
+                            arraySymbol : TAssociativeArraySymbol);
+         destructor Destroy; override;
+
+         function IsWritable : Boolean; override;
+
+         function SameDataExpr(expr : TTypedExpr) : Boolean; override;
+
+         procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
+
+         property BaseExpr : TDataExpr read FBaseExpr;
+         property KeyExpr : TTypedExpr read FKeyExpr;
+   end;
+
+   TAssociativeArraySetExpr = class (TNoResultExpr)
+      protected
+         FBaseExpr : TDataExpr;
+         FKeyExpr : TTypedExpr;
+         FValueExpr : TTypedExpr;
+
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(const aScriptPos: TScriptPos; baseExpr: TDataExpr;
+                            keyExpr, valueExpr: TTypedExpr);
+         destructor Destroy; override;
+
+         procedure EvalNoResult(exec : TdwsExecution); override;
+
+         property BaseExpr : TDataExpr read FBaseExpr;
+         property KeyExpr : TTypedExpr read FKeyExpr;
+         property ValueExpr : TTypedExpr read FValueExpr;
+   end;
+
    // Record expression: record.member
    TRecordExpr = class(TPosDataExpr)
       protected
@@ -544,7 +592,12 @@ type
    TOpenArrayLengthExpr = class(TArrayLengthExpr)
       public
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+   end;
 
+   // length of an associative array
+   TAssociativeArrayLengthExpr = class(TUnaryOpIntExpr)
+      public
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
    // left[right] UnicodeString read access
@@ -596,7 +649,7 @@ type
          property LengthExprCount : Integer read FLengthExprs.FCount;
    end;
 
-   // Pseudo-method for dynamic array
+   // Pseudo-method for dynamic and associative arrays
    TArrayPseudoMethodExpr = class(TNoResultExpr)
       private
          FBaseExpr : TTypedExpr;
@@ -914,6 +967,11 @@ type
          property AddExpr : TArrayAddExpr read FAddExpr;
          property ArgExpr[index : Integer] : TTypedExpr read GetArgs;
          function ArgCount : Integer; inline;
+   end;
+
+   TAssociativeArrayClearExpr = class (TArrayPseudoMethodExpr)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TAssignedExpr = class(TUnaryOpBoolExpr)
@@ -1327,6 +1385,7 @@ type
    TAssignConstExpr = class (TAssignExpr)
       public
          procedure TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution); override;
+         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
          function RightValue : Variant; virtual; abstract;
    end;
 
@@ -1402,6 +1461,12 @@ type
 
    // left := nil (class)
    TAssignNilClassToVarExpr = class(TAssignNilToVarExpr)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+
+   // left := nil (reset to default type)
+   TAssignNilAsResetExpr = class(TAssignNilToVarExpr)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
@@ -3381,6 +3446,137 @@ begin
 end;
 
 // ------------------
+// ------------------ TAssociativeArrayGetExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TAssociativeArrayGetExpr.Create(const aScriptPos: TScriptPos;
+                            baseExpr: TDataExpr; keyExpr: TTypedExpr;
+                            arraySymbol : TAssociativeArraySymbol);
+begin
+   inherited Create(aScriptPos, arraySymbol.Typ);
+   FBaseExpr := baseExpr;
+   FKeyExpr := KeyExpr;
+   FElementSize := FTyp.Size; // Necessary because of arrays of records!
+end;
+
+// Destroy
+//
+destructor TAssociativeArrayGetExpr.Destroy;
+begin
+   inherited;
+   FBaseExpr.Free;
+   FKeyExpr.Free;
+end;
+
+// GetSubExpr
+//
+function TAssociativeArrayGetExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if i=0 then
+      Result:=FBaseExpr
+   else Result:=FKeyExpr;
+end;
+
+// GetSubExprCount
+//
+function TAssociativeArrayGetExpr.GetSubExprCount : Integer;
+begin
+   Result:=2;
+end;
+
+// GetBaseType
+//
+function TAssociativeArrayGetExpr.GetBaseType : TTypeSymbol;
+begin
+   Result:=FTyp;
+end;
+
+// IsWritable
+//
+function TAssociativeArrayGetExpr.IsWritable : Boolean;
+begin
+   Result:=FBaseExpr.IsWritable;
+end;
+
+// SameDataExpr
+//
+function TAssociativeArrayGetExpr.SameDataExpr(expr : TTypedExpr) : Boolean;
+begin
+   Result:=    (ClassType=expr.ClassType)
+           and BaseExpr.SameDataExpr(TAssociativeArrayGetExpr(expr).BaseExpr)
+           and KeyExpr.SameDataExpr(TAssociativeArrayGetExpr(expr).KeyExpr);
+end;
+
+// GetDataPtr
+//
+procedure TAssociativeArrayGetExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
+var
+   base : IScriptAssociativeArray;
+begin
+   FBaseExpr.EvalAsScriptAssociativeArray(exec, base);
+
+   TScriptAssociativeArray(base.GetSelf).GetDataPtr(exec, KeyExpr, result);
+end;
+
+// ------------------
+// ------------------ TAssociativeArraySetExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TAssociativeArraySetExpr.Create(const aScriptPos: TScriptPos;
+                                            baseExpr: TDataExpr; keyExpr, valueExpr: TTypedExpr);
+begin
+   inherited Create(aScriptPos);
+   FBaseExpr:=baseExpr;
+   FKeyExpr:=keyExpr;
+   FValueExpr:=valueExpr;
+end;
+
+// Destroy
+//
+destructor TAssociativeArraySetExpr.Destroy;
+begin
+   inherited;
+   FBaseExpr.Free;
+   FKeyExpr.Free;
+   FValueExpr.Free;
+end;
+
+// GetSubExpr
+//
+function TAssociativeArraySetExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FBaseExpr;
+      1 : Result:=FKeyExpr;
+   else
+      Result:=FValueExpr;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TAssociativeArraySetExpr.GetSubExprCount : Integer;
+begin
+   Result:=2;
+end;
+
+// EvalNoResult
+//
+procedure TAssociativeArraySetExpr.EvalNoResult(exec : TdwsExecution);
+var
+   aa : TScriptAssociativeArray;
+   base : IScriptAssociativeArray;
+begin
+   FBaseExpr.EvalAsScriptAssociativeArray(exec, base);
+   aa:=TScriptAssociativeArray(base.GetSelf);
+   aa.ReplaceValue(exec, KeyExpr, valueExpr);
+end;
+
+// ------------------
 // ------------------ TRecordExpr ------------------
 // ------------------
 
@@ -4002,6 +4198,20 @@ end;
 function TOpenArrayLengthExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
    Result:=TDataExpr(FExpr).DataPtr[exec].DataLength+FDelta;
+end;
+
+// ------------------
+// ------------------ TAssociativeArrayLengthExpr ------------------
+// ------------------
+
+// EvalAsInteger
+//
+function TAssociativeArrayLengthExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+var
+   aa : IScriptAssociativeArray;
+begin
+   Expr.EvalAsScriptAssociativeArray(exec, aa);
+   Result:=aa.Count;
 end;
 
 // ------------------
@@ -5896,6 +6106,13 @@ begin
    // nothing, checked during optimize
 end;
 
+// Optimize
+//
+function TAssignConstExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   Result:=Self;
+end;
+
 // ------------------
 // ------------------ TAssignConstToIntegerVarExpr ------------------
 // ------------------
@@ -6069,6 +6286,20 @@ end;
 procedure TAssignNilClassToVarExpr.EvalNoResult(exec : TdwsExecution);
 begin
    TVarExpr(FLeft).AssignValueAsInteger(exec, 0);
+end;
+
+// ------------------
+// ------------------ TAssignNilAsResetExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TAssignNilAsResetExpr.EvalNoResult(exec : TdwsExecution);
+var
+   dataPtr : IDataContext;
+begin
+   TVarExpr(FLeft).GetDataPtr(exec, dataPtr);
+   FLeft.Typ.InitData(dataPtr.AsPData^, dataPtr.Addr);
 end;
 
 // ------------------
@@ -9584,6 +9815,20 @@ end;
 function TArrayConcatExpr.GetArgs(index : Integer) : TTypedExpr;
 begin
    Result:=FAddExpr.ArgExpr[index];
+end;
+
+// ------------------
+// ------------------ TAssociativeArrayClearExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TAssociativeArrayClearExpr.EvalNoResult(exec : TdwsExecution);
+var
+   aa : IScriptAssociativeArray;
+begin
+   FBaseExpr.EvalAsScriptAssociativeArray(exec, aa);
+   aa.Clear;
 end;
 
 // ------------------

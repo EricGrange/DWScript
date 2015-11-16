@@ -1,0 +1,2 @@
+Syntax Error: Bound isn't of an ordinal type [line: 1, column: 23]
+Syntax Error: Expression expected [line: 1, column: 25]

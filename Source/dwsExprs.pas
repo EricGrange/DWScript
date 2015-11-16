@@ -946,6 +946,7 @@ type
          procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
          procedure EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface); override;
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
+         procedure EvalAsScriptAssociativeArray(exec : TdwsExecution; var result : IScriptAssociativeArray); override;
 
          procedure AssignValue(exec : TdwsExecution; const value : Variant); override;
          procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
@@ -1843,6 +1844,34 @@ type
          function CompareString(i1, i2 : Integer) : Integer;
          function CompareInteger(i1, i2 : Integer) : Integer;
          function CompareFloat(i1, i2 : Integer) : Integer;
+   end;
+
+   TScriptAssociativeArray = class (TScriptObj, IScriptAssociativeArray)
+      private
+         FElementTyp, FKeyTyp : TTypeSymbol;
+         FElementSize, FKeySize : Integer;
+
+         FCount : Integer;
+         FCapacity, FGrowth : Integer;
+         FHashCodes : array of Cardinal;
+         FKeys : TData;
+
+      protected
+         procedure Grow;
+         function LinearFind(const item : IDataContext; var index : Integer) : Boolean;
+
+         procedure IndexExprToKeyAndHashCode(exec : TdwsExecution; index : TTypedExpr;
+                                             out key : IDataContext; out hashCode : Cardinal);
+
+      public
+         class function CreateNew(keyTyp, elemTyp : TTypeSymbol) : TScriptAssociativeArray; static;
+
+         procedure GetDataPtr(exec : TdwsExecution; index : TTypedExpr; var result : IDataContext);
+         //procedure ReplaceData(exec : TdwsExecution; index : Int64; value : TDataExpr);
+         procedure ReplaceValue(exec : TdwsExecution; index, value : TTypedExpr);
+
+         procedure Clear;
+         function Count : Integer;
    end;
 
    TScriptInterface = class(TScriptObj, IScriptObjInterface)
@@ -3809,6 +3838,17 @@ begin
    EvalAsVariant(exec, buf);
    Assert(VarType(buf)=varUnknown);
    Result:=(IUnknown(TVarData(buf).VUnknown) as IScriptDynArray);
+end;
+
+// EvalAsScriptAssociativeArray
+//
+procedure TProgramExpr.EvalAsScriptAssociativeArray(exec : TdwsExecution; var result : IScriptAssociativeArray);
+var
+   buf : Variant;
+begin
+   EvalAsVariant(exec, buf);
+   Assert(VarType(buf)=varUnknown);
+   Result:=(IUnknown(TVarData(buf).VUnknown) as IScriptAssociativeArray);
 end;
 
 // AssignValue
@@ -7062,6 +7102,170 @@ begin
 end;
 
 // ------------------
+// ------------------ TScriptAssociativeIntegerArray ------------------
+// ------------------
+
+// TScriptAssociativeIntegerArray_InitData
+//
+procedure TScriptAssociativeIntegerArray_InitData(typ : TTypeSymbol; var result : Variant);
+var
+   a : TAssociativeArraySymbol;
+begin
+   a:=(typ as TAssociativeArraySymbol);
+   result:=IScriptAssociativeArray(TScriptAssociativeArray.CreateNew(a.KeyType, a.Typ));
+end;
+
+// CreateNew
+//
+class function TScriptAssociativeArray.CreateNew(keyTyp, elemTyp : TTypeSymbol) : TScriptAssociativeArray;
+var
+   size : Integer;
+begin
+   Result:=TScriptAssociativeArray.Create;
+
+   if keyTyp<>nil then
+      size:=keyTyp.Size
+   else size:=0;
+   Assert(size=1);    // other cases TODO
+   Result.FKeyTyp:=keyTyp;
+   Result.FKeySize:=size;
+
+   if elemTyp<>nil then
+      size:=elemTyp.Size
+   else size:=0;
+   Assert(size=1);    // other cases TODO
+   Result.FElementTyp:=elemTyp;
+   Result.FElementSize:=size;
+end;
+
+// Grow
+//
+procedure TScriptAssociativeArray.Grow;
+var
+   i, j, n : Integer;
+   oldHashCodes : array of Integer;
+   oldKeys, oldData : TData;
+begin
+   if FCapacity=0 then
+      FCapacity:=32
+   else FCapacity:=FCapacity*2;
+   FGrowth:=(FCapacity*11) div 16;
+
+   oldKeys:=FKeys;
+   oldData:=AsData;
+
+   FHashCodes:=nil;
+   SetLength(FHashCodes, FCapacity);
+
+   FKeys:=nil;
+   SetLength(FKeys, FCapacity*FKeySize);
+
+   ClearData;
+   SetDataLength(FCapacity*FElementSize);
+
+   n:=FCapacity-1;
+   for i:=0 to High(oldHashCodes) do begin
+      if oldHashCodes[i]=0 then continue;
+      j:=(oldHashCodes[i] and (FCapacity-1));
+      while FHashCodes[j]<>0 do
+         j:=(j+1) and n;
+      FHashCodes[j]:=oldHashCodes[i];
+      DWSCopyData(oldKeys, i*FKeySize, FKeys, j*FKeySize, FKeySize);
+      DWSCopyData(oldData, i*FElementSize, AsData, j*FElementSize, FElementSize);
+   end;
+end;
+
+// LinearFind
+//
+function TScriptAssociativeArray.LinearFind(const item : IDataContext; var index : Integer) : Boolean;
+begin
+   repeat
+      if FHashCodes[index]=0 then
+         Exit(False)
+      else if item.SameData(0, FKeys, index*FKeySize, FKeySize) then
+         Exit(True);
+      index:=(index+1) and (FCapacity-1);
+   until False;
+end;
+
+// IndexExprToKeyAndHashCode
+//
+procedure TScriptAssociativeArray.IndexExprToKeyAndHashCode(exec : TdwsExecution;
+         index : TTypedExpr; out key : IDataContext; out hashCode : Cardinal);
+var
+   v : Variant;
+begin
+   if FKeySize>1 then
+      (index as TDataExpr).GetDataPtr(exec, key)
+   else begin
+      index.EvalAsVariant(exec, v);
+      exec.DataContext_CreateValue(v, key);
+   end;
+   hashCode:=key.HashCode(FKeySize);
+end;
+
+// GetDataPtr
+//
+procedure TScriptAssociativeArray.GetDataPtr(exec : TdwsExecution; index : TTypedExpr; var result : IDataContext);
+var
+   i : Integer;
+   hashCode : Cardinal;
+   key : IDataContext;
+begin
+   if FCount>0 then begin
+      IndexExprToKeyAndHashCode(exec, index, key, hashCode);
+      i:=(hashCode and (FCapacity-1));
+      if LinearFind(key, i) then begin
+         CreateOffset(i*FElementSize, result);
+         Exit;
+      end;
+   end;
+   exec.DataContext_CreateEmpty(FElementSize, result);
+   FElementTyp.InitData(result);
+end;
+
+// ReplaceValue
+//
+procedure TScriptAssociativeArray.ReplaceValue(exec : TdwsExecution; index, value : TTypedExpr);
+var
+   i : Integer;
+   hashCode : Cardinal;
+   key : IDataContext;
+begin
+   if FCount>=FGrowth then Grow;
+
+   IndexExprToKeyAndHashCode(exec, index, key, hashCode);
+   i:=(hashCode and (FCapacity-1));
+   if not LinearFind(key, i) then begin
+      FHashCodes[i]:=hashCode;
+      key.CopyData(FKeys, i*FKeySize, FKeySize);
+      Inc(FCount);
+   end;
+   if FElementSize>1 then
+      WriteData((value as TDataExpr).GetDataPtrFunc(exec), FElementSize)
+   else value.EvalAsVariant(exec, AsPVariant(i)^);
+end;
+
+// Clear
+//
+procedure TScriptAssociativeArray.Clear;
+begin
+   SetDataLength(0);
+   FKeys:=nil;
+   FHashCodes:=nil;
+   FCount:=0;
+   FCapacity:=0;
+   FGrowth:=0;
+end;
+
+// Count
+//
+function TScriptAssociativeArray.Count : Integer;
+begin
+   Result:=FCount;
+end;
+
+// ------------------
 // ------------------ TScriptInterface ------------------
 // ------------------
 
@@ -8557,7 +8761,9 @@ initialization
 // ------------------------------------------------------------------
 
    TdwsGuardianThread.Initialize;
+
    TDynamicArraySymbol.SetInitDynamicArrayProc(TScriptDynamicArray_InitData);
+   TAssociativeIntegerArraySymbol.SetInitAssociativeIntegerArrayProc(TScriptAssociativeIntegerArray_InitData);
 
 finalization
 

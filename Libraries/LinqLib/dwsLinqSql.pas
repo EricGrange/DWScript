@@ -203,7 +203,7 @@ begin
       result := TSqlIdentifier(expr).Value
    else begin
       result := NewParam;
-      FParams.AddElementExpr(compiler.CurrentProg, expr);
+      FParams.AddElementExpr(cNullPos, compiler.CurrentProg, expr);
       expr.IncRefCount;
       if expr.typ.classtype = TDynamicArraySymbol then
          FListParams.Add(result)
@@ -357,7 +357,7 @@ begin
       for i := 0 to High do
       begin
          paramList.Add(':a' + intToStr(i));
-         params.AddElementExpr(prog, TConstExpr.Create(Prog, prog.TypVariant, obj.AsVariant[i]));
+         params.AddElementExpr(cNullPos, prog, TConstExpr.Create(Prog, prog.TypVariant, obj.AsVariant[i]));
       end;
       result := StringReplace(query, param, format('(%s)', [paramList.CommaText]), []);
    finally
@@ -400,7 +400,7 @@ begin
          while counter < index do
          begin
             sub := FParams.SubExpr[counter] as TTypedExpr;
-            params.AddElementExpr(prog, sub);
+            params.AddElementExpr(cNullPos, prog, sub);
             sub.IncRefCount;
             inc(counter);
          end;

@@ -73,6 +73,8 @@ type
       procedure WriteData(const src : IDataContext; size : Integer); overload;
       procedure WriteData(const srcData : TData; srcAddr, size : Integer); overload;
       function SameData(addr : Integer; const otherData : TData; otherAddr, size : Integer) : Boolean; overload;
+
+      function  HashCode(size : Integer) : Cardinal;
    end;
 
    TDataContext = class;
@@ -157,10 +159,13 @@ type
          procedure WriteData(const src : IDataContext; size : Integer); overload; inline;
          procedure WriteData(const srcData : TData; srcAddr, size : Integer); overload; inline;
          function  SameData(addr : Integer; const otherData : TData; otherAddr, size : Integer) : Boolean; overload; inline;
+         function  SameData(addr : Integer; const otherData : IDataContext; size : Integer) : Boolean; overload; inline;
 
          procedure ReplaceData(const newData : TData); virtual;
          procedure ClearData; virtual;
          procedure SetDataLength(n : Integer);
+
+         function  HashCode(size : Integer) : Cardinal;
    end;
 
 procedure DWSCopyData(const sourceData : TData; sourceAddr : Integer;
@@ -168,6 +173,11 @@ procedure DWSCopyData(const sourceData : TData; sourceAddr : Integer;
 function DWSSameData(const data1, data2 : TData; offset1, offset2, size : Integer) : Boolean; overload;
 function DWSSameData(const data1, data2 : TData) : Boolean; overload;
 function DWSSameVariant(const v1, v2 : Variant) : Boolean;
+
+procedure DWSHashCode(var partial : Cardinal; const v : Variant); overload;
+function DWSHashCode(const v : Variant) : Cardinal; overload;
+function DWSHashCode(const data : TData; offset, size : Integer) : Cardinal; overload;
+
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -242,6 +252,66 @@ begin
       end;
    end;
 end;
+
+// DWSHashCode
+//
+procedure DWSHashCode(var partial : Cardinal; const v : Variant); overload;
+var
+   buf : Cardinal;
+   k : PByte;
+   n : Integer;
+   p : PVarData;
+begin
+   p := @v;
+   k := @p.VByte;
+   case p.VType of
+      varByte, varBoolean, varShortInt : // 8 bits
+         n := 1;
+      varSmallint, varWord :  // 16 bits
+         n := 2;
+      varInteger, varSingle, varLongWord, varUnknown, varDispatch : // 32 bits
+         n := 4;
+      varInt64, varDouble, varCurrency, varDate, varUInt64 : begin // 64 bits
+         n := 8;
+      end;
+      varUString : begin
+         if p.VUString <> nil then begin
+            buf := SimpleStringHash(String(p.VUString));
+            k := @buf;
+         end;
+         n := 4;
+      end;
+      varString : begin
+         if p.VString <> nil then begin
+            k := p.VString;
+            n := Length(AnsiString(p.VString));
+         end else n := 4;
+      end;
+   else
+      k := @p.VType;
+      n := 1;
+   end;
+   for n:=n downto 1 do begin
+      partial := (partial xor k^)*16777619;
+      Inc(k);
+   end;
+end;
+
+function DWSHashCode(const v : Variant) : Cardinal;
+begin
+   Result := 2166136261;
+   DWSHashCode(Result, v);
+end;
+
+function DWSHashCode(const data : TData; offset, size : Integer) : Cardinal;
+var
+   i : Integer;
+begin
+   Result := 2166136261;
+   for i := offset to offset+size-1 do
+      DWSHashCode(Result, data[i]);
+end;
+
 
 // ------------------
 // ------------------ TDataContextPool ------------------
@@ -611,6 +681,13 @@ begin
    Result:=DWSSameData(FData, otherData, FAddr+addr, otherAddr, size);
 end;
 
+// SameData
+//
+function TDataContext.SameData(addr : Integer; const otherData : IDataContext; size : Integer) : Boolean;
+begin
+   Result:=DWSSameData(FData, otherData.AsPData^, FAddr+addr, otherData.Addr, size);
+end;
+
 // ReplaceData
 //
 procedure TDataContext.ReplaceData(const newData : TData);
@@ -631,6 +708,13 @@ end;
 procedure TDataContext.SetDataLength(n : Integer);
 begin
    SetLength(FData, n);
+end;
+
+// HashCode
+//
+function TDataContext.HashCode(size : Integer) : Cardinal;
+begin
+   Result:=DWSHashCode(FData, FAddr, size);
 end;
 
 end.
