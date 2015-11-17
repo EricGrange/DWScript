@@ -1087,25 +1087,22 @@ type
    end;
 
    // associative array aka dictionary
-   TAssociativeArraySymbol = class abstract (TTypeSymbol)
+   TAssociativeArraySymbol = class sealed (TTypeSymbol)
       private
          FKeyType : TTypeSymbol;
 
       public
          constructor Create(const name : UnicodeString; elementType, keyType : TTypeSymbol);
 
+         procedure InitData(const Data: TData; Offset: Integer); override;
+
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsPointerType : Boolean; override;
          function SameType(typSym : TTypeSymbol) : Boolean; override;
 
          property KeyType : TTypeSymbol read FKeyType;
-   end;
 
-   TAssociativeIntegerArraySymbol = class sealed (TAssociativeArraySymbol)
-      public
-         procedure InitData(const Data: TData; Offset: Integer); override;
-
-         class procedure SetInitAssociativeIntegerArrayProc(const aProc : TInitDataProc);
+         class procedure SetInitAssociativeArrayProc(const aProc : TInitDataProc);
    end;
 
    // TMembersSymbolTable
@@ -6369,12 +6366,29 @@ end;
 // ------------------ TAssociativeArraySymbol ------------------
 // ------------------
 
+var
+   vInitAssociativeArray : TInitDataProc;
+
 // Create
 //
 constructor TAssociativeArraySymbol.Create(const name : UnicodeString; elementType, keyType : TTypeSymbol);
 begin
    inherited Create(name, elementType);
    FKeyType:=keyType;
+end;
+
+// InitData
+//
+procedure TAssociativeArraySymbol.InitData(const Data: TData; Offset: Integer);
+begin
+   vInitAssociativeArray(Self, Data[Offset]);
+end;
+
+// SetInitAssociativeArrayProc
+//
+class procedure TAssociativeArraySymbol.SetInitAssociativeArrayProc(const aProc : TInitDataProc);
+begin
+   vInitAssociativeArray:=aProc;
 end;
 
 // IsCompatible
@@ -6399,27 +6413,6 @@ begin
    Result:=    (typSym<>nil)
            and (typSym.ClassType=ClassType)
            and Typ.SameType(typSym.Typ);
-end;
-
-// ------------------
-// ------------------ TAssociativeIntegerArraySymbol ------------------
-// ------------------
-
-var
-   vInitAssociativeIntegerArray : TInitDataProc;
-
-// InitData
-//
-procedure TAssociativeIntegerArraySymbol.InitData(const Data: TData; Offset: Integer);
-begin
-   vInitAssociativeIntegerArray(Self, Data[Offset]);
-end;
-
-// SetInitAssociativeIntegerArrayProc
-//
-class procedure TAssociativeIntegerArraySymbol.SetInitAssociativeIntegerArrayProc(const aProc : TInitDataProc);
-begin
-   vInitAssociativeIntegerArray:=aProc;
 end;
 
 // ------------------

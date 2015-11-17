@@ -1,0 +1,2 @@
+Syntax Error: There is no overloaded version of "Foo" that can be called with these arguments [line: 27, column: 3]
+Syntax Error: There is no overloaded version of "Bar" that can be called with these arguments [line: 31, column: 3]

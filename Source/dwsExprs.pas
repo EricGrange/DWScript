@@ -1846,6 +1846,8 @@ type
          function CompareFloat(i1, i2 : Integer) : Integer;
    end;
 
+   TScriptAssociativeArrayHashCodes = array of Cardinal;
+
    TScriptAssociativeArray = class (TScriptObj, IScriptAssociativeArray)
       private
          FElementTyp, FKeyTyp : TTypeSymbol;
@@ -1853,7 +1855,7 @@ type
 
          FCount : Integer;
          FCapacity, FGrowth : Integer;
-         FHashCodes : array of Cardinal;
+         FHashCodes : TScriptAssociativeArrayHashCodes;
          FKeys : TData;
 
       protected
@@ -3836,8 +3838,14 @@ var
    buf : Variant;
 begin
    EvalAsVariant(exec, buf);
-   Assert(VarType(buf)=varUnknown);
-   Result:=(IUnknown(TVarData(buf).VUnknown) as IScriptDynArray);
+   case VarType(buf) of
+      varUnknown :
+         Result:=(IUnknown(TVarData(buf).VUnknown) as IScriptDynArray);
+      varEmpty, varNull :
+         Result:=TScriptDynamicArray.CreateNew(Typ.typ);
+   else
+      Assert(False);
+   end;
 end;
 
 // EvalAsScriptAssociativeArray
@@ -7105,9 +7113,9 @@ end;
 // ------------------ TScriptAssociativeIntegerArray ------------------
 // ------------------
 
-// TScriptAssociativeIntegerArray_InitData
+// TScriptAssociativeInteger_InitData
 //
-procedure TScriptAssociativeIntegerArray_InitData(typ : TTypeSymbol; var result : Variant);
+procedure TScriptAssociativeArray_InitData(typ : TTypeSymbol; var result : Variant);
 var
    a : TAssociativeArraySymbol;
 begin
@@ -7126,14 +7134,12 @@ begin
    if keyTyp<>nil then
       size:=keyTyp.Size
    else size:=0;
-   Assert(size=1);    // other cases TODO
    Result.FKeyTyp:=keyTyp;
    Result.FKeySize:=size;
 
    if elemTyp<>nil then
       size:=elemTyp.Size
    else size:=0;
-   Assert(size=1);    // other cases TODO
    Result.FElementTyp:=elemTyp;
    Result.FElementSize:=size;
 end;
@@ -7143,7 +7149,7 @@ end;
 procedure TScriptAssociativeArray.Grow;
 var
    i, j, n : Integer;
-   oldHashCodes : array of Integer;
+   oldHashCodes : TScriptAssociativeArrayHashCodes;
    oldKeys, oldData : TData;
 begin
    if FCapacity=0 then
@@ -7151,6 +7157,7 @@ begin
    else FCapacity:=FCapacity*2;
    FGrowth:=(FCapacity*11) div 16;
 
+   oldHashCodes:=FHashCodes;
    oldKeys:=FKeys;
    oldData:=AsData;
 
@@ -7242,7 +7249,7 @@ begin
       Inc(FCount);
    end;
    if FElementSize>1 then
-      WriteData((value as TDataExpr).GetDataPtrFunc(exec), FElementSize)
+      WriteData(i*FElementSize, (value as TDataExpr).GetDataPtrFunc(exec), FElementSize)
    else value.EvalAsVariant(exec, AsPVariant(i)^);
 end;
 
@@ -8763,7 +8770,7 @@ initialization
    TdwsGuardianThread.Initialize;
 
    TDynamicArraySymbol.SetInitDynamicArrayProc(TScriptDynamicArray_InitData);
-   TAssociativeIntegerArraySymbol.SetInitAssociativeIntegerArrayProc(TScriptAssociativeIntegerArray_InitData);
+   TAssociativeArraySymbol.SetInitAssociativeArrayProc(TScriptAssociativeArray_InitData);
 
 finalization
 

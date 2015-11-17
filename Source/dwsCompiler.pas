@@ -5672,7 +5672,7 @@ begin
       keyExpr := ReadExpr;
 
       if    (keyExpr.Typ=nil)
-         or not (   (keyExpr.Typ.UnAliasedType=baseType.KeyType.UnAliasedType)
+         or not (   (keyExpr.Typ.IsCompatible(baseType.KeyType))
                  or keyExpr.Typ.IsOfType(FProg.TypVariant)) then
          IncompatibleTypes(hotPos, CPE_ArrayIndexMismatch,
                            baseType.KeyType, keyExpr.Typ);
@@ -7589,8 +7589,11 @@ begin
 
                end else if (min.Count=0) and FTok.TestDelete(ttARIGHT) then begin
 
-                  Result:=ReadAssociativeArrayType(typeName, TTypeReferenceExpr(lowBound).Typ, typeContext);
-                  lowBound.Free;
+                  try
+                     Result:=ReadAssociativeArrayType(typeName, TTypeReferenceExpr(lowBound).Typ, typeContext);
+                  finally
+                     lowBound.Free;
+                  end;
                   Exit;
 
                end else begin
@@ -7599,6 +7602,15 @@ begin
 
                end;
                lowBound.Free;
+
+            end else if (min.Count=0) and (lowBound.Typ is TStructuredTypeMetaSymbol)
+                                      and FTok.TestDelete(ttARIGHT) then begin
+               try
+                  Result:=ReadAssociativeArrayType(typeName, lowBound.Typ.Typ, typeContext);
+               finally
+                  lowBound.Free;
+               end;
+               Exit;
 
             end else begin
 
@@ -7699,7 +7711,7 @@ begin
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_OfExpected);
 
    elementType:=ReadType('', typeContext);
-   Result:=TAssociativeIntegerArraySymbol.Create(typeName, elementType, keyType);
+   Result:=TAssociativeArraySymbol.Create(typeName, elementType, keyType);
 end;
 
 // ReadArrayConstant

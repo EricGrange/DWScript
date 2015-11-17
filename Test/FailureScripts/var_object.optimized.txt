@@ -1,0 +1,6 @@
+Syntax Error: Argument 0 expects type "TObject" instead of "TBase" [line: 21, column: 8]
+Syntax Error: Argument 0 expects type "TObject" instead of "TChild" [line: 22, column: 8]
+Syntax Error: Argument 0 expects type "TBase" instead of "TObject" [line: 24, column: 9]
+Syntax Error: Argument 0 expects type "TBase" instead of "TChild" [line: 26, column: 9]
+Syntax Error: Argument 0 expects type "TChild" instead of "TObject" [line: 28, column: 10]
+Syntax Error: Argument 0 expects type "TChild" instead of "TBase" [line: 29, column: 10]

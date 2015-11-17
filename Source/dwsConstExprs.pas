@@ -76,7 +76,8 @@ type
 
          class function CreateBooleanValue(prog : TdwsProgram; const value : Boolean) : TConstExpr; overload; static;
 
-         class function CreateDynamicArrayValue(prog : TdwsProgram; typ : TTypeSymbol; const val : IScriptDynArray) : TConstExpr; overload; static;
+         class function CreateDynamicArrayValue(prog : TdwsProgram; typ : TTypeSymbol; const val : IScriptDynArray) : TConstExpr; static;
+         class function CreateAssociativeArrayValue(prog : TdwsProgram; typ : TAssociativeArraySymbol; const val : IScriptAssociativeArray) : TConstExpr; static;
    end;
 
    TUnifiedConstExprClass = class of TUnifiedConstExpr;
@@ -372,6 +373,9 @@ begin
       Result:=TConstStringExpr.CreateUnified(prog, typ, value)
    else if typ.ClassType=TDynamicArraySymbol then
       Result:=CreateDynamicArrayValue(prog, typ, IUnknown(value) as IScriptDynArray)
+   else if typ.ClassType=TAssociativeArraySymbol then
+      Result:=CreateAssociativeArrayValue(prog, TAssociativeArraySymbol(typ),
+                                          IUnknown(value) as IScriptAssociativeArray)
    else if (typ=prog.TypInteger) or (typ.typ=prog.TypInteger) then
       Result:=CreateIntegerValue(prog, typ, value)
    else if typ=prog.TypBoolean then
@@ -468,6 +472,15 @@ begin
    if val<>nil then
       Result:=TConstExpr.Create(prog, typ, val)
    else Result:=TConstExpr.Create(prog, typ, TScriptDynamicArray.CreateNew(typ.Typ) as IScriptDynArray);
+end;
+
+// CreateAssociativeArrayValue
+//
+class function TConstExpr.CreateAssociativeArrayValue(prog : TdwsProgram; typ : TAssociativeArraySymbol; const val : IScriptAssociativeArray) : TConstExpr;
+begin
+   if val<>nil then
+      Result:=TConstExpr.Create(prog, typ, val)
+   else Result:=TConstExpr.Create(prog, typ, TScriptAssociativeArray.CreateNew(typ.KeyType, typ.Typ) as IScriptAssociativeArray);
 end;
 
 // ------------------

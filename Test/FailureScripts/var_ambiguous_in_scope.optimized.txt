@@ -1,0 +1,4 @@
+Syntax Error: Name "test" already exists [line: 5, column: 4]
+Syntax Error: Name "test" already exists [line: 11, column: 8]
+Hint: Name "test" could be ambiguous in its scope context [line: 19, column: 11]
+Hint: Name "test" could be ambiguous in its scope context [line: 32, column: 14]

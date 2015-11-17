@@ -1,0 +1,2 @@
+Hint: Name "i" could be ambiguous in its scope context [line: 13, column: 15]
+Syntax Error: Name "i" already exists [line: 17, column: 9]

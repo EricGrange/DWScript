@@ -1,0 +1,3 @@
+Syntax Error: Cannot assign a value to the left-side argument [line: 9, column: 12]
+Syntax Error: Argument 0 (o) cannot be passed as Var-parameter [line: 19, column: 12]
+Syntax Error: Cannot assign a value to the left-side argument [line: 20, column: 9]

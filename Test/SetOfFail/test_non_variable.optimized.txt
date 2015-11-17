@@ -1,0 +1,2 @@
+Syntax Error: Variable expected [line: 6, column: 9]
+Syntax Error: Variable expected [line: 8, column: 6]

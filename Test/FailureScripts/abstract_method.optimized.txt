@@ -1,0 +1,2 @@
+Error: Trying to create an instance of an abstract class [line: 16, column: 18]
+Error: Trying to create an instance of an abstract class [line: 19, column: 26]

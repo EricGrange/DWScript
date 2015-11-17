@@ -1,0 +1,2 @@
+Syntax Error: Only non-virtual class methods can be marked as static [line: 5, column: 32]
+Syntax Error: Class method expected [line: 13, column: 11]

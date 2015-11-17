@@ -157,6 +157,7 @@ type
 
          procedure CopyData(const destData : TData; destAddr, size : Integer); inline;
          procedure WriteData(const src : IDataContext; size : Integer); overload; inline;
+         procedure WriteData(destAddr : Integer; const src : IDataContext; size : Integer); overload; inline;
          procedure WriteData(const srcData : TData; srcAddr, size : Integer); overload; inline;
          function  SameData(addr : Integer; const otherData : TData; otherAddr, size : Integer) : Boolean; overload; inline;
          function  SameData(addr : Integer; const otherData : IDataContext; size : Integer) : Boolean; overload; inline;
@@ -665,6 +666,13 @@ var
 begin
    implem:=TDataContext(src.GetSelf);
    DWSCopyData(implem.FData, implem.FAddr, FData, FAddr, size);
+end;
+
+// WriteData
+//
+procedure TDataContext.WriteData(destAddr : Integer; const src : IDataContext; size : Integer);
+begin
+   DWSCopyData(src.AsPData^, src.Addr, FData, FAddr+destAddr, size);
 end;
 
 // WriteData
