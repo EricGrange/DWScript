@@ -56,6 +56,7 @@ type
       wrmvUNLOCK,
       wrmvSEARCH
    );
+   TWebRequestMethodVerbs = set of TWebRequestMethodVerb;
 
    TWebRequest = class
       private

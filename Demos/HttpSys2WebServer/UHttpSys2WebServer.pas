@@ -79,6 +79,7 @@ type
          FCacheCounter : Cardinal;
          FFileAccessInfoCacheSize : Integer;
          FDWSExtensions : array of TDWSExtension;
+         FMethodsNotAllowed : TWebRequestMethodVerbs;
 
          procedure FileChanged(sender : TdwsFileNotifier; const fileName : String;
                                changeAction : TFileNotificationAction);
@@ -91,6 +92,8 @@ type
          function HttpsDomainName : String;
 
          procedure RegisterExtensions(list : TdwsJSONValue; typ : TFileAccessType);
+
+         function ParseMethodList(list : TdwsJSONValue) : TWebRequestMethodVerbs;
 
          procedure Initialize(const basePath : TFileName; options : TdwsJSONValue); virtual;
 
@@ -179,7 +182,9 @@ const
          // List of extensions that go through the script filter
          +'"ScriptedExtensions": [".dws"],'
          // List of extensions that go through the Pascal To JavaScript  filter
-         +'"P2JSExtensions": [".p2js",".pas.js"]'
+         +'"P2JSExtensions": [".p2js",".pas.js"],'
+         // List of HTTP methods that will return a 405 'Not Allowed' response
+         +'"MethodsNotAllowed": ["TRACE"]'
       +'}';
 
 // ------------------------------------------------------------------
@@ -256,6 +261,31 @@ begin
    for i:=0 to list.ElementCount-1 do begin
       FDWSExtensions[n+i].Str:=list.Elements[i].AsString;
       FDWSExtensions[n+i].Typ:=typ;
+   end;
+end;
+
+// ParseMethodList
+//
+function THttpSys2WebServer.ParseMethodList(list : TdwsJSONValue) : TWebRequestMethodVerbs;
+var
+   i : Integer;
+   s : String;
+   v : TWebRequestMethodVerb;
+   found : Boolean;
+begin
+   Result:=[];
+   for i:=0 to list.ElementCount-1 do begin
+      s:=list.Elements[i].AsString;
+      found:=False;
+      for v:=Low(cWebRequestMethodVerbs) to High(cWebRequestMethodVerbs) do begin
+         if UnicodeSameText(s, cWebRequestMethodVerbs[v]) then begin
+            Include(Result, v);
+            found:=True;
+            Break;
+         end;
+      end;
+      if not found then
+         FDWS.LogError(Format('Unknown method verb "%s"', [s]));
    end;
 end;
 
@@ -353,6 +383,8 @@ begin
 
       FAutoRedirectFolders:=serverOptions['AutoRedirectFolders'].AsBoolean;
 
+      FMethodsNotAllowed:=ParseMethodList(serverOptions['MethodsNotAllowed']);
+
       FFileAccessInfoCacheSize:=256;
    finally
       serverOptions.Free;
@@ -386,6 +418,12 @@ var
    infoCache : TFileAccessInfoCache;
    fileInfo : TFileAccessInfo;
 begin
+   if request.MethodVerb in FMethodsNotAllowed then begin
+      response.StatusCode:=405;
+      response.ContentText['plain']:='405: Method Not Allowed';
+      Exit;
+   end;
+
    infoCache:=TFileAccessInfoCache(request.Custom);
    if infoCache=nil then begin
       infoCache:=TFileAccessInfoCache.Create(FileAccessInfoCacheSize);

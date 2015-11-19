@@ -1244,8 +1244,8 @@ const
       'OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE',
       'CONNECT', 'TRACK', 'MOVE', 'COPY', 'PROPFIND', 'PROPPATCH',
       'MKCOL', 'LOCK', 'UNLOCK', 'SEARCH' );
-var
-   verb : THttpVerb;
+var
+   verb : THttpVerb;
    request : PHTTP_REQUEST_V2;
 begin
    request := FWebRequest.Request;
