@@ -174,6 +174,8 @@ type
 
       function LiveQueries : String;
 
+      procedure LogError(const msg : String);
+
       property ScriptTimeoutMilliseconds : Integer read FScriptTimeoutMilliseconds write FScriptTimeoutMilliseconds;
       property WorkerTimeoutMilliseconds : Integer read FWorkerTimeoutMilliseconds write FWorkerTimeoutMilliseconds;
 
@@ -614,16 +616,22 @@ begin
    end;
 end;
 
-// LogCompileErrors
+// LogError
 //
-procedure TSimpleDWScript.LogCompileErrors(const fileName : String;const msgs : TdwsMessageList);
+procedure TSimpleDWScript.LogError(const msg : String);
 var
    buf : String;
 begin
    buf := #13#10+FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', Now)
-         +' in '+fileName+#13#10
-         +msgs.AsInfo+#13#10;
+         +' '+msg+#13#10;
    AppendTextToUTF8File(ErrorLogDirectory+'error.log', UTF8Encode(buf));
+end;
+
+// LogCompileErrors
+//
+procedure TSimpleDWScript.LogCompileErrors(const fileName : String; const msgs : TdwsMessageList);
+begin
+   LogError('in '+fileName+#13#10+msgs.AsInfo);
 end;
 
 // AddNotMatching
