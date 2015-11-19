@@ -109,6 +109,9 @@ type
          function CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase; override;
    end;
 
+var
+   vOnNeedSQLite3DynamicDLLName : function : String;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -118,17 +121,36 @@ implementation
 // ------------------------------------------------------------------
 
 var
-   vSQLite3DynamicCS : TFixedCriticalSection;
+   vSQLite3DynamicMRSW : TMultiReadSingleWrite;
 
 procedure InitializeSQLite3Dynamic;
-begin
-   vSQLite3DynamicCS.Enter;
-   try
-      if sqlite3=nil then
-         sqlite3:=TSQLite3LibraryDynamic.Create;
-   finally
-      vSQLite3DynamicCS.Leave;
+
+   procedure DoInitialize;
+   var
+      dllName : String;
+   begin
+      vSQLite3DynamicMRSW.BeginWrite;
+      try
+         if sqlite3=nil then begin
+            if Assigned(vOnNeedSQLite3DynamicDLLName) then
+               dllName:=vOnNeedSQLite3DynamicDLLName;
+            if dllName<>'' then
+               sqlite3:=TSQLite3LibraryDynamic.Create(dllName)
+            else sqlite3:=TSQLite3LibraryDynamic.Create;
+         end;
+      finally
+         vSQLite3DynamicMRSW.EndWrite;
+      end;
    end;
+
+begin
+   vSQLite3DynamicMRSW.BeginRead;
+   try
+      if sqlite3<>nil then Exit;
+   finally
+      vSQLite3DynamicMRSW.EndRead;
+   end;
+   DoInitialize;
 end;
 
 function SQLiteTypeToDataType(sqliteType : Integer) : TdwsDataFieldType;
@@ -486,10 +508,10 @@ initialization
 
    TdwsDatabase.RegisterDriver('SQLite', TdwsSynSQLiteDataBaseFactory.Create);
 
-   vSQLite3DynamicCS:=TFixedCriticalSection.Create;
+   vSQLite3DynamicMRSW:=TMultiReadSingleWrite.Create;
 
 finalization
 
-   FreeAndNil(vSQLite3DynamicCS);
+   FreeAndNil(vSQLite3DynamicMRSW);
 
 end.
