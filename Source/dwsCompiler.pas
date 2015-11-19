@@ -7787,7 +7787,7 @@ begin
          until not FTok.TestDelete(ttCOMMA);
 
          if not FTok.TestDelete(closingToken) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBracketRightExpected);
       end else begin
          // empty array
          (Result.Typ as TStaticArraySymbol).Typ:=FProg.TypVariant;
