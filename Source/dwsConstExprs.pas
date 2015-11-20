@@ -789,6 +789,9 @@ var
    arraySymbol : TStaticArraySymbol;
 begin
    FElementExprs.Add(ElementExpr);
+   if ElementExpr.Typ=nil then
+      prog.Root.CompileMsgs.AddCompilerStopFmt(scriptPos, CPE_IncompatibleTypes, [SYS_VOID, Typ.Typ.Caption]);
+
    arraySymbol:=(FTyp as TStaticArraySymbol);
    if arraySymbol.Typ<>Prog.TypVariant then begin
       if arraySymbol.Typ=Prog.TypNil then

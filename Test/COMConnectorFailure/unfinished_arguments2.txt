@@ -1,2 +1,2 @@
 Syntax Error: Expression expected [line: 3, column: 13]
-Syntax Error: ")" expected. [line: 3, column: 13]
+Syntax Error: "]" expected [line: 3, column: 13]

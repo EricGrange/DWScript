@@ -1,0 +1,2 @@
+Syntax Error: More arguments expected [line: 5, column: 10]
+Syntax Error: Incompatible types: "void" and "Integer" [line: 5, column: 9]

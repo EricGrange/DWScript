@@ -1,3 +1,2 @@
 Syntax Error: More arguments expected [line: 5, column: 7]
-Syntax Error: Invalid const type "void" [line: 5, column: 6]
-Syntax Error: Argument 0 expects type "array of procedure " instead of "array [0..0] of void" [line: 5, column: 6]
+Syntax Error: Incompatible types: "void" and "nil" [line: 5, column: 11]
