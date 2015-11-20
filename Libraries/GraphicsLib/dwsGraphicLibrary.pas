@@ -44,6 +44,10 @@ type
    TPixmapToJPEGDataFunc = class(TInternalMagicStringFunction)
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
+
+   TPNGDataToPixmapFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
+   end;
    TPixmapToPNGDataFunc = class(TInternalMagicStringFunction)
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
@@ -55,6 +59,14 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+type
+   TRGB24 = record r, g, b : Byte; end;
+   PRGB24 = ^TRGB24;
+
+   TRGB32 = record r, g, b, a : Byte; end;
+   PRGB32 = ^TRGB32;
+
 
 // RegisterGraphicsTypes
 //
@@ -87,9 +99,6 @@ end;
 // DoEvalAsString
 //
 procedure TPixmapToJPEGDataFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
-type
-   TRGB24 = record r, g, b : Byte; end;
-   PRGB24 = ^TRGB24;
 var
    w, h, quality : Integer;
    jpegOptions : TJPEGOptions;
@@ -180,17 +189,161 @@ begin
 end;
 
 // ------------------
+// ------------------ TPNGDataToPixmapFunc ------------------
+// ------------------
+
+// DoEvalAsVariant
+//
+procedure TPNGDataToPixmapFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
+
+   procedure CopyRGBtoBGR(pixmap : PVarData; pngScan : PRGB24); inline;
+   begin
+      pixmap.VType:=varInt64;
+      PRGB24(@pixmap.VInt64).r:=pngScan.b;
+      PRGB24(@pixmap.VInt64).g:=pngScan.g;
+      PRGB24(@pixmap.VInt64).b:=pngScan.r;
+   end;
+
+   procedure CopyRowDefault(pixmap : PVarData; png : TPngImage; y : Integer);
+   var
+      x : Integer;
+   begin
+      for x:=0 to png.Width-1 do begin
+         pixmap.VType:=varInt64;
+         pixmap.VInt64:=png.Pixels[x, y];
+         PByte(@pixmap.VInt64)[3]:=255;
+         Inc(pixmap);
+      end;
+   end;
+
+   procedure CopyRowDefaultBitAlpha(pixmap : PVarData; png : TPngImage; y : Integer);
+   var
+      x : Integer;
+      col, trCol : TColor;
+   begin
+      trCol:=png.TransparentColor;
+      for x:=0 to png.Width-1 do begin
+         pixmap.VType:=varInt64;
+         col:=png.Pixels[x, y];
+         pixmap.VInt64:=col;
+         if col=trCol then
+            PByte(@pixmap.VInt64)[3]:=0
+         else PByte(@pixmap.VInt64)[3]:=255;
+         Inc(pixmap);
+      end;
+   end;
+
+   procedure CopyRowPalettedPartialAlpha(pixmap : PVarData; png : TPngImage; y : Integer);
+   var
+      x : Integer;
+      alphaScan : PByteArray;
+      trns : TChunktRNS;
+   begin
+      trns:=png.Chunks.ItemFromClass(TChunkTRNS) as TChunktRNS;
+      alphaScan:=png.AlphaScanline[y];
+      if alphaScan=nil then
+         alphaScan:=png.Scanline[y];
+      for x:=0 to png.Width-1 do begin
+         pixmap.VType:=varInt64;
+         pixmap.VInt64:=png.Pixels[x, y];
+         PByte(@pixmap.VInt64)[3]:=trns.PaletteValues[alphaScan[x]];
+         Inc(pixmap);
+      end;
+   end;
+
+   procedure CopyRow24(pixmap : PVarData; pngScan : PRGB24; n : Integer);
+   var
+      x : Integer;
+   begin
+      for x:=1 to n do begin
+         CopyRGBtoBGR(pixmap, pngScan);
+         PByte(@pixmap.VInt64)[3]:=255;
+         Inc(pixmap);
+         Inc(pngScan);
+      end;
+   end;
+
+   procedure CopyRow32(pixmap : PVarData; pngScan : PRGB24; alphaScan : PByte; n : Integer);
+   var
+      x : Integer;
+   begin
+      for x:=0 to n-1 do begin
+         CopyRGBtoBGR(pixmap, pngScan);
+         PByte(@pixmap^.VInt64)[3]:=alphaScan[x];
+         Inc(pixmap);
+         Inc(pngScan);
+      end;
+   end;
+
+var
+   data : RawByteString;
+   stream : TMemoryStream;
+   png : TPngImage;
+   pixmapData : TData;
+   pixmap : IScriptDynArray;
+   y, w, h : Integer;
+   withAlpha : Boolean;
+begin
+   data:=args.AsDataString[0];
+   stream:=TMemoryStream.Create;
+   try
+      stream.Write(Pointer(data)^, Length(data));
+      stream.Position:=0;
+      data:='';
+      png:=TPngImage.Create;
+      try
+         png.LoadFromStream(stream);
+         stream.Clear;
+         w:=png.Width;
+         h:=png.Height;
+         SetLength(pixmapData, w*h);
+         withAlpha:=args.AsBoolean[1];
+         case png.Header.ColorType of
+            COLOR_RGBALPHA : begin
+               if withAlpha then begin
+                  png.CreateAlpha;
+                  for y:=0 to h-1 do
+                     CopyRow32(@pixmapData[y*w], png.Scanline[y], PByte(png.AlphaScanline[y]), w);
+               end else begin
+                  for y:=0 to h-1 do
+                     CopyRow24(@pixmapData[y*w], png.Scanline[y], w);
+               end;
+            end;
+         else
+            if withAlpha and (png.TransparencyMode<>ptmNone) then begin
+               if png.TransparencyMode=ptmBit then begin
+                  for y:=0 to h-1 do
+                     CopyRowDefaultBitAlpha(@pixmapData[y*w], png, y);
+               end else begin
+                  for y:=0 to h-1 do
+                     CopyRowPalettedPartialAlpha(@pixmapData[y*w], png, y);
+               end;
+            end else begin
+               for y:=0 to h-1 do
+                  CopyRowDefault(@pixmapData[y*w], png, y);
+            end;
+         end;
+
+         pixmap:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).Prog.TypInteger);
+         pixmap.ReplaceData(pixmapData);
+      finally
+         png.Free;
+      end;
+   finally
+      stream.Free;
+   end;
+   args.AsInteger[2]:=w;
+   args.AsInteger[3]:=h;
+   result:=pixmap;
+end;
+
+// ------------------
 // ------------------ TPixmapToPNGDataFunc ------------------
 // ------------------
 
 // DoEvalAsString
 //
 procedure TPixmapToPNGDataFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
-type
-   TRGB24 = record r, g, b : Byte; end;
-   PRGB24 = ^TRGB24;
-   TRGB32 = record r, g, b, a : Byte; end;
-   PRGB32 = ^TRGB32;
 var
    w, h : Integer;
    pixmap : IScriptDynArray;
@@ -275,6 +428,9 @@ initialization
    RegisterInternalStringFunction(TPixmapToJPEGDataFunc, 'PixmapToJPEGData',
          ['pixmap', SYS_PIXMAP, 'width', SYS_INTEGER, 'height', SYS_INTEGER,
           'quality=90', SYS_INTEGER, 'options=', SYS_TJPEGOptions], []);
+
+   RegisterInternalFunction(TPNGDataToPixmapFunc, 'PNGDataToPixmap',
+         ['pngData', SYS_STRING, 'withAlpha=False', SYS_BOOLEAN, '@width', SYS_INTEGER, '@height', SYS_INTEGER], SYS_PIXMAP, []);
    RegisterInternalStringFunction(TPixmapToPNGDataFunc, 'PixmapToPNGData',
          ['pixmap', SYS_PIXMAP, 'width', SYS_INTEGER, 'height', SYS_INTEGER, 'withAlpha=False', SYS_BOOLEAN], []);
 
