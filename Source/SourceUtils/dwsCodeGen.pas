@@ -489,7 +489,7 @@ end;
 //
 function TdwsCodeGen.SymbolMappedName(sym : TSymbol; scope : TdwsCodeGenSymbolScope) : String;
 var
-   i : Integer;
+//   i : Integer;
    meth : TMethodSymbol;
    funcSym : TFuncSymbol;
    fieldSym : TFieldSymbol;
@@ -532,10 +532,10 @@ begin
    end;
    Result:=FSymbolMap.SymbolToName(sym);
    if Result<>'' then Exit;
-   for i:=0 to FSymbolMaps.Count-1 do begin
-      Result:=FSymbolMaps[i].SymbolToName(sym);
-      if Result<>'' then Exit;
-   end;
+//   for i:=0 to FSymbolMaps.Count-1 do begin
+//      Result:=FSymbolMaps[i].SymbolToName(sym);
+//      if Result<>'' then Exit;
+//   end;
    Result:=FSymbolMap.MapSymbol(sym, scope, True);
 end;
 
@@ -1988,9 +1988,11 @@ begin
    FCodeGen:=aCodeGen;
    FParent:=aParent;
    FSymbol:=aSymbol;
-   FHash:=TdwsMappedSymbolHash.Create;
-   FNames:=TSimpleNameObjectHash<TSymbol>.Create;
-   FReservedSymbol:=TSymbol.Create('', nil);
+   if aParent=nil then begin
+      FHash:=TdwsMappedSymbolHash.Create;
+      FNames:=TSimpleNameObjectHash<TSymbol>.Create;
+      FReservedSymbol:=TSymbol.Create('', nil);
+   end;
    if aSymbol is TUnitSymbol then
       FPrefix:=aSymbol.Name+'_';
 end;
@@ -2009,62 +2011,78 @@ end;
 //
 function TdwsCodeGenSymbolMap.SymbolToName(symbol : TSymbol) : String;
 begin
+   if Parent<>nil then
+      Exit(FParent.SymbolToName(symbol));
+
+   FLookup.Symbol:=symbol;
+   if FHash.Match(FLookup) then
+      Result:=FLookup.Name
+   else Result:='';
+
+(*
    FLookup.Symbol:=symbol;
    if FHash.Match(FLookup) then
       Result:=FLookup.Name
    else if Parent<>nil then
       Result:=Parent.SymbolToName(symbol)
    else Result:='';
+*)
 end;
 
 // NameToSymbol
 //
 function TdwsCodeGenSymbolMap.NameToSymbol(const name : String; scope : TdwsCodeGenSymbolScope) : TSymbol;
-var
-   i : Integer;
-   iter : TdwsCodeGenSymbolMap;
-   skip : Boolean;
-   rootMap : TdwsCodeGenSymbolMap;
+//var
+//   i : Integer;
+//   iter : TdwsCodeGenSymbolMap;
+//   skip : Boolean;
+//   rootMap : TdwsCodeGenSymbolMap;
 begin
+   if Parent<>nil then
+      Exit(FParent.NameToSymbol(name, scope));
    Result:=FNames[name];
-   if Result=nil then begin
-      case scope of
-         cgssGlobal : if Parent<>nil then
-            Result:=Parent.NameToSymbol(name, scope);
-         cgssClass : begin
-            if (Parent<>nil) and (Parent.Symbol is TClassSymbol) then
-               Result:=Parent.NameToSymbol(name, scope)
-            else if Parent<>nil then begin
-               // check for root reserved names
-               rootMap:=Parent;
-               while rootMap.Parent<>nil do
-                  rootMap:=rootMap.Parent;
-               Result:=rootMap.NameToSymbol(name, cgssLocal);
-            end;
-         end;
-      end;
-      if (Result=nil) and (scope=cgssGlobal) then begin
-         for i:=0 to Maps.Count-1 do begin
-            iter:=Maps[i];
-            repeat
-               skip:=(iter=Self);
-               iter:=iter.Parent;
-            until (iter=nil) or skip;
-            if not skip then begin
-               iter:=Maps[i];
-               Result:=iter.NameToSymbol(name, cgssLocal);
-               if Result<>nil then Break;
-            end;
-         end;
-      end;
-   end;
+
+//   Result:=FNames[name];
+//   if Result=nil then begin
+//      case scope of
+//         cgssGlobal : if Parent<>nil then
+//            Result:=Parent.NameToSymbol(name, scope);
+//         cgssClass : begin
+//            if (Parent<>nil) and (Parent.Symbol is TClassSymbol) then
+//               Result:=Parent.NameToSymbol(name, scope)
+//            else if Parent<>nil then begin
+//               // check for root reserved names
+//               rootMap:=Parent;
+//               while rootMap.Parent<>nil do
+//                  rootMap:=rootMap.Parent;
+//               Result:=rootMap.NameToSymbol(name, cgssLocal);
+//            end;
+//         end;
+//      end;
+//      if (Result=nil) and (scope=cgssGlobal) then begin
+//         for i:=0 to Maps.Count-1 do begin
+//            iter:=Maps[i];
+//            repeat
+//               skip:=(iter=Self);
+//               iter:=iter.Parent;
+//            until (iter=nil) or skip;
+//            if not skip then begin
+//               iter:=Maps[i];
+//               Result:=iter.NameToSymbol(name, cgssLocal);
+//               if Result<>nil then Break;
+//            end;
+//         end;
+//      end;
+//   end;
 end;
 
 // ReserveName
 //
 procedure TdwsCodeGenSymbolMap.ReserveName(const name : String);
 begin
-   FNames.Objects[name]:=FReservedSymbol;
+   if Parent<>nil then
+      Parent.ReserveName(name)
+   else FNames.Objects[name]:=FReservedSymbol;
 end;
 
 // RaiseAlreadyDefined
@@ -2095,6 +2113,11 @@ var
    n : String;
    existing : TSymbol;
 begin
+   if Parent<>nil then begin
+      Parent.ReserveExternalName(sym);
+      Exit;
+   end;
+
    if sym is TFuncSymbol then
       n:=TFuncSymbol(sym).ExternalName
    else n:=sym.Name;
@@ -2135,6 +2158,9 @@ function TdwsCodeGenSymbolMap.MapSymbol(symbol : TSymbol; scope : TdwsCodeGenSym
    end;
 
 begin
+   if Parent<>nil then
+      Exit(Parent.MapSymbol(symbol, scope, canObfuscate));
+
    Result:=SymbolToName(symbol);
    if Result='' then
       if scope<>cgssNoMap then
