@@ -968,7 +968,6 @@ var
    inCompressAccept : THttpSocketCompressSet;
    outContentData, outContentEncoding : RawByteString;
    outCustomHeader : RawByteString;
-   logUserName : String;
    inContent, inContentType : RawByteString;
    response : PHTTP_RESPONSE_V2;
    headers : HTTP_UNKNOWN_HEADER_ARRAY;
@@ -1016,7 +1015,6 @@ begin
 
             if FLogDataPtr<>nil then begin
                UpdateLogFieldsData;
-               logUserName:=FWebRequest.AuthenticatedUser;
             end;
 
             // retrieve body
@@ -1053,10 +1051,6 @@ begin
                pRespServer^.pRawValue:=FLogFieldsData.ServerName;
                pRespServer^.RawValueLength:=FLogFieldsData.ServerNameLength;
 
-               if FLogDataPtr<>nil then begin
-                  FLogFieldsData.UserNameLength:=Length(logUserName);
-                  FLogFieldsData.UserName:=Pointer(logUserName);
-               end;
                // send response
                response^.Version := request^.Version;
                response^.SetHeaders(Pointer(outCustomHeader), headers);
