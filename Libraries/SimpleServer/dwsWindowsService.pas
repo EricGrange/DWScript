@@ -43,8 +43,10 @@ type
 
          class function DefaultServiceOptions : String; virtual; abstract;
 
-         procedure ExecuteCommandLineParameters;
+         procedure ExecuteCommandLineParameters; virtual;
+         procedure WriteCommandLineHelp; virtual;
 
+         function ServiceStatus(var status : TServiceStatus) : Boolean;
          function LaunchedBySCM : Boolean;
 
          property Options : TdwsJSONValue read FOptions;
@@ -129,65 +131,93 @@ begin
          for i:=1 to ParamCount do begin
             param:=ParamStr(i);
             if param='/install' then begin
-               if ctrl.State=ssNotInstalled then begin
-                  ctrl.Free;
-                  ctrl:=nil;
-                  deviceCheck[0]:=ParamStr(0)[1];
-                  deviceCheck[1]:=':';
-                  deviceCheck[2]:=#0;
-                  // subst'ed path and services don't mix
-                  // if the drive is a subst'ed one will return \??\xxxx
-                  if    (QueryDosDevice(@deviceCheck, @buffer, MAX_PATH)=0)
-                     or (buffer[1]='?') then
-                     writeln('Must install from actual, non-subst''ed path')
-                  else begin
-                     ctrl:=TServiceController.CreateNewService(
-                        '','', ServiceName, ServiceDisplayName,
-                        ParamStr(0), '', '', '', '',
-                        SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START);
-                     if ctrl.State<>ssNotInstalled then begin
-                        writeln('Installed successfully');
-                        description.lpDescription:=PChar(ServiceDescription);
-                        ChangeServiceConfig2(ctrl.Handle, SERVICE_CONFIG_DESCRIPTION, @description);
-                     end else writeln('Failed to install');
+               case ctrl.State of
+                  ssNotInstalled : begin
+                     ctrl.Free;
+                     ctrl:=nil;
+                     deviceCheck[0]:=ParamStr(0)[1];
+                     deviceCheck[1]:=':';
+                     deviceCheck[2]:=#0;
+                     // subst'ed path and services don't mix
+                     // if the drive is a subst'ed one will return \??\xxxx
+                     if    (QueryDosDevice(@deviceCheck, @buffer, MAX_PATH)=0)
+                        or (buffer[1]='?') then
+                        writeln('Must install from actual, non-subst''ed path')
+                     else begin
+                        ctrl:=TServiceController.CreateNewService(
+                           '','', ServiceName, ServiceDisplayName,
+                           ParamStr(0), '', '', '', '',
+                           SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START);
+                        case ctrl.State of
+                           ssNotInstalled :
+                              Writeln('Failed to install');
+                           ssErrorRetrievingState :
+                              Writeln('Account has insufficient rights, cannot install');
+                        else
+                           description.lpDescription:=PChar(ServiceDescription);
+                           ChangeServiceConfig2(ctrl.Handle, SERVICE_CONFIG_DESCRIPTION, @description);
+                           Writeln('Installed successfully');
+                        end;
+                     end;
                   end;
-               end else writeln('Already installed');
+                  ssErrorRetrievingState :
+                     Writeln('Account has insufficient rights');
+               else
+                   Writeln('Already installed');
+               end;
             end else if param='/uninstall' then begin
-               if ctrl.State=ssNotInstalled then
-                  writeln('Not installed')
-               else begin
+               case ctrl.State of
+                  ssNotInstalled :
+                     Writeln('Not installed');
+                  ssErrorRetrievingState :
+                     Writeln('Account has insufficient rights');
+               else
                   ctrl.Stop;
                   if ctrl.State<>ssStopped then
-                     writeln('Failed to stop')
+                     Writeln('Failed to stop')
                   else begin
                      ctrl.Delete;
                      if ctrl.State=ssNotInstalled then
-                        writeln('Uninstalled successfully')
-                     else writeln('Failed to uninstall');
+                        Writeln('Uninstalled successfully')
+                     else Writeln('Failed to uninstall');
                   end;
                end;
             end else if param='/stop' then begin
-               if ctrl.State=ssNotInstalled then
-                  writeln('Not installed')
-               else begin
+               case ctrl.State of
+                  ssNotInstalled :
+                     Writeln('Not installed');
+                  ssErrorRetrievingState :
+                     Writeln('Account has insufficient rights');
+               else
                   ctrl.Stop;
-                  writeln('Stop command issued')
+                  Writeln('Stop command issued')
                end;
             end else if param='/start' then begin
-               if ctrl.State=ssNotInstalled then
-                  writeln('Not installed')
-               else begin
+               case ctrl.State of
+                  ssNotInstalled :
+                     Writeln('Not installed');
+                  ssErrorRetrievingState :
+                     Writeln('Account has insufficient rights');
+               else
                   ctrl.Start([]);
-                  writeln('Start command issued')
+                  Writeln('Start command issued')
                end;
             end else begin
-               Writeln( ServiceName+#13#10#13#10
-                       +'Parameters:'#13#10
-                       +'* none : run as application'#13#10
-                       +'* /install & /uninstall : install & uninstall service'#13#10
-                       +'* /start & /stop : start & stop service'#13#10
-                       +#13#10
-                       +'For more information, go to http://delphitools.info/');
+               WriteCommandLineHelp;
+               if ctrl.State<>ssErrorRetrievingState then begin
+                  Write('Service is currently ');
+                  case ctrl.State of
+                     ssNotInstalled : Writeln('not installed');
+                     ssStopped : Writeln('stopped');
+                     ssStarting : Writeln('starting');
+                     ssStopping : Writeln('stopping');
+                     ssRunning : Writeln('running');
+                     ssPausing : Writeln('pausing');
+                     ssPaused : Writeln('paused');
+                  else
+                     Writeln('in an unknown state');
+                  end;
+               end;
             end;
          end;
       end;
@@ -196,12 +226,24 @@ begin
    end;
 end;
 
-// LaunchedBySCM
+// WriteCommandLineHelp
 //
-function TdwsWindowsService.LaunchedBySCM : Boolean;
+procedure TdwsWindowsService.WriteCommandLineHelp;
+begin
+   Writeln( ServiceName+#13#10#13#10
+           +'Parameters:'#13#10
+           +'* none : run as application'#13#10
+           +'* /install & /uninstall : install & uninstall service'#13#10
+           +'* /start & /stop : start & stop service'#13#10
+           +#13#10
+           +'For more information, go to https://www.delphitools.info/');
+end;
+
+// ServiceState
+//
+function TdwsWindowsService.ServiceStatus(var status : TServiceStatus) : Boolean;
 var
    scHandle, svInfo : Integer;
-   servStat : TServiceStatus;
 begin
    Result:=False;
    scHandle:=OpenSCManager(nil, nil, GENERIC_READ);
@@ -209,15 +251,26 @@ begin
       svInfo:=OpenService(scHandle, PChar(ServiceName), GENERIC_READ);
       if svInfo<>0 then begin
          try
-            QueryServiceStatus(svInfo, servStat);
-            Result:=(servStat.dwCurrentState=SERVICE_START_PENDING);
+            QueryServiceStatus(svInfo, status);
          finally
             CloseServiceHandle(svInfo);
          end;
+         Result:=True;
       end;
    finally
       CloseServiceHandle(scHandle);
    end;
+end;
+
+// LaunchedBySCM
+//
+function TdwsWindowsService.LaunchedBySCM : Boolean;
+var
+   status : TServiceStatus;
+begin
+   if ServiceStatus(status) then
+      Result:=status.dwCurrentState=SERVICE_START_PENDING
+   else Result:=False;
 end;
 
 end.
