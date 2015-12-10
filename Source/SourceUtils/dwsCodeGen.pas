@@ -74,6 +74,7 @@ type
          procedure ReserveExternalName(sym : TSymbol);
 
          function IsReserved(const name : String) : Boolean; inline;
+         function IsMapped(const sym : TSymbol) : Boolean;
 
          function MapSymbol(symbol : TSymbol; scope : TdwsCodeGenSymbolScope; canObfuscate : Boolean) : String;
 
@@ -154,9 +155,10 @@ type
          FLocalVarSymbolMap : TStringList;
          FLocalVarSymbolMapStack : TTightStack;
 
-         FSymbolMap : TdwsCodeGenSymbolMap;
-         FSymbolMaps : TdwsCodeGenSymbolMaps;
-         FSymbolMapStack : TTightStack;
+         FRootSymbolMap : TdwsCodeGenSymbolMap;
+//         FSymbolMap : TdwsCodeGenSymbolMap;
+//         FSymbolMaps : TdwsCodeGenSymbolMaps;
+//         FSymbolMapStack : TTightStack;
          FMappedUnits : TTightList;
          FOutputLineOffset : Integer;
 
@@ -184,11 +186,11 @@ type
 
          function CreateSymbolMap(parentMap : TdwsCodeGenSymbolMap; symbol : TSymbol) : TdwsCodeGenSymbolMap; virtual;
 
-         procedure EnterScope(symbol : TSymbol);
-         procedure LeaveScope;
-         function  EnterStructScope(struct : TCompositeTypeSymbol) : Integer;
-         procedure LeaveScopes(n : Integer);
-         function  IsScopeLevel(symbol : TSymbol) : Boolean;
+//         procedure EnterScope(symbol : TSymbol);
+//         procedure LeaveScope;
+//         function  EnterStructScope(struct : TCompositeTypeSymbol) : Integer;
+//         procedure LeaveScopes(n : Integer);
+//         function  IsScopeLevel(symbol : TSymbol) : Boolean;
 
          procedure RaiseUnknowExpression(expr : TExprBase);
 
@@ -309,7 +311,7 @@ type
          property ContextSymbolDictionary : TdwsSymbolDictionary read FContextSymbolDictionary;
 
          property LocalTable : TSymbolTable read FLocalTable write FLocalTable;
-         property SymbolMap : TdwsCodeGenSymbolMap read FSymbolMap;
+         property SymbolMap : TdwsCodeGenSymbolMap read FRootSymbolMap;
          property OutputLineOffset : Integer read FOutputLineOffset write FOutputLineOffset;
          property OutputLine : Integer read FOutputLine;
 
@@ -396,7 +398,8 @@ begin
    FFlushedDependencies.Sorted:=True;
    FFlushedDependencies.Duplicates:=dupIgnore;
    FTempReg:=TdwsRegisteredCodeGen.Create;
-   FSymbolMaps:=TdwsCodeGenSymbolMaps.Create;
+//   FSymbolMaps:=TdwsCodeGenSymbolMaps.Create;
+   FRootSymbolMap:=TdwsCodeGenSymbolMap.Create(Self, nil, nil);
    FIndentSize:=3;
    FDataContextPool:=TDataContextPool.Create;
 end;
@@ -406,9 +409,10 @@ end;
 destructor TdwsCodeGen.Destroy;
 begin
    Clear;
-   FSymbolMapStack.Free;
-   FMappedUnits.Free;
-   FSymbolMaps.Free;
+//   FSymbolMapStack.Free;
+//   FMappedUnits.Free;
+//   FSymbolMaps.Free;
+   FRootSymbolMap.Free;
    FTempReg.Free;
    FDependencies.Free;
    FFlushedDependencies.Free;
@@ -530,13 +534,13 @@ begin
       else Assert(False);
       Exit;
    end;
-   Result:=FSymbolMap.SymbolToName(sym);
+   Result:=FRootSymbolMap.SymbolToName(sym);
    if Result<>'' then Exit;
 //   for i:=0 to FSymbolMaps.Count-1 do begin
 //      Result:=FSymbolMaps[i].SymbolToName(sym);
 //      if Result<>'' then Exit;
 //   end;
-   Result:=FSymbolMap.MapSymbol(sym, scope, True);
+   Result:=FRootSymbolMap.MapSymbol(sym, scope, True);
 end;
 
 // NotifyCompileExpr
@@ -562,10 +566,12 @@ begin
    FCompiledUnits.Clear;
    FMappedUnits.Clear;
 
-   FSymbolMapStack.Clear;
-   FSymbolMap:=nil;
-   FSymbolMaps.Clear;
-   EnterScope(nil);
+//   FSymbolMapStack.Clear;
+//   FSymbolMap:=nil;
+//   FSymbolMaps.Clear;
+//   EnterScope(nil);
+   FRootSymbolMap.Free;
+   FRootSymbolMap:=TdwsCodeGenSymbolMap.Create(Self, nil, nil);
 
    FIndent:=0;
    FIndentString:='';
@@ -681,9 +687,9 @@ begin
    if FCompiledUnits.IndexOf(un)>=0 then Exit;
    FCompiledUnits.Add(un);
 
-   EnterScope(un);
+//   EnterScope(un);
    DoCompileUnitSymbol(un);
-   LeaveScope;
+//   LeaveScope;
 end;
 
 // DoCompileUnitSymbol
@@ -735,13 +741,13 @@ begin
 
    proc:=TdwsProcedure(execSelf);
 
-   EnterScope(func);
+//   EnterScope(func);
    EnterContext(proc);
    try
       DoCompileFuncSymbol(func, deAnonymize);
    finally
       LeaveContext;
-      LeaveScope;
+//      LeaveScope;
    end;
 end;
 
@@ -816,11 +822,11 @@ begin
    if SmartLink(cls) then
       DoCompileCompositeSymbolInternals(cls);
 
-   EnterScope(cls);
+//   EnterScope(cls);
    try
       DoCompileClassSymbol(cls);
    finally
-      LeaveScope;
+//      LeaveScope;
    end;
 end;
 
@@ -988,8 +994,8 @@ var
 begin
    FContextSymbolDictionary:=prog.SymbolDictionary;
 
-   if FSymbolMap=nil then
-      EnterScope(nil);
+//   if FSymbolMap=nil then
+//      EnterScope(nil);
 
    p:=prog.ProgramObject;
    EnterContext(p);
@@ -1015,34 +1021,36 @@ end;
 procedure TdwsCodeGen.MapStructuredSymbol(structSym : TCompositeTypeSymbol; canObfuscate : Boolean);
 var
    sym : TSymbol;
-   n : Integer;
+//   n : Integer;
    changed : Boolean;
 begin
-   if FSymbolMaps.MapOf(structSym)<>nil then Exit;
+//   if FSymbolMaps.MapOf(structSym)<>nil then Exit;
+   if FRootSymbolMap.IsMapped(structSym) then Exit;
 
    SmartLinkFilterStructSymbol(structSym, changed);
 
    if structSym.Parent<>nil then
       MapStructuredSymbol(structSym.Parent, canObfuscate);
 
-   if (structSym.UnitSymbol<>nil) and not IsScopeLevel(structSym.UnitSymbol) then begin
-      EnterScope(structSym.UnitSymbol);
-      SymbolMap.MapSymbol(structSym, cgssGlobal, canObfuscate);
-      LeaveScope;
-   end else SymbolMap.MapSymbol(structSym, cgssGlobal, canObfuscate);
+//   if (structSym.UnitSymbol<>nil) and not IsScopeLevel(structSym.UnitSymbol) then begin
+//      EnterScope(structSym.UnitSymbol);
+//      SymbolMap.MapSymbol(structSym, cgssGlobal, canObfuscate);
+//      LeaveScope;
+//   end else SymbolMap.MapSymbol(structSym, cgssGlobal, canObfuscate);
+   FRootSymbolMap.MapSymbol(structSym, cgssGlobal, canObfuscate);
 
-   n:=EnterStructScope(structSym);
+//   n:=EnterStructScope(structSym);
    if structSym is TRecordSymbol then begin
       for sym in structSym.Members do begin
          if (sym is TMethodSymbol) and (TMethodSymbol(sym).IsClassMethod) then
-            SymbolMap.MapSymbol(sym, cgssGlobal, canObfuscate)
-         else SymbolMap.MapSymbol(sym, cgssGlobal, canObfuscate);
+            FRootSymbolMap.MapSymbol(sym, cgssGlobal, canObfuscate)
+         else FRootSymbolMap.MapSymbol(sym, cgssGlobal, canObfuscate);
       end;
    end else begin
       for sym in structSym.Members do
-         SymbolMap.MapSymbol(sym, cgssGlobal, canObfuscate);
+         FRootSymbolMap.MapSymbol(sym, cgssGlobal, canObfuscate);
    end;
-   LeaveScopes(n);
+//   LeaveScopes(n);
 end;
 
 // DoCustomCodeGen
@@ -1073,14 +1081,14 @@ procedure TdwsCodeGen.MapInternalSymbolNames(progTable, systemTable : TSymbolTab
             if (sym is TClassSymbol) or (sym is TRecordSymbol) then begin
                MapStructuredSymbol(TStructuredTypeSymbol(sym), False);
             end else if sym is TInterfaceSymbol then
-               SymbolMap.MapSymbol(sym, cgssGlobal, False)
+               FRootSymbolMap.MapSymbol(sym, cgssGlobal, False)
             else Assert(False);
          end else begin
             funcSym:=sym.AsFuncSymbol;
             if funcSym<>nil then
-               SymbolMap.MapSymbol(funcSym, cgssGlobal, False)
+               FRootSymbolMap.MapSymbol(funcSym, cgssGlobal, False)
             else if sym is TDataSymbol then
-               SymbolMap.MapSymbol(sym, cgssGlobal, False);
+               FRootSymbolMap.MapSymbol(sym, cgssGlobal, False);
          end;
       end;
    end;
@@ -1112,13 +1120,13 @@ begin
             MapPrioritySymbolNames(unitSym.Table);
       end else if sym is TClassSymbol then begin
          if TClassSymbol(sym).IsExternal then begin
-            SymbolMap.ReserveExternalName(sym);
+            FRootSymbolMap.ReserveExternalName(sym);
          end;
       end else begin
          funcSym:=sym.AsFuncSymbol;
          if funcSym<>nil then
             if funcSym.IsExternal then
-               SymbolMap.ReserveExternalName(funcSym);
+               FRootSymbolMap.ReserveExternalName(funcSym);
       end;
    end;
 end;
@@ -1138,25 +1146,25 @@ begin
          if not (unitSym.Table is TStaticSymbolTable) then begin
             if FMappedUnits.IndexOf(unitSym)<0 then begin
                FMappedUnits.Add(unitSym);
-               EnterScope(unitSym);
+//               EnterScope(unitSym);
                MapNormalSymbolNames(unitSym.Table);
                MapNormalSymbolNames(unitSym.ImplementationTable);
-               LeaveScope;
+//               LeaveScope;
             end;
          end;
       end else if (sym is TClassSymbol) or (sym is TRecordSymbol) then begin
          MapStructuredSymbol(TStructuredTypeSymbol(sym), True);
       end else if sym is TInterfaceSymbol then begin
-         SymbolMap.MapSymbol(sym, cgssGlobal, True);
+         FRootSymbolMap.MapSymbol(sym, cgssGlobal, True);
       end else begin
          funcSym:=sym.AsFuncSymbol;
          if funcSym<>nil then begin
-            SymbolMap.MapSymbol(funcSym, cgssGlobal, True);
+            FRootSymbolMap.MapSymbol(funcSym, cgssGlobal, True);
             if     (funcSym.Executable<>nil)
                and (funcSym.Executable.GetSelf is TdwsProcedure) then
                MapNormalSymbolNames((funcSym.Executable.GetSelf as TdwsProcedure).Table);
          end else if sym is TDataSymbol then begin
-            SymbolMap.MapSymbol(sym, cgssGlobal, True);
+            FRootSymbolMap.MapSymbol(sym, cgssGlobal, True);
          end;
       end;
    end;
@@ -1453,72 +1461,72 @@ end;
 //
 function TdwsCodeGen.CreateSymbolMap(parentMap : TdwsCodeGenSymbolMap; symbol : TSymbol) : TdwsCodeGenSymbolMap;
 begin
-   Result:=TdwsCodeGenSymbolMap.Create(Self, FSymbolMap, symbol);
+   Result:=TdwsCodeGenSymbolMap.Create(Self, FRootSymbolMap, symbol);
 end;
 
 // EnterScope
 //
-procedure TdwsCodeGen.EnterScope(symbol : TSymbol);
-var
-   map : TdwsCodeGenSymbolMap;
-begin
-   FSymbolMapStack.Push(FSymbolMap);
-   if symbol is TUnitSymbol then
-      symbol:=TUnitSymbol(symbol).Main;
-   map:=FSymbolMaps.MapOf(symbol);
-   if map=nil then begin
-      FSymbolMap:=CreateSymbolMap(FSymbolMap, symbol);
-      FSymbolMap.Maps:=FSymbolMaps;
-      FSymbolMaps.Add(FSymbolMap);
-   end else begin
-      map.FParent:=FSymbolMap;
-      FSymbolMap:=map;
-   end;
-end;
+//procedure TdwsCodeGen.EnterScope(symbol : TSymbol);
+//var
+//   map : TdwsCodeGenSymbolMap;
+//begin
+//   FSymbolMapStack.Push(FSymbolMap);
+//   if symbol is TUnitSymbol then
+//      symbol:=TUnitSymbol(symbol).Main;
+//   map:=FSymbolMaps.MapOf(symbol);
+//   if map=nil then begin
+//      FSymbolMap:=CreateSymbolMap(FSymbolMap, symbol);
+//      FSymbolMap.Maps:=FSymbolMaps;
+//      FSymbolMaps.Add(FSymbolMap);
+//   end else begin
+//      map.FParent:=FSymbolMap;
+//      FSymbolMap:=map;
+//   end;
+//end;
 
 // LeaveScope
 //
-procedure TdwsCodeGen.LeaveScope;
-begin
-   Assert(FSymbolMap<>nil);
-   FSymbolMap.FParent:=nil;
-   FSymbolMap:=TdwsCodeGenSymbolMap(FSymbolMapStack.Peek);
-   FSymbolMapStack.Pop;
-end;
+//procedure TdwsCodeGen.LeaveScope;
+//begin
+//   Assert(FSymbolMap<>nil);
+//   FSymbolMap.FParent:=nil;
+//   FSymbolMap:=TdwsCodeGenSymbolMap(FSymbolMapStack.Peek);
+//   FSymbolMapStack.Pop;
+//end;
 
 // EnterStructScope
 //
-function TdwsCodeGen.EnterStructScope(struct : TCompositeTypeSymbol) : Integer;
-begin
-   if struct<>nil then begin
-      Result:=EnterStructScope(struct.Parent)+1;
-      EnterScope(struct);
-   end else Result:=0;
-end;
+//function TdwsCodeGen.EnterStructScope(struct : TCompositeTypeSymbol) : Integer;
+//begin
+//   if struct<>nil then begin
+//      Result:=EnterStructScope(struct.Parent)+1;
+//      EnterScope(struct);
+//   end else Result:=0;
+//end;
 
 // LeaveScopes
 //
-procedure TdwsCodeGen.LeaveScopes(n : Integer);
-begin
-   while n>0 do begin
-      LeaveScope;
-      Dec(n);
-   end;
-end;
+//procedure TdwsCodeGen.LeaveScopes(n : Integer);
+//begin
+//   while n>0 do begin
+//      LeaveScope;
+//      Dec(n);
+//   end;
+//end;
 
 // IsScopeLevel
 //
-function TdwsCodeGen.IsScopeLevel(symbol : TSymbol) : Boolean;
-var
-   m : TdwsCodeGenSymbolMap;
-begin
-   m:=FSymbolMap;
-   while m<>nil do begin
-      if m.Symbol=symbol then Exit(True);
-      m:=m.Parent;
-   end;
-   Result:=False;
-end;
+//function TdwsCodeGen.IsScopeLevel(symbol : TSymbol) : Boolean;
+//var
+//   m : TdwsCodeGenSymbolMap;
+//begin
+//   m:=FSymbolMap;
+//   while m<>nil do begin
+//      if m.Symbol=symbol then Exit(True);
+//      m:=m.Parent;
+//   end;
+//   Result:=False;
+//end;
 
 // RaiseUnknowExpression
 //
@@ -1985,6 +1993,9 @@ end;
 constructor TdwsCodeGenSymbolMap.Create(aCodeGen : TdwsCodeGen; aParent : TdwsCodeGenSymbolMap; aSymbol : TSymbol);
 begin
    inherited Create;
+   if (aParent<>nil) and (aParent.FParent=nil) and (aParent.FHash=nil) then
+      FCodeGen:=aCodeGen;
+
    FCodeGen:=aCodeGen;
    FParent:=aParent;
    FSymbol:=aSymbol;
@@ -2040,6 +2051,7 @@ function TdwsCodeGenSymbolMap.NameToSymbol(const name : String; scope : TdwsCode
 begin
    if Parent<>nil then
       Exit(FParent.NameToSymbol(name, scope));
+   Assert(FHash<>nil);
    Result:=FNames[name];
 
 //   Result:=FNames[name];
@@ -2082,7 +2094,10 @@ procedure TdwsCodeGenSymbolMap.ReserveName(const name : String);
 begin
    if Parent<>nil then
       Parent.ReserveName(name)
-   else FNames.Objects[name]:=FReservedSymbol;
+   else begin
+      Assert(FHash<>nil);
+      FNames.Objects[name]:=FReservedSymbol;
+   end;
 end;
 
 // RaiseAlreadyDefined
@@ -2134,7 +2149,20 @@ end;
 //
 function TdwsCodeGenSymbolMap.IsReserved(const name : String) : Boolean;
 begin
-   Result:=(FNames.Objects[name]<>nil);
+   if FParent<>nil then
+      Result:=FParent.IsReserved(name)
+   else begin
+      Assert(FHash<>nil);
+      Result:=(FNames.Objects[name]<>nil);
+   end;
+end;
+
+// IsMapped
+//
+function TdwsCodeGenSymbolMap.IsMapped(const sym : TSymbol) : Boolean;
+begin
+   FLookup.Symbol:=symbol;
+   Result:=FHash.Match(FLookup);
 end;
 
 // MapSymbol
@@ -2161,6 +2189,7 @@ begin
    if Parent<>nil then
       Exit(Parent.MapSymbol(symbol, scope, canObfuscate));
 
+   Assert(FHash<>nil);
    Result:=SymbolToName(symbol);
    if Result='' then
       if scope<>cgssNoMap then
@@ -2171,6 +2200,10 @@ end;
 //
 function TdwsCodeGenSymbolMap.DoNeedUniqueName(symbol : TSymbol; tryCount : Integer; canObfuscate : Boolean) : String;
 begin
+   if FParent<>nil then
+      Exit(Parent.DoNeedUniqueName(symbol, tryCount, canObfuscate));
+
+   Assert(FHash<>nil);
    if symbol.Name='' then begin
       if tryCount=0 then
          Result:='a$'
