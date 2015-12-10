@@ -2997,8 +2997,10 @@ begin
                if expr is TConstExpr then begin
                   Result:=factory.CreateConstSymbol(name, constPos, sas, TConstExpr(expr).Data);
                   detachTyp:=False;
-               end else Result:=factory.CreateConstSymbol(name, constPos, sas,
-                                                          (expr as TArrayConstantExpr).EvalAsTData(FExec));
+               end else begin
+                  Result:=factory.CreateConstSymbol(name, constPos, sas,
+                                                    (expr as TArrayConstantExpr).EvalAsTData(FExec));
+               end;
             end else begin
                if typ.Size=1 then begin
                   SetLength(recordData, 1);
@@ -3020,10 +3022,8 @@ begin
          end;
 
       finally
-         if detachTyp then begin
-            FProg.Table.AddSymbol(typ);
-            expr.Typ:=nil;
-         end;
+         if detachTyp then
+            expr.DetachTypes(FProg.Table);
          expr.Free;
       end;
    end;

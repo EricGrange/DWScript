@@ -1,0 +1,15 @@
+Errors >>>>
+Hint: "boolean" does not match case of declaration ("Boolean") [line: 5, column: 23]
+Result >>>>
+31 vs 31
+28 vs 29
+31 vs 31
+30 vs 30
+31 vs 31
+30 vs 30
+31 vs 31
+31 vs 31
+30 vs 30
+31 vs 31
+30 vs 30
+31 vs 31

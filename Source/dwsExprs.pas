@@ -992,6 +992,8 @@ type
          function SameDataExpr(expr : TTypedExpr) : Boolean; virtual;
 
          property Typ : TTypeSymbol read FTyp write FTyp;
+
+         procedure DetachTypes(toTable : TSymbolTable); virtual;
    end;
 
    TTypedExprClass = class of TTypedExpr;
@@ -4087,6 +4089,14 @@ end;
 function TTypedExpr.SameDataExpr(expr : TTypedExpr) : Boolean;
 begin
    Result:=False;
+end;
+
+// DetachTypes
+//
+procedure TTypedExpr.DetachTypes(toTable : TSymbolTable);
+begin
+   toTable.AddSymbol(Typ);
+   FTyp:=nil;
 end;
 
 // GetBaseType
