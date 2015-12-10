@@ -75,6 +75,8 @@ type
          procedure WriteStrings(const str : TStrings); overload;
          procedure WriteStrings(const str : array of UnicodeString); overload;
 
+         procedure WriteJSON(const json : String);
+
          function ToString : String; override;
 
          property Stream : TWriteOnlyBlockStream read FStream write FStream;
@@ -2633,6 +2635,15 @@ begin
    for i:=0 to str.Count-1 do
       WriteString(str[i]);
    EndArray;
+end;
+
+// WriteJSON
+//
+procedure TdwsJSONWriter.WriteJSON(const json : String);
+begin
+   BeforeWriteImmediate;
+   FStream.WriteString(json);
+   AfterWriteImmediate;
 end;
 
 // WriteStrings
