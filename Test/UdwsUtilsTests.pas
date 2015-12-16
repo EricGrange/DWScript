@@ -17,7 +17,8 @@ unit UdwsUtilsTests;
 
 interface
 
-uses Classes, SysUtils, Math, dwsXPlatformTests, dwsUtils, dwsXPlatform, dwsWebUtils;
+uses Classes, SysUtils, Math, dwsXPlatformTests, dwsUtils,
+   dwsXPlatform, dwsWebUtils, dwsTokenStore, dwsCryptoLibModule;
 
 type
 
@@ -68,6 +69,8 @@ type
          procedure URLEncodedEncoder;
 
          procedure VariantClearAssignString;
+
+         procedure MultiThreadedTokenStore;
    end;
 
 // ------------------------------------------------------------------
@@ -850,6 +853,43 @@ begin
    CheckEquals(123, v, '123');
    VarCopySafe(v, 'e');
    CheckEquals('e', v, 'e');
+end;
+
+// MultiThreadedTokenStore
+//
+type
+   TTokenLoadThread = class(TThread)
+      FStore : TdwsTokenStore;
+      procedure Execute; override;
+   end;
+procedure TTokenLoadThread.Execute;
+var
+   i : Integer;
+begin
+   for i:=1 to 20000 do
+      FStore.Register(CryptographicToken(120), Random(100));
+end;
+procedure TdwsUtilsTests.MultiThreadedTokenStore;
+var
+   store : TdwsTokenStore;
+   threads : array [0..3] of TTokenLoadThread;
+   i : Integer;
+begin
+   store:=TdwsTokenStore.Create;
+   try
+      store.CollectionIntervalMilliseconds:=50;
+      for i:=0 to High(threads) do begin
+         threads[i]:=TTokenLoadThread.Create(True);
+         threads[i].FStore:=store;
+         threads[i].Start;
+      end;
+      for i:=0 to High(threads) do begin
+         threads[i].WaitFor;
+         threads[i].Free;
+      end;
+   finally
+      store.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------

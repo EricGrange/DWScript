@@ -1,5 +1,7 @@
 object dwsCryptoLib: TdwsCryptoLib
   OldCreateOrder = False
+  OnCreate = DataModuleCreate
+  OnDestroy = DataModuleDestroy
   Left = 810
   Top = 86
   Height = 215
@@ -40,6 +42,7 @@ object dwsCryptoLib: TdwsCryptoLib
       item
         Name = 'HashSHA256'
         Ancestor = 'HashAlgorithm'
+        IsStatic = True
         Methods = <
           item
             Name = 'HashData'
@@ -348,6 +351,47 @@ object dwsCryptoLib: TdwsCryptoLib
             OnEval = dwsCryptoClassesEncryptionCryptProtectMethodsDecryptDataEval
             Kind = mkClassFunction
           end>
+      end
+      item
+        Name = 'Nonces'
+        IsStatic = True
+        Methods = <
+          item
+            Name = 'Generate'
+            Parameters = <
+              item
+                Name = 'millisecondsUntilExpiration'
+                DataType = 'Integer'
+              end>
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsCryptoClassesNoncesMethodsGenerateEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'IsValid'
+            Parameters = <
+              item
+                Name = 'aNonce'
+                DataType = 'String'
+              end
+              item
+                Name = 'clearIfExists'
+                DataType = 'Boolean'
+                HasDefaultValue = True
+                DefaultValue = True
+              end>
+            ResultType = 'Boolean'
+            Attributes = [maStatic]
+            OnEval = dwsCryptoClassesNoncesMethodsIsValidEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'Clear'
+            Attributes = [maStatic]
+            OnEval = dwsCryptoClassesNoncesMethodsClearEval
+            Kind = mkClassProcedure
+          end>
       end>
     Functions = <
       item
@@ -364,6 +408,18 @@ object dwsCryptoLib: TdwsCryptoLib
         Name = 'ProcessUniqueRandom'
         ResultType = 'String'
         OnEval = dwsCryptoFunctionsProcessUniqueRandomEval
+      end
+      item
+        Name = 'CryptographicToken'
+        Parameters = <
+          item
+            Name = 'bitStrength'
+            DataType = 'Integer'
+            HasDefaultValue = True
+            DefaultValue = 120
+          end>
+        ResultType = 'String'
+        OnEval = dwsCryptoFunctionsCryptographicTokenEval
       end>
     UnitName = 'System.Crypto'
     StaticSymbols = True
