@@ -334,7 +334,8 @@ type
       Value : T;
    end;
    TSimpleHashBucketArray<T> = array of TSimpleHashBucket<T>;
-   TSimpleHashProc<T> = procedure (const item : T) of object;
+   TSimpleHashAction = (shaNone, shaRemove);
+   TSimpleHashFunc<T> = function (const item : T) : TSimpleHashAction of object;
 
    {: Minimalistic open-addressing hash, subclasses must override SameItem and GetItemHashCode.
       HashCodes *MUST* be non zero }
@@ -360,9 +361,10 @@ type
       public
          function Add(const anItem : T) : Boolean; // true if added
          function Replace(const anItem : T) : Boolean; // true if added
+         function Remove(const anItem : T) : Boolean; // true if removed
          function Contains(const anItem : T) : Boolean;
          function Match(var anItem : T) : Boolean;
-         procedure Enumerate(callBack : TSimpleHashProc<T>);
+         procedure Enumerate(callBack : TSimpleHashFunc<T>);
          procedure Clear;
 
          property Count : Integer read FCount;
@@ -3838,6 +3840,27 @@ begin
    end;
 end;
 
+// Remove
+//
+function TSimpleHash<T>.Remove(const anItem : T) : Boolean;
+var
+   i : Integer;
+   hashCode : Integer;
+begin
+   if FCount>=FGrowth then Grow;
+
+   hashCode:=GetItemHashCode(anItem);
+   i:=(hashCode and (FCapacity-1));
+   if LinearFind(anItem, i) then begin
+      FBuckets[i].HashCode:=0;
+      FBuckets[i].Value:=Default(T);
+      Dec(FCount);
+      Result:=True;
+   end else begin
+      Result:=False;
+   end;
+end;
+
 // Contains
 //
 function TSimpleHash<T>.Contains(const anItem : T) : Boolean;
@@ -3864,13 +3887,20 @@ end;
 
 // Enumerate
 //
-procedure TSimpleHash<T>.Enumerate(callBack : TSimpleHashProc<T>);
+procedure TSimpleHash<T>.Enumerate(callBack : TSimpleHashFunc<T>);
 var
    i : Integer;
 begin
-   for i:=0 to High(FBuckets) do
-      if FBuckets[i].HashCode<>0 then
-         callBack(FBuckets[i].Value);
+   if FCount=0 then Exit;
+   for i:=0 to High(FBuckets) do begin
+      if FBuckets[i].HashCode<>0 then begin
+         if callBack(FBuckets[i].Value)=shaRemove then begin
+            FBuckets[i].HashCode:=0;
+            FBuckets[i].Value:=Default(T);
+            Dec(FCount);
+         end;
+      end;
+   end;
 end;
 
 // Clear
@@ -3880,7 +3910,7 @@ begin
    FCount:=0;
    FCapacity:=0;
    FGrowth:=0;
-   SetLength(FBuckets, 0);
+   FBuckets:=nil;
 end;
 
 // ------------------

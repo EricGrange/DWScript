@@ -1505,7 +1505,7 @@ type
 
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
-         procedure ProcessOverriddenInterfaceCallback(const item : TResolvedInterface);
+         function  ProcessOverriddenInterfaceCallback(const item : TResolvedInterface) : TSimpleHashAction;
          procedure ProcessOverriddenInterfaces;
          function  ProcessOverriddenInterface(const ancestorResolved : TResolvedInterface) : Boolean; // True if added
 
@@ -4454,9 +4454,10 @@ end;
 
 // ProcessOverriddenInterfaceCallback
 //
-procedure TClassSymbol.ProcessOverriddenInterfaceCallback(const item : TResolvedInterface);
+function TClassSymbol.ProcessOverriddenInterfaceCallback(const item : TResolvedInterface) : TSimpleHashAction;
 begin
    ProcessOverriddenInterface(item);
+   Result:=shaNone;
 end;
 
 // ResolveInterface

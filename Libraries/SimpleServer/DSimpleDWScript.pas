@@ -134,7 +134,7 @@ type
 
       procedure LogCompileErrors(const fileName : String; const msgs : TdwsMessageList);
 
-      procedure AddNotMatching(const cp : TCompiledProgram);
+      function AddNotMatching(const cp : TCompiledProgram) : TSimpleHashAction;
 
       procedure SetCPUUsageLimit(const val : Integer);
       procedure SetCPUAffinity(const val : Cardinal);
@@ -246,6 +246,8 @@ implementation
 {$R *.dfm}
 
 procedure TSimpleDWScript.DataModuleCreate(Sender: TObject);
+var
+   cryptoLib : TdwsCryptoLib;
 begin
    // attempt to minimize probability of ID collisions between server restarts
    FExecutingID:=SimpleIntegerHash(GetTickCount);
@@ -268,7 +270,9 @@ begin
    FSynapse:=TdwsSynapseLib.Create(Self);
    FSynapse.Script:=DelphiWebScript;
 
-   TdwsCryptoLib.Create(Self).dwsCrypto.Script:=DelphiWebScript;
+   cryptoLib:=TdwsCryptoLib.Create(Self);
+   cryptoLib.dwsCrypto.Script:=DelphiWebScript;
+   cryptoLib.UseTemporaryStorageForNonces;
 
    TdwsEncodingLib.Create(Self).dwsEncoding.Script:=DelphiWebScript;
 
@@ -636,10 +640,11 @@ end;
 
 // AddNotMatching
 //
-procedure TSimpleDWScript.AddNotMatching(const cp : TCompiledProgram);
+function TSimpleDWScript.AddNotMatching(const cp : TCompiledProgram) : TSimpleHashAction;
 var
    i : Integer;
 begin
+   Result:=shaNone;
    if cp.Prog.Msgs.HasErrors then Exit;
 
    for i:=0 to FFlushProgList.Count-1 do
