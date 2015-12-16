@@ -75,6 +75,7 @@ type
          FSSLRelativeURI : String;
          FDirectoryIndex : TDirectoryIndexCache;
          FAutoRedirectFolders : Boolean;
+         FErrorPagesPath : String;
          // Used to implement a lazy flush on FileAccessInfoCaches
          FCacheCounter : Cardinal;
          FFileAccessInfoCacheSize : Integer;
@@ -106,6 +107,7 @@ type
 
          procedure Process(request : TWebRequest; response : TWebResponse);
          procedure ProcessStaticFile(const pathName : String; request : TWebRequest; response : TWebResponse);
+         procedure ProcessStandardError(request : TWebRequest; statusCode : Integer; const defaultText : String; response : TWebResponse);
 
          procedure Redirect301TrailingPathDelimiter(request : TWebRequest; response : TWebResponse);
 
@@ -127,6 +129,7 @@ type
          property SSLRelativeURI : String read FSSLRelativeURI;
          property AutoRedirectFolders : Boolean read FAutoRedirectFolders;
          property FileAccessInfoCacheSize : Integer read FFileAccessInfoCacheSize write FFileAccessInfoCacheSize;
+         property ErrorPagesPath : String read FErrorPagesPath;
 
          property DWS : TSimpleDWScript read FDWS;
   end;
@@ -310,6 +313,8 @@ begin
       for i := 0 to env.ElementCount - 1 do
          fDWS.PathVariables.Values[env.Names[i]] := env.Elements[i].AsString;
 
+   FErrorPagesPath:=IncludeTrailingPathDelimiter(FPath+'.errors');
+
    FDirectoryIndex:=TDirectoryIndexCache.Create;
    FDirectoryIndex.IndexFileNames.CommaText:='"index.dws","index.htm","index.html"';
 
@@ -419,8 +424,7 @@ var
    fileInfo : TFileAccessInfo;
 begin
    if request.MethodVerb in FMethodsNotAllowed then begin
-      response.StatusCode:=405;
-      response.ContentText['plain']:='405: Method Not Allowed';
+      ProcessStandardError(request, 405, 'method not allowed',  response);
       Exit;
    end;
 
@@ -486,12 +490,10 @@ begin
 
    case fileInfo.FileAttribs of
       INVALID_FILE_ATTRIBUTES : begin
-         response.ContentData:='<h1>Not found</h1>';
-         response.StatusCode:=404;
+         ProcessStandardError(request, 404, 'not found',  response);
       end;
       FILE_ATTRIBUTE_SYSTEM : begin
-         response.ContentData:='<h1>Not authorized</h1>';
-         response.StatusCode:=401;
+         ProcessStandardError(request, 401, 'not authorized',  response);
       end;
       FILE_ATTRIBUTE_DIRECTORY :
          Redirect301TrailingPathDelimiter(request, response);
@@ -518,8 +520,7 @@ var
 begin
    lastModified:=FileDateTime(pathName);
    if lastModified=0 then begin
-      response.ContentData:='<h1>Not found</h1>';
-      response.StatusCode:=404;
+      ProcessStandardError(request, 404, 'not found',  response);
       Exit;
    end;
 
@@ -537,6 +538,30 @@ begin
    end else begin
 
       response.StatusCode:=304;
+
+   end;
+end;
+
+// ProcessStandardError
+//
+procedure THttpSys2WebServer.ProcessStandardError(
+   request : TWebRequest;
+   statusCode : Integer; const defaultText : String;
+   response : TWebResponse);
+var
+   errorFile : String;
+begin
+   response.StatusCode:=statusCode;
+   errorFile:=FErrorPagesPath+IntToStr(statusCode)+'.htm';
+
+   if FileExists(errorFile) then begin
+
+      response.ContentData:=UnicodeStringToUtf8(errorFile);
+      response.ContentType:=HTTP_RESP_STATICFILE;
+
+   end else begin
+
+      response.ContentText['plain'] := 'Error '+IntToStr(statusCode)+': '+defaultText;
 
    end;
 end;
