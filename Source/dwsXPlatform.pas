@@ -144,6 +144,7 @@ type
    {$ENDIF}
 
    TPath = class
+      class function GetTempPath : UnicodeString; static;
       class function GetTempFileName : UnicodeString; static;
    end;
 
@@ -239,6 +240,8 @@ function DeleteDirectory(const path : String) : Boolean;
 function DirectSet8087CW(newValue : Word) : Word; register;
 function DirectSetMXCSR(newValue : Word) : Word; register;
 
+function GetCurrentUserName : String;
+
 // Generics helper functions to handle Delphi 2009 issues - HV
 function TtoObject(const T): TObject; inline;
 function TtoPointer(const T): Pointer; inline;
@@ -255,6 +258,25 @@ procedure InitializeWithDefaultFormatSettings(var fmt : TFormatSettings);
 {$ifdef NEED_FindDelimiter}
 function FindDelimiter(const Delimiters, S: string; StartIdx: Integer = 1): Integer;
 {$endif}
+
+type
+   TTimerEvent = procedure of object;
+
+   ITimer = interface
+      procedure Cancel;
+   end;
+
+   TTimerTimeout = class(TInterfacedObject, ITimer)
+      private
+         FTimer : THandle;
+         FOnTimer : TTimerEvent;
+
+      public
+         constructor Create(delayMSec : Cardinal; onTimer : TTimerEvent);
+         destructor Destroy; override;
+
+         procedure Cancel;
+   end;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -1089,6 +1111,18 @@ begin
 {$endif}
 end;
 
+// GetCurrentUserName
+//
+function GetCurrentUserName : String;
+var
+	len : Cardinal;
+begin
+	len:=255;
+	SetLength(Result, len);
+	Windows.GetUserName(PChar(Result), len);
+	SetLength(Result, len-1);
+end;
+
 // Delphi 2009 is not able to cast a generic T instance to TObject or Pointer
 function TtoObject(const T): TObject;
 begin
@@ -1180,6 +1214,24 @@ end;
 // ------------------
 // ------------------ TPath ------------------
 // ------------------
+
+// GetTempPath
+//
+class function TPath.GetTempPath : UnicodeString;
+{$IFDEF VER200} // Delphi 2009
+var
+   tempPath : array [0..MAX_PATH] of WideChar; // Buf sizes are MAX_PATH+1
+begin
+   if Windows.GetTempPath(MAX_PATH, @tempPath[0])=0 then begin
+      tempPath[1]:='.'; // Current directory
+      tempPath[2]:=#0;
+   end;
+   Result:=tempPath;
+{$ELSE}
+begin
+   Result:=IOUTils.TPath.GetTempPath;
+{$ENDIF}
+end;
 
 // GetTempFileName
 //
@@ -1365,6 +1417,53 @@ begin
    end else begin
       Result:=mrswWriteLock;
    end;
+end;
+
+// ------------------
+// ------------------ TTimerTimeout ------------------
+// ------------------
+
+procedure TTimerTimeoutCallBack(Context: Pointer; Success: Boolean); stdcall
+var
+   tt : TTimerTimeout;
+begin
+   tt:=TTimerTimeout(Context);
+   tt._AddRef;
+   try
+      if Assigned(tt.FOnTimer) then
+         tt.FOnTimer();
+   finally
+      tt._Release;
+   end;
+end;
+
+// Create
+//
+constructor TTimerTimeout.Create(delayMSec : Cardinal; onTimer : TTimerEvent);
+begin
+   inherited Create;
+   FOnTimer:=onTimer;
+   CreateTimerQueueTimer(FTimer, 0, TTimerTimeoutCallBack, Self,
+                         delayMSec, 0,
+                         WT_EXECUTEDEFAULT or WT_EXECUTELONGFUNCTION or WT_EXECUTEONLYONCE);
+end;
+
+// Destroy
+//
+destructor TTimerTimeout.Destroy;
+begin
+   Cancel;
+   inherited;
+end;
+
+// Cancel
+//
+procedure TTimerTimeout.Cancel;
+begin
+   FOnTimer:=nil;
+   if FTimer=0 then Exit;
+   DeleteTimerQueueTimer(0, FTimer, INVALID_HANDLE_VALUE);
+   FTimer:=0;
 end;
 
 // ------------------------------------------------------------------
