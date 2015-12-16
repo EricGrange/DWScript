@@ -399,7 +399,6 @@ begin
    FFlushedDependencies.Duplicates:=dupIgnore;
    FTempReg:=TdwsRegisteredCodeGen.Create;
 //   FSymbolMaps:=TdwsCodeGenSymbolMaps.Create;
-   FRootSymbolMap:=TdwsCodeGenSymbolMap.Create(Self, nil, nil);
    FIndentSize:=3;
    FDataContextPool:=TDataContextPool.Create;
 end;
@@ -570,8 +569,7 @@ begin
 //   FSymbolMap:=nil;
 //   FSymbolMaps.Clear;
 //   EnterScope(nil);
-   FRootSymbolMap.Free;
-   FRootSymbolMap:=TdwsCodeGenSymbolMap.Create(Self, nil, nil);
+   FreeAndNil(FRootSymbolMap);
 
    FIndent:=0;
    FIndentString:='';
@@ -941,6 +939,8 @@ begin
       FSymbolDictionary:=nil;
       FSourceContextMap:=nil;
    end;
+   Assert(FRootSymbolMap=nil);
+   FRootSymbolMap:=CreateSymbolMap(nil, nil);
 
    p.ResourceStringList.ComputeIndexes;
 
