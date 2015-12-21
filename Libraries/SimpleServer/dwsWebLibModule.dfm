@@ -706,6 +706,16 @@ object dwsWebLib: TdwsWebLib
           end>
         ResultType = 'String'
         OnEval = dwsWebFunctionsGetHostByAddrEval
+      end
+      item
+        Name = 'GetHostByName'
+        Parameters = <
+          item
+            Name = 'host'
+            DataType = 'String'
+          end>
+        ResultType = 'String'
+        OnEval = dwsWebFunctionsGetHostByNameEval
       end>
     UnitName = 'System.Net'
     StaticSymbols = True

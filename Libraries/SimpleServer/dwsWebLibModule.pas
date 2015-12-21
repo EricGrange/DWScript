@@ -119,6 +119,7 @@ type
     procedure dwsWebClassesHttpQueryMethodsGetIgnoreSSLCertificateErrorsEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebFunctionsGetHostByAddrEval(info: TProgramInfo);
+    procedure dwsWebFunctionsGetHostByNameEval(info: TProgramInfo);
   private
     { Private declarations }
   public
@@ -651,6 +652,16 @@ begin
    if (addr = '127.0.0.1') or (addr = '::1') then
       info.ResultAsString := 'localhost'
    else info.ResultAsDataString := ResolveIPToName(addr, 0, 0, SOCK_STREAM);
+end;
+
+procedure TdwsWebLib.dwsWebFunctionsGetHostByNameEval(info: TProgramInfo);
+var
+   host : RawByteString;
+begin
+   host := info.ParamAsDataString[0];
+   if host = 'localhost' then
+      info.ResultAsString := '127.0.0.1'
+   else info.ResultAsDataString := ResolveName(host);
 end;
 
 end.
