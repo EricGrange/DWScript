@@ -18,7 +18,8 @@ unit UdwsUtilsTests;
 interface
 
 uses Classes, SysUtils, Math, dwsXPlatformTests, dwsUtils,
-   dwsXPlatform, dwsWebUtils, dwsTokenStore, dwsCryptoLibModule;
+   dwsXPlatform, dwsWebUtils, dwsTokenStore, dwsCryptoLibModule,
+   dwsEncodingLibModule;
 
 type
 
@@ -71,6 +72,9 @@ type
          procedure VariantClearAssignString;
 
          procedure MultiThreadedTokenStore;
+         procedure TokenStoreData;
+
+         procedure Base32EncoderTest;
    end;
 
 // ------------------------------------------------------------------
@@ -867,7 +871,7 @@ var
    i : Integer;
 begin
    for i:=1 to 20000 do
-      FStore.Register(CryptographicToken(120), Random(100));
+      FStore.Register(CryptographicToken(120), Random(100), '');
 end;
 procedure TdwsUtilsTests.MultiThreadedTokenStore;
 var
@@ -890,6 +894,61 @@ begin
    finally
       store.Free;
    end;
+end;
+
+// TokenStoreData
+//
+procedure TdwsUtilsTests.TokenStoreData;
+var
+   store : TdwsTokenStore;
+begin
+   store:=TdwsTokenStore.Create;
+   try
+      store.Register('a', 1000, 'aa');
+      store.Register('b', 1000, 'bb');
+      store.Register('c', 1000, 'aa');
+      CheckEquals('aa', store.TokenData['a']);
+      CheckEquals('bb', store.TokenData['b']);
+      CheckEquals('aa', store.TokenData['c']);
+      store.RemoveByData('aa');
+      CheckEquals('', store.TokenData['a']);
+      CheckEquals('bb', store.TokenData['b']);
+      CheckEquals('', store.TokenData['c']);
+   finally
+      store.Free;
+   end;
+end;
+
+// Base32EncoderTest
+//
+procedure TdwsUtilsTests.Base32EncoderTest;
+begin
+   CheckEquals('', Base32Encode(''));
+   CheckEquals('GE', Base32Encode('1'));
+   CheckEquals('GEZA', Base32Encode('12'));
+   CheckEquals('GEZDG', Base32Encode('123'));
+   CheckEquals('GEZDGNA', Base32Encode('1234'));
+   CheckEquals('GEZDGNBV', Base32Encode('12345'));
+   CheckEquals('GEZDGNBVGY', Base32Encode('123456'));
+   CheckEquals('GEZDGNBVGY3Q', Base32Encode('1234567'));
+   CheckEquals('GEZDGNBVGY3TQ', Base32Encode('12345678'));
+   CheckEquals('GEZDGNBVGY3TQOI', Base32Encode('123456789'));
+   CheckEquals('GEZDGNBVGY3TQOJQ', Base32Encode('1234567890'));
+   CheckEquals('GEZDGNBVGY3TQOJQME', Base32Encode('1234567890a'));
+
+   CheckEquals('', Base32Decode(''));
+   CheckEquals('1', Base32Decode('GE'));
+   CheckEquals('12', Base32Decode('GEZA'));
+   CheckEquals('12', Base32Decode('GEZA===='));
+   CheckEquals('123', Base32Decode('GEZDG'));
+   CheckEquals('1234', Base32Decode('GEZDGNA'));
+   CheckEquals('12345', Base32Decode('GEZDGNBV'));
+   CheckEquals('123456', Base32Decode('GEZDGNBVGY'));
+   CheckEquals('1234567', Base32Decode('GEZDGNBVGY3Q'));
+   CheckEquals('12345678', Base32Decode('GEZDGNBVGY3TQ'));
+   CheckEquals('123456789', Base32Decode('GEZDGNBVGY3TQOI'));
+   CheckEquals('1234567890', Base32Decode('GEZDGNBVGY3TQOJQ'));
+   CheckEquals('1234567890a', Base32Decode('GEZDGNBVGY3TQOJQME'));
 end;
 
 // ------------------------------------------------------------------

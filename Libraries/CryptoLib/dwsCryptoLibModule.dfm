@@ -357,11 +357,38 @@ object dwsCryptoLib: TdwsCryptoLib
         IsStatic = True
         Methods = <
           item
+            Name = 'Register'
+            Parameters = <
+              item
+                Name = 'aNonce'
+                DataType = 'String'
+              end
+              item
+                Name = 'millisecondsUntilExpiration'
+                DataType = 'Integer'
+              end
+              item
+                Name = 'data'
+                DataType = 'String'
+                HasDefaultValue = True
+                DefaultValue = ''
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsCryptoClassesNoncesMethodsRegisterEval
+            Kind = mkClassProcedure
+          end
+          item
             Name = 'Generate'
             Parameters = <
               item
                 Name = 'millisecondsUntilExpiration'
                 DataType = 'Integer'
+              end
+              item
+                Name = 'data'
+                DataType = 'String'
+                HasDefaultValue = True
+                DefaultValue = ''
               end>
             ResultType = 'String'
             Attributes = [maStatic]
@@ -369,22 +396,62 @@ object dwsCryptoLib: TdwsCryptoLib
             Kind = mkClassFunction
           end
           item
-            Name = 'IsValid'
+            Name = 'CheckAndKeep'
             Parameters = <
               item
                 Name = 'aNonce'
                 DataType = 'String'
-              end
-              item
-                Name = 'clearIfExists'
-                DataType = 'Boolean'
-                HasDefaultValue = True
-                DefaultValue = True
               end>
             ResultType = 'Boolean'
             Attributes = [maStatic]
-            OnEval = dwsCryptoClassesNoncesMethodsIsValidEval
+            OnEval = dwsCryptoClassesNoncesMethodsCheckAndKeepEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'CheckAndRemove'
+            Parameters = <
+              item
+                Name = 'aNonce'
+                DataType = 'String'
+              end>
+            ResultType = 'Boolean'
+            Attributes = [maStatic]
+            OnEval = dwsCryptoClassesNoncesMethodsCheckAndRemoveEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'GetData'
+            Parameters = <
+              item
+                Name = 'aNonce'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsCryptoClassesNoncesMethodsGetDataEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'Remove'
+            Parameters = <
+              item
+                Name = 'aNonce'
+                DataType = 'String'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsCryptoClassesNoncesMethodsRemoveEval
+            Kind = mkClassProcedure
+          end
+          item
+            Name = 'RemoveByData'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsCryptoClassesNoncesMethodsRemoveByDataEval
+            Kind = mkClassProcedure
           end
           item
             Name = 'Clear'

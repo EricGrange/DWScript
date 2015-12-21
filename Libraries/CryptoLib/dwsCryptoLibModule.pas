@@ -64,9 +64,19 @@ type
     procedure DataModuleDestroy(Sender: TObject);
     procedure dwsCryptoClassesNoncesMethodsGenerateEval(Info: TProgramInfo;
       ExtObject: TObject);
-    procedure dwsCryptoClassesNoncesMethodsIsValidEval(Info: TProgramInfo;
-      ExtObject: TObject);
     procedure dwsCryptoClassesNoncesMethodsClearEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsCryptoClassesNoncesMethodsGetDataEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsCryptoClassesNoncesMethodsRemoveEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsCryptoClassesNoncesMethodsRemoveByDataEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsCryptoClassesNoncesMethodsCheckAndKeepEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsCryptoClassesNoncesMethodsCheckAndRemoveEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsCryptoClassesNoncesMethodsRegisterEval(Info: TProgramInfo;
       ExtObject: TObject);
   private
     { Private declarations }
@@ -373,6 +383,18 @@ begin
    PerformHashData(Info, HashMD5);
 end;
 
+procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsCheckAndKeepEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean:=FNonces.CheckAndKeep(Info.ParamAsString[0])
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsCheckAndRemoveEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean:=FNonces.CheckAndRemove(Info.ParamAsString[0])
+end;
+
 procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsClearEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
@@ -394,16 +416,33 @@ var
    nonce : String;
 begin
    nonce:=CryptographicToken(120);
-   FNonces.Register(nonce, Info.ParamAsInteger[0]*0.001);
+   FNonces.Register(nonce, Info.ParamAsInteger[0]*0.001, Info.ParamAsString[1]);
    Info.ResultAsString:=nonce;
 end;
 
-procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsIsValidEval(
+procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsGetDataEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   if Info.ParamAsBoolean[1] then
-      Info.ResultAsBoolean:=FNonces.CheckAndClear(Info.ParamAsString[0])
-   else Info.ResultAsBoolean:=FNonces.CheckAndKeep(Info.ParamAsString[0])
+   Info.ResultAsString:=FNonces.TokenData[Info.ParamAsString[0]];
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsRegisterEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   FNonces.Register(Info.ParamAsString[0], Info.ParamAsInteger[1],
+                    Info.ParamAsString[2]);
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsRemoveByDataEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   FNonces.RemoveByData(Info.ParamAsString[0]);
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsRemoveEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   FNonces.CheckAndRemove(Info.ParamAsString[0]);
 end;
 
 procedure TdwsCryptoLib.dwsCryptoClassesHashMD5MethodsHMACEval(

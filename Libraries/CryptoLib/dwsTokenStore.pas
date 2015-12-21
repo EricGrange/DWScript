@@ -27,6 +27,7 @@ type
    TdwsToken = record
       HashCode : Integer;
       Token : String;
+      Data : String;
       Expire : TDateTime;
    end;
 
@@ -42,20 +43,27 @@ type
          FHash : TdwsTokenHash;
          FCollection : ITimer;
          FCollectionIntervalMilliseconds : Integer;
+         FCollectData : String;
 
       protected
          procedure ScheduleCollection;
          function CollectToken(const item : TdwsToken) : TSimpleHashAction;
+         function CollectTokenByData(const item : TdwsToken) : TSimpleHashAction;
+
+         function GetTokenData(const aToken : String) : String;
 
       public
          constructor Create;
          destructor Destroy; override;
 
-         procedure Register(const aToken : String; ttlSeconds : Double);
+         procedure Register(const aToken : String; ttlSeconds : Double; const aData : String);
 
          function CheckAndKeep(const aToken : String) : Boolean;
-         function CheckAndClear(const aToken : String) : Boolean;
+         function CheckAndRemove(const aToken : String) : Boolean;
 
+         property TokenData[const aToken : String] : String read GetTokenData;
+
+         procedure RemoveByData(const data : String);
          procedure Clear;
          procedure Collect;
 
@@ -66,6 +74,10 @@ type
          procedure LoadFromFile(const fileName : String);
 
          property CollectionIntervalMilliseconds : Integer read FCollectionIntervalMilliseconds write FCollectionIntervalMilliseconds;
+   end;
+
+   TdwsTokenKeyStore = class
+      private
    end;
 
 // ------------------------------------------------------------------
@@ -123,16 +135,17 @@ end;
 
 // Register
 //
-procedure TdwsTokenStore.Register(const aToken : String; ttlSeconds : Double);
+procedure TdwsTokenStore.Register(const aToken : String; ttlSeconds : Double; const aData : String);
 var
    token : TdwsToken;
 begin
    token.HashCode:=SimpleStringHash(aToken);
    token.Token:=aToken;
    token.Expire:=UTCDateTime+ttlSeconds*(1/86400);
+   token.Data:=adata;
    FLock.BeginWrite;
    try
-      FHash.Add(token);
+      FHash.Replace(token);
       if FCollection=nil then
          ScheduleCollection;
    finally
@@ -158,12 +171,11 @@ begin
    finally
       FLock.EndRead;
    end;
-
 end;
 
-// CheckAndClear
+// CheckAndRemove
 //
-function TdwsTokenStore.CheckAndClear(const aToken : String) : Boolean;
+function TdwsTokenStore.CheckAndRemove(const aToken : String) : Boolean;
 var
    token : TdwsToken;
    t : TDateTime;
@@ -178,6 +190,20 @@ begin
          FHash.Remove(token);
       end else Result:=False;
    finally
+      FLock.EndWrite;
+   end;
+end;
+
+// RemoveByData
+//
+procedure TdwsTokenStore.RemoveByData(const data : String);
+begin
+   FLock.BeginWrite;
+   try
+      FCollectData:=data;
+      FHash.Enumerate(CollectTokenByData);
+   finally
+      FCollectData:='';
       FLock.EndWrite;
    end;
 end;
@@ -218,6 +244,36 @@ begin
    Result:=shaRemove;
 end;
 
+// CollectTokenByData
+//
+function TdwsTokenStore.CollectTokenByData(const item : TdwsToken) : TSimpleHashAction;
+begin
+   if item.Data=FCollectData then
+      Result:=shaRemove
+   else Result:=shaNone;
+end;
+
+// GetTokenData
+//
+function TdwsTokenStore.GetTokenData(const aToken : String) : String;
+var
+   token : TdwsToken;
+   t : TDateTime;
+begin
+   Result:='';
+   token.HashCode:=SimpleStringHash(aToken);
+   token.Token:=aToken;
+   t:=UTCDateTime;
+   FLock.BeginRead;
+   try
+      if FHash.Match(token) and (token.Expire>t) then
+         Result:=token.Data
+      else Result:='';
+   finally
+      FLock.EndRead;
+   end;
+end;
+
 type
    TJSONStreamer = class
       Writer : TdwsJSONWriter;
@@ -229,7 +285,14 @@ function TJSONStreamer.Write(const item : TdwsToken) : TSimpleHashAction;
 begin
    if item.Expire>T then begin
       Writer.WriteName(item.Token);
-      Writer.WriteNumber(item.Expire);
+      if item.Data<>'' then begin
+         Writer.BeginObject;
+         Writer.WriteName('data').WriteString(item.Data);
+         Writer.WriteName('expire').WriteNumber(item.Expire);
+         Writer.EndObject;
+      end else begin
+         Writer.WriteNumber(item.Expire);
+      end;
       Result:=shaNone;
    end else Result:=shaRemove;
 end;
@@ -264,13 +327,21 @@ var
    i : Integer;
    token : TdwsToken;
    t : TDateTime;
+   elem : TdwsJSONValue;
 begin
    t:=UTCDateTime;
    FLock.BeginWrite;
    try
       FHash.Clear;
       for i:=0 to json.ElementCount-1 do begin
-         token.Expire:=json.Elements[i].AsNumber;
+         elem:=json.Elements[i];
+         if elem.ValueType=jvtObject then begin
+            token.Expire:=elem['expire'].AsNumber;
+            token.Data:=elem['data'].AsString;
+         end else begin
+            token.Expire:=elem.AsNumber;
+            token.Data:='';
+         end;
          if token.Expire>t then begin
             token.Token:=json.Names[i];
             token.HashCode:=SimpleStringHash(token.Token);
