@@ -28,6 +28,7 @@ type
 
       published
          procedure ParseURLEncodedTest;
+         procedure HTMLAttributeTest;
    end;
 
 // ------------------------------------------------------------------
@@ -68,6 +69,19 @@ begin
    finally
       decoded.Free;
    end;
+end;
+
+// HTMLAttributeTest
+//
+procedure TdwsWebUtilsTests.HTMLAttributeTest;
+begin
+   CheckEquals('', WebUtils.HTMLAttributeEncode(''), 'empty');
+   CheckEquals('1', WebUtils.HTMLAttributeEncode('1'), '1');
+   CheckEquals('ab', WebUtils.HTMLAttributeEncode('ab'), 'ab');
+   CheckEquals('&#x09;&#x7E;', WebUtils.HTMLAttributeEncode(#9#126), '#9#126');
+   CheckEquals('a&#32;c', WebUtils.HTMLAttributeEncode('a c'), 'a c');
+   CheckEquals('a&#34;&#60;&#62;', WebUtils.HTMLAttributeEncode('a"<>'), 'a"<>');
+   CheckEquals('a&#47;hj', WebUtils.HTMLAttributeEncode('a/hj'), 'a/hj');
 end;
 
 

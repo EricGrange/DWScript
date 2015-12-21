@@ -206,6 +206,35 @@ object dwsEncodingLib: TdwsEncodingLib
             OnEval = dwsEncodingClassesBase58EncoderMethodsDecodeEval
             Kind = mkClassFunction
           end>
+      end
+      item
+        Name = 'HTMLAttributeEncoder'
+        Ancestor = 'Encoder'
+        Methods = <
+          item
+            Name = 'Encode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsEncodingClassesHTMLAttributeEncoderMethodsEncodeEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'Decode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsEncodingClassesHTMLAttributeEncoderMethodsDecodeEval
+            Kind = mkClassFunction
+          end>
       end>
     UnitName = 'System.Encoding'
     StaticSymbols = True

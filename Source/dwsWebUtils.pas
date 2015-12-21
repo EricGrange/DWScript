@@ -44,6 +44,9 @@ type
          class function HTMLTextEncode(const s : String) : String; static;
          class function HTMLTextDecode(const s : String) : String; static;
          class function HTMLCharacterDecode(p : PChar) : Char; static;
+
+         class function HTMLAttributeEncode(const s : String) : String; static;
+         class function HTMLAttributeDecode(const s : String) : String; static;
    end;
 
 
@@ -869,6 +872,80 @@ begin
    end;
    if Result=#0 then
       Result:=TryAllEntities(p);
+end;
+
+// HTMLAttributeEncode
+//
+class function WebUtils.HTMLAttributeEncode(const s : String) : String;
+// as per OWASP XSS Rule#2
+var
+   capacity : Integer;
+   pSrc, pDest : PChar;
+
+   procedure Grow;
+   var
+      nr, dnr : Integer;
+      k : NativeUInt;
+   begin
+      k := NativeUInt(pDest)-NativeUInt(Pointer(Result));
+      nr := Length(Result);
+      dnr := (nr div 4) + 8;
+      SetLength(Result, nr + dnr);
+      Inc(capacity, dnr);
+      pDest := Pointer(NativeUInt(Pointer(Result))+k);
+   end;
+
+   procedure Append(c : Byte); overload;
+   begin
+      if capacity < 6 then Grow;
+      pDest[0] := '&';
+      pDest[1] := '#';
+      if c in [10..99] then begin
+         pDest[2] := Char( Ord('0')+(c div 10) );
+         pDest[3] := Char( Ord('0')+(c mod 10) );
+         pDest[4] := ';';
+         Inc(pDest, 5);
+         Dec(capacity, 5);
+      end else begin
+         pDest[2] := 'x';
+         pDest[3] := cToHex[((c shr 4) and $F)+1];
+         pDest[4] := cToHex[(c and $F)+1];
+         pDest[5] := ';';
+         Inc(pDest, 6);
+         Dec(capacity, 6);
+      end;
+   end;
+
+begin
+   if s='' then exit;
+   capacity:=Length(s);
+   SetLength(Result, capacity);
+   pSrc:=Pointer(s);
+   pDest:=Pointer(Result);
+   repeat
+      case pSrc^ of
+         #0 : break;
+         'A'..'Z', 'a'..'z', '0'..'9', #256..#$FFFF : begin
+            if capacity=0 then
+               Grow;
+            pDest^ := pSrc^;
+            Inc(pDest);
+            Dec(capacity);
+         end;
+      else
+         Append(Ord(pSrc^));
+      end;
+      Inc(pSrc);
+   until False;
+   if capacity>0 then
+      SetLength(Result, Length(Result)-capacity);
+end;
+
+// HTMLAttributeDecode
+//
+class function WebUtils.HTMLAttributeDecode(const s : String) : String;
+begin
+   Result:=WebUtils.HTMLTextDecode(s);
 end;
 
 end.

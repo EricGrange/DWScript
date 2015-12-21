@@ -34,6 +34,10 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsEncodingClassesBase58EncoderMethodsDecodeEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesHTMLAttributeEncoderMethodsEncodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesHTMLAttributeEncoderMethodsDecodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -180,6 +184,18 @@ procedure TdwsEncodingLib.dwsEncodingClassesHexadecimalEncoderMethodsEncodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString := dwsUtils.BinToHex(Info.ParamAsDataString[0]);
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesHTMLAttributeEncoderMethodsDecodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := WebUtils.HTMLAttributeDecode(Info.ParamAsString[0]);
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesHTMLAttributeEncoderMethodsEncodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := WebUtils.HTMLAttributeEncode(Info.ParamAsString[0]);
 end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesHTMLTextEncoderMethodsDecodeEval(
