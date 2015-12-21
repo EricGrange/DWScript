@@ -859,6 +859,9 @@ var
    i : Integer;
    changed : Boolean;
 begin
+   if FRootSymbolMap=nil then
+      FRootSymbolMap:=CreateSymbolMap(nil, nil);
+
    ReserveSymbolNames;
    MapInternalSymbolNames(table, systemTable);
 
@@ -939,8 +942,6 @@ begin
       FSymbolDictionary:=nil;
       FSourceContextMap:=nil;
    end;
-   Assert(FRootSymbolMap=nil);
-   FRootSymbolMap:=CreateSymbolMap(nil, nil);
 
    p.ResourceStringList.ComputeIndexes;
 
