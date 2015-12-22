@@ -27,6 +27,7 @@ type
    TdwsToken = record
       HashCode : Integer;
       Token : String;
+      DataHashCode : Integer;
       Data : String;
       Expire : TDateTime;
    end;
@@ -44,6 +45,7 @@ type
          FCollection : ITimer;
          FCollectionIntervalMilliseconds : Integer;
          FCollectData : String;
+         FCollectDataHash : Integer;
 
       protected
          procedure ScheduleCollection;
@@ -58,12 +60,13 @@ type
 
          procedure Register(const aToken : String; ttlSeconds : Double; const aData : String);
 
-         function CheckAndKeep(const aToken : String) : Boolean;
-         function CheckAndRemove(const aToken : String) : Boolean;
+         function CheckAndKeep(const aToken, aData : String) : Boolean;
+         function CheckAndRemove(const aToken, aData : String) : Boolean;
 
          property TokenData[const aToken : String] : String read GetTokenData;
 
-         procedure RemoveByData(const data : String);
+         procedure Remove(const aToken : String);
+         procedure RemoveByData(const aData : String);
          procedure Clear;
          procedure Collect;
 
@@ -139,10 +142,12 @@ procedure TdwsTokenStore.Register(const aToken : String; ttlSeconds : Double; co
 var
    token : TdwsToken;
 begin
+   if aToken='' then Exit;
    token.HashCode:=SimpleStringHash(aToken);
    token.Token:=aToken;
    token.Expire:=UTCDateTime+ttlSeconds*(1/86400);
-   token.Data:=adata;
+   token.DataHashCode:=SimpleStringHash(aData);
+   token.Data:=aData;
    FLock.BeginWrite;
    try
       FHash.Replace(token);
@@ -155,18 +160,19 @@ end;
 
 // CheckAndKeep
 //
-function TdwsTokenStore.CheckAndKeep(const aToken : String) : Boolean;
+function TdwsTokenStore.CheckAndKeep(const aToken, aData : String) : Boolean;
 var
    token : TdwsToken;
    t : TDateTime;
 begin
+   if aToken='' then Exit(False);
    token.HashCode:=SimpleStringHash(aToken);
    token.Token:=aToken;
    t:=UTCDateTime;
    FLock.BeginRead;
    try
       if FHash.Match(token) then
-         Result:=(token.Expire>t)
+         Result:=(token.Expire>t) and (token.Data=aData)
       else Result:=False;
    finally
       FLock.EndRead;
@@ -175,20 +181,45 @@ end;
 
 // CheckAndRemove
 //
-function TdwsTokenStore.CheckAndRemove(const aToken : String) : Boolean;
+function TdwsTokenStore.CheckAndRemove(const aToken, aData : String) : Boolean;
 var
    token : TdwsToken;
    t : TDateTime;
 begin
+   if aToken='' then Exit(False);
    token.HashCode:=SimpleStringHash(aToken);
    token.Token:=aToken;
    t:=UTCDateTime;
+   FLock.BeginRead;
+   try
+      if FHash.Match(token) then
+         Result:=(token.Expire>t) and (token.Data=aData)
+      else Result:=False;
+   finally
+      FLock.EndRead;
+   end;
+   if Result then begin
+      FLock.BeginWrite;
+      try
+         FHash.Remove(token);
+      finally
+         FLock.EndWrite;
+      end;
+   end;
+end;
+
+// Remove
+//
+procedure TdwsTokenStore.Remove(const aToken : String);
+var
+   token : TdwsToken;
+begin
+   if aToken='' then Exit;
+   token.HashCode:=SimpleStringHash(aToken);
+   token.Token:=aToken;
    FLock.BeginWrite;
    try
-      if FHash.Match(token) then begin
-         Result:=(token.Expire>t);
-         FHash.Remove(token);
-      end else Result:=False;
+      FHash.Remove(token);
    finally
       FLock.EndWrite;
    end;
@@ -196,11 +227,12 @@ end;
 
 // RemoveByData
 //
-procedure TdwsTokenStore.RemoveByData(const data : String);
+procedure TdwsTokenStore.RemoveByData(const aData : String);
 begin
    FLock.BeginWrite;
    try
-      FCollectData:=data;
+      FCollectData:=aData;
+      FCollectDataHash:=SimpleStringHash(aData);
       FHash.Enumerate(CollectTokenByData);
    finally
       FCollectData:='';
@@ -248,7 +280,7 @@ end;
 //
 function TdwsTokenStore.CollectTokenByData(const item : TdwsToken) : TSimpleHashAction;
 begin
-   if item.Data=FCollectData then
+   if (item.DataHashCode=FCollectDataHash) and (item.Data=FCollectData) then
       Result:=shaRemove
    else Result:=shaNone;
 end;

@@ -386,13 +386,13 @@ end;
 procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsCheckAndKeepEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsBoolean:=FNonces.CheckAndKeep(Info.ParamAsString[0])
+   Info.ResultAsBoolean:=FNonces.CheckAndKeep(Info.ParamAsString[0], Info.ParamAsString[1])
 end;
 
 procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsCheckAndRemoveEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsBoolean:=FNonces.CheckAndRemove(Info.ParamAsString[0])
+   Info.ResultAsBoolean:=FNonces.CheckAndRemove(Info.ParamAsString[0], Info.ParamAsString[1])
 end;
 
 procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsClearEval(
@@ -442,7 +442,7 @@ end;
 procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsRemoveEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   FNonces.CheckAndRemove(Info.ParamAsString[0]);
+   FNonces.Remove(Info.ParamAsString[0]);
 end;
 
 procedure TdwsCryptoLib.dwsCryptoClassesHashMD5MethodsHMACEval(

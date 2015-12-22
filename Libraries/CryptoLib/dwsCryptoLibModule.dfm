@@ -360,7 +360,7 @@ object dwsCryptoLib: TdwsCryptoLib
             Name = 'Register'
             Parameters = <
               item
-                Name = 'aNonce'
+                Name = 'nonce'
                 DataType = 'String'
               end
               item
@@ -399,8 +399,14 @@ object dwsCryptoLib: TdwsCryptoLib
             Name = 'CheckAndKeep'
             Parameters = <
               item
-                Name = 'aNonce'
+                Name = 'nonce'
                 DataType = 'String'
+              end
+              item
+                Name = 'data'
+                DataType = 'String'
+                HasDefaultValue = True
+                DefaultValue = ''
               end>
             ResultType = 'Boolean'
             Attributes = [maStatic]
@@ -411,8 +417,14 @@ object dwsCryptoLib: TdwsCryptoLib
             Name = 'CheckAndRemove'
             Parameters = <
               item
-                Name = 'aNonce'
+                Name = 'nonce'
                 DataType = 'String'
+              end
+              item
+                Name = 'data'
+                DataType = 'String'
+                HasDefaultValue = True
+                DefaultValue = ''
               end>
             ResultType = 'Boolean'
             Attributes = [maStatic]
@@ -423,7 +435,7 @@ object dwsCryptoLib: TdwsCryptoLib
             Name = 'GetData'
             Parameters = <
               item
-                Name = 'aNonce'
+                Name = 'nonce'
                 DataType = 'String'
               end>
             ResultType = 'String'
@@ -435,7 +447,7 @@ object dwsCryptoLib: TdwsCryptoLib
             Name = 'Remove'
             Parameters = <
               item
-                Name = 'aNonce'
+                Name = 'nonce'
                 DataType = 'String'
               end>
             Attributes = [maStatic]
