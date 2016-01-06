@@ -218,10 +218,14 @@ begin
             end;
             if StrEndsWithA(mimeType, '/xml') then begin
                // unqualified xml content, may still be utf-8, check data header
-               p1:=PosA('?>', buf);
-               if     (p1>0)
-                  and (PosA('encoding="utf-8"', LowerCaseA(Copy(buf, 1, p1)))>0) then begin
-                  mimeType := mimeType + '; charset=utf-8';
+               if StrBeginsWithBytes(buf, [$EF, $BB, $BF]) then
+                  mimeType := mimeType + '; charset=utf-8'
+               else begin
+                  p1:=PosA('?>', buf);
+                  if     (p1>0)
+                     and (PosA('encoding="utf-8"', LowerCaseA(Copy(buf, 1, p1)))>0) then begin
+                     mimeType := mimeType + '; charset=utf-8';
+                  end;
                end;
             end;
 
