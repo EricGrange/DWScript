@@ -62,6 +62,8 @@ type
    TState_L = packed array[0..(cKeccakPermutationSizeInBytes) div 4 - 1] of Integer;
    TKDQueue = packed array[0..cKeccakMaximumRateInBytes-1] of Byte;
 
+   TSHA3_Algo = (SHA3_224, SHA3_256, SHA3_384, SHA3_512, SHAKE_128, SHAKE_256);
+
    TSpongeState = record
       StateB: TState_B;
       DataQueue: TKDQueue;
@@ -71,16 +73,26 @@ type
       FixedOutputLength: Integer;
       BitsAvailableForSqueezing: Integer;
       Squeezing: Integer;
+
+      procedure Init(algo: TSHA3_Algo); inline;
+      procedure Update(msg: Pointer; len: Integer); inline;
+      procedure FinalHash(digest : Pointer); inline;
    end;
 
    THashState = TSpongeState;   {Hash state context}
 
    TKeccakMaxDigest = packed array[0..63] of Byte;  {Keccak-512 digest}
 
-type
-   TSHA3_Algo = (SHA3_224, SHA3_256, SHA3_384, SHA3_512, SHAKE_128, SHAKE_256);
+   TSHA3_256_Hash = array [0..31] of Byte;
+   PSHA3_256_Hash = ^TSHA3_256_Hash;
 
    TSHA3State = TSpongeState;   {Hash state context}
+
+const
+   cSHA3_256_EmptyString : TSHA3_256_Hash = (
+      $a7, $ff, $c6, $f8, $bf, $1e, $d7, $66, $51, $c1, $47, $56, $a0, $61, $d6, $62,
+      $f5, $80, $ff, $4d, $e4, $3b, $49, $fa, $82, $d8, $0a, $4b, $80, $f8, $43, $4a
+      );
 
 procedure SHA3_Init(var state: TSHA3State; algo: TSHA3_Algo);
 procedure SHA3_Update(var state: TSHA3State; msg: Pointer; len: Integer);
@@ -445,6 +457,21 @@ begin
    if state.FixedOutputLength=0 then
       raise ESHA3Exception.Create('Wrong final');
    SHA3_FinalBit_LSB(state, 0, 0, digest, state.FixedOutputLength);
+end;
+
+procedure TSpongeState.Init(algo : TSHA3_Algo);
+begin
+   SHA3_Init(Self, algo);
+end;
+
+procedure TSpongeState.Update(msg : Pointer; len : Integer);
+begin
+   SHA3_Update(Self, msg, len);
+end;
+
+procedure TSpongeState.FinalHash(digest : Pointer);
+begin
+   SHA3_FinalHash(Self, digest);
 end;
 
 end.

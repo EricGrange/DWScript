@@ -195,14 +195,15 @@ end;
 function HashSHA3_256(const data : RawByteString) : RawByteString;
 var
    sponge : TSpongeState;
-   hash : array [0..256 div 8-1] of Byte;
 begin
-   SHA3_Init(sponge, SHA3_256);
-   SHA3_Update(sponge, Pointer(data), Length(data));
-   SHA3_FinalHash(sponge, @hash);
-
-   SetLength(Result, SizeOf(hash));
-   System.Move(hash, Result[1], SizeOf(hash));
+   SetLength(Result, SizeOf(TSHA3_256_Hash));
+   if data<>'' then begin
+      sponge.Init(SHA3_256);
+      sponge.Update(Pointer(data), Length(data));
+      sponge.FinalHash(Pointer(Result));
+   end else begin
+      System.Move(cSHA3_256_EmptyString, Pointer(Result)^, SizeOf(TSHA3_256_Hash));
+   end;
 end;
 
 function HashCRC32(const data : RawByteString) : RawByteString;
