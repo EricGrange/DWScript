@@ -316,7 +316,7 @@ end;
 //
 function TBoxedJSONValue.QueryInterface({$IFDEF FPC_HAS_CONSTREF}constref{$ELSE}const{$ENDIF} IID: TGUID; out Obj): HResult;
 begin
-   if IID=IBoxedJSONValue then begin
+   if IsEqualGUID(IID, IBoxedJSONValue) then begin // D2010 workaround, does not support = testing
       PIUnknown(@Obj)^:=IBoxedJSONValue(Self);
       Result:=0;
    end else Result:=inherited QueryInterface(IID, Obj);
