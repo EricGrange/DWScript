@@ -4742,7 +4742,7 @@ end;
 procedure TClassCloneConstructor<T>.Finalize;
 begin
    FTemplate.Free;
-   FTemplate:=nil;
+   TObject(FTemplate):=nil; // D2010 bug workaround
 end;
 
 // Create
