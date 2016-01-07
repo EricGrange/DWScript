@@ -342,8 +342,11 @@ end;
 
 procedure TdwsCryptoLib.dwsCryptoClassesHashCRC32MethodsHashDataEval(
   Info: TProgramInfo; ExtObject: TObject);
+var
+   crc : Cardinal;
 begin
-   Info.ResultAsString := IntToHex(CRC32string(Info.ParamAsDataString[0]), 8);
+   crc := SwapBytes(CRC32string(Info.ParamAsDataString[0]));
+   Info.ResultAsString := BinToHex(crc, 4);
 end;
 
 procedure TdwsCryptoLib.dwsCryptoClassesHashCRC32MethodsHMACEval(
