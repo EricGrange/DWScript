@@ -1,4 +1,22 @@
+{**********************************************************************}
+{                                                                      }
+{    "The contents of this file are subject to the Mozilla Public      }
+{    License Version 1.1 (the "License"); you may not use this         }
+{    file except in compliance with the License. You may obtain        }
+{    a copy of the License at http://www.mozilla.org/MPL/              }
+{                                                                      }
+{    Software distributed under the License is distributed on an       }
+{    "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express       }
+{    or implied. See the License for the specific language             }
+{    governing rights and limitations under the License.               }
+{                                                                      }
+{    Copyright Creative IT.                                            }
+{    Current maintainer: Eric Grange                                   }
+{                                                                      }
+{**********************************************************************}
 unit dwsEncodingLibModule;
+
+{$I dws.inc}
 
 interface
 
@@ -62,9 +80,29 @@ implementation
 const
    cBase58 : String = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
+function DivBy58(var v : Integer) : Integer;
+const
+   cMagic : Cardinal = 2369637129;
+{$ifdef WIN32_ASM}
+asm
+   mov ecx, eax
+   mov eax, dword ptr [eax]
+   mul eax, cMagic
+   mov eax, edx
+   shr eax, 5
+   mov edx, eax
+   imul edx, 58
+   sub dword ptr [ecx], edx
+{$else}
+begin
+   Result := UInt64(cMagic)*v shr 37;
+   v := v - Result*58;
+{$endif}
+end;
+
 function Base58Encode(const data : RawByteString) : String;
 var
-   i, j, carry, n : Integer;
+   i, j, carry, nextCarry, n : Integer;
    digits : array of Integer;
 begin
    if data = '' then exit;
@@ -84,24 +122,20 @@ begin
 
    for i := Length(Result)+1 to Length(data) do begin
 
-      for j := 0 to n do
-         digits[j] := digits[j] shl 8;
+      digits[0] := (digits[0] shl 8) + Ord(data[i]);
+      carry := DivBy58(digits[0]);
 
-      digits[0] := digits[0] + Ord(data[i]);
-
-      carry := 0;
-
-      for j := 0 to n do begin
-         digits[j] := digits[j] + carry;
-         carry := digits[j] div 58;
-         digits[j] := digits[j] mod 58;
+      for j := 1 to n do begin
+         digits[j] := (digits[j] shl 8) + carry;
+         carry := DivBy58(digits[j]);
       end;
 
       while carry > 0 do begin
          Inc(n);
          SetLength(digits, n+1);
-         digits[n] := carry mod 58;
-         carry := carry div 58;
+         nextCarry := carry div 58;
+         digits[n] := carry - nextCarry*58;
+         carry := nextCarry;
       end;
    end;
 

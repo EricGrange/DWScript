@@ -240,6 +240,8 @@ function DeleteDirectory(const path : String) : Boolean;
 function DirectSet8087CW(newValue : Word) : Word; register;
 function DirectSetMXCSR(newValue : Word) : Word; register;
 
+function SwapBytes(v : Cardinal) : Cardinal;
+
 function GetCurrentUserName : String;
 
 // Generics helper functions to handle Delphi 2009 issues - HV
@@ -1108,6 +1110,24 @@ asm
 {$else}
 begin
    Result:=newValue;
+{$endif}
+end;
+
+// SwapBytes
+//
+function SwapBytes(v : Cardinal) : Cardinal;
+{$ifdef WIN32_ASM}
+asm
+   bswap eax
+{$else}
+type
+   TCardinalBytes = array [0..3] of Byte;
+   PCardinalBytes = ^TCardinalBytes;
+begin
+   TCardinalBytes(Result)[0]:=TCardinalBytes(v)[3];
+   TCardinalBytes(Result)[1]:=TCardinalBytes(v)[2];
+   TCardinalBytes(Result)[2]:=TCardinalBytes(v)[1];
+   TCardinalBytes(Result)[3]:=TCardinalBytes(v)[0];
 {$endif}
 end;
 
