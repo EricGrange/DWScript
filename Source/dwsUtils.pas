@@ -165,7 +165,8 @@ type
 
       public
          procedure Push(item : TRefCountedObject); inline;
-         function  Peek : TRefCountedObject; inline;
+         function  Peek : TRefCountedObject;  overload; inline;
+         function  Peek(n : Integer) : TRefCountedObject; overload;
          procedure Pop; inline;
 
          procedure Clear; inline;
@@ -3709,7 +3710,20 @@ end;
 //
 function TTightStack.Peek : TRefCountedObject;
 begin
-   Result:=FList[FCount-1];
+   if FCount>0 then
+      Result:=FList[FCount-1]
+   else Result:=nil;
+end;
+
+// Peek
+//
+function TTightStack.Peek(n : Integer) : TRefCountedObject;
+begin
+   if n>=0 then
+      n:=FCount-n-1;
+   if n<0 then
+      Result:=nil
+   else Result:=FList[n];
 end;
 
 // Pop

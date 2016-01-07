@@ -2675,7 +2675,7 @@ end;
 procedure TdwsProgramExecution.LeaveRecursion;
 begin
    if IsDebugging then
-      Debugger.LeaveFunc(Self, TExprBase(FCallStack.Peek));
+      Debugger.LeaveFunc(Self, TExprBase(FCallStack.Peek(1)));
 
    FCurrentProg:=TdwsProgram(FCallStack.Peek);
 
