@@ -108,9 +108,9 @@ type
          class function CreateDataBase(const driverName : String; const parameters : TStringDynArray) : IdwsDataBase; static;
    end;
 
-   TdwsDataSet = class (TInterfacedSelfObject, IdwsDataSet)
+   TdwsDataSet = class (TInterfacedSelfObject, IUnknown, IdwsDataSet)
       private
-         FDataBase : TdwsDataBase;
+         FDataBase : IdwsDataBase;
          FFieldsPrepared : Boolean;
 
       protected
@@ -119,10 +119,12 @@ type
          procedure PrepareFields;
          procedure DoPrepareFields; virtual; abstract;
 
-         property DataBase : TdwsDataBase read FDataBase;
+         function _Release : Integer; stdcall;
+
+         property DataBase : IdwsDataBase read FDataBase;
 
       public
-         constructor Create(db : TdwsDataBase);
+         constructor Create(const db : IdwsDataBase);
          destructor Destroy; override;
 
          function Eof : Boolean; virtual; abstract;
@@ -134,7 +136,7 @@ type
 
    TdwsDataField = class (TInterfacedSelfObject, IdwsDataField)
       private
-         FDataSet : TdwsDataSet;
+         FDataSet : IdwsDataSet;
          FIndex : Integer;
          FName : String;
          FDataType : TdwsDataFieldType;
@@ -148,9 +150,9 @@ type
          procedure RaiseNoActiveRecord;
 
       public
-         constructor Create(dataSet : TdwsDataSet; fieldIndex : Integer);
+         constructor Create(const dataSet : IdwsDataSet; fieldIndex : Integer);
 
-         property DataSet : TdwsDataSet read FDataSet;
+         property DataSet : IdwsDataSet read FDataSet;
          property Index : Integer read FIndex;
 
          function Name : String;
@@ -223,7 +225,7 @@ end;
 
 // Create
 //
-constructor TdwsDataSet.Create(db : TdwsDataBase);
+constructor TdwsDataSet.Create(const db : IdwsDataBase);
 begin
    inherited Create;
    FDataBase:=db;
@@ -269,13 +271,24 @@ begin
    end;
 end;
 
+// _Release
+//
+function TdwsDataSet._Release : Integer;
+begin
+   Result:=DecRefCount;
+   if Result=0 then
+      Destroy
+   else if Result=Length(FFields) then
+      SetLength(FFields, 0);
+end;
+
 // ------------------
 // ------------------ TdwsDataField ------------------
 // ------------------
 
 // Create
 //
-constructor TdwsDataField.Create(dataSet : TdwsDataSet; fieldIndex : Integer);
+constructor TdwsDataField.Create(const dataSet : IdwsDataSet; fieldIndex : Integer);
 begin
    FDataSet:=dataSet;
    FIndex:=fieldIndex;
