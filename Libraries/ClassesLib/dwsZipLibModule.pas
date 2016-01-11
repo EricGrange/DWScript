@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, SysUtils, Classes,
-  dwsExprs, dwsComp, dwsWebUtils, dwsUtils, dwsXPlatform,
+  dwsExprs, dwsComp, dwsWebUtils, dwsUtils, dwsXPlatform, dwsSymbols,
   SynZip;
 
 type
@@ -36,6 +36,8 @@ type
     procedure dwsZipClassesTZipWriterMethodsAddDataEval(Info: TProgramInfo;
       ExtObject: TObject);
     procedure dwsZipClassesTZipWriterCleanUp(ExternalObject: TObject);
+    procedure dwsZipClassesTZipWriterMethodsAddFromZipEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -313,6 +315,30 @@ begin
       nameInZip:=ExtractFileName(fileName);
 
    z.AddFile(fileName, Info.ParamAsInteger[1], nameInZip);
+end;
+
+procedure TdwsZipLib.dwsZipClassesTZipWriterMethodsAddFromZipEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   z : TScriptZipWrite;
+   readerObj : IScriptObj;
+   reader : TScriptZipRead;
+   index : Integer;
+begin
+   z:=TScriptZipWrite(ExtObject);
+
+   readerObj:=Info.ParamAsScriptObj[0];
+   if readerObj.Destroyed then
+      raise Exception.Create('zipReader object already closed');
+   reader:=(readerObj.ExternalObject as TScriptZipRead);
+   if reader=nil then
+      raise Exception.Create('zipReader is nil');
+
+   index:=Info.ParamAsInteger[1];
+   if Cardinal(index)>=Cardinal(reader.Count) then
+      raise Exception.CreateFmt('zipReader entry index out of bounds (%d)', [index]);
+
+   z.AddFromZip(reader.Entry[index]);
 end;
 
 end.

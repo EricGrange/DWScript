@@ -103,6 +103,10 @@ object dwsZipLib: TdwsZipLib
             ResultType = 'Boolean'
             OnEval = dwsZipClassesTZipReaderMethodsUnzipEval
             Kind = mkFunction
+          end
+          item
+            Name = 'Close'
+            Kind = mkDestructor
           end>
         Properties = <
           item
@@ -199,6 +203,24 @@ object dwsZipLib: TdwsZipLib
               end>
             OnEval = dwsZipClassesTZipWriterMethodsAddDataEval
             Kind = mkProcedure
+          end
+          item
+            Name = 'AddFromZip'
+            Parameters = <
+              item
+                Name = 'reader'
+                DataType = 'TZipReader'
+              end
+              item
+                Name = 'index'
+                DataType = 'Integer'
+              end>
+            OnEval = dwsZipClassesTZipWriterMethodsAddFromZipEval
+            Kind = mkProcedure
+          end
+          item
+            Name = 'Close'
+            Kind = mkDestructor
           end>
         OnCleanUp = dwsZipClassesTZipWriterCleanUp
       end>
