@@ -53,7 +53,7 @@ end;
 
 procedure WriteHeader;
 begin
-   Writeln('dwsRunner - sample code runner for DWScript');
+   Writeln('dws Runner - sample code runner for DWScript');
    Writeln('');
 end;
 
@@ -180,13 +180,13 @@ begin
       if ParamCount<1 then begin
          WriteHeader;
          Writeln('Run a simple script with:');
-         Writeln('   dwsRunner <sourcefile> [param1] [param2] ... [paramN]');
+         Writeln('   dws <sourcefile> [param1] [param2] ... [paramN]');
          Writeln('');
          Writeln('Run a zip project with (starts from "main.pas" in the zip):');
-         Writeln('   dwsRunner <zipfile> [param1] [param2] ... [paramN]');
+         Writeln('   dws <zipfile> [param1] [param2] ... [paramN]');
          Writeln('');
          Writeln('Bundle a zip project into an executable:');
-         Writeln('   dwsRunner make <zipFile|sourcefile> [exeName]');
+         Writeln('   dws make <zipFile|sourcefile> [exeName]');
          Exit;
       end;
       fileName:=ParamStr(1);
