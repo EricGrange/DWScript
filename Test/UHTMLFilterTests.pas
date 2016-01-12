@@ -27,6 +27,7 @@ type
       procedure TestSpecialChars;
       procedure TestNotClosed;
       procedure TestIncludeFiltered;
+      procedure TestEditorMode;
 
    end;
 
@@ -182,6 +183,21 @@ begin
       scriptSource:='B'
    else scriptSource:=LoadTextFromFile('SimpleScripts\'+scriptName);
 end;
+
+// TestEditorMode
+//
+procedure THTMLFilterTests.TestEditorMode;
+begin
+   FFilter.BeginEditorMode;
+   try
+      CheckEquals('       N    ', FFilter.Process('a<?pas N ?>b', nil), '1');
+      CheckEquals('      (N); ',  FFilter.Process('a<?pas=N?>b', nil), '2');
+      CheckEquals('     N'#13#10'  '#13#10'     M  ',  FFilter.Process('<?pasN'#13#10'?>'#13#10'<?pasM?>', nil), '3');
+   finally
+      FFilter.EndEditorMode;
+   end;
+end;
+
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------

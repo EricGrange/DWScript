@@ -187,6 +187,7 @@ type
          FSubFilter : TdwsFilter;
          FDependencies : TStrings;
          FPrivateDependencies : TStrings;
+         FEditorMode : Integer;
 
          function GetDependencies : TStrings;
 
@@ -202,10 +203,18 @@ type
 
          function Process(const aText : UnicodeString; aMsgs : TdwsMessageList) : UnicodeString; virtual;
 
-         property Dependencies: TStrings read GetDependencies;
+         property Dependencies : TStrings read GetDependencies;
+
+         (*
+           EditorMode means the filter should strive to keep source locations unchanged
+           as the compilation will be used of Code Editor support features rather than execution
+         *)
+         procedure BeginEditorMode;
+         procedure EndEditorMode;
+         function  EditorMode : Boolean; inline;
 
       published
-         property SubFilter: TdwsFilter read FSubFilter write SetSubFilter;
+         property SubFilter : TdwsFilter read FSubFilter write SetSubFilter;
    end;
 
    TAddArgProcedure = procedure (argExpr : TTypedExpr) of object;
@@ -14393,13 +14402,45 @@ begin
     SetSubFilter(nil);
 end;
 
+// BeginEditorMode
+//
+procedure TdwsFilter.BeginEditorMode;
+begin
+   if Self<>nil then
+      Inc(FEditorMode);
+end;
+
+// EndEditorMode
+//
+procedure TdwsFilter.EndEditorMode;
+begin
+   if Self<>nil then begin
+      Assert(FEditorMode>0, 'Unbalanced EndEditorMode');
+      Dec(FEditorMode);
+   end;
+end;
+
+// EditorMode
+//
+function TdwsFilter.EditorMode : Boolean;
+begin
+   Result:=(FEditorMode>0);
+end;
+
 // Process
 //
 function TdwsFilter.Process(const aText : UnicodeString; aMsgs : TdwsMessageList) : UnicodeString;
 begin
-   if Assigned(FSubFilter) then
-      Result := FSubFilter.Process(aText, aMsgs)
-   else Result := aText;
+   if Assigned(FSubFilter) then begin
+      if EditorMode then
+         FSubFilter.BeginEditorMode;
+      try
+         Result := FSubFilter.Process(aText, aMsgs)
+      finally
+         if EditorMode then
+            FSubFilter.BeginEditorMode;
+      end;
+   end else Result := aText;
 end;
 
 procedure TdwsFilter.SetSubFilter(const Filter: TdwsFilter);

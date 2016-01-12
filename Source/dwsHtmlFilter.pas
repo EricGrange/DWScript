@@ -120,6 +120,18 @@ var
    begin
       if start>stop then Exit;
 
+      if EditorMode then begin
+         for i := start to stop do begin
+            c := input[i];
+            case c of
+               #13, #10, #9 : output.WriteChar(c);
+            else
+               output.WriteChar(' ');
+            end;
+         end;
+         Exit;
+      end;
+
       output.WriteString('Print(');
       isQuoted:=False;
       lineCount:=0;
@@ -185,6 +197,16 @@ var
          output.WriteCRLF;
    end;
 
+   procedure StuffSpaces(n : Integer);
+   begin
+      while n>10 do begin
+         output.WriteSubString('          ', 1, 10);
+         Dec(n, 10);
+      end;
+      if n>0 then
+         output.WriteSubString('          ', 1, n);
+   end;
+
 var
    p, start, stop : Integer;
    isEval : Integer;
@@ -210,12 +232,16 @@ begin
             Break;
          end else StuffString(input, p, start-1);
          start:=start+FPatternOpenLength;
+         if EditorMode then StuffSpaces(FPatternOpenLength-1);
 
          isEval:=FCheckPatternEval(@inputPtr[start-1]);
          if isEval=0 then begin
-            output.WriteString('Print(');
             start:=start+FPatternEvalLength;
-         end;
+            if EditorMode then begin
+               StuffSpaces(FPatternEvalLength);
+               output.WriteString('(');
+            end else output.WriteString('Print(');
+         end else if EditorMode then StuffSpaces(1);
 
          stop:=PosEx(PatternClose, input, start);
          if stop<=0 then
@@ -223,10 +249,13 @@ begin
          else begin
             output.Write(inputPtr[start-1], (stop-start)*SizeOf(WideChar));
             p:=stop+FPatternCloseLength;
+            if EditorMode then StuffSpaces(FPatternCloseLength-2);
          end;
 
          if isEval=0 then
-            output.WriteString(');');
+            output.WriteString(');')
+         else if EditorMode then StuffSpaces(2);
+
       until (stop<=0);
 
       Result:=output.ToString;
