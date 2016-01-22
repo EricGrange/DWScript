@@ -91,6 +91,7 @@ type
          procedure InitializationFinalization;
          procedure IsAbstractFlag;
          procedure UnitOwnedByCompiler;
+         procedure BugInForVarConnectorExpr;
    end;
 
    ETestException = class (Exception);
@@ -1955,6 +1956,19 @@ begin
    end;
 
    CheckException(InvalidAddUnit, EdwsInvalidUnitAddition, 'TdwsUnit AddUnit');
+end;
+
+// BugInForVarConnectorExpr
+//
+procedure TCornerCasesTests.BugInForVarConnectorExpr;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'var a : array of String;'#13#10
+                           +'var j : JSONVariant;'#13#10
+                           +'for var n in a do j[n] := ...');
+   // no expected leak
+   prog := nil;
 end;
 
 // ------------------------------------------------------------------

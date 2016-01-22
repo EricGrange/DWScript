@@ -552,7 +552,7 @@ type
          function ReadInterface(const typeName : UnicodeString) : TInterfaceSymbol;
          function ReadConnectorSym(const name : UnicodeString; baseExpr : TTypedExpr;
                                    const connectorType : IConnectorType; isWrite: Boolean) : TProgramExpr;
-         function ReadConnectorArray(const name : UnicodeString; baseExpr : TTypedExpr;
+         function ReadConnectorArray(const name : UnicodeString; var baseExpr : TTypedExpr;
                                      const connectorType : IConnectorType; isWrite: Boolean) : TConnectorCallExpr;
 
          function ReadConstSymbol(const name : UnicodeString; const constPos : TScriptPos;
@@ -6296,8 +6296,14 @@ begin
    end;
    Result:=blockExpr;
    try
-      Result:=ReadForStep(forPos, forExprClass, iterVarExpr,
-                          fromExpr, toExpr, readArrayItemExpr);
+      try
+         Result:=ReadForStep(forPos, forExprClass, iterVarExpr,
+                             fromExpr, toExpr, readArrayItemExpr);
+      except
+         OrphanObject(blockExpr);
+         blockExpr:=nil;
+         raise;
+      end;
       if Optimize then
          Result:=Result.Optimize(FProg, FExec);
    finally
@@ -12485,13 +12491,14 @@ end;
 
 // ReadConnectorArray
 //
-function TdwsCompiler.ReadConnectorArray(const Name: UnicodeString; BaseExpr: TTypedExpr;
+function TdwsCompiler.ReadConnectorArray(const Name: UnicodeString; var baseExpr: TTypedExpr;
             const ConnectorType: IConnectorType; IsWrite: Boolean): TConnectorCallExpr;
 var
    argPosArray : TScriptPosArray;
 begin
-   Result:=TConnectorCallExpr.Create(FTok.HotPos, Name, BaseExpr, IsWrite, True);
+   Result:=TConnectorCallExpr.Create(FTok.HotPos, Name, baseExpr, IsWrite, True);
    try
+      baseExpr := nil;
       ReadArguments(Result.AddArg, ttALEFT, ttARIGHT, argPosArray);
 
       if IsWrite then begin
