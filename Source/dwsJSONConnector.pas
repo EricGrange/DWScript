@@ -667,7 +667,7 @@ end;
 //
 procedure TdwsJSONLowCall.FastCall(const args : TExprBaseListExec; var result : Variant);
 begin
-   result:=0;
+   VarCopySafe(result, 0);
 end;
 
 // ------------------
@@ -683,7 +683,7 @@ var
 begin
    args.EvalAsVariant(0, base);
    v:=TBoxedJSONValue.UnBox(base);
-   result:=v.ElementCount-1;
+   VarCopySafe(result, v.ElementCount-1);
 end;
 
 // ------------------
@@ -699,7 +699,7 @@ var
 begin
    args.EvalAsVariant(0, base);
    v:=TBoxedJSONValue.UnBox(base);
-   result:=v.ElementCount;
+   VarCopySafe(result, v.ElementCount);
 end;
 
 // ------------------
@@ -728,7 +728,7 @@ begin
    else
       vt:=jvtUndefined;
    end;
-   result:=TdwsJSONValue.ValueTypeStrings[vt];
+   VarCopySafe(result, TdwsJSONValue.ValueTypeStrings[vt]);
 end;
 
 // ------------------
@@ -745,8 +745,8 @@ begin
    args.EvalAsVariant(0, base);
    v:=TBoxedJSONValue.UnBox(base);
    if v<>nil then
-      result:=v.Names[args.AsInteger[1]]
-   else result:='';
+      VarCopySafe(result, v.Names[args.AsInteger[1]])
+   else VarCopySafe(result, '');
 end;
 
 // ------------------
@@ -763,8 +763,8 @@ begin
    args.EvalAsVariant(0, base);
    v:=TBoxedJSONValue.UnBox(base);
    if v<>nil then
-      result:=IBoxedJSONValue(TBoxedJSONValue.Create(v.Clone))
-   else result:=vNilJSONValue;
+      VarCopySafe(result, IBoxedJSONValue(TBoxedJSONValue.Create(v.Clone)))
+   else VarCopySafe(result, vNilJSONValue);
 end;
 
 // ------------------
@@ -828,7 +828,7 @@ begin
                raise EdwsJSONException.Create('JSON Array Add() unsupported type');
             end;
          end;
-         result:=baseArray.ElementCount;
+         VarCopySafe(result, baseArray.ElementCount);
          Exit;
       end;
    end;
@@ -843,7 +843,7 @@ end;
 //
 procedure TdwsJSONToStringCall.FastCall(const args : TExprBaseListExec; var result : Variant);
 begin
-   result:='';
+   VarCopySafe(result, '');
    TJSONStringifyMethod.Stringify(args, UnicodeString(PVarData(@Result)^.VString));
 end;
 
@@ -882,7 +882,7 @@ begin
          Exit;
       end;
    end;
-   Result:=vNilJSONValue;
+   VarCopySafe(Result, vNilJSONValue);
 end;
 
 // ------------------
@@ -935,7 +935,10 @@ begin
             argValue:=nil;
          end;
       else
-         raise Exception.Create('Unsupported assignment');
+         if VarIsNumeric(val) then begin
+            argValue:=TdwsJSONImmediate.Create;
+            argValue.AsNumber:=val;
+         end else raise Exception.Create('Unsupported assignment');
       end;
       args.ExprBase[1].EvalAsVariant(args.Exec, val);
       baseValue.Values[val]:=argValue;
@@ -983,7 +986,7 @@ begin
    if v<>nil then begin
       v:=v.Items[FMemberName];
       TBoxedJSONValue.AllocateOrGetImmediate(v, result)
-   end else result:=vNilJSONValue;
+   end else VarCopySafe(result, vNilJSONValue);
 end;
 
 // FastWrite
@@ -1033,13 +1036,13 @@ begin
    v:=TBoxedJSONValue.UnBox(b);
    if v<>nil then begin
       case v.ValueType of
-         jvtArray : result:=v.ElementCount;
-         jvtString : result:=Length(v.AsString)
+         jvtArray : VarCopySafe(result, v.ElementCount);
+         jvtString : VarCopySafe(result, Length(v.AsString));
       else
          v:=v.Items[FMemberName];
          TBoxedJSONValue.AllocateOrGetImmediate(v, result)
       end;
-   end else result:=vNilJSONValue;
+   end else VarCopySafe(result, vNilJSONValue);
 end;
 
 // ------------------
