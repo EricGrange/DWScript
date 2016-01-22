@@ -86,7 +86,15 @@ type
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
 
-   TFileWriteFunc = class(TInternalMagicIntFunction)
+   TFileRead4Func = class(TInternalMagicStringFunction)
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+   end;
+
+   TFileWrite1Func = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+   end;
+
+   TFileWrite2Func = class(TInternalMagicIntFunction)
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
@@ -387,17 +395,39 @@ begin
 end;
 
 // ------------------
-// ------------------ TFileWriteFunc ------------------
+// ------------------ TFileRead4Func ------------------
+// ------------------
+
+// DoEvalAsString
+//
+procedure TFileRead4Func.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+begin
+   RawByteStringToScriptString(LoadRawBytesFromFile(args.AsFileName[0]), Result);
+end;
+
+// ------------------
+// ------------------ TFileWrite1Func ------------------
 // ------------------
 
 // DoEvalAsInteger
 //
-function TFileWriteFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+function TFileWrite1Func.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 var
    buf : RawByteString;
 begin
    buf:=args.AsDataString[1];
    Result:=dwsXPlatform.FileWrite(GetFileHandle(args, 0), Pointer(buf), Length(buf));
+end;
+
+// ------------------
+// ------------------ TFileWrite2Func ------------------
+// ------------------
+
+// DoEvalAsInteger
+//
+function TFileWrite2Func.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+begin
+   Result:=SaveRawBytesToFile(args.AsFileName[0], args.AsDataString[1]);
 end;
 
 // ------------------
@@ -653,7 +683,9 @@ initialization
    RegisterInternalIntFunction(TFileRead1Func, 'FileRead', ['f', SYS_FILE, '@buf', SYS_STRING, 'n', SYS_INTEGER], [iffOverloaded]);
    RegisterInternalStringFunction(TFileRead2Func, 'FileRead', ['f', SYS_FILE, 'n', SYS_INTEGER], [iffOverloaded]);
    RegisterInternalStringFunction(TFileRead3Func, 'FileRead', ['f', SYS_FILE], [iffOverloaded]);
-   RegisterInternalIntFunction(TFileWriteFunc, 'FileWrite', ['f', SYS_FILE, 'buf', SYS_STRING], []);
+   RegisterInternalStringFunction(TFileRead4Func, 'FileRead', ['name', SYS_STRING], [iffOverloaded]);
+   RegisterInternalIntFunction(TFileWrite1Func, 'FileWrite', ['f', SYS_FILE, 'buf', SYS_STRING], [iffOverloaded]);
+   RegisterInternalIntFunction(TFileWrite2Func, 'FileWrite', ['name', SYS_STRING, 'buf', SYS_STRING], [iffOverloaded]);
    RegisterInternalIntFunction(TFileSeekFunc, 'FileSeek', ['f', SYS_FILE, 'offset', SYS_INTEGER, 'origin', SYS_INTEGER], []);
 
    RegisterInternalProcedure(TFileCloseFunc, 'FileClose', ['f', SYS_FILE]);

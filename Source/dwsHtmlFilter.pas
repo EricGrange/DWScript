@@ -198,13 +198,20 @@ var
    end;
 
    procedure StuffSpaces(n : Integer);
+   const
+      cManySpaces = '                ';
    begin
-      while n>10 do begin
-         output.WriteSubString('          ', 1, 10);
-         Dec(n, 10);
+      case n of
+         0 : ;
+         1..Length(cManySpaces) :
+            output.WriteSubString(cManySpaces, 1, n);
+      else
+         while n>Length(cManySpaces) do begin
+            output.WriteSubString(cManySpaces, 1, Length(cManySpaces));
+            Dec(n, Length(cManySpaces));
+         end;
+         StuffSpaces(n);
       end;
-      if n>0 then
-         output.WriteSubString('          ', 1, n);
    end;
 
 var

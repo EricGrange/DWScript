@@ -189,7 +189,7 @@ procedure TdwsZipLib.dwsZipClassesTZipReaderConstructorsCreateEval(
 var
    z : TScriptZipRead;
 begin
-   z:=TScriptZipRead.Create(Info.ParamAsString[0], 0, 0);
+   z:=TScriptZipRead.Create(Info.ParamAsFileName[0], 0, 0);
    ExtObject:=z;
 end;
 
@@ -259,7 +259,7 @@ var
 begin
    z:=TScriptZipRead(ExtObject);
    i:=z.CheckedIndex(Info);
-   fileName:=Info.ParamAsString[1];
+   fileName:=Info.ParamAsFileName[1];
    if ForceDirectories(ExtractFilePath(fileName)) then begin
       h:=OpenFileForSequentialWriteOnly(fileName);
       try
@@ -282,7 +282,7 @@ procedure TdwsZipLib.dwsZipClassesTZipWriterConstructorsCreateEval(
 var
    z : TScriptZipWrite;
 begin
-   z:=TScriptZipWrite.Create(Info.ParamAsString[0]);
+   z:=TScriptZipWrite.Create(Info.ParamAsFileName[0]);
    ExtObject:=z;
 end;
 
@@ -309,7 +309,7 @@ var
 begin
    z:=TScriptZipWrite(ExtObject);
 
-   fileName:=Info.ParamAsString[0];
+   fileName:=Info.ParamAsFileName[0];
    nameInZip:=Info.ParamAsString[2];
    if nameInZip='' then
       nameInZip:=ExtractFileName(fileName);

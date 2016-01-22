@@ -19,7 +19,7 @@ interface
 
 uses Classes, SysUtils, Math, dwsXPlatformTests, dwsUtils,
    dwsXPlatform, dwsWebUtils, dwsTokenStore, dwsCryptoLibModule,
-   dwsEncodingLibModule;
+   dwsEncodingLibModule, dwsGlobalVars;
 
 type
 
@@ -75,6 +75,12 @@ type
          procedure TokenStoreData;
 
          procedure Base32EncoderTest;
+
+         procedure NameObjectHashTest;
+
+         procedure MultiThreadedGlobalVars;
+         procedure Eratosthenes;
+         procedure GlobalVarsCollect;
    end;
 
 // ------------------------------------------------------------------
@@ -84,6 +90,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+var
+   vGlobals : TGlobalVars;
 
 // ------------------
 // ------------------ TdwsUtilsTests ------------------
@@ -949,6 +958,205 @@ begin
    CheckEquals('123456789', Base32Decode('GEZDGNBVGY3TQOI'));
    CheckEquals('1234567890', Base32Decode('GEZDGNBVGY3TQOJQ'));
    CheckEquals('1234567890a', Base32Decode('GEZDGNBVGY3TQOJQME'));
+end;
+
+// NameObjectHashTest
+//
+procedure TdwsUtilsTests.NameObjectHashTest;
+var
+   i : Integer;
+   h : Cardinal;
+   name1, name2, name1c : String;
+   noh : TNameObjectHash;
+begin
+   // generate names for test, name1 & name2 should not collide
+   // while name1c should clash with name1
+   name1:='0';
+   h:=SimpleStringHash(name1) and (cNameObjectHashMinSize-1);
+   for i:=1 to cNameObjectHashMinSize*4 do begin
+      if (SimpleStringHash(IntToStr(i)) and (cNameObjectHashMinSize-1))=h then begin
+         if name1c='' then
+            name1c:=IntToStr(i);
+      end else begin
+         if name2='' then
+            name2:=IntToStr(i);
+      end;
+   end;
+   Assert((name2<>'') and (name1c<>''), 'either you got darn unlucky or the hash function is bugged...');
+
+   noh:=TNameObjectHash.Create;
+   try
+      noh.AddObject(name1, Self);
+      CheckEquals(noh.Count, 1);
+      CheckTrue(Self=noh.Objects[name1], '1 a');
+      CheckTrue(nil=noh.Objects[name1c], '1 b');
+      CheckTrue(nil=noh.Objects[name2], '1 c');
+
+      noh.AddObject(name2, noh);
+      CheckEquals(noh.Count, 2);
+      CheckTrue(Self=noh.Objects[name1], '2 a');
+      CheckTrue(nil=noh.Objects[name1c], '2 b');
+      CheckTrue(noh=noh.Objects[name2], '2 c');
+
+      noh.AddObject(name1c, FStatusStrings);
+      CheckEquals(noh.Count, 3);
+      CheckTrue(Self=noh.Objects[name1], '3 a');
+      CheckTrue(FStatusStrings=noh.Objects[name1c], '3 b');
+      CheckTrue(noh=noh.Objects[name2], '3 c');
+
+      noh.Bucket[noh.BucketIndex[name1]].HashCode:=0;
+      noh.Pack;
+      CheckEquals(noh.Count, 2);
+      CheckTrue(nil=noh.Objects[name1], '4 a');
+      CheckTrue(FStatusStrings=noh.Objects[name1c], '4 b');
+      CheckTrue(noh=noh.Objects[name2], '4 c');
+
+      noh.Bucket[noh.BucketIndex[name2]].HashCode:=0;
+      noh.Pack;
+      CheckEquals(noh.Count, 1);
+      CheckTrue(nil=noh.Objects[name1], '5 a');
+      CheckTrue(FStatusStrings=noh.Objects[name1c], '5 b');
+      CheckTrue(nil=noh.Objects[name2], '5 c');
+
+      noh.Bucket[noh.BucketIndex[name1c]].HashCode:=0;
+      noh.Pack;
+      CheckEquals(noh.Count, 0);
+      CheckTrue(nil=noh.Objects[name1], '6 a');
+      CheckTrue(nil=noh.Objects[name1c], '6 b');
+      CheckTrue(nil=noh.Objects[name2], '6 c');
+   finally
+      noh.Free;
+   end;
+end;
+
+// MultiThreadedGlobalVars
+//
+type
+   TGlobalVarStress = class (TThread)
+      procedure Execute; override;
+   end;
+procedure TGlobalVarStress.Execute;
+var
+   i : Integer;
+   v : Variant;
+   names : array [0..15] of String;
+begin
+   FreeOnTerminate:=False;
+   for i:=0 to High(names) do
+      names[i]:=IntToHex(i, 4);
+   for i:=1 to 50000 do begin
+      vGlobals.TryRead(names[(i + 60) and High(names)], v);
+      vGlobals.Write(names[i and High(names)], i, 0);
+   end;
+end;
+procedure TdwsUtilsTests.MultiThreadedGlobalVars;
+var
+   i : Integer;
+   threads : array [0..3] of TGlobalVarStress;
+begin
+   vGlobals.Initialize;
+   try
+      for i:=0 to High(threads) do
+         threads[i]:=TGlobalVarStress.Create;
+      for i:=0 to High(threads) do begin
+         threads[i].WaitFor;
+         threads[i].Free;
+      end;
+      CheckNotEquals('', vGlobals.NamesCommaText);
+      vGlobals.Cleanup;
+      CheckEquals('', vGlobals.NamesCommaText);
+   finally
+      vGlobals.Finalize;
+   end;
+end;
+
+// Eratosthenes
+//
+type
+   TSieveResult = class(TSimpleInt64List)
+      procedure AddFind(const s : String);
+   end;
+procedure TSieveResult.AddFind(const s : String);
+begin
+   Add(StrToInt64(s));
+end;
+procedure TdwsUtilsTests.Eratosthenes;
+const
+   cMAX = 10000;
+var
+   i, j : Integer;
+   v : Variant;
+   si : String;
+   primes : TSieveResult;
+begin
+   vGlobals.Initialize;
+   try
+      for i:=2 to cMAX do begin
+         FastInt64ToStr(i, si);
+         if not vGlobals.TryRead(si, v) then begin
+            vGlobals.Write(si, 1, 0);
+            j:=i+i;
+            while j<=cMAX do begin
+               vGlobals.Write(IntToStr(j), 0, 0);
+               j:=j+i;
+            end;
+         end;
+      end;
+      for i:=2 to cMAX do begin
+         FastInt64ToStr(i, si);
+         if vGlobals.TryRead(si, v) and (v=0) then
+            vGlobals.Delete(si);
+      end;
+      primes:=TSieveResult.Create;
+      try
+         vGlobals.EnumerateNames('*', primes.AddFind);
+         primes.Sort;
+         CheckEquals(1229, primes.Count);
+         CheckEquals(2, primes[0]);
+         CheckEquals(3, primes[1]);
+         CheckEquals(5, primes[2]);
+         CheckEquals(7, primes[3]);
+         CheckEquals(9967, primes[1227]);
+         CheckEquals(9949, primes[1226]);
+         CheckEquals(9973, primes[1228]);
+      finally
+         primes.Free;
+      end;
+   finally
+      vGlobals.Finalize;
+   end;
+end;
+
+// GlobalVarsCollect
+//
+procedure TdwsUtilsTests.GlobalVarsCollect;
+var
+   i, k : Integer;
+   v : Variant;
+   gv : TGlobalVars;
+   t : Int64;
+begin
+   gv.Initialize;
+   try
+      for i:=1 to 10 do
+         gv.Write('survivor'+IntToStr(i), i, 0);
+      for i:=1 to 10000 do begin
+         gv.Write(IntToStr(i), i, 1e-10);
+         if (i and 1023)=0 then begin
+            t:=GetSystemMilliseconds;
+            while t=GetSystemMilliseconds do Sleep(10);
+            for k:=1 to 30 do
+               gv.IncrementalCollect;
+            CheckEquals(10, gv.Count, IntToStr(i));
+         end;
+      end;
+      for i:=1 to 10 do begin
+         CheckTrue(gv.TryRead('survivor'+IntToStr(i), v));
+         CheckEquals(i, v);
+      end;
+   finally
+      gv.Finalize;
+   end;
 end;
 
 // ------------------------------------------------------------------

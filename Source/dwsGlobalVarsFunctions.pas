@@ -131,7 +131,7 @@ function WriteGlobalVar(const aName: UnicodeString; const aValue: Variant; expir
 function ReadGlobalVar(const aName: UnicodeString): Variant; inline;
 function TryReadGlobalVar(const aName: UnicodeString; var value: Variant): Boolean;
 {: Directly read a global var, using a default value if variable does not exists.<p> }
-function ReadGlobalVarDef(const aName: UnicodeString; const aDefault: Variant): Variant; inline;
+function ReadGlobalVarDef(const aName: UnicodeString; const aDefault: Variant): Variant;
 {: Increments an integer global var. If not an integer, conversion is attempted.<p>
    Returns the value after the incrementation }
 function IncrementGlobalVar(const aName : UnicodeString; const delta : Int64) : Int64;
@@ -155,11 +155,6 @@ procedure SaveGlobalVarsToStream(destStream : TStream);
 {: Load global vars and their values to a file. }
 procedure LoadGlobalVarsFromStream(srcStream : TStream);
 
-{: CommaText of the names of all global vars. }
-procedure CollectGlobalVarsNames(const filter : String; dest : TStrings);
-{: CommaText of the names of all global vars. }
-function GlobalVarsNamesCommaText : UnicodeString;
-
 {: Push to global queue and return count (after push) }
 function GlobalQueuePush(const aName : String; const aValue : Variant) : Integer;
 {: Insert to global queue and return count (after insert) }
@@ -177,18 +172,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsGlobalVars;
+
 type
-
-   TGlobalVar = class(TObject)
-      private
-         Value: Variant;
-         Expire: Int64;
-
-         procedure WriteToFiler(writer: TWriter; const Name : UnicodeString);
-         procedure ReadFromFiler(reader: TReader; var Name : UnicodeString);
-   end;
-
-   TNameGlobalVarHash = TSimpleNameObjectHash<TGlobalVar>;
 
    TGlobalQueue = TSimpleQueue<Variant>;
 
@@ -197,103 +183,44 @@ type
    end;
 
 var
-   vGlobalVarsCS : TMultiReadSingleWrite;
-   vGlobalVars : TNameGlobalVarHash;
-   vGlobalVarsNamesCache : UnicodeString;
+   vGlobalVars : TGlobalVars;
    vGlobalQueuesCS : TMultiReadSingleWrite;
    vGlobalQueues : TNameGlobalQueueHash;
 
 const
    cGlobalVarsFiles : AnsiString = 'GBF 2.0';
-   cGlobalVarsLarge = 1024;
+
+// ------------------
+// ------------------ stubs ------------------
+// ------------------
 
 // WriteGlobalVar
 //
 function WriteGlobalVar(const aName : UnicodeString; const aValue : Variant; expirationSeconds : Double) : Boolean;
-var
-   gv : TGlobalVar;
-   expire : Int64;
 begin
-   if expirationSeconds>0 then
-      expire:=GetSystemMilliseconds+Round(expirationSeconds*1000)
-   else expire:=0;
-   vGlobalVarsCS.BeginWrite;
-   try
-      gv:=vGlobalVars.Objects[aName];
-      if gv=nil then begin
-         gv:=TGlobalVar.Create;
-         vGlobalVars.Objects[aName]:=gv;
-         gv.Value:=aValue;
-         vGlobalVarsNamesCache:='';
-         Result:=True;
-      end else begin
-         Result:=(VarType(gv.Value)<>VarType(aValue)) or (gv.Value<>aValue);
-         if Result then
-            gv.Value:=aValue;
-      end;
-      gv.Expire:=expire;
-   finally
-      vGlobalVarsCS.EndWrite;
-   end;
+   Result:=vGlobalVars.Write(aName, aValue, expirationSeconds);
 end;
 
 // ReadGlobalVarDef
 //
 function ReadGlobalVarDef(const aName : UnicodeString; const aDefault : Variant) : Variant;
 begin
-   if not TryReadGlobalVar(aName, Result) then
+   if not vGlobalVars.TryRead(aName, Result) then
       Result:=aDefault;
 end;
 
 // IncrementGlobalVar
 //
 function IncrementGlobalVar(const aName : UnicodeString; const delta : Int64) : Int64;
-var
-   gv : TGlobalVar;
 begin
-   vGlobalVarsCS.BeginWrite;
-   try
-      gv:=vGlobalVars.Objects[aName];
-      if gv=nil then begin
-         vGlobalVarsNamesCache:='';
-         gv:=TGlobalVar.Create;
-         vGlobalVars.Objects[aName]:=gv;
-         Result:=delta;
-      end else begin
-         if (gv.Expire=0) or (gv.Expire>GetSystemMilliseconds) then
-            Result:=delta+gv.Value
-         else Result:=delta;
-      end;
-      gv.Value:=Result;
-   finally
-      vGlobalVarsCS.EndWrite;
-   end;
+   Result:=vGlobalVars.Increment(aName, delta);
 end;
 
 // CompareExchangeGlobalVar
 //
 function CompareExchangeGlobalVar(const aName : UnicodeString; const value, comparand : Variant) : Variant;
-var
-   gv : TGlobalVar;
 begin
-   vGlobalVarsCS.BeginWrite;
-   try
-      gv:=vGlobalVars.Objects[aName];
-      if (gv<>nil) and ((gv.Expire=0) or (gv.Expire>GetSystemMilliseconds)) then
-         Result:=gv.Value
-      else Result:=Unassigned;
-
-      if (VarType(Result)=VarType(comparand)) and (Result=comparand) then begin
-         if gv=nil then begin
-            vGlobalVarsNamesCache:='';
-            gv:=TGlobalVar.Create;
-            vGlobalVars.Objects[aName]:=gv;
-         end;
-         gv.Value:=value;
-      end;
-   finally
-      vGlobalVarsCS.EndWrite;
-   end;
+   Result:=vGlobalVars.CompareExchange(aName, value, comparand);
 end;
 
 // ReadGlobalVar
@@ -308,113 +235,22 @@ end;
 // TryReadGlobalVar
 //
 function TryReadGlobalVar(const aName: UnicodeString; var value: Variant): Boolean;
-var
-   gv : TGlobalVar;
 begin
-   vGlobalVarsCS.BeginRead;
-   try
-      gv:=vGlobalVars.Objects[aName];
-      if     (gv<>nil)
-         and ((gv.Expire=0) or (gv.Expire>GetSystemMilliseconds)) then begin
-         value:=gv.Value;
-         Exit(True);
-      end;
-   finally
-      vGlobalVarsCS.EndRead;
-   end;
-   Result:=False;
+   Result:=vGlobalVars.TryRead(aName, value);
 end;
 
 // DeleteGlobalVar
 //
 function DeleteGlobalVar(const aName : UnicodeString) : Boolean;
-var
-   gv : TGlobalVar;
-   i : Integer;
 begin
-   gv:=nil;
-   vGlobalVarsCS.BeginWrite;
-   try
-      i:=vGlobalVars.BucketIndex[aName];
-      if i>=0 then begin
-         gv:=vGlobalVars.BucketObject[i];
-         if gv<>nil then begin
-            vGlobalVars.BucketObject[i]:=nil;
-            vGlobalVarsNamesCache:='';
-         end;
-      end
-   finally
-      vGlobalVarsCS.EndWrite;
-   end;
-   if gv<>nil then begin
-      gv.Destroy;
-      Result:=True;
-   end else Result:=False;
+   Result:=vGlobalVars.Delete(aName);
 end;
 
 // CleanupGlobalVars
 //
 procedure CleanupGlobalVars(const filter : String = '*');
-var
-   i, n : Integer;
-   mask : TMask;
-   gv : TGlobalVar;
-   rehash : TNameGlobalVarHash;
-   expire : Int64;
 begin
-   if filter='*' then begin
-      vGlobalVarsCS.BeginWrite;
-      try
-         vGlobalVars.Clean;
-         vGlobalVarsNamesCache:='';
-      finally
-         vGlobalVarsCS.EndWrite;
-      end;
-   end else begin
-      expire:=GetSystemMilliseconds;
-      if filter='' then
-         mask:=nil
-      else mask:=TMask.Create(filter);
-      vGlobalVarsCS.BeginWrite;
-      try
-         n:=0;
-         for i:=0 to vGlobalVars.HighIndex do begin
-            gv:=vGlobalVars.BucketObject[i];
-            if gv=nil then
-               Inc(n)
-            else if    ((gv.Expire>0) and (gv.Expire<expire))
-                    or ((mask<>nil) and mask.Matches(vGlobalVars.BucketName[i])) then begin
-               gv.Free;
-               vGlobalVars.BucketObject[i]:=nil;
-               Inc(n);
-            end;
-         end;
-         // if hash is large and 75% or more of the hash slots are nil, then rehash
-         if (vGlobalVars.HighIndex>cGlobalVarsLarge) and (4*n>3*vGlobalVars.HighIndex) then begin
-            // compute required capacity after rehash taking into account a 25% margin
-            // (or 33%, depending on which way you look at the percentage)
-            n:=vGlobalVars.HighIndex-n;
-            n:=2*(n+n div 3)+1;
-            i:=vGlobalVars.HighIndex+1;
-            while i>n do
-               i:=i shr 1;
-            if i<=vGlobalVars.HighIndex then begin
-               rehash:=TNameGlobalVarHash.Create(i);
-               for i:=0 to vGlobalVars.HighIndex do begin
-                  gv:=vGlobalVars.BucketObject[i];
-                  if gv<>nil then
-                     rehash.Objects[vGlobalVars.BucketName[i]]:=gv;
-               end;
-               vGlobalVars.Free;
-               vGlobalVars:=rehash;
-            end;
-         end;
-         vGlobalVarsNamesCache:='';
-      finally
-         vGlobalVarsCS.EndWrite;
-         mask.Free;
-      end;
-   end;
+   vGlobalVars.Cleanup(filter);
 end;
 
 // SaveGlobalVarsToString
@@ -480,30 +316,12 @@ end;
 //
 procedure SaveGlobalVarsToStream(destStream : TStream);
 var
-   i : Integer;
    writer : TWriter;
-   gv : TGlobalVar;
-   expire : Int64;
 begin
-   expire:=GetSystemMilliseconds;
    writer:=TWriter.Create(destStream, 16384);
    try
       writer.Write(cGlobalVarsFiles[1], Length(cGlobalVarsFiles));
-      writer.WriteListBegin;
-
-      vGlobalVarsCS.BeginRead;
-      try
-         for i:=0 to vGlobalVars.HighIndex do begin
-            gv:=vGlobalVars.BucketObject[i];
-            if     (gv<>nil)
-               and ((gv.Expire=0) or (gv.Expire<expire)) then
-               gv.WriteToFiler(writer, vGlobalVars.BucketName[i]);
-         end;
-      finally
-         vGlobalVarsCS.EndRead;
-      end;
-
-      writer.WriteListEnd;
+      vGlobalVars.SaveToFiler(writer);
    finally
       writer.Free;
    end;
@@ -515,8 +333,6 @@ procedure LoadGlobalVarsFromStream(srcStream : TStream);
 var
    reader : TReader;
    fileTag : AnsiString;
-   name : UnicodeString;
-   gv : TGlobalVar;
 begin
    reader:=TReader.Create(srcStream, 16384);
    try
@@ -527,75 +343,9 @@ begin
       if fileTag<>cGlobalVarsFiles then
          raise EGlobalVarError.Create('Invalid file tag');
 
-      vGlobalVarsCS.BeginWrite;
-      try
-         vGlobalVars.Clean;
-         vGlobalVarsNamesCache:='';
-
-         reader.ReadListBegin;
-         while not reader.EndOfList do begin
-            gv:=TGlobalVar.Create;
-            gv.ReadFromFiler(reader, name);
-            vGlobalVars.AddObject(name, gv);
-         end;
-         reader.ReadListEnd;
-
-         vGlobalVarsNamesCache:='';
-      finally
-         vGlobalVarsCS.EndWrite;
-      end;
+      vGlobalVars.LoadFromFiler(reader);
    finally
       reader.Free;
-   end;
-end;
-
-// CollectGlobalVarsNames
-//
-procedure CollectGlobalVarsNames(const filter : String; dest : TStrings);
-var
-   list : TStringList;
-   mask : TMask;
-   item : String;
-begin
-   mask:=TMask.Create(filter);
-   list:=TStringList.Create;
-   try
-      list.CommaText:=GlobalVarsNamesCommaText;
-      if filter='*' then
-         dest.AddStrings(list)
-      else begin
-         for item in list do begin
-            if mask.Matches(item) then
-               dest.Add(item);
-         end;
-      end;
-   finally
-      list.Free;
-      mask.Free;
-   end;
-end;
-
-// GlobalVarsNamesCommaText
-//
-function GlobalVarsNamesCommaText : UnicodeString;
-var
-   i : Integer;
-   list : TStringList;
-begin
-   list:=TStringList.Create;
-   vGlobalVarsCS.BeginWrite;
-   try
-      if vGlobalVarsNamesCache='' then begin
-         for i:=0 to vGlobalVars.HighIndex do begin
-            if vGlobalVars.BucketObject[i]<>nil then
-               list.Add(vGlobalVars.BucketName[i]);
-         end;
-         vGlobalVarsNamesCache:=list.CommaText;
-      end;
-      Result:=vGlobalVarsNamesCache;
-   finally
-      vGlobalVarsCS.EndWrite;
-      list.Free;
    end;
 end;
 
@@ -726,128 +476,11 @@ begin
    end;
 end;
 
-// WriteVariant
-//
-procedure WriteVariant(writer: TWriter; const value: Variant);
-
-   procedure WriteValue(const value: TValueType);
-   begin
-      writer.Write(value, SizeOf(value));
-   end;
-
-begin
-   case VarType(Value) of
-      varInt64 :
-         writer.WriteInteger(PVarData(@value).VInt64);
-      varUString :
-         {$ifdef FPC}
-         writer.WriteString(UnicodeString(PVarData(@value).VString));
-         {$else}
-         writer.WriteString(UnicodeString(PVarData(@value).VUString));
-         {$endif}
-      varDouble :
-         writer.WriteFloat(PVarData(@value).VDouble);
-      varBoolean :
-         writer.WriteBoolean(PVarData(@value).VBoolean);
-      varEmpty :
-         WriteValue(vaNil);
-      varNull :
-         WriteValue(vaNull);
-      varByte, varSmallInt, varInteger :
-         writer.WriteInteger(value);
-      varString, varOleStr :
-         writer.WriteString(value);
-      varSingle :
-         writer.WriteSingle(value);
-      varCurrency :
-         writer.WriteCurrency(value);
-      varDate :
-         writer.WriteDate(value);
-   else
-      try
-         writer.WriteString(Value);
-      except
-         raise EWriteError.Create('Streaming not supported');
-      end;
-   end;
-end;
-
-// ReadVariant
-//
-function ReadVariant(reader: TReader): Variant;
-
-  function ReadValue: TValueType;
-  begin
-    reader.Read(Result, SizeOf(Result));
-  end;
-
-const
-   {$ifdef FPC}
-   cValTtoVarT: array[TValueType] of Integer = (
-      varNull, varError, varByte, varSmallInt, varInteger, varDouble,
-      varString, varError, varBoolean, varBoolean, varError, varError, varString,
-      varEmpty, varError, varSingle, varCurrency, varDate, varOleStr,
-      varUInt64, varString, varDouble{$ifdef FPC}, varQWord{$endif}
-    );
-   {$else}
-   cValTtoVarT: array[TValueType] of Integer = (
-      varNull, varError, varByte, varSmallInt, varInteger, varDouble,
-      varUString, varError, varBoolean, varBoolean, varError, varError, varUString,
-      varEmpty, varError, varSingle, varCurrency, varDate, varOleStr,
-      varUInt64, varUString, varDouble{$ifdef FPC}, varQWord{$endif}
-    );
-   {$endif}
-
-var
-  valType: TValueType;
-begin
-  valType := reader.NextValue;
-  case valType of
-    vaNil, vaNull:
-      begin
-        if ReadValue = vaNil then
-          VarClearSafe(Result)
-        else
-          Result := NULL;
-      end;
-    vaInt8: TVarData(Result).VByte := Byte(reader.ReadInteger);
-    vaInt16: TVarData(Result).VSmallint := Smallint(reader.ReadInteger);
-    vaInt32: TVarData(Result).VInteger := reader.ReadInteger;
-    vaInt64: TVarData(Result).VInt64 := reader.ReadInt64;
-    vaExtended: TVarData(Result).VDouble := reader.ReadFloat;
-    vaSingle: TVarData(Result).VSingle := reader.ReadSingle;
-    vaCurrency: TVarData(Result).VCurrency := reader.ReadCurrency;
-    vaDate: TVarData(Result).VDate := reader.ReadDate;
-    vaString, vaLString, vaUTF8String:
-       Result := UnicodeString(reader.ReadString);
-    vaWString: Result := reader.ReadString;
-    vaFalse, vaTrue:
-       TVarData(Result).VBoolean := (reader.ReadValue = vaTrue);
-  else
-    raise EReadError.Create('Invalid variant stream');
-  end;
-  TVarData(Result).VType := cValTtoVarT[ValType];
-end;
-
-{ TGlobalVar }
-
-procedure TGlobalVar.WriteToFiler(writer: TWriter; const Name : UnicodeString);
-begin
-   writer.WriteString(Name);
-   dwsGlobalVarsFunctions.WriteVariant(writer, Value);
-end;
-
-procedure TGlobalVar.ReadFromFiler(reader: TReader; var Name : UnicodeString);
-begin
-   Name:=reader.ReadString;
-   Value:=dwsGlobalVarsFunctions.ReadVariant(reader);
-end;
-
 { TReadGlobalVarFunc }
 
 procedure TReadGlobalVarFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 begin
-   if not TryReadGlobalVar(args.AsString[0], Result) then
+   if not vGlobalVars.TryRead(args.AsString[0], Result) then
       VarClearSafe(Result);
 end;
 
@@ -855,7 +488,7 @@ end;
 
 procedure TReadGlobalVarDefFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 begin
-   if not TryReadGlobalVar(args.AsString[0], Result) then
+   if not vGlobalVars.TryRead(args.AsString[0], Result) then
       args.ExprBase[1].EvalAsVariant(args.Exec, Result);
 end;
 
@@ -865,7 +498,7 @@ function TTryReadGlobalVarFunc.DoEvalAsBoolean(const args : TExprBaseListExec) :
 var
    v : Variant;
 begin
-   Result:=TryReadGlobalVar(args.AsString[0], v);
+   Result:=vGlobalVars.TryRead(args.AsString[0], v);
    if Result then
       args.ExprBase[1].AssignValue(args.Exec, v);
 end;
@@ -877,7 +510,7 @@ var
    buf : Variant;
 begin
    args.ExprBase[1].EvalAsVariant(args.Exec, buf);
-   Result:=WriteGlobalVar(args.AsString[0], buf, 0);
+   Result:=vGlobalVars.Write(args.AsString[0], buf, 0);
 end;
 
 { TWriteGlobalVarExpireFunc }
@@ -887,7 +520,7 @@ var
    buf : Variant;
 begin
    args.ExprBase[1].EvalAsVariant(args.Exec, buf);
-   Result:=WriteGlobalVar(args.AsString[0], buf, args.AsFloat[2]);
+   Result:=vGlobalVars.Write(args.AsString[0], buf, args.AsFloat[2]);
 end;
 
 // ------------------
@@ -898,7 +531,7 @@ end;
 //
 function TIncrementGlobalVarFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
-   Result:=IncrementGlobalVar(args.AsString[0], args.AsInteger[1]);
+   Result:=vGlobalVars.Increment(args.AsString[0], args.AsInteger[1]);
 end;
 
 // ------------------
@@ -913,21 +546,21 @@ var
 begin
    args.ExprBase[1].EvalAsVariant(args.Exec, value);
    args.ExprBase[2].EvalAsVariant(args.Exec, comparand);
-   result:=CompareExchangeGlobalVar(args.AsString[0], value, comparand);
+   result:=vGlobalVars.CompareExchange(args.AsString[0], value, comparand);
 end;
 
 { TDeleteGlobalVarFunc }
 
 function TDeleteGlobalVarFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
-   Result:=DeleteGlobalVar(args.AsString[0]);
+   Result:=vGlobalVars.Delete(args.AsString[0]);
 end;
 
 { TCleanupGlobalVarsFunc }
 
 procedure TCleanupGlobalVarsFunc.DoEvalProc(const args : TExprBaseListExec);
 begin
-   CleanupGlobalVars(args.AsString[0]);
+   vGlobalVars.Cleanup(args.AsString[0]);
 end;
 
 // ------------------
@@ -938,28 +571,20 @@ end;
 //
 procedure TGlobalVarsNamesFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
-   sl : TStringList;
-   newArray : TScriptDynamicArray;
-   i : Integer;
+   newArray : TScriptDynamicStringArray;
+   typString : TTypeSymbol;
 begin
-   sl:=TStringList.Create;
-   try
-      CollectGlobalVarsNames(args.AsString[0], sl);
-      newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).Prog.SystemTable.SymbolTable.TypString);
-      Result:=IScriptDynArray(newArray);
-      newArray.ArrayLength:=sl.Count;
-      for i:=0 to newArray.ArrayLength-1 do
-         newArray.AsString[i]:=sl[i];
-   finally
-      sl.Free;
-   end;
+   typString:=(args.Exec as TdwsProgramExecution).Prog.TypString;
+   newArray:=TScriptDynamicArray.CreateNew(typString) as TScriptDynamicStringArray;
+   result:=IScriptDynArray(newArray);
+   vGlobalVars.EnumerateNames(args.AsString[0], newArray.Add);
 end;
 
 { TGlobalVarsNamesCommaText }
 
 procedure TGlobalVarsNamesCommaText.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
-   Result:=GlobalVarsNamesCommaText;
+   Result:=vGlobalVars.NamesCommaText;
 end;
 
 { TSaveGlobalVarsToString }
@@ -1066,8 +691,7 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   vGlobalVarsCS:=TMultiReadSingleWrite.Create;
-   vGlobalVars:=TNameGlobalVarHash.Create;
+   vGlobalVars.Initialize;
    vGlobalQueuesCS:=TMultiReadSingleWrite.Create;
    vGlobalQueues:=TNameGlobalQueueHash.Create;
 
@@ -1095,11 +719,7 @@ initialization
 finalization
 
    CleanupGlobalVars;
-   vGlobalVarsCS.Free;
-   vGlobalVarsCS:=nil;
-   vGlobalVars.Clean;
-   vGlobalVars.Free;
-   vGlobalVars:=nil;
+   vGlobalVars.Finalize;
 
    CleanupGlobalQueues;
    vGlobalQueuesCS.Free;

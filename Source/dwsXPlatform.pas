@@ -91,14 +91,10 @@ type
 
    TMultiReadSingleWrite = class (TInterfacedObject, IMultiReadSingleWrite)
       private
-         FCS : TFixedCriticalSection; // used as fallback
          FSRWLock : Pointer;
          FDummy : array [0..95-4*SizeOf(Pointer)] of Byte; // padding
 
       public
-         constructor Create(forceFallBack : Boolean = False);
-         destructor Destroy; override;
-
          procedure BeginRead;
          function  TryBeginRead : Boolean;
          procedure EndRead;
@@ -217,7 +213,7 @@ function LoadDataFromFile(const fileName : UnicodeString) : TBytes;
 procedure SaveDataToFile(const fileName : UnicodeString; const data : TBytes);
 
 function LoadRawBytesFromFile(const fileName : UnicodeString) : RawByteString;
-procedure SaveRawBytesToFile(const fileName : UnicodeString; const data : RawByteString);
+function SaveRawBytesToFile(const fileName : UnicodeString; const data : RawByteString) : Integer;
 
 function LoadTextFromBuffer(const buf : TBytes) : UnicodeString;
 function LoadTextFromRawBytes(const buf : RawByteString) : UnicodeString;
@@ -934,16 +930,19 @@ end;
 
 // SaveRawBytesToFile
 //
-procedure SaveRawBytesToFile(const fileName : UnicodeString; const data : RawByteString);
+function SaveRawBytesToFile(const fileName : UnicodeString; const data : RawByteString) : Integer;
 var
    hFile : THandle;
    nWrite : DWORD;
 begin
+   Result:=0;
    hFile:=OpenFileForSequentialWriteOnly(fileName);
    try
-      if data<>'' then
-         if not WriteFile(hFile, data[1], Length(data), nWrite, nil) then
+      if data<>'' then begin
+         Result:=Length(data);
+         if not WriteFile(hFile, data[1], Result, nWrite, nil) then
             RaiseLastOSError;
+      end;
    finally
       CloseHandle(hFile);
    end;
@@ -1321,104 +1320,57 @@ end;
 // ------------------ TMultiReadSingleWrite ------------------
 // ------------------
 
-// light-weight SRW is supported on Vista and above
-// we detect by feature rather than OS Version
 type
    SRWLOCK = Pointer;
-var vSupportsSRWChecked : Boolean;
 
-var AcquireSRWLockExclusive : procedure (var SRWLock : SRWLOCK); stdcall;
-var TryAcquireSRWLockExclusive : function (var SRWLock : SRWLOCK) : BOOL; stdcall;
-var ReleaseSRWLockExclusive : procedure (var SRWLock : SRWLOCK); stdcall;
+procedure AcquireSRWLockExclusive(var SRWLock : SRWLOCK); stdcall; external 'kernel32.dll';
+function TryAcquireSRWLockExclusive(var SRWLock : SRWLOCK) : BOOL; stdcall; external 'kernel32.dll';
+procedure ReleaseSRWLockExclusive(var SRWLock : SRWLOCK); stdcall; external 'kernel32.dll';
 
-var AcquireSRWLockShared : procedure(var SRWLock : SRWLOCK); stdcall;
-var TryAcquireSRWLockShared : function (var SRWLock : SRWLOCK) : BOOL; stdcall;
-var ReleaseSRWLockShared : procedure (var SRWLock : SRWLOCK); stdcall;
-
-function SupportsSRW : Boolean;
-var
-   h : HMODULE;
-begin
-   if not vSupportsSRWChecked then begin
-      vSupportsSRWChecked:=True;
-      h:=GetModuleHandle('kernel32');
-      AcquireSRWLockExclusive:=GetProcAddress(h, 'AcquireSRWLockExclusive');
-      TryAcquireSRWLockExclusive:=GetProcAddress(h, 'TryAcquireSRWLockExclusive');
-      ReleaseSRWLockExclusive:=GetProcAddress(h, 'ReleaseSRWLockExclusive');
-      AcquireSRWLockShared:=GetProcAddress(h, 'AcquireSRWLockShared');
-      TryAcquireSRWLockShared:=GetProcAddress(h, 'TryAcquireSRWLockShared');
-      ReleaseSRWLockShared:=GetProcAddress(h, 'ReleaseSRWLockShared');
-   end;
-   Result:=Assigned(AcquireSRWLockExclusive);
-end;
-
-// Create
-//
-constructor TMultiReadSingleWrite.Create(forceFallBack : Boolean = False);
-begin
-   if forceFallBack or not SupportsSRW then
-      FCS:=TFixedCriticalSection.Create;
-end;
-
-// Destroy
-//
-destructor TMultiReadSingleWrite.Destroy;
-begin
-   FCS.Free;
-end;
+procedure AcquireSRWLockShared(var SRWLock : SRWLOCK); stdcall; external 'kernel32.dll';
+function TryAcquireSRWLockShared(var SRWLock : SRWLOCK) : BOOL; stdcall; external 'kernel32.dll';
+procedure ReleaseSRWLockShared(var SRWLock : SRWLOCK); stdcall; external 'kernel32.dll';
 
 // BeginRead
 //
 procedure TMultiReadSingleWrite.BeginRead;
 begin
-   if Assigned(FCS) then
-      FCS.Enter
-   else AcquireSRWLockShared(FSRWLock);
+   AcquireSRWLockShared(FSRWLock);
 end;
 
 // TryBeginRead
 //
 function TMultiReadSingleWrite.TryBeginRead : Boolean;
 begin
-   if Assigned(FCS) then
-      Result:=FCS.TryEnter
-   else Result:=TryAcquireSRWLockShared(FSRWLock);
+   Result:=TryAcquireSRWLockShared(FSRWLock);
 end;
 
 // EndRead
 //
 procedure TMultiReadSingleWrite.EndRead;
 begin
-   if Assigned(FCS) then
-      FCS.Leave
-   else ReleaseSRWLockShared(FSRWLock)
+   ReleaseSRWLockShared(FSRWLock)
 end;
 
 // BeginWrite
 //
 procedure TMultiReadSingleWrite.BeginWrite;
 begin
-   if Assigned(FCS) then
-      FCS.Enter
-   else AcquireSRWLockExclusive(FSRWLock);
+   AcquireSRWLockExclusive(FSRWLock);
 end;
 
 // TryBeginWrite
 //
 function TMultiReadSingleWrite.TryBeginWrite : Boolean;
 begin
-   if Assigned(FCS) then
-      Result:=FCS.TryEnter
-   else Result:=TryAcquireSRWLockExclusive(FSRWLock);
+   Result:=TryAcquireSRWLockExclusive(FSRWLock);
 end;
 
 // EndWrite
 //
 procedure TMultiReadSingleWrite.EndWrite;
 begin
-   if Assigned(FCS) then
-      FCS.Leave
-   else ReleaseSRWLockExclusive(FSRWLock)
+   ReleaseSRWLockExclusive(FSRWLock)
 end;
 
 // State
@@ -1446,15 +1398,13 @@ end;
 procedure TTimerTimeoutCallBack(Context: Pointer; Success: Boolean); stdcall
 var
    tt : TTimerTimeout;
+   event : TTimerEvent;
 begin
    tt:=TTimerTimeout(Context);
-   tt._AddRef;
-   try
-      if Assigned(tt.FOnTimer) then
-         tt.FOnTimer();
-   finally
-      tt._Release;
-   end;
+   event:=tt.FOnTimer;
+   tt.FTimer:=0;
+   if Assigned(event) then
+      event();
 end;
 
 // Create

@@ -28,6 +28,9 @@ type
 
    TStringDynArray = array of UnicodeString;
 
+   TInt64Array = array [0..High(MaxInt) shr 4] of Int64;
+   PInt64Array = ^TInt64Array;
+
    // TRefCountedObject
    //
    // Uses Monitor hidden field to store refcount, so not compatible with monitor use
@@ -380,17 +383,15 @@ type
          procedure Clean;
    end;
 
-   TSimpleRefCountedObjectHash = class (TSimpleObjectHash<TRefCountedObject>);
+   TNameObjectHashBucket = record
+      HashCode : Cardinal;
+      Name : UnicodeString;
+      Obj : TObject;
+   end;
+   PNameObjectHashBucket = ^TNameObjectHashBucket;
+   TNameObjectHashBuckets = array of TNameObjectHashBucket;
 
-   TSimpleNameObjectHash<T{$IFNDEF FPC}: class{$ENDIF}> = class
-      type
-         TNameObjectHashBucket = record
-            HashCode : Cardinal;
-            Name : UnicodeString;
-            Obj : T;
-         end;
-         TNameObjectHashBuckets = array of TNameObjectHashBucket;
-
+   TNameObjectHash = class
       private
          FBuckets : TNameObjectHashBuckets;
          FCount : Integer;
@@ -399,8 +400,54 @@ type
 
       protected
          procedure Grow;
+         procedure Resize(newSize : Integer);
 
+         function GetHashedIndex(const aName : UnicodeString; aHash : Cardinal) : Integer;
          function GetIndex(const aName : UnicodeString) : Integer;
+
+         function GetHashedObjects(const aName : UnicodeString; aHash : Cardinal) : TObject; inline;
+         function GetObjects(const aName : UnicodeString) : TObject; inline;
+
+         procedure SetHashedObjects(const aName : UnicodeString; aHash : Cardinal; obj : TObject); inline;
+         procedure SetObjects(const aName : UnicodeString; obj : TObject); inline;
+
+         function GetBucket(index : Integer) : PNameObjectHashBucket; inline;
+
+         function GetBucketObject(index : Integer) : TObject; inline;
+         procedure SetBucketObject(index : Integer; obj : TObject); inline;
+         function GetBucketName(index : Integer) : String; inline;
+
+      public
+         constructor Create(initialCapacity : Integer = 0);
+
+         class function HashName(const aName : UnicodeString) : Cardinal; static; inline;
+         function AddObject(const aName : UnicodeString; aObj : TObject; replace : Boolean = False) : Boolean;
+         function AddHashedObject(const aName : UnicodeString; aHash : Cardinal; aObj : TObject; replace : Boolean = False) : Boolean;
+
+         procedure Clean;
+         procedure Clear;
+         procedure Pack;
+
+         property Objects[const aName : UnicodeString] : TObject read GetObjects write SetObjects; default;
+         property HashedObjects[const aName : UnicodeString; aHash : Cardinal] : TObject read GetHashedObjects write SetHashedObjects;
+
+         property Bucket[index : Integer] : PNameObjectHashBucket read GetBucket;
+         property BucketObject[index : Integer] : TObject read GetBucketObject write SetBucketObject;
+         property BucketName[index : Integer] : String read GetBucketName;
+         property BucketIndex[const aName : UnicodeString] : Integer read GetIndex;
+
+         property Count : Integer read FCount;
+         property HighIndex : Integer read FHighIndex;
+   end;
+
+   TSimpleRefCountedObjectHash = class (TSimpleObjectHash<TRefCountedObject>);
+
+   TSimpleNameObjectHash<T{$IFNDEF FPC}: class{$ENDIF}> = class
+      private
+         FHash : TNameObjectHash;
+
+      protected
+         function GetIndex(const aName : UnicodeString) : Integer; inline;
          function GetObjects(const aName : UnicodeString) : T; inline;
          procedure SetObjects(const aName : UnicodeString; obj : T); inline;
          function GetBucketObject(index : Integer) : T; inline;
@@ -409,11 +456,13 @@ type
 
       public
          constructor Create(initialCapacity : Integer = 0);
+         destructor Destroy; override;
 
-         function AddObject(const aName : UnicodeString; aObj : T; replace : Boolean = False) : Boolean;
+         function AddObject(const aName : UnicodeString; aObj : T; replace : Boolean = False) : Boolean; inline;
 
-         procedure Clean;
-         procedure Clear;
+         procedure Clean; inline;
+         procedure Clear; inline;
+         procedure Pack; inline;
 
          property Objects[const aName : UnicodeString] : T read GetObjects write SetObjects; default;
 
@@ -421,8 +470,8 @@ type
          property BucketName[index : Integer] : String read GetBucketName;
          property BucketIndex[const aName : UnicodeString] : Integer read GetIndex;
 
-         property Count : Integer read FCount;
-         property HighIndex : Integer read FHighIndex;
+         function Count : Integer; inline;
+         function HighIndex : Integer; inline;
    end;
 
    TObjectObjectHashBucket<TKey, TValue{$IFNDEF FPC}: TRefCountedObject{$ENDIF}> = record
@@ -575,6 +624,7 @@ type
 
 const
    cWriteOnlyBlockStreamBlockSize = $2000 - 2*SizeOf(Pointer);
+   cNameObjectHashMinSize = 32;
 
 type
    // TWriteOnlyBlockStream
@@ -670,6 +720,12 @@ type
    end;
 
    TSimpleInt64List = class(TSimpleList<Int64>)
+      protected
+         procedure DoExchange(index1, index2 : Integer); inline;
+         procedure QuickSort(minIndex, maxIndex : Integer);
+
+      public
+         procedure Sort;
    end;
 
    TSimpleDoubleList = class(TSimpleList<Double>)
@@ -768,7 +824,6 @@ type
 
       public
          constructor Create; virtual;
-         destructor Destroy; override;
    end;
    TPooledObjectClass = class of TPooledObject;
 
@@ -777,13 +832,20 @@ type
          FRoot : TPooledObject;
          FPoolClass : TPooledObjectClass;
          FLock : TMultiReadSingleWrite;
+         FCount : Integer;
+         FCapacity : Integer;
 
       public
          procedure Initialize(aClass : TPooledObjectClass);
          procedure Finalize;
 
+         procedure Clean(nb : Integer);
+
          function Acquire : TPooledObject;
-         procedure Release(const obj : TPooledObject);
+         procedure Release(obj : TPooledObject);
+
+         property Count : Integer read FCount;
+         property Capacity : Integer read FCapacity write FCapacity;
    end;
 
 const
@@ -878,6 +940,9 @@ procedure VarCopySafe(var dest : Variant; const src : Int64); overload;
 procedure VarCopySafe(var dest : Variant; const src : UnicodeString); overload;
 procedure VarCopySafe(var dest : Variant; const src : Double); overload;
 procedure VarCopySafe(var dest : Variant; const src : Boolean); overload;
+
+procedure WriteVariant(writer: TWriter; const value: Variant);
+function ReadVariant(reader: TReader): Variant;
 
 type
    EISO8601Exception = class (Exception);
@@ -1667,6 +1732,109 @@ begin
 
    TVarData(dest).VType:=varBoolean;
    TVarData(dest).VBoolean:=src;
+end;
+
+// WriteVariant
+//
+procedure WriteVariant(writer: TWriter; const value: Variant);
+
+   procedure WriteValue(const value: TValueType);
+   begin
+      writer.Write(value, SizeOf(value));
+   end;
+
+begin
+   case VarType(Value) of
+      varInt64 :
+         writer.WriteInteger(PVarData(@value).VInt64);
+      varUString :
+         {$ifdef FPC}
+         writer.WriteString(UnicodeString(PVarData(@value).VString));
+         {$else}
+         writer.WriteString(UnicodeString(PVarData(@value).VUString));
+         {$endif}
+      varDouble :
+         writer.WriteFloat(PVarData(@value).VDouble);
+      varBoolean :
+         writer.WriteBoolean(PVarData(@value).VBoolean);
+      varEmpty :
+         WriteValue(vaNil);
+      varNull :
+         WriteValue(vaNull);
+      varByte, varSmallInt, varInteger :
+         writer.WriteInteger(value);
+      varString, varOleStr :
+         writer.WriteString(value);
+      varSingle :
+         writer.WriteSingle(value);
+      varCurrency :
+         writer.WriteCurrency(value);
+      varDate :
+         writer.WriteDate(value);
+   else
+      try
+         writer.WriteString(Value);
+      except
+         raise EWriteError.Create('Streaming not supported');
+      end;
+   end;
+end;
+
+// ReadVariant
+//
+function ReadVariant(reader: TReader): Variant;
+
+  function ReadValue: TValueType;
+  begin
+    reader.Read(Result, SizeOf(Result));
+  end;
+
+const
+   {$ifdef FPC}
+   cValTtoVarT: array[TValueType] of Integer = (
+      varNull, varError, varByte, varSmallInt, varInteger, varDouble,
+      varString, varError, varBoolean, varBoolean, varError, varError, varString,
+      varEmpty, varError, varSingle, varCurrency, varDate, varOleStr,
+      varUInt64, varString, varDouble{$ifdef FPC}, varQWord{$endif}
+    );
+   {$else}
+   cValTtoVarT: array[TValueType] of Integer = (
+      varNull, varError, varByte, varSmallInt, varInteger, varDouble,
+      varUString, varError, varBoolean, varBoolean, varError, varError, varUString,
+      varEmpty, varError, varSingle, varCurrency, varDate, varOleStr,
+      varUInt64, varUString, varDouble{$ifdef FPC}, varQWord{$endif}
+    );
+   {$endif}
+
+var
+  valType: TValueType;
+begin
+  valType := reader.NextValue;
+  case valType of
+    vaNil, vaNull:
+      begin
+        if ReadValue = vaNil then
+          VarClearSafe(Result)
+        else
+          Result := NULL;
+      end;
+    vaInt8: TVarData(Result).VByte := Byte(reader.ReadInteger);
+    vaInt16: TVarData(Result).VSmallint := Smallint(reader.ReadInteger);
+    vaInt32: TVarData(Result).VInteger := reader.ReadInteger;
+    vaInt64: TVarData(Result).VInt64 := reader.ReadInt64;
+    vaExtended: TVarData(Result).VDouble := reader.ReadFloat;
+    vaSingle: TVarData(Result).VSingle := reader.ReadSingle;
+    vaCurrency: TVarData(Result).VCurrency := reader.ReadCurrency;
+    vaDate: TVarData(Result).VDate := reader.ReadDate;
+    vaString, vaLString, vaUTF8String:
+       Result := UnicodeString(reader.ReadString);
+    vaWString: Result := reader.ReadString;
+    vaFalse, vaTrue:
+       TVarData(Result).VBoolean := (reader.ReadValue = vaTrue);
+  else
+    raise EReadError.Create('Invalid variant stream');
+  end;
+  TVarData(Result).VType := cValTtoVarT[ValType];
 end;
 
 // DateTimeToISO8601
@@ -4156,143 +4324,190 @@ begin
 end;
 
 // ------------------
-// ------------------ TSimpleNameObjectHash<T> ------------------
+// ------------------ TNameObjectHash<T> ------------------
 // ------------------
 
 // Create
 //
-constructor TSimpleNameObjectHash<T>.Create(initialCapacity : Integer = 0);
+constructor TNameObjectHash.Create(initialCapacity : Integer = 0);
+var
+   n : Integer;
 begin
    if initialCapacity>0 then begin
-      // check if initial capacity is a power of two
-      Assert((initialCapacity and (initialCapacity-1))=0);
-      SetLength(FBuckets, initialCapacity);
+      // find nearest power of two >= initialCapacity
+      n:=cNameObjectHashMinSize;
+      while n<initialCapacity do
+         n:=n shl 1;
+      initialCapacity:=n;
+      SetLength(FBuckets, n);
    end;
    FHighIndex:=initialCapacity-1;
 end;
 
+// HashName
+//
+class function TNameObjectHash.HashName(const aName : UnicodeString) : Cardinal;
+begin
+   Result:=SimpleStringHash(aName);
+   if Result=0 then
+      Result:=1;
+end;
+
 // Grow
 //
-procedure TSimpleNameObjectHash<T>.Grow;
-var
-   i, j : Integer;
-   hashCode : Integer;
-   oldBuckets : TNameObjectHashBuckets;
+procedure TNameObjectHash.Grow;
 begin
-   if FHighIndex<0 then
-      FHighIndex:=31
-   else FHighIndex:=FHighIndex*2+1;
-   FGrowth:=(FHighIndex*3) div 4;
+   if FHighIndex<cNameObjectHashMinSize-1 then
+      Resize(cNameObjectHashMinSize)
+   else Resize(FHighIndex*2+2);
+end;
 
-   oldBuckets:=FBuckets;
-   FBuckets:=nil;
-   SetLength(FBuckets, FHighIndex+1);
-
-   for i:=0 to High(oldBuckets) do begin
-      if oldBuckets[i].HashCode=0 then continue;
-      j:=(oldBuckets[i].HashCode and FHighIndex);
-      while FBuckets[j].HashCode<>0 do
-         j:=(j+1) and FHighIndex;
-      FBuckets[j]:=oldBuckets[i];
+// Pack
+//
+procedure TNameObjectHash.Pack;
+var
+   i, m : Integer;
+begin
+   case FCount of
+      0 : Clear;
+      1..cNameObjectHashMinSize shr 1 : Resize(cNameObjectHashMinSize);
+   else
+      i:=FHighIndex+1;
+      m:=FCount*3; // = 2 * FCount*(3/2)
+      while i>=m do
+         i:=i shr 1;
+      Resize(i);
    end;
 end;
 
-// GetIndex
+// Resize
 //
-function TSimpleNameObjectHash<T>.GetIndex(const aName : UnicodeString) : Integer;
+procedure TNameObjectHash.Resize(newSize : Integer);
+
+   procedure MoveBucket(var src, dest : TNameObjectHashBucket); inline;
+   begin
+      dest.HashCode:=src.HashCode;
+      Pointer(dest.Name):=Pointer(src.Name);
+      Pointer(src.Name):=nil;
+      dest.Obj:=src.Obj;
+   end;
+
 var
-   h : Cardinal;
+   i, j, n : Integer;
+   mask : Integer;
+   oldBuckets : TNameObjectHashBuckets;
+   oldBucket : PNameObjectHashBucket;
+begin
+   Assert(newSize>FCount);  // protect from infinite loop
+
+   oldBuckets:=FBuckets;
+   FBuckets:=nil;
+   SetLength(FBuckets, newSize);
+   FHighIndex:=newSize-1;
+   FGrowth:=(FHighIndex*3) div 4;
+
+   if FCount=0 then Exit;
+
+   n:=0;
+   mask:=newSize-1;
+   oldBucket:=@oldBuckets[0];
+   for i:=0 to High(oldBuckets) do begin
+      if oldBucket.HashCode<>0 then begin
+         Inc(n);
+         j:=(oldBucket.HashCode and mask);
+         while FBuckets[j].HashCode<>0 do
+            j:=(j+1) and mask;
+         MoveBucket(oldBucket^, FBuckets[j]);
+      end;
+      Inc(oldBucket);
+   end;
+   FCount:=n;
+end;
+
+// GetHashedIndex
+//
+function TNameObjectHash.GetHashedIndex(const aName : UnicodeString; aHash : Cardinal) : Integer;
+var
    i : Integer;
 begin
    if FCount=0 then Exit(-1);
 
-   if aName='' then
-      h:=1
-   else h:=SimpleStringHash(aName);
-   i:=h and FHighIndex;
+   i:=aHash and FHighIndex;
 
    repeat
       with FBuckets[i] do begin
          if HashCode=0 then
             Exit(-1)
-         else if (HashCode=h) and (Name=aName) then
+         else if (HashCode=aHash) and (Name=aName) then
             Exit(i);
       end;
       i:=(i+1) and FHighIndex;
    until False;
 end;
 
-// GetObjects
+// GetIndex
 //
-function TSimpleNameObjectHash<T>.GetObjects(const aName : UnicodeString) : T;
+function TNameObjectHash.GetIndex(const aName : UnicodeString) : Integer;
+begin
+   Result:=GetHashedIndex(aName, HashName(aName));
+end;
+
+// GetHashedObjects
+//
+function TNameObjectHash.GetHashedObjects(const aName : UnicodeString; aHash : Cardinal) : TObject;
 var
    i : Integer;
 begin
-   i:=GetIndex(aName);
-   if i<0 then begin
-      {$ifdef VER200}
-      Exit(default(T));  // D2009 support
-      {$else}
-      Exit(T(TObject(nil)));  // workaround for D2010 compiler bug
-      {$endif}
-   end else Result:=FBuckets[i].Obj
+   i:=GetHashedIndex(aName, aHash);
+   if i<0 then
+      Result:=nil
+   else Result:=FBuckets[i].Obj
 end;
-//var
-//   h : Cardinal;
-//   i : Integer;
-//begin
-//   if FCount=0 then
-//      {$ifdef VER200}
-//      Exit(default(T));  // D2009 support
-//      {$else}
-//      Exit(T(TObject(nil)));  // workaround for D2010 compiler bug
-//      {$endif}
+
+// GetObjects
 //
-//   h:=SimpleStringHash(aName);
-//   i:=h and FHighIndex;
+function TNameObjectHash.GetObjects(const aName : UnicodeString) : TObject;
+begin
+   Result:=GetHashedObjects(aName, HashName(aName));
+end;
+
+// SetHashedObjects
 //
-//   repeat
-//      with FBuckets[i] do begin
-//         if HashCode=0 then begin
-//            {$ifdef VER200}
-//            Exit(default(T)); // D2009 support
-//            {$else}
-//            Exit(T(TObject(nil)));  // workaround for D2010 compiler bug
-//            {$endif}
-//         end else if (HashCode=h) and (Name=aName) then
-//            Exit(Obj);
-//      end;
-//      i:=(i+1) and FHighIndex;
-//   until False;
-//end;
+procedure TNameObjectHash.SetHashedObjects(const aName : UnicodeString; aHash : Cardinal; obj : TObject);
+begin
+   AddHashedObject(aName, HashName(aName), obj, True);
+end;
 
 // SetObjects
 //
-procedure TSimpleNameObjectHash<T>.SetObjects(const aName : UnicodeString; obj : T);
+procedure TNameObjectHash.SetObjects(const aName : UnicodeString; obj : TObject);
 begin
    AddObject(aName, obj, True);
 end;
 
 // AddObject
 //
-function TSimpleNameObjectHash<T>.AddObject(const aName : UnicodeString; aObj : T;
+function TNameObjectHash.AddObject(const aName : UnicodeString; aObj : TObject;
                                             replace : Boolean = False) : Boolean;
+begin
+   Result:=AddHashedObject(aName, HashName(aName), aObj, replace);
+end;
+
+// AddHashedObject
+//
+function TNameObjectHash.AddHashedObject(const aName : UnicodeString; aHash : Cardinal; aObj : TObject; replace : Boolean = False) : Boolean;
 var
    i : Integer;
-   h : Cardinal;
 begin
    if FCount>=FGrowth then Grow;
 
-   if aName='' then
-      h:=1
-   else h:=SimpleStringHash(aName);
-   i:=h and FHighIndex;
+   i:=aHash and FHighIndex;
 
    repeat
       with FBuckets[i] do begin
          if HashCode=0 then
             Break
-         else if (HashCode=h) and (Name=aName) then begin
+         else if (HashCode=aHash) and (Name=aName) then begin
             if replace then
                Obj:=aObj;
             Exit(False);
@@ -4302,7 +4517,7 @@ begin
    until False;
 
    with FBuckets[i] do begin
-      HashCode:=h;
+      HashCode:=aHash;
       Name:=aName;
       Obj:=aObj;
    end;
@@ -4312,7 +4527,7 @@ end;
 
 // Clean
 //
-procedure TSimpleNameObjectHash<T>.Clean;
+procedure TNameObjectHash.Clean;
 var
    i : Integer;
 begin
@@ -4325,7 +4540,7 @@ end;
 
 // Clear
 //
-procedure TSimpleNameObjectHash<T>.Clear;
+procedure TNameObjectHash.Clear;
 begin
    SetLength(FBuckets, 0);
    FGrowth:=0;
@@ -4333,25 +4548,135 @@ begin
    FHighIndex:=-1;
 end;
 
+// GetBucket
+//
+function TNameObjectHash.GetBucket(index : Integer) : PNameObjectHashBucket;
+begin
+   Result:=@FBuckets[index];
+end;
+
 // GetBucketName
 //
-function TSimpleNameObjectHash<T>.GetBucketName(index : Integer) : String;
+function TNameObjectHash.GetBucketName(index : Integer) : String;
 begin
    Result:=FBuckets[index].Name;
 end;
 
 // GetBucketObject
 //
-function TSimpleNameObjectHash<T>.GetBucketObject(index : Integer) : T;
+function TNameObjectHash.GetBucketObject(index : Integer) : TObject;
 begin
    Result:=FBuckets[index].Obj;
 end;
 
 // SetBucketObject
 //
-procedure TSimpleNameObjectHash<T>.SetBucketObject(index : Integer; obj : T);
+procedure TNameObjectHash.SetBucketObject(index : Integer; obj : TObject);
 begin
    FBuckets[index].Obj:=obj;
+end;
+
+// ------------------
+// ------------------ TSimpleNameObjectHash<T> ------------------
+// ------------------
+
+// Create
+//
+constructor TSimpleNameObjectHash<T>.Create(initialCapacity : Integer = 0);
+begin
+   FHash:=TNameObjectHash.Create(initialCapacity);
+end;
+
+// Destroy
+//
+destructor TSimpleNameObjectHash<T>.Destroy;
+begin
+   FHash.Free;
+end;
+
+// Pack
+//
+procedure TSimpleNameObjectHash<T>.Pack;
+begin
+   FHash.Pack;
+end;
+
+// GetIndex
+//
+function TSimpleNameObjectHash<T>.GetIndex(const aName : UnicodeString) : Integer;
+begin
+   Result:=FHash.GetIndex(aName);
+end;
+
+// GetObjects
+//
+function TSimpleNameObjectHash<T>.GetObjects(const aName : UnicodeString) : T;
+begin
+   Result:=T(FHash.GetObjects(aName));
+end;
+
+// SetObjects
+//
+procedure TSimpleNameObjectHash<T>.SetObjects(const aName : UnicodeString; obj : T);
+begin
+   FHash.SetObjects(aName, obj);
+end;
+
+// AddObject
+//
+function TSimpleNameObjectHash<T>.AddObject(const aName : UnicodeString; aObj : T;
+                                            replace : Boolean = False) : Boolean;
+begin
+   Result:=FHash.AddObject(aName, aObj, replace);
+end;
+
+// Clean
+//
+procedure TSimpleNameObjectHash<T>.Clean;
+begin
+   FHash.Clean;
+end;
+
+// Clear
+//
+procedure TSimpleNameObjectHash<T>.Clear;
+begin
+   FHash.Clear;
+end;
+
+// GetBucketName
+//
+function TSimpleNameObjectHash<T>.GetBucketName(index : Integer) : String;
+begin
+   Result:=FHash.GetBucketName(index);
+end;
+
+// GetBucketObject
+//
+function TSimpleNameObjectHash<T>.GetBucketObject(index : Integer) : T;
+begin
+   Result:=T(FHash.GetBucketObject(index));
+end;
+
+// SetBucketObject
+//
+procedure TSimpleNameObjectHash<T>.SetBucketObject(index : Integer; obj : T);
+begin
+   FHash.SetBucketObject(index, obj);
+end;
+
+// Count
+//
+function TSimpleNameObjectHash<T>.Count : Integer;
+begin
+   Result:=FHash.Count;
+end;
+
+// HighIndex
+//
+function TSimpleNameObjectHash<T>.HighIndex : Integer;
+begin
+   Result:=FHash.HighIndex;
 end;
 
 // ------------------
@@ -5186,6 +5511,76 @@ begin
 end;
 
 // ------------------
+// ------------------ TSimpleInt64List ------------------
+// ------------------
+
+// DoExchange
+//
+procedure TSimpleInt64List.DoExchange(index1, index2 : Integer);
+var
+   t : Int64;
+begin
+   t:=FItems[index1];
+   FItems[index1]:=FItems[index2];
+   FItems[index2]:=t;
+end;
+
+// QuickSort
+//
+procedure TSimpleInt64List.QuickSort(minIndex, maxIndex : Integer);
+var
+   i, j, p, n : Integer;
+begin
+   n:=maxIndex-minIndex;
+   case n of
+      1 : begin
+         if FItems[minIndex]>FItems[maxIndex] then
+            DoExchange(minIndex, maxIndex);
+      end;
+      2 : begin
+         i:=minIndex+1;
+         if FItems[minIndex]>FItems[i] then
+            DoExchange(minIndex, i);
+         if FItems[i]>FItems[maxIndex] then begin
+            DoExchange(i, maxIndex);
+            if FItems[minIndex]>FItems[i] then
+               DoExchange(minIndex, i);
+         end;
+      end;
+   else
+      if n<=0 then Exit;
+      repeat
+         i:=minIndex;
+         j:=maxIndex;
+         p:=((i+j) shr 1);
+         repeat
+            while FItems[i]<FItems[p] do Inc(i);
+            while Fitems[j]>FItems[p] do Dec(j);
+            if i<=j then begin
+               DoExchange(i, j);
+               if p=i then
+                  p:=j
+               else if p=j then
+                  p:=i;
+               Inc(i);
+               Dec(j);
+            end;
+         until i>j;
+         if minIndex<j then
+            QuickSort(minIndex, j);
+         minIndex:=i;
+      until i>=maxIndex;
+   end;
+end;
+
+// Sort
+//
+procedure TSimpleInt64List.Sort;
+begin
+   QuickSort(0, Count-1);
+end;
+
+// ------------------
 // ------------------ TSimpleDoubleList ------------------
 // ------------------
 
@@ -5254,7 +5649,7 @@ begin
          j:=maxIndex;
          p:=((i+j) shr 1);
          repeat
-            while FItems[i]>FItems[p] do Inc(i);
+            while FItems[i]<FItems[p] do Inc(i);
             while Fitems[j]>FItems[p] do Dec(j);
             if i<=j then begin
                DoExchange(i, j);
@@ -5284,14 +5679,6 @@ begin
    // nothing, just to introduce virtual construction
 end;
 
-// Destroy
-//
-destructor TPooledObject.Destroy;
-begin
-   inherited;
-   FNext.Free;
-end;
-
 // ------------------
 // ------------------ TPool ------------------
 // ------------------
@@ -5303,17 +5690,43 @@ begin
    FRoot:=nil;
    FPoolClass:=aClass;
    FLock:=TMultiReadSingleWrite.Create;
+   FCount:=0;
+   FCapacity:=16*1024;
 end;
 
 // Finalize
 //
 procedure TPool.Finalize;
 begin
-   FRoot.Free;
-   FRoot:=nil;
+   Clean(0);
    FLock.Free;
    FLock:=nil;
    FPoolClass:=nil;
+   FCount:=0;
+   FCapacity:=0;
+end;
+
+// Clean
+//
+procedure TPool.Clean(nb : Integer);
+var
+   obj : TPooledObject;
+begin
+   if FCount=0 then Exit;
+
+   FLock.BeginWrite;
+   try
+      if nb=0 then nb:=FCount;
+      while (FRoot<>nil) and (nb>0) do begin
+         obj:=FRoot;
+         FRoot:=obj.FNext;
+         obj.Destroy;
+         Dec(nb);
+         Dec(FCount);
+      end;
+   finally
+      FLock.EndWrite;
+   end;
 end;
 
 // Acquire
@@ -5321,14 +5734,17 @@ end;
 function TPool.Acquire : TPooledObject;
 begin
    Result:=nil;
-   FLock.BeginWrite;
-   try
-      if FRoot<>nil then begin
-         Result:=FRoot;
-         FRoot:=Result.FNext;
+   if FRoot<>nil then begin
+      FLock.BeginWrite;
+      try
+         if FRoot<>nil then begin
+            Result:=FRoot;
+            FRoot:=Result.FNext;
+            Dec(FCount);
+         end;
+      finally
+         FLock.EndWrite;
       end;
-   finally
-      FLock.EndWrite;
    end;
    if Result=nil then
       Result:=FPoolClass.Create
@@ -5337,15 +5753,21 @@ end;
 
 // Release
 //
-procedure TPool.Release(const obj : TPooledObject);
+procedure TPool.Release(obj : TPooledObject);
 begin
    FLock.BeginWrite;
    try
-      obj.FNext:=FRoot;
-      FRoot:=obj;
+      if FCount<FCapacity then begin
+         obj.FNext:=FRoot;
+         FRoot:=obj;
+         obj:=nil;
+         Inc(FCount);
+      end;
    finally
       FLock.EndWrite;
    end;
+   if obj<>nil then
+      obj.Destroy;
 end;
 
 // ------------------------------------------------------------------

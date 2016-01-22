@@ -1682,6 +1682,7 @@ type
          procedure SetParamAsString(index : Integer; const v : UnicodeString);
          function GetParamAsDataString(index : Integer) : RawByteString;
          procedure SetParamAsDataString(index : Integer; const v : RawByteString);
+         function GetParamAsFileName(index : Integer) : UnicodeString;
          function GetParamAsFloat(index : Integer) : Double;
          function GetParamAsBoolean(index : Integer) : Boolean;
          function GetParamAsObject(index : Integer) : TObject;
@@ -1735,6 +1736,7 @@ type
          property ParamAsVariant[index : Integer] : Variant read GetParamAsVariant write SetParamAsVariant;
          property ParamAsInteger[index : Integer] : Int64 read GetParamAsInteger write SetParamAsInteger;
          property ParamAsString[index : Integer] : UnicodeString read GetParamAsString write SetParamAsString;
+         property ParamAsFileName[index : Integer] : UnicodeString read GetParamAsFileName;
          property ParamAsDataString[index : Integer] : RawByteString read GetParamAsDataString write SetParamAsDataString;
          property ParamAsFloat[index : Integer] : Double read GetParamAsFloat;
          property ParamAsBoolean[index : Integer] : Boolean read GetParamAsBoolean;
@@ -1846,6 +1848,11 @@ type
          function CompareString(i1, i2 : Integer) : Integer;
          function CompareInteger(i1, i2 : Integer) : Integer;
          function CompareFloat(i1, i2 : Integer) : Integer;
+   end;
+
+   TScriptDynamicStringArray = class (TScriptDynamicValueArray)
+      public
+         procedure Add(const s : String);
    end;
 
    TScriptAssociativeArrayHashCodes = array of Cardinal;
@@ -6386,6 +6393,13 @@ begin
    GetParamAsPVariant(index)^:=RawByteStringToScriptString(v);
 end;
 
+// GetParamAsFileName
+//
+function TProgramInfo.GetParamAsFileName(index : Integer) : UnicodeString;
+begin
+   Result:=Execution.ValidateFileName(GetParamAsString(index));
+end;
+
 // GetParamAsFloat
 //
 function TProgramInfo.GetParamAsFloat(index : Integer) : Double;
@@ -6787,7 +6801,9 @@ begin
       size:=elemTyp.Size
    else size:=0;
    if size=1 then
-      Result:=TScriptDynamicValueArray.Create
+      if elemTyp.ClassType=TBaseStringSymbol then
+         Result:=TScriptDynamicStringArray.Create
+      else Result:=TScriptDynamicValueArray.Create
    else Result:=TScriptDynamicDataArray.Create;
    Result.FElementTyp:=elemTyp;
    Result.FElementSize:=size;
@@ -7094,6 +7110,19 @@ begin
    if v1.VDouble<v2.VDouble then
       Result:=-1
    else Result:=Ord(v1.VDouble>v2.VDouble);
+end;
+
+// ------------------
+// ------------------ TScriptDynamicStringArray ------------------
+// ------------------
+
+// Add
+//
+procedure TScriptDynamicStringArray.Add(const s : String);
+begin
+   ArrayLength:=ArrayLength+1;
+   if s<>'' then
+      AsString[ArrayLength-1]:=s;
 end;
 
 // ------------------

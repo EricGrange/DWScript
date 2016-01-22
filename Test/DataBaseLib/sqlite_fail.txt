@@ -1,4 +1,4 @@
 Empty query
-Error SQLITE_ERROR (1) using 3.8.9 - 'near "bug": syntax error' extended_errcode=1
+Error SQLITE_ERROR (1) using 3.10.1 - 'near "bug": syntax error' extended_errcode=1
 Empty query
-Error SQLITE_ERROR (1) using 3.8.9 - 'near "nope": syntax error' extended_errcode=1
+Error SQLITE_ERROR (1) using 3.10.1 - 'near "nope": syntax error' extended_errcode=1
