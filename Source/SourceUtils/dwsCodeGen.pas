@@ -168,6 +168,7 @@ type
          FIndent : Integer;
          FIndentString : String;
          FNeedIndent : Boolean;
+         FIndentChar : Char;
          FIndentSize : Integer;
          FOptions : TdwsCodeGenOptions;
          FVerbosity : TdwsCodeGenOutputVerbosity;
@@ -315,6 +316,7 @@ type
          property OutputLineOffset : Integer read FOutputLineOffset write FOutputLineOffset;
          property OutputLine : Integer read FOutputLine;
 
+         property IndentChar : Char read FIndentChar write FIndentChar;
          property IndentSize : Integer read FIndentSize write FIndentSize;
          property Options : TdwsCodeGenOptions read FOptions write FOptions;
          property Verbosity : TdwsCodeGenOutputVerbosity read FVerbosity write FVerbosity;
@@ -399,6 +401,7 @@ begin
    FFlushedDependencies.Duplicates:=dupIgnore;
    FTempReg:=TdwsRegisteredCodeGen.Create;
 //   FSymbolMaps:=TdwsCodeGenSymbolMaps.Create;
+   FIndentChar:=' ';
    FIndentSize:=3;
    FDataContextPool:=TDataContextPool.Create;
 end;
@@ -499,7 +502,7 @@ var
 begin
    funcSym:=sym.AsFuncSymbol;
    if funcSym<>nil then begin
-      if funcSym.IsExternal or funcSym.HasExternalName then
+      if funcSym.IsExternal or (funcSym.HasExternalName and not funcSym.IsExport) then
          Exit(funcSym.ExternalName);
       if funcSym is TMethodSymbol then begin
          meth:=TMethodSymbol(funcSym);
@@ -1214,7 +1217,7 @@ end;
 procedure TdwsCodeGen.Indent(needIndent : Boolean = True);
 begin
    Inc(FIndent);
-   FIndentString:=StringOfChar(' ', FIndent*FIndentSize);
+   FIndentString:=StringOfChar(FIndentChar, FIndent*FIndentSize);
    FNeedIndent:=needIndent;
 end;
 
@@ -1223,7 +1226,7 @@ end;
 procedure TdwsCodeGen.UnIndent(needIndent : Boolean = True);
 begin
    Dec(FIndent);
-   FIndentString:=StringOfChar(' ', FIndent*FIndentSize);
+   FIndentString:=StringOfChar(FIndentChar, FIndent*FIndentSize);
    FNeedIndent:=needIndent;
 end;
 
