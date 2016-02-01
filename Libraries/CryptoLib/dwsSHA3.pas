@@ -98,6 +98,9 @@ procedure SHA3_Init(var state: TSHA3State; algo: TSHA3_Algo);
 procedure SHA3_Update(var state: TSHA3State; msg: Pointer; len: Integer);
 procedure SHA3_FinalHash(var state: THashState; digest: Pointer);
 
+function HashSHA3_256(const buf : RawByteString) : String; overload;
+function HashSHA3_256(p : Pointer; len : Integer) : String; overload;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -472,6 +475,33 @@ end;
 procedure TSpongeState.FinalHash(digest : Pointer);
 begin
    SHA3_FinalHash(Self, digest);
+end;
+
+function HashSHA3_256(const buf : RawByteString) : String;
+begin
+   Result:=HashSHA3_256(Pointer(buf), Length(buf));
+end;
+
+function HashSHA3_256(p : Pointer; len : Integer) : String;
+const
+   cHex : String = '0123456789abcdef';
+var
+   i : Integer;
+   sponge : TSHA3State;
+   hash : TSHA3_256_Hash;
+   pResult : PChar;
+begin
+   SHA3_Init(sponge, SHA3_256);
+   SHA3_Update(sponge, p, len);
+   SHA3_FinalHash(sponge, @hash);
+
+   SetLength(Result, SizeOf(hash)*2);
+   pResult:=Pointer(Result);
+   for i:=0 to SizeOf(hash)-1 do begin
+      pResult[0]:=cHex[(hash[i] shr 4)+1];
+      pResult[1]:=cHex[(hash[i] and 15)+1];
+      Inc(pResult, 2);
+   end;
 end;
 
 end.
