@@ -66,6 +66,7 @@ type
    TdwsOnNeedUnitEvent = function (const unitName : UnicodeString; var unitSource : UnicodeString) : IdwsUnit of object;
    TdwsResourceEvent = procedure (compiler : TdwsCompiler; const resourceName : UnicodeString) of object;
    TdwsCodeGenEvent = procedure (compiler : TdwsCompiler; const switchPos : TScriptPos; const code : UnicodeString) of object;
+   TdwsFilterEvent = procedure (compiler : TdwsCompiler; const sourceName : String; var sourceCode : String; var filter : TdwsFilter) of object;
 
    TCompilerCreateBaseVariantSymbolEvent = function (table : TSystemSymbolTable) : TBaseVariantSymbol of object;
    TCompilerCreateSystemSymbolsEvent = procedure (table : TSystemSymbolTable) of object;
@@ -115,6 +116,7 @@ type
          FOnNeedUnit : TdwsOnNeedUnitEvent;
          FOnResource : TdwsResourceEvent;
          FOnCodeGen : TdwsCodeGenEvent;
+         FOnFilter : TdwsFilterEvent;
          FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbolEvent;
          FOnCreateSystemSymbols : TCompilerCreateSystemSymbolsEvent;
          FOnExecutionStarted : TdwsExecutionEvent;
@@ -178,6 +180,7 @@ type
          property OnNeedUnit : TdwsOnNeedUnitEvent read FOnNeedUnit write FOnNeedUnit;
          property OnResource : TdwsResourceEvent read FOnResource write FOnResource;
          property OnCodeGen : TdwsCodeGenEvent read FOnCodeGen write FOnCodeGen;
+         property OnFilter : TdwsFilterEvent read FOnFilter write FOnFilter;
          property OnExecutionStarted : TdwsExecutionEvent read FOnExecutionStarted write FOnExecutionStarted;
          property OnExecutionEnded : TdwsExecutionEvent read FOnExecutionEnded write FOnExecutionEnded;
    end;
@@ -442,6 +445,7 @@ type
          FOnNeedUnit : TdwsOnNeedUnitEvent;
          FOnResource : TdwsResourceEvent;
          FOnCodeGen : TdwsCodeGenEvent;
+         FOnFilter : TdwsFilterEvent;
          FUnits : TIdwsUnitList;
          FSystemTable : TSystemSymbolTable;
          FScriptPaths : TStrings;
@@ -1527,6 +1531,7 @@ begin
    FOnNeedUnit := conf.OnNeedUnit;
    FOnResource := conf.OnResource;
    FOnCodeGen := conf.OnCodeGen;
+   FOnFilter := conf.OnFilter;
    FScriptPaths := conf.ScriptPaths;
 
    FOnExecutionStarted := conf.OnExecutionStarted;
@@ -3375,6 +3380,10 @@ begin
 
                   if FTok.TestDelete(ttEXPORT) then begin
                      Result.IsExport:=True;
+                     if FTok.Test(ttStrVal) then begin
+                        Result.ExternalName:=FTok.GetToken.AsString;
+                        FTok.KillToken;
+                     end;
                      ReadSemiColon;
                   end;
 
@@ -11563,6 +11572,7 @@ var
    sourceFile : TSourceFile;
    includeSymbol : TIncludeSymbol;
    condInfo : TTokenizerConditionalInfo;
+   filter : TdwsFilter;
 begin
    Result:=True;
    if Assigned(FOnReadInstrSwitch) then begin
@@ -11616,7 +11626,11 @@ begin
                         FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoFilterAvailable);
                      // Include file is processed by the filter
                      scriptSource := GetIncludeScriptSource(name);
-                     scriptSource := FFilter.Process(scriptSource, FMsgs);
+                     filter := FFilter;
+                     if Assigned(FOnFilter) then
+                        FOnFilter(Self, name, scriptSource, filter);
+                     if filter <> nil then
+                        scriptSource := filter.Process(scriptSource, FMsgs);
                   end else begin
                      scriptSource := GetIncludeScriptSource(name);
                   end;
