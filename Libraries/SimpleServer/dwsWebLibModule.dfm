@@ -425,6 +425,17 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maStatic]
             OnEval = dwsWebClassesWebResponseMethodsSetLastModifiedEval
             Kind = mkClassProcedure
+          end
+          item
+            Name = 'SetStatic'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'Boolean'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebResponseMethodsSetStaticEval
+            Kind = mkClassProcedure
           end>
         Properties = <
           item
@@ -476,6 +487,11 @@ object dwsWebLib: TdwsWebLib
             Name = 'LastModified'
             DataType = 'Float'
             WriteAccess = 'SetLastModified'
+          end
+          item
+            Name = 'Static'
+            DataType = 'Boolean'
+            WriteAccess = 'SetStatic'
           end>
       end
       item

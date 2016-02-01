@@ -21,7 +21,7 @@ interface
 uses
    Classes, SysUtils, StrUtils, DateUtils,
    SynCrtSock, SynCommons,
-   dwsExprs, dwsUtils, dwsWebUtils;
+   dwsExprs, dwsUtils, dwsWebUtils, dwsSHA3;
 
 type
    TWebRequestAuthentication = (
@@ -155,6 +155,9 @@ type
          function AddCookie(const name : String) : TWebResponseCookie;
    end;
 
+   TWebResponseHint = (shStatic, shCompression);
+   TWebResponseHints = set of TWebResponseHint;
+
    TWebResponse = class
       private
          FStatusCode : Integer;
@@ -163,14 +166,16 @@ type
          FContentEncoding : RawByteString;
          FHeaders : TStrings;
          FCookies : TWebResponseCookies;  // lazy initialization
-         FCompression : Boolean;
          FProcessingTime : Integer;
+         FHints : TWebResponseHints;
 
       protected
          procedure SetContentText(const textType : RawByteString; const text : String);
          procedure SetContentJSON(const json : String);
          procedure SetLastModified(v : TDateTime);
-         function GetCookies : TWebResponseCookies;
+         function  GetCookies : TWebResponseCookies;
+         function  GetCompression : Boolean; inline;
+         procedure SetCompression(v : Boolean);
 
       public
          constructor Create;
@@ -191,8 +196,9 @@ type
 
          property Headers : TStrings read FHeaders;
          property Cookies : TWebResponseCookies read GetCookies;
-         property Compression : Boolean read FCompression write FCompression;
+         property Compression : Boolean read GetCompression write SetCompression;
          property LastModified : TDateTime write SetLastModified;
+         property Hints : TWebResponseHints read FHints write FHints;
 
          // optional, informative, time it took to process the response in microseconds
          property ProcessingTime : Integer read FProcessingTime write FProcessingTime;
@@ -221,6 +227,29 @@ type
       function WebEnvironment : IWebEnvironment; inline;
       function WebRequest : TWebRequest; inline;
       function WebResponse : TWebResponse; inline;
+   end;
+
+   TWebStaticCacheEntry = class (TInterfacedSelfObject)
+      private
+         FStatusCode : Integer;
+         FContentType : RawByteString;
+         FContentData : RawByteString;
+         FETag : String;
+         FCacheControl : String;
+
+      public
+         constructor Create(fromResponse : TWebResponse);
+         procedure HandleStatic(request : TWebRequest; response : TWebResponse);
+
+         property StatusCode : Integer read FStatusCode write FStatusCode;
+
+         property ContentData : RawByteString read FContentData write FContentData;
+         property ContentType : RawByteString read FContentType write FContentType;
+
+         property ETag : String read FETag write FETag;
+         property CacheControl : String read FCacheControl write FCacheControl;
+
+         function Size : Integer;
    end;
 
 const
@@ -487,7 +516,7 @@ constructor TWebResponse.Create;
 begin
    inherited;
    FHeaders:=TFastCompareStringList.Create;
-   FCompression:=True;
+   FHints:=[shCompression];
 end;
 
 // Destroy
@@ -510,6 +539,7 @@ begin
    FHeaders.Clear;
    if FCookies<>nil then
       FCookies.Clear;
+   FHints:=[shCompression];
 end;
 
 // HasCookies
@@ -585,6 +615,22 @@ begin
    Result:=FCookies;
 end;
 
+// GetCompression
+//
+function TWebResponse.GetCompression : Boolean;
+begin
+   Result:=(shCompression in FHints);
+end;
+
+// SetCompression
+//
+procedure TWebResponse.SetCompression(v : Boolean);
+begin
+   if v then
+      Include(FHints, shCompression)
+   else Exclude(FHints, shCompression);
+end;
+
 // ------------------
 // ------------------ TWebResponseCookies ------------------
 // ------------------
@@ -652,6 +698,58 @@ begin
    Result:=TWebResponseCookie.Create;
    Result.Name:=name;
    Add(Result);
+end;
+
+// ------------------
+// ------------------ TWebStaticCacheEntry ------------------
+// ------------------
+
+// Create
+//
+constructor TWebStaticCacheEntry.Create(fromResponse : TWebResponse);
+var
+   sponge : TSHA3State;
+   digest : TSHA3_256_Hash;
+begin
+   inherited Create;
+   FContentType:=fromResponse.ContentType;
+   FContentData:=fromResponse.ContentData;
+   FStatusCode:=fromResponse.StatusCode;
+   FCacheControl:=fromResponse.Headers.Values['Cache-Control'];
+   FETag:=fromResponse.Headers.Values['ETag'];
+   if FETag='' then begin
+      SHA3_Init(sponge, SHA3_256);
+      SHA3_Update(sponge, @FStatusCode, SizeOf(FStatusCode));
+      SHA3_Update(sponge, @FCacheControl, Length(FCacheControl)*SizeOf(Char));
+      SHA3_Update(sponge, Pointer(FContentType), Length(FContentType));
+      SHA3_Update(sponge, Pointer(FContentData), Length(FContentData));
+      SHA3_FinalHash(sponge, @digest);
+      RawByteStringToScriptString(BinToBase64URI(@digest, SizeOf(digest) div 2), FETag);
+      fromResponse.Headers.Values['ETag']:=FETag;
+   end;
+end;
+
+// HandleStatic
+//
+procedure TWebStaticCacheEntry.HandleStatic(request : TWebRequest; response : TWebResponse);
+begin
+   if request.Header('If-None-Match') = FETag then begin
+      response.StatusCode := 304;
+      Exit;
+   end;
+   response.Headers.Values['ETag'] := FETag;
+   if FCacheControl<>'' then
+      response.Headers.Values['Cache-Control'] := FCacheControl;
+   response.ContentType := FContentType;
+   response.ContentData := FContentData;
+   response.StatusCode := FStatusCode;
+end;
+
+// Size
+//
+function TWebStaticCacheEntry.Size : Integer;
+begin
+   Result:=Length(FContentData);
 end;
 
 end.

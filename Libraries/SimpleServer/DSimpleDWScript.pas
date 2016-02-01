@@ -346,6 +346,7 @@ var
    prog : IdwsProgram;
    webenv : TWebEnvironment;
    executing : TExecutingScript;
+   staticCache : TWebStaticCacheEntry;
 begin
    if (CPUUsageLimit>0) and not WaitForCPULimit then begin
       Handle503(response);
@@ -356,52 +357,62 @@ begin
    if prog=nil then
       CompileDWS(fileName, prog, typ);
 
-   if prog.Msgs.HasErrors then
-      Handle500(response, prog.Msgs)
-   else begin
-      executing.Start:=GetSystemMilliseconds;
-      executing.Exec:=prog.CreateNewExecution;
-      executing.Options:=options;
-      executing.ID:=InterlockedIncrement(FExecutingID);
+   if prog.Msgs.HasErrors then begin
+      Handle500(response, prog.Msgs);
+      Exit;
+   end;
 
-      webenv:=TWebEnvironment.Create;
-      webenv.WebRequest:=request;
-      webenv.WebResponse:=response;
-      executing.Exec.Environment:=webenv;
-      try
-         executing.Exec.BeginProgram;
+   if prog.ProgramObject.TagInterface <> nil then begin
+      staticCache := prog.ProgramObject.TagInterface.GetSelf as TWebStaticCacheEntry;
+      staticCache.HandleStatic(request, response);
+      Exit;
+   end;
 
-         // insert into executing queue
-         executing.Prev:=nil;
-         FExecutingScriptsLock.BeginWrite;
-         executing.Next:=FExecutingScripts;
-         if FExecutingScripts<>nil then
-            FExecutingScripts.Prev:=@executing;
-         FExecutingScripts:=@executing;
-         FExecutingScriptsLock.EndWrite;
+   executing.Start:=GetSystemMilliseconds;
+   executing.Exec:=prog.CreateNewExecution;
+   executing.Options:=options;
+   executing.ID:=InterlockedIncrement(FExecutingID);
 
-         if optWorker in options then
-            executing.Exec.RunProgram(WorkerTimeoutMilliseconds)
-         else executing.Exec.RunProgram(ScriptTimeoutMilliseconds);
+   webenv:=TWebEnvironment.Create;
+   webenv.WebRequest:=request;
+   webenv.WebResponse:=response;
+   executing.Exec.Environment:=webenv;
+   try
+      executing.Exec.BeginProgram;
 
-         // extract from executing queue
-         FExecutingScriptsLock.BeginWrite;
-         if executing.Prev<>nil then
-            executing.Prev.Next:=executing.Next
-         else FExecutingScripts:=executing.Next;
-         if executing.Next<>nil then
-            executing.Next.Prev:=executing.Prev;
-         FExecutingScriptsLock.EndWrite;
+      // insert into executing queue
+      executing.Prev:=nil;
+      FExecutingScriptsLock.BeginWrite;
+      executing.Next:=FExecutingScripts;
+      if FExecutingScripts<>nil then
+         FExecutingScripts.Prev:=@executing;
+      FExecutingScripts:=@executing;
+      FExecutingScriptsLock.EndWrite;
 
-         executing.Exec.EndProgram;
-      finally
-         executing.Exec.Environment:=nil;
-      end;
+      if optWorker in options then
+         executing.Exec.RunProgram(WorkerTimeoutMilliseconds)
+      else executing.Exec.RunProgram(ScriptTimeoutMilliseconds);
 
-      if executing.Exec.Msgs.Count>0 then
-         Handle500(response, executing.Exec.Msgs)
-      else if (response<>nil) and (response.ContentData='') then
-         HandleScriptResult(response, executing.Exec.Result);
+      // extract from executing queue
+      FExecutingScriptsLock.BeginWrite;
+      if executing.Prev<>nil then
+         executing.Prev.Next:=executing.Next
+      else FExecutingScripts:=executing.Next;
+      if executing.Next<>nil then
+         executing.Next.Prev:=executing.Prev;
+      FExecutingScriptsLock.EndWrite;
+
+      executing.Exec.EndProgram;
+   finally
+      executing.Exec.Environment:=nil;
+   end;
+
+   if executing.Exec.Msgs.Count>0 then
+      Handle500(response, executing.Exec.Msgs)
+   else if (response<>nil) and (response.ContentData='') then begin
+      HandleScriptResult(response, executing.Exec.Result);
+      if shStatic in response.Hints then
+         prog.ProgramObject.TagInterface:=TWebStaticCacheEntry.Create(response);
    end;
 end;
 

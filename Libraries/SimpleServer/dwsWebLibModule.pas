@@ -120,6 +120,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebFunctionsGetHostByAddrEval(info: TProgramInfo);
     procedure dwsWebFunctionsGetHostByNameEval(info: TProgramInfo);
+    procedure dwsWebClassesWebResponseMethodsSetStaticEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -559,6 +561,18 @@ procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetLastModifiedEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.WebResponse.LastModified:=Info.ParamAsFloat[0];
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetStaticEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   h : TWebResponseHints;
+begin
+   h:=Info.WebResponse.Hints;
+   if Info.ParamAsBoolean[0] then
+      h:=h+[shStatic]
+   else h:=h-[shStatic];
+   Info.WebResponse.Hints:=h;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetStatusCodeEval(
