@@ -46,11 +46,6 @@ type
 
   EdwsZIPException = class (Exception);
 
-implementation
-
-{$R *.dfm}
-
-type
    PZipEntry = ^TZipEntry;
    PFileHeader = ^TFileHeader;
 
@@ -63,6 +58,10 @@ type
       procedure AddData(data : Pointer; size : Int64; compression : Integer; const name : TFileName);
       procedure AddFile(const aFileName : TFileName; compression : Integer; const nameInZip : TFileName);
    end;
+
+implementation
+
+{$R *.dfm}
 
 function DateTimeToDosDateTime(dt : TDateTime) : Integer;
 var
