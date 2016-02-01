@@ -791,6 +791,8 @@ type
 
          FProgramType : TdwsProgramType;
 
+         FTagInterface : IGetSelf;
+
       protected
          function GetConditionalDefines : IAutoStrings;
          function GetDefaultUserObject : TObject;
@@ -875,6 +877,7 @@ type
          property OnExecutionEnded : TdwsExecutionEvent read FOnExecutionEnded write FOnExecutionEnded;
 
          property ProgramType : TdwsProgramType read FProgramType write FProgramType;
+         property TagInterface : IGetSelf read FTagInterface write FTagInterface;
    end;
 
    // Functions callable from a script program implement this interfaces
