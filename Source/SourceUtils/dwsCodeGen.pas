@@ -308,6 +308,8 @@ type
 
          procedure CreateDataContext(const data : TData; addr : Integer; var result : IDataContext);
 
+         function Localizer : IdwsLocalizer;
+
          property Context : TdwsProgram read FContext;
          property ContextSymbolDictionary : TdwsSymbolDictionary read FContextSymbolDictionary;
 
@@ -391,7 +393,7 @@ end;
 //
 constructor TdwsCodeGen.Create;
 begin
-   inherited;
+   inherited Create;
    FCodeGenList:=TdwsRegisteredCodeGenList.Create;
    FOutput:=TWriteOnlyBlockStream.Create;
    FOutputLine:=1;
@@ -596,6 +598,15 @@ end;
 procedure TdwsCodeGen.CreateDataContext(const data : TData; addr : Integer; var result : IDataContext);
 begin
    result:=FDataContextPool.Create(data, addr);
+end;
+
+// Localizer
+//
+function TdwsCodeGen.Localizer : IdwsLocalizer;
+begin
+   if FContext<>nil then
+      Result:=FContext.Root.DefaultLocalizer
+   else Result:=nil;
 end;
 
 // Compile

@@ -38,7 +38,7 @@ interface
 
 uses
    Variants, Windows, Classes, SysUtils, Masks,
-   dwsXPlatform, dwsUtils, dwsStrings, dwsExprList, dwsConstExprs,
+   dwsXPlatform, dwsUtils, dwsStrings, dwsExprList, dwsConstExprs, dwsErrors,
    dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs, dwsDataContext;
 
 type
@@ -125,6 +125,18 @@ type
    EGlobalVarError = class (Exception)
    end;
 
+   TReadPrivateVarFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
+   end;
+
+   TWritePrivateVarFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
+   end;
+
+   TCleanupPrivateVarsFunc = class(TInternalMagicProcedure)
+      procedure DoEvalProc(const args : TExprBaseListExec); override;
+   end;
+
 {: Directly write a global var.<p> }
 function WriteGlobalVar(const aName: UnicodeString; const aValue: Variant; expirationSeconds : Double) : Boolean;
 {: Directly read a global var.<p> }
@@ -184,11 +196,24 @@ type
 
 var
    vGlobalVars : TGlobalVars;
+   vPrivateVars : TGlobalVars;
    vGlobalQueuesCS : TMultiReadSingleWrite;
    vGlobalQueues : TNameGlobalQueueHash;
 
 const
    cGlobalVarsFiles : AnsiString = 'GBF 2.0';
+
+function PrivateVarName(const args : TExprBaseListExec) : String;
+var
+   scriptPos : TScriptPos;
+   expr : TPosDataExpr;
+begin
+   expr:=(args.Expr as TPosDataExpr);
+   scriptPos:=expr.ScriptPos;
+   if scriptPos.IsMainModule then
+      raise Exception.Create('Private variables cannot be referred from main module');
+   Result:=scriptPos.SourceName+' '+args.AsString[0];
+end;
 
 // ------------------
 // ------------------ stubs ------------------
@@ -683,6 +708,43 @@ begin
    Result:=GlobalQueueLength(args.AsString[0]);
 end;
 
+// ------------------
+// ------------------ TReadPrivateVarFunc ------------------
+// ------------------
+
+// DoEvalAsVariant
+//
+procedure TReadPrivateVarFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
+begin
+   if not vPrivateVars.TryRead(PrivateVarName(args), Result) then
+      args.ExprBase[1].EvalAsVariant(args.Exec, Result);
+end;
+
+// ------------------
+// ------------------ TWritePrivateVarFunc ------------------
+// ------------------
+
+// DoEvalAsBoolean
+//
+function TWritePrivateVarFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+var
+   buf : Variant;
+begin
+   args.ExprBase[1].EvalAsVariant(args.Exec, buf);
+   Result:=vPrivateVars.Write(PrivateVarName(args), buf, args.AsFloat[2]);
+end;
+
+// ------------------
+// ------------------ TCleanupPrivateVarsFunc ------------------
+// ------------------
+
+// DoEvalProc
+//
+procedure TCleanupPrivateVarsFunc.DoEvalProc(const args : TExprBaseListExec);
+begin
+   vPrivateVars.Cleanup(PrivateVarName(args));
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -692,6 +754,7 @@ initialization
 // ------------------------------------------------------------------
 
    vGlobalVars.Initialize;
+   vPrivateVars.Initialize;
    vGlobalQueuesCS:=TMultiReadSingleWrite.Create;
    vGlobalQueues:=TNameGlobalQueueHash.Create;
 
@@ -709,6 +772,10 @@ initialization
    RegisterInternalStringFunction(TSaveGlobalVarsToString, 'SaveGlobalVarsToString', []);
    RegisterInternalProcedure(TLoadGlobalVarsFromString, 'LoadGlobalVarsFromString', ['s', SYS_STRING]);
 
+   RegisterInternalFunction(TReadPrivateVarFunc, 'ReadPrivateVar', ['n', SYS_STRING, 'd=Unassigned', SYS_VARIANT], SYS_VARIANT);
+   RegisterInternalBoolFunction(TWritePrivateVarFunc, 'WritePrivateVar', ['n', SYS_STRING, 'v', SYS_VARIANT, 'e=0', SYS_FLOAT]);
+   RegisterInternalProcedure(TCleanupPrivateVarsFunc, 'CleanupPrivateVars', ['filter=*', SYS_STRING]);
+
    RegisterInternalIntFunction(TGlobalQueuePushFunc, 'GlobalQueuePush', ['n', SYS_STRING, 'v', SYS_VARIANT]);
    RegisterInternalIntFunction(TGlobalQueueInsertFunc, 'GlobalQueueInsert', ['n', SYS_STRING, 'v', SYS_VARIANT]);
    RegisterInternalBoolFunction(TGlobalQueuePullFunc, 'GlobalQueuePull', ['n', SYS_STRING, '@v', SYS_VARIANT]);
@@ -718,8 +785,8 @@ initialization
 
 finalization
 
-   CleanupGlobalVars;
    vGlobalVars.Finalize;
+   vPrivateVars.Finalize;
 
    CleanupGlobalQueues;
    vGlobalQueuesCS.Free;

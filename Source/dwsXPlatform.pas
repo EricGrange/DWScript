@@ -159,6 +159,7 @@ type
 // 64bit system clock reference in milliseconds since boot
 function GetSystemMilliseconds : Int64;
 function UTCDateTime : TDateTime;
+function UnixTime : Int64;
 // UTC = LocalTime + Bias
 function LocalTimeBias : TDateTime;
 procedure SystemSleep(msec : Integer);
@@ -350,6 +351,13 @@ begin
 {$ELSE}
    Not yet implemented!
 {$ENDIF}
+end;
+
+// UnixTime
+//
+function UnixTime : Int64;
+begin
+   Result:=Trunc(UTCDateTime*86400)-Int64(25569)*86400;
 end;
 
 // LocalTimeBias

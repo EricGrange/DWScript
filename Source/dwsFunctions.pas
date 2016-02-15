@@ -291,6 +291,8 @@ function ConvertFuncParams(const funcParams : array of UnicodeString) : TParamAr
    begin
       SetLength(paramRec.DefaultValue, 1);
       paramRec.DefaultValue[0]:=Trim(Copy(paramRec.ParamName, p+1, MaxInt));
+      if paramRec.DefaultValue[0]='Unassigned' then
+         VarClearSafe(paramRec.DefaultValue[0]);
       paramRec.HasDefaultValue:=True;
       paramRec.ParamName:=Trim(Copy(paramRec.ParamName, 1, p-1));
    end;

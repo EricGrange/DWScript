@@ -244,6 +244,10 @@ type
     function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
   end;
 
+  TStrFindFunc = class(TInternalMagicIntFunction)
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+  end;
+
   TStrAfterFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
@@ -899,6 +903,13 @@ begin
    Result:=StrContains(args.AsString[0], args.AsString[1]);
 end;
 
+{ TStrFindFunc }
+
+function TStrFindFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+begin
+   Result:=PosEx(args.AsString[1], args.AsString[0], args.AsInteger[2]);
+end;
+
 { TStrAfterFunc }
 
 procedure TStrAfterFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
@@ -1169,6 +1180,7 @@ initialization
    RegisterInternalBoolFunction(TStrEndsWithFunc, 'StrEndsWith', ['str', SYS_STRING, 'endStr', SYS_STRING], [iffStateLess], 'EndsWith');
 
    RegisterInternalBoolFunction(TStrContainsFunc, 'StrContains', ['str', SYS_STRING, 'subStr', SYS_STRING], [iffStateLess], 'Contains');
+   RegisterInternalIntFunction(TStrFindFunc, 'StrFind', ['str', SYS_STRING, 'subStr', SYS_STRING, 'fromIndex=1', SYS_INTEGER], [iffStateLess], 'IndexOf');
 
    RegisterInternalStringFunction(TStrAfterFunc, 'StrAfter', ['str', SYS_STRING, 'delimiter', SYS_STRING], [iffStateLess], 'After');
    RegisterInternalStringFunction(TStrBeforeFunc, 'StrBefore', ['str', SYS_STRING, 'delimiter', SYS_STRING], [iffStateLess], 'Before');

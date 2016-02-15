@@ -91,6 +91,7 @@ type
   end;
 
 function CryptographicToken(bitStrength : Integer) : String;
+function ProcessUniqueRandom : String;
 
 implementation
 
@@ -100,6 +101,26 @@ uses SynCrypto, SynZip, dwsRipeMD160, dwsCryptProtect, dwsSHA3, wcrypt2;
 
 type
    THashFunction = function (const data : RawByteString) : RawByteString;
+
+var
+   vProcessUniqueRandom : String;
+
+procedure GenerateUniqueRandom;
+var
+   buf : String;
+begin
+   // 6 bits per character, 42 characters, 252 bits of random
+   buf:=CryptographicToken(6*42);
+   Pointer(buf):=InterlockedCompareExchangePointer(Pointer(vProcessUniqueRandom),
+                                                   Pointer(buf), nil);
+end;
+
+function ProcessUniqueRandom : String;
+begin
+   if vProcessUniqueRandom='' then
+      GenerateUniqueRandom;
+   Result:=vProcessUniqueRandom;
+end;
 
 procedure PerformHashData(Info: TProgramInfo; h : THashFunction);
 var
@@ -499,25 +520,10 @@ begin
    NonceFilename:=IncludeTrailingPathDelimiter(TPath.GetTempPath)+UTF8ToString(SHA256(signature))+'.nonces';
 end;
 
-var
-   vProcessUniqueRandom : String;
 procedure TdwsCryptoLib.dwsCryptoFunctionsProcessUniqueRandomEval(
   info: TProgramInfo);
-
-   procedure GenerateUniqueRandom;
-   var
-      buf : String;
-   begin
-      // 6 bits per character, 42 characters, 252 bits of random
-      buf:=CryptographicToken(6*42);
-      Pointer(buf):=InterlockedCompareExchangePointer(Pointer(vProcessUniqueRandom),
-                                                      Pointer(buf), nil);
-   end;
-
 begin
-   if vProcessUniqueRandom='' then
-      GenerateUniqueRandom;
-   info.ResultAsString:=vProcessUniqueRandom;
+   info.ResultAsString:=ProcessUniqueRandom;
 end;
 
 // ------------------------------------------------------------------

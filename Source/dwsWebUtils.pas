@@ -22,7 +22,8 @@ interface
 
 uses
    Classes, SysUtils,
-   dwsUtils, dwsXPlatform;
+   dwsUtils, dwsXPlatform,
+   SynCommons, dwsSHA3;
 
 type
 
@@ -47,6 +48,8 @@ type
 
          class function HTMLAttributeEncode(const s : String) : String; static;
          class function HTMLAttributeDecode(const s : String) : String; static;
+
+         class function ETag(const data : array of const) : String; static;
    end;
 
 
@@ -946,6 +949,32 @@ end;
 class function WebUtils.HTMLAttributeDecode(const s : String) : String;
 begin
    Result:=WebUtils.HTMLTextDecode(s);
+end;
+
+// ETag
+//
+class function WebUtils.ETag(const data : array of const) : String;
+var
+   i : Integer;
+   sponge : TSHA3State;
+   digest : TSHA3_256_Hash;
+begin
+   SHA3_Init(sponge, SHA3_256);
+   for i:=0 to High(data) do begin
+      case data[i].VType of
+         vtInteger       : SHA3_Update(sponge, @data[i].VInteger, SizeOf(Integer));
+         vtInt64         : SHA3_Update(sponge, @data[i].VInt64, SizeOf(Int64));
+         vtBoolean       : SHA3_Update(sponge, @data[i].VBoolean, SizeOf(Boolean));
+         vtChar          : SHA3_Update(sponge, @data[i].VChar, SizeOf(AnsiChar));
+         vtExtended      : SHA3_Update(sponge, @data[i].VExtended, SizeOf(Extended));
+         vtAnsiString    : SHA3_Update(sponge, data[i].VAnsiString, Length(AnsiString(data[i].VAnsiString)));
+         vtUnicodeString : SHA3_Update(sponge, data[i].VUnicodeString, 2*Length(UnicodeString(data[i].VAnsiString)));
+      else
+         raise Exception.CreateFmt('Unsupported VType %d in WebUtils.ETag', [data[i].VType]);
+      end;
+   end;
+   SHA3_FinalHash(sponge, @digest);
+   Result:=RawByteStringToScriptString(BinToBase64URI(@digest, SizeOf(digest) div 2));
 end;
 
 end.

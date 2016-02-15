@@ -537,6 +537,7 @@ var
 begin
    execRec.ListRec:=FArgs;
    execRec.Exec:=exec;
+   execRec.Expr:=Self;
    try
       FOnEval(execRec, Result);
    except
@@ -585,6 +586,7 @@ var
 begin
    execRec.ListRec:=FArgs;
    execRec.Exec:=exec;
+   execRec.Expr:=Self;
    try
       exec.DataContext_CreateBase(FResultAddr, Result);
       FOnEval(execRec, Result);
@@ -629,6 +631,7 @@ var
 begin
    execRec.ListRec:=FArgs;
    execRec.Exec:=exec;
+   execRec.Expr:=Self;
    try
       Result:=FOnEval(execRec);
    except
@@ -680,6 +683,7 @@ var
 begin
    execRec.ListRec:=FArgs;
    execRec.Exec:=exec;
+   execRec.Expr:=Self;
    try
       FOnEval(execRec, Result);
    except
@@ -722,6 +726,7 @@ var
 begin
    execRec.ListRec:=FArgs;
    execRec.Exec:=exec;
+   execRec.Expr:=Self;
    try
       FOnEval(execRec, Result);
    except
@@ -764,6 +769,7 @@ var
 begin
    execRec.ListRec:=FArgs;
    execRec.Exec:=exec;
+   execRec.Expr:=Self;
    try
       Result:=FOnEval(execRec);
    except
@@ -793,6 +799,7 @@ var
 begin
    execRec.ListRec:=FArgs;
    execRec.Exec:=exec;
+   execRec.Expr:=Self;
    try
       FOnEval(execRec);
    except

@@ -21,7 +21,7 @@ interface
 uses
    Classes, SysUtils, StrUtils, DateUtils,
    SynCrtSock, SynCommons,
-   dwsExprs, dwsUtils, dwsWebUtils, dwsSHA3;
+   dwsExprs, dwsUtils, dwsWebUtils;
 
 type
    TWebRequestAuthentication = (
@@ -707,9 +707,6 @@ end;
 // Create
 //
 constructor TWebStaticCacheEntry.Create(fromResponse : TWebResponse);
-var
-   sponge : TSHA3State;
-   digest : TSHA3_256_Hash;
 begin
    inherited Create;
    FContentType:=fromResponse.ContentType;
@@ -718,13 +715,7 @@ begin
    FCacheControl:=fromResponse.Headers.Values['Cache-Control'];
    FETag:=fromResponse.Headers.Values['ETag'];
    if FETag='' then begin
-      SHA3_Init(sponge, SHA3_256);
-      SHA3_Update(sponge, @FStatusCode, SizeOf(FStatusCode));
-      SHA3_Update(sponge, @FCacheControl, Length(FCacheControl)*SizeOf(Char));
-      SHA3_Update(sponge, Pointer(FContentType), Length(FContentType));
-      SHA3_Update(sponge, Pointer(FContentData), Length(FContentData));
-      SHA3_FinalHash(sponge, @digest);
-      RawByteStringToScriptString(BinToBase64URI(@digest, SizeOf(digest) div 2), FETag);
+      FEtag:=WebUtils.ETag([FStatusCode, FCacheControl, FContentType, FContentData]);
       fromResponse.Headers.Values['ETag']:=FETag;
    end;
 end;
