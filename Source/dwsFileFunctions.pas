@@ -287,6 +287,8 @@ var
    i : IdwsFileHandle;
 begin
    h:=FileOpen(args.AsFileName[0], args.AsInteger[1]);
+   if h=INVALID_HANDLE_VALUE then
+      RaiseLastOSError;
    i:=TdwsFileHandle.Create(h);
    Result:=IUnknown(i);
 end;
@@ -303,6 +305,8 @@ var
    i : IdwsFileHandle;
 begin
    h:=FileOpen(args.AsFileName[0], fmOpenRead+fmShareDenyNone);
+   if h=INVALID_HANDLE_VALUE then
+      RaiseLastOSError;
    i:=TdwsFileHandle.Create(h);
    Result:=IUnknown(i);
 end;
@@ -319,6 +323,8 @@ var
    i : IdwsFileHandle;
 begin
    h:=FileCreate(args.AsFileName[0]);
+   if h=INVALID_HANDLE_VALUE then
+      RaiseLastOSError;
    i:=TdwsFileHandle.Create(h);
    Result:=IUnknown(i);
 end;
