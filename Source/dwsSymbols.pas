@@ -5255,6 +5255,8 @@ begin
          Result := Result + ' = ''' + VarToStr(FDefaultValue[0]) + ''''  // put quotes around value
       else if VarType(FDefaultValue[0])=varUnknown then
          Result := Result + ' = nil'
+      else if (Typ is TArraySymbol) then
+         Result := Result + ' = []'
       else Result := Result + ' = ' + VarToStr(FDefaultValue[0]);
    end;
 end;
