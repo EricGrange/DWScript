@@ -233,7 +233,8 @@ procedure RegisterInternalFunction(InternalFunctionClass: TInternalFunctionClass
       const FuncType: UnicodeString; const flags : TInternalFunctionFlags = [];
       const helperName : UnicodeString = '');
 procedure RegisterInternalProcedure(InternalFunctionClass: TInternalFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString);
+      const FuncName: UnicodeString; const FuncParams: array of UnicodeString;
+      const helperName : UnicodeString = '');
 
 procedure RegisterInternalSymbolsProc(proc : TSymbolsRegistrationProc);
 procedure RegisterInternalOperatorsProc(proc : TOperatorsRegistrationProc);
@@ -365,9 +366,10 @@ end;
 // RegisterInternalProcedure
 //
 procedure RegisterInternalProcedure(InternalFunctionClass: TInternalFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString);
+      const FuncName: UnicodeString; const FuncParams: array of UnicodeString;
+      const helperName : UnicodeString = '');
 begin
-   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, '');
+   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, '', [], helperName);
 end;
 
 { TEmptyFunc }
