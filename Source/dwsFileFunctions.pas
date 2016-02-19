@@ -35,26 +35,26 @@ const
 type
 
    IdwsFileHandle = interface
-      procedure SetHandle(h : THandle);
       function GetHandle : THandle;
+      function GetOSError : Integer;
+      procedure Clear;
    end;
 
    TdwsFileHandle = class (TInterfacedSelfObject, IdwsFileHandle)
       private
          FHandle : THandle;
-
-      protected
-         procedure SetHandle(h : THandle);
-         function GetHandle : THandle;
+         FOSError : Integer;
 
       public
-         constructor Create(aHandle : THandle);
+         constructor Create(aHandle : THandle; osError : Integer);
          destructor Destroy; override;
 
-         property Handle : THandle read FHandle write FHandle;
+         function GetHandle : THandle;
+         function GetOSError : Integer;
+         procedure Clear;
    end;
 
-   TBaseFileSymbol = class (TBaseVariantSymbol)
+   TBaseFileSymbol = class (TBaseSymbol)
       public
          constructor Create;
 
@@ -72,6 +72,10 @@ type
 
    TFileCreateFunc = class(TInternalMagicVariantFunction)
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
+   end;
+
+   TFileIsValidFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
 
    TFileRead1Func = class(TInternalMagicIntFunction)
@@ -106,11 +110,27 @@ type
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
-   TFileSizeFunc = class(TInternalMagicIntFunction)
+   TFileSizeFileFunc = class(TInternalMagicIntFunction)
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
-   TFileDateTimeFunc = class(TInternalMagicFloatFunction)
+   TFileSizeNameFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+   end;
+
+   TFileDateTimeFileFunc = class(TInternalMagicFloatFunction)
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+   end;
+
+   TFileDateTimeNameFunc = class(TInternalMagicFloatFunction)
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+   end;
+
+   TFileSetDateTimeFileFunc = class(TInternalMagicFloatFunction)
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+   end;
+
+   TFileSetDateTimeNameFunc = class(TInternalMagicFloatFunction)
       procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
@@ -184,7 +204,7 @@ implementation
 procedure RegisterFileTypes(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                             unitTable : TSymbolTable);
 var
-   typFile : TBaseVariantSymbol;
+   typFile : TBaseFileSymbol;
 begin
    if systemTable.FindLocal(SYS_FILE)<>nil then exit;
 
@@ -192,6 +212,7 @@ begin
 
    systemTable.AddSymbol(typFile);
 
+   unitTable.AddSymbol(TConstSymbol.CreateValue('fmCreate', systemTable.TypInteger, fmCreate));
    unitTable.AddSymbol(TConstSymbol.CreateValue('fmOpenRead', systemTable.TypInteger, fmOpenRead));
    unitTable.AddSymbol(TConstSymbol.CreateValue('fmOpenWrite', systemTable.TypInteger, fmOpenWrite));
    unitTable.AddSymbol(TConstSymbol.CreateValue('fmOpenReadWrite', systemTable.TypInteger, fmOpenReadWrite));
@@ -207,14 +228,23 @@ end;
 
 // GetFileHandle
 //
-function GetFileHandle(const args : TExprBaseListExec; index : Integer) : THandle;
+function GetFileHandle(const args : TExprBaseListExec; index : Integer; checkValidity : Boolean = True) : THandle;
 var
+   ih : IdwsFileHandle;
    v : Variant;
 begin
    args.ExprBase[index].EvalAsVariant(args.Exec, v);
-   if (TVarData(v).VType=varUnknown) and (TVarData(v).VUnknown<>nil) then
-      Result:=IdwsFileHandle(IUnknown(TVarData(v).VUnknown)).GetHandle
-   else Result:=0;
+   if (TVarData(v).VType=varUnknown) and (TVarData(v).VUnknown<>nil) then begin
+      ih:=IdwsFileHandle(IUnknown(TVarData(v).VUnknown));
+      Result:=ih.GetHandle;
+      if checkValidity and (Result=INVALID_HANDLE_VALUE) then
+         raise Exception.CreateFmt('Invalid file handle (%d): %s',
+                                   [ih.GetOSError, SysErrorMessage(ih.GetOSError)]);
+   end else begin
+      if checkValidity then
+         raise Exception.Create('File is not open');
+      Result:=0;
+   end;
 end;
 
 // ------------------
@@ -223,9 +253,10 @@ end;
 
 // Create
 //
-constructor TdwsFileHandle.Create(aHandle : THandle);
+constructor TdwsFileHandle.Create(aHandle : THandle; osError : Integer);
 begin
    FHandle:=aHandle;
+   FOSError:=osError;
 end;
 
 // Destroy
@@ -236,18 +267,26 @@ begin
       CloseFileHandle(FHandle);
 end;
 
-// SetHandle
-//
-procedure TdwsFileHandle.SetHandle(h : THandle);
-begin
-   FHandle:=h;
-end;
-
 // GetHandle
 //
 function TdwsFileHandle.GetHandle : THandle;
 begin
    Result:=FHandle;
+end;
+
+// GetOSError
+//
+function TdwsFileHandle.GetOSError : Integer;
+begin
+   Result:=FOSError;
+end;
+
+// Clear
+//
+procedure TdwsFileHandle.Clear;
+begin
+   FHandle:=0;
+   FOSError:=0;
 end;
 
 // ------------------
@@ -287,9 +326,7 @@ var
    i : IdwsFileHandle;
 begin
    h:=FileOpen(args.AsFileName[0], args.AsInteger[1]);
-   if h=INVALID_HANDLE_VALUE then
-      RaiseLastOSError;
-   i:=TdwsFileHandle.Create(h);
+   i:=TdwsFileHandle.Create(h, GetLastError);
    Result:=IUnknown(i);
 end;
 
@@ -305,9 +342,7 @@ var
    i : IdwsFileHandle;
 begin
    h:=FileOpen(args.AsFileName[0], fmOpenRead+fmShareDenyNone);
-   if h=INVALID_HANDLE_VALUE then
-      RaiseLastOSError;
-   i:=TdwsFileHandle.Create(h);
+   i:=TdwsFileHandle.Create(h, GetLastError);
    Result:=IUnknown(i);
 end;
 
@@ -323,10 +358,19 @@ var
    i : IdwsFileHandle;
 begin
    h:=FileCreate(args.AsFileName[0]);
-   if h=INVALID_HANDLE_VALUE then
-      RaiseLastOSError;
-   i:=TdwsFileHandle.Create(h);
+   i:=TdwsFileHandle.Create(h, GetLastError);
    Result:=IUnknown(i);
+end;
+
+// ------------------
+// ------------------ TFileIsValidFunc ------------------
+// ------------------
+
+// DoEvalAsBoolean
+//
+function TFileIsValidFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+begin
+   Result:=GetFileHandle(args, 0, False)<>INVALID_HANDLE_VALUE;
 end;
 
 // ------------------
@@ -462,30 +506,80 @@ begin
    if (TVarData(v).VType=varUnknown) and (TVarData(v).VUnknown<>nil) then begin
       i:=IdwsFileHandle(IUnknown(TVarData(v).VUnknown));
       CloseFileHandle(i.GetHandle);
-      i.SetHandle(0);
+      i.Clear;
    end;
 end;
 
 // ------------------
-// ------------------ TFileSizeFunc ------------------
+// ------------------ TFileSizeFileFunc ------------------
 // ------------------
 
 // DoEvalAsInteger
 //
-function TFileSizeFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+function TFileSizeFileFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+var
+   p : Int64;
+   h : THandle;
+begin
+   h := GetFileHandle(args, 0);
+   p := FileSeek(h, 0, soFromCurrent);
+   Result := FileSeek(h, 0, soFromEnd);
+   FileSeek(h, p, soFromBeginning);
+end;
+
+// ------------------
+// ------------------ TFileSizeNameFunc ------------------
+// ------------------
+
+// DoEvalAsInteger
+//
+function TFileSizeNameFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=FileSize(args.AsFileName[0]);
 end;
 
 // ------------------
-// ------------------ TFileDateTimeFunc ------------------
+// ------------------ TFileDateTimeFileFunc ------------------
 // ------------------
 
 // DoEvalAsFloat
 //
-procedure TFileDateTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+procedure TFileDateTimeFileFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result:=FileDateToDateTime(FileGetDate(GetFileHandle(args, 0)));
+end;
+
+// ------------------
+// ------------------ TFileDateTimeNameFunc ------------------
+// ------------------
+
+// DoEvalAsFloat
+//
+procedure TFileDateTimeNameFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=FileDateTime(args.AsFileName[0]);
+end;
+
+// ------------------
+// ------------------ TFileSetDateTimeFileFunc ------------------
+// ------------------
+
+// DoEvalAsFloat
+//
+procedure TFileSetDateTimeFileFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   FileSetDate(GetFileHandle(args, 0), DateTimeToFileDate(args.AsFloat[0]));
+end;
+
+// ------------------
+// ------------------ TFileSetDateTimeNameFunc ------------------
+// ------------------
+
+// DoEvalAsFloat
+//
+procedure TFileSetDateTimeNameFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   FileSetDate(args.AsFileName[0], DateTimeToFileDate(args.AsFloat[0]));
 end;
 
 // ------------------
@@ -686,18 +780,24 @@ initialization
    RegisterInternalFunction(TFileOpenReadFunc, 'FileOpenRead', ['name', SYS_STRING], SYS_FILE, []);
    RegisterInternalFunction(TFileCreateFunc, 'FileCreate', ['name', SYS_STRING], SYS_FILE, []);
 
-   RegisterInternalIntFunction(TFileRead1Func, 'FileRead', ['f', SYS_FILE, '@buf', SYS_STRING, 'n', SYS_INTEGER], [iffOverloaded]);
-   RegisterInternalStringFunction(TFileRead2Func, 'FileRead', ['f', SYS_FILE, 'n', SYS_INTEGER], [iffOverloaded]);
-   RegisterInternalStringFunction(TFileRead3Func, 'FileRead', ['f', SYS_FILE], [iffOverloaded]);
-   RegisterInternalStringFunction(TFileRead4Func, 'FileRead', ['name', SYS_STRING], [iffOverloaded]);
-   RegisterInternalIntFunction(TFileWrite1Func, 'FileWrite', ['f', SYS_FILE, 'buf', SYS_STRING], [iffOverloaded]);
-   RegisterInternalIntFunction(TFileWrite2Func, 'FileWrite', ['name', SYS_STRING, 'buf', SYS_STRING], [iffOverloaded]);
-   RegisterInternalIntFunction(TFileSeekFunc, 'FileSeek', ['f', SYS_FILE, 'offset', SYS_INTEGER, 'origin', SYS_INTEGER], []);
+   RegisterInternalBoolFunction(TFileIsValidFunc, 'FileIsValid', ['f', SYS_FILE], [], 'IsValid');
+   RegisterInternalIntFunction(TFileRead1Func, 'FileRead', ['f', SYS_FILE, '@buf', SYS_STRING, 'n', SYS_INTEGER], [iffOverloaded], 'Read');
+   RegisterInternalStringFunction(TFileRead2Func, 'FileRead', ['f', SYS_FILE, 'n', SYS_INTEGER], [iffOverloaded], 'Read');
+   RegisterInternalStringFunction(TFileRead3Func, 'FileRead', ['f', SYS_FILE], [iffOverloaded], 'Read');
+   RegisterInternalStringFunction(TFileRead4Func, 'FileRead', ['name', SYS_STRING], [iffOverloaded], '');
+   RegisterInternalIntFunction(TFileWrite1Func, 'FileWrite', ['f', SYS_FILE, 'buf', SYS_STRING], [iffOverloaded], 'Write');
+   RegisterInternalIntFunction(TFileWrite2Func, 'FileWrite', ['name', SYS_STRING, 'buf', SYS_STRING], [iffOverloaded], '');
+   RegisterInternalIntFunction(TFileSeekFunc, 'FileSeek', ['f', SYS_FILE, 'offset', SYS_INTEGER, 'origin', SYS_INTEGER], [], 'Seek');
 
-   RegisterInternalProcedure(TFileCloseFunc, 'FileClose', ['f', SYS_FILE]);
+   RegisterInternalProcedure(TFileCloseFunc, 'FileClose', ['f', SYS_FILE], 'Close');
 
-   RegisterInternalIntFunction(TFileSizeFunc, 'FileSize', ['name', SYS_STRING], []);
-   RegisterInternalFloatFunction(TFileDateTimeFunc, 'FileDateTime', ['name', SYS_STRING], []);
+   RegisterInternalIntFunction(TFileSizeFileFunc, 'FileSize', ['f', SYS_FILE], [iffOverloaded], 'Size');
+   RegisterInternalIntFunction(TFileSizeNameFunc, 'FileSize', ['name', SYS_STRING], [iffOverloaded]);
+
+   RegisterInternalFloatFunction(TFileDateTimeFileFunc, 'FileDateTime', ['f', SYS_FILE], [iffOverloaded], 'DateTime');
+   RegisterInternalFloatFunction(TFileDateTimeNameFunc, 'FileDateTime', ['name', SYS_STRING], [iffOverloaded]);
+   RegisterInternalFloatFunction(TFileSetDateTimeFileFunc, 'FileSetDateTime', ['f', SYS_FILE], [iffOverloaded], 'SetDateTime');
+   RegisterInternalFloatFunction(TFileSetDateTimeNameFunc, 'FileSetDateTime', ['name', SYS_STRING], [iffOverloaded]);
 
    RegisterInternalBoolFunction(TFileExistsFunc, 'FileExists', ['name', SYS_STRING], []);
    RegisterInternalBoolFunction(TDirectoryExistsFunc, 'DirectoryExists', ['name', SYS_STRING], []);
