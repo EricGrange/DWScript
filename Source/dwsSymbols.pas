@@ -2762,6 +2762,7 @@ end;
 //
 function TRecordSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
+   if typSym=nil then Exit(False);
    typSym:=typSym.UnAliasedType.BaseType;
    if not (typSym is TRecordSymbol) then
       Exit(False);
