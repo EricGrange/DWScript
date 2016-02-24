@@ -5088,8 +5088,13 @@ end;
 //
 function TClassCloneConstructor<T>.Create : T;
 begin
-  GetMemForT(Result, FSize);
-  Move(TtoPointer(FTemplate)^, TtoPointer(Result)^, FSize);
+   {$ifdef FPC}
+   System.GetMem(Pointer(Result), Size);
+   System.Move(Pointer(FTemplate)^, Pointer(Result)^, FSize);
+   {$else}
+   GetMemForT(Result, FSize);
+   Move(TtoPointer(FTemplate)^, TtoPointer(Result)^, FSize);
+   {$endif}
 end;
 
 // ------------------
