@@ -568,7 +568,7 @@ end;
 //
 procedure TFileSetDateTimeFileFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
-   FileSetDate(GetFileHandle(args, 0), DateTimeToFileDate(args.AsFloat[0]));
+   FileSetDateTime(GetFileHandle(args, 0), args.AsFloat[0]);
 end;
 
 // ------------------

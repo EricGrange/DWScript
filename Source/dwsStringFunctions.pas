@@ -1160,7 +1160,7 @@ initialization
 
    RegisterInternalStringFunction(TQuotedStrFunc, 'QuotedStr', ['str', SYS_STRING, 'quoteChar=', SYS_STRING], [iffStateLess], 'QuotedString');
 
-   RegisterInternalStringFunction(TCopyFunc, 'Copy', ['str', SYS_STRING, 'index', SYS_INTEGER, 'Len', SYS_INTEGER], [iffStateLess]);
+   RegisterInternalStringFunction(TCopyFunc, 'Copy', ['str', SYS_STRING, 'index', SYS_INTEGER, 'len=MaxInt', SYS_INTEGER], [iffStateLess], 'Copy');
 
    RegisterInternalStringFunction(TLeftStrFunc, 'LeftStr', ['str', SYS_STRING, 'count', SYS_INTEGER], [iffStateLess], 'Left');
    RegisterInternalStringFunction(TRightStrFunc, 'RightStr', ['str', SYS_STRING, 'count', SYS_INTEGER], [iffStateLess], 'Right');

@@ -232,6 +232,7 @@ function FileDelete(const fileName : String) : Boolean;
 function FileRename(const oldName, newName : String) : Boolean;
 function FileSize(const name : String) : Int64;
 function FileDateTime(const name : String) : TDateTime;
+procedure FileSetDateTime(hFile : THandle; aDateTime : TDateTime);
 function DeleteDirectory(const path : String) : Boolean;
 
 function DirectSet8087CW(newValue : Word) : Word; register;
@@ -1070,6 +1071,13 @@ begin
       FileTimeToSystemTime(localTime, systemTime);
       Result:=SystemTimeToDateTime(systemTime);
    end else Result:=0;
+end;
+
+// FileSetDateTime
+//
+procedure FileSetDateTime(hFile : THandle; aDateTime : TDateTime);
+begin
+   FileSetDate(hFile, DateTimeToFileDate(aDateTime));
 end;
 
 // DeleteDirectory
