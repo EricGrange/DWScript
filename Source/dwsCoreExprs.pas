@@ -571,6 +571,9 @@ type
    end;
 
    TReadOnlyFieldExpr = class(TFieldExpr)
+      constructor Create(const aScriptPos: TScriptPos;
+                         fieldSym : TFieldSymbol; objExpr: TTypedExpr;
+                         propertyType : TTypeSymbol);
       function IsWritable: Boolean; override;
    end;
 
@@ -4109,6 +4112,17 @@ end;
 // ------------------
 // ------------------ TReadOnlyFieldExpr ------------------
 // ------------------
+
+// Create
+//
+constructor TReadOnlyFieldExpr.Create(const aScriptPos: TScriptPos;
+                         fieldSym : TFieldSymbol; objExpr: TTypedExpr;
+                         propertyType : TTypeSymbol);
+begin
+   inherited Create(aScriptPos, fieldSym, objExpr);
+   Assert(fieldSym.Typ.IsOfType(propertyType));
+   Typ:=propertyType;
+end;
 
 // IsWritable
 //

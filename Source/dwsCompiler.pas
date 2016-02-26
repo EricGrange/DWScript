@@ -5337,7 +5337,7 @@ begin
                   expr.Free;
                   expr:=nil;
                end;
-               Result:=TReadOnlyFieldExpr.Create(FTok.HotPos, TFieldSymbol(sym), expr);
+               Result:=TReadOnlyFieldExpr.Create(FTok.HotPos, TFieldSymbol(sym), expr, propertySym.Typ);
                expr:=nil;
 
             end else if sym is TClassVarSymbol then begin
