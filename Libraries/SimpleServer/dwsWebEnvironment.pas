@@ -21,7 +21,7 @@ interface
 uses
    Classes, SysUtils, StrUtils, DateUtils,
    SynCrtSock, SynCommons,
-   dwsExprs, dwsUtils, dwsWebUtils;
+   dwsExprs, dwsUtils, dwsWebUtils, dwsWebServerUtils;
 
 type
    TWebRequestAuthentication = (
@@ -715,7 +715,7 @@ begin
    FCacheControl:=fromResponse.Headers.Values['Cache-Control'];
    FETag:=fromResponse.Headers.Values['ETag'];
    if FETag='' then begin
-      FEtag:=WebUtils.ETag([FStatusCode, FCacheControl, FContentType, FContentData]);
+      FEtag:=WebServerUtils.ETag([FStatusCode, FCacheControl, FContentType, FContentData]);
       fromResponse.Headers.Values['ETag']:=FETag;
    end;
 end;
