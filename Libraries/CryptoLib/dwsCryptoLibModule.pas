@@ -86,6 +86,7 @@ type
   public
     { Public declaration }
     property NonceFilename : String read FNonceFilename write SetNonceFilename;
+    property Nonces : TdwsTokenStore read FNonces;
 
     procedure UseTemporaryStorageForNonces;
   end;
