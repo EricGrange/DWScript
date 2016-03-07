@@ -496,7 +496,7 @@ const
   TOK_GreaterEqualityExpected = '">" or "=" expected';
   TOK_StringTerminationError = 'End of string constant not found (end of line)';
   TOK_HereDocTerminationError = 'End of string constant not found (end of file)';
-  TOK_InvalidHexConstant = 'Invalid hexadezimal constant "%s"';
+  TOK_InvalidHexConstant = 'Invalid hexadecimal constant "%s"';
   TOK_InvalidCharConstant = 'Invalid char constant "%s"';
   TOK_InvalidIntegerConstant = 'Invalid integer constant "%s"';
   TOK_InvalidFloatConstant = 'Invalid floating point constant "%s"';
