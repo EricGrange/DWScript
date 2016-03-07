@@ -335,6 +335,8 @@ const
   CPE_InvalidOperands = 'Invalid Operands';
   CPE_IncompatibleOperands = 'Incompatible operands';
 
+  CPE_InvalidTypeCast = 'Invalid typecast';
+
   CPE_FunctionOptimizationFailed = 'Evaluation of "%s" failed: %s %s';
 
   CPH_VariableDeclaredButNotUsed = 'Variable "%s" declared but not used';

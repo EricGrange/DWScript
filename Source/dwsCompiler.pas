@@ -13677,7 +13677,7 @@ begin
          Result:=TConnectorCastExpr.CreateCast(FProg, argExpr, connCast);
          Result.Typ:=typeSym;
 
-      end else FMsgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
+      end else FMsgs.AddCompilerStop(hotPos, CPE_InvalidTypeCast);
 
       if Optimize then
          Result:=Result.OptimizeToTypedExpr(FProg, FExec, hotPos);
