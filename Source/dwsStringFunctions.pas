@@ -803,16 +803,16 @@ procedure TSetLengthFunc.DoEvalProc(const args : TExprBaseListExec);
 var
    i, n : Integer;
    s : UnicodeString;
+   p : PWideChar;
 begin
    s:=args.AsString[0];
 
-   i:=Length(s)+1;
+   i:=Length(s);
    n:=args.AsInteger[1];
    SetLength(s, n);
-   while i<=n do begin
-      s[i]:=' ';
-      Inc(i);
-   end;
+   p:=Pointer(s);
+   for i:=i to n-1 do
+      p[i]:=' ';
 
    args.AsString[0]:=s;
 end;
