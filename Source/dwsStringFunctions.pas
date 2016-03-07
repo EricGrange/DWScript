@@ -472,8 +472,12 @@ end;
 { TCopyFunc }
 
 procedure TCopyFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+var
+   n : Int64;
 begin
-   Result:=Copy(args.AsString[0], args.AsInteger[1], args.AsInteger[2]);
+   n := args.AsInteger[2];
+   if n > MaxInt then n := MaxInt;
+   Result:=Copy(args.AsString[0], args.AsInteger[1], n);
 end;
 
 { TLeftStrFunc }
