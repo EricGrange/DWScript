@@ -65,6 +65,8 @@ type
                                         const callback : TOperatorSymbolEnumerationCallback) : Boolean;
          function EnumerateOperatorSymbols(const callback : TOperatorSymbolEnumerationCallback) : Boolean;
 
+         // strict check
+         function HasOperatorFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : Boolean;
 
          procedure RegisterCaster(aCastType, aOperandType : TTypeSymbol;
                                   exprClass : TTypedExprClass);
@@ -196,6 +198,20 @@ begin
          p:=@FOperators[tt][i];
          if callback(p.OperatorSym) then Exit(True);
       end;
+   end;
+   Result:=False;
+end;
+
+// HasOperatorFor
+//
+function TOperators.HasOperatorFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : Boolean;
+var
+   i : Integer;
+   p : PRegisteredOperator;
+begin
+   for i:=0 to High(FOperators[aToken]) do begin
+      p:=@FOperators[aToken][i];
+      if (aLeftType=p.LeftType) and (aRightType=p.RighType) then Exit(True);
    end;
    Result:=False;
 end;

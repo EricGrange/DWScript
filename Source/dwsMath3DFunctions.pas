@@ -121,6 +121,8 @@ var
 begin
    typVector:=systemTable.FindTypeSymbol(SYS_VECTOR, cvMagic) as TRecordSymbol;
 
+   if operators.HasOperatorFor(ttPLUS, typVector, typVector) then Exit;
+
    operators.RegisterOperator(ttPLUS, unitTable.FindSymbol('VectorAdd', cvMagic) as TFuncSymbol, typVector, typVector);
    operators.RegisterOperator(ttMINUS, unitTable.FindSymbol('VectorSub', cvMagic) as TFuncSymbol, typVector, typVector);
 

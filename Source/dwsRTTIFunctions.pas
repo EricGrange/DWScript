@@ -205,6 +205,8 @@ var
 begin
    typTypInfo:=systemTable.FindTypeSymbol(SYS_TRTTITYPEINFO, cvMagic) as TRecordSymbol;
 
+   if operators.HasOperatorFor(ttEQ, typTypInfo, typTypInfo) then Exit;
+
    operators.RegisterOperator(ttEQ, unitTable.FindSymbol('SameRTTITypeInfo', cvMagic) as TFuncSymbol, typTypInfo, typTypInfo);
 end;
 
