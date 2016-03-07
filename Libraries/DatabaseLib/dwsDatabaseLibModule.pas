@@ -100,6 +100,10 @@ type
       ExtObject: TObject);
     function dwsDatabaseFunctionsBlobHexParameterFastEval(
       const args: TExprBaseListExec): Variant;
+    procedure dwsDatabaseClassesDataSetMethodsStringifyMapEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsDatabaseClassesDataBaseMethodsLowerCaseStringifyEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     procedure SetScript(aScript : TDelphiWebScript);
@@ -123,19 +127,22 @@ resourcestring
 type
    TDataBase = class
       Intf : IdwsDataBase;
+      LowerCaseStringify : Boolean;
    end;
 
    TDataSet = class
       Intf : IdwsDataSet;
       FirstDone : Boolean;
       ScriptFieldsPrepared : Boolean;
+      WriterOptions : TdwsJSONWriterOptions;
       function IndexOfField(const aName : String) : Integer;
       function FieldByName(Info : TProgramInfo) : IdwsDataField;
       function Step : Boolean;
       class procedure WriteValueToJSON(wr : TdwsJSONWriter; const fld : IdwsDataField); static;
-      procedure WriteToJSON(wr : TdwsJSONWriter);
+      procedure WriteToJSON(wr : TdwsJSONWriter; initial : Integer);
       function Stringify : String;
       function StringifyAll(maxRows : Integer) : String;
+      function StringifyMap(maxRows : Integer) : String;
       procedure PrepareScriptFields(programInfo : TProgramInfo; var fieldsInfo : IInfo);
       class procedure NeedScriptFields(programInfo : TProgramInfo; extObject: TObject; var fieldsInfo : IInfo);
    end;
@@ -199,13 +206,13 @@ end;
 
 // WriteToJSON
 //
-procedure TDataSet.WriteToJSON(wr : TdwsJSONWriter);
+procedure TDataSet.WriteToJSON(wr : TdwsJSONWriter; initial : Integer);
 var
    i : Integer;
    fld : IdwsDataField;
 begin
    wr.BeginObject;
-   for i:=0 to Intf.FieldCount-1 do begin
+   for i:=initial to Intf.FieldCount-1 do begin
       fld:=intf.Fields[i];
       wr.WriteName(fld.Name);
       WriteValueToJSON(wr, fld);
@@ -219,9 +226,9 @@ function TDataSet.Stringify : String;
 var
    wr : TdwsJSONWriter;
 begin
-   wr:=TdwsJSONWriter.Create(nil);
+   wr:=TdwsJSONWriter.Create(nil, WriterOptions);
    try
-      WriteToJSON(wr);
+      WriteToJSON(wr, 0);
       Result:=wr.ToString;
    finally
       wr.Free;
@@ -234,16 +241,39 @@ function TDataSet.StringifyAll(maxRows : Integer) : String;
 var
    wr : TdwsJSONWriter;
 begin
-   wr:=TdwsJSONWriter.Create(nil);
+   wr:=TdwsJSONWriter.Create(nil, WriterOptions);
    try
       wr.BeginArray;
       while not Intf.EOF do begin
-         WriteToJSON(wr);
+         WriteToJSON(wr, 0);
          Intf.Next;
          Dec(maxRows);
          if maxRows=0 then break;
       end;
       wr.EndArray;
+      Result:=wr.ToString;
+   finally
+      wr.Free;
+   end;
+end;
+
+// StringifyMap
+//
+function TDataSet.StringifyMap(maxRows : Integer) : String;
+var
+   wr : TdwsJSONWriter;
+begin
+   wr:=TdwsJSONWriter.Create(nil, WriterOptions);
+   try
+      wr.BeginObject;
+      while not Intf.EOF do begin
+         wr.WriteName(Intf.Fields[0].AsString);
+         WriteToJSON(wr, 1);
+         Intf.Next;
+         Dec(maxRows);
+         if maxRows=0 then break;
+      end;
+      wr.EndObject;
       Result:=wr.ToString;
    finally
       wr.Free;
@@ -505,13 +535,19 @@ var
    scriptDyn : IScriptDynArray;
 begin
    scriptDyn:=Info.ParamAsScriptDynArray[1];
-   (ExtObject as TDataBase).Intf.Exec(Info.ParamAsString[0], scriptDyn.AsData);
+   (ExtObject as TDataBase).Intf.Exec(Info.ParamAsString[0], scriptDyn.AsData, Info.Execution.CallStackLastExpr);
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsInTransactionEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsBoolean:=(ExtObject as TDataBase).Intf.InTransaction;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsLowerCaseStringifyEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   (ExtObject as TDataBase).LowerCaseStringify:=Info.ParamAsBoolean[0];
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsQueryEval(
@@ -526,12 +562,14 @@ begin
    scriptDyn:=Info.ParamAsScriptDynArray[1];
 
    dbo:=(ExtObject as TDataBase);
-   ids:=dbo.Intf.Query(Info.ParamAsString[0], scriptDyn.AsData);
+   ids:=dbo.Intf.Query(Info.ParamAsString[0], scriptDyn.AsData, Info.Execution.CallStackLastExpr);
 
    dataSetInfo:=Info.Vars['DataSet'].Method['Create'].Call;
 
    dataSet:=TDataSet.Create;
    dataSet.Intf:=ids;
+   if dbo.LowerCaseStringify then
+      dataSet.WriterOptions:=[woLowerCaseNames];
 
    dataSetInfo.ExternalObject:=dataSet;
 
@@ -747,6 +785,12 @@ procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsStringifyEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString:=(ExtObject as TDataSet).Stringify;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsStringifyMapEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=(ExtObject as TDataSet).StringifyMap(Info.ParamAsInteger[0]);
 end;
 
 function TdwsDatabaseLib.dwsDatabaseFunctionsBlobHexParameterFastEval(

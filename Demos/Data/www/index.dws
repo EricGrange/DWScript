@@ -1,10 +1,10 @@
-<html>
+﻿<html>
 <head>
 <title>Hello DWS</title>
 <style><?pas
 {$F "res\index.css"}
 uses System.WebServer;
-
+                       uses System.Net; WebResponse.Static:=True;
 var auths : array of String;
 for var a in WebServer.Authentications do
 	auths.Add(a.Name);

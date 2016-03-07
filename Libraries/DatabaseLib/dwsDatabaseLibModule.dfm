@@ -109,6 +109,16 @@ object dwsDatabaseLib: TdwsDatabaseLib
             ResultType = 'String'
             OnEval = dwsDatabaseClassesDataBaseMethodsVersionInfoTextEval
             Kind = mkFunction
+          end
+          item
+            Name = 'SetLowerCaseStringify'
+            Parameters = <
+              item
+                Name = 'value'
+                DataType = 'Boolean'
+              end>
+            OnEval = dwsDatabaseClassesDataBaseMethodsLowerCaseStringifyEval
+            Kind = mkProcedure
           end>
         OnCleanUp = dwsDatabaseClassesDataBaseCleanUp
       end
@@ -326,10 +336,23 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 Name = 'maxRows'
                 DataType = 'Integer'
                 HasDefaultValue = True
-                DefaultValue = '0'
+                DefaultValue = 0
               end>
             ResultType = 'String'
             OnEval = dwsDatabaseClassesDataSetMethodsStringifyAllEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'StringifyMap'
+            Parameters = <
+              item
+                Name = 'maxRows'
+                DataType = 'Integer'
+                HasDefaultValue = True
+                DefaultValue = 0
+              end>
+            ResultType = 'String'
+            OnEval = dwsDatabaseClassesDataSetMethodsStringifyMapEval
             Kind = mkFunction
           end>
         Properties = <

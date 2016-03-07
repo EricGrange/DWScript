@@ -27,7 +27,7 @@ interface
 uses
    Classes, Variants, SysUtils,
    SynSQLite3, SynCommons,
-   dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform, dwsDataContext;
+   dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform, dwsDataContext, dwsSymbols;
 
 type
    TdwsSynSQLiteDataSet = class;
@@ -51,8 +51,8 @@ type
          function InTransaction : Boolean;
          function CanReleaseToPool : String;
 
-         procedure Exec(const sql : String; const parameters : TData);
-         function Query(const sql : String; const parameters : TData) : IdwsDataSet;
+         procedure Exec(const sql : String; const parameters : TData; context : TExprBase);
+         function Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
 
          function VersionInfoText : String;
    end;
@@ -299,7 +299,7 @@ end;
 
 // Exec
 //
-procedure TdwsSynSQLiteDataBase.Exec(const sql : String; const parameters : TData);
+procedure TdwsSynSQLiteDataBase.Exec(const sql : String; const parameters : TData; context : TExprBase);
 begin
    if sql='' then
       raise ESQLite3Exception.CreateFmt('Empty query', []);
@@ -325,7 +325,7 @@ end;
 
 // Query
 //
-function TdwsSynSQLiteDataBase.Query(const sql : String; const parameters : TData) : IdwsDataSet;
+function TdwsSynSQLiteDataBase.Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
 var
    ds : TdwsSynSQLiteDataSet;
 begin

@@ -20,7 +20,7 @@ interface
 
 uses
    SysUtils,
-   dwsExprs, dwsUtils, dwsStack, dwsXPlatform, dwsDataContext;
+   dwsSymbols, dwsUtils, dwsStack, dwsXPlatform, dwsDataContext;
 
 // Simple database abstraction interfaces and optional base classes for DWS
 // exposes transaction & forward-only cursor, which are all one really needs :p
@@ -50,8 +50,8 @@ type
       // if can't should return string with descriptive reason
       function CanReleaseToPool : String;
 
-      procedure Exec(const sql : String; const parameters : TData);
-      function Query(const sql : String; const parameters : TData) : IdwsDataSet;
+      procedure Exec(const sql : String; const parameters : TData; context : TExprBase);
+      function Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
 
       function VersionInfoText : String;
    end;

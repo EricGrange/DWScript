@@ -29,7 +29,7 @@ interface
 uses
    Classes, Variants, SysUtils,
    SynDB, SynCommons,
-   dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform, dwsDataContext;
+   dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform, dwsDataContext, dwsSymbols;
 
 type
 
@@ -49,8 +49,8 @@ type
          function InTransaction : Boolean;
          function CanReleaseToPool : String;
 
-         procedure Exec(const sql : String; const parameters : TData);
-         function Query(const sql : String; const parameters : TData) : IdwsDataSet;
+         procedure Exec(const sql : String; const parameters : TData; context : TExprBase);
+         function Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
 
          function VersionInfoText : String;
    end;
@@ -206,7 +206,7 @@ end;
 
 // Exec
 //
-procedure TdwsSynDBDataBase.Exec(const sql : String; const parameters : TData);
+procedure TdwsSynDBDataBase.Exec(const sql : String; const parameters : TData; context : TExprBase);
 var
    stmt : TSQLDBStatement;
 begin
@@ -222,7 +222,7 @@ end;
 
 // Query
 //
-function TdwsSynDBDataBase.Query(const sql : String; const parameters : TData) : IdwsDataSet;
+function TdwsSynDBDataBase.Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
 var
    ds : TdwsSynDBDataSet;
 begin

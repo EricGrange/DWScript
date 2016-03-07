@@ -24,7 +24,6 @@ type
          procedure Compilation;
 
       published
-
          procedure CompilationNormal;
          procedure CompilationWithMapAndSymbols;
          procedure ExecutionNonOptimized;

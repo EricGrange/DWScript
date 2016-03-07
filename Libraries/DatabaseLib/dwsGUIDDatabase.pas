@@ -24,7 +24,7 @@ interface
 
 uses
    Classes, Variants, SysUtils,
-   dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform, dwsDataContext;
+   dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform, dwsDataContext, dwsSymbols;
 
 type
 
@@ -38,8 +38,8 @@ type
          function InTransaction : Boolean;
          function CanReleaseToPool : String;
 
-         procedure Exec(const sql : String; const parameters : TData);
-         function Query(const sql : String; const parameters : TData) : IdwsDataSet;
+         procedure Exec(const sql : String; const parameters : TData; context : TExprBase);
+         function Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
 
          function VersionInfoText : String;
    end;
@@ -180,14 +180,14 @@ end;
 
 // Exec
 //
-procedure TdwsGUIDDataBase.Exec(const sql : String; const parameters : TData);
+procedure TdwsGUIDDataBase.Exec(const sql : String; const parameters : TData; context : TExprBase);
 begin
    raise Exception.Create('Exec not supported');
 end;
 
 // Query
 //
-function TdwsGUIDDataBase.Query(const sql : String; const parameters : TData) : IdwsDataSet;
+function TdwsGUIDDataBase.Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
 var
    ds : TdwsGUIDDataSet;
 begin

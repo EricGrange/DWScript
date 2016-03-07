@@ -26,7 +26,7 @@ interface
 uses
    Classes, Variants, SysUtils,
    uib, uiblib, uibmetadata,
-   dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform, dwsDataContext;
+   dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform, dwsDataContext, dwsSymbols;
 
 type
 
@@ -49,8 +49,8 @@ type
          function InTransaction : Boolean;
          function CanReleaseToPool : String;
 
-         procedure Exec(const sql : String; const parameters : TData);
-         function Query(const sql : String; const parameters : TData) : IdwsDataSet;
+         procedure Exec(const sql : String; const parameters : TData; context : TExprBase);
+         function Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
 
          function VersionInfoText : String;
    end;
@@ -227,7 +227,7 @@ end;
 
 // Exec
 //
-procedure TdwsUIBDataBase.Exec(const sql : String; const parameters : TData);
+procedure TdwsUIBDataBase.Exec(const sql : String; const parameters : TData; context : TExprBase);
 var
    rq : TUIBQuery;
 begin
@@ -245,7 +245,7 @@ end;
 
 // Query
 //
-function TdwsUIBDataBase.Query(const sql : String; const parameters : TData) : IdwsDataSet;
+function TdwsUIBDataBase.Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
 var
    ds : TdwsUIBDataSet;
 begin
