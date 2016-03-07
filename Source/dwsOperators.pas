@@ -32,12 +32,20 @@ type
    end;
    PRegisteredOperator = ^TRegisteredOperator;
 
+   TRegisteredCaster = record
+      CastType : TTypeSymbol;
+      OperandType : TTypeSymbol;
+      ExprClass : TTypedExprClass;
+   end;
+   PRegisteredCaster = ^TRegisteredCaster;
+
    // lists of  operators and their expression classes
    // used for operator overloading
    TOperators = class
       private
          FCount : Integer;
-         FItems : array [TTokenType] of array of TRegisteredOperator;
+         FOperators : array [TTokenType] of array of TRegisteredOperator;
+         FCasters : array [0..15] of array of TRegisteredCaster;
 
          function AddOperator(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : PRegisteredOperator;
 
@@ -56,6 +64,12 @@ type
          function EnumerateOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
                                         const callback : TOperatorSymbolEnumerationCallback) : Boolean;
          function EnumerateOperatorSymbols(const callback : TOperatorSymbolEnumerationCallback) : Boolean;
+
+
+         procedure RegisterCaster(aCastType, aOperandType : TTypeSymbol;
+                                  exprClass : TTypedExprClass);
+
+         function FindCaster(aCastType, aOperandType : TTypeSymbol) : TTypedExprClass;
    end;
 
 
@@ -79,9 +93,9 @@ var
    i : Integer;
 begin
    for tt:=Low(TTokenType) to High(TTokenType) do begin
-      for i:=0 to High(FItems[tt]) do
-         if FItems[tt][i].Owned then
-            FItems[tt][i].OperatorSym.Free;
+      for i:=0 to High(FOperators[tt]) do
+         if FOperators[tt][i].Owned then
+            FOperators[tt][i].OperatorSym.Free;
    end;
    inherited;
 end;
@@ -92,9 +106,9 @@ function TOperators.AddOperator(aToken : TTokenType; aLeftType, aRightType : TTy
 var
    n : Integer;
 begin
-   n:=Length(FItems[aToken]);
-   SetLength(FItems[aToken], n+1);
-   Result:=@FItems[aToken][n];
+   n:=Length(FOperators[aToken]);
+   SetLength(FOperators[aToken], n+1);
+   Result:=@FOperators[aToken][n];
    Result.LeftType:=aLeftType;
    Result.RighType:=aRightType;
    Inc(FCount);
@@ -116,6 +130,7 @@ end;
 function TOperators.RegisterOperator(aToken : TTokenType; aExprClass : TBinaryOpExprClass;
                                      aLeftType, aRightType : TTypeSymbol) : PRegisteredOperator;
 begin
+   Assert(Assigned(aExprClass));
    Result:=AddOperator(aToken, aLeftType, aRightType);
    Result.OperatorSym:=TOperatorSymbol.Create(aToken);
    Result.OperatorSym.BinExprClass:=aExprClass;
@@ -158,8 +173,8 @@ var
    i : Integer;
    p : PRegisteredOperator;
 begin
-   for i:=0 to High(FItems[aToken]) do begin
-      p:=@FItems[aToken][i];
+   for i:=0 to High(FOperators[aToken]) do begin
+      p:=@FOperators[aToken][i];
       if     ((aLeftType=p.LeftType) or aLeftType.IsOfType(p.LeftType))
          and ((aRightType=p.RighType) or aRightType.IsOfType(p.RighType)) then begin
          if callback(p.OperatorSym) then Exit(True);
@@ -176,13 +191,47 @@ var
    i : Integer;
    p : PRegisteredOperator;
 begin
-   for tt:=Low(FItems) to High(FItems) do begin
-      for i:=0 to High(FItems[tt]) do begin
-         p:=@FItems[tt][i];
+   for tt:=Low(FOperators) to High(FOperators) do begin
+      for i:=0 to High(FOperators[tt]) do begin
+         p:=@FOperators[tt][i];
          if callback(p.OperatorSym) then Exit(True);
       end;
    end;
    Result:=False;
+end;
+
+// RegisterCaster
+//
+procedure TOperators.RegisterCaster(aCastType, aOperandType : TTypeSymbol;
+                                    exprClass : TTypedExprClass);
+var
+   h, n : Integer;
+   p : PRegisteredCaster;
+begin
+   h := (NativeUInt(aCastType) shr 4) and 15;
+   n := Length(FCasters[h]);
+   SetLength(FCasters[h], n+1);
+   p := @FCasters[h][n];
+
+   p.CastType := aCastType;
+   p.OperandType := aOperandType;
+   p.ExprClass := exprClass;
+end;
+
+// FindCaster
+//
+function TOperators.FindCaster(aCastType, aOperandType : TTypeSymbol) : TTypedExprClass;
+var
+   h, i : Integer;
+   p : PRegisteredCaster;
+begin
+   h := (NativeUInt(aCastType) shr 4) and 15;
+   for i := 0 to High(FCasters[h]) do begin
+      p := @FCasters[h][i];
+      if (p.CastType=aCastType) and (p.OperandType=aOperandType) then
+         Exit(p.ExprClass);
+   end;
+   Result := nil;
 end;
 
 end.

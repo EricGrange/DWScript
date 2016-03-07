@@ -1423,6 +1423,23 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
+   TUnaryOpDataExpr = class (TPosDataExpr)
+      protected
+         FExpr : TTypedExpr;
+
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+         function GetIsConstant : Boolean; override;
+
+      public
+         constructor Create(prog : TdwsProgram; expr : TTypedExpr); virtual;
+         destructor Destroy; override;
+
+         property Expr : TTypedExpr read FExpr write FExpr;
+   end;
+   TUnaryOpDataExprClass = class of TUnaryOpDataExpr;
+
    TUnaryOpExpr = class(TTypedExpr)
       protected
          FExpr : TTypedExpr;
@@ -5712,6 +5729,46 @@ begin
       Result:=TConstBooleanExpr.CreateUnified(Prog, nil, EvalAsBoolean(exec));
       Free;
    end else Result:=Self;
+end;
+
+// ------------------
+// ------------------ TUnaryOpDataExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TUnaryOpDataExpr.Create(prog : TdwsProgram; expr : TTypedExpr);
+begin
+   FExpr:=Expr;
+end;
+
+// Destroy
+//
+destructor TUnaryOpDataExpr.Destroy;
+begin
+   FExpr.Free;
+   inherited;
+end;
+
+// GetIsConstant
+//
+function TUnaryOpDataExpr.GetIsConstant : Boolean;
+begin
+   Result:=FExpr.IsConstant;
+end;
+
+// GetSubExpr
+//
+function TUnaryOpDataExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FExpr;
+end;
+
+// GetSubExprCount
+//
+function TUnaryOpDataExpr.GetSubExprCount : Integer;
+begin
+   Result:=1;
 end;
 
 // ------------------

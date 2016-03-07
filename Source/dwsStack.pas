@@ -104,6 +104,7 @@ type
          procedure InitDataPtr(var dataPtr : IDataContext; addr : Integer); inline;
          procedure InitDataPtrLevel(var dataPtr : IDataContext; level, addr : Integer); inline;
          function  CreateDataContext(const data : TData; addr : Integer) : TDataContext; inline;
+         function  CreateEmpty(size : Integer) : TDataContext;
 
          procedure IncIntValue_BaseRelative(destAddr : Integer; const value : Int64); inline;
          procedure AppendStringValue_BaseRelative(destAddr : Integer; const value : UnicodeString);
@@ -501,6 +502,16 @@ end;
 function TStackMixIn.CreateDataContext(const data : TData; addr : Integer) : TDataContext;
 begin
    Result:=FDataPtrPool.Create(data, addr);
+end;
+
+// CreateEmpty
+//
+function TStackMixIn.CreateEmpty(size : Integer) : TDataContext;
+var
+   data : TData;
+begin
+   Setlength(data, size);
+   Result:=FDataPtrPool.Create(data, 0);
 end;
 
 // IncIntValue_BaseRelative

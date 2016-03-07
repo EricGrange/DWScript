@@ -4831,7 +4831,9 @@ begin
          end else begin
 
             Assert(baseType.ClassType=TRecordSymbol);
-            Result:=ReadRecordSymbolName(TRecordSymbol(baseType), isWrite, expecting);
+            if FTok.TestDelete(ttBLEFT) then
+               Result:=ReadTypeCast(namePos, TTypeSymbol(sym))
+            else Result:=ReadRecordSymbolName(TRecordSymbol(baseType), isWrite, expecting);
 
          end;
 
@@ -13548,6 +13550,7 @@ var
    argTyp : TTypeSymbol;
    hotPos : TScriptPos;
    connCast : IConnectorCast;
+   casterExprClass : TTypedExprClass;
 begin
    hotPos:=FTok.CurrentPos;
    argExpr:=ReadExpr;
@@ -13568,7 +13571,17 @@ begin
       if argTyp<>nil then
          argTyp:=argTyp.UnAliasedType;
 
-      if typeSym.IsOfType(FProg.TypInteger) then begin
+      casterExprClass := FOperators.FindCaster(typeSym, argTyp);
+      if casterExprClass <> nil then begin
+
+         if casterExprClass.InheritsFrom(TUnaryOpExpr) then
+            Result := TUnaryOpExprClass(casterExprClass).Create(FProg, argExpr)
+         else begin
+            Assert(casterExprClass.InheritsFrom(TUnaryOpDataExpr));
+            Result := TUnaryOpDataExprClass(casterExprClass).Create(FProg, argExpr);
+         end;
+
+      end else if typeSym.IsOfType(FProg.TypInteger) then begin
 
          // Cast Integer(...)
          if argTyp is TEnumerationSymbol then
