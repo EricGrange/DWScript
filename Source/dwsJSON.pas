@@ -30,6 +30,8 @@ type
    TdwsJSONImmediate = class;
 
    TdwsJSONWriterState = (wsNone, wsObject, wsObjectName, wsObjectValue, wsArray, wsArrayValue, wsDone);
+   TdwsJSONWriterOption = (woLowerCaseNames);
+   TdwsJSONWriterOptions = set of TdwsJSONWriterOption;
 
    // TdwsJSONWriter
    //
@@ -39,13 +41,14 @@ type
          FOwnsStream : Boolean;
          FStateStack : TTightStack;
          FState : TdwsJSONWriterState;
+         FOptions : TdwsJSONWriterOptions;
 
       protected
          procedure BeforeWriteImmediate; virtual;
          procedure AfterWriteImmediate;
 
       public
-         constructor Create(aStream : TWriteOnlyBlockStream);
+         constructor Create(aStream : TWriteOnlyBlockStream; aOptions : TdwsJSONWriterOptions = []);
          destructor Destroy; override;
 
          procedure BeginObject; overload; virtual;
@@ -2407,9 +2410,10 @@ end;
 
 // Create
 //
-constructor TdwsJSONWriter.Create(aStream : TWriteOnlyBlockStream);
+constructor TdwsJSONWriter.Create(aStream : TWriteOnlyBlockStream; aOptions : TdwsJSONWriterOptions = []);
 begin
    inherited Create;
+   FOptions:=aOptions;
    FOwnsStream:=(aStream=nil);
    if FOwnsStream then
       FStream:=TWriteOnlyBlockStream.AllocFromPool
@@ -2497,6 +2501,12 @@ end;
 // WriteName
 //
 function TdwsJSONWriter.WriteName(const aName : PWideChar) : TdwsJSONWriter;
+
+   procedure WriteLowerCase(stream : TWriteOnlyBlockStream; aName : PWideChar);
+   begin
+      WriteJavaScriptString(FStream, UnicodeLowerCase(aName));
+   end;
+
 begin
    case FState of
       wsObject : ;
@@ -2506,7 +2516,9 @@ begin
    else
       Assert(False);
    end;
-   WriteJavaScriptString(FStream, aName);
+   if woLowerCaseNames in FOptions then
+      WriteLowerCase(FStream, aName)
+   else WriteJavaScriptString(FStream, aName);
    FStream.WriteChar(':');
    FState:=wsObjectValue;
    Result:=Self;
