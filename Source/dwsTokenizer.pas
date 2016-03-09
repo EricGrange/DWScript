@@ -31,7 +31,8 @@ uses
 type
 
    TTokenType =
-     (ttNone, ttStrVal, ttIntVal, ttFloatVal, ttNAME, ttSWITCH,
+     (
+     ttNone, ttStrVal, ttIntVal, ttFloatVal, ttNAME, ttSWITCH,
      ttLAZY, ttVAR, ttCONST, ttRESOURCESTRING,
      ttTYPE, ttRECORD, ttARRAY, ttSET, ttDOT, ttDOTDOT, ttOF, ttENUM, ttFLAGS,
      ttTRY, ttEXCEPT, ttRAISE, ttFINALLY, ttON, ttREAD, ttWRITE, ttPROPERTY,
@@ -62,7 +63,8 @@ type
      ttPROGRAM, ttLIBRARY,
 
      // Tokens for compatibility to Delphi
-     ttREGISTER, ttPASCAL, ttCDECL, ttSAFECALL, ttSTDCALL, ttFASTCALL, ttREFERENCE);
+     ttREGISTER, ttPASCAL, ttCDECL, ttSAFECALL, ttSTDCALL, ttFASTCALL, ttREFERENCE
+     );
 
    TTokenTypes = set of TTokenType;
 

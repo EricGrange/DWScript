@@ -230,9 +230,10 @@ begin
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 8);
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
    CheckTrue(sugg.Count>10, 'column 8');
-   CheckEquals('Boolean', sugg.Code[0], 'sugg 8, 0');
-   CheckEquals('CompilerVersion', sugg.Code[1], 'sugg 8, 1');
-   CheckEquals('DateTimeZone', sugg.Code[2], 'sugg 8, 2');
+   CheckEquals('BigInteger', sugg.Code[0], 'sugg 8, 0');
+   CheckEquals('Boolean', sugg.Code[1], 'sugg 8, 1');
+   CheckEquals('CompilerVersion', sugg.Code[2], 'sugg 8, 2');
+   CheckEquals('DateTimeZone', sugg.Code[3], 'sugg 8, 3');
 
    scriptPos.Col:=9;
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
@@ -320,9 +321,10 @@ begin
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 4);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
-   CheckTrue(sugg.Count=2, 's.h');
-   CheckEquals('HexToInteger', sugg.Code[0], 's.h 0');
-   CheckEquals('High', sugg.Code[1], 's.h 1');
+   CheckTrue(sugg.Count=3, 's.h');
+   CheckEquals('HexToBigInteger', sugg.Code[0], 's.h 0');
+   CheckEquals('HexToInteger', sugg.Code[1], 's.h 1');
+   CheckEquals('High', sugg.Code[2], 's.h 2');
 end;
 
 // StaticArrayTest
@@ -412,8 +414,8 @@ end;
 //
 procedure TSourceUtilsTests.HelperSuggestTest;
 const
-   cSugg : array [0..13] of String = (
-      'Clamp', 'Factorial', 'Hello', 'IsPrime', 'LeastFactor', 'Max',
+   cSugg : array [0..14] of String = (
+      'Clamp', 'Factorial', 'Hello', 'IsOdd', 'IsPrime', 'LeastFactor', 'Max',
       'Min', 'Next', 'Sign', 'Sqr', 'ToBin', 'ToHexString', 'ToString',
       'Unsigned32'
       );

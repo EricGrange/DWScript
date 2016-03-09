@@ -20,7 +20,7 @@ interface
 
 uses
    Windows, SysUtils, Classes, Types,
-   dwsComp, dwsExprs, dwsUtils, dwsXPlatform, dwsTokenStore;
+   dwsComp, dwsExprs, dwsUtils, dwsXPlatform, dwsTokenStore, dwsCryptoXPlatform;
 
 type
   TdwsCryptoLib = class(TDataModule)
@@ -91,37 +91,14 @@ type
     procedure UseTemporaryStorageForNonces;
   end;
 
-function CryptographicToken(bitStrength : Integer) : String;
-function ProcessUniqueRandom : String;
-
 implementation
 
 {$R *.dfm}
 
-uses SynCrypto, SynZip, dwsRipeMD160, dwsCryptProtect, dwsSHA3, wcrypt2;
+uses SynCrypto, SynZip, dwsRipeMD160, dwsCryptProtect, dwsSHA3;
 
 type
    THashFunction = function (const data : RawByteString) : RawByteString;
-
-var
-   vProcessUniqueRandom : String;
-
-procedure GenerateUniqueRandom;
-var
-   buf : String;
-begin
-   // 6 bits per character, 42 characters, 252 bits of random
-   buf:=CryptographicToken(6*42);
-   Pointer(buf):=InterlockedCompareExchangePointer(Pointer(vProcessUniqueRandom),
-                                                   Pointer(buf), nil);
-end;
-
-function ProcessUniqueRandom : String;
-begin
-   if vProcessUniqueRandom='' then
-      GenerateUniqueRandom;
-   Result:=vProcessUniqueRandom;
-end;
 
 procedure PerformHashData(Info: TProgramInfo; h : THashFunction);
 var
@@ -245,85 +222,6 @@ begin
    finally
       outbuf.ReturnToPool;
    end;
-end;
-
-var
-   hProv : THandle;
-   hProvLock : TMultiReadSingleWrite;
-   vXorShiftSeedMask : UInt64;
-
-function CryptographicRandom(nb : Integer) : RawByteString;
-
-   function RDTSC : UInt64;
-   asm
-      RDTSC;
-   end;
-
-   function XorShift(var seed : UInt64) : Cardinal; inline;
-   var
-      buf : UInt64;
-   begin
-      buf:=seed xor (seed shl 13);
-      buf:=buf xor (buf shr 17);
-      buf:=buf xor (buf shl 5);
-      seed:=buf;
-      Result:=seed and $FFFFFFFF;
-   end;
-
-var
-   i : Integer;
-   seed : UInt64;
-   p : PCardinal;
-begin
-   if nb<=0 then Exit('');
-
-   SetLength(Result, nb);
-
-   hProvLock.BeginWrite;
-   try
-      if hProv=0 then begin
-         if not CryptAcquireContext(@hProv, nil, MS_ENHANCED_PROV, PROV_RSA_FULL,
-                                    CRYPT_VERIFYCONTEXT) then begin
-            CryptAcquireContext(@hProv, nil, MS_ENHANCED_PROV, PROV_RSA_FULL,
-                                CRYPT_NEWKEYSET + CRYPT_VERIFYCONTEXT);
-         end;
-         CryptGenRandom(hProv, SizeOf(vXorShiftSeedMask), @vXorShiftSeedMask);
-      end;
-      CryptGenRandom(hProv, nb, Pointer(Result));
-   finally
-      hProvLock.EndWrite;
-   end;
-
-   FillChar(Result[1], nb, 0);
-
-   // further muddy things, in case Windows generator is later found vulnerable,
-   // this will protect us from "generic" exploits
-   seed:=RDTSC xor vXorShiftSeedMask;
-   p:=PCardinal(Result);
-   for i:=0 to (nb div 4)-1 do begin
-      p^:=p^ xor XorShift(seed);
-      Inc(p);
-   end;
-end;
-
-function CryptographicToken(bitStrength : Integer) : String;
-const
-   // uri-safe base64 table (RFC 4648)
-   cChars : AnsiString = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
-var
-   i, n : Integer;
-   rand : RawByteString;
-begin
-   if bitStrength<=0 then
-      bitStrength:=120;
-   // 6 bits per character
-   n:=bitStrength div 6;
-   if n*6<bitStrength then
-      Inc(n);
-   rand:=CryptographicRandom(n);
-   SetLength(Result, n);
-   for i:=1 to n do
-      Result[i]:=Char(cChars[(Ord(rand[i]) and 63)+1]);
 end;
 
 procedure TdwsCryptoLib.DataModuleCreate(Sender: TObject);
@@ -526,21 +424,5 @@ procedure TdwsCryptoLib.dwsCryptoFunctionsProcessUniqueRandomEval(
 begin
    info.ResultAsString:=ProcessUniqueRandom;
 end;
-
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-initialization
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-
-   hProvLock := TMultiReadSingleWrite.Create;
-
-finalization
-
-   FreeAndNil(hProvLock);
-   if hProv>0 then
-      CryptReleaseContext(hProv, 0);
 
 end.

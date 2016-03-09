@@ -58,7 +58,9 @@ uses
   UdwsGraphicsTests in 'UdwsGraphicsTests.pas',
   dwsJSONPath in '..\Source\dwsJSONPath.pas',
   dwsDateTime in '..\Source\dwsDateTime.pas',
-  dwsGlobalVars in '..\Source\dwsGlobalVars.pas';
+  dwsGlobalVars in '..\Source\dwsGlobalVars.pas'
+  ,UBigIntegerTests in 'UBigIntegerTests.pas'
+  ;
 
 {$R *.res}
 

@@ -33,7 +33,7 @@ uses
    dwsWebServerHelpers, dwsZipLibModule,
    dwsDataBase, dwsDataBaseLibModule, dwsWebServerInfo, dwsWebServerLibModule,
    dwsBackgroundWorkersLibModule, dwsSynapseLibModule, dwsCryptoLibModule,
-   dwsEncodingLibModule, dwsComConnector;
+   dwsEncodingLibModule, dwsComConnector, dwsBigIntegerFunctions;
 
 type
 

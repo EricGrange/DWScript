@@ -892,7 +892,7 @@ initialization
    RegisterInternalFloatFunction(TLog10Func, 'Log10', ['v', SYS_FLOAT], [iffStateLess], 'Log10');
    RegisterInternalFloatFunction(TLogNFunc, 'LogN', ['n', SYS_FLOAT, 'x', SYS_FLOAT], [iffStateLess], 'LogN');
    RegisterInternalFloatFunction(TPowerFunc, 'Power', ['base', SYS_FLOAT, 'exponent', SYS_FLOAT], [iffStateLess], 'Power');
-   RegisterInternalFloatFunction(TIntPowerFunc, 'IntPower', ['base', SYS_FLOAT, 'exponent', SYS_INTEGER], [iffStateLess], 'Power');
+   RegisterInternalFloatFunction(TIntPowerFunc, 'IntPower', ['base', SYS_FLOAT, 'exponent', SYS_INTEGER], [iffStateLess, iffOverloaded], 'Power');
    RegisterInternalIntFunction(TSqrIntFunc, 'Sqr', ['v', SYS_INTEGER], [iffStateLess, iffOverloaded], 'Sqr');
    RegisterInternalFloatFunction(TSqrFloatFunc, 'Sqr', ['v', SYS_FLOAT], [iffStateLess, iffOverloaded], 'Sqr');
    RegisterInternalFloatFunction(TSqrtFunc, 'Sqrt', ['v', SYS_FLOAT], [iffStateLess], 'Sqrt');
