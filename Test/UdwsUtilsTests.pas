@@ -18,7 +18,7 @@ unit UdwsUtilsTests;
 interface
 
 uses Classes, SysUtils, Math, dwsXPlatformTests, dwsUtils,
-   dwsXPlatform, dwsWebUtils, dwsTokenStore, dwsCryptoLibModule,
+   dwsXPlatform, dwsWebUtils, dwsTokenStore, dwsCryptoXPlatform,
    dwsEncodingLibModule, dwsGlobalVars;
 
 type

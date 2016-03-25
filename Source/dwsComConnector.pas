@@ -431,11 +431,11 @@ type
 
    TComVariantArrayMember = class (TInterfacedSelfObject, IConnectorMember)
       procedure Write(const Base: Variant; const Data: TData);
-      procedure FastWrite(const exec : TdwsExecution; const base, value : TExprBase);
    end;
 
    TComVariantArrayLengthMember = class (TComVariantArrayMember, IConnectorFastMember)
       procedure FastRead(const exec : TdwsExecution; const base : TExprBase; var result : Variant);
+      procedure FastWrite(const exec : TdwsExecution; const base, value : TExprBase);
    end;
    TComVariantArrayHighBoundMember = class (TComVariantArrayMember, IConnectorDataMember)
       function Read(const base: Variant): TData;
@@ -1117,13 +1117,6 @@ begin
   Assert(False); // we should never come here
 end;
 
-// FastWrite
-//
-procedure TComVariantArrayMember.FastWrite(const exec : TdwsExecution; const base, value : TExprBase);
-begin
-  Assert(False); // we should never come here
-end;
-
 function TComVariantArrayDimCountMember.Read(const Base: Variant): TData;
 begin
   SetLength(Result, 1);
@@ -1174,6 +1167,13 @@ var
 begin
    base.EvalAsVariant(exec, bv);
    Result := VarArrayHighBound(bv, 1) - VarArrayLowBound(bv, 1) + 1;
+end;
+
+// FastWrite
+//
+procedure TComVariantArrayLengthMember.FastWrite(const exec : TdwsExecution; const base, value : TExprBase);
+begin
+   raise Exception.Create('FastWrite not supported by '+ClassName);
 end;
 
 procedure TComVariantArrayLengthCall.FastCall(const args : TExprBaseListExec; var result : Variant);

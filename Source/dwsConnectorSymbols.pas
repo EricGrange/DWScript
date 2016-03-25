@@ -24,6 +24,7 @@ unit dwsConnectorSymbols;
 interface
 
 uses
+   SysUtils,
    dwsUtils, dwsDataContext, dwsSymbols, dwsExprList, dwsExprs, dwsErrors;
 
 type
@@ -121,6 +122,12 @@ type
          property ConnectorType : IConnectorType read FConnectorType write FConnectorType;
    end;
 
+   TConnectorFastMember = class (TInterfacedSelfObject, IConnectorFastMember)
+      protected
+         procedure FastRead(const exec : TdwsExecution; const base : TExprBase; var result : Variant); virtual;
+         procedure FastWrite(const exec : TdwsExecution; const base, value : TExprBase); virtual;
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -165,6 +172,24 @@ function TConnectorSymbol.CreateAssignExpr(prog : TdwsProgram; const aScriptPos:
                                            left : TDataExpr; right : TTypedExpr) : TProgramExpr;
 begin
    Result:=TAssignExpr.Create(prog, aScriptPos, exec, left, right);
+end;
+
+// ------------------
+// ------------------ TConnectorFastMember ------------------
+// ------------------
+
+// FastRead
+//
+procedure TConnectorFastMember.FastRead(const exec : TdwsExecution; const base : TExprBase; var result : Variant);
+begin
+   raise Exception.Create('FastRead not supported by '+ClassName);
+end;
+
+// FastWrite
+//
+procedure TConnectorFastMember.FastWrite(const exec : TdwsExecution; const base, value : TExprBase);
+begin
+   raise Exception.Create('FastRead not supported by '+ClassName);
 end;
 
 end.
