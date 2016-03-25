@@ -64,7 +64,7 @@ begin
       end;
    end;
    hash.Final(digest);
-   Result:=RawByteStringToScriptString(BinToBase64URI(@digest, SizeOf(digest) div 2));
+   Result:='"'+RawByteStringToScriptString(BinToBase64URI(@digest, SizeOf(digest) div 2))+'"';
 end;
 
 end.
