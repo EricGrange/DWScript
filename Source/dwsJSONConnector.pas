@@ -150,20 +150,23 @@ type
 
    // TdwsJSONConnectorMember
    //
-   TdwsJSONConnectorMember = class(TInterfacedSelfObject, IConnectorMember, IConnectorFastMember)
+   TdwsJSONConnectorMember = class(TConnectorFastMember, IConnectorMember, IConnectorFastMember)
       private
          FMemberName : UnicodeString;
+         FMemberHash : Cardinal;
 
       protected
+         procedure SetMemberName(const n : String);
+
          function Read(const base : Variant) : TData;
          procedure Write(const base : Variant; const data : TData);
-         procedure FastRead(const exec : TdwsExecution; const base : TExprBase; var result : Variant); virtual;
-         procedure FastWrite(const exec : TdwsExecution; const base, value : TExprBase);
+         procedure FastRead(const exec : TdwsExecution; const base : TExprBase; var result : Variant); override;
+         procedure FastWrite(const exec : TdwsExecution; const base, value : TExprBase); override;
 
       public
          constructor Create(const memberName : UnicodeString);
 
-         property MemberName : UnicodeString read FMemberName write FMemberName;
+         property MemberName : UnicodeString read FMemberName write SetMemberName;
    end;
 
    TdwsJSONConnectorLengthMember = class(TdwsJSONConnectorMember)
@@ -270,7 +273,7 @@ const
    SYS_JSON_NEWARRAY = 'NewArray';
 
 type
-   TBoxedJSONValue = class (TInterfacedSelfObject, IBoxedJSONValue, ICoalesceable, IUnknown)
+   TBoxedJSONValue = class (TInterfacedObject, IBoxedJSONValue, ICoalesceable, IGetSelf, IUnknown)
       FValue : TdwsJSONValue;
 
       constructor Create(wrapped : TdwsJSONValue);
@@ -278,8 +281,10 @@ type
 
       function QueryInterface({$IFDEF FPC_HAS_CONSTREF}constref{$ELSE}const{$ENDIF} IID: TGUID; out Obj): HResult; stdcall;
 
-      function Value : TdwsJSONValue;
+      function GetSelf : TObject;
       function ToString : UnicodeString; override;
+
+      function Value : TdwsJSONValue;
 
       function IsFalsey : Boolean;
 
@@ -289,9 +294,10 @@ type
       class function UnBox(const v : Variant) : TdwsJSONValue; static;
    end;
 
-   TBoxedNilJSONValue = class (TInterfacedSelfObject, IBoxedJSONValue, ICoalesceable)
-      function Value : TdwsJSONValue;
+   TBoxedNilJSONValue = class (TInterfacedObject, IBoxedJSONValue, ICoalesceable, IGetSelf, IUnknown)
+      function GetSelf : TObject;
       function ToString : UnicodeString; override;
+      function Value : TdwsJSONValue;
       function IsFalsey : Boolean;
    end;
 
@@ -320,6 +326,13 @@ begin
       PIUnknown(@Obj)^:=IBoxedJSONValue(Self);
       Result:=0;
    end else Result:=inherited QueryInterface(IID, Obj);
+end;
+
+// GetSelf
+//
+function TBoxedJSONValue.GetSelf : TObject;
+begin
+   Result:=Self;
 end;
 
 // Value
@@ -359,12 +372,14 @@ end;
 //
 class procedure TBoxedJSONValue.AllocateOrGetImmediate(wrapped : TdwsJSONValue; var v : Variant);
 begin
-   if wrapped.IsImmediateValue then
-      v:=TdwsJSONImmediate(wrapped).AsVariant
-   else if wrapped<>nil then begin
+   if wrapped=nil then
+      v:=vNilJSONValue
+   else if wrapped.IsImmediateValue then
+      TdwsJSONImmediate(wrapped).GetAsVariant(v)
+   else begin
       wrapped.IncRefCount;
       TBoxedJSONValue.Allocate(wrapped, v);
-   end else v:=vNilJSONValue;
+   end;
 end;
 
 // UnBox
@@ -413,6 +428,13 @@ end;
 function TBoxedNilJSONValue.IsFalsey : Boolean;
 begin
    Result:=True;
+end;
+
+// GetSelf
+//
+function TBoxedNilJSONValue.GetSelf : TObject;
+begin
+   Result := Self;
 end;
 
 // ------------------
@@ -956,7 +978,7 @@ end;
 constructor TdwsJSONConnectorMember.Create(const memberName : UnicodeString);
 begin
    inherited Create;
-   FMemberName:=memberName;
+   SetMemberName(memberName);
 end;
 
 // Read
@@ -973,6 +995,14 @@ begin
    Assert(False);
 end;
 
+// SetMemberName
+//
+procedure TdwsJSONConnectorMember.SetMemberName(const n : String);
+begin
+   FMemberName := n;
+   FMemberHash := SimpleStringHash(n);
+end;
+
 // FastRead
 //
 procedure TdwsJSONConnectorMember.FastRead(
@@ -984,7 +1014,7 @@ begin
    base.EvalAsVariant(exec, b);
    v:=TBoxedJSONValue.UnBox(b);
    if v<>nil then begin
-      v:=v.Items[FMemberName];
+      v:=v.HashedItems[FMemberHash, FMemberName];
       TBoxedJSONValue.AllocateOrGetImmediate(v, result)
    end else VarCopySafe(result, vNilJSONValue);
 end;
@@ -1018,7 +1048,7 @@ begin
       end;
    end else dataValue := nil;
 
-   baseValue.Items[FMemberName]:=dataValue;
+   baseValue.HashedItems[FMemberHash, FMemberName]:=dataValue;
 end;
 
 // ------------------

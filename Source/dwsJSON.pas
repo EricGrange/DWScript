@@ -168,9 +168,13 @@ type
          procedure SetElement(index : Integer; const value : TdwsJSONValue); inline;
          procedure DoSetElement(index : Integer; const value : TdwsJSONValue); virtual; abstract;
          function GetItem(const name : UnicodeString) : TdwsJSONValue; inline;
+         function GetHashedItem(hash : Cardinal; const name : UnicodeString) : TdwsJSONValue; inline;
          function DoGetItem(const name : UnicodeString) : TdwsJSONValue; virtual;
+         function DoGetHashedItem(hash : Cardinal; const name : UnicodeString) : TdwsJSONValue; virtual;
          procedure SetItem(const name : UnicodeString; const value : TdwsJSONValue); inline;
+         procedure SetHashedItem(hash : Cardinal; const name : UnicodeString; const value : TdwsJSONValue); inline;
          procedure DoSetItem(const name : UnicodeString; const value : TdwsJSONValue); virtual; abstract;
+         procedure DoSetHashedItem(hash : Cardinal; const name : UnicodeString; const value : TdwsJSONValue); virtual;
          function DoElementCount : Integer; virtual;
          function GetValue(const index : Variant) : TdwsJSONValue;
          procedure SetValue(const index : Variant; const aValue : TdwsJSONValue);
@@ -221,6 +225,7 @@ type
 
          property Owner : TdwsJSONValue read GetOwner;
          property Items[const name : UnicodeString] : TdwsJSONValue read GetItem write SetItem;
+         property HashedItems[hash : Cardinal; const name : UnicodeString] : TdwsJSONValue read GetHashedItem write SetHashedItem;
          property Names[index : Integer] : UnicodeString read GetName;
          property Elements[index : Integer] : TdwsJSONValue read GetElement write SetElement;
          function ElementCount : Integer;
@@ -269,6 +274,7 @@ type
       Hash : Cardinal;
       Value : TdwsJSONValue;
    end;
+   PdwsJSONPair = ^TdwsJSONPair;
    TdwsJSONPairArray = array [0..MaxInt shr 5] of TdwsJSONPair;
    PdwsJSONPairArray = ^TdwsJSONPairArray;
 
@@ -283,6 +289,7 @@ type
       protected
          procedure Grow;
          procedure SetCapacity(newCapacity : Integer);
+         function IndexOfHashedName(hash : Cardinal; const name : UnicodeString) : Integer; inline;
          function IndexOfName(const name : UnicodeString) : Integer;
          function IndexOfValue(const aValue : TdwsJSONValue) : Integer;
          procedure DetachChild(child : TdwsJSONValue); override;
@@ -293,7 +300,9 @@ type
          function DoGetElement(index : Integer) : TdwsJSONValue; override;
          procedure DoSetElement(index : Integer; const value : TdwsJSONValue); override;
          function DoGetItem(const name : UnicodeString) : TdwsJSONValue; override;
+         function DoGetHashedItem(hash : Cardinal; const name : UnicodeString) : TdwsJSONValue; override;
          procedure DoSetItem(const name : UnicodeString; const value : TdwsJSONValue); override;
+         procedure DoSetHashedItem(hash : Cardinal; const name : UnicodeString; const value : TdwsJSONValue); override;
          function DoElementCount : Integer; override;
 
          procedure DoParse(initialChar : WideChar; parserState : TdwsJSONParserState); override;
@@ -309,6 +318,7 @@ type
          procedure Clear;
 
          procedure Add(const aName : UnicodeString; aValue : TdwsJSONValue);
+         procedure AddHashed(hash : Cardinal; const aName : UnicodeString; aValue : TdwsJSONValue);
 
          function AddObject(const name : UnicodeString) : TdwsJSONObject;
 
@@ -394,7 +404,7 @@ type
          procedure DoSetElement(index : Integer; const value : TdwsJSONValue); override;
 
          function GetValueType : TdwsJSONValueType; override;
-         function GetAsVariant : Variant;
+         function GetAsVariant : Variant; overload; inline;
          procedure SetAsVariant(const val : Variant);
          function GetAsString : UnicodeString; inline;
          procedure SetAsString(const val : UnicodeString); inline;
@@ -425,6 +435,8 @@ type
          function Clone : TdwsJSONImmediate;
 
          procedure WriteTo(writer : TdwsJSONWriter); override;
+
+         procedure GetAsVariant(var result : Variant); overload;
 
          property AsVariant : Variant read GetAsVariant write SetAsVariant;
          property AsString : UnicodeString read GetAsString write SetAsString;
@@ -1278,11 +1290,27 @@ begin
    else Result:=nil;
 end;
 
+// GetHashedItem
+//
+function TdwsJSONValue.GetHashedItem(hash : Cardinal; const name : UnicodeString) : TdwsJSONValue;
+begin
+   if Assigned(Self) then
+      Result:=DoGetHashedItem(hash, name)
+   else Result:=nil;
+end;
+
 // DoGetItem
 //
 function TdwsJSONValue.DoGetItem(const name : UnicodeString) : TdwsJSONValue;
 begin
    Result:=nil;
+end;
+
+// DoGetHashedItem
+//
+function TdwsJSONValue.DoGetHashedItem(hash : Cardinal; const name : UnicodeString) : TdwsJSONValue;
+begin
+   Result:=DoGetItem(name);
 end;
 
 // SetItem
@@ -1292,6 +1320,15 @@ begin
    if Assigned(Self) then
       DoSetItem(name, value)
    else raise EdwsJSONException.CreateFmt('Can''t set member "%s" of Undefined', [name]);
+end;
+
+// SetHashedItem
+//
+procedure TdwsJSONValue.SetHashedItem(hash : Cardinal; const name : UnicodeString; const value : TdwsJSONValue);
+begin
+   if Assigned(Self) then
+      DoSetHashedItem(hash, name, value)
+   else SetItem(name, value);
 end;
 
 // RaiseJSONException
@@ -1341,6 +1378,13 @@ end;
 function TdwsJSONValue.DoIsFalsey : Boolean;
 begin
    Result:=false;
+end;
+
+// DoSetHashedItem
+//
+procedure TdwsJSONValue.DoSetHashedItem(hash : Cardinal; const name : UnicodeString; const value : TdwsJSONValue);
+begin
+   SetItem(name, value);
 end;
 
 // ------------------
@@ -1424,12 +1468,19 @@ end;
 //
 procedure TdwsJSONObject.Add(const aName : UnicodeString; aValue : TdwsJSONValue);
 begin
+   AddHashed(SimpleStringHash(aName), aName, aValue);
+end;
+
+// AddHashed
+//
+procedure TdwsJSONObject.AddHashed(hash : Cardinal; const aName : UnicodeString; aValue : TdwsJSONValue);
+begin
    Assert(aValue.Owner=nil);
    aValue.FOwner:=Self;
    if FCount=FCapacity then Grow;
    FItems^[FCount].Value:=aValue;
    FItems^[FCount].Name:=aName;
-   FItems^[FCount].Hash:=SimpleStringHash(aName);
+   FItems^[FCount].Hash:=hash;
    Inc(FCount);
 end;
 
@@ -1592,6 +1643,18 @@ begin
    else Result:=nil;
 end;
 
+// DoGetHashedItem
+//
+function TdwsJSONObject.DoGetHashedItem(hash : Cardinal; const name : UnicodeString) : TdwsJSONValue;
+var
+   i : Integer;
+begin
+   i:=IndexOfHashedName(hash, name);
+   if i>=0 then
+      Result:=FItems^[i].Value
+   else Result:=nil;
+end;
+
 // DoSetItem
 //
 procedure TdwsJSONObject.DoSetItem(const name : UnicodeString; const value : TdwsJSONValue);
@@ -1599,6 +1662,18 @@ var
    i : Integer;
 begin
    i:=IndexOfName(name);
+   if i>=0 then
+      DoSetElement(i, value)
+   else Add(name, value);
+end;
+
+// DoSetHashedItem
+//
+procedure TdwsJSONObject.DoSetHashedItem(hash : Cardinal; const name : UnicodeString; const value : TdwsJSONValue);
+var
+   i : Integer;
+begin
+   i:=IndexOfHashedName(hash, name);
    if i>=0 then
       DoSetElement(i, value)
    else Add(name, value);
@@ -1683,18 +1758,24 @@ begin
    end;
 end;
 
+// IndexOfHashedName
+//
+function TdwsJSONObject.IndexOfHashedName(hash : Cardinal; const name : UnicodeString) : Integer;
+var
+   i : Integer;
+begin
+   for i:=0 to FCount-1 do begin
+      if (FItems^[i].Hash=hash) and (FItems^[i].Name=name) then
+         Exit(i);
+   end;
+   Result:=-1;
+end;
+
 // IndexOfName
 //
 function TdwsJSONObject.IndexOfName(const name : UnicodeString) : Integer;
-var
-   i : Integer;
-   h : Cardinal;
 begin
-   h:=SimpleStringHash(name);
-   for i:=0 to FCount-1 do
-      if (FItems^[i].Hash=h) and (FItems^[i].Name=name) then
-         Exit(i);
-   Result:=-1;
+   Result := IndexOfHashedName(SimpleStringHash(name), name);
 end;
 
 // IndexOfValue
@@ -2373,7 +2454,7 @@ end;
 
 // GetAsVariant
 //
-function TdwsJSONImmediate.GetAsVariant : Variant;
+procedure TdwsJSONImmediate.GetAsVariant(var result : Variant);
 begin
    case FType of
       jvtNull : Result:=Null;
@@ -2383,6 +2464,13 @@ begin
    else
       Result:=Unassigned;
    end;
+end;
+
+// GetAsVariant
+//
+function TdwsJSONImmediate.GetAsVariant : Variant;
+begin
+   GetAsVariant(Result);
 end;
 
 // SetAsVariant
