@@ -11988,10 +11988,7 @@ var
 begin
    if name='' then Exit;
 
-   sym:=FProg.Table.FindLocal(name);
-
-   if not Assigned(sym) and (FProg is TdwsProcedure) then
-      sym:=TdwsProcedure(FProg).Func.Params.FindLocal(name);
+   sym:=FProg.FindLocal(name);
 
    if Assigned(sym) then
       FMsgs.AddCompilerErrorFmt(namePos, CPE_NameAlreadyExists, [name]);

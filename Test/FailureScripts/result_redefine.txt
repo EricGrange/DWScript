@@ -1,0 +1,2 @@
+Syntax Error: Name "result" already exists [line: 3, column: 6]
+Hint: Result is never used [line: 4, column: 1]

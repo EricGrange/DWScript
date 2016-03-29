@@ -708,6 +708,7 @@ type
 
          function GetGlobalAddr(DataSize: Integer): Integer;
          function GetTempAddr(DataSize: Integer = -1): Integer;
+         function FindLocal(const name : String) : TSymbol; virtual;
 
          procedure ResetExprs;
 
@@ -910,6 +911,7 @@ type
          procedure CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
          procedure InitSymbol(Symbol: TSymbol; const msgs : TdwsCompileMessageList);
          procedure InitExpression(Expr: TExprBase);
+         function FindLocal(const name : String) : TSymbol; override;
 
          procedure OptimizeConstAssignments(blockExpr : TBlockExprBase);
 
@@ -2887,6 +2889,13 @@ begin
    Result:=2;
 end;
 
+// FindLocal
+//
+function TdwsProgram.FindLocal(const name : String) : TSymbol;
+begin
+   Result:=Table.FindLocal(name);
+end;
+
 function TdwsProgram.GetGlobalAddr(DataSize: Integer): Integer;
 begin
   Result := FRoot.FGlobalAddrGenerator.GetStackAddr(DataSize);
@@ -3455,6 +3464,18 @@ end;
 procedure TdwsProcedure.SetBeginPos(const scriptPos : TScriptPos);
 begin
    FInitExpr.FScriptPos:=scriptPos;
+end;
+
+// FindLocal
+//
+function TdwsProcedure.FindLocal(const name : String) : TSymbol;
+begin
+   Result := inherited FindLocal(name);
+   if Result = nil then begin
+      Result := FFunc.Params.FindLocal(name);
+      if Result = nil then
+         Result := FFunc.InternalParams.FindLocal(name);
+   end;
 end;
 
 // ------------------
