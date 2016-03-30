@@ -63,6 +63,64 @@ object dwsEncodingLib: TdwsEncodingLib
           end>
       end
       item
+        Name = 'UTF16BigEndianEncoder'
+        Ancestor = 'Encoder'
+        Methods = <
+          item
+            Name = 'Encode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsEncodingClassesUTF16BigEndianEncoderMethodsEncodeEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'Decode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsEncodingClassesUTF16BigEndianEncoderMethodsDecodeEval
+            Kind = mkClassFunction
+          end>
+      end
+      item
+        Name = 'UTF16LittleEndianEncoder'
+        Ancestor = 'Encoder'
+        Methods = <
+          item
+            Name = 'Encode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsEncodingClassesUTF16LittleEndianEncoderMethodsEncodeEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'Decode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsEncodingClassesUTF16LittleEndianEncoderMethodsDecodeEval
+            Kind = mkClassFunction
+          end>
+      end
+      item
         Name = 'Base64Encoder'
         Ancestor = 'Encoder'
         Methods = <

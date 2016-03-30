@@ -60,6 +60,14 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsEncodingClassesBase32EncoderMethodsDecodeEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesUTF16BigEndianEncoderMethodsEncodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesUTF16BigEndianEncoderMethodsDecodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesUTF16LittleEndianEncoderMethodsEncodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesUTF16LittleEndianEncoderMethodsDecodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -382,6 +390,46 @@ procedure TdwsEncodingLib.dwsEncodingClassesURLEncodedEncoderMethodsEncodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString := WebUtils.EncodeURLEncoded(Info.ParamAsString[0]);
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesUTF16BigEndianEncoderMethodsDecodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   buf : String;
+begin
+   buf := Info.ParamAsString[0];
+   StringWordsToBytes(buf, True);
+   Info.ResultAsString := buf;
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesUTF16BigEndianEncoderMethodsEncodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   buf : String;
+begin
+   buf := Info.ParamAsString[0];
+   StringBytesToWords(buf, True);
+   Info.ResultAsString := buf;
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesUTF16LittleEndianEncoderMethodsDecodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   buf : String;
+begin
+   buf := Info.ParamAsString[0];
+   StringWordsToBytes(buf, False);
+   Info.ResultAsString := buf;
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesUTF16LittleEndianEncoderMethodsEncodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   buf : String;
+begin
+   buf := Info.ParamAsString[0];
+   StringBytesToWords(buf, False);
+   Info.ResultAsString := buf;
 end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesUTF8EncoderMethodsDecodeEval(

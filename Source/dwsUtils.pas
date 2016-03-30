@@ -910,6 +910,9 @@ procedure BytesToScriptString(const p : PByte; n : Integer; var result : Unicode
 function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString; overload; inline;
 procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
 
+procedure StringBytesToWords(var buf : String; swap : Boolean);
+procedure StringWordsToBytes(var buf : String; swap : Boolean);
+
 function BinToHex(const data; n : Integer) : String; overload;
 function BinToHex(const data : RawByteString) : String; overload; inline;
 
@@ -1081,6 +1084,75 @@ begin
    pDest:=PByteArray(NativeUInt(Result));
    for i:=0 to n-1 do
       pDest[i]:=PByte(@pSrc[i])^;
+end;
+
+// StringBytesToWords
+//
+procedure StringBytesToWords(var buf : String; swap : Boolean);
+type
+   TTwoBytes = array [0..1] of Byte;
+   TTwoWords = array [0..1] of Word;
+var
+   pSrc : ^TTwoBytes;
+   pDest : ^TTwoWords;
+   i, n : Integer;
+begin
+   n := Length(buf);
+   if n > 0 then begin
+      SetLength(buf, 2*n);
+      pSrc := @PChar(Pointer(buf))[n-1];
+      pDest := @PChar(Pointer(buf))[2*n-2];
+      if swap then begin
+         for i := 1 to n do begin
+            pDest[1] := pSrc[0];
+            pDest[0] := pSrc[1];
+            Dec(pDest);
+            Dec(pSrc);
+         end;
+      end else begin
+         for i := 1 to n do begin
+            pDest[1] := pSrc[1];
+            pDest[0] := pSrc[0];
+            Dec(pDest);
+            Dec(pSrc);
+         end;
+      end;
+   end;
+end;
+
+// StringWordsToBytes
+//
+procedure StringWordsToBytes(var buf : String; swap : Boolean);
+type
+   TTwoBytes = array [0..1] of Byte;
+   TTwoWords = array [0..1] of Word;
+var
+   pSrc : ^TTwoWords;
+   pDest : ^TTwoBytes;
+   i, n, b : Integer;
+begin
+   n := Length(buf) div 2;
+   if n > 0 then begin
+      pSrc := Pointer(buf);
+      pDest := Pointer(buf);
+      if swap then begin
+         for i := 1 to n do begin
+            b := pSrc[0];
+            pDest[0] := pSrc[1];
+            pDest[1] := b;
+            Inc(pDest);
+            Inc(pSrc);
+         end;
+      end else begin
+         for i := 1 to n do begin
+            pDest[1] := pSrc[1];
+            pDest[0] := pSrc[0];
+            Inc(pDest);
+            Inc(pSrc);
+         end;
+      end;
+      SetLength(buf, n);
+   end else buf := '';
 end;
 
 // BinToHex

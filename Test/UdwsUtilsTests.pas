@@ -81,6 +81,8 @@ type
          procedure MultiThreadedGlobalVars;
          procedure Eratosthenes;
          procedure GlobalVarsCollect;
+
+         procedure BytesWords;
    end;
 
 // ------------------------------------------------------------------
@@ -1157,6 +1159,26 @@ begin
    finally
       gv.Finalize;
    end;
+end;
+
+// BytesWords
+//
+procedure TdwsUtilsTests.BytesWords;
+var
+   buf : String;
+begin
+   buf := 'Example';
+   StringBytesToWords(buf, False);
+   CheckEquals('4500780061006d0070006c006500', dwsUtils.BinToHex(ScriptStringToRawByteString(buf)), 'bytes to words no swap');
+
+   StringWordsToBytes(buf, False);
+   CheckEquals('Example', buf, 'words to bytes no swap');
+
+   StringBytesToWords(buf, True);
+   CheckEquals('004500780061006d0070006c0065', dwsUtils.BinToHex(ScriptStringToRawByteString(buf)), 'bytes to words with swap');
+
+   StringWordsToBytes(buf, True);
+   CheckEquals('Example', buf, 'words to bytes with swap');
 end;
 
 // ------------------------------------------------------------------
