@@ -319,7 +319,7 @@ begin
   finally
     FDelimiter := FOldDelimiter;
     FQuoteChar := FOldQuoteChar;
-    FDefined := FDefined;
+    FDefined := FOldDefined;
   end;
 end;
 
