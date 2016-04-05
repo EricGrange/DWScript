@@ -86,6 +86,8 @@ uses
 
 // --- User settings ---
 
+{$UNDEF DEBUG}
+
 // Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.
 
   { $DEFINE PUREPASCAL}
@@ -810,8 +812,8 @@ function SignBitOf(Int: Integer): Integer; inline;
 function Min(const A, B: BigInteger): BigInteger; overload; inline;
 function Max(const A, B: BigInteger): BigInteger; overload; inline;
 
-var
-  DoDebug: Boolean = True;
+//var
+//  DoDebug: Boolean = True;
 
 implementation
 
