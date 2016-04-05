@@ -20,7 +20,7 @@ interface
 
 uses
    Windows, WinSvc,
-   SysUtils,
+   SysUtils, TypInfo,
    mORMotService,
    dwsJSON;
 
@@ -115,110 +115,126 @@ end;
 // ExecuteCommandLineParameters
 //
 procedure TdwsWindowsService.ExecuteCommandLineParameters;
+type
+   TServiceStateEx = (ssNotInstalled, ssStopped, ssStarting, ssStopping, ssRunning,
+        ssResuming, ssPausing, ssPaused, ssErrorRetrievingState, ssAccessDenied);
 var
    i : Integer;
    param : String;
    ctrl : TServiceController;
+   serviceState : TServiceStateEx;
    deviceCheck : array [0..2] of Char;
    buffer : array [0..MAX_PATH] of Char;
    description : TServiceDescription;
+   err : Integer;
 begin
    ctrl:=TServiceController.CreateOpenService('', '', ServiceName);
    try
-      if ctrl.State=ssErrorRetrievingState then
-         writeln('Error retrieving state')
-      else begin
-         for i:=1 to ParamCount do begin
-            param:=ParamStr(i);
-            if param='/install' then begin
-               case ctrl.State of
-                  ssNotInstalled : begin
-                     ctrl.Free;
-                     ctrl:=nil;
-                     deviceCheck[0]:=ParamStr(0)[1];
-                     deviceCheck[1]:=':';
-                     deviceCheck[2]:=#0;
-                     // subst'ed path and services don't mix
-                     // if the drive is a subst'ed one will return \??\xxxx
-                     if    (QueryDosDevice(@deviceCheck, @buffer, MAX_PATH)=0)
-                        or (buffer[1]='?') then
-                        writeln('Must install from actual, non-subst''ed path')
-                     else begin
-                        ctrl:=TServiceController.CreateNewService(
-                           '','', ServiceName, ServiceDisplayName,
-                           ParamStr(0), '', '', '', '',
-                           SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START);
-                        case ctrl.State of
-                           ssNotInstalled :
-                              Writeln('Failed to install');
-                           ssErrorRetrievingState :
-                              Writeln('Account has insufficient rights, cannot install');
-                        else
-                           description.lpDescription:=PChar(ServiceDescription);
-                           ChangeServiceConfig2(ctrl.Handle, SERVICE_CONFIG_DESCRIPTION, @description);
-                           Writeln('Installed successfully');
-                        end;
+      err := GetLastError;
+      serviceState := TServiceStateEx(ctrl.State);
+      if serviceState = ssNotInstalled then begin
+         // clarify state
+         case err of
+            ERROR_ACCESS_DENIED :
+               serviceState := ssAccessDenied;
+            ERROR_INVALID_NAME : begin
+               WriteLn('Invalid service name');
+               serviceState := ssErrorRetrievingState;
+            end;
+         end;
+      end;
+      for i:=1 to ParamCount do begin
+         param:=ParamStr(i);
+         if param='/install' then begin
+            case serviceState of
+               ssNotInstalled : begin
+                  ctrl.Free;
+                  ctrl:=nil;
+                  deviceCheck[0]:=ParamStr(0)[1];
+                  deviceCheck[1]:=':';
+                  deviceCheck[2]:=#0;
+                  // subst'ed path and services don't mix
+                  // if the drive is a subst'ed one will return \??\xxxx
+                  if    (QueryDosDevice(@deviceCheck, @buffer, MAX_PATH)=0)
+                     or (buffer[1]='?') then
+                     writeln('Must install from actual, non-subst''ed path')
+                  else begin
+                     ctrl:=TServiceController.CreateNewService(
+                        '','', ServiceName, ServiceDisplayName,
+                        ParamStr(0), '', '', '', '',
+                        SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START);
+                     case TServiceStateEx(ctrl.State) of
+                        ssNotInstalled :
+                           Writeln('Failed to install');
+                        ssErrorRetrievingState :
+                           Writeln('Account has insufficient rights, cannot install');
+                     else
+                        description.lpDescription:=PChar(ServiceDescription);
+                        ChangeServiceConfig2(ctrl.Handle, SERVICE_CONFIG_DESCRIPTION, @description);
+                        Writeln('Installed successfully');
                      end;
                   end;
-                  ssErrorRetrievingState :
-                     Writeln('Account has insufficient rights');
-               else
-                   Writeln('Already installed');
                end;
-            end else if param='/uninstall' then begin
-               case ctrl.State of
-                  ssNotInstalled :
-                     Writeln('Not installed');
-                  ssErrorRetrievingState :
-                     Writeln('Account has insufficient rights');
-               else
-                  ctrl.Stop;
-                  if ctrl.State<>ssStopped then
-                     Writeln('Failed to stop')
-                  else begin
-                     ctrl.Delete;
-                     if ctrl.State=ssNotInstalled then
-                        Writeln('Uninstalled successfully')
-                     else Writeln('Failed to uninstall');
-                  end;
-               end;
-            end else if param='/stop' then begin
-               case ctrl.State of
-                  ssNotInstalled :
-                     Writeln('Not installed');
-                  ssErrorRetrievingState :
-                     Writeln('Account has insufficient rights');
-               else
-                  ctrl.Stop;
-                  Writeln('Stop command issued')
-               end;
-            end else if param='/start' then begin
-               case ctrl.State of
-                  ssNotInstalled :
-                     Writeln('Not installed');
-                  ssErrorRetrievingState :
-                     Writeln('Account has insufficient rights');
-               else
-                  ctrl.Start([]);
-                  Writeln('Start command issued')
-               end;
-            end else begin
-               WriteCommandLineHelp;
-               if ctrl.State<>ssErrorRetrievingState then begin
-                  Write('Service is currently ');
-                  case ctrl.State of
-                     ssNotInstalled : Writeln('not installed');
-                     ssStopped : Writeln('stopped');
-                     ssStarting : Writeln('starting');
-                     ssStopping : Writeln('stopping');
-                     ssRunning : Writeln('running');
-                     ssPausing : Writeln('pausing');
-                     ssPaused : Writeln('paused');
-                  else
-                     Writeln('in an unknown state');
-                  end;
+               ssErrorRetrievingState, ssAccessDenied :
+                  Writeln('Account has insufficient rights');
+            else
+                Writeln('Already installed');
+            end;
+         end else if param='/uninstall' then begin
+            case serviceState of
+               ssNotInstalled :
+                  Writeln('Not installed');
+               ssErrorRetrievingState, ssAccessDenied :
+                  Writeln('Account has insufficient rights');
+            else
+               ctrl.Stop;
+               if ctrl.State<>TServiceState.ssStopped then
+                  Writeln('Failed to stop')
+               else begin
+                  ctrl.Delete;
+                  if ctrl.State=TServiceState.ssNotInstalled then
+                     Writeln('Uninstalled successfully')
+                  else Writeln('Failed to uninstall');
                end;
             end;
+         end else if param='/stop' then begin
+            case serviceState of
+               ssNotInstalled :
+                  Writeln('Not installed');
+               ssErrorRetrievingState, ssAccessDenied :
+                  Writeln('Account has insufficient rights');
+            else
+               ctrl.Stop;
+               Writeln('Stop command issued')
+            end;
+         end else if param='/start' then begin
+            case serviceState of
+               ssNotInstalled :
+                  Writeln('Not installed');
+               ssErrorRetrievingState, ssAccessDenied :
+                  Writeln('Account has insufficient rights');
+            else
+               ctrl.Start([]);
+               Writeln('Start command issued')
+            end;
+         end else begin
+            WriteCommandLineHelp;
+
+            Write('Service is currently ');
+            case serviceState of
+               ssNotInstalled : Writeln('not installed');
+               ssStopped : Writeln('stopped');
+               ssStarting : Writeln('starting');
+               ssStopping : Writeln('stopping');
+               ssRunning : Writeln('running');
+               ssPausing : Writeln('pausing');
+               ssPaused : Writeln('paused');
+               ssErrorRetrievingState : Writeln('in an unknown state (error retrieving state)');
+               ssAccessDenied : Writeln('in an unknown state (insufficient rights)');
+            else
+               Writeln('in an unsupported state');
+            end;
+            Break;
          end;
       end;
    finally
