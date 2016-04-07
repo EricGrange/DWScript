@@ -2881,6 +2881,7 @@ var
    assignExpr : TAssignExpr;
    constExpr : TConstExpr;
    varExpr : TVarExpr;
+   symTypClass : TClass;
 begin
    Result:=nil;
 
@@ -2908,7 +2909,8 @@ begin
 
       RecordSymbolUse(sym, scriptPos, [suDeclaration]);
 
-      if sym.Typ is TArraySymbol then begin
+      symTypClass := sym.Typ.ClassType;
+      if symTypClass.InheritsFrom(TArraySymbol) or (symTypClass=TAssociativeArraySymbol) then begin
 
          // TODO: if Sym.DynamicInit?
          FProg.InitExpr.AddStatement(
