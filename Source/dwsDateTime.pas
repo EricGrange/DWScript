@@ -155,7 +155,7 @@ begin
       c:=fmt[i];
       tok:='';
       value:=0;
-      while (fmt[i]=c) and (i<=fmtLength) do begin
+      while (i<=fmtLength) and (fmt[i]=c) do begin
          case c of
             'A'..'Z' : tok:=tok+Chr(Ord(c)+(Ord('a')-Ord('A')));
          else

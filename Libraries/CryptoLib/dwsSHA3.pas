@@ -43,6 +43,7 @@
 unit dwsSHA3;
 
 {$I dws.inc}
+{$R-}
 
 interface
 

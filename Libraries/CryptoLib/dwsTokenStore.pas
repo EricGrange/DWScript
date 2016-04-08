@@ -17,6 +17,7 @@
 unit dwsTokenStore;
 
 {$I dws.inc}
+{$R-}
 
 interface
 

@@ -155,7 +155,7 @@ function HashMD5(const data : RawByteString) : RawByteString;
 var
    digest : TMD5Digest;
 begin
-   digest:=MD5Buf(data[1], Length(data));
+   digest:=MD5Buf(Pointer(data)^, Length(data));
    SetLength(Result, SizeOf(digest));
    System.Move(digest, Result[1], SizeOf(digest));
 end;

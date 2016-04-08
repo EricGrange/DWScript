@@ -54,6 +54,7 @@ type
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
+         procedure GetRelativeDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
          function ReferencesVariable(varSymbol : TDataSymbol) : Boolean; override;
 
@@ -139,6 +140,7 @@ type
       public
          constructor Create(prog : TdwsProgram; dataSym : TDataSymbol);
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
+         procedure GetRelativeDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -181,6 +183,7 @@ type
          function GetVarParamEval(exec : TdwsExecution) : PVariant; inline;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
+         procedure GetRelativeDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
          procedure AssignDataExpr(exec : TdwsExecution; dataExpr: TDataExpr); override;
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
@@ -2336,6 +2339,13 @@ begin
    exec.Stack.InitDataPtr(Result, FStackAddr);
 end;
 
+// GetRelativeDataPtr
+//
+procedure TVarExpr.GetRelativeDataPtr(exec : TdwsExecution; var result : IDataContext);
+begin
+   exec.Stack.InitRelativeDataPtr(Result, FStackAddr);
+end;
+
 // AssignDataExpr
 //
 procedure TVarExpr.AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr);
@@ -2346,8 +2356,11 @@ end;
 // AssignExpr
 //
 procedure TVarExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
+var
+   buf : Variant;
 begin
-   Expr.EvalAsVariant(exec, DataPtr[exec].AsPVariant(0)^);
+   Expr.EvalAsVariant(exec, buf);
+   DataPtr[exec][0] := buf;
 end;
 
 // AssignValue
@@ -2613,8 +2626,11 @@ end;
 // AssignExpr
 //
 procedure TObjectVarExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
+var
+   buf : Variant;
 begin
-   Expr.EvalAsVariant(exec, exec.Stack.Data[exec.Stack.BasePointer+FStackAddr]);
+   Expr.EvalAsVariant(exec, buf);
+   exec.Stack.Data[exec.Stack.BasePointer+FStackAddr] := buf;
 end;
 
 // EvalAsScriptObj
@@ -2683,6 +2699,13 @@ begin
    exec.DataContext_CreateLevel(FLevel, FStackAddr, Result);
 end;
 
+// GetRelativeDataPtr
+//
+procedure TVarParentExpr.GetRelativeDataPtr(exec : TdwsExecution; var result : IDataContext);
+begin
+   exec.Stack.InitRelativeDataPtrLevel(result, FLevel, FStackAddr);
+end;
+
 // EvalAsVariant
 //
 procedure TVarParentExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
@@ -2741,6 +2764,13 @@ end;
 // GetDataPtr
 //
 procedure TByRefParamExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
+begin
+   Result:=IDataContext(GetVarParamDataAsPointer(exec));
+end;
+
+// GetRelativeDataPtr
+//
+procedure TByRefParamExpr.GetRelativeDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    Result:=IDataContext(GetVarParamDataAsPointer(exec));
 end;
@@ -4157,11 +4187,11 @@ begin
    lazyExpr:=TExprBase(lazyContext and $FFFFFFFF);
 
    oldBasePointer:=exec.Stack.BasePointer;
-   exec.Stack.BasePointer:=(lazyContext shr 32);//  stack.GetSavedBp(Level);
+   exec.Stack.SetBasePointer(lazyContext shr 32);//  stack.GetSavedBp(Level);
    try
       lazyExpr.EvalAsVariant(exec, Result);
    finally
-      exec.Stack.BasePointer:=oldBasePointer;
+      exec.Stack.SetBasePointer(oldBasePointer);
    end;
 end;
 
@@ -7420,9 +7450,11 @@ end;
 
 procedure TForUpwardExpr.EvalNoResult(exec : TdwsExecution);
 var
+   dataPtr : Pointer;
    toValue: Int64;
    i : PInt64;
 begin
+   dataPtr := Pointer(exec.Stack.Data);
    i:=FVarExpr.EvalAsPInteger(exec);
    i^:=FFromExpr.EvalAsInteger(exec);
    toValue:=FToExpr.EvalAsInteger(exec);
@@ -7440,6 +7472,10 @@ begin
             esrExit : Exit;
          end;
       end;
+      if dataPtr <> Pointer(exec.Stack.Data) then begin
+         dataPtr := Pointer(exec.Stack.Data);
+         i:=FVarExpr.EvalAsPInteger(exec);
+      end;
       Inc(i^);
    end;
 end;
@@ -7450,9 +7486,11 @@ end;
 
 procedure TForDownwardExpr.EvalNoResult(exec : TdwsExecution);
 var
+   dataPtr : Pointer;
    toValue: Int64;
    i : PInt64;
 begin
+   dataPtr := Pointer(exec.Stack.Data);
    i:=FVarExpr.EvalAsPInteger(exec);
    i^:=FFromExpr.EvalAsInteger(exec);
    toValue:=FToExpr.EvalAsInteger(exec);
@@ -7470,6 +7508,10 @@ begin
             esrExit : Exit;
          end;
       end;
+      if dataPtr <> Pointer(exec.Stack.Data) then begin
+         dataPtr := Pointer(exec.Stack.Data);
+         i:=FVarExpr.EvalAsPInteger(exec);
+      end;
       Dec(i^);
    end;
 end;
@@ -7480,9 +7522,11 @@ end;
 
 procedure TForUpwardStepExpr.EvalNoResult(exec : TdwsExecution);
 var
+   dataPtr : Pointer;
    step, toValue: Int64;
    i : PInt64;
 begin
+   dataPtr := Pointer(exec.Stack.Data);
    i:=FVarExpr.EvalAsPInteger(exec);
    i^:=FFromExpr.EvalAsInteger(exec);
    toValue:=FToExpr.EvalAsInteger(exec);
@@ -7500,6 +7544,10 @@ begin
                exec.Status:=esrNone;
             esrExit : Exit;
          end;
+      end;
+      if dataPtr <> Pointer(exec.Stack.Data) then begin
+         dataPtr := Pointer(exec.Stack.Data);
+         i:=FVarExpr.EvalAsPInteger(exec);
       end;
       try
          {$OVERFLOWCHECKS ON}
@@ -7517,9 +7565,11 @@ end;
 
 procedure TForDownwardStepExpr.EvalNoResult(exec : TdwsExecution);
 var
+   dataPtr : Pointer;
    step, toValue: Int64;
    i : PInt64;
 begin
+   dataPtr := Pointer(exec.Stack.Data);
    i:=FVarExpr.EvalAsPInteger(exec);
    i^:=FFromExpr.EvalAsInteger(exec);
    toValue:=FToExpr.EvalAsInteger(exec);
@@ -7537,6 +7587,10 @@ begin
                exec.Status:=esrNone;
             esrExit : Exit;
          end;
+      end;
+      if dataPtr <> Pointer(exec.Stack.Data) then begin
+         dataPtr := Pointer(exec.Stack.Data);
+         i:=FVarExpr.EvalAsPInteger(exec);
       end;
       try
          {$OVERFLOWCHECKS ON}

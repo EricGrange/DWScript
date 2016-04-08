@@ -90,7 +90,7 @@ uses
 
 // Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.
 
-  { $DEFINE PUREPASCAL}
+  {$DEFINE PUREPASCAL}
 
 
 // Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
@@ -4638,7 +4638,7 @@ begin
   if LIsNegative then
     Res := -Res;
   Result := True;
-  Res.Compact;
+//  Res.Compact;
 end;
 
 class procedure BigInteger.Decimal;
@@ -7703,7 +7703,7 @@ begin
   LLength := Cardinal(Length(Multiplicand)) * 2;
   LHighWord := 0;
   I := 0;
-  while I < LLength do
+  while I < LLength-1 do
   begin
     LProduct := PWord(Multiplicand)[I] * Multiplicator + LHighWord;
     PWord(Res)[I] := WordRec(LProduct).Lo;

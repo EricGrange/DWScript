@@ -96,7 +96,7 @@ begin
 
    FTests:=TStringList.Create;
 
-   CollectFiles(ExtractFilePath(ParamStr(0))+'Algorithms'+PathDelim, '*.pas', FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'Algorithms'+PathDelim, 'quicksort.pas', FTests);
 
    FCompiler:=TDelphiWebScript.Create(nil);
 end;

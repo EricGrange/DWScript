@@ -581,6 +581,7 @@ type
       public
          procedure InitData(const data : TData; offset : Integer); overload; virtual;
          procedure InitData(const data : IDataContext); overload; inline;
+         class function DynamicInitialization : Boolean; virtual;
 
          function IsType : Boolean; override;
          function BaseType : TTypeSymbol; override;
@@ -1026,6 +1027,8 @@ type
          constructor Create(const name : UnicodeString; elementType, indexType : TTypeSymbol);
          destructor Destroy; override;
 
+         class function DynamicInitialization : Boolean; override;
+
          function SortFunctionType(integerType : TTypeSymbol) : TFuncSymbol; virtual;
          function MapFunctionType(anyType : TTypeSymbol) : TFuncSymbol; virtual;
 
@@ -1095,6 +1098,7 @@ type
          constructor Create(const name : UnicodeString; elementType, keyType : TTypeSymbol);
 
          procedure InitData(const Data: TData; Offset: Integer); override;
+         class function DynamicInitialization : Boolean; override;
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsPointerType : Boolean; override;
@@ -4496,10 +4500,8 @@ begin
 end;
 
 procedure TClassSymbol.InitData(const Data: TData; Offset: Integer);
-const
-   cNilIntf : IUnknown = nil;
 begin
-   Data[Offset]:=cNilIntf;
+   VarCopySafe(Data[Offset], IUnknown(nil));
 end;
 
 // Initialize
@@ -4961,10 +4963,8 @@ end;
 // InitData
 //
 procedure TBaseIntegerSymbol.InitData(const data : TData; offset : Integer);
-const
-   cZero64 : Int64 = 0;
 begin
-   data[offset]:=cZero64;
+   VarSetDefaultInt64(data[offset]);
 end;
 
 // IsCompatible
@@ -6149,6 +6149,13 @@ begin
    inherited;
 end;
 
+// DynamicInitialization
+//
+class function TArraySymbol.DynamicInitialization : Boolean;
+begin
+   Result := True;
+end;
+
 // ElementSize
 //
 function TArraySymbol.ElementSize : Integer;
@@ -6269,23 +6276,27 @@ begin
    FSize := FElementCount * ElementSize;
 end;
 
-procedure TStaticArraySymbol.InitData(const Data: TData; Offset: Integer);
+// InitData
+//
+procedure TStaticArraySymbol.InitData(const data : TData; offset : Integer);
 var
-  x: Integer;
+   i, s : Integer;
 begin
-  for x := 1 to ElementCount do
-  begin
-    Typ.InitData(Data, Offset);
-    Inc(Offset, Typ.BaseType.Size);
-  end;
+   s := Typ.BaseType.Size;
+   for i := 1 to ElementCount do begin
+      Typ.InitData(data, offset);
+      Inc(offset, s);
+   end;
 end;
 
+// IsCompatible
+//
 function TStaticArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-  typSym := typSym.UnAliasedType;
-  Result :=     (typSym is TStaticArraySymbol)
-            and (Size = TStaticArraySymbol(typSym).Size)
-            and Typ.IsCompatible(typSym.Typ);
+   typSym := typSym.UnAliasedType;
+   Result :=     (typSym is TStaticArraySymbol)
+             and (Size = TStaticArraySymbol(typSym).Size)
+             and Typ.IsCompatible(typSym.Typ);
 end;
 
 // SameType
@@ -6393,6 +6404,13 @@ end;
 class procedure TAssociativeArraySymbol.SetInitAssociativeArrayProc(const aProc : TInitDataProc);
 begin
    vInitAssociativeArray:=aProc;
+end;
+
+// DynamicInitialization
+//
+class function TAssociativeArraySymbol.DynamicInitialization : Boolean;
+begin
+   Result := True;
 end;
 
 // IsCompatible
@@ -6751,6 +6769,13 @@ end;
 procedure TTypeSymbol.InitData(const data : IDataContext);
 begin
    InitData(data.AsPData^, data.Addr);
+end;
+
+// DynamicInitialization
+//
+class function TTypeSymbol.DynamicInitialization : Boolean;
+begin
+   Result:=False;
 end;
 
 // ------------------

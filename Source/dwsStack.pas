@@ -50,6 +50,7 @@ type
          FSize : Integer;
          FStackPointer : Integer;
          FDataPtrPool : IDataContextPool;
+         FData : TData;
 
          function GetFrameSize : Integer;
 
@@ -57,10 +58,9 @@ type
 
          procedure GrowTo(desiredSize : Integer);
 
-         procedure SetBasePointer(newBp : Integer); inline;
+         function GetPData : PData;
 
       public
-         Data : TData;
 
          procedure Initialize(const params : TStackParameters);
          procedure Finalize;
@@ -103,6 +103,10 @@ type
 
          procedure InitDataPtr(var dataPtr : IDataContext; addr : Integer); inline;
          procedure InitDataPtrLevel(var dataPtr : IDataContext; level, addr : Integer); inline;
+
+         procedure InitRelativeDataPtr(var dataPtr : IDataContext; addr : Integer); inline;
+         procedure InitRelativeDataPtrLevel(var dataPtr : IDataContext; level, addr : Integer); inline;
+
          function  CreateDataContext(const data : TData; addr : Integer) : TDataContext; inline;
          function  CreateEmpty(size : Integer) : TDataContext;
 
@@ -120,8 +124,10 @@ type
          procedure RestoreFrame(level, oldBasePointer: Integer); inline;
          procedure Reset;
 
-         property BasePointer: Integer read FBasePointer write SetBasePointer;
-         property BaseData: PDataArray read FBaseData;
+         procedure SetBasePointer(newBp : Integer); inline;
+
+         property Data : TData read FData;
+         property BasePointer: Integer read FBasePointer;
          property FrameSize: Integer read GetFrameSize;
          property MaxSize: Integer read FMaxSize write FMaxSize;
          property StackPointer: Integer read FStackPointer;
@@ -213,8 +219,15 @@ begin
    FSize := ((desiredSize) div FParams.ChunkSize + 1) * FParams.ChunkSize;
    if FSize > FMaxSize then
       FSize := FMaxSize;
-   SetLength(Data, FSize);
-   BasePointer:=BasePointer;
+   SetLength(FData, FSize);
+   FBaseData:=@FData[FBasePointer];
+end;
+
+// GetPData
+//
+function TStackMixIn.GetPData : PData;
+begin
+   Result:=@FData;
 end;
 
 // SetBasePointer
@@ -293,7 +306,7 @@ end;
 function TStackMixIn.SwitchFrame(level : Integer) : Integer;
 begin
    Result:=FBasePointer;
-   BasePointer:=FStackPointer;
+   SetBasePointer(FStackPointer);
    PushBP(level, Result);
 end;
 
@@ -302,7 +315,7 @@ end;
 procedure TStackMixIn.RestoreFrame(level, oldBasePointer : Integer);
 begin
    FStackPointer:=BasePointer;
-   BasePointer:=oldBasePointer;
+   SetBasePointer(oldBasePointer);
    PopBp(level);
 end;
 
@@ -310,7 +323,7 @@ procedure TStackMixIn.Reset;
 var
    i : Integer;
 begin
-   Data:=nil;
+   FData:=nil;
    FSize:=0;
    FStackPointer:=0;
    FBasePointer:=0;
@@ -495,6 +508,20 @@ end;
 procedure TStackMixIn.InitDataPtrLevel(var dataPtr : IDataContext; level, addr : Integer);
 begin
    dataPtr:=FDataPtrPool.Create(Data, GetSavedBp(level)+addr);
+end;
+
+// InitRelativeDataPtr
+//
+procedure TStackMixIn.InitRelativeDataPtr(var dataPtr : IDataContext; addr : Integer);
+begin
+   dataPtr:=TRelativeDataContext.Create(GetPData, BasePointer+addr);
+end;
+
+// InitRelativeDataPtrLevel
+//
+procedure TStackMixIn.InitRelativeDataPtrLevel(var dataPtr : IDataContext; level, addr : Integer);
+begin
+   dataPtr:=TRelativeDataContext.Create(GetPData, GetSavedBp(level)+addr);
 end;
 
 // CreateDataContext

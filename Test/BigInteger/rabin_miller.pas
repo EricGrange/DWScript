@@ -1,4 +1,4 @@
-// Check Prime Sextuplet
+﻿// Check Prime Sextuplet
 
 function RabinMiller(n : BigInteger; k : Integer) : String;
 begin

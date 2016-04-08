@@ -17,6 +17,7 @@
 unit dwsEncodingLibModule;
 
 {$I dws.inc}
+{$R-}
 
 interface
 

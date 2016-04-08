@@ -169,6 +169,53 @@ type
          function  HashCode(size : Integer) : Cardinal;
    end;
 
+   TGetPDataFunc = function : PData of object;
+
+   TRelativeDataContext = class(TInterfacedObject, IDataContext, IGetSelf)
+      private
+         FGetPData : TGetPDataFunc;
+         FAddr : Integer;
+
+      public
+         constructor Create(const getPData : TGetPDataFunc; addr : Integer);
+
+         function GetSelf : TObject;
+
+         function GetAsVariant(addr : Integer) : Variant;
+         procedure SetAsVariant(addr : Integer; const value : Variant);
+         function GetAsInteger(addr : Integer) : Int64;
+         procedure SetAsInteger(addr : Integer; const value : Int64);
+         function GetAsFloat(addr : Integer) : Double;
+         procedure SetAsFloat(addr : Integer; const value : Double);
+         function GetAsBoolean(addr : Integer) : Boolean;
+         procedure SetAsBoolean(addr : Integer; const value : Boolean);
+         function GetAsString(addr : Integer) : UnicodeString;
+         procedure SetAsString(addr : Integer; const value : UnicodeString);
+         function GetAsInterface(addr : Integer) : IUnknown;
+         procedure SetAsInterface(addr : Integer; const value : IUnknown);
+
+         function Addr : Integer;
+         function DataLength : Integer;
+
+         function AsPVarDataArray : PVarDataArray;
+         function AsPData : PData;
+         function AsData : TData;
+         function AsPVariant(addr : Integer) : PVariant;
+
+         procedure CreateOffset(offset : Integer; var result : IDataContext);
+
+         procedure EvalAsVariant(addr : Integer; var result : Variant);
+         procedure EvalAsString(addr : Integer; var result : UnicodeString);
+         procedure EvalAsInterface(addr : Integer; var result : IUnknown);
+
+         procedure CopyData(const destData : TData; destAddr, size : Integer);
+         procedure WriteData(const src : IDataContext; size : Integer); overload;
+         procedure WriteData(const srcData : TData; srcAddr, size : Integer); overload;
+         function SameData(addr : Integer; const otherData : TData; otherAddr, size : Integer) : Boolean; overload;
+
+         function  HashCode(size : Integer) : Cardinal;
+   end;
+
 procedure DWSCopyData(const sourceData : TData; sourceAddr : Integer;
                       const destData : TData; destAddr : Integer; size : Integer);
 function DWSSameData(const data1, data2 : TData; offset1, offset2, size : Integer) : Boolean; overload;
@@ -661,11 +708,8 @@ end;
 // WriteData
 //
 procedure TDataContext.WriteData(const src : IDataContext; size : Integer);
-var
-   implem : TDataContext;
 begin
-   implem:=TDataContext(src.GetSelf);
-   DWSCopyData(implem.FData, implem.FAddr, FData, FAddr, size);
+   DWSCopyData(src.AsPData^, src.Addr, FData, FAddr, size);
 end;
 
 // WriteData
@@ -723,6 +767,214 @@ end;
 function TDataContext.HashCode(size : Integer) : Cardinal;
 begin
    Result:=DWSHashCode(FData, FAddr, size);
+end;
+
+// ------------------
+// ------------------ TRelativeDataContext ------------------
+// ------------------
+
+// Create
+//
+constructor TRelativeDataContext.Create(const getPData : TGetPDataFunc; addr : Integer);
+begin
+   FGetPData:=getPData;
+   FAddr:=addr;
+end;
+
+// GetSelf
+//
+function TRelativeDataContext.GetSelf : TObject;
+begin
+   Result:=Self;
+end;
+
+// GetAsVariant
+//
+function TRelativeDataContext.GetAsVariant(addr : Integer) : Variant;
+begin
+   Result := FGetPData^[FAddr+addr];
+end;
+
+// SetAsVariant
+//
+procedure TRelativeDataContext.SetAsVariant(addr : Integer; const value : Variant);
+begin
+   FGetPData^[FAddr+addr] := value;
+end;
+
+// GetAsInteger
+//
+function TRelativeDataContext.GetAsInteger(addr : Integer) : Int64;
+begin
+   Result := FGetPData^[FAddr+addr];
+end;
+
+// SetAsInteger
+//
+procedure TRelativeDataContext.SetAsInteger(addr : Integer; const value : Int64);
+begin
+   VarCopySafe(FGetPData^[FAddr+addr], value);
+end;
+
+// GetAsFloat
+//
+function TRelativeDataContext.GetAsFloat(addr : Integer) : Double;
+begin
+   Result := FGetPData^[FAddr+addr];
+end;
+
+// SetAsFloat
+//
+procedure TRelativeDataContext.SetAsFloat(addr : Integer; const value : Double);
+begin
+   VarCopySafe(FGetPData^[FAddr+addr], value);
+end;
+
+// GetAsBoolean
+//
+function TRelativeDataContext.GetAsBoolean(addr : Integer) : Boolean;
+begin
+   Result := FGetPData^[FAddr+addr];
+end;
+
+// SetAsBoolean
+//
+procedure TRelativeDataContext.SetAsBoolean(addr : Integer; const value : Boolean);
+begin
+   VarCopySafe(FGetPData^[FAddr+addr], value);
+end;
+
+// GetAsString
+//
+function TRelativeDataContext.GetAsString(addr : Integer) : UnicodeString;
+begin
+   Result := FGetPData^[FAddr+addr];
+end;
+
+// SetAsString
+//
+procedure TRelativeDataContext.SetAsString(addr : Integer; const value : UnicodeString);
+begin
+   VarCopySafe(FGetPData^[FAddr+addr], value);
+end;
+
+// GetAsInterface
+//
+function TRelativeDataContext.GetAsInterface(addr : Integer) : IUnknown;
+begin
+   Result := FGetPData^[FAddr+addr];
+end;
+
+// SetAsInterface
+//
+procedure TRelativeDataContext.SetAsInterface(addr : Integer; const value : IUnknown);
+begin
+   VarCopySafe(FGetPData^[FAddr+addr], value);
+end;
+
+// Addr
+//
+function TRelativeDataContext.Addr : Integer;
+begin
+   Result := FAddr;
+end;
+
+// DataLength
+//
+function TRelativeDataContext.DataLength : Integer;
+begin
+   Result:=System.Length(FGetPData^);
+end;
+
+// AsPVarDataArray
+//
+function TRelativeDataContext.AsPVarDataArray : PVarDataArray;
+begin
+   Result:=@FGetPData^[FAddr];
+end;
+
+// AsPData
+//
+function TRelativeDataContext.AsPData : PData;
+begin
+   Result:=FGetPData;
+end;
+
+// AsData
+//
+function TRelativeDataContext.AsData : TData;
+begin
+   Result:=FGetPData^;
+end;
+
+// AsPVariant
+//
+function TRelativeDataContext.AsPVariant(addr : Integer) : PVariant;
+begin
+   Result:=@FGetPData^[FAddr+addr];
+end;
+
+// CreateOffset
+//
+procedure TRelativeDataContext.CreateOffset(offset : Integer; var result : IDataContext);
+begin
+   Result:=TRelativeDataContext.Create(FGetPData, FAddr+offset);
+end;
+
+// EvalAsVariant
+//
+procedure TRelativeDataContext.EvalAsVariant(addr : Integer; var result : Variant);
+begin
+   VarCopySafe(result, FGetPData^[FAddr+addr]);
+end;
+
+// EvalAsString
+//
+procedure TRelativeDataContext.EvalAsString(addr : Integer; var result : UnicodeString);
+begin
+   result := FGetPData^[FAddr+addr];
+end;
+
+// EvalAsInterface
+//
+procedure TRelativeDataContext.EvalAsInterface(addr : Integer; var result : IUnknown);
+begin
+   result := FGetPData^[FAddr+addr];
+end;
+
+// CopyData
+//
+procedure TRelativeDataContext.CopyData(const destData : TData; destAddr, size : Integer);
+begin
+   DWSCopyData(FGetPData^, FAddr, destData, destAddr, size);
+end;
+
+// WriteData
+//
+procedure TRelativeDataContext.WriteData(const src : IDataContext; size : Integer);
+begin
+   DWSCopyData(src.AsPData^, src.Addr, FGetPData^, FAddr, size);
+end;
+
+// WriteData
+//
+procedure TRelativeDataContext.WriteData(const srcData : TData; srcAddr, size : Integer);
+begin
+   DWSCopyData(srcData, srcAddr, FGetPData^, FAddr, size);
+end;
+
+// SameData
+//
+function TRelativeDataContext.SameData(addr : Integer; const otherData : TData; otherAddr, size : Integer) : Boolean;
+begin
+   Result:=DWSSameData(FGetPData^, otherData, FAddr+addr, otherAddr, size);
+end;
+
+// HashCode
+//
+function TRelativeDataContext.HashCode(size : Integer) : Cardinal;
+begin
+   Result:=DWSHashCode(FGetPData^, FAddr, size);
 end;
 
 end.

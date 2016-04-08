@@ -52,7 +52,7 @@ procedure TBigIntegerTests.SetUp;
 begin
    FTests:=TStringList.Create;
 
-   CollectFiles(ExtractFilePath(ParamStr(0))+'BigInteger'+PathDelim, '*.pas', FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'BigInteger'+PathDelim, 'rabin*.pas', FTests);
 
    FCompiler:=TDelphiWebScript.Create(nil);
 end;

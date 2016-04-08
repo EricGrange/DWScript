@@ -17,6 +17,7 @@
 unit dwsUtils;
 
 {$I dws.inc}
+{$R-}
 
 interface
 
@@ -944,6 +945,9 @@ procedure VarCopySafe(var dest : Variant; const src : UnicodeString); overload;
 procedure VarCopySafe(var dest : Variant; const src : Double); overload;
 procedure VarCopySafe(var dest : Variant; const src : Boolean); overload;
 
+procedure VarSetDefaultInt64(var dest : Variant); inline;
+
+
 procedure WriteVariant(writer: TWriter; const value: Variant);
 function ReadVariant(reader: TReader): Variant;
 
@@ -1804,6 +1808,16 @@ begin
 
    TVarData(dest).VType:=varBoolean;
    TVarData(dest).VBoolean:=src;
+end;
+
+// VarSetDefaultInt64
+//
+procedure VarSetDefaultInt64(var dest : Variant); overload;
+begin
+   VarClearSafe(dest);
+
+   TVarData(dest).VType:=varInt64;
+   TVarData(dest).VInt64:=0;
 end;
 
 // WriteVariant

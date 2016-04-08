@@ -53,7 +53,7 @@ const
    cDefaultCompilerOptions = [coOptimize, coAssertions];
    cDefaultMaxRecursionDepth = 1024;
    cDefaultMaxExceptionDepth = 10;
-   cDefaultStackChunkSize = 128;  // 2 kB in 32bit Delphi, each stack entry is a Variant
+   cDefaultStackChunkSize = 4096;  // 64 kB in 32bit Delphi, each stack entry is a Variant
 
    // compiler version is date in YYYYMMDD format, dot subversion number
    cCompilerVersion = 20160309.0;
@@ -2881,7 +2881,6 @@ var
    assignExpr : TAssignExpr;
    constExpr : TConstExpr;
    varExpr : TVarExpr;
-   symTypClass : TClass;
 begin
    Result:=nil;
 
@@ -2909,10 +2908,8 @@ begin
 
       RecordSymbolUse(sym, scriptPos, [suDeclaration]);
 
-      symTypClass := sym.Typ.ClassType;
-      if symTypClass.InheritsFrom(TArraySymbol) or (symTypClass=TAssociativeArraySymbol) then begin
+      if sym.Typ.DynamicInitialization then begin
 
-         // TODO: if Sym.DynamicInit?
          FProg.InitExpr.AddStatement(
             TInitDataExpr.Create(FProg, scriptPos, varExpr));
 

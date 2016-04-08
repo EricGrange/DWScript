@@ -1092,6 +1092,7 @@ type
          function DataSymbol : TDataSymbol; virtual;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); virtual; abstract;
+         procedure GetRelativeDataPtr(exec : TdwsExecution; var result : IDataContext); virtual;
 
          property DataPtr[exec : TdwsExecution] : IDataContext read GetDataPtrFunc;
    end;
@@ -1186,7 +1187,7 @@ type
       FArgExpr : TTypedExpr;
       FTypeParamSym : TSymbol;  // TSymbol / TPushOperatorType union
 
-      procedure InitPushAddr(stackAddr: Integer; argExpr: TTypedExpr);
+      procedure InitPushAddr(addr: Integer; argExpr: TTypedExpr);
       procedure InitPushTempAddr(stackAddr: Integer; argExpr: TTypedExpr);
       procedure InitPushTempArrayAddr(stackAddr: Integer; argExpr: TTypedExpr);
       procedure InitPushTempArray(stackAddr: Integer; argExpr: TTypedExpr);
@@ -4406,6 +4407,13 @@ begin
    DataPtr[exec].WriteData(DataExpr.DataPtr[exec], Typ.Size);
 end;
 
+// GetRelativeDataPtr
+//
+procedure TDataExpr.GetRelativeDataPtr(exec : TdwsExecution; var result : IDataContext);
+begin
+   GetDataPtr(exec, result);
+end;
+
 // ------------------
 // ------------------ TFuncExprBase ------------------
 // ------------------
@@ -4592,12 +4600,12 @@ end;
 
 // InitPushAddr
 //
-procedure TPushOperator.InitPushAddr(stackAddr: Integer; argExpr: TTypedExpr);
+procedure TPushOperator.InitPushAddr(addr: Integer; argExpr: TTypedExpr);
 begin
    if argExpr is TVarParamExpr then
       FTypeParamSym:=TSymbol(potPassAddr)
    else FTypeParamSym:=TSymbol(potAddr);
-   FStackAddr:=stackAddr;
+   FStackAddr:=addr;
    FArgExpr:=argExpr;
 end;
 
@@ -4714,8 +4722,11 @@ end;
 // ExecuteAddr
 //
 procedure TPushOperator.ExecuteAddr(exec : TdwsExecution);
+var
+   dc : IDataContext;
 begin
-   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, TDataExpr(FArgExpr).DataPtr[exec]);
+   TDataExpr(FArgExpr).GetRelativeDataPtr(exec, dc);
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, dc);
 end;
 
 // ExecutePassAddr
@@ -4787,8 +4798,12 @@ end;
 // ExecuteResult
 //
 procedure TPushOperator.ExecuteResult(exec : TdwsExecution);
+var
+   buf : Variant;
 begin
-   FArgExpr.EvalAsVariant(exec, exec.Stack.Data[exec.Stack.StackPointer+FStackAddr]);
+   // temporary variable is required because FArgExpr could involve stack reallocation
+   FArgExpr.EvalAsVariant(exec, buf);
+   exec.Stack.Data[exec.Stack.StackPointer+FStackAddr] := buf;
 end;
 
 // ExecuteResultBoolean
@@ -6797,9 +6812,13 @@ begin
       // we are released, so never do: Self as IScriptObj
       if not FDestroyed then begin
          destroySym:=ExecutionContext.Prog.TypDefaultDestructor;
-         if destroySym=ClassSym.VMTMethod(destroySym.VMTIndex) then
+         if destroySym=ClassSym.VMTMethod(destroySym.VMTIndex) then begin
             Destroyed:=True
-         else CallDestructor;
+         end else begin
+            CallDestructor;
+            // workaround for self reference cleared from within constructor
+            if RefCount=-1 then _AddRef;
+         end;
       end;
       ExecutionContext.ScriptObjDestroyed(Self);
    end;
