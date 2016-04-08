@@ -1,0 +1,12 @@
+n+0 : probably prime
+n+2 : composite2
+n+4 : probably prime
+n+6 : probably prime
+n+8 : composite2
+n+10 : probably prime
+n+12 : probably prime
+n+14 : composite2
+n+16 : probably prime
+n+18 : composite2
+n+20 : composite2
+n+22 : composite2

@@ -30,6 +30,8 @@ type
          procedure CompilationWithMapAndSymbols;
          procedure ExecutionNonOptimized;
          procedure ExecutionOptimized;
+
+         procedure MultiThreadedExecution;
    end;
 
 // ------------------------------------------------------------------
@@ -121,39 +123,46 @@ begin
    Execution;
 end;
 
-// Execution
-//
-procedure TBigIntegerTests.Execution;
+type
+   TCheckEquals = procedure (const expected, effective, msg : String) of object;
+
+procedure RunTests(testList : TStrings; compiler : TDelphiWebScript;
+                   checkEquals :  TCheckEquals; rounds : Integer);
 var
    source, expectedResult : TStringList;
-   i : Integer;
+   i, j : Integer;
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
-   resultText, resultsFileName : String;
+   resultText, resultsFileName, expectedResultText : String;
 begin
    source:=TStringList.Create;
    expectedResult:=TStringList.Create;
    try
 
-      for i:=0 to FTests.Count-1 do begin
+      for i:=0 to testList.Count-1 do begin
 
-         source.LoadFromFile(FTests[i]);
+         source.LoadFromFile(testList[i]);
 
-         prog:=FCompiler.Compile(source.Text);
+         prog:=compiler.Compile(source.Text);
 
-         CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
-         exec:=prog.Execute;
+         checkEquals('', prog.Msgs.AsInfo, testList[i]);
 
-         resultText:=exec.Result.ToString;
-         if exec.Msgs.Count>0 then
-            resultText:=resultText+#13#10'>>>> Error(s): '#13#10+exec.Msgs.AsInfo;
-
-         resultsFileName:=ChangeFileExt(FTests[i], '.txt');
+         resultsFileName:=ChangeFileExt(testList[i], '.txt');
          if FileExists(resultsFileName) then begin
             expectedResult.LoadFromFile(resultsFileName);
-            CheckEquals(expectedResult.Text, resultText, FTests[i]);
-         end else CheckEquals('', resultText, FTests[i]);
-         CheckEquals('', exec.Msgs.AsInfo, FTests[i]);
+            expectedResultText := expectedResult.Text;
+         end else expectedResultText := '';
+
+         for j := 1 to rounds do begin
+            exec:=prog.Execute;
+
+            resultText:=exec.Result.ToString;
+            if exec.Msgs.Count>0 then
+               resultText:=resultText+#13#10'>>>> Error(s): '#13#10+exec.Msgs.AsInfo;
+
+            checkEquals(expectedResultText, resultText, testList[i]);
+            checkEquals('', exec.Msgs.AsInfo, testList[i]);
+         end;
 
       end;
 
@@ -161,6 +170,13 @@ begin
       expectedResult.Free;
       source.Free;
    end;
+end;
+
+// Execution
+//
+procedure TBigIntegerTests.Execution;
+begin
+   RunTests(FTests, FCompiler, CheckEquals, 1);
 end;
 
 // BasicTest32
@@ -219,6 +235,52 @@ begin
    CheckEquals('-1', c.ToHexString, '(-1)+1');
    c:=b-a;
    CheckEquals('-FFFFFFFFFFFFFFFF', c.ToHexString, '(-1)-1');
+end;
+
+type
+   TThreadRunner = class(TThread)
+      FTests : TBigIntegerTests;
+      FMessage : String;
+      procedure CheckEquals(const expected, effective, msg : String);
+      procedure Execute; override;
+
+   end;
+
+// Execute
+//
+procedure TThreadRunner.Execute;
+begin
+   RunTests(FTests.FTests, FTests.FCompiler, CheckEquals, 20);
+end;
+
+// CheckEquals
+//
+procedure TThreadRunner.CheckEquals(const expected, effective, msg : String);
+begin
+   if expected <> effective then
+      FMessage := Format('expected << %s >> but got << %s >> (%s)', [expected, effective, msg]);
+end;
+
+// MultiThreadedExecution
+//
+procedure TBigIntegerTests.MultiThreadedExecution;
+var
+   i : Integer;
+   t : array [0..3] of TThreadRunner;
+begin
+   for i := 0 to High(t) do begin
+      t[i] := TThreadRunner.Create(True);
+      t[i].FTests := Self;
+      t[i].Start;
+   end;
+   for i := 0 to High(t) do t[i].WaitFor;
+   try
+      for i := 0 to High(t) do
+         if t[i].FMessage <> '' then
+            Check(False, t[i].FMessage);
+   finally
+      for i := 0 to High(t) do t[i].Free;
+   end;
 end;
 
 // ------------------------------------------------------------------
