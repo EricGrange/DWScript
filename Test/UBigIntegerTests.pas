@@ -5,8 +5,7 @@ interface
 uses
    Windows, Classes, SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
-   dwsBigIntegerFunctions, dwsXPlatform, dwsSymbols, dwsUtils,
-   Velthuis.BigIntegers;
+   dwsBigIntegerFunctions.GMP, dwsXPlatform, dwsSymbols, dwsUtils;
 
 type
 
@@ -23,8 +22,8 @@ type
          procedure Compilation;
 
       published
-         procedure BasicTest32;
-         procedure BasicTest64;
+//         procedure BasicTest32;
+//         procedure BasicTest64;
 
          procedure CompilationNormal;
          procedure CompilationWithMapAndSymbols;
@@ -52,7 +51,7 @@ procedure TBigIntegerTests.SetUp;
 begin
    FTests:=TStringList.Create;
 
-   CollectFiles(ExtractFilePath(ParamStr(0))+'BigInteger'+PathDelim, 'rabin*.pas', FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'BigInteger'+PathDelim, 'rand*.pas', FTests);
 
    FCompiler:=TDelphiWebScript.Create(nil);
 end;
@@ -179,6 +178,7 @@ begin
    RunTests(FTests, FCompiler, CheckEquals, 1);
 end;
 
+{
 // BasicTest32
 //
 procedure TBigIntegerTests.BasicTest32;
@@ -236,7 +236,7 @@ begin
    c:=b-a;
    CheckEquals('-FFFFFFFFFFFFFFFF', c.ToHexString, '(-1)-1');
 end;
-
+}
 type
    TThreadRunner = class(TThread)
       FTests : TBigIntegerTests;

@@ -112,8 +112,6 @@ begin
       hProvLock.EndWrite;
    end;
 
-   FillChar(Result[1], nb, 0);
-
    // further muddy things, in case Windows generator is later found vulnerable,
    // this will protect us from "generic" exploits
    seed:=RDTSC xor vXorShiftSeedMask;

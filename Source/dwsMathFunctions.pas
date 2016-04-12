@@ -936,8 +936,8 @@ initialization
    RegisterInternalBoolFunction(TIsFiniteFunc, 'IsFinite', ['v', SYS_FLOAT], [iffStateLess], 'IsFinite');
 
    RegisterInternalIntFunction(TGcdFunc, 'Gcd', ['a', SYS_INTEGER, 'b', SYS_INTEGER], [iffStateLess, iffOverloaded]);
-   RegisterInternalIntFunction(TLcmFunc, 'Lcm', ['a', SYS_INTEGER, 'b', SYS_INTEGER], [iffStateLess]);
-   RegisterInternalBoolFunction(TIsPrimeFunc, 'IsPrime', ['n', SYS_INTEGER], [iffStateLess], 'IsPrime');
+   RegisterInternalIntFunction(TLcmFunc, 'Lcm', ['a', SYS_INTEGER, 'b', SYS_INTEGER], [iffStateLess, iffOverloaded]);
+   RegisterInternalBoolFunction(TIsPrimeFunc, 'IsPrime', ['n', SYS_INTEGER], [iffStateLess, iffOverloaded], 'IsPrime');
    RegisterInternalIntFunction(TLeastFactorFunc, 'LeastFactor', ['n', SYS_INTEGER], [iffStateLess], 'LeastFactor');
 
    RegisterInternalFloatFunction(TRandomFunc, 'Random', []);

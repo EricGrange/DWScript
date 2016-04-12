@@ -1016,9 +1016,10 @@ end;
 //
 procedure StatusCodeToReason(code : integer; var result : RawByteString);
 const
-   cCodes200 : array [200..206] of RawByteString = (
+   cCodes200 : array [200..207] of RawByteString = (
       'OK', 'Created', 'Accepted', 'Non-Authoritative Information',  // 200-203
-      'No Content', 'Reset Content', 'Partial Content' );            // 204-206
+      'No Content', 'Reset Content', 'Partial Content',              // 204-206
+      'Multi-Status' );                                              // 207
    cCodes300 : array [300..307] of RawByteString = (
       'Multiple Choices', 'Moved Permanently', 'Found', 'See Other', // 300-303
       'Not Modified', 'Use Proxy', 'Unused', 'Temporary Redirect' ); // 304-307
@@ -1093,8 +1094,8 @@ begin
       dataChunk.BufferLength := length(Content);
       EntityChunkCount := 1;
       pEntityChunks := @dataChunk;
-      Headers.KnownHeaders[reqContentType].RawValueLength := length(ContentType);
    end;
+   Headers.KnownHeaders[reqContentType].RawValueLength := length(ContentType);
    Headers.KnownHeaders[reqContentType].pRawValue := pointer(ContentType);
 end;
 

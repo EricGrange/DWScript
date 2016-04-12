@@ -274,7 +274,10 @@ end;
 //
 function TdwsTokenStore.CollectToken(const item : TdwsToken) : TSimpleHashAction;
 begin
-   Result:=shaRemove;
+   if item.Expire>UTCDateTime then
+      Result:=shaNone
+   else
+      Result:=shaRemove;
 end;
 
 // CollectTokenByData
