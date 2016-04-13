@@ -1087,7 +1087,7 @@ end;
 procedure HTTP_RESPONSE_V2.SetContent(var dataChunk : HTTP_DATA_CHUNK_INMEMORY;
    const Content, ContentType : RawByteString);
 begin
-   fillchar(dataChunk, sizeof(dataChunk), 0);
+   FillChar(dataChunk, SizeOf(dataChunk), 0);
    if Content <> '' then begin
       dataChunk.DataChunkType := hctFromMemory;
       dataChunk.pBuffer := pointer(Content);
@@ -1095,8 +1095,10 @@ begin
       EntityChunkCount := 1;
       pEntityChunks := @dataChunk;
    end;
-   Headers.KnownHeaders[reqContentType].RawValueLength := length(ContentType);
-   Headers.KnownHeaders[reqContentType].pRawValue := pointer(ContentType);
+   if ContentType<>'' then begin
+      Headers.KnownHeaders[reqContentType].RawValueLength := Length(ContentType);
+      Headers.KnownHeaders[reqContentType].pRawValue := Pointer(ContentType);
+   end;
 end;
 
 procedure HTTP_RESPONSE_V2.SetHeaders(P : PAnsiChar;
