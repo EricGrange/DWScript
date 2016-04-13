@@ -26,7 +26,7 @@ uses
    dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList, dwsUnitSymbols,
    dwsConstExprs, dwsMagicExprs, dwsDataContext, dwsErrors, dwsRelExprs,
    dwsOperators, dwsTokenizer, dwsCryptoXPlatform,
-   gmp_lib;
+   dwsMPIR;
 
 const
    SYS_BIGINTEGER = 'BigInteger';
@@ -96,6 +96,16 @@ type
       procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
    TBigIntegerModOpExpr = class(TBigIntegerOpExpr)
+      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+   end;
+
+   TBigIntegerAndOpExpr = class(TBigIntegerOpExpr)
+      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+   end;
+   TBigIntegerOrOpExpr = class(TBigIntegerOpExpr)
+      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+   end;
+   TBigIntegerXorOpExpr = class(TBigIntegerOpExpr)
       procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
@@ -238,6 +248,10 @@ type
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
+   TBigIntegerFactorialFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
+   end;
+
    TBigIntegerRandomFunc = class(TInternalMagicVariantFunction)
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
@@ -288,6 +302,9 @@ begin
    RegisterOperators(ttTIMES,    TBigIntegerMultOpExpr);
    RegisterOperators(ttDIV,      TBigIntegerDivOpExpr);
    RegisterOperators(ttMOD,      TBigIntegerModOpExpr);
+   RegisterOperators(ttAND,      TBigIntegerAndOpExpr);
+   RegisterOperators(ttOR,       TBigIntegerOrOpExpr);
+   RegisterOperators(ttXOR,      TBigIntegerXorOpExpr);
 
    operators.RegisterOperator(ttSHL, TBigIntegerShiftLeftExpr,   typBigInteger, systemTable.TypInteger);
    operators.RegisterOperator(ttSAR, TBigIntegerShiftRightExpr,  typBigInteger, systemTable.TypInteger);
@@ -387,11 +404,10 @@ end;
 constructor TBigIntegerWrapper.CreateZero;
 begin
    inherited Create;
-   try
-      mpz_init(Value);
-   except
+   if not Bind_MPIR_DLL then
       raise Exception.Create('mpir.dll is required for BigInteger');
-   end;
+
+   mpz_init(Value);
 end;
 
 // CreateInt64
@@ -457,7 +473,9 @@ end;
 //
 function TBigIntegerWrapper.BitLength : Integer;
 begin
-   Result := Abs(Value.mp_size) * 4; // TODO: a better estimator
+   if Value.mp_size = 0 then
+      Result := 0
+   else Result := mpz_sizeinbase(Value, 2);
 end;
 
 // ToStringBase
@@ -522,6 +540,7 @@ end;
 constructor TBigIntegerOpExpr.Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
 begin
    inherited;
+   Bind_MPIR_DLL;
    if aLeft.Typ.UnAliasedTypeIs(TBaseIntegerSymbol) then
       Typ := aRight.Typ
    else Typ := aLeft.Typ;
@@ -589,6 +608,45 @@ var
 begin
    bi := TBigIntegerWrapper.CreateZero;
    mpz_mod(bi.Value, Left.EvalAsBigInteger(exec).Value^, Right.EvalAsBigInteger(exec).Value^);
+   result := bi as IdwsBigInteger;
+end;
+
+// ------------------
+// ------------------ TBigIntegerAndOpExpr ------------------
+// ------------------
+
+procedure TBigIntegerAndOpExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+var
+   bi : TBigIntegerWrapper;
+begin
+   bi := TBigIntegerWrapper.CreateZero;
+   mpz_and(bi.Value, Left.EvalAsBigInteger(exec).Value^, Right.EvalAsBigInteger(exec).Value^);
+   result := bi as IdwsBigInteger;
+end;
+
+// ------------------
+// ------------------ TBigIntegerOrOpExpr ------------------
+// ------------------
+
+procedure TBigIntegerOrOpExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+var
+   bi : TBigIntegerWrapper;
+begin
+   bi := TBigIntegerWrapper.CreateZero;
+   mpz_ior(bi.Value, Left.EvalAsBigInteger(exec).Value^, Right.EvalAsBigInteger(exec).Value^);
+   result := bi as IdwsBigInteger;
+end;
+
+// ------------------
+// ------------------ TBigIntegerXorOpExpr ------------------
+// ------------------
+
+procedure TBigIntegerXorOpExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+var
+   bi : TBigIntegerWrapper;
+begin
+   bi := TBigIntegerWrapper.CreateZero;
+   mpz_xor(bi.Value, Left.EvalAsBigInteger(exec).Value^, Right.EvalAsBigInteger(exec).Value^);
    result := bi as IdwsBigInteger;
 end;
 
@@ -773,11 +831,8 @@ end;
 // ------------------
 
 function TBigIntegerOddFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
-var
-   p : pmpz_t;
 begin
-   p := ArgBigInteger(args, 0).Value;
-   Result := (p.mp_size <> 0) and Odd(p.mp_d^);
+   Result := mpz_odd_p(ArgBigInteger(args, 0).Value^);
 end;
 
 // ------------------
@@ -785,11 +840,8 @@ end;
 // ------------------
 
 function TBigIntegerEvenFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
-var
-   p : pmpz_t;
 begin
-   p := ArgBigInteger(args, 0).Value;
-   Result := (p.mp_size = 0) or not Odd(p.mp_d^);
+   Result := mpz_even_p(ArgBigInteger(args, 0).Value^);
 end;
 
 // ------------------
@@ -797,15 +849,8 @@ end;
 // ------------------
 
 function TBigIntegerSignFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
-var
-   size : Integer;
 begin
-   size := ArgBigInteger(args, 0).Value.mp_size;
-   if size > 0 then
-      Result := 1
-   else if size = 0 then
-      Result := 0
-   else Result := -1;
+   Result := mpz_sgn(ArgBigInteger(args, 0).Value^);
 end;
 
 // ------------------
@@ -1118,6 +1163,23 @@ begin
    Result := bi as IdwsBigInteger;
 end;
 
+// ------------------
+// ------------------ TBigIntegerFactorialFunc ------------------
+// ------------------
+
+procedure TBigIntegerFactorialFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
+var
+   bi : TBigIntegerWrapper;
+   i : Int64;
+begin
+   bi := TBigIntegerWrapper.CreateZero;
+   i:=args.AsInteger[0];
+   if i <= 1 then
+      mpz_set_uint64(bi.Value, 1)
+   else mpz_fac_ui(bi.Value, i);
+   Result := bi as IdwsBigInteger;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -1157,8 +1219,9 @@ initialization
                                                                   SYS_BIGINTEGER, [iffStateLess, iffOverloaded], 'ModPow');
    RegisterInternalFunction(TBigIntegerModPowFunc,    'ModPow',   ['base', SYS_BIGINTEGER, 'exponent', SYS_INTEGER, 'modulus', SYS_BIGINTEGER],
                                                                   SYS_BIGINTEGER, [iffStateLess, iffOverloaded], 'ModPow');
+   RegisterInternalFunction(TBigIntegerFactorialFunc, 'BigFactorial', ['n', SYS_INTEGER], SYS_VARIANT, [iffStateLess]);
 
-   RegisterInternalFunction(TBigIntegerRandomFunc,   'RandomBigInteger', ['limitPlusOne', SYS_BIGINTEGER], SYS_BIGINTEGER);
+   RegisterInternalFunction(TBigIntegerRandomFunc,    'RandomBigInteger', ['limitPlusOne', SYS_BIGINTEGER], SYS_BIGINTEGER);
 
 end.
 
