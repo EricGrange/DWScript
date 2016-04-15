@@ -26,6 +26,8 @@ uses
   dwsTimeFunctions,
   dwsVariantFunctions,
   dwsFileFunctions,
+  dwsBigIntegerFunctions.GMP,
+  dwsMPIR.Bundle,
   dwsClassesLibModule,
   dwsZipLibModule,
   dwsEncodingLibModule,

@@ -27,7 +27,7 @@ unit dwsMPIR;
 
 interface
 
-uses Windows;
+uses Windows, SysUtils, dwsXPlatform;
 
 const
    MaxVarSize = MaxInt div 4;
@@ -436,7 +436,10 @@ procedure mpf_pi(var dest: mpf_t);
 
 *)
 
-function Bind_MPIR_DLL(const dllName : String = 'mpir.dll') : Boolean;
+var
+   vOnNeedMPIRDynamicDLLName : function : String;
+
+function Bind_MPIR_DLL(const dllName : String = '') : Boolean;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -448,295 +451,316 @@ implementation
 
 var
    vDLLHandle : THandle;
+   vBindMRSW : TMultiReadSingleWrite;
 
-function Bind_MPIR_DLL(const dllName : String = 'mpir.dll') : Boolean;
+function PerformBind_MPIR_DLL(dllName : String) : Boolean;
+var
+   handle : THandle;
 
    function GetProcMPZ(const name : AnsiString) : Pointer;
    begin
-      Result := GetProcAddress(vDLLHandle, PAnsiChar('__gmpz_'+name));
+      Result := GetProcAddress(handle, PAnsiChar('__gmpz_'+name));
    end;
 
    function GetProcMPQ(const name : AnsiString) : Pointer;
    begin
-      Result := GetProcAddress(vDLLHandle, PAnsiChar('__gmpq_'+name));
+      Result := GetProcAddress(handle, PAnsiChar('__gmpq_'+name));
    end;
 
    function GetProcMPF(const name : AnsiString) : Pointer;
    begin
-      Result := GetProcAddress(vDLLHandle, PAnsiChar('__gmpf_'+name));
+      Result := GetProcAddress(handle, PAnsiChar('__gmpf_'+name));
    end;
 
    function GetProcGMP(const name : AnsiString) : Pointer;
    begin
-      Result := GetProcAddress(vDLLHandle, PAnsiChar('__gmp_'+name));
+      Result := GetProcAddress(handle, PAnsiChar('__gmp_'+name));
    end;
 
 begin
+   vBindMRSW.BeginWrite;
+   try
+      if dllName = '' then begin
+         if Assigned(vOnNeedMPIRDynamicDLLName) then
+            dllName := vOnNeedMPIRDynamicDLLName();
+         if dllName = '' then
+            dllName := 'mpir.dll';
+      end;
+
+      handle := LoadLibrary(PChar(dllName));
+      if handle = 0 then RaiseLastOSError;// Exit(False);
+
+      mpz_init := GetProcMPZ('init');
+      mpz_inits := GetProcMPZ('inits');
+      mpz_init2 := GetProcMPZ('init2');
+      mpz_clear := GetProcMPZ('clear');
+      mpz_clears := GetProcMPZ('clears');
+      mpz_realloc := GetProcMPZ('realloc');
+      mpz_realloc2 := GetProcMPZ('realloc2');
+      mpz_array_init := GetProcMPZ('array_init');
+      mpz_swap := GetProcMPZ('swap');
+      mpz_set := GetProcMPZ('set');
+      mpz_set_ui := GetProcMPZ('set_ui');
+      mpz_set_si := GetProcMPZ('set_si');
+      mpz_set_d := GetProcMPZ('set_d');
+      mpz_set_q := GetProcMPZ('set_q');
+      mpz_set_f := GetProcMPZ('set_f');
+      mpz_set_str := GetProcMPZ('set_str');
+      mpz_init_set := GetProcMPZ('init_set');
+      mpz_init_set_ui := GetProcMPZ('init_set_ui');
+      mpz_init_set_si := GetProcMPZ('init_set_si');
+      mpz_init_set_d := GetProcMPZ('init_set_d');
+      mpz_init_set_str := GetProcMPZ('init_set_str');
+      mpz_import := GetProcMPZ('import');
+      mpz_export := GetProcMPZ('export');
+      mpz_getlimbn := GetProcMPZ('getlimbn');
+      mpz_size := GetProcMPZ('size');
+      mpz_get_ui := GetProcMPZ('get_ui');
+      mpz_get_si := GetProcMPZ('get_si');
+      mpz_get_d := GetProcMPZ('get_d');
+      mpz_get_d_2exp := GetProcMPZ('get_d_2exp');
+      mpz_fits_sint_p := GetProcMPZ('fits_sint_p');
+      mpz_fits_slong_p := GetProcMPZ('fits_slong_p');
+      mpz_fits_sshort_p := GetProcMPZ('fits_sshort_p');
+      mpz_fits_uint_p := GetProcMPZ('fits_uint_p');
+      mpz_fits_ulong_p := GetProcMPZ('fits_ulong_p');
+      mpz_fits_ushort_p := GetProcMPZ('fits_ushort_p');
+      mpz_get_str := GetProcMPZ('get_str');
+      mpz_add := GetProcMPZ('add');
+      mpz_add_ui := GetProcMPZ('add_ui');
+      mpz_sub := GetProcMPZ('sub');
+      mpz_sub_ui := GetProcMPZ('sub_ui');
+      mpz_ui_sub := GetProcMPZ('ui_sub');
+      mpz_mul := GetProcMPZ('mul');
+      mpz_mul_si := GetProcMPZ('mul_si');
+      mpz_mul_ui := GetProcMPZ('mul_ui');
+      mpz_mul_2exp := GetProcMPZ('mul_2exp');
+      mpz_addmul := GetProcMPZ('addmul');
+      mpz_addmul_ui := GetProcMPZ('addmul_ui');
+      mpz_submul := GetProcMPZ('submul');
+      mpz_submul_ui := GetProcMPZ('submul_ui');
+      mpz_neg := GetProcMPZ('neg');
+      mpz_abs := GetProcMPZ('abs');
+      mpz_cdiv_q := GetProcMPZ('cdiv_q');
+      mpz_cdiv_r := GetProcMPZ('cdiv_r');
+      mpz_cdiv_qr := GetProcMPZ('cdiv_qr');
+      mpz_cdiv_q_ui := GetProcMPZ('cdiv_q_ui');
+      mpz_cdiv_r_ui := GetProcMPZ('cdiv_r_ui');
+      mpz_cdiv_qr_ui := GetProcMPZ('cdiv_qr_ui');
+      mpz_cdiv_ui := GetProcMPZ('cdiv_ui');
+      mpz_cdiv_q_2exp := GetProcMPZ('cdiv_q_2exp');
+      mpz_cdiv_r_2exp := GetProcMPZ('cdiv_r_2exp');
+      mpz_fdiv_q := GetProcMPZ('fdiv_q');
+      mpz_fdiv_r := GetProcMPZ('fdiv_r');
+      mpz_fdiv_qr := GetProcMPZ('fdiv_qr');
+      mpz_fdiv_q_ui := GetProcMPZ('fdiv_q_ui');
+      mpz_fdiv_r_ui := GetProcMPZ('fdiv_r_ui');
+      mpz_fdiv_qr_ui := GetProcMPZ('fdiv_qr_ui');
+      mpz_fdiv_ui := GetProcMPZ('fdiv_ui');
+      mpz_fdiv_q_2exp := GetProcMPZ('fdiv_q_2exp');
+      mpz_fdiv_r_2exp := GetProcMPZ('fdiv_r_2exp');
+      mpz_tdiv_q := GetProcMPZ('tdiv_q');
+      mpz_tdiv_r := GetProcMPZ('tdiv_r');
+      mpz_tdiv_qr := GetProcMPZ('tdiv_qr');
+      mpz_tdiv_q_ui := GetProcMPZ('tdiv_q_ui');
+      mpz_tdiv_r_ui := GetProcMPZ('tdiv_r_ui');
+      mpz_tdiv_qr_ui := GetProcMPZ('tdiv_qr_ui');
+      mpz_tdiv_ui := GetProcMPZ('tdiv_ui');
+      mpz_tdiv_q_2exp := GetProcMPZ('tdiv_q_2exp');
+      mpz_tdiv_r_2exp := GetProcMPZ('tdiv_r_2exp');
+      mpz_mod := GetProcMPZ('mod');
+      mpz_mod_ui := GetProcMPZ('mod_ui');
+      mpz_divexact := GetProcMPZ('divexact');
+      mpz_divexact_ui := GetProcMPZ('divexact_ui');
+      mpz_mod_2exp := GetProcMPZ('mod_2exp');
+      mpz_div_2exp := GetProcMPZ('div_2exp');
+      mpz_divisible_p := GetProcMPZ('divisible_p');
+      mpz_divisible_ui_p := GetProcMPZ('divisible_ui_p');
+      mpz_divisible_2exp_p := GetProcMPZ('divisible_2exp_p');
+      mpz_congruent_p := GetProcMPZ('congruent_p');
+      mpz_congruent_ui_p := GetProcMPZ('congruent_ui_p');
+      mpz_congruent_2exp_p := GetProcMPZ('congruent_2exp_p');
+      mpz_powm := GetProcMPZ('powm');
+      mpz_powm_ui := GetProcMPZ('powm_ui');
+      mpz_pow_ui := GetProcMPZ('pow_ui');
+      mpz_ui_pow_ui := GetProcMPZ('ui_pow_ui');
+      mpz_root := GetProcMPZ('root');
+      mpz_nthroot := GetProcMPZ('nthroot');
+      mpz_rootrem := GetProcMPZ('rootrem');
+      mpz_sqrt := GetProcMPZ('sqrt');
+      mpz_sqrtrem := GetProcMPZ('sqrtrem');
+      mpz_perfect_square_p := GetProcMPZ('perfect_square_p');
+      mpz_perfect_power_p := GetProcMPZ('perfect_power_p');
+      mpz_sizeinbase := GetProcMPZ('sizeinbase');
+      mpz_probable_prime_p := GetProcMPZ('probable_prime_p');
+      mpz_likely_prime_p := GetProcMPZ('likely_prime_p');
+      mpz_next_likely_prime := GetProcMPZ('next_likely_prime');
+      mpz_gcd := GetProcMPZ('gcd');
+      mpz_gcd_ui := GetProcMPZ('gcd_ui');
+      mpz_gcdext := GetProcMPZ('gcdext');
+      mpz_lcm := GetProcMPZ('lcm');
+      mpz_lcm_ui := GetProcMPZ('lcm_ui');
+      mpz_invert := GetProcMPZ('invert');
+      mpz_jacobi := GetProcMPZ('jacobi');
+      mpz_legendre := GetProcMPZ('legendre');
+      mpz_kronecker := GetProcMPZ('kronecker');
+      mpz_kronecker_si := GetProcMPZ('kronecker_si');
+      mpz_kronecker_ui := GetProcMPZ('kronecker_ui');
+      mpz_si_kronecker := GetProcMPZ('si_kronecker');
+      mpz_ui_kronecker := GetProcMPZ('ui_kronecker');
+      mpz_remove := GetProcMPZ('remove');
+      mpz_fac_ui := GetProcMPZ('fac_ui');
+      mpz_fib_ui := GetProcMPZ('fib_ui');
+      mpz_fib2_ui := GetProcMPZ('fib2_ui');
+      mpz_bin_ui := GetProcMPZ('bin_ui');
+      mpz_bin_uiui := GetProcMPZ('bin_uiui');
+      mpz_lucnum_ui := GetProcMPZ('lucnum_ui');
+      mpz_lucnum2_ui := GetProcMPZ('lucnum2_ui');
+      mpz_cmp := GetProcMPZ('cmp');
+      mpz_cmp_d := GetProcMPZ('cmp_d');
+      mpz_cmp_ui := GetProcMPZ('cmp_ui');
+      mpz_cmp_si := GetProcMPZ('cmp_si');
+      mpz_cmpabs := GetProcMPZ('cmpabs');
+      mpz_cmpabs_d := GetProcMPZ('cmpabs_d');
+      mpz_cmpabs_ui := GetProcMPZ('cmpabs_ui');
+      mpz_and := GetProcMPZ('and');
+      mpz_ior := GetProcMPZ('ior');
+      mpz_xor := GetProcMPZ('xor');
+      mpz_com := GetProcMPZ('com');
+      mpz_popcount := GetProcMPZ('popcount');
+      mpz_hamdist := GetProcMPZ('hamdist');
+      mpz_scan0 := GetProcMPZ('scan0');
+      mpz_scan1 := GetProcMPZ('scan1');
+      mpz_setbit := GetProcMPZ('setbit');
+      mpz_clrbit := GetProcMPZ('clrbit');
+      mpz_combit := GetProcMPZ('combit');
+      mpz_tstbit := GetProcMPZ('tstbit');
+      mpz_urandomb := GetProcMPZ('urandomb');
+      mpz_urandomm := GetProcMPZ('urandomm');
+      mpz_rrandomb := GetProcMPZ('rrandomb');
+
+      mpq_canonicalize := GetProcMPQ('canonicalize');
+      mpq_init := GetProcMPQ('init');
+      mpq_inits := GetProcMPQ('inits');
+      mpq_clear := GetProcMPQ('clear');
+      mpq_clears := GetProcMPQ('clears');
+      mpq_set := GetProcMPQ('set');
+      mpq_set_z := GetProcMPQ('set_z');
+      mpq_set_ui := GetProcMPQ('set_ui');
+      mpq_set_si := GetProcMPQ('set_si');
+      mpq_set_str := GetProcMPQ('set_str');
+      mpq_set_d := GetProcMPQ('set_d');
+      mpq_set_f := GetProcMPQ('set_f');
+      mpq_swap := GetProcMPQ('swap');
+      mpq_add := GetProcMPQ('add');
+      mpq_sub := GetProcMPQ('sub');
+      mpq_mul := GetProcMPQ('mul');
+      mpq_div := GetProcMPQ('div');
+      mpq_neg := GetProcMPQ('neg');
+      mpq_abs := GetProcMPQ('abs');
+      mpq_inv := GetProcMPQ('inv');
+      mpq_mul_2exp := GetProcMPQ('mul_2exp');
+      mpq_div_2exp := GetProcMPQ('div_2exp');
+      mpq_cmp := GetProcMPQ('cmp');
+      mpq_cmp_ui := GetProcMPQ('cmp_ui');
+      mpq_cmp_si := GetProcMPQ('cmp_si');
+      mpq_equal := GetProcMPQ('equal');
+      mpq_get_d := GetProcMPQ('get_d');
+      mpq_set_num := GetProcMPQ('set_num');
+      mpq_set_den := GetProcMPQ('set_den');
+      mpq_get_num := GetProcMPQ('get_num');
+      mpq_get_den := GetProcMPQ('get_den');
+      mpq_get_str := GetProcMPQ('get_str');
+
+      mpf_set_default_prec := GetProcMPF('set_default_prec');
+      mpf_get_default_prec := GetProcMPF('get_default_prec');
+      mpf_init := GetProcMPF('init');
+      mpf_init2 := GetProcMPF('init2');
+      mpf_inits := GetProcMPF('inits');
+      mpf_clear := GetProcMPF('clear');
+      mpf_clears := GetProcMPF('clears');
+      mpf_set_prec := GetProcMPF('set_prec');
+      mpf_get_prec := GetProcMPF('get_prec');
+      mpf_set_prec_raw := GetProcMPF('set_prec_raw');
+      mpf_set := GetProcMPF('set');
+      mpf_set_ui := GetProcMPF('set_ui');
+      mpf_set_si := GetProcMPF('set_si');
+      mpf_set_d := GetProcMPF('set_d');
+      mpf_set_z := GetProcMPF('set_z');
+      mpf_set_q := GetProcMPF('set_q');
+      mpf_set_str := GetProcMPF('set_str');
+      mpf_swap := GetProcMPF('swap');
+      mpf_init_set := GetProcMPF('init_set');
+      mpf_init_set_ui := GetProcMPF('init_set_ui');
+      mpf_init_set_si := GetProcMPF('init_set_si');
+      mpf_init_set_d := GetProcMPF('init_set_d');
+      mpf_init_set_str := GetProcMPF('init_set_str');
+      mpf_get_d := GetProcMPF('get_d');
+      mpf_get_si := GetProcMPF('get_si');
+      mpf_get_ui := GetProcMPF('get_ui');
+      mpf_get_d_2exp := GetProcMPF('get_d_2exp');
+      mpf_fits_sint_p := GetProcMPF('fits_sint_p');
+      mpf_fits_slong_p := GetProcMPF('fits_slong_p');
+      mpf_fits_sshort_p := GetProcMPF('fits_sshort_p');
+      mpf_fits_uint_p := GetProcMPF('fits_uint_p');
+      mpf_fits_ulong_p := GetProcMPF('fits_ulong_p');
+      mpf_fits_ushort_p := GetProcMPF('fits_ushort_p');
+      mpf_cmp := GetProcMPF('cmp');
+      mpf_cmp_si := GetProcMPF('cmp_si');
+      mpf_cmp_ui := GetProcMPF('cmp_ui');
+      mpf_cmp_d := GetProcMPF('cmp_d');
+      mpf_eq := GetProcMPF('eq');
+      mpf_reldiff := GetProcMPF('reldiff');
+      mpf_get_str := GetProcMPF('get_str');
+      mpf_add := GetProcMPF('add');
+      mpf_add_ui := GetProcMPF('add_ui');
+      mpf_sub := GetProcMPF('sub');
+      mpf_ui_sub := GetProcMPF('ui_sub');
+      mpf_sub_ui := GetProcMPF('sub_ui');
+      mpf_mul := GetProcMPF('mul');
+      mpf_mul_ui := GetProcMPF('mul_ui');
+      mpf_div := GetProcMPF('div');
+      mpf_ui_div := GetProcMPF('ui_div');
+      mpf_div_ui := GetProcMPF('div_ui');
+      mpf_sqrt := GetProcMPF('sqrt');
+      mpf_sqrt_ui := GetProcMPF('sqrt_ui');
+      mpf_pow_ui := GetProcMPF('pow_ui');
+      mpf_neg := GetProcMPF('neg');
+      mpf_abs := GetProcMPF('abs');
+      mpf_mul_2exp := GetProcMPF('mul_2exp');
+      mpf_div_2exp := GetProcMPF('div_2exp');
+      mpf_ceil := GetProcMPF('ceil');
+      mpf_floor := GetProcMPF('floor');
+      mpf_trunc := GetProcMPF('trunc');
+      mpf_integer_p := GetProcMPF('integer_p');
+      mpf_urandomb := GetProcMPF('urandomb');
+      mpf_rrandomb := GetProcMPF('rrandomb');
+
+      gmp_randinit_default := GetProcGMP('randinit_default');
+      gmp_randinit_mt := GetProcGMP('randinit_mt');
+      gmp_randinit_lc_2exp := GetProcGMP('randinit_lc_2exp');
+      gmp_randinit_lc_2exp_size := GetProcGMP('randinit_lc_2exp_size');
+      gmp_randinit_set := GetProcGMP('randinit_set');
+      gmp_randclear := GetProcGMP('randclear');
+      gmp_randseed := GetProcGMP('randseed');
+      gmp_randseed_ui := GetProcGMP('randseed_ui');
+      gmp_urandomb_ui := GetProcGMP('urandomb_ui');
+      gmp_urandomm_ui := GetProcGMP('urandomm_ui');
+      gmp_printf := GetProcGMP('printf');
+      gmp_scanf := GetProcGMP('scanf');
+
+      vDLLHandle := handle;
+
+      Result := True;
+   finally
+      vBindMRSW.EndWrite;
+   end;
+end;
+
+function Bind_MPIR_DLL(const dllName : String = '') : Boolean;
+begin
    if vDLLHandle <> 0 then Exit(True);
-
-   vDLLHandle := LoadLibrary(PChar(dllName));
-   if vDLLHandle = 0 then Exit(False);
-
-   mpz_init := GetProcMPZ('init');
-   mpz_inits := GetProcMPZ('inits');
-   mpz_init2 := GetProcMPZ('init2');
-   mpz_clear := GetProcMPZ('clear');
-   mpz_clears := GetProcMPZ('clears');
-   mpz_realloc := GetProcMPZ('realloc');
-   mpz_realloc2 := GetProcMPZ('realloc2');
-   mpz_array_init := GetProcMPZ('array_init');
-   mpz_swap := GetProcMPZ('swap');
-   mpz_set := GetProcMPZ('set');
-   mpz_set_ui := GetProcMPZ('set_ui');
-   mpz_set_si := GetProcMPZ('set_si');
-   mpz_set_d := GetProcMPZ('set_d');
-   mpz_set_q := GetProcMPZ('set_q');
-   mpz_set_f := GetProcMPZ('set_f');
-   mpz_set_str := GetProcMPZ('set_str');
-   mpz_init_set := GetProcMPZ('init_set');
-   mpz_init_set_ui := GetProcMPZ('init_set_ui');
-   mpz_init_set_si := GetProcMPZ('init_set_si');
-   mpz_init_set_d := GetProcMPZ('init_set_d');
-   mpz_init_set_str := GetProcMPZ('init_set_str');
-   mpz_import := GetProcMPZ('import');
-   mpz_export := GetProcMPZ('export');
-   mpz_getlimbn := GetProcMPZ('getlimbn');
-   mpz_size := GetProcMPZ('size');
-   mpz_get_ui := GetProcMPZ('get_ui');
-   mpz_get_si := GetProcMPZ('get_si');
-   mpz_get_d := GetProcMPZ('get_d');
-   mpz_get_d_2exp := GetProcMPZ('get_d_2exp');
-   mpz_fits_sint_p := GetProcMPZ('fits_sint_p');
-   mpz_fits_slong_p := GetProcMPZ('fits_slong_p');
-   mpz_fits_sshort_p := GetProcMPZ('fits_sshort_p');
-   mpz_fits_uint_p := GetProcMPZ('fits_uint_p');
-   mpz_fits_ulong_p := GetProcMPZ('fits_ulong_p');
-   mpz_fits_ushort_p := GetProcMPZ('fits_ushort_p');
-   mpz_get_str := GetProcMPZ('get_str');
-   mpz_add := GetProcMPZ('add');
-   mpz_add_ui := GetProcMPZ('add_ui');
-   mpz_sub := GetProcMPZ('sub');
-   mpz_sub_ui := GetProcMPZ('sub_ui');
-   mpz_ui_sub := GetProcMPZ('ui_sub');
-   mpz_mul := GetProcMPZ('mul');
-   mpz_mul_si := GetProcMPZ('mul_si');
-   mpz_mul_ui := GetProcMPZ('mul_ui');
-   mpz_mul_2exp := GetProcMPZ('mul_2exp');
-   mpz_addmul := GetProcMPZ('addmul');
-   mpz_addmul_ui := GetProcMPZ('addmul_ui');
-   mpz_submul := GetProcMPZ('submul');
-   mpz_submul_ui := GetProcMPZ('submul_ui');
-   mpz_neg := GetProcMPZ('neg');
-   mpz_abs := GetProcMPZ('abs');
-   mpz_cdiv_q := GetProcMPZ('cdiv_q');
-   mpz_cdiv_r := GetProcMPZ('cdiv_r');
-   mpz_cdiv_qr := GetProcMPZ('cdiv_qr');
-   mpz_cdiv_q_ui := GetProcMPZ('cdiv_q_ui');
-   mpz_cdiv_r_ui := GetProcMPZ('cdiv_r_ui');
-   mpz_cdiv_qr_ui := GetProcMPZ('cdiv_qr_ui');
-   mpz_cdiv_ui := GetProcMPZ('cdiv_ui');
-   mpz_cdiv_q_2exp := GetProcMPZ('cdiv_q_2exp');
-   mpz_cdiv_r_2exp := GetProcMPZ('cdiv_r_2exp');
-   mpz_fdiv_q := GetProcMPZ('fdiv_q');
-   mpz_fdiv_r := GetProcMPZ('fdiv_r');
-   mpz_fdiv_qr := GetProcMPZ('fdiv_qr');
-   mpz_fdiv_q_ui := GetProcMPZ('fdiv_q_ui');
-   mpz_fdiv_r_ui := GetProcMPZ('fdiv_r_ui');
-   mpz_fdiv_qr_ui := GetProcMPZ('fdiv_qr_ui');
-   mpz_fdiv_ui := GetProcMPZ('fdiv_ui');
-   mpz_fdiv_q_2exp := GetProcMPZ('fdiv_q_2exp');
-   mpz_fdiv_r_2exp := GetProcMPZ('fdiv_r_2exp');
-   mpz_tdiv_q := GetProcMPZ('tdiv_q');
-   mpz_tdiv_r := GetProcMPZ('tdiv_r');
-   mpz_tdiv_qr := GetProcMPZ('tdiv_qr');
-   mpz_tdiv_q_ui := GetProcMPZ('tdiv_q_ui');
-   mpz_tdiv_r_ui := GetProcMPZ('tdiv_r_ui');
-   mpz_tdiv_qr_ui := GetProcMPZ('tdiv_qr_ui');
-   mpz_tdiv_ui := GetProcMPZ('tdiv_ui');
-   mpz_tdiv_q_2exp := GetProcMPZ('tdiv_q_2exp');
-   mpz_tdiv_r_2exp := GetProcMPZ('tdiv_r_2exp');
-   mpz_mod := GetProcMPZ('mod');
-   mpz_mod_ui := GetProcMPZ('mod_ui');
-   mpz_divexact := GetProcMPZ('divexact');
-   mpz_divexact_ui := GetProcMPZ('divexact_ui');
-   mpz_mod_2exp := GetProcMPZ('mod_2exp');
-   mpz_div_2exp := GetProcMPZ('div_2exp');
-   mpz_divisible_p := GetProcMPZ('divisible_p');
-   mpz_divisible_ui_p := GetProcMPZ('divisible_ui_p');
-   mpz_divisible_2exp_p := GetProcMPZ('divisible_2exp_p');
-   mpz_congruent_p := GetProcMPZ('congruent_p');
-   mpz_congruent_ui_p := GetProcMPZ('congruent_ui_p');
-   mpz_congruent_2exp_p := GetProcMPZ('congruent_2exp_p');
-   mpz_powm := GetProcMPZ('powm');
-   mpz_powm_ui := GetProcMPZ('powm_ui');
-   mpz_pow_ui := GetProcMPZ('pow_ui');
-   mpz_ui_pow_ui := GetProcMPZ('ui_pow_ui');
-   mpz_root := GetProcMPZ('root');
-   mpz_nthroot := GetProcMPZ('nthroot');
-   mpz_rootrem := GetProcMPZ('rootrem');
-   mpz_sqrt := GetProcMPZ('sqrt');
-   mpz_sqrtrem := GetProcMPZ('sqrtrem');
-   mpz_perfect_square_p := GetProcMPZ('perfect_square_p');
-   mpz_perfect_power_p := GetProcMPZ('perfect_power_p');
-   mpz_sizeinbase := GetProcMPZ('sizeinbase');
-   mpz_probable_prime_p := GetProcMPZ('probable_prime_p');
-   mpz_likely_prime_p := GetProcMPZ('likely_prime_p');
-   mpz_next_likely_prime := GetProcMPZ('next_likely_prime');
-   mpz_gcd := GetProcMPZ('gcd');
-   mpz_gcd_ui := GetProcMPZ('gcd_ui');
-   mpz_gcdext := GetProcMPZ('gcdext');
-   mpz_lcm := GetProcMPZ('lcm');
-   mpz_lcm_ui := GetProcMPZ('lcm_ui');
-   mpz_invert := GetProcMPZ('invert');
-   mpz_jacobi := GetProcMPZ('jacobi');
-   mpz_legendre := GetProcMPZ('legendre');
-   mpz_kronecker := GetProcMPZ('kronecker');
-   mpz_kronecker_si := GetProcMPZ('kronecker_si');
-   mpz_kronecker_ui := GetProcMPZ('kronecker_ui');
-   mpz_si_kronecker := GetProcMPZ('si_kronecker');
-   mpz_ui_kronecker := GetProcMPZ('ui_kronecker');
-   mpz_remove := GetProcMPZ('remove');
-   mpz_fac_ui := GetProcMPZ('fac_ui');
-   mpz_fib_ui := GetProcMPZ('fib_ui');
-   mpz_fib2_ui := GetProcMPZ('fib2_ui');
-   mpz_bin_ui := GetProcMPZ('bin_ui');
-   mpz_bin_uiui := GetProcMPZ('bin_uiui');
-   mpz_lucnum_ui := GetProcMPZ('lucnum_ui');
-   mpz_lucnum2_ui := GetProcMPZ('lucnum2_ui');
-   mpz_cmp := GetProcMPZ('cmp');
-   mpz_cmp_d := GetProcMPZ('cmp_d');
-   mpz_cmp_ui := GetProcMPZ('cmp_ui');
-   mpz_cmp_si := GetProcMPZ('cmp_si');
-   mpz_cmpabs := GetProcMPZ('cmpabs');
-   mpz_cmpabs_d := GetProcMPZ('cmpabs_d');
-   mpz_cmpabs_ui := GetProcMPZ('cmpabs_ui');
-   mpz_and := GetProcMPZ('and');
-   mpz_ior := GetProcMPZ('ior');
-   mpz_xor := GetProcMPZ('xor');
-   mpz_com := GetProcMPZ('com');
-   mpz_popcount := GetProcMPZ('popcount');
-   mpz_hamdist := GetProcMPZ('hamdist');
-   mpz_scan0 := GetProcMPZ('scan0');
-   mpz_scan1 := GetProcMPZ('scan1');
-   mpz_setbit := GetProcMPZ('setbit');
-   mpz_clrbit := GetProcMPZ('clrbit');
-   mpz_combit := GetProcMPZ('combit');
-   mpz_tstbit := GetProcMPZ('tstbit');
-   mpz_urandomb := GetProcMPZ('urandomb');
-   mpz_urandomm := GetProcMPZ('urandomm');
-   mpz_rrandomb := GetProcMPZ('rrandomb');
-
-   mpq_canonicalize := GetProcMPQ('canonicalize');
-   mpq_init := GetProcMPQ('init');
-   mpq_inits := GetProcMPQ('inits');
-   mpq_clear := GetProcMPQ('clear');
-   mpq_clears := GetProcMPQ('clears');
-   mpq_set := GetProcMPQ('set');
-   mpq_set_z := GetProcMPQ('set_z');
-   mpq_set_ui := GetProcMPQ('set_ui');
-   mpq_set_si := GetProcMPQ('set_si');
-   mpq_set_str := GetProcMPQ('set_str');
-   mpq_set_d := GetProcMPQ('set_d');
-   mpq_set_f := GetProcMPQ('set_f');
-   mpq_swap := GetProcMPQ('swap');
-   mpq_add := GetProcMPQ('add');
-   mpq_sub := GetProcMPQ('sub');
-   mpq_mul := GetProcMPQ('mul');
-   mpq_div := GetProcMPQ('div');
-   mpq_neg := GetProcMPQ('neg');
-   mpq_abs := GetProcMPQ('abs');
-   mpq_inv := GetProcMPQ('inv');
-   mpq_mul_2exp := GetProcMPQ('mul_2exp');
-   mpq_div_2exp := GetProcMPQ('div_2exp');
-   mpq_cmp := GetProcMPQ('cmp');
-   mpq_cmp_ui := GetProcMPQ('cmp_ui');
-   mpq_cmp_si := GetProcMPQ('cmp_si');
-   mpq_equal := GetProcMPQ('equal');
-   mpq_get_d := GetProcMPQ('get_d');
-   mpq_set_num := GetProcMPQ('set_num');
-   mpq_set_den := GetProcMPQ('set_den');
-   mpq_get_num := GetProcMPQ('get_num');
-   mpq_get_den := GetProcMPQ('get_den');
-   mpq_get_str := GetProcMPQ('get_str');
-
-   mpf_set_default_prec := GetProcMPF('set_default_prec');
-   mpf_get_default_prec := GetProcMPF('get_default_prec');
-   mpf_init := GetProcMPF('init');
-   mpf_init2 := GetProcMPF('init2');
-   mpf_inits := GetProcMPF('inits');
-   mpf_clear := GetProcMPF('clear');
-   mpf_clears := GetProcMPF('clears');
-   mpf_set_prec := GetProcMPF('set_prec');
-   mpf_get_prec := GetProcMPF('get_prec');
-   mpf_set_prec_raw := GetProcMPF('set_prec_raw');
-   mpf_set := GetProcMPF('set');
-   mpf_set_ui := GetProcMPF('set_ui');
-   mpf_set_si := GetProcMPF('set_si');
-   mpf_set_d := GetProcMPF('set_d');
-   mpf_set_z := GetProcMPF('set_z');
-   mpf_set_q := GetProcMPF('set_q');
-   mpf_set_str := GetProcMPF('set_str');
-   mpf_swap := GetProcMPF('swap');
-   mpf_init_set := GetProcMPF('init_set');
-   mpf_init_set_ui := GetProcMPF('init_set_ui');
-   mpf_init_set_si := GetProcMPF('init_set_si');
-   mpf_init_set_d := GetProcMPF('init_set_d');
-   mpf_init_set_str := GetProcMPF('init_set_str');
-   mpf_get_d := GetProcMPF('get_d');
-   mpf_get_si := GetProcMPF('get_si');
-   mpf_get_ui := GetProcMPF('get_ui');
-   mpf_get_d_2exp := GetProcMPF('get_d_2exp');
-   mpf_fits_sint_p := GetProcMPF('fits_sint_p');
-   mpf_fits_slong_p := GetProcMPF('fits_slong_p');
-   mpf_fits_sshort_p := GetProcMPF('fits_sshort_p');
-   mpf_fits_uint_p := GetProcMPF('fits_uint_p');
-   mpf_fits_ulong_p := GetProcMPF('fits_ulong_p');
-   mpf_fits_ushort_p := GetProcMPF('fits_ushort_p');
-   mpf_cmp := GetProcMPF('cmp');
-   mpf_cmp_si := GetProcMPF('cmp_si');
-   mpf_cmp_ui := GetProcMPF('cmp_ui');
-   mpf_cmp_d := GetProcMPF('cmp_d');
-   mpf_eq := GetProcMPF('eq');
-   mpf_reldiff := GetProcMPF('reldiff');
-   mpf_get_str := GetProcMPF('get_str');
-   mpf_add := GetProcMPF('add');
-   mpf_add_ui := GetProcMPF('add_ui');
-   mpf_sub := GetProcMPF('sub');
-   mpf_ui_sub := GetProcMPF('ui_sub');
-   mpf_sub_ui := GetProcMPF('sub_ui');
-   mpf_mul := GetProcMPF('mul');
-   mpf_mul_ui := GetProcMPF('mul_ui');
-   mpf_div := GetProcMPF('div');
-   mpf_ui_div := GetProcMPF('ui_div');
-   mpf_div_ui := GetProcMPF('div_ui');
-   mpf_sqrt := GetProcMPF('sqrt');
-   mpf_sqrt_ui := GetProcMPF('sqrt_ui');
-   mpf_pow_ui := GetProcMPF('pow_ui');
-   mpf_neg := GetProcMPF('neg');
-   mpf_abs := GetProcMPF('abs');
-   mpf_mul_2exp := GetProcMPF('mul_2exp');
-   mpf_div_2exp := GetProcMPF('div_2exp');
-   mpf_ceil := GetProcMPF('ceil');
-   mpf_floor := GetProcMPF('floor');
-   mpf_trunc := GetProcMPF('trunc');
-   mpf_integer_p := GetProcMPF('integer_p');
-   mpf_urandomb := GetProcMPF('urandomb');
-   mpf_rrandomb := GetProcMPF('rrandomb');
-
-   gmp_randinit_default := GetProcGMP('randinit_default');
-   gmp_randinit_mt := GetProcGMP('randinit_mt');
-   gmp_randinit_lc_2exp := GetProcGMP('randinit_lc_2exp');
-   gmp_randinit_lc_2exp_size := GetProcGMP('randinit_lc_2exp_size');
-   gmp_randinit_set := GetProcGMP('randinit_set');
-   gmp_randclear := GetProcGMP('randclear');
-   gmp_randseed := GetProcGMP('randseed');
-   gmp_randseed_ui := GetProcGMP('randseed_ui');
-   gmp_urandomb_ui := GetProcGMP('urandomb_ui');
-   gmp_urandomm_ui := GetProcGMP('urandomm_ui');
-   gmp_printf := GetProcGMP('printf');
-   gmp_scanf := GetProcGMP('scanf');
-
-   Result := True;
+   Result := PerformBind_MPIR_DLL(dllName);
 end;
 
 function mpz_odd_p(const src: mpz_t): Boolean;
@@ -1089,6 +1113,8 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+   vBindMRSW := TMultiReadSingleWrite.Create;
+
 finalization
 
 (*
@@ -1101,4 +1127,7 @@ finalization
    if PiInited then
       mpf_clear(_Pi);
 *)
+
+   FreeAndNil(vBindMRSW);
+
 end.
