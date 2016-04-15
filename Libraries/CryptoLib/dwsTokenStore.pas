@@ -50,7 +50,6 @@ type
 
       protected
          procedure ScheduleCollection;
-         function CollectToken(const item : TdwsToken) : TSimpleHashAction;
          function CollectTokenByData(const item : TdwsToken) : TSimpleHashAction;
 
          function GetTokenData(const aToken : String) : String;
@@ -255,29 +254,35 @@ end;
 
 // Collect
 //
-procedure TdwsTokenStore.Collect;
+type TCollector = class
+   FUTCDateTime : TDateTime;
+   function CollectToken(const item : TdwsToken) : TSimpleHashAction;
+end;
+function TCollector.CollectToken(const item : TdwsToken) : TSimpleHashAction;
 begin
+   if item.Expire>FUTCDateTime then
+      Result:=shaNone
+   else Result:=shaRemove;
+end;
+
+procedure TdwsTokenStore.Collect;
+var
+   collector : TCollector;
+begin
+   collector:=TCollector.Create;
+   collector.FUTCDateTime:=UTCDateTime;
    FLock.BeginWrite;
    try
       if FHash.Count>0 then begin
-         FHash.Enumerate(CollectToken);
+         FHash.Enumerate(collector.CollectToken);
          if FHash.Count>0 then
             ScheduleCollection
          else FHash.Clear;
       end;
    finally
       FLock.EndWrite;
+      collector.Free;
    end;
-end;
-
-// CollectToken
-//
-function TdwsTokenStore.CollectToken(const item : TdwsToken) : TSimpleHashAction;
-begin
-   if item.Expire>UTCDateTime then
-      Result:=shaNone
-   else
-      Result:=shaRemove;
 end;
 
 // CollectTokenByData
