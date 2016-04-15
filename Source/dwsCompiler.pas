@@ -3436,7 +3436,9 @@ begin
 
          end;
 
-         if forwardedSym=nil then
+         if Result.IsLambda then
+            RecordSymbolUse(Result, funcPos, [suDeclaration, suImplementation, suReference])
+         else if forwardedSym=nil then
             RecordSymbolUse(Result, funcPos, [suDeclaration, suImplementation])
          else RecordSymbolUse(Result, funcPos, [suImplementation]);
       except
