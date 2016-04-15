@@ -47,11 +47,6 @@ unit dwsSHA3;
 
 interface
 
-uses SysUtils;
-
-type
-   ESHA3Exception = class(Exception);
-
 const
    cKeccakPermutationSize        = 1600;
    cKeccakMaximumRate            = 1536;
@@ -142,33 +137,60 @@ const
       UInt64($0000000080000001), UInt64($8000000080008008)
    );
 
+{$ifndef PUREPASCAL}
+
+procedure KeccakPermutationKernel(B, A, C : Pointer);
+asm
+{$ifdef WIN32_ASM}
+   {$include sha3_mmx.inc}
+{$else}
+   {$include sha3_x64.inc}
+{$endif}
+end;
+
+procedure EMMS;
+asm
+   emms
+end;
+
+procedure KeccakPermutation(var state: TState_L);
+var
+   A : PUInt64Array;
+   B : array [0..24] of UInt64;
+   C : array [0..4] of UInt64;
+   i : Integer;
+begin
+   A := PUInt64Array(@state);
+   for i:=0 to 23 do begin
+      KeccakPermutationKernel(@B, A, @C);
+      A[00] := A[00] xor cRoundConstants[i];
+   end;
+   {$ifdef WIN32_ASM}
+   EMMS;
+   {$endif}
+end;
+
+{$else} // WIN32_ASM
+
 function RotL(const x: UInt64; c: Integer): UInt64; inline;
 begin
    Result := (x shl c) or (x shr (64-c));
 end;
 
-function RotL1(var x: UInt64): UInt64;
-{$ifdef WIN32_ASM}
-asm
-   mov   edx, [eax+4]
-   mov   eax, [eax]
-   add   eax, eax
-   adc   edx, edx
-   adc   al, 0
-{$else}
+function RotL1(var x: UInt64): UInt64; inline;
+begin
    Result := (x shl 1) or (x shr (64-1));
-{$endif}
 end;
 
 procedure KeccakPermutation(var state: TState_L);
 var
-   A: PUInt64Array;
-   B: array[0..24] of UInt64;
+   A : PUInt64Array;
+   B : array[0..24] of UInt64;
    C0, C1, C2, C3, C4, D0, D1, D2, D3, D4: UInt64;
-   i: Integer;
+   i : Integer;
 begin
    A := PUInt64Array(@state);
-   for i:=0 to 23 do begin
+   for i := 0 to 23 do begin
       C0 := A[00] xor A[05] xor A[10] xor A[15] xor A[20];
       C1 := A[01] xor A[06] xor A[11] xor A[16] xor A[21];
       C2 := A[02] xor A[07] xor A[12] xor A[17] xor A[22];
@@ -235,6 +257,7 @@ begin
       A[00] := A[00] xor cRoundConstants[i];
    end;
 end;
+{$endif} //WIN32_ASM
 
 procedure ExtractFromState(outp: Pointer; const state: TState_L; laneCount: Integer);
 var
@@ -271,10 +294,8 @@ end;
 
 procedure InitSponge(var state: TSpongeState; Rate, Capacity: Integer);
 begin
-   if Rate+Capacity <> 1600 then
-      raise ESHA3Exception.Create('Rate+Capacity should be 1600');
-   if (Rate <= 0) or (Rate >= 1600) or ((Rate and 63) <> 0) then
-      raise ESHA3Exception.Create('Invalid Rate');
+   Assert(Rate+Capacity = 1600, 'Rate+Capacity should be 1600');
+   Assert((Rate > 0) and (Rate < 1600) and ((Rate and 63) = 0), 'Invalid Rate');
 
    state.Rate := Rate;
    state.Capacity := Capacity;
@@ -299,10 +320,8 @@ var
    partialByte: Integer;
    curData: PUInt64;
 begin
-   if state.BitsInQueue and 7 <> 0 then
-      raise ESHA3Exception.Create('Only the last call may contain a partial byte');
-   if state.Squeezing<>0 then
-      raise ESHA3Exception.Create('Too late for additional input');
+   Assert(state.BitsInQueue and 7 = 0, 'Only the last call may contain a partial byte');
+   Assert(state.Squeezing = 0, 'Too late for additional input');
    i := 0;
    while i < databitlen do begin
       if ((state.BitsInQueue=0) and (databitlen >= state.Rate) and (i <= (databitlen-state.Rate))) then begin
@@ -366,8 +385,7 @@ var
 begin
    if state.Squeezing=0 then
       PadAndSwitchToSqueezingPhase(state);
-   if outputLength and 7 <> 0 then
-      raise ESHA3Exception.Create('Only multiple of 8 bits are allowed for output digest length');
+   Assert(outputLength and 7 = 0, 'Only multiple of 8 bits are allowed for output digest length');
    i := 0;
    while i < outputLength do begin
       if state.BitsAvailableForSqueezing=0 then begin
@@ -451,7 +469,7 @@ begin
       SHAKE_128: InitSponge(state, 1344,  256);
       SHAKE_256: InitSponge(state, 1088,  512);
    else
-      raise ESHA3Exception.Create('Invalid algorithm');
+      Assert(False, 'Invalid algorithm');
    end;
    state.FixedOutputLength := cOutputLength[algo];
 end;
@@ -463,14 +481,19 @@ end;
 
 procedure SHA3_FinalHash(var state: THashState; digest: Pointer);
 begin
-   if state.FixedOutputLength=0 then
-      raise ESHA3Exception.Create('Wrong final');
+   Assert(state.FixedOutputLength <> 0, 'Wrong final');
    SHA3_FinalBit_LSB(state, 0, 0, digest, state.FixedOutputLength);
 end;
 
 function SHA3_DigestToString(digest : Pointer; size : Integer) : String;
+type
+   PByteArray = ^TByteArray;
+   TByteArray = array[0..1023] of Byte;
 const
-   cHex : String = '0123456789abcdef';
+   cHex : array [0..15] of Char = (
+      '0', '1', '2', '3', '4', '5', '6', '7',
+      '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
+   );
 var
    i : Integer;
    pResult : PChar;
@@ -480,8 +503,8 @@ begin
    pSrc:=digest;
    pResult:=Pointer(Result);
    for i:=0 to size-1 do begin
-      pResult[0]:=cHex[(pSrc[i] shr 4)+1];
-      pResult[1]:=cHex[(pSrc[i] and 15)+1];
+      pResult[0]:=cHex[pSrc[i] shr 4];
+      pResult[1]:=cHex[Cardinal(pSrc[i]) and 15];
       Inc(pResult, 2);
    end;
 end;
