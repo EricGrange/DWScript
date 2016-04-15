@@ -19,7 +19,7 @@ interface
 
 uses Classes, SysUtils, Math, dwsXPlatformTests, dwsUtils,
    dwsXPlatform, dwsWebUtils, dwsTokenStore, dwsCryptoXPlatform,
-   dwsEncodingLibModule, dwsGlobalVars;
+   dwsEncodingLibModule, dwsGlobalVars, dwsEncoding;
 
 type
 
