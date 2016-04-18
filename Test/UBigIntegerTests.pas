@@ -5,7 +5,8 @@ interface
 uses
    Windows, Classes, SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
-   dwsBigIntegerFunctions.GMP, dwsXPlatform, dwsSymbols, dwsUtils;
+   dwsBigIntegerFunctions.GMP, dwsXPlatform, dwsSymbols, dwsUtils,
+   dwsMPIR.Bundle;
 
 type
 
