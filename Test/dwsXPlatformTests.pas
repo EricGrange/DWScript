@@ -22,7 +22,7 @@ uses
    {$ifdef FPC}
    fpcunit, testutils, testregistry
    {$else}
-   TestFrameWork
+   TestFrameWork, TestUtils
    {$endif}
    ;
 
@@ -37,9 +37,16 @@ type
 
    ETestFailure = class (Exception);
    {$else}
-   TTestCase = TestFrameWork.TTestCase;
+   TTestCase = class(TestFrameWork.TTestCase)
+      public
+         procedure CheckEquals(const expected, actual: RawByteString; const msg: String = ''); overload;
+         procedure CheckEquals(const expected : String; const actual: RawByteString; const msg: String = ''); overload;
+         procedure CheckEquals(const expected : String; const actual: Variant; const msg: String = ''); overload;
+   end;
    ETestFailure = TestFrameWork.ETestFailure;
    {$endif}
+
+   TTestCaseClass = class of TTestCase;
 
 procedure RegisterTest(const testName : String; aTest : TTestCaseClass);
 
@@ -73,6 +80,30 @@ procedure TTestCase.CheckEquals(const expected : String; const actual: UnicodeSt
 begin
    AssertTrue(msg + ComparisonMsg(Expected, Actual), AnsiCompareStr(Expected, Actual) = 0);
 end;
+
+{$else}
+
+procedure TTestCase.CheckEquals(const expected, actual: RawByteString; const msg: String);
+begin
+   OnCheckCalled;
+   if (expected <> actual) then
+      FailNotEquals(String(expected), String(actual), msg, CallerAddr);
+end;
+
+procedure TTestCase.CheckEquals(const expected : String; const actual: RawByteString; const msg: String);
+begin
+   OnCheckCalled;
+   if (expected <> String(actual)) then
+      FailNotEquals(String(expected), String(actual), msg, CallerAddr);
+end;
+
+procedure TTestCase.CheckEquals(const expected : String; const actual: Variant; const msg: String);
+begin
+   OnCheckCalled;
+   if (expected <> actual) then
+      FailNotEquals(String(expected), String(actual), msg, CallerAddr);
+end;
+
 {$endif}
 
 end.
