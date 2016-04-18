@@ -256,6 +256,10 @@ type
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
+  TStrBetweenFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+  end;
+
   TStrSplitFunc = class(TInternalMagicVariantFunction)
     procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
   end;
@@ -313,11 +317,8 @@ end;
 { TStrToIntFunc }
 
 function TStrToIntFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
-var
-   s : UnicodeString;
 begin
-   s:=args.AsString[0];
-   Result:=StrToInt64(s);
+   Result:=StrToInt64(args.AsString[0]);
 end;
 
 { TStrToIntDefFunc }
@@ -346,7 +347,7 @@ var
    buf : UnicodeString;
    err : Integer;
 begin
-   buf:=args.AsString[0];
+   args.EvalAsString(0, buf);
    Val('$'+buf, Result, err);
    if err<>0 then
       raise EConvertError.CreateFmt('''''%s'''' is not a valid hexadecimal value', [buf]);
@@ -388,7 +389,7 @@ function TStrToBoolFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolea
 var
    s : UnicodeString;
 begin
-   s:=args.AsString[0];
+   args.EvalAsString(0, s);
 
    case Length(s) of
       1 : begin
@@ -494,7 +495,7 @@ var
    buf : UnicodeString;
    n : Integer;
 begin
-   buf:=args.AsString[0];
+   args.EvalAsString(0, buf);
    n:=args.AsInteger[1];
    Result:=Copy(buf, Length(buf)+1-n, n);
 end;
@@ -546,7 +547,7 @@ procedure TDeleteFunc.DoEvalProc(const args : TExprBaseListExec);
 var
    s : UnicodeString;
 begin
-   s:=args.AsString[0];
+   args.EvalAsString(0, s);
    Delete(s, args.AsInteger[1], args.AsInteger[2]);
    args.AsString[0]:=s;
 end;
@@ -557,7 +558,7 @@ procedure TInsertFunc.DoEvalProc(const args : TExprBaseListExec);
 var
    s : UnicodeString;
 begin
-   s:=args.AsString[1];
+   args.EvalAsString(1, s);
    Insert(args.AsString[0], s, args.AsInteger[2]);
    args.AsString[1]:=s;
 end;
@@ -570,7 +571,7 @@ var
    i : Integer;
    c : WideChar;
 begin
-   args.ExprBase[0].EvalAsString(args.Exec, Result);
+   args.EvalAsString(0, Result);
    if Result='' then Exit;
    UniqueString(Result);
    p:=PWideChar(Pointer(Result));
@@ -598,7 +599,7 @@ var
    i : Integer;
    c : WideChar;
 begin
-   args.ExprBase[0].EvalAsString(args.Exec, Result);
+   args.EvalAsString(0, Result);
    if Result='' then Exit;
    UniqueString(Result);
    p:=PWideChar(Pointer(Result));
@@ -692,7 +693,7 @@ procedure TTrimNbFunc.DoEvalAsString(const args : TExprBaseListExec; var Result 
 var
    nbLeft, nbRight : Integer;
 begin
-   Result:=args.AsString[0];
+   args.EvalAsString(0, Result);
    nbLeft:=args.AsInteger[1];
    nbRight:=args.AsInteger[2];
    if Result<>'' then begin
@@ -809,7 +810,7 @@ var
    s : UnicodeString;
    p : PWideChar;
 begin
-   s:=args.AsString[0];
+   args.EvalAsString(0, s);
 
    i:=Length(s);
    n:=args.AsInteger[1];
@@ -834,7 +835,7 @@ var
 begin
    n:=args.AsInteger[1];
    if n<=0 then Exit;
-   ch:=args.AsString[0];
+   args.EvalAsString(0, ch);
    if ch='' then
       charCode:=' ' // default to blank if an empty String
    else charCode:=ch[1];
@@ -874,8 +875,8 @@ function TStrBeginsWithFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Bo
 var
    str, beginStr : UnicodeString;
 begin
-   str:=args.AsString[0];
-   beginStr:=args.AsString[1];
+   args.EvalAsString(0, str);
+   args.EvalAsString(1, beginStr);
    if Length(str)<Length(beginStr) then
       Result:=False
    else begin
@@ -890,8 +891,8 @@ function TStrEndsWithFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Bool
 var
    str, endStr : UnicodeString;
 begin
-   str:=args.AsString[0];
-   endStr:=args.AsString[1];
+   args.EvalAsString(0, str);
+   args.EvalAsString(1, endStr);
    if Length(str)<Length(endStr) then
       Result:=False
    else begin
@@ -921,8 +922,8 @@ var
    p : Integer;
    str, delimiter : UnicodeString;
 begin
-   str:=args.AsString[0];
-   delimiter:=args.AsString[1];
+   args.EvalAsString(0, str);
+   args.EvalAsString(1, delimiter);
    p:=Pos(delimiter, str);
    if p>0 then
       Result:=Copy(str, p+Length(delimiter), MaxInt)
@@ -936,12 +937,32 @@ var
    p : Integer;
    str, delimiter : UnicodeString;
 begin
-   str:=args.AsString[0];
-   delimiter:=args.AsString[1];
+   args.EvalAsString(0, str);
+   args.EvalAsString(1, delimiter);
    p:=Pos(delimiter, str);
    if p>0 then
       Result:=Copy(str, 1, p-1)
    else Result:=str;
+end;
+
+{ TStrBetweenFunc }
+
+procedure TStrBetweenFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+var
+   p, p2 : Integer;
+   str, delimiter : UnicodeString;
+begin
+   args.EvalAsString(0, str);
+   args.EvalAsString(1, delimiter);
+   p := Pos(delimiter, str);
+   if p > 0 then begin
+      p := p + Length(delimiter);
+      delimiter := args.AsString[2];
+      p2 := PosEx(delimiter, str, p);
+      if p2 > 0 then
+         Result := Copy(str, p, p2-p)
+      else Result := Copy(str, p, Length(str));
+   end else Result := '';
 end;
 
 { TReverseStringFunc }
@@ -960,14 +981,15 @@ var
 begin
    varRecs:=nil;
    expr:=args.ExprBase[1];
-   if expr is TArrayConstantExpr then
+   if expr.ClassType=TArrayConstantExpr then
       varRecs:=TArrayConstantExpr(expr).EvalAsVarRecArray(args.Exec)
    else if expr is TByRefParamExpr then begin
       if TByRefParamExpr(expr).Typ is TOpenArraySymbol then
          varRecs:=TVarRecArrayContainer.Create(TByRefParamExpr(expr).DataPtr[args.Exec].AsPData^)
    end;
    // current implementation, limitations may be relaxed later
-   if varRecs=nil then raise EScriptError.Create('Constant expression or open array expected');
+   if varRecs=nil then
+      raise EScriptError.Create('Constant expression or open array expected');
    try
       Result:=UnicodeFormat(args.AsString[0], varRecs.VarRecArray);
    finally
@@ -984,8 +1006,8 @@ var
    p, pn, nDelim, k, n : Integer;
    c : Char;
 begin
-   str:=args.AsString[0];
-   delim:=args.AsString[1];
+   args.EvalAsString(0, str);
+   args.EvalAsString(1, delim);
 
    dyn:=TScriptDynamicArray.CreateNew((args.ExprBase[0] as TTypedExpr).Typ);
 
@@ -1058,7 +1080,7 @@ var
 begin
    args.ExprBase[0].EvalAsScriptDynArray(args.Exec, dynIntf);
 
-   delim:=args.AsString[1];
+   args.EvalAsString(1, delim);
 
    case dynIntf.ArrayLength of
       0 : Result:='';
@@ -1188,6 +1210,7 @@ initialization
 
    RegisterInternalStringFunction(TStrAfterFunc, 'StrAfter', ['str', SYS_STRING, 'delimiter', SYS_STRING], [iffStateLess], 'After');
    RegisterInternalStringFunction(TStrBeforeFunc, 'StrBefore', ['str', SYS_STRING, 'delimiter', SYS_STRING], [iffStateLess], 'Before');
+   RegisterInternalStringFunction(TStrBetweenFunc, 'StrBetween', ['str', SYS_STRING, 'start', SYS_STRING, 'stop', SYS_STRING], [iffStateLess], 'Between');
    RegisterInternalFunction(TStrSplitFunc, 'StrSplit', ['str', SYS_STRING, 'delimiter', SYS_STRING], 'array of string', [], 'Split');
    RegisterInternalStringFunction(TStrJoinFunc, 'StrJoin', ['strs', 'array of string', 'delimiter', SYS_STRING], [], 'Join');
 

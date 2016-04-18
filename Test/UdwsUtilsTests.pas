@@ -26,8 +26,12 @@ type
    TdwsUtilsTests = class (TTestCase)
       private
          FTightList : TTightList;
+         FDummy : TObject;
 
       protected
+         procedure SetUp; override;
+         procedure TearDown; override;
+
          procedure TightListOutOfBoundsDelete;
          procedure TightListOutOfBoundsInsert;
          procedure TightListOutOfBoundsMove;
@@ -1000,24 +1004,24 @@ begin
       CheckTrue(nil=noh.Objects[name1c], '2 b');
       CheckTrue(noh=noh.Objects[name2], '2 c');
 
-      noh.AddObject(name1c, FStatusStrings);
+      noh.AddObject(name1c, FDummy);
       CheckEquals(noh.Count, 3);
       CheckTrue(Self=noh.Objects[name1], '3 a');
-      CheckTrue(FStatusStrings=noh.Objects[name1c], '3 b');
+      CheckTrue(FDummy=noh.Objects[name1c], '3 b');
       CheckTrue(noh=noh.Objects[name2], '3 c');
 
       noh.Bucket[noh.BucketIndex[name1]].HashCode:=0;
       noh.Pack;
       CheckEquals(noh.Count, 2);
       CheckTrue(nil=noh.Objects[name1], '4 a');
-      CheckTrue(FStatusStrings=noh.Objects[name1c], '4 b');
+      CheckTrue(FDummy=noh.Objects[name1c], '4 b');
       CheckTrue(noh=noh.Objects[name2], '4 c');
 
       noh.Bucket[noh.BucketIndex[name2]].HashCode:=0;
       noh.Pack;
       CheckEquals(noh.Count, 1);
       CheckTrue(nil=noh.Objects[name1], '5 a');
-      CheckTrue(FStatusStrings=noh.Objects[name1c], '5 b');
+      CheckTrue(FDummy=noh.Objects[name1c], '5 b');
       CheckTrue(nil=noh.Objects[name2], '5 c');
 
       noh.Bucket[noh.BucketIndex[name1c]].HashCode:=0;
@@ -1179,6 +1183,20 @@ begin
 
    StringWordsToBytes(buf, True);
    CheckEquals('Example', buf, 'words to bytes with swap');
+end;
+
+// Setup
+//
+procedure TdwsUtilsTests.Setup;
+begin
+   FDummy:=TObject.Create;
+end;
+
+// Teardown
+//
+procedure TdwsUtilsTests.Teardown;
+begin
+   FDummy.Free;
 end;
 
 // ------------------------------------------------------------------

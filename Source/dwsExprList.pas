@@ -91,6 +91,7 @@ type
          property ExprBase[const x : Integer] : TExprBase read GetExprBase write SetExprBase; default;
 
          procedure EvalAsVariant(const x : Integer; var result : Variant); inline;
+         procedure EvalAsString(const x : Integer; var result : String); inline;
 
          property AsInteger[const x : Integer] : Int64 read GetAsInteger write SetAsInteger;
          property AsBoolean[const x : Integer] : Boolean read GetAsBoolean write SetAsBoolean;
@@ -286,6 +287,13 @@ end;
 procedure TExprBaseListExec.EvalAsVariant(const x : Integer; var result : Variant);
 begin
    ExprBase[x].EvalAsVariant(Exec, result);
+end;
+
+// EvalAsString
+//
+procedure TExprBaseListExec.EvalAsString(const x : Integer; var result : String);
+begin
+   ExprBase[x].EvalAsString(Exec, result);
 end;
 
 end.
