@@ -101,6 +101,7 @@ type
 
          function RawURL : RawByteString; virtual; abstract;
          function URL : String; virtual; abstract;
+         function FullURL : String; virtual; abstract;
          function Method : String; virtual; abstract;
          function MethodVerb : TWebRequestMethodVerb; virtual; abstract;
          function Security : String; virtual; abstract;

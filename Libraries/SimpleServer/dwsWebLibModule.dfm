@@ -87,6 +87,13 @@ object dwsWebLib: TdwsWebLib
             Kind = mkClassFunction
           end
           item
+            Name = 'FullURL'
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebRequestMethodsFullURLEval
+            Kind = mkClassFunction
+          end
+          item
             Name = 'URL'
             ResultType = 'String'
             Attributes = [maStatic]
@@ -98,6 +105,13 @@ object dwsWebLib: TdwsWebLib
             ResultType = 'String'
             Attributes = [maStatic]
             OnEval = dwsWebClassesWebRequestMethodsMethodEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'Host'
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebRequestMethodsHostEval
             Kind = mkClassFunction
           end
           item

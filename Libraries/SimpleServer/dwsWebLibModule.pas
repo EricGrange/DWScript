@@ -122,6 +122,10 @@ type
     procedure dwsWebFunctionsGetHostByNameEval(info: TProgramInfo);
     procedure dwsWebClassesWebResponseMethodsSetStaticEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsWebClassesWebRequestMethodsFullURLEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesWebRequestMethodsHostEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -380,6 +384,12 @@ begin
    Info.ResultAsString:=Info.WebRequest.Cookies.Text;
 end;
 
+procedure TdwsWebLib.dwsWebClassesWebRequestMethodsFullURLEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=Info.WebRequest.FullURL;
+end;
+
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsGetContentFieldEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
@@ -408,6 +418,12 @@ procedure TdwsWebLib.dwsWebClassesWebRequestMethodsHeadersEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString:=Info.WebRequest.Headers.Text;
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebRequestMethodsHostEval(Info: TProgramInfo;
+  ExtObject: TObject);
+begin
+   Info.ResultAsString:=Info.WebRequest.Host;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsIfModifiedSinceEval(

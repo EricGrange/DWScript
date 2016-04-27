@@ -56,6 +56,7 @@ type
 
          function RawURL : RawByteString; override;
          function URL : String; override;
+         function FullURL : String; override;
          function Method : String; override;
          function MethodVerb : TWebRequestMethodVerb; override;
 
@@ -105,6 +106,13 @@ end;
 function TWorkWebRequest.URL : String;
 begin
    Result:=Task;
+end;
+
+// FullURL
+//
+function TWorkWebRequest.FullURL : String;
+begin
+   Result := 'worker:' + Task;
 end;
 
 // Method

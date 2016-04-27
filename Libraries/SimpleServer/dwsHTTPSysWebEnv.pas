@@ -79,6 +79,7 @@ type
 
          function RawURL : RawByteString; override;
          function URL : String; override;
+         function FullURL : String; override;
          function Method : String; override;
          function MethodVerb : TWebRequestMethodVerb; override;
          function Security : String; override;
@@ -388,9 +389,17 @@ begin
    Result:=FURL;
 end;
 
+// FullURL
+//
+function THttpSysWebRequest.FullURL : String;
+begin
+   SetString(Result, Request^.CookedUrl.pFullUrl, Request^.CookedUrl.FullUrlLength div SizeOf(Char));
+end;
+
 // Method
 //
 function THttpSysWebRequest.Method : String;
+
 const
    cVERB_TEXT : array [hvOPTIONS..hvSEARCH] of String = (
       'OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE',
