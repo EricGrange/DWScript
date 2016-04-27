@@ -9744,6 +9744,8 @@ begin
                         0 : FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantInstruction);
                         1 : expr.EvalAsVariant(FExec, exprData[0]);
                      else
+                        if expr.ClassType=TArrayConstantExpr then
+                           TArrayConstantExpr(expr).Prepare(FProg, typ.Typ);
                         FExec.Stack.Push(typ.Size);
                         try
                            (expr as TDataExpr).DataPtr[FExec].CopyData(exprData, 0, typ.Size);

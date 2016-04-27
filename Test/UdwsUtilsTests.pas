@@ -348,6 +348,20 @@ begin
    FTightList.Insert(1, nil);
 end;
 
+// SetUp
+//
+procedure TdwsUtilsTests.SetUp;
+begin
+   FDummy:=TObject.Create;
+end;
+
+// TearDown
+//
+procedure TdwsUtilsTests.TearDown;
+begin
+   FDummy.Free;
+end;
+
 // TightListTest
 //
 procedure TdwsUtilsTests.TightListTest;
@@ -1183,20 +1197,6 @@ begin
 
    StringWordsToBytes(buf, True);
    CheckEquals('Example', buf, 'words to bytes with swap');
-end;
-
-// Setup
-//
-procedure TdwsUtilsTests.Setup;
-begin
-   FDummy:=TObject.Create;
-end;
-
-// Teardown
-//
-procedure TdwsUtilsTests.Teardown;
-begin
-   FDummy.Free;
 end;
 
 // ------------------------------------------------------------------

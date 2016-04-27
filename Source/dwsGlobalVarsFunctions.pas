@@ -39,7 +39,8 @@ interface
 uses
    Variants, Windows, Classes, SysUtils, Masks,
    dwsXPlatform, dwsUtils, dwsStrings, dwsExprList, dwsConstExprs, dwsErrors,
-   dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs, dwsDataContext;
+   dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs, dwsDataContext,
+   dwsGlobalVars;
 
 type
 
@@ -176,6 +177,9 @@ function GlobalQueuePop(const aName : String; var aValue : Variant) : Boolean;
 function GlobalQueueLength(const aName : String) : Integer;
 procedure CleanupGlobalQueues(const filter : String = '*');
 
+function InternalGlobalVars : PGlobalVars;
+function InternalPrivateVars : PGlobalVars;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -183,8 +187,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-uses dwsGlobalVars;
 
 type
 
@@ -499,6 +501,20 @@ begin
          mask.Free;
       end;
    end;
+end;
+
+// InternalGlobalVars
+//
+function InternalGlobalVars : PGlobalVars;
+begin
+   Result := @vGlobalVars;
+end;
+
+// InternalPrivateVars
+//
+function InternalPrivateVars : PGlobalVars;
+begin
+   Result := @vPrivateVars;
 end;
 
 { TReadGlobalVarFunc }

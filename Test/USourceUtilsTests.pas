@@ -316,8 +316,9 @@ begin
    CheckTrue(sugg.Count>4, 's.');
    CheckEquals('After', sugg.Code[0], 's. 0');
    CheckEquals('Before', sugg.Code[1], 's. 1');
-   CheckEquals('CompareText', sugg.Code[2], 's. 2');
-   CheckEquals('CompareTo', sugg.Code[3], 's. 3');
+   CheckEquals('Between', sugg.Code[2], 's. 2');
+   CheckEquals('CompareText', sugg.Code[3], 's. 3');
+   CheckEquals('CompareTo', sugg.Code[4], 's. 4');
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 4);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);

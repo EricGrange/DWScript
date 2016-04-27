@@ -74,7 +74,7 @@ type
          procedure SetAsFloat(const x : Integer; const value : Double);
          function GetAsString(const x : Integer) : UnicodeString; inline;
          procedure SetAsString(const x : Integer; const value : UnicodeString);
-         function GetAsDataString(const x : Integer) : RawByteString;
+         function GetAsDataString(const x : Integer) : RawByteString; inline;
          procedure SetAsDataString(const x : Integer; const value : RawByteString);
          function GetAsFileName(const x : Integer) : UnicodeString;
          function GetFormatSettings : TdwsFormatSettings; inline;
@@ -258,7 +258,7 @@ end;
 //
 function TExprBaseListExec.GetAsDataString(const x : Integer) : RawByteString;
 begin
-   Result:=ScriptStringToRawByteString(GetAsString(x));
+   ScriptStringToRawByteString(GetAsString(x), Result);
 end;
 
 // SetAsDataString
