@@ -5,7 +5,8 @@ interface
 uses
    Windows, Classes, SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
-   dwsComConnector, Variants, ActiveX, ComObj, dwsXPlatform, dwsUtils;
+   dwsComConnector, Variants, ActiveX, ComObj, dwsXPlatform, dwsUtils,
+   dwsEncodingLibModule;
 
 type
 
@@ -60,6 +61,7 @@ begin
    FCompiler:=TDelphiWebScript.Create(nil);
    FConnector:=TdwsComConnector.Create(nil);
    FConnector.Script:=FCompiler;
+   TdwsEncodingLib.Create(FCompiler).dwsEncoding.Script := FCompiler;
 
    FCW:=Get8087CW;
 

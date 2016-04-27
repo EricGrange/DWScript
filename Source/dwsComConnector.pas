@@ -367,6 +367,14 @@ type
       procedure Execute(info : TProgramInfo); override;
    end;
 
+   TBinaryToGUIDFunc = class(TInternalMagicStringFunction)
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+   end;
+
+   TGUIDToBinaryFunc = class(TInternalMagicStringFunction)
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+   end;
+
    TComConnectorType = class(TInterfacedSelfObject, IUnknown, IConnectorType, IConnectorEnumerator)
       private
          FTable : TSymbolTable;
@@ -569,6 +577,9 @@ begin
    TOleDoubleFunc.Create(Table, 'OleDouble', ['v', SYS_FLOAT], 'ComVariant', [iffStateLess]);
    TComVarClearFunc.Create(Table, 'VarClear', ['@v', 'ComVariant'], '', [iffOverloaded]);
 
+   TBinaryToGUIDFunc.Create(Table, 'BinaryToGUID', ['b', SYS_STRING], SYS_STRING, [iffStateLess]);
+   TGUIDToBinaryFunc.Create(Table, 'GUIDToBinary', ['guid', SYS_STRING], SYS_STRING, [iffStateLess]);
+
    Table.AddSymbol(TComVariantArraySymbol.Create('ComVariantArray', TComVariantArrayType.Create(systemTable), systemTable.TypVariant));
 end;
 
@@ -698,6 +709,37 @@ end;
 procedure TComVarClearFunc.Execute(info : TProgramInfo);
 begin
    Info.ValueAsVariant['v'] := Unassigned;
+end;
+
+// ------------------
+// ------------------ TBinaryToGUIDFunc ------------------
+// ------------------
+
+procedure TBinaryToGUIDFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+var
+   guid : TGUID;
+   buf : RawByteString;
+begin
+   buf := args.AsDataString[0];
+   if Length(buf) <> SizeOf(guid) then
+      raise Exception.CreateFmt('Invalid GUID length (expected %d, got %d)', [SizeOf(guid), Length(buf)]);
+   System.Move(Pointer(buf)^, guid, SizeOf(guid));
+   Result := GUIDToString(guid);
+end;
+
+// ------------------
+// ------------------ TGUIDToBinaryFunc ------------------
+// ------------------
+
+procedure TGUIDToBinaryFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+var
+   guid : TGUID;
+   buf : RawByteString;
+begin
+   guid := StringToGUID(args.AsString[0]);
+   SetLength(buf, SizeOf(guid));
+   System.Move(guid, Pointer(buf)^, SizeOf(guid));
+   RawByteStringToScriptString(buf, Result);
 end;
 
 // ------------------
