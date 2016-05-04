@@ -93,6 +93,7 @@ type
       private
          FBaseExpr : TTypedExpr;
          FName : UnicodeString;
+         FWritable : Boolean;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
@@ -104,6 +105,8 @@ type
                                   aBaseExpr: TTypedExpr; const aConnectorType : IConnectorType
                                   ) : TConnectorReadMemberExpr; static;
          destructor Destroy; override;
+
+         function IsWritable : Boolean; override;
 
          property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
          property Name : UnicodeString read FName write FName;
@@ -534,7 +537,8 @@ end;
 //
 class function TConnectorReadMemberExpr.CreateNew(
       aProg: TdwsProgram; const aScriptPos: TScriptPos; const aName: UnicodeString;
-      aBaseExpr: TTypedExpr; const aConnectorType : IConnectorType) : TConnectorReadMemberExpr;
+      aBaseExpr: TTypedExpr; const aConnectorType : IConnectorType
+      ) : TConnectorReadMemberExpr;
 var
    connMember : IConnectorMember;
    connFastMember : IConnectorFastMember;
@@ -563,6 +567,7 @@ begin
 
    Result.Name := aName;
    Result.BaseExpr := aBaseExpr;
+   Result.FWritable := aConnectorType.WritableReads(aName);
 end;
 
 // Destroy
@@ -571,6 +576,13 @@ destructor TConnectorReadMemberExpr.Destroy;
 begin
    FBaseExpr.Free;
    inherited;
+end;
+
+// IsWritable
+//
+function TConnectorReadMemberExpr.IsWritable : Boolean;
+begin
+   Result:=FWritable;
 end;
 
 // GetSubExpr

@@ -24,7 +24,7 @@ unit dwsErrors;
 interface
 
 uses
-   Classes, SysUtils, dwsStrings, dwsUtils, dwsXPlatform;
+   Classes, SysUtils, dwsStrings, dwsUtils, dwsXPlatform, dwsJSON;
 
 type
 
@@ -96,6 +96,8 @@ type
       public
          constructor Create(aMessageList : TdwsMessageList; const Text: UnicodeString);
 
+         procedure WriteToJSON(writer : TdwsJSONWriter); virtual;
+
          function AsInfo : UnicodeString; virtual; abstract;
          function IsError : Boolean; virtual;
          function IsValid : Boolean; virtual;
@@ -157,6 +159,7 @@ type
          constructor Create(msgs: TdwsMessageList; const text : UnicodeString; const p : TScriptPos); overload;
          destructor Destroy; override;
 
+         procedure WriteToJSON(writer : TdwsJSONWriter); override;
          function AsInfo : UnicodeString; override;
 
          function Pos : TScriptPos; deprecated 'Renamed as ScriptPos';
@@ -182,6 +185,7 @@ type
          constructor Create(msgs: TdwsMessageList; const text : UnicodeString; const p : TScriptPos;
                             aLevel : TdwsHintsLevel);
 
+         procedure WriteToJSON(writer : TdwsJSONWriter); override;
          function AsInfo: UnicodeString; override;
 
          property Level : TdwsHintsLevel read FLevel;
@@ -232,7 +236,10 @@ type
          procedure Clear;
          procedure RemoveInvalidDeferred;
 
-         function AsInfo: UnicodeString;
+         function AsInfo : UnicodeString;
+         function AsJSON : UnicodeString;
+
+         procedure WriteJSONValue(writer : TdwsJSONWriter);
 
          property Msgs[index : Integer] : TdwsMessage read GetMsg; default;
          property Count : Integer read GetMsgCount;
@@ -672,6 +679,36 @@ begin
       Result:=Result+Msgs[i].AsInfo+#13#10
 end;
 
+// AsJSON
+//
+function TdwsMessageList.AsJSON : UnicodeString;
+var
+   wr : TdwsJSONWriter;
+begin
+   wr := TdwsJSONWriter.Create(nil);
+   try
+      WriteJSONValue(wr);
+      Result := wr.ToString;
+   finally
+      wr.Free;
+   end;
+end;
+
+// WriteJSONValue
+//
+procedure TdwsMessageList.WriteJSONValue(writer : TdwsJSONWriter);
+var
+   i : Integer;
+begin
+   writer.BeginArray;
+   for i := 0 to Count-1 do begin
+      writer.BeginObject;
+      Msgs[i].WriteToJSON(writer);
+      writer.EndObject;
+   end;
+   writer.EndArray;
+end;
+
 // ------------------
 // ------------------ TdwsMessage ------------------
 // ------------------
@@ -683,6 +720,13 @@ begin
    FMsgs:=aMessageList;
    FText:=Text;
    aMessageList.AddMessage(Self);
+end;
+
+// WriteToJSON
+//
+procedure TdwsMessage.WriteToJSON(writer : TdwsJSONWriter);
+begin
+   writer.WriteString('text', Text);
 end;
 
 // IsError
@@ -728,6 +772,20 @@ destructor TScriptMessage.Destroy;
 begin
    inherited;
    FAutoFix.Free;
+end;
+
+// WriteToJSON
+//
+procedure TScriptMessage.WriteToJSON(writer : TdwsJSONWriter);
+begin
+   inherited WriteToJSON(writer);
+   if StrEndsWith(ClassName, 'Message') then
+      writer.WriteString('type', Copy(ClassName, 2, Length(ClassName)-1-Length('Message')));
+   writer.WriteName('pos').BeginObject;
+      writer.WriteString('file', ScriptPos.SourceName);
+      writer.WriteInteger('line', ScriptPos.Line);
+      writer.WriteInteger('col', ScriptPos.Col);
+   writer.EndObject;
 end;
 
 // AsInfo
@@ -776,6 +834,18 @@ constructor THintMessage.Create(msgs: TdwsMessageList; const text : UnicodeStrin
 begin
    inherited Create(msgs, text, p);
    FLevel:=aLevel;
+end;
+
+// WriteToJSON
+//
+procedure THintMessage.WriteToJSON(writer : TdwsJSONWriter);
+const
+   cHintsLevels : array [TdwsHintsLevel] of String = (
+      'Disabled', 'Normal', 'Strict', 'Pedantic'
+   );
+begin
+   inherited WriteToJSON(writer);
+   writer.WriteString('hintLevel', cHintsLevels[Level]);
 end;
 
 // AsInfo

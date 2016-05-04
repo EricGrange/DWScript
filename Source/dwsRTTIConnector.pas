@@ -209,6 +209,8 @@ type
          function ConnectorCaption : String;
          function AcceptsParams(const params : TConnectorParamArray) : Boolean;
          function AutoVarParams : Boolean;
+         function WritableReads(const memberName : UnicodeString) : Boolean;
+
          function HasMethod(const methodName : String; const params : TConnectorParamArray;
                             var typSym : TTypeSymbol) : IConnectorCall;
          function HasMember(const memberName : String; var typSym : TTypeSymbol;
@@ -577,6 +579,13 @@ end;
 function TdwsRTTIConnectorType.AutoVarParams : Boolean;
 begin
    Result:=True;
+end;
+
+// WritableReads
+//
+function TdwsRTTIConnectorType.WritableReads(const memberName : UnicodeString) : Boolean;
+begin
+   Result := False;
 end;
 
 // ------------------

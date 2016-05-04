@@ -64,6 +64,7 @@ type
          function ConnectorCaption : UnicodeString;
          function AutoVarParams : Boolean;
          function AcceptsParams(const params : TConnectorParamArray) : Boolean;
+         function WritableReads(const memberName : UnicodeString) : Boolean;
 
          function HasMethod(const methodName : UnicodeString; const params : TConnectorParamArray;
                             var typSym : TTypeSymbol) : IConnectorCall;
@@ -555,6 +556,13 @@ end;
 function TdwsJSONConnectorType.AcceptsParams(const params : TConnectorParamArray) : Boolean;
 begin
    Result:=True;
+end;
+
+// WritableReads
+//
+function TdwsJSONConnectorType.WritableReads(const memberName : UnicodeString) : Boolean;
+begin
+   Result := False;
 end;
 
 // HasMethod

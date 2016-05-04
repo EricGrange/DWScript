@@ -386,6 +386,8 @@ type
          function ConnectorCaption : UnicodeString;
          function AutoVarParams : Boolean;
          function AcceptsParams(const params: TConnectorParamArray) : Boolean;
+         function WritableReads(const memberName : UnicodeString) : Boolean;
+
          function HasMethod(const aMethodName: UnicodeString; const aParams: TConnectorParamArray;
                             var TypSym: TTypeSymbol): IConnectorCall;
          function HasMember(const aMemberName: UnicodeString; var typSym: TTypeSymbol; isWrite: Boolean): IConnectorMember;
@@ -506,6 +508,8 @@ type
          function ConnectorCaption: UnicodeString;
          function AutoVarParams : Boolean;
          function AcceptsParams(const params: TConnectorParamArray) : Boolean;
+         function WritableReads(const memberName : UnicodeString) : Boolean;
+
          function HasMethod(const methodName: UnicodeString; const params: TConnectorParamArray;
                             var typSym: TTypeSymbol): IConnectorCall;
          function HasMember(const memberName: UnicodeString; var typSym: TTypeSymbol;
@@ -852,6 +856,13 @@ begin
    Result:=True;
 end;
 
+// WritableReads
+//
+function TComConnectorType.WritableReads(const memberName : UnicodeString) : Boolean;
+begin
+   Result := False;
+end;
+
 function TComConnectorType.HasMethod(const aMethodName: UnicodeString;
   const aParams: TConnectorParamArray; var typSym: TTypeSymbol): IConnectorCall;
 begin
@@ -1103,6 +1114,13 @@ function TComVariantArrayType.AcceptsParams(const params: TConnectorParamArray) 
 begin
   Result:=    (Length(params) in [1, 2])
           and FTable.FindTypeSymbol(SYS_INTEGER, cvMagic).IsCompatible(params[0].typSym);
+end;
+
+// WritableReads
+//
+function TComVariantArrayType.WritableReads(const memberName : UnicodeString) : Boolean;
+begin
+   Result := False;
 end;
 
 // HasMethod

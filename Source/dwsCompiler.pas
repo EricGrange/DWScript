@@ -11083,7 +11083,7 @@ var
 begin
    hotPos:=FTok.HotPos;
    boolExpr:=ReadExpr;
-   if not boolExpr.IsOfType(FProg.TypBoolean) then
+   if not (boolExpr.IsOfType(FProg.TypBoolean) or boolExpr.IsOfType(FProg.TypVariant)) then
       FMsgs.AddCompilerError(hotPos, CPE_BooleanExpected);
    trueExpr:=nil;
    falseExpr:=nil;

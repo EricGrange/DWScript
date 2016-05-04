@@ -94,6 +94,7 @@ type
      function ConnectorCaption: UnicodeString;
      function AutoVarParams : Boolean;
      function AcceptsParams(const params: TConnectorParamArray) : Boolean;
+     function WritableReads(const memberName : UnicodeString) : Boolean;
      function HasMethod(const MethodName: UnicodeString; const Params: TConnectorParamArray;
                         var TypSym: TTypeSymbol): IConnectorCall;
      function HasMember(const MemberName: UnicodeString; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;

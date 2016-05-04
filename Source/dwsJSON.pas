@@ -81,6 +81,7 @@ type
          procedure WriteJSON(const json : String);
 
          function ToString : String; override;
+         function ToUTF8String : RawByteString; inline;
 
          property Stream : TWriteOnlyBlockStream read FStream write FStream;
    end;
@@ -2763,6 +2764,13 @@ end;
 function TdwsJSONWriter.ToString : String;
 begin
    Result:=FStream.ToString;
+end;
+
+// ToUTF8String
+//
+function TdwsJSONWriter.ToUTF8String : RawByteString;
+begin
+   Result:=FStream.ToUTF8String;
 end;
 
 // BeforeWriteImmediate

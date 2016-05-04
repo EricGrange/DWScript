@@ -13,10 +13,9 @@ begin
       s += 1;
    end;
 
-   var a : BigInteger;
    for var i := 1 to k do begin
    
-      a := 2 + RandomBigInteger( n-4 );
+      var a := 2 + RandomBigInteger( n-4 );
 
       var x := a.ModPow(d, n);
       if (x = 1) or (x = n - 1) then
