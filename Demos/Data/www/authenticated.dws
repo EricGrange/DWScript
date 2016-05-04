@@ -1,4 +1,7 @@
 <?pas
+PrintLn(WebRequest.Host);
+PrintLn(WebRequest.FullURL);
+
 if WebRequest.Authentication=WebAuthentication.None then
 
    if WebRequest.Header['Authorization']<>'' then

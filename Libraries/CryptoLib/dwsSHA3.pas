@@ -40,6 +40,13 @@
 
     3. This notice may not be removed or altered from any source distribution.
 *)
+(*
+
+   MMX and x64 assembler versions based on optimized SHA-3 kernel by Eric Grange
+
+   https://www.delphitools.info/2016/04/19/new-sha-3-permutation-kernel/
+
+*)
 unit dwsSHA3;
 
 {$I dws.inc}
@@ -77,6 +84,7 @@ type
       procedure UpdateString(const s : String); inline;
       procedure UpdateInt64(const i : Int64); inline;
       procedure UpdateInteger(const i : Integer); inline;
+      procedure UpdateDouble(const d : Double); inline;
    end;
 
    THashState = TSpongeState;   {Hash state context}
@@ -102,6 +110,8 @@ function  SHA3_DigestToString(digest : Pointer; size : Integer) : String;
 function HashSHA3_256(const buf : RawByteString) : String; overload;
 function HashSHA3_256(p : Pointer; len : Integer) : String; overload;
 
+procedure KeccakPermutation(var state: TState_L);
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -118,8 +128,6 @@ type
    PBA = ^TBABytes;
    TUInt64Array = array [0..MaxInt div SizeOf(UInt64)-1] of UInt64;
    PUInt64Array = ^TUInt64Array;
-
-{$define USE_LOCALA}  {With FPC64/WIN64 about 20% faster}
 
 const
    cRoundConstants : array[0..23] of UInt64 = (
@@ -170,7 +178,7 @@ begin
    {$endif}
 end;
 
-{$else} // WIN32_ASM
+{$else} // PUREPASCAL
 
 function RotL(const x: UInt64; c: Integer): UInt64; inline;
 begin
@@ -254,10 +262,11 @@ begin
       A[22] := B[22] xor ((not B[23]) and B[24]);
       A[23] := B[23] xor ((not B[24]) and B[20]);
       A[24] := B[24] xor ((not B[20]) and B[21]);
+
       A[00] := A[00] xor cRoundConstants[i];
    end;
 end;
-{$endif} //WIN32_ASM
+{$endif} //PUREPASCAL
 
 procedure ExtractFromState(outp: Pointer; const state: TState_L; laneCount: Integer);
 var
@@ -537,6 +546,11 @@ end;
 procedure TSpongeState.UpdateInteger(const i : Integer);
 begin
    Update(@i, SizeOf(i));
+end;
+
+procedure TSpongeState.UpdateDouble(const d : Double);
+begin
+   Update(@d, SizeOf(d));
 end;
 
 function HashSHA3_256(const buf : RawByteString) : String;

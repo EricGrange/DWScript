@@ -17,327 +17,341 @@
 
    add edx, 128
    add eax, 128
-   // Theta
-   movq  mm2, [edx-112]
-   movq  mm0, [edx-128]
-   pxor  mm0, [edx-88]
-   pxor  mm0, [edx-48]
-   pxor  mm0, [edx-8]
-   pxor  mm0, [edx+32]
+
    movq  mm1, [edx-120]
-   pxor  mm2, [edx-72]
-   pxor  mm2, [edx-32]
-   pxor  mm2, [edx+8]
-   pxor  mm2, [edx+48]
-   movq  mm3, [edx-104]
-   movq  [ecx+16], mm2
-   pxor  mm1, [edx-80]
-   pxor  mm1, [edx-40]
-   pxor  mm1, [edx]
-   pxor  mm1, [edx+40]
    movq  mm4, [edx-96]
-   pxor  mm3, [edx-64]
-   pxor  mm3, [edx-24]
-   pxor  mm3, [edx+16]
-   pxor  mm3, [edx+56]
+   movq  mm3, [edx-104]
+   pxor  mm1, [edx-80]
+   movq  mm5, [edx+16]
+   pxor  mm1, [edx]
+   movq  mm2, [edx-112]
+   pxor  mm1, [edx+40]
+   pxor  mm1, [edx-40]
+   movq  mm0, [edx-128]
+   movq  mm6, mm1
    pxor  mm4, [edx-56]
-   pxor  mm4, [edx-16]
+   movq  [ecx+8], mm1
+   psrlq mm6, 63
    pxor  mm4, [edx+24]
    pxor  mm4, [edx+64]
-   movq  mm6, mm2
-   psllq mm2, 1
-   psrlq mm6, 63
-   por   mm2, mm6
-   pxor  mm2, mm0
-   movq  mm7, mm0
-   psllq mm0, 1
-   psrlq mm7, 63
-   por   mm0, mm7
-   pxor  mm0, mm3
-   movq  mm5, mm3
-   psllq mm3, 1
-   psrlq mm5, 63
-   por   mm3, mm5
-   pxor  mm3, mm1
-   movq  mm6, mm1
+   pxor  mm4, [edx-16]
    psllq mm1, 1
-   psrlq mm6, 63
+   pxor  mm2, [edx+48]
    por   mm1, mm6
+   movq  mm6, [edx-88]
    pxor  mm1, mm4
-   movq  mm7, mm4
-   psllq mm4, 1
-   psrlq mm7, 63
-   por   mm4, mm7
-   pxor  mm4, [ecx+16]
-   // Rho Pi
-   movq  mm5, [edx-24]
-   movq  mm6, [edx-80]
-   pxor  mm6, mm2
+   pxor  mm2, [edx-32]
+   pxor  mm2, [edx-72]
+   pxor  mm6, mm1
    movq  mm7, mm6
-   psllq mm6, 44
-   psrlq mm7, 20
+   psrlq mm7, 28
+   psllq mm6, 36
    por   mm6, mm7
-   movq  [eax-120], mm6
-   movq  mm6, [edx+24]
+   pxor  mm2, [edx+8]
+   movq  [eax], mm6
+   movq  mm6, [edx+32]
+   movq  mm7, mm4
+   psrlq mm7, 63
+   psllq mm4, 1
+   pxor  mm0, mm6
+   por   mm4, mm7
+   pxor  mm4, mm2
    pxor  mm5, mm4
    movq  mm7, mm5
-   psllq mm5, 25
-   psrlq mm7, 39
+   pxor  mm0, [edx-8]
+   psllq mm5, 21
+   psrlq mm7, 43
+   pxor  mm6, mm1
    por   mm5, mm7
-   movq  [eax-32], mm5
-   movq  mm5, [edx-96]
-   pxor  mm6, mm0
+   movq  [eax-104], mm5
+   movq  mm5, [edx-48]
+   pxor  mm0, mm5
    movq  mm7, mm6
-   psllq mm6, 8
-   psrlq mm7, 56
+   psrlq mm7, 46
+   psllq mm6, 18
    por   mm6, mm7
-   movq  [eax-24], mm6
-   movq  mm6, [edx-64]
-   pxor  mm5, mm0
+   movq  [eax-16], mm6
+   movq  mm6, [edx+56]
+   pxor  mm5, mm1
    movq  mm7, mm5
-   psllq mm5, 27
-   psrlq mm7, 37
+   pxor  mm3, mm6
+   psllq mm5, 3
+   psrlq mm7, 61
+   pxor  mm3, [edx+16]
+   pxor  mm3, [edx-24]
    por   mm5, mm7
-   movq  [eax-8], mm5
    pxor  mm6, mm4
+   pxor  mm0, [edx-88]
    movq  mm7, mm6
+   psrlq mm7, 8
+   movq  [eax-72], mm5
+   movq  mm5, mm2
+   psllq mm2, 1
+   psllq mm6, 56
+   psrlq mm5, 63
+   por   mm6, mm7
+   por   mm2, mm5
+   pxor  mm2, mm0
+   movq  [eax+24], mm6
+   movq  mm5, [edx-120]
+   movq  mm6, mm0
+   psllq mm0, 1
+   pxor  mm5, mm2
+   pxor  mm3, [edx-64]
+   psrlq mm6, 63
+   por   mm0, mm6
+   movq  mm6, [edx-64]
+   movq  mm7, mm5
+   psllq mm5, 1
+   psrlq mm7, 63
+   pxor  mm6, mm4
+   por   mm5, mm7
+   pxor  mm0, mm3
+   movq  mm7, mm6
+   movq  [eax-48], mm5
+   movq  mm5, [edx]
    psllq mm6, 55
    psrlq mm7, 9
    por   mm6, mm7
-   movq  mm5, [edx]
    movq  [eax+40], mm6
-   movq  mm6, [edx-128]
-   pxor  mm6, mm1
-   movq  [eax-128], mm6
-   movq  mm6, [edx-88]
+   movq  mm6, [edx-40]
    pxor  mm5, mm2
    movq  mm7, mm5
    psllq mm5, 45
    psrlq mm7, 19
+   pxor  mm6, mm2
    por   mm5, mm7
    movq  [eax-64], mm5
-   movq  mm5, [edx-16]
-   pxor  mm6, mm1
-   movq  mm7, mm6
-   psllq mm6, 36
-   psrlq mm7, 28
-   por   mm6, mm7
-   movq  [eax], mm6
-   movq  mm6, [edx+8]
-   pxor  mm5, mm0
-   movq  mm7, mm5
-   psllq mm5, 39
-   psrlq mm7, 25
-   por   mm5, mm7
-   movq  [eax+48], mm5
-   movq  mm5, [edx-104]
-   pxor  mm6, mm3
-   movq  mm7, mm6
-   psllq mm6, 15
-   psrlq mm7, 49
-   por   mm6, mm7
-   movq  [eax+16], mm6
-   movq  mm6, [edx-120]
-   pxor  mm5, mm4
-   movq  mm7, mm5
-   psllq mm5, 28
-   psrlq mm7, 36
-   por   mm5, mm7
-   movq  [eax-88], mm5
-   movq  mm5, [edx-48]
-   pxor  mm6, mm2
-   movq  mm7, mm6
-   psllq mm6, 1
-   psrlq mm7, 63
-   por   mm6, mm7
-   movq  [eax-48], mm6
-   movq  mm6, [edx+56]
-   pxor  mm5, mm1
-   movq  mm7, mm5
-   psllq mm5, 3
-   psrlq mm7, 61
-   por   mm5, mm7
-   movq  [eax-72], mm5
-   movq  mm5, [edx+16]
-   pxor  mm6, mm4
-   movq  mm7, mm6
-   psllq mm6, 56
-   psrlq mm7, 8
-   por   mm6, mm7
-   movq  [eax+24], mm6
-   movq  mm6, [edx+32]
-   pxor  mm5, mm4
-   movq  mm7, mm5
-   psllq mm5, 21
-   psrlq mm7, 43
-   por   mm5, mm7
-   movq  [eax-104], mm5
    movq  mm5, [edx+40]
-   pxor  mm6, mm1
    movq  mm7, mm6
-   psllq mm6, 18
-   psrlq mm7, 46
-   por   mm6, mm7
-   movq  [eax-16], mm6
-   movq  mm6, [edx-72]
    pxor  mm5, mm2
+   psllq mm6, 10
+   psrlq mm7, 54
+   por   mm6, mm7
+   movq  [eax+8], mm6
+   movq  mm6, [edx-96]
+   movq  mm7, mm3
+   psrlq mm7, 63
+   psllq mm3, 1
+   por   mm3, mm7
    movq  mm7, mm5
    psllq mm5, 2
    psrlq mm7, 62
    por   mm5, mm7
    movq  [eax+64], mm5
-   movq  mm5, [edx-40]
-   pxor  mm6, mm3
-   movq  mm7, mm6
-   psllq mm6, 6
-   psrlq mm7, 58
-   por   mm6, mm7
-   movq  [eax-40], mm6
-   movq  mm6, [edx-56]
-   pxor  mm5, mm2
-   movq  mm7, mm5
-   psllq mm5, 10
-   psrlq mm7, 54
-   por   mm5, mm7
-   movq  [eax+8], mm5
-   movq  mm5, [edx-112]
+   movq  mm5, [edx+24]
    pxor  mm6, mm0
    movq  mm7, mm6
-   psllq mm6, 20
-   psrlq mm7, 44
+   psrlq mm7, 37
+   psllq mm6, 27
    por   mm6, mm7
-   movq  [eax-80], mm6
-   movq  mm6, [edx+48]
+   movq  [eax-8], mm6
+   pxor  mm5, mm0
+   movq  mm6, [edx-16]
+   movq  mm7, mm5
+   psllq mm5, 8
+   pxor  mm3, [ecx+8]
+   psrlq mm7, 56
+   pxor  mm6, mm0
+   por   mm5, mm7
+   movq  [eax-24], mm5
+   movq  mm7, mm6
+   psllq mm6, 39
+   movq  mm5, [edx-112]
+   psrlq mm7, 25
+   por   mm6, mm7
+   movq  [eax+48], mm6
+   movq  mm6, [edx-24]
    pxor  mm5, mm3
    movq  mm7, mm5
-   psllq mm5, 62
    psrlq mm7, 2
+   psllq mm5, 62
    por   mm5, mm7
    movq  [eax+32], mm5
-   movq  mm5, [edx-8]
-   pxor  mm6, mm3
+   movq  mm5, [edx-104]
+   pxor  mm6, mm4
    movq  mm7, mm6
-   psllq mm6, 61
-   psrlq mm7, 3
+   psrlq mm7, 39
+   psllq mm6, 25
    por   mm6, mm7
-   movq  [eax-56], mm6
-   movq  mm6, [edx+64]
-   pxor  mm5, mm1
+   pxor  mm5, mm4
+   movq  [eax-32], mm6
+   movq  mm6, [edx-128]
+   pxor  mm6, mm1
+   movq  mm4, mm6
+   movq  [eax-128], mm6
+   movq  mm4, mm6
+   movq  mm6, [edx-8]
    movq  mm7, mm5
-   psllq mm5, 41
-   psrlq mm7, 23
+   psrlq mm7, 36
+   psllq mm5, 28
+   pxor  mm6, mm1
    por   mm5, mm7
-   movq  [eax+56], mm5
-   movq  mm5, [edx-32]
-   pxor  mm6, mm0
    movq  mm7, mm6
-   psllq mm6, 14
-   psrlq mm7, 50
+   psrlq mm7, 23
+   movq  mm1, mm5
+   movq  [eax-88], mm5
+   movq  mm5, [edx-56]
+   pxor  mm5, mm0
+   psllq mm6, 41
    por   mm6, mm7
+   movq  [eax+56], mm6
+   movq  mm6, [edx+48]
+   pxor  mm6, mm3
+   movq  mm7, mm5
+   psrlq mm7, 44
+   psllq mm5, 20
+   por   mm5, mm7
+   movq  [eax-80], mm5
+   pandn mm1, mm5
+   movq  mm5, [edx-32]
+   movq  mm7, mm6
+   psrlq mm7, 3
+   psllq mm6, 61
+   por   mm6, mm7
+   pxor  mm1, mm6
+   movq  [eax-56], mm6
+   movq  mm6, [edx+8]
+   movq  [edx-56], mm1
+   movq  mm1, [eax-112]
    pxor  mm5, mm3
    movq  mm7, mm5
    psllq mm5, 43
    psrlq mm7, 21
+   pxor  mm6, mm3
    por   mm5, mm7
-   // Chi
-   movq  mm4, [eax-128]
-   movq  mm2, [eax-104]
    movq  mm1, mm5
-   movq  mm3, mm6
-   pandn mm3, mm4
-   pxor  mm3, mm2
-   movq  mm0, [eax-120]
-   movq  [edx-104], mm3
-   pandn mm1, mm2
-   pxor  mm1, mm0
-   movq  [edx-120], mm1
+   movq  mm5, [edx-80]
+   pxor  mm5, mm2
+   movq  mm2, [eax-104]
+   movq  mm7, mm6
+   psrlq mm7, 49
+   psllq mm6, 15
+   por   mm6, mm7
+   movq  [eax+16], mm6
+   movq  mm6, [edx+64]
+   movq  [eax-96], mm6
+   movq  mm7, mm5
+   psrlq mm7, 20
+   psllq mm5, 44
+   pxor  mm6, mm0
+   por   mm5, mm7
+   movq  mm7, mm6
+   psrlq mm7, 50
+   psllq mm6, 14
+   por   mm6, mm7
    pandn mm2, mm6
-   pxor  mm2, mm5
+   movq  mm0, mm5
+   pandn mm0, mm1
+   pxor  mm2, mm1
+   pandn mm1, [eax-104]
    movq  [edx-112], mm2
-   pandn mm0, mm5
-   pxor  mm0, mm4
-   movq  mm5, [eax-80]
-   movq  [edx-128], mm0
-   pandn mm4, [eax-120]
-   pxor  mm4, mm6
-   movq  mm0, [eax-56]
-   movq  mm6, [eax-72]
-   movq  mm1, [eax-88]
-   movq  [edx-96], mm4
-   pandn mm5, mm6
-   pxor  mm5, mm1
-   movq  mm7, [eax-64]
-   movq  [edx-88], mm5
-   pandn mm0, mm1
-   pxor  mm0, mm7
-   movq  [edx-64], mm0
-   pandn mm6, mm7
-   pxor  mm6, [eax-80]
-   movq  mm5, [eax-16]
-   movq  [edx-80], mm6
-   pandn mm1, [eax-80]
-   pxor  mm1, [eax-56]
-   movq  mm6, [eax-48]
-   movq  mm4, [eax-24]
-   movq  [edx-56], mm1
-   pandn mm5, mm6
-   pxor  mm5, mm4
-   movq  mm3, [eax-32]
-   movq  [edx-24], mm5
-   pandn mm7, [eax-56]
-   pxor  mm7, [eax-72]
+   pandn mm4, mm5
+   pxor  mm1, mm5
+   movq  [eax-120], mm5
    movq  mm2, [eax-40]
+   movq  [edx-120], mm1
+   movq  mm5, [edx-72]
+   movq  mm1, [eax-64]
+   pxor  mm4, mm6
+   movq  [edx-96], mm4
+   pxor  mm5, mm3
+   movq  mm4, [eax-88]
+   movq  mm7, mm5
+   movq  mm3, mm6
+   pxor  mm0, [eax-128]
+   movq  [edx-128], mm0
+   movq  mm6, [eax-72]
+   psllq mm5, 6
+   psrlq mm7, 58
+   movq  mm0, [eax-56]
+   por   mm5, mm7
+   movq  mm2, mm5
+   movq  mm5, [eax-80]
+   movq  mm7, mm1
+   pandn mm7, mm0
+   pxor  mm7, mm6
    movq  [edx-72], mm7
-   pandn mm3, mm4
-   pxor  mm3, mm2
-   movq  mm0, [eax+8]
-   movq  [edx-40], mm3
-   pandn mm2, [eax-32]
-   pxor  mm2, mm6
+   movq  mm7, [eax-72]
+   pandn mm6, mm1
+   pxor  mm6, mm5
+   pandn mm0, mm4
+   pandn mm5, mm7
    movq  mm7, [eax]
-   movq  mm1, [eax+16]
-   movq  [edx-48], mm2
-   pandn mm0, mm1
-   pxor  mm0, mm7
-   movq  [edx], mm0
-   pandn mm6, [eax-40]
-   pxor  mm6, [eax-16]
-   movq  mm3, [eax-8]
+   pxor  mm5, mm4
+   movq  mm4, [eax-24]
+   movq  [edx-80], mm6
+   movq  mm6, [eax-48]
+   movq  [edx-88], mm5
+   movq  mm5, mm1
+   movq  mm1, [eax-16]
+   pxor  mm0, mm5
+   movq  mm5, mm1
+   pandn mm3, [eax-128]
+   pxor  mm3, [eax-104]
+   movq  [edx-64], mm0
+   movq  mm0, [eax+8]
+   movq  [edx-104], mm3
+   movq  mm3, [eax-32]
+   pandn mm6, mm2
+   pxor  mm6, mm5
    movq  [edx-16], mm6
    movq  mm6, [eax+56]
-   pandn mm7, [eax+8]
-   pxor  mm7, mm3
+   pandn mm3, mm4
+   pxor  mm3, mm2
+   movq  [edx-40], mm3
+   movq  mm3, [eax-32]
+   pandn mm5, [eax-48]
+   pxor  mm5, mm4
+   movq  [edx-24], mm5
+   pandn mm7, mm0
+   movq  mm5, [eax+16]
+   pandn mm4, mm1
+   pxor  mm4, mm3
+   movq  [edx-32], mm4
+   movq  mm4, [eax+40]
+   movq  mm1, mm5
    movq  mm5, [eax+48]
+   pandn mm5, mm6
+   pxor  mm5, mm4
+   pandn mm2, mm3
+   movq  mm3, [eax-8]
+   movq  [edx+40], mm5
+   movq  mm5, [eax+24]
+   pxor  mm7, mm3
    movq  [edx-8], mm7
    movq  mm7, [eax+64]
+   pxor  mm2, [eax-48]
+   movq  [edx-48], mm2
+   movq  mm2, mm5
+   pandn mm2, mm3
+   pxor  mm2, mm1
+   movq  [edx+16], mm2
+   pandn mm3, [eax]
+   movq  mm2, mm5
+   movq  mm5, [eax+48]
    pandn mm6, mm7
    pxor  mm6, mm5
    movq  [edx+48], mm6
-   pandn mm4, [eax-16]
-   pxor  mm4, [eax-32]
-   movq  mm2, [eax+24]
-   movq  [edx-32], mm4
-   pandn mm3, [eax]
+   pandn mm1, mm2
+   movq  mm6, [eax+32]
+   pxor  mm1, mm0
    pxor  mm3, mm2
-   movq  mm4, [eax+40]
-   movq  mm0, [eax+32]
    movq  [edx+24], mm3
-   pandn mm7, mm0
-   pxor  mm7, [eax+56]
-   movq  [edx+56], mm7
+   pandn mm0, [eax+16]
+   pxor  mm0, [eax]
+   movq  mm3, mm4
+   movq  [edx+8], mm1
+   movq  [edx], mm0
+   movq  mm0, mm6
+   movq  mm1, [eax+56]
    pandn mm4, mm5
    pxor  mm4, mm0
+   pandn mm0, mm3
+   pxor  mm0, mm7
    movq  [edx+32], mm4
-   pandn mm1, mm2
-   pxor  mm1, [eax+8]
-   movq  [edx+8], mm1
-   pandn mm0, [eax+40]
-   pxor  mm0, [eax+64]
+   pandn mm7, mm6
+   pxor  mm7, mm1
+   movq  [edx+56], mm7
    movq  [edx+64], mm0
-   pandn mm5, [eax+56]
-   pxor  mm5, [eax+40]
-   movq  [edx+40], mm5
-   pandn mm2, [eax-8]
-   pxor  mm2, [eax+16]
-   movq  [edx+16], mm2
 
