@@ -79,6 +79,11 @@ type
          function ToInt64 : Int64;
    end;
 
+   TBigIntegerNegateExpr = class(TUnaryOpExpr)
+      constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
+      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+   end;
+
    TBigIntegerOpExpr = class(TBinaryOpExpr)
       constructor Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
    end;
@@ -264,6 +269,10 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+type
+   TCardinalArray = array [0..MaxInt shr 3] of Cardinal;
+   PCardinalArray = ^TCardinalArray;
+
 // RegisterBigIntegerType                                      
 //
 procedure RegisterBigIntegerType(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
@@ -296,6 +305,8 @@ begin
    typBigInteger:=systemTable.FindTypeSymbol(SYS_BIGINTEGER, cvMagic) as TBaseBigIntegerSymbol;
 
    if operators.FindCaster(typBigInteger, systemTable.TypInteger) <> nil then Exit;
+
+   operators.RegisterUnaryOperator(ttMINUS, TBigIntegerNegateExpr, typBigInteger);
 
    RegisterOperators(ttPLUS,     TBigIntegerAddOpExpr);
    RegisterOperators(ttMINUS,    TBigIntegerSubOpExpr);
@@ -423,11 +434,15 @@ end;
 constructor TBigIntegerWrapper.CreateString(const s : String; base : Integer);
 var
    buf : RawByteString;
+   p : PAnsiChar;
 begin
    CreateZero;
    if s <> '' then begin
       ScriptStringToRawByteString(s, buf);
-      mpz_set_str(Value, Pointer(buf), base);
+      p := Pointer(buf);
+      if p^ = '+' then
+         Inc(p);
+      mpz_set_str(Value, p, base);
    end;
 end;
 
@@ -531,6 +546,30 @@ begin
    end;
 end;
 
+// ------------------
+// ------------------ TBigIntegerNegateExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TBigIntegerNegateExpr.Create(prog : TdwsProgram; expr : TTypedExpr);
+begin
+   inherited;
+   Bind_MPIR_DLL;
+   Typ := expr.Typ;
+end;
+
+
+// EvalAsVariant
+//
+procedure TBigIntegerNegateExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+var
+   bi : TBigIntegerWrapper;
+begin
+   bi := TBigIntegerWrapper.CreateZero;
+   mpz_neg(bi.Value, Expr.EvalAsBigInteger(exec).Value^);
+   result := bi as IdwsBigInteger;
+end;
 // ------------------
 // ------------------ TBigIntegerOpExpr ------------------
 // ------------------
@@ -960,22 +999,39 @@ end;
 procedure TBigIntegerToBlobFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    bufString : RawByteString;
-   pDest : PInteger;
-   n : Integer;
+   pDest, pSrc : PByte;
+   i, n : Integer;
    gmp : pmpz_t;
 begin
    gmp := ArgBigInteger(args, 0).Value;
-   n := Abs(gmp.mp_size);
+   n := gmp.mp_size;
    if n = 0 then
       bufString := ''
    else begin
-      SetLength(bufString, n*4+4);
-      pDest := Pointer(bufString);
-      pDest^ := n;
-      if n > 0 then begin
+      if n < 0 then begin
+         n := -n;
+         SetLength(bufString, n*4+1);
+         pDest := Pointer(bufString);
+         pDest^ := Ord('-');
          Inc(pDest);
-         System.Move(gmp.mp_d^, pDest^, n*4);
+      end else begin
+         SetLength(bufString, n*4);
+         pDest := Pointer(bufString);
       end;
+      pSrc := @PCardinalArray(gmp.mp_d)^[n-1];
+      Inc(pSrc, 3);
+      n := n*4;
+      // skip zeroes
+      while (n > 0) and (pSrc^ = 0) do begin
+         Dec(pSrc);
+         Dec(n);
+      end;
+      for i := 1 to n do begin
+         pDest^ := pSrc^;
+         Dec(pSrc);
+         Inc(pDest);
+      end;
+      SetLength(bufString, NativeUInt(pDest)-NativeUInt(Pointer(bufString)));
    end;
    Result := bufString;
 end;
@@ -987,8 +1043,9 @@ end;
 procedure TBlobToBigIntegerFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    bufString : RawByteString;
-   pSrc : PInteger;
-   n : Integer;
+   pSrc, pDest : PByte;
+   i : Integer;
+   nbBytes, nbDWords : Cardinal;
    bi : TBigIntegerWrapper;
 begin
    bi := TBigIntegerWrapper.CreateZero;
@@ -996,14 +1053,25 @@ begin
    bufString := args.AsDataString[0];
    if bufString <> '' then begin
 
-      Assert( (Length(bufString) and 3) = 0 );
+      nbBytes := Length(bufString);
       pSrc := Pointer(bufString);
-      if pSrc^ <> 0 then begin
-         n := Abs(pSrc^);
-         mpz_realloc(bi.Value, n);
-         bi.Value.mp_size := pSrc^;
+      if bufString[1] = '-' then begin
          Inc(pSrc);
-         System.Move( bi.Value.mp_d^, pSrc^, n*4);
+         Dec(nbBytes);
+      end;
+
+      nbDWords := (nbBytes+3) div 4;
+      mpz_realloc(bi.Value, nbDWords);
+      if bufString[1] = '-' then
+         bi.Value.mp_size := -nbDWords
+      else bi.Value.mp_size := nbDWords;
+
+      PCardinalArray(bi.Value.mp_d)[nbDWords-1] := 0;
+      pDest := @PByteArray(bi.Value.mp_d)[nbBytes-1];
+      for i := 1 to nbBytes do begin
+         pDest^ := pSrc^;
+         Dec(pDest);
+         Inc(pSrc);
       end;
 
    end;
