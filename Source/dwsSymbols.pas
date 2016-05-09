@@ -912,7 +912,7 @@ type
          FToken : TTokenType;
          FParams : TTypeSymbols;
          FUsesSym : TFuncSymbol;
-         FBinExprClass : TExprBaseClass;
+         FOperatorExprClass : TExprBaseClass;
          FAssignExprClass : TExprBaseClass;
 
       protected
@@ -926,7 +926,7 @@ type
          property Token : TTokenType read FToken write FToken;
          property Params : TTypeSymbols read FParams;
          property UsesSym : TFuncSymbol read FUsesSym write FUsesSym;
-         property BinExprClass : TExprBaseClass read FBinExprClass write FBinExprClass;
+         property OperatorExprClass : TExprBaseClass read FOperatorExprClass write FOperatorExprClass;
          property AssignExprClass : TExprBaseClass read FAssignExprClass write FAssignExprClass;
    end;
 

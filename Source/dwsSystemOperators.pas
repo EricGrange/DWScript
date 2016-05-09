@@ -82,6 +82,10 @@ begin
 
    // computation operators
 
+   RegisterUnaryOperator(ttMINUS,   TNegIntExpr,      typInteger);
+   RegisterUnaryOperator(ttMINUS,   TNegFloatExpr,    typFloat);
+   RegisterUnaryOperator(ttMINUS,   TNegVariantExpr,  typVariant);
+
    RegisterOperator(ttPLUS,   TAddIntExpr,      typInteger,  typInteger);
    RegisterOperator(ttPLUS,   TAddStrExpr,      typString,   typString);
    RegisterOperator(ttPLUS,   TAddStrExpr,      typString,   typVariant);

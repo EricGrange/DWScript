@@ -11050,6 +11050,7 @@ end;
 //
 function TdwsCompiler.ReadNegation : TTypedExpr;
 var
+   opSymbol : TOperatorSymbol;
    negExprClass : TUnaryOpExprClass;
    negTerm : TTypedExpr;
    hotPos : TScriptPos;
@@ -11057,14 +11058,21 @@ begin
    FTok.TestName; // make sure hotpos is on next token
    hotPos:=FTok.HotPos;
    negTerm:=ReadTerm;
-   if negTerm.IsOfType(FProg.TypInteger) then
+
+   // shortcut for common negations
+   if negTerm.Typ = FProg.TypInteger then
       negExprClass:=TNegIntExpr
-   else if negTerm.IsOfType(FProg.TypFloat) then
+   else if negTerm.Typ = FProg.TypFloat then
       negExprClass:=TNegFloatExpr
    else begin
-      if not negTerm.IsOfType(FProg.TypVariant) then
+      opSymbol := ResolveOperatorFor(ttMINUS, nil, negTerm.Typ);
+      if opSymbol = nil then begin
          FMsgs.AddCompilerError(hotPos, CPE_NumericalExpected);
-      negExprClass:=TNegVariantExpr;
+         negExprClass := TNegVariantExpr; // keep compiling
+      end else begin
+         Assert(opSymbol.OperatorExprClass.InheritsFrom(TUnaryOpExpr));
+         negExprClass := TUnaryOpExprClass(opSymbol.OperatorExprClass);
+      end;
    end;
    Result:=negExprClass.Create(FProg, negTerm);
    if Optimize or (negTerm is TConstExpr) then
@@ -13071,10 +13079,17 @@ begin
    FOperatorResolver.Resolved:=nil;
    FOperatorResolver.LeftType:=aLeftType;
    FOperatorResolver.RightType:=aRightType;
-   if FProg.Table.HasOperators then
-      if FProg.Table.EnumerateOperatorsFor(token, aLeftType, aRightType, FOperatorResolver.Callback) then
-         Exit(FOperatorResolver.Resolved);
-   FOperators.EnumerateOperatorsFor(token, aLeftType, aRightType, FOperatorResolver.Callback);
+   if aLeftType=nil then begin
+      if FProg.Table.HasOperators then
+         if FProg.Table.EnumerateOperatorsFor(token, nil, aRightType, FOperatorResolver.Callback) then
+            Exit(FOperatorResolver.Resolved);
+      FOperators.EnumerateUnaryOperatorsFor(token, aRightType, FOperatorResolver.Callback);
+   end else begin
+      if FProg.Table.HasOperators then
+         if FProg.Table.EnumerateOperatorsFor(token, aLeftType, aRightType, FOperatorResolver.Callback) then
+            Exit(FOperatorResolver.Resolved);
+      FOperators.EnumerateOperatorsFor(token, aLeftType, aRightType, FOperatorResolver.Callback);
+   end;
    Result:=FOperatorResolver.Resolved;
 end;
 
@@ -13091,8 +13106,8 @@ begin
    opSym:=ResolveOperatorFor(token, aLeft.Typ, aRight.Typ);
    if opSym=nil then Exit;
 
-   if opSym.BinExprClass<>nil then begin
-      Result:=TBinaryOpExprClass(opSym.BinExprClass).Create(FProg, scriptPos, aLeft, aRight);
+   if opSym.OperatorExprClass<>nil then begin
+      Result:=TBinaryOpExprClass(opSym.OperatorExprClass).Create(FProg, scriptPos, aLeft, aRight);
    end else if opSym.UsesSym<>nil then begin
       if opSym.UsesSym is TMethodSymbol then
          funcExpr:=CreateMethodExpr(FProg, TMethodSymbol(opSym.UsesSym), aLeft, rkObjRef, scriptPos)

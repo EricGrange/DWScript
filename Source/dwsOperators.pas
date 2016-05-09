@@ -61,9 +61,15 @@ type
          function RegisterOperator(aToken : TTokenType; funcSymbol : TFuncSymbol;
                                    aLeftType, aRightType : TTypeSymbol) : PRegisteredOperator; overload;
 
+         function RegisterUnaryOperator(aToken : TTokenType; aExprClass : TUnaryOpExprClass;
+                                        aType : TTypeSymbol) : PRegisteredOperator; overload;
+
          function EnumerateOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
                                         const callback : TOperatorSymbolEnumerationCallback) : Boolean;
          function EnumerateOperatorSymbols(const callback : TOperatorSymbolEnumerationCallback) : Boolean;
+
+         function EnumerateUnaryOperatorsFor(aToken : TTokenType; aType : TTypeSymbol;
+                                             const callback : TOperatorSymbolEnumerationCallback) : Boolean;
 
          // strict check
          function HasOperatorFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : Boolean;
@@ -135,7 +141,7 @@ begin
    Assert(Assigned(aExprClass));
    Result:=AddOperator(aToken, aLeftType, aRightType);
    Result.OperatorSym:=TOperatorSymbol.Create(aToken);
-   Result.OperatorSym.BinExprClass:=aExprClass;
+   Result.OperatorSym.OperatorExprClass:=aExprClass;
    Result.OperatorSym.AddParam(aLeftType);
    Result.OperatorSym.AddParam(aRightType);
    Result.Owned:=True;
@@ -164,6 +170,19 @@ begin
    Result.OperatorSym.UsesSym:=funcSymbol;
    Result.OperatorSym.AddParam(aLeftType);
    Result.OperatorSym.AddParam(aRightType);
+   Result.Owned:=True;
+end;
+
+// RegisterUnaryOperator
+//
+function TOperators.RegisterUnaryOperator(aToken : TTokenType; aExprClass : TUnaryOpExprClass;
+                                          aType : TTypeSymbol) : PRegisteredOperator;
+begin
+   Result:=AddOperator(aToken, nil, aType);
+   Result.OperatorSym:=TOperatorSymbol.Create(aToken);
+   Result.OperatorSym.OperatorExprClass:=aExprClass;
+   Result.OperatorSym.AddParam(nil);
+   Result.OperatorSym.AddParam(aType);
    Result.Owned:=True;
 end;
 
@@ -196,6 +215,24 @@ begin
    for tt:=Low(FOperators) to High(FOperators) do begin
       for i:=0 to High(FOperators[tt]) do begin
          p:=@FOperators[tt][i];
+         if callback(p.OperatorSym) then Exit(True);
+      end;
+   end;
+   Result:=False;
+end;
+
+// EnumerateUnaryOperatorsFor
+//
+function TOperators.EnumerateUnaryOperatorsFor(aToken : TTokenType; aType : TTypeSymbol;
+                                             const callback : TOperatorSymbolEnumerationCallback) : Boolean;
+var
+   i : Integer;
+   p : PRegisteredOperator;
+begin
+   for i:=0 to High(FOperators[aToken]) do begin
+      p:=@FOperators[aToken][i];
+      if     (p.LeftType=nil)
+         and ((aType=p.RighType) or aType.IsOfType(p.RighType)) then begin
          if callback(p.OperatorSym) then Exit(True);
       end;
    end;
