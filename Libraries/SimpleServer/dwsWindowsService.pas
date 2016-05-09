@@ -19,7 +19,7 @@ unit dwsWindowsService;
 interface
 
 uses
-   Windows, WinSvc,
+   Windows,
    SysUtils, TypInfo,
    mORMotService,
    dwsJSON;
@@ -53,18 +53,6 @@ type
    end;
 
 implementation
-
-const
-   SERVICE_CONFIG_DESCRIPTION = 1;
-
-type
-   TServiceDescription = record
-      lpDescription : PWideChar;
-   end;
-
-function ChangeServiceConfig2(hService : SC_HANDLE; dwsInfoLevel : DWORD;
-                              lpInfo : Pointer) : BOOL; stdcall;
-                              external 'advapi32.dll' name 'ChangeServiceConfig2W';
 
 // ------------------
 // ------------------ TdwsWindowsService ------------------
@@ -125,21 +113,28 @@ var
    serviceState : TServiceStateEx;
    deviceCheck : array [0..2] of Char;
    buffer : array [0..MAX_PATH] of Char;
-   description : TServiceDescription;
    err : Integer;
 begin
    ctrl:=TServiceController.CreateOpenService('', '', ServiceName);
    try
       err := GetLastError;
       serviceState := TServiceStateEx(ctrl.State);
-      if serviceState = ssNotInstalled then begin
-         // clarify state
-         case err of
-            ERROR_ACCESS_DENIED :
-               serviceState := ssAccessDenied;
-            ERROR_INVALID_NAME : begin
-               WriteLn('Invalid service name');
-               serviceState := ssErrorRetrievingState;
+      // clarify state
+      case serviceState of
+         ssNotInstalled : begin
+            case err of
+               ERROR_ACCESS_DENIED :
+                  serviceState := ssAccessDenied;
+               ERROR_INVALID_NAME : begin
+                  WriteLn('Invalid service name');
+                  serviceState := ssErrorRetrievingState;
+               end;
+            end;
+         end;
+         ssErrorRetrievingState : begin
+            case err of
+               ERROR_SERVICE_DOES_NOT_EXIST :
+                  serviceState := ssNotInstalled;
             end;
          end;
       end;
@@ -169,8 +164,7 @@ begin
                         ssErrorRetrievingState :
                            Writeln('Account has insufficient rights, cannot install');
                      else
-                        description.lpDescription:=PChar(ServiceDescription);
-                        ChangeServiceConfig2(ctrl.Handle, SERVICE_CONFIG_DESCRIPTION, @description);
+                        ctrl.SetDescription(ServiceDescription);
                         Writeln('Installed successfully');
                      end;
                   end;
@@ -192,7 +186,7 @@ begin
                   Writeln('Failed to stop')
                else begin
                   ctrl.Delete;
-                  if ctrl.State=TServiceState.ssNotInstalled then
+                  if ctrl.State in [TServiceState.ssNotInstalled, TServiceState.ssErrorRetrievingState] then
                      Writeln('Uninstalled successfully')
                   else Writeln('Failed to uninstall');
                end;
