@@ -1,0 +1,2 @@
+Syntax Error: ";" expected. [line: 11, column: 1]
+Syntax Error: Class reference expected [line: 13, column: 12]

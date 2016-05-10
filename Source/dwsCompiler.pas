@@ -10371,16 +10371,18 @@ begin
                              or (Result.Typ is TClassOfSymbol)
                              or (Result.Typ=FProg.TypNil)
                              ) then begin
-                        if not ((rightTyp.ClassType=Result.Typ.ClassType) or (rightTyp=FProg.TypNil)) then
+                        if not ((rightTyp.ClassType=Result.Typ.ClassType) or (rightTyp=FProg.TypNil)) then begin
                            if Result.Typ is TClassSymbol then
                               FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
+                           else if Result.Typ is TClassOfSymbol then
+                              FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected)
                            else FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
+                        end;
                         if Result.Typ is TClassSymbol then
                            if tt=ttNOTEQ then
                               Result:=TObjCmpNotEqualExpr.Create(FProg, hotPos, Result, right)
                            else Result:=TObjCmpEqualExpr.Create(FProg, hotPos, Result, right)
                         else if Result.Typ is TClassOfSymbol then begin
-                           Assert(rightTyp=FProg.TypNil);
                            Result:=TAssignedMetaClassExpr.Create(FProg, Result);
                            if tt=ttEQ then
                               Result:=TNotBoolExpr.Create(FProg, Result);
