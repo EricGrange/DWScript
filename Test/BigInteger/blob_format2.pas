@@ -16,18 +16,32 @@ begin
 	PrintLn('');
 end;
 
-for var i := 0 to 20 do begin
+var bm := BigInteger($ff);
+var bf := bm.ToBlobParameter;
+PrintBlob(bf);
+PrintLn(BlobFieldToBigInteger(bf));
+
+bm := BigInteger(-1);
+bf := bm.ToBlobParameter;
+PrintBlob(bf);
+PrintLn(BlobFieldToBigInteger(bf));
+
+for var i := 0 to 16 do begin
 	var s := '';
 	for var j := 1 to i do
-		s += cHex[j and 15];
+		s += 'f';
 	var b := s.ToBigInteger(16);
-	PrintBlob(b.ToBlobParameter);
+	var p := b.ToBlobParameter;
+	PrintBlob(p);
+	if BlobFieldToBigInteger(p) <> b then PrintLn('bug');
 end;
 
-for var i := 1 to 20 do begin
+for var i := 1 to 16 do begin
 	var s := '-';
 	for var j := 1 to i do
-		s += cHex[j and 15];
+		s += 'f';
 	var b := s.ToBigInteger(16);
-	PrintBlob(b.ToBlobParameter);
+	var p := b.ToBlobParameter;
+	PrintBlob(p);
+	if BlobFieldToBigInteger(p) <> b then PrintLn('bug');
 end;

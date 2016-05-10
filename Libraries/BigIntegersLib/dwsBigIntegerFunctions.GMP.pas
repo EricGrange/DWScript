@@ -1000,37 +1000,36 @@ procedure TBigIntegerToBlobFunc.DoEvalAsVariant(const args : TExprBaseListExec; 
 var
    bufString : RawByteString;
    pDest, pSrc : PByte;
-   i, n : Integer;
+   n : Integer;
    gmp : pmpz_t;
 begin
    gmp := ArgBigInteger(args, 0).Value;
-   n := gmp.mp_size;
+   n := Abs(gmp.mp_size);
    if n = 0 then
       bufString := ''
    else begin
-      if n < 0 then begin
-         n := -n;
-         SetLength(bufString, n*4+1);
-         pDest := Pointer(bufString);
-         pDest^ := Ord('-');
+      SetLength(bufString, n*4+1);
+      pDest := Pointer(bufString);
+      if gmp.mp_size < 0 then begin
+         pDest^ := $ff;
          Inc(pDest);
-      end else begin
-         SetLength(bufString, n*4);
-         pDest := Pointer(bufString);
       end;
       pSrc := @PCardinalArray(gmp.mp_d)^[n-1];
       Inc(pSrc, 3);
-      n := n*4;
       // skip zeroes
-      while (n > 0) and (pSrc^ = 0) do begin
+      while pSrc^ = 0 do begin
          Dec(pSrc);
-         Dec(n);
+         if pSrc = PByte(gmp.mp_d) then break;
       end;
-      for i := 1 to n do begin
+      if (pSrc^ = $ff) and (gmp.mp_size > 0) then begin
+         pDest^ := $00;
+         Inc(pDest);
+      end;
+      repeat
          pDest^ := pSrc^;
          Dec(pSrc);
          Inc(pDest);
-      end;
+      until NativeUInt(pSrc) < NativeUInt(gmp.mp_d);
       SetLength(bufString, NativeUInt(pDest)-NativeUInt(Pointer(bufString)));
    end;
    Result := bufString;
@@ -1055,14 +1054,16 @@ begin
 
       nbBytes := Length(bufString);
       pSrc := Pointer(bufString);
-      if bufString[1] = '-' then begin
-         Inc(pSrc);
-         Dec(nbBytes);
+      case Ord(bufString[1]) of
+         $00, $ff : begin
+            Inc(pSrc);
+            Dec(nbBytes);
+         end
       end;
 
       nbDWords := (nbBytes+3) div 4;
       mpz_realloc(bi.Value, nbDWords);
-      if bufString[1] = '-' then
+      if Ord(bufString[1]) = $ff then
          bi.Value.mp_size := -nbDWords
       else bi.Value.mp_size := nbDWords;
 
