@@ -125,6 +125,8 @@ type
          FTrailCharacter : WideChar;
          DuplicatesOption : TdwsJSONDuplicatesOptions;
 
+         function ParseEscapedCharacter : WideChar;
+
       public
          constructor Create(const aStr : UnicodeString);
 
@@ -142,6 +144,8 @@ type
          procedure ParseIntegerArray(dest : TSimpleInt64List);
          procedure ParseNumberArray(dest : TSimpleDoubleList);
          procedure ParseStringArray(dest : TStringList);
+
+         class var UnifyStrings : Boolean;
    end;
 
    TdwsJSONValueType = (jvtUndefined, jvtNull, jvtObject, jvtArray, jvtString, jvtNumber, jvtBoolean);
@@ -526,59 +530,69 @@ begin
    until False;
 end;
 
+// ParseEscapedCharacter
+//
+function TdwsJSONParserState.ParseEscapedCharacter : WideChar;
+var
+   c : WideChar;
+   hexBuf, hexCount : Integer;
+begin
+   c:=NeedChar();
+   case c of
+      '"', '\', '/' : Result:=c;
+      'n' : Result:=#10;
+      'r' : Result:=#13;
+      't' : Result:=#9;
+      'b' : Result:=#8;
+      'f' : Result:=#12;
+      'u' : begin
+         hexBuf:=0;
+         for hexCount:=1 to 4 do begin
+            c:=NeedChar();
+            case c of
+               '0'..'9' :
+                  hexBuf:=(hexBuf shl 4)+Ord(c)-Ord('0');
+               'a'..'f' :
+                  hexBuf:=(hexBuf shl 4)+Ord(c)-(Ord('a')-10);
+               'A'..'F' :
+                  hexBuf:=(hexBuf shl 4)+Ord(c)-(Ord('A')-10);
+            else
+               TdwsJSONValue.RaiseJSONParseError('Invalid unicode hex character "%s"', c);
+            end;
+         end;
+         Result:=WideChar(hexBuf);
+      end;
+   else
+      Result := c;
+      TdwsJSONValue.RaiseJSONParseError('Invalid character "%s" after escape', c);
+   end;
+end;
+
 // ParseJSONString
 //
 procedure TdwsJSONParserState.ParseJSONString(initialChar : WideChar; var result : UnicodeString);
 var
    c : WideChar;
    wobs : TWriteOnlyBlockStream;
-   hexBuf, hexCount, n, nw : Integer;
+   n, nw : Integer;
    localBufferPtr, startPr : PWideChar;
-   localBuffer : array [0..59] of WideChar; // range adjusted to have a stack space of 128 for the proc
+   localBuffer : array [0..95] of WideChar;
 begin
    startPr:=Ptr;
    wobs:=nil;
    try
       localBufferPtr:=@localBuffer[0];
       repeat
-         c:=NeedChar();
+         c:=Ptr^;
+         Inc(Ptr);
          case c of
             #0..#31 :
                if c=#0 then begin
                   Ptr:=startPr;
-                  TdwsJSONValue.RaiseJSONParseError('Unterminated string', c)
+                  TdwsJSONValue.RaiseJSONParseError('Unterminated string')
                end else TdwsJSONValue.RaiseJSONParseError('Invalid string character %s', c);
             '"' : Break;
-            '\' : begin
-               c:=NeedChar();
-               case c of
-                  '"', '\', '/' : localBufferPtr^:=c;
-                  'n' : localBufferPtr^:=#10;
-                  'r' : localBufferPtr^:=#13;
-                  't' : localBufferPtr^:=#9;
-                  'b' : localBufferPtr^:=#8;
-                  'f' : localBufferPtr^:=#12;
-                  'u' : begin
-                     hexBuf:=0;
-                     for hexCount:=1 to 4 do begin
-                        c:=NeedChar();
-                        case c of
-                           '0'..'9' :
-                              hexBuf:=(hexBuf shl 4)+Ord(c)-Ord('0');
-                           'a'..'f' :
-                              hexBuf:=(hexBuf shl 4)+Ord(c)-(Ord('a')-10);
-                           'A'..'F' :
-                              hexBuf:=(hexBuf shl 4)+Ord(c)-(Ord('A')-10);
-                        else
-                           TdwsJSONValue.RaiseJSONParseError('Invalid unicode hex character "%s"', c);
-                        end;
-                     end;
-                     localBufferPtr^:=WideChar(hexBuf);
-                  end;
-               else
-                  TdwsJSONValue.RaiseJSONParseError('Invalid character "%s" after escape', c);
-               end;
-            end;
+            '\' : localBufferPtr^:=ParseEscapedCharacter;
          else
             localBufferPtr^:=c;
          end;
@@ -606,6 +620,8 @@ begin
    finally
       wobs.ReturnToPool;
    end;
+   if UnifyStrings then
+      Result:=UnifiedString(Result);
 end;
 
 // ParseJSONNumber
