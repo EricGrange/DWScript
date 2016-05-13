@@ -126,6 +126,16 @@ type
       ExtObject: TObject);
     procedure dwsWebClassesWebRequestMethodsHostEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsSetConnectTimeoutMSecEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsSetSendTimeoutMSecEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsSetReceiveTimeoutMSecEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsSetProxyNameEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsSetCustomHeadersEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -137,11 +147,16 @@ implementation
 {$R *.dfm}
 
 type
+   TCustomHeaders = class (TInterfacedSelfObject)
+      Headers : array of RawByteString;
+   end;
+
    THttpQueryMethod = (hqmGET, hqmPOST, hqmPUT, hqmDELETE);
 
    TdwsWinHTTP = class (TWinHTTP)
       protected
          AuthorizationHeader : RawByteString;
+         CustomHeaders : TCustomHeaders;
          procedure InternalSendRequest(const aData: SockString); override;
    end;
 
@@ -151,13 +166,24 @@ type
 const
    cWinHttpCredentials : TGUID = '{FB60EB3D-1085-4A88-9923-DE895B5CAB76}';
    cWinHttpIgnoreSSLCertificateErrors : TGUID = '{42AC8563-761B-4E3D-9767-A21F8F32201C}';
+   cWinHttpProxyName : TGUID = '{2449F585-D6C6-4FDC-8D86-0266E01CA99C}';
+   cWinHttpConnectTimeout : TGUID = '{8D322334-D1DD-4EBF-945F-193CFCA001FB}';
+   cWinHttpSendTimeout : TGUID = '{1DE21769-65B5-4039-BB66-62D405FB00B7}';
+   cWinHttpReceiveTimeout : TGUID = '{0D14B470-4F8A-48AE-BAD2-426E15FE4E03}';
+   cWinHttpCustomHeaders : TGUID = '{FD05B54E-FBF2-498A-BD1F-0B1F18F27A1E}';
 
 // InternalSendRequest
 //
 procedure TdwsWinHTTP.InternalSendRequest(const aData: SockString);
+var
+   i : Integer;
 begin
    if AuthorizationHeader<>'' then
       InternalAddHeader('Authorization: '+AuthorizationHeader);
+   if Assigned(CustomHeaders) then
+      for i := 0 to High(CustomHeaders.Headers) do
+         InternalAddHeader(CustomHeaders.Headers[i]);
+
    inherited InternalSendRequest(aData);
 end;
 
@@ -173,10 +199,15 @@ var
    uri : TURI;
    headers, buf, mimeType : SockString;
    p1, p2 : Integer;
-   credentials, ignoreSSLErrors : Variant;
+   credentials, ignoreSSLErrors, customHeaders : Variant;
 begin
    if uri.From(url) then begin
-      query:=TdwsWinHTTP.Create(uri.Server, uri.Port, uri.Https);
+      query:=TdwsWinHTTP.Create(uri.Server, uri.Port, uri.Https,
+                                SynUnicodeToUtf8(customStates.StringStateDef(cWinHttpProxyName, '')),
+                                '',
+                                customStates.IntegerStateDef(cWinHttpConnectTimeout, HTTP_DEFAULT_CONNECTTIMEOUT),
+                                customStates.IntegerStateDef(cWinHttpSendTimeout, HTTP_DEFAULT_SENDTIMEOUT),
+                                customStates.IntegerStateDef(cWinHttpReceiveTimeout, HTTP_DEFAULT_RECEIVETIMEOUT));
       try
          ignoreSSLErrors:=customStates[cWinHttpIgnoreSSLCertificateErrors];
          // may be empty, and that fails direct boolean casting, hence casting & boolean check
@@ -196,6 +227,11 @@ begin
             query.AuthUserName:=credentials[1];
             query.AuthPassword:=credentials[2];
          end;
+
+         customHeaders := customStates[cWinHttpCustomHeaders];
+         if VarType(customHeaders) = varUnknown then
+            query.CustomHeaders := IGetSelf(TVarData(customHeaders).VUnknown).GetSelf as TCustomHeaders;
+
          case method of
             hqmGET : begin
                Assert(requestData='');
@@ -307,6 +343,24 @@ begin
       Info.Execution.CustomStates);
 end;
 
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetConnectTimeoutMSecEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.Execution.CustomStates[cWinHttpConnectTimeout]:=Info.ParamAsInteger[0];
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetSendTimeoutMSecEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.Execution.CustomStates[cWinHttpSendTimeout]:=Info.ParamAsInteger[0];
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetReceiveTimeoutMSecEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.Execution.CustomStates[cWinHttpReceiveTimeout]:=Info.ParamAsInteger[0];
+end;
+
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetCredentialsEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
@@ -317,6 +371,24 @@ begin
    v[1]:=Info.ParamAsString[1];
    v[2]:=Info.ParamAsString[2];
    Info.Execution.CustomStates[cWinHttpCredentials]:=v;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetCustomHeadersEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   dyn : IScriptDynArray;
+   headers : TCustomHeaders;
+   i, n : Integer;
+begin
+   dyn := Info.ParamAsScriptDynArray[0];
+   n := dyn.ArrayLength;
+   if n > 0 then begin
+      headers := TCustomHeaders.Create;
+      SetLength(headers.Headers, n);
+      for i := 0 to n-1 do
+         ScriptStringToRawByteString(dyn.AsString[i], headers.Headers[i]);
+      Info.Execution.CustomStates[cWinHttpCustomHeaders] := headers as IGetSelf;
+   end else Info.Execution.CustomStates[cWinHttpCustomHeaders] := Unassigned;
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsClearCredentialsEval(
@@ -340,6 +412,12 @@ begin
    if VarType(v)<>varBoolean then
       v:=False;
    Info.ResultAsBoolean:=v;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetProxyNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.Execution.CustomStates[cWinHttpProxyName]:=Info.ParamAsString[0];
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsAuthenticatedUserEval(

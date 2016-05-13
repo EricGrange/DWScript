@@ -645,6 +645,61 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maStatic]
             OnEval = dwsWebClassesHttpQueryMethodsGetIgnoreSSLCertificateErrorsEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'SetProxyName'
+            Parameters = <
+              item
+                Name = 'val'
+                DataType = 'String'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsSetProxyNameEval
+            Kind = mkClassProcedure
+          end
+          item
+            Name = 'SetConnectTimeoutMSec'
+            Parameters = <
+              item
+                Name = 'val'
+                DataType = 'Integer'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsSetConnectTimeoutMSecEval
+            Kind = mkClassProcedure
+          end
+          item
+            Name = 'SetSendTimeoutMSec'
+            Parameters = <
+              item
+                Name = 'val'
+                DataType = 'Integer'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsSetSendTimeoutMSecEval
+            Kind = mkClassProcedure
+          end
+          item
+            Name = 'SetReceiveTimeoutMSec'
+            Parameters = <
+              item
+                Name = 'val'
+                DataType = 'Integer'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsSetReceiveTimeoutMSecEval
+            Kind = mkClassProcedure
+          end
+          item
+            Name = 'SetCustomHeaders'
+            Parameters = <
+              item
+                Name = 'headers'
+                DataType = 'array of String'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsSetCustomHeadersEval
+            Kind = mkClassProcedure
           end>
         Properties = <
           item
@@ -652,6 +707,11 @@ object dwsWebLib: TdwsWebLib
             DataType = 'Boolean'
             ReadAccess = 'GetIgnoreSSLCertificateErrors'
             WriteAccess = 'SetIgnoreSSLCertificateErrors'
+          end
+          item
+            Name = 'ConnectTimeoutMSec'
+            DataType = 'Integer'
+            WriteAccess = 'SetConnectTimeoutMSec'
           end>
       end>
     Enumerations = <
