@@ -96,6 +96,12 @@ type
          destructor Destroy; override;
    end;
 
+   // Interface for coalesce-able IUnknown
+   ICoalesceable = interface
+      ['{9F074F2A-2AAC-48E7-851B-FFA2CE3742F4}']
+      function IsFalsey : Boolean;
+   end;
+
    // TVarRecArrayContainer
    //
    TVarRecArrayContainer = class
@@ -142,6 +148,7 @@ type
          property List : PObjectTightList read GetList;
          property Count : Integer read FCount;
 
+         procedure Initialize; // in case of use as a local variable
          procedure Free; // to posture as a regular TList
          procedure Clean;  // clear the list and free the item objects
          procedure Clear;  // clear the list without freeing the items
@@ -935,6 +942,7 @@ procedure FastStringReplace(var str : UnicodeString; const sub, newSub : Unicode
 
 procedure VariantToString(const v : Variant; var s : UnicodeString);
 procedure VariantToInt64(const v : Variant; var r : Int64);
+function VariantToBool(const v : Variant) : Boolean;
 
 procedure VarClearSafe(var v : Variant);
 procedure VarCopySafe(var dest : Variant; const src : Variant); overload;
@@ -962,6 +970,8 @@ procedure SuppressH2077ValueAssignedToVariableNeverUsed(const X); inline;
 
 procedure dwsFreeAndNil(var O); // transitional function, do not use
 
+function CoalesceableIsFalsey(const unk : IUnknown) : Boolean;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -969,6 +979,17 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+// CoalesceableIsFalsey
+//
+function CoalesceableIsFalsey(const unk : IUnknown) : Boolean;
+var
+   c : ICoalesceable;
+begin
+   Result :=    (unk=nil)
+             or (    (unk.QueryInterface(ICoalesceable, c)=S_OK)
+                 and c.IsFalsey);
+end;
 
 // SuppressH2077ValueAssignedToVariableNeverUsed
 //
@@ -1664,6 +1685,28 @@ begin
          else DefaultCast;
    else
       DefaultCast;
+   end;
+end;
+
+// VariantToBool
+//
+function VariantToBool(const v : Variant) : Boolean;
+begin
+   case TVarData(v).VType of
+      varBoolean :
+         Result := TVarData(v).VBoolean;
+      varInt64 :
+         Result := (TVarData(v).VInt64<>0);
+      varUnknown :
+         Result := not CoalesceableIsFalsey(IUnknown(TVarData(v).VUnknown));
+      varUString :
+         Result := TVarData(v).VUString <> nil;
+      varDouble :
+         Result := TVarData(v).VDouble <> 0;
+      varNull, varEmpty :
+         Result := False;
+   else
+      Result := v;
    end;
 end;
 
@@ -3010,6 +3053,14 @@ begin
    else
       FreeMem(FList);
    end;
+   FList:=nil;
+   FCount:=0;
+end;
+
+// Initialize
+//
+procedure TTightList.Initialize; // in case of use as a local variable
+begin
    FList:=nil;
    FCount:=0;
 end;

@@ -1834,6 +1834,7 @@ type
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          procedure AddCaseCondition(cond : TCaseCondition);
+         procedure Prepare; virtual;
 
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
 
@@ -1843,9 +1844,6 @@ type
    end;
 
    TStringInOpExpr = class (TInOpExpr)
-      private
-         procedure PrepareSortedStrings; virtual;
-
       public
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
@@ -1860,10 +1858,10 @@ type
       private
          FSortedStrings : TFastCompareStringList;
 
-         procedure PrepareSortedStrings; override;
-
       public
          destructor Destroy; override;
+
+         procedure Prepare; override;
 
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
@@ -4419,7 +4417,6 @@ var
    value : Variant;
    i, k, mask : Integer;
    cc : TCaseCondition;
-   sioe : TStringInOpExpr;
    iioe : TIntegerInOpExpr;
 begin
    Result:=Self;
@@ -4445,17 +4442,6 @@ begin
       FLeft:=nil;
       Free;
 
-   end else if FLeft.IsOfType(prog.TypString) then begin
-
-      if TCaseConditionsHelper.CanOptimizeToTyped(FCaseConditions, TConstStringExpr) then begin
-         if FCaseConditions.ItemsAllOfClass(TCompareCaseCondition) then
-            sioe:=TStringInOpStaticSetExpr.Create(prog, Left)
-         else sioe:=TStringInOpExpr.Create(prog, Left);
-         TransferFieldsAndFree(sioe);
-         sioe.PrepareSortedStrings;
-         Exit(sioe);
-      end;
-
    end else if FLeft.IsOfType(prog.TypInteger) then begin
 
       if TCaseConditionsHelper.CanOptimizeToTyped(FCaseConditions, TConstIntExpr) then begin
@@ -4473,6 +4459,13 @@ end;
 procedure TInOpExpr.AddCaseCondition(cond : TCaseCondition);
 begin
    FCaseConditions.Add(cond);
+end;
+
+// Prepare
+//
+procedure TInOpExpr.Prepare;
+begin
+   // nothing here
 end;
 
 //
@@ -4534,13 +4527,6 @@ begin
    Result:=False;
 end;
 
-// PrepareSortedStrings
-//
-procedure TStringInOpExpr.PrepareSortedStrings;
-begin
-   // nothing here (yet)
-end;
-
 // ------------------
 // ------------------ TIntegerInOpExpr ------------------
 // ------------------
@@ -4574,9 +4560,9 @@ begin
    FSortedStrings.Free;
 end;
 
-// PrepareSortedStrings
+// Prepare
 //
-procedure TStringInOpStaticSetExpr.PrepareSortedStrings;
+procedure TStringInOpStaticSetExpr.Prepare;
 var
    i : Integer;
    cc : TCompareCaseCondition;
@@ -5393,7 +5379,7 @@ begin
       varInt64 :
          TVarData(Result).VInt64 := not TVarData(Result).VInt64;
    else
-      Result := not Result;
+      Result := not VariantToBool(Result);
    end;
 end;
 
@@ -5664,14 +5650,6 @@ end;
 // EvalAsVariant
 //
 procedure TCoalesceExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
-
-   function CoalesceableIsFalsey(const unk : IUnknown) : Boolean;
-   var
-      c : ICoalesceable;
-   begin
-      Result:=(unk.QueryInterface(ICoalesceable, c)=S_OK) and c.IsFalsey;
-   end;
-
 var
    i : Int64;
 begin
@@ -5690,9 +5668,7 @@ begin
       varString, varUString :
          if TVarData(result).VString<>nil then Exit;
       varUnknown : begin
-         if TVarData(result).VUnknown<>nil then begin
-            if not CoalesceableIsFalsey(IUnknown(TVarData(result).VUnknown)) then Exit;
-         end;
+         if not CoalesceableIsFalsey(IUnknown(TVarData(result).VUnknown)) then Exit;
       end;
       varDispatch :
          if TVarData(result).VDispatch<>nil then Exit;

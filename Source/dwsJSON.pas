@@ -124,6 +124,7 @@ type
          Line : Integer;
          FTrailCharacter : WideChar;
          DuplicatesOption : TdwsJSONDuplicatesOptions;
+         UnifyStrings : Boolean;
 
          function ParseEscapedCharacter : WideChar;
 
@@ -144,8 +145,6 @@ type
          procedure ParseIntegerArray(dest : TSimpleInt64List);
          procedure ParseNumberArray(dest : TSimpleDoubleList);
          procedure ParseStringArray(dest : TStringList);
-
-         class var UnifyStrings : Boolean;
    end;
 
    TdwsJSONValueType = (jvtUndefined, jvtNull, jvtObject, jvtArray, jvtString, jvtNumber, jvtBoolean);
@@ -218,14 +217,16 @@ type
                                     duplicatesOption : TdwsJSONDuplicatesOptions = jdoOverwrite) : TdwsJSONValue; static;
          class function ParseFile(const fileName : UnicodeString) : TdwsJSONValue; static;
 
-         function Clone : TdwsJSONValue;
+         function  Clone : TdwsJSONValue;
          procedure Extend(other : TdwsJSONValue);
 
          procedure WriteTo(writer : TdwsJSONWriter); virtual; abstract;
          procedure WriteToStream(aStream : TStream); overload;
          procedure WriteToStream(aStream : TWriteOnlyBlockStream); overload;
-         function ToString : UnicodeString; reintroduce;
-         function ToBeautifiedString(initialTabs : Integer = 0; indentTabs : Integer = 1) : UnicodeString;
+
+         function  ToString : UnicodeString; reintroduce;
+         function  ToBeautifiedString(initialTabs : Integer = 0; indentTabs : Integer = 1) : UnicodeString;
+
          procedure Detach;
 
          property Owner : TdwsJSONValue read GetOwner;
@@ -952,12 +953,15 @@ end;
 //
 class function TdwsJSONValue.ParseString(const json : UnicodeString;
                                          duplicatesOption : TdwsJSONDuplicatesOptions = jdoOverwrite) : TdwsJSONValue;
+const
+   cAutoUnifierTreshold = 10 * 1024 * 1024;
 var
    parserState : TdwsJSONParserState;
 begin
    Result:=nil;
-   parserState:=TdwsJSONParserState.Create(json);
+   parserState := TdwsJSONParserState.Create(json);
    try
+      parserState.UnifyStrings := (Length(json) >= cAutoUnifierTreshold);
       try
          parserState.DuplicatesOption:=duplicatesOption;
          Result:=TdwsJSONValue.Parse(parserState);
@@ -969,6 +973,8 @@ begin
          raise;
       end;
    finally
+      if parserState.UnifyStrings then
+         TidyStringsUnifier;
       parserState.Free;
    end;
 end;
@@ -1394,7 +1400,7 @@ end;
 //
 function TdwsJSONValue.DoIsFalsey : Boolean;
 begin
-   Result:=false;
+   Result:=False;
 end;
 
 // DoSetHashedItem

@@ -1,0 +1,10 @@
+unassigned is false
+null is false
+object is true
+array is true
+non empty string is true
+empty string is false
+1 is true
+0 is false
+true is true
+false is false

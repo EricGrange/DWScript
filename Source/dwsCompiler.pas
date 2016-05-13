@@ -540,7 +540,7 @@ type
                                     baseExpr : TTypedExpr) : TProgramExpr;
 
          function ReadCase : TCaseExpr;
-         function ReadCaseConditions(condList : TCaseConditions; valueExpr : TTypedExpr) : Integer;
+         function ReadCaseConditions(var condList : TTightList; valueExpr : TTypedExpr) : Integer;
          function ReadAliasedNameSymbol(var namePos : TScriptPos) : TSymbol;
          function ReadNameSymbol(var namePos : TScriptPos) : TSymbol;
          function ReadClassName : TClassSymbol;
@@ -6573,12 +6573,12 @@ end;
 function TdwsCompiler.ReadCase : TCaseExpr;
 var
    expr : TProgramExpr;
-   condList : TCaseConditions;
+   condList : TTightList;
    condition : TCaseCondition;
    tt : TTokenType;
    x : Integer;
 begin
-   condList := TCaseConditions.Create;
+   condList.Initialize;
    try
       Result := TCaseExpr.Create(FTok.HotPos);
       try
@@ -6603,13 +6603,13 @@ begin
 
                // Add case conditions to TCaseExpr
                for x:=0 to condList.Count-1 do begin
-                  condition:=condList[x];
+                  condition:=(condList.List[x] as TCaseCondition);
                   condition.TrueExpr:=Expr;
                   if x=0 then
                      condition.OwnsTrueExpr:=True;
                   Result.AddCaseCondition(condition);
                end;
-               condList.ExtractAll;
+               condList.Clear;
 
                if not (FTok.Test(ttELSE) or FTok.Test(ttEND) or FTok.TestDelete(ttSEMI)) then
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
@@ -6620,13 +6620,13 @@ begin
          raise;
       end;
    finally
-      condList.Free;
+      condList.Clean;
    end;
 end;
 
 // ReadCaseConditions
 //
-function TdwsCompiler.ReadCaseConditions(condList : TCaseConditions; valueExpr : TTypedExpr) : Integer;
+function TdwsCompiler.ReadCaseConditions(var condList : TTightList; valueExpr : TTypedExpr) : Integer;
 var
    hotPos : TScriptPos;
    exprFrom, exprTo : TTypedExpr;
@@ -10710,12 +10710,12 @@ end;
 function TdwsCompiler.ReadExprInConditions(var left : TTypedExpr) : TInOpExpr;
 var
    i : Integer;
-   condList : TCaseConditions;
+   condList : TTightList;
    hotPos : TScriptPos;
 begin
    hotPos:=FTok.HotPos;
 
-   condList:=TCaseConditions.Create;
+   condList.Initialize;
    try
       if not FTok.TestDelete(ttARIGHT) then begin
          ReadCaseConditions(condList, left);
@@ -10723,15 +10723,35 @@ begin
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBracketRightExpected);
       end;
 
-      Result:=TInOpExpr.Create(FProg, left);
+      if left.IsOfType(FProg.TypString) then begin
+
+         if     TCaseConditionsHelper.CanOptimizeToTyped(condList, TConstStringExpr)
+            and condList.ItemsAllOfClass(TCompareCaseCondition) then begin
+
+            Result:=TStringInOpStaticSetExpr.Create(FProg, left)
+
+         end else begin
+
+            Result:=TStringInOpExpr.Create(FProg, left);
+
+         end;
+      end else begin
+
+         Result:=TInOpExpr.Create(FProg, left);
+
+      end;
+
       left:=nil;
 
       // Add case conditions to TCaseExpr
       for i:=0 to condList.Count-1 do
-         Result.AddCaseCondition(condList[i]);
-      condList.ExtractAll;
+         Result.AddCaseCondition(condList.List[i] as TCaseCondition);
+
+      Result.Prepare;
+
+      condList.Clear;
    finally
-      condList.Free;
+      condList.Clean;
    end;
 end;
 

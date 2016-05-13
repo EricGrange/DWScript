@@ -548,6 +548,9 @@ type
 
       public
          property States[const index : TGUID] : Variant read GetState write SetState; default;
+
+         function IntegerStateDef(const index : TGUID; const default : Integer) : Integer;
+         function StringStateDef(const index : TGUID; const default : String) : String;
    end;
 
    // holds execution context for a script
@@ -3977,7 +3980,7 @@ var
 begin
    EvalAsVariant(exec, v);
    try
-      Result:=v;
+      Result := VariantToBool(v);
    except
       // standardize RTL message
       on E : EVariantError do begin
@@ -8896,6 +8899,30 @@ begin
    s.Key:=index;
    s.Value:=v;
    Replace(s);
+end;
+
+// IntegerStateDef
+//
+function TdwsCustomStates.IntegerStateDef(const index : TGUID; const default : Integer) : Integer;
+var
+   s : TdwsCustomState;
+begin
+   s.Key:=index;
+   if Match(s) and VarIsOrdinal(s.Value) then
+      Result:=s.Value
+   else Result:=default;
+end;
+
+// StringStateDef
+//
+function TdwsCustomStates.StringStateDef(const index : TGUID; const default : String) : String;
+var
+   s : TdwsCustomState;
+begin
+   s.Key:=index;
+   if Match(s) and VarIsStr(s.Value) then
+      Result:=s.Value
+   else Result:=default;
 end;
 
 // ------------------------------------------------------------------

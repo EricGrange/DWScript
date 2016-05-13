@@ -66,12 +66,6 @@ type
    end;
    TdwsExprLocationArray = array of TdwsExprLocation;
 
-   // Interface for coalesce-able IUnknown
-   ICoalesceable = interface
-      ['{9F074F2A-2AAC-48E7-851B-FFA2CE3742F4}']
-      function IsFalsey : Boolean;
-   end;
-
    // Interface for external debuggers
    IDebugger = interface
       ['{8D534D14-4C6B-11D5-8DCB-0000216D9E86}']
