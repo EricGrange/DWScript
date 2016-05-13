@@ -452,7 +452,7 @@ end;
 //
 procedure TFileRead4Func.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
-   RawByteStringToScriptString(LoadRawBytesFromFile(args.AsFileName[0]), Result);
+   LoadRawBytesAsScriptStringFromFile(args.AsFileName[0], Result);
 end;
 
 // ------------------

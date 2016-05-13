@@ -216,6 +216,8 @@ procedure SaveDataToFile(const fileName : UnicodeString; const data : TBytes);
 function LoadRawBytesFromFile(const fileName : UnicodeString) : RawByteString;
 function SaveRawBytesToFile(const fileName : UnicodeString; const data : RawByteString) : Integer;
 
+procedure LoadRawBytesAsScriptStringFromFile(const fileName : UnicodeString; var result : String);
+
 function LoadTextFromBuffer(const buf : TBytes) : UnicodeString;
 function LoadTextFromRawBytes(const buf : RawByteString) : UnicodeString;
 function LoadTextFromStream(aStream : TStream) : UnicodeString;
@@ -873,6 +875,34 @@ begin
    Result:=LoadTextFromBuffer(buf);
 end;
 
+// ReadFileChunked
+//
+function ReadFileChunked(hFile : THandle; const buffer; size : Integer) : Integer;
+const
+   CHUNK_SIZE = 16384;
+var
+   p : PByte;
+   nRemaining : Integer;
+   nRead : Cardinal;
+begin
+   p := @buffer;
+   nRemaining := size;
+   repeat
+      if nRemaining > CHUNK_SIZE then
+         nRead := CHUNK_SIZE
+      else nRead := nRemaining;
+      if not ReadFile(hFile, p^, nRead, nRead, nil) then
+         RaiseLastOSError
+      else if nRead = 0 then begin
+         // file got trimmed while we were reading
+         Exit(size-nRemaining);
+      end;
+      Dec(nRemaining, nRead);
+      Inc(p, nRead);
+   until nRemaining <= 0;
+   Result := size;
+end;
+
 // LoadDataFromFile
 //
 function LoadDataFromFile(const fileName : UnicodeString) : TBytes;
@@ -891,8 +921,9 @@ begin
          RaiseLastOSError;
       if n>0 then begin
          SetLength(Result, n);
-         if not ReadFile(hFile, Result[0], n, nRead, nil) then
-            RaiseLastOSError;
+         nRead := ReadFileChunked(hFile, Result[0], n);
+         if nRead < n then
+            SetLength(Result, nRead);
       end else Result:=nil;
    finally
       CloseHandle(hFile);
@@ -922,6 +953,7 @@ end;
 function LoadRawBytesFromFile(const fileName : UnicodeString) : RawByteString;
 const
    INVALID_FILE_SIZE = DWORD($FFFFFFFF);
+   CHUNK_SIZE = 16384;
 var
    hFile : THandle;
    n, nRead : Cardinal;
@@ -935,8 +967,9 @@ begin
          RaiseLastOSError;
       if n>0 then begin
          SetLength(Result, n);
-         if not ReadFile(hFile, Result[1], n, nRead, nil) then
-            RaiseLastOSError;
+         nRead := ReadFileChunked(hFile, Pointer(Result)^, n);
+         if nRead < n then
+            SetLength(Result, nRead);
       end;
    finally
       CloseHandle(hFile);
@@ -957,6 +990,50 @@ begin
          Result:=Length(data);
          if not WriteFile(hFile, data[1], Result, nWrite, nil) then
             RaiseLastOSError;
+      end;
+   finally
+      CloseHandle(hFile);
+   end;
+end;
+
+// LoadRawBytesAsScriptStringFromFile
+//
+procedure LoadRawBytesAsScriptStringFromFile(const fileName : UnicodeString; var result : String);
+const
+   INVALID_FILE_SIZE = DWORD($FFFFFFFF);
+var
+   hFile : THandle;
+   n, i, nRead : Cardinal;
+   pDest : PWord;
+   buffer : array [0..16383] of Byte;
+begin
+   if fileName='' then Exit;
+   hFile:=OpenFileForSequentialReadOnly(fileName);
+   if hFile=INVALID_HANDLE_VALUE then Exit;
+   try
+      n:=GetFileSize(hFile, nil);
+      if n=INVALID_FILE_SIZE then
+         RaiseLastOSError;
+      if n>0 then begin
+         SetLength(Result, n);
+         pDest := Pointer(Result);
+         repeat
+            if n > SizeOf(Buffer) then
+               nRead := SizeOf(Buffer)
+            else nRead := n;
+            if not ReadFile(hFile, buffer, nRead, nRead, nil) then
+               RaiseLastOSError
+            else if nRead = 0 then begin
+               // file got trimmed while we were reading
+               SetLength(Result, Length(Result)-Integer(n));
+               Break;
+            end;
+            for i := 1 to nRead do begin
+               pDest^ := buffer[i-1];
+               Inc(pDest);
+            end;
+            Dec(n, nRead);
+         until n <= 0;
       end;
    finally
       CloseHandle(hFile);
