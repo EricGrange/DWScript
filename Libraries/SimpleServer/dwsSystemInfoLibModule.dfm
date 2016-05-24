@@ -223,6 +223,12 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
             Kind = mkClassFunction
           end>
       end>
+    Functions = <
+      item
+        Name = 'SystemMilliseconds'
+        ResultType = 'Integer'
+        OnFastEval = dwsSystemInfoFunctionsSystemMillisecondsFastEval
+      end>
     Records = <
       item
         Name = 'MemoryStatusDetail'

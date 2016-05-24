@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, SysUtils, Classes, Registry, PsAPI,
-  dwsDataContext, dwsComp, dwsExprs, dwsUtils, dwsCPUUsage, dwsXPlatform;
+  dwsExprList, dwsDataContext, dwsComp, dwsExprs, dwsUtils, dwsCPUUsage, dwsXPlatform;
 
 type
    TOSNameVersion = record
@@ -62,6 +62,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsSystemInfoClassesCPUInfoMethodsUpTimeEval(Info: TProgramInfo;
       ExtObject: TObject);
+    function dwsSystemInfoFunctionsSystemMillisecondsFastEval(
+      const args: TExprBaseListExec): Variant;
   private
     { Private declarations }
     FOSNameVersion : TOSNameVersion;
@@ -335,6 +337,12 @@ procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesOSVersionInfoMethodsVersio
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString:=FOSNameVersion.Version;
+end;
+
+function TdwsSystemInfoLibModule.dwsSystemInfoFunctionsSystemMillisecondsFastEval(
+  const args: TExprBaseListExec): Variant;
+begin
+   Result := GetSystemMilliseconds;
 end;
 
 end.
