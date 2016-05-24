@@ -56,7 +56,7 @@ const
    cDefaultStackChunkSize = 4096;  // 64 kB in 32bit Delphi, each stack entry is a Variant
 
    // compiler version is date in YYYYMMDD format, dot subversion number
-   cCompilerVersion = 20160309.0;
+   cCompilerVersion = 20160517.0;
 
 type
    TdwsCompiler = class;
@@ -81,6 +81,7 @@ type
    TCompilerGetDefaultLocalizerEvent = function : IdwsLocalizer of object;
    TCompilerOnRootExternalClassEvent = function (compiler : TdwsCompiler;
                                                  const externalName : UnicodeString) : TClassSymbol of object;
+   TCompilerApplyConditionalDefines = procedure (defines : TStrings) of object;
 
    TdwsNameListOption = (nloAllowDots, nloNoCheckSpecials, nloAllowStrings);
    TdwsNameListOptions = set of TdwsNameListOption;
@@ -487,6 +488,7 @@ type
          FOnGetDefaultEnvironment : TCompilerGetDefaultEnvironmentEvent;
          FOnGetDefaultLocalizer : TCompilerGetDefaultLocalizerEvent;
          FOnRootExternalClass : TCompilerOnRootExternalClassEvent;
+         FOnApplyConditionalDefines : TCompilerApplyConditionalDefines;
          FOnExecutionStarted : TdwsExecutionEvent;
          FOnExecutionEnded : TdwsExecutionEvent;
 
@@ -926,6 +928,7 @@ type
          property OnGetDefaultEnvironment : TCompilerGetDefaultEnvironmentEvent read FOnGetDefaultEnvironment write FOnGetDefaultEnvironment;
          property OnGetDefaultLocalizer : TCompilerGetDefaultLocalizerEvent read FOnGetDefaultLocalizer write FOnGetDefaultLocalizer;
          property OnRootExternalClass : TCompilerOnRootExternalClassEvent read FOnRootExternalClass write FOnRootExternalClass;
+         property OnApplyConditionalDefines : TCompilerApplyConditionalDefines read FOnApplyConditionalDefines write FOnApplyConditionalDefines;
    end;
 
 const
@@ -1551,7 +1554,11 @@ begin
    FDataSymbolExprReuse := TSimpleObjectObjectHash_TDataSymbol_TVarExpr.Create;
 
    FDefaultConditionals := TAutoStrings.CreateClone(conf.Conditionals);
+   FDefaultConditionals.Value.Duplicates := dupIgnore;
+   FDefaultConditionals.Value.Sorted := True;
    FDefaultConditionals.Value.Add('DWSCRIPT');
+   if Assigned(FOnApplyConditionalDefines) then
+      FOnApplyConditionalDefines(FDefaultConditionals.Value);
 
    F8087CW:=DirectSet8087CW($133F);
 end;

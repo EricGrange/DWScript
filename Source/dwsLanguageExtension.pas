@@ -44,6 +44,7 @@ type
                               scriptType : TScriptSourceType); virtual;
          procedure GetDefaultEnvironment(var enviro : IdwsEnvironment); virtual;
          function RootExternalClass(compiler : TdwsCompiler; const externalName : UnicodeString) : TClassSymbol; virtual;
+         procedure ApplyConditionalDefines(defines : TStrings); virtual;
    end;
 
    // TdwsLanguageExtensionAggregator
@@ -75,6 +76,7 @@ type
          procedure GetDefaultEnvironment(var enviro : IdwsEnvironment); override;
          function DefaultEnvironment : IdwsEnvironment;
          function RootExternalClass(compiler : TdwsCompiler; const externalName : UnicodeString) : TClassSymbol; override;
+         procedure ApplyConditionalDefines(defines : TStrings); override;
    end;
 
 // ------------------------------------------------------------------
@@ -174,6 +176,13 @@ end;
 function TdwsLanguageExtension.RootExternalClass(compiler : TdwsCompiler; const externalName : UnicodeString) : TClassSymbol;
 begin
    Result:=compiler.CurrentProg.TypObject;
+end;
+
+// ApplyConditionalDefines
+//
+procedure TdwsLanguageExtension.ApplyConditionalDefines(defines : TStrings);
+begin
+   // nothing
 end;
 
 // ------------------
@@ -386,6 +395,19 @@ begin
       ext:=TdwsLanguageExtension(FList.List[i]);
       Result:=ext.RootExternalClass(compiler, externalName);
       if Result<>nil then Exit;
+   end;
+end;
+
+// ApplyConditionalDefines
+//
+procedure TdwsLanguageExtensionAggregator.ApplyConditionalDefines(defines : TStrings);
+var
+   i : Integer;
+   ext : TdwsLanguageExtension;
+begin
+   for i:=0 to FList.Count-1 do begin
+      ext:=TdwsLanguageExtension(FList.List[i]);
+      ext.ApplyConditionalDefines(defines);
    end;
 end;
 

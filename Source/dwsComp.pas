@@ -1649,6 +1649,7 @@ begin
       c.OnReadScript:=FExtensions.ReadScript;
       c.OnGetDefaultEnvironment:=FExtensions.DefaultEnvironment;
       c.OnRootExternalClass:=FExtensions.RootExternalClass;
+      c.OnApplyConditionalDefines:=FExtensions.ApplyConditionalDefines;
    end else begin
       c.StaticExtensionSymbols:=True;
       c.OnCreateBaseVariantSymbol:=nil;
@@ -1661,6 +1662,7 @@ begin
       c.OnReadScript:=nil;
       c.OnGetDefaultEnvironment:=nil;
       c.OnRootExternalClass:=nil;
+      c.OnApplyConditionalDefines:=nil;
    end;
 end;
 
