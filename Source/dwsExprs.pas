@@ -546,11 +546,15 @@ type
          function GetState(const index : TGUID) : Variant;
          procedure SetState(const index : TGUID; const v : Variant);
 
+         function AddClonedState(const item : TdwsCustomState) : TSimpleHashAction;
+
       public
          property States[const index : TGUID] : Variant read GetState write SetState; default;
 
          function IntegerStateDef(const index : TGUID; const default : Integer) : Integer;
          function StringStateDef(const index : TGUID; const default : String) : String;
+
+         function Clone : TdwsCustomStates;
    end;
 
    // holds execution context for a script
@@ -3012,6 +3016,8 @@ begin
    FAttributes:=TdwsSymbolAttributes.Create;
 
    FConditionalDefines:=TAutoStrings.Create;
+   FConditionalDefines.Value.Duplicates := dupIgnore;
+   FConditionalDefines.Value.Sorted := True;
 
    FSourceList:=TScriptSourceList.Create;
 
@@ -8901,6 +8907,14 @@ begin
    Replace(s);
 end;
 
+// AddClonedState
+//
+function TdwsCustomStates.AddClonedState(const item : TdwsCustomState) : TSimpleHashAction;
+begin
+   SetState(item.Key, item.Value);
+   Result := shaNone;
+end;
+
 // IntegerStateDef
 //
 function TdwsCustomStates.IntegerStateDef(const index : TGUID; const default : Integer) : Integer;
@@ -8923,6 +8937,14 @@ begin
    if Match(s) and VarIsStr(s.Value) then
       Result:=s.Value
    else Result:=default;
+end;
+
+// Clone
+//
+function TdwsCustomStates.Clone : TdwsCustomStates;
+begin
+   Result := TdwsCustomStates.Create;
+   Result.Enumerate(Result.AddClonedState);
 end;
 
 // ------------------------------------------------------------------

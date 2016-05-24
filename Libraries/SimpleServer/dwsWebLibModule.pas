@@ -136,6 +136,31 @@ type
       ExtObject: TObject);
     procedure dwsWebClassesHttpQueryMethodsSetCustomHeadersEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesHttpRequestCleanUp(ExternalObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsRequestEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesHttpRequestMethodsMethodEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesHttpRequestMethodsURLEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesHttpRequestMethodsStatusCodeEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesHttpRequestMethodsHeadersEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesHttpRequestMethodsGetHeaderEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesHttpRequestMethodsContentLengthEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesHttpRequestMethodsContentTypeEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesHttpRequestMethodsContentDataEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesHttpRequestMethodsCompletedEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesHttpRequestMethodsErrorEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesHttpRequestMethodsCurrentContentSizeEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -151,12 +176,11 @@ type
       Headers : array of RawByteString;
    end;
 
-   THttpQueryMethod = (hqmGET, hqmPOST, hqmPUT, hqmDELETE);
-
    TdwsWinHTTP = class (TWinHTTP)
       protected
          AuthorizationHeader : RawByteString;
          CustomHeaders : TCustomHeaders;
+         procedure InternalConnect(ConnectionTimeOut,SendTimeout,ReceiveTimeout: DWORD); override;
          procedure InternalSendRequest(const aData: SockString); override;
    end;
 
@@ -172,6 +196,14 @@ const
    cWinHttpReceiveTimeout : TGUID = '{0D14B470-4F8A-48AE-BAD2-426E15FE4E03}';
    cWinHttpCustomHeaders : TGUID = '{FD05B54E-FBF2-498A-BD1F-0B1F18F27A1E}';
 
+// InternalConnect
+//
+procedure TdwsWinHTTP.InternalConnect(ConnectionTimeOut,SendTimeout,ReceiveTimeout: DWORD);
+begin
+   UserAgent := 'Mozilla/5.0 (Windows; Synopse DWScript)';
+   inherited;
+end;
+
 // InternalSendRequest
 //
 procedure TdwsWinHTTP.InternalSendRequest(const aData: SockString);
@@ -184,20 +216,21 @@ begin
       for i := 0 to High(CustomHeaders.Headers) do
          InternalAddHeader(CustomHeaders.Headers[i]);
 
-   inherited InternalSendRequest(aData);
+   inherited;
 end;
 
-function HttpQuery(method : THttpQueryMethod; const url : RawByteString;
-                   const requestData : RawByteString;
-                   const requestContentType : RawByteString;
-                   var replyData : String; asText : Boolean;
-                   const customStates : TdwsCustomStates) : Integer; overload;
+function HttpQuery(const method, url : RawByteString;
+                   const requestData, requestContentType : RawByteString;
+                   var replyData : String; var replyHeaders : SockString;
+                   asText : Boolean;
+                   const customStates : TdwsCustomStates;
+                   onProgress : TWinHttpProgress = nil) : Integer; overload;
 const
    cContentType : RawUTF8 = 'Content-Type:';
 var
    query : TdwsWinHTTP;
    uri : TURI;
-   headers, buf, mimeType : SockString;
+   buf, mimeType : SockString;
    p1, p2 : Integer;
    credentials, ignoreSSLErrors, customHeaders : Variant;
 begin
@@ -209,6 +242,7 @@ begin
                                 customStates.IntegerStateDef(cWinHttpSendTimeout, HTTP_DEFAULT_SENDTIMEOUT),
                                 customStates.IntegerStateDef(cWinHttpReceiveTimeout, HTTP_DEFAULT_RECEIVETIMEOUT));
       try
+         query.OnProgress := onProgress;
          ignoreSSLErrors:=customStates[cWinHttpIgnoreSSLCertificateErrors];
          // may be empty, and that fails direct boolean casting, hence casting & boolean check
          if (VarType(ignoreSSLErrors)=varBoolean) and TVarData(ignoreSSLErrors).VBoolean then
@@ -232,31 +266,15 @@ begin
          if VarType(customHeaders) = varUnknown then
             query.CustomHeaders := IGetSelf(TVarData(customHeaders).VUnknown).GetSelf as TCustomHeaders;
 
-         case method of
-            hqmGET : begin
-               Assert(requestData='');
-               Result:=query.Request(uri.Address, 'GET', 0, '', '', '', headers, buf);
-            end;
-            hqmPOST : begin
-               Result:=query.Request(uri.Address, 'POST', 0, '', requestData, requestContentType, headers, buf);
-            end;
-            hqmPUT : begin
-               Result:=query.Request(uri.Address, 'PUT', 0, '', requestData, requestContentType, headers, buf);
-            end;
-            hqmDELETE : begin
-               Result:=query.Request(uri.Address, 'PUT', 0, '', '', '', headers, buf);
-            end;
-         else
-            Result:=0;
-            Assert(False);
-         end;
+         Result := query.Request(uri.Address, method, 0, '', requestData, requestContentType, replyHeaders, buf);
+
          if asText then begin
-            p1:=Pos(cContentType, RawUTF8(headers));
+            p1:=Pos(cContentType, RawUTF8(replyHeaders));
             if p1>0 then begin
                Inc(p1, Length(cContentType));
-               p2:=PosEx(#13, headers, p1);
+               p2:=PosEx(#13, replyHeaders, p1);
                if p2>p1 then
-                  mimeType:=Copy(headers, p1, p2-p1);
+                  mimeType:=Copy(replyHeaders, p1, p2-p1);
             end;
             if StrEndsWithA(mimeType, '/xml') then begin
                // unqualified xml content, may still be utf-8, check data header
@@ -284,11 +302,136 @@ begin
    end else Result:=0;
 end;
 
-function HttpQuery(method : THttpQueryMethod; const url : RawByteString;
-                   var replyData : String; asText : Boolean;
+function HttpQuery(const method, url : RawByteString;
+                   var replyData : String;
+                   asText : Boolean;
                    const customStates : TdwsCustomStates) : Integer; overload;
+var
+   replyHeaders : SockString;
 begin
-   Result:=HttpQuery(method, url, '', '', replyData, asText, customStates);
+   Result:=HttpQuery(method, url, '', '', replyData, replyHeaders, asText, customStates);
+end;
+
+type
+   THttpRequestThread = class (TThread)
+      Method, URL : RawByteString;
+      RequestData, RequestContentType : RawByteString;
+      ResponseData : String;
+      RawResponseHeaders : SockString;
+      ResponseHeaders : TStrings;
+      CustomStates : TdwsCustomStates;
+      CurrentSize, ContentLength : DWORD;
+      StatusCode : Integer;
+      Error : String;
+      constructor CreateQuery(const method, url : RawByteString;
+                              const requestData, requestContentType : RawByteString;
+                              const customStates : TdwsCustomStates);
+      destructor Destroy; override;
+      procedure PrepareHeaders;
+      procedure Execute; override;
+      procedure Release;
+      function Wait : THttpRequestThread;
+      procedure DoProgress(Sender: TWinHttpAPI; CurrentSize, ContentLength: DWORD);
+   end;
+
+// CreateQuery
+//
+constructor THttpRequestThread.CreateQuery(const method, url : RawByteString;
+                              const requestData, requestContentType : RawByteString;
+                              const customStates : TdwsCustomStates);
+begin
+   inherited Create;
+   Self.Method := method;
+   Self.URL := url;
+   Self.RequestData := requestData;
+   Self.RequestContentType := requestContentType;
+   Self.CustomStates := customStates;
+   FreeOnTerminate := False;
+end;
+
+// Destroy
+//
+destructor THttpRequestThread.Destroy;
+begin
+   inherited;
+   ResponseHeaders.Free;
+   CustomStates.Free;
+end;
+
+// PrepareHeaders
+//
+procedure THttpRequestThread.PrepareHeaders;
+
+   procedure AddHeader(const s : String);
+   var
+      k : Integer;
+   begin
+      k := Pos(':', s);
+      if k > 0 then
+         ResponseHeaders.Add(SysUtils.TrimRight(Copy(s, 1, k-1) + '=' + SysUtils.Trim(Copy(s, k+1))));
+   end;
+
+var
+   h : String;
+   p, pn : Integer;
+begin
+   RawByteStringToScriptString(RawResponseHeaders, h);
+   ResponseHeaders := TFastCompareTextList.Create;
+
+   p := 1;
+   while True do begin
+      pn := StrUtils.PosEx(#13#10, h, p);
+      if pn > 0 then begin
+         AddHeader(Copy(h, p, pn-p));
+         p := pn + 2;
+      end else break;
+   end;
+   AddHeader(Copy(h, p));
+end;
+
+// Execute
+//
+procedure THttpRequestThread.Execute;
+begin
+   try
+      StatusCode := HttpQuery(Method, URL, RequestData, RequestContentType,
+                              ResponseData, RawResponseHeaders, False,
+                              CustomStates, DoProgress);
+      FreeAndNil(CustomStates);
+      RequestData := '';
+      RequestContentType := '';
+      ContentLength := Length(ResponseData);
+      CurrentSize := ContentLength;
+      PrepareHeaders;
+   except
+      on E: Exception do
+         Error := E.Message;
+   end;
+end;
+
+// Release
+//
+procedure THttpRequestThread.Release;
+begin
+   FreeOnTerminate := True;
+   if Finished then
+      Free;
+end;
+
+// Wait
+//
+function THttpRequestThread.Wait : THttpRequestThread;
+begin
+   if not Finished then WaitFor;
+   Result := Self;
+end;
+
+// DoProgress
+//
+procedure THttpRequestThread.DoProgress(Sender: TWinHttpAPI; CurrentSize, ContentLength: DWORD);
+begin
+   Self.CurrentSize := CurrentSize;
+   Self.ContentLength := ContentLength;
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsDeleteEval(Info: TProgramInfo;
@@ -296,7 +439,7 @@ procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsDeleteEval(Info: TProgramInfo;
 var
    buf : String;
 begin
-   Info.ResultAsInteger:=HttpQuery(hqmDELETE, Info.ParamAsDataString[0], buf, False,
+   Info.ResultAsInteger:=HttpQuery('DELETE', Info.ParamAsDataString[0], buf, False,
                                    Info.Execution.CustomStates);
 end;
 
@@ -305,7 +448,7 @@ procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsGetDataEval(
 var
    buf : String;
 begin
-   Info.ResultAsInteger:=HttpQuery(hqmGET, Info.ParamAsDataString[0], buf, False,
+   Info.ResultAsInteger:=HttpQuery('GET', Info.ParamAsDataString[0], buf, False,
                                    Info.Execution.CustomStates);
    Info.ParamAsString[1]:=buf;
 end;
@@ -315,7 +458,7 @@ procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsGetTextEval(
 var
    buf : String;
 begin
-   Info.ResultAsInteger:=HttpQuery(hqmGET, Info.ParamAsDataString[0], buf, True,
+   Info.ResultAsInteger:=HttpQuery('GET', Info.ParamAsDataString[0], buf, True,
                                    Info.Execution.CustomStates);
    Info.ParamAsString[1]:=buf;
 end;
@@ -324,11 +467,13 @@ procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsPostDataEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    buf : String;
+   headers : SockString;
 begin
    Info.ResultAsInteger:=HttpQuery(
-      hqmPOST, Info.ParamAsDataString[0],
-      Info.ParamAsDataString[1], Info.ParamAsDataString[2], buf, False,
-      Info.Execution.CustomStates);
+      'POST', Info.ParamAsDataString[0],
+      Info.ParamAsDataString[1], Info.ParamAsDataString[2], buf, headers,
+      False, Info.Execution.CustomStates
+      );
    Info.ParamAsString[3]:=buf;
 end;
 
@@ -336,11 +481,30 @@ procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsPutDataEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    buf : String;
+   headers : SockString;
 begin
    Info.ResultAsInteger:=HttpQuery(
-      hqmPUT, Info.ParamAsDataString[0],
-      Info.ParamAsDataString[1], Info.ParamAsDataString[2], buf, False,
-      Info.Execution.CustomStates);
+      'PUT', Info.ParamAsDataString[0],
+      Info.ParamAsDataString[1], Info.ParamAsDataString[2], buf, headers,
+      False, Info.Execution.CustomStates
+      );
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsRequestEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   rq : THttpRequestThread;
+   obj : IScriptObj;
+begin
+   obj := TScriptObjInstance.Create(Info.Table.FindTypeSymbol('HttpRequest', cvPublic) as TClassSymbol,
+                                    Info.Execution);
+   rq := THttpRequestThread.CreateQuery(
+      Info.ParamAsDataString[0], Info.ParamAsDataString[1],
+      Info.ParamAsDataString[2], Info.ParamAsDataString[3],
+      Info.Execution.CustomStates.Clone
+      );
+   obj.ExternalObject := rq;
+   Info.ResultAsVariant := obj;
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetConnectTimeoutMSecEval(
@@ -774,6 +938,80 @@ begin
    if host = 'localhost' then
       info.ResultAsString := '127.0.0.1'
    else info.ResultAsDataString := ResolveName(host);
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpRequestCleanUp(ExternalObject: TObject);
+var
+   t : THttpRequestThread;
+begin
+   t := (ExternalObject as THttpRequestThread);
+   t.Release;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsCompletedEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean := (ExtObject as THttpRequestThread).Finished;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsContentDataEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := (ExtObject as THttpRequestThread).Wait.ResponseData;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsContentLengthEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger := (ExtObject as THttpRequestThread).ContentLength;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsContentTypeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := (ExtObject as THttpRequestThread).Wait.ResponseHeaders.Values['Content-Type'];
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsCurrentContentSizeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger := (ExtObject as THttpRequestThread).CurrentSize;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsErrorEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := (ExtObject as THttpRequestThread).Error;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsGetHeaderEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := (ExtObject as THttpRequestThread).Wait.ResponseHeaders.Values[Info.ParamAsString[0]];
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsHeadersEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString := (ExtObject as THttpRequestThread).Wait.RawResponseHeaders;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsMethodEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString := (ExtObject as THttpRequestThread).Method;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsStatusCodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger := (ExtObject as THttpRequestThread).Wait.StatusCode;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsURLEval(Info: TProgramInfo;
+  ExtObject: TObject);
+begin
+   Info.ResultAsDataString := (ExtObject as THttpRequestThread).URL;
 end;
 
 end.

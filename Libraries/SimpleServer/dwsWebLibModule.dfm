@@ -604,6 +604,34 @@ object dwsWebLib: TdwsWebLib
             Kind = mkClassFunction
           end
           item
+            Name = 'Request'
+            Parameters = <
+              item
+                Name = 'method'
+                DataType = 'String'
+              end
+              item
+                Name = 'url'
+                DataType = 'String'
+              end
+              item
+                Name = 'data'
+                DataType = 'String'
+                HasDefaultValue = True
+                DefaultValue = ''
+              end
+              item
+                Name = 'dataType'
+                DataType = 'String'
+                HasDefaultValue = True
+                DefaultValue = ''
+              end>
+            ResultType = 'HttpRequest'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsRequestEval
+            Kind = mkClassFunction
+          end
+          item
             Name = 'SetCredentials'
             Parameters = <
               item
@@ -713,6 +741,82 @@ object dwsWebLib: TdwsWebLib
             DataType = 'Integer'
             WriteAccess = 'SetConnectTimeoutMSec'
           end>
+      end
+      item
+        Name = 'HttpRequest'
+        Methods = <
+          item
+            Name = 'Method'
+            ResultType = 'String'
+            OnEval = dwsWebClassesHttpRequestMethodsMethodEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'URL'
+            ResultType = 'String'
+            OnEval = dwsWebClassesHttpRequestMethodsURLEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'StatusCode'
+            ResultType = 'Integer'
+            OnEval = dwsWebClassesHttpRequestMethodsStatusCodeEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'Headers'
+            ResultType = 'String'
+            OnEval = dwsWebClassesHttpRequestMethodsHeadersEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'GetHeader'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            OnEval = dwsWebClassesHttpRequestMethodsGetHeaderEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'ContentLength'
+            ResultType = 'Integer'
+            OnEval = dwsWebClassesHttpRequestMethodsContentLengthEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'ContentType'
+            ResultType = 'String'
+            OnEval = dwsWebClassesHttpRequestMethodsContentTypeEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'ContentData'
+            ResultType = 'String'
+            OnEval = dwsWebClassesHttpRequestMethodsContentDataEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'Completed'
+            ResultType = 'Boolean'
+            OnEval = dwsWebClassesHttpRequestMethodsCompletedEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'Error'
+            ResultType = 'String'
+            OnEval = dwsWebClassesHttpRequestMethodsErrorEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'CurrentContentSize'
+            ResultType = 'Integer'
+            OnEval = dwsWebClassesHttpRequestMethodsCurrentContentSizeEval
+            Kind = mkFunction
+          end>
+        OnCleanUp = dwsWebClassesHttpRequestCleanUp
       end>
     Enumerations = <
       item
