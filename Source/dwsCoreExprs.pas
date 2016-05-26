@@ -1709,7 +1709,7 @@ type
          function GetSubExprCount : Integer; virtual; abstract;
 
          function IsTrue(exec : TdwsExecution; const value : Variant) : Boolean; virtual; abstract;
-         function StringIsTrue(const value : String) : Boolean; virtual; abstract;
+         function StringIsTrue(exec : TdwsExecution; const value : String) : Boolean; virtual; abstract;
          function IntegerIsTrue(const value : Int64) : Boolean; virtual; abstract;
 
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); virtual; abstract;
@@ -1743,7 +1743,7 @@ type
          function GetSubExprCount : Integer; override;
 
          function IsTrue(exec : TdwsExecution; const value : Variant) : Boolean; override;
-         function StringIsTrue(const value : String) : Boolean; override;
+         function StringIsTrue(exec : TdwsExecution; const value : String) : Boolean; override;
          function IntegerIsTrue(const value : Int64) : Boolean; override;
 
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
@@ -1751,6 +1751,27 @@ type
          function IsExpr(aClass : TClass) : Boolean; override;
 
          property CompareExpr : TTypedExpr read FCompareExpr;
+   end;
+
+   TCompareConstStringCaseCondition = class (TCaseCondition)
+      private
+         FValue : String;
+
+      public
+         constructor Create(const aPos : TScriptPos; const aValue : String);
+
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+         function IsTrue(exec : TdwsExecution; const value : Variant) : Boolean; override;
+         function StringIsTrue(exec : TdwsExecution; const value : String) : Boolean; override;
+         function IntegerIsTrue(const value : Int64) : Boolean; override;
+
+         procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
+         function IsConstant : Boolean; override;
+         function IsExpr(aClass : TClass) : Boolean; override;
+
+         property Value : String read FValue write FValue;
    end;
 
    TRangeCaseCondition = class(TCaseCondition)
@@ -1766,7 +1787,7 @@ type
          function GetSubExprCount : Integer; override;
 
          function IsTrue(exec : TdwsExecution; const Value: Variant): Boolean; override;
-         function StringIsTrue(const value : String) : Boolean; override;
+         function StringIsTrue(exec : TdwsExecution; const value : String) : Boolean; override;
          function IntegerIsTrue(const value : Int64) : Boolean; override;
 
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
@@ -3146,7 +3167,7 @@ begin
       if Typ.Size=1 then begin
          EvalAsVariant(exec, v);
          Result:=TConstExpr.CreateTypedVariantValue(prog, Typ, v);
-         Free;
+         Orphan(prog);
       end;
    end;
 end;
@@ -4404,12 +4425,12 @@ end;
 //
 function TInOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 
-   procedure TransferFieldsAndFree(dest : TInOpExpr);
+   procedure TransferFieldsAndOrphan(dest : TInOpExpr);
    begin
       FLeft:=nil;
       dest.FCaseConditions.Assign(FCaseConditions);
       FCaseConditions.Clear;
-      Free;
+      Orphan(prog);
    end;
 
 var
@@ -4440,13 +4461,13 @@ begin
       Result:=TBitwiseInOpExpr.Create(prog, FLeft);
       TBitwiseInOpExpr(Result).Mask:=mask;
       FLeft:=nil;
-      Free;
+      Orphan(prog);
 
    end else if FLeft.IsOfType(prog.TypInteger) then begin
 
       if TCaseConditionsHelper.CanOptimizeToTyped(FCaseConditions, TConstIntExpr) then begin
          iioe:=TIntegerInOpExpr.Create(prog, Left);
-         TransferFieldsAndFree(iioe);
+         TransferFieldsAndOrphan(iioe);
          Exit(iioe);
       end;
 
@@ -4521,7 +4542,7 @@ begin
    FLeft.EvalAsString(exec, value);
    for i:=0 to FCaseConditions.Count-1 do begin
       cc:=TCaseCondition(FCaseConditions.List[i]);
-      if cc.StringIsTrue(value) then
+      if cc.StringIsTrue(exec, value) then
          Exit(True);
    end;
    Result:=False;
@@ -4700,7 +4721,7 @@ begin
    Result:=Self;
    if FCond.IsConstant and FCond.EvalAsBoolean(exec) then begin
       Result:=TNullExpr.Create(FScriptPos);
-      Free;
+      Orphan(prog);
    end;
 end;
 
@@ -5092,7 +5113,7 @@ begin
    if Left.SameDataExpr(Right) then begin
       Result:=TSqrIntExpr.Create(Prog, FLeft);
       FLeft:=nil;
-      Free;
+      Orphan(prog);
    end else if FLeft.IsConstant then begin
       if FRight.IsConstant then
          Result:=inherited
@@ -5103,7 +5124,7 @@ begin
             mip.FShift:=n-1;
             Result:=mip;
             FRight:=nil;
-            Free;
+            Orphan(prog);
          end else Result:=Self;
       end;
    end else if FRight.IsConstant then begin
@@ -5113,7 +5134,7 @@ begin
          mip.FShift:=n-1;
          Result:=mip;
          FLeft:=nil;
-         Free;
+         Orphan(prog);
       end else Result:=Self;
    end else Result:=Self;
 end;
@@ -5147,7 +5168,7 @@ begin
    if Left.SameDataExpr(Right) then begin
       Result:=TSqrFloatExpr.Create(Prog, FLeft);
       FLeft:=nil;
-      Free;
+      Orphan(prog);
       Exit;
    end;
    Result:=inherited;
@@ -5204,7 +5225,7 @@ begin
       TDivideExpr(Right).Swap;
       FLeft:=nil;
       FRight:=nil;
-      Free;
+      Orphan(prog);
       Result:=Result.Optimize(prog, exec);
    end else Result:=inherited Optimize(prog, exec);
 end;
@@ -5285,7 +5306,7 @@ begin
       Result:=TDivConstExpr.Create(prog, FScriptPos, Left, Right);
       Left:=nil;
       Right:=nil;
-      Self.Free;
+      Orphan(prog);
    end;
 end;
 
@@ -5327,7 +5348,7 @@ begin
       Result:=TModConstExpr.Create(prog, FScriptPos, Left, Right);
       Left:=nil;
       Right:=nil;
-      Self.Free;
+      Orphan(prog);
    end;
 end;
 
@@ -5410,7 +5431,7 @@ begin
          end else begin
             Result:=TUnifiedConstExpr.CreateBooleanValue(prog, False)
          end;
-         Free;
+         Orphan(prog);
       end else if Right.IsConstant then begin
          if Right.EvalAsBoolean(exec) then begin
             Result:=Left;
@@ -5418,7 +5439,7 @@ begin
          end else begin
             Result:=TUnifiedConstExpr.CreateBooleanValue(prog, False)
          end;
-         Free;
+         Orphan(prog);
       end;
    end;
 end;
@@ -5463,7 +5484,7 @@ begin
             Result:=Right;
             Right:=nil;
          end;
-         Free;
+         Orphan(prog);
       end else if Right.IsConstant then begin
          if Right.EvalAsBoolean(exec) then begin
             Result:=TUnifiedConstExpr.CreateBooleanValue(prog, True)
@@ -5471,7 +5492,7 @@ begin
             Result:=Left;
             Left:=nil;
          end;
-         Free;
+         Orphan(prog);
       end;
    end;
 end;
@@ -5538,7 +5559,7 @@ begin
    if Right.IsConstant and (Right.EvalAsInteger(exec)=0) then begin
       Result:=Left;
       FLeft:=nil;
-      Free;
+      Orphan(prog);
    end else Result:=Self;
 end;
 
@@ -5610,12 +5631,12 @@ begin
       Result:=TVarStringInConstStringExpr.Create(prog, ScriptPos, Left, Right);
       Left:=nil;
       Right:=nil;
-      Free;
+      Orphan(prog);
    end else if (Left is TConstStringExpr) and (Right is TStrVarExpr) then begin
       Result:=TConstStringInVarStringExpr.Create(prog, ScriptPos, Left, Right);
       Left:=nil;
       Right:=nil;
-      Free;
+      Orphan(prog);
    end else Result:=inherited;
 end;
 
@@ -5708,11 +5729,11 @@ begin
       if s='' then begin
          Result:=Right;
          FRight:=nil;
-         Free;
+         Orphan(prog);
       end else begin
          Result:=Left;
          FLeft:=nil;
-         Free;
+         Orphan(prog);
       end;
       Exit;
    end else Result:=inherited Optimize(prog, exec);
@@ -5952,7 +5973,7 @@ begin
    end;
    if Result<>Self then begin
       FLeft:=nil;
-      Free;
+      Orphan(prog);
    end;
 end;
 
@@ -6368,7 +6389,7 @@ begin
       Result:=TIncIntVarExpr.Create(Prog, FScriptPos, exec, FLeft, FRight);
       FLeft:=nil;
       FRight:=nil;
-      Free;
+      Orphan(prog);
    end;
 end;
 
@@ -6407,7 +6428,7 @@ begin
       Result:=TAppendStringVarExpr.Create(Prog, FScriptPos, exec, FLeft, FRight);
       FLeft:=nil;
       FRight:=nil;
-      Free;
+      Orphan(prog);
    end;
 end;
 
@@ -6446,7 +6467,7 @@ begin
       Result:=TDecIntVarExpr.Create(Prog, FScriptPos, exec, FLeft, FRight);
       FLeft:=nil;
       FRight:=nil;
-      Free;
+      Orphan(prog);
    end;
 end;
 
@@ -6681,7 +6702,7 @@ begin
       end;
       FStatements:=nil;
       FCount:=0;
-      Free;
+      Orphan(prog);
    end else Result:=Self;
 end;
 
@@ -6811,7 +6832,7 @@ begin
          Result:=FThen;
          FThen:=nil;
       end else Result:=TNullExpr.Create(FScriptPos);
-      Free;
+      Orphan(prog);
    end;
 end;
 
@@ -6880,7 +6901,7 @@ begin
          Result:=FElse;
          FElse:=nil;
       end;
-      Free;
+      Orphan(prog);
    end else begin
       Result:=Self;
       if FCond is TNotBoolExpr then begin
@@ -6964,7 +6985,7 @@ function TCaseExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgram
       FCaseConditions.Clear;
       FElseExpr:=nil;
       FValueExpr:=nil;
-      Free;
+      Orphan(prog);
    end;
 
 var
@@ -7059,7 +7080,7 @@ begin
    FValueExpr.EvalAsString(exec, value);
    for x := 0 to FCaseConditions.Count - 1 do begin
       cc:=TCaseCondition(FCaseConditions.List[x]);
-      if cc.StringIsTrue(value) then begin
+      if cc.StringIsTrue(exec, value) then begin
          exec.DoStep(cc.TrueExpr);
          cc.TrueExpr.EvalNoResult(exec);
          Exit;
@@ -7192,14 +7213,17 @@ var
    buf : Variant;
 begin
    FCompareExpr.EvalAsVariant(exec, buf);
-   Result:=(buf=Value);
+   Result:=(buf=value);
 end;
 
 // StringIsTrue
 //
-function TCompareCaseCondition.StringIsTrue(const value : String) : Boolean;
+function TCompareCaseCondition.StringIsTrue(exec : TdwsExecution; const value : String) : Boolean;
+var
+   buf : String;
 begin
-   Result:=(value=TConstStringExpr(FCompareExpr).Value);
+   FCompareExpr.EvalAsString(exec, buf);
+   Result:=(buf=value);
 end;
 
 // IntegerIsTrue
@@ -7232,6 +7256,76 @@ end;
 function TCompareCaseCondition.IsExpr(aClass : TClass) : Boolean;
 begin
    Result:=FCompareExpr.IsConstant and FCompareExpr.InheritsFrom(aClass);
+end;
+
+// ------------------
+// ------------------ TCompareConstStringCaseCondition ------------------
+// ------------------
+
+// Create
+//
+constructor TCompareConstStringCaseCondition.Create(const aPos : TScriptPos; const aValue : String);
+begin
+   inherited Create(aPos);
+   FValue := aValue;
+end;
+
+// GetSubExpr
+//
+function TCompareConstStringCaseCondition.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result := nil;
+end;
+
+// GetSubExprCount
+//
+function TCompareConstStringCaseCondition.GetSubExprCount : Integer;
+begin
+   Result := 0;
+end;
+
+// IsTrue
+//
+function TCompareConstStringCaseCondition.IsTrue(exec : TdwsExecution; const value : Variant) : Boolean;
+begin
+   Result := VarIsStr(value) and (value = FValue);
+end;
+
+// StringIsTrue
+//
+function TCompareConstStringCaseCondition.StringIsTrue(exec : TdwsExecution; const value : String) : Boolean;
+begin
+   Result := (value = FValue);
+end;
+
+// IntegerIsTrue
+//
+function TCompareConstStringCaseCondition.IntegerIsTrue(const value : Int64) : Boolean;
+begin
+   Result := False;
+end;
+
+// TypeCheck
+//
+procedure TCompareConstStringCaseCondition.TypeCheck(prog : TdwsProgram; typ : TTypeSymbol);
+begin
+   if not (typ.IsOfType(prog.TypString) or typ.IsOfType(prog.TypVariant)) then
+      prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_IncompatibleTypes,
+                                           [typ.Caption, SYS_STRING]);
+end;
+
+// IsConstant
+//
+function TCompareConstStringCaseCondition.IsConstant : Boolean;
+begin
+   Result := True;
+end;
+
+// IsExpr
+//
+function TCompareConstStringCaseCondition.IsExpr(aClass : TClass) : Boolean;
+begin
+   Result := False;
 end;
 
 // ------------------
@@ -7290,7 +7384,7 @@ end;
 
 // StringIsTrue
 //
-function TRangeCaseCondition.StringIsTrue(const value : String) : Boolean;
+function TRangeCaseCondition.StringIsTrue(exec : TdwsExecution; const value : String) : Boolean;
 begin
    Result:=    (value>=TConstStringExpr(FFromExpr).Value)
            and (value<=TConstStringExpr(FToExpr).Value);
@@ -7662,7 +7756,7 @@ begin
          TLoopExpr(Result).FLoopExpr:=FLoopExpr;
          FLoopExpr:=nil;
       end;
-      Free;
+      Orphan(prog);
    end;
 end;
 
@@ -7697,7 +7791,7 @@ begin
       Result:=TLoopExpr.Create(FScriptPos);
       TLoopExpr(Result).FLoopExpr:=FLoopExpr;
       FLoopExpr:=nil;
-      Free;
+      Orphan(prog);
    end;
 end;
 
@@ -9753,14 +9847,14 @@ begin
          Result:=FFalseExpr;
          FFalseExpr:=nil;
       end;
-      Free;
+      Orphan(prog);
    end else begin
       Result:=Self;
       if CondExpr is TNotBoolExpr then begin
          notExpr:=TNotBoolExpr(CondExpr);
          CondExpr:=notExpr.Expr;
          notExpr.Expr:=nil;
-         notExpr.Free;
+         notExpr.Orphan(prog);
          bufExpr:=TrueExpr;
          TrueExpr:=FalseExpr;
          FalseExpr:=bufExpr;

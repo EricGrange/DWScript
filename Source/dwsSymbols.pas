@@ -1847,6 +1847,7 @@ type
       property ArrayLength : Integer read GetArrayLength write SetArrayLength;
 
       function ToStringArray : TStringDynArray;
+      function ToInt64Array : TInt64DynArray;
 
       procedure ReplaceData(const v : TData);
    end;

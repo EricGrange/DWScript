@@ -1,9 +1,9 @@
 var s := 'Hello éric!';
 
-PrintLn(UpperCase(s));
+PrintLn(ASCIIUpperCase(s));
 PrintLn(AnsiUpperCase(s));
 
-PrintLn(LowerCase(s));
+PrintLn(ASCIILowerCase(s));
 PrintLn(AnsiLowerCase(s));
 
 PrintLn(s.UpperCase);

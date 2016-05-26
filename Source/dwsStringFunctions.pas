@@ -24,7 +24,7 @@ unit dwsStringFunctions;
 interface
 
 uses
-   Classes, SysUtils, Variants, StrUtils, Math, Masks,
+   Classes, SysUtils, Variants, StrUtils, Math, Masks, Character,
    dwsXPlatform, dwsUtils, dwsStrings,
    dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList,
    dwsConstExprs, dwsMagicExprs, dwsDataContext, dwsWebUtils;
@@ -124,6 +124,14 @@ type
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
+  TStrPadLeftFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+  end;
+
+  TStrPadRightFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+  end;
+
   TStrReplaceFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
@@ -140,7 +148,7 @@ type
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
-  TAnsiLowerCaseFunc = class(TInternalMagicStringFunction)
+  TASCIILowerCaseFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
@@ -148,7 +156,7 @@ type
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
-  TAnsiUpperCaseFunc = class(TInternalMagicStringFunction)
+  TASCIIUpperCaseFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
@@ -269,6 +277,14 @@ type
   end;
 
   TReverseStringFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+  end;
+
+  TNormalizeStringFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+  end;
+
+  TStripAccentsFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
   end;
 
@@ -533,6 +549,41 @@ begin
    Result:=StrDeleteRight(args.AsString[0], args.AsInteger[1]);
 end;
 
+{ TStrPadLeftFunc }
+
+procedure TStrPadLeftFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+var
+   nb : Integer;
+   padChar : WideChar;
+begin
+   Result := args.AsString[0];
+   nb := args.AsInteger[1]-Length(Result);
+   if nb > 0 then begin
+      padChar := args.AsChar(2, ' ');
+      Result := StringOfChar(padChar, nb) + Result;
+   end;
+end;
+
+{ TStrPadRightFunc }
+
+procedure TStrPadRightFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+var
+   nb, nr, i : Integer;
+   padChar : WideChar;
+   p : PWideChar;
+begin
+   Result := args.AsString[0];
+   nr := Length(Result);
+   nb := args.AsInteger[1];
+   if nb > nr then begin
+      padChar := args.AsChar(2, ' ');
+      SetLength(Result, nb);
+      p := @Result[nr];
+      for i := 1 to nb-nr do
+         p[i] := padChar;
+   end;
+end;
+
 { TStrReplaceFunc }
 
 procedure TStrReplaceFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
@@ -566,57 +617,29 @@ end;
 { TLowerCaseFunc }
 
 procedure TLowerCaseFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
-var
-   p : PWideChar;
-   i : Integer;
-   c : WideChar;
-begin
-   args.EvalAsString(0, Result);
-   if Result='' then Exit;
-   UniqueString(Result);
-   p:=PWideChar(Pointer(Result));
-   for i:=0 to Length(Result)-1 do begin
-      c:=p[i];
-      case c of
-        'A'..'Z':
-           p[i]:=WideChar(Word(c)+(Ord('a')-Ord('A')));
-      end;
-   end;
-end;
-
-{ TAnsiLowerCaseFunc }
-
-procedure TAnsiLowerCaseFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=UnicodeLowerCase(args.AsString[0]);
+end;
+
+{ TASCIILowerCaseFunc }
+
+procedure TASCIILowerCaseFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+begin
+   Result:=LowerCase(args.AsString[0]);
 end;
 
 { TUpperCaseFunc }
 
 procedure TUpperCaseFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
-var
-   p : PWideChar;
-   i : Integer;
-   c : WideChar;
-begin
-   args.EvalAsString(0, Result);
-   if Result='' then Exit;
-   UniqueString(Result);
-   p:=PWideChar(Pointer(Result));
-   for i:=0 to Length(Result)-1 do begin
-      c:=p[i];
-      case c of
-        'a'..'z':
-           p[i]:=WideChar(Word(c)-(Ord('a')-Ord('A')));
-      end;
-   end;
-end;
-
-{ TAnsiUpperCaseFunc }
-
-procedure TAnsiUpperCaseFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=UnicodeUpperCase(args.AsString[0]);
+end;
+
+{ TASCIIUpperCaseFunc }
+
+procedure TASCIIUpperCaseFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+begin
+   Result:=UpperCase(args.AsString[0]);
 end;
 
 { TPosFunc }
@@ -828,21 +851,14 @@ end;
 //
 procedure TStringOfCharFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
-   ch : UnicodeString;
    charCode : WideChar;
-   p : PWideChar;
    n : Integer;
 begin
-   n:=args.AsInteger[1];
-   if n<=0 then Exit;
-   args.EvalAsString(0, ch);
-   if ch='' then
-      charCode:=' ' // default to blank if an empty String
-   else charCode:=ch[1];
-   SetLength(Result, n);
-   p:=PWideChar(Pointer(Result));
-   for n:=n downto 1 do
-      p[n-1]:=charCode;
+   n := args.AsInteger[1];
+   if n > 0 then begin
+      charCode := args.AsChar(0, ' ');
+      Result := StringOfChar(charCode, n);
+   end else Result := '';
 end;
 
 { TStringOfStringFunc }
@@ -972,6 +988,13 @@ begin
    Result:=ReverseString(args.AsString[0]);
 end;
 
+{ TNormalizeStringFunc }
+
+procedure TNormalizeStringFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+begin
+   Result:=NormalizeString(args.AsString[0], args.AsString[1]);
+end;
+
 { TFormatFunc }
 
 procedure TFormatFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
@@ -1065,12 +1088,8 @@ begin
    Result:=IScriptDynArray(dyn);
 end;
 
-// ------------------
-// ------------------ TStrJoinFunc ------------------
-// ------------------
+{ TStrJoinFunc }
 
-// DoEvalAsString
-//
 procedure TStrJoinFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    delim, item : UnicodeString;
@@ -1108,15 +1127,31 @@ begin
    end;
 end;
 
-// ------------------
-// ------------------ TGetTextFunc ------------------
-// ------------------
+{ TGetTextFunc }
 
-// DoEvalAsString
-//
 procedure TGetTextFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    args.Exec.LocalizeString(args.AsString[0], Result);
+end;
+
+{ TStripAccentsFunc }
+
+procedure TStripAccentsFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+var
+   i : Integer;
+   pSrc, pDest : PWideChar;
+begin
+   Result := NormalizeString(args.AsString[0], 'NFKD');
+   pSrc := Pointer(Result);
+   pDest := pSrc;
+   for i := 1 to Length(Result) do begin
+      if TCharacter.IsLetterOrDigit(pSrc^) then begin
+         pDest^ := pSrc^;
+         Inc(pDest);
+      end;
+      Inc(pSrc);
+   end;
+   SetLength(Result, (NativeUInt(pDest)-NativeUInt(Pointer(Result))) div 2);
 end;
 
 // ------------------------------------------------------------------
@@ -1157,9 +1192,11 @@ initialization
    RegisterInternalFunction(TInsertFunc, 'Insert', ['src', SYS_STRING, '@S', SYS_STRING, 'index', SYS_INTEGER], '');
 
    RegisterInternalStringFunction(TLowerCaseFunc, 'LowerCase', ['str', SYS_STRING], [iffStateLess], 'LowerCase');
-   RegisterInternalStringFunction(TAnsiLowerCaseFunc, 'AnsiLowerCase', ['str', SYS_STRING], [iffStateLess], 'ToLower');
+   RegisterInternalStringFunction(TLowerCaseFunc, 'AnsiLowerCase', ['str', SYS_STRING], [iffStateLess], 'ToLower');
+   RegisterInternalStringFunction(TASCIILowerCaseFunc, 'ASCIILowerCase', ['str', SYS_STRING], [iffStateLess]);
    RegisterInternalStringFunction(TUpperCaseFunc, 'UpperCase', ['str', SYS_STRING], [iffStateLess], 'UpperCase');
-   RegisterInternalStringFunction(TAnsiUpperCaseFunc, 'AnsiUpperCase', ['str', SYS_STRING], [iffStateLess], 'ToUpper');
+   RegisterInternalStringFunction(TUpperCaseFunc, 'AnsiUpperCase', ['str', SYS_STRING], [iffStateLess], 'ToUpper');
+   RegisterInternalStringFunction(TASCIIUpperCaseFunc, 'ASCIIUpperCase', ['str', SYS_STRING], [iffStateLess]);
 
    RegisterInternalIntFunction(TPosFunc, 'Pos', ['subStr', SYS_STRING, 'str', SYS_STRING], [iffStateLess]);
    RegisterInternalIntFunction(TPosExFunc, 'PosEx', ['subStr', SYS_STRING, 'str', SYS_STRING, 'offset', SYS_INTEGER], [iffStateLess]);
@@ -1195,6 +1232,8 @@ initialization
    RegisterInternalStringFunction(TSubStringFunc, 'SubString', ['str', SYS_STRING, 'start', SYS_INTEGER, 'end', SYS_INTEGER], [iffStateLess]);
    RegisterInternalStringFunction(TStrDeleteLeftFunc, 'StrDeleteLeft', ['str', SYS_STRING, 'count', SYS_INTEGER], [iffStateLess], 'DeleteLeft');
    RegisterInternalStringFunction(TStrDeleteRightFunc, 'StrDeleteRight', ['str', SYS_STRING, 'count', SYS_INTEGER], [iffStateLess], 'DeleteRight');
+   RegisterInternalStringFunction(TStrPadLeftFunc, 'PadLeft', ['str', SYS_STRING, 'count', SYS_INTEGER, 'char=', SYS_STRING], [iffStateLess], 'PadLeft');
+   RegisterInternalStringFunction(TStrPadRightFunc, 'PadRight', ['str', SYS_STRING, 'count', SYS_INTEGER, 'char=', SYS_STRING], [iffStateLess], 'PadRight');
 
    RegisterInternalStringFunction(TStrReplaceFunc, 'StrReplace', ['str', SYS_STRING, 'sub', SYS_STRING,  'newSub', SYS_STRING], [iffStateLess], 'Replace');
 
@@ -1215,6 +1254,9 @@ initialization
    RegisterInternalStringFunction(TStrJoinFunc, 'StrJoin', ['strs', 'array of string', 'delimiter', SYS_STRING], [], 'Join');
 
    RegisterInternalStringFunction(TReverseStringFunc, 'ReverseString', ['str', SYS_STRING], [iffStateLess], 'Reverse');
+
+   RegisterInternalStringFunction(TNormalizeStringFunc, 'NormalizeString', ['str', SYS_STRING, 'form=NFC', SYS_STRING], [iffStateLess], 'Normalize');
+   RegisterInternalStringFunction(TStripAccentsFunc, 'StripAccents', ['str', SYS_STRING], [iffStateLess], 'StripAccents');
 
    RegisterInternalStringFunction(TGetTextFunc, '_', ['str', SYS_STRING], []);
 

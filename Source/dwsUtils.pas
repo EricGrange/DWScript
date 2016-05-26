@@ -28,6 +28,7 @@ uses
 type
 
    TStringDynArray = array of UnicodeString;
+   TInt64DynArray = array of Int64;
 
    TInt64Array = array [0..High(MaxInt) shr 4] of Int64;
    PInt64Array = ^TInt64Array;
@@ -49,6 +50,7 @@ type
          property  RefCount : Integer read GetRefCount write SetRefCount;
          procedure Free;
    end;
+   PRefCountedObject = ^TRefCountedObject;
 
    // IGetSelf
    //

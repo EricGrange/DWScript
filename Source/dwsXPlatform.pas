@@ -181,6 +181,8 @@ function UnicodeUpperCase(const s : UnicodeString) : UnicodeString;
 function ASCIICompareText(const s1, s2 : UnicodeString) : Integer; inline;
 function ASCIISameText(const s1, s2 : UnicodeString) : Boolean; inline;
 
+function NormalizeString(const s, form : UnicodeString) : String;
+
 function InterlockedIncrement(var val : Integer) : Integer; overload; {$IFDEF PUREPASCAL} inline; {$endif}
 function InterlockedDecrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} inline; {$endif}
 
@@ -488,6 +490,33 @@ begin
    {$else}
    Result:=SameText(s1, s2);
    {$endif}
+end;
+
+// NormalizeString
+//
+function APINormalizeString(normForm : Integer; lpSrcString : LPCWSTR; cwSrcLength : Integer;
+                            lpDstString : LPWSTR; cwDstLength : Integer) : Integer;
+                            stdcall; external 'Normaliz.dll' name 'NormalizeString' delayed;
+function NormalizeString(const s, form : UnicodeString) : String;
+var
+   nf, len : Integer;
+begin
+   if s = '' then Exit('');
+   if (form = '') or (form = 'NFC') then
+      nf := 1
+   else if form = 'NFD' then
+      nf := 2
+   else if form = 'NFKC' then
+      nf := 5
+   else if form = 'NFKD' then
+      nf := 6
+   else raise Exception.CreateFmt('Unsupported normalization form "%s"', [form]);
+   len := APINormalizeString(nf, Pointer(s), Length(s), nil, 0);
+   SetLength(Result, len);
+   len := APINormalizeString(nf, PWideChar(s), Length(s), Pointer(Result), len);
+   if len <= 0 then
+      RaiseLastOSError;
+   SetLength(Result, len);
 end;
 
 // InterlockedIncrement
