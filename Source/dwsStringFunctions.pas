@@ -1141,11 +1141,13 @@ var
    i : Integer;
    pSrc, pDest : PWideChar;
 begin
-   Result := NormalizeString(args.AsString[0], 'NFKD');
+   Result := NormalizeString(args.AsString[0], 'NFD');
    pSrc := Pointer(Result);
    pDest := pSrc;
    for i := 1 to Length(Result) do begin
-      if TCharacter.IsLetterOrDigit(pSrc^) then begin
+      case Ord(pSrc^) of
+         $300..$36F : ; // diacritic range
+      else
          pDest^ := pSrc^;
          Inc(pDest);
       end;
