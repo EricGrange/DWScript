@@ -117,6 +117,12 @@ type
     property Script : TDelphiWebScript write SetScript;
   end;
 
+type
+   TScriptDataBase = class
+      Intf : IdwsDataBase;
+      LowerCaseStringify : Boolean;
+   end;
+
 implementation
 
 {$R *.dfm}
@@ -125,11 +131,6 @@ resourcestring
    FIELD_NOT_FOUND = 'Field ''%s'' not found';
 
 type
-   TDataBase = class
-      Intf : IdwsDataBase;
-      LowerCaseStringify : Boolean;
-   end;
-
    TDataSet = class
       Intf : IdwsDataSet;
       FirstDone : Boolean;
@@ -365,7 +366,7 @@ procedure TdwsDatabaseLib.dwsDatabaseClassesDataBasePoolMethodsAcquireEval(
 var
    name : String;
    db : IdwsDataBase;
-   dbo : TDataBase;
+   dbo : TScriptDataBase;
    q : TSimpleQueue<IdwsDataBase>;
    obj : TScriptObjInstance;
 begin
@@ -380,7 +381,7 @@ begin
    end;
    if Assigned(db) then begin
       obj:=TScriptObjInstance.Create(Info.FuncSym.Typ as TClassSymbol, Info.Execution);
-      dbo:=TDataBase.Create;
+      dbo:=TScriptDataBase.Create;
       obj.ExternalObject:=dbo;
       dbo.Intf:=db;
       Info.ResultAsVariant:=IScriptObj(obj);
@@ -398,8 +399,8 @@ var
 begin
    name:=Info.ParamAsString[0];
    obj:=Info.ParamAsObject[1];
-   if obj is TDataBase then begin
-      db:=TDataBase(obj).Intf;
+   if obj is TScriptDataBase then begin
+      db:=TScriptDataBase(obj).Intf;
       checkRelease:=db.CanReleaseToPool;
       if checkRelease<>'' then begin
          checkRelease:='Releasing to pool not allowed: '+checkRelease;
@@ -513,41 +514,44 @@ begin
    scriptDyn:=Info.ParamAsScriptDynArray[1];
    db:=TdwsDatabase.CreateDataBase(Info.ParamAsString[0], scriptDyn.ToStringArray);
 
-   ExtObject:=TDataBase.Create;
-   TDataBase(ExtObject).Intf:=db;
+   ExtObject:=TScriptDataBase.Create;
+   TScriptDataBase(ExtObject).Intf:=db;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsBeginTransactionEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   (ExtObject as TDataBase).Intf.BeginTransaction;
+   (ExtObject as TScriptDataBase).Intf.BeginTransaction;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsCommitEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   (ExtObject as TDataBase).Intf.Commit;
+   (ExtObject as TScriptDataBase).Intf.Commit;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsExecEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    scriptDyn : IScriptDynArray;
+   db : IdwsDataBase;
 begin
    scriptDyn:=Info.ParamAsScriptDynArray[1];
-   (ExtObject as TDataBase).Intf.Exec(Info.ParamAsString[0], scriptDyn.AsData, Info.Execution.CallStackLastExpr);
+
+   db := (ExtObject as TScriptDataBase).Intf;
+   db.Exec(Info.ParamAsString[0], scriptDyn.AsData, Info.Execution.CallStackLastExpr);
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsInTransactionEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsBoolean:=(ExtObject as TDataBase).Intf.InTransaction;
+   Info.ResultAsBoolean:=(ExtObject as TScriptDataBase).Intf.InTransaction;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsLowerCaseStringifyEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   (ExtObject as TDataBase).LowerCaseStringify:=Info.ParamAsBoolean[0];
+   (ExtObject as TScriptDataBase).LowerCaseStringify:=Info.ParamAsBoolean[0];
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsQueryEval(
@@ -555,13 +559,13 @@ procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsQueryEval(
 var
    scriptDyn : IScriptDynArray;
    ids : IdwsDataSet;
-   dbo : TDataBase;
+   dbo : TScriptDataBase;
    dataSetInfo : IInfo;
    dataSet : TDataSet;
 begin
    scriptDyn:=Info.ParamAsScriptDynArray[1];
 
-   dbo:=(ExtObject as TDataBase);
+   dbo:=(ExtObject as TScriptDataBase);
    ids:=dbo.Intf.Query(Info.ParamAsString[0], scriptDyn.AsData, Info.Execution.CallStackLastExpr);
 
    dataSetInfo:=Info.Vars['DataSet'].Method['Create'].Call;
@@ -579,13 +583,13 @@ end;
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsRollbackEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   (ExtObject as TDataBase).Intf.Rollback;
+   (ExtObject as TScriptDataBase).Intf.Rollback;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsVersionInfoTextEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsString:=(ExtObject as TDataBase).Intf.VersionInfoText;
+   Info.ResultAsString:=(ExtObject as TScriptDataBase).Intf.VersionInfoText;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsAsBlobEval(

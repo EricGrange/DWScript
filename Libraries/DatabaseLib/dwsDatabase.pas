@@ -20,7 +20,7 @@ interface
 
 uses
    SysUtils,
-   dwsSymbols, dwsUtils, dwsStack, dwsXPlatform, dwsDataContext;
+   dwsSymbols, dwsUtils, dwsExprs, dwsStack, dwsXPlatform, dwsDataContext;
 
 // Simple database abstraction interfaces and optional base classes for DWS
 // exposes transaction & forward-only cursor, which are all one really needs :p

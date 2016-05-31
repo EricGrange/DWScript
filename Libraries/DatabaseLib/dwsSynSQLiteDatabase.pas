@@ -38,8 +38,11 @@ type
          FDataSets : Integer;
          FExecRequest : TSQLRequest;
          FExecSQL : String;
+         FModules : TStringList;
 
       protected
+         function GetModule(const name : String) : TObject;
+         procedure SetModule(const name : String; aModule : TObject);
 
       public
          constructor Create(const parameters : array of String);
@@ -55,6 +58,9 @@ type
          function Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
 
          function VersionInfoText : String;
+
+         property DB : TSQLDatabase read FDB;
+         property Module[const name : String] : TObject read GetModule write SetModule;
    end;
 
    TdwsSynSQLiteDataSet = class (TdwsDataSet)
@@ -250,6 +256,7 @@ end;
 //
 destructor TdwsSynSQLiteDataBase.Destroy;
 begin
+   FModules.Free;
    FExecRequest.Close;
    FDB.Free;
    inherited;
@@ -340,6 +347,32 @@ end;
 function TdwsSynSQLiteDataBase.VersionInfoText : String;
 begin
    Result:=UTF8ToString(sqlite3.libversion);
+end;
+
+// GetModule
+//
+function TdwsSynSQLiteDataBase.GetModule(const name : String) : TObject;
+var
+   i : Integer;
+begin
+   Result := nil;
+   if FModules <> nil then begin
+      i := FModules.IndexOf(name);
+      if i >= 0 then
+         Result := FModules.Objects[i];
+   end;
+end;
+
+// SetModule
+//
+procedure TdwsSynSQLiteDataBase.SetModule(const name : String; aModule : TObject);
+begin
+   if FModules = nil then begin
+      FModules := TFastCompareStringList.Create;
+      FModules.Sorted := True;
+   end else if FModules.IndexOf(name) >= 0 then
+      raise Exception.CreateFmt('Module "%s" already registered', [name]);
+   FModules.AddObject(name, aModule);
 end;
 
 // ------------------
