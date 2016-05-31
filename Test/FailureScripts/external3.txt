@@ -1,0 +1,1 @@
+Syntax Error: Class "TFoo" has no default constructor [line: 6, column: 16]

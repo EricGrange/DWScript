@@ -766,7 +766,7 @@ type
          function ReadNegation : TTypedExpr;
          function ReadIfExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
 
-         procedure ReadTry(var Result : TExceptionExpr);
+         function  ReadTry : TExceptionExpr;
          procedure ReadFinally(finallyExpr : TFinallyExpr);
          procedure ReadExcept(exceptExpr : TExceptExpr; var finalToken : TTokenType);
 
@@ -869,8 +869,13 @@ type
          procedure ReleaseStringList(sl : TSimpleStringList);
          procedure ReleaseStringListPool;
 
-         procedure OrphanObject(obj : TRefCountedObject);
-         procedure OrphanAndNil(pobj : PRefCountedObject);
+         procedure OrphanObject(obj : TRefCountedObject); overload;
+
+         procedure OrphanAndNil(var expr : TTypedExpr); overload;
+         procedure OrphanAndNil(var expr : TProgramExpr); overload;
+         procedure OrphanAndNil(var expr : TDataExpr); overload;
+         procedure OrphanAndNil(var expr : TBlockExpr); overload;
+         procedure OrphanAndNil(var expr : TVarExpr); overload;
 
          function Compiler : TdwsCompiler;
          function GetCurrentProg : TdwsProgram;
@@ -2014,12 +2019,54 @@ begin
       FProg.Root.OrphanObject(obj);
 end;
 
-// OrphanAndNil
+// OrphanAndNil (TTypedExpr)
 //
-procedure TdwsCompiler.OrphanAndNil(pobj : PRefCountedObject);
+procedure TdwsCompiler.OrphanAndNil(var expr : TTypedExpr);
 begin
-   OrphanObject(pobj^);
-   pobj^ := nil;
+   if expr <> nil then begin
+      expr.Orphan(FProg);
+      expr := nil;
+   end;
+end;
+
+// OrphanAndNil (TProgramExpr)
+//
+procedure TdwsCompiler.OrphanAndNil(var expr : TProgramExpr);
+begin
+   if expr <> nil then begin
+      expr.Orphan(FProg);
+      expr := nil;
+   end;
+end;
+
+// OrphanAndNil (TDataExpr)
+//
+procedure TdwsCompiler.OrphanAndNil(var expr : TDataExpr);
+begin
+   if expr <> nil then begin
+      expr.Orphan(FProg);
+      expr := nil;
+   end;
+end;
+
+// OrphanAndNil (TBlockExpr)
+//
+procedure TdwsCompiler.OrphanAndNil(var expr : TBlockExpr);
+begin
+   if expr <> nil then begin
+      expr.Orphan(FProg);
+      expr := nil;
+   end;
+end;
+
+// OrphanAndNil (TVarExpr)
+//
+procedure TdwsCompiler.OrphanAndNil(var expr : TVarExpr);
+begin
+   if expr <> nil then begin
+      expr.Orphan(FProg);
+      expr := nil;
+   end;
 end;
 
 // Compiler
@@ -2240,7 +2287,7 @@ begin
          end;
       end;
    except
-      OrphanAndNil(@Result);
+      OrphanAndNil(Result);
       raise;
    end;
 end;
@@ -2365,7 +2412,7 @@ begin
                      CurrentSourceUnit.GetDependencies.Add(unitSymbol.Name);
                end;
             end;
-            OrphanAndNil(@Result);
+            OrphanAndNil(Result);
          end;
       end;
 
@@ -2438,9 +2485,9 @@ begin
 
       if coOptimize in Options then begin
          if (initializationBlock<>nil) and (initializationBlock.StatementCount=0) then
-            OrphanAndNil(@initializationBlock);
+            OrphanAndNil(initializationBlock);
          if (finalizationBlock<>nil) and (finalizationBlock.StatementCount=0) then
-            OrphanAndNil(@finalizationBlock);
+            OrphanAndNil(finalizationBlock);
       end;
 
       if CurrentUnitSymbol<>nil then begin
@@ -2465,9 +2512,9 @@ begin
          end;
       end;
    finally
-      OrphanAndNil(@unitBlock);
-      OrphanAndNil(@initializationBlock);
-      OrphanAndNil(@finalizationBlock);
+      OrphanAndNil(unitBlock);
+      OrphanAndNil(initializationBlock);
+      OrphanAndNil(finalizationBlock);
    end;
 end;
 
@@ -2621,10 +2668,10 @@ begin
    try
       if not expr.IsConstant then begin
          FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
-         OrphanAndNil(@expr);
+         OrphanAndNil(expr);
       end else if (expr.Typ=nil) or not expr.Typ.IsOfType(FProg.TypString) then begin
          FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected);
-         OrphanAndNil(@expr);
+         OrphanAndNil(expr);
       end;
       // keep compiling
       if expr=nil then
@@ -2636,7 +2683,7 @@ begin
       FMainProg.ResourceStringList.Add(Result);
       RecordSymbolUse(Result, namePos, [suDeclaration]);
    finally
-      OrphanAndNil(@expr);
+      OrphanAndNil(expr);
    end;
 end;
 
@@ -2845,7 +2892,7 @@ begin
 
          if typ=nil then begin
             FMsgs.AddCompilerError(hotPos, CPE_RightSideNeedsReturnType);
-            OrphanAndNil(@initExpr);
+            OrphanAndNil(initExpr);
          end else if typ=FProg.TypNil then
             if not (initExpr is TBogusConstExpr) then
                FMsgs.AddCompilerError(hotPos, CPE_TypeCouldNotBeInferenced);
@@ -2873,7 +2920,7 @@ begin
             initVarBlockExpr.AddStatement(assignExpr);
       end;
    finally
-      OrphanAndNil(@initExpr);
+      OrphanAndNil(initExpr);
    end;
 end;
 
@@ -3045,7 +3092,7 @@ begin
       finally
          if detachTyp then
             expr.DetachTypes(FProg.Table);
-         OrphanAndNil(@expr);
+         OrphanAndNil(expr);
       end;
    end;
 end;
@@ -3450,7 +3497,7 @@ begin
             RecordSymbolUse(Result, funcPos, [suDeclaration, suImplementation])
          else RecordSymbolUse(Result, funcPos, [suImplementation]);
       except
-         OrphanAndNil(@Result);
+         OrphanObject(Result);
          raise;
       end;
    end;
@@ -3538,7 +3585,7 @@ begin
       // Added as last step. OnExcept, won't need to be freed.
       RecordSymbolUse(Result, methPos, [suDeclaration]);
    except
-      OrphanAndNil(@Result);
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -3838,7 +3885,7 @@ begin
          end else if explicitParams then
             CompareFuncSymbolParams(Result, tmpMeth);
       finally
-         OrphanAndNil(@tmpMeth);
+         OrphanObject(tmpMeth);
       end;
    end else begin
       // keep compiling a method that wasn't declared in class
@@ -4132,8 +4179,8 @@ begin
          conditions.AddCondition(srcCond);
          funcSymbol.AddCondition(condsSymClass.Create(hotPos, srcCond, srcCond));
       except
-         OrphanAndNil(@testExpr);
-         OrphanAndNil(@msgExpr);
+         OrphanAndNil(testExpr);
+         OrphanAndNil(msgExpr);
          raise;
       end;
 
@@ -4287,7 +4334,7 @@ begin
          else Result.UsesSym:=usesSym;
       end;
    except
-      OrphanAndNil(@Result);
+      OrphanObject(Result);
       raise;
    end;
 
@@ -4411,7 +4458,7 @@ begin
          end;
       end;
    except
-      OrphanAndNil(@blockExpr);
+      OrphanAndNil(blockExpr);
       raise;
    end;
 end;
@@ -4439,7 +4486,6 @@ var
    locExpr : TProgramExpr;
    hotPos : TScriptPos;
    msgsCount : Integer;
-   tryExpr : TExceptionExpr;
    funcSym : TFuncSymbol;
 begin
    if Assigned(FOnReadInstr) then begin
@@ -4477,16 +4523,8 @@ begin
          Result := ReadExit;
          MarkLoopExitable(leExit);
       end;
-      ttTRY : begin
-         tryExpr:=nil;
-         try
-            ReadTry(tryExpr);
-            Result:=tryExpr;
-         except
-            OrphanAndNil(@tryExpr);
-            raise;
-         end;
-      end;
+      ttTRY :
+         Result := ReadTry;
       ttCONTINUE : begin
          if FLoopExprs.Count=0 then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_ContinueOutsideOfLoop)
@@ -4515,9 +4553,9 @@ begin
             if token<>ttNone then begin
                if not (locExpr is TDataExpr) then begin
                   FMsgs.AddCompilerError(hotPos, CPE_CantWriteToLeftSide);
-                  OrphanAndNil(@locExpr);
-                  OrphanObject(ReadExpr); // keep compiling
-                  Result:=nil;
+                  OrphanAndNil(locExpr);
+                  Result:=ReadExpr; // keep compiling
+                  OrphanAndNil(Result);
                end else begin
                   if not TDataExpr(locExpr).IsWritable then
                      FMsgs.AddCompilerError(FTok.HotPos, CPE_CantWriteToLeftSide);
@@ -4550,7 +4588,7 @@ begin
                else if locExpr is TArrayPseudoMethodExpr then
                   Result:=TArrayPseudoMethodExpr(locExpr)
                else if locExpr is TConstExpr then begin
-                  OrphanAndNil(@locExpr);
+                  OrphanAndNil(locExpr);
                   Result:=TNullExpr.Create(hotPos);
                   if FMsgs.Count=msgsCount then   // avoid hint on expression with issues
                      FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
@@ -4569,7 +4607,7 @@ begin
                end;
             end;
          except
-            OrphanAndNil(@locExpr);
+            OrphanAndNil(locExpr);
             raise;
          end;
       end else begin
@@ -4649,7 +4687,7 @@ begin
          try
             Result:=ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite);
          except
-            OrphanAndNil(@varExpr);
+            OrphanAndNil(varExpr);
             raise;
          end;
 
@@ -4879,7 +4917,7 @@ begin
          try
             propExpr:=ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite);
          except
-            OrphanAndNil(@varExpr);
+            OrphanAndNil(varExpr);
             raise;
          end;
 
@@ -4923,7 +4961,7 @@ begin
       end;
 
    except
-      OrphanAndNil(@Result);
+      OrphanAndNil(Result);
       raise;
    end;
 end;
@@ -5116,7 +5154,7 @@ begin
    if (not (oldExpr is TTypedExpr)) or (TTypedExpr(oldExpr).Typ=nil) then begin
       FMsgs.AddCompilerError(FTok.HotPos, CPE_FunctionOrValueExpected);
       // keep going
-      OrphanAndNil(@oldExpr);
+      OrphanAndNil(oldExpr);
       expr:=TUnifiedConstExpr.CreateUnified(FProg, FProg.TypVariant, Unassigned);
    end else expr:=TTypedExpr(oldExpr);
 
@@ -5213,7 +5251,7 @@ begin
       if propertySym.WriteSym=nil then
          FMsgs.AddCompilerError(aPos, CPE_CantReadProperty)
       else FMsgs.AddCompilerError(aPos, CPE_WriteOnlyProperty);
-      OrphanAndNil(@expr);
+      OrphanAndNil(expr);
       Exit(TConstExpr.CreateTypedDefault(FProg, propertySym.Typ));
 
    end;
@@ -5239,19 +5277,19 @@ begin
          Result:=ReadPropertyArrayAccessor(expr, propertySym, typedExprList, aPos, False);
 
       finally
-         OrphanAndNil(@typedExprList);
+         typedExprList.Orphan(FProg);
       end;
 
    end else if sym is TClassVarSymbol then begin
 
-      OrphanAndNil(@expr);
+      OrphanAndNil(expr);
       Result:=GetVarExpr(TClassVarSymbol(sym));
 
    end else begin
 
       Assert(sym is TConstSymbol);
 
-      OrphanAndNil(@expr);
+      OrphanAndNil(expr);
       Result:=TConstExpr.CreateTyped(FProg, sym.Typ, TConstSymbol(sym));
 
    end;
@@ -5305,7 +5343,7 @@ begin
 
             // WriteSym is a class var
             RecordSymbolUseImplicitReference(sym, aPos, True);
-            OrphanAndNil(@expr);
+            OrphanAndNil(expr);
             fieldExpr:=GetVarExpr(TClassVarSymbol(sym));
             Result:=ReadAssign(ttASSIGN, fieldExpr);
 
@@ -5318,7 +5356,7 @@ begin
 
          end else begin
 
-            OrphanAndNil(@expr);
+            OrphanAndNil(expr);
             Result:=TErrorExpr.Create(aPos);
             FMsgs.AddCompilerError(aPos, CPE_ReadOnlyProperty)
 
@@ -5338,21 +5376,21 @@ begin
 
                if Expr.Typ is TClassOfSymbol then begin
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_ObjectReferenceExpected);
-                  OrphanAndNil(@expr);
+                  OrphanAndNil(expr);
                end;
                Result:=TReadOnlyFieldExpr.Create(FTok.HotPos, TFieldSymbol(sym), expr, propertySym.Typ);
                expr:=nil;
 
             end else if sym is TClassVarSymbol then begin
 
-               OrphanAndNil(@expr);
+               OrphanAndNil(expr);
                Result:=GetVarExpr(TClassVarSymbol(sym));
 
             end else begin
 
                Assert(sym is TConstSymbol);
 
-               OrphanAndNil(@expr);
+               OrphanAndNil(expr);
                Result:=TConstExpr.CreateTyped(FProg, sym.Typ, TConstSymbol(sym));
 
             end;
@@ -5361,7 +5399,7 @@ begin
 
             FMsgs.AddCompilerError(aPos, CPE_InvalidInstruction);
             // fake to keep going
-            OrphanAndNil(@expr);
+            OrphanAndNil(expr);
             Result:=TConstExpr.Create(propertySym.Typ);
 
          end;
@@ -5369,7 +5407,7 @@ begin
       end;
 
    finally
-      OrphanAndNil(@typedExprList);
+      typedExprList.Orphan(FProg);
    end;
 end;
 
@@ -5412,7 +5450,8 @@ begin
 
       TypeCheckArgs(Result, nil);
    except
-      OrphanAndNil(@Result);
+      if Result <> nil then
+         Result.Orphan(FProg);
       raise;
    end;
 end;
@@ -5478,7 +5517,7 @@ begin
 
                      // Type "array"
                      if not (Result is TTypedExpr) then begin
-                        OrphanAndNil(@Result);
+                        OrphanAndNil(Result);
                      end;
                      if (baseType is TArraySymbol) and (Result is TDataExpr) then begin
                         Result := ReadSymbolArrayExpr(TDataExpr(Result))
@@ -5519,7 +5558,7 @@ begin
 
       until (Expr = Result);
    except
-      OrphanAndNil(@Result);
+      OrphanAndNil(Result);
       raise;
    end;
 end;
@@ -5553,7 +5592,7 @@ begin
          indexExpr := ReadExpr;
          if not (baseExpr.BaseType is TArraySymbol) then begin
             FMsgs.AddCompilerError(hotPos, RTE_TooManyIndices);
-            OrphanAndNil(@indexExpr);
+            OrphanAndNil(indexExpr);
             Continue;
          end else if indexExpr=nil then begin
             continue;
@@ -5644,7 +5683,7 @@ begin
 
             end else begin
 
-               OrphanAndNil(@indexExpr);
+               OrphanAndNil(indexExpr);
                break;
 
             end;
@@ -5655,8 +5694,8 @@ begin
          newBaseExpr := nil;
       until not FTok.TestDelete(ttCOMMA);
    except
-      OrphanAndNil(@indexExpr);
-      OrphanAndNil(@newBaseExpr);
+      OrphanAndNil(indexExpr);
+      OrphanAndNil(newBaseExpr);
       raise;
    end;
 
@@ -5720,7 +5759,7 @@ begin
       end;
 
    except
-      OrphanAndNil(@keyExpr);
+      OrphanAndNil(keyExpr);
       raise;
    end;
 
@@ -5797,12 +5836,12 @@ begin
 
             end else if memberClassType=TClassVarSymbol then begin
 
-               OrphanAndNil(@Result);
+               OrphanAndNil(Result);
                Result:=ReadDataSymbolName(TDataSymbol(member), TStructuredTypeSymbol(member).Members, IsWrite, expecting);
 
             end else if memberClassType=TClassConstSymbol then begin
 
-               OrphanAndNil(@Result);
+               OrphanAndNil(Result);
                Result:=ReadConstName(TConstSymbol(member), IsWrite);
 
             end else begin
@@ -5842,13 +5881,13 @@ begin
 
             end else if memberClassType=TClassVarSymbol then begin
 
-               OrphanAndNil(@Result);
+               OrphanAndNil(Result);
                Result:=ReadDataSymbolName(TDataSymbol(member), TStructuredTypeSymbol(baseType.Typ).Members,
                                           IsWrite, expecting);
 
             end else if memberClassType=TClassConstSymbol then begin
 
-               OrphanAndNil(@Result);
+               OrphanAndNil(Result);
                Result:=ReadConstName(TConstSymbol(member), IsWrite);
 
             end else if member<>nil then begin
@@ -5904,13 +5943,13 @@ begin
 
       end else begin
 
-         OrphanAndNil(@expr);
+         OrphanAndNil(expr);
          expr:=nil;
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
       end;
    except
-      OrphanAndNil(@Result);
+      OrphanAndNil(Result);
       raise;
    end;
 end;
@@ -5938,7 +5977,8 @@ begin
       else FMsgs.AddCompilerStop(FTok.HotPos,CPE_WriteOnlyProperty); // ??
       TypeCheckArgs(Result, nil);
    except
-      OrphanAndNil(@Result);
+      if Result <> nil then
+         Result.Orphan(FProg);
       raise;
    end;
 end;
@@ -5970,7 +6010,7 @@ begin
       if expr is TFuncPtrExpr then
          expr:=TFuncPtrExpr(expr).Extract;
       if not (expr is TVarExpr) then begin
-         OrphanAndNil(@expr);
+         OrphanAndNil(expr);
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_VariableExpected);
       end;
 
@@ -5987,7 +6027,7 @@ begin
       ttIN :
          Result:=ReadForIn(forPos, loopVarExpr, loopVarName, loopVarNamePos);
    else
-      OrphanAndNil(@expr);
+      OrphanAndNil(expr);
       Result:=nil;
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_AssignExpected);
    end;
@@ -6064,10 +6104,10 @@ begin
       end;
 
    except
-      OrphanAndNil(@loopBlockExpr);
-      OrphanAndNil(@fromExpr);
-      OrphanAndNil(@toExpr);
-      OrphanAndNil(@loopVarExpr);
+      OrphanAndNil(loopBlockExpr);
+      OrphanAndNil(fromExpr);
+      OrphanAndNil(toExpr);
+      OrphanAndNil(loopVarExpr);
       raise;
    end;
 
@@ -6139,19 +6179,19 @@ begin
          end;
 
       except
-         OrphanAndNil(@iterBlockExpr);
-         OrphanAndNil(@stepExpr);
-         OrphanAndNil(@Result);
+         OrphanAndNil(iterBlockExpr);
+         OrphanAndNil(stepExpr);
+         if Result <> nil then
+            Result.Orphan(FProg);
          raise;
       end;
       LeaveLoop;
    except
-      OrphanAndNil(@iterVarExpr);
-      OrphanAndNil(@fromExpr);
-      fromExpr:=nil;
-      OrphanAndNil(@toExpr);
-      toExpr:=nil;
-      OrphanAndNil(@loopFirstStatement);
+      if iterVarExpr <> nil then
+         iterVarExpr.Orphan(FProg);
+      OrphanAndNil(fromExpr);
+      OrphanAndNil(toExpr);
+      OrphanAndNil(loopFirstStatement);
       raise;
    end;
 end;
@@ -6240,18 +6280,25 @@ begin
 
          end else if inExpr.Typ is TSetOfSymbol then begin
 
-            OrphanAndNil(@inExprAssignExpr);
+            if inExprAssignExpr <> nil then
+               inExprAssignExpr.Orphan(FProg);
             Result:=ReadForInSetOf(forPos, inExpr as TDataExpr, loopVarExpr, loopVarName, loopVarNamePos);
             Exit;
 
          end else begin
 
-            OrphanAndNil(@inExprAssignExpr);
-            OrphanAndNil(@loopVarExpr);
-            OrphanAndNil(@iterVarExpr);
+            if inExprAssignExpr <> nil then begin
+               inExprAssignExpr.Orphan(FProg);
+               inExprAssignExpr := nil;
+            end;
+            OrphanAndNil(loopVarExpr);
+            if iterVarExpr <> nil then begin
+               iterVarExpr.Orphan(FProg);
+               iterVarExpr:=nil;
+            end;
             fromExpr:=nil;
             toExpr:=nil;
-            OrphanAndNil(@inExpr);
+            OrphanAndNil(inExpr);
             FMsgs.AddCompilerStop(inPos, CPE_ArrayExpected);
 
          end;
@@ -6265,7 +6312,7 @@ begin
          if inExpr.Typ.InheritsFrom(TEnumerationSymbol) then
             enumSymbol:=TEnumerationSymbol(inExpr.Typ);
       end;
-      OrphanAndNil(@inExpr);
+      OrphanAndNil(inExpr);
 
       if enumSymbol=nil then begin
          FMsgs.AddCompilerError(inPos, CPE_EnumerationExpected);
@@ -6303,7 +6350,7 @@ begin
          Result:=ReadForStep(forPos, forExprClass, iterVarExpr,
                              fromExpr, toExpr, readArrayItemExpr);
       except
-         OrphanAndNil(@blockExpr);
+         OrphanAndNil(blockExpr);
          raise;
       end;
       if Optimize then
@@ -6333,8 +6380,8 @@ var
    forInExpr : TForInStrExpr;
 begin
    if not FTok.TestDelete(ttDO) then begin
-      OrphanAndNil(@inExpr);
-      OrphanAndNil(@loopVarExpr);
+      OrphanAndNil(inExpr);
+      OrphanAndNil(loopVarExpr);
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
    end;
 
@@ -6402,9 +6449,9 @@ begin
    try
       doBlock:=ReadBlock;
    except
-      OrphanAndNil(@blockExpr);
-      OrphanAndNil(@loopVarExpr);
-      OrphanAndNil(@inExpr);
+      OrphanAndNil(blockExpr);
+      OrphanAndNil(loopVarExpr);
+      OrphanAndNil(inExpr);
       raise;
    end;
 
@@ -6464,7 +6511,7 @@ begin
       try
          forInExpr.DoExpr:=ReadBlock;
       except
-         OrphanAndNil(@forInExpr);
+         forInExpr.Orphan(FProg);
          raise;
       end;
    finally
@@ -6548,9 +6595,9 @@ begin
          Result:=TIfThenExpr.Create(FProg, hotPos, condExpr, thenExpr)
       else Result:=TIfThenElseExpr.Create(FProg, hotPos, condExpr, thenExpr, elseExpr);
    except
-      OrphanAndNil(@condExpr);
-      OrphanAndNil(@thenExpr);
-      OrphanAndNil(@elseExpr);
+      OrphanAndNil(condExpr);
+      OrphanAndNil(thenExpr);
+      OrphanAndNil(elseExpr);
       raise;
    end;
 
@@ -6606,7 +6653,7 @@ begin
             end;
          end;
       except
-         OrphanAndNil(@Result);
+         Result.Orphan(FProg);
          raise;
       end;
    finally
@@ -6637,7 +6684,7 @@ begin
             // compare condition e. g. 123:
             if exprFrom is TConstStringExpr then begin
                condition := TCompareConstStringCaseCondition.Create(hotPos, TConstStringExpr(exprFrom).Value);
-               OrphanObject(exprFrom);
+               OrphanAndNil(exprFrom);
             end else begin
                condition:=TCompareCaseCondition.Create(hotPos, exprFrom);
             end;
@@ -6647,7 +6694,7 @@ begin
          if valueExpr.Typ<>nil then
             condition.TypeCheck(FProg, valueExpr.Typ);
       except
-         OrphanAndNil(@exprFrom);
+         OrphanAndNil(exprFrom);
          raise;
       end;
 
@@ -6680,7 +6727,7 @@ begin
 
       TWhileExpr(Result).LoopExpr := ReadBlock;
    except
-      OrphanAndNil(@Result);
+      OrphanAndNil(Result);
       raise;
    end;
    LeaveLoop;
@@ -6735,7 +6782,7 @@ begin
       end;
 
    except
-      OrphanAndNil(@blockExpr);
+      OrphanAndNil(blockExpr);
       raise;
    end;
 end;
@@ -6759,7 +6806,7 @@ begin
       else if (not condExpr.IsConstant) or condExpr.EvalAsBoolean(FExec) then
          MarkLoopExitable(leBreak);
    except
-      OrphanAndNil(@Result);
+      OrphanAndNil(Result);
       raise;
    end;
    LeaveLoop;
@@ -6782,8 +6829,8 @@ begin
       Result:=CreateAssign(hotPos, token, left, right);
       left:=nil;
    except
-      OrphanAndNil(@left);
-      OrphanAndNil(@right);
+      OrphanAndNil(left);
+      OrphanAndNil(right);
       raise;
    end;
 end;
@@ -7313,7 +7360,7 @@ begin
       end;
       WarnDeprecatedFunc(funcExpr);
    except
-      OrphanAndNil(@Result);
+      OrphanAndNil(Result);
       raise;
    end;
 end;
@@ -7613,7 +7660,7 @@ begin
                   try
                      Result:=ReadAssociativeArrayType(typeName, TTypeReferenceExpr(lowBound).Typ, typeContext);
                   finally
-                     OrphanAndNil(@lowBound);
+                     OrphanAndNil(lowBound);
                   end;
                   Exit;
 
@@ -7622,14 +7669,14 @@ begin
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_ArrayBoundNotOrdinal)
 
                end;
-               OrphanAndNil(@lowBound);
+               OrphanAndNil(lowBound);
 
             end else if (min.Count=0) and (lowBound.Typ is TStructuredTypeMetaSymbol)
                                       and FTok.TestDelete(ttARIGHT) then begin
                try
                   Result:=ReadAssociativeArrayType(typeName, lowBound.Typ.Typ, typeContext);
                finally
-                  OrphanAndNil(@lowBound);
+                  OrphanAndNil(lowBound);
                end;
                Exit;
 
@@ -7656,7 +7703,7 @@ begin
                if boundsOk and (max[0].EvalAsInteger(FExec)<min[0].EvalAsInteger(FExec)) then begin
                   FMsgs.AddCompilerError(hotPos, CPE_LowerBoundGreaterThanUpperBound);
                   // keep compiling
-                  OrphanObject(max[0]);
+                  max[0].Orphan(FProg);
                   max[0]:=TConstExpr.CreateIntegerValue(FProg, min[0].EvalAsInteger(FExec));
                end;
 
@@ -7716,8 +7763,8 @@ begin
       end;
 
    finally
-      OrphanAndNil(@min);
-      OrphanAndNil(@max);
+      min.Orphan(FProg);
+      max.Orphan(FProg);
    end;
 end;
 
@@ -7778,8 +7825,8 @@ var
             end;
          end;
       finally
-         OrphanAndNil(@expr1);
-         OrphanAndNil(@expr2);
+         OrphanAndNil(expr1);
+         OrphanAndNil(expr2);
       end;
    end;
 
@@ -7820,7 +7867,7 @@ begin
       if Optimize then
          Result:=Result.Optimize(FProg, FExec) as TArrayConstantExpr;
    except
-      OrphanAndNil(@Result);
+      Result.Orphan(FProg);
       raise;
    end;
 end;
@@ -8078,7 +8125,7 @@ begin
                      if not argList[0].Typ.IsCompatible(arraySym.SortFunctionType(FProg.TypInteger)) then begin
                         IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
                                           arraySym.SortFunctionType(FProg.TypBoolean), argList[0].Typ);
-                        OrphanObject(argList[0]);
+                        argList.OrphanItems(Fprog);
                         argList.Clear;
                      end;
                      if argList.Count>0 then begin
@@ -8097,13 +8144,13 @@ begin
                   if      argList[0].Typ.IsCompatible(mapFunctionType)
                      and (argList[0].Typ.Typ<>nil) then begin
                      Result:=TArrayMapExpr.Create(FProg, namePos, baseExpr,
-                                                  TFuncPtrExpr.Create(FProg, argPosArray[0], argList[0]))
+                                                  TFuncPtrExpr.Create(FProg, argPosArray[0], argList[0]));
+                     argList.Clear;
                   end else begin
                      IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
                                        mapFunctionType, argList[0].Typ);
-                     OrphanObject(argList[0]);
+                     argList.OrphanItems(FProg)
                   end;
-                  argList.Clear;
                end;
                if Result=nil then
                   Result:=TArrayMapExpr.Create(FProg, namePos, baseExpr, nil);
@@ -8119,15 +8166,12 @@ begin
             FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
          end;
       except
-         OrphanAndNil(@Result);
-         for i:=0 to argList.Count-1 do
-            OrphanObject(argList[i]);
-         argList.Clear;
+         OrphanAndNil(Result);
          raise;
       end;
    finally
-      OrphanAndNil(@argSymTable);
-      OrphanAndNil(@argList);
+      OrphanObject(argSymTable);
+      argList.Orphan(FProg);
    end;
 end;
 
@@ -8139,7 +8183,6 @@ var
    argList : TTypedExprList;
    argPosArray : TScriptPosArray;
    argSymTable : TUnSortedSymbolTable;
-   i : Integer;
    methodKind : TArrayMethodKind;
 
    function CheckArguments(expectedMin, expectedMax : Integer) : Boolean;
@@ -8180,15 +8223,12 @@ begin
             FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
          end;
       except
-         OrphanAndNil(@Result);
-         for i:=0 to argList.Count-1 do
-            OrphanObject(argList[i]);
-         argList.Clear;
+         OrphanAndNil(Result);
          raise;
       end;
    finally
-      OrphanAndNil(@argSymTable);
-      OrphanAndNil(@argList);
+      OrphanObject(argSymTable);
+      argList.Orphan(FProg);
    end;
 end;
 
@@ -8212,7 +8252,7 @@ begin
       else begin
 
          if sk=skLow then begin
-            OrphanAndNil(@baseExpr);
+            OrphanAndNil(baseExpr);
             Result:=TConstExpr.CreateIntegerValue(FProg, 1);
          end else begin
             Result:=nil;
@@ -8224,7 +8264,7 @@ begin
       if not (coHintsDisabled in FOptions) then
          CheckSpecialNameCase(name, sk, namePos);
    except
-      OrphanAndNil(@baseExpr);
+      OrphanAndNil(baseExpr);
       raise;
    end;
 end;
@@ -8254,11 +8294,11 @@ begin
          CheckSpecialNameCase(name, sk, namePos);
 
       if not FTok.TestDelete(ttBRIGHT) then begin
-         OrphanAndNil(@Result);
+         OrphanAndNil(Result);
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
       end;
    except
-      OrphanAndNil(@baseExpr);
+      OrphanAndNil(baseExpr);
       raise;
    end;
 end;
@@ -8296,7 +8336,7 @@ begin
             end else if meth=emName then
                Result:=TConstExpr.CreateStringValue(FProg, element.Name)
             else Result:=TConstExpr.CreateStringValue(FProg, element.QualifiedName);
-            OrphanAndNil(@baseExpr);
+            OrphanAndNil(baseExpr);
 
          end else begin
 
@@ -8313,7 +8353,7 @@ begin
          if baseExpr.ClassType=TConstIntExpr then begin
 
             Result:=TConstExpr.CreateIntegerValue(FProg, TConstIntExpr(baseExpr).Value);
-            OrphanAndNil(@baseExpr);
+            OrphanAndNil(baseExpr);
 
          end else begin
 
@@ -8325,7 +8365,7 @@ begin
    else
 
       Result:=nil;
-      OrphanAndNil(@baseExpr);
+      OrphanAndNil(baseExpr);
       FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [name]);
 
    end;
@@ -8449,7 +8489,7 @@ begin
          if not FTok.TestDelete(ttBRIGHT) then
             FMsgs.AddCompilerStop(hotPos, CPE_BrackRightExpected);
       except
-         OrphanAndNil(@typedExpr);
+         OrphanAndNil(typedExpr);
          raise;
       end;
 
@@ -8512,7 +8552,7 @@ begin
    WarnDeprecatedType(hotPos, classSym);
 
    if classSym.IsStatic then begin
-      OrphanAndNil(@baseExpr);
+      OrphanAndNil(baseExpr);
       FMsgs.AddCompilerErrorFmt(hotPos, CPE_ClassIsStaticNoInstantiation, [classSym.Name]);
       Result:=TConstExpr.Create(FProg, classSym, Null);
       Exit;
@@ -8520,10 +8560,13 @@ begin
    if (restrictTo<>nil) and not classSym.IsOfType(restrictTo) then
       FMsgs.AddCompilerErrorFmt(hotPos, CPE_MustBeSubClassOf, [restrictTo.Name]);
 
+   overloads:=nil;
    methSym:=classSym.FindDefaultConstructor(cvPrivate);
-   if methSym.IsOverloaded then
-      overloads:=TFuncSymbolList.Create
-   else overloads:=nil;
+   if methSym = nil then begin
+      OrphanAndNil(baseExpr);
+      FMsgs.AddCompilerStopFmt(hotPos, CPE_NoDefaultConstructor, [classSym.Name])
+   end else if methSym.IsOverloaded then
+      overloads:=TFuncSymbolList.Create;
    try
       if overloads<>nil then begin
          CollectMethodOverloads(methSym, overloads);
@@ -8538,7 +8581,7 @@ begin
       try
          Result:=GetMethodExpr(methSym, baseExpr, rkClassOfRef, hotPos, False);
       except
-         OrphanAndNil(@baseExpr);
+         OrphanAndNil(baseExpr);
          raise;
       end;
       try
@@ -8551,7 +8594,7 @@ begin
          end;
          TypeCheckArgs(TFuncExpr(Result), argPosArray);
       except
-         OrphanAndNil(@Result);
+         OrphanAndNil(Result);
          raise;
       end;
    finally
@@ -8581,7 +8624,7 @@ begin
       if not FTok.TestDelete(ttARIGHT) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBracketRightExpected);
    except
-      OrphanAndNil(@newExpr);
+      newExpr.Orphan(FProg);
       raise;
    end;
    Result:=newExpr;
@@ -9088,7 +9131,7 @@ begin
             FProg.Table.Remove(Result);
       end;
    except
-      OrphanAndNil(@Result);
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -9180,7 +9223,7 @@ begin
 
       ReadSemiColon;
    except
-      OrphanAndNil(@Result);
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -9248,7 +9291,7 @@ begin
       try
          ReadArrayParams(tempArrayIndices);
       except
-         OrphanAndNil(@tempArrayIndices);
+         OrphanObject(tempArrayIndices);
          raise;
       end;
    end else tempArrayIndices:=nil;
@@ -9271,7 +9314,7 @@ begin
       end else begin
          propSym.SetIndex(TConstExpr(indexExpr).Data, indexTyp);
       end;
-      OrphanAndNil(@indexExpr);
+      OrphanAndNil(indexExpr);
    end else indexTyp:=nil;
 
    gotReadOrWrite:=False;
@@ -9556,7 +9599,7 @@ begin
             if expr.Typ.IsOfType(propSym.Typ) then begin
                if expr<>nil then begin
                   TNoResultWrapperExpr(instr).Expr:=nil;
-                  OrphanAndNil(@instr);
+                  OrphanAndNil(instr);
                end;
                instr:=nil;
                if (expr is TDataExpr) and TDataExpr(expr).IsWritable then begin
@@ -9565,14 +9608,14 @@ begin
                   proc.Expr:=CreateAssign(scriptPos, ttASSIGN, leftExpr, paramExpr);
                end else begin
                   FMsgs.AddCompilerError(scriptPos, CPE_CantWriteToLeftSide);
-                  OrphanAndNil(@expr);
+                  OrphanAndNil(expr);
                end;
             end;
          end;
          if instr<>nil then
             proc.Expr:=instr;
       finally
-         OrphanAndNil(@FPendingSetterValueExpr);
+         OrphanAndNil(FPendingSetterValueExpr);
          FProg:=oldProg;
       end;
 
@@ -9668,7 +9711,7 @@ begin
 
       Result.IsFullyDefined:=True;
    except
-      OrphanAndNil(@Result);
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -9759,7 +9802,7 @@ begin
                      FProg.Table.AddSymbol(typ);
                   expr.Typ:=nil;
                end;
-               OrphanAndNil(@expr);
+               OrphanAndNil(expr);
             end;
          end;
       end else begin
@@ -9898,14 +9941,14 @@ begin
          FHelperMemberNames.Add(member.Name);
 
    except
-      OrphanAndNil(@Result);
+      OrphanObject(Result);
       raise;
    end;
 end;
 
 // ReadTry
 //
-procedure TdwsCompiler.ReadTry(var Result : TExceptionExpr);
+function TdwsCompiler.ReadTry : TExceptionExpr;
 var
    tryBlock : TProgramExpr;
    tt : TTokenType;
@@ -9913,24 +9956,31 @@ var
    exceptExpr : TExceptExpr;
    finallyExpr : TFinallyExpr;
 begin
-   wasExcept:=FIsExcept;
-   FIsExcept:=False;
+   Result := nil;
    try
-      tryBlock:=ReadBlocks([ttFINALLY, ttEXCEPT], tt);
-      if tt=ttEXCEPT then begin
-         FIsExcept:=True;
-         exceptExpr:=TExceptExpr.Create(tryBlock);
-         Result:=exceptExpr;
-         ReadExcept(exceptExpr, tt);
-         tryBlock:=Result;
+      wasExcept:=FIsExcept;
+      FIsExcept:=False;
+      try
+         tryBlock:=ReadBlocks([ttFINALLY, ttEXCEPT], tt);
+         if tt=ttEXCEPT then begin
+            FIsExcept:=True;
+            exceptExpr:=TExceptExpr.Create(tryBlock);
+            Result:=exceptExpr;
+            ReadExcept(exceptExpr, tt);
+            tryBlock:=Result;
+         end;
+         if tt=ttFINALLY then begin
+            finallyExpr:=TFinallyExpr.Create(tryBlock);
+            Result:=finallyExpr;
+            ReadFinally(finallyExpr);
+         end;
+      finally
+         FIsExcept:=wasExcept;
       end;
-      if tt=ttFINALLY then begin
-         finallyExpr:=TFinallyExpr.Create(tryBlock);
-         Result:=finallyExpr;
-         ReadFinally(finallyExpr);
-      end;
-   finally
-      FIsExcept:=wasExcept;
+   except
+      if Result <> nil then
+         Result.Orphan(FProg);
+      raise;
    end;
 end;
 
@@ -10049,11 +10099,11 @@ begin
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
             Result:=TExitValueExpr.Create(FProg, exitPos, assignExpr);
          except
-            OrphanAndNil(@assignExpr);
+            assignExpr.Orphan(FProg);
             raise;
          end;
       except
-         OrphanAndNil(@leftExpr);
+         OrphanAndNil(leftExpr);
          raise;
       end;
    end;
@@ -10083,7 +10133,7 @@ begin
          exprTable.TransferSymbolsTo(FProg.Table);
    finally
       FCurrentStructure:=oldStructure;
-      OrphanAndNil(@exprTable);
+      OrphanObject(exprTable);
    end;
 end;
 
@@ -10378,7 +10428,7 @@ begin
                            Result:=TAssignedMetaClassExpr.Create(FProg, Result);
                            if tt=ttEQ then
                               Result:=TNotBoolExpr.Create(FProg, Result);
-                           OrphanAndNil(@right);
+                           OrphanAndNil(right);
                         end else begin
                            Result:=TIntfCmpExpr.Create(FProg, hotPos, Result, right);
                            if tt=ttNOTEQ then
@@ -10390,7 +10440,7 @@ begin
                         if tt=ttEQ then
                            Result:=TRelVarEqualNilExpr.Create(FProg, Result)
                         else Result:=TRelVarNotEqualNilExpr.Create(FProg, Result);
-                        OrphanAndNil(@right);
+                        OrphanAndNil(right);
                      end else begin
                         FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                         Result:=TRelOpExpr.Create(FProg, hotPos, Result, right); // keep going
@@ -10398,13 +10448,13 @@ begin
                   end else Result:=opExpr;
                end;
             except
-               OrphanAndNil(@right);
+               OrphanAndNil(right);
                raise;
             end;
          end;
       until False;
    except
-      OrphanAndNil(@Result);
+      OrphanAndNil(Result);
       raise;
    end;
 end;
@@ -10467,7 +10517,7 @@ begin
                   Result.Typ:=FProg.TypVariant;
                end else Result:=opExpr;
             except
-               OrphanAndNil(@right);
+               OrphanAndNil(right);
                raise;
             end;
          end;
@@ -10476,7 +10526,7 @@ begin
             Result:=Result.OptimizeToTypedExpr(FProg, FExec, hotPos);
       until False;
    except
-      OrphanAndNil(@Result);
+      OrphanAndNil(Result);
       raise;
    end;
 end;
@@ -10542,7 +10592,7 @@ begin
                      end;
                      Result:=TClassAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(rightTyp));
                   end;
-                  OrphanAndNil(@right);
+                  OrphanAndNil(right);
                end;
                ttQUESTIONQUESTION : begin
                   rightTyp:=right.Typ;
@@ -10578,7 +10628,7 @@ begin
             end;
 
          except
-            OrphanAndNil(@right);
+            OrphanAndNil(right);
             raise;
          end;
 
@@ -10586,7 +10636,7 @@ begin
             Result:=Result.OptimizeToTypedExpr(FProg, FExec, hotPos);
       until False;
    except
-      OrphanAndNil(@Result);
+      OrphanAndNil(Result);
       raise;
    end;
 end;
@@ -10651,8 +10701,8 @@ begin
 
             FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected);
             // keep compiling
-            OrphanAndNil(@left);
-            OrphanAndNil(@setExpr);
+            OrphanAndNil(left);
+            OrphanAndNil(setExpr);
             Result:=TConstExpr.CreateBooleanValue(FProg, False);
 
          end else begin
@@ -10668,7 +10718,7 @@ begin
                      left:=nil;
                      TypeCheckArgs(classOpExpr, argPosArray);
                   except
-                     OrphanAndNil(@classOpExpr);
+                     classOpExpr.Orphan(FProg);
                      raise;
                   end;
                   Result:=classOpExpr;
@@ -10688,7 +10738,7 @@ begin
          end;
 
       except
-         OrphanAndNil(@setExpr);
+         OrphanAndNil(setExpr);
          raise;
       end;
 
@@ -10931,7 +10981,7 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
             FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
          else ReportIncompatibleAt(hotPos, Result);
          // keep compiling
-         OrphanAndNil(@Result);
+         OrphanAndNil(Result);
          Result:=TBogusConstExpr.Create(FProg, FProg.TypNil, cNilIntf);
       end;
    end;
@@ -10946,7 +10996,7 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
          try
             hasDot := FTok.Test(ttDOT);
          except
-            OrphanAndNil(@constExpr);
+            constExpr.Orphan(FProg);
             raise;
          end;
          if hasDot then
@@ -11031,7 +11081,7 @@ begin
          // Variable or Function
          nameExpr:=ReadName(isWrite, expecting);
          if (nameExpr<>nil) and not nameExpr.InheritsFrom(TTypedExpr) then begin
-            OrphanAndNil(@nameExpr);
+            OrphanAndNil(nameExpr);
             FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
             // keep compiling
             if expecting=nil then
@@ -11054,7 +11104,7 @@ function TdwsCompiler.ReadBracket(expecting : TTypeSymbol = nil) : TTypedExpr;
 begin
    Result:=ReadExpr(expecting);
    if not FTok.TestDelete(ttBRIGHT) then begin
-      OrphanAndNil(@Result);
+      OrphanAndNil(Result);
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
    end else if Optimize then
       Result:=Result.OptimizeToTypedExpr(FProg, FExec, Result.ScriptPos);
@@ -11185,9 +11235,9 @@ begin
 
       Result:=TIfThenElseValueExpr.Create(FProg, hotPos, typ, boolExpr, trueExpr, falseExpr);
    except
-      OrphanAndNil(@boolExpr);
-      OrphanAndNil(@trueExpr);
-      OrphanAndNil(@falseExpr);
+      OrphanAndNil(boolExpr);
+      OrphanAndNil(trueExpr);
+      OrphanAndNil(falseExpr);
       raise;
    end;
 end;
@@ -11282,7 +11332,7 @@ begin
                expr:=expr.OptimizeToTypedExpr(FProg, FExec, exprPos)
             else begin
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
-               OrphanAndNil(@expr);
+               OrphanAndNil(expr);
             end;
          end;
          if (expr<>nil) and (memberSym<>nil) then begin
@@ -11294,7 +11344,7 @@ begin
             else constExpr.DataPtr[FExec].CopyData(result, memberSym.Offset, memberSym.Typ.Size);
          end;
       finally
-         OrphanAndNil(@expr);
+         OrphanAndNil(expr);
       end;
       if not FTok.TestDelete(ttSEMI) then
          Break;
@@ -11493,11 +11543,11 @@ begin
                         if defaultExpr<>nil then begin
                            if (not defaultExpr.IsConstant) or (defaultExpr.Typ=nil) then begin
                               FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
-                              OrphanAndNil(@defaultExpr);
+                              OrphanAndNil(defaultExpr);
                            end else if not typ.IsCompatible(defaultExpr.Typ) then begin
                               defaultExpr:=CompilerUtils.WrapWithImplicitConversion(FProg, defaultExpr, Typ, exprPos);
                               if defaultExpr.ClassType=TConvInvalidExpr then
-                                 OrphanAndNil(@defaultExpr);
+                                 OrphanAndNil(defaultExpr);
                            end;
                         end;
                      end else if onlyDefaultParamsNow then begin
@@ -11511,7 +11561,7 @@ begin
                         GenerateParam(names[i], localPosArray[i], typ, typScriptPos, defaultExpr);
 
                   finally
-                     OrphanAndNil(@defaultExpr);
+                     OrphanAndNil(defaultExpr);
                   end;
 
                end;
@@ -11737,7 +11787,7 @@ begin
                         FMsgs.AddCompilerError(condPos, CPE_BooleanExpected)
                      else conditionalTrue:=condExpr.EvalAsBoolean(FExec);
                   finally
-                     OrphanAndNil(@condExpr);
+                     OrphanAndNil(condExpr);
                   end;
                finally
                   FIsSwitch:=False;
@@ -12454,10 +12504,12 @@ function TdwsCompiler.ReadConnectorSym(const name : UnicodeString; baseExpr : TT
       Result:=TConnectorCallExpr.Create(FTok.HotPos, Name, BaseExpr, IsWrite);
       try
          ReadArguments(Result.AddArg, ttBLEFT, ttBRIGHT, argPosArray);
-         if not Result.AssignConnectorSym(FProg, connectorType) then
-            OrphanAndNil(@Result);
+         if not Result.AssignConnectorSym(FProg, connectorType) then begin
+            Result.Orphan(FProg);
+            Result:=nil;
+         end;
       except
-         OrphanAndNil(@Result);
+         Result.Orphan(FProg);
          raise;
       end;
   end;
@@ -12494,13 +12546,14 @@ begin
          connWrite:=TConnectorWriteMemberExpr.CreateNew(FProg, FTok.HotPos, name, baseExpr, rightExpr, connectorType);
          baseExpr:=nil;
          if connWrite=nil then begin
-            OrphanAndNil(@connWrite);
+            connWrite.Orphan(FProg);
+            connWrite:=nil;
             FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorMember,
                                   [name, connectorType.ConnectorCaption]);
          end;
          Result:=connWrite;
       except
-         OrphanAndNil(@baseExpr);
+         OrphanAndNil(baseExpr);
          raise;
       end;
 
@@ -12542,7 +12595,7 @@ begin
       if not Result.AssignConnectorSym(FProg, connectorType) then
          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorIndex, [ConnectorType.ConnectorCaption]);
    except
-      OrphanAndNil(@Result);
+      Result.Orphan(FProg);
       raise;
    end;
 end;
@@ -12574,7 +12627,7 @@ begin
                Result:=TVarStringArraySetChrExpr.Create(FProg, scriptPos, expr, indexExpr,
                                                         TMagicStringFuncExpr(valueExpr).Args[0] as TTypedExpr);
                TMagicStringFuncExpr(valueExpr).Args.Clear;
-               OrphanAndNil(@valueExpr);
+               OrphanAndNil(valueExpr);
             end else Result:=TVarStringArraySetExpr.Create(FProg, scriptPos, expr, indexExpr, valueExpr);
          end else begin
             if not expr.IsWritable then
@@ -12583,7 +12636,7 @@ begin
          end;
       end else Result := TStringArrayOpExpr.CreatePos(FProg, scriptPos, expr, indexExpr);
    except
-      OrphanAndNil(@indexExpr);
+      OrphanAndNil(indexExpr);
       raise;
    end;
 end;
@@ -12610,7 +12663,7 @@ var
    namePos : TScriptPos;
    isUserDef, overflowed : Boolean;
 begin
-   Result:=TEnumerationSymbol.Create(TypeName, FProg.TypInteger, aStyle);
+   Result := TEnumerationSymbol.Create(TypeName, FProg.TypInteger, aStyle);
    try
       if aStyle=enumFlags then
          enumInt:=1
@@ -12630,10 +12683,10 @@ begin
 
             if constExpr<>nil then begin
                if not constExpr.IsConstant then begin
-                  OrphanAndNil(@constExpr);
+                  OrphanAndNil(constExpr);
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
                end else if not FProg.TypInteger.IsCompatible(constExpr.Typ) then begin
-                  OrphanAndNil(@constExpr);
+                  OrphanAndNil(constExpr);
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpressionExpected);
                end;
             end;
@@ -12641,7 +12694,7 @@ begin
             if Assigned(constExpr) then begin
                if aStyle<>enumFlags then
                   enumInt:=constExpr.EvalAsInteger(FExec);
-               OrphanAndNil(@constExpr);
+               OrphanAndNil(constExpr);
             end;
 
             isUserDef:=True;
@@ -12680,7 +12733,7 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
 
    except
-      OrphanAndNil(@Result);
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -12855,8 +12908,8 @@ begin
             leftTyp:=left.Typ;
             if leftTyp=nil then begin
                // error assumed to have already been reported
-               OrphanAndNil(@left);
-               OrphanAndNil(@right);
+               OrphanAndNil(left);
+               OrphanAndNil(right);
                Result:=TNullExpr.Create(scriptPos);
             end else begin
                leftTyp:=leftTyp.UnAliasedType;
@@ -12875,7 +12928,7 @@ begin
                end else if    (leftTyp.ClassType=TDynamicArraySymbol)
                            or (leftTyp is TAssociativeArraySymbol) then begin
                   if right.ClassType=TConstNilExpr then begin
-                     OrphanAndNil(@right);
+                     OrphanAndNil(right);
                      Result:=TAssignNilAsResetExpr.CreateVal(FProg, scriptPos, FExec, left);
                   end else begin
                      Result:=TAssignExpr.Create(FProg, scriptPos, FExec, left, right);
@@ -12957,8 +13010,8 @@ begin
 
    end else begin
 
-      OrphanAndNil(@left);
-      OrphanAndNil(@right);
+      OrphanAndNil(left);
+      OrphanAndNil(right);
       FMsgs.AddCompilerError(scriptPos, CPE_RightSideNeedsReturnType);
       Result:=TNullExpr.Create(scriptPos);
 
@@ -12976,7 +13029,7 @@ begin
       Result:=TConstExpr.CreateIntegerValue(FProg, 0)
    end;
    if captureBase then
-      OrphanAndNil(@baseExpr);
+      OrphanAndNil(baseExpr);
 end;
 
 // CreateArrayHigh
@@ -12992,7 +13045,7 @@ begin
       TArrayLengthExpr(Result).Delta:=-1;
    end else begin
       if captureBase then
-         OrphanAndNil(@baseExpr);
+         OrphanAndNil(baseExpr);
       Assert(typ is TStaticArraySymbol);
       Result:=TConstExpr.CreateIntegerValue(FProg, TStaticArraySymbol(typ).HighBound);
    end;
@@ -13009,7 +13062,7 @@ begin
       Result:=TArrayLengthExpr.Create(FProg, baseExpr, True);
    end else begin
       Assert(typ is TStaticArraySymbol);
-      OrphanAndNil(@baseExpr);
+      OrphanAndNil(baseExpr);
       Result:=TConstExpr.CreateIntegerValue(FProg, TStaticArraySymbol(typ).ElementCount);
    end;
 end;
@@ -13054,7 +13107,7 @@ begin
 
       if (not loopVarExpr.Typ.IsCompatible(loopVarTyp) and (not loopVarExpr.Typ.IsOfType(loopVarTyp))) then begin
          IncompatibleTypes(loopVarNamePos, CPE_IncompatibleTypes, loopVarExpr.Typ, loopVarTyp);
-         OrphanAndNil(@loopVarExpr);
+         OrphanAndNil(loopVarExpr);
       end else Exit(nil);
 
    end;
@@ -13270,7 +13323,7 @@ begin
       end;
 
       if not Assigned(argTyp) then begin
-         OrphanAndNil(@argExpr);
+         OrphanAndNil(argExpr);
          FMsgs.AddCompilerStop(argPos, CPE_InvalidOperands);
       end;
 
@@ -13310,8 +13363,8 @@ begin
                msgExpr:=nil;
             end else begin
                Result:=TNullExpr.Create(namePos);
-               OrphanAndNil(@argExpr);
-               OrphanAndNil(@msgExpr);
+               OrphanAndNil(argExpr);
+               OrphanAndNil(msgExpr);
             end;
          end;
          skAssigned : begin
@@ -13325,7 +13378,7 @@ begin
                Result:=TAssignedFuncPtrExpr.Create(FProg, argExpr)
             else begin
                FMsgs.AddCompilerError(argPos, CPE_InvalidArgumentType);
-               OrphanAndNil(@argExpr);
+               OrphanAndNil(argExpr);
             end;
             argExpr:=nil;
          end;
@@ -13333,16 +13386,16 @@ begin
             if argTyp is TArraySymbol then begin
                Result:=CreateArrayHigh(argExpr, TArraySymbol(argTyp), True);
             end else if argTyp is TEnumerationSymbol then begin
-               OrphanAndNil(@argExpr);
+               OrphanAndNil(argExpr);
                Result:=TConstExpr.CreateIntegerValue(FProg, argTyp, TEnumerationSymbol(argTyp).HighBound)
             end else if argTyp.IsOfType(FProg.TypString) and Assigned(argExpr) then begin
                Result:=TStringLengthExpr.Create(FProg, argExpr);
             end else if argTyp=FProg.TypInteger then begin
-               OrphanAndNil(@argExpr);
+               OrphanAndNil(argExpr);
                Result:=TConstExpr.CreateIntegerValue(FProg, High(Int64));
             end else begin
                FMsgs.AddCompilerError(argPos, CPE_InvalidArgumentType);
-               OrphanAndNil(@argExpr);
+               OrphanAndNil(argExpr);
             end;
             argExpr:=nil;
          end;
@@ -13382,7 +13435,7 @@ begin
                Result:=TStringLengthExpr.Create(FProg, argExpr);
             end else begin
                FMsgs.AddCompilerError(argPos, CPE_InvalidArgumentType);
-               OrphanAndNil(@argExpr);
+               OrphanAndNil(argExpr);
             end;
             argExpr:=nil;
          end;
@@ -13390,7 +13443,7 @@ begin
             if argTyp is TArraySymbol then begin
                Result:=CreateArrayLow(argExpr, TArraySymbol(argTyp), True);
             end else begin
-               OrphanAndNil(@argExpr);
+               OrphanAndNil(argExpr);
                if argTyp is TEnumerationSymbol then begin
                   Result:=TConstExpr.CreateIntegerValue(FProg, argTyp, TEnumerationSymbol(argTyp).LowBound);
                end else if argTyp=FProg.TypString then begin
@@ -13416,13 +13469,13 @@ begin
                Result:=TOrdExpr.Create(FProg, argExpr);
             end else begin
                FMsgs.AddCompilerError(argPos, CPE_InvalidOperands);
-               OrphanAndNil(@argExpr);
+               OrphanAndNil(argExpr);
             end;
             argExpr:=nil;
          end;
          skSizeOf : begin
             Result:=TConstExpr.CreateIntegerValue(FProg, argTyp.Size);
-            OrphanAndNil(@argExpr);
+            OrphanAndNil(argExpr);
          end;
          skDefined, skDeclared : begin
             if FIsSwitch then begin
@@ -13438,7 +13491,7 @@ begin
                         Result:=TConstBooleanExpr.CreateUnified(FProg, FProg.TypBoolean, EvaluateDeclared(argExpr));
                   end;
                finally
-                  OrphanAndNil(@argExpr);
+                  OrphanAndNil(argExpr);
                end;
             end else begin
                case SpecialKind of
@@ -13470,7 +13523,7 @@ begin
          skSwap : begin
             if not ((argExpr is TDataExpr) and TDataExpr(argExpr).IsWritable) then begin
                FMsgs.AddCompilerError(argPos, CPE_VariableExpected);
-               OrphanAndNil(@argExpr);
+               OrphanAndNil(argExpr);
             end;
             if not FTok.TestDelete(ttCOMMA) then begin
                FMsgs.AddCompilerError(FTok.HotPos, CPE_CommaExpected);
@@ -13481,7 +13534,7 @@ begin
                msgExpr:=ReadExpr(argTyp);
                if not ((msgExpr is TDataExpr) and TDataExpr(msgExpr).IsWritable) then begin
                   FMsgs.AddCompilerError(argPos, CPE_VariableExpected);
-                  OrphanAndNil(@argExpr);
+                  OrphanAndNil(argExpr);
                end else if (argExpr<>nil) then begin
                   if (msgExpr=nil) or not (msgExpr.IsOfType(argTyp) and argTyp.IsOfType(msgExpr.Typ)) then
                      IncompatibleTypes(namePos, CPE_IncompatibleTypes, argTyp, msgExpr.Typ);
@@ -13494,7 +13547,7 @@ begin
       end;
 
       if argExpr<>nil then begin
-         OrphanAndNil(@argExpr);
+         OrphanAndNil(argExpr);
       end;
       if Result=nil then begin
          // fake expression to keep compiling
@@ -13512,14 +13565,14 @@ begin
             if not FTok.TestDelete(ttBRIGHT) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
          except
-            OrphanAndNil(@Result);
+            OrphanAndNil(Result);
             raise;
          end;
       end;
 
    except
-      OrphanAndNil(@argExpr);
-      OrphanAndNil(@msgExpr);
+      OrphanAndNil(argExpr);
+      OrphanAndNil(msgExpr);
       raise;
    end;
 end;
@@ -13698,7 +13751,7 @@ begin
          Result:=Result.OptimizeToTypedExpr(FProg, FExec, hotPos);
 
    except
-      OrphanAndNil(@argExpr);
+      OrphanAndNil(argExpr);
       raise;
    end;
 end;
@@ -13899,12 +13952,12 @@ begin
 
          end else if sym.ClassType=TClassVarSymbol then begin
 
-            OrphanAndNil(@expr);
+            OrphanAndNil(expr);
             Result:=GetVarExpr(TClassVarSymbol(sym));
 
          end else if sym is TConstSymbol then begin
 
-            OrphanAndNil(@expr);
+            OrphanAndNil(expr);
             Result:=TConstExpr.CreateTyped(FProg, sym.Typ, TConstSymbol(sym));
 
          end else if sym is TMethodSymbol then begin
@@ -13920,7 +13973,7 @@ begin
                            expr:=TObjToClassTypeExpr.Create(FProg, expr)
                      end else expr:=TConstExpr.Create(FProg, meta, Int64(bestHelper.ForType));
                   end else begin
-                     OrphanAndNil(@expr);
+                     OrphanAndNil(expr);
                   end;
                end;
 
@@ -13939,7 +13992,7 @@ begin
             end;
 
             if (expr<>nil) and (expr.Typ is THelperSymbol) then begin
-               OrphanAndNil(@expr);
+               OrphanAndNil(expr);
             end;
 
             if meth.IsOverloaded then
@@ -13975,7 +14028,7 @@ begin
       else selfExpr:=GetSelfParamExpr(progMeth.SelfSym);
       Result:=ReadTypeHelper(selfExpr, name.AsString, namePos, expecting, False, True);
       if Result=nil then
-         OrphanAndNil(@selfExpr);
+         OrphanAndNil(selfExpr);
    end else Result:=nil;
 end;
 

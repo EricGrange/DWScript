@@ -363,7 +363,7 @@ var
    v : Variant;
 begin
    FExpr.EvalAsVariant(exec, v);
-   Result:=v;
+   Result:=VariantToFloat(v);
 end;
 
 // ------------------

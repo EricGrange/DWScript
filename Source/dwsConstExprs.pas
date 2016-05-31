@@ -45,6 +45,7 @@ type
          constructor Create(aTyp: TTypeSymbol); overload;
          constructor CreateRef(aTyp: TTypeSymbol; const Data: TData);
          constructor CreateNull(aTyp: TTypeSymbol);
+         procedure Orphan(prog : TdwsProgram); override;
 
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
@@ -106,8 +107,10 @@ type
    TConstBooleanExpr = class(TUnifiedConstExpr)
       protected
          FValue : Boolean;
+
       public
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
+
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
 
@@ -119,8 +122,10 @@ type
    TConstIntExpr = class sealed (TUnifiedConstExpr)
       private
          FValue : Int64;
+
       public
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
+
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
          property Value : Int64 read FValue write FValue;
@@ -131,8 +136,10 @@ type
    TConstFloatExpr = class sealed (TUnifiedConstExpr)
       private
          FValue : Double;
+
       public
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
+
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
          property Value : Double read FValue;
    end;
@@ -144,6 +151,7 @@ type
          FValue : UnicodeString;
       public
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
+
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
          property Value : UnicodeString read FValue write FValue;
    end;
@@ -293,6 +301,13 @@ begin
    SetLength(FData, aTyp.Size);
    for i:=0 to aTyp.Size-1 do
       FData[i]:=Null;
+end;
+
+// Orphan
+//
+procedure TConstExpr.Orphan(prog : TdwsProgram);
+begin
+   DecRefCount;
 end;
 
 // EvalAsString
@@ -647,8 +662,8 @@ end;
 //
 constructor TConstStringExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant);
 begin
-   if Typ=nil then
-      Typ:=Prog.TypString;
+   if Typ = nil then
+      Typ := Prog.TypString;
    UnifyAssignString(Value, FValue);
    inherited Create(Prog, Typ, FValue);
 end;

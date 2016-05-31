@@ -41,6 +41,7 @@ type
       public
          constructor Create(prog : TdwsProgram; dataSym : TDataSymbol);
          class function CreateTyped(prog: TdwsProgram; dataSym : TDataSymbol) : TVarExpr;
+         procedure Orphan(prog : TdwsProgram); override;
 
          procedure AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr); override;
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
@@ -265,6 +266,7 @@ type
                             BaseExpr: TDataExpr; IndexExpr: TTypedExpr;
                             arraySymbol : TArraySymbol);
          destructor Destroy; override;
+         procedure Orphan(prog : TdwsProgram); override;
 
          function IsWritable : Boolean; override;
 
@@ -442,6 +444,7 @@ type
          constructor Create(const aScriptPos: TScriptPos; BaseExpr: TDataExpr;
                             fieldSymbol: TFieldSymbol);
          destructor Destroy; override;
+         procedure Orphan(prog : TdwsProgram); override;
 
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
          procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
@@ -1323,6 +1326,7 @@ type
                             exec : TdwsExecution;
                             left : TDataExpr; right : TTypedExpr); virtual;
          destructor Destroy; override;
+         procedure Orphan(prog : TdwsProgram); override;
 
          property Left : TDataExpr read FLeft;
          property Right : TTypedExpr read FRight write FRight;
@@ -1597,6 +1601,7 @@ type
       public
          constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos);
          destructor Destroy; override;
+         procedure Orphan(prog : TdwsProgram); override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
          function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
@@ -1607,6 +1612,7 @@ type
    // statement; statement; statement;
    TBlockExprNoTable = class(TBlockExprBase)
       public
+         procedure Orphan(prog : TdwsProgram); override;
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
    TBlockExprNoTable2 = class(TBlockExprBase)
@@ -2321,6 +2327,13 @@ begin
    else if typ.Size=1 then
       Result:=TBaseTypeVarExpr.Create(prog, dataSym)
    else Result:=TVarExpr.Create(prog, dataSym);
+end;
+
+// Orphan
+//
+procedure TVarExpr.Orphan(prog : TdwsProgram);
+begin
+   DecRefCount;
 end;
 
 // EvalAsVariant
@@ -3095,6 +3108,21 @@ begin
    inherited;
 end;
 
+// Orphan
+//
+procedure TArrayExpr.Orphan(prog : TdwsProgram);
+begin
+   if FBaseExpr <> nil then begin
+      FBaseExpr.Orphan(prog);
+      FBaseExpr := nil;
+   end;
+   if FIndexExpr <> nil then begin
+      FIndexExpr.Orphan(prog);
+      FIndexExpr := nil;
+   end;
+   DecRefCount;
+end;
+
 // IsWritable
 //
 function TArrayExpr.IsWritable : Boolean;
@@ -3649,6 +3677,17 @@ destructor TRecordExpr.Destroy;
 begin
    FBaseExpr.Free;
    inherited;
+end;
+
+// Orphan
+//
+procedure TRecordExpr.Orphan(prog : TdwsProgram);
+begin
+   if FBaseExpr <> nil then begin
+      FBaseExpr.Orphan(prog);
+      FBaseExpr := nil;
+      DecRefCount;
+   end else inherited;
 end;
 
 // GetIsConstant
@@ -5824,6 +5863,19 @@ begin
    inherited;
 end;
 
+// Orphan
+//
+procedure TAssignExpr.Orphan(prog : TdwsProgram);
+begin
+   if FLeft = nil then begin
+      if FRight <> nil then begin
+         FRight.Orphan(prog);
+         FRight := nil;
+      end;
+      DecRefCount;
+   end else inherited;
+end;
+
 // EvalNoResult
 //
 procedure TAssignExpr.EvalNoResult(exec : TdwsExecution);
@@ -5973,7 +6025,11 @@ begin
    end;
    if Result<>Self then begin
       FLeft:=nil;
-      Orphan(prog);
+      if FRight <> nil then begin
+         FRight.Orphan(prog);
+         FRight := nil;
+      end;
+      Free;
    end;
 end;
 
@@ -6642,6 +6698,15 @@ begin
    inherited;
 end;
 
+// Orphan
+//
+procedure TBlockExpr.Orphan(prog : TdwsProgram);
+begin
+   if (FCount=0) and (FTable.Count=0) then
+      DecRefCount
+   else inherited;
+end;
+
 // EvalNoResult
 //
 procedure TBlockExpr.EvalNoResult(exec : TdwsExecution);
@@ -6709,6 +6774,15 @@ end;
 // ------------------
 // ------------------ TBlockExprNoTable ------------------
 // ------------------
+
+// Orphan
+//
+procedure TBlockExprNoTable.Orphan(prog : TdwsProgram);
+begin
+   if FCount=0 then
+      DecRefCount
+   else inherited;
+end;
 
 // EvalNoResult
 //
