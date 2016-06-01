@@ -171,23 +171,11 @@ implementation
 
 {$R *.dfm}
 
-type
-   TCustomHeaders = class (TInterfacedSelfObject)
-      Headers : array of RawByteString;
-   end;
-
-   TdwsWinHTTP = class (TWinHTTP)
-      protected
-         AuthorizationHeader : RawByteString;
-         CustomHeaders : TCustomHeaders;
-         procedure InternalConnect(ConnectionTimeOut,SendTimeout,ReceiveTimeout: DWORD); override;
-         procedure InternalSendRequest(const aData: SockString); override;
-   end;
-
-//function WinHttpSetOption(hInternet: HINTERNET; dwOption: DWORD;
-//  lpBuffer: Pointer; dwBufferLength: DWORD): BOOL; stdcall; external 'winhttp.dll';
+uses dwsWinHTTP;
 
 const
+   cWinHttpConnection : TGUID = '{0B47FA19-7BE9-41AE-A3BD-2C686117D669}';
+
    cWinHttpCredentials : TGUID = '{FB60EB3D-1085-4A88-9923-DE895B5CAB76}';
    cWinHttpIgnoreSSLCertificateErrors : TGUID = '{42AC8563-761B-4E3D-9767-A21F8F32201C}';
    cWinHttpProxyName : TGUID = '{2449F585-D6C6-4FDC-8D86-0266E01CA99C}';
@@ -196,120 +184,55 @@ const
    cWinHttpReceiveTimeout : TGUID = '{0D14B470-4F8A-48AE-BAD2-426E15FE4E03}';
    cWinHttpCustomHeaders : TGUID = '{FD05B54E-FBF2-498A-BD1F-0B1F18F27A1E}';
 
-// InternalConnect
+// HttpQuery
 //
-procedure TdwsWinHTTP.InternalConnect(ConnectionTimeOut,SendTimeout,ReceiveTimeout: DWORD);
-begin
-   UserAgent := 'Mozilla/5.0 (Windows; Synopse DWScript)';
-   inherited;
-end;
-
-// InternalSendRequest
-//
-procedure TdwsWinHTTP.InternalSendRequest(const aData: SockString);
 var
-   i : Integer;
-begin
-   if AuthorizationHeader<>'' then
-      InternalAddHeader('Authorization: '+AuthorizationHeader);
-   if Assigned(CustomHeaders) then
-      for i := 0 to High(CustomHeaders.Headers) do
-         InternalAddHeader(CustomHeaders.Headers[i]);
-
-   inherited;
-end;
-
-function HttpQuery(const method, url : RawByteString;
+   vUnassigned : Variant;
+function HttpQuery(exec : TdwsProgramExecution;
+                   const method, url : RawByteString;
                    const requestData, requestContentType : RawByteString;
-                   var replyData : String; var replyHeaders : SockString;
-                   asText : Boolean;
-                   const customStates : TdwsCustomStates;
-                   onProgress : TWinHttpProgress = nil) : Integer; overload;
-const
-   cContentType : RawUTF8 = 'Content-Type:';
+                   var replyHeaders : SockString; var replyData : String;
+                   asText : Boolean; onProgress : TWinHttpProgress = nil) : Integer;
 var
-   query : TdwsWinHTTP;
    uri : TURI;
-   buf, mimeType : SockString;
-   p1, p2 : Integer;
-   credentials, ignoreSSLErrors, customHeaders : Variant;
+   conn : TdwsWinHttpConnection;
+   iconn : IGetSelf;
+   customStates : TdwsCustomStates;
+   unassignedVariant : Variant;
 begin
-   if uri.From(url) then begin
-      query:=TdwsWinHTTP.Create(uri.Server, uri.Port, uri.Https,
-                                SynUnicodeToUtf8(customStates.StringStateDef(cWinHttpProxyName, '')),
-                                '',
-                                customStates.IntegerStateDef(cWinHttpConnectTimeout, HTTP_DEFAULT_CONNECTTIMEOUT),
-                                customStates.IntegerStateDef(cWinHttpSendTimeout, HTTP_DEFAULT_SENDTIMEOUT),
-                                customStates.IntegerStateDef(cWinHttpReceiveTimeout, HTTP_DEFAULT_RECEIVETIMEOUT));
-      try
-         query.OnProgress := onProgress;
-         ignoreSSLErrors:=customStates[cWinHttpIgnoreSSLCertificateErrors];
-         // may be empty, and that fails direct boolean casting, hence casting & boolean check
-         if (VarType(ignoreSSLErrors)=varBoolean) and TVarData(ignoreSSLErrors).VBoolean then
-            query.IgnoreSSLCertificateErrors:=True;
+   if not uri.From(url) then
+      raise Exception.CreateFmt('Invalid url "%s"', [url]);
 
-         credentials:=customStates[cWinHttpCredentials];
-         if VarIsArray(credentials, False) then begin
-            case TWebRequestAuthentication(credentials[0]) of
-               wraBasic : query.AuthScheme := THttpRequestAuthentication.wraBasic;
-               wraDigest : query.AuthScheme := THttpRequestAuthentication.wraDigest;
-               wraNegotiate : query.AuthScheme := THttpRequestAuthentication.wraNegotiate;
-               wraAuthorization : query.AuthorizationHeader := UTF8Encode(credentials[1]);
-            else
-               query.AuthScheme := THttpRequestAuthentication.wraNone;
-            end;
-            query.AuthUserName:=credentials[1];
-            query.AuthPassword:=credentials[2];
-         end;
+   if exec <> nil then
+      iconn := exec.CustomInterfaces[cWinHttpConnection] as IGetSelf;
+   if iconn = nil then
+      iconn := IGetSelf(TdwsWinHttpConnection.Create);
 
-         customHeaders := customStates[cWinHttpCustomHeaders];
-         if VarType(customHeaders) = varUnknown then
-            query.CustomHeaders := IGetSelf(TVarData(customHeaders).VUnknown).GetSelf as TCustomHeaders;
+   customStates := nil;
+   if exec <> nil then begin
+      exec.CustomInterfaces[cWinHttpConnection] := iconn;
+      if exec.HasCustomStates then
+         customStates := exec.CustomStates;
+   end;
 
-         Result := query.Request(uri.Address, method, 0, '', requestData, requestContentType, replyHeaders, buf);
+   conn := iconn.GetSelf as TdwsWinHttpConnection;
+   if customStates <> nil then begin
+      conn.ConnectServer(uri, customStates.StringStateDef(cWinHttpProxyName, ''),
+                         customStates.IntegerStateDef(cWinHttpConnectTimeout, HTTP_DEFAULT_CONNECTTIMEOUT),
+                         customStates.IntegerStateDef(cWinHttpSendTimeout, HTTP_DEFAULT_SENDTIMEOUT),
+                         customStates.IntegerStateDef(cWinHttpReceiveTimeout, HTTP_DEFAULT_RECEIVETIMEOUT));
+      conn.SetIgnoreSSLErrors(customStates[cWinHttpIgnoreSSLCertificateErrors]);
+      conn.SetCredentials(customStates[cWinHttpCredentials]);
+      conn.SetCustomHeaders(customStates[cWinHttpCustomHeaders]);
+   end else begin
+      conn.ConnectServer(uri, '', HTTP_DEFAULT_CONNECTTIMEOUT, HTTP_DEFAULT_SENDTIMEOUT, HTTP_DEFAULT_RECEIVETIMEOUT);
+      conn.SetIgnoreSSLErrors(unassignedVariant);
+      conn.SetCredentials(unassignedVariant);
+      conn.SetCustomHeaders(unassignedVariant);
+   end;
+   conn.SetOnProgress(onProgress);
 
-         if asText then begin
-            p1:=Pos(cContentType, RawUTF8(replyHeaders));
-            if p1>0 then begin
-               Inc(p1, Length(cContentType));
-               p2:=PosEx(#13, replyHeaders, p1);
-               if p2>p1 then
-                  mimeType:=Copy(replyHeaders, p1, p2-p1);
-            end;
-            if StrEndsWithA(mimeType, '/xml') then begin
-               // unqualified xml content, may still be utf-8, check data header
-               if StrBeginsWithBytes(buf, [$EF, $BB, $BF]) then
-                  mimeType := mimeType + '; charset=utf-8'
-               else begin
-                  p1:=PosA('?>', buf);
-                  if     (p1>0)
-                     and (PosA('encoding="utf-8"', LowerCaseA(Copy(buf, 1, p1)))>0) then begin
-                     mimeType := mimeType + '; charset=utf-8';
-                  end;
-               end;
-            end;
-
-            if StrIEndsWithA(mimeType, 'charset=utf-8') then begin
-               // strip BOM if present
-               if StrBeginsWithBytes(buf, [$EF, $BB, $BF]) then
-                  Delete(buf, 1, 3);
-               replyData:=UTF8DecodeToUnicodeString(buf);
-            end else RawByteStringToScriptString(buf, replyData);
-         end else RawByteStringToScriptString(buf, replyData);
-      finally
-         query.Free;
-      end;
-   end else Result:=0;
-end;
-
-function HttpQuery(const method, url : RawByteString;
-                   var replyData : String;
-                   asText : Boolean;
-                   const customStates : TdwsCustomStates) : Integer; overload;
-var
-   replyHeaders : SockString;
-begin
-   Result:=HttpQuery(method, url, '', '', replyData, replyHeaders, asText, customStates);
+   Result := conn.Request(uri, method, 0, '', requestData, requestContentType, replyHeaders, replyData, asText);
 end;
 
 type
@@ -394,9 +317,9 @@ end;
 procedure THttpRequestThread.Execute;
 begin
    try
-      StatusCode := HttpQuery(Method, URL, RequestData, RequestContentType,
-                              ResponseData, RawResponseHeaders, False,
-                              CustomStates, DoProgress);
+      StatusCode := HttpQuery(nil, Method, URL, RequestData, RequestContentType,
+                              RawResponseHeaders, ResponseData, False,
+                              DoProgress);
       FreeAndNil(CustomStates);
       RequestData := '';
       RequestContentType := '';
@@ -437,29 +360,32 @@ end;
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsDeleteEval(Info: TProgramInfo;
   ExtObject: TObject);
 var
+   replyHeaders : SockString;
    buf : String;
 begin
-   Info.ResultAsInteger:=HttpQuery('DELETE', Info.ParamAsDataString[0], buf, False,
-                                   Info.Execution.CustomStates);
+   Info.ResultAsInteger:=HttpQuery(Info.Execution, 'DELETE', Info.ParamAsDataString[0],
+                                   '', '', replyHeaders, buf, False);
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsGetDataEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
+   replyHeaders : SockString;
    buf : String;
 begin
-   Info.ResultAsInteger:=HttpQuery('GET', Info.ParamAsDataString[0], buf, False,
-                                   Info.Execution.CustomStates);
+   Info.ResultAsInteger:=HttpQuery(Info.Execution, 'GET', Info.ParamAsDataString[0],
+                                   '', '', replyHeaders, buf, False);
    Info.ParamAsString[1]:=buf;
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsGetTextEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
+   replyHeaders : SockString;
    buf : String;
 begin
-   Info.ResultAsInteger:=HttpQuery('GET', Info.ParamAsDataString[0], buf, True,
-                                   Info.Execution.CustomStates);
+   Info.ResultAsInteger:=HttpQuery(Info.Execution, 'GET', Info.ParamAsDataString[0],
+                                   '', '', replyHeaders, buf, True);
    Info.ParamAsString[1]:=buf;
 end;
 
@@ -470,10 +396,8 @@ var
    headers : SockString;
 begin
    Info.ResultAsInteger:=HttpQuery(
-      'POST', Info.ParamAsDataString[0],
-      Info.ParamAsDataString[1], Info.ParamAsDataString[2], buf, headers,
-      False, Info.Execution.CustomStates
-      );
+      Info.Execution, 'POST', Info.ParamAsDataString[0],
+      Info.ParamAsDataString[1], Info.ParamAsDataString[2], headers, buf, False);
    Info.ParamAsString[3]:=buf;
 end;
 
@@ -484,10 +408,8 @@ var
    headers : SockString;
 begin
    Info.ResultAsInteger:=HttpQuery(
-      'PUT', Info.ParamAsDataString[0],
-      Info.ParamAsDataString[1], Info.ParamAsDataString[2], buf, headers,
-      False, Info.Execution.CustomStates
-      );
+      Info.Execution, 'PUT', Info.ParamAsDataString[0],
+      Info.ParamAsDataString[1], Info.ParamAsDataString[2], headers, buf, False);
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsRequestEval(
@@ -541,13 +463,13 @@ procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetCustomHeadersEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    dyn : IScriptDynArray;
-   headers : TCustomHeaders;
+   headers : TdwsCustomHeaders;
    i, n : Integer;
 begin
    dyn := Info.ParamAsScriptDynArray[0];
    n := dyn.ArrayLength;
    if n > 0 then begin
-      headers := TCustomHeaders.Create;
+      headers := TdwsCustomHeaders.Create;
       SetLength(headers.Headers, n);
       for i := 0 to n-1 do
          ScriptStringToRawByteString(dyn.AsString[i], headers.Headers[i]);

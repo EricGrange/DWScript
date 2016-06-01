@@ -543,10 +543,10 @@ type
          function SameItem(const item1, item2 : TdwsCustomState) : Boolean; override;
          function GetItemHashCode(const item1 : TdwsCustomState) : Integer; override;
 
+         function AddClonedState(const item : TdwsCustomState) : TSimpleHashAction;
+
          function GetState(const index : TGUID) : Variant;
          procedure SetState(const index : TGUID; const v : Variant);
-
-         function AddClonedState(const item : TdwsCustomState) : TSimpleHashAction;
 
       public
          property States[const index : TGUID] : Variant read GetState write SetState; default;
@@ -555,6 +555,23 @@ type
          function StringStateDef(const index : TGUID; const default : String) : String;
 
          function Clone : TdwsCustomStates;
+   end;
+
+   TdwsCustomInterface = record
+      Key : TGUID;
+      Value : IInterface;
+   end;
+
+   TdwsCustomInterfaces = class (TSimpleHash<TdwsCustomInterface>)
+      protected
+         function SameItem(const item1, item2 : TdwsCustomInterface) : Boolean; override;
+         function GetItemHashCode(const item1 : TdwsCustomInterface) : Integer; override;
+
+         function  GetInterface(const index : TGUID) : IInterface; inline;
+         procedure SetInterface(const index : TGUID; const intf : IInterface); inline;
+
+      public
+         property Interfaces[const index : TGUID] : IInterface read GetInterface write SetInterface; default;
    end;
 
    // holds execution context for a script
@@ -577,6 +594,7 @@ type
          FRTTIRawAttributes : IScriptDynArray;
 
          FCustomStates : TdwsCustomStates;
+         FCustomInterfaces : TdwsCustomInterfaces;
 
          FOnExecutionStarted : TdwsExecutionEvent;
          FOnExecutionEnded : TdwsExecutionEvent;
@@ -597,6 +615,7 @@ type
          procedure SetEnvironment(const val : IdwsEnvironment);
 
          function GetCustomStates : TdwsCustomStates;
+         function GetCustomInterfaces : TdwsCustomInterfaces;
 
          // for interface only, script exprs use direct properties
          function GetProg : IdwsProgram;
@@ -662,6 +681,9 @@ type
          property FileSystem : IdwsFileSystem read FFileSystem;
          property Environment : IdwsEnvironment read GetEnvironment write SetEnvironment;
          property CustomStates : TdwsCustomStates read GetCustomStates;
+         function HasCustomStates : Boolean;
+         property CustomInterfaces : TdwsCustomInterfaces read GetCustomInterfaces;
+         function HasCustomInterfaces : Boolean;
          property Localizer : IdwsLocalizer read FLocalizer write FLocalizer;
          property RTTIRawAttributes : IScriptDynArray read FRTTIRawAttributes write FRTTIRawAttributes;
 
@@ -2049,6 +2071,16 @@ begin
    raise Exception.CreateFmt(RTE_OnlyVarSymbols, [sym.Caption]);
 end;
 
+// GUIDToHash
+//
+function GUIDToHash(const guid : TGUID) : Integer; inline;
+var
+   p : PIntegerArray;
+begin
+   p := PIntegerArray(@guid);
+   Result := p[0] xor p[1] xor p[2] xor p[3];
+end;
+
 // ------------------
 // ------------------ TdwsProgramExecution ------------------
 // ------------------
@@ -2334,6 +2366,8 @@ begin
       // Custom states
       FCustomStates.Free;
       FCustomStates:=nil;
+      FCustomInterfaces.Free;
+      FCustomInterfaces:=nil;
 
       // Debugger
       StopDebug;
@@ -2491,6 +2525,20 @@ begin
    else Result:='';
    if Result='' then
       Result:=inherited ValidateFileName(path);
+end;
+
+// HasCustomStates
+//
+function TdwsProgramExecution.HasCustomStates : Boolean;
+begin
+   Result := (FCustomStates <> nil);
+end;
+
+// HasCustomInterfaces
+//
+function TdwsProgramExecution.HasCustomInterfaces : Boolean;
+begin
+   Result := (FCustomInterfaces <> nil);
 end;
 
 // ReleaseObjects
@@ -2698,6 +2746,15 @@ begin
    if FCustomStates=nil then
       FCustomStates:=TdwsCustomStates.Create;
    Result:=FCustomStates;
+end;
+
+// GetCustomInterfaces
+//
+function TdwsProgramExecution.GetCustomInterfaces : TdwsCustomInterfaces;
+begin
+   if FCustomInterfaces = nil then
+      FCustomInterfaces := TdwsCustomInterfaces.Create;
+   Result := FCustomInterfaces;
 end;
 
 // GetProg
@@ -9020,20 +9077,14 @@ end;
 //
 function TdwsCustomStates.SameItem(const item1, item2 : TdwsCustomState) : Boolean;
 begin
-   Result:=IsEqualGUID(item1.Key, item2.Key);
+   Result := IsEqualGUID(item1.Key, item2.Key);
 end;
 
 // GetItemHashCode
 //
 function TdwsCustomStates.GetItemHashCode(const item1 : TdwsCustomState) : Integer;
-type
-   TInteger4 = array [0..3] of Integer;
-   PInteger4 = ^TInteger4;
-var
-   p : PInteger4;
 begin
-   p:=PInteger4(@item1.Key);
-   Result:=p[0] xor p[1] xor p[2] xor p[3];
+   Result := GUIDToHash(item1.Key);
 end;
 
 // GetState
@@ -9057,14 +9108,6 @@ begin
    s.Key:=index;
    s.Value:=v;
    Replace(s);
-end;
-
-// AddClonedState
-//
-function TdwsCustomStates.AddClonedState(const item : TdwsCustomState) : TSimpleHashAction;
-begin
-   SetState(item.Key, item.Value);
-   Result := shaNone;
 end;
 
 // IntegerStateDef
@@ -9091,12 +9134,61 @@ begin
    else Result:=default;
 end;
 
+// AddClonedState
+//
+function TdwsCustomStates.AddClonedState(const item : TdwsCustomState) : TSimpleHashAction;
+begin
+   SetState(item.Key, item.Value);
+   Result := shaNone;
+end;
+
 // Clone
 //
 function TdwsCustomStates.Clone : TdwsCustomStates;
 begin
    Result := TdwsCustomStates.Create;
    Result.Enumerate(Result.AddClonedState);
+end;
+
+// ------------------
+// ------------------ TdwsCustomInterfaces ------------------
+// ------------------
+
+// SameItem
+//
+function TdwsCustomInterfaces.SameItem(const item1, item2 : TdwsCustomInterface) : Boolean;
+begin
+   Result := IsEqualGUID(item1.Key, item2.Key);
+end;
+
+// GetItemHashCode
+//
+function TdwsCustomInterfaces.GetItemHashCode(const item1 : TdwsCustomInterface) : Integer;
+begin
+   Result := GUIDToHash(item1.Key);
+end;
+
+// GetInterface
+//
+function TdwsCustomInterfaces.GetInterface(const index : TGUID) : IInterface;
+var
+   s : TdwsCustomInterface;
+begin
+   s.Key:=index;
+   if Match(s) then
+      Result:=s.Value
+   else Result:=nil;
+end;
+
+// SetInterface
+//
+procedure TdwsCustomInterfaces.SetInterface(const index : TGUID; const intf : IInterface);
+var
+   s : TdwsCustomInterface;
+begin
+   s.Key := index;
+   s.Value := intf;
+   Replace(s);
 end;
 
 // ------------------------------------------------------------------
