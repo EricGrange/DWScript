@@ -1594,7 +1594,7 @@ type
    end;
 
    // statement; statement; statement;
-   TBlockExpr = class(TBlockExprBase)
+   TBlockExpr = class sealed (TBlockExprBase)
       private
          FTable : TSymbolTable;
 
@@ -1610,20 +1610,20 @@ type
    end;
 
    // statement; statement; statement;
-   TBlockExprNoTable = class(TBlockExprBase)
+   TBlockExprNoTable = class sealed (TBlockExprBase)
       public
          procedure Orphan(prog : TdwsProgram); override;
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
-   TBlockExprNoTable2 = class(TBlockExprBase)
+   TBlockExprNoTable2 = class sealed (TBlockExprBase)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
-   TBlockExprNoTable3 = class(TBlockExprBase)
+   TBlockExprNoTable3 = class sealed (TBlockExprBase)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
-   TBlockExprNoTable4 = class(TBlockExprBase)
+   TBlockExprNoTable4 = class sealed (TBlockExprBase)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
@@ -6702,9 +6702,9 @@ end;
 //
 procedure TBlockExpr.Orphan(prog : TdwsProgram);
 begin
-   if (FCount=0) and (FTable.Count=0) then
-      DecRefCount
-   else inherited;
+   prog.Root.OrphanObject(FTable);
+   FTable := nil;
+   inherited;
 end;
 
 // EvalNoResult

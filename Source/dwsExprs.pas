@@ -1080,6 +1080,7 @@ type
 
       public
          destructor Destroy; override;
+         procedure Orphan(prog : TdwsProgram); override;
 
          procedure AddStatement(expr : TProgramExpr);
          procedure ReplaceStatement(index : Integer; expr : TProgramExpr);
@@ -4370,6 +4371,13 @@ begin
    inherited;
 end;
 
+// Orphan
+//
+procedure TBlockExprBase.Orphan(prog : TdwsProgram);
+begin
+   DecRefCount;
+end;
+
 // AddStatement
 //
 procedure TBlockExprBase.AddStatement(expr : TProgramExpr);
@@ -7342,7 +7350,7 @@ function TScriptDynamicArray.ToInt64Array : TInt64DynArray;
 var
    i : Integer;
 begin
-   Assert(FElementTyp.BaseType.ClassType=TBaseStringSymbol);
+   Assert(FElementTyp.BaseType.ClassType=TBaseIntegerSymbol);
 
    System.SetLength(Result, ArrayLength);
    for i:=0 to ArrayLength-1 do
