@@ -215,6 +215,7 @@ function DoAESFull(const data, key : RawByteString; encrypt : Boolean) : RawByte
 var
    outbuf : TWriteOnlyBlockStream;
 begin
+   if data = '' then Exit('');
    outbuf := TWriteOnlyBlockStream.AllocFromPool;
    try
       AESSHA256Full(Pointer(data), Length(data), outbuf, key, encrypt);
