@@ -637,8 +637,6 @@ begin
             rangeStart := GetNextItemUInt64(R);
             if R^ = '-' then begin
                inc(R);
-               // EG: suspicious flags, was incorrect and doing a disconnect
-               // and the ranges flags is not encouraged in the doc
                flags := HTTP_SEND_RESPONSE_FLAG_PROCESS_RANGES;
                dataChunkFile.ByteRange.StartingOffset := ULARGE_INTEGER(rangeStart);
                if R^ in ['0'..'9'] then begin

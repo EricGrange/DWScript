@@ -165,7 +165,6 @@ begin
    if VarType(customHeaders) = varUnknown then
       FWinHttp.CustomHeaders := IGetSelf(TVarData(customHeaders).VUnknown).GetSelf as TdwsCustomHeaders
    else FWinHttp.CustomHeaders := nil;
-
 end;
 
 // SetIgnoreSSLErrors
@@ -205,7 +204,7 @@ function TdwsWinHttpConnection.Request(const uri : TURI; const method: SockStrin
          if p2>p1 then
             mimeType:=Copy(replyHeaders, p1, p2-p1);
       end;
-      if StrEndsWithA(mimeType, '/xml') then begin
+      if StrEndsWithA(mimeType, '/xml') or StrEndsWithA(mimeType, '+xml') then begin
          // unqualified xml content, may still be utf-8, check data header
          if StrBeginsWithBytes(buf, [$EF, $BB, $BF]) then
             mimeType := mimeType + '; charset=utf-8'

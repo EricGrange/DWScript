@@ -192,12 +192,12 @@ function HttpQuery(exec : TdwsProgramExecution;
                    const method, url : RawByteString;
                    const requestData, requestContentType : RawByteString;
                    var replyHeaders : SockString; var replyData : String;
-                   asText : Boolean; onProgress : TWinHttpProgress = nil) : Integer;
+                   asText : Boolean; onProgress : TWinHttpProgress = nil;
+                   customStates : TdwsCustomStates = nil) : Integer;
 var
    uri : TURI;
    conn : TdwsWinHttpConnection;
    iconn : IGetSelf;
-   customStates : TdwsCustomStates;
    unassignedVariant : Variant;
 begin
    if not uri.From(url) then
@@ -208,8 +208,7 @@ begin
    if iconn = nil then
       iconn := IGetSelf(TdwsWinHttpConnection.Create);
 
-   customStates := nil;
-   if exec <> nil then begin
+   if (customStates = nil) and (exec <> nil) then begin
       exec.CustomInterfaces[cWinHttpConnection] := iconn;
       if exec.HasCustomStates then
          customStates := exec.CustomStates;
@@ -319,7 +318,7 @@ begin
    try
       StatusCode := HttpQuery(nil, Method, URL, RequestData, RequestContentType,
                               RawResponseHeaders, ResponseData, False,
-                              DoProgress);
+                              DoProgress, CustomStates);
       FreeAndNil(CustomStates);
       RequestData := '';
       RequestContentType := '';
