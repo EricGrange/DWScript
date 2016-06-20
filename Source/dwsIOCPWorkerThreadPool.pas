@@ -46,6 +46,8 @@ type
       procedure QueueWork(const workUnit : TNotifyEvent; sender : TObject); overload;
 
       function QueueSize : Integer;
+
+      function IsIdle : Boolean;
    end;
 
    TIOCPWorkerThreadPool = class (TInterfacedSelfObject, IWorkerThreadPool)
@@ -75,6 +77,7 @@ type
          property WorkerCount : Integer read FWorkerCount write SetWorkerCount;
          function LiveWorkerCount : Integer;
          function ActiveWorkerCount : Integer;
+         function IsIdle : Boolean;
    end;
 
 // ------------------------------------------------------------------
@@ -281,6 +284,13 @@ begin
    Result:=FActiveWorkerCount;
 end;
 
+// IsIdle
+//
+function TIOCPWorkerThreadPool.IsIdle : Boolean;
+begin
+   Result := (FQueueSize=0) and (FActiveWorkerCount=0);
+end;
+
 // SetWorkerCount
 //
 procedure TIOCPWorkerThreadPool.SetWorkerCount(val : Integer);
@@ -292,6 +302,7 @@ begin
    if val>FWorkerCount then begin
       for i:=FWorkerCount+1 to val do
          TIOCPWorkerThread.Create(Self);
+      FWorkerCount:=val;
    end else if val<FWorkerCount then begin
       lpOverlapped:=nil;
       for i:=FWorkerCount-1 downto val do
