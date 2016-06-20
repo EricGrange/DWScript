@@ -100,9 +100,11 @@ begin
 
    scriptPos.Col:=2;
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
-   CheckTrue(sugg.Count>2, 'column 2');
+   CheckTrue(sugg.Count>3, 'column 2');
    CheckEquals('printit', sugg.Code[0], 'sugg 2, 0');
-   CheckEquals('Param', sugg.Code[1], 'sugg 2, 1');
+   CheckEquals('PadLeft', sugg.Code[1], 'sugg 2, 1');
+   CheckEquals('PadRight', sugg.Code[2], 'sugg 2, 2');
+   CheckEquals('Param', sugg.Code[3], 'sugg 2, 3');
 
    scriptPos.Col:=3;
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
@@ -216,10 +218,12 @@ begin
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 11);
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
-   CheckTrue(sugg.Count>3, 'column 11');
-   CheckEquals('ParseDateTime', sugg.Code[0], 'sugg 11, 0');
-   CheckEquals('Pi', sugg.Code[1], 'sugg 11, 1');
-   CheckEquals('PixmapToJPEGData', sugg.Code[2], 'sugg 11, 2');
+   CheckTrue(sugg.Count>5, 'column 11');
+   CheckEquals('PadLeft', sugg.Code[0], 'sugg 11, 0');
+   CheckEquals('PadRight', sugg.Code[1], 'sugg 11, 1');
+   CheckEquals('ParseDateTime', sugg.Code[2], 'sugg 11, 2');
+   CheckEquals('Pi', sugg.Code[3], 'sugg 11, 3');
+   CheckEquals('PixmapToJPEGData', sugg.Code[4], 'sugg 11, 4');
 
    scriptPos.Col:=12;
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
