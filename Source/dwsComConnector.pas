@@ -325,6 +325,10 @@ type
       procedure Execute(info : TProgramInfo); override;
    end;
 
+   TCreateComObjectFunc = class(TInternalFunction)
+      procedure Execute(info : TProgramInfo); override;
+   end;
+
    TGetActiveOleObjectFunc = class(TInternalFunction)
       procedure Execute(info : TProgramInfo); override;
    end;
@@ -568,6 +572,7 @@ begin
 
    // Function to create a new COM-Object
    TCreateOleObjectFunc.Create(Table, 'CreateOleObject', ['ClassName', SYS_STRING], 'ComVariant');
+   TCreateComObjectFunc.Create(Table, 'CreateComObject', ['GUID', SYS_STRING], 'ComVariant');
 
    TClassIDToProgIDFunc.Create(Table, 'ClassIDToProgID', ['ClassID', SYS_STRING], SYS_STRING);
    TGetActiveOleObjectFunc.Create(Table, 'GetActiveOleObject', ['ClassName', SYS_STRING], 'ComVariant');
@@ -594,6 +599,15 @@ end;
 procedure TCreateOleObjectFunc.Execute(info : TProgramInfo);
 begin
    Info.ResultAsVariant := CreateOleObject(Info.ParamAsString[0]);
+end;
+
+// ------------------
+// ------------------ TCreateComObjectFunc ------------------
+// ------------------
+
+procedure TCreateComObjectFunc.Execute(info : TProgramInfo);
+begin
+   Info.ResultAsVariant := CreateComObject(StringToGUID(Info.ParamAsString[0]));
 end;
 
 // ------------------
@@ -1248,7 +1262,7 @@ end;
 
 // ------------------
 // ------------------ TComVariantArraySymbol ------------------
-// ------------------
+// ------------------                                                          fedituser
 
 function TComVariantArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
