@@ -9155,7 +9155,7 @@ end;
 function TdwsCustomStates.Clone : TdwsCustomStates;
 begin
    Result := TdwsCustomStates.Create;
-   Result.Enumerate(Result.AddClonedState);
+   Self.Enumerate(Result.AddClonedState);
 end;
 
 // ------------------
