@@ -323,9 +323,11 @@ begin
             Inc(next);
          end;
       until False;
-      if next>base then begin
+      if next > base then begin
          dest.Add(DecodeURLEncoded(data, base, next-base));
-         base:=next+1;
+         base := next + 1;
+      end else if next > 0 then begin
+         base := next + 1;
       end else begin
          if base<Length(data) then
             dest.Add(DecodeURLEncoded(data, base));

@@ -66,6 +66,10 @@ begin
       WebUtils.ParseURLEncoded('a=b;c=d', decoded);
       CheckEquals('a=b,c=d', decoded.CommaText);
 
+      decoded.Clear;
+      WebUtils.ParseURLEncoded('&a&c=d&', decoded);
+      CheckEquals('a,c=d', decoded.CommaText);
+
    finally
       decoded.Free;
    end;
