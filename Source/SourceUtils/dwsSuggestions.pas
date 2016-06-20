@@ -576,7 +576,12 @@ begin
    try
       for t in cPascalReservedNames do begin
          if IsAlpha(cTokenStrings[t]) then begin
-            rws:=TReservedWordSymbol.Create(LowerCase(cTokenStrings[t]), nil);
+            case t of
+               ttTRUE : rws:=TReservedWordSymbol.Create('True', nil);
+               ttFALSE : rws:=TReservedWordSymbol.Create('False', nil);
+            else
+               rws:=TReservedWordSymbol.Create(LowerCase(cTokenStrings[t]), nil);
+            end;
             list.Add(rws);
             FCleanupList.Add(rws);
          end;
