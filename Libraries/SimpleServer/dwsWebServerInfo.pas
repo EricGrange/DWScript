@@ -33,6 +33,12 @@ type
       function Authentications : TWebRequestAuthentications;
       function LiveQueries : String;
       procedure FlushCompiledPrograms;
+
+      procedure EventSourcePost(const sourceName, eventID, eventName : String;
+                                const data : TWebServerEventData);
+      procedure EventSourceClose(const sourceName : String);
+      function  EventSourceList : TStringDynArray;
+      function  EventSourceConnections(const sourceName : String) : TStringDynArray;
    end;
 
 implementation

@@ -3,9 +3,9 @@ unit dwsWebServerLibModule;
 interface
 
 uses
-   SysUtils, Classes,
-   dwsComp, dwsExprs,
-   dwsWebServerInfo;
+   SysUtils, Classes, SynCommons,
+   dwsComp, dwsExprs, dwsSymbols, dwsUtils,
+   dwsWebServerInfo, dwsWebEnvironment;
 
 type
   TdwsWebServerLib = class(TDataModule)
@@ -21,6 +21,14 @@ type
     procedure dwsWebServerClassesWebServerMethodsFlushCompiledProgramsEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebServerClassesWebServerMethodsLiveQueriesEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebServerClassesWebServerSentEventsMethodsPostRawEventEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebServerClassesWebServerSentEventsMethodsCloseEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebServerClassesWebServerSentEventsMethodsConnectionsEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebServerClassesWebServerSentEventsMethodsSourceNamesEval(
       Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
@@ -68,6 +76,38 @@ procedure TdwsWebServerLib.dwsWebServerClassesWebServerMethodsNameEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString:=FServer.Name;
+end;
+
+procedure TdwsWebServerLib.dwsWebServerClassesWebServerSentEventsMethodsCloseEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   FServer.EventSourceClose(Info.ParamAsString[0]);
+end;
+
+procedure TdwsWebServerLib.dwsWebServerClassesWebServerSentEventsMethodsConnectionsEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsStringArray := FServer.EventSourceConnections(Info.ParamAsString[0]);
+end;
+
+procedure TdwsWebServerLib.dwsWebServerClassesWebServerSentEventsMethodsPostRawEventEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   data : TWebServerEventData;
+   dyn : IScriptDynArray;
+   i : Integer;
+begin
+   dyn := Info.ParamAsScriptDynArray[3];
+   SetLength(data, dyn.ArrayLength);
+   for i := 0 to High(data) do
+      data[i] := StringToUTF8(dyn.AsString[i]);
+   FServer.EventSourcePost(Info.ParamAsString[0], Info.ParamAsString[1], Info.ParamAsString[2], data);
+end;
+
+procedure TdwsWebServerLib.dwsWebServerClassesWebServerSentEventsMethodsSourceNamesEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsStringArray := FServer.EventSourceList;
 end;
 
 end.

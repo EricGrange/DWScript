@@ -448,6 +448,8 @@ type
 
          property Count : Integer read FCount;
          property HighIndex : Integer read FHighIndex;
+
+         function Names : TStringDynArray;
    end;
 
    TSimpleRefCountedObjectHash = class (TSimpleObjectHash<TRefCountedObject>);
@@ -4536,6 +4538,23 @@ begin
          i:=i shr 1;
       Resize(i);
    end;
+end;
+
+// Names
+//
+function TNameObjectHash.Names : TStringDynArray;
+var
+   i, k : Integer;
+begin
+   k := 0;
+   SetLength(Result, FHighIndex);
+   for i := 0 to FHighIndex do begin
+      if FBuckets[i].HashCode <> 0 then begin
+         Result[k] := FBuckets[i].Name;
+         Inc(k);
+      end;
+   end;
+   SetLength(Result, k);
 end;
 
 // Resize

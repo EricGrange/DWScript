@@ -43,7 +43,8 @@ uses
    Classes,
    SynWinSock, Registry,
    dwsHTTPSysAPI, dwsUtils, dwsXPlatform,
-   dwsWebEnvironment, dwsHttpSysWebEnv, dwsWebServerHelpers;
+   dwsWebEnvironment, dwsHttpSysWebEnv, dwsWebServerHelpers,
+   dwsHTTPSysServerEvents;
 
 type
    /// FPC 64 compatibility Integer type
@@ -214,6 +215,8 @@ type
          FAuthentication : Cardinal;
          FMimeInfos : TMIMETypeCache;
 
+         FServerEvents : IdwsHTTPServerEvents;
+
          /// server main loop - don't change directly
          // - will call the Request public virtual method with the appropriate
          // parameters to retrive the content
@@ -325,6 +328,7 @@ type
          property MaxConnections : Cardinal read FMaxConnections write SetMaxConnections;
          property Authentication : Cardinal read FAuthentication;
 
+         property ServerEvents : IdwsHTTPServerEvents read FServerEvents write FServerEvents;
    end;
 
 const
@@ -620,6 +624,7 @@ begin
       FLogDataPtr:=@FLogFieldsData;
       ServiceName:=From.ServiceName;
    end;
+   FServerEvents := From.FServerEvents;
 end;
 
 // SendStaticFile
@@ -972,6 +977,14 @@ begin
 end;
 
 procedure THttpApi2Server.Execute;
+
+   procedure SetKnownHeader(var h : HTTP_KNOWN_HEADER; const value : RawByteString);
+   begin
+      h.RawValueLength := Length(value);
+      h.pRawValue := Pointer(value);
+   end;
+
+
 var
    request : PHTTP_REQUEST_V2;
    requestID : HTTP_REQUEST_ID;
@@ -982,6 +995,7 @@ var
    outContentData, outContentEncoding : RawByteString;
    outCustomHeader : RawByteString;
    inContent, inContentType : RawByteString;
+   sourceName : String;
    response : PHTTP_RESPONSE_V2;
    headers : HTTP_UNKNOWN_HEADER_ARRAY;
    dataChunkInMemory : HTTP_DATA_CHUNK_INMEMORY;
@@ -1068,27 +1082,48 @@ begin
                response^.Version := request^.Version;
                response^.SetHeaders(Pointer(outCustomHeader), headers);
                if FWebResponse.ContentType = HTTP_RESP_STATICFILE then begin
+
                   // response is file -> let http.sys serve it (OutContent is UTF-8)
                   SendStaticFile(request, response);
+
                end else begin
-                  // response is in OutContent -> sent it from memory
-                  if (FCompress<>nil) and FWebResponse.Compression then begin
-                     pContentEncoding := @response^.Headers.KnownHeaders[reqContentEncoding];
-                     if pContentEncoding^.RawValueLength = 0 then begin
-                        // no previous encoding -> try if any compression
-                        outContentData := FWebResponse.ContentData;
-                        outContentEncoding := CompressDataAndGetHeaders(inCompressAccept,
-                           FCompress, FWebResponse.ContentType, outContentData);
-                        FWebResponse.ContentData := outContentData;
-                        pContentEncoding^.pRawValue := Pointer(outContentEncoding);
-                        pContentEncoding^.RawValueLength := Length(outContentEncoding);
+
+                  if Assigned(FServerEvents) and StrBeginsWithA(FWebResponse.ContentType, 'text/event-stream') then begin
+
+                     sourceName := StrAfterChar(UTF8ToString(FWebResponse.ContentType), ',');
+                     FWebResponse.ContentType := 'text/event-stream';
+                     SetKnownHeader(response^.Headers.KnownHeaders[reqCacheControl], 'no-cache');
+                     SetKnownHeader(response^.Headers.KnownHeaders[reqConnection], 'keep-alive');
+                     response^.SetContent(dataChunkInMemory, FWebResponse.ContentData, FWebResponse.ContentType);
+
+                     FServerEvents.AddRequest(sourceName,
+                                              FReqQueue, request^.RequestId,
+                                              FWebRequest.RemoteIP,
+                                              response);
+
+                  end else begin
+
+                     // response is in OutContent -> sent it from memory
+                     if (FCompress<>nil) and FWebResponse.Compression then begin
+                        pContentEncoding := @response^.Headers.KnownHeaders[reqContentEncoding];
+                        if pContentEncoding^.RawValueLength = 0 then begin
+                           // no previous encoding -> try if any compression
+                           outContentData := FWebResponse.ContentData;
+                           outContentEncoding := CompressDataAndGetHeaders(inCompressAccept,
+                              FCompress, FWebResponse.ContentType, outContentData);
+                           FWebResponse.ContentData := outContentData;
+                           pContentEncoding^.pRawValue := Pointer(outContentEncoding);
+                           pContentEncoding^.RawValueLength := Length(outContentEncoding);
+                        end;
                      end;
+
+                     response^.SetContent(dataChunkInMemory, FWebResponse.ContentData, FWebResponse.ContentType);
+                     HttpAPI.Check(
+                        HttpAPI.SendHttpResponse(FReqQueue, request^.RequestId, GetHttpResponseFlags,
+                                                 response^, nil, bytesSent, nil, 0, nil, FLogDataPtr),
+                        hSendHttpResponse);
+
                   end;
-                  response^.SetContent(dataChunkInMemory, FWebResponse.ContentData, FWebResponse.ContentType);
-                  HttpAPI.Check(
-                     HttpAPI.SendHttpResponse(FReqQueue, request^.RequestId, GetHttpResponseFlags,
-                                              response^, nil, bytesSent, nil, 0, nil, FLogDataPtr),
-                     hSendHttpResponse);
                end;
             except
                // handle any exception raised during process: show must go on!

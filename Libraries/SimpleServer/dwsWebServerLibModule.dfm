@@ -51,6 +51,64 @@ object dwsWebServerLib: TdwsWebServerLib
             OnEval = dwsWebServerClassesWebServerMethodsLiveQueriesEval
             Kind = mkClassFunction
           end>
+      end
+      item
+        Name = 'WebServerSentEvents'
+        IsStatic = True
+        Methods = <
+          item
+            Name = 'PostRaw'
+            Parameters = <
+              item
+                Name = 'sourceName'
+                DataType = 'String'
+              end
+              item
+                Name = 'eventID'
+                DataType = 'String'
+              end
+              item
+                Name = 'eventName'
+                DataType = 'String'
+              end
+              item
+                Name = 'data'
+                DataType = 'array of String'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsWebServerClassesWebServerSentEventsMethodsPostRawEventEval
+            Kind = mkClassProcedure
+          end
+          item
+            Name = 'Close'
+            Parameters = <
+              item
+                Name = 'sourceName'
+                DataType = 'String'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsWebServerClassesWebServerSentEventsMethodsCloseEval
+            Kind = mkClassProcedure
+          end
+          item
+            Name = 'Connections'
+            Parameters = <
+              item
+                Name = 'sourceName'
+                DataType = 'String'
+              end>
+            ResultType = 'array of String'
+            Attributes = [maStatic]
+            OnEval = dwsWebServerClassesWebServerSentEventsMethodsConnectionsEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'SourceNames'
+            ResultType = 'array of String'
+            Attributes = [maStatic]
+            OnEval = dwsWebServerClassesWebServerSentEventsMethodsSourceNamesEval
+            Kind = mkClassFunction
+          end>
       end>
     Dependencies.Strings = (
       'System.Net')

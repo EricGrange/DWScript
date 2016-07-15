@@ -63,7 +63,8 @@ uses
   dwsGraphicLibrary in '..\..\Libraries\GraphicsLib\dwsGraphicLibrary.pas',
   dwsBackgroundWorkersLibModule in '..\..\Libraries\SimpleServer\dwsBackgroundWorkersLibModule.pas' {dwsBackgroundWorkersLib: TDataModule},
   dwsEncodingLibModule in '..\..\Libraries\ClassesLib\dwsEncodingLibModule.pas' {dwsEncodingLib: TDataModule},
-  dwsHTTPSysServer in '..\..\Libraries\SimpleServer\dwsHTTPSysServer.pas';
+  dwsHTTPSysServer in '..\..\Libraries\SimpleServer\dwsHTTPSysServer.pas',
+  dwsHTTPSysServerEvents in '..\..\Libraries\SimpleServer\dwsHTTPSysServerEvents.pas';
 
 {$SetPEFlags IMAGE_FILE_LARGE_ADDRESS_AWARE or IMAGE_FILE_RELOCS_STRIPPED}
 

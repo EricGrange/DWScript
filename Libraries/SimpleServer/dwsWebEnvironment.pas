@@ -59,6 +59,8 @@ type
    );
    TWebRequestMethodVerbs = set of TWebRequestMethodVerb;
 
+   TWebServerEventData = array of RawByteString;
+
    TWebRequest = class
       private
          FCookies : TStrings;

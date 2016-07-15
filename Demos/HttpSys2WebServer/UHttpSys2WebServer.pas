@@ -39,7 +39,7 @@ interface
 uses
   Windows, SysUtils, Classes,
   SynZip, SynCommons,
-  dwsHTTPSysServer, dwsHTTPSysAPI,
+  dwsHTTPSysServer, dwsHTTPSysAPI, dwsHTTPSysServerEvents,
   dwsUtils, dwsWebEnvironment, dwsFileSystem,
   dwsJSON, dwsXPlatform,
   dwsWebServerHelpers, dwsWebServerInfo, dwsWebUtils,
@@ -61,6 +61,7 @@ type
       protected
          FPath : TFileName;
          FServer : THttpApi2Server;
+         FServerEvents : IdwsHTTPServerEvents;
          FDWS : TSimpleDWScript;
          FURLInfos : THttpSys2URLInfos;
          FDirectoryIndex : TDirectoryIndexCache;
@@ -108,6 +109,12 @@ type
          procedure FlushCompiledPrograms;
 
          class function EnumerateURLInfos(options : TdwsJSONValue) : THttpSys2URLInfos;
+
+         procedure EventSourcePost(const sourceName, eventID, eventName : String;
+                                   const data : TWebServerEventData);
+         procedure EventSourceClose(const sourceName : String);
+         function  EventSourceList : TStringDynArray;
+         function  EventSourceConnections(const sourceName : String) : TStringDynArray;
 
          property AutoRedirectFolders : Boolean read FAutoRedirectFolders;
          property FileAccessInfoCacheSize : Integer read FFileAccessInfoCacheSize write FFileAccessInfoCacheSize;
@@ -358,6 +365,9 @@ begin
       serverOptions.Free;
    end;
 
+   FServerEvents := TdwsHTTPServerEvents.Create;
+   FServer.ServerEvents := FServerEvents;
+
    if nbThreads>1 then
       FServer.Clone(nbThreads-1);
 end;
@@ -367,8 +377,9 @@ end;
 procedure THttpSys2WebServer.Shutdown;
 begin
    FDWS.StopDWS;
+   FServerEvents := nil;
    FServer.Free;
-   FServer:=nil;
+   FServer := nil;
    FDWS.Shutdown;
    FDWS.Finalize;
 end;
@@ -631,6 +642,35 @@ begin
       end;
       AddInfo(domain['RelativeURI'].AsString, domain['Name'].AsString, port, domain['SSL'].AsBoolean);
    end;
+end;
+
+// EventSourcePost
+//
+procedure THttpSys2WebServer.EventSourcePost(const sourceName, eventID, eventName : String;
+                                   const data : TWebServerEventData);
+begin
+   FServerEvents.PostEvent(sourceName, StringToUTF8(eventID), StringToUTF8(eventName), data);
+end;
+
+// EventSourceClose
+//
+procedure THttpSys2WebServer.EventSourceClose(const sourceName : String);
+begin
+   FServerEvents.CloseRequests(sourceName);
+end;
+
+// EventSourceList
+//
+function THttpSys2WebServer.EventSourceList : TStringDynArray;
+begin
+   Result := FServerEvents.SourceNames;
+end;
+
+// EventSourceConnections
+//
+function THttpSys2WebServer.EventSourceConnections(const sourceName : String) : TStringDynArray;
+begin
+   Result := FServerEvents.SourceRequests(sourceName);
 end;
 
 // LoadAuthenticateOptions
