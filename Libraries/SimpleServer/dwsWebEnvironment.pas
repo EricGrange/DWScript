@@ -357,6 +357,20 @@ end;
 // PrepareCookies
 //
 function TWebRequest.PrepareCookies : TStrings;
+
+   procedure AddCookie(const name, value : String);
+   var
+      i : Integer;
+   begin
+      i := Result.IndexOfName(name);
+      if i >= 0 then begin
+         if value <> '' then
+            Result[i] := name + '=' + value;
+      end else begin
+         Result.Add(name + '=' + value);
+      end;
+   end;
+
 var
    base, next, p : Integer;
    cookieField : String;
@@ -370,16 +384,12 @@ begin
       p:=StrUtils.PosEx('=', cookieField, base);
       next:=StrUtils.PosEx(';', cookieField, p);
       if (p>base) and (next>p) then begin
-         Result.Add(SysUtils.Trim(Copy(cookieField, base, p-base))
-                    +'='
-                    +Copy(cookieField, p+1, pred(next-p)));
+         AddCookie(SysUtils.Trim(Copy(cookieField, base, p-base)), Copy(cookieField, p+1, pred(next-p)));
          base:=next+1;
       end else Break;
    end;
    if (p>base) and (base<Length(cookieField)) then
-      Result.Add(SysUtils.Trim(Copy(cookieField, base, p-base))
-                 +'='
-                 +Copy(cookieField, p+1));
+      AddCookie(SysUtils.Trim(Copy(cookieField, base, p-base)), Copy(cookieField, p+1));
 end;
 
 // PrepareQueryFields

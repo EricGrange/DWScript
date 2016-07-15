@@ -41,19 +41,15 @@ uses
   SynZip, SynCommons,
   dwsHTTPSysServer, dwsHTTPSysAPI,
   dwsUtils, dwsWebEnvironment, dwsFileSystem,
-  dwsDirectoryNotifier, dwsJSON, dwsXPlatform,
+  dwsJSON, dwsXPlatform,
   dwsWebServerHelpers, dwsWebServerInfo, dwsWebUtils,
   DSimpleDWScript;
 
 type
    IHttpSys2WebServer = interface
+      function URLInfos : THttpSys2URLInfos;
+
       procedure Shutdown;
-
-      function HttpPort : Integer;
-      function HttpDomainName : String;
-      function HttpsPort : Integer;
-      function HttpsDomainName : String;
-
    end;
 
    TDWSExtension = record
@@ -66,13 +62,7 @@ type
          FPath : TFileName;
          FServer : THttpApi2Server;
          FDWS : TSimpleDWScript;
-         FNotifier : TdwsFileNotifier;
-         FPort : Integer;
-         FSSLPort : Integer;
-         FDomainName : String;
-         FSSLDomainName : String;
-         FRelativeURI : String;
-         FSSLRelativeURI : String;
+         FURLInfos : THttpSys2URLInfos;
          FDirectoryIndex : TDirectoryIndexCache;
          FAutoRedirectFolders : Boolean;
          FErrorPagesPath : String;
@@ -82,15 +72,11 @@ type
          FDWSExtensions : array of TDWSExtension;
          FMethodsNotAllowed : TWebRequestMethodVerbs;
 
-         procedure FileChanged(sender : TdwsFileNotifier; const fileName : String;
-                               changeAction : TFileNotificationAction);
-
          procedure LoadAuthenticateOptions(authOptions : TdwsJSONValue);
 
+         function URLInfos : THttpSys2URLInfos;
          function HttpPort : Integer;
-         function HttpDomainName : String;
          function HttpsPort : Integer;
-         function HttpsDomainName : String;
 
          procedure RegisterExtensions(list : TdwsJSONValue; typ : TFileAccessType);
 
@@ -121,12 +107,8 @@ type
 
          procedure FlushCompiledPrograms;
 
-         property Port : Integer read FPort;
-         property SSLPort : Integer read FSSLPort;
-         property DomainName : String read FDomainName;
-         property SSLDomainName : String read FSSLDomainName;
-         property RelativeURI : String read FRelativeURI;
-         property SSLRelativeURI : String read FSSLRelativeURI;
+         class function EnumerateURLInfos(options : TdwsJSONValue) : THttpSys2URLInfos;
+
          property AutoRedirectFolders : Boolean read FAutoRedirectFolders;
          property FileAccessInfoCacheSize : Integer read FFileAccessInfoCacheSize write FFileAccessInfoCacheSize;
          property ErrorPagesPath : String read FErrorPagesPath;
@@ -246,7 +228,6 @@ end;
 //
 destructor THttpSys2WebServer.Destroy;
 begin
-   FNotifier.Free;
    FServer.Free;
    FDWS.Free;
    FDirectoryIndex.Free;
@@ -333,27 +314,9 @@ begin
       RegisterExtensions(serverOptions['ScriptedExtensions'], fatDWS);
       RegisterExtensions(serverOptions['P2JSExtensions'], fatP2JS);
 
-      FRelativeURI:=serverOptions['RelativeURI'].AsString;
-      FDomainName:=serverOptions['DomainName'].AsString;
-      FPort:=serverOptions['Port'].AsInteger;
-      if FPort<>0 then
-         FServer.AddUrl(FRelativeURI, FPort, False, FDomainName);
-
-      FSSLRelativeURI:=serverOptions['SSLRelativeURI'].AsString;
-      FSSLDomainName:=serverOptions['SSLDomainName'].AsString;
-      FSSLPort:=serverOptions['SSLPort'].AsInteger;
-      if FSSLPort<>0 then begin
-         FServer.AddUrl(FSSLRelativeURI, FSSLPort, True, FSSLDomainName);
-      end;
-
-      extraDomains:=serverOptions['Domains'];
-      for i:=0 to extraDomains.ElementCount-1 do begin
-         domain:=extraDomains.Elements[i];
-         FServer.AddUrl(domain['RelativeURI'].AsString,
-                        domain['Port'].AsInteger,
-                        domain['SSL'].AsBoolean,
-                        domain['Name'].AsString);
-      end;
+      FURLInfos := EnumerateURLInfos(serverOptions);
+      for i := 0 to High(FURLInfos) do
+         FServer.AddUrl(FURLInfos[i]);
 
       if serverOptions['Compression'].AsBoolean then
          FServer.RegisterCompress(CompressDeflate);
@@ -394,10 +357,6 @@ begin
    finally
       serverOptions.Free;
    end;
-
-   FNotifier:=TdwsFileNotifier.Create(FPath, dnoDirectoryAndSubTree);
-   FNotifier.IgnoredPaths:=TdwsFileNotifierPaths.Create('.db\');
-   FNotifier.OnFileChanged:=FileChanged;
 
    if nbThreads>1 then
       FServer.Clone(nbThreads-1);
@@ -628,15 +587,50 @@ begin
    FDWS.FlushDWSCache;
 end;
 
-// FileChanged
+// EnumerateURLs
 //
-procedure THttpSys2WebServer.FileChanged(sender : TdwsFileNotifier; const fileName : String;
-                                         changeAction : TFileNotificationAction);
+class function THttpSys2WebServer.EnumerateURLInfos(options : TdwsJSONValue) : THttpSys2URLInfos;
+
+   procedure AddInfo(const relativeURI, domainName : String; aPort : Integer; isHTTPS : Boolean);
+   var
+      n : Integer;
+   begin
+      n := Length(Result);
+      Setlength(Result, n+1);
+      if relativeURI = 'undefined' then
+         Result[n].RelativeURI := ''
+      else Result[n].RelativeURI := relativeURI;
+      if (domainName = 'undefined') or (domainName = '') then
+         Result[n].DomainName := '*'
+      else Result[n].DomainName := domainName;
+      Result[n].Port := aPort;
+      Result[n].HTTPS := isHTTPS;
+   end;
+
+var
+   info : THttpSys2URLInfo;
+   i, port : Integer;
+   extraDomains, domain : TdwsJSONValue;
 begin
-   FDWS.FlushDWSCache(fileName);
-   if (not StrContains(fileName, '\.')) and StrContains(fileName, '\index.') then
-      FDirectoryIndex.Flush;
-   Inc(FCacheCounter);
+   port := options['Port'].AsInteger;
+   if port <> 0 then
+      AddInfo(options['RelativeURI'].AsString, options['DomainName'].AsString, port, False);
+
+   port := options['SSLPort'].AsInteger;
+   if port <> 0 then
+      AddInfo(options['SSLRelativeURI'].AsString, options['SSLDomainName'].AsString, port, True);
+
+   extraDomains := options['Domains'];
+   for i:=0 to extraDomains.ElementCount-1 do begin
+      domain := extraDomains.Elements[i];
+      port := domain['Port'].AsInteger;
+      if port = 0 then begin
+         if domain['SSL'].AsBoolean then
+            port := 443
+         else port := 80;
+      end;
+      AddInfo(domain['RelativeURI'].AsString, domain['Name'].AsString, port, domain['SSL'].AsBoolean);
+   end;
 end;
 
 // LoadAuthenticateOptions
@@ -669,36 +663,35 @@ begin
       FServer.SetAuthentication(authMask);
 end;
 
+// URLInfos
+//
+function THttpSys2WebServer.URLInfos : THttpSys2URLInfos;
+begin
+   Result := FURLInfos;
+end;
+
 // HttpPort
 //
 function THttpSys2WebServer.HttpPort : Integer;
+var
+   i : Integer;
 begin
-   Result:=Port;
-end;
-
-// HttpDomainName
-//
-function THttpSys2WebServer.HttpDomainName : String;
-begin
-   if DomainName='+' then
-      Result:='localhost'
-   else Result:=DomainName;
+   for i := 0 to High(FURLInfos) do
+      if not FURLInfos[i].HTTPS then
+         Exit(FURLInfos[i].Port);
+   Result := 0;
 end;
 
 // HttpsPort
 //
 function THttpSys2WebServer.HttpsPort : Integer;
+var
+   i : Integer;
 begin
-   Result:=SSLPort;
-end;
-
-// HttpsDomainName
-//
-function THttpSys2WebServer.HttpsDomainName : String;
-begin
-   if SSLDomainName='+' then
-      Result:='localhost'
-   else Result:=SSLDomainName;
+   for i := 0 to High(FURLInfos) do
+      if FURLInfos[i].HTTPS then
+         Exit(FURLInfos[i].Port);
+   Result := 0;
 end;
 
 end.

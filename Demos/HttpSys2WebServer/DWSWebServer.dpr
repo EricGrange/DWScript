@@ -41,6 +41,7 @@ program DWSWebServer;
 {$R *.dres}
 
 uses
+  FastMM4,
   Windows,
   SysUtils,
   mORMotService,
@@ -61,7 +62,6 @@ uses
   dwsFileFunctions in '..\..\Source\dwsFileFunctions.pas',
   dwsGraphicLibrary in '..\..\Libraries\GraphicsLib\dwsGraphicLibrary.pas',
   dwsBackgroundWorkersLibModule in '..\..\Libraries\SimpleServer\dwsBackgroundWorkersLibModule.pas' {dwsBackgroundWorkersLib: TDataModule},
-  dwsWebUtils in '..\..\Libraries\SimpleServer\dwsWebUtils.pas',
   dwsEncodingLibModule in '..\..\Libraries\ClassesLib\dwsEncodingLibModule.pas' {dwsEncodingLib: TDataModule},
   dwsHTTPSysServer in '..\..\Libraries\SimpleServer\dwsHTTPSysServer.pas';
 
@@ -79,6 +79,9 @@ type
          destructor Destroy; override;
 
          class function DefaultServiceOptions : String; override;
+
+         procedure ExecuteCommandLineParameters; override;
+         procedure WriteCommandLineHelpExtra; override;
    end;
 
 { TWebServerHttpService }
@@ -143,13 +146,49 @@ begin
    end;
 end;
 
+procedure TWebServerHttpService.ExecuteCommandLineParameters;
+var
+   authorize : Boolean;
+   serverOptions : TdwsJSONValue;
+   infos : THttpSys2URLInfos;
+   i : Integer;
+   msg : String;
+begin
+   if (ParamCount>=1) and ((ParamStr(1)='/authorize') or (ParamStr(1)='/unauthorize')) then begin
+
+      authorize := (ParamStr(1)='/authorize');
+
+      serverOptions:=TdwsJSONValue.ParseString(cDefaultServerOptions);
+      try
+         serverOptions.Extend(Options['Server']);
+         infos := THttpSys2WebServer.EnumerateURLInfos(serverOptions);
+         for i := 0 to High(infos) do begin
+            Write(infos[i].ToString, ' -> ');
+            msg := THttpApi2Server.AddUrlAuthorize(infos[i], not authorize);
+            if msg = '' then
+               Writeln('success!')
+            else WriteLn(msg);
+         end;
+      finally
+         serverOptions.Free;
+      end;
+
+   end else inherited ExecuteCommandLineParameters;
+end;
+
+procedure TWebServerHttpService.WriteCommandLineHelpExtra;
+begin
+   Writeln('* /authorize & /unauthorize : enable/disable ACL (must be run as administrator)');
+end;
+
+
 procedure LogServiceError(options : TdwsJSONValue; const msg : String); overload;
 var
    log : String;
 begin
    if options<>nil then begin
       log:=options['Service']['DWSErrorLogDirectory'].AsString;
-      if log<>'' then begin
+      if log<>'undefined' then begin
          log:=IncludeTrailingPathDelimiter(log)+'service.log';
          AppendTextToUTF8File(log, UTF8Encode(FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz ', Now)+msg+#13#10));
       end;
@@ -168,6 +207,7 @@ end;
 
 
 var
+   i : Integer;
    optionsFileName, url, log : String;
    options : TdwsJSONValue;
    service : TWebServerHttpService;
@@ -218,13 +258,11 @@ begin
             end;
 
             writeln('Server is now running on');
-            if service.Server.HttpPort>0 then
-               writeln('http://', service.Server.HttpDomainName, ':', service.Server.HttpPort, '/');
-            if service.Server.HttpsPort>0 then
-               writeln('https://', service.Server.HttpsDomainName, ':', service.Server.HttpsPort, '/');
-            writeln;
-            writeln('Press [Enter] to quit');
-            readln;
+            for i := 0 to High(service.Server.URLInfos) do
+               Writeln(service.Server.URLInfos[i].ToString);
+            Writeln;
+            Writeln('Press [Enter] to quit');
+            Readln;
 
          end;
       except

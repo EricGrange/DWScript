@@ -22,5 +22,7 @@ begin
 end;
 
 MyStuff;
+PrintLn(1);
 vMyStuff := TMyStuff.Create;
+PrintLn(2);
 vMyStuff.Free;

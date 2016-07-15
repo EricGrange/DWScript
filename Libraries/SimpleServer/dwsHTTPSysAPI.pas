@@ -1046,8 +1046,10 @@ begin
          result := cCodes300[code];
       400..High(cCodes400) :
          result := cCodes400[code];
+      423: result:='Locked';
       500..High(cCodes500) :
          result := cCodes500[code];
+      507: result := 'Insufficient Storage';
    else
       result := 'Unknown';
    end;

@@ -31,6 +31,22 @@ type
 
    TProcedureWorkUnit = procedure;
 
+   TIOCPWorkerThreadPool = class;
+
+   TIOCPDelayedWork = class
+      private
+         FPool : TIOCPWorkerThreadPool;
+         FTimer : THandle;
+         FEvent : TNotifyEvent;
+         FSender : TObject;
+         FNext, FPrev : TIOCPDelayedWork;
+         procedure Detach;
+         procedure Cancel;
+
+      public
+         destructor Destroy; override;
+   end;
+
    IWorkerThreadPool = interface (IGetSelf)
       ['{775D71DC-6F61-4A52-B9DC-250682F4D696}']
       procedure Shutdown(timeoutMilliSeconds : Cardinal = INFINITE);
@@ -57,6 +73,9 @@ type
          FLiveWorkerCount : Integer;
          FActiveWorkerCount : Integer;
          FQueueSize : Integer;
+         FTimerQueue : THandle;
+         FDelayed : TIOCPDelayedWork;
+         FDelayedLock : TMultiReadSingleWrite;
 
       protected
          function GetWorkerCount : Integer;
@@ -71,6 +90,8 @@ type
          procedure QueueWork(const workUnit : TAnonymousWorkUnit); overload;
          procedure QueueWork(const workUnit : TProcedureWorkUnit); overload;
          procedure QueueWork(const workUnit : TNotifyEvent; sender : TObject); overload;
+
+         procedure QueueDelayedWork(delayMillisecSeconds : Cardinal; const workUnit : TNotifyEvent; sender : TObject);
 
          function QueueSize : Integer;
 
@@ -119,6 +140,63 @@ type
       destructor Destroy; override;
       procedure Execute; override;
    end;
+
+procedure DelayedWorkCallBack(Context: Pointer; Success: Boolean); stdcall;
+var
+   dw : TIOCPDelayedWork;
+begin
+   dw := TIOCPDelayedWork(Context);
+   try
+      if dw.FPool <> nil then begin
+         dw.FPool.QueueWork(dw.FEvent, dw.FSender);
+         InterlockedDecrement(dw.FPool.FQueueSize);
+      end;
+   finally
+      dw.Free;
+   end;
+end;
+
+// ------------------
+// ------------------ TIOCPDelayedWork ------------------
+// ------------------
+
+// Destroy
+//
+destructor TIOCPDelayedWork.Destroy;
+begin
+   Cancel;
+   Detach;
+end;
+
+// Detach
+//
+procedure TIOCPDelayedWork.Detach;
+begin
+   if FPool = nil then Exit;
+   FPool.FDelayedLock.BeginWrite;
+   try
+      if FPrev <> nil then
+         FPrev.FNext := FNext
+      else FPool.FDelayed := FNext;
+      if FNext <> nil then
+         FNext.FPrev := nil;
+   finally
+      FPool.FDelayedLock.EndWrite;
+   end;
+   FPrev := nil;
+   FNext := nil;
+   FPool := nil;
+end;
+
+// Cancel
+//
+procedure TIOCPDelayedWork.Cancel;
+begin
+   if FTimer <> 0 then begin
+      DeleteTimerQueueTimer(FPool.FTimerQueue, FTimer, 0);
+      FTimer := 0;
+   end;
+end;
 
 // ------------------
 // ------------------ TIOCPWorkerThread ------------------
@@ -200,16 +278,37 @@ begin
    inherited Create;
    FIOCP:=CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, MaxInt);
    WorkerCount:=aWorkerCount;
+   FTimerQueue:=CreateTimerQueue;
+   FDelayedLock:=TMultiReadSingleWrite.Create;
 end;
 
 // Destroy
 //
 destructor TIOCPWorkerThreadPool.Destroy;
+var
+   dw : TIOCPDelayedWork;
 begin
+   FDelayedLock.BeginWrite;
+   try
+      dw := FDelayed;
+      while dw <> nil do begin
+         dw.Cancel;
+         dw := dw.FNext;
+      end;
+   finally
+      FDelayedLock.EndWrite;
+   end;
+   DeleteTimerQueueEx(FTimerQueue, INVALID_HANDLE_VALUE);
+   FTimerQueue := 0;
+   while FDelayed <> nil do
+      FDelayed.Free;
+
    CloseHandle(FIOCP);
 
    while LiveWorkerCount>0 do
       Sleep(10);
+
+   FDelayedLock.Free;
 
    inherited;
 end;
@@ -261,6 +360,37 @@ begin
    data.notifyEvent:=workUnit;
    data.sender:=sender;
    PostQueuedCompletionStatus(FIOCP, data.lpNumberOfBytesTransferred, data.lpCompletionKey, data.lpOverlapped);
+end;
+
+// QueueDelayedWork
+//
+procedure TIOCPWorkerThreadPool.QueueDelayedWork(delayMillisecSeconds : Cardinal; const workUnit : TNotifyEvent; sender : TObject);
+var
+   dw : TIOCPDelayedWork;
+begin
+   dw := TIOCPDelayedWork.Create;
+   try
+      dw.FPool := Self;
+      dw.FEvent := workUnit;
+      dw.FSender := sender;
+      FDelayedLock.BeginWrite;
+      try
+         if FDelayed <> nil then begin
+            dw.FNext := FDelayed;
+            FDelayed.FPrev := dw;
+         end;
+         FDelayed := dw;
+      finally
+         FDelayedLock.EndWrite;
+      end;
+      CreateTimerQueueTimer(dw.FTimer, FTimerQueue, @DelayedWorkCallBack, dw,
+                            delayMillisecSeconds, 0,
+                            WT_EXECUTEDEFAULT or WT_EXECUTELONGFUNCTION or WT_EXECUTEONLYONCE);
+      InterlockedIncrement(FQueueSize);
+   except
+      dw.Free;
+      raise;
+   end;
 end;
 
 // QueueSize

@@ -83,16 +83,18 @@ type
       amkClear, amkSwap, amkCopy, amkReverse, amkDimCount
    );
 
+
 function NameToArrayMethod(const name : String; msgs : TdwsCompileMessageList;
                            const namePos : TScriptPos) : TArrayMethodKind;
 
 function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
                         const scriptObj : IScriptObj; structSym : TCompositeTypeSymbol;
-                        forceStatic : Boolean = False) : TFuncExprBase;
+                        options : TCreateFunctionOptions) : TFuncExprBase;
 function CreateIntfExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
                         const scriptObjIntf : IScriptObjInterface) : TFuncExprBase;
+
 function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; var expr : TTypedExpr; RefKind: TRefKind;
-                          const scriptPos: TScriptPos; ForceStatic : Boolean = False) : TFuncExprBase;
+                          const scriptPos: TScriptPos; options : TCreateFunctionOptions) : TFuncExprBase;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -149,7 +151,7 @@ end;
 //
 function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
                         const scriptObj : IScriptObj; structSym : TCompositeTypeSymbol;
-                        forceStatic : Boolean = False) : TFuncExprBase;
+                        options : TCreateFunctionOptions) : TFuncExprBase;
 var
    instanceExpr : TTypedExpr;
 begin
@@ -157,18 +159,18 @@ begin
       if Assigned(scriptObj) then begin
          instanceExpr:=TConstExpr.Create(Prog, structSym, scriptObj);
          Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
-                                  instanceExpr, rkObjRef, cNullPos, ForceStatic)
+                                  instanceExpr, rkObjRef, cNullPos, options)
       end else if structSym<>nil then begin
          instanceExpr:=TConstExpr.Create(prog, structSym.MetaSymbol, Int64(structSym));
          Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
-                                  instanceExpr, rkClassOfRef, cNullPos, ForceStatic)
+                                  instanceExpr, rkClassOfRef, cNullPos, options)
       end else begin
          // static method
          structSym:=TMethodSymbol(funcSym).StructSymbol;
          if structSym is TStructuredTypeSymbol then begin
             instanceExpr:=TConstExpr.Create(prog, structSym.MetaSymbol, Int64(structSym));
             Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
-                                     instanceExpr, rkClassOfRef, cNullPos, ForceStatic)
+                                     instanceExpr, rkClassOfRef, cNullPos, options)
          end else begin
             Result:=nil;
             Assert(False, 'TODO');
@@ -192,13 +194,13 @@ begin
    scriptIntf:=(scriptObjIntf.GetSelf as TScriptInterface);
    instanceExpr:=TConstExpr.Create(Prog, scriptIntf.Typ, scriptObjIntf);
    Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
-                            instanceExpr, rkIntfRef, cNullPos)
+                            instanceExpr, rkIntfRef, cNullPos, [])
 end;
 
 // CreateMethodExpr
 //
 function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; var expr: TTypedExpr; RefKind: TRefKind;
-                          const scriptPos: TScriptPos; ForceStatic : Boolean = False) : TFuncExprBase;
+                          const scriptPos: TScriptPos; options : TCreateFunctionOptions) : TFuncExprBase;
 var
    helper : THelperSymbol;
    internalFunc : TInternalMagicFunction;
@@ -251,7 +253,7 @@ begin
       case meth.Kind of
          fkFunction, fkProcedure, fkMethod, fkLambda:
             if meth.IsClassMethod then begin
-               if not ForceStatic and meth.IsVirtual then
+               if not (cfoForceStatic in options) and meth.IsVirtual then
                   Result := TClassMethodVirtualExpr.Create(prog, scriptPos, meth, expr)
                else Result := TClassMethodStaticExpr.Create(prog, scriptPos, meth, expr)
             end else begin
@@ -259,13 +261,13 @@ begin
                   prog.CompileMsgs.AddCompilerError(scriptPos, CPE_StaticMethodExpected)
                else if expr.Typ is TClassOfSymbol then
                   prog.CompileMsgs.AddCompilerError(scriptPos, CPE_ClassMethodExpected);
-               if not ForceStatic and meth.IsVirtual then
+               if not (cfoForceStatic in options) and meth.IsVirtual then
                   Result := TMethodVirtualExpr.Create(prog, scriptPos, meth, expr)
                else Result := TMethodStaticExpr.Create(prog, scriptPos, meth, expr);
             end;
          fkConstructor:
             if RefKind = rkClassOfRef then begin
-               if not ForceStatic and meth.IsVirtual then
+               if not (cfoForceStatic in options) and meth.IsVirtual then
                   Result := TConstructorVirtualExpr.Create(prog, scriptPos, meth, expr)
                else if meth = prog.Root.TypDefaultConstructor then
                   Result := TConstructorStaticDefaultExpr.Create(prog, scriptPos, meth, expr)
@@ -273,7 +275,7 @@ begin
             end else begin
                if not ((prog is TdwsProcedure) and (TdwsProcedure(prog).Func.Kind=fkConstructor)) then
                   prog.CompileMsgs.AddCompilerWarning(scriptPos, CPE_UnexpectedConstructor);
-               if not ForceStatic and meth.IsVirtual then
+               if not (cfoForceStatic in options) and meth.IsVirtual then
                   Result := TConstructorVirtualObjExpr.Create(prog, scriptPos, meth, expr)
                else Result := TConstructorStaticObjExpr.Create(prog, scriptPos, meth, expr);
             end;
@@ -281,7 +283,7 @@ begin
             begin
                if RefKind=rkClassOfRef then
                   prog.CompileMsgs.AddCompilerError(scriptPos, CPE_UnexpectedDestructor);
-               if not ForceStatic and meth.IsVirtual then
+               if not (cfoForceStatic in options) and meth.IsVirtual then
                   Result := TDestructorVirtualExpr.Create(prog, scriptPos, meth, expr)
                else Result := TDestructorStaticExpr.Create(prog, scriptPos, meth, expr)
             end;

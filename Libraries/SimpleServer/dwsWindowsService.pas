@@ -45,6 +45,7 @@ type
 
          procedure ExecuteCommandLineParameters; virtual;
          procedure WriteCommandLineHelp; virtual;
+         procedure WriteCommandLineHelpExtra; virtual;
 
          function ServiceStatus(var status : TServiceStatus) : Boolean;
          function LaunchedBySCM : Boolean;
@@ -244,9 +245,14 @@ begin
            +'Parameters:'#13#10
            +'* none : run as application'#13#10
            +'* /install & /uninstall : install & uninstall service'#13#10
-           +'* /start & /stop : start & stop service'#13#10
-           +#13#10
-           +'For more information, go to https://www.delphitools.info/');
+           +'* /start & /stop : start & stop service');
+end;
+
+// WriteCommandLineHelpExtra
+//
+procedure TdwsWindowsService.WriteCommandLineHelpExtra;
+begin
+   Writeln(#13#10'For more information, go to https://www.delphitools.info/');
 end;
 
 // ServiceState

@@ -1110,13 +1110,17 @@ end;
 function TInfoFunc.CreateTempFuncExpr : TFuncExprBase;
 var
    caller : TExprBase;
+   cf : TCreateFunctionOptions;
 begin
    if FDataPtr.DataLength>0 then begin
       Result:=TFuncPtrExpr.Create(FExec.Prog, cNullPos,
                                   TConstExpr.Create(FExec.Prog, FTypeSym.AsFuncSymbol, FDataPtr[0]));
    end else begin
+      if FForceStatic then
+         cf := [cfoForceStatic]
+      else cf := [];
       Result:=CreateFuncExpr(FExec.Prog, FTypeSym.AsFuncSymbol, FScriptObj,
-                             FClassSym, FForceStatic);
+                             FClassSym, cf);
    end;
    if Result is TFuncExpr then begin
       caller:=FExec.CallStackLastExpr;
@@ -1679,7 +1683,7 @@ var
 begin
    // Read an external var
    if TExternalVarSymbol(FSym).ReadFunc<>nil then begin
-      funcExpr := CreateFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).ReadFunc, nil, nil);
+      funcExpr := CreateFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).ReadFunc, nil, nil, []);
       try
          prog:=(exec as TdwsProgramExecution).Prog;
          funcExpr.Initialize(prog);
@@ -1709,7 +1713,7 @@ var
    funcExpr : TFuncExprBase;
 begin
    if TExternalVarSymbol(FSym).WriteFunc<>nil then begin
-      funcExpr := CreateFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).WriteFunc, nil, nil);
+      funcExpr := CreateFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).WriteFunc, nil, nil, []);
       try
          funcExpr.AddArg(TConstExpr.CreateTyped(FCaller.Prog, FSym.Typ, Data));
          if (funcExpr is TFuncExpr) then

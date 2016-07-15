@@ -169,8 +169,11 @@ end;
 procedure TGlobalVarsHashMap.Finalize;
 begin
    FreeAndNil(Lock);
-   Hash.Clean;
-   FreeAndNil(Hash);
+   if Hash <> nil then begin
+      Hash.Clean;
+      Hash.Free;
+      Hash := nil;
+   end;
 end;
 
 // GetObjects
@@ -286,6 +289,7 @@ var
    bucket : PNameObjectHashBucket;
    gv : TGlobalVar;
 begin
+   if Hash.Count=0 then Exit;
    t:=GetSystemMilliseconds;
    Lock.BeginRead;
    try
@@ -676,7 +680,7 @@ procedure TGlobalVarsGarbageCollector.IncrementalCollect;
 var
    t, n : Integer;
 begin
-   t:=cGarbageCollectionIntervalMilliseconds;
+   t := cGarbageCollectionIntervalMilliseconds;
 
    vGVPool.Clean(16+(vGVPool.Count shr 2));
 

@@ -58,9 +58,10 @@ uses
   UdwsGraphicsTests in 'UdwsGraphicsTests.pas',
   dwsJSONPath in '..\Source\dwsJSONPath.pas',
   dwsDateTime in '..\Source\dwsDateTime.pas',
-  dwsGlobalVars in '..\Source\dwsGlobalVars.pas'
-  ,UBigIntegerTests in 'UBigIntegerTests.pas'
-  ;
+  dwsGlobalVars in '..\Source\dwsGlobalVars.pas',
+  UBigIntegerTests in 'UBigIntegerTests.pas',
+  dwsMPIR.Bundle in '..\Libraries\BigIntegersLib\dwsMPIR.Bundle.pas',
+  dwsEncoding in '..\Source\dwsEncoding.pas';
 
 {$R *.res}
 
@@ -71,6 +72,7 @@ var
    procAffinity, systAffinity : DWORD;
 {$IFEND}
 begin
+//UnBundle_MPIR_DLL;
    DirectSet8087CW($133F);
    GetProcessAffinityMask(GetCurrentProcess, procAffinity, systAffinity);
    SetProcessAffinityMask(GetCurrentProcess, systAffinity);

@@ -24,11 +24,14 @@ type
     procedure DataModuleDestroy(Sender: TObject);
     procedure dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueSizeEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueDelayedWorkEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FOnBackgroundWork : TBackgroundWorkEvent;
     FPools : TWorkQueues;
     FPoolsCS : TMultiReadSingleWrite;
+
   public
     { Public declarations }
     property OnBackgroundWork : TBackgroundWorkEvent read FOnBackgroundWork write FOnBackgroundWork;
@@ -204,9 +207,10 @@ begin
    try
       pool:=FPools[name];
       Info.ResultAsBoolean:=(pool=nil);
-      if pool=nil then
+      if pool=nil then begin
          pool:=TIOCPWorkerThreadPool.Create(1);
-      FPools[name]:=pool;
+         FPools[name]:=pool;
+      end;
    finally
       FPoolsCS.EndWrite;
    end;
@@ -270,6 +274,37 @@ begin
       pool:=FPools[name];
       if pool<>nil then
          pool.QueueWork(workUnit.Execute, Self);
+   finally
+      FPoolsCS.EndRead;
+   end;
+
+   if pool=nil then begin
+      workUnit.Free;
+      raise Exception.CreateFmt('Unknown Work Queue "%s"', [name]);
+   end;
+end;
+
+procedure TdwsBackgroundWorkersLib.dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueDelayedWorkEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   name : String;
+   workUnit : TWorkWebRequest;
+   pool : TIOCPWorkerThreadPool;
+   delayMilliseconds : Integer;
+begin
+   name:=Info.ParamAsString[0];
+
+   delayMilliseconds := Round(Info.ParamAsFloat[1] * 1000);
+
+   workUnit:=TWorkWebRequest.Create;
+   workUnit.Task:=Info.ParamAsString[2];
+   workUnit.Data:=Info.ParamAsDataString[3];
+
+   FPoolsCS.BeginRead;
+   try
+      pool:=FPools[name];
+      if pool<>nil then
+         pool.QueueDelayedWork(delayMilliseconds, workUnit.Execute, Self);
    finally
       FPoolsCS.EndRead;
    end;

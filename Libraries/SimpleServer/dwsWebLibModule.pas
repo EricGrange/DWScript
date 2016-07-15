@@ -205,33 +205,43 @@ begin
 
    if exec <> nil then
       iconn := exec.CustomInterfaces[cWinHttpConnection] as IGetSelf;
-   if iconn = nil then
+   if iconn = nil then begin
       iconn := IGetSelf(TdwsWinHttpConnection.Create);
-
-   if (customStates = nil) and (exec <> nil) then begin
-      exec.CustomInterfaces[cWinHttpConnection] := iconn;
-      if exec.HasCustomStates then
-         customStates := exec.CustomStates;
+      if exec <> nil then
+         exec.CustomInterfaces[cWinHttpConnection] := iconn;
    end;
 
-   conn := iconn.GetSelf as TdwsWinHttpConnection;
-   if customStates <> nil then begin
-      conn.ConnectServer(uri, customStates.StringStateDef(cWinHttpProxyName, ''),
-                         customStates.IntegerStateDef(cWinHttpConnectTimeout, HTTP_DEFAULT_CONNECTTIMEOUT),
-                         customStates.IntegerStateDef(cWinHttpSendTimeout, HTTP_DEFAULT_SENDTIMEOUT),
-                         customStates.IntegerStateDef(cWinHttpReceiveTimeout, HTTP_DEFAULT_RECEIVETIMEOUT));
-      conn.SetIgnoreSSLErrors(customStates[cWinHttpIgnoreSSLCertificateErrors]);
-      conn.SetCredentials(customStates[cWinHttpCredentials]);
-      conn.SetCustomHeaders(customStates[cWinHttpCustomHeaders]);
-   end else begin
-      conn.ConnectServer(uri, '', HTTP_DEFAULT_CONNECTTIMEOUT, HTTP_DEFAULT_SENDTIMEOUT, HTTP_DEFAULT_RECEIVETIMEOUT);
-      conn.SetIgnoreSSLErrors(unassignedVariant);
-      conn.SetCredentials(unassignedVariant);
-      conn.SetCustomHeaders(unassignedVariant);
-   end;
-   conn.SetOnProgress(onProgress);
+   try
+      if (customStates = nil) and (exec <> nil) then begin
+         if exec.HasCustomStates then
+            customStates := exec.CustomStates;
+      end;
 
-   Result := conn.Request(uri, method, 0, '', requestData, requestContentType, replyHeaders, replyData, asText);
+      conn := iconn.GetSelf as TdwsWinHttpConnection;
+      if customStates <> nil then begin
+         conn.ConnectServer(uri, customStates.StringStateDef(cWinHttpProxyName, ''),
+                            customStates.IntegerStateDef(cWinHttpConnectTimeout, HTTP_DEFAULT_CONNECTTIMEOUT),
+                            customStates.IntegerStateDef(cWinHttpSendTimeout, HTTP_DEFAULT_SENDTIMEOUT),
+                            customStates.IntegerStateDef(cWinHttpReceiveTimeout, HTTP_DEFAULT_RECEIVETIMEOUT));
+         conn.SetIgnoreSSLErrors(customStates[cWinHttpIgnoreSSLCertificateErrors]);
+         conn.SetCredentials(customStates[cWinHttpCredentials]);
+         conn.SetCustomHeaders(customStates[cWinHttpCustomHeaders]);
+      end else begin
+         conn.ConnectServer(uri, '', HTTP_DEFAULT_CONNECTTIMEOUT, HTTP_DEFAULT_SENDTIMEOUT, HTTP_DEFAULT_RECEIVETIMEOUT);
+         conn.SetIgnoreSSLErrors(unassignedVariant);
+         conn.SetCredentials(unassignedVariant);
+         conn.SetCustomHeaders(unassignedVariant);
+      end;
+      conn.SetOnProgress(onProgress);
+
+      Result := conn.Request(uri, method, 0, '', requestData, requestContentType, replyHeaders, replyData, asText);
+   except
+      on EWinHTTP do begin
+         if exec <> nil then
+            exec.CustomInterfaces[cWinHttpConnection] := nil;
+         raise;
+      end;
+   end;
 end;
 
 type

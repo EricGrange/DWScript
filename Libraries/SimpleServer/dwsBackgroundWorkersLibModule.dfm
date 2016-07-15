@@ -68,6 +68,31 @@ object dwsBackgroundWorkersLib: TdwsBackgroundWorkersLib
             Attributes = [maStatic]
             OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueSizeEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'QueueDelayedWork'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end
+              item
+                Name = 'delaySeconds'
+                DataType = 'Float'
+              end
+              item
+                Name = 'task'
+                DataType = 'String'
+              end
+              item
+                Name = 'data'
+                DataType = 'String'
+                HasDefaultValue = True
+                DefaultValue = ''
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueDelayedWorkEval
+            Kind = mkClassProcedure
           end>
       end>
     UnitName = 'System.Workers'

@@ -138,6 +138,11 @@ type
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
+   TPrivateVarsNamesFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
+   end;
+
+
 {: Directly write a global var.<p> }
 function WriteGlobalVar(const aName: UnicodeString; const aValue: Variant; expirationSeconds : Double) : Boolean;
 {: Directly read a global var.<p> }
@@ -205,7 +210,7 @@ var
 const
    cGlobalVarsFiles : AnsiString = 'GBF 2.0';
 
-function PrivateVarName(const args : TExprBaseListExec) : String;
+function PrivateVarPrefix(const args : TExprBaseListExec) : String;
 var
    scriptPos : TScriptPos;
    expr : TPosDataExpr;
@@ -214,7 +219,12 @@ begin
    scriptPos:=expr.ScriptPos;
    if scriptPos.IsMainModule then
       raise Exception.Create('Private variables cannot be referred from main module');
-   Result:=scriptPos.SourceName+' '+args.AsString[0];
+   Result:=scriptPos.SourceName+' ';
+end;
+
+function PrivateVarName(const args : TExprBaseListExec) : String;
+begin
+   Result := PrivateVarPrefix(args) + args.AsString[0];
 end;
 
 // ------------------
@@ -761,6 +771,45 @@ begin
    vPrivateVars.Cleanup(PrivateVarName(args));
 end;
 
+// ------------------
+// ------------------ TPrivateVarsNamesFunc ------------------
+// ------------------
+
+// DoEvalAsVariant
+//
+type
+   TPrivateVarEnumerator = class
+      FArray : TScriptDynamicStringArray;
+      FOffset : Integer;
+      procedure Add(const s : String);
+   end;
+procedure TPrivateVarEnumerator.Add(const s : String);
+begin
+   FArray.Add(Copy(s, FOffset));
+end;
+procedure TPrivateVarsNamesFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
+var
+   typString : TTypeSymbol;
+   filter, prefix : String;
+   enum : TPrivateVarEnumerator;
+begin
+   typString:=(args.Exec as TdwsProgramExecution).Prog.TypString;
+   enum := TPrivateVarEnumerator.Create;
+   try
+      enum.FArray := TScriptDynamicArray.CreateNew(typString) as TScriptDynamicStringArray;
+      result := IScriptDynArray(enum.FArray);
+
+      filter := args.AsString[0];
+      if filter = '' then
+         filter := '*';
+      prefix := PrivateVarPrefix(args);
+      enum.FOffset := Length(prefix)+1;
+      vPrivateVars.EnumerateNames(prefix + filter, enum.Add);
+   finally
+      enum.Free;
+   end;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -791,6 +840,7 @@ initialization
    RegisterInternalFunction(TReadPrivateVarFunc, 'ReadPrivateVar', ['n', SYS_STRING, 'd=Unassigned', SYS_VARIANT], SYS_VARIANT);
    RegisterInternalBoolFunction(TWritePrivateVarFunc, 'WritePrivateVar', ['n', SYS_STRING, 'v', SYS_VARIANT, 'e=0', SYS_FLOAT]);
    RegisterInternalProcedure(TCleanupPrivateVarsFunc, 'CleanupPrivateVars', ['filter=*', SYS_STRING]);
+   RegisterInternalFunction(TPrivateVarsNamesFunc, 'PrivateVarsNames', ['filter', SYS_STRING], 'array of string');
 
    RegisterInternalIntFunction(TGlobalQueuePushFunc, 'GlobalQueuePush', ['n', SYS_STRING, 'v', SYS_VARIANT]);
    RegisterInternalIntFunction(TGlobalQueueInsertFunc, 'GlobalQueueInsert', ['n', SYS_STRING, 'v', SYS_VARIANT]);

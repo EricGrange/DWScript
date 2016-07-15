@@ -73,7 +73,8 @@ type
 
          function MethSym : TMethodSymbol; inline;
 
-         function ChangeFuncSymbol(aProg: TdwsProgram; newFuncSym : TFuncSymbol) : TFuncExprBase; override;
+         function ChangeFuncSymbol(aProg: TdwsProgram; newFuncSym : TFuncSymbol;
+                                   options : TCreateFunctionOptions) : TFuncExprBase; override;
 
          property BaseExpr : TTypedExpr read FBaseExpr;
    end;
@@ -333,7 +334,8 @@ end;
 
 // ChangeFuncSymbol
 //
-function TMethodExpr.ChangeFuncSymbol(aProg: TdwsProgram; newFuncSym : TFuncSymbol) : TFuncExprBase;
+function TMethodExpr.ChangeFuncSymbol(aProg: TdwsProgram; newFuncSym : TFuncSymbol;
+                                      options : TCreateFunctionOptions) : TFuncExprBase;
 var
    newMeth : TMethodSymbol;
    refKind : TRefKind;
@@ -345,7 +347,7 @@ begin
       refKind:=rkClassOfRef;
    end else refKind:=rkObjRef;
 
-   Result:=CreateMethodExpr(aProg, newMeth, Self.FBaseExpr, refKind, ScriptPos);
+   Result:=CreateMethodExpr(aProg, newMeth, Self.FBaseExpr, refKind, ScriptPos, options);
    Result.Args.Assign(Args);
    Self.FArgs.Clear;
    Self.Free;

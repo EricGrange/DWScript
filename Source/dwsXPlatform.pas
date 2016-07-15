@@ -272,13 +272,13 @@ type
       procedure Cancel;
    end;
 
-   TTimerTimeout = class(TInterfacedObject, ITimer)
+   TTimerTimeout = class (TInterfacedObject, ITimer)
       private
          FTimer : THandle;
          FOnTimer : TTimerEvent;
 
       public
-         constructor Create(delayMSec : Cardinal; onTimer : TTimerEvent);
+         class function Create(delayMSec : Cardinal; onTimer : TTimerEvent) : ITimer;
          destructor Destroy; override;
 
          procedure Cancel;
@@ -1546,20 +1546,29 @@ var
    tt : TTimerTimeout;
    event : TTimerEvent;
 begin
-   tt:=TTimerTimeout(Context);
-   event:=tt.FOnTimer;
-   tt.FTimer:=0;
-   if Assigned(event) then
-      event();
+   tt := TTimerTimeout(Context);
+   tt._AddRef;
+   try
+      event := tt.FOnTimer;
+      if Assigned(event) then
+         event();
+      DeleteTimerQueueTimer(0, tt.FTimer, 0);
+      tt.FTimer := 0;
+   finally
+      tt._Release;
+   end;
 end;
 
 // Create
 //
-constructor TTimerTimeout.Create(delayMSec : Cardinal; onTimer : TTimerEvent);
+class function TTimerTimeout.Create(delayMSec : Cardinal; onTimer : TTimerEvent) : ITimer;
+var
+   obj : TTimerTimeout;
 begin
-   inherited Create;
-   FOnTimer:=onTimer;
-   CreateTimerQueueTimer(FTimer, 0, TTimerTimeoutCallBack, Self,
+   obj := inherited Create;
+   Result := obj;
+   obj.FOnTimer := onTimer;
+   CreateTimerQueueTimer(obj.FTimer, 0, TTimerTimeoutCallBack, obj,
                          delayMSec, 0,
                          WT_EXECUTEDEFAULT or WT_EXECUTELONGFUNCTION or WT_EXECUTEONLYONCE);
 end;
@@ -1576,8 +1585,8 @@ end;
 //
 procedure TTimerTimeout.Cancel;
 begin
-   FOnTimer:=nil;
-   if FTimer=0 then Exit;
+   FOnTimer := nil;
+   if FTimer = 0 then Exit;
    DeleteTimerQueueTimer(0, FTimer, INVALID_HANDLE_VALUE);
    FTimer:=0;
 end;
