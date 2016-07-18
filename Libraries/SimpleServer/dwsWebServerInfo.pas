@@ -22,7 +22,7 @@ interface
 
 uses
    dwsUtils,
-   dwsWebEnvironment;
+   dwsWebEnvironment, dwsHTTPSysServerEvents;
 
 type
 
@@ -33,12 +33,7 @@ type
       function Authentications : TWebRequestAuthentications;
       function LiveQueries : String;
       procedure FlushCompiledPrograms;
-
-      procedure EventSourcePost(const sourceName, eventID, eventName : String;
-                                const data : RawByteString);
-      procedure EventSourceClose(const sourceName : String);
-      function  EventSourceList : TStringDynArray;
-      function  EventSourceConnections(const sourceName : String) : TStringDynArray;
+      function ServerEvents : IdwsHTTPServerEvents;
    end;
 
 implementation

@@ -87,7 +87,7 @@ type
 
       FSystemInfo : TdwsSystemInfoLibModule;
       FHotPath : String;
-      FWebEnv : TdwsWebLib;
+      FWebLib : TdwsWebLib;
       FDataBase : TdwsDatabaseLib;
       FJSON : TdwsJSONLibModule;
       FSynapse : TdwsSynapseLib;
@@ -263,8 +263,8 @@ begin
    FDataBase.dwsDatabase.Script:=DelphiWebScript;
    TdwsDataBase.OnApplyPathVariables:=ApplyPathVariables;
 
-   FWebEnv:=TdwsWebLib.Create(Self);
-   FWebEnv.dwsWeb.Script:=DelphiWebScript;
+   FWebLib:=TdwsWebLib.Create(Self);
+   FWebLib.dwsWeb.Script:=DelphiWebScript;
 
    FJSON:=TdwsJSONLibModule.Create(Self);
    FJSON.Script:=DelphiWebScript;
@@ -858,6 +858,8 @@ begin
    FWebServerLib.Server:=serverInfo;
    FWebServerLib.dwsWebServer.Script:=DelphiWebScript;
 
+   FWebLib.Server:=serverInfo;
+
    FBkgndWorkers:=TdwsBackgroundWorkersLib.Create(Self);
    FBkgndWorkers.dwsBackgroundWorkers.Script:=DelphiWebScript;
    FBkgndWorkers.OnBackgroundWork:=DoBackgroundWork;
@@ -867,6 +869,7 @@ end;
 //
 procedure TSimpleDWScript.Finalize;
 begin
+   FWebLib.Server:=nil;
    FreeAndNil(FBkgndWorkers);
    FreeAndNil(FWebServerLib);
 end;

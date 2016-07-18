@@ -108,13 +108,9 @@ type
 
          procedure FlushCompiledPrograms;
 
-         class function EnumerateURLInfos(options : TdwsJSONValue) : THttpSys2URLInfos;
+         function ServerEvents : IdwsHTTPServerEvents;
 
-         procedure EventSourcePost(const sourceName, eventID, eventName : String;
-                                   const data : RawByteString);
-         procedure EventSourceClose(const sourceName : String);
-         function  EventSourceList : TStringDynArray;
-         function  EventSourceConnections(const sourceName : String) : TStringDynArray;
+         class function EnumerateURLInfos(options : TdwsJSONValue) : THttpSys2URLInfos;
 
          property AutoRedirectFolders : Boolean read FAutoRedirectFolders;
          property FileAccessInfoCacheSize : Integer read FFileAccessInfoCacheSize write FFileAccessInfoCacheSize;
@@ -598,6 +594,13 @@ begin
    FDWS.FlushDWSCache;
 end;
 
+// ServerEvents
+//
+function THttpSys2WebServer.ServerEvents : IdwsHTTPServerEvents;
+begin
+   Result := FServerEvents;
+end;
+
 // EnumerateURLs
 //
 class function THttpSys2WebServer.EnumerateURLInfos(options : TdwsJSONValue) : THttpSys2URLInfos;
@@ -642,35 +645,6 @@ begin
       end;
       AddInfo(domain['RelativeURI'].AsString, domain['Name'].AsString, port, domain['SSL'].AsBoolean);
    end;
-end;
-
-// EventSourcePost
-//
-procedure THttpSys2WebServer.EventSourcePost(const sourceName, eventID, eventName : String;
-                                             const data : RawByteString);
-begin
-   FServerEvents.PostEvent(sourceName, StringToUTF8(eventID), StringToUTF8(eventName), data);
-end;
-
-// EventSourceClose
-//
-procedure THttpSys2WebServer.EventSourceClose(const sourceName : String);
-begin
-   FServerEvents.CloseRequests(sourceName);
-end;
-
-// EventSourceList
-//
-function THttpSys2WebServer.EventSourceList : TStringDynArray;
-begin
-   Result := FServerEvents.SourceNames;
-end;
-
-// EventSourceConnections
-//
-function THttpSys2WebServer.EventSourceConnections(const sourceName : String) : TStringDynArray;
-begin
-   Result := FServerEvents.SourceRequests(sourceName);
 end;
 
 // LoadAuthenticateOptions

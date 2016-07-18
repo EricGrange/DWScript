@@ -257,7 +257,6 @@ begin
                   Exit;
                end;
             end;
-
             writeln('Server is now running on');
             for i := 0 to High(service.Server.URLInfos) do
                Writeln(service.Server.URLInfos[i].ToString);

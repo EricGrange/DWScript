@@ -1,7 +1,7 @@
 object dwsWebLib: TdwsWebLib
   OldCreateOrder = False
-  Left = 646
-  Top = 86
+  Left = 1046
+  Top = 84
   Height = 150
   Width = 215
   object dwsWeb: TdwsUnit
@@ -831,6 +831,93 @@ object dwsWebLib: TdwsWebLib
             Kind = mkFunction
           end>
         OnCleanUp = dwsWebClassesHttpRequestCleanUp
+      end
+      item
+        Name = 'WebServerSentEvents'
+        IsStatic = True
+        Methods = <
+          item
+            Name = 'PostRaw'
+            Parameters = <
+              item
+                Name = 'sourceName'
+                DataType = 'String'
+              end
+              item
+                Name = 'data'
+                DataType = 'String'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebServerSentEventsMethodsPostRawEval
+            Kind = mkClassProcedure
+          end
+          item
+            Name = 'Close'
+            Parameters = <
+              item
+                Name = 'sourceName'
+                DataType = 'String'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebServerSentEventsMethodsCloseEval
+            Kind = mkClassProcedure
+          end
+          item
+            Name = 'Connections'
+            Parameters = <
+              item
+                Name = 'sourceName'
+                DataType = 'String'
+              end>
+            ResultType = 'array of String'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebServerSentEventsMethodsConnectionsEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'SourceNames'
+            ResultType = 'array of String'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebServerSentEventsMethodsSourceNamesEval
+            Kind = mkClassFunction
+          end>
+      end
+      item
+        Name = 'WebServerSentEvent'
+        Fields = <
+          item
+            Name = 'Retry'
+            DataType = 'Integer'
+          end
+          item
+            Name = 'ID'
+            DataType = 'String'
+          end
+          item
+            Name = 'Name'
+            DataType = 'String'
+          end
+          item
+            Name = 'Data'
+            DataType = 'array of String'
+          end>
+        Methods = <
+          item
+            Name = 'Post'
+            Parameters = <
+              item
+                Name = 'sourceName'
+                DataType = 'String'
+              end>
+            OnEval = dwsWebClassesWebServerSentEventMethodsPostEval
+            Kind = mkProcedure
+          end
+          item
+            Name = 'ToRawData'
+            ResultType = 'String'
+            OnEval = dwsWebClassesWebServerSentEventMethodsToRawDataEval
+            Kind = mkFunction
+          end>
       end>
     Enumerations = <
       item

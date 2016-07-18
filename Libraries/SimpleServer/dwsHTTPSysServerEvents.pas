@@ -29,9 +29,7 @@ type
    IdwsHTTPServerEvents = interface
       procedure AddRequest(const sourceName : String; aQueue : THandle; aID : HTTP_REQUEST_ID;
                            const remoteIP : String; response : PHTTP_RESPONSE_V2);
-      procedure PostEvent(const sourceName : String;
-                          const eventID, eventName : RawByteString;
-                          const payload : RawByteString);
+      procedure PostEvent(const sourceName : String; const payload : RawByteString);
       procedure CloseRequests(const sourceName : String);
       function SourceNames : TStringDynArray;
       function SourceRequests(const sourceName : String) : TStringDynArray;
@@ -71,8 +69,7 @@ type
          procedure Collect;
          property Count : Integer read FCount;
 
-         procedure PostEvent(const eventID, eventName : RawByteString;
-                             const payload : RawByteString);
+         procedure PostEvent(const payload : RawByteString);
          procedure CloseConnections;
          function ConnectedIPs : TStringDynArray;
    end;
@@ -95,7 +92,6 @@ type
          function Count : Integer;
 
          procedure PostEvent(const sourceName : String;
-                             const eventID, eventName : RawByteString;
                              const payload : RawByteString);
          procedure CloseRequests(const sourceName : String);
          function SourceNames : TStringDynArray;
@@ -236,7 +232,7 @@ end;
 
 // PostEvent
 //
-procedure TdwsHTTPServerEventSource.PostEvent(const eventID, eventName : RawByteString; const payload : RawByteString);
+procedure TdwsHTTPServerEventSource.PostEvent(const payload : RawByteString);
 var
    nb : Integer;
    data : RawByteString;
@@ -390,7 +386,6 @@ end;
 // PostEvent
 //
 procedure TdwsHTTPServerEvents.PostEvent(const sourceName : String;
-                                         const eventID, eventName : RawByteString;
                                          const payload : RawByteString);
 var
    source : TdwsHTTPServerEventSource;
@@ -399,7 +394,7 @@ begin
    try
       source := TdwsHTTPServerEventSource(FItems.Objects[sourceName]);
       if source <> nil then
-         source.PostEvent(eventID, eventName, payload);
+         source.PostEvent(payload);
    finally
       FLock.EndRead;
    end;
