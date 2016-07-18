@@ -1859,6 +1859,8 @@ type
 
          procedure ClearData; override;
 
+         function FieldAddress(const fieldName : String) : Integer;
+
          property ClassSym : TClassSymbol read FClassSym;
          property ExecutionContext : TdwsProgramExecution read FExecutionContext write FExecutionContext;
          property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
@@ -7049,6 +7051,18 @@ procedure TScriptObjInstance.ClearData;
 begin
    inherited;
    FClassSym:=nil;
+end;
+
+// FieldAddress
+//
+function TScriptObjInstance.FieldAddress(const fieldName : String) : Integer;
+var
+   field : TFieldSymbol;
+begin
+   field := TFieldSymbol(FClassSym.Members.FindLocal(fieldName, TFieldSymbol));
+   if field = nil then
+      raise Exception.CreateFmt(RTE_FieldNotFoundInClass, [fieldName, FClassSym.Name]);
+   Result := field.Offset;
 end;
 
 // GetClassSym

@@ -152,7 +152,7 @@ type
          property  AsInteger[addr : Integer] : Int64 read GetAsInteger write SetAsInteger;
          property  AsBoolean[addr : Integer] : Boolean read GetAsBoolean write SetAsBoolean;
          property  AsFloat[addr : Integer] : Double read GetAsFloat write SetAsFloat;
-         property  AsString[addr : Integer] : UnicodeString write SetAsString;
+         property  AsString[addr : Integer] : UnicodeString read GetAsString write SetAsString;
          property  AsInterface[addr : Integer] : IUnknown read GetAsInterface write SetAsInterface;
 
          procedure CopyData(const destData : TData; destAddr, size : Integer); inline;

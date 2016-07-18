@@ -111,7 +111,7 @@ type
          class function EnumerateURLInfos(options : TdwsJSONValue) : THttpSys2URLInfos;
 
          procedure EventSourcePost(const sourceName, eventID, eventName : String;
-                                   const data : TWebServerEventData);
+                                   const data : RawByteString);
          procedure EventSourceClose(const sourceName : String);
          function  EventSourceList : TStringDynArray;
          function  EventSourceConnections(const sourceName : String) : TStringDynArray;
@@ -647,7 +647,7 @@ end;
 // EventSourcePost
 //
 procedure THttpSys2WebServer.EventSourcePost(const sourceName, eventID, eventName : String;
-                                   const data : TWebServerEventData);
+                                             const data : RawByteString);
 begin
    FServerEvents.PostEvent(sourceName, StringToUTF8(eventID), StringToUTF8(eventName), data);
 end;

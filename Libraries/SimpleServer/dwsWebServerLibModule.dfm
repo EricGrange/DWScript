@@ -73,7 +73,7 @@ object dwsWebServerLib: TdwsWebServerLib
               end
               item
                 Name = 'data'
-                DataType = 'array of String'
+                DataType = 'String'
               end>
             Attributes = [maStatic]
             OnEval = dwsWebServerClassesWebServerSentEventsMethodsPostRawEventEval
@@ -108,6 +108,43 @@ object dwsWebServerLib: TdwsWebServerLib
             Attributes = [maStatic]
             OnEval = dwsWebServerClassesWebServerSentEventsMethodsSourceNamesEval
             Kind = mkClassFunction
+          end>
+      end
+      item
+        Name = 'WebServerSentEvent'
+        Fields = <
+          item
+            Name = 'Retry'
+            DataType = 'Integer'
+          end
+          item
+            Name = 'ID'
+            DataType = 'String'
+          end
+          item
+            Name = 'Name'
+            DataType = 'String'
+          end
+          item
+            Name = 'Data'
+            DataType = 'array of String'
+          end>
+        Methods = <
+          item
+            Name = 'Post'
+            Parameters = <
+              item
+                Name = 'sourceName'
+                DataType = 'String'
+              end>
+            OnEval = dwsWebServerClassesWebServerSentEventMethodsPostEval
+            Kind = mkProcedure
+          end
+          item
+            Name = 'ToRawData'
+            ResultType = 'String'
+            OnEval = dwsWebServerClassesWebServerSentEventMethodsToRawDataEval
+            Kind = mkFunction
           end>
       end>
     Dependencies.Strings = (

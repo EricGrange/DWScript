@@ -23,7 +23,7 @@ uses
    SysUtils, Classes, StrUtils,
    SynZip, SynCrtSock, SynCommons, SynWinSock,
    dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList, dwsSymbols,
-   dwsJSONConnector;
+   dwsJSONConnector, dwsCryptoXPlatform;
 
 type
   TdwsWebLib = class(TDataModule)
@@ -160,6 +160,8 @@ type
     procedure dwsWebClassesHttpRequestMethodsErrorEval(Info: TProgramInfo;
       ExtObject: TObject);
     procedure dwsWebClassesHttpRequestMethodsCurrentContentSizeEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesWebResponseMethodsSetContentEventStreamEval(
       Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
@@ -696,6 +698,18 @@ procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetCompressionEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.WebResponse.Compression:=Info.ParamAsBoolean[0];
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetContentEventStreamEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   sourceName : String;
+begin
+   sourceName := Info.ParamAsString[0];
+   if sourceName = '' then
+      sourceName := CryptographicToken;
+   Info.WebResponse.ContentType := 'text/event-stream,' + ScriptStringToRawByteString(sourceName);
+   Info.ResultAsString := sourceName;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetContentJSONEval(

@@ -35,7 +35,7 @@ type
       procedure FlushCompiledPrograms;
 
       procedure EventSourcePost(const sourceName, eventID, eventName : String;
-                                const data : TWebServerEventData);
+                                const data : RawByteString);
       procedure EventSourceClose(const sourceName : String);
       function  EventSourceList : TStringDynArray;
       function  EventSourceConnections(const sourceName : String) : TStringDynArray;

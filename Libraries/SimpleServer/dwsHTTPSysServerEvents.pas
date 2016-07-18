@@ -31,7 +31,7 @@ type
                            const remoteIP : String; response : PHTTP_RESPONSE_V2);
       procedure PostEvent(const sourceName : String;
                           const eventID, eventName : RawByteString;
-                          const payload : TWebServerEventData);
+                          const payload : RawByteString);
       procedure CloseRequests(const sourceName : String);
       function SourceNames : TStringDynArray;
       function SourceRequests(const sourceName : String) : TStringDynArray;
@@ -72,7 +72,7 @@ type
          property Count : Integer read FCount;
 
          procedure PostEvent(const eventID, eventName : RawByteString;
-                             const payload : TWebServerEventData);
+                             const payload : RawByteString);
          procedure CloseConnections;
          function ConnectedIPs : TStringDynArray;
    end;
@@ -96,7 +96,7 @@ type
 
          procedure PostEvent(const sourceName : String;
                              const eventID, eventName : RawByteString;
-                             const payload : TWebServerEventData);
+                             const payload : RawByteString);
          procedure CloseRequests(const sourceName : String);
          function SourceNames : TStringDynArray;
          function SourceRequests(const sourceName : String) : TStringDynArray;
@@ -236,21 +236,23 @@ end;
 
 // PostEvent
 //
-procedure TdwsHTTPServerEventSource.PostEvent(const eventID, eventName : RawByteString; const payload : TWebServerEventData);
+procedure TdwsHTTPServerEventSource.PostEvent(const eventID, eventName : RawByteString; const payload : RawByteString);
 var
-   i, nb : Integer;
+   nb : Integer;
    data : RawByteString;
    req : TdwsHTTPServerEventRequest;
    chunk : HTTP_DATA_CHUNK_INMEMORY;
    bytesSent : ULONG;
 begin
-   if eventID <> '' then
-      data := 'id: ' + eventID + #10;
-   if eventName <> '' then
-      data := data + 'event: ' + eventID + #10;
-   for i := 0 to High(payload) do
-      data  := data + 'data: ' + payload[i] + #10;
-   data := data + #10;
+   data := payload;
+   // normalize end of message
+   if not (StrEndsWithA(data, #10#10) or StrEndsWithA(data, #13#10#13#10)) then begin
+      if StrEndsWithA(data, #13#10) then
+         data := data + #13#10
+      else if StrEndsWithA(data, #10) then
+         data := data + #10
+      else data := data + #10#10;
+   end;
 
    chunk.DataChunkType := hctFromMemory;
    chunk.pBuffer := Pointer(data);
@@ -389,7 +391,7 @@ end;
 //
 procedure TdwsHTTPServerEvents.PostEvent(const sourceName : String;
                                          const eventID, eventName : RawByteString;
-                                         const payload : TWebServerEventData);
+                                         const payload : RawByteString);
 var
    source : TdwsHTTPServerEventSource;
 begin

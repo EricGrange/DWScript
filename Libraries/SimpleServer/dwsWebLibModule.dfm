@@ -450,6 +450,20 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maStatic]
             OnEval = dwsWebClassesWebResponseMethodsSetStaticEval
             Kind = mkClassProcedure
+          end
+          item
+            Name = 'SetContentEventStream'
+            Parameters = <
+              item
+                Name = 'sourceName'
+                DataType = 'String'
+                HasDefaultValue = True
+                DefaultValue = ''
+              end>
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebResponseMethodsSetContentEventStreamEval
+            Kind = mkClassFunction
           end>
         Properties = <
           item

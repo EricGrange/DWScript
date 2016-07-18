@@ -30,7 +30,7 @@ unit dwsCryptoXPlatform;
 interface
 
 function CryptographicRandom(nb : Integer) : RawByteString;
-function CryptographicToken(bitStrength : Integer) : String;
+function CryptographicToken(bitStrength : Integer = 0) : String;
 function ProcessUniqueRandom : String;
 
 // ------------------------------------------------------------------
@@ -44,6 +44,9 @@ implementation
 uses
    dwsXPlatform,
    Windows, wcrypt2;
+
+const
+   cCryptographicTokenDefaultBitStrength = 120;
 
 var
    vProcessUniqueRandom : String;
@@ -122,7 +125,7 @@ begin
    end;
 end;
 
-function CryptographicToken(bitStrength : Integer) : String;
+function CryptographicToken(bitStrength : Integer = 0) : String;
 const
    // uri-safe base64 table (RFC 4648)
    cChars : AnsiString = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
@@ -130,8 +133,8 @@ var
    i, n : Integer;
    rand : RawByteString;
 begin
-   if bitStrength<=0 then
-      bitStrength:=120;
+   if bitStrength <= 0 then
+      bitStrength := cCryptographicTokenDefaultBitStrength;
    // 6 bits per character
    n:=bitStrength div 6;
    if n*6<bitStrength then
