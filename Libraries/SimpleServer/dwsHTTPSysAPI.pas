@@ -1008,8 +1008,12 @@ end;
 
 class procedure THttpAPI.Check(error : HRESULT; api : THttpAPIs);
 begin
-   if error<>NO_ERROR then
+   case error of
+      NO_ERROR : ;
+      ERROR_NETNAME_DELETED : ; // ignored
+   else
       raise EHttpApiServer.Create(api, error);
+   end;
 end;
 
 // StatusCodeToReason
