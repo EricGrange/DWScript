@@ -1233,7 +1233,7 @@ begin
    try
       tokenizer.ParseStringArray(values);
 
-      newArray:=TScriptDynamicArray.CreateNew(info.Execution.Prog.TypInteger);
+      newArray:=TScriptDynamicArray.CreateNew(info.Execution.Prog.TypString);
       Info.ResultAsVariant:=IScriptDynArray(newArray);
       newArray.ArrayLength:=values.Count;
       newPData:=newArray.AsPData;
