@@ -478,9 +478,8 @@ begin
    // do we have to remove indents?
    if firstIsCRLF then begin
       // skip first line
-      repeat
+      while Buffer[i]<>#10 do
          Inc(i);
-      until Buffer[i]=#10;
       Inc(i);
    end;
 

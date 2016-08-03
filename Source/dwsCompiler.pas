@@ -11339,13 +11339,15 @@ begin
                OrphanAndNil(expr);
             end;
          end;
-         if (expr<>nil) and (memberSym<>nil) then begin
+         if (expr<>nil) and (memberTyp<>nil) then begin
             constExpr:=TConstExpr(expr);
-            if constExpr.Typ.IsOfType(FProg.TypInteger) and memberSym.Typ.IsOfType(FProg.TypFloat) then
+            if constExpr.Typ.IsOfType(FProg.TypInteger) and memberTyp.IsOfType(FProg.TypFloat) then
                Result[memberSym.Offset]:=constExpr.EvalAsFloat(FExec)
-            else if not constExpr.Typ.IsCompatible(memberSym.Typ) then
-               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidConstType, [constExpr.Typ.Caption])
-            else constExpr.DataPtr[FExec].CopyData(result, memberSym.Offset, memberSym.Typ.Size);
+            else if not constExpr.Typ.IsCompatible(memberTyp) then
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidConstTypeVsExpected, [constExpr.Typ.Caption, memberTyp.Caption])
+            else begin
+               constExpr.DataPtr[FExec].CopyData(result, memberSym.Offset, memberTyp.Size);
+            end;
          end;
       finally
          OrphanAndNil(expr);

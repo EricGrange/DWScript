@@ -1614,6 +1614,7 @@ type
          constructor Create;
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         procedure InitData(const data : TData; offset : Integer); override;
    end;
 
    TEnumerationSymbol = class;
@@ -3157,7 +3158,9 @@ procedure GenerateParams(table : TSymbolTable; const funcParams : TParamArray;
                          const addProc : TAddParamSymbolMethod);
 var
    i : Integer;
+   i64 : Int64;
    typSym : TTypeSymbol;
+   baseTypClass : TClass;
    paramSym : TParamSymbol;
    paramSymWithDefault : TParamSymbolWithDefaultValue;
    paramRec : PParamRec;
@@ -3186,6 +3189,19 @@ begin
             raise Exception.Create(CPE_VarParamCantHaveDefaultValue);
          if paramRec.IsConstParam then
             raise Exception.Create(CPE_ConstParamCantHaveDefaultValue);
+
+         Assert(Length(paramRec.DefaultValue)=1);
+         baseTypClass := typSym.BaseType.UnAliasedType.ClassType;
+         if not baseTypClass.InheritsFrom(TBaseStringSymbol) then begin
+            if baseTypClass.InheritsFrom(TBaseIntegerSymbol) then begin
+               VariantToInt64(paramRec.DefaultValue[0], i64);
+               paramRec.DefaultValue[0] := i64;
+            end else if baseTypClass.InheritsFrom(TBaseFloatSymbol) then begin
+               paramRec.DefaultValue[0] := VariantToFloat(paramRec.DefaultValue[0]);
+            end else if baseTypClass.InheritsFrom(TBaseBooleanSymbol) then begin
+               paramRec.DefaultValue[0] := SameText(paramRec.DefaultValue[0], 'True');
+            end;
+         end;
 
          paramSymWithDefault:=TParamSymbolWithDefaultValue.Create(paramRec.ParamName, typSym,
                                                                   paramRec.DefaultValue);
@@ -4867,6 +4883,13 @@ function TNilSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   typSym := typSym.BaseType;
   Result := (TypSym is TClassSymbol) or (TypSym is TNilSymbol);
+end;
+
+// InitData
+//
+procedure TNilSymbol.InitData(const data : TData; offset : Integer);
+begin
+   VarCopySafe(data[offset], nil);
 end;
 
 // ------------------

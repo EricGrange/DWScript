@@ -410,6 +410,7 @@ const
   CPE_IntegerExpressionExpected = 'Integer expression expected';
   CPE_OrdinalExpressionExpected = 'Ordinal expression expected';
   CPE_InvalidConstType = 'Invalid const type "%s"';
+  CPE_InvalidConstTypeVsExpected = 'Invalid const type "%s" expected "%s"';
   CPE_ConstantCannotBeWrittenTo = 'Constant "%s" cannot be written to';
 
   CPE_CompilerSwitchUnknown = 'Compiler switch "%s" unknown';

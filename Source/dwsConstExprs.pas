@@ -198,9 +198,8 @@ type
 
    TArrayConstantExpr = class sealed (TPosDataExpr)
       protected
-         FArrayAddr : Integer;
          FElementExprs : TTightList;
-         FArrayEvaled : Boolean;
+         FArrayData : IDataContext;
 
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
@@ -220,7 +219,7 @@ type
          property ElementCount : Integer read GetElementCount;
          procedure AddElementExpr(const scriptPos : TScriptPos; prog: TdwsProgram; ElementExpr: TTypedExpr);
          procedure AddElementRange(prog : TdwsProgram; const range1, range2 : Int64; typ : TTypeSymbol);
-         procedure Prepare(Prog: TdwsProgram; ElementTyp : TTypeSymbol);
+         procedure Prepare(prog : TdwsProgram; elementTyp : TTypeSymbol);
          procedure TypeCheckElements(prog : TdwsProgram);
          procedure ElementsFromIntegerToFloat(prog : TdwsProgram);
 
@@ -850,13 +849,13 @@ end;
 
 // Prepare
 //
-procedure TArrayConstantExpr.Prepare(prog: TdwsProgram; elementTyp : TTypeSymbol);
+procedure TArrayConstantExpr.Prepare(prog : TdwsProgram; elementTyp : TTypeSymbol);
 var
-   x, n : Integer;
+   x : Integer;
    elemExpr : TTypedExpr;
 begin
    if (elementTyp<>nil) and (FTyp.Typ<>elementTyp) then begin
-      if  (elementTyp.IsOfType(prog.TypFloat) and FTyp.Typ.IsOfType(prog.TypInteger)) then begin
+      if  (elementTyp.UnAliasedTypeIs(TBaseFloatSymbol) and FTyp.Typ.UnAliasedTypeIs(TBaseIntegerSymbol)) then begin
          ElementsFromIntegerToFloat(prog);
       end else if elementTyp.IsCompatible(FTyp.Typ) then begin
          (FTyp as TStaticArraySymbol).Typ:=elementTyp;
@@ -868,11 +867,6 @@ begin
       if elemExpr is TArrayConstantExpr then
          TArrayConstantExpr(elemExpr).Prepare(prog, FTyp.Typ);
    end;
-
-   if FTyp.Typ<>nil then
-      n:=FElementExprs.Count * FTyp.Typ.Size
-   else n:=0;
-   FArrayAddr := prog.GetGlobalAddr(n);
 end;
 
 // GetDataPtr
@@ -880,7 +874,7 @@ end;
 procedure TArrayConstantExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    EvalNoResult(exec);
-   exec.DataContext_Create(exec.Stack.Data, FArrayAddr, Result);
+   result := FArrayData;
 end;
 
 // GetSubExpr
@@ -924,34 +918,37 @@ procedure TArrayConstantExpr.EvalNoResult(exec : TdwsExecution);
 
    procedure DoEval;
    var
-      x, addr : Integer;
+      x, n, addr : Integer;
       elemSize : Integer;
       elemExpr : TTypedExpr;
       dataExpr : TDataExpr;
-      buf : Variant;
    begin
-      exec.Stack.WriteValue(FArrayAddr, FElementExprs.Count);
+      if FArrayData=nil then begin
+         if FTyp.Typ<>nil then
+            n:=FElementExprs.Count * FTyp.Typ.Size
+         else n:=0;
+         FArrayData := TDataContext.CreateStandalone(n);
+      end;
 
       elemSize:=Typ.Typ.Size;
-      addr:=FArrayAddr;
-      for x:=0 to FElementExprs.Count-1 do begin
-         elemExpr:=TTypedExpr(FElementExprs.List[x]);
-         if elemSize=1 then begin
-            elemExpr.EvalAsVariant(exec, buf);
-            exec.Stack.WriteValue(addr, buf);
-         end else begin
-            dataExpr:=elemExpr as TDataExpr;
-            dataExpr.DataPtr[exec].CopyData(exec.Stack.Data, addr, elemSize);
+      if elemSize=1 then begin
+         for x:=0 to FElementExprs.Count-1 do begin
+            elemExpr:=TTypedExpr(FElementExprs.List[x]);
+            elemExpr.EvalAsVariant(exec, FArrayData.AsPVariant(x)^);
          end;
-         Inc(addr, elemSize);
+      end else begin
+         addr:=0;
+         for x:=0 to FElementExprs.Count-1 do begin
+            dataExpr:=FElementExprs.List[x] as TDataExpr;
+            dataExpr.DataPtr[exec].CopyData(FArrayData.AsPData^, addr, elemSize);
+            Inc(addr, elemSize);
+         end;
       end;
    end;
 
 begin
-   if not FArrayEvaled then begin
-      FArrayEvaled:=True;
+   if FArrayData=nil then
       DoEval;
-   end;
 end;
 
 // EvalAsVariant
@@ -1077,8 +1074,10 @@ begin
    if Typ.Typ=nil then
       prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_InvalidConstType, [SYS_VOID])
    else if FElementExprs.Count>0 then begin
-      elemTyp:=Elements[0].Typ;
-      for x:=1 to FElementExprs.Count-1 do begin
+      elemTyp := Typ.Typ;
+      if elemTyp is TBaseVariantSymbol then
+         elemTyp:=Elements[0].Typ;
+      for x:=0 to FElementExprs.Count-1 do begin
          expr:=Elements[x];
          if not elemTyp.IsCompatible(expr.Typ) then begin
             if elemTyp.IsOfType(prog.TypInteger) and expr.Typ.IsOfType(prog.TypFloat) then

@@ -70,7 +70,7 @@ type
       dwsGlobalVarsFunctions: TdwsGlobalVarsFunctions;
       dwsCompileSystem: TdwsRestrictedFileSystem;
       dwsRuntimeFileSystem: TdwsRestrictedFileSystem;
-    dwsComConnector: TdwsComConnector;
+      dwsComConnector: TdwsComConnector;
       procedure DataModuleCreate(Sender: TObject);
       procedure DataModuleDestroy(Sender: TObject);
 
@@ -412,7 +412,7 @@ begin
    else if (response<>nil) and (response.ContentData='') then begin
       HandleScriptResult(response, executing.Exec.Result);
       if shStatic in response.Hints then
-         prog.ProgramObject.TagInterface:=TWebStaticCacheEntry.Create(response);
+         prog.ProgramObject.TagInterface := TWebStaticCacheEntry.Create(response);
    end;
 end;
 
@@ -452,6 +452,7 @@ begin
       try
          if prog=nil then begin
             code:=DoLoadSourceCode(fileName);
+            FHotPath:=ExtractFilePath(fileName);
             js:=FJSFilter.CompileToJS(prog, code);
          end else begin
             js:=FJSFilter.CompileToJS(prog, '');
@@ -476,11 +477,7 @@ end;
 //
 procedure TSimpleDWScript.FlushDWSCache(const fileName : String = '');
 begin
-   // ignore .bak files
-   if StrEndsWith(fileName, '.bak') then exit;
-   // ignore .db folder
-   if Pos('/.db/', fileName)>0 then exit;
-
+   LogError('Flushing "'+fileName+'"');
    FCompiledProgramsLock.Enter;
    try
       if fileName='' then begin
@@ -613,13 +610,14 @@ begin
       end;
 
       cp.Name  := fileName;
-      cp.Prog  := prog;
-      cp.Files := FCompilerFiles;
-      FCompilerFiles := nil;
 
       FCompiledProgramsLock.Enter;
       try
-         FCompiledPrograms.Add(cp);
+         if not FCompiledPrograms.Match(cp) then begin
+            cp.Prog  := prog;
+            cp.Files := FCompilerFiles;
+            FCompiledPrograms.Add(cp);
+         end;
       finally
          FCompiledProgramsLock.Leave;
       end;

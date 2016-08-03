@@ -947,7 +947,6 @@ begin
    RegisterJITter(TConditionalDefinedExpr,      FInterpretedJITter.IncRefCount);
 
    RegisterJITter(TConvIntToFloatExpr,          Tx86ConvIntToFloat.Create(Self));
-   RegisterJITter(TConvFloatToIntegerExpr,      FInterpretedJITter.IncRefCount);
    RegisterJITter(TConvVarToFloatExpr,          FInterpretedJITter.IncRefCount);
    RegisterJITter(TConvVarToIntegerExpr,        FInterpretedJITter.IncRefCount);
    RegisterJITter(TConvOrdToIntegerExpr,        FInterpretedJITter.IncRefCount);

@@ -132,6 +132,8 @@ type
          property DirectData : TData read FData;
 
       public
+         constructor CreateStandalone(size : Integer);
+
          function GetSelf : TObject;
 
          property AsVariant[addr : Integer] : Variant read GetAsVariant write SetAsVariant; default;
@@ -460,6 +462,14 @@ begin
       FPool.Push(Self);
 end;
 
+// CreateStandalone
+//
+constructor TDataContext.CreateStandalone(size : Integer);
+begin
+   inherited Create;
+   SetLength(FData, size);
+end;
+
 // GetSelf
 //
 function TDataContext.GetSelf : TObject;
@@ -683,7 +693,7 @@ begin
    p:=@FData[FAddr+addr];
    if p.VType=varUString then
       result:=UnicodeString(p.VString)
-   else result:=PVariant(p)^;
+   else VariantToString(PVariant(p)^, result);
 end;
 
 // EvalAsInterface

@@ -477,6 +477,12 @@ begin
          expr.Free;
       end else Result:=TConvIntToFloatExpr.Create(aProg, expr);
 
+   end else if     (expr.ClassType=TArrayConstantExpr)
+               and toTyp.UnAliasedTypeIs(TSetOfSymbol)
+               and exprTyp.Typ.IsCompatible(toTyp.Typ) then begin
+
+      Result := TConvStaticArrayToSetOfExpr.Create(hotPos, TArrayConstantExpr(expr), toTyp.UnAliasedType as TSetOfSymbol);
+
    end else begin
       // error & keep compiling
       IncompatibleTypes(aProg, hotPos, msg, toTyp, exprTyp);

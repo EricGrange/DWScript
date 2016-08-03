@@ -3421,7 +3421,7 @@ begin
    if p.VType=varUString then
       Result:=UnicodeString(p.VUString)
    {$endif}
-   else Result:=PVariant(p)^;
+   else VariantToString(PVariant(p)^, Result);
 end;
 
 // ------------------
@@ -3641,7 +3641,7 @@ end;
 //
 function TAssociativeArraySetExpr.GetSubExprCount : Integer;
 begin
-   Result:=2;
+   Result:=3;
 end;
 
 // EvalNoResult
@@ -5892,7 +5892,7 @@ begin
    if FLeft=nil then Exit;
 
    if FRight.ClassType=TArrayConstantExpr then
-      TArrayConstantExpr(FRight).Prepare(Prog, FLeft.Typ.Typ);
+      TArrayConstantExpr(FRight).Prepare(prog, FLeft.Typ.Typ);
 
    rightScriptPos:=Right.ScriptPos;
    if not rightScriptPos.Defined then

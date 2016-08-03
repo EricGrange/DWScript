@@ -1308,7 +1308,7 @@ begin
          StringifyVariant(args.Exec, writer, v);
       end else begin
          dataExpr:=(expr as TDataExpr);
-         StringifySymbol(args.Exec as TdwsProgramExecution, writer, expr.Typ, dataExpr.DataPtr[args.Exec]);
+         StringifySymbol(args.Exec, writer, expr.Typ, dataExpr.DataPtr[args.Exec]);
       end;
       Result:=stream.ToString;
    finally
