@@ -196,6 +196,8 @@ type
          property NilConst : TConstNilExpr read FNil;
    end;
 
+   // TArrayConstantExpr
+   //
    TArrayConstantExpr = class sealed (TPosDataExpr)
       protected
          FElementExprs : TTightList;

@@ -42,6 +42,8 @@ type
    EdwsFSInvalidFileName = class (EdwsFileSystemException)
    end;
 
+   TFileStreamOpenedEvent = procedure (Sender : TObject; const fileName : String; const mode : TdwsFileOpenMode) of object;
+
    // IdwsFileSystem
    //
    IdwsFileSystem = interface
@@ -49,18 +51,28 @@ type
       function FileExists(const fileName : String) : Boolean;
       function OpenFileStream(const fileName : String; const mode : TdwsFileOpenMode) : TStream;
       function ValidateFileName(const fileName : String) : String;
+      function LoadTextFile(const fileName : String) : String;
    end;
 
    // TdwsBaseFileSystem
    //
    {: Minimal virtualized filesystem interface. }
    TdwsBaseFileSystem = class abstract (TInterfacedObject, IdwsFileSystem)
+      private
+         FOnFileStreamOpened : TFileStreamOpenedEvent;
+
+      protected
+         procedure DoFileStreamOpenedEvent(const fileName : String; const mode : TdwsFileOpenMode); inline;
+
       public
          constructor Create; virtual;
 
          function FileExists(const fileName : String) : Boolean; virtual; abstract;
          function OpenFileStream(const fileName : String; const mode : TdwsFileOpenMode) : TStream; virtual; abstract;
          function ValidateFileName(const fileName : String) : String; virtual; abstract;
+         function LoadTextFile(const fileName : String) : String;
+
+         property OnFileStreamOpened : TFileStreamOpenedEvent read FOnFileStreamOpened write FOnFileStreamOpened;
    end;
 
    // TdwsNullFileSystem
@@ -109,8 +121,13 @@ type
    // TdwsCustomFileSystem
    //
    TdwsCustomFileSystem = class abstract (TComponent)
+      private
+         FOnFileStreamOpened : TFileStreamOpenedEvent;
+
       public
          function AllocateFileSystem : IdwsFileSystem; virtual; abstract;
+
+         property OnFileStreamOpened : TFileStreamOpenedEvent read FOnFileStreamOpened write FOnFileStreamOpened;
    end;
 
    // TdwsNoFileSystem
@@ -169,6 +186,30 @@ end;
 constructor TdwsBaseFileSystem.Create;
 begin
    inherited Create;
+end;
+
+// DoFileStreamOpenedEvent
+//
+procedure TdwsBaseFileSystem.DoFileStreamOpenedEvent(const fileName : String; const mode : TdwsFileOpenMode);
+begin
+   if Assigned(FOnFileStreamOpened) then
+      FOnFileStreamOpened(Self, fileName, mode);
+end;
+
+// LoadTextFile
+//
+function TdwsBaseFileSystem.LoadTextFile(const fileName : String) : String;
+var
+   stream : TStream;
+begin
+   stream := OpenFileStream(fileName, fomFastSequentialRead);
+   if stream <> nil then begin
+      try
+         Result := LoadTextFromStream(stream);
+      finally
+         stream.Free;
+      end;
+   end else Result := '';
 end;
 
 // ------------------
@@ -243,9 +284,11 @@ begin
          else Result:=nil;
       end;
    else
-      Assert(False);
       Result:=nil;
    end;
+
+   if Result <> nil then
+      DoFileStreamOpenedEvent(validFileName, mode);
 end;
 
 // ------------------
@@ -312,12 +355,19 @@ var
    i : Integer;
    path : String;
 begin
-   for i:=0 to FPaths.Count-1 do begin
-      path:=FPaths[i];
-      if StrContains(fileName, ':') then
-         Result:=ExpandFileName(fileName)
-      else Result:=ExpandFileName(path+fileName);
-      if StrIBeginsWith(Result, path) then Exit;
+   if StrContains(fileName, ':') then begin
+      // validate an absolute path
+      Result := ExpandFileName(fileName);
+      for i := 0 to FPaths.Count-1 do begin
+         if StrIBeginsWith(Result, FPaths[i]) then Exit;
+      end;
+   end else begin
+      // search for match in paths
+      for i:=0 to FPaths.Count-1 do begin
+         path := FPaths[i];
+         Result := ExpandFileName(path + fileName);
+         if StrIBeginsWith(Result, path) and SysUtils.FileExists(Result) then Exit;
+      end;
    end;
    Result:='';
 end;
@@ -359,8 +409,9 @@ function TdwsRestrictedFileSystem.AllocateFileSystem : IdwsFileSystem;
 var
    fs : TdwsRestrictedOSFileSystem;
 begin
-   fs:=TdwsRestrictedOSFileSystem.Create;
-   fs.Paths:=Paths;
+   fs := TdwsRestrictedOSFileSystem.Create;
+   fs.Paths := Paths;
+   fs.OnFileStreamOpened := OnFileStreamOpened;
    Result:=fs;
 end;
 

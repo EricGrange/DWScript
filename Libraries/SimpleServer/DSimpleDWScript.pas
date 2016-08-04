@@ -62,8 +62,6 @@ type
       Prev, Next : PExecutingScript;
    end;
 
-   TLoadSourceCodeEvent = function (const fileName : String) : String of object;
-
    TSimpleDWScript = class(TDataModule)
       DelphiWebScript: TDelphiWebScript;
       dwsHtmlFilter: TdwsHtmlFilter;
@@ -107,8 +105,6 @@ type
       FExecutingScripts : PExecutingScript;
       FExecutingScriptsLock : TMultiReadSingleWrite;
 
-      FOnLoadSourceCode : TLoadSourceCodeEvent;
-
       FStartupScriptName : String;
       FShutdownScriptName : String;
       FBackgroundFileSystem : IdwsFileSystem;
@@ -138,7 +134,7 @@ type
 
       function WaitForCPULimit : Boolean;
 
-      function DoLoadSourceCode(const fileName : String) : String;
+      procedure DoSourceFileStreamOpened(Sender : TObject; const fileName : String; const mode : TdwsFileOpenMode);
 
       procedure DoBackgroundWork(const request : TWebRequest);
 
@@ -181,8 +177,6 @@ type
       property CPUUsageLimit : Integer read FCPUUsageLimit write SetCPUUsageLimit;
       property CPUAffinity : Cardinal read FCPUAffinity write SetCPUAffinity;
       property PathVariables : TStrings read FPathVariables;
-
-      property OnLoadSourceCode : TLoadSourceCodeEvent read FOnLoadSourceCode write FOnLoadSourceCode;
 
       property StartupScriptName : String read FStartupScriptName write FStartupScriptName;
       property ShutdownScriptName : String read FShutdownScriptName write FShutdownScriptName;
@@ -314,6 +308,8 @@ begin
       cgoSmartLink, cgoDeVirtualize, cgoNoRTTI
    ];
 {$endif}
+
+   dwsCompileSystem.OnFileStreamOpened := DoSourceFileStreamOpened;
 end;
 
 procedure TSimpleDWScript.DataModuleDestroy(Sender: TObject);
@@ -451,7 +447,7 @@ begin
       FCodeGenLock.Enter;
       try
          if prog=nil then begin
-            code:=DoLoadSourceCode(fileName);
+            code:=dwsCompileSystem.AllocateFileSystem.LoadTextFile(fileName);
             FHotPath:=ExtractFilePath(fileName);
             js:=FJSFilter.CompileToJS(prog, code);
          end else begin
@@ -531,6 +527,7 @@ begin
       DelphiWebScript.Config.MaxRecursionDepth:=dws['MaxRecursionDepth'].AsInteger;
 
       dwsCompileSystem.Paths.Clear;
+      dwsCompileSystem.Paths.Add(IncludeTrailingPathDelimiter(PathVariables.Values['www']));
       ApplyPathsVariables(dws['LibraryPaths'], dwsCompileSystem.Paths);
 
       dwsRuntimeFileSystem.Paths.Clear;
@@ -581,7 +578,7 @@ begin
    try
       FCompilerFiles := TAutoStrings.Create;
 
-      code := DoLoadSourceCode(fileName);
+      code := dwsCompileSystem.AllocateFileSystem.LoadTextFile(fileName);
 
       // check after compiler lock in case of simultaneous requests
       TryAcquireDWS(fileName, prog);
@@ -665,7 +662,7 @@ end;
 procedure TSimpleDWScript.DoInclude(const scriptName: String; var scriptSource: String);
 begin
    if FHotPath<>'' then
-      scriptSource:=DoLoadSourceCode(FHotPath+scriptName);
+      scriptSource := dwsCompileSystem.AllocateFileSystem.LoadTextFile(FHotPath+scriptName);
 end;
 
 // DoNeedUnit
@@ -719,14 +716,11 @@ begin
    Result:=True;
 end;
 
-// DoLoadSourceCode
+// DoSourceFileStreamOpened
 //
-function TSimpleDWScript.DoLoadSourceCode(const fileName : String) : String;
+procedure TSimpleDWScript.DoSourceFileStreamOpened(Sender : TObject; const fileName : String; const mode : TdwsFileOpenMode);
 begin
    FCompilerFiles.Value.Add(fileName);
-   if Assigned(FOnLoadSourceCode) then
-      Result:=FOnLoadSourceCode(fileName)
-   else Result:=LoadTextFromFile(fileName);
 end;
 
 // DoBackgroundWork
@@ -783,7 +777,7 @@ begin
    Inc(FProgIndex);
    Result := shaNone;
 end;
-procedure TSimpleDWScript.CheckDirectoryChanges;       // 9320 @ 12:24
+procedure TSimpleDWScript.CheckDirectoryChanges;
 var
    i, n : Integer;
    prevFileName : String;
@@ -818,9 +812,13 @@ begin
       for i := 0 to files.Count-1 do begin
          if files[i] <> prevFileName then begin
             prevFileName := files[i];
-            if GetFileAttributesEx(PChar(Pointer(prevFileName)), GetFileExInfoStandard, @info) then
-               fileChanged := (UInt64(info.ftLastWriteTime) >= UInt64(FLastCheckTime))
-            else fileChanged := True
+            if GetFileAttributesEx(PChar(Pointer(prevFileName)), GetFileExInfoStandard, @info) then begin
+               fileChanged := (UInt64(info.ftLastWriteTime) >= UInt64(FLastCheckTime));
+//               if fileChanged then LogError('"' + prevFileName + '" change detected');//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            end else begin
+//               LogError('"' + prevFileName + '" ' + SysErrorMessage(GetLastError));//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+               fileChanged := True
+            end;
          end;
          if fileChanged then begin
             files.FChanged[Integer(files.Objects[i])] := True;
@@ -834,6 +832,7 @@ begin
             for i := 0 to High(files.FChanged) do begin
                if files.FChanged[i] then begin
                   cp.Name := files.FProgNames[i];
+//                  LogError('"' + cp.Name + '" flushing'); //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                   FCompiledPrograms.Remove(cp);
                end;
             end;
