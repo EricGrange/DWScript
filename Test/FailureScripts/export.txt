@@ -1,0 +1,2 @@
+Syntax Error: ";" expected. [line: 9, column: 25]
+Syntax Error: BEGIN expected [line: 9, column: 25]

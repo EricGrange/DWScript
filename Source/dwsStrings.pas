@@ -266,6 +266,7 @@ const
   CPE_MethodExpected = 'Declaration should be "method"';
   CPE_ConstructorExpected = 'Declaration should be "constructor"';
   CPE_DestructorExpected = 'Declaration should be "destructor"';
+  CPE_LambdaExpected = 'Declaration should be "lambda"';
   CPE_BadResultType = 'Result type should be "%s"';
   CPE_BadNumberOfParameters = 'Expected %d parameters (instead of %d)';
   CPE_BadParameterName = 'Parameter %d - Name "%s" expected';

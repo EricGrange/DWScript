@@ -1,0 +1,3 @@
+Syntax Error: Expression expected [line: 3, column: 32]
+Syntax Error: Constant expression expected [line: 3, column: 29]
+Syntax Error: "}" expected [line: 3, column: 32]

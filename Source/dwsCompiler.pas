@@ -12005,10 +12005,8 @@ begin
       while FTok.HasTokens and (not FTok.Test(ttSWITCH)) do
          FTok.KillToken;
 
-      if not FTok.HasTokens then begin
+      if not FTok.HasTokens then
          FMsgs.AddCompilerStop(startPos, CPE_UnbalancedConditionalDirective);
-         Break;
-      end;
 
       startPos:=FTok.HotPos;
       switch:=StringToSwitchInstruction(FTok.GetToken.AsString);
@@ -12306,18 +12304,14 @@ end;
 // CompareFuncKinds
 //
 procedure TdwsCompiler.CompareFuncKinds(a, b : TFuncKind);
+const
+   cErrorForFunkKind : array [TFuncKind] of String = (
+      CPE_FunctionExpected, CPE_ProcedureExpected, CPE_ConstructorExpected,
+      CPE_DestructorExpected, CPE_MethodExpected, CPE_LambdaExpected
+   );
 begin
-   if a<>b then begin
-      case a of
-         fkFunction : FMsgs.AddCompilerError(FTok.HotPos, CPE_FunctionExpected);
-         fkProcedure : FMsgs.AddCompilerError(FTok.HotPos, CPE_ProcedureExpected);
-         fkConstructor : FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstructorExpected);
-         fkDestructor : FMsgs.AddCompilerError(FTok.HotPos, CPE_DestructorExpected);
-         fkMethod, fkLambda : FMsgs.AddCompilerError(FTok.HotPos, CPE_MethodExpected);
-      else
-         Assert(False);
-      end;
-   end;
+   if a<>b then
+      FMsgs.AddCompilerError(FTok.HotPos, cErrorForFunkKind[a]);
 end;
 
 // CompareFuncSymbolParams

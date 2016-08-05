@@ -1,0 +1,7 @@
+1
+2
+Pre-condition failed in TTest.TestPre [line: 7, column: 4], Field <= 0
+3
+4
+Pre-condition failed in TTest.TestBoth [line: 14, column: 4], Field <= 0
+Post-condition failed in TTest.TestBoth [line: 18, column: 4], Field > 0
