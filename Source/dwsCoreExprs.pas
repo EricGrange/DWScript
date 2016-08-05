@@ -3394,7 +3394,7 @@ begin
    p:=PVarData(EvalItem(exec, dyn));
    if p.VType=varDouble then
       Result:=p.VDouble
-   else Result:=PVariant(p)^;
+   else Result:=VariantToFloat(PVariant(p)^);
 end;
 
 // EvalAsVariant
@@ -7399,7 +7399,7 @@ end;
 //
 function TCompareConstStringCaseCondition.IsExpr(aClass : TClass) : Boolean;
 begin
-   Result := False;
+   Result := (aClass = TConstStringExpr);
 end;
 
 // ------------------

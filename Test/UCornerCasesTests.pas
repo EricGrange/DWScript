@@ -93,6 +93,7 @@ type
          procedure UnitOwnedByCompiler;
          procedure BugInForVarConnectorExpr;
          procedure MultiLineUnixStyle;
+         procedure EmptyProgram;
    end;
 
    ETestException = class (Exception);
@@ -1993,6 +1994,18 @@ begin
    exec.Execute(0);
    CheckEquals('hello'#10'world'#13#10, exec.Result.ToString, 'LF');
 
+end;
+
+// EmptyProgram
+//
+procedure TCornerCasesTests.EmptyProgram;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile('');
+   CheckTrue(prog.IsEmpty, '""');
+   prog:=FCompiler.Compile('// blabla'#13#10);
+   CheckTrue(prog.IsEmpty, 'comments');
 end;
 
 // ------------------------------------------------------------------

@@ -265,10 +265,9 @@ begin
             expr.Free;
          end else if arrayConst.Typ.Typ.IsOfType(toTyp.Typ) then begin
             staticArrayToSetOf:=TConvStaticArrayToSetOfExpr.Create(scriptPos, arrayConst, TSetOfSymbol(toTyp));
-            if staticArrayToSetOf.IsConstant then begin
-               Result:=staticArrayToSetOf.ToConstExpr(exec);
-               staticArrayToSetOf.Free;
-            end else Result:=staticArrayToSetOf;
+            Assert(staticArrayToSetOf.IsConstant);
+            Result:=staticArrayToSetOf.ToConstExpr(exec);
+            staticArrayToSetOf.Free;
          end;
       end;
 
@@ -286,14 +285,10 @@ begin
    end else if     (toTyp is TStructuredTypeMetaSymbol)
                and (expr.Typ.IsOfType(toTyp.Typ)) then begin
 
-      if toTyp.ClassType=TClassOfSymbol then begin
-         Result:=TObjToClassTypeExpr.Create(prog, expr);
-         if toTyp.Typ<>expr.Typ then
-            Result:=TClassAsClassExpr.Create(prog, scriptPos, Result, toTyp);
-      end else begin
-         Assert(False);
-         Result:=nil;
-      end;
+      Assert(toTyp.ClassType=TClassOfSymbol);
+      Result:=TObjToClassTypeExpr.Create(prog, expr);
+      if toTyp.Typ<>expr.Typ then
+         Result:=TClassAsClassExpr.Create(prog, scriptPos, Result, toTyp);
 
    end else begin
 

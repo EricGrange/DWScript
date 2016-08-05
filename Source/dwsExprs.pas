@@ -507,6 +507,7 @@ type
       function GetUnitMains : TUnitMainSymbols;
       function GetProgramObject : TdwsMainProgram;
       procedure SetExecutionsClass(aClass : TdwsProgramExecutionClass);
+      function IsEmpty : Boolean;
 
       function CreateNewExecution : IdwsProgramExecution;
       function BeginNewExecution : IdwsProgramExecution;
