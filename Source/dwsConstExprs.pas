@@ -421,13 +421,9 @@ class function TConstExpr.CreateTypedDefault(prog : TdwsProgram; typ : TTypeSymb
 var
    data : TData;
 begin
-   if typ=nil then
-      Result:=TConstExpr.CreateTypedVariantValue(prog, prog.TypNil, IUnknown(nil))
-   else begin
-      SetLength(data, typ.Size);
-      typ.InitData(data, 0);
-      Result:=TConstExpr.CreateTyped(prog, typ, data);
-   end;
+   SetLength(data, typ.Size);
+   typ.InitData(data, 0);
+   Result:=TConstExpr.CreateTyped(prog, typ, data);
 end;
 
 // CreateTyped
