@@ -1,0 +1,1 @@
+Syntax Error: External symbol "TNative" already defined, declarations at [line: 5, column: 4] and [line: 4, column: 4, file: ExternalNative])

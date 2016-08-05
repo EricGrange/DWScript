@@ -1,0 +1,14 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+type
+   TNative = class(JObject)
+      Field : Integer;
+      constructor Create(v : Integer = 1); overload; begin Field:=v; end;
+      procedure Test; overload; begin end;
+   end;
+%>
+
+</script>

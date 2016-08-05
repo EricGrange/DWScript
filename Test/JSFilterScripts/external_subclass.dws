@@ -1,0 +1,49 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+function TExternal() {
+   this.Field = "hello";
+}
+TExternal.prototype.GetIt = function () { return this.Field };
+TExternal.prototype.PrintIt = function () { PrintLn(this.GetIt()) };
+
+<%pas2js
+type
+   TExternal = class external
+      Field : String;
+      function GetIt : String;
+      procedure PrintIt;
+   end;
+
+type
+   TSub = class (TExternal)
+      function GetIt : String;
+   end;
+
+type TSub2 = class (TExternal) end;
+
+function TSub.GetIt : String;
+begin
+   Result:=Field+' world';
+end;   
+
+var base := new TExternal;
+base.printIt;
+
+var sub := new TSub;
+sub.printit;
+
+if (sub is TExternal) then PrintLn('ok1');
+if (sub is TSub) then PrintLn('ok2');
+
+if (sub is TSub2) then PrintLn('bug1');
+
+sub:=nil;
+
+if (sub is TSub) then PrintLn('bug2');
+
+
+%>
+
+</script>

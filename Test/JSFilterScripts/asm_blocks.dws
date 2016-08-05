@@ -1,0 +1,19 @@
+<script>
+
+<%pas2js
+
+procedure PrintIt(s : String; n : Integer);
+begin
+   asm
+      if (@n<=0) { document.writeln("n<=0<br />"); return };
+      for (;@n>0;@n--) document.write(@s);
+      document.writeln("<br />");
+   end;
+end;
+
+PrintIt('hello',3);
+PrintIt('hello',0);
+PrintIt('world',1);
+%>
+
+</script>

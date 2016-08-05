@@ -1,0 +1,21 @@
+<script>
+<%pas2js
+type
+   TExternalCreatable = class external
+      Field : String;
+      constructor Create;
+   end;
+   
+type   
+   TExternalClass = class external
+      Field : String;
+   end;
+
+var e1 := TExternalCreatable.Create;
+var e2 := new TExternalCreatable;
+
+var e3 := TExternalClass.Create;
+
+%>
+
+</script>

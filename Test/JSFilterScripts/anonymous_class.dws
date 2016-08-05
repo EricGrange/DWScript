@@ -1,0 +1,43 @@
+<script>
+function PrintLn(s) { document.writeln(JSON.stringify(s)+"<br/>") };
+
+<%pas2js
+var v : Variant;
+
+v := class
+   'hello' = 'world';
+   int123 : Integer = 123;
+   fl := 5/2;
+   ai : array [0..2] of Integer := [1, 2, 3];
+end;
+
+PrintLn(v);
+
+var i = 2;
+   
+v := class
+		helloWorld = 'cool'; external 'hello world';
+		subrec := class
+			one = 1;
+			two : String := IntToStr(i);
+		end;
+	private
+		function GetSubRecTwo : String;
+		begin
+		Result:='['+subrec.two+']';
+		end;
+	published
+		property SubRecTwo : String read GetSubRecTwo;
+end;
+
+PrintLn(v);
+
+v := class
+   four := i*i;
+   zero : Integer;
+end;
+
+PrintLn(v);
+
+%>
+</script>

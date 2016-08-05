@@ -1,0 +1,29 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+function SubArray : Variant;
+begin
+   asm
+      @Result = {a:[1,2,16],b:["one","two","sixteen"]};
+   end;
+end;
+
+var v := SubArray;
+
+var i : Integer;
+
+for i:=0 to Integer(v.a.length-1) do begin
+   Print(v.a[i].toString(16));
+   Print('=');
+   PrintLn(v.b[i]);
+end;
+
+PrintLn(v.b[0]);
+PrintLn(v.b[1]);
+PrintLn(v.b[2]);
+
+%>
+
+</script>

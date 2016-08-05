@@ -1,0 +1,26 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+function GetDoIt() {
+   return {
+      DoIt: function(f) { f('hello') }
+   }
+}
+
+<%pas2js
+
+function GetDoIt : Variant; external;
+
+procedure SayIt(s : String);
+begin
+   Print('Say ');
+   PrintLn(s);
+end;
+
+var v := GetDoIt;
+v.DoIt(@SayIt);
+
+%>
+
+</script>

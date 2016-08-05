@@ -1,0 +1,40 @@
+<script>
+
+function GetMyOne() {
+   return {
+      Field : "hello"
+   };
+}
+
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+type
+   TExternalClass = class external
+	  property Field : String;
+   end;
+   
+type
+   JInternal = class (JObject)
+      property Field : String;
+   end;
+
+function GetOne : TExternalClass; external "GetMyOne";
+
+var obj := GetOne;
+
+PrintLn(obj.Field);
+obj.Field := 'world';
+PrintLn(obj.Field);
+
+var obj2 := new JInternal;
+
+PrintLn(obj2.Field);
+obj2.Field := 'bye';
+PrintLn(obj2.Field);
+
+
+%>
+
+</script>

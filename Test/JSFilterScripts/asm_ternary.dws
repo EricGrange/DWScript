@@ -1,0 +1,18 @@
+<script>
+
+<%pas2js
+
+procedure PrintOneOrTwo(b : Boolean);
+begin
+   asm
+      document.writeln(@b?'1':'2');
+      document.writeln("<br />");
+   end;
+end;
+
+
+PrintOneOrTwo(True);
+PrintOneOrTwo(False);
+%>
+
+</script>

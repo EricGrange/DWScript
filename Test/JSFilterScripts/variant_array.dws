@@ -1,0 +1,36 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+function EmptyJSObject : Variant;
+begin
+   asm
+      @Result = {};
+   end;
+end;
+
+var v : Variant = EmptyJSObject;
+
+PrintLn(v.hasOwnProperty('test'));
+
+v.test := 'hello';
+PrintLn(v.hasOwnProperty('test'));
+
+PrintLn(v['test']);
+PrintLn(v.test);
+
+asm
+   delete @v['test'];
+end;
+PrintLn(v.hasOwnProperty('test'));
+
+v['test']:='world';
+PrintLn(v.hasOwnProperty('test'));
+
+PrintLn(v['test']);
+PrintLn(v.test);
+
+%>
+
+</script>

@@ -1,0 +1,15 @@
+<script>
+function PrintLn(s) { if (s===null) document.writeln("null<br />") };
+
+<%pas2js
+Procedure testvar;
+var
+  v:variant;
+Begin
+  v:=null;
+  PrintLn(v);
+end;
+testvar;
+%>
+
+</script>

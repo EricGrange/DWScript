@@ -1,0 +1,33 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+type
+   TNative = class(JObject)
+      Field : String;
+      function GetIt : String;
+      begin
+         Result:='Got '+Field;
+      end;
+      procedure PrintIt;
+      begin
+         PrintLn(GetIt);
+      end;
+   end;
+
+var obj := new TNative;
+obj.Field := 'Hello';
+
+function Stringify(o : JObject) : String;
+begin
+   asm @Result = JSON.stringify(@o); end;
+end;
+
+PrintLn(Stringify(obj));
+
+obj.PrintIt;
+
+%>
+
+</script>

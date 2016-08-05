@@ -1,0 +1,22 @@
+<script>
+<%pas2js
+procedure PrintLn(s : String);
+begin
+   asm
+      document.writeln(@s);
+      document.writeln("<br />");
+   end;
+end;
+
+try
+   asm 
+      var testNull = null;
+      testNull.bug();
+   end;
+except
+   on e: Exception do
+      PrintLn(E.Message);
+end;
+%>
+
+</script>

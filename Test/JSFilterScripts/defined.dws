@@ -1,0 +1,33 @@
+<html>
+<body>
+<script>
+
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+
+type J = class external end;
+
+var v : J;
+
+asm
+   var uvwxyz;
+   @v = uvwxyz;
+end;
+
+if Defined(v) then
+   PrintLn('defined')
+else PrintLn('undefined');
+
+v := nil;
+
+if Defined(v) then
+   PrintLn('defined')
+else PrintLn('undefined');
+
+%>
+
+</script>
+</body>
+</html>

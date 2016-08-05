@@ -1,0 +1,3 @@
+{"ai":[1,2,3],"fl":2.5,"int123":123,"hello":"world"}
+{"subrec":{"two":"2","one":1},"hello world":"cool"}
+{"zero":0,"four":4}

@@ -1,0 +1,22 @@
+<script>
+var myVar = 'test';
+var $myVar2 = 'hello';
+
+function PrintLn(s) { document.writeln(s+myVar+"<br />") };
+
+<%pas2js
+
+var here external 'myVar' : String;
+var hello external '$myVar2' := 'HELLO';
+
+PrintLn('say ');
+
+PrintLn(hello);
+
+here := hello;
+
+PrintLn('say ');
+
+%>
+
+</script>

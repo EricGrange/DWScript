@@ -1,0 +1,31 @@
+<script>
+
+function Apple(color) {
+   this.color = color;
+   this.getColor = function () {
+      return this.color + ' apple';
+   };
+}
+
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+type
+   TApple = class external 'Apple'
+      color : String;
+      function GetColor : String; external 'getColor';
+      constructor Create(color : String);
+   end;
+
+var a : TApple := new TApple("red");
+
+PrintLn(a.GetColor);
+PrintLn(TApple.Create("golden").GetColor);
+
+var w := new TApple("weird");
+PrintLn(w.color);
+
+%>
+
+</script>

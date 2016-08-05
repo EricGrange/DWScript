@@ -1,0 +1,31 @@
+<script>
+var myVar = 'test';
+var myVar2 = 'bug';
+
+function PrintLn(s) { document.writeln(s+"<br />") };
+
+<%pas2js
+
+type
+	Test = static class
+		class var Variable external "myVar" : String;
+		class var Variable2 external "myVar2" : String;
+		property Prop : String read Variable;
+		property Prop2 : String read Variable2 write Variable2;
+	end;
+	
+var _myVar2 external 'myVar2' := 'world';
+
+PrintLn(Test.Variable);
+PrintLn(Test.Prop);
+Test.Variable:='hello';
+PrintLn(Test.Prop);
+
+PrintLn(Test.Variable2);
+PrintLn(Test.Prop2);
+Test.Prop2:='bye';
+PrintLn(Test.Variable2);
+
+%>
+
+</script>

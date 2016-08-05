@@ -1,0 +1,21 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+function JExternal() { }
+
+<%pas2js
+type
+   JExternal = class external
+      property Field : String;
+   end;
+
+var o := new JExternal;
+o.Field := 'Hello';
+PrintLn(o.Field);
+o.Field := o.Field+' World';
+PrintLn(o.Field);
+
+%>
+
+</script>

@@ -1,0 +1,28 @@
+<script>
+
+<%pas2js
+
+procedure PrintLn(s : Variant);
+begin
+   asm
+      document.writeln(@s);
+      document.writeln("<br />");
+   end;
+end;
+
+var i : Integer;
+
+asm
+   if (!@i) {
+      @i = 123;
+      @PrintLn(@i);
+      @i++;
+   }
+end;
+
+PrintLn(i);
+
+
+%>
+
+</script>

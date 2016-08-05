@@ -1,0 +1,26 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+
+procedure MyProc(var i : Integer);
+begin
+   i:=123;
+end;
+
+procedure Foo(i : Integer);
+begin
+   PrintLn(i);
+   MyProc(i);
+   PrintLn(i);
+end;
+
+var i : Integer;
+i:=456;
+PrintLn(i);
+Foo(i);
+PrintLn(i);
+%>
+
+</script>

@@ -1,0 +1,31 @@
+<script>
+function PrintLn(s) { document.writeln(JSON.stringify(s)+"<br/>") };
+
+<%pas2js
+var v : Variant;
+
+asm @v = {}; end;
+
+type 
+   TRec = record
+      published
+         x : Integer;
+         n : String;
+   end;
+
+const c : TRec = (x: 0; n: 'hello');
+   
+v.rec := c;
+
+PrintLn(v);
+
+var vr : TRec;
+vr.x:=1;
+vr.n:='world';
+   
+v.rec := vr;
+
+PrintLn(v);
+
+%>
+</script>

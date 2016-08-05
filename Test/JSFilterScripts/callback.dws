@@ -1,0 +1,25 @@
+<script>
+
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+
+type TEventCallback = procedure(aCallback: procedure);
+
+var v : TEventCallback;
+
+v := procedure(aCallback: procedure)
+	begin
+		PrintLn('Hello');
+		aCallback;
+	end;
+	
+v(procedure
+  begin
+	PrintLn('World');
+  end)
+
+%>
+
+</script>

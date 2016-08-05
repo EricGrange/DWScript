@@ -1,0 +1,47 @@
+<script>
+function PrintLn(o) { document.writeln(JSON.stringify(o)+"<br />") };
+
+<%pas2js
+
+type
+   TTest = record
+      private
+         FInt : Integer = 1;
+         FStr : String = 'hello';
+         const cMy = 'MyConst';
+         class var vMy = 'MyVar';
+         
+      published
+         Field3Dot5 := 3.5;
+      
+      public
+         class function GetWorld : String;
+         begin
+            Result:='World';
+         end;
+         function GetStr : String;
+         begin
+            Result:='my '+FStr;
+         end;
+         
+      published
+         property Int : Integer read Fint;
+         property Str : String read FStr;
+         property World : String read GetWorld;
+         property MyHello : String read GetStr;
+         property MyConst : String read cMy;
+         property MyVar : String read vMy;
+   end;
+
+var v : Variant;
+asm @v = {}; end;
+
+var r : TTest;
+
+v.Rec := r;
+
+PrintLn(v);
+
+%>
+
+</script>

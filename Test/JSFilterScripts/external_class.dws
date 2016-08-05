@@ -1,0 +1,35 @@
+<script>
+
+function GetOne() {
+   return {
+      Field : "hello",
+      Method : function (s) { return this.Field+" "+s; },
+      Length : 42      
+   };
+}
+
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+type
+   TExternalClass = class external
+      Field : String;
+      function Method(s : String) : String;
+      Length : Integer;
+   end;
+
+function GetOne : TExternalClass; external;
+
+var obj := GetOne;
+
+PrintLn(obj.Field);
+PrintLn(obj.Method('World'));
+
+obj.Field:='bye bye';
+PrintLn(obj.Method('World'));
+PrintLn(obj.Length);
+
+%>
+
+</script>

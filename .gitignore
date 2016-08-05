@@ -23,7 +23,11 @@
 /Demos/IDEDialog
 /Demos/ISAPI
 /Demos/SynopseWebServer/www
-/Test/SimpleScripts/*.jstxt
-*.jstxt
 /Test/Algorithms/debug
 /Libraries/SimpleServer/Test
+/Test/TODO
+/Demos/IndyWebServer/IndyWebServer.dproj
+/Demos/IndyWebServer/IndyWebServer.res
+/Test/LanguageTestsXE3.dpr
+/Test/LanguageTestsXE5.dpr
+/Test/LanguageTestsXE6.dpr

@@ -1,0 +1,19 @@
+<script>
+
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+
+uses Hello;
+
+HelloFunc("world");
+
+var t := TTest.Create("test");
+t.Print;
+
+PrintLn(1+parseInt("2"));
+
+%>
+
+</script>

@@ -213,6 +213,22 @@ begin
    Result:=CompareText(S1, S2);
 end;
 
+function TSynDWSSyn.HashKey(Str: PWideChar): Cardinal;
+var
+   c : Word;
+begin
+   Result:=0;
+   while IsIdentChar(Str^) do begin
+      c:=Ord(Str^);
+      if c in [Ord('A')..Ord('Z')] then
+         c := c + (Ord('a')-Ord('A'));
+      Result := Result * 692 + c * 171;
+      inc(Str);
+   end;
+   fStringLen := Str - fToIdent;
+   Result := Result mod Cardinal(Length(fIdentFuncTable));
+end;
+
 function TSynDWSSyn.IdentKind(MayBe: PWideChar): TtkTokenKind;
 var
   Key: Cardinal;
@@ -971,24 +987,6 @@ end;
 class function TSynDWSSyn.GetFriendlyLanguageName: UnicodeString;
 begin
   Result := SYNS_FriendlyLangPascal;
-end;
-
-{$overflowchecks OFF}
-
-function TSynDWSSyn.HashKey(Str: PWideChar): Cardinal;
-var
-   c : Word;
-begin
-   Result:=0;
-   while IsIdentChar(Str^) do begin
-      c:=Ord(Str^);
-      if c in [Ord('A')..Ord('Z')] then
-         c := c + (Ord('a')-Ord('A'));
-      Result := Result * 692 + c * 171;
-      inc(Str);
-   end;
-   fStringLen := Str - fToIdent;
-   Result := Result mod Cardinal(Length(fIdentFuncTable));
 end;
 
 initialization

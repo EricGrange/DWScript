@@ -1,0 +1,20 @@
+<script>
+function PrintLn(s) { document.writeln(s+"<br/>") };
+
+<%pas2js
+var v : Variant;
+
+asm @v = {}; end;
+
+procedure World;
+begin
+   PrintLn('World');
+end;
+
+v.Hello := procedure begin PrintLn('Hello') end;
+v.World := @World;
+
+v.Hello();
+v.World();
+%>
+</script>

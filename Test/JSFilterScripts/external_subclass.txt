@@ -1,0 +1,7 @@
+Errors >>>>
+Warning: Incompatible types: "TSub" and "TSub2" [line: 40, column: 9]
+Result >>>>
+hello
+hello world
+ok1
+ok2

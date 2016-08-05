@@ -1,0 +1,23 @@
+<script>
+
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+type
+   JDate = class external 'Date'
+      class function UTC(y, m, d : Integer) : Integer;
+   end;
+
+var f : Integer;
+
+f:=JDate.UTC(2012, 8, 16);
+PrintLn(f);
+
+var jd : JDate;
+
+PrintLn(jd.UTC(2012, 8, 17));
+
+%>
+
+</script>

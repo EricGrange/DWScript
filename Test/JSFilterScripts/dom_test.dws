@@ -1,0 +1,52 @@
+<html>
+<body>
+<div id="sample"><div>a</div><div>b</div></div>
+<div id="sample2">Hello World</div>
+<script>
+
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+
+ type
+  TDoc  = class
+    public
+      Document:VAriant;
+  end;
+
+ var Doc : TDoc = TDOc.create;
+ asm
+   @doc.document = document;
+ end;
+
+ type
+   TCont = class
+   private
+     Elm:Variant;
+   public
+     constructor Create(e:Variant);
+     procedure Exec;
+ end;
+
+ constructor TCont.Create(E:Variant);
+ begin
+   Elm:=e;
+ end;
+
+ procedure TCont.Exec;
+ begin
+    Elm.childNodes[0].innerHTML := doc.document.getElementById('sample2').innerText;
+ end;
+
+ var Cont = TCont.create(doc.document.getElementById('sample'));
+
+ Cont.Exec;
+ 
+PrintLn(doc.Document.innerText);
+
+%>
+
+</script>
+</body>
+</html>

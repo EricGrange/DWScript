@@ -1,0 +1,43 @@
+<script>
+
+function Print(s) { document.write(JSON.stringify(s)) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+type
+  JToDoItem = class(JObject)
+    ID: integer;
+    Task: string;
+    Detail: string;
+    Priority: integer;
+    Category: string;
+    constructor Create;
+  end;
+
+type  
+  JToDoList = class(JObject)
+    List: array of JToDoItem;
+
+    constructor Create;
+  end;
+
+constructor JToDoItem.Create;
+begin
+   Category := 'cat';
+end;
+
+constructor JToDoList.Create;
+begin
+end;
+
+var todo := JToDoItem.Create;
+todo.ID := 42;
+todo.Detail := 'test';
+var list := JToDoList.Create;
+list.List.Add(todo);
+
+PrintLn(list);
+
+%>
+
+</script>

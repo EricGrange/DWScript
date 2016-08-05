@@ -1,0 +1,29 @@
+<script><%pas2js
+
+procedure Print(s : Variant); external 'document.write';
+
+
+var c = class
+    Values: array [0..2] of array [0..1] of Integer = [
+      [0, 1],
+      [2, 3],
+      [4, 5]
+    ];
+    class const CValues: array [0..2] of array [0..1] of Integer = [
+      [9, 8],
+      [7, 6],
+      [5, 4]
+    ];
+  end;      
+
+for var Index := 0 to High(c.Values) do begin
+  Print(IntToStr(c.Values[Index][0]));
+  Print(IntToStr(c.Values[Index][1]) + '<br>');
+ end;
+  
+for var Index := 0 to High(c.CValues) do begin
+  Print(IntToStr(c.CValues[Index][0]));
+  Print(IntToStr(c.CValues[Index][1]) + '<br>');
+ end;
+%>
+</script><pre>

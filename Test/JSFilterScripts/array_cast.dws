@@ -1,0 +1,28 @@
+<script>
+
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+
+type TIntegerArray = array of integer;
+
+var v : Variant;
+
+asm
+	@v = [1, 3, 5];
+end;
+
+for var i in v do
+   PrintLn(i);
+for var i in TIntegerArray(v) do
+   PrintLn(i);
+
+var va := TIntegerArray(v);
+
+for var i in va do
+   PrintLn(i);
+
+%>
+
+</script>

@@ -1,0 +1,10 @@
+<script>
+<%pas2js
+uses ExternalNative;
+
+type
+   TNative = class external
+   end;
+%>
+
+</script>

@@ -1,0 +1,40 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+<%pas2js
+type TMyFunc = function (a: Integer) : String;
+
+function GetIncrementer(d : Integer) : TMyFunc;
+begin
+   Result:=function (a : Integer) : String
+      begin
+         Result:=IntToStr(a+d);
+      end;
+end;
+
+function GetDecrementer(d : Integer) : TMyFunc;
+var
+   e : Integer;
+begin
+   e:=d;
+   Result:=function (a : Integer) : String
+      begin
+         Result:=IntToStr(a-e);
+      end;
+end;
+
+var f : array [0..2] of TMyFunc;
+var i : Integer;
+
+for i:=0 to 2 do
+   f[i]:=GetIncrementer(i);
+   
+for i:=0 to 2 do
+   PrintLn(f[i](10));
+
+var fd := GetDecrementer(3);
+PrintLn(fd(10));
+fd := GetDecrementer(2);
+PrintLn(fd(10));
+%>
+</script>

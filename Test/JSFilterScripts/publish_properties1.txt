@@ -1,0 +1,1 @@
+{"Rec":{"Field3Dot5":3.5,"Int":1,"MyConst":"MyConst","MyHello":"my hello","MyVar":"MyVar","Str":"hello","World":"World"}}

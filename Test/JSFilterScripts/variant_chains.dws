@@ -1,0 +1,21 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+var v : Variant;
+
+asm
+   @v = { Data : { Fields : [ 'one', 2, { Value: 3 } ], Tag : 'Hello' }, Tag : 'world' };
+end;
+
+PrintLn(v.Data.Fields[0]);
+PrintLn(v.Data.Fields[1]);
+PrintLn(v.Data.Fields[1].toString());
+PrintLn(v.Data.Fields[2].Value.toString());
+PrintLn(v.Data.Tag);
+PrintLn(v.Tag);
+
+%>
+
+</script>

@@ -1,0 +1,19 @@
+<script>
+
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+var hello : String;
+hello := 'hello';
+
+PrintLn(hello);
+%>
+
+PrintLn("javascript");
+
+<%pas2js
+PrintLn(hello);
+%>
+
+</script>
