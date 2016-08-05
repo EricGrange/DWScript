@@ -10,3 +10,5 @@ for i:=0 to 5 do
 PrintLn(FloatToStr(f2));
 for i:=0 to 5 do
    PrintLn(FloatToStr(f2, i));
+   
+PrintLn(FloatToStr(f2, 99))
