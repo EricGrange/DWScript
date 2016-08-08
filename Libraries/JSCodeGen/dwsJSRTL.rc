@@ -1,0 +1,6 @@
+sprintf_js dwsjsrtl "rtl/sprintf.js"
+formatDateTime_js dwsjsrtl "rtl/formatDateTime.js"
+strToDateTimeDef_js dwsjsrtl "rtl/strToDateTimeDef.js"
+alea_js dwsjsrtl "rtl/alea.js"
+unicharcodeat_js dwsjsrtl "rtl/uniCharCodeAt.js"
+unicharat_js dwsjsrtl "rtl/uniCharAt.js"
