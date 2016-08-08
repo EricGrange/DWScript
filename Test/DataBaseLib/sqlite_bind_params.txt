@@ -1,0 +1,16 @@
+Integer
+123456789123456789
+Float
+1.5
+String
+hello
+Integer
+65535
+Integer
+0
+Null
+True
+Blob
+world
+String
+2014-12-27T00:00Z

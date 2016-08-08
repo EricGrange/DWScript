@@ -307,6 +307,8 @@ end;
 // Exec
 //
 procedure TdwsSynSQLiteDataBase.Exec(const sql : String; const parameters : TData; context : TExprBase);
+var
+   err : Integer;
 begin
    if sql='' then
       raise ESQLite3Exception.CreateFmt('Empty query', []);
@@ -321,9 +323,10 @@ begin
    try
       SQLAssignParameters(FExecRequest, parameters);
       while FExecRequest.Step=SQLITE_ROW do ;
-      if FExecRequest.Reset=SQLITE_OK then
-         FExecRequest.BindReset
-      else FExecRequest.Close;
+      err := FExecRequest.Reset;
+      if err <> SQLITE_OK then
+         raise Exception.CreateFmt('Statement Reset failed (%d)', [err]);
+      FExecRequest.BindReset;
    except
       FExecRequest.Close;
       raise;
@@ -389,10 +392,9 @@ begin
    try
       FRequest.Prepare(db.FDB.DB, StringToUTF8(sql));
       try
-         if FRequest.Request<>0 then begin
-            SQLAssignParameters(FRequest, parameters);
-            FEOFReached:=(FRequest.Step=SQLITE_DONE);
-         end else FEOFReached:=True;
+         Assert(FRequest.Request<>0);
+         SQLAssignParameters(FRequest, parameters);
+         FEOFReached:=(FRequest.Step=SQLITE_DONE);
          Inc(FDB.FDataSets);
       except
          FRequest.Close;

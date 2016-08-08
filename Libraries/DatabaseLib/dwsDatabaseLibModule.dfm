@@ -547,6 +547,16 @@ object dwsDatabaseLib: TdwsDatabaseLib
           end>
         ResultType = 'Variant'
         OnFastEval = dwsDatabaseFunctionsBlobHexParameterFastEval
+      end
+      item
+        Name = 'DateParameter'
+        Parameters = <
+          item
+            Name = 'dt'
+            DataType = 'Float'
+          end>
+        ResultType = 'Variant'
+        OnFastEval = dwsDatabaseFunctionsDateParameterFastEval
       end>
     UnitName = 'System.Data'
     StaticSymbols = True

@@ -1,0 +1,2 @@
+malformed JSON, extended_errcode=1
+malformed JSON, extended_errcode=1

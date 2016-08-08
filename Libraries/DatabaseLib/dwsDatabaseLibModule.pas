@@ -3,7 +3,7 @@ unit dwsDatabaseLibModule;
 interface
 
 uses
-  SysUtils, Classes, Masks,
+  SysUtils, Classes, Masks, Variants,
   dwsStrings, dwsUtils, dwsExprList, dwsXPlatform,
   dwsComp, dwsExprs, dwsSymbols, dwsStack, dwsDatabase, dwsJSON, dwsErrors;
 
@@ -104,6 +104,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsDatabaseClassesDataBaseMethodsLowerCaseStringifyEval(
       Info: TProgramInfo; ExtObject: TObject);
+    function dwsDatabaseFunctionsDateParameterFastEval(
+      const args: TExprBaseListExec): Variant;
   private
     { Private declarations }
     procedure SetScript(aScript : TDelphiWebScript);
@@ -807,6 +809,12 @@ function TdwsDatabaseLib.dwsDatabaseFunctionsBlobParameterFastEval(
   const args: TExprBaseListExec): Variant;
 begin
    Result:=args.AsDataString[0];
+end;
+
+function TdwsDatabaseLib.dwsDatabaseFunctionsDateParameterFastEval(
+  const args: TExprBaseListExec): Variant;
+begin
+   Result := VarFromDateTime(args.AsFloat[0]);
 end;
 
 // ------------------------------------------------------------------
