@@ -18,17 +18,14 @@ unit DSimpleDWScript;
 
 interface
 
-{.$define EnablePas2Js}
+{$define LogCompiles}
 
 uses
    Windows, SysUtils, Classes, StrUtils, Masks,
    dwsFileSystem, dwsGlobalVarsFunctions, dwsExprList,
    dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils, dwsXPlatform,
    dwsJSONConnector, dwsJSON, dwsErrors, dwsFunctions, dwsSymbols,
-   dwsJIT, dwsJITx86,
-{$ifdef EnablePas2Js}
-   dwsJSFilter, dwsJSLibModule, dwsCodeGen,
-{$endif}
+   dwsJIT, dwsJITx86, dwsJSFilter, dwsJSLibModule, dwsCodeGen,
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
    dwsWebServerHelpers, dwsZipLibModule,
    dwsDataBase, dwsDataBaseLibModule, dwsWebServerInfo, dwsWebServerLibModule,
@@ -116,16 +113,15 @@ type
       FLastCheckTime : TFileTime;
 
    protected
-      {$ifdef EnablePas2Js}
       FJSCompiler : TDelphiWebScript;
       FJSFilter : TdwsJSFilter;
-      {$endif}
 
       procedure TryAcquireDWS(const fileName : String; var prog : IdwsProgram);
       procedure CompileDWS(const fileName : String; var prog : IdwsProgram;
                            typ : TFileAccessType);
 
       procedure LogCompileErrors(const fileName : String; const msgs : TdwsMessageList);
+      procedure LogCompilation(const fmt : String; const params : array of const);
 
       function FlushMatchingMask(const cp : TCompiledProgram) : TSimpleHashAction;
 
@@ -152,9 +148,7 @@ type
                           const options : TDWSHandlingOptions);
       procedure StopDWS;
 
-      {$ifdef EnablePas2Js}
       procedure HandleP2JS(const fileName : String; request : TWebRequest; response : TWebResponse);
-      {$endif}
 
       procedure FlushDWSCache(const fileName : String = '');
 
@@ -284,7 +278,6 @@ begin
    FScriptTimeoutMilliseconds:=3000;
    FWorkerTimeoutMilliseconds:=30000;
 
-{$ifdef EnablePas2Js}
    FJSFilter:=TdwsJSFilter.Create(Self);
    dwsHtmlFilter.SubFilter:=FJSFilter;
    FJSCompiler:=TDelphiWebScript.Create(Self);
@@ -307,7 +300,6 @@ begin
       // cgoObfuscate, cgoOptimizeForSize,
       cgoSmartLink, cgoDeVirtualize, cgoNoRTTI
    ];
-{$endif}
 
    dwsCompileSystem.OnFileStreamOpened := DoSourceFileStreamOpened;
 end;
@@ -429,7 +421,6 @@ end;
 
 // HandleP2JS
 //
-{$ifdef EnablePas2Js}
 procedure TSimpleDWScript.HandleP2JS(const fileName : String; request : TWebRequest; response : TWebResponse);
 var
    code, js : String;
@@ -467,7 +458,6 @@ begin
       response.ContentType:='text/javascript; charset=UTF-8';
    end;
 end;
-{$endif}
 
 // FlushDWSCache
 //
@@ -576,6 +566,7 @@ var
 begin
    FCompilerLock.Enter;
    try
+      LogCompilation('Compiling "%s"', [fileName]);
       FCompilerFiles := TAutoStrings.Create;
 
       code := dwsCompileSystem.AllocateFileSystem.LoadTextFile(fileName);
@@ -630,7 +621,7 @@ procedure TSimpleDWScript.LogError(const msg : String);
 var
    buf : String;
 begin
-   buf := #13#10+FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', Now)
+   buf := FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', Now)
          +' '+msg+#13#10;
    AppendTextToUTF8File(ErrorLogDirectory+'error.log', UTF8Encode(buf));
 end;
@@ -640,6 +631,15 @@ end;
 procedure TSimpleDWScript.LogCompileErrors(const fileName : String; const msgs : TdwsMessageList);
 begin
    LogError('in '+fileName+#13#10+msgs.AsInfo);
+end;
+
+// LogCompilation
+//
+procedure TSimpleDWScript.LogCompilation(const fmt : String; const params : array of const);
+begin
+   {$ifdef LogCompiles}
+   LogError(Format(fmt, params));
+   {$endif}
 end;
 
 // FlushMatchingMask
@@ -814,9 +814,10 @@ begin
             prevFileName := files[i];
             if GetFileAttributesEx(PChar(Pointer(prevFileName)), GetFileExInfoStandard, @info) then begin
                fileChanged := (UInt64(info.ftLastWriteTime) >= UInt64(FLastCheckTime));
-//               if fileChanged then LogError('"' + prevFileName + '" change detected');//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+               if fileChanged then
+                  LogCompilation('"%s" change detected', [prevFileName]);
             end else begin
-//               LogError('"' + prevFileName + '" ' + SysErrorMessage(GetLastError));//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+               LogCompilation('"%s" check error: ', [prevFileName, SysErrorMessage(GetLastError)]);
                fileChanged := True
             end;
          end;
@@ -832,7 +833,7 @@ begin
             for i := 0 to High(files.FChanged) do begin
                if files.FChanged[i] then begin
                   cp.Name := files.FProgNames[i];
-//                  LogError('"' + cp.Name + '" flushing'); //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                  LogCompilation('Flushing "%s"', [cp.Name]);
                   FCompiledPrograms.Remove(cp);
                end;
             end;
