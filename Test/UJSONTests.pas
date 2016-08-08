@@ -34,9 +34,22 @@ type
          procedure JSONInvalidFalse;
          procedure JSONInvalidNull;
          procedure JSONInvalidImmediate;
+         procedure JSONUnterminatedString;
+         procedure JSONInvalidNameValueSeparator;
+         procedure JSONInvalidNameValueEnding;
          procedure JSONMissingElementValue;
          procedure JSONWriterNoValue;
          procedure JSONWriterNoName;
+
+         procedure JSONIntegerArrayBadStart;
+         procedure JSONIntegerArrayBadChar;
+         procedure JSONIntegerArrayBadComma;
+         procedure JSONNumberArrayBadStart;
+         procedure JSONNumberArrayBadChar;
+         procedure JSONNumberArrayBadComma;
+         procedure JSONStringArrayBadStart;
+         procedure JSONStringArrayBadChar;
+         procedure JSONStringArrayBadComma;
 
          function CompareStringArray(v1, v2 : TdwsJSONValue) : Integer;
 
@@ -61,6 +74,7 @@ type
          procedure JSONSpecialChars;
          procedure JSONLongNumber;
          procedure JSONInvalidStuff;
+         procedure JSONParseArrayInvalid;
          procedure NestedArrays;
          procedure MultipleElementsWithSameName;
          procedure SetItemTest;
@@ -362,6 +376,27 @@ begin
    TdwsJSONValue.ParseString('{"v":bug}');
 end;
 
+// JSONUnterminatedString
+//
+procedure TdwsJSONTests.JSONUnterminatedString;
+begin
+   TdwsJSONValue.ParseString('"bug');
+end;
+
+// JSONInvalidNameValueSeparator
+//
+procedure TdwsJSONTests.JSONInvalidNameValueSeparator;
+begin
+   TdwsJSONValue.ParseString('{"n" bug');
+end;
+
+// JSONInvalidNameValueEnding
+//
+procedure TdwsJSONTests.JSONInvalidNameValueEnding;
+begin
+   TdwsJSONValue.ParseString('{"n":"bug"');
+end;
+
 // JSONMissingElementValue
 //
 procedure TdwsJSONTests.JSONMissingElementValue;
@@ -398,6 +433,141 @@ begin
       wr.EndObject;
    finally
       wr.Free;
+   end;
+end;
+
+// JSONIntegerArrayBadStart
+//
+procedure TdwsJSONTests.JSONIntegerArrayBadStart;
+var
+   state : TdwsJSONParserState;
+begin
+   state := TdwsJSONParserState.Create(' bug');
+   try
+      state.ParseIntegerArray(nil);
+   finally
+      state.Free;
+   end;
+end;
+
+// JSONIntegerArrayBadChar
+//
+procedure TdwsJSONTests.JSONIntegerArrayBadChar;
+var
+   state : TdwsJSONParserState;
+begin
+   state := TdwsJSONParserState.Create('[bug');
+   try
+      state.ParseIntegerArray(nil);
+   finally
+      state.Free;
+   end;
+end;
+
+// JSONIntegerArrayBadComma
+//
+procedure TdwsJSONTests.JSONIntegerArrayBadComma;
+var
+   state : TdwsJSONParserState;
+   dest : TSimpleInt64List;
+begin
+   state := TdwsJSONParserState.Create('[1,2 bug');
+   dest := TSimpleInt64List.Create;
+   try
+      state.ParseIntegerArray(dest);
+   finally
+      dest.Free;
+      state.Free;
+   end;
+end;
+
+// JSONNumberArrayBadStart
+//
+procedure TdwsJSONTests.JSONNumberArrayBadStart;
+var
+   state : TdwsJSONParserState;
+begin
+   state := TdwsJSONParserState.Create(' bug');
+   try
+      state.ParseNumberArray(nil);
+   finally
+      state.Free;
+   end;
+end;
+
+// JSONNumberArrayBadChar
+//
+procedure TdwsJSONTests.JSONNumberArrayBadChar;
+var
+   state : TdwsJSONParserState;
+begin
+   state := TdwsJSONParserState.Create('[bug');
+   try
+      state.ParseNumberArray(nil);
+   finally
+      state.Free;
+   end;
+end;
+
+// JSONNumberArrayBadComma
+//
+procedure TdwsJSONTests.JSONNumberArrayBadComma;
+var
+   state : TdwsJSONParserState;
+   dest : TSimpleDoubleList;
+begin
+   state := TdwsJSONParserState.Create('[1,2 bug');
+   dest := TSimpleDoubleList.Create;
+   try
+      state.ParseNumberArray(dest);
+   finally
+      dest.Free;
+      state.Free;
+   end;
+end;
+
+// JSONStringArrayBadStart
+//
+procedure TdwsJSONTests.JSONStringArrayBadStart;
+var
+   state : TdwsJSONParserState;
+begin
+   state := TdwsJSONParserState.Create(' bug');
+   try
+      state.ParseStringArray(nil);
+   finally
+      state.Free;
+   end;
+end;
+
+// JSONStringArrayBadChar
+//
+procedure TdwsJSONTests.JSONStringArrayBadChar;
+var
+   state : TdwsJSONParserState;
+begin
+   state := TdwsJSONParserState.Create('[bug');
+   try
+      state.ParseStringArray(nil);
+   finally
+      state.Free;
+   end;
+end;
+
+// JSONStringArrayBadComma
+//
+procedure TdwsJSONTests.JSONStringArrayBadComma;
+var
+   state : TdwsJSONParserState;
+   dest : TStringList;
+begin
+   state := TdwsJSONParserState.Create('["1","2" bug');
+   dest := TStringList.Create;
+   try
+      state.ParseStringArray(dest);
+   finally
+      dest.Free;
+      state.Free;
    end;
 end;
 
@@ -537,8 +707,28 @@ begin
    CheckException(JSONInvalidFalse, EdwsJSONParseError, 'false');
    CheckException(JSONInvalidNull, EdwsJSONParseError, 'null');
    CheckException(JSONInvalidImmediate, EdwsJSONParseError, 'immediate');
+   CheckException(JSONUnterminatedString, EdwsJSONParseError, 'unterminated');
+   CheckException(JSONInvalidNameValueSeparator, EdwsJSONParseError, 'separator');
+   CheckException(JSONInvalidNameValueEnding, EdwsJSONParseError, 'ending');
 
    CheckException(JSONMissingElementValue, EdwsJSONParseError, 'missing element value');
+end;
+
+// JSONParseArrayInvalid
+//
+procedure TdwsJSONTests.JSONParseArrayInvalid;
+begin
+   CheckException(JSONIntegerArrayBadStart, EdwsJSONParseError, 'bad start i');
+   CheckException(JSONIntegerArrayBadChar, EdwsJSONParseError, 'bad char i');
+   CheckException(JSONIntegerArrayBadComma, EdwsJSONParseError, 'bad comma i');
+
+   CheckException(JSONNumberArrayBadStart, EdwsJSONParseError, 'bad start n');
+   CheckException(JSONNumberArrayBadChar, EdwsJSONParseError, 'bad char n');
+   CheckException(JSONNumberArrayBadComma, EdwsJSONParseError, 'bad comma n');
+
+   CheckException(JSONStringArrayBadStart, EdwsJSONParseError, 'bad start s');
+   CheckException(JSONStringArrayBadChar, EdwsJSONParseError, 'bad char s');
+   CheckException(JSONStringArrayBadComma, EdwsJSONParseError, 'bad comma s');
 end;
 
 // NestedArrays

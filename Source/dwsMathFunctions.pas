@@ -850,14 +850,14 @@ end;
 
 function TRandSeedFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
-   Result:=Int64(args.Exec.RandSeed);
+   Result:=Int64(args.Exec.RandSeed) xor cDefaultRandSeed;
 end;
 
 { TSetRandSeedFunc }
 
 procedure TSetRandSeedFunc.DoEvalProc(const args : TExprBaseListExec);
 begin
-   args.Exec.RandSeed:=args.AsInteger[0];
+   args.Exec.RandSeed:=args.AsInteger[0] xor cDefaultRandSeed;
 end;
 
 // ------------------------------------------------------------------

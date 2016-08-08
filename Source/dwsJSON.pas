@@ -745,11 +745,12 @@ begin
       end;
       c:=SkipBlanks(TrailCharacter);
       case c of
-         ',' : c:=SkipBlanks(NeedChar);
+         ',' : ;
          ']' : break;
       else
          raise EdwsJSONParseError.CreateFmt('"," expected but U+%.04x encountered', [Ord(c)]);
       end;
+      c:=SkipBlanks(NeedChar)
    until False;
 end;
 
@@ -777,11 +778,12 @@ begin
       end;
       c:=SkipBlanks(TrailCharacter);
       case c of
-         ',' : c:=SkipBlanks(NeedChar);
+         ',' : ;
          ']' : break;
       else
          raise EdwsJSONParseError.CreateFmt('"," expected but U+%.04x encountered', [Ord(c)]);
       end;
+      c:=SkipBlanks(NeedChar)
    until False;
 end;
 
@@ -807,11 +809,12 @@ begin
       end;
       c:=SkipBlanks(NeedChar);
       case c of
-         ',' : c:=SkipBlanks(NeedChar);
+         ',' : ;
          ']' : break;
       else
          raise EdwsJSONParseError.CreateFmt('"," expected but U+%.04x encountered', [Ord(c)]);
       end;
+      c:=SkipBlanks(NeedChar);
    until False;
 end;
 

@@ -1893,6 +1893,7 @@ const
    cFuncKindToString : array [Low(TFuncKind)..High(TFuncKind)] of UnicodeString = (
       'function', 'procedure', 'constructor', 'destructor', 'method', 'lambda' );
    cFirstFieldUnprepared : TFieldSymbol = Pointer(-1);
+   cDefaultRandSeed : UInt64 = 88172645463325252;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -1901,9 +1902,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-const
-   cDefaultRandSeed : UInt64 = 88172645463325252;
 
 // ------------------
 // ------------------ TdwsExprLocation ------------------
