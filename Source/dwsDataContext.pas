@@ -500,7 +500,7 @@ begin
    p:=@FData[FAddr+addr];
    if p^.VType=varInt64 then
       Result:=p^.VInt64
-   else Result:=PVariant(p)^;
+   else VariantToInt64(PVariant(p)^, Result);
 end;
 
 // SetAsInteger
@@ -512,7 +512,7 @@ begin
    p:=@FData[FAddr+addr];
    if p^.VType=varInt64 then
       p^.VInt64:=value
-   else PVariant(p)^:=value;
+   else VarCopySafe(PVariant(p)^, value);
 end;
 
 // GetAsFloat
@@ -524,7 +524,7 @@ begin
    p:=@FData[FAddr+addr];
    if p^.VType=varDouble then
       Result:=p^.VDouble
-   else Result:=PVariant(p)^;
+   else Result:=VariantToFloat(PVariant(p)^);
 end;
 
 // SetAsFloat
@@ -536,7 +536,7 @@ begin
    p:=@FData[FAddr+addr];
    if p^.VType=varDouble then
       p^.VDouble:=value
-   else PVariant(p)^:=value;
+   else VarCopySafe(PVariant(p)^, value);
 end;
 
 // GetAsBoolean
@@ -548,7 +548,7 @@ begin
    p:=@FData[FAddr+addr];
    if p^.VType=varBoolean then
       Result:=p^.VBoolean
-   else Result:=PVariant(p)^;
+   else Result:=VariantToBool(PVariant(p)^);
 end;
 
 // SetAsBoolean
@@ -560,7 +560,7 @@ begin
    p:=@FData[FAddr+addr];
    if p^.VType=varBoolean then
       p^.VBoolean:=value
-   else PVariant(p)^:=value;
+   else VarCopySafe(PVariant(p)^, value);
 end;
 
 // GetAsString
@@ -584,7 +584,7 @@ begin
    if p.VType=varUString then
       UnicodeString(p.VUString):=value
    {$endif}
-   else PVariant(p)^:=value;
+   else VarCopySafe(PVariant(p)^, value);
 end;
 
 // GetAsInterface
@@ -608,7 +608,7 @@ begin
    p:=@FData[FAddr+addr];
    if p^.VType=varUnknown then
       IUnknown(p^.VUnknown):=value
-   else PVariant(p)^:=value;
+   else VarCopySafe(PVariant(p)^, value);
 end;
 
 // AsPVarDataArray

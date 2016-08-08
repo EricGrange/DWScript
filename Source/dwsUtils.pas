@@ -1683,11 +1683,13 @@ begin
       varInt64 :
          r:=TVarData(v).VInt64;
       varBoolean :
-         r:=Ord(TVarData(v).VBoolean);
+         r:=Ord(Boolean(TVarData(v).VBoolean));
       varUnknown :
          if TVarData(v).VUnknown=nil then
             r:=0
          else DefaultCast;
+      varNull :
+         r := 0;
    else
       DefaultCast;
    end;
@@ -1725,7 +1727,7 @@ begin
       varInt64 :
          Result := TVarData(v).VInt64;
       varBoolean :
-         Result := Ord(TVarData(v).VBoolean);
+         Result := Ord(Boolean(TVarData(v).VBoolean));
       varNull :
          Result := 0;
    else
@@ -1959,34 +1961,32 @@ const
    {$endif}
 
 var
-  valType: TValueType;
+   valType: TValueType;
 begin
-  valType := reader.NextValue;
-  case valType of
-    vaNil, vaNull:
-      begin
-        if ReadValue = vaNil then
-          VarClearSafe(Result)
-        else
-          Result := NULL;
+   valType := reader.NextValue;
+   case valType of
+      vaNil, vaNull : begin
+         if ReadValue = vaNil then
+            VarClearSafe(Result)
+         else Result := Null;
       end;
-    vaInt8: TVarData(Result).VByte := Byte(reader.ReadInteger);
-    vaInt16: TVarData(Result).VSmallint := Smallint(reader.ReadInteger);
-    vaInt32: TVarData(Result).VInteger := reader.ReadInteger;
-    vaInt64: TVarData(Result).VInt64 := reader.ReadInt64;
-    vaExtended: TVarData(Result).VDouble := reader.ReadFloat;
-    vaSingle: TVarData(Result).VSingle := reader.ReadSingle;
-    vaCurrency: TVarData(Result).VCurrency := reader.ReadCurrency;
-    vaDate: TVarData(Result).VDate := reader.ReadDate;
-    vaString, vaLString, vaUTF8String:
-       Result := UnicodeString(reader.ReadString);
-    vaWString: Result := reader.ReadString;
-    vaFalse, vaTrue:
-       TVarData(Result).VBoolean := (reader.ReadValue = vaTrue);
-  else
-    raise EReadError.Create('Invalid variant stream');
-  end;
-  TVarData(Result).VType := cValTtoVarT[ValType];
+      vaInt8: TVarData(Result).VByte := Byte(reader.ReadInteger);
+      vaInt16: TVarData(Result).VSmallint := Smallint(reader.ReadInteger);
+      vaInt32: TVarData(Result).VInteger := reader.ReadInteger;
+      vaInt64: TVarData(Result).VInt64 := reader.ReadInt64;
+      vaExtended: TVarData(Result).VDouble := reader.ReadFloat;
+      vaSingle: TVarData(Result).VSingle := reader.ReadSingle;
+      vaCurrency: TVarData(Result).VCurrency := reader.ReadCurrency;
+      vaDate: TVarData(Result).VDate := reader.ReadDate;
+      vaString, vaLString, vaUTF8String:
+         Result := UnicodeString(reader.ReadString);
+      vaWString: Result := reader.ReadString;
+      vaFalse, vaTrue:
+         TVarData(Result).VBoolean := (reader.ReadValue = vaTrue);
+   else
+      raise EReadError.Create('Invalid variant stream');
+   end;
+   TVarData(Result).VType := cValTtoVarT[ValType];
 end;
 
 // DateTimeToISO8601

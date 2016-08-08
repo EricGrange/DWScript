@@ -17,9 +17,10 @@ unit UdwsUtilsTests;
 
 interface
 
-uses Classes, SysUtils, Math, dwsXPlatformTests, dwsUtils,
+uses Classes, SysUtils, Math, Variants, Types,
+   dwsXPlatformTests, dwsUtils,
    dwsXPlatform, dwsWebUtils, dwsTokenStore, dwsCryptoXPlatform,
-   dwsEncodingLibModule, dwsGlobalVars, dwsEncoding;
+   dwsEncodingLibModule, dwsGlobalVars, dwsEncoding, dwsDataContext;
 
 type
 
@@ -49,7 +50,9 @@ type
          procedure LookupTest;
          procedure SortedListExtract;
          procedure SimpleListOfInterfaces;
+
          procedure UnifierTest;
+         procedure UnifierTestBig;
 
          procedure UnicodeCompareTextTest;
          procedure FastCompareTextSortedValues;
@@ -68,6 +71,8 @@ type
          procedure QueueTest;
 
          procedure StringHash;
+         procedure TestDWSHashCode;
+         procedure TestDWSHashCodeEmptyStrings;
 
          procedure LoadTextFromBufferTest;
 
@@ -87,6 +92,10 @@ type
          procedure GlobalVarsCollect;
 
          procedure BytesWords;
+
+         procedure DataContextCasts;
+
+         procedure VariantPersist;
    end;
 
 // ------------------------------------------------------------------
@@ -509,6 +518,23 @@ begin
    Check(Pointer(s1)=Pointer(s2), 'unified');
 end;
 
+// UnifierTestBig
+//
+procedure TdwsUtilsTests.UnifierTestBig;
+var
+   i : Integer;
+   before, after : TIntegerDynArray;
+begin
+   TidyStringsUnifier;
+   before := StringUnifierHistogram;
+   for i := 1 to 10000 do
+      UnifiedString(IntToStr(i));
+   TidyStringsUnifier;
+   after := StringUnifierHistogram;
+   for i := Low(before) to High(before) do
+      CheckEquals(before[i], after[i], IntToStr(i));
+end;
+
 // UnicodeCompareTextTest
 //
 procedure TdwsUtilsTests.UnicodeCompareTextTest;
@@ -820,6 +846,37 @@ begin
    CheckEquals(SimpleLowerCaseStringHash('abc'), SimpleStringHash('abc'), 'abc');
    CheckEquals(SimpleLowerCaseStringHash('ABC'), SimpleStringHash(LowerCase('ABC')), 'ABC');
    CheckEquals(SimpleLowerCaseStringHash('ÈRic'), SimpleStringHash(UnicodeLowerCase('ÈRic')), 'ÈRic');
+end;
+
+// TestDWSHashCode
+//
+procedure TdwsUtilsTests.TestDWSHashCode;
+var
+   h : Cardinal;
+begin
+   h := 0;
+   DWSHashCode(h, Byte(123));
+   CheckEquals(2063647137, h, 'after 123');
+   DWSHashCode(h, Word(12345));
+   CheckEquals(314712808, h, 'after 12345');
+   DWSHashCode(h, AnsiString('hello'));
+   CheckEquals(3004885648, h, 'after hello');
+   DWSHashCode(h, Null);
+   CheckEquals(2220835395, h, 'after null');
+end;
+
+// TestDWSHashCodeEmptyStrings
+//
+procedure TdwsUtilsTests.TestDWSHashCodeEmptyStrings;
+var
+   h : Cardinal;
+begin
+   h := 1;
+   DWSHashCode(h, AnsiString(''));
+   CheckEquals(1345077009, h, 'ansi');
+   h := 1;
+   DWSHashCode(h, UnicodeString(''));
+   CheckEquals(1345077009, h, 'uni');
 end;
 
 // LoadTextFromBufferTest
@@ -1197,6 +1254,111 @@ begin
 
    StringWordsToBytes(buf, True);
    CheckEquals('Example', buf, 'words to bytes with swap');
+end;
+
+// DataContextCasts
+//
+procedure TdwsUtilsTests.DataContextCasts;
+const
+   cSingle : Single = 3.25;
+   cDouble : Double = 4.75;
+var
+   dc : IDataContext;
+begin
+   dc := TDataContext.CreateStandalone(1);
+
+   dc.AsVariant[0] := True;
+   CheckEquals(1, dc.AsInteger[0], 'True');
+   CheckEquals(1, dc.AsFloat[0], 'True');
+   CheckEquals(True, dc.AsBoolean[0], 'True');
+   CheckEquals('True', dc.AsString[0], 'True');
+
+   dc.AsVariant[0] := Int64(2);
+   CheckEquals(2, dc.AsInteger[0], '2');
+   CheckEquals(2.0, dc.AsFloat[0], '2');
+   CheckEquals(True, dc.AsBoolean[0], '2');
+   CheckEquals('2', dc.AsString[0], '2');
+
+   dc.AsVariant[0] := cSingle;
+   CheckEquals(3, dc.AsInteger[0], '3.25');
+   CheckEquals(3.25, dc.AsFloat[0], '3.25');
+   CheckEquals(True, dc.AsBoolean[0], '3.25');
+   CheckEquals('3.25', dc.AsString[0], '3.25');
+
+   dc.AsVariant[0] := cDouble;
+   CheckEquals(5, dc.AsInteger[0], '4.75');
+   CheckEquals(4.75, dc.AsFloat[0], '4.75');
+   CheckEquals(True, dc.AsBoolean[0], '4.75');
+   CheckEquals('4.75', dc.AsString[0], '4.75');
+
+   dc.AsVariant[0] := '05';
+   CheckEquals(5, dc.AsInteger[0], '05');
+   CheckEquals(5.0, dc.AsFloat[0], '05');
+   CheckEquals(True, dc.AsBoolean[0], '05');
+   CheckEquals('05', dc.AsString[0], '05');
+
+   dc.AsVariant[0] := Null;
+   CheckEquals(0, dc.AsInteger[0], 'Null');
+   CheckEquals(0.0, dc.AsFloat[0], 'Null');
+   CheckEquals(False, dc.AsBoolean[0], 'Null');
+   CheckEquals('Null', dc.AsString[0], 'Null');
+end;
+
+// VariantPersist
+//
+procedure TdwsUtilsTests.VariantPersist;
+const
+   cDouble : Double = 1234.5;
+   cSingle : Single = 1.5;
+var
+   wobs : TWriteOnlyBlockStream;
+   bs : TBytesStream;
+   wr : TWriter;
+   rd : TReader;
+begin
+   wobs := TWriteOnlyBlockStream.AllocFromPool;
+   try
+      wr := TWriter.Create(wobs, 16384);
+      try
+         WriteVariant(wr, Int64(123456789123456789));
+         WriteVariant(wr, UnicodeString('hello'));
+         WriteVariant(wr, cDouble);
+         WriteVariant(wr, True);
+         WriteVariant(wr, False);
+         WriteVariant(wr, Unassigned);
+         WriteVariant(wr, Null);
+         WriteVariant(wr, Byte(123));
+         WriteVariant(wr, AnsiString('world'));
+         WriteVariant(wr, cSingle);
+         WriteVariant(wr, EncodeDate(2016, 8, 1));
+      finally
+         wr.Free;
+      end;
+      bs := TBytesStream.Create(wobs.ToBytes);
+      try
+         rd := TReader.Create(bs, 16384);
+         try
+            CheckEquals(Int64(123456789123456789), ReadVariant(rd));
+            CheckEquals('hello', ReadVariant(rd));
+            CheckEquals(cDouble, ReadVariant(rd));
+            CheckEquals(True, ReadVariant(rd));
+            CheckEquals(False, ReadVariant(rd));
+            CheckEquals(Unassigned, ReadVariant(rd));
+            Check(VarIsNull(ReadVariant(rd)));
+            CheckEquals(123, ReadVariant(rd));
+            CheckEquals('world', ReadVariant(rd));
+            CheckEquals(cSingle, ReadVariant(rd));
+            CheckEquals(EncodeDate(2016, 8, 1), ReadVariant(rd));
+         finally
+            rd.Free;
+         end;
+      finally
+         bs.Free;
+      end;
+   finally
+      wobs.Free;
+   end;
+
 end;
 
 // ------------------------------------------------------------------

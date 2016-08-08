@@ -94,6 +94,7 @@ type
          procedure BugInForVarConnectorExpr;
          procedure MultiLineUnixStyle;
          procedure EmptyProgram;
+         procedure MessagesToJSON;
    end;
 
    ETestException = class (Exception);
@@ -2006,6 +2007,24 @@ begin
    CheckTrue(prog.IsEmpty, '""');
    prog:=FCompiler.Compile('// blabla'#13#10);
    CheckTrue(prog.IsEmpty, 'comments');
+end;
+
+// MessagesToJSON
+//
+procedure TCornerCasesTests.MessagesToJSON;
+var
+   wr : TdwsJSONWriter;
+   prog : IdwsProgram;
+begin
+   wr := TdwsJSONWriter.Create(nil);
+   try
+      prog:=FCompiler.Compile('{$HINT "hello"}'#13#10'...');
+      prog.Msgs.WriteJSONValue(wr);
+      CheckEquals('[{"text":"hello","type":"Hint","pos":{"file":"*MainModule*","line":1,"col":3},"hintLevel":"Normal"},'
+                 +'{"text":"Unexpected \"..\".","type":"SyntaxError","pos":{"file":"*MainModule*","line":2,"col":2}}]', wr.ToString);
+   finally
+      wr.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------

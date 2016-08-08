@@ -72,7 +72,6 @@ var
    procAffinity, systAffinity : DWORD;
 {$IFEND}
 begin
-//UnBundle_MPIR_DLL;
    DirectSet8087CW($133F);
    GetProcessAffinityMask(GetCurrentProcess, procAffinity, systAffinity);
    SetProcessAffinityMask(GetCurrentProcess, systAffinity);
