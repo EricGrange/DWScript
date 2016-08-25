@@ -165,9 +165,8 @@ const
       dftInteger, dftFloat, dftString, dftBlob, dftNull
    );
 begin
-   if sqliteType in [Low(cSQLiteTypeToDataType)..High(SQLITE_NULL)] then
-      Result:=cSQLiteTypeToDataType[sqliteType]
-   else Result:=dftUnknown;
+   Assert(sqliteType in [Low(cSQLiteTypeToDataType)..High(SQLITE_NULL)]);
+   Result:=cSQLiteTypeToDataType[sqliteType]
 end;
 
 // SQLAssignParameters

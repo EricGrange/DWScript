@@ -1,2 +1,7 @@
 url%20encoded%2F%2B%01that%20%C3%A9%21
+
 url encoded/+that é!
+é]
+
+True
+True

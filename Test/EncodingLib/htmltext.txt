@@ -2,8 +2,10 @@
 hello
 &amp;hello
 hello&gt;
+&#39;&nbsp;
 &lt;hello&quot;world&gt;here&amp;
 <hello"world>here&
 &<+>'"
 ###
 &&&bug;&;
+azerty
