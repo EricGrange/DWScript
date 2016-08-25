@@ -50,6 +50,7 @@ type
          procedure SuggestInBlockWithError;
          procedure NormalizeOverload;
          procedure OptimizedIfThenBlockSymbol;
+         procedure MemberVisibilities;
    end;
 
 // ------------------------------------------------------------------
@@ -980,6 +981,32 @@ begin
    finally
       FCompiler.Config.CompilerOptions := options;
    end;
+end;
+
+// MemberVisibilities
+//
+procedure TSourceUtilsTests.MemberVisibilities;
+var
+   prog : IdwsProgram;
+   sym : TTypeSymbol;
+begin
+   prog:=FCompiler.Compile(
+       'type TPrivate = class private field : Integer; end;'#13#10
+      +'type TPrivateRec = record private field : Integer; end;'#13#10
+      +'type TPublished = class published function func : Integer; begin Result := 1; end; end;'#13#10
+      +'type TPublicProtected = class (Object) protected field : Integer; public property prop : Integer read field; end;');
+
+   sym := prog.Table.FindTypeLocal('TPrivate');
+   CheckTrue((sym as TCompositeTypeSymbol).MembersVisibilities = [cvPrivate, cvPublic], 'private class');
+
+   sym := prog.Table.FindTypeLocal('TPrivateRec');
+   CheckTrue((sym as TCompositeTypeSymbol).MembersVisibilities = [cvPrivate], 'private record');
+
+   sym := prog.Table.FindTypeLocal('TPublished');
+   CheckTrue((sym as TCompositeTypeSymbol).MembersVisibilities = [cvPublic, cvPublished], 'published class');
+
+   sym := prog.Table.FindTypeLocal('TPublicProtected');
+   CheckTrue((sym as TCompositeTypeSymbol).MembersVisibilities = [cvPublic, cvProtected], 'public protected class');
 end;
 
 // ------------------------------------------------------------------

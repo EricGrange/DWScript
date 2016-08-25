@@ -6018,7 +6018,7 @@ begin
       else if symClass.InheritsFrom(TPropertySymbol) then
          Include(Result, TPropertySymbol(sym).Visibility)
       else if symClass.InheritsFrom(TMethodSymbol) then
-         Include(Result, TMethodSymbol(symClass).Visibility)
+         Include(Result, TMethodSymbol(sym).Visibility)
    end;
 end;
 
