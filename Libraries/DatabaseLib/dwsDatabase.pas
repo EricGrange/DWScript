@@ -207,7 +207,7 @@ begin
    for i:=0 to High(vDrivers) do
       if UnicodeSameText(vDrivers[i].Name, driverName) then
          Exit(vDrivers[i].Factory.CreateDataBase(parameters));
-   raise Exception.CreateFmt('No driver of name "%s"', [driverName]);
+   raise EDWSDataBase.CreateFmt('No driver of name "%s"', [driverName]);
 end;
 
 // ApplyPathVariables
