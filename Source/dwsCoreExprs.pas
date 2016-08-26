@@ -1644,6 +1644,7 @@ type
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
+         procedure Orphan(prog : TdwsProgram); override;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
 
          property CondExpr : TTypedExpr read FCond write FCond;
@@ -1651,7 +1652,7 @@ type
    end;
 
    // if FCond then FThen else FElse
-   TIfThenElseExpr = class(TIfThenExpr)
+   TIfThenElseExpr = class sealed (TIfThenExpr)
       private
          FElse : TProgramExpr;
 
@@ -1665,6 +1666,7 @@ type
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
+         procedure Orphan(prog : TdwsProgram); override;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
 
          property ElseExpr : TProgramExpr read FElse write FElse;
@@ -6896,6 +6898,21 @@ begin
    end;
 end;
 
+// Orphan
+//
+procedure TIfThenExpr.Orphan(prog : TdwsProgram);
+begin
+   if FCond <> nil then begin
+      FCond.Orphan(prog);
+      FCond := nil;
+   end;
+   if FThen <> nil then begin
+      FThen.Orphan(prog);
+      FThen := nil;
+   end;
+   DecRefCount;
+end;
+
 // Optimize
 //
 function TIfThenExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
@@ -6958,6 +6975,17 @@ begin
       exec.DoStep(FElse);
       FElse.EvalNoResult(exec);
    end;
+end;
+
+// Orphan
+//
+procedure TIfThenElseExpr.Orphan(prog : TdwsProgram);
+begin
+   if FElse <> nil then begin
+      FElse.Orphan(prog);
+      FElse := nil;
+   end;
+   inherited;
 end;
 
 // Optimize

@@ -23,7 +23,7 @@ unit dwsRelExprs;
 
 interface
 
-uses dwsExprs, dwsSymbols, dwsErrors, Variants;
+uses dwsExprs, dwsSymbols, dwsErrors, dwsConstExprs, Variants;
 
 type
 
@@ -229,15 +229,16 @@ end;
 //
 function TRelEqualIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
-   if FLeft.IsConstant and (FLeft.EvalAsInteger(exec)=0) then begin
+   if IsConstant then
+      Result := TConstExpr.CreateBooleanValue(prog, EvalAsBoolean(exec))
+   else if FLeft.IsConstant and (FLeft.EvalAsInteger(exec)=0) then begin
       Result:=TRelIntIsZeroExpr.Create(prog, FRight);
       FRight:=nil;
-      Free;
    end else if FRight.IsConstant and (FRight.EvalAsInteger(exec)=0) then begin
       Result:=TRelIntIsZeroExpr.Create(prog, FLeft);
       FLeft:=nil;
-      Free;
-   end else Result:=Self;
+   end else Exit(Self);
+   Orphan(prog);
 end;
 
 // ------------------
@@ -255,15 +256,16 @@ end;
 //
 function TRelNotEqualIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
-   if FLeft.IsConstant and (FLeft.EvalAsInteger(exec)=0) then begin
+   if IsConstant then
+      Result := TConstExpr.CreateBooleanValue(prog, EvalAsBoolean(exec))
+   else if FLeft.IsConstant and (FLeft.EvalAsInteger(exec)=0) then begin
       Result:=TRelIntIsNotZeroExpr.Create(prog, FRight);
       FRight:=nil;
-      Free;
    end else if FRight.IsConstant and (FRight.EvalAsInteger(exec)=0) then begin
       Result:=TRelIntIsNotZeroExpr.Create(prog, FLeft);
       FLeft:=nil;
-      Free;
-   end else Result:=Self;
+   end else Exit(Self);
+   Orphan(prog);
 end;
 
 // ------------------

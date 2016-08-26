@@ -11328,7 +11328,6 @@ begin
       if not FTok.TestDelete(ttCOLON) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
       exprPos:=FTok.HotPos;
-//      expr:=ReadExpr;
       expr:=factory.ReadInitExpr(memberTyp);
       try
          if not (expr is TConstExpr) then begin
