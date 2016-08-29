@@ -37,7 +37,7 @@ requires
   dwsLibRuntime;
 
 contains
-  dwsRegister in '..\source\dwsRegister.pas',
-  dwsExperts in '..\source\dwsExperts.pas';
+  dwsRegister in '..\..\Source\dwsRegister.pas',
+  dwsExperts in '..\..\Source\dwsExperts.pas';
 
 end.
