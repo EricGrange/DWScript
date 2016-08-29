@@ -1,0 +1,83 @@
+package dwsLibRuntime;
+
+{$R *.res}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO ON}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO OFF}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES OFF}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DESCRIPTION 'DelphiWebScript Runtime'}
+{$LIBSUFFIX 'D2010'}
+{$RUNONLY}
+{$IMPLICITBUILD OFF}
+
+requires
+  vcl,
+  rtl;
+
+contains
+  dwsComConnector in '..\Source\dwsComConnector.pas',
+  dwsStrings in '..\Source\dwsStrings.pas',
+  dwsSymbols in '..\Source\dwsSymbols.pas',
+  dwsUnitSymbols in '..\Source\dwsUnitSymbols.pas',
+  dwsTimeFunctions in '..\Source\dwsTimeFunctions.pas',
+  dwsTokenizer in '..\Source\dwsTokenizer.pas',
+  dwsVariantFunctions in '..\Source\dwsVariantFunctions.pas',
+  dwsVCLGUIFunctions in '..\Source\dwsVCLGUIFunctions.pas',
+  dwsComp in '..\Source\dwsComp.pas',
+  dwsCompiler in '..\Source\dwsCompiler.pas',
+  dwsDebugger in '..\Source\dwsDebugger.pas',
+  dwsErrors in '..\Source\dwsErrors.pas',
+  dwsExprs in '..\Source\dwsExprs.pas',
+  dwsInfo in '..\Source\dwsInfo.pas',
+  dwsFunctions in '..\Source\dwsFunctions.pas',
+  dwsGlobalVarsFunctions in '..\Source\dwsGlobalVarsFunctions.pas',
+  dwsMathFunctions in '..\Source\dwsMathFunctions.pas',
+  dwsStack in '..\Source\dwsStack.pas',
+  dwsStringFunctions in '..\Source\dwsStringFunctions.pas',
+  dwsCoreExprs in '..\Source\dwsCoreExprs.pas',
+  dwsUtils in '..\Source\dwsUtils.pas',
+  dwsXPlatform in '..\Source\dwsXPlatform.pas',
+  dwsClasses in '..\Libraries\ClassesLib\dwsClasses.pas',
+  dwsHashtables in '..\Libraries\ClassesLib\dwsHashtables.pas',
+  dwsFileSystem in '..\Source\dwsFileSystem.pas',
+  dwsHtmlFilter in '..\Source\dwsHtmlFilter.pas',
+  dwsLanguageExtension in '..\Source\dwsLanguageExtension.pas',
+  dwsMagicExprs in '..\Source\dwsMagicExprs.pas',
+  dwsRelExprs in '..\Source\dwsRelExprs.pas',
+  dwsStringResult in '..\source\dwsStringResult.pas',
+  dwsClassesLibModule in '..\Libraries\ClassesLib\dwsClassesLibModule.pas' {dwsClassesLib: TDataModule},
+  dwsAsmLibModule in '..\Libraries\asmLib\dwsAsmLibModule.pas',
+  dwsSymbolsLibModule in '..\Libraries\SymbolsLib\dwsSymbolsLibModule.pas' {dwsSymbolsLib: TDataModule},
+  dwsJSON in '..\Source\dwsJSON.pas',
+  dwsOperators in '..\Source\dwsOperators.pas',
+  dwsSystemOperators in '..\Source\dwsSystemOperators.pas',
+  dwsPascalTokenizer in '..\Source\dwsPascalTokenizer.pas',
+  dwsRTTIConnector in '..\Source\dwsRTTIConnector.pas',
+  dwsXPlatformUI in '..\Source\dwsXPlatformUI.pas',
+  dwsCompilerUtils in '..\Source\dwsCompilerUtils.pas',
+  dwsConnectorExprs in '..\Source\dwsConnectorExprs.pas',
+  dwsConstExprs in '..\Source\dwsConstExprs.pas',
+  dwsConvExprs in '..\Source\dwsConvExprs.pas',
+  dwsDataContext in '..\Source\dwsDataContext.pas',
+  dwsExprList in '..\Source\dwsExprList.pas',
+  dwsSetOfExprs in '..\Source\dwsSetOfExprs.pas',
+  dwsMethodExprs in '..\Source\dwsMethodExprs.pas';
+
+end.
