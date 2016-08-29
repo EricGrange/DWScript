@@ -12,7 +12,7 @@ for var a in WebServer.Authentications do
 </style>
 </head>
 <body>
-<table align="center" border=0>
+<table align="center" border="0">
 <tr><td align="center" class="info">
 	<a href="https://code.google.com/p/dwscript/"><img src="res/DWS_server.png" width=306 height=200></a><br />
 	<a href="http://delphitools.info">DelphiTools.info</a> - <a href="https://code.google.com/p/dwscript/">Get the code!</a><br />

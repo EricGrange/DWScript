@@ -39,6 +39,7 @@ type
       Name : String;
       Prog : IdwsProgram;
       Files : IAutoStrings;
+      procedure Flush;
    end;
 
    TCompiledProgramHash = class (TSimpleHash<TCompiledProgram>)
@@ -150,6 +151,7 @@ type
 
       procedure HandleP2JS(const fileName : String; request : TWebRequest; response : TWebResponse);
 
+      function CompilationInfoJSON(const sourceName : String; fileType : TFileAccessType) : String;
       procedure FlushDWSCache(const fileName : String = '');
 
       procedure LoadCPUOptions(options : TdwsJSONValue);
@@ -234,6 +236,12 @@ implementation
 
 const
    cCheckDirectoryChangesInterval = 1000;
+
+procedure TCompiledProgram.Flush;
+begin
+   Prog := nil;
+   Files := nil;
+end;
 
 procedure TSimpleDWScript.DataModuleCreate(Sender: TObject);
 var
@@ -456,6 +464,24 @@ begin
    else begin
       response.ContentData:='(function(){'#13#10+UTF8Encode(js)+'})();'#13#10;
       response.ContentType:='text/javascript; charset=UTF-8';
+   end;
+end;
+
+// CompilationInfoJSON
+//
+function TSimpleDWScript.CompilationInfoJSON(const sourceName : String; fileType : TFileAccessType) : String;
+var
+   prog : IdwsProgram;
+   fileName : String;
+begin
+   fileName := dwsCompileSystem.AllocateFileSystem.ValidateFileName(sourceName);
+   if fileName = '' then
+      Exit('"Access denied or does not exist"')
+   else begin
+      TryAcquireDWS(fileName, prog);
+      if prog = nil then
+         CompileDWS(fileName, prog, fileType);
+      Result := prog.Msgs.AsJSON;
    end;
 end;
 
@@ -761,21 +787,39 @@ type
    TFilesList = class (TFastCompareStringList)
       private
          FProgIndex : Integer;
-         FProgNames : array of String;
+         FProgs : array of IdwsProgram;
          FChanged : array of Boolean;
+         FDWS : TSimpleDWScript;
          function Enumerate(const item : TCompiledProgram) : TSimpleHashAction;
+         function RemoveChanged(const item : TCompiledProgram) : TSimpleHashAction;
    end;
 function TFilesList.Enumerate(const item : TCompiledProgram) : TSimpleHashAction;
 var
    i : Integer;
    sourceList : TStringList;
 begin
-   FProgNames[FProgIndex] := item.Name;
+   FProgs[FProgIndex] := item.Prog;
    sourceList := item.Files.Value;
    for i := 0 to sourceList.Count-1 do
       AddObject(sourceList[i], TObject(FProgIndex));
    Inc(FProgIndex);
    Result := shaNone;
+end;
+function TFilesList.RemoveChanged(const item : TCompiledProgram) : TSimpleHashAction;
+var
+   i : Integer;
+begin
+   Result := shaNone;
+   for i := 0 to High(FChanged) do begin
+      if FProgs[i] = item.Prog then begin
+         if FChanged[i] then begin
+            item.Flush;
+            FDWS.LogCompilation('Flushing "%s"', [item.Name]);
+            Result := shaRemove;
+         end;
+         Break;
+      end;
+   end;
 end;
 procedure TSimpleDWScript.CheckDirectoryChanges;
 var
@@ -785,18 +829,18 @@ var
    fileChanged, gotChanges : Boolean;
    files : TFilesList;
    info : TWin32FileAttributeData;
-   cp : TCompiledProgram;
 begin
    files := TFilesList.Create;
    try
+      files.FDWS := Self;
       // speculative check and allocation outside of lock
       n := FCompiledPrograms.Count;
-      SetLength(files.FProgNames, n);
+      SetLength(files.FProgs, n);
       // collect all files as fast as possible then release lock
       FCompiledProgramsLock.Enter;
       try
          if n <> FCompiledPrograms.Count then
-            SetLength(files.FProgNames, n);
+            SetLength(files.FProgs, n);
          FCompiledPrograms.Enumerate(files.Enumerate);
       finally
          FCompiledProgramsLock.Leave;
@@ -804,7 +848,7 @@ begin
       // sort to avoid duplicate checks
       files.CaseSensitive := False;
       files.Sort;
-      SetLength(files.FChanged, Length(files.FProgNames));
+      SetLength(files.FChanged, Length(files.FProgs));
       prevFileName := '';
       fileChanged := False;
       gotChanges := False;
@@ -830,13 +874,7 @@ begin
       if gotChanges then begin
          FCompiledProgramsLock.Enter;
          try
-            for i := 0 to High(files.FChanged) do begin
-               if files.FChanged[i] then begin
-                  cp.Name := files.FProgNames[i];
-                  LogCompilation('Flushing "%s"', [cp.Name]);
-                  FCompiledPrograms.Remove(cp);
-               end;
-            end;
+            FCompiledPrograms.Enumerate(files.RemoveChanged);
          finally
             FCompiledProgramsLock.Leave;
          end;

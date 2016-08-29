@@ -78,6 +78,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsCryptoClassesNoncesMethodsRegisterEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsCryptoClassesNoncesMethodsCollectEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
     FNonces : TdwsTokenStore;
@@ -324,6 +326,12 @@ procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsClearEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    FNonces.Clear;
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsCollectEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   FNonces.Collect;
 end;
 
 // SetNonceFilename

@@ -470,6 +470,12 @@ object dwsCryptoLib: TdwsCryptoLib
             Attributes = [maStatic]
             OnEval = dwsCryptoClassesNoncesMethodsClearEval
             Kind = mkClassProcedure
+          end
+          item
+            Name = 'Collect'
+            Attributes = [maStatic]
+            OnEval = dwsCryptoClassesNoncesMethodsCollectEval
+            Kind = mkClassProcedure
           end>
       end>
     Functions = <

@@ -51,6 +51,7 @@ dwsSynSQLiteDatabase
 dwsSystemOperators
 dwsTimeFunctions
 dwsTokenizer
+dwsTokenStore
 dwsUnitSymbols
 dwsUtils
 dwsVariantFunctions

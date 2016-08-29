@@ -192,16 +192,20 @@ begin
    t:=UTCDateTime;
    FLock.BeginRead;
    try
-      if FHash.Match(token) then
-         Result:=(token.Expire>t) and (token.Data=aData)
-      else Result:=False;
+      if FHash.Match(token) then begin
+         Result := (token.Expire>t) and (token.Data=aData);
+      end else Result := False;
    finally
       FLock.EndRead;
    end;
    if Result then begin
       FLock.BeginWrite;
       try
-         FHash.Remove(token);
+         if FHash.Match(token) then begin
+            token.Data := '';
+            token.Expire := 0;
+            FHash.Replace(token);
+         end;
       finally
          FLock.EndWrite;
       end;
@@ -219,7 +223,11 @@ begin
    token.Token:=aToken;
    FLock.BeginWrite;
    try
-      FHash.Remove(token);
+      if FHash.Match(token) then begin
+            token.Data := '';
+            token.Expire := 0;
+         FHash.Replace(token);
+      end;
    finally
       FLock.EndWrite;
    end;
