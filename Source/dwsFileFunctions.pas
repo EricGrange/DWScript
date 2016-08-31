@@ -568,7 +568,7 @@ end;
 //
 procedure TFileSetDateTimeFileFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
-   FileSetDateTime(GetFileHandle(args, 0), args.AsFloat[0]);
+   FileSetDateTime(GetFileHandle(args, 0), args.AsFloat[1]);
 end;
 
 // ------------------
@@ -579,7 +579,7 @@ end;
 //
 procedure TFileSetDateTimeNameFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
-   FileSetDate(args.AsFileName[0], DateTimeToFileDate(args.AsFloat[0]));
+   FileSetDate(args.AsFileName[0], DateTimeToFileDate(args.AsFloat[1]));
 end;
 
 // ------------------
@@ -796,8 +796,8 @@ initialization
 
    RegisterInternalFloatFunction(TFileDateTimeFileFunc, 'FileDateTime', ['f', SYS_FILE], [iffOverloaded], 'DateTime');
    RegisterInternalFloatFunction(TFileDateTimeNameFunc, 'FileDateTime', ['name', SYS_STRING], [iffOverloaded]);
-   RegisterInternalFloatFunction(TFileSetDateTimeFileFunc, 'FileSetDateTime', ['f', SYS_FILE], [iffOverloaded], 'SetDateTime');
-   RegisterInternalFloatFunction(TFileSetDateTimeNameFunc, 'FileSetDateTime', ['name', SYS_STRING], [iffOverloaded]);
+   RegisterInternalFloatFunction(TFileSetDateTimeFileFunc, 'FileSetDateTime', ['f', SYS_FILE, 'dt', SYS_FLOAT], [iffOverloaded], 'SetDateTime');
+   RegisterInternalFloatFunction(TFileSetDateTimeNameFunc, 'FileSetDateTime', ['name', SYS_STRING, 'dt', SYS_FLOAT], [iffOverloaded]);
 
    RegisterInternalBoolFunction(TFileExistsFunc, 'FileExists', ['name', SYS_STRING], []);
    RegisterInternalBoolFunction(TDirectoryExistsFunc, 'DirectoryExists', ['name', SYS_STRING], []);
