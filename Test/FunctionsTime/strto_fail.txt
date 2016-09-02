@@ -1,0 +1,3 @@
+Date/time parsing error for "bug1" [line: 2, column: 2]
+Date/time parsing error for "bug2" [line: 9, column: 2]
+Date/time parsing error for "bug3" [line: 16, column: 2]

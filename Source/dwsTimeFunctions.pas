@@ -247,6 +247,8 @@ begin
    AddClassVar(typFormatSettings, 'LongDateFormat', handler, systemTable.TypString);
    AddClassVar(typFormatSettings, 'ShortTimeFormat', handler, systemTable.TypString);
    AddClassVar(typFormatSettings, 'LongTimeFormat', handler, systemTable.TypString);
+   AddClassVar(typFormatSettings, 'TimeAMString', handler, systemTable.TypString);
+   AddClassVar(typFormatSettings, 'TimePMString', handler, systemTable.TypString);
    AddClassVar(typFormatSettings, 'Zone', handler, typDTZ).ExternalName:='$TZ';
 
    systemTable.AddSymbol(typFormatSettings);
