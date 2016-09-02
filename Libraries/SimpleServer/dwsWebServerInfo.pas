@@ -32,6 +32,7 @@ type
       function HttpsPort : Integer;
       function Authentications : TWebRequestAuthentications;
       function LiveQueries : String;
+      function CompilationInfoJSON(const sourceName : String) : String;
       procedure FlushCompiledPrograms;
       function ServerEvents : IdwsHTTPServerEvents;
    end;

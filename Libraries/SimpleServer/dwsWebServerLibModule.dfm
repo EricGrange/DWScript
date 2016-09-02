@@ -50,6 +50,17 @@ object dwsWebServerLib: TdwsWebServerLib
             Attributes = [maClassMethod, maStatic]
             OnEval = dwsWebServerClassesWebServerMethodsLiveQueriesEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'CompilationInfoJSON'
+            Parameters = <
+              item
+                Name = 'sourceFileName'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            OnEval = dwsWebServerClassesWebServerMethodsCompilationInfoJSONEval
+            Kind = mkFunction
           end>
       end>
     Dependencies.Strings = (

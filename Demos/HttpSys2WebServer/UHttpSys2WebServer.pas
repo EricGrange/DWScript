@@ -85,6 +85,8 @@ type
 
          procedure Initialize(const basePath : TFileName; options : TdwsJSONValue); virtual;
 
+         function FileAccessTypeFromFileName(const fileName : TFileName) : TFileAccessType;
+
       public
          constructor Create; overload;
          class function Create(const basePath : TFileName; options : TdwsJSONValue) : THttpSys2WebServer; overload;
@@ -106,6 +108,7 @@ type
 
          function LiveQueries : String;
 
+         function CompilationInfoJSON(const sourceName : String) : String;
          procedure FlushCompiledPrograms;
 
          function ServerEvents : IdwsHTTPServerEvents;
@@ -291,28 +294,33 @@ begin
    FDWS:=TSimpleDWScript.Create(nil);
    FDWS.Initialize(Self);
 
-   FDWS.PathVariables.Values['www']:=ExcludeTrailingPathDelimiter(FPath);
-   env := options['Server']['Environment'] as TdwsJSONObject;
-   if assigned(env) then
-      for i := 0 to env.ElementCount - 1 do
-         fDWS.PathVariables.Values[env.Names[i]] := env.Elements[i].AsString;
-
-   FErrorPagesPath:=IncludeTrailingPathDelimiter(FPath+'.errors');
-
-   FDirectoryIndex:=TDirectoryIndexCache.Create;
-   FDirectoryIndex.IndexFileNames.CommaText:='"index.dws","index.htm","index.html"';
-
-   FDWS.LoadCPUOptions(options['CPU']);
-
-   FDWS.LoadDWScriptOptions(options['DWScript']);
-
-   FDWS.Startup;
-
-   FServer:=THttpApi2Server.Create(False);
-
    serverOptions:=TdwsJSONValue.ParseString(cDefaultServerOptions);
    try
       serverOptions.Extend(options['Server']);
+
+      FDWS.PathVariables.Values['www']:=ExcludeTrailingPathDelimiter(FPath);
+      env := options['Server']['Environment'] as TdwsJSONObject;
+      if assigned(env) then
+         for i := 0 to env.ElementCount - 1 do
+            fDWS.PathVariables.Values[env.Names[i]] := env.Elements[i].AsString;
+
+      errorLogPath:=serverOptions['DWSErrorLogDirectory'];
+      if (errorLogPath.ValueType=jvtString) and (errorLogPath.AsString<>'') then begin
+         FDWS.ErrorLogDirectory:=IncludeTrailingPathDelimiter(FDWS.ApplyPathVariables(errorLogPath.AsString));
+      end;
+
+      FErrorPagesPath:=IncludeTrailingPathDelimiter(FPath+'.errors');
+
+      FDirectoryIndex:=TDirectoryIndexCache.Create;
+      FDirectoryIndex.IndexFileNames.CommaText:='"index.dws","index.htm","index.html"';
+
+      FDWS.LoadCPUOptions(options['CPU']);
+
+      FDWS.LoadDWScriptOptions(options['DWScript']);
+
+      FDWS.Startup;
+
+      FServer:=THttpApi2Server.Create(False);
 
       RegisterExtensions(serverOptions['ScriptedExtensions'], fatDWS);
       RegisterExtensions(serverOptions['P2JSExtensions'], fatP2JS);
@@ -331,11 +339,6 @@ begin
       nbThreads:=serverOptions['WorkerThreads'].AsInteger;
 
       FServer.LogRolloverSize:=1024*1024;
-
-      errorLogPath:=serverOptions['DWSErrorLogDirectory'];
-      if (errorLogPath.ValueType=jvtString) and (errorLogPath.AsString<>'') then begin
-         FDWS.ErrorLogDirectory:=IncludeTrailingPathDelimiter(FDWS.ApplyPathVariables(errorLogPath.AsString));
-      end;
 
       logPath:=serverOptions['LogDirectory'];
       if (logPath.ValueType=jvtString) and (logPath.AsString<>'') then begin
@@ -368,6 +371,19 @@ begin
       FServer.Clone(nbThreads-1);
 end;
 
+// FileAccessTypeFromFileName
+//
+function THttpSys2WebServer.FileAccessTypeFromFileName(const fileName : TFileName) : TFileAccessType;
+var
+   i : Integer;
+begin
+   for i := 0 to High(FDWSExtensions) do begin
+      if StrEndsWith(fileName, FDWSExtensions[i].Str) then
+         Exit(FDWSExtensions[i].Typ);
+   end;
+   Result := fatRAW;
+end;
+
 // Shutdown
 //
 procedure THttpSys2WebServer.Shutdown;
@@ -384,7 +400,6 @@ end;
 //
 procedure THttpSys2WebServer.Process(request : TWebRequest; response : TWebResponse);
 var
-   i : Integer;
    noTrailingPathDelimiter : Boolean;
    infoCache : TFileAccessInfoCache;
    fileInfo : TFileAccessInfo;
@@ -442,13 +457,7 @@ begin
          end;
          {$WARN SYMBOL_PLATFORM ON}
 
-         fileInfo.Typ:=fatRAW;
-         for i:=0 to High(FDWSExtensions) do begin
-            if StrEndsWith(fileInfo.CookedPathName, FDWSExtensions[i].Str) then begin
-               fileInfo.Typ:=FDWSExtensions[i].Typ;
-               Break;
-            end;
-         end;
+         fileInfo.Typ := FileAccessTypeFromFileName(fileInfo.CookedPathName);
       end;
 
    end;
@@ -585,6 +594,18 @@ end;
 function THttpSys2WebServer.LiveQueries : String;
 begin
    Result:=FDWS.LiveQueries;
+end;
+
+// CompilationInfoJSON
+//
+function THttpSys2WebServer.CompilationInfoJSON(const sourceName : String) : String;
+var
+   fat : TFileAccessType;
+begin
+   fat := FileAccessTypeFromFileName(sourceName);
+   if fat <> fatRAW then
+      Result := FDWS.CompilationInfoJSON(sourceName, fat)
+   else Result := '';
 end;
 
 // FlushCompiledPrograms

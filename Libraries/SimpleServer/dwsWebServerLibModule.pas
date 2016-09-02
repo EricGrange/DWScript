@@ -22,6 +22,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebServerClassesWebServerMethodsLiveQueriesEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebServerClassesWebServerMethodsCompilationInfoJSONEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FServer :  IWebServerInfo;
@@ -38,6 +40,12 @@ procedure TdwsWebServerLib.dwsWebServerClassesWebServerMethodsAuthenticationsEva
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsInteger:=0;
+end;
+
+procedure TdwsWebServerLib.dwsWebServerClassesWebServerMethodsCompilationInfoJSONEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := FServer.CompilationInfoJSON(Info.ParamAsString[0]);
 end;
 
 procedure TdwsWebServerLib.dwsWebServerClassesWebServerMethodsFlushCompiledProgramsEval(
