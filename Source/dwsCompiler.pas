@@ -12799,7 +12799,7 @@ begin
          end;
          if z<0 then begin
             unitSymbol:=HandleExplicitDependency(names[x]);
-            if unitSymbol<>nil then begin
+            if (unitSymbol<>nil) and (unitSymbol.Main<>nil) then begin
                if unitSymbol.IsDeprecated then
                   WarnDeprecatedSymbol(posArray[x], unitSymbol.Main, unitSymbol.Main.DeprecatedMessage);
                z:=rt.IndexOfParent(unitSymbol.Table);

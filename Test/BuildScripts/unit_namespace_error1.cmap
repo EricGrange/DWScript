@@ -1,0 +1,96 @@
+[
+	{
+		"Token" : "ttPROGRAM",
+		"Symbol" : null,
+		"SubContexts" : [
+			{
+				"Token" : "ttUSES",
+				"Symbol" : null,
+				"SubContexts" : [ ]
+			},
+			{
+				"Token" : "ttUSES",
+				"Symbol" : null,
+				"SubContexts" : [ ]
+			}
+		]
+	},
+	{
+		"Token" : "ttUNIT",
+		"Symbol" : {
+			"Class" : "TUnitMainSymbol",
+			"Name" : "Dotted.Both"
+		},
+		"SubContexts" : [
+			{
+				"Token" : "ttUSES",
+				"Symbol" : null,
+				"SubContexts" : [ ]
+			}
+		]
+	},
+	{
+		"Token" : "ttUNIT",
+		"Symbol" : {
+			"Class" : "TUnitMainSymbol",
+			"Name" : "Dotted.Abc"
+		},
+		"SubContexts" : [
+			{
+				"Token" : "ttFUNCTION",
+				"Symbol" : {
+					"Class" : "TSourceFuncSymbol",
+					"Name" : "Abc"
+				},
+				"SubContexts" : [
+					{
+						"Token" : "ttBEGIN",
+						"Symbol" : {
+							"Class" : "TSourceFuncSymbol",
+							"Name" : "Abc"
+						},
+						"SubContexts" : [
+							{
+								"Token" : "ttBEGIN",
+								"Symbol" : null,
+								"SubContexts" : [ ]
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	{
+		"Token" : "ttUNIT",
+		"Symbol" : {
+			"Class" : "TUnitMainSymbol",
+			"Name" : "Dotted.Hello.World"
+		},
+		"SubContexts" : [
+			{
+				"Token" : "ttFUNCTION",
+				"Symbol" : {
+					"Class" : "TSourceFuncSymbol",
+					"Name" : "HelloWorld"
+				},
+				"SubContexts" : [
+					{
+						"Token" : "ttBEGIN",
+						"Symbol" : {
+							"Class" : "TSourceFuncSymbol",
+							"Name" : "HelloWorld"
+						},
+						"SubContexts" : [
+							{
+								"Token" : "ttBEGIN",
+								"Symbol" : null,
+								"SubContexts" : [ ]
+							}
+						]
+					}
+				]
+			}
+		]
+	}
+]
