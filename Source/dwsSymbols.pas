@@ -3242,14 +3242,27 @@ function TFuncSymbol.GetCaption : UnicodeString;
 var
    i : Integer;
    nam : UnicodeString;
+   p : TSymbol;
+   pct : TClass;
 begin
    nam:=cFuncKindToString[Kind]+' '+Name;
 
    if Params.Count>0 then begin
-      Result:=Params[0].Typ.Caption;
-      for i:=1 to Params.Count - 1 do
-         Result:=Result+', '+Params[i].Typ.Caption;
-      Result:='('+Result+')';
+      Result := '(';
+      for i := 0 to Params.Count-1 do begin
+         if i > 0 then
+            Result := Result + ', ';
+         p := Params[i];
+         pct := p.ClassType;
+         if pct = TConstParamSymbol then
+            Result := Result + 'const '
+         else if pct = TVarParamSymbol then
+            Result := Result + 'var '
+         else if pct = TLazyParamSymbol then
+            Result := Result + 'lazy ';
+         Result := Result + Params[i].Typ.Caption;
+      end;
+      Result := Result + ')';
    end else Result:='';
 
    if Typ<>nil then

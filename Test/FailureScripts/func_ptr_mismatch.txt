@@ -1,0 +1,2 @@
+Syntax Error: More arguments expected [line: 5, column: 40]
+Syntax Error: Incompatible types: "procedure (String)" and "procedure Test(const String)" [line: 5, column: 39]
