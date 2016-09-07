@@ -91,6 +91,7 @@ type
    TMIMETypeCache = class
       private
          FList : TMIMETypeInfos;
+         FLock : TMultiReadSingleWrite;
 
          procedure Prime(const ext : String; const mimeType : RawByteString);
 
@@ -366,18 +367,26 @@ end;
 constructor TMIMETypeCache.Create;
 begin
    inherited;
-   FList:=TMIMETypeInfos.Create;
+   FList := TMIMETypeInfos.Create;
 
    // prime the cache with common extensions
 
    Prime('.txt', 'text/plain');
    Prime('.htm', 'text/html');
    Prime('.html', 'text/html');
-   Prime('.js', 'text/javascript');
+   Prime('.js',  'text/javascript');
    Prime('.css', 'text/css');
+
    Prime('.png', 'image/png');
    Prime('.jpg', 'image/jpeg');
    Prime('.gif', 'image/gif');
+   Prime('.svg', 'image/svg+xml');
+
+   Prime('.pdf', 'application/pdf');
+   Prime('.xml', 'application/xml');
+   Prime('.zip', 'application/zip');
+
+   FLock := TMultiReadSingleWrite.Create;
 end;
 
 // Destroy
@@ -387,6 +396,7 @@ begin
    inherited;
    FList.Clean;
    FList.Free;
+   FLock.Free;
 end;
 
 // MIMEType
@@ -397,11 +407,18 @@ var
    info : TMIMETypeInfo;
 begin
    ext:=ExtractFileExt(fileName);
+
+   FLock.BeginRead;
    info:=FList.Objects[ext];
+   FLock.EndRead;
+
    if info=nil then begin
       info:=TMIMETypeInfo.CreateAuto(ext);
+      FLock.BeginWrite;
       FList.Objects[ext]:=info;
+      FLock.EndWrite;
    end;
+
    Result:=info.MIMEType;
 end;
 
