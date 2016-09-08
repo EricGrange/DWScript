@@ -890,6 +890,7 @@ function StrEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
 function StrEndsWithA(const aStr, aEnd : RawByteString) : Boolean;
 function StrContains(const aStr, aSubStr : UnicodeString) : Boolean; overload;
 function StrContains(const aStr : UnicodeString; aChar : WideChar) : Boolean; overload;
+function StrIndexOfChar(const aStr : UnicodeString; aChar : WideChar) : Integer;
 function LowerCaseA(const aStr : RawByteString) : RawByteString;
 
 function StrMatches(const aStr, aMask : UnicodeString) : Boolean;
@@ -975,6 +976,9 @@ procedure SuppressH2077ValueAssignedToVariableNeverUsed(const X); inline;
 procedure dwsFreeAndNil(var O); // transitional function, do not use
 
 function CoalesceableIsFalsey(const unk : IUnknown) : Boolean;
+
+function ApplyStringVariables(const str : String; const variables : TStrings;
+                              const delimiter : String = '%') : String;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -2702,6 +2706,24 @@ begin
    else Result:=(Pos(aSubStr, aStr)>0);
 end;
 
+// StrContains (sub char)
+//
+function StrContains(const aStr : UnicodeString; aChar : WideChar) : Boolean;
+begin
+   Result := (StrIndexOfChar(aStr, aChar) > 0)
+end;
+
+// StrIndexOfChar
+//
+function StrIndexOfChar(const aStr : UnicodeString; aChar : WideChar) : Integer;
+var
+   i : Integer;
+begin
+   for i:=1 to Length(aStr) do
+      if aStr[i] = aChar then Exit(i);
+   Result := 0;
+end;
+
 // LowerCaseA
 //
 function LowerCaseA(const aStr : RawByteString) : RawByteString;
@@ -2740,17 +2762,6 @@ begin
    end;
 end;
 
-// StrContains (sub char)
-//
-function StrContains(const aStr : UnicodeString; aChar : WideChar) : Boolean;
-var
-   i : Integer;
-begin
-   for i:=0 to Length(aStr)-1 do
-      if aStr[i+1]=aChar then Exit(True);
-   Result:=False;
-end;
-
 // StrDeleteLeft
 //
 function StrDeleteLeft(const aStr : UnicodeString; n : Integer) : UnicodeString;
@@ -2771,7 +2782,7 @@ function StrAfterChar(const aStr : UnicodeString; aChar : WideChar) : UnicodeStr
 var
    p : Integer;
 begin
-   p:=Pos(aChar, aStr);
+   p:=StrIndexOfChar(aStr, aChar);
    if p>0 then
       Result:=Copy(aStr, p+1)
    else Result:='';
@@ -2783,7 +2794,7 @@ function StrBeforeChar(const aStr : UnicodeString; aChar : WideChar) : UnicodeSt
 var
    p : Integer;
 begin
-   p:=Pos(aChar, aStr);
+   p:=StrIndexOfChar(aStr, aChar);
    if p>0 then
       Result:=Copy(aStr, 1, p-1)
    else Result:=aStr;
@@ -2836,6 +2847,27 @@ begin
       end;
    end;
    Result:=-1;
+end;
+
+// ApplyStringVariables
+//
+function ApplyStringVariables(const str : String; const variables : TStrings;
+                              const delimiter : String = '%') : String;
+var
+   p1, p2 : Integer;
+begin
+   Result := str;
+   if (str='') or (variables.Count=0) then Exit;
+
+   p1:=Pos(delimiter, Result);
+   while p1>0 do begin
+      p2:=PosEx(delimiter, Result, p1+1);
+      if p2<p1 then Break;
+      Result:= Copy(Result, 1, p1-1)
+              +variables.Values[Copy(Result, p1+1, p2-p1-1)]
+              +Copy(Result, p2+1);
+      p1:=PosEx('%', Result, p1);
+   end;
 end;
 
 // ------------------

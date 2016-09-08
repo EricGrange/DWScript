@@ -545,9 +545,11 @@ begin
       dwsCompileSystem.Paths.Clear;
       dwsCompileSystem.Paths.Add(IncludeTrailingPathDelimiter(PathVariables.Values['www']));
       ApplyPathsVariables(dws['LibraryPaths'], dwsCompileSystem.Paths);
+      dwsCompileSystem.Variables := FPathVariables;
 
       dwsRuntimeFileSystem.Paths.Clear;
       ApplyPathsVariables(dws['WorkPaths'], dwsRuntimeFileSystem.Paths);
+      dwsRuntimeFileSystem.Variables := FPathVariables;
 
       dwsHtmlFilter.PatternOpen:=dws['PatternOpen'].AsString;
       dwsHtmlFilter.PatternClose:=dws['PatternClose'].AsString;
@@ -563,6 +565,13 @@ begin
    finally
       dws.Free;
    end;
+end;
+
+// ApplyPathVariables
+//
+function TSimpleDWScript.ApplyPathVariables(const aPath : String) : String;
+begin
+   Result := ApplyStringVariables(aPath, FPathVariables, '%');
 end;
 
 // TryAcquireDWS
@@ -908,24 +917,6 @@ begin
    FWebLib.Server:=nil;
    FreeAndNil(FBkgndWorkers);
    FreeAndNil(FWebServerLib);
-end;
-
-// ApplyPathVariables
-//
-function TSimpleDWScript.ApplyPathVariables(const aPath : String) : String;
-var
-   p1, p2 : Integer;
-begin
-   Result:=aPath;
-   p1:=Pos('%', Result);
-   while p1>0 do begin
-      p2:=PosEx('%', Result, p1+1);
-      if p2<p1 then Break;
-      Result:= Copy(Result, 1, p1-1)
-              +FPathVariables.Values[Copy(Result, p1+1, p2-p1-1)]
-              +Copy(Result, p2+1);
-      p1:=PosEx('%', Result, p1);
-   end;
 end;
 
 // ApplyPathsVariables

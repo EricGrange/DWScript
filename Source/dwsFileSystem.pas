@@ -103,9 +103,11 @@ type
       private
          FPaths : TStrings;
          FPathsPrepared : Boolean;
+         FVariables : TStrings;
 
       protected
          procedure SetPaths(const val : TStrings);
+         procedure SetVariables(const val : TStrings);
          procedure PathsChanged(Sender : TObject);
          procedure PreparePaths;
 
@@ -113,9 +115,10 @@ type
          constructor Create; override;
          destructor Destroy; override;
 
-         function ValidateFileName(const fileName : String) : String; override;
+         function ValidateFileName(const aFileName : String) : String; override;
 
          property Paths : TStrings read FPaths write SetPaths;
+         property Variables : TStrings read FVariables write SetVariables;
    end;
 
    // TdwsCustomFileSystem
@@ -142,9 +145,11 @@ type
    TdwsRestrictedFileSystem = class abstract (TdwsCustomFileSystem)
       private
          FPaths : TStrings;
+         FVariables : TStrings;
 
       protected
          procedure SetPaths(const val : TStrings);
+         procedure SetVariables(const val : TStrings);
 
       public
          constructor Create(Owner : TComponent); override;
@@ -154,6 +159,7 @@ type
 
       published
          property Paths : TStrings read FPaths write SetPaths;
+         property Variables : TStrings read FVariables write SetVariables;
    end;
 
 // ------------------------------------------------------------------
@@ -302,12 +308,14 @@ begin
    inherited;
    FPaths:=TStringList.Create;
    TStringList(FPaths).OnChange:=PathsChanged;
+   FVariables:=TFastCompareTextList.Create;
 end;
 
 // Destroy
 //
 destructor TdwsRestrictedOSFileSystem.Destroy;
 begin
+   FVariables.Free;
    FPaths.Free;
    inherited;
 end;
@@ -317,6 +325,13 @@ end;
 procedure TdwsRestrictedOSFileSystem.SetPaths(const val : TStrings);
 begin
    FPaths.Assign(val);
+end;
+
+// SetVariables
+//
+procedure TdwsRestrictedOSFileSystem.SetVariables(const val : TStrings);
+begin
+   FVariables.Assign(val);
 end;
 
 // PathsChanged
@@ -350,11 +365,12 @@ end;
 
 // ValidateFileName
 //
-function TdwsRestrictedOSFileSystem.ValidateFileName(const fileName : String) : String;
+function TdwsRestrictedOSFileSystem.ValidateFileName(const aFileName : String) : String;
 var
    i : Integer;
-   path : String;
+   fileName, path : String;
 begin
+   fileName := ApplyStringVariables(aFileName, FVariables, '%');
    if StrContains(fileName, ':') then begin
       // validate an absolute path
       Result := ExpandFileName(fileName);
@@ -393,6 +409,7 @@ constructor TdwsRestrictedFileSystem.Create(Owner : TComponent);
 begin
    inherited;
    FPaths:=TStringList.Create;
+   FVariables:=TStringList.Create;
 end;
 
 // Destroy
@@ -401,6 +418,7 @@ destructor TdwsRestrictedFileSystem.Destroy;
 begin
    inherited;
    FPaths.Free;
+   FVariables.Free;
 end;
 
 // AllocateFileSystem
@@ -411,6 +429,7 @@ var
 begin
    fs := TdwsRestrictedOSFileSystem.Create;
    fs.Paths := Paths;
+   fs.Variables := Variables;
    fs.OnFileStreamOpened := OnFileStreamOpened;
    Result:=fs;
 end;
@@ -420,6 +439,13 @@ end;
 procedure TdwsRestrictedFileSystem.SetPaths(const val : TStrings);
 begin
    FPaths.Assign(val);
+end;
+
+// SetVariables
+//
+procedure TdwsRestrictedFileSystem.SetVariables(const val : TStrings);
+begin
+   FVariables.Assign(val);
 end;
 
 end.
