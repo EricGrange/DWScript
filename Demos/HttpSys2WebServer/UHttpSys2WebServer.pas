@@ -186,6 +186,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+const
+   cFileCacheExpiryMilliseconds = 1000;
+
 // ExpandPathFileName
 //
 function ExpandPathFileName(const path : String; var fileName : String) : Boolean;
@@ -403,13 +406,14 @@ var
    noTrailingPathDelimiter : Boolean;
    infoCache : TFileAccessInfoCache;
    fileInfo : TFileAccessInfo;
+   t : TFileTime;
 begin
    if request.MethodVerb in FMethodsNotAllowed then begin
       ProcessStandardError(request, 405, 'method not allowed',  response);
       Exit;
    end;
 
-   infoCache:=TFileAccessInfoCache(request.Custom);
+   infoCache := TFileAccessInfoCache(request.Custom);
    if infoCache=nil then begin
       infoCache:=TFileAccessInfoCache.Create(FileAccessInfoCacheSize);
       request.Custom:=infoCache;
@@ -419,10 +423,14 @@ begin
       infoCache.CacheCounter:=FCacheCounter;
    end;
 
-   fileInfo:=infoCache.FileAccessInfo(request.PathInfo);
-   if fileInfo=nil then begin
+   GetSystemTimeAsFileTime(t);
+   fileInfo := infoCache.FileAccessInfo(request.PathInfo);
+   if (fileInfo = nil) or (Int64(t) > fileInfo.NextCheck) then begin
 
-      fileInfo:=infoCache.CreateFileAccessInfo(request.PathInfo);
+      if fileInfo = nil then
+         fileInfo := infoCache.CreateFileAccessInfo(request.PathInfo)
+      else fileInfo.CookedPathName := request.PathInfo;
+      fileInfo.NextCheck := Int64(t) + cFileCacheExpiryMilliseconds * 10000;
 
       if not ExpandPathFileName(FPath, fileInfo.CookedPathName) then
 

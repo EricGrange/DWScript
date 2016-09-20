@@ -60,6 +60,7 @@ type
          CookedPathName : String;
          FileAttribs : Cardinal;
          Typ : TFileAccessType;
+         NextCheck : Int64;
    end;
 
    // this class is not thread safe, use from a single thread
