@@ -1018,6 +1018,8 @@ end;
 
 // StatusCodeToReason
 //
+var
+   vCode200 : RawByteString; // initialized in initialization (see there)
 procedure StatusCodeToReason(code : integer; var result : RawByteString);
 const
    cCodes200 : array [200..207] of RawByteString = (
@@ -1039,8 +1041,8 @@ const
       'Internal Server Error', 'Not Implemented', 'Bad Gateway',     // 500-502
       'Service Unavailable' );
 begin
-   if code=200 then
-      result := cCodes200[200]
+   if code = 200 then
+      result := vCode200
    else case code of
       100 : result := 'Continue';
       101 : result := 'Switching Protocols';
@@ -1204,5 +1206,16 @@ begin
                  '<h1>'+outStatus+'</h1>'+UTF8Encode(errorMsg),
                  'text/html; charset=utf-8');
 end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   // we initialize the variable so that reference counting is effective
+   vCode200 := 'OK';
 
 end.
