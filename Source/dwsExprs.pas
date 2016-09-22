@@ -1063,11 +1063,19 @@ type
 
    // Does nothing! E. g.: "for x := 1 to 10 do {TNullExpr};"
    TNullExpr = class (TNoResultExpr)
-      procedure EvalNoResult(exec : TdwsExecution); override;
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+
+   // invalid statement
+   TErrorExpr = class sealed (TNullExpr)
    end;
 
    // invalid expression
-   TErrorExpr = class sealed (TNullExpr)
+   TErrorValueExpr = class sealed (TTypedExpr)
+      public
+         constructor Create(prog : TdwsProgram);
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
    // statement; statement; statement;
@@ -4361,6 +4369,24 @@ end;
 procedure TNullExpr.EvalNoResult(exec : TdwsExecution);
 begin
    //nothing
+end;
+
+// ------------------
+// ------------------ TErrorValueExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TErrorValueExpr.Create(prog : TdwsProgram);
+begin
+   Typ := prog.TypAnyType;
+end;
+
+// EvalAsVariant
+//
+procedure TErrorValueExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+begin
+   Assert(False);
 end;
 
 // ------------------

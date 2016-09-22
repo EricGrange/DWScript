@@ -7333,7 +7333,11 @@ begin
       if FTok.Test(ttBLEFT) then begin
          ReadFuncArgs(funcExpr, argPosArray, overloads);
          if overloads<>nil then begin
-            if not ResolveOverload(funcExpr, overloads, argPosArray, nil, cfOptions) then Exit;
+            if not ResolveOverload(funcExpr, overloads, argPosArray, nil, cfOptions) then begin
+               Result := TErrorValueExpr.Create(FProg);
+               funcExpr.Orphan(FProg);
+               Exit;
+            end;
             Result:=funcExpr;
          end;
          TypeCheckArgs(funcExpr, argPosArray);
@@ -12031,14 +12035,13 @@ begin
             end;
 
          end;
-         siIfDef, siIfNDef : begin
+         siIfDef, siIfNDef, siIf : begin
 
             while FTok.HasTokens and not FTok.Test(ttCRIGHT) do
                FTok.KillToken;
             Inc(innerDepth);
 
          end;
-
       else
          while FTok.HasTokens and not FTok.Test(ttCRIGHT) do
             FTok.KillToken;

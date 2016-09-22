@@ -232,10 +232,16 @@ class function TConvExpr.WrapWithConvCast(prog : TdwsProgram; const scriptPos : 
       if reportError='' then Exit;
       if toTyp = nil then
          cleft := SYS_VOID
-      else cleft := toTyp.Caption;
+      else begin
+         if toTyp is TAnyTypeSymbol then Exit;
+         cleft := toTyp.Caption;
+      end;
       if expr.Typ = nil then
          cright := SYS_VOID
-      else cright := expr.Typ.Caption;
+      else begin
+         cright := expr.Typ.Caption;
+         if expr.Typ is TAnyTypeSymbol then Exit;
+      end;
       prog.CompileMsgs.AddCompilerErrorFmt(scriptPos, reportError, [cright, cleft]);
    end;
 
