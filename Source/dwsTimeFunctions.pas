@@ -27,7 +27,7 @@ uses
    Classes, SysUtils, Variants,
    dwsUtils, dwsStrings, dwsXPlatform, dwsDateTime,
    dwsFunctions, dwsExprs, dwsSymbols, dwsUnitSymbols, dwsExprList,
-   dwsMagicExprs, dwsExternalSymbols;
+   dwsMagicExprs, dwsExternalSymbols, dwsWebUtils;
 
 type
 
@@ -108,6 +108,14 @@ type
   end;
 
   TISO8601ToDateTimeFunc = class(TInternalMagicFloatFunction)
+    procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+  end;
+
+  TDateTimeToRFC822Func = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+  end;
+
+  TRFC822ToDateTimeFunc = class(TInternalMagicFloatFunction)
     procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
   end;
 
@@ -500,6 +508,20 @@ begin
    Result:=ISO8601ToDateTime(args.AsString[0]);
 end;
 
+{ TDateTimeToRFC822Func }
+
+procedure TDateTimeToRFC822Func.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+begin
+   Result := WebUtils.DateTimeToRFC822(args.AsFloat[0]);
+end;
+
+{ TRFC822ToDateTimeFunc }
+
+procedure TRFC822ToDateTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result := WebUtils.RFC822ToDateTime(args.AsString[0]);
+end;
+
 { TDayOfWeekFunc }
 
 function TDayOfWeekFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
@@ -829,6 +851,9 @@ initialization
    RegisterInternalStringFunction(TDateToISO8601Func, 'DateToISO8601', ['dt', cDateTime]);
    RegisterInternalStringFunction(TDateTimeToISO8601Func, 'DateTimeToISO8601', ['dt', cDateTime]);
    RegisterInternalFloatFunction(TISO8601ToDateTimeFunc, 'ISO8601ToDateTime', ['s', SYS_STRING]);
+
+   RegisterInternalStringFunction(TDateTimeToRFC822Func, 'DateTimeToRFC822', ['dt', cDateTime]);
+   RegisterInternalFloatFunction(TRFC822ToDateTimeFunc, 'RFC822ToDateTime', ['s', SYS_STRING]);
 
    RegisterInternalStringFunction(TTimeToStrFunc, 'TimeToStr', ['dt', cDateTime, 'utc=0', SYS_DATE_TIME_ZONE]);
    RegisterInternalFloatFunction(TStrToTimeFunc, 'StrToTime', ['str', SYS_STRING, 'utc=0', SYS_DATE_TIME_ZONE]);

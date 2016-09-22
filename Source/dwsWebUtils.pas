@@ -518,15 +518,45 @@ const
 // DateTimeToRFC822
 //
 class function WebUtils.DateTimeToRFC822(const dt : TDateTime) : String;
+
+   procedure Copy3(src, dest : PChar); inline;
+   begin
+      PCardinal(dest)^ := PCardinal(src)^;
+      dest[2] := src[2];
+   end;
+
 var
    a, m, j, hh, mn, ss, ms : Word;
-   dow : Integer;
+   dow : Word;
+   aHigh, aLow : Cardinal;
+   p : PWideChar;
 begin
-   DecodeDate(dt, a, m, j);
+   DecodeDateFully(dt, a, m, j, dow);
    DecodeTime(dt, hh, mn, ss, ms);
-   dow:=DayOfWeek(dt);
-   Result:=Format('%s, %.2d %s %.4d %.2d:%.2d:%.2d GMT',
-                  [cRFC822Days[dow], j, cRFC822Months[m], a, hh, mn, ss]);
+   SetLength(Result, 29); // 'ddd, jj mmm yyyy hh:nn:ss GMT';
+   p := Pointer(Result);
+   Copy3(Pointer(cRFC822Days[dow]), p);
+   p[3] := ',';
+   p[4] := ' ';
+   PTwoChars(@p[5])^ := cTwoDigits[j];
+   p[7] := ' ';
+   Copy3(Pointer(cRFC822Months[m]), @p[8]);
+   p[11] := ' ';
+   aHigh := a;
+   if aHigh > 9999 then aHigh := 999;
+   aLow := DivMod100(aHigh);
+   PTwoChars(@p[12])^ := cTwoDigits[aHigh];
+   PTwoChars(@p[14])^ := cTwoDigits[aLow];
+   p[16] := ' ';
+   PTwoChars(@p[17])^ := cTwoDigits[hh];
+   p[19] := ':';
+   PTwoChars(@p[20])^ := cTwoDigits[mn];
+   p[22] := ':';
+   PTwoChars(@p[23])^ := cTwoDigits[ss];
+   p[25] := ' ';
+   p[26] := 'G';
+   p[27] := 'M';
+   p[28] := 'T';
 end;
 
 // RFC822ToDateTime
