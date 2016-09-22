@@ -188,6 +188,7 @@ implementation
 
 const
    cFileCacheExpiryMilliseconds = 1000;
+   cFileCacheCountFlush = 200;
 
 // ExpandPathFileName
 //
@@ -414,13 +415,11 @@ begin
    end;
 
    infoCache := TFileAccessInfoCache(request.Custom);
-   if infoCache=nil then begin
-      infoCache:=TFileAccessInfoCache.Create(FileAccessInfoCacheSize);
-      request.Custom:=infoCache;
-      infoCache.CacheCounter:=FCacheCounter;
-   end else if infoCache.CacheCounter<>FCacheCounter then begin
+   if infoCache = nil then begin
+      infoCache := TFileAccessInfoCache.Create(FileAccessInfoCacheSize);
+      request.Custom := infoCache;
+   end else if infoCache.Count > cFileCacheCountFlush then begin
       infoCache.Flush;
-      infoCache.CacheCounter:=FCacheCounter;
    end;
 
    GetSystemTimeAsFileTime(t);
@@ -501,26 +500,26 @@ var
    ifModifiedSince : TDateTime;
    lastModified : TDateTime;
 begin
-   lastModified:=FileDateTime(pathName);
-   if lastModified=0 then begin
+   lastModified := FileDateTime(pathName);
+   if lastModified = 0 then begin
       ProcessStandardError(request, 404, 'not found',  response);
       Exit;
    end;
 
-   ifModifiedSince:=request.IfModifiedSince;
+   ifModifiedSince := request.IfModifiedSince;
 
    // compare with a precision to the second and no more
-   if Round(lastModified*86400)>Round(ifModifiedSince*86400) then begin
+   if Round(lastModified*86400) > Round(ifModifiedSince*86400) then begin
 
       // http.sys will send the specified file from kernel mode
 
-      response.ContentData:=UnicodeStringToUtf8(pathName);
-      response.ContentType:=HTTP_RESP_STATICFILE;
-      response.LastModified:=lastModified;
+      response.ContentData := UnicodeStringToUtf8(pathName);
+      response.ContentType := HTTP_RESP_STATICFILE;
+      response.LastModified := lastModified;
 
    end else begin
 
-      response.StatusCode:=304;
+      response.StatusCode := 304;
 
    end;
 end;

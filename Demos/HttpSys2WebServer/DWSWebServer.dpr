@@ -206,7 +206,6 @@ begin
    LogServiceError(options, E.ClassName+': '+E.Message);
 end;
 
-
 var
    i : Integer;
    optionsFileName, url, log : String;

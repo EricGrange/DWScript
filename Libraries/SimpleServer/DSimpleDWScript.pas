@@ -18,7 +18,7 @@ unit DSimpleDWScript;
 
 interface
 
-{$define LogCompiles}
+{.$define LogCompiles}
 
 uses
    Windows, SysUtils, Classes, StrUtils, Masks,
@@ -870,7 +870,7 @@ begin
                if fileChanged then
                   LogCompilation('"%s" change detected', [prevFileName]);
             end else begin
-               LogCompilation('"%s" check error: ', [prevFileName, SysErrorMessage(GetLastError)]);
+               LogCompilation('"%s" check error: %s', [prevFileName, SysErrorMessage(GetLastError)]);
                fileChanged := True
             end;
          end;

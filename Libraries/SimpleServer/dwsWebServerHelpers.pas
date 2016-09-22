@@ -68,7 +68,6 @@ type
       private
          FHash : TSimpleNameObjectHash<TFileAccessInfo>;
          FMaxSize, FSize : Integer;
-         FCacheCounter : Cardinal;
 
       public
          constructor Create(const aMaxSize : Integer);
@@ -76,10 +75,9 @@ type
 
          function FileAccessInfo(const pathInfo : String) : TFileAccessInfo; inline;
          function CreateFileAccessInfo(const pathInfo : String) : TFileAccessInfo;
+         function Count : Integer; inline;
 
          procedure Flush;
-
-         property CacheCounter : Cardinal read FCacheCounter write FCacheCounter;
    end;
 
    TMIMETypeInfo = class (TRefCountedObject)
@@ -324,6 +322,13 @@ begin
    Result.CookedPathName:=pathInfo;
    FHash.AddObject(pathInfo, Result);
    Inc(FSize);
+end;
+
+// Count
+//
+function TFileAccessInfoCache.Count : Integer;
+begin
+   Result := FHash.Count;
 end;
 
 // Flush
