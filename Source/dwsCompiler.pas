@@ -5390,7 +5390,8 @@ begin
 
             end else begin
 
-               Assert(sym is TConstSymbol);
+               if not (sym is TConstSymbol) then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_ConstantExpressionExpected);
 
                OrphanAndNil(expr);
                Result:=TConstExpr.CreateTyped(FProg, sym.Typ, TConstSymbol(sym));
