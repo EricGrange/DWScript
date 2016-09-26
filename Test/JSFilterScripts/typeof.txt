@@ -1,0 +1,8 @@
+number
+string
+numberstring
+stringnumber
+string
+string
+number
+string

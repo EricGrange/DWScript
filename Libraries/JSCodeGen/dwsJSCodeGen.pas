@@ -584,8 +584,10 @@ type
          FVirtualCall : Boolean;
       public
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+         procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
          procedure CodeGenFunctionName(codeGen : TdwsCodeGen; expr : TFuncExprBase; funcSym : TFuncSymbol); virtual;
          procedure CodeGenBeginParams(codeGen : TdwsCodeGen; expr : TFuncExprBase); virtual;
+         procedure CodeGenTypeOf(codeGen : TdwsCodeGen; expr : TFuncExprBase; wrap : Boolean);
 
          class function GetSignature(funcSym : TFuncSymbol) : String;
    end;
@@ -4579,6 +4581,11 @@ begin
    if funcSym.ClassType=TAliasMethodSymbol then
       funcSym:=TAliasMethodSymbol(funcSym).Alias;
 
+   if funcSym.ClassType=TTypeOfSymbol then begin
+      CodeGenTypeOf(codeGen, e, True);
+      Exit;
+   end;
+
    if     (funcSym.Executable<>nil)
       and (funcSym.Executable.GetSelf is TInternalFunction) then begin
 
@@ -4626,6 +4633,15 @@ begin
    end;
 end;
 
+// CodeGenNoWrap
+//
+procedure TJSFuncBaseExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+begin
+   if TFuncExprBase(expr).FuncSym.ClassType=TTypeOfSymbol then
+      CodeGenTypeOf(codeGen, TFuncExprBase(expr), False)
+   else Self.CodeGen(codeGen, expr);
+end;
+
 // CodeGenFunctionName
 //
 procedure TJSFuncBaseExpr.CodeGenFunctionName(codeGen : TdwsCodeGen; expr : TFuncExprBase; funcSym : TFuncSymbol);
@@ -4649,6 +4665,18 @@ end;
 procedure TJSFuncBaseExpr.CodeGenBeginParams(codeGen : TdwsCodeGen; expr : TFuncExprBase);
 begin
    // nothing here
+end;
+
+// CodeGenTypeOf
+//
+procedure TJSFuncBaseExpr.CodeGenTypeOf(codeGen : TdwsCodeGen; expr : TFuncExprBase; wrap : Boolean);
+begin
+   if wrap then
+      codeGen.WriteString('(typeof ')
+   else codeGen.WriteString('typeof ');
+   codeGen.Compile(expr.Args[0]);
+   if wrap then
+      codeGen.WriteString(')');
 end;
 
 // GetSignature
@@ -5199,7 +5227,7 @@ begin
    codeGen.WriteString(jsMember.MemberName);
    codeGen.WriteString(' = ');
    valueTyp:=e.ValueExpr.Typ;
-   if (valueTyp is TRecordSymbol) then begin
+   if valueTyp is TRecordSymbol then begin
       if cvPublished in TRecordSymbol(valueTyp).MembersVisibilities then begin
          codeGen.WriteString('Pub$');
          codeGen.WriteSymbolName(valueTyp);
@@ -5209,6 +5237,10 @@ begin
       end else begin
          codeGen.WriteString('{}');
       end;
+   end else if valueTyp is TStaticArraySymbol then begin
+      codeGen.Compile(e.ValueExpr);
+      if not e.ValueExpr.IsConstant then
+         codeGen.WriteString('.slice()');
    end else codeGen.Compile(e.ValueExpr);
 end;
 

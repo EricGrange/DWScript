@@ -1,0 +1,19 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+var a : Variant = 1;
+var b : Variant = "2";
+
+PrintLn(TypeOf(a));
+PrintLn(TypeOf(b));
+PrintLn(TypeOf(a)+TypeOf(b));
+PrintLn(TypeOf(b)+TypeOf(a));
+PrintLn(TypeOf(a+b));
+PrintLn(TypeOf(b+a));
+PrintLn(TypeOf(a+a));
+PrintLn(TypeOf(b+b));
+%>
+
+</script>

@@ -172,6 +172,9 @@ type
          function SupportsEmptyParam : Boolean; override;
    end;
 
+   TTypeOfSymbol = class sealed(TFuncSymbol)
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -362,6 +365,7 @@ procedure TdwsJSLanguageExtension.CreateSystemSymbols(table : TSystemSymbolTable
 var
    jObject : TClassSymbol;
    meth : TMethodSymbol;
+   typeOf : TFuncSymbol;
 begin
    jObject:=TClassSymbol.Create(SYS_JOBJECT, nil);
    jObject.InheritFrom(table.TypObject);
@@ -376,6 +380,12 @@ begin
    jObject.AddMethod(meth);
 
    table.AddSymbol(TConstSymbol.CreateValue('Undefined', table.TypVariant, Unassigned));
+
+   typeOf:=TTypeOfSymbol.Create('TypeOf', fkFunction, 0);
+   typeOf.Typ:=table.TypString;
+   typeOf.AddParam(TParamSymbol.Create('v', table.TypVariant));
+   typeOf.IsExternal:=True;
+   table.AddSymbol(typeOf);
 end;
 
 // StaticSymbols
@@ -621,7 +631,8 @@ function TJSConnectorSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=   inherited IsCompatible(typSym)
            or (typSym.AsFuncSymbol<>nil)
-           or (typSym is TRecordSymbol);
+           or (typSym is TRecordSymbol)
+           or (typSym is TStaticArraySymbol);
 end;
 
 // SupportsEmptyParam

@@ -1,0 +1,20 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+
+var a external 'a': Variant := new JObject;
+
+a.b := [];
+a.c := [1, 2];
+
+var s := [3, 4, 5];
+
+a.s := s;
+
+s[0] := 6;
+
+%>
+PrintLn(JSON.stringify(a));
+</script>

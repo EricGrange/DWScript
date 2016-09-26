@@ -141,7 +141,7 @@ implementation
 {$R dwsJSRTL.res dwsJSRTL.rc}
 
 const
-   cJSRTLDependencies : array [1..260] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..262] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -646,6 +646,10 @@ const
                +#9'return FormatDateTime("yyyy-mm-dd", v, 2)+"T"+FormatDateTime("hh:nn:ss", v, 2)+"Z"'#13#10
                +'}';
        Dependency : 'FormatDateTime' ),
+      (Name : 'DateTimeToRFC822';
+       Code : 'function DateTimeToRFC822(v) {'#13#10
+               +#9'return new Date(Math.round((v-25569)*864e5));'#13#10
+               +'}' ),
       (Name : 'DateTimeToStr';
        Code : 'function DateTimeToStr(v, u) { return FormatDateTime($fmt.ShortDateFormat+" "+$fmt.LongTimeFormat, v, u) }';
        Dependency : 'FormatDateTime' ),
@@ -954,6 +958,8 @@ const
        Code : 'function ReverseString(s) { return s.split("").reverse().join("") }'),
       (Name : 'RevPos';
        Code : 'function RevPos(a,b) { return (a=="")?0:(b.lastIndexOf(a)+1) }'),
+      (Name : 'RFC822ToDateTime';
+       Code : 'function RFC822ToDateTime(v) { return Date.parse(s)/864e5+25569 }'),
       (Name : 'RightStr';
        Code : 'function RightStr(s,n) { return s.substr(s.length-n) }'),
       (Name : 'Round';
