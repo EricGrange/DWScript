@@ -3013,7 +3013,6 @@ var
    expr : TTypedExpr;
    dataExpr : TDataExpr;
    sas : TStaticArraySymbol;
-   detachTyp : Boolean;
    recordData : TData;
 begin
    if typ is TRecordSymbol then begin
@@ -3023,7 +3022,6 @@ begin
 
    end else begin
 
-      detachTyp:=False;
       if typ is TArraySymbol then begin
          case FTok.TestDeleteAny([ttALEFT, ttBLEFT]) of
             ttALEFT : expr:=factory.ReadArrayConstantExpr(ttARIGHT, typ);
@@ -3041,7 +3039,6 @@ begin
                expr:=CompilerUtils.WrapWithImplicitConversion(FProg, expr, typ, FTok.HotPos);
          end else if expr<>nil then begin
             typ:=expr.typ;
-            detachTyp:=(typ.Name='');
          end;
 
          if not expr.IsConstant then begin
@@ -3052,7 +3049,6 @@ begin
             if typ=nil then
                typ:=FProg.TypVariant;
             Result:=factory.CreateConstSymbol(name, constPos, typ, nil);
-            detachTyp:=False;
 
          end else begin
 
@@ -3066,7 +3062,6 @@ begin
                end;
                if expr is TConstExpr then begin
                   Result:=factory.CreateConstSymbol(name, constPos, sas, TConstExpr(expr).Data);
-                  detachTyp:=False;
                end else begin
                   Result:=factory.CreateConstSymbol(name, constPos, sas,
                                                     (expr as TArrayConstantExpr).EvalAsTData(FExec));
@@ -3092,8 +3087,6 @@ begin
          end;
 
       finally
-         if detachTyp then
-            expr.DetachTypes(FProg.Table);
          OrphanAndNil(expr);
       end;
    end;

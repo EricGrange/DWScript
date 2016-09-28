@@ -236,8 +236,6 @@ type
 
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
          function IsWritable : Boolean; override;
-
-         procedure DetachTypes(toTable : TSymbolTable); override;
    end;
 
 // ------------------------------------------------------------------
@@ -782,9 +780,12 @@ end;
 // Create
 //
 constructor TArrayConstantExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos);
+var
+   sas : TStaticArraySymbol;
 begin
-   inherited Create(aScriptPos,
-      TStaticArraySymbol.Create('', prog.TypNil, prog.TypInteger, 0, -1));
+   sas := TStaticArraySymbol.Create('', prog.TypNil, prog.TypInteger, 0, -1);
+   prog.Table.AddSymbol(sas);
+   inherited Create(aScriptPos, sas);
 end;
 
 // Destroy
@@ -792,7 +793,6 @@ end;
 destructor TArrayConstantExpr.Destroy;
 begin
    FElementExprs.Clean;
-   FTyp.Free;
    inherited;
 end;
 
@@ -1044,21 +1044,6 @@ end;
 function TArrayConstantExpr.IsWritable : Boolean;
 begin
    Result:=False;
-end;
-
-// DetachTypes
-//
-procedure TArrayConstantExpr.DetachTypes(toTable : TSymbolTable);
-var
-   i : Integer;
-   e : TTypedExpr;
-begin
-   for i:=0 to FElementExprs.Count-1 do begin
-      e:=TTypedExpr(FElementExprs.List[i]);
-      if (e.Typ<>nil) and (e.Typ.Name='') then
-         e.DetachTypes(toTable);
-   end;
-   inherited DetachTypes(toTable);
 end;
 
 // TypeCheckElements

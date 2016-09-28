@@ -1028,8 +1028,6 @@ type
          function SameDataExpr(expr : TTypedExpr) : Boolean; virtual;
 
          property Typ : TTypeSymbol read FTyp write FTyp;
-
-         procedure DetachTypes(toTable : TSymbolTable); virtual;
    end;
 
    TTypedExprClass = class of TTypedExpr;
@@ -4252,14 +4250,6 @@ begin
    Result:=False;
 end;
 
-// DetachTypes
-//
-procedure TTypedExpr.DetachTypes(toTable : TSymbolTable);
-begin
-   toTable.AddSymbol(Typ);
-   FTyp:=nil;
-end;
-
 // GetBaseType
 //
 function TTypedExpr.GetBaseType : TTypeSymbol;
@@ -4408,7 +4398,12 @@ end;
 // Orphan
 //
 procedure TBlockExprBase.Orphan(prog : TdwsProgram);
+var
+   i : Integer;
 begin
+   for i := 0 to FCount-1 do
+      prog.Root.OrphanObject(FStatements[i]);
+   FCount := 0;
    DecRefCount;
 end;
 
