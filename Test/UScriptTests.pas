@@ -145,7 +145,12 @@ begin
          (prog.GetSelf as TdwsProgram).InitExpr.RecursiveEnumerateSubExprs(TEnumeratorEmptyCallBack(nil).EmptyCallBack);
          (prog.GetSelf as TdwsProgram).Expr.RecursiveEnumerateSubExprs(TEnumeratorEmptyCallBack(nil).EmptyCallBack);
 
-         prog:=nil;
+         try
+            prog := nil;
+         except
+            on E: Exception do
+               Check(False, FTests[i]+#13#10+E.ClassName+': '+E.Message);
+         end;
 
       end;
 
@@ -221,6 +226,13 @@ begin
             {$endif}
             CheckEquals(expectedResult.Text, output, FTests[i]);
          end else CheckEquals('', output, FTests[i]);
+
+         try
+            prog := nil;
+         except
+            on E: Exception do
+               Check(False, FTests[i]+#13#10+E.ClassName+': '+E.Message);
+         end;
 
       end;
 
