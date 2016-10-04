@@ -37,6 +37,7 @@ type
    TMagicFuncDoEvalEvent = procedure(const args : TExprBaseListExec; var result : Variant) of object;
    TMagicProcedureDoEvalEvent = procedure(const args : TExprBaseListExec) of object;
    TMagicFuncDoEvalDataEvent = procedure(const args : TExprBaseListExec; var result : IDataContext) of object;
+   TMagicFuncDoEvalAsInterfaceEvent = procedure(const args : TExprBaseListExec; var Result : IUnknown) of object;
    TMagicFuncDoEvalAsIntegerEvent = function(const args : TExprBaseListExec) : Int64 of object;
    TMagicFuncDoEvalAsBooleanEvent = function(const args : TExprBaseListExec) : Boolean of object;
    TMagicFuncDoEvalAsFloatEvent = procedure(const args : TExprBaseListExec; var Result : Double) of object;
@@ -80,6 +81,15 @@ type
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
    TInternalMagicVariantFunctionClass = class of TInternalMagicVariantFunction;
+
+   // TInternalMagicInterfaceFunction
+   //
+   TInternalMagicInterfaceFunction = class(TInternalMagicFunction)
+      public
+         procedure DoEvalAsInterface(const args : TExprBaseListExec; var result : IUnknown); virtual; abstract;
+         function MagicFuncExprClass : TMagicFuncExprClass; override;
+   end;
+   TInternalMagicInterfaceFunctionClass = class of TInternalMagicInterfaceFunction;
 
    // TInternalMagicIntFunction
    //
@@ -186,6 +196,18 @@ type
          constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos;
                             func : TFuncSymbol; internalFunc : TInternalMagicFunction); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+   end;
+
+   // TMagicInterfaceFuncExpr
+   //
+   TMagicInterfaceFuncExpr = class(TMagicFuncExpr)
+      private
+         FOnEval : TMagicFuncDoEvalAsInterfaceEvent;
+      public
+         constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos;
+                            func : TFuncSymbol; internalFunc : TInternalMagicFunction); override;
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+         procedure EvalAsInterface(exec : TdwsExecution; var Result : IUnknown); override;
    end;
 
    // TMagicProcedureExpr
@@ -306,6 +328,9 @@ type
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
+procedure RegisterInternalInterfaceFunction(InternalFunctionClass: TInternalMagicInterfaceFunctionClass;
+      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const funcType : UnicodeString;
+      const flags : TInternalFunctionFlags = []; const helperName : UnicodeString = '');
 procedure RegisterInternalIntFunction(InternalFunctionClass: TInternalMagicIntFunctionClass;
       const FuncName: UnicodeString; const FuncParams: array of UnicodeString;
       const flags : TInternalFunctionFlags = []; const helperName : UnicodeString = '');
@@ -328,6 +353,15 @@ implementation
 // ------------------------------------------------------------------
 
 uses dwsCompilerUtils;
+
+// RegisterInternalInterfaceFunction
+//
+procedure RegisterInternalInterfaceFunction(InternalFunctionClass: TInternalMagicInterfaceFunctionClass;
+      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const funcType : UnicodeString;
+      const flags : TInternalFunctionFlags = []; const helperName : UnicodeString = '');
+begin
+   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, funcType, flags, helperName);
+end;
 
 // RegisterInternalIntFunction
 //
@@ -532,6 +566,45 @@ end;
 // EvalAsVariant
 //
 procedure TMagicVariantFuncExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+var
+   execRec : TExprBaseListExec;
+begin
+   execRec.ListRec:=FArgs;
+   execRec.Exec:=exec;
+   execRec.Expr:=Self;
+   try
+      FOnEval(execRec, Result);
+   except
+      RaiseScriptError(exec);
+   end;
+end;
+
+// ------------------
+// ------------------ TMagicInterfaceFuncExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TMagicInterfaceFuncExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos;
+                                           func : TFuncSymbol; internalFunc : TInternalMagicFunction);
+begin
+   inherited Create(prog, scriptPos, func, internalFunc);
+   FOnEval:=(internalFunc as TInternalMagicInterfaceFunction).DoEvalAsInterface;
+end;
+
+// EvalAsVariant
+//
+procedure TMagicInterfaceFuncExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+var
+   intf : IUnknown;
+begin
+   EvalAsInterface(exec, intf);
+   VarCopySafe(Result, intf);
+end;
+
+// EvalAsInterface
+//
+procedure TMagicInterfaceFuncExpr.EvalAsInterface(exec : TdwsExecution; var Result : IUnknown);
 var
    execRec : TExprBaseListExec;
 begin
@@ -958,6 +1031,17 @@ end;
 function TInternalMagicVariantFunction.MagicFuncExprClass : TMagicFuncExprClass;
 begin
    Result:=TMagicVariantFuncExpr;
+end;
+
+// ------------------
+// ------------------ TInternalMagicInterfaceFunction ------------------
+// ------------------
+
+// MagicFuncExprClass
+//
+function TInternalMagicInterfaceFunction.MagicFuncExprClass : TMagicFuncExprClass;
+begin
+   Result:=TMagicInterfaceFuncExpr;
 end;
 
 // ------------------

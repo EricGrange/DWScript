@@ -69,6 +69,7 @@ type
    TBaseTypeVarExpr = class (TVarExpr)
       public
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+         procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
    end;
 
    TIntVarExpr = class (TBaseTypeVarExpr)
@@ -2448,6 +2449,13 @@ end;
 procedure TBaseTypeVarExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
    exec.Stack.ReadValue(exec.Stack.BasePointer + FStackAddr, Result);
+end;
+
+// EvalAsInterface
+//
+procedure TBaseTypeVarExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
+begin
+   exec.Stack.ReadInterfaceValue(exec.Stack.BasePointer + FStackAddr, Result);
 end;
 
 // ------------------

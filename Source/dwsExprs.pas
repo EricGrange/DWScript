@@ -979,6 +979,7 @@ type
          function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
          procedure EvalAsString(exec : TdwsExecution; var result : UnicodeString); override;
+         procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
          procedure EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface); override;
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
@@ -3970,15 +3971,23 @@ begin
    Result:=nil;
 end;
 
-// EvalAsScriptObj
+// EvalAsInterface
 //
-procedure TProgramExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
+procedure TProgramExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
 var
    buf : Variant;
 begin
    EvalAsVariant(exec, buf);
    Assert(VarType(buf)=varUnknown);
-   Result:=(IUnknown(TVarData(buf).VUnknown) as IScriptObj);
+   Result:=IUnknown(TVarData(buf).VUnknown);
+end;
+
+// EvalAsScriptObj
+//
+procedure TProgramExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
+begin
+   EvalAsInterface(exec, IUnknown(Result));
+   Result := IUnknown(Result) as IScriptObj;
 end;
 
 // EvalAsScriptObjInterface
