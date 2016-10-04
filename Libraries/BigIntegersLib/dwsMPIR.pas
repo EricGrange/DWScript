@@ -478,6 +478,7 @@ var
    end;
 
 begin
+   Result := False;
    vBindMRSW.BeginWrite;
    try
       if dllName = '' then begin
@@ -488,7 +489,10 @@ begin
       end;
 
       handle := LoadLibrary(PChar(dllName));
-      if handle = 0 then RaiseLastOSError;// Exit(False);
+      if handle = 0 then begin
+          raise EOSError.CreateFmt('Failed to load "%s", Error %d: %s',
+                                   [dllName, GetLastError, SysErrorMessage(GetLastError)]);
+      end;
 
       mpz_init := GetProcMPZ('init');
       mpz_inits := GetProcMPZ('inits');

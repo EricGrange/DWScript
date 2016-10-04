@@ -105,7 +105,6 @@ var
    sha3 : String;
 begin
    if vDLLFileName <> '' then Exit(vDLLFileName);
-
    sha3 := ResourceSHA3;
    vDLLFileName := IncludeTrailingPathDelimiter(TPath.GetTempPath) + Copy(sha3, 1, 40)  + '.dll';
 

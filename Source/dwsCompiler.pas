@@ -13160,8 +13160,8 @@ begin
    opSym:=ResolveOperatorFor(token, aLeft.Typ, aRight.Typ);
    if opSym=nil then Exit;
 
-   if opSym.OperatorExprClass<>nil then begin
-      Result:=TBinaryOpExprClass(opSym.OperatorExprClass).Create(FProg, scriptPos, aLeft, aRight);
+   if opSym.OperatorExprClass <> nil then begin
+      Result := TBinaryOpExprClass(opSym.OperatorExprClass).Create(FProg, scriptPos, aLeft, aRight);
    end else if opSym.UsesSym<>nil then begin
       if opSym.UsesSym is TMethodSymbol then
          funcExpr:=CreateMethodExpr(FProg, TMethodSymbol(opSym.UsesSym), aLeft, rkObjRef, scriptPos, [])
