@@ -1102,7 +1102,9 @@ begin
                         end;
                      end;
 
-                     response^.SetContent(dataChunkInMemory, FWebResponse.ContentData, FWebResponse.ContentType);
+                     if FWebResponse.StatusCode <> 304 then begin
+                        response^.SetContent(dataChunkInMemory, FWebResponse.ContentData, FWebResponse.ContentType);
+                     end;
                      HttpAPI.Check(
                         HttpAPI.SendHttpResponse(FReqQueue, request^.RequestId, GetHttpResponseFlags,
                                                  response^, nil, bytesSent, nil, 0, nil, FLogDataPtr),
