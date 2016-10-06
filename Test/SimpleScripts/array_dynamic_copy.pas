@@ -32,6 +32,7 @@ end;
 
 try
    a2:=a1.Copy(0, 4);
+   PrintLn(a2.Map(IntToStr).Join(','));
 except
    on e: Exception do PrintLn(e.Message);
 end;

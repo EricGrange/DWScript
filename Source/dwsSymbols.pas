@@ -1854,6 +1854,8 @@ type
       function ToInt64Array : TInt64DynArray;
 
       procedure ReplaceData(const v : TData);
+
+      procedure Reverse;
    end;
 
    // IScriptAssociativeArray
