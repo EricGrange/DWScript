@@ -7422,7 +7422,7 @@ procedure TdwsCompiler.TypeCheckArgs(funcExpr : TFuncExprBase; const argPosArray
 
 var
    arg : TTypedExpr;
-   x, paramCount, nbParamsToCheck : Integer;
+   i, paramCount, nbParamsToCheck : Integer;
    funcSym : TFuncSymbol;
    paramSymbol : TParamSymbol;
    argTyp : TTypeSymbol;
@@ -7462,11 +7462,13 @@ begin
       nbParamsToCheck:=paramCount
    else nbParamsToCheck:=funcExpr.Args.Count;
 
-   for x:=0 to nbParamsToCheck-1 do begin
-      arg:=TTypedExpr(funcExpr.Args.ExprBase[x]);
-      paramSymbol:=TParamSymbol(funcSym.Params[x]);
-      if x<Length(argPosArray) then
-         argPos:=argPosArray[x]
+   for i := 0 to nbParamsToCheck-1 do begin
+      arg := TTypedExpr(funcExpr.Args.ExprBase[i]);
+      if arg.ClassType = TErrorValueExpr then continue;
+
+      paramSymbol:=TParamSymbol(funcSym.Params[i]);
+      if i < Length(argPosArray) then
+         argPos:=argPosArray[i]
       else argPos:=funcExpr.ScriptPos;
 
       if arg.ClassType=TArrayConstantExpr then
@@ -7477,20 +7479,20 @@ begin
       if paramSymbol.ClassType<>TVarParamSymbol then begin
          arg:=TConvExpr.WrapWithConvCast(FProg, argPos, FExec, paramSymbol.Typ, arg, '');
       end;
-      funcExpr.Args.ExprBase[x]:=arg;
+      funcExpr.Args.ExprBase[i] := arg;
 
       if argTyp=nil then
-         WrongArgumentError(argPos, x, paramSymbol.Typ)
+         WrongArgumentError(argPos, i, paramSymbol.Typ)
       else if not paramSymbol.Typ.IsCompatible(arg.Typ) then
-         WrongArgumentLongError(argPos, x, paramSymbol.Typ, arg.Typ)
+         WrongArgumentLongError(argPos, i, paramSymbol.Typ, arg.Typ)
       else if paramSymbol.ClassType=TVarParamSymbol then begin
          if not paramSymbol.Typ.IsOfType(arg.Typ) then
-            WrongArgumentLongError(argPos, x, paramSymbol.Typ, argTyp);
+            WrongArgumentLongError(argPos, i, paramSymbol.Typ, argTyp);
          if arg is TDataExpr then begin
             if     (coVariablesAsVarOnly in Options)
                and (not (arg is TVarExpr))
                and (not (argTyp.UnAliasedType.ClassType=TRecordSymbol))
-               and (   (x>0)
+               and (   (i > 0)
                     or (not (funcSym is TMethodSymbol))
                     or (not (TMethodSymbol(funcSym).StructSymbol is TRecordSymbol))
                     or TMethodSymbol(funcSym).IsClassMethod
@@ -7498,11 +7500,11 @@ begin
                FMsgs.AddCompilerError(argPos, CPE_OnlyVariablesAsVarParam)
             // Record methods ignore the IsWritable constraints, as in Delphi
             else if     (not TDataExpr(arg).IsWritable)
-                    and (   (x>0)
+                    and (   (i > 0)
                          or (not (funcSym is TMethodSymbol))
                          or (not (TMethodSymbol(funcSym).StructSymbol is TRecordSymbol))) then
-               FMsgs.AddCompilerErrorFmt(argPos, CPE_ConstVarParam, [x, paramSymbol.Name]);
-         end else FMsgs.AddCompilerErrorFmt(argPos, CPE_ConstVarParam, [x, paramSymbol.Name]);
+               FMsgs.AddCompilerErrorFmt(argPos, CPE_ConstVarParam, [i, paramSymbol.Name]);
+         end else FMsgs.AddCompilerErrorFmt(argPos, CPE_ConstVarParam, [i, paramSymbol.Name]);
       end;
 
    end;
@@ -11122,12 +11124,16 @@ var
    hotPos : TScriptPos;
 begin
    FTok.TestName; // make sure hotpos is on next token
-   hotPos:=FTok.HotPos;
-   negTerm:=ReadTerm;
+   hotPos := FTok.HotPos;
+   negTerm := ReadTerm;
+   if negTerm = nil then begin
+      Result := TErrorValueExpr.Create(FProg);
+      Exit;
+   end;
 
    // shortcut for common negations
    if negTerm.Typ = FProg.TypInteger then
-      negExprClass:=TNegIntExpr
+      negExprClass := TNegIntExpr
    else if negTerm.Typ = FProg.TypFloat then
       negExprClass:=TNegFloatExpr
    else begin

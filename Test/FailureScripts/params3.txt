@@ -1,0 +1,2 @@
+Hint: "Translate" does not match case of declaration ("translate") [line: 4, column: 5]
+Syntax Error: Expression expected [line: 4, column: 16]
