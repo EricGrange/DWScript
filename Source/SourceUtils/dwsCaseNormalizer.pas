@@ -26,7 +26,7 @@ uses
    dwsErrors, dwsExprs, dwsSymbols;
 
 type
-   TCaseNormalizerEvent = procedure (line, col : Integer; const name : String) of object;
+   TCaseNormalizerEvent = procedure (line, col : Integer; const name : UnicodeString) of object;
 
 
 procedure NormalizeSymbolsCase(sourceLines : TStrings; sourceFile : TSourceFile;
@@ -90,7 +90,7 @@ var
    location : TSymbolLocation;
    sorter : TQuickSort;
    symbol : TSymbol;
-   line, occurence : String;
+   line, occurence : UnicodeString;
 begin
    locations:=TSymbolLocations.Create;
    try

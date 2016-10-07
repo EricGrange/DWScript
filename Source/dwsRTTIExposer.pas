@@ -143,7 +143,7 @@ type
       private
          FMethod : TRttiMethod;  // referred, not owned
          FTypParams : array of TRttiType;
-         FNameParams : array of String;
+         FNameParams : array of UnicodeString;
          FVarParams : array of Integer;
          FTypResult : TRttiType;
 

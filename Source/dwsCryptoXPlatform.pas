@@ -30,8 +30,8 @@ unit dwsCryptoXPlatform;
 interface
 
 function CryptographicRandom(nb : Integer) : RawByteString;
-function CryptographicToken(bitStrength : Integer = 0) : String;
-function ProcessUniqueRandom : String;
+function CryptographicToken(bitStrength : Integer = 0) : UnicodeString;
+function ProcessUniqueRandom : UnicodeString;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -49,11 +49,11 @@ const
    cCryptographicTokenDefaultBitStrength = 120;
 
 var
-   vProcessUniqueRandom : String;
+   vProcessUniqueRandom : UnicodeString;
 
 procedure GenerateUniqueRandom;
 var
-   buf : String;
+   buf : UnicodeString;
 begin
    // 6 bits per character, 42 characters, 252 bits of random
    buf:=CryptographicToken(6*42);
@@ -61,7 +61,7 @@ begin
                                                    Pointer(buf), nil);
 end;
 
-function ProcessUniqueRandom : String;
+function ProcessUniqueRandom : UnicodeString;
 begin
    if vProcessUniqueRandom='' then
       GenerateUniqueRandom;
@@ -125,7 +125,7 @@ begin
    end;
 end;
 
-function CryptographicToken(bitStrength : Integer = 0) : String;
+function CryptographicToken(bitStrength : Integer = 0) : UnicodeString;
 const
    // uri-safe base64 table (RFC 4648)
    cChars : AnsiString = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';

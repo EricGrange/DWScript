@@ -15,7 +15,7 @@ type
 
    TTryFrame = array[0..3] of integer;
 
-   TTypeLookupEvent = function(const name: string): TTypeLookupData of object;
+   TTypeLookupEvent = function(const name: UnicodeString): TTypeLookupData of object;
 
    IExternalFunctionJit = interface
       procedure BeginProcedure(params: TParamsSymbolTable);

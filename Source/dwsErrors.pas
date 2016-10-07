@@ -840,7 +840,7 @@ end;
 //
 procedure THintMessage.WriteToJSON(writer : TdwsJSONWriter);
 const
-   cHintsLevels : array [TdwsHintsLevel] of String = (
+   cHintsLevels : array [TdwsHintsLevel] of UnicodeString = (
       'Disabled', 'Normal', 'Strict', 'Pedantic'
    );
 begin

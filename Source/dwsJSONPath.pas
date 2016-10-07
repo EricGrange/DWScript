@@ -67,14 +67,14 @@ type
 
    TdwsJSONPathOperatorProperty = class(TdwsJSONPathOperator)
       private
-         FProp : String;
+         FProp : UnicodeString;
 
       public
          constructor Create(iter : TStringIterator); override;
 
          procedure Apply(value : TdwsJSONValue; result : TdwsJSONValueList); override;
 
-         property Prop : String read FProp write FProp;
+         property Prop : UnicodeString read FProp write FProp;
    end;
 
    TdwsJSONPathOperatorDeepProperty = class(TdwsJSONPathOperatorProperty)
@@ -84,14 +84,14 @@ type
 
    TdwsJSONPathQuery = class
       private
-         FQuery : String;
+         FQuery : UnicodeString;
          FOperators : TdwsJSONPathOperator;
 
       protected
          procedure Parse;
 
       public
-         constructor Create(const aQuery : String);
+         constructor Create(const aQuery : UnicodeString);
          destructor Destroy; override;
 
          function Apply(value : TdwsJSONValue) : TdwsJSONValueList;
@@ -99,7 +99,7 @@ type
 
    JSONPath = class
 
-      class function Query(const aQuery : String; aJSON : TdwsJSONValue) : TdwsJSONValueList; static;
+      class function Query(const aQuery : UnicodeString; aJSON : TdwsJSONValue) : TdwsJSONValueList; static;
 
    end;
 
@@ -271,7 +271,7 @@ end;
 
 // Create
 //
-constructor TdwsJSONPathQuery.Create(const aQuery : String);
+constructor TdwsJSONPathQuery.Create(const aQuery : UnicodeString);
 begin
    FQuery:=aQuery;
    Parse;
@@ -372,7 +372,7 @@ end;
 
 // Query
 //
-class function JSONPath.Query(const aQuery : String; aJSON : TdwsJSONValue) : TdwsJSONValueList;
+class function JSONPath.Query(const aQuery : UnicodeString; aJSON : TdwsJSONValue) : TdwsJSONValueList;
 var
    q : TdwsJSONPathQuery;
 begin

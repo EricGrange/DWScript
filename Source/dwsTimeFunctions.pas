@@ -225,7 +225,7 @@ type
 procedure RegisterFormatSettings(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                  unitTable : TSymbolTable);
 
-   function AddClassVar(owner : TClassSymbol; const name : String; const h : IExternalSymbolHandler; typ : TTypeSymbol) : TClassVarSymbol;
+   function AddClassVar(owner : TClassSymbol; const name : UnicodeString; const h : IExternalSymbolHandler; typ : TTypeSymbol) : TClassVarSymbol;
    begin
       Result:=TClassVarSymbol.Create(name, typ, cvPublic);
       Result.ExternalName:='$fmt.'+name;
@@ -264,7 +264,7 @@ end;
 
 // DateTimeConversionError
 //
-procedure DateTimeConversionError(const str : String);
+procedure DateTimeConversionError(const str : UnicodeString);
 begin
    raise EConvertError.CreateFmt('Date/time parsing error for "%s"', [str]);
 end;
@@ -277,7 +277,7 @@ end;
 //
 procedure TFormatSettingsHandler.Assign(exec : TdwsExecution; symbol : TDataSymbol; expr : TTypedExpr; var handled : Boolean);
 
-   procedure EvalAsString(var s : String);
+   procedure EvalAsString(var s : UnicodeString);
    begin
       expr.EvalAsString(exec, s);
       handled:=True;
@@ -400,7 +400,7 @@ end;
 
 procedure TStrToDateTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 var
-   s : String;
+   s : UnicodeString;
    utc : TdwsTimeZone;
 begin
    s:=args.AsString[0];
@@ -440,7 +440,7 @@ end;
 
 procedure TStrToDateFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 var
-   s : String;
+   s : UnicodeString;
 begin
    s:=args.AsString[0];
    if not args.FormatSettings.TryStrToDate(args.AsString[0], Result, TdwsTimeZone(args.AsInteger[1])) then
@@ -469,7 +469,7 @@ end;
 
 procedure TStrToTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 var
-   s : String;
+   s : UnicodeString;
 begin
    s:=args.AsString[0];
    if not args.FormatSettings.TryStrToTime(s, Result, TdwsTimeZone(args.AsInteger[1])) then

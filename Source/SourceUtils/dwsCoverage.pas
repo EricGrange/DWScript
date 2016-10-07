@@ -29,7 +29,7 @@ type
    TCoverageStatus = (csUnknown, csNotRunnable, csNotCovered, csCovered);
 
    TdwsCodeCoverageReportEntry = record
-      SourceName : String;
+      SourceName : UnicodeString;
       Runnable : Integer;
       NonCovered : Integer;
    end;
@@ -73,7 +73,7 @@ type
 
          property Debugger : IDebugger read FDebugger write FDebugger;
 
-         function CoverageStatus(const sourceName : String; line : Integer) : TCoverageStatus;
+         function CoverageStatus(const sourceName : UnicodeString; line : Integer) : TCoverageStatus;
 
          function CreateReport : TdwsCodeCoverageReport;
          function HasReport : Boolean;
@@ -202,7 +202,7 @@ end;
 
 // CoverageStatus
 //
-function TdwsCoverageDebugger.CoverageStatus(const sourceName : String; line : Integer) : TCoverageStatus;
+function TdwsCoverageDebugger.CoverageStatus(const sourceName : UnicodeString; line : Integer) : TCoverageStatus;
 var
    bits : TBits;
 begin

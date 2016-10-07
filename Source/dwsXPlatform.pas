@@ -112,7 +112,7 @@ procedure SetDecimalSeparator(c : Char);
 function GetDecimalSeparator : Char;
 
 type
-   TCollectFileProgressEvent = procedure (const directory : String; var skipScan : Boolean) of object;
+   TCollectFileProgressEvent = procedure (const directory : UnicodeString; var skipScan : Boolean) of object;
 
 procedure CollectFiles(const directory, fileMask : UnicodeString;
                        list : TStrings; recurseSubdirectories: Boolean = False;
@@ -181,7 +181,7 @@ function UnicodeUpperCase(const s : UnicodeString) : UnicodeString;
 function ASCIICompareText(const s1, s2 : UnicodeString) : Integer; inline;
 function ASCIISameText(const s1, s2 : UnicodeString) : Boolean; inline;
 
-function NormalizeString(const s, form : UnicodeString) : String;
+function NormalizeString(const s, form : UnicodeString) : UnicodeString;
 
 function InterlockedIncrement(var val : Integer) : Integer; overload; {$IFDEF PUREPASCAL} inline; {$endif}
 function InterlockedDecrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} inline; {$endif}
@@ -218,26 +218,26 @@ procedure SaveDataToFile(const fileName : UnicodeString; const data : TBytes);
 function LoadRawBytesFromFile(const fileName : UnicodeString) : RawByteString;
 function SaveRawBytesToFile(const fileName : UnicodeString; const data : RawByteString) : Integer;
 
-procedure LoadRawBytesAsScriptStringFromFile(const fileName : UnicodeString; var result : String);
+procedure LoadRawBytesAsScriptStringFromFile(const fileName : UnicodeString; var result : UnicodeString);
 
 function LoadTextFromBuffer(const buf : TBytes) : UnicodeString;
 function LoadTextFromRawBytes(const buf : RawByteString) : UnicodeString;
 function LoadTextFromStream(aStream : TStream) : UnicodeString;
 function LoadTextFromFile(const fileName : UnicodeString) : UnicodeString;
 procedure SaveTextToUTF8File(const fileName, text : UnicodeString);
-procedure AppendTextToUTF8File(const fileName : String; const text : UTF8String);
+procedure AppendTextToUTF8File(const fileName : UnicodeString; const text : UTF8String);
 function OpenFileForSequentialReadOnly(const fileName : UnicodeString) : THandle;
 function OpenFileForSequentialWriteOnly(const fileName : UnicodeString) : THandle;
 procedure CloseFileHandle(hFile : THandle);
 function FileWrite(hFile : THandle; buffer : Pointer; byteCount : Integer) : Cardinal;
 function FileCopy(const existing, new : UnicodeString; failIfExists : Boolean) : Boolean;
 function FileMove(const existing, new : UnicodeString) : Boolean;
-function FileDelete(const fileName : String) : Boolean;
-function FileRename(const oldName, newName : String) : Boolean;
-function FileSize(const name : String) : Int64;
-function FileDateTime(const name : String) : TDateTime;
+function FileDelete(const fileName : UnicodeString) : Boolean;
+function FileRename(const oldName, newName : UnicodeString) : Boolean;
+function FileSize(const name : UnicodeString) : Int64;
+function FileDateTime(const name : UnicodeString) : TDateTime;
 procedure FileSetDateTime(hFile : THandle; aDateTime : TDateTime);
-function DeleteDirectory(const path : String) : Boolean;
+function DeleteDirectory(const path : UnicodeString) : Boolean;
 
 function DirectSet8087CW(newValue : Word) : Word; register;
 function DirectSetMXCSR(newValue : Word) : Word; register;
@@ -711,7 +711,7 @@ const
 var
    searchRec : TFindDataRec;
    infoLevel : TFindexInfoLevels;
-   fileName : String;
+   fileName : UnicodeString;
    skipScan : Boolean;
 begin
    // 6.1 required for FindExInfoBasic (Win 2008 R2 or Win 7)
@@ -1078,7 +1078,7 @@ end;
 
 // AppendTextToUTF8File
 //
-procedure AppendTextToUTF8File(const fileName : String; const text : UTF8String);
+procedure AppendTextToUTF8File(const fileName : UnicodeString; const text : UTF8String);
 var
    fs : TFileStream;
 begin
@@ -1147,21 +1147,21 @@ end;
 
 // FileDelete
 //
-function FileDelete(const fileName : String) : Boolean;
+function FileDelete(const fileName : UnicodeString) : Boolean;
 begin
    Result:=SysUtils.DeleteFile(fileName);
 end;
 
 // FileRename
 //
-function FileRename(const oldName, newName : String) : Boolean;
+function FileRename(const oldName, newName : UnicodeString) : Boolean;
 begin
    Result:=RenameFile(oldName, newName);
 end;
 
 // FileSize
 //
-function FileSize(const name : String) : Int64;
+function FileSize(const name : UnicodeString) : Int64;
 var
    info : TWin32FileAttributeData;
 begin
@@ -1172,7 +1172,7 @@ end;
 
 // FileDateTime
 //
-function FileDateTime(const name : String) : TDateTime;
+function FileDateTime(const name : UnicodeString) : TDateTime;
 var
    info : TWin32FileAttributeData;
    localTime : TFileTime;
@@ -1194,7 +1194,7 @@ end;
 
 // DeleteDirectory
 //
-function DeleteDirectory(const path : String) : Boolean;
+function DeleteDirectory(const path : UnicodeString) : Boolean;
 begin
    {$ifdef FPC}
    Result := RemoveDir(path);
@@ -1263,7 +1263,7 @@ end;
 
 // GetCurrentUserName
 //
-function GetCurrentUserName : String;
+function GetCurrentUserName : UnicodeString;
 var
 	len : Cardinal;
 begin
@@ -1315,7 +1315,7 @@ end;
 // FindDelimiter
 //
 {$ifdef NEED_FindDelimiter}
-function FindDelimiter(const Delimiters, S: string; StartIdx: Integer = 1): Integer;
+function FindDelimiter(const Delimiters, S: UnicodeString; StartIdx: Integer = 1): Integer;
 begin
   for Result := StartIdx to Length(S) do
     if IsDelimiter(Delimiters, S, Result) then

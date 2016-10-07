@@ -29,24 +29,24 @@ type
    WebUtils = class
       public
          class procedure ParseURLEncoded(const data : RawByteString; dest : TStrings); static;
-         class function DecodeURLEncoded(const src : RawByteString; start, count : Integer) : String; overload; static;
-         class function DecodeURLEncoded(const src : RawByteString; start : Integer) : String; overload; static;
-         class function EncodeURLEncoded(const src : String) : String; static;
+         class function DecodeURLEncoded(const src : RawByteString; start, count : Integer) : UnicodeString; overload; static;
+         class function DecodeURLEncoded(const src : RawByteString; start : Integer) : UnicodeString; overload; static;
+         class function EncodeURLEncoded(const src : UnicodeString) : UnicodeString; static;
 
          class function DecodeHex2(p : PAnsiChar) : Integer; static;
-         class function HasFieldName(const list : TStrings; const name : String) : Boolean; static;
+         class function HasFieldName(const list : TStrings; const name : UnicodeString) : Boolean; static;
 
-         class function EncodeEncodedWord(const s : String) : String; static;
+         class function EncodeEncodedWord(const s : UnicodeString) : UnicodeString; static;
 
-         class function DateTimeToRFC822(const dt : TDateTime) : String; static;
-         class function RFC822ToDateTime(const str : String) : TDateTime; static;
+         class function DateTimeToRFC822(const dt : TDateTime) : UnicodeString; static;
+         class function RFC822ToDateTime(const str : UnicodeString) : TDateTime; static;
 
-         class function HTMLTextEncode(const s : String) : String; static;
-         class function HTMLTextDecode(const s : String) : String; static;
+         class function HTMLTextEncode(const s : UnicodeString) : UnicodeString; static;
+         class function HTMLTextDecode(const s : UnicodeString) : UnicodeString; static;
          class function HTMLCharacterDecode(p : PChar) : Char; static;
 
-         class function HTMLAttributeEncode(const s : String) : String; static;
-         class function HTMLAttributeDecode(const s : String) : String; static;
+         class function HTMLAttributeEncode(const s : UnicodeString) : UnicodeString; static;
+         class function HTMLAttributeDecode(const s : UnicodeString) : UnicodeString; static;
    end;
 
 
@@ -59,7 +59,7 @@ implementation
 // ------------------------------------------------------------------
 
 const
-   cToHex : String = '0123456789ABCDEF';
+   cToHex : UnicodeString = '0123456789ABCDEF';
 
    // based on http://www.w3.org/TR/html5/entities.json
    cAllNamedEntities =
@@ -338,7 +338,7 @@ end;
 
 // DecodeURLEncoded
 //
-class function WebUtils.DecodeURLEncoded(const src : RawByteString; start, count : Integer) : String;
+class function WebUtils.DecodeURLEncoded(const src : RawByteString; start, count : Integer) : UnicodeString;
 var
    raw : UTF8String;
    pSrc, pDest : PAnsiChar;
@@ -371,7 +371,7 @@ end;
 
 // EncodeURLEncoded
 //
-class function WebUtils.EncodeURLEncoded(const src : String) : String;
+class function WebUtils.EncodeURLEncoded(const src : UnicodeString) : UnicodeString;
 var
    raw : UTF8String;
    pSrc : PAnsiChar;
@@ -407,7 +407,7 @@ end;
 
 // DecodeURLEncoded
 //
-class function WebUtils.DecodeURLEncoded(const src : RawByteString; start : Integer) : String;
+class function WebUtils.DecodeURLEncoded(const src : RawByteString; start : Integer) : UnicodeString;
 var
    n : Integer;
 begin
@@ -444,10 +444,10 @@ end;
 
 // HasFieldName
 //
-class function WebUtils.HasFieldName(const list : TStrings; const name : String) : Boolean;
+class function WebUtils.HasFieldName(const list : TStrings; const name : UnicodeString) : Boolean;
 var
    i, n : Integer;
-   elem : String;
+   elem : UnicodeString;
 begin
    for i:=0 to list.Count-1 do begin
       elem:=list[i];
@@ -462,11 +462,11 @@ end;
 
 // EncodeEncodedWord
 //
-class function WebUtils.EncodeEncodedWord(const s : String) : String;
+class function WebUtils.EncodeEncodedWord(const s : UnicodeString) : UnicodeString;
 var
    p, n : Integer;
    line : array [0..100] of Char;
-   buf : String;
+   buf : UnicodeString;
    c : AnsiChar;
 
    procedure FlushLine;
@@ -508,16 +508,16 @@ begin
 end;
 
 const
-   cRFC822Months : array[1..12] of String = (
+   cRFC822Months : array[1..12] of UnicodeString = (
       'Jan','Feb','Mar','Apr', 'May','Jun','Jul','Aug', 'Sep','Oct','Nov','Dec'
    );
-   cRFC822Days : array[1..7] of String = (
+   cRFC822Days : array[1..7] of UnicodeString = (
       'Sun','Mon','Tue','Wed','Thu', 'Fri','Sat'
    );
 
 // DateTimeToRFC822
 //
-class function WebUtils.DateTimeToRFC822(const dt : TDateTime) : String;
+class function WebUtils.DateTimeToRFC822(const dt : TDateTime) : UnicodeString;
 
    procedure Copy3(src, dest : PChar); inline;
    begin
@@ -561,20 +561,20 @@ end;
 
 // RFC822ToDateTime
 //
-class function WebUtils.RFC822ToDateTime(const str : String) : TDateTime;
+class function WebUtils.RFC822ToDateTime(const str : UnicodeString) : TDateTime;
 const
    cMaxItems = 6;
 type
-   TStringArray = array of String;
+   TStringArray = array of UnicodeString;
 var
-   list : array [0..cMaxItems+1] of String;
+   list : array [0..cMaxItems+1] of UnicodeString;
    count : Integer;
    y, mo, d : Word;
    h, mi, s : Word;
    deltaHours, deltaDays, p : Integer;
    deltaTime : TDateTime;
 
-   procedure SplitStr(const str : String; const delim : Char; start : Integer);
+   procedure SplitStr(const str : UnicodeString; const delim : Char; start : Integer);
    var
       lookup : integer;
    begin
@@ -608,7 +608,7 @@ var
       Result:=ParseTwoDigits(p, 0)*100+ParseTwoDigits(p, 2);
    end;
 
-   procedure ParseHMS(const str : String);
+   procedure ParseHMS(const str : UnicodeString);
    var
       p : PChar;
    begin
@@ -631,7 +631,7 @@ var
       end;
    end;
 
-   procedure ParseYear(const str : String);
+   procedure ParseYear(const str : UnicodeString);
    begin
       case Length(str) of
          2 : y:=ParseTwoDigits(Pointer(str), 0)+2000;
@@ -641,7 +641,7 @@ var
       end;
    end;
 
-   procedure ParseMonth(const str : String);
+   procedure ParseMonth(const str : UnicodeString);
    begin
       mo:=1;
       while (mo<=12) and not SameText(str, cRFC822Months[mo]) do
@@ -692,7 +692,7 @@ end;
 
 // HTMLTextEncode
 //
-class function WebUtils.HTMLTextEncode(const s : String) : String;
+class function WebUtils.HTMLTextEncode(const s : UnicodeString) : UnicodeString;
 var
    capacity : Integer;
    pSrc, pDest : PChar;
@@ -710,7 +710,7 @@ var
       pDest := Pointer(NativeUInt(Pointer(Result))+k);
    end;
 
-   procedure Append(const a : String);
+   procedure Append(const a : UnicodeString);
    var
       n : Integer;
    begin
@@ -751,7 +751,7 @@ end;
 
 // HTMLTextDecode
 //
-class function WebUtils.HTMLTextDecode(const s : String) : String;
+class function WebUtils.HTMLTextDecode(const s : UnicodeString) : UnicodeString;
 type
    TDecoderState = ( dsText, dsTag, dsSingleQuote, dsDoubleQuote, dsCharacter );
 var
@@ -835,7 +835,7 @@ end;
 //
 class function WebUtils.HTMLCharacterDecode(p : PChar) : Char;
 
-   function AsString(p : PChar) : String;
+   function AsString(p : PChar) : UnicodeString;
    var
       n : Integer;
    begin
@@ -908,7 +908,7 @@ end;
 
 // HTMLAttributeEncode
 //
-class function WebUtils.HTMLAttributeEncode(const s : String) : String;
+class function WebUtils.HTMLAttributeEncode(const s : UnicodeString) : UnicodeString;
 // as per OWASP XSS Rule#2
 var
    capacity : Integer;
@@ -975,7 +975,7 @@ end;
 
 // HTMLAttributeDecode
 //
-class function WebUtils.HTMLAttributeDecode(const s : String) : String;
+class function WebUtils.HTMLAttributeDecode(const s : UnicodeString) : UnicodeString;
 begin
    Result:=WebUtils.HTMLTextDecode(s);
 end;

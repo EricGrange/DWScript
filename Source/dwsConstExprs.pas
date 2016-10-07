@@ -73,7 +73,7 @@ type
          class function CreateFloatValue(prog : TdwsProgram; const value : Int64) : TConstExpr; overload; static;
          class function CreateFloatValue(prog : TdwsProgram; const value : Double) : TConstExpr; overload; static;
 
-         class function CreateStringValue(prog : TdwsProgram; const value : String) : TConstExpr; overload; static;
+         class function CreateStringValue(prog : TdwsProgram; const value : UnicodeString) : TConstExpr; overload; static;
 
          class function CreateBooleanValue(prog : TdwsProgram; const value : Boolean) : TConstExpr; overload; static;
 
@@ -464,7 +464,7 @@ end;
 
 // CreateStringValue
 //
-class function TConstExpr.CreateStringValue(prog : TdwsProgram; const value : String) : TConstExpr;
+class function TConstExpr.CreateStringValue(prog : TdwsProgram; const value : UnicodeString) : TConstExpr;
 begin
    Result:=TConstStringExpr.CreateUnified(prog, prog.TypString, value);
 end;

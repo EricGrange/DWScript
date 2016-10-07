@@ -364,9 +364,9 @@ type
 
    TBreakpointBits = class(TBits)
       private
-         FSourceName : String;
+         FSourceName : UnicodeString;
       public
-         property SourceName : String read FSourceName write FSourceName;
+         property SourceName : UnicodeString read FSourceName write FSourceName;
    end;
 
    TNamesBitsHash = TSimpleNameObjectHash<TBreakpointBits>;

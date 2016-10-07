@@ -326,7 +326,7 @@ begin
       end;
       varUString : begin
          if p.VUString <> nil then begin
-            buf := SimpleStringHash(String(p.VUString));
+            buf := SimpleStringHash(UnicodeString(p.VUString));
             k := @buf;
          end;
          n := 4;

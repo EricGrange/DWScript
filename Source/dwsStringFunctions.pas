@@ -1252,8 +1252,8 @@ initialization
    RegisterInternalStringFunction(TStrAfterFunc, 'StrAfter', ['str', SYS_STRING, 'delimiter', SYS_STRING], [iffStateLess], 'After');
    RegisterInternalStringFunction(TStrBeforeFunc, 'StrBefore', ['str', SYS_STRING, 'delimiter', SYS_STRING], [iffStateLess], 'Before');
    RegisterInternalStringFunction(TStrBetweenFunc, 'StrBetween', ['str', SYS_STRING, 'start', SYS_STRING, 'stop', SYS_STRING], [iffStateLess], 'Between');
-   RegisterInternalFunction(TStrSplitFunc, 'StrSplit', ['str', SYS_STRING, 'delimiter', SYS_STRING], 'array of string', [], 'Split');
-   RegisterInternalStringFunction(TStrJoinFunc, 'StrJoin', ['strs', 'array of string', 'delimiter', SYS_STRING], [], 'Join');
+   RegisterInternalFunction(TStrSplitFunc, 'StrSplit', ['str', SYS_STRING, 'delimiter', SYS_STRING], SYS_ARRAY_OF_STRING, [], 'Split');
+   RegisterInternalStringFunction(TStrJoinFunc, 'StrJoin', ['strs', SYS_ARRAY_OF_STRING, 'delimiter', SYS_STRING], [], 'Join');
 
    RegisterInternalStringFunction(TReverseStringFunc, 'ReverseString', ['str', SYS_STRING], [iffStateLess], 'Reverse');
 

@@ -152,11 +152,11 @@ type
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
    TExtractFileExtFunc = class(TInternalMagicStringFunction)
-      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
 
    TChangeFileExtFunc = class(TInternalMagicStringFunction)
-      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
 
    TDeleteFileFunc = class(TInternalMagicBoolFunction)
@@ -643,7 +643,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TExtractFileExtFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+procedure TExtractFileExtFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=ExtractFileExt(args.AsString[0]);
 end;
@@ -654,7 +654,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TChangeFileExtFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+procedure TChangeFileExtFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=ChangeFileExt(args.AsString[0], args.AsString[1]);
 end;
@@ -733,7 +733,7 @@ end;
 //
 function TRemoveDirFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 var
-   path : String;
+   path : UnicodeString;
 begin
    path:=args.AsFileName[0];
    if args.AsBoolean[1] then
@@ -817,7 +817,7 @@ initialization
    RegisterInternalBoolFunction(TCreateDirFunc, 'CreateDir', ['path', SYS_STRING], []);
    RegisterInternalBoolFunction(TRemoveDirFunc, 'RemoveDir', ['path', SYS_STRING, 'evenIfNotEmpty=False', SYS_BOOLEAN], []);
 
-   RegisterInternalFunction(TEnumerateDirFunc, 'EnumerateDir', ['path', SYS_STRING, 'mask', SYS_STRING, 'recursive', SYS_BOOLEAN], 'array of string', []);
+   RegisterInternalFunction(TEnumerateDirFunc, 'EnumerateDir', ['path', SYS_STRING, 'mask', SYS_STRING, 'recursive', SYS_BOOLEAN], SYS_ARRAY_OF_STRING, []);
 
 end.
 

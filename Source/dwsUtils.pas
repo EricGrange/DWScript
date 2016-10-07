@@ -57,7 +57,7 @@ type
    IGetSelf = interface
       ['{77D8EA0B-311C-422B-B8DE-AA5BDE726E41}']
       function GetSelf : TObject;
-      function ToString : String;
+      function ToString : UnicodeString;
    end;
 
    // TInterfacedSelfObject
@@ -424,7 +424,7 @@ type
 
          function GetBucketObject(index : Integer) : TObject; inline;
          procedure SetBucketObject(index : Integer; obj : TObject); inline;
-         function GetBucketName(index : Integer) : String; inline;
+         function GetBucketName(index : Integer) : UnicodeString; inline;
 
       public
          constructor Create(initialCapacity : Integer = 0);
@@ -442,7 +442,7 @@ type
 
          property Bucket[index : Integer] : PNameObjectHashBucket read GetBucket;
          property BucketObject[index : Integer] : TObject read GetBucketObject write SetBucketObject;
-         property BucketName[index : Integer] : String read GetBucketName;
+         property BucketName[index : Integer] : UnicodeString read GetBucketName;
          property BucketIndex[const aName : UnicodeString] : Integer read GetIndex;
 
          property Count : Integer read FCount;
@@ -463,7 +463,7 @@ type
          procedure SetObjects(const aName : UnicodeString; obj : T); inline;
          function GetBucketObject(index : Integer) : T; inline;
          procedure SetBucketObject(index : Integer; obj : T); inline;
-         function GetBucketName(index : Integer) : String; inline;
+         function GetBucketName(index : Integer) : UnicodeString; inline;
 
       public
          constructor Create(initialCapacity : Integer = 0);
@@ -478,7 +478,7 @@ type
          property Objects[const aName : UnicodeString] : T read GetObjects write SetObjects; default;
 
          property BucketObject[index : Integer] : T read GetBucketObject write SetBucketObject;
-         property BucketName[index : Integer] : String read GetBucketName;
+         property BucketName[index : Integer] : UnicodeString read GetBucketName;
          property BucketIndex[const aName : UnicodeString] : Integer read GetIndex;
 
          function Count : Integer; inline;
@@ -522,7 +522,7 @@ type
    end;
 
    TNameValueHashBucket<T> = record
-      Name : String;
+      Name : UnicodeString;
       Value : T;
    end;
 
@@ -690,7 +690,7 @@ type
          procedure WriteDigits(value : Int64; digits : Integer);
 
          // assumes data is an utf16 UnicodeString, spits out utf8 in FPC, utf16 in Delphi
-         function ToString : String; override;
+         function ToString : UnicodeString; override;
          function ToUTF8String : RawByteString;
          function ToBytes : TBytes;
          function ToRawBytes : RawByteString;
@@ -709,7 +709,7 @@ type
       procedure WriteChar(utf16Char : WideChar);
       procedure WriteCRLF;
 
-      function ToString : String;
+      function ToString : UnicodeString;
    end;
 
    TAutoWriteOnlyBlockStream = class (TInterfacedSelfObject, IWriteOnlyBlockStream)
@@ -727,7 +727,7 @@ type
          constructor Create;
          destructor Destroy; override;
 
-         function ToString : String; override;
+         function ToString : UnicodeString; override;
    end;
 
    TSimpleInt64List = class(TSimpleList<Int64>)
@@ -750,10 +750,10 @@ type
          function Sum : Double;
    end;
 
-   TSimpleStringHash = class(TSimpleHash<String>)
+   TSimpleStringHash = class(TSimpleHash<UnicodeString>)
       protected
-         function SameItem(const item1, item2 : String) : Boolean; override;
-         function GetItemHashCode(const item1 : String) : Integer; override;
+         function SameItem(const item1, item2 : UnicodeString) : Boolean; override;
+         function GetItemHashCode(const item1 : UnicodeString) : Integer; override;
    end;
 
    TFastCompareStringList = class (TStringList)
@@ -798,24 +798,24 @@ type
 
    TStringIterator = class
       private
-         FStr : String;
+         FStr : UnicodeString;
          FPStr : PChar;
          FPosition : Integer;
          FLength : Integer;
 
       public
-         constructor Create(const s : String);
+         constructor Create(const s : UnicodeString);
 
          function Current : Char; inline;
          function EOF : Boolean; inline;
          procedure Next; inline;
          procedure SkipWhiteSpace;
 
-         function CollectQuotedString : String;
-         function CollectAlphaNumeric : String;
+         function CollectQuotedString : UnicodeString;
+         function CollectAlphaNumeric : UnicodeString;
          function CollectInteger : Int64;
 
-         property Str : String read FStr;
+         property Str : UnicodeString read FStr;
          property Length : Integer read FLength write FLength;
    end;
 
@@ -876,7 +876,7 @@ function AsciiSameText(p : PAnsiChar; const s : RawByteString) : Boolean;
 
 function PosA(const sub, main : RawByteString) : Integer; inline;
 
-function StrIsASCII(const s : String) : Boolean;
+function StrIsASCII(const s : UnicodeString) : Boolean;
 
 function StrNonNilLength(const aString : UnicodeString) : Integer; inline;
 
@@ -922,13 +922,13 @@ procedure BytesToScriptString(const p : PByte; n : Integer; var result : Unicode
 function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString; overload; inline;
 procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
 
-procedure StringBytesToWords(var buf : String; swap : Boolean);
-procedure StringWordsToBytes(var buf : String; swap : Boolean);
+procedure StringBytesToWords(var buf : UnicodeString; swap : Boolean);
+procedure StringWordsToBytes(var buf : UnicodeString; swap : Boolean);
 
-function BinToHex(const data; n : Integer) : String; overload;
-function BinToHex(const data : RawByteString) : String; overload; inline;
+function BinToHex(const data; n : Integer) : UnicodeString; overload;
+function BinToHex(const data : RawByteString) : UnicodeString; overload; inline;
 
-function HexToBin(const data : String) : RawByteString;
+function HexToBin(const data : UnicodeString) : RawByteString;
 
 type
    TInt64StringBuffer = array [0..21] of WideChar;
@@ -967,9 +967,9 @@ function ReadVariant(reader: TReader): Variant;
 type
    EISO8601Exception = class (Exception);
 
-function TryISO8601ToDateTime(const v : String; var aResult : TDateTime) : Boolean;
-function ISO8601ToDateTime(const v : String) : TDateTime;
-function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : String;
+function TryISO8601ToDateTime(const v : UnicodeString; var aResult : TDateTime) : Boolean;
+function ISO8601ToDateTime(const v : UnicodeString) : TDateTime;
+function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : UnicodeString;
 
 procedure SuppressH2077ValueAssignedToVariableNeverUsed(const X); inline;
 
@@ -977,8 +977,8 @@ procedure dwsFreeAndNil(var O); // transitional function, do not use
 
 function CoalesceableIsFalsey(const unk : IUnknown) : Boolean;
 
-function ApplyStringVariables(const str : String; const variables : TStrings;
-                              const delimiter : String = '%') : String;
+function ApplyStringVariables(const str : UnicodeString; const variables : TStrings;
+                              const delimiter : UnicodeString = '%') : UnicodeString;
 
 type
    TTwoChars = packed array [0..1] of WideChar;
@@ -1138,7 +1138,7 @@ end;
 
 // StringBytesToWords
 //
-procedure StringBytesToWords(var buf : String; swap : Boolean);
+procedure StringBytesToWords(var buf : UnicodeString; swap : Boolean);
 type
    TTwoBytes = array [0..1] of Byte;
    TTwoWords = array [0..1] of Word;
@@ -1172,7 +1172,7 @@ end;
 
 // StringWordsToBytes
 //
-procedure StringWordsToBytes(var buf : String; swap : Boolean);
+procedure StringWordsToBytes(var buf : UnicodeString; swap : Boolean);
 type
    TTwoBytes = array [0..1] of Byte;
    TTwoWords = array [0..1] of Word;
@@ -1207,7 +1207,7 @@ end;
 
 // BinToHex
 //
-function BinToHex(const data; n : Integer) : String;
+function BinToHex(const data; n : Integer) : UnicodeString;
 const
    cHexDigits : array [0..15] of Char = (
       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
@@ -1233,14 +1233,14 @@ end;
 
 // BinToHex
 //
-function BinToHex(const data : RawByteString) : String; overload;
+function BinToHex(const data : RawByteString) : UnicodeString; overload;
 begin
    Result:=BinToHex(Pointer(data)^, Length(data));
 end;
 
 // HexToBin
 //
-function HexToBin(const data : String) : RawByteString;
+function HexToBin(const data : UnicodeString) : RawByteString;
 var
    i, n, b : Integer;
    c : Char;
@@ -1443,7 +1443,7 @@ end;
 // InitializeSmallIntegers
 //
 var
-   vSmallIntegers : array [0..39] of String;
+   vSmallIntegers : array [0..39] of UnicodeString;
 procedure InitializeSmallIntegers;
 var
    i : Integer;
@@ -1809,7 +1809,7 @@ begin
       varUString : begin
          {$ifdef DEBUG} Assert(TVarData(dest).VUString=nil); {$endif}
          TVarData(dest).VType:=varUString;
-         UnicodeString(TVarData(dest).VUString):=String(TVarData(src).VUString);
+         UnicodeString(TVarData(dest).VUString):=UnicodeString(TVarData(src).VUString);
       end;
       varSmallint..varSingle, varCurrency..varDate, varError, varShortInt..varLongWord, varUInt64 : begin
          TVarData(dest).RawData[0]:=TVarData(src).RawData[0];
@@ -1995,7 +1995,7 @@ end;
 
 // DateTimeToISO8601
 //
-function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : String;
+function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : UnicodeString;
 var
    buf : array [0..31] of Char;
    p : PChar;
@@ -2045,7 +2045,7 @@ end;
 
 // ISO8601ToDateTime
 //
-function ISO8601ToDateTime(const v : String) : TDateTime;
+function ISO8601ToDateTime(const v : UnicodeString) : TDateTime;
 var
    p : PChar;
 
@@ -2145,7 +2145,7 @@ end;
 
 // TryISO8601ToDateTime
 //
-function TryISO8601ToDateTime(const v : String; var aResult : TDateTime) : Boolean;
+function TryISO8601ToDateTime(const v : UnicodeString; var aResult : TDateTime) : Boolean;
 begin
    try
       aResult:=ISO8601ToDateTime(v);
@@ -2340,7 +2340,7 @@ var
 // CompareStrings
 //
 {$ifdef FPC}
-function TFastCompareStringList.DoCompareText(const S1, S2: String): Integer;
+function TFastCompareStringList.DoCompareText(const S1, S2: UnicodeString): Integer;
 begin
    Result:=CompareStr(S1, S2);
 end;
@@ -2568,7 +2568,7 @@ end;
 
 // StrIsASCII
 //
-function StrIsASCII(const s : String) : Boolean;
+function StrIsASCII(const s : UnicodeString) : Boolean;
 var
    i : Integer;
 begin
@@ -2852,8 +2852,8 @@ end;
 
 // ApplyStringVariables
 //
-function ApplyStringVariables(const str : String; const variables : TStrings;
-                              const delimiter : String = '%') : String;
+function ApplyStringVariables(const str : UnicodeString; const variables : TStrings;
+                              const delimiter : UnicodeString = '%') : UnicodeString;
 var
    p1, p2 : Integer;
 begin
@@ -2878,7 +2878,7 @@ end;
 // CompareStrings
 //
 {$ifdef FPC}
-function TFastCompareTextList.DoCompareText(const S1, S2: String): Integer;
+function TFastCompareTextList.DoCompareText(const S1, S2: UnicodeString): Integer;
 begin
    Result:=UnicodeCompareText(s1, s2);
 end;
@@ -3931,7 +3931,7 @@ end;
 
 // ToString
 //
-function TWriteOnlyBlockStream.ToString : String;
+function TWriteOnlyBlockStream.ToString : UnicodeString;
 {$ifdef FPC}
 var
    uniBuf : UnicodeString;
@@ -4768,7 +4768,7 @@ end;
 
 // GetBucketName
 //
-function TNameObjectHash.GetBucketName(index : Integer) : String;
+function TNameObjectHash.GetBucketName(index : Integer) : UnicodeString;
 begin
    Result:=FBuckets[index].Name;
 end;
@@ -4857,7 +4857,7 @@ end;
 
 // GetBucketName
 //
-function TSimpleNameObjectHash<T>.GetBucketName(index : Integer) : String;
+function TSimpleNameObjectHash<T>.GetBucketName(index : Integer) : UnicodeString;
 begin
    Result:=FHash.GetBucketName(index);
 end;
@@ -5575,7 +5575,7 @@ end;
 
 // ToString
 //
-function TAutoWriteOnlyBlockStream.ToString : String;
+function TAutoWriteOnlyBlockStream.ToString : UnicodeString;
 begin
    Result:=FStream.ToString;
 end;
@@ -5586,7 +5586,7 @@ end;
 
 // Create
 //
-constructor TStringIterator.Create(const s : String);
+constructor TStringIterator.Create(const s : UnicodeString);
 begin
    FStr:=s;
    FPStr:=PChar(Pointer(s));
@@ -5627,7 +5627,7 @@ end;
 
 // CollectQuotedString
 //
-function TStringIterator.CollectQuotedString : String;
+function TStringIterator.CollectQuotedString : UnicodeString;
 var
    quoteChar : Char;
 begin
@@ -5648,7 +5648,7 @@ end;
 
 // CollectAlphaNumeric
 //
-function TStringIterator.CollectAlphaNumeric : String;
+function TStringIterator.CollectAlphaNumeric : UnicodeString;
 var
    start : Integer;
 begin
@@ -5714,14 +5714,14 @@ end;
 
 // SameItem
 //
-function TSimpleStringHash.SameItem(const item1, item2 : String) : Boolean;
+function TSimpleStringHash.SameItem(const item1, item2 : UnicodeString) : Boolean;
 begin
    Result:=UnicodeSameText(item1, item2);
 end;
 
 // GetItemHashCode
 //
-function TSimpleStringHash.GetItemHashCode(const item1 : String) : Integer;
+function TSimpleStringHash.GetItemHashCode(const item1 : UnicodeString) : Integer;
 begin
    Result:=SimpleLowerCaseStringHash(item1);
 end;

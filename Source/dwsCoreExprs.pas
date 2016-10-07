@@ -1718,7 +1718,7 @@ type
          function GetSubExprCount : Integer; virtual; abstract;
 
          function IsTrue(exec : TdwsExecution; const value : Variant) : Boolean; virtual; abstract;
-         function StringIsTrue(exec : TdwsExecution; const value : String) : Boolean; virtual; abstract;
+         function StringIsTrue(exec : TdwsExecution; const value : UnicodeString) : Boolean; virtual; abstract;
          function IntegerIsTrue(const value : Int64) : Boolean; virtual; abstract;
 
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); virtual; abstract;
@@ -1752,7 +1752,7 @@ type
          function GetSubExprCount : Integer; override;
 
          function IsTrue(exec : TdwsExecution; const value : Variant) : Boolean; override;
-         function StringIsTrue(exec : TdwsExecution; const value : String) : Boolean; override;
+         function StringIsTrue(exec : TdwsExecution; const value : UnicodeString) : Boolean; override;
          function IntegerIsTrue(const value : Int64) : Boolean; override;
 
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
@@ -1764,23 +1764,23 @@ type
 
    TCompareConstStringCaseCondition = class (TCaseCondition)
       private
-         FValue : String;
+         FValue : UnicodeString;
 
       public
-         constructor Create(const aPos : TScriptPos; const aValue : String);
+         constructor Create(const aPos : TScriptPos; const aValue : UnicodeString);
 
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
          function IsTrue(exec : TdwsExecution; const value : Variant) : Boolean; override;
-         function StringIsTrue(exec : TdwsExecution; const value : String) : Boolean; override;
+         function StringIsTrue(exec : TdwsExecution; const value : UnicodeString) : Boolean; override;
          function IntegerIsTrue(const value : Int64) : Boolean; override;
 
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
          function IsConstant : Boolean; override;
          function IsExpr(aClass : TClass) : Boolean; override;
 
-         property Value : String read FValue write FValue;
+         property Value : UnicodeString read FValue write FValue;
    end;
 
    TRangeCaseCondition = class(TCaseCondition)
@@ -1796,7 +1796,7 @@ type
          function GetSubExprCount : Integer; override;
 
          function IsTrue(exec : TdwsExecution; const Value: Variant): Boolean; override;
-         function StringIsTrue(exec : TdwsExecution; const value : String) : Boolean; override;
+         function StringIsTrue(exec : TdwsExecution; const value : UnicodeString) : Boolean; override;
          function IntegerIsTrue(const value : Int64) : Boolean; override;
 
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
@@ -5769,7 +5769,7 @@ end;
 //
 function TCoalesceStrExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 var
-   s : String;
+   s : UnicodeString;
 begin
    if Left.IsConstant then begin
       Left.EvalAsString(exec, s);
@@ -7182,7 +7182,7 @@ end;
 procedure TCaseStringExpr.EvalNoResult(exec : TdwsExecution);
 var
    x : Integer;
-   value : String;
+   value : UnicodeString;
    cc : TCaseCondition;
 begin
    FValueExpr.EvalAsString(exec, value);
@@ -7326,9 +7326,9 @@ end;
 
 // StringIsTrue
 //
-function TCompareCaseCondition.StringIsTrue(exec : TdwsExecution; const value : String) : Boolean;
+function TCompareCaseCondition.StringIsTrue(exec : TdwsExecution; const value : UnicodeString) : Boolean;
 var
-   buf : String;
+   buf : UnicodeString;
 begin
    FCompareExpr.EvalAsString(exec, buf);
    Result:=(buf=value);
@@ -7372,7 +7372,7 @@ end;
 
 // Create
 //
-constructor TCompareConstStringCaseCondition.Create(const aPos : TScriptPos; const aValue : String);
+constructor TCompareConstStringCaseCondition.Create(const aPos : TScriptPos; const aValue : UnicodeString);
 begin
    inherited Create(aPos);
    FValue := aValue;
@@ -7401,7 +7401,7 @@ end;
 
 // StringIsTrue
 //
-function TCompareConstStringCaseCondition.StringIsTrue(exec : TdwsExecution; const value : String) : Boolean;
+function TCompareConstStringCaseCondition.StringIsTrue(exec : TdwsExecution; const value : UnicodeString) : Boolean;
 begin
    Result := (value = FValue);
 end;
@@ -7492,7 +7492,7 @@ end;
 
 // StringIsTrue
 //
-function TRangeCaseCondition.StringIsTrue(exec : TdwsExecution; const value : String) : Boolean;
+function TRangeCaseCondition.StringIsTrue(exec : TdwsExecution; const value : UnicodeString) : Boolean;
 begin
    Result:=    (value>=TConstStringExpr(FFromExpr).Value)
            and (value<=TConstStringExpr(FToExpr).Value);

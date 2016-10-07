@@ -157,7 +157,7 @@ type
          FMemberHash : Cardinal;
 
       protected
-         procedure SetMemberName(const n : String);
+         procedure SetMemberName(const n : UnicodeString);
 
          function Read(const base : Variant) : TData;
          procedure Write(const base : Variant; const data : TData);
@@ -492,7 +492,7 @@ begin
                            ['str', SYS_STRING], 'array of float',
                            jsonObject, cvPublic, table);
    TJSONParseStringArrayMethod.Create(mkClassFunction, [maStatic], SYS_JSON_PARSE_STRING_ARRAY,
-                           ['str', SYS_STRING], 'array of string',
+                           ['str', SYS_STRING], SYS_ARRAY_OF_STRING,
                            jsonObject, cvPublic, table);
 
    TJSONNewObject.Create(mkClassFunction, [maStatic], SYS_JSON_NEWOBJECT,
@@ -1005,7 +1005,7 @@ end;
 
 // SetMemberName
 //
-procedure TdwsJSONConnectorMember.SetMemberName(const n : String);
+procedure TdwsJSONConnectorMember.SetMemberName(const n : UnicodeString);
 begin
    FMemberName := n;
    FMemberHash := SimpleStringHash(n);
@@ -1154,7 +1154,7 @@ var
    i : Integer;
    newArray : TScriptDynamicArray;
    newPData : PData;
-   s : String;
+   s : UnicodeString;
 begin
    s:=info.ParamAsString[0];
 
@@ -1189,7 +1189,7 @@ var
    i : Integer;
    newArray : TScriptDynamicArray;
    newPData : PData;
-   s : String;
+   s : UnicodeString;
 begin
    s:=info.ParamAsString[0];
 
@@ -1224,7 +1224,7 @@ var
    i : Integer;
    newArray : TScriptDynamicArray;
    newPData : PData;
-   s : String;
+   s : UnicodeString;
 begin
    s:=info.ParamAsString[0];
 

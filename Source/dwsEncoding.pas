@@ -23,13 +23,13 @@ interface
 
 uses SysUtils;
 
-function Base58Encode(const data : RawByteString) : String;
-function Base58Decode(const data : String) : RawByteString;
+function Base58Encode(const data : RawByteString) : UnicodeString;
+function Base58Decode(const data : UnicodeString) : RawByteString;
 
 // RFC 4648 without padding
-function Base32Encode(data : Pointer; len : Integer) : String; overload;
-function Base32Encode(const data : RawByteString) : String; overload;
-function Base32Decode(const data : String) : RawByteString;
+function Base32Encode(data : Pointer; len : Integer) : UnicodeString; overload;
+function Base32Encode(const data : RawByteString) : UnicodeString; overload;
+function Base32Decode(const data : UnicodeString) : RawByteString;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -40,7 +40,7 @@ implementation
 // ------------------------------------------------------------------
 
 const
-   cBase58 : String = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+   cBase58 : UnicodeString = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
 function DivBy58(var v : Integer) : Integer;
 const
@@ -62,7 +62,7 @@ begin
 {$endif}
 end;
 
-function Base58Encode(const data : RawByteString) : String;
+function Base58Encode(const data : RawByteString) : UnicodeString;
 var
    i, j, carry, nextCarry, n : Integer;
    digits : array of Integer;
@@ -105,7 +105,7 @@ begin
       Result := Result + cBase58[digits[j]+1];
 end;
 
-function Base58Decode(const data : String) : RawByteString;
+function Base58Decode(const data : UnicodeString) : RawByteString;
 var
    i, j, carry, n, d : Integer;
    bytes : array of Integer;
@@ -160,7 +160,7 @@ const
       'Q','R','S','T','U','V','W','X','Y','Z','2','3','4','5','6','7'
    );
 
-function Base32Encode(data : Pointer; len : Integer) : String;
+function Base32Encode(data : Pointer; len : Integer) : UnicodeString;
 var
    i, n, c, b : Integer;
    pIn : PByteArray;
@@ -192,7 +192,7 @@ end;
 
 // Base32Encode
 //
-function Base32Encode(const data : RawByteString) : String;
+function Base32Encode(const data : RawByteString) : UnicodeString;
 begin
    Result:=Base32Encode(Pointer(data), Length(data));
 end;
@@ -201,7 +201,7 @@ end;
 //
 var
    vBase32DecodeTable : array [#0..'z'] of Byte;
-function Base32Decode(const data : String) : RawByteString;
+function Base32Decode(const data : UnicodeString) : RawByteString;
 
    procedure PrepareTable;
    var

@@ -38,7 +38,7 @@ type
          class function WrapWithImplicitConversion(
                         aProg : TdwsProgram; expr : TTypedExpr; toTyp : TTypeSymbol;
                         const hotPos : TScriptPos;
-                        const msg : String = CPE_IncompatibleTypes) : TTypedExpr; static;
+                        const msg : UnicodeString = CPE_IncompatibleTypes) : TTypedExpr; static;
 
          class procedure AddProcHelper(const name : UnicodeString;
                                        table : TSymbolTable; func : TFuncSymbol;
@@ -84,7 +84,7 @@ type
    );
 
 
-function NameToArrayMethod(const name : String; msgs : TdwsCompileMessageList;
+function NameToArrayMethod(const name : UnicodeString; msgs : TdwsCompileMessageList;
                            const namePos : TScriptPos) : TArrayMethodKind;
 
 function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
@@ -108,7 +108,7 @@ implementation
 //
 var
    vArrayMethodsHash : TStringToEnum;
-function NameToArrayMethod(const name : String; msgs : TdwsCompileMessageList;
+function NameToArrayMethod(const name : UnicodeString; msgs : TdwsCompileMessageList;
                            const namePos : TScriptPos) : TArrayMethodKind;
 var
    bucket : TNameValueHashBucket<Integer>;
@@ -462,7 +462,7 @@ end;
 class function CompilerUtils.WrapWithImplicitConversion(
       aProg : TdwsProgram; expr : TTypedExpr; toTyp : TTypeSymbol;
       const hotPos : TScriptPos;
-      const msg : String = CPE_IncompatibleTypes) : TTypedExpr;
+      const msg : UnicodeString = CPE_IncompatibleTypes) : TTypedExpr;
 var
    exprTyp : TTypeSymbol;
 begin

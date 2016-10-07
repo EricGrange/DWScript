@@ -1779,7 +1779,7 @@ type
          procedure LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : UnicodeString); virtual;
          procedure LocalizeString(const aString : UnicodeString; var Result : UnicodeString); virtual;
 
-         function ValidateFileName(const path : String) : String; virtual;
+         function ValidateFileName(const path : UnicodeString) : UnicodeString; virtual;
 
          function Random : Double;
 
@@ -7138,7 +7138,7 @@ end;
 
 // ValidateFileName
 //
-function TdwsExecution.ValidateFileName(const path : String) : String;
+function TdwsExecution.ValidateFileName(const path : UnicodeString) : UnicodeString;
 begin
    raise EScriptException.CreateFmt(RTE_UnauthorizedFilePath, [path]);
 end;

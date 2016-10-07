@@ -42,16 +42,16 @@ type
    EdwsFSInvalidFileName = class (EdwsFileSystemException)
    end;
 
-   TFileStreamOpenedEvent = procedure (Sender : TObject; const fileName : String; const mode : TdwsFileOpenMode) of object;
+   TFileStreamOpenedEvent = procedure (Sender : TObject; const fileName : UnicodeString; const mode : TdwsFileOpenMode) of object;
 
    // IdwsFileSystem
    //
    IdwsFileSystem = interface
       ['{D49F19A9-46C6-43E1-AF29-BDB8602A098C}']
-      function FileExists(const fileName : String) : Boolean;
-      function OpenFileStream(const fileName : String; const mode : TdwsFileOpenMode) : TStream;
-      function ValidateFileName(const fileName : String) : String;
-      function LoadTextFile(const fileName : String) : String;
+      function FileExists(const fileName : UnicodeString) : Boolean;
+      function OpenFileStream(const fileName : UnicodeString; const mode : TdwsFileOpenMode) : TStream;
+      function ValidateFileName(const fileName : UnicodeString) : UnicodeString;
+      function LoadTextFile(const fileName : UnicodeString) : UnicodeString;
    end;
 
    // TdwsBaseFileSystem
@@ -62,15 +62,15 @@ type
          FOnFileStreamOpened : TFileStreamOpenedEvent;
 
       protected
-         procedure DoFileStreamOpenedEvent(const fileName : String; const mode : TdwsFileOpenMode); inline;
+         procedure DoFileStreamOpenedEvent(const fileName : UnicodeString; const mode : TdwsFileOpenMode); inline;
 
       public
          constructor Create; virtual;
 
-         function FileExists(const fileName : String) : Boolean; virtual; abstract;
-         function OpenFileStream(const fileName : String; const mode : TdwsFileOpenMode) : TStream; virtual; abstract;
-         function ValidateFileName(const fileName : String) : String; virtual; abstract;
-         function LoadTextFile(const fileName : String) : String;
+         function FileExists(const fileName : UnicodeString) : Boolean; virtual; abstract;
+         function OpenFileStream(const fileName : UnicodeString; const mode : TdwsFileOpenMode) : TStream; virtual; abstract;
+         function ValidateFileName(const fileName : UnicodeString) : UnicodeString; virtual; abstract;
+         function LoadTextFile(const fileName : UnicodeString) : UnicodeString;
 
          property OnFileStreamOpened : TFileStreamOpenedEvent read FOnFileStreamOpened write FOnFileStreamOpened;
    end;
@@ -80,9 +80,9 @@ type
    {: Gives access to nothing. }
    TdwsNullFileSystem = class (TdwsBaseFileSystem)
       public
-         function FileExists(const fileName : String) : Boolean; override;
-         function OpenFileStream(const fileName : String; const mode : TdwsFileOpenMode) : TStream; override;
-         function ValidateFileName(const fileName : String) : String; override;
+         function FileExists(const fileName : UnicodeString) : Boolean; override;
+         function OpenFileStream(const fileName : UnicodeString; const mode : TdwsFileOpenMode) : TStream; override;
+         function ValidateFileName(const fileName : UnicodeString) : UnicodeString; override;
    end;
 
    // TdwsOSFileSystem
@@ -90,10 +90,10 @@ type
    {: Gives access to the whole OS FileSystem. }
    TdwsOSFileSystem = class (TdwsBaseFileSystem)
       public
-         function ValidateFileName(const fileName : String) : String; override;
+         function ValidateFileName(const fileName : UnicodeString) : UnicodeString; override;
 
-         function FileExists(const fileName : String) : Boolean; override;
-         function OpenFileStream(const fileName : String; const mode : TdwsFileOpenMode) : TStream; override;
+         function FileExists(const fileName : UnicodeString) : Boolean; override;
+         function OpenFileStream(const fileName : UnicodeString; const mode : TdwsFileOpenMode) : TStream; override;
    end;
 
    // TdwsRestrictedOSFileSystem
@@ -115,7 +115,7 @@ type
          constructor Create; override;
          destructor Destroy; override;
 
-         function ValidateFileName(const aFileName : String) : String; override;
+         function ValidateFileName(const aFileName : UnicodeString) : UnicodeString; override;
 
          property Paths : TStrings read FPaths write SetPaths;
          property Variables : TStrings read FVariables write SetVariables;
@@ -196,7 +196,7 @@ end;
 
 // DoFileStreamOpenedEvent
 //
-procedure TdwsBaseFileSystem.DoFileStreamOpenedEvent(const fileName : String; const mode : TdwsFileOpenMode);
+procedure TdwsBaseFileSystem.DoFileStreamOpenedEvent(const fileName : UnicodeString; const mode : TdwsFileOpenMode);
 begin
    if Assigned(FOnFileStreamOpened) then
       FOnFileStreamOpened(Self, fileName, mode);
@@ -204,7 +204,7 @@ end;
 
 // LoadTextFile
 //
-function TdwsBaseFileSystem.LoadTextFile(const fileName : String) : String;
+function TdwsBaseFileSystem.LoadTextFile(const fileName : UnicodeString) : UnicodeString;
 var
    stream : TStream;
 begin
@@ -224,21 +224,21 @@ end;
 
 // FileExists
 //
-function TdwsNullFileSystem.FileExists(const fileName : String) : Boolean;
+function TdwsNullFileSystem.FileExists(const fileName : UnicodeString) : Boolean;
 begin
    Result:=False;
 end;
 
 // OpenFileStream
 //
-function TdwsNullFileSystem.OpenFileStream(const fileName : String; const mode : TdwsFileOpenMode) : TStream;
+function TdwsNullFileSystem.OpenFileStream(const fileName : UnicodeString; const mode : TdwsFileOpenMode) : TStream;
 begin
    Result:=nil;
 end;
 
 // ValidateFileName
 //
-function TdwsNullFileSystem.ValidateFileName(const fileName : String) : String;
+function TdwsNullFileSystem.ValidateFileName(const fileName : UnicodeString) : UnicodeString;
 begin
    Result:='';
 end;
@@ -249,7 +249,7 @@ end;
 
 // ValidateFileName
 //
-function TdwsOSFileSystem.ValidateFileName(const fileName : String) : String;
+function TdwsOSFileSystem.ValidateFileName(const fileName : UnicodeString) : UnicodeString;
 begin
    // accept all
    Result:=ExpandFileName(fileName);
@@ -257,9 +257,9 @@ end;
 
 // FileExists
 //
-function TdwsOSFileSystem.FileExists(const fileName : String) : Boolean;
+function TdwsOSFileSystem.FileExists(const fileName : UnicodeString) : Boolean;
 var
-   validFileName : String;
+   validFileName : UnicodeString;
 begin
    validFileName:=ValidateFileName(fileName);
    Result:=SysUtils.FileExists(validFileName);
@@ -267,9 +267,9 @@ end;
 
 // OpenFileStream
 //
-function TdwsOSFileSystem.OpenFileStream(const fileName : String; const mode : TdwsFileOpenMode) : TStream;
+function TdwsOSFileSystem.OpenFileStream(const fileName : UnicodeString; const mode : TdwsFileOpenMode) : TStream;
 var
-   validFileName : String;
+   validFileName : UnicodeString;
    hFile : THandle;
 begin
    validFileName:=ValidateFileName(fileName);
@@ -348,7 +348,7 @@ const
    cDummyFileName = 'dummy.file';
 var
    i : Integer;
-   buf : String;
+   buf : UnicodeString;
 begin
    if FPathsPrepared then Exit;
    for i:=FPaths.Count-1 downto 0 do begin
@@ -365,10 +365,10 @@ end;
 
 // ValidateFileName
 //
-function TdwsRestrictedOSFileSystem.ValidateFileName(const aFileName : String) : String;
+function TdwsRestrictedOSFileSystem.ValidateFileName(const aFileName : UnicodeString) : UnicodeString;
 var
    i : Integer;
-   fileName, path : String;
+   fileName, path : UnicodeString;
 begin
    fileName := ApplyStringVariables(aFileName, FVariables, '%');
    if StrContains(fileName, ':') then begin

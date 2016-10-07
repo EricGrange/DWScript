@@ -274,10 +274,10 @@ const
 
    cStackMixinBaseDataOffset = 8;
    cVariant_DataOffset = 8;
-   cgpRegisterName : array [TgpRegister] of String = (
+   cgpRegisterName : array [TgpRegister] of UnicodeString = (
       'eax', 'ecx', 'edx', 'ebx', 'esp', 'ebp', 'esi', 'edi'
       );
-   cgpRegister8bitName : array [TgpRegister] of String = (
+   cgpRegister8bitName : array [TgpRegister] of UnicodeString = (
       'al', 'cl', 'dl', 'bl', '??', '??', '??', '??'
       );
    cExecMemGPR = gprEBX;

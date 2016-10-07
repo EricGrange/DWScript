@@ -385,7 +385,7 @@ type
          procedure AddString(const i : Int64); override;
          procedure AddCRLF; override;
          procedure Clear; override;
-         function ToString : String; override;
+         function ToString : UnicodeString; override;
          function ToDataString : RawByteString; override;
 
          property Text : UnicodeString read GetText;
@@ -553,7 +553,7 @@ type
          property States[const index : TGUID] : Variant read GetState write SetState; default;
 
          function IntegerStateDef(const index : TGUID; const default : Integer) : Integer;
-         function StringStateDef(const index : TGUID; const default : String) : String;
+         function StringStateDef(const index : TGUID; const default : UnicodeString) : UnicodeString;
 
          function Clone : TdwsCustomStates;
    end;
@@ -660,7 +660,7 @@ type
          procedure RaiseAssertionFailed(fromExpr : TExprBase; const msg : UnicodeString; const scriptPos : TScriptPos);
          procedure RaiseAssertionFailedFmt(fromExpr : TExprBase; const fmt : UnicodeString; const args : array of const; const scriptPos : TScriptPos);
 
-         function CreateEDelphiObj(const ClassName : String;
+         function CreateEDelphiObj(const ClassName : UnicodeString;
                                    const Message : UnicodeString) : IScriptObj;
 
          procedure EnterExceptionBlock(var exceptObj : IScriptObj); override;
@@ -671,7 +671,7 @@ type
          procedure LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : UnicodeString); override;
          procedure LocalizeString(const aString : UnicodeString; var Result : UnicodeString); override;
 
-         function ValidateFileName(const path : String) : String; override;
+         function ValidateFileName(const path : UnicodeString) : UnicodeString; override;
 
          property Prog : TdwsMainProgram read FProg;
          property CurrentProg : TdwsProgram read FCurrentProg write SetCurrentProg;
@@ -738,7 +738,7 @@ type
 
          function GetGlobalAddr(DataSize: Integer): Integer;
          function GetTempAddr(DataSize: Integer = -1): Integer;
-         function FindLocal(const name : String) : TSymbol; virtual;
+         function FindLocal(const name : UnicodeString) : TSymbol; virtual;
 
          procedure ResetExprs;
 
@@ -812,7 +812,7 @@ type
          FTypDefaultConstructor : TMethodSymbol;
          FTypDefaultDestructor : TMethodSymbol;
 
-         FMainFileName : String;
+         FMainFileName : UnicodeString;
          FDefaultEnvironment : IdwsEnvironment;
          FDefaultLocalizer : IdwsLocalizer;
          FOnExecutionStarted : TdwsExecutionEvent;
@@ -850,7 +850,7 @@ type
          constructor Create(const systemTable : ISystemSymbolTable;
                             resultType : TdwsResultType;
                             const stackParameters : TStackParameters;
-                            const mainFileName : String);
+                            const mainFileName : UnicodeString);
          destructor Destroy; override;
 
          function CreateNewExecution : IdwsProgramExecution;
@@ -875,7 +875,7 @@ type
 
          procedure AddFinalExpr(expr : TProgramExpr);
 
-         property MainFileName : String read FMainFileName write FMainFileName;
+         property MainFileName : UnicodeString read FMainFileName write FMainFileName;
          property TimeoutMilliseconds : Integer read FTimeoutMilliseconds write FTimeoutMilliseconds;
          property MaxRecursionDepth : Integer read FStackParameters.MaxRecursionDepth write FStackParameters.MaxRecursionDepth;
          property MaxExceptionDepth : Integer read FStackParameters.MaxExceptionDepth write FStackParameters.MaxExceptionDepth;
@@ -941,7 +941,7 @@ type
          procedure CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
          procedure InitSymbol(Symbol: TSymbol; const msgs : TdwsCompileMessageList);
          procedure InitExpression(Expr: TExprBase);
-         function FindLocal(const name : String) : TSymbol; override;
+         function FindLocal(const name : UnicodeString) : TSymbol; override;
 
          procedure OptimizeConstAssignments(blockExpr : TBlockExprBase);
 
@@ -1863,11 +1863,11 @@ type
          destructor Destroy; override;
          procedure BeforeDestruction; override;
 
-         function ToString : String; override;
+         function ToString : UnicodeString; override;
 
          procedure ClearData; override;
 
-         function FieldAddress(const fieldName : String) : Integer;
+         function FieldAddress(const fieldName : UnicodeString) : Integer;
 
          property ClassSym : TClassSymbol read FClassSym;
          property ExecutionContext : TdwsProgramExecution read FExecutionContext write FExecutionContext;
@@ -1905,7 +1905,7 @@ type
          function IndexOfInteger(const item : Int64; fromIndex : Integer) : Integer;
          function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
 
-         function ToString : String; override;
+         function ToString : UnicodeString; override;
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
 
@@ -1932,7 +1932,7 @@ type
 
    TScriptDynamicStringArray = class (TScriptDynamicValueArray)
       public
-         procedure Add(const s : String);
+         procedure Add(const s : UnicodeString);
    end;
 
    TScriptAssociativeArrayHashCodes = array of Cardinal;
@@ -1981,7 +1981,7 @@ type
                             executionContext : TdwsProgramExecution = nil);
          procedure BeforeDestruction; override;
 
-         function ToString : String; override;
+         function ToString : UnicodeString; override;
 
          property Typ : TInterfaceSymbol read FTyp;
          property Instance : IScriptObj read FInstance;
@@ -2437,7 +2437,7 @@ end;
 
 // CreateEDelphiObj
 //
-function TdwsProgramExecution.CreateEDelphiObj(const ClassName : String;
+function TdwsProgramExecution.CreateEDelphiObj(const ClassName : UnicodeString;
                                    const Message : UnicodeString) : IScriptObj;
 begin
    Result := IScriptObj(IUnknown(
@@ -2533,7 +2533,7 @@ end;
 
 // ValidateFileName
 //
-function TdwsProgramExecution.ValidateFileName(const path : String) : String;
+function TdwsProgramExecution.ValidateFileName(const path : UnicodeString) : UnicodeString;
 begin
    if Assigned(FileSystem) then
       Result:=FileSystem.ValidateFileName(path)
@@ -2984,7 +2984,7 @@ end;
 
 // FindLocal
 //
-function TdwsProgram.FindLocal(const name : String) : TSymbol;
+function TdwsProgram.FindLocal(const name : UnicodeString) : TSymbol;
 begin
    Result:=Table.FindLocal(name);
 end;
@@ -3076,7 +3076,7 @@ end;
 constructor TdwsMainProgram.Create(const systemTable : ISystemSymbolTable;
                                    resultType : TdwsResultType;
                                    const stackParameters : TStackParameters;
-                                   const mainFileName : String);
+                                   const mainFileName : UnicodeString);
 var
    systemUnitTable : TLinkedSymbolTable;
    systemUnit : TUnitMainSymbol;
@@ -3573,7 +3573,7 @@ end;
 
 // FindLocal
 //
-function TdwsProcedure.FindLocal(const name : String) : TSymbol;
+function TdwsProcedure.FindLocal(const name : UnicodeString) : TSymbol;
 begin
    Result := inherited FindLocal(name);
    if Result = nil then begin
@@ -3732,7 +3732,7 @@ end;
 
 // ToString
 //
-function TdwsDefaultResult.ToString : String;
+function TdwsDefaultResult.ToString : UnicodeString;
 begin
    Result:=GetText;
 end;
@@ -7072,7 +7072,7 @@ end;
 
 // ToString
 //
-function TScriptObjInstance.ToString : String;
+function TScriptObjInstance.ToString : UnicodeString;
 begin
    Result:=FClassSym.Name;
 end;
@@ -7087,7 +7087,7 @@ end;
 
 // FieldAddress
 //
-function TScriptObjInstance.FieldAddress(const fieldName : String) : Integer;
+function TScriptObjInstance.FieldAddress(const fieldName : UnicodeString) : Integer;
 var
    field : TFieldSymbol;
 begin
@@ -7377,7 +7377,7 @@ end;
 
 // ToString
 //
-function TScriptDynamicArray.ToString : String;
+function TScriptDynamicArray.ToString : UnicodeString;
 begin
    Result:='array of '+FElementTyp.Name;
 end;
@@ -7495,7 +7495,7 @@ end;
 
 // Add
 //
-procedure TScriptDynamicStringArray.Add(const s : String);
+procedure TScriptDynamicStringArray.Add(const s : UnicodeString);
 begin
    ArrayLength:=ArrayLength+1;
    if s<>'' then
@@ -7719,7 +7719,7 @@ end;
 
 // ToString
 //
-function TScriptInterface.ToString : String;
+function TScriptInterface.ToString : UnicodeString;
 begin
    Result:=FTyp.ClassName;
 end;
@@ -9183,7 +9183,7 @@ end;
 
 // StringStateDef
 //
-function TdwsCustomStates.StringStateDef(const index : TGUID; const default : String) : String;
+function TdwsCustomStates.StringStateDef(const index : TGUID; const default : UnicodeString) : UnicodeString;
 var
    s : TdwsCustomState;
 begin

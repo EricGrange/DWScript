@@ -299,10 +299,11 @@ end;
 var
    vWbemLocator : OleVariant;
    vWbemLocatorMRSW : TMultiReadSingleWrite;
-function WbemLocatorConnect(const path : String; const user : String = ''; const pass : String = '') : OleVariant;
+function WbemLocatorConnect(const path : UnicodeString; const user : UnicodeString = '';
+                            const pass : UnicodeString = '') : OleVariant;
 var
    p : Integer;
-   server, namespace : String;
+   server, namespace : UnicodeString;
 begin
    p:=Pos(':\\', path);
    server:=Copy(path, p+3, MaxInt);
@@ -628,7 +629,7 @@ end;
 
 procedure TGetActiveOleObjectFunc.Execute(info : TProgramInfo);
 var
-   n : String;
+   n : UnicodeString;
 begin
    n:=info.ParamAsString[0];
    if StrIBeginsWith(n, 'winmgmts:') then

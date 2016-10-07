@@ -80,9 +80,9 @@ begin
       try
          exprBase.EvalAsString(args.Exec, UnicodeString(buf));
          Result:=TdwsProgramExecution(args.Exec).Result;
-         Result.AddString(String(buf));
+         Result.AddString(UnicodeString(buf));
       finally
-         String(buf):='';
+         UnicodeString(buf):='';
       end;
    end;
 end;

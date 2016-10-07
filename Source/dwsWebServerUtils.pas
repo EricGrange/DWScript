@@ -29,7 +29,7 @@ type
 
    WebServerUtils = class
       public
-         class function ETag(const data : array of const) : String; static;
+         class function ETag(const data : array of const) : UnicodeString; static;
    end;
 
 
@@ -43,7 +43,7 @@ implementation
 
 // ETag
 //
-class function WebServerUtils.ETag(const data : array of const) : String;
+class function WebServerUtils.ETag(const data : array of const) : UnicodeString;
 var
    i : Integer;
    hash : TSHA256;

@@ -58,6 +58,8 @@ const
   SYS_TCUSTOMATTRIBUTE = 'TCustomAttribute';
   SYS_IINTERFACE = 'IInterface';
 
+  SYS_ARRAY_OF_STRING = 'array of String';
+
   SYS_COMPILER_VERSION = 'CompilerVersion';
 
   SYS_MainModule = '*MainModule*';
