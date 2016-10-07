@@ -46,6 +46,7 @@ type
          procedure WriteOnlyBlockStreamTest;
          procedure WOBSBigFirstTest;
          procedure WOBSBigSecondTest;
+         procedure WOBSToStream;
          procedure TightListTest;
          procedure LookupTest;
          procedure SortedListExtract;
@@ -334,6 +335,33 @@ begin
          CheckEquals(bw[i], br[i], IntToStr(i));
 
    buffer.Free;
+end;
+
+// WOBSToStream
+//
+procedure TdwsUtilsTests.WOBSToStream;
+var
+   wobs : TWriteOnlyBlockStream;
+   ms : TMemoryStream;
+   i : Integer;
+   str : String;
+begin
+   wobs := TWriteOnlyBlockStream.Create;
+   try
+      for i := 0 to 10 do
+         wobs.WriteString('Hello World');
+      str := wobs.ToString;
+      ms := TMemoryStream.Create;
+      try
+         wobs.StoreData(ms);
+         CheckEquals(Length(str)*SizeOf(Char), ms.Size);
+         CheckTrue(CompareMem(Pointer(str), ms.Memory, ms.Size));
+      finally
+         ms.Free;
+      end;
+   finally
+      wobs.Free;
+   end;
 end;
 
 // TightListOutOfBoundsDelete
