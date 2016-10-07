@@ -7514,7 +7514,7 @@ var
 begin
    fromIsNumber:=IsOfTypeNumber(prog, FFromExpr.Typ);
 
-   if (FFromExpr.Typ=nil) or not FFromExpr.Typ.IsCompatible(FToExpr.Typ) then begin
+   if (FFromExpr.Typ=nil) or (FToExpr.Typ=nil) or not FFromExpr.Typ.IsCompatible(FToExpr.Typ) then begin
       if not (fromIsNumber and IsOfTypeNumber(prog, FToExpr.Typ)) then begin
          prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_RangeIncompatibleTypes,
                                               [FFromExpr.Typ.Caption, FToExpr.Typ.Caption]);
