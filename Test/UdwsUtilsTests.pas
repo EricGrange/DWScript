@@ -20,7 +20,8 @@ interface
 uses Classes, SysUtils, Math, Variants, Types,
    dwsXPlatformTests, dwsUtils,
    dwsXPlatform, dwsWebUtils, dwsTokenStore, dwsCryptoXPlatform,
-   dwsEncodingLibModule, dwsGlobalVars, dwsEncoding, dwsDataContext;
+   dwsEncodingLibModule, dwsGlobalVars, dwsEncoding, dwsDataContext,
+   dwsXXHash;
 
 type
 
@@ -97,6 +98,8 @@ type
          procedure DataContextCasts;
 
          procedure VariantPersist;
+
+         procedure xxHashTest;
    end;
 
 // ------------------------------------------------------------------
@@ -1387,6 +1390,36 @@ begin
       wobs.Free;
    end;
 
+end;
+
+// xxHashTest
+//
+procedure TdwsUtilsTests.xxHashTest;
+
+   procedure CheckFull(const data : RawByteString; expected : Cardinal);
+   begin
+      CheckEquals(expected, xxHash32.Full(Pointer(data), Length(data)), 'for '+UTF8ToString(data));
+   end;
+
+var
+   i : Integer;
+   abc : RawByteString;
+begin
+   CheckFull('A', $10659A4D);
+   CheckFull('ZOOLOGICALLY', $A5D0E117);
+   CheckFull('ab', $4999fc53);
+   CheckFull('abc', $32D153FF);
+   CheckFull('abcd', $A3643705);
+   CheckFull('abcde', $9738f19b);
+   CheckFull('abcde', $9738f19b);
+   CheckFull('abcdef', $8b7cd587);
+   CheckFull('abcdefg', $9dd093b3);
+   CheckFull('abcdefgh', $0bb3c6bb);
+   CheckFull('abcdefghi', $d03c13fd);
+
+   for i := 1 to 1000 do
+      abc := abc + 'abc';
+   CheckFull(abc, $598bfdf6);
 end;
 
 // ------------------------------------------------------------------
