@@ -61,6 +61,7 @@ type
          FTotalLength : UInt64;
 
          class function FullLarge(data : Pointer; dataSize : Cardinal) : Cardinal; static;
+         class function FullSmall(data : Pointer; dataSize : Cardinal) : Cardinal; static;
          class function DigestTail(data : Pointer; dataSize, partial : Cardinal) : Cardinal; static;
 
       public
@@ -68,7 +69,7 @@ type
          procedure Update(data : Pointer; dataSize : Cardinal);
          function Digest : Cardinal;
 
-         class function Full(data : Pointer; dataSize : Cardinal) : Cardinal; static; inline;
+         class function Full(data : Pointer; dataSize : Cardinal) : Cardinal; static;
    end;
    PxxHash32 = ^xxHash32;
 
@@ -167,6 +168,32 @@ begin
 {$endif}
 end;
 
+// MixKernel
+//
+{$CODEALIGN 16}
+{$ifdef WIN32_ASM}
+function MixKernel(v : PCardinalArray) : Cardinal;
+asm
+   mov   edx, [eax]
+   rol   edx, 1
+   mov   ecx, [eax+4]
+   rol   ecx, 7
+   lea   edx, [edx+ecx]
+   mov   ecx, [eax+8]
+   rol   ecx, 12
+   lea   edx, [edx+ecx]
+   mov   ecx, [eax+12]
+   rol   ecx, 18
+   lea   eax, [edx+ecx]
+end;
+{$else}
+function MixKernel(v : PCardinalArray) : Cardinal; inline;
+begin
+   Result := RotateLeft32(v[0],  1) + RotateLeft32(v[1],  7)
+           + RotateLeft32(v[2], 12) + RotateLeft32(v[3], 18);
+end;
+{$endif}
+
 procedure xxHash32.Init(aSeed : Cardinal = 0);
 begin
    FSeed := aSeed;
@@ -227,8 +254,7 @@ end;
 function xxHash32.Digest : Cardinal;
 begin
    if FTotalLength >= 16 then begin
-      Result := RotateLeft32(Fv[0],  1) + RotateLeft32(Fv[1],  7)
-              + RotateLeft32(Fv[2], 12) + RotateLeft32(Fv[3], 18)
+      Result := MixKernel(@Fv)
    end else begin
       Result := FSeed + cPRIME32_5;
    end;
@@ -240,30 +266,6 @@ end;
 // FullLarge
 //
 class function xxHash32.FullLarge(data : Pointer; dataSize : Cardinal) : Cardinal;
-
-   {$ifdef WIN32_ASM}
-   function Mix(v : PCardinalArray) : Cardinal;
-   asm
-      mov   edx, [eax]
-      rol   edx, 1
-      mov   ecx, [eax+4]
-      rol   ecx, 7
-      lea   edx, [edx+ecx]
-      mov   ecx, [eax+8]
-      rol   ecx, 12
-      lea   edx, [edx+ecx]
-      mov   ecx, [eax+12]
-      rol   ecx, 18
-      lea   eax, [edx+ecx]
-   end;
-   {$else}
-   function Mix(v : PCardinalArray) : Cardinal; inline;
-   begin
-      Result := RotateLeft32(v[0],  1) + RotateLeft32(v[1],  7)
-              + RotateLeft32(v[2], 12) + RotateLeft32(v[3], 18);
-   end;
-   {$endif}
-
 var
    ptrData : NativeUInt;
    v : array [0..3] of Cardinal;
@@ -276,7 +278,14 @@ begin
    v[3] := Cardinal(0-cPRIME32_1);
 
    ptrData := Kernel(@v, ptrData, ptrData+dataSize-16);
-   Result := DigestTail(Pointer(ptrData), dataSize and 15, dataSize + Mix(@v));
+   Result := DigestTail(Pointer(ptrData), dataSize and 15, dataSize + MixKernel(@v));
+end;
+
+// FullSmall
+//
+class function xxHash32.FullSmall(data : Pointer; dataSize : Cardinal) : Cardinal;
+begin
+   Result := DigestTail(data, dataSize, dataSize + 374761393);
 end;
 
 // DigestTail
@@ -360,11 +369,25 @@ end;
 // Full
 //
 class function xxHash32.Full(data : Pointer; dataSize : Cardinal) : Cardinal;
+var
+   ptrData : NativeUInt;
+   v : array [0..3] of Cardinal;
 begin
-   // cPRIME32_5 is manually inlined below to work around a compiler limitation
-   if dataSize >= 16 then
-      Result := FullLarge(data, dataSize)
-   else Result := DigestTail(data, dataSize, dataSize + 374761393);
+   if dataSize >= 16 then begin
+
+      v[0] := cPRIME32_1 + cPRIME32_2;
+      v[1] := cPRIME32_2;
+      v[2] := 0;
+      v[3] := Cardinal(0-cPRIME32_1);
+
+      ptrData := Kernel(@v, NativeUInt(data), NativeUInt(data)+dataSize-16);
+      Result := DigestTail(Pointer(ptrData), dataSize and 15, dataSize + MixKernel(@v));
+
+   end else begin
+
+      Result := DigestTail(data, dataSize, dataSize + 374761393);
+
+   end;
 end;
 
 end.
