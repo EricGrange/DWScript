@@ -1396,9 +1396,9 @@ end;
 //
 procedure TdwsUtilsTests.xxHashTest;
 
-   procedure CheckFull(const data : RawByteString; expected : Cardinal);
+   procedure CheckFull(const data : RawByteString; expected : Cardinal; seed : Cardinal = 0);
    begin
-      CheckEquals(expected, xxHash32.Full(Pointer(data), Length(data)), 'for '+UTF8ToString(data));
+      CheckEquals(expected, xxHash32.Full(Pointer(data), Length(data), seed), 'for '+UTF8ToString(data));
    end;
 
 var
@@ -1416,6 +1416,12 @@ begin
    CheckFull('abcdefg', $9dd093b3);
    CheckFull('abcdefgh', $0bb3c6bb);
    CheckFull('abcdefghi', $d03c13fd);
+
+   CheckFull('1234567890', $e8412d73);
+   CheckFull('1234567890abcdefgh', $1f03d5e7);
+
+   CheckFull('1234567890', $9d1f13e5, 1234);
+   CheckFull('1234567890abcdefgh', $8e1995a7, 1234);
 
    for i := 1 to 1000 do
       abc := abc + 'abc';

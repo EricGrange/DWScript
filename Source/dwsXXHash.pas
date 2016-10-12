@@ -60,8 +60,6 @@ type
          FSeed : Cardinal;
          FTotalLength : UInt64;
 
-         class function FullLarge(data : Pointer; dataSize : Cardinal) : Cardinal; static;
-         class function FullSmall(data : Pointer; dataSize : Cardinal) : Cardinal; static;
          class function DigestTail(data : Pointer; dataSize, partial : Cardinal) : Cardinal; static;
 
       public
@@ -69,7 +67,7 @@ type
          procedure Update(data : Pointer; dataSize : Cardinal);
          function Digest : Cardinal;
 
-         class function Full(data : Pointer; dataSize : Cardinal) : Cardinal; static;
+         class function Full(data : Pointer; dataSize : Cardinal; aSeed : Cardinal = 0) : Cardinal; static;
    end;
    PxxHash32 = ^xxHash32;
 
@@ -263,31 +261,6 @@ begin
    Result := DigestTail(@FBuffer, FBufferSize, Result);
 end;
 
-// FullLarge
-//
-class function xxHash32.FullLarge(data : Pointer; dataSize : Cardinal) : Cardinal;
-var
-   ptrData : NativeUInt;
-   v : array [0..3] of Cardinal;
-begin
-   ptrData := NativeUInt(data);
-
-   v[0] := cPRIME32_1 + cPRIME32_2;
-   v[1] := cPRIME32_2;
-   v[2] := 0;
-   v[3] := Cardinal(0-cPRIME32_1);
-
-   ptrData := Kernel(@v, ptrData, ptrData+dataSize-16);
-   Result := DigestTail(Pointer(ptrData), dataSize and 15, dataSize + MixKernel(@v));
-end;
-
-// FullSmall
-//
-class function xxHash32.FullSmall(data : Pointer; dataSize : Cardinal) : Cardinal;
-begin
-   Result := DigestTail(data, dataSize, dataSize + 374761393);
-end;
-
 // DigestTail
 //
 {$CODEALIGN 16}
@@ -368,26 +341,134 @@ end;
 
 // Full
 //
-class function xxHash32.Full(data : Pointer; dataSize : Cardinal) : Cardinal;
-var
-   ptrData : NativeUInt;
-   v : array [0..3] of Cardinal;
-begin
-   if dataSize >= 16 then begin
+{$ifdef WIN32_ASM}
+class function xxHash32.Full(data : Pointer; dataSize : Cardinal; aSeed : Cardinal = 0) : Cardinal;
+// eax = data, edx = dataSize, ecx = seed
+asm
+   push  ebx
 
-      v[0] := cPRIME32_1 + cPRIME32_2;
-      v[1] := cPRIME32_2;
-      v[2] := 0;
-      v[3] := Cardinal(0-cPRIME32_1);
+   cmp   edx, 16
+   jb    @@SizeBelow16
 
-      ptrData := Kernel(@v, NativeUInt(data), NativeUInt(data)+dataSize-16);
-      Result := DigestTail(Pointer(ptrData), dataSize and 15, dataSize + MixKernel(@v));
+   // Init & compute kernel
 
-   end else begin
+   push  ebp
+   push  edx
+   push  edi
+   push  esi
 
-      Result := DigestTail(data, dataSize, dataSize + 374761393);
+   lea   edi, [ecx + cPRIME32_1 + cPRIME32_2]
+   lea   esi, [ecx + cPRIME32_2]
+   lea   ebx, [ecx + Cardinal(0-cPRIME32_1)]
 
-   end;
+   lea   ebp, [eax+edx-16]
+
+@@Loop16:
+   mov   edx, [eax]
+   imul  edx, cPRIME32_2
+   lea   edi, [edi+edx]
+   rol   edi, 13
+   imul  edi, cPRIME32_1
+
+   mov   edx, [eax+4]
+   imul  edx, cPRIME32_2
+   lea   esi, [esi+edx]
+   rol   esi, 13
+   imul  esi, cPRIME32_1
+
+   mov   edx, [eax+8]
+   imul  edx, cPRIME32_2
+   lea   ecx, [ecx+edx]
+   rol   ecx, 13
+   imul  ecx, cPRIME32_1
+
+   mov   edx, [eax+12]
+   lea   eax, [eax+16];
+   imul  edx, cPRIME32_2
+   lea   ebx, [ebx+edx]
+   rol   ebx, 13
+   imul  ebx, cPRIME32_1
+
+   cmp   eax, ebp
+   jng   @@Loop16
+
+   // mix kernel
+   rol   edi, 1
+   rol   esi, 7
+   lea   edi, [edi+esi]
+   rol   ecx, 12
+   rol   ebx, 18
+   lea   ebx, [ebx+ecx]
+   lea   ecx, [ebx+edi]
+
+   pop   esi
+   pop   edi
+   pop   edx
+   pop   ebp
+
+   lea   ecx, [ecx + edx]
+   and   edx, 15
+
+   jmp @@DigestTail
+
+@@SizeBelow16:
+   lea ecx, [edx + ecx + cPRIME32_5]
+
+@@DigestTail:
+   // eax = data, edx = dataSize, ecx = result
+   cmp   edx, 4
+   jb    @@SizeBelow4
+
+@@SizeAbove4:
+   mov   ebx, [eax]
+   lea   eax, [eax + 4]
+   imul  ebx, cPRIME32_3
+   lea   ecx, [ecx + ebx]
+   rol   ecx, 17
+   lea   edx, [edx - 4]
+   imul  ecx, cPRIME32_4
+   cmp   edx, 4
+   jge   @@SizeAbove4
+
+@@SizeBelow4:
+   test  edx, edx
+   jz    @@wrapup
+
+@@sizeabove0:
+   movzx ebx, [eax]
+   lea   eax, [eax + 1]
+   imul  ebx, cPRIME32_5
+   lea   ecx, [ecx + ebx]
+   rol   ecx, 11
+   imul  ecx, cPRIME32_1
+   dec   edx
+   jnz   @@sizeabove0
+
+@@wrapup:
+   mov   edx, ecx
+   shr   ecx, 15
+   xor   edx, ecx
+   imul  ecx, edx, cPRIME32_2
+   mov   edx, ecx
+   shr   ecx, 13
+   xor   edx, ecx
+   imul  ecx, edx, cPRIME32_3
+   mov   eax, ecx
+   shr   ecx, 16
+   xor   eax, ecx
+
+   pop   ebx
 end;
+{$else}
+class function xxHash32.Full(data : Pointer; dataSize : Cardinal; aSeed : Cardinal = 0) : Cardinal;
+var
+   h : xxHash32;
+begin
+   h.Init(aSeed);
+   h.Update(data, dataSize);
+   Result := h.Digest;
+end;
+{$endif}
+
 
 end.

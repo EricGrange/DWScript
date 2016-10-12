@@ -1076,7 +1076,7 @@ end;
 //
 function SimpleByteHash(p : PByte; n : Integer) : Cardinal;
 begin
-   Result:=2166136261;
+   Result := 2166136261;
    for n:=n downto 1 do begin
       Result:=(Result xor p^)*16777619;
       Inc(p);
