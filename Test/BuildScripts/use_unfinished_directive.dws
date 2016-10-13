@@ -1,0 +1,5 @@
+uses UnfinishedDirective;
+
+var a := 1;
+
+!another bug here
