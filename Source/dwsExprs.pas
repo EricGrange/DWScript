@@ -8594,7 +8594,7 @@ end;
 //
 procedure TdwsSourceContextMap.ResumeContext(aContext : TdwsSourceContext);
 begin
-   Assert((FCurrentContext=nil) or (FCurrentContext.Token=ttUNIT));
+   Assert((FCurrentContext=nil) or (FCurrentContext.Token in [ttUNIT, ttINTERFACE]));
    FCurrentContext:=aContext;
 end;
 

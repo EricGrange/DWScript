@@ -29,7 +29,8 @@ unit dwsCryptoXPlatform;
 
 interface
 
-function CryptographicRandom(nb : Integer) : RawByteString;
+procedure CryptographicRandom(buf : Pointer; nb : Integer); overload;
+function CryptographicRandom(nb : Integer) : RawByteString; overload;
 function CryptographicToken(bitStrength : Integer = 0) : UnicodeString;
 function ProcessUniqueRandom : UnicodeString;
 
@@ -73,7 +74,7 @@ var
    hProvLock : TMultiReadSingleWrite;
    vXorShiftSeedMask : UInt64;
 
-function CryptographicRandom(nb : Integer) : RawByteString;
+procedure CryptographicRandom(buf : Pointer; nb : Integer); overload;
 
    function RDTSC : UInt64;
    asm
@@ -96,9 +97,7 @@ var
    seed : UInt64;
    p : PCardinal;
 begin
-   if nb<=0 then Exit('');
-
-   SetLength(Result, nb);
+   if nb <= 0 then Exit;
 
    hProvLock.BeginWrite;
    try
@@ -110,19 +109,27 @@ begin
          end;
          CryptGenRandom(hProv, SizeOf(vXorShiftSeedMask), @vXorShiftSeedMask);
       end;
-      CryptGenRandom(hProv, nb, Pointer(Result));
+      CryptGenRandom(hProv, nb, buf);
    finally
       hProvLock.EndWrite;
    end;
 
    // further muddy things, in case Windows generator is later found vulnerable,
    // this will protect us from "generic" exploits
-   seed:=RDTSC xor vXorShiftSeedMask;
-   p:=PCardinal(Result);
+   seed := RDTSC xor vXorShiftSeedMask;
+   p := buf;
    for i:=0 to (nb div 4)-1 do begin
       p^:=p^ xor XorShift(seed);
       Inc(p);
    end;
+end;
+
+// CryptographicRandom
+//
+function CryptographicRandom(nb : Integer) : RawByteString;
+begin
+   SetLength(Result, nb);
+   CryptographicRandom(Pointer(Result), nb);
 end;
 
 function CryptographicToken(bitStrength : Integer = 0) : UnicodeString;

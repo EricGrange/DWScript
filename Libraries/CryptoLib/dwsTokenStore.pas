@@ -21,7 +21,9 @@ unit dwsTokenStore;
 
 interface
 
-uses dwsUtils, dwsXPlatform, dwsJSON;
+uses
+   dwsUtils, dwsXPlatform, dwsCryptoXPlatform,
+   dwsJSON, dwsXXHash;
 
 type
 
@@ -47,12 +49,15 @@ type
          FCollectionIntervalMilliseconds : Integer;
          FCollectData : String;
          FCollectDataHash : Integer;
+         FHashSalt : Cardinal;
 
       protected
          procedure ScheduleCollection;
          function CollectTokenByData(const item : TdwsToken) : TSimpleHashAction;
 
          function GetTokenData(const aToken : String) : String;
+
+         function HashToken(const aToken : String) : Cardinal; inline;
 
       public
          constructor Create;
@@ -124,6 +129,7 @@ begin
    FHash:=TdwsTokenHash.Create;
    FLock:=TMultiReadSingleWrite.Create;
    FCollectionIntervalMilliseconds:=cCollectionIntervalMilliseconds;
+   CryptographicRandom(@FHashSalt, SizeOf(FHashSalt));
 end;
 
 // Destroy
@@ -136,6 +142,13 @@ begin
    inherited;
 end;
 
+// HashToken
+//
+function TdwsTokenStore.HashToken(const aToken : String) : Cardinal;
+begin
+   Result := xxHash32.Full(Pointer(aToken), Length(aToken)*SizeOf(Char), FHashSalt);
+end;
+
 // Register
 //
 procedure TdwsTokenStore.Register(const aToken : String; ttlSeconds : Double; const aData : String);
@@ -143,10 +156,10 @@ var
    token : TdwsToken;
 begin
    if aToken='' then Exit;
-   token.HashCode:=SimpleStringHash(aToken);
+   token.HashCode:=HashToken(aToken);
    token.Token:=aToken;
    token.Expire:=UTCDateTime+ttlSeconds*(1/86400);
-   token.DataHashCode:=SimpleStringHash(aData);
+   token.DataHashCode:=HashToken(aData);
    token.Data:=aData;
    FLock.BeginWrite;
    try
@@ -166,7 +179,7 @@ var
    t : TDateTime;
 begin
    if aToken='' then Exit(False);
-   token.HashCode:=SimpleStringHash(aToken);
+   token.HashCode:=HashToken(aToken);
    token.Token:=aToken;
    t:=UTCDateTime;
    FLock.BeginRead;
@@ -187,7 +200,7 @@ var
    t : TDateTime;
 begin
    if aToken='' then Exit(False);
-   token.HashCode:=SimpleStringHash(aToken);
+   token.HashCode:=HashToken(aToken);
    token.Token:=aToken;
    t:=UTCDateTime;
    FLock.BeginRead;
@@ -219,7 +232,7 @@ var
    token : TdwsToken;
 begin
    if aToken='' then Exit;
-   token.HashCode:=SimpleStringHash(aToken);
+   token.HashCode:=HashToken(aToken);
    token.Token:=aToken;
    FLock.BeginWrite;
    try
@@ -240,7 +253,7 @@ begin
    FLock.BeginWrite;
    try
       FCollectData:=aData;
-      FCollectDataHash:=SimpleStringHash(aData);
+      FCollectDataHash:=HashToken(aData);
       FHash.Enumerate(CollectTokenByData);
    finally
       FCollectData:='';
@@ -310,7 +323,7 @@ var
    t : TDateTime;
 begin
    Result:='';
-   token.HashCode:=SimpleStringHash(aToken);
+   token.HashCode:=HashToken(aToken);
    token.Token:=aToken;
    t:=UTCDateTime;
    FLock.BeginRead;
@@ -393,7 +406,7 @@ begin
          end;
          if token.Expire>t then begin
             token.Token:=json.Names[i];
-            token.HashCode:=SimpleStringHash(token.Token);
+            token.HashCode:=HashToken(token.Token);
             FHash.Add(token);
          end;
       end;

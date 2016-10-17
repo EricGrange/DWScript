@@ -1,4 +1,4 @@
-Test.Alpha,Alpha.Test,Test.Beta
+Alpha.Test,Test.Alpha,Test.Beta
 Alpha.Test
-Test.Alpha,Alpha.Test,Test.Beta
+Alpha.Test,Test.Alpha,Test.Beta
 Test.Beta

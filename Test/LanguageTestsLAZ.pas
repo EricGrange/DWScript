@@ -6,9 +6,10 @@ program LanguageTestsLAZ;
 
 uses
   Classes,
-  Forms,
-  TestFrameWork,
-  GUITestRunner,
+  fpcunit,
+//  Forms,
+//  TestFrameWork,
+//  GUITestRunner,
   SysUtils,
   UScriptTests in 'UScriptTests.pas',
   UAlgorithmsTests in 'UAlgorithmsTests.pas',

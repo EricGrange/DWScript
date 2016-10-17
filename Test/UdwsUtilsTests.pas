@@ -89,6 +89,8 @@ type
 
          procedure NameObjectHashTest;
 
+         procedure ObjectListTest;
+
          procedure MultiThreadedGlobalVars;
          procedure Eratosthenes;
          procedure GlobalVarsCollect;
@@ -1134,6 +1136,41 @@ begin
       CheckTrue(nil=noh.Objects[name2], '6 c');
    finally
       noh.Free;
+   end;
+end;
+
+// ObjectListTest
+//
+procedure TdwsUtilsTests.ObjectListTest;
+var
+   list : TObjectList<TRefCountedObject>;
+   obj1, obj2 : TRefCountedObject;
+begin
+   list := TObjectList<TRefCountedObject>.Create;
+   try
+      CheckEquals(0, list.Count);
+      list.Add(nil);
+      CheckEquals(1, list.Count);
+      Check(list[0] = nil);
+      obj1 := TRefCountedObject.Create;
+      list.Add(obj1);
+      CheckEquals(2, list.Count);
+      Check(list[1] = obj1);
+      obj2 := TRefCountedObject.Create;
+      list.Add(obj2);
+      CheckEquals(3, list.Count);
+      Check(list[2] = obj2);
+      list.Extract(2).Free;
+      CheckEquals(2, list.Count);
+      Check(list[0] = nil);
+      Check(list[1] = obj1);
+      list.Extract(0).Free;
+      CheckEquals(1, list.Count);
+      Check(list[0] = obj1);
+      list.Extract(0).Free;
+      CheckEquals(0, list.Count);
+   finally
+      list.Free;
    end;
 end;
 

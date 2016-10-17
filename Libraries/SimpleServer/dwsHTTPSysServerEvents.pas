@@ -22,7 +22,7 @@ interface
 
 uses
    Windows, Classes,
-   dwsUtils, dwsHTTPSysAPI, dwsXPlatform, dwsWebEnvironment;
+   dwsUtils, dwsHTTPSysAPI, dwsXPlatform, dwsWebEnvironment, dwsXXHash;
 
 type
 

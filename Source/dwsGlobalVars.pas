@@ -23,7 +23,7 @@ interface
 
 uses
    Classes, SysUtils, Variants, Masks,
-   dwsUtils, dwsXPlatform;
+   dwsUtils, dwsXPlatform, dwsXXHash;
 
 const
    cGlobalVarHashmaps = 15;

@@ -63,6 +63,7 @@ implementation
 procedure RegisterTest(const testName : String; aTest : TTestCaseClass);
 begin
    {$ifdef FPC}
+   if Length(testName) = 0 then ; // just to disable warning about it not being used
    testregistry.RegisterTest(aTest);
    {$else}
    TestFrameWork.RegisterTest(testName, aTest.Suite);
@@ -74,11 +75,13 @@ end;
 {$ifdef FPC}
 procedure TTestCase.CheckEquals(const expected, actual: UnicodeString; const msg: String = '');
 begin
-   AssertTrue(msg + ComparisonMsg(Expected, Actual), AnsiCompareStr(Expected, Actual) = 0);
+   AssertTrue(msg + ComparisonMsg(UTF8Encode(expected), UTF8Encode(actual)),
+              UnicodeCompareStr(expected, actual) = 0);
 end;
 procedure TTestCase.CheckEquals(const expected : String; const actual: UnicodeString; const msg: String = '');
 begin
-   AssertTrue(msg + ComparisonMsg(Expected, Actual), AnsiCompareStr(Expected, Actual) = 0);
+   AssertTrue(msg + ComparisonMsg(UTF8Encode(expected), UTF8Encode(actual)),
+              AnsiCompareStr(expected, UTF8Encode(actual)) = 0);
 end;
 
 {$else}

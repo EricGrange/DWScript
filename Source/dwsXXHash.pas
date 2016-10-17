@@ -93,7 +93,7 @@ end;
 
 // Kernel
 //
-{$CODEALIGN 16}
+{$ifndef FPC}{$CODEALIGN 16}{$endif}
 function Kernel(v : PCardinalArray; ptrData, ptrDataLimit : NativeUInt) : NativeUInt;
 {$ifdef WIN32_ASM}
 asm
@@ -156,10 +156,10 @@ asm
 {$else}
 begin
    repeat
-      v[0] := cPRIME32_1 * RotateLeft32(v[0] + cPRIME32_2 * PCardinalArray(ptrData)[0], 13);
-      v[1] := cPRIME32_1 * RotateLeft32(v[1] + cPRIME32_2 * PCardinalArray(ptrData)[1], 13);
-      v[2] := cPRIME32_1 * RotateLeft32(v[2] + cPRIME32_2 * PCardinalArray(ptrData)[2], 13);
-      v[3] := cPRIME32_1 * RotateLeft32(v[3] + cPRIME32_2 * PCardinalArray(ptrData)[3], 13);
+      v[0] := cPRIME32_1 * RotateLeft32(v[0] + cPRIME32_2 * {%H-}PCardinalArray(ptrData)[0], 13);
+      v[1] := cPRIME32_1 * RotateLeft32(v[1] + cPRIME32_2 * {%H-}PCardinalArray(ptrData)[1], 13);
+      v[2] := cPRIME32_1 * RotateLeft32(v[2] + cPRIME32_2 * {%H-}PCardinalArray(ptrData)[2], 13);
+      v[3] := cPRIME32_1 * RotateLeft32(v[3] + cPRIME32_2 * {%H-}PCardinalArray(ptrData)[3], 13);
       Inc(ptrData, 16);
    until ptrData > ptrDataLimit;
    Result := ptrData;
@@ -168,7 +168,6 @@ end;
 
 // MixKernel
 //
-{$CODEALIGN 16}
 {$ifdef WIN32_ASM}
 function MixKernel(v : PCardinalArray) : Cardinal;
 asm
@@ -209,13 +208,13 @@ procedure xxHash32.Update(data : Pointer; dataSize : Cardinal);
 var
    ptrData, ptrDataEnd : NativeUInt;
 begin
-   ptrData := NativeUInt(data);
+   ptrData := {%H-}NativeUInt(data);
 
    Inc(FTotalLength, dataSize);
 
    if FBufferSize + dataSize < 16 then begin
       // accumulate to buffer
-      Move(Pointer(ptrData)^, PByte(@FBuffer)[FBufferSize], dataSize);
+      Move({%H-}Pointer(ptrData)^, PByte(@FBuffer)[FBufferSize], dataSize);
       FBufferSize := FBufferSize + dataSize;
       Exit;
    end;
@@ -224,14 +223,14 @@ begin
 
    if FBufferSize > 0 then begin
       // flush buffer
-      Move(Pointer(ptrData)^, PByte(@FBuffer)[FBufferSize], 16-FBufferSize);
+      Move({%H-}Pointer(ptrData)^, PByte(@FBuffer)[FBufferSize], 16-FBufferSize);
 
       Fv[0] := cPRIME32_1 * RotateLeft32(Fv[0] + cPRIME32_2 * FBuffer[0], 13);
       Fv[1] := cPRIME32_1 * RotateLeft32(Fv[1] + cPRIME32_2 * FBuffer[1], 13);
       Fv[2] := cPRIME32_1 * RotateLeft32(Fv[2] + cPRIME32_2 * FBuffer[2], 13);
       Fv[3] := cPRIME32_1 * RotateLeft32(Fv[3] + cPRIME32_2 * FBuffer[3], 13);
 
-      ptrData := ptrData + 16-FBufferSize;
+      ptrData := ptrData + 16{%H-}-FBufferSize;
       FBufferSize := 0;
    end;
 
@@ -243,7 +242,7 @@ begin
    if ptrData < ptrDataEnd then begin
       // place remainder in buffer
       FBufferSize := ptrDataEnd-ptrData;
-      Move(Pointer(ptrData)^, FBuffer, ptrDataEnd-ptrData);
+      Move({%H-}Pointer(ptrData)^, FBuffer, ptrDataEnd-ptrData);
    end;
 end;
 
@@ -263,7 +262,6 @@ end;
 
 // DigestTail
 //
-{$CODEALIGN 16}
 class function xxHash32.DigestTail(data : Pointer; dataSize, partial : Cardinal) : Cardinal;
 {$ifdef WIN32_ASM}
 asm
@@ -317,18 +315,18 @@ var
    i : Integer;
    ptrData : NativeUInt;
 begin
-   ptrData := NativeUInt(data);
+   ptrData := {%H-}NativeUInt(data);
    Result := partial;
 
    while dataSize >= 4 do begin
-      Result := Result + PCardinal(ptrData)^ * cPRIME32_3;
+      Result := Result + {%H-}PCardinal(ptrData)^ * cPRIME32_3;
       Result := RotateLeft32(Result, 17) * cPRIME32_4;
       Inc(ptrData, 4);
       Dec(dataSize, 4);
    end;
 
    for i := 1 to dataSize do begin
-      Result := Result + PByte(ptrData)^ * cPRIME32_5;
+      Result := Result + {%H-}PByte(ptrData)^ * cPRIME32_5;
       Result := RotateLeft32(Result, 11) * cPRIME32_1;
       Inc(ptrData);
    end;
@@ -347,6 +345,8 @@ class function xxHash32.Full(data : Pointer; dataSize : Cardinal; aSeed : Cardin
 asm
    push  ebx
 
+   test  edx, edx
+   jz    @@NoData
    cmp   edx, 16
    jb    @@SizeBelow16
 
@@ -411,8 +411,15 @@ asm
 
    jmp @@DigestTail
 
+@@NoData:
+   test  ecx, ecx
+   jnz   @@SizeBelow16
+   mov   eax, $02cc5d05    // hash value for no data and seed = 0
+   pop   ebx
+   ret
+
 @@SizeBelow16:
-   lea ecx, [edx + ecx + cPRIME32_5]
+   lea   ecx, [edx + ecx + cPRIME32_5]
 
 @@DigestTail:
    // eax = data, edx = dataSize, ecx = result
@@ -464,6 +471,7 @@ class function xxHash32.Full(data : Pointer; dataSize : Cardinal; aSeed : Cardin
 var
    h : xxHash32;
 begin
+   if (dataSize=0) and (aSeed=0) then Exit($02cc5d05);
    h.Init(aSeed);
    h.Update(data, dataSize);
    Result := h.Digest;

@@ -8115,14 +8115,14 @@ begin
                if CheckArguments(0, 1) then begin
                   if argList.Count=0 then begin
                      if arraySym.Typ.IsOfType(FProg.TypString) then
-                        Result:=TArraySortNaturalStringExpr.Create(namePos, baseExpr)
+                        Result:=TArraySortNaturalStringExpr.Create(FProg, namePos, baseExpr)
                      else if arraySym.Typ.IsOfType(FProg.TypInteger) then
-                        Result:=TArraySortNaturalIntegerExpr.Create(namePos, baseExpr)
+                        Result:=TArraySortNaturalIntegerExpr.Create(FProg, namePos, baseExpr)
                      else if arraySym.Typ.IsOfType(FProg.TypFloat) then
-                        Result:=TArraySortNaturalFloatExpr.Create(namePos, baseExpr)
+                        Result:=TArraySortNaturalFloatExpr.Create(FProg, namePos, baseExpr)
                      else begin
                         FMsgs.AddCompilerError(namePos, CPE_ArrayDoesNotHaveNaturalSortOrder);
-                        Result:=TArraySortNaturalExpr.Create(namePos, baseExpr);
+                        Result:=TArraySortNaturalExpr.Create(FProg, namePos, baseExpr);
                      end;
                   end else begin
                      if not argList[0].Typ.IsCompatible(arraySym.SortFunctionType(FProg.TypInteger)) then begin

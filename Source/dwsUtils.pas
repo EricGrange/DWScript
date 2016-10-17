@@ -23,7 +23,7 @@ interface
 
 uses
    Classes, SysUtils, Variants, Types, StrUtils, Masks,
-   dwsStrings, dwsXPlatform, Math;
+   dwsStrings, dwsXPlatform, Math, dwsXXHash;
 
 type
 
@@ -68,6 +68,9 @@ type
          function QueryInterface({$IFDEF FPC_HAS_CONSTREF}constref{$ELSE}const{$ENDIF} IID: TGUID; out Obj): HResult; stdcall;
          function _AddRef : Integer; stdcall;
          function _Release : Integer; stdcall;
+         {$ifdef FPC}
+         function ToString : UnicodeString; reintroduce;
+         {$endif}
 
       public
          class function NewInstance: TObject; override;
@@ -406,6 +409,7 @@ type
          FCount : Integer;
          FGrowth : Integer;
          FHighIndex : Integer;
+         class var vHashSalt : Cardinal;
 
       protected
          procedure Grow;
@@ -3380,9 +3384,9 @@ begin
    Assert(Cardinal(idx)<Cardinal(FCount), 'Index out of range');
    n:=Count-1-idx;
    Dec(FCount);
+   Result:=FItems[idx];
    if n>0 then
       System.Move(FItems[idx+1], FItems[idx], SizeOf(T)*n);
-   Result:=FItems[idx];
 end;
 
 // ExtractAll
@@ -4442,6 +4446,15 @@ begin
    if Result=0 then Destroy;
 end;
 
+{$ifdef FPC}
+// ToString
+//
+function TInterfacedSelfObject.ToString : UnicodeString
+begin
+   Result := UTF8ToString;
+end;
+{$endif}
+
 // NewInstance
 //
 class function TInterfacedSelfObject.NewInstance: TObject;
@@ -4542,7 +4555,7 @@ end;
 //
 class function TNameObjectHash.HashName(const aName : UnicodeString) : Cardinal;
 begin
-   Result:=SimpleStringHash(aName);
+   Result := xxHash32.Full(Pointer(aName), Length(aName)*SizeOf(Char), vHashSalt);
    if Result=0 then
       Result:=1;
 end;
@@ -5997,6 +6010,7 @@ initialization
    InitializeSmallIntegers;
    InitializeStringsUnifier;
    TSimpleIntegerStack.vTemplate:=TSimpleIntegerStack.Create;
+   TNameObjectHash.vHashSalt := Cardinal(GetSystemMilliseconds);
 
 finalization
 

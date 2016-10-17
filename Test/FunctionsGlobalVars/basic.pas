@@ -22,14 +22,14 @@ WriteGlobalVar('123', 'world!');
 
 PrintLn(ReadGlobalVarDef('123', 'empty'));
 
-PrintLn(GlobalVarsNamesCommaText);
+PrintLn(GlobalVarsNames('*').Sort(CompareText).Join(','));
 
 DeleteGlobalVar('123');
 
 PrintLn(ReadGlobalVarDef('123', 'empty'));
 PrintLn(ReadGlobalVarDef('test', 'empty'));
 
-PrintLn(GlobalVarsNamesCommaText);
+PrintLn(GlobalVarsNames('*').Sort(CompareText).Join(','));
 
 CleanupGlobalVars;
 

@@ -30,13 +30,13 @@ unit dwsXPlatform;
 {$WARN SYMBOL_PLATFORM OFF}
 
 {$IFDEF FPC}
-   {$DEFINE VER200}
+   {$DEFINE VER200}  // FPC compatibility = D2009
 {$ENDIF}
 
 interface
 
 uses
-   Classes, SysUtils, Types, Masks,
+   Classes, SysUtils, Types, Masks, Registry,
    {$IFDEF FPC}
       {$IFDEF Windows}
          Windows
@@ -160,8 +160,10 @@ type
 function GetSystemMilliseconds : Int64;
 function UTCDateTime : TDateTime;
 function UnixTime : Int64;
-// UTC = LocalTime + Bias
-function LocalTimeBias : TDateTime;
+
+function LocalDateTimeToUTCDateTime(t : TDateTime) : TDateTime;
+function UTCDateTimeToLocalDateTime(t : TDateTime) : TDateTime;
+
 procedure SystemSleep(msec : Integer);
 
 {$ifndef FPC}
@@ -244,7 +246,7 @@ function DirectSetMXCSR(newValue : Word) : Word; register;
 
 function SwapBytes(v : Cardinal) : Cardinal;
 
-function GetCurrentUserName : String;
+function GetCurrentUserName : UnicodeString;
 
 {$ifndef FPC}
 // Generics helper functions to handle Delphi 2009 issues - HV
@@ -262,7 +264,7 @@ procedure InitializeWithDefaultFormatSettings(var fmt : TFormatSettings);
    {$IF RTLVersion < 21}{$define NEED_FindDelimiter}{$ifend}
 {$endif}
 {$ifdef NEED_FindDelimiter}
-function FindDelimiter(const Delimiters, S: string; StartIdx: Integer = 1): Integer;
+function FindDelimiter(const Delimiters, S: UnicodeString; StartIdx: Integer = 1): Integer;
 {$endif}
 
 type
@@ -367,19 +369,43 @@ begin
    Result:=Trunc(UTCDateTime*86400)-Int64(25569)*86400;
 end;
 
-// LocalTimeBias
+function TzSpecificLocalTimeToSystemTime(lpTimeZoneInformation: PTimeZoneInformation;
+   var lpLocalTime, lpUniversalTime: TSystemTime): BOOL; stdcall; external 'kernel32';
+
+// LocalDateTimeToUTCDateTime
 //
-function LocalTimeBias : TDateTime;
-{$IFDEF Windows}
+function LocalDateTimeToUTCDateTime(t : TDateTime) : TDateTime;
 var
+   localSystemTime, universalSystemTime : TSystemTime;
+   tzDynInfo : TDynamicTimeZoneInformation;
    tzInfo : TTimeZoneInformation;
 begin
-   GetTimeZoneInformation(tzInfo);
-   Result:=tzInfo.Bias*(1/24/60);
-{$ELSE}
+   DateTimeToSystemTime(t, localSystemTime);
+   if GetDynamicTimeZoneInformation(tzDynInfo) = TIME_ZONE_ID_INVALID then
+      RaiseLastOSError;
+   if not GetTimeZoneInformationForYear(localSystemTime.wYear, @tzDynInfo, tzInfo) then
+      RaiseLastOSError;
+   if not TzSpecificLocalTimeToSystemTime(@tzInfo, localSystemTime, universalSystemTime) then
+      RaiseLastOSError;
+   Result := SystemTimeToDateTime(universalSystemTime);
+end;
+
+// UTCDateTimeToLocalDateTime
+//
+function UTCDateTimeToLocalDateTime(t : TDateTime) : TDateTime;
+var
+   tzDynInfo : TDynamicTimeZoneInformation;
+   tzInfo : TTimeZoneInformation;
+   localSystemTime, universalSystemTime : TSystemTime;
 begin
-   Result:=0; // TODO!
-{$ENDIF}
+   DateTimeToSystemTime(t, universalSystemTime);
+   if GetDynamicTimeZoneInformation(tzDynInfo) = TIME_ZONE_ID_INVALID then
+      RaiseLastOSError;
+   if not GetTimeZoneInformationForYear(localSystemTime.wYear, @tzDynInfo, tzInfo) then
+      RaiseLastOSError;
+   if not SystemTimeToTzSpecificLocalTime(@tzInfo, universalSystemTime, localSystemTime) then
+      RaiseLastOSError;
+   Result := SystemTimeToDateTime(localSystemTime);
 end;
 
 // SystemSleep
@@ -496,8 +522,8 @@ end;
 //
 function APINormalizeString(normForm : Integer; lpSrcString : LPCWSTR; cwSrcLength : Integer;
                             lpDstString : LPWSTR; cwDstLength : Integer) : Integer;
-                            stdcall; external 'Normaliz.dll' name 'NormalizeString' delayed;
-function NormalizeString(const s, form : UnicodeString) : String;
+                            stdcall; external 'Normaliz.dll' name 'NormalizeString' {$ifndef FPC}delayed{$endif};
+function NormalizeString(const s, form : UnicodeString) : UnicodeString;
 var
    nf, len : Integer;
 begin
@@ -1027,7 +1053,7 @@ end;
 
 // LoadRawBytesAsScriptStringFromFile
 //
-procedure LoadRawBytesAsScriptStringFromFile(const fileName : UnicodeString; var result : String);
+procedure LoadRawBytesAsScriptStringFromFile(const fileName : UnicodeString; var result : UnicodeString);
 const
    INVALID_FILE_SIZE = DWORD($FFFFFFFF);
 var
@@ -1541,7 +1567,7 @@ const
    WT_EXECUTELONGFUNCTION  = ULONG($00000010);
 {$endif}
 
-procedure TTimerTimeoutCallBack(Context: Pointer; Success: Boolean); stdcall;
+procedure TTimerTimeoutCallBack(Context: Pointer; {%H-}Success: Boolean); stdcall;
 var
    tt : TTimerTimeout;
    event : TTimerEvent;
@@ -1565,7 +1591,7 @@ class function TTimerTimeout.Create(delayMSec : Cardinal; onTimer : TTimerEvent)
 var
    obj : TTimerTimeout;
 begin
-   obj := inherited Create;
+   obj := TTimerTimeout(inherited Create);
    Result := obj;
    obj.FOnTimer := onTimer;
    CreateTimerQueueTimer(obj.FTimer, 0, TTimerTimeoutCallBack, obj,
@@ -1600,5 +1626,10 @@ initialization
 // ------------------------------------------------------------------
 
    InitializeGetSystemMilliseconds;
+//   vTimeZoneLock := TMultiReadSingleWrite.Create;
+
+finalization
+
+//   FreeAndNil(vTimeZoneLock);
 
 end.
