@@ -47,11 +47,27 @@ type
     procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
   end;
 
+  TLocalDateTimeToUTCDateTimeFunc = class(TInternalMagicFloatFunction)
+    procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+  end;
+
+  TUTCDateTimeToLocalDateTimeFunc = class(TInternalMagicFloatFunction)
+    procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+  end;
+
   TUnixTimeFunc = class(TInternalMagicIntFunction)
     function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
 
   TUnixTimeToDateTimeFunc = class(TInternalMagicFloatFunction)
+    procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+  end;
+
+  TLocalDateTimeToUnixTimeFunc = class(TInternalMagicIntFunction)
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+  end;
+
+  TUnixTimeToLocalDateTimeFunc = class(TInternalMagicFloatFunction)
     procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
   end;
 
@@ -368,6 +384,20 @@ begin
    Result:=UTCDateTime;
 end;
 
+{ TLocalDateTimeToUTCDateTimeFunc }
+
+procedure TLocalDateTimeToUTCDateTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result := LocalDateTimeToUTCDateTime(args.AsFloat[0]);
+end;
+
+{ TUTCDateTimeToLocalDateTimeFunc }
+
+procedure TUTCDateTimeToLocalDateTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result := UTCDateTimeToLocalDateTime(args.AsFloat[0]);
+end;
+
 { TUnixTimeFunc }
 
 function TUnixTimeFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
@@ -387,10 +417,22 @@ begin
    Result:=args.AsInteger[0]/86400+25569;
 end;
 
+{ TUnixTimeToLocalDateTimeFunc }
+
+function TLocalDateTimeToUnixTimeFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+begin
+   Result := Trunc(LocalDateTimeToUTCDateTime(args.AsFloat[0])*86400)-Int64(25569)*86400;
+end;
+
+{ TUnixTimeToLocalDateTimeFunc }
+
+procedure TUnixTimeToLocalDateTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result := UTCDateTimeToLocalDateTime(args.AsInteger[0]/86400+25569);
+end;
+
 { TDateTimeToStrFunc }
 
-// DoEvalAsString
-//
 procedure TDateTimeToStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
    Result:=args.FormatSettings.DateTimeToStr(args.AsFloat[0], TdwsTimeZone(args.AsInteger[1]));
@@ -834,9 +876,14 @@ initialization
 
    RegisterInternalFloatFunction(TUTCDateTimeFunc, 'UTCDateTime', []);
 
+   RegisterInternalFloatFunction(TLocalDateTimeToUTCDateTimeFunc, 'LocalDateTimeToUTCDateTime', ['t', cDateTime]);
+   RegisterInternalFloatFunction(TUTCDateTimeToLocalDateTimeFunc, 'UTCDateTimeToLocalDateTime', ['t', cDateTime]);
+
    RegisterInternalIntFunction(TUnixTimeFunc, 'UnixTime', []);
    RegisterInternalIntFunction(TUnixTimeFunc, 'DateTimeToUnixTime', ['utc', cDateTime]);
-   RegisterInternalFloatFunction(TUnixTimeToDateTimeFunc, 'UnixTimeToDateTime', ['utc=0', cDateTime]);
+   RegisterInternalFloatFunction(TUnixTimeToDateTimeFunc, 'UnixTimeToDateTime', ['ut', SYS_INTEGER]);
+   RegisterInternalIntFunction(TLocalDateTimeToUnixTimeFunc, 'LocalDateTimeToUnixTime', ['dt', cDateTime]);
+   RegisterInternalFloatFunction(TUnixTimeToLocalDateTimeFunc, 'UnixTimeToLocalDateTime', ['ut', SYS_INTEGER]);
 
    RegisterInternalFloatFunction(TParseDateTimeFunc, 'ParseDateTime', ['fmt', SYS_STRING, 'str', SYS_STRING, 'utc=0', SYS_DATE_TIME_ZONE]);
 

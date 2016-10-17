@@ -2726,24 +2726,30 @@ procedure TdwsJSONWriter.WriteDate(dt : TDateTime);
 var
    y, m, d, h, n, s, z : Word;
 begin
+   if dt = 0 then begin
+      WriteNull;
+      Exit;
+   end;
+
    BeforeWriteImmediate;
 
    FStream.WriteChar('"');
 
    DecodeDate(dt, y, m, d);
    FStream.WriteDigits(y, 4);
+   FStream.WriteChar('-');
    FStream.WriteDigits(m, 2);
-   FStream.WriteDigits(m, 2);
+   FStream.WriteChar('-');
+   FStream.WriteDigits(d, 2);
 
    DecodeTime(dt, h, n, s, z);
    if (h or n or s)<>0 then begin
       FStream.WriteChar('T');
       FStream.WriteDigits(h, 2);
-      if (n or s)<>0 then begin
-         FStream.WriteDigits(n, 2);
-         if s<>0 then
-            FStream.WriteDigits(s, 2);
-      end;
+      FStream.WriteChar(':');
+      FStream.WriteDigits(n, 2);
+      FStream.WriteChar(':');
+      FStream.WriteDigits(s, 2);
    end;
 
    FStream.WriteChar('"');
