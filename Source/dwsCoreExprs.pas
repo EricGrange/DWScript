@@ -331,7 +331,7 @@ type
    // Array expressions: x[index0] for dynamic arrays
    TDynamicArrayExpr = class(TArrayExpr)
       protected
-         function EvalItem(exec : TdwsExecution; var dyn : IScriptDynArray) : PVariant; virtual;
+         function EvalItem(exec : TdwsExecution; var dyn : IScriptDynArray) : PVariant;
 
       public
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
@@ -344,6 +344,13 @@ type
 
    // Array expressions: x[index0] for dynamic arrays where BaseExpr is a TObjectVarExpr
    TDynamicArrayVarExpr = class(TDynamicArrayExpr)
+      protected
+         function EvalItem(exec : TdwsExecution) : PVariant;
+
+      public
+         function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
+         function  EvalAsFloat(exec : TdwsExecution) : Double; override;
+         procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
    end;
 
    // array[index]:=val for dynamic arrays
@@ -711,8 +718,33 @@ type
          property Index2Expr : TTypedExpr read FIndex2Expr;
    end;
 
+   // TypedExpr for dynamic array
+   TArrayTypedExpr = class(TTypedExpr)
+      private
+         FBaseExpr : TTypedExpr;
+         FScriptPos : TScriptPos;
+
+      public
+         constructor Create(prog: TdwsProgram; const scriptPos: TScriptPos;
+                            aBaseExpr : TTypedExpr);
+         destructor Destroy; override;
+
+         function ScriptPos : TScriptPos; override;
+
+         property BaseExpr : TTypedExpr read FBaseExpr;
+   end;
+
+   // TypedExpr for dynamic array that returns the array (for fluent-style)
+   TArrayTypedFluentExpr = class(TArrayTypedExpr)
+      public
+         constructor Create(prog: TdwsProgram; const scriptPos: TScriptPos;
+                            aBaseExpr : TTypedExpr);
+
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+   end;
+
    // Sort a dynamic array
-   TArraySortExpr = class(TArrayPseudoMethodExpr)
+   TArraySortExpr = class(TArrayTypedFluentExpr)
       private
          FCompareExpr : TFuncPtrExpr;
          FLeft, FRight : TDataSymbol;
@@ -726,16 +758,16 @@ type
                             aBase : TTypedExpr; aCompare : TFuncPtrExpr);
          destructor Destroy; override;
 
-         procedure EvalNoResult(exec : TdwsExecution); override;
+         procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
 
          property CompareExpr : TFuncPtrExpr read FCompareExpr write FCompareExpr;
    end;
 
    // Sort a dynamic array (natural order)
-   TArraySortNaturalExpr = class(TArrayPseudoMethodExpr)
+   TArraySortNaturalExpr = class(TArrayTypedFluentExpr)
       public
          procedure SetCompareMethod(var qs : TQuickSort; dyn : TScriptDynamicValueArray); virtual;
-         procedure EvalNoResult(exec : TdwsExecution); override;
+         procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
    end;
 
    TArraySortNaturalStringExpr = class(TArraySortNaturalExpr)
@@ -751,22 +783,6 @@ type
    TArraySortNaturalFloatExpr = class(TArraySortNaturalExpr)
       public
          procedure SetCompareMethod(var qs : TQuickSort; dyn : TScriptDynamicValueArray); override;
-   end;
-
-   // TypedExpr for dynamic array
-   TArrayTypedExpr = class(TTypedExpr)
-      private
-         FBaseExpr : TTypedExpr;
-         FScriptPos : TScriptPos;
-
-      public
-         constructor Create(prog: TdwsProgram; const scriptPos: TScriptPos;
-                            aBaseExpr : TTypedExpr);
-         destructor Destroy; override;
-
-         function ScriptPos : TScriptPos; override;
-
-         property BaseExpr : TTypedExpr read FBaseExpr;
    end;
 
    // Map a dynamic array
@@ -2981,6 +2997,29 @@ begin
 end;
 
 // ------------------
+// ------------------ TArrayTypedFluentExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TArrayTypedFluentExpr.Create(prog: TdwsProgram; const scriptPos: TScriptPos;
+                                         aBaseExpr : TTypedExpr);
+begin
+   inherited Create(prog, scriptPos, aBaseExpr);
+   Typ := aBaseExpr.Typ;
+end;
+
+// EvalAsVariant
+//
+procedure TArrayTypedFluentExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+var
+   dyn : IScriptDynArray;
+begin
+   EvalAsScriptDynArray(exec, dyn);
+   Result := dyn;
+end;
+
+// ------------------
 // ------------------ TDynamicArrayDataExpr ------------------
 // ------------------
 
@@ -3424,6 +3463,68 @@ var
    p : PVarData;
 begin
    p:=PVarData(EvalItem(exec, dyn));
+   {$ifdef FPC}
+   if p.VType=varString then
+      Result:=UnicodeString(p.VString)
+   {$else}
+   if p.VType=varUString then
+      Result:=UnicodeString(p.VUString)
+   {$endif}
+   else VariantToString(PVariant(p)^, Result);
+end;
+
+// ------------------
+// ------------------ TDynamicArrayVarExpr ------------------
+// ------------------
+
+// EvalItem
+//
+function TDynamicArrayVarExpr.EvalItem(exec : TdwsExecution) : PVariant;
+var
+   pIDyn : PIUnknown;
+   dynArray : TScriptDynamicArray;
+   index : Integer;
+begin
+   pIDyn := exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FBaseExpr).FStackAddr);
+   dynArray := TScriptDynamicArray(IScriptDynArray(pIDyn^).GetSelf);
+
+   index:=IndexExpr.EvalAsInteger(exec);
+   BoundsCheck(exec, dynArray.ArrayLength, index);
+
+   Result:=dynArray.AsPVariant(index*FElementSize);
+end;
+
+// EvalAsInteger
+//
+function TDynamicArrayVarExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+var
+   p : PVarData;
+begin
+   p:=PVarData(EvalItem(exec));
+   if p.VType=varInt64 then
+      Result:=p.VInt64
+   else VariantToInt64(PVariant(p)^, Result);
+end;
+
+// EvalAsFloat
+//
+function TDynamicArrayVarExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+var
+   p : PVarData;
+begin
+   p:=PVarData(EvalItem(exec));
+   if p.VType=varDouble then
+      Result:=p.VDouble
+   else Result:=VariantToFloat(PVariant(p)^);
+end;
+
+// EvalAsString
+//
+procedure TDynamicArrayVarExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
+var
+   p : PVarData;
+begin
+   p:=PVarData(EvalItem(exec));
    {$ifdef FPC}
    if p.VType=varString then
       Result:=UnicodeString(p.VString)
@@ -8758,7 +8859,7 @@ constructor TArraySortExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPo
 var
    elemTyp : TTypeSymbol;
 begin
-   inherited Create(scriptPos, aBase);
+   inherited Create(prog, scriptPos, aBase);
    FCompareExpr:=aCompare;
    if aCompare<>nil then begin
       elemTyp:=aCompare.FuncSym.Params[0].Typ;
@@ -8779,17 +8880,16 @@ begin
    inherited;
 end;
 
-// EvalNoResult
+// EvalAsScriptDynArray
 //
-procedure TArraySortExpr.EvalNoResult(exec : TdwsExecution);
+procedure TArraySortExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 var
-   base : IScriptDynArray;
    dyn : TScriptDynamicValueArray;
    qs : TQuickSort;
    comparer : TArraySortComparer;
 begin
-   BaseExpr.EvalAsScriptDynArray(exec, base);
-   dyn:=TScriptDynamicValueArray(base.GetSelf);
+   BaseExpr.EvalAsScriptDynArray(exec, result);
+   dyn:=TScriptDynamicValueArray(result.GetSelf);
    comparer:=TArraySortComparer.Create(exec, dyn, CompareExpr);
    try
       if dyn.ElementSize>1 then
@@ -8801,6 +8901,7 @@ begin
       comparer.Free;
    end;
 end;
+
 
 // GetSubExpr
 //
@@ -8822,16 +8923,15 @@ end;
 // ------------------ TArraySortNaturalExpr ------------------
 // ------------------
 
-// EvalNoResult
+// EvalAsScriptDynArray
 //
-procedure TArraySortNaturalExpr.EvalNoResult(exec : TdwsExecution);
+procedure TArraySortNaturalExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 var
-   base : IScriptDynArray;
    dyn : TScriptDynamicValueArray;
    qs : TQuickSort;
 begin
-   BaseExpr.EvalAsScriptDynArray(exec, base);
-   dyn:=TScriptDynamicValueArray(base.GetSelf);
+   BaseExpr.EvalAsScriptDynArray(exec, result);
+   dyn:=TScriptDynamicValueArray(result.GetSelf);
    SetCompareMethod(qs, dyn);
    qs.SwapMethod:=dyn.Swap;
    qs.Sort(0, dyn.ArrayLength-1);

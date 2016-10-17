@@ -149,7 +149,7 @@ type
 
          procedure EvalAsVariant(addr : Integer; var result : Variant); inline;
          procedure EvalAsString(addr : Integer; var result : UnicodeString); inline;
-         procedure EvalAsInterface(addr : Integer; var result : IUnknown);
+         procedure EvalAsInterface(addr : Integer; var result : IUnknown); inline;
 
          property  AsInteger[addr : Integer] : Int64 read GetAsInteger write SetAsInteger;
          property  AsBoolean[addr : Integer] : Boolean read GetAsBoolean write SetAsBoolean;
@@ -692,7 +692,7 @@ var
 begin
    p:=@FData[FAddr+addr];
    if p.VType=varUString then
-      result:=UnicodeString(p.VString)
+      result:=UnicodeString(p.VUString)
    else VariantToString(PVariant(p)^, result);
 end;
 
