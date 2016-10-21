@@ -834,7 +834,7 @@ begin
       wr.WriteName('DateTime');
       wr.WriteDate(EncodeDate(2080, 12, 24)+EncodeTime(15, 30, 45, 450));
       wr.EndObject;
-      CheckEquals('{"Date":"20801212","DateTime":"20801212T153045"}',
+      CheckEquals('{"Date":"2080-12-24","DateTime":"2080-12-24T15:30:45"}',
                   wr.ToString);
    finally
       wr.Free;

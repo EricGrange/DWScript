@@ -15,5 +15,5 @@ PrintLn(StrToDateTimeDef('2010-01-01 12:34:56', 0, DateTimeZone.Local)-StrToDate
 
 var t := Now;
 
-PrintLn( Abs( StrToDateTime(DateTimeToStr(t, DateTimeZone.UTC), DateTimeZone.Local)-t-delta )*86400 <1 );
-PrintLn( Abs( StrToDateTime(DateTimeToStr(t, DateTimeZone.Local), DateTimeZone.UTC)-t+delta )*86400 <1 );
+PrintLn( Abs( StrToDateTime(DateTimeToStr(t, DateTimeZone.UTC), DateTimeZone.Local)-t-2*delta )*86400 <1 );
+PrintLn( Abs( StrToDateTime(DateTimeToStr(t, DateTimeZone.Local), DateTimeZone.UTC)-t+2*delta )*86400 <1 );

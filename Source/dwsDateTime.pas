@@ -81,8 +81,10 @@ function TdwsFormatSettings.FormatDateTime(const fmt : UnicodeString; dt : Doubl
 begin
    if (dt<-693592) or (dt>2146790052) then
       raise EConvertError.Create('Invalid date/time');
-   if tz=tzDefault then tz:=TimeZone;
-   if tz=tzUTC then dt := LocalDateTimeToUTCDateTime(dt);
+   if tz = tzDefault then
+      tz := TimeZone;
+   if tz = tzUTC then
+      dt := UTCDateTimeToLocalDateTime(dt);
    Result:=SysUtils.FormatDateTime(fmt, dt, Settings);
 end;
 
@@ -313,8 +315,10 @@ function TdwsFormatSettings.TryEncodeDate(y, m, d : Integer; tz : TdwsTimeZone; 
 begin
    Result:=SysUtils.TryEncodeDate(y, m, d, TDateTime(dt));
 
-   if tz=tzDefault then tz:=TimeZone;
-   if tz=tzUTC then dt:=LocalDateTimeToUTCDateTime(dt);
+   if tz = tzDefault then
+      tz := TimeZone;
+   if tz = tzUTC then
+      dt := LocalDateTimeToUTCDateTime(dt);
 end;
 
 // EncodeDate
