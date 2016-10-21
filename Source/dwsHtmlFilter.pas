@@ -108,27 +108,53 @@ var
    endQuote : array [0..1] of WideChar;
    output : TWriteOnlyBlockStream;
 
+   procedure StuffSpaces(n : Integer);
+   const
+      cManySpaces = '                ';
+   begin
+      case n of
+         0 : ;
+         1..Length(cManySpaces) :
+            output.WriteSubString(cManySpaces, 1, n);
+      else
+         while n>Length(cManySpaces) do begin
+            output.WriteSubString(cManySpaces, 1, Length(cManySpaces));
+            Dec(n, Length(cManySpaces));
+         end;
+         StuffSpaces(n);
+      end;
+   end;
+
    procedure StuffString(const input : UnicodeString; start, stop : Integer);
    const
       // Truth table for #13, #10, #9 and ''''
       cSpecial : array [#0..''''] of Byte =
          (0,0,0,0,0,0,0,0,0,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1);
    var
-      isQuoted: Boolean;
-      i, k, lineCount: Integer;
+      isQuoted : Boolean;
+      i, k, lineCount, nbSpaces : Integer;
       c : WideChar;
    begin
       if start>stop then Exit;
 
       if EditorMode then begin
+         nbSpaces := 0;
          for i := start to stop do begin
             c := input[i];
             case c of
-               #13, #10, #9 : output.WriteChar(c);
+               #13, #10, #9 : begin
+                  if nbSpaces > 0 then begin
+                     StuffSpaces(nbSpaces);
+                     nbSpaces := 0;
+                  end;
+                  output.WriteChar(c);
+               end;
             else
-               output.WriteChar(' ');
+               Inc(nbSpaces);
             end;
          end;
+         if nbSpaces > 0 then
+            StuffSpaces(nbSpaces);
          Exit;
       end;
 
@@ -165,8 +191,6 @@ var
                   output.WriteString('''#9');
                   isQuoted:=False;
                end;
-            else
-               output.WriteChar(input[i]);
             end
          end else begin
             case input[i] of
@@ -195,23 +219,6 @@ var
 
       for i:=1 to lineCount do
          output.WriteCRLF;
-   end;
-
-   procedure StuffSpaces(n : Integer);
-   const
-      cManySpaces = '                ';
-   begin
-      case n of
-         0 : ;
-         1..Length(cManySpaces) :
-            output.WriteSubString(cManySpaces, 1, n);
-      else
-         while n>Length(cManySpaces) do begin
-            output.WriteSubString(cManySpaces, 1, Length(cManySpaces));
-            Dec(n, Length(cManySpaces));
-         end;
-         StuffSpaces(n);
-      end;
    end;
 
 var

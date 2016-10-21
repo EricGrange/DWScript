@@ -24,6 +24,7 @@ type
    published
       procedure TestHTMLScript;
       procedure TestPatterns;
+      procedure TestPatternLong;
       procedure TestSpecialChars;
       procedure TestNotClosed;
       procedure TestIncludeFiltered;
@@ -127,6 +128,21 @@ begin
    end;
 end;
 
+// TestPatternLong
+//
+procedure THTMLFilterTests.TestPatternLong;
+var
+   locFilter : TdwsHtmlFilter;
+begin
+   locFilter:=TdwsHtmlFilter.Create(nil);
+   try
+      locFilter.PatternEval:='==';
+      CheckEquals('Print(1);Print(''2'');Print(3);Print(''4'');', locFilter.Process('<?pas==1?>2<?pas==3?>4', nil));
+   finally
+      locFilter.Free;
+   end;
+end;
+
 // TestSpecialChars
 //
 procedure THTMLFilterTests.TestSpecialChars;
@@ -142,9 +158,21 @@ begin
    exec:=prog.Execute;
    CheckEquals('hello'#9'world', exec.Result.ToString, '#9');
 
+   prog:=FCompiler.Compile('''');
+   exec:=prog.Execute;
+   CheckEquals('''', exec.Result.ToString, 'apos 0');
+
    prog:=FCompiler.Compile('''#13''');
    exec:=prog.Execute;
-   CheckEquals('''#13''', exec.Result.ToString, 'apos');
+   CheckEquals('''#13''', exec.Result.ToString, 'apos 1');
+
+   prog:=FCompiler.Compile('''''''');
+   exec:=prog.Execute;
+   CheckEquals('''''''', exec.Result.ToString, 'apos 2');
+
+   prog:=FCompiler.Compile(''''#13'''');
+   exec:=prog.Execute;
+   CheckEquals(''''#13'''', exec.Result.ToString, 'apos 3');
 end;
 
 // TestNotClosed
@@ -193,6 +221,11 @@ begin
       CheckEquals('       N    ', FFilter.Process('a<?pas N ?>b', nil), '1');
       CheckEquals('      (N); ',  FFilter.Process('a<?pas=N?>b', nil), '2');
       CheckEquals('     N'#13#10'  '#13#10'     M  ',  FFilter.Process('<?pasN'#13#10'?>'#13#10'<?pasM?>', nil), '3');
+
+      CheckEquals('     (1);'+StringOfChar(' ', 1204 + 5)+'(2);',
+                  TrimRight(FFilter.Process('<?pas=1?>'+StringOfChar(' ', 1204)+'<?pas=2?>', nil)), 'many spaces');
+      CheckEquals('     (1);'+StringOfChar(' ', 1204)+#13#10'     (2);',
+                  TrimRight(FFilter.Process('<?pas=1?>'+StringOfChar(' ', 1204)+#13#10'<?pas=2?>', nil)), 'many spaces');
    finally
       FFilter.EndEditorMode;
    end;
