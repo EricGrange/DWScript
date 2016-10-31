@@ -215,7 +215,8 @@ function VarToUnicodeStr(const v : Variant) : UnicodeString; inline;
 {$endif}
 
 function RawByteStringToBytes(const buf : RawByteString) : TBytes;
-function BytesToRawByteString(const buf : TBytes; startIndex : Integer = 0) : RawByteString;
+function BytesToRawByteString(const buf : TBytes; startIndex : Integer = 0) : RawByteString; overload;
+function BytesToRawByteString(p : Pointer; size : Integer) : RawByteString; overload;
 
 function LoadDataFromFile(const fileName : UnicodeString) : TBytes;
 procedure SaveDataToFile(const fileName : UnicodeString; const data : TBytes);
@@ -856,8 +857,16 @@ begin
       Result:=''
    else begin
       SetLength(Result, n);
-      System.Move(buf[startIndex], Result[1], n);
+      System.Move(buf[startIndex], Pointer(Result)^, n);
    end;
+end;
+
+// BytesToRawByteString
+//
+function BytesToRawByteString(p : Pointer; size : Integer) : RawByteString;
+begin
+   SetLength(Result, size);
+   System.Move(p^, Pointer(Result)^, size);
 end;
 
 // TryTextToFloat

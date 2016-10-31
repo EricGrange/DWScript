@@ -316,6 +316,43 @@ object dwsCryptoLib: TdwsCryptoLib
           end>
       end
       item
+        Name = 'EncryptionAESSHA3CTR'
+        Ancestor = 'EncryptionAlgorithm'
+        Methods = <
+          item
+            Name = 'EncryptData'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end
+              item
+                Name = 'key'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsCryptoClassesEncryptionAESSHA3CTRMethodsEncryptDataEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'DecryptData'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end
+              item
+                Name = 'key'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsCryptoClassesEncryptionAESSHA3CTRMethodsDecryptDataEval
+            Kind = mkClassFunction
+          end>
+      end
+      item
         Name = 'EncryptionCryptProtect'
         Ancestor = 'EncryptionAlgorithm'
         Methods = <

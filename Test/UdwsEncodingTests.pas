@@ -5,7 +5,7 @@ interface
 uses
    Classes, SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
-   dwsEncodingLibModule, dwsXPlatform;
+   dwsEncodingLibModule, dwsXPlatform, dwsEncoding;
 
 type
 
@@ -28,6 +28,8 @@ type
          procedure CompilationWithMapAndSymbols;
          procedure ExecutionNonOptimized;
          procedure ExecutionOptimized;
+
+         procedure Base64Test;
    end;
 
 // ------------------------------------------------------------------
@@ -164,6 +166,32 @@ begin
       expectedResult.Free;
       source.Free;
    end;
+end;
+
+// Base64Test
+//
+procedure TdwsEncodingTests.Base64Test;
+begin
+   CheckEquals('', Base64Encode(''));
+   CheckEquals('MA==', Base64Encode('0'));
+   CheckEquals('MDE=', Base64Encode('01'));
+   CheckEquals('MDEy', Base64Encode('012'));
+   CheckEquals('MDEyMw==', Base64Encode('0123'));
+   CheckEquals('MDEyMzQ=', Base64Encode('01234'));
+   CheckEquals('MDEyMzQ1', Base64Encode('012345'));
+   CheckEquals('MDEyMzQ1Ng==', Base64Encode('0123456'));
+
+   CheckEquals('', Base64Decode(''));
+   CheckEquals('0', Base64Decode('MA=='));
+   CheckEquals('01', Base64Decode('MDE='));
+   CheckEquals('012', Base64Decode('MDEy'));
+   CheckEquals('0123', Base64Decode('MDEyMw=='));
+   CheckEquals('01234', Base64Decode('MDEyMzQ='));
+   CheckEquals('012345', Base64Decode('MDEyMzQ1'));
+   CheckEquals('0123456', Base64Decode('MDEyMzQ1Ng=='));
+
+   CheckEquals('012345', Base64Decode('MDEy MzQ1'), 'whitespace');
+   CheckEquals('012345', Base64Decode('MDEy'#13#10'MzQ1'), 'crlf');
 end;
 
 // ------------------------------------------------------------------

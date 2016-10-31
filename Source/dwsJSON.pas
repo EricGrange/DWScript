@@ -48,7 +48,7 @@ type
          procedure AfterWriteImmediate;
 
       public
-         constructor Create(aStream : TWriteOnlyBlockStream; aOptions : TdwsJSONWriterOptions = []);
+         constructor Create(aStream : TWriteOnlyBlockStream = nil; aOptions : TdwsJSONWriterOptions = []);
          destructor Destroy; override;
 
          procedure BeginObject; overload; virtual;
@@ -2524,7 +2524,8 @@ end;
 
 // Create
 //
-constructor TdwsJSONWriter.Create(aStream : TWriteOnlyBlockStream; aOptions : TdwsJSONWriterOptions = []);
+constructor TdwsJSONWriter.Create(aStream : TWriteOnlyBlockStream = nil;
+                                  aOptions : TdwsJSONWriterOptions = []);
 begin
    inherited Create;
    FOptions:=aOptions;

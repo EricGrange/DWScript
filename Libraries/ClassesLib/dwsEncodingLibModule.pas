@@ -111,13 +111,13 @@ end;
 procedure TdwsEncodingLib.dwsEncodingClassesBase64EncoderMethodsDecodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsDataString := Base64ToBin(Info.ParamAsDataString[0]);
+   Info.ResultAsDataString := Base64Decode(Info.ParamAsString[0]);
 end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesBase64EncoderMethodsEncodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsDataString := BinToBase64(Info.ParamAsDataString[0]);
+   Info.ResultAsString := Base64Encode(Info.ParamAsDataString[0]);
 end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesHexadecimalEncoderMethodsDecodeEval(

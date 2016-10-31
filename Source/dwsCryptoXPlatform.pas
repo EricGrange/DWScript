@@ -34,6 +34,11 @@ function CryptographicRandom(nb : Integer) : RawByteString; overload;
 function CryptographicToken(bitStrength : Integer = 0) : UnicodeString;
 function ProcessUniqueRandom : UnicodeString;
 
+// only encodes 6 bits of each bytes using URI-safe base 64 alphabet
+function DigestToSimplifiedBase64(digest : PByte; size : Integer) : String;
+// only encodes 5.8 bits of each bytes (using 62 alphanumeric characters)
+function DigestToSimplifiedBase62(digest : PByte; size : Integer) : String;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -132,12 +137,37 @@ begin
    CryptographicRandom(Pointer(Result), nb);
 end;
 
-function CryptographicToken(bitStrength : Integer = 0) : UnicodeString;
 const
    // uri-safe base64 table (RFC 4648)
-   cChars : AnsiString = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+   cBase64Chars : AnsiString = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+
+// DigestToSimplifiedBase64
+//
+function DigestToSimplifiedBase64(digest : PByte; size : Integer) : String;
 var
-   i, n : Integer;
+   i : Integer;
+begin
+   SetLength(Result, size);
+   for i := 0 to size-1 do
+      PChar(Pointer(Result))[i] := Char(cBase64Chars[(digest[i] and 63)+1]);
+end;
+
+// DigestToSimplifiedBase62
+//
+function DigestToSimplifiedBase62(digest : PByte; size : Integer) : String;
+var
+   i : Integer;
+begin
+   SetLength(Result, size);
+   for i := 0 to size-1 do
+      PChar(Pointer(Result))[i] := Char(cBase64Chars[((digest[i]*62) shr 8)+1]);
+end;
+
+// CryptographicToken
+//
+function CryptographicToken(bitStrength : Integer = 0) : UnicodeString;
+var
+   n : Integer;
    rand : RawByteString;
 begin
    if bitStrength <= 0 then
@@ -147,9 +177,7 @@ begin
    if n*6<bitStrength then
       Inc(n);
    rand:=CryptographicRandom(n);
-   SetLength(Result, n);
-   for i:=1 to n do
-      Result[i]:=Char(cChars[(Ord(rand[i]) and 63)+1]);
+   Result := DigestToSimplifiedBase64(Pointer(rand), n);
 end;
 
 // ------------------------------------------------------------------

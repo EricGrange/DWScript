@@ -74,6 +74,7 @@ type
          procedure RemoveByData(const aData : String);
          procedure Clear;
          procedure Collect;
+         function  Count : Integer;
 
          procedure SaveToJSON(writer : TdwsJSONWriter);
          procedure LoadFromJSON(json : TdwsJSONValue);
@@ -304,6 +305,13 @@ begin
       FLock.EndWrite;
       collector.Free;
    end;
+end;
+
+// Count
+//
+function TdwsTokenStore.Count : Integer;
+begin
+   Result := FHash.Count;
 end;
 
 // CollectTokenByData

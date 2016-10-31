@@ -20,7 +20,8 @@ interface
 
 uses
    Windows, SysUtils, Classes, Types,
-   dwsComp, dwsExprs, dwsUtils, dwsXPlatform, dwsTokenStore, dwsCryptoXPlatform;
+   dwsComp, dwsExprs, dwsUtils, dwsXPlatform, dwsTokenStore, dwsCryptoXPlatform,
+   dwsXXHash;
 
 type
   TdwsCryptoLib = class(TDataModule)
@@ -80,6 +81,10 @@ type
       ExtObject: TObject);
     procedure dwsCryptoClassesNoncesMethodsCollectEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsCryptoClassesEncryptionAESSHA3CTRMethodsEncryptDataEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsCryptoClassesEncryptionAESSHA3CTRMethodsDecryptDataEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FNonces : TdwsTokenStore;
@@ -97,120 +102,19 @@ implementation
 
 {$R *.dfm}
 
-uses SynCrypto, SynZip, dwsRipeMD160, dwsCryptProtect, dwsSHA3;
-
-type
-   THashFunction = function (const data : RawByteString) : RawByteString;
+uses dwsCryptoUtils, SynCrypto, dwsCryptProtect, SynZip;
 
 procedure PerformHashData(Info: TProgramInfo; h : THashFunction);
 var
    b : RawByteString;
 begin
-   b:=h(Info.ParamAsDataString[0]);
-   Info.ResultAsString:=BinToHex(b[1], Length(b));
+   b := h(Info.ParamAsDataString[0]);
+   Info.ResultAsString := BinToHex(b[1], Length(b));
 end;
 
 procedure PerformHMAC(Info: TProgramInfo; h : THashFunction; blockSize : Integer);
-var
-   n : Integer;
-   key, msg : RawByteString;
-   oPad, iPad : AnsiString;
 begin
-   key:=Info.ParamAsDataString[0];
-   msg:=Info.ParamAsDataString[1];
-
-   n:=Length(key);
-   if n>blockSize then begin
-      // shorten
-      iPad:=h(key);
-      n:=Length(iPad);
-   end else iPad:=key;
-
-   if n<blockSize then begin
-      // zero pad to the right
-      SetLength(iPad, blockSize);
-      FillChar(iPad[n+1], blockSize-n, 0);
-   end;
-   oPad:=iPad;
-   UniqueString(iPad);
-   UniqueString(oPad);
-
-   for n:=1 to blockSize do begin
-      oPad[n]:=AnsiChar(Ord(oPad[n]) xor $5C);
-      iPad[n]:=AnsiChar(Ord(iPad[n]) xor $36);
-   end;
-
-   Info.ResultAsString:=BinToHex(h(oPad+h(iPad+msg)));
-end;
-
-function HashSHA256(const data : RawByteString) : RawByteString;
-var
-   SHA : TSHA256;
-   digest : TSHA256Digest;
-begin
-   SHA.Full(Pointer(data), Length(data), digest);
-   SetLength(Result, SizeOf(digest));
-   System.Move(digest, Result[1], SizeOf(digest));
-end;
-
-function HashMD5(const data : RawByteString) : RawByteString;
-var
-   digest : TMD5Digest;
-begin
-   digest:=MD5Buf(Pointer(data)^, Length(data));
-   SetLength(Result, SizeOf(digest));
-   System.Move(digest, Result[1], SizeOf(digest));
-end;
-
-function HashSHA1(const data : RawByteString) : RawByteString;
-var
-   SHA : TSHA1;
-   digest : TSHA1Digest;
-begin
-   SHA.Full(Pointer(data), Length(data), digest);
-   SetLength(Result, SizeOf(digest));
-   System.Move(digest, Result[1], SizeOf(digest));
-end;
-
-function HashRIPEMD160(const data : RawByteString) : RawByteString;
-var
-   digest : TRipe160Digest;
-   remaining : Integer;
-   p : PRipe160Block;
-begin
-   p := PRipe160Block(data);
-   remaining := Length(data);
-
-   RipeMD160Init(digest);
-   while remaining >= SizeOf(TRipe160Block) do begin
-      RipeMD160(digest, p);
-      Inc(p);
-      Dec(remaining, SizeOf(TRipe160Block));
-   end;
-   RipeMD160Final(digest, p, remaining, Length(data));
-
-   SetLength(Result, SizeOf(digest));
-   System.Move(digest, Result[1], SizeOf(digest));
-end;
-
-function HashSHA3_256(const data : RawByteString) : RawByteString;
-var
-   sponge : TSpongeState;
-begin
-   SetLength(Result, SizeOf(TSHA3_256_Hash));
-   if data<>'' then begin
-      sponge.Init(SHA3_256);
-      sponge.Update(Pointer(data), Length(data));
-      sponge.FinalHash(Pointer(Result));
-   end else begin
-      System.Move(cSHA3_256_EmptyString, Pointer(Result)^, SizeOf(TSHA3_256_Hash));
-   end;
-end;
-
-function HashCRC32(const data : RawByteString) : RawByteString;
-begin
-   SetLength(Result, 4);
-   PCardinal(Result)^:=CRC32string(data);
+   Info.ResultAsString := HMAC(Info.ParamAsDataString[0], Info.ParamAsDataString[1], h, blockSize);
 end;
 
 function DoAESFull(const data, key : RawByteString; encrypt : Boolean) : RawByteString;
@@ -234,8 +138,11 @@ end;
 
 procedure TdwsCryptoLib.DataModuleDestroy(Sender: TObject);
 begin
-   if FNonceFilename<>'' then
-      FNonces.SaveToFile(FNonceFilename);
+   if FNonceFilename<>'' then begin
+      if FNonces.Count > 0 then
+         FNonces.SaveToFile(FNonceFilename)
+      else DeleteFile(FNonceFilename);
+   end;
    FNonces.Free;
 end;
 
@@ -249,6 +156,18 @@ procedure TdwsCryptoLib.dwsCryptoClassesEncryptionAESSHA256FullMethodsEncryptDat
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsDataString := DoAESFull(Info.ParamAsDataString[0], Info.ParamAsDataString[1], True);
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesEncryptionAESSHA3CTRMethodsDecryptDataEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString := AES_SHA3_CTR(Info.ParamAsDataString[0], Info.ParamAsDataString[1], False);
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesEncryptionAESSHA3CTRMethodsEncryptDataEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString := AES_SHA3_CTR(Info.ParamAsDataString[0], Info.ParamAsDataString[1], True);
 end;
 
 procedure TdwsCryptoLib.dwsCryptoClassesEncryptionCryptProtectMethodsDecryptDataEval(
@@ -422,10 +341,14 @@ end;
 
 procedure TdwsCryptoLib.UseTemporaryStorageForNonces;
 var
-   signature : RawByteString;
+   signature : String;
+   digest : TSHA256Digest;
 begin
-   signature:=UTF8Encode(GetCurrentUserName+','+ParamStr(0));
-   NonceFilename:=IncludeTrailingPathDelimiter(TPath.GetTempPath)+UTF8ToString(SHA256(signature))+'.nonces';
+   signature := GetCurrentUserName+','+ParamStr(0);
+   digest := SHA256Digest(Pointer(signature), Length(signature)*SizeOf(Char));
+   FNonceFilename := IncludeTrailingPathDelimiter(TPath.GetTempPath)
+                   + DigestToSimplifiedBase64(@digest, SizeOf(digest) div 2)
+                   + '.nonces';
 end;
 
 procedure TdwsCryptoLib.dwsCryptoFunctionsProcessUniqueRandomEval(

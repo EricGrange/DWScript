@@ -80,6 +80,7 @@ type
       procedure Init(algo: TSHA3_Algo); inline;
       procedure Update(msg: Pointer; len: Integer); inline;
       procedure FinalHash(digest : Pointer); inline;
+      procedure Burn; inline;
 
       procedure UpdateString(const s : String); inline;
       procedure UpdateInt64(const i : Int64); inline;
@@ -107,8 +108,10 @@ procedure SHA3_Update(var state: TSHA3State; msg: Pointer; len: Integer);
 procedure SHA3_FinalHash(var state: THashState; digest: Pointer);
 function  SHA3_DigestToString(digest : Pointer; size : Integer) : String;
 
-function HashSHA3_256(const buf : RawByteString) : String; overload;
+function HashSHA3_256(const buf : RawByteString) : String; overload; inline;
 function HashSHA3_256(p : Pointer; len : Integer) : String; overload;
+function HashSHA3_256_Digest(const buf : RawByteString) : TSHA3_256_Hash; overload; inline;
+function HashSHA3_256_Digest(p : Pointer; len : Integer) : TSHA3_256_Hash; overload;
 
 procedure KeccakPermutation(var state: TState_L);
 
@@ -533,6 +536,11 @@ begin
    SHA3_FinalHash(Self, digest);
 end;
 
+procedure TSpongeState.Burn;
+begin
+   FillChar(Self, SizeOf(Self), 0);
+end;
+
 procedure TSpongeState.UpdateString(const s : String);
 begin
    Update(Pointer(s), Length(s)*SizeOf(Char));
@@ -555,19 +563,30 @@ end;
 
 function HashSHA3_256(const buf : RawByteString) : String;
 begin
-   Result:=HashSHA3_256(Pointer(buf), Length(buf));
+   Result := HashSHA3_256(Pointer(buf), Length(buf));
 end;
 
 function HashSHA3_256(p : Pointer; len : Integer) : String;
 var
-   sponge : TSHA3State;
    hash : TSHA3_256_Hash;
 begin
-   SHA3_Init(sponge, SHA3_256);
-   SHA3_Update(sponge, p, len);
-   SHA3_FinalHash(sponge, @hash);
-
+   hash := HashSHA3_256_Digest(p, len);
    Result := SHA3_DigestToString(@hash, SizeOf(hash));
+end;
+
+function HashSHA3_256_Digest(const buf : RawByteString) : TSHA3_256_Hash;
+begin
+   Result := HashSHA3_256_Digest(Pointer(buf), Length(buf));
+end;
+
+function HashSHA3_256_Digest(p : Pointer; len : Integer) : TSHA3_256_Hash;
+var
+   sponge : TSpongeState;
+begin
+   sponge.Init(SHA3_256);
+   sponge.Update(p, len);
+   sponge.FinalHash(@Result);
+   sponge.Burn;
 end;
 
 end.

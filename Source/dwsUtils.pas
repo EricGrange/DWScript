@@ -82,8 +82,20 @@ type
    //
    IAutoStrings = interface
       function GetValue : TStringList;
-      property Value : TStringList read GetValue;
+      function GetItem(index : Integer) : String;
+      procedure SetItem(index : Integer; const value : String);
+      function GetValues(const name : String) : String;
+      procedure SetValues(const name, value : String);
+
       function Clone : IAutoStrings;
+
+      property Value : TStringList read GetValue;
+
+      property Items[index : Integer] : String read GetItem write SetItem; default;
+      function Count : Integer;
+
+      property Values[const name : String] : String read GetValues write SetValues;
+      function IndexOfName(const name : String) : Integer;
    end;
 
    // TAutoStrings
@@ -94,6 +106,12 @@ type
       protected
          function GetValue : TStringList;
          function Clone : IAutoStrings;
+         function GetItem(index : Integer) : String;
+         procedure SetItem(index : Integer; const value : String);
+         function Count : Integer;
+         function IndexOfName(const name : String) : Integer;
+         function GetValues(const name : String) : String;
+         procedure SetValues(const name, value : String);
       public
          constructor Create;
          constructor CreateCapture(value : TStringList);
@@ -932,7 +950,7 @@ procedure StringWordsToBytes(var buf : UnicodeString; swap : Boolean);
 function BinToHex(const data; n : Integer) : UnicodeString; overload;
 function BinToHex(const data : RawByteString) : UnicodeString; overload; inline;
 
-function HexToBin(const data : UnicodeString) : RawByteString;
+function HexToBin(const data : UnicodeString) : RawByteString; overload;
 
 type
    TInt64StringBuffer = array [0..21] of WideChar;
@@ -1111,33 +1129,6 @@ begin
    k := (x shr 32) * $cc9e2d51;
    k := (k shl 15) or (k shr 17);
    Result := k * $1b873593 xor Result;
-end;
-
-// ScriptStringToRawByteString
-//
-function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString;
-begin
-   ScriptStringToRawByteString(s, Result);
-end;
-
-// ScriptStringToRawByteString
-//
-procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
-type
-  PByteArray = ^TByteArray;
-  TByteArray = array[0..maxInt shr 1] of Byte;
-var
-   i, n : Integer;
-   pSrc : PWordArray;
-   pDest : PByteArray;
-begin
-   n:=Length(s);
-   SetLength(Result, n);
-   if n=0 then Exit;
-   pSrc:=PWordArray(Pointer(s));
-   pDest:=PByteArray(Pointer(Result));
-   for i:=0 to n-1 do
-      pDest[i]:=pSrc[i];
 end;
 
 // StringBytesToWords
@@ -2206,15 +2197,65 @@ end;
 //
 procedure BytesToScriptString(const p : PByte; n : Integer; var result : UnicodeString); overload;
 var
-   i : Integer;
    pSrc : PByteArray;
    pDest : PWordArray;
 begin
    SetLength(result, n);
-   pSrc:=PByteArray(p);
-   pDest:=PWordArray(Pointer(result));
-   for i:=0 to n-1 do
-      pDest[i]:=Word(PByte(@pSrc[i])^);
+   pSrc := PByteArray(p);
+   pDest := PWordArray(Pointer(result));
+   while n >= 4 do begin
+      Dec(n, 4);
+      pDest[0] := pSrc[0];
+      pDest[1] := pSrc[1];
+      pDest[2] := pSrc[2];
+      pDest[3] := pSrc[3];
+      pDest := @pDest[4];
+      pSrc := @pSrc[4];
+   end;
+   for n := 1 to n do begin
+      pDest[0] := pSrc[0];
+      pDest := @pDest[1];
+      pSrc := @pSrc[1];
+   end;
+end;
+
+// ScriptStringToRawByteString
+//
+function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString;
+begin
+   ScriptStringToRawByteString(s, Result);
+end;
+
+// ScriptStringToRawByteString
+//
+procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
+type
+  PByteArray = ^TByteArray;
+  TByteArray = array[0..maxInt shr 1] of Byte;
+var
+   n : Integer;
+   pSrc : PWordArray;
+   pDest : PByteArray;
+begin
+   n := Length(s);
+   SetLength(Result, n);
+   if n = 0 then Exit;
+   pSrc := PWordArray(Pointer(s));
+   pDest := PByteArray(Pointer(Result));
+   while n >= 4 do begin
+      Dec(n, 4);
+      pDest[0] := pSrc[0];
+      pDest[1] := pSrc[1];
+      pDest[2] := pSrc[2];
+      pDest[3] := pSrc[3];
+      pDest := @pDest[4];
+      pSrc := @pSrc[4];
+   end;
+   for n := 1 to n do begin
+      pDest[0] := pSrc[0];
+      pDest := @pDest[1];
+      pSrc := @pSrc[1];
+   end;
 end;
 
 // ------------------
@@ -4500,6 +4541,7 @@ end;
 //
 constructor TAutoStrings.CreateCapture(value : TStringList);
 begin
+   Assert(value <> nil);
    FValue:=value;
 end;
 
@@ -4528,6 +4570,48 @@ end;
 function TAutoStrings.Clone : IAutoStrings;
 begin
    Result:=TAutoStrings.CreateClone(FValue);
+end;
+
+// GetItem
+//
+function TAutoStrings.GetItem(index : Integer) : String;
+begin
+   Result := FValue[index];
+end;
+
+// SetItem
+//
+procedure TAutoStrings.SetItem(index : Integer; const value : String);
+begin
+   FValue[index] := value;
+end;
+
+// Count
+//
+function TAutoStrings.Count : Integer;
+begin
+   Result := FValue.Count;
+end;
+
+// IndexOfName
+//
+function TAutoStrings.IndexOfName(const name : String) : Integer;
+begin
+   Result := FValue.IndexOfName(name);
+end;
+
+// GetValues
+//
+function TAutoStrings.GetValues(const name : String) : String;
+begin
+   Result := FValue.Values[name];
+end;
+
+// SetValues
+//
+procedure TAutoStrings.SetValues(const name, value : String);
+begin
+   FValue.Values[name] := value;
 end;
 
 // ------------------

@@ -28,8 +28,12 @@ function Base58Decode(const data : UnicodeString) : RawByteString;
 
 // RFC 4648 without padding
 function Base32Encode(data : Pointer; len : Integer) : UnicodeString; overload;
-function Base32Encode(const data : RawByteString) : UnicodeString; overload;
+function Base32Encode(const data : RawByteString) : UnicodeString; overload; inline;
 function Base32Decode(const data : UnicodeString) : RawByteString;
+
+function Base64Encode(data : Pointer; len : Integer) : UnicodeString; overload;
+function Base64Encode(const data : RawByteString) : UnicodeString; overload; inline;
+function Base64Decode(const data : UnicodeString) : RawByteString;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -251,5 +255,160 @@ begin
    SetLength(Result, n);
 end;
 
+type
+   TBase64Block = record
+      v0, skip0 : Byte;
+      v1, skip1 : Byte;
+      v2, skip2 : Byte;
+      v3, skip3 : Byte;
+   end;
+   PBase64Block = ^TBase64Block;
+
+const
+   cBase64 : array [0..63] of WideChar = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+var
+   vBase64Decode : array [0..255] of Integer;
+
+// PrepareBase64DecodeTable
+//
+procedure PrepareBase64DecodeTable;
+var
+   i : Integer;
+begin
+   // < 0 is for non-base64 characters
+   // -1 is for invalid characters
+   // -2 is for characters that are allowed (and ignored) between blocks
+   // table should be filled sequentially so preparation does not need a threading lock
+   for i := 0 to High(vBase64Decode) do begin
+      case Char(i) of
+         #1..#32 : vBase64Decode[i] := -2;
+         'A'..'Z' : vBase64Decode[i] := i - Ord('A');
+         'a'..'z' : vBase64Decode[i] := i + (26 - Ord('a'));
+         '0'..'9' : vBase64Decode[i] := i + (52 - Ord('0'));
+         '+', '-' : vBase64Decode[Ord('+')] := 62;
+         '/', '_' : vBase64Decode[Ord('/')] := 63;
+      else
+         vBase64Decode[i] := -1;
+      end;
+   end;
+end;
+
+// Base64Encode
+//
+function Base64Encode(const data : RawByteString) : UnicodeString; overload;
+begin
+   Result := Base64Encode(Pointer(data), Length(data));
+end;
+
+// Base64Encode
+//
+function Base64Encode(data : Pointer; len : Integer) : UnicodeString; overload;
+var
+   outLen, blocks, tail, i : Integer;
+   dest : PWideChar;
+   src : PByte;
+   c : Cardinal;
+begin
+   outLen := ((len+2) div 3)*4;
+   SetLength(Result, outLen);
+   if outLen = 0 then Exit;
+   blocks := len div 3;
+   tail := len - blocks*3;
+   dest := Pointer(Result);
+   src := PByte(data);
+   for i := 1 to blocks do begin
+      c := (src[0] shl 16) + (src[1] shl 8) + src[2];
+      dest[0] := cBase64[(c shr 18) and $3f];
+      dest[1] := cBase64[(c shr 12) and $3f];
+      dest[2] := cBase64[(c shr 6) and $3f];
+      dest[3] := cBase64[c and $3f];
+      Inc(dest, 4);
+      Inc(src, 3);
+   end;
+   case tail of
+      1 : begin
+         c := src[0] shl 4;
+         dest[0] := cBase64[(c shr 6) and $3f];
+         dest[1] := cBase64[c and $3f];
+         dest[2] := '=';
+         dest[3] := '=';
+      end;
+      2 : begin
+         c := (src[0] shl 10) + (src[1] shl 2);
+         dest[0] := cBase64[(c shr 12) and $3f];
+         dest[1] := cBase64[(c shr 6) and $3f];
+         dest[2] := cBase64[c and $3f];
+         dest[3] := '=';
+      end;
+   end;
+end;
+
+// Base64Decode
+//
+function Base64Decode(const data : UnicodeString) : RawByteString;
+
+   function Base64Decode(src, srcLast : PBase64Block; dest : PByte) : PByte;
+   var
+      c, ch : Integer;
+   begin
+      c := 0;
+      while NativeUInt(src) <= NativeUInt(srcLast) do begin
+         ch := vBase64Decode[src.v0];
+         if ch >= 0 then begin
+            c := ch shl 6;
+            ch := vBase64Decode[src.v1];
+            if ch >= 0 then begin
+               c := (c or ch) shl 6;
+               ch := vBase64Decode[src.v2];
+               if ch >= 0 then begin
+                  c := (c or ch) shl 6;
+                  ch := vBase64Decode[src.v3];
+                  if ch >= 0 then begin
+                     c := c or ch;
+                     dest[2] := c;
+                     c := c shr 8;
+                     dest[1] := c;
+                     c := c shr 8;
+                     dest[0] := c;
+                     Inc(dest,3);
+                     Inc(src);
+                     Continue;
+                  end else begin
+                     c := c shr 8;
+                     dest[1] := c;
+                     dest[0] := c shr 8;
+                     Inc(dest, 2);
+                     Break;
+                  end;
+               end;
+            end;
+         end else if ch = -2 then begin
+            src := @PWideChar(src)[1];
+            Continue;
+         end;
+         dest[0] := c shr 10;
+         Inc(dest);
+         Break;
+      end;
+      Result := dest;
+   end;
+
+var
+   len, outLen : Integer;
+begin
+   if data = '' then Exit;
+   if vBase64Decode[High(vBase64Decode)] = 0 then
+      PrepareBase64DecodeTable;
+   len := Length(data);
+   outLen := (len shr 2)*3;
+   if data[len] = '=' then begin
+      if data[len-1] = '=' then
+         Dec(outLen, 2)
+      else Dec(outLen);
+   end;
+   SetLength(Result, outLen);
+   if Base64Decode(Pointer(data), Pointer(@data[len-3]), Pointer(Result)) <> @PByte(Result)[outLen] then
+      Result := '';
+end;
 
 end.
