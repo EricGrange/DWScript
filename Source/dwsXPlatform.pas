@@ -194,6 +194,8 @@ function InterlockedDecrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} 
 procedure FastInterlockedIncrement(var val : Integer); {$IFDEF PUREPASCAL} inline; {$endif}
 procedure FastInterlockedDecrement(var val : Integer); {$IFDEF PUREPASCAL} inline; {$endif}
 
+function InterlockedIncrement64(var val : Int64) : Int64;
+
 function InterlockedExchangePointer(var target : Pointer; val : Pointer) : Pointer; {$IFDEF PUREPASCAL} inline; {$endif}
 
 function InterlockedCompareExchangePointer(var destination : Pointer; exchange, comparand : Pointer) : Pointer; {$IFDEF PUREPASCAL} inline; {$endif}
@@ -299,7 +301,7 @@ implementation
 // ------------------------------------------------------------------
 
 {$ifndef FPC}
-uses Variants;
+uses Variants, SyncObjs;
 {$endif}
 
 {$ifdef FPC}
@@ -615,6 +617,13 @@ begin
 asm
    lock  dec [eax]
 {$endif}
+end;
+
+// InterlockedIncrement64
+//
+function InterlockedIncrement64(var val : Int64) : Int64;
+begin
+   Result := TInterlocked.Increment(val);
 end;
 
 // InterlockedExchangePointer
