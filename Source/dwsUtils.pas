@@ -695,7 +695,8 @@ type
          function Write(const buffer; count: Longint): Longint; override;
 
          procedure WriteByte(b : Byte); inline;
-         procedure WriteBytes(const b : array of Byte);
+         procedure WriteBytes(const b : array of Byte); overload;
+         procedure WriteBytes(const buffer : RawByteString); overload;
          procedure WriteInt32(const i : Integer); inline;
          procedure WriteDWord(const dw : DWORD); inline;
 
@@ -3890,6 +3891,17 @@ begin
    n:=Length(b);
    if n>0 then
       WriteBuf(@b[0], Length(b));
+end;
+
+// WriteBytes
+//
+procedure TWriteOnlyBlockStream.WriteBytes(const buffer : RawByteString);
+var
+   n : Integer;
+begin
+   n:=Length(buffer);
+   if n>0 then
+      WriteBuf(Pointer(buffer), Length(buffer));
 end;
 
 // WriteInt32
