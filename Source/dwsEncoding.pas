@@ -23,17 +23,29 @@ interface
 
 uses SysUtils;
 
-function Base58Encode(const data : RawByteString) : UnicodeString;
+type
+   TBase64Alphabet = array [0..63] of WideChar;
+
+function Base58Encode(const data : RawByteString) : UnicodeString; overload; inline;
+function Base58Encode(data : Pointer; len : Integer) : UnicodeString; overload;
 function Base58Decode(const data : UnicodeString) : RawByteString;
 
 // RFC 4648 without padding
-function Base32Encode(data : Pointer; len : Integer) : UnicodeString; overload;
 function Base32Encode(const data : RawByteString) : UnicodeString; overload; inline;
+function Base32Encode(data : Pointer; len : Integer) : UnicodeString; overload;
 function Base32Decode(const data : UnicodeString) : RawByteString;
 
-function Base64Encode(data : Pointer; len : Integer) : UnicodeString; overload;
+function Base64EncodeURI(const data : RawByteString) : UnicodeString; overload; inline;
+function Base64EncodeURI(data : Pointer; len : Integer) : UnicodeString; overload; inline;
 function Base64Encode(const data : RawByteString) : UnicodeString; overload; inline;
+function Base64Encode(data : Pointer; len : Integer) : UnicodeString; overload; inline;
+function Base64Encode(data : Pointer; len : Integer; const alphabet : TBase64Alphabet) : UnicodeString; overload;
 function Base64Decode(const data : UnicodeString) : RawByteString;
+
+const
+   cBase58 : UnicodeString = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+   cBase64 : TBase64Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+   cBase64URI : TBase64Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -42,9 +54,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-const
-   cBase58 : UnicodeString = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
 function DivBy58(var v : Integer) : Integer;
 const
@@ -66,17 +75,26 @@ begin
 {$endif}
 end;
 
+// Base58Encode
+//
 function Base58Encode(const data : RawByteString) : UnicodeString;
+begin
+   Result := Base58Encode(Pointer(data), Length(data));
+end;
+
+// Base58Encode
+//
+function Base58Encode(data : Pointer; len : Integer) : UnicodeString;
 var
    i, j, carry, nextCarry, n : Integer;
    digits : array of Integer;
 begin
-   if data = '' then exit;
+   if len <= 0 then exit;
 
    Result := '';
    n := -1;
-   for j := 1 to Length(data) do begin
-      if data[j] = #0 then
+   for j := 1 to len do begin
+      if PByte(data)[j-1] = 0 then
          Result := Result + cBase58[1]
       else begin
          SetLength(digits, 1);
@@ -86,9 +104,9 @@ begin
       end;
    end;
 
-   for i := Length(Result)+1 to Length(data) do begin
+   for i := Length(Result) to len-1 do begin
 
-      digits[0] := (digits[0] shl 8) + Ord(data[i]);
+      digits[0] := (digits[0] shl 8) + PByte(data)[i];
       carry := DivBy58(digits[0]);
 
       for j := 1 to n do begin
@@ -109,6 +127,8 @@ begin
       Result := Result + cBase58[digits[j]+1];
 end;
 
+// Base58Decode
+//
 function Base58Decode(const data : UnicodeString) : RawByteString;
 var
    i, j, carry, n, d : Integer;
@@ -264,8 +284,6 @@ type
    end;
    PBase64Block = ^TBase64Block;
 
-const
-   cBase64 : array [0..63] of WideChar = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 var
    vBase64Decode : array [0..255] of Integer;
 
@@ -293,16 +311,37 @@ begin
    end;
 end;
 
-// Base64Encode
+// Base64EncodeURI
 //
-function Base64Encode(const data : RawByteString) : UnicodeString; overload;
+function Base64EncodeURI(const data : RawByteString) : UnicodeString;
 begin
-   Result := Base64Encode(Pointer(data), Length(data));
+   Result := Base64Encode(Pointer(data), Length(data), cBase64URI);
+end;
+
+// Base64EncodeURI
+//
+function Base64EncodeURI(data : Pointer; len : Integer) : UnicodeString;
+begin
+   Result := Base64Encode(data, len, cBase64URI);
 end;
 
 // Base64Encode
 //
-function Base64Encode(data : Pointer; len : Integer) : UnicodeString; overload;
+function Base64Encode(const data : RawByteString) : UnicodeString;
+begin
+   Result := Base64Encode(Pointer(data), Length(data), cBase64);
+end;
+
+// Base64Encode
+//
+function Base64Encode(data : Pointer; len : Integer) : UnicodeString;
+begin
+   Result := Base64Encode(data, len, cBase64);
+end;
+
+// Base64Encode
+//
+function Base64Encode(data : Pointer; len : Integer; const alphabet : TBase64Alphabet) : UnicodeString; overload;
 var
    outLen, blocks, tail, i : Integer;
    dest : PWideChar;
@@ -318,26 +357,26 @@ begin
    src := PByte(data);
    for i := 1 to blocks do begin
       c := (src[0] shl 16) + (src[1] shl 8) + src[2];
-      dest[0] := cBase64[(c shr 18) and $3f];
-      dest[1] := cBase64[(c shr 12) and $3f];
-      dest[2] := cBase64[(c shr 6) and $3f];
-      dest[3] := cBase64[c and $3f];
+      dest[0] := alphabet[(c shr 18) and $3f];
+      dest[1] := alphabet[(c shr 12) and $3f];
+      dest[2] := alphabet[(c shr 6) and $3f];
+      dest[3] := alphabet[c and $3f];
       Inc(dest, 4);
       Inc(src, 3);
    end;
    case tail of
       1 : begin
          c := src[0] shl 4;
-         dest[0] := cBase64[(c shr 6) and $3f];
-         dest[1] := cBase64[c and $3f];
+         dest[0] := alphabet[(c shr 6) and $3f];
+         dest[1] := alphabet[c and $3f];
          dest[2] := '=';
          dest[3] := '=';
       end;
       2 : begin
          c := (src[0] shl 10) + (src[1] shl 2);
-         dest[0] := cBase64[(c shr 12) and $3f];
-         dest[1] := cBase64[(c shr 6) and $3f];
-         dest[2] := cBase64[c and $3f];
+         dest[0] := alphabet[(c shr 12) and $3f];
+         dest[1] := alphabet[(c shr 6) and $3f];
+         dest[2] := alphabet[c and $3f];
          dest[3] := '=';
       end;
    end;
