@@ -23,7 +23,8 @@ uses
    SysUtils, Classes, StrUtils,
    SynZip, SynCrtSock, SynCommons, SynWinSock,
    dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList, dwsSymbols,
-   dwsJSONConnector, dwsCryptoXPlatform, dwsHTTPSysServerEvents, dwsWebServerInfo;
+   dwsJSONConnector, dwsCryptoXPlatform, dwsHTTPSysServerEvents, dwsWebServerInfo,
+   dwsXPlatform;
 
 type
   TdwsWebLib = class(TDataModule)
@@ -351,6 +352,8 @@ type
       CurrentSize, ContentLength : DWORD;
       StatusCode : Integer;
       Error : String;
+      Completed, Released : Boolean;
+      ReleaseLock : TMultiReadSingleWrite;
       constructor CreateQuery(const method, url : RawByteString;
                               const requestData, requestContentType : RawByteString;
                               const customStates : TdwsCustomStates);
@@ -375,6 +378,7 @@ begin
    Self.RequestContentType := requestContentType;
    Self.CustomStates := customStates;
    FreeOnTerminate := False;
+   ReleaseLock := TMultiReadSingleWrite.Create;
 end;
 
 // Destroy
@@ -382,6 +386,7 @@ end;
 destructor THttpRequestThread.Destroy;
 begin
    inherited;
+   ReleaseLock.Free;
    ResponseHeaders.Free;
    CustomStates.Free;
 end;
@@ -421,7 +426,7 @@ end;
 //
 procedure THttpRequestThread.Execute;
 begin
-   try
+   if not Released then try
       StatusCode := HttpQuery(nil, Method, URL, RequestData, RequestContentType,
                               RawResponseHeaders, ResponseData, False,
                               DoProgress, CustomStates);
@@ -430,20 +435,30 @@ begin
       RequestContentType := '';
       ContentLength := Length(ResponseData);
       CurrentSize := ContentLength;
-      PrepareHeaders;
+      if not Released then
+         PrepareHeaders;
    except
       on E: Exception do
          Error := E.Message;
    end;
+   ReleaseLock.BeginWrite;
+   Completed := True;
+   if Released then
+      FreeOnTerminate := True;
+   ReleaseLock.EndWrite;
 end;
 
 // Release
 //
 procedure THttpRequestThread.Release;
 begin
-   FreeOnTerminate := True;
-   if Finished then
+   ReleaseLock.BeginWrite;
+   if Completed then begin
+      if not Finished then
+         WaitFor;
       Free;
+   end else Released := True;
+   ReleaseLock.EndWrite;
 end;
 
 // Wait
@@ -975,7 +990,7 @@ end;
 procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsCompletedEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsBoolean := (ExtObject as THttpRequestThread).Finished;
+   Info.ResultAsBoolean := (ExtObject as THttpRequestThread).Completed;
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsContentDataEval(
