@@ -1,0 +1,3 @@
+Syntax Error: Unknown name "TBar" [line: 4, column: 11]
+Syntax Error: Field/method "FBar" has an incompatible type [line: 6, column: 29]
+Syntax Error: Name expected [line: 10, column: 9]

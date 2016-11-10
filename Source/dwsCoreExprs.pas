@@ -4317,8 +4317,7 @@ constructor TReadOnlyFieldExpr.Create(const aScriptPos: TScriptPos;
                          propertyType : TTypeSymbol);
 begin
    inherited Create(aScriptPos, fieldSym, objExpr);
-   Assert(fieldSym.Typ.IsOfType(propertyType));
-   Typ:=propertyType;
+   Typ := propertyType;
 end;
 
 // IsWritable
