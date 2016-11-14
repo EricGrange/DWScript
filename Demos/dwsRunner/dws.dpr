@@ -166,7 +166,7 @@ var
    params : array of Variant;
    project : TRunnerProject;
    zr : TZipRead;
-   embedded : Boolean;
+   embedded, compileOnly : Boolean;
 begin
    zr:=TZipRead.Create(HInstance, 'SCRIPT', RT_RCDATA);
    if zr.Count=0 then begin
@@ -191,12 +191,19 @@ begin
          Writeln('');
          Writeln('Bundle a zip project into an executable:');
          Writeln('   dws make <zipFile|sourcefile> [exeName]');
+         Writeln('');
+         Writeln('Compile but do not run a script:');
+         Writeln('   dws compile <zipFile|sourcefile>');
          Exit;
       end;
       fileName:=ParamStr(1);
       if fileName='make' then begin
          MakeExe;
-         exit;
+         Exit;
+      end;
+      if fileName = 'compile' then begin
+         compileOnly := True;
+         fileName := ParamStr(2);
       end;
       if FileExists(fileName) then
          if StrEndsWith(fileName, '.zip') then
@@ -215,6 +222,12 @@ begin
          source:=project.Attach(script);
 
          prog:=script.Compile(source);
+
+         if compileOnly then begin
+            Writeln(prog.Msgs.AsInfo);
+            Writeln('Compiled with ', prog.Msgs.Count, ' message(s)');
+            Exit;
+         end;
 
          if prog.Msgs.Count>0 then begin
             if prog.Msgs.HasErrors or not embedded then
