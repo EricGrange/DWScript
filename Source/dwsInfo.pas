@@ -200,6 +200,24 @@ type
       function GetMember(const s: UnicodeString): IInfo; override;
    end;
 
+   TInfoAssociativeArrayBase = class (TInfoData)
+      protected
+         function SelfAssocArray : IScriptAssociativeArray;
+   end;
+
+   TInfoAssociativeArrayLength = class (TInfoAssociativeArrayBase)
+      public
+         function GetValue : Variant; override;
+         function GetValueAsInteger : Int64; override;
+         procedure SetValue(const Value: Variant); override;
+         procedure SetValueAsInteger(const Value: Int64); override;
+   end;
+
+   TInfoAssociativeArray = class(TInfoAssociativeArrayBase)
+      public
+         function GetMember(const s: UnicodeString): IInfo; override;
+   end;
+
    TInfoFunc = class(TInfoData)
       protected
          FClassSym: TClassSymbol;
@@ -508,6 +526,9 @@ begin
    else if baseTypeClass=TClassOfSymbol then
       result := TInfoClassOf.Create(programInfo, childTypeSym, childDataPtr,
                                      childDataMaster)
+   else if baseTypeClass = TAssociativeArraySymbol then
+      Result := TInfoAssociativeArray.Create(programInfo, childTypeSym, childDataPtr,
+                                             childDataMaster)
    else if baseType is TConnectorSymbol then
       result := TInfoData.Create(programInfo, childTypeSym, childDataPtr,
                                     ChildDataMaster)
@@ -1427,7 +1448,67 @@ begin
    SetChild(Result, FProgramInfo, elemTyp, locData, FDataMaster);
 end;
 
-{ TInfoConst }
+// ------------------
+// ------------------ TInfoAssociativeArrayBase ------------------
+// ------------------
+
+// SelfAssocArray
+//
+function TInfoAssociativeArrayBase.SelfAssocArray : IScriptAssociativeArray;
+begin
+   Result:=IScriptAssociativeArray(FDataPtr.AsInterface[0]);
+end;
+
+// ------------------
+// ------------------ TInfoAssociativeArrayLength ------------------
+// ------------------
+
+// GetValue
+//
+function TInfoAssociativeArrayLength.GetValue : Variant;
+begin
+   Result := GetValueAsInteger;
+end;
+
+// GetValueAsInteger
+//
+function TInfoAssociativeArrayLength.GetValueAsInteger : Int64;
+begin
+   Result := SelfAssocArray.Count;
+end;
+
+// SetValue
+//
+procedure TInfoAssociativeArrayLength.SetValue(const Value: Variant);
+begin
+   SetValueAsInteger(Value);
+end;
+
+// SetValueAsInteger
+//
+procedure TInfoAssociativeArrayLength.SetValueAsInteger(const Value: Int64);
+begin
+   if Value <> 0 then
+      raise Exception.Create(RTE_IncorrectParameterValue);
+   SelfAssocArray.Clear;
+end;
+
+// ------------------
+// ------------------ TInfoAssociativeArray ------------------
+// ------------------
+
+// GetMember
+//
+function TInfoAssociativeArray.GetMember(const s: UnicodeString): IInfo;
+begin
+   if UnicodeSameText('length', s) or UnicodeSameText('count', s) then
+      Result := TInfoAssociativeArrayLength.Create(FProgramInfo, FTypeSym, DataPtr)
+   else raise Exception.CreateFmt(RTE_NoMemberOfArray, [s, FTypeSym.Caption]);
+end;
+
+// ------------------
+// ------------------ TInfoConst ------------------
+// ------------------
 
 constructor TInfoConst.Create(ProgramInfo: TProgramInfo; TypeSym: TSymbol;
   const Value: Variant);

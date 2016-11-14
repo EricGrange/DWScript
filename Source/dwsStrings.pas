@@ -610,6 +610,7 @@ const
   RTE_UseParameter = 'Use ''Parameter'' property to set parameter "%s" of Function "%s"';
   RTE_NoParameterFound = 'No parameter "%s" found in function "%s"';
   RTE_IncorrectParameterIndex = 'Incorrect parameter index %d';
+  RTE_IncorrectParameterValue = 'Incorrect parameter value';
   RTE_NoIndexFound = 'No index parameter "%s" found for property "%s"';
 
   RTE_NoRecordMemberFound = 'No member "%s" found in record "%s"';
