@@ -94,6 +94,7 @@ type
       function GetSleeping : Boolean;
 
       function GetCallStack : TdwsExprLocationArray;
+      function GetLastScriptErrorExpr : TExprBase;
 
       property ProgramState : TProgramState read GetProgramState;
       property Sleeping : Boolean read GetSleeping;
@@ -1761,6 +1762,7 @@ type
 
          class function Status_Offset : Integer;
 
+         function GetLastScriptErrorExpr : TExprBase;
          procedure SetScriptError(expr : TExprBase);
          procedure ClearScriptError;
 
@@ -6933,6 +6935,13 @@ asm
 begin
    Result:=0;
 {$endif}
+end;
+
+// GetLastScriptErrorExpr
+//
+function TdwsExecution.GetLastScriptErrorExpr : TExprBase;
+begin
+   Result := FLastScriptError;
 end;
 
 // SetScriptError

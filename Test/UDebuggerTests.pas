@@ -4,8 +4,8 @@ interface
 
 uses
    Classes, SysUtils, Variants, ComObj,
-   dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
-   dwsUtils, dwsSymbols, dwsDebugger, dwsStrings;
+   dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors, dwsInfo,
+   dwsUtils, dwsSymbols, dwsDebugger, dwsStrings, dwsEvaluate;
 
 type
 
@@ -228,24 +228,24 @@ begin
 
          CheckEquals(10, exec.Info.ValueAsInteger['i'], 'value of i');
 
-         expr:=TdwsCompiler.Evaluate(exec, 'i+i*10');
+         expr:=TdwsEvaluateExpr.Evaluate(exec, 'i+i*10');
          try
             CheckEquals(110, expr.Expression.EvalAsInteger(exec.ExecutionObject), 'i+i*10');
          finally
             expr:=nil;
          end;
 
-         expr:=TdwsCompiler.Evaluate(exec, 'StrToInt(''123'')');
+         expr:=TdwsEvaluateExpr.Evaluate(exec, 'StrToInt(''123'')');
          try
             CheckEquals(123, expr.Expression.EvalAsInteger(exec.ExecutionObject), 'StrToInt(''123'')');
          finally
             expr:=nil;
          end;
 
-         expr:=TdwsCompiler.Evaluate(exec, 'i +* i');
+         expr:=TdwsEvaluateExpr.Evaluate(exec, 'i +* i');
          try
             expr.Expression.EvalAsString(exec.ExecutionObject, buf);
-            CheckEquals('Syntax Error: Expression expected [line: 1, column: 4]'#13#10, buf, 'i +* i');
+            CheckEquals('Syntax Error: Expression expected [line: 1, column: 4]', buf, 'i +* i');
          finally
             expr:=nil;
          end;
@@ -265,7 +265,7 @@ procedure TDebuggerTests.EvaluateOutsideOfExec;
 var
    expr : IdwsEvaluateExpr;
 begin
-   expr:=TdwsCompiler.Evaluate(nil, 'StrToInt(''113'')+10');
+   expr:=TdwsEvaluateExpr.Evaluate(nil, 'StrToInt(''113'')+10');
    try
       CheckEquals(123, expr.Expression.EvalAsInteger(expr.Execution.ExecutionObject), 'StrToInt(''113'')+10');
    finally

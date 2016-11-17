@@ -27,7 +27,7 @@ uses
   Variants, Classes, SysUtils, TypInfo,
   dwsFileSystem, dwsUtils, dwsXPlatform,
   dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors, dwsDataContext, dwsExprList,
-  dwsStrings, dwsFunctions, dwsStack, dwsConnectorSymbols,
+  dwsStrings, dwsFunctions, dwsStack, dwsConnectorSymbols, dwsFilter,
   dwsCoreExprs, dwsMagicExprs, dwsRelExprs, dwsMethodExprs, dwsConstExprs,
   dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs,
   dwsOperators, dwsPascalTokenizer, dwsSystemOperators,
@@ -60,7 +60,6 @@ const
 
 type
    TdwsCompiler = class;
-   TdwsFilter = class;
 
    TIncludeEvent = procedure (const scriptName: UnicodeString; var scriptSource: UnicodeString) of object;
    TdwsOnNeedUnitEvent = function (const unitName : UnicodeString; var unitSource : UnicodeString) : IdwsUnit of object;
@@ -186,41 +185,6 @@ type
          property OnExecutionEnded : TdwsExecutionEvent read FOnExecutionEnded write FOnExecutionEnded;
    end;
 
-   TdwsFilter = class(TComponent)
-      private
-         FSubFilter : TdwsFilter;
-         FDependencies : TStrings;
-         FPrivateDependencies : TStrings;
-         FEditorMode : Integer;
-
-         function GetDependencies : TStrings;
-
-      protected
-         procedure SetSubFilter(const filter : TdwsFilter); virtual;
-         procedure Notification(aComponent : TComponent; operation: TOperation); override;
-
-         property PrivateDependencies : TStrings read FPrivateDependencies;
-
-      public
-         constructor Create(AOwner: TComponent); override;
-         destructor Destroy; override;
-
-         function Process(const aText : UnicodeString; aMsgs : TdwsMessageList) : UnicodeString; virtual;
-
-         property Dependencies : TStrings read GetDependencies;
-
-         (*
-           EditorMode means the filter should strive to keep source locations unchanged
-           as the compilation will be used of Code Editor support features rather than execution
-         *)
-         procedure BeginEditorMode;
-         procedure EndEditorMode;
-         function  EditorMode : Boolean; inline;
-
-      published
-         property SubFilter : TdwsFilter read FSubFilter write SetSubFilter;
-   end;
-
    TAddArgProcedure = procedure (argExpr : TTypedExpr) of object;
    TExpectedArgFunction = function : TParamSymbol of object;
 
@@ -273,53 +237,6 @@ type
          function CallStackLastProg : TObject; override;
          function CallStackDepth : Integer; override;
          procedure DebuggerNotifyException(const exceptObj : IScriptObj); override;
-   end;
-
-   IdwsEvaluateExpr = interface
-      ['{43410A86-3D04-4201-ABD5-02B935D6C6AF}']
-      function GetExecution : IdwsProgramExecution;
-      function GetRootProgram : IdwsProgram;
-      function GetContextProcedure : TdwsProcedure;
-      function GetExpression : TTypedExpr;
-      function GetEvaluationError : Boolean;
-
-      function ContextIsValid : Boolean;
-
-      property Execution : IdwsProgramExecution read GetExecution;
-      property RootProgram : IdwsProgram read GetRootProgram;
-      property ContextProcedure : TdwsProcedure read GetContextProcedure;
-      property Expression : TTypedExpr read GetExpression;
-      property EvaluationError : Boolean read GetEvaluationError;
-   end;
-
-   TdwsEvaluateOption = (eoRootContext);
-   TdwsEvaluateOptions = set of TdwsEvaluateOption;
-
-   // holds and evaluated expression
-   TdwsEvaluateExpr = class (TInterfacedObject, IdwsEvaluateExpr)
-      private
-         FExecution : IdwsProgramExecution;
-         FContextProcedure : TdwsProcedure;
-         FExpression : TTypedExpr;
-         FEvaluationError : Boolean;
-
-      protected
-         function GetExecution : IdwsProgramExecution;
-         function GetRootProgram : IdwsProgram;
-         function GetContextProcedure : TdwsProcedure;
-         function GetExpression : TTypedExpr;
-         function GetEvaluationError : Boolean;
-
-      public
-         destructor Destroy; override;
-
-         function ContextIsValid : Boolean;
-
-         property Execution : IdwsProgramExecution read FExecution;
-         property RootProgram : IdwsProgram read GetRootProgram;
-         property ContextProcedure : TdwsProcedure read FContextProcedure;
-         property Expression : TTypedExpr read FExpression;
-         property EvaluationError : Boolean read FEvaluationError;
    end;
 
    TdwsReadTypeContext = (tcDeclaration, tcVariable, tcConstant, tcMember,
@@ -495,6 +412,7 @@ type
          F8087CW : Cardinal;
          FCompilerAbort : Boolean;
 
+      protected
          function Optimize : Boolean;
 
          function CheckPropertyFuncParams(paramsA : TSymbolTable; methSym : TMethodSymbol;
@@ -887,6 +805,14 @@ type
          procedure SetExternalFunctionsManager(const value : IdwsExternalFunctionsManager);
          function CompileTimeExecution : TdwsExecution;
 
+         procedure AttachContextProgram(contextProgram : TdwsProgram);
+         procedure DetachContextProgram;
+         procedure AttachTokenizer(tok : TTokenizer);
+         function  DetachTokenizer : TTokenizer;
+         property  SourceContextMap : TdwsSourceContextMap read FSourceContextMap;
+         property  Prog : TdwsProgram read FProg;
+
+
       public
          constructor Create;
          destructor Destroy; override;
@@ -895,11 +821,9 @@ type
                           const mainFileName : UnicodeString = '') : IdwsProgram;
          procedure RecompileInContext(const context : IdwsProgram; const aCodeText : UnicodeString; aConf : TdwsConfiguration);
 
-         procedure AbortCompilation;
+         class procedure Evaluate; static; deprecated 'Moved to TdwsEvaluateExpr.Evaluate';
 
-         class function Evaluate(exec : IdwsProgramExecution; const anExpression : UnicodeString;
-                                 options : TdwsEvaluateOptions = [];
-                                 const scriptPos : PScriptPos = nil) : IdwsEvaluateExpr;
+         procedure AbortCompilation;
 
          procedure WarnForVarUsage(varExpr : TVarExpr; const scriptPos : TScriptPos);
 
@@ -2120,6 +2044,45 @@ begin
    Result:=FExec;
 end;
 
+// AttachContextProgram
+//
+procedure TdwsCompiler.AttachContextProgram(contextProgram : TdwsProgram);
+begin
+   FProg := contextProgram;
+   FMainProg := contextProgram.Root;
+   FSourceContextMap := FMainProg.SourceContextMap;
+   FSymbolDictionary := FMainProg.SymbolDictionary;
+   FOperators := (FMainProg.Operators as TOperators);
+   FMsgs := FMainProg.CompileMsgs;
+end;
+
+// DetachContextProgram
+//
+procedure TdwsCompiler.DetachContextProgram;
+begin
+   FMsgs := nil;
+   FOperators := nil;
+   FProg := nil;
+   FMainProg := nil;
+   FSourceContextMap := nil;
+   FSymbolDictionary := nil;
+end;
+
+// AttachTokenizer
+//
+procedure TdwsCompiler.AttachTokenizer(tok : TTokenizer);
+begin
+   FTok := tok;
+end;
+
+// DetachTokenizer
+//
+function TdwsCompiler.DetachTokenizer : TTokenizer;
+begin
+   Result := FTok;
+   FTok := nil;
+end;
+
 // CheckMatchingDeclarationCase
 //
 procedure TdwsCompiler.CheckMatchingDeclarationCase(const nameString : UnicodeString; sym : TSymbol;
@@ -2219,6 +2182,13 @@ begin
    FMainProg.Compiler:=nil;
 
    CleanupAfterCompile;
+end;
+
+// Evaluate
+//
+class procedure TdwsCompiler.Evaluate;
+begin
+   // dummy
 end;
 
 // AbortCompilation
@@ -2703,118 +2673,6 @@ begin
    until not (    (UnitSection in [secInterface, secImplementation])
               and (FProg.Level=0)
               and FTok.TestName);
-end;
-
-// Evaluate
-//
-class function TdwsCompiler.Evaluate(exec : IdwsProgramExecution;
-                                     const anExpression : UnicodeString;
-                                     options : TdwsEvaluateOptions = [];
-                                     const scriptPos : PScriptPos = nil) : IdwsEvaluateExpr;
-var
-   oldProgMsgs : TdwsCompileMessageList;
-   sourceFile : TSourceFile;
-   compiler : TdwsCompiler;
-   expr : TTypedExpr;
-   resultObj : TdwsEvaluateExpr;
-   contextProgram : TdwsProgram;
-   sourceContext : TdwsSourceContext;
-   config : TdwsConfiguration;
-   gotError : Boolean;
-begin
-   { This will evaluate an expression by tokenizing it evaluating it in the
-     Context provided. }
-
-   gotError:=False;
-   expr:=nil;
-   compiler:=Self.Create;
-   try
-      if exec=nil then begin
-         config:=TdwsConfiguration.Create(nil);
-         try
-            exec:=compiler.Compile('', config).CreateNewExecution;
-         finally
-            config.Free;
-         end;
-      end;
-      if (eoRootContext in options) then
-         contextProgram:=exec.Prog.ProgramObject
-      else begin
-         contextProgram:=TdwsProgram((exec.ExecutionObject as TdwsProgramExecution).CurrentProg);
-         if contextProgram=nil then
-            contextProgram:=exec.Prog.ProgramObject;
-      end;
-      compiler.FProg:=contextProgram;
-      compiler.FMainProg:=contextProgram.Root;
-      compiler.FSourceContextMap:=compiler.FMainProg.SourceContextMap;
-      compiler.FSymbolDictionary:=compiler.FMainProg.SymbolDictionary;
-      try
-         oldProgMsgs:=compiler.FProg.CompileMsgs;
-         compiler.FMsgs:=TdwsCompileMessageList.Create;
-         compiler.FProg.CompileMsgs:=compiler.FMsgs;
-         compiler.FOperators:=(compiler.FMainProg.Operators as TOperators);
-
-         sourceFile:=TSourceFile.Create;
-         try
-            sourceFile.Code:=anExpression;
-            sourceFile.Name:=MSG_MainModule;
-            compiler.FTok:=compiler.FTokRules.CreateTokenizer(compiler.FMsgs);
-            try
-               compiler.FTok.BeginSourceFile(sourceFile);
-               try
-                  if scriptPos<>nil then begin
-                     sourceContext:=compiler.FSourceContextMap.FindContext(scriptPos^);
-                     while sourceContext<>nil do begin
-                        if sourceContext.LocalTable<>nil then begin
-                           compiler.FProg.EnterSubTable(sourceContext.LocalTable);
-                           Break;
-                        end;
-                        sourceContext:=sourceContext.Parent;
-                     end;
-                  end else sourceContext:=nil;
-                  try
-                     expr:=compiler.ReadExpr;
-                  finally
-                     if sourceContext<>nil then
-                        compiler.FProg.LeaveSubTable;
-                  end;
-               except
-                  gotError:=True;
-               end;
-               if compiler.FMsgs.HasErrors then begin
-                  gotError:=True;
-                  expr:=TConstExpr.Create(contextProgram,
-                                          contextProgram.TypString,
-                                          compiler.FMsgs.AsInfo);
-               end;
-            finally
-               compiler.FTok.EndSourceFile;
-               compiler.FTok.Free;
-               compiler.FTok:=nil;
-            end;
-         finally
-            sourceFile.Free;
-            compiler.FProg.CompileMsgs:=oldProgMsgs;
-            compiler.FMsgs.Free;
-            compiler.FMsgs:=nil;
-         end;
-      finally
-         compiler.FSymbolDictionary:=nil;
-         compiler.FSourceContextMap:=nil;
-         compiler.FMainProg:=nil;
-         compiler.FProg:=nil;
-      end;
-   finally
-      compiler.Free;
-   end;
-
-   resultObj:=TdwsEvaluateExpr.Create;
-   resultObj.FExecution:=exec;
-   if contextProgram is TdwsProcedure then
-      resultObj.FContextProcedure:=TdwsProcedure(contextProgram);
-   resultObj.FExpression:=expr;
-   resultObj.FEvaluationError:=gotError;
-   Result:=resultObj;
 end;
 
 // ReadVarDeclBlock
@@ -14465,95 +14323,6 @@ begin
 end;
 
 // ------------------
-// ------------------ TdwsFilter ------------------
-// ------------------
-
-constructor TdwsFilter.Create(AOwner: TComponent);
-begin
-  inherited;
-  FDependencies := TStringList.Create;
-  FPrivateDependencies := TStringList.Create;
-end;
-
-destructor TdwsFilter.Destroy;
-begin
-  inherited;
-  FDependencies.Free;
-  FPrivateDependencies.Free;
-end;
-
-function TdwsFilter.GetDependencies: TStrings;
-begin
-  FDependencies.Clear;
-  FDependencies.AddStrings(FPrivateDependencies);
-
-  // Merge dependencies with subfilter dependencies
-  if Assigned(FSubFilter) then
-    FDependencies.AddStrings(FSubFilter.Dependencies);
-
-  Result := FDependencies;
-end;
-
-procedure TdwsFilter.Notification(aComponent: TComponent; operation: TOperation);
-begin
-  inherited;
-  if (Operation = opRemove) and (AComponent = FSubFilter) then
-    SetSubFilter(nil);
-end;
-
-// BeginEditorMode
-//
-procedure TdwsFilter.BeginEditorMode;
-begin
-   if Self<>nil then
-      Inc(FEditorMode);
-end;
-
-// EndEditorMode
-//
-procedure TdwsFilter.EndEditorMode;
-begin
-   if Self<>nil then begin
-      Assert(FEditorMode>0, 'Unbalanced EndEditorMode');
-      Dec(FEditorMode);
-   end;
-end;
-
-// EditorMode
-//
-function TdwsFilter.EditorMode : Boolean;
-begin
-   Result:=(FEditorMode>0);
-end;
-
-// Process
-//
-function TdwsFilter.Process(const aText : UnicodeString; aMsgs : TdwsMessageList) : UnicodeString;
-begin
-   if Assigned(FSubFilter) then begin
-      if EditorMode then
-         FSubFilter.BeginEditorMode;
-      try
-         Result := FSubFilter.Process(aText, aMsgs)
-      finally
-         if EditorMode then
-            FSubFilter.BeginEditorMode;
-      end;
-   end else Result := aText;
-end;
-
-procedure TdwsFilter.SetSubFilter(const Filter: TdwsFilter);
-begin
-  if Assigned(FSubFilter) then
-    FSubFilter.RemoveFreeNotification(Self);
-
-  FSubFilter := Filter;
-
-  if Assigned(FSubFilter) then
-    FSubFilter.FreeNotification(Self);
-end;
-
-// ------------------
 // ------------------ TdwsOptimizationMessageList ------------------
 // ------------------
 
@@ -14627,60 +14396,6 @@ end;
 function TdwsCompilerExecution.GetMsgs : TdwsRuntimeMessageList;
 begin
    Result:=FOptimMsgs;
-end;
-
-// ------------------
-// ------------------ TdwsEvaluateExpr ------------------
-// ------------------
-
-// Destroy
-//
-destructor TdwsEvaluateExpr.Destroy;
-begin
-   FExpression.Free;
-   inherited;
-end;
-
-// ContextIsValid
-//
-function TdwsEvaluateExpr.ContextIsValid : Boolean;
-begin
-   Result:=(FContextProcedure=(FExecution.ExecutionObject as TdwsProgramExecution).CurrentProg);
-end;
-
-// GetExecution
-//
-function TdwsEvaluateExpr.GetExecution : IdwsProgramExecution;
-begin
-   Result:=FExecution;
-end;
-
-// GetRootProgram
-//
-function TdwsEvaluateExpr.GetRootProgram : IdwsProgram;
-begin
-   Result:=FExecution.Prog;
-end;
-
-// GetContextProcedure
-//
-function TdwsEvaluateExpr.GetContextProcedure : TdwsProcedure;
-begin
-   Result:=FContextProcedure;
-end;
-
-// GetExpression
-//
-function TdwsEvaluateExpr.GetExpression : TTypedExpr;
-begin
-   Result:=FExpression;
-end;
-
-// GetEvaluationError
-//
-function TdwsEvaluateExpr.GetEvaluationError : Boolean;
-begin
-   Result:=FEvaluationError;
 end;
 
 // ------------------

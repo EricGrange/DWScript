@@ -234,6 +234,7 @@ type
          procedure AddMessage(aMessage : TdwsMessage); virtual;
          procedure AddMsgs(src : TdwsMessageList; lineOffset, colOffset : Integer);
          procedure Clear;
+         procedure Delete(i : Integer);
          procedure RemoveInvalidDeferred;
 
          function AsInfo : UnicodeString;
@@ -547,6 +548,20 @@ begin
    FMessageList.Clean;
    FSourceFiles.Clean;
    FErrorsCount:=0;
+end;
+
+// Delete
+//
+procedure TdwsMessageList.Delete(i : Integer);
+var
+   msg : TdwsMessage;
+begin
+   Assert(Cardinal(i) < Cardinal(FMessageList.Count));
+   msg := GetMsg(i);
+   FMessageList.Delete(i);
+   if msg.IsError then
+      Dec(FErrorsCount);
+   msg.Free;
 end;
 
 // RemoveInvalidDeferred

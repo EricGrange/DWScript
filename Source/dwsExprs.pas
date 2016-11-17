@@ -27,7 +27,7 @@ uses
    Classes, Variants, SysUtils, TypInfo, Math,
    dwsSymbols, dwsErrors, dwsUtils, dwsDataContext, dwsExprList,
    dwsStrings, dwsStack, SyncObjs, dwsFileSystem, dwsTokenizer, dwsUnitSymbols,
-   dwsJSON, dwsXPlatform;
+   dwsJSON, dwsXPlatform, dwsInfo;
 
 type
    TRelOps = (roEqual, roUnEqual, roLess, roLessEqual, roMore, roMoreEqual);
@@ -470,7 +470,6 @@ type
       procedure SetEnvironment(const env : IdwsEnvironment);
       function GetLocalizer : IdwsLocalizer;
       procedure SetLocalizer(const loc : IdwsLocalizer);
-      function GetLastScriptErrorExpr : TExprBase;
 
       procedure Execute(aTimeoutMilliSeconds : Integer = 0); overload;
       procedure ExecuteParam(const params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0); overload;
@@ -625,7 +624,6 @@ type
          function GetObjectCount : Integer;
          function GetLocalizer : IdwsLocalizer;
          procedure SetLocalizer(const val : IdwsLocalizer);
-         function GetLastScriptErrorExpr : TExprBase;
 
          procedure RaiseMaxRecursionReached;
          procedure SetCurrentProg(const val : TdwsProgram); inline;
@@ -1651,54 +1649,6 @@ type
          property DefaultExpected : TParamSymbol read FDefaultExpected write FDefaultExpected;
    end;
 
-   // Helper object for access to symbols
-   IInfo = interface
-      ['{8D534D16-4C6B-11D5-8DCB-0000216D9E86}']
-      function Call: IInfo; overload;
-      function Call(const Params: array of Variant): IInfo; overload;
-      function Element(const Indices: array of Integer): IInfo;
-      function GetConstructor(const MethName: UnicodeString; ExtObject: TObject): IInfo;
-      function GetData : TData;
-      function GetExternalObject: TObject;
-      function GetMember(const s: UnicodeString): IInfo;
-      function GetFieldMemberNames : TStrings;
-      function GetMethod(const s: UnicodeString): IInfo;
-      function GetScriptObj: IScriptObj;
-      function GetScriptDynArray: IScriptDynArray;
-      function GetParameter(const s: UnicodeString): IInfo;
-      function GetTypeSym: TSymbol;
-      function GetValue : Variant;
-      function GetValueAsString : UnicodeString;
-      function GetValueAsDataString : RawByteString;
-      function GetValueAsInteger : Int64;
-      function GetValueAsBoolean : Boolean;
-      function GetValueAsFloat : Double;
-      function GetInherited: IInfo;
-      function GetExec : IdwsProgramExecution;
-      procedure SetData(const Data: TData);
-      procedure SetExternalObject(ExtObject: TObject);
-      procedure SetValue(const Value: Variant);
-      procedure SetValueAsInteger(const value : Int64);
-      procedure SetValueAsString(const value : UnicodeString);
-
-      property Data: TData read GetData write SetData;
-      property ExternalObject: TObject read GetExternalObject write SetExternalObject;
-      property Member[const s : UnicodeString]: IInfo read GetMember;
-      property FieldMemberNames : TStrings read GetFieldMemberNames;
-      property Method[const s : UnicodeString]: IInfo read GetMethod;
-
-      property Exec: IdwsProgramExecution read GetExec;
-      property ScriptObj: IScriptObj read GetScriptObj;
-      property ScriptDynArray: IScriptDynArray read GetScriptDynArray;
-      property Parameter[const s: UnicodeString]: IInfo read GetParameter;
-      property TypeSym: TSymbol read GetTypeSym;
-      property Value: Variant read GetValue write SetValue;
-      property ValueAsString : UnicodeString read GetValueAsString write SetValueAsString;
-      property ValueAsDataString : RawByteString read GetValueAsDataString;
-      property ValueAsInteger : Int64 read GetValueAsInteger write SetValueAsInteger;
-      property ValueAsBoolean : Boolean read GetValueAsBoolean;
-      property ValueAsFloat : Double read GetValueAsFloat;
-   end;
 
    // Informations about the program in external procedures
    TProgramInfo = class
@@ -1997,7 +1947,7 @@ implementation
 // ------------------------------------------------------------------
 
 uses dwsFunctions, dwsCoreExprs, dwsMagicExprs, dwsMethodExprs,
-   dwsInfo, dwsCompilerUtils, dwsConstExprs, dwsResultFunctions;
+   dwsInfoClasses, dwsCompilerUtils, dwsConstExprs, dwsResultFunctions;
 
 { TScriptObjectWrapper }
 
@@ -2006,6 +1956,7 @@ type
    TScriptObjectWrapper = class (TDataContext, IUnknown, IScriptObj)
       private
          FScriptObj : TScriptObjInstance;
+
       protected
          { IScriptObj }
          function GetClassSym: TClassSymbol;
@@ -2014,6 +1965,7 @@ type
          procedure SetExternalObject(Value: TObject);
          function GetDestroyed : Boolean;
          procedure SetDestroyed(const val : Boolean);
+
       public
          constructor Create(scriptObj : TScriptObjInstance);
    end;
@@ -2722,13 +2674,6 @@ end;
 procedure TdwsProgramExecution.SetLocalizer(const val : IdwsLocalizer);
 begin
    FLocalizer:=val;
-end;
-
-// GetLastScriptErrorExpr
-//
-function TdwsProgramExecution.GetLastScriptErrorExpr : TExprBase;
-begin
-   Result:=LastScriptError;
 end;
 
 // GetMsgs

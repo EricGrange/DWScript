@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, Classes, dwsUnitSymbols, dwsExprs, dwsCompiler, dwsComp,
-  dwsHtmlFilter, dwsSymbols, dwsErrors, dwsUtils, dwsXPlatform, dwsInfo,
+  dwsHtmlFilter, dwsSymbols, dwsErrors, dwsUtils, dwsXPlatform,
   {$IFDEF UseDebugger}
   dwsDebugger,
   {$ENDIF}

@@ -180,6 +180,7 @@ begin
       embedded:=True;
    end;
 
+   compileOnly := False;
    if project=nil then begin
       if ParamCount<1 then begin
          WriteHeader;

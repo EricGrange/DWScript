@@ -4,7 +4,8 @@ interface
 
 uses
   Windows, SysUtils, Classes, Registry, PsAPI,
-  dwsExprList, dwsDataContext, dwsComp, dwsExprs, dwsUtils, dwsCPUUsage, dwsXPlatform;
+  dwsExprList, dwsDataContext, dwsComp, dwsExprs, dwsUtils, dwsCPUUsage,
+  dwsXPlatform, dwsInfo;
 
 type
    TOSNameVersion = record

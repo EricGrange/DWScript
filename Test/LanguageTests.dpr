@@ -61,7 +61,10 @@ uses
   dwsGlobalVars in '..\Source\dwsGlobalVars.pas',
   UBigIntegerTests in 'UBigIntegerTests.pas',
   dwsMPIR.Bundle in '..\Libraries\BigIntegersLib\dwsMPIR.Bundle.pas',
-  dwsEncoding in '..\Source\dwsEncoding.pas';
+  dwsEncoding in '..\Source\dwsEncoding.pas',
+  dwsInfo in '..\Source\dwsInfo.pas',
+  dwsEvaluate in '..\Source\dwsEvaluate.pas',
+  dwsFilter in '..\Source\dwsFilter.pas';
 
 {$R *.res}
 

@@ -4,9 +4,9 @@ interface
 
 uses
    Windows, Classes, SysUtils,
-   dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsDataContext,
+   dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsDataContext, dwsInfo,
    dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, Variants,
-   dwsSymbols, dwsPascalTokenizer, dwsStrings, dwsJSON, dwsFunctions;
+   dwsSymbols, dwsPascalTokenizer, dwsStrings, dwsJSON, dwsFunctions, dwsFilter;
 
 type
 

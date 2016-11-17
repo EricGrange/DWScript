@@ -22,7 +22,7 @@ interface
 
 uses
    dwsFunctions, dwsSymbols, dwsExprs, dwsStrings, dwsOperators,
-   dwsStack, dwsDataContext, dwsExprList,
+   dwsStack, dwsDataContext, dwsExprList, dwsInfo,
    dwsTokenizer, SysUtils, dwsUtils, dwsMagicExprs, dwsUnitSymbols, dwsCoreExprs;
 
 type
@@ -103,7 +103,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsInfo;
+uses dwsInfoClasses;
 
 // RegisterRTTITypes
 //

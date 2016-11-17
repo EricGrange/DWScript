@@ -24,7 +24,7 @@ uses
    dwsExprs, dwsRelExprs, dwsJSON, dwsMagicExprs, dwsStrings, dwsMethodExprs,
    dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs, dwsCompilerUtils,
    dwsJSLibModule, dwsJSMin, dwsFunctions, dwsGlobalVarsFunctions, dwsErrors,
-   dwsRTTIFunctions, dwsConstExprs;
+   dwsRTTIFunctions, dwsConstExprs, dwsInfo;
 
 type
 

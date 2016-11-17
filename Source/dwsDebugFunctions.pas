@@ -23,7 +23,7 @@ interface
 uses
    Classes, Variants, SysUtils,
    dwsFunctions, dwsExprs, dwsSymbols, dwsUtils, dwsExprList, dwsStrings,
-   dwsMagicExprs, dwsUnitSymbols, dwsXPlatform, dwsErrors, dwsDataContext;
+   dwsMagicExprs, dwsUnitSymbols, dwsXPlatform, dwsErrors, dwsDataContext, dwsInfo;
 
 type
    TOutputDebugStringFunc = class(TInternalMagicProcedure)

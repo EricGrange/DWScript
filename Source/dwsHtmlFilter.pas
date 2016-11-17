@@ -32,7 +32,7 @@ interface
 
 uses
    Variants, Classes, SysUtils, StrUtils,
-   dwsComp, dwsExprs, dwsFunctions, dwsSymbols, dwsExprList,
+   dwsComp, dwsExprs, dwsFunctions, dwsSymbols, dwsExprList, dwsFilter,
    dwsErrors, dwsCompiler, dwsStrings, dwsUtils, dwsMagicExprs,
    dwsResultFunctions;
 

@@ -26,9 +26,8 @@ interface
 uses
    Classes, SysUtils, Variants,
    dwsSymbols, dwsXPlatform, dwsCompiler, dwsErrors, dwsDataContext,
-   dwsExprs, dwsCoreExprs,
-   dwsUtils, dwsXPlatformUI, dwsStrings, dwsUnitSymbols, dwsStack,
-   dwsInfo;
+   dwsExprs, dwsCoreExprs, dwsInfo, dwsEvaluate,
+   dwsUtils, dwsXPlatformUI, dwsStrings, dwsUnitSymbols, dwsStack, dwsInfoClasses;
 
 type
    TdwsDebugger = class;
@@ -909,7 +908,7 @@ begin
    Assert(daCanEvaluate in AllowedActions, 'Evaluate not allowed');
 
    if FExecution<>nil then
-      Result:=TdwsCompiler.Evaluate(FExecution, expression, [], scriptPos)
+      Result:=TdwsEvaluateExpr.Evaluate(FExecution, expression, [], scriptPos)
    else Result:=nil;
 end;
 
@@ -1340,12 +1339,12 @@ begin
 
    if (Evaluator=nil) or (not Evaluator.ContextIsValid) then begin
       scriptPos:=debugger.GetCurrentScriptPos;
-      Evaluator:=TdwsCompiler.Evaluate(debugger.Execution, ExpressionText, [], @scriptPos);
+      Evaluator:=TdwsEvaluateExpr.Evaluate(debugger.Execution, ExpressionText, [], @scriptPos);
    end;
 
    expr:=Evaluator.Expression;
    if expr.Typ=nil then begin
-      Evaluator:=TdwsCompiler.Evaluate(debugger.Execution, '''(not an expression)''');
+      Evaluator:=TdwsEvaluateExpr.Evaluate(debugger.Execution, '''(not an expression)''');
       expr:=Evaluator.Expression;
       FEvaluationError:=dweeCompile;
    end else if Evaluator.EvaluationError then

@@ -20,7 +20,9 @@ unit dwsJSFilter;
 
 interface
 
-uses Classes, dwsComp, dwsCompiler, dwsErrors, dwsJSCodeGen, dwsCodeGen, dwsUtils,
+uses
+   Classes,
+   dwsComp, dwsCompiler, dwsErrors, dwsJSCodeGen, dwsCodeGen, dwsUtils, dwsFilter,
    dwsExprs, StrUtils, SysUtils;
 
 type

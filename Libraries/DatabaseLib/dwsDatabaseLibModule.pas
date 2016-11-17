@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, Classes, Masks, Variants,
-  dwsStrings, dwsUtils, dwsExprList, dwsXPlatform,
+  dwsStrings, dwsUtils, dwsExprList, dwsXPlatform, dwsInfo,
   dwsComp, dwsExprs, dwsSymbols, dwsStack, dwsDatabase, dwsJSON, dwsErrors;
 
 type
