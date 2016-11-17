@@ -3176,9 +3176,7 @@ begin
       if (typSym=nil) or not UnicodeSameText(typSym.Name, paramRec.ParamType) then
          typSym:=Table.FindTypeSymbol(paramRec.ParamType, cvMagic);
       if (typSym = nil) and (paramRec.ParamType = 'array of Any Type') then begin
-         typSym := TAnyTypeSymbol.Create('Any Type', nil);
-         table.AddSymbol(typSym);
-         typSym := TDynamicArraySymbol.Create('', typSym, Table.FindTypeSymbol(SYS_INTEGER, cvPublic));
+         typSym := TDynamicArraySymbol.Create('', table.FindTypeSymbol(SYS_ANY_TYPE, cvPublic), Table.FindTypeSymbol(SYS_INTEGER, cvPublic));
          table.AddSymbol(typSym);
       end;
 

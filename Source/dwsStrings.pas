@@ -37,7 +37,6 @@ const
   SYS_SYSTEM = 'System';
   SYS_DEFAULT = 'Default';
   SYS_OBJECT = 'Object';
-  SYS_ANY = 'Any';
   SYS_TCLASS = 'TClass';
   SYS_TOBJECT = 'TObject';
   SYS_TOBJECT_CREATE = 'Create';
@@ -57,6 +56,7 @@ const
   SYS_EDELPHI_EXCEPTIONCLASS_FIELD = 'FExceptionClass';
   SYS_TCUSTOMATTRIBUTE = 'TCustomAttribute';
   SYS_IINTERFACE = 'IInterface';
+  SYS_ANY_TYPE = 'Any Type';
 
   SYS_ARRAY_OF_STRING = 'array of String';
 

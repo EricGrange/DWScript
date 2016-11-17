@@ -187,38 +187,38 @@ type
 
    // TJSONParseMethod
    //
-   TJSONParseMethod = class(TInternalStaticMethod)
-      procedure Execute(info : TProgramInfo); override;
+   TJSONParseMethod = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    // TJSONParseIntegerArrayMethod
    //
-   TJSONParseIntegerArrayMethod = class(TInternalStaticMethod)
-      procedure Execute(info : TProgramInfo); override;
+   TJSONParseIntegerArrayMethod = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    // TJSONParseFloatArrayMethod
    //
-   TJSONParseFloatArrayMethod = class(TInternalStaticMethod)
-      procedure Execute(info : TProgramInfo); override;
+   TJSONParseFloatArrayMethod = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    // TJSONParseStringArrayMethod
    //
-   TJSONParseStringArrayMethod = class(TInternalStaticMethod)
-      procedure Execute(info : TProgramInfo); override;
+   TJSONParseStringArrayMethod = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    // TJSONNewObject
    //
-   TJSONNewObject = class(TInternalStaticMethod)
-      procedure Execute(info : TProgramInfo); override;
+   TJSONNewObject = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    // TJSONNewArray
    //
-   TJSONNewArray = class(TInternalStaticMethod)
-      procedure Execute(info : TProgramInfo); override;
+   TJSONNewArray = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    // TJSONStringifyMethod
@@ -460,7 +460,6 @@ var
    connType : TdwsJSONConnectorType;
    connSym : TJSONConnectorSymbol;
    jsonObject : TClassSymbol;
-   anyType : TAnyTypeSymbol;
 begin
    connType:=TdwsJSONConnectorType.Create(table);
    connSym:=TJSONConnectorSymbol.Create(SYS_JSONVARIANT, connType);
@@ -474,33 +473,37 @@ begin
    jsonObject.IsSealed:=True;
    jsonObject.SetNoVirtualMembers;
 
-   anyType:=TAnyTypeSymbol.Create('Any Type', nil);
-   table.AddSymbol(anyType);
+   TJSONStringifyMethod.Create(
+      table, SYS_JSON_STRINGIFY, ['val', SYS_ANY_TYPE], SYS_STRING,
+      [iffStateLess, iffStaticMethod], jsonObject
+   );
 
-   TJSONStringifyMethod.Create(table, SYS_JSON_STRINGIFY,
-                               ['val', 'Any Type'], SYS_STRING,
-                               [iffStateLess, iffStaticMethod],
-                               jsonObject);
+   TJSONParseMethod.Create(
+      table, SYS_JSON_PARSE, ['str', SYS_STRING], SYS_JSONVARIANT,
+      [iffStaticMethod], jsonObject, ''
+   );
 
-   TJSONParseMethod.Create(mkClassFunction, [maStatic], SYS_JSON_PARSE,
-                           ['str', SYS_STRING], SYS_JSONVARIANT,
-                           jsonObject, cvPublic, table);
-   TJSONParseIntegerArrayMethod.Create(mkClassFunction, [maStatic], SYS_JSON_PARSE_INTEGER_ARRAY,
-                           ['str', SYS_STRING], 'array of integer',
-                           jsonObject, cvPublic, table);
-   TJSONParseFloatArrayMethod.Create(mkClassFunction, [maStatic], SYS_JSON_PARSE_FLOAT_ARRAY,
-                           ['str', SYS_STRING], 'array of float',
-                           jsonObject, cvPublic, table);
-   TJSONParseStringArrayMethod.Create(mkClassFunction, [maStatic], SYS_JSON_PARSE_STRING_ARRAY,
-                           ['str', SYS_STRING], SYS_ARRAY_OF_STRING,
-                           jsonObject, cvPublic, table);
+   TJSONParseIntegerArrayMethod.Create(
+      table, SYS_JSON_PARSE_INTEGER_ARRAY, ['str', SYS_STRING], 'array of integer',
+      [iffStaticMethod], jsonObject, ''
+   );
+   TJSONParseFloatArrayMethod.Create(
+      table, SYS_JSON_PARSE_FLOAT_ARRAY, ['str', SYS_STRING], 'array of float',
+      [iffStaticMethod], jsonObject, ''
+   );
+   TJSONParseStringArrayMethod.Create(
+      table, SYS_JSON_PARSE_STRING_ARRAY, ['str', SYS_STRING], SYS_ARRAY_OF_STRING,
+      [iffStaticMethod], jsonObject, ''
+   );
 
-   TJSONNewObject.Create(mkClassFunction, [maStatic], SYS_JSON_NEWOBJECT,
-                         [], SYS_JSONVARIANT,
-                         jsonObject, cvPublic, table);
-   TJSONNewArray.Create(mkClassFunction, [maStatic], SYS_JSON_NEWARRAY,
-                        [], SYS_JSONVARIANT,
-                        jsonObject, cvPublic, table);
+   TJSONNewObject.Create(
+      table, SYS_JSON_NEWOBJECT, [], SYS_JSONVARIANT,
+      [iffStaticMethod], jsonObject, ''
+   );
+   TJSONNewArray.Create(
+      table, SYS_JSON_NEWARRAY, [], SYS_JSONVARIANT,
+      [iffStaticMethod], jsonObject, ''
+   );
 end;
 
 // StaticSymbols
@@ -1127,27 +1130,25 @@ end;
 // ------------------ TJSONParseMethod ------------------
 // ------------------
 
-// Execute
-//
-procedure TJSONParseMethod.Execute(info : TProgramInfo);
+procedure TJSONParseMethod.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    v : TdwsJSONValue;
    box : TBoxedJSONValue;
 begin
-   v:=TdwsJSONValue.ParseString(info.ParamAsString[0]);
+   v:=TdwsJSONValue.ParseString(args.AsString[0]);
    if v=nil then
       box:=nil
    else box:=TBoxedJSONValue.Create(v);
-   Info.ResultAsVariant:=IBoxedJSONValue(box);
+   VarCopySafe(result, IBoxedJSONValue(box));
 end;
 
 // ------------------
 // ------------------ TJSONParseIntegerArrayMethod ------------------
 // ------------------
 
-// Execute
+// DoEvalAsVariant
 //
-procedure TJSONParseIntegerArrayMethod.Execute(info : TProgramInfo);
+procedure TJSONParseIntegerArrayMethod.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    tokenizer : TdwsJSONParserState;
    values : TSimpleInt64List;
@@ -1156,15 +1157,15 @@ var
    newPData : PData;
    s : UnicodeString;
 begin
-   s:=info.ParamAsString[0];
+   s := args.AsString[0];
 
    tokenizer:=TdwsJSONParserState.Create(s);
    values:=TSimpleInt64List.Create;
    try
       tokenizer.ParseIntegerArray(values);
 
-      newArray:=TScriptDynamicArray.CreateNew(info.Execution.Prog.TypInteger);
-      Info.ResultAsVariant:=IScriptDynArray(newArray);
+      newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).Prog.TypInteger);
+      VarCopySafe(result, IScriptDynArray(newArray));
       newArray.ArrayLength:=values.Count;
       newPData:=newArray.AsPData;
 
@@ -1180,9 +1181,9 @@ end;
 // ------------------ TJSONParseFloatArrayMethod ------------------
 // ------------------
 
-// Execute
+// DoEvalAsVariant
 //
-procedure TJSONParseFloatArrayMethod.Execute(info : TProgramInfo);
+procedure TJSONParseFloatArrayMethod.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    tokenizer : TdwsJSONParserState;
    values : TSimpleDoubleList;
@@ -1191,15 +1192,15 @@ var
    newPData : PData;
    s : UnicodeString;
 begin
-   s:=info.ParamAsString[0];
+   s := args.AsString[0];
 
    tokenizer:=TdwsJSONParserState.Create(s);
    values:=TSimpleDoubleList.Create;
    try
       tokenizer.ParseNumberArray(values);
 
-      newArray:=TScriptDynamicArray.CreateNew(info.Execution.Prog.TypInteger);
-      Info.ResultAsVariant:=IScriptDynArray(newArray);
+      newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).Prog.TypInteger);
+      VarCopySafe(result, IScriptDynArray(newArray));
       newArray.ArrayLength:=values.Count;
       newPData:=newArray.AsPData;
 
@@ -1215,9 +1216,9 @@ end;
 // ------------------ TJSONParseStringArrayMethod ------------------
 // ------------------
 
-// Execute
+// DoEvalAsVariant
 //
-procedure TJSONParseStringArrayMethod.Execute(info : TProgramInfo);
+procedure TJSONParseStringArrayMethod.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    tokenizer : TdwsJSONParserState;
    values : TStringList;
@@ -1226,15 +1227,15 @@ var
    newPData : PData;
    s : UnicodeString;
 begin
-   s:=info.ParamAsString[0];
+   s := args.AsString[0];
 
    tokenizer:=TdwsJSONParserState.Create(s);
    values:=TStringList.Create;
    try
       tokenizer.ParseStringArray(values);
 
-      newArray:=TScriptDynamicArray.CreateNew(info.Execution.Prog.TypString);
-      Info.ResultAsVariant:=IScriptDynArray(newArray);
+      newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).Prog.TypString);
+      VarCopySafe(result, IScriptDynArray(newArray));
       newArray.ArrayLength:=values.Count;
       newPData:=newArray.AsPData;
 
@@ -1250,32 +1251,32 @@ end;
 // ------------------ TJSONNewObject ------------------
 // ------------------
 
-// Execute
+// DoEvalAsVariant
 //
-procedure TJSONNewObject.Execute(info : TProgramInfo);
+procedure TJSONNewObject.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    v : TdwsJSONValue;
    box : TBoxedJSONValue;
 begin
-   v:=TdwsJSONObject.Create;
-   box:=TBoxedJSONValue.Create(v);
-   Info.ResultAsVariant:=IBoxedJSONValue(box);
+   v := TdwsJSONObject.Create;
+   box := TBoxedJSONValue.Create(v);
+   VarCopySafe(result, IBoxedJSONValue(box));
 end;
 
 // ------------------
 // ------------------ TJSONNewArray ------------------
 // ------------------
 
-// Execute
+// DoEvalAsVariant
 //
-procedure TJSONNewArray.Execute(info : TProgramInfo);
+procedure TJSONNewArray.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    v : TdwsJSONValue;
    box : TBoxedJSONValue;
 begin
-   v:=TdwsJSONArray.Create;
-   box:=TBoxedJSONValue.Create(v);
-   Info.ResultAsVariant:=IBoxedJSONValue(box);
+   v := TdwsJSONArray.Create;
+   box := TBoxedJSONValue.Create(v);
+   VarCopySafe(result, IBoxedJSONValue(box));
 end;
 
 // ------------------

@@ -125,12 +125,6 @@ type
          procedure Execute(info : TProgramInfo; var externalObject : TObject); virtual; abstract;
    end;
 
-   TInternalStaticMethod = class (TInternalBaseMethod)
-      public
-         procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); override;
-         procedure Execute(info : TProgramInfo); virtual; abstract;
-   end;
-
    TInternalRecordMethod = class(TInternalFunction)
       public
          constructor Create(methKind : TMethodKind; attributes : TMethodAttributes;
@@ -542,22 +536,6 @@ begin
          extObj := nil;
          Execute(info, extObj);
       end;
-   finally
-      exec.ReleaseProgramInfo(info);
-   end;
-end;
-
-// ------------------
-// ------------------ TInternalStaticMethod ------------------
-// ------------------
-
-procedure TInternalStaticMethod.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
-var
-   info : TProgramInfo;
-begin
-   info:=exec.AcquireProgramInfo(func);
-   try
-      Execute(info);
    finally
       exec.ReleaseProgramInfo(info);
    end;

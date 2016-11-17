@@ -283,8 +283,6 @@ const
 
 // HttpQuery
 //
-var
-   vUnassigned : Variant;
 function HttpQuery(exec : TdwsProgramExecution;
                    const method, url : RawByteString;
                    const requestData, requestContentType : RawByteString;

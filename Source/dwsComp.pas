@@ -2941,23 +2941,24 @@ end;
 // ------------------ TdwsParameter ------------------
 // ------------------
 
-procedure TdwsParameter.Assign(Source: TPersistent);
-begin
-  inherited;
-  if Source is TdwsParameter then
-  begin
-    FIsVarParam := TdwsParameter(Source).IsVarParam;
-    FIsWritable := TdwsParameter(Source).IsWritable;
-  end;
-end;
-
+// Create
+//
 constructor TdwsParameter.Create(Collection: TCollection);
 begin
-  inherited;
-  FIsWritable := True;
-  FIsVarParam := False;
-  FDefaultValue := Unassigned;
-  FHasDefaultValue := False;
+   inherited;
+   FIsWritable := True;
+end;
+
+procedure TdwsParameter.Assign(Source: TPersistent);
+begin
+   inherited;
+   if Source is TdwsParameter then begin
+      FIsVarParam := TdwsParameter(Source).IsVarParam;
+      FIsLazy := TdwsParameter(Source).IsLazy;
+      FIsWritable := TdwsParameter(Source).IsWritable;
+      VarCopySafe(FDefaultValue, TdwsParameter(Source).DefaultValue);
+      FHasDefaultValue := TdwsParameter(Source).HasDefaultValue;
+   end;
 end;
 
 function TdwsParameter.DoGenerate(systemTable : TSystemSymbolTable; Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;

@@ -282,8 +282,6 @@ type
          function SymbolTable : TSystemSymbolTable; overload;
 
       public
-         destructor Destroy; override;
-
          property TypInteger : TBaseIntegerSymbol read FTypInteger write FTypInteger;
          property TypBoolean : TBaseBooleanSymbol read FTypBoolean write FTypBoolean;
          property TypFloat : TBaseFloatSymbol read FTypFloat write FTypFloat;
@@ -868,14 +866,6 @@ end;
 // ------------------
 // ------------------ TSystemSymbolTable ------------------
 // ------------------
-
-// Destroy
-//
-destructor TSystemSymbolTable.Destroy;
-begin
-   inherited;
-   FTypAnyType.Free;
-end;
 
 // SymbolTable
 //

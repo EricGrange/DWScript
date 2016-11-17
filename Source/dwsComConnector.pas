@@ -28,7 +28,7 @@ uses
    dwsUtils, dwsDataContext, dwsExprList, dwsConnectorSymbols, dwsXPlatform,
    dwsStrings, dwsFunctions, dwsStack, dwsMagicExprs, dwsErrors,
    dwsExprs, dwsComp, dwsSymbols, dwsOperators, dwsUnitSymbols,
-   dwsCompilerUtils, dwsLegacy;
+   dwsCompilerUtils;
 
 const
    COM_ConnectorCaption = 'COM Connector 2.0';
@@ -59,11 +59,11 @@ implementation
 
 const
    MaxDispArgs = 64;
-
    DISP_E_PARAMNOTFOUND = HRESULT($80020004);
-
    LOCALE_SYSTEM_DEFAULT = $0800;
 
+var
+   vUnassigned : Variant;
 
 // DwsOleCheck
 //
@@ -322,20 +322,20 @@ begin
 end;
 
 type
-   TCreateOleObjectFunc = class(TInternalFunctionWithExecute)
-      procedure Execute(info : TProgramInfo); override;
+   TCreateOleObjectFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
-   TCreateComObjectFunc = class(TInternalFunctionWithExecute)
-      procedure Execute(info : TProgramInfo); override;
+   TCreateComObjectFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
-   TGetActiveOleObjectFunc = class(TInternalFunctionWithExecute)
-      procedure Execute(info : TProgramInfo); override;
+   TGetActiveOleObjectFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
-   TClassIDToProgIDFunc = class(TInternalFunctionWithExecute)
-      procedure Execute(info : TProgramInfo); override;
+   TClassIDToProgIDFunc = class(TInternalMagicStringFunction)
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
 
    TOleConversionFunc = class (TInternalMagicVariantFunction);
@@ -368,8 +368,8 @@ type
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
-   TComVarClearFunc = class(TInternalFunctionWithExecute)
-      procedure Execute(info : TProgramInfo); override;
+   TComVarClearFunc = class(TInternalMagicProcedure)
+      procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
    TBinaryToGUIDFunc = class(TInternalMagicStringFunction)
@@ -597,44 +597,44 @@ end;
 // ------------------ TCreateOleObjectFunc ------------------
 // ------------------
 
-procedure TCreateOleObjectFunc.Execute(info : TProgramInfo);
+procedure TCreateOleObjectFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 begin
-   Info.ResultAsVariant := CreateOleObject(Info.ParamAsString[0]);
+   VarCopySafe(result, CreateOleObject(args.AsString[0]));
 end;
 
 // ------------------
 // ------------------ TCreateComObjectFunc ------------------
 // ------------------
 
-procedure TCreateComObjectFunc.Execute(info : TProgramInfo);
+procedure TCreateComObjectFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 begin
-   Info.ResultAsVariant := CreateComObject(StringToGUID(Info.ParamAsString[0]));
+   VarCopySafe(result, CreateComObject(StringToGUID(args.AsString[0])));
 end;
 
 // ------------------
 // ------------------ TClassIDToProgIDFunc ------------------
 // ------------------
 
-procedure TClassIDToProgIDFunc.Execute(info : TProgramInfo);
+procedure TClassIDToProgIDFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    guid : TGUID;
 begin
-   guid := StringToGUID(Info.ParamAsString[0]);
-   Info.ResultAsString := ClassIDToProgID(guid);
+   guid := StringToGUID(args.AsString[0]);
+   Result := ClassIDToProgID(guid);
 end;
 
 // ------------------
 // ------------------ TGetActiveOleObjectFunc ------------------
 // ------------------
 
-procedure TGetActiveOleObjectFunc.Execute(info : TProgramInfo);
+procedure TGetActiveOleObjectFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    n : UnicodeString;
 begin
-   n:=info.ParamAsString[0];
+   n := args.AsString[0];
    if StrIBeginsWith(n, 'winmgmts:') then
-      Info.ResultAsVariant := WbemLocatorConnect(n)
-   else Info.ResultAsVariant := GetActiveOleObject(n);
+      VarCopySafe(result, WbemLocatorConnect(n))
+   else VarCopySafe(result, GetActiveOleObject(n));
 end;
 
 // ------------------
@@ -723,11 +723,9 @@ end;
 // ------------------ TComVarClearFunc ------------------
 // ------------------
 
-// Execute
-//
-procedure TComVarClearFunc.Execute(info : TProgramInfo);
+procedure TComVarClearFunc.DoEvalProc(const args : TExprBaseListExec);
 begin
-   Info.ValueAsVariant['v'] := Unassigned;
+   args.ExprBase[0].AssignValue(args.Exec, vUnassigned);
 end;
 
 // ------------------

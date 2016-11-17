@@ -30,7 +30,7 @@ uses
   dwsStrings, dwsFunctions, dwsStack, dwsConnectorSymbols, dwsFilter,
   dwsCoreExprs, dwsMagicExprs, dwsRelExprs, dwsMethodExprs, dwsConstExprs,
   dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs,
-  dwsOperators, dwsPascalTokenizer, dwsSystemOperators, dwsLegacy,
+  dwsOperators, dwsPascalTokenizer, dwsSystemOperators,
   dwsUnitSymbols, dwsCompilerUtils;
 
 type
@@ -904,28 +904,12 @@ const
 type
    TReachStatus = (rsReachable, rsUnReachable, rsUnReachableWarned);
 
-   TExceptionCreateMethod = class(TInternalMethod)
-      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   TExceptObjFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
-   TExceptionDestroyMethod = class(TInternalMethod)
-      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
-   end;
-
-   TExceptionStackTraceMethod = class(TInternalMethod)
-      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
-   end;
-
-   TDelphiExceptionCreateMethod = class(TExceptionCreateMethod)
-      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
-   end;
-
-   TExceptObjFunc = class(TInternalFunctionWithExecute)
-      procedure Execute(info : TProgramInfo); override;
-   end;
-
-   TParamFunc = class(TInternalFunctionWithExecute)
-      procedure Execute(info : TProgramInfo); override;
+   TParamFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TParamStrFunc = class(TInternalMagicStringFunction)
@@ -13987,7 +13971,8 @@ begin
    sysTable.TypInterface:=TInterfaceSymbol.Create(SYS_IINTERFACE, nil);
    sysTable.AddSymbol(sysTable.TypInterface);
 
-   sysTable.TypAnyType:=TAnyTypeSymbol.Create('', nil);
+   sysTable.TypAnyType:=TAnyTypeSymbol.Create(SYS_ANY_TYPE, nil);
+   sysTable.AddSymbol(sysTable.TypAnyType);
 
    // Create "root" class Object
    sysTable.TypObject:=TClassSymbol.Create(SYS_OBJECT, nil);
@@ -14219,84 +14204,30 @@ begin
 end;
 
 // ------------------
-// ------------------ TExceptionCreateMethod ------------------
-// ------------------
-
-// Execute
-//
-procedure TExceptionCreateMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
-var
-   context : TdwsExceptionContext;
-begin
-   Info.ValueAsString[SYS_EXCEPTION_MESSAGE_FIELD]:=Info.ValueAsString['Msg'];
-
-   context:=TdwsExceptionContext.Create(info.Execution.GetCallStack);
-   ExternalObject:=context;
-end;
-
-// ------------------
-// ------------------ TExceptionDestroyMethod ------------------
-// ------------------
-
-// Execute
-//
-procedure TExceptionDestroyMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
-begin
-   ExternalObject.Free;
-   ExternalObject:=nil;
-end;
-
-// ------------------
-// ------------------ TExceptionStackTraceMethod ------------------
-// ------------------
-
-// Execute
-//
-procedure TExceptionStackTraceMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
-var
-   context : TdwsExceptionContext;
-begin
-   context:=ExternalObject as TdwsExceptionContext;
-   Info.ResultAsString:=info.Execution.CallStackToString(context.CallStack);
-end;
-
-// ------------------
-// ------------------ TDelphiExceptionCreateMethod ------------------
-// ------------------
-
-// Execute
-//
-procedure TDelphiExceptionCreateMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
-begin
-   inherited;
-   Info.ValueAsVariant[SYS_EDELPHI_EXCEPTIONCLASS_FIELD]:=Info.ValueAsVariant['Cls']
-end;
-
-// ------------------
 // ------------------ TExceptObjFunc ------------------
 // ------------------
 
-// Execute
-//
-procedure TExceptObjFunc.Execute(info : TProgramInfo);
+procedure TExceptObjFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 begin
-   if info.Execution.ExceptionObjectStack.Count>0 then
-      info.ResultAsVariant:=info.Execution.ExceptionObjectStack.Peek
-   else info.ResultAsVariant:=IScriptObj(nil);
+   if args.Exec.ExceptionObjectStack.Count>0 then
+      VarCopySafe(result, args.Exec.ExceptionObjectStack.Peek)
+   else VarCopySafe(result, IScriptObj(nil));
 end;
 
 // ------------------
 // ------------------ TParamFunc ------------------
 // ------------------
 
-procedure TParamFunc.Execute(info : TProgramInfo);
+procedure TParamFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    idx : Integer;
+   progExec : TdwsProgramExecution;
 begin
-   idx:=Info.ParamAsInteger[0];
-   if Cardinal(idx)<Cardinal(Length(Info.Execution.Parameters)) then
-      Info.ResultAsVariant:=Info.Execution.Parameters[idx]
-   else Info.ResultAsVariant:=Unassigned;
+   progExec := (args.Exec as TdwsProgramExecution);
+   idx := args.AsInteger[0];
+   if Cardinal(idx) < Cardinal(Length(progExec.Parameters)) then
+      VarCopySafe(result, progExec.Parameters[idx])
+   else VarClearSafe(result);
 end;
 
 // ------------------

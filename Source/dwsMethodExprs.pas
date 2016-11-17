@@ -51,6 +51,22 @@ type
       procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
    end;
 
+   TExceptionCreateMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
+
+   TExceptionDestroyMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
+
+   TExceptionStackTraceMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
+
+   TDelphiExceptionCreateMethod = class(TExceptionCreateMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
+
    // Call of a method
    TMethodExpr = class abstract (TFuncExpr)
       private
@@ -276,6 +292,60 @@ begin
 
    if (scriptObj^<>nil) then
       info.Method['Destroy'].Call;
+end;
+
+// ------------------
+// ------------------ TExceptionCreateMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TExceptionCreateMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+var
+   context : TdwsExceptionContext;
+begin
+   Info.ValueAsString[SYS_EXCEPTION_MESSAGE_FIELD]:=Info.ValueAsString['Msg'];
+
+   context:=TdwsExceptionContext.Create(info.Execution.GetCallStack);
+   ExternalObject:=context;
+end;
+
+// ------------------
+// ------------------ TExceptionDestroyMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TExceptionDestroyMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+begin
+   ExternalObject.Free;
+   ExternalObject:=nil;
+end;
+
+// ------------------
+// ------------------ TExceptionStackTraceMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TExceptionStackTraceMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+var
+   context : TdwsExceptionContext;
+begin
+   context:=ExternalObject as TdwsExceptionContext;
+   Info.ResultAsString:=info.Execution.CallStackToString(context.CallStack);
+end;
+
+// ------------------
+// ------------------ TDelphiExceptionCreateMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TDelphiExceptionCreateMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+begin
+   inherited;
+   Info.ValueAsVariant[SYS_EDELPHI_EXCEPTIONCLASS_FIELD]:=Info.ValueAsVariant['Cls']
 end;
 
 // ------------------
