@@ -29,8 +29,8 @@ uses
    dwsMagicExprs, dwsUnitSymbols, dwsXPlatform, dwsStrings;
 
 type
-   TVarClearFunc = class(TInternalFunction)
-      procedure Execute(info : TProgramInfo); override;
+   TVarClearFunc = class(TInternalMagicProcedure)
+      procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
    TVarIsNullFunc = class(TInternalMagicBoolFunction)
@@ -57,8 +57,8 @@ type
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
-   TVarAsTypeFunc = class(TInternalFunction)
-      procedure Execute(info : TProgramInfo); override;
+   TVarAsTypeFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TVarToStrFunc = class(TInternalMagicStringFunction)
@@ -66,13 +66,22 @@ type
       procedure CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase); override;
    end;
 
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+var
+   vUnassigned : Variant;
 
 { TVarClearFunc }
 
-procedure TVarClearFunc.Execute(info : TProgramInfo);
+procedure TVarClearFunc.DoEvalProc(const args : TExprBaseListExec);
 begin
-   Info.ValueAsVariant['v'] := Unassigned;
+   args.ExprBase[0].AssignValue(args.Exec, vUnassigned);
 end;
 
 { TVarIsNullFunc }
@@ -137,9 +146,12 @@ end;
 
 { TVarAsTypeFunc }
 
-procedure TVarAsTypeFunc.Execute(info : TProgramInfo);
+procedure TVarAsTypeFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
+var
+   v : Variant;
 begin
-  Info.ResultAsVariant := VarAsType(Info.ValueAsVariant['v'], Info.ValueAsInteger['VarType']);
+   args.EvalAsVariant(0, v);
+   VarCopySafe(result, VarAsType(v, args.AsInteger[1]));
 end;
 
 { TVarToStrFunc }

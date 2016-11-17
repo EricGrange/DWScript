@@ -64,7 +64,8 @@ uses
   dwsEncoding in '..\Source\dwsEncoding.pas',
   dwsInfo in '..\Source\dwsInfo.pas',
   dwsEvaluate in '..\Source\dwsEvaluate.pas',
-  dwsFilter in '..\Source\dwsFilter.pas';
+  dwsFilter in '..\Source\dwsFilter.pas',
+  dwsLegacy in '..\Source\dwsLegacy.pas';
 
 {$R *.res}
 

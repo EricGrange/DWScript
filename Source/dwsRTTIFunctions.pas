@@ -22,22 +22,22 @@ interface
 
 uses
    dwsFunctions, dwsSymbols, dwsExprs, dwsStrings, dwsOperators,
-   dwsStack, dwsDataContext, dwsExprList, dwsInfo,
+   dwsStack, dwsDataContext, dwsExprList, dwsInfo, dwsLegacy,
    dwsTokenizer, SysUtils, dwsUtils, dwsMagicExprs, dwsUnitSymbols, dwsCoreExprs;
 
 type
-   TRTTIRawAttributesFunc = class(TInternalFunction)
+   TRTTIRawAttributesFunc = class(TInternalFunctionWithExecute)
       public
          procedure Execute(info : TProgramInfo); override;
    end;
 
-   TTypeOfClassFunc = class(TInternalFunction)
+   TTypeOfClassFunc = class(TInternalFunctionWithExecute)
       public
          procedure Execute(info : TProgramInfo); override;
    end;
 
    TRTTITypeInfoNameMethod = class(TInternalRecordMethod)
-      procedure Execute(info : TProgramInfo); override;
+      procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); override;
    end;
 
    TSameRTTITypeInfoFunc = class(TInternalMagicBoolFunction)
@@ -317,16 +317,22 @@ end;
 // ------------------ TRTTITypeInfoNameMethod ------------------
 // ------------------
 
-// Execute
+// Call
 //
-procedure TRTTITypeInfoNameMethod.Execute(info : TProgramInfo);
+procedure TRTTITypeInfoNameMethod.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
 var
+   info : TProgramInfo;
    id : Int64;
 begin
-   id:=Info.Vars['Self'].Member['ID'].ValueAsInteger;
-   if id<>0 then
-      Info.ResultAsString:=TSymbol(id).Name
-   else Info.ResultAsString:='';
+   info := exec.AcquireProgramInfo(func);
+   try
+      id:=Info.Vars['Self'].Member['ID'].ValueAsInteger;
+      if id<>0 then
+         Info.ResultAsString:=TSymbol(id).Name
+      else Info.ResultAsString:='';
+   finally
+      exec.ReleaseProgramInfo(info);
+   end;
 end;
 
 // ------------------

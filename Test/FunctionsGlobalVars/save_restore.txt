@@ -10,4 +10,4 @@ hello world
 123
 2.5
 True
-Invalid file tag
+Invalid file tag [line: 34, column: 4]

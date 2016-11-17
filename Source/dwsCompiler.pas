@@ -30,7 +30,7 @@ uses
   dwsStrings, dwsFunctions, dwsStack, dwsConnectorSymbols, dwsFilter,
   dwsCoreExprs, dwsMagicExprs, dwsRelExprs, dwsMethodExprs, dwsConstExprs,
   dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs,
-  dwsOperators, dwsPascalTokenizer, dwsSystemOperators,
+  dwsOperators, dwsPascalTokenizer, dwsSystemOperators, dwsLegacy,
   dwsUnitSymbols, dwsCompilerUtils;
 
 type
@@ -920,20 +920,20 @@ type
       procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
    end;
 
-   TExceptObjFunc = class(TInternalFunction)
+   TExceptObjFunc = class(TInternalFunctionWithExecute)
       procedure Execute(info : TProgramInfo); override;
    end;
 
-   TParamFunc = class(TInternalFunction)
+   TParamFunc = class(TInternalFunctionWithExecute)
       procedure Execute(info : TProgramInfo); override;
    end;
 
-   TParamStrFunc = class(TInternalFunction)
-      procedure Execute(info : TProgramInfo); override;
+   TParamStrFunc = class(TInternalMagicStringFunction)
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
 
-   TParamCountFunc = class(TInternalFunction)
-      procedure Execute(info : TProgramInfo); override;
+   TParamCountFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
    TStandardSymbolFactory = class (TInterfacedObject, IdwsDataSymbolFactory)
@@ -14303,23 +14303,25 @@ end;
 // ------------------ TParamStrFunc ------------------
 // ------------------
 
-procedure TParamStrFunc.Execute(info : TProgramInfo);
+procedure TParamStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    idx : Integer;
+   progExec : TdwsProgramExecution;
 begin
-   idx:=Info.ParamAsInteger[0];
-   if Cardinal(idx)<Cardinal(Length(Info.Execution.Parameters)) then
-      Info.ResultAsString:=Info.Execution.Parameters[idx]
-   else Info.ResultAsString:='';
+   progExec := (args.Exec as TdwsProgramExecution);
+   idx := args.AsInteger[0];
+   if Cardinal(idx) < Cardinal(Length(progExec.Parameters)) then
+      VariantToString(progExec.Parameters[idx], Result)
+   else Result := '';
 end;
 
 // ------------------
 // ------------------ TParamCountFunc ------------------
 // ------------------
 
-procedure TParamCountFunc.Execute(info : TProgramInfo);
+function TParamCountFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
-  Info.ResultAsInteger := Length(Info.Execution.Parameters);
+   Result := Length((args.Exec as TdwsProgramExecution).Parameters);
 end;
 
 // ------------------

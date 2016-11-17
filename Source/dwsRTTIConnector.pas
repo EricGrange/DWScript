@@ -23,7 +23,7 @@ interface
 uses
    Windows, Forms, Variants, Classes, SysUtils, SysConst, TypInfo, RTTI,
    dwsComp, dwsSymbols, dwsDataContext, dwsErrors, dwsUnitSymbols,
-   dwsExprs, dwsStrings, dwsFunctions, dwsStack, dwsOperators,
+   dwsExprs, dwsStrings, dwsFunctions, dwsStack, dwsOperators, dwsLegacy,
    dwsUtils, dwsLanguageExtension, dwsCompiler, dwsConnectorSymbols;
 
 const
@@ -192,11 +192,11 @@ var
 
 type
 
-   TConnectFormFunc = class(TInternalFunction)
+   TConnectFormFunc = class(TInternalFunctionWithExecute)
       procedure Execute(info : TProgramInfo); override;
    end;
 
-   TCreateComponentFunc = class(TInternalFunction)
+   TCreateComponentFunc = class(TInternalFunctionWithExecute)
       procedure Execute(info : TProgramInfo); override;
    end;
 

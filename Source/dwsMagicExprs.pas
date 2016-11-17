@@ -45,7 +45,7 @@ type
 
    // TInternalMagicFunction
    //
-   TInternalMagicFunction = class(TInternalFunction)
+   TInternalMagicFunction = class (TInternalFunction)
       public
          constructor Create(table: TSymbolTable; const funcName: UnicodeString;
                             const params : TParamArray; const funcType: UnicodeString;
@@ -53,7 +53,7 @@ type
                             compositeSymbol : TCompositeTypeSymbol;
                             const helperName : UnicodeString); override;
          function MagicFuncExprClass : TMagicFuncExprClass; virtual; abstract;
-         procedure Execute(info : TProgramInfo); override;
+         procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); override; final;
    end;
 
    // TInternalMagicProcedure
@@ -490,9 +490,9 @@ begin
    end;
 end;
 
-// Execute
+// Call
 //
-procedure TInternalMagicFunction.Execute(info : TProgramInfo);
+procedure TInternalMagicFunction.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
 begin
    Assert(False);
 end;

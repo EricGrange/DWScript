@@ -30,8 +30,8 @@ type
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
-   TCurrentSourceCodeLocation = class(TInternalFunction)
-      procedure Execute(info : TProgramInfo); override;
+   TCurrentSourceCodeLocation = class(TInternalMagicDataFunction)
+      procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
    TCallerSourceCodeLocation = class(TInternalMagicDataFunction)
       procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
@@ -81,33 +81,28 @@ end;
 // ------------------ TCurrentSourceCodeLocation ------------------
 // ------------------
 
-// Execute
+// DoEval
 //
-procedure TCurrentSourceCodeLocation.Execute(info : TProgramInfo);
+procedure TCurrentSourceCodeLocation.DoEval(const args : TExprBaseListExec; var result : IDataContext);
 var
    expr : TExprBase;
    sp : TScriptPos;
-   result : IInfo;
    prog : TObject;
-   data : TData;
 begin
-   expr := info.Execution.CallStackLastExpr;
-   result := info.ResultVars;
-   SetLength(data, 3);
+   expr := args.Expr as TExprBase;
    if expr<>nil then begin
       sp := expr.ScriptPos;
-      prog := info.Execution.CallStackLastProg;
+      prog := (args.Exec as TdwsProgramExecution).CurrentProg;
       if prog.ClassType = TdwsProcedure then
-         data[0] := TdwsProcedure(prog).Func.QualifiedName
-      else data[0] := '';
-      data[1] := sp.SourceName;
-      data[2] := sp.Line;
+         result.AsString[0] := TdwsProcedure(prog).Func.QualifiedName
+      else result.AsString[0] := '';
+      result.AsString[1] := sp.SourceName;
+      result.AsInteger[2] := sp.Line;
    end else begin
-      data[0] := '';
-      data[1] := '';
-      data[2] := 0;
+      result.AsString[0] := '';
+      result.AsString[1] := '';
+      result.AsInteger[2] := 0;
    end;
-   Info.Data[SYS_RESULT] := data;
 end;
 
 // ------------------

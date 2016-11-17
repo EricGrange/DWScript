@@ -28,7 +28,7 @@ uses
    dwsUtils, dwsDataContext, dwsExprList, dwsConnectorSymbols, dwsXPlatform,
    dwsStrings, dwsFunctions, dwsStack, dwsMagicExprs, dwsErrors,
    dwsExprs, dwsComp, dwsSymbols, dwsOperators, dwsUnitSymbols,
-   dwsCompilerUtils;
+   dwsCompilerUtils, dwsLegacy;
 
 const
    COM_ConnectorCaption = 'COM Connector 2.0';
@@ -322,19 +322,19 @@ begin
 end;
 
 type
-   TCreateOleObjectFunc = class(TInternalFunction)
+   TCreateOleObjectFunc = class(TInternalFunctionWithExecute)
       procedure Execute(info : TProgramInfo); override;
    end;
 
-   TCreateComObjectFunc = class(TInternalFunction)
+   TCreateComObjectFunc = class(TInternalFunctionWithExecute)
       procedure Execute(info : TProgramInfo); override;
    end;
 
-   TGetActiveOleObjectFunc = class(TInternalFunction)
+   TGetActiveOleObjectFunc = class(TInternalFunctionWithExecute)
       procedure Execute(info : TProgramInfo); override;
    end;
 
-   TClassIDToProgIDFunc = class(TInternalFunction)
+   TClassIDToProgIDFunc = class(TInternalFunctionWithExecute)
       procedure Execute(info : TProgramInfo); override;
    end;
 
@@ -368,7 +368,7 @@ type
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
-   TComVarClearFunc = class(TInternalFunction)
+   TComVarClearFunc = class(TInternalFunctionWithExecute)
       procedure Execute(info : TProgramInfo); override;
    end;
 

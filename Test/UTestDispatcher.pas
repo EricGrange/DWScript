@@ -3,7 +3,7 @@ unit UTestDispatcher;
 interface
 
 Uses
- Windows, SysUtils, ActiveX, Variants, ComObj, dwsExprs, dwsFunctions;
+ Windows, SysUtils, ActiveX, Variants, ComObj, dwsExprs, dwsFunctions, dwsLegacy;
 
 Type
 
@@ -23,7 +23,7 @@ Type
  End;
  //
 
-  TDispCallProxyFunc = Class(TInternalFunction)
+  TDispCallProxyFunc = Class(TInternalFunctionWithExecute)
 
    Procedure Execute(info : TProgramInfo); Override;
 

@@ -92,8 +92,8 @@ type
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
 
-   TLoadGlobalVarsFromString = class(TInternalFunction)
-      procedure Execute(info : TProgramInfo); override;
+   TLoadGlobalVarsFromString = class(TInternalMagicProcedure)
+      procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
    TGlobalQueuePushFunc = class(TInternalMagicIntFunction)
@@ -649,9 +649,9 @@ end;
 
 { TLoadGlobalVarsFromString }
 
-procedure TLoadGlobalVarsFromString.Execute;
+procedure TLoadGlobalVarsFromString.DoEvalProc(const args : TExprBaseListExec);
 begin
-   LoadGlobalVarsFromString(Info.ValueAsDataString['s']);
+   LoadGlobalVarsFromString(args.AsDataString[0]);
 end;
 
 // ------------------
