@@ -1431,7 +1431,7 @@ end;
 // GetTempPath
 //
 class function TPath.GetTempPath : UnicodeString;
-{$IFDEF VER200} // Delphi 2009
+{$IFDEF WINDOWS}
 var
    tempPath : array [0..MAX_PATH] of WideChar; // Buf sizes are MAX_PATH+1
 begin
@@ -1449,7 +1449,7 @@ end;
 // GetTempFileName
 //
 class function TPath.GetTempFileName : UnicodeString;
-{$IFDEF VER200} // Delphi 2009
+{$IFDEF WINDOWS}
 var
    tempPath, tempFileName : array [0..MAX_PATH] of WideChar; // Buf sizes are MAX_PATH+1
 begin
