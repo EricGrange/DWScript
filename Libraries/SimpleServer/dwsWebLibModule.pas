@@ -853,12 +853,13 @@ procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetCookie2Eval(
 var
    cookie : TWebResponseCookie;
 begin
-   cookie:=Info.WebResponse.Cookies.AddCookie(Info.ParamAsString[0]);
-   cookie.Value:=Info.ParamAsString[1];
-   cookie.ExpiresGMT:=Info.ParamAsFloat[2];
-   cookie.Path:=Info.ParamAsString[3];
-   cookie.Domain:=Info.ParamAsString[4];
-   cookie.Flags:=Info.ParamAsInteger[5];
+   cookie := Info.WebResponse.Cookies.AddCookie(Info.ParamAsString[0]);
+   cookie.Value := Info.ParamAsString[1];
+   cookie.ExpiresGMT := Info.ParamAsFloat[2];
+   cookie.Path := Info.ParamAsString[3];
+   cookie.Domain := Info.ParamAsString[4];
+   cookie.Flags := Info.ParamAsInteger[5];
+   cookie.SameSite := TWebResponseCookieSameSite(Info.ParamAsInteger[6]);
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetHeaderEval(

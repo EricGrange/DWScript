@@ -140,6 +140,7 @@ type
    end;
 
    TWebResponseCookieFlag = (wrcfSecure = 1, wrcfHttpOnly = 2);
+   TWebResponseCookieSameSite = (wrcssUnspecified = 0, wrcssStrict = 1, wrcssLax = 2);
 
    TWebResponseCookie = class
       public
@@ -150,6 +151,7 @@ type
          Path : String;
          MaxAge : Integer;
          Flags : Integer;
+         SameSite : TWebResponseCookieSameSite;
 
          procedure WriteStringLn(dest : TWriteOnlyBlockStream);
    end;
@@ -697,6 +699,11 @@ begin
 
    if (Flags and Ord(wrcfHttpOnly))<>0 then
       dest.WriteString('; HttpOnly');
+
+   case SameSite of
+      wrcssStrict : dest.WriteString('; SameSite=Strict');
+      wrcssLax : dest.WriteString('; SameSite=Lax');
+   end;
 
    dest.WriteCRLF;
 end;

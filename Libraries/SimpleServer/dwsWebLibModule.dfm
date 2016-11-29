@@ -412,6 +412,12 @@ object dwsWebLib: TdwsWebLib
                 DataType = 'Integer'
                 HasDefaultValue = True
                 DefaultValue = 0
+              end
+              item
+                Name = 'sameSite'
+                DataType = 'WebCookieSameSite'
+                HasDefaultValue = True
+                DefaultValue = 0
               end>
             Overloaded = True
             Attributes = [maStatic]
@@ -959,6 +965,20 @@ object dwsWebLib: TdwsWebLib
             Name = 'HttpOnly'
           end>
         Style = enumFlags
+      end
+      item
+        Name = 'WebCookieSameSite'
+        Elements = <
+          item
+            Name = 'Unspecified'
+          end
+          item
+            Name = 'Strict'
+          end
+          item
+            Name = 'Lax'
+          end>
+        Style = enumScoped
       end>
     Sets = <
       item
