@@ -138,10 +138,13 @@ type
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
-   TPrivateVarsNamesFunc = class(TInternalMagicVariantFunction)
+   TCompareExchangePrivateVarFunc = class(TInternalMagicVariantFunction)
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
+   TPrivateVarsNamesFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
+   end;
 
 {: Directly write a global var.<p> }
 function WriteGlobalVar(const aName: UnicodeString; const aValue: Variant; expirationSeconds : Double) : Boolean;
@@ -585,12 +588,8 @@ begin
    Result:=vGlobalVars.Increment(args.AsString[0], args.AsInteger[1]);
 end;
 
-// ------------------
-// ------------------ TCompareExchangeGlobalVarFunc ------------------
-// ------------------
+{ TCompareExchangeGlobalVarFunc }
 
-// DoEvalAsVariant
-//
 procedure TCompareExchangeGlobalVarFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    value, comparand : Variant;
@@ -760,23 +759,26 @@ begin
    Result:=vPrivateVars.Write(PrivateVarName(args), buf, args.AsFloat[2]);
 end;
 
-// ------------------
-// ------------------ TCleanupPrivateVarsFunc ------------------
-// ------------------
+{ TCleanupPrivateVarsFunc }
 
-// DoEvalProc
-//
 procedure TCleanupPrivateVarsFunc.DoEvalProc(const args : TExprBaseListExec);
 begin
    vPrivateVars.Cleanup(PrivateVarName(args));
 end;
 
-// ------------------
-// ------------------ TPrivateVarsNamesFunc ------------------
-// ------------------
+{ TCompareExchangePrivateVarFunc }
 
-// DoEvalAsVariant
-//
+procedure TCompareExchangePrivateVarFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
+var
+   value, comparand : Variant;
+begin
+   args.ExprBase[1].EvalAsVariant(args.Exec, value);
+   args.ExprBase[2].EvalAsVariant(args.Exec, comparand);
+   result := vPrivateVars.CompareExchange(PrivateVarName(args), value, comparand);
+end;
+
+{ TPrivateVarsNamesFunc }
+
 type
    TPrivateVarEnumerator = class
       FArray : TScriptDynamicStringArray;
@@ -840,6 +842,7 @@ initialization
    RegisterInternalFunction(TReadPrivateVarFunc, 'ReadPrivateVar', ['n', SYS_STRING, 'd=Unassigned', SYS_VARIANT], SYS_VARIANT);
    RegisterInternalBoolFunction(TWritePrivateVarFunc, 'WritePrivateVar', ['n', SYS_STRING, 'v', SYS_VARIANT, 'e=0', SYS_FLOAT]);
    RegisterInternalProcedure(TCleanupPrivateVarsFunc, 'CleanupPrivateVars', ['filter=*', SYS_STRING]);
+   RegisterInternalFunction(TCompareExchangePrivateVarFunc, 'CompareExchangePrivateVar', ['n', SYS_STRING, 'v', SYS_VARIANT, 'c', SYS_VARIANT], SYS_VARIANT);
    RegisterInternalFunction(TPrivateVarsNamesFunc, 'PrivateVarsNames', ['filter', SYS_STRING], SYS_ARRAY_OF_STRING);
 
    RegisterInternalIntFunction(TGlobalQueuePushFunc, 'GlobalQueuePush', ['n', SYS_STRING, 'v', SYS_VARIANT]);
