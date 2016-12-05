@@ -489,7 +489,6 @@ end;
 //
 procedure TSimpleDWScript.FlushDWSCache(const fileName : String = '');
 begin
-   LogError('Flushing "'+fileName+'"');
    FCompiledProgramsLock.Enter;
    try
       if fileName='' then begin
