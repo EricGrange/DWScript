@@ -3080,7 +3080,7 @@ begin
 
    finally
       if coContextMap in FOptions then
-         FSourceContextMap.CloseContext(endPos);
+         FSourceContextMap.CloseContext(endPos, ttName);
    end;
 end;
 
@@ -13058,10 +13058,12 @@ end;
 procedure TdwsCompiler.DoTokenizerEndSourceFile(sourceFile : TSourceFile);
 begin
    Inc(FLineCount, FTok.CurrentPos.Line-2);
-   if     (coContextMap in Options)
-      and (FSourceContextMap.Current<>nil)
-      and (FSourceContextMap.Current.StartPos.SourceFile=sourceFile) then
-      FSourceContextMap.CloseContext(FTok.CurrentPos);
+   if coContextMap in Options then begin
+      while     (FSourceContextMap.Current<>nil)
+            and (FSourceContextMap.Current.StartPos.SourceFile=sourceFile) do begin
+         FSourceContextMap.CloseContext(FTok.CurrentPos);
+      end;
+   end;
 end;
 
 // EnterUnit

@@ -1,0 +1,97 @@
+﻿[
+	{
+		"Token" : "ttPROGRAM",
+		"Symbol" : null,
+		"SubContexts" : [
+			{
+				"Token" : "ttSWITCH",
+				"Symbol" : null,
+				"SubContexts" : [
+					{
+						"Token" : "ttNAME",
+						"Symbol" : {
+							"Class" : "TClassSymbol",
+							"Name" : "TTest"
+						},
+						"SubContexts" : [ ]
+					}
+				]
+			},
+			{
+				"Token" : "ttSWITCH",
+				"Symbol" : null,
+				"SubContexts" : [
+					{
+						"Token" : "ttPROCEDURE",
+						"Symbol" : {
+							"Class" : "TSourceFuncSymbol",
+							"Name" : "TestInclusion"
+						},
+						"SubContexts" : [
+							{
+								"Token" : "ttBEGIN",
+								"Symbol" : {
+									"Class" : "TSourceFuncSymbol",
+									"Name" : "TestInclusion"
+								},
+								"SubContexts" : [
+									{
+										"Token" : "ttBEGIN",
+										"Symbol" : null,
+										"SubContexts" : [ ]
+									}
+								]
+							}
+						]
+					}
+				]
+			},
+			{
+				"Token" : "ttCONSTRUCTOR",
+				"Symbol" : {
+					"Class" : "TSourceMethodSymbol",
+					"Name" : "Connect"
+				},
+				"SubContexts" : [
+					{
+						"Token" : "ttBEGIN",
+						"Symbol" : {
+							"Class" : "TSourceMethodSymbol",
+							"Name" : "Connect"
+						},
+						"SubContexts" : [
+							{
+								"Token" : "ttBEGIN",
+								"Symbol" : null,
+								"SubContexts" : [ ]
+							}
+						]
+					}
+				]
+			},
+			{
+				"Token" : "ttFUNCTION",
+				"Symbol" : {
+					"Class" : "TSourceFuncSymbol",
+					"Name" : "Test"
+				},
+				"SubContexts" : [
+					{
+						"Token" : "ttBEGIN",
+						"Symbol" : {
+							"Class" : "TSourceFuncSymbol",
+							"Name" : "Test"
+						},
+						"SubContexts" : [
+							{
+								"Token" : "ttBEGIN",
+								"Symbol" : null,
+								"SubContexts" : [ ]
+							}
+						]
+					}
+				]
+			}
+		]
+	}
+]

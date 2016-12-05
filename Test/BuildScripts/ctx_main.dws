@@ -1,0 +1,13 @@
+﻿{$Include 'ctx_sub1.pas'}
+{$Include 'ctx_sub2.pas'}
+
+constructor TTest.Connect;
+begin
+end;
+
+function Test(toto : String) : String;
+begin
+   Result:=toto;
+end;
+
+bug
