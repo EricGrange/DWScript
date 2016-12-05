@@ -1137,23 +1137,8 @@ end;
 { TStripAccentsFunc }
 
 procedure TStripAccentsFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
-var
-   i : Integer;
-   pSrc, pDest : PWideChar;
 begin
-   Result := NormalizeString(args.AsString[0], 'NFD');
-   pSrc := Pointer(Result);
-   pDest := pSrc;
-   for i := 1 to Length(Result) do begin
-      case Ord(pSrc^) of
-         $300..$36F : ; // diacritic range
-      else
-         pDest^ := pSrc^;
-         Inc(pDest);
-      end;
-      Inc(pSrc);
-   end;
-   SetLength(Result, (NativeUInt(pDest)-NativeUInt(Pointer(Result))) div 2);
+   Result := StripAccents(args.AsString[0]);
 end;
 
 // ------------------------------------------------------------------

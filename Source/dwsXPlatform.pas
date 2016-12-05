@@ -187,6 +187,7 @@ function ASCIICompareText(const s1, s2 : UnicodeString) : Integer; inline;
 function ASCIISameText(const s1, s2 : UnicodeString) : Boolean; inline;
 
 function NormalizeString(const s, form : UnicodeString) : UnicodeString;
+function StripAccents(const s : UnicodeString) : UnicodeString;
 
 function InterlockedIncrement(var val : Integer) : Integer; overload; {$IFDEF PUREPASCAL} inline; {$endif}
 function InterlockedDecrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} inline; {$endif}
@@ -563,6 +564,28 @@ begin
    if len <= 0 then
       RaiseLastOSError;
    SetLength(Result, len);
+end;
+
+// StripAccents
+//
+function StripAccents(const s : UnicodeString) : UnicodeString;
+var
+   i : Integer;
+   pSrc, pDest : PWideChar;
+begin
+   Result := NormalizeString(s, 'NFD');
+   pSrc := Pointer(Result);
+   pDest := pSrc;
+   for i := 1 to Length(Result) do begin
+      case Ord(pSrc^) of
+         $300..$36F : ; // diacritic range
+      else
+         pDest^ := pSrc^;
+         Inc(pDest);
+      end;
+      Inc(pSrc);
+   end;
+   SetLength(Result, (NativeUInt(pDest)-NativeUInt(Pointer(Result))) div 2);
 end;
 
 // InterlockedIncrement
