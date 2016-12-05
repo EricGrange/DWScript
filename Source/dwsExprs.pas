@@ -780,6 +780,8 @@ type
          FFinalExpr : TBlockFinalExpr;
 
          FUnifiedConstList : TSortedExprBaseList;
+         FUnifiedConstListLock : TMultiReadSingleWrite;
+
          FResourceStringList : TResourceStringSymbolList;
 
          FDefaultUserObject : TObject;
@@ -880,6 +882,7 @@ type
          property MaxDataSize : Integer read FStackParameters.MaxByteSize write FStackParameters.MaxByteSize;
          property StackChunkSize : Integer read FStackParameters.ChunkSize write FStackParameters.ChunkSize;
          property UnifiedConstList : TSortedExprBaseList read FUnifiedConstList;
+         property UnifiedConstListLock : TMultiReadSingleWrite read FUnifiedConstListLock;
          property ResourceStringList : TResourceStringSymbolList read FResourceStringList write FResourceStringList;
          property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write FRuntimeFileSystem;
 
@@ -3053,7 +3056,8 @@ begin
 
    FRoot:=Self;
 
-   FUnifiedConstList:=TUnifiedConstList.Create;
+   FUnifiedConstListLock := TMultiReadSingleWrite.Create;
+   FUnifiedConstList := TUnifiedConstList.Create;
    TUnifiedConstList(FUnifiedConstList).Precharge(Self, systemTable.SymbolTable);
 
    FResourceStringList:=TResourceStringSymbolList.Create;
@@ -3103,6 +3107,7 @@ begin
    FSymbolDictionary.Free;
    FAttributes.Free;
    FUnifiedConstList.Free;
+   FUnifiedConstListLock.Free;
    FResourceStringList.Free;
    FSourceList.Free;
 end;

@@ -506,15 +506,22 @@ class function TUnifiedConstExpr.CreateUnified(Prog: TdwsProgram; Typ: TTypeSymb
 var
    i : Integer;
    added : Boolean;
+   main : TdwsMainProgram;
 begin
-   Result:=Self.Create(Prog, Typ, Value);
+   Result := Self.Create(Prog, Typ, Value);
 
-   i:=Prog.Root.UnifiedConstList.AddOrFind(Result, added);
-   if not added then begin
-      Result.Free;
-      Result:=TUnifiedConstExpr(Prog.Root.UnifiedConstList[i]);
+   main := Prog.Root;
+   main.UnifiedConstListLock.BeginWrite;
+   try
+      i:=Prog.Root.UnifiedConstList.AddOrFind(Result, added);
+      if not added then begin
+         Result.Free;
+         Result:=TUnifiedConstExpr(Prog.Root.UnifiedConstList[i]);
+      end;
+      Result.IncRefCount;
+   finally
+      main.UnifiedConstListLock.EndWrite;
    end;
-   Result.IncRefCount;
 end;
 
 // ------------------
@@ -723,6 +730,7 @@ var
    i : Integer;
 begin
    inherited Create;
+   // no lock is required here
    FEmptyString:=TConstStringExpr.CreateUnified(prog, systemTable.TypString, cEmptyString);
    for i:=Low(FIntegers) to High(FIntegers) do
       FIntegers[i]:=TConstIntExpr.CreateUnified(prog, systemTable.TypInteger, Int64(i));
