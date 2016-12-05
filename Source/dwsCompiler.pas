@@ -10821,13 +10821,17 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       else if expecting=FAnyFuncSymbol then
          FMsgs.AddCompilerStop(hotPos, CPE_UnexpectedAt);
       Result:=ReadTerm(isWrite, expecting);
-      if (Result.Typ=nil) or (Result.Typ.AsFuncSymbol=nil) then begin
+      if Result = nil then begin
+         // error was already reported
+         Result := TBogusConstExpr.Create(FProg, FProg.TypNil, cNilIntf);
+      end else if (Result.Typ=nil) or (Result.Typ.AsFuncSymbol=nil) then begin
          if (expecting=FAnyFuncSymbol) or (Result is TConstExpr) then
             FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
-         else ReportIncompatibleAt(hotPos, Result);
+         else if Result <> nil then // if nil, error was already reported
+            ReportIncompatibleAt(hotPos, Result);
          // keep compiling
          OrphanAndNil(Result);
-         Result:=TBogusConstExpr.Create(FProg, FProg.TypNil, cNilIntf);
+         Result := TBogusConstExpr.Create(FProg, FProg.TypNil, cNilIntf);
       end;
    end;
 
