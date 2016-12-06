@@ -4007,7 +4007,7 @@ begin
             msg:=Trim(msg);
             if (msg<>'') and (msg[Length(msg)]=';') then
                SetLength(msg, Length(msg)-1);
-            msgExpr:=TConstStringExpr.CreateUnified(FProg, FProg.TypString, msg);
+            msgExpr:=TConstExpr.CreateStringValue(FProg, msg);
          end;
 
          ReadSemiColon;
@@ -11114,17 +11114,17 @@ begin
             if (token.FInteger>=-1) and (token.FInteger<=2) then begin
                Result:=unifiedConstants.Integers[token.FInteger];
                Result.IncRefCount;
-            end else Result:=TConstIntExpr.CreateUnified(FProg, nil, token.FInteger);
+            end else Result:=TConstExpr.CreateIntegerValue(FProg, token.FInteger);
          ttFloatVal :
             if token.FFloat=0 then begin
                Result:=unifiedConstants.ZeroFloat;
                Result.IncRefCount;
-            end else Result:=TConstFloatExpr.CreateUnified(FProg, nil, token.FFloat);
+            end else Result:=TConstExpr.CreateFloatValue(FProg, token.FFloat);
          ttStrVal :
             if token.EmptyString then begin
                Result:=unifiedConstants.EmptyString;
                Result.IncRefCount;
-            end else Result:=TConstStringExpr.CreateUnified(FProg, nil, token.AsString);
+            end else Result:=TConstExpr.CreateStringValue(FProg, token.AsString);
       end;
       FTok.KillToken;
    end;
@@ -13335,9 +13335,9 @@ begin
                try
                   case SpecialKind of
                      skDefined :
-                        Result:=TConstBooleanExpr.CreateUnified(FProg, FProg.TypBoolean, EvaluateDefined(argExpr));
+                        Result := TConstExpr.CreateBooleanValue(FProg, EvaluateDefined(argExpr));
                      skDeclared :
-                        Result:=TConstBooleanExpr.CreateUnified(FProg, FProg.TypBoolean, EvaluateDeclared(argExpr));
+                        Result := TConstExpr.CreateBooleanValue(FProg, EvaluateDeclared(argExpr));
                   end;
                finally
                   OrphanAndNil(argExpr);
@@ -13402,9 +13402,9 @@ begin
          // fake expression to keep compiling
          case SpecialKind of
             skDefined, skDeclared, skAssigned :
-               Result:=TConstBooleanExpr.CreateUnified(FProg, nil, False);
+               Result:=TConstExpr.CreateBooleanValue(FProg, False);
          else
-            Result:=TConstIntExpr.CreateUnified(FProg, nil, 0);
+            Result:=TConstExpr.CreateIntegerValue(FProg, 0);
          end;
       end else if Optimize then
          Result:=Result.Optimize(FProg, FExec);

@@ -24,7 +24,7 @@ uses
    SynZip, SynCrtSock, SynCommons, SynWinSock,
    dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList, dwsSymbols,
    dwsJSONConnector, dwsCryptoXPlatform, dwsHTTPSysServerEvents, dwsWebServerInfo,
-   dwsXPlatform;
+   dwsXPlatform, dwsCustomData;
 
 type
   TdwsWebLib = class(TDataModule)

@@ -43,6 +43,7 @@ uses
   ULocalizerTests in 'ULocalizerTests.pas',
   dwsRTTIFunctions,
   dwsRTTIConnector,
+  dwsStringResult,
   UJSONTests in 'UJSONTests.pas',
   UJSONConnectorTests in 'UJSONConnectorTests.pas',
   UTokenizerTests in 'UTokenizerTests.pas',

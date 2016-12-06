@@ -27,7 +27,7 @@ uses
    Classes, Variants, SysUtils, TypInfo, Math,
    dwsSymbols, dwsErrors, dwsUtils, dwsDataContext, dwsExprList,
    dwsStrings, dwsStack, SyncObjs, dwsFileSystem, dwsTokenizer, dwsUnitSymbols,
-   dwsJSON, dwsXPlatform, dwsInfo, dwsScriptSource;
+   dwsJSON, dwsXPlatform, dwsInfo, dwsScriptSource, dwsCustomData;
 
 type
    TRelOps = (roEqual, roUnEqual, roLess, roLessEqual, roMore, roMoreEqual);
@@ -487,47 +487,6 @@ type
       property TimeStamp : TDateTime read GetTimeStamp;
       property CompileDuration : TDateTime read GetCompileDuration;
       property ExecutionsClass : TdwsProgramExecutionClass write SetExecutionsClass;
-   end;
-
-   TdwsCustomState = record
-      Key : TGUID;
-      Value : Variant;
-   end;
-
-   TdwsCustomStates = class (TSimpleHash<TdwsCustomState>)
-      protected
-         function SameItem(const item1, item2 : TdwsCustomState) : Boolean; override;
-         function GetItemHashCode(const item1 : TdwsCustomState) : Integer; override;
-
-         function AddClonedState(const item : TdwsCustomState) : TSimpleHashAction;
-
-         function GetState(const index : TGUID) : Variant;
-         procedure SetState(const index : TGUID; const v : Variant);
-
-      public
-         property States[const index : TGUID] : Variant read GetState write SetState; default;
-
-         function IntegerStateDef(const index : TGUID; const default : Integer) : Integer;
-         function StringStateDef(const index : TGUID; const default : UnicodeString) : UnicodeString;
-
-         function Clone : TdwsCustomStates;
-   end;
-
-   TdwsCustomInterface = record
-      Key : TGUID;
-      Value : IInterface;
-   end;
-
-   TdwsCustomInterfaces = class (TSimpleHash<TdwsCustomInterface>)
-      protected
-         function SameItem(const item1, item2 : TdwsCustomInterface) : Boolean; override;
-         function GetItemHashCode(const item1 : TdwsCustomInterface) : Integer; override;
-
-         function  GetInterface(const index : TGUID) : IInterface; inline;
-         procedure SetInterface(const index : TGUID; const intf : IInterface); inline;
-
-      public
-         property Interfaces[const index : TGUID] : IInterface read GetInterface write SetInterface; default;
    end;
 
    // holds execution context for a script
@@ -1993,16 +1952,6 @@ end;
 procedure RaiseOnlyVarSymbols(sym : TSymbol);
 begin
    raise Exception.CreateFmt(RTE_OnlyVarSymbols, [sym.Caption]);
-end;
-
-// GUIDToHash
-//
-function GUIDToHash(const guid : TGUID) : Integer; inline;
-var
-   p : PIntegerArray;
-begin
-   p := PIntegerArray(@guid);
-   Result := p[0] xor p[1] xor p[2] xor p[3];
 end;
 
 // ------------------
@@ -4109,7 +4058,7 @@ function TTypedExpr.OptimizeToFloatConstant(prog : TdwsProgram; exec : TdwsExecu
 begin
    if IsConstant then begin
       if Typ.IsOfType(prog.TypInteger) or Typ.IsOfType(prog.TypFloat) then begin
-         Result:=TConstFloatExpr.CreateUnified(prog, nil, EvalAsFloat(exec));
+         Result:=TConstExpr.CreateFloatValue(prog, EvalAsFloat(exec));
          Orphan(prog);
       end else Result:=OptimizeToTypedExpr(prog, exec, ScriptPos);
    end else Result:=Self;
@@ -5812,7 +5761,7 @@ var
 begin
    if IsConstant then begin
       EvalAsString(exec, buf);
-      Result:=TConstStringExpr.CreateUnified(Prog, nil, buf);
+      Result:=TConstExpr.CreateStringValue(prog, buf);
       Orphan(prog);
    end else Result:=Self;
 end;
@@ -5850,7 +5799,7 @@ end;
 function TFloatBinOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
    if IsConstant then begin
-      Result:=TConstFloatExpr.CreateUnified(Prog, nil, EvalAsFloat(exec));
+      Result:=TConstExpr.CreateFloatValue(prog, EvalAsFloat(exec));
       Orphan(prog);
    end else begin
       OptimizeConstantOperandsToFloats(prog, exec);
@@ -5882,7 +5831,7 @@ end;
 function TBooleanBinOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
    if IsConstant then begin
-      Result:=TConstBooleanExpr.CreateUnified(Prog, nil, EvalAsBoolean(exec));
+      Result:=TConstExpr.CreateBooleanValue(prog, EvalAsBoolean(exec));
       Orphan(prog);
    end else Result:=Self;
 end;
@@ -6023,7 +5972,7 @@ end;
 function TUnaryOpIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
    if IsConstant then begin
-      Result:=TConstIntExpr.CreateUnified(Prog, Typ, EvalAsInteger(exec));
+      Result:=TConstExpr.CreateIntegerValue(prog, EvalAsInteger(exec));
       Orphan(prog);
    end else Result:=Self;
 end;
@@ -6065,7 +6014,7 @@ end;
 function TUnaryOpFloatExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
    if IsConstant then begin
-      Result:=TConstFloatExpr.CreateUnified(Prog, nil, EvalAsFloat(exec));
+      Result:=TConstExpr.CreateFloatValue(prog, EvalAsFloat(exec));
       Orphan(prog);
    end else Result:=Self;
 end;
@@ -8927,128 +8876,6 @@ begin
          Inc(n);
       end;
    end;
-end;
-
-// ------------------
-// ------------------ TdwsCustomStates ------------------
-// ------------------
-
-// SameItem
-//
-function TdwsCustomStates.SameItem(const item1, item2 : TdwsCustomState) : Boolean;
-begin
-   Result := IsEqualGUID(item1.Key, item2.Key);
-end;
-
-// GetItemHashCode
-//
-function TdwsCustomStates.GetItemHashCode(const item1 : TdwsCustomState) : Integer;
-begin
-   Result := GUIDToHash(item1.Key);
-end;
-
-// GetState
-//
-function TdwsCustomStates.GetState(const index : TGUID) : Variant;
-var
-   s : TdwsCustomState;
-begin
-   s.Key:=index;
-   if Match(s) then
-      Result:=s.Value
-   else Result:=Unassigned;
-end;
-
-// SetState
-//
-procedure TdwsCustomStates.SetState(const index : TGUID; const v : Variant);
-var
-   s : TdwsCustomState;
-begin
-   s.Key:=index;
-   s.Value:=v;
-   Replace(s);
-end;
-
-// IntegerStateDef
-//
-function TdwsCustomStates.IntegerStateDef(const index : TGUID; const default : Integer) : Integer;
-var
-   s : TdwsCustomState;
-begin
-   s.Key:=index;
-   if Match(s) and VarIsOrdinal(s.Value) then
-      Result:=s.Value
-   else Result:=default;
-end;
-
-// StringStateDef
-//
-function TdwsCustomStates.StringStateDef(const index : TGUID; const default : UnicodeString) : UnicodeString;
-var
-   s : TdwsCustomState;
-begin
-   s.Key:=index;
-   if Match(s) and VarIsStr(s.Value) then
-      Result:=s.Value
-   else Result:=default;
-end;
-
-// AddClonedState
-//
-function TdwsCustomStates.AddClonedState(const item : TdwsCustomState) : TSimpleHashAction;
-begin
-   SetState(item.Key, item.Value);
-   Result := shaNone;
-end;
-
-// Clone
-//
-function TdwsCustomStates.Clone : TdwsCustomStates;
-begin
-   Result := TdwsCustomStates.Create;
-   Self.Enumerate(Result.AddClonedState);
-end;
-
-// ------------------
-// ------------------ TdwsCustomInterfaces ------------------
-// ------------------
-
-// SameItem
-//
-function TdwsCustomInterfaces.SameItem(const item1, item2 : TdwsCustomInterface) : Boolean;
-begin
-   Result := IsEqualGUID(item1.Key, item2.Key);
-end;
-
-// GetItemHashCode
-//
-function TdwsCustomInterfaces.GetItemHashCode(const item1 : TdwsCustomInterface) : Integer;
-begin
-   Result := GUIDToHash(item1.Key);
-end;
-
-// GetInterface
-//
-function TdwsCustomInterfaces.GetInterface(const index : TGUID) : IInterface;
-var
-   s : TdwsCustomInterface;
-begin
-   s.Key:=index;
-   if Match(s) then
-      Result:=s.Value
-   else Result:=nil;
-end;
-
-// SetInterface
-//
-procedure TdwsCustomInterfaces.SetInterface(const index : TGUID; const intf : IInterface);
-var
-   s : TdwsCustomInterface;
-begin
-   s.Key := index;
-   s.Value := intf;
-   Replace(s);
 end;
 
 // ------------------------------------------------------------------
