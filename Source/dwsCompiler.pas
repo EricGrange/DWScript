@@ -1076,15 +1076,19 @@ end;
 // ReadInitExpr
 //
 function TStandardSymbolFactory.ReadInitExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
-var
-   recSym : TRecordSymbol;
+
+   function ReadConstRecordInitExpr(recSym : TRecordSymbol) : TTypedExpr;
+   begin
+      // isolate because of the temporary dynamic array
+      Result := TConstExpr.Create(expecting, FCompiler.ReadConstRecord(recSym), 0);
+   end;
+
 begin
    if expecting<>nil then begin
       case FCompiler.Tokenizer.TestAny([ttBLEFT, ttALEFT]) of
          ttBLEFT :
             if expecting.ClassType=TRecordSymbol then begin
-               recSym:=TRecordSymbol(expecting);
-               Result:=TConstExpr.Create(expecting, FCompiler.ReadConstRecord(recSym), 0);
+               Result := ReadConstRecordInitExpr(TRecordSymbol(expecting));
                Exit;
             end else if expecting is TArraySymbol then begin
                FCompiler.Tokenizer.KillToken;
@@ -4991,8 +4995,8 @@ begin
       FMsgs.AddCompilerError(FTok.HotPos, CPE_FunctionOrValueExpected);
       // keep going
       OrphanAndNil(oldExpr);
-      expr:=TUnifiedConstExpr.CreateUnified(FProg, FProg.TypVariant, Unassigned);
-   end else expr:=TTypedExpr(oldExpr);
+      expr := TConstExpr.Create(FProg, FProg.TypVariant, Unassigned);
+   end else expr := TTypedExpr(oldExpr);
 
    sym:=TDataSymbol.Create('old$'+IntToStr(FSourcePostConditionsIndex), expr.Typ);
    Inc(FSourcePostConditionsIndex);

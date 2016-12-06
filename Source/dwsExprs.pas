@@ -24,7 +24,7 @@ unit dwsExprs;
 interface
 
 uses
-   Classes, Variants, SysUtils, TypInfo, Math,
+   Classes, Variants, SysUtils, TypInfo,
    dwsSymbols, dwsErrors, dwsUtils, dwsDataContext, dwsExprList,
    dwsStrings, dwsStack, SyncObjs, dwsFileSystem, dwsTokenizer, dwsUnitSymbols,
    dwsJSON, dwsXPlatform, dwsInfo, dwsScriptSource, dwsCustomData, dwsSymbolDictionary,
@@ -5459,7 +5459,7 @@ var
 begin
    if IsConstant then begin
       EvalAsVariant(exec, v);
-      Result:=TUnifiedConstExpr.CreateUnified(Prog, Prog.TypVariant, v);
+      Result := TConstExpr.Create(prog, prog.TypVariant, v);
       Orphan(prog);
    end else Result:=Self;
 end;
@@ -5506,7 +5506,7 @@ end;
 function TIntegerBinOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
    if IsConstant then begin
-      Result:=TConstIntExpr.CreateUnified(Prog, Typ, EvalAsInteger(exec));
+      Result := TConstIntExpr.Create(prog, typ, EvalAsInteger(exec));
       Orphan(prog);
    end else Result:=Self;
 end;

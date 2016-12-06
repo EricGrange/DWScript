@@ -5576,7 +5576,7 @@ begin
             Result:=Right;
             Right:=nil;
          end else begin
-            Result:=TUnifiedConstExpr.CreateBooleanValue(prog, False)
+            Result := TConstExpr.CreateBooleanValue(prog, False)
          end;
          Orphan(prog);
       end else if Right.IsConstant then begin
@@ -5584,7 +5584,7 @@ begin
             Result:=Left;
             Left:=nil;
          end else begin
-            Result:=TUnifiedConstExpr.CreateBooleanValue(prog, False)
+            Result := TConstExpr.CreateBooleanValue(prog, False)
          end;
          Orphan(prog);
       end;
@@ -5626,7 +5626,7 @@ begin
    if Result.ClassType=TBoolOrExpr then begin
       if Left.IsConstant then begin
          if Left.EvalAsBoolean(exec) then begin
-            Result:=TUnifiedConstExpr.CreateBooleanValue(prog, True)
+            Result := TConstExpr.CreateBooleanValue(prog, True)
          end else begin
             Result:=Right;
             Right:=nil;
@@ -5634,7 +5634,7 @@ begin
          Orphan(prog);
       end else if Right.IsConstant then begin
          if Right.EvalAsBoolean(exec) then begin
-            Result:=TUnifiedConstExpr.CreateBooleanValue(prog, True)
+            Result := TConstExpr.CreateBooleanValue(prog, True)
          end else begin
             Result:=Left;
             Left:=nil;

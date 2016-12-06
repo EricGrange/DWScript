@@ -399,7 +399,7 @@ begin
          Result:=Expr;
          Expr:=nil;
       end else begin
-         Result:=TConstIntExpr.CreateUnified(prog, Typ, TConstIntExpr(Expr).Value);
+         Result := TConstIntExpr.Create(prog, typ, TConstIntExpr(Expr).Value);
       end;
       Free;
    end else Result:=Self;

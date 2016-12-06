@@ -81,16 +81,6 @@ type
          class function CreateAssociativeArrayValue(prog : TdwsProgram; typ : TAssociativeArraySymbol; const val : IScriptAssociativeArray) : TConstExpr; static;
    end;
 
-   TUnifiedConstExprClass = class of TUnifiedConstExpr;
-
-   // TUnifiedConstExpr
-   //
-   {: Unified constants go into a program root unified const list. }
-   TUnifiedConstExpr = class (TConstExpr)
-      public
-         class function CreateUnified(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant) : TUnifiedConstExpr;
-   end;
-
    // TConstNilExpr
    //
    TConstNilExpr = class(TConstExpr)
@@ -104,7 +94,7 @@ type
 
    // TConstBooleanExpr
    //
-   TConstBooleanExpr = class(TUnifiedConstExpr)
+   TConstBooleanExpr = class(TConstExpr)
       protected
          FValue : Boolean;
 
@@ -119,7 +109,7 @@ type
 
    // TConstIntExpr
    //
-   TConstIntExpr = class sealed (TUnifiedConstExpr)
+   TConstIntExpr = class sealed (TConstExpr)
       private
          FValue : Int64;
 
@@ -133,7 +123,7 @@ type
 
    // TConstFloatExpr
    //
-   TConstFloatExpr = class sealed (TUnifiedConstExpr)
+   TConstFloatExpr = class sealed (TConstExpr)
       private
          FValue : Double;
 
@@ -146,7 +136,7 @@ type
 
    // TConstStringExpr
    //
-   TConstStringExpr = class(TUnifiedConstExpr)
+   TConstStringExpr = class(TConstExpr)
       private
          FValue : UnicodeString;
       public
@@ -168,27 +158,27 @@ type
          property Symbol : TConstSymbol read FSymbol;
    end;
 
-   TStandardIntegersConstIntExprArray = array [-1..2] of TUnifiedConstExpr;
+   TStandardIntegersConstIntExprArray = array [-1..2] of TConstExpr;
 
    // TUnifiedConstants
    //
    TUnifiedConstants = class
       private
-         FEmptyString : TUnifiedConstExpr;
+         FEmptyString : TConstExpr;
          FIntegers : TStandardIntegersConstIntExprArray;
-         FZeroFloat : TUnifiedConstExpr;
-         FTrue, FFalse : TUnifiedConstExpr;
+         FZeroFloat : TConstExpr;
+         FTrue, FFalse : TConstExpr;
          FNil : TConstNilExpr;
 
       public
          constructor Create(prog : TdwsMainProgram; systemTable : TSystemSymbolTable);
          destructor Destroy; override;
 
-         property EmptyString : TUnifiedConstExpr read FEmptyString;
+         property EmptyString : TConstExpr read FEmptyString;
          property Integers : TStandardIntegersConstIntExprArray read FIntegers;
-         property ZeroFloat : TUnifiedConstExpr read FZeroFloat;
-         property TrueConst : TUnifiedConstExpr read FTrue;
-         property FalseConst : TUnifiedConstExpr read FFalse;
+         property ZeroFloat : TConstExpr read FZeroFloat;
+         property TrueConst : TConstExpr read FTrue;
+         property FalseConst : TConstExpr read FFalse;
          property NilConst : TConstNilExpr read FNil;
    end;
 
@@ -381,9 +371,9 @@ end;
 class function TConstExpr.CreateTypedVariantValue(
    prog : TdwsProgram; typ : TTypeSymbol; const value : Variant) : TConstExpr;
 begin
-   if typ=prog.TypString then
-      Result:=TConstStringExpr.CreateUnified(prog, typ, value)
-   else if typ.ClassType=TDynamicArraySymbol then
+   if typ = prog.TypString then
+      Result := TConstStringExpr.Create(prog, typ, value)
+   else if typ.ClassType = TDynamicArraySymbol then
       Result:=CreateDynamicArrayValue(prog, typ, IUnknown(value) as IScriptDynArray)
    else if typ.ClassType=TAssociativeArraySymbol then
       Result:=CreateAssociativeArrayValue(prog, TAssociativeArraySymbol(typ),
@@ -392,9 +382,9 @@ begin
       Result:=CreateIntegerValue(prog, typ, value)
    else if typ=prog.TypBoolean then
       Result:=CreateBooleanValue(prog, value)
-   else if typ=prog.TypFloat then
-      Result:=TConstFloatExpr.CreateUnified(prog, typ, value)
-   else Result:=TConstExpr.Create(prog, typ, value);
+   else if typ = prog.TypFloat then
+      Result := TConstFloatExpr.Create(prog, typ, value)
+   else Result := TConstExpr.Create(prog, typ, value);
 end;
 
 // CreateTyped
@@ -434,42 +424,48 @@ end;
 //
 class function TConstExpr.CreateIntegerValue(prog : TdwsProgram; const value : Int64) : TConstExpr;
 begin
-   Result:=TConstIntExpr.CreateUnified(prog, prog.TypInteger, value);
+   Result := TConstIntExpr.Create(prog, prog.TypInteger, value);
 end;
 
 // CreateIntegerValue
 //
 class function TConstExpr.CreateIntegerValue(prog : TdwsProgram; typ : TTypeSymbol; const value : Int64) : TConstExpr;
 begin
-   Result:=TConstIntExpr.CreateUnified(prog, typ, value);
+   Result := TConstIntExpr.Create(prog, typ, value);
 end;
 
 // CreateFloatValue
 //
 class function TConstExpr.CreateFloatValue(prog : TdwsProgram; const value : Int64) : TConstExpr;
 begin
-   Result:=TConstFloatExpr.CreateUnified(prog, prog.TypFloat, value);
+   Result := TConstFloatExpr.Create(prog, prog.TypFloat, value);
 end;
 
 // CreateFloatValue
 //
 class function TConstExpr.CreateFloatValue(prog : TdwsProgram; const value : Double) : TConstExpr;
 begin
-   Result:=TConstFloatExpr.CreateUnified(prog, prog.TypFloat, value);
+   Result := TConstFloatExpr.Create(prog, prog.TypFloat, value);
 end;
 
 // CreateStringValue
 //
 class function TConstExpr.CreateStringValue(prog : TdwsProgram; const value : UnicodeString) : TConstExpr;
 begin
-   Result:=TConstStringExpr.CreateUnified(prog, prog.TypString, value);
+   Result := TConstStringExpr.Create(prog, prog.TypString, value);
 end;
 
 // CreateBooleanValue
 //
 class function TConstExpr.CreateBooleanValue(prog : TdwsProgram; const value : Boolean) : TConstExpr;
+var
+   unified : TUnifiedConstants;
 begin
-   Result:=TConstBooleanExpr.CreateUnified(prog, prog.TypBoolean, value);
+   unified := TUnifiedConstants(prog.Root.UnifiedConstants);
+   if value then
+      Result := unified.TrueConst
+   else Result := unified.FalseConst;
+   Result.IncRefCount;
 end;
 
 // CreateDynamicArrayValue
@@ -489,18 +485,6 @@ begin
    if val<>nil then
       Result:=TConstExpr.Create(prog, typ, val)
    else Result:=TConstExpr.Create(prog, typ, TScriptAssociativeArray.CreateNew(typ.KeyType, typ.Typ) as IScriptAssociativeArray);
-end;
-
-// ------------------
-// ------------------ TUnifiedConstExpr ------------------
-// ------------------
-
-// CreateUnified
-//
-class function TUnifiedConstExpr.CreateUnified(Prog: TdwsProgram; Typ: TTypeSymbol;
-                                               const Value: Variant) : TUnifiedConstExpr;
-begin
-   Result := Self.Create(Prog, Typ, Value);
 end;
 
 // ------------------
@@ -550,10 +534,11 @@ end;
 //
 constructor TConstBooleanExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant);
 begin
-   if Typ=nil then
-      Typ:=Prog.TypBoolean;
-   FValue:=Value;
-   inherited Create(Prog, Typ, FValue);
+   Assert(TVarData(value).VType = varBoolean);
+   if typ = nil then
+      typ := prog.TypBoolean;
+   FValue := value;
+   inherited Create(prog, typ, value);
 end;
 
 // EvalAsInteger
@@ -578,10 +563,11 @@ end;
 //
 constructor TConstIntExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant);
 begin
-   if Typ=nil then
-      Typ:=Prog.TypInteger;
-   FValue:=Value;
-   inherited Create(Prog, Typ, FValue);
+   Assert(TVarData(value).VType = varInt64);
+   if typ = nil then
+      typ := prog.TypInteger;
+   FValue := value;
+   inherited Create(prog, typ, value);
 end;
 
 // EvalAsInteger
@@ -615,11 +601,11 @@ end;
 
 // Create
 //
-constructor TConstFloatExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant);
+constructor TConstFloatExpr.Create(prog : TdwsProgram; typ : TTypeSymbol; const value : Variant);
 begin
-   if Typ=nil then
-      Typ:=Prog.TypFloat;
-   FValue:=Value;
+   if typ = nil then
+      typ := prog.TypFloat;
+   FValue := VariantToFloat(value);
    inherited Create(Prog, Typ, FValue);
 end;
 
@@ -631,7 +617,7 @@ asm
    fld qword [eax].FValue
 {$else}
 begin
-   Result:=FValue;
+   Result := FValue;
 {$ifend}
 end;
 
@@ -641,12 +627,15 @@ end;
 
 // Create
 //
-constructor TConstStringExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant);
+constructor TConstStringExpr.Create(prog: TdwsProgram; typ: TTypeSymbol; const value: Variant);
 begin
-   if Typ = nil then
-      Typ := Prog.TypString;
-   UnifyAssignString(Value, FValue);
-   inherited Create(Prog, Typ, FValue);
+   if typ = nil then
+      FTyp := prog.TypString
+   else FTyp := typ;
+   VariantToString(value, FValue);
+   UnifyString(FValue);
+   SetLength(FData, 1);
+   FData[0] := FValue;
 end;
 
 // EvalAsString
@@ -683,7 +672,6 @@ end;
 //
 constructor TUnifiedConstants.Create(prog : TdwsMainProgram; systemTable : TSystemSymbolTable);
 const
-   cEmptyString : UnicodeString = '';
    cZeroFloat : Double = 0;
    cNilIntf : IUnknown = nil;
 var
@@ -691,13 +679,13 @@ var
 begin
    inherited Create;
    // no lock is required here
-   FEmptyString:=TConstStringExpr.CreateUnified(prog, systemTable.TypString, cEmptyString);
+   FEmptyString:=TConstStringExpr.Create(prog, systemTable.TypString, '');
    for i:=Low(FIntegers) to High(FIntegers) do
-      FIntegers[i]:=TConstIntExpr.CreateUnified(prog, systemTable.TypInteger, Int64(i));
-   FZeroFloat:=TConstFloatExpr.CreateUnified(prog, systemTable.TypFloat, cZeroFloat);
-   FTrue:=TConstBooleanExpr.CreateUnified(prog, systemTable.TypBoolean, True);
-   FFalse:=TConstBooleanExpr.CreateUnified(prog, systemTable.TypBoolean, False);
-   FNil:=TConstNilExpr.Create(prog, prog.TypNil, cNilIntf);
+      FIntegers[i] := TConstIntExpr.Create(prog, systemTable.TypInteger, Int64(i));
+   FZeroFloat := TConstFloatExpr.Create(prog, systemTable.TypFloat, cZeroFloat);
+   FTrue := TConstBooleanExpr.Create(prog, systemTable.TypBoolean, True);
+   FFalse := TConstBooleanExpr.Create(prog, systemTable.TypBoolean, False);
+   FNil := TConstNilExpr.Create(prog, prog.TypNil, cNilIntf);
 end;
 
 // Destroy
@@ -784,7 +772,7 @@ begin
    else d:=-1;
    i:=range1;
    repeat
-      AddElementExpr(cNullPos, prog, TConstIntExpr.CreateUnified(prog, typ, i));
+      AddElementExpr(cNullPos, prog, TConstIntExpr.Create(prog, typ, i));
       if i=range2 then break;
       Inc(i, d);
    until False;

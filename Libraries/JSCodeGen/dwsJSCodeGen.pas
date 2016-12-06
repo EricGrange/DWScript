@@ -953,7 +953,6 @@ begin
    RegisterCodeGen(TNoResultWrapperExpr,  TJSNoResultWrapperExpr.Create);
 
    RegisterCodeGen(TConstExpr,            TJSConstExpr.Create);
-   RegisterCodeGen(TUnifiedConstExpr,     TJSConstExpr.Create);
    RegisterCodeGen(TConstNilExpr,         TdwsExprGenericCodeGen.Create(['null']));
    RegisterCodeGen(TConstIntExpr,         TJSConstIntExpr.Create);
    RegisterCodeGen(TConstStringExpr,      TJSConstStringExpr.Create);

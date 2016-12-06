@@ -887,6 +887,7 @@ const
 
 procedure UnifyAssignString(const fromStr : UnicodeString; var toStr : UnicodeString);
 function  UnifiedString(const fromStr : UnicodeString) : UnicodeString; inline;
+procedure UnifyString(var str : UnicodeString);
 procedure TidyStringsUnifier;
 function  StringUnifierHistogram : TIntegerDynArray;
 
@@ -2464,6 +2465,13 @@ end;
 function UnifiedString(const fromStr : UnicodeString) : UnicodeString;
 begin
    UnifyAssignString(fromStr, Result);
+end;
+
+// UnifyString
+//
+procedure UnifyString(var str : UnicodeString);
+begin
+   str := UnifiedString(str);
 end;
 
 // TidyStringsUnifier
