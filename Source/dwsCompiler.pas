@@ -31,7 +31,7 @@ uses
   dwsCoreExprs, dwsMagicExprs, dwsRelExprs, dwsMethodExprs, dwsConstExprs,
   dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs,
   dwsOperators, dwsPascalTokenizer, dwsSystemOperators,
-  dwsUnitSymbols, dwsCompilerUtils;
+  dwsUnitSymbols, dwsCompilerUtils, dwsScriptSource;
 
 type
    TCompilerOption = (
@@ -10666,19 +10666,19 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
 
    function ReadNilTerm : TConstExpr;
    begin
-      Result:=TUnifiedConstList(FMainProg.UnifiedConstList).NilConst;
+      Result:=TUnifiedConstants(FMainProg.UnifiedConstants).NilConst;
       Result.IncRefCount;
    end;
 
    function ReadTrue : TConstExpr;
    begin
-      Result:=TUnifiedConstList(FMainProg.UnifiedConstList).TrueConst;
+      Result:=TUnifiedConstants(FMainProg.UnifiedConstants).TrueConst;
       Result.IncRefCount;
    end;
 
    function ReadFalse : TConstExpr;
    begin
-      Result:=TUnifiedConstList(FMainProg.UnifiedConstList).FalseConst;
+      Result:=TUnifiedConstants(FMainProg.UnifiedConstants).FalseConst;
       Result.IncRefCount;
    end;
 
@@ -11100,11 +11100,11 @@ end;
 function TdwsCompiler.ReadConstImmediateValue: TConstExpr;
 var
    tt : TTokenType;
-   unifiedList : TUnifiedConstList;
+   unifiedConstants : TUnifiedConstants;
    token : TToken;
 begin
    Result:=nil;
-   unifiedList:=TUnifiedConstList(FMainProg.UnifiedConstList);
+   unifiedConstants:=TUnifiedConstants(FMainProg.UnifiedConstants);
    tt:=FTok.TestAny([ttStrVal, ttIntVal, ttFloatVal]);
    if tt<>ttNone then begin
       token:=FTok.GetToken;
@@ -11112,17 +11112,17 @@ begin
          ttIntVal :
             // can't use a "case of" or range here because of compiler bug (will do a 32bit comparison)
             if (token.FInteger>=-1) and (token.FInteger<=2) then begin
-               Result:=unifiedList.Integers[token.FInteger];
+               Result:=unifiedConstants.Integers[token.FInteger];
                Result.IncRefCount;
             end else Result:=TConstIntExpr.CreateUnified(FProg, nil, token.FInteger);
          ttFloatVal :
             if token.FFloat=0 then begin
-               Result:=unifiedList.ZeroFloat;
+               Result:=unifiedConstants.ZeroFloat;
                Result.IncRefCount;
             end else Result:=TConstFloatExpr.CreateUnified(FProg, nil, token.FFloat);
          ttStrVal :
             if token.EmptyString then begin
-               Result:=unifiedList.EmptyString;
+               Result:=unifiedConstants.EmptyString;
                Result.IncRefCount;
             end else Result:=TConstStringExpr.CreateUnified(FProg, nil, token.AsString);
       end;

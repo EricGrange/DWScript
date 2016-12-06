@@ -24,7 +24,7 @@ unit dwsSymbols;
 interface
 
 uses SysUtils, Variants, Classes,
-   dwsStrings, dwsErrors, dwsUtils, dwsDateTime,
+   dwsStrings, dwsErrors, dwsUtils, dwsDateTime, dwsScriptSource,
    dwsTokenizer, dwsStack, dwsXPlatform, dwsDataContext
    {$ifdef FPC},LazUTF8{$endif};
 

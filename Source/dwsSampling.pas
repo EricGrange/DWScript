@@ -21,7 +21,7 @@ unit dwsSampling;
 interface
 
 uses Windows, Classes, dwsDebugger, dwsUtils, dwsErrors, dwsSymbols,
-   SysUtils, dwsExprs, dwsJSON, MMSystem, dwsStrings;
+   SysUtils, dwsExprs, dwsJSON, MMSystem, dwsStrings, dwsScriptSource;
 
 type
 

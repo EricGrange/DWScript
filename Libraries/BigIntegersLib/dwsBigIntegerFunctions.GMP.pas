@@ -25,7 +25,7 @@ uses
    dwsXPlatform, dwsUtils, dwsStrings,
    dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList, dwsUnitSymbols,
    dwsConstExprs, dwsMagicExprs, dwsDataContext, dwsErrors, dwsRelExprs,
-   dwsOperators, dwsTokenizer, dwsCryptoXPlatform,
+   dwsOperators, dwsTokenizer, dwsCryptoXPlatform, dwsScriptSource,
    dwsMPIR;
 
 const

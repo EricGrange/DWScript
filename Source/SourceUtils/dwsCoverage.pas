@@ -21,7 +21,8 @@ interface
 
 uses
    Classes, SysUtils,
-   dwsUtils, dwsSymbols, dwsDebugger, dwsExprs, dwsErrors, dwsXPlatform;
+   dwsUtils, dwsSymbols, dwsDebugger, dwsExprs, dwsErrors, dwsXPlatform,
+   dwsScriptSource;
 
 
 type

@@ -27,7 +27,7 @@ uses
    Variants, SysUtils,
    dwsUtils, dwsDataContext, dwsStack, dwsXPlatform, dwsErrors, dwsStrings,
    dwsExprs, dwsExprList, dwsSymbols, dwsUnitSymbols, dwsConnectorSymbols,
-   dwsCoreExprs;
+   dwsCoreExprs, dwsScriptSource;
 
 type
    TConnectorCallFlag = (ccfIsInstruction, ccfIsIndex, ccfHasVarParams,

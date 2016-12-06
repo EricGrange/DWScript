@@ -27,7 +27,7 @@ uses
    Classes, Variants, SysUtils,
    dwsUtils, dwsXPlatform, dwsDataContext, dwsExprList,
    dwsSymbols, dwsErrors, dwsStrings, dwsConvExprs,
-   dwsStack, dwsExprs,
+   dwsStack, dwsExprs, dwsScriptSource,
    dwsConstExprs, dwsTokenizer, dwsUnitSymbols
    {$ifdef FPC},LazUTF8{$endif};
 

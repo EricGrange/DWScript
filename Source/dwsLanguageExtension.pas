@@ -21,7 +21,7 @@ interface
 
 uses
   Classes, Types,
-  dwsCompiler, dwsExprs, dwsErrors, dwsSymbols, dwsUnitSymbols;
+  dwsCompiler, dwsExprs, dwsErrors, dwsSymbols, dwsUnitSymbols, dwsScriptSource;
 
 type
 

@@ -5,7 +5,7 @@ uses
    Classes,
    dwsXPlatform, dwsLinq, dwsExprs, dwsSymbols, dwsConstExprs,
    dwsMethodExprs, dwsCompiler, dwsCoreExprs, dwsErrors, dwsRelExprs,
-   dwsJson, dwsUtils;
+   dwsJson, dwsUtils, dwsScriptSource;
 
 type
    TLinqJsonExtension = class(TComponent)

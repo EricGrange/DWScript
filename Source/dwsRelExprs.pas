@@ -23,7 +23,7 @@ unit dwsRelExprs;
 
 interface
 
-uses dwsExprs, dwsSymbols, dwsErrors, dwsConstExprs, Variants;
+uses dwsExprs, dwsSymbols, dwsErrors, dwsConstExprs, Variants, dwsScriptSource;
 
 type
 

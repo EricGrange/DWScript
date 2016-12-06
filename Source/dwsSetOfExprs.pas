@@ -20,7 +20,7 @@ interface
 
 uses
    dwsUtils, dwsErrors, dwsDataContext,
-   dwsSymbols, dwsExprs;
+   dwsSymbols, dwsExprs, dwsScriptSource;
 
 type
 

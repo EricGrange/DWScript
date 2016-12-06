@@ -24,64 +24,14 @@ unit dwsErrors;
 interface
 
 uses
-   Classes, SysUtils, dwsStrings, dwsUtils, dwsXPlatform, dwsJSON;
+   Classes, SysUtils,
+   dwsStrings, dwsUtils, dwsScriptSource, dwsXPlatform, dwsJSON;
 
 type
 
    TdwsMessage = class;
    TScriptMessage = class;
    TdwsMessageList = class;
-
-   // TSourceFile
-   //
-   TSourceFile = class (TRefCountedObject)
-      private
-         FLineCount : Integer;
-         FCode : UnicodeString;
-
-      {$ifdef FPC}
-      protected
-         procedure SetCode(const sourceCode : UnicodeString);
-      {$endif}
-
-      public
-         Name : UnicodeString;
-         property Code : UnicodeString read FCode write {$ifdef FPC}SetCode{$else}FCode{$endif};
-         function LineCount : Integer;
-   end;
-
-   // TScriptPos
-   //
-   PScriptPos = ^TScriptPos;
-   TScriptPos = packed record
-      public
-         Line : Integer;
-         Col : Integer;
-         SourceFile : TSourceFile;
-
-         const cLineMask = $FFFFF;
-
-         class function Create(aSourceFile : TSourceFile; aLine, aCol : Integer) : TScriptPos; static;
-
-         procedure Clear; inline;
-
-         function SamePosAs(const aPos : TScriptPos) : Boolean;
-         function IsMainModule : Boolean;
-         function IsSourceFile(const name : UnicodeString) : Boolean;
-         function SourceName : UnicodeString; inline;
-         function SourceCode : UnicodeString; inline;
-         function Defined : Boolean;
-
-         procedure IncCol; inline;
-         procedure NewLine; inline;
-         procedure SetColLine(aCol, aLine : Integer); inline;
-         procedure SetLineCol(const aPos : TScriptPos); inline;
-
-         function IsBeforeOrEqual(const aPos : TScriptPos) : Boolean;
-
-         function AsInfo : UnicodeString;
-   end;
-   TScriptPosArray = array of TScriptPos; // dynamic array that can hold ScriptPos settings (needed for ReadNameList)
 
    // TdwsMessage
    //
@@ -350,11 +300,6 @@ type
          property Text : UnicodeString read FText write FText;
    end;
 
-procedure ConcatScriptPosArray(var dest : TScriptPosarray; const src : TScriptPosarray; nb : Integer);
-
-const
-   cNullPos: TScriptPos = (Line: 0; Col: 0; SourceFile: nil);
-
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -362,151 +307,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-// ConcatScriptPosArray
-//
-procedure ConcatScriptPosArray(var dest : TScriptPosarray; const src : TScriptPosarray; nb : Integer);
-var
-   nd : Integer;
-begin
-   if nb=0 then Exit;
-   nd:=Length(dest);
-   SetLength(dest, nd+nb);
-   System.Move(src[0], dest[nd], SizeOf(TScriptPos)*nb);
-end;
-
-// ------------------
-// ------------------ TScriptPos ------------------
-// ------------------
-
-// Create
-//
-class function TScriptPos.Create(aSourceFile : TSourceFile; aLine, aCol : Integer) : TScriptPos;
-begin
-   Result.SourceFile:=aSourceFile;
-   Result.Line:=aLine;
-   Result.Col:=aCol;
-end;
-
-// Clear
-//
-procedure TScriptPos.Clear;
-begin
-   SourceFile:=nil;
-   Line:=0;
-   Col:=Line;
-end;
-
-// SamePosAs
-//
-function TScriptPos.SamePosAs(const aPos : TScriptPos) : Boolean;
-begin
-   Result:=    (Line=aPos.Line) and (Col=aPos.Col)
-           and (SourceFile=aPos.SourceFile);
-end;
-
-// IsMainModule
-//
-function TScriptPos.IsMainModule : Boolean;
-begin
-   Result:=(SourceFile=nil) or (SourceFile.Name=MSG_MainModule);
-end;
-
-// IsSourceFile
-//
-function TScriptPos.IsSourceFile(const name : UnicodeString) : Boolean;
-begin
-   Result:=(SourceFile<>nil) and UnicodeSameText(SourceFile.Name, name);
-end;
-
-// SourceName
-//
-function TScriptPos.SourceName : UnicodeString;
-begin
-   if SourceFile<>nil then
-      Result:=SourceFile.Name
-   else Result:='';
-end;
-
-// SourceCode
-//
-function TScriptPos.SourceCode : UnicodeString;
-begin
-   if SourceFile<>nil then
-      Result:=SourceFile.Code
-   else Result:='';
-end;
-
-// Defined
-//
-function TScriptPos.Defined : Boolean;
-begin
-   Result:=(SourceFile<>nil) and ((Line or Col)<>0);
-end;
-
-// IncCol
-//
-procedure TScriptPos.IncCol;
-begin
-   Inc(Col);
-end;
-
-// NewLine
-//
-procedure TScriptPos.NewLine;
-begin
-   Inc(Line);
-   Col:=1;
-end;
-
-// SetColLine
-//
-procedure TScriptPos.SetColLine(aCol, aLine : Integer);
-begin
-   Col:=aCol;
-   Line:=aLine;
-end;
-
-// SetLineCol
-//
-procedure TScriptPos.SetLineCol(const aPos : TScriptPos);
-begin
-   PUInt64(@Self)^:=PUInt64(@aPos)^;
-end;
-
-// IsBeforeOrEqual
-//
-function TScriptPos.IsBeforeOrEqual(const aPos : TScriptPos) : Boolean;
-begin
-   Result:=    (SourceFile=aPos.SourceFile)
-           and (   (Line<aPos.Line)
-                or ((Line=aPos.Line) and (Col<=aPos.Col)));
-end;
-
-// AsInfo
-//
-function TScriptPos.AsInfo : UnicodeString;
-begin
-   if SourceFile=nil then
-      Result:=''
-   else begin
-      if not IsMainModule then
-         Result:=UnicodeFormat(MSG_ScriptPosFile, [SourceFile.Name])
-      else Result:='';
-      if Col<>cNullPos.Col then begin
-         if Result<>'' then
-            Result:=', '+Result;
-         Result:=UnicodeFormat(MSG_ScriptPosColumn, [Col])+Result;
-      end;
-      if Line<>cNullPos.Line then begin
-         if Result<>'' then
-            Result:=', '+Result;
-         Result:=UnicodeFormat(MSG_ScriptPosLine, [Line])+Result;
-      end;
-      if Result<>'' then
-         Result:=' ['+Result+']';
-   end;
-end;
 
 // ------------------
 // ------------------ ECompileException ------------------
@@ -1035,46 +835,6 @@ procedure TdwsCompileMessageList.AddCompilerStopFmt(const aScriptPos: TScriptPos
       const textFormat : UnicodeString; const args: array of const);
 begin
    AddCompilerStop(aScriptPos, UnicodeFormat(textFormat, args), TSyntaxErrorMessage);
-end;
-
-// ------------------
-// ------------------ TSourceFile ------------------
-// ------------------
-
-{$ifdef FPC}
-// SetCode
-//
-procedure TSourceFile.SetCode(const sourceCode: UnicodeString);
-begin
-   if Length(sourceCode)>3 then begin
-      if (Ord(sourceCode[1])=$EF) and (Ord(sourceCode[2])=$BB) and (Ord(sourceCode[3])=$BF) then begin
-         // UTF-8
-         FCode:=StrDeleteLeft(sourceCode, 3);
-      end else if (Ord(sourceCode[1])=$FE) and (Ord(sourceCode[2])=$FF) then begin
-         // UTF-16 BE
-         FCode:=UTF8Encode(StrDeleteLeft(sourceCode, 2));
-      end else if (Ord(sourceCode[1])=$FF) and (Ord(sourceCode[2])=$FE) then begin
-         // UTF-16 LE
-         // TODO: revert bytes...
-         FCode:=UTF8Encode(StrDeleteLeft(sourceCode, 2));
-      end else FCode:=sourceCode;
-   end else FCode:=sourceCode;
-end;
-{$endif}
-
-// LineCount
-//
-function TSourceFile.LineCount : Integer;
-var
-   i : Integer;
-begin
-   if FLineCount=0 then begin
-      FLineCount:=1;
-      for i:=1 to Length(Code) do
-         if Code[i]=#10 then
-            Inc(FLineCount);
-   end;
-   Result:=FLineCount;
 end;
 
 // ------------------

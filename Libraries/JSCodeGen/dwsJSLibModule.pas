@@ -25,7 +25,7 @@ uses
    dwsLanguageExtension, dwsComp, dwsCompiler, dwsDataContext, dwsConnectorSymbols,
    dwsExprs, dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs,
    dwsStrings, dwsXPlatform, StrUtils, dwsUtils, dwsOperators, dwsUnitSymbols,
-   dwsFunctions, dwsMagicExprs, dwsPascalTokenizer;
+   dwsFunctions, dwsMagicExprs, dwsPascalTokenizer, dwsScriptSource;
 
 type
 

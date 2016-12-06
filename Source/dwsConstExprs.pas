@@ -26,7 +26,7 @@ interface
 uses
    Variants, SysUtils,
    dwsUtils, dwsDataContext, dwsStack, dwsXPlatform, dwsErrors, dwsStrings,
-   dwsExprs, dwsExprList, dwsSymbols, dwsUnitSymbols;
+   dwsExprs, dwsExprList, dwsSymbols, dwsUnitSymbols, dwsScriptSource;
 
 type
 
@@ -170,9 +170,9 @@ type
 
    TStandardIntegersConstIntExprArray = array [-1..2] of TUnifiedConstExpr;
 
-   // TUnifiedConstList
+   // TUnifiedConstants
    //
-   TUnifiedConstList = class (TSortedExprBaseList)
+   TUnifiedConstants = class
       private
          FEmptyString : TUnifiedConstExpr;
          FIntegers : TStandardIntegersConstIntExprArray;
@@ -180,13 +180,9 @@ type
          FTrue, FFalse : TUnifiedConstExpr;
          FNil : TConstNilExpr;
 
-      protected
-         function Compare(const item1, item2 : TExprBase) : Integer; override;
-
       public
+         constructor Create(prog : TdwsMainProgram; systemTable : TSystemSymbolTable);
          destructor Destroy; override;
-
-         procedure Precharge(prog : TdwsMainProgram; systemTable : TSystemSymbolTable);
 
          property EmptyString : TUnifiedConstExpr read FEmptyString;
          property Integers : TStandardIntegersConstIntExprArray read FIntegers;
@@ -503,25 +499,8 @@ end;
 //
 class function TUnifiedConstExpr.CreateUnified(Prog: TdwsProgram; Typ: TTypeSymbol;
                                                const Value: Variant) : TUnifiedConstExpr;
-var
-   i : Integer;
-   added : Boolean;
-   main : TdwsMainProgram;
 begin
    Result := Self.Create(Prog, Typ, Value);
-
-   main := Prog.Root;
-   main.UnifiedConstListLock.BeginWrite;
-   try
-      i:=Prog.Root.UnifiedConstList.AddOrFind(Result, added);
-      if not added then begin
-         Result.Free;
-         Result:=TUnifiedConstExpr(Prog.Root.UnifiedConstList[i]);
-      end;
-      Result.IncRefCount;
-   finally
-      main.UnifiedConstListLock.EndWrite;
-   end;
 end;
 
 // ------------------
@@ -697,31 +676,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TUnifiedConstList<TExprBase> ------------------
+// ------------------ TUnifiedConstants ------------------
 // ------------------
-
-// Destroy
-//
-destructor TUnifiedConstList.Destroy;
-var
-   i : Integer;
-begin
-   Clean;
-   FEmptyString.Free;
-   for i:=Low(FIntegers) to High(FIntegers) do begin
-      Assert(FIntegers[i].RefCount=0);
-      FIntegers[i].Free;
-   end;
-   FZeroFloat.Free;
-   FTrue.Free;
-   FFalse.Free;
-   FNil.Free;
-   inherited;
-end;
 
 // Precharge
 //
-procedure TUnifiedConstList.Precharge(prog : TdwsMainProgram; systemTable : TSystemSymbolTable);
+constructor TUnifiedConstants.Create(prog : TdwsMainProgram; systemTable : TSystemSymbolTable);
 const
    cEmptyString : UnicodeString = '';
    cZeroFloat : Double = 0;
@@ -740,45 +700,22 @@ begin
    FNil:=TConstNilExpr.Create(prog, prog.TypNil, cNilIntf);
 end;
 
-// Compare
+// Destroy
 //
-function TUnifiedConstList.Compare(const item1, item2 : TExprBase) : Integer;
+destructor TUnifiedConstants.Destroy;
 var
-   unified1, unified2 : TUnifiedConstExpr;
-   vd1, vd2 : PVarData;
-   rawResult : Int64;
+   i : Integer;
 begin
-   unified1:=TUnifiedConstExpr(item1);
-   unified2:=TUnifiedConstExpr(item2);
-   if unified1.ClassType=unified2.ClassType then begin
-      if unified1.Typ=unified2.Typ then begin
-         vd1:=@unified1.FData[0];
-         vd2:=@unified2.FData[0];
-         rawResult:=Integer(vd1.VType)-Integer(vd2.VType);
-         if rawResult=0 then begin
-            case vd1.VType of
-               varUString : rawResult:=UnicodeCompareStr(UnicodeString(vd1.VString), UnicodeString(vd2.VString));
-               varInt64 : rawResult:=vd1.VInt64-vd2.VInt64;
-               varBoolean : rawResult:=Integer(vd1.VBoolean)-Integer(vd2.VBoolean);
-            else
-               case VarCompareValue(unified1.FData[0], unified2.FData[0]) of
-                  vrEqual : rawResult:=0;
-                  vrLessThan : rawResult:=-1;
-                  vrGreaterThan : rawResult:=1;
-               else
-                  rawResult:=0;
-                  Assert(False);
-               end;
-            end;
-         end;
-      end else rawResult:=NativeInt(unified1.Typ)-NativeInt(unified2.Typ);
-   end else rawResult:=NativeInt(unified1.ClassType)-NativeInt(unified2.ClassType);
-
-   if rawResult=0 then
-      Result:=0
-   else if rawResult>0 then
-      Result:=1
-   else Result:=-1;
+   FEmptyString.Free;
+   for i:=Low(FIntegers) to High(FIntegers) do begin
+      Assert(FIntegers[i].RefCount=0);
+      FIntegers[i].Free;
+   end;
+   FZeroFloat.Free;
+   FTrue.Free;
+   FFalse.Free;
+   FNil.Free;
+   inherited;
 end;
 
 // ------------------

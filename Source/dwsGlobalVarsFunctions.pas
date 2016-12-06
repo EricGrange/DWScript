@@ -40,7 +40,7 @@ uses
    Variants, Windows, Classes, SysUtils, Masks,
    dwsXPlatform, dwsUtils, dwsStrings, dwsExprList, dwsConstExprs, dwsErrors,
    dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs, dwsDataContext,
-   dwsGlobalVars;
+   dwsGlobalVars, dwsScriptSource;
 
 type
 

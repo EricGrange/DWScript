@@ -8,7 +8,7 @@ uses
    Classes, SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsDataContext,
    dwsTokenizer, dwsErrors, dwsUtils, Variants, dwsSymbols, dwsSuggestions,
-   dwsFunctions, dwsCaseNormalizer;
+   dwsFunctions, dwsCaseNormalizer, dwsScriptSource;
 
 type
 

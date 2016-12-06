@@ -25,7 +25,7 @@ interface
 
 uses
    Variants,
-   dwsErrors, dwsStrings, dwsUtils,
+   dwsErrors, dwsStrings, dwsUtils, dwsScriptSource,
    dwsSymbols, dwsDataContext, dwsStack, dwsFunctions,
    dwsExprs, dwsExprList, dwsMagicExprs;
 

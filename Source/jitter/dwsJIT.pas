@@ -21,7 +21,7 @@ interface
 uses
    Classes, SysUtils,
    dwsExprs, dwsExprList, dwsSymbols, dwsErrors, dwsUtils, dwsCoreExprs, dwsXPlatform,
-   dwsRelExprs, dwsMagicExprs, dwsJITFixups;
+   dwsRelExprs, dwsMagicExprs, dwsJITFixups, dwsScriptSource;
 
 type
 

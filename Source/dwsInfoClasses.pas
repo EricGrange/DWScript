@@ -25,7 +25,7 @@ interface
 
 uses
    Classes, SysUtils, Variants,
-   dwsUtils, dwsXPlatform, dwsDataContext, dwsInfo,
+   dwsUtils, dwsXPlatform, dwsDataContext, dwsInfo, dwsScriptSource,
    dwsSymbols, dwsConnectorSymbols, dwsStack, dwsExprs, dwsFunctions, dwsConstExprs,
    dwsConnectorExprs, dwsConvExprs, dwsMethodExprs, dwsResultFunctions,
    dwsStrings, dwsErrors, dwsCompilerUtils;

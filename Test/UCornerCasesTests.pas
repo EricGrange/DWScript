@@ -6,7 +6,8 @@ uses
    Windows, Classes, SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsDataContext, dwsInfo,
    dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, Variants,
-   dwsSymbols, dwsPascalTokenizer, dwsStrings, dwsJSON, dwsFunctions, dwsFilter;
+   dwsSymbols, dwsPascalTokenizer, dwsStrings, dwsJSON, dwsFunctions,
+   dwsFilter, dwsScriptSource;
 
 type
 
