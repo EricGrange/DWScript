@@ -30,7 +30,8 @@ unit dwsStringResult;
 interface
 
 uses
-  Variants, Classes, SysUtils, dwsExprs, dwsSymbols, dwsComp, dwsUtils;
+  Variants, Classes, SysUtils, dwsExprs, dwsSymbols, dwsComp, dwsUtils,
+  dwsLegacy;
 
 type
    TdwsStringResult = class(TdwsResult)
@@ -93,32 +94,32 @@ uses
    dwsFunctions, dwsStrings;
 
 type
-  TWriteFunction = class(TInternalFunction)
+  TWriteFunction = class(TInternalFunctionWithExecute)
   public
     procedure Execute(info : TProgramInfo); override;
   end;
 
-  TWriteLnFunction = class(TInternalFunction)
+  TWriteLnFunction = class(TInternalFunctionWithExecute)
   public
     procedure Execute(info : TProgramInfo); override;
   end;
 
-  TWriteAllFunction = class(TInternalFunction)
+  TWriteAllFunction = class(TInternalFunctionWithExecute)
   public
     procedure Execute(info : TProgramInfo); override;
   end;
 
-  TReadCharFunction = class(TInternalFunction)
+  TReadCharFunction = class(TInternalFunctionWithExecute)
   public
     procedure Execute(info : TProgramInfo); override;
   end;
 
-  TReadLnFunction = class(TInternalFunction)
+  TReadLnFunction = class(TInternalFunctionWithExecute)
   public
     procedure Execute(info : TProgramInfo); override;
   end;
 
-  TReadAllFunction = class(TInternalFunction)
+  TReadAllFunction = class(TInternalFunctionWithExecute)
   public
     procedure Execute(info : TProgramInfo); override;
   end;
