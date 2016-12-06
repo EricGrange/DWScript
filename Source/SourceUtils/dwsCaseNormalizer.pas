@@ -23,7 +23,7 @@ interface
 uses
    Classes, SysUtils,
    dwsUtils, dwsScriptSource,
-   dwsErrors, dwsExprs, dwsSymbols;
+   dwsErrors, dwsExprs, dwsSymbols, dwsSymbolDictionary;
 
 type
    TCaseNormalizerEvent = procedure (line, col : Integer; const name : UnicodeString) of object;

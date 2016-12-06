@@ -302,9 +302,9 @@ begin
       if     toTyp.IsOfType(prog.TypFloat)
          and expr.IsOfType(prog.TypInteger) then begin
          if expr is TConstIntExpr then begin
-            Result:=TConstFloatExpr.CreateTypedVariantValue(prog, prog.TypFloat, TConstIntExpr(expr).Value);
+            Result := TConstFloatExpr.CreateTypedVariantValue(prog, prog.TypFloat, TConstIntExpr(expr).Value);
             expr.Free;
-         end else Result:=TConvIntToFloatExpr.Create(prog, expr);
+         end else Result := TConvIntToFloatExpr.Create(prog, expr);
       end;
 
    end;

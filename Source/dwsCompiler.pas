@@ -31,7 +31,7 @@ uses
   dwsCoreExprs, dwsMagicExprs, dwsRelExprs, dwsMethodExprs, dwsConstExprs,
   dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs,
   dwsOperators, dwsPascalTokenizer, dwsSystemOperators,
-  dwsUnitSymbols, dwsCompilerUtils, dwsScriptSource;
+  dwsUnitSymbols, dwsCompilerUtils, dwsScriptSource, dwsSymbolDictionary;
 
 type
    TCompilerOption = (

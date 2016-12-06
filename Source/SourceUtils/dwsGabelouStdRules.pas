@@ -21,7 +21,7 @@ interface
 
 uses Classes, SysUtils, Character,
    dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsCoreExprs, dwsTokenizer,
-   dwsStrings, dwsUnitSymbols,
+   dwsStrings, dwsUnitSymbols, dwsSymbolDictionary,
    dwsGabelou, dwsGabelouStrings;
 
 type

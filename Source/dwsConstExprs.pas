@@ -65,7 +65,7 @@ type
 
          class function CreateTypedDefault(prog : TdwsProgram; typ : TTypeSymbol) : TConstExpr;
 
-         class function CreateTypedVariantValue(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant) : TConstExpr; overload; static;
+         class function CreateTypedVariantValue(prog : TdwsProgram; typ : TTypeSymbol; const value : Variant) : TConstExpr; overload; static;
 
          class function CreateIntegerValue(prog : TdwsProgram; const value : Int64) : TConstExpr; overload; static;
          class function CreateIntegerValue(prog : TdwsProgram; typ : TTypeSymbol; const value : Int64) : TConstExpr; overload; static;

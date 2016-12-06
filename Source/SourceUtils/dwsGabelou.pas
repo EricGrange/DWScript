@@ -19,7 +19,8 @@ unit dwsGabelou;
 
 interface
 
-uses SysUtils, dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsGabelouStrings, dwsScriptSource;
+uses SysUtils, dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsGabelouStrings,
+   dwsScriptSource, dwsSymbolDictionary;
 
 type
 

@@ -44,6 +44,7 @@ uses
   dwsRTTIFunctions,
   dwsRTTIConnector,
   dwsStringResult,
+  dwsMetrics,
   UJSONTests in 'UJSONTests.pas',
   UJSONConnectorTests in 'UJSONConnectorTests.pas',
   UTokenizerTests in 'UTokenizerTests.pas',
@@ -66,7 +67,8 @@ uses
   dwsInfo in '..\Source\dwsInfo.pas',
   dwsEvaluate in '..\Source\dwsEvaluate.pas',
   dwsFilter in '..\Source\dwsFilter.pas',
-  dwsScriptSource in '..\Source\dwsScriptSource.pas';
+  dwsScriptSource in '..\Source\dwsScriptSource.pas',
+  dwsSymbolDictionary in '..\Source\dwsSymbolDictionary.pas';
 
 {$R *.res}
 
