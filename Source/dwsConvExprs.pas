@@ -291,10 +291,11 @@ begin
    end else if     (toTyp is TStructuredTypeMetaSymbol)
                and (expr.Typ.IsOfType(toTyp.Typ)) then begin
 
-      Assert(toTyp.ClassType=TClassOfSymbol);
-      Result:=TObjToClassTypeExpr.Create(prog, expr);
-      if toTyp.Typ<>expr.Typ then
-         Result:=TClassAsClassExpr.Create(prog, scriptPos, Result, toTyp);
+      if toTyp.ClassType=TClassOfSymbol then begin
+         Result:=TObjToClassTypeExpr.Create(prog, expr);
+         if toTyp.Typ<>expr.Typ then
+            Result:=TClassAsClassExpr.Create(prog, scriptPos, Result, toTyp);
+      end;
 
    end else begin
 
