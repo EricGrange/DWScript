@@ -68,7 +68,8 @@ uses
   dwsEvaluate in '..\Source\dwsEvaluate.pas',
   dwsFilter in '..\Source\dwsFilter.pas',
   dwsScriptSource in '..\Source\dwsScriptSource.pas',
-  dwsSymbolDictionary in '..\Source\dwsSymbolDictionary.pas';
+  dwsSymbolDictionary in '..\Source\dwsSymbolDictionary.pas',
+  dwsContextMap in '..\Source\dwsContextMap.pas';
 
 {$R *.res}
 

@@ -24,7 +24,8 @@ unit dwsEvaluate;
 interface
 
 uses
-   dwsCompiler, dwsExprs, dwsErrors, dwsStrings, dwsConstExprs, dwsScriptSource;
+   dwsCompiler, dwsExprs, dwsErrors, dwsStrings, dwsConstExprs, dwsScriptSource,
+   dwsContextMap;
 
 type
 
