@@ -5054,7 +5054,7 @@ end;
 //
 procedure TBaseStringSymbol.InitData(const data : TData; offset : Integer);
 begin
-   data[offset]:='';
+   VarSetDefaultString(data[offset]);
 end;
 
 // ------------------

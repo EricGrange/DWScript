@@ -139,11 +139,14 @@ type
    TConstStringExpr = class(TConstExpr)
       private
          FValue : UnicodeString;
+
+         procedure SetValue(const v : UnicodeString);
+
       public
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
 
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
-         property Value : UnicodeString read FValue write FValue;
+         property Value : UnicodeString read FValue write SetValue;
    end;
 
    // TConstArrayExpr
@@ -632,8 +635,7 @@ begin
    if typ = nil then
       FTyp := prog.TypString
    else FTyp := typ;
-   VariantToString(value, FValue);
-   UnifyString(FValue);
+   VariantToUnifiedString(value, FValue);
    SetLength(FData, 1);
    FData[0] := FValue;
 end;
@@ -650,6 +652,14 @@ asm
    mov   eax, ecx
    call  System.@UStrAsg;
 {$endif}
+end;
+
+// SetValue
+//
+procedure TConstStringExpr.SetValue(const v : UnicodeString);
+begin
+   FValue := v;
+   FData[0] := FValue;
 end;
 
 // ------------------

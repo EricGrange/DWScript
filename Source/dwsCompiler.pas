@@ -10312,21 +10312,20 @@ end;
 //
 function TdwsCompiler.ReadExprAdd(expecting : TTypeSymbol = nil; leftExpr : TTypedExpr = nil) : TTypedExpr;
 var
-   right: TTypedExpr;
-   tt: TTokenType;
-   hotPos: TScriptPos;
+   right : TTypedExpr;
+   tt : TTokenType;
+   hotPos : TScriptPos;
    opExpr : TTypedExpr;
 begin
    // Read left argument
-   if leftExpr=nil then
-      Result:=ReadExprMult(expecting)
-   else Result:=leftExpr;
+   if leftExpr = nil then
+      Result := ReadExprMult(expecting)
+   else Result := leftExpr;
    try
 
       repeat
-         tt:=FTok.TestDeleteAny([ttPLUS, ttMINUS, ttOR, ttXOR,
-                                 ttNOT]);
-         if tt=ttNone then Break;
+         tt := FTok.TestDeleteAny([ttPLUS, ttMINUS, ttOR, ttXOR, ttNOT]);
+         if tt = ttNone then Break;
 
          hotPos := FTok.HotPos;
 
@@ -10391,15 +10390,15 @@ var
    rightTyp : TTypeSymbol;
 begin
    // Read left argument
-   if leftExpr=nil then
-      Result:=ReadTerm(False, expecting)
-   else Result:=leftExpr;
+   if leftExpr = nil then
+      Result := ReadTerm(False, expecting)
+   else Result := leftExpr;
    try
       repeat
-         tt:=FTok.TestDeleteAny([ttTIMES, ttDIVIDE, ttMOD, ttDIV, ttAND,
-                                 ttCARET, ttAS, ttLESSLESS, ttGTRGTR, ttQUESTIONQUESTION,
-                                 ttSHL, ttSHR, ttSAR]);
-         if tt=ttNone then Break;
+         tt := FTok.TestDeleteAny([ttTIMES, ttDIVIDE, ttMOD, ttDIV, ttAND,
+                                   ttCARET, ttAS, ttLESSLESS, ttGTRGTR, ttQUESTIONQUESTION,
+                                   ttSHL, ttSHR, ttSAR]);
+         if tt = ttNone then Break;
 
          // Save position of the operator
          hotPos := FTok.HotPos;
@@ -10863,12 +10862,12 @@ var
    nameExpr : TProgramExpr;
    hotPos : TScriptPos;
 begin
-   tt:=FTok.TestAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT, ttAT,
-                     ttTRUE, ttFALSE, ttNIL, ttIF,
-                     ttFUNCTION, ttPROCEDURE, ttLAMBDA,
-                     ttRECORD, ttCLASS,
-                     ttBRIGHT]);
-   if tt<>ttNone then begin
+   tt := FTok.TestAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT, ttAT,
+                       ttTRUE, ttFALSE, ttNIL, ttIF,
+                       ttFUNCTION, ttPROCEDURE, ttLAMBDA,
+                       ttRECORD, ttCLASS,
+                       ttBRIGHT]);
+   if tt <> ttNone then begin
       // special logic for property write expressions
       if tt=ttBRIGHT then begin
          if FPendingSetterValueExpr<>nil then begin
