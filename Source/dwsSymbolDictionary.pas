@@ -61,9 +61,10 @@ type
          end;
 
       private
-         FSymbol : TSymbol;                        // pointer to the symbol
-         FPosList : TSimpleList<TSymbolPosition>;  // list of positions where symbol is declared and used
-         FSourceFile : TSourceFile; // not nil only if all positions are in that file
+         FSymbol : TSymbol;                     // pointer to the symbol
+         FPosList : array of TSymbolPosition;   // list of positions where symbol is declared and used
+         FCount : Integer;
+         FSourceFile : TSourceFile;             // not nil only if all positions are in that file
 
       protected
          function GetPosition(index : Integer) : TSymbolPosition; inline;
@@ -147,7 +148,7 @@ type
          function GetEnumerator : TdwsSymbolDictionaryEnumerator;
 
          function Count : Integer; inline;
-         property Items[Index: Integer] : TSymbolPositionList read GetList; default;
+         property Items[index: Integer] : TSymbolPositionList read GetList; default;
    end;
 
 // ------------------------------------------------------------------
@@ -167,7 +168,6 @@ implementation
 constructor TSymbolPositionList.Create(ASymbol: TSymbol);
 begin
    FSymbol:=ASymbol;
-   FPosList:=TSimpleList<TSymbolPosition>.Create;
 end;
 
 // Destroy
@@ -175,7 +175,6 @@ end;
 destructor TSymbolPositionList.Destroy;
 begin
    Clear;
-   FPosList.Free;
    inherited;
 end;
 
@@ -184,10 +183,11 @@ end;
 procedure TSymbolPositionList.Add(const scriptPos : TScriptPos; const useTypes : TSymbolUsages);
 var
    symPos : TSymbolPosition;
+   capacity : Integer;
 begin
    if (scriptPos.Line<=0) or (scriptPos.SourceFile=nil) then Exit;
 
-   if FPosList.Count=0 then
+   if FCount=0 then
       FSourceFile:=scriptPos.SourceFile
    else if FSourceFile<>scriptPos.SourceFile then
       FSourceFile:=nil;
@@ -195,15 +195,29 @@ begin
    New(symPos);
    symPos.FScriptPos:=scriptPos;
    symPos.FSymUsages:=useTypes;
-   FPosList.Add(symPos);
+
+   capacity := Length(FPosList);
+   if FCount = capacity then
+      SetLength(FPosList, capacity + 8 + (capacity shr 2));
+
+   FPosList[FCount] := symPos;
+   Inc(FCount);
 end;
 
 // Delete
 //
 procedure TSymbolPositionList.Delete(index : Integer);
+var
+   n : Integer;
 begin
    Dispose(FPosList[index]);
-   FPosList.Extract(index);
+
+   n := FCount-index-1;
+   if n > 0 then begin
+      Move(FPosList[index+1], FPosList[index], n*SizeOf(TSymbolPosition));
+      FillChar(FPosList[FCount-1], SizeOf(TSymbolPosition), 0);
+   end;
+   Dec(FCount);
 end;
 
 // Clear
@@ -212,9 +226,9 @@ procedure TSymbolPositionList.Clear;
 var
    i : Integer;
 begin
-   for i:=0 to FPosList.Count-1 do
+   for i:=0 to FCount-1 do
       Dispose(FPosList[i]);
-   FPosList.Clear;
+   SetLength(FPosList, 0);
 end;
 
 // FindSymbolAtPosition
@@ -224,7 +238,7 @@ var
    i : Integer;
    symPos : TSymbolPosition;
 begin
-   for i:=0 to FPosList.Count-1 do begin
+   for i:=0 to FCount-1 do begin
       symPos:=FPosList[i];
       if     (symPos.ScriptPos.Line=ALine)
          and (symPos.ScriptPos.Col=ACol)
@@ -246,7 +260,7 @@ end;
 //
 function TSymbolPositionList.Count: Integer;
 begin
-   Result:=FPosList.Count;
+   Result:=FCount;
 end;
 
 // FindUsage
@@ -284,11 +298,9 @@ end;
 function TSymbolPositionList.IndexOfPosition(const scriptPos : TScriptPos) : Integer;
 var
    i : Integer;
-   symPos : TSymbolPosition;
 begin
    for i:=0 to Count-1 do begin
-      symPos:=FPosList[i];
-      if symPos.ScriptPos.SamePosAs(scriptPos) then
+      if FPosList[i].ScriptPos.SamePosAs(scriptPos) then
          Exit(i);
    end;
    Result:=-1;
@@ -301,12 +313,11 @@ var
    i : Integer;
    symPos : TSymbolPosition;
 begin
-   for i:=FPosList.Count-1 downto 0 do begin
-      symPos:=FPosList[i];
+   for i := FCount-1 downto 0 do begin
+      symPos := FPosList[i];
       if     startPos.IsBeforeOrEqual(symPos.ScriptPos)
          and symPos.ScriptPos.IsBeforeOrEqual(endPos) then begin
-         Dispose(symPos);
-         FPosList.Extract(i);
+         Delete(i);
       end;
    end;
 end;
