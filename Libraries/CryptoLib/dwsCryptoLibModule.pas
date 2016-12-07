@@ -346,7 +346,7 @@ var
 begin
    signature := GetCurrentUserName+','+ParamStr(0);
    digest := SHA256Digest(Pointer(signature), Length(signature)*SizeOf(Char));
-   FNonceFilename := IncludeTrailingPathDelimiter(TPath.GetTempPath)
+   NonceFilename :=  IncludeTrailingPathDelimiter(TPath.GetTempPath)
                    + DigestToSimplifiedBase64(@digest, SizeOf(digest) div 2)
                    + '.nonces';
 end;
