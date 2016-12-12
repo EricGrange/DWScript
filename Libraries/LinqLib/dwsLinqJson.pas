@@ -625,12 +625,12 @@ begin
    prog := compiler.CurrentProg;
    FData := TDataSymbol.Create('', FBase.FTyp);
    FData.AllocateStackAddr(prog.Table.AddrGenerator);
-   jsonVar := TVarExpr.Create(prog, FData);
+   jsonVar := TVarExpr.Create(FData);
    FBase.IncRefCount;
-   FAssign := TAssignExpr.Create(prog, aPos, compiler.CompileTimeExecution, jsonVar, FBase);
+   FAssign := TAssignExpr.Create(compiler.CompilerContext, aPos, compiler.CompileTimeExecution, jsonVar, FBase);
    jsonVar.IncRefCount;
    FInto.AddArg(jsonVar);
-   FInto.Initialize(prog);
+   FInto.Initialize(compiler.CompilerContext);
 end;
 
 destructor TJsonIntoFilter.Destroy;

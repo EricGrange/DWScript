@@ -19,7 +19,7 @@ unit dwsSetOfExprs;
 interface
 
 uses
-   dwsUtils, dwsErrors, dwsDataContext,
+   dwsUtils, dwsErrors, dwsDataContext, dwsCompilerContext,
    dwsSymbols, dwsExprs, dwsScriptSource;
 
 type
@@ -38,7 +38,7 @@ type
          procedure Perform(const dc : IDataContext; value : Integer); virtual; abstract;
 
       public
-         constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                             aBase : TDataExpr; operand : TTypedExpr);
          destructor Destroy; override;
 
@@ -64,9 +64,9 @@ type
          FSetType : TSetOfSymbol;
 
       public
-         constructor Create(prog: TdwsProgram; const aScriptPos : TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
                             aLeft : TTypedExpr; aRight : TDataExpr); reintroduce;
-         class function CreateOptimal(prog: TdwsProgram; const aScriptPos : TScriptPos;
+         class function CreateOptimal(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
                                       aLeft : TTypedExpr; aRight : TDataExpr) : TSetOfInExpr; static;
 
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
@@ -87,7 +87,7 @@ implementation
 
 // Create
 //
-constructor TSetOfFunctionExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+constructor TSetOfFunctionExpr.Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                                     aBase : TDataExpr; operand : TTypedExpr);
 begin
    inherited Create(scriptPos);
@@ -168,21 +168,21 @@ end;
 
 // Create
 //
-constructor TSetOfInExpr.Create(prog: TdwsProgram; const aScriptPos : TScriptPos;
+constructor TSetOfInExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
                                 aLeft : TTypedExpr; aRight : TDataExpr);
 begin
-   inherited Create(prog, aScriptPos, aLeft, aRight);
+   inherited Create(context, aScriptPos, aLeft, aRight);
    FSetType:=TSetOfSymbol(aRight.Typ);
 end;
 
 // CreateOptimal
 //
-class function TSetOfInExpr.CreateOptimal(prog: TdwsProgram; const aScriptPos : TScriptPos;
+class function TSetOfInExpr.CreateOptimal(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
                                           aLeft : TTypedExpr; aRight : TDataExpr) : TSetOfInExpr;
 begin
    if (aRight.Typ as TSetOfSymbol).CountValue<=32 then
-      Result:=TSetOfSmallInExpr.Create(prog, aScriptPos, aLeft, aRight)
-   else Result:=TSetOfInExpr.Create(prog, aScriptPos, aLeft, aRight);
+      Result := TSetOfSmallInExpr.Create(context, aScriptPos, aLeft, aRight)
+   else Result := TSetOfInExpr.Create(context, aScriptPos, aLeft, aRight);
 end;
 
 // EvalAsBoolean

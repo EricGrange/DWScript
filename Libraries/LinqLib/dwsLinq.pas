@@ -194,7 +194,7 @@ begin
    base := idx.baseExpr;
    assert(base.typ.classtype = TDynamicArraySymbol);
    ident := TSqlIdentifier(TConvVarToIntegerExpr(idx.ItemExpr).expr);
-   result := TSqlInExpr.Create(compiler.CurrentProg, compiler.Tokenizer.HotPos, ident, base);
+   result := TSqlInExpr.Create(compiler.CompilerContext, compiler.Tokenizer.HotPos, ident, base);
    base.IncRefCount;
    ident.IncRefCount;
    expr.Free;
@@ -225,7 +225,7 @@ begin
       expr := ReadComparisonExpr(compiler, tok);
       try
          while tok.TestDelete(ttOr) do
-            expr := TBoolOrExpr.Create(compiler.CurrentProg, cNullPos, expr, ReadComparisonExpr(compiler, tok));
+            expr := TBoolOrExpr.Create(compiler.CompilerContext, cNullPos, expr, ReadComparisonExpr(compiler, tok));
          List.Add(expr);
          expr := nil;
       except
@@ -561,7 +561,7 @@ end;
 function TypeSymbol(const compiler: IdwsCompiler; base: TTypedExpr): TFuncSymbol;
 begin
    result := TFuncSymbol.Create('', fkMethod, 0);
-   result.Typ := compiler.Compiler.CurrentProg.TypAnyType;
+   result.Typ := compiler.CompilerContext.TypAnyType;
    result.AddParam(TParamSymbol.Create('', base.Typ));
 end;
 
@@ -588,7 +588,7 @@ begin
             target.Free;
             Error(compiler, 'Into expression must be a valid function reference.');
          end;
-         targetFunc := TFuncPtrExpr.Create(compiler.CurrentProg, aPos, target);
+         targetFunc := TFuncPtrExpr.Create(compiler.CompilerContext, aPos, target);
          result := FQueryBuilder.Into(base, targetFunc, aPos);
       except
          base.Free;
@@ -635,7 +635,7 @@ end;
 
 constructor TSqlIdentifier.Create(const name: string; const compiler: IdwsCompiler);
 begin
-   inherited Create(compiler.CurrentProg, compiler.CurrentProg.TypVariant, name);
+   inherited Create(compiler.CompilerContext.TypVariant, name);
 end;
 
 
@@ -666,7 +666,7 @@ end;
 constructor TSqlFunction.Create(base: TsqlIdentifier; const compiler: IdwsCompiler);
 begin
    inherited Create(base.Value, compiler);
-   FFunction := TFuncExpr.Create(compiler.CurrentProg, compiler.Tokenizer.CurrentPos, nil);
+   FFunction := TFuncExpr.Create(compiler.CompilerContext, compiler.Tokenizer.CurrentPos, nil);
 end;
 
 destructor TSqlFunction.Destroy;
@@ -690,7 +690,7 @@ begin
             sl.Add(TsqlIdentifier(arg).GetValue(params, prog, newParam))
          else begin
             sl.Add(newParam());
-            params.AddElementExpr(cNullPos, prog, arg as TTypedExpr);
+            params.AddElementExpr(cNullPos, prog.Root.CompilerContext, arg as TTypedExpr);
          end;
       end;
       result := self.Value + '(' + sl.CommaText + ')';

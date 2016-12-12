@@ -21,7 +21,7 @@ interface
 
 uses
    Classes, SysUtils, Variants, Math,
-   dwsUtils, dwsXPlatform;
+   dwsUtils, dwsXPlatform, dwsXXHash;
 
 type
 

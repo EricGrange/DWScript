@@ -28,7 +28,7 @@ uses
    dwsUtils, dwsXPlatform, dwsDataContext, dwsInfo, dwsScriptSource,
    dwsSymbols, dwsConnectorSymbols, dwsStack, dwsExprs, dwsFunctions, dwsConstExprs,
    dwsConnectorExprs, dwsConvExprs, dwsMethodExprs, dwsResultFunctions,
-   dwsStrings, dwsErrors, dwsCompilerUtils;
+   dwsStrings, dwsErrors, dwsCompilerUtils, dwsCompilerContext;
 
 type
 
@@ -231,7 +231,7 @@ type
          FUsesTempParams: Boolean;
          FForceStatic: Boolean;
 
-         function CreateTempFuncExpr : TFuncExprBase;
+         function CreateTempFuncExpr(context : TdwsCompilerContext) : TFuncExprBase;
          procedure InitTempParams;
          function GetParameter(const s: UnicodeString): IInfo; override;
          function GetExternalObject: TObject; override;
@@ -943,19 +943,19 @@ begin
       // Simulate the params of the functions as local variables
       FExec.Stack.Push(FParamSize);
       try
-         funcExpr:=CreateTempFuncExpr;
+         funcExpr:=CreateTempFuncExpr(FExec.CompilerContext);
          FExec.ExternalObject:=FExternalObject;
          try
 
             for x := 0 to FTempParams.Count - 1 do begin
                tp := TTempParam(FTempParams[x]);
                if tp.IsVarParam then begin
-                  funcExpr.AddArg(TVarExpr.Create(FExec.Prog, tp));
+                  funcExpr.AddArg(TVarExpr.Create(tp));
                end else begin
-                  funcExpr.AddArg(TConstExpr.CreateTyped(FExec.Prog, tp.Typ, tp.Data));
+                  funcExpr.AddArg(TConstExpr.Create(tp.Typ, tp.Data, 0));
                end;
             end;
-            funcExpr.Initialize(FExec.Prog);
+            funcExpr.Initialize(FExec.CompilerContext);
             if Assigned(funcExpr.Typ) then begin
                if funcExpr.Typ.Size > 1 then begin
                   // Allocate space on the stack to store the Result value
@@ -1019,7 +1019,7 @@ begin
       raise Exception.CreateFmt(RTE_InvalidNumberOfParams, [Length(Params),
          funcSym.Params.Count, FTypeSym.Caption]);
 
-   funcExpr:=CreateTempFuncExpr;
+   funcExpr:=CreateTempFuncExpr(FExec.CompilerContext);
 
    FExec.ExternalObject:=FExternalObject;
    try
@@ -1031,9 +1031,9 @@ begin
             raise Exception.CreateFmt(RTE_UseParameter,
                                       [dataSym.Caption, funcSym.Caption]);
 
-         funcExpr.AddArg(TConstExpr.Create(FExec.Prog, dataSym.Typ, Params[x]));
+         funcExpr.AddArg(TConstExpr.Create(dataSym.Typ, Params[x]));
       end;
-      funcExpr.Initialize(FExec.Prog);
+      funcExpr.Initialize(FExec.CompilerContext);
       if Assigned(funcExpr.Typ) then begin
          if funcExpr.Typ.Size > 1 then begin
             // Allocate space on the stack to store the Result value
@@ -1128,19 +1128,19 @@ end;
 
 // CreateTempFuncExpr
 //
-function TInfoFunc.CreateTempFuncExpr : TFuncExprBase;
+function TInfoFunc.CreateTempFuncExpr(context : TdwsCompilerContext) : TFuncExprBase;
 var
    caller : TExprBase;
    cf : TCreateFunctionOptions;
 begin
    if FDataPtr.DataLength>0 then begin
-      Result:=TFuncPtrExpr.Create(FExec.Prog, cNullPos,
-                                  TConstExpr.Create(FExec.Prog, FTypeSym.AsFuncSymbol, FDataPtr[0]));
+      Result:=TFuncPtrExpr.Create(context, cNullPos,
+                                  TConstExpr.Create(FTypeSym.AsFuncSymbol, FDataPtr[0]));
    end else begin
       if FForceStatic then
          cf := [cfoForceStatic]
       else cf := [];
-      Result:=CreateFuncExpr(FExec.Prog, FTypeSym.AsFuncSymbol, FScriptObj,
+      Result:=CreateFuncExpr(ProgramInfo.CompilerContext, FTypeSym.AsFuncSymbol, FScriptObj,
                              FClassSym, cf);
    end;
    if Result is TFuncExpr then begin
@@ -1242,11 +1242,11 @@ begin
   h := TStaticArraySymbol(FTypeSym).HighBound;
   l := TStaticArraySymbol(FTypeSym).LowBound;
   if UnicodeSameText('length', s) then
-    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, h - l + 1)
+    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.CompilerContext.TypInteger, h - l + 1)
   else if UnicodeSameText('low', s) then
-    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, l)
+    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.CompilerContext.TypInteger, l)
   else if UnicodeSameText('high', s) then
-    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, h)
+    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.CompilerContext.TypInteger, h)
   else
     raise Exception.CreateFmt(RTE_NoMemberOfArray, [s, FTypeSym.Caption]);
 end;
@@ -1277,7 +1277,7 @@ end;
 //
 constructor TInfoDynamicArrayLength.Create(ProgramInfo: TProgramInfo; const DataPtr: IDataContext; Delta: Integer);
 begin
-   inherited Create(ProgramInfo, ProgramInfo.Execution.Prog.TypInteger, DataPtr);
+   inherited Create(ProgramInfo, ProgramInfo.CompilerContext.TypInteger, DataPtr);
    FDelta:=Delta;
 end;
 
@@ -1363,7 +1363,7 @@ begin
    if UnicodeSameText('length', s) or UnicodeSameText('count', s) then
       Result:=TInfoDynamicArrayLength.Create(FProgramInfo, DataPtr, 0)
    else if UnicodeSameText('low', s) then
-      Result:=TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, 0)
+      Result:=TInfoConst.Create(FProgramInfo, FProgramInfo.CompilerContext.TypInteger, 0)
    else if UnicodeSameText('high', s) then
       Result:=TInfoDynamicArrayLength.Create(FProgramInfo, DataPtr, -1)
    else raise Exception.CreateFmt(RTE_NoMemberOfArray, [s, FTypeSym.Caption]);
@@ -1413,11 +1413,11 @@ end;
 function TInfoOpenArray.GetMember(const s: UnicodeString): IInfo;
 begin
    if UnicodeSameText('length', s) then
-      Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, FDataPtr.DataLength)
+      Result := TInfoConst.Create(FProgramInfo, FProgramInfo.CompilerContext.TypInteger, FDataPtr.DataLength)
    else if UnicodeSameText('low', s) then
-      Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, 0)
+      Result := TInfoConst.Create(FProgramInfo, FProgramInfo.CompilerContext.TypInteger, 0)
    else if UnicodeSameText('high', s) then
-      Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, FDataPtr.DataLength-1)
+      Result := TInfoConst.Create(FProgramInfo, FProgramInfo.CompilerContext.TypInteger, FDataPtr.DataLength-1)
    else
       raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
 end;
@@ -1441,7 +1441,7 @@ begin
    if elemIdx < 0 then
       raise Exception.CreateFmt(RTE_ArrayLowerBoundExceeded, [elemIdx]);
 
-   elemTyp := FExec.Prog.TypVariant;
+   elemTyp := FProgramInfo.CompilerContext.TypVariant;
    elemOff := elemIdx * elemTyp.Size;
 
    FDataPtr.CreateOffset(elemOff, locData);
@@ -1697,11 +1697,11 @@ var
   locData : IDataContext;
 begin
   expr := TConnectorCallExpr.Create(cNullPos, FName,
-    TConstExpr.Create(FExec.Prog, FExec.Prog.TypVariant, FDataPtr[0]));
+    TConstExpr.Create(FProgramInfo.CompilerContext.TypVariant, FDataPtr[0]));
 
   try
     for x := 0 to Length(Params) - 1 do
-      expr.AddArg(TConstExpr.Create(FExec.Prog, FExec.Prog.TypVariant, Params[x]));
+      expr.AddArg(TConstExpr.Create(FProgramInfo.CompilerContext.TypVariant, Params[x]));
 
     if expr.AssignConnectorSym(FExec.Prog, FConnectorType) then
     begin
@@ -1764,10 +1764,11 @@ var
 begin
    // Read an external var
    if TExternalVarSymbol(FSym).ReadFunc<>nil then begin
-      funcExpr := CreateFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).ReadFunc, nil, nil, []);
+      funcExpr := TFuncSimpleExpr.Create((exec as TdwsProgramExecution).CompilerContext,
+                                         cNullPos, TExternalVarSymbol(FSym).ReadFunc);
       try
          prog:=(exec as TdwsProgramExecution).Prog;
-         funcExpr.Initialize(prog);
+         funcExpr.Initialize((exec as TdwsProgramExecution).CompilerContext);
          if funcExpr.Typ.Size > 1 then begin // !! > 1 untested !!
             funcExpr.SetResultAddr(prog, exec, FCaller.Stack.FrameSize);
             // Allocate space on the stack to store the Result value
@@ -1792,13 +1793,15 @@ end;
 procedure TExternalVarDataMaster.Write(exec : TdwsExecution; const Data: TData);
 var
    funcExpr : TFuncExprBase;
+   context : TdwsCompilerContext;
 begin
    if TExternalVarSymbol(FSym).WriteFunc<>nil then begin
-      funcExpr := CreateFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).WriteFunc, nil, nil, []);
+      context := (exec as TdwsProgramExecution).CompilerContext;
+      funcExpr := TFuncSimpleExpr.Create(context, cNullPos, TExternalVarSymbol(FSym).WriteFunc);
       try
-         funcExpr.AddArg(TConstExpr.CreateTyped(FCaller.Prog, FSym.Typ, Data));
+         funcExpr.AddArg(TConstExpr.Create(FSym.Typ, Data, 0));
          if (funcExpr is TFuncExpr) then
-            TFuncExpr(funcExpr).AddPushExprs((exec as TdwsProgramExecution).Prog);
+            TFuncExpr(funcExpr).AddPushExprs(context);
          funcExpr.EvalNoResult(exec);
       finally
          funcExpr.Free;
@@ -1824,9 +1827,9 @@ var
    baseExpr : TConstExpr;
 begin
    dataSource := nil;
-   baseExpr := TConstExpr.Create(FCaller.Prog, FCaller.Prog.TypVariant, FBaseValue);
+   baseExpr := TConstExpr.Create(FCaller.Prog.Root.SystemTable.SymbolTable.TypVariant, FBaseValue);
    readExpr := TConnectorReadMemberExpr.CreateNew(
-      FCaller.Prog, cNullPos, FName, baseExpr, TConnectorSymbol(FSym).ConnectorType
+      cNullPos, FName, baseExpr, TConnectorSymbol(FSym).ConnectorType
    );
    try
       if readExpr<>nil then begin
@@ -1845,11 +1848,13 @@ procedure TConnectorMemberDataMaster.Write(exec : TdwsExecution; const Data: TDa
 var
    baseExpr, valueExpr : TConstExpr;
    writeExpr: TConnectorWriteMemberExpr;
+   typVariant : TTypeSymbol;
 begin
-   baseExpr := TConstExpr.Create(FCaller.Prog, FCaller.Prog.TypVariant, FBaseValue);
-   valueExpr := TConstExpr.Create(FCaller.Prog, FCaller.Prog.TypVariant, Data);
+   typVariant := FCaller.Prog.Root.SystemTable.SymbolTable.TypVariant;
+   baseExpr := TConstExpr.Create(typVariant, FBaseValue);
+   valueExpr := TConstExpr.Create(typVariant, Data, 0);
    writeExpr := TConnectorWriteExpr.CreateNew(
-      FCaller.Prog, cNullPos, FName,
+      FCaller.CompilerContext, cNullPos, FName,
       baseExpr, valueExpr, TConnectorSymbol(FSym).ConnectorType
    );
    try

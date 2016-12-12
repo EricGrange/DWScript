@@ -24,7 +24,8 @@ uses
    Windows, Forms, Variants, Classes, SysUtils, SysConst, TypInfo, RTTI,
    dwsComp, dwsSymbols, dwsDataContext, dwsErrors, dwsUnitSymbols,
    dwsExprs, dwsStrings, dwsFunctions, dwsStack, dwsOperators, dwsLegacy,
-   dwsUtils, dwsLanguageExtension, dwsCompiler, dwsConnectorSymbols;
+   dwsUtils, dwsLanguageExtension, dwsCompiler, dwsConnectorSymbols,
+   dwsCompilerContext;
 
 const
    RTTI_ConnectorCaption = 'RTTI Connector 1.0';
@@ -116,7 +117,7 @@ type
          constructor Create(environment : TRTTIEnvironment);
 
          procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); virtual; abstract;
-         procedure CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
+         procedure CompileTimeCheck(context : TdwsCompilerContext; expr : TFuncExprBase);
          procedure InitSymbol(symbol : TSymbol; const msgs : TdwsCompileMessageList);
          procedure InitExpression(expr : TExprBase);
          function SubExpr(i : Integer) : TExprBase;
@@ -981,7 +982,7 @@ end;
 
 // CompileTimeCheck
 //
-procedure TRTTIEnvironmentCallable.CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
+procedure TRTTIEnvironmentCallable.CompileTimeCheck(context : TdwsCompilerContext; expr : TFuncExprBase);
 begin
    // nothing yet
 end;

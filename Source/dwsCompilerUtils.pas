@@ -23,7 +23,7 @@ interface
 uses
    SysUtils, TypInfo,
    dwsErrors, dwsStrings, dwsXPlatform, dwsUtils, dwsScriptSource,
-   dwsSymbols, dwsUnitSymbols,
+   dwsSymbols, dwsUnitSymbols, dwsCompilerContext,
    dwsExprs, dwsCoreExprs, dwsConstExprs, dwsMethodExprs, dwsMagicExprs,
    dwsConvExprs;
 
@@ -32,11 +32,11 @@ type
    CompilerUtils = class
       public
          class procedure IncompatibleTypes(
-                        aProg : TdwsProgram; const scriptPos : TScriptPos;
+                        context : TdwsCompilerContext; const scriptPos : TScriptPos;
                         const fmt : UnicodeString; typ1, typ2 : TTypeSymbol); static;
 
          class function WrapWithImplicitConversion(
-                        aProg : TdwsProgram; expr : TTypedExpr; toTyp : TTypeSymbol;
+                        context : TdwsCompilerContext; expr : TTypedExpr; toTyp : TTypeSymbol;
                         const hotPos : TScriptPos;
                         const msg : UnicodeString = CPE_IncompatibleTypes) : TTypedExpr; static;
 
@@ -44,13 +44,13 @@ type
                                        table : TSymbolTable; func : TFuncSymbol;
                                        unitSymbol : TUnitMainSymbol); static;
 
-         class function DynamicArrayAdd(aProg : TdwsProgram; baseExpr : TTypedExpr;
+         class function DynamicArrayAdd(context : TdwsCompilerContext; baseExpr : TTypedExpr;
                                         const namePos : TScriptPos;
                                         argList : TTypedExprList; const argPosArray : TScriptPosArray) : TArrayAddExpr; overload; static;
-         class function DynamicArrayAdd(aProg : TdwsProgram; baseExpr : TTypedExpr;
+         class function DynamicArrayAdd(context : TdwsCompilerContext; baseExpr : TTypedExpr;
                                         const scriptPos : TScriptPos; argExpr : TTypedExpr) : TArrayAddExpr; overload; static;
 
-         class function ArrayConcat(aProg : TdwsProgram; const hotPos : TScriptPos;
+         class function ArrayConcat(context : TdwsCompilerContext; const hotPos : TScriptPos;
                                     left, right : TTypedExpr) : TArrayConcatExpr; static;
    end;
 
@@ -87,13 +87,13 @@ type
 function NameToArrayMethod(const name : UnicodeString; msgs : TdwsCompileMessageList;
                            const namePos : TScriptPos) : TArrayMethodKind;
 
-function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
+function CreateFuncExpr(context : TdwsCompilerContext; funcSym: TFuncSymbol;
                         const scriptObj : IScriptObj; structSym : TCompositeTypeSymbol;
                         options : TCreateFunctionOptions) : TFuncExprBase;
-function CreateIntfExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
+function CreateIntfExpr(context : TdwsCompilerContext; funcSym: TFuncSymbol;
                         const scriptObjIntf : IScriptObjInterface) : TFuncExprBase;
 
-function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; var expr : TTypedExpr; RefKind: TRefKind;
+function CreateMethodExpr(context : TdwsCompilerContext; meth: TMethodSymbol; var expr : TTypedExpr; RefKind: TRefKind;
                           const scriptPos: TScriptPos; options : TCreateFunctionOptions) : TFuncExprBase;
 
 // ------------------------------------------------------------------
@@ -149,7 +149,7 @@ end;
 
 // CreateFuncExpr
 //
-function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
+function CreateFuncExpr(context : TdwsCompilerContext; funcSym: TFuncSymbol;
                         const scriptObj : IScriptObj; structSym : TCompositeTypeSymbol;
                         options : TCreateFunctionOptions) : TFuncExprBase;
 var
@@ -157,19 +157,19 @@ var
 begin
    if FuncSym is TMethodSymbol then begin
       if Assigned(scriptObj) then begin
-         instanceExpr:=TConstExpr.Create(Prog, structSym, scriptObj);
-         Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
+         instanceExpr:=TConstExpr.Create(structSym, scriptObj);
+         Result:=CreateMethodExpr(context, TMethodSymbol(funcSym),
                                   instanceExpr, rkObjRef, cNullPos, options)
       end else if structSym<>nil then begin
-         instanceExpr:=TConstExpr.Create(prog, structSym.MetaSymbol, Int64(structSym));
-         Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
+         instanceExpr:=TConstExpr.Create(structSym.MetaSymbol, Int64(structSym));
+         Result:=CreateMethodExpr(context, TMethodSymbol(funcSym),
                                   instanceExpr, rkClassOfRef, cNullPos, options)
       end else begin
          // static method
          structSym:=TMethodSymbol(funcSym).StructSymbol;
          if structSym is TStructuredTypeSymbol then begin
-            instanceExpr:=TConstExpr.Create(prog, structSym.MetaSymbol, Int64(structSym));
-            Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
+            instanceExpr:=TConstExpr.Create(structSym.MetaSymbol, Int64(structSym));
+            Result:=CreateMethodExpr(context, TMethodSymbol(funcSym),
                                      instanceExpr, rkClassOfRef, cNullPos, options)
          end else begin
             Result:=nil;
@@ -177,29 +177,29 @@ begin
          end;
       end;
    end else if funcSym is TMagicFuncSymbol then begin
-      Result:=TMagicFuncExpr.CreateMagicFuncExpr(prog, cNullPos, TMagicFuncSymbol(funcSym));
+      Result:=TMagicFuncExpr.CreateMagicFuncExpr(context, cNullPos, TMagicFuncSymbol(funcSym));
    end else begin
-      Result:=TFuncSimpleExpr.Create(prog, cNullPos, funcSym);
+      Result:=TFuncSimpleExpr.Create(context, cNullPos, funcSym);
    end;
 end;
 
 // CreateIntfExpr
 //
-function CreateIntfExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
+function CreateIntfExpr(context : TdwsCompilerContext; funcSym: TFuncSymbol;
                         const scriptObjIntf : IScriptObjInterface) : TFuncExprBase;
 var
    instanceExpr : TTypedExpr;
    scriptIntf : TScriptInterface;
 begin
    scriptIntf:=(scriptObjIntf.GetSelf as TScriptInterface);
-   instanceExpr:=TConstExpr.Create(Prog, scriptIntf.Typ, scriptObjIntf);
-   Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
+   instanceExpr:=TConstExpr.Create(scriptIntf.Typ, scriptObjIntf);
+   Result:=CreateMethodExpr(context, TMethodSymbol(funcSym),
                             instanceExpr, rkIntfRef, cNullPos, [])
 end;
 
 // CreateMethodExpr
 //
-function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; var expr: TTypedExpr; RefKind: TRefKind;
+function CreateMethodExpr(context : TdwsCompilerContext; meth: TMethodSymbol; var expr: TTypedExpr; RefKind: TRefKind;
                           const scriptPos: TScriptPos; options : TCreateFunctionOptions) : TFuncExprBase;
 var
    helper : THelperSymbol;
@@ -214,22 +214,22 @@ begin
       if meth is TMagicStaticMethodSymbol then begin
          dwsFreeAndNil(expr);
          internalFunc:=TMagicStaticMethodSymbol(meth).InternalFunction;
-         Result:=internalFunc.MagicFuncExprClass.Create(prog, scriptPos, meth, internalFunc);
+         Result:=internalFunc.MagicFuncExprClass.Create(context, scriptPos, meth, internalFunc);
       end else Assert(False, 'not supported yet');
 
    end else if meth.StructSymbol is TInterfaceSymbol then begin
 
       if meth.Name<>'' then
-         Result:=TMethodInterfaceExpr.Create(prog, scriptPos, meth, expr)
+         Result:=TMethodInterfaceExpr.Create(context, scriptPos, meth, expr)
       else begin
-         Result:=TMethodInterfaceAnonymousExpr.Create(prog, scriptPos, meth, expr);
+         Result:=TMethodInterfaceAnonymousExpr.Create(context, scriptPos, meth, expr);
       end;
 
    end else if meth.StructSymbol is TClassSymbol then begin
 
       if meth.IsStatic then begin
 
-         Result:=TFuncSimpleExpr.Create(prog, scriptPos, meth);
+         Result:=TFuncSimpleExpr.Create(context, scriptPos, meth);
          expr.Free;
          Exit;
 
@@ -239,53 +239,53 @@ begin
             classSymbol:=TClassOfSymbol(expr.Typ).TypClassSymbol;
             if classSymbol.IsAbstract then begin
                if meth.Kind=fkConstructor then
-                  TCheckAbstractClassConstruction.Create(prog.CompileMsgs, RTE_InstanceOfAbstractClass, scriptPos, classSymbol)
+                  TCheckAbstractClassConstruction.Create(context.Msgs, RTE_InstanceOfAbstractClass, scriptPos, classSymbol)
                else if meth.IsAbstract then
-                  TCheckAbstractClassConstruction.Create(prog.CompileMsgs, CPE_AbstractClassUsage, scriptPos, classSymbol);
+                  TCheckAbstractClassConstruction.Create(context.Msgs, CPE_AbstractClassUsage, scriptPos, classSymbol);
             end;
          end;
 
       end;
       if (not meth.IsClassMethod) and meth.StructSymbol.IsStatic then
-         prog.CompileMsgs.AddCompilerErrorFmt(scriptPos, CPE_ClassIsStaticNoInstantiation, [meth.StructSymbol.Name]);
+         context.Msgs.AddCompilerErrorFmt(scriptPos, CPE_ClassIsStaticNoInstantiation, [meth.StructSymbol.Name]);
 
       // Return the right expression
       case meth.Kind of
          fkFunction, fkProcedure, fkMethod, fkLambda:
             if meth.IsClassMethod then begin
                if not (cfoForceStatic in options) and meth.IsVirtual then
-                  Result := TClassMethodVirtualExpr.Create(prog, scriptPos, meth, expr)
-               else Result := TClassMethodStaticExpr.Create(prog, scriptPos, meth, expr)
+                  Result := TClassMethodVirtualExpr.Create(context, scriptPos, meth, expr)
+               else Result := TClassMethodStaticExpr.Create(context, scriptPos, meth, expr)
             end else begin
                if RefKind=rkClassOfRef then
-                  prog.CompileMsgs.AddCompilerError(scriptPos, CPE_StaticMethodExpected)
+                  context.Msgs.AddCompilerError(scriptPos, CPE_StaticMethodExpected)
                else if expr.Typ is TClassOfSymbol then
-                  prog.CompileMsgs.AddCompilerError(scriptPos, CPE_ClassMethodExpected);
+                  context.Msgs.AddCompilerError(scriptPos, CPE_ClassMethodExpected);
                if not (cfoForceStatic in options) and meth.IsVirtual then
-                  Result := TMethodVirtualExpr.Create(prog, scriptPos, meth, expr)
-               else Result := TMethodStaticExpr.Create(prog, scriptPos, meth, expr);
+                  Result := TMethodVirtualExpr.Create(context, scriptPos, meth, expr)
+               else Result := TMethodStaticExpr.Create(context, scriptPos, meth, expr);
             end;
          fkConstructor:
             if RefKind = rkClassOfRef then begin
                if not (cfoForceStatic in options) and meth.IsVirtual then
-                  Result := TConstructorVirtualExpr.Create(prog, scriptPos, meth, expr)
-               else if meth = prog.Root.TypDefaultConstructor then
-                  Result := TConstructorStaticDefaultExpr.Create(prog, scriptPos, meth, expr)
-               else Result := TConstructorStaticExpr.Create(prog, scriptPos, meth, expr);
+                  Result := TConstructorVirtualExpr.Create(context, scriptPos, meth, expr)
+               else if meth = context.TypDefaultConstructor then
+                  Result := TConstructorStaticDefaultExpr.Create(context, scriptPos, meth, expr)
+               else Result := TConstructorStaticExpr.Create(context, scriptPos, meth, expr);
             end else begin
-               if not ((prog is TdwsProcedure) and (TdwsProcedure(prog).Func.Kind=fkConstructor)) then
-                  prog.CompileMsgs.AddCompilerWarning(scriptPos, CPE_UnexpectedConstructor);
+               if not ((context.Prog is TdwsProcedure) and (TdwsProcedure(context.Prog).Func.Kind=fkConstructor)) then
+                  context.Msgs.AddCompilerWarning(scriptPos, CPE_UnexpectedConstructor);
                if not (cfoForceStatic in options) and meth.IsVirtual then
-                  Result := TConstructorVirtualObjExpr.Create(prog, scriptPos, meth, expr)
-               else Result := TConstructorStaticObjExpr.Create(prog, scriptPos, meth, expr);
+                  Result := TConstructorVirtualObjExpr.Create(context, scriptPos, meth, expr)
+               else Result := TConstructorStaticObjExpr.Create(context, scriptPos, meth, expr);
             end;
          fkDestructor:
             begin
                if RefKind=rkClassOfRef then
-                  prog.CompileMsgs.AddCompilerError(scriptPos, CPE_UnexpectedDestructor);
+                  context.Msgs.AddCompilerError(scriptPos, CPE_UnexpectedDestructor);
                if not (cfoForceStatic in options) and meth.IsVirtual then
-                  Result := TDestructorVirtualExpr.Create(prog, scriptPos, meth, expr)
-               else Result := TDestructorStaticExpr.Create(prog, scriptPos, meth, expr)
+                  Result := TDestructorVirtualExpr.Create(context, scriptPos, meth, expr)
+               else Result := TDestructorStaticExpr.Create(context, scriptPos, meth, expr)
             end;
       else
          Assert(False);
@@ -295,12 +295,12 @@ begin
 
       if meth.IsClassMethod then begin
 
-         Result:=TFuncSimpleExpr.Create(prog, scriptPos, meth);
+         Result:=TFuncSimpleExpr.Create(context, scriptPos, meth);
          expr.Free;
 
       end else begin
 
-         Result:=TRecordMethodExpr.Create(prog, scriptPos, meth);
+         Result:=TRecordMethodExpr.Create(context, scriptPos, meth);
          Result.AddArg(expr);
 
       end;
@@ -314,12 +314,12 @@ begin
               or not (   (helper.ForType is TStructuredTypeSymbol)
                       or (helper.ForType is TStructuredTypeMetaSymbol))) then begin
 
-         Result:=TFuncSimpleExpr.Create(prog, scriptPos, meth);
+         Result:=TFuncSimpleExpr.Create(context, scriptPos, meth);
          expr.Free;
 
       end else begin
 
-         Result:=THelperMethodExpr.Create(prog, scriptPos, meth);
+         Result:=THelperMethodExpr.Create(context, scriptPos, meth);
          if expr<>nil then
             Result.AddArg(expr);
 
@@ -337,17 +337,17 @@ end;
 // IncompatibleTypes
 //
 class procedure CompilerUtils.IncompatibleTypes(
-                        aProg : TdwsProgram; const scriptPos : TScriptPos;
+                        context : TdwsCompilerContext; const scriptPos : TScriptPos;
                         const fmt : UnicodeString; typ1, typ2 : TTypeSymbol);
 begin
-   aProg.CompileMsgs.AddCompilerErrorFmt(scriptPos, fmt, [typ1.Caption, typ2.Caption]);
+   context.Msgs.AddCompilerErrorFmt(scriptPos, fmt, [typ1.Caption, typ2.Caption]);
 end;
 
 // AddProcHelper
 //
 class procedure CompilerUtils.AddProcHelper(const name : UnicodeString;
-                                                table : TSymbolTable; func : TFuncSymbol;
-                                                unitSymbol : TUnitMainSymbol);
+                                            table : TSymbolTable; func : TFuncSymbol;
+                                            unitSymbol : TUnitMainSymbol);
 var
    helper : THelperSymbol;
    param : TParamSymbol;
@@ -389,7 +389,7 @@ end;
 // DynamicArrayAdd
 //
 class function CompilerUtils.DynamicArrayAdd(
-      aProg : TdwsProgram; baseExpr : TTypedExpr;
+      context : TdwsCompilerContext; baseExpr : TTypedExpr;
       const namePos : TScriptPos;
       argList : TTypedExprList; const argPosArray : TScriptPosArray) : TArrayAddExpr;
 var
@@ -404,11 +404,11 @@ begin
                  or (    (argList[i].Typ is TStaticArraySymbol)
                      and (   arraySym.Typ.IsCompatible(argList[i].Typ.Typ)
                           or (argList[i].Typ.Size=0)))) then begin
-         argList[i]:=WrapWithImplicitConversion(aProg, argList[i], arraySym.Typ, argPosArray[i],
+         argList[i]:=WrapWithImplicitConversion(context, argList[i], arraySym.Typ, argPosArray[i],
                                                 CPE_IncompatibleParameterTypes);
          Break;
       end else if argList[i].ClassType=TArrayConstantExpr then begin
-         TArrayConstantExpr(argList[i]).Prepare(aProg, arraySym.Typ);
+         TArrayConstantExpr(argList[i]).Prepare(context, arraySym.Typ);
       end;
    end;
    Result:=TArrayAddExpr.Create(namePos, baseExpr, argList);
@@ -417,7 +417,7 @@ end;
 
 // ArrayConcat
 //
-class function CompilerUtils.ArrayConcat(aProg : TdwsProgram; const hotPos : TScriptPos;
+class function CompilerUtils.ArrayConcat(context : TdwsCompilerContext; const hotPos : TScriptPos;
                                          left, right : TTypedExpr) : TArrayConcatExpr;
 var
    typ : TDynamicArraySymbol;
@@ -427,10 +427,10 @@ begin
    rightTyp:=left.Typ.UnAliasedType as TArraySymbol;
 
    if leftTyp.Typ<>rightTyp.Typ then
-      IncompatibleTypes(aProg, hotPos, CPE_IncompatibleTypes, left.Typ, right.Typ);
+      IncompatibleTypes(context, hotPos, CPE_IncompatibleTypes, left.Typ, right.Typ);
 
-   typ:=TDynamicArraySymbol.Create('', leftTyp.Typ, aProg.TypInteger);
-   aProg.Table.AddSymbol(typ);
+   typ:=TDynamicArraySymbol.Create('', leftTyp.Typ, context.TypInteger);
+   context.Table.AddSymbol(typ);
 
    Result:=TArrayConcatExpr.Create(hotPos, typ);
    Result.AddArg(left);
@@ -439,7 +439,7 @@ end;
 
 // DynamicArrayAdd
 //
-class function CompilerUtils.DynamicArrayAdd(aProg : TdwsProgram; baseExpr : TTypedExpr;
+class function CompilerUtils.DynamicArrayAdd(context : TdwsCompilerContext; baseExpr : TTypedExpr;
       const scriptPos : TScriptPos; argExpr : TTypedExpr) : TArrayAddExpr;
 var
    argList : TTypedExprList;
@@ -450,7 +450,7 @@ begin
       argList.AddExpr(argExpr);
       SetLength(argPosArray, 1);
       argPosArray[0]:=scriptPos;
-      Result:=DynamicArrayAdd(aProg, baseExpr, scriptPos, argList, argPosArray);
+      Result:=DynamicArrayAdd(context, baseExpr, scriptPos, argList, argPosArray);
    finally
       argList.Free;
    end;
@@ -460,7 +460,7 @@ end;
 // WrapWithImplicitConversion
 //
 class function CompilerUtils.WrapWithImplicitConversion(
-      aProg : TdwsProgram; expr : TTypedExpr; toTyp : TTypeSymbol;
+      context : TdwsCompilerContext; expr : TTypedExpr; toTyp : TTypeSymbol;
       const hotPos : TScriptPos;
       const msg : UnicodeString = CPE_IncompatibleTypes) : TTypedExpr;
 var
@@ -470,12 +470,12 @@ begin
       exprTyp:=expr.Typ
    else exprTyp:=nil;
 
-   if exprTyp.IsOfType(aProg.TypInteger) and toTyp.IsOfType(aProg.TypFloat) then begin
+   if exprTyp.IsOfType(context.TypInteger) and toTyp.IsOfType(context.TypFloat) then begin
 
       if expr.ClassType=TConstIntExpr then begin
-         Result:=TConstExpr.CreateFloatValue(aProg, TConstIntExpr(expr).Value);
+         Result := TConstFloatExpr.Create(context.TypFloat, TConstIntExpr(expr).Value);
          expr.Free;
-      end else Result:=TConvIntToFloatExpr.Create(aProg, expr);
+      end else Result:=TConvIntToFloatExpr.Create(context, expr);
 
    end else if     (expr.ClassType=TArrayConstantExpr)
                and toTyp.UnAliasedTypeIs(TSetOfSymbol)
@@ -485,8 +485,8 @@ begin
 
    end else begin
       // error & keep compiling
-      IncompatibleTypes(aProg, hotPos, msg, toTyp, exprTyp);
-      Result:=TConvInvalidExpr.Create(aProg, expr, toTyp);
+      IncompatibleTypes(context, hotPos, msg, toTyp, exprTyp);
+      Result:=TConvInvalidExpr.Create(context, expr, toTyp);
       Exit;
    end;
 end;

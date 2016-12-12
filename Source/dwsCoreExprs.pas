@@ -25,7 +25,7 @@ interface
 
 uses
    Classes, Variants, SysUtils,
-   dwsUtils, dwsXPlatform, dwsDataContext, dwsExprList,
+   dwsUtils, dwsXPlatform, dwsDataContext, dwsExprList, dwsCompilerContext,
    dwsSymbols, dwsErrors, dwsStrings, dwsConvExprs,
    dwsStack, dwsExprs, dwsScriptSource,
    dwsConstExprs, dwsTokenizer, dwsUnitSymbols
@@ -39,9 +39,9 @@ type
          FDataSym : TDataSymbol;
 
       public
-         constructor Create(prog : TdwsProgram; dataSym : TDataSymbol);
-         class function CreateTyped(prog: TdwsProgram; dataSym : TDataSymbol) : TVarExpr;
-         procedure Orphan(prog : TdwsProgram); override;
+         constructor Create(dataSym : TDataSymbol);
+         class function CreateTyped(context : TdwsCompilerContext; dataSym : TDataSymbol) : TVarExpr;
+         procedure Orphan(context : TdwsCompilerContext); override;
 
          procedure AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr); override;
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
@@ -139,7 +139,7 @@ type
          FLevel: Integer;
 
       public
-         constructor Create(prog : TdwsProgram; dataSym : TDataSymbol);
+         constructor Create(dataSym : TDataSymbol);
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
          procedure GetRelativeDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
@@ -164,7 +164,7 @@ type
          FLevel : Integer;
 
       public
-         constructor Create(Prog: TdwsProgram; dataSym : TLazyParamSymbol);
+         constructor Create(context : TdwsCompilerContext; dataSym : TLazyParamSymbol);
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
 
          function SameDataExpr(expr : TTypedExpr) : Boolean; override;
@@ -214,7 +214,7 @@ type
          FLevel: Integer;
 
       public
-         constructor Create(prog : TdwsProgram; dataSym : TDataSymbol);
+         constructor Create(dataSym : TDataSymbol);
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
@@ -241,7 +241,7 @@ type
          FScriptPos : TScriptPos;
 
       public
-         constructor Create(aProg : TdwsProgram; const aScriptPos : TScriptPos; aRes : TResourceStringSymbol);
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aRes : TResourceStringSymbol);
 
          function ScriptPos : TScriptPos; override;
 
@@ -267,7 +267,7 @@ type
                             BaseExpr: TDataExpr; IndexExpr: TTypedExpr;
                             arraySymbol : TArraySymbol);
          destructor Destroy; override;
-         procedure Orphan(prog : TdwsProgram); override;
+         procedure Orphan(context : TdwsCompilerContext); override;
 
          function IsWritable : Boolean; override;
 
@@ -295,7 +295,7 @@ type
                             baseExpr : TDataExpr; indexExpr : TTypedExpr;
                             arraySymbol : TStaticArraySymbol);
 
-         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
 
          procedure AssignExpr(exec : TdwsExecution; expr : TTypedExpr); override;
          procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
@@ -365,7 +365,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const scriptPos : TScriptPos;
                             arrayExpr, indexExpr, valueExpr : TTypedExpr);
          destructor Destroy; override;
 
@@ -452,7 +452,7 @@ type
          constructor Create(const aScriptPos: TScriptPos; BaseExpr: TDataExpr;
                             fieldSymbol: TFieldSymbol);
          destructor Destroy; override;
-         procedure Orphan(prog : TdwsProgram); override;
+         procedure Orphan(context : TdwsCompilerContext); override;
 
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
          procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
@@ -505,7 +505,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; Expr: TDataExpr);
+         constructor Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos; Expr: TDataExpr);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -523,7 +523,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(aProg : TdwsProgram; const aPos : TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const aPos : TScriptPos;
                             recordTyp : TRecordSymbol);
 
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -598,7 +598,7 @@ type
          FCapture : Boolean;
 
       public
-         constructor Create(prog : TdwsProgram; expr : TTypedExpr; captureExpr : Boolean); reintroduce;
+         constructor Create(context : TdwsCompilerContext; expr : TTypedExpr; captureExpr : Boolean); reintroduce;
          destructor Destroy; override;
 
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -623,7 +623,7 @@ type
          FScriptPos : TScriptPos;
 
       public
-         constructor CreatePos(Prog: TdwsProgram; const aScriptPos: TScriptPos; Left, Right: TTypedExpr);
+         constructor CreatePos(context : TdwsCompilerContext; const aScriptPos: TScriptPos; Left, Right: TTypedExpr);
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function ScriptPos : TScriptPos; override;
@@ -654,7 +654,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog: TdwsProgram; const scriptPos: TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                             elementTyp : TTypeSymbol); overload;
          constructor Create(const scriptPos: TScriptPos; arrayTyp : TDynamicArraySymbol); overload;
          destructor Destroy; override;
@@ -725,7 +725,7 @@ type
          FScriptPos : TScriptPos;
 
       public
-         constructor Create(prog: TdwsProgram; const scriptPos: TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                             aBaseExpr : TTypedExpr);
          destructor Destroy; override;
 
@@ -737,7 +737,7 @@ type
    // TypedExpr for dynamic array that returns the array (for fluent-style)
    TArrayTypedFluentExpr = class(TArrayTypedExpr)
       public
-         constructor Create(prog: TdwsProgram; const scriptPos: TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                             aBaseExpr : TTypedExpr);
 
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
@@ -754,7 +754,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                             aBase : TTypedExpr; aCompare : TFuncPtrExpr);
          destructor Destroy; override;
 
@@ -796,7 +796,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                             aBase : TTypedExpr; aMapFunc : TFuncPtrExpr);
          destructor Destroy; override;
 
@@ -851,7 +851,7 @@ type
          function GetBaseDynArray(exec : TdwsExecution) : TScriptDynamicArray;
 
       public
-         constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                             aBase :  TTypedExpr);
          destructor Destroy; override;
 
@@ -903,7 +903,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                             aBase, aIndex, aCount : TTypedExpr);
          destructor Destroy; override;
 
@@ -934,7 +934,7 @@ type
          function DoEvalData(exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer;
 
       public
-         constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const scriptPos : TScriptPos;
                             aBase : TTypedExpr; aItem : TTypedExpr; aFromIndex : TTypedExpr);
          destructor Destroy; override;
 
@@ -1103,7 +1103,7 @@ type
    end;
    TAddFloatExpr = class sealed (TFloatBinOpExpr)
       function EvalAsFloat(exec : TdwsExecution) : Double; override;
-      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+      function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // a - b
@@ -1125,7 +1125,7 @@ type
    TMultIntExpr = class(TIntegerBinOpExpr)
       function EvalAsInteger(exec : TdwsExecution) : Int64; override;
       function EvalAsFloat(exec : TdwsExecution) : Double; override;
-      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+      function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
    TMultIntPow2Expr = class(TUnaryOpIntExpr)
       private
@@ -1137,7 +1137,7 @@ type
    end;
    TMultFloatExpr = class(TFloatBinOpExpr)
       function EvalAsFloat(exec : TdwsExecution) : Double; override;
-      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+      function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // Sqr ( a )
@@ -1151,7 +1151,7 @@ type
    // a / b
    TDivideExpr = class(TFloatBinOpExpr)
      function EvalAsFloat(exec : TdwsExecution) : Double; override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+     function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // a mod b  (float)
@@ -1164,14 +1164,15 @@ type
          FScriptPos : TScriptPos;
 
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                            aLeft, aRight : TTypedExpr); override;
          function ScriptPos : TScriptPos; override;
    end;
 
    // a div b
    TDivExpr = class(TPosIntegerBinOpExpr)
       function EvalAsInteger(exec : TdwsExecution) : Int64; override;
-      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+      function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
    // a div const b
    TDivConstExpr = class(TIntegerBinOpExpr)
@@ -1181,7 +1182,7 @@ type
    // a mod b
    TModExpr = class(TPosIntegerBinOpExpr)
       function EvalAsInteger(exec : TdwsExecution) : Int64; override;
-      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+      function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
    // a div const b
    TModConstExpr = class(TIntegerBinOpExpr)
@@ -1207,7 +1208,7 @@ type
    end;
    TBoolAndExpr = class(TBooleanBinOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+     function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
    TVariantAndExpr = class(TVariantBinOpExpr)
       procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
@@ -1219,7 +1220,7 @@ type
    end;
    TBoolOrExpr = class(TBooleanBinOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+     function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
    TVariantOrExpr = class(TVariantBinOpExpr)
       procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
@@ -1243,7 +1244,7 @@ type
 
    // a shift b
    TShiftExpr = class(TIntegerBinOpExpr)
-      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+      function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // a shl b
@@ -1265,7 +1266,7 @@ type
    TStringInStringExpr = class(TBooleanBinOpExpr)
       public
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
-         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // var left in const right (strings)
@@ -1290,13 +1291,13 @@ type
    TCoalesceStrExpr = class(TStringBinOpExpr)
       public
          procedure EvalAsString(exec : TdwsExecution; var result : UnicodeString); override;
-         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // left ?? right (class)
    TCoalesceClassExpr = class(TBinaryOpExpr)
       public
-         constructor Create(aProg: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
    end;
@@ -1304,7 +1305,7 @@ type
    // left ?? right (dyn array)
    TCoalesceDynArrayExpr = class(TBinaryOpExpr)
       public
-         constructor Create(aProg: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
    end;
@@ -1319,11 +1320,11 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; condExpr, msgExpr : TTypedExpr);
+         constructor Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos; condExpr, msgExpr : TTypedExpr);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
-         function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         function  Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
 
          property Cond : TTypedExpr read FCond;
          property Message : TTypedExpr read FMessage;
@@ -1339,20 +1340,20 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                             exec : TdwsExecution;
                             left : TDataExpr; right : TTypedExpr); virtual;
          destructor Destroy; override;
-         procedure Orphan(prog : TdwsProgram); override;
+         procedure Orphan(context : TdwsCompilerContext); override;
 
          property Left : TDataExpr read FLeft;
          property Right : TTypedExpr read FRight write FRight;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
 
-         procedure TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution); virtual;
-         function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
-         function  OptimizeConstAssignment(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
+         procedure TypeCheckAssign(context : TdwsCompilerContext; exec : TdwsExecution); virtual;
+         function  Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
+         function  OptimizeConstAssignment(context : TdwsCompilerContext; exec : TdwsExecution) : TNoResultExpr;
    end;
 
    TAssignExprClass = class of TAssignExpr;
@@ -1368,7 +1369,7 @@ type
    protected
      FSize: Integer;
    public
-     constructor Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
+     constructor Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                         exec : TdwsExecution;
                         left : TDataExpr; right : TTypedExpr); override;
      procedure EvalNoResult(exec : TdwsExecution); override;
@@ -1377,32 +1378,32 @@ type
    // left := right; (var, func)
    TAssignFuncExpr = class(TAssignExpr)
       public
-         procedure TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution); override;
+         procedure TypeCheckAssign(context : TdwsCompilerContext; exec : TdwsExecution); override;
          procedure EvalNoResult(exec : TdwsExecution); override;
-         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // external left := right
    TAssignExternalExpr = class(TAssignExpr)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
-         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // left := [constant array];
    TAssignArrayConstantExpr = class(TAssignDataExpr)
       public
-         constructor Create(prog : TdwsProgram; const aScriptPos : TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
                             exec : TdwsExecution;
                             left : TDataExpr; right : TTypedExpr); override;
          procedure EvalNoResult(exec : TdwsExecution); override;
-         procedure TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution); override;
+         procedure TypeCheckAssign(context : TdwsCompilerContext; exec : TdwsExecution); override;
    end;
 
    // var left := const right;
    TAssignConstDataToVarExpr = class(TAssignDataExpr)
       public
-         constructor Create(prog : TdwsProgram; const aScriptPos : TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
                             exec : TdwsExecution;
                             left : TDataExpr; right : TTypedExpr); override;
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -1411,8 +1412,8 @@ type
    // left := const right;
    TAssignConstExpr = class (TAssignExpr)
       public
-         procedure TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution); override;
-         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         procedure TypeCheckAssign(context : TdwsCompilerContext; exec : TdwsExecution); override;
+         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
          function RightValue : Variant; virtual; abstract;
    end;
 
@@ -1421,7 +1422,7 @@ type
       protected
          FRight : Int64;
       public
-         constructor CreateVal(Prog: TdwsProgram; const aScriptPos: TScriptPos;
+         constructor CreateVal(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                exec : TdwsExecution;
                                Left : TDataExpr; const rightValue : Int64);
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -1434,7 +1435,7 @@ type
       protected
          FRight : Double;
       public
-         constructor CreateVal(Prog: TdwsProgram; const aScriptPos: TScriptPos; exec : TdwsExecution;
+         constructor CreateVal(context : TdwsCompilerContext; const aScriptPos: TScriptPos; exec : TdwsExecution;
                                Left : TDataExpr; const rightValue : Double);
          procedure EvalNoResult(exec : TdwsExecution); override;
          function RightValue : Variant; override;
@@ -1446,7 +1447,7 @@ type
       protected
          FRight : Boolean;
       public
-         constructor CreateVal(Prog: TdwsProgram; const aScriptPos: TScriptPos; exec : TdwsExecution;
+         constructor CreateVal(context : TdwsCompilerContext; const aScriptPos: TScriptPos; exec : TdwsExecution;
                                Left : TDataExpr; const rightValue : Boolean);
          procedure EvalNoResult(exec : TdwsExecution); override;
          function RightValue : Variant; override;
@@ -1458,7 +1459,7 @@ type
       protected
          FRight : UnicodeString;
       public
-         constructor CreateVal(Prog: TdwsProgram; const aScriptPos: TScriptPos; exec : TdwsExecution;
+         constructor CreateVal(context : TdwsCompilerContext; const aScriptPos: TScriptPos; exec : TdwsExecution;
                                Left : TDataExpr; const rightValue : UnicodeString);
          procedure EvalNoResult(exec : TdwsExecution); override;
          function RightValue : Variant; override;
@@ -1470,7 +1471,7 @@ type
       protected
          FRight : Variant;
       public
-         constructor CreateVal(Prog: TdwsProgram; const aScriptPos: TScriptPos; exec : TdwsExecution;
+         constructor CreateVal(context : TdwsCompilerContext; const aScriptPos: TScriptPos; exec : TdwsExecution;
                                Left : TDataExpr; const rightValue : Variant);
          procedure EvalNoResult(exec : TdwsExecution); override;
          function RightValue : Variant; override;
@@ -1480,7 +1481,7 @@ type
    // left := nil (instance)
    TAssignNilToVarExpr = class(TAssignConstExpr)
       public
-         constructor CreateVal(prog : TdwsProgram; const aScriptPos: TScriptPos;
+         constructor CreateVal(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                exec : TdwsExecution; left : TDataExpr);
          function RightValue : Variant; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -1500,7 +1501,7 @@ type
 
    // a := a op b
    TOpAssignExpr = class(TAssignExpr)
-     function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+     function  Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
    TOpAssignExprClass = class of TOpAssignExpr;
 
@@ -1511,7 +1512,7 @@ type
    // a += b (int)
    TPlusAssignIntExpr = class(TPlusAssignExpr)
      procedure EvalNoResult(exec : TdwsExecution); override;
-     function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+     function  Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
    // a += b (float)
    TPlusAssignFloatExpr = class(TPlusAssignExpr)
@@ -1520,7 +1521,7 @@ type
    // a += b (UnicodeString)
    TPlusAssignStrExpr = class(TPlusAssignExpr)
      procedure EvalNoResult(exec : TdwsExecution); override;
-     function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+     function  Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // a -= b
@@ -1530,7 +1531,7 @@ type
    // a -= b (int)
    TMinusAssignIntExpr = class(TMinusAssignExpr)
      procedure EvalNoResult(exec : TdwsExecution); override;
-     function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+     function  Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
    // a -= b (float)
    TMinusAssignFloatExpr = class(TMinusAssignExpr)
@@ -1587,7 +1588,7 @@ type
       private
          FAppendString : UnicodeString;
       public
-         constructor Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                             exec : TdwsExecution;
                             left : TDataExpr; right : TTypedExpr); override;
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -1600,7 +1601,7 @@ type
          function EvalElement(exec : TdwsExecution) : TElementSymbol;
 
       public
-         constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
+         constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
    end;
 
@@ -1616,12 +1617,12 @@ type
          FTable : TSymbolTable;
 
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos);
+         constructor Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos);
          destructor Destroy; override;
-         procedure Orphan(prog : TdwsProgram); override;
+         procedure Orphan(context : TdwsCompilerContext); override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
-         function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         function  Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
 
          property  Table: TSymbolTable read FTable;
    end;
@@ -1629,7 +1630,7 @@ type
    // statement; statement; statement;
    TBlockExprNoTable = class sealed (TBlockExprBase)
       public
-         procedure Orphan(prog : TdwsProgram); override;
+         procedure Orphan(context : TdwsCompilerContext); override;
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
    TBlockExprNoTable2 = class sealed (TBlockExprBase)
@@ -1656,13 +1657,13 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                             condExpr : TTypedExpr; thenExpr : TProgramExpr);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
-         procedure Orphan(prog : TdwsProgram); override;
-         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         procedure Orphan(context : TdwsCompilerContext); override;
+         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
 
          property CondExpr : TTypedExpr read FCond write FCond;
          property ThenExpr : TProgramExpr read FThen write FThen;
@@ -1678,13 +1679,13 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                             condExpr : TTypedExpr; thenExpr, elseExpr : TProgramExpr);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
-         procedure Orphan(prog : TdwsProgram); override;
-         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         procedure Orphan(context : TdwsCompilerContext); override;
+         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
 
          property ElseExpr : TProgramExpr read FElse write FElse;
    end;
@@ -1704,13 +1705,13 @@ type
          function GetIsConstant : Boolean; override;
 
       public
-         constructor Create(prog : TdwsProgram; const aPos : TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const aPos : TScriptPos;
                             aTyp : TTypeSymbol;
                             condExpr, trueExpr, falseExpr : TTypedExpr);
          destructor Destroy; override;
 
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
-         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
 
          property CondExpr : TTypedExpr read FCondExpr write FCondExpr;
          property TrueExpr : TTypedExpr read FTrueExpr write FTrueExpr;
@@ -1724,7 +1725,7 @@ type
          FTrueExpr : TProgramExpr;
          FScriptPos : TScriptPos;
 
-         function IsOfTypeNumber(prog : TdwsProgram; typ : TTypeSymbol) : Boolean;
+         function IsOfTypeNumber(context : TdwsCompilerContext; typ : TTypeSymbol) : Boolean;
 
       public
          constructor Create(const aPos : TScriptPos);
@@ -1737,7 +1738,7 @@ type
          function StringIsTrue(exec : TdwsExecution; const value : UnicodeString) : Boolean; virtual; abstract;
          function IntegerIsTrue(const value : Int64) : Boolean; virtual; abstract;
 
-         procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); virtual; abstract;
+         procedure TypeCheck(context : TdwsCompilerContext; typ : TTypeSymbol); virtual; abstract;
          function IsConstant : Boolean; virtual; abstract;
          function IsExpr(aClass : TClass) : Boolean; virtual; abstract;
 
@@ -1771,7 +1772,7 @@ type
          function StringIsTrue(exec : TdwsExecution; const value : UnicodeString) : Boolean; override;
          function IntegerIsTrue(const value : Int64) : Boolean; override;
 
-         procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
+         procedure TypeCheck(context : TdwsCompilerContext; typ : TTypeSymbol); override;
          function IsConstant : Boolean; override;
          function IsExpr(aClass : TClass) : Boolean; override;
 
@@ -1792,7 +1793,7 @@ type
          function StringIsTrue(exec : TdwsExecution; const value : UnicodeString) : Boolean; override;
          function IntegerIsTrue(const value : Int64) : Boolean; override;
 
-         procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
+         procedure TypeCheck(context : TdwsCompilerContext; typ : TTypeSymbol); override;
          function IsConstant : Boolean; override;
          function IsExpr(aClass : TClass) : Boolean; override;
 
@@ -1815,7 +1816,7 @@ type
          function StringIsTrue(exec : TdwsExecution; const value : UnicodeString) : Boolean; override;
          function IntegerIsTrue(const value : Int64) : Boolean; override;
 
-         procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
+         procedure TypeCheck(context : TdwsCompilerContext; typ : TTypeSymbol); override;
          function IsConstant : Boolean; override;
          function IsExpr(aClass : TClass) : Boolean; override;
 
@@ -1841,7 +1842,7 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
 
-         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
 
          property CaseConditions : TTightList read FCaseConditions;
          property ValueExpr: TTypedExpr read FValueExpr write FValueExpr;
@@ -1874,7 +1875,7 @@ type
          function GetIsConstant : Boolean; override;
 
       public
-         constructor Create(Prog: TdwsProgram; Left : TTypedExpr);
+         constructor Create(context : TdwsCompilerContext; Left : TTypedExpr);
          destructor Destroy; override;
 
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
@@ -1882,7 +1883,7 @@ type
          procedure AddCaseCondition(cond : TCaseCondition);
          procedure Prepare; virtual;
 
-         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
 
          property Left : TTypedExpr read FLeft;
          property CaseConditions[idx : Integer] : TCaseCondition read GetCaseConditions; default;
@@ -1998,7 +1999,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(aProg: TdwsProgram; const aPos: TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const aPos: TScriptPos;
                             aVarExpr : TVarExpr; aInExpr : TTypedExpr);
          destructor Destroy; override;
 
@@ -2010,7 +2011,7 @@ type
    // for charCode in aString do ...;
    TForCharCodeInStrExpr = class(TForInStrExpr)
       public
-         constructor Create(aProg: TdwsProgram; const aPos: TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const aPos: TScriptPos;
                             aVarExpr : TIntVarExpr; aInExpr : TTypedExpr);
 
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -2019,7 +2020,7 @@ type
    // for char in aString do ...;
    TForCharInStrExpr = class(TForInStrExpr)
       public
-         constructor Create(aProg: TdwsProgram; const aPos: TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const aPos: TScriptPos;
                             aVarExpr : TStrVarExpr; aInExpr : TTypedExpr);
 
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -2048,14 +2049,14 @@ type
    TWhileExpr = class(TLoopExpr)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
-         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // repeat FLoopExpr while FCondExpr
    TRepeatExpr = class(TLoopExpr)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
-         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    TFlowControlExpr = class(TNoResultExpr)
@@ -2082,7 +2083,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; assignExpr : TAssignExpr);
+         constructor Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos; assignExpr : TAssignExpr);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -2108,7 +2109,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const scriptPos: TScriptPos; ExceptionExpr: TTypedExpr);
+         constructor Create(context : TdwsCompilerContext; const scriptPos: TScriptPos; ExceptionExpr: TTypedExpr);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -2174,7 +2175,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(aProg: TdwsProgram; const aPos: TScriptPos);
+         constructor Create(context : TdwsCompilerContext; const aPos: TScriptPos);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -2203,7 +2204,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; StringExpr : TDataExpr; IndexExpr, ValueExpr: TTypedExpr);
+         constructor Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos; StringExpr : TDataExpr; IndexExpr, ValueExpr: TTypedExpr);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -2262,7 +2263,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const scriptPos : TScriptPos;
                             expr0, expr1 : TDataExpr);
          destructor Destroy; override;
 
@@ -2315,7 +2316,7 @@ end;
 
 // Create
 //
-constructor TVarExpr.Create(prog : TdwsProgram; dataSym : TDataSymbol);
+constructor TVarExpr.Create(dataSym : TDataSymbol);
 begin
    inherited Create(dataSym.Typ);
    FStackAddr:=dataSym.StackAddr;
@@ -2324,33 +2325,33 @@ end;
 
 // CreateTyped
 //
-class function TVarExpr.CreateTyped(prog : TdwsProgram; dataSym : TDataSymbol) : TVarExpr;
+class function TVarExpr.CreateTyped(context : TdwsCompilerContext; dataSym : TDataSymbol) : TVarExpr;
 var
    typ : TTypeSymbol;
 begin
    typ:=dataSym.Typ;
-   if typ.IsOfType(prog.TypInteger) then
-      Result:=TIntVarExpr.Create(prog, dataSym)
-   else if typ.IsOfType(prog.TypFloat) then
-      Result:=TFloatVarExpr.Create(prog, dataSym)
-   else if typ.IsOfType(prog.TypString) then
-      Result:=TStrVarExpr.Create(prog, dataSym)
-   else if typ.IsOfType(prog.TypBoolean) then
-      Result:=TBoolVarExpr.Create(prog, dataSym)
+   if typ.IsOfType(context.TypInteger) then
+      Result:=TIntVarExpr.Create(dataSym)
+   else if typ.IsOfType(context.TypFloat) then
+      Result:=TFloatVarExpr.Create(dataSym)
+   else if typ.IsOfType(context.TypString) then
+      Result:=TStrVarExpr.Create(dataSym)
+   else if typ.IsOfType(context.TypBoolean) then
+      Result:=TBoolVarExpr.Create(dataSym)
    else if dataSym.ClassType=TSelfSymbol then
       if (typ is TClassSymbol) then
-         Result:=TSelfObjectVarExpr.Create(prog, dataSym)
-      else Result:=TSelfVarExpr.Create(prog, dataSym)
+         Result:=TSelfObjectVarExpr.Create(dataSym)
+      else Result:=TSelfVarExpr.Create(dataSym)
    else if (typ is TClassSymbol) or (typ is TDynamicArraySymbol) then
-      Result:=TObjectVarExpr.Create(prog, dataSym)
+      Result:=TObjectVarExpr.Create(dataSym)
    else if typ.Size=1 then
-      Result:=TBaseTypeVarExpr.Create(prog, dataSym)
-   else Result:=TVarExpr.Create(prog, dataSym);
+      Result:=TBaseTypeVarExpr.Create(dataSym)
+   else Result:=TVarExpr.Create(dataSym);
 end;
 
 // Orphan
 //
-procedure TVarExpr.Orphan(prog : TdwsProgram);
+procedure TVarExpr.Orphan(context : TdwsCompilerContext);
 begin
    DecRefCount;
 end;
@@ -2737,7 +2738,7 @@ end;
 
 // Create
 //
-constructor TVarParentExpr.Create(prog : TdwsProgram; dataSym : TDataSymbol);
+constructor TVarParentExpr.Create(dataSym : TDataSymbol);
 begin
    inherited;
    FLevel:=dataSym.Level;
@@ -2923,7 +2924,7 @@ end;
 
 // Create
 //
-constructor TByRefParentParamExpr.Create(prog : TdwsProgram; dataSym : TDataSymbol);
+constructor TByRefParentParamExpr.Create(dataSym : TDataSymbol);
 begin
    inherited;
    FLevel := DataSym.Level;
@@ -2974,7 +2975,7 @@ end;
 
 // Create
 //
-constructor TArrayTypedExpr.Create(prog: TdwsProgram; const scriptPos: TScriptPos;
+constructor TArrayTypedExpr.Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                                    aBaseExpr : TTypedExpr);
 begin
    FScriptPos:=scriptPos;
@@ -3002,10 +3003,10 @@ end;
 
 // Create
 //
-constructor TArrayTypedFluentExpr.Create(prog: TdwsProgram; const scriptPos: TScriptPos;
+constructor TArrayTypedFluentExpr.Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                                          aBaseExpr : TTypedExpr);
 begin
-   inherited Create(prog, scriptPos, aBaseExpr);
+   inherited Create(context, scriptPos, aBaseExpr);
    Typ := aBaseExpr.Typ;
 end;
 
@@ -3050,10 +3051,10 @@ end;
 
 // Create
 //
-constructor TNewArrayExpr.Create(prog: TdwsProgram; const scriptPos: TScriptPos;
+constructor TNewArrayExpr.Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                                  elementTyp : TTypeSymbol);
 begin
-   inherited Create(scriptPos, TDynamicArraySymbol.Create('', elementTyp, prog.TypInteger));
+   inherited Create(scriptPos, TDynamicArraySymbol.Create('', elementTyp, context.TypInteger));
    FTyps.Add(FTyp);
 end;
 
@@ -3159,14 +3160,14 @@ end;
 
 // Orphan
 //
-procedure TArrayExpr.Orphan(prog : TdwsProgram);
+procedure TArrayExpr.Orphan(context : TdwsCompilerContext);
 begin
    if FBaseExpr <> nil then begin
-      FBaseExpr.Orphan(prog);
+      FBaseExpr.Orphan(context);
       FBaseExpr := nil;
    end;
    if FIndexExpr <> nil then begin
-      FIndexExpr.Orphan(prog);
+      FIndexExpr.Orphan(context);
       FIndexExpr := nil;
    end;
    DecRefCount;
@@ -3235,7 +3236,7 @@ end;
 
 // Optimize
 //
-function TStaticArrayExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TStaticArrayExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 var
    v : Variant;
 begin
@@ -3243,8 +3244,8 @@ begin
    if IsConstant then begin
       if Typ.Size=1 then begin
          EvalAsVariant(exec, v);
-         Result:=TConstExpr.CreateTypedVariantValue(prog, Typ, v);
-         Orphan(prog);
+         Result:=TConstExpr.Create(Typ, v);
+         Orphan(context);
       end;
    end;
 end;
@@ -3541,7 +3542,7 @@ end;
 
 // Create
 //
-constructor TDynamicArraySetExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos;
+constructor TDynamicArraySetExpr.Create(context : TdwsCompilerContext; const scriptPos : TScriptPos;
                             arrayExpr, indexExpr, valueExpr : TTypedExpr);
 begin
    inherited Create(scriptPos);
@@ -3790,10 +3791,10 @@ end;
 
 // Orphan
 //
-procedure TRecordExpr.Orphan(prog : TdwsProgram);
+procedure TRecordExpr.Orphan(context : TdwsCompilerContext);
 begin
    if FBaseExpr <> nil then begin
-      FBaseExpr.Orphan(prog);
+      FBaseExpr.Orphan(context);
       FBaseExpr := nil;
       DecRefCount;
    end else inherited;
@@ -3993,7 +3994,7 @@ end;
 
 // Create
 //
-constructor TInitDataExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; Expr: TDataExpr);
+constructor TInitDataExpr.Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos; Expr: TDataExpr);
 begin
    inherited Create(aScriptPos);
    FExpr := Expr;
@@ -4037,11 +4038,11 @@ end;
 
 // Create
 //
-constructor TDynamicRecordExpr.Create(aProg : TdwsProgram; const aPos : TScriptPos;
+constructor TDynamicRecordExpr.Create(context : TdwsCompilerContext; const aPos : TScriptPos;
                                       recordTyp : TRecordSymbol);
 begin
    inherited Create(aPos, recordTyp);
-   FAddr:=aProg.GetTempAddr(recordTyp.Size);
+   FAddr:=context.GetTempAddr(recordTyp.Size);
 end;
 
 // EvalNoResult
@@ -4333,7 +4334,7 @@ end;
 
 // Create
 //
-constructor TLazyParamExpr.Create(Prog: TdwsProgram; dataSym : TLazyParamSymbol);
+constructor TLazyParamExpr.Create(context : TdwsCompilerContext; dataSym : TLazyParamSymbol);
 begin
    FDataSym:=dataSym;
    FTyp:=dataSym.Typ;
@@ -4374,9 +4375,9 @@ end;
 
 // Create
 //
-constructor TArrayLengthExpr.Create(prog : TdwsProgram; expr : TTypedExpr; captureExpr : Boolean);
+constructor TArrayLengthExpr.Create(context : TdwsCompilerContext; expr : TTypedExpr; captureExpr : Boolean);
 begin
-   inherited Create(prog, expr);
+   inherited Create(context, expr);
    FCapture:=captureExpr;
 end;
 
@@ -4430,10 +4431,10 @@ end;
 
 // CreatePos
 //
-constructor TStringArrayOpExpr.CreatePos(Prog: TdwsProgram; const aScriptPos: TScriptPos;
+constructor TStringArrayOpExpr.CreatePos(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                          Left, Right: TTypedExpr);
 begin
-   inherited Create(Prog, aScriptPos, Left, Right);
+   inherited Create(context, aScriptPos, Left, Right);
    FScriptPos := aScriptPos;
 end;
 
@@ -4510,10 +4511,10 @@ end;
 
 // Create
 //
-constructor TInOpExpr.Create(Prog: TdwsProgram; Left: TTypedExpr);
+constructor TInOpExpr.Create(context : TdwsCompilerContext; Left: TTypedExpr);
 begin
    FLeft:=Left;
-   FTyp:=Prog.TypBoolean;
+   FTyp:=context.TypBoolean;
 end;
 
 // Destroy
@@ -4570,14 +4571,14 @@ end;
 
 // Optimize
 //
-function TInOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TInOpExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 
    procedure TransferFieldsAndOrphan(dest : TInOpExpr);
    begin
       FLeft:=nil;
       dest.FCaseConditions.Assign(FCaseConditions);
       FCaseConditions.Clear;
-      Orphan(prog);
+      Orphan(context);
    end;
 
 var
@@ -4605,15 +4606,15 @@ begin
             end;
          end;
       end;
-      Result:=TBitwiseInOpExpr.Create(prog, FLeft);
+      Result:=TBitwiseInOpExpr.Create(context, FLeft);
       TBitwiseInOpExpr(Result).Mask:=mask;
       FLeft:=nil;
-      Orphan(prog);
+      Orphan(context);
 
-   end else if FLeft.IsOfType(prog.TypInteger) then begin
+   end else if FLeft.IsOfType(context.TypInteger) then begin
 
       if TCaseConditionsHelper.CanOptimizeToTyped(FCaseConditions, TConstIntExpr) then begin
-         iioe:=TIntegerInOpExpr.Create(prog, Left);
+         iioe := TIntegerInOpExpr.Create(context, Left);
          TransferFieldsAndOrphan(iioe);
          Exit(iioe);
       end;
@@ -4775,7 +4776,7 @@ end;
 
 // Create
 //
-constructor TEnumerationElementNameExpr.Create(prog : TdwsProgram; expr : TTypedExpr);
+constructor TEnumerationElementNameExpr.Create(context : TdwsCompilerContext; expr : TTypedExpr);
 begin
    inherited;
    Assert(expr.Typ is TEnumerationSymbol);
@@ -4825,7 +4826,7 @@ end;
 
 // Create
 //
-constructor TAssertExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; condExpr, msgExpr : TTypedExpr);
+constructor TAssertExpr.Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos; condExpr, msgExpr : TTypedExpr);
 begin
    inherited Create(aScriptPos);
    FCond:=condExpr;
@@ -4863,12 +4864,12 @@ end;
 
 // Optimize
 //
-function TAssertExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TAssertExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    Result:=Self;
    if FCond.IsConstant and FCond.EvalAsBoolean(exec) then begin
       Result:=TNullExpr.Create(FScriptPos);
-      Orphan(prog);
+      Orphan(context);
    end;
 end;
 
@@ -5159,9 +5160,9 @@ end;
 
 // Optimize
 //
-function TAddFloatExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TAddFloatExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
-   Result:=inherited Optimize(prog, exec);
+   Result:=inherited Optimize(context, exec);
    if     (Result=Self)
       and (Left.ClassType=TAddFloatExpr)
       and (TAddFloatExpr(Left).Right.ClassType<>TAddFloatExpr) then begin
@@ -5252,36 +5253,36 @@ end;
 
 // Optimize
 //
-function TMultIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TMultIntExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 var
    mip : TMultIntPow2Expr;
    n : Integer;
 begin
    if Left.SameDataExpr(Right) then begin
-      Result:=TSqrIntExpr.Create(Prog, FLeft);
-      FLeft:=nil;
-      Orphan(prog);
+      Result := TSqrIntExpr.Create(context, FLeft);
+      FLeft := nil;
+      Orphan(context);
    end else if FLeft.IsConstant then begin
       if FRight.IsConstant then
          Result:=inherited
       else begin
          n:=WhichPowerOfTwo(FLeft.EvalAsInteger(exec));
          if n>=1 then begin
-            mip:=TMultIntPow2Expr.Create(prog, FRight);
+            mip:=TMultIntPow2Expr.Create(context, FRight);
             mip.FShift:=n-1;
             Result:=mip;
             FRight:=nil;
-            Orphan(prog);
+            Orphan(context);
          end else Result:=Self;
       end;
    end else if FRight.IsConstant then begin
       n:=WhichPowerOfTwo(FRight.EvalAsInteger(exec));
       if n>=1 then begin
-         mip:=TMultIntPow2Expr.Create(prog, FLeft);
+         mip:=TMultIntPow2Expr.Create(context, FLeft);
          mip.FShift:=n-1;
          Result:=mip;
          FLeft:=nil;
-         Orphan(prog);
+         Orphan(context);
       end else Result:=Self;
    end else Result:=Self;
 end;
@@ -5310,12 +5311,12 @@ end;
 
 // Optimize
 //
-function TMultFloatExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TMultFloatExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    if Left.SameDataExpr(Right) then begin
-      Result:=TSqrFloatExpr.Create(Prog, FLeft);
+      Result:=TSqrFloatExpr.Create(context, FLeft);
       FLeft:=nil;
-      Orphan(prog);
+      Orphan(context);
       Exit;
    end;
    Result:=inherited;
@@ -5365,16 +5366,16 @@ end;
 
 // Optimize
 //
-function TDivideExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TDivideExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    if FRight is TDivideExpr then begin
-      Result:=TMultFloatExpr.Create(prog, ScriptPos, Left, Right);
+      Result:=TMultFloatExpr.Create(context, ScriptPos, Left, Right);
       TDivideExpr(Right).Swap;
       FLeft:=nil;
       FRight:=nil;
-      Orphan(prog);
-      Result:=Result.Optimize(prog, exec);
-   end else Result:=inherited Optimize(prog, exec);
+      Orphan(context);
+      Result:=Result.Optimize(context, exec);
+   end else Result:=inherited Optimize(context, exec);
 end;
 
 // ------------------
@@ -5413,7 +5414,7 @@ end;
 
 // Create
 //
-constructor TPosIntegerBinOpExpr.Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+constructor TPosIntegerBinOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
 begin
    inherited;
    FScriptPos:=aScriptPos;
@@ -5444,16 +5445,16 @@ end;
 
 // Optimize
 //
-function TDivExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TDivExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
-   Result:=inherited Optimize(prog, exec);
+   Result:=inherited Optimize(context, exec);
    if (Result=Self) and (FRight.ClassType=TConstIntExpr) then begin
       if TConstIntExpr(Right).Value=0 then
-         prog.CompileMsgs.AddCompilerError(FScriptPos, CPE_DivisionByZero);
-      Result:=TDivConstExpr.Create(prog, FScriptPos, Left, Right);
+         context.Msgs.AddCompilerError(FScriptPos, CPE_DivisionByZero);
+      Result:=TDivConstExpr.Create(context, FScriptPos, Left, Right);
       Left:=nil;
       Right:=nil;
-      Orphan(prog);
+      Orphan(context);
    end;
 end;
 
@@ -5486,16 +5487,16 @@ end;
 
 // Optimize
 //
-function TModExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TModExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
-   Result:=inherited Optimize(prog, exec);
+   Result:=inherited Optimize(context, exec);
    if (Result=Self) and (FRight.ClassType=TConstIntExpr) then begin
       if TConstIntExpr(Right).Value=0 then
-         prog.CompileMsgs.AddCompilerError(FScriptPos, CPE_DivisionByZero);
-      Result:=TModConstExpr.Create(prog, FScriptPos, Left, Right);
+         context.Msgs.AddCompilerError(FScriptPos, CPE_DivisionByZero);
+      Result:=TModConstExpr.Create(context, FScriptPos, Left, Right);
       Left:=nil;
       Right:=nil;
-      Orphan(prog);
+      Orphan(context);
    end;
 end;
 
@@ -5567,26 +5568,26 @@ end;
 
 // Optimize
 //
-function TBoolAndExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TBoolAndExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
-   Result:=inherited Optimize(prog, exec);
+   Result:=inherited Optimize(context, exec);
    if Result.ClassType=TBoolAndExpr then begin
       if Left.IsConstant then begin
          if Left.EvalAsBoolean(exec) then begin
             Result:=Right;
             Right:=nil;
          end else begin
-            Result := TConstExpr.CreateBooleanValue(prog, False)
+            Result := TConstBooleanExpr.Create(context.TypBoolean, False)
          end;
-         Orphan(prog);
+         Orphan(context);
       end else if Right.IsConstant then begin
          if Right.EvalAsBoolean(exec) then begin
             Result:=Left;
             Left:=nil;
          end else begin
-            Result := TConstExpr.CreateBooleanValue(prog, False)
+            Result := TConstBooleanExpr.Create(context.TypBoolean, False)
          end;
-         Orphan(prog);
+         Orphan(context);
       end;
    end;
 end;
@@ -5620,26 +5621,26 @@ end;
 
 // Optimize
 //
-function TBoolOrExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TBoolOrExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
-   Result:=inherited Optimize(prog, exec);
+   Result:=inherited Optimize(context, exec);
    if Result.ClassType=TBoolOrExpr then begin
       if Left.IsConstant then begin
          if Left.EvalAsBoolean(exec) then begin
-            Result := TConstExpr.CreateBooleanValue(prog, True)
+            Result := TConstBooleanExpr.Create(context.TypBoolean, True)
          end else begin
             Result:=Right;
             Right:=nil;
          end;
-         Orphan(prog);
+         Orphan(context);
       end else if Right.IsConstant then begin
          if Right.EvalAsBoolean(exec) then begin
-            Result := TConstExpr.CreateBooleanValue(prog, True)
+            Result := TConstBooleanExpr.Create(context.TypBoolean, True)
          end else begin
             Result:=Left;
             Left:=nil;
          end;
-         Orphan(prog);
+         Orphan(context);
       end;
    end;
 end;
@@ -5701,12 +5702,12 @@ end;
 
 // Optimize
 //
-function TShiftExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TShiftExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    if Right.IsConstant and (Right.EvalAsInteger(exec)=0) then begin
       Result:=Left;
       FLeft:=nil;
-      Orphan(prog);
+      Orphan(context);
    end else Result:=Self;
 end;
 
@@ -5772,18 +5773,18 @@ end;
 
 // Optimize
 //
-function TStringInStringExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TStringInStringExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    if (Left is TStrVarExpr) and (Right is TConstStringExpr) then begin
-      Result:=TVarStringInConstStringExpr.Create(prog, ScriptPos, Left, Right);
+      Result:=TVarStringInConstStringExpr.Create(context, ScriptPos, Left, Right);
       Left:=nil;
       Right:=nil;
-      Orphan(prog);
+      Orphan(context);
    end else if (Left is TConstStringExpr) and (Right is TStrVarExpr) then begin
-      Result:=TConstStringInVarStringExpr.Create(prog, ScriptPos, Left, Right);
+      Result:=TConstStringInVarStringExpr.Create(context, ScriptPos, Left, Right);
       Left:=nil;
       Right:=nil;
-      Orphan(prog);
+      Orphan(context);
    end else Result:=inherited;
 end;
 
@@ -5867,7 +5868,7 @@ end;
 
 // Optimize
 //
-function TCoalesceStrExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TCoalesceStrExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 var
    s : UnicodeString;
 begin
@@ -5876,14 +5877,14 @@ begin
       if s='' then begin
          Result:=Right;
          FRight:=nil;
-         Orphan(prog);
+         Orphan(context);
       end else begin
          Result:=Left;
          FLeft:=nil;
-         Orphan(prog);
+         Orphan(context);
       end;
       Exit;
-   end else Result:=inherited Optimize(prog, exec);
+   end else Result:=inherited Optimize(context, exec);
 end;
 
 // ------------------
@@ -5892,9 +5893,9 @@ end;
 
 // Create
 //
-constructor TCoalesceClassExpr.Create(aProg: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+constructor TCoalesceClassExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
 begin
-   inherited Create(aProg, aScriptPos, aLeft, aRight);
+   inherited Create(context, aScriptPos, aLeft, aRight);
    Typ:=aLeft.Typ;
 end;
 
@@ -5923,9 +5924,9 @@ end;
 
 // Create
 //
-constructor TCoalesceDynArrayExpr.Create(aProg: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+constructor TCoalesceDynArrayExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
 begin
-   inherited Create(aProg, aScriptPos, aLeft, aRight);
+   inherited Create(context, aScriptPos, aLeft, aRight);
    Typ:=aLeft.Typ;
 end;
 
@@ -5952,14 +5953,14 @@ end;
 // ------------------ TAssignExpr ------------------
 // ------------------
 
-constructor TAssignExpr.Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
+constructor TAssignExpr.Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                exec : TdwsExecution;
                                left : TDataExpr; right : TTypedExpr);
 begin
   inherited Create(aScriptPos);
   FLeft := Left;
   FRight := Right;
-  TypeCheckAssign(Prog, exec);
+  TypeCheckAssign(context, exec);
 end;
 
 // Destroy
@@ -5973,11 +5974,11 @@ end;
 
 // Orphan
 //
-procedure TAssignExpr.Orphan(prog : TdwsProgram);
+procedure TAssignExpr.Orphan(context : TdwsCompilerContext);
 begin
    if FLeft = nil then begin
       if FRight <> nil then begin
-         FRight.Orphan(prog);
+         FRight.Orphan(context);
          FRight := nil;
       end;
       DecRefCount;
@@ -5993,26 +5994,26 @@ end;
 
 // TypeCheckAssign
 //
-procedure TAssignExpr.TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution);
+procedure TAssignExpr.TypeCheckAssign(context : TdwsCompilerContext; exec : TdwsExecution);
 var
    rightScriptPos : TScriptPos;
 begin
    if FLeft=nil then Exit;
 
    if FRight.ClassType=TArrayConstantExpr then
-      TArrayConstantExpr(FRight).Prepare(prog, FLeft.Typ.Typ);
+      TArrayConstantExpr(FRight).Prepare(context, FLeft.Typ.Typ);
 
    rightScriptPos:=Right.ScriptPos;
    if not rightScriptPos.Defined then
       rightScriptPos:=Self.ScriptPos;
 
-   FRight:=TConvExpr.WrapWithConvCast(prog, rightScriptPos, exec,
+   FRight:=TConvExpr.WrapWithConvCast(context, rightScriptPos, exec,
                                       FLeft.Typ, FRight, CPE_AssignIncompatibleTypes);
 end;
 
 // Optimize
 //
-function TAssignExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TAssignExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 type
    TCombinedOp = record
       Op : TBinaryOpExprClass; Comb : TOpAssignExprClass;
@@ -6036,7 +6037,7 @@ var
    rightClassType : TClass;
 begin
    if FRight.IsConstant then begin
-      Exit(OptimizeConstAssignment(prog, exec));
+      Exit(OptimizeConstAssignment(context, exec));
    end;
 
    Result:=Self;
@@ -6047,7 +6048,7 @@ begin
          if rightClassType=TAddIntExpr then begin
             addIntExpr:=TAddIntExpr(FRight);
             if addIntExpr.Left.SameDataExpr(leftVarExpr) then begin
-               Result:=TIncIntVarExpr.Create(Prog, FScriptPos, exec, FLeft, addIntExpr.Right);
+               Result:=TIncIntVarExpr.Create(context, FScriptPos, exec, FLeft, addIntExpr.Right);
                FLeft:=nil;
                addIntExpr.Right:=nil;
                Free;
@@ -6056,7 +6057,7 @@ begin
          end else if rightClassType=TSubIntExpr then begin
             subIntExpr:=TSubIntExpr(FRight);
             if subIntExpr.Left.SameDataExpr(leftVarExpr) then begin
-               Result:=TDecIntVarExpr.Create(Prog, FScriptPos, exec, FLeft, subIntExpr.Right);
+               Result:=TDecIntVarExpr.Create(context, FScriptPos, exec, FLeft, subIntExpr.Right);
                FLeft:=nil;
                subIntExpr.Right:=nil;
                Free;
@@ -6071,9 +6072,9 @@ begin
             addStrExpr:=TAddStrExpr(FRight);
             if (addStrExpr.Left is TVarExpr) and (addStrExpr.Left.ReferencesVariable(leftVarExpr.DataSym)) then begin
                if addStrExpr.Right.InheritsFrom(TConstStringExpr) then begin
-                  Result:=TAppendConstStringVarExpr.Create(Prog, FScriptPos, exec, FLeft, addStrExpr.Right);
+                  Result:=TAppendConstStringVarExpr.Create(context, FScriptPos, exec, FLeft, addStrExpr.Right);
                end else begin
-                  Result:=TAppendStringVarExpr.Create(Prog, FScriptPos, exec, FLeft, addStrExpr.Right);
+                  Result:=TAppendStringVarExpr.Create(context, FScriptPos, exec, FLeft, addStrExpr.Right);
                end;
                FLeft:=nil;
                addStrExpr.Right:=nil;
@@ -6086,7 +6087,7 @@ begin
    if (Right is TBinaryOpExpr) and Left.SameDataExpr(TBinaryOpExpr(Right).Left) then begin
       for i:=Low(cCombinedOps) to High(cCombinedOps) do begin
          if rightClassType=cCombinedOps[i].Op then begin
-            Result:=cCombinedOps[i].Comb.Create(Prog, FScriptPos, exec, FLeft, TBinaryOpExpr(Right).Right);
+            Result:=cCombinedOps[i].Comb.Create(context, FScriptPos, exec, FLeft, TBinaryOpExpr(Right).Right);
             FLeft:=nil;
             TBinaryOpExpr(Right).Right:=nil;
             Free;
@@ -6098,43 +6099,43 @@ end;
 
 // OptimizeConstAssignment
 //
-function TAssignExpr.OptimizeConstAssignment(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
+function TAssignExpr.OptimizeConstAssignment(context : TdwsCompilerContext; exec : TdwsExecution) : TNoResultExpr;
 var
    stringBuf : UnicodeString;
 begin
    Result:=Self;
 
-   if FLeft.IsOfType(prog.TypVariant) then Exit;
+   if FLeft.IsOfType(context.TypVariant) then Exit;
 
-   if FRight.IsOfType(prog.TypInteger) then begin
+   if FRight.IsOfType(context.TypInteger) then begin
 
-      Result:=TAssignConstToIntegerVarExpr.CreateVal(prog, FScriptPos, exec, FLeft, FRight.EvalAsInteger(exec));
+      Result:=TAssignConstToIntegerVarExpr.CreateVal(context, FScriptPos, exec, FLeft, FRight.EvalAsInteger(exec));
 
-   end else if FRight.IsOfType(prog.TypFloat) then begin
+   end else if FRight.IsOfType(context.TypFloat) then begin
 
-      Result:=TAssignConstToFloatVarExpr.CreateVal(prog, FScriptPos, exec, FLeft, FRight.EvalAsFloat(exec));
+      Result:=TAssignConstToFloatVarExpr.CreateVal(context, FScriptPos, exec, FLeft, FRight.EvalAsFloat(exec));
 
-   end else if FRight.IsOfType(prog.TypBoolean) then begin
+   end else if FRight.IsOfType(context.TypBoolean) then begin
 
-      Result:=TAssignConstToBoolVarExpr.CreateVal(prog, FScriptPos, exec, FLeft, FRight.EvalAsBoolean(exec));
+      Result:=TAssignConstToBoolVarExpr.CreateVal(context, FScriptPos, exec, FLeft, FRight.EvalAsBoolean(exec));
 
-   end else if FRight.IsOfType(prog.TypString) then begin
+   end else if FRight.IsOfType(context.TypString) then begin
 
       FRight.EvalAsString(exec, stringBuf);
-      Result:=TAssignConstToStringVarExpr.CreateVal(prog, FScriptPos, exec, FLeft, stringBuf);
+      Result:=TAssignConstToStringVarExpr.CreateVal(context, FScriptPos, exec, FLeft, stringBuf);
 
-   end else if FRight.IsOfType(prog.TypNil) then begin
+   end else if FRight.IsOfType(context.TypNil) then begin
 
       if FLeft.Typ.UnAliasedType.ClassType=TClassSymbol then
-         Result:=TAssignNilToVarExpr.CreateVal(prog, FScriptPos, exec, FLeft)
+         Result:=TAssignNilToVarExpr.CreateVal(context, FScriptPos, exec, FLeft)
       else if FLeft.Typ.UnAliasedType.ClassType=TClassOfSymbol then
-         Result:=TAssignNilClassToVarExpr.CreateVal(prog, FScriptPos, exec, FLeft);
+         Result:=TAssignNilClassToVarExpr.CreateVal(context, FScriptPos, exec, FLeft);
 
    end;
    if Result<>Self then begin
       FLeft:=nil;
       if FRight <> nil then begin
-         FRight.Orphan(prog);
+         FRight.Orphan(context);
          FRight := nil;
       end;
       Free;
@@ -6181,10 +6182,10 @@ end;
 
 { TAssignDataExpr }
 
-constructor TAssignDataExpr.Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
+constructor TAssignDataExpr.Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                    exec : TdwsExecution; left : TDataExpr; right : TTypedExpr);
 begin
-  inherited Create(Prog, aScriptPos, exec, Left, Right);
+  inherited Create(context, aScriptPos, exec, Left, Right);
   FSize := FLeft.Typ.Size;
 end;
 
@@ -6199,10 +6200,10 @@ end;
 
 // TypeCheckAssign
 //
-procedure TAssignFuncExpr.TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution);
+procedure TAssignFuncExpr.TypeCheckAssign(context : TdwsCompilerContext; exec : TdwsExecution);
 begin
    if not FLeft.Typ.IsCompatible((FRight as TFuncExprBase).FuncSym) then
-      prog.CompileMsgs.AddCompilerError(ScriptPos, CPE_IncompatibleOperands);
+      context.Msgs.AddCompilerError(ScriptPos, CPE_IncompatibleOperands);
 end;
 
 // EvalNoResult
@@ -6219,7 +6220,7 @@ end;
 
 // Optimize
 //
-function TAssignFuncExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TAssignFuncExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    Result:=Self;
 end;
@@ -6228,11 +6229,11 @@ end;
 // ------------------ TAssignArrayConstantExpr ------------------
 // ------------------
 
-constructor TAssignArrayConstantExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
+constructor TAssignArrayConstantExpr.Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                             exec : TdwsExecution;
                                             Left : TDataExpr; Right: TTypedExpr);
 begin
-  inherited Create(Prog, aScriptPos, exec, Left, Right as TArrayConstantExpr); // typecheck Right
+  inherited Create(context, aScriptPos, exec, Left, Right as TArrayConstantExpr); // typecheck Right
 end;
 
 procedure TAssignArrayConstantExpr.EvalNoResult(exec : TdwsExecution);
@@ -6263,20 +6264,20 @@ end;
 
 // TypeCheckAssign
 //
-procedure TAssignArrayConstantExpr.TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution);
+procedure TAssignArrayConstantExpr.TypeCheckAssign(context : TdwsCompilerContext; exec : TdwsExecution);
 var
    leftItemTyp : TTypeSymbol;
 begin
    if FLeft.Typ is TDynamicArraySymbol then begin
       leftItemTyp:=TDynamicArraySymbol(FLeft.Typ).Typ;
       if not (   leftItemTyp.IsOfType(TArraySymbol(FRight.Typ).Typ)
-              or leftItemTyp.IsOfType(prog.TypVariant)) then
-         prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_AssignIncompatibleTypes,
+              or leftItemTyp.IsOfType(context.TypVariant)) then
+         context.Msgs.AddCompilerErrorFmt(ScriptPos, CPE_AssignIncompatibleTypes,
                                               [Right.Typ.Caption, Left.Typ.Caption]);
-   end else if     FLeft.Typ.Typ.IsOfType(prog.TypFloat)
+   end else if     FLeft.Typ.Typ.IsOfType(context.TypFloat)
                and (Right is TArrayConstantExpr)
-               and Right.Typ.Typ.IsOfType(prog.TypInteger) then begin
-      TArrayConstantExpr(Right).ElementsFromIntegerToFloat(prog);
+               and Right.Typ.Typ.IsOfType(context.TypInteger) then begin
+      TArrayConstantExpr(Right).ElementsFromIntegerToFloat(context);
    end else inherited;
 end;
 
@@ -6284,11 +6285,11 @@ end;
 // ------------------ TAssignConstDataToVarExpr ------------------
 // ------------------
 
-constructor TAssignConstDataToVarExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
+constructor TAssignConstDataToVarExpr.Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                              exec : TdwsExecution;
                                              Left : TDataExpr; Right: TTypedExpr);
 begin
-   inherited Create(Prog, aScriptPos, exec, Left, Right);
+   inherited Create(context, aScriptPos, exec, Left, Right);
    Assert(Left is TVarExpr);
    if Right=nil then
       Assert(ClassType<>TAssignConstDataToVarExpr)
@@ -6306,14 +6307,14 @@ end;
 
 // TypeCheckAssign
 //
-procedure TAssignConstExpr.TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution);
+procedure TAssignConstExpr.TypeCheckAssign(context : TdwsCompilerContext; exec : TdwsExecution);
 begin
    // nothing, checked during optimize
 end;
 
 // Optimize
 //
-function TAssignConstExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TAssignConstExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    Result:=Self;
 end;
@@ -6324,10 +6325,10 @@ end;
 
 // Create
 //
-constructor TAssignConstToIntegerVarExpr.CreateVal(Prog: TdwsProgram; const aScriptPos: TScriptPos; exec : TdwsExecution;
+constructor TAssignConstToIntegerVarExpr.CreateVal(context : TdwsCompilerContext; const aScriptPos: TScriptPos; exec : TdwsExecution;
                                                    Left : TDataExpr; const rightValue : Int64);
 begin
-   inherited Create(Prog, aScriptPos, exec, Left, nil);
+   inherited Create(context, aScriptPos, exec, Left, nil);
    FRight:=rightValue;
 end;
 
@@ -6351,10 +6352,10 @@ end;
 
 // Create
 //
-constructor TAssignConstToFloatVarExpr.CreateVal(Prog: TdwsProgram;
+constructor TAssignConstToFloatVarExpr.CreateVal(context : TdwsCompilerContext;
       const aScriptPos: TScriptPos; exec : TdwsExecution; Left : TDataExpr; const rightValue : Double);
 begin
-   inherited Create(Prog, aScriptPos, exec, Left, nil);
+   inherited Create(context, aScriptPos, exec, Left, nil);
    FRight:=rightValue;
 end;
 
@@ -6378,11 +6379,11 @@ end;
 
 // Create
 //
-constructor TAssignConstToBoolVarExpr.CreateVal(Prog: TdwsProgram;
+constructor TAssignConstToBoolVarExpr.CreateVal(context : TdwsCompilerContext;
       const aScriptPos: TScriptPos; exec : TdwsExecution;
       Left : TDataExpr; const rightValue : Boolean);
 begin
-   inherited Create(Prog, aScriptPos, exec, Left, nil);
+   inherited Create(context, aScriptPos, exec, Left, nil);
    FRight:=rightValue;
 end;
 
@@ -6406,11 +6407,11 @@ end;
 
 // Create
 //
-constructor TAssignConstToStringVarExpr.CreateVal(Prog: TdwsProgram;
+constructor TAssignConstToStringVarExpr.CreateVal(context : TdwsCompilerContext;
       const aScriptPos: TScriptPos; exec : TdwsExecution;
       Left : TDataExpr; const rightValue : UnicodeString);
 begin
-   inherited Create(Prog, aScriptPos, exec, Left, nil);
+   inherited Create(context, aScriptPos, exec, Left, nil);
    FRight:=rightValue;
 end;
 
@@ -6434,11 +6435,11 @@ end;
 
 // CreateVal
 //
-constructor TAssignConstToVariantVarExpr.CreateVal(Prog: TdwsProgram;
+constructor TAssignConstToVariantVarExpr.CreateVal(context : TdwsCompilerContext;
       const aScriptPos: TScriptPos; exec : TdwsExecution;
       Left : TDataExpr; const rightValue : Variant);
 begin
-   inherited Create(Prog, aScriptPos, exec, Left, nil);
+   inherited Create(context, aScriptPos, exec, Left, nil);
    VarCopySafe(FRight, rightValue);
 end;
 
@@ -6462,10 +6463,10 @@ end;
 
 // CreateVal
 //
-constructor TAssignNilToVarExpr.CreateVal(prog : TdwsProgram;
+constructor TAssignNilToVarExpr.CreateVal(context : TdwsCompilerContext;
    const aScriptPos: TScriptPos; exec : TdwsExecution; left : TDataExpr);
 begin
-   inherited Create(prog, aScriptPos, exec, left, nil);
+   inherited Create(context, aScriptPos, exec, left, nil);
 end;
 
 // RightValue
@@ -6513,7 +6514,7 @@ end;
 
 // Optimize
 //
-function TOpAssignExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TOpAssignExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    Result:=Self;
 end;
@@ -6546,14 +6547,14 @@ end;
 
 // Optimize
 //
-function TPlusAssignIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TPlusAssignIntExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    Result:=Self;
    if FLeft is TIntVarExpr then begin
-      Result:=TIncIntVarExpr.Create(Prog, FScriptPos, exec, FLeft, FRight);
+      Result:=TIncIntVarExpr.Create(context, FScriptPos, exec, FLeft, FRight);
       FLeft:=nil;
       FRight:=nil;
-      Orphan(prog);
+      Orphan(context);
    end;
 end;
 
@@ -6585,14 +6586,14 @@ end;
 
 // Optimize
 //
-function TPlusAssignStrExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TPlusAssignStrExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    Result:=Self;
    if FLeft is TStrVarExpr then begin
-      Result:=TAppendStringVarExpr.Create(Prog, FScriptPos, exec, FLeft, FRight);
+      Result:=TAppendStringVarExpr.Create(context, FScriptPos, exec, FLeft, FRight);
       FLeft:=nil;
       FRight:=nil;
-      Orphan(prog);
+      Orphan(context);
    end;
 end;
 
@@ -6624,14 +6625,14 @@ end;
 
 // Optimize
 //
-function TMinusAssignIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TMinusAssignIntExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    Result:=Self;
    if FLeft is TIntVarExpr then begin
-      Result:=TDecIntVarExpr.Create(Prog, FScriptPos, exec, FLeft, FRight);
+      Result:=TDecIntVarExpr.Create(context, FScriptPos, exec, FLeft, FRight);
       FLeft:=nil;
       FRight:=nil;
-      Orphan(prog);
+      Orphan(context);
    end;
 end;
 
@@ -6771,11 +6772,11 @@ end;
 
 // Create
 //
-constructor TAppendConstStringVarExpr.Create(prog : TdwsProgram;
+constructor TAppendConstStringVarExpr.Create(context : TdwsCompilerContext;
       const aScriptPos: TScriptPos;
       exec : TdwsExecution; left : TDataExpr; right : TTypedExpr);
 begin
-   inherited Create(Prog, aScriptPos, exec, Left, Right);
+   inherited Create(context, aScriptPos, exec, Left, Right);
    FAppendString:=(right as TConstStringExpr).Value;
 end;
 
@@ -6792,10 +6793,10 @@ end;
 
 // Create
 //
-constructor TBlockExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos);
+constructor TBlockExpr.Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos);
 begin
    inherited Create(aScriptPos);
-   FTable:=TSymbolTable.Create(Prog.Table, Prog.Table.AddrGenerator);
+   FTable:=TSymbolTable.Create(context.Table, context.Table.AddrGenerator);
 end;
 
 // Destroy
@@ -6808,9 +6809,9 @@ end;
 
 // Orphan
 //
-procedure TBlockExpr.Orphan(prog : TdwsProgram);
+procedure TBlockExpr.Orphan(context : TdwsCompilerContext);
 begin
-   prog.Root.OrphanObject(FTable);
+   context.OrphanObject(FTable);
    FTable := nil;
    inherited;
 end;
@@ -6838,7 +6839,7 @@ end;
 
 // Optimize
 //
-function TBlockExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TBlockExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 var
    i : Integer;
 begin
@@ -6875,7 +6876,7 @@ begin
       end;
       FStatements:=nil;
       FCount:=0;
-      Orphan(prog);
+      Orphan(context);
    end else Result:=Self;
 end;
 
@@ -6885,7 +6886,7 @@ end;
 
 // Orphan
 //
-procedure TBlockExprNoTable.Orphan(prog : TdwsProgram);
+procedure TBlockExprNoTable.Orphan(context : TdwsCompilerContext);
 begin
    if FCount=0 then
       DecRefCount
@@ -6977,7 +6978,7 @@ end;
 
 // Create
 //
-constructor TIfThenExpr.Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
+constructor TIfThenExpr.Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                condExpr : TTypedExpr; thenExpr : TProgramExpr);
 begin
    inherited Create(aScriptPos);
@@ -7006,14 +7007,14 @@ end;
 
 // Orphan
 //
-procedure TIfThenExpr.Orphan(prog : TdwsProgram);
+procedure TIfThenExpr.Orphan(context : TdwsCompilerContext);
 begin
    if FCond <> nil then begin
-      FCond.Orphan(prog);
+      FCond.Orphan(context);
       FCond := nil;
    end;
    if FThen <> nil then begin
-      FThen.Orphan(prog);
+      FThen.Orphan(context);
       FThen := nil;
    end;
    DecRefCount;
@@ -7021,7 +7022,7 @@ end;
 
 // Optimize
 //
-function TIfThenExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TIfThenExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    Result:=Self;
    if FCond.IsConstant then begin
@@ -7029,7 +7030,7 @@ begin
          Result:=FThen;
          FThen:=nil;
       end else Result:=TNullExpr.Create(FScriptPos);
-      Orphan(prog);
+      Orphan(context);
    end;
 end;
 
@@ -7055,10 +7056,10 @@ end;
 
 // Create
 //
-constructor TIfThenElseExpr.Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
+constructor TIfThenElseExpr.Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                  condExpr : TTypedExpr; thenExpr, elseExpr : TProgramExpr);
 begin
-   inherited Create(prog, aScriptPos, condExpr, thenExpr);
+   inherited Create(context, aScriptPos, condExpr, thenExpr);
    FElse:=elseExpr;
 end;
 
@@ -7085,10 +7086,10 @@ end;
 
 // Orphan
 //
-procedure TIfThenElseExpr.Orphan(prog : TdwsProgram);
+procedure TIfThenElseExpr.Orphan(context : TdwsCompilerContext);
 begin
    if FElse <> nil then begin
-      FElse.Orphan(prog);
+      FElse.Orphan(context);
       FElse := nil;
    end;
    inherited;
@@ -7096,7 +7097,7 @@ end;
 
 // Optimize
 //
-function TIfThenElseExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TIfThenElseExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 var
    bufNoResult : TProgramExpr;
    notExpr : TNotBoolExpr;
@@ -7109,7 +7110,7 @@ begin
          Result:=FElse;
          FElse:=nil;
       end;
-      Orphan(prog);
+      Orphan(context);
    end else begin
       Result:=Self;
       if FCond is TNotBoolExpr then begin
@@ -7183,7 +7184,7 @@ end;
 
 // Optimize
 //
-function TCaseExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TCaseExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 
    procedure TransferFieldsAndFree(dest : TCaseExpr);
    begin
@@ -7193,7 +7194,7 @@ function TCaseExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgram
       FCaseConditions.Clear;
       FElseExpr:=nil;
       FValueExpr:=nil;
-      Orphan(prog);
+      Orphan(context);
    end;
 
 var
@@ -7202,19 +7203,19 @@ var
    cse : TCaseStringExpr;
    cie : TCaseIntegerExpr;
 begin
-   if ValueExpr.Typ.IsOfType(prog.TypString) then begin
+   if ValueExpr.Typ.IsOfType(context.TypString) then begin
       if TCaseConditionsHelper.CanOptimizeToTyped(FCaseConditions, TConstStringExpr) then begin
          cse:=TCaseStringExpr.Create(ScriptPos);
          TransferFieldsAndFree(cse);
          Exit(cse);
       end;
-   end else if ValueExpr.Typ.IsOfType(prog.TypInteger) then begin
+   end else if ValueExpr.Typ.IsOfType(context.TypInteger) then begin
       if TCaseConditionsHelper.CanOptimizeToTyped(FCaseConditions, TConstIntExpr) then begin
          cie:=TCaseIntegerExpr.Create(ScriptPos);
          TransferFieldsAndFree(cie);
          Exit(cie);
       end;
-   end else if     ValueExpr.Typ.IsOfType(prog.TypBoolean)
+   end else if     ValueExpr.Typ.IsOfType(context.TypBoolean)
                and (CaseConditions.Count=2)
                and (CaseConditions.List[0] is TCompareCaseCondition)
                and (CaseConditions.List[1] is TCompareCaseCondition) then begin
@@ -7227,7 +7228,7 @@ begin
          if cond[0].CompareExpr.EvalAsBoolean(exec) then
             trueIndex:=0
          else trueIndex:=1;
-         Result:=TIfThenElseExpr.Create(prog, ScriptPos, ValueExpr,
+         Result:=TIfThenElseExpr.Create(context, ScriptPos, ValueExpr,
                                         cond[trueIndex].TrueExpr,
                                         cond[1-trueIndex].TrueExpr);
          ValueExpr:=nil;
@@ -7351,10 +7352,10 @@ end;
 
 // IsOfTypeNumber
 //
-function TCaseCondition.IsOfTypeNumber(prog : TdwsProgram; typ : TTypeSymbol) : Boolean;
+function TCaseCondition.IsOfTypeNumber(context : TdwsCompilerContext; typ : TTypeSymbol) : Boolean;
 begin
-   Result:=   typ.IsOfType(prog.TypInteger) or typ.IsOfType(prog.TypFloat)
-           or typ.IsOfType(prog.TypVariant)
+   Result:=   typ.IsOfType(context.TypInteger) or typ.IsOfType(context.TypFloat)
+           or typ.IsOfType(context.TypVariant)
            or (typ is TEnumerationSymbol);
 end;
 
@@ -7443,13 +7444,13 @@ end;
 
 // TypeCheck
 //
-procedure TCompareCaseCondition.TypeCheck(prog : TdwsProgram; typ : TTypeSymbol);
+procedure TCompareCaseCondition.TypeCheck(context : TdwsCompilerContext; typ : TTypeSymbol);
 begin
    if FCompareExpr=nil then Exit;
    if (FCompareExpr.Typ=nil) or not (typ.IsCompatible(FCompareExpr.Typ) or FCompareExpr.Typ.IsCompatible(typ)) then
-      if not (IsOfTypeNumber(prog, FCompareExpr.Typ) and IsOfTypeNumber(prog, typ)) then
-         prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_IncompatibleTypes,
-                                              [typ.Caption, FCompareExpr.Typ.Caption]);
+      if not (IsOfTypeNumber(context, FCompareExpr.Typ) and IsOfTypeNumber(context, typ)) then
+         context.Msgs.AddCompilerErrorFmt(ScriptPos, CPE_IncompatibleTypes,
+                                          [typ.Caption, FCompareExpr.Typ.Caption]);
 end;
 
 // IsConstant
@@ -7515,10 +7516,10 @@ end;
 
 // TypeCheck
 //
-procedure TCompareConstStringCaseCondition.TypeCheck(prog : TdwsProgram; typ : TTypeSymbol);
+procedure TCompareConstStringCaseCondition.TypeCheck(context : TdwsCompilerContext; typ : TTypeSymbol);
 begin
-   if not (typ.IsOfType(prog.TypString) or typ.IsOfType(prog.TypVariant)) then
-      prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_IncompatibleTypes,
+   if not (typ.IsOfType(context.TypString) or typ.IsOfType(context.TypVariant)) then
+      context.Msgs.AddCompilerErrorFmt(ScriptPos, CPE_IncompatibleTypes,
                                            [typ.Caption, SYS_STRING]);
 end;
 
@@ -7608,24 +7609,24 @@ end;
 
 // TypeCheck
 //
-procedure TRangeCaseCondition.TypeCheck(prog : TdwsProgram; typ : TTypeSymbol);
+procedure TRangeCaseCondition.TypeCheck(context : TdwsCompilerContext; typ : TTypeSymbol);
 var
    fromIsNumber : Boolean;
 begin
-   fromIsNumber:=IsOfTypeNumber(prog, FFromExpr.Typ);
+   fromIsNumber:=IsOfTypeNumber(context, FFromExpr.Typ);
 
    if (FFromExpr.Typ=nil) or (FToExpr.Typ=nil) or not FFromExpr.Typ.IsCompatible(FToExpr.Typ) then begin
-      if not (fromIsNumber and IsOfTypeNumber(prog, FToExpr.Typ)) then begin
-         prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_RangeIncompatibleTypes,
-                                              [FFromExpr.Typ.Caption, FToExpr.Typ.Caption]);
+      if not (fromIsNumber and IsOfTypeNumber(context, FToExpr.Typ)) then begin
+         context.Msgs.AddCompilerErrorFmt(ScriptPos, CPE_RangeIncompatibleTypes,
+                                          [FFromExpr.Typ.Caption, FToExpr.Typ.Caption]);
          Exit;
       end;
    end;
 
    if not typ.IsCompatible(FFromExpr.Typ) then
-      if not (fromIsNumber and IsOfTypeNumber(prog, typ)) then
-         prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_IncompatibleTypes,
-                                              [typ.Caption, FFromExpr.Typ.Caption]);
+      if not (fromIsNumber and IsOfTypeNumber(context, typ)) then
+         context.Msgs.AddCompilerErrorFmt(ScriptPos, CPE_IncompatibleTypes,
+                                          [typ.Caption, FFromExpr.Typ.Caption]);
 end;
 
 // IsConstant
@@ -7953,7 +7954,7 @@ end;
 
 // Optimize
 //
-function TWhileExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TWhileExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    Result:=Self;
    if FCondExpr.IsConstant then begin
@@ -7964,7 +7965,7 @@ begin
          TLoopExpr(Result).FLoopExpr:=FLoopExpr;
          FLoopExpr:=nil;
       end;
-      Orphan(prog);
+      Orphan(context);
    end;
 end;
 
@@ -7992,14 +7993,14 @@ end;
 
 // Optimize
 //
-function TRepeatExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TRepeatExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    Result:=Self;
    if FCondExpr.IsConstant and not FCondExpr.EvalAsBoolean(exec) then begin
       Result:=TLoopExpr.Create(FScriptPos);
       TLoopExpr(Result).FLoopExpr:=FLoopExpr;
       FLoopExpr:=nil;
-      Orphan(prog);
+      Orphan(context);
    end;
 end;
 
@@ -8042,7 +8043,7 @@ end;
 
 // Create
 //
-constructor TExitValueExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; assignExpr : TAssignExpr);
+constructor TExitValueExpr.Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos; assignExpr : TAssignExpr);
 begin
    inherited Create(aScriptPos);
    FAssignExpr:=assignExpr;
@@ -8311,7 +8312,7 @@ end;
 
 // Create
 //
-constructor TRaiseExpr.Create(Prog: TdwsProgram; const scriptPos : TScriptPos; ExceptionExpr: TTypedExpr);
+constructor TRaiseExpr.Create(context : TdwsCompilerContext; const scriptPos : TScriptPos; ExceptionExpr: TTypedExpr);
 begin
    inherited Create(scriptPos);
    FExceptionExpr:=ExceptionExpr;
@@ -8387,10 +8388,10 @@ end;
 
 // Create
 //
-constructor TExceptDoExpr.Create(aProg: TdwsProgram; const aPos: TScriptPos);
+constructor TExceptDoExpr.Create(context : TdwsCompilerContext; const aPos: TScriptPos);
 begin
    inherited Create(aPos);
-   FExceptionTable:=TSymbolTable.Create(aProg.Table, aProg.Table.AddrGenerator);
+   FExceptionTable:=TSymbolTable.Create(context.Table, context.Table.AddrGenerator);
 end;
 
 // Destroy
@@ -8444,7 +8445,7 @@ end;
 
 // Create
 //
-constructor TStringArraySetExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
+constructor TStringArraySetExpr.Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                      StringExpr : TDataExpr; IndexExpr, ValueExpr: TTypedExpr);
 begin
    inherited Create(aScriptPos);
@@ -8853,21 +8854,21 @@ end;
 
 // Create
 //
-constructor TArraySortExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+constructor TArraySortExpr.Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                                   aBase : TTypedExpr; aCompare : TFuncPtrExpr);
 var
    elemTyp : TTypeSymbol;
 begin
-   inherited Create(prog, scriptPos, aBase);
+   inherited Create(context, scriptPos, aBase);
    FCompareExpr:=aCompare;
    if aCompare<>nil then begin
       elemTyp:=aCompare.FuncSym.Params[0].Typ;
       FLeft:=TScriptDataSymbol.Create('', elemTyp);
-      prog.Table.AddSymbol(FLeft);
+      context.Table.AddSymbol(FLeft);
       FRight:=TScriptDataSymbol.Create('', elemTyp);
-      prog.Table.AddSymbol(FRight);
-      FCompareExpr.AddArg(TVarExpr.CreateTyped(prog, FLeft));
-      FCompareExpr.AddArg(TVarExpr.CreateTyped(prog, FRight));
+      context.Table.AddSymbol(FRight);
+      FCompareExpr.AddArg(TVarExpr.CreateTyped(context, FLeft));
+      FCompareExpr.AddArg(TVarExpr.CreateTyped(context, FRight));
    end;
 end;
 
@@ -8982,29 +8983,29 @@ end;
 
 // Create
 //
-constructor TArrayMapExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+constructor TArrayMapExpr.Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                                  aBase : TTypedExpr; aMapFunc : TFuncPtrExpr);
 var
    elemTyp : TTypeSymbol;
    arrayTyp : TDynamicArraySymbol;
 begin
-   inherited Create(prog, scriptPos, aBase);
+   inherited Create(context, scriptPos, aBase);
    FMapFuncExpr:=aMapFunc;
    if aMapFunc<>nil then
       elemTyp:=aMapFunc.Typ
    else elemTyp:=nil;
    if elemTyp=nil then
-      elemTyp:=prog.TypVariant;
-   arrayTyp:=TDynamicArraySymbol.Create('', elemTyp, prog.TypInteger);
-   prog.Table.AddSymbol(arrayTyp);
+      elemTyp:=context.TypVariant;
+   arrayTyp:=TDynamicArraySymbol.Create('', elemTyp, context.TypInteger);
+   context.Table.AddSymbol(arrayTyp);
    Typ:=arrayTyp;
 
    if aMapFunc<>nil then begin
       elemTyp:=aMapFunc.FuncSym.Params[0].Typ;
       FItem:=TScriptDataSymbol.Create('', elemTyp);
-      prog.Table.AddSymbol(FItem);
-      FMapFuncExpr.AddArg(TVarExpr.CreateTyped(prog, FItem));
-      FMapFuncExpr.SetResultAddr(prog, nil);
+      context.Table.AddSymbol(FItem);
+      FMapFuncExpr.AddArg(TVarExpr.CreateTyped(context, FItem));
+      FMapFuncExpr.SetResultAddr(context.Prog as TdwsProgram, nil);
    end;
 end;
 
@@ -9224,12 +9225,12 @@ end;
 
 // Create
 //
-constructor TArrayDataExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+constructor TArrayDataExpr.Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                             aBase :  TTypedExpr);
 begin
    inherited Create(scriptPos, (aBase.Typ as TDynamicArraySymbol).Typ);
    FBaseExpr:=aBase;
-   FResultAddr:=prog.GetTempAddr(Typ.Size);
+   FResultAddr:=context.GetTempAddr(Typ.Size);
 end;
 
 // Destroy
@@ -9378,10 +9379,10 @@ end;
 
 // Create
 //
-constructor TArrayCopyExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+constructor TArrayCopyExpr.Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                                   aBase, aIndex, aCount : TTypedExpr);
 begin
-   inherited Create(prog, scriptPos, aBase);
+   inherited Create(context, scriptPos, aBase);
    FTyp:=aBase.Typ;
    FIndexExpr:=aIndex;
    FCountExpr:=aCount;
@@ -9459,15 +9460,15 @@ end;
 
 // Create
 //
-constructor TArrayIndexOfExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos;
+constructor TArrayIndexOfExpr.Create(context : TdwsCompilerContext; const scriptPos : TScriptPos;
                                      aBase : TTypedExpr; aItem : TTypedExpr; aFromIndex : TTypedExpr);
 var
    arrayItemTyp : TTypeSymbol;
 begin
-   inherited Create(prog, scriptPos, aBase);
+   inherited Create(context, scriptPos, aBase);
    FItemExpr:=aItem;
    FFromIndexExpr:=aFromIndex;
-   Typ:=prog.TypInteger;
+   Typ:=context.TypInteger;
    // resolve internal method depending on array and item type
    if (FItemExpr<>nil) and (FItemExpr.Typ.AsFuncSymbol<>nil) then
       FMethod:=DoEvalFuncPtr
@@ -9476,9 +9477,9 @@ begin
       if arrayItemTyp<>nil then begin
          if arrayItemTyp.Size>1 then
             FMethod:=DoEvalData
-         else if arrayItemTyp.IsOfType(prog.TypString) then
+         else if arrayItemTyp.IsOfType(context.TypString) then
             FMethod:=DoEvalString
-         else if arrayItemTyp.IsOfType(prog.TypInteger) then
+         else if arrayItemTyp.IsOfType(context.TypInteger) then
             FMethod:=DoEvalInteger
          else FMethod:=DoEvalValue;
       end;
@@ -9730,12 +9731,12 @@ end;
 
 // Create
 //
-constructor TResourceStringExpr.Create(aProg : TdwsProgram; const aScriptPos : TScriptPos; aRes : TResourceStringSymbol);
+constructor TResourceStringExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aRes : TResourceStringSymbol);
 begin
    inherited Create;
    FScriptPos:=aScriptPos;
    FResSymbol:=aRes;
-   Typ:=aProg.TypString;
+   Typ:=context.TypString;
 end;
 
 // ScriptPos
@@ -9768,7 +9769,7 @@ end;
 
 // Create
 //
-constructor TSwapExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos;
+constructor TSwapExpr.Create(context : TdwsCompilerContext; const scriptPos : TScriptPos;
                              expr0, expr1 : TDataExpr);
 begin
    inherited Create(scriptPos);
@@ -9843,7 +9844,7 @@ end;
 
 // Create
 //
-constructor TForInStrExpr.Create(aProg: TdwsProgram; const aPos: TScriptPos;
+constructor TForInStrExpr.Create(context : TdwsCompilerContext; const aPos: TScriptPos;
          aVarExpr : TVarExpr; aInExpr : TTypedExpr);
 begin
    inherited Create(aPos);
@@ -9886,10 +9887,10 @@ end;
 
 // Create
 //
-constructor TForCharCodeInStrExpr.Create(aProg: TdwsProgram; const aPos: TScriptPos;
+constructor TForCharCodeInStrExpr.Create(context : TdwsCompilerContext; const aPos: TScriptPos;
          aVarExpr : TIntVarExpr; aInExpr : TTypedExpr);
 begin
-   inherited Create(aProg, aPos, aVarExpr, aInExpr);
+   inherited Create(context, aPos, aVarExpr, aInExpr);
 end;
 
 // EvalNoResult
@@ -9940,10 +9941,10 @@ end;
 
 // Create
 //
-constructor TForCharInStrExpr.Create(aProg: TdwsProgram; const aPos: TScriptPos;
+constructor TForCharInStrExpr.Create(context : TdwsCompilerContext; const aPos: TScriptPos;
          aVarExpr : TStrVarExpr; aInExpr : TTypedExpr);
 begin
-   inherited Create(aProg, aPos, aVarExpr, aInExpr);
+   inherited Create(context, aPos, aVarExpr, aInExpr);
 end;
 
 // EvalNoResult
@@ -9994,7 +9995,7 @@ end;
 
 // Create
 //
-constructor TIfThenElseValueExpr.Create(prog : TdwsProgram; const aPos : TScriptPos;
+constructor TIfThenElseValueExpr.Create(context : TdwsCompilerContext; const aPos : TScriptPos;
                                         aTyp : TTypeSymbol;
                                         condExpr, trueExpr, falseExpr : TTypedExpr);
 begin
@@ -10037,7 +10038,7 @@ end;
 
 // Optimize
 //
-function TIfThenElseValueExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TIfThenElseValueExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 var
    bufExpr : TTypedExpr;
    notExpr : TNotBoolExpr;
@@ -10050,14 +10051,14 @@ begin
          Result:=FFalseExpr;
          FFalseExpr:=nil;
       end;
-      Orphan(prog);
+      Orphan(context);
    end else begin
       Result:=Self;
       if CondExpr is TNotBoolExpr then begin
          notExpr:=TNotBoolExpr(CondExpr);
          CondExpr:=notExpr.Expr;
          notExpr.Expr:=nil;
-         notExpr.Orphan(prog);
+         notExpr.Orphan(context);
          bufExpr:=TrueExpr;
          TrueExpr:=FalseExpr;
          FalseExpr:=bufExpr;
@@ -10217,7 +10218,7 @@ end;
 
 // Optimize
 //
-function TAssignExternalExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TAssignExternalExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    Result:=Self;
 end;

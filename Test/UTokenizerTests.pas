@@ -120,7 +120,7 @@ begin
    FMsgs.Clear;
    FSourceFile.Code:='@ @= %= ^ ^= $( ? ?? ?. | || & && ~ ~=';
    rules:=TPascalTokenizerStateRules.Create;
-   t:=rules.CreateTokenizer(FMsgs);
+   t:=rules.CreateTokenizer(FMsgs, nil);
    try
       t.BeginSourceFile(FSourceFile);
 
@@ -160,7 +160,7 @@ var
 begin
    FSourceFile.Code:='{ /* { */ }';
    rules:=TPascalTokenizerStateRules.Create;
-   t:=rules.CreateTokenizer(FMsgs);
+   t:=rules.CreateTokenizer(FMsgs, nil);
    try
       CheckTrue(rules.CurlyComments, 'curly comments by default');
 
@@ -193,7 +193,7 @@ var
 begin
    FSourceFile.Code:='$a a$ $a$';
    rules:=TPascalTokenizerStateRules.Create;
-   t:=rules.CreateTokenizer(FMsgs);
+   t:=rules.CreateTokenizer(FMsgs, nil);
    try
       CheckFalse(rules.DollarNames, 'dollar names by default');
 
@@ -232,7 +232,7 @@ var
 begin
    FSourceFile.Code:='" "'#$00A0'"'#$00A0'"';
    rules:=TPascalTokenizerStateRules.Create;
-   t:=rules.CreateTokenizer(FMsgs);
+   t:=rules.CreateTokenizer(FMsgs, nil);
    try
       t.BeginSourceFile(FSourceFile);
 

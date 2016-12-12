@@ -6,7 +6,7 @@ interface
 
 uses
    dwsTokenizer,
-   dwsExternalFunctionJit, dwsExprs, dwsJITx86Intrinsics, dwsExprList;
+   dwsExternalFunctionJit, dwsExprs, dwsJITx86Intrinsics, dwsExprList, dwsCompilerContext;
 
 function JitFactory(conv: TTokenType; prog: TdwsProgram;
    OnLookupType: TTypeLookupEvent): IExternalFunctionJit;
@@ -36,6 +36,7 @@ type
       TResultStyle = (rsNormal, rsVar, rsFloat, rsObj, rsArray);
    private
       FProgram: TdwsProgram;
+      FCompilerContext : TdwsCompilerContext;
       FInitStream: Tx86WriteOnlyStream;
       FStream: Tx86WriteOnlyStream;
       FReturnValue: TTypeSymbol;
@@ -111,6 +112,7 @@ end;
 constructor Tx86RegisterJit.Create(prog: TdwsProgram; OnLookupType: TTypeLookupEvent);
 begin
    FProgram := prog;
+   FCompilerContext := prog.Root.CompilerContext;
    FInitStream := Tx86WriteOnlyStream.Create;
    FStream := Tx86WriteOnlyStream.Create;
    FOnLookupType := OnLookupType;
@@ -125,7 +127,7 @@ end;
 
 function Tx86RegisterJit.typeSize(value: TTypeSymbol): integer;
 begin
-   if value = FProgram.TypFloat then
+   if value = FCompilerContext.TypFloat then
       result := 2
    else if (value is TClassSymbol) or (value is TDynamicArraySymbol) then
       result := 2
@@ -266,16 +268,16 @@ end;
 function Tx86RegisterJit.GetVmtSlot(pType: TTypeSymbol; out resultStyle: TResultStyle): byte;
 begin
    resultStyle := rsNormal;
-   if (pType = FProgram.TypInteger) or (ptype is TEnumerationSymbol) then
+   if (pType = FCompilerContext.TypInteger) or (ptype is TEnumerationSymbol) then
       result := vmt_TExprBase_EvalAsInteger
-   else if pType = FProgram.TypBoolean then
+   else if pType = FCompilerContext.TypBoolean then
       result := vmt_TExprBase_EvalAsBoolean
-   else if pType = FProgram.TypString then
+   else if pType = FCompilerContext.TypString then
    begin
       result := vmt_TExprBase_EvalAsString;
       resultStyle := rsVar;
    end
-   else if pType = FProgram.TypFloat then
+   else if pType = FCompilerContext.TypFloat then
    begin
       result := vmt_TExprBase_EvalAsFloat;
       resultStyle := rsFloat;
@@ -327,7 +329,7 @@ begin
    begin
       WriteLoadVarParam(result);
       if resultStyle = rsArray then
-         AddCleanup(result, FProgram.TypInterface)
+         AddCleanup(result, FCompilerContext.TypInterface)
       else AddCleanup(result, pType);
    end;
    FStream._mov_reg_dword_ptr_reg(gprEDI, gprEAX);    //load VMT to EDI
@@ -370,7 +372,7 @@ begin
       raise Exception.Create('Function pointer types are not supported');
    if param.ClassType = TVarParamSymbol then
       raise Exception.Create('Var parameters are not supported');
-   passOnStack := (FRegParams = 3) or (pType = FProgram.TypFloat) or (pType = FProgram.TypVariant);
+   passOnStack := (FRegParams = 3) or (pType = FCompilerContext.TypFloat) or (pType = FCompilerContext.TypVariant);
    if FParams = 0 then
       InitParams;
    if passOnStack then
@@ -404,12 +406,12 @@ end;
 
 procedure Tx86RegisterJit.WriteStoreResult;
 begin
-   if (FReturnValue = FProgram.TypInteger) or (FReturnValue is TEnumerationSymbol) then
+   if (FReturnValue = FCompilerContext.TypInteger) or (FReturnValue is TEnumerationSymbol) then
       WriteStoreIntResult
 {
-   else if FReturnValue = FProgram.TypBoolean then
-   else if FReturnValue = FProgram.TypString then
-   else if FReturnValue = FProgram.TypFloat then
+   else if FReturnValue = FCompilerContext.TypBoolean then
+   else if FReturnValue = FCompilerContext.TypString then
+   else if FReturnValue = FCompilerContext.TypFloat then
 }   
    else if FReturnValue is TClassSymbol then
       WriteStoreObjResult
@@ -457,11 +459,11 @@ begin
    begin
       FStream.WriteBytes([$8D, $45]); //lea eax,[ebp - ??]
       FStream.WriteByte(byte(item.depth));
-      if item.typ = FProgram.TypString then
+      if item.typ = FCompilerContext.TypString then
          WriteCall(func_ustr_clear)
-      else if item.typ = FProgram.TypVariant then
+      else if item.typ = FCompilerContext.TypVariant then
          WriteCall(func_var_clr)
-      else if (item.typ is TClassSymbol) or (item.typ = FProgram.TypInterface) then
+      else if (item.typ is TClassSymbol) or (item.typ = FCompilerContext.TypInterface) then
          WriteCall(func_intf_clear)
       else if item.typ is TDynamicArraySymbol then
       begin

@@ -3911,7 +3911,7 @@ begin
 
                WriteVar;
                codeGen.WriteSymbolName(sym);
-               if sym.Typ<>codeGen.Context.TypVariant then begin
+               if sym.Typ<>codeGen.Context.Root.CompilerContext.TypVariant then begin
                   codeGen.WriteString(' = ');
                   TdwsJSCodeGen(codeGen).WriteDefaultValue(sym.Typ, IsLocalVarParam(codeGen, sym));
                end;
@@ -3926,7 +3926,7 @@ begin
                   codeGen.WriteString(' = {}');
                   EndVar;
                end;
-               if     sym.Typ.IsOfType(codeGen.Context.TypVariant)
+               if     sym.Typ.IsOfType(codeGen.Context.Root.CompilerContext.TypVariant)
                   and (initExpr is TAssignConstToVariantVarExpr)
                   and (TAssignConstToVariantVarExpr(initExpr).Right=Unassigned) then begin
 
@@ -5054,7 +5054,7 @@ begin
    end else begin
 
       codeGen.Dependencies.Add('TObject');
-      if structSymbol=codeGen.Context.TypException then
+      if structSymbol=codeGen.Context.Root.CompilerContext.TypException then
          codeGen.Dependencies.Add('Exception');
 
       codeGen.WriteSymbolName(structSymbol);
@@ -6564,7 +6564,7 @@ begin
       codeGen.Dependencies.Add('Exception');
 
 
-      if (e.DoExprCount=1) and (e.DoExpr[0].ExceptionVar.Typ.UnAliasedType=codeGen.Context.TypException) then begin
+      if (e.DoExprCount=1) and (e.DoExpr[0].ExceptionVar.Typ.UnAliasedType=codeGen.Context.Root.CompilerContext.TypException) then begin
 
          // special case with only "on E: Exception"
 
@@ -8526,7 +8526,7 @@ begin
    info.Parameter['exprClass'].Value := expr.ClassName;
    info.Parameter['qualifiedName'].Value := expr.FuncSymQualifiedName;
 
-   dynArray := TScriptDynamicArray.CreateNew(Environment.CodeGen.Context.TypVariant);
+   dynArray := TScriptDynamicArray.CreateNew(Environment.CodeGen.Context.Root.CompilerContext.TypVariant);
    dynArray.ArrayLength := expr.SubExprCount;
 
    exec := Environment.Exec.ExecutionObject;

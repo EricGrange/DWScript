@@ -69,14 +69,14 @@ var
    readFunc : TFuncSymbol;
    call : TCallableAutoExternal;
 begin
-   externalSym:=TExternalVarSymbol.Create(name, compiler.CurrentProg.TypString);
+   externalSym:=TExternalVarSymbol.Create(name, compiler.CompilerContext.TypString);
    compiler.CurrentProg.Table.AddSymbol(externalSym);
 
    call:=TCallableAutoExternal.Create(nil);
 
    readFunc:=TFuncSymbol.Create('_get_'+name, fkFunction, 0);
    readFunc.Executable:=call;
-   readFunc.Typ:=compiler.CurrentProg.TypString;
+   readFunc.Typ:=compiler.CompilerContext.TypString;
 
    call._Release;
 

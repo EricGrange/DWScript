@@ -1696,6 +1696,24 @@ type
          property WriteFunc : TFuncSymbol read GetWriteFunc write FWriteFunc;
    end;
 
+   TdwsBaseSymbolTypes = record
+      TypBoolean : TBaseBooleanSymbol;
+      TypFloat : TBaseFloatSymbol;
+      TypInteger : TBaseIntegerSymbol;
+      TypString : TBaseStringSymbol;
+      TypVariant : TBaseVariantSymbol;
+
+      TypNil : TNilSymbol;
+      TypObject : TClassSymbol;
+      TypTObject : TClassSymbol;
+      TypClass : TClassOfSymbol;
+
+      TypException : TClassSymbol;
+      TypInterface : TInterfaceSymbol;
+      TypCustomAttribute : TClassSymbol;
+      TypAnyType : TAnyTypeSymbol;
+   end;
+
    // TdwsExecution
    //
    TdwsExecution = class abstract (TInterfacedSelfObject, IdwsExecution)
@@ -5142,7 +5160,7 @@ end;
 //
 constructor TValueSymbol.Create(const aName : UnicodeString; aType : TTypeSymbol);
 begin
-   UnifyAssignString(aName, FName);
+   FName := aName;
    FTyp:=aType;
    FSize:=aType.Size;
 end;

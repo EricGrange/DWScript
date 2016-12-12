@@ -624,7 +624,7 @@ var
    newArray : TScriptDynamicStringArray;
    typString : TTypeSymbol;
 begin
-   typString:=(args.Exec as TdwsProgramExecution).Prog.TypString;
+   typString:=(args.Exec as TdwsProgramExecution).CompilerContext.TypString;
    newArray:=TScriptDynamicArray.CreateNew(typString) as TScriptDynamicStringArray;
    result:=IScriptDynArray(newArray);
    vGlobalVars.EnumerateNames(args.AsString[0], newArray.Add);
@@ -795,7 +795,7 @@ var
    filter, prefix : String;
    enum : TPrivateVarEnumerator;
 begin
-   typString:=(args.Exec as TdwsProgramExecution).Prog.TypString;
+   typString:=(args.Exec as TdwsProgramExecution).CompilerContext.TypString;
    enum := TPrivateVarEnumerator.Create;
    try
       enum.FArray := TScriptDynamicArray.CreateNew(typString) as TScriptDynamicStringArray;

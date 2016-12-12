@@ -25,7 +25,7 @@ interface
 
 uses
   Classes, SysUtils,
-  dwsXPlatform, dwsUtils, dwsErrors,
+  dwsXPlatform, dwsUtils, dwsErrors, dwsCompilerContext,
   dwsExprs, dwsSymbols, dwsStrings, dwsTokenizer,
   dwsOperators, dwsUnitSymbols;
 
@@ -57,7 +57,7 @@ type
    TEmptyFunc = class sealed (TInterfacedSelfObject, ICallable)
       public
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol);
-         procedure CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
+         procedure CompileTimeCheck(context : TdwsCompilerContext; expr : TFuncExprBase);
          procedure InitSymbol(Symbol: TSymbol; const msgs : TdwsCompileMessageList);
          procedure InitExpression(Expr: TExprBase);
          function SubExpr(i : Integer) : TExprBase;
@@ -73,7 +73,7 @@ type
          function SubExpr(i : Integer) : TExprBase;
          function SubExprCount : Integer;
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); virtual; abstract;
-         procedure CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase); virtual;
+         procedure CompileTimeCheck(context : TdwsCompilerContext; expr : TFuncExprBase); virtual;
          property FuncSymbol : TFuncSymbol read FFuncSymbol write FFuncSymbol;
    end;
 
@@ -142,8 +142,8 @@ type
    TOperatorsRegistrationProc = procedure (systemTable : TSystemSymbolTable; unitTable : TSymbolTable;
                                            operators : TOperators);
 
-   TInternalAbsHandler = function (FProg : TdwsProgram; argExpr : TTypedExpr) : TTypedExpr;
-   TInternalSqrHandler = function (FProg : TdwsProgram; argExpr : TTypedExpr) : TTypedExpr;
+   TInternalAbsHandler = function (context : TdwsCompilerContext; argExpr : TTypedExpr) : TTypedExpr;
+   TInternalSqrHandler = function (context : TdwsCompilerContext; argExpr : TTypedExpr) : TTypedExpr;
 
    TInternalUnit = class(TObject, IdwsUnit)
       private
@@ -185,7 +185,7 @@ type
          procedure AddOperatorsRegistrationProc(proc : TOperatorsRegistrationProc);
 
          procedure AddAbsHandler(const handler : TInternalAbsHandler);
-         function HandleAbs(prog : TdwsProgram; argExpr : TTypedExpr) : TTypedExpr;
+         function HandleAbs(context : TdwsCompilerContext; argExpr : TTypedExpr) : TTypedExpr;
 
          procedure InitStaticSymbols(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                      operators : TOperators);
@@ -305,7 +305,7 @@ begin
    while x<Length(funcParams)-1 do begin
       paramRec:=@Result[x div 2];
 
-      paramRec.ParamName:=funcParams[x];
+      UnifyAssignString(funcParams[x], paramRec.ParamName);
       c:=#0;
       if paramRec.ParamName<>'' then
          c:=paramRec.ParamName[1];
@@ -351,11 +351,11 @@ var
 begin
    New(rif);
    rif.InternalFunctionClass:=internalFunctionClass;
-   rif.FuncName:=FuncName;
+   UnifyAssignString(funcName, rif.FuncName);
    rif.Flags:=flags;
    rif.FuncParams:=ConvertFuncParams(funcParams);
    rif.FuncType:=funcType;
-   rif.HelperName:=helperName;
+   UnifyAssignString(helperName, rif.HelperName);
 
    dwsInternalUnit.AddInternalFunction(rif);
 end;
@@ -380,7 +380,7 @@ end;
 
 // CompileTimeCheck
 //
-procedure TEmptyFunc.CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
+procedure TEmptyFunc.CompileTimeCheck(context : TdwsCompilerContext; expr : TFuncExprBase);
 begin
    // nothing
 end;
@@ -433,7 +433,7 @@ end;
 
 // CompileTimeCheck
 //
-procedure TFunctionPrototype.CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
+procedure TFunctionPrototype.CompileTimeCheck(context : TdwsCompilerContext; expr : TFuncExprBase);
 begin
    // nothing yet
 end;
@@ -709,13 +709,13 @@ end;
 
 // HandleAbs
 //
-function TInternalUnit.HandleAbs(prog : TdwsProgram; argExpr : TTypedExpr) : TTypedExpr;
+function TInternalUnit.HandleAbs(context : TdwsCompilerContext; argExpr : TTypedExpr) : TTypedExpr;
 var
    i : Integer;
 begin
    Result:=nil;
    for i:=0 to High(FAbsHandlers) do begin
-      Result:=FAbsHandlers[i](prog, argExpr);
+      Result:=FAbsHandlers[i](context, argExpr);
       if Result<>nil then Exit;
    end;
    argExpr.Free;

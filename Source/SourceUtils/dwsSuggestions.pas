@@ -22,7 +22,7 @@ interface
 uses
    Classes, SysUtils,
    dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsTokenizer, dwsScriptSource,
-   dwsUnitSymbols, dwsPascalTokenizer, dwsCompiler, dwsContextMap;
+   dwsUnitSymbols, dwsPascalTokenizer, dwsCompiler, dwsContextMap, dwsCompilerContext;
 
 type
 
@@ -462,11 +462,11 @@ end;
 //
 procedure TdwsSuggestions.AddEnumerationElementHelpers(list : TSimpleSymbolList);
 var
-   p : TdwsMainProgram;
+   p : TdwsCompilerContext;
 begin
    if FEnumElementHelpers=nil then begin
       FEnumElementHelpers:=TSymbolTable.Create;
-      p:=FProg.ProgramObject;
+      p:=FProg.ProgramObject.CompilerContext;
       FEnumElementHelpers.AddSymbol(CreateHelper('Name', p.TypString, []));
       FEnumElementHelpers.AddSymbol(CreateHelper('Value', p.TypInteger, []));
    end;
@@ -478,11 +478,11 @@ end;
 //
 procedure TdwsSuggestions.AddStaticArrayHelpers(list : TSimpleSymbolList);
 var
-   p : TdwsMainProgram;
+   p : TdwsCompilerContext;
 begin
    if FStaticArrayHelpers=nil then begin
       FStaticArrayHelpers:=TSymbolTable.Create;
-      p:=FProg.ProgramObject;
+      p:=FProg.ProgramObject.CompilerContext;
       FStaticArrayHelpers.AddSymbol(CreateHelper('Low', p.TypInteger, []));
       FStaticArrayHelpers.AddSymbol(CreateHelper('High', p.TypInteger, []));
       FStaticArrayHelpers.AddSymbol(CreateHelper('Length', p.TypInteger, []));
@@ -495,10 +495,10 @@ end;
 //
 procedure TdwsSuggestions.AddDynamicArrayHelpers(dyn : TDynamicArraySymbol; list : TSimpleSymbolList);
 var
-   p : TdwsMainProgram;
+   p : TdwsCompilerContext;
 begin
    if FDynArrayHelpers=nil then begin
-      p:=FProg.ProgramObject;
+      p:=FProg.ProgramObject.CompilerContext;
       FDynArrayHelpers:=TSystemSymbolTable.Create;
       FDynArrayHelpers.AddSymbol(CreateHelper('Count', p.TypInteger, []));
       FDynArrayHelpers.AddSymbol(CreateHelper('Add', nil, ['item', dyn.Typ]));

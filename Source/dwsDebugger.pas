@@ -1366,7 +1366,7 @@ begin
          FEvaluationError:=dweeEvaluation;
          FValueData.Free;
          FValueData:=TdwsDebuggerTempValueSymbol.Create(ExpressionText,
-                           debugger.Execution.Prog.ProgramObject.TypString);
+                           debugger.Execution.Prog.ProgramObject.CompilerContext.TypString);
          FValueData.Data[0]:=E.Message+' ('+E.ClassName+')';
       end;
    end;

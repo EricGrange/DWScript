@@ -25,7 +25,7 @@ interface
 
 uses
   SysUtils, Classes, TypInfo,
-  dwsScriptSource, dwsErrors, dwsStrings, dwsXPlatform, dwsUtils
+  dwsScriptSource, dwsErrors, dwsStrings, dwsXPlatform, dwsUtils, dwsXXHash
   {$ifdef FPC},lazutf8{$endif};
 
 type
@@ -75,6 +75,8 @@ type
       Capacity : Integer;
       CaseSensitive : Boolean;
       Buffer : array of WideChar;
+      Unifier : TStringUnifier;
+
       procedure AppendChar(c : WideChar);
       procedure Grow;
       function LastChar : WideChar;
@@ -196,7 +198,7 @@ type
 
          procedure PrepareStates;
 
-         function CreateTokenizer(msgs : TdwsCompileMessageList) : TTokenizer;
+         function CreateTokenizer(msgs : TdwsCompileMessageList; unifier : TStringUnifier) : TTokenizer;
 
          property ReservedNames : TTokenTypes read FReservedNames write FReservedNames;
          property SymbolTokens : TTokenTypes read FSymbolTokens write FSymbolTokens;
@@ -257,7 +259,8 @@ type
          procedure AddCompilerStopFmtTokenBuffer(const formatString : UnicodeString);
 
       public
-         constructor Create(rules : TTokenizerRules; msgs : TdwsCompileMessageList);
+         constructor Create(rules : TTokenizerRules; msgs : TdwsCompileMessageList;
+                            unifier : TStringUnifier = nil);
          destructor Destroy; override;
 
          procedure BeginSourceFile(sourceFile : TSourceFile; const pathName : String = '');
@@ -413,7 +416,9 @@ end;
 procedure TTokenBuffer.ToStr(var result : UnicodeString);
 begin
    if Len=0 then
-      result:=''
+      result := ''
+   else if Unifier <> nil then
+      Unifier.UnifyAssignPChar(@Buffer[0], Len, SimpleStringHash(@Buffer[0], Len), result)
    else begin
       SetLength(result, Len);
       Move(Buffer[0], Pointer(result)^, Len*SizeOf(WideChar));
@@ -1052,13 +1057,15 @@ end;
 
 // Create
 //
-constructor TTokenizer.Create(rules : TTokenizerRules; msgs : TdwsCompileMessageList);
+constructor TTokenizer.Create(rules : TTokenizerRules; msgs : TdwsCompileMessageList;
+                              unifier : TStringUnifier = nil);
 begin
    FMsgs := Msgs;
    FTokenBuf.Grow;
    FRules := rules;
    FStartState := FRules.StartState;
    FTokenBuf.CaseSensitive := rules.CaseSensitive;
+   FTokenBuf.Unifier := unifier;
 
    FConditionalDepth:=TSimpleStack<TTokenizerConditionalInfo>.Create;
 end;
@@ -1709,9 +1716,9 @@ end;
 
 // CreateTokenizer
 //
-function TTokenizerRules.CreateTokenizer(msgs : TdwsCompileMessageList) : TTokenizer;
+function TTokenizerRules.CreateTokenizer(msgs : TdwsCompileMessageList; unifier : TStringUnifier) : TTokenizer;
 begin
-   Result:=TTokenizer.Create(Self, msgs);
+   Result:=TTokenizer.Create(Self, msgs, unifier);
 end;
 
 // ------------------------------------------------------------------

@@ -175,7 +175,7 @@ end;
 //
 function TdwsLanguageExtension.RootExternalClass(compiler : TdwsCompiler; const externalName : UnicodeString) : TClassSymbol;
 begin
-   Result:=compiler.CurrentProg.TypObject;
+   Result := compiler.CompilerContext. TypObject;
 end;
 
 // ApplyConditionalDefines

@@ -25,7 +25,8 @@ interface
 
 uses
    SysUtils,
-   dwsUtils, dwsDataContext, dwsSymbols, dwsExprList, dwsExprs, dwsErrors, dwsScriptSource;
+   dwsUtils, dwsDataContext, dwsSymbols, dwsExprList, dwsExprs, dwsErrors,
+   dwsScriptSource, dwsCompilerContext;
 
 type
 
@@ -115,7 +116,7 @@ type
          constructor Create(const name : UnicodeString; const connectorType : IConnectorType);
 
          function Specialize(table : TSymbolTable; const qualifier : UnicodeString) : TConnectorSymbol; virtual;
-         function CreateAssignExpr(prog : TdwsProgram; const aScriptPos: TScriptPos;
+         function CreateAssignExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                    exec : TdwsExecution;
                                    left : TDataExpr; right : TTypedExpr) : TProgramExpr; virtual;
 
@@ -168,11 +169,11 @@ end;
 
 // CreateAssignExpr
 //
-function TConnectorSymbol.CreateAssignExpr(prog : TdwsProgram; const aScriptPos: TScriptPos;
+function TConnectorSymbol.CreateAssignExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                            exec : TdwsExecution;
                                            left : TDataExpr; right : TTypedExpr) : TProgramExpr;
 begin
-   Result:=TAssignExpr.Create(prog, aScriptPos, exec, left, right);
+   Result:=TAssignExpr.Create(context, aScriptPos, exec, left, right);
 end;
 
 // ------------------

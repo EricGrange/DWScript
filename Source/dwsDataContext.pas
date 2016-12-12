@@ -21,7 +21,7 @@ unit dwsDataContext;
 interface
 
 uses
-   dwsXPlatform, dwsUtils;
+   dwsXPlatform, dwsUtils, dwsXXHash;
 
 type
 

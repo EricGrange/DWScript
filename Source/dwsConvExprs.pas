@@ -26,14 +26,15 @@ interface
 uses
    Variants, SysUtils,
    dwsUtils, dwsDataContext, dwsStack, dwsXPlatform, dwsErrors, dwsStrings,
-   dwsExprs, dwsExprList, dwsConstExprs, dwsSymbols, dwsUnitSymbols, dwsScriptSource;
+   dwsExprs, dwsExprList, dwsConstExprs, dwsSymbols, dwsUnitSymbols,
+   dwsScriptSource, dwsCompilerContext;
 
 type
 
    // newType(x)
    TConvExpr = class(TUnaryOpExpr)
       public
-         class function WrapWithConvCast(prog : TdwsProgram; const scriptPos : TScriptPos;
+         class function WrapWithConvCast(context : TdwsCompilerContext; const scriptPos : TScriptPos;
                                          exec : TdwsExecution;
                                          toTyp : TTypeSymbol; expr : TTypedExpr;
                                          const reportError : UnicodeString) : TTypedExpr; static;
@@ -47,7 +48,7 @@ type
          function GetIsConstant : Boolean; override;
 
       public
-         constructor Create(prog : TdwsProgram; expr : TTypedExpr; toTyp : TTypeSymbol); reintroduce;
+         constructor Create(context : TdwsCompilerContext; expr : TTypedExpr; toTyp : TTypeSymbol); reintroduce;
    end;
 
    // Float(int x)
@@ -66,7 +67,7 @@ type
    // Integer(ordinal x)
    TConvOrdToIntegerExpr = class (TUnaryOpIntExpr)
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+     function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // String(variant x)
@@ -95,7 +96,7 @@ type
    // Static Array to Dynamic Array
    TConvStaticArrayToDynamicExpr = class (TUnaryOpExpr)
       public
-         constructor Create(prog : TdwsProgram; expr : TArrayConstantExpr; toTyp : TDynamicArraySymbol); reintroduce;
+         constructor Create(context : TdwsCompilerContext; expr : TArrayConstantExpr; toTyp : TDynamicArraySymbol); reintroduce;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
@@ -155,7 +156,7 @@ type
          FPos : TScriptPos;
 
       public
-         constructor Create(prog : TdwsProgram; const aPos : TScriptPos;
+         constructor Create(context : TdwsCompilerContext; const aPos : TScriptPos;
                             expr : TTypedExpr; toTyp : TTypeSymbol); reintroduce;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
@@ -181,7 +182,7 @@ type
    // obj.ClassType
    TObjToClassTypeExpr = class(TUnaryOpExpr)
       public
-         constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
+         constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
 
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
@@ -220,7 +221,7 @@ uses dwsCoreExprs;
 
 // WrapWithConvCast
 //
-class function TConvExpr.WrapWithConvCast(prog : TdwsProgram; const scriptPos : TScriptPos;
+class function TConvExpr.WrapWithConvCast(context : TdwsCompilerContext; const scriptPos : TScriptPos;
                                           exec : TdwsExecution;
                                           toTyp : TTypeSymbol; expr : TTypedExpr;
                                           const reportError : UnicodeString) : TTypedExpr;
@@ -242,7 +243,7 @@ class function TConvExpr.WrapWithConvCast(prog : TdwsProgram; const scriptPos : 
          cright := expr.Typ.Caption;
          if expr.Typ is TAnyTypeSymbol then Exit;
       end;
-      prog.CompileMsgs.AddCompilerErrorFmt(scriptPos, reportError, [cright, cleft]);
+      context.Msgs.AddCompilerErrorFmt(scriptPos, reportError, [cright, cleft]);
    end;
 
 var
@@ -262,8 +263,8 @@ begin
       arrayConst:=TArrayConstantExpr(expr);
       if toTyp is TDynamicArraySymbol then begin
          if    (toTyp.Typ.IsOfType(expr.Typ.Typ))
-            or ((arrayConst.ElementCount=0) and (arrayConst.Typ.Typ.IsOfType(prog.TypVariant)))  then
-            Result:=TConvStaticArrayToDynamicExpr.Create(prog, arrayConst,
+            or ((arrayConst.ElementCount=0) and (arrayConst.Typ.Typ.IsOfType(context.TypVariant)))  then
+            Result:=TConvStaticArrayToDynamicExpr.Create(context, arrayConst,
                                                          TDynamicArraySymbol(toTyp))
       end else if toTyp is TSetOfSymbol then begin
          if arrayConst.ElementCount=0 then begin
@@ -279,32 +280,32 @@ begin
 
    end else if expr.Typ.UnAliasedTypeIs(TBaseVariantSymbol) then begin
 
-      if toTyp.IsOfType(prog.TypInteger) then
-         Result:=TConvVarToIntegerExpr.Create(prog, expr)
-      else if toTyp.IsOfType(prog.TypFloat) then
-         Result:=TConvVarToFloatExpr.Create(prog, expr)
-      else if toTyp.IsOfType(prog.TypString) then
-         Result:=TConvVarToStringExpr.Create(prog, expr)
-      else if toTyp.IsOfType(prog.TypBoolean) then
-         Result:=TConvVarToBoolExpr.Create(prog, expr);
+      if toTyp.IsOfType(context.TypInteger) then
+         Result:=TConvVarToIntegerExpr.Create(context, expr)
+      else if toTyp.IsOfType(context.TypFloat) then
+         Result:=TConvVarToFloatExpr.Create(context, expr)
+      else if toTyp.IsOfType(context.TypString) then
+         Result:=TConvVarToStringExpr.Create(context, expr)
+      else if toTyp.IsOfType(context.TypBoolean) then
+         Result:=TConvVarToBoolExpr.Create(context, expr);
 
    end else if     (toTyp is TStructuredTypeMetaSymbol)
                and (expr.Typ.IsOfType(toTyp.Typ)) then begin
 
       if toTyp.ClassType=TClassOfSymbol then begin
-         Result:=TObjToClassTypeExpr.Create(prog, expr);
+         Result:=TObjToClassTypeExpr.Create(context, expr);
          if toTyp.Typ<>expr.Typ then
-            Result:=TClassAsClassExpr.Create(prog, scriptPos, Result, toTyp);
+            Result:=TClassAsClassExpr.Create(context, scriptPos, Result, toTyp);
       end;
 
    end else begin
 
-      if     toTyp.IsOfType(prog.TypFloat)
-         and expr.IsOfType(prog.TypInteger) then begin
+      if     toTyp.IsOfType(context.TypFloat)
+         and expr.IsOfType(context.TypInteger) then begin
          if expr is TConstIntExpr then begin
-            Result := TConstFloatExpr.CreateTypedVariantValue(prog, prog.TypFloat, TConstIntExpr(expr).Value);
+            Result := TConstFloatExpr.Create(context.TypFloat, TConstIntExpr(expr).Value);
             expr.Free;
-         end else Result := TConvIntToFloatExpr.Create(prog, expr);
+         end else Result := TConvIntToFloatExpr.Create(context, expr);
       end;
 
    end;
@@ -326,9 +327,9 @@ end;
 
 // Create
 //
-constructor TConvInvalidExpr.Create(prog : TdwsProgram; expr : TTypedExpr; toTyp : TTypeSymbol);
+constructor TConvInvalidExpr.Create(context : TdwsCompilerContext; expr : TTypedExpr; toTyp : TTypeSymbol);
 begin
-   inherited Create(prog, expr);
+   inherited Create(context, expr);
    Typ:=toTyp;
 end;
 
@@ -391,7 +392,7 @@ end;
 
 // Optimize
 //
-function TConvOrdToIntegerExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TConvOrdToIntegerExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    // this can happen when an integer was qualifed as a type
    if Expr.ClassType=TConstIntExpr then begin
@@ -399,7 +400,8 @@ begin
          Result:=Expr;
          Expr:=nil;
       end else begin
-         Result := TConstIntExpr.Create(prog, typ, TConstIntExpr(Expr).Value);
+         // requalify constant type
+         Result := TConstIntExpr.Create(Typ, TConstIntExpr(Expr).Value);
       end;
       Free;
    end else Result:=Self;
@@ -472,10 +474,10 @@ end;
 
 // Create
 //
-constructor TConvStaticArrayToDynamicExpr.Create(prog : TdwsProgram; expr : TArrayConstantExpr;
+constructor TConvStaticArrayToDynamicExpr.Create(context : TdwsCompilerContext; expr : TArrayConstantExpr;
                                                  toTyp : TDynamicArraySymbol);
 begin
-   inherited Create(prog, expr);
+   inherited Create(context, expr);
    Typ:=toTyp;
 end;
 
@@ -522,10 +524,10 @@ end;
 
 // Create
 //
-constructor TAsCastExpr.Create(prog : TdwsProgram; const aPos : TScriptPos;
+constructor TAsCastExpr.Create(context : TdwsCompilerContext; const aPos : TScriptPos;
                                expr : TTypedExpr; toTyp : TTypeSymbol);
 begin
-   inherited Create(prog, expr);
+   inherited Create(context, expr);
    FPos:=aPos;
    FTyp:=toTyp;
 end;
@@ -595,9 +597,9 @@ end;
 
 // Create
 //
-constructor TObjToClassTypeExpr.Create(prog : TdwsProgram; expr : TTypedExpr);
+constructor TObjToClassTypeExpr.Create(context : TdwsCompilerContext; expr : TTypedExpr);
 begin
-   inherited Create(prog, expr);
+   inherited Create(context, expr);
    Typ:=(expr.Typ as TStructuredTypeSymbol).MetaSymbol;
 end;
 

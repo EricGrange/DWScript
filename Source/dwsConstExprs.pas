@@ -26,7 +26,8 @@ interface
 uses
    Variants, SysUtils,
    dwsUtils, dwsDataContext, dwsStack, dwsXPlatform, dwsErrors, dwsStrings,
-   dwsExprs, dwsExprList, dwsSymbols, dwsUnitSymbols, dwsScriptSource;
+   dwsExprs, dwsExprList, dwsSymbols, dwsUnitSymbols, dwsScriptSource,
+   dwsCompilerContext;
 
 type
 
@@ -40,12 +41,12 @@ type
          function GetIsConstant : Boolean; override;
 
       public
-         constructor Create(Prog: TdwsProgram; aTyp: TTypeSymbol; const Value: Variant); overload; virtual;
+         constructor Create(aTyp: TTypeSymbol; const Value: Variant); overload;
          constructor Create(aTyp: TTypeSymbol; const Data: TData; addr : Integer); overload;
          constructor Create(aTyp: TTypeSymbol); overload;
          constructor CreateRef(aTyp: TTypeSymbol; const Data: TData);
          constructor CreateNull(aTyp: TTypeSymbol);
-         procedure Orphan(prog : TdwsProgram); override;
+         procedure Orphan(context : TdwsCompilerContext); override;
 
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
@@ -60,31 +61,16 @@ type
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
          property Data : TData read FData;
 
-         class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData; addr : Integer = 0) : TConstExpr; overload; static;
-         class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; constSymbol : TConstSymbol) : TConstExpr; overload; static;
-
-         class function CreateTypedDefault(prog : TdwsProgram; typ : TTypeSymbol) : TConstExpr;
-
-         class function CreateTypedVariantValue(prog : TdwsProgram; typ : TTypeSymbol; const value : Variant) : TConstExpr; overload; static;
-
-         class function CreateIntegerValue(prog : TdwsProgram; const value : Int64) : TConstExpr; overload; static;
-         class function CreateIntegerValue(prog : TdwsProgram; typ : TTypeSymbol; const value : Int64) : TConstExpr; overload; static;
-
-         class function CreateFloatValue(prog : TdwsProgram; const value : Int64) : TConstExpr; overload; static;
-         class function CreateFloatValue(prog : TdwsProgram; const value : Double) : TConstExpr; overload; static;
-
-         class function CreateStringValue(prog : TdwsProgram; const value : UnicodeString) : TConstExpr; overload; static;
-
-         class function CreateBooleanValue(prog : TdwsProgram; const value : Boolean) : TConstExpr; overload; static;
-
-         class function CreateDynamicArrayValue(prog : TdwsProgram; typ : TTypeSymbol; const val : IScriptDynArray) : TConstExpr; static;
-         class function CreateAssociativeArrayValue(prog : TdwsProgram; typ : TAssociativeArraySymbol; const val : IScriptAssociativeArray) : TConstExpr; static;
+         class function CreateTyped(context : TdwsCompilerContext; Typ: TTypeSymbol; const Data: TData; addr : Integer = 0) : TConstExpr; overload; static;
+         class function CreateTyped(context : TdwsCompilerContext; Typ: TTypeSymbol; constSymbol : TConstSymbol) : TConstExpr; overload; static;
    end;
 
    // TConstNilExpr
    //
    TConstNilExpr = class(TConstExpr)
       public
+         constructor Create(aTyp : TTypeSymbol);
+
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
@@ -99,7 +85,7 @@ type
          FValue : Boolean;
 
       public
-         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
+         constructor Create(aTyp : TTypeSymbol; const aValue : Boolean);
 
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
@@ -114,7 +100,7 @@ type
          FValue : Int64;
 
       public
-         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
+         constructor Create(typ : TTypeSymbol; const aValue : Int64);
 
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
@@ -128,7 +114,7 @@ type
          FValue : Double;
 
       public
-         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
+         constructor Create(typ : TTypeSymbol; const aValue : Double);
 
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
          property Value : Double read FValue;
@@ -143,7 +129,7 @@ type
          procedure SetValue(const v : UnicodeString);
 
       public
-         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
+         constructor Create(typ : TTypeSymbol; const aValue : UnicodeString);
 
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
          property Value : UnicodeString read FValue write SetValue;
@@ -156,33 +142,9 @@ type
          FSymbol : TConstSymbol;
 
       public
-         constructor Create(prog : TdwsProgram; symbol : TConstSymbol);
+         constructor Create(context : TdwsCompilerContext; symbol : TConstSymbol);
 
          property Symbol : TConstSymbol read FSymbol;
-   end;
-
-   TStandardIntegersConstIntExprArray = array [-1..2] of TConstExpr;
-
-   // TUnifiedConstants
-   //
-   TUnifiedConstants = class
-      private
-         FEmptyString : TConstExpr;
-         FIntegers : TStandardIntegersConstIntExprArray;
-         FZeroFloat : TConstExpr;
-         FTrue, FFalse : TConstExpr;
-         FNil : TConstNilExpr;
-
-      public
-         constructor Create(prog : TdwsMainProgram; systemTable : TSystemSymbolTable);
-         destructor Destroy; override;
-
-         property EmptyString : TConstExpr read FEmptyString;
-         property Integers : TStandardIntegersConstIntExprArray read FIntegers;
-         property ZeroFloat : TConstExpr read FZeroFloat;
-         property TrueConst : TConstExpr read FTrue;
-         property FalseConst : TConstExpr read FFalse;
-         property NilConst : TConstNilExpr read FNil;
    end;
 
    // TArrayConstantExpr
@@ -201,18 +163,18 @@ type
          function GetIsConstant : Boolean; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos);
+         constructor Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos);
          destructor Destroy; override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
          property Elements[idx : Integer] : TTypedExpr read GetElement;
          property ElementCount : Integer read GetElementCount;
-         procedure AddElementExpr(const scriptPos : TScriptPos; prog: TdwsProgram; ElementExpr: TTypedExpr);
-         procedure AddElementRange(prog : TdwsProgram; const range1, range2 : Int64; typ : TTypeSymbol);
-         procedure Prepare(prog : TdwsProgram; elementTyp : TTypeSymbol);
-         procedure TypeCheckElements(prog : TdwsProgram);
-         procedure ElementsFromIntegerToFloat(prog : TdwsProgram);
+         procedure AddElementExpr(const scriptPos : TScriptPos; context : TdwsCompilerContext; ElementExpr: TTypedExpr);
+         procedure AddElementRange(context : TdwsCompilerContext; const range1, range2 : Int64; typ : TTypeSymbol);
+         procedure Prepare(context : TdwsCompilerContext; elementTyp : TTypeSymbol);
+         procedure TypeCheckElements(context : TdwsCompilerContext);
+         procedure ElementsFromIntegerToFloat(context : TdwsCompilerContext);
 
          function Size : Integer; inline;
 
@@ -223,7 +185,7 @@ type
          procedure EvalToTData(exec : TdwsExecution; var result : TData; offset : Integer);
          function EvalAsVarRecArray(exec : TdwsExecution) : TVarRecArrayContainer;
 
-         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
          function IsWritable : Boolean; override;
    end;
 
@@ -243,7 +205,7 @@ uses dwsConvExprs;
 
 // Create
 //
-constructor TConstExpr.Create(Prog: TdwsProgram; aTyp: TTypeSymbol; const Value: Variant);
+constructor TConstExpr.Create(aTyp: TTypeSymbol; const Value: Variant);
 begin
    inherited Create(aTyp);
    SetLength(FData, aTyp.Size);
@@ -293,7 +255,7 @@ end;
 
 // Orphan
 //
-procedure TConstExpr.Orphan(prog : TdwsProgram);
+procedure TConstExpr.Orphan(context : TdwsCompilerContext);
 begin
    DecRefCount;
 end;
@@ -369,130 +331,41 @@ begin
    exec.DataContext_Create(FData, 0, Result);
 end;
 
-// CreateTypedVariantValue
-//
-class function TConstExpr.CreateTypedVariantValue(
-   prog : TdwsProgram; typ : TTypeSymbol; const value : Variant) : TConstExpr;
-begin
-   if typ = prog.TypString then
-      Result := TConstStringExpr.Create(prog, typ, value)
-   else if typ.ClassType = TDynamicArraySymbol then
-      Result:=CreateDynamicArrayValue(prog, typ, IUnknown(value) as IScriptDynArray)
-   else if typ.ClassType=TAssociativeArraySymbol then
-      Result:=CreateAssociativeArrayValue(prog, TAssociativeArraySymbol(typ),
-                                          IUnknown(value) as IScriptAssociativeArray)
-   else if (typ=prog.TypInteger) or (typ.typ=prog.TypInteger) then
-      Result:=CreateIntegerValue(prog, typ, value)
-   else if typ=prog.TypBoolean then
-      Result:=CreateBooleanValue(prog, value)
-   else if typ = prog.TypFloat then
-      Result := TConstFloatExpr.Create(prog, typ, value)
-   else Result := TConstExpr.Create(prog, typ, value);
-end;
-
 // CreateTyped
 //
-class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData; addr : Integer = 0) : TConstExpr;
+class function TConstExpr.CreateTyped(context : TdwsCompilerContext; Typ: TTypeSymbol; const Data: TData; addr : Integer = 0) : TConstExpr;
 begin
    case Length(Data) of
-      0 : Result:=TConstExpr.Create(Prog, Typ, Null);
-      1 : Result:=TConstExpr.CreateTypedVariantValue(Prog, Typ, Data[addr]);
+      0 : Result := TConstExpr.Create(Typ, Null);
+      1 : Result := (context.CreateConstExpr(typ, data[addr]) as TConstExpr);
    else
-      Result:=TConstExpr.Create(Typ, Data, addr);
+      Result := TConstExpr.Create(Typ, Data, addr);
    end;
 end;
 
-// CreateTypedDefault
-//
-class function TConstExpr.CreateTypedDefault(prog : TdwsProgram; typ : TTypeSymbol) : TConstExpr;
-var
-   data : TData;
-begin
-   SetLength(data, typ.Size);
-   typ.InitData(data, 0);
-   Result:=TConstExpr.CreateTyped(prog, typ, data);
-end;
-
 // CreateTyped
 //
-class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; constSymbol : TConstSymbol) : TConstExpr;
+class function TConstExpr.CreateTyped(context : TdwsCompilerContext; Typ: TTypeSymbol; constSymbol : TConstSymbol) : TConstExpr;
 begin
    Assert(constSymbol<>nil);
    if constSymbol.Typ is TArraySymbol then
-      Result:=TConstArrayExpr.Create(Prog, constSymbol)
-   else Result:=CreateTyped(Prog, Typ, constSymbol.Data);
-end;
-
-// CreateIntegerValue
-//
-class function TConstExpr.CreateIntegerValue(prog : TdwsProgram; const value : Int64) : TConstExpr;
-begin
-   Result := TConstIntExpr.Create(prog, prog.TypInteger, value);
-end;
-
-// CreateIntegerValue
-//
-class function TConstExpr.CreateIntegerValue(prog : TdwsProgram; typ : TTypeSymbol; const value : Int64) : TConstExpr;
-begin
-   Result := TConstIntExpr.Create(prog, typ, value);
-end;
-
-// CreateFloatValue
-//
-class function TConstExpr.CreateFloatValue(prog : TdwsProgram; const value : Int64) : TConstExpr;
-begin
-   Result := TConstFloatExpr.Create(prog, prog.TypFloat, value);
-end;
-
-// CreateFloatValue
-//
-class function TConstExpr.CreateFloatValue(prog : TdwsProgram; const value : Double) : TConstExpr;
-begin
-   Result := TConstFloatExpr.Create(prog, prog.TypFloat, value);
-end;
-
-// CreateStringValue
-//
-class function TConstExpr.CreateStringValue(prog : TdwsProgram; const value : UnicodeString) : TConstExpr;
-begin
-   Result := TConstStringExpr.Create(prog, prog.TypString, value);
-end;
-
-// CreateBooleanValue
-//
-class function TConstExpr.CreateBooleanValue(prog : TdwsProgram; const value : Boolean) : TConstExpr;
-var
-   unified : TUnifiedConstants;
-begin
-   unified := TUnifiedConstants(prog.Root.UnifiedConstants);
-   if value then
-      Result := unified.TrueConst
-   else Result := unified.FalseConst;
-   Result.IncRefCount;
-end;
-
-// CreateDynamicArrayValue
-//
-class function TConstExpr.CreateDynamicArrayValue(prog : TdwsProgram;
-      typ : TTypeSymbol; const val : IScriptDynArray) : TConstExpr;
-begin
-   if val<>nil then
-      Result:=TConstExpr.Create(prog, typ, val)
-   else Result:=TConstExpr.Create(prog, typ, TScriptDynamicArray.CreateNew(typ.Typ) as IScriptDynArray);
-end;
-
-// CreateAssociativeArrayValue
-//
-class function TConstExpr.CreateAssociativeArrayValue(prog : TdwsProgram; typ : TAssociativeArraySymbol; const val : IScriptAssociativeArray) : TConstExpr;
-begin
-   if val<>nil then
-      Result:=TConstExpr.Create(prog, typ, val)
-   else Result:=TConstExpr.Create(prog, typ, TScriptAssociativeArray.CreateNew(typ.KeyType, typ.Typ) as IScriptAssociativeArray);
+      Result:=TConstArrayExpr.Create(context, constSymbol)
+   else Result:=CreateTyped(context, Typ, constSymbol.Data);
 end;
 
 // ------------------
 // ------------------ TConstNilExpr ------------------
 // ------------------
+
+// Create
+//
+constructor TConstNilExpr.Create(aTyp : TTypeSymbol);
+begin
+   FTyp := aTyp;
+   SetLength(FData, 1);
+   TVarData(FData[0]).VType := varUnknown;
+   TVarData(FData[0]).VUnknown := nil;
+end;
 
 // EvalAsInteger
 //
@@ -535,27 +408,27 @@ end;
 
 // Create
 //
-constructor TConstBooleanExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant);
+constructor TConstBooleanExpr.Create(aTyp : TTypeSymbol; const aValue : Boolean);
 begin
-   Assert(TVarData(value).VType = varBoolean);
-   if typ = nil then
-      typ := prog.TypBoolean;
-   FValue := value;
-   inherited Create(prog, typ, value);
+   FTyp := aTyp;
+   FValue := aValue;
+   SetLength(FData, 1);
+   TVarData(FData[0]).VType := varBoolean;
+   TVarData(FData[0]).VBoolean := aValue;
 end;
 
 // EvalAsInteger
 //
 function TConstBooleanExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
-   Result:=Integer(FValue);
+   Result := Integer(FValue);
 end;
 
 // EvalAsBoolean
 //
 function TConstBooleanExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
-   Result:=FValue;
+   Result := FValue;
 end;
 
 // ------------------
@@ -564,13 +437,13 @@ end;
 
 // Create
 //
-constructor TConstIntExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant);
+constructor TConstIntExpr.Create(typ : TTypeSymbol; const aValue : Int64);
 begin
-   Assert(TVarData(value).VType = varInt64);
-   if typ = nil then
-      typ := prog.TypInteger;
-   FValue := value;
-   inherited Create(prog, typ, value);
+   FTyp := typ;
+   FValue := aValue;
+   SetLength(FData, 1);
+   TVarData(FData[0]).VType := varInt64;
+   TVarData(FData[0]).VInt64 := aValue;
 end;
 
 // EvalAsInteger
@@ -604,12 +477,13 @@ end;
 
 // Create
 //
-constructor TConstFloatExpr.Create(prog : TdwsProgram; typ : TTypeSymbol; const value : Variant);
+constructor TConstFloatExpr.Create(typ : TTypeSymbol; const aValue : Double);
 begin
-   if typ = nil then
-      typ := prog.TypFloat;
-   FValue := VariantToFloat(value);
-   inherited Create(Prog, Typ, FValue);
+   FTyp := typ;
+   FValue := aValue;
+   SetLength(FData, 1);
+   TVarData(FData[0]).VType := varDouble;
+   TVarData(FData[0]).VDouble := aValue;
 end;
 
 // EvalAsFloat
@@ -630,14 +504,13 @@ end;
 
 // Create
 //
-constructor TConstStringExpr.Create(prog: TdwsProgram; typ: TTypeSymbol; const value: Variant);
+constructor TConstStringExpr.Create(typ : TTypeSymbol; const aValue : UnicodeString);
 begin
-   if typ = nil then
-      FTyp := prog.TypString
-   else FTyp := typ;
-   VariantToUnifiedString(value, FValue);
+   FTyp := typ;
+   FValue := aValue;
    SetLength(FData, 1);
-   FData[0] := FValue;
+   TVarData(FData[0]).VType := varUString;
+   UnicodeString(TVarData(FData[0]).VUString) := aValue;
 end;
 
 // EvalAsString
@@ -668,52 +541,10 @@ end;
 
 // Create
 //
-constructor TConstArrayExpr.Create(prog : TdwsProgram; symbol : TConstSymbol);
+constructor TConstArrayExpr.Create(context : TdwsCompilerContext; symbol : TConstSymbol);
 begin
    inherited CreateRef(symbol.Typ, symbol.Data);
    FSymbol:=symbol;
-end;
-
-// ------------------
-// ------------------ TUnifiedConstants ------------------
-// ------------------
-
-// Precharge
-//
-constructor TUnifiedConstants.Create(prog : TdwsMainProgram; systemTable : TSystemSymbolTable);
-const
-   cZeroFloat : Double = 0;
-   cNilIntf : IUnknown = nil;
-var
-   i : Integer;
-begin
-   inherited Create;
-   // no lock is required here
-   FEmptyString:=TConstStringExpr.Create(prog, systemTable.TypString, '');
-   for i:=Low(FIntegers) to High(FIntegers) do
-      FIntegers[i] := TConstIntExpr.Create(prog, systemTable.TypInteger, Int64(i));
-   FZeroFloat := TConstFloatExpr.Create(prog, systemTable.TypFloat, cZeroFloat);
-   FTrue := TConstBooleanExpr.Create(prog, systemTable.TypBoolean, True);
-   FFalse := TConstBooleanExpr.Create(prog, systemTable.TypBoolean, False);
-   FNil := TConstNilExpr.Create(prog, prog.TypNil, cNilIntf);
-end;
-
-// Destroy
-//
-destructor TUnifiedConstants.Destroy;
-var
-   i : Integer;
-begin
-   FEmptyString.Free;
-   for i:=Low(FIntegers) to High(FIntegers) do begin
-      Assert(FIntegers[i].RefCount=0);
-      FIntegers[i].Free;
-   end;
-   FZeroFloat.Free;
-   FTrue.Free;
-   FFalse.Free;
-   FNil.Free;
-   inherited;
 end;
 
 // ------------------
@@ -722,12 +553,12 @@ end;
 
 // Create
 //
-constructor TArrayConstantExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos);
+constructor TArrayConstantExpr.Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos);
 var
    sas : TStaticArraySymbol;
 begin
-   sas := TStaticArraySymbol.Create('', prog.TypNil, prog.TypInteger, 0, -1);
-   prog.Table.AddSymbol(sas);
+   sas := TStaticArraySymbol.Create('', context.TypNil, context.TypInteger, 0, -1);
+   context.Table.AddSymbol(sas);
    inherited Create(aScriptPos, sas);
 end;
 
@@ -741,29 +572,29 @@ end;
 
 // AddElementExpr
 //
-procedure TArrayConstantExpr.AddElementExpr(const scriptPos : TScriptPos; prog: TdwsProgram; ElementExpr: TTypedExpr);
+procedure TArrayConstantExpr.AddElementExpr(const scriptPos : TScriptPos; context: TdwsCompilerContext; ElementExpr: TTypedExpr);
 var
    arraySymbol : TStaticArraySymbol;
 begin
    FElementExprs.Add(ElementExpr);
    if ElementExpr.Typ=nil then
-      prog.Root.CompileMsgs.AddCompilerStopFmt(scriptPos, CPE_IncompatibleTypes, [SYS_VOID, Typ.Typ.Caption]);
+      context.Msgs.AddCompilerStopFmt(scriptPos, CPE_IncompatibleTypes, [SYS_VOID, Typ.Typ.Caption]);
 
    arraySymbol:=(FTyp as TStaticArraySymbol);
-   if arraySymbol.Typ<>Prog.TypVariant then begin
-      if arraySymbol.Typ=Prog.TypNil then
+   if arraySymbol.Typ<>context.TypVariant then begin
+      if arraySymbol.Typ=context.TypNil then
          arraySymbol.Typ:=ElementExpr.Typ
       else if arraySymbol.Typ<>ElementExpr.Typ then begin
-         if arraySymbol.Typ=Prog.TypNil then
+         if arraySymbol.Typ=context.TypNil then
             arraySymbol.Typ:=ElementExpr.Typ
-         else if (arraySymbol.Typ=Prog.TypInteger) and (ElementExpr.Typ=Prog.TypFloat) then
-            arraySymbol.Typ:=Prog.TypFloat
+         else if (arraySymbol.Typ=context.TypInteger) and (ElementExpr.Typ=context.TypFloat) then
+            arraySymbol.Typ:=context.TypFloat
          else if ElementExpr.Typ.Size=1 then begin
-            if not ((arraySymbol.Typ=Prog.TypFloat) and (ElementExpr.Typ=Prog.TypInteger)) then
-               arraySymbol.Typ:=Prog.TypVariant;
+            if not ((arraySymbol.Typ=context.TypFloat) and (ElementExpr.Typ=context.TypInteger)) then
+               arraySymbol.Typ:=context.TypVariant;
          end else if not ElementExpr.Typ.IsCompatible(Typ.Typ) then begin
-            prog.Root.CompileMsgs.AddCompilerStopFmt(scriptPos, CPE_IncompatibleTypes,
-                                                     [ElementExpr.Typ.Caption, Typ.Typ.Caption]);
+            context.Msgs.AddCompilerStopFmt(scriptPos, CPE_IncompatibleTypes,
+                                            [ElementExpr.Typ.Caption, Typ.Typ.Caption]);
          end;
       end;
    end;
@@ -772,17 +603,19 @@ end;
 
 // AddElementRange
 //
-procedure TArrayConstantExpr.AddElementRange(prog : TdwsProgram; const range1, range2 : Int64; typ : TTypeSymbol);
+procedure TArrayConstantExpr.AddElementRange(context : TdwsCompilerContext; const range1, range2 : Int64; typ : TTypeSymbol);
 var
    i : Int64;
    d : Integer;
 begin
+   if typ = nil then
+      typ := context.TypInteger;
    if range1<range2 then
       d:=1
    else d:=-1;
    i:=range1;
    repeat
-      AddElementExpr(cNullPos, prog, TConstIntExpr.Create(prog, typ, i));
+      AddElementExpr(cNullPos, context, TConstIntExpr.Create(typ, i));
       if i=range2 then break;
       Inc(i, d);
    until False;
@@ -790,14 +623,14 @@ end;
 
 // Prepare
 //
-procedure TArrayConstantExpr.Prepare(prog : TdwsProgram; elementTyp : TTypeSymbol);
+procedure TArrayConstantExpr.Prepare(context : TdwsCompilerContext; elementTyp : TTypeSymbol);
 var
    x : Integer;
    elemExpr : TTypedExpr;
 begin
    if (elementTyp<>nil) and (FTyp.Typ<>elementTyp) then begin
       if  (elementTyp.UnAliasedTypeIs(TBaseFloatSymbol) and FTyp.Typ.UnAliasedTypeIs(TBaseIntegerSymbol)) then begin
-         ElementsFromIntegerToFloat(prog);
+         ElementsFromIntegerToFloat(context);
       end else if elementTyp.IsCompatible(FTyp.Typ) then begin
          (FTyp as TStaticArraySymbol).Typ:=elementTyp;
       end;
@@ -806,7 +639,7 @@ begin
    for x := 0 to FElementExprs.Count - 1 do begin
       elemExpr:=TTypedExpr(FElementExprs.List[x]);
       if elemExpr is TArrayConstantExpr then
-         TArrayConstantExpr(elemExpr).Prepare(prog, FTyp.Typ);
+         TArrayConstantExpr(elemExpr).Prepare(context, FTyp.Typ);
    end;
 end;
 
@@ -958,7 +791,7 @@ end;
 
 // Optimize
 //
-function TArrayConstantExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TArrayConstantExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 var
    i : Integer;
    expr : TTypedExpr;
@@ -966,7 +799,7 @@ begin
    Result:=Self;
    for i:=0 to FElementExprs.Count-1 do begin
       expr:=TTypedExpr(FElementExprs.List[i]);
-      FElementExprs.List[i]:=expr.Optimize(prog, exec);
+      FElementExprs.List[i]:=expr.Optimize(context, exec);
    end;
 end;
 
@@ -991,14 +824,14 @@ end;
 
 // TypeCheckElements
 //
-procedure TArrayConstantExpr.TypeCheckElements(prog : TdwsProgram);
+procedure TArrayConstantExpr.TypeCheckElements(context : TdwsCompilerContext);
 var
    x : Integer;
    expr : TTypedExpr;
    elemTyp : TTypeSymbol;
 begin
    if Typ.Typ=nil then
-      prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_InvalidConstType, [SYS_VOID])
+      context.Msgs.AddCompilerErrorFmt(ScriptPos, CPE_InvalidConstType, [SYS_VOID])
    else if FElementExprs.Count>0 then begin
       elemTyp := Typ.Typ;
       if elemTyp is TBaseVariantSymbol then
@@ -1006,9 +839,9 @@ begin
       for x:=0 to FElementExprs.Count-1 do begin
          expr:=Elements[x];
          if not elemTyp.IsCompatible(expr.Typ) then begin
-            if elemTyp.IsOfType(prog.TypInteger) and expr.Typ.IsOfType(prog.TypFloat) then
-               elemTyp:=prog.TypFloat
-            else if elemTyp.IsOfType(prog.TypFloat) and expr.Typ.IsOfType(prog.TypInteger) then
+            if elemTyp.IsOfType(context.TypInteger) and expr.Typ.IsOfType(context.TypFloat) then
+               elemTyp:=context.TypFloat
+            else if elemTyp.IsOfType(context.TypFloat) and expr.Typ.IsOfType(context.TypInteger) then
                // handled below
             else if expr.Typ.IsCompatible(elemTyp) then
                elemTyp:=expr.Typ
@@ -1016,8 +849,8 @@ begin
                repeat
                   elemTyp:=TStructuredTypeSymbol(elemTyp).Parent;
                   if elemTyp=nil then begin
-                     prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_AssignIncompatibleTypes,
-                                                          [expr.Typ.Caption, Elements[0].Typ.Caption]);
+                     context.Msgs.AddCompilerErrorFmt(ScriptPos, CPE_AssignIncompatibleTypes,
+                                                      [expr.Typ.Caption, Elements[0].Typ.Caption]);
                      Exit;
                   end;
                until elemTyp.IsCompatible(expr.Typ);
@@ -1025,24 +858,24 @@ begin
                repeat
                   elemTyp:=TStructuredTypeMetaSymbol(elemTyp).Parent;
                   if elemTyp=nil then begin
-                     prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_AssignIncompatibleTypes,
-                                                          [expr.Typ.Caption, Elements[0].Typ.Caption]);
+                     context.Msgs.AddCompilerErrorFmt(ScriptPos, CPE_AssignIncompatibleTypes,
+                                                      [expr.Typ.Caption, Elements[0].Typ.Caption]);
                      Exit;
                   end;
                until elemTyp.IsCompatible(expr.Typ);
-            end else if prog.TypVariant.IsCompatible(expr.Typ) and prog.TypVariant.IsCompatible(elemTyp) then
-               elemTyp:=prog.TypVariant
+            end else if context.TypVariant.IsCompatible(expr.Typ) and context.TypVariant.IsCompatible(elemTyp) then
+               elemTyp:=context.TypVariant
             else begin
-               prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_AssignIncompatibleTypes,
-                                                    [expr.Typ.Caption, elemTyp.Caption]);
+               context.Msgs.AddCompilerErrorFmt(ScriptPos, CPE_AssignIncompatibleTypes,
+                                                [expr.Typ.Caption, elemTyp.Caption]);
                Exit;
             end;
          end;
       end;
 
       // implicit cast integer to float
-      if elemTyp.IsOfType(prog.TypFloat) then
-         ElementsFromIntegerToFloat(prog);
+      if elemTyp.IsOfType(context.TypFloat) then
+         ElementsFromIntegerToFloat(context);
 
       Typ.Typ:=elemTyp;
    end;
@@ -1050,19 +883,19 @@ end;
 
 // ElementsFromIntegerToFloat
 //
-procedure TArrayConstantExpr.ElementsFromIntegerToFloat(prog : TdwsProgram);
+procedure TArrayConstantExpr.ElementsFromIntegerToFloat(context : TdwsCompilerContext);
 var
    x : Integer;
    expr : TTypedExpr;
 begin
    for x:=0 to FElementExprs.Count-1 do begin
       expr:=Elements[x];
-      if expr.Typ.IsOfType(prog.TypInteger) then begin
-         expr:=TConvIntToFloatExpr.Create(prog, expr);
+      if expr.Typ.IsOfType(context.TypInteger) then begin
+         expr:=TConvIntToFloatExpr.Create(context, expr);
          FElementExprs.List[x]:=expr;
       end;
    end;
-   Typ.Typ:=prog.TypFloat;
+   Typ.Typ:=context.TypFloat;
 end;
 
 end.

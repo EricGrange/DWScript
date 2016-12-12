@@ -22,7 +22,7 @@ interface
 
 uses
    Classes, SysUtils,
-   dwsXPlatform, dwsUtils, dwsStrings,
+   dwsXPlatform, dwsUtils, dwsStrings, dwsCompilerContext,
    dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList, dwsUnitSymbols,
    dwsConstExprs, dwsMagicExprs, dwsDataContext, dwsErrors, dwsRelExprs,
    dwsOperators, dwsTokenizer, dwsCryptoXPlatform, dwsScriptSource,
@@ -80,12 +80,12 @@ type
    end;
 
    TBigIntegerNegateExpr = class(TUnaryOpExpr)
-      constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
+      constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
       procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
    TBigIntegerOpExpr = class(TBinaryOpExpr)
-      constructor Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
+      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
       procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
@@ -123,7 +123,7 @@ type
    end;
 
    TBigIntegerOpAssignExpr = class(TOpAssignExpr)
-     procedure TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution); override;
+     procedure TypeCheckAssign(context : TdwsCompilerContext; exec : TdwsExecution); override;
    end;
 
    TBigIntegerPlusAssignExpr = class(TBigIntegerOpAssignExpr)
@@ -163,7 +163,7 @@ type
 
    TBigIntegerUnaryOpExpr = class (TUnaryOpExpr)
       public
-         constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
+         constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
@@ -360,10 +360,10 @@ end;
 
 // HandleBigIntegerAbs
 //
-function HandleBigIntegerAbs(prog : TdwsProgram; argExpr : TTypedExpr) : TTypedExpr;
+function HandleBigIntegerAbs(context : TdwsCompilerContext; argExpr : TTypedExpr) : TTypedExpr;
 begin
    if argExpr.Typ.UnAliasedTypeIs(TBaseBigIntegerSymbol) then
-      Result:=TBigIntegerAbsExpr.Create(prog, argExpr)
+      Result:=TBigIntegerAbsExpr.Create(context, argExpr)
    else Result:=nil;
 end;
 
@@ -588,7 +588,7 @@ end;
 
 // Create
 //
-constructor TBigIntegerNegateExpr.Create(prog : TdwsProgram; expr : TTypedExpr);
+constructor TBigIntegerNegateExpr.Create(context : TdwsCompilerContext; expr : TTypedExpr);
 begin
    inherited;
    Bind_MPIR_DLL;
@@ -612,14 +612,14 @@ end;
 
 // Create
 //
-constructor TBigIntegerOpExpr.Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+constructor TBigIntegerOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
 begin
    inherited;
    try
       Bind_MPIR_DLL;
    except
       on E : Exception do begin
-         Prog.CompileMsgs.AddCompilerErrorFmt(aScriptPos, 'mpir.dll binding failed, %s: %s', [E.ClassName, E.Message]);
+         context.Msgs.AddCompilerErrorFmt(aScriptPos, 'mpir.dll binding failed, %s: %s', [E.ClassName, E.Message]);
       end;
    end;
    if aLeft.Typ.UnAliasedTypeIs(TBaseIntegerSymbol) then
@@ -811,10 +811,10 @@ end;
 // ------------------ TBigIntegerUnaryOpExpr ------------------
 // ------------------
 
-constructor TBigIntegerUnaryOpExpr.Create(prog : TdwsProgram; expr : TTypedExpr);
+constructor TBigIntegerUnaryOpExpr.Create(context : TdwsCompilerContext; expr : TTypedExpr);
 begin
-   inherited Create(prog, expr);
-   Typ := prog.Root.SystemTable.SymbolTable.FindTypeSymbol(SYS_BIGINTEGER, cvMagic);
+   inherited Create(context, expr);
+   Typ := context.SystemTable.FindTypeSymbol(SYS_BIGINTEGER, cvMagic);
 end;
 
 procedure TBigIntegerUnaryOpExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
@@ -1171,7 +1171,7 @@ end;
 // ------------------ TBigIntegerOpAssignExpr ------------------
 // ------------------
 
-procedure TBigIntegerOpAssignExpr.TypeCheckAssign(prog : TdwsProgram; exec : TdwsExecution);
+procedure TBigIntegerOpAssignExpr.TypeCheckAssign(context : TdwsCompilerContext; exec : TdwsExecution);
 begin
    // nothing here
 end;

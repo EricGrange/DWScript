@@ -203,7 +203,7 @@ begin
       result := TSqlIdentifier(expr).Value
    else begin
       result := NewParam;
-      FParams.AddElementExpr(cNullPos, compiler.CurrentProg, expr);
+      FParams.AddElementExpr(cNullPos, compiler.CompilerContext, expr);
       expr.IncRefCount;
       if expr.typ.classtype = TDynamicArraySymbol then
          FListParams.Add(result)
@@ -320,25 +320,23 @@ end;
 procedure TSqlFromExpr.Codegen(compiler: TdwsCompiler);
 var
    query: TMethodSymbol;
-   prog: TdwsProgram;
    base: TVarExpr;
    pos: TScriptPos;
    arr: TTypedExpr;
 begin
    query := (FDBSymbol.Typ as TClassSymbol).Members.FindSymbol('query', cvMagic) as TMethodSymbol;
-   prog := compiler.CurrentProg;
    pos := compiler.Tokenizer.CurrentPos;
-   base := TVarExpr.CreateTyped(prog, FDBSymbol);
+   base := TVarExpr.CreateTyped(compiler.CompilerContext, FDBSymbol);
 
-   FParams := TArrayConstantExpr.Create(prog, pos);
+   FParams := TArrayConstantExpr.Create(compiler.CompilerContext, pos);
    FParams.IncRefCount;
    BuildQuery(compiler);
 
-   FMethod := TMethodStaticExpr.Create(prog, pos, query, base);
-   FMethod.AddArg(TConstStringExpr.Create(prog, nil, FSql));
-   arr := TConvStaticArrayToDynamicExpr.Create(prog, FParams, TDynamicArraySymbol(query.Params.Symbols[1].Typ));
+   FMethod := TMethodStaticExpr.Create(compiler.CompilerContext, pos, query, base);
+   FMethod.AddArg(TConstStringExpr.Create(compiler.CompilerContext.TypString, FSql));
+   arr := TConvStaticArrayToDynamicExpr.Create(compiler.CompilerContext, FParams, TDynamicArraySymbol(query.Params.Symbols[1].Typ));
    FMethod.AddArg(arr);
-   FMethod.Initialize(prog);
+   FMethod.Initialize(compiler.CompilerContext);
 end;
 
 function TSqlFromExpr.Interpolate(exec: TdwsExecution; list: TObjectVarExpr; params: TArrayConstantexpr;
@@ -357,7 +355,8 @@ begin
       for i := 0 to High do
       begin
          paramList.Add(':a' + intToStr(i));
-         params.AddElementExpr(cNullPos, prog, TConstExpr.Create(Prog, prog.TypVariant, obj.AsVariant[i]));
+         params.AddElementExpr(cNullPos, prog.Root.CompilerContext,
+                               TConstExpr.Create(prog.Root.CompilerContext.TypVariant, obj.AsVariant[i]));
       end;
       result := StringReplace(query, param, format('(%s)', [paramList.CommaText]), []);
    finally
@@ -370,13 +369,13 @@ var
    method: TMethodStaticExpr;
    arr: TConvStaticArrayToDynamicExpr;
 begin
-   method := TMethodStaticExpr.Create(prog, FMethod.ScriptPos, FMethod.FuncSym as TMethodSymbol, FMethod.BaseExpr);
+   method := TMethodStaticExpr.Create(prog.Root.CompilerContext, FMethod.ScriptPos, FMethod.FuncSym as TMethodSymbol, FMethod.BaseExpr);
    method.BaseExpr.IncRefCount;
-   method.AddArg(TConstStringExpr.Create(prog, nil, query));
-   arr := TConvStaticArrayToDynamicExpr.Create(prog, params,
+   method.AddArg(TConstStringExpr.Create(prog.Root.CompilerContext.TypString, query));
+   arr := TConvStaticArrayToDynamicExpr.Create(prog.Root.CompilerContext, params,
      TDynamicArraySymbol(method.FuncSym.Params.Symbols[1].Typ));
    method.AddArg(arr);
-   method.Initialize(prog);
+   method.Initialize(prog.Root.CompilerContext);
    FMethod.free;
    FMethod := method;
 end;
@@ -391,7 +390,7 @@ var
 begin
    prog := (exec as TdwsProgramExecution).Prog;
    query := FSql;
-   params := TArrayConstantExpr.Create(prog, FParams.ScriptPos);
+   params := TArrayConstantExpr.Create(prog.Root.CompilerContext, FParams.ScriptPos);
    try
       counter := 0;
       for param in FListParams do
@@ -400,7 +399,7 @@ begin
          while counter < index do
          begin
             sub := FParams.SubExpr[counter] as TTypedExpr;
-            params.AddElementExpr(cNullPos, prog, sub);
+            params.AddElementExpr(cNullPos, prog.Root.CompilerContext, sub);
             sub.IncRefCount;
             inc(counter);
          end;
@@ -443,15 +442,15 @@ begin
    prog := compiler.CurrentProg;
    FData := TDataSymbol.Create('', FBase.Typ);
    FData.AllocateStackAddr(prog.Table.AddrGenerator);
-   dsVar := TObjectVarExpr.Create(prog, FData);
+   dsVar := TObjectVarExpr.Create(FData);
    FBase.IncRefCount;
-   FAssign := TAssignExpr.Create(prog, aPos, compiler.CompileTimeExecution, dsVar, FBase);
+   FAssign := TAssignExpr.Create(prog.Root.CompilerContext, aPos, compiler.CompileTimeExecution, dsVar, FBase);
    dsVar.IncRefCount;
    FInto.AddArg(dsVar);
-   FInto.Initialize(prog);
+   FInto.Initialize(prog.Root.CompilerContext);
    freeSym := (prog.Table.FindTypeSymbol('TObject', cvMagic) as TClassSymbol).Members.FindSymbol('Free', cvMagic) as TMethodSymbol;
    dsVar.IncRefCount;
-   FFree := TMethodStaticExpr.Create(prog, aPos, freeSym, dsVar);
+   FFree := TMethodStaticExpr.Create(prog.Root.CompilerContext, aPos, freeSym, dsVar);
 end;
 
 destructor TLinqIntoExpr.Destroy;
@@ -472,9 +471,9 @@ constructor TLinqIntoSingleExpr.Create(base: TSqlFromExpr; into: TFuncPtrExpr;
 begin
    inherited Create(base, into, compiler, aPos);
    if assigned(into.FuncSym.Result) then
-      self.Typ := TDynamicArraySymbol.Create('', into.FuncSym.Result.Typ, compiler.CurrentProg.TypInteger);
+      self.Typ := TDynamicArraySymbol.Create('', into.FuncSym.Result.Typ, compiler.CompilerContext.TypInteger);
    FAssign.Left.IncRefCount;
-   FStep := TMethodStaticExpr.Create(compiler.CurrentProg, aPos,
+   FStep := TMethodStaticExpr.Create(compiler.CompilerContext, aPos,
      dsSymbol.Members.FindSymbol('Step', cvMagic) as TMethodSymbol, FAssign.Left);
 end;
 

@@ -357,12 +357,18 @@ end;
 // Compare
 //
 function TSymbolPositionListList.Compare(const item1, item2 : TSymbolPositionList) : Integer;
+var
+   p1, p2 : NativeInt;
 begin
-   if NativeInt(item1.Symbol)<NativeInt(item2.Symbol) then
-      Result:=-1
-   else if NativeInt(item1.Symbol)>NativeInt(item2.Symbol) then
-      Result:=1
-   else Result:=0;
+   p1 := NativeInt(item1.Symbol);
+   p2 := NativeInt(item2.Symbol);
+   Result := Integer(p1 > p2) - Integer(p1 < p2);
+
+//   if NativeInt(item1.Symbol)<NativeInt(item2.Symbol) then
+//      Result:=-1
+//   else if NativeInt(item1.Symbol)>NativeInt(item2.Symbol) then
+//      Result:=1
+//   else Result:=0;
 end;
 
 // ------------------

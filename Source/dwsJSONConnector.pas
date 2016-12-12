@@ -25,7 +25,8 @@ uses
    dwsLanguageExtension, dwsComp, dwsCompiler, dwsDataContext, dwsExprList,
    dwsExprs, dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs, dwsStack,
    dwsStrings, dwsXPlatform, dwsUtils, dwsOperators, dwsUnitSymbols,
-   dwsFunctions, dwsJSON, dwsMagicExprs, dwsConnectorSymbols, dwsScriptSource;
+   dwsFunctions, dwsJSON, dwsMagicExprs, dwsConnectorSymbols, dwsScriptSource,
+   dwsXXHash, dwsCompilerContext;
 
 type
 
@@ -180,7 +181,7 @@ type
    TJSONConnectorSymbol = class(TConnectorSymbol)
       public
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         function CreateAssignExpr(prog : TdwsProgram; const aScriptPos: TScriptPos;
+         function CreateAssignExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                    exec : TdwsExecution;
                                    left : TDataExpr; right : TTypedExpr) : TProgramExpr; override;
    end;
@@ -1101,7 +1102,7 @@ end;
 
 // CreateAssignExpr
 //
-function TJSONConnectorSymbol.CreateAssignExpr(prog : TdwsProgram; const aScriptPos: TScriptPos;
+function TJSONConnectorSymbol.CreateAssignExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                                exec : TdwsExecution;
                                                left : TDataExpr; right : TTypedExpr) : TProgramExpr;
 var
@@ -1114,13 +1115,13 @@ begin
 
    rightTypClass:=rightTyp.ClassType;
    if rightTypClass=TJSONConnectorSymbol then
-      Result:=TAssignExpr.Create(prog, aScriptPos, exec, left, right)
+      Result:=TAssignExpr.Create(context, aScriptPos, exec, left, right)
    else if rightTypClass.InheritsFrom(TBaseSymbol) then
-      Result:=TAssignBoxJSONExpr.Create(prog, aScriptPos, exec, left, right);
+      Result:=TAssignBoxJSONExpr.Create(context, aScriptPos, exec, left, right);
 
    if Result=nil then begin
-      prog.CompileMsgs.AddCompilerErrorFmt(aScriptPos, CPE_AssignIncompatibleTypes,
-                                           [right.Typ.Caption, left.Typ.Caption]);
+      context.Msgs.AddCompilerErrorFmt(aScriptPos, CPE_AssignIncompatibleTypes,
+                                       [right.Typ.Caption, left.Typ.Caption]);
       left.Free;
       right.Free;
    end;
@@ -1164,7 +1165,7 @@ begin
    try
       tokenizer.ParseIntegerArray(values);
 
-      newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).Prog.TypInteger);
+      newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).CompilerContext.TypInteger);
       VarCopySafe(result, IScriptDynArray(newArray));
       newArray.ArrayLength:=values.Count;
       newPData:=newArray.AsPData;
@@ -1199,7 +1200,7 @@ begin
    try
       tokenizer.ParseNumberArray(values);
 
-      newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).Prog.TypInteger);
+      newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).CompilerContext.TypInteger);
       VarCopySafe(result, IScriptDynArray(newArray));
       newArray.ArrayLength:=values.Count;
       newPData:=newArray.AsPData;
@@ -1234,7 +1235,7 @@ begin
    try
       tokenizer.ParseStringArray(values);
 
-      newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).Prog.TypString);
+      newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).CompilerContext.TypString);
       VarCopySafe(result, IScriptDynArray(newArray));
       newArray.ArrayLength:=values.Count;
       newPData:=newArray.AsPData;

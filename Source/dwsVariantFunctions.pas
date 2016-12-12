@@ -25,7 +25,7 @@ interface
 
 uses
    Classes, Variants, SysUtils,
-   dwsFunctions, dwsExprs, dwsSymbols, dwsUtils, dwsExprList,
+   dwsFunctions, dwsExprs, dwsSymbols, dwsUtils, dwsExprList, dwsCompilerContext,
    dwsMagicExprs, dwsUnitSymbols, dwsXPlatform, dwsStrings;
 
 type
@@ -63,7 +63,7 @@ type
 
    TVarToStrFunc = class(TInternalMagicStringFunction)
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
-      procedure CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase); override;
+      procedure CompileTimeCheck(context : TdwsCompilerContext; expr : TFuncExprBase); override;
    end;
 
 // ------------------------------------------------------------------
@@ -168,10 +168,10 @@ end;
 
 // CompileTimeCheck
 //
-procedure TVarToStrFunc.CompileTimeCheck(prog : TdwsProgram; expr : TFuncExprBase);
+procedure TVarToStrFunc.CompileTimeCheck(context : TdwsCompilerContext; expr : TFuncExprBase);
 begin
-   if expr.GetArgType(0).IsOfType(prog.TypString) then
-      prog.CompileMsgs.AddCompilerHint(expr.ScriptPos, CPH_RedundantFunctionCall);
+   if expr.GetArgType(0).IsOfType(context.TypString) then
+      context.Msgs.AddCompilerHint(expr.ScriptPos, CPH_RedundantFunctionCall);
 end;
 
 { InitVariants }

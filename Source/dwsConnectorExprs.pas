@@ -27,7 +27,7 @@ uses
    Variants, SysUtils,
    dwsUtils, dwsDataContext, dwsStack, dwsXPlatform, dwsErrors, dwsStrings,
    dwsExprs, dwsExprList, dwsSymbols, dwsUnitSymbols, dwsConnectorSymbols,
-   dwsCoreExprs, dwsScriptSource;
+   dwsCoreExprs, dwsScriptSource, dwsCompilerContext;
 
 type
    TConnectorCallFlag = (ccfIsInstruction, ccfIsIndex, ccfHasVarParams,
@@ -100,8 +100,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         class function CreateNew(aProg: TdwsProgram;
-                                  const aScriptPos: TScriptPos; const aName: UnicodeString;
+         class function CreateNew(const aScriptPos: TScriptPos; const aName: UnicodeString;
                                   aBaseExpr: TTypedExpr; const aConnectorType : IConnectorType
                                   ) : TConnectorReadMemberExpr; static;
          destructor Destroy; override;
@@ -151,7 +150,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         class function CreateNew(aProg: TdwsProgram; const scriptPos: TScriptPos;
+         class function CreateNew(context: TdwsCompilerContext; const scriptPos: TScriptPos;
                                   const aName: UnicodeString;
                                   aBaseExpr, aValueExpr: TTypedExpr;
                                   const connectorType : IConnectorType) : TConnectorWriteMemberExpr;
@@ -215,7 +214,7 @@ type
          FConnectorCast : IConnectorCast;
 
       public
-         constructor CreateCast(prog : TdwsProgram; expr : TTypedExpr; const cast : IConnectorCast);
+         constructor CreateCast(context : TdwsCompilerContext; expr : TTypedExpr; const cast : IConnectorCast);
 
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
 
@@ -536,7 +535,7 @@ end;
 // Create
 //
 class function TConnectorReadMemberExpr.CreateNew(
-      aProg: TdwsProgram; const aScriptPos: TScriptPos; const aName: UnicodeString;
+      const aScriptPos: TScriptPos; const aName: UnicodeString;
       aBaseExpr: TTypedExpr; const aConnectorType : IConnectorType
       ) : TConnectorReadMemberExpr;
 var
@@ -665,7 +664,7 @@ end;
 // CreateNew
 //
 class function TConnectorWriteMemberExpr.CreateNew(
-      aProg: TdwsProgram; const scriptPos: TScriptPos;
+      context : TdwsCompilerContext; const scriptPos: TScriptPos;
       const aName: UnicodeString;
       aBaseExpr, aValueExpr: TTypedExpr;
       const connectorType : IConnectorType) : TConnectorWriteMemberExpr;
@@ -679,7 +678,7 @@ begin
    if connMember<>nil then begin
 
       if not (Assigned(typSym) and Assigned(aValueExpr.Typ) and typSym.IsCompatible(aValueExpr.Typ)) then
-         aProg.CompileMsgs.AddCompilerError(scriptPos, CPE_ConnectorTypeMismatch);
+         context.Msgs.AddCompilerError(scriptPos, CPE_ConnectorTypeMismatch);
 
       connMember.QueryInterface(IConnectorFastMember, connFastMember);
 
@@ -695,8 +694,8 @@ begin
          Result := TConnectorWriteExpr.Create;
          TConnectorWriteExpr(Result).ConnectorMember := connDataMember;
          if connDataMember=nil then
-            aProg.CompileMsgs.AddCompilerErrorFmt(scriptPos, CPE_ConnectorMember,
-                                                  [aName, connectorType.ConnectorCaption]);
+            context.Msgs.AddCompilerErrorFmt(scriptPos, CPE_ConnectorMember,
+                                             [aName, connectorType.ConnectorCaption]);
 
       end;
 
@@ -894,9 +893,9 @@ end;
 
 // CreateCast
 //
-constructor TConnectorCastExpr.CreateCast(prog : TdwsProgram; expr : TTypedExpr; const cast : IConnectorCast);
+constructor TConnectorCastExpr.CreateCast(context : TdwsCompilerContext; expr : TTypedExpr; const cast : IConnectorCast);
 begin
-   inherited Create(prog, expr);
+   inherited Create(context, expr);
    FConnectorCast:=cast;
 end;
 

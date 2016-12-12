@@ -1931,7 +1931,7 @@ begin
       for i:=0 to methods.Count-1 do begin
          if marks[i] then continue;
          methSym:=methods[i];
-         if methSym.StructSymbol=FContext.TypTObject then continue;
+         if methSym.StructSymbol=FContext.Root.CompilerContext.TypTObject then continue;
          methSym.IsVirtual:=False;
       end;
    finally

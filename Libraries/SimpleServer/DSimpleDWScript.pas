@@ -30,7 +30,7 @@ uses
    dwsWebServerHelpers, dwsZipLibModule,
    dwsDataBase, dwsDataBaseLibModule, dwsWebServerInfo, dwsWebServerLibModule,
    dwsBackgroundWorkersLibModule, dwsSynapseLibModule, dwsCryptoLibModule,
-   dwsEncodingLibModule, dwsComConnector,
+   dwsEncodingLibModule, dwsComConnector, dwsXXHash,
    dwsBigIntegerFunctions.GMP, dwsMPIR.Bundle;
 
 type

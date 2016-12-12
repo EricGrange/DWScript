@@ -145,7 +145,7 @@ begin
          try
             sourceFile.Code:=anExpression;
             sourceFile.Name:=MSG_MainModule;
-            compiler.AttachTokenizer(compiler.TokenizerRules.CreateTokenizer(compiler.Msgs));
+            compiler.AttachTokenizer(compiler.TokenizerRules.CreateTokenizer(compiler.Msgs, nil));
             try
                compiler.Tokenizer.BeginSourceFile(sourceFile);
                try
@@ -153,7 +153,7 @@ begin
                      sourceContext:=compiler.SourceContextMap.FindContext(scriptPos^);
                      while sourceContext<>nil do begin
                         if sourceContext.LocalTable<>nil then begin
-                           compiler.Prog.EnterSubTable(sourceContext.LocalTable);
+                           compiler.CurrentProg.EnterSubTable(sourceContext.LocalTable);
                            Break;
                         end;
                         sourceContext:=sourceContext.Parent;
@@ -163,7 +163,7 @@ begin
                      expr := compiler.ReadExpr;
                   finally
                      if sourceContext<>nil then
-                        compiler.Prog.LeaveSubTable;
+                        compiler.CurrentProg.LeaveSubTable;
                   end;
                except
                   gotError:=True;
@@ -175,9 +175,8 @@ begin
                      messageString := messageString + #13#10
                                     + compiler.Msgs[i].AsInfo;
                   end;
-                  expr := TConstExpr.Create(contextProgram,
-                                            contextProgram.TypString,
-                                            messageString);
+                  expr := TConstStringExpr.Create(contextProgram.Root.CompilerContext.TypString,
+                                                  messageString);
                end;
                while compiler.Msgs.Count > previousMsgCount do
                   compiler.Msgs.Delete(compiler.Msgs.Count-1);

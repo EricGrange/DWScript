@@ -106,15 +106,12 @@ end;
 //
 procedure TJITTests.DoInclude(const scriptName: string; var scriptSource: string);
 var
-   sl : TStringList;
+   fileName : String;
 begin
-   sl:=TStringList.Create;
-   try
-      sl.LoadFromFile('SimpleScripts\'+scriptName);
-      scriptSource:=sl.Text;
-   finally
-      sl.Free;
-   end;
+   fileName := 'SimpleScripts\'+scriptName;
+   if not FileExists(fileName) then
+      fileName := 'BuildScripts\'+scriptName;
+   scriptSource := LoadTextFromFile(fileName);
 end;
 
 // DoNeedUnit

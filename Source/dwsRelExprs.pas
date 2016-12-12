@@ -23,12 +23,14 @@ unit dwsRelExprs;
 
 interface
 
-uses dwsExprs, dwsSymbols, dwsErrors, dwsConstExprs, Variants, dwsScriptSource;
+uses
+   dwsExprs, dwsSymbols, dwsErrors, dwsConstExprs, Variants, dwsScriptSource,
+   dwsCompilerContext;
 
 type
 
    TRelOpExpr = class(TBinaryOpExpr)
-      constructor Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
+      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
       procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
    TRelOpExprClass = class of TRelOpExpr;
@@ -52,11 +54,11 @@ type
 
    TRelEqualIntExpr = class(TIntegerRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+     function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
    TRelNotEqualIntExpr = class(TIntegerRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+     function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
    TRelLessIntExpr = class(TIntegerRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
@@ -81,7 +83,7 @@ type
    // float rel ops
 
    TFloatRelOpExpr = class(TRelOpExpr)
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+     function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    TRelEqualFloatExpr = class(TFloatRelOpExpr)
@@ -179,10 +181,10 @@ implementation
 
 // Create
 //
-constructor TRelOpExpr.Create(Prog: TdwsProgram; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+constructor TRelOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
 begin
    inherited;
-   FTyp:=Prog.TypBoolean;
+   FTyp:=context.TypBoolean;
 end;
 
 // EvalAsVariant
@@ -227,18 +229,18 @@ end;
 
 // Optimize
 //
-function TRelEqualIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TRelEqualIntExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    if IsConstant then
-      Result := TConstExpr.CreateBooleanValue(prog, EvalAsBoolean(exec))
+      Result := TConstBooleanExpr.Create(context.TypBoolean, EvalAsBoolean(exec))
    else if FLeft.IsConstant and (FLeft.EvalAsInteger(exec)=0) then begin
-      Result:=TRelIntIsZeroExpr.Create(prog, FRight);
+      Result:=TRelIntIsZeroExpr.Create(context, FRight);
       FRight:=nil;
    end else if FRight.IsConstant and (FRight.EvalAsInteger(exec)=0) then begin
-      Result:=TRelIntIsZeroExpr.Create(prog, FLeft);
+      Result:=TRelIntIsZeroExpr.Create(context, FLeft);
       FLeft:=nil;
    end else Exit(Self);
-   Orphan(prog);
+   Orphan(context);
 end;
 
 // ------------------
@@ -254,18 +256,18 @@ end;
 
 // Optimize
 //
-function TRelNotEqualIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TRelNotEqualIntExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
    if IsConstant then
-      Result := TConstExpr.CreateBooleanValue(prog, EvalAsBoolean(exec))
+      Result := TConstBooleanExpr.Create(context.TypBoolean, EvalAsBoolean(exec))
    else if FLeft.IsConstant and (FLeft.EvalAsInteger(exec)=0) then begin
-      Result:=TRelIntIsNotZeroExpr.Create(prog, FRight);
+      Result:=TRelIntIsNotZeroExpr.Create(context, FRight);
       FRight:=nil;
    end else if FRight.IsConstant and (FRight.EvalAsInteger(exec)=0) then begin
-      Result:=TRelIntIsNotZeroExpr.Create(prog, FLeft);
+      Result:=TRelIntIsNotZeroExpr.Create(context, FLeft);
       FLeft:=nil;
    end else Exit(Self);
-   Orphan(prog);
+   Orphan(context);
 end;
 
 // ------------------
@@ -318,9 +320,9 @@ end;
 
 // Optimize
 //
-function TFloatRelOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+function TFloatRelOpExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
 begin
-   OptimizeConstantOperandsToFloats(prog, exec);
+   OptimizeConstantOperandsToFloats(context, exec);
    Result:=inherited;
 end;
 

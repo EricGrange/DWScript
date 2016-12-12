@@ -324,7 +324,7 @@ begin
             end;
          end;
 
-         pixmap:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).Prog.TypInteger);
+         pixmap:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).CompilerContext.TypInteger);
          pixmap.ReplaceData(pixmapData);
       finally
          png.Free;

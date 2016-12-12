@@ -265,40 +265,34 @@ type
    //
    TSystemSymbolTable = class (TStaticSymbolTable, ISystemSymbolTable)
       private
-         FTypInteger : TBaseIntegerSymbol;
-         FTypBoolean : TBaseBooleanSymbol;
-         FTypFloat : TBaseFloatSymbol;
-         FTypString : TBaseStringSymbol;
-         FTypVariant : TBaseVariantSymbol;
-         FTypObject : TClassSymbol;
-         FTypTObject : TClassSymbol;
-         FTypClass : TClassOfSymbol;
-         FTypException : TClassSymbol;
-         FTypInterface : TInterfaceSymbol;
-         FTypCustomAttribute : TClassSymbol;
-         FTypAnyType : TAnyTypeSymbol;
+         FBaseSymbolTypes : TdwsBaseSymbolTypes;
 
       protected
          function SymbolTable : TSystemSymbolTable; overload;
 
       public
-         property TypInteger : TBaseIntegerSymbol read FTypInteger write FTypInteger;
-         property TypBoolean : TBaseBooleanSymbol read FTypBoolean write FTypBoolean;
-         property TypFloat : TBaseFloatSymbol read FTypFloat write FTypFloat;
-         property TypString : TBaseStringSymbol read FTypString write FTypString;
-         property TypVariant : TBaseVariantSymbol read FTypVariant write FTypVariant;
+         destructor Destroy; override;
 
-         property TypObject : TClassSymbol read FTypObject write FTypObject;
-         property TypTObject : TClassSymbol read FTypTObject write FTypTObject;
-         property TypClass : TClassOfSymbol read FTypClass write FTypClass;
+         property BaseSymbolTypes : TdwsBaseSymbolTypes read FBaseSymbolTypes;
 
-         property TypException : TClassSymbol read FTypException write FTypException;
+         property TypInteger : TBaseIntegerSymbol read FBaseSymbolTypes.TypInteger write FBaseSymbolTypes.TypInteger;
+         property TypBoolean : TBaseBooleanSymbol read FBaseSymbolTypes.TypBoolean write FBaseSymbolTypes.TypBoolean;
+         property TypFloat : TBaseFloatSymbol read FBaseSymbolTypes.TypFloat write FBaseSymbolTypes.TypFloat;
+         property TypString : TBaseStringSymbol read FBaseSymbolTypes.TypString write FBaseSymbolTypes.TypString;
+         property TypVariant : TBaseVariantSymbol read FBaseSymbolTypes.TypVariant write FBaseSymbolTypes.TypVariant;
 
-         property TypInterface : TInterfaceSymbol read FTypInterface write FTypInterface;
+         property TypNil : TNilSymbol read FBaseSymbolTypes.TypNil write FBaseSymbolTypes.TypNil;
+         property TypObject : TClassSymbol read FBaseSymbolTypes.TypObject write FBaseSymbolTypes.TypObject;
+         property TypTObject : TClassSymbol read FBaseSymbolTypes.TypTObject write FBaseSymbolTypes.TypTObject;
+         property TypClass : TClassOfSymbol read FBaseSymbolTypes.TypClass write FBaseSymbolTypes.TypClass;
 
-         property TypAnyType : TAnyTypeSymbol read FTypAnyType write FTypAnyType;
+         property TypException : TClassSymbol read FBaseSymbolTypes.TypException write FBaseSymbolTypes.TypException;
 
-         property TypCustomAttribute : TClassSymbol read FTypCustomAttribute write FTypCustomAttribute;
+         property TypInterface : TInterfaceSymbol read FBaseSymbolTypes.TypInterface write FBaseSymbolTypes.TypInterface;
+
+         property TypAnyType : TAnyTypeSymbol read FBaseSymbolTypes.TypAnyType write FBaseSymbolTypes.TypAnyType;
+
+         property TypCustomAttribute : TClassSymbol read FBaseSymbolTypes.TypCustomAttribute write FBaseSymbolTypes.TypCustomAttribute;
    end;
 
    // TProgramSymbolTable
@@ -866,6 +860,14 @@ end;
 // ------------------
 // ------------------ TSystemSymbolTable ------------------
 // ------------------
+
+// Destroy
+//
+destructor TSystemSymbolTable.Destroy;
+begin
+   FBaseSymbolTypes.TypNil.Free;
+   inherited;
+end;
 
 // SymbolTable
 //
