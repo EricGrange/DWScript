@@ -1,0 +1,2 @@
+Warning: Constant condition [line: 3, column: 2]
+Syntax Error: ";" expected. [line: 3, column: 25]

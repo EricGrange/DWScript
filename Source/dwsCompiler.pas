@@ -662,7 +662,7 @@ type
          function ReadRaise : TRaiseBaseExpr;
          function ReadRepeat : TProgramExpr;
          function ReadImplementationBlock : TTokenType;
-         procedure ReadSemiColon;
+         procedure ReadSemiColon(fatal : Boolean = False);
          function ReadScript(sourceFile : TSourceFile; scriptType : TScriptSourceType) : TProgramExpr;
          procedure ReadScriptImplementations;
          function ReadSpecialFunction(const namePos : TScriptPos; specialKind : TSpecialKeywordKind) : TProgramExpr;
@@ -2316,10 +2316,13 @@ end;
 
 // ReadSemiColon
 //
-procedure TdwsCompiler.ReadSemiColon;
+procedure TdwsCompiler.ReadSemiColon(fatal : Boolean = False);
 begin
-   if not FTok.TestDelete(ttSEMI) then
-      FMsgs.AddCompilerError(FTok.HotPos, CPE_SemiExpected);
+   if not FTok.TestDelete(ttSEMI) then begin
+      if fatal then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected)
+      else FMsgs.AddCompilerError(FTok.HotPos, CPE_SemiExpected);
+   end;
 end;
 
 // ReadScript
@@ -4079,7 +4082,7 @@ begin
             msgExpr := FUnifiedConstants.CreateString(msg);
          end;
 
-         ReadSemiColon;
+         ReadSemiColon(True);
 
          srcCond:=TSourceCondition.Create(hotPos, testExpr, msgExpr);
          conditions.AddCondition(srcCond);

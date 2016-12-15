@@ -1,0 +1,2 @@
+Syntax Error: More arguments expected [line: 3, column: 2]
+Syntax Error: Boolean expected [line: 3, column: 2]
