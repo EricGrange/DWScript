@@ -40,8 +40,10 @@ type
          function GetUnit(const UnitName : String) : IConnectorType;
 
       protected
-         function GetUnitName : String; override;
          procedure AddUnitSymbols(systemTable : TSystemSymbolTable; table : TSymbolTable; operators : TOperators); override;
+
+      public
+         constructor Create(AOwner: TComponent); override;
 
       published
          property StaticSymbols;
@@ -358,6 +360,14 @@ end;
 // ------------------ TdwsRTTIConnector ------------------
 // ------------------
 
+// Create
+//
+constructor TdwsRTTIConnector.Create(AOwner: TComponent);
+begin
+   inherited;
+   UnitName := RTTI_UnitName;
+end;
+
 // ConnectorCaption
 //
 function TdwsRTTIConnector.ConnectorCaption : String;
@@ -377,13 +387,6 @@ end;
 function TdwsRTTIConnector.GetUnit(const unitName : String) : IConnectorType;
 begin
    raise Exception.Create('Not supported');
-end;
-
-// GetUnitName
-//
-function TdwsRTTIConnector.GetUnitName : String;
-begin
-   Result:=RTTI_UnitName;
 end;
 
 // AddUnitSymbols

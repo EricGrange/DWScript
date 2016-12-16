@@ -415,13 +415,13 @@ end;
 //
 procedure TTokenBuffer.ToStr(var result : UnicodeString);
 begin
-   if Len=0 then
-      result := ''
-   else if Unifier <> nil then
-      Unifier.UnifyAssignPChar(@Buffer[0], Len, SimpleStringHash(@Buffer[0], Len), result)
-   else begin
-      SetLength(result, Len);
-      Move(Buffer[0], Pointer(result)^, Len*SizeOf(WideChar));
+   case Len of
+      0 : result := '';
+      1 : UnifyAssignChar(@Buffer[0], result);
+   else
+      if Unifier <> nil then
+         Unifier.UnifyAssignPChar(@Buffer[0], Len, result)
+      else SetString(result, PChar(@Buffer[0]), Len);
    end;
 end;
 
@@ -1565,6 +1565,7 @@ var
    state : TState;
    trns : TTransition;
    pch : PWideChar;
+   ch : WideChar;
 begin
    AllocateToken;
 
@@ -1578,20 +1579,22 @@ begin
    while Assigned(state) do begin
 
       // Find next state
-      if pch^>#127 then
-         if Ord(pch^)=160 then  // treat no-break space as regular space
-            trns:=state.FTransitions[#32]
-         else trns:=state.FTransitions[#127]
-      else trns:=state.FTransitions[pch^];
+      ch := pch^;
+      if Ord(ch) > 127 then begin
+         if Ord(ch) = 160 then  // treat no-break space as regular space
+            ch := #32
+         else ch := #127
+      end;
+      trns := state.FTransitions[Char(ch)];
 
       // Handle Errors
       if trns.IsError then begin
          DoErrorTransition(trns as TErrorTransition, pch^);
-         state:=FStartState;
+         state := FStartState;
          FTokenBuf.Len:=0;
-         if FSourceStack<>nil then begin
+         if FSourceStack <> nil then begin
             EndSourceFile;
-            pch:=PosPtr;
+            pch := PosPtr;
             continue;
          end;
          Break;

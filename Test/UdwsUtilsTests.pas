@@ -559,11 +559,9 @@ var
    before, after : TIntegerDynArray;
 begin
    TidyStringsUnifier;
-   before := StringUnifierHistogram;
    for i := 1 to 10000 do
       UnifiedString(IntToStr(i));
    TidyStringsUnifier;
-   after := StringUnifierHistogram;
    for i := Low(before) to High(before) do
       CheckEquals(before[i], after[i], IntToStr(i));
 end;

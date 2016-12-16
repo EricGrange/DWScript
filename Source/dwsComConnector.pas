@@ -24,7 +24,7 @@ unit dwsComConnector;
 interface
 
 uses
-   Variants, SysUtils, ComObj, ActiveX,
+   Classes, Variants, SysUtils, ComObj, ActiveX,
    dwsUtils, dwsDataContext, dwsExprList, dwsConnectorSymbols, dwsXPlatform,
    dwsStrings, dwsFunctions, dwsStack, dwsMagicExprs, dwsErrors,
    dwsExprs, dwsComp, dwsSymbols, dwsOperators, dwsUnitSymbols,
@@ -42,8 +42,10 @@ type
          function GetUnit(const UnitName: UnicodeString): IConnectorType;
 
       protected
-         function GetUnitName: UnicodeString; override;
          procedure AddUnitSymbols(systemTable : TSystemSymbolTable; Table: TSymbolTable; operators : TOperators); override;
+
+      public
+         constructor Create(AOwner: TComponent); override;
 
       published
          property StaticSymbols;
@@ -536,6 +538,14 @@ type
 // ------------------ TdwsComConnector ------------------
 // ------------------
 
+// Create
+//
+constructor TdwsComConnector.Create(AOwner: TComponent);
+begin
+   inherited;
+   UnitName := COM_UnitName;
+end;
+
 function TdwsComConnector.ConnectorCaption: UnicodeString;
 begin
   Result := COM_ConnectorCaption;
@@ -549,11 +559,6 @@ end;
 function TdwsComConnector.GetUnit(const UnitName: UnicodeString): IConnectorType;
 begin
   raise Exception.Create('Not supported');
-end;
-
-function TdwsComConnector.GetUnitName: UnicodeString;
-begin
-  Result := COM_UnitName;
 end;
 
 procedure TdwsComConnector.AddUnitSymbols(systemTable : TSystemSymbolTable; Table: TSymbolTable; operators : TOperators);

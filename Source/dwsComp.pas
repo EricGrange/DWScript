@@ -210,7 +210,7 @@ type
          procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
          procedure BeforeAdditionTo(dwscript : TObject);
-         function GetUnitName: UnicodeString; virtual;
+         function GetUnitName: UnicodeString;
          function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                operators : TOperators; rootTable : TSymbolTable) : TUnitSymbolTable; virtual; abstract;
          function GetUnitFlags : TIdwsUnitFlags;
@@ -218,7 +218,7 @@ type
 
          property Dependencies: TStrings read FDependencies write SetDependencies;
          {$WARNINGS OFF}
-         property UnitName: UnicodeString read GetUnitName write SetUnitName;
+         property UnitName: UnicodeString read FUnitName write SetUnitName;
          {$WARNINGS ON}
 
          property DeprecatedMessage : UnicodeString read FDeprecatedMessage write FDeprecatedMessage;
