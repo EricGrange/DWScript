@@ -229,6 +229,7 @@ begin
    for i:=0 to FCount-1 do
       Dispose(FPosList[i]);
    SetLength(FPosList, 0);
+   FCount := 0;
 end;
 
 // FindSymbolAtPosition
