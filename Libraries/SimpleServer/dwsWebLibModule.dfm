@@ -101,6 +101,13 @@ object dwsWebLib: TdwsWebLib
             Kind = mkClassFunction
           end
           item
+            Name = 'RawURL'
+            ResultType = 'String'
+            Attributes = [maClassMethod, maStatic]
+            OnEval = dwsWebClassesWebRequestMethodsRawURLEval
+            Kind = mkClassFunction
+          end
+          item
             Name = 'Method'
             ResultType = 'String'
             Attributes = [maStatic]

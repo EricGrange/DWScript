@@ -25,7 +25,8 @@ interface
 uses
    Windows, Classes, SysUtils, StrUtils,
    SynCommons, SynWinSock,
-   dwsWebEnvironment, dwsUtils, dwsHTTPSysAPI, dwsWebServerHelpers;
+   dwsWebEnvironment, dwsUtils, dwsHTTPSysAPI, dwsWebServerHelpers,
+   dwsURLRewriter;
 
 type
 
@@ -44,7 +45,7 @@ type
          FAuthentication : TWebRequestAuthentication;
          FAuthenticatedUser : String;
 
-         FURL : String;
+         FRawURL, FURL : String;
 
          FHeaders : TStrings;
 
@@ -55,11 +56,9 @@ type
          FInContentType : RawByteString;
 
       protected
-         procedure SetRequest(val : PHTTP_REQUEST_V2);
          function  GetHeaders : TStrings; override;
 
          procedure PrepareAuthenticationInfo;
-         procedure PrepareURL;
          procedure PrepareHeaders;
          procedure PrepareIP_UTF8;
 
@@ -70,14 +69,15 @@ type
          constructor Create;
          destructor Destroy; override;
 
-         property Request : PHTTP_REQUEST_V2 read FRequest write SetRequest;
+         procedure SetRequest(val : PHTTP_REQUEST_V2; rewriter : TdwsURLRewriter);
+         property Request : PHTTP_REQUEST_V2 read FRequest;
 
          function RemoteIP : String; override;
          procedure GetRemoteIP(var ip : RawByteString);
          function RemoteIP_UTF8 : PAnsiChar;
          function RemoteIP_UTF8_Length : Integer;
 
-         function RawURL : RawByteString; override;
+         function RawURL : String; override;
          function URL : String; override;
          function FullURL : String; override;
          function Method : String; override;
@@ -91,8 +91,8 @@ type
 
          property InContent : RawByteString read FInContent write FInContent;
          property InContentType : RawByteString read FInContentType write FInContentType;
-         property Authentication : TWebRequestAuthentication read FAuthentication write FAuthentication;
-         property AuthenticatedUser : String read FAuthenticatedUser write FAuthenticatedUser;
+         property Authentication : TWebRequestAuthentication read GetAuthentication;
+         property AuthenticatedUser : String read GetAuthenticatedUser;
    end;
 
    THttpSysWebResponse = class (TWebResponse)
@@ -183,26 +183,55 @@ end;
 
 // SetRequest
 //
-procedure THttpSysWebRequest.SetRequest(val : PHTTP_REQUEST_V2);
+procedure THttpSysWebRequest.SetRequest(val : PHTTP_REQUEST_V2; rewriter : TdwsURLRewriter);
 var
    p : PChar;
-   n : Integer;
+   n, urlLength : Integer;
+   checkQueryString : Boolean;
 begin
-   FRequest:=val;
+   FRequest := val;
 
-   SetString(FPathInfo, FRequest.CookedUrl.pAbsPath, FRequest.CookedUrl.AbsPathLength div SizeOf(Char));
-
-   // eliminate leading '?'
-   p:=FRequest.CookedUrl.pQueryString;
-   n:=FRequest.CookedUrl.QueryStringLength;
-   if (p<>nil) and (p^='?') then begin
-      Inc(p);
-      Dec(n);
+   if val.CookedUrl.QueryStringLength > 0 then begin
+      urlLength := (val.CookedUrl.AbsPathLength + val.CookedUrl.QueryStringLength) div SizeOf(Char);
+      SetLength(FRawURL, urlLength);
+      p := Pointer(FRawURL);
+      System.Move(val.CookedUrl.pAbsPath^, p^, val.CookedUrl.AbsPathLength);
+      Inc(p, val.CookedUrl.AbsPathLength  div SizeOf(Char));
+      System.Move(val.CookedUrl.pQueryString^, p^, val.CookedUrl.QueryStringLength);
+      checkQueryString := True;
+   end else begin
+      urlLength := val.CookedUrl.AbsPathLength div SizeOf(Char);
+      SetString(FRawURL, val.CookedUrl.pAbsPath, urlLength);
+      checkQueryString := False;
    end;
-   SetString(FQueryString, p, n div SizeOf(Char));
+   if (rewriter.Count > 0) and rewriter.Apply(FRawURL, FURL) then begin
+      checkQueryString := True;
+      urlLength := Length(FURL);
+   end else FURL := FRawURL;
 
-   FPrepared:=[];
-   FURL:='';
+   // breakup path & querystring
+   if checkQueryString then begin
+      p := Pointer(FURL);
+      for n := 1 to urlLength do begin
+         if p^ = '?' then begin
+            SetString(FPathInfo, PChar(Pointer(FURL)), n-1);
+            Inc(p);
+            SetString(FQueryString, p, urlLength-n);
+            checkQueryString := False;
+            Break;
+         end;
+         Inc(p);
+      end;
+      if checkQueryString then begin
+         FPathInfo := FURL;
+         FQueryString := '';
+      end;
+   end else begin
+      FPathInfo := FURL;
+      FQueryString := '';
+   end;
+
+   FPrepared := [];
    ResetCookies;
    ResetFields;
 end;
@@ -233,13 +262,6 @@ begin
             FAuthentication:=wraFailed;
       end;
    end;
-end;
-
-// PrepareURL
-//
-procedure THttpSysWebRequest.PrepareURL;
-begin
-   FURL:=UTF8ToString(UrlDecode(Request^.pRawUrl));
 end;
 
 // PrepareHeaders
@@ -375,31 +397,28 @@ end;
 
 // RawURL
 //
-function THttpSysWebRequest.RawURL : RawByteString;
+function THttpSysWebRequest.RawURL : String;
 begin
-   Result:=Request^.pRawUrl;
+   Result := FRawURL;
 end;
 
 // URL
 //
 function THttpSysWebRequest.URL : String;
 begin
-   if FURL='' then
-      PrepareURL;
-   Result:=FURL;
+   Result := FURL;
 end;
 
 // FullURL
 //
 function THttpSysWebRequest.FullURL : String;
 begin
-   SetString(Result, Request^.CookedUrl.pFullUrl, Request^.CookedUrl.FullUrlLength div SizeOf(Char));
+   SetString(Result, FRequest.CookedUrl.pFullUrl, FRequest.CookedUrl.FullUrlLength div SizeOf(Char));
 end;
 
 // Method
 //
 function THttpSysWebRequest.Method : String;
-
 const
    cVERB_TEXT : array [hvOPTIONS..hvSEARCH] of String = (
       'OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE',

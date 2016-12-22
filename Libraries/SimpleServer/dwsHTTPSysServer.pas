@@ -44,7 +44,7 @@ uses
    SynWinSock, Registry,
    dwsHTTPSysAPI, dwsUtils, dwsXPlatform,
    dwsWebEnvironment, dwsHttpSysWebEnv, dwsWebServerHelpers,
-   dwsHTTPSysServerEvents;
+   dwsHTTPSysServerEvents, dwsURLRewriter;
 
 type
    /// FPC 64 compatibility Integer type
@@ -216,6 +216,8 @@ type
 
          FServerEvents : IdwsHTTPServerEvents;
 
+         FURLRewriter : TdwsURLRewriter;
+
          /// server main loop - don't change directly
          // - will call the Request public virtual method with the appropriate
          // parameters to retrive the content
@@ -326,6 +328,7 @@ type
          property Authentication : Cardinal read FAuthentication;
 
          property ServerEvents : IdwsHTTPServerEvents read FServerEvents write FServerEvents;
+         property URLRewriter : TdwsURLRewriter read FURLRewriter write FURLRewriter;
    end;
 
 const
@@ -622,6 +625,7 @@ begin
       ServiceName:=From.ServiceName;
    end;
    FServerEvents := From.FServerEvents;
+   FURLRewriter := From.URLRewriter;
 end;
 
 // SendStaticFile
@@ -1018,7 +1022,7 @@ begin
       case errCode of
          NO_ERROR : begin
             // parse method and headers
-            FWebRequest.Request:=request;
+            FWebRequest.SetRequest(request, URLRewriter);
 
             with request^.Headers.KnownHeaders[reqContentType] do
                SetString(inContentType, pRawValue, RawValueLength);

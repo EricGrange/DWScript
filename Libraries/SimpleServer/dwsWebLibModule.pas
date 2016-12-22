@@ -176,6 +176,8 @@ type
       ExtObject: TObject);
     procedure dwsWebClassesWebServerSentEventMethodsToRawDataEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesWebRequestMethodsRawURLEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
     FServer :  IWebServerInfo;
@@ -742,6 +744,12 @@ procedure TdwsWebLib.dwsWebClassesWebRequestMethodsQueryStringEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString:=Info.WebRequest.QueryString;
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebRequestMethodsRawURLEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := Info.WebRequest.RawURL;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsRemoteIPEval(

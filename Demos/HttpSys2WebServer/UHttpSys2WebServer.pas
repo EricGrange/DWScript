@@ -41,7 +41,7 @@ uses
   SynZip, SynCommons,
   dwsHTTPSysServer, dwsHTTPSysAPI, dwsHTTPSysServerEvents,
   dwsUtils, dwsWebEnvironment, dwsFileSystem,
-  dwsJSON, dwsXPlatform,
+  dwsJSON, dwsXPlatform, dwsURLRewriter,
   dwsWebServerHelpers, dwsWebServerInfo, dwsWebUtils,
   DSimpleDWScript;
 
@@ -72,6 +72,7 @@ type
          FFileAccessInfoCacheSize : Integer;
          FDWSExtensions : array of TDWSExtension;
          FMethodsNotAllowed : TWebRequestMethodVerbs;
+         FURLRewriter : TdwsURLRewriter;
 
          procedure LoadAuthenticateOptions(authOptions : TdwsJSONValue);
 
@@ -86,6 +87,9 @@ type
          procedure Initialize(const basePath : TFileName; options : TdwsJSONValue); virtual;
 
          function FileAccessTypeFromFileName(const fileName : TFileName) : TFileAccessType;
+
+         function  GetURLRewriteRules : String;
+         procedure SetURLRewriteRules(const json : String);
 
       public
          constructor Create; overload;
@@ -112,6 +116,8 @@ type
          procedure FlushCompiledPrograms;
 
          function ServerEvents : IdwsHTTPServerEvents;
+
+         property URLRewriter : TdwsURLRewriter read FURLRewriter;
 
          class function EnumerateURLInfos(options : TdwsJSONValue) : THttpSys2URLInfos;
 
@@ -241,6 +247,7 @@ begin
    FServer.Free;
    FDWS.Free;
    FDirectoryIndex.Free;
+   FURLRewriter.Free;
    inherited;
 end;
 
@@ -322,6 +329,8 @@ begin
 
       FDWS.LoadDWScriptOptions(options['DWScript']);
 
+      FURLRewriter := TdwsURLRewriter.Create;
+
       FDWS.Startup;
 
       FServer:=THttpApi2Server.Create(False);
@@ -370,6 +379,7 @@ begin
 
    FServerEvents := TdwsHTTPServerEvents.Create;
    FServer.ServerEvents := FServerEvents;
+   FServer.URLRewriter := FURLRewriter;
 
    if nbThreads>1 then
       FServer.Clone(nbThreads-1);
@@ -386,6 +396,20 @@ begin
          Exit(FDWSExtensions[i].Typ);
    end;
    Result := fatRAW;
+end;
+
+// GetURLRewriteRules
+//
+function THttpSys2WebServer.GetURLRewriteRules : String;
+begin
+   Result := FURLRewriter.AsJSON
+end;
+
+// SetURLRewriteRules
+//
+procedure THttpSys2WebServer.SetURLRewriteRules(const json : String);
+begin
+   FURLRewriter.AsJSON := json;
 end;
 
 // Shutdown

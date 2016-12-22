@@ -101,7 +101,7 @@ type
 
          function RemoteIP : String; virtual; abstract;
 
-         function RawURL : RawByteString; virtual; abstract;
+         function RawURL : String; virtual; abstract;
          function URL : String; virtual; abstract;
          function FullURL : String; virtual; abstract;
          function Method : String; virtual; abstract;

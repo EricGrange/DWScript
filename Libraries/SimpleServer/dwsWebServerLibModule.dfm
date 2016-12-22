@@ -59,8 +59,27 @@ object dwsWebServerLib: TdwsWebServerLib
                 DataType = 'String'
               end>
             ResultType = 'String'
+            Attributes = [maClassMethod, maStatic]
             OnEval = dwsWebServerClassesWebServerMethodsCompilationInfoJSONEval
-            Kind = mkFunction
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'GetURLRewriteRulesJSON'
+            ResultType = 'String'
+            Attributes = [maClassMethod, maStatic]
+            OnEval = dwsWebServerClassesWebServerMethodsGetRewriteRulesJSONEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'SetURLRewriteRulesJSON'
+            Parameters = <
+              item
+                Name = 'val'
+                DataType = 'String'
+              end>
+            Attributes = [maClassMethod, maStatic]
+            OnEval = dwsWebServerClassesWebServerMethodsSetURLRewriteRulesJSONEval
+            Kind = mkClassProcedure
           end>
       end>
     Dependencies.Strings = (

@@ -21,7 +21,7 @@ uses Classes, SysUtils, Math, Variants, Types,
    dwsXPlatformTests, dwsUtils,
    dwsXPlatform, dwsWebUtils, dwsTokenStore, dwsCryptoXPlatform,
    dwsEncodingLibModule, dwsGlobalVars, dwsEncoding, dwsDataContext,
-   dwsXXHash;
+   dwsXXHash, dwsURLRewriter;
 
 type
 
@@ -29,6 +29,7 @@ type
       private
          FTightList : TTightList;
          FDummy : TObject;
+         FRewriterPattern, FRewriterRewrite : String;
 
       protected
          procedure SetUp; override;
@@ -37,6 +38,8 @@ type
          procedure TightListOutOfBoundsDelete;
          procedure TightListOutOfBoundsInsert;
          procedure TightListOutOfBoundsMove;
+
+         procedure FailURLRewriterRule;
 
       published
 
@@ -102,6 +105,8 @@ type
          procedure VariantPersist;
 
          procedure xxHashTest;
+
+         procedure URLRewriter;
    end;
 
 // ------------------------------------------------------------------
@@ -388,6 +393,13 @@ end;
 procedure TdwsUtilsTests.TightListOutOfBoundsMove;
 begin
    FTightList.Insert(1, nil);
+end;
+
+// FailURLRewriterRule
+//
+procedure TdwsUtilsTests.FailURLRewriterRule;
+begin
+   TdwsURLRewriteRule.Create(FRewriterPattern, FRewriterRewrite).Free;
 end;
 
 // SetUp
@@ -1461,6 +1473,72 @@ begin
    for i := 1 to 1000 do
       abc := abc + 'abc';
    CheckFull(abc, $598bfdf6);
+end;
+
+// URLRewriter
+//
+procedure TdwsUtilsTests.URLRewriter;
+
+   procedure CheckFail(const pattern, rewrite : String);
+   begin
+      FRewriterPattern := pattern;
+      FRewriterRewrite := rewrite;
+      CheckException(FailURLRewriterRule, EdwsURLRewriterException,
+                     'No exception for "' + pattern + '", "' + rewrite + '"');
+   end;
+
+   procedure CheckPass(const pattern, rewrite, testUrl, rewrittenUrl : String);
+   var
+      rule : TdwsURLRewriteRule;
+      rw : String;
+   begin
+      try
+         rule := TdwsURLRewriteRule.Create(pattern, rewrite);
+         try
+            if rule.Apply(testUrl, rw) then
+               CheckEquals(rewrittenUrl, rw, pattern + ', ' + rewrite + ', ' + testUrl)
+            else CheckEquals(rewrittenUrl, testUrl, pattern + ', ' + rewrite + ', ' + testUrl);
+         finally
+            rule.Free;
+         end;
+      except
+         on E: Exception do
+            Check(False, 'Got exception for "'+pattern + '", "' + rewrite + '": ' +E.Message);
+      end;
+   end;
+
+begin
+   CheckFail('', '');
+   CheckFail('**', '$1$2');
+   CheckFail('*', '$2');
+   CheckFail('*', '$0');
+   CheckFail('a', '$1');
+   CheckFail('*aa*', '$1$2$3');
+   CheckFail('a*b*c*d*e*f*g*h*i*j*', '$1$2$3');
+
+   CheckPass('*', '$1', 'abc', 'abc');
+
+   CheckPass('a*', '$1a', 'abc', 'bca');
+   CheckPass('a*', '$1a', 'a', 'a');
+
+   CheckPass('*a', 'a$1', 'za', 'az');
+   CheckPass('*a', 'a$1', 'a', 'a');
+
+   CheckPass('a*b', 'b$1a', 'acb', 'bca');
+   CheckPass('a*b', 'b$1a', 'ab', 'ba');
+   CheckPass('a*b', 'azb', 'abc', 'abc');
+   CheckPass('a*b', 'azb', 'acb', 'azb');
+   CheckPass('a1*b2', '--$1', 'a1b2c3', 'a1b2c3');
+   CheckPass('a1*b2', '--$1', 'a1c3b2', '--c3');
+   CheckPass('a1*b2', '--$1', 'a1b2', '--');
+
+   CheckPass('*aa*', '$2$1$2', 'aa', '');
+   CheckPass('*aa*', '$2$1$2', 'baac', 'cbc');
+
+   CheckPass('a*a*', '$2c$1z', 'aa', 'cz');
+   CheckPass('a*a*', '$2c$1z', 'a1a2', '2c1z');
+
+   CheckPass('a*b*c*d*e*f*g*h*i*j', '$1a$2b$3c$4d$5e$6f$7g$8h$9', 'a1b2c3d4e5f6g7h8i9j', '1a2b3c4d5e6f7g8h9');
 end;
 
 // ------------------------------------------------------------------

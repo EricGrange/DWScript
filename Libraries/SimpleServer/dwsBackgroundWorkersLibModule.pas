@@ -57,7 +57,7 @@ type
 
          function RemoteIP : String; override;
 
-         function RawURL : RawByteString; override;
+         function RawURL : String; override;
          function URL : String; override;
          function FullURL : String; override;
          function Method : String; override;
@@ -99,9 +99,9 @@ end;
 
 // RawURL
 //
-function TWorkWebRequest.RawURL : RawByteString;
+function TWorkWebRequest.RawURL : String;
 begin
-   Result:=UTF8Encode(Task);
+   Result := Task;
 end;
 
 // URL
