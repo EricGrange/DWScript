@@ -254,6 +254,9 @@ type
    TBigIntegerIsPrimeFunc = class(TInternalMagicBoolFunction)
       function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
+   TBigIntegerNextPrimeFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
+   end;
 
    TBigIntegerPowerFunc = class(TInternalMagicVariantFunction)
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
@@ -267,11 +270,25 @@ type
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
+   TBigIntegerModInvFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
+   end;
+
    TBigIntegerDivModFunc = class(TInternalMagicProcedure)
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
+   TBigJacobiFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+   end;
+   TBigLegendreFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+   end;
+
    TBigIntegerFactorialFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
+   end;
+   TBigIntegerPrimorialFunc = class(TInternalMagicVariantFunction)
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
@@ -439,7 +456,7 @@ end;
 //
 procedure TBaseBigIntegerSymbol.InitData(const data : TData; offset : Integer);
 begin
-   data[offset] := IUnknown(nil);
+   VarCopySafe(data[offset], IUnknown(nil));
 end;
 
 // ------------------
@@ -997,8 +1014,6 @@ end;
 // ------------------ TBigIntegerIsPrimeFunc ------------------
 // ------------------
 
-// DoEvalAsBoolean
-//
 function TBigIntegerIsPrimeFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 var
    state : gmp_randstate_t;
@@ -1006,6 +1021,44 @@ begin
    gmp_randinit_mt(state);
    Result := mpz_probable_prime_p(ArgBigInteger(args, 0).Value^, state, args.AsInteger[1], 0) > 0;
    gmp_randclear(state);
+end;
+
+// ------------------
+// ------------------ TBigIntegerNextPrimeFunc ------------------
+// ------------------
+
+procedure TBigIntegerNextPrimeFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
+var
+   base : IdwsBigInteger;
+   bi : TBigIntegerWrapper;
+   state : gmp_randstate_t;
+   reps : Integer;
+begin
+   base := ArgBigInteger(args, 0);
+   reps := args.AsInteger[1];
+
+   bi := TBigIntegerWrapper.CreateZero;
+   result := bi as IdwsBigInteger;
+
+   if base.Value.mp_size <= 0 then begin
+      mpz_set_ui(bi.Value, 1);
+      Exit;
+   end;
+
+   if mpz_even_p(base.Value^) then
+      mpz_add_ui(bi.Value, base.Value^, 1)
+   else mpz_add_ui(bi.Value, base.Value^, 2);
+
+   gmp_randinit_mt(state);
+   try
+      while mpz_probable_prime_p(bi.Value, state, reps, 0) <= 0 do begin
+         if args.Exec.ProgramState = psRunningStopped then
+            raise Exception.Create('NextPrime aborted');
+         mpz_add_ui(bi.Value, bi.Value, 2);
+      end;
+   finally
+      gmp_randclear(state);
+   end;
 end;
 
 // ------------------
@@ -1345,6 +1398,21 @@ begin
 end;
 
 // ------------------
+// ------------------ TBigIntegerModInvFunc ------------------
+// ------------------
+
+// DoEvalAsVariant
+//
+procedure TBigIntegerModInvFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
+var
+   bi : TBigIntegerWrapper;
+begin
+   bi := TBigIntegerWrapper.CreateZero;
+   mpz_invert(bi.Value, ArgBigInteger(args, 0).Value^, ArgBigInteger(args, 1).Value^);
+   Result := bi as IdwsBigInteger;
+end;
+
+// ------------------
 // ------------------ TBigIntegerFactorialFunc ------------------
 // ------------------
 
@@ -1354,11 +1422,50 @@ var
    i : Int64;
 begin
    bi := TBigIntegerWrapper.CreateZero;
-   i:=args.AsInteger[0];
+   i := args.AsInteger[0];
    if i <= 1 then
       mpz_set_uint64(bi.Value, 1)
    else mpz_fac_ui(bi.Value, i);
    Result := bi as IdwsBigInteger;
+end;
+
+// ------------------
+// ------------------ TBigIntegerPrimorialFunc ------------------
+// ------------------
+
+procedure TBigIntegerPrimorialFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
+var
+   bi : TBigIntegerWrapper;
+   i : Int64;
+begin
+   bi := TBigIntegerWrapper.CreateZero;
+   i := args.AsInteger[0];
+   if i < 1 then
+      mpz_set_uint64(bi.Value, 1)
+   else mpz_primorial_ui(bi.Value, i);
+   Result := bi as IdwsBigInteger;
+end;
+
+// ------------------
+// ------------------ TBigJacobiFunc ------------------
+// ------------------
+
+// DoEvalAsInteger
+//
+function TBigJacobiFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+begin
+   Result := mpz_jacobi(ArgBigInteger(args, 0).Value^, ArgBigInteger(args, 1).Value^);
+end;
+
+// ------------------
+// ------------------ TBigLegendreFunc ------------------
+// ------------------
+
+// DoEvalAsInteger
+//
+function TBigLegendreFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+begin
+   Result := mpz_legendre(ArgBigInteger(args, 0).Value^, ArgBigInteger(args, 1).Value^);
 end;
 
 // ------------------------------------------------------------------
@@ -1393,9 +1500,11 @@ initialization
    RegisterInternalProcedure(TBigIntegerSetBitValFunc,    '',     ['@i', SYS_BIGINTEGER, 'bit', SYS_INTEGER, 'v', SYS_BOOLEAN], 'SetBit', [iffOverloaded]);
    RegisterInternalProcedure(TBigIntegerClearBitFunc,     '',     ['@i', SYS_BIGINTEGER, 'bit', SYS_INTEGER], 'ClearBit', []);
 
-   RegisterInternalFunction(TBigIntegerGcdFunc,       'Gcd',      ['a', SYS_BIGINTEGER, 'b', SYS_BIGINTEGER], SYS_BIGINTEGER, [iffStateLess, iffOverloaded]);
-   RegisterInternalFunction(TBigIntegerLcmFunc,       'Gcd',      ['a', SYS_BIGINTEGER, 'b', SYS_BIGINTEGER], SYS_BIGINTEGER, [iffStateLess, iffOverloaded]);
+   RegisterInternalFunction(TBigIntegerGcdFunc,        'Gcd',     ['a', SYS_BIGINTEGER, 'b', SYS_BIGINTEGER], SYS_BIGINTEGER, [iffStateLess, iffOverloaded]);
+   RegisterInternalFunction(TBigIntegerLcmFunc,        'Gcd',     ['a', SYS_BIGINTEGER, 'b', SYS_BIGINTEGER], SYS_BIGINTEGER, [iffStateLess, iffOverloaded]);
    RegisterInternalBoolFunction(TBigIntegerIsPrimeFunc, 'IsPrime',['n', SYS_BIGINTEGER, 'prob=25', SYS_INTEGER], [iffStateLess, iffOverloaded], 'IsPrime');
+   RegisterInternalFunction(TBigIntegerNextPrimeFunc,     '',     ['n', SYS_BIGINTEGER, 'prob=25', SYS_INTEGER], SYS_BIGINTEGER, [iffStateLess], 'NextPrime');
+
    RegisterInternalFunction(TBigIntegerPowerFunc,     'IntPower', ['base', SYS_BIGINTEGER, 'exponent', SYS_INTEGER], SYS_BIGINTEGER, [iffStateLess, iffOverloaded], 'Power');
    RegisterInternalFunction(TBigIntegerSqrFunc,       'Sqr',      ['v', SYS_BIGINTEGER], SYS_BIGINTEGER, [iffStateLess, iffOverloaded], 'Sqr');
    RegisterInternalProcedure(TBigIntegerDivModFunc,   'DivMod',
@@ -1405,7 +1514,13 @@ initialization
                                                                   SYS_BIGINTEGER, [iffStateLess, iffOverloaded], 'ModPow');
    RegisterInternalFunction(TBigIntegerModPowFunc,    'ModPow',   ['base', SYS_BIGINTEGER, 'exponent', SYS_INTEGER, 'modulus', SYS_BIGINTEGER],
                                                                   SYS_BIGINTEGER, [iffStateLess, iffOverloaded], 'ModPow');
-   RegisterInternalFunction(TBigIntegerFactorialFunc, 'BigFactorial', ['n', SYS_INTEGER], SYS_VARIANT, [iffStateLess]);
+   RegisterInternalFunction(TBigIntegerModInvFunc,    'ModInv',   ['base', SYS_BIGINTEGER, 'modulus', SYS_BIGINTEGER],
+                                                                  SYS_BIGINTEGER, [iffStateLess], 'ModInv');
+   RegisterInternalFunction(TBigIntegerFactorialFunc, 'BigFactorial', ['n', SYS_INTEGER], SYS_BIGINTEGER, [iffStateLess]);
+   RegisterInternalFunction(TBigIntegerPrimorialFunc, 'BigPrimorial', ['n', SYS_INTEGER], SYS_BIGINTEGER, [iffStateLess], 'Primorial');
+
+   RegisterInternalIntFunction(TBigJacobiFunc,        'BigJacobi', ['a', SYS_BIGINTEGER, 'b', SYS_BIGINTEGER], [iffStateLess], 'Jacobi');
+   RegisterInternalIntFunction(TBigLegendreFunc,      'BigLegendre', ['a', SYS_BIGINTEGER, 'b', SYS_BIGINTEGER], [iffStateLess], 'Legendre');
 
    RegisterInternalFunction(TBigIntegerRandomFunc,    'RandomBigInteger', ['limitPlusOne', SYS_BIGINTEGER], SYS_BIGINTEGER);
 

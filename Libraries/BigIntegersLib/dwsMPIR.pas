@@ -213,7 +213,7 @@ var
 
    mpz_probable_prime_p : function (const src: mpz_t; var state: gmp_randstate_t; Prob: Integer; DivTested: Cardinal): Integer; cdecl;
    mpz_likely_prime_p : function (const src: mpz_t; var state: gmp_randstate_t; DivTested: Cardinal): Integer; cdecl;
-   mpz_next_likely_prime : procedure (var dest: mpz_t; const src: mpz_t; var state: gmp_randstate_t); cdecl;
+   mpz_next_prime_candidate : procedure (var dest: mpz_t; const src: mpz_t; var state: gmp_randstate_t); cdecl;
 
    // Number theoretic functions
    mpz_gcd : procedure (var dest: mpz_t; const src1, src2: mpz_t); cdecl;
@@ -231,6 +231,7 @@ var
    mpz_ui_kronecker : function (src1: Cardinal; const src2: mpz_t): Integer; cdecl;
    mpz_remove : function (var dest: mpz_t; const src1, src2: mpz_t): Cardinal; cdecl;
    mpz_fac_ui : procedure (var dest: mpz_t; src: Cardinal); cdecl;
+   mpz_primorial_ui : procedure (var dest: mpz_t; n: Cardinal); cdecl;
    mpz_fib_ui : procedure (var dest: mpz_t; src: Cardinal); cdecl;
    mpz_fib2_ui : procedure (var dest: mpz_t; var destSub: mpz_t; src: Cardinal); cdecl;
    mpz_bin_ui : procedure (var dest: mpz_t; const src1: mpz_t; src2: Cardinal); cdecl;
@@ -598,7 +599,7 @@ begin
       mpz_sizeinbase := GetProcMPZ('sizeinbase');
       mpz_probable_prime_p := GetProcMPZ('probable_prime_p');
       mpz_likely_prime_p := GetProcMPZ('likely_prime_p');
-      mpz_next_likely_prime := GetProcMPZ('next_likely_prime');
+      mpz_next_prime_candidate := GetProcMPZ('next_prime_candidate');
       mpz_gcd := GetProcMPZ('gcd');
       mpz_gcd_ui := GetProcMPZ('gcd_ui');
       mpz_gcdext := GetProcMPZ('gcdext');
@@ -614,6 +615,7 @@ begin
       mpz_ui_kronecker := GetProcMPZ('ui_kronecker');
       mpz_remove := GetProcMPZ('remove');
       mpz_fac_ui := GetProcMPZ('fac_ui');
+      mpz_primorial_ui := GetProcMPZ('primorial_ui');
       mpz_fib_ui := GetProcMPZ('fib_ui');
       mpz_fib2_ui := GetProcMPZ('fib2_ui');
       mpz_bin_ui := GetProcMPZ('bin_ui');
