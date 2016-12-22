@@ -1630,7 +1630,7 @@ begin
          s:=UnicodeString(varData^.VString);
       {$else}
       varString :
-         s:=RawByteStringToScriptString(RawByteString(varData^.VString));
+         RawByteStringToScriptString(RawByteString(varData^.VString), s);
       varUString :
          s:=UnicodeString(varData^.VUString);
       {$endif}
