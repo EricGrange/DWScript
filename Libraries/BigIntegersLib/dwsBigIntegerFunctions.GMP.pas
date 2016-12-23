@@ -1501,7 +1501,7 @@ initialization
    RegisterInternalProcedure(TBigIntegerClearBitFunc,     '',     ['@i', SYS_BIGINTEGER, 'bit', SYS_INTEGER], 'ClearBit', []);
 
    RegisterInternalFunction(TBigIntegerGcdFunc,        'Gcd',     ['a', SYS_BIGINTEGER, 'b', SYS_BIGINTEGER], SYS_BIGINTEGER, [iffStateLess, iffOverloaded]);
-   RegisterInternalFunction(TBigIntegerLcmFunc,        'Gcd',     ['a', SYS_BIGINTEGER, 'b', SYS_BIGINTEGER], SYS_BIGINTEGER, [iffStateLess, iffOverloaded]);
+   RegisterInternalFunction(TBigIntegerLcmFunc,        'Lcm',     ['a', SYS_BIGINTEGER, 'b', SYS_BIGINTEGER], SYS_BIGINTEGER, [iffStateLess, iffOverloaded]);
    RegisterInternalBoolFunction(TBigIntegerIsPrimeFunc, 'IsPrime',['n', SYS_BIGINTEGER, 'prob=25', SYS_INTEGER], [iffStateLess, iffOverloaded], 'IsPrime');
    RegisterInternalFunction(TBigIntegerNextPrimeFunc,     '',     ['n', SYS_BIGINTEGER, 'prob=25', SYS_INTEGER], SYS_BIGINTEGER, [iffStateLess], 'NextPrime');
 
