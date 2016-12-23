@@ -113,6 +113,7 @@ type
          function LiveQueries : String;
 
          function CompilationInfoJSON(const sourceName : String) : String;
+         function CompiledPrograms : TStringDynArray;
          procedure FlushCompiledPrograms;
 
          function ServerEvents : IdwsHTTPServerEvents;
@@ -637,6 +638,13 @@ begin
    if fat <> fatRAW then
       Result := FDWS.CompilationInfoJSON(sourceName, fat)
    else Result := '';
+end;
+
+// CompiledPrograms
+//
+function THttpSys2WebServer.CompiledPrograms : TStringDynArray;
+begin
+   Result := FDWS.CompiledPrograms;
 end;
 
 // FlushCompiledPrograms

@@ -28,6 +28,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebServerClassesWebServerMethodsSetURLRewriteRulesJSONEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebServerClassesWebServerMethodsCompiledProgramsEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FServer :  IWebServerInfo;
@@ -50,6 +52,12 @@ procedure TdwsWebServerLib.dwsWebServerClassesWebServerMethodsCompilationInfoJSO
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString := FServer.CompilationInfoJSON(Info.ParamAsString[0]);
+end;
+
+procedure TdwsWebServerLib.dwsWebServerClassesWebServerMethodsCompiledProgramsEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsStringArray := FServer.CompiledPrograms;
 end;
 
 procedure TdwsWebServerLib.dwsWebServerClassesWebServerMethodsFlushCompiledProgramsEval(

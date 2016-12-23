@@ -64,6 +64,13 @@ object dwsWebServerLib: TdwsWebServerLib
             Kind = mkClassFunction
           end
           item
+            Name = 'CompiledPrograms'
+            ResultType = 'array of String'
+            Attributes = [maClassMethod, maStatic]
+            OnEval = dwsWebServerClassesWebServerMethodsCompiledProgramsEval
+            Kind = mkClassFunction
+          end
+          item
             Name = 'GetURLRewriteRulesJSON'
             ResultType = 'String'
             Attributes = [maClassMethod, maStatic]
