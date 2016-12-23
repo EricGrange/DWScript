@@ -152,6 +152,7 @@ type
       procedure HandleP2JS(const fileName : String; request : TWebRequest; response : TWebResponse);
 
       function CompilationInfoJSON(const sourceName : String; fileType : TFileAccessType) : String;
+      function ExecutionInfoJSON(const sourceName : String; fileType : TFileAccessType) : String;
       function CompiledPrograms : TStringDynArray;
       procedure FlushDWSCache(const fileName : String = '');
 
@@ -477,6 +478,8 @@ var
    fileName : String;
 begin
    fileName := dwsCompileSystem.AllocateFileSystem.ValidateFileName(sourceName);
+   if (fileName = '') and Assigned(FBackgroundFileSystem) then
+      fileName := FBackgroundFileSystem.ValidateFileName(sourceName);
    if fileName = '' then
       Exit('"Access denied or does not exist"')
    else begin
@@ -485,6 +488,39 @@ begin
          CompileDWS(fileName, prog, fileType);
       Result := prog.Msgs.AsJSON;
    end;
+end;
+
+// ExecutionInfoJSON
+//
+function TSimpleDWScript.ExecutionInfoJSON(const sourceName : String; fileType : TFileAccessType) : String;
+var
+   prog : IdwsProgram;
+   fileName : String;
+   wr : TdwsJSONWriter;
+   execStats : TdwsProgramExecStats;
+begin
+   fileName := dwsCompileSystem.AllocateFileSystem.ValidateFileName(sourceName);
+   if (fileName = '') and Assigned(FBackgroundFileSystem) then
+      fileName := FBackgroundFileSystem.ValidateFileName(sourceName);
+   if fileName = '' then
+      Exit('"Access denied or does not exist"')
+   else begin
+      TryAcquireDWS(fileName, prog);
+      if prog = nil then
+         FillChar(execStats, SizeOf(execStats), 0)
+      else execStats := prog.ProgramObject.ExecStats;
+      wr := TdwsJSONWriter.Create;
+      try
+         wr.BeginObject;
+            wr.WriteInteger('count', execStats.Count);
+            wr.WriteInteger('totalTimeMSec', execStats.TimeMSec);
+         wr.EndObject;
+         Result := wr.ToString;
+      finally
+         wr.Free;
+      end;
+   end;
+
 end;
 
 // CompiledPrograms

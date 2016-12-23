@@ -156,6 +156,11 @@ type
          function CreateProgResult: TdwsResult; override;
    end;
 
+   TdwsProgramExecStats = record
+      TimeMSec : Int64;
+      Count, ConfirmCount : Integer;
+   end;
+
    TdwsGuardedExecution = class (TRefCountedObject)
       public
          Exec : IdwsProgramExecution;
@@ -239,7 +244,7 @@ type
       function GetConditionalDefines : IAutoStrings;
       function GetLineCount : Integer;
       function GetTimeStamp : TDateTime;
-      function GetCompileDuration : TDateTime;
+      function GetExecStats : TdwsProgramExecStats;
       function GetTable : TSymbolTable;
       function GetTimeoutMilliseconds : Integer;
       procedure SetTimeoutMilliseconds(const val : Integer);
@@ -274,7 +279,7 @@ type
       property ProgramObject : TdwsMainProgram read GetProgramObject;
       property LineCount : Integer read GetLineCount;
       property TimeStamp : TDateTime read GetTimeStamp;
-      property CompileDuration : TDateTime read GetCompileDuration;
+      property ExecStats : TdwsProgramExecStats read GetExecStats;
       property ExecutionsClass : TdwsProgramExecutionClass write SetExecutionsClass;
    end;
 
@@ -307,6 +312,7 @@ type
          FRuntimeMsgs : TdwsRuntimeMessageList;
 
          FDebuggerFieldAddr : Integer;
+         FStartTicks : Int64;
 
       protected
          procedure ReleaseObjects;
@@ -483,9 +489,11 @@ type
          FSourceList : TScriptSourceList;
          FLineCount : Integer;
          FTimeStamp : TDateTime;
-         FCompileDuration : TDateTime;
+         FCompileDurationMSec : Integer;
          FCompiler : TObject;
          FCompilerContext : TdwsCompilerContext;
+
+         FExecStats : TdwsProgramExecStats;
 
          FMainFileName : UnicodeString;
          FDefaultEnvironment : IdwsEnvironment;
@@ -507,9 +515,10 @@ type
          function GetSourceList : TScriptSourceList;
          function GetLineCount : Integer;
          function GetTimeStamp : TDateTime;
-         function GetCompileDuration : TDateTime;
+         function GetExecStats : TdwsProgramExecStats;
 
          procedure NotifyExecutionDestruction(exec : TdwsProgramExecution);
+         procedure RecordExecution(const durationMSec : Integer);
 
          // for interface only, script exprs use direct properties
          function GetMsgs : TdwsMessageList;
@@ -571,7 +580,8 @@ type
          property SourceList : TScriptSourceList read FSourceList;
          property LineCount : Integer read FLineCount write FLineCount;
          property TimeStamp : TDateTime read FTimeStamp write FTimeStamp;
-         property CompileDuration : TDateTime read FCompileDuration write FCompileDuration;
+         property CompileDurationMSec : Integer read FCompileDurationMSec write FCompileDurationMSec;
+         property ExecStats : TdwsProgramExecStats read FExecStats;
 
          property DefaultEnvironment : IdwsEnvironment read FDefaultEnvironment write FDefaultEnvironment;
          property DefaultLocalizer : IdwsLocalizer read FDefaultLocalizer write FDefaultLocalizer;
@@ -1827,6 +1837,7 @@ begin
 
    if Assigned(FOnExecutionStarted) then
       FOnExecutionStarted(Self);
+   FStartTicks := GetSystemMilliseconds;
 
    FProgramState:=psRunning;
    try
@@ -2021,6 +2032,7 @@ begin
          Msgs.AddRuntimeError(e.Message);
    end;
 
+   FProg.RecordExecution(GetSystemMilliseconds-FStartTicks-FSleepTime);
    if Assigned(FOnExecutionEnded) then
       FOnExecutionEnded(Self);
 end;
@@ -2793,6 +2805,15 @@ begin
    end;
 end;
 
+// RecordExecution
+//
+procedure TdwsMainProgram.RecordExecution(const durationMSec : Integer);
+begin
+   InterlockedIncrement(FExecStats.Count);
+   InterlockedAdd64(FExecStats.TimeMSec, durationMSec);
+   InterlockedIncrement(FExecStats.ConfirmCount);
+end;
+
 // Execute
 //
 function TdwsMainProgram.Execute(aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution;
@@ -2913,11 +2934,13 @@ begin
    Result:=FTimeStamp;
 end;
 
-// GetCompileDuration
+// GetExecStats
 //
-function TdwsMainProgram.GetCompileDuration : TDateTime;
+function TdwsMainProgram.GetExecStats : TdwsProgramExecStats;
 begin
-   Result:=FCompileDuration;
+   repeat
+      Result := FExecStats;
+   until Result.Count = Result.ConfirmCount;
 end;
 
 // GetDefaultUserObject

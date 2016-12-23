@@ -1609,9 +1609,9 @@ var
    stackParams : TStackParameters;
    codeText : UnicodeString;
    sourceFile : TSourceFile;
-   compileStartTime : TDateTime;
+   compileStartTicks : Int64;
 begin
-   compileStartTime:=Now;
+   compileStartTicks := GetSystemMilliseconds;
 
    SetupCompileOptions(aConf);
 
@@ -1707,12 +1707,12 @@ begin
       FMsgs.State:=mlsCompleted;
    FMsgs.RemoveInvalidDeferred;
 
-   FMainProg.TimeStamp:=compileStartTime;
-   FMainProg.CompileDuration:=Now-compileStartTime;
-   FMainProg.LineCount:=FLineCount;
-   FMainProg.Compiler:=nil;
+   FMainProg.TimeStamp := Now;
+   FMainProg.CompileDurationMSec := GetSystemMilliseconds-compileStartTicks;
+   FMainProg.LineCount := FLineCount;
+   FMainProg.Compiler := nil;
 
-   Result:=FMainProg;
+   Result := FMainProg;
 
    CleanupAfterCompile;
 end;

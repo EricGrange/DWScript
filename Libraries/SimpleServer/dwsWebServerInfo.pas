@@ -35,6 +35,7 @@ type
       function LiveQueries : String;
 
       function CompilationInfoJSON(const sourceName : String) : String;
+      function ExecutionInfoJSON(const sourceName : String) : String;
       function CompiledPrograms : TStringDynArray;
       procedure FlushCompiledPrograms;
 

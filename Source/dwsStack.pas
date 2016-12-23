@@ -399,7 +399,7 @@ begin
       Result:=varData.VDouble
    else if varData.VType=varInt64 then
       Result:=varData.VInt64
-   else Result:=PVariant(varData)^;
+   else Result:=VariantToFloat(PVariant(varData)^);
 end;
 
 // ReadFloatValue_BaseRelative
@@ -413,7 +413,7 @@ begin
       Result:=varData.VDouble
    else if varData.VType=varInt64 then
       Result:=varData.VInt64
-   else Result:=PVariant(varData)^;
+   else Result:=VariantToFloat(PVariant(varData)^);
 end;
 
 // ReadStrValue
@@ -425,7 +425,7 @@ begin
    varData:=@Data[SourceAddr];
    if varData.VType=varUString then
       Result:=UnicodeString(varData.VString)
-   else Result:=PVariant(varData)^;
+   else VariantToString(PVariant(varData)^, Result);
 end;
 
 // ReadBoolValue
@@ -437,7 +437,7 @@ begin
    varData:=@Data[SourceAddr];
    if varData.VType=varBoolean then
       Result:=varData.VBoolean
-   else Result:=PVariant(varData)^;
+   else Result:=VariantToBool(PVariant(varData)^);
 end;
 
 // ReadInterfaceValue

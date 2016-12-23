@@ -113,6 +113,7 @@ type
          function LiveQueries : String;
 
          function CompilationInfoJSON(const sourceName : String) : String;
+         function ExecutionInfoJSON(const sourceName : String) : String;
          function CompiledPrograms : TStringDynArray;
          procedure FlushCompiledPrograms;
 
@@ -635,9 +636,21 @@ var
    fat : TFileAccessType;
 begin
    fat := FileAccessTypeFromFileName(sourceName);
-   if fat <> fatRAW then
-      Result := FDWS.CompilationInfoJSON(sourceName, fat)
-   else Result := '';
+   if fat = fatRAW then
+      fat := fatPAS;
+   Result := FDWS.CompilationInfoJSON(sourceName, fat);
+end;
+
+// ExecutionInfoJSON
+//
+function THttpSys2WebServer.ExecutionInfoJSON(const sourceName : String) : String;
+var
+   fat : TFileAccessType;
+begin
+   fat := FileAccessTypeFromFileName(sourceName);
+   if fat = fatRAW then
+      fat := fatPAS;
+   Result := FDWS.ExecutionInfoJSON(sourceName, fat);
 end;
 
 // CompiledPrograms

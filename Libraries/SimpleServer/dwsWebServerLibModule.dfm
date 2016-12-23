@@ -64,6 +64,18 @@ object dwsWebServerLib: TdwsWebServerLib
             Kind = mkClassFunction
           end
           item
+            Name = 'ExecutionInfoJSON'
+            Parameters = <
+              item
+                Name = 'sourceFileName'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maClassMethod, maStatic]
+            OnEval = dwsWebServerClassesWebServerMethodsExecutionInfoJSONEval
+            Kind = mkClassFunction
+          end
+          item
             Name = 'CompiledPrograms'
             ResultType = 'array of String'
             Attributes = [maClassMethod, maStatic]

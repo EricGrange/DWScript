@@ -7112,7 +7112,7 @@ begin
          tNow:=GetSystemMilliseconds;
       until ProgramState<>psRunning;
    end;
-   FSleepTime:=tNow-tStart;
+   FSleepTime:=FSleepTime+tNow-tStart;
    FSleeping:=False;
 end;
 

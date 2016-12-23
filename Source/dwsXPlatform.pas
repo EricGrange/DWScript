@@ -36,7 +36,7 @@ unit dwsXPlatform;
 interface
 
 uses
-   Classes, SysUtils, Types, Masks, Registry,
+   Classes, SysUtils, Types, Masks, Registry, SyncObjs,
    {$IFDEF FPC}
       {$IFDEF Windows}
          Windows
@@ -195,7 +195,8 @@ function InterlockedDecrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} 
 procedure FastInterlockedIncrement(var val : Integer); {$IFDEF PUREPASCAL} inline; {$endif}
 procedure FastInterlockedDecrement(var val : Integer); {$IFDEF PUREPASCAL} inline; {$endif}
 
-function InterlockedIncrement64(var val : Int64) : Int64;
+function InterlockedIncrement64(var val : Int64) : Int64; inline;
+function InterlockedAdd64(var val : Int64; const delta : Int64) : Int64; inline;
 
 function InterlockedExchangePointer(var target : Pointer; val : Pointer) : Pointer; {$IFDEF PUREPASCAL} inline; {$endif}
 
@@ -302,7 +303,7 @@ implementation
 // ------------------------------------------------------------------
 
 {$ifndef FPC}
-uses Variants, SyncObjs;
+uses Variants;
 {$endif}
 
 {$ifdef FPC}
@@ -647,6 +648,13 @@ end;
 function InterlockedIncrement64(var val : Int64) : Int64;
 begin
    Result := TInterlocked.Increment(val);
+end;
+
+// InterlockedAdd64
+//
+function InterlockedAdd64(var val : Int64; const delta : Int64) : Int64;
+begin
+   Result := TInterlocked.Add(val, delta);
 end;
 
 // InterlockedExchangePointer
