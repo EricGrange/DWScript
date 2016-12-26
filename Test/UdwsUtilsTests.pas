@@ -399,7 +399,7 @@ end;
 //
 procedure TdwsUtilsTests.FailURLRewriterRule;
 begin
-   TdwsURLRewriteRule.Create(FRewriterPattern, FRewriterRewrite).Free;
+   TdwsURLRewriteRuleGeneric.Create(FRewriterPattern, FRewriterRewrite).Free;
 end;
 
 // SetUp
@@ -1493,7 +1493,7 @@ procedure TdwsUtilsTests.URLRewriter;
       rw : String;
    begin
       try
-         rule := TdwsURLRewriteRule.Create(pattern, rewrite);
+         rule := TdwsURLRewriteRuleGeneric.Create(pattern, rewrite);
          try
             if rule.Apply(testUrl, rw) then
                CheckEquals(rewrittenUrl, rw, pattern + ', ' + rewrite + ', ' + testUrl)

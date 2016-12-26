@@ -29,17 +29,15 @@ type
       private
          FPattern : String;
          FRewrite : String;
-         FPatternChunks : array of String;
-         FRewriteChunks : array of String;
          FHead : Integer;
          FHitCount : Integer;
 
       protected
 
       public
-         constructor Create(const aPattern, aRewrite : String);
+         constructor Create(const aPattern, aRewrite : String); virtual;
 
-         function Apply(const originURL : String; var rewrittenURL : String) : Boolean;
+         function Apply(const originURL : String; var rewrittenURL : String) : Boolean; virtual; abstract;
 
          property Pattern : String read FPattern;
          property Rewrite : String read FRewrite;
@@ -47,6 +45,34 @@ type
          property HitCount : Integer read FHitCount;
 
          procedure WriteToJSON(wr : TdwsJSONWriter; withHitCount : Boolean);
+   end;
+
+   TdwsURLRewriteRuleGeneric = class (TdwsURLRewriteRule)
+      private
+         FPatternChunks : array of String;
+         FRewriteChunks : array of String;
+
+      protected
+
+      public
+         constructor Create(const aPattern, aRewrite : String); override;
+
+         function Apply(const originURL : String; var rewrittenURL : String) : Boolean; override;
+   end;
+
+   TdwsURLRewriteRuleStartMatch = class (TdwsURLRewriteRule)
+      private
+         FStart : String;
+         FRewrite : String;
+         FStartLength, FRewriteLength : Integer;
+         FPassThrough : Boolean;
+
+      protected
+
+      public
+         constructor Create(const aPattern, aRewrite : String); override;
+
+         function Apply(const originURL : String; var rewrittenURL : String) : Boolean; override;
    end;
 
    TdwsURLRewriteRules = array of TdwsURLRewriteRule;
@@ -60,6 +86,8 @@ type
       protected
          function GetAsJSON : String;
          procedure SetAsJSON(const js : String);
+
+         function CreateRule(const aPattern, aRewrite : String) : TdwsURLRewriteRule;
 
       public
          constructor Create;
@@ -118,13 +146,27 @@ begin
    inherited;
 end;
 
+// CreateRule
+//
+function TdwsURLRewriter.CreateRule(const aPattern, aRewrite : String) : TdwsURLRewriteRule;
+begin
+   if     (Pos('*', aPattern) = Length(aPattern))
+      and (Pos('$1', aRewrite) = Length(aRewrite)-1) then begin
+
+      Result := TdwsURLRewriteRuleStartMatch.Create(aPattern, aRewrite)
+
+   end else begin
+      Result := TdwsURLRewriteRuleGeneric.Create(aPattern, aRewrite);
+   end;
+end;
+
 // AddRule
 //
 procedure TdwsURLRewriter.AddRule(const aPattern, aRewrite : String);
 var
    rule : TdwsURLRewriteRule;
 begin
-   rule := TdwsURLRewriteRule.Create(aPattern, aRewrite);
+   rule := CreateRule(aPattern, aRewrite);
    FLock.BeginWrite;
    try
       SetLength(FRules, FCount+1);
@@ -213,7 +255,7 @@ begin
          SetLength(FRules, FCount);
          for i := 0 to jv.ElementCount-1 do begin
             ruleJV := jv.Elements[i];
-            FRules[i] := TdwsURLRewriteRule.Create(ruleJV.Items['pattern'].AsString, ruleJV.Items['rewrite'].AsString);
+            FRules[i] := CreateRule(ruleJV.Items['pattern'].AsString, ruleJV.Items['rewrite'].AsString);
          end;
       finally
          FLock.EndWrite;
@@ -260,6 +302,35 @@ end;
 // Create
 //
 constructor TdwsURLRewriteRule.Create(const aPattern, aRewrite : String);
+begin
+   inherited Create;
+
+   if aPattern = '' then
+      raise EdwsURLRewriterException.Create('Pattern cannot be empty');
+
+   FPattern := aPattern;
+   FRewrite := aRewrite;
+end;
+
+// WriteToJSON
+//
+procedure TdwsURLRewriteRule.WriteToJSON(wr : TdwsJSONWriter; withHitCount : Boolean);
+begin
+   wr.BeginObject;
+      wr.WriteString('pattern', Pattern);
+      wr.WriteString('rewrite', Rewrite);
+      if withHitCount then
+         wr.WriteInteger('hits', HitCount);
+   wr.EndObject;
+end;
+
+// ------------------
+// ------------------ TdwsURLRewriteRuleGeneric ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsURLRewriteRuleGeneric.Create(const aPattern, aRewrite : String);
 
    procedure AddPatternChunk(startIncluded, stopExcluded : Integer);
    var
@@ -286,13 +357,7 @@ constructor TdwsURLRewriteRule.Create(const aPattern, aRewrite : String);
 var
    i, start, k : Integer;
 begin
-   inherited Create;
-
-   if aPattern = '' then
-      raise EdwsURLRewriterException.Create('Pattern cannot be empty');
-
-   FPattern := aPattern;
-   FRewrite := aRewrite;
+   inherited Create(aPattern, aRewrite);
 
    // parse pattern for *
    i := 1;
@@ -333,7 +398,7 @@ end;
 
 // Apply
 //
-function TdwsURLRewriteRule.Apply(const originURL : String; var rewrittenURL : String) : Boolean;
+function TdwsURLRewriteRuleGeneric.Apply(const originURL : String; var rewrittenURL : String) : Boolean;
 var
    buffer : array [0..cMAX_REWRITTEN_URL_SIZE-1] of Char;
    bufferIndex : Integer;
@@ -404,16 +469,51 @@ begin
    Result := True;
 end;
 
-// WriteToJSON
+// ------------------
+// ------------------ TdwsURLRewriteRuleStartMatch ------------------
+// ------------------
+
+// Create
 //
-procedure TdwsURLRewriteRule.WriteToJSON(wr : TdwsJSONWriter; withHitCount : Boolean);
+constructor TdwsURLRewriteRuleStartMatch.Create(const aPattern, aRewrite : String);
 begin
-   wr.BeginObject;
-      wr.WriteString('pattern', Pattern);
-      wr.WriteString('rewrite', Rewrite);
-      if withHitCount then
-         wr.WriteInteger('hits', HitCount);
-   wr.EndObject;
+   inherited Create(aPattern, aRewrite);
+
+   Assert(Pos('*', aPattern) = Length(aPattern));
+
+   FStartLength := Length(aPattern)-1;
+   FStart := Copy(aPattern, 1, FStartLength);
+   FHead := StringHead2Chars(FStart);
+
+   Assert(Pos('$1', aRewrite) = Length(aRewrite)-1);
+
+   FRewriteLength := Length(aRewrite)-1;
+   FRewrite := Copy(aRewrite, 1, FRewriteLength);
+
+   FPassThrough := (FStart = FRewrite);
+end;
+
+// Apply
+//
+function TdwsURLRewriteRuleStartMatch.Apply(const originURL : String; var rewrittenURL : String) : Boolean;
+var
+   n : Integer;
+   p : PChar;
+begin
+   n := Length(originURL);
+   if n < FStartLength then Exit(False);
+   if not CompareMem(Pointer(FStart), Pointer(originURL), FStartLength*SizeOf(Char)) then Exit(False);
+
+   if FPassThrough then begin
+      rewrittenURL := originURL;
+   end else begin
+      SetLength(rewrittenURL, FRewriteLength + n - FStartLength);
+      p := PChar(Pointer(rewrittenURL));
+      System.Move(Pointer(FRewrite)^, p^, FRewriteLength*SizeOf(Char));
+      Inc(p, FRewriteLength);
+      System.Move(originURL[FStartLength], p^, n - FStartLength);
+   end;
+   Result := True;
 end;
 
 end.
