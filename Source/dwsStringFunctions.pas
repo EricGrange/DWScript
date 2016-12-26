@@ -893,12 +893,7 @@ var
 begin
    args.EvalAsString(0, str);
    args.EvalAsString(1, beginStr);
-   if Length(str)<Length(beginStr) then
-      Result:=False
-   else begin
-      Result:=CompareMem(PChar(Pointer(str)), PChar(Pointer(beginStr)),
-                         Length(beginStr)*SizeOf(Char));
-   end;
+   Result := StrBeginsWith(str, beginStr);
 end;
 
 { TStrEndsWithFunc }
@@ -909,12 +904,7 @@ var
 begin
    args.EvalAsString(0, str);
    args.EvalAsString(1, endStr);
-   if Length(str)<Length(endStr) then
-      Result:=False
-   else begin
-      Result:=CompareMem(@str[Length(str)-Length(endStr)+1], PChar(Pointer(endStr)),
-                         Length(endStr)*SizeOf(Char));
-   end;
+   Result := StrEndsWith(str, endStr);
 end;
 
 { TStrContainsFunc }
@@ -963,7 +953,7 @@ end;
 
 { TStrBetweenFunc }
 
-procedure TStrBetweenFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+procedure TStrBetweenFunc.DoEvalAsString(const args : TExprBaseListExec; var result : UnicodeString);
 var
    p, p2 : Integer;
    str, delimiter : UnicodeString;
@@ -973,7 +963,7 @@ begin
    p := Pos(delimiter, str);
    if p > 0 then begin
       p := p + Length(delimiter);
-      delimiter := args.AsString[2];
+      args.EvalAsString(2, delimiter);
       p2 := PosEx(delimiter, str, p);
       if p2 > 0 then
          Result := Copy(str, p, p2-p)
