@@ -287,11 +287,15 @@ procedure TdwsURLRewriter.SetAsJSON(const js : String);
 var
    jv : TdwsJSONValue;
 begin
-   jv := TdwsJSONValue.ParseString(js);
-   try
-      ReadFromJSON(jv);
-   finally
-      jv.Free;
+   if js = '' then
+      Clear
+   else begin
+      jv := TdwsJSONValue.ParseString(js);
+      try
+         ReadFromJSON(jv);
+      finally
+         jv.Free;
+      end;
    end;
 end;
 
