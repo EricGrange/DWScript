@@ -588,7 +588,7 @@ end;
 
 procedure TStrReplaceFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 begin
-   Result:=args.AsString[0];
+   args.EvalAsString(0, Result);
    FastStringReplace(Result, args.AsString[1], args.AsString[2]);
 end;
 
@@ -801,7 +801,7 @@ procedure TQuotedStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Resu
 var
    quoteChar : UnicodeString;
 begin
-   quoteChar:=args.AsString[1];
+   args.EvalAsString(1, quoteChar);
    if quoteChar='' then
       Result:=AnsiQuotedStr(args.AsString[0], '''')
    else Result:=AnsiQuotedStr(args.AsString[0], quoteChar[1]);
@@ -816,7 +816,7 @@ var
    buf : UnicodeString;
    n : Integer;
 begin
-   buf:=args.AsString[0];
+   args.EvalAsString(0, buf);
    n:=args.AsInteger[1];
    if (n>0) and (n<=Length(buf)) then
       Result:=buf[n]
