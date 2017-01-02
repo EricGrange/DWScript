@@ -85,6 +85,14 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsCryptoClassesEncryptionAESSHA3CTRMethodsDecryptDataEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsCryptoClassesECCsecp256r1MethodsMakeKeyEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsCryptoClassesECCsecp256r1MethodsECDHSharedSecretEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsCryptoClassesECCsecp256r1MethodsECDSASignEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsCryptoClassesECCsecp256r1MethodsECDSAVerifyEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FNonces : TdwsTokenStore;
@@ -102,7 +110,7 @@ implementation
 
 {$R *.dfm}
 
-uses dwsCryptoUtils, SynCrypto, dwsCryptProtect, SynZip;
+uses dwsCryptoUtils, SynCrypto, dwsCryptProtect, SynZip, SynEcc;
 
 procedure PerformHashData(Info: TProgramInfo; h : THashFunction);
 var
@@ -357,4 +365,86 @@ begin
    info.ResultAsString:=ProcessUniqueRandom;
 end;
 
+procedure TdwsCryptoLib.dwsCryptoClassesECCsecp256r1MethodsMakeKeyEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   pub : TECCPublicKey;
+   priv : TECCPrivateKey;
+begin
+   if ecc_make_key(pub, priv) then begin
+      Info.ParamAsDataString[0] := BytesToRawByteString(@pub, SizeOf(pub));
+      Info.ParamAsDataString[1] := BytesToRawByteString(@priv, SizeOf(priv));
+      FillChar(priv, SizeOf(priv), 0);
+      Info.ResultAsBoolean := True;
+   end else begin
+      Info.ParamAsString[0] := '';
+      Info.ParamAsString[1] := '';
+      Info.ResultAsBoolean := True;
+   end;
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesECCsecp256r1MethodsECDHSharedSecretEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   secret : TECCSecretKey;
+   pubData, privData : RawByteString;
+begin
+   pubData := Info.ParamAsDataString[0];
+   if Length(pubData) <> SizeOf(TECCPublicKey) then
+      raise Exception.Create('Invalid public key size');
+
+   privData := Info.ParamAsDataString[1];
+   if Length(privData) <> SizeOf(TECCPrivateKey) then
+      raise Exception.Create('Invalid private key size');
+
+   if not ecdh_shared_secret(TECCPublicKey(Pointer(pubData)^), TECCPrivateKey(Pointer(privData)^), secret) then
+      raise Exception.Create('Invalid ECC keys');
+
+   Info.ResultAsDataString := BytesToRawByteString(@secret, SizeOf(secret));
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesECCsecp256r1MethodsECDSASignEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   privData, hashData : RawByteString;
+   sign : TECCSignature;
+begin
+   privData := Info.ParamAsDataString[0];
+   if Length(privData) <> SizeOf(TECCPrivateKey) then
+      raise Exception.Create('Invalid private key size');
+
+   hashData := HexToBin(Info.ParamAsString[1]);
+   if Length(hashData) <> SizeOf(TECCHash) then
+      raise Exception.Create('Invalid hash hexadecimal size');
+
+   if not ecdsa_sign(TECCPrivateKey(Pointer(privData)^), TECCHash(Pointer(hashData)^), sign) then
+      raise Exception.Create('Invalid ECC key for signature');
+
+   Info.ResultAsDataString := BytesToRawByteString(@sign, SizeOf(sign));
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesECCsecp256r1MethodsECDSAVerifyEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   pubData, hashData, signData : RawByteString;
+begin
+   pubData := Info.ParamAsDataString[0];
+   if Length(pubData) <> SizeOf(TECCPublicKey) then
+      raise Exception.Create('Invalid public key size');
+
+   hashData := HexToBin(Info.ParamAsString[1]);
+   if Length(hashData) <> SizeOf(TECCHash) then
+      raise Exception.Create('Invalid hash hexadecimal size');
+
+   signData := Info.ParamAsDataString[2];
+   if Length(signData) <> SizeOf(TECCSignature) then
+      raise Exception.Create('Invalid signature size');
+
+   Info.ResultAsBoolean := ecdsa_verify(
+      TECCPublicKey(Pointer(pubData)^), TECCHash(Pointer(hashData)^),
+      TECCSignature(Pointer(signData)^)
+   );
+end;
+
 end.
+

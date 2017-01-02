@@ -11,6 +11,7 @@ object dwsCryptoLib: TdwsCryptoLib
       item
         Name = 'HashAlgorithm'
         IsAbstract = True
+        IsStatic = True
         Methods = <
           item
             Name = 'HashData'
@@ -246,6 +247,7 @@ object dwsCryptoLib: TdwsCryptoLib
       item
         Name = 'EncryptionAlgorithm'
         IsAbstract = True
+        IsStatic = True
         Methods = <
           item
             Name = 'EncryptData'
@@ -281,6 +283,7 @@ object dwsCryptoLib: TdwsCryptoLib
       item
         Name = 'EncryptionAESSHA256Full'
         Ancestor = 'EncryptionAlgorithm'
+        IsStatic = True
         Methods = <
           item
             Name = 'EncryptData'
@@ -318,6 +321,7 @@ object dwsCryptoLib: TdwsCryptoLib
       item
         Name = 'EncryptionAESSHA3CTR'
         Ancestor = 'EncryptionAlgorithm'
+        IsStatic = True
         Methods = <
           item
             Name = 'EncryptData'
@@ -355,6 +359,7 @@ object dwsCryptoLib: TdwsCryptoLib
       item
         Name = 'EncryptionCryptProtect'
         Ancestor = 'EncryptionAlgorithm'
+        IsStatic = True
         Methods = <
           item
             Name = 'EncryptData'
@@ -513,6 +518,81 @@ object dwsCryptoLib: TdwsCryptoLib
             Attributes = [maStatic]
             OnEval = dwsCryptoClassesNoncesMethodsCollectEval
             Kind = mkClassProcedure
+          end>
+      end
+      item
+        Name = 'ECCsecp256r1'
+        IsStatic = True
+        Methods = <
+          item
+            Name = 'MakeKey'
+            Parameters = <
+              item
+                Name = 'pubKey'
+                DataType = 'String'
+                IsVarParam = True
+              end
+              item
+                Name = 'privKey'
+                DataType = 'String'
+                IsVarParam = True
+              end>
+            ResultType = 'Boolean'
+            Attributes = [maStatic]
+            OnEval = dwsCryptoClassesECCsecp256r1MethodsMakeKeyEval
+            Kind = mkClassMethod
+          end
+          item
+            Name = 'ECDHSharedSecret'
+            Parameters = <
+              item
+                Name = 'pubKey'
+                DataType = 'String'
+              end
+              item
+                Name = 'privKey'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsCryptoClassesECCsecp256r1MethodsECDHSharedSecretEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'ECDSASign'
+            Parameters = <
+              item
+                Name = 'privKey'
+                DataType = 'String'
+              end
+              item
+                Name = 'hash256hex'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsCryptoClassesECCsecp256r1MethodsECDSASignEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'ECDSAVerify'
+            Parameters = <
+              item
+                Name = 'pubKey'
+                DataType = 'String'
+              end
+              item
+                Name = 'hash256hex'
+                DataType = 'String'
+              end
+              item
+                Name = 'signature'
+                DataType = 'String'
+              end>
+            ResultType = 'Boolean'
+            Attributes = [maStatic]
+            OnEval = dwsCryptoClassesECCsecp256r1MethodsECDSAVerifyEval
+            Kind = mkClassFunction
           end>
       end>
     Functions = <
