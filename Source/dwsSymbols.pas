@@ -4708,8 +4708,9 @@ end;
 //
 function TClassSymbol.VMTMethod(index : Integer) : TMethodSymbol;
 begin
-   Assert(Cardinal(index)<Cardinal(Length(FVirtualMethodTable)));
-   Result:=FVirtualMethodTable[index];
+   if Cardinal(index) < Cardinal(Length(FVirtualMethodTable)) then
+      Result := FVirtualMethodTable[index]
+   else Result := nil;
 end;
 
 // VMTCount

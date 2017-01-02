@@ -161,7 +161,7 @@ type
          FMaxSize : Integer;
          FMaxChunkSize : Integer;
          FPrefix : String;
-         FLock : TFixedCriticalSection;
+         FLock : TdwsCriticalSection;
 
       public
          constructor Create(queueHandle : THandle; const aPrefix : String; aMaxSize : Integer);
@@ -1344,7 +1344,7 @@ begin
    FQueue:=queueHandle;
    FMaxSize:=aMaxSize;
    FMaxChunkSize:=aMaxSize div 10;
-   FLock:=TFixedCriticalSection.Create;
+   FLock:=TdwsCriticalSection.Create;
 end;
 
 // Destroy

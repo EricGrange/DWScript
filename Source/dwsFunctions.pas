@@ -155,7 +155,7 @@ type
          FStaticTable : IStaticSymbolTable; // static symbols
          FStaticSystemTable : TSystemSymbolTable;
          FAbsHandlers : array of TInternalAbsHandler;
-         FCriticalSection : TFixedCriticalSection;
+         FCriticalSection : TdwsCriticalSection;
 
       protected
          procedure SetStaticSymbols(const Value: Boolean);
@@ -639,7 +639,7 @@ begin
    FDependencies:=TStringList.Create;
    FRegisteredInternalFunctions:=TList.Create;
    FStaticSymbols:=True;
-   FCriticalSection:=TFixedCriticalSection.Create;
+   FCriticalSection:=TdwsCriticalSection.Create;
 end;
 
 // Destroy

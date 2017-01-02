@@ -106,7 +106,7 @@ type
          FCompiler : IdwsCompiler;
          FConfig : TdwsConfiguration;
          FExtensions : TdwsLanguageExtensionAggregator;
-         FLock : TFixedCriticalSection;
+         FLock : TdwsCriticalSection;
 
       protected
          function GetOnInclude: TIncludeEvent;
@@ -1577,7 +1577,7 @@ begin
    FConfig:=TdwsConfiguration.Create(Self);
    AddUnit(Self);
    FExtensions:=TdwsLanguageExtensionAggregator.Create;
-   FLock:=TFixedCriticalSection.Create;
+   FLock:=TdwsCriticalSection.Create;
 end;
 
 // Destroy

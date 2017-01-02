@@ -71,7 +71,7 @@ type
          function Check(expr : TExprBase) : Boolean;
    end;
 
-   TStringToEnum = class (TCaseInsensitiveNameValueHash<Integer>)
+   TStringToEnum = class (TFastCompareTextList)
       public
          constructor Create(typ : PTypeInfo; low, high, prefixLength : Integer);
    end;
@@ -107,20 +107,28 @@ implementation
 // NameToArrayMethod
 //
 var
-   vArrayMethodsHash : TStringToEnum;
+   vArrayMethods : TStringToEnum;
 function NameToArrayMethod(const name : UnicodeString; msgs : TdwsCompileMessageList;
                            const namePos : TScriptPos) : TArrayMethodKind;
-var
-   bucket : TNameValueHashBucket<Integer>;
-begin
-   bucket.Name:=name;
-   if vArrayMethodsHash.Match(bucket) then begin
-      Result:=TArrayMethodKind(bucket.Value);
-      if (msgs<>nil) and (name<>bucket.Name) then begin
+
+   procedure CheckExactMatch(i : Integer);
+   begin
+      if vArrayMethods[i] <> name then begin
          msgs.AddCompilerHintFmt(namePos, CPH_CaseDoesNotMatchDeclaration,
-                                 [name, bucket.Name], hlPedantic);
+                                 [name, vArrayMethods[i]], hlPedantic);
       end;
-   end else Result:=amkNone;
+   end;
+
+var
+   i : Integer;
+begin
+   if vArrayMethods.Find(name, i) then begin
+      Result := TArrayMethodKind(vArrayMethods.Objects[i]);
+      if (msgs <> nil) and (msgs.HintsLevel >= hlPedantic) then
+         CheckExactMatch(i);
+   end else begin
+      Result := amkNone;
+   end;
 end;
 
 type
@@ -525,13 +533,10 @@ end;
 constructor TStringToEnum.Create(typ : PTypeInfo; low, high, prefixLength : Integer);
 var
    i : Integer;
-   bucket : TNameValueHashBucket<Integer>;
 begin
-   for i:=low to high do begin
-      bucket.Name:=Copy(GetEnumName(typ, i), prefixLength+1, 99);
-      bucket.Value:=i;
-      Add(bucket);
-   end;
+   for i:=low to high do
+      AddObject(Copy(GetEnumName(typ, i), prefixLength+1, 99), TObject(i));
+   Sorted := True;
 end;
 
 // ------------------------------------------------------------------
@@ -542,13 +547,13 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   vArrayMethodsHash := TStringToEnum.Create(
+   vArrayMethods := TStringToEnum.Create(
       TypeInfo(TArrayMethodKind),
       Ord(Low(TArrayMethodKind)), Ord(High(TArrayMethodKind)), 3
    );
 
 finalization
 
-   FreeAndNil(vArrayMethodsHash);
+   FreeAndNil(vArrayMethods);
 
 end.

@@ -62,7 +62,10 @@ const
 type
    // see http://delphitools.info/2011/11/30/fixing-tcriticalsection/
    {$HINTS OFF}
-   TFixedCriticalSection = class
+   {$ifdef UNIX}
+   TdwsCriticalSection = class (TCriticalSection);
+   {$else}
+   TdwsCriticalSection = class
       private
          FDummy : array [0..95-SizeOf(TRTLCRiticalSection)-2*SizeOf(Pointer)] of Byte;
          FCS : TRTLCriticalSection;
@@ -76,6 +79,7 @@ type
 
          function TryEnter : Boolean;
    end;
+   {$endif}
 
    IMultiReadSingleWrite = interface
       procedure BeginRead;
@@ -89,23 +93,35 @@ type
 
    TMultiReadSingleWriteState = (mrswUnlocked, mrswReadLock, mrswWriteLock);
 
+   {$ifdef UNIX}{$define SRW_FALLBACK}{$endif}
+
    TMultiReadSingleWrite = class (TInterfacedObject, IMultiReadSingleWrite)
       private
+         {$ifndef SRW_FALLBACK}
          FSRWLock : Pointer;
          FDummy : array [0..95-4*SizeOf(Pointer)] of Byte; // padding
+         {$else}
+         FLock : TFixedCriticalSection;
+         {$endif}
 
       public
-         procedure BeginRead;
-         function  TryBeginRead : Boolean;
-         procedure EndRead;
+         {$ifdef SRW_FALLBACK}
+         constructor Create;
+         destructor Destroy; override;
+         {$endif}
 
-         procedure BeginWrite;
-         function  TryBeginWrite : Boolean;
-         procedure EndWrite;
+         procedure BeginRead; inline;
+         function  TryBeginRead : Boolean; inline;
+         procedure EndRead; inline;
+
+         procedure BeginWrite; inline;
+         function  TryBeginWrite : Boolean; inline;
+         procedure EndWrite; inline;
 
          // use for diagnostic only
          function State : TMultiReadSingleWriteState;
    end;
+
    {$HINTS ON}
 
 procedure SetDecimalSeparator(c : Char);
@@ -194,9 +210,6 @@ function InterlockedDecrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} 
 
 procedure FastInterlockedIncrement(var val : Integer); {$IFDEF PUREPASCAL} inline; {$endif}
 procedure FastInterlockedDecrement(var val : Integer); {$IFDEF PUREPASCAL} inline; {$endif}
-
-function InterlockedIncrement64(var val : Int64) : Int64; inline;
-function InterlockedAdd64(var val : Int64; const delta : Int64) : Int64; inline;
 
 function InterlockedExchangePointer(var target : Pointer; val : Pointer) : Pointer; {$IFDEF PUREPASCAL} inline; {$endif}
 
@@ -294,6 +307,19 @@ type
          procedure Cancel;
    end;
 
+{$ifndef SRW_FALLBACK}
+type
+   SRWLOCK = Pointer;
+
+procedure AcquireSRWLockExclusive(var SRWLock : SRWLOCK); stdcall; external 'kernel32.dll';
+function TryAcquireSRWLockExclusive(var SRWLock : SRWLOCK) : BOOL; stdcall; external 'kernel32.dll';
+procedure ReleaseSRWLockExclusive(var SRWLock : SRWLOCK); stdcall; external 'kernel32.dll';
+
+procedure AcquireSRWLockShared(var SRWLock : SRWLOCK); stdcall; external 'kernel32.dll';
+function TryAcquireSRWLockShared(var SRWLock : SRWLOCK) : BOOL; stdcall; external 'kernel32.dll';
+procedure ReleaseSRWLockShared(var SRWLock : SRWLOCK); stdcall; external 'kernel32.dll';
+{$endif}
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -377,8 +403,26 @@ begin
    Result:=Trunc(UTCDateTime*86400)-Int64(25569)*86400;
 end;
 
+type
+   TDynamicTimeZoneInformation = record
+      Bias : Longint;
+      StandardName : array[0..31] of WCHAR;
+      StandardDate : TSystemTime;
+      StandardBias : Longint;
+      DaylightName : array[0..31] of WCHAR;
+      DaylightDate : TSystemTime;
+      DaylightBias : Longint;
+      TimeZoneKeyName : array[0..127] of WCHAR;
+      DynamicDaylightTimeDisabled : Boolean;
+   end;
+   PDynamicTimeZoneInformation = ^TDynamicTimeZoneInformation;
+
+function GetDynamicTimeZoneInformation(
+      var pTimeZoneInformation: TDynamicTimeZoneInformation): DWORD; stdcall; external 'kernel32' {$ifndef FPC}delayed{$endif};
+function GetTimeZoneInformationForYear(wYear: USHORT; lpDynamicTimeZoneInformation: PDynamicTimeZoneInformation;
+      var lpTimeZoneInformation: TTimeZoneInformation): BOOL; stdcall; external 'kernel32' {$ifndef FPC}delayed{$endif};
 function TzSpecificLocalTimeToSystemTime(lpTimeZoneInformation: PTimeZoneInformation;
-   var lpLocalTime, lpUniversalTime: TSystemTime): BOOL; stdcall; external 'kernel32';
+      var lpLocalTime, lpUniversalTime: TSystemTime): BOOL; stdcall; external 'kernel32' {$ifndef FPC}delayed{$endif};
 
 // LocalDateTimeToUTCDateTime
 //
@@ -641,13 +685,6 @@ begin
 asm
    lock  dec [eax]
 {$endif}
-end;
-
-// InterlockedIncrement64
-//
-function InterlockedIncrement64(var val : Int64) : Int64;
-begin
-   Result := TInterlocked.Increment(val);
 end;
 
 // InterlockedAdd64
@@ -1417,40 +1454,40 @@ end;
 {$endif}
 
 // ------------------
-// ------------------ TFixedCriticalSection ------------------
+// ------------------ TdwsCriticalSection ------------------
 // ------------------
 
 // Create
 //
-constructor TFixedCriticalSection.Create;
+constructor TdwsCriticalSection.Create;
 begin
    InitializeCriticalSection(FCS);
 end;
 
 // Destroy
 //
-destructor TFixedCriticalSection.Destroy;
+destructor TdwsCriticalSection.Destroy;
 begin
    DeleteCriticalSection(FCS);
 end;
 
 // Enter
 //
-procedure TFixedCriticalSection.Enter;
+procedure TdwsCriticalSection.Enter;
 begin
    EnterCriticalSection(FCS);
 end;
 
 // Leave
 //
-procedure TFixedCriticalSection.Leave;
+procedure TdwsCriticalSection.Leave;
 begin
    LeaveCriticalSection(FCS);
 end;
 
 // TryEnter
 //
-function TFixedCriticalSection.TryEnter : Boolean;
+function TdwsCriticalSection.TryEnter : Boolean;
 begin
    Result:=TryEnterCriticalSection(FCS);
 end;
@@ -1545,61 +1582,37 @@ end;
 // ------------------ TMultiReadSingleWrite ------------------
 // ------------------
 
-type
-   SRWLOCK = Pointer;
-
-procedure AcquireSRWLockExclusive(var SRWLock : SRWLOCK); stdcall; external 'kernel32.dll';
-function TryAcquireSRWLockExclusive(var SRWLock : SRWLOCK) : BOOL; stdcall; external 'kernel32.dll';
-procedure ReleaseSRWLockExclusive(var SRWLock : SRWLOCK); stdcall; external 'kernel32.dll';
-
-procedure AcquireSRWLockShared(var SRWLock : SRWLOCK); stdcall; external 'kernel32.dll';
-function TryAcquireSRWLockShared(var SRWLock : SRWLOCK) : BOOL; stdcall; external 'kernel32.dll';
-procedure ReleaseSRWLockShared(var SRWLock : SRWLOCK); stdcall; external 'kernel32.dll';
-
-// BeginRead
-//
+{$ifndef SRW_FALLBACK}
 procedure TMultiReadSingleWrite.BeginRead;
 begin
    AcquireSRWLockShared(FSRWLock);
 end;
 
-// TryBeginRead
-//
 function TMultiReadSingleWrite.TryBeginRead : Boolean;
 begin
    Result:=TryAcquireSRWLockShared(FSRWLock);
 end;
 
-// EndRead
-//
 procedure TMultiReadSingleWrite.EndRead;
 begin
    ReleaseSRWLockShared(FSRWLock)
 end;
 
-// BeginWrite
-//
 procedure TMultiReadSingleWrite.BeginWrite;
 begin
    AcquireSRWLockExclusive(FSRWLock);
 end;
 
-// TryBeginWrite
-//
 function TMultiReadSingleWrite.TryBeginWrite : Boolean;
 begin
    Result:=TryAcquireSRWLockExclusive(FSRWLock);
 end;
 
-// EndWrite
-//
 procedure TMultiReadSingleWrite.EndWrite;
 begin
    ReleaseSRWLockExclusive(FSRWLock)
 end;
 
-// State
-//
 function TMultiReadSingleWrite.State : TMultiReadSingleWriteState;
 begin
    // Attempt to guess the state of the lock without making assumptions
@@ -1615,6 +1628,56 @@ begin
       Result:=mrswWriteLock;
    end;
 end;
+{$else} // SRW_FALLBACK
+constructor TMultiReadSingleWrite.Create;
+begin
+   FLock := TFixedCriticalSection.Create;
+end;
+
+destructor TMultiReadSingleWrite.Destroy;
+begin
+   FLock.Free;
+end;
+
+procedure TMultiReadSingleWrite.BeginRead;
+begin
+   FLock.Enter;
+end;
+
+function TMultiReadSingleWrite.TryBeginRead : Boolean;
+begin
+   Result:=FLock.TryEnter;
+end;
+
+procedure TMultiReadSingleWrite.EndRead;
+begin
+   FLock.Leave;
+end;
+
+procedure TMultiReadSingleWrite.BeginWrite;
+begin
+   FLock.Enter;
+end;
+
+function TMultiReadSingleWrite.TryBeginWrite : Boolean;
+begin
+   Result:=FLock.TryEnter;
+end;
+
+procedure TMultiReadSingleWrite.EndWrite;
+begin
+   FLock.Leave;
+end;
+
+function TMultiReadSingleWrite.State : TMultiReadSingleWriteState;
+begin
+   if FLock.TryEnter then begin
+      FLock.Leave;
+      Result := mrswUnlocked;
+   end else Result := mrswWriteLock;
+end;
+
+{$endif}
 
 // ------------------
 // ------------------ TTimerTimeout ------------------

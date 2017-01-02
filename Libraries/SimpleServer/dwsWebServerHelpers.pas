@@ -35,7 +35,7 @@ type
 
    TDirectoryIndexCache = class
       private
-         FLock : TFixedCriticalSection;
+         FLock : TdwsCriticalSection;
          FHash : TSimpleNameObjectHash<TDirectoryIndexInfo>;
          FIndexFileNames : TStrings;
 
@@ -208,7 +208,7 @@ end;
 constructor TDirectoryIndexCache.Create;
 begin
    inherited;
-   FLock:=TFixedCriticalSection.Create;
+   FLock:=TdwsCriticalSection.Create;
    FHash:=TSimpleNameObjectHash<TDirectoryIndexInfo>.Create;
    FIndexFileNames:=TStringList.Create;
 end;

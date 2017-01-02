@@ -93,10 +93,10 @@ type
       FCompiledPrograms : TCompiledProgramHash;
       FCompiledProgramsLock : TMultiReadSingleWrite;
 
-      FCompilerLock : TFixedCriticalSection;
+      FCompilerLock : TdwsCriticalSection;
       FCompilerFiles : IAutoStrings;
 
-      FCodeGenLock : TFixedCriticalSection;
+      FCodeGenLock : TdwsCriticalSection;
       FEnableJIT : Boolean;
 
       FExecutingID : Integer;
@@ -281,8 +281,8 @@ begin
    FCompiledPrograms := TCompiledProgramHash.Create;
    FCompiledProgramsLock := TMultiReadSingleWrite.Create;
 
-   FCompilerLock := TFixedCriticalSection.Create;
-   FCodeGenLock := TFixedCriticalSection.Create;
+   FCompilerLock := TdwsCriticalSection.Create;
+   FCodeGenLock := TdwsCriticalSection.Create;
 
    FExecutingScriptsLock:=TMultiReadSingleWrite.Create;
 
@@ -520,7 +520,6 @@ begin
          wr.Free;
       end;
    end;
-
 end;
 
 // CompiledPrograms

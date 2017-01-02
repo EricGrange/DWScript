@@ -543,17 +543,6 @@ type
          procedure CleanValues;
    end;
 
-   TNameValueHashBucket<T> = record
-      Name : UnicodeString;
-      Value : T;
-   end;
-
-   TCaseInsensitiveNameValueHash<T> = class (TSimpleHash<TNameValueHashBucket<T>>)
-      protected
-         function SameItem(const item1, item2 : TNameValueHashBucket<T>) : Boolean; override;
-         function GetItemHashCode(const item1 : TNameValueHashBucket<T>) : Integer; override;
-   end;
-
    TObjectsLookup = class (TSortedList<TRefCountedObject>)
       protected
          function Compare(const item1, item2 : TRefCountedObject) : Integer; override;
@@ -939,7 +928,6 @@ function WhichPowerOfTwo(const v : Int64) : Integer;
 
 function SimpleStringHash(const s : UnicodeString) : Cardinal; overload; inline;
 function SimpleStringHash(p : PChar; sizeInChars : Integer) : Cardinal; overload; inline;
-function SimpleLowerCaseStringHash(const s : UnicodeString) : Cardinal;
 function SimpleByteHash(p : PByte; n : Integer) : Cardinal;
 
 function SimpleIntegerHash(x : Cardinal) : Cardinal;
@@ -1076,13 +1064,6 @@ end;
 function SimpleStringHash(const s : UnicodeString) : Cardinal; inline;
 begin
    Result := xxHash32.Full(Pointer(s), Length(s)*SizeOf(Char));
-end;
-
-// SimpleLowerCaseStringHash
-//
-function SimpleLowerCaseStringHash(const s : UnicodeString) : Cardinal;
-begin
-   Result:=SimpleStringHash(UnicodeLowerCase(s));
 end;
 
 // SimpleByteHash
@@ -5841,24 +5822,6 @@ begin
 end;
 
 // ------------------
-// ------------------ TCaseInsensitiveNameValueHash<T> ------------------
-// ------------------
-
-// SameItem
-//
-function TCaseInsensitiveNameValueHash<T>.SameItem(const item1, item2 : TNameValueHashBucket<T>) : Boolean;
-begin
-   Result:=UnicodeSameText(item1.Name, item2.Name);
-end;
-
-// GetItemHashCode
-//
-function TCaseInsensitiveNameValueHash<T>.GetItemHashCode(const item1 : TNameValueHashBucket<T>) : Integer;
-begin
-   Result:=SimpleLowerCaseStringHash(item1.Name);
-end;
-
-// ------------------
 // ------------------ TSimpleStringHash ------------------
 // ------------------
 
@@ -5873,7 +5836,7 @@ end;
 //
 function TSimpleStringHash.GetItemHashCode(const item1 : UnicodeString) : Integer;
 begin
-   Result:=SimpleLowerCaseStringHash(item1);
+   Result:=SimpleStringHash(UnicodeLowerCase(item1));
 end;
 
 // ------------------

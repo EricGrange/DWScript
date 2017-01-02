@@ -75,7 +75,6 @@ type
 
          procedure QueueTest;
 
-         procedure StringHash;
          procedure TestDWSHashCode;
          procedure TestDWSHashCodeEmptyStrings;
 
@@ -879,16 +878,6 @@ begin
    finally
       q.Free;
    end;
-end;
-
-// StringHash
-//
-procedure TdwsUtilsTests.StringHash;
-begin
-   CheckEquals(SimpleLowerCaseStringHash(''), SimpleStringHash(''), 'empty');
-   CheckEquals(SimpleLowerCaseStringHash('abc'), SimpleStringHash('abc'), 'abc');
-   CheckEquals(SimpleLowerCaseStringHash('ABC'), SimpleStringHash(LowerCase('ABC')), 'ABC');
-   CheckEquals(SimpleLowerCaseStringHash('ÈRic'), SimpleStringHash(UnicodeLowerCase('ÈRic')), 'ÈRic');
 end;
 
 // TestDWSHashCode

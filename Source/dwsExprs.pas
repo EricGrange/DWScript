@@ -156,9 +156,22 @@ type
          function CreateProgResult: TdwsResult; override;
    end;
 
+   // use methods only when field of a class
    TdwsProgramExecStats = record
-      TimeMSec : Int64;
-      Count, ConfirmCount : Integer;
+      private
+         FLock : Pointer;
+         FTimeMSec : Int64;
+         FCount : Integer;
+
+         procedure Lock; inline;
+         procedure Unlock; inline;
+
+      public
+         procedure RecordExec(const durationMSec : Integer);
+         procedure CopyTo(var dest : TdwsProgramExecStats);
+
+         property Count : Integer read FCount;
+         property TimeMSec : Int64 read FTimeMSec;
    end;
 
    TdwsGuardedExecution = class (TRefCountedObject)
@@ -176,7 +189,7 @@ type
       private
          FEvent : TEvent;
          FExecutions : TdwsGuardedExecution;
-         FExecutionsLock : TFixedCriticalSection;
+         FExecutionsLock : TdwsCriticalSection;
 
       protected
          procedure Execute; override;
@@ -476,7 +489,7 @@ type
          FResultType : TdwsResultType;
          FRuntimeFileSystem : TdwsCustomFileSystem;
          FExecutions : TTightList;
-         FExecutionsLock : TFixedCriticalSection;
+         FExecutionsLock : TdwsCriticalSection;
          FTimeoutMilliseconds : Integer;
 
          FSourceContextMap : TdwsSourceContextMap;
@@ -2694,7 +2707,7 @@ begin
 
    FMainFileName:=mainFileName;
 
-   FExecutionsLock:=TFixedCriticalSection.Create;
+   FExecutionsLock:=TdwsCriticalSection.Create;
 
    FStackParameters:=stackParameters;
    FStackParameters.MaxLevel:=1;
@@ -2803,15 +2816,6 @@ begin
    finally
       FExecutionsLock.Leave;
    end;
-end;
-
-// RecordExecution
-//
-procedure TdwsMainProgram.RecordExecution(const durationMSec : Integer);
-begin
-   InterlockedIncrement(FExecStats.Count);
-   InterlockedAdd64(FExecStats.TimeMSec, durationMSec);
-   InterlockedIncrement(FExecStats.ConfirmCount);
 end;
 
 // Execute
@@ -2934,13 +2938,18 @@ begin
    Result:=FTimeStamp;
 end;
 
+// RecordExecution
+//
+procedure TdwsMainProgram.RecordExecution(const durationMSec : Integer);
+begin
+   FExecStats.RecordExec(durationMSec);
+end;
+
 // GetExecStats
 //
 function TdwsMainProgram.GetExecStats : TdwsProgramExecStats;
 begin
-   repeat
-      Result := FExecStats;
-   until Result.Count = Result.ConfirmCount;
+   FExecStats.CopyTo(Result);
 end;
 
 // GetDefaultUserObject
@@ -3290,6 +3299,44 @@ begin
 end;
 
 // ------------------
+// ------------------ TdwsProgramExecStats ------------------
+// ------------------
+
+// Lock
+//
+procedure TdwsProgramExecStats.Lock;
+begin
+   while InterlockedCompareExchangePointer(FLock, @Self, nil) <> nil do ;
+end;
+
+// Unlock
+//
+procedure TdwsProgramExecStats.Unlock;
+begin
+   FLock := nil;
+end;
+
+// RecordExec
+//
+procedure TdwsProgramExecStats.RecordExec(const durationMSec : Integer);
+begin
+   Lock;
+   Inc(FCount);
+   Inc(FTimeMSec, durationMSec);
+   Unlock;
+end;
+
+// CopyTo
+//
+procedure TdwsProgramExecStats.CopyTo(var dest : TdwsProgramExecStats);
+begin
+   Lock;
+   dest := Self;
+   dest.FLock := nil;
+   Unlock;
+end;
+
+// ------------------
 // ------------------ TdwsDefaultResult ------------------
 // ------------------
 
@@ -3381,7 +3428,7 @@ end;
 constructor TdwsGuardianThread.Create;
 begin
    FEvent:=TEvent.Create(nil, False, False, '');
-   FExecutionsLock:=TFixedCriticalSection.Create;
+   FExecutionsLock:=TdwsCriticalSection.Create;
    FreeOnTerminate:=False;
 
    inherited Create(True);
@@ -6670,18 +6717,20 @@ procedure TScriptObjInstance.BeforeDestruction;
    end;
 
 var
+   destroySymDefault : TMethodSymbol;
    destroySym : TMethodSymbol;
 begin
    if Assigned(FExecutionContext) then begin
       // we are released, so never do: Self as IScriptObj
       if not FDestroyed then begin
-         destroySym:=ExecutionContext.CompilerContext.TypDefaultDestructor;
-         if destroySym=ClassSym.VMTMethod(destroySym.VMTIndex) then begin
-            Destroyed:=True
+         destroySymDefault := ExecutionContext.CompilerContext.TypDefaultDestructor;
+         destroySym := ClassSym.VMTMethod(destroySymDefault.VMTIndex);
+         if (destroySym = destroySymDefault) or (destroySym = nil) then begin
+            Destroyed := True
          end else begin
             CallDestructor;
             // workaround for self reference cleared from within constructor
-            if RefCount=-1 then _AddRef;
+            if RefCount = -1 then _AddRef;
          end;
       end;
       ExecutionContext.ScriptObjDestroyed(Self);
