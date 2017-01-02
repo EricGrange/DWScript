@@ -101,7 +101,7 @@ type
          FSRWLock : Pointer;
          FDummy : array [0..95-4*SizeOf(Pointer)] of Byte; // padding
          {$else}
-         FLock : TFixedCriticalSection;
+         FLock : TdwsCriticalSection;
          {$endif}
 
       public
@@ -1631,7 +1631,7 @@ end;
 {$else} // SRW_FALLBACK
 constructor TMultiReadSingleWrite.Create;
 begin
-   FLock := TFixedCriticalSection.Create;
+   FLock := TdwsCriticalSection.Create;
 end;
 
 destructor TMultiReadSingleWrite.Destroy;
