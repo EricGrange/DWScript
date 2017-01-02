@@ -1517,7 +1517,7 @@ initialization
    RegisterInternalFunction(TBigIntegerModInvFunc,    'ModInv',   ['base', SYS_BIGINTEGER, 'modulus', SYS_BIGINTEGER],
                                                                   SYS_BIGINTEGER, [iffStateLess], 'ModInv');
    RegisterInternalFunction(TBigIntegerFactorialFunc, 'BigFactorial', ['n', SYS_INTEGER], SYS_BIGINTEGER, [iffStateLess]);
-   RegisterInternalFunction(TBigIntegerPrimorialFunc, 'BigPrimorial', ['n', SYS_INTEGER], SYS_BIGINTEGER, [iffStateLess], 'Primorial');
+   RegisterInternalFunction(TBigIntegerPrimorialFunc, 'BigPrimorial', ['n', SYS_INTEGER], SYS_BIGINTEGER, [iffStateLess]);
 
    RegisterInternalIntFunction(TBigJacobiFunc,        'BigJacobi', ['a', SYS_BIGINTEGER, 'b', SYS_BIGINTEGER], [iffStateLess], 'Jacobi');
    RegisterInternalIntFunction(TBigLegendreFunc,      'BigLegendre', ['a', SYS_BIGINTEGER, 'b', SYS_BIGINTEGER], [iffStateLess], 'Legendre');
