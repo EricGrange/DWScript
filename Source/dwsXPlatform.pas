@@ -60,6 +60,7 @@ const
    INVALID_HANDLE_VALUE = DWORD(-1);
 
 type
+
    // see http://delphitools.info/2011/11/30/fixing-tcriticalsection/
    {$HINTS OFF}
    {$ifdef UNIX}
@@ -685,13 +686,6 @@ begin
 asm
    lock  dec [eax]
 {$endif}
-end;
-
-// InterlockedAdd64
-//
-function InterlockedAdd64(var val : Int64; const delta : Int64) : Int64;
-begin
-   Result := TInterlocked.Add(val, delta);
 end;
 
 // InterlockedExchangePointer
