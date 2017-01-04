@@ -1,0 +1,13 @@
+0
+Unexpected character (121) instead of digit in TryParse [line: 4, column: 11] for "2017-01-0y"
+Unexpected character (121) instead of digit in TryParse [line: 4, column: 11] for "20y7-01-01"
+Unexpected character (121) instead of digit in TryParse [line: 4, column: 11] for "2017y01-01"
+"-" expected after month in TryParse [line: 4, column: 11] for "2017-01y01"
+Invalid argument to date encode in TryParse [line: 4, column: 11] for "2017-01-99"
+Invalid argument to date encode in TryParse [line: 4, column: 11] for "2017-99-01"
+"T" expected after date in TryParse [line: 4, column: 11] for "2017-01-01y01:02:03"
+Unexpected character (121) instead of digit in TryParse [line: 4, column: 11] for "2017-01-01 y1:02:03"
+Unexpected character (121) instead of digit in TryParse [line: 4, column: 11] for "2017-01-01 01:y2:03"
+Unexpected character (121) instead of digit in TryParse [line: 4, column: 11] for "2017-01-01 01:02:y3"
+Unexpected ":" after minutes in TryParse [line: 4, column: 11] for "20170101T0102:03"
+":" expected after minutes in TryParse [line: 4, column: 11] for "20170101T01:0203"

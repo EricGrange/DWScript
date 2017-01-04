@@ -914,6 +914,9 @@ procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawB
 procedure StringBytesToWords(var buf : UnicodeString; swap : Boolean);
 procedure StringWordsToBytes(var buf : UnicodeString; swap : Boolean);
 
+type
+   EHexEncodingException = class (Exception);
+
 function BinToHex(const data; n : Integer) : UnicodeString; overload;
 function BinToHex(const data : RawByteString) : UnicodeString; overload; inline;
 
@@ -1188,7 +1191,7 @@ var
 begin
    n:=Length(data);
    if (n and 1)<>0 then
-      raise Exception.Create('Even hexadecimal character count expected');
+      raise EHexEncodingException.Create('Even hexadecimal character count expected');
 
    n:=n shr 1;
    SetLength(Result, n);
@@ -1201,7 +1204,7 @@ begin
          'A'..'F' : b := (Ord(c) shl 4)+(160-(Ord('A') shl 4));
          'a'..'f' : b := (Ord(c) shl 4)+(160-(Ord('a') shl 4));
       else
-         raise Exception.Create('Invalid characters in hexadecimal');
+         raise EHexEncodingException.CreateFmt('Invalid hexadecimal character at index %d', [2*i-1]);
       end;
       c:=pSrc[1];
       case c of
@@ -1209,7 +1212,7 @@ begin
          'A'..'F' : b := b + Ord(c) + (10-Ord('A'));
          'a'..'f' : b := b + Ord(c) + (10-Ord('a'));
       else
-         raise Exception.Create('Invalid characters in hexadecimal');
+         raise EHexEncodingException.CreateFmt('Invalid hexadecimal character at index %d', [2*i]);
       end;
       pDest^ := b;
       Inc(pDest);
