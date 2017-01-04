@@ -903,11 +903,22 @@ end;
 //
 procedure TdwsJIT.GreedyJIT(prog : TdwsProgram);
 var
+   i : Integer;
+   initStatement : TExprBase;
    statementJIT : TJITTedProgramExpr;
 begin
+   for i := 0 to prog.InitExpr.StatementCount-1 do begin
+      initStatement := prog.InitExpr.SubExpr[i];
+      if initStatement is TBlockExpr then begin
+         statementJIT := JITStatement(TBlockExpr(initStatement), True);
+         if statementJIT <> nil then
+            prog.InitExpr.ReplaceStatement(i, statementJIT);
+      end;
+   end;
+
    if prog.Expr is TProgramExpr then begin
-      statementJIT:=JITStatement(TProgramExpr(prog.Expr), True);
-      if statementJIT<>nil then begin
+      statementJIT := JITStatement(TProgramExpr(prog.Expr), True);
+      if statementJIT <> nil then begin
          prog.Expr.Free;
          prog.Expr:=statementJIT;
       end;
