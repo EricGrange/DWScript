@@ -3237,17 +3237,26 @@ end;
 // Optimize
 //
 function TStaticArrayExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
-var
-   v : Variant;
-begin
-   Result:=Self;
-   if IsConstant then begin
+
+   function DoOptimize(exec : TdwsExecution) : TProgramExpr;
+   var
+      v : Variant;
+      dc : IDataContext;
+   begin
       if Typ.Size=1 then begin
          EvalAsVariant(exec, v);
-         Result:=TConstExpr.Create(Typ, v);
-         Orphan(context);
+         Result := TConstExpr.Create(Typ, v);
+      end else begin
+         dc := DataPtr[exec];
+         Result := TConstExpr.Create(Typ, dc.AsPData^, dc.Addr);
       end;
+      Orphan(context);
    end;
+
+begin
+   if IsConstant then
+      Result := DoOptimize(exec)
+   else Result := Self;
 end;
 
 // AssignExpr
@@ -3291,15 +3300,21 @@ end;
 // EvalAsInteger
 //
 function TStaticArrayExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+var
+   dc : IDataContext;
 begin
-   Result:=FBaseExpr.DataPtr[exec].AsInteger[GetIndex(exec)];
+   FBaseExpr.GetDataPtr(exec, dc);
+   Result := dc.AsInteger[GetIndex(exec)];
 end;
 
 // EvalAsFloat
 //
 function TStaticArrayExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+var
+   dc : IDataContext;
 begin
-   Result:=FBaseExpr.DataPtr[exec].AsFloat[GetIndex(exec)];
+   FBaseExpr.GetDataPtr(exec, dc);
+   Result := dc.AsFloat[GetIndex(exec)];
 end;
 
 // EvalAsBoolean
