@@ -294,6 +294,7 @@ type
       function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
       function CompileInteger(expr : TTypedExpr) : Integer; override;
       procedure DoCompileAssignFloat(expr : TTypedExpr; source : TxmmRegister); override;
+      procedure CompileAssignInteger(expr : TTypedExpr; source : Integer); override;
    end;
    Tx86DynamicArrayBase = class (Tx86ArrayBase)
       procedure CompileAsData(expr : TTypedExpr);
@@ -804,6 +805,7 @@ begin
    RegisterJITter(TAppendStringVarExpr,         FInterpretedJITter.IncRefCount);
    RegisterJITter(TAppendConstStringVarExpr,    FInterpretedJITter.IncRefCount);
    RegisterJITter(TVarStringArraySetExpr,       FInterpretedJITter.IncRefCount);
+   RegisterJITter(TStringArrayOpExpr,           FInterpretedJITter.IncRefCount);
 
    RegisterJITter(TPlusAssignIntExpr,           FInterpretedJITter.IncRefCount);
    RegisterJITter(TMinusAssignIntExpr,          FInterpretedJITter.IncRefCount);
@@ -3301,31 +3303,53 @@ end;
 function Tx86StaticArray.CompileInteger(expr : TTypedExpr) : Integer;
 var
    e : TStaticArrayExpr;
-   delta : Integer;
+   delta, offsetBase : Integer;
 begin
    e:=TStaticArrayExpr(expr);
 
    if (e.BaseExpr is TConstExpr) then begin
 
       x86._mov_reg_dword(gprEAX, NativeUInt(@TConstExpr(e.BaseExpr).Data[0]));
+      offsetBase := 0;
+
+//   end else if (e.BaseExpr.ClassType=TVarExpr) then begin
+//
+//      x86._mov_reg_reg(gprEAX, cExecMemGPR);
+//      offsetBase := TVarExpr(e.BaseExpr).StackAddr*SizeOf(Variant);
 
    end else if (e.BaseExpr is TFieldExpr) then  begin
 
       jit.CompileScriptObj(TFieldExpr(e.BaseExpr).ObjectExpr);
       // TODO object check
       x86._mov_reg_dword_ptr_reg(gprEAX, gprEAX, vmt_ScriptObjInstance_IScriptObj_To_FData);
-      x86._add_reg_int32(gprEAX, TFieldExpr(e.BaseExpr).FieldSym.Offset*SizeOf(Variant));
+      offsetBase := TFieldExpr(e.BaseExpr).FieldSym.Offset*SizeOf(Variant);
 
    end else Exit(inherited);
 
-   CompileIndexToGPR(e.IndexExpr, gprECX, delta);
-   jit._RangeCheck(e, gprECX, delta, e.LowBound, e.LowBound+e.Count);
+   if e.IndexExpr is TConstIntExpr then begin
 
-   x86._shift_reg_imm(gpShl, gprECX, 4);
+      // assume range check done at compile time when index is constant on a static array
+      Inc(offsetBase, TConstIntExpr(e.IndexExpr).Value*SizeOf(Variant));
+      if offsetBase <> 0 then
+         x86._add_reg_int32(gprEAX, offsetBase);
 
-   x86._mov_reg_dword_ptr_indexed(gprEDX, gprEAX, gprECX, 1, cVariant_DataOffset+4);
-   x86._mov_reg_dword_ptr_indexed(gprEAX, gprEAX, gprECX, 1, cVariant_DataOffset);
+      x86._mov_reg_dword_ptr_reg(gprEDX, gprEAX, cVariant_DataOffset+4);
+      x86._mov_reg_dword_ptr_reg(gprEAX, gprEAX, cVariant_DataOffset);
 
+   end else begin
+
+      if offsetBase <> 0 then
+         x86._add_reg_int32(gprEAX, offsetBase);
+
+      CompileIndexToGPR(e.IndexExpr, gprECX, delta);
+      jit._RangeCheck(e, gprECX, delta, e.LowBound, e.LowBound+e.Count);
+
+      x86._shift_reg_imm(gpShl, gprECX, 4);
+
+      x86._mov_reg_dword_ptr_indexed(gprEDX, gprEAX, gprECX, 1, cVariant_DataOffset+4);
+      x86._mov_reg_dword_ptr_indexed(gprEAX, gprEAX, gprECX, 1, cVariant_DataOffset);
+
+   end;
    Result:=0;
 end;
 
@@ -3353,6 +3377,48 @@ begin
          index:=TConstIntExpr(e.IndexExpr).Value;
 
          x86._movsd_execmem_reg(TVarExpr(e.BaseExpr).StackAddr+index, source);
+
+         x86._shift_reg_imm(gpShl, gprECX, 4);
+
+      end else inherited;
+
+   end else inherited;
+end;
+
+// CompileAssignInteger
+//
+procedure Tx86StaticArray.CompileAssignInteger(expr : TTypedExpr; source : Integer);
+var
+   e : TStaticArrayExpr;
+   index, delta, offset : Integer;
+begin
+   e:=TStaticArrayExpr(expr);
+
+   if jit.IsInteger(e) then begin
+
+      if e.BaseExpr.ClassType=TVarExpr then begin
+
+         if e.IndexExpr is TConstIntExpr then begin
+
+            index := TConstIntExpr(e.IndexExpr).Value;
+            // assume statically checked before
+            x86._mov_execmem_eaxedx(TVarExpr(e.BaseExpr).StackAddr+index);
+
+         end else begin
+
+            CompileIndexToGPR(e.IndexExpr, gprECX, delta);
+            jit._RangeCheck(e, gprECX, delta, e.LowBound, e.LowBound+e.Count);
+
+            x86._shift_reg_imm(gpShl, gprECX, 4);
+
+            x86._add_reg_reg(gprECX, cExecMemGPR);
+
+            offset := TVarExpr(e.BaseExpr).StackAddr * SizeOf(Variant);
+
+            x86._mov_dword_ptr_reg_reg(gprECX, offset+cVariant_DataOffset+4, gprEDX);
+            x86._mov_dword_ptr_reg_reg(gprECX, offset+cVariant_DataOffset, gprEAX);
+
+         end;
 
       end else inherited;
 
