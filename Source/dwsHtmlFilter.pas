@@ -272,7 +272,7 @@ begin
 
       until (stop<=0);
 
-      Result:=output.ToString;
+      Result:=output.ToUnicodeString;
 
    finally
       output.ReturnToPool;

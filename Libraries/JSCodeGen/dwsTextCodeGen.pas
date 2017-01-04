@@ -154,7 +154,7 @@ begin
 
       json.EndArray;
 
-      Result:=wobs.ToString;
+      Result:=wobs.ToUnicodeString;
    finally
       json.Free;
       wobs.Free;

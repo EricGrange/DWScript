@@ -1381,9 +1381,9 @@ begin
    CompileResourceStrings(dest, prog);
    CompileDependencies(dest, prog);
 
-   FOutputLineOffset:=StrCountChar(dest.ToString, #10);
+   FOutputLineOffset:=StrCountChar(dest.ToUnicodeString, #10);
 
-   dest.WriteString(FOutput.ToString);
+   dest.WriteString(FOutput.ToUnicodeString);
 end;
 
 // CompiledOutput
@@ -1395,7 +1395,7 @@ begin
    buf:=TWriteOnlyBlockStream.Create;
    try
       WriteCompiledOutput(buf, prog);
-      Result:=buf.ToString;
+      Result:=buf.ToUnicodeString;
    finally
       buf.Free;
    end;

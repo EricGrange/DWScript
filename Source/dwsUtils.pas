@@ -702,8 +702,8 @@ type
          procedure WriteChar(utf16Char : WideChar); inline;
          procedure WriteDigits(value : Int64; digits : Integer);
 
-         // assumes data is an utf16 UnicodeString, spits out utf8 in FPC, utf16 in Delphi
-         function ToString : UnicodeString; override;
+         function ToString : String; override; deprecated 'use ToUnicodeString'; final;
+         function ToUnicodeString : UnicodeString;
          function ToUTF8String : RawByteString;
          function ToBytes : TBytes;
          function ToRawBytes : RawByteString;
@@ -713,34 +713,6 @@ type
          procedure StoreData(var buffer); overload;
          procedure StoreData(destStream : TStream); overload;
          procedure StoreUTF8Data(destStream : TStream); overload;
-   end;
-
-   IWriteOnlyBlockStream = interface
-      function Stream : TWriteOnlyBlockStream;
-
-      procedure WriteString(const utf16String : UnicodeString); overload;
-      procedure WriteChar(utf16Char : WideChar);
-      procedure WriteCRLF;
-
-      function ToString : UnicodeString;
-   end;
-
-   TAutoWriteOnlyBlockStream = class (TInterfacedSelfObject, IWriteOnlyBlockStream)
-      private
-         FStream : TWriteOnlyBlockStream;
-
-      protected
-         function Stream : TWriteOnlyBlockStream;
-
-         procedure WriteString(const utf16String : UnicodeString); overload;
-         procedure WriteChar(utf16Char : WideChar);
-         procedure WriteCRLF;
-
-      public
-         constructor Create;
-         destructor Destroy; override;
-
-         function ToString : UnicodeString; override;
    end;
 
    TSimpleInt64List = class(TSimpleList<Int64>)
@@ -1716,11 +1688,11 @@ procedure VarClearSafe(var v : Variant);
 begin
    case TVarData(v).VType of
       varEmpty : begin
-         TVarData(v).VUInt64:=0;
+         TVarData(v).VInt64:=0;
       end;
       varBoolean, varInt64, varDouble : begin
          TVarData(v).VType:=varEmpty;
-         TVarData(v).VUInt64:=0;
+         TVarData(v).VInt64:=0;
       end;
       varUnknown : begin
          TVarData(v).VType:=varEmpty;
@@ -1736,7 +1708,7 @@ begin
       end;
    else
       VarClear(v);
-      TVarData(v).VUInt64:=0;
+      TVarData(v).VInt64:=0;
    end;
 end;
 
@@ -1851,7 +1823,7 @@ end;
 
 // VarSetDefaultInt64
 //
-procedure VarSetDefaultInt64(var dest : Variant); overload;
+procedure VarSetDefaultInt64(var dest : Variant);
 begin
    VarClearSafe(dest);
 
@@ -1861,7 +1833,7 @@ end;
 
 // VarSetDefaultString
 //
-procedure VarSetDefaultString(var dest : Variant); inline;
+procedure VarSetDefaultString(var dest : Variant);
 begin
    VarClearSafe(dest);
 
@@ -3790,8 +3762,8 @@ procedure TWriteOnlyBlockStream.StoreUTF8Data(destStream : TStream);
 var
    buf : UTF8String;
 begin
-   buf:=UTF8Encode(ToString);
-   if buf<>'' then
+   buf := UTF8Encode(ToUnicodeString);
+   if buf <> '' then
       destStream.Write(buf[1], Length(buf));
 end;
 
@@ -4010,20 +3982,14 @@ end;
 
 // ToString
 //
-function TWriteOnlyBlockStream.ToString : UnicodeString;
-{$ifdef FPC}
-var
-   uniBuf : UnicodeString;
+function TWriteOnlyBlockStream.ToString : String;
 begin
-   if FTotalSize>0 then begin
+   Result := ToUnicodeString;
+end;
 
-      Assert((FTotalSize and 1) = 0);
-      SetLength(uniBuf, FTotalSize div SizeOf(WideChar));
-      StoreData(uniBuf[1]);
-      Result:=UTF8Encode(uniBuf);
-
-   end else Result:='';
-{$else}
+// ToUnicodeString
+//
+function TWriteOnlyBlockStream.ToUnicodeString : UnicodeString;
 begin
    if FTotalSize>0 then begin
 
@@ -4032,14 +3998,13 @@ begin
       StoreData(Result[1]);
 
    end else Result:='';
-   {$endif}
 end;
 
 // ToUTF8String
 //
 function TWriteOnlyBlockStream.ToUTF8String : RawByteString;
 begin
-   Result:=UTF8Encode(ToString);
+   Result := UTF8Encode(ToUnicodeString);
 end;
 
 // ToBytes
@@ -5656,59 +5621,6 @@ begin
    inherited CreateFmt(RTE_VariantCastFailed,
                        [VarTypeAsText(VarType(v)), desiredType, originalException.ClassName])
 
-end;
-
-// ------------------
-// ------------------ TAutoWriteOnlyBlockStream ------------------
-// ------------------
-
-// Create
-//
-constructor TAutoWriteOnlyBlockStream.Create;
-begin
-   FStream:=TWriteOnlyBlockStream.AllocFromPool;
-end;
-
-// Destroy
-//
-destructor TAutoWriteOnlyBlockStream.Destroy;
-begin
-   FStream.ReturnToPool;
-end;
-
-// Stream
-//
-function TAutoWriteOnlyBlockStream.Stream : TWriteOnlyBlockStream;
-begin
-   Result:=FStream;
-end;
-
-// WriteString
-//
-procedure TAutoWriteOnlyBlockStream.WriteString(const utf16String : UnicodeString);
-begin
-   FStream.WriteString(utf16String);
-end;
-
-// WriteChar
-//
-procedure TAutoWriteOnlyBlockStream.WriteChar(utf16Char : WideChar);
-begin
-   FStream.WriteChar(utf16Char);
-end;
-
-// WriteCRLF
-//
-procedure TAutoWriteOnlyBlockStream.WriteCRLF;
-begin
-   FStream.WriteCRLF;
-end;
-
-// ToString
-//
-function TAutoWriteOnlyBlockStream.ToString : UnicodeString;
-begin
-   Result:=FStream.ToString;
 end;
 
 // ------------------

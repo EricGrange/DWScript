@@ -137,8 +137,8 @@ begin
                   contextMapFileName:=ChangeFileExt(FTests[i], '.cmap');
                   if FileExists(contextMapFileName) then begin
                      expectedResult.LoadFromFile(contextMapFileName);
-                     CheckEquals(Trim(expectedResult.Text), json.Stream.ToString, FTests[i]);
-                  end else CheckEquals('', json.Stream.ToString, FTests[i]);
+                     CheckEquals(Trim(expectedResult.Text), json.Stream.ToUnicodeString, FTests[i]);
+                  end else CheckEquals('', json.Stream.ToUnicodeString, FTests[i]);
 
                finally
                   json.Free;

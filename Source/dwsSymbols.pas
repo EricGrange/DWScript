@@ -1969,7 +1969,7 @@ begin
             buffer.WriteString(#13#10);
          buffer.WriteString(callStack[i].Expr.ScriptLocation(callStack[i].Prog));
       end;
-      Result:=buffer.ToString;
+      Result:=buffer.ToUnicodeString;
    finally
       buffer.Free;
    end;

@@ -197,7 +197,7 @@ end;
 //
 function TdwsStringResult.GetStr : String;
 begin
-   Result:=FStrBuilder.ToString;
+   Result:=FStrBuilder.ToUnicodeString;
 end;
 
 { TdwsStringResultType }

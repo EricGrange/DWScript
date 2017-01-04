@@ -816,7 +816,7 @@ end;
 //
 function TRelativeDataContext.GetAsInteger(addr : Integer) : Int64;
 begin
-   Result := FGetPData^[FAddr+addr];
+   VariantToInt64( FGetPData^[FAddr+addr], Result );
 end;
 
 // SetAsInteger

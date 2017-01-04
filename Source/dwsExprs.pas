@@ -460,7 +460,7 @@ type
          function IsEmpty : Boolean; virtual;
 
          property Expr : TProgramExpr read FExpr write FExpr;
-         property InitExpr : TBlockInitExpr read FInitExpr;
+         property InitExpr : TBlockInitExpr read FInitExpr write FInitExpr;
          property Level : Integer read GetLevel;
          property CompileMsgs : TdwsCompileMessageList read FCompileMsgs write FCompileMsgs;
          property Parent : TdwsProgram read FParent;
@@ -3395,14 +3395,14 @@ end;
 //
 function TdwsDefaultResult.ToDataString : RawByteString;
 begin
-   Result:=ScriptStringToRawByteString(FTextBuilder.ToString);
+   Result:=ScriptStringToRawByteString(FTextBuilder.ToUnicodeString);
 end;
 
 // GetText
 //
 function TdwsDefaultResult.GetText : UnicodeString;
 begin
-   Result:=FTextBuilder.ToString;
+   Result:=FTextBuilder.ToUnicodeString;
 end;
 
 // ------------------

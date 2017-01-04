@@ -16,8 +16,8 @@ object dwsClassesLib: TdwsClassesLib
         Methods = <
           item
             Name = 'Destroy'
+            Attributes = [maVirtual, maOverride]
             OnEval = dwsUnitClassesTListMethodsDestroyEval
-            Attributes = [maOverride]
             Kind = mkDestructor
           end
           item
@@ -174,8 +174,8 @@ object dwsClassesLib: TdwsClassesLib
         Methods = <
           item
             Name = 'Destroy'
+            Attributes = [maVirtual, maOverride]
             OnEval = dwsUnitClassesTStringsMethodsDestroyEval
-            Attributes = [maOverride]
             Kind = mkDestructor
           end
           item
@@ -552,20 +552,17 @@ object dwsClassesLib: TdwsClassesLib
             DataType = 'String'
             ReadAccess = 'GetText'
             WriteAccess = 'SetText'
-            IsDefault = False
           end
           item
             Name = 'Count'
             DataType = 'Integer'
             ReadAccess = 'GetCount'
-            IsDefault = False
           end
           item
             Name = 'CommaText'
             DataType = 'String'
             ReadAccess = 'GetCommaText'
             WriteAccess = 'SetCommaText'
-            IsDefault = False
           end
           item
             Name = 'Strings'
@@ -591,7 +588,6 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'Integer'
                 IsWritable = False
               end>
-            IsDefault = False
           end
           item
             Name = 'Names'
@@ -603,7 +599,6 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'String'
                 IsWritable = False
               end>
-            IsDefault = False
           end
           item
             Name = 'Values'
@@ -616,7 +611,6 @@ object dwsClassesLib: TdwsClassesLib
                 DataType = 'String'
                 IsWritable = False
               end>
-            IsDefault = False
           end>
       end
       item
@@ -701,21 +695,18 @@ object dwsClassesLib: TdwsClassesLib
             DataType = 'Integer'
             ReadAccess = 'GetDuplicates'
             WriteAccess = 'SetDuplicates'
-            IsDefault = False
           end
           item
             Name = 'Sorted'
             DataType = 'Boolean'
             ReadAccess = 'GetSorted'
             WriteAccess = 'SetSorted'
-            IsDefault = False
           end
           item
             Name = 'CaseSensitive'
             DataType = 'Boolean'
             ReadAccess = 'GetCaseSensitive'
             WriteAccess = 'SetCaseSensitive'
-            IsDefault = False
           end>
       end
       item
@@ -750,8 +741,8 @@ object dwsClassesLib: TdwsClassesLib
         Methods = <
           item
             Name = 'Destroy'
+            Attributes = [maVirtual, maOverride]
             OnEval = dwsUnitClassesTIntegerHashtableMethodsDestroyEval
-            Attributes = [maOverride]
             Kind = mkDestructor
           end
           item
@@ -824,8 +815,8 @@ object dwsClassesLib: TdwsClassesLib
         Methods = <
           item
             Name = 'Destroy'
+            Attributes = [maVirtual, maOverride]
             OnEval = dwsUnitClassesTStringHashtableMethodsDestroyEval
-            Attributes = [maOverride]
             Kind = mkDestructor
           end
           item
@@ -897,8 +888,8 @@ object dwsClassesLib: TdwsClassesLib
         Methods = <
           item
             Name = 'Destroy'
+            Attributes = [maVirtual, maOverride]
             OnEval = dwsUnitClassesTStackMethodsDestroyEval
-            Attributes = [maOverride]
             Kind = mkDestructor
           end
           item
@@ -941,8 +932,8 @@ object dwsClassesLib: TdwsClassesLib
         Methods = <
           item
             Name = 'Destroy'
+            Attributes = [maVirtual, maOverride]
             OnEval = dwsUnitClassesTQueueMethodsDestroyEval
-            Attributes = [maOverride]
             Kind = mkDestructor
           end
           item

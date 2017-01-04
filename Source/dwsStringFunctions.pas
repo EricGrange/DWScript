@@ -1110,7 +1110,7 @@ begin
             dynIntf.EvalAsString(i, item);
             wobs.WriteString(item);
          end;
-         Result:=wobs.ToString;
+         Result:=wobs.ToUnicodeString;
       finally
          wobs.ReturnToPool;
       end;

@@ -757,7 +757,7 @@ end;
 procedure TdwsClassesLib.dwsUnitClassesTStringBuilderMethodsToStringEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsString:=TWriteOnlyBlockStream(ExtObject).ToString;
+   Info.ResultAsString:=TWriteOnlyBlockStream(ExtObject).ToUnicodeString;
 end;
 
 end.

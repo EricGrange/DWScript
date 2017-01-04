@@ -763,7 +763,7 @@ procedure TCornerCasesTests.SubExprTest;
       sb:=TWriteOnlyBlockStream.Create;
       try
          SubExprTree(sb, expr, 0);
-         Result:=sb.ToString;
+         Result:=sb.ToUnicodeString;
       finally
          sb.Free;
       end;
@@ -1073,7 +1073,7 @@ begin
                   +#9#9']'#13#10
                   +#9'}'#13#10
                   +']',
-                  wobs.ToString, 'JSON map');
+                  wobs.ToUnicodeString, 'JSON map');
    finally
       writer.Free;
       wobs.Free;

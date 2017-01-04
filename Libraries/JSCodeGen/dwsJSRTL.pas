@@ -1204,7 +1204,7 @@ begin
          wobs.WriteString(cJSRTLDependencies[i].Code);
          wobs.WriteString(#13#10);
       end;
-      Result:=wobs.ToString;
+      Result:=wobs.ToUnicodeString;
    finally
       wobs.Free;
    end;

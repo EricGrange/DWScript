@@ -3522,7 +3522,7 @@ begin
       buf:=TWriteOnlyBlockStream.Create;
       try
          inherited WriteCompiledOutput(buf, prog);
-         JavaScriptMinify(buf.ToString, dest);
+         JavaScriptMinify(buf.ToUnicodeString, dest);
       finally
          buf.Free;
       end;
@@ -3648,7 +3648,7 @@ begin
       json.WriteName('names');
       json.WriteStrings(names);
       json.WriteName('mappings');
-      json.WriteString(mappings.ToString);
+      json.WriteString(mappings.ToUnicodeString);
 
       json.EndObject;
    finally
@@ -3670,7 +3670,7 @@ begin
    dest:=TWriteOnlyBlockStream.Create;
    try
       WriteSourceMap(dest, srcFileName, outFileName, srcRoot, srcSuffix);
-      Result:=dest.ToString;
+      Result:=dest.ToUnicodeString;
    finally
       dest.Free;
    end;
@@ -3777,7 +3777,7 @@ begin
    wobs:=TWriteOnlyBlockStream.Create;
    try
       WriteDebuggingSourceFile(wobs, srcFile);
-      Result:=wobs.ToString;
+      Result:=wobs.ToUnicodeString;
    finally
       wobs.Free;
    end;

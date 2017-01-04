@@ -60,7 +60,7 @@ begin
    buf:=TWriteOnlyBlockStream.Create;
    try
       JavaScriptMinify(src, buf);
-      Result:=buf.ToString;
+      Result:=buf.ToUnicodeString;
    finally
       buf.Free;
    end;

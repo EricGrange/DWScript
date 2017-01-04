@@ -256,7 +256,7 @@ begin
    wr:=TdwsJSONWriter.Create(wobs);
    try
       ToJSON(wr);
-      Result:=wobs.ToString;
+      Result:=wobs.ToUnicodeString;
    finally
       wr.Free;
       wobs.Free;

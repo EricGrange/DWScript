@@ -184,7 +184,7 @@ begin
             output.WriteString(CodeGenPostfix);
          until False;
 
-         Result:=output.ToString;
+         Result:=output.ToUnicodeString;
       finally
          output.Free;
       end;

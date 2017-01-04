@@ -1312,7 +1312,7 @@ begin
          dataExpr:=(expr as TDataExpr);
          StringifySymbol(args.Exec, writer, expr.Typ, dataExpr.DataPtr[args.Exec]);
       end;
-      Result:=stream.ToString;
+      Result:=stream.ToUnicodeString;
    finally
       writer.Free;
       stream.ReturnToPool;
