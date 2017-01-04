@@ -491,7 +491,7 @@ begin
 
    Assert(Pos('$1', aRewrite) = Length(aRewrite)-1);
 
-   FRewriteLength := Length(aRewrite)-1;
+   FRewriteLength := Length(aRewrite)-2;
    FRewrite := Copy(aRewrite, 1, FRewriteLength);
 
    FPassThrough := (FStart = FRewrite);
@@ -515,8 +515,10 @@ begin
       p := PChar(Pointer(rewrittenURL));
       System.Move(Pointer(FRewrite)^, p^, FRewriteLength*SizeOf(Char));
       Inc(p, FRewriteLength);
-      System.Move(originURL[FStartLength], p^, n - FStartLength);
+      if n > FStartLength then
+         System.Move(originURL[FStartLength+1], p^, n - FStartLength);
    end;
+   Inc(FHitCount);
    Result := True;
 end;
 

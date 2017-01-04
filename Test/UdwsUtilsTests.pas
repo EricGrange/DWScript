@@ -359,7 +359,7 @@ begin
    try
       for i := 0 to 10 do
          wobs.WriteString('Hello World');
-      str := wobs.ToString;
+      str := wobs.ToUnicodeString;
       ms := TMemoryStream.Create;
       try
          wobs.StoreData(ms);
@@ -1490,6 +1490,19 @@ procedure TdwsUtilsTests.URLRewriter;
          finally
             rule.Free;
          end;
+
+         if     (Pos('*', pattern) = Length(pattern))
+            and (Pos('$1', rewrite) = Length(rewrite)-1) then begin
+            rule := TdwsURLRewriteRuleStartMatch.Create(pattern, rewrite);
+            try
+               if rule.Apply(testUrl, rw) then
+                  CheckEquals(rewrittenUrl, rw, pattern + ', ' + rewrite + ', ' + testUrl)
+               else CheckEquals(rewrittenUrl, testUrl, pattern + ', ' + rewrite + ', ' + testUrl);
+            finally
+               rule.Free;
+            end;
+         end;
+
       except
          on E: Exception do
             Check(False, 'Got exception for "'+pattern + '", "' + rewrite + '": ' +E.Message);
@@ -1509,6 +1522,10 @@ begin
 
    CheckPass('a*', '$1a', 'abc', 'bca');
    CheckPass('a*', '$1a', 'a', 'a');
+
+   CheckPass('abc*', 'def$1', 'ab', 'ab');
+   CheckPass('abc*', 'def$1', 'abc', 'def');
+   CheckPass('abc*', 'def$1', 'abc123', 'def123');
 
    CheckPass('*a', 'a$1', 'za', 'az');
    CheckPass('*a', 'a$1', 'a', 'a');
