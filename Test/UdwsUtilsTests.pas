@@ -21,7 +21,7 @@ uses Classes, SysUtils, Math, Variants, Types,
    dwsXPlatformTests, dwsUtils,
    dwsXPlatform, dwsWebUtils, dwsTokenStore, dwsCryptoXPlatform,
    dwsEncodingLibModule, dwsGlobalVars, dwsEncoding, dwsDataContext,
-   dwsXXHash, dwsURLRewriter;
+   dwsXXHash, dwsURLRewriter, dwsJSON;
 
 type
 
@@ -1027,6 +1027,7 @@ end;
 procedure TdwsUtilsTests.TokenStoreData;
 var
    store : TdwsTokenStore;
+   js : TdwsJSONWriter;
 begin
    store:=TdwsTokenStore.Create;
    try
@@ -1040,6 +1041,13 @@ begin
       CheckEquals('', store.TokenData['a']);
       CheckEquals('bb', store.TokenData['b']);
       CheckEquals('', store.TokenData['c']);
+      js := TdwsJSONWriter.Create;
+      try
+         store.SaveToJSON(js);
+         CheckTrue(StrMatches(js.ToString, '{"b":{"data":"bb","expire":*}}'), js.ToString);
+      finally
+         js.Free;
+      end;
    finally
       store.Free;
    end;
