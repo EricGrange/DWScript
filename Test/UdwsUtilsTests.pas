@@ -29,7 +29,7 @@ type
       private
          FTightList : TTightList;
          FDummy : TObject;
-         FRewriterPattern, FRewriterRewrite : String;
+         FRewriterPattern, FRewriterRewrite, FRewriterURL : String;
 
       protected
          procedure SetUp; override;
@@ -397,8 +397,16 @@ end;
 // FailURLRewriterRule
 //
 procedure TdwsUtilsTests.FailURLRewriterRule;
+var
+   rule :  TdwsURLRewriteRuleGeneric;
+   rewritten : String;
 begin
-   TdwsURLRewriteRuleGeneric.Create(FRewriterPattern, FRewriterRewrite).Free;
+   rule := TdwsURLRewriteRuleGeneric.Create(FRewriterPattern, FRewriterRewrite);
+   try
+      rule.Apply(FRewriterURL, rewritten);
+   finally
+      rule.Free;
+   end;
 end;
 
 // SetUp
@@ -1468,10 +1476,11 @@ end;
 //
 procedure TdwsUtilsTests.URLRewriter;
 
-   procedure CheckFail(const pattern, rewrite : String);
+   procedure CheckFail(const pattern, rewrite : String; const url : String = '');
    begin
       FRewriterPattern := pattern;
       FRewriterRewrite := rewrite;
+      FRewriterURL := url;
       CheckException(FailURLRewriterRule, EdwsURLRewriterException,
                      'No exception for "' + pattern + '", "' + rewrite + '"');
    end;
@@ -1517,6 +1526,8 @@ begin
    CheckFail('a', '$1');
    CheckFail('*aa*', '$1$2$3');
    CheckFail('a*b*c*d*e*f*g*h*i*j*', '$1$2$3');
+   CheckFail('*', '$2');
+   CheckFail('*', '$1$1$1', StringOfChar('a', cMAX_REWRITTEN_URL_SIZE div 2));
 
    CheckPass('*', '$1', 'abc', 'abc');
 
