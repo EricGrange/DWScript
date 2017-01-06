@@ -466,6 +466,7 @@ type
          property BucketObject[index : Integer] : TObject read GetBucketObject write SetBucketObject;
          property BucketName[index : Integer] : UnicodeString read GetBucketName;
          property BucketIndex[const aName : UnicodeString] : Integer read GetIndex;
+         property BucketHashedIndex[const aName : UnicodeString; aHash : Cardinal] : Integer read GetHashedIndex;
 
          property Count : Integer read FCount;
          property HighIndex : Integer read FHighIndex;
