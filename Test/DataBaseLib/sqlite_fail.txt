@@ -2,3 +2,4 @@ Empty query
 Error SQLITE_ERROR (1) [bug] using 3.12.2 - near "bug": syntax error, extended_errcode=1
 Empty query
 Error SQLITE_ERROR (1) [nope] using 3.12.2 - near "nope": syntax error, extended_errcode=1
+Unsupported parameter type (VarType 13) at index 1

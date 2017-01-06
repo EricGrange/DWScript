@@ -1,4 +1,4 @@
-var db := DataBase.Create('SQLite', [':memory:']);
+﻿var db := DataBase.Create('SQLite', [':memory:']);
 
 try
 	db.Exec('');
@@ -23,6 +23,13 @@ end;
 
 try
 	db.Query('nope');
+except
+	on e : Exception do
+		PrintLn(e.Message);
+end;
+
+try
+	db.Query('select ?', [db]);
 except
 	on e : Exception do
 		PrintLn(e.Message);

@@ -196,7 +196,7 @@ begin
          varString : rq.Bind(i, p.VString, Length(RawByteString(p.VString)));
          varDate : BindDateTime(rq, i, p);
       else
-         raise Exception.CreateFmt('Unsupported VarType %d', [p.VType]);
+         raise EDWSDataBase.CreateFmt('Unsupported parameter type (VarType %d) at index %d', [p.VType, i]);
       end;
    end;
 end;
