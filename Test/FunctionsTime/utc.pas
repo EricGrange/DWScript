@@ -1,4 +1,4 @@
-FormatSettings.ShortDateFormat := 'yyyy-mm-dd';
+﻿FormatSettings.ShortDateFormat := 'yyyy-mm-dd';
 
 var delta := StrToDate('2000-01-01', DateTimeZone.Local)-StrToDate('2000-01-01', DateTimeZone.UTC);
 
@@ -13,7 +13,15 @@ PrintLn(StrToDateTimeDef('2010-01-01 12:34:56', 0, DateTimeZone.Local)-StrToDate
 
 // roundtrip vs UTC delta second accuracy as time format does not include milliseconds
 
-var t := Now;
+var t := EncodeDate(2017, 1, 1, DateTimeZone.Local);
+delta := t-EncodeDate(2017, 1, 1, DateTimeZone.UTC);
 
-PrintLn( Abs( StrToDateTime(DateTimeToStr(t, DateTimeZone.UTC), DateTimeZone.Local)-t-2*delta )*86400 <1 );
-PrintLn( Abs( StrToDateTime(DateTimeToStr(t, DateTimeZone.Local), DateTimeZone.UTC)-t+2*delta )*86400 <1 );
+PrintLn( Abs( StrToDateTime(DateTimeToStr(t, DateTimeZone.UTC), DateTimeZone.Local)-t-delta )*86400 <1 );
+PrintLn( Abs( StrToDateTime(DateTimeToStr(t, DateTimeZone.Local), DateTimeZone.UTC)-t+delta )*86400 <1 );
+
+t := EncodeDate(2016, 8, 1, DateTimeZone.Local);
+delta := t-EncodeDate(2016, 8, 1, DateTimeZone.UTC);
+
+PrintLn( Abs( StrToDateTime(DateTimeToStr(t, DateTimeZone.UTC), DateTimeZone.Local)-t-delta )*86400 <1 );
+PrintLn( Abs( StrToDateTime(DateTimeToStr(t, DateTimeZone.Local), DateTimeZone.UTC)-t+delta )*86400 <1 );
+
