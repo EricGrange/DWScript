@@ -21,7 +21,7 @@ interface
 
 uses
    SysUtils,
-   dwsJSON, dwsUtils;
+   dwsJSON, dwsUtils, dwsXPlatform, dwsXXHash;
 
 type
 
@@ -99,7 +99,8 @@ type
 
    JSONPath = class
 
-      class function Query(const aQuery : UnicodeString; aJSON : TdwsJSONValue) : TdwsJSONValueList; static;
+      class function Query(const aQuery : UnicodeString; aJSON : TdwsJSONValue) : TdwsJSONValueList; overload; static;
+      class function Query(const aQuery, aJSON : UnicodeString) : TdwsJSONValueList; overload; static;
 
    end;
 
@@ -112,6 +113,81 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+const
+   cJSONCacheMaxSize = 128*1024;
+
+var
+   vJSONCacheLock : TMultiReadSingleWrite;
+   vJSONCache : TNameObjectHash;
+   vJSONCacheSize : Integer;
+
+procedure InitializeJSONCache;
+begin
+   vJSONCacheLock := TMultiReadSingleWrite.Create;
+   vJSONCache := TNameObjectHash.Create;
+end;
+
+procedure FinalizeJSONCache;
+begin
+   FreeAndNil(vJSONCacheLock);
+   vJSONCache.Clean;
+   FreeAndNil(vJSONCache);
+end;
+
+function AcquireFromJSONCache(const json : UnicodeString) : TdwsJSONValue;
+var
+   h : Cardinal;
+   i : Integer;
+begin
+   Result := nil;
+   h := vJSONCache.HashName(json);
+   vJSONCacheLock.BeginWrite;
+   try
+      i := vJSONCache.BucketHashedIndex[json, h];
+      if i >= 0 then begin
+         Result := vJSONCache.BucketObject[i] as TdwsJSONValue;
+         if Result <> nil then begin
+            vJSONCache.Objects[json] := nil;
+            Dec(vJSONCacheSize, Length(json));
+         end;
+      end;
+   finally
+      vJSONCacheLock.EndWrite;
+   end;
+   if Result = nil then
+      Result := TdwsJSONValue.ParseString(json);
+end;
+
+procedure ReleaseToJSONCache(const json : UnicodeString; jv : TdwsJSONValue);
+var
+   h : Cardinal;
+   i : Integer;
+begin
+   if Length(json) < cJSONCacheMaxSize then begin
+      h := vJSONCache.HashName(json);
+      vJSONCacheLock.BeginWrite;
+      try
+         if vJSONCacheSize + Length(json) > cJSONCacheMaxSize then begin
+            vJSONCache.Clean;
+            vJSONCacheSize := 0;
+         end;
+         i := vJSONCache.BucketHashedIndex[json, h];
+         if i < 0 then begin
+            vJSONCache.AddObject(json, jv);
+            Inc(vJSONCacheSize, Length(json));
+            jv := nil;
+         end else if vJSONCache.BucketObject[i] = nil then begin
+            vJSONCache.BucketObject[i] := jv;
+            Inc(vJSONCacheSize, Length(json));
+            jv := nil;
+         end;
+      finally
+         vJSONCacheLock.EndWrite;
+      end;
+   end;
+   jv.Free;
+end;
 
 // ------------------
 // ------------------ TdwsJSONPathOperator ------------------
@@ -370,7 +446,7 @@ end;
 // ------------------ JSONPath ------------------
 // ------------------
 
-// Query
+// Query (json parsed)
 //
 class function JSONPath.Query(const aQuery : UnicodeString; aJSON : TdwsJSONValue) : TdwsJSONValueList;
 var
@@ -383,5 +459,33 @@ begin
       q.Free;
    end;
 end;
+
+// Query (json string)
+//
+class function JSONPath.Query(const aQuery, aJSON : UnicodeString) : TdwsJSONValueList;
+var
+   jv : TdwsJSONValue;
+begin
+   jv := AcquireFromJSONCache(aJSON);
+   try
+      Result := Query(aQuery, jv);
+   finally
+      ReleaseToJSONCache(aJSON, jv);
+   end;
+end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   InitializeJSONCache;
+
+finalization
+
+   FinalizeJSONCache;
 
 end.
