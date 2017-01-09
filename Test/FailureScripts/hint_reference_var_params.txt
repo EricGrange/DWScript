@@ -1,4 +1,2 @@
 Hint: "o" parameter is a reference type passed as VAR, but never written to [line: 6, column: 27]
-Hint: "o" parameter is a reference type passed as CONST [line: 16, column: 29]
 Hint: "o" parameter is a reference type passed as VAR, but never written to [line: 23, column: 21]
-Hint: "o" parameter is a reference type passed as CONST [line: 33, column: 23]

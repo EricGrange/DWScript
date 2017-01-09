@@ -2962,35 +2962,9 @@ begin
 end;
 
 function TdwsParameter.DoGenerate(systemTable : TSystemSymbolTable; Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
-//var
-//   paramSym : TParamSymbol;
-//   paramType : TTypeSymbol;
-//   elemSym : TSymbol;
-//   elemValue : Integer;
 begin
    Result:=nil;
-   Assert(False);  // shouldn't be used anymore (not sure yet)
-//   FIsGenerating := True;
-//   paramType := GetDataType(Table, DataType);
-//   if IsLazy then
-//      paramSym:=TLazyParamSymbol.Create(Name, paramType)
-//   else if IsVarParam then begin
-//      if IsWritable then
-//         paramSym := TVarParamSymbol.Create(Name, paramType)
-//      else paramSym := TConstParamSymbol.Create(Name, paramType)
-//   end else if HasDefaultValue then begin
-//      paramSym := TParamSymbolWithDefaultValue.Create(Name, paramType);
-//      if paramType is TEnumerationSymbol then begin
-//         elemSym:=TEnumerationSymbol(paramType).Elements.FindLocal(DefaultValue);
-//         if elemSym=nil then
-//            elemValue:=DefaultValue
-//         else elemValue:=TElementSymbol(elemSym).UserDefValue;
-//         TParamSymbolWithDefaultValue(paramSym).SetDefaultValue(elemValue);
-//      end else TParamSymbolWithDefaultValue(paramSym).SetDefaultValue(DefaultValue);
-//   end else begin
-//      paramSym := TParamSymbol.Create(Name, paramType);
-//   end;
-//   Result := paramSym;
+   Assert(False);  // shouldn't be used anymore
 end;
 
 function TdwsParameter.GetDisplayName: UnicodeString;

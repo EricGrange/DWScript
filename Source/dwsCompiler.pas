@@ -420,14 +420,14 @@ type
       protected
          function Optimize : Boolean;
 
-         function CheckPropertyFuncParams(paramsA : TSymbolTable; methSym : TMethodSymbol;
+         function CheckPropertyFuncParams(paramsA : TParamsSymbolTable; methSym : TMethodSymbol;
                                           indexSym : TSymbol = nil; typSym : TTypeSymbol = nil) : Boolean;
          procedure CheckName(const name : UnicodeString; const namePos : TScriptPos);
          function  IdentifySpecialName(const name : UnicodeString) : TSpecialKeywordKind;
          procedure CheckSpecialName(const name : UnicodeString);
          procedure CheckSpecialNameCase(const name : UnicodeString; sk : TSpecialKeywordKind;
                                         const namePos : TScriptPos);
-         function  CheckParams(tableA, tableB : TSymbolTable; checkNames : Boolean; skipB : Integer = 0) : Boolean;
+         function  CheckParams(tableA, tableB : TParamsSymbolTable; checkNames : Boolean; skipB : Integer = 0) : Boolean;
          procedure CompareFuncKinds(a, b : TFuncKind);
          procedure CompareFuncSymbolParams(a, b : TFuncSymbol);
          function  CurrentStruct : TCompositeTypeSymbol;
@@ -442,7 +442,8 @@ type
 
          function GetLazyParamExpr(dataSym : TLazyParamSymbol) : TLazyParamExpr;
          function GetVarParamExpr(dataSym : TVarParamSymbol) : TByRefParamExpr;
-         function GetConstParamExpr(dataSym : TConstParamSymbol) : TByRefParamExpr;
+         function GetConstByRefParamExpr(dataSym : TConstByRefParamSymbol) : TByRefParamExpr;
+         function GetConstParamExpr(dataSym : TParamSymbol) : TVarExpr;
 
          function GetSelfParamExpr(selfSym : TDataSymbol) : TVarExpr;
          function ReadAssign(token : TTokenType; var left : TDataExpr) : TProgramExpr;
@@ -4555,7 +4556,7 @@ begin
          if sym is TArraySymbol then begin
             if sym is TDynamicArraySymbol then
                varExpr:=GetVarExpr(methSym.SelfSym)
-            else varExpr:=GetConstParamExpr(methSym.SelfSym as TConstParamSymbol);
+            else varExpr:=GetConstByRefParamExpr(methSym.SelfSym as TConstByRefParamSymbol);
             Result:=ReadArrayMethod(name, namePos, varExpr);
             Exit;
          end;
@@ -4746,9 +4747,9 @@ begin
 
          Result:=ReadSymbol(GetVarParamExpr(TVarParamSymbol(sym)), IsWrite, expecting);
 
-      end else if symClassType=TConstParamSymbol then begin
+      end else if symClassType=TConstByRefParamSymbol then begin
 
-         Result:=ReadSymbol(GetConstParamExpr(TConstParamSymbol(sym)), IsWrite, expecting);
+         Result:=ReadSymbol(GetConstByRefParamExpr(TConstByRefParamSymbol(sym)), IsWrite, expecting);
 
       end else if symClassType=TResourceStringSymbol then begin
 
@@ -6764,9 +6765,9 @@ begin
          Result:=GetMethodExpr(methodSym,
                                TConstExpr.Create(structSym.MetaSymbol, Int64(structSym)),
                                rkClassOfRef, FTok.HotPos, options);
-      end else if progMeth.SelfSym is TConstParamSymbol then begin
+      end else if progMeth.SelfSym is TConstByRefParamSymbol then begin
          Result:=GetMethodExpr(methodSym,
-                               GetConstParamExpr(TConstParamSymbol(progMeth.SelfSym)),
+                               GetConstByRefParamExpr(TConstByRefParamSymbol(progMeth.SelfSym)),
                                rkObjRef, FTok.HotPos, options);
       end else if progMeth.SelfSym=nil then begin
          Result:=GetMethodExpr(methodSym, nil, rkClassOfRef, FTok.HotPos, options);
@@ -9055,11 +9056,11 @@ end;
 
 // CheckPropertyFuncParams
 //
-function TdwsCompiler.CheckPropertyFuncParams(paramsA : TSymbolTable; methSym : TMethodSymbol;
+function TdwsCompiler.CheckPropertyFuncParams(paramsA : TParamsSymbolTable; methSym : TMethodSymbol;
                                       indexSym : TSymbol = nil;
                                       typSym : TTypeSymbol = nil) : Boolean;
 var
-   paramsB : TSymbolTable;
+   paramsB : TParamsSymbolTable;
    skipB : Integer;
 begin
    Result:=False;
@@ -9461,9 +9462,9 @@ var
    instr : TProgramExpr;
    expr : TTypedExpr;
    leftExpr : TDataExpr;
-   paramExpr : TByRefParamExpr;
+   paramExpr : TVarExpr;
    meth : TMethodSymbol;
-   paramSymbol : TConstParamSymbol;
+   paramSymbol : TParamSymbol;
    oldProg : TdwsProgram;
    proc : TdwsProcedure;
 begin
@@ -9491,7 +9492,7 @@ begin
       meth:=propSym.OwnerSymbol.CreateAnonymousMethod(fkProcedure, cvPrivate, classProperty);
 
       meth.AddParams(propSym.ArrayIndices);
-      paramSymbol:=TConstParamSymbol.Create('Value', propSym.Typ);
+      paramSymbol := CreateConstParamSymbol('Value', propSym.Typ);
       meth.Params.AddSymbol(paramSymbol);
 
       propSym.OwnerSymbol.AddMethod(meth);
@@ -9505,7 +9506,7 @@ begin
       CurrentProg:=proc;
       FPendingSetterValueExpr:=nil;
       try
-         FPendingSetterValueExpr:=GetConstParamExpr(paramSymbol);
+         FPendingSetterValueExpr := GetConstParamExpr(paramSymbol);
          instr:=ReadInstr;
          if instr is TNullExpr then
             FMsgs.AddCompilerWarning(scriptPos, CPW_PropertyWriterDoesNothing);
@@ -11285,7 +11286,7 @@ begin
                if isVarParam then
                   ArrayIndices.AddSymbol(TVarParamSymbol.Create(names[i], typSym))
                else if isConstParam then
-                  ArrayIndices.AddSymbol(TConstParamSymbol.Create(names[i], typSym))
+                  ArrayIndices.AddSymbol(CreateConstParamSymbol(names[i], typSym))
                else ArrayIndices.AddSymbol(TParamSymbol.Create(names[i], typSym));
             end;
          end;
@@ -11307,7 +11308,7 @@ procedure TdwsCompiler.ReadParams(const hasParamMeth : THasParamSymbolMethod;
                                   expectedLambdaParams : TParamsSymbolTable;
                                   var posArray : TScriptPosArray);
 var
-   lazyParam, varParam, constParam : Boolean;
+   paramSemantics : TParamSymbolSemantics;
 
    procedure GenerateParam(const curName : UnicodeString; const scriptPos : TScriptPos;
                            paramType : TTypeSymbol; const typScriptPos : TScriptPos;
@@ -11315,13 +11316,14 @@ var
    var
       paramSym : TParamSymbol;
    begin
-      if lazyParam then begin
-         paramSym := TLazyParamSymbol.Create(curName, paramType)
-      end else if varParam then begin
-         paramSym := TVarParamSymbol.Create(curName, paramType)
-      end else if constParam then begin
-         paramSym := TConstParamSymbol.Create(curName, paramType)
-      end else begin
+      case paramSemantics of
+         pssLazy :
+            paramSym := TLazyParamSymbol.Create(curName, paramType);
+         pssVar :
+            paramSym := TVarParamSymbol.Create(curName, paramType);
+         pssConst :
+            paramSym := CreateConstParamSymbol(curName, paramType);
+      else
          if Assigned(defaultExpr) then begin
             if defaultExpr.ClassType=TArrayConstantExpr then begin
                paramSym:=TParamSymbolWithDefaultValue.Create(
@@ -11379,14 +11381,13 @@ begin
             paramIdx:=0;
             onlyDefaultParamsNow:=False;
             repeat
-               lazyParam:=FTok.TestDelete(ttLAZY);
-               varParam:=FTok.TestDelete(ttVAR);
-               if not varParam then
-                  constParam:=FTok.TestDelete(ttCONST)
-               else constParam:=False;
-
-               if lazyParam and (varParam or constParam) then
-                  FMsgs.AddCompilerError(FTok.HotPos, CPE_LazyParamCantBeVarOrConst);
+               case FTok.TestDeleteAny([ttLAZY, ttVAR, ttCONST]) of
+                  ttLAZY : paramSemantics := pssLazy;
+                  ttVAR : paramSemantics := pssVar;
+                  ttCONST : paramSemantics := pssConst;
+               else
+                  paramSemantics := pssCopy;
+               end;
 
                ReadNameList(names, localPosArray);
                ConcatScriptPosArray(posArray, localPosArray, names.Count);
@@ -11397,12 +11398,8 @@ begin
 
                      defaultExpr:=nil;
                      for i:=0 to names.Count-1 do begin
-                        expectedParam:=expectedLambdaParams[paramIdx+i];
-                        if not (lazyParam or varParam or constParam) then begin
-                           lazyParam:=(expectedParam.ClassType=TLazyParamSymbol);
-                           varParam:=(expectedParam.ClassType=TVarParamSymbol);
-                           constParam:=(expectedParam.ClassType=TConstParamSymbol);
-                        end;
+                        expectedParam := expectedLambdaParams[paramIdx+i];
+                        paramSemantics := expectedParam.Semantics;
                         GenerateParam(names[i], localPosArray[i], expectedParam.Typ, cNullPos, defaultExpr);
                      end;
 
@@ -11420,19 +11417,21 @@ begin
                   try
                      typScriptPos:=FTok.HotPos;
 
-                     if (not constParam) and (typ is TOpenArraySymbol) then
+                     if (paramSemantics<>pssConst) and (typ is TOpenArraySymbol) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamMustBeConst);
-                     if lazyParam and (typ.AsFuncSymbol<>nil) then
+                     if (paramSemantics=pssLazy) and (typ.AsFuncSymbol<>nil) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_LazyParamCantBeFunctionPointer);
 
                      if FTok.TestDelete(ttEQ) then begin
                         onlyDefaultParamsNow:=True;
-                        if lazyParam then
-                           FMsgs.AddCompilerError(FTok.HotPos, CPE_LazyParamCantHaveDefaultValue);
-                        if varParam then
-                           FMsgs.AddCompilerError(FTok.HotPos, CPE_VarParamCantHaveDefaultValue);
-                        if constParam then
-                           FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstParamCantHaveDefaultValue);
+                        case paramSemantics of
+                           pssLazy :
+                              FMsgs.AddCompilerError(FTok.HotPos, CPE_LazyParamCantHaveDefaultValue);
+                           pssVar :
+                              FMsgs.AddCompilerError(FTok.HotPos, CPE_VarParamCantHaveDefaultValue);
+                           pssConst :
+                              FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstParamCantHaveDefaultValue);
+                        end;
 
                         exprPos:=FTok.HotPos;
                         defaultExpr:=FStandardDataSymbolFactory.ReadInitExpr(typ);
@@ -11481,9 +11480,9 @@ begin
       defaultExpr:=nil;
       for i:=0 to expectedLambdaParams.Count-1 do begin
          expectedParam:=expectedLambdaParams[i];
-         lazyParam:=(expectedParam.ClassType=TLazyParamSymbol);
-         varParam:=(expectedParam.ClassType=TVarParamSymbol);
-         constParam:=(expectedParam.ClassType=TConstParamSymbol);
+//         lazyParam:=(expectedParam.ClassType=TLazyParamSymbol);
+//         varParam:=(expectedParam.ClassType=TVarParamSymbol);
+//         constParam:=(expectedParam.ClassType=TConstParamSymbol);
          GenerateParam('_implicit_'+expectedParam.Name, cNullPos,
                        expectedParam.Typ, cNullPos, defaultExpr);
       end;
@@ -12128,13 +12127,22 @@ begin
   else Result:=TVarParamParentExpr.Create(dataSym)
 end;
 
-// GetConstParamExpr
+// GetConstByRefParamExpr
 //
-function TdwsCompiler.GetConstParamExpr(dataSym: TConstParamSymbol): TByRefParamExpr;
+function TdwsCompiler.GetConstByRefParamExpr(dataSym : TConstByRefParamSymbol) : TByRefParamExpr;
 begin
    if CurrentProg.Level = dataSym.Level then
       Result := TConstParamExpr.Create(dataSym)
-   else Result := TConstParamParentExpr.Create(dataSym);
+   else Result := TConstParamParentExpr.Create(dataSym)
+end;
+
+// GetConstParamExpr
+//
+function TdwsCompiler.GetConstParamExpr(dataSym: TParamSymbol) : TVarExpr;
+begin
+   if dataSym is TConstByRefParamSymbol then
+      Result := GetConstByRefParamExpr(TConstByRefParamSymbol(dataSym))
+   else Result := GetVarExpr(dataSym);
 end;
 
 // GetSelfParamExpr
@@ -12144,8 +12152,8 @@ var
    ct : TClass;
 begin
    ct:=selfSym.ClassType;
-   if ct=TConstParamSymbol then
-      Result:=GetConstParamExpr(TConstParamSymbol(selfSym))
+   if ct=TConstByRefParamSymbol then
+      Result:=GetConstByRefParamExpr(TConstByRefParamSymbol(selfSym))
    else if ct=TVarParamSymbol then
       Result:=GetVarParamExpr(TVarParamSymbol(selfSym))
    else begin
@@ -12154,29 +12162,32 @@ begin
    end;
 end;
 
-function TdwsCompiler.CheckParams(tableA, tableB : TSymbolTable; checkNames : Boolean; skipB : Integer = 0) : Boolean;
+function TdwsCompiler.CheckParams(tableA, tableB : TParamsSymbolTable; checkNames : Boolean; skipB : Integer = 0) : Boolean;
 var
    x : Integer;
    r : Boolean;
-   paramA, paramB : TSymbol;
+   paramA, paramB : TParamSymbol;
+   semanticsA, semanticsB : TParamSymbolSemantics;
 begin
    Result:=True;
    for x:=0 to tableA.Count-1 do begin
       r:=False;
       paramA:=tableA[x];
       paramB:=tableB[x+skipB];
+      semanticsA := paramA.Semantics;
+      semanticsB := paramB.Semantics;
       if checkNames and not UnicodeSameText(paramA.Name, paramB.Name) then
          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterName, [x, tableA[x].Name])
       else if not paramA.Typ.IsCompatible(paramB.Typ) then
          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterType,
                                    [x, paramA.Typ.Caption, paramB.Typ.Caption])
-      else if (paramA.ClassType=TVarParamSymbol) and not (paramB.ClassType=TVarParamSymbol) then
+      else if (semanticsA=pssVar) and (semanticsB<>pssVar) then
          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_VarParameterExpected, [x, paramA.Name])
-      else if not (paramA.ClassType=TVarParamSymbol) and (paramB.ClassType=TVarParamSymbol) then
+      else if (semanticsA<>pssVar) and (semanticsB=pssVar) then
          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ValueParameterExpected, [x, paramA.Name])
-      else if (paramA.ClassType=TConstParamSymbol) and (paramB.ClassType<>TConstParamSymbol) then
+      else if (semanticsA=pssConst) and (semanticsB<>pssConst) then
          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConstParameterExpected, [x, paramA.Name])
-      else if (paramA.ClassType<>TConstParamSymbol) and (paramB.ClassType=TConstParamSymbol) then
+      else if (semanticsA<>pssConst) and (semanticsB=pssConst) then
          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ValueParameterExpected, [x, paramA.Name])
       else if     (paramA.ClassType<>TParamSymbolWithDefaultValue)
               and (paramB.ClassType=TParamSymbolWithDefaultValue) then
@@ -12361,12 +12372,7 @@ begin
       paramPos:=FSymbolDictionary.FindSymbolUsage(param, suDeclaration);
       if paramPos=nil then continue;
 
-      if param is TConstParamSymbol then begin
-
-         FMsgs.AddCompilerHintFmt(paramPos.ScriptPos, CPH_ReferenceTypeParamAsConst,
-                                  [param.Name], hlPedantic);
-
-      end else if not isVirtual then begin
+      if not isVirtual then begin
 
          if param is TVarParamSymbol then begin
 
@@ -13913,8 +13919,8 @@ begin
       if progMeth.IsStatic then begin
          structSym:=progMeth.StructSymbol;
          selfExpr:=TConstExpr.Create(structSym.MetaSymbol, Int64(structSym));
-      end else if progMeth.SelfSym is TConstParamSymbol then
-         selfExpr:=GetConstParamExpr(TConstParamSymbol(progMeth.SelfSym))
+      end else if progMeth.SelfSym is TConstByRefParamSymbol then
+         selfExpr:=GetConstParamExpr(TConstByRefParamSymbol(progMeth.SelfSym))
       else if progMeth.SelfSym=nil then
          Exit(nil)
       else selfExpr:=GetSelfParamExpr(progMeth.SelfSym);

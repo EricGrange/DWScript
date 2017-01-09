@@ -57,6 +57,8 @@ type
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
          procedure GetRelativeDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
+         function IsWritable : Boolean; override;
+
          function ReferencesVariable(varSymbol : TDataSymbol) : Boolean; override;
 
          function SameDataExpr(expr : TTypedExpr) : Boolean; override;
@@ -2396,6 +2398,13 @@ end;
 procedure TVarExpr.GetRelativeDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    exec.Stack.InitRelativeDataPtr(Result, FStackAddr);
+end;
+
+// IsWritable
+//
+function TVarExpr.IsWritable : Boolean;
+begin
+   Result := FDataSym.IsWritable;
 end;
 
 // AssignDataExpr

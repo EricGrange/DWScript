@@ -96,6 +96,8 @@ function CreateIntfExpr(context : TdwsCompilerContext; funcSym: TFuncSymbol;
 function CreateMethodExpr(context : TdwsCompilerContext; meth: TMethodSymbol; var expr : TTypedExpr; RefKind: TRefKind;
                           const scriptPos: TScriptPos; options : TCreateFunctionOptions) : TFuncExprBase;
 
+function CreateConstParamSymbol(const name : UnicodeString; typ : TTypeSymbol) : TParamSymbol;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -336,6 +338,23 @@ begin
    end else Assert(False);
 
    expr:=nil;
+end;
+
+// CreateConstParamSymbol
+//
+function CreateConstParamSymbol(const name : UnicodeString; typ : TTypeSymbol) : TParamSymbol;
+var
+   utyp : TTypeSymbol;
+begin
+   utyp := typ.UnAliasedType;
+   if       (utyp.Size = 1)
+      and (    (utyp is TBaseSymbol)
+            or (utyp is TClassSymbol)
+            or (utyp is TDynamicArraySymbol)
+            or (utyp is TInterfaceSymbol)
+            ) then
+      Result := TConstByValueParamSymbol.Create(name, typ)
+   else Result := TConstByRefParamSymbol.Create(name, typ);
 end;
 
 // ------------------

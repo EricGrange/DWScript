@@ -440,7 +440,6 @@ const
 
   CPE_TypeIsUnknown = 'Type "%s" unknown';
   CPE_TypeForParamNotFound = 'Type "%s" not found for parameter "%s"';
-  CPE_LazyParamCantBeVarOrConst = 'lazy parameter cannot be var or const';
   CPE_LazyParamCantHaveDefaultValue = 'lazy parameter cannot have a default value';
   CPE_LazyParamCantBeFunctionPointer = 'Lazy parameter cannot be a function pointer';
   CPE_VarParamCantHaveDefaultValue = 'var parameter cannot have a default value';

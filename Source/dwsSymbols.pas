@@ -493,6 +493,7 @@ type
          procedure AllocateStackAddr(generator : TAddrGenerator);
 
          function HasExternalName : Boolean;
+         function IsWritable : Boolean; virtual;
 
          property ExternalName : UnicodeString read GetExternalName write FExternalName;
          property Level : SmallInt read FLevel write FLevel;
@@ -503,11 +504,18 @@ type
    TScriptDataSymbol = class (TDataSymbol)
    end;
 
+   TParamSymbolSemantics = (pssCopy, pssConst, pssVar, pssLazy);
+
    // parameter: procedure P(x: Integer);
    TParamSymbol = class (TDataSymbol)
+      protected
+         function GetDescription : UnicodeString; override;
+
       public
          function Clone : TParamSymbol; virtual;
          function SameParam(other : TParamSymbol) : Boolean; virtual;
+         function GetDescriptionPrefix : UnicodeString; virtual;
+         function Semantics : TParamSymbolSemantics; virtual;
    end;
 
    THasParamSymbolMethod = function (param : TParamSymbol) : Boolean of object;
@@ -539,26 +547,36 @@ type
 
    // lazy parameter: procedure P(lazy x: Integer)
    TLazyParamSymbol = class sealed (TParamSymbol)
-      protected
-         function GetDescription : UnicodeString; override;
       public
          function Clone : TParamSymbol; override;
+         function GetDescriptionPrefix : UnicodeString; override;
+         function Semantics : TParamSymbolSemantics; override;
    end;
 
-   // const parameter: procedure P(const x: Integer)
-   TConstParamSymbol = class sealed (TByRefParamSymbol)
-      protected
-         function GetDescription : UnicodeString; override;
+   // const parameter: procedure P(const(ref) x: Integer)
+   TConstByRefParamSymbol = class sealed (TByRefParamSymbol)
       public
          function Clone : TParamSymbol; override;
+         function IsWritable : Boolean; override;
+         function GetDescriptionPrefix : UnicodeString; override;
+         function Semantics : TParamSymbolSemantics; override;
+   end;
+
+   // const parameter: procedure P(const(copy) x: Integer)
+   TConstByValueParamSymbol = class (TParamSymbol)
+      public
+         function Clone : TParamSymbol; override;
+         function IsWritable : Boolean; override;
+         function GetDescriptionPrefix : UnicodeString; override;
+         function Semantics : TParamSymbolSemantics; override;
    end;
 
    // var parameter: procedure P(var x: Integer)
    TVarParamSymbol = class sealed (TByRefParamSymbol)
-      protected
-         function GetDescription : UnicodeString; override;
       public
          function Clone : TParamSymbol; override;
+         function GetDescriptionPrefix : UnicodeString; override;
+         function Semantics : TParamSymbolSemantics; override;
    end;
 
    TTypeSymbolClass = class of TTypeSymbol;
@@ -1926,6 +1944,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsCompilerUtils;
+
 // ------------------
 // ------------------ TdwsExprLocation ------------------
 // ------------------
@@ -3231,8 +3251,8 @@ begin
          if paramRec.IsVarParam then
             paramSym:=TVarParamSymbol.Create(paramRec.ParamName, typSym)
          else if paramRec.IsConstParam then
-            paramSym:=TConstParamSymbol.Create(paramRec.ParamName, typSym)
-         else paramSym:=TParamSymbol.Create(paramRec.ParamName, typSym);
+            paramSym := CreateConstParamSymbol(paramRec.ParamName, typSym)
+         else paramSym := TParamSymbol.Create(paramRec.ParamName, typSym);
 
       end;
 
@@ -3262,9 +3282,8 @@ end;
 function TFuncSymbol.GetCaption : UnicodeString;
 var
    i : Integer;
-   nam : UnicodeString;
-   p : TSymbol;
-   pct : TClass;
+   nam, pref : UnicodeString;
+   p : TParamSymbol;
 begin
    nam:=cFuncKindToString[Kind]+' '+Name;
 
@@ -3274,13 +3293,9 @@ begin
          if i > 0 then
             Result := Result + ', ';
          p := Params[i];
-         pct := p.ClassType;
-         if pct = TConstParamSymbol then
-            Result := Result + 'const '
-         else if pct = TVarParamSymbol then
-            Result := Result + 'var '
-         else if pct = TLazyParamSymbol then
-            Result := Result + 'lazy ';
+         pref := p.GetDescriptionPrefix;
+         if pref <> '' then
+            Result := Result + pref + ' ';
          Result := Result + Params[i].Typ.Caption;
       end;
       Result := Result + ')';
@@ -3718,7 +3733,7 @@ begin
    FStructSymbol := aStructSymbol;
    if isClassMethod then
       Include(FAttributes, maClassMethod);
-   FSelfSym:=aStructSymbol.CreateSelfParameter(Self);
+   FSelfSym := aStructSymbol.CreateSelfParameter(Self);
    FSize:=1; // wrapped in a interface
    FParams.AddParent(FStructSymbol.Members);
    FVisibility:=aVisibility;
@@ -5253,6 +5268,13 @@ begin
    Result:=(FExternalName<>'');
 end;
 
+// IsWritable
+//
+function TDataSymbol.IsWritable : Boolean;
+begin
+   Result := True;
+end;
+
 // ------------------
 // ------------------ TParamSymbol ------------------
 // ------------------
@@ -5268,11 +5290,35 @@ begin
            and UnicodeSameText(Name, other.Name);
 end;
 
+// GetDescriptionPrefix
+//
+function TParamSymbol.GetDescriptionPrefix : UnicodeString;
+begin
+   Result := '';
+end;
+
+// Semantics
+//
+function TParamSymbol.Semantics : TParamSymbolSemantics;
+begin
+   Result := pssCopy;
+end;
+
 // Clone
 //
 function TParamSymbol.Clone : TParamSymbol;
 begin
    Result:=TParamSymbol.Create(Name, Typ);
+end;
+
+// GetDescription
+//
+function TParamSymbol.GetDescription : UnicodeString;
+begin
+   Result := GetDescriptionPrefix;
+   if Result = '' then
+      Result := inherited GetDescription
+   else Result := Result + ' ' + inherited GetDescription;
 end;
 
 // ------------------
@@ -5343,13 +5389,6 @@ end;
 // ------------------ TLazyParamSymbol ------------------
 // ------------------
 
-// GetDescription
-//
-function TLazyParamSymbol.GetDescription: UnicodeString;
-begin
-   Result:='lazy '+inherited GetDescription;
-end;
-
 // Clone
 //
 function TLazyParamSymbol.Clone : TParamSymbol;
@@ -5357,32 +5396,107 @@ begin
    Result:=TLazyParamSymbol.Create(Name, Typ);
 end;
 
-{ TConstParamSymbol }
-
-function TConstParamSymbol.GetDescription: UnicodeString;
+// GetDescriptionPrefix
+//
+function TLazyParamSymbol.GetDescriptionPrefix : UnicodeString;
 begin
-  Result := 'const ' + inherited GetDescription;
+   Result := 'lazy';
 end;
+
+// Semantics
+//
+function TLazyParamSymbol.Semantics : TParamSymbolSemantics;
+begin
+   Result := pssLazy;
+end;
+
+// ------------------
+// ------------------ TConstByRefParamSymbol ------------------
+// ------------------
 
 // Clone
 //
-function TConstParamSymbol.Clone : TParamSymbol;
+function TConstByRefParamSymbol.Clone : TParamSymbol;
 begin
-   Result:=TConstParamSymbol.Create(Name, Typ);
+   Result := TConstByRefParamSymbol.Create(Name, Typ);
 end;
 
-{ TVarParamSymbol }
-
-function TVarParamSymbol.GetDescription: UnicodeString;
+// IsWritable
+//
+function TConstByRefParamSymbol.IsWritable : Boolean;
 begin
-  Result := 'var ' + inherited GetDescription;
+   Result := False;
 end;
+
+// GetDescriptionPrefix
+//
+function TConstByRefParamSymbol.GetDescriptionPrefix : UnicodeString;
+begin
+   Result := 'const';
+end;
+
+// Semantics
+//
+function TConstByRefParamSymbol.Semantics : TParamSymbolSemantics;
+begin
+   Result := pssConst;
+end;
+
+// ------------------
+// ------------------ TConstByValueParamSymbol ------------------
+// ------------------
+
+// Clone
+//
+function TConstByValueParamSymbol.Clone : TParamSymbol;
+begin
+   Result := TConstByValueParamSymbol.Create(Name, Typ);
+end;
+
+// IsWritable
+//
+function TConstByValueParamSymbol.IsWritable : Boolean;
+begin
+   Result := False;
+end;
+
+// GetDescriptionPrefix
+//
+function TConstByValueParamSymbol.GetDescriptionPrefix : UnicodeString;
+begin
+   Result := 'const';
+end;
+
+// Semantics
+//
+function TConstByValueParamSymbol.Semantics : TParamSymbolSemantics;
+begin
+   Result := pssConst;
+end;
+
+// ------------------
+// ------------------ TVarParamSymbol ------------------
+// ------------------
 
 // Clone
 //
 function TVarParamSymbol.Clone : TParamSymbol;
 begin
    Result:=TVarParamSymbol.Create(Name, Typ);
+end;
+
+// GetDescriptionPrefix
+//
+function TVarParamSymbol.GetDescriptionPrefix : UnicodeString;
+begin
+   Result := 'var';
+end;
+
+// Semantics
+//
+function TVarParamSymbol.Semantics : TParamSymbolSemantics;
+begin
+   Result := pssVar;
 end;
 
 { TSymbolTable }
@@ -7469,7 +7583,7 @@ begin
       if    (ForType is TClassSymbol) or (ForType is TInterfaceSymbol)
          or (ForType is TDynamicArraySymbol) then
          Result:=TParamSymbol.Create(SYS_SELF, ForType)
-      else Result:=TConstParamSymbol.Create(SYS_SELF, ForType);
+      else Result := CreateConstParamSymbol(SYS_SELF, ForType);
    end;
    if Result<>nil then begin
       methSym.Params.AddSymbol(Result);
