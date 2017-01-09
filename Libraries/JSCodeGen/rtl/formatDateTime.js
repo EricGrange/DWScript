@@ -36,7 +36,7 @@ function FormatDateTime(fmt, v, u) {
 			};
 			break;
          case "mmm": res+=$fmt.ShortMonthNames[dt.getUTCMonth()]; break;
-         case "mmmm": res+=fmt.LongMonthNames[dt.getUTCMonth()]; break;
+         case "mmmm": res+=$fmt.LongMonthNames[dt.getUTCMonth()]; break;
          case "yy": res+=pad2(dt.getUTCFullYear()%100); break;
          case "yyyy": res+=dt.getUTCFullYear(); break;
          case "h": res+=dt.getUTCHours(); wasHour=1; break;
