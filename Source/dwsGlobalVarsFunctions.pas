@@ -857,7 +857,6 @@ finalization
    vGlobalVars.Finalize;
    vPrivateVars.Finalize;
 
-   CleanupGlobalQueues;
    vGlobalQueuesCS.Free;
    vGlobalQueuesCS:=nil;
    vGlobalQueues.Clean;
