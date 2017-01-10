@@ -352,6 +352,7 @@ destructor TdwsHTTPServerEvents.Destroy;
 begin
    FGCTimer := nil;
    FItems.Clean;
+   FItems.Free;
    FLock.Free;
    inherited;
 end;
