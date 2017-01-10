@@ -22,7 +22,7 @@ interface
 
 uses
    Windows, Classes, SysUtils, Registry,
-   dwsUtils, dwsXPlatform;
+   dwsUtils, dwsXPlatform, dwsXXHash;
 
 type
    TDirectoryIndexInfo = class(TRefCountedObject)
@@ -35,8 +35,8 @@ type
 
    TDirectoryIndexCache = class
       private
-         FLock : TdwsCriticalSection;
-         FHash : TSimpleNameObjectHash<TDirectoryIndexInfo>;
+         FLock : TMultiReadSingleWrite;
+         FHash : TNameObjectHash;
          FIndexFileNames : TStrings;
 
       protected
@@ -208,9 +208,9 @@ end;
 constructor TDirectoryIndexCache.Create;
 begin
    inherited;
-   FLock:=TdwsCriticalSection.Create;
-   FHash:=TSimpleNameObjectHash<TDirectoryIndexInfo>.Create;
-   FIndexFileNames:=TStringList.Create;
+   FLock := TMultiReadSingleWrite.Create;
+   FHash := TNameObjectHash.Create;
+   FIndexFileNames := TStringList.Create;
 end;
 
 // Destroy
@@ -228,24 +228,40 @@ end;
 //
 function TDirectoryIndexCache.IndexFileForDirectory(var path : String) : Boolean;
 var
+   h : Cardinal;
    indexInfo : TDirectoryIndexInfo;
 begin
    if not StrEndsWith(path, PathDelim) then
-      path:=path+PathDelim;
+      path := path + PathDelim;
 
-   FLock.Enter;
+   h := FHash.HashName(path);
+
+   FLock.BeginRead;
    try
-      indexInfo:=FHash.Objects[path];
-      if indexInfo=nil then begin
-         indexInfo:=CreateIndexInfo(path);
-         FHash.Objects[path]:=indexInfo;
+      indexInfo := TDirectoryIndexInfo(FHash.HashedObjects[path, h]);
+      if indexInfo <> nil then begin
+         if indexInfo.IndexFileName <> '' then begin
+            path := indexInfo.IndexFileName;
+            Exit(True);
+         end;
       end;
-      if indexInfo.IndexFileName<>'' then begin
-         path:=indexInfo.IndexFileName;
-         Result:=True;
-      end else Result:=False;
    finally
-      FLock.Leave;
+      FLock.EndRead;
+   end;
+
+   FLock.BeginWrite;
+   try
+      indexInfo := TDirectoryIndexInfo(FHash.HashedObjects[path, h]);
+      if indexInfo = nil then begin
+         indexInfo := CreateIndexInfo(path);
+         FHash.HashedObjects[path, h] := indexInfo;
+      end;
+      if indexInfo.IndexFileName <> '' then begin
+         path := indexInfo.IndexFileName;
+         Result := True;
+      end else Result := False;
+   finally
+      FLock.EndWrite;
    end;
 end;
 
@@ -253,13 +269,11 @@ end;
 //
 procedure TDirectoryIndexCache.Flush;
 begin
-   FLock.Enter;
+   FLock.BeginWrite;
    try
       FHash.Clean;
-      FHash.Free;
-      FHash:=TSimpleNameObjectHash<TDirectoryIndexInfo>.Create;
    finally
-      FLock.Leave;
+      FLock.EndWrite;
    end;
 end;
 
