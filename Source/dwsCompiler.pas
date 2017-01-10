@@ -10685,7 +10685,7 @@ begin
       if left.IsOfType(FCompilerContext.TypString) then begin
 
          if     TCaseConditionsHelper.CanOptimizeToTyped(condList, TConstStringExpr)
-            and condList.ItemsAllOfClass(TCompareCaseCondition) then begin
+            and condList.ItemsAllOfClass(TCompareConstStringCaseCondition) then begin
 
             Result:=TStringInOpStaticSetExpr.Create(FCompilerContext, left)
 
@@ -12821,8 +12821,21 @@ begin
                      Result:=TAssignExpr.Create(FCompilerContext, scriptPos, FExec, left,
                                                 TObjAsIntfExpr.Create(FCompilerContext, scriptPos, right, intfSymbol));
                   end else Result:=TAssignExpr.Create(FCompilerContext, scriptPos, FExec, left, right);
-               end else if    (leftTyp.ClassType=TDynamicArraySymbol)
-                           or (leftTyp is TAssociativeArraySymbol) then begin
+               end else if leftTyp.ClassType=TDynamicArraySymbol then begin
+                  if right.ClassType=TConstNilExpr then begin
+                     OrphanAndNil(right);
+                     Result:=TAssignNilAsResetExpr.CreateVal(FCompilerContext, scriptPos, FExec, left);
+                  end else if right.ClassType = TArrayConstantExpr then begin
+                     if TArrayConstantExpr(right).ElementCount = 0 then begin
+                        OrphanAndNil(right);
+                        Result := TAssignNilAsResetExpr.CreateVal(FCompilerContext, scriptPos, FExec, left);
+                     end else begin
+                        Result := TAssignArrayConstantExpr.Create(FCompilerContext, scriptPos, FExec, left, TArrayConstantExpr(right));
+                     end
+                  end else begin
+                     Result:=TAssignExpr.Create(FCompilerContext, scriptPos, FExec, left, right);
+                  end;
+               end else if leftTyp is TAssociativeArraySymbol then begin
                   if right.ClassType=TConstNilExpr then begin
                      OrphanAndNil(right);
                      Result:=TAssignNilAsResetExpr.CreateVal(FCompilerContext, scriptPos, FExec, left);

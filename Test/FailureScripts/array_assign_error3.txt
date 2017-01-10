@@ -1,0 +1,4 @@
+Syntax Error: Incompatible types: Cannot assign "array [0..0] of Float" to "array of Integer" [line: 3, column: 3]
+Syntax Error: Incompatible types: Cannot assign "array [0..0] of String" to "array of Integer" [line: 5, column: 3]
+Syntax Error: Incompatible types: Cannot assign "array [0..1] of Float" to "array of Integer" [line: 8, column: 3]
+Syntax Error: Incompatible types: Cannot assign "array [0..0] of String" to "array of Integer" [line: 14, column: 3]

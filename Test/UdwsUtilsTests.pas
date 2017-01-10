@@ -1535,6 +1535,7 @@ begin
    CheckFail('*aa*', '$1$2$3');
    CheckFail('a*b*c*d*e*f*g*h*i*j*', '$1$2$3');
    CheckFail('*', '$2');
+   CheckFail('*', '$');
    CheckFail('*', '$1$1$1', StringOfChar('a', cMAX_REWRITTEN_URL_SIZE div 2));
 
    CheckPass('*', '$1', 'abc', 'abc');
