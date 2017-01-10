@@ -1749,10 +1749,5 @@ initialization
 // ------------------------------------------------------------------
 
    InitializeGetSystemMilliseconds;
-//   vTimeZoneLock := TMultiReadSingleWrite.Create;
-
-finalization
-
-//   FreeAndNil(vTimeZoneLock);
 
 end.
