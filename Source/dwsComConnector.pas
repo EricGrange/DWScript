@@ -98,7 +98,7 @@ begin
    if msg<>'' then
       msg:=' from '+msg;
    raise EOleError.CreateFmt('OLE Error %.8x (%s)%s',
-                             [err, SysErrorMessage(err), msg]);
+                             [err, SysErrorMessage(Cardinal(err)), msg]);
 end;
 
 type
