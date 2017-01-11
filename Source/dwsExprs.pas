@@ -692,6 +692,8 @@ type
          procedure RaiseUpperExceeded(exec : TdwsExecution; index : Integer);
          procedure RaiseLowerExceeded(exec : TdwsExecution; index : Integer);
 
+         procedure CheckScriptObject(exec : TdwsExecution; const scriptObj : IScriptObj); inline;
+
          function ScriptLocation(prog : TObject) : UnicodeString; override;
 
          function InterruptsFlow : Boolean; virtual;
@@ -3814,6 +3816,16 @@ end;
 procedure TProgramExpr.RaiseLowerExceeded(exec : TdwsExecution; index : Integer);
 begin
    RaiseScriptError(exec, EScriptOutOfBounds.CreateFmt(RTE_ArrayLowerBoundExceeded, [index]));
+end;
+
+// CheckScriptObject
+//
+procedure TProgramExpr.CheckScriptObject(exec : TdwsExecution; const scriptObj : IScriptObj);
+begin
+   if scriptObj=nil then
+      RaiseObjectNotInstantiated(exec)
+   else if scriptObj.Destroyed then
+      RaiseObjectAlreadyDestroyed(exec);
 end;
 
 // ScriptLocation

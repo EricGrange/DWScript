@@ -206,7 +206,6 @@ type
          procedure RaiseScriptError(exec : TdwsExecution; exceptClass : EScriptErrorClass; const msg : UnicodeString;
                                     const args : array of const); overload;
 
-         procedure CheckScriptObject(exec : TdwsExecution; const scriptObj : IScriptObj); inline;
          procedure RaiseObjectNotInstantiated(exec : TdwsExecution);
          procedure RaiseObjectAlreadyDestroyed(exec : TdwsExecution);
    end;
@@ -2139,16 +2138,6 @@ procedure TExprBase.RaiseScriptError(exec : TdwsExecution; exceptClass : EScript
                                         const msg : UnicodeString; const args : array of const);
 begin
    RaiseScriptError(exec, exceptClass.CreateFmt(msg, args));
-end;
-
-// CheckScriptObject
-//
-procedure TExprBase.CheckScriptObject(exec : TdwsExecution; const scriptObj : IScriptObj);
-begin
-   if scriptObj=nil then
-      RaiseObjectNotInstantiated(exec)
-   else if scriptObj.Destroyed then
-      RaiseObjectAlreadyDestroyed(exec);
 end;
 
 // RaiseObjectNotInstantiated
