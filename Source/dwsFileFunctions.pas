@@ -106,6 +106,10 @@ type
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
+   TFileFlushBuffersFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
+   end;
+
    TFileCloseFunc = class(TInternalMagicProcedure)
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
@@ -484,19 +488,24 @@ end;
 // ------------------ TFileSeekFunc ------------------
 // ------------------
 
-// DoEvalAsInteger
-//
 function TFileSeekFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result:=FileSeek(GetFileHandle(args, 0), args.AsInteger[1], args.AsInteger[2]);
 end;
 
 // ------------------
+// ------------------ TFileFlushBuffersFunc ------------------
+// ------------------
+
+function TFileFlushBuffersFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+begin
+   Result := FileFlushBuffers(GetFileHandle(args, 0));
+end;
+
+// ------------------
 // ------------------ TFileCloseFunc ------------------
 // ------------------
 
-// DoEvalProc
-//
 procedure TFileCloseFunc.DoEvalProc(const args : TExprBaseListExec);
 var
    v : Variant;
@@ -788,6 +797,7 @@ initialization
    RegisterInternalIntFunction(TFileWrite1Func, 'FileWrite', ['f', SYS_FILE, 'buf', SYS_STRING], [iffOverloaded], 'Write');
    RegisterInternalIntFunction(TFileWrite2Func, 'FileWrite', ['name', SYS_STRING, 'buf', SYS_STRING], [iffOverloaded], '');
    RegisterInternalIntFunction(TFileSeekFunc, 'FileSeek', ['f', SYS_FILE, 'offset', SYS_INTEGER, 'origin', SYS_INTEGER], [], 'Seek');
+   RegisterInternalBoolFunction(TFileFlushBuffersFunc, 'FileFlushBuffers', ['f', SYS_FILE]);
 
    RegisterInternalProcedure(TFileCloseFunc, 'FileClose', ['f', SYS_FILE], 'Close');
 

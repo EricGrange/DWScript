@@ -254,6 +254,7 @@ function OpenFileForSequentialReadOnly(const fileName : UnicodeString) : THandle
 function OpenFileForSequentialWriteOnly(const fileName : UnicodeString) : THandle;
 procedure CloseFileHandle(hFile : THandle);
 function FileWrite(hFile : THandle; buffer : Pointer; byteCount : Integer) : Cardinal;
+function FileFlushBuffers(hFile : THandle) : Boolean;
 function FileCopy(const existing, new : UnicodeString; failIfExists : Boolean) : Boolean;
 function FileMove(const existing, new : UnicodeString) : Boolean;
 function FileDelete(const fileName : UnicodeString) : Boolean;
@@ -1252,6 +1253,14 @@ function FileWrite(hFile : THandle; buffer : Pointer; byteCount : Integer) : Car
 begin
    if not WriteFile(hFile, buffer^, byteCount, Result, nil) then
       RaiseLastOSError;
+end;
+
+// FileFlushBuffers
+//
+function FlushFileBuffers(hFile : THandle) : BOOL; stdcall; external 'kernel32.dll';
+function FileFlushBuffers(hFile : THandle) : Boolean;
+begin
+   Result := FlushFileBuffers(hFile);
 end;
 
 // FileCopy
