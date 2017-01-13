@@ -2219,7 +2219,7 @@ function TdwsJSONImmediate.GetAsString : UnicodeString;
 begin
    if Assigned(Self) then
       case FType of
-         jvtNull : Result:='Null';
+         jvtNull : Result:='null';
          jvtString : Result:=PString(@FData)^;
          jvtNumber : Result:=FloatToStr(FData);
          jvtBoolean :

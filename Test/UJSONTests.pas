@@ -89,6 +89,7 @@ type
          procedure SortArray;
          procedure EnumerateNil;
          procedure EnumerateArray;
+         procedure ImmediateCasts;
 
          procedure JSONPathBasic;
          procedure JSONPathFails;
@@ -1030,6 +1031,76 @@ begin
    finally
       v.Free;
    end;
+end;
+
+// ImmediateCasts
+//
+procedure TdwsJSONTests.ImmediateCasts;
+var
+   v : TdwsJSONValue;
+begin
+   v := TdwsJSONValue.ParseString('0');
+   CheckEquals('0', v.AsString, '0');
+   CheckEquals(False, v.AsBoolean, '0');
+   CheckEquals(0, v.AsNumber, '0');
+   CheckEquals(0, v.AsInteger, '0');
+   v.Free;
+
+   v := TdwsJSONValue.ParseString('123');
+   CheckEquals('123', v.AsString, '123');
+   CheckEquals(True, v.AsBoolean, '123');
+   CheckEquals(123, v.AsNumber, '123');
+   CheckEquals(123, v.AsInteger, '123');
+   v.Free;
+
+   v := TdwsJSONValue.ParseString('0.0');
+   CheckEquals('0', v.AsString, '0.0');
+   CheckEquals(False, v.AsBoolean, '0.0');
+   CheckEquals(0.0, v.AsNumber, '0.0');
+   CheckEquals(0, v.AsInteger, '0.0');
+   v.Free;
+
+   v := TdwsJSONValue.ParseString('1.25');
+   CheckEquals('1.25', v.AsString, '1.25');
+   CheckEquals(True, v.AsBoolean, '1.25');
+   CheckEquals(1.25, v.AsNumber, '1.25');
+   CheckEquals(1, v.AsInteger, '1.25');
+   v.Free;
+
+   v := TdwsJSONValue.ParseString('"a"');
+   CheckEquals('a', v.AsString, '"a"');
+   CheckEquals(False, v.AsBoolean, '"a"');
+   CheckEquals(0, v.AsNumber, '"a"');
+   CheckEquals(0, v.AsInteger, '"a"');
+   v.Free;
+
+   v := TdwsJSONValue.ParseString('"true"');
+   CheckEquals('true', v.AsString, '"true"');
+   CheckEquals(True, v.AsBoolean, '"true"');
+   CheckEquals(0, v.AsNumber, '"true"');
+   CheckEquals(0, v.AsInteger, '"true"');
+   v.Free;
+
+   v := TdwsJSONValue.ParseString('true');
+   CheckEquals('true', v.AsString, 'true');
+   CheckEquals(True, v.AsBoolean, 'true');
+   CheckEquals(-1, v.AsNumber, 'true');
+   CheckEquals(-1, v.AsInteger, 'true');
+   v.Free;
+
+   v := TdwsJSONValue.ParseString('false');
+   CheckEquals('false', v.AsString, 'false');
+   CheckEquals(False, v.AsBoolean, 'false');
+   CheckEquals(0, v.AsNumber, 'false');
+   CheckEquals(0, v.AsInteger, 'false');
+   v.Free;
+
+   v := TdwsJSONValue.ParseString('null');
+   CheckEquals('null', v.AsString, 'null');
+   CheckEquals(False, v.AsBoolean, 'null');
+   CheckEquals(0, v.AsNumber, 'null');
+   CheckEquals(0, v.AsInteger, 'null');
+   v.Free;
 end;
 
 // JSONPathBasic
