@@ -1,1 +1,9 @@
+False
+False
+20
+True
+False
 0
+False
+True
+8204
