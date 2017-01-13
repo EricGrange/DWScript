@@ -65,9 +65,13 @@ type
          procedure OverloadForwardDictionary;
          procedure OverloadMethodDictionary;
          procedure ClassForwardDictionary;
+
          procedure FilterTest;
          procedure SubFilterTest;
+         procedure SubFilterEditorModeTest;
          procedure FilterNotDefined;
+         procedure FilterEditorMode;
+
          procedure ConfigNotifications;
          procedure ConfigTimeout;
          procedure CallUnitProcTest;
@@ -146,6 +150,7 @@ end;
 type
    TTestFilter = class(TdwsFilter)
       constructor TestCreate(const s : String);
+      function Process(const aText : UnicodeString; aMsgs : TdwsMessageList) : UnicodeString; override;
    end;
 
 // TTestFilter
@@ -155,6 +160,18 @@ begin
    inherited Create(nil);
    if s<>'' then
       PrivateDependencies.Add(s);
+end;
+
+// Process
+//
+function TTestFilter.Process(const aText : UnicodeString; aMsgs : TdwsMessageList) : UnicodeString;
+begin
+   if EditorMode then begin
+      if SubFilter <> nil then
+         Result := SubFilter.Process(aText, aMsgs)
+      else Result := aText;
+      Result := '(' + Result + ')';
+   end else Result := inherited Process(aText, aMsgs);
 end;
 
 // ------------------
@@ -1383,6 +1400,35 @@ begin
    filter1.Free;
 end;
 
+// SubFilterEditorModeTest
+//
+procedure TCornerCasesTests.SubFilterEditorModeTest;
+var
+   filter1, filter2 : TTestFilter;
+begin
+   filter1:=TTestFilter.TestCreate('abc');
+   filter2:=TTestFilter.TestCreate('def');
+   filter1.SubFilter:=filter2;
+   try
+      CheckEquals('hello', filter1.Process('hello', nil), 'regular');
+      filter1.BeginEditorMode;
+      try
+         CheckEquals('((hello))', filter1.Process('hello', nil), 'editor mode');
+      finally
+         filter1.EndEditorMode;
+      end;
+      filter2.BeginEditorMode;
+      try
+         CheckEquals('(hello)', filter1.Process('hello', nil), 'editor mode');
+      finally
+         filter2.EndEditorMode;
+      end;
+   finally
+      filter2.Free;
+      filter1.Free;
+   end;
+end;
+
 // FilterNotDefined
 //
 procedure TCornerCasesTests.FilterNotDefined;
@@ -1392,6 +1438,28 @@ begin
    prog:=FCompiler.Compile('{$F "foo.bar"}');
 
    CheckEquals('Syntax Error: There is no filter assigned to TDelphiWebScriptII.Config.Filter [line: 1, column: 5]'#13#10, prog.Msgs.AsInfo);
+end;
+
+// FilterEditorMode
+//
+procedure TCornerCasesTests.FilterEditorMode;
+var
+   f : TdwsFilter;
+begin
+   f := TdwsFilter.Create(nil);
+   try
+      CheckFalse(f.EditorMode, 'before');
+      f.BeginEditorMode;
+      CheckTrue(f.EditorMode, 'during 1');
+      f.BeginEditorMode;
+      CheckTrue(f.EditorMode, 'during 2');
+      f.EndEditorMode;
+      CheckTrue(f.EditorMode, 'during 1bis');
+      f.EndEditorMode;
+      CheckFalse(f.EditorMode, 'after');
+   finally
+      f.Free;
+   end;
 end;
 
 // ConfigNotifications

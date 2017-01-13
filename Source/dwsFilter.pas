@@ -114,8 +114,11 @@ end;
 //
 procedure TdwsFilter.BeginEditorMode;
 begin
-   if Self<>nil then
+   if Self<>nil then begin
       Inc(FEditorMode);
+      if SubFilter<>nil then
+         SubFilter.BeginEditorMode;
+   end;
 end;
 
 // EndEditorMode
@@ -125,6 +128,8 @@ begin
    if Self<>nil then begin
       Assert(FEditorMode>0, 'Unbalanced EndEditorMode');
       Dec(FEditorMode);
+      if SubFilter<>nil then
+         SubFilter.EndEditorMode;
    end;
 end;
 
@@ -139,16 +144,9 @@ end;
 //
 function TdwsFilter.Process(const aText : UnicodeString; aMsgs : TdwsMessageList) : UnicodeString;
 begin
-   if Assigned(FSubFilter) then begin
-      if EditorMode then
-         FSubFilter.BeginEditorMode;
-      try
-         Result := FSubFilter.Process(aText, aMsgs)
-      finally
-         if EditorMode then
-            FSubFilter.BeginEditorMode;
-      end;
-   end else Result := aText;
+   if Assigned(FSubFilter) then
+      Result := FSubFilter.Process(aText, aMsgs)
+   else Result := aText;
 end;
 
 procedure TdwsFilter.SetSubFilter(const Filter: TdwsFilter);
