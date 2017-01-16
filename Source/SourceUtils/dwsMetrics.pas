@@ -145,16 +145,16 @@ end;
 //
 constructor TdwsSourceFuncSymbolMetric.Create(const aProg : IdwsProgram);
 var
-   i : Integer;
    symDict : TdwsSymbolDictionary;
    sym : TSymbol;
    funcSym : TFuncSymbol;
+   symPosList : TSymbolPositionList;
 begin
    symDict:=aProg.SymbolDictionary;
    if (symDict=nil) or (symDict.Count=0) then Exit;
 
-   for i:=0 to symDict.Count-1 do begin
-      sym:=symDict.Items[i].Symbol;
+   for symPosList in symDict do begin
+      sym:=symPosList.Symbol;
       funcSym:=sym.AsFuncSymbol;
       if funcSym=nil then continue;
       if funcSym.IsType then continue;

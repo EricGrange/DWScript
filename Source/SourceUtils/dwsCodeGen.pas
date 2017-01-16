@@ -1574,7 +1574,6 @@ end;
 //
 function TdwsCodeGen.SmartLinkMethod(meth : TMethodSymbol) : Boolean;
 var
-   i : Integer;
    symPos : TSymbolPositionList;
    lookup : TMethodSymbol;
    isUsed : Boolean;
@@ -1597,8 +1596,7 @@ begin
    // the virtual method should be included if itself or any
    // of its overrides are used
    // filtering of unused subclasses is assumed to have been made already
-   for i:=0 to FSymbolDictionary.Count-1 do begin
-      symPos:=FSymbolDictionary.Items[i];
+   for symPos in FSymbolDictionary do begin
       // only check methods
       if not (symPos.Symbol is TMethodSymbol) then continue;
 
@@ -1896,6 +1894,7 @@ end;
 //
 procedure TdwsCodeGen.DeVirtualize;
 var
+   symPosList : TSymbolPositionList;
    sym : TSymbol;
    methSym : TMethodSymbol;
    methods : TObjectList<TMethodSymbol>;
@@ -1908,8 +1907,8 @@ begin
    methods:=TObjectList<TMethodSymbol>.Create;
    try
       // collect all method symbols that are virtual
-      for i:=0 to FSymbolDictionary.Count-1 do begin
-         sym:=FSymbolDictionary.Items[i].Symbol;
+      for symPosList in FSymbolDictionary do begin
+         sym := symPosList.Symbol;
          if sym is TMethodSymbol then begin
             methSym:=TMethodSymbol(sym);
             if methSym.IsVirtual then

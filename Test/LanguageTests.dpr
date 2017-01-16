@@ -8,7 +8,7 @@ program LanguageTests;
 {$ENDIF}
 
 uses
-  FastMM4,
+  FastMM4Debug,
   Classes,
   Forms,
   Windows,
@@ -70,7 +70,8 @@ uses
   dwsScriptSource in '..\Source\dwsScriptSource.pas',
   dwsSymbolDictionary in '..\Source\dwsSymbolDictionary.pas',
   dwsContextMap in '..\Source\dwsContextMap.pas',
-  dwsUnifiedConstants in '..\Source\dwsUnifiedConstants.pas';
+  dwsUnifiedConstants in '..\Source\dwsUnifiedConstants.pas',
+  USymbolDictionaryTests in 'USymbolDictionaryTests.pas';
 
 {$R *.res}
 

@@ -401,7 +401,10 @@ type
          procedure Enumerate(callBack : TSimpleHashFunc<T>);
          procedure Clear;
 
+         function HashBucketValue(index : Integer; var anItem : T) : Boolean; inline;
+
          property Count : Integer read FCount;
+         property Capacity : Integer read FCapacity;
    end;
 
    TSimpleObjectHash<T{$IFNDEF FPC}: TRefCountedObject{$ENDIF}> = class(TSimpleHash<T>)
@@ -904,6 +907,7 @@ function SimpleStringHash(p : PChar; sizeInChars : Integer) : Cardinal; overload
 function SimpleByteHash(p : PByte; n : Integer) : Cardinal;
 
 function SimpleIntegerHash(x : Cardinal) : Cardinal;
+function SimplePointerHash(x : Pointer) : Cardinal;
 function SimpleInt64Hash(x : Int64) : Cardinal;
 
 function RawByteStringToScriptString(const s : RawByteString) : UnicodeString; overload; inline;
@@ -964,8 +968,6 @@ function TryISO8601ToDateTime(const v : UnicodeString; var aResult : TDateTime) 
 function ISO8601ToDateTime(const v : UnicodeString) : TDateTime;
 function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : UnicodeString;
 
-procedure SuppressH2077ValueAssignedToVariableNeverUsed(const {%H-}X); inline;
-
 procedure dwsFreeAndNil(var O); // transitional function, do not use
 
 function CoalesceableIsFalsey(const unk : IUnknown) : Boolean;
@@ -1007,12 +1009,6 @@ begin
    Result :=    (unk=nil)
              or (    (unk.QueryInterface(ICoalesceable, c)=S_OK)
                  and c.IsFalsey);
-end;
-
-// SuppressH2077ValueAssignedToVariableNeverUsed
-//
-procedure SuppressH2077ValueAssignedToVariableNeverUsed(const X); inline;
-begin
 end;
 
 // dwsFreeAndNil
@@ -1061,6 +1057,24 @@ begin
    Result := x * $cc9e2d51;
    Result := (Result shl 15) or (Result shr 17);
    Result := Result * $1b873593 + $e6546b64;
+end;
+
+// SimplePointerHash
+//
+function SimplePointerHash(x : Pointer) : Cardinal;
+var
+   mix : NativeUInt;
+begin
+   // based on xxHash finalizers
+   {$ifdef CPU64}
+   mix := (mix xor (mix shr 33)) * 14029467366897019727;
+   mix := (mix xor (mix shr 29)) * 1609587929392839161;
+   mix := mix xor (mix shr 32);
+   {$else}
+   mix := (NativeUInt(x) shr 2) * Cardinal(2246822519);
+   mix := (mix xor (mix shr 15)) * Cardinal(3266489917);
+   Result := (mix xor (mix shr 16));
+   {$endif}
 end;
 
 // SimpleInt64Hash
@@ -4336,6 +4350,16 @@ begin
    FCapacity:=0;
    FGrowth:=0;
    FBuckets:=nil;
+end;
+
+// HashBucketValue
+//
+function TSimpleHash<T>.HashBucketValue(index : Integer; var anItem : T) : Boolean;
+begin
+   if FBuckets[index].HashCode <> 0 then begin
+      anItem := FBuckets[index].Value;
+      Result := True;
+   end else Result := False;
 end;
 
 // ------------------

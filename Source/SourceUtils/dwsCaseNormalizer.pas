@@ -95,8 +95,7 @@ begin
    locations:=TSymbolLocations.Create;
    try
       // collect all symbol locations in the file
-      for i:=0 to symbolDictionary.Count-1 do begin
-         symPosList:=symbolDictionary[i];
+      for symPosList in symbolDictionary do begin
          for j:=0 to symPosList.Count-1 do begin
             symPos:=symPosList[j];
             if suImplicit in symPos.SymbolUsages then continue;

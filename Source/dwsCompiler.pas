@@ -3173,9 +3173,11 @@ var
    forwardedSymPos : TSymbolPosition;
    sourceContext : TdwsSourceContext;
    posArray : TScriptPosArray;
+   isForward : Boolean;
 begin
    Result:=nil;
    sym:=nil;
+   isForward := False;
 
    funcKind:=cTokenToFuncKind[funcToken];
    funcPos:=hotPos;
@@ -3327,6 +3329,7 @@ begin
 
                   if UnitSection=secInterface then begin
                      // default to forward in interface section, except for external funcs
+                     isForward := True;
                      if not Result.IsExternal then
                         Result.SetForwardedPos(funcPos);
                      if FTok.TestDelete(ttFORWARD) then begin
@@ -3335,6 +3338,7 @@ begin
                      end;
                   end else begin
                      if FTok.TestDelete(ttFORWARD) then begin
+                        isForward := True;
                         if Result.IsExternal then
                            FMsgs.AddCompilerHint(FTok.HotPos, CPW_ForwardIsMeaningless);
                         Result.SetForwardedPos(funcPos);
@@ -3386,13 +3390,15 @@ begin
                   OrphanObject(Result);
                   Result := forwardedSym;
                   Result.ClearIsForwarded;
+
                end else begin
 
                   if forwardedSymForParams<>nil then
                      AdaptParametersSymPos(forwardedSymForParams, Result,
-                                           [suReference, suDeclaration], posArray);
+                                           [suDeclaration], posArray);
 
                   CurrentProg.Table.AddSymbol(Result);
+
                end;
 
                if Result.IsForwarded or Result.IsExternal then
@@ -3403,6 +3409,8 @@ begin
 
          if Result.IsLambda then
             RecordSymbolUse(Result, funcPos, [suDeclaration, suImplementation, suReference])
+         else if isForward then
+            RecordSymbolUse(Result, funcPos, [suDeclaration, suForward])
          else if forwardedSym=nil then
             RecordSymbolUse(Result, funcPos, [suDeclaration, suImplementation])
          else RecordSymbolUse(Result, funcPos, [suImplementation]);

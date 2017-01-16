@@ -24,7 +24,7 @@ unit dwsSymbolDictionary;
 interface
 
 uses
-   dwsUtils, dwsXPlatform, dwsScriptSource, dwsSymbols;
+   Classes, TypInfo, dwsUtils, dwsXPlatform, dwsScriptSource, dwsSymbols, dwsJSON;
 
 type
 
@@ -35,6 +35,8 @@ type
    TSymbolUsage = (suForward, suDeclaration, suImplementation, suReference,
                    suRead, suWrite, suImplicit, suRTTI );
    TSymbolUsages = set of TSymbolUsage;
+
+   TdwsSymbolDictionary = class;
 
    // Records a symbol's position in source and usage at that position
    //
@@ -49,6 +51,29 @@ type
    end;
    TSymbolPosition = ^TSymbolPositionRec;
 
+   TSymbolPositionBlock = array [0..127] of TSymbolPositionRec;
+   PSymbolPositionBlock = ^TSymbolPositionBlock;
+
+   // dedicated class to suballocate symbol positions
+   TSymbolPositionbSubAllocator = record
+      private
+         FBlocks : array of PSymbolPositionBlock;
+         FStack : array of TSymbolPosition;
+         FStackCount : Integer;
+         FStackCapacity : Integer;
+
+         procedure AllocateNewSymbolPositions;
+
+      public
+         procedure Initialize; inline;
+         procedure Finalize; inline;
+         function  Finalized : Boolean; inline;
+
+         function  AllocateSymbolPosition : TSymbolPosition;
+         procedure ReleaseSymbolPosition(symPos : TSymbolPosition);
+         procedure CleanupSymbolPositions;
+   end;
+
    {Re-list every symbol (pointer to it) and every position it is in in the script }
    TSymbolPositionList = class (TRefCountedObject)
       type
@@ -61,6 +86,7 @@ type
          end;
 
       private
+         FDictionary : TdwsSymbolDictionary;
          FSymbol : TSymbol;                     // pointer to the symbol
          FPosList : array of TSymbolPosition;   // list of positions where symbol is declared and used
          FCount : Integer;
@@ -73,7 +99,7 @@ type
          function FindSymbolAtPosition(aCol, aLine : Integer; const sourceFile : UnicodeString) : TSymbol; overload;
 
       public
-         constructor Create(ASymbol: TSymbol);
+         constructor Create(aDictionary : TdwsSymbolDictionary; aSymbol: TSymbol);
          destructor Destroy; override;
 
          procedure Add(const scriptPos : TScriptPos; const useTypes : TSymbolUsages);
@@ -87,15 +113,18 @@ type
 
          function GetEnumerator : TSymbolPositionListEnumerator;
 
+         procedure WriteToJSON(wr : TdwsJSONWriter);
+
          property Items[index : Integer] : TSymbolPosition read GetPosition; default;
          function Count : Integer; inline;
 
          property Symbol: TSymbol read FSymbol;
    end;
 
-   TSymbolPositionListList = class(TSortedList<TSymbolPositionList>)
+   TSymbolPositionListHash = class(TSimpleHash<TSymbolPositionList>)
       protected
-         function Compare(const item1, item2 : TSymbolPositionList) : Integer; override;
+         function SameItem(const item1, item2 : TSymbolPositionList) : Boolean; override;
+         function GetItemHashCode(const item1 : TSymbolPositionList) : Integer; override;
    end;
 
    TdwsSymbolDictionaryProc = procedure (sym : TSymbol) of object;
@@ -107,23 +136,28 @@ type
       type
          TdwsSymbolDictionaryEnumerator = record
             Index : Integer;
-            Dict : TdwsSymbolDictionary;
+            Hash : TSymbolPositionListHash;
+            FCurrent : TSymbolPositionList;
             function MoveNext : Boolean; inline;
             function GetCurrent : TSymbolPositionList; inline;
             property Current : TSymbolPositionList read GetCurrent;
          end;
 
       protected
-         FSymbolList : TSymbolPositionListList;
+         FHash : TSymbolPositionListHash;
          FSearchSymbolPositionList : TSymbolPositionList;
+         FRemovingSymbols : Integer;
+         FSymPosAllocator : TSymbolPositionbSubAllocator;
 
-         function GetList(Index: Integer): TSymbolPositionList; inline;
+         function PackCallback(const item : TSymbolPositionList) : TSimpleHashAction;
 
       public
          constructor Create;
          destructor Destroy; override;
 
          procedure Clear;  // clear the lists
+         procedure Pack;   // remove entries with zero script positions
+
          procedure AddSymbol(sym : TSymbol; const scriptPos : TScriptPos; const useTypes : TSymbolUsages);
 
          // remove all references to the symbol
@@ -146,9 +180,10 @@ type
          function FindSymbolByUsageAtLine(const scriptPos : TScriptPos; symbolUse : TSymbolUsage) : TSymbol;
 
          function GetEnumerator : TdwsSymbolDictionaryEnumerator;
-
          function Count : Integer; inline;
-         property Items[index: Integer] : TSymbolPositionList read GetList; default;
+
+         procedure WriteToJSON(wr : TdwsJSONWriter);
+         function  ToJSON : String;
    end;
 
 // ------------------------------------------------------------------
@@ -160,14 +195,93 @@ implementation
 // ------------------------------------------------------------------
 
 // ------------------
+// ------------------ TSymbolPositionbSubAllocator ------------------
+// ------------------
+
+// Initialize
+//
+procedure TSymbolPositionbSubAllocator.Initialize;
+begin
+   FStackCount := 0;
+   FStackCapacity := 512;
+   SetLength(FStack, FStackCapacity);
+end;
+
+// Finalize
+//
+procedure TSymbolPositionbSubAllocator.Finalize;
+begin
+   CleanupSymbolPositions;
+   FStack := nil;
+end;
+
+// Finalized
+//
+function TSymbolPositionbSubAllocator.Finalized : Boolean;
+begin
+   Result := (FStack = nil);
+end;
+
+// AllocateNewSymbolPositions
+//
+procedure TSymbolPositionbSubAllocator.AllocateNewSymbolPositions;
+var
+   block : PSymbolPositionBlock;
+   n : Integer;
+begin
+   New(block);
+   n := Length(FBlocks);
+   SetLength(FBlocks, n+1);
+   FBlocks[n] := block;
+   for n := 0 to High(block^) do
+      ReleaseSymbolPosition(@block^[n]);
+end;
+
+// AllocateSymbolPosition
+//
+function TSymbolPositionbSubAllocator.AllocateSymbolPosition : TSymbolPosition;
+begin
+   if FStackCount = 0 then
+      AllocateNewSymbolPositions;
+   Result := FStack[FStackCount-1];
+   Dec(FStackCount);
+end;
+
+// ReleaseSymbolPosition
+//
+procedure TSymbolPositionbSubAllocator.ReleaseSymbolPosition(symPos : TSymbolPosition);
+begin
+   if FStackCount = FStackCapacity then begin
+      FStackCapacity := FStackCapacity + (High(TSymbolPositionBlock) shr 1);
+      SetLength(FStack, FStackCapacity);
+   end;
+   FStack[FStackCount] := symPos;
+   Inc(FStackCount);
+end;
+
+// CleanupSymbolPositions
+//
+procedure TSymbolPositionbSubAllocator.CleanupSymbolPositions;
+var
+   i : Integer;
+begin
+   for i := 0 to High(FBlocks) do
+      Dispose(FBlocks[i]);
+   SetLength(FBlocks, 0);
+   FStackCount := 0;
+end;
+
+// ------------------
 // ------------------ TSymbolPositionList ------------------
 // ------------------
 
 // Create
 //
-constructor TSymbolPositionList.Create(ASymbol: TSymbol);
+constructor TSymbolPositionList.Create(aDictionary : TdwsSymbolDictionary; aSymbol: TSymbol);
 begin
-   FSymbol:=ASymbol;
+   inherited Create;
+   FDictionary := aDictionary;
+   FSymbol := ASymbol;
 end;
 
 // Destroy
@@ -185,16 +299,16 @@ var
    symPos : TSymbolPosition;
    capacity : Integer;
 begin
-   if (scriptPos.Line<=0) or (scriptPos.SourceFile=nil) then Exit;
+   if (scriptPos.Line <= 0) or (scriptPos.SourceFile = nil) then Exit;
 
-   if FCount=0 then
-      FSourceFile:=scriptPos.SourceFile
-   else if FSourceFile<>scriptPos.SourceFile then
-      FSourceFile:=nil;
+   if FCount = 0 then
+      FSourceFile := scriptPos.SourceFile
+   else if FSourceFile <> scriptPos.SourceFile then
+      FSourceFile := nil;
 
-   New(symPos);
-   symPos.FScriptPos:=scriptPos;
-   symPos.FSymUsages:=useTypes;
+   symPos := FDictionary.FSymPosAllocator.AllocateSymbolPosition;
+   symPos.FScriptPos := scriptPos;
+   symPos.FSymUsages := useTypes;
 
    capacity := Length(FPosList);
    if FCount = capacity then
@@ -210,12 +324,12 @@ procedure TSymbolPositionList.Delete(index : Integer);
 var
    n : Integer;
 begin
-   Dispose(FPosList[index]);
+   FDictionary.FSymPosAllocator.ReleaseSymbolPosition(FPosList[index]);
 
    n := FCount-index-1;
    if n > 0 then begin
       Move(FPosList[index+1], FPosList[index], n*SizeOf(TSymbolPosition));
-      FillChar(FPosList[FCount-1], SizeOf(TSymbolPosition), 0);
+      FPosList[FCount-1] := Default(TSymbolPosition);
    end;
    Dec(FCount);
 end;
@@ -226,8 +340,10 @@ procedure TSymbolPositionList.Clear;
 var
    i : Integer;
 begin
-   for i:=0 to FCount-1 do
-      Dispose(FPosList[i]);
+   if not FDictionary.FSymPosAllocator.Finalized then begin
+      for i := 0 to FCount-1 do
+         FDictionary.FSymPosAllocator.ReleaseSymbolPosition(FPosList[i]);
+   end;
    SetLength(FPosList, 0);
    FCount := 0;
 end;
@@ -336,6 +452,37 @@ begin
    end;
 end;
 
+// WriteToJSON
+//
+procedure TSymbolPositionList.WriteToJSON(wr : TdwsJSONWriter);
+var
+   i : Integer;
+   u : TSymbolUsage;
+begin
+   wr.BeginObject;
+
+   wr.BeginObject('symbol');
+      wr.WriteString('name', Symbol.Name);
+      wr.WriteString('class', Symbol.ClassName);
+   wr.EndObject;
+
+   wr.BeginArray('positions');
+   for i := 0 to Count-1 do begin
+      wr.BeginObject;
+         wr.BeginArray('usages');
+         for u := Low(TSymbolUsage) to High(TSymbolUsage) do begin
+            if u in Items[i].SymbolUsages then
+               wr.WriteString(GetEnumName(TypeInfo(TSymbolUsage), Ord(u)));
+         end;
+         wr.EndArray;
+         wr.WriteString('position', Items[i].ScriptPos.AsInfo);
+      wr.EndObject;
+   end;
+   wr.EndArray;
+
+   wr.EndObject;
+end;
+
 // TSymbolPositionListEnumerator.GetCurrent
 //
 function TSymbolPositionList.TSymbolPositionListEnumerator.GetCurrent: TSymbolPosition;
@@ -352,24 +499,22 @@ begin
 end;
 
 // ------------------
-// ------------------ TSymbolPositionListList ------------------
+// ------------------ TSymbolPositionListHash ------------------
 // ------------------
 
-// Compare
+// SameItem
 //
-function TSymbolPositionListList.Compare(const item1, item2 : TSymbolPositionList) : Integer;
-var
-   p1, p2 : NativeInt;
+function TSymbolPositionListHash.SameItem(const item1, item2 : TSymbolPositionList) : Boolean;
 begin
-   p1 := NativeInt(item1.Symbol);
-   p2 := NativeInt(item2.Symbol);
-   Result := Integer(p1 > p2) - Integer(p1 < p2);
+   Result := (item1.FSymbol = item2.FSymbol);
+end;
 
-//   if NativeInt(item1.Symbol)<NativeInt(item2.Symbol) then
-//      Result:=-1
-//   else if NativeInt(item1.Symbol)>NativeInt(item2.Symbol) then
-//      Result:=1
-//   else Result:=0;
+// GetItemHashCode
+//
+function TSymbolPositionListHash.GetItemHashCode(const item1 : TSymbolPositionList) : Integer;
+begin
+   Result := SimplePointerHash(item1.FSymbol);
+   Assert(Result <> 0);
 end;
 
 // ------------------
@@ -380,16 +525,19 @@ end;
 //
 constructor TdwsSymbolDictionary.Create;
 begin
-   FSymbolList:=TSymbolPositionListList.Create;
-   FSearchSymbolPositionList:=TSymbolPositionList.Create(nil);
+   inherited;
+   FHash := TSymbolPositionListHash.Create;
+   FSearchSymbolPositionList := TSymbolPositionList.Create(Self, nil);
+   FSymPosAllocator.Initialize;
 end;
 
 // Destroy
 //
 destructor TdwsSymbolDictionary.Destroy;
 begin
+   FSymPosAllocator.Finalize;
    Clear;
-   FSymbolList.Free;
+   FHash.Free;
    FSearchSymbolPositionList.Free;
    inherited;
 end;
@@ -404,14 +552,14 @@ begin
    if sym.IsBaseType then Exit;  // don't store references to base symbols
 
    // Check to see if symbol list already exists, if not create it
-   symPosList:=FindSymbolPosList(sym);
+   symPosList := FindSymbolPosList(sym);
    if symPosList=nil then begin
-      symPosList:=TSymbolPositionList.Create(sym);
-      FSymbolList.Add(symPosList);
+      symPosList := TSymbolPositionList.Create(Self, sym);
+      FHash.Add(symPosList);
    end;
 
    // add the instance of the symbol to the position list
-   symPosList.Add(scriptPos, UseTypes);
+   symPosList.Add(scriptPos, useTypes);
 end;
 
 // FindSymbolAtPosition
@@ -419,11 +567,14 @@ end;
 function TdwsSymbolDictionary.FindSymbolAtPosition(aCol, aLine : Integer; const sourceFile : UnicodeString) : TSymbol;
 var
    i : Integer;
+   symPosList : TSymbolPositionList;
 begin
-   Result:=nil;
-   for i:=0 to FSymbolList.Count-1 do begin
-      Result:=FSymbolList[i].FindSymbolAtPosition(aCol, aLine, sourceFile);
-      if Assigned(Result) then Break;
+   Result := nil;
+   for i := 0 to FHash.Capacity-1 do begin
+      if FHash.HashBucketValue(i, symPosList) then begin
+         Result := symPosList.FindSymbolAtPosition(aCol, aLine, sourceFile);
+         if Assigned(Result) then Break;
+      end;
    end;
 end;
 
@@ -438,86 +589,179 @@ end;
 //
 function TdwsSymbolDictionary.GetEnumerator: TdwsSymbolDictionaryEnumerator;
 begin
-   if Self=nil then begin
-      Result.Dict:=nil;
-      Result.Index:=0;
-   end else begin
-      Result.Dict:=Self;
-      Result.Index:=Count;
-   end;
+   Result.Hash := Self.FHash;
+   Result.Index := -1;
+   Result.FCurrent := nil;
 end;
 
-// GetList
+// TdwsSymbolDictionaryEnumerator.GetCurrent
 //
-function TdwsSymbolDictionary.GetList(Index: Integer): TSymbolPositionList;
+function TdwsSymbolDictionary.TdwsSymbolDictionaryEnumerator.GetCurrent: TSymbolPositionList;
 begin
-   Result:=FSymbolList[Index];
+   Hash.HashBucketValue(Index, Result);
+end;
+
+// TdwsSymbolDictionaryEnumerator.MoveNext
+//
+function TdwsSymbolDictionary.TdwsSymbolDictionaryEnumerator.MoveNext: Boolean;
+begin
+   while Index < Hash.Capacity-1 do begin
+      Inc(Index);
+      Result := Hash.HashBucketValue(Index, FCurrent);
+      if Result then begin
+         Assert(FCurrent<>nil);
+         Exit;
+      end;
+   end;
+   Result := False;
 end;
 
 // Count
 //
 function TdwsSymbolDictionary.Count: Integer;
 begin
-  Result:=FSymbolList.Count;
+  Result := FHash.Count;
+end;
+
+// WriteToJSON
+//
+function SymbolCustomSort(list: TStringList; index1, index2: Integer): Integer;
+var
+   spl1, spl2 : TSymbolPositionList;
+begin
+   Result := UnicodeCompareText(list[index1], list[index2]);
+   if Result = 0 then begin
+      spl1 := TSymbolPositionList(list.Objects[index1]);
+      spl2 := TSymbolPositionList(list.Objects[index2]);
+      if spl1.Count = 0 then begin
+         if spl2.Count <> 0 then
+            Result := -1;
+      end else begin
+         if spl2.Count = 0 then
+            Result := 1
+         else if spl1[0].ScriptPos.IsBeforeOrEqual(spl2[0].ScriptPos) then
+            if spl1[0].ScriptPos.SamePosAs(spl2[0].ScriptPos) then
+               Result := 0
+            else Result := -1
+         else Result := 1;
+      end;
+   end;
+end;
+procedure TdwsSymbolDictionary.WriteToJSON(wr : TdwsJSONWriter);
+var
+   i : Integer;
+   list : TStringList;
+   symPosList : TSymbolPositionList;
+begin
+   list := TStringList.Create;
+   try
+      for symPosList in Self do
+         if symPosList.Count > 0 then
+            list.AddObject(symPosList.Symbol.Name, symPosList);
+      list.CustomSort(@SymbolCustomSort);
+
+      wr.BeginArray;
+      for i := 0 to list.Count-1 do
+         TSymbolPositionList(list.Objects[i]).WriteToJSON(wr);
+      wr.EndArray;
+   finally
+      list.Free;
+   end;
+end;
+
+// ToJSON
+//
+function TdwsSymbolDictionary.ToJSON : String;
+var
+   wr : TdwsJSONWriter;
+begin
+   wr := TdwsJSONWriter.Create;
+   try
+      WriteToJSON(wr);
+      Result := wr.ToString;
+   finally
+      wr.Free;
+   end;
 end;
 
 // FindSymbolPosList
 //
 function TdwsSymbolDictionary.FindSymbolPosList(Sym: TSymbol): TSymbolPositionList;
-var
-   i : Integer;
 begin
-   FSearchSymbolPositionList.FSymbol:=sym;
-   if FSymbolList.Find(FSearchSymbolPositionList, i) then
-      Result:=FSymbolList[i]
-   else Result:=nil;
+   Result := FSearchSymbolPositionList;
+   Result.FSymbol := sym;
+   if not FHash.Match(Result) then
+      Result:=nil;
 end;
 
 // FindSymbolPosList
 //
 function TdwsSymbolDictionary.FindSymbolPosList(const symName : UnicodeString) : TSymbolPositionList;
 var
-   i : Integer;
+   symPosList : TSymbolPositionList;
 begin
-   for i:=0 to FSymbolList.Count-1 do begin
-      // same name (not case-sensitive)
-      Result:=FSymbolList[i];
-      if AnsiCompareText(Result.Symbol.Name, SymName)=0 then Exit;
+   for symPosList in Self do begin
+      if UnicodeSameText(symPosList.FSymbol.Name, symName) then
+         Exit(symPosList);
    end;
    Result:=nil;
+end;
+
+type
+   TSymbolRemover = class(TList)
+      procedure CollectSymbolsToRemove(sym : TSymbol);
+      function RemoveCallback(const item : TSymbolPositionList) : TSimpleHashAction;
+   end;
+
+// CollectSymbolsToRemove
+//
+procedure TSymbolRemover.CollectSymbolsToRemove(sym : TSymbol);
+var
+   i : Integer;
+   funcSym : TFuncSymbol;
+begin
+   Add(sym);
+   // TFuncSymbol - remove params
+   funcSym:=sym.AsFuncSymbol;
+   if funcSym<>nil then begin
+      for i := 0 to funcSym.Params.Count - 1 do
+         CollectSymbolsToRemove(funcSym.Params[i]);
+   // TPropertySymbol - remove array indices
+   end else if sym is TPropertySymbol then begin
+      for i := 0 to TPropertySymbol(sym).ArrayIndices.Count - 1 do
+         CollectSymbolsToRemove(TPropertySymbol(sym).ArrayIndices[i]);
+   // TStructuredTypeSymbol - remove members (methods, fields, properties)
+   end else if sym is TCompositeTypeSymbol then begin
+      for i := 0 to TCompositeTypeSymbol(sym).Members.Count - 1 do
+         CollectSymbolsToRemove(TCompositeTypeSymbol(sym).Members[i]);
+   end;
+end;
+
+// RemoveCallback
+//
+function TSymbolRemover.RemoveCallback(const item : TSymbolPositionList) : TSimpleHashAction;
+begin
+   if IndexOf(item.FSymbol) >= 0 then begin
+      item.Free;
+      Result := shaRemove;
+   end else Result := shaNone;
 end;
 
 // Remove
 //
 procedure TdwsSymbolDictionary.Remove(sym: TSymbol);
 var
-   idx, i : Integer;
-   symList : TSymbolPositionList;
-   funcSym : TFuncSymbol;
+   list : TSymbolRemover;
 begin
-   // TFuncSymbol - remove params
-   funcSym:=sym.AsFuncSymbol;
-   if funcSym<>nil then begin
-      for i := 0 to funcSym.Params.Count - 1 do
-         Remove(funcSym.Params[i]);
-   // TPropertySymbol - remove array indices
-   end else if sym is TPropertySymbol then begin
-      for i := 0 to TPropertySymbol(sym).ArrayIndices.Count - 1 do
-         Remove(TPropertySymbol(sym).ArrayIndices[i]);
-   // TStructuredTypeSymbol - remove members (methods, fields, properties)
-   end else if sym is TCompositeTypeSymbol then begin
-      for i := 0 to TCompositeTypeSymbol(sym).Members.Count - 1 do
-         Remove(TCompositeTypeSymbol(sym).Members[i]);
-   end;
-
-   // basic entry to remove
-   symList := FindSymbolPosList(sym);
-   if Assigned(symList) then begin
-      // remove symList from internal list
-      idx:=FSymbolList.Extract(symList);
-      Assert(idx>=0);
-      SuppressH2077ValueAssignedToVariableNeverUsed(idx);
-      symList.Free;
+   FSearchSymbolPositionList.FSymbol := sym;
+   if FHash.Contains(FSearchSymbolPositionList) then begin
+      list := TSymbolRemover.Create;
+      try
+         list.CollectSymbolsToRemove(sym);
+         FHash.Enumerate(list.RemoveCallback);
+      finally
+         list.Free;
+      end;
    end;
 end;
 
@@ -530,10 +774,11 @@ var
 begin
    if startPos.SourceFile<>endPos.SourceFile then Exit;
 
-   for i:=0 to FSymbolList.Count-1 do begin
-      symPosList:=FSymbolList[i];
-      if symPosList.FSourceFile=startPos.SourceFile then
-         FSymbolList[i].RemoveInRange(startPos, endPos);
+   for i:=0 to FHash.Capacity-1 do begin
+      if FHash.HashBucketValue(i, symPosList) then begin
+         if symPosList.FSourceFile=startPos.SourceFile then
+            symPosList.RemoveInRange(startPos, endPos);
+      end;
    end;
 end;
 
@@ -542,19 +787,20 @@ end;
 procedure TdwsSymbolDictionary.EnumerateInRange(const startPos, endPos : TScriptPos; const callBack : TdwsSymbolDictionaryProc);
 var
    i, j : Integer;
-   list : TSymbolPositionList;
+   symPosList : TSymbolPositionList;
    symPos : TSymbolPosition;
 begin
    if startPos.SourceFile<>endPos.SourceFile then Exit;
 
-   for i:=0 to FSymbolList.Count-1 do begin
-      list:=FSymbolList[i];
-      for j:=list.Count-1 downto 0 do begin
-         symPos:=list[j];
-         if     startPos.IsBeforeOrEqual(symPos.ScriptPos)
-            and symPos.ScriptPos.IsBeforeOrEqual(endPos) then begin
-            callBack(list.Symbol);
-            Break;
+   for i:=0 to FHash.Capacity-1 do begin
+      if FHash.HashBucketValue(i, symPosList) then begin
+         for j:=symPosList.Count-1 downto 0 do begin
+            symPos:=symPosList[j];
+            if     startPos.IsBeforeOrEqual(symPos.ScriptPos)
+               and symPos.ScriptPos.IsBeforeOrEqual(endPos) then begin
+               callBack(symPosList.Symbol);
+               Break;
+            end;
          end;
       end;
    end;
@@ -565,19 +811,20 @@ end;
 procedure TdwsSymbolDictionary.EnumerateInRange(const startPos, endPos : TScriptPos; const callBack : TdwsSymbolDictionaryRef);
 var
    i, j : Integer;
-   list : TSymbolPositionList;
+   symPosList : TSymbolPositionList;
    symPos : TSymbolPosition;
 begin
    if startPos.SourceFile<>endPos.SourceFile then Exit;
 
-   for i:=0 to FSymbolList.Count-1 do begin
-      list:=FSymbolList[i];
-      for j:=list.Count-1 downto 0 do begin
-         symPos:=list[j];
-         if     startPos.IsBeforeOrEqual(symPos.ScriptPos)
-            and symPos.ScriptPos.IsBeforeOrEqual(endPos) then begin
-            callBack(list.Symbol);
-            Break;
+   for i:=0 to FHash.Capacity-1 do begin
+      if FHash.HashBucketValue(i, symPosList) then begin
+         for j:=symPosList.Count-1 downto 0 do begin
+            symPos:=symPosList[j];
+            if     startPos.IsBeforeOrEqual(symPos.ScriptPos)
+               and symPos.ScriptPos.IsBeforeOrEqual(endPos) then begin
+               callBack(symPosList.Symbol);
+               Break;
+            end;
          end;
       end;
    end;
@@ -607,12 +854,13 @@ var
    symPosList : TSymbolPositionList;
    symPos : TSymbolPosition;
 begin
-   for i:=0 to FSymbolList.Count-1 do begin
-      symPosList:=FSymbolList[i];
-      k:=symPosList.IndexOfPosition(scriptPos);
-      if k>=0 then begin
-         symPos:=symPosList[k];
-         symPos.SymbolUsages:=symPos.SymbolUsages+addUsages-removeUsages;
+   for i:=0 to FHash.Capacity-1 do begin
+      if FHash.HashBucketValue(i, symPosList) then begin
+         k:=symPosList.IndexOfPosition(scriptPos);
+         if k>=0 then begin
+            symPos:=symPosList[k];
+            symPos.SymbolUsages:=symPos.SymbolUsages+addUsages-removeUsages;
+         end;
       end;
    end;
 end;
@@ -620,8 +868,32 @@ end;
 // Clear
 //
 procedure TdwsSymbolDictionary.Clear;
+var
+   i : Integer;
+   symPosList : TSymbolPositionList;
 begin
-   FSymbolList.Clean;
+   for i := 0 to FHash.Capacity-1 do begin
+      if FHash.HashBucketValue(i, symPosList) then
+         symPosList.Free;
+   end;
+   FHash.Clear;
+end;
+
+// PackCallback
+//
+function TdwsSymbolDictionary.PackCallback(const item : TSymbolPositionList) : TSimpleHashAction;
+begin
+   if item.Count = 0 then begin
+      item.Free;
+      Result := shaRemove;
+   end else Result := shaNone;
+end;
+
+// Pack
+//
+procedure TdwsSymbolDictionary.Pack;
+begin
+   FHash.Enumerate(Self.PackCallback);
 end;
 
 // FindSymbolUsage
@@ -650,12 +922,12 @@ end;
 function TdwsSymbolDictionary.FindSymbolUsageOfType(const SymName: UnicodeString;
   SymbolType: TSymbolClass; SymbolUse: TSymbolUsage): TSymbolPosition;
 var
-  list: TSymbolPositionList;
+   list: TSymbolPositionList;
 begin
-  Result := nil;
-  list := FindSymbolPosListOfType(SymName, SymbolType);
-  if Assigned(list) then
-    Result := list.FindUsage(SymbolUse);
+   Result := nil;
+   list := FindSymbolPosListOfType(SymName, SymbolType);
+   if Assigned(list) then
+      Result := list.FindUsage(SymbolUse);
 end;
 
 // FindSymbolByUsageAtLine
@@ -666,14 +938,15 @@ var
    list : TSymbolPositionList;
    symPos : TSymbolPosition;
 begin
-   for i:=0 to FSymbolList.Count-1 do begin
-      list:=FSymbolList[i];
-      for j:=0 to list.Count-1 do begin
-         symPos:=list[j];
-         if     (symbolUse in symPos.SymbolUsages)
-            and (symPos.ScriptPos.SourceFile=scriptPos.SourceFile)
-            and (symPos.ScriptPos.Line=scriptPos.Line) then begin
-            Exit(list.Symbol);
+   for i := 0 to FHash.Capacity-1 do begin
+      if FHash.HashBucketValue(i, list) then begin
+         for j:=0 to list.Count-1 do begin
+            symPos:=list[j];
+            if     (symbolUse in symPos.SymbolUsages)
+               and (symPos.ScriptPos.SourceFile=scriptPos.SourceFile)
+               and (symPos.ScriptPos.Line=scriptPos.Line) then begin
+               Exit(list.Symbol);
+            end;
          end;
       end;
    end;
@@ -683,26 +956,13 @@ end;
 function TdwsSymbolDictionary.FindSymbolPosListOfType(const SymName: UnicodeString;
   SymbolType: TSymbolClass): TSymbolPositionList;
 var
-  x: Integer;
+   symPosList : TSymbolPositionList;
 begin
-  Result := nil;
-  for x := 0 to Self.Count - 1 do
-    if UnicodeSameText(Self.Items[x].Symbol.Name, SymName) and (Self.Items[x].Symbol is SymbolType) then // same name (not case-sensitive)
-    begin
-      Result := Self.Items[x];
-      Break;
-    end;
-end;
-
-function TdwsSymbolDictionary.TdwsSymbolDictionaryEnumerator.GetCurrent: TSymbolPositionList;
-begin
-   Result:=Dict[Index];
-end;
-
-function TdwsSymbolDictionary.TdwsSymbolDictionaryEnumerator.MoveNext: Boolean;
-begin
-   Dec(Index);
-   Result:=(Index>=0);
+   for symPosList in Self do begin
+      if (symPosList.Symbol is symbolType) and UnicodeSameText(symPosList.Symbol.Name, symName) then
+         Exit(symPosList);
+   end;
+   Result := nil;
 end;
 
 end.

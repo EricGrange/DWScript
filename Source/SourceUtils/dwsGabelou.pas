@@ -264,15 +264,13 @@ end;
 procedure TdwsSymbolDictionaryGabelouRule.Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList;
                                                    const restrictToSourceFile : TSourceFile);
 var
-   i : Integer;
    symDict : TdwsSymbolDictionary;
    symPosList : TSymbolPositionList;
    symPos : TSymbolPosition;
    sym : TSymbol;
 begin
    symDict:=aProg.SymbolDictionary;
-   for i:=0 to symDict.Count-1 do begin
-      symPosList:=symDict.Items[i];
+   for symPosList in symDict do begin
       sym:=symPosList.Symbol;
       // skip magic symbols
       if (sym.Name='') or StrContains(sym.Name, ' ') then

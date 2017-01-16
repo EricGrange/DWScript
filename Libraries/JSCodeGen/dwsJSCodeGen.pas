@@ -3712,8 +3712,7 @@ begin
       SetLength(sourceLines, source.Count);
 
       // collect all symbols and locations relevant to the sourcefile
-      for i:=0 to SymbolDictionary.Count-1 do begin
-         symPosList:=SymbolDictionary[i];
+      for symPosList in SymbolDictionary do begin
          checkNoMap:=True;
          for j:=0 to symPosList.Count-1 do begin
             symPos:=symPosList.Items[j];
