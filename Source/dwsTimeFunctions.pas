@@ -456,11 +456,16 @@ end;
 
 procedure TStrToDateTimeDefFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 var
+   s : UnicodeString;
    def : Double;
+   utc : TdwsTimeZone;
 begin
-   def:=args.AsFloat[1];
-   if not args.FormatSettings.TryStrToDateTime(args.AsString[0], Result, TdwsTimeZone(args.AsInteger[2])) then
-      Result:=def;
+   s := args.AsString[0];
+   def := args.AsFloat[1];
+   utc := TdwsTimeZone(args.AsInteger[2]);
+   if not args.FormatSettings.TryStrToDateTime(args.AsString[0], Result, utc) then
+      if not args.FormatSettings.TryStrToDate(s, Result, utc) then
+         Result:=def;
 end;
 
 { TParseDateTimeFunc }
