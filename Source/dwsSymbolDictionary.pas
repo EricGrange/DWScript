@@ -125,6 +125,8 @@ type
       protected
          function SameItem(const item1, item2 : TSymbolPositionList) : Boolean; override;
          function GetItemHashCode(const item1 : TSymbolPositionList) : Integer; override;
+
+         function MatchSymbol(sym : TSymbol) : TSymbolPositionList;
    end;
 
    TdwsSymbolDictionaryProc = procedure (sym : TSymbol) of object;
@@ -145,7 +147,6 @@ type
 
       protected
          FHash : TSymbolPositionListHash;
-         FSearchSymbolPositionList : TSymbolPositionList;
          FRemovingSymbols : Integer;
          FSymPosAllocator : TSymbolPositionbSubAllocator;
 
@@ -171,7 +172,7 @@ type
 
          function FindSymbolAtPosition(aCol, aLine: Integer; const sourceFile : UnicodeString): TSymbol; overload;
          function FindSymbolAtPosition(const aScriptPos : TScriptPos) : TSymbol; overload;
-         function FindSymbolPosList(sym : TSymbol) : TSymbolPositionList; overload;  // return list of symbol
+         function FindSymbolPosList(sym : TSymbol) : TSymbolPositionList; overload; // return list of symbol
          function FindSymbolPosList(const symName : UnicodeString) : TSymbolPositionList; overload;  // return list of symbol
          function FindSymbolPosListOfType(const symName : UnicodeString; symbolType : TSymbolClass) : TSymbolPositionList; // return list of symbol given the desired type
          function FindSymbolUsage(symbol : TSymbol; symbolUse: TSymbolUsage) : TSymbolPosition; overload;
@@ -514,7 +515,29 @@ end;
 function TSymbolPositionListHash.GetItemHashCode(const item1 : TSymbolPositionList) : Integer;
 begin
    Result := SimplePointerHash(item1.FSymbol);
-   Assert(Result <> 0);
+end;
+
+// MatchSymbol
+//
+function TSymbolPositionListHash.MatchSymbol(sym : TSymbol) : TSymbolPositionList;
+var
+   i : Integer;
+begin
+   if FCount = 0 then Exit(nil);
+
+   i := (SimplePointerHash(sym) and (FCapacity-1));
+
+   repeat
+      if FBuckets[i].HashCode = 0 then
+         Exit(nil)
+      else begin
+         Result := FBuckets[i].Value;
+         if Result.FSymbol = sym then Exit;
+      end;
+      i := (i+1) and (FCapacity-1);
+   until False;
+
+   Result := nil;
 end;
 
 // ------------------
@@ -527,7 +550,6 @@ constructor TdwsSymbolDictionary.Create;
 begin
    inherited;
    FHash := TSymbolPositionListHash.Create;
-   FSearchSymbolPositionList := TSymbolPositionList.Create(Self, nil);
    FSymPosAllocator.Initialize;
 end;
 
@@ -538,7 +560,6 @@ begin
    FSymPosAllocator.Finalize;
    Clear;
    FHash.Free;
-   FSearchSymbolPositionList.Free;
    inherited;
 end;
 
@@ -686,12 +707,9 @@ end;
 
 // FindSymbolPosList
 //
-function TdwsSymbolDictionary.FindSymbolPosList(Sym: TSymbol): TSymbolPositionList;
+function TdwsSymbolDictionary.FindSymbolPosList(sym : TSymbol): TSymbolPositionList;
 begin
-   Result := FSearchSymbolPositionList;
-   Result.FSymbol := sym;
-   if not FHash.Match(Result) then
-      Result:=nil;
+   Result := FHash.MatchSymbol(sym);
 end;
 
 // FindSymbolPosList
@@ -753,8 +771,7 @@ procedure TdwsSymbolDictionary.Remove(sym: TSymbol);
 var
    list : TSymbolRemover;
 begin
-   FSearchSymbolPositionList.FSymbol := sym;
-   if FHash.Contains(FSearchSymbolPositionList) then begin
+   if FindSymbolPosList(sym) <> nil then begin
       list := TSymbolRemover.Create;
       try
          list.CollectSymbolsToRemove(sym);
