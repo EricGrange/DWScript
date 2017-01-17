@@ -97,6 +97,8 @@ type
          procedure MultiLineUnixStyle;
          procedure EmptyProgram;
          procedure MessagesToJSON;
+
+         procedure LambdaAsConstParam;
    end;
 
    ETestException = class (Exception);
@@ -1952,6 +1954,29 @@ begin
                  +'{"text":"Unexpected \"..\".","type":"SyntaxError","pos":{"file":"*MainModule*","line":2,"col":2}}]', wr.ToString);
    finally
       wr.Free;
+   end;
+end;
+
+// LambdaAsConstParam
+//
+procedure TCornerCasesTests.LambdaAsConstParam;
+var
+   prog : IdwsProgram;
+begin
+   FCompiler.Config.CompilerOptions := FCompiler.Config.CompilerOptions + [coAllowClosures];
+   try
+      prog := FCompiler.Compile(
+         'type TSomeCallback = function (const a: TObject; const b: String; var c: Variant): Boolean;'#13#10
+        +'procedure Test(const a: TObject; const b: String; var c: Variant; const callback: TSomeCallback);'#13#10
+        +'begin callback(a, b, c); end;'#13#10
+        +'var va : TObject;'#13#10
+        +'var vb : String;'#13#10
+        +'var vc : Variant;'#13#10
+        +'Test(va, vb, vc, lambda => false);'
+        );
+      CheckEquals('', prog.Msgs.AsInfo);
+   finally
+      FCompiler.Config.CompilerOptions := FCompiler.Config.CompilerOptions - [coAllowClosures];
    end;
 end;
 

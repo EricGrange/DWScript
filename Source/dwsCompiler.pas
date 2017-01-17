@@ -11457,10 +11457,8 @@ begin
       // implicit anonmous lambda params
       defaultExpr:=nil;
       for i:=0 to expectedLambdaParams.Count-1 do begin
-         expectedParam:=expectedLambdaParams[i];
-//         lazyParam:=(expectedParam.ClassType=TLazyParamSymbol);
-//         varParam:=(expectedParam.ClassType=TVarParamSymbol);
-//         constParam:=(expectedParam.ClassType=TConstParamSymbol);
+         expectedParam := expectedLambdaParams[i];
+         paramSemantics := expectedParam.Semantics;
          GenerateParam('_implicit_'+expectedParam.Name, cNullPos,
                        expectedParam.Typ, cNullPos, defaultExpr);
       end;
