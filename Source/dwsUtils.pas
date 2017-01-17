@@ -414,7 +414,7 @@ type
    {: Minimalistic open-addressing hash, subclasses must override SameItem and GetItemHashCode.
       HashCodes *MUST* be non zero }
    TSimpleHash<T> = class
-      private
+      protected
          {$IFDEF DELPHI_XE3}
          // workaround for XE3 compiler bug
          FBuckets : array of TSimpleHashBucket<T>;
@@ -425,7 +425,6 @@ type
          FGrowth : Integer;
          FCapacity : Integer;
 
-      protected
          procedure Grow(capacityPreAdjusted : Boolean);
          function LinearFind(const item : T; var index : Integer) : Boolean;
          function SameItem(const item1, item2 : T) : Boolean; virtual; abstract;
