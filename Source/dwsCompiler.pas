@@ -11285,10 +11285,9 @@ procedure TdwsCompiler.ReadParams(const hasParamMeth : THasParamSymbolMethod;
                                   forwardedParams : TParamsSymbolTable;
                                   expectedLambdaParams : TParamsSymbolTable;
                                   var posArray : TScriptPosArray);
-var
-   paramSemantics : TParamSymbolSemantics;
 
    procedure GenerateParam(const curName : UnicodeString; const scriptPos : TScriptPos;
+                           paramSemantics : TParamSymbolSemantics;
                            paramType : TTypeSymbol; const typScriptPos : TScriptPos;
                            var defaultExpr : TTypedExpr);
    var
@@ -11349,6 +11348,7 @@ var
    defaultExpr : TTypedExpr;
    expectedParam : TParamSymbol;
    localPosArray : TScriptPosArray;
+   paramSemantics : TParamSymbolSemantics;
 begin
    if FTok.TestDelete(ttBLEFT) then begin
 
@@ -11378,7 +11378,7 @@ begin
                      for i:=0 to names.Count-1 do begin
                         expectedParam := expectedLambdaParams[paramIdx+i];
                         paramSemantics := expectedParam.Semantics;
-                        GenerateParam(names[i], localPosArray[i], expectedParam.Typ, cNullPos, defaultExpr);
+                        GenerateParam(names[i], localPosArray[i], paramSemantics, expectedParam.Typ, cNullPos, defaultExpr);
                      end;
 
                   end else begin
@@ -11432,7 +11432,7 @@ begin
                         defaultExpr:=defaultExpr.OptimizeToTypedExpr(FCompilerContext, FExec, exprPos);
 
                      for i:=0 to names.Count-1 do
-                        GenerateParam(names[i], localPosArray[i], typ, typScriptPos, defaultExpr);
+                        GenerateParam(names[i], localPosArray[i], paramSemantics, typ, typScriptPos, defaultExpr);
 
                   finally
                      OrphanAndNil(defaultExpr);
@@ -11460,7 +11460,7 @@ begin
          expectedParam := expectedLambdaParams[i];
          paramSemantics := expectedParam.Semantics;
          GenerateParam('_implicit_'+expectedParam.Name, cNullPos,
-                       expectedParam.Typ, cNullPos, defaultExpr);
+                       paramSemantics, expectedParam.Typ, cNullPos, defaultExpr);
       end;
 
    end;
