@@ -1550,6 +1550,8 @@ type
          function  IsPointerType : Boolean; override;
          function  HasMetaSymbol : Boolean; override;
 
+         function CommonAncestor(otherClass : TTypeSymbol) : TClassSymbol;
+
          function VMTMethod(index : Integer) : TMethodSymbol;
          function VMTCount : Integer;
 
@@ -4697,6 +4699,15 @@ begin
    Result:=True;
 end;
 
+// CommonAncestor
+//
+function TClassSymbol.CommonAncestor(otherClass : TTypeSymbol) : TClassSymbol;
+begin
+   Result := Self;
+   while (Result <> nil) and not otherClass.IsOfType(Result) do
+      Result := Result.Parent;
+end;
+
 // DoIsOfType
 //
 function TClassSymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
@@ -5488,8 +5499,12 @@ begin
    Result := pssVar;
 end;
 
-{ TSymbolTable }
+// ------------------
+// ------------------ TSymbolTable ------------------
+// ------------------
 
+// Create
+//
 constructor TSymbolTable.Create(Parent: TSymbolTable; AddrGenerator: TAddrGenerator);
 begin
    FAddrGenerator := AddrGenerator;
@@ -5497,11 +5512,27 @@ begin
       AddParent(Parent);
 end;
 
+// Destroy
+//
 destructor TSymbolTable.Destroy;
 begin
    FSymbols.Clean;
    FParents.Clear;
    inherited;
+end;
+
+// GetCount
+//
+function TSymbolTable.GetCount : Integer;
+begin
+   Result:=FSymbols.Count
+end;
+
+// GetSymbol
+//
+function TSymbolTable.GetSymbol(index : Integer) : TSymbol;
+begin
+   Result:=TSymbol(FSymbols.List[Index]);
 end;
 
 procedure TSymbolTable.Initialize(const msgs : TdwsCompileMessageList);
@@ -5723,10 +5754,12 @@ function TSymbolTable.EnumerateLocalHelpers(helpedType : TTypeSymbol; const call
 var
    i : Integer;
    sym : TSymbol;
+   list : PObjectTightList;
 begin
    if stfHasHelpers in FFlags then begin
-      for i:=0 to Count-1 do begin
-         sym:=Symbols[i];
+      list := FSymbols.List;
+      for i:=0 to FSymbols.Count-1 do begin
+         sym:=TSymbol(list[i]);
          if sym.ClassType=THelperSymbol then
             if THelperSymbol(sym).HelpsType(helpedType) then begin
                if callback(THelperSymbol(sym)) then Exit(True);
@@ -5764,10 +5797,12 @@ var
    sym : TSymbol;
    opSym : TOperatorSymbol;
    leftParam, rightParam : TTypeSymbol;
+   list : PObjectTightList;
 begin
    if stfHasLocalOperators in FFlags then begin
-      for i:=0 to Count-1 do begin
-         sym:=Symbols[i];
+      list := FSymbols.List;
+      for i:=0 to FSymbols.Count-1 do begin
+         sym:=TSymbol(list[i]);
          if sym.ClassType=TOperatorSymbol then begin
             opSym:=TOperatorSymbol(sym);
             if opSym.Token<>aToken then continue;
@@ -5915,20 +5950,6 @@ end;
 class function TSymbolTable.IsUnitTable : Boolean;
 begin
    Result:=False;
-end;
-
-// GetCount
-//
-function TSymbolTable.GetCount : Integer;
-begin
-   Result:=FSymbols.Count
-end;
-
-// GetSymbol
-//
-function TSymbolTable.GetSymbol(index : Integer) : TSymbol;
-begin
-   Result:=TSymbol(FSymbols.List[Index]);
 end;
 
 // AddSymbol

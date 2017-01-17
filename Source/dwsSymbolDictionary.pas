@@ -313,7 +313,7 @@ begin
 
    capacity := Length(FPosList);
    if FCount = capacity then
-      SetLength(FPosList, capacity + 8 + (capacity shr 2));
+      SetLength(FPosList, capacity + 4 + (capacity shr 2));
 
    FPosList[FCount] := symPos;
    Inc(FCount);

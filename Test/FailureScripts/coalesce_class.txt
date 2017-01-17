@@ -1,5 +1,3 @@
-Syntax Error: Incompatible types: "TTest" and "TObject" [line: 7, column: 8]
-Syntax Error: Incompatible types: "TTest" and "TObject" [line: 8, column: 8]
-Syntax Error: Incompatible types: "TTest" and "TObject" [line: 14, column: 8]
-Syntax Error: Incompatible types: "TTest" and "TObject" [line: 16, column: 8]
+Syntax Error: Incompatible types: Cannot assign "TObject" to "TTest" [line: 7, column: 3]
+Syntax Error: Incompatible types: Cannot assign "TObject" to "TTest" [line: 16, column: 3]
 Syntax Error: Incompatible types: Cannot assign "TObject" to "TTest" [line: 17, column: 3]

@@ -57,7 +57,7 @@ const
    cDefaultStackChunkSize = 4096;  // 64 kB in 32bit Delphi, each stack entry is a Variant
 
    // compiler version is date in YYYYMMDD format, dot subversion number
-   cCompilerVersion = 20160517.0;
+   cCompilerVersion = 20170117.0;
 
 type
    TdwsCompiler = class;
@@ -85,12 +85,6 @@ type
 
    TdwsNameListOption = (nloAllowDots, nloNoCheckSpecials, nloAllowStrings);
    TdwsNameListOptions = set of TdwsNameListOption;
-
-   TSimpleStringList = class(TSimpleList<UnicodeString>)
-      public
-         Next : TSimpleStringList;
-         function IndexOf(const s : UnicodeString) : Integer;
-   end;
 
    // TdwsLocalizerComponent
    //
@@ -386,7 +380,7 @@ type
          FAnyFuncSymbol : TAnyFuncSymbol;
          FStandardDataSymbolFactory : IdwsDataSymbolFactory;
          FPendingAttributes : TdwsSymbolAttributes;
-         FPooledStringList : TSimpleStringList;
+         FStringListPool : TSimpleStringListPool;
          FOperatorResolver : TOperatorResolver;
          FDefaultConditionals : IAutoStrings;
          FHelperMemberNames : TSimpleStringHash;
@@ -797,10 +791,6 @@ type
 
          procedure SetupInitializationFinalization;
 
-         function  AcquireStringList : TSimpleStringList;
-         procedure ReleaseStringList(sl : TSimpleStringList);
-         procedure ReleaseStringListPool;
-
          procedure OrphanObject(obj : TRefCountedObject); overload;
 
          procedure OrphanAndNil(var expr : TTypedExpr); overload;
@@ -1204,6 +1194,8 @@ var
 begin
    inherited;
 
+   FStringListPool.Initialize;
+
    FStandardDataSymbolFactory:=TStandardSymbolFactory.Create(Self);
 
    FTokRules:=TPascalTokenizerStateRules.Create;
@@ -1238,8 +1230,6 @@ begin
 
    FOperatorResolver.Free;
 
-   ReleaseStringListPool;
-
    FPendingAttributes.Free;
 
    FAnyFuncSymbol.Free;
@@ -1251,6 +1241,9 @@ begin
    FLoopExitable.Free;
    FLoopExprs.Free;
    FTokRules.Free;
+
+   FStringListPool.Finalize;
+
    inherited;
 end;
 
@@ -1949,39 +1942,6 @@ begin
          FMainProg.AddFinalExpr(ums.FinalizationExpr as TBlockExprBase);
          ums.FinalizationExpr.IncRefCount;
       end;
-   end;
-end;
-
-// AcquireStringList
-//
-function TdwsCompiler.AcquireStringList : TSimpleStringList;
-begin
-   if FPooledStringList=nil then
-      Result:=TSimpleStringList.Create
-   else begin
-      Result:=FPooledStringList;
-      FPooledStringList:=Result.Next;
-   end;
-end;
-
-// ReleaseStringList
-//
-procedure TdwsCompiler.ReleaseStringList(sl : TSimpleStringList);
-begin
-   sl.Next:=FPooledStringList;
-   FPooledStringList:=sl;
-end;
-
-// ReleaseStringListPool
-//
-procedure TdwsCompiler.ReleaseStringListPool;
-var
-   sl : TSimpleStringList;
-begin
-   while FPooledStringList<>nil do begin
-      sl:=FPooledStringList;
-      FPooledStringList:=sl.Next;
-      sl.Free;
    end;
 end;
 
@@ -2749,14 +2709,14 @@ var
    names, externalNames : TSimpleStringList;
    posArray : TScriptPosArray;
 begin
-   names:=AcquireStringList;
-   externalNames:=AcquireStringList;
+   names := FStringListPool.Acquire;
+   externalNames := FStringListPool.Acquire;
    try
       ReadNameList(names, posArray, [], externalNames);
       ReadNamedVarsDecl(names, externalNames, posArray, dataSymbolFactory, initVarBlockExpr);
    finally
-      ReleaseStringList(externalNames);
-      ReleaseStringList(names);
+      FStringListPool.Release(externalNames);
+      FStringListPool.Release(names);
    end;
 end;
 
@@ -9660,7 +9620,7 @@ var
    options : TdwsNameListOptions;
    factory : IdwsDataSymbolFactory;
 begin
-   names:=AcquireStringList;
+   names:=FStringListPool.Acquire;
    try
       options:=[];
       if struct.Name='' then
@@ -9780,7 +9740,7 @@ begin
       end;
 
    finally
-      ReleaseStringList(names);
+      FStringListPool.Release(names);
    end;
 end;
 
@@ -10522,10 +10482,20 @@ begin
                ttQUESTIONQUESTION : begin
                   rightTyp:=right.Typ;
                   if not Result.Typ.IsCompatible(rightTyp) then begin
-                     IncompatibleTypes(hotPos, CPE_IncompatibleTypes, Result.Typ, rightTyp);
-                     // fake result to keep compiler going and report further issues
-                     Result:=TBinaryOpExpr.Create(FCompilerContext, hotPos, Result, right);
-                     Result.Typ:=TBinaryOpExpr(Result).Left.Typ;
+                     if Result.Typ.UnAliasedTypeIs(TClassSymbol) and right.Typ.UnAliasedTypeIs(TClassSymbol) then begin
+                        Result := TCoalesceClassExpr.Create(FCompilerContext, hotPos, Result, right);
+                        Result.Typ := (Result.Typ.UnAliasedType as TClassSymbol).CommonAncestor(rightTyp.UnAliasedType);
+                        if Result.Typ = nil then begin
+                           FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
+                           // keep compiling
+                           Result.Typ := TCoalesceClassExpr(Result).Left.Typ;
+                        end;
+                     end else begin
+                        IncompatibleTypes(hotPos, CPE_IncompatibleTypes, Result.Typ, rightTyp);
+                        // fake result to keep compiler going and report further issues
+                        Result:=TBinaryOpExpr.Create(FCompilerContext, hotPos, Result, right);
+                        Result.Typ:=TBinaryOpExpr(Result).Left.Typ;
+                     end;
                   end else if Result.Typ.IsOfType(FCompilerContext.TypVariant) then begin
                      Result:=TCoalesceExpr.Create(FCompilerContext, hotPos, Result, right);
                      Result.Typ:=FCompilerContext.TypVariant;
@@ -11276,7 +11246,7 @@ begin
    end;
 
    // At least one argument was found
-   names:=AcquireStringList;
+   names:=FStringListPool.Acquire;
    try
       repeat
          isVarParam:=FTok.TestDelete(ttVAR);
@@ -11301,7 +11271,7 @@ begin
       until not FTok.TestDelete(ttSEMI);
 
    finally
-      ReleaseStringList(names);
+      FStringListPool.Release(names);
    end;
 
    if not FTok.TestDelete(ttARIGHT) then
@@ -11384,7 +11354,7 @@ begin
 
       if not FTok.TestDelete(ttBRIGHT) then begin
          // At least one argument was found
-         names:=AcquireStringList;
+         names:=FStringListPool.Acquire;
          try
             paramIdx:=0;
             onlyDefaultParamsNow:=False;
@@ -11475,7 +11445,7 @@ begin
             until not FTok.TestDelete(ttSEMI);
 
          finally
-            ReleaseStringList(names);
+            FStringListPool.Release(names);
          end;
 
          if not FTok.TestDelete(ttBRIGHT) then
@@ -12653,7 +12623,7 @@ var
    unitSymbol : TUnitSymbol;
    posArray : TScriptPosArray;
 begin
-   names:=AcquireStringList;
+   names:=FStringListPool.Acquire;
    try
       if coContextMap in FOptions then
          FSourceContextMap.OpenContext(FTok.HotPos, nil, ttUSES);
@@ -12725,7 +12695,7 @@ begin
          end;
       end;
    finally
-      ReleaseStringList(names);
+      FStringListPool.Release(names);
    end;
 end;
 
@@ -14452,19 +14422,6 @@ begin
    compiler.EnterUnit(Peek.SourceUnit, oldSourceUnit);
    compiler.FSourceContextMap.ResumeContext(Peek.Context);
    Pop;
-end;
-
-// ------------------
-// ------------------ TSimpleStringList ------------------
-// ------------------
-
-// IndexOf
-//
-function TSimpleStringList.IndexOf(const s : UnicodeString) : Integer;
-begin
-   for Result:=0 to Count-1 do
-      if Items[Result]=s then Exit;
-   Result:=-1;
 end;
 
 { TTypeLookupData }
