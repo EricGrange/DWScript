@@ -3605,7 +3605,7 @@ begin
                   if meth=nil then
                      FMsgs.AddCompilerErrorFmt(methPos, CPE_CantOverrideNotInherited, [name])
                   else begin
-                     RecordSymbolUse(meth, methPos, [suReference, suImplicit]);
+                     RecordSymbolUse(meth, methPos, [suImplicit]);
                      if not meth.IsVirtual then
                         FMsgs.AddCompilerErrorFmt(methPos, CPE_CantOverrideNotVirtual, [name])
                      else begin

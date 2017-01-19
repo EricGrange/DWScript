@@ -28,9 +28,16 @@ type
          procedure BasicForward3;
          procedure BasicForward3Overloaded;
 
+         procedure BasicOverride;
+
          procedure OverloadForwardDictionary;
          procedure OverloadMethodDictionary;
          procedure ClassForwardDictionary;
+
+         procedure SymDictFunctionForward;
+         procedure SymDictInherited;
+         procedure SymDictParamExplicit;
+         procedure SymDictParamImplicit;
    end;
 
    ETestException = class (Exception);
@@ -223,7 +230,7 @@ begin
       +'procedure Test(a3 : Integer); begin end;'#13#10
       );
    CheckEquals(
-      '[{"symbol":{"name":"a1","class":"TParamSymbol"},"positions":['
+       '[{"symbol":{"name":"a1","class":"TParamSymbol"},"positions":['
          +'{"usages":["suDeclaration"],"position":" [line: 1, column: 16]"},'
          +'{"usages":["suReference"],"position":" [line: 4, column: 16]"}]},'
       +'{"symbol":{"name":"a2","class":"TParamSymbol"},"positions":['
@@ -241,6 +248,25 @@ begin
       +'{"symbol":{"name":"Test","class":"TSourceFuncSymbol"},"positions":['
          +'{"usages":["suForward","suDeclaration"],"position":" [line: 3, column: 11]"},'
          +'{"usages":["suImplementation"],"position":" [line: 6, column: 11]"}]}]',
+      prog.SymbolDictionary.ToJSON);
+end;
+
+// BasicOverride
+//
+procedure TSymbolDictionaryTests.BasicOverride;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile(
+       'type TTest = class destructor Destroy; override; begin end; end;'#13#10
+      );
+   CheckEquals(
+       '[{"symbol":{"name":"Destroy","class":"TMethodSymbol"},"positions":['
+         +'{"usages":["suImplicit"],"position":" [line: 1, column: 31]"}]},'
+      +'{"symbol":{"name":"Destroy","class":"TSourceMethodSymbol"},"positions":['
+         +'{"usages":["suDeclaration"],"position":" [line: 1, column: 31]"}]},'
+      +'{"symbol":{"name":"TTest","class":"TClassSymbol"},"positions":['
+         +'{"usages":["suDeclaration"],"position":" [line: 1, column: 6]"}]}]',
       prog.SymbolDictionary.ToJSON);
 end;
 
@@ -360,6 +386,160 @@ begin
    CheckTrue(symPosList.Items[2].SymbolUsages=[suDeclaration], 'declaration 2');
 end;
 
+// SymDictFunctionForward
+//
+procedure TSymbolDictionaryTests.SymDictFunctionForward;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'procedure Test; begin end;');
+
+   Check(prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suForward)=nil, 'Forward');
+   CheckEquals(1, prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suDeclaration).ScriptPos.Line,
+               'a Declaration');
+   CheckEquals(1, prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suImplementation).ScriptPos.Line,
+               'a Implementation');
+
+   prog:=FCompiler.Compile( 'procedure Test; forward;'#13#10
+                           +'procedure Test; begin end;');
+
+   CheckEquals(1, prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suForward).ScriptPos.Line,
+               'b Forward');
+   CheckEquals(1, prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suDeclaration).ScriptPos.Line,
+               'b Declaration');
+   CheckEquals(2, prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suImplementation).ScriptPos.Line,
+               'b Implementation');
+
+   prog:=FCompiler.Compile( 'unit Test; interface'#13#10
+                           +'procedure Test;'#13#10
+                           +'implementation'#13#10
+                           +'procedure Test; begin end;');
+
+   CheckEquals(2, prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suForward).ScriptPos.Line,
+               'c Forward');
+   CheckEquals(2, prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suDeclaration).ScriptPos.Line,
+               'c Declaration');
+   CheckEquals(4, prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suImplementation).ScriptPos.Line,
+               'c Implementation');
+end;
+
+// SymDictInherited
+//
+procedure TSymbolDictionaryTests.SymDictInherited;
+var
+   prog : IdwsProgram;
+   symPosList : TSymbolPositionList;
+   sym : TSymbol;
+begin
+   prog:=FCompiler.Compile( 'type TBaseClass = class procedure Foo; virtual; end;'#13#10
+                           +'type TDerivedClass = class(TBaseClass) procedure Foo; override; end;'#13#10
+                           +'procedure TDerivedClass.Foo; begin'#13#10
+                           +'inherited;'#13#10
+                           +'inherited Foo;'#13#10
+                           +'end;');
+
+   // base method
+
+   sym:=prog.Table.FindSymbol('TBaseClass', cvMagic);
+   sym:=(sym as TClassSymbol).Members.FindSymbol('Foo', cvMagic);
+
+   symPosList:=prog.SymbolDictionary.FindSymbolPosList(sym);
+
+   CheckEquals(4, symPosList.Count);
+
+   CheckEquals(1, symPosList[0].ScriptPos.Line, 'TBaseClass Line 1');
+   Check(symPosList[0].SymbolUsages=[suDeclaration], 'TBaseClass Line 1 usage');
+
+   CheckEquals(2, symPosList[1].ScriptPos.Line, 'TBaseClass Line 2');
+   Check(symPosList[1].SymbolUsages=[suImplicit], 'TBaseClass Line 2 usage');
+
+   CheckEquals(4, symPosList[2].ScriptPos.Line, 'TBaseClass Line 4');
+   Check(symPosList[2].SymbolUsages=[suReference, suImplicit], 'TBaseClass Line 4 usage');
+
+   CheckEquals(5, symPosList[3].ScriptPos.Line, 'TBaseClass Line 5');
+   Check(symPosList[3].SymbolUsages=[suReference], 'TBaseClass Line 5 usage');
+
+   // derived method
+
+   sym:=prog.Table.FindSymbol('TDerivedClass', cvMagic);
+   sym:=(sym as TClassSymbol).Members.FindSymbol('Foo', cvMagic);
+
+   symPosList:=prog.SymbolDictionary.FindSymbolPosList(sym);
+
+   CheckEquals(2, symPosList.Count);
+
+   CheckEquals(2, symPosList[0].ScriptPos.Line, 'TDerivedClass Line 2');
+   Check(symPosList[0].SymbolUsages=[suDeclaration], 'TDerivedClass Line 2 usage');
+
+   CheckEquals(3, symPosList[1].ScriptPos.Line, 'TDerivedClass Line 3');
+   Check(symPosList[1].SymbolUsages=[suImplementation], 'TDerivedClass Line 3 usage');
+end;
+
+// SymDictParamExplicit
+//
+procedure TSymbolDictionaryTests.SymDictParamExplicit;
+var
+   prog : IdwsProgram;
+   sym : TTypeSymbol;
+   spl : TSymbolPositionList;
+begin
+   prog:=FCompiler.Compile( 'type TTest = class end;'#13#10
+                           +'procedure Test(a : TTest); begin end;'#13#10
+                           +'Test(nil);'#13#10);
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   sym := prog.Table.FindTypeSymbol('TTest', cvMagic);
+
+   spl := prog.SymbolDictionary.FindSymbolPosList(sym);
+
+   CheckEquals(2, spl.Count, 'TTest');
+   CheckEquals(' [line: 1, column: 6]', spl.Items[0].ScriptPos.AsInfo);
+   CheckEquals(' [line: 2, column: 20]', spl.Items[1].ScriptPos.AsInfo);
+
+   spl := prog.SymbolDictionary.FindSymbolPosList('a');
+
+   CheckEquals(1, spl.Count, 'a');
+   CheckEquals(' [line: 2, column: 16]', spl.Items[0].ScriptPos.AsInfo);
+
+   spl := prog.SymbolDictionary.FindSymbolPosList('Test');
+
+   CheckEquals(2, spl.Count, 'Test');
+   CheckEquals(' [line: 2, column: 11]', spl.Items[0].ScriptPos.AsInfo);
+   CheckEquals(' [line: 3, column: 1]', spl.Items[1].ScriptPos.AsInfo);
+end;
+
+// SymDictParamImplicit
+//
+procedure TSymbolDictionaryTests.SymDictParamImplicit;
+var
+   prog : IdwsProgram;
+   sym : TTypeSymbol;
+   spl : TSymbolPositionList;
+begin
+   prog:=FCompiler.Compile( 'type TTest = class end;'#13#10
+                           +'procedure Test(a : TTest = nil); begin end;'#13#10
+                           +'Test();'#13#10);
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   sym := prog.Table.FindTypeSymbol('TTest', cvMagic);
+
+   spl := prog.SymbolDictionary.FindSymbolPosList(sym);
+
+   CheckEquals(2, spl.Count, 'TTest');
+   CheckEquals(' [line: 1, column: 6]', spl.Items[0].ScriptPos.AsInfo);
+   CheckEquals(' [line: 2, column: 20]', spl.Items[1].ScriptPos.AsInfo);
+
+   spl := prog.SymbolDictionary.FindSymbolPosList('a');
+
+   CheckEquals(1, spl.Count, 'a');
+   CheckEquals(' [line: 2, column: 16]', spl.Items[0].ScriptPos.AsInfo);
+
+   spl := prog.SymbolDictionary.FindSymbolPosList('Test');
+
+   CheckEquals(2, spl.Count, 'Test');
+   CheckEquals(' [line: 2, column: 11]', spl.Items[0].ScriptPos.AsInfo);
+   CheckEquals(' [line: 3, column: 1]', spl.Items[1].ScriptPos.AsInfo);
+end;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
