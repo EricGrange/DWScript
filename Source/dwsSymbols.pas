@@ -607,6 +607,7 @@ type
          // but identical declarations are
          function SameType(typSym : TTypeSymbol) : Boolean; virtual;
          function HasMetaSymbol : Boolean; virtual;
+         function IsForwarded : Boolean; virtual;
 
          property DeprecatedMessage : UnicodeString read FDeprecatedMessage write FDeprecatedMessage;
          property IsDeprecated : Boolean read GetIsDeprecated;
@@ -702,7 +703,6 @@ type
 
          procedure SetType(const Value: TTypeSymbol);
          function GetCaption : UnicodeString; override;
-         function GetIsForwarded : Boolean;
          function GetDescription : UnicodeString; override;
          function GetLevel : SmallInt; inline;
          function GetParamSize : Integer; inline;
@@ -761,7 +761,7 @@ type
          property Executable : IExecutable read FExecutable write FExecutable;
          property IsDeprecated : Boolean read GetIsDeprecated;
          property IsStateless : Boolean read GetIsStateless write SetIsStateless;
-         property IsForwarded : Boolean read GetIsForwarded;
+         function IsForwarded : Boolean; override;
          property IsOverloaded : Boolean read GetIsOverloaded write SetIsOverloaded;
          property IsExternal : Boolean read GetIsExternal write SetIsExternal;
          property IsExport : Boolean read GetIsExport write SetIsExport;
@@ -948,6 +948,7 @@ type
       protected
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
          function GetAsFuncSymbol : TFuncSymbol; override;
+         function GetDescription : UnicodeString; override;
 
       public
          function BaseType : TTypeSymbol; override;
@@ -1248,7 +1249,6 @@ type
          FExternalName : UnicodeString;
 
       protected
-         function GetIsForwarded : Boolean; inline;
          function GetIsExternal : Boolean; override;
          function GetExternalName : UnicodeString; override;
 
@@ -1269,7 +1269,7 @@ type
          procedure SetForwardedPos(const aScriptPos: TScriptPos);
          procedure ClearIsForwarded;
 
-         property IsForwarded : Boolean read GetIsForwarded;
+         function IsForwarded : Boolean; override;
          property ExternalName : UnicodeString read GetExternalName write FExternalName;
 
          property MetaSymbol : TStructuredTypeMetaSymbol read FMetaSymbol;
@@ -2584,9 +2584,9 @@ begin
    else Result:=MaxInt;
 end;
 
-// GetIsForwarded
+// IsForwarded
 //
-function TStructuredTypeSymbol.GetIsForwarded : Boolean;
+function TStructuredTypeSymbol.IsForwarded : Boolean;
 begin
    Result:=Assigned(FForwardPosition);
 end;
@@ -3301,7 +3301,7 @@ end;
 
 // GetIsForwarded
 //
-function TFuncSymbol.GetIsForwarded : Boolean;
+function TFuncSymbol.IsForwarded : Boolean;
 begin
    Result:=Assigned(FForwardPosition);
 end;
@@ -6852,6 +6852,13 @@ begin
    Result:=Typ.GetAsFuncSymbol;
 end;
 
+// GetDescription
+//
+function TAliasSymbol.GetDescription : UnicodeString;
+begin
+   Result := Name + ' = ' + Typ.Name;
+end;
+
 // ------------------
 // ------------------ TTypeSymbol ------------------
 // ------------------
@@ -6932,6 +6939,13 @@ end;
 function TTypeSymbol.HasMetaSymbol : Boolean;
 begin
    Result:=False;
+end;
+
+// IsForwarded
+//
+function TTypeSymbol.IsForwarded : Boolean;
+begin
+   Result := False;
 end;
 
 // IsType

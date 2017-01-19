@@ -28,11 +28,18 @@ type
          procedure BasicForward3;
          procedure BasicForward3Overloaded;
 
+         procedure BasicMethod;
+         procedure BasicClassMethod;
+
          procedure BasicOverride;
+
+         procedure PartialClass;
+         procedure PartialClassMethod;
 
          procedure OverloadForwardDictionary;
          procedure OverloadMethodDictionary;
          procedure ClassForwardDictionary;
+         procedure ClassForwardPartialDictionary;
 
          procedure SymDictFunctionForward;
          procedure SymDictInherited;
@@ -251,6 +258,46 @@ begin
       prog.SymbolDictionary.ToJSON);
 end;
 
+// BasicMethod
+//
+procedure TSymbolDictionaryTests.BasicMethod;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile(
+       'type TTest = class procedure Test; end;'#13#10
+      +'procedure TTest.Test; begin end;'#13#10
+      );
+   CheckEquals(
+       '[{"symbol":{"name":"Test","class":"TSourceMethodSymbol"},"positions":['
+         +'{"usages":["suDeclaration"],"position":" [line: 1, column: 30]"},'
+         +'{"usages":["suImplementation"],"position":" [line: 2, column: 17]"}]},'
+      +'{"symbol":{"name":"TTest","class":"TClassSymbol"},"positions":['
+         +'{"usages":["suDeclaration"],"position":" [line: 1, column: 6]"},'
+         +'{"usages":["suReference"],"position":" [line: 2, column: 11]"}]}]',
+      prog.SymbolDictionary.ToJSON);
+end;
+
+// BasicClassMethod
+//
+procedure TSymbolDictionaryTests.BasicClassMethod;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile(
+       'type TTest = class class procedure Test; end;'#13#10
+      +'class procedure TTest.Test; begin end;'#13#10
+      );
+   CheckEquals(
+       '[{"symbol":{"name":"Test","class":"TSourceMethodSymbol"},"positions":['
+         +'{"usages":["suDeclaration"],"position":" [line: 1, column: 36]"},'
+         +'{"usages":["suImplementation"],"position":" [line: 2, column: 23]"}]},'
+      +'{"symbol":{"name":"TTest","class":"TClassSymbol"},"positions":['
+         +'{"usages":["suDeclaration"],"position":" [line: 1, column: 6]"},'
+         +'{"usages":["suReference"],"position":" [line: 2, column: 17]"}]}]',
+      prog.SymbolDictionary.ToJSON);
+end;
+
 // BasicOverride
 //
 procedure TSymbolDictionaryTests.BasicOverride;
@@ -267,6 +314,45 @@ begin
          +'{"usages":["suDeclaration"],"position":" [line: 1, column: 31]"}]},'
       +'{"symbol":{"name":"TTest","class":"TClassSymbol"},"positions":['
          +'{"usages":["suDeclaration"],"position":" [line: 1, column: 6]"}]}]',
+      prog.SymbolDictionary.ToJSON);
+end;
+
+// PartialClass
+//
+procedure TSymbolDictionaryTests.PartialClass;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile(
+       'type TTest = class partial end;'#13#10
+      +'type TTest = class partial end;'#13#10
+      );
+   CheckEquals(
+       '[{"symbol":{"name":"TTest","class":"TClassSymbol"},"positions":['
+         +'{"usages":["suDeclaration"],"position":" [line: 1, column: 6]"},'
+         +'{"usages":["suDeclaration"],"position":" [line: 2, column: 6]"}]}]',
+      prog.SymbolDictionary.ToJSON);
+end;
+
+// PartialClassMethod
+//
+procedure TSymbolDictionaryTests.PartialClassMethod;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile(
+       'type TTest = class partial end;'#13#10
+      +'type TTest = class partial procedure Test; end;'#13#10
+      +'procedure TTest.Test; begin end;'#13#10
+      );
+   CheckEquals(
+        '[{"symbol":{"name":"Test","class":"TSourceMethodSymbol"},"positions":['
+         +'{"usages":["suDeclaration"],"position":" [line: 2, column: 38]"},'
+         +'{"usages":["suImplementation"],"position":" [line: 3, column: 17]"}]},'
+       +'{"symbol":{"name":"TTest","class":"TClassSymbol"},"positions":['
+         +'{"usages":["suDeclaration"],"position":" [line: 1, column: 6]"},'
+         +'{"usages":["suDeclaration"],"position":" [line: 2, column: 6]"},'
+         +'{"usages":["suReference"],"position":" [line: 3, column: 11]"}]}]',
       prog.SymbolDictionary.ToJSON);
 end;
 
@@ -365,7 +451,6 @@ end;
 procedure TSymbolDictionaryTests.ClassForwardDictionary;
 var
    prog : IdwsProgram;
-   symPosList : TSymbolPositionList;
 begin
    prog := FCompiler.Compile( 'type TTest = class;'#13#10
                              +'type TTest = class end;');
@@ -373,8 +458,15 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'compile');
    CheckEquals(1, prog.SymbolDictionary.FindSymbolUsage('TTest', suForward).ScriptPos.Line, 'forward');
    CheckEquals(2, prog.SymbolDictionary.FindSymbolUsage('TTest', suDeclaration).ScriptPos.Line, 'declaration');
+end;
 
-
+// ClassForwardPartialDictionary
+//
+procedure TSymbolDictionaryTests.ClassForwardPartialDictionary;
+var
+   prog : IdwsProgram;
+   symPosList : TSymbolPositionList;
+begin
    prog := FCompiler.Compile( 'type TTest = class partial;'#13#10
                              +'type TTest = class partial end;'
                              +'type TTest = class partial end;');

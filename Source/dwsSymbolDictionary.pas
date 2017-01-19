@@ -108,6 +108,7 @@ type
 
          function FindUsage(const symbolUse : TSymbolUsage) : TSymbolPosition;
          function FindAnyUsage(const symbolUses : TSymbolUsages) : TSymbolPosition;
+         function FindAnyUsageInFile(const symbolUses : TSymbolUsages; const sourceFile : TSourceFile) : TSymbolPosition;
          function IndexOfPosition(const scriptPos : TScriptPos) : Integer;
          procedure RemoveInRange(const startPos, endPos : TScriptPos);
 
@@ -411,6 +412,21 @@ begin
    Result:=nil;
 end;
 
+// FindAnyUsageInFile
+//
+function TSymbolPositionList.FindAnyUsageInFile(const symbolUses : TSymbolUsages; const sourceFile : TSourceFile) : TSymbolPosition;
+var
+   i : Integer;
+begin
+   if Self<>nil then begin
+      for i:=0 to Count-1 do begin
+         Result:=FPosList[i];
+         if (Result.ScriptPos.SourceFile=sourceFile) and ((symbolUses*Result.SymbolUsages)<>[]) then Exit;
+      end;
+   end;
+   Result:=nil;
+end;
+
 // IndexOfPosition
 //
 function TSymbolPositionList.IndexOfPosition(const scriptPos : TScriptPos) : Integer;
@@ -662,7 +678,7 @@ begin
             Result := 1
          else if spl1[0].ScriptPos.IsBeforeOrEqual(spl2[0].ScriptPos) then
             if spl1[0].ScriptPos.SamePosAs(spl2[0].ScriptPos) then
-               Result := 0
+               Result := UnicodeCompareText(spl1.Symbol.ClassName, spl2.Symbol.ClassName)
             else Result := -1
          else Result := 1;
       end;

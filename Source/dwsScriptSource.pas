@@ -74,6 +74,7 @@ type
          procedure SetLineCol(const aPos : TScriptPos); inline;
 
          function IsBeforeOrEqual(const aPos : TScriptPos) : Boolean;
+         function Compare(const aPos : TScriptPos) : Integer;
 
          function AsInfo : UnicodeString;
    end;
@@ -254,6 +255,25 @@ begin
    Result:=    (SourceFile=aPos.SourceFile)
            and (   (Line<aPos.Line)
                 or ((Line=aPos.Line) and (Col<=aPos.Col)));
+end;
+
+// Compare
+//
+function TScriptPos.Compare(const aPos : TScriptPos) : Integer;
+begin
+   if SourceFile <> aPos.SourceFile then begin
+      if SourceFile.Name < aPos.SourceName then
+         Result := 1
+      else Result := -1;
+   end else if Line < aPos.Line then
+      Result := -1
+   else if Line > aPos.Line then
+      Result := 1
+   else if Col < aPos.Col then
+      Result := -1
+   else if Col > aPos.Col then
+      Result := 1
+   else Result := 0;
 end;
 
 // AsInfo

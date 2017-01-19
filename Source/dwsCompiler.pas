@@ -3095,13 +3095,16 @@ begin
             // Handle overwriting forwards in Dictionary
             // Original symbol was a forward. Update symbol entry
             // If the type is in the SymbolDictionary (disabled dictionary would leave pointer nil),
-            if Assigned(oldSymPos) then              // update original position information
+            if Assigned(oldSymPos) and not (typOld.InheritsFrom(TClassSymbol) and TClassSymbol(typOld).IsPartial) then begin
                if FSymbolDictionary.FindSymbolUsage(typOld, suForward)=nil then
                   oldSymPos.SymbolUsages := [suForward]; // update old position to reflect that the type was forwarded
+            end;
          end;
 
          // Add symbol position as being the type being declared (works for forwards too)
-         RecordSymbolUse(typNew, typePos, [suDeclaration]);
+         if typNew.IsForwarded then
+            RecordSymbolUse(typNew, typePos, [suForward])
+         else RecordSymbolUse(typNew, typePos, [suDeclaration]);
       end;
 
       ReadSemiColon;
@@ -8602,6 +8605,19 @@ end;
 //
 function TdwsCompiler.ReadClassDecl(const typeName : UnicodeString; const flags : TClassSymbolFlags;
                                     allowNonConstExpressions : Boolean) : TClassSymbol;
+
+   procedure CheckAndSetForwardDecl;
+   begin
+      if typeName='' then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_AnonymousClassesMustBeFullyDefined);
+      if Result.IsForwarded then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassForwardAlreadyExists, [Result.Name])
+      else if csfPartial in flags then
+         Result.SetIsPartial;
+      Result.SetForwardedPos(FTok.HotPos);
+   end;
+
+
 var
    namePos, hotPos : TScriptPos;
    sym, typ : TSymbol;
@@ -8638,7 +8654,7 @@ begin
          if Result=nil then // make anonymous to keep compiling
             Result:=TClassSymbol.Create('', CurrentUnitSymbol);
       end;
-   end else sym:=nil;
+   end;
 
    isInSymbolTable:=Assigned(Result);
 
@@ -8655,13 +8671,7 @@ begin
 
    // forwarded declaration
    if FTok.Test(ttSEMI) then begin
-      if typeName='' then
-         FMsgs.AddCompilerError(FTok.HotPos, CPE_AnonymousClassesMustBeFullyDefined);
-      if Result.IsForwarded then
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassForwardAlreadyExists, [sym.Name])
-      else if csfPartial in flags then
-         Result.SetIsPartial;
-      Result.SetForwardedPos(FTok.HotPos);
+      CheckAndSetForwardDecl;
       Exit;
    end else Result.ClearIsForwarded;
 
@@ -8695,6 +8705,10 @@ begin
                else if previousClassFlags<>Result.Flags then
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_ClassPartialModifiersNotMatched);
             end;
+         end;
+         if FTok.Test(ttSEMI) then begin
+            CheckAndSetForwardDecl;
+            Exit;
          end;
 
          // inheritance
@@ -8858,6 +8872,7 @@ begin
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
 
             CheckNoPendingAttributes;
+
          end;
 
          // resolve interface tables
