@@ -1,6 +1,6 @@
 object dwsOverviewDialog: TdwsOverviewDialog
-  Left = 503
-  Top = 74
+  Left = 488
+  Top = 114
   BorderStyle = bsSizeToolWin
   Caption = 'Overview'
   ClientHeight = 635
@@ -19,6 +19,9 @@ object dwsOverviewDialog: TdwsOverviewDialog
   OnDestroy = FormDestroy
   OnDeactivate = FormDeactivate
   OnKeyDown = FormKeyDown
+  DesignSize = (
+    645
+    635)
   PixelsPerInch = 96
   TextHeight = 14
   object TreeView: TTreeView
@@ -58,6 +61,21 @@ object dwsOverviewDialog: TdwsOverviewDialog
     ParentShowHint = False
     ShowHint = True
     TabOrder = 1
+  end
+  object CBSort: TComboBox
+    Left = 514
+    Top = 4
+    Width = 127
+    Height = 22
+    Style = csDropDownList
+    Anchors = [akTop, akRight]
+    ItemIndex = 0
+    TabOrder = 2
+    Text = 'Source Order'
+    OnChange = CBSortChange
+    Items.Strings = (
+      'Source Order'
+      'Alphabetic Order')
   end
   object ImageList: TImageList
     ColorDepth = cd32Bit

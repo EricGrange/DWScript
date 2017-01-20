@@ -20,8 +20,9 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, ComCtrls, ImgList, ToolWin,
-  dwsExprs, dwsScriptSource, dwsSymbolDictionary, dwsSymbols, dwsUtils;
+  Dialogs, ComCtrls, ImgList, ToolWin, StdCtrls, TypInfo,
+  dwsExprs, dwsScriptSource, dwsSymbolDictionary, dwsSymbols, dwsUtils,
+  dwsJSON;
 
 type
    TIconIndex = (
@@ -35,6 +36,7 @@ type
     TreeView: TTreeView;
     ImageList: TImageList;
     ToolBar: TToolBar;
+    CBSort: TComboBox;
     procedure FormCreate(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure TreeViewExpanding(Sender: TObject; Node: TTreeNode;
@@ -47,6 +49,7 @@ type
       Node: TTreeNode; State: TCustomDrawState; Stage: TCustomDrawStage;
       var PaintImages, DefaultDraw: Boolean);
     procedure FormDestroy(Sender: TObject);
+    procedure CBSortChange(Sender: TObject);
 
    private
       { Private declarations }
@@ -54,6 +57,7 @@ type
       FScriptPos : TScriptPos;
       FOnGoToScriptPos : TNotifyEvent;
       FFilter : TIconIndexSet;
+      FFilterButtons : array [TIconIndex] of TToolButton;
       FExpandedNodes : TStringList;
 
       procedure FilterChanged(sender : TObject);
@@ -64,12 +68,19 @@ type
       procedure ApplyExpandedNodes(parent : TTreeNode);
 
       procedure RefreshTree;
+      procedure SortSymbols(list : TList);
       procedure AddSymbolsOfSourceFile(root : TTreeNode; const sourceFile : TSourceFile);
       procedure AddSymbolsOfComposite(parent : TTreeNode; const sourceFile : TSourceFile);
 
   public
       { Public declarations }
       procedure Execute(const aProg : IdwsProgram; const aScriptPos : TScriptPos);
+
+      procedure SavePreferences(wr : TdwsJSONWriter);
+      procedure LoadPreferences(prefs : TdwsJSONValue);
+
+      function  SavePreferencesAsJSON : String;
+      procedure LoadPreferencesAsJSON(const j : String);
 
       property Filter : TIconIndexSet read FFilter write FFilter;
       property ScriptPos : TScriptPos read FScriptPos;
@@ -114,6 +125,7 @@ begin
       tb.OnClick := FilterChanged;
       tb.Hint := 'Show or hide ' + cIconIndexHints[i];
       Include(FFilter, i);
+      FFilterButtons[i] := tb;
    end;
 end;
 
@@ -160,6 +172,58 @@ begin
    Show;
 end;
 
+// SavePreferences
+//
+procedure TdwsOverviewDialog.SavePreferences(wr : TdwsJSONWriter);
+var
+   i : TIconIndex;
+begin
+   wr.BeginObject;
+
+   wr.BeginArray('Filters');
+   for i := Low(TIconIndex) to High(TIconIndex) do begin
+      if i in FFilter then begin
+         wr.WriteString(Copy(GetEnumName(TypeInfo(TIconIndex), Ord(i)), 3));
+      end;
+   end;
+   wr.EndArray;
+
+   wr.WriteString('Sort', CBSort.Text);
+
+   wr.EndObject;
+end;
+
+// LoadPreferences
+//
+procedure TdwsOverviewDialog.LoadPreferences(prefs : TdwsJSONValue);
+var
+   i, k : Integer;
+   filters : TdwsJSONValue;
+   iconIndex : TIconIndex;
+begin
+   if prefs = nil then Exit;
+   filters := prefs.Items['Filters'];
+   FFilter := [];
+   for iconIndex := Low(FFilterButtons) to High(FFilterButtons) do
+      if FFilterButtons[iconIndex] <> nil then
+         FFilterButtons[iconIndex].Down := True;
+   for i := 0 to filters.ElementCount-1 do begin
+      k := GetEnumValue(TypeInfo(TIconIndex), 'ii'+filters.Elements[i].AsString);
+      if Cardinal(k) <= Cardinal(High(TIconIndex)) then begin
+         iconIndex := TIconIndex(k);
+         if FFilterButtons[iconIndex] <> nil then begin
+            Include(FFilter, iconIndex);
+            FFilterButtons[iconIndex].Down := False;
+         end
+      end;
+   end;
+
+   k := CBSort.Items.IndexOf(prefs.Items['Sort'].AsString);
+   if k < 0 then
+      k := 0;
+   CBSort.ItemIndex := k;
+end;
+
 // RefreshTree
 //
 procedure TdwsOverviewDialog.RefreshTree;
@@ -184,6 +248,25 @@ begin
    finally
       TreeView.Items.EndUpdate;
    end;
+end;
+
+// SortSymbols
+//
+function CompareDeclaration(Item1, Item2: Pointer): Integer;
+begin
+   Result := TSymbolPositionList(Item1).FindUsage(suDeclaration).ScriptPos
+            .Compare(TSymbolPositionList(Item2).FindUsage(suDeclaration).ScriptPos);
+end;
+function CompareAlpha(Item1, Item2: Pointer): Integer;
+begin
+   Result := UnicodeCompareText(TSymbolPositionList(Item1).Symbol.Name,
+                                TSymbolPositionList(Item2).Symbol.Name);
+end;
+procedure TdwsOverviewDialog.SortSymbols(list : TList);
+begin
+   if CBSort.ItemIndex = 0 then
+      list.Sort(CompareDeclaration)
+   else list.Sort(CompareAlpha);
 end;
 
 procedure TdwsOverviewDialog.TreeViewAdvancedCustomDrawItem(
@@ -267,6 +350,11 @@ end;
 
 // CollectExpandedNodes
 //
+procedure TdwsOverviewDialog.CBSortChange(Sender: TObject);
+begin
+   RefreshTree;
+end;
+
 procedure TdwsOverviewDialog.CollectExpandedNodes(parent : TTreeNode);
 var
    child : TTreeNode;
@@ -324,11 +412,6 @@ end;
 
 // AddSymbolsOfSourceFile
 //
-function CompareDeclaration(Item1, Item2: Pointer): Integer;
-begin
-   Result := TSymbolPositionList(Item1).FindUsage(suDeclaration).ScriptPos
-            .Compare(TSymbolPositionList(Item2).FindUsage(suDeclaration).ScriptPos);
-end;
 procedure TdwsOverviewDialog.AddSymbolsOfSourceFile(root : TTreeNode; const sourceFile : TSourceFile);
 var
    symPosList : TSymbolPositionList;
@@ -355,7 +438,8 @@ begin
          end;
       end;
 
-      localSymbols.Sort(CompareDeclaration);
+      SortSymbols(localSymbols);
+
       for i := 0 to localSymbols.Count-1 do begin
          symPosList := TSymbolPositionList(localSymbols[i]);
 
@@ -412,7 +496,7 @@ begin
             members.Add(symPosList);
          end;
       end;
-      members.Sort(CompareDeclaration);
+      SortSymbols(members);
       for i := 0 to members.Count-1 do begin
          symPosList := TSymbolPositionList(members[i]);
          if symPosList.FindAnyUsageInFile([suDeclaration, suImplementation], sourceFile) = nil then continue;
@@ -434,6 +518,36 @@ begin
       end;
    finally
       members.Free;
+   end;
+end;
+
+// SavePreferencesAsJSON
+//
+function TdwsOverviewDialog.SavePreferencesAsJSON : String;
+var
+   wr : TdwsJSONWriter;
+begin
+   wr := TdwsJSONWriter.Create;
+   try
+      SavePreferences(wr);
+      Result := wr.ToString;
+   finally
+      wr.Free;
+   end;
+end;
+
+// LoadPreferencesAsJSON
+//
+procedure TdwsOverviewDialog.LoadPreferencesAsJSON(const j : String);
+var
+   v : TdwsJSONValue;
+begin
+   if j = '' then Exit;
+   v := TdwsJSONValue.ParseString(j);
+   try
+      LoadPreferences(v);
+   finally
+      v.Free;
    end;
 end;
 
