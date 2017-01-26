@@ -464,9 +464,11 @@ type
    TConstSymbol = class (TValueSymbol)
       protected
          FData : TData;
+         FDeprecatedMessage : String;
 
          function GetCaption : UnicodeString; override;
          function GetDescription : UnicodeString; override;
+         function GetIsDeprecated : Boolean; inline;
 
       public
          constructor CreateValue(const name : UnicodeString; typ : TTypeSymbol; const value : Variant); overload;
@@ -475,6 +477,9 @@ type
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
 
          property Data : TData read FData;
+
+         property DeprecatedMessage : String read FDeprecatedMessage write FDeprecatedMessage;
+         property IsDeprecated : Boolean read GetIsDeprecated;
    end;
    TConstSymbolClass = class of TConstSymbol;
 
@@ -5225,6 +5230,13 @@ begin
     Result := 'const ' + inherited GetDescription + ' = [varError]'
   else
     Result := 'const ' + inherited GetDescription + ' = ' + VarToStr(FData[0]);
+end;
+
+// GetIsDeprecated
+//
+function TConstSymbol.GetIsDeprecated : Boolean;
+begin
+   Result := (FDeprecatedMessage<>'');
 end;
 
 procedure TConstSymbol.Initialize(const msgs : TdwsCompileMessageList);

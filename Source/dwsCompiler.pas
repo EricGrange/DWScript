@@ -586,7 +586,7 @@ type
          function ReadMethodImpl(ownerSym : TCompositeTypeSymbol; funcKind : TFuncKind;
                                  isClassMethod : Boolean) : TMethodSymbol;
 
-         function  ReadDeprecatedMessage : UnicodeString;
+         function  ReadDeprecatedMessage(withSemiColon : Boolean = True) : UnicodeString;
          procedure WarnDeprecatedFunc(funcExpr : TFuncExprBase);
          procedure WarnDeprecatedType(const scriptPos : TScriptPos; typeSymbol : TTypeSymbol);
          procedure WarnDeprecatedSymbol(const scriptPos : TScriptPos; sym : TSymbol; const deprecatedMessage : UnicodeString);
@@ -597,7 +597,7 @@ type
          function ReadClassSymbolName(baseType : TClassSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
          function ReadInterfaceSymbolName(baseType : TInterfaceSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
          function ReadRecordSymbolName(baseType : TRecordSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
-         function ReadConstName(constSym : TConstSymbol; isWrite: Boolean) : TProgramExpr;
+         function ReadConstName(const constPos : TScriptPos; constSym : TConstSymbol; isWrite: Boolean) : TProgramExpr;
          function ReadDataSymbolName(dataSym : TDataSymbol; fromTable : TSymbolTable; isWrite: Boolean; expecting : TTypeSymbol) : TProgramExpr;
          function ReadImplicitCall(codeExpr : TTypedExpr; isWrite: Boolean;
                                    expecting : TTypeSymbol) : TProgramExpr;
@@ -3793,7 +3793,7 @@ end;
 
 // ReadDeprecatedMessage
 //
-function TdwsCompiler.ReadDeprecatedMessage : UnicodeString;
+function TdwsCompiler.ReadDeprecatedMessage(withSemiColon : Boolean = True) : UnicodeString;
 begin
    if FTok.TestDelete(ttDEPRECATED) then begin
       if FTok.Test(ttStrVal) then begin
@@ -3802,7 +3802,8 @@ begin
       end;
       if Result='' then
          Result:=MSG_DeprecatedEmptyMsg;
-      ReadSemiColon;
+      if withSemiColon then
+         ReadSemiColon;
    end else Result:='';
 end;
 
@@ -4728,7 +4729,7 @@ begin
 
       end else if sym.InheritsFrom(TConstSymbol) then begin
 
-         Result:=ReadConstName(TConstSymbol(sym), IsWrite);
+         Result:=ReadConstName(namePos, TConstSymbol(sym), IsWrite);
 
       end else if sym.InheritsFrom(TDataSymbol) then begin
 
@@ -4882,7 +4883,7 @@ begin
          end;
       end else begin
          RecordSymbolUseReference(elem, elemPos, False);
-         Result:=ReadConstName(elem as TElementSymbol, False);
+         Result:=ReadConstName(elemPos, elem as TElementSymbol, False);
       end;
 
    end else begin
@@ -4964,10 +4965,12 @@ end;
 
 // ReadConstName
 //
-function TdwsCompiler.ReadConstName(constSym : TConstSymbol; IsWrite: Boolean) : TProgramExpr;
+function TdwsCompiler.ReadConstName(const constPos : TScriptPos; constSym : TConstSymbol; IsWrite: Boolean) : TProgramExpr;
 var
    typ : TTypeSymbol;
 begin
+   if constSym.IsDeprecated then
+      WarnDeprecatedSymbol(constPos, constSym, constSym.DeprecatedMessage);
    typ:=constSym.Typ;
    Result:=ReadSymbol(TConstExpr.CreateTyped(FCompilerContext, typ, constSym), IsWrite)
 end;
@@ -5723,7 +5726,7 @@ begin
             end else if memberClassType=TClassConstSymbol then begin
 
                OrphanAndNil(Result);
-               Result:=ReadConstName(TConstSymbol(member), IsWrite);
+               Result:=ReadConstName(namePos, TConstSymbol(member), IsWrite);
 
             end else begin
 
@@ -5769,7 +5772,7 @@ begin
             end else if memberClassType=TClassConstSymbol then begin
 
                OrphanAndNil(Result);
-               Result:=ReadConstName(TConstSymbol(member), IsWrite);
+               Result := ReadConstName(namePos, TConstSymbol(member), IsWrite);
 
             end else if member<>nil then begin
 
@@ -12543,7 +12546,7 @@ end;
 function TdwsCompiler.ReadEnumeration(const typeName : UnicodeString;
                                       aStyle : TEnumerationSymbolStyle) : TEnumerationSymbol;
 var
-   name : UnicodeString;
+   name, deprecatedMsg : UnicodeString;
    elemSym : TElementSymbol;
    constExpr : TTypedExpr;
    enumInt, enumIntPrev : Int64;
@@ -12561,6 +12564,10 @@ begin
          // Read a member of the enumeration
          if not FTok.TestDeleteNamePos(name, namePos) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+
+         if FTok.Test(ttDEPRECATED) then
+            deprecatedMsg := ReadDeprecatedMessage(False)
+         else deprecatedMsg := '';
 
          // Member has a user defined value
          if FTok.TestDelete(ttEQ) then begin
@@ -12597,6 +12604,9 @@ begin
 
          // Create member symbol
          elemSym:=TElementSymbol.Create(name, Result, enumInt, isUserDef);
+
+         if deprecatedMsg <> '' then
+            elemSym.DeprecatedMessage := deprecatedMsg;
 
          enumIntPrev:=enumInt;
          if aStyle=enumFlags then
