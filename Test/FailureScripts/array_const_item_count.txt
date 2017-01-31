@@ -1,0 +1,2 @@
+Syntax Error: Incompatible types: "array [0..2] of Integer" and "array [0..3] of Integer" [line: 1, column: 37]
+Syntax Error: Incompatible types: "array [0..2] of Integer" and "array [0..1] of Integer" [line: 8, column: 37]
