@@ -1,4 +1,4 @@
-Syntax Error: Incompatible types: "array of Integer" and "array [0..0] of Integer" [line: 2, column: 34]
-Syntax Error: Constant expression expected [line: 4, column: 14]
-Syntax Error: Constant expression expected [line: 9, column: 17]
-Syntax Error: Constant expression expected [line: 14, column: 17]
+Syntax Error: Incompatible types: "array of Integer" and "array [0..0] of Integer" [line: 2, column: 32]
+Syntax Error: Constant expression expected [line: 4, column: 10]
+Syntax Error: Constant expression expected [line: 9, column: 13]
+Syntax Error: Constant expression expected [line: 14, column: 13]

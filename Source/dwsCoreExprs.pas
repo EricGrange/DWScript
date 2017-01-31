@@ -6307,7 +6307,7 @@ begin
          or (leftItemTyp.IsPointerType and rightItemTyp.IsOfType(context.TypNil))
          ) then begin
          context.Msgs.AddCompilerErrorFmt(ScriptPos, CPE_AssignIncompatibleTypes,
-                                              [Right.Typ.Caption, Left.Typ.Caption]);
+                                          [Right.Typ.Caption, Left.Typ.Caption]);
       end;
    end else inherited;
 end;

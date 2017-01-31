@@ -1,3 +1,3 @@
 Syntax Error: Cannot assign a value to the left-side argument [line: 2, column: 2]
-Syntax Error: Incompatible types: "String" and "Integer" [line: 4, column: 22]
-Syntax Error: Constant expression expected [line: 8, column: 13]
+Syntax Error: Incompatible types: "String" and "Integer" [line: 4, column: 19]
+Syntax Error: Constant expression expected [line: 8, column: 10]

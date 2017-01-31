@@ -2886,6 +2886,7 @@ var
    dataExpr : TDataExpr;
    sas : TStaticArraySymbol;
    recordData : TData;
+   exprPos : TScriptPos;
 begin
    if typ is TRecordSymbol then begin
 
@@ -2894,6 +2895,7 @@ begin
 
    end else begin
 
+      exprPos := FTok.HotPos;
       if typ is TArraySymbol then begin
          case FTok.TestDeleteAny([ttALEFT, ttBLEFT]) of
             ttALEFT : expr:=factory.ReadArrayConstantExpr(ttARIGHT, typ);
@@ -2902,13 +2904,15 @@ begin
             expr:=factory.ReadExpr(nil);
          end;
       end else expr:=factory.ReadExpr(nil);
+      if (expr <> nil) and expr.ScriptPos.Defined then
+         exprPos := expr.ScriptPos;
       try
          if Assigned(typ) then begin
             if expr=nil then begin
                // keep compiling
                expr := TConvInvalidExpr.Create(FCompilerContext, nil, typ);
             end else if not typ.IsCompatible(expr.Typ) then
-               expr:=CompilerUtils.WrapWithImplicitConversion(FCompilerContext, expr, typ, FTok.HotPos);
+               expr:=CompilerUtils.WrapWithImplicitConversion(FCompilerContext, expr, typ, exprPos);
          end else if expr<>nil then begin
             typ:=expr.typ;
          end;
@@ -2916,7 +2920,7 @@ begin
          if not expr.IsConstant then begin
 
             if not (expr is TConvInvalidExpr) then
-               FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
+               FMsgs.AddCompilerError(exprPos, CPE_ConstantExpressionExpected);
             // keep compiling
             if typ=nil then
                typ:=FCompilerContext.TypVariant;
