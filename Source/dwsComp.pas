@@ -1054,6 +1054,7 @@ type
       private
          FIsUserDef: Boolean;
          FUserDefValue: Integer;
+         FDeprecated : UnicodeString;
 
          procedure SetUserDefValue(const Value: Integer);
          procedure SetIsUserDef(const Value: Boolean);
@@ -1069,6 +1070,7 @@ type
       published
          property UserDefValue : Integer read FUserDefValue write SetUserDefValue default 0;
          property IsUserDef : Boolean read FIsUserDef write SetIsUserDef default False;
+         property Deprecated : UnicodeString read FDeprecated write FDeprecated;
    end;
 
    TdwsElements = class(TdwsCollection)
@@ -5406,6 +5408,7 @@ begin
    end;
 
    Result := TElementSymbol.Create(Name, enumSym, enumInt, FIsUserDef);
+   TElementSymbol(Result).DeprecatedMessage := FDeprecated;
 end;
 
 function TdwsElement.GetDisplayName: UnicodeString;
