@@ -1106,7 +1106,6 @@ end;
 function LoadRawBytesFromFile(const fileName : UnicodeString) : RawByteString;
 const
    INVALID_FILE_SIZE = DWORD($FFFFFFFF);
-   CHUNK_SIZE = 16384;
 var
    hFile : THandle;
    n, nRead : Cardinal;
