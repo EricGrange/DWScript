@@ -32,7 +32,7 @@ uses
   dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs, dwsUnifiedConstants,
   dwsOperators, dwsPascalTokenizer, dwsSystemOperators, dwsContextMap,
   dwsUnitSymbols, dwsCompilerUtils, dwsScriptSource, dwsSymbolDictionary,
-  dwsCompilerContext;
+  dwsCompilerContext, dwsGenericSymbols;
 
 type
    TCompilerOption = (
@@ -236,7 +236,7 @@ type
 
    TdwsReadTypeContext = (tcDeclaration, tcVariable, tcConstant, tcMember,
                           tcParameter, tcResult, tcOperand, tcExceptionClass,
-                          tcProperty, tcHelper);
+                          tcProperty, tcHelper, tcGeneric);
 
    TdwsReadProcDeclOption = (pdoClassMethod, pdoType, pdoAnonymous);
    TdwsReadProcDeclOptions = set of TdwsReadProcDeclOption;
@@ -690,7 +690,11 @@ type
          procedure ReadFinally(finallyExpr : TFinallyExpr);
          procedure ReadExcept(exceptExpr : TExceptExpr; var finalToken : TTokenType);
 
-         function ReadType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TTypeSymbol;
+         function ReadGenericParametersDecl : IGenericParameters;
+         function ReadGenericType(genericType : TGenericSymbol) : TTypeSymbol;
+
+         function ReadType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext;
+                           const genericParameters : IGenericParameters = nil) : TTypeSymbol;
          function ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
          function ReadTypeExpr(const namePos : TScriptPos; typeSym : TTypeSymbol;
                                isWrite : Boolean; expecting : TTypeSymbol = nil) : TProgramExpr;
@@ -3045,6 +3049,7 @@ var
    oldSymPos : TSymbolPosition; // Mark *where* the old declaration was
    typContext : TdwsSourceContext;
    attributesBag : ISymbolAttributesBag;
+   genericParameters : IGenericParameters;
 begin
    Result:=True;
 
@@ -3054,6 +3059,12 @@ begin
 
    if not FTok.TestDeleteNamePos(name, typePos) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+
+   if FTok.TestDelete(ttLESS) then begin
+      genericParameters := ReadGenericParametersDecl;
+      if not FTok.TestDelete(ttGTR) then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_GreaterExpected)
+   end;
 
    if not FTok.TestDelete(ttEQ) then begin
       if firstInBlock then
@@ -3081,7 +3092,7 @@ begin
    end else typContext:=nil;
    try
 
-      typNew := ReadType(name, tcDeclaration);
+      typNew := ReadType(name, tcDeclaration, genericParameters);
 
       if typContext<>nil then
          typContext.ParentSym:=typNew;
@@ -9958,6 +9969,82 @@ begin
    end;
 end;
 
+// ReadGenericParametersDecl
+//
+function TdwsCompiler.ReadGenericParametersDecl : IGenericParameters;
+var
+   name : String;
+   hotPos : TScriptPos;
+   param : TGenericTypeParameterSymbol;
+   constraintType : TTypeSymbol;
+begin
+   Result := TGenericParameters.Create;
+   repeat
+      if not FTok.TestDeleteNamePos(name, hotPos) then begin
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
+         Break;
+      end;
+      param := TGenericTypeParameterSymbol.Create(name);
+      Result.Add(param);
+      RecordSymbolUse(param, hotPos, [suDeclaration]);
+      if FTok.TestDelete(ttCOLON) then begin
+         repeat
+            hotPos := FTok.HotPos;
+            constraintType := ReadType('', tcParameter);
+            if constraintType <> nil then begin
+               param.AddConstraint(TGenericConstraintType.Create(constraintType));
+            end else FMsgs.AddCompilerError(hotPos, CPE_UnsupportedGenericConstraint);
+         until not FTok.TestDelete(ttCOMMA);
+      end;
+   until not FTok.TestDelete(ttSEMI);
+   if Result.Count = 0 then
+      Result := nil;
+end;
+
+// ReadGenericType
+//
+function TdwsCompiler.ReadGenericType(genericType : TGenericSymbol) : TTypeSymbol;
+var
+   value : TTypeSymbol;
+   valueList : TUnSortedSymbolTable;
+   hotPos : TScriptPos;
+   checkSuccessful : Boolean;
+begin
+   if not FTok.TestDelete(ttLESS) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_GenericParametersListExpected);
+   valueList := TUnSortedSymbolTable.Create;
+   try
+      checkSuccessful := True;
+      repeat
+         hotPos := FTok.HotPos;
+         value := ReadType('', tcGeneric);
+         if value <> nil then begin
+            if valueList.Count < genericType.Parameters.Count then begin
+               if not genericType.Parameters[valueList.Count].CheckConstraints(hotPos, value, FMsgs) then
+                  checkSuccessful := False;
+            end;
+            valueList.AddSymbol(value);
+         end;
+      until not FTok.TestDelete(ttCOMMA);
+      if not FTok.TestDelete(ttGTR) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_GreaterExpected);
+      if valueList.Count <> genericType.Parameters.Count then begin
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadNumberOfParameters,
+                                   [genericType.Parameters.Count, valueList.Count]);
+         checkSuccessful := False;
+      end;
+
+      if checkSuccessful then begin
+         Result := genericType.SpecializationFor(valueList);
+      end else begin
+         Result := genericType;
+      end;
+   finally
+      valueList.Clear;
+      valueList.Free;
+   end;
+end;
+
 // ReadRaise
 //
 function TdwsCompiler.ReadRaise : TRaiseBaseExpr;
@@ -10047,7 +10134,8 @@ end;
 
 // ReadType
 //
-function TdwsCompiler.ReadType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TTypeSymbol;
+function TdwsCompiler.ReadType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext;
+                               const genericParameters : IGenericParameters) : TTypeSymbol;
 
    function ReadClassFlags(token : TTokenType) : TTypeSymbol;
    var
@@ -10083,167 +10171,193 @@ var
    name, connectorQualifier : UnicodeString;
    hotPos, namePos : TScriptPos;
    sym : TSymbol;
+   genericSymbol : TGenericSymbol;
 begin
+   Result := nil;
+   genericSymbol := nil;
    hotPos:=FTok.HotPos;
    tt:=FTok.TestDeleteAny([ttARRAY, ttSET,
                            ttRECORD, ttCLASS, ttINTERFACE, ttHELPER,
                            ttBLEFT, ttENUM, ttFLAGS, ttPARTIAL, ttSTATIC, ttSTRICT,
                            ttPROCEDURE, ttFUNCTION, ttREFERENCE]);
-   case tt of
-      ttARRAY : begin
-         Result:=ReadArrayType(typeName, typeContext);
-         if typeName='' then
-            RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
-      end;
 
-      ttSET : begin
-         Result:=ReadSetOfType(typeName, typeContext);
-         if typeName='' then
-            RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
+   if Assigned(genericParameters) then begin
+      if tt <> ttARRAY then
+         FMsgs.AddCompilerError(hotPos, CPE_GenericParametersNotSupportedHere)
+      else begin
+         genericParameters.List.AddParent(CurrentProg.Table);
+         CurrentProg.EnterSubTable(genericParameters.List);
+         genericSymbol := TGenericSymbol.Create(typeName, genericParameters);
       end;
+   end;
+   try
+      case tt of
+         ttARRAY : begin
+            Result:=ReadArrayType(typeName, typeContext);
+            if typeName='' then
+               RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
+         end;
 
-      ttRECORD :
-         if FTok.TestDelete(ttHELPER) then
-            Result:=ReadHelperDecl(typeName, ttRECORD, False)
-         else begin
-            Result:=ReadRecordDecl(typeName, False);
-            if typeName='' then begin
-               CurrentProg.Table.AddSymbol(Result);
-               Result.IncRefCount;
+         ttSET : begin
+            Result:=ReadSetOfType(typeName, typeContext);
+            if typeName='' then
+               RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
+         end;
+
+         ttRECORD :
+            if FTok.TestDelete(ttHELPER) then
+               Result:=ReadHelperDecl(typeName, ttRECORD, False)
+            else begin
+               Result:=ReadRecordDecl(typeName, False);
+               if typeName='' then begin
+                  CurrentProg.Table.AddSymbol(Result);
+                  Result.IncRefCount;
+               end;
+               if typeName='' then
+                  RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
+            end;
+
+         ttCLASS : begin
+            tt:=FTok.TestDeleteAny([ttOF, ttHELPER]);
+            case tt of
+               ttOF :
+                  Result:=ReadClassOf(typeName);
+               ttHELPER :
+                  Result:=ReadHelperDecl(typeName, ttCLASS, False);
+            else
+               if typeContext=tcDeclaration then
+                  Result:=ReadClassDecl(typeName, [], False)
+               else begin
+                  Result:=nil;
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_TypeExpected);
+               end;
             end;
             if typeName='' then
                RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
          end;
 
-      ttCLASS : begin
-         tt:=FTok.TestDeleteAny([ttOF, ttHELPER]);
-         case tt of
-            ttOF :
-               Result:=ReadClassOf(typeName);
-            ttHELPER :
-               Result:=ReadHelperDecl(typeName, ttCLASS, False);
-         else
-            if typeContext=tcDeclaration then
-               Result:=ReadClassDecl(typeName, [], False)
-            else begin
-               Result:=nil;
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_TypeExpected);
-            end;
+         ttPARTIAL, ttSTATIC : begin
+            Result:=ReadClassFlags(tt);
          end;
-         if typeName='' then
-            RecordSymbolUse(Result, hotPos, [suReference, suImplicit]);
-      end;
 
-      ttPARTIAL, ttSTATIC :
-         Result:=ReadClassFlags(tt);
-
-      ttINTERFACE : begin
-         hotPos:=FTok.HotPos;
-         if FTok.TestDelete(ttHELPER) then
-            Result:=ReadHelperDecl(typeName, ttINTERFACE, False)
-         else begin
-            if typeContext=tcDeclaration then
-               Result:=ReadInterface(typeName)
+         ttINTERFACE : begin
+            hotPos:=FTok.HotPos;
+            if FTok.TestDelete(ttHELPER) then
+               Result:=ReadHelperDecl(typeName, ttINTERFACE, False)
             else begin
-               Result:=nil;
-               FMsgs.AddCompilerStop(hotPos, CPE_TypeExpected);
-            end;
-         end;
-      end;
-
-      ttHELPER :
-         Result:=ReadHelperDecl(typeName, ttNone, False);
-
-      ttSTRICT : begin
-         if not FTok.TestDelete(ttHELPER) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_HelperExpected);
-         Result:=ReadHelperDecl(typeName, ttNone, True);
-      end;
-
-      ttENUM, ttFLAGS : begin
-         // explicitly scoped enum
-         if not FTok.TestDelete(ttBLEFT) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
-         if tt=ttENUM then
-            Result:=ReadEnumeration(typeName, enumScoped)
-         else Result:=ReadEnumeration(typeName, enumFlags);
-      end;
-
-      ttBLEFT : begin
-         // class, globally scoped enum
-         Result:=ReadEnumeration(typeName, enumClassic);
-      end;
-
-      ttREFERENCE : begin
-         if FTok.TestDelete(ttTO) then
-            FMsgs.AddCompilerHint(FTok.HotPos, CPH_ReferenceToIsLegacy, hlPedantic)
-         else FMsgs.AddCompilerError(FTok.HotPos, CPE_ToExpected);
-         tt:=FTok.TestDeleteAny([ttPROCEDURE, ttFUNCTION]);
-         if tt=ttNone then begin
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_ProcOrFuncExpected);
-            tt:=ttFUNCTION; // keep compiling
-         end;
-         Result:=ReadProcType(tt, hotPos)
-      end;
-
-      ttPROCEDURE, ttFUNCTION :
-         Result:=ReadProcType(tt, hotPos);
-
-   else
-
-      if FTok.TestName then begin
-
-         sym:=ReadAliasedNameSymbol(namePos);
-
-         if not Assigned(sym) then begin
-            // keep compiling
-            Result:=FCompilerContext.TypVariant;
-         end else if not sym.IsType then begin
-            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidType, [sym.Name]);
-            Result:=FCompilerContext.TypVariant; // keep compiling
-         end else if sym is TConnectorSymbol then begin
-            connectorQualifier:='';
-            if FTok.TestDelete(ttLESS) then begin
-               repeat
-                  if not FTok.TestDeleteNamePos(name, namePos) then
-                     FMsgs.AddCompilerStop(namePos, CPE_NameExpected);
-                  connectorQualifier:=connectorQualifier+name;
-                  if FTok.TestDelete(ttGTR) then
-                     Break;
-                  if not FTok.TestDelete(ttDOT) then
-                     FMsgs.AddCompilerStop(namePos, CPE_DotExpected);
-                  connectorQualifier:=connectorQualifier+'.';
-               until False;
-            end;
-            if connectorQualifier='' then
-               Result:=TTypeSymbol(sym)
-            else begin
-               Result:=TConnectorSymbol(sym).Specialize(CurrentProg.Table, connectorQualifier);
-               if Result=sym then
-                  FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConnectorCantBeSpecialized, [sym.Name])
-               else if Result=nil then begin
-                  FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConnectorInvalidSpecifier, [sym.Name, connectorQualifier]);
-                  Result:=TTypeSymbol(sym);
+               if typeContext=tcDeclaration then
+                  Result:=ReadInterface(typeName)
+               else begin
+                  Result:=nil;
+                  FMsgs.AddCompilerStop(hotPos, CPE_TypeExpected);
                end;
             end;
-         end else Result:=TTypeSymbol(sym);
+         end;
 
-         WarnDeprecatedType(hotPos, Result);
+         ttHELPER : begin
+            Result:=ReadHelperDecl(typeName, ttNone, False);
+         end;
 
-         // Create name symbol, e. g.: type a = integer;
-         if typeName <> '' then
-            Result:=TAliasSymbol.Create(typeName, Result);
+         ttSTRICT : begin
+            if not FTok.TestDelete(ttHELPER) then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_HelperExpected);
+            Result:=ReadHelperDecl(typeName, ttNone, True);
+         end;
 
-         RecordSymbolUse(Result, namePos, [suReference]);
+         ttENUM, ttFLAGS : begin
+            // explicitly scoped enum
+            if not FTok.TestDelete(ttBLEFT) then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
+            if tt=ttENUM then
+               Result:=ReadEnumeration(typeName, enumScoped)
+            else Result:=ReadEnumeration(typeName, enumFlags);
+         end;
 
-      end else begin
+         ttBLEFT : begin
+            // class, globally scoped enum
+            Result:=ReadEnumeration(typeName, enumClassic);
+         end;
 
-         FMsgs.AddCompilerError(FTok.HotPos, CPE_TypeExpected);
-         // keep compiling
-         Result:=TAliasSymbol.Create(typeName, FCompilerContext.TypVariant);
+         ttREFERENCE : begin
+            if FTok.TestDelete(ttTO) then
+               FMsgs.AddCompilerHint(FTok.HotPos, CPH_ReferenceToIsLegacy, hlPedantic)
+            else FMsgs.AddCompilerError(FTok.HotPos, CPE_ToExpected);
+            tt:=FTok.TestDeleteAny([ttPROCEDURE, ttFUNCTION]);
+            if tt=ttNone then begin
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_ProcOrFuncExpected);
+               tt:=ttFUNCTION; // keep compiling
+            end;
+            Result:=ReadProcType(tt, hotPos)
+         end;
+
+         ttPROCEDURE, ttFUNCTION : begin
+            Result:=ReadProcType(tt, hotPos);
+         end;
+
+      else
+
+         if FTok.TestName then begin
+
+            sym:=ReadAliasedNameSymbol(namePos);
+
+            if not Assigned(sym) then begin
+               // keep compiling
+               Result:=FCompilerContext.TypVariant;
+            end else if not sym.IsType then begin
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidType, [sym.Name]);
+               Result:=FCompilerContext.TypVariant; // keep compiling
+            end else if sym is TGenericSymbol then begin
+               Result := ReadGenericType(TGenericSymbol(sym));
+            end else if sym is TConnectorSymbol then begin
+               connectorQualifier:='';
+               if FTok.TestDelete(ttLESS) then begin
+                  repeat
+                     if not FTok.TestDeleteNamePos(name, namePos) then
+                        FMsgs.AddCompilerStop(namePos, CPE_NameExpected);
+                     connectorQualifier:=connectorQualifier+name;
+                     if FTok.TestDelete(ttGTR) then
+                        Break;
+                     if not FTok.TestDelete(ttDOT) then
+                        FMsgs.AddCompilerStop(namePos, CPE_DotExpected);
+                     connectorQualifier:=connectorQualifier+'.';
+                  until False;
+               end;
+               if connectorQualifier='' then
+                  Result:=TTypeSymbol(sym)
+               else begin
+                  Result:=TConnectorSymbol(sym).SpecializeConnector(CurrentProg.Table, connectorQualifier);
+                  if Result=sym then
+                     FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConnectorCantBeSpecialized, [sym.Name])
+                  else if Result=nil then begin
+                     FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConnectorInvalidSpecifier, [sym.Name, connectorQualifier]);
+                     Result:=TTypeSymbol(sym);
+                  end;
+               end;
+            end else Result:=TTypeSymbol(sym);
+
+            WarnDeprecatedType(hotPos, Result);
+
+            // Create name symbol, e. g.: type a = integer;
+            if typeName <> '' then
+               Result:=TAliasSymbol.Create(typeName, Result);
+
+            RecordSymbolUse(Result, namePos, [suReference]);
+
+         end else begin
+
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_TypeExpected);
+            // keep compiling
+            Result:=TAliasSymbol.Create(typeName, FCompilerContext.TypVariant);
+
+         end;
 
       end;
-
+   finally
+      if genericSymbol <> nil then begin
+         CurrentProg.LeaveSubTable;
+         genericSymbol.GenericType := Result;
+         Result := genericSymbol;
+      end;
    end;
 
    // Ensure that unnamed symbols will be freed

@@ -70,7 +70,7 @@ type
    TRTTIConnectorSymbol = class (TConnectorSymbol)
       public
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         function Specialize(table : TSymbolTable; const qualifier : String) : TConnectorSymbol; override;
+         function SpecializeConnector(table : TSymbolTable; const qualifier : String) : TConnectorSymbol; override;
    end;
 
    TRTTIEnvironmentOption = (eoAllowFieldWrite);
@@ -316,7 +316,7 @@ begin
       tkFloat :
          Result:=table.FindTypeSymbol(SYS_FLOAT, cvMagic);
       tkRecord, tkClass, tkInterface :
-         Result:=default.Specialize(table, rttiType.QualifiedName);
+         Result:=default.SpecializeConnector(table, rttiType.QualifiedName);
    else
       Result:=default;
    end;
@@ -807,9 +807,9 @@ end;
 // ------------------ TRTTIConnectorSymbol ------------------
 // ------------------
 
-// Specialize
+// SpecializeConnector
 //
-function TRTTIConnectorSymbol.Specialize(table : TSymbolTable; const qualifier : String) : TConnectorSymbol;
+function TRTTIConnectorSymbol.SpecializeConnector(table : TSymbolTable; const qualifier : String) : TConnectorSymbol;
 var
    t : TRttiType;
    qualifiedName : String;

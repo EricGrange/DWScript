@@ -115,7 +115,7 @@ type
       public
          constructor Create(const name : UnicodeString; const connectorType : IConnectorType);
 
-         function Specialize(table : TSymbolTable; const qualifier : UnicodeString) : TConnectorSymbol; virtual;
+         function SpecializeConnector(table : TSymbolTable; const qualifier : UnicodeString) : TConnectorSymbol; virtual;
          function CreateAssignExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                    exec : TdwsExecution;
                                    left : TDataExpr; right : TTypedExpr) : TProgramExpr; virtual;
@@ -160,9 +160,9 @@ begin
            or (typSym is TBaseVariantSymbol);
 end;
 
-// Specialize
+// SpecializeConnector
 //
-function TConnectorSymbol.Specialize(table : TSymbolTable; const qualifier : UnicodeString) : TConnectorSymbol;
+function TConnectorSymbol.SpecializeConnector(table : TSymbolTable; const qualifier : UnicodeString) : TConnectorSymbol;
 begin
    Result:=Self;
 end;

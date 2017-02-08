@@ -53,6 +53,7 @@ type
    TOperatorSymbol = class;
    TPropertySymbol = class;
    TSymbolTable = class;
+   TUnSortedSymbolTable = class;
    TdwsRuntimeMessageList = class;
    EScriptError = class;
    EScriptErrorClass = class of EScriptError;
@@ -255,6 +256,25 @@ type
 
    TFuncSymbol = class;
 
+   // TSpecializationContext
+   //
+   TSpecializationContext = class
+      private
+         FName : String;
+         FParameters, FValues : TUnSortedSymbolTable; // referred
+
+      protected
+
+      public
+         constructor Create(const aName : String; aParams, aValues : TUnSortedSymbolTable);
+
+         function Specialize(typ : TTypeSymbol) : TTypeSymbol;
+
+         property Name : String read FName;
+         property Parameters : TUnSortedSymbolTable read FParameters;
+         property Values : TUnSortedSymbolTable read FValues;
+   end;
+
    // TSymbol
    //
    // Named item in the script
@@ -287,6 +307,8 @@ type
          function QualifiedName : UnicodeString; virtual;
 
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; virtual;
+
+         function Specialize(context : TSpecializationContext) : TTypeSymbol; virtual;
 
          property Caption : UnicodeString read SafeGetCaption;
          property Description : UnicodeString read GetDescription;
@@ -1068,6 +1090,7 @@ type
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsPointerType : Boolean; override;
          function SameType(typSym : TTypeSymbol) : Boolean; override;
+         function Specialize(context : TSpecializationContext) : TTypeSymbol; override;
 
          class procedure SetInitDynamicArrayProc(const aProc : TInitDataProc);
    end;
@@ -2262,6 +2285,13 @@ end;
 function TSymbol.IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean;
 begin
    Result:=True;
+end;
+
+// Specialize
+//
+function TSymbol.Specialize(context : TSpecializationContext) : TTypeSymbol;
+begin
+   raise ECompileException.CreateFmt('Specialization of %S s is not supported yet', [ClassName]);
 end;
 
 function TSymbol.BaseType: TTypeSymbol;
@@ -6449,6 +6479,13 @@ begin
            and Typ.SameType(typSym.Typ);
 end;
 
+// Specialize
+//
+function TDynamicArraySymbol.Specialize(context : TSpecializationContext) : TTypeSymbol;
+begin
+   Result := TDynamicArraySymbol.Create(context.Name, context.Specialize(Typ), context.Specialize(IndexType));
+end;
+
 // SetInitDynamicArrayProc
 //
 class procedure TDynamicArraySymbol.SetInitDynamicArrayProc(const aProc : TInitDataProc);
@@ -7734,6 +7771,33 @@ begin
       end;
    end;
    Result:=False;
+end;
+
+// ------------------
+// ------------------ TSpecializationContext ------------------
+// ------------------
+
+// Create
+//
+constructor TSpecializationContext.Create(const aName : String; aParams, aValues : TUnSortedSymbolTable);
+begin
+   inherited Create;
+   FName := aName;
+   Assert(aParams.Count = aValues.Count);
+   FParameters := aParams;
+   FValues := aValues;
+end;
+
+// Specialize
+//
+function TSpecializationContext.Specialize(typ : TTypeSymbol) : TTypeSymbol;
+var
+   i : Integer;
+begin
+   for i := 0 to FParameters.Count-1 do
+      if FParameters.Symbols[i] = typ then
+         Exit(FValues.Symbols[i] as TTypeSymbol);
+   Result := typ;
 end;
 
 end.

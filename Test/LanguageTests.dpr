@@ -71,7 +71,8 @@ uses
   dwsSymbolDictionary in '..\Source\dwsSymbolDictionary.pas',
   dwsContextMap in '..\Source\dwsContextMap.pas',
   dwsUnifiedConstants in '..\Source\dwsUnifiedConstants.pas',
-  USymbolDictionaryTests in 'USymbolDictionaryTests.pas';
+  USymbolDictionaryTests in 'USymbolDictionaryTests.pas',
+  dwsGenericSymbols in '..\Source\dwsGenericSymbols.pas';
 
 {$R *.res}
 

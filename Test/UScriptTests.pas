@@ -71,22 +71,31 @@ begin
    basePath:=ExtractFilePath(ParamStr(0));
 
    CollectFiles(basePath+'SimpleScripts'+PathDelim, cFilter, FTests);
-   CollectFiles(basePath+'InterfacesPass'+PathDelim, cFilter, FTests);
-   CollectFiles(basePath+'OverloadsPass'+PathDelim, cFilter, FTests);
-   CollectFiles(basePath+'HelpersPass'+PathDelim, cFilter, FTests);
-   CollectFiles(basePath+'PropertyExpressionsPass'+PathDelim, cFilter, FTests);
-   CollectFiles(basePath+'SetOfPass'+PathDelim, cFilter, FTests);
-   CollectFiles(basePath+'AssociativePass'+PathDelim, cFilter, FTests);
 
    CollectFiles(basePath+'FailureScripts'+PathDelim, cFilter, FFailures);
-   CollectFiles(basePath+'InterfacesFail'+PathDelim, cFilter, FFailures);
-   CollectFiles(basePath+'OverloadsFail'+PathDelim, cFilter, FFailures);
-   CollectFiles(basePath+'HelpersFail'+PathDelim, cFilter, FFailures);
    CollectFiles(basePath+'AttributesFail'+PathDelim, cFilter, FFailures);
    CollectFiles(basePath+'LambdaFail'+PathDelim, cFilter, FFailures);
+
+   CollectFiles(basePath+'InterfacesPass'+PathDelim, cFilter, FTests);
+   CollectFiles(basePath+'InterfacesFail'+PathDelim, cFilter, FFailures);
+
+   CollectFiles(basePath+'OverloadsPass'+PathDelim, cFilter, FTests);
+   CollectFiles(basePath+'OverloadsFail'+PathDelim, cFilter, FFailures);
+
+   CollectFiles(basePath+'HelpersPass'+PathDelim, cFilter, FTests);
+   CollectFiles(basePath+'HelpersFail'+PathDelim, cFilter, FFailures);
+
+   CollectFiles(basePath+'PropertyExpressionsPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'PropertyExpressionsFail'+PathDelim, cFilter, FFailures);
+
+   CollectFiles(basePath+'SetOfPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'SetOfFail'+PathDelim, cFilter, FFailures);
+
+   CollectFiles(basePath+'AssociativePass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'AssociativeFail'+PathDelim, cFilter, FFailures);
+
+   CollectFiles(basePath+'GenericsPass'+PathDelim, cFilter, FTests);
+   CollectFiles(basePath+'GenericsFail'+PathDelim, cFilter, FFailures);
 
    FCompiler:=TDelphiWebScript.Create(nil);
    FCompiler.OnInclude:=DoInclude;

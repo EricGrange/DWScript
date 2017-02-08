@@ -114,6 +114,8 @@ const
   CPE_AtExpected = '"@" expected';
   CPE_UnexpectedAt = 'unexpected "@"';
   CPE_CurlyRightExpected = '"}" expected';
+  CPE_GreaterExpected = '">" expected';
+  CPE_LesserExpected = '"<" expected';
   CPE_ColonExpected = 'Colon ":" expected';
   CPE_DotExpected = 'Dot "." expected';
   CPE_NameExpected = 'Name expected';
@@ -148,6 +150,9 @@ const
   CPE_ExternalVariablesMustBeGlobal = 'External variables must be global';
   CPE_ExternalClassVariablesInitializationIsNotSupported = 'External class variables initialization is not supported';
   CPE_ExternalPropertyNoArguments = 'External properties cannot have arguments';
+  CPE_GenericParametersNotSupportedHere = 'Generic parameters not supported here';
+  CPE_GenericParametersListExpected = 'Generic parameters list expected';
+  CPE_UnsupportedGenericConstraint = 'Unsupported generic constraint';
 
   // ReadName
   CPE_UnknownName = 'Unknown name "%s"';

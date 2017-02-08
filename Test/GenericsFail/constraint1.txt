@@ -1,0 +1,2 @@
+Syntax Error: Incompatible parameter types - "TFoo" expected (instead of "TBar") [line: 7, column: 18]
+Syntax Error: Incompatible parameter types - "TBar" expected (instead of "TFoo") [line: 11, column: 18]
