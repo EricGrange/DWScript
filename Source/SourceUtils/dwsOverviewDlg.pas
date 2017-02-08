@@ -50,6 +50,8 @@ type
       var PaintImages, DefaultDraw: Boolean);
     procedure FormDestroy(Sender: TObject);
     procedure CBSortChange(Sender: TObject);
+    procedure TreeViewMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
 
    private
       { Private declarations }
@@ -408,6 +410,16 @@ procedure TdwsOverviewDialog.TreeViewKeyUp(Sender: TObject; var Key: Word;
 begin
    if Key = 13 then
       ValidateSelection;
+end;
+
+procedure TdwsOverviewDialog.TreeViewMouseDown(Sender: TObject;
+  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+   node : TTreeNode;
+begin
+   node := TreeView.GetNodeAt(x, y);
+   if (node <> nil) and (node <> TreeView.Selected) then
+      TreeView.Selected := node;
 end;
 
 // AddSymbolsOfSourceFile

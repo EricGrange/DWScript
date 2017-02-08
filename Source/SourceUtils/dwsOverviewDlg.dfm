@@ -46,6 +46,7 @@ object dwsOverviewDialog: TdwsOverviewDialog
     OnDblClick = TreeViewDblClick
     OnExpanding = TreeViewExpanding
     OnKeyUp = TreeViewKeyUp
+    OnMouseDown = TreeViewMouseDown
     ExplicitLeft = 72
     ExplicitTop = 136
     ExplicitWidth = 513
