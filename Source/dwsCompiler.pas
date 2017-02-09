@@ -9984,6 +9984,8 @@ begin
          FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
          Break;
       end;
+      if Result.Find(name) <> nil then
+         FMsgs.AddCompilerErrorFmt(hotPos, CPE_NameAlreadyExists, [name]);
       param := TGenericTypeParameterSymbol.Create(name);
       Result.Add(param);
       RecordSymbolUse(param, hotPos, [suDeclaration]);

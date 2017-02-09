@@ -1,0 +1,2 @@
+Syntax Error: Print is not a Type [line: 1, column: 17]
+Syntax Error: Print is not a Type [line: 3, column: 26]

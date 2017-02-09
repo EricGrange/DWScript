@@ -59,6 +59,7 @@ type
       function  GetParameter(index : Integer) : TGenericTypeParameterSymbol;
       property  Parameters[index : Integer] : TGenericTypeParameterSymbol read GetParameter; default;
       function  Count : Integer;
+      function  Find(const name : String) : TGenericTypeParameterSymbol;
    end;
 
    TGenericParameters = class (TInterfacedObject, IGenericParameters)
@@ -76,6 +77,7 @@ type
 
          procedure Add(param : TGenericTypeParameterSymbol);
          function  GetParameter(index : Integer) : TGenericTypeParameterSymbol;
+         function  Find(const name : String) : TGenericTypeParameterSymbol;
 
          function Count : Integer;
    end;
@@ -312,6 +314,13 @@ end;
 function TGenericParameters.GetParameter(index : Integer) : TGenericTypeParameterSymbol;
 begin
    Result := TGenericTypeParameterSymbol(FList.Symbols[index]);
+end;
+
+// Find
+//
+function TGenericParameters.Find(const name : String) : TGenericTypeParameterSymbol;
+begin
+   Result := TGenericTypeParameterSymbol(FList.FindLocal(name));
 end;
 
 // Count
