@@ -96,7 +96,9 @@ type
       protected
          class function Signature(params : TUnSortedSymbolTable) : String; static;
 
-         function CreateSpecializationContext(values : TUnSortedSymbolTable) : TSpecializationContext;
+         function CreateSpecializationContext(values : TUnSortedSymbolTable;
+                                              const aScriptPos : TScriptPos; aUnit : TSymbol;
+                                              aMsgs : TdwsCompileMessageList) : TSpecializationContext;
 
       public
          constructor Create(const name : String; const params : IGenericParameters);
@@ -104,7 +106,9 @@ type
 
          function Specialize(context : TSpecializationContext) : TTypeSymbol; override;
 
-         function SpecializationFor(values : TUnSortedSymbolTable) : TTypeSymbol;
+         function SpecializationFor(values : TUnSortedSymbolTable;
+                                    const aScriptPos : TScriptPos; aUnit : TSymbol;
+                                    aMsgs : TdwsCompileMessageList) : TTypeSymbol;
 
          property Parameters : IGenericParameters read FParameters;
          property GenericType : TTypeSymbol read FGenericType write FGenericType;
@@ -179,7 +183,10 @@ end;
 
 // SpecializationFor
 //
-function TGenericSymbol.SpecializationFor(values : TUnSortedSymbolTable) : TTypeSymbol;
+function TGenericSymbol.SpecializationFor(
+      values : TUnSortedSymbolTable;
+      const aScriptPos : TScriptPos; aUnit : TSymbol;
+      aMsgs : TdwsCompileMessageList) : TTypeSymbol;
 var
    context : TSpecializationContext;
    sig : String;
@@ -192,7 +199,7 @@ begin
       end;
    end;
 
-   context := CreateSpecializationContext(values);
+   context := CreateSpecializationContext(values, aScriptPos, aUnit, aMsgs);
    try
       Result := Specialize(context);
    finally
@@ -202,7 +209,10 @@ end;
 
 // CreateSpecializationContext
 //
-function TGenericSymbol.CreateSpecializationContext(values : TUnSortedSymbolTable) : TSpecializationContext;
+function TGenericSymbol.CreateSpecializationContext(
+      values : TUnSortedSymbolTable;
+      const aScriptPos : TScriptPos; aUnit : TSymbol;
+      aMsgs : TdwsCompileMessageList) : TSpecializationContext;
 var
    i : Integer;
    n : String;
@@ -214,7 +224,7 @@ begin
       n := n + values.Symbols[i].Name;
    end;
    n := n + '>';
-   Result := TSpecializationContext.Create(n, Parameters.List, values);
+   Result := TSpecializationContext.Create(n, Parameters.List, values, aScriptPos, aUnit, aMsgs);
 end;
 
 // Signature
@@ -239,6 +249,7 @@ end;
 constructor TGenericTypeParameterSymbol.Create(const name : String);
 begin
    inherited Create(name, nil);
+   FSize := 1; // fake size
 end;
 
 // Destroy

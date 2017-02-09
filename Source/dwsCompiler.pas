@@ -9998,7 +9998,7 @@ begin
             end else FMsgs.AddCompilerError(hotPos, CPE_UnsupportedGenericConstraint);
          until not FTok.TestDelete(ttCOMMA);
       end;
-   until not FTok.TestDelete(ttSEMI);
+   until FTok.TestDeleteAny([ttSEMI, ttCOMMA]) = ttNONE;
    if Result.Count = 0 then
       Result := nil;
 end;
@@ -10009,11 +10009,12 @@ function TdwsCompiler.ReadGenericType(genericType : TGenericSymbol) : TTypeSymbo
 var
    value : TTypeSymbol;
    valueList : TUnSortedSymbolTable;
-   hotPos : TScriptPos;
+   startPos, hotPos : TScriptPos;
    checkSuccessful : Boolean;
 begin
+   startPos := FTok.HotPos;
    if not FTok.TestDelete(ttLESS) then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_GenericParametersListExpected);
+      FMsgs.AddCompilerStop(startPos, CPE_GenericParametersListExpected);
    valueList := TUnSortedSymbolTable.Create;
    try
       checkSuccessful := True;
@@ -10037,7 +10038,7 @@ begin
       end;
 
       if checkSuccessful then begin
-         Result := genericType.SpecializationFor(valueList);
+         Result := genericType.SpecializationFor(valueList, startPos, CurrentUnitSymbol, FMsgs);
       end else begin
          Result := genericType;
       end;
@@ -10171,9 +10172,10 @@ function TdwsCompiler.ReadType(const typeName : UnicodeString; typeContext : Tdw
 var
    tt : TTokenType;
    name, connectorQualifier : UnicodeString;
-   hotPos, namePos : TScriptPos;
+   hotPos, namePos, genericPos : TScriptPos;
    sym : TSymbol;
    genericSymbol : TGenericSymbol;
+   specializeMethod : TSpecializationMethod;
 begin
    Result := nil;
    genericSymbol := nil;
@@ -10184,13 +10186,10 @@ begin
                            ttPROCEDURE, ttFUNCTION, ttREFERENCE]);
 
    if Assigned(genericParameters) then begin
-      if tt <> ttARRAY then
-         FMsgs.AddCompilerError(hotPos, CPE_GenericParametersNotSupportedHere)
-      else begin
-         genericParameters.List.AddParent(CurrentProg.Table);
-         CurrentProg.EnterSubTable(genericParameters.List);
-         genericSymbol := TGenericSymbol.Create(typeName, genericParameters);
-      end;
+      genericPos := FTok.HotPos;
+      genericParameters.List.AddParent(CurrentProg.Table);
+      CurrentProg.EnterSubTable(genericParameters.List);
+      genericSymbol := TGenericSymbol.Create(typeName, genericParameters);
    end;
    try
       case tt of
@@ -10357,6 +10356,9 @@ begin
    finally
       if genericSymbol <> nil then begin
          CurrentProg.LeaveSubTable;
+         specializeMethod := Result.Specialize;
+         if TMethod(specializeMethod).Code = @TSymbol.Specialize then
+            FMsgs.AddCompilerError(genericPos, CPE_GenericParametersNotSupportedHere);
          genericSymbol.GenericType := Result;
          Result := genericSymbol;
       end;

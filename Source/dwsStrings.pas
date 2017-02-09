@@ -153,6 +153,7 @@ const
   CPE_GenericParametersNotSupportedHere = 'Generic parameters not supported here';
   CPE_GenericParametersListExpected = 'Generic parameters list expected';
   CPE_UnsupportedGenericConstraint = 'Unsupported generic constraint';
+  CPE_SpecializationNotSupportedYet = 'Specialization of %s is not supported yet';
 
   // ReadName
   CPE_UnknownName = 'Unknown name "%s"';

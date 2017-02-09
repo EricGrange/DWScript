@@ -262,18 +262,27 @@ type
       private
          FName : String;
          FParameters, FValues : TUnSortedSymbolTable; // referred
+         FUnitSymbol : TSymbol;
+         FMsgs : TdwsCompileMessageList;
+         FScriptPos : TScriptPos;
 
       protected
 
       public
-         constructor Create(const aName : String; aParams, aValues : TUnSortedSymbolTable);
+         constructor Create(const aName : String; aParams, aValues : TUnSortedSymbolTable;
+                            const aScriptPos : TScriptPos; aUnit : TSymbol; aMsgs : TdwsCompileMessageList);
 
          function Specialize(typ : TTypeSymbol) : TTypeSymbol;
 
          property Name : String read FName;
          property Parameters : TUnSortedSymbolTable read FParameters;
          property Values : TUnSortedSymbolTable read FValues;
+         property UnitSymbol : TSymbol read FUnitSymbol;
+         property Msgs : TdwsCompileMessageList read FMsgs;
+         property ScriptPos : TScriptPos read FScriptPos;
    end;
+
+   TSpecializationMethod = function (context : TSpecializationContext) : TTypeSymbol of object;
 
    // TSymbol
    //
@@ -1384,6 +1393,8 @@ type
          procedure InitData(const data : TData; offset : Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
+         function Specialize(context : TSpecializationContext) : TTypeSymbol; override;
+
          property IsDynamic : Boolean read GetIsDynamic write SetIsDynamic;
          property IsImmutable : Boolean read GetIsImmutable write SetIsImmutable;
          property IsFullyDefined : Boolean read GetIsFullyDefined write SetIsFullyDefined;
@@ -2291,7 +2302,7 @@ end;
 //
 function TSymbol.Specialize(context : TSpecializationContext) : TTypeSymbol;
 begin
-   raise ECompileException.CreateFmt('Specialization of %S s is not supported yet', [ClassName]);
+   raise ECompileException.CreateFmt(CPE_SpecializationNotSupportedYet, [ClassName]);
 end;
 
 function TSymbol.BaseType: TTypeSymbol;
@@ -2839,6 +2850,37 @@ begin
       Exit(True);
 
    Result:=False;
+end;
+
+// Specialize
+//
+function TRecordSymbol.Specialize(context : TSpecializationContext) : TTypeSymbol;
+var
+   i : Integer;
+   member : TSymbol;
+   specialized : TSymbol;
+   field, specializedField : TFieldSymbol;
+   specializedRecord : TRecordSymbol;
+begin
+   Assert(rsfFullyDefined in FFlags);
+
+   specializedRecord := TRecordSymbol.Create(context.Name, context.UnitSymbol);
+   for i := 0 to Members.Count-1 do begin
+      member := Members[i];
+      if member is TFieldSymbol then begin
+         field := TFieldSymbol(member);
+         specializedField := TFieldSymbol.Create(field.Name, context.Specialize(field.Typ), field.Visibility);
+         specializedRecord.AddField(specializedField);
+      end else if member is TMethodSymbol then begin
+         specialized := member.Specialize(context);
+         if specialized <> nil then
+            specializedRecord.AddMethod(specialized as TMethodSymbol)
+      end else begin
+         context.Msgs.AddCompilerErrorFmt(context.ScriptPos, CPE_SpecializationNotSupportedYet, [member.ClassName]);
+      end;
+   end;
+   specializedRecord.FFlags := FFlags;
+   Result := specializedRecord;
 end;
 
 // GetCaption
@@ -7779,13 +7821,17 @@ end;
 
 // Create
 //
-constructor TSpecializationContext.Create(const aName : String; aParams, aValues : TUnSortedSymbolTable);
+constructor TSpecializationContext.Create(
+      const aName : String; aParams, aValues : TUnSortedSymbolTable;
+      const aScriptPos : TScriptPos; aUnit : TSymbol; aMsgs : TdwsCompileMessageList);
 begin
    inherited Create;
    FName := aName;
    Assert(aParams.Count = aValues.Count);
    FParameters := aParams;
    FValues := aValues;
+   FUnitSymbol := aUnit;
+   FMsgs := aMsgs;
 end;
 
 // Specialize
