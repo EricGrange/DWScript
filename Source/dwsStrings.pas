@@ -150,10 +150,13 @@ const
   CPE_ExternalVariablesMustBeGlobal = 'External variables must be global';
   CPE_ExternalClassVariablesInitializationIsNotSupported = 'External class variables initialization is not supported';
   CPE_ExternalPropertyNoArguments = 'External properties cannot have arguments';
+
   CPE_GenericParametersNotSupportedHere = 'Generic parameters not supported here';
   CPE_GenericParametersListExpected = 'Generic parameters list expected';
   CPE_UnsupportedGenericConstraint = 'Unsupported generic constraint';
   CPE_SpecializationNotSupportedYet = 'Specialization of %s is not supported yet';
+  CPE_GenericityNotSupportedYet = 'Genericity of %s not supported yet';
+  CPE_PartialClassesCannotBeSpecialized = 'Partial classes cannot be specialized';
 
   // ReadName
   CPE_UnknownName = 'Unknown name "%s"';

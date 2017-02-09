@@ -4693,6 +4693,9 @@ begin
    // Add the symbol usage to Dictionary
    RecordSymbolUseReference(sym, namePos, isWrite);
 
+   if sym.ClassType = TGenericSymbol then
+      sym := ReadGenericType(TGenericSymbol(sym));
+
    Result := nil;
    try
       baseType := sym.BaseType;
@@ -10307,7 +10310,7 @@ begin
             end else if not sym.IsType then begin
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidType, [sym.Name]);
                Result:=FCompilerContext.TypVariant; // keep compiling
-            end else if sym is TGenericSymbol then begin
+            end else if sym.ClassType = TGenericSymbol then begin
                Result := ReadGenericType(TGenericSymbol(sym));
             end else if sym is TConnectorSymbol then begin
                connectorQualifier:='';
@@ -10356,9 +10359,9 @@ begin
    finally
       if genericSymbol <> nil then begin
          CurrentProg.LeaveSubTable;
-         specializeMethod := Result.Specialize;
-         if TMethod(specializeMethod).Code = @TSymbol.Specialize then
-            FMsgs.AddCompilerError(genericPos, CPE_GenericParametersNotSupportedHere);
+         specializeMethod := Result.SpecializeType;
+         if TMethod(specializeMethod).Code = @TTypeSymbol.SpecializeType then
+            FMsgs.AddCompilerErrorFmt(genericPos, CPE_GenericityNotSupportedYet, [Result.ClassName]);
          genericSymbol.GenericType := Result;
          Result := genericSymbol;
       end;

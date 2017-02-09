@@ -35,6 +35,7 @@ type
    TGenericTypeSymbol = class (TTypeSymbol)
       public
          procedure InitData(const data : TData; offset : Integer); override;
+         function IsGeneric : Boolean; override;
    end;
 
    TGenericTypeParameterSymbol = class (TGenericTypeSymbol)
@@ -87,7 +88,7 @@ type
       Specialization : TTypeSymbol;
    end;
 
-   TGenericSymbol = class (TGenericTypeSymbol)
+   TGenericSymbol = class sealed (TGenericTypeSymbol)
       private
          FParameters : IGenericParameters;
          FGenericType : TTypeSymbol;
@@ -104,7 +105,7 @@ type
          constructor Create(const name : String; const params : IGenericParameters);
          destructor Destroy; override;
 
-         function Specialize(context : TSpecializationContext) : TTypeSymbol; override;
+         function SpecializeType(context : TSpecializationContext) : TTypeSymbol; override;
 
          function SpecializationFor(values : TUnSortedSymbolTable;
                                     const aScriptPos : TScriptPos; aUnit : TSymbol;
@@ -158,9 +159,9 @@ begin
    inherited;
 end;
 
-// Specialize
+// SpecializeType
 //
-function TGenericSymbol.Specialize(context : TSpecializationContext) : TTypeSymbol;
+function TGenericSymbol.SpecializeType(context : TSpecializationContext) : TTypeSymbol;
 var
    sig : String;
    i : Integer;
@@ -173,7 +174,7 @@ begin
       end;
    end;
 
-   Result := FGenericType.Specialize(context);
+   Result := FGenericType.SpecializeType(context);
 
    i := Length(FSpecializations);
    SetLength(FSpecializations, i+1);
@@ -201,7 +202,7 @@ begin
 
    context := CreateSpecializationContext(values, aScriptPos, aUnit, aMsgs);
    try
-      Result := Specialize(context);
+      Result := SpecializeType(context);
    finally
       context.Free;
    end;
@@ -350,6 +351,13 @@ end;
 procedure TGenericTypeSymbol.InitData(const data : TData; offset : Integer);
 begin
    // nothing
+end;
+
+// IsGeneric
+//
+function TGenericTypeSymbol.IsGeneric : Boolean;
+begin
+   Result := True;
 end;
 
 // ------------------

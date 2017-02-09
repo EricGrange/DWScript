@@ -93,7 +93,7 @@ begin
 
    CollectFiles(basePath+'AssociativePass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'AssociativeFail'+PathDelim, cFilter, FFailures);
-
+//}
    CollectFiles(basePath+'GenericsPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'GenericsFail'+PathDelim, cFilter, FFailures);
 
