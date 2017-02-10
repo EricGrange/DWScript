@@ -785,6 +785,8 @@ type
 
          function  DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
+         procedure InternalSpecialize(destination : TFuncSymbol; context : TSpecializationContext);
+
       public
          constructor Create(const name : UnicodeString; funcKind : TFuncKind; funcLevel : SmallInt);
          destructor Destroy; override;
@@ -850,7 +852,7 @@ type
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
-   TSourceFuncSymbol = class(TFuncSymbol)
+   TSourceFuncSymbol = class sealed (TFuncSymbol)
       private
          FSourcePosition : TScriptPos;
 
@@ -859,6 +861,8 @@ type
          procedure SetSourcePosition(const val : TScriptPos); override;
 
       public
+         function SpecializeType(context : TSpecializationContext) : TTypeSymbol; override;
+
          property SubExpr;
          property SubExprCount;
    end;
@@ -947,7 +951,7 @@ type
 
    TMethodSymbolArray = array of TMethodSymbol;
 
-   TSourceMethodSymbol = class(TMethodSymbol)
+   TSourceMethodSymbol = class (TMethodSymbol)
       private
          FDeclarationPos : TScriptPos;
          FSourcePosition : TScriptPos;
@@ -1557,6 +1561,7 @@ type
    TClassSymbolFlag = (csfAbstract, csfExplicitAbstract, csfSealed,
                        csfStatic, csfExternal, csfPartial,
                        csfNoVirtualMembers, csfNoOverloads,
+                       csfHasOwnMethods, csfHasOwnFields,
                        csfExternalRooted,
                        csfInitialized,
                        csfAttribute);
@@ -3690,6 +3695,32 @@ begin
    Result:=True;
 end;
 
+// InternalSpecialize
+//
+procedure TFuncSymbol.InternalSpecialize(destination : TFuncSymbol; context : TSpecializationContext);
+var
+   i : Integer;
+begin
+   if FExecutable <> nil then
+      context.AddCompilerError('Executable functions cannot be specialized yet');
+   if FConditions <> nil then
+      context.AddCompilerError('Functions with conditions cannot be specialized yet');
+
+   destination.FFlags := FFlags;
+   if fsfExternal in FFlags then
+      if FExternalName <> '' then
+         destination.FExternalName := FExternalName
+      else destination.FExternalName := Name
+   else destination.FExternalName := FExternalName;
+
+   destination.FExternalConvention := FExternalConvention;
+
+   destination.Typ := context.SpecializeType(typ);
+   Assert(destination.InternalParams.Count = InternalParams.Count);
+   for i := 0 to Params.Count-1 do
+      destination.Params.AddSymbol(Params[i].Specialize(context));
+end;
+
 // IsType
 //
 function TFuncSymbol.IsType : Boolean;
@@ -3838,6 +3869,18 @@ end;
 procedure TSourceFuncSymbol.SetSourcePosition(const val : TScriptPos);
 begin
    FSourcePosition:=val;
+end;
+
+// SpecializeType
+//
+function TSourceFuncSymbol.SpecializeType(context : TSpecializationContext) : TTypeSymbol;
+var
+   specializedFunc : TSourceFuncSymbol;
+begin
+   specializedFunc := TSourceFuncSymbol.Create(context.Name, Kind, Level);
+   specializedFunc.FSourcePosition := FSourcePosition;
+   InternalSpecialize(specializedFunc, context);
+   Result := specializedFunc;
 end;
 
 // ------------------
@@ -4213,19 +4256,14 @@ end;
 //
 function TSourceMethodSymbol.SpecializeType(context : TSpecializationContext) : TTypeSymbol;
 var
-   i : Integer;
    specializedMethod : TSourceMethodSymbol;
 begin
    if not (IsExternal or IsAbstract) then
       context.AddCompilerError('Only external or abstract methods can be specialized right now');
 
-   specializedMethod := TSourceMethodSymbol.Create(context.Name, Kind, context.CompositeSymbol,
+   specializedMethod := TSourceMethodSymbol.Create(Name, Kind, context.CompositeSymbol,
                                                    Visibility, IsClassMethod, Level);
-   specializedMethod.FFlags := FFlags;
-   specializedMethod.Typ := context.SpecializeType(typ);
-   for i := 0 to Params.Count-1 do
-      specializedMethod.Params.AddSymbol(Params[i].Specialize(context));
-
+   InternalSpecialize(specializedMethod, context);
    Result := specializedMethod;
 end;
 
@@ -4554,6 +4592,7 @@ begin
    inherited;
    fieldSym.FOffset := FScriptInstanceSize;
    FScriptInstanceSize := FScriptInstanceSize + fieldSym.Typ.Size;
+   Include(FFlags, csfHasOwnFields);
 end;
 
 // AddMethod
@@ -4563,6 +4602,7 @@ begin
    inherited;
    if methSym.IsAbstract then
       Include(FFlags, csfAbstract);
+   Include(FFlags, csfHasOwnMethods);
 end;
 
 // AddOperator
@@ -5038,8 +5078,14 @@ begin
       context.AddCompilerError(CPE_PartialClassesCannotBeSpecialized);
 
    // temporary errors while generic support is in progress, so no standard error string
-   if not (csfExternal in FFlags) then
-      context.AddCompilerError('Only external classes can be specialized right now');
+   if not (csfExternal in FFlags) then begin
+      if Parent.IsGeneric then
+         context.AddCompilerError('Subclasses of a generic class connt be specialized right now')
+      else if csfHasOwnMethods in FFlags then
+         context.AddCompilerError('Classes with methods cannot be specialized right now')
+      else if FOperators.Count > 0 then
+         context.AddCompilerError('Classes with operators cannot be specialized right now');
+   end;
    if FOperators.Count <> 0 then
       context.AddCompilerError('Specialization of class operators not yet supported');
    if (FInterfaces <> nil) and (FInterfaces.Count <> 0) then
@@ -5051,8 +5097,15 @@ begin
    context.EnterComposite(specializedClass);
    try
       specializedClass.FFlags := FFlags - [csfInitialized];
+      if csfExternal in FFlags then
+         if FExternalName <> '' then
+            specializedClass.FExternalName := FExternalName
+         else specializedClass.FExternalName := Name
+      else specializedClass.FExternalName := FExternalName;
+
       if Parent <> nil then
          specializedClass.InheritFrom( context.Specialize(Parent) as TClassSymbol );
+
       SpecializeMembers(specializedClass, context);
       specializedClass.Initialize(context.Msgs);
    finally

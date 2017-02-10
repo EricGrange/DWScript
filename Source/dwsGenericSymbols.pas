@@ -61,6 +61,7 @@ type
       property  Parameters[index : Integer] : TGenericTypeParameterSymbol read GetParameter; default;
       function  Count : Integer;
       function  Find(const name : String) : TGenericTypeParameterSymbol;
+      function  Caption : String;
    end;
 
    TGenericParameters = class (TInterfacedObject, IGenericParameters)
@@ -81,6 +82,8 @@ type
          function  Find(const name : String) : TGenericTypeParameterSymbol;
 
          function Count : Integer;
+
+         function  Caption : String;
    end;
 
    TGenericSymbolSpecialization = record
@@ -100,6 +103,8 @@ type
          function CreateSpecializationContext(values : TUnSortedSymbolTable;
                                               const aScriptPos : TScriptPos; aUnit : TSymbol;
                                               aMsgs : TdwsCompileMessageList) : TSpecializationContext;
+
+         function GetCaption : UnicodeString; override;
 
       public
          constructor Create(const name : String; const params : IGenericParameters);
@@ -174,7 +179,9 @@ begin
       end;
    end;
 
-   Result := FGenericType.SpecializeType(context);
+   if FGenericType <> nil then
+      Result := FGenericType.SpecializeType(context)
+   else Result := nil;
 
    i := Length(FSpecializations);
    SetLength(FSpecializations, i+1);
@@ -226,6 +233,13 @@ begin
    end;
    n := n + '>';
    Result := TSpecializationContext.Create(n, Parameters.List, values, aScriptPos, aUnit, aMsgs);
+end;
+
+// GetCaption
+//
+function TGenericSymbol.GetCaption : UnicodeString;
+begin
+   Result := Name + FParameters.Caption;
 end;
 
 // Signature
@@ -340,6 +354,25 @@ end;
 function TGenericParameters.Count : Integer;
 begin
    Result := FList.Count;
+end;
+
+// Caption
+//
+function TGenericParameters.Caption : String;
+var
+   i : Integer;
+   p : TGenericTypeParameterSymbol;
+begin
+   Result := '<';
+   for i := 0 to FList.Count-1 do begin
+      if i > 0 then
+         Result := Result + ',';
+      p := TGenericTypeParameterSymbol(FList.Symbols[i]);
+      if p.Name = '' then
+         Result := Result + p.Caption
+      else Result := Result + p.Name;
+   end;
+   Result := Result + '>';
 end;
 
 // ------------------
