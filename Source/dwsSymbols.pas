@@ -6848,9 +6848,10 @@ end;
 //
 function TOpenArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-  TypSym := TypSym.BaseType;
-  Result :=     (TypSym is TStaticArraySymbol)
-            and Typ.IsCompatible(TypSym.Typ);
+   if typSym = nil then Exit(False);
+   typSym := typSym.BaseType;
+   Result :=     (typSym is TStaticArraySymbol)
+             and Typ.IsCompatible(typSym.Typ);
 end;
 
 // GetCaption
