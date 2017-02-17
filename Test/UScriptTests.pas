@@ -69,7 +69,7 @@ begin
    FFailures:=TStringList.Create;
 
    basePath:=ExtractFilePath(ParamStr(0));
-{
+
    CollectFiles(basePath+'SimpleScripts'+PathDelim, cFilter, FTests);
 
    CollectFiles(basePath+'FailureScripts'+PathDelim, cFilter, FFailures);

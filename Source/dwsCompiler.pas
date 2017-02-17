@@ -8394,17 +8394,23 @@ begin
 
       hotPos:=FTok.HotPos;
       typedExpr:=ReadExpr;
-      try
-         if typedExpr.Typ.UnAliasedTypeIs(TClassOfSymbol) and (typedExpr is TDataExpr) then begin
-            baseExpr:=TDataExpr(typedExpr);
-            classSym:=TClassOfSymbol(typedExpr.Typ.UnAliasedType).TypClassSymbol;
-         end else FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
-         if not FTok.TestDelete(ttBRIGHT) then
-            FMsgs.AddCompilerStop(hotPos, CPE_BrackRightExpected);
-      except
-         OrphanAndNil(typedExpr);
-         raise;
+      if typedExpr<>nil then begin
+         try
+            if typedExpr.Typ.UnAliasedTypeIs(TClassOfSymbol) and (typedExpr is TDataExpr) then begin
+               baseExpr:=TDataExpr(typedExpr);
+               classSym:=TClassOfSymbol(typedExpr.Typ.UnAliasedType).TypClassSymbol;
+            end else FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
+         except
+            OrphanAndNil(typedExpr);
+            raise;
+         end;
+      end else begin
+         // error was already regsitered, attempt to keep compiling
+         classSym := FCompilerContext.TypTObject;
+         baseExpr := TBogusConstExpr.Create(classSym, Null);
       end;
+      if not FTok.TestDelete(ttBRIGHT) then
+         FMsgs.AddCompilerError(hotPos, CPE_BrackRightExpected);
 
    end else begin
 
@@ -8421,7 +8427,7 @@ begin
          sym:=CurrentProg.Table.FindSymbol(nameToken.AsString, cvPrivate);
       FTok.KillToken;
 
-      if sym.ClassType = TGenericSymbol then
+      if (sym <> nil) and (sym.ClassType = TGenericSymbol) then
          sym := ReadSpecializedType(TGenericSymbol(sym));
 
       if FTok.TestDelete(ttALEFT) then begin
