@@ -168,7 +168,7 @@ begin
                except
                   gotError:=True;
                end;
-               if compiler.Msgs.Count > previousMsgCount then begin
+               if compiler.Msgs.HasErrors and (compiler.Msgs.Count > previousMsgCount) then begin
                   gotError := True;
                   messageString := compiler.Msgs[previousMsgCount].AsInfo;
                   for i := previousMsgCount+1 to compiler.Msgs.Count-1 do begin
