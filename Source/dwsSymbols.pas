@@ -256,6 +256,11 @@ type
 
    TFuncSymbol = class;
 
+   TSpecializedSymbol = record
+      Generic : TSymbol;
+      Specialized : TSymbol;
+   end;
+
    // TSpecializationContext
    //
    TSpecializationContext = class
@@ -267,6 +272,7 @@ type
          FScriptPos : TScriptPos;
          FCompositeSymbol : TCompositeTypeSymbol;
          FCompositeStack : TTightList;
+         FSpecializedSymbols : array of TSpecializedSymbol;
 
       protected
 
@@ -277,6 +283,8 @@ type
 
          function Specialize(sym : TSymbol) : TSymbol;
          function SpecializeType(typ : TTypeSymbol) : TTypeSymbol;
+
+         procedure RegisterSpecialization(generic, specialized : TSymbol);
 
          procedure AddCompilerError(const msg : String);
          procedure AddCompilerErrorFmt(const msgFmt : String; const params : array of const);
@@ -1496,6 +1504,8 @@ type
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
          function HasArrayIndices : Boolean;
 
+         function Specialize(context : TSpecializationContext) : TSymbol; override;
+
          property OwnerSymbol : TCompositeTypeSymbol read FOwnerSymbol;
          property Visibility : TdwsVisibility read FVisibility write FVisibility;
          property ArrayIndices : TParamsSymbolTable read GetArrayIndices;
@@ -2630,19 +2640,36 @@ var
    member : TSymbol;
    specialized : TSymbol;
    field, specializedField : TFieldSymbol;
+   specializedProp : TPropertySymbol;
+   firstPropertyIndex : Integer;
 begin
+   firstPropertyIndex := Members.Count;
    for i := 0 to Members.Count-1 do begin
       member := Members[i];
       if member is TFieldSymbol then begin
          field := TFieldSymbol(member);
          specializedField := TFieldSymbol.Create(field.Name, context.SpecializeType(field.Typ), field.Visibility);
          destination.AddField(specializedField);
+         context.RegisterSpecialization(field, specializedField);
       end else if member is TMethodSymbol then begin
          specialized := member.Specialize(context);
-         if specialized <> nil then
-            destination.AddMethod(specialized as TMethodSymbol)
+         if specialized <> nil then begin
+            destination.AddMethod(specialized as TMethodSymbol);
+            context.RegisterSpecialization(member, specialized);
+         end;
+      end else if member is TPropertySymbol then begin
+         // specialize properties in a separate pass as they refer other members
+         if i < firstPropertyIndex then
+            firstPropertyIndex := i;
       end else begin
          context.AddCompilerErrorFmt(CPE_SpecializationNotSupportedYet, [member.ClassName]);
+      end;
+   end;
+   for i := firstPropertyIndex to Members.Count-1 do begin
+      member := Members[i];
+      if member is TPropertySymbol then begin
+         specializedProp := member.Specialize(context) as TPropertySymbol;
+         destination.AddProperty(specializedProp);
       end;
    end;
 end;
@@ -4369,6 +4396,35 @@ end;
 function TPropertySymbol.HasArrayIndices : Boolean;
 begin
    Result:=Assigned(FArrayIndices) and (FArrayIndices.Count>0);
+end;
+
+// Specialize
+//
+function TPropertySymbol.Specialize(context : TSpecializationContext) : TSymbol;
+var
+   i : Integer;
+   specializedArrayIndices : TParamsSymbolTable;
+   specializedProperty : TPropertySymbol;
+begin
+   if HasArrayIndices then begin
+      specializedArrayIndices := TParamsSymbolTable.Create;
+      for i := 0 to ArrayIndices.Count-1 do
+         specializedArrayIndices.AddSymbol(ArrayIndices[i].Specialize(context));
+   end else specializedArrayIndices := nil;
+
+   specializedProperty := TPropertySymbol.Create(Name, context.SpecializeType(Typ), Visibility,
+                                                 specializedArrayIndices);
+
+   specializedProperty.FReadSym := context.Specialize(FReadSym);
+   specializedProperty.FWriteSym := context.Specialize(FWriteSym);
+   specializedProperty.FIndexSym := context.SpecializeType(FIndexSym);
+   specializedProperty.FIndexValue := FIndexValue;
+   specializedProperty.FDefaultSym := FDefaultSym;
+   if FDefaultSym <> nil then
+      FDefaultSym.IncRefCount;
+   specializedProperty.FDeprecatedMessage := FDeprecatedMessage;
+
+   Result := specializedProperty;
 end;
 
 // GetDescription
@@ -8083,6 +8139,9 @@ begin
    for i := 0 to FParameters.Count-1 do
       if FParameters.Symbols[i] = sym then
          Exit(FValues.Symbols[i] as TTypeSymbol);
+   for i := 0 to High(FSpecializedSymbols) do
+      if FSpecializedSymbols[i].Generic = sym then
+         Exit(FSpecializedSymbols[i].Specialized);
    if sym.IsGeneric then
       AddCompilerErrorFmt(CPE_SpecializationNotSupportedYet, [sym.ClassName]);
    Result := sym;
@@ -8098,6 +8157,18 @@ begin
    if sym <> nil then
       Result := sym as TTypeSymbol
    else Result := nil;
+end;
+
+// RegisterSpecialization
+//
+procedure TSpecializationContext.RegisterSpecialization(generic, specialized : TSymbol);
+var
+   n : Integer;
+begin
+   n := Length(FSpecializedSymbols);
+   SetLength(FSpecializedSymbols, n+1);
+   FSpecializedSymbols[n].Generic := generic;
+   FSpecializedSymbols[n].Specialized := specialized;
 end;
 
 // AddCompilerError

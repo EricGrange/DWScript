@@ -35,6 +35,7 @@ type
    TGenericTypeSymbol = class (TTypeSymbol)
       public
          procedure InitData(const data : TData; offset : Integer); override;
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsGeneric : Boolean; override;
    end;
 
@@ -384,6 +385,13 @@ end;
 procedure TGenericTypeSymbol.InitData(const data : TData; offset : Integer);
 begin
    // nothing
+end;
+
+// IsCompatible
+//
+function TGenericTypeSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+begin
+   Result := (Self = typSym);
 end;
 
 // IsGeneric
