@@ -8747,7 +8747,9 @@ begin
          // inheritance
          if FTok.TestDelete(ttBLEFT) then begin
 
-            typ:=ReadNameSymbol(namePos);
+            typ := ReadNameSymbol(namePos);
+            if typ is  TGenericSymbol then
+               typ := ReadSpecializedType(TGenericSymbol(typ));
 
             if not (typ is TClassSymbol) then begin
                if typ is TInterfaceSymbol then

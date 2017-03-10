@@ -1461,7 +1461,9 @@ type
          procedure InitData(const Data: TData; Offset: Integer); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         function IsPointerType : Boolean; override;
+         function  IsPointerType : Boolean; override;
+
+         function  SpecializeType(context : TSpecializationContext) : TTypeSymbol; override;
 
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
          function CreateAnonymousMethod(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
@@ -3123,6 +3125,24 @@ begin
    Result:=True;
 end;
 
+// SpecializeType
+//
+function TInterfaceSymbol.SpecializeType(context : TSpecializationContext) : TTypeSymbol;
+var
+   specializedInterface : TInterfaceSymbol;
+begin
+   specializedInterface := TInterfaceSymbol.Create(context.Name, context.UnitSymbol);
+
+   context.EnterComposite(specializedInterface);
+   try
+      SpecializeMembers(specializedInterface, context);
+   finally
+      context.LeaveComposite;
+   end;
+
+   Result := specializedInterface;
+end;
+
 // CreateSelfParameter
 //
 function TInterfaceSymbol.CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol;
@@ -4285,7 +4305,7 @@ function TSourceMethodSymbol.SpecializeType(context : TSpecializationContext) : 
 var
    specializedMethod : TSourceMethodSymbol;
 begin
-   if not (IsExternal or IsAbstract) then
+   if not (IsExternal or IsAbstract or (FStructSymbol is TInterfaceSymbol)) then
       context.AddCompilerError('Only external or abstract methods can be specialized right now');
 
    specializedMethod := TSourceMethodSymbol.Create(Name, Kind, context.CompositeSymbol,
