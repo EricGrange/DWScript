@@ -26,7 +26,7 @@ uses
 
 type
    TIconIndex = (
-      iiClass = 0, iiInterface, iiEnum, iiType, iiRecord,
+      iiClass = 0, iiInterface, iiEnum, iiType, iiRecord, iiHelper,
       iiMethodPrivate, iiMethodProtected, iiMethodPublic, iiFunction,
       iiSource
       );
@@ -73,6 +73,7 @@ type
       procedure SortSymbols(list : TList);
       procedure AddSymbolsOfSourceFile(root : TTreeNode; const sourceFile : TSourceFile);
       procedure AddSymbolsOfComposite(parent : TTreeNode; const sourceFile : TSourceFile);
+      procedure AddSymbolLocations(parent : TTreeNode; symbol : TSymbol; const sourceFile : TSourceFile);
 
   public
       { Public declarations }
@@ -94,7 +95,7 @@ implementation
 {$R *.dfm}
 
 const cIconIndexHints : array [TIconIndex] of String = (
-      'Classes', 'Interfaces', 'Enumerations', 'other Types', 'Records',
+      'Classes', 'Interfaces', 'Enumerations', 'other Types', 'Records', 'Helpers',
       'Private Methods', 'Protected Methods', 'Public & Published Methods', 'Functions & Procedures',
       'Source file'
       );
@@ -111,7 +112,7 @@ begin
    FExpandedNodes := TStringList.Create;
 
    for i := iiFunction downto iiClass do begin
-      if i in [iiRecord] then begin
+      if i in [iiHelper] then begin
          tb := TToolButton.Create(ToolBar);
          tb.Style := tbsSeparator;
          tb.Parent := ToolBar;
@@ -288,13 +289,17 @@ begin
       r.Right := TreeView.Width;
       if (GetWindowLong(TreeView.Handle, GWL_STYLE) and WS_VSCROLL) <> 0 then
          r.Right := r.Right - GetSystemMetrics(SM_CXVSCROLL);
-      symbol := TSymbolPositionList(Node.Data).Symbol;
-      txt := symbol.Description;
-      p := Pos( LowerCase(symbol.Name), LowerCase(txt) );
-      if p > 0 then begin
-         txt := Trim(Copy(txt, 1, p-1)) + ' ' + Trim(Copy(txt, p + Length(symbol.Name)));
-         txt := Trim(StrBeforeChar(txt, #13));
-      end else txt := '';
+      if Node.ImageIndex >= 0 then begin
+         symbol := TSymbolPositionList(Node.Data).Symbol;
+         txt := symbol.Description;
+         p := Pos( LowerCase(symbol.Name), LowerCase(txt) );
+         if p > 0 then begin
+            txt := Trim(Copy(txt, 1, p-1)) + ' ' + Trim(Copy(txt, p + Length(symbol.Name)));
+            txt := Trim(StrBeforeChar(txt, #13));
+         end else txt := '';
+      end else begin
+         txt := 'Line ' + IntToStr(Integer(Node.Data));
+      end;
       if txt <> '' then begin
          TreeView.Canvas.Font.Size := 8;
          TreeView.Canvas.Font.Name := 'Segoe UI';
@@ -333,18 +338,23 @@ begin
    node := TreeView.Selected;
    if node = nil then Exit;
 
-   symPosList := TSymbolPositionList(node.Data);
-   if symPosList = nil then Exit;
-   if symPosList.Count = 0 then Exit;
+   if node.ImageIndex >= 0 then begin
+      symPosList := TSymbolPositionList(node.Data);
+      if symPosList = nil then Exit;
+      if symPosList.Count = 0 then Exit;
 
-   symPos := symPosList.FindUsage(suImplementation);
-   if symPos = nil then begin
-      symPos := symPosList.FindUsage(suDeclaration);
-      if symPos = nil then
-         symPos := symPosList[0];
+      symPos := symPosList.FindUsage(suImplementation);
+      if symPos = nil then begin
+         symPos := symPosList.FindUsage(suDeclaration);
+         if symPos = nil then
+            symPos := symPosList[0];
+      end;
+
+      FScriptPos := symPos.ScriptPos;
+   end else begin
+      FScriptPos.Line := Integer(node.Data);
    end;
 
-   FScriptPos := symPos.ScriptPos;
    if Assigned(FOnGoToScriptPos) then
       FOnGoToScriptPos(Self);
    Close;
@@ -387,9 +397,11 @@ begin
    end else child := parent.getFirstChild;
    while child <> nil do begin
       if child.Data <> nil then begin
-         if FExpandedNodes.IndexOf(TSymbolPositionList(child.Data).Symbol.QualifiedName) >= 0 then begin
-            child.Expand(False);
-            ApplyExpandedNodes(child);
+         if child.ImageIndex >= 0 then begin
+            if FExpandedNodes.IndexOf(TSymbolPositionList(child.Data).Symbol.QualifiedName) >= 0 then begin
+               child.Expand(False);
+               ApplyExpandedNodes(child);
+            end;
          end;
       end else if child.Expanded then
          ApplyExpandedNodes(child);
@@ -463,6 +475,8 @@ begin
             iconIndex := iiRecord;
          end else if symbolClass.InheritsFrom(TInterfaceSymbol) then begin
             iconIndex := iiInterface;
+         end else if symbolClass.InheritsFrom(THelperSymbol) then begin
+            iconIndex := iiHelper;
          end else if symbolClass.InheritsFrom(TEnumerationSymbol) then begin
             iconIndex := iiEnum;
          end else if symbolClass.InheritsFrom(TFuncSymbol) and (not symPosList.Symbol.IsType) then
@@ -471,7 +485,7 @@ begin
 
          if iconIndex in FFilter then begin
             node := TreeView.Items.AddChild(root, symPosList.Symbol.Name);
-            if iconIndex in [iiClass, iiRecord] then
+            if iconIndex in [iiClass, iiRecord, iiInterface, iiHelper, iiFunction] then
                TreeView.Items.AddChild(node, '');
             node.Data := symPosList;
             node.ImageIndex := Ord(iconIndex);
@@ -495,8 +509,15 @@ var
    members : TList;
    i : Integer;
 begin
-   composite := TSymbolPositionList(parent.Data).Symbol as TCompositeTypeSymbol;
    parent.DeleteChildren;
+
+   symbol := TSymbolPositionList(parent.Data).Symbol;
+   if not (symbol is TCompositeTypeSymbol) then begin
+      AddSymbolLocations(parent, symbol, sourceFile);
+      Exit;
+   end;
+
+   composite := symbol as TCompositeTypeSymbol;
 
    members := TList.Create;
    try
@@ -527,10 +548,43 @@ begin
             node.ImageIndex := Ord(iconIndex);
             node.SelectedIndex := Ord(iconIndex);
          end;
+         if symbol is TMethodSymbol then
+            TreeView.Items.AddChild(node, '');
       end;
    finally
       members.Free;
    end;
+end;
+
+// AddSymbolLocations
+//
+procedure TdwsOverviewDialog.AddSymbolLocations(parent : TTreeNode; symbol : TSymbol; const sourceFile : TSourceFile);
+var
+   symPosList : TSymbolPositionList;
+   prevSymPos : TSymbolPosition;
+   symPos : TSymbolPosition;
+
+   procedure AddLocation(const locationLabel : String; usage : TSymbolUsage);
+   var
+      node : TTreeNode;
+   begin
+      symPos := symPosList.FindAnyUsageInFile([usage], sourceFile);
+      if (symPos <> nil) and (symPos <> prevSymPos) then begin
+         node := TreeView.Items.AddChildFirst(parent, locationLabel);
+         node.Data := Pointer(symPos.ScriptPos.Line);
+         node.ImageIndex := -1;
+         node.SelectedIndex := -1;
+      end;
+      prevSymPos := symPos;
+   end;
+
+begin
+   symPosList := FProg.SymbolDictionary.FindSymbolPosList(symbol);
+   if symPosList = nil then Exit;
+   prevSymPos := nil;
+   AddLocation('Implementation', suImplementation);
+   AddLocation('Declaration', suDeclaration);
+   AddLocation('Forward', suForward);
 end;
 
 // SavePreferencesAsJSON
