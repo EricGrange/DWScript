@@ -464,12 +464,12 @@ type
          procedure CodeGenCall(codeGen : TdwsCodeGen; expr : TStringArraySetExpr); override;
    end;
 
-   TJSAssociativeArrayGetExpr  = class (TJSExprCodeGen)
+   TJSAssociativeArrayGetExpr = class (TJSExprCodeGen)
       public
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
-   TJSAssociativeArraySetExpr  = class (TJSExprCodeGen)
+   TJSAssociativeArraySetExpr = class (TJSExprCodeGen)
       public
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -1277,6 +1277,10 @@ begin
 
    RegisterCodeGen(TAssociativeArrayGetExpr, TJSAssociativeArrayGetExpr.Create);
    RegisterCodeGen(TAssociativeArraySetExpr, TJSAssociativeArraySetExpr.Create);
+   RegisterCodeGen(TAssociativeArrayLengthExpr,
+      TdwsExprGenericCodeGen.Create(['Object.keys', '(', 0, ')', '.length']));
+   RegisterCodeGen(TAssociativeArrayClearExpr,
+      TdwsExprGenericCodeGen.Create(['$Delete', '(', 0, ')'], gcgStatement, '$Delete'));
 
    RegisterCodeGen(TStringLengthExpr,
       TdwsExprGenericCodeGen.Create([0, '.length']));
@@ -5429,10 +5433,13 @@ end;
 procedure TJSAssociativeArrayGetExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TAssociativeArrayGetExpr;
+   keyTyp : TTypeSymbol;
 begin
    e:=TAssociativeArrayGetExpr(expr);
 
-   Assert(e.KeyExpr.Typ.UnAliasedTypeIs(TBaseStringSymbol), 'String key required');
+   keyTyp := e.KeyExpr.Typ;
+   Assert(keyTyp.UnAliasedTypeIs(TBaseStringSymbol) or keyTyp.UnAliasedTypeIs(TBaseIntegerSymbol),
+          'Only String or Integer keys supported');
    Assert(e.Typ.UnAliasedTypeIs(TBaseSymbol), 'Base type value required');
 
    codeGen.Compile(e.BaseExpr);
@@ -5450,10 +5457,13 @@ end;
 procedure TJSAssociativeArraySetExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TAssociativeArraySetExpr;
+   keyTyp : TTypeSymbol;
 begin
    e:=TAssociativeArraySetExpr(expr);
 
-   Assert(e.KeyExpr.Typ.UnAliasedTypeIs(TBaseStringSymbol), 'String key required');
+   keyTyp := e.KeyExpr.Typ;
+   Assert(keyTyp.UnAliasedTypeIs(TBaseStringSymbol) or keyTyp.UnAliasedTypeIs(TBaseIntegerSymbol),
+          'Only String or Integer keys supported');
    Assert(e.ValueExpr.Typ.UnAliasedTypeIs(TBaseSymbol), 'Base type value required');
 
    codeGen.Compile(e.BaseExpr);
@@ -6064,8 +6074,6 @@ begin
    e:=TConvStaticArrayToDynamicExpr(expr);
 
    codeGen.Compile(e.Expr);
-   if (e.Expr as TArrayConstantExpr).Size>0 then
-      codeGen.WriteString('.slice()');
 end;
 
 // ------------------
