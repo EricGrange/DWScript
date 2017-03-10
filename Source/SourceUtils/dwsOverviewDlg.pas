@@ -547,9 +547,9 @@ begin
             node.Data := symPosList;
             node.ImageIndex := Ord(iconIndex);
             node.SelectedIndex := Ord(iconIndex);
+            if symbol is TMethodSymbol then
+               TreeView.Items.AddChild(node, '');
          end;
-         if symbol is TMethodSymbol then
-            TreeView.Items.AddChild(node, '');
       end;
    finally
       members.Free;
