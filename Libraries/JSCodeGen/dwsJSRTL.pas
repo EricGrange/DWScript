@@ -1290,6 +1290,7 @@ begin
    FMagicCodeGens.AddObject('StrFind', TJSStrFindExpr.Create);
    FMagicCodeGens.AddObject('StrJoin', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.join', '(', 1, ')']));
    FMagicCodeGens.AddObject('StrMatches', TJSStrMatchesFuncExpr.Create);
+   FMagicCodeGens.AddObject('StrReplace', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.replace', '(', 1, ',', 2, ')']));
    FMagicCodeGens.AddObject('StrSplit', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.split', '(', 1, ')']));
    FMagicCodeGens.AddObject('StrToFloat', TdwsExprGenericCodeGen.Create(['parseFloat', '(', 0, ')']));
    FMagicCodeGens.AddObject('StrToInt', TdwsExprGenericCodeGen.Create(['parseInt', '(', 0, ',', '10)']));
