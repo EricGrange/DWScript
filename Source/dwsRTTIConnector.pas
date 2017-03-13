@@ -25,7 +25,7 @@ uses
    dwsComp, dwsSymbols, dwsDataContext, dwsErrors, dwsUnitSymbols,
    dwsExprs, dwsStrings, dwsFunctions, dwsStack, dwsOperators, dwsLegacy,
    dwsUtils, dwsLanguageExtension, dwsCompiler, dwsConnectorSymbols,
-   dwsCompilerContext;
+   dwsCompilerContext, dwsScriptSource;
 
 const
    RTTI_ConnectorCaption = 'RTTI Connector 1.0';
@@ -124,6 +124,8 @@ type
          procedure InitExpression(expr : TExprBase);
          function SubExpr(i : Integer) : TExprBase;
          function SubExprCount : Integer;
+
+         function Specialize(const context : ISpecializationContext) : IExecutable;
    end;
 
    TRTTIEnvironmentField = class(TRTTIEnvironmentCallable)
@@ -981,6 +983,13 @@ function TRTTIEnvironmentCallable.SubExprCount : Integer;
 begin
    Result:=0;
 
+end;
+
+// Specialize
+//
+function TRTTIEnvironmentCallable.Specialize(const context : ISpecializationContext) : IExecutable;
+begin
+   context.AddCompilerError('TRTTIEnvironmentCallable cannot be specialized yet');
 end;
 
 // CompileTimeCheck

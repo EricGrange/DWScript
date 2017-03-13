@@ -622,7 +622,7 @@ type
    TExternalRoutineFactory = function (funcSymbol : TFuncSymbol; mainProg : TdwsMainProgram) : IExternalRoutine;
 
    // A script procedure
-   TdwsProcedure = class sealed (TdwsProgram, IUnknown, ICallable)
+   TdwsProcedure = class sealed (TdwsProgram, IUnknown, ICallable, IExecutable)
       private
          FFunc : TFuncSymbol;
          FPreConditions : TSourcePreConditions;
@@ -638,6 +638,8 @@ type
          procedure InitSymbol(Symbol: TSymbol; const msgs : TdwsCompileMessageList);
          procedure InitExpression(Expr: TExprBase);
          function FindLocal(const name : UnicodeString) : TSymbol; override;
+
+         function Specialize(const context : ISpecializationContext) : IExecutable;
 
          procedure OptimizeConstAssignments(blockExpr : TBlockExprBase);
 
@@ -671,6 +673,9 @@ type
          function  Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; virtual;
          procedure Orphan(context : TdwsCompilerContext); virtual;
 
+         function  Specialize(const context : ISpecializationContext) : TExprBase; override; final;
+         function  SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; virtual;
+
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
@@ -692,7 +697,7 @@ type
          procedure RaiseUpperExceeded(exec : TdwsExecution; index : Integer);
          procedure RaiseLowerExceeded(exec : TdwsExecution; index : Integer);
 
-         procedure CheckScriptObject(exec : TdwsExecution; const scriptObj : IScriptObj); inline;
+         procedure CheckScriptObject(exec : TdwsExecution; const scriptObj : IScriptObj);
 
          function ScriptLocation(prog : TObject) : UnicodeString; override;
 
@@ -715,6 +720,9 @@ type
       public
          function OptimizeToTypedExpr(context : TdwsCompilerContext; exec : TdwsExecution; const hotPos : TScriptPos) : TTypedExpr;
          function OptimizeToFloatConstant(context : TdwsCompilerContext; exec : TdwsExecution) : TTypedExpr;
+
+         function  SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override; final;
+         function  SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr; virtual;
 
          function ScriptPos : TScriptPos; override;
 
@@ -832,6 +840,9 @@ type
          procedure GetRelativeDataPtr(exec : TdwsExecution; var result : IDataContext); virtual;
 
          property DataPtr[exec : TdwsExecution] : IDataContext read GetDataPtrFunc;
+
+         function  SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr; override; final;
+         function  SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; virtual;
    end;
 
    // Encapsulates data
@@ -855,6 +866,7 @@ type
          procedure CompileTimeCheck(context : TdwsCompilerContext; expr : TFuncExprBase);
          function SubExpr(i : Integer) : TExprBase;
          function SubExprCount : Integer;
+         function Specialize(const context : ISpecializationContext) : IExecutable;
    end;
 
    EdwsExternalFuncHandler = class (Exception);
@@ -1110,6 +1122,8 @@ type
          procedure InitExpression(Expr: TExprBase);
          function SubExpr(i : Integer) : TExprBase;
          function SubExprCount : Integer;
+
+         function Specialize(const context : ISpecializationContext) : IExecutable;
 
          function EvalAsBoolean(exec : TdwsExecution) : Boolean;
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
@@ -3201,6 +3215,23 @@ begin
    end;
 end;
 
+// Specialize
+//
+function TdwsProcedure.Specialize(const context : ISpecializationContext) : IExecutable;
+var
+   i : Integer;
+   specialized : TdwsProcedure;
+begin
+   specialized := TdwsProcedure.Create(Parent);
+   Result := specialized as IExecutable;
+   specialized.FFunc := FFunc;
+
+   for i := 0 to FInitExpr.SubExprCount-1 do
+      specialized.FInitExpr.AddStatement(FInitExpr.SpecializeProgramExpr(context));
+
+   specialized.FExpr := FExpr.SpecializeProgramExpr(context);
+end;
+
 // ------------------
 // ------------------ TdwsExceptionContext ------------------
 // ------------------
@@ -3613,6 +3644,21 @@ begin
    context.OrphanObject(Self);
 end;
 
+// Specialize
+//
+function TProgramExpr.Specialize(const context : ISpecializationContext) : TExprBase;
+begin
+   Result := SpecializeProgramExpr(context);
+end;
+
+// SpecializeProgramExpr
+//
+function TProgramExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+begin
+   context.AddCompilerErrorFmt('Unsupported specialization of %s', [ClassName]);
+   Result := nil;
+end;
+
 // GetType
 //
 function TProgramExpr.GetType : TTypeSymbol;
@@ -3878,6 +3924,21 @@ begin
          Orphan(context);
       end else Result:=OptimizeToTypedExpr(context, exec, ScriptPos);
    end else Result:=Self;
+end;
+
+// SpecializeProgramExpr
+//
+function TTypedExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+begin
+   Result := SpecializeTypedExpr(context);
+end;
+
+// SpecializeTypedExpr
+//
+function TTypedExpr.SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr;
+begin
+   context.AddCompilerErrorFmt('Unsupported specialization of %s', [ClassName]);
+   Result := nil;
 end;
 
 // ScriptPos
@@ -4219,6 +4280,21 @@ end;
 procedure TDataExpr.GetRelativeDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    GetDataPtr(exec, result);
+end;
+
+// SpecializeTypedExpr
+//
+function TDataExpr.SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr;
+begin
+   Result := SpecializeDataExpr(context);
+end;
+
+// SpecializeDataExpr
+//
+function TDataExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
+begin
+   context.AddCompilerErrorFmt('Unsupported specialization of %s', [ClassName]);
+   Result := nil;
 end;
 
 // ------------------
@@ -7537,6 +7613,13 @@ begin
    Result:=2;
 end;
 
+// Specialize
+//
+function TSourceCondition.Specialize(const context : ISpecializationContext) : IExecutable;
+begin
+   context.AddCompilerError('Conditions cannot yet be specialized');
+end;
+
 // EvalAsBoolean
 //
 function TSourceCondition.EvalAsBoolean(exec : TdwsExecution) : Boolean;
@@ -7756,6 +7839,13 @@ end;
 function TExternalFuncHandler.SubExprCount : Integer;
 begin
    Result:=0;
+end;
+
+// Specialize
+//
+function TExternalFuncHandler.Specialize(const context : ISpecializationContext) : IExecutable;
+begin
+   context.AddCompilerError('External functions cannot be specialized');
 end;
 
 // ------------------

@@ -20,7 +20,8 @@ interface
 
 uses
    SysUtils,
-   dwsUtils, dwsSymbols, dwsDataContext, dwsScriptSource, dwsErrors, dwsStrings;
+   dwsUtils, dwsSymbols, dwsDataContext, dwsScriptSource, dwsErrors, dwsStrings,
+   dwsSpecializationContext, dwsCompilerContext;
 
 type
    TGenericSymbol = class;
@@ -103,7 +104,8 @@ type
 
          function CreateSpecializationContext(values : TUnSortedSymbolTable;
                                               const aScriptPos : TScriptPos; aUnit : TSymbol;
-                                              aMsgs : TdwsCompileMessageList) : TSpecializationContext;
+                                              aContext : TdwsCompilerContext;
+                                              allowOptimize : Boolean) : TSpecializationContext;
 
          function GetCaption : UnicodeString; override;
 
@@ -111,11 +113,12 @@ type
          constructor Create(const name : String; const params : IGenericParameters);
          destructor Destroy; override;
 
-         function SpecializeType(context : TSpecializationContext) : TTypeSymbol; override;
+         function SpecializeType(const context : ISpecializationContext) : TTypeSymbol; override;
 
          function SpecializationFor(values : TUnSortedSymbolTable;
                                     const aScriptPos : TScriptPos; aUnit : TSymbol;
-                                    aMsgs : TdwsCompileMessageList) : TTypeSymbol;
+                                    aContext : TdwsCompilerContext;
+                                    allowOptimize : Boolean) : TTypeSymbol;
 
          property Parameters : IGenericParameters read FParameters;
          property GenericType : TTypeSymbol read FGenericType write FGenericType;
@@ -167,7 +170,7 @@ end;
 
 // SpecializeType
 //
-function TGenericSymbol.SpecializeType(context : TSpecializationContext) : TTypeSymbol;
+function TGenericSymbol.SpecializeType(const context : ISpecializationContext) : TTypeSymbol;
 var
    sig : String;
    i : Integer;
@@ -195,7 +198,8 @@ end;
 function TGenericSymbol.SpecializationFor(
       values : TUnSortedSymbolTable;
       const aScriptPos : TScriptPos; aUnit : TSymbol;
-      aMsgs : TdwsCompileMessageList) : TTypeSymbol;
+      aContext : TdwsCompilerContext;
+      allowOptimize : Boolean) : TTypeSymbol;
 var
    context : TSpecializationContext;
    sig : String;
@@ -208,7 +212,7 @@ begin
       end;
    end;
 
-   context := CreateSpecializationContext(values, aScriptPos, aUnit, aMsgs);
+   context := CreateSpecializationContext(values, aScriptPos, aUnit, aContext, allowOptimize);
    try
       Result := SpecializeType(context);
    finally
@@ -221,7 +225,8 @@ end;
 function TGenericSymbol.CreateSpecializationContext(
       values : TUnSortedSymbolTable;
       const aScriptPos : TScriptPos; aUnit : TSymbol;
-      aMsgs : TdwsCompileMessageList) : TSpecializationContext;
+      aContext : TdwsCompilerContext;
+      allowOptimize : Boolean) : TSpecializationContext;
 var
    i : Integer;
    n : String;
@@ -233,7 +238,10 @@ begin
       n := n + values.Symbols[i].Name;
    end;
    n := n + '>';
-   Result := TSpecializationContext.Create(n, Parameters.List, values, aScriptPos, aUnit, aMsgs);
+   Result := TSpecializationContext.Create(
+      n, Parameters.List, values, aScriptPos, aUnit,
+      aContext, allowOptimize
+      );
 end;
 
 // GetCaption

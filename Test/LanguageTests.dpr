@@ -72,7 +72,8 @@ uses
   dwsContextMap in '..\Source\dwsContextMap.pas',
   dwsUnifiedConstants in '..\Source\dwsUnifiedConstants.pas',
   USymbolDictionaryTests in 'USymbolDictionaryTests.pas',
-  dwsGenericSymbols in '..\Source\dwsGenericSymbols.pas';
+  dwsGenericSymbols in '..\Source\dwsGenericSymbols.pas',
+  dwsSpecializationContext in '..\Source\dwsSpecializationContext.pas';
 
 {$R *.res}
 

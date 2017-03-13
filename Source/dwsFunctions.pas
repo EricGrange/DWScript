@@ -62,6 +62,7 @@ type
          procedure InitExpression(Expr: TExprBase);
          function SubExpr(i : Integer) : TExprBase;
          function SubExprCount : Integer;
+         function Specialize(const context : ISpecializationContext) : IExecutable;
    end;
 
    TFunctionPrototype = class(TInterfacedSelfObject)
@@ -82,6 +83,7 @@ type
          constructor Create(FuncSym: TFuncSymbol);
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); override;
          procedure Execute(info : TProgramInfo); virtual; abstract;
+         function Specialize(const context : ISpecializationContext) : IExecutable;
    end;
 
    TInternalFunctionFlag = (iffStateLess, iffOverloaded, iffDeprecated, iffStaticMethod);
@@ -99,6 +101,7 @@ type
                             const flags : TInternalFunctionFlags = [];
                             compositeSymbol : TCompositeTypeSymbol = nil;
                             const helperName : UnicodeString = ''); overload;
+         function Specialize(const context : ISpecializationContext) : IExecutable;
    end;
    TInternalFunctionClass = class of TInternalFunction;
 
@@ -107,6 +110,7 @@ type
          constructor Create(MethSym: TMethodSymbol);
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); override;
          procedure Execute(info : TProgramInfo; var ExternalObject: TObject); virtual; abstract;
+         function Specialize(const context : ISpecializationContext) : IExecutable;
    end;
 
    TInternalBaseMethod = class(TFunctionPrototype, IUnknown, ICallable)
@@ -117,6 +121,7 @@ type
                             aVisibility : TdwsVisibility;
                             table : TSymbolTable;
                             overloaded : Boolean = False);
+         function Specialize(const context : ISpecializationContext) : IExecutable;
    end;
 
    TInternalMethod = class(TInternalBaseMethod)
@@ -407,6 +412,13 @@ begin
    Result:=0;
 end;
 
+// Specialize
+//
+function TEmptyFunc.Specialize(const context : ISpecializationContext) : IExecutable;
+begin
+   Result := Self as IExecutable;
+end;
+
 { TFunctionPrototype }
 
 procedure TFunctionPrototype.InitSymbol(Symbol: TSymbol; const msgs : TdwsCompileMessageList);
@@ -464,6 +476,13 @@ begin
       CompilerUtils.AddProcHelper(helperName, table, sym, nil);
 end;
 
+// Specialize
+//
+function TInternalFunction.Specialize(const context : ISpecializationContext) : IExecutable;
+begin
+   context.AddCompilerError('Specialization of TInternalFunction not yet supported');
+end;
+
 // Create
 //
 constructor TInternalFunction.Create(table: TSymbolTable; const funcName : UnicodeString;
@@ -505,6 +524,13 @@ begin
 
    // Add method to its class
    cls.AddMethod(sym);
+end;
+
+// Specialize
+//
+function TInternalBaseMethod.Specialize(const context : ISpecializationContext) : IExecutable;
+begin
+   context.AddCompilerError('Specialization of TInternalBaseMethod not yet supported');
 end;
 
 // ------------------
@@ -593,6 +619,13 @@ begin
    end;
 end;
 
+// Specialize
+//
+function TAnonymousFunction.Specialize(const context : ISpecializationContext) : IExecutable;
+begin
+   context.AddCompilerError('Specialization of TAnonymousFunction not yet supported');
+end;
+
 { TAnonymousMethod }
 
 constructor TAnonymousMethod.Create(MethSym: TMethodSymbol);
@@ -626,6 +659,13 @@ begin
    finally
       exec.ReleaseProgramInfo(info);
    end;
+end;
+
+// Specialize
+//
+function TAnonymousMethod.Specialize(const context : ISpecializationContext) : IExecutable;
+begin
+   context.AddCompilerError('Specialization of TAnonymousMethod not yet supported');
 end;
 
 // ------------------

@@ -409,6 +409,8 @@ type
          function SubExpr(i : Integer) : TExprBase;
          function SubExprCount : Integer;
 
+         function Specialize(const context : ISpecializationContext) : IExecutable;
+
       public
          constructor Create(owner : TObject);
 
@@ -1358,6 +1360,8 @@ type
          FDataSym : TDataSymbol;
 
       public
+         function Specialize(const context : ISpecializationContext) : IExecutable;
+
          property ClassSym : TClassSymbol read FClassSym write FClassSym;
          property DataSym : TDataSymbol read FDataSym write FDataSym;
    end;
@@ -3142,6 +3146,13 @@ end;
 function TdwsCallable.SubExprCount : Integer;
 begin
    Result:=0;
+end;
+
+// Specialize
+//
+function TdwsCallable.Specialize(const context : ISpecializationContext) : IExecutable;
+begin
+   context.AddCompilerError('TdwsCallable cannot be specialized yet');
 end;
 
 // CompileTimeCheck
@@ -6549,6 +6560,17 @@ end;
 class function TdwsDelegates.GetSymbolClass: TdwsSymbolClass;
 begin
   Result := TdwsDelegate;
+end;
+
+// ------------------
+// ------------------ TCustomInstantiateFunc ------------------
+// ------------------
+
+// Specialize
+//
+function TCustomInstantiateFunc.Specialize(const context : ISpecializationContext) : IExecutable;
+begin
+   context.AddCompilerError('TCustomInstantiateFunc cannot be specialized yet');
 end;
 
 end.

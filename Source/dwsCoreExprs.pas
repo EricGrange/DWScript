@@ -25,7 +25,8 @@ interface
 
 uses
    Classes, Variants, SysUtils,
-   dwsUtils, dwsXPlatform, dwsDataContext, dwsExprList, dwsCompilerContext,
+   dwsUtils, dwsXPlatform, dwsDataContext, dwsExprList,
+   dwsSpecializationContext, dwsCompilerContext,
    dwsSymbols, dwsErrors, dwsStrings, dwsConvExprs,
    dwsStack, dwsExprs, dwsScriptSource,
    dwsConstExprs, dwsTokenizer, dwsUnitSymbols
@@ -63,6 +64,8 @@ type
 
          function SameDataExpr(expr : TTypedExpr) : Boolean; override;
          function DataSymbol : TDataSymbol; override;
+
+         function  SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
 
          property StackAddr : Integer read FStackAddr;
          property DataSym : TDataSymbol read FDataSym write FDataSym;
@@ -1356,6 +1359,8 @@ type
          procedure TypeCheckAssign(context : TdwsCompilerContext; exec : TdwsExecution); virtual;
          function  Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
          function  OptimizeConstAssignment(context : TdwsCompilerContext; exec : TdwsExecution) : TNoResultExpr;
+
+         function  SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
    end;
 
    TAssignExprClass = class of TAssignExpr;
@@ -1625,6 +1630,7 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
          function  Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
+         function  SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
 
          property  Table: TSymbolTable read FTable;
    end;
@@ -2377,6 +2383,14 @@ end;
 function TVarExpr.DataSymbol : TDataSymbol;
 begin
    Result:=FDataSym;
+end;
+
+// SpecializeDataExpr
+//
+function TVarExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
+begin
+   Result := TVarExpr.CreateTyped(CompilerContextFromSpecialization(context),
+                                  context.SpecializeDataSymbol(FDataSym));
 end;
 
 // SameDataExpr
@@ -6166,6 +6180,26 @@ begin
    end;
 end;
 
+// SpecializeProgramExpr
+//
+function TAssignExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+var
+   expr : TAssignExpr;
+begin
+   if Self.ClassType <> TAssignExpr then begin
+      context.AddCompilerErrorFmt('Unsupported specialization of %s', [ClassName]);
+      Exit(nil);
+   end;
+
+   expr := TAssignExpr.Create(CompilerContextFromSpecialization(context), ScriptPos,
+                              nil,
+                              FLeft.SpecializeDataExpr(context),
+                              FRight.SpecializeTypedExpr(context));
+//   if context.Optimize then
+//      expr := expr.Optimize(...);  TODO
+   Result := expr;
+end;
+
 // GetSubExpr
 //
 function TAssignExpr.GetSubExpr(i : Integer) : TExprBase;
@@ -6909,6 +6943,25 @@ begin
       FCount:=0;
       Orphan(context);
    end else Result:=Self;
+end;
+
+// SpecializeProgramExpr
+//
+function TBlockExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+var
+   i : Integer;
+   blockExpr : TBlockExpr;
+begin
+   if FTable.HasChildTables or (FTable.Count <> 0) then begin
+      context.AddCompilerError('Specialization of TBlockExpr with tables not supported yet');
+      Exit(nil);
+   end;
+
+   blockExpr := TBlockExpr.Create(CompilerContextFromSpecialization(context), ScriptPos);
+   for i := 0 to FCount-1 do
+      blockExpr.AddStatement(FStatements[i].SpecializeProgramExpr(context));
+
+   Result := blockExpr;
 end;
 
 // ------------------

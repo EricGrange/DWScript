@@ -32,7 +32,7 @@ uses
   dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs, dwsUnifiedConstants,
   dwsOperators, dwsPascalTokenizer, dwsSystemOperators, dwsContextMap,
   dwsUnitSymbols, dwsCompilerUtils, dwsScriptSource, dwsSymbolDictionary,
-  dwsCompilerContext, dwsGenericSymbols;
+  dwsCompilerContext, dwsGenericSymbols, dwsSpecializationContext;
 
 type
    TCompilerOption = (
@@ -10055,7 +10055,7 @@ begin
       end;
 
       if checkSuccessful then begin
-         Result := genericType.SpecializationFor(valueList, startPos, CurrentUnitSymbol, FMsgs);
+         Result := genericType.SpecializationFor(valueList, startPos, CurrentUnitSymbol, FCompilerContext, Optimize);
       end else begin
          Result := genericType;
       end;
