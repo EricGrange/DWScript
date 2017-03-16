@@ -25,7 +25,7 @@ uses
    dwsErrors, dwsStrings, dwsXPlatform, dwsUtils, dwsScriptSource,
    dwsSymbols, dwsUnitSymbols, dwsCompilerContext,
    dwsExprs, dwsCoreExprs, dwsConstExprs, dwsMethodExprs, dwsMagicExprs,
-   dwsConvExprs;
+   dwsConvExprs, dwsTokenizer, dwsOperators;
 
 type
 
@@ -96,7 +96,16 @@ function CreateIntfExpr(context : TdwsCompilerContext; funcSym: TFuncSymbol;
 function CreateMethodExpr(context : TdwsCompilerContext; meth: TMethodSymbol; var expr : TTypedExpr; RefKind: TRefKind;
                           const scriptPos: TScriptPos; options : TCreateFunctionOptions) : TFuncExprBase;
 
+procedure TypeCheckArguments(context : TdwsCompilerContext; funcExpr : TFuncExprBase;
+                             const argPosArray : TScriptPosArray);
+
 function CreateConstParamSymbol(const name : UnicodeString; typ : TTypeSymbol) : TParamSymbol;
+
+function ResolveOperatorFor(currentProg : TdwsProgram; token : TTokenType;
+                            aLeftType, aRightType : TTypeSymbol) : TOperatorSymbol;
+function CreateTypedOperatorExpr(context : TdwsCompilerContext; token : TTokenType;
+                                 const scriptPos : TScriptPos;
+                                 aLeft, aRight : TTypedExpr) : TTypedExpr;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -340,6 +349,123 @@ begin
    expr:=nil;
 end;
 
+// TypeCheckArguments
+//
+procedure TypeCheckArguments(context : TdwsCompilerContext; funcExpr : TFuncExprBase;
+                             const argPosArray : TScriptPosArray);
+
+   procedure WrongArgumentError(const argPos : TScriptPos; n : Integer; typ : TTypeSymbol);
+   begin
+      context.Msgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType, [n, typ.Caption]);
+   end;
+
+   procedure WrongArgumentLongError(const argPos : TScriptPos; n : Integer; typ1, typ2 : TTypeSymbol);
+   begin
+      context.Msgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType_Long,
+                                       [n, typ1.Caption, typ2.Caption]);
+   end;
+
+var
+   arg : TTypedExpr;
+   i, paramCount, nbParamsToCheck : Integer;
+   funcSym : TFuncSymbol;
+   paramSymbol : TParamSymbol;
+   argTyp : TTypeSymbol;
+   initialErrorCount : Integer;
+   tooManyArguments, tooFewArguments : Boolean;
+   argPos : TScriptPos;
+begin
+   funcSym:=funcExpr.FuncSym;
+
+   paramCount:=funcSym.Params.Count;
+
+   initialErrorCount:=context.Msgs.Count;
+
+   // Check number of arguments = number of parameters
+   if funcExpr.Args.Count>paramCount then begin
+      tooManyArguments:=True;
+      while funcExpr.Args.Count>paramCount do begin
+         context.OrphanObject(funcExpr.Args.ExprBase[funcExpr.Args.Count-1]);
+         funcExpr.Args.Delete(funcExpr.Args.Count-1);
+      end;
+   end else tooManyArguments:=False;
+
+   tooFewArguments:=False;
+   while funcExpr.Args.Count<paramCount do begin
+      // Complete missing args by default values
+      paramSymbol:=TParamSymbol(funcSym.Params[funcExpr.Args.Count]);
+      if paramSymbol is TParamSymbolWithDefaultValue then
+         funcExpr.Args.Add(TConstExpr.CreateTyped(context, paramSymbol.Typ,
+                                                  TParamSymbolWithDefaultValue(paramSymbol).DefaultValue))
+      else begin
+         tooFewArguments:=True;
+         Break;
+      end;
+   end;
+
+   if paramCount<funcExpr.Args.Count then
+      nbParamsToCheck:=paramCount
+   else nbParamsToCheck:=funcExpr.Args.Count;
+
+   for i := 0 to nbParamsToCheck-1 do begin
+      arg := TTypedExpr(funcExpr.Args.ExprBase[i]);
+      if arg.ClassType = TErrorValueExpr then continue;
+
+      paramSymbol:=TParamSymbol(funcSym.Params[i]);
+      if i < Length(argPosArray) then
+         argPos:=argPosArray[i]
+      else argPos:=funcExpr.ScriptPos;
+
+      if arg.ClassType=TArrayConstantExpr then
+         TArrayConstantExpr(arg).Prepare(context, paramSymbol.Typ.Typ);
+
+      argTyp:=arg.Typ;
+      // Wrap-convert arguments if necessary and possible
+      if paramSymbol.ClassType<>TVarParamSymbol then begin
+         arg:=TConvExpr.WrapWithConvCast(context, argPos, paramSymbol.Typ, arg, '');
+      end;
+      funcExpr.Args.ExprBase[i] := arg;
+
+      if argTyp=nil then
+         WrongArgumentError(argPos, i, paramSymbol.Typ)
+      else if not paramSymbol.Typ.IsCompatible(arg.Typ) then
+         WrongArgumentLongError(argPos, i, paramSymbol.Typ, arg.Typ)
+      else if paramSymbol.ClassType=TVarParamSymbol then begin
+         if not paramSymbol.Typ.IsOfType(arg.Typ) then
+            WrongArgumentLongError(argPos, i, paramSymbol.Typ, argTyp);
+         if arg is TDataExpr then begin
+            if     (coVariablesAsVarOnly in context.Options)
+               and (not (arg is TVarExpr))
+               and (not (argTyp.UnAliasedType.ClassType=TRecordSymbol))
+               and (   (i > 0)
+                    or (not (funcSym is TMethodSymbol))
+                    or (not (TMethodSymbol(funcSym).StructSymbol is TRecordSymbol))
+                    or TMethodSymbol(funcSym).IsClassMethod
+                    ) then
+               context.Msgs.AddCompilerError(argPos, CPE_OnlyVariablesAsVarParam)
+            // Record methods ignore the IsWritable constraints, as in Delphi
+            else if     (not TDataExpr(arg).IsWritable)
+                    and (   (i > 0)
+                         or (not (funcSym is TMethodSymbol))
+                         or (not (TMethodSymbol(funcSym).StructSymbol is TRecordSymbol))) then
+               context.Msgs.AddCompilerErrorFmt(argPos, CPE_ConstVarParam, [i, paramSymbol.Name]);
+         end else context.Msgs.AddCompilerErrorFmt(argPos, CPE_ConstVarParam, [i, paramSymbol.Name]);
+      end;
+
+   end;
+
+   if initialErrorCount=context.Msgs.Count then begin
+      if tooManyArguments then
+         context.Msgs.AddCompilerError(funcExpr.ScriptPos, CPE_TooManyArguments);
+      if tooFewArguments then
+         context.Msgs.AddCompilerError(funcExpr.ScriptPos, CPE_TooFewArguments);
+   end;
+
+   funcExpr.CompileTimeCheck(context);
+
+   funcExpr.Initialize(context);
+end;
+
 // CreateConstParamSymbol
 //
 function CreateConstParamSymbol(const name : UnicodeString; typ : TTypeSymbol) : TParamSymbol;
@@ -355,6 +481,82 @@ begin
             ) then
       Result := TConstByValueParamSymbol.Create(name, typ)
    else Result := TConstByRefParamSymbol.Create(name, typ);
+end;
+
+type
+   TOperatorResolver = class
+      private
+         Resolved : TOperatorSymbol;
+         LeftType, RightType : TTypeSymbol;
+         function Callback(opSym : TOperatorSymbol) : Boolean;
+   end;
+
+// Callback
+//
+function TOperatorResolver.Callback(opSym : TOperatorSymbol) : Boolean;
+begin
+   Result:=(opSym.Params[0]=LeftType) and (opSym.Params[1]=RightType);
+   if Result or (Resolved=nil) then
+      Resolved:=opSym;
+end;
+
+// ResolveOperatorFor
+//
+function ResolveOperatorFor(currentProg : TdwsProgram; token : TTokenType;
+                            aLeftType, aRightType : TTypeSymbol) : TOperatorSymbol;
+var
+   operatorResolver : TOperatorResolver;
+begin
+   operatorResolver := TOperatorResolver.Create;
+   try
+      operatorResolver.Resolved:=nil;
+      operatorResolver.LeftType:=aLeftType;
+      operatorResolver.RightType:=aRightType;
+
+      if aLeftType=nil then begin
+         if currentProg.Table.HasOperators then
+            if currentProg.Table.EnumerateOperatorsFor(token, nil, aRightType, operatorResolver.Callback) then
+               Exit(operatorResolver.Resolved);
+         (currentProg.Root.Operators as TOperators).EnumerateUnaryOperatorsFor(token, aRightType, operatorResolver.Callback);
+      end else begin
+         if currentProg.Table.HasOperators then
+            if currentProg.Table.EnumerateOperatorsFor(token, aLeftType, aRightType, operatorResolver.Callback) then
+               Exit(operatorResolver.Resolved);
+         (currentProg.Root.Operators as TOperators).EnumerateOperatorsFor(token, aLeftType, aRightType, operatorResolver.Callback);
+      end;
+      Result:=operatorResolver.Resolved;
+   finally
+      operatorResolver.Free;
+   end;
+end;
+
+// CreateTypedOperatorExpr
+//
+function CreateTypedOperatorExpr(context : TdwsCompilerContext; token : TTokenType;
+                                 const scriptPos : TScriptPos;
+                                 aLeft, aRight : TTypedExpr) : TTypedExpr;
+var
+   opSym : TOperatorSymbol;
+   funcExpr : TFuncExprBase;
+begin
+   Result := nil;
+   if (aLeft=nil) or (aRight=nil) then Exit;
+   opSym:=ResolveOperatorFor(context.Prog as TdwsProgram, token, aLeft.Typ, aRight.Typ);
+   if opSym=nil then Exit;
+
+   if opSym.OperatorExprClass <> nil then begin
+      Result := TBinaryOpExprClass(opSym.OperatorExprClass).Create(context, scriptPos, aLeft, aRight);
+   end else if opSym.UsesSym<>nil then begin
+      if opSym.UsesSym is TMethodSymbol then
+         funcExpr:=CreateMethodExpr(context, TMethodSymbol(opSym.UsesSym), aLeft, rkObjRef, scriptPos, [])
+      else begin
+         funcExpr := CreateFuncExpr(context, opSym.UsesSym, nil, nil, []);
+         funcExpr.AddArg(aLeft);
+      end;
+      funcExpr.AddArg(aRight);
+      TypeCheckArguments(context, funcExpr, nil);
+      Result:=funcExpr;
+   end;
 end;
 
 // ------------------

@@ -6,7 +6,7 @@ uses
    Windows, Classes, SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsBigIntegerFunctions.GMP, dwsXPlatform, dwsSymbols, dwsUtils,
-   dwsMPIR.Bundle;
+   dwsMPIR.Bundle, dwsCompilerContext;
 
 type
 

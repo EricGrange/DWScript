@@ -6,7 +6,7 @@ uses
    Windows, Classes, SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsComConnector, Variants, ActiveX, ComObj, dwsXPlatform, dwsUtils,
-   dwsEncodingLibModule;
+   dwsEncodingLibModule, dwsCompilerContext;
 
 type
 

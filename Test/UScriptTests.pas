@@ -3,7 +3,7 @@ unit UScriptTests;
 interface
 
 uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsUtils,
-   dwsXPlatform, dwsSymbols, dwsErrors, Clipbrd;
+   dwsXPlatform, dwsSymbols, dwsErrors, Clipbrd, dwsCompilerContext;
 
 type
 

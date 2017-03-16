@@ -73,7 +73,8 @@ uses
   dwsUnifiedConstants in '..\Source\dwsUnifiedConstants.pas',
   USymbolDictionaryTests in 'USymbolDictionaryTests.pas',
   dwsGenericSymbols in '..\Source\dwsGenericSymbols.pas',
-  dwsSpecializationContext in '..\Source\dwsSpecializationContext.pas';
+  dwsSpecializationContext in '..\Source\dwsSpecializationContext.pas',
+  dwsGenericExprs in '..\Source\dwsGenericExprs.pas';
 
 {$R *.res}
 

@@ -6,7 +6,7 @@ uses
    Classes, SysUtils, Variants,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsXPlatform,
    dwsTokenizer, dwsErrors, dwsUtils, dwsSymbols, dwsFunctions,
-   dwsJITFixups, dwsJITx86, dwsJITx86Intrinsics;
+   dwsJITFixups, dwsJITx86, dwsJITx86Intrinsics, dwsCompilerContext;
 
 type
 

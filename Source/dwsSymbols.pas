@@ -113,6 +113,7 @@ type
       function Specialize(sym : TSymbol) : TSymbol;
       function SpecializeType(typ : TTypeSymbol) : TTypeSymbol;
       function SpecializeDataSymbol(ds : TDataSymbol) : TDataSymbol;
+      function SpecializeField(fld : TFieldSymbol) : TFieldSymbol;
       function SpecializeExecutable(const exec : IExecutable) : IExecutable;
 
       procedure RegisterSpecialization(generic, specialized : TSymbol);
@@ -3759,13 +3760,22 @@ begin
    destination.Typ := context.SpecializeType(typ);
    context.RegisterSpecialization(Result, destination.Result);
 
+   // internal paramps are all pre-specialized
    Assert(destination.InternalParams.Count = InternalParams.Count);
    for i := 0 to InternalParams.Count-1 do begin
       specializedParam := destination.InternalParams[i];
       context.RegisterSpecialization(InternalParams[i], specializedParam);
    end;
 
-   for i := 0 to Params.Count-1 do begin
+   // some params can be pre-specialized
+   Assert(destination.Params.Count <= Params.Count);
+   for i := 0 to destination.Params.Count-1 do begin
+      specializedParam := destination.Params[i];
+      context.RegisterSpecialization(Params[i], specializedParam);
+   end;
+
+   // specialize reamining parameters
+   for i := destination.Params.Count to Params.Count-1 do begin
       specializedParam := Params[i].Specialize(context);
       destination.Params.AddSymbol(specializedParam);
       context.RegisterSpecialization(Params[i], specializedParam);

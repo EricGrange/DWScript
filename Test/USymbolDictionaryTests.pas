@@ -7,7 +7,8 @@ uses
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsDataContext, dwsInfo,
    dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, Variants,
    dwsSymbols, dwsPascalTokenizer, dwsStrings, dwsJSON, dwsFunctions,
-   dwsFilter, dwsScriptSource, dwsSymbolDictionary, dwsContextMap;
+   dwsFilter, dwsScriptSource, dwsSymbolDictionary, dwsContextMap,
+   dwsCompilerContext;
 
 type
 

@@ -800,6 +800,8 @@ type
          procedure ReplaceStatement(index : Integer; expr : TProgramExpr);
          function ExtractStatement(index : Integer) : TProgramExpr;
 
+         function  SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
+
          property StatementCount : Integer read FCount;
    end;
 
@@ -1662,7 +1664,8 @@ implementation
 // ------------------------------------------------------------------
 
 uses dwsFunctions, dwsCoreExprs, dwsMagicExprs, dwsMethodExprs, dwsUnifiedConstants,
-   dwsInfoClasses, dwsCompilerUtils, dwsConstExprs, dwsResultFunctions;
+   dwsInfoClasses, dwsCompilerUtils, dwsConstExprs, dwsResultFunctions,
+   dwsSpecializationContext;
 
 { TScriptObjectWrapper }
 
@@ -4168,6 +4171,20 @@ begin
    if index<FCount-1 then
       Move(FStatements[index+1], FStatements[index], (FCount-index-1)*SizeOf(TNoResultExpr));
    Dec(FCount);
+end;
+
+// SpecializeProgramExpr
+//
+function TBlockExprBase.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+var
+   i : Integer;
+   blockExpr : TBlockExpr;
+begin
+   blockExpr := TBlockExpr.Create(CompilerContextFromSpecialization(context), ScriptPos);
+   for i := 0 to FCount-1 do
+      blockExpr.AddStatement(FStatements[i].SpecializeProgramExpr(context));
+
+   Result := blockExpr;
 end;
 
 // GetSubExpr

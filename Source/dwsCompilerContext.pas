@@ -18,9 +18,25 @@ unit dwsCompilerContext;
 
 interface
 
-uses dwsUtils, dwsSymbols, dwsErrors, dwsUnitSymbols, dwsStrings;
+uses
+   dwsUtils, dwsSymbols, dwsErrors,
+   dwsUnitSymbols, dwsStrings;
 
 type
+   TCompilerOption = (
+      coOptimize,          // enable compiler optimizations
+      coSymbolDictionary,  // fillup symbol dictionary
+      coContextMap,        // fillup context map
+      coAssertions,        // compile assertions (if absent, ignores assertions)
+      coHintsDisabled,     // don't generate hints messages
+      coWarningsDisabled,  // don't generate warnings messages
+      coExplicitUnitUses,  // unit dependencies must be explicit via a "uses" clause
+      coVariablesAsVarOnly,// only variable can be passed as "var" parameters
+                           // (for CodeGen that does not support passing record fields or array elements)
+      coAllowClosures      // allow closures, ie. capture of local procedures as function pointers
+                           // (not suppported yet by script engine, may be supported by CodeGen)
+      );
+   TCompilerOptions = set of TCompilerOption;
 
    TdwsCompilerContext = class
       private
@@ -35,6 +51,9 @@ type
          FTypDefaultDestructor : TMethodSymbol;
 
          FStringsUnifier : TStringUnifier;
+
+         FExecution : TdwsExecution;
+         FOptions : TCompilerOptions;
 
       protected
          procedure SetSystemTable(const val : TSystemSymbolTable);
@@ -57,6 +76,9 @@ type
          property SystemTable : TSystemSymbolTable read FSystemTable write SetSystemTable;
          property Prog : TObject read FProg write FProg;
          property UnifiedConstants : TObject read FUnifiedConstants write FUnifiedConstants;
+
+         property Execution : TdwsExecution read FExecution write FExecution;
+         property Options : TCompilerOptions read FOptions write FOptions;
 
          property TypBoolean: TBaseBooleanSymbol read FBaseTypes.TypBoolean;
          property TypFloat: TBaseFloatSymbol read FBaseTypes.TypFloat;

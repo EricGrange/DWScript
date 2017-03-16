@@ -5,7 +5,7 @@ interface
 uses
    Windows, Classes, SysUtils, Variants,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
-   dwsXPlatform, dwsUtils, dwsJSONConnector;
+   dwsXPlatform, dwsUtils, dwsJSONConnector, dwsCompilerContext;
 
 type
 

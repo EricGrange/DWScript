@@ -35,7 +35,6 @@ type
    TConvExpr = class(TUnaryOpExpr)
       public
          class function WrapWithConvCast(context : TdwsCompilerContext; const scriptPos : TScriptPos;
-                                         exec : TdwsExecution;
                                          toTyp : TTypeSymbol; expr : TTypedExpr;
                                          const reportError : UnicodeString) : TTypedExpr; static;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
@@ -222,7 +221,6 @@ uses dwsCoreExprs;
 // WrapWithConvCast
 //
 class function TConvExpr.WrapWithConvCast(context : TdwsCompilerContext; const scriptPos : TScriptPos;
-                                          exec : TdwsExecution;
                                           toTyp : TTypeSymbol; expr : TTypedExpr;
                                           const reportError : UnicodeString) : TTypedExpr;
 
@@ -273,7 +271,7 @@ begin
          end else if arrayConst.Typ.Typ.IsOfType(toTyp.Typ) then begin
             staticArrayToSetOf:=TConvStaticArrayToSetOfExpr.Create(scriptPos, arrayConst, TSetOfSymbol(toTyp));
             Assert(staticArrayToSetOf.IsConstant);
-            Result:=staticArrayToSetOf.ToConstExpr(exec);
+            Result:=staticArrayToSetOf.ToConstExpr(context.Execution);
             staticArrayToSetOf.Free;
          end;
       end;

@@ -5,7 +5,7 @@ interface
 uses
    Classes, SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
-   dwsXPlatform, dwsUtils, dwsSymbols;
+   dwsXPlatform, dwsUtils, dwsSymbols, dwsCompilerContext;
 
 type
 

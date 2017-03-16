@@ -6,7 +6,7 @@ uses
    Classes, SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsGraphicLibrary, dwsXPlatform, dwsSymbols, dwsUtils,
-   dwsEncodingLibModule;
+   dwsEncodingLibModule, dwsCompilerContext;
 
 type
 

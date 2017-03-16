@@ -20,8 +20,9 @@ interface
 
 uses
    SysUtils,
-   dwsUtils, dwsSymbols, dwsDataContext, dwsScriptSource, dwsErrors, dwsStrings,
-   dwsSpecializationContext, dwsCompilerContext;
+   dwsXPlatform, dwsUtils,
+   dwsSymbols, dwsDataContext, dwsScriptSource, dwsErrors, dwsStrings,
+   dwsSpecializationContext, dwsCompilerContext, dwsTokenizer, dwsOperators;
 
 type
    TGenericSymbol = class;
@@ -33,6 +34,8 @@ type
    end;
    TGenericConstraints = array of TGenericConstraint;
 
+   TGenericConstraintBinaryOp = class;
+
    TGenericTypeSymbol = class (TTypeSymbol)
       public
          procedure InitData(const data : TData; offset : Integer); override;
@@ -42,7 +45,7 @@ type
 
    TGenericTypeParameterSymbol = class (TGenericTypeSymbol)
       private
-         FConstraints : TTightList;
+         FConstraints : TTightList;  // owned
 
       protected
 
@@ -98,6 +101,8 @@ type
          FParameters : IGenericParameters;
          FGenericType : TTypeSymbol;
          FSpecializations : array of TGenericSymbolSpecialization;
+         FInternalTypes : TSymbolTable;
+         FBinaryOps : TTightList;
 
       protected
          class function Signature(params : TUnSortedSymbolTable) : String; static;
@@ -105,6 +110,7 @@ type
          function CreateSpecializationContext(values : TUnSortedSymbolTable;
                                               const aScriptPos : TScriptPos; aUnit : TSymbol;
                                               aContext : TdwsCompilerContext;
+                                              const aOperators : TOperators;
                                               allowOptimize : Boolean) : TSpecializationContext;
 
          function GetCaption : UnicodeString; override;
@@ -118,10 +124,13 @@ type
          function SpecializationFor(values : TUnSortedSymbolTable;
                                     const aScriptPos : TScriptPos; aUnit : TSymbol;
                                     aContext : TdwsCompilerContext;
+                                    const aOperators : TOperators;
                                     allowOptimize : Boolean) : TTypeSymbol;
 
-         property Parameters : IGenericParameters read FParameters;
+         function ConstraintForBinaryOp(anOp : TTokenType; aLeft, aRight : TTypeSymbol) : TGenericConstraintBinaryOp;
+
          property GenericType : TTypeSymbol read FGenericType write FGenericType;
+         property Parameters : IGenericParameters read FParameters;
    end;
 
    TGenericConstraintType = class (TGenericConstraint)
@@ -134,6 +143,26 @@ type
          function Check(const scriptPos : TScriptPos; valueType : TTypeSymbol;
                         msgs : TdwsCompileMessageList) : Boolean; override;
    end;
+
+   TGenericConstraintBinaryOp = class (TGenericConstraint)
+      private
+         FOp : TTokenType;
+         FLeftType : TTypeSymbol;
+         FRightType : TTypeSymbol;
+         FResultType : TTypeSymbol;
+
+      public
+         constructor Create(anOp : TTokenType; aLeft, aRight : TTypeSymbol);
+
+         function Check(const scriptPos : TScriptPos; valueType : TTypeSymbol;
+                        msgs : TdwsCompileMessageList) : Boolean; override;
+
+         property Op : TTokenType read FOp;
+         property LeftType : TTypeSymbol read FLeftType;
+         property RightType : TTypeSymbol read FRightType;
+         property ResultType : TTypeSymbol read FResultType write FResultType;
+   end;
+
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -161,10 +190,11 @@ destructor TGenericSymbol.Destroy;
 var
    i : Integer;
 begin
-   for i := 0 to High(FSpecializations) do begin
+   for i := 0 to High(FSpecializations) do
       FSpecializations[i].Specialization.Free;
-   end;
    FGenericType.Free;
+   FBinaryOps.Clean;
+   FInternalTypes.Free;
    inherited;
 end;
 
@@ -199,6 +229,7 @@ function TGenericSymbol.SpecializationFor(
       values : TUnSortedSymbolTable;
       const aScriptPos : TScriptPos; aUnit : TSymbol;
       aContext : TdwsCompilerContext;
+      const aOperators : TOperators;
       allowOptimize : Boolean) : TTypeSymbol;
 var
    context : TSpecializationContext;
@@ -212,12 +243,35 @@ begin
       end;
    end;
 
-   context := CreateSpecializationContext(values, aScriptPos, aUnit, aContext, allowOptimize);
+   context := CreateSpecializationContext(values, aScriptPos, aUnit, aContext, aOperators, allowOptimize);
    try
       Result := SpecializeType(context);
    finally
       context.Free;
    end;
+end;
+
+// ConstraintForBinaryOp
+//
+function TGenericSymbol.ConstraintForBinaryOp(anOp : TTokenType; aLeft, aRight : TTypeSymbol) : TGenericConstraintBinaryOp;
+var
+   i : Integer;
+   resultType : TGenericTypeParameterSymbol;
+begin
+   for i := 0 to FBinaryOps.Count-1 do begin
+      Result := TGenericConstraintBinaryOp(FBinaryOps.List[i]);
+      if (Result.Op = anOp) and (Result.LeftType = aLeft) and (Result.RightType = aRight) then
+         Exit;
+   end;
+   Result := TGenericConstraintBinaryOp.Create(anOp, aLeft, aRight);
+   resultType := TGenericTypeParameterSymbol.Create(aLeft.Caption + ' ' + cTokenStrings[anOp] + ' ' + aRight.Caption);
+   Result.ResultType := resultType;
+   resultType.AddConstraint(Result);
+   Result.IncRefCount;
+   FBinaryOps.Add(Result);
+   if FInternalTypes = nil then
+      FInternalTypes := TSymbolTable.Create;
+   FInternalTypes.AddSymbolDirect(resultType);
 end;
 
 // CreateSpecializationContext
@@ -226,6 +280,7 @@ function TGenericSymbol.CreateSpecializationContext(
       values : TUnSortedSymbolTable;
       const aScriptPos : TScriptPos; aUnit : TSymbol;
       aContext : TdwsCompilerContext;
+      const aOperators : TOperators;
       allowOptimize : Boolean) : TSpecializationContext;
 var
    i : Integer;
@@ -240,7 +295,7 @@ begin
    n := n + '>';
    Result := TSpecializationContext.Create(
       n, Parameters.List, values, aScriptPos, aUnit,
-      aContext, allowOptimize
+      aContext, aOperators, allowOptimize
       );
 end;
 
@@ -399,7 +454,7 @@ end;
 //
 function TGenericTypeSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-   Result := (Self = typSym);
+   Result := True;
 end;
 
 // IsGeneric
@@ -432,6 +487,29 @@ begin
                                [FType.Caption, valueType.Caption]);
       Result := False;
    end else Result := True;
+end;
+
+// ------------------
+// ------------------ TGenericConstraintBinaryOp ------------------
+// ------------------
+
+// Create
+//
+constructor TGenericConstraintBinaryOp.Create(anOp : TTokenType; aLeft, aRight : TTypeSymbol);
+begin
+   inherited Create;
+   FOp := anOp;
+   FLeftType := aLeft;
+   FRightType := aRight;
+end;
+
+// Check
+//
+function TGenericConstraintBinaryOp.Check(const scriptPos : TScriptPos; valueType : TTypeSymbol;
+                        msgs : TdwsCompileMessageList) : Boolean;
+begin
+   // nothing yet TODO
+   Result := True;
 end;
 
 end.

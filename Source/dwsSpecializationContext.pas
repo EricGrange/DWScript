@@ -20,7 +20,7 @@ interface
 
 uses
    dwsUtils, dwsSymbols, dwsScriptSource, dwsErrors, dwsStrings,
-   dwsCompilerContext;
+   dwsCompilerContext, dwsOperators;
 
 type
 
@@ -44,6 +44,7 @@ type
          FSpecializedSymbols : array of TSpecializedSymbol;
          FOptimize : Boolean;
          FCompilerContext : TdwsCompilerContext;
+         FOperators : TOperators;
 
       protected
          function Name : String;
@@ -57,12 +58,14 @@ type
          constructor Create(const aName : String; aParams, aValues : TUnSortedSymbolTable;
                             const aScriptPos : TScriptPos; aUnit : TSymbol;
                             const aCompilerContext : TdwsCompilerContext;
+                            const aOperators : TOperators;
                             allowOptimization : Boolean);
          destructor Destroy; override;
 
          function Specialize(sym : TSymbol) : TSymbol;
          function SpecializeType(typ : TTypeSymbol) : TTypeSymbol;
          function SpecializeDataSymbol(ds : TDataSymbol) : TDataSymbol;
+         function SpecializeField(fld : TFieldSymbol) : TFieldSymbol;
          function SpecializeExecutable(const exec : IExecutable) : IExecutable;
 
          procedure RegisterSpecialization(generic, specialized : TSymbol);
@@ -72,6 +75,7 @@ type
          procedure AddCompilerErrorFmt(const msgFmt : String; const params : array of const);
 
          property CompilerContext : TdwsCompilerContext read FCompilerContext;
+         property Operators : TOperators read FOperators;
          property ScriptPos : TScriptPos read FScriptPos;
 
          procedure EnterComposite(sym : TCompositeTypeSymbol);
@@ -86,12 +90,28 @@ type
    TSpecializationMethod = function (const context : ISpecializationContext) : TTypeSymbol of object;
 
 function CompilerContextFromSpecialization(const specializationContext : ISpecializationContext) : TdwsCompilerContext;
+function OperatorsFromSpecialization(const specializationContext : ISpecializationContext) : TOperators;
 
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
+// CompilerContextFromSpecialization
+//
 function CompilerContextFromSpecialization(const specializationContext : ISpecializationContext) : TdwsCompilerContext;
 begin
    Result := (specializationContext.GetSelf as TSpecializationContext).CompilerContext;
+end;
+
+// OperatorsFromSpecialization
+//
+function OperatorsFromSpecialization(const specializationContext : ISpecializationContext) : TOperators;
+begin
+   Result := (specializationContext.GetSelf as TSpecializationContext).Operators;
 end;
 
 // ------------------
@@ -104,6 +124,7 @@ constructor TSpecializationContext.Create(
       const aName : String; aParams, aValues : TUnSortedSymbolTable;
       const aScriptPos : TScriptPos; aUnit : TSymbol;
       const aCompilerContext : TdwsCompilerContext;
+      const aOperators : TOperators;
       allowOptimization : Boolean);
 begin
    inherited Create;
@@ -113,6 +134,7 @@ begin
    FValues := aValues;
    FUnitSymbol := aUnit;
    FCompilerContext := aCompilerContext;
+   FOperators := aOperators;
    FOptimize := allowOptimization;
 end;
 
@@ -163,6 +185,21 @@ begin
    sym := Specialize(ds);
    if sym <> nil then
       Result := sym as TDataSymbol
+   else Result := nil;
+end;
+
+// SpecializeField
+//
+function TSpecializationContext.SpecializeField(fld : TFieldSymbol) : TFieldSymbol;
+var
+   sym : TSymbol;
+begin
+   sym := SpecializeType(fld.StructSymbol);
+   if sym = nil then Exit(nil);
+
+   sym := Specialize(fld);
+   if sym <> nil then
+      Result := sym as TFieldSymbol
    else Result := nil;
 end;
 

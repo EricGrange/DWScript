@@ -26,7 +26,7 @@ interface
 uses
    Classes, Variants, SysUtils,
    dwsUtils, dwsXPlatform, dwsDataContext, dwsExprList,
-   dwsSpecializationContext, dwsCompilerContext,
+   dwsCompilerContext,
    dwsSymbols, dwsErrors, dwsStrings, dwsConvExprs,
    dwsStack, dwsExprs, dwsScriptSource,
    dwsConstExprs, dwsTokenizer, dwsUnitSymbols
@@ -65,7 +65,7 @@ type
          function SameDataExpr(expr : TTypedExpr) : Boolean; override;
          function DataSymbol : TDataSymbol; override;
 
-         function  SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
+         function SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
 
          property StackAddr : Integer read FStackAddr;
          property DataSym : TDataSymbol read FDataSym write FDataSym;
@@ -203,14 +203,19 @@ type
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
+
+         function SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
    end;
 
-   TVarParamExpr = class (TByRefParamExpr)
+   TVarParamExpr = class sealed (TByRefParamExpr)
+      public
+         function SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
    end;
 
-   TConstParamExpr = class (TByRefParamExpr)
+   TConstParamExpr = class sealed (TByRefParamExpr)
       public
          function IsWritable : Boolean; override;
+         function SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
    end;
 
    // Encapsulates a var parameter
@@ -475,6 +480,8 @@ type
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
          function SameDataExpr(expr : TTypedExpr) : Boolean; override;
+
+         function SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
 
          property BaseExpr : TDataExpr read FBaseExpr;
          property MemberOffset : Integer read FMemberOffset;
@@ -2291,7 +2298,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsStringFunctions, dwsExternalSymbols;
+uses dwsStringFunctions, dwsExternalSymbols, dwsSpecializationContext;
 
 type
    // this needs to be in a helper (or more precisely implemented at the top of this unit)
@@ -2930,6 +2937,25 @@ begin
    Result:=IDataContext(GetVarParamDataAsPointer(exec)).AsFloat[0];
 end;
 
+// SpecializeDataExpr
+//
+function TByRefParamExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
+begin
+   context.AddCompilerError(ClassName + '  specialization unsupported yet');
+   Result := nil;
+end;
+
+// ------------------
+// ------------------ TVarParamExpr ------------------
+// ------------------
+
+// SpecializeDataExpr
+//
+function TVarParamExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
+begin
+   Result := TVarParamExpr.Create(context.SpecializeDataSymbol(DataSymbol));
+end;
+
 // ------------------
 // ------------------ TConstParamExpr ------------------
 // ------------------
@@ -2939,6 +2965,13 @@ end;
 function TConstParamExpr.IsWritable : Boolean;
 begin
    Result:=False;
+end;
+
+// SpecializeDataExpr
+//
+function TConstParamExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
+begin
+   Result := TConstParamExpr.Create(context.SpecializeDataSymbol(DataSymbol));
 end;
 
 // ------------------
@@ -3895,6 +3928,14 @@ begin
    Result:=    (ClassType=expr.ClassType)
            and (FieldSymbol=TRecordExpr(expr).FieldSymbol)
            and BaseExpr.SameDataExpr(TRecordExpr(expr).BaseExpr);
+end;
+
+// SpecializeDataExpr
+//
+function TRecordExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
+begin
+   Result := TRecordExpr.Create(ScriptPos, BaseExpr.SpecializeDataExpr(context),
+                                context.SpecializeField(FieldSymbol));
 end;
 
 // AssignExpr
@@ -6036,7 +6077,7 @@ procedure TAssignExpr.TypeCheckAssign(context : TdwsCompilerContext; exec : Tdws
 var
    rightScriptPos : TScriptPos;
 begin
-   if FLeft=nil then Exit;
+   if (FLeft=nil) or (FRight=nil) then Exit;
 
    if FRight.ClassType=TArrayConstantExpr then
       TArrayConstantExpr(FRight).Prepare(context, FLeft.Typ.Typ);
@@ -6045,7 +6086,7 @@ begin
    if not rightScriptPos.Defined then
       rightScriptPos:=Self.ScriptPos;
 
-   FRight:=TConvExpr.WrapWithConvCast(context, rightScriptPos, exec,
+   FRight:=TConvExpr.WrapWithConvCast(context, rightScriptPos,
                                       FLeft.Typ, FRight, CPE_AssignIncompatibleTypes);
 end;
 
@@ -6948,20 +6989,13 @@ end;
 // SpecializeProgramExpr
 //
 function TBlockExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
-var
-   i : Integer;
-   blockExpr : TBlockExpr;
 begin
    if FTable.HasChildTables or (FTable.Count <> 0) then begin
       context.AddCompilerError('Specialization of TBlockExpr with tables not supported yet');
       Exit(nil);
    end;
 
-   blockExpr := TBlockExpr.Create(CompilerContextFromSpecialization(context), ScriptPos);
-   for i := 0 to FCount-1 do
-      blockExpr.AddStatement(FStatements[i].SpecializeProgramExpr(context));
-
-   Result := blockExpr;
+   Result := inherited SpecializeProgramExpr(context);
 end;
 
 // ------------------
