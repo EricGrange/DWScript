@@ -168,7 +168,7 @@ type
    TAddArgProcedure = procedure (argExpr : TTypedExpr) of object;
    TExpectedArgFunction = function : TParamSymbol of object;
 
-   TSpecialKeywordKind = (skNone, skAbs, skAssert, skAssigned,
+   TSpecialKeywordKind = (skNone, skAbs, skAssert, skAssigned, skDefault,
                           skHigh, skLength, skLow,
                           skOrd, skSizeOf, skDefined, skDeclared,
                           skInc, skDec, skSucc, skPred,
@@ -852,7 +852,7 @@ type
 
 const
    cSpecialKeywords : array [TSpecialKeywordKind] of UnicodeString = (
-      '', 'Abs', 'Assert', 'Assigned', 'High', 'Length', 'Low',
+      '', 'Abs', 'Assert', 'Assigned', 'Default', 'High', 'Length', 'Low',
       'Ord', 'SizeOf', 'Defined', 'Declared', 'Inc', 'Dec', 'Succ', 'Pred',
       'Include', 'Exclude', 'Swap', 'ConditionalDefined', 'DebugBreak'
    );
@@ -4608,6 +4608,23 @@ end;
 // ReadName
 //
 function TdwsCompiler.ReadName(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TProgramExpr;
+
+   function ReadSpecialName(const name : String; const namePos : TScriptPos;
+                            sk : TSpecialKeywordKind; var exprResult : TProgramExpr) : Boolean;
+   begin
+      FTok.KillToken;
+      if (sk = skDefault) and not FTok.Test(ttBLEFT) then begin
+         FTok.SimulateNameToken(namePos, name);
+         FTok.TestName;
+         Result := False;
+      end else begin
+         if not (coHintsDisabled in FOptions) then
+            CheckSpecialNameCase(name, sk, namePos);
+         exprResult := ReadSymbol(ReadSpecialFunction(namePos, sk), isWrite, expecting);
+         Result := True;
+      end;
+   end;
+
 var
    sym : TSymbol;
    nameToken : TToken;
@@ -4644,10 +4661,8 @@ begin
    // Test for special functions
    sk:=IdentifySpecialName(nameToken.AsString);
    if sk<>skNone then begin
-      if not (coHintsDisabled in FOptions) then
-         CheckSpecialNameCase(nameToken.AsString, sk, namePos);
-      FTok.KillToken;
-      Exit(ReadSymbol(ReadSpecialFunction(namePos, sk), isWrite, expecting));
+      if ReadSpecialName(nameToken.AsString, namePos, sk, Result) then Exit;
+      nameToken := FTok.GetToken;
    end;
 
    // Find name in symboltable
@@ -12034,7 +12049,10 @@ begin
          's', 'S' : if ASCIISameText(name, cSpecialKeywords[skSizeOf]) then Exit(skSizeOf);
       end;
       7 : case name[1] of
-         'd', 'D' : if ASCIISameText(name, cSpecialKeywords[skDefined]) then Exit(skDefined);
+         'd', 'D' :
+            if ASCIISameText(name, cSpecialKeywords[skDefined]) then  Exit(skDefined)
+            else if ASCIISameText(name, cSpecialKeywords[skDefault]) then  Exit(skDefault)
+            ;
          'i', 'I' : if ASCIISameText(name, cSpecialKeywords[skInclude]) then Exit(skInclude);
          'e', 'E' : if ASCIISameText(name, cSpecialKeywords[skExclude]) then Exit(skExclude);
       end;
@@ -12056,8 +12074,11 @@ end;
 //
 procedure TdwsCompiler.CheckSpecialName(const name : UnicodeString);
 begin
-   if IdentifySpecialName(name)<>skNone then
+   case IdentifySpecialName(name) of
+      skNone, skDefault : ;
+   else
       FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameIsReserved, [Name]);
+   end;
 end;
 
 // CheckSpecialNameCase
@@ -13206,6 +13227,17 @@ function TdwsCompiler.ReadSpecialFunction(const namePos : TScriptPos; specialKin
       Result:=(TDeclaredExpr.FindSymbol(CurrentProg.Root.RootTable, name)<>nil);
    end;
 
+   function CreateDefault(argTyp : TTypeSymbol) : TExprBase;
+   var
+      data : TData;
+   begin
+      SetLength(data, argTyp.Size);
+      argTyp.InitData(data, 0);
+      if argTyp is TBaseSymbol then
+         Result := FCompilerContext.CreateConstExpr(argTyp, data[0])
+      else Result := TConstExpr.Create(argTyp, data);
+   end;
+
 var
    argExpr, msgExpr, operandExpr : TTypedExpr;
    argTyp : TTypeSymbol;
@@ -13233,7 +13265,7 @@ begin
             argExpr:=ReadExpr(FCompilerContext.TypNil);
          skInc, skDec :
             argExpr:=ReadTerm(True);
-         skLow, skHigh :
+         skLow, skHigh, skDefault :
             argExpr:=ReadExpr(FCompilerContext.TypAnyType);
       else
          argExpr:=ReadExpr;
@@ -13396,6 +13428,15 @@ begin
                OrphanAndNil(argExpr);
             end;
             argExpr:=nil;
+         end;
+         skDefault : begin
+            if argTyp <> nil then
+               Result := CreateTypedDefault(argTyp) as TProgramExpr
+            else begin
+               FMsgs.AddCompilerError(argPos, CPE_TypeExpected);
+               Result := TConstExpr.Create(FCompilerContext.TypVariant, Null);
+            end;
+            OrphanAndNil(argExpr);
          end;
          skSizeOf : begin
             Result := FUnifiedConstants.CreateInteger(argTyp.Size);
