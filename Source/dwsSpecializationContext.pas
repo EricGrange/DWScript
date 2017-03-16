@@ -35,6 +35,7 @@ type
       private
          FName : String;
          FParameters, FValues : TUnSortedSymbolTable; // referred
+         FValuesPosList : TScriptPosArray;
          FUnitSymbol : TSymbol;
          FScriptPos : TScriptPos;
          FCompositeSymbol : TCompositeTypeSymbol;
@@ -57,6 +58,7 @@ type
       public
          constructor Create(const aName : String; aParams, aValues : TUnSortedSymbolTable;
                             const aScriptPos : TScriptPos; aUnit : TSymbol;
+                            const aValuesPosList : TScriptPosArray;
                             const aCompilerContext : TdwsCompilerContext;
                             const aOperators : TOperators;
                             allowOptimization : Boolean);
@@ -72,11 +74,14 @@ type
 
          procedure AddCompilerHint(const msg : String);
          procedure AddCompilerError(const msg : String);
-         procedure AddCompilerErrorFmt(const msgFmt : String; const params : array of const);
+         procedure AddCompilerErrorFmt(const msgFmt : String; const params : array of const); overload;
+         procedure AddCompilerErrorFmt(const aScriptPos : TScriptPos; const msgFmt : String;
+                                       const params : array of const); overload;
 
          property CompilerContext : TdwsCompilerContext read FCompilerContext;
          property Operators : TOperators read FOperators;
          property ScriptPos : TScriptPos read FScriptPos;
+         function ParameterValuePos(parameter : TSymbol) : TScriptPos;
 
          procedure EnterComposite(sym : TCompositeTypeSymbol);
          procedure LeaveComposite;
@@ -123,6 +128,7 @@ end;
 constructor TSpecializationContext.Create(
       const aName : String; aParams, aValues : TUnSortedSymbolTable;
       const aScriptPos : TScriptPos; aUnit : TSymbol;
+      const aValuesPosList : TScriptPosArray;
       const aCompilerContext : TdwsCompilerContext;
       const aOperators : TOperators;
       allowOptimization : Boolean);
@@ -132,10 +138,12 @@ begin
    Assert(aParams.Count = aValues.Count);
    FParameters := aParams;
    FValues := aValues;
+   FValuesPosList := aValuesPosList;
    FUnitSymbol := aUnit;
    FCompilerContext := aCompilerContext;
    FOperators := aOperators;
    FOptimize := allowOptimization;
+   FScriptPos := aScriptPos;
 end;
 
 // Destroy
@@ -245,6 +253,28 @@ procedure TSpecializationContext.AddCompilerErrorFmt(const msgFmt : String; cons
 begin
    FOptimize := False;
    FCompilerContext.Msgs.AddCompilerErrorFmt(ScriptPos, msgFmt, params);
+end;
+
+// ParameterValuePos
+//
+function TSpecializationContext.ParameterValuePos(parameter : TSymbol) : TScriptPos;
+var
+   i : Integer;
+begin
+   i := FParameters.IndexOf(parameter);
+   if (i >= 0) and (i < Length(FValuesPosList)) then
+      Result := FValuesPosList[i]
+   else Result := FScriptPos;
+end;
+
+// AddCompilerErrorFmt
+//
+procedure TSpecializationContext.AddCompilerErrorFmt(
+      const aScriptPos : TScriptPos; const msgFmt : String;
+      const params : array of const);
+begin
+   FOptimize := False;
+   FCompilerContext.Msgs.AddCompilerErrorFmt(aScriptPos, msgFmt, params);
 end;
 
 // EnterComposite

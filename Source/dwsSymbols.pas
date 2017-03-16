@@ -120,7 +120,9 @@ type
 
       procedure AddCompilerHint(const msg : String);
       procedure AddCompilerError(const msg : String);
-      procedure AddCompilerErrorFmt(const msgFmt : String; const params : array of const);
+      procedure AddCompilerErrorFmt(const msgFmt : String; const params : array of const); overload;
+      procedure AddCompilerErrorFmt(const aScriptPos : TScriptPos; const msgFmt : String;
+                                    const params : array of const); overload;
 
       function Name : String;
       function Parameters : TUnSortedSymbolTable;
@@ -444,6 +446,7 @@ type
    TUnSortedSymbolTable = class (TSymbolTable)
       public
          function FindLocal(const aName : UnicodeString; ofClass : TSymbolClass = nil) : TSymbol; override;
+         function IndexOf(sym : TSymbol) : Integer;
    end;
 
    // TConditionsSymbolTable
@@ -6575,6 +6578,13 @@ begin
    Result:=FindLocalUnSorted(aName);
    if (Result<>nil) and (ofClass<>nil) and (not (Result is ofClass)) then
       Result:=nil;
+end;
+
+// IndexOf
+//
+function TUnSortedSymbolTable.IndexOf(sym : TSymbol) : Integer;
+begin
+   Result := FSymbols.IndexOf(sym);
 end;
 
 // ------------------

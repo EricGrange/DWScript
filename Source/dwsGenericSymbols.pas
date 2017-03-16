@@ -22,15 +22,15 @@ uses
    SysUtils,
    dwsXPlatform, dwsUtils,
    dwsSymbols, dwsDataContext, dwsScriptSource, dwsErrors, dwsStrings,
-   dwsSpecializationContext, dwsCompilerContext, dwsTokenizer, dwsOperators;
+   dwsSpecializationContext, dwsCompilerContext, dwsTokenizer, dwsOperators,
+   dwsCompilerUtils, dwsExprs;
 
 type
    TGenericSymbol = class;
 
    TGenericConstraint = class (TRefCountedObject)
       public
-         function Check(const scriptPos : TScriptPos; valueType : TTypeSymbol;
-                        msgs : TdwsCompileMessageList) : Boolean; virtual; abstract;
+         function Check(context : TSpecializationContext) : Boolean; virtual; abstract;
    end;
    TGenericConstraints = array of TGenericConstraint;
 
@@ -55,8 +55,7 @@ type
 
          procedure AddConstraint(aConstraint : TGenericConstraint);
 
-         function CheckConstraints(const scriptPos : TScriptPos; valueType : TTypeSymbol;
-                                   msgs : TdwsCompileMessageList) : Boolean;
+         function CheckConstraints(context : TSpecializationContext) : Boolean;
    end;
 
    IGenericParameters = interface (IGetSelf)
@@ -107,12 +106,6 @@ type
       protected
          class function Signature(params : TUnSortedSymbolTable) : String; static;
 
-         function CreateSpecializationContext(values : TUnSortedSymbolTable;
-                                              const aScriptPos : TScriptPos; aUnit : TSymbol;
-                                              aContext : TdwsCompilerContext;
-                                              const aOperators : TOperators;
-                                              allowOptimize : Boolean) : TSpecializationContext;
-
          function GetCaption : UnicodeString; override;
 
       public
@@ -121,11 +114,11 @@ type
 
          function SpecializeType(const context : ISpecializationContext) : TTypeSymbol; override;
 
-         function SpecializationFor(values : TUnSortedSymbolTable;
-                                    const aScriptPos : TScriptPos; aUnit : TSymbol;
+         function SpecializationFor(const aScriptPos : TScriptPos; aUnit : TSymbol;
+                                    values : TUnSortedSymbolTable;
+                                    const valuesPos : TScriptPosArray;
                                     aContext : TdwsCompilerContext;
-                                    const aOperators : TOperators;
-                                    allowOptimize : Boolean) : TTypeSymbol;
+                                    const aOperators : TOperators) : TTypeSymbol;
 
          function ConstraintForBinaryOp(anOp : TTokenType; aLeft, aRight : TTypeSymbol) : TGenericConstraintBinaryOp;
 
@@ -135,13 +128,13 @@ type
 
    TGenericConstraintType = class (TGenericConstraint)
       private
-         FType : TTypeSymbol;
+         FParameter : TGenericTypeParameterSymbol;
+         FConstraintType : TTypeSymbol;
 
       public
-         constructor Create(aType : TTypeSymbol);
+         constructor Create(aParameter : TGenericTypeParameterSymbol; aConstraintType : TTypeSymbol);
 
-         function Check(const scriptPos : TScriptPos; valueType : TTypeSymbol;
-                        msgs : TdwsCompileMessageList) : Boolean; override;
+         function Check(context : TSpecializationContext) : Boolean; override;
    end;
 
    TGenericConstraintBinaryOp = class (TGenericConstraint)
@@ -154,8 +147,7 @@ type
       public
          constructor Create(anOp : TTokenType; aLeft, aRight : TTypeSymbol);
 
-         function Check(const scriptPos : TScriptPos; valueType : TTypeSymbol;
-                        msgs : TdwsCompileMessageList) : Boolean; override;
+         function Check(context : TSpecializationContext) : Boolean; override;
 
          property Op : TTokenType read FOp;
          property LeftType : TTypeSymbol read FLeftType;
@@ -225,15 +217,14 @@ end;
 
 // SpecializationFor
 //
-function TGenericSymbol.SpecializationFor(
-      values : TUnSortedSymbolTable;
-      const aScriptPos : TScriptPos; aUnit : TSymbol;
-      aContext : TdwsCompilerContext;
-      const aOperators : TOperators;
-      allowOptimize : Boolean) : TTypeSymbol;
+function TGenericSymbol.SpecializationFor(const aScriptPos : TScriptPos; aUnit : TSymbol;
+                                          values : TUnSortedSymbolTable;
+                                          const valuesPos : TScriptPosArray;
+                                          aContext : TdwsCompilerContext;
+                                          const aOperators : TOperators) : TTypeSymbol;
 var
    context : TSpecializationContext;
-   sig : String;
+   sig, n : String;
    i : Integer;
 begin
    sig := Signature(values);
@@ -243,8 +234,22 @@ begin
       end;
    end;
 
-   context := CreateSpecializationContext(values, aScriptPos, aUnit, aContext, aOperators, allowOptimize);
+   n := Name + '<';
+   for i := 0 to values.Count-1 do begin
+      if i > 0 then
+         n := n + ',';
+      n := n + values.Symbols[i].Name;
+   end;
+   n := n + '>';
+
+   context := TSpecializationContext.Create(
+      n, Parameters.List, values, aScriptPos, aUnit, valuesPos,
+      aContext, aOperators,
+      (coOptimize in aContext.Options) and not aContext.Msgs.HasErrors
+   );
    try
+      for i := 0 to FParameters.Count-1 do
+         FParameters.Parameters[i].CheckConstraints(context);
       Result := SpecializeType(context);
    finally
       context.Free;
@@ -272,31 +277,6 @@ begin
    if FInternalTypes = nil then
       FInternalTypes := TSymbolTable.Create;
    FInternalTypes.AddSymbolDirect(resultType);
-end;
-
-// CreateSpecializationContext
-//
-function TGenericSymbol.CreateSpecializationContext(
-      values : TUnSortedSymbolTable;
-      const aScriptPos : TScriptPos; aUnit : TSymbol;
-      aContext : TdwsCompilerContext;
-      const aOperators : TOperators;
-      allowOptimize : Boolean) : TSpecializationContext;
-var
-   i : Integer;
-   n : String;
-begin
-   n := Name + '<';
-   for i := 0 to values.Count-1 do begin
-      if i > 0 then
-         n := n + ',';
-      n := n + values.Symbols[i].Name;
-   end;
-   n := n + '>';
-   Result := TSpecializationContext.Create(
-      n, Parameters.List, values, aScriptPos, aUnit,
-      aContext, aOperators, allowOptimize
-      );
 end;
 
 // GetCaption
@@ -348,14 +328,13 @@ end;
 
 // CheckConstraints
 //
-function TGenericTypeParameterSymbol.CheckConstraints(
-      const scriptPos : TScriptPos; valueType : TTypeSymbol; msgs : TdwsCompileMessageList) : Boolean;
+function TGenericTypeParameterSymbol.CheckConstraints(context : TSpecializationContext) : Boolean;
 var
    i : Integer;
 begin
    Result := True;
    for i := 0 to FConstraints.Count-1 do
-      if not TGenericConstraint(FConstraints.List[i]).Check(scriptPos, valueType, msgs) then
+      if not TGenericConstraint(FConstraints.List[i]).Check(context) then
          Result := False;
 end;
 
@@ -470,21 +449,25 @@ end;
 
 // Create
 //
-constructor TGenericConstraintType.Create(aType : TTypeSymbol);
+constructor TGenericConstraintType.Create(aParameter : TGenericTypeParameterSymbol; aConstraintType : TTypeSymbol);
 begin
    inherited Create;
-   FType := aType;
+   FParameter := aParameter;
+   FConstraintType := aConstraintType;
 end;
 
 // Check
 //
-function TGenericConstraintType.Check(
-      const scriptPos : TScriptPos; valueType : TTypeSymbol;
-      msgs : TdwsCompileMessageList) : Boolean;
+function TGenericConstraintType.Check(context : TSpecializationContext) : Boolean;
+var
+   specialized : TTypeSymbol;
+   scriptPos : TScriptPos;
 begin
-   if not valueType.IsOfType(FType) then begin
-      msgs.AddCompilerErrorFmt(scriptPos, CPE_IncompatibleParameterTypes,
-                               [FType.Caption, valueType.Caption]);
+   specialized := context.SpecializeType(FParameter);
+   if not specialized.IsOfType(FConstraintType) then begin
+      scriptPos := context.ParameterValuePos(FParameter);
+      context.AddCompilerErrorFmt(scriptPos, CPE_IncompatibleParameterTypes,
+                                  [FConstraintType.Caption, specialized.Caption]);
       Result := False;
    end else Result := True;
 end;
@@ -505,8 +488,7 @@ end;
 
 // Check
 //
-function TGenericConstraintBinaryOp.Check(const scriptPos : TScriptPos; valueType : TTypeSymbol;
-                        msgs : TdwsCompileMessageList) : Boolean;
+function TGenericConstraintBinaryOp.Check(context : TSpecializationContext) : Boolean;
 begin
    // nothing yet TODO
    Result := True;

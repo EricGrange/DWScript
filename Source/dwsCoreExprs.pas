@@ -582,7 +582,7 @@ type
    end;
 
    // Field expression: obj.Field
-   TFieldVarExpr = class(TFieldExpr)
+   TFieldVarExpr = class sealed (TFieldExpr)
       protected
          function GetPIScriptObj(exec : TdwsExecution) : PIScriptObj; inline;
 
@@ -594,13 +594,19 @@ type
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
+
+         function SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
    end;
 
-   TReadOnlyFieldExpr = class(TFieldExpr)
-      constructor Create(const aScriptPos: TScriptPos;
-                         fieldSym : TFieldSymbol; objExpr: TTypedExpr;
-                         propertyType : TTypeSymbol);
-      function IsWritable: Boolean; override;
+   TReadOnlyFieldExpr = class sealed (TFieldExpr)
+      public
+         constructor Create(const aScriptPos: TScriptPos;
+                            fieldSym : TFieldSymbol; objExpr: TTypedExpr;
+                            propertyType : TTypeSymbol);
+
+         function IsWritable: Boolean; override;
+
+         function SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
    end;
 
    // length of dynamic arrays
@@ -4386,6 +4392,14 @@ begin
    exec.DataContext_Create(p^.AsPData^, FieldSym.Offset, result);
 end;
 
+// SpecializeDataExpr
+//
+function TFieldVarExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
+begin
+   Result := TFieldVarExpr.Create(ScriptPos, context.SpecializeField(FieldSym),
+                                  ObjectExpr.SpecializeTypedExpr(context));
+end;
+
 // ------------------
 // ------------------ TReadOnlyFieldExpr ------------------
 // ------------------
@@ -4404,7 +4418,16 @@ end;
 //
 function TReadOnlyFieldExpr.IsWritable: Boolean;
 begin
-   Result:=False;
+   Result := False;
+end;
+
+// SpecializeDataExpr
+//
+function TReadOnlyFieldExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
+begin
+   Result := TReadOnlyFieldExpr.Create(ScriptPos, context.SpecializeField(FieldSym),
+                                       ObjectExpr.SpecializeTypedExpr(context),
+                                       context.SpecializeType(Typ));
 end;
 
 // ------------------

@@ -1,0 +1,2 @@
+Syntax Error: No available specialization of operator "+" for types "Boolean" and "Boolean" [line: 13, column: 16]
+Syntax Error: Generic parameters list expected [line: 15, column: 16]

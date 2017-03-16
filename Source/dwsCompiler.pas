@@ -9877,7 +9877,7 @@ begin
             hotPos := FTok.HotPos;
             constraintType := ReadType('', tcParameter);
             if constraintType <> nil then begin
-               param.AddConstraint(TGenericConstraintType.Create(constraintType));
+               param.AddConstraint(TGenericConstraintType.Create(param, constraintType));
             end else FMsgs.AddCompilerError(hotPos, CPE_UnsupportedGenericConstraint);
          until not FTok.TestDelete(ttCOMMA);
       end;
@@ -9892,8 +9892,10 @@ function TdwsCompiler.ReadSpecializedType(genericType : TGenericSymbol) : TTypeS
 var
    value : TTypeSymbol;
    valueList : TUnSortedSymbolTable;
+   valuePosList : TScriptPosArray;
    startPos, hotPos : TScriptPos;
    checkSuccessful : Boolean;
+   n : Integer;
 begin
    startPos := FTok.HotPos;
    if not FTok.TestDelete(ttLESS) then
@@ -9905,11 +9907,10 @@ begin
          hotPos := FTok.HotPos;
          value := ReadType('', tcGeneric);
          if value <> nil then begin
-            if valueList.Count < genericType.Parameters.Count then begin
-               if not genericType.Parameters[valueList.Count].CheckConstraints(hotPos, value, FMsgs) then
-                  checkSuccessful := False;
-            end;
             valueList.AddSymbol(value);
+            n := Length(valuePosList);
+            SetLength(valuePosList, n+1);
+            valuePosList[n] := hotPos;
          end;
       until not FTok.TestDelete(ttCOMMA);
       if not FTok.TestDelete(ttGTR) then
@@ -9921,7 +9922,11 @@ begin
       end;
 
       if checkSuccessful then begin
-         Result := genericType.SpecializationFor(valueList, startPos, CurrentUnitSymbol, FCompilerContext, FOperators, Optimize);
+         Result := genericType.SpecializationFor(
+            startPos, CurrentUnitSymbol,
+            valueList, valuePosList,
+            FCompilerContext, FOperators
+         );
       end else begin
          Result := genericType;
       end;

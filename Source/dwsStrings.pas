@@ -157,6 +157,7 @@ const
   CPE_SpecializationNotSupportedYet = 'Specialization of %s is not supported yet';
   CPE_GenericityNotSupportedYet = 'Genericity of %s not supported yet';
   CPE_PartialClassesCannotBeSpecialized = 'Partial classes cannot be specialized';
+  CPE_NoAvailableBinaryOpSpecialization = 'No available specialization of operator "%s" for types "%s" and "%s"';
 
   // ReadName
   CPE_UnknownName = 'Unknown name "%s"';

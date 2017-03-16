@@ -20,8 +20,7 @@ interface
 
 uses
    dwsTokenizer, dwsScriptSource,
-   dwsExprs, dwsSymbols, dwsGenericSymbols, dwsCompilerContext;
-
+   dwsExprs, dwsSymbols, dwsGenericSymbols, dwsCompilerContext, dwsStrings;
 
 type
 
@@ -69,12 +68,23 @@ end;
 // SpecializeTypedExpr
 //
 function TGenericBinaryOpExpr.SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr;
+var
+   leftSpecialized, rightSpecialized : TTypedExpr;
 begin
+   leftSpecialized := Left.SpecializeTypedExpr(context);
+   rightSpecialized := Right.SpecializeTypedExpr(context);
+
    Result := CreateTypedOperatorExpr(
       CompilerContextFromSpecialization(context),
       FOp, FScriptPos,
-      Left.SpecializeTypedExpr(context), Right.SpecializeTypedExpr(context)
+      leftSpecialized, rightSpecialized
    );
+   if Result = nil then begin
+      context.AddCompilerErrorFmt(CPE_NoAvailableBinaryOpSpecialization,
+                                  [cTokenStrings[FOp], leftSpecialized.Typ.Caption, rightSpecialized.Typ.Caption]);
+      leftSpecialized.Free;
+      rightSpecialized.Free;
+   end;
 end;
 
 // ScriptPos
