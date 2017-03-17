@@ -350,10 +350,12 @@ type
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
+
+         function  SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
    end;
 
    // Array expressions: x[index0] for dynamic arrays where BaseExpr is a TObjectVarExpr
-   TDynamicArrayVarExpr = class(TDynamicArrayExpr)
+   TDynamicArrayVarExpr = class sealed (TDynamicArrayExpr)
       protected
          function EvalItem(exec : TdwsExecution) : PVariant;
 
@@ -361,6 +363,8 @@ type
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
+
+         function  SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
    end;
 
    // array[index]:=val for dynamic arrays
@@ -520,6 +524,8 @@ type
          constructor Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos; Expr: TDataExpr);
          destructor Destroy; override;
 
+         function  SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
+
          procedure EvalNoResult(exec : TdwsExecution); override;
 
          property Expr : TDataExpr read FExpr;
@@ -610,21 +616,23 @@ type
    end;
 
    // length of dynamic arrays
-   TArrayLengthExpr = class(TUnaryOpIntExpr)
+   TArrayLengthExpr = class (TUnaryOpIntExpr)
       private
          FDelta : Integer;
          FCapture : Boolean;
-
       public
-         constructor Create(context : TdwsCompilerContext; expr : TTypedExpr; captureExpr : Boolean); reintroduce;
+         constructor Create(context : TdwsCompilerContext; expr : TTypedExpr; captureExpr : Boolean); reintroduce; virtual;
          destructor Destroy; override;
+
+         function SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr; override;
 
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          property Delta : Integer read FDelta write FDelta;
    end;
+   TArrayLengthExprClass = class of TArrayLengthExpr;
 
    // length of an open array
-   TOpenArrayLengthExpr = class(TArrayLengthExpr)
+   TOpenArrayLengthExpr = class (TArrayLengthExpr)
       public
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
@@ -831,7 +839,7 @@ type
    end;
 
    // Add an item to a dynamic array
-   TArrayAddExpr = class(TArrayPseudoMethodExpr)
+   TArrayAddExpr = class sealed (TArrayPseudoMethodExpr)
       private
          FArgs : TTightList;
 
@@ -851,6 +859,8 @@ type
 
          procedure AddArg(expr : TTypedExpr);
          procedure ExtractArgs(destination : TArrayAddExpr);
+
+         function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
 
          property ArgExpr[idx : Integer] : TTypedExpr read GetItemExpr;
          property ArgCount : Integer read FArgs.FCount;
@@ -1438,15 +1448,20 @@ type
    end;
 
    // left := const integer;
-   TAssignConstToIntegerVarExpr = class(TAssignConstExpr)
+   TAssignConstToIntegerVarExpr = class sealed (TAssignConstExpr)
       protected
          FRight : Int64;
+
       public
          constructor CreateVal(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                exec : TdwsExecution;
                                Left : TDataExpr; const rightValue : Int64);
+
+         function  SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
+
          procedure EvalNoResult(exec : TdwsExecution); override;
          function RightValue : Variant; override;
+
          property Right : Int64 read FRight write FRight;
    end;
 
@@ -1636,6 +1651,9 @@ type
       private
          FTable : TSymbolTable;
 
+      protected
+         procedure SpecializeTable(const context : ISpecializationContext; destination : TBlockExprBase); override;
+
       public
          constructor Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos);
          destructor Destroy; override;
@@ -1643,7 +1661,6 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
          function  Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
-         function  SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
 
          property  Table: TSymbolTable read FTable;
    end;
@@ -1685,6 +1702,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
          procedure Orphan(context : TdwsCompilerContext); override;
          function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
+         function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
 
          property CondExpr : TTypedExpr read FCond write FCond;
          property ThenExpr : TProgramExpr read FThen write FThen;
@@ -1707,6 +1725,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
          procedure Orphan(context : TdwsCompilerContext); override;
          function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
+         function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
 
          property ElseExpr : TProgramExpr read FElse write FElse;
    end;
@@ -1958,12 +1977,15 @@ type
          function GetSubExprCount : Integer; override;
 
       public
+         constructor Create(const aPos: TScriptPos); virtual;
          destructor Destroy; override;
 
          property DoExpr: TProgramExpr read FDoExpr write FDoExpr;
          property FromExpr: TTypedExpr read FFromExpr write FFromExpr;
          property ToExpr: TTypedExpr read FToExpr write FToExpr;
          property VarExpr: TIntVarExpr read FVarExpr write FVarExpr;
+
+         function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
    end;
 
    TForExprClass = class of TForExpr;
@@ -1992,6 +2014,8 @@ type
 
          function EvalStep(exec : TdwsExecution) : Int64;
          procedure RaiseForLoopStepShouldBeStrictlyPositive(exec : TdwsExecution; index : Int64);
+
+         function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
 
          property StepExpr : TTypedExpr read FStepExpr write FStepExpr;
    end;
@@ -3551,6 +3575,17 @@ begin
    else VariantToString(PVariant(p)^, Result);
 end;
 
+// SpecializeDataExpr
+//
+function TDynamicArrayExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
+begin
+   Result := TDynamicArrayExpr.Create(
+      ScriptPos,
+      BaseExpr.SpecializeDataExpr(context), IndexExpr.SpecializeTypedExpr(context),
+      context.SpecializeType(BaseExpr.Typ) as TArraySymbol
+      );
+end;
+
 // ------------------
 // ------------------ TDynamicArrayVarExpr ------------------
 // ------------------
@@ -3611,6 +3646,17 @@ begin
       Result:=UnicodeString(p.VUString)
    {$endif}
    else VariantToString(PVariant(p)^, Result);
+end;
+
+// SpecializeDataExpr
+//
+function TDynamicArrayVarExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
+begin
+   Result := TDynamicArrayVarExpr.Create(
+      ScriptPos,
+      BaseExpr.SpecializeDataExpr(context), IndexExpr.SpecializeTypedExpr(context),
+      context.SpecializeType(BaseExpr.Typ) as TArraySymbol
+      );
 end;
 
 // ------------------
@@ -4093,6 +4139,17 @@ begin
    inherited;
 end;
 
+// SpecializeProgramExpr
+//
+function TInitDataExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+begin
+   Result := TInitDataExpr.Create(
+      CompilerContextFromSpecialization(context),
+      ScriptPos,
+      Expr.SpecializeDataExpr(context)
+   );
+end;
+
 // EvalNoResult
 //
 procedure TInitDataExpr.EvalNoResult(exec : TdwsExecution);
@@ -4490,6 +4547,17 @@ begin
    if not FCapture then
       Expr:=nil;
    inherited;
+end;
+
+// SpecializeTypedExpr
+//
+function TArrayLengthExpr.SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr;
+begin
+   Result := TArrayLengthExprClass(ClassType).Create(
+      CompilerContextFromSpecialization(context),
+      Expr.SpecializeTypedExpr(context), True
+   );
+   TArrayLengthExpr(Result).Delta := Delta;
 end;
 
 // EvalAsInteger
@@ -6461,6 +6529,17 @@ begin
    FRight:=rightValue;
 end;
 
+// SpecializeProgramExpr
+//
+function TAssignConstToIntegerVarExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+begin
+   Result := TAssignConstToIntegerVarExpr.CreateVal(
+      CompilerContextFromSpecialization(context), ScriptPos,
+      CompilerContextFromSpecialization(context).Execution,
+      Left.SpecializeDataExpr(context), FRight
+   );
+end;
+
 // EvalNoResult
 //
 procedure TAssignConstToIntegerVarExpr.EvalNoResult(exec : TdwsExecution);
@@ -7009,16 +7088,11 @@ begin
    end else Result:=Self;
 end;
 
-// SpecializeProgramExpr
+// SpecializeTable
 //
-function TBlockExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+procedure TBlockExpr.SpecializeTable(const context : ISpecializationContext; destination : TBlockExprBase);
 begin
-   if FTable.HasChildTables or (FTable.Count <> 0) then begin
-      context.AddCompilerError('Specialization of TBlockExpr with tables not supported yet');
-      Exit(nil);
-   end;
-
-   Result := inherited SpecializeProgramExpr(context);
+   context.SpecializeTable(FTable, (destination as TBlockExpr).FTable);
 end;
 
 // ------------------
@@ -7175,6 +7249,18 @@ begin
    end;
 end;
 
+// SpecializeProgramExpr
+//
+function TIfThenExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+begin
+   Result := TIfThenExpr.Create(
+      CompilerContextFromSpecialization(context),
+      ScriptPos,
+      CondExpr.SpecializeBooleanExpr(context),
+      ThenExpr.SpecializeProgramExpr(context)
+   );
+end;
+
 // GetSubExpr
 //
 function TIfThenExpr.GetSubExpr(i : Integer) : TExprBase;
@@ -7264,6 +7350,19 @@ begin
          FThen:=bufNoResult;
       end;
    end;
+end;
+
+// SpecializeProgramExpr
+//
+function TIfThenElseExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+begin
+   Result := TIfThenElseExpr.Create(
+      CompilerContextFromSpecialization(context),
+      ScriptPos,
+      CondExpr.SpecializeTypedExpr(context),
+      ThenExpr.SpecializeProgramExpr(context),
+      ElseExpr.SpecializeProgramExpr(context)
+   );
 end;
 
 // GetSubExpr
@@ -7789,6 +7888,13 @@ end;
 // ------------------ TForExpr ------------------
 // ------------------
 
+// Create
+//
+constructor TForExpr.Create(const aPos: TScriptPos);
+begin
+   inherited Create(aPos);
+end;
+
 // Destroy
 //
 destructor TForExpr.Destroy;
@@ -7798,6 +7904,20 @@ begin
    FToExpr.Free;
    FVarExpr.Free;
    inherited;
+end;
+
+// SpecializeProgramExpr
+//
+function TForExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+var
+   specialized : TForExpr;
+begin
+   specialized := TForExprClass(ClassType).Create(ScriptPos);
+   specialized.FVarExpr := VarExpr.SpecializeDataExpr(context) as TIntVarExpr;
+   specialized.FFromExpr := FromExpr.SpecializeTypedExpr(context);
+   specialized.FToExpr := ToExpr.SpecializeTypedExpr(context);
+   specialized.FDoExpr := DoExpr.SpecializeProgramExpr(context);
+   Result := specialized;
 end;
 
 // GetSubExpr
@@ -7846,6 +7966,14 @@ end;
 procedure TForStepExpr.RaiseForLoopStepShouldBeStrictlyPositive(exec : TdwsExecution; index : Int64);
 begin
    RaiseScriptError(exec, EScriptError.CreateFmt(RTE_ForLoopStepShouldBeStrictlyPositive, [index]));
+end;
+
+// SpecializeProgramExpr
+//
+function TForStepExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+begin
+   Result := inherited SpecializeProgramExpr(context);
+   (Result as TForStepExpr).FStepExpr := FStepExpr.SpecializeTypedExpr(context);
 end;
 
 // GetSubExpr
@@ -9335,6 +9463,28 @@ begin
    for i:=0 to FArgs.Count-1 do
       destination.FArgs.Add(FArgs.List[i]);
    FArgs.Clear;
+end;
+
+// SpecializeProgramExpr
+//
+function TArrayAddExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+var
+   i : Integer;
+   specialized : TArrayAddExpr;
+   arg : TTypedExpr;
+   elemTyp : TTypeSymbol;
+begin
+   specialized := TArrayAddExpr.Create(ScriptPos, BaseExpr.SpecializeTypedExpr(context), nil);
+   Result := specialized;
+   if BaseExpr = nil then Exit;
+   elemTyp := specialized.BaseExpr.Typ.Typ;
+   for i := 0 to ArgCount-1 do begin
+      arg := ArgExpr[i].SpecializeTypedExpr(context);
+      if (arg <> nil) and (not arg.Typ.IsOfType(elemTyp)) then
+         context.AddCompilerErrorFmt(CPE_IncompatibleParameterTypes,
+                                     [elemTyp.Caption, arg.Typ.Caption]);
+      specialized.AddArg(arg);
+   end;
 end;
 
 // GetSubExpr

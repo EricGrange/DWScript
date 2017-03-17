@@ -114,9 +114,13 @@ type
       function SpecializeType(typ : TTypeSymbol) : TTypeSymbol;
       function SpecializeDataSymbol(ds : TDataSymbol) : TDataSymbol;
       function SpecializeField(fld : TFieldSymbol) : TFieldSymbol;
+      procedure SpecializeTable(source, destination : TSymbolTable);
       function SpecializeExecutable(const exec : IExecutable) : IExecutable;
 
       procedure RegisterSpecialization(generic, specialized : TSymbol);
+
+      function SpecializedObject(obj : TRefCountedObject) : TRefCountedObject;
+      procedure RegisterSpecializedObject(generic, specialized : TRefCountedObject);
 
       procedure AddCompilerHint(const msg : String);
       procedure AddCompilerError(const msg : String);
@@ -306,6 +310,7 @@ type
          function GetCaption : UnicodeString; virtual;
          function GetDescription : UnicodeString; virtual;
          function GetAsFuncSymbol : TFuncSymbol; virtual;
+         function GetIsGeneric : Boolean; virtual;
 
       public
          constructor Create(const aName : UnicodeString; aType : TTypeSymbol);
@@ -319,7 +324,7 @@ type
          function IsPointerType : Boolean; virtual;
          function AsFuncSymbol : TFuncSymbol; overload;
          function AsFuncSymbol(var funcSym : TFuncSymbol) : Boolean; overload;
-         function IsGeneric : Boolean; virtual;
+         function IsGeneric : Boolean;
 
          function QualifiedName : UnicodeString; virtual;
 
@@ -538,6 +543,8 @@ type
 
          function HasExternalName : Boolean;
          function IsWritable : Boolean; virtual;
+
+         function Specialize(const context : ISpecializationContext) : TSymbol; override;
 
          property ExternalName : UnicodeString read GetExternalName write FExternalName;
          property Level : SmallInt read FLevel write FLevel;
@@ -2310,6 +2317,15 @@ begin
    Result:=nil;
 end;
 
+// GetIsGeneric
+//
+function TSymbol.GetIsGeneric : Boolean;
+begin
+   if FTyp <> nil then
+      Result := FTyp.IsGeneric
+   else Result := False;
+end;
+
 // AsFuncSymbol
 //
 function TSymbol.AsFuncSymbol : TFuncSymbol;
@@ -2323,8 +2339,8 @@ end;
 //
 function TSymbol.IsGeneric : Boolean;
 begin
-   if FTyp <> nil then
-      Result := FTyp.IsGeneric
+   if Self <> nil then
+      Result := GetIsGeneric
    else Result := False;
 end;
 
@@ -2356,7 +2372,8 @@ end;
 //
 function TSymbol.Specialize(const context : ISpecializationContext) : TSymbol;
 begin
-   raise ECompileException.CreateFmt(CPE_SpecializationNotSupportedYet, [ClassName]);
+   context.AddCompilerErrorFmt(CPE_SpecializationNotSupportedYet, [ClassName]);
+   Result := nil;
 end;
 
 function TSymbol.BaseType: TTypeSymbol;
@@ -3745,8 +3762,9 @@ end;
 //
 procedure TFuncSymbol.InternalSpecialize(destination : TFuncSymbol; const context : ISpecializationContext);
 var
-   i : Integer;
+   i, skip : Integer;
    specializedParam : TSymbol;
+   param : TParamSymbol;
 begin
    if FConditions <> nil then
       context.AddCompilerError('Functions with conditions cannot be specialized yet');
@@ -3760,12 +3778,13 @@ begin
 
    destination.FExternalConvention := FExternalConvention;
 
-   destination.Typ := context.SpecializeType(typ);
-   context.RegisterSpecialization(Result, destination.Result);
-
    // internal paramps are all pre-specialized
-   Assert(destination.InternalParams.Count = InternalParams.Count);
-   for i := 0 to InternalParams.Count-1 do begin
+   // but Result is handled separately
+   if Self.Result <> nil then
+      skip := 1
+   else skip := 0;
+   Assert(destination.InternalParams.Count = InternalParams.Count-skip);
+   for i := 0 to InternalParams.Count-1-skip do begin
       specializedParam := destination.InternalParams[i];
       context.RegisterSpecialization(InternalParams[i], specializedParam);
    end;
@@ -3779,10 +3798,14 @@ begin
 
    // specialize reamining parameters
    for i := destination.Params.Count to Params.Count-1 do begin
-      specializedParam := Params[i].Specialize(context);
+      param := Params[i];
+      specializedParam := param.Specialize(context);
       destination.Params.AddSymbol(specializedParam);
-      context.RegisterSpecialization(Params[i], specializedParam);
+      context.RegisterSpecialization(param, specializedParam);
    end;
+
+   destination.Typ := context.SpecializeType(typ);
+   context.RegisterSpecialization(Result, destination.Result);
 
    destination.Executable := context.SpecializeExecutable(FExecutable);
 end;
@@ -5610,6 +5633,16 @@ end;
 function TDataSymbol.IsWritable : Boolean;
 begin
    Result := True;
+end;
+
+// Specialize
+//
+function TDataSymbol.Specialize(const context : ISpecializationContext) : TSymbol;
+begin
+   if ClassType <> TDataSymbol then
+      Exit(inherited Specialize(context));
+
+   Result := TDataSymbol.Create(Name, context.SpecializeType(Typ));
 end;
 
 // ------------------

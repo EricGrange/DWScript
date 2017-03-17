@@ -25,13 +25,14 @@ interface
 
 uses
    dwsExprs, dwsSymbols, dwsErrors, dwsConstExprs, Variants, dwsScriptSource,
-   dwsCompilerContext;
+   dwsCompilerContext, dwsSpecializationContext;
 
 type
 
    TRelOpExpr = class(TBinaryOpExpr)
       constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
       procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+      function  SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr; override;
    end;
    TRelOpExprClass = class of TRelOpExpr;
 
@@ -192,6 +193,16 @@ end;
 procedure TRelOpExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
    Result:=EvalAsBoolean(exec);
+end;
+
+// SpecializeTypedExpr
+//
+function TRelOpExpr.SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr;
+begin
+   Result := TRelOpExprClass(ClassType).Create(
+      CompilerContextFromSpecialization(context), ScriptPos,
+      Left.SpecializeTypedExpr(context), Right.SpecializeTypedExpr(context)
+   );
 end;
 
 // ------------------

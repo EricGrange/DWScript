@@ -1428,10 +1428,11 @@ begin
       Result:=GetFuncExpr(TAliasMethodSymbol(meth).Alias);
       Result.AddArg(expr);
 
-   end else Result:=CreateMethodExpr(FCompilerContext, meth, Expr, RefKind, scriptPos, options);
+   end else begin
 
-   if (meth.Typ<>nil) and (meth.Typ.Size>1) then
-      Result.SetResultAddr(CurrentProg, nil);
+      Result:=CreateMethodExpr(FCompilerContext, meth, Expr, RefKind, scriptPos, options);
+
+   end;
 end;
 
 
@@ -6468,7 +6469,8 @@ begin
    try
       condExpr:=ReadExpr;
       if not (condExpr.IsOfType(FCompilerContext.TypBoolean) or condExpr.IsOfType(FCompilerContext.TypVariant)) then
-         FMsgs.AddCompilerError(hotPos, CPE_BooleanExpected);
+         if not condExpr.Typ.IsGeneric then
+            FMsgs.AddCompilerError(hotPos, CPE_BooleanExpected);
 
       if not FTok.TestDelete(ttTHEN) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ThenExpected);
@@ -9156,11 +9158,11 @@ begin
 
             // error already handled
 
-         else if not sym.Typ.IsOfType(propSym.Typ) then
+         else if (not sym.Typ.IsOfType(propSym.Typ)) and not (sym.IsGeneric or propSym.IsGeneric) then begin
 
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleType, [sym.Name])
 
-         else if sym is TMethodSymbol then begin
+         end else if sym is TMethodSymbol then begin
 
             if classProperty and not TMethodSymbol(sym).IsClassMethod then
                FMsgs.AddCompilerError(accessPos, CPE_ClassMethodExpected);
@@ -10400,6 +10402,8 @@ begin
                            Result:=TRelVarEqualNilExpr.Create(FCompilerContext, Result)
                         else Result:=TRelVarNotEqualNilExpr.Create(FCompilerContext, Result);
                         OrphanAndNil(right);
+                     end else if FGenericSymbol.Count > 0 then begin
+                        Result := TGenericBinaryOpExpr.Create(hotPos, FGenericSymbol.Peek, tt, Result, right);
                      end else begin
                         FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                         Result:=TRelOpExpr.Create(FCompilerContext, hotPos, Result, right); // keep going

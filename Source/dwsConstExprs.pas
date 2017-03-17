@@ -58,6 +58,8 @@ type
          function SameValueAs(otherConst : TConstExpr) : Boolean;
          function SameDataExpr(expr : TTypedExpr) : Boolean; override;
 
+         function  SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
+
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
          property Data : TData read FData;
 
@@ -197,7 +199,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsConvExprs;
+uses dwsConvExprs, dwsSpecializationContext;
 
 // ------------------
 // ------------------ TConstExpr ------------------
@@ -322,6 +324,14 @@ end;
 function TConstExpr.SameDataExpr(expr : TTypedExpr) : Boolean;
 begin
    Result:=(ClassType=expr.ClassType) and SameValueAs(TConstExpr(expr));
+end;
+
+// SpecializeDataExpr
+//
+function TConstExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
+begin
+   Result := CreateTyped(CompilerContextFromSpecialization(context),
+                         context.SpecializeType(Typ), Data, 0);
 end;
 
 // GetDataPtr

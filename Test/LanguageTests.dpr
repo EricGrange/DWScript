@@ -85,11 +85,11 @@ var
    procAffinity, systAffinity : DWORD;
 {$IFEND}
 begin
+   ReportMemoryLeaksOnShutdown:=True;
    DirectSet8087CW($133F);
    GetProcessAffinityMask(GetCurrentProcess, procAffinity, systAffinity);
    SetProcessAffinityMask(GetCurrentProcess, systAffinity);
    SetDecimalSeparator('.');
-   ReportMemoryLeaksOnShutdown:=True;
    Application.Initialize;
    GUITestRunner.RunRegisteredTests;
 end.

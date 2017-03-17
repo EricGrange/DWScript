@@ -250,6 +250,8 @@ begin
 
          Result:=TFuncSimpleExpr.Create(context, scriptPos, meth);
          expr.Free;
+         if (meth.Typ<>nil) and (meth.Typ.Size>1) then
+            Result.SetResultAddr(context.Prog as TdwsProgram, nil);
          Exit;
 
       end else if (expr.Typ is TClassOfSymbol) then begin
@@ -347,6 +349,9 @@ begin
    end else Assert(False);
 
    expr:=nil;
+
+   if (meth.Typ<>nil) and (meth.Typ.Size>1) then
+      Result.SetResultAddr(context.Prog as TdwsProgram, nil);
 end;
 
 // TypeCheckArguments
@@ -356,13 +361,15 @@ procedure TypeCheckArguments(context : TdwsCompilerContext; funcExpr : TFuncExpr
 
    procedure WrongArgumentError(const argPos : TScriptPos; n : Integer; typ : TTypeSymbol);
    begin
-      context.Msgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType, [n, typ.Caption]);
+      if not typ.IsGeneric then
+         context.Msgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType, [n, typ.Caption]);
    end;
 
    procedure WrongArgumentLongError(const argPos : TScriptPos; n : Integer; typ1, typ2 : TTypeSymbol);
    begin
-      context.Msgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType_Long,
-                                       [n, typ1.Caption, typ2.Caption]);
+      if not (typ1.IsGeneric or typ2.IsGeneric) then
+         context.Msgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType_Long,
+                                          [n, typ1.Caption, typ2.Caption]);
    end;
 
 var
@@ -712,11 +719,17 @@ begin
 
       Result := TConvStaticArrayToSetOfExpr.Create(hotPos, TArrayConstantExpr(expr), toTyp.UnAliasedType as TSetOfSymbol);
 
+   end else if expr.Typ.IsGeneric or toTyp.IsGeneric then begin
+
+      Result := expr;
+
    end else begin
+
       // error & keep compiling
       IncompatibleTypes(context, hotPos, msg, toTyp, exprTyp);
       Result:=TConvInvalidExpr.Create(context, expr, toTyp);
       Exit;
+
    end;
 end;
 

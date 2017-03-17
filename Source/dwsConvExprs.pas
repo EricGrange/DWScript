@@ -309,7 +309,8 @@ begin
    end;
    // Look if Types are compatible
    if not toTyp.IsCompatible(Result.Typ) then
-      ReportIncompatibleTypes;
+      if not (toTyp.IsGeneric or Result.Typ.IsGeneric) then
+         ReportIncompatibleTypes;
 end;
 
 // EvalAsVariant

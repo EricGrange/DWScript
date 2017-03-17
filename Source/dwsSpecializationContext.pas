@@ -20,13 +20,13 @@ interface
 
 uses
    dwsUtils, dwsSymbols, dwsScriptSource, dwsErrors, dwsStrings,
-   dwsCompilerContext, dwsOperators;
+   dwsCompilerContext, dwsOperators, dwsXPlatform;
 
 type
 
-   TSpecializedSymbol = record
-      Generic : TSymbol;
-      Specialized : TSymbol;
+   TSpecializedObjects = record
+      Generic : TRefCountedObject;
+      Specialized : TRefCountedObject;
    end;
 
    // TSpecializationContext
@@ -42,7 +42,7 @@ type
          FCompositeStack : TTightList;
          FFuncSymbol : TFuncSymbol;
          FFuncSymbolStack : TTightList;
-         FSpecializedSymbols : array of TSpecializedSymbol;
+         FSpecializedObjects : array of TSpecializedObjects;
          FOptimize : Boolean;
          FCompilerContext : TdwsCompilerContext;
          FOperators : TOperators;
@@ -68,9 +68,13 @@ type
          function SpecializeType(typ : TTypeSymbol) : TTypeSymbol;
          function SpecializeDataSymbol(ds : TDataSymbol) : TDataSymbol;
          function SpecializeField(fld : TFieldSymbol) : TFieldSymbol;
+         procedure SpecializeTable(source, destination : TSymbolTable);
          function SpecializeExecutable(const exec : IExecutable) : IExecutable;
 
          procedure RegisterSpecialization(generic, specialized : TSymbol);
+
+         function SpecializedObject(obj : TRefCountedObject) : TRefCountedObject;
+         procedure RegisterSpecializedObject(generic, specialized : TRefCountedObject);
 
          procedure AddCompilerHint(const msg : String);
          procedure AddCompilerError(const msg : String);
@@ -161,15 +165,21 @@ var
    i : Integer;
 begin
    if sym = nil then Exit(nil);
+   if not sym.IsGeneric then Exit(sym);
+
    for i := 0 to FParameters.Count-1 do
       if FParameters.Symbols[i] = sym then
          Exit(FValues.Symbols[i] as TTypeSymbol);
-   for i := 0 to High(FSpecializedSymbols) do
-      if FSpecializedSymbols[i].Generic = sym then
-         Exit(FSpecializedSymbols[i].Specialized);
-   if sym.IsGeneric then
-      AddCompilerErrorFmt(CPE_SpecializationNotSupportedYet, [sym.ClassName]);
-   Result := sym;
+   Result := TSymbol(SpecializedObject(sym));
+   if Result <> nil then begin
+      Assert(Result.InheritsFrom(TSymbol));
+      Exit;
+   end;
+
+   Result := sym.Specialize(Self);
+   if Result <> nil then
+      RegisterSpecialization(sym, Result)
+   else Result := sym;
 end;
 
 // SpecializeType
@@ -211,6 +221,19 @@ begin
    else Result := nil;
 end;
 
+// SpecializeTable
+//
+procedure TSpecializationContext.SpecializeTable(source, destination : TSymbolTable);
+var
+   sym, specializedSym : TSymbol;
+begin
+   for sym in source do begin
+      specializedSym := Specialize(sym);
+      destination.AddSymbol(specializedSym);
+      RegisterSpecialization(sym, specializedSym);
+   end;
+end;
+
 // SpecializeExecutable
 //
 function TSpecializationContext.SpecializeExecutable(const exec : IExecutable) : IExecutable;
@@ -223,13 +246,32 @@ end;
 // RegisterSpecialization
 //
 procedure TSpecializationContext.RegisterSpecialization(generic, specialized : TSymbol);
+begin
+   RegisterSpecializedObject(generic, specialized);
+end;
+
+// SpecializedObject
+//
+function TSpecializationContext.SpecializedObject(obj : TRefCountedObject) : TRefCountedObject;
+var
+   i : Integer;
+begin
+   for i := 0 to High(FSpecializedObjects) do
+      if FSpecializedObjects[i].Generic = obj then
+         Exit(FSpecializedObjects[i].Specialized);
+   Result := nil;
+end;
+
+// RegisterSpecializedObject
+//
+procedure TSpecializationContext.RegisterSpecializedObject(generic, specialized : TRefCountedObject);
 var
    n : Integer;
 begin
-   n := Length(FSpecializedSymbols);
-   SetLength(FSpecializedSymbols, n+1);
-   FSpecializedSymbols[n].Generic := generic;
-   FSpecializedSymbols[n].Specialized := specialized;
+   n := Length(FSpecializedObjects);
+   SetLength(FSpecializedObjects, n+1);
+   FSpecializedObjects[n].Generic := generic;
+   FSpecializedObjects[n].Specialized := specialized;
 end;
 
 // AddCompilerHint

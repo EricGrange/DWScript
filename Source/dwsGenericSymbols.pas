@@ -37,10 +37,12 @@ type
    TGenericConstraintBinaryOp = class;
 
    TGenericTypeSymbol = class (TTypeSymbol)
+      protected
+         function GetIsGeneric : Boolean; override;
       public
          procedure InitData(const data : TData; offset : Integer); override;
+         function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         function IsGeneric : Boolean; override;
    end;
 
    TGenericTypeParameterSymbol = class (TGenericTypeSymbol)
@@ -429,16 +431,23 @@ begin
    // nothing
 end;
 
+// DoIsOfType
+//
+function TGenericTypeSymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
+begin
+   Result := False; // TODO check vs constraints
+end;
+
 // IsCompatible
 //
 function TGenericTypeSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-   Result := True;
+   Result := False; // TODO check vs constraints
 end;
 
-// IsGeneric
+// GetIsGeneric
 //
-function TGenericTypeSymbol.IsGeneric : Boolean;
+function TGenericTypeSymbol.GetIsGeneric : Boolean;
 begin
    Result := True;
 end;

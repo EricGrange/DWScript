@@ -204,7 +204,7 @@ begin
       SetString(FRawURL, val.CookedUrl.pAbsPath, urlLength);
       checkQueryString := False;
    end;
-   if (rewriter.Count > 0) and rewriter.Apply(FRawURL, FURL) then begin
+   if (rewriter <> nil) and (rewriter.Count > 0) and rewriter.Apply(FRawURL, FURL) then begin
       checkQueryString := True;
       urlLength := Length(FURL);
    end else FURL := FRawURL;

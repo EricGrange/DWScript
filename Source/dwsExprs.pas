@@ -721,8 +721,9 @@ type
          function OptimizeToTypedExpr(context : TdwsCompilerContext; exec : TdwsExecution; const hotPos : TScriptPos) : TTypedExpr;
          function OptimizeToFloatConstant(context : TdwsCompilerContext; exec : TdwsExecution) : TTypedExpr;
 
-         function  SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override; final;
-         function  SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr; virtual;
+         function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override; final;
+         function SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr; virtual;
+         function SpecializeBooleanExpr(const context : ISpecializationContext) : TTypedExpr;
 
          function ScriptPos : TScriptPos; override;
 
@@ -792,6 +793,8 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
+         procedure SpecializeTable(const context : ISpecializationContext; destination : TBlockExprBase); virtual;
+
       public
          destructor Destroy; override;
          procedure Orphan(context : TdwsCompilerContext); override;
@@ -800,7 +803,7 @@ type
          procedure ReplaceStatement(index : Integer; expr : TProgramExpr);
          function ExtractStatement(index : Integer) : TProgramExpr;
 
-         function  SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
+         function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
 
          property StatementCount : Integer read FCount;
    end;
@@ -1307,30 +1310,34 @@ type
 
    TBinaryOpExprClass = class of TBinaryOpExpr;
 
-   TVariantBinOpExpr = class(TBinaryOpExpr)
+   TStaticallyTypedBinOpExpr = class(TBinaryOpExpr)
+      function SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr; override;
+   end;
+
+   TVariantBinOpExpr = class(TStaticallyTypedBinOpExpr)
      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
      function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
-   TIntegerBinOpExpr = class(TBinaryOpExpr)
+   TIntegerBinOpExpr = class(TStaticallyTypedBinOpExpr)
      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
      procedure Orphan(context : TdwsCompilerContext); override;
      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
      function EvalAsFloat(exec : TdwsExecution) : Double; override;
      function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
-   TStringBinOpExpr = class(TBinaryOpExpr)
+   TStringBinOpExpr = class(TStaticallyTypedBinOpExpr)
      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
      procedure Orphan(context : TdwsCompilerContext); override;
      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
      function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
-   TFloatBinOpExpr = class(TBinaryOpExpr)
+   TFloatBinOpExpr = class(TStaticallyTypedBinOpExpr)
      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
      procedure Orphan(context : TdwsCompilerContext); override;
      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
      function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
    end;
-   TBooleanBinOpExpr = class(TBinaryOpExpr)
+   TBooleanBinOpExpr = class(TStaticallyTypedBinOpExpr)
      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
      function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
@@ -3224,10 +3231,19 @@ function TdwsProcedure.Specialize(const context : ISpecializationContext) : IExe
 var
    i : Integer;
    specialized : TdwsProcedure;
+   specializedParent : TRefCountedObject;
 begin
-   specialized := TdwsProcedure.Create(Parent);
+   specializedParent := context.SpecializedObject(Parent);
+   if specializedParent <> nil then
+      specialized := TdwsProcedure.Create(specializedParent as TdwsProgram)
+   else specialized := TdwsProcedure.Create(Parent);
    Result := specialized as IExecutable;
+
+   context.RegisterSpecializedObject(Parent, specialized);
+
    specialized.FFunc := FFunc;
+
+   context.SpecializeTable(FTable, specialized.FTable);
 
    for i := 0 to FInitExpr.SubExprCount-1 do
       specialized.FInitExpr.AddStatement(FInitExpr.SpecializeProgramExpr(context));
@@ -3944,6 +3960,15 @@ begin
    Result := nil;
 end;
 
+// SpecializeBooleanExpr
+//
+function TTypedExpr.SpecializeBooleanExpr(const context : ISpecializationContext) : TTypedExpr;
+begin
+   Result := SpecializeTypedExpr(context);
+   if (Result <> nil) and not Result.Typ.IsOfType(CompilerContextFromSpecialization(context).TypBoolean) then
+      context.AddCompilerError(CPE_BooleanExpected);
+end;
+
 // ScriptPos
 //
 function TTypedExpr.ScriptPos : TScriptPos;
@@ -4181,10 +4206,19 @@ var
    blockExpr : TBlockExpr;
 begin
    blockExpr := TBlockExpr.Create(CompilerContextFromSpecialization(context), ScriptPos);
+
+   SpecializeTable(context, blockExpr);
    for i := 0 to FCount-1 do
       blockExpr.AddStatement(FStatements[i].SpecializeProgramExpr(context));
 
    Result := blockExpr;
+end;
+
+// SpecializeTable
+//
+procedure TBlockExprBase.SpecializeTable(const context : ISpecializationContext; destination : TBlockExprBase);
+begin
+   // no table by default
 end;
 
 // GetSubExpr
@@ -5560,6 +5594,20 @@ end;
 function TBinaryOpExpr.GetSubExprCount : Integer;
 begin
    Result:=2;
+end;
+
+// ------------------
+// ------------------ TStaticallyTypedBinOpExpr ------------------
+// ------------------
+
+// SpecializeTypedExpr
+//
+function TStaticallyTypedBinOpExpr.SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr;
+begin
+   Result := TBinaryOpExprClass(ClassType).Create(
+      CompilerContextFromSpecialization(context), ScriptPos,
+      Left.SpecializeTypedExpr(context), Right.SpecializeTypedExpr(context)
+   );
 end;
 
 // ------------------
