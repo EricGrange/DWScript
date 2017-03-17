@@ -407,7 +407,7 @@ begin
    if args.Count>0 then
       t:=args.AsFloat[0]
    else t:=UTCDateTime;
-   Result:=Trunc(t*86400)-Int64(25569)*86400;
+   Result:=Round(t*86400)-Int64(25569)*86400;
 end;
 
 { TUnixTimeToDateTimeFunc }
