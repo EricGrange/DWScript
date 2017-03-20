@@ -20,14 +20,11 @@ interface
 
 uses
    dwsUtils, dwsSymbols, dwsScriptSource, dwsErrors, dwsStrings,
-   dwsCompilerContext, dwsOperators, dwsXPlatform;
+   dwsCompilerContext, dwsOperators, dwsXPlatform, dwsSpecializationMap;
 
 type
 
-   TSpecializedObjects = record
-      Generic : TRefCountedObject;
-      Specialized : TRefCountedObject;
-   end;
+   TSpecializationAcquireSymbolProc = procedure (sym : TSymbol) of object;
 
    // TSpecializationContext
    //
@@ -42,10 +39,11 @@ type
          FCompositeStack : TTightList;
          FFuncSymbol : TFuncSymbol;
          FFuncSymbolStack : TTightList;
-         FSpecializedObjects : array of TSpecializedObjects;
+         FSpecializedObjects : TSpecializationMap;
          FOptimize : Boolean;
          FCompilerContext : TdwsCompilerContext;
          FOperators : TOperators;
+         FAcquireSymbol : TSpecializationAcquireSymbolProc;
 
       protected
          function Name : String;
@@ -55,13 +53,16 @@ type
          function Msgs : TdwsCompileMessageList;
          function Optimize : Boolean;
 
+         function ExistingSpecialization(sym : TSymbol) : TSymbol;
+
       public
          constructor Create(const aName : String; aParams, aValues : TUnSortedSymbolTable;
                             const aScriptPos : TScriptPos; aUnit : TSymbol;
                             const aValuesPosList : TScriptPosArray;
                             const aCompilerContext : TdwsCompilerContext;
                             const aOperators : TOperators;
-                            allowOptimization : Boolean);
+                            allowOptimization : Boolean;
+                            aMap : TSpecializationMap);
          destructor Destroy; override;
 
          function Specialize(sym : TSymbol) : TSymbol;
@@ -82,10 +83,15 @@ type
          procedure AddCompilerErrorFmt(const aScriptPos : TScriptPos; const msgFmt : String;
                                        const params : array of const); overload;
 
+         property SpecializedObjects : TSpecializationMap read FSpecializedObjects write FSpecializedObjects;
+
          property CompilerContext : TdwsCompilerContext read FCompilerContext;
          property Operators : TOperators read FOperators;
          property ScriptPos : TScriptPos read FScriptPos;
          function ParameterValuePos(parameter : TSymbol) : TScriptPos;
+
+         property AcquireSymbol : TSpecializationAcquireSymbolProc read FAcquireSymbol write FAcquireSymbol;
+         procedure RegisterInternalType(sym : TSymbol);
 
          procedure EnterComposite(sym : TCompositeTypeSymbol);
          procedure LeaveComposite;
@@ -135,7 +141,8 @@ constructor TSpecializationContext.Create(
       const aValuesPosList : TScriptPosArray;
       const aCompilerContext : TdwsCompilerContext;
       const aOperators : TOperators;
-      allowOptimization : Boolean);
+      allowOptimization : Boolean;
+      aMap : TSpecializationMap);
 begin
    inherited Create;
    FName := aName;
@@ -148,6 +155,7 @@ begin
    FOperators := aOperators;
    FOptimize := allowOptimization;
    FScriptPos := aScriptPos;
+   FSpecializedObjects := aMap;
 end;
 
 // Destroy
@@ -158,14 +166,13 @@ begin
    inherited;
 end;
 
-// Specialize
+// ExistingSpecialization
 //
-function TSpecializationContext.Specialize(sym : TSymbol) : TSymbol;
+function TSpecializationContext.ExistingSpecialization(sym : TSymbol) : TSymbol;
 var
    i : Integer;
 begin
    if sym = nil then Exit(nil);
-   if not sym.IsGeneric then Exit(sym);
 
    for i := 0 to FParameters.Count-1 do
       if FParameters.Symbols[i] = sym then
@@ -175,11 +182,18 @@ begin
       Assert(Result.InheritsFrom(TSymbol));
       Exit;
    end;
+end;
 
-   Result := sym.Specialize(Self);
-   if Result <> nil then
-      RegisterSpecialization(sym, Result)
-   else Result := sym;
+// Specialize
+//
+function TSpecializationContext.Specialize(sym : TSymbol) : TSymbol;
+begin
+   if sym = nil then Exit(nil);
+
+   Result := ExistingSpecialization(sym);
+
+   if Result = nil then
+      Result := sym.Specialize(Self);
 end;
 
 // SpecializeType
@@ -188,10 +202,14 @@ function TSpecializationContext.SpecializeType(typ : TTypeSymbol) : TTypeSymbol;
 var
    sym : TSymbol;
 begin
-   sym := Specialize(typ);
-   if sym <> nil then
-      Result := sym as TTypeSymbol
-   else Result := nil;
+   sym := ExistingSpecialization(typ);
+
+   if sym = nil then begin
+      if typ = nil then Exit(nil);
+      sym := typ.Specialize(Self);
+      SpecializedObjects.RegisterSpecialization(typ, sym);
+   end;
+   Result := sym as TTypeSymbol;
 end;
 
 // SpecializeDataSymbol
@@ -212,9 +230,6 @@ function TSpecializationContext.SpecializeField(fld : TFieldSymbol) : TFieldSymb
 var
    sym : TSymbol;
 begin
-   sym := SpecializeType(fld.StructSymbol);
-   if sym = nil then Exit(nil);
-
    sym := Specialize(fld);
    if sym <> nil then
       Result := sym as TFieldSymbol
@@ -253,25 +268,15 @@ end;
 // SpecializedObject
 //
 function TSpecializationContext.SpecializedObject(obj : TRefCountedObject) : TRefCountedObject;
-var
-   i : Integer;
 begin
-   for i := 0 to High(FSpecializedObjects) do
-      if FSpecializedObjects[i].Generic = obj then
-         Exit(FSpecializedObjects[i].Specialized);
-   Result := nil;
+   Result := FSpecializedObjects.SpecializationOf(obj);
 end;
 
 // RegisterSpecializedObject
 //
 procedure TSpecializationContext.RegisterSpecializedObject(generic, specialized : TRefCountedObject);
-var
-   n : Integer;
 begin
-   n := Length(FSpecializedObjects);
-   SetLength(FSpecializedObjects, n+1);
-   FSpecializedObjects[n].Generic := generic;
-   FSpecializedObjects[n].Specialized := specialized;
+   FSpecializedObjects.RegisterSpecialization(generic, specialized);
 end;
 
 // AddCompilerHint
@@ -307,6 +312,13 @@ begin
    if (i >= 0) and (i < Length(FValuesPosList)) then
       Result := FValuesPosList[i]
    else Result := FScriptPos;
+end;
+
+// RegisterInternalType
+//
+procedure TSpecializationContext.RegisterInternalType(sym : TSymbol);
+begin
+   AcquireSymbol(sym);
 end;
 
 // AddCompilerErrorFmt

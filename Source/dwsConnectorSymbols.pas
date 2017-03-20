@@ -117,7 +117,6 @@ type
 
          function SpecializeConnector(table : TSymbolTable; const qualifier : UnicodeString) : TConnectorSymbol; virtual;
          function CreateAssignExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
-                                   exec : TdwsExecution;
                                    left : TDataExpr; right : TTypedExpr) : TProgramExpr; virtual;
 
 
@@ -170,10 +169,9 @@ end;
 // CreateAssignExpr
 //
 function TConnectorSymbol.CreateAssignExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
-                                           exec : TdwsExecution;
                                            left : TDataExpr; right : TTypedExpr) : TProgramExpr;
 begin
-   Result:=TAssignExpr.Create(context, aScriptPos, exec, left, right);
+   Result:=TAssignExpr.Create(context, aScriptPos, left, right);
 end;
 
 // ------------------

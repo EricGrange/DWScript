@@ -74,7 +74,8 @@ uses
   USymbolDictionaryTests in 'USymbolDictionaryTests.pas',
   dwsGenericSymbols in '..\Source\dwsGenericSymbols.pas',
   dwsSpecializationContext in '..\Source\dwsSpecializationContext.pas',
-  dwsGenericExprs in '..\Source\dwsGenericExprs.pas';
+  dwsGenericExprs in '..\Source\dwsGenericExprs.pas',
+  dwsSpecializationMap in '..\Source\dwsSpecializationMap.pas';
 
 {$R *.res}
 

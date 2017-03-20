@@ -54,7 +54,7 @@ type
          function FindDuplicateUnitName : UnicodeString;
    end;
 
-   TEmptyFunc = class sealed (TInterfacedSelfObject, ICallable)
+   TEmptyFunc = class sealed (TInterfacedSelfObject, ICallable, IExecutable)
       public
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol);
          procedure CompileTimeCheck(context : TdwsCompilerContext; expr : TFuncExprBase);

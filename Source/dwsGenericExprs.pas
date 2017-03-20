@@ -70,6 +70,7 @@ end;
 function TGenericBinaryOpExpr.SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr;
 var
    leftSpecialized, rightSpecialized : TTypedExpr;
+   leftTyp, rightTyp : TTypeSymbol;
 begin
    leftSpecialized := Left.SpecializeTypedExpr(context);
    rightSpecialized := Right.SpecializeTypedExpr(context);
@@ -80,8 +81,14 @@ begin
       leftSpecialized, rightSpecialized
    );
    if Result = nil then begin
+      if leftSpecialized <> nil then
+         leftTyp := leftSpecialized.Typ
+      else leftTyp := nil;
+      if rightSpecialized <> nil then
+         rightTyp := rightSpecialized.Typ
+      else rightTyp := nil;
       context.AddCompilerErrorFmt(CPE_NoAvailableBinaryOpSpecialization,
-                                  [cTokenStrings[FOp], leftSpecialized.Typ.Caption, rightSpecialized.Typ.Caption]);
+                                  [cTokenStrings[FOp], leftTyp.Caption, rightTyp.Caption]);
       leftSpecialized.Free;
       rightSpecialized.Free;
    end;

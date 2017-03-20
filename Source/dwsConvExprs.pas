@@ -66,7 +66,7 @@ type
    // Integer(ordinal x)
    TConvOrdToIntegerExpr = class (TUnaryOpIntExpr)
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
-     function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
+     function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
 
    // String(variant x)
@@ -391,7 +391,7 @@ end;
 
 // Optimize
 //
-function TConvOrdToIntegerExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
+function TConvOrdToIntegerExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
 begin
    // this can happen when an integer was qualifed as a type
    if Expr.ClassType=TConstIntExpr then begin

@@ -187,7 +187,7 @@ type
          procedure EvalToTData(exec : TdwsExecution; var result : TData; offset : Integer);
          function EvalAsVarRecArray(exec : TdwsExecution) : TVarRecArrayContainer;
 
-         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
+         function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
          function IsWritable : Boolean; override;
    end;
 
@@ -801,7 +801,7 @@ end;
 
 // Optimize
 //
-function TArrayConstantExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
+function TArrayConstantExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
 var
    i : Integer;
    expr : TTypedExpr;
@@ -809,7 +809,7 @@ begin
    Result:=Self;
    for i:=0 to FElementExprs.Count-1 do begin
       expr:=TTypedExpr(FElementExprs.List[i]);
-      FElementExprs.List[i]:=expr.Optimize(context, exec);
+      FElementExprs.List[i]:=expr.Optimize(context);
    end;
 end;
 

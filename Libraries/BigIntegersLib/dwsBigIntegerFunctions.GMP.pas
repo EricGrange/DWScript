@@ -123,7 +123,7 @@ type
    end;
 
    TBigIntegerOpAssignExpr = class(TOpAssignExpr)
-     procedure TypeCheckAssign(context : TdwsCompilerContext; exec : TdwsExecution); override;
+     procedure TypeCheckAssign(context : TdwsCompilerContext); override;
    end;
 
    TBigIntegerPlusAssignExpr = class(TBigIntegerOpAssignExpr)
@@ -1224,7 +1224,7 @@ end;
 // ------------------ TBigIntegerOpAssignExpr ------------------
 // ------------------
 
-procedure TBigIntegerOpAssignExpr.TypeCheckAssign(context : TdwsCompilerContext; exec : TdwsExecution);
+procedure TBigIntegerOpAssignExpr.TypeCheckAssign(context : TdwsCompilerContext);
 begin
    // nothing here
 end;

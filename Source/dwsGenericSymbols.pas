@@ -23,7 +23,7 @@ uses
    dwsXPlatform, dwsUtils,
    dwsSymbols, dwsDataContext, dwsScriptSource, dwsErrors, dwsStrings,
    dwsSpecializationContext, dwsCompilerContext, dwsTokenizer, dwsOperators,
-   dwsCompilerUtils, dwsExprs;
+   dwsCompilerUtils, dwsExprs, dwsSpecializationMap;
 
 type
    TGenericSymbol = class;
@@ -95,6 +95,7 @@ type
    TGenericSymbolSpecialization = record
       Signature : String;
       Specialization : TTypeSymbol;
+      SpecializedObjects : TSpecializationMap;
    end;
 
    TGenericSymbol = class sealed (TGenericTypeSymbol)
@@ -109,6 +110,7 @@ type
          class function Signature(params : TUnSortedSymbolTable) : String; static;
 
          function GetCaption : UnicodeString; override;
+         procedure AcquireSymbol(sym : TSymbol);
 
       public
          constructor Create(const name : String; const params : IGenericParameters);
@@ -184,8 +186,10 @@ destructor TGenericSymbol.Destroy;
 var
    i : Integer;
 begin
-   for i := 0 to High(FSpecializations) do
+   for i := 0 to High(FSpecializations) do begin
       FSpecializations[i].Specialization.Free;
+      FSpecializations[i].SpecializedObjects.Free;
+   end;
    FGenericType.Free;
    FBinaryOps.Clean;
    FInternalTypes.Free;
@@ -195,26 +199,9 @@ end;
 // SpecializeType
 //
 function TGenericSymbol.SpecializeType(const context : ISpecializationContext) : TTypeSymbol;
-var
-   sig : String;
-   i : Integer;
 begin
-   sig := Signature(context.Values);
-   for i := 0 to High(FSpecializations) do begin
-      if FSpecializations[i].Signature = sig then begin
-         Result := FSpecializations[i].Specialization;
-         Exit(Result);
-      end;
-   end;
-
-   if FGenericType <> nil then
-      Result := FGenericType.SpecializeType(context)
-   else Result := nil;
-
-   i := Length(FSpecializations);
-   SetLength(FSpecializations, i+1);
-   FSpecializations[i].Signature := sig;
-   FSpecializations[i].Specialization := Result;
+   context.AddCompilerError('TGenericSymbol.SpecializeType should never be invoked...');
+   Result := nil;
 end;
 
 // SpecializationFor
@@ -227,14 +214,12 @@ function TGenericSymbol.SpecializationFor(const aScriptPos : TScriptPos; aUnit :
 var
    context : TSpecializationContext;
    sig, n : String;
-   i : Integer;
+   i, k : Integer;
 begin
    sig := Signature(values);
-   for i := 0 to High(FSpecializations) do begin
-      if FSpecializations[i].Signature = sig then begin
+   for i := 0 to High(FSpecializations) do
+      if FSpecializations[i].Signature = sig then
          Exit(FSpecializations[i].Specialization);
-      end;
-   end;
 
    n := Name + '<';
    for i := 0 to values.Count-1 do begin
@@ -244,15 +229,34 @@ begin
    end;
    n := n + '>';
 
+   // TODO support self-references
+
+   k := Length(FSpecializations);
+   SetLength(FSpecializations, k+1);
+   FSpecializations[k].Signature := sig;
+   FSpecializations[k].Specialization := nil;
+   FSpecializations[k].SpecializedObjects := TSpecializationMap.Create;
+
    context := TSpecializationContext.Create(
       n, Parameters.List, values, aScriptPos, aUnit, valuesPos,
       aContext, aOperators,
-      (coOptimize in aContext.Options) and not aContext.Msgs.HasErrors
+      (coOptimize in aContext.Options) and not aContext.Msgs.HasErrors,
+      FSpecializations[k].SpecializedObjects
    );
    try
+      context.AcquireSymbol := AcquireSymbol;
       for i := 0 to FParameters.Count-1 do
          FParameters.Parameters[i].CheckConstraints(context);
-      Result := SpecializeType(context);
+
+      if FGenericType <> nil then begin
+         Result := FGenericType.SpecializeType(context);
+         if Result <> nil then begin
+            Result.SetName(n, True);
+            if FInternalTypes <> nil then
+               FInternalTypes.Remove(Result);
+            FSpecializations[k].Specialization := Result;
+         end;
+      end else Result := nil;
    finally
       context.Free;
    end;
@@ -276,9 +280,7 @@ begin
    resultType.AddConstraint(Result);
    Result.IncRefCount;
    FBinaryOps.Add(Result);
-   if FInternalTypes = nil then
-      FInternalTypes := TSymbolTable.Create;
-   FInternalTypes.AddSymbolDirect(resultType);
+   AcquireSymbol(resultType);
 end;
 
 // GetCaption
@@ -286,6 +288,15 @@ end;
 function TGenericSymbol.GetCaption : UnicodeString;
 begin
    Result := Name + FParameters.Caption;
+end;
+
+// AcquireSymbol
+//
+procedure TGenericSymbol.AcquireSymbol(sym : TSymbol);
+begin
+   if FInternalTypes = nil then
+      FInternalTypes := TSymbolTable.Create;
+   FInternalTypes.AddSymbolDirect(sym);
 end;
 
 // Signature
@@ -435,14 +446,14 @@ end;
 //
 function TGenericTypeSymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
 begin
-   Result := False; // TODO check vs constraints
+   Result := (typSym = Self); // TODO check vs constraints
 end;
 
 // IsCompatible
 //
 function TGenericTypeSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-   Result := False; // TODO check vs constraints
+   Result := (typSym = Self); // TODO check vs constraints
 end;
 
 // GetIsGeneric

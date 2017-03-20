@@ -670,7 +670,7 @@ type
          function GetBaseType : TTypeSymbol; virtual;
 
       public
-         function  Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; virtual;
+         function  Optimize(context : TdwsCompilerContext) : TProgramExpr; virtual;
          procedure Orphan(context : TdwsCompilerContext); virtual;
 
          function  Specialize(const context : ISpecializationContext) : TExprBase; override; final;
@@ -718,8 +718,8 @@ type
          function GetBaseType : TTypeSymbol; override;
 
       public
-         function OptimizeToTypedExpr(context : TdwsCompilerContext; exec : TdwsExecution; const hotPos : TScriptPos) : TTypedExpr;
-         function OptimizeToFloatConstant(context : TdwsCompilerContext; exec : TdwsExecution) : TTypedExpr;
+         function OptimizeToTypedExpr(context : TdwsCompilerContext; const hotPos : TScriptPos) : TTypedExpr;
+         function OptimizeToFloatConstant(context : TdwsCompilerContext) : TTypedExpr;
 
          function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override; final;
          function SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr; virtual;
@@ -906,7 +906,7 @@ type
          procedure ClearArgs;
          function ExpectedArg : TParamSymbol; virtual; abstract;
          function GetArgType(idx : Integer) : TTypeSymbol;
-         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
+         function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
          procedure CompileTimeCheck(context : TdwsCompilerContext); virtual;
 
          procedure Initialize(compiler : TdwsCompilerContext); virtual;
@@ -1234,7 +1234,7 @@ type
          constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
          procedure Orphan(context : TdwsCompilerContext); override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
-         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
+         function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
 
    // float unary result
@@ -1243,7 +1243,7 @@ type
          constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
          procedure Orphan(context : TdwsCompilerContext); override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
-         function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
+         function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
 
    // UnicodeString unary result
@@ -1299,7 +1299,7 @@ type
 
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
 
-         procedure OptimizeConstantOperandsToFloats(context : TdwsCompilerContext; exec : TdwsExecution);
+         procedure OptimizeConstantOperandsToFloats(context : TdwsCompilerContext);
 
          procedure Swap;
 
@@ -1316,31 +1316,31 @@ type
 
    TVariantBinOpExpr = class(TStaticallyTypedBinOpExpr)
      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
-     function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
+     function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
    TIntegerBinOpExpr = class(TStaticallyTypedBinOpExpr)
      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
      procedure Orphan(context : TdwsCompilerContext); override;
      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
      function EvalAsFloat(exec : TdwsExecution) : Double; override;
-     function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
+     function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
    TStringBinOpExpr = class(TStaticallyTypedBinOpExpr)
      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
      procedure Orphan(context : TdwsCompilerContext); override;
      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
-     function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
+     function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
    TFloatBinOpExpr = class(TStaticallyTypedBinOpExpr)
      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
      procedure Orphan(context : TdwsCompilerContext); override;
      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
-     function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
+     function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
    TBooleanBinOpExpr = class(TStaticallyTypedBinOpExpr)
      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
-     function Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr; override;
+     function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
 
    // A list of typed expressions
@@ -3239,16 +3239,16 @@ begin
    else specialized := TdwsProcedure.Create(Parent);
    Result := specialized as IExecutable;
 
-   context.RegisterSpecializedObject(Parent, specialized);
+   context.RegisterSpecializedObject(Self, specialized);
 
    specialized.FFunc := FFunc;
 
    context.SpecializeTable(FTable, specialized.FTable);
 
+   specialized.FExpr := FExpr.SpecializeProgramExpr(context);
+
    for i := 0 to FInitExpr.SubExprCount-1 do
       specialized.FInitExpr.AddStatement(FInitExpr.SpecializeProgramExpr(context));
-
-   specialized.FExpr := FExpr.SpecializeProgramExpr(context);
 end;
 
 // ------------------
@@ -3651,7 +3651,7 @@ end;
 
 // Optimize
 //
-function TProgramExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
+function TProgramExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
 begin
    Result:=Self;
 end;
@@ -3915,12 +3915,12 @@ end;
 
 // OptimizeToTypedExpr
 //
-function TTypedExpr.OptimizeToTypedExpr(context : TdwsCompilerContext; exec : TdwsExecution; const hotPos : TScriptPos) : TTypedExpr;
+function TTypedExpr.OptimizeToTypedExpr(context : TdwsCompilerContext; const hotPos : TScriptPos) : TTypedExpr;
 var
    optimized : TProgramExpr;
 begin
    try
-      optimized:=Optimize(context, exec);
+      optimized:=Optimize(context);
       if optimized<>Self then begin
          Assert(optimized is TTypedExpr);
          Result:=TTypedExpr(optimized);
@@ -3935,13 +3935,13 @@ end;
 
 // OptimizeToFloatConstant
 //
-function TTypedExpr.OptimizeToFloatConstant(context : TdwsCompilerContext; exec : TdwsExecution) : TTypedExpr;
+function TTypedExpr.OptimizeToFloatConstant(context : TdwsCompilerContext) : TTypedExpr;
 begin
    if IsConstant then begin
       if Typ.IsOfType(context.TypInteger) or Typ.IsOfType(context.TypFloat) then begin
-         Result := TConstFloatExpr.Create(context.TypFloat, EvalAsFloat(exec));
+         Result := TConstFloatExpr.Create(context.TypFloat, EvalAsFloat(context.Execution));
          Orphan(context);
-      end else Result:=OptimizeToTypedExpr(context, exec, ScriptPos);
+      end else Result:=OptimizeToTypedExpr(context, ScriptPos);
    end else Result:=Self;
 end;
 
@@ -4400,7 +4400,7 @@ end;
 
 // Optimize
 //
-function TFuncExprBase.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
+function TFuncExprBase.Optimize(context : TdwsCompilerContext) : TProgramExpr;
 var
    buf : Variant;
    prog : TdwsProgram;
@@ -4411,15 +4411,15 @@ begin
       Initialize(context);
       try
          if (Typ=nil) or (Typ.Size<=1) then begin
-            EvalAsVariant(exec, buf);
+            EvalAsVariant(context.Execution, buf);
             Result := (context.CreateConstExpr(typ, buf) as TProgramExpr);
          end else begin
-            exec.Stack.Push(prog.DataSize);
+            context.Execution.Stack.Push(prog.DataSize);
             try
-               EvalAsVariant(exec, buf);
-               Result:=TConstExpr.Create(typ, exec.Stack.Data, FResultAddr);
+               EvalAsVariant(context.Execution, buf);
+               Result:=TConstExpr.Create(typ, context.Execution.Stack.Data, FResultAddr);
             finally
-               exec.Stack.Pop(prog.DataSize);
+               context.Execution.Stack.Pop(prog.DataSize);
             end;
          end;
       except
@@ -5563,10 +5563,10 @@ end;
 
 // OptimizeConstantOperandsToFloats
 //
-procedure TBinaryOpExpr.OptimizeConstantOperandsToFloats(context : TdwsCompilerContext; exec : TdwsExecution);
+procedure TBinaryOpExpr.OptimizeConstantOperandsToFloats(context : TdwsCompilerContext);
 begin
-   FLeft:=FLeft.OptimizeToFloatConstant(context, exec);
-   FRight:=FRight.OptimizeToFloatConstant(context, exec);
+   FLeft:=FLeft.OptimizeToFloatConstant(context);
+   FRight:=FRight.OptimizeToFloatConstant(context);
 end;
 
 // Swap
@@ -5624,12 +5624,12 @@ end;
 
 // Optimize
 //
-function TVariantBinOpExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
+function TVariantBinOpExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
 var
    v : Variant;
 begin
    if IsConstant then begin
-      EvalAsVariant(exec, v);
+      EvalAsVariant(context.Execution, v);
       Result := TConstExpr.Create(context.TypVariant, v);
       Orphan(context);
    end else Result:=Self;
@@ -5674,10 +5674,10 @@ end;
 
 // Optimize
 //
-function TIntegerBinOpExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
+function TIntegerBinOpExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
 begin
    if IsConstant then begin
-      Result := TConstIntExpr.Create(Typ, EvalAsInteger(exec));
+      Result := TConstIntExpr.Create(Typ, EvalAsInteger(context.Execution));
       Orphan(context);
    end else Result:=Self;
 end;
@@ -5715,12 +5715,12 @@ end;
 
 // Optimize
 //
-function TStringBinOpExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
+function TStringBinOpExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
 var
    buf : UnicodeString;
 begin
    if IsConstant then begin
-      EvalAsString(exec, buf);
+      EvalAsString(context.Execution, buf);
       Result := TConstStringExpr.Create(context.TypString, buf);
       Orphan(context);
    end else Result:=Self;
@@ -5756,13 +5756,13 @@ end;
 
 // Optimize
 //
-function TFloatBinOpExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
+function TFloatBinOpExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
 begin
    if IsConstant then begin
-      Result:=TConstFloatExpr.Create(Typ, EvalAsFloat(exec));
+      Result:=TConstFloatExpr.Create(Typ, EvalAsFloat(context.Execution));
       Orphan(context);
    end else begin
-      OptimizeConstantOperandsToFloats(context, exec);
+      OptimizeConstantOperandsToFloats(context);
       Result:=Self;
    end;
 end;
@@ -5788,10 +5788,10 @@ end;
 
 // Optimize
 //
-function TBooleanBinOpExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
+function TBooleanBinOpExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
 begin
    if IsConstant then begin
-      Result := TConstBooleanExpr.Create(context.TypBoolean, EvalAsBoolean(exec));
+      Result := TConstBooleanExpr.Create(context.TypBoolean, EvalAsBoolean(context.Execution));
       Orphan(context);
    end else Result:=Self;
 end;
@@ -5929,10 +5929,10 @@ end;
 
 // Optimize
 //
-function TUnaryOpIntExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
+function TUnaryOpIntExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
 begin
    if IsConstant then begin
-      Result := TConstIntExpr.Create(Typ, EvalAsInteger(exec));
+      Result := TConstIntExpr.Create(Typ, EvalAsInteger(context.Execution));
       Orphan(context);
    end else Result:=Self;
 end;
@@ -5971,10 +5971,10 @@ end;
 
 // Optimize
 //
-function TUnaryOpFloatExpr.Optimize(context : TdwsCompilerContext; exec : TdwsExecution) : TProgramExpr;
+function TUnaryOpFloatExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
 begin
    if IsConstant then begin
-      Result := TConstFloatExpr.Create(Typ, EvalAsFloat(exec));
+      Result := TConstFloatExpr.Create(Typ, EvalAsFloat(context.Execution));
       Orphan(context);
    end else Result:=Self;
 end;

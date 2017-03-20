@@ -444,7 +444,7 @@ begin
    FData.AllocateStackAddr(prog.Table.AddrGenerator);
    dsVar := TObjectVarExpr.Create(FData);
    FBase.IncRefCount;
-   FAssign := TAssignExpr.Create(prog.Root.CompilerContext, aPos, compiler.CompileTimeExecution, dsVar, FBase);
+   FAssign := TAssignExpr.Create(prog.Root.CompilerContext, aPos, dsVar, FBase);
    dsVar.IncRefCount;
    FInto.AddArg(dsVar);
    FInto.Initialize(prog.Root.CompilerContext);

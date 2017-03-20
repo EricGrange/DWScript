@@ -119,8 +119,10 @@ type
 
       procedure RegisterSpecialization(generic, specialized : TSymbol);
 
-      function SpecializedObject(obj : TRefCountedObject) : TRefCountedObject;
+      function  SpecializedObject(obj : TRefCountedObject) : TRefCountedObject;
       procedure RegisterSpecializedObject(generic, specialized : TRefCountedObject);
+
+      procedure RegisterInternalType(sym : TSymbol);
 
       procedure AddCompilerHint(const msg : String);
       procedure AddCompilerError(const msg : String);
@@ -317,7 +319,7 @@ type
 
          procedure Initialize(const msgs : TdwsCompileMessageList); virtual;
          function  BaseType : TTypeSymbol; virtual;
-         procedure SetName(const newName : UnicodeString);
+         procedure SetName(const newName : UnicodeString; force : Boolean = False);
 
          class function IsBaseType : Boolean; virtual;
          function IsType : Boolean; virtual;
@@ -936,6 +938,8 @@ type
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
          function IsSameOverloadOf(other : TFuncSymbol) : Boolean; override;
 
+         function SpecializeType(const context : ISpecializationContext) : TTypeSymbol; override;
+
          property StructSymbol : TCompositeTypeSymbol read FStructSymbol;
          property VMTIndex : Integer read FVMTIndex;
          property IsDefault : Boolean read GetIsDefault write SetIsDefault;
@@ -953,6 +957,8 @@ type
          property Visibility : TdwsVisibility read FVisibility;
    end;
 
+   TMethodSymbolClass = class of TMethodSymbol;
+
    TMethodSymbolArray = array of TMethodSymbol;
 
    TSourceMethodSymbol = class (TMethodSymbol)
@@ -965,8 +971,6 @@ type
          procedure SetSourcePosition(const val : TScriptPos); override;
 
       public
-         function SpecializeType(const context : ISpecializationContext) : TTypeSymbol; override;
-
          property DeclarationPos : TScriptPos read FDeclarationPos write FDeclarationPos;
 
          property SubExpr;
@@ -1035,6 +1039,8 @@ type
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          class function IsBaseType : Boolean; override;
+
+         function SpecializeType(const context : ISpecializationContext) : TTypeSymbol; override;
    end;
 
    TBaseIntegerSymbol = class (TBaseSymbol)
@@ -1266,6 +1272,8 @@ type
          function PrepareFirstField : TFieldSymbol;
 
          function GetMetaSymbol : TStructuredTypeMetaSymbol; virtual; abstract;
+
+         function GetIsGeneric : Boolean; override;
 
          procedure SpecializeMembers(destination : TCompositeTypeSymbol;
                                      const context : ISpecializationContext);
@@ -2383,9 +2391,9 @@ end;
 
 // SetName
 //
-procedure TSymbol.SetName(const newName : UnicodeString);
+procedure TSymbol.SetName(const newName : UnicodeString; force : Boolean = False);
 begin
-   Assert(FName='');
+   Assert(force or (FName=''));
    FName:=newName;
 end;
 
@@ -2582,17 +2590,22 @@ begin
             if Assigned(methSym.FExecutable) then
                methSym.FExecutable.InitSymbol(FMembers[i], msgs)
             else if not methSym.IsExternal then begin
-               msg:=msgs.AddCompilerErrorFmt((methSym as TSourceMethodSymbol).DeclarationPos, CPE_MethodNotImplemented,
-                                             [methSym.Name, methSym.StructSymbol.Caption]);
-               afa:=TdwsAFAAddImplementation.Create(msg, AFA_AddImplementation);
-               buf:=methSym.GetDescription;
-               FastStringReplace(buf, '()', ' ');
-               afa.Text:= #13#10
-                         +TrimRight(buf)
-                         +';'#13#10'begin'#13#10#9'|'#13#10'end;'#13#10;
-               k:=Pos(methSym.Name, afa.Text);
-               afa.Text:=Copy(afa.Text, 1, k-1)+methSym.StructSymbol.Name+'.'
-                        +Copy(afa.Text, k, MaxInt);
+               if methSym is TSourceMethodSymbol then begin
+                  msg:=msgs.AddCompilerErrorFmt(TSourceMethodSymbol(methSym).DeclarationPos, CPE_MethodNotImplemented,
+                                                [methSym.Name, methSym.StructSymbol.Caption]);
+                  afa:=TdwsAFAAddImplementation.Create(msg, AFA_AddImplementation);
+                  buf:=methSym.GetDescription;
+                  FastStringReplace(buf, '()', ' ');
+                  afa.Text:= #13#10
+                            +TrimRight(buf)
+                            +';'#13#10'begin'#13#10#9'|'#13#10'end;'#13#10;
+                  k:=Pos(methSym.Name, afa.Text);
+                  afa.Text:=Copy(afa.Text, 1, k-1)+methSym.StructSymbol.Name+'.'
+                           +Copy(afa.Text, k, MaxInt);
+               end else begin
+                  msgs.AddCompilerErrorFmt(cNullPos, CPE_MethodNotImplemented,
+                                           [methSym.Name, methSym.StructSymbol.Caption]);
+               end;
             end;
          end;
       end;
@@ -2658,6 +2671,7 @@ var
    member : TSymbol;
    specialized : TSymbol;
    field, specializedField : TFieldSymbol;
+   fieldType : TTypeSymbol;
    specializedProp : TPropertySymbol;
    firstPropertyIndex : Integer;
 begin
@@ -2666,14 +2680,16 @@ begin
       member := Members[i];
       if member is TFieldSymbol then begin
          field := TFieldSymbol(member);
-         specializedField := TFieldSymbol.Create(field.Name, context.SpecializeType(field.Typ), field.Visibility);
+         fieldType := context.SpecializeType(field.Typ);
+         specializedField := TFieldSymbol.Create(field.Name, fieldType, field.Visibility);
          destination.AddField(specializedField);
          context.RegisterSpecialization(field, specializedField);
       end else if member is TMethodSymbol then begin
-         specialized := member.Specialize(context);
+         specialized := TMethodSymbol(member).SpecializeType(context);
          if specialized <> nil then begin
             destination.AddMethod(specialized as TMethodSymbol);
             context.RegisterSpecialization(member, specialized);
+            specialized.IncRefCount;
          end;
       end else if member is TPropertySymbol then begin
          // specialize properties in a separate pass as they refer other members
@@ -2690,6 +2706,13 @@ begin
          destination.AddProperty(specializedProp);
       end;
    end;
+end;
+
+// GetIsGeneric
+//
+function TCompositeTypeSymbol.GetIsGeneric : Boolean;
+begin
+   Result := False; // TODO
 end;
 
 // ------------------
@@ -2975,6 +2998,7 @@ begin
    Assert(rsfFullyDefined in FFlags);
 
    specializedRecord := TRecordSymbol.Create(context.Name, context.UnitSymbol);
+
    context.EnterComposite(specializedRecord);
    try
       SpecializeMembers(specializedRecord, context);
@@ -3805,7 +3829,7 @@ begin
    end;
 
    destination.Typ := context.SpecializeType(typ);
-   context.RegisterSpecialization(Result, destination.Result);
+   context.RegisterSpecialization(Self.Result, destination.Result);
 
    destination.Executable := context.SpecializeExecutable(FExecutable);
 end;
@@ -3967,9 +3991,12 @@ var
    specializedFunc : TSourceFuncSymbol;
 begin
    specializedFunc := TSourceFuncSymbol.Create(context.Name, Kind, Level);
+
    specializedFunc.FSourcePosition := FSourcePosition;
    InternalSpecialize(specializedFunc, context);
    Result := specializedFunc;
+
+   context.RegisterInternalType(Result);
 end;
 
 // ------------------
@@ -4303,6 +4330,27 @@ begin
            and (IsClassMethod=TMethodSymbol(other).IsClassMethod);
 end;
 
+// SpecializeType
+//
+function TMethodSymbol.SpecializeType(const context : ISpecializationContext) : TTypeSymbol;
+var
+   specializedMethod : TMethodSymbol;
+begin
+   specializedMethod := TMethodSymbolClass(ClassType).Create(
+      Name, Kind, context.CompositeSymbol,
+      Visibility, IsClassMethod, Level
+   );
+
+   if IsStatic then
+      specializedMethod.SetIsStatic;
+   if IsStateless then
+      specializedMethod.SetIsStateless(True);
+   InternalSpecialize(specializedMethod, context);
+   Result := specializedMethod;
+
+   context.RegisterInternalType(Result);
+end;
+
 // SetOverride
 //
 procedure TMethodSymbol.SetOverride(meth: TMethodSymbol);
@@ -4339,22 +4387,6 @@ end;
 procedure TSourceMethodSymbol.SetSourcePosition(const val : TScriptPos);
 begin
    FSourcePosition:=val;
-end;
-
-// SpecializeType
-//
-function TSourceMethodSymbol.SpecializeType(const context : ISpecializationContext) : TTypeSymbol;
-var
-   specializedMethod : TSourceMethodSymbol;
-begin
-   specializedMethod := TSourceMethodSymbol.Create(Name, Kind, context.CompositeSymbol,
-                                                   Visibility, IsClassMethod, Level);
-   if IsStatic then
-      specializedMethod.SetIsStatic;
-   if IsStateless then
-      specializedMethod.SetIsStateless(True);
-   InternalSpecialize(specializedMethod, context);
-   Result := specializedMethod;
 end;
 
 // ------------------
@@ -5211,6 +5243,7 @@ begin
       context.AddCompilerError('Specialization of classes with custom destructor not yet supported');
 
    specializedClass := TClassSymbol.Create(context.Name, context.UnitSymbol);
+
    context.EnterComposite(specializedClass);
    try
       specializedClass.FFlags := FFlags - [csfInitialized];
@@ -5221,7 +5254,8 @@ begin
       else specializedClass.FExternalName := FExternalName;
 
       if Parent <> nil then
-         specializedClass.InheritFrom( context.Specialize(Parent) as TClassSymbol );
+         specializedClass.InheritFrom( Parent );
+//         specializedClass.InheritFrom( context.Specialize(Parent) as TClassSymbol );  TODO
 
       SpecializeMembers(specializedClass, context);
       specializedClass.Initialize(context.Msgs);
@@ -5375,6 +5409,13 @@ end;
 class function TBaseSymbol.IsBaseType : Boolean;
 begin
    Result:=True;
+end;
+
+// SpecializeType
+//
+function TBaseSymbol.SpecializeType(const context : ISpecializationContext) : TTypeSymbol;
+begin
+   Result := Self;
 end;
 
 // ------------------
@@ -6867,7 +6908,8 @@ end;
 //
 function TDynamicArraySymbol.SpecializeType(const context : ISpecializationContext) : TTypeSymbol;
 begin
-   Result := TDynamicArraySymbol.Create(context.Name, context.SpecializeType(Typ), context.SpecializeType(IndexType));
+   Result := TDynamicArraySymbol.Create(Name, context.SpecializeType(Typ), context.SpecializeType(IndexType));
+   context.RegisterInternalType(Result);
 end;
 
 // SetInitDynamicArrayProc
@@ -7393,7 +7435,8 @@ end;
 //
 function TTypeSymbol.SpecializeType(const context : ISpecializationContext) : TTypeSymbol;
 begin
-   Result := inherited Specialize(context) as TTypeSymbol;
+   context.AddCompilerErrorFmt(CPE_SpecializationNotSupportedYet, [ClassName]);
+   Result := Self;
 end;
 
 // IsType

@@ -627,7 +627,7 @@ begin
    FData.AllocateStackAddr(prog.Table.AddrGenerator);
    jsonVar := TVarExpr.Create(FData);
    FBase.IncRefCount;
-   FAssign := TAssignExpr.Create(compiler.CompilerContext, aPos, compiler.CompileTimeExecution, jsonVar, FBase);
+   FAssign := TAssignExpr.Create(compiler.CompilerContext, aPos, jsonVar, FBase);
    jsonVar.IncRefCount;
    FInto.AddArg(jsonVar);
    FInto.Initialize(compiler.CompilerContext);

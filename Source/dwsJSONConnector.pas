@@ -182,7 +182,6 @@ type
       public
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function CreateAssignExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
-                                   exec : TdwsExecution;
                                    left : TDataExpr; right : TTypedExpr) : TProgramExpr; override;
    end;
 
@@ -1103,7 +1102,6 @@ end;
 // CreateAssignExpr
 //
 function TJSONConnectorSymbol.CreateAssignExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
-                                               exec : TdwsExecution;
                                                left : TDataExpr; right : TTypedExpr) : TProgramExpr;
 var
    rightTyp : TTypeSymbol;
@@ -1115,9 +1113,9 @@ begin
 
    rightTypClass:=rightTyp.ClassType;
    if rightTypClass=TJSONConnectorSymbol then
-      Result:=TAssignExpr.Create(context, aScriptPos, exec, left, right)
+      Result:=TAssignExpr.Create(context, aScriptPos, left, right)
    else if rightTypClass.InheritsFrom(TBaseSymbol) then
-      Result:=TAssignBoxJSONExpr.Create(context, aScriptPos, exec, left, right);
+      Result:=TAssignBoxJSONExpr.Create(context, aScriptPos, left, right);
 
    if Result=nil then begin
       context.Msgs.AddCompilerErrorFmt(aScriptPos, CPE_AssignIncompatibleTypes,
