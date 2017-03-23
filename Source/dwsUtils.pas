@@ -437,11 +437,12 @@ type
          function Contains(const anItem : T) : Boolean;
          function Match(var anItem : T) : Boolean;
          procedure Enumerate(callBack : TSimpleHashFunc<T>);
-         procedure Clear;
+         procedure Clear(resetCapacity : Boolean = True);
 
          function HashBucketValue(index : Integer; var anItem : T) : Boolean; inline;
 
          property Count : Integer read FCount;
+
          property Capacity : Integer read FCapacity;
    end;
 
@@ -4382,12 +4383,23 @@ end;
 
 // Clear
 //
-procedure TSimpleHash<T>.Clear;
+procedure TSimpleHash<T>.Clear(resetCapacity : Boolean = True);
+var
+   i : Integer;
 begin
    FCount:=0;
-   FCapacity:=0;
-   FGrowth:=0;
-   FBuckets:=nil;
+   if resetCapacity then begin
+      FCapacity:=0;
+      FGrowth:=0;
+      FBuckets:=nil;
+   end else begin
+      for i := 0 to High(FBuckets) do begin
+         if FBuckets[i].HashCode <> 0 then begin
+            FBuckets[i].HashCode := 0;
+            FBuckets[i].Value := Default(T);
+         end;
+      end;
+   end;
 end;
 
 // HashBucketValue

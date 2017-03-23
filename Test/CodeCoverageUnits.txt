@@ -27,6 +27,8 @@ dwsFileFunctions
 dwsFileSystem
 dwsFilter
 dwsFunctions
+dwsGenericExprs
+dwsGenericSymbols
 dwsGlobalVars
 dwsGlobalVarsFunctions
 dwsHtmlFilter
@@ -53,6 +55,8 @@ dwsResultFunctions
 dwsSampling
 dwsScriptSource
 dwsSetOfExprs
+dwsSpecializationContext
+dwsSpecializationMap
 dwsStack
 dwsStringFunctions
 dwsStringResult

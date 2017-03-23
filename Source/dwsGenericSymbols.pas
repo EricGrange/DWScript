@@ -130,9 +130,23 @@ type
          property Parameters : IGenericParameters read FParameters;
    end;
 
-   TGenericConstraintType = class (TGenericConstraint)
+   TGenericParameterConstraint = class (TGenericConstraint)
       private
          FParameter : TGenericTypeParameterSymbol;
+
+      public
+         constructor Create(aParameter : TGenericTypeParameterSymbol);
+
+         property Parameter : TGenericTypeParameterSymbol read FParameter;
+   end;
+
+   TGenericConstraintRecord = class (TGenericParameterConstraint)
+      public
+         function Check(context : TSpecializationContext) : Boolean; override;
+   end;
+
+   TGenericConstraintType = class (TGenericParameterConstraint)
+      private
          FConstraintType : TTypeSymbol;
 
       public
@@ -464,6 +478,38 @@ begin
 end;
 
 // ------------------
+// ------------------ TGenericParameterConstraint ------------------
+// ------------------
+
+// Create
+//
+constructor TGenericParameterConstraint.Create(aParameter : TGenericTypeParameterSymbol);
+begin
+   inherited Create;
+   FParameter := aParameter;
+end;
+
+// ------------------
+// ------------------ TGenericConstraintRecord ------------------
+// ------------------
+
+// Check
+//
+function TGenericConstraintRecord.Check(context : TSpecializationContext) : Boolean;
+var
+   specialized : TTypeSymbol;
+   scriptPos : TScriptPos;
+begin
+   specialized := context.SpecializeType(Parameter);
+   if not specialized.UnAliasedTypeIs(TRecordSymbol) then begin
+      scriptPos := context.ParameterValuePos(Parameter);
+      context.AddCompilerErrorFmt(scriptPos, CPE_IncompatibleParameterTypes,
+                                  ['record', specialized.Caption]);
+      Result := False;
+   end else Result := True;
+end;
+
+// ------------------
 // ------------------ TGenericConstraintType ------------------
 // ------------------
 
@@ -471,8 +517,7 @@ end;
 //
 constructor TGenericConstraintType.Create(aParameter : TGenericTypeParameterSymbol; aConstraintType : TTypeSymbol);
 begin
-   inherited Create;
-   FParameter := aParameter;
+   inherited Create(aParameter);
    FConstraintType := aConstraintType;
 end;
 
@@ -483,9 +528,9 @@ var
    specialized : TTypeSymbol;
    scriptPos : TScriptPos;
 begin
-   specialized := context.SpecializeType(FParameter);
+   specialized := context.SpecializeType(Parameter);
    if not specialized.IsOfType(FConstraintType) then begin
-      scriptPos := context.ParameterValuePos(FParameter);
+      scriptPos := context.ParameterValuePos(Parameter);
       context.AddCompilerErrorFmt(scriptPos, CPE_IncompatibleParameterTypes,
                                   [FConstraintType.Caption, specialized.Caption]);
       Result := False;

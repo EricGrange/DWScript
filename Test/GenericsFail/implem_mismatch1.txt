@@ -1,0 +1,7 @@
+Hint: "t" does not match case of declaration ("T") [line: 9, column: 18]
+Syntax Error: T expected but u found. [line: 10, column: 18]
+Syntax Error: There is already a method with name "Dummy" [line: 10, column: 26]
+Syntax Error: Name expected [line: 12, column: 19]
+Syntax Error: Name expected [line: 13, column: 19]
+Syntax Error: ">" expected [line: 13, column: 19]
+Syntax Error: Dot "." expected [line: 13, column: 19]

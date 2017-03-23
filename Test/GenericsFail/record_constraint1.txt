@@ -1,0 +1,4 @@
+Syntax Error: Incompatible parameter types - "record" expected (instead of "Integer") [line: 5, column: 13]
+Syntax Error: Incompatible parameter types - "record" expected (instead of "TObject") [line: 6, column: 13]
+Syntax Error: Type expected [line: 7, column: 14]
+Syntax Error: ">" expected [line: 7, column: 14]

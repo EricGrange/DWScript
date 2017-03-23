@@ -2081,9 +2081,13 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
 
+         function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
+
          property CondExpr : TTypedExpr read FCondExpr write FCondExpr;
          property LoopExpr : TProgramExpr read FLoopExpr write FLoopExpr;
    end;
+
+   TLoopExprClass = class of TLoopExpr;
 
    // while FCondExpr do FLoopExpr
    TWhileExpr = class(TLoopExpr)
@@ -8168,6 +8172,18 @@ begin
          end;
       end;
    until False;
+end;
+
+// SpecializeProgramExpr
+//
+function TLoopExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+var
+   specialized : TLoopExpr;
+begin
+   specialized := TLoopExprClass(ClassType).Create(ScriptPos);
+   specialized.CondExpr := CondExpr.SpecializeTypedExpr(context);
+   specialized.LoopExpr := LoopExpr.SpecializeProgramExpr(context);
+   Result := specialized;
 end;
 
 // GetSubExpr

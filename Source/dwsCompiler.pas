@@ -669,6 +669,7 @@ type
 
          function ReadGenericParametersDecl : IGenericParameters;
          function ReadSpecializedType(genericType : TGenericSymbol) : TTypeSymbol;
+         procedure CheckGenericParameters(genericType : TGenericSymbol);
 
          function ReadType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TTypeSymbol;
          function ReadTypeGenericDecl(const typeName : UnicodeString; typeContext : TdwsReadTypeContext;
@@ -3135,6 +3136,7 @@ var
    overloadFuncSym, existingFuncSym, forwardedSym : TFuncSymbol;
    forwardedSymForParams : TFuncSymbol;
    forwardedSymPos : TSymbolPosition;
+   genericSymbol : TGenericSymbol;
    sourceContext : TdwsSourceContext;
    posArray : TScriptPosArray;
    isForward : Boolean;
@@ -3169,6 +3171,12 @@ begin
       sourceContext:=FSourceContextMap.Current;
    end else sourceContext:=nil;
 
+   if sym is TGenericSymbol then begin
+      genericSymbol := TGenericSymbol(sym);
+      CheckGenericParameters(genericSymbol);
+      sym := genericSymbol.GenericType;
+   end else genericSymbol := nil;
+
    // name is the name of composite type -> this is a method implementation
    if sym is TCompositeTypeSymbol then begin
 
@@ -3180,7 +3188,15 @@ begin
 
          // Store reference to class in dictionary
          RecordSymbolUse(sym, funcPos, [suReference]);
-         Result:=ReadMethodImpl(compositeSym, funcKind, pdoClassMethod in declOptions);
+
+         if genericSymbol <> nil then
+            EnterGeneric(genericSymbol);
+         try
+            Result:=ReadMethodImpl(compositeSym, funcKind, pdoClassMethod in declOptions);
+         finally
+            if genericSymbol <> nil then
+               LeaveGeneric;
+         end;
 
       end;
 
@@ -3531,6 +3547,9 @@ begin
    funcResult:=TSourceMethodSymbol.Create(name, funcKind, ownerSym, aVisibility, isClassMethod);
    funcResult.DeclarationPos:=methPos;
    try
+      if FGenericSymbol.Count > 0 then
+         funcResult.InternalParams.InsertParent(0, FGenericSymbol.Peek.Parameters.List);
+
       ReadParams(funcResult.HasParam, funcResult.AddParam, nil, nil, posArray);
 
       funcResult.Typ:=ReadFuncResultType(funcKind);
@@ -9875,6 +9894,7 @@ function TdwsCompiler.ReadGenericParametersDecl : IGenericParameters;
 var
    name : String;
    hotPos : TScriptPos;
+   tt : TTokenType;
    param : TGenericTypeParameterSymbol;
    constraintType : TTypeSymbol;
 begin
@@ -9892,10 +9912,17 @@ begin
       if FTok.TestDelete(ttCOLON) then begin
          repeat
             hotPos := FTok.HotPos;
-            constraintType := ReadType('', tcParameter);
-            if constraintType <> nil then begin
-               param.AddConstraint(TGenericConstraintType.Create(param, constraintType));
-            end else FMsgs.AddCompilerError(hotPos, CPE_UnsupportedGenericConstraint);
+            tt := FTok.TestDeleteAny([ttRECORD]);
+            case tt of
+               ttRECORD : begin
+                  param.AddConstraint(TGenericConstraintRecord.Create(param));
+               end;
+            else
+               constraintType := ReadType('', tcParameter);
+               if constraintType <> nil then begin
+                  param.AddConstraint(TGenericConstraintType.Create(param, constraintType));
+               end else FMsgs.AddCompilerError(hotPos, CPE_UnsupportedGenericConstraint);
+            end;
          until not FTok.TestDelete(ttCOMMA);
       end;
    until FTok.TestDeleteAny([ttSEMI, ttCOMMA]) = ttNONE;
@@ -9951,6 +9978,35 @@ begin
       valueList.Clear;
       valueList.Free;
    end;
+end;
+
+// CheckGenericParameters
+//
+procedure TdwsCompiler.CheckGenericParameters(genericType : TGenericSymbol);
+var
+   i : Integer;
+   name : String;
+   namePos : TScriptPos;
+   p : TGenericTypeParameterSymbol;
+begin
+   if not FTok.TestDelete(ttLESS) then
+      Msgs.AddCompilerError(FTok.HotPos, CPE_LesserExpected);
+   for i := 0 to genericType.Parameters.Count-1 do begin
+      if not FTok.TestDeleteNamePos(name, namePos) then begin
+         Msgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
+         Break;
+      end;
+      p := genericType.Parameters[i];
+      if not SameText(p.Name, name) then begin
+         Msgs.AddCompilerErrorFmt(namePos, CPE_X_ExpectedBut_Y_Found,
+                                  [p.Name, name]);
+      end else if p.Name <> name then begin
+         FMsgs.AddCompilerHintFmt(namePos, CPH_CaseDoesNotMatchDeclaration,
+                                  [name, p.Name], hlPedantic);
+      end;
+   end;
+   if not FTok.TestDelete(ttGTR) then
+      Msgs.AddCompilerError(FTok.HotPos, CPE_GreaterExpected);
 end;
 
 // ReadRaise
