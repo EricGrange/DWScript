@@ -1,0 +1,2 @@
+Syntax Error: Symbol "b" cannot be captured [line: 3, column: 24]
+Syntax Error: Symbol "a" cannot be captured [line: 17, column: 20]

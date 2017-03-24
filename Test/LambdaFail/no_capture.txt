@@ -1,0 +1,4 @@
+Syntax Error: Symbol "i" cannot be captured [line: 3, column: 25]
+Syntax Error: Symbol "j" cannot be captured [line: 8, column: 28]
+Syntax Error: Symbol "Self" cannot be captured [line: 17, column: 28]
+Syntax Error: Symbol "Self" cannot be captured [line: 18, column: 28]

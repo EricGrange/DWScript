@@ -3054,7 +3054,7 @@ begin
    FParent:=aParent;
 
    // Create a local symbol table and connect it to the parent symboltable
-   FAddrGenerator:=TAddrGeneratorRec.CreatePositive(Parent.Level + 1);
+   FAddrGenerator := TAddrGeneratorRec.CreatePositive(aParent.Level + 1);
    FRootTable:=TProgramSymbolTable.Create(Parent.Table, @FAddrGenerator);
    FTable:=FRootTable;
    FCompileMsgs:=Parent.CompileMsgs;

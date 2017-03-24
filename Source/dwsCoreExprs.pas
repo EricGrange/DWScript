@@ -141,16 +141,19 @@ type
 
    TVarParentExpr = class(TVarExpr)
       protected
+         FScriptPos : TScriptPos;
          FLevel: Integer;
 
       public
-         constructor Create(dataSym : TDataSymbol);
+         constructor Create(const aScriptPos: TScriptPos; dataSym : TDataSymbol);
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
          procedure GetRelativeDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
+
+         function ScriptPos : TScriptPos; override;
 
          property Level : Integer read FLevel;
    end;
@@ -2800,10 +2803,11 @@ end;
 
 // Create
 //
-constructor TVarParentExpr.Create(dataSym : TDataSymbol);
+constructor TVarParentExpr.Create(const aScriptPos: TScriptPos; dataSym : TDataSymbol);
 begin
-   inherited;
-   FLevel:=dataSym.Level;
+   inherited Create(dataSym);
+   FLevel := dataSym.Level;
+   FScriptPos := aScriptPos;
 end;
 
 // GetDataPtr
@@ -2839,6 +2843,13 @@ end;
 function TVarParentExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
    Result:=exec.Stack.Data[exec.Stack.GetSavedBp(FLevel)+FStackAddr];
+end;
+
+// ScriptPos
+//
+function TVarParentExpr.ScriptPos : TScriptPos;
+begin
+   Result := FScriptPos;
 end;
 
 // ------------------

@@ -1,3 +1,6 @@
+Errors >>>>
+Hint: "result" does not match case of declaration ("Result") [line: 6, column: 13]
+Result >>>>
 123
 456
 22

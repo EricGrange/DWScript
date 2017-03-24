@@ -7,6 +7,13 @@ pf := function : Integer
  
 pf := lambda => 1;
 
+procedure Bug1(a : Integer);
+begin
+   var i := 1;
+   pf := lambda => i;
+   pf := lambda => a;
+end;
+
 var pt := lambda => 2;
 
 var pp : function (i : Integer) : Integer;

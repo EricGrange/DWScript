@@ -1,0 +1,3 @@
+Syntax Error: Local procedure/function cannot be used as delegate [line: 18, column: 10]
+Syntax Error: Local procedure/function cannot be used as delegate [line: 20, column: 20]
+Syntax Error: Local procedure/function cannot be used as delegate [line: 24, column: 12]

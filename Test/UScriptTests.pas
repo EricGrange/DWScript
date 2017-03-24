@@ -74,6 +74,8 @@ begin
 
    CollectFiles(basePath+'FailureScripts'+PathDelim, cFilter, FFailures);
    CollectFiles(basePath+'AttributesFail'+PathDelim, cFilter, FFailures);
+
+   CollectFiles(basePath+'LambdaPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'LambdaFail'+PathDelim, cFilter, FFailures);
 
    CollectFiles(basePath+'InterfacesPass'+PathDelim, cFilter, FTests);

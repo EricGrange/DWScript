@@ -401,6 +401,7 @@ const
   CPE_RangeTooLarge = 'Range is too large';
 
   CPE_LocalFunctionAsDelegate = 'Local procedure/function cannot be used as delegate';
+  CPE_SymbolCannotBeCaptured = 'Symbol "%s" cannot be captured';
 
   // Connector
   CPE_ConnectorCall = 'Method "%s" not found in connector "%s"';

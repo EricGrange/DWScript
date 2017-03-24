@@ -410,14 +410,14 @@ type
          procedure HintUnusedResult(resultSymbol : TDataSymbol);
          procedure HintReferenceConstVarParams(funcSym : TFuncSymbol);
 
-         function GetVarExpr(dataSym : TDataSymbol): TVarExpr;
+         function GetVarExpr(const aScriptPos: TScriptPos; dataSym : TDataSymbol): TVarExpr;
 
          function GetLazyParamExpr(dataSym : TLazyParamSymbol) : TLazyParamExpr;
          function GetVarParamExpr(dataSym : TVarParamSymbol) : TByRefParamExpr;
          function GetConstByRefParamExpr(dataSym : TConstByRefParamSymbol) : TByRefParamExpr;
-         function GetConstParamExpr(dataSym : TParamSymbol) : TVarExpr;
+         function GetConstParamExpr(const aScriptPos: TScriptPos; dataSym : TParamSymbol) : TVarExpr;
+         function GetSelfParamExpr(const aScriptPos: TScriptPos; selfSym : TDataSymbol) : TVarExpr;
 
-         function GetSelfParamExpr(selfSym : TDataSymbol) : TVarExpr;
          function ReadAssign(token : TTokenType; var left : TDataExpr) : TProgramExpr;
 
          function ReadSetOfType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TSetOfSymbol;
@@ -575,7 +575,8 @@ type
          function ReadInterfaceSymbolName(baseType : TInterfaceSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
          function ReadRecordSymbolName(baseType : TRecordSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
          function ReadConstName(const constPos : TScriptPos; constSym : TConstSymbol; isWrite: Boolean) : TProgramExpr;
-         function ReadDataSymbolName(dataSym : TDataSymbol; fromTable : TSymbolTable; isWrite: Boolean; expecting : TTypeSymbol) : TProgramExpr;
+         function ReadDataSymbolName(const aScriptPos: TScriptPos;dataSym : TDataSymbol;
+                                     fromTable : TSymbolTable; isWrite: Boolean; expecting : TTypeSymbol) : TProgramExpr;
          function ReadImplicitCall(codeExpr : TTypedExpr; isWrite: Boolean;
                                    expecting : TTypeSymbol) : TProgramExpr;
          function ReadResourceStringName(resSym : TResourceStringSymbol; const namePos : TScriptPos) : TResourceStringExpr;
@@ -2804,7 +2805,7 @@ begin
 
    sym:=dataSymbolFactory.CreateDataSymbol(name, externalName, scriptPos, typ);
 
-   varExpr:=GetVarExpr(sym);
+   varExpr:=GetVarExpr(scriptPos, sym);
    if Assigned(initExpr) then begin
 
       // Initialize with an expression
@@ -4547,7 +4548,7 @@ begin
          sym:=THelperSymbol(compositeSym).ForType.UnAliasedType;
          if sym is TArraySymbol then begin
             if sym is TDynamicArraySymbol then
-               varExpr:=GetVarExpr(methSym.SelfSym)
+               varExpr:=GetVarExpr(namePos, methSym.SelfSym)
             else varExpr:=GetConstByRefParamExpr(methSym.SelfSym as TConstByRefParamSymbol);
             Result:=ReadArrayMethod(name, namePos, varExpr);
             Exit;
@@ -4771,7 +4772,7 @@ begin
 
       end else if sym.InheritsFrom(TDataSymbol) then begin
 
-         Result:=ReadDataSymbolName(TDataSymbol(sym), CurrentProg.Table, isWrite, expecting);
+         Result:=ReadDataSymbolName(namePos, TDataSymbol(sym), CurrentProg.Table, isWrite, expecting);
 
       end else if sym.ClassType=TExternalVarSymbol then begin
 
@@ -4832,7 +4833,7 @@ begin
 
          if selfSym.ClassType=TVarParamSymbol then
             varExpr:=GetVarParamExpr(progMeth.SelfSym as TVarParamSymbol)
-         else varExpr:=GetVarExpr(progMeth.SelfSym);
+         else varExpr:=GetVarExpr(namePos, progMeth.SelfSym);
          try
             propExpr:=ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite);
          except
@@ -5015,12 +5016,12 @@ end;
 
 // ReadDataSymbolName
 //
-function TdwsCompiler.ReadDataSymbolName(dataSym : TDataSymbol; fromTable : TSymbolTable;
+function TdwsCompiler.ReadDataSymbolName(const aScriptPos: TScriptPos; dataSym : TDataSymbol; fromTable : TSymbolTable;
                                          isWrite: Boolean; expecting : TTypeSymbol) : TProgramExpr;
 var
    varExpr : TVarExpr;
 begin
-   varExpr:=GetVarExpr(dataSym);
+   varExpr:=GetVarExpr(aScriptPos, dataSym);
    Result:=ReadImplicitCall(varExpr, isWrite, expecting);
 end;
 
@@ -5082,11 +5083,11 @@ begin
    sym:=TDataSymbol.Create('old$'+IntToStr(FSourcePostConditionsIndex), expr.Typ);
    Inc(FSourcePostConditionsIndex);
    CurrentProg.Table.AddSymbol(sym);
-   varExpr:=GetVarExpr(sym);
+   varExpr:=GetVarExpr(FTok.HotPos, sym);
    initExpr:=CreateAssign(FTok.HotPos, ttASSIGN, varExpr, expr);
    CurrentProg.InitExpr.AddStatement(initExpr);
 
-   Result:=GetVarExpr(sym);
+   Result:=GetVarExpr(FTok.HotPos, sym);
 end;
 
 // ReadNameInherited
@@ -5115,7 +5116,7 @@ function TdwsCompiler.ReadField(const scriptPos : TScriptPos; selfSym : TDataSym
                                 fieldSym : TFieldSymbol; var varExpr : TTypedExpr) : TDataExpr;
 begin
    if varExpr=nil then
-      varExpr:=GetSelfParamExpr(selfSym);
+      varExpr:=GetSelfParamExpr(scriptPos, selfSym);
    if fieldSym.StructSymbol.ClassType=TRecordSymbol then begin
       if varExpr.ClassType=TVarExpr then
          Result:=TRecordVarExpr.Create(scriptPos, TVarExpr(varExpr), fieldSym)
@@ -5204,7 +5205,7 @@ begin
    end else if sym is TClassVarSymbol then begin
 
       OrphanAndNil(expr);
-      Result:=GetVarExpr(TClassVarSymbol(sym));
+      Result:=GetVarExpr(aPos, TClassVarSymbol(sym));
 
    end else begin
 
@@ -5265,7 +5266,7 @@ begin
             // WriteSym is a class var
             RecordSymbolUseImplicitReference(sym, aPos, True);
             OrphanAndNil(expr);
-            fieldExpr:=GetVarExpr(TClassVarSymbol(sym));
+            fieldExpr:=GetVarExpr(aPos, TClassVarSymbol(sym));
             Result:=ReadAssign(ttASSIGN, fieldExpr);
 
          end else if sym is TMethodSymbol then begin
@@ -5305,7 +5306,7 @@ begin
             end else if sym is TClassVarSymbol then begin
 
                OrphanAndNil(expr);
-               Result:=GetVarExpr(TClassVarSymbol(sym));
+               Result:=GetVarExpr(aPos, TClassVarSymbol(sym));
 
             end else begin
 
@@ -5759,7 +5760,7 @@ begin
             end else if memberClassType=TClassVarSymbol then begin
 
                OrphanAndNil(Result);
-               Result:=ReadDataSymbolName(TDataSymbol(member), TStructuredTypeSymbol(member).Members, IsWrite, expecting);
+               Result:=ReadDataSymbolName(namePos, TDataSymbol(member), TStructuredTypeSymbol(member).Members, IsWrite, expecting);
 
             end else if memberClassType=TClassConstSymbol then begin
 
@@ -5804,7 +5805,7 @@ begin
             end else if memberClassType=TClassVarSymbol then begin
 
                OrphanAndNil(Result);
-               Result:=ReadDataSymbolName(TDataSymbol(member), TStructuredTypeSymbol(baseType.Typ).Members,
+               Result:=ReadDataSymbolName(namePos, TDataSymbol(member), TStructuredTypeSymbol(baseType.Typ).Members,
                                           IsWrite, expecting);
 
             end else if memberClassType=TClassConstSymbol then begin
@@ -5986,7 +5987,7 @@ begin
          loopVarSymbol:=TDataSymbol.Create(loopVarName, fromExpr.Typ);
          loopBlockExpr.Table.AddSymbol(loopVarSymbol);
          RecordSymbolUse(loopVarSymbol, loopVarNamePos, [suDeclaration, suReference, suWrite]);
-         loopVarExpr:=GetVarExpr(loopVarSymbol);
+         loopVarExpr:=GetVarExpr(loopVarNamePos, loopVarSymbol);
          CurrentProg.InitExpr.AddStatement(TAssignConstToIntegerVarExpr.CreateVal(FCompilerContext, loopVarNamePos, loopVarExpr, 0));
          loopVarExpr.IncRefCount;
       end;
@@ -6171,7 +6172,7 @@ begin
          if (inExpr.Typ<>nil) and not ((inExpr is TVarExpr) or (inExpr is TConstExpr)) then begin
             inExprVarSym:=TDataSymbol.Create('', inExpr.Typ);
             CurrentProg.Table.AddSymbol(inExprVarSym);
-            inExprVarExpr:=GetVarExpr(inExprVarSym);
+            inExprVarExpr:=GetVarExpr(inPos, inExprVarSym);
             inExprAssignExpr:=TAssignExpr.Create(FCompilerContext, FTok.HotPos, inExprVarExpr, TTypedExpr(inExpr));
             inExpr:=inExprVarExpr;
             inExpr.IncRefCount;
@@ -6185,7 +6186,7 @@ begin
             // create anonymous iter variables & its initialization expression
             iterVarSym:=TDataSymbol.Create('', arraySymbol.IndexType);
             CurrentProg.Table.AddSymbol(iterVarSym);
-            iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
+            iterVarExpr:=GetVarExpr(inPos, iterVarSym) as TIntVarExpr;
             initIterVarExpr:=TAssignConstToIntegerVarExpr.CreateVal(FCompilerContext, inPos, iterVarExpr, 0);
             CurrentProg.InitExpr.AddStatement(initIterVarExpr);
 
@@ -6194,11 +6195,11 @@ begin
 
             blockExpr:=EnsureLoopVarExpr(forPos, loopVarName, loopVarNamePos, loopVarExpr, arraySymbol.Typ);
 
-            iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
+            iterVarExpr:=GetVarExpr(inPos, iterVarSym) as TIntVarExpr;
             readArrayItemExpr:=CreateAssign(FTok.HotPos, ttASSIGN, loopVarExpr,
                                             CreateArrayExpr(FTok.HotPos, (inExpr as TDataExpr), iterVarExpr));
 
-            iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
+            iterVarExpr:=GetVarExpr(inPos, iterVarSym) as TIntVarExpr;
 
          end else if inExpr.Typ is TSetOfSymbol then begin
 
@@ -6786,7 +6787,7 @@ begin
          Result:=GetMethodExpr(methodSym, nil, rkClassOfRef, FTok.HotPos, options);
       end else begin
          Result:=GetMethodExpr(methodSym,
-                               GetVarExpr(progMeth.SelfSym),
+                               GetVarExpr(FTok.HotPos, progMeth.SelfSym),
                                rkObjRef, FTok.HotPos, options);
       end;
    end else begin
@@ -9426,7 +9427,7 @@ begin
       CurrentProg:=proc;
       FPendingSetterValueExpr:=nil;
       try
-         FPendingSetterValueExpr := GetConstParamExpr(paramSymbol);
+         FPendingSetterValueExpr := GetConstParamExpr(scriptPos, paramSymbol);
          instr:=ReadInstr;
          if instr is TNullExpr then
             FMsgs.AddCompilerWarning(scriptPos, CPW_PropertyWriterDoesNothing);
@@ -9442,7 +9443,7 @@ begin
                instr:=nil;
                if (expr is TDataExpr) and TDataExpr(expr).IsWritable then begin
                   leftExpr:=TDataExpr(expr);
-                  paramExpr:=GetConstParamExpr(paramSymbol);
+                  paramExpr:=GetConstParamExpr(scriptPos, paramSymbol);
                   proc.Expr:=CreateAssign(scriptPos, ttASSIGN, leftExpr, paramExpr);
                end else begin
                   FMsgs.AddCompilerError(scriptPos, CPE_CantWriteToLeftSide);
@@ -10854,6 +10855,33 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       Result:=TConstExpr.CreateNull(expecting);
    end;
 
+   procedure CheckForClosure(funcSym : TFuncSymbol);
+
+      procedure CheckSubExprs(expr : TExprBase);
+      var
+         i : Integer;
+         funcSym : TFuncSymbol;
+      begin
+         if expr = nil then Exit;
+         if (expr is TVarParentExpr) or (expr is TVarParamParentExpr) then
+            FMsgs.AddCompilerErrorFmt(expr.ScriptPos, CPE_SymbolCannotBeCaptured,
+                                      [(expr as TVarExpr).DataSym.Name])
+         else if expr is TFuncExprBase then begin
+            funcSym := TFuncExprBase(expr).FuncSym;
+            if Assigned(funcSym) and (funcSym.Level <> 1) then
+               FMsgs.AddCompilerError(expr.ScriptPos, CPE_LocalFunctionAsDelegate);
+         end;
+         for i := 0 to expr.SubExprCount-1 do
+            CheckSubExprs(expr.SubExpr[i]);
+      end;
+
+   var
+      i : Integer;
+   begin
+      for i := 0 to funcSym.Executable.SubExprCount-1 do
+         CheckSubExprs(funcSym.Executable.SubExpr(i));
+   end;
+
    function ReadAnonymousMethod(funcType : TTokenType; const hotPos : TScriptPos) : TAnonymousFuncRefExpr;
    var
       funcSym : TFuncSymbol;
@@ -10862,6 +10890,8 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       CurrentProg.Table.AddSymbol(funcSym);
       ReadProcBody(funcSym);
       Result:=TAnonymousFuncRefExpr.Create(FCompilerContext, GetFuncExpr(funcSym, nil));
+      if not (coAllowClosures in Options) then
+         CheckForClosure(funcSym);
    end;
 
    function ReadLambda(funcType : TTokenType; const hotPos : TScriptPos) : TAnonymousFuncRefExpr;
@@ -10891,7 +10921,7 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
          FTok.TestName;
          procPos:=FTok.HotPos;
 
-         proc:=TdwsProcedure.Create(CurrentProg);
+         proc := TdwsProcedure.Create(CurrentProg);
          proc.SetBeginPos(procPos);
          proc.AssignTo(funcSym);
 
@@ -10919,6 +10949,9 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
 
       end;
       Result:=TAnonymousFuncRefExpr.Create(FCompilerContext, GetFuncExpr(funcSym, nil));
+
+      if not (coAllowClosures in Options) then
+         CheckForClosure(funcSym);
    end;
 
    function ReadAnonymousRecord : TTypedExpr;
@@ -11076,13 +11109,9 @@ begin
       ttIF :
          Result:=ReadIfExpr;
       ttPROCEDURE, ttFUNCTION : begin
-         if not (coAllowClosures in Options) then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_LocalFunctionAsDelegate);
          Result:=ReadAnonymousMethod(tt, FTok.HotPos);
       end;
       ttLAMBDA : begin
-         if not (coAllowClosures in Options) then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_LocalFunctionAsDelegate);
          Result:=ReadLambda(tt, FTok.HotPos);
       end;
       ttRECORD :
@@ -12212,7 +12241,7 @@ end;
 
 // GetVarExpr
 //
-function TdwsCompiler.GetVarExpr(dataSym: TDataSymbol): TVarExpr;
+function TdwsCompiler.GetVarExpr(const aScriptPos: TScriptPos; dataSym: TDataSymbol): TVarExpr;
 begin
    if (dataSym.ClassType=TClassVarSymbol) and (TClassVarSymbol(dataSym).OwnerSymbol.IsExternal) then
       Result:=TExternalVarExpr.Create(dataSym)
@@ -12225,7 +12254,7 @@ begin
          end;
          Result.IncRefCount;
       end else Result:=TVarExpr.CreateTyped(FCompilerContext, dataSym);
-   end else Result:=TVarParentExpr.Create(dataSym);
+   end else Result:=TVarParentExpr.Create(aScriptPos, dataSym);
 end;
 
 // GetLazyParamExpr
@@ -12255,16 +12284,16 @@ end;
 
 // GetConstParamExpr
 //
-function TdwsCompiler.GetConstParamExpr(dataSym: TParamSymbol) : TVarExpr;
+function TdwsCompiler.GetConstParamExpr(const aScriptPos: TScriptPos; dataSym: TParamSymbol) : TVarExpr;
 begin
    if dataSym is TConstByRefParamSymbol then
       Result := GetConstByRefParamExpr(TConstByRefParamSymbol(dataSym))
-   else Result := GetVarExpr(dataSym);
+   else Result := GetVarExpr(aScriptPos, dataSym);
 end;
 
 // GetSelfParamExpr
 //
-function TdwsCompiler.GetSelfParamExpr(selfSym : TDataSymbol) : TVarExpr;
+function TdwsCompiler.GetSelfParamExpr(const aScriptPos: TScriptPos; selfSym : TDataSymbol) : TVarExpr;
 var
    ct : TClass;
 begin
@@ -12275,7 +12304,7 @@ begin
       Result:=GetVarParamExpr(TVarParamSymbol(selfSym))
    else begin
       Assert((ct=TSelfSymbol) or (ct=TParamSymbol));
-      Result:=GetVarExpr(selfSym);
+      Result:=GetVarExpr(aScriptPos, selfSym);
    end;
 end;
 
@@ -13149,7 +13178,7 @@ begin
    loopVarSymbol:=TDataSymbol.Create(loopVarName, loopVarTyp);
    Result.Table.AddSymbol(loopVarSymbol);
    RecordSymbolUse(loopVarSymbol, loopVarNamePos, [suDeclaration, suReference, suWrite]);
-   loopVarExpr:=GetVarExpr(loopVarSymbol);
+   loopVarExpr:=GetVarExpr(loopVarNamePos, loopVarSymbol);
    CurrentProg.InitExpr.AddStatement(TInitDataExpr.Create(FCompilerContext, loopVarNamePos, loopVarExpr));
    loopVarExpr.IncRefCount;
 end;
@@ -13978,7 +14007,7 @@ begin
          end else if sym.ClassType=TClassVarSymbol then begin
 
             OrphanAndNil(expr);
-            Result:=GetVarExpr(TClassVarSymbol(sym));
+            Result:=GetVarExpr(namePos, TClassVarSymbol(sym));
 
          end else if sym is TConstSymbol then begin
 
@@ -14047,10 +14076,10 @@ begin
          structSym:=progMeth.StructSymbol;
          selfExpr:=TConstExpr.Create(structSym.MetaSymbol, Int64(structSym));
       end else if progMeth.SelfSym is TConstByRefParamSymbol then
-         selfExpr:=GetConstParamExpr(TConstByRefParamSymbol(progMeth.SelfSym))
+         selfExpr:=GetConstParamExpr(namePos, TConstByRefParamSymbol(progMeth.SelfSym))
       else if progMeth.SelfSym=nil then
          Exit(nil)
-      else selfExpr:=GetSelfParamExpr(progMeth.SelfSym);
+      else selfExpr:=GetSelfParamExpr(namePos, progMeth.SelfSym);
       Result:=ReadTypeHelper(selfExpr, name.AsString, namePos, expecting, False, True);
       if Result=nil then
          OrphanAndNil(selfExpr);
