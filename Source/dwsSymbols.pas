@@ -677,7 +677,7 @@ type
          property IsDeprecated : Boolean read GetIsDeprecated;
    end;
 
-   TAnyTypeSymbol = class(TTypeSymbol)
+   TAnyTypeSymbol = class sealed (TTypeSymbol)
       public
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;

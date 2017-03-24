@@ -10898,6 +10898,7 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
    var
       funcSym : TFuncSymbol;
       expectingFuncSym : TFuncSymbol;
+      expectedType : TTypeSymbol;
       expectingParams : TParamsSymbolTable;
       resultExpr : TTypedExpr;
       resultVar : TVarExpr;
@@ -10906,15 +10907,20 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       oldProg : TdwsProgram;
    begin
       expectingFuncSym:=expecting.AsFuncSymbol;
-      if expectingFuncSym<>nil then
-         expectingParams:=expectingFuncSym.Params
-      else expectingParams:=nil;
+      if expectingFuncSym <> nil then begin
+         expectingParams := expectingFuncSym.Params;
+         expectedType := expectingFuncSym.Typ;
+      end else begin
+         expectingParams := nil;
+         expectedType := nil;
+      end;
 
-      funcSym:=ReadProcDecl(funcType, hotPos, [pdoAnonymous], expectingParams);
+      funcSym := ReadProcDecl(funcType, hotPos, [pdoAnonymous], expectingParams);
       CurrentProg.Table.AddSymbol(funcSym);
 
       if (funcSym.Typ=nil) and (expectingFuncSym<>nil) then
-         funcSym.Typ:=expectingFuncSym.Typ;
+         if not (expectedType is TAnyTypeSymbol) then
+            funcSym.Typ := expectedType;
 
       if FTok.TestDelete(ttEQGTR) then begin
 
@@ -10928,12 +10934,12 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
          oldProg:=CurrentProg;
          CurrentProg:=proc;
          try
-            resultExpr:=ReadExpr(funcSym.Typ);
+            resultExpr:=ReadExpr(expectedType);
          finally
             CurrentProg:=oldProg;
          end;
-         if funcSym.Typ=nil then
-            funcSym.Typ:=resultExpr.Typ;
+         if funcSym.Typ = nil then
+            funcSym.Typ := resultExpr.Typ;
 
          if funcSym.Typ=nil then begin
             FMsgs.AddCompilerError(procPos, CPE_UnexpectedEqGtrForLambdaStatement);
