@@ -239,7 +239,7 @@ begin
          CollectExpandedNodes(nil);
       TreeView.Items.Clear;
 
-      root := TreeView.Items.AddFirst(nil, FScriptPos.SourceFile.Name);
+      root := TreeView.Items.AddFirst(nil, FScriptPos.SourceName);
       root.ImageIndex := Ord(iiSource);
       root.SelectedIndex := Ord(iiSource);
       AddSymbolsOfSourceFile(root, FScriptPos.SourceFile);
