@@ -264,7 +264,7 @@ type
    end;
 
    IBooleanEvalable = interface (IExecutable)
-      ['{6D0552ED-6FBD-4BC7-AADA-8D8F8DBDF29B}']
+      ['{C984224C-92FC-41EF-845A-CE5CA0F8C77D}']
       function EvalAsBoolean(exec : TdwsExecution) : Boolean;
    end;
 
