@@ -1033,6 +1033,27 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
+   TAssociativeArrayDeleteExpr = class (TTypedExpr)
+      private
+         FBaseExpr : TTypedExpr;
+         FKeyExpr : TTypedExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(context : TdwsCompilerContext; aBase, aKey : TTypedExpr);
+         destructor Destroy; override;
+
+         function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override; final;
+         procedure EvalNoResult(exec : TdwsExecution); override; final;
+
+         property BaseExpr : TTypedExpr read FBaseExpr;
+         property KeyExpr : TTypedExpr read FKeyExpr;
+   end;
+
    TAssociativeArrayKeysExpr = class (TUnaryOpExpr)
       public
          constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
@@ -10522,6 +10543,69 @@ var
 begin
    FBaseExpr.EvalAsScriptAssociativeArray(exec, aa);
    aa.Clear;
+end;
+
+// ------------------
+// ------------------ TAssociativeArrayDeleteExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TAssociativeArrayDeleteExpr.Create(context : TdwsCompilerContext; aBase, aKey : TTypedExpr);
+begin
+   inherited Create;
+   FBaseExpr := aBase;
+   FKeyExpr := aKey;
+   Typ := context.TypBoolean;
+end;
+
+// Destroy
+//
+destructor TAssociativeArrayDeleteExpr.Destroy;
+begin
+   inherited;
+   FBaseExpr.Free;
+   FKeyExpr.Free;
+end;
+
+// EvalAsBoolean
+//
+function TAssociativeArrayDeleteExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   base : IScriptAssociativeArray;
+begin
+   FBaseExpr.EvalAsScriptAssociativeArray(exec, base);
+   Result := (base.GetSelf as TScriptAssociativeArray).Delete(exec, KeyExpr);
+end;
+
+// EvalAsVariant
+//
+procedure TAssociativeArrayDeleteExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+begin
+   result := EvalAsBoolean(exec);
+end;
+
+// EvalNoResult
+//
+procedure TAssociativeArrayDeleteExpr.EvalNoResult(exec : TdwsExecution);
+begin
+   EvalAsBoolean(exec);
+end;
+
+// GetSubExpr
+//
+function TAssociativeArrayDeleteExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if i = 0 then
+      Result := BaseExpr
+   else Result := KeyExpr;
+end;
+
+// GetSubExprCount
+//
+function TAssociativeArrayDeleteExpr.GetSubExprCount : Integer;
+begin
+   Result := 2;
 end;
 
 // ------------------

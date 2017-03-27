@@ -1647,11 +1647,12 @@ type
          //procedure ReplaceData(exec : TdwsExecution; index : Int64; value : TDataExpr);
          procedure ReplaceValue(exec : TdwsExecution; index, value : TTypedExpr);
 
+         function Delete(exec : TdwsExecution; index : TTypedExpr) : Boolean;
+
          procedure Clear;
          function Count : Integer;
 
          function CopyKeys : TData;
-
    end;
 
    TScriptInterface = class(TScriptObj, IScriptObjInterface)
@@ -7526,6 +7527,43 @@ begin
    if FElementSize>1 then
       WriteData(i*FElementSize, (value as TDataExpr).GetDataPtrFunc(exec), FElementSize)
    else value.EvalAsVariant(exec, AsPVariant(i)^);
+end;
+
+// Delete
+//
+function TScriptAssociativeArray.Delete(exec : TdwsExecution; index : TTypedExpr) : Boolean;
+var
+   i, k, gap : Integer;
+   hashCode : Cardinal;
+   key : IDataContext;
+begin
+   if FCount = 0 then Exit(False);
+
+   IndexExprToKeyAndHashCode(exec, index, key, hashCode);
+   i:=(hashCode and (FCapacity-1));
+   if not LinearFind(key, i) then Exit(False);
+
+   gap := i;
+   repeat
+      i := (i+1) and (FCapacity-1);
+
+      if FHashCodes[i] = 0 then
+         Break;
+
+      k := FHashCodes[i] and (FCapacity - 1);
+
+      if ((gap >= k) or (k > i)) and ((i >= gap) or (k <= gap)) and ((i >= gap) or (k > i)) then begin
+         InternalCopyData(gap*FElementSize, i*FElementSize, FElementSize);
+         FHashCodes[i] := 0;
+         gap := i;
+      end;
+   until False;
+
+   FHashCodes[gap] := 0;
+   FElementTyp.InitData(AsPData^, gap*FElementSize);
+   Dec(FCount);
+
+   Result := True;
 end;
 
 // Clear

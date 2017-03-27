@@ -157,6 +157,7 @@ type
          property  AsString[addr : Integer] : UnicodeString read GetAsString write SetAsString;
          property  AsInterface[addr : Integer] : IUnknown read GetAsInterface write SetAsInterface;
 
+         procedure InternalCopyData(destAddr, sourceAddr, size : Integer); inline;
          procedure CopyData(const destData : TData; destAddr, size : Integer); inline;
          procedure WriteData(const src : IDataContext; size : Integer); overload; inline;
          procedure WriteData(destAddr : Integer; const src : IDataContext; size : Integer); overload; inline;
@@ -706,6 +707,21 @@ begin
    if p^.VType=varUnknown then
       result:=IUnknown(p^.VUnknown)
    else result:=PVariant(p)^;
+end;
+
+// InternalCopyData
+//
+procedure TDataContext.InternalCopyData(destAddr, sourceAddr, size : Integer);
+var
+   i : Integer;
+begin
+   if sourceAddr > destAddr then begin
+      for i := 0 to size-1 do
+         VarCopySafe(FData[destAddr+i], FData[sourceAddr+i])
+   end else begin
+      for i := size-1 downto 0 do
+         VarCopySafe(FData[destAddr+i], FData[sourceAddr+i])
+   end;
 end;
 
 // CopyData

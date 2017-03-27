@@ -7706,7 +7706,7 @@ begin
    argSymTable:=nil;
    argList:=TTypedExprList.Create;
    try
-      arraySym:=baseExpr.Typ as TArraySymbol;
+      arraySym := baseExpr.Typ.UnAliasedType as TArraySymbol;
 
       methodKind:=NameToArrayMethod(name, FMsgs, namePos);
 
@@ -7974,6 +7974,7 @@ var
    argList : TTypedExprList;
    argPosArray : TScriptPosArray;
    argSymTable : TUnSortedSymbolTable;
+   arraySym : TAssociativeArraySymbol;
    methodKind : TArrayMethodKind;
 
    function CheckArguments(expectedMin, expectedMax : Integer) : Boolean;
@@ -7993,6 +7994,8 @@ begin
    argSymTable:=nil;
    argList:=TTypedExprList.Create;
    try
+      arraySym := baseExpr.Typ.UnAliasedType as TAssociativeArraySymbol;
+
       methodKind := NameToArrayMethod(name, FMsgs, namePos);
 
       ReadArguments(argList.AddExpr, ttBLEFT, ttBRIGHT, argPosArray, argList.ExpectedArg);
@@ -8008,6 +8011,16 @@ begin
             amkClear : begin
                CheckArguments(0, 0);
                Result:=TAssociativeArrayClearExpr.Create(namePos, baseExpr);
+            end;
+
+            amkDelete : begin
+               if CheckArguments(1, 1) then begin
+                  if (argList[0].Typ=nil) or not arraySym.KeyType.IsCompatible(argList[0].Typ) then
+                     IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
+                                       arraySym.Typ, argList[0].Typ);
+                  Result := TAssociativeArrayDeleteExpr.Create(FCompilerContext, baseExpr, argList[0]);
+                  argList.Clear;
+               end else Result := TAssociativeArrayDeleteExpr.Create(FCompilerContext, baseExpr, nil);
             end;
 
             amkKeys : begin

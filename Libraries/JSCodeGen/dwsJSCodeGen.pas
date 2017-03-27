@@ -1282,6 +1282,8 @@ begin
       TdwsExprGenericCodeGen.Create(['Object.keys', '(', 0, ')', '.length']));
    RegisterCodeGen(TAssociativeArrayClearExpr,
       TdwsExprGenericCodeGen.Create(['$Delete', '(', 0, ')'], gcgStatement, '$Delete'));
+   RegisterCodeGen(TAssociativeArrayDeleteExpr,
+      TdwsExprGenericCodeGen.Create(['(delete ', 0, '[', 1, ']', ')']));
    RegisterCodeGen(TAssociativeArrayKeysExpr,
       TdwsExprGenericCodeGen.Create(['Object.keys', '(', 0, ')']));
 
