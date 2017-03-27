@@ -20,7 +20,7 @@ interface
 
 uses
    dwsUtils, dwsErrors, dwsDataContext, dwsCompilerContext,
-   dwsSymbols, dwsExprs, dwsScriptSource;
+   dwsSymbols, dwsExprs, dwsScriptSource, dwsTokenizer;
 
 type
 
@@ -171,7 +171,7 @@ end;
 constructor TSetOfInExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
                                 aLeft : TTypedExpr; aRight : TDataExpr);
 begin
-   inherited Create(context, aScriptPos, aLeft, aRight);
+   inherited Create(context, aScriptPos, ttIN, aLeft, aRight);
    FSetType:=TSetOfSymbol(aRight.Typ);
 end;
 

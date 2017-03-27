@@ -38,21 +38,24 @@ type
 
    TGenericTypeSymbol = class (TTypeSymbol)
       protected
+         FGenericSymbol : TGenericSymbol;
+
          function GetIsGeneric : Boolean; override;
+
       public
          procedure InitData(const data : TData; offset : Integer); override;
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
+         property GenericSymbol : TGenericSymbol read FGenericSymbol;
    end;
 
    TGenericTypeParameterSymbol = class (TGenericTypeSymbol)
       private
          FConstraints : TTightList;  // owned
 
-      protected
-
       public
-         constructor Create(const name : String);
+         constructor Create(aGeneric : TGenericSymbol; const name : String);
          destructor Destroy; override;
 
          procedure AddConstraint(aConstraint : TGenericConstraint);
@@ -126,6 +129,8 @@ type
 
          function ConstraintForBinaryOp(anOp : TTokenType; aLeft, aRight : TTypeSymbol) : TGenericConstraintBinaryOp;
 
+         class function GenericFor(typ1, typ2 : TTypeSymbol) : TGenericSymbol; static;
+
          property GenericType : TTypeSymbol read FGenericType write FGenericType;
          property Parameters : IGenericParameters read FParameters;
    end;
@@ -189,9 +194,13 @@ implementation
 // Create
 //
 constructor TGenericSymbol.Create(const name : String; const params : IGenericParameters);
+var
+   i : Integer;
 begin
    inherited Create(name, nil);
    FParameters := params;
+   for i := 0 to params.Count-1 do
+      params[i].FGenericSymbol := Self;
 end;
 
 // Destroy
@@ -289,12 +298,37 @@ begin
          Exit;
    end;
    Result := TGenericConstraintBinaryOp.Create(anOp, aLeft, aRight);
-   resultType := TGenericTypeParameterSymbol.Create(aLeft.Caption + ' ' + cTokenStrings[anOp] + ' ' + aRight.Caption);
+   resultType := TGenericTypeParameterSymbol.Create(Self, aLeft.Caption + ' ' + cTokenStrings[anOp] + ' ' + aRight.Caption);
    Result.ResultType := resultType;
    resultType.AddConstraint(Result);
    Result.IncRefCount;
    FBinaryOps.Add(Result);
    AcquireSymbol(resultType);
+end;
+
+// GenericFor
+//
+class function TGenericSymbol.GenericFor(typ1, typ2 : TTypeSymbol) : TGenericSymbol;
+var
+   ts1, ts2 : TGenericTypeSymbol;
+begin
+   typ1 := typ1.UnAliasedType;
+   typ2 := typ2.UnAliasedType;
+   if typ1 is TGenericTypeSymbol then begin
+      ts1 := TGenericTypeSymbol(typ1);
+      if typ2 is TGenericTypeSymbol then begin
+         ts2 := TGenericTypeSymbol(typ2);
+         // both are generic
+         if ts1.GenericSymbol = ts2.GenericSymbol then
+            Result := ts1.GenericSymbol
+         else begin
+            Assert(False, 'not supported yet');
+            Result := nil;
+         end;
+      end else Result := ts1.GenericSymbol;
+   end else if typ2 is TGenericTypeSymbol then
+      Result := TGenericTypeSymbol(typ2).GenericSymbol
+   else Result := nil;
 end;
 
 // GetCaption
@@ -332,9 +366,10 @@ end;
 
 // Create
 //
-constructor TGenericTypeParameterSymbol.Create(const name : String);
+constructor TGenericTypeParameterSymbol.Create(aGeneric : TGenericSymbol; const name : String);
 begin
    inherited Create(name, nil);
+   FGenericSymbol := aGeneric;
    FSize := 1; // fake size
 end;
 

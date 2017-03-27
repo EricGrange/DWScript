@@ -25,7 +25,7 @@ uses
    dwsErrors, dwsStrings, dwsXPlatform, dwsUtils, dwsScriptSource,
    dwsSymbols, dwsUnitSymbols, dwsCompilerContext,
    dwsExprs, dwsCoreExprs, dwsConstExprs, dwsMethodExprs, dwsMagicExprs,
-   dwsConvExprs, dwsTokenizer, dwsOperators;
+   dwsConvExprs, dwsTokenizer, dwsOperators, dwsConnectorSymbols;
 
 type
 
@@ -87,7 +87,15 @@ type
 function NameToArrayMethod(const name : UnicodeString; msgs : TdwsCompileMessageList;
                            const namePos : TScriptPos) : TArrayMethodKind;
 
-function CreateFuncExpr(context : TdwsCompilerContext; funcSym: TFuncSymbol;
+function CreateAssignExpr(context : TdwsCompilerContext;
+                          const scriptPos : TScriptPos; token : TTokenType;
+                          left : TDataExpr; right : TTypedExpr) : TProgramExpr;
+
+function CreateSimpleFuncExpr(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                              funcSym: TFuncSymbol) : TFuncExprBase;
+
+function CreateFuncExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
+                        funcSym: TFuncSymbol;
                         const scriptObj : IScriptObj; structSym : TCompositeTypeSymbol;
                         options : TCreateFunctionOptions) : TFuncExprBase;
 function CreateIntfExpr(context : TdwsCompilerContext; funcSym: TFuncSymbol;
@@ -114,6 +122,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsGenericExprs;
 
 // NameToArrayMethod
 //
@@ -142,6 +152,170 @@ begin
    end;
 end;
 
+// CreateAssignOperatorExpr
+//
+function CreateAssignOperatorExpr(context : TdwsCompilerContext;
+                                  token : TTokenType; const scriptPos : TScriptPos;
+                                  aLeft, aRight : TTypedExpr) : TAssignExpr;
+var
+   opSym : TOperatorSymbol;
+begin
+   Result:=nil;
+   if (aLeft=nil) or (aRight=nil) then Exit;
+   opSym:=ResolveOperatorFor(context.Prog as TdwsProgram, token, aLeft.Typ, aRight.Typ);
+   if opSym<>nil then begin
+      if opSym.AssignExprClass<>nil then
+         Result:=TAssignExprClass(opSym.AssignExprClass).Create(context, scriptPos, aLeft as TDataExpr, aRight);
+   end;
+end;
+
+// CreateAssignExpr
+//
+function CreateAssignExpr(context : TdwsCompilerContext;
+                          const scriptPos : TScriptPos; token : TTokenType;
+                          left : TDataExpr; right : TTypedExpr) : TProgramExpr;
+var
+   classOpSymbol : TClassOperatorSymbol;
+   classOpExpr : TFuncExprBase;
+   assignOpExpr : TAssignExpr;
+   classSymbol : TClassSymbol;
+   intfSymbol : TInterfaceSymbol;
+   leftTyp : TTypeSymbol;
+begin
+   if (right<>nil) and (right.Typ<>nil) then begin
+
+      case token of
+         ttASSIGN : begin
+            leftTyp:=left.Typ;
+            if leftTyp=nil then begin
+               // error assumed to have already been reported
+               left.Orphan(context);
+               right.Orphan(context);
+               Result:=TNullExpr.Create(scriptPos);
+            end else begin
+               leftTyp:=leftTyp.UnAliasedType;
+               if leftTyp.ClassType=TClassOfSymbol then begin
+                  Result:=TAssignClassOfExpr.Create(context, scriptPos, left, right);
+               end else if leftTyp.ClassType=TInterfaceSymbol then begin
+                  if right.Typ is TClassSymbol then begin
+                     classSymbol:=TClassSymbol(right.Typ);
+                     intfSymbol:=TInterfaceSymbol(left.Typ);
+                     if not classSymbol.ImplementsInterface(intfSymbol) then
+                        context.Msgs.AddCompilerErrorFmt(scriptPos, RTE_ObjCastToIntfFailed,
+                                                         [classSymbol.Name, intfSymbol.Name]);
+                     Result:=TAssignExpr.Create(context, scriptPos, left,
+                                                TObjAsIntfExpr.Create(context, scriptPos, right, intfSymbol));
+                  end else Result:=TAssignExpr.Create(context, scriptPos, left, right);
+               end else if leftTyp.ClassType=TDynamicArraySymbol then begin
+                  if right.ClassType=TConstNilExpr then begin
+                     right.Orphan(context);
+                     Result:=TAssignNilAsResetExpr.CreateVal(context, scriptPos, left);
+                  end else if right.ClassType = TArrayConstantExpr then begin
+                     if TArrayConstantExpr(right).ElementCount = 0 then begin
+                        right.Orphan(context);
+                        Result := TAssignNilAsResetExpr.CreateVal(context, scriptPos, left);
+                     end else begin
+                        Result := TAssignArrayConstantExpr.Create(context, scriptPos, left, TArrayConstantExpr(right));
+                     end
+                  end else begin
+                     Result:=TAssignExpr.Create(context, scriptPos, left, right);
+                  end;
+               end else if leftTyp is TAssociativeArraySymbol then begin
+                  if right.ClassType=TConstNilExpr then begin
+                     right.Orphan(context);
+                     Result:=TAssignNilAsResetExpr.CreateVal(context, scriptPos, left);
+                  end else begin
+                     Result:=TAssignExpr.Create(context, scriptPos, left, right);
+                  end;
+               end else if     right.InheritsFrom(TDataExpr)
+                           and (   (right.Typ.Size<>1)
+                                or (right.Typ is TArraySymbol)
+                                or (right.Typ is TSetOfSymbol)) then begin
+                  if right.InheritsFrom(TFuncExpr) then
+                     TFuncExpr(right).SetResultAddr(context.Prog as TdwsProgram, nil);
+                  if right.InheritsFrom(TArrayConstantExpr) and (left.Typ is TArraySymbol) then
+                     Result:=TAssignArrayConstantExpr.Create(context, scriptPos, left, TArrayConstantExpr(right))
+                  else Result:=TAssignDataExpr.Create(context, scriptPos, left, right)
+               end else if leftTyp.AsFuncSymbol<>nil then begin
+                  if (right.Typ.AsFuncSymbol<>nil) or (right.Typ is TNilSymbol) then begin
+                     if right is TFuncRefExpr then begin
+                        right:=TFuncRefExpr(right).Extract;
+                        if right is TFuncPtrExpr then begin
+                           right:=TFuncPtrExpr(right).Extract;
+                           Result:=TAssignExpr.Create(context, scriptPos, left, right);
+                        end else begin
+                           Assert(right is TFuncExprBase);
+                           Result:=TAssignFuncExpr.Create(context, scriptPos, left, right);
+                        end;
+                     end else begin
+                        Result:=TAssignExpr.Create(context, scriptPos, left, right);
+                     end;
+                  end else begin
+                     context.Msgs.AddCompilerError(scriptPos, CPE_IncompatibleOperands);
+                     Result:=TAssignExpr.Create(context, scriptPos, left, right); // keep going
+                  end;
+               end else if leftTyp is TConnectorSymbol then begin
+                  Result:=TConnectorSymbol(leftTyp).CreateAssignExpr(context, scriptPos, left, right);
+               end else begin
+                  if left.IsExternal then
+                     Result:=TAssignExternalExpr.Create(context, scriptPos, left, right)
+                  else Result:=TAssignExpr.Create(context, scriptPos, left, right);
+               end;
+            end;
+         end;
+         ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN, ttCARET_ASSIGN : begin
+            if left.Typ is TClassSymbol then begin
+
+               classOpSymbol:=(left.Typ as TClassSymbol).FindClassOperator(token, right.Typ);
+               if classOpSymbol=nil then
+                  context.Msgs.AddCompilerStop(scriptPos, CPE_IncompatibleOperands);
+               classOpExpr := CreateMethodExpr(context, classOpSymbol.UsesSym, TTypedExpr(left), rkObjRef, scriptPos, []);
+               classOpExpr.AddArg(right);
+               TypeCheckArguments(context, classOpExpr, nil);
+               Result:=classOpExpr;
+
+            end else begin
+
+               assignOpExpr := CreateAssignOperatorExpr(context, token, scriptPos, left, right);
+               if assignOpExpr<>nil then
+
+                  Result:=assignOpExpr
+
+               else if left.Typ is TDynamicArraySymbol then begin
+
+                  Result:=CompilerUtils.DynamicArrayAdd(context, left, scriptPos, right);
+
+               end else if left.IsGeneric or right.IsGeneric then begin
+
+                  Result := TGenericAssignExpr.Create(context, scriptPos, token, left, right);
+
+               end else begin
+
+                  context.Msgs.AddCompilerError(scriptPos, CPE_IncompatibleOperands);
+                  Result:=TAssignExpr.Create(context, scriptPos, left, right);
+
+               end;
+
+            end;
+         end;
+      else
+         Result:=nil;
+         Assert(False);
+      end;
+
+      if context.Optimize then
+         Result:=Result.Optimize(context);
+
+   end else begin
+
+      left.Orphan(context);
+      right.Orphan(context);
+      context.Msgs.AddCompilerError(scriptPos, CPE_RightSideNeedsReturnType);
+      Result:=TNullExpr.Create(scriptPos);
+
+   end;
+end;
+
 type
    TCheckAbstractClassConstruction = class (TErrorMessage)
       FClassSym : TClassSymbol;
@@ -166,39 +340,56 @@ begin
    Result:=FClassSym.IsAbstract and (MessageList.State=mlsCompleted);
 end;
 
+// CreateSimpleFuncExpr
+//
+function CreateSimpleFuncExpr(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                              funcSym: TFuncSymbol) : TFuncExprBase;
+var
+   magicFuncSym : TMagicFuncSymbol;
+begin
+   if funcSym.IsType then
+      context.Msgs.AddCompilerError(aScriptPos, CPE_FunctionMethodExpected);
+
+   if funcSym.InheritsFrom(TMagicFuncSymbol) then begin
+
+      magicFuncSym := TMagicFuncSymbol(funcSym);
+      Result := TMagicFuncExpr.CreateMagicFuncExpr(context, aScriptPos, magicFuncSym);
+
+   end else Result := TFuncSimpleExpr.Create(context, aScriptPos, funcSym);
+end;
+
 // CreateFuncExpr
 //
-function CreateFuncExpr(context : TdwsCompilerContext; funcSym: TFuncSymbol;
+function CreateFuncExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
+                        funcSym: TFuncSymbol;
                         const scriptObj : IScriptObj; structSym : TCompositeTypeSymbol;
                         options : TCreateFunctionOptions) : TFuncExprBase;
 var
    instanceExpr : TTypedExpr;
 begin
-   if FuncSym is TMethodSymbol then begin
+   if funcSym is TMethodSymbol then begin
       if Assigned(scriptObj) then begin
          instanceExpr:=TConstExpr.Create(structSym, scriptObj);
          Result:=CreateMethodExpr(context, TMethodSymbol(funcSym),
-                                  instanceExpr, rkObjRef, cNullPos, options)
+                                  instanceExpr, rkObjRef, aScriptPos, options)
       end else if structSym<>nil then begin
          instanceExpr:=TConstExpr.Create(structSym.MetaSymbol, Int64(structSym));
          Result:=CreateMethodExpr(context, TMethodSymbol(funcSym),
-                                  instanceExpr, rkClassOfRef, cNullPos, options)
+                                  instanceExpr, rkClassOfRef, aScriptPos, options)
       end else begin
          // static method
          structSym:=TMethodSymbol(funcSym).StructSymbol;
          if structSym is TStructuredTypeSymbol then begin
             instanceExpr:=TConstExpr.Create(structSym.MetaSymbol, Int64(structSym));
             Result:=CreateMethodExpr(context, TMethodSymbol(funcSym),
-                                     instanceExpr, rkClassOfRef, cNullPos, options)
+                                     instanceExpr, rkClassOfRef, aScriptPos, options)
          end else begin
             Result:=nil;
             Assert(False, 'TODO');
          end;
       end;
-   end else if funcSym is TMagicFuncSymbol then begin
-      Result:=TMagicFuncExpr.CreateMagicFuncExpr(context, cNullPos, TMagicFuncSymbol(funcSym));
    end else begin
-      Result:=TFuncSimpleExpr.Create(context, cNullPos, funcSym);
+      Result := CreateSimpleFuncExpr(context, aScriptPos, funcSym);
    end;
 end;
 
@@ -225,6 +416,15 @@ var
    internalFunc : TInternalMagicFunction;
    classSymbol : TClassSymbol;
 begin
+   if meth is TAliasMethodSymbol then begin
+
+      Result:=CreateSimpleFuncExpr(context, scriptPos, TAliasMethodSymbol(meth).Alias);
+      Result.AddArg(expr);
+      Exit;
+
+   end;
+
+
    // Create the correct TExpr for a method symbol
    Result := nil;
 
@@ -552,12 +752,12 @@ begin
    if opSym=nil then Exit;
 
    if opSym.OperatorExprClass <> nil then begin
-      Result := TBinaryOpExprClass(opSym.OperatorExprClass).Create(context, scriptPos, aLeft, aRight);
+      Result := TBinaryOpExprClass(opSym.OperatorExprClass).Create(context, scriptPos, token, aLeft, aRight);
    end else if opSym.UsesSym<>nil then begin
       if opSym.UsesSym is TMethodSymbol then
          funcExpr:=CreateMethodExpr(context, TMethodSymbol(opSym.UsesSym), aLeft, rkObjRef, scriptPos, [])
       else begin
-         funcExpr := CreateFuncExpr(context, opSym.UsesSym, nil, nil, []);
+         funcExpr := CreateFuncExpr(context, scriptPos, opSym.UsesSym, nil, nil, []);
          funcExpr.AddArg(aLeft);
       end;
       funcExpr.AddArg(aRight);

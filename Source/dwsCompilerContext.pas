@@ -70,6 +70,8 @@ type
 
          function CreateConstExpr(typ : TTypeSymbol; const value : Variant) : TExprBase;
 
+         function Optimize : Boolean;
+
          property StringsUnifier : TStringUnifier read FStringsUnifier;
 
          property Msgs : TdwsCompileMessageList read FMsgs write FMsgs;
@@ -207,6 +209,13 @@ begin
    else if typ.typ = TypInteger then
       Result := TConstIntExpr.Create(typ, value)
    else Result := TConstExpr.Create(typ, value);
+end;
+
+// Optimize
+//
+function TdwsCompilerContext.Optimize : Boolean;
+begin
+   Result := (coOptimize in FOptions) and (not FMsgs.HasErrors);
 end;
 
 // SetSystemTable

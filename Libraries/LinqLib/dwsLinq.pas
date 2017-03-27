@@ -194,7 +194,7 @@ begin
    base := idx.baseExpr;
    assert(base.typ.classtype = TDynamicArraySymbol);
    ident := TSqlIdentifier(TConvVarToIntegerExpr(idx.ItemExpr).expr);
-   result := TSqlInExpr.Create(compiler.CompilerContext, compiler.Tokenizer.HotPos, ident, base);
+   result := TSqlInExpr.Create(compiler.CompilerContext, compiler.Tokenizer.HotPos, ttIN, ident, base);
    base.IncRefCount;
    ident.IncRefCount;
    expr.Free;
@@ -225,7 +225,7 @@ begin
       expr := ReadComparisonExpr(compiler, tok);
       try
          while tok.TestDelete(ttOr) do
-            expr := TBoolOrExpr.Create(compiler.CompilerContext, cNullPos, expr, ReadComparisonExpr(compiler, tok));
+            expr := TBoolOrExpr.Create(compiler.CompilerContext, cNullPos, ttOR, expr, ReadComparisonExpr(compiler, tok));
          List.Add(expr);
          expr := nil;
       except

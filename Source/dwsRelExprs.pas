@@ -25,12 +25,13 @@ interface
 
 uses
    dwsExprs, dwsSymbols, dwsErrors, dwsConstExprs, Variants, dwsScriptSource,
-   dwsCompilerContext, dwsSpecializationContext;
+   dwsCompilerContext, dwsSpecializationContext, dwsTokenizer;
 
 type
 
    TRelOpExpr = class(TBinaryOpExpr)
-      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
+      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                         const anOp : TTokenType; aLeft, aRight : TTypedExpr); override;
       procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
       function  SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr; override;
    end;
@@ -182,7 +183,8 @@ implementation
 
 // Create
 //
-constructor TRelOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+constructor TRelOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                              const anOp : TTokenType; aLeft, aRight : TTypedExpr);
 begin
    inherited;
    FTyp:=context.TypBoolean;
@@ -200,7 +202,7 @@ end;
 function TRelOpExpr.SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr;
 begin
    Result := TRelOpExprClass(ClassType).Create(
-      CompilerContextFromSpecialization(context), ScriptPos,
+      CompilerContextFromSpecialization(context), ScriptPos, Op,
       Left.SpecializeTypedExpr(context), Right.SpecializeTypedExpr(context)
    );
 end;

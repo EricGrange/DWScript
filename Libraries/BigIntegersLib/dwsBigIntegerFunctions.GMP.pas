@@ -85,7 +85,8 @@ type
    end;
 
    TBigIntegerOpExpr = class(TBinaryOpExpr)
-      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
+      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                         const anOp : TTokenType; aLeft, aRight : TTypedExpr); override;
       procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
@@ -629,7 +630,8 @@ end;
 
 // Create
 //
-constructor TBigIntegerOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+constructor TBigIntegerOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                                     const anOp : TTokenType; aLeft, aRight : TTypedExpr);
 begin
    inherited;
    try

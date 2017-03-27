@@ -1,2 +1,1 @@
 Syntax Error: Boolean expected [line: 1, column: 8]
-Warning: Infinite loop [line: 1, column: 8]

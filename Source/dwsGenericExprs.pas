@@ -20,29 +20,43 @@ interface
 
 uses
    dwsTokenizer, dwsScriptSource,
-   dwsExprs, dwsSymbols, dwsGenericSymbols, dwsCompilerContext, dwsStrings;
+   dwsSymbols, dwsGenericSymbols, dwsCompilerContext, dwsStrings,
+   dwsExprs, dwsCoreExprs;
 
 type
 
    // left "op" right
    TGenericBinaryOpExpr = class(TBinaryOpExpr)
       private
-         FOp : TTokenType;
          FConstraint : TGenericConstraintBinaryOp;  // referred
-         FScriptPos : TScriptPos;
 
       protected
 
       public
-         constructor Create(const aScriptPos : TScriptPos; aGeneric : TGenericSymbol;
-                            const anOp : TTokenType; aLeft, aRight : TTypedExpr); reintroduce;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                            const anOp : TTokenType; aLeft, aRight : TTypedExpr); override;
 
          function SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr; override;
 
-         function ScriptPos : TScriptPos; override;
+         function IsGeneric : Boolean; override;
 
-         property Op : TTokenType read FOp;
          property Constraint : TGenericConstraintBinaryOp read FConstraint;
+   end;
+
+   // left "assign op" right
+   TGenericAssignExpr = class(TAssignExpr)
+      private
+         FToken : TTokenType;
+
+      public
+         constructor Create(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
+                            token : TTokenType; left : TDataExpr; right : TTypedExpr); reintroduce;
+
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         procedure TypeCheckAssign(context : TdwsCompilerContext); override;
+         function  SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
+
+         property Token : TTokenType read FToken;
    end;
 
 implementation
@@ -55,13 +69,14 @@ uses dwsSpecializationContext, dwsCompilerUtils;
 
 // Create
 //
-constructor TGenericBinaryOpExpr.Create(const aScriptPos : TScriptPos; aGeneric : TGenericSymbol;
+constructor TGenericBinaryOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
                                         const anOp : TTokenType; aLeft, aRight : TTypedExpr);
+var
+   generic : TGenericSymbol;
 begin
-   inherited Create(nil, aScriptPos, aLeft, aRight);
-   FOp := anOp;
-   FScriptPos := aScriptPos;
-   FConstraint := aGeneric.ConstraintForBinaryOp(anOp, aLeft.Typ, aRight.Typ);
+   inherited Create(context, aScriptPos, anOp, aLeft, aRight);
+   generic := TGenericSymbol.GenericFor(aLeft.Typ, aRight.Typ);
+   FConstraint := generic.ConstraintForBinaryOp(anOp, aLeft.Typ, aRight.Typ);
    Typ := FConstraint.ResultType;
 end;
 
@@ -94,11 +109,52 @@ begin
    end;
 end;
 
-// ScriptPos
+// IsGeneric
 //
-function TGenericBinaryOpExpr.ScriptPos : TScriptPos;
+function TGenericBinaryOpExpr.IsGeneric : Boolean;
 begin
-   Result := FScriptPos;
+   Result := True;
+end;
+
+// ------------------
+// ------------------ TGenericAssignExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TGenericAssignExpr.Create(
+      context : TdwsCompilerContext; const aScriptPos: TScriptPos;
+      token : TTokenType;
+      left : TDataExpr; right : TTypedExpr);
+begin
+   FToken := token;
+   inherited Create(context, aScriptPos, left, right);
+end;
+
+// EvalNoResult
+//
+procedure TGenericAssignExpr.EvalNoResult(exec : TdwsExecution);
+begin
+   Assert(False);
+end;
+
+// TypeCheckAssign
+//
+procedure TGenericAssignExpr.TypeCheckAssign(context : TdwsCompilerContext);
+begin
+   // TODO check vs constraints
+end;
+
+// SpecializeProgramExpr
+//
+function TGenericAssignExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+begin
+   Result := CreateAssignExpr(
+      CompilerContextFromSpecialization(context), ScriptPos,
+      Token,
+      Left.SpecializeDataExpr(context),
+      Right.SpecializeTypedExpr(context)
+   );
 end;
 
 end.

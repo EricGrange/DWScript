@@ -732,6 +732,7 @@ type
          procedure RaiseInterfaceIsNil(exec : TdwsExecution);
 
          function IsOfType(typSym : TTypeSymbol) : Boolean;
+         function IsGeneric : Boolean; virtual;
 
          function SameDataExpr(expr : TTypedExpr) : Boolean; virtual;
 
@@ -1283,6 +1284,8 @@ type
    // left "op" right
    TBinaryOpExpr = class(TTypedExpr)
       protected
+         FScriptPos : TScriptPos;
+         FOp : TTokenType;
          FLeft : TTypedExpr;
          FRight : TTypedExpr;
 
@@ -1294,16 +1297,20 @@ type
          procedure OrphanSubExprs(context : TdwsCompilerContext);
 
       public
-         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); virtual;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                            const anOp : TTokenType; aLeft, aRight : TTypedExpr); virtual;
          destructor Destroy; override;
 
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+
+         function ScriptPos : TScriptPos; override;
 
          procedure OptimizeConstantOperandsToFloats(context : TdwsCompilerContext);
 
          procedure Swap;
 
          property Typ : TTypeSymbol read FTyp write FTyp;
+         property Op : TTokenType read FOp write FOp;
          property Left : TTypedExpr read FLeft write FLeft;
          property Right : TTypedExpr read FRight write FRight;
    end;
@@ -1315,30 +1322,35 @@ type
    end;
 
    TVariantBinOpExpr = class(TStaticallyTypedBinOpExpr)
-     constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
+     constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                        const anOp : TTokenType; aLeft, aRight : TTypedExpr); override;
      function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
    TIntegerBinOpExpr = class(TStaticallyTypedBinOpExpr)
-     constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
+     constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                        const anOp : TTokenType; aLeft, aRight : TTypedExpr); override;
      procedure Orphan(context : TdwsCompilerContext); override;
      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
      function EvalAsFloat(exec : TdwsExecution) : Double; override;
      function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
    TStringBinOpExpr = class(TStaticallyTypedBinOpExpr)
-     constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
+     constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                        const anOp : TTokenType; aLeft, aRight : TTypedExpr); override;
      procedure Orphan(context : TdwsCompilerContext); override;
      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
      function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
    TFloatBinOpExpr = class(TStaticallyTypedBinOpExpr)
-     constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
+     constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                        const anOp : TTokenType; aLeft, aRight : TTypedExpr); override;
      procedure Orphan(context : TdwsCompilerContext); override;
      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
      function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
    TBooleanBinOpExpr = class(TStaticallyTypedBinOpExpr)
-     constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
+     constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                        const anOp : TTokenType; aLeft, aRight : TTypedExpr); override;
      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
      function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
@@ -4007,6 +4019,13 @@ begin
            and (Typ.IsOfType(typSym));
 end;
 
+// IsGeneric
+//
+function TTypedExpr.IsGeneric : Boolean;
+begin
+   Result := (Typ <> nil) and (Typ.IsGeneric);
+end;
+
 // SameDataExpr
 //
 function TTypedExpr.SameDataExpr(expr : TTypedExpr) : Boolean;
@@ -5120,7 +5139,7 @@ begin
       baseTyp:=baseExpr.Typ.UnAliasedType;
       if baseTyp is TClassOfSymbol then begin
          classSym:=TClassSymbol(baseExpr.EvalAsInteger(exec));
-         FFuncExpr:=CreateFuncExpr(compilerContext,
+         FFuncExpr:=CreateFuncExpr(compilerContext, cNullPos,
                                    funcExpr.FuncSym, nil, classSym, []);
       end else begin
          if baseTyp is TInterfaceSymbol then begin
@@ -5128,7 +5147,8 @@ begin
             FFuncExpr:=CreateIntfExpr(compilerContext, funcExpr.FuncSym, scriptObjIntf);
          end else begin
             baseExpr.EvalAsScriptObj(exec, scriptObj);
-            FFuncExpr:=CreateFuncExpr(compilerContext, funcExpr.FuncSym, scriptObj, scriptObj.ClassSym, []);
+            FFuncExpr:=CreateFuncExpr(compilerContext, cNullPos,
+                                      funcExpr.FuncSym, scriptObj, scriptObj.ClassSym, []);
          end;
       end;
 
@@ -5139,7 +5159,7 @@ begin
 
    end else begin
 
-      FFuncExpr:=CreateFuncExpr(compilerContext, funcExpr.FuncSym, nil, nil, []);
+      FFuncExpr:=CreateFuncExpr(compilerContext, cNullPos, funcExpr.FuncSym, nil, nil, []);
 
    end;
 
@@ -5519,8 +5539,11 @@ end;
 // ------------------ TBinaryOpExpr ------------------
 // ------------------
 
-constructor TBinaryOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+constructor TBinaryOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                                 const anOp : TTokenType; aLeft, aRight : TTypedExpr);
 begin
+   FScriptPos := aScriptPos;
+   FOp := anOp;
    FLeft := aLeft;
    FRight := aRight;
 end;
@@ -5537,6 +5560,13 @@ end;
 procedure TBinaryOpExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
    Assert(False);
+end;
+
+// ScriptPos
+//
+function TBinaryOpExpr.ScriptPos : TScriptPos;
+begin
+   Result := FScriptPos;
 end;
 
 // GetIsConstant
@@ -5605,7 +5635,7 @@ end;
 function TStaticallyTypedBinOpExpr.SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr;
 begin
    Result := TBinaryOpExprClass(ClassType).Create(
-      CompilerContextFromSpecialization(context), ScriptPos,
+      CompilerContextFromSpecialization(context), ScriptPos, Op,
       Left.SpecializeTypedExpr(context), Right.SpecializeTypedExpr(context)
    );
 end;
@@ -5616,7 +5646,8 @@ end;
 
 // Create
 //
-constructor TVariantBinOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+constructor TVariantBinOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                                     const anOp : TTokenType; aLeft, aRight : TTypedExpr);
 begin
    inherited;
    FTyp:=context.TypVariant;
@@ -5641,7 +5672,8 @@ end;
 
 // Create
 //
-constructor TIntegerBinOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+constructor TIntegerBinOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                                     const anOp : TTokenType; aLeft, aRight : TTypedExpr);
 begin
    inherited;
    if aLeft.Typ=aRight.Typ then
@@ -5688,7 +5720,8 @@ end;
 
 // Create
 //
-constructor TStringBinOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+constructor TStringBinOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                                    const anOp : TTokenType; aLeft, aRight : TTypedExpr);
 begin
    inherited;
    FTyp:=context.TypString;
@@ -5732,7 +5765,8 @@ end;
 
 // Create
 //
-constructor TFloatBinOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+constructor TFloatBinOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                                   const anOp : TTokenType; aLeft, aRight : TTypedExpr);
 begin
    inherited;
    FTyp:=context.TypFloat;
@@ -5773,7 +5807,8 @@ end;
 
 // Create
 //
-constructor TBooleanBinOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+constructor TBooleanBinOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                                     const anOp : TTokenType; aLeft, aRight : TTypedExpr);
 begin
    inherited;
    FTyp:=context.TypBoolean;

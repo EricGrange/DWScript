@@ -1140,7 +1140,8 @@ begin
       if FForceStatic then
          cf := [cfoForceStatic]
       else cf := [];
-      Result:=CreateFuncExpr(ProgramInfo.CompilerContext, FTypeSym.AsFuncSymbol, FScriptObj,
+      Result:=CreateFuncExpr(ProgramInfo.CompilerContext, cNullPos,
+                             FTypeSym.AsFuncSymbol, FScriptObj,
                              FClassSym, cf);
    end;
    if Result is TFuncExpr then begin

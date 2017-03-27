@@ -892,15 +892,17 @@ type
    end;
 
    // Peek the last value of a dynamic array
-   TArrayPeekExpr = class(TArrayDataExpr)
+   TArrayPeekExpr = class (TArrayDataExpr)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
+         function  SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
    end;
 
    // Pop the last value of a dynamic array
-   TArrayPopExpr = class(TArrayPeekExpr)
+   TArrayPopExpr = class sealed (TArrayPeekExpr)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
+         function  SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
    end;
 
    // Delete one or N elements of a dynamic array
@@ -1190,18 +1192,8 @@ type
      function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
-   TPosIntegerBinOpExpr = class(TIntegerBinOpExpr)
-      private
-         FScriptPos : TScriptPos;
-
-      public
-         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
-                            aLeft, aRight : TTypedExpr); override;
-         function ScriptPos : TScriptPos; override;
-   end;
-
    // a div b
-   TDivExpr = class(TPosIntegerBinOpExpr)
+   TDivExpr = class(TIntegerBinOpExpr)
       function EvalAsInteger(exec : TdwsExecution) : Int64; override;
       function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
@@ -1211,7 +1203,7 @@ type
    end;
 
    // a mod b
-   TModExpr = class(TPosIntegerBinOpExpr)
+   TModExpr = class(TIntegerBinOpExpr)
       function EvalAsInteger(exec : TdwsExecution) : Int64; override;
       function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
@@ -1328,7 +1320,8 @@ type
    // left ?? right (class)
    TCoalesceClassExpr = class(TBinaryOpExpr)
       public
-         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                            const anOp : TTokenType; aLeft, aRight : TTypedExpr); override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
    end;
@@ -1336,7 +1329,8 @@ type
    // left ?? right (dyn array)
    TCoalesceDynArrayExpr = class(TBinaryOpExpr)
       public
-         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr); override;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                            const anOp : TTokenType; aLeft, aRight : TTypedExpr); override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
    end;
@@ -4617,7 +4611,7 @@ end;
 constructor TStringArrayOpExpr.CreatePos(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                          Left, Right: TTypedExpr);
 begin
-   inherited Create(context, aScriptPos, Left, Right);
+   inherited Create(context, aScriptPos, ttALEFT, Left, Right);
    FScriptPos := aScriptPos;
 end;
 
@@ -5552,7 +5546,7 @@ end;
 function TDivideExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
 begin
    if FRight is TDivideExpr then begin
-      Result:=TMultFloatExpr.Create(context, ScriptPos, Left, Right);
+      Result:=TMultFloatExpr.Create(context, ScriptPos, ttTIMES, Left, Right);
       TDivideExpr(Right).Swap;
       FLeft:=nil;
       FRight:=nil;
@@ -5592,25 +5586,6 @@ begin
 end;
 
 // ------------------
-// ------------------ TPosIntegerBinOpExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TPosIntegerBinOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
-begin
-   inherited;
-   FScriptPos:=aScriptPos;
-end;
-
-// ScriptPos
-//
-function TPosIntegerBinOpExpr.ScriptPos : TScriptPos;
-begin
-   Result:=FScriptPos;
-end;
-
-// ------------------
 // ------------------ TDivExpr ------------------
 // ------------------
 
@@ -5634,7 +5609,7 @@ begin
    if (Result=Self) and (FRight.ClassType=TConstIntExpr) then begin
       if TConstIntExpr(Right).Value=0 then
          context.Msgs.AddCompilerError(FScriptPos, CPE_DivisionByZero);
-      Result:=TDivConstExpr.Create(context, FScriptPos, Left, Right);
+      Result:=TDivConstExpr.Create(context, FScriptPos, ttDIV, Left, Right);
       Left:=nil;
       Right:=nil;
       Orphan(context);
@@ -5676,7 +5651,7 @@ begin
    if (Result=Self) and (FRight.ClassType=TConstIntExpr) then begin
       if TConstIntExpr(Right).Value=0 then
          context.Msgs.AddCompilerError(FScriptPos, CPE_DivisionByZero);
-      Result:=TModConstExpr.Create(context, FScriptPos, Left, Right);
+      Result:=TModConstExpr.Create(context, FScriptPos, ttMOD, Left, Right);
       Left:=nil;
       Right:=nil;
       Orphan(context);
@@ -5959,12 +5934,12 @@ end;
 function TStringInStringExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
 begin
    if (Left is TStrVarExpr) and (Right is TConstStringExpr) then begin
-      Result:=TVarStringInConstStringExpr.Create(context, ScriptPos, Left, Right);
+      Result:=TVarStringInConstStringExpr.Create(context, ScriptPos, ttIN, Left, Right);
       Left:=nil;
       Right:=nil;
       Orphan(context);
    end else if (Left is TConstStringExpr) and (Right is TStrVarExpr) then begin
-      Result:=TConstStringInVarStringExpr.Create(context, ScriptPos, Left, Right);
+      Result:=TConstStringInVarStringExpr.Create(context, ScriptPos, ttIN, Left, Right);
       Left:=nil;
       Right:=nil;
       Orphan(context);
@@ -6076,9 +6051,10 @@ end;
 
 // Create
 //
-constructor TCoalesceClassExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+constructor TCoalesceClassExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                                      const anOp : TTokenType; aLeft, aRight : TTypedExpr);
 begin
-   inherited Create(context, aScriptPos, aLeft, aRight);
+   inherited Create(context, aScriptPos, anOp, aLeft, aRight);
    Typ:=aLeft.Typ;
 end;
 
@@ -6107,9 +6083,10 @@ end;
 
 // Create
 //
-constructor TCoalesceDynArrayExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; aLeft, aRight : TTypedExpr);
+constructor TCoalesceDynArrayExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                                         const anOp : TTokenType; aLeft, aRight : TTypedExpr);
 begin
-   inherited Create(context, aScriptPos, aLeft, aRight);
+   inherited Create(context, aScriptPos, anOp, aLeft, aRight);
    Typ:=aLeft.Typ;
 end;
 
@@ -8192,7 +8169,7 @@ var
    specialized : TLoopExpr;
 begin
    specialized := TLoopExprClass(ClassType).Create(ScriptPos);
-   specialized.CondExpr := CondExpr.SpecializeTypedExpr(context);
+   specialized.CondExpr := CondExpr.SpecializeBooleanExpr(context);
    specialized.LoopExpr := LoopExpr.SpecializeProgramExpr(context);
    Result := specialized;
 end;
@@ -9598,6 +9575,17 @@ begin
                dyn.ElementSize);
 end;
 
+// SpecializeDataExpr
+//
+function TArrayPeekExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
+begin
+   Result := TArrayPeekExpr.Create(
+      CompilerContextFromSpecialization(context),
+      ScriptPos,
+      BaseExpr.SpecializeTypedExpr(context)
+   );
+end;
+
 // ------------------
 // ------------------ TArrayPopExpr ------------------
 // ------------------
@@ -9612,6 +9600,17 @@ begin
 
    dyn:=GetBaseDynArray(exec);
    dyn.Delete(dyn.ArrayLength-1, 1);
+end;
+
+// SpecializeDataExpr
+//
+function TArrayPopExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
+begin
+   Result := TArrayPopExpr.Create(
+      CompilerContextFromSpecialization(context),
+      ScriptPos,
+      BaseExpr.SpecializeTypedExpr(context)
+   );
 end;
 
 // ------------------

@@ -48,3 +48,7 @@
 /Packages/DelphiXE2/dwsLibRuntime.res
 /Packages/DelphiXE3/dwsLib.dproj
 /Source/backup
+/Demos/Mandelbrot/ConverterBackup/FMain.pas
+/Demos/Mandelbrot/ConverterBackup/Mandelbrot.dpr
+/Demos/MandelbrotJS/MandelbrotJS.dpr
+/Demos/MandelbrotJS/MandelbrotJS.dproj
