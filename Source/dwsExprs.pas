@@ -1234,7 +1234,7 @@ type
       public
          constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
          procedure Orphan(context : TdwsCompilerContext); override;
-         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override; final;
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
 
@@ -1243,7 +1243,7 @@ type
       public
          constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
          procedure Orphan(context : TdwsCompilerContext); override;
-         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override; final;
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
 
@@ -1251,7 +1251,7 @@ type
    TUnaryOpStringExpr = class(TUnaryOpExpr)
       public
          constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
-         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override; final;
    end;
 
    // variant unary result
@@ -1649,6 +1649,9 @@ type
 
          procedure Clear;
          function Count : Integer;
+
+         function CopyKeys : TData;
+
    end;
 
    TScriptInterface = class(TScriptObj, IScriptObjInterface)
@@ -7542,6 +7545,31 @@ end;
 function TScriptAssociativeArray.Count : Integer;
 begin
    Result:=FCount;
+end;
+
+// CopyKeys
+//
+function TScriptAssociativeArray.CopyKeys : TData;
+var
+   i, k : Integer;
+begin
+   SetLength(Result, FKeySize*FCount);
+   k := 0;
+   if FKeySize > 1 then begin
+      for i := 0 to FCapacity-1 do begin
+         if FHashCodes[i] <> 0 then begin
+            DWSCopyData(FKeys, i*FKeySize, Result, k, FKeySize);
+            Inc(k, FKeySize);
+         end;
+      end;
+   end else begin
+      for i := 0 to FCapacity-1 do begin
+         if FHashCodes[i] <> 0 then begin
+            VarCopySafe(Result[k], FKeys[i]);
+            Inc(k);
+         end;
+      end;
+   end;
 end;
 
 // ------------------

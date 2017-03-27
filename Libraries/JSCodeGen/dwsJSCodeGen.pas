@@ -1061,6 +1061,7 @@ begin
 
    RegisterCodeGen(TCoalesceExpr,         TJSCoalesceExpr.Create);
    RegisterCodeGen(TCoalesceStrExpr,      TJSCoalesceExpr.Create);
+   RegisterCodeGen(TCoalesceIntExpr,      TJSCoalesceExpr.Create);
    RegisterCodeGen(TCoalesceClassExpr,    TJSCoalesceExpr.Create);
    RegisterCodeGen(TCoalesceDynArrayExpr, TJSCoalesceExpr.Create);
 
@@ -1281,6 +1282,8 @@ begin
       TdwsExprGenericCodeGen.Create(['Object.keys', '(', 0, ')', '.length']));
    RegisterCodeGen(TAssociativeArrayClearExpr,
       TdwsExprGenericCodeGen.Create(['$Delete', '(', 0, ')'], gcgStatement, '$Delete'));
+   RegisterCodeGen(TAssociativeArrayKeysExpr,
+      TdwsExprGenericCodeGen.Create(['Object.keys', '(', 0, ')']));
 
    RegisterCodeGen(TStringLengthExpr,
       TdwsExprGenericCodeGen.Create([0, '.length']));

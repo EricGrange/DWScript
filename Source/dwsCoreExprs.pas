@@ -1033,6 +1033,14 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
+   TAssociativeArrayKeysExpr = class (TUnaryOpExpr)
+      public
+         constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
+
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override; final;
+         procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
+   end;
+
    TAssignedExpr = class(TUnaryOpBoolExpr)
    end;
 
@@ -1314,6 +1322,13 @@ type
    TCoalesceStrExpr = class(TStringBinOpExpr)
       public
          procedure EvalAsString(exec : TdwsExecution; var result : UnicodeString); override;
+         function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
+   end;
+
+   // left ?? right (integers)
+   TCoalesceIntExpr = class(TIntegerBinOpExpr)
+      public
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
 
@@ -6035,14 +6050,47 @@ begin
       if s='' then begin
          Result:=Right;
          FRight:=nil;
-         Orphan(context);
       end else begin
          Result:=Left;
          FLeft:=nil;
-         Orphan(context);
       end;
+      Orphan(context);
       Exit;
    end else Result:=inherited Optimize(context);
+end;
+
+// ------------------
+// ------------------ TCoalesceIntExpr ------------------
+// ------------------
+
+// EvalAsInteger
+//
+function TCoalesceIntExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   Result := Left.EvalAsInteger(exec);
+   if Result = 0 then
+      Result := Right.EvalAsInteger(exec);
+
+end;
+
+// Optimize
+//
+function TCoalesceIntExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
+var
+   i : Int64;
+begin
+   if Left.IsConstant then begin
+      i := Left.EvalAsInteger(context.Execution);
+      if i = 0 then begin
+         Result := Right;
+         FRight := nil;
+      end else begin
+         Result := Left;
+         FLeft := nil;
+      end;
+      Orphan(context);
+      Exit;
+   end else Result := inherited Optimize(context);
 end;
 
 // ------------------
@@ -10474,6 +10522,45 @@ var
 begin
    FBaseExpr.EvalAsScriptAssociativeArray(exec, aa);
    aa.Clear;
+end;
+
+// ------------------
+// ------------------ TAssociativeArrayKeysExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TAssociativeArrayKeysExpr.Create(context : TdwsCompilerContext; expr : TTypedExpr);
+var
+   a : TAssociativeArraySymbol;
+begin
+   inherited;
+   a := (expr.Typ.UnAliasedType as TAssociativeArraySymbol);
+   Typ := a.KeysArrayType(context.TypInteger);
+end;
+
+// EvalAsVariant
+//
+procedure TAssociativeArrayKeysExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+var
+   dyn : IScriptDynArray;
+begin
+   EvalAsScriptDynArray(exec, dyn);
+   Result := dyn;
+end;
+
+// EvalAsScriptDynArray
+//
+procedure TAssociativeArrayKeysExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
+var
+   a : IScriptAssociativeArray;
+   dyn : TScriptDynamicArray;
+begin
+   Expr.EvalAsScriptAssociativeArray(exec, a);
+   dyn := TScriptDynamicArray.CreateNew(Typ);
+   Result := dyn;
+   if a <> nil then
+      dyn.ReplaceData((a.GetSelf as TScriptAssociativeArray).CopyKeys);
 end;
 
 // ------------------

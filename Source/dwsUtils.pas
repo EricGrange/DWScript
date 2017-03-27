@@ -436,10 +436,12 @@ type
          function Replace(const anItem : T) : Boolean; // true if added
          function Contains(const anItem : T) : Boolean;
          function Match(var anItem : T) : Boolean;
+         function Remove(const anItem : T) : Boolean; // true if removed
          procedure Enumerate(callBack : TSimpleHashFunc<T>);
          procedure Clear(resetCapacity : Boolean = True);
 
          function HashBucketValue(index : Integer; var anItem : T) : Boolean; inline;
+         procedure Delete(index : Integer);
 
          property Count : Integer read FCount;
 
@@ -4344,6 +4346,48 @@ begin
    if Result then
       anItem:=FBuckets[i].Value;
 end;
+
+// Remove
+//
+function TSimpleHash<T>.Remove(const anItem : T) : Boolean;
+var
+   i : Integer;
+begin
+   if FCount=0 then Exit(False);
+   i := (GetItemHashCode(anItem) and (FCapacity-1));
+   Result := LinearFind(anItem, i);
+   if Result then Delete(i);
+end;
+
+// Delete
+//
+procedure TSimpleHash<T>.Delete(index : Integer);
+var
+   k, gap : Integer;
+begin
+   if FBuckets[index].HashCode = 0 then Exit;
+
+   gap := index;
+   repeat
+      index := (index+1) and (FCapacity-1);
+
+      if FBuckets[index].HashCode = 0 then
+         Break;
+
+      k := FBuckets[index].HashCode and (FCapacity - 1);
+
+      if ((gap >= k) or (k > index)) and ((index >= gap) or (k <= gap)) and ((index >= gap) or (k > index)) then begin
+         FBuckets[gap] := FBuckets[index];
+         FBuckets[index].HashCode := 0;
+         gap := index;
+      end;
+   until False;
+
+   FBuckets[gap].HashCode := 0;
+   FBuckets[gap].Value := Default(T);
+   Dec(FCount);
+end;
+
 
 // Enumerate
 //

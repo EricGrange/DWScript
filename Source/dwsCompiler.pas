@@ -7993,7 +7993,7 @@ begin
    argSymTable:=nil;
    argList:=TTypedExprList.Create;
    try
-      methodKind:=NameToArrayMethod(name, FMsgs, namePos);
+      methodKind := NameToArrayMethod(name, FMsgs, namePos);
 
       ReadArguments(argList.AddExpr, ttBLEFT, ttBRIGHT, argPosArray, argList.ExpectedArg);
 
@@ -8008,6 +8008,11 @@ begin
             amkClear : begin
                CheckArguments(0, 0);
                Result:=TAssociativeArrayClearExpr.Create(namePos, baseExpr);
+            end;
+
+            amkKeys : begin
+               CheckArguments(0, 0);
+               Result := TAssociativeArrayKeysExpr.Create(FCompilerContext, baseExpr);
             end;
 
          else
@@ -10619,6 +10624,8 @@ begin
                      Result:=TCoalesceClassExpr.Create(FCompilerContext, hotPos, tt, Result, right);
                   end else if Result.Typ.UnAliasedType.ClassType=TDynamicArraySymbol then begin
                      Result:=TCoalesceDynArrayExpr.Create(FCompilerContext, hotPos, tt, Result, right);
+                  end else if Result.Typ.IsOfType(FCompilerContext.TypInteger) then begin
+                     Result:=TCoalesceIntExpr.Create(FCompilerContext, hotPos, tt, Result, right);
                   end else begin
                      FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                      // fake result to keep compiler going and report further issues

@@ -1184,9 +1184,11 @@ type
    TAssociativeArraySymbol = class sealed (TTypeSymbol)
       private
          FKeyType : TTypeSymbol;
+         FKeyArrayType : TDynamicArraySymbol;
 
       public
          constructor Create(const name : UnicodeString; elementType, keyType : TTypeSymbol);
+         destructor Destroy; override;
 
          procedure InitData(const Data: TData; Offset: Integer); override;
          class function DynamicInitialization : Boolean; override;
@@ -1194,6 +1196,8 @@ type
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsPointerType : Boolean; override;
          function SameType(typSym : TTypeSymbol) : Boolean; override;
+
+         function KeysArrayType(integerType : TTypeSymbol) : TDynamicArraySymbol; virtual;
 
          property KeyType : TTypeSymbol read FKeyType;
 
@@ -7052,6 +7056,14 @@ begin
    FKeyType:=keyType;
 end;
 
+// Destroy
+//
+destructor TAssociativeArraySymbol.Destroy;
+begin
+   inherited;
+   FKeyArrayType.Free;
+end;
+
 // InitData
 //
 procedure TAssociativeArraySymbol.InitData(const Data: TData; Offset: Integer);
@@ -7095,6 +7107,15 @@ begin
    Result:=    (typSym<>nil)
            and (typSym.ClassType=ClassType)
            and Typ.SameType(typSym.Typ);
+end;
+
+// KeysArrayType
+//
+function TAssociativeArraySymbol.KeysArrayType(integerType : TTypeSymbol) : TDynamicArraySymbol;
+begin
+   if FKeyArrayType = nil then
+      FKeyArrayType := TDynamicArraySymbol.Create('', KeyType, integerType);
+   Result := FKeyArrayType;
 end;
 
 // ------------------

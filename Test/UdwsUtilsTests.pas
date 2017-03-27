@@ -90,6 +90,7 @@ type
          procedure Base32EncoderTest;
 
          procedure NameObjectHashTest;
+         procedure SimpleHashTest;
 
          procedure ObjectListTest;
 
@@ -1152,6 +1153,87 @@ begin
    finally
       noh.Free;
    end;
+end;
+
+// SimpleHashTest
+//
+type
+   TSimpleIntegerHash = class (TSimpleHash<Integer>)
+      function SameItem(const item1, item2 : Integer) : Boolean; override;
+      function GetItemHashCode(const item1 : Integer) : Integer; override;
+   end;
+   TSimpleIntegerHash2 = class (TSimpleIntegerHash)
+      function GetItemHashCode(const item1 : Integer) : Integer; override;
+   end;
+   TSimpleIntegerHash3 = class (TSimpleIntegerHash)
+      function GetItemHashCode(const item1 : Integer) : Integer; override;
+   end;
+function TSimpleIntegerHash.SameItem(const item1, item2 : Integer) : Boolean;
+begin
+   Result := item1 = item2;
+end;
+function TSimpleIntegerHash.GetItemHashCode(const item1 : Integer) : Integer;
+begin
+   Result := SimpleIntegerHash(item1);
+end;
+function TSimpleIntegerHash2.GetItemHashCode(const item1 : Integer) : Integer;
+begin
+   Result := item1; // NOT a good hash, will cause many collision but that's what we want in this test
+end;
+function TSimpleIntegerHash3.GetItemHashCode(const item1 : Integer) : Integer;
+begin
+   Result := item1*4; // NOT a good hash, will cause many collision but that's what we want in this test
+end;
+procedure TdwsUtilsTests.SimpleHashTest;
+
+   procedure RunSieve(hash : TSimpleIntegerHash);
+   var
+      i, k : Integer;
+      list : TSimpleInt64List;
+      buf, buf2 : String;
+      foundPrime : Boolean;
+   begin
+      buf := '1';
+      try
+         // brute-force sieve
+         for i := 2 to 150 do
+            hash.Add(i);
+         for i := 2 to 150 do begin
+            foundPrime := hash.Contains(i);
+            k := i;
+            while k <= 150 do begin
+               hash.Remove(k);
+               k := k + i;
+            end;
+            if foundPrime then begin
+               buf := buf + ',' + IntToStr(i);
+               hash.Add(i); // add back, to mix remove/add
+            end;
+         end;
+         CheckEquals('1,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113,127,131,137,139,149', buf, 'collected');
+         CheckEquals(35, hash.Count);
+         list := TSimpleInt64List.Create;
+         try
+            for i := 0 to hash.Capacity-1 do
+               if hash.HashBucketValue(i, k) then
+                  list.Add(k);
+            list.Sort;
+            buf2 := '1';
+            for i := 0 to list.Count-1 do
+               buf2 := buf2 + ',' + IntToStr(list[i]);
+            CheckEquals(buf, buf2, 'added back');
+         finally
+            list.Free;
+         end;
+      finally
+         hash.Free;
+      end;
+   end;
+
+begin
+   RunSieve(TSimpleIntegerHash.Create);
+   RunSieve(TSimpleIntegerHash2.Create);
+   RunSieve(TSimpleIntegerHash3.Create);
 end;
 
 // ObjectListTest
