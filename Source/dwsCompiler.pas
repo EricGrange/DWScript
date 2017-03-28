@@ -4140,10 +4140,13 @@ var
    usesSym : TFuncSymbol;
    fromTable : TSymbolTable;
    typ : TTypeSymbol;
+   expectedNbParams : Integer;
 begin
    opPos:=FTok.HotPos;
    tt:=FTok.TestDeleteAny([ttPLUS, ttMINUS, ttTIMES, ttDIVIDE, ttMOD, ttDIV,
-                           ttOR, ttAND, ttXOR, ttIN, ttIMPLIES, ttSHL, ttSHR, ttSAR,
+                           ttOR, ttAND, ttXOR,
+                           ttIN, ttIMPLIES, ttIMPLICIT,
+                           ttSHL, ttSHR, ttSAR,
                            ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
                            ttLESSLESS, ttGTRGTR, ttCARET]);
    if tt=ttNone then
@@ -4162,9 +4165,15 @@ begin
       if not FTok.TestDelete(ttBRIGHT) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
 
-      if Length(Result.Params)<>2 then begin
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadNumberOfParameters, [2, Length(Result.Params)]);
-         Result.Token:=ttNone;  // nerf the operator
+      case tt of
+         ttIMPLICIT : expectedNbParams := 1;
+      else
+         expectedNbParams := 2;
+      end;
+      if Length(Result.Params) <> expectedNbParams then begin
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadNumberOfParameters,
+                                   [expectedNbParams, Length(Result.Params)]);
+         Result.Token := ttNone;  // nerf the operator
       end;
 
       if not FTok.TestDelete(ttCOLON) then
@@ -4206,15 +4215,15 @@ begin
 
          if (usesSym.typ=nil) or not usesSym.Typ.IsOfType(Result.Typ) then
             FMsgs.AddCompilerErrorFmt(usesPos, CPE_BadResultType, [Result.Typ.Caption])
-         else if usesSym.Params.Count<>2 then
-            FMsgs.AddCompilerErrorFmt(usesPos, CPE_BadNumberOfParameters, [2, usesSym.Params.Count])
+         else if usesSym.Params.Count <> expectedNbParams then
+            FMsgs.AddCompilerErrorFmt(usesPos, CPE_BadNumberOfParameters, [expectedNbParams, usesSym.Params.Count])
          else if not usesSym.Params[0].Typ.IsOfType(Result.Params[0]) then
             FMsgs.AddCompilerErrorFmt(usesPos, CPE_BadParameterType, [0, Result.Params[0].Caption, usesSym.Params[0].Typ.Caption])
          else if usesSym.Params[0].ClassType=TVarParamSymbol then
             FMsgs.AddCompilerErrorFmt(usesPos, CPE_VarParameterForbidden, [0])
-         else if not usesSym.Params[1].Typ.IsOfType(Result.Params[1]) then
+         else if (expectedNbParams > 1) and not usesSym.Params[1].Typ.IsOfType(Result.Params[1]) then
             FMsgs.AddCompilerErrorFmt(usesPos, CPE_BadParameterType, [1, Result.Params[1].Caption, usesSym.Params[1].Typ.Caption])
-         else if usesSym.Params[1].ClassType=TVarParamSymbol then
+         else if (expectedNbParams > 1) and (usesSym.Params[1].ClassType=TVarParamSymbol) then
             FMsgs.AddCompilerErrorFmt(usesPos, CPE_VarParameterForbidden, [1])
          else Result.UsesSym:=usesSym;
       end;
@@ -5558,14 +5567,12 @@ begin
                if FTok.TestDelete(ttASSIGN) then begin
                   hotPos:=FTok.HotPos;
                   valueExpr:=ReadExpr(baseType.Typ);
+                  if valueExpr.Typ <> baseType.Typ then
+                     FCompilerContext.WrapWithImplicitCast(baseType.Typ, hotPos, valueExpr);
+
                   if not baseType.Typ.IsCompatible(valueExpr.Typ) then begin
-                     if     valueExpr.Typ.IsOfType(FCompilerContext.TypInteger)
-                        and baseType.Typ.IsOfType(FCompilerContext.TypFloat) then begin
-                        valueExpr:=TConvIntToFloatExpr.Create(FCompilerContext, valueExpr)
-                     end else begin
-                        IncompatibleTypes(hotPos, CPE_AssignIncompatibleTypes,
-                                          valueExpr.Typ, baseType.Typ);
-                     end;
+                     IncompatibleTypes(hotPos, CPE_AssignIncompatibleTypes,
+                                       valueExpr.Typ, baseType.Typ);
                   end;
 
                   if baseType.Typ.Size=1 then
@@ -5630,6 +5637,9 @@ begin
       hotPos := FTok.HotPos;
       keyExpr := ReadExpr;
 
+      if keyExpr.Typ <> baseType.KeyType then
+         FCompilerContext.WrapWithImplicitCast(baseType.KeyType, hotPos, keyExpr);
+
       if    (keyExpr.Typ=nil)
          or not (   (keyExpr.Typ.IsCompatible(baseType.KeyType))
                  or keyExpr.Typ.IsOfType(FCompilerContext.TypVariant)) then
@@ -5641,15 +5651,14 @@ begin
 
       if FTok.TestDelete(ttASSIGN) then begin
 
-         valueExpr:=ReadExpr(baseType.Typ);
+         hotPos := FTok.HotPos;
+         valueExpr := ReadExpr(baseType.Typ);
+         if valueExpr.Typ <> baseType.Typ then
+            FCompilerContext.WrapWithImplicitCast(baseType.Typ, hotPos, valueExpr);
+
          if not baseType.Typ.IsCompatible(valueExpr.Typ) then begin
-            if     valueExpr.Typ.IsOfType(FCompilerContext.TypInteger)
-               and baseType.Typ.IsOfType(FCompilerContext.TypFloat) then begin
-               valueExpr:=TConvIntToFloatExpr.Create(FCompilerContext, valueExpr)
-            end else begin
-               IncompatibleTypes(hotPos, CPE_AssignIncompatibleTypes,
-                                 valueExpr.Typ, baseType.Typ);
-            end;
+            IncompatibleTypes(hotPos, CPE_AssignIncompatibleTypes,
+                              valueExpr.Typ, baseType.Typ);
          end;
 
          Result := TAssociativeArraySetExpr.Create(FTok.HotPos, baseExpr, keyExpr, valueExpr);
@@ -13612,9 +13621,7 @@ begin
       end else if typeSym = FCompilerContext.TypFloat then begin
 
          // Cast Float(...)
-         if argExpr.IsOfType(FCompilerContext.TypInteger) then
-            Result := TConvIntToFloatExpr.Create(FCompilerContext, argExpr)
-         else if argExpr.IsOfType(FCompilerContext.TypFloat) then
+         if argExpr.IsOfType(FCompilerContext.TypFloat) then
             Result := argExpr
          else begin
             if not argExpr.IsOfType(FCompilerContext.TypVariant) then

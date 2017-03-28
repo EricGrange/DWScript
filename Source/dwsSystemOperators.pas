@@ -22,7 +22,7 @@ interface
 
 uses
    dwsSymbols, dwsTokenizer, dwsExprs, dwsCoreExprs, dwsRelExprs,
-   dwsOperators, dwsUnitSymbols;
+   dwsOperators, dwsUnitSymbols, dwsConvExprs;
 
 type
 
@@ -79,6 +79,10 @@ begin
    typString:=systemTable.TypString;
    typVariant:=systemTable.TypVariant;
    typClassOf:=systemTable.TypClass;
+
+   // implicit conversions
+
+   RegisterCaster(typFloat,   typInteger,    TConvIntToFloatExpr,    True);
 
    // computation operators
 

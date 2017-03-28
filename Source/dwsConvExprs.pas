@@ -256,6 +256,11 @@ begin
 
    if expr.Typ=toTyp then Exit;
 
+   if context.WrapWithImplicitCast(toTyp, scriptPos, expr) then begin
+      Result := expr;
+      Exit;
+   end;
+
    if expr.ClassType=TArrayConstantExpr then begin
 
       arrayConst:=TArrayConstantExpr(expr);

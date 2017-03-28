@@ -36,6 +36,7 @@ type
       CastType : TTypeSymbol;
       OperandType : TTypeSymbol;
       ExprClass : TTypedExprClass;
+      Implicit : Boolean;
    end;
    PRegisteredCaster = ^TRegisteredCaster;
 
@@ -75,9 +76,10 @@ type
          function HasOperatorFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : Boolean;
 
          procedure RegisterCaster(aCastType, aOperandType : TTypeSymbol;
-                                  exprClass : TTypedExprClass);
+                                  exprClass : TTypedExprClass; implicit : Boolean = False);
 
          function FindCaster(aCastType, aOperandType : TTypeSymbol) : TTypedExprClass;
+         function FindImplicitCaster(aCastType, aOperandType : TTypeSymbol) : TTypedExprClass;
    end;
 
 
@@ -256,7 +258,7 @@ end;
 // RegisterCaster
 //
 procedure TOperators.RegisterCaster(aCastType, aOperandType : TTypeSymbol;
-                                    exprClass : TTypedExprClass);
+                                    exprClass : TTypedExprClass; implicit : Boolean = False);
 var
    h, n : Integer;
    p : PRegisteredCaster;
@@ -269,6 +271,7 @@ begin
    p.CastType := aCastType;
    p.OperandType := aOperandType;
    p.ExprClass := exprClass;
+   p.Implicit := implicit;
 end;
 
 // FindCaster
@@ -282,6 +285,22 @@ begin
    for i := 0 to High(FCasters[h]) do begin
       p := @FCasters[h][i];
       if (p.CastType=aCastType) and (p.OperandType=aOperandType) then
+         Exit(p.ExprClass);
+   end;
+   Result := nil;
+end;
+
+// FindImplicitCaster
+//
+function TOperators.FindImplicitCaster(aCastType, aOperandType : TTypeSymbol) : TTypedExprClass;
+var
+   h, i : Integer;
+   p : PRegisteredCaster;
+begin
+   h := (NativeUInt(aCastType) shr 4) and 15;
+   for i := 0 to High(FCasters[h]) do begin
+      p := @FCasters[h][i];
+      if p.Implicit and (p.CastType=aCastType) and (p.OperandType=aOperandType) then
          Exit(p.ExprClass);
    end;
    Result := nil;

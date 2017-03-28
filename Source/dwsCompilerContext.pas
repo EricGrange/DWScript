@@ -19,8 +19,8 @@ unit dwsCompilerContext;
 interface
 
 uses
-   dwsUtils, dwsSymbols, dwsErrors,
-   dwsUnitSymbols, dwsStrings;
+   dwsUtils, dwsSymbols, dwsErrors, dwsScriptSource,
+   dwsUnitSymbols, dwsStrings, dwsTokenizer;
 
 type
    TCompilerOption = (
@@ -70,6 +70,8 @@ type
 
          function CreateConstExpr(typ : TTypeSymbol; const value : Variant) : TExprBase;
 
+         function WrapWithImplicitCast(toTyp : TTypeSymbol; const scriptPos : TScriptPos; var expr) : Boolean;
+
          function Optimize : Boolean;
 
          property StringsUnifier : TStringUnifier read FStringsUnifier;
@@ -106,7 +108,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsExprs, dwsUnifiedConstants, dwsConstExprs;
+uses dwsExprs, dwsUnifiedConstants, dwsConstExprs, dwsOperators, dwsCompilerUtils;
 
 // ------------------
 // ------------------ TdwsCompilerContext ------------------
@@ -209,6 +211,49 @@ begin
    else if typ.typ = TypInteger then
       Result := TConstIntExpr.Create(typ, value)
    else Result := TConstExpr.Create(typ, value);
+end;
+
+// WrapWithImplicitCast
+//
+function TdwsCompilerContext.WrapWithImplicitCast(
+      toTyp : TTypeSymbol; const scriptPos : TScriptPos; var expr) : Boolean;
+var
+   casterClass : TTypedExprClass;
+   typedExpr : TTypedExpr;
+   prog : TdwsProgram;
+   opSym : TOperatorSymbol;
+   funcExpr : TFuncExprBase;
+begin
+   typedExpr := TObject(expr) as TTypedExpr;
+   if typedExpr.Typ = nil then Exit(False);
+
+   prog := FProg as TdwsProgram;
+   opSym := prog.Table.FindImplicitCastOperatorFor(typedExpr.Typ, toTyp);
+   if opSym <> nil then begin
+      funcExpr := CreateSimpleFuncExpr(Self, scriptPos, opSym.UsesSym);
+      funcExpr.AddArg(typedExpr);
+      TObject(expr) := funcExpr;
+      if opSym.UsesSym.Typ.Size>1 then
+         funcExpr.SetResultAddr(prog, nil);
+      funcExpr.Initialize(Self);
+      if Optimize then
+         TObject(expr) := funcExpr.OptimizeToTypedExpr(Self, scriptPos);
+      Result := True;
+   end else begin
+      casterClass := (prog.Root.Operators as TOperators).FindImplicitCaster(toTyp, typedExpr.Typ);
+      Result := (casterClass <> nil);
+      if Result then begin
+         if casterClass.InheritsFrom(TUnaryOpExpr) then
+            typedExpr := TUnaryOpExprClass(casterClass).Create(Self, typedExpr)
+         else begin
+            Assert(casterClass.InheritsFrom(TUnaryOpDataExpr));
+            typedExpr := TUnaryOpDataExprClass(casterClass).Create(Self, typedExpr);
+         end;
+         TObject(expr) := typedExpr;
+         if Optimize then
+            TObject(expr) := typedExpr.OptimizeToTypedExpr(Self, scriptPos);
+      end;
+   end;
 end;
 
 // Optimize

@@ -416,6 +416,7 @@ type
                                              const callback : TOperatorSymbolEnumerationCallback) : Boolean; virtual;
          function EnumerateOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
                                         const callback : TOperatorSymbolEnumerationCallback) : Boolean; virtual;
+         function FindImplicitCastOperatorFor(fromType, toType : TTypeSymbol) : TOperatorSymbol; virtual;
          function HasSameLocalOperator(anOpSym : TOperatorSymbol) : Boolean; virtual;
          function HasOperators : Boolean; inline;
 
@@ -6300,6 +6301,35 @@ begin
       end;
    end;
    Result:=False;
+end;
+
+// FindImplicitCastOperatorFor
+//
+function TSymbolTable.FindImplicitCastOperatorFor(fromType, toType : TTypeSymbol) : TOperatorSymbol;
+var
+   i : Integer;
+   sym : TSymbol;
+   list : PObjectTightList;
+begin
+   if stfHasLocalOperators in FFlags then begin
+      list := FSymbols.List;
+      for i := 0 to FSymbols.Count-1 do begin
+         sym := TSymbol(list[i]);
+         if sym.ClassType = TOperatorSymbol then begin
+            Result := TOperatorSymbol(sym);
+            if     (Result.Token = ttIMPLICIT)
+               and (Result.Typ = toType)
+               and (Result.Params[0] = fromType) then Exit;
+         end;
+      end;
+   end;
+   if stfHasParentOperators in FFlags then begin
+      for i:=0 to ParentCount-1 do begin
+         Result := Parents[i].FindImplicitCastOperatorFor(fromType, toType);
+         if Result <> nil then Exit;
+      end;
+   end;
+   Result := nil;
 end;
 
 // HasSameLocalOperator

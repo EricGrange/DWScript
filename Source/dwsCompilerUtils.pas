@@ -902,20 +902,15 @@ class function CompilerUtils.WrapWithImplicitConversion(
 var
    exprTyp : TTypeSymbol;
 begin
-   if expr<>nil then
-      exprTyp:=expr.Typ
-   else exprTyp:=nil;
+   if expr<>nil then begin
+      if context.WrapWithImplicitCast(toTyp, hotPos, expr) then
+         Exit(expr);
+      exprTyp := expr.Typ
+   end else exprTyp := nil;
 
-   if exprTyp.IsOfType(context.TypInteger) and toTyp.IsOfType(context.TypFloat) then begin
-
-      if expr.ClassType=TConstIntExpr then begin
-         Result := TConstFloatExpr.Create(context.TypFloat, TConstIntExpr(expr).Value);
-         expr.Free;
-      end else Result:=TConvIntToFloatExpr.Create(context, expr);
-
-   end else if     (expr.ClassType=TArrayConstantExpr)
-               and toTyp.UnAliasedTypeIs(TSetOfSymbol)
-               and exprTyp.Typ.IsCompatible(toTyp.Typ) then begin
+   if     (expr.ClassType=TArrayConstantExpr)
+      and toTyp.UnAliasedTypeIs(TSetOfSymbol)
+      and exprTyp.Typ.IsCompatible(toTyp.Typ) then begin
 
       Result := TConvStaticArrayToSetOfExpr.Create(hotPos, TArrayConstantExpr(expr), toTyp.UnAliasedType as TSetOfSymbol);
 
