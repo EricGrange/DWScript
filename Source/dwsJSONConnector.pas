@@ -258,7 +258,9 @@ function BoxedJSONValue(value : TdwsJSONValue): IBoxedJSONValue;
 implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-// ------------------------------------------------------------------
+// -----------------------------------------------------------------
+
+uses dwsConstExprs;
 
 const
    cDefaultSymbolMarker = ttAT;
@@ -1303,7 +1305,7 @@ begin
    writer:=TdwsJSONWriter.Create(stream);
    try
       expr:=(args.ExprBase[0] as TTypedExpr);
-      if expr.Typ.Size=1 then begin
+      if (expr.Typ.Size=1) and (expr.Typ.UnAliasedTypeIs(TBaseSymbol)) then begin
          expr.EvalAsVariant(args.Exec, v);
          StringifyVariant(args.Exec, writer, v);
       end else begin
@@ -1393,9 +1395,11 @@ begin
       StringifyArray(exec, writer, TStaticArraySymbol(sym).Typ, dataPtr, TStaticArraySymbol(sym).ElementCount)
    else if ct=TRecordSymbol then
       StringifyComposite(exec, writer, TRecordSymbol(sym), dataPtr)
-   else if ct=TClassSymbol then begin
-      StringifyClass(exec, writer, IScriptObj(dataPtr.AsInterface[0]));
-   end else writer.WriteString(sym.ClassName);
+   else if ct=TClassSymbol then
+      StringifyClass(exec, writer, IScriptObj(dataPtr.AsInterface[0]))
+   else if ct=TNilSymbol then
+      writer.WriteNull
+   else writer.WriteString(sym.ClassName);
 end;
 
 // StringifyArray
@@ -1460,7 +1464,7 @@ begin
             if (propSym.Visibility>=cvPublished) and (propSym.ReadSym<>nil) then
                sym:=propSym.ReadSym
             else continue;
-            writer.WriteName(propSym.Name);
+            writer.WriteName(propSym.ExternalName);
          end else if sym.ClassType=TFieldSymbol then begin
             if TFieldSymbol(sym).Visibility<cvPublished then
                continue;
@@ -1485,10 +1489,45 @@ end;
 //
 class procedure TJSONStringifyMethod.StringifyClass(exec : TdwsExecution;
    writer : TdwsJSONWriter; const obj : IScriptObj);
+var
+   stringifyMeth : TMethodSymbol;
+   classSym : TClassSymbol;
+   progExec : TdwsProgramExecution;
+   methExpr : TFuncExprBase;
+   selfExpr : TTypedExpr;
+   buf : UnicodeString;
 begin
-   if (obj=nil) or (obj.Destroyed) then
-      writer.WriteNull
-   else StringifyComposite(exec, writer, obj.ClassSym, obj);
+   if (obj=nil) or (obj.Destroyed) then begin
+      writer.WriteNull;
+      Exit;
+   end;
+   classSym := obj.ClassSym;
+   stringifyMeth := TMethodSymbol(classSym.Members.FindSymbol(SYS_JSON_STRINGIFY, cvPublic, TMethodSymbol));
+   if    (stringifyMeth=nil)
+      or stringifyMeth.IsClassMethod
+      or (stringifyMeth.Params.Count <> 0)
+      or (not stringifyMeth.Typ.UnAliasedTypeIs(TBaseStringSymbol)) then begin
+
+      StringifyComposite(exec, writer, obj.ClassSym, obj);
+
+   end else begin
+
+      progExec := (exec as TdwsProgramExecution);
+      methExpr := nil;
+      selfExpr := TConstExpr.Create(classSym, IUnknown(obj));
+      try
+         methExpr := CreateMethodExpr(
+            progExec.CompilerContext, stringifyMeth,
+            selfExpr, rkObjRef, cNullPos, []
+            );
+         methExpr.EvalAsString(exec, buf);
+         writer.WriteJSON(buf)
+      finally
+         methExpr.Free;
+         selfExpr.Free;
+      end;
+
+   end;
 end;
 
 // ------------------
