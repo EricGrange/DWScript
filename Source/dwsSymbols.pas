@@ -1494,6 +1494,7 @@ type
          FDefaultSym : TConstSymbol;
          FVisibility : TdwsVisibility;
          FDeprecatedMessage : UnicodeString;
+         FExternalName : UnicodeString;
 
       protected
          function GetCaption : UnicodeString; override;
@@ -1502,6 +1503,7 @@ type
          function GetArrayIndices : TParamsSymbolTable;
          procedure AddParam(Param : TParamSymbol);
          function GetIsDeprecated : Boolean; inline;
+         function GetExternalName : String;
 
       public
          constructor Create(const name : UnicodeString; typ : TTypeSymbol; aVisibility : TdwsVisibility;
@@ -1528,6 +1530,7 @@ type
          property DefaultSym : TConstSymbol read FDefaultSym write FDefaultSym;
          property DeprecatedMessage : UnicodeString read FDeprecatedMessage write FDeprecatedMessage;
          property IsDeprecated : Boolean read GetIsDeprecated;
+         property ExternalName : UnicodeString read GetExternalName write FExternalName;
    end;
 
    // class operator X (params) uses method;
@@ -4437,6 +4440,15 @@ end;
 function TPropertySymbol.GetIsDeprecated : Boolean;
 begin
    Result:=(FDeprecatedMessage<>'');
+end;
+
+// GetExternalName
+//
+function TPropertySymbol.GetExternalName : String;
+begin
+   if FExternalName <> '' then
+      Result := FExternalName
+   else Result := Name;
 end;
 
 procedure TPropertySymbol.GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);

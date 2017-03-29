@@ -9147,6 +9147,15 @@ begin
 
    RecordSymbolUse(propSym, propNamePos, [suDeclaration]);
 
+   if FTok.TestDelete(ttEXTERNAL) then begin
+      if not FTok.Test(ttStrVal) then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected)
+      else begin
+         propSym.ExternalName := FTok.GetToken.AsString;
+         FTok.KillToken;
+      end;
+   end;
+
    if FTok.TestDelete(ttINDEX) then begin
       indexExpr:=ReadExpr;
       indexTyp:=indexExpr.Typ;
