@@ -26,7 +26,7 @@ uses
    dwsExprs, dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs, dwsStack,
    dwsStrings, dwsXPlatform, dwsUtils, dwsOperators, dwsUnitSymbols,
    dwsFunctions, dwsJSON, dwsMagicExprs, dwsConnectorSymbols, dwsScriptSource,
-   dwsXXHash, dwsCompilerContext;
+   dwsXXHash, dwsCompilerContext, dwsCompilerUtils;
 
 type
 
@@ -237,7 +237,7 @@ type
                                          compSym : TCompositeTypeSymbol;
                                          const dataPtr : IDataContext); static;
       class procedure StringifyClass(exec : TdwsExecution; writer : TdwsJSONWriter;
-                                     clsSym : TClassSymbol; const obj : IScriptObj); static;
+                                     const obj : IScriptObj); static;
    end;
 
    IBoxedJSONValue = interface
@@ -1356,7 +1356,7 @@ begin
                if selfObj is TScriptObjInstance then begin
 
                   scriptObj:=TScriptObjInstance(selfObj);
-                  StringifyClass(exec, writer, scriptObj.ClassSym, scriptObj);
+                  StringifyClass(exec, writer, scriptObj);
 
                end else if selfObj is TScriptDynamicArray then begin
 
@@ -1393,9 +1393,9 @@ begin
       StringifyArray(exec, writer, TStaticArraySymbol(sym).Typ, dataPtr, TStaticArraySymbol(sym).ElementCount)
    else if ct=TRecordSymbol then
       StringifyComposite(exec, writer, TRecordSymbol(sym), dataPtr)
-   else if ct=TClassSymbol then
-      StringifyClass(exec, writer, TClassSymbol(sym), IScriptObj(dataPtr.AsInterface[0]))
-   else writer.WriteString(sym.ClassName);
+   else if ct=TClassSymbol then begin
+      StringifyClass(exec, writer, IScriptObj(dataPtr.AsInterface[0]));
+   end else writer.WriteString(sym.ClassName);
 end;
 
 // StringifyArray
@@ -1452,28 +1452,31 @@ var
    locData : IDataContext;
 begin
    writer.BeginObject;
-   for i:=0 to compSym.Members.Count-1 do begin
-      sym:=compSym.Members[i];
-      if sym.ClassType=TPropertySymbol then begin
-         propSym:=TPropertySymbol(sym);
-         if (propSym.Visibility>=cvPublished) and (propSym.ReadSym<>nil) then
-            sym:=propSym.ReadSym
-         else continue;
-         writer.WriteName(propSym.Name);
-      end else if sym.ClassType=TFieldSymbol then begin
-         if TFieldSymbol(sym).Visibility<cvPublished then
-            continue;
-         writer.WriteName(sym.Name);
-      end else continue;
+   while compSym <> nil do begin
+      for i:=0 to compSym.Members.Count-1 do begin
+         sym:=compSym.Members[i];
+         if sym.ClassType=TPropertySymbol then begin
+            propSym:=TPropertySymbol(sym);
+            if (propSym.Visibility>=cvPublished) and (propSym.ReadSym<>nil) then
+               sym:=propSym.ReadSym
+            else continue;
+            writer.WriteName(propSym.Name);
+         end else if sym.ClassType=TFieldSymbol then begin
+            if TFieldSymbol(sym).Visibility<cvPublished then
+               continue;
+            writer.WriteName(sym.Name);
+         end else continue;
 
-      if sym.ClassType=TFieldSymbol then begin
-         fieldSym:=TFieldSymbol(sym);
-         dataPtr.CreateOffset(fieldSym.Offset, locData);
-         StringifySymbol(exec, writer, fieldSym.Typ, locData);
-      end else begin
-//         SetLength(bufData, sym.Typ.Size);
-         Assert(False, 'published method getters not supported yet');
+         if sym.ClassType=TFieldSymbol then begin
+            fieldSym:=TFieldSymbol(sym);
+            dataPtr.CreateOffset(fieldSym.Offset, locData);
+            StringifySymbol(exec, writer, fieldSym.Typ, locData);
+         end else begin
+   //         SetLength(bufData, sym.Typ.Size);
+            Assert(False, 'published method getters not supported yet');
+         end;
       end;
+      compSym := compSym.Parent;
    end;
    writer.EndObject;
 end;
@@ -1481,11 +1484,11 @@ end;
 // StringifyClass
 //
 class procedure TJSONStringifyMethod.StringifyClass(exec : TdwsExecution;
-   writer : TdwsJSONWriter; clsSym : TClassSymbol; const obj : IScriptObj);
+   writer : TdwsJSONWriter; const obj : IScriptObj);
 begin
    if (obj=nil) or (obj.Destroyed) then
       writer.WriteNull
-   else StringifyComposite(exec, writer, clsSym, obj);
+   else StringifyComposite(exec, writer, obj.ClassSym, obj);
 end;
 
 // ------------------
