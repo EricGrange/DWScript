@@ -8,7 +8,7 @@ program LanguageTests;
 {$ENDIF}
 
 uses
-  FastMM4Debug,
+  FastMM4,
   Classes,
   Forms,
   Windows,
@@ -75,7 +75,8 @@ uses
   dwsGenericSymbols in '..\Source\dwsGenericSymbols.pas',
   dwsSpecializationContext in '..\Source\dwsSpecializationContext.pas',
   dwsGenericExprs in '..\Source\dwsGenericExprs.pas',
-  dwsSpecializationMap in '..\Source\dwsSpecializationMap.pas';
+  dwsSpecializationMap in '..\Source\dwsSpecializationMap.pas',
+  dwsUnicode in '..\Source\dwsUnicode.pas';
 
 {$R *.res}
 

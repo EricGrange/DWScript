@@ -24,7 +24,8 @@ uses
    dwsExprs, dwsRelExprs, dwsJSON, dwsMagicExprs, dwsStrings, dwsMethodExprs,
    dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs, dwsCompilerUtils,
    dwsJSLibModule, dwsJSMin, dwsFunctions, dwsGlobalVarsFunctions, dwsErrors,
-   dwsRTTIFunctions, dwsConstExprs, dwsInfo, dwsScriptSource, dwsSymbolDictionary;
+   dwsRTTIFunctions, dwsConstExprs, dwsInfo, dwsScriptSource, dwsSymbolDictionary,
+   dwsUnicode;
 
 type
 
@@ -54,8 +55,8 @@ type
          FMainBodyName : String;
          FSelfSymbolName : String;
          FResultSymbolName : String;
-         FUniqueGlobalVar : TFastCompareStringList;
-         FCustomDependency : TFastCompareStringList;
+         FUniqueGlobalVar : TUnicodeStringList;
+         FCustomDependency : TUnicodeStringList;
 
       protected
          procedure CollectLocalVars(proc : TdwsProgram);
@@ -939,8 +940,8 @@ begin
    FDeclaredLocalVars:=TDataSymbolList.Create;
    FDeclaredLocalVarsStack:=TSimpleStack<TDataSymbolList>.Create;
 
-   FUniqueGlobalVar:=TFastCompareStringList.Create;
-   FCustomDependency:=TFastCompareStringList.Create;
+   FUniqueGlobalVar := TUnicodeStringList.Create;
+   FCustomDependency := TUnicodeStringList.Create;
 
    FMainBodyName:='$dws';
    FSelfSymbolName:='Self';

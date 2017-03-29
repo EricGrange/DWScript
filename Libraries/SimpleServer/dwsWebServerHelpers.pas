@@ -101,6 +101,11 @@ type
          function MIMEType(const fileName : String) : RawByteString;
    end;
 
+   TFastCompareStringList = class (TStringList)
+      function CompareStrings(const S1, S2: UnicodeString): Integer; override;
+      function IndexOfName(const name : UnicodeString): Integer; override;
+   end;
+
 // Decodes an http request URL and splits path & params
 // Skips initial '/'
 // Normalizes '/' to '\' for the pathInfo
@@ -451,6 +456,49 @@ begin
    info:=TMIMETypeInfo.Create;
    info.MIMEType:=mimeType;
    FList.Objects[ext]:=info;
+end;
+
+// ------------------
+// ------------------ TFastCompareStringList ------------------
+// ------------------
+
+type
+   {$IF CompilerVersion > 22}
+   TStringListList = TStringItemList;
+   {$ELSE}
+   TStringListList = PStringItemList;
+   {$IFEND}
+
+   TStringListCracker = class (TStrings)
+      private
+         FList : TStringListList;
+   end;
+
+// CompareStrings
+//
+function TFastCompareStringList.CompareStrings(const S1, S2: UnicodeString): Integer;
+begin
+   Result:=CompareStr(S1, S2);
+end;
+
+// IndexOfName
+//
+function TFastCompareStringList.IndexOfName(const name : UnicodeString): Integer;
+var
+   n, nc : Integer;
+   nvs : WideChar;
+   list : TStringListList;
+begin
+   nvs:=NameValueSeparator;
+   n:=Length(name);
+   list:=TStringListCracker(Self).FList;
+   for Result:=0 to Count-1 do begin
+      nc:=Length(list[Result].FString);
+      if     (nc>n) and (list[Result].FString[n+1]=nvs)
+         and CompareMem(PWideChar(Pointer(name)),
+                        PWideChar(Pointer(list[Result].FString)), n) then Exit;
+   end;
+   Result:=-1;
 end;
 
 end.

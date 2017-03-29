@@ -507,7 +507,7 @@ end;
 function AnsiCompareText(const S1, S2: UnicodeString) : Integer;
 begin
    {$ifdef FPC}
-   Result:=widestringmanager.CompareTextUnicodeStringProc(s1,s2);
+   Result:=widestringmanager.CompareUnicodeStringProc(s1,s2, [coIgnoreCase]);
    {$else}
    Result:=SysUtils.AnsiCompareText(S1, S2);
    {$endif}
@@ -518,7 +518,7 @@ end;
 function AnsiCompareStr(const S1, S2: UnicodeString) : Integer;
 begin
    {$ifdef FPC}
-   Result:=widestringmanager.CompareUnicodeStringProc(s1,s2);
+   Result:=widestringmanager.CompareUnicodeStringProc(s1,s2, []);
    {$else}
    Result:=SysUtils.AnsiCompareStr(S1, S2);
    {$endif}
@@ -812,7 +812,7 @@ end;
 type
    TFindDataRec = record
       Handle : THandle;
-      Data : TWin32FindData;
+      Data : TWin32FindDataW;
    end;
 
 // CollectFilesMasked
@@ -866,7 +866,7 @@ begin
             fileName:=directory+fileName+PathDelim;
             CollectFilesMasked(fileName, mask, list, True, onProgress);
          end;
-      until not FindNextFile(searchRec.Handle, searchRec.Data);
+      until not FindNextFileW(searchRec.Handle, searchRec.Data);
       Windows.FindClose(searchRec.Handle);
    end;
 end;

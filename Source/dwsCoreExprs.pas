@@ -25,8 +25,8 @@ interface
 
 uses
    Classes, Variants, SysUtils,
-   dwsUtils, dwsXPlatform, dwsDataContext, dwsExprList,
-   dwsCompilerContext,
+   dwsUtils, dwsXPlatform, dwsUnicode,
+   dwsDataContext, dwsCompilerContext, dwsExprList,
    dwsSymbols, dwsErrors, dwsStrings, dwsConvExprs,
    dwsStack, dwsExprs, dwsScriptSource,
    dwsConstExprs, dwsTokenizer, dwsUnitSymbols
@@ -1971,7 +1971,7 @@ type
    // special case of disjointed strings
    TStringInOpStaticSetExpr = class (TStringInOpExpr)
       private
-         FSortedStrings : TFastCompareStringList;
+         FSortedStrings : TUnicodeStringList;
 
       public
          destructor Destroy; override;
@@ -4949,12 +4949,12 @@ var
    i : Integer;
    cc : TCompareConstStringCaseCondition;
 begin
-   FSortedStrings:=TFastCompareStringList.Create;
+   FSortedStrings := TUnicodeStringList.Create;
    for i:=0 to FCaseConditions.Count-1 do begin
       cc:=(FCaseConditions.List[i] as TCompareConstStringCaseCondition);
-      FSortedStrings.AddObject(cc.Value, cc);
+      FSortedStrings.Add(cc.Value);
    end;
-   FSortedStrings.Sorted:=True;
+   FSortedStrings.Sorted := True;
 end;
 
 // EvalAsBoolean
@@ -4965,7 +4965,7 @@ var
    value : UnicodeString;
 begin
    FLeft.EvalAsString(exec, value);
-   Result:=FSortedStrings.Find(value, i);
+   Result := FSortedStrings.Find(value, i);
 end;
 
 // ------------------

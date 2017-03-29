@@ -21,8 +21,8 @@ unit dwsWebUtils;
 interface
 
 uses
-   Classes, SysUtils,
-   dwsUtils, dwsXPlatform;
+   Classes, SysUtils, StrUtils,
+   dwsUtils, dwsXPlatform, dwsXXHash;
 
 type
 
@@ -270,32 +270,52 @@ const
       +'Yfr=1D51C,yfr=1D536,YIcy=407,yicy=457,Yopf=1D550,yopf=1D56A,Yscr=1D4B4,yscr=1D4CE,YUcy=42E,yucy=44E,Yuml=178,yuml=FF,Zacute=179,'
       +'zacute=17A,Zcaron=17D,zcaron=17E,Zcy=417,zcy=437,Zdot=17B,zdot=17C,zeetrf=2128,ZeroWidthSpace=200B,Zeta=396,zeta=3B6,Zfr=2128';
 
-var
-   vAllNamedEntities : IAutoStrings;
-
-// AllNamedEntities
-//
-function AllNamedEntities : IAutoStrings;
-
-   procedure Prepare;
-   var
-      list : TFastCompareStringList;
-      i : Integer;
-   begin
-      list:=TFastCompareStringList.Create;
-      list.CommaText:=cAllNamedEntities;
-      for i:=0 to list.Count-1 do begin
-         list.Objects[i]:=TObject(StrToInt('$'+list.ValueFromIndex[i]));
-         list[i]:=list.Names[i];
-      end;
-      list.Sorted:=True;
-      vAllNamedEntities:=TAutoStrings.CreateCapture(list);
+type
+   TNamedEntity = record
+      Name : UnicodeString;
+      Code : Integer;
    end;
 
+   TNamedEntities = class(TSimpleHash<TNamedEntity>)
+      function SameItem(const item1, item2 : TNamedEntity) : Boolean; override;
+      function GetItemHashCode(const item1 : TNamedEntity) : Integer; override;
+   end;
+
+function TNamedEntities.SameItem(const item1, item2 : TNamedEntity) : Boolean;
 begin
-   if vAllNamedEntities=nil then
-      Prepare;
-   Result:=vAllNamedEntities;
+   Result := (item1.Name = item2.Name);
+end;
+
+function TNamedEntities.GetItemHashCode(const item1 : TNamedEntity) : Integer;
+begin
+   Result := SimpleStringHash(item1.Name);
+end;
+
+var
+   vAllNamedEntities : TNamedEntities;
+
+// PrepareAllNamedEntities
+//
+procedure PrepareAllNamedEntities;
+var
+   i, p, e : Integer;
+   s : String;
+   entity : TNamedEntity;
+begin
+   vAllNamedEntities := TNamedEntities.Create;
+
+   s := cAllNamedEntities;
+   i := 1;
+   repeat
+      p := PosEx(',', s, i);
+      if p <= 0 then
+         p := Length(s)+1;
+      e := PosEx('=', s, i);
+      entity.Name := Copy(s, i, e-i);
+      entity.Code := StrToInt('$' + Copy(s, e+1, p-e-1));
+      vAllNamedEntities.Add(entity);
+      i := p + 1;
+   until i >= Length(s);
 end;
 
 // ------------------
@@ -865,16 +885,13 @@ class function WebUtils.HTMLCharacterDecode(p : PChar) : Char;
          Result:=(p[n]=';');
    end;
 
-   function TryAllEntities(p : PChar) : Char;
+   function TryAllEntities(p : PWideChar) : WideChar;
    var
-      all : IAutoStrings;
-      i : Integer;
+      entity : TNamedEntity;
    begin
-      all:=AllNamedEntities;
-      i:=all.Value.IndexOf(AsString(p));
-      if i>=0 then begin
-         i:=Integer(all.Value.Objects[i]);
-         Result:=Char(i); // UCS-2 only !
+      entity.Name := AsString(p);
+      if vAllNamedEntities.Match(entity) then begin
+         Result := WideChar(entity.Code);  // UCS-2 only !
       end else Result:=#0;
    end;
 
@@ -979,5 +996,19 @@ class function WebUtils.HTMLAttributeDecode(const s : UnicodeString) : UnicodeSt
 begin
    Result:=WebUtils.HTMLTextDecode(s);
 end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   PrepareAllNamedEntities;
+
+finalization
+
+   FreeAndNil(vAllNamedEntities);
 
 end.

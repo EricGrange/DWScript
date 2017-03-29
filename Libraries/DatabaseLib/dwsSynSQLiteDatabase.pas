@@ -27,7 +27,8 @@ interface
 uses
    Classes, Variants, SysUtils,
    SynSQLite3, SynCommons,
-   dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform, dwsDataContext, dwsSymbols;
+   dwsUtils, dwsExprs, dwsDatabase, dwsXPlatform, dwsXXHash,
+   dwsDataContext, dwsStack, dwsSymbols;
 
 type
    TdwsSynSQLiteDataSet = class;
@@ -38,7 +39,7 @@ type
          FDataSets : Integer;
          FExecRequest : TSQLRequest;
          FExecSQL : String;
-         FModules : TStringList;
+         FModules : TNameObjectHash;
 
       protected
          function GetModule(const name : String) : TObject;
@@ -354,15 +355,10 @@ end;
 // GetModule
 //
 function TdwsSynSQLiteDataBase.GetModule(const name : String) : TObject;
-var
-   i : Integer;
 begin
-   Result := nil;
-   if FModules <> nil then begin
-      i := FModules.IndexOf(name);
-      if i >= 0 then
-         Result := FModules.Objects[i];
-   end;
+   if FModules <> nil then
+      Result := FModules.Objects[name]
+   else Result := nil;
 end;
 
 // SetModule
@@ -370,11 +366,10 @@ end;
 procedure TdwsSynSQLiteDataBase.SetModule(const name : String; aModule : TObject);
 begin
    if FModules = nil then begin
-      FModules := TFastCompareStringList.Create;
-      FModules.Sorted := True;
-   end else if FModules.IndexOf(name) >= 0 then
+      FModules := TNameObjectHash.Create;
+   end else if FModules.Objects[name] <> nil then
       raise Exception.CreateFmt('Module "%s" already registered', [name]);
-   FModules.AddObject(name, aModule);
+   FModules.Objects[name] := aModule;
 end;
 
 // ------------------

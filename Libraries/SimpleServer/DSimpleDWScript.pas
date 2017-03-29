@@ -862,15 +862,20 @@ end;
 // CheckDirectoryChanges
 //
 type
-   TFilesList = class (TFastCompareStringList)
+   TFilesList = class (TStringList)
       private
          FProgIndex : Integer;
          FProgs : array of IdwsProgram;
          FChanged : array of Boolean;
          FDWS : TSimpleDWScript;
+         function CompareStrings(const S1, S2: UnicodeString): Integer; override;
          function Enumerate(const item : TCompiledProgram) : TSimpleHashAction;
          function RemoveChanged(const item : TCompiledProgram) : TSimpleHashAction;
    end;
+function TFilesList.CompareStrings(const S1, S2: UnicodeString): Integer;
+begin
+   Result := CompareStr(S1, S2);
+end;
 function TFilesList.Enumerate(const item : TCompiledProgram) : TSimpleHashAction;
 var
    i : Integer;

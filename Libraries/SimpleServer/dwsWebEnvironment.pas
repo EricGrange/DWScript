@@ -22,7 +22,7 @@ interface
 uses
    Classes, SysUtils, StrUtils, DateUtils,
    SynCrtSock, SynCommons,
-   dwsExprs, dwsUtils, dwsWebUtils, dwsWebServerUtils;
+   dwsExprs, dwsUtils, dwsWebUtils, dwsWebServerUtils, dwsWebServerHelpers;
 
 type
    TWebRequestAuthentication = (
