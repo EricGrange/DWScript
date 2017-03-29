@@ -10763,6 +10763,23 @@ begin
                                  left.Typ, elementType);
             Result:=TSetOfInExpr.CreateOptimal(FCompilerContext, hotPos, left, setExpr as TDataExpr);
 
+         end else if setExpr.Typ is TAssociativeArraySymbol then begin
+
+            elementType := TAssociativeArraySymbol(setExpr.Typ).KeyType;
+            if (left.Typ=nil) or not left.Typ.IsOfType(elementType) then begin
+               // attempt cast & typecheck harder
+               if (left is TFuncExpr) and (TFuncExpr(left).Args.Count=0) then begin
+                  if left is TFuncPtrExpr then
+                     left := TFuncPtrExpr(left).Extract
+                  else left := TFuncRefExpr.Create(FCompilerContext, TFuncExpr(left));
+               end else begin
+                  left := TConvExpr.WrapWithConvCast(FCompilerContext, hotPos, elementType,
+                                                     left, CPE_IncompatibleTypes);
+               end;
+            end;
+
+            Result := TAssociativeArrayContainsKeyExpr.Create(FCompilerContext, hotPos, ttIN, left, setExpr);
+
          end else if not (setExpr is TDataExpr) then begin
 
             FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected);

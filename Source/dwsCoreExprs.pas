@@ -453,6 +453,11 @@ type
          property ValueExpr : TTypedExpr read FValueExpr;
    end;
 
+   TAssociativeArrayContainsKeyExpr = class (TBooleanBinOpExpr)
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
    // Record expression: record.member
    TRecordExpr = class(TPosDataExpr)
       protected
@@ -3930,6 +3935,20 @@ begin
    FBaseExpr.EvalAsScriptAssociativeArray(exec, base);
    aa:=TScriptAssociativeArray(base.GetSelf);
    aa.ReplaceValue(exec, KeyExpr, valueExpr);
+end;
+
+// ------------------
+// ------------------ TAssociativeArrayContainsKeyExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TAssociativeArrayContainsKeyExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   base : IScriptAssociativeArray;
+begin
+   FRight.EvalAsScriptAssociativeArray(exec, base);
+   Result := TScriptAssociativeArray(base.GetSelf).ContainsKey(exec, Left);
 end;
 
 // ------------------

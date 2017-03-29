@@ -1,0 +1,2 @@
+Syntax Error: Incompatible types: "Integer" and "String" [line: 4, column: 11]
+Syntax Error: Incompatible types: "nil" and "String" [line: 5, column: 13]
