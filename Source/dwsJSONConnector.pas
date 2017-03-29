@@ -1399,7 +1399,7 @@ begin
    else if ct=TClassSymbol then
       StringifyClass(exec, writer, IScriptObj(dataPtr.AsInterface[0]))
    else if ct=TAssociativeArraySymbol then
-      StringifyAssociativeArray(exec, writer, IScriptAssociativeArray(dataPtr.AsInterface[0]).GetSelf as TScriptDynamicArray)
+      StringifyAssociativeArray(exec, writer, IScriptAssociativeArray(dataPtr.AsInterface[0]).GetSelf as TScriptAssociativeArray)
    else if ct=TNilSymbol then
       writer.WriteNull
    else writer.WriteString(sym.ClassName);
