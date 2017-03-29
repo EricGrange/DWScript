@@ -233,6 +233,7 @@ type
       class procedure StringifyDynamicArray(exec : TdwsExecution; writer : TdwsJSONWriter; dynArray : TScriptDynamicArray); static;
       class procedure StringifyArray(exec : TdwsExecution; writer : TdwsJSONWriter; elemSym : TTypeSymbol;
                                      const dataPtr : IDataContext; nb : Integer); static;
+      class procedure StringifyAssociativeArray(exec : TdwsExecution; writer : TdwsJSONWriter; dynArray : TScriptAssociativeArray); static;
       class procedure StringifyComposite(exec : TdwsExecution; writer : TdwsJSONWriter;
                                          compSym : TCompositeTypeSymbol;
                                          const dataPtr : IDataContext); static;
@@ -1397,6 +1398,8 @@ begin
       StringifyComposite(exec, writer, TRecordSymbol(sym), dataPtr)
    else if ct=TClassSymbol then
       StringifyClass(exec, writer, IScriptObj(dataPtr.AsInterface[0]))
+   else if ct=TAssociativeArraySymbol then
+      StringifyAssociativeArray(exec, writer, IScriptAssociativeArray(dataPtr.AsInterface[0]).GetSelf as TScriptDynamicArray)
    else if ct=TNilSymbol then
       writer.WriteNull
    else writer.WriteString(sym.ClassName);
@@ -1441,6 +1444,30 @@ var
 begin
    exec.DataContext_Create(dynArray.AsData, 0, locData);
    StringifyArray(exec, writer, dynArray.ElementTyp, locData, dynArray.ArrayLength);
+end;
+
+// StringifyAssociativeArray
+//
+class procedure TJSONStringifyMethod.StringifyAssociativeArray(exec : TdwsExecution;
+   writer : TdwsJSONWriter; dynArray : TScriptAssociativeArray);
+var
+   i : Integer;
+   key : TData;
+   elementData : IDataContext;
+   name : UnicodeString;
+begin
+   writer.BeginObject;
+   if (dynArray.Count>0) and dynArray.KeyType.UnAliasedTypeIs(TBaseSymbol) then begin
+      SetLength(key, dynArray.KeyType.Size);
+      for i := 0 to dynArray.Capacity-1 do begin
+         if dynArray.ReadBucket(i, key, elementData) then begin
+            VariantToString(key[0], name);
+            writer.WriteName(name);
+            StringifySymbol(exec, writer, dynArray.ElementType, elementData);
+         end;
+      end;
+   end;
+   writer.EndObject;
 end;
 
 // StringifyComposite

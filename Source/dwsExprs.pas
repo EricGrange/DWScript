@@ -1636,6 +1636,7 @@ type
       protected
          procedure Grow;
          function LinearFind(const item : IDataContext; var index : Integer) : Boolean;
+         function LinearValueFind(const keyValue : Variant; var index : Integer) : Boolean;
 
          procedure IndexExprToKeyAndHashCode(exec : TdwsExecution; index : TTypedExpr;
                                              out key : IDataContext; out hashCode : Cardinal);
@@ -1644,15 +1645,23 @@ type
          class function CreateNew(keyTyp, elemTyp : TTypeSymbol) : TScriptAssociativeArray; static;
 
          procedure GetDataPtr(exec : TdwsExecution; index : TTypedExpr; var result : IDataContext);
+         procedure GetValueDataPtr(exec : TdwsExecution; const keyValue : Variant; var result : IDataContext);
          //procedure ReplaceData(exec : TdwsExecution; index : Int64; value : TDataExpr);
          procedure ReplaceValue(exec : TdwsExecution; index, value : TTypedExpr);
 
          function Delete(exec : TdwsExecution; index : TTypedExpr) : Boolean;
 
          procedure Clear;
+
+         function ReadBucket(index : Integer; var key : TData; var value : IDataContext) : Boolean;
+
          function Count : Integer;
+         function Capacity : Integer;
 
          function CopyKeys : TData;
+
+         property KeyType : TTypeSymbol read FKeyTyp;
+         property ElementType : TTypeSymbol read FElementTyp;
    end;
 
    TScriptInterface = class(TScriptObj, IScriptObjInterface)
@@ -7471,6 +7480,19 @@ begin
    until False;
 end;
 
+// LinearValueFind
+//
+function TScriptAssociativeArray.LinearValueFind(const keyValue : Variant; var index : Integer) : Boolean;
+begin
+   repeat
+      if FHashCodes[index]=0 then
+         Exit(False)
+      else if DWSSameVariant(keyValue, FKeys[index]) then
+         Exit(True);
+      index:=(index+1) and (FCapacity-1);
+   until False;
+end;
+
 // IndexExprToKeyAndHashCode
 //
 procedure TScriptAssociativeArray.IndexExprToKeyAndHashCode(exec : TdwsExecution;
@@ -7485,6 +7507,25 @@ begin
       exec.DataContext_CreateValue(v, key);
    end;
    hashCode:=key.HashCode(FKeySize);
+end;
+
+// GetValueDataPtr
+//
+procedure TScriptAssociativeArray.GetValueDataPtr(exec : TdwsExecution; const keyValue : Variant; var result : IDataContext);
+var
+   hashCode : Cardinal;
+   i : Integer;
+begin
+   if FCount>0 then begin
+      hashCode := DWSHashCode(keyValue);
+      i:=(hashCode and (FCapacity-1));
+      if LinearValueFind(keyValue, i) then begin
+         CreateOffset(i*FElementSize, result);
+         Exit;
+      end;
+   end;
+   exec.DataContext_CreateEmpty(FElementSize, result);
+   FElementTyp.InitData(result);
 end;
 
 // GetDataPtr
@@ -7578,11 +7619,30 @@ begin
    FGrowth:=0;
 end;
 
+// ReadBucket
+//
+function TScriptAssociativeArray.ReadBucket(index : Integer; var key : TData; var value : IDataContext) : Boolean;
+begin
+   if Cardinal(index) >= Cardinal(FCapacity) then Exit(False);
+   if FHashCodes[index] = 0 then Exit(False);
+
+   DWSCopyData(FKeys, index*FKeySize, key, 0, FKeySize);
+   CreateOffset(index*FElementSize, value);
+   Result := True;
+end;
+
 // Count
 //
 function TScriptAssociativeArray.Count : Integer;
 begin
    Result:=FCount;
+end;
+
+// Capacity
+//
+function TScriptAssociativeArray.Capacity : Integer;
+begin
+   Result := FCapacity;
 end;
 
 // CopyKeys
