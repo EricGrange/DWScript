@@ -1301,14 +1301,18 @@ var
    expr : TTypedExpr;
    dataExpr : TDataExpr;
    v : Variant;
+   dc : IDataContext;
 begin
    stream:=TWriteOnlyBlockStream.AllocFromPool;
    writer:=TdwsJSONWriter.Create(stream);
    try
       expr:=(args.ExprBase[0] as TTypedExpr);
-      if (expr.Typ.Size=1) and (expr.Typ.UnAliasedTypeIs(TBaseSymbol)) then begin
+      if expr.Typ.Size=1 then begin
          expr.EvalAsVariant(args.Exec, v);
-         StringifyVariant(args.Exec, writer, v);
+         if expr.Typ.UnAliasedTypeIs(TRecordSymbol) or expr.Typ.UnAliasedTypeIs(TStaticArraySymbol) then begin
+            args.Exec.DataContext_CreateValue(v, dc);
+            StringifySymbol(args.Exec, writer, expr.Typ, dc);
+         end else StringifyVariant(args.Exec, writer, v);
       end else begin
          dataExpr:=(expr as TDataExpr);
          StringifySymbol(args.Exec, writer, expr.Typ, dataExpr.DataPtr[args.Exec]);
@@ -1364,6 +1368,10 @@ begin
                end else if selfObj is TScriptDynamicArray then begin
 
                   StringifyDynamicArray(exec, writer, TScriptDynamicArray(selfObj))
+
+               end else if selfObj is TScriptAssociativeArray then begin
+
+                  StringifyAssociativeArray(exec, writer, TScriptAssociativeArray(selfObj))
 
                end else if selfObj<>nil then begin
 
