@@ -23,8 +23,30 @@ begin
     Result :=[['a','b'],['c','d']];
 end;
 
+function TestObj : TObject;
+begin
+    Result := new TObject;
+end;
+
+function TestObjNil : TObject;
+begin
+    Result := nil;
+end;
+
+type
+    TObject2 = class
+        Hello := 'World';
+    end;
+function TestObj2 : TObject;
+begin
+    Result := new TObject2;
+end;
+
 PrintLn(JSON.Stringify(TestString));
 PrintLn(JSON.Stringify(TestDynArray));
 PrintLn(JSON.Stringify(TestStaticArray));
 PrintLn(JSON.Stringify(TestStaticArray1));
 PrintLn(JSON.Stringify(TestStaticArray2));
+PrintLn(JSON.Stringify(TestObj));
+PrintLn(JSON.Stringify(TestObjNil));
+PrintLn(JSON.Stringify(TestObj2));

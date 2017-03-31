@@ -3,3 +3,6 @@
 [4,5]
 [true]
 [["a","b"],["c","d"]]
+{}
+null
+{"Hello":"World"}

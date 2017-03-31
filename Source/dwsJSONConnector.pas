@@ -229,11 +229,16 @@ type
       class procedure Stringify(const args : TExprBaseListExec; var Result : UnicodeString); static;
 
       class procedure StringifyVariant(exec : TdwsExecution; writer : TdwsJSONWriter; const v : Variant); static;
-      class procedure StringifySymbol(exec : TdwsExecution; writer : TdwsJSONWriter; sym : TSymbol; const dataPtr : IDataContext); static;
-      class procedure StringifyDynamicArray(exec : TdwsExecution; writer : TdwsJSONWriter; dynArray : TScriptDynamicArray); static;
+      class procedure StringifyUnknown(exec : TdwsExecution; writer : TdwsJSONWriter;
+                                       const unk : IUnknown); static;
+      class procedure StringifySymbol(exec : TdwsExecution; writer : TdwsJSONWriter;
+                                      sym : TSymbol; const dataPtr : IDataContext); static;
+      class procedure StringifyDynamicArray(exec : TdwsExecution; writer : TdwsJSONWriter;
+                                            dynArray : TScriptDynamicArray); static;
       class procedure StringifyArray(exec : TdwsExecution; writer : TdwsJSONWriter; elemSym : TTypeSymbol;
                                      const dataPtr : IDataContext; nb : Integer); static;
-      class procedure StringifyAssociativeArray(exec : TdwsExecution; writer : TdwsJSONWriter; dynArray : TScriptAssociativeArray); static;
+      class procedure StringifyAssociativeArray(exec : TdwsExecution; writer : TdwsJSONWriter;
+                                                assocArray : TScriptAssociativeArray); static;
       class procedure StringifyComposite(exec : TdwsExecution; writer : TdwsJSONWriter;
                                          compSym : TCompositeTypeSymbol;
                                          const dataPtr : IDataContext); static;
@@ -1327,12 +1332,16 @@ end;
 // StringifyVariant
 //
 class procedure TJSONStringifyMethod.StringifyVariant(exec : TdwsExecution; writer : TdwsJSONWriter; const v : Variant);
+
+   procedure StringifyString(writer : TdwsJSONWriter; const v : Variant);
+   var
+      s : String;
+   begin
+      VariantToString(v, s);
+      writer.WriteString(s);
+   end;
+
 var
-   unk : IUnknown;
-   getSelf : IGetSelf;
-   selfObj : TObject;
-   boxedJSON : IBoxedJSONValue;
-   scriptObj : IScriptObj;
    p : PVarData;
 begin
    p:=PVarData(@v);
@@ -1345,46 +1354,60 @@ begin
          writer.WriteBoolean(p^.VBoolean);
       varNull :
          writer.WriteNull;
-      varUnknown : begin
-         unk:=IUnknown(p^.VUnknown);
-         if unk=nil then
+      varUnknown :
+         if p^.VUnknown=nil then
             writer.WriteNull
-         else if unk.QueryInterface(IBoxedJSONValue, boxedJSON)=0 then begin
-
-            if boxedJSON.Value<>nil then
-               boxedJSON.Value.WriteTo(writer)
-            else writer.WriteString('Undefined');
-
-         end else begin
-
-            if unk.QueryInterface(IGetSelf, getSelf)=0 then begin
-
-               selfObj:=getSelf.GetSelf;
-               if selfObj is TScriptObjInstance then begin
-
-                  scriptObj:=TScriptObjInstance(selfObj);
-                  StringifyClass(exec, writer, scriptObj);
-
-               end else if selfObj is TScriptDynamicArray then begin
-
-                  StringifyDynamicArray(exec, writer, TScriptDynamicArray(selfObj))
-
-               end else if selfObj is TScriptAssociativeArray then begin
-
-                  StringifyAssociativeArray(exec, writer, TScriptAssociativeArray(selfObj))
-
-               end else if selfObj<>nil then begin
-
-                  writer.WriteString(selfObj.ToString)
-
-               end else writer.WriteString('null');
-
-            end else writer.WriteString('IUnknown');
-
-         end;
-      end;
+         else StringifyUnknown(exec, writer, IUnknown(p^.VUnknown));
    else
-      writer.WriteString(v);
+      StringifyString(writer, v);
+   end;
+end;
+
+// StringifyUnknown
+//
+class procedure TJSONStringifyMethod.StringifyUnknown(exec : TdwsExecution; writer : TdwsJSONWriter; const unk : IUnknown);
+var
+   getSelf : IGetSelf;
+   selfObj : TObject;
+   boxedJSON : IBoxedJSONValue;
+   scriptObj : IScriptObj;
+begin
+   if unk = nil then
+
+      writer.WriteNull
+
+   else if unk.QueryInterface(IBoxedJSONValue, boxedJSON)=0 then begin
+
+      if boxedJSON.Value<>nil then
+         boxedJSON.Value.WriteTo(writer)
+      else writer.WriteString('Undefined');
+
+   end else begin
+
+      if unk.QueryInterface(IGetSelf, getSelf)=0 then begin
+
+         selfObj:=getSelf.GetSelf;
+         if selfObj is TScriptObjInstance then begin
+
+            scriptObj:=TScriptObjInstance(selfObj);
+            StringifyClass(exec, writer, scriptObj);
+
+         end else if selfObj is TScriptDynamicArray then begin
+
+            StringifyDynamicArray(exec, writer, TScriptDynamicArray(selfObj))
+
+         end else if selfObj is TScriptAssociativeArray then begin
+
+            StringifyAssociativeArray(exec, writer, TScriptAssociativeArray(selfObj))
+
+         end else if selfObj<>nil then begin
+
+            writer.WriteString(selfObj.ToString)
+
+         end else writer.WriteString('null');
+
+      end else writer.WriteString('IUnknown');
+
    end;
 end;
 
@@ -1457,7 +1480,7 @@ end;
 // StringifyAssociativeArray
 //
 class procedure TJSONStringifyMethod.StringifyAssociativeArray(exec : TdwsExecution;
-   writer : TdwsJSONWriter; dynArray : TScriptAssociativeArray);
+   writer : TdwsJSONWriter; assocArray : TScriptAssociativeArray);
 var
    i : Integer;
    key : TData;
@@ -1465,13 +1488,13 @@ var
    name : UnicodeString;
 begin
    writer.BeginObject;
-   if (dynArray.Count>0) and dynArray.KeyType.UnAliasedTypeIs(TBaseSymbol) then begin
-      SetLength(key, dynArray.KeyType.Size);
-      for i := 0 to dynArray.Capacity-1 do begin
-         if dynArray.ReadBucket(i, key, elementData) then begin
+   if (assocArray.Count>0) and assocArray.KeyType.UnAliasedTypeIs(TBaseSymbol) then begin
+      SetLength(key, assocArray.KeyType.Size);
+      for i := 0 to assocArray.Capacity-1 do begin
+         if assocArray.ReadBucket(i, key, elementData) then begin
             VariantToString(key[0], name);
             writer.WriteName(name);
-            StringifySymbol(exec, writer, dynArray.ElementType, elementData);
+            StringifySymbol(exec, writer, assocArray.ElementType, elementData);
          end;
       end;
    end;
