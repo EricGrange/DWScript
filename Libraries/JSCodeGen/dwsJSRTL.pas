@@ -20,7 +20,7 @@ interface
 
 uses
    Classes, SysUtils,
-   dwsUtils, dwsJSCodeGen, dwsTextCodeGen, dwsCodeGen,
+   dwsUtils, dwsUnicode, dwsJSCodeGen, dwsTextCodeGen, dwsCodeGen,
    dwsExprs, dwsSymbols, dwsMagicExprs, dwsCoreExprs, dwsConstExprs;
 
 type
@@ -33,7 +33,7 @@ type
       private
          FMagicCodeGens : TStringList;
 
-         class var vAliases : TStringList;
+         class var vAliases : TUnicodeStringList;
          class procedure RegisterAlias(const aliasName, canonicalName : String); static;
 
       public
@@ -2015,7 +2015,7 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   TJSMagicFuncExpr.vAliases := TFastCompareTextList.Create;
+   TJSMagicFuncExpr.vAliases := TUnicodeStringList.Create;
 
    TJSMagicFuncExpr.RegisterAlias('Date', '$Date');
    TJSMagicFuncExpr.RegisterAlias('NaN', '$NaN');
@@ -2023,6 +2023,7 @@ initialization
    TJSMagicFuncExpr.RegisterAlias('DateToWeekNumber', 'WeekNumber');
    TJSMagicFuncExpr.RegisterAlias('DateToYearOfWeek', 'YearOfWeek');
 
+   TJSMagicFuncExpr.vAliases.CaseSensitive := False;
    TJSMagicFuncExpr.vAliases.Sorted := True;
 
 finalization
