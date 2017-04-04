@@ -292,7 +292,7 @@ type
          property DefaultPos : TScriptPos read FSource.FDefaultPos;
          property HotPos : TScriptPos read FSource.FHotPos;
          property CurrentPos : TScriptPos read FSource.FCurPos;
-         property PathName : String read FSource.FPathName;
+         property PathName : UnicodeString read FSource.FPathName;
 
          function SafePathName : String; inline;
 

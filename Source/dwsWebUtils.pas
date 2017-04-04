@@ -43,7 +43,7 @@ type
 
          class function HTMLTextEncode(const s : UnicodeString) : UnicodeString; static;
          class function HTMLTextDecode(const s : UnicodeString) : UnicodeString; static;
-         class function HTMLCharacterDecode(p : PChar) : Char; static;
+         class function HTMLCharacterDecode(p : PWideChar) : WideChar; static;
 
          class function HTMLAttributeEncode(const s : UnicodeString) : UnicodeString; static;
          class function HTMLAttributeDecode(const s : UnicodeString) : UnicodeString; static;
@@ -386,7 +386,7 @@ begin
       Inc(pSrc);
    end;
    SetLength(raw, NativeUInt(pDest)-NativeUInt(Pointer(raw)));
-   Result:=UTF8ToUnicodeString(raw);
+   Result := UTF8Decode(raw);
 end;
 
 // EncodeURLEncoded
@@ -539,7 +539,7 @@ const
 //
 class function WebUtils.DateTimeToRFC822(const dt : TDateTime) : UnicodeString;
 
-   procedure Copy3(src, dest : PChar); inline;
+   procedure Copy3(src, dest : PWideChar); inline;
    begin
       PCardinal(dest)^ := PCardinal(src)^;
       dest[2] := src[2];
@@ -775,8 +775,8 @@ class function WebUtils.HTMLTextDecode(const s : UnicodeString) : UnicodeString;
 type
    TDecoderState = ( dsText, dsTag, dsSingleQuote, dsDoubleQuote, dsCharacter );
 var
-   pSrc, pDest, pAmp : PChar;
-   c : Char;
+   pSrc, pDest, pAmp : PWideChar;
+   c : WideChar;
    state : TDecoderState;
 begin
    if s='' then exit;
@@ -853,9 +853,9 @@ end;
 
 // HTMLCharacterDecode
 //
-class function WebUtils.HTMLCharacterDecode(p : PChar) : Char;
+class function WebUtils.HTMLCharacterDecode(p : PWideChar) : WideChar;
 
-   function AsString(p : PChar) : UnicodeString;
+   function AsString(p : PWideChar) : UnicodeString;
    var
       n : Integer;
    begin
@@ -870,12 +870,12 @@ class function WebUtils.HTMLCharacterDecode(p : PChar) : Char;
       SetString(Result, p, n);
    end;
 
-   function DecodeNumeric(p : PChar) : Char;
+   function DecodeNumeric(p : PWideChar) : WideChar;
    begin
       Result:=Char(StrToIntDef(AsString(p), 0)); // UCS-2 only !
    end;
 
-   function Check(p : PChar; const aBegin : UnicodeString) : Boolean; overload;
+   function Check(p : PWideChar; const aBegin : UnicodeString) : Boolean; overload;
    var
       n : Integer;
    begin

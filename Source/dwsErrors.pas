@@ -221,9 +221,9 @@ type
          function AddCompilerError(const aScriptPos: TScriptPos; const Text: UnicodeString;
                                    messageClass : TScriptMessageClass) : TScriptMessage; overload;
          function AddCompilerError(const aScriptPos: TScriptPos; const Text: UnicodeString) : TScriptMessage; overload;
-         function AddCompilerErrorFmt(const aScriptPos: TScriptPos; const textFormat : UnicodeString;
+         function AddCompilerErrorFmt(const aScriptPos: TScriptPos; const textFormat : String;
                                       const args: array of const; messageClass : TScriptMessageClass) : TScriptMessage; overload;
-         function AddCompilerErrorFmt(const aScriptPos: TScriptPos; const textFormat : UnicodeString;
+         function AddCompilerErrorFmt(const aScriptPos: TScriptPos; const textFormat : String;
                                       const args: array of const) : TScriptMessage; overload;
 
          function AddCompilerException(const aScriptPos: TScriptPos; e : Exception) : TScriptMessage;
@@ -258,7 +258,7 @@ type
          FScriptPos : TScriptPos;
 
       public
-         constructor CreatePosFmt(const aScriptPos: TScriptPos; const Msg: UnicodeString; const Args: array of const);
+         constructor CreatePosFmt(const aScriptPos: TScriptPos; const Msg: String; const Args: array of const);
          constructor CreateFromException(const aScriptPos: TScriptPos; e : Exception);
 
          property ScriptPos : TScriptPos read FScriptPos write FScriptPos;
@@ -314,7 +314,7 @@ implementation
 
 // CreatePosFmt
 //
-constructor ECompileException.CreatePosFmt(const aScriptPos: TScriptPos; const Msg: UnicodeString; const Args: array of const);
+constructor ECompileException.CreatePosFmt(const aScriptPos: TScriptPos; const Msg: String; const Args: array of const);
 begin
    inherited CreateFmt(msg, args);
    FScriptPos:=aScriptPos;
@@ -781,7 +781,7 @@ end;
 // AddCompilerErrorFmt
 //
 function TdwsCompileMessageList.AddCompilerErrorFmt(const aScriptPos: TScriptPos;
-      const textFormat: UnicodeString; const args: array of const;
+      const textFormat: String; const args: array of const;
       messageClass : TScriptMessageClass) : TScriptMessage;
 begin
    Result:=AddCompilerError(aScriptPos, UnicodeFormat(textFormat, args), messageClass);
@@ -797,7 +797,7 @@ end;
 // AddCompilerErrorFmt
 //
 function TdwsCompileMessageList.AddCompilerErrorFmt(const aScriptPos: TScriptPos;
-      const textFormat: UnicodeString; const args: array of const) : TScriptMessage;
+      const textFormat: String; const args: array of const) : TScriptMessage;
 begin
    Result:=AddCompilerErrorFmt(aScriptPos, textFormat, args, TSyntaxErrorMessage);
 end;

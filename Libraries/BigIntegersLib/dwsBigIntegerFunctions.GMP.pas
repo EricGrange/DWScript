@@ -74,7 +74,8 @@ type
 
          function ToStringBase(base : Integer) : String;
          function ToHexString : String;
-         function ToString : String; override;
+         function ToString : String; override; deprecated 'Use ToUnicodeString'; final;
+         function ToUnicodeString : String;
 
          function ToInt64 : Int64;
    end;
@@ -579,6 +580,13 @@ end;
 // ToString
 //
 function TBigIntegerWrapper.ToString : String;
+begin
+   Result := ToUnicodeString;
+end;
+
+// ToUnicodeString
+//
+function TBigIntegerWrapper.ToUnicodeString : String;
 begin
    Result := ToStringBase(10);
 end;

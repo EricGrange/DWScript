@@ -125,12 +125,12 @@ var
 begin
    json:=TdwsJSONObject.Create;
 
-   CheckEquals('{}', json.ToString);
+   CheckEquals('{}', json.ToUnicodeString);
    CheckEquals('{ }', json.ToBeautifiedString(0, 3));
 
    json.AddValue('hello').AsString:='world';
 
-   CheckEquals('{"hello":"world"}', json.ToString);
+   CheckEquals('{"hello":"world"}', json.ToUnicodeString);
    CheckEquals('{'#13#10#9'"hello" : "world"'#13#10'}', json.ToBeautifiedString(0, 1));
 
    with json.AddArray('items') do begin
@@ -141,7 +141,7 @@ begin
       AddValue.IsNull:=True;
    end;
 
-   CheckEquals('{"hello":"world","items":[null,12.3,true,false,null]}', json.ToString);
+   CheckEquals('{"hello":"world","items":[null,12.3,true,false,null]}', json.ToUnicodeString);
    CheckEquals( '{'#13#10
                   +#9'"hello" : "world",'#13#10
                   +#9'"items" : ['#13#10
@@ -166,12 +166,12 @@ var
 begin
    json:=TdwsJSONValue.ParseString('"hello"');
    CheckEquals(TdwsJSONImmediate.ClassName, json.ClassName, '"hello"');
-   CheckEquals('"hello"', json.ToString, '"hello"');
+   CheckEquals('"hello"', json.ToUnicodeString, '"hello"');
    json.Free;
 
    json:=TdwsJSONValue.ParseString('{"hello":"world","abc":123}');
    CheckEquals(TdwsJSONObject.ClassName, json.ClassName, '"hello"');
-   CheckEquals('{"hello":"world","abc":123}', json.ToString, '"hello"');
+   CheckEquals('{"hello":"world","abc":123}', json.ToUnicodeString, '"hello"');
    json.Free;
 
    sl:=TStringList.Create;
@@ -181,8 +181,8 @@ begin
       CheckEquals(TdwsJSONObject.ClassName, json.ClassName, 'json.txt');
       CheckEquals(1, json.ElementCount, 'json.txt');
       CheckEquals(3, json.Elements[0].ElementCount, 'json.txt');
-      CheckEquals('"templates"', json[0]['servlet'][0]['init-param']['templatePath'].ToString, 'json.txt');
-      CheckEquals('', json['doh'][5]['bug'].ToString, 'json.txt');
+      CheckEquals('"templates"', json[0]['servlet'][0]['init-param']['templatePath'].ToUnicodeString, 'json.txt');
+      CheckEquals('', json['doh'][5]['bug'].ToUnicodeString, 'json.txt');
       json.Free;
    finally
       sl.Free;
@@ -194,7 +194,7 @@ begin
       CheckEquals(TdwsJSONArray.ClassName, json.ClassName, 'json2.txt');
       CheckEquals(1, json.ElementCount, 'json2.txt a');
       CheckEquals(1, json.Elements[0].ElementCount, 'json2.txt b');
-      CheckEquals(buf, json.ToString, 'json2.txt');
+      CheckEquals(buf, json.ToUnicodeString, 'json2.txt');
    finally
       json.Free;
    end;
@@ -250,7 +250,7 @@ begin
 
    json:=TdwsJSONObject.Create;
    TdwsJSONObject(json).AddValue('test', #$1234#$ABCD);
-   CheckEquals('{"test":"\u1234\uABCD"}', json.ToString, 'encode');
+   CheckEquals('{"test":"\u1234\uABCD"}', json.ToUnicodeString, 'encode');
    json.Free;
 end;
 
@@ -265,8 +265,8 @@ begin
                                     +#9'"Value": ['#13#10
                                     +#9']'#13#10
                                     +'}');
-   CheckEquals('{"Value":[]}', json1.ToString, 'Roundtrip');
-   CheckEquals(json1.ToString, json2.ToString, 'Json1 vs Json2');
+   CheckEquals('{"Value":[]}', json1.ToUnicodeString, 'Roundtrip');
+   CheckEquals(json1.ToUnicodeString, json2.ToUnicodeString, 'Json1 vs Json2');
 
    json1.Free;
    json2.Free;
@@ -280,7 +280,7 @@ var
 begin
    json:=TdwsJSONValue.ParseString('{"Value":"\""}');
    CheckEquals('"', json['Value'].Value.AsString, 'parse');
-   CheckEquals('{"Value":"\""}', json.ToString, 'roundtrip');
+   CheckEquals('{"Value":"\""}', json.ToUnicodeString, 'roundtrip');
    json.Free;
 end;
 
@@ -657,7 +657,7 @@ begin
    Check(json['nested'].ValueType=jvtArray, 'check nested value type');
    CheckEquals(1, json['nested'].ElementCount, 'check empty element count');
 
-   CheckEquals('{"empty":[],"nested":[[]]}', json.ToString, 'roundtrip');
+   CheckEquals('{"empty":[],"nested":[[]]}', json.ToUnicodeString, 'roundtrip');
 
    json.Free;
 
@@ -673,10 +673,10 @@ begin
    json:=TdwsJSONValue.ParseString('{"test":"\t\n\r\b\f\\"}');
 
    CheckEquals(#9#10#13#8#12'\', json['test'].Value.AsString, 'specials check');
-   CheckEquals('"\t\n\r\b\f\\"', json['test'].ToString, 'specials toString');
+   CheckEquals('"\t\n\r\b\f\\"', json['test'].ToUnicodeString, 'specials toString');
 
    json['test'].Value.AsString:=#25#0'bug';
-   CheckEquals('"\u0019"', json['test'].ToString, 'very specials');
+   CheckEquals('"\u0019"', json['test'].ToUnicodeString, 'very specials');
 
    json.Free;
 end;
@@ -742,7 +742,7 @@ begin
    try
       a.Add(TdwsJSONArray.Create);
       a.AddArray;
-      CheckEquals('[[],[]]', a.ToString);
+      CheckEquals('[[],[]]', a.ToUnicodeString);
    finally
       a.Free;
    end;
@@ -765,7 +765,7 @@ begin
       for j:=Low(cAlternatives) to High(cAlternatives) do begin
          json:=TdwsJSONValue.ParseString('{"a":'+cAlternatives[i]+',"a":'+cAlternatives[j]+'}', jdoOverwrite);
          try
-            CheckEquals('{"a":'+cAlternatives[j]+'}', json.ToString);
+            CheckEquals('{"a":'+cAlternatives[j]+'}', json.ToUnicodeString);
          finally
             json.Free;
          end;
@@ -783,19 +783,19 @@ begin
 
    json.Items['hello']:=TdwsJSONValue.ParseString('[1, 2]');
 
-   CheckEquals('{"hello":[1,2],"world":{}}', json.ToString, 'replace 1 with [1,2]');
+   CheckEquals('{"hello":[1,2],"world":{}}', json.ToUnicodeString, 'replace 1 with [1,2]');
 
    json.Items['world']:=TdwsJSONImmediate.FromVariant(3);
 
-   CheckEquals('{"hello":[1,2],"world":3}', json.ToString, 'replace {} with 3');
+   CheckEquals('{"hello":[1,2],"world":3}', json.ToUnicodeString, 'replace {} with 3');
 
    json.Items['world']:=nil;
 
-   CheckEquals('{"hello":[1,2]}', json.ToString, 'delete world');
+   CheckEquals('{"hello":[1,2]}', json.ToUnicodeString, 'delete world');
 
    json.Items['hello'].Items['1']:=nil;
 
-   CheckEquals('{"hello":[1]}', json.ToString, 'delete 2');
+   CheckEquals('{"hello":[1]}', json.ToUnicodeString, 'delete 2');
 
    json.Free;
 end;
@@ -836,7 +836,7 @@ begin
       wr.WriteDate(EncodeDate(2080, 12, 24)+EncodeTime(15, 30, 45, 450));
       wr.EndObject;
       CheckEquals('{"Date":"2080-12-24","DateTime":"2080-12-24T15:30:45"}',
-                  wr.ToString);
+                  wr.ToUnicodeString);
    finally
       wr.Free;
    end;
@@ -852,13 +852,13 @@ begin
    try
       obj.AddValue('test');
       obj.AddValue('test');
-      CheckEquals('{"test":null,"test":null}', obj.ToString);
+      CheckEquals('{"test":null,"test":null}', obj.ToUnicodeString);
       obj.MergeDuplicates;
-      CheckEquals('{"test":null}', obj.ToString);
+      CheckEquals('{"test":null}', obj.ToUnicodeString);
       obj.AddValue('test');
-      CheckEquals('{"test":null,"test":null}', obj.ToString);
+      CheckEquals('{"test":null,"test":null}', obj.ToUnicodeString);
       obj.MergeDuplicates;
-      CheckEquals('{"test":null}', obj.ToString);
+      CheckEquals('{"test":null}', obj.ToUnicodeString);
    finally
       obj.Free;
    end;
@@ -889,7 +889,7 @@ begin
       jsonArray.Add(TdwsJSONValue.ParseString('false'));
       jsonArray.Add(TdwsJSONValue.ParseString('false'));
       jsonArray.Add(TdwsJSONValue.ParseString('false'));
-      CheckEquals('[true,false,null,"test",{"foo":"bar"},true,false,false,false]', jsonArray.ToString, '1st');
+      CheckEquals('[true,false,null,"test",{"foo":"bar"},true,false,false,false]', jsonArray.ToUnicodeString, '1st');
       jsonArray.Clear;
       jsonArray.Add(TdwsJSONValue.ParseString('true'));
       jsonArray.Add(TdwsJSONValue.ParseString('false'));
@@ -900,7 +900,7 @@ begin
       jsonArray.Add(TdwsJSONValue.ParseString('false'));
       jsonArray.Add(TdwsJSONValue.ParseString('true'));
       jsonArray.Add(TdwsJSONValue.ParseString('false'));
-      CheckEquals('[true,false,null,"test",{"foo":"bar"},true,false,true,false]', jsonArray.ToString, '2nd');
+      CheckEquals('[true,false,null,"test",{"foo":"bar"},true,false,true,false]', jsonArray.ToUnicodeString, '2nd');
    finally
       jsonArray.Free;
    end;
@@ -933,10 +933,10 @@ begin
    try
       b:=TdwsJSONObject.Create;
       a.Elements[0]:=b;
-      CheckEquals('[{}]', a.ToString);
+      CheckEquals('[{}]', a.ToUnicodeString);
 
       a.Elements[1]:=b;
-      CheckEquals('[null,{}]', a.ToString);
+      CheckEquals('[null,{}]', a.ToUnicodeString);
    finally
       a.Free;
    end;
@@ -953,14 +953,14 @@ begin
       b:=a.Clone;
       try
          a.Elements[0].AsString:='WORLD';
-         CheckEquals('{"hello":"WORLD"}', a.ToString);
-         CheckEquals('{"hello":"world"}', b.ToString);
+         CheckEquals('{"hello":"WORLD"}', a.ToUnicodeString);
+         CheckEquals('{"hello":"world"}', b.ToUnicodeString);
 
          c:=b.Elements[0];
          c.Detach;
          try
-            CheckEquals('{}', b.ToString);
-            CheckEquals('"world"', c.ToString);
+            CheckEquals('{}', b.ToUnicodeString);
+            CheckEquals('"world"', c.ToUnicodeString);
          finally
             c.Free;
          end;
@@ -981,7 +981,7 @@ begin
    a:=TdwsJSONObject.ParseString('["hello", "world", "some", "alpha", "stuff"]');
    try
       (a as TdwsJSONArray).Sort(CompareStringArray);
-      CheckEquals('["alpha","hello","some","stuff","world"]', a.ToString);
+      CheckEquals('["alpha","hello","some","stuff","world"]', a.ToUnicodeString);
    finally
       a.Free;
    end;
@@ -1115,7 +1115,7 @@ var
    begin
       list := JSONPath.Query(query, js);
       try
-         CheckEquals(expected, list.ToString, query);
+         CheckEquals(expected, list.ToUnicodeString, query);
       finally
          list.Free;
       end;

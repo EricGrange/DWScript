@@ -59,8 +59,8 @@ type
          procedure BeginArray(const aName : UnicodeString); overload; inline;
          procedure EndArray; virtual;
 
-         function  WriteName(const aName : UnicodeString) : TdwsJSONWriter; overload; inline;
-         function  WriteName(const aName : PWideChar) : TdwsJSONWriter; overload; virtual;
+         function  WriteName(const aName : UnicodeString) : TdwsJSONWriter; inline;
+         function  WriteNameP(const aName : PWideChar) : TdwsJSONWriter; virtual;
          procedure WriteString(const str : UnicodeString); overload; inline;
          procedure WriteString(const name, str : UnicodeString); overload; inline;
          procedure WriteString(const p : PWideChar); overload;
@@ -80,7 +80,8 @@ type
 
          procedure WriteJSON(const json : String);
 
-         function ToString : String; override;
+         function ToString : String; override; final;
+         function ToUnicodeString : UnicodeString;
          function ToUTF8String : RawByteString; inline;
 
          property Stream : TWriteOnlyBlockStream read FStream write FStream;
@@ -109,7 +110,7 @@ type
          procedure BeginArray; override;
          procedure EndArray; override;
 
-         function  WriteName(const aName : PWideChar) : TdwsJSONWriter; override;
+         function  WriteNameP(const aName : PWideChar) : TdwsJSONWriter; override;
    end;
 
    TdwsJSONDuplicatesOptions = (jdoAccept, jdoOverwrite);
@@ -224,7 +225,7 @@ type
          procedure WriteToStream(aStream : TStream); overload;
          procedure WriteToStream(aStream : TWriteOnlyBlockStream); overload;
 
-         function  ToString : UnicodeString; reintroduce;
+         function  ToUnicodeString : UnicodeString; reintroduce;
          function  ToBeautifiedString(initialTabs : Integer = 0; indentTabs : Integer = 1) : UnicodeString;
 
          procedure Detach;
@@ -272,7 +273,8 @@ type
    TdwsJSONValueList = class(TSimpleList<TdwsJSONValue>)
       public
          procedure WriteTo(writer : TdwsJSONWriter);
-         function ToString : String; override;
+         function ToString : String; override; final;
+         function ToUnicodeString : UnicodeString;
    end;
 
    TdwsJSONPair = record
@@ -791,8 +793,8 @@ end;
 //
 procedure TdwsJSONParserState.ParseStringArray(dest : TStringList);
 var
-   c : Char;
-   buf : String;
+   c : WideChar;
+   buf : UnicodeString;
 begin
    c:=SkipBlanks(' ');
    if c<>'[' then
@@ -1042,9 +1044,9 @@ begin
    end;
 end;
 
-// ToString
+// ToUnicodeString
 //
-function TdwsJSONValue.ToString : UnicodeString;
+function TdwsJSONValue.ToUnicodeString : UnicodeString;
 var
    writer : TdwsJSONWriter;
 begin
@@ -2610,12 +2612,12 @@ end;
 //
 function TdwsJSONWriter.WriteName(const aName : UnicodeString) : TdwsJSONWriter;
 begin
-   Result:=WriteName(PWideChar(aName));
+   Result:=WriteNameP(PWideChar(aName));
 end;
 
-// WriteName
+// WriteNameP
 //
-function TdwsJSONWriter.WriteName(const aName : PWideChar) : TdwsJSONWriter;
+function TdwsJSONWriter.WriteNameP(const aName : PWideChar) : TdwsJSONWriter;
 
    procedure WriteLowerCase(stream : TWriteOnlyBlockStream; aName : PWideChar);
    begin
@@ -2798,6 +2800,13 @@ begin
    Result:=FStream.ToUnicodeString;
 end;
 
+// ToUnicodeString
+//
+function TdwsJSONWriter.ToUnicodeString : UnicodeString;
+begin
+   Result:=FStream.ToUnicodeString;
+end;
+
 // ToUTF8String
 //
 function TdwsJSONWriter.ToUTF8String : RawByteString;
@@ -2916,9 +2925,9 @@ begin
    inherited;
 end;
 
-// WriteName
+// WriteNameP
 //
-function TdwsJSONBeautifiedWriter.WriteName(const aName : PWideChar) : TdwsJSONWriter;
+function TdwsJSONBeautifiedWriter.WriteNameP(const aName : PWideChar) : TdwsJSONWriter;
 begin
    case FState of
       wsObject :
@@ -2942,6 +2951,13 @@ end;
 // ToString
 //
 function TdwsJSONValueList.ToString : String;
+begin
+   Result := ToUnicodeString;
+end;
+
+// ToUnicodeString
+//
+function TdwsJSONValueList.ToUnicodeString : UnicodeString;
 var
    wr : TdwsJSONWriter;
    wobs : TWriteOnlyBlockStream;

@@ -58,9 +58,9 @@ type
 
          procedure GrowTo(desiredSize : Integer);
 
-         function GetPData : PData;
-
       public
+
+         function GetPData : PData;
 
          procedure Initialize(const params : TStackParameters);
          procedure Finalize;
@@ -104,8 +104,8 @@ type
          procedure InitDataPtr(var dataPtr : IDataContext; addr : Integer); inline;
          procedure InitDataPtrLevel(var dataPtr : IDataContext; level, addr : Integer); inline;
 
-         procedure InitRelativeDataPtr(var dataPtr : IDataContext; addr : Integer); inline;
-         procedure InitRelativeDataPtrLevel(var dataPtr : IDataContext; level, addr : Integer); inline;
+         procedure InitRelativeDataPtr(const getPData : TGetPDataFunc; var dataPtr : IDataContext; addr : Integer); inline;
+         procedure InitRelativeDataPtrLevel(const getPData : TGetPDataFunc; var dataPtr : IDataContext; level, addr : Integer); inline;
 
          function  CreateDataContext(const data : TData; addr : Integer) : TDataContext; inline;
          function  CreateEmpty(size : Integer) : TDataContext;
@@ -512,16 +512,16 @@ end;
 
 // InitRelativeDataPtr
 //
-procedure TStackMixIn.InitRelativeDataPtr(var dataPtr : IDataContext; addr : Integer);
+procedure TStackMixIn.InitRelativeDataPtr(const getPData : TGetPDataFunc; var dataPtr : IDataContext; addr : Integer);
 begin
-   dataPtr:=TRelativeDataContext.Create(GetPData, BasePointer+addr);
+   dataPtr := TRelativeDataContext.Create(getPData, BasePointer+addr);
 end;
 
 // InitRelativeDataPtrLevel
 //
-procedure TStackMixIn.InitRelativeDataPtrLevel(var dataPtr : IDataContext; level, addr : Integer);
+procedure TStackMixIn.InitRelativeDataPtrLevel(const getPData : TGetPDataFunc; var dataPtr : IDataContext; level, addr : Integer);
 begin
-   dataPtr:=TRelativeDataContext.Create(GetPData, GetSavedBp(level)+addr);
+   dataPtr:=TRelativeDataContext.Create(getPData, GetSavedBp(level)+addr);
 end;
 
 // CreateDataContext

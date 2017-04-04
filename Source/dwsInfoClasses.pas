@@ -43,7 +43,7 @@ type
    end;
 
    // private implementation of IInfo
-   TInfo = class(TInterfacedObject, IUnknown, IInfo)
+   TInfo = class (TInterfacedObject, IUnknown, IInfo)
       protected
          FExec : TdwsProgramExecution;
          FChild : IInfo;

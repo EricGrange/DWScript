@@ -69,8 +69,8 @@ type
       function  GetParameter(index : Integer) : TGenericTypeParameterSymbol;
       property  Parameters[index : Integer] : TGenericTypeParameterSymbol read GetParameter; default;
       function  Count : Integer;
-      function  Find(const name : String) : TGenericTypeParameterSymbol;
-      function  Caption : String;
+      function  Find(const name : UnicodeString) : TGenericTypeParameterSymbol;
+      function  Caption : UnicodeString;
    end;
 
    TGenericParameters = class (TInterfacedObject, IGenericParameters)
@@ -80,6 +80,8 @@ type
       protected
          function GetSelf : TObject;
 
+         function ToUnicodeString : UnicodeString;
+
       public
          constructor Create;
          destructor Destroy; override;
@@ -88,15 +90,15 @@ type
 
          procedure Add(param : TGenericTypeParameterSymbol);
          function  GetParameter(index : Integer) : TGenericTypeParameterSymbol;
-         function  Find(const name : String) : TGenericTypeParameterSymbol;
+         function  Find(const name : UnicodeString) : TGenericTypeParameterSymbol;
 
          function Count : Integer;
 
-         function  Caption : String;
+         function  Caption : UnicodeString;
    end;
 
    TGenericSymbolSpecialization = record
-      Signature : String;
+      Signature : UnicodeString;
       Specialization : TTypeSymbol;
       SpecializedObjects : TSpecializationMap;
    end;
@@ -433,6 +435,13 @@ begin
    Result := Self;
 end;
 
+// ToUnicodeString
+//
+function TGenericParameters.ToUnicodeString : UnicodeString;
+begin
+   Result := ClassName;
+end;
+
 // Add
 //
 procedure TGenericParameters.Add(param : TGenericTypeParameterSymbol);
@@ -449,7 +458,7 @@ end;
 
 // Find
 //
-function TGenericParameters.Find(const name : String) : TGenericTypeParameterSymbol;
+function TGenericParameters.Find(const name : UnicodeString) : TGenericTypeParameterSymbol;
 begin
    Result := TGenericTypeParameterSymbol(FList.FindLocal(name));
 end;
@@ -463,7 +472,7 @@ end;
 
 // Caption
 //
-function TGenericParameters.Caption : String;
+function TGenericParameters.Caption : UnicodeString;
 var
    i : Integer;
    p : TGenericTypeParameterSymbol;

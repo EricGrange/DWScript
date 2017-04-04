@@ -1503,7 +1503,7 @@ type
          function GetArrayIndices : TParamsSymbolTable;
          procedure AddParam(Param : TParamSymbol);
          function GetIsDeprecated : Boolean; inline;
-         function GetExternalName : String;
+         function GetExternalName : UnicodeString;
 
       public
          constructor Create(const name : UnicodeString; typ : TTypeSymbol; aVisibility : TdwsVisibility;
@@ -1914,6 +1914,8 @@ type
          procedure DataContext_CreateLevel(level, addr : Integer; var Result : IDataContext); inline;
          function  DataContext_Nil : IDataContext; inline;
 
+         function  GetStackPData : PData;
+
          procedure LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : UnicodeString); virtual;
          procedure LocalizeString(const aString : UnicodeString; var Result : UnicodeString); virtual;
 
@@ -2033,7 +2035,7 @@ type
 const
    cFuncKindToString : array [Low(TFuncKind)..High(TFuncKind)] of UnicodeString = (
       'function', 'procedure', 'constructor', 'destructor', 'method', 'lambda' );
-   cFirstFieldUnprepared : TFieldSymbol = Pointer(-1);
+   cFirstFieldUnprepared = Pointer(-1);
    cDefaultRandSeed : UInt64 = 88172645463325252;
 
 // ------------------------------------------------------------------
@@ -7908,6 +7910,13 @@ end;
 function TdwsExecution.DataContext_Nil : IDataContext;
 begin
    Result:=FStack.CreateDataContext(nil, 0);
+end;
+
+// GetStackPData
+//
+function TdwsExecution.GetStackPData : PData;
+begin
+   Result := FStack.GetPData;
 end;
 
 // ------------------

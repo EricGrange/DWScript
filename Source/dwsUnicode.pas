@@ -20,7 +20,7 @@ unit dwsUnicode;
 
 interface
 
-uses SysUtils, dwsUtils;
+uses SysUtils, dwsUtils, dwsXPlatform;
 
 type
 
@@ -69,8 +69,8 @@ type
          procedure Sort;
 
          property Strings[index : Integer] : UnicodeString read GetString write SetString; default;
-         property Values[const name : UnicodeString] : String read GetValue write SetValue;
-         property ValueFromIndex[index : Integer] : String read GetValueFromIndex;
+         property Values[const name : UnicodeString] : UnicodeString read GetValue write SetValue;
+         property ValueFromIndex[index : Integer] : UnicodeString read GetValueFromIndex;
          property Count : Integer read FCount;
 
          property Sorted : Boolean read GetSorted write SetSorted;
@@ -145,7 +145,7 @@ function TUnicodeStringList.Compare(const s1, s2 : UnicodeString) : Integer;
 begin
    if usflCaseInsensitive in FFlags then
       Result := UnicodeCompareText(s1, s2)
-   else Result := CompareStr(s1, s2);
+   else Result := UnicodeCompareStr(s1, s2);
 end;
 
 // CompareIndex

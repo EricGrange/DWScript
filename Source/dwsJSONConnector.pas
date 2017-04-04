@@ -291,7 +291,9 @@ type
       function QueryInterface({$IFDEF FPC_HAS_CONSTREF}constref{$ELSE}const{$ENDIF} IID: TGUID; out Obj): HResult; stdcall;
 
       function GetSelf : TObject;
-      function ToString : UnicodeString; override;
+
+      function ToString : UnicodeString; override; final;
+      function ToUnicodeString : UnicodeString; virtual;
 
       function Value : TdwsJSONValue;
 
@@ -305,7 +307,8 @@ type
 
    TBoxedNilJSONValue = class (TInterfacedObject, IBoxedJSONValue, ICoalesceable, IGetSelf, IUnknown)
       function GetSelf : TObject;
-      function ToString : UnicodeString; override;
+      function ToString : UnicodeString; override; final;
+      function ToUnicodeString : UnicodeString;
       function Value : TdwsJSONValue;
       function IsFalsey : Boolean;
    end;
@@ -355,9 +358,16 @@ end;
 //
 function TBoxedJSONValue.ToString : UnicodeString;
 begin
-   if FValue.ValueType=jvtString then
-      Result:=FValue.AsString
-   else Result:=FValue.ToString;
+   Result := ToUnicodeString;
+end;
+
+// ToUnicodeString
+//
+function TBoxedJSONValue.ToUnicodeString : UnicodeString;
+begin
+   if FValue.ValueType = jvtString then
+      Result := FValue.AsString
+   else Result := FValue.ToUnicodeString;
 end;
 
 // IsFalsey
@@ -429,7 +439,14 @@ end;
 //
 function TBoxedNilJSONValue.ToString;
 begin
-   Result:='';
+   Result := '';
+end;
+
+// ToUnicodeString
+//
+function TBoxedNilJSONValue.ToUnicodeString : UnicodeString;
+begin
+   Result := '';
 end;
 
 // IsFalsey

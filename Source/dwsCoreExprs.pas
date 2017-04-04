@@ -2488,7 +2488,7 @@ end;
 //
 procedure TVarExpr.GetRelativeDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   exec.Stack.InitRelativeDataPtr(Result, FStackAddr);
+   exec.Stack.InitRelativeDataPtr(exec.GetStackPData, Result, FStackAddr);
 end;
 
 // IsWritable
@@ -2856,7 +2856,7 @@ end;
 //
 procedure TVarParentExpr.GetRelativeDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   exec.Stack.InitRelativeDataPtrLevel(result, FLevel, FStackAddr);
+   exec.Stack.InitRelativeDataPtrLevel(exec.GetStackPData, result, FLevel, FStackAddr);
 end;
 
 // EvalAsVariant
@@ -5194,8 +5194,12 @@ begin
          if v then
             Result:=1
          else Result:=0;
-      varSingle, varDouble, varCurrency :
-         Result:=Round(v);
+      varSingle :
+         Result := Round(TVarData(v).VSingle);
+      varDouble :
+         Result := Round(TVarData(v).VDouble);
+      varCurrency :
+         Result := Round(TVarData(v).VCurrency);
       varString, varUString, varOleStr : begin
          s:=v;
          if s<>'' then

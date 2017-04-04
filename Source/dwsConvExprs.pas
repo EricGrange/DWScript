@@ -36,7 +36,7 @@ type
       public
          class function WrapWithConvCast(context : TdwsCompilerContext; const scriptPos : TScriptPos;
                                          toTyp : TTypeSymbol; expr : TTypedExpr;
-                                         const reportError : UnicodeString) : TTypedExpr; static;
+                                         const reportError : String) : TTypedExpr; static;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
@@ -222,7 +222,7 @@ uses dwsCoreExprs;
 //
 class function TConvExpr.WrapWithConvCast(context : TdwsCompilerContext; const scriptPos : TScriptPos;
                                           toTyp : TTypeSymbol; expr : TTypedExpr;
-                                          const reportError : UnicodeString) : TTypedExpr;
+                                          const reportError : String) : TTypedExpr;
 
    procedure ReportIncompatibleTypes;
    var
@@ -705,7 +705,7 @@ begin
       obj:=intf.Instance;
       if not obj.ClassSym.IsCompatible(FTyp) then
          RaiseIntfCastFailed(obj);
-   end else VarCopySafe(Result, nil);
+   end else VarCopySafe(Result, IUnknown(nil));
 end;
 
 // ------------------

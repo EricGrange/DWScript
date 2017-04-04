@@ -33,12 +33,12 @@ type
       public
          class procedure IncompatibleTypes(
                         context : TdwsCompilerContext; const scriptPos : TScriptPos;
-                        const fmt : UnicodeString; typ1, typ2 : TTypeSymbol); static;
+                        const fmt : String; typ1, typ2 : TTypeSymbol); static;
 
          class function WrapWithImplicitConversion(
                         context : TdwsCompilerContext; expr : TTypedExpr; toTyp : TTypeSymbol;
                         const hotPos : TScriptPos;
-                        const msg : UnicodeString = CPE_IncompatibleTypes) : TTypedExpr; static;
+                        const msg : String = CPE_IncompatibleTypes) : TTypedExpr; static;
 
          class procedure AddProcHelper(const name : UnicodeString;
                                        table : TSymbolTable; func : TFuncSymbol;
@@ -774,7 +774,7 @@ end;
 //
 class procedure CompilerUtils.IncompatibleTypes(
                         context : TdwsCompilerContext; const scriptPos : TScriptPos;
-                        const fmt : UnicodeString; typ1, typ2 : TTypeSymbol);
+                        const fmt : String; typ1, typ2 : TTypeSymbol);
 begin
    context.Msgs.AddCompilerErrorFmt(scriptPos, fmt, [typ1.Caption, typ2.Caption]);
 end;
@@ -898,7 +898,7 @@ end;
 class function CompilerUtils.WrapWithImplicitConversion(
       context : TdwsCompilerContext; expr : TTypedExpr; toTyp : TTypeSymbol;
       const hotPos : TScriptPos;
-      const msg : UnicodeString = CPE_IncompatibleTypes) : TTypedExpr;
+      const msg : String = CPE_IncompatibleTypes) : TTypedExpr;
 var
    exprTyp : TTypeSymbol;
 begin

@@ -170,14 +170,19 @@ type
          procedure SetDataLength(n : Integer);
 
          function  HashCode(size : Integer) : Cardinal;
+
+         function ToString : String; override; deprecated 'Use ToUnicodeString'; final;
+         function ToUnicodeString : UnicodeString; virtual;
    end;
 
    TGetPDataFunc = function : PData of object;
 
-   TRelativeDataContext = class(TInterfacedObject, IDataContext, IGetSelf)
+   TRelativeDataContext = class (TInterfacedObject, IDataContext, IGetSelf)
       private
          FGetPData : TGetPDataFunc;
          FAddr : Integer;
+
+         function ToUnicodeString : UnicodeString;
 
       public
          constructor Create(const getPData : TGetPDataFunc; addr : Integer);
@@ -326,8 +331,8 @@ begin
          n := 8;
       end;
       varUString : begin
-         if p.VUString <> nil then begin
-            buf := SimpleStringHash(UnicodeString(p.VUString));
+         if p.VString <> nil then begin
+            buf := SimpleStringHash(UnicodeString(p.VString));
             k := @buf;
          end;
          n := 4;
@@ -461,6 +466,20 @@ begin
    Result := InterlockedDecrement(FRefCount);
    if Result = 0 then
       FPool.Push(Self);
+end;
+
+// ToString
+//
+function TDataContext.ToString : String;
+begin
+   Result := ToUnicodeString;
+end;
+
+// ToUnicodeString
+//
+function TDataContext.ToUnicodeString : UnicodeString;
+begin
+   Result := ClassName;
 end;
 
 // CreateStandalone
@@ -693,7 +712,7 @@ var
 begin
    p:=@FData[FAddr+addr];
    if p.VType=varUString then
-      result:=UnicodeString(p.VUString)
+      result:=UnicodeString(p.VString)
    else VariantToString(PVariant(p)^, result);
 end;
 
@@ -1001,6 +1020,13 @@ end;
 function TRelativeDataContext.HashCode(size : Integer) : Cardinal;
 begin
    Result:=DWSHashCode(FGetPData^, FAddr, size);
+end;
+
+// ToUnicodeString
+//
+function TRelativeDataContext.ToUnicodeString : UnicodeString;
+begin
+   Result := ClassName;
 end;
 
 end.

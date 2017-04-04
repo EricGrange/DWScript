@@ -49,6 +49,9 @@ type
          function  DecRefCount : Integer;
          property  RefCount : Integer read GetRefCount write SetRefCount;
          procedure Free;
+
+         function ToString : String; override; deprecated 'Use ToUnicodeString'; final;
+         function ToUnicodeString : UnicodeString; virtual;
    end;
    PRefCountedObject = ^TRefCountedObject;
 
@@ -57,7 +60,7 @@ type
    IGetSelf = interface
       ['{77D8EA0B-311C-422B-B8DE-AA5BDE726E41}']
       function GetSelf : TObject;
-      function ToString : UnicodeString;
+      function ToUnicodeString : UnicodeString;
    end;
 
    // TInterfacedSelfObject
@@ -68,9 +71,6 @@ type
          function QueryInterface({$IFDEF FPC_HAS_CONSTREF}constref{$ELSE}const{$ENDIF} IID: TGUID; out Obj): HResult; stdcall;
          function _AddRef : Integer; stdcall;
          function _Release : Integer; stdcall;
-         {$ifdef FPC}
-         function ToString : UnicodeString; reintroduce;
-         {$endif}
 
       public
          class function NewInstance: TObject; override;
@@ -749,7 +749,7 @@ type
          procedure WriteChar(utf16Char : WideChar); inline;
          procedure WriteDigits(value : Int64; digits : Integer);
 
-         function ToString : String; override; deprecated 'use ToUnicodeString'; final;
+         {$ifndef FPC}function ToString : String; override; deprecated 'use ToUnicodeString'; final;{$endif}
          function ToUnicodeString : UnicodeString;
          function ToUTF8String : RawByteString;
          function ToBytes : TBytes;
@@ -897,6 +897,7 @@ function  TidyStringsUnifier : Integer;
 function UnicodeCompareLen(p1, p2 : PWideChar; n : Integer) : Integer;
 function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
 function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
+
 function AsciiCompareLen(p1, p2 : PAnsiChar; n : Integer) : Integer; overload;
 function AsciiCompareText(p : PAnsiChar; const s : RawByteString) : Integer;
 function AsciiSameText(p : PAnsiChar; const s : RawByteString) : Boolean;
@@ -1616,7 +1617,7 @@ procedure VariantToString(const v : Variant; var s : UnicodeString);
       if unknown=nil then
          Result:='nil'
       else if unknown.QueryInterface(IGetSelf, intf)=0 then
-         Result:=intf.ToString
+         Result:=intf.ToUnicodeString
       else Result:='[IUnknown]';
    end;
 
@@ -2936,7 +2937,7 @@ end;
 // CompareStrings
 //
 {$ifdef FPC}
-function TFastCompareTextList.DoCompareText(const S1, S2: String): Integer;
+function TFastCompareTextList.DoCompareText(const S1, S2: String): PtrInt;
 begin
    Result:=UnicodeCompareText(s1, s2);
 end;
@@ -4001,10 +4002,12 @@ end;
 
 // ToString
 //
+{$ifndef FPC}
 function TWriteOnlyBlockStream.ToString : String;
 begin
    Result := ToUnicodeString;
 end;
+{$endif}
 
 // ToUnicodeString
 //
@@ -4568,15 +4571,6 @@ begin
    if Result=0 then Destroy;
 end;
 
-{$ifdef FPC}
-// ToString
-//
-function TInterfacedSelfObject.ToString : UnicodeString;
-begin
-   Result := UTF8Decode(inherited ToString);
-end;
-{$endif}
-
 // NewInstance
 //
 class function TInterfacedSelfObject.NewInstance: TObject;
@@ -5078,6 +5072,20 @@ procedure TRefCountedObject.Free;
 begin
    if Self <> nil then
       DecRefCount;
+end;
+
+// ToString
+//
+function TRefCountedObject.ToString : String;
+begin
+   Result := ToUnicodeString;
+end;
+
+// ToUnicodeString
+//
+function TRefCountedObject.ToUnicodeString : UnicodeString;
+begin
+   Result := ClassName;
 end;
 
 // IncRefCount

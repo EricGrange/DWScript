@@ -131,7 +131,6 @@ type
    end;
 
    TdwsSymbolDictionaryProc = procedure (sym : TSymbol) of object;
-   TdwsSymbolDictionaryRef = reference to procedure (sym : TSymbol);
 
    { List all symbols in the script. Each symbol list contains a list of the
      positions where it was used. }
@@ -166,7 +165,6 @@ type
          procedure Remove(sym : TSymbol);
          procedure RemoveInRange(const startPos, endPos : TScriptPos);
          procedure EnumerateInRange(const startPos, endPos : TScriptPos; const callBack : TdwsSymbolDictionaryProc); overload;
-         procedure EnumerateInRange(const startPos, endPos : TScriptPos; const callBack : TdwsSymbolDictionaryRef); overload;
 
          procedure ReplaceSymbolAt(oldSym, newSym : TSymbol; const scriptPos : TScriptPos);
          procedure ChangeUsageAt(const scriptPos : TScriptPos; const addUsages, removeUsages : TSymbolUsages);
@@ -818,30 +816,6 @@ end;
 // EnumerateInRange
 //
 procedure TdwsSymbolDictionary.EnumerateInRange(const startPos, endPos : TScriptPos; const callBack : TdwsSymbolDictionaryProc);
-var
-   i, j : Integer;
-   symPosList : TSymbolPositionList;
-   symPos : TSymbolPosition;
-begin
-   if startPos.SourceFile<>endPos.SourceFile then Exit;
-
-   for i:=0 to FHash.Capacity-1 do begin
-      if FHash.HashBucketValue(i, symPosList) then begin
-         for j:=symPosList.Count-1 downto 0 do begin
-            symPos:=symPosList[j];
-            if     startPos.IsBeforeOrEqual(symPos.ScriptPos)
-               and symPos.ScriptPos.IsBeforeOrEqual(endPos) then begin
-               callBack(symPosList.Symbol);
-               Break;
-            end;
-         end;
-      end;
-   end;
-end;
-
-// EnumerateInRange
-//
-procedure TdwsSymbolDictionary.EnumerateInRange(const startPos, endPos : TScriptPos; const callBack : TdwsSymbolDictionaryRef);
 var
    i, j : Integer;
    symPosList : TSymbolPositionList;

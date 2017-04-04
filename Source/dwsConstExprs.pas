@@ -520,7 +520,7 @@ begin
    FValue := aValue;
    SetLength(FData, 1);
    TVarData(FData[0]).VType := varUString;
-   UnicodeString(TVarData(FData[0]).VUString) := aValue;
+   UnicodeString(TVarData(FData[0]).VString) := aValue;
 end;
 
 // EvalAsString
