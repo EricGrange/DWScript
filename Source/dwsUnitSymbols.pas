@@ -26,7 +26,7 @@ interface
 uses
    SysUtils,
    dwsUtils, dwsSymbols, dwsErrors, dwsXPlatform,
-   dwsStrings, dwsTokenizer, dwsDataContext;
+   dwsStrings, dwsTokenizer, dwsDataContext, dwsUnicode, dwsXXHash;
 
 type
 
@@ -147,11 +147,13 @@ type
          constructor Create(const fileName : UnicodeString);
    end;
 
+   TUnitSymbolProc = procedure (unitSymbol : TUnitSymbol) of object;
+
    // Front end for units, serves for explicit unit resolution "unitName.symbolName"
    TUnitSymbol = class sealed (TTypeSymbol)
       private
          FMain : TUnitMainSymbol;
-         FNameSpace : TFastCompareTextList;
+         FNameSpace : TNameObjectHash;
          FImplicit : Boolean;
 
       public
@@ -168,7 +170,9 @@ type
 
          property Main : TUnitMainSymbol read FMain write FMain;
          property Implicit : Boolean read FImplicit write FImplicit;
-         property NameSpace : TFastCompareTextList read FNameSpace;
+
+         function HasNameSpace : Boolean;
+         procedure EnumerateNameSpaceUnits(const proc : TUnitSymbolProc);
 
          function Table : TUnitSymbolTable; inline;
          function InterfaceTable : TSymbolTable; inline;
@@ -728,25 +732,26 @@ end;
 procedure TUnitSymbol.RegisterNameSpaceUnit(unitSymbol : TUnitSymbol);
 begin
    if FNameSpace=nil then begin
-      FNameSpace:=TFastCompareTextList.Create;
-      FNameSpace.Sorted:=True;
+      FNameSpace:=TNameObjectHash.Create;
    end;
-   FNameSpace.AddObject(unitSymbol.Name, unitSymbol);
+   FNameSpace[UnicodeLowerCase(unitSymbol.Name)] := unitSymbol;
 end;
 
 // FindNameSpaceUnit
 //
 function TUnitSymbol.FindNameSpaceUnit(const name : UnicodeString) : TUnitSymbol;
-var
-   i : Integer;
+
+   function FindInNameSpace : TUnitSymbol;
+   begin
+      Result := TUnitSymbol(FNameSpace[UnicodeLowerCase(name)]);
+   end;
+
 begin
    Result:=nil;
    if (Main<>nil) and UnicodeSameText(name, Self.Name) then
       Result:=Self
    else if FNameSpace<>nil then begin
-      i:=FNameSpace.IndexOf(name);
-      if i>=0 then
-         Result:=TUnitSymbol(FNameSpace.Objects[i]);
+      Result := FindInNameSpace;
    end;
 end;
 
@@ -754,16 +759,21 @@ end;
 //
 function TUnitSymbol.PossibleNameSpace(const name : UnicodeString) : Boolean;
 var
-   i : Integer;
-   candidate : UnicodeString;
+   i, lenCandidate, lenName : Integer;
+   bucket : PNameObjectHashBucket;
 begin
    if FNameSpace=nil then Exit(False);
-   if FNameSpace.Find(name, i) then Exit(True);
-   if Cardinal(i)>=Cardinal(FNameSpace.Count) then Exit(False);
-   candidate:=FNameSpace[i];
-   Result:=    (Length(candidate)>Length(name))
-           and (StrIBeginsWith(candidate, name))
-           and (candidate[Length(name)+1]='.');
+   lenName := Length(name);
+   for i := 0 to FNameSpace.HighIndex do begin
+      bucket := FNameSpace.Bucket[i];
+      if bucket^.HashCode = 0 then Continue;
+      lenCandidate := Length(bucket^.Name);
+      if lenCandidate >=  lenName then begin
+         if UnicodeCompareLen(Pointer(name), Pointer(bucket^.Name), lenName) = 0 then
+            Exit(True);
+      end;
+   end;
+   Result := False;
 end;
 
 // IsDeprecated
@@ -771,6 +781,28 @@ end;
 function TUnitSymbol.IsDeprecated : Boolean;
 begin
    Result:=(Main.DeprecatedMessage<>'');
+end;
+
+// HasNameSpace
+//
+function TUnitSymbol.HasNameSpace : Boolean;
+begin
+   Result := (FNameSpace<>nil);
+end;
+
+// EnumerateNameSpaceUnits
+//
+procedure TUnitSymbol.EnumerateNameSpaceUnits(const proc : TUnitSymbolProc);
+var
+   i : Integer;
+   unitSym : TUnitSymbol;
+begin
+   if FNameSpace = nil then Exit;
+   for i := 0 to FNameSpace.HighIndex do begin
+      unitSym := TUnitSymbol(FNameSpace.BucketObject[i]);
+      if unitSym <> nil then
+         proc(unitSym);
+   end;
 end;
 
 // Table

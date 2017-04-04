@@ -545,7 +545,7 @@ procedure TdwsSuggestions.AddUnitSymbol(unitSym : TUnitSymbol; list : TSimpleSym
 begin
    if unitSym.Main<>nil then
       list.AddSymbolTable(unitSym.Table);
-   if unitSym.NameSpace<>nil then
+   if unitSym.HasNameSpace then
       list.AddNameSpace(unitSym);
 end;
 
@@ -1116,15 +1116,10 @@ end;
 // AddNameSpace
 //
 procedure TSimpleSymbolList.AddNameSpace(unitSym : TUnitSymbol);
-var
-   i : Integer;
 begin
    if unitSym.Main<>nil then
       Add(unitSym)
-   else begin
-      for i:=0 to unitSym.NameSpace.Count-1 do
-         AddNameSpace(unitSym.NameSpace.Objects[i] as TUnitSymbol);
-   end;
+   else unitSym.EnumerateNameSpaceUnits(AddNameSpace);
 end;
 
 end.
