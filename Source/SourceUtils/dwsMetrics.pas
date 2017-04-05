@@ -94,7 +94,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-resourcestring
+const
    METRIC_ParametersCount = 'Parameters Count';
    METRIC_ProcedureLength = 'Procedure Length';
 

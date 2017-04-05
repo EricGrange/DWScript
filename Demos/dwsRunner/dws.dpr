@@ -66,7 +66,7 @@ end;
 procedure MakeExe;
 var
    zw : TZipWrite;
-   sourceName, zipFileName, exeName : String;
+   sourceName, zipFileName, exeName : TFileName;
    hUpdate : THandle;
    buf : RawByteString;
    fs : TFileStream;
@@ -146,7 +146,7 @@ begin
       fs.Free;
    end;
 
-   hUpdate:=BeginUpdateResource(PChar(exeName), False);
+   hUpdate:=BeginUpdateResource(Pointer(exeName), False);
    try
       UpdateResource(hUpdate, RT_RCDATA, 'SCRIPT', 0, Pointer(buf), Length(buf));
    finally

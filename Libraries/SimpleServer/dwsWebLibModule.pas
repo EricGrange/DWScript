@@ -835,7 +835,7 @@ var
 begin
    intf := IUnknown(Info.ParamAsVariant[0]);
    if intf <> nil then
-      json := (intf as IBoxedJSONValue).Value.ToString
+      json := (intf as IBoxedJSONValue).Value.ToUnicodeString
    else json := '';
    Info.WebResponse.ContentJSON := json;
 end;

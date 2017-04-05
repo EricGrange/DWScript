@@ -161,10 +161,10 @@ type
 
    TErrorTransition = class(TTransition)
       private
-         ErrorMessage : UnicodeString;
+         ErrorMessage : String;
 
       public
-         constructor Create(const msg : UnicodeString);
+         constructor Create(const msg : String);
    end;
 
    TCheckTransition = class(TTransition);
@@ -207,7 +207,7 @@ type
    end;
 
    TTokenizerSourceInfo = record
-      FPathName : UnicodeString;
+      FPathName : TFileName;
       FText : UnicodeString;
       FDefaultPos : TScriptPos;
       FHotPos : TScriptPos;
@@ -256,14 +256,14 @@ type
          procedure ConsumeToken;
 
          procedure ReadToken;
-         procedure AddCompilerStopFmtTokenBuffer(const formatString : UnicodeString);
+         procedure AddCompilerStopFmtTokenBuffer(const formatString : String);
 
       public
          constructor Create(rules : TTokenizerRules; msgs : TdwsCompileMessageList;
                             unifier : TStringUnifier = nil);
          destructor Destroy; override;
 
-         procedure BeginSourceFile(sourceFile : TSourceFile; const pathName : String = '');
+         procedure BeginSourceFile(sourceFile : TSourceFile; const pathName : TFileName = '');
          procedure EndSourceFile;
 
          function GetToken : TToken; inline;
@@ -292,7 +292,7 @@ type
          property DefaultPos : TScriptPos read FSource.FDefaultPos;
          property HotPos : TScriptPos read FSource.FHotPos;
          property CurrentPos : TScriptPos read FSource.FCurPos;
-         property PathName : UnicodeString read FSource.FPathName;
+         property PathName : TFileName read FSource.FPathName;
 
          function SafePathName : String; inline;
 
@@ -338,7 +338,7 @@ const
      'REGISTER', 'PASCAL', 'CDECL', 'SAFECALL', 'STDCALL', 'FASTCALL', 'REFERENCE'
      );
 
-function TokenTypesToString(const tt : TTokenTypes) : String;
+function TokenTypesToString(const tt : TTokenTypes) : UnicodeString;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -353,7 +353,7 @@ const
 
 // TokenTypesToString
 //
-function TokenTypesToString(const tt : TTokenTypes) : String;
+function TokenTypesToString(const tt : TTokenTypes) : UnicodeString;
 var
    t : TTokenType;
 begin
@@ -420,8 +420,8 @@ begin
       1 : UnifyAssignChar(@Buffer[0], result);
    else
       if Unifier <> nil then
-         Unifier.UnifyAssignPChar(@Buffer[0], Len, result)
-      else SetString(result, PChar(@Buffer[0]), Len);
+         Unifier.UnifyAssignP(@Buffer[0], Len, result)
+      else SetString(result, PWideChar(@Buffer[0]), Len);
    end;
 end;
 
@@ -613,7 +613,7 @@ function TTokenBuffer.ToInt64 : Int64;
 
    function ComplexToInt64(var buffer : TTokenBuffer) : Int64;
    begin
-      Result:=StrToInt64(buffer.ToStr);
+      Result := StrToInt64(String(buffer.ToStr));
    end;
 
 var
@@ -811,7 +811,7 @@ var
    tt : TTokenType;
 begin
    for tt in cAlphaTypeTokens do begin
-      tokenName:=GetEnumName(TypeInfo(TTokenType), Ord(tt));
+      tokenName := UnicodeString(GetEnumName(TypeInfo(TTokenType), Ord(tt)));
       len:=Length(tokenName)-2;
       Assert(len<=14);
       n:=Length(vAlphaToTokenType[len][tokenName[3]]);
@@ -1022,7 +1022,7 @@ end;
 // ------------------ TErrorTransition ------------------
 // ------------------
 
-constructor TErrorTransition.Create(const msg : UnicodeString);
+constructor TErrorTransition.Create(const msg : String);
 begin
    IsError:=True;
    ErrorMessage:=msg;
@@ -1091,7 +1091,7 @@ end;
 
 // BeginSourceFile
 //
-procedure TTokenizer.BeginSourceFile(sourceFile : TSourceFile; const pathName : String = '');
+procedure TTokenizer.BeginSourceFile(sourceFile : TSourceFile; const pathName : TFileName = '');
 var
    n : Integer;
 begin
@@ -1157,7 +1157,7 @@ end;
 
 // AddCompilerStopFmtTokenBuffer
 //
-procedure TTokenizer.AddCompilerStopFmtTokenBuffer(const formatString : UnicodeString);
+procedure TTokenizer.AddCompilerStopFmtTokenBuffer(const formatString : String);
 var
    buf : UnicodeString;
 begin

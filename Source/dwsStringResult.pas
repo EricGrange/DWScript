@@ -275,7 +275,7 @@ end;
 
 procedure TWriteAllFunction.Execute(info : TProgramInfo);
 begin
-  (Info.Execution.Result as TdwsStringResult).SetStr(VarToStr(Info.ValueAsVariant['Str']));
+  (Info.Execution.Result as TdwsStringResult).SetStr(VariantToString(Info.ValueAsVariant['Str']));
 end;
 
 { TReadCharFunction }

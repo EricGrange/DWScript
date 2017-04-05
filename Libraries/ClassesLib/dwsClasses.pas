@@ -4,7 +4,7 @@ unit dwsClasses;
 
 interface
 
-uses Windows, SysUtils, Classes;
+uses Windows, SysUtils, Classes, dwsUtils, dwsXPlatform;
 
 type
 
@@ -15,8 +15,8 @@ type
   TdwsStrings = class(TPersistent)
   private
     FDefined: TStringsDefined;
-    FDelimiter: Char;
-    FQuoteChar: Char;
+    FDelimiter: WideChar;
+    FQuoteChar: WideChar;
     FUpdateCount: Integer;
     function GetCommaText: UnicodeString;
     function GetDelimitedText: UnicodeString;
@@ -27,14 +27,14 @@ type
     procedure SetDelimitedText(const Value: UnicodeString);
     procedure SetValue(const Name, Value: UnicodeString);
     procedure WriteData(Writer: TWriter);
-    function GetDelimiter: Char;
-    procedure SetDelimiter(const Value: Char);
-    function GetQuoteChar: Char;
-    procedure SetQuoteChar(const Value: Char);
+    function GetDelimiter: WideChar;
+    procedure SetDelimiter(const Value: WideChar);
+    function GetQuoteChar: WideChar;
+    procedure SetQuoteChar(const Value: WideChar);
 
   protected
     procedure DefineProperties(Filer: TFiler); override;
-    procedure Error(const Msg: UnicodeString; Data: Integer); overload;
+    procedure Error(const Msg: String; Data: Integer); overload;
     procedure Error(Msg: PResStringRec; Data: Integer); overload;
     function ExtractName(const S: UnicodeString): UnicodeString;
     function GetCapacity: Integer; virtual;
@@ -80,11 +80,11 @@ type
     property Capacity: Integer read GetCapacity write SetCapacity;
     property CommaText: UnicodeString read GetCommaText write SetCommaText;
     property Count: Integer read GetCount;
-    property Delimiter: Char read GetDelimiter write SetDelimiter;
+    property Delimiter: WideChar read GetDelimiter write SetDelimiter;
     property DelimitedText: UnicodeString read GetDelimitedText write SetDelimitedText;
     property Names[Index: Integer]: UnicodeString read GetName;
     property Objects[Index: Integer]: IUnknown read GetObject write PutObject;
-    property QuoteChar: Char read GetQuoteChar write SetQuoteChar;
+    property QuoteChar: WideChar read GetQuoteChar write SetQuoteChar;
     property Values[const Name: UnicodeString]: UnicodeString read GetValue write SetValue;
     property Strings[Index: Integer]: UnicodeString read Get write Put; default;
     property Text: UnicodeString read GetTextStr write SetTextStr;
@@ -96,7 +96,7 @@ type
 
   PStringItem = ^TStringItem;
   TStringItem = record
-    FString : String;
+    FString : UnicodeString;
     FObject : IUnknown;
   end;
 
@@ -255,7 +255,7 @@ begin
   Result := True;
 end;
 
-procedure TdwsStrings.Error(const Msg: UnicodeString; Data: Integer);
+procedure TdwsStrings.Error(const Msg: String; Data: Integer);
 {$ifdef FPC}
 begin
    raise EStringListError.Create(Msg);
@@ -298,7 +298,7 @@ var
   P: Integer;
 begin
   Result := S;
-  P := AnsiPos('=', Result);
+  P := Pos('=', Result);
   if P <> 0 then
     SetLength(Result, P-1) else
     SetLength(Result, 0);
@@ -329,6 +329,26 @@ begin
   end;
 end;
 
+function AnsiQuotedStrW(const s: UnicodeString; quote: WideChar): UnicodeString;
+var
+   i, j, count: integer;
+begin
+   Result := quote;
+   count := Length(s);
+   i := 0;
+   j := 0;
+   while i < count do begin
+      i := i + 1;
+      if s[i] = quote then begin
+         Result := Result + Copy(s, 1 + j, i - j) + quote;
+         j := i;
+      end;
+   end;
+   if i <> j then
+      Result := Result + Copy(s, 1 + j, i - j);
+   Result := Result + quote;
+end ;
+
 function TdwsStrings.GetDelimitedText: UnicodeString;
 var
   S: UnicodeString;
@@ -345,9 +365,9 @@ begin
     begin
       S := Get(I);
       P := PWideChar(S);
-      while not CharInSet(P^, [#0..' ', QuoteChar, Delimiter]) do
+      while (P^>' ') and (P^<>QuoteChar) and (P^<>Delimiter) do
         Inc(P);
-      if (P^ <> #0) then S := AnsiQuotedStr(S, QuoteChar);
+      if (P^ <> #0) then S := AnsiQuotedStrW(S, QuoteChar);
       Result := Result + S + Delimiter;
     end;
     System.Delete(Result, Length(Result), 1);
@@ -367,7 +387,7 @@ end;
 function TdwsStrings.GetTextStr: UnicodeString;
 var
    I, L, Size, Count: Integer;
-   P: PChar;
+   P: PWideChar;
    S, LB: UnicodeString;
 begin
    Count := GetCount;
@@ -417,7 +437,7 @@ begin
   for Result := 0 to GetCount - 1 do
   begin
     S := Get(Result);
-    P := AnsiPos('=', S);
+    P := Pos('=', S);
     if (P <> 0) and (CompareStrings(Copy(S, 1, P - 1), Name) = 0) then Exit;
   end;
   Result := -1;
@@ -490,7 +510,8 @@ begin
   BeginUpdate;
   try
     Clear;
-    while not Reader.EndOfList do Add(Reader.ReadString);
+    while not Reader.EndOfList do
+      Add(UnicodeString(Reader.ReadString));
   finally
     EndUpdate;
   end;
@@ -519,7 +540,7 @@ end;
 
 procedure TdwsStrings.SetTextStr(const Value: UnicodeString);
 var
-  P, Start: PChar;
+  P, Start: PWideChar;
   S: UnicodeString;
 begin
   BeginUpdate;
@@ -565,63 +586,72 @@ var
   I: Integer;
 begin
   Writer.WriteListBegin;
-  for I := 0 to Count - 1 do Writer.WriteString(Get(I));
+  for I := 0 to Count - 1 do Writer.WriteString(String(Get(I)));
   Writer.WriteListEnd;
 end;
 
+function AnsiExtractQuotedStrW(var src: PWideChar; quote: WideChar): WideString;
+var
+   p, q, r : PWideChar;
+begin
+   p := src;
+   q := StrEnd(p);
+   result:='';
+   if p = q then Exit;
+   if p^ <> quote then Exit;
+   Inc(p);
+
+   SetLength(Result, (NativeUInt(q)-NativeUInt(p))+1);
+   r := @Result[1];
+   while p <> q do begin
+      r^ := p^;
+      Inc(r);
+      if (p^ = quote) then begin
+         Inc(p);
+         if p^ <> quote then begin
+            dec(r);
+            break;
+         end;
+      end;
+      Inc(p);
+   end ;
+   src:=p;
+   SetLength(result, NativeUInt(r)-NativeUInt(Pointer(Result)));
+end ;
+
 procedure TdwsStrings.SetDelimitedText(const Value: UnicodeString);
 var
-  P, P1: PChar;
+  P, P1: PWideChar;
   S: UnicodeString;
 begin
   BeginUpdate;
   try
     Clear;
-    P := PChar(Value);
+    P := PWideChar(Value);
     while CharInSet(P^, [#1..' ']) do
-    {$IFDEF MSWINDOWS}
-      P := CharNext(P);
-    {$ELSE}
       Inc(P);
-    {$ENDIF}
     while P^ <> #0 do
     begin
       if P^ = QuoteChar then
-        S := AnsiExtractQuotedStr(P, QuoteChar)
+        S := AnsiExtractQuotedStrW(P, QuoteChar)
       else
       begin
         P1 := P;
         while (P^ > ' ') and (P^ <> Delimiter) do
-        {$IFDEF MSWINDOWS}
-          P := CharNext(P);
-        {$ELSE}
           Inc(P);
-        {$ENDIF}
         SetString(S, P1, P - P1);
       end;
       Add(S);
       while CharInSet(P^, [#1..' ']) do
-      {$IFDEF MSWINDOWS}
-        P := CharNext(P);
-      {$ELSE}
         Inc(P);
-      {$ENDIF}
       if P^ = Delimiter then
       begin
         P1 := P;
-        {$IFDEF MSWINDOWS}
-        if CharNext(P1)^ = #0 then
-        {$ELSE}
         Inc(P1);
         if P1^ = #0 then
-        {$ENDIF}
-          Add('');
+           Add('');
         repeat
-          {$IFDEF MSWINDOWS}
-          P := CharNext(P);
-          {$ELSE}
           Inc(P);
-          {$ENDIF}
         until not CharInSet(P^, [#1..' ']);
       end;
     end;
@@ -630,21 +660,21 @@ begin
   end;
 end;
 
-function TdwsStrings.GetDelimiter: Char;
+function TdwsStrings.GetDelimiter: WideChar;
 begin
   if not (sdDelimiter in FDefined) then
     Delimiter := ',';
   Result := FDelimiter;
 end;
 
-function TdwsStrings.GetQuoteChar: Char;
+function TdwsStrings.GetQuoteChar: WideChar;
 begin
   if not (sdQuoteChar in FDefined) then
     QuoteChar := '"';
   Result := FQuoteChar;
 end;
 
-procedure TdwsStrings.SetDelimiter(const Value: Char);
+procedure TdwsStrings.SetDelimiter(const Value: WideChar);
 begin
   if (FDelimiter <> Value) or not (sdDelimiter in FDefined) then
   begin
@@ -653,7 +683,7 @@ begin
   end
 end;
 
-procedure TdwsStrings.SetQuoteChar(const Value: Char);
+procedure TdwsStrings.SetQuoteChar(const Value: WideChar);
 begin
   if (FQuoteChar <> Value) or not (sdQuoteChar in FDefined) then
   begin
@@ -664,7 +694,7 @@ end;
 
 function TdwsStrings.CompareStrings(const S1, S2: UnicodeString): Integer;
 begin
-  Result := AnsiCompareText(S1, S2);
+  Result := UnicodeCompareText(S1, S2);
 end;
 
 // Remove
@@ -932,9 +962,9 @@ end;
 function TdwsStringList.CompareStrings(const S1, S2: UnicodeString): Integer;
 begin
   if CaseSensitive then
-    Result := CompareStr(S1, S2)
+    Result := UnicodeCompareStr(S1, S2)
   else
-    Result := AnsiCompareText(S1, S2);
+    Result := UnicodeCompareText(S1, S2);
 end;
 
 procedure TdwsStringList.SetCaseSensitive(const Value: Boolean);

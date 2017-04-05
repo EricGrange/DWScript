@@ -618,7 +618,7 @@ type
          constructor Create;
 
          procedure UnifyAssign(const aString : UnicodeString; var unifiedString : UnicodeString); inline;
-         procedure UnifyAssignPChar(p : PChar; size : Integer; var unifiedString : UnicodeString);
+         procedure UnifyAssignP(p : PWideChar; size : Integer; var unifiedString : UnicodeString);
 
          property Count : Integer read FCount;
          procedure Clear;
@@ -889,8 +889,8 @@ function AcquireUnifier : TStringUnifier;
 procedure ReleaseUnifier(unifier : TStringUnifier);
 
 procedure UnifyAssignString(const fromStr : UnicodeString; var toStr : UnicodeString); inline;
-procedure UnifyAssignPChar(p : PChar; size : Integer; var toStr : UnicodeString);
-procedure UnifyAssignChar(p : PChar; var toStr : UnicodeString);
+procedure UnifyAssignP(p : PWideChar; size : Integer; var toStr : UnicodeString);
+procedure UnifyAssignChar(p : PWideChar; var toStr : UnicodeString);
 function  UnifiedString(const fromStr : UnicodeString) : UnicodeString; inline;
 function  TidyStringsUnifier : Integer;
 
@@ -938,7 +938,7 @@ function Min(a, b : Integer) : Integer; inline;
 function WhichPowerOfTwo(const v : Int64) : Integer;
 
 function SimpleStringHash(const s : UnicodeString) : Cardinal; overload; inline;
-function SimpleStringHash(p : PChar; sizeInChars : Integer) : Cardinal; overload; inline;
+function SimpleStringHash(p : PWideChar; sizeInChars : Integer) : Cardinal; overload; inline;
 function SimpleByteHash(p : PByte; n : Integer) : Cardinal;
 
 function SimpleIntegerHash(x : Cardinal) : Cardinal;
@@ -1009,8 +1009,8 @@ procedure dwsFreeAndNil(var O); // transitional function, do not use
 
 function CoalesceableIsFalsey(const unk : IUnknown) : Boolean;
 
-function ApplyStringVariables(const str : UnicodeString; const variables : TStrings;
-                              const delimiter : UnicodeString = '%') : UnicodeString;
+function ApplyStringVariables(const str : TFilename; const variables : TStrings;
+                              const delimiter : String = '%') : TFilename;
 
 type
    TTwoChars = packed array [0..1] of WideChar;
@@ -1063,16 +1063,16 @@ end;
 
 // SimpleStringHash
 //
-function SimpleStringHash(p : PChar; sizeInChars : Integer) : Cardinal; overload; inline;
+function SimpleStringHash(p : PWideChar; sizeInChars : Integer) : Cardinal; overload; inline;
 begin
-   Result := xxHash32.Full(p, sizeInChars*SizeOf(Char));
+   Result := xxHash32.Full(p, sizeInChars*SizeOf(WideChar));
 end;
 
 // SimpleStringHash
 //
 function SimpleStringHash(const s : UnicodeString) : Cardinal; inline;
 begin
-   Result := xxHash32.Full(Pointer(s), Length(s)*SizeOf(Char));
+   Result := xxHash32.Full(Pointer(s), Length(s)*SizeOf(WideChar));
 end;
 
 // SimpleByteHash
@@ -2283,7 +2283,7 @@ end;
 
 var
    vUnifiedStrings : array [0..1] of Pointer;
-   vUnifiedCharacters : array [0..Ord(TStringUnifier.HighestUnifiedChar)] of String;
+   vUnifiedCharacters : array [0..Ord(TStringUnifier.HighestUnifiedChar)] of UnicodeString;
 
 // ------------------
 // ------------------ TStringUnifier ------------------
@@ -2301,12 +2301,12 @@ end;
 //
 procedure TStringUnifier.UnifyAssign(const aString : UnicodeString; var unifiedString : UnicodeString);
 begin
-   UnifyAssignPChar(Pointer(aString), Length(aString), unifiedString);
+   UnifyAssignP(Pointer(aString), Length(aString), unifiedString);
 end;
 
-// UnifyAssignPChar
+// UnifyAssignP
 //
-procedure TStringUnifier.UnifyAssignPChar(p : PChar; size : Integer; var unifiedString : UnicodeString);
+procedure TStringUnifier.UnifyAssignP(p : PWideChar; size : Integer; var unifiedString : UnicodeString);
 var
    i : Integer;
    h : Cardinal;
@@ -2420,7 +2420,7 @@ begin
    end;
 
    for i := Low(vUnifiedCharacters) to High(vUnifiedCharacters) do
-      vUnifiedCharacters[i] := Char(Ord(i));
+      vUnifiedCharacters[i] := WideChar(Ord(i));
 end;
 
 // FinalizeStringsUnifier
@@ -2459,12 +2459,12 @@ end;
 //
 procedure UnifyAssignString(const fromStr : UnicodeString; var toStr : UnicodeString);
 begin
-   UnifyAssignPChar(Pointer(fromStr), Length(fromStr), toStr);
+   UnifyAssignP(Pointer(fromStr), Length(fromStr), toStr);
 end;
 
 // UnifyAssignPChar
 //
-procedure UnifyAssignPChar(p : PChar; size : Integer; var toStr : UnicodeString);
+procedure UnifyAssignP(p : PWideChar; size : Integer; var toStr : UnicodeString);
 var
    su : TStringUnifier;
 begin
@@ -2481,17 +2481,17 @@ begin
       end;
    end;
    su := AcquireUnifier;
-   su.UnifyAssignPChar(p, size, toStr);
+   su.UnifyAssignP(p, size, toStr);
    ReleaseUnifier(su);
 end;
 
 // UnifyAssignChar
 //
-procedure UnifyAssignChar(p : PChar; var toStr : UnicodeString);
+procedure UnifyAssignChar(p : PWideChar; var toStr : UnicodeString);
 begin
    if Cardinal(Ord(p^)) <= Cardinal(High(vUnifiedCharacters)) then
       toStr := vUnifiedCharacters[Ord(p^)]
-   else UnifyAssignPChar(p, 1, toStr);
+   else UnifyAssignP(p, 1, toStr);
 end;
 
 // UnifiedString
@@ -2927,8 +2927,8 @@ end;
 
 // ApplyStringVariables
 //
-function ApplyStringVariables(const str : UnicodeString; const variables : TStrings;
-                              const delimiter : UnicodeString = '%') : UnicodeString;
+function ApplyStringVariables(const str : TFilename; const variables : TStrings;
+                              const delimiter : String = '%') : TFilename;
 var
    p1, p2 : Integer;
 begin
@@ -5094,7 +5094,7 @@ end;
 //
 function TRefCountedObject.ToString : String;
 begin
-   Result := UnicodeString(ToUnicodeString);
+   Result := String(ToUnicodeString);
 end;
 
 // ToUnicodeString

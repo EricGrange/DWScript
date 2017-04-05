@@ -334,7 +334,7 @@ end;
 
 function TStrToIntFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
-   Result:=StrToInt64(args.AsString[0]);
+   Result := StrToInt64(String(args.AsString[0]));
 end;
 
 { TStrToIntDefFunc }

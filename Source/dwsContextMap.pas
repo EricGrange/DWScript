@@ -219,7 +219,7 @@ begin
    writer.BeginObject;
 
    writer.WriteName('Token');
-   writer.WriteString(GetEnumName(TypeInfo(TTokenType), Ord(Token)));
+   writer.WriteString(UnicodeString(GetEnumName(TypeInfo(TTokenType), Ord(Token))));
 
    writer.WriteName('Symbol');
    if ParentSym=nil then

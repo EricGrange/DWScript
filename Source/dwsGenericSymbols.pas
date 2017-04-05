@@ -439,7 +439,7 @@ end;
 //
 function TGenericParameters.ToUnicodeString : UnicodeString;
 begin
-   Result := ClassName;
+   Result := UnicodeString(ClassName);
 end;
 
 // Add

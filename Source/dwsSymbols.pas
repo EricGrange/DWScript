@@ -242,9 +242,9 @@ type
 
          procedure RaiseScriptError(exec : TdwsExecution; e : EScriptError); overload;
          procedure RaiseScriptError(exec : TdwsExecution); overload;
-         procedure RaiseScriptError(exec : TdwsExecution; const msg : UnicodeString); overload;
-         procedure RaiseScriptError(exec : TdwsExecution; exceptClass : EScriptErrorClass; const msg : UnicodeString); overload;
-         procedure RaiseScriptError(exec : TdwsExecution; exceptClass : EScriptErrorClass; const msg : UnicodeString;
+         procedure RaiseScriptError(exec : TdwsExecution; const msg : String); overload;
+         procedure RaiseScriptError(exec : TdwsExecution; exceptClass : EScriptErrorClass; const msg : String); overload;
+         procedure RaiseScriptError(exec : TdwsExecution; exceptClass : EScriptErrorClass; const msg : String;
                                     const args : array of const); overload;
 
          procedure RaiseObjectNotInstantiated(exec : TdwsExecution);
@@ -2223,14 +2223,14 @@ end;
 
 // RaiseScriptError
 //
-procedure TExprBase.RaiseScriptError(exec : TdwsExecution; const msg : UnicodeString);
+procedure TExprBase.RaiseScriptError(exec : TdwsExecution; const msg : String);
 begin
    RaiseScriptError(exec, EScriptError, msg);
 end;
 
 // RaiseScriptError
 //
-procedure TExprBase.RaiseScriptError(exec : TdwsExecution; exceptClass : EScriptErrorClass; const msg : UnicodeString);
+procedure TExprBase.RaiseScriptError(exec : TdwsExecution; exceptClass : EScriptErrorClass; const msg : String);
 begin
    RaiseScriptError(exec, exceptClass.Create(msg));
 end;
@@ -2238,7 +2238,7 @@ end;
 // RaiseScriptError
 //
 procedure TExprBase.RaiseScriptError(exec : TdwsExecution; exceptClass : EScriptErrorClass;
-                                        const msg : UnicodeString; const args : array of const);
+                                        const msg : String; const args : array of const);
 begin
    RaiseScriptError(exec, exceptClass.CreateFmt(msg, args));
 end;
@@ -3563,7 +3563,7 @@ begin
       msg:=msgs.AddCompilerErrorFmt(FForwardPosition^, CPE_ForwardNotImplemented, [Name]);
       afa:=TdwsAFAAddImplementation.Create(msg, AFA_AddImplementation);
       afa.Text:= #13#10
-                +TrimRight(StringReplace(GetDescription, '()', ' ', [rfIgnoreCase]))
+                +TrimRight(UnicodeStringReplace(GetDescription, '()', ' ', [rfIgnoreCase]))
                 +';'#13#10'begin'#13#10#9'|'#13#10'end;'#13#10;
    end;
 end;
@@ -4545,7 +4545,7 @@ end;
 //
 function TPropertySymbol.GetDescription : UnicodeString;
 begin
-   Result := Format('property %s%s: %s', [Name, GetArrayIndicesDescription, Typ.Name]);
+   Result := UnicodeFormat('property %s%s: %s', [Name, GetArrayIndicesDescription, Typ.Name]);
 
    if Assigned(FIndexSym) then
       Result := Result + ' index ' + VariantToString(FIndexValue[0]);

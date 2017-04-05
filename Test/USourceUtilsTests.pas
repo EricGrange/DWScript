@@ -9,7 +9,7 @@ uses
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsDataContext,
    dwsTokenizer, dwsErrors, dwsUtils, Variants, dwsSymbols, dwsSuggestions,
    dwsFunctions, dwsCaseNormalizer, dwsScriptSource, dwsSymbolDictionary,
-   dwsCompilerContext;
+   dwsCompilerContext, dwsUnicode;
 
 type
 
@@ -620,7 +620,7 @@ end;
 procedure TSourceUtilsTests.BigEnumerationNamesAndValues;
 var
    i : Integer;
-   s : String;
+   s : UnicodeString;
    prog : IdwsProgram;
    enum : TEnumerationSymbol;
 begin
@@ -628,7 +628,7 @@ begin
    for i:=1 to 100 do begin
       if i>1 then
          s:=s+',';
-      s:=s+'v'+IntToStr(i);
+      s:=s+'v'+FastInt64ToStr(i);
    end;
    prog:=FCompiler.Compile(s+');');
 
@@ -637,7 +637,7 @@ begin
    enum:=(prog.Table.FindTypeSymbol('TTest', cvPublic) as TEnumerationSymbol);
 
    for i:=1 to 100 do begin
-      CheckEquals(i-1, (enum.Elements.FindLocal('v'+IntToStr(i)) as TElementSymbol).Value, 'value of '+IntToStr(i-1));
+      CheckEquals(i-1, (enum.Elements.FindLocal('v'+FastInt64ToStr(i)) as TElementSymbol).Value, 'value of '+IntToStr(i-1));
       CheckEquals('v'+IntToStr(i), enum.ElementByValue(i-1).Name, 'name of '+IntToStr(i-1));
    end;
 end;
@@ -728,7 +728,7 @@ begin
                            +'var xyz := "";'#13#10
                            +'x');
 
-   CheckNotEquals('', prog.Msgs.AsInfo, 'should have compiled with errors');
+   CheckNotEquals(UnicodeString(''), prog.Msgs.AsInfo, 'should have compiled with errors');
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 3, 2);
 
@@ -755,7 +755,7 @@ var
    lines : TStringList;
    normalizer : TTestNormalizer;
 begin
-   lines:=TStringList.Create;
+   lines := TStringList.Create;
    try
       lines.Text:= 'unit Unit1;'#13#10
                   +'interface'#13#10
