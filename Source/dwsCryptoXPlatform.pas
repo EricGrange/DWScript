@@ -30,14 +30,14 @@ unit dwsCryptoXPlatform;
 interface
 
 procedure CryptographicRandom(buf : Pointer; nb : Integer); overload;
-function CryptographicRandom(nb : Integer) : RawByteString; overload;
+function CryptographicRandom(nb : Integer) : AnsiString; overload;
 function CryptographicToken(bitStrength : Integer = 0) : UnicodeString;
 function ProcessUniqueRandom : UnicodeString;
 
 // only encodes 6 bits of each bytes using URI-safe base 64 alphabet
-function DigestToSimplifiedBase64(digest : PByte; size : Integer) : String;
+function DigestToSimplifiedBase64(digest : PByte; size : Integer) : UnicodeString;
 // only encodes 5.8 bits of each bytes (using 62 alphanumeric characters)
-function DigestToSimplifiedBase62(digest : PByte; size : Integer) : String;
+function DigestToSimplifiedBase62(digest : PByte; size : Integer) : UnicodeString;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -79,7 +79,7 @@ var
    hProvLock : TMultiReadSingleWrite;
    vXorShiftSeedMask : UInt64;
 
-procedure CryptographicRandom(buf : Pointer; nb : Integer); overload;
+procedure CryptographicRandom(buf : Pointer; nb : Integer);
 
    function RDTSC : UInt64;
    asm
@@ -131,7 +131,7 @@ end;
 
 // CryptographicRandom
 //
-function CryptographicRandom(nb : Integer) : RawByteString;
+function CryptographicRandom(nb : Integer) : AnsiString;
 begin
    SetLength(Result, nb);
    CryptographicRandom(Pointer(Result), nb);
@@ -143,24 +143,24 @@ const
 
 // DigestToSimplifiedBase64
 //
-function DigestToSimplifiedBase64(digest : PByte; size : Integer) : String;
+function DigestToSimplifiedBase64(digest : PByte; size : Integer) : UnicodeString;
 var
    i : Integer;
 begin
    SetLength(Result, size);
    for i := 0 to size-1 do
-      PChar(Pointer(Result))[i] := Char(cBase64Chars[(digest[i] and 63)+1]);
+      PWideChar(Pointer(Result))[i] := WideChar(cBase64Chars[(digest[i] and 63)+1]);
 end;
 
 // DigestToSimplifiedBase62
 //
-function DigestToSimplifiedBase62(digest : PByte; size : Integer) : String;
+function DigestToSimplifiedBase62(digest : PByte; size : Integer) : UnicodeString;
 var
    i : Integer;
 begin
    SetLength(Result, size);
    for i := 0 to size-1 do
-      PChar(Pointer(Result))[i] := Char(cBase64Chars[((digest[i]*62) shr 8)+1]);
+      PWideChar(Pointer(Result))[i] := WideChar(cBase64Chars[((digest[i]*62) shr 8)+1]);
 end;
 
 // CryptographicToken
@@ -168,7 +168,7 @@ end;
 function CryptographicToken(bitStrength : Integer = 0) : UnicodeString;
 var
    n : Integer;
-   rand : RawByteString;
+   rand : AnsiString;
 begin
    if bitStrength <= 0 then
       bitStrength := cCryptographicTokenDefaultBitStrength;
@@ -176,7 +176,7 @@ begin
    n:=bitStrength div 6;
    if n*6<bitStrength then
       Inc(n);
-   rand:=CryptographicRandom(n);
+   rand := CryptographicRandom(n);
    Result := DigestToSimplifiedBase64(Pointer(rand), n);
 end;
 

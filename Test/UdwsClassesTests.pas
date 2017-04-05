@@ -165,8 +165,8 @@ begin
          resultsFileName:=ChangeFileExt(FTests[i], '.txt');
          if FileExists(resultsFileName) then begin
             expectedResult.LoadFromFile(resultsFileName);
-            CheckEquals(expectedResult.Text, exec.Result.ToString, FTests[i]);
-         end else CheckEquals('', exec.Result.ToString, FTests[i]);
+            CheckEquals(expectedResult.Text, exec.Result.ToUnicodeString, FTests[i]);
+         end else CheckEquals('', exec.Result.ToUnicodeString, FTests[i]);
          CheckEquals('', exec.Msgs.AsInfo, FTests[i]);
 
       end;
@@ -199,12 +199,12 @@ begin
    try
       exec.RunProgram(0);
 
-      CheckEquals('Line 1'#13#10'Line 2'#13#10, exec.Result.ToString);
+      CheckEquals('Line 1'#13#10'Line 2'#13#10, exec.Result.ToUnicodeString);
 
       func:=exec.Info.Func['MyProc'];
       func.Call([]);
 
-      CheckEquals('Line 1'#13#10'Line 2'#13#10'2', exec.Result.ToString);
+      CheckEquals('Line 1'#13#10'Line 2'#13#10'2', exec.Result.ToUnicodeString);
    finally
       exec.EndProgram;
    end;

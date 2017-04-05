@@ -55,7 +55,7 @@ type
          FConstraints : TTightList;  // owned
 
       public
-         constructor Create(aGeneric : TGenericSymbol; const name : String);
+         constructor Create(aGeneric : TGenericSymbol; const name : UnicodeString);
          destructor Destroy; override;
 
          procedure AddConstraint(aConstraint : TGenericConstraint);
@@ -112,13 +112,13 @@ type
          FBinaryOps : TTightList;
 
       protected
-         class function Signature(params : TUnSortedSymbolTable) : String; static;
+         class function Signature(params : TUnSortedSymbolTable) : UnicodeString; static;
 
          function GetCaption : UnicodeString; override;
          procedure AcquireSymbol(sym : TSymbol);
 
       public
-         constructor Create(const name : String; const params : IGenericParameters);
+         constructor Create(const name : UnicodeString; const params : IGenericParameters);
          destructor Destroy; override;
 
          function SpecializeType(const context : ISpecializationContext) : TTypeSymbol; override;
@@ -195,7 +195,7 @@ implementation
 
 // Create
 //
-constructor TGenericSymbol.Create(const name : String; const params : IGenericParameters);
+constructor TGenericSymbol.Create(const name : UnicodeString; const params : IGenericParameters);
 var
    i : Integer;
 begin
@@ -238,7 +238,7 @@ function TGenericSymbol.SpecializationFor(const aScriptPos : TScriptPos; aUnit :
                                           const aOperators : TOperators) : TTypeSymbol;
 var
    context : TSpecializationContext;
-   sig, n : String;
+   sig, n : UnicodeString;
    i, k : Integer;
 begin
    sig := Signature(values);
@@ -351,14 +351,14 @@ end;
 
 // Signature
 //
-class function TGenericSymbol.Signature(params : TUnSortedSymbolTable) : String;
+class function TGenericSymbol.Signature(params : TUnSortedSymbolTable) : UnicodeString;
 var
    i : Integer;
    sym : TSymbol;
 begin
    for i := 0 to params.Count-1 do begin
       sym := params.Symbols[i];
-      Result := Result + sym.Name + ':' + IntToStr(NativeUInt(sym)) + ';';
+      Result := Result + sym.Name + ':' + FastInt64ToStr(NativeUInt(sym)) + ';';
    end;
 end;
 
@@ -368,7 +368,7 @@ end;
 
 // Create
 //
-constructor TGenericTypeParameterSymbol.Create(aGeneric : TGenericSymbol; const name : String);
+constructor TGenericTypeParameterSymbol.Create(aGeneric : TGenericSymbol; const name : UnicodeString);
 begin
    inherited Create(name, nil);
    FGenericSymbol := aGeneric;

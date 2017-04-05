@@ -1152,7 +1152,7 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'FuncsTest compile');
    if execute then begin
       exec:=prog.Execute;
-      CheckEquals('', exec.Result.ToString, 'FuncsTest result');
+      CheckEquals('', exec.Result.ToUnicodeString, 'FuncsTest result');
       CheckEquals('', exec.Msgs.AsInfo, 'FuncsTest Msgs');
    end;
 end;
@@ -1369,7 +1369,7 @@ begin
 
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
    exec:=prog.Execute;
-   CheckEquals('876543210', exec.Result.ToString, 'Enums Ord');
+   CheckEquals('876543210', exec.Result.ToUnicodeString, 'Enums Ord');
 end;
 
 // ParseNameTests
@@ -1689,7 +1689,7 @@ begin
 
    exec:=prog.Execute;
 
-   CheckEquals('11'#13#10'22'#13#10, exec.Result.ToString);
+   CheckEquals('11'#13#10'22'#13#10, exec.Result.ToUnicodeString);
 end;
 
 // CallFuncPointArray
@@ -1709,7 +1709,7 @@ begin
 
    exec:=prog.Execute;
 
-   CheckEquals('1,2'#13#10'3,4'#13#10, exec.Result.ToString);
+   CheckEquals('1,2'#13#10'3,4'#13#10, exec.Result.ToUnicodeString);
 end;
 
 // PredefinedVar
@@ -1737,7 +1737,7 @@ begin
       CheckEquals( 'xyz'#13#10'XYZ'#13#10
                   +'magic'#13#10'MAGIC'#13#10
                   +'MAGIC+1'#13#10
-                  +'42'#13#10, exec.Result.ToString, 'Result');
+                  +'42'#13#10, exec.Result.ToUnicodeString, 'Result');
       CheckEquals('XYZ', exec.Info.ValueAsString['xyzVar'], 'xyz var value');
       CheckEquals('MAGIC+1', FContext.FMagicVar, 'magic var value');
       CheckEquals(42, exec.Info.ValueAsInteger['LifeUniverseEverything'], '42 var value');
@@ -1767,7 +1767,7 @@ begin
 
    exec:=prog.Execute;
 
-   CheckEquals('0'#13#10'0'#13#10, exec.Result.ToString, 'Result');
+   CheckEquals('0'#13#10'0'#13#10, exec.Result.ToUnicodeString, 'Result');
 end;
 
 // AssignTest
@@ -1818,7 +1818,7 @@ begin
 
       exec.RunProgram(0);
 
-      CheckEquals( '105106107108109110', exec.Result.ToString, 'Result');
+      CheckEquals( '105106107108109110', exec.Result.ToUnicodeString, 'Result');
    finally
       exec.EndProgram;
    end;
@@ -1851,7 +1851,7 @@ begin
 
       exec.RunProgram(0);
 
-      CheckEquals( '123, 456', exec.Result.ToString, 'Result');
+      CheckEquals( '123, 456', exec.Result.ToUnicodeString, 'Result');
 
       p:=exec.Info.Vars['p'];
       CheckEquals(456, p.Member['x'].Value, 'After exec Fields 1');
@@ -1905,7 +1905,7 @@ begin
 
       exec.Info.Func['MyTest'].Call;
 
-      CheckEquals('1byebye', exec.Result.ToString, 'after setdata');
+      CheckEquals('1byebye', exec.Result.ToUnicodeString, 'after setdata');
    finally
       exec.EndProgram;
    end;
@@ -1934,7 +1934,7 @@ begin
 
       CheckEquals('', exec.Msgs.AsInfo, 'Run');
 
-      CheckEquals('0-1'#13#10#13#10'0/1/2'#13#10, exec.Result.ToString);
+      CheckEquals('0-1'#13#10#13#10'0/1/2'#13#10, exec.Result.ToUnicodeString);
    finally
       exec.EndProgram;
    end;
@@ -1963,7 +1963,7 @@ begin
 
       CheckEquals('', exec.Msgs.AsInfo, 'Run');
 
-      CheckEquals('0-2'#13#10#13#10'0/2/4'#13#10, exec.Result.ToString);
+      CheckEquals('0-2'#13#10#13#10'0/2/4'#13#10, exec.Result.ToUnicodeString);
    finally
       exec.EndProgram;
    end;
@@ -2024,7 +2024,7 @@ begin
    exec:=prog.BeginNewExecution;
    try
       exec.RunProgram(0);
-      CheckEquals('789456', exec.Result.ToString);
+      CheckEquals('789456', exec.Result.ToUnicodeString);
    finally
       exec.EndProgram;
    end;
@@ -2050,7 +2050,7 @@ begin
 
       CheckEquals( 'hello'#13#10'cleaned up'#13#10
                   +'Runtime Error: Object already destroyed [line: 1, column: 74]'#13#10,
-                  exec.Result.ToString+exec.Msgs.AsInfo);
+                  exec.Result.ToUnicodeString+exec.Msgs.AsInfo);
    finally
       exec.EndProgram;
    end;
@@ -2101,7 +2101,7 @@ begin
 
       CheckEquals( 'hello'#13#10'my destructor'#13#10'cleaned up'#13#10
                   +'Runtime Error: Object already destroyed [line: 1, column: 79]'#13#10,
-                  exec.Result.ToString+exec.Msgs.AsInfo);
+                  exec.Result.ToUnicodeString+exec.Msgs.AsInfo);
    finally
       exec.EndProgram;
    end;
@@ -2128,7 +2128,7 @@ begin
       exec.RunProgram(0);
 
       CheckEquals( '2'#13#10'11'#13#10,
-                  exec.Result.ToString);
+                  exec.Result.ToUnicodeString);
 
       CheckEquals(124, exec.Info.Vars['v1'].Call([123]).Value, 'Call unit func direct');
       CheckEquals(133, exec.Info.Vars['v2'].Call([123]).Value, 'Call source func direct');
@@ -2164,7 +2164,7 @@ begin
       exec.RunProgram(0);
 
       CheckEquals( '3.5'#13#10'2'#13#10,
-                  exec.Result.ToString+exec.Msgs.AsInfo);
+                  exec.Result.ToUnicodeString+exec.Msgs.AsInfo);
    finally
       exec.EndProgram;
    end;
@@ -2188,7 +2188,7 @@ begin
       exec.RunProgram(0);
 
       CheckEquals( '2:one,two'#13#10'0:'#13#10,
-                  exec.Result.ToString+exec.Msgs.AsInfo);
+                  exec.Result.ToUnicodeString+exec.Msgs.AsInfo);
    finally
       exec.EndProgram;
    end;
@@ -2214,7 +2214,7 @@ begin
       print.Call(['world']);
 
       CheckEquals( 'Hello'#13#10'world',
-                  exec.Result.ToString+exec.Msgs.AsInfo);
+                  exec.Result.ToUnicodeString+exec.Msgs.AsInfo);
    finally
       exec.EndProgram;
    end;
@@ -2244,7 +2244,7 @@ begin
       printit.Call([v.Value]);
 
       CheckEquals('TObject'#13#10,
-                  exec.Result.ToString+exec.Msgs.AsInfo);
+                  exec.Result.ToUnicodeString+exec.Msgs.AsInfo);
    finally
       exec.EndProgram;
    end;
@@ -2289,7 +2289,7 @@ begin
 
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
 
-   CheckEquals('1', prog.Execute.Result.ToString, 'exec');
+   CheckEquals('1', prog.Execute.Result.ToUnicodeString, 'exec');
 end;
 
 // OverloadedFunc
@@ -2306,7 +2306,7 @@ begin
 
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
 
-   CheckEquals('246(123)468(234)', prog.Execute.Result.ToString, 'exec');
+   CheckEquals('246(123)468(234)', prog.Execute.Result.ToUnicodeString, 'exec');
 end;
 
 // FastEvalTest
@@ -2321,7 +2321,7 @@ begin
 
    CheckEquals('', prog.Msgs.AsInfo, 'Compile 1');
 
-   CheckEquals('54', prog.Execute.Result.ToString, 'exec 1');
+   CheckEquals('54', prog.Execute.Result.ToUnicodeString, 'exec 1');
 
    prog:=FCompiler.Compile( 'var p := FuncFastPoint(2);'#13#10
                            +'PrintLn(p.X);'#13#10
@@ -2329,7 +2329,7 @@ begin
 
    CheckEquals('', prog.Msgs.AsInfo, 'Compile 2');
 
-   CheckEquals('2'#13#10'3'#13#10, prog.Execute.Result.ToString, 'exec 2');
+   CheckEquals('2'#13#10'3'#13#10, prog.Execute.Result.ToUnicodeString, 'exec 2');
 end;
 
 // ArrayOfObjects
@@ -2348,7 +2348,7 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'Compile 1');
 
    CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
-   CheckEquals('', prog.Execute.Result.ToString, 'exec result');
+   CheckEquals('', prog.Execute.Result.ToUnicodeString, 'exec result');
 end;
 
 // FuncVariantTest
@@ -2373,7 +2373,7 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'Compile 1');
 
    CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
-   CheckEquals('12312.5456helloTrue', prog.Execute.Result.ToString, 'exec result');
+   CheckEquals('12312.5456helloTrue', prog.Execute.Result.ToUnicodeString, 'exec result');
 end;
 
 // FuncVariantDateTest
@@ -2392,7 +2392,7 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'Compile 1');
 
    CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
-   CheckEquals('', prog.Execute.Result.ToString, 'exec result');
+   CheckEquals('', prog.Execute.Result.ToUnicodeString, 'exec result');
 end;
 
 // FuncNilTest
@@ -2410,7 +2410,7 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
 
    CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
-   CheckEquals('', prog.Execute.Result.ToString, 'exec result');
+   CheckEquals('', prog.Execute.Result.ToUnicodeString, 'exec result');
 end;
 
 // SetTest
@@ -2434,7 +2434,7 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
 
    CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
-   CheckEquals('123', prog.Execute.Result.ToString, 'exec result');
+   CheckEquals('123', prog.Execute.Result.ToUnicodeString, 'exec result');
 end;
 
 // ClassNameTest
@@ -2450,7 +2450,7 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
 
    CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
-   CheckEquals(#13#10'TObject', prog.Execute.Result.ToString, 'exec result');
+   CheckEquals(#13#10'TObject', prog.Execute.Result.ToUnicodeString, 'exec result');
 end;
 
 // VirtCreateFunc
@@ -2467,7 +2467,7 @@ begin
    FContext.FMagicVar:='';
 
    CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
-   CheckEquals('TTestClass', prog.Execute.Result.ToString, 'exec result');
+   CheckEquals('TTestClass', prog.Execute.Result.ToUnicodeString, 'exec result');
    CheckEquals('-1', FContext.FMagicVar, 'magic');
 end;
 
@@ -2491,7 +2491,7 @@ begin
       CheckEquals('', prog.Msgs.AsInfo, 'Compile no uses');
 
       exec:=prog.Execute;
-      CheckEquals( '1'#13#10, exec.Result.ToString+exec.Msgs.AsInfo);
+      CheckEquals( '1'#13#10, exec.Result.ToUnicodeString+exec.Msgs.AsInfo);
 
    finally
       FCompiler.Config.CompilerOptions:=FCompiler.Config.CompilerOptions-[coExplicitUnitUses];

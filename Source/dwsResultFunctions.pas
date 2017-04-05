@@ -63,27 +63,29 @@ end;
 //
 function TPrintFunction.DoPrint(const args : TExprBaseListExec) : TdwsResult;
 var
-   buf : Pointer;
    exprBase : TExprBase;
+
+   procedure EvalString(Result : TdwsResult);
+   var
+      buf : UnicodeString;
+   begin
+      exprBase.EvalAsString(args.Exec, buf);
+      Result:=TdwsProgramExecution(args.Exec).Result;
+      Result.AddString(buf);
+   end;
+
+var
    exprBaseClass : TClass;
 begin
    exprBase:=args.ExprBase[0];
    exprBaseClass:=exprBase.ClassType;
+   Result:=TdwsProgramExecution(args.Exec).Result;
    if exprBaseClass=TConstStringExpr then begin
-      Result:=TdwsProgramExecution(args.Exec).Result;
       Result.AddString(TConstStringExpr(exprBase).Value);
    end else if exprBaseClass=TIntVarExpr then begin
-      Result:=TdwsProgramExecution(args.Exec).Result;
       Result.AddString(exprBase.EvalAsInteger(args.Exec));
    end else begin
-      buf:=nil;
-      try
-         exprBase.EvalAsString(args.Exec, UnicodeString(buf));
-         Result:=TdwsProgramExecution(args.Exec).Result;
-         Result.AddString(UnicodeString(buf));
-      finally
-         UnicodeString(buf):='';
-      end;
+      EvalString(Result);
    end;
 end;
 

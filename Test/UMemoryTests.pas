@@ -250,8 +250,8 @@ begin
          resultsFileName:=ChangeFileExt(FTests[i], '.txt');
          if FileExists(resultsFileName) then begin
             expectedResult.LoadFromFile(resultsFileName);
-            CheckEquals(expectedResult.Text, exec.Result.ToString, FTests[i]);
-         end else CheckEquals('', exec.Result.ToString, FTests[i]);
+            CheckEquals(expectedResult.Text, exec.Result.ToUnicodeString, FTests[i]);
+         end else CheckEquals('', exec.Result.ToUnicodeString, FTests[i]);
          CheckEquals('', exec.Msgs.AsInfo, FTests[i]);
          CheckEquals(0, exec.ObjectCount, FTests[i]+', leaked '+IntToStr(exec.ObjectCount)+' script objects');
          CheckEquals(0, FTestObjects.Count, FTests[i]+', leaked '+IntToStr(FTestObjects.Count)+' external objects');

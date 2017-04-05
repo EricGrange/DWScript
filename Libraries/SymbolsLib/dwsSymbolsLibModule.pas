@@ -180,7 +180,7 @@ var
   table: TSymbolTable;
   sym: TSymbol;
   funcSym : TFuncSymbol;
-  uid, name: string;
+  uid, name: UnicodeString;
   p: Integer;
 begin
   table := Info.Execution.Prog.RootTable;
@@ -325,7 +325,7 @@ procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsLocateEval(
 var
   x: Integer;
   table: TSymbolTable;
-  name: string;
+  name: UnicodeString;
   wasFound: Boolean;
 begin
   table := TSymbols(ExtObject).FTable;

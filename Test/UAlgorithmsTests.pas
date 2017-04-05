@@ -75,7 +75,7 @@ begin
             Break;
          end;
       end;
-      ActualResult:=Exec.Result.ToString;
+      ActualResult:=Exec.Result.ToUnicodeString;
       if Copy(ActualResult, 1, 5)='Swaps' then
          ActualResult:=Copy(ActualResult, Pos(#13#10, ActualResult)+2, MaxInt);
       if ActualResult<>ExpectedResult then
@@ -276,7 +276,7 @@ begin
 
          CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
          exec:=prog.Execute;
-         output:=exec.Result.ToString;
+         output:=exec.Result.ToUnicodeString;
          if exec.Msgs.Count>0 then
             output:=output+#13#10+'>>> Runtime Error: '+exec.Msgs.AsInfo;
          resultsFileName:=ChangeFileExt(FTests[i], '.txt');

@@ -187,7 +187,10 @@ function UnixTimeToSystemMilliseconds(ut : Int64) : Int64;
 procedure SystemSleep(msec : Integer);
 
 function UnicodeFormat(const fmt : UnicodeString; const args : array of const) : UnicodeString;
+{$ifndef FPC}
 function UnicodeCompareStr(const S1, S2 : UnicodeString) : Integer; inline;
+function UnicodeStringReplace(const s, oldPattern, newPattern: String; flags: TReplaceFlags) : String; inline;
+{$endif}
 
 function AnsiCompareText(const S1, S2 : UnicodeString) : Integer;
 function AnsiCompareStr(const S1, S2 : UnicodeString) : Integer;
@@ -228,6 +231,10 @@ function TryTextToFloat(const s : PWideChar; var value : Extended;
 procedure VarCopy(out dest : Variant; const src : Variant); inline;
 {$else}
 function VarToUnicodeStr(const v : Variant) : UnicodeString; inline;
+{$endif}
+
+{$ifdef FPC}
+function Utf8ToUnicodeString(const buf : RawByteString) : UnicodeString; inline;
 {$endif}
 
 function RawByteStringToBytes(const buf : RawByteString) : TBytes;
@@ -491,9 +498,18 @@ end;
 
 // UnicodeCompareStr
 //
+{$ifndef FPC}
 function UnicodeCompareStr(const S1, S2 : UnicodeString) : Integer;
 begin
    Result:=CompareStr(S1, S2);
+end;
+{$endif}
+
+// UnicodeStringReplace
+//
+function UnicodeStringReplace(const s, oldPattern, newPattern: String; flags: TReplaceFlags) : String;
+begin
+   Result := SysUtils.StringReplace(s, oldPattern, newPattern, flags);
 end;
 
 // AnsiCompareText
@@ -899,6 +915,15 @@ begin
    Result:=VarToStr(v);
 end;
 {$endif FPC}
+
+{$ifdef FPC}
+// Utf8ToUnicodeString
+//
+function Utf8ToUnicodeString(const buf : RawByteString) : UnicodeString; inline;
+begin
+   Result := UTF8Decode(buf);
+end;
+{$endif}
 
 // RawByteStringToBytes
 //

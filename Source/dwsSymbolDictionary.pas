@@ -24,7 +24,8 @@ unit dwsSymbolDictionary;
 interface
 
 uses
-   Classes, TypInfo, dwsUtils, dwsXPlatform, dwsScriptSource, dwsSymbols, dwsJSON;
+   SysUtils, Classes, TypInfo,
+   dwsUtils, dwsXPlatform, dwsScriptSource, dwsSymbols, dwsJSON;
 
 type
 
@@ -478,7 +479,7 @@ begin
 
    wr.BeginObject('symbol');
       wr.WriteString('name', Symbol.Name);
-      wr.WriteString('class', Symbol.ClassName);
+      wr.WriteString('class', UnicodeString(Symbol.ClassName));
    wr.EndObject;
 
    wr.BeginArray('positions');
@@ -487,7 +488,7 @@ begin
          wr.BeginArray('usages');
          for u := Low(TSymbolUsage) to High(TSymbolUsage) do begin
             if u in Items[i].SymbolUsages then
-               wr.WriteString(GetEnumName(TypeInfo(TSymbolUsage), Ord(u)));
+               wr.WriteString(UnicodeString(GetEnumName(TypeInfo(TSymbolUsage), Ord(u))));
          end;
          wr.EndArray;
          wr.WriteString('position', Items[i].ScriptPos.AsInfo);
@@ -664,7 +665,7 @@ function SymbolCustomSort(list: TStringList; index1, index2: Integer): Integer;
 var
    spl1, spl2 : TSymbolPositionList;
 begin
-   Result := UnicodeCompareText(list[index1], list[index2]);
+   Result := CompareText(list[index1], list[index2]);
    if Result = 0 then begin
       spl1 := TSymbolPositionList(list.Objects[index1]);
       spl2 := TSymbolPositionList(list.Objects[index2]);
@@ -676,7 +677,7 @@ begin
             Result := 1
          else if spl1[0].ScriptPos.IsBeforeOrEqual(spl2[0].ScriptPos) then
             if spl1[0].ScriptPos.SamePosAs(spl2[0].ScriptPos) then
-               Result := UnicodeCompareText(spl1.Symbol.ClassName, spl2.Symbol.ClassName)
+               Result := CompareText(spl1.Symbol.ClassName, spl2.Symbol.ClassName)
             else Result := -1
          else Result := 1;
       end;
@@ -692,7 +693,7 @@ begin
    try
       for symPosList in Self do
          if symPosList.Count > 0 then
-            list.AddObject(symPosList.Symbol.Name, symPosList);
+            list.AddObject(String(symPosList.Symbol.Name), symPosList);
       list.CustomSort(@SymbolCustomSort);
 
       wr.BeginArray;

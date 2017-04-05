@@ -66,7 +66,7 @@ end;
 procedure TTokenizerTests.EmptyTokenBuffer;
 var
    w : TTokenBufferWrapper;
-   s : String;
+   s : UnicodeString;
 begin
    w:=TTokenBufferWrapper.Create;
    try

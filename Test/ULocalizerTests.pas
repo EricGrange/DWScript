@@ -2,7 +2,7 @@ unit ULocalizerTests;
 
 interface
 
-uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
+uses Windows, Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
    dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, Variants,
    dwsSymbols, dwsPascalTokenizer, dwsStrings, dwsStack, dwsJSON;
 
@@ -15,7 +15,7 @@ type
       public
          procedure SetUp; override;
          procedure TearDown; override;
-         procedure DoLocalize(Sender : TObject; const aString : String; var Result : String);
+         procedure DoLocalize(Sender : TObject; const aString : UnicodeString; var Result : UnicodeString);
 
       published
          procedure SimpleTest;
@@ -49,7 +49,7 @@ end;
 
 // DoLocalize
 //
-procedure TLocalizerTests.DoLocalize(Sender : TObject; const aString : String; var Result : String);
+procedure TLocalizerTests.DoLocalize(Sender : TObject; const aString : UnicodeString; var Result : UnicodeString);
 begin
    Result:='['+aString+']';
 end;
@@ -71,14 +71,14 @@ begin
 
       exec:=prog.CreateNewExecution;
       exec.Execute;
-      CheckEquals('[hello]', exec.Result.ToString, 'localized');
+      CheckEquals('[hello]', exec.Result.ToUnicodeString, 'localized');
       exec.Localizer:=nil;
       exec.Execute;
-      CheckEquals('hello', exec.Result.ToString, 'localizer off');
+      CheckEquals('hello', exec.Result.ToUnicodeString, 'localizer off');
 
       exec:=prog.CreateNewExecution;
       exec.Execute;
-      CheckEquals('[hello]', exec.Result.ToString, 'localized2');
+      CheckEquals('[hello]', exec.Result.ToUnicodeString, 'localized2');
    finally
       customLoc.Free;
    end;
@@ -92,6 +92,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   TestFramework.RegisterTest('LocalizerTests', TLocalizerTests.Suite);
+   RegisterTest('LocalizerTests', TLocalizerTests);
 
 end.

@@ -20,7 +20,7 @@ unit dwsUnicode;
 
 interface
 
-uses SysUtils, dwsUtils, dwsXPlatform;
+uses Classes, SysUtils, dwsUtils, dwsXPlatform;
 
 type
 
@@ -52,6 +52,9 @@ type
          procedure SetCaseSensitive(const val : Boolean);
 
       public
+         procedure Assign(src : TUnicodeStringList);
+         procedure AssignFromTStrings(src : TStrings);
+
          function Add(const s : UnicodeString) : Integer;
          procedure Insert(index : Integer; const s : UnicodeString);
 
@@ -192,6 +195,36 @@ begin
       if usflSorted in FFlags then
          Sort;
    end;
+end;
+
+// Assign
+//
+procedure TUnicodeStringList.Assign(src : TUnicodeStringList);
+var
+   i : Integer;
+begin
+   FCount := src.FCount;
+   SetLength(FItems, FCount);
+   for i := 0 to FCount-1 do
+      FItems[i] := src.FItems[i];
+   if FFlags <> src.FFlags then begin
+      if usflSorted in FFlags then
+         Sort;
+   end;
+end;
+
+// AssignFromTStrings
+//
+procedure TUnicodeStringList.AssignFromTStrings(src : TStrings);
+var
+   i : Integer;
+begin
+   FCount := src.Count;
+   SetLength(FItems, FCount);
+   for i := 0 to FCount-1 do
+      FItems[i] := src[i];
+   if usflSorted in FFlags then
+      Sort;
 end;
 
 // IndexOf

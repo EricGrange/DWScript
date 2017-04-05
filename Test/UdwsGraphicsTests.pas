@@ -144,7 +144,7 @@ begin
          CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
          exec:=prog.Execute;
 
-         resultText:=exec.Result.ToString;
+         resultText:=exec.Result.ToUnicodeString;
          if exec.Msgs.Count>0 then
             resultText:=resultText+#13#10'>>>> Error(s): '#13#10+exec.Msgs.AsInfo;
 

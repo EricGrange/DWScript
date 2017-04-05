@@ -299,7 +299,7 @@ var
 procedure PrepareAllNamedEntities;
 var
    i, p, e : Integer;
-   s : String;
+   s : UnicodeString;
    entity : TNamedEntity;
 begin
    vAllNamedEntities := TNamedEntities.Create;
@@ -307,10 +307,10 @@ begin
    s := cAllNamedEntities;
    i := 1;
    repeat
-      p := PosEx(',', s, i);
+      p := StrUtils.PosEx(',', s, i);
       if p <= 0 then
          p := Length(s)+1;
-      e := PosEx('=', s, i);
+      e := StrUtils.PosEx('=', s, i);
       entity.Name := Copy(s, i, e-i);
       entity.Code := StrToInt('$' + Copy(s, e+1, p-e-1));
       vAllNamedEntities.Add(entity);
@@ -386,7 +386,7 @@ begin
       Inc(pSrc);
    end;
    SetLength(raw, NativeUInt(pDest)-NativeUInt(Pointer(raw)));
-   Result := UTF8Decode(raw);
+   Result := UTF8ToUnicodeString(raw);
 end;
 
 // EncodeURLEncoded

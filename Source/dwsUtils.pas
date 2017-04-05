@@ -252,15 +252,15 @@ type
          FCount : Integer;
 
       protected
-         function GetItems(i : Integer) : String; inline;
-         procedure SetItems(i : Integer; const s : String); inline;
+         function GetItems(i : Integer) : UnicodeString; inline;
+         procedure SetItems(i : Integer; const s : UnicodeString); inline;
 
       public
          procedure Add(const s : UnicodeString);
          function IndexOf(const s : UnicodeString) : Integer;
          procedure Clear;
 
-         property Items[i : Integer] : String read GetItems write SetItems; default;
+         property Items[i : Integer] : UnicodeString read GetItems write SetItems; default;
          property Count : Integer read FCount;
    end;
 
@@ -968,7 +968,8 @@ type
 
 function FastInt32ToBuffer(const val : Int32; var buf : TInt32StringBuffer) : Integer;
 function FastInt64ToBuffer(const val : Int64; var buf : TInt64StringBuffer) : Integer;
-procedure FastInt64ToStr(const val : Int64; var s : UnicodeString);
+procedure FastInt64ToStr(const val : Int64; var s : UnicodeString); overload;
+function  FastInt64ToStr(const val : Int64) : UnicodeString; overload; inline;
 procedure FastInt64ToHex(val : Int64; digits : Integer; var s : UnicodeString);
 function Int64ToHex(val : Int64; digits : Integer) : UnicodeString; inline;
 
@@ -976,7 +977,8 @@ function DivMod100(var dividend : Cardinal) : Cardinal;
 
 procedure FastStringReplace(var str : UnicodeString; const sub, newSub : UnicodeString);
 
-procedure VariantToString(const v : Variant; var s : UnicodeString);
+procedure VariantToString(const v : Variant; var s : UnicodeString); overload;
+function VariantToString(const v : Variant) : UnicodeString; overload; inline;
 procedure VariantToInt64(const v : Variant; var r : Int64);
 function VariantToBool(const v : Variant) : Boolean;
 function VariantToFloat(const v : Variant) : Double;
@@ -1443,7 +1445,7 @@ begin
    // we can't use a constant array here, as obtaining a string from a constant
    // array implies a memory allocations, which would defeat the whole purpose
    for i := 0 to High(vSmallIntegers) do
-      vSmallIntegers[i] := IntToStr(i);
+      vSmallIntegers[i] := UnicodeString(IntToStr(i));
 end;
 
 // FastInt64ToStr
@@ -1459,6 +1461,13 @@ begin
       n:=FastInt64ToBuffer(val, buf{%H-});
       SetString(s, PWideChar(@buf[n]), (High(buf)+1)-n);
    end;
+end;
+
+// FastInt64ToStr
+//
+function FastInt64ToStr(const val : Int64) : UnicodeString;
+begin
+   FastInt64ToStr(val, Result);
 end;
 
 // FastInt64ToHex
@@ -1517,7 +1526,7 @@ procedure FastStringReplace(var str : UnicodeString; const sub, newSub : Unicode
 
    procedure FallBack;
    begin
-      str:=SysUtils.StringReplace(str, sub, newSub, [rfReplaceAll]);
+      str := UnicodeStringReplace(str, sub, newSub, [rfReplaceAll]);
    end;
 
    procedure ReplaceChars(pStr : PWideChar; oldChar, newChar : WideChar; n : Integer);
@@ -1623,7 +1632,7 @@ procedure VariantToString(const v : Variant; var s : UnicodeString);
 
    procedure FloatAsString(var v : Double; var Result : UnicodeString);
    begin
-      Result:=FloatToStr(v);
+      Result := UnicodeString(FloatToStr(v));
    end;
 
 var
@@ -1655,6 +1664,13 @@ begin
    else
       s:=v;
    end;
+end;
+
+// VariantToString
+//
+function VariantToString(const v : Variant) : UnicodeString;
+begin
+   VariantToString(v, Result);
 end;
 
 // VariantToInt64
@@ -1909,7 +1925,7 @@ begin
          writer.WriteInteger(PVarData(@value).VInt64);
       varUString :
          {$ifdef FPC}
-         writer.WriteString(UnicodeString(PVarData(@value).VString));
+         writer.WriteUnicodeString(UnicodeString(PVarData(@value).VString));
          {$else}
          writer.WriteString(UnicodeString(PVarData(@value).VUString));
          {$endif}
@@ -4988,21 +5004,21 @@ end;
 //
 function TSimpleNameObjectHash<T>.GetIndex(const aName : UnicodeString) : Integer;
 begin
-   Result:=FHash.GetIndex(aName);
+   Result := FHash.BucketIndex[aName];
 end;
 
 // GetObjects
 //
 function TSimpleNameObjectHash<T>.GetObjects(const aName : UnicodeString) : T;
 begin
-   Result:=T(FHash.GetObjects(aName));
+   Result:=T(FHash.Objects[aName]);
 end;
 
 // SetObjects
 //
 procedure TSimpleNameObjectHash<T>.SetObjects(const aName : UnicodeString; obj : T);
 begin
-   FHash.SetObjects(aName, obj);
+   FHash.Objects[aName] := obj;
 end;
 
 // AddObject
@@ -5031,21 +5047,21 @@ end;
 //
 function TSimpleNameObjectHash<T>.GetBucketName(index : Integer) : UnicodeString;
 begin
-   Result:=FHash.GetBucketName(index);
+   Result := FHash.BucketName[index];
 end;
 
 // GetBucketObject
 //
 function TSimpleNameObjectHash<T>.GetBucketObject(index : Integer) : T;
 begin
-   Result:=T(FHash.GetBucketObject(index));
+   Result:=T(FHash.BucketObject[index]);
 end;
 
 // SetBucketObject
 //
 procedure TSimpleNameObjectHash<T>.SetBucketObject(index : Integer; obj : T);
 begin
-   FHash.SetBucketObject(index, obj);
+   FHash.BucketObject[index] := obj;
 end;
 
 // Count
@@ -5078,14 +5094,14 @@ end;
 //
 function TRefCountedObject.ToString : String;
 begin
-   Result := ToUnicodeString;
+   Result := UnicodeString(ToUnicodeString);
 end;
 
 // ToUnicodeString
 //
 function TRefCountedObject.ToUnicodeString : UnicodeString;
 begin
-   Result := ClassName;
+   Result := UnicodeString(ClassName);
 end;
 
 // IncRefCount
@@ -6135,14 +6151,14 @@ end;
 
 // GetItems
 //
-function TSimpleStringList.GetItems(i : Integer) : String;
+function TSimpleStringList.GetItems(i : Integer) : UnicodeString;
 begin
    Result := FItems[i];
 end;
 
 // SetItems
 //
-procedure TSimpleStringList.SetItems(i : Integer; const s : String);
+procedure TSimpleStringList.SetItems(i : Integer; const s : UnicodeString);
 begin
    FItems[i] := s;
 end;

@@ -227,7 +227,7 @@ begin
    else begin
       writer.BeginObject;
       writer.WriteName('Class');
-      writer.WriteString(ParentSym.ClassName);
+      writer.WriteString(UnicodeString(ParentSym.ClassName));
       writer.WriteName('Name');
       writer.WriteString(ParentSym.Name);
       writer.EndObject;

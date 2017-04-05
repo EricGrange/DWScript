@@ -743,9 +743,9 @@ end;
 //
 type
    TTestNormalizer = class (TStringList)
-      procedure Normalize(line, col : Integer; const name : String);
+      procedure Normalize(line, col : Integer; const name : UnicodeString);
    end;
-procedure TTestNormalizer.Normalize(line, col : Integer; const name : String);
+procedure TTestNormalizer.Normalize(line, col : Integer; const name : UnicodeString);
 begin
    Add(Format('%d, %d, %s', [line, col, name]));
 end;

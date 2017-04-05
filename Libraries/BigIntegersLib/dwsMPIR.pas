@@ -893,10 +893,8 @@ var
    n, precision: Cardinal;
    exp: mp_exp_t;
 begin
-   if mpf_sgn(src) <= 0 then begin
-      Ln(0); { Generate an error }
-      Exit;
-   end;
+   if mpf_sgn(src) <= 0 then
+      raise EMathError.Create('Invalid argument for Ln');
    precision := mpf_get_prec(dest) + PREC_PRO;
    mpf_init2(y, precision);
    mpf_set(y, src);

@@ -3251,7 +3251,7 @@ begin
       {$ENDIF}
       begin
         exec := prog.Execute;
-        Result := exec.Result.ToString;
+        Result := exec.Result.ToUnicodeString;
       end;
 
       if exec.Msgs.HasErrors then

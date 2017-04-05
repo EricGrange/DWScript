@@ -458,7 +458,7 @@ begin
                               +'PrintLn(i);'#13#10
                            +'end;'#13#10
                            +'Test;');
-   CheckEquals('2'#13#10, prog.Execute.Result.ToString, 'Result 1');
+   CheckEquals('2'#13#10, prog.Execute.Result.ToUnicodeString, 'Result 1');
 
    breakpointables:=TdwsBreakpointableLines.Create(prog);
    CheckEquals('*MainModule*: 1,3,5,7,', ReportBreakpointables, 'Case 1');
@@ -471,7 +471,7 @@ begin
                               +'PrintLn(i);'#13#10
                            +'end;'#13#10
                            +'i:=i+1;');
-   CheckEquals('', prog.Execute.Result.ToString, 'Result 2');
+   CheckEquals('', prog.Execute.Result.ToUnicodeString, 'Result 2');
 
    breakpointables:=TdwsBreakpointableLines.Create(prog);
    CheckEquals('*MainModule*: 1,4,5,7,', ReportBreakpointables, 'Case 2');
@@ -498,7 +498,7 @@ begin
 
    exec.RunProgram(0);
    try
-      CheckEquals('1', exec.Result.ToString, 'run');
+      CheckEquals('1', exec.Result.ToUnicodeString, 'run');
 
       FDebugger.AttachDebug(exec);
 
@@ -507,7 +507,7 @@ begin
       exec.Info.Func['Test'].Call;
 
       CheckEquals('2', FDebugger.EvaluateAsString('i'), 'eval after call');
-      CheckEquals('12', exec.Result.ToString, 'result after call');
+      CheckEquals('12', exec.Result.ToUnicodeString, 'result after call');
 
       FDebugger.DetachDebug;
 
@@ -515,7 +515,7 @@ begin
 
       exec.Info.Func['Test'].Call;
 
-      CheckEquals('123', exec.Result.ToString, 'result after re-call');
+      CheckEquals('123', exec.Result.ToUnicodeString, 'result after re-call');
    finally
       exec.EndProgram;
    end;
@@ -640,7 +640,7 @@ begin
       FDebugger.EndDebug;
 
       CheckEquals(0, FDebugResumed, 'disabled at runtime');
-      CheckEquals('ab', exec.Result.ToString, 'case 1');
+      CheckEquals('ab', exec.Result.ToUnicodeString, 'case 1');
 
       FDebugger.Breakpoints[0].Enabled := False;
 
@@ -649,7 +649,7 @@ begin
       FDebugger.EndDebug;
 
       CheckEquals(1, FDebugResumed, 'enabled at runtime');
-      CheckEquals('ab', exec.Result.ToString, 'case 2');
+      CheckEquals('ab', exec.Result.ToUnicodeString, 'case 2');
    finally
       FDebugger.Breakpoints.Clear;
    end;

@@ -16,7 +16,7 @@
 {**********************************************************************}
 unit dwsTokenStore;
 
-{$I dws.inc}
+{$I '..\Source\dws.inc'}
 {$R-}
 
 interface

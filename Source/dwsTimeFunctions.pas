@@ -293,11 +293,22 @@ end;
 //
 procedure TFormatSettingsHandler.Assign(exec : TdwsExecution; symbol : TDataSymbol; expr : TTypedExpr; var handled : Boolean);
 
+   {$ifdef FPC}
+   procedure EvalAsString(var s : String);
+   var
+      u : UnicodeString;
+   begin
+      expr.EvalAsString(exec, u);
+      s := u;
+      handled := True;
+   end;
+   {$else}
    procedure EvalAsString(var s : UnicodeString);
    begin
       expr.EvalAsString(exec, s);
       handled:=True;
    end;
+   {$endif}
 
 begin
    handled:=False;

@@ -44,14 +44,14 @@ const
 function CryptProtectData(pDataIn: PCRYPT_INTEGER_BLOB; szDataDescr: PWideChar;
                           pOptionalEntropy: PCRYPT_INTEGER_BLOB; pvReserved: Pointer;
                           pPromptStruct: PCRYPTPROTECT_PROMPTSTRUCT;
-                          dwFlags: DWORD; pDataOut: PCRYPT_INTEGER_BLOB): LongBool; stdcall; external 'crypt32.dll' delayed;
+                          dwFlags: DWORD; pDataOut: PCRYPT_INTEGER_BLOB): LongBool; stdcall; external 'crypt32.dll';
 
 function CryptUnprotectData(pDataIn: PCRYPT_INTEGER_BLOB; ppszDataDescr: PPWideChar;
                             pOptionalEntropy: PCRYPT_INTEGER_BLOB; pvReserved: Pointer;
                             pPromptStruct: PCRYPTPROTECT_PROMPTSTRUCT;
-                            dwFlags: DWORD; pDataOut: PCRYPT_INTEGER_BLOB): LongBool; stdcall; external 'crypt32.dll' delayed;
+                            dwFlags: DWORD; pDataOut: PCRYPT_INTEGER_BLOB): LongBool; stdcall; external 'crypt32.dll';
 
-function LocalFree(hMem: Pointer): Pointer; stdcall; external 'kernel32.dll' delayed;
+function LocalFree(hMem: Pointer): Pointer; stdcall; external 'kernel32.dll';
 
 function CryptProtect(const data, key : RawByteString) : RawByteString;
 function CryptUnProtect(const data, key : RawByteString) : RawByteString;

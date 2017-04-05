@@ -18,12 +18,12 @@ type
          FFixups : TFixupLogic;
 
       protected
-         procedure DoInclude(const scriptName: string; var scriptSource: string);
-         function  DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+         procedure DoInclude(const scriptName : UnicodeString; var scriptSource: UnicodeString);
+         function  DoNeedUnit(const unitName : UnicodeString; var unitSource : UnicodeString) : IdwsUnit;
 
          function GetStreamPosition : Integer;
 
-         function GetExpectedResult(const fileName : String) : String;
+         function GetExpectedResult(const fileName : UnicodeString) : UnicodeString;
 
          procedure Execution;
 
@@ -104,9 +104,9 @@ end;
 
 // DoInclude
 //
-procedure TJITTests.DoInclude(const scriptName: string; var scriptSource: string);
+procedure TJITTests.DoInclude(const scriptName: UnicodeString; var scriptSource: UnicodeString);
 var
-   fileName : String;
+   fileName : UnicodeString;
 begin
    fileName := 'SimpleScripts\'+scriptName;
    if not FileExists(fileName) then
@@ -116,10 +116,10 @@ end;
 
 // DoNeedUnit
 //
-function TJITTests.DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+function TJITTests.DoNeedUnit(const unitName : UnicodeString; var unitSource : UnicodeString) : IdwsUnit;
 var
    sl : TStringList;
-   fName : String;
+   fName : UnicodeString;
 begin
    fName:='BuildScripts\' + unitName + '.pas';
    if not FileExists(fName) then Exit(nil);
@@ -142,7 +142,7 @@ end;
 
 // GetExpectedResult
 //
-function TJITTests.GetExpectedResult(const fileName : String) : String;
+function TJITTests.GetExpectedResult(const fileName : UnicodeString) : UnicodeString;
 var
    expectedResult : TStringList;
    resultsFileName : String;
@@ -219,13 +219,13 @@ begin
          end;
 
          if prog.Msgs.Count+exec.Msgs.Count=0 then
-            output:=exec.Result.ToString
+            output:=exec.Result.ToUnicodeString
          else begin
             output:= 'Errors >>>>'#13#10
                     +prog.Msgs.AsInfo
                     +exec.Msgs.AsInfo
                     +'Result >>>>'#13#10
-                    +exec.Result.ToString;
+                    +exec.Result.ToUnicodeString;
          end;
 
          expectedResult:=GetExpectedResult(FTests[i]);

@@ -30,18 +30,18 @@ type
 
    TdwsGUIDDataBase = class (TdwsDataBase, IdwsDataBase)
       public
-         constructor Create(const parameters : array of String);
+         constructor Create(const parameters : array of UnicodeString);
 
          procedure BeginTransaction;
          procedure Commit;
          procedure Rollback;
          function InTransaction : Boolean;
-         function CanReleaseToPool : String;
+         function CanReleaseToPool : UnicodeString;
 
-         procedure Exec(const sql : String; const parameters : TData; context : TExprBase);
-         function Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
+         procedure Exec(const sql : UnicodeString; const parameters : TData; context : TExprBase);
+         function Query(const sql : UnicodeString; const parameters : TData; context : TExprBase) : IdwsDataSet;
 
-         function VersionInfoText : String;
+         function VersionInfoText : UnicodeString;
    end;
 
    TdwsGUIDDataSet = class (TdwsDataSet)
@@ -60,15 +60,15 @@ type
 
    TdwsGUIDDataField = class (TdwsDataField)
       protected
-         function GetName : String; override;
+         function GetName : UnicodeString; override;
          function GetDataType : TdwsDataFieldType; override;
-         function GetDeclaredType : String; override;
+         function GetDeclaredType : UnicodeString; override;
 
       public
          constructor Create(dataSet : TdwsGUIDDataSet; fieldIndex : Integer);
 
          function IsNull : Boolean; override;
-         function AsString : String; override;
+         function AsString : UnicodeString; override;
          function AsInteger : Int64; override;
          function AsFloat : Double; override;
          function AsBlob : RawByteString; override;
@@ -138,7 +138,7 @@ end;
 
 // Create
 //
-constructor TdwsGUIDDataBase.Create(const parameters : array of String);
+constructor TdwsGUIDDataBase.Create(const parameters : array of UnicodeString);
 begin
    // nothing
 end;
@@ -173,21 +173,21 @@ end;
 
 // CanReleaseToPool
 //
-function TdwsGUIDDataBase.CanReleaseToPool : String;
+function TdwsGUIDDataBase.CanReleaseToPool : UnicodeString;
 begin
    Result:='';
 end;
 
 // Exec
 //
-procedure TdwsGUIDDataBase.Exec(const sql : String; const parameters : TData; context : TExprBase);
+procedure TdwsGUIDDataBase.Exec(const sql : UnicodeString; const parameters : TData; context : TExprBase);
 begin
    raise Exception.Create('Exec not supported');
 end;
 
 // Query
 //
-function TdwsGUIDDataBase.Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
+function TdwsGUIDDataBase.Query(const sql : UnicodeString; const parameters : TData; context : TExprBase) : IdwsDataSet;
 var
    ds : TdwsGUIDDataSet;
 begin
@@ -197,7 +197,7 @@ end;
 
 // VersionInfoText
 //
-function TdwsGUIDDataBase.VersionInfoText : String;
+function TdwsGUIDDataBase.VersionInfoText : UnicodeString;
 begin
    Result:='GUID pseudo-database';
 end;
@@ -259,7 +259,7 @@ end;
 
 // GetName
 //
-function TdwsGUIDDataField.GetName : String;
+function TdwsGUIDDataField.GetName : UnicodeString;
 begin
    case Index of
       1 : Result:='GUID32';
@@ -277,14 +277,14 @@ end;
 
 // GetDeclaredType
 //
-function TdwsGUIDDataField.GetDeclaredType : String;
+function TdwsGUIDDataField.GetDeclaredType : UnicodeString;
 begin
    Result:='Text';
 end;
 
 // AsString
 //
-function TdwsGUIDDataField.AsString : String;
+function TdwsGUIDDataField.AsString : UnicodeString;
 var
    ds : TdwsGUIDDataSet;
 begin

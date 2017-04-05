@@ -643,6 +643,11 @@ begin
 {$endif}
 end;
 
+function double_power(const base, exponent: Double) : Double;
+begin
+   Result := Math.Power(base, exponent);
+end;
+
 function double_cos(const v : Double) : Double;
 {$ifdef WIN32_ASM}
 asm
@@ -682,7 +687,7 @@ var
    vAddr_Ln : function (const v : Double) : Double = double_ln;
    vAddr_Log2 : function (const v : Double) : Double = double_log2;
    vAddr_Log10 : function (const v : Double) : Double = double_log10;
-   vAddr_Power : function (const base, exponent: Double) : Double = Math.Power;
+   vAddr_Power : function (const base, exponent: Double) : Double = double_power;
    vAddr_Trunc : function (const v : Double) : Int64 = double_trunc;
    vAddr_Frac : function (const v : Double) : Double = double_frac;
    vAddr_div : function (a, b : Int64) : Int64 = int64_div;

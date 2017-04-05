@@ -47,7 +47,7 @@ type
       function GetTypeSym: TSymbol;
       function GetValue : Variant;
       function GetValueAsString : UnicodeString;
-      function GetValueAsDataString : RawByteString;
+      function GetValueAsDataString : AnsiString;
       function GetValueAsInteger : Int64;
       function GetValueAsBoolean : Boolean;
       function GetValueAsFloat : Double;
@@ -72,7 +72,7 @@ type
       property TypeSym: TSymbol read GetTypeSym;
       property Value: Variant read GetValue write SetValue;
       property ValueAsString : UnicodeString read GetValueAsString write SetValueAsString;
-      property ValueAsDataString : RawByteString read GetValueAsDataString;
+      property ValueAsDataString : AnsiString read GetValueAsDataString;
       property ValueAsInteger : Int64 read GetValueAsInteger write SetValueAsInteger;
       property ValueAsBoolean : Boolean read GetValueAsBoolean;
       property ValueAsFloat : Double read GetValueAsFloat;

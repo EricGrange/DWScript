@@ -25,7 +25,7 @@ interface
 
 uses
   Classes, SysUtils,
-  dwsXPlatform, dwsUtils, dwsErrors, dwsCompilerContext,
+  dwsXPlatform, dwsUtils, dwsErrors, dwsCompilerContext, dwsUnicode,
   dwsExprs, dwsSymbols, dwsStrings, dwsTokenizer,
   dwsOperators, dwsUnitSymbols;
 
@@ -41,7 +41,7 @@ type
       function GetUnitName : UnicodeString;
       function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                             operators : TOperators; rootTable : TSymbolTable) : TUnitSymbolTable;
-      function GetDependencies : TStrings;
+      function GetDependencies : TUnicodeStringList;
       function GetUnitFlags : TIdwsUnitFlags;
       function GetDeprecatedMessage : UnicodeString;
    end;
@@ -152,7 +152,7 @@ type
 
    TInternalUnit = class(TObject, IdwsUnit)
       private
-         FDependencies : TStrings;
+         FDependencies : TUnicodeStringList;
          FSymbolsRegistrationProcs : array of TSymbolsRegistrationProc;
          FOperatorsRegistrationProcs : array of TOperatorsRegistrationProc;
          FRegisteredInternalFunctions : TList;
@@ -167,7 +167,7 @@ type
          function _AddRef : Integer; stdcall;
          function _Release : Integer; stdcall;
          function QueryInterface({$ifdef FPC}constref{$else}const{$endif} IID: TGUID; out Obj): HResult; stdcall;
-         function GetDependencies : TStrings;
+         function GetDependencies : TUnicodeStringList;
          procedure BeforeAdditionTo(dwscript : TObject);
          function GetUnitName : UnicodeString;
          function GetDeprecatedMessage : UnicodeString;
@@ -204,7 +204,7 @@ type
 
    TSourceUnit = class(TInterfacedObject, IdwsUnit)
       private
-         FDependencies : TStrings;
+         FDependencies : TUnicodeStringList;
          FSymbol : TUnitMainSymbol;
 
       protected
@@ -218,7 +218,7 @@ type
          function GetUnitName : UnicodeString;
          function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                operators : TOperators; rootTable : TSymbolTable) : TUnitSymbolTable;
-         function GetDependencies : TStrings;
+         function GetDependencies : TUnicodeStringList;
          function GetUnitFlags : TIdwsUnitFlags;
          function GetDeprecatedMessage : UnicodeString;
 
@@ -676,7 +676,7 @@ end;
 //
 constructor TInternalUnit.Create;
 begin
-   FDependencies:=TStringList.Create;
+   FDependencies := TUnicodeStringList.Create;
    FRegisteredInternalFunctions:=TList.Create;
    FStaticSymbols:=True;
    FCriticalSection:=TdwsCriticalSection.Create;
@@ -777,9 +777,9 @@ end;
 
 // GetDependencies
 //
-function TInternalUnit.GetDependencies: TStrings;
+function TInternalUnit.GetDependencies : TUnicodeStringList;
 begin
-   Result:=FDependencies;
+   Result := FDependencies;
 end;
 
 // BeforeAdditionTo
@@ -985,7 +985,7 @@ var
    ust : TUnitSymbolTable;
 begin
    inherited Create;
-   FDependencies:=TStringList.Create;
+   FDependencies := TUnicodeStringList.Create;
    ust:=TUnitSymbolTable.Create(nil, rootTable.AddrGenerator);
    FSymbol:=TUnitMainSymbol.Create(unitName, ust, unitSyms);
    ust.UnitMainSymbol:=FSymbol;
@@ -1032,9 +1032,9 @@ end;
 
 // GetDependencies
 //
-function TSourceUnit.GetDependencies : TStrings;
+function TSourceUnit.GetDependencies : TUnicodeStringList;
 begin
-   Result:=FDependencies;
+   Result := FDependencies;
 end;
 
 // GetUnitFlags

@@ -292,7 +292,7 @@ type
 
       function GetSelf : TObject;
 
-      function ToString : UnicodeString; override; final;
+      function ToString : String; override; final;
       function ToUnicodeString : UnicodeString; virtual;
 
       function Value : TdwsJSONValue;
@@ -307,7 +307,7 @@ type
 
    TBoxedNilJSONValue = class (TInterfacedObject, IBoxedJSONValue, ICoalesceable, IGetSelf, IUnknown)
       function GetSelf : TObject;
-      function ToString : UnicodeString; override; final;
+      function ToString : String; override; final;
       function ToUnicodeString : UnicodeString;
       function Value : TdwsJSONValue;
       function IsFalsey : Boolean;
@@ -356,7 +356,7 @@ end;
 
 // ToString
 //
-function TBoxedJSONValue.ToString : UnicodeString;
+function TBoxedJSONValue.ToString : String;
 begin
    Result := ToUnicodeString;
 end;
@@ -869,7 +869,7 @@ begin
             case pParam^.VType of
                varInt64 : baseArray.Add(pParam^.VInt64);
                varDouble : baseArray.Add(pParam^.VDouble);
-               varUString : baseArray.Add(UnicodeString(pParam^.VUString));
+               varUString : baseArray.Add(UnicodeString(pParam^.VString));
                varBoolean : baseArray.Add(pParam^.VBoolean);
                varUnknown : begin
                   if pParam.VUnknown<>nil then begin
@@ -980,7 +980,7 @@ begin
          end;
          varUString : begin
             argValue:=TdwsJSONImmediate.Create;
-            argValue.AsString:=UnicodeString(pVal^.VUString);
+            argValue.AsString:=UnicodeString(pVal^.VString);
          end;
          varBoolean : begin
             argValue:=TdwsJSONImmediate.Create;
@@ -1352,7 +1352,7 @@ class procedure TJSONStringifyMethod.StringifyVariant(exec : TdwsExecution; writ
 
    procedure StringifyString(writer : TdwsJSONWriter; const v : Variant);
    var
-      s : String;
+      s : UnicodeString;
    begin
       VariantToString(v, s);
       writer.WriteString(s);

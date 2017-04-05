@@ -25,7 +25,7 @@ interface
 
 uses
   Variants, Classes, SysUtils, TypInfo,
-  dwsFileSystem, dwsUtils, dwsXPlatform,
+  dwsFileSystem, dwsUtils, dwsXPlatform, dwsUnicode,
   dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors, dwsDataContext, dwsExprList,
   dwsStrings, dwsFunctions, dwsStack, dwsConnectorSymbols, dwsFilter,
   dwsCoreExprs, dwsMagicExprs, dwsRelExprs, dwsMethodExprs, dwsConstExprs,
@@ -1237,7 +1237,7 @@ function TdwsCompiler.ResolveUnitReferences(scriptType : TScriptSourceType) : TI
 var
    i, j, k : Integer;
    expectedUnitCount : Integer;
-   deps : TStrings;
+   deps : TUnicodeStringList;
    refCount : array of Integer;
    changed : Boolean;
    unitName : UnicodeString;
@@ -1258,7 +1258,7 @@ begin
       if    (ufImplicitUse in curUnit.GetUnitFlags)
          or (  (scriptType<>stUnit)
              and not (coExplicitUnitUses in FOptions)) then begin
-         deps:=curUnit.GetDependencies;
+         deps := curUnit.GetDependencies;
          for j:=0 to deps.Count-1 do begin
             if FUnits.IndexOfName(deps[j])<0 then
                FMsgs.AddCompilerStopFmt(cNullPos, CPE_UnitNotFound,
@@ -1733,7 +1733,7 @@ var
    unitResolved : IdwsUnit;
    unitTable : TUnitSymbolTable;
    unitMain : TUnitMainSymbol;
-   dependencies : TStrings;
+   dependencies : TUnicodeStringList;
    unitSource : UnicodeString;
    srcUnit : TSourceUnit;
    oldContext : TdwsSourceContext;
@@ -1775,7 +1775,7 @@ begin
       end;
    end else unitResolved:=FUnits[i];
 
-   dependencies:=unitResolved.GetDependencies;
+   dependencies := unitResolved.GetDependencies;
    for i:=0 to dependencies.Count-1 do begin
       FUnitsFromStack.Push(unitName);
       try
@@ -9904,7 +9904,7 @@ end;
 //
 function TdwsCompiler.ReadGenericParametersDecl : IGenericParameters;
 var
-   name : String;
+   name : UnicodeString;
    hotPos : TScriptPos;
    tt : TTokenType;
    param : TGenericTypeParameterSymbol;
@@ -9997,7 +9997,7 @@ end;
 procedure TdwsCompiler.CheckGenericParameters(genericType : TGenericSymbol);
 var
    i : Integer;
-   name : String;
+   name : UnicodeString;
    namePos : TScriptPos;
    p : TGenericTypeParameterSymbol;
 begin
@@ -14339,7 +14339,7 @@ procedure TExceptObjFunc.DoEvalAsVariant(const args : TExprBaseListExec; var res
 begin
    if args.Exec.ExceptionObjectStack.Count>0 then
       VarCopySafe(result, args.Exec.ExceptionObjectStack.Peek)
-   else VarCopySafe(result, IScriptObj(nil));
+   else VarCopySafe(result, IUnknown(nil));
 end;
 
 // ------------------

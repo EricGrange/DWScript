@@ -167,20 +167,20 @@ begin
          exec:=prog.Execute;
 
          if prog.Msgs.Count+exec.Msgs.Count=0 then
-            output:=exec.Result.ToString
+            output:=exec.Result.ToUnicodeString
          else begin
             output:= 'Errors >>>>'#13#10
                     +prog.Msgs.AsInfo
                     +exec.Msgs.AsInfo
                     +'Result >>>>'#13#10
-                    +exec.Result.ToString;
+                    +exec.Result.ToUnicodeString;
          end;
 
          resultsFileName:=ChangeFileExt(FTests[i], '.txt');
          if FileExists(resultsFileName) then begin
             expectedResult.LoadFromFile(resultsFileName);
             CheckEquals(expectedResult.Text, output, FTests[i]);
-         end else CheckEquals('', exec.Result.ToString, FTests[i]);
+         end else CheckEquals('', exec.Result.ToUnicodeString, FTests[i]);
 
       end;
 
@@ -304,7 +304,7 @@ begin
    prog:=FCompiler.Compile('Print(_("Test"));');
    exec:=prog.CreateNewExecution;
    exec.Execute;
-   CheckEquals('[Test]', exec.Result.ToString);
+   CheckEquals('[Test]', exec.Result.ToUnicodeString);
 end;
 
 // ------------------

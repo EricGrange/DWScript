@@ -52,3 +52,10 @@
 /Demos/Mandelbrot/ConverterBackup/Mandelbrot.dpr
 /Demos/MandelbrotJS/MandelbrotJS.dpr
 /Demos/MandelbrotJS/MandelbrotJS.dproj
+/Libraries/DatabaseLib/backup
+/Libraries/CryptoLib/backup
+/Libraries/BigIntegersLib/backup
+/Libraries/GraphicsLib/backup
+/Libraries/ClassesLib/backup
+/Libraries/SymbolsLib/backup
+/Source/jitter/backup

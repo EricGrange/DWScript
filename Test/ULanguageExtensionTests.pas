@@ -34,7 +34,7 @@ implementation
 type
    TAutoExternalValues = class (TdwsLanguageExtension)
       public
-         function FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol; override;
+         function FindUnknownName(compiler : TdwsCompiler; const name : UnicodeString) : TSymbol; override;
    end;
 
    TCallableAutoExternal = class(TdwsCallable)
@@ -63,7 +63,7 @@ end;
 
 // FindUnknownName
 //
-function TAutoExternalValues.FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol;
+function TAutoExternalValues.FindUnknownName(compiler : TdwsCompiler; const name : UnicodeString) : TSymbol;
 var
    externalSym : TExternalVarSymbol;
    readFunc : TFuncSymbol;
@@ -118,7 +118,7 @@ begin
                               +'PrintLn(World);'#13#10);
       CheckEquals('', prog.Msgs.AsInfo);
       exec:=prog.Execute;
-      CheckEquals('_get_Hello'#13#10'_get_World'#13#10, exec.Result.ToString);
+      CheckEquals('_get_Hello'#13#10'_get_World'#13#10, exec.Result.ToUnicodeString);
    finally
       custom.Free;
    end;

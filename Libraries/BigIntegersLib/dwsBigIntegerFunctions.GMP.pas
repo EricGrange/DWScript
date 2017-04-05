@@ -49,8 +49,8 @@ type
 
       function BitLength : Integer;
 
-      function ToStringBase(base : Integer) : String;
-      function ToHexString : String;
+      function ToStringBase(base : Integer) : UnicodeString;
+      function ToHexString : UnicodeString;
 
       function ToInt64 : Int64;
    end;
@@ -66,16 +66,16 @@ type
 
          constructor CreateZero;
          constructor CreateInt64(const i : Int64);
-         constructor CreateString(const s : String; base : Integer);
+         constructor CreateString(const s : UnicodeString; base : Integer);
          constructor Wrap(const v : mpz_t);
          destructor Destroy; override;
 
          function BitLength : Integer;
 
-         function ToStringBase(base : Integer) : String;
-         function ToHexString : String;
+         function ToStringBase(base : Integer) : UnicodeString;
+         function ToHexString : UnicodeString;
          function ToString : String; override; deprecated 'Use ToUnicodeString'; final;
-         function ToUnicodeString : String;
+         function ToUnicodeString : UnicodeString;
 
          function ToInt64 : Int64;
    end;
@@ -290,7 +290,7 @@ type
    TBigIntegerFactorialFunc = class(TInternalMagicVariantFunction)
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
-   TBigIntegerPrimorialFunc = class(TInternalMagicVariantFunction)
+   TBigIntegerPrimorialFunc = class(TInternalMagicVariantFunction)
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
@@ -486,7 +486,7 @@ end;
 
 // CreateString
 //
-constructor TBigIntegerWrapper.CreateString(const s : String; base : Integer);
+constructor TBigIntegerWrapper.CreateString(const s : UnicodeString; base : Integer);
 var
    buf : RawByteString;
    p : PAnsiChar;
@@ -550,7 +550,7 @@ end;
 
 // ToStringBase
 //
-function TBigIntegerWrapper.ToStringBase(base : Integer) : String;
+function TBigIntegerWrapper.ToStringBase(base : Integer) : UnicodeString;
 var
    size : Integer;
    buf : RawByteString;
@@ -572,7 +572,7 @@ end;
 
 // ToHexString
 //
-function TBigIntegerWrapper.ToHexString : String;
+function TBigIntegerWrapper.ToHexString : UnicodeString;
 begin
    Result := ToStringBase(16);
 end;
@@ -581,12 +581,12 @@ end;
 //
 function TBigIntegerWrapper.ToString : String;
 begin
-   Result := ToUnicodeString;
+   Result := String(ToUnicodeString);
 end;
 
 // ToUnicodeString
 //
-function TBigIntegerWrapper.ToUnicodeString : String;
+function TBigIntegerWrapper.ToUnicodeString : UnicodeString;
 begin
    Result := ToStringBase(10);
 end;
@@ -607,7 +607,7 @@ begin
       Result := -Result;
    end;
 end;
-
+
 // ------------------
 // ------------------ TBigIntegerNegateExpr ------------------
 // ------------------
@@ -866,7 +866,7 @@ end;
 
 procedure TConvStringToBigIntegerExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
 var
-   s : String;
+   s : UnicodeString;
 begin
    Expr.EvalAsString(exec, s);
    result := TBigIntegerWrapper.CreateString( s, 10 ) as IdwsBigInteger;
@@ -1517,7 +1517,7 @@ initialization
 
    RegisterInternalFunction(TBigIntegerPowerFunc,     'IntPower', ['base', SYS_BIGINTEGER, 'exponent', SYS_INTEGER], SYS_BIGINTEGER, [iffStateLess, iffOverloaded], 'Power');
    RegisterInternalFunction(TBigIntegerSqrFunc,       'Sqr',      ['v', SYS_BIGINTEGER], SYS_BIGINTEGER, [iffStateLess, iffOverloaded], 'Sqr');
-   RegisterInternalProcedure(TBigIntegerDivModFunc,   'DivMod',
+   RegisterInternalProcedure(TBigIntegerDivModFunc,   'DivMod',
                              ['dividend', SYS_BIGINTEGER, 'divisor', SYS_BIGINTEGER,
                               '@result', SYS_BIGINTEGER, '@remainder', SYS_BIGINTEGER], '', [iffOverloaded]);
    RegisterInternalFunction(TBigIntegerModPowFunc,    'ModPow',   ['base', SYS_BIGINTEGER, 'exponent', SYS_BIGINTEGER, 'modulus', SYS_BIGINTEGER],

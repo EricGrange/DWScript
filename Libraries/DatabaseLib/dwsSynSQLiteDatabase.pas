@@ -38,30 +38,30 @@ type
          FDB : TSQLDatabase;
          FDataSets : Integer;
          FExecRequest : TSQLRequest;
-         FExecSQL : String;
+         FExecSQL : UnicodeString;
          FModules : TNameObjectHash;
 
       protected
-         function GetModule(const name : String) : TObject;
-         procedure SetModule(const name : String; aModule : TObject);
+         function GetModule(const name : UnicodeString) : TObject;
+         procedure SetModule(const name : UnicodeString; aModule : TObject);
 
       public
-         constructor Create(const parameters : array of String);
+         constructor Create(const parameters : array of UnicodeString);
          destructor Destroy; override;
 
          procedure BeginTransaction;
          procedure Commit;
          procedure Rollback;
          function InTransaction : Boolean;
-         function CanReleaseToPool : String;
+         function CanReleaseToPool : UnicodeString;
 
-         procedure Exec(const sql : String; const parameters : TData; context : TExprBase);
-         function Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
+         procedure Exec(const sql : UnicodeString; const parameters : TData; context : TExprBase);
+         function Query(const sql : UnicodeString; const parameters : TData; context : TExprBase) : IdwsDataSet;
 
-         function VersionInfoText : String;
+         function VersionInfoText : UnicodeString;
 
          property DB : TSQLDatabase read FDB;
-         property Module[const name : String] : TObject read GetModule write SetModule;
+         property Module[const name : UnicodeString] : TObject read GetModule write SetModule;
    end;
 
    TdwsSynSQLiteDataSet = class (TdwsDataSet)
@@ -69,13 +69,13 @@ type
          FDB : TdwsSynSQLiteDataBase;
          FRequest : TSQLRequest;
          FEOFReached : Boolean;
-         FSQL : String;
+         FSQL : UnicodeString;
 
       protected
          procedure DoPrepareFields; override;
 
       public
-         constructor Create(db : TdwsSynSQLiteDataBase; const sql : String; const parameters : TData);
+         constructor Create(db : TdwsSynSQLiteDataBase; const sql : UnicodeString; const parameters : TData);
          destructor Destroy; override;
 
          function Eof : Boolean; override;
@@ -83,7 +83,7 @@ type
 
          function FieldCount : Integer; override;
 
-         property SQL : String read FSQL;
+         property SQL : UnicodeString read FSQL;
    end;
 
    TdwsSynSQLiteDataField = class (TdwsDataField)
@@ -91,9 +91,9 @@ type
          FDataSet : TdwsSynSQLiteDataSet;
 
       protected
-         function GetName : String; override;
+         function GetName : UnicodeString; override;
          function GetDataType : TdwsDataFieldType; override;
-         function GetDeclaredType : String; override;
+         function GetDeclaredType : UnicodeString; override;
 
       public
          constructor Create(dataSet : TdwsSynSQLiteDataSet; fieldIndex : Integer);
@@ -101,7 +101,7 @@ type
          function DataType : TdwsDataFieldType; override;
 
          function IsNull : Boolean; override;
-         function AsString : String; override;
+         function AsString : UnicodeString; override;
          function AsInteger : Int64; override;
          function AsFloat : Double; override;
          function AsBlob : RawByteString; override;
@@ -191,7 +191,7 @@ begin
       case p.VType of
          varInt64 : rq.Bind(i, p.VInt64);
          varDouble : rq.Bind(i, p.VDouble);
-         varUString : rq.BindS(i, String(p.VUString));
+         varUString : rq.BindS(i, UnicodeString(p.VString));
          varBoolean : rq.Bind(i, Ord(p.VBoolean));
          varNull : rq.BindNull(i);
          varString : rq.Bind(i, p.VString, Length(RawByteString(p.VString)));
@@ -224,7 +224,7 @@ end;
 
 // Create
 //
-constructor TdwsSynSQLiteDataBase.Create(const parameters : array of String);
+constructor TdwsSynSQLiteDataBase.Create(const parameters : array of UnicodeString);
 var
    dbName : String;
    i, flags : Integer;
@@ -292,7 +292,7 @@ end;
 
 // CanReleaseToPool
 //
-function TdwsSynSQLiteDataBase.CanReleaseToPool : String;
+function TdwsSynSQLiteDataBase.CanReleaseToPool : UnicodeString;
 begin
    if FDB.TransactionActive then
       Result:='in transaction'
@@ -306,7 +306,7 @@ end;
 
 // Exec
 //
-procedure TdwsSynSQLiteDataBase.Exec(const sql : String; const parameters : TData; context : TExprBase);
+procedure TdwsSynSQLiteDataBase.Exec(const sql : UnicodeString; const parameters : TData; context : TExprBase);
 var
    err : Integer;
 begin
@@ -335,7 +335,7 @@ end;
 
 // Query
 //
-function TdwsSynSQLiteDataBase.Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
+function TdwsSynSQLiteDataBase.Query(const sql : UnicodeString; const parameters : TData; context : TExprBase) : IdwsDataSet;
 var
    ds : TdwsSynSQLiteDataSet;
 begin
@@ -347,14 +347,14 @@ end;
 
 // VersionInfoText
 //
-function TdwsSynSQLiteDataBase.VersionInfoText : String;
+function TdwsSynSQLiteDataBase.VersionInfoText : UnicodeString;
 begin
    Result:=UTF8ToString(sqlite3.libversion);
 end;
 
 // GetModule
 //
-function TdwsSynSQLiteDataBase.GetModule(const name : String) : TObject;
+function TdwsSynSQLiteDataBase.GetModule(const name : UnicodeString) : TObject;
 begin
    if FModules <> nil then
       Result := FModules.Objects[name]
@@ -363,7 +363,7 @@ end;
 
 // SetModule
 //
-procedure TdwsSynSQLiteDataBase.SetModule(const name : String; aModule : TObject);
+procedure TdwsSynSQLiteDataBase.SetModule(const name : UnicodeString; aModule : TObject);
 begin
    if FModules = nil then begin
       FModules := TNameObjectHash.Create;
@@ -378,7 +378,7 @@ end;
 
 // Create
 //
-constructor TdwsSynSQLiteDataSet.Create(db : TdwsSynSQLiteDataBase; const sql : String; const parameters : TData);
+constructor TdwsSynSQLiteDataSet.Create(db : TdwsSynSQLiteDataBase; const sql : UnicodeString; const parameters : TData);
 begin
    FSQL:=sql;
    FDB:=db;
@@ -472,7 +472,7 @@ end;
 
 // GetName
 //
-function TdwsSynSQLiteDataField.GetName : String;
+function TdwsSynSQLiteDataField.GetName : UnicodeString;
 begin
    Result:=UTF8ToString(TdwsSynSQLiteDataSet(DataSet).FRequest.FieldName(Index));
 end;
@@ -486,14 +486,14 @@ end;
 
 // GetDeclaredType
 //
-function TdwsSynSQLiteDataField.GetDeclaredType : String;
+function TdwsSynSQLiteDataField.GetDeclaredType : UnicodeString;
 begin
    Result:=TdwsSynSQLiteDataSet(DataSet).FRequest.FieldDeclaredTypeS(Index);
 end;
 
 // AsString
 //
-function TdwsSynSQLiteDataField.AsString : String;
+function TdwsSynSQLiteDataField.AsString : UnicodeString;
 begin
    if FDataSet.FEOFReached then
       RaiseNoActiveRecord;

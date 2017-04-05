@@ -24,7 +24,7 @@
 {                                                                      }
 {**********************************************************************}
 
-// DWSII include file
+// DWS include file
 
 {global compiler options}
 
@@ -60,6 +60,7 @@
 {$ELSE}
    {$mode delphi}
    {$DEFINE PUREPASCAL}
+   {$ASMMODE INTEL}
 {$ENDIF}
 
 {.$DEFINE PUREPASCAL}

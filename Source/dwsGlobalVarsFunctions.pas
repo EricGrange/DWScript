@@ -783,9 +783,9 @@ type
    TPrivateVarEnumerator = class
       FArray : TScriptDynamicStringArray;
       FOffset : Integer;
-      procedure Add(const s : String);
+      procedure Add(const s : UnicodeString);
    end;
-procedure TPrivateVarEnumerator.Add(const s : String);
+procedure TPrivateVarEnumerator.Add(const s : UnicodeString);
 begin
    FArray.Add(Copy(s, FOffset));
 end;

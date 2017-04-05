@@ -17,7 +17,7 @@ unit UdwsUtilsTests;
 
 interface
 
-uses Classes, SysUtils, Math, Variants, Types,
+uses Classes, SysUtils, Math, Variants, Types, SynCommons,
    dwsXPlatformTests, dwsUtils,
    dwsXPlatform, dwsWebUtils, dwsTokenStore, dwsCryptoXPlatform,
    dwsEncodingLibModule, dwsGlobalVars, dwsEncoding, dwsDataContext,
@@ -1299,7 +1299,7 @@ begin
    vGlobals.Initialize;
    try
       for i:=0 to High(threads) do
-         threads[i]:=TGlobalVarStress.Create;
+         threads[i]:=TGlobalVarStress.Create(False);
       for i:=0 to High(threads) do begin
          threads[i].WaitFor;
          threads[i].Free;
@@ -1316,9 +1316,9 @@ end;
 //
 type
    TSieveResult = class(TSimpleInt64List)
-      procedure AddFind(const s : String);
+      procedure AddFind(const s : UnicodeString);
    end;
-procedure TSieveResult.AddFind(const s : String);
+procedure TSieveResult.AddFind(const s : UnicodeString);
 begin
    Add(StrToInt64(s));
 end;
@@ -1328,7 +1328,7 @@ const
 var
    i, j : Integer;
    v : Variant;
-   si : String;
+   si : UnicodeString;
    primes : TSieveResult;
 begin
    vGlobals.Initialize;
@@ -1405,7 +1405,7 @@ end;
 //
 procedure TdwsUtilsTests.BytesWords;
 var
-   buf : String;
+   buf : UnicodeString;
 begin
    buf := 'Example';
    StringBytesToWords(buf, False);
@@ -1508,7 +1508,9 @@ begin
             CheckEquals(cDouble, ReadVariant(rd));
             CheckEquals(True, ReadVariant(rd));
             CheckEquals(False, ReadVariant(rd));
+            {$ifndef FPC}
             CheckEquals(Unassigned, ReadVariant(rd));
+            {$endif}
             Check(VarIsNull(ReadVariant(rd)));
             CheckEquals(123, ReadVariant(rd));
             CheckEquals('world', ReadVariant(rd));
@@ -1532,7 +1534,8 @@ procedure TdwsUtilsTests.xxHashTest;
 
    procedure CheckFull(const data : RawByteString; expected : Cardinal; seed : Cardinal = 0);
    begin
-      CheckEquals(expected, xxHash32.Full(Pointer(data), Length(data), seed), 'for '+UTF8ToString(data));
+      CheckEquals(expected, xxHash32.Full(Pointer(data), Length(data), seed),
+                  'for ' + UTF8DecodeToUnicodeString(data));
    end;
 
 var

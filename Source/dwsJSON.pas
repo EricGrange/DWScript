@@ -63,7 +63,7 @@ type
          function  WriteNameP(const aName : PWideChar) : TdwsJSONWriter; virtual;
          procedure WriteString(const str : UnicodeString); overload; inline;
          procedure WriteString(const name, str : UnicodeString); overload; inline;
-         procedure WriteString(const p : PWideChar); overload;
+         procedure WriteStringP(const p : PWideChar);
          procedure WriteNumber(const n : Double); overload;
          procedure WriteNumber(const name : UnicodeString; const n : Double); overload; inline;
          procedure WriteInteger(const n : Int64); overload;
@@ -2645,7 +2645,7 @@ end;
 //
 procedure TdwsJSONWriter.WriteString(const str : UnicodeString);
 begin
-   WriteString(PWideChar(Pointer(str)));
+   WriteStringP(PWideChar(Pointer(str)));
 end;
 
 // WriteString
@@ -2655,9 +2655,9 @@ begin
    WriteName(name).WriteString(str);
 end;
 
-// WriteString
+// WriteStringP
 //
-procedure TdwsJSONWriter.WriteString(const p : PWideChar);
+procedure TdwsJSONWriter.WriteStringP(const p : PWideChar);
 begin
    BeforeWriteImmediate;
    WriteJavaScriptString(FStream, p);

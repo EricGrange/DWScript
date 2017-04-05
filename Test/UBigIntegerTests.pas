@@ -121,7 +121,7 @@ begin
 end;
 
 type
-   TCheckEquals = procedure (const expected, effective, msg : String) of object;
+   TCheckEquals = procedure (const expected, effective : UnicodeString; const msg : String) of object;
 
 procedure RunTests(testList : TStrings; compiler : TDelphiWebScript;
                    checkEquals :  TCheckEquals; rounds : Integer);
@@ -153,7 +153,7 @@ begin
          for j := 1 to rounds do begin
             exec:=prog.Execute;
 
-            resultText:=exec.Result.ToString;
+            resultText:=exec.Result.ToUnicodeString;
             if exec.Msgs.Count>0 then
                resultText:=resultText+#13#10'>>>> Error(s): '#13#10+exec.Msgs.AsInfo;
 
@@ -180,7 +180,7 @@ type
    TThreadRunner = class(TThread)
       FTests : TBigIntegerTests;
       FMessage : String;
-      procedure CheckEquals(const expected, effective, msg : String);
+      procedure CheckEquals(const expected, effective : UnicodeString; const msg : String);
       procedure Execute; override;
 
    end;
@@ -194,7 +194,7 @@ end;
 
 // CheckEquals
 //
-procedure TThreadRunner.CheckEquals(const expected, effective, msg : String);
+procedure TThreadRunner.CheckEquals(const expected, effective : UnicodeString; const msg : String);
 begin
    if expected <> effective then
       FMessage := Format('expected << %s >> but got << %s >> (%s)', [expected, effective, msg]);

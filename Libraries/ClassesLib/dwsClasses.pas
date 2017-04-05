@@ -1,5 +1,7 @@
 unit dwsClasses;
 
+{$i dws.inc}
+
 interface
 
 uses Windows, SysUtils, Classes;
@@ -254,14 +256,18 @@ begin
 end;
 
 procedure TdwsStrings.Error(const Msg: UnicodeString; Data: Integer);
-
+{$ifdef FPC}
+begin
+   raise EStringListError.Create(Msg);
+{$else}
   function ReturnAddr: Pointer;
   asm
-          MOV     EAX,[EBP+4]
+     MOV eax, [EBP+4]
   end;
 
 begin
   raise EStringListError.CreateFmt(Msg, [Data]) at ReturnAddr;
+{$endif}
 end;
 
 procedure TdwsStrings.Error(Msg: PResStringRec; Data: Integer);
@@ -326,7 +332,7 @@ end;
 function TdwsStrings.GetDelimitedText: UnicodeString;
 var
   S: UnicodeString;
-  P: PChar;
+  P: PWideChar;
   I, Count: Integer;
 begin
   Count := GetCount;
@@ -338,13 +344,9 @@ begin
     for I := 0 to Count - 1 do
     begin
       S := Get(I);
-      P := PChar(S);
+      P := PWideChar(S);
       while not CharInSet(P^, [#0..' ', QuoteChar, Delimiter]) do
-      {$IFDEF MSWINDOWS}
-        P := CharNext(P);
-      {$ELSE}
         Inc(P);
-      {$ENDIF}
       if (P^ <> #0) then S := AnsiQuotedStr(S, QuoteChar);
       Result := Result + S + Delimiter;
     end;

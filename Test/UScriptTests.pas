@@ -209,13 +209,13 @@ begin
             end;
          end;
          if prog.Msgs.Count+exec.Msgs.Count=0 then
-            output:=exec.Result.ToString
+            output:=exec.Result.ToUnicodeString
          else begin
             output:= 'Errors >>>>'#13#10
                     +prog.Msgs.AsInfo
                     +exec.Msgs.AsInfo
                     +'Result >>>>'#13#10
-                    +exec.Result.ToString;
+                    +exec.Result.ToUnicodeString;
          end;
 
          if coOptimize in FCompiler.Config.CompilerOptions then begin

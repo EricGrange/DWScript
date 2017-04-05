@@ -220,12 +220,12 @@ begin
          CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
          exec:=prog.Execute;
          if exec.Msgs.Count=0 then
-            output:=exec.Result.ToString
+            output:=exec.Result.ToUnicodeString
          else begin
             output:= 'Errors >>>>'#13#10
                     +exec.Msgs.AsInfo
                     +'Result >>>>'#13#10
-                    +exec.Result.ToString;
+                    +exec.Result.ToUnicodeString;
          end;
          resultsFileName:=ChangeFileExt(FTests[i], '.txt');
          if FileExists(resultsFileName) then begin

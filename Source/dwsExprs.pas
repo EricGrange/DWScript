@@ -113,6 +113,8 @@ type
          procedure AddCRLF; virtual;
          procedure Clear; virtual; abstract;
 
+         function ToString : String; override; deprecated 'Use ToUnicodeString'; final;
+         function ToUnicodeString : UnicodeString; virtual;
          function ToUTF8String : UTF8String; virtual;
          function ToDataString : RawByteString; virtual;
    end;
@@ -130,7 +132,8 @@ type
          procedure AddString(const i : Int64); override;
          procedure AddCRLF; override;
          procedure Clear; override;
-         {$ifndef FPC}function ToString : UnicodeString; override;{$endif}
+
+         function ToUnicodeString : UnicodeString; override;
          function ToDataString : RawByteString; override;
 
          property Text : UnicodeString read GetText;
@@ -3334,14 +3337,14 @@ end;
 //
 function TdwsResult.ToDataString : RawByteString;
 begin
-   Result:=ScriptStringToRawByteString(ToString);
+   Result:=ScriptStringToRawByteString(ToUnicodeString);
 end;
 
 // ToUTF8String
 //
 function TdwsResult.ToUTF8String : UTF8String;
 begin
-   Result:=UTF8Encode(ToString);
+   Result:=UTF8Encode(ToUnicodeString);
 end;
 
 // AddCRLF
@@ -3356,6 +3359,20 @@ end;
 procedure TdwsResult.AddString(const i : Int64);
 begin
    AddString(IntToStr(i));
+end;
+
+// ToString
+//
+function TdwsResult.ToString : String;
+begin
+   Result := ToUnicodeString;
+end;
+
+// ToUnicodeString
+//
+function TdwsResult.ToUnicodeString : UnicodeString;
+begin
+   Result := ClassName;
 end;
 
 // ------------------
@@ -3465,12 +3482,10 @@ end;
 
 // ToString
 //
-{$ifndef FPC}
-function TdwsDefaultResult.ToString : UnicodeString;
+function TdwsDefaultResult.ToUnicodeString : UnicodeString;
 begin
-   Result:=GetText;
+   Result := GetText;
 end;
-{$endif}
 
 // ToDataString
 //

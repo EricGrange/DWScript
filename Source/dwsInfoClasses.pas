@@ -63,7 +63,7 @@ type
          function GetTypeSym : TSymbol;
          function GetValue : Variant; virtual;
          function GetValueAsString : UnicodeString; virtual;
-         function GetValueAsDataString : RawByteString; virtual;
+         function GetValueAsDataString : AnsiString; virtual;
          function GetValueAsInteger : Int64; virtual;
          function GetValueAsBoolean : Boolean; virtual;
          function GetValueAsFloat : Double; virtual;
@@ -461,7 +461,7 @@ end;
 
 // GetValueAsDataString
 //
-function TInfo.GetValueAsDataString : RawByteString;
+function TInfo.GetValueAsDataString : AnsiString;
 begin
    Result:=ScriptStringToRawByteString(GetValueAsString);
 end;
