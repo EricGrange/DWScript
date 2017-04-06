@@ -1586,7 +1586,7 @@ begin
             ch := #32
          else ch := #127
       end;
-      trns := state.FTransitions[Char(ch)];
+      trns := state.FTransitions[WideChar(ch)];
 
       // Handle Errors
       if trns.IsError then begin

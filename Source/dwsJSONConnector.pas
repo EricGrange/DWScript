@@ -358,7 +358,7 @@ end;
 //
 function TBoxedJSONValue.ToString : String;
 begin
-   Result := ToUnicodeString;
+   Result := String(ToUnicodeString);
 end;
 
 // ToUnicodeString
@@ -1419,7 +1419,7 @@ begin
 
          end else if selfObj<>nil then begin
 
-            writer.WriteString(selfObj.ToString)
+            writer.WriteString(UnicodeString(selfObj.ToString))
 
          end else writer.WriteString('null');
 
@@ -1450,7 +1450,7 @@ begin
       StringifyAssociativeArray(exec, writer, IScriptAssociativeArray(dataPtr.AsInterface[0]).GetSelf as TScriptAssociativeArray)
    else if ct=TNilSymbol then
       writer.WriteNull
-   else writer.WriteString(sym.ClassName);
+   else writer.WriteString(UnicodeString(sym.ClassName));
 end;
 
 // StringifyArray
@@ -1596,7 +1596,7 @@ begin
             selfExpr, rkObjRef, cNullPos, []
             );
          methExpr.EvalAsString(exec, buf);
-         writer.WriteJSON(buf)
+         writer.WriteJSON(buf);
       finally
          methExpr.Free;
          selfExpr.Free;

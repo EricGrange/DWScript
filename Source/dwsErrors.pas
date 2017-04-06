@@ -741,7 +741,7 @@ function TdwsCompileMessageList.AddCompilerHintFmt(const aScriptPos: TScriptPos;
                const textFormat : String; const args: array of const;
                const aLevel : TdwsHintsLevel = hlNormal) : TScriptMessage;
 begin
-   Result:=AddCompilerHint(aScriptPos, UnicodeFormat(textFormat, args), aLevel);
+   Result:=AddCompilerHint(aScriptPos, Format(textFormat, args), aLevel);
 end;
 
 // AddCompilerWarning

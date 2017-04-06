@@ -1017,7 +1017,7 @@ var
    str, delim : UnicodeString;
    dyn : TScriptDynamicArray;
    p, pn, nDelim, k, n : Integer;
-   c : Char;
+   c : WideChar;
 begin
    args.EvalAsString(0, str);
    args.EvalAsString(1, delim);

@@ -829,7 +829,7 @@ type
       public
          constructor Create(const s : UnicodeString);
 
-         function Current : Char; inline;
+         function Current : WideChar; inline;
          function EOF : Boolean; inline;
          procedure Next; inline;
          procedure SkipWhiteSpace;
@@ -971,7 +971,9 @@ function FastInt64ToBuffer(const val : Int64; var buf : TInt64StringBuffer) : In
 procedure FastInt64ToStr(const val : Int64; var s : UnicodeString); overload;
 function  FastInt64ToStr(const val : Int64) : UnicodeString; overload; inline;
 procedure FastInt64ToHex(val : Int64; digits : Integer; var s : UnicodeString);
+
 function Int64ToHex(val : Int64; digits : Integer) : UnicodeString; inline;
+function IntToStrU(const val : Integer) : UnicodeString; inline;
 
 function DivMod100(var dividend : Cardinal) : Cardinal;
 
@@ -1144,8 +1146,8 @@ begin
    n := Length(buf);
    if n > 0 then begin
       SetLength(buf, 2*n);
-      pSrc := @PChar(Pointer(buf))[n-1];
-      pDest := @PChar(Pointer(buf))[2*n-2];
+      pSrc := @PWideChar(Pointer(buf))[n-1];
+      pDest := @PWideChar(Pointer(buf))[2*n-2];
       if swap then begin
          for i := 1 to n do begin
             pDest[1] := pSrc[0];
@@ -1203,7 +1205,7 @@ end;
 //
 function BinToHex(const data; n : Integer) : UnicodeString;
 const
-   cHexDigits : array [0..15] of Char = (
+   cHexDigits : array [0..15] of WideChar = (
       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
       'a', 'b', 'c', 'd', 'e', 'f'
    );
@@ -1237,8 +1239,8 @@ end;
 function HexToBin(const data : UnicodeString) : RawByteString;
 var
    i, n, b : Integer;
-   c : Char;
-   pSrc : PChar;
+   c : WideChar;
+   pSrc : PWideChar;
    pDest : PByte;
 begin
    n:=Length(data);
@@ -1247,7 +1249,7 @@ begin
 
    n:=n shr 1;
    SetLength(Result, n);
-   pSrc:=PChar(Pointer(data));
+   pSrc:=PWideChar(Pointer(data));
    pDest:=PByte(Result);
    for i:=1 to n do begin
       c:=pSrc[0];
@@ -1445,7 +1447,7 @@ begin
    // we can't use a constant array here, as obtaining a string from a constant
    // array implies a memory allocations, which would defeat the whole purpose
    for i := 0 to High(vSmallIntegers) do
-      vSmallIntegers[i] := UnicodeString(IntToStr(i));
+      vSmallIntegers[i] := IntToStrU(i);
 end;
 
 // FastInt64ToStr
@@ -1518,6 +1520,17 @@ end;
 function Int64ToHex(val : Int64; digits : Integer) : UnicodeString;
 begin
    FastInt64ToHex(val, digits, Result);
+end;
+
+// IntToStrU
+//
+function IntToStrU(const val : Integer) : UnicodeString;
+var
+   buf : TInt32StringBuffer;
+   n : Integer;
+begin
+   n := FastInt32ToBuffer(val, buf);
+   SetString(Result, PWideChar(@buf[n]), (High(buf)+1)-n);
 end;
 
 // FastStringReplace
@@ -2015,10 +2028,10 @@ end;
 //
 function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : UnicodeString;
 var
-   buf : array [0..31] of Char;
-   p : PChar;
+   buf : array [0..31] of WideChar;
+   p : PWideChar;
 
-   procedure WriteChar(c : Char);
+   procedure WriteChar(c : WideChar);
    begin
       p^:=c;
       Inc(p);
@@ -2065,11 +2078,11 @@ end;
 //
 function ISO8601ToDateTime(const v : UnicodeString) : TDateTime;
 var
-   p : PChar;
+   p : PWideChar;
 
    function ReadDigit : Integer;
    var
-      c : Char;
+      c : WideChar;
    begin
       c := p^;
       case c of
@@ -2328,9 +2341,8 @@ begin
 
    repeat
       bucket := @FBuckets[i];
-      // bypass Length() as only non-empty strings can be in the buckets
       if bucket^.Hash = h then begin
-         if (PInteger(NativeUInt(bucket^.Str)-4)^=size) and CompareMem(p, Pointer(bucket^.Str), size*SizeOf(Char)) then begin
+         if (Length(bucket^.Str)=size) and CompareMem(p, Pointer(bucket^.Str), size*SizeOf(WideChar)) then begin
             unifiedString := bucket^.Str;
             Exit;
          end;
@@ -2462,7 +2474,7 @@ begin
    UnifyAssignP(Pointer(fromStr), Length(fromStr), toStr);
 end;
 
-// UnifyAssignPChar
+// UnifyAssignP
 //
 procedure UnifyAssignP(p : PWideChar; size : Integer; var toStr : UnicodeString);
 var
@@ -2540,7 +2552,7 @@ begin
                Exit;
             end;
          end else begin
-            Result:=UnicodeComparePChars(p1, p2, n);
+            Result:=UnicodeCompareP(p1, p2, n);
             Exit;
          end;
       end;
@@ -2563,8 +2575,13 @@ begin
    if ps1 = ps2 then Exit(0);
    if ps1<>nil then begin
       if ps2<>nil then begin
+         {$ifdef WIN32_ASM}
          n1:=PInteger(NativeUInt(ps1)-4)^;
          n2:=PInteger(NativeUInt(ps2)-4)^;
+         {$else}
+         n1:=Length(s1);
+         n2:=Length(s2);
+         {$endif}
          if n1<n2 then begin
             Result:=UnicodeCompareLen(ps1, ps2, n1);
             if Result=0 then
@@ -2782,7 +2799,7 @@ begin
    else Result:=(Pos(aSubStr, aStr)>0);
 end;
 
-// StrContains (sub char)
+// StrContains (sub character)
 //
 function StrContains(const aStr : UnicodeString; aChar : WideChar) : Boolean;
 begin
@@ -4730,7 +4747,7 @@ end;
 //
 class function TNameObjectHash.HashName(const aName : UnicodeString) : Cardinal;
 begin
-   Result := xxHash32.Full(Pointer(aName), Length(aName)*SizeOf(Char), vHashSalt);
+   Result := xxHash32.Full(Pointer(aName), Length(aName)*SizeOf(WideChar), vHashSalt);
    if Result=0 then
       Result:=1;
 end;
@@ -5745,7 +5762,7 @@ end;
 
 // Current
 //
-function TStringIterator.Current : Char;
+function TStringIterator.Current : WideChar;
 begin
    if Cardinal(FPosition)<Cardinal(FLength) then
       Result:=FPstr[FPosition]

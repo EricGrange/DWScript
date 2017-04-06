@@ -250,7 +250,7 @@ var
    function SkipBrackets : Boolean;
    var
       n : Integer;
-      inString : Char;
+      inString : WideChar;
    begin
       while p<=0 do
          if not NeedCodeLine then

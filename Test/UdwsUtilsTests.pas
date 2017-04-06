@@ -354,7 +354,7 @@ var
    wobs : TWriteOnlyBlockStream;
    ms : TMemoryStream;
    i : Integer;
-   str : String;
+   str : UnicodeString;
 begin
    wobs := TWriteOnlyBlockStream.Create;
    try
@@ -364,7 +364,7 @@ begin
       ms := TMemoryStream.Create;
       try
          wobs.StoreData(ms);
-         CheckEquals(Length(str)*SizeOf(Char), ms.Size);
+         CheckEquals(Length(str)*SizeOf(WideChar), ms.Size);
          CheckTrue(CompareMem(Pointer(str), ms.Memory, ms.Size));
       finally
          ms.Free;
@@ -558,10 +558,10 @@ end;
 //
 procedure TdwsUtilsTests.UnifierTest;
 var
-   s1, s2 : String;
+   s1, s2 : UnicodeString;
 begin
-   s1:=IntToStr(123);
-   s2:=IntToStr(123);
+   s1 := IntToStrU(123);
+   s2 := '123';
 
    Check(Pointer(s1)<>Pointer(s2), 'initial');
 
@@ -580,7 +580,7 @@ var
 begin
    TidyStringsUnifier;
    for i := 1 to 10000 do
-      UnifiedString(IntToStr(i));
+      UnifiedString(UnicodeString(IntToStr(i)));
    TidyStringsUnifier;
    for i := Low(before) to High(before) do
       CheckEquals(before[i], after[i], IntToStr(i));
@@ -942,10 +942,10 @@ procedure TdwsUtilsTests.LoadTextFromBufferTest;
 
 begin
    CheckEquals('hello', LoadTextFromBuffer(Buffer(['h', 'e', 'l', 'l', 'o'])), 'hello');
-   CheckEquals('hél', LoadTextFromBuffer(Buffer(['h', $C3, $A9, 'l'])), 'hél');
-   CheckEquals('utf8é', LoadTextFromBuffer(Buffer([$EF, $BB, $BF, 'u', 't', 'f', '8', $C3, $A9])), 'utf8é');
-   CheckEquals('Bé', LoadTextFromBuffer(Buffer([$FE, $FF, 0, 'B', 0, $E9])), 'Bé');
-   CheckEquals('Lé', LoadTextFromBuffer(Buffer([$FF, $FE, 'L', 0, $E9, 0])), 'Lé');
+   CheckEquals('h'#$00E9'l', LoadTextFromBuffer(Buffer(['h', $C3, $A9, 'l'])), 'hél');
+   CheckEquals('utf8'#$00E9, LoadTextFromBuffer(Buffer([$EF, $BB, $BF, 'u', 't', 'f', '8', $C3, $A9])), 'utf8é');
+   CheckEquals('B'#$00E9, LoadTextFromBuffer(Buffer([$FE, $FF, 0, 'B', 0, $E9])), 'Bé');
+   CheckEquals('L'#$00E9, LoadTextFromBuffer(Buffer([$FF, $FE, 'L', 0, $E9, 0])), 'Lé');
 end;
 
 // URLEncodedEncoder
@@ -1092,7 +1092,7 @@ procedure TdwsUtilsTests.NameObjectHashTest;
 var
    i : Integer;
    h : Cardinal;
-   name1, name2, name1c : String;
+   name1, name2, name1c : UnicodeString;
    noh : TNameObjectHash;
 begin
    // generate names for test, name1 & name2 should not collide
@@ -1100,12 +1100,12 @@ begin
    name1:='0';
    h:=SimpleStringHash(name1) and (cNameObjectHashMinSize-1);
    for i:=1 to cNameObjectHashMinSize*4 do begin
-      if (SimpleStringHash(IntToStr(i)) and (cNameObjectHashMinSize-1))=h then begin
+      if (SimpleStringHash(IntToStrU(i)) and (cNameObjectHashMinSize-1))=h then begin
          if name1c='' then
-            name1c:=IntToStr(i);
+            name1c:=IntToStrU(i);
       end else begin
          if name2='' then
-            name2:=IntToStr(i);
+            name2:=IntToStrU(i);
       end;
    end;
    Assert((name2<>'') and (name1c<>''), 'either you got darn unlucky or the hash function is bugged...');
@@ -1281,11 +1281,11 @@ procedure TGlobalVarStress.Execute;
 var
    i : Integer;
    v : Variant;
-   names : array [0..15] of String;
+   names : array [0..15] of UnicodeString;
 begin
    FreeOnTerminate:=False;
    for i:=0 to High(names) do
-      names[i]:=IntToHex(i, 4);
+      names[i]:=UnicodeString(IntToHex(i, 4));
    for i:=1 to 50000 do begin
       vGlobals.TryRead(names[(i + 60) and High(names)], v);
       vGlobals.Write(names[i and High(names)], i, 0);
@@ -1320,7 +1320,7 @@ type
    end;
 procedure TSieveResult.AddFind(const s : UnicodeString);
 begin
-   Add(StrToInt64(s));
+   Add(StrToInt64(String(s)));
 end;
 procedure TdwsUtilsTests.Eratosthenes;
 const
@@ -1339,7 +1339,7 @@ begin
             vGlobals.Write(si, 1, 0);
             j:=i+i;
             while j<=cMAX do begin
-               vGlobals.Write(IntToStr(j), 0, 0);
+               vGlobals.Write(IntToStrU(j), 0, 0);
                j:=j+i;
             end;
          end;
@@ -1393,7 +1393,7 @@ begin
          end;
       end;
       for i:=1 to 10 do begin
-         CheckTrue(gv.TryRead('survivor'+IntToStr(i), v));
+         CheckTrue(gv.TryRead('survivor'+IntToStrU(i), v));
          CheckEquals(i, v);
       end;
    finally

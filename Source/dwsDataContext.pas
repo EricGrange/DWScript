@@ -334,7 +334,7 @@ begin
          if p.VString <> nil then begin
             buf := SimpleStringHash(UnicodeString(p.VString));
             k := @buf;
-         end;
+         end else buf := 0;
          n := 4;
       end;
       varString : begin
@@ -342,6 +342,13 @@ begin
             k := p.VString;
             n := Length(AnsiString(p.VString));
          end else n := 4;
+      end;
+      varOleStr : begin
+         if p.VOleStr <> nil then begin
+            buf := SimpleStringHash(p.VOleStr, Length(p.VOleStr));
+            k := @buf;
+         end;
+         n := 4;
       end;
    else
       k := @p.VType;

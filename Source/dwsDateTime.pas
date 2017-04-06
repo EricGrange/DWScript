@@ -117,7 +117,7 @@ function TdwsFormatSettings.TryStrToDateTime(
 var
    year, month, day, hours, minutes, seconds, msec : Integer;
    i, j, p, value, fmtLength, digit : Integer;
-   c : Char;
+   c : WideChar;
    tok, litteral : UnicodeString;
    dth : Double;
    match, previousWasHour, hourToken : Boolean;

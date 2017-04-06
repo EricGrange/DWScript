@@ -179,7 +179,7 @@ begin
 end;
 
 const
-   cBase32 : array [0..31] of Char = (
+   cBase32 : array [0..31] of WideChar = (
       'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P',
       'Q','R','S','T','U','V','W','X','Y','Z','2','3','4','5','6','7'
    );
@@ -188,7 +188,7 @@ function Base32Encode(data : Pointer; len : Integer) : UnicodeString;
 var
    i, n, c, b : Integer;
    pIn : PByteArray;
-   pOut : PChar;
+   pOut : PWideChar;
 begin
    if (len = 0) or (data = nil) then Exit('');
    n := len;
@@ -210,7 +210,7 @@ begin
       pOut^ := cBase32[(c shl (5-b)) and $1F];
       Inc(pOut);
    end;
-   n := (NativeUInt(pOut)-NativeUInt(Pointer(Result))) div SizeOf(Char);
+   n := (NativeUInt(pOut)-NativeUInt(Pointer(Result))) div SizeOf(WideChar);
    SetLength(Result, n);
 end;
 
@@ -229,7 +229,7 @@ function Base32Decode(const data : UnicodeString) : RawByteString;
 
    procedure PrepareTable;
    var
-      c : Char;
+      c : WideChar;
    begin
       for c := #0 to High(vBase32DecodeTable) do begin
          case c of
@@ -245,7 +245,7 @@ function Base32Decode(const data : UnicodeString) : RawByteString;
 
 var
    c, b, i, n, d : Integer;
-   pIn : PChar;
+   pIn : PWideChar;
    pOut : PByte;
 begin
    if data = '' then Exit('');
@@ -298,7 +298,7 @@ begin
    // -2 is for characters that are allowed (and ignored) between blocks
    // table should be filled sequentially so preparation does not need a threading lock
    for i := 0 to High(vBase64Decode) do begin
-      case Char(i) of
+      case WideChar(i) of
          #1..#32 : vBase64Decode[i] := -2;
          'A'..'Z' : vBase64Decode[i] := i - Ord('A');
          'a'..'z' : vBase64Decode[i] := i + (26 - Ord('a'));

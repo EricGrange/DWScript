@@ -78,7 +78,7 @@ type
          procedure WriteStrings(const str : TStrings); overload;
          procedure WriteStrings(const str : array of UnicodeString); overload;
 
-         procedure WriteJSON(const json : String);
+         procedure WriteJSON(const json : UnicodeString);
 
          function ToString : String; override; final;
          function ToUnicodeString : UnicodeString;
@@ -206,8 +206,8 @@ type
 
          function DoIsFalsey : Boolean; virtual;
 
-         class procedure RaiseJSONException(const msg : UnicodeString); static;
-         class procedure RaiseJSONParseError(const msg : UnicodeString; c : WideChar = #0); static;
+         class procedure RaiseJSONException(const msg : String); static;
+         class procedure RaiseJSONParseError(const msg : String; c : WideChar = #0); static;
 
          class function Parse(parserState : TdwsJSONParserState) : TdwsJSONValue; static;
 
@@ -384,7 +384,7 @@ type
          procedure Add(aValue : TdwsJSONValue); overload;
          procedure Add(const aValue : Int64); overload;
          procedure Add(const aValue : Double); overload;
-         procedure Add(const aValue : String); overload;
+         procedure Add(const aValue : UnicodeString); overload;
          procedure Add(const aValue : Boolean); overload;
          function AddObject : TdwsJSONObject;
          function AddArray : TdwsJSONArray;
@@ -508,13 +508,13 @@ end;
 function TdwsJSONParserState.Location : UnicodeString;
 begin
    if (Line=0) then begin
-      Result:=Format('line 1, col %d',
-                     [(NativeInt(Ptr)-NativeInt(ColStart)) div SizeOf(WideChar)]);
+      Result:=UnicodeFormat('line 1, col %d',
+                            [(NativeUInt(Ptr)-NativeUInt(ColStart)) div SizeOf(WideChar)]);
    end else begin
-      Result:=Format('line %d, col %d (offset %d)',
-                     [Line+1,
-                      (NativeInt(Ptr)-NativeInt(ColStart)) div SizeOf(WideChar),
-                      (NativeInt(Ptr)-NativeInt(PWideChar(Str))) div SizeOf(WideChar)]);
+      Result:=UnicodeFormat('line %d, col %d (offset %d)',
+                            [Line+1,
+                             (NativeUInt(Ptr)-NativeUInt(ColStart)) div SizeOf(WideChar),
+                             (NativeUInt(Ptr)-NativeUInt(PWideChar(Str))) div SizeOf(WideChar)]);
    end;
 end;
 
@@ -606,7 +606,7 @@ begin
             localBufferPtr:=@localBuffer[0];
          end else Inc(localBufferPtr);
       until False;
-      n:=(NativeInt(localBufferPtr)-NativeInt(@localBuffer[0])) shr (SizeOf(WideChar)-1);
+      n:=(NativeUInt(localBufferPtr)-NativeUInt(@localBuffer[0])) shr (SizeOf(WideChar)-1);
       if wobs<>nil then begin
          nw:=(wobs.Size div SizeOf(WideChar));
          SetLength(Result, n+nw);
@@ -645,7 +645,7 @@ begin
          Break;
       end;
    until False;
-   Result:=StrToFloat(buf, vJSONFormatSettings);
+   Result:=StrToFloat(String(buf), vJSONFormatSettings);
 end;
 
 // ParseJSONNumber
@@ -727,7 +727,7 @@ end;
 //
 procedure TdwsJSONParserState.ParseIntegerArray(dest : TSimpleInt64List);
 var
-   c : Char;
+   c : WideChar;
    num : Double;
 begin
    c:=SkipBlanks(' ');
@@ -760,7 +760,7 @@ end;
 //
 procedure TdwsJSONParserState.ParseNumberArray(dest : TSimpleDoubleList);
 var
-   c : Char;
+   c : WideChar;
    num : Double;
 begin
    c:=SkipBlanks(' ');
@@ -1361,14 +1361,14 @@ end;
 
 // RaiseJSONException
 //
-class procedure TdwsJSONValue.RaiseJSONException(const msg : UnicodeString);
+class procedure TdwsJSONValue.RaiseJSONException(const msg : String);
 begin
    raise EdwsJSONException.Create(msg);
 end;
 
 // RaiseJSONParseError
 //
-class procedure TdwsJSONValue.RaiseJSONParseError(const msg : UnicodeString; c : WideChar = #0);
+class procedure TdwsJSONValue.RaiseJSONParseError(const msg : String; c : WideChar = #0);
 begin
    if c<=#31 then
       raise EdwsJSONParseError.CreateFmt(msg, [IntToStr(Ord(c))])
@@ -1654,7 +1654,7 @@ begin
 
    end else if value<>nil then begin
 
-      Add(IntToStr(index), value);
+      Add(IntToStrU(index), value);
 
    end;
 end;
@@ -1968,7 +1968,7 @@ end;
 
 // Add (str)
 //
-procedure TdwsJSONArray.Add(const aValue : String);
+procedure TdwsJSONArray.Add(const aValue : UnicodeString);
 var
    v : TdwsJSONImmediate;
 begin
@@ -2774,7 +2774,7 @@ end;
 
 // WriteJSON
 //
-procedure TdwsJSONWriter.WriteJSON(const json : String);
+procedure TdwsJSONWriter.WriteJSON(const json : UnicodeString);
 begin
    BeforeWriteImmediate;
    FStream.WriteString(json);

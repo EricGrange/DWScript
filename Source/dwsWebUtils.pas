@@ -395,7 +395,7 @@ class function WebUtils.EncodeURLEncoded(const src : UnicodeString) : UnicodeStr
 var
    raw : UTF8String;
    pSrc : PAnsiChar;
-   pDest : PChar;
+   pDest : PWideChar;
 begin
    if src='' then Exit('');
 
@@ -416,13 +416,13 @@ begin
             Inc(pDest, 3);
          end;
       else
-         pDest^ := Char(pSrc^);
+         pDest^ := WideChar(pSrc^);
          Inc(pDest);
       end;
       Inc(pSrc);
    until False;
 
-   SetLength(Result, (NativeUInt(PDest)-NativeUInt(Pointer(Result))) div SizeOf(Char));
+   SetLength(Result, (NativeUInt(PDest)-NativeUInt(Pointer(Result))) div SizeOf(WideChar));
 end;
 
 // DecodeURLEncoded
@@ -485,13 +485,13 @@ end;
 class function WebUtils.EncodeEncodedWord(const s : UnicodeString) : UnicodeString;
 var
    p, n : Integer;
-   line : array [0..100] of Char;
+   line : array [0..100] of WideChar;
    buf : UnicodeString;
    c : AnsiChar;
 
    procedure FlushLine;
    begin
-      SetString(buf, PChar(@line[0]), p);
+      SetString(buf, PWideChar(@line[0]), p);
       Result:=Result+'=?utf-8?Q?'+buf+'?='#13#10#9;
    end;
 
@@ -512,7 +512,7 @@ begin
             Inc(n, 2);
          end;
       else
-         line[p]:=Char(c);
+         line[p]:=WideChar(c);
       end;
       Inc(p);
       if n>64 then begin
@@ -594,7 +594,7 @@ var
    deltaHours, deltaDays, p : Integer;
    deltaTime : TDateTime;
 
-   procedure SplitStr(const str : UnicodeString; const delim : Char; start : Integer);
+   procedure SplitStr(const str : UnicodeString; const delim : WideChar; start : Integer);
    var
       lookup : integer;
    begin
@@ -618,21 +618,21 @@ var
       end;
    end;
 
-   function ParseTwoDigits(p : PChar; offset : Integer) : Integer; inline;
+   function ParseTwoDigits(p : PWideChar; offset : Integer) : Integer; inline;
    begin
       Result:=Ord(p[offset])*10+Ord(p[offset+1])-11*Ord('0')
    end;
 
-   function ParseFourDigits(p : PChar; offset : Integer) : Integer; inline;
+   function ParseFourDigits(p : PWideChar; offset : Integer) : Integer; inline;
    begin
       Result:=ParseTwoDigits(p, 0)*100+ParseTwoDigits(p, 2);
    end;
 
    procedure ParseHMS(const str : UnicodeString);
    var
-      p : PChar;
+      p : PWideChar;
    begin
-      p:=PChar(Pointer(str));
+      p:=PWideChar(Pointer(str));
       h:=65535;
       case Length(str) of
          5 : begin // hh:nn
@@ -715,7 +715,7 @@ end;
 class function WebUtils.HTMLTextEncode(const s : UnicodeString) : UnicodeString;
 var
    capacity : Integer;
-   pSrc, pDest : PChar;
+   pSrc, pDest : PWideChar;
 
    procedure Grow;
    var
@@ -736,7 +736,7 @@ var
    begin
       n := Length(a);
       if n>capacity then Grow;
-      System.Move(Pointer(a)^, pDest^, n*SizeOf(Char));
+      System.Move(Pointer(a)^, pDest^, n*SizeOf(WideChar));
       Inc(pDest, n);
       Dec(capacity, n);
    end;
@@ -848,7 +848,7 @@ begin
       Inc(pSrc);
    until False;
 
-   SetLength(Result, (NativeUInt(pDest)-NativeUInt(Pointer(Result))) div SizeOf(Char));
+   SetLength(Result, (NativeUInt(pDest)-NativeUInt(Pointer(Result))) div SizeOf(WideChar));
 end;
 
 // HTMLCharacterDecode
@@ -872,7 +872,7 @@ class function WebUtils.HTMLCharacterDecode(p : PWideChar) : WideChar;
 
    function DecodeNumeric(p : PWideChar) : WideChar;
    begin
-      Result:=Char(StrToIntDef(AsString(p), 0)); // UCS-2 only !
+      Result:=WideChar(StrToIntDef(AsString(p), 0)); // UCS-2 only !
    end;
 
    function Check(p : PWideChar; const aBegin : UnicodeString) : Boolean; overload;
@@ -929,7 +929,7 @@ class function WebUtils.HTMLAttributeEncode(const s : UnicodeString) : UnicodeSt
 // as per OWASP XSS Rule#2
 var
    capacity : Integer;
-   pSrc, pDest : PChar;
+   pSrc, pDest : PWideChar;
 
    procedure Grow;
    var
@@ -950,8 +950,8 @@ var
       pDest[0] := '&';
       pDest[1] := '#';
       if c in [10..99] then begin
-         pDest[2] := Char( Ord('0')+(c div 10) );
-         pDest[3] := Char( Ord('0')+(c mod 10) );
+         pDest[2] := WideChar( Ord('0')+(c div 10) );
+         pDest[3] := WideChar( Ord('0')+(c mod 10) );
          pDest[4] := ';';
          Inc(pDest, 5);
          Dec(capacity, 5);

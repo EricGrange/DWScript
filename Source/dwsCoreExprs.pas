@@ -2095,7 +2095,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
-   // for char in aString do ...;
+   // for character in aString do ...;
    TForCharInStrExpr = class(TForInStrExpr)
       public
          constructor Create(context : TdwsCompilerContext; const aPos: TScriptPos;

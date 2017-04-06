@@ -132,7 +132,7 @@ var
 //
 procedure TGlobalVar.WriteToFiler(writer: TWriter; const Name : UnicodeString);
 begin
-   writer.WriteString(Name);
+   writer.WriteString(String(Name));
    WriteVariant(writer, Value);
 end;
 
@@ -140,7 +140,7 @@ end;
 //
 procedure TGlobalVar.ReadFromFiler(reader: TReader; var Name : UnicodeString);
 begin
-   Name:=reader.ReadString;
+   Name:=UnicodeString(reader.ReadString);
    Value:=ReadVariant(reader);
 end;
 
