@@ -15,7 +15,7 @@ type
       public
          procedure SetUp; override;
          procedure TearDown; override;
-         procedure DoLocalize(Sender : TObject; const aString : UnicodeString; var Result : UnicodeString);
+         procedure DoLocalize(Sender : TObject; const aString : String; var Result : String);
 
       published
          procedure SimpleTest;
@@ -49,7 +49,7 @@ end;
 
 // DoLocalize
 //
-procedure TLocalizerTests.DoLocalize(Sender : TObject; const aString : UnicodeString; var Result : UnicodeString);
+procedure TLocalizerTests.DoLocalize(Sender : TObject; const aString : String; var Result : String);
 begin
    Result:='['+aString+']';
 end;
@@ -71,14 +71,14 @@ begin
 
       exec:=prog.CreateNewExecution;
       exec.Execute;
-      CheckEquals('[hello]', exec.Result.ToUnicodeString, 'localized');
+      CheckEquals('[hello]', exec.Result.ToString, 'localized');
       exec.Localizer:=nil;
       exec.Execute;
-      CheckEquals('hello', exec.Result.ToUnicodeString, 'localizer off');
+      CheckEquals('hello', exec.Result.ToString, 'localizer off');
 
       exec:=prog.CreateNewExecution;
       exec.Execute;
-      CheckEquals('[hello]', exec.Result.ToUnicodeString, 'localized2');
+      CheckEquals('[hello]', exec.Result.ToString, 'localized2');
    finally
       customLoc.Free;
    end;

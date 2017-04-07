@@ -36,7 +36,7 @@ unit dwsXPlatform;
 interface
 
 uses
-   Classes, SysUtils, Types, Masks, Registry, SyncObjs,
+   Classes, SysUtils, Types, Masks, Registry, SyncObjs, Variants,
    {$IFDEF FPC}
       {$IFDEF Windows}
          Windows
@@ -129,9 +129,9 @@ procedure SetDecimalSeparator(c : Char);
 function GetDecimalSeparator : Char;
 
 type
-   TCollectFileProgressEvent = procedure (const directory : UnicodeString; var skipScan : Boolean) of object;
+   TCollectFileProgressEvent = procedure (const directory : TFileName; var skipScan : Boolean) of object;
 
-procedure CollectFiles(const directory, fileMask : UnicodeString;
+procedure CollectFiles(const directory, fileMask : TFileName;
                        list : TStrings; recurseSubdirectories: Boolean = False;
                        onProgress : TCollectFileProgressEvent = nil);
 
@@ -150,19 +150,19 @@ type
    {$IFDEF FPC}
    TBytes = array of Byte;
 
-   RawByteString = UnicodeString;
+   RawByteString = String;
 
    PNativeInt = ^NativeInt;
    PUInt64 = ^UInt64;
    {$ENDIF}
 
    TPath = class
-      class function GetTempPath : UnicodeString; static;
-      class function GetTempFileName : UnicodeString; static;
+      class function GetTempPath : String; static;
+      class function GetTempFileName : String; static;
    end;
 
    TFile = class
-      class function ReadAllBytes(const filename : UnicodeString) : TBytes; static;
+      class function ReadAllBytes(const filename : String) : TBytes; static;
    end;
 
    TdwsThread = class (TThread)
@@ -186,26 +186,31 @@ function UnixTimeToSystemMilliseconds(ut : Int64) : Int64;
 
 procedure SystemSleep(msec : Integer);
 
-function UnicodeFormat(const fmt : UnicodeString; const args : array of const) : UnicodeString;
+function FirstWideCharOfString(const s : String; const default : WideChar = #0) : WideChar; inline;
+procedure CodePointToUnicodeString(c : Integer; var result : UnicodeString);
+procedure CodePointToString(const c : Integer; var result : String); inline;
+
 {$ifndef FPC}
-function UnicodeCompareStr(const S1, S2 : UnicodeString) : Integer; inline;
+function UnicodeCompareStr(const S1, S2 : String) : Integer; inline;
 function UnicodeStringReplace(const s, oldPattern, newPattern: String; flags: TReplaceFlags) : String; inline;
 {$endif}
-
-function AnsiCompareText(const S1, S2 : UnicodeString) : Integer;
-function AnsiCompareStr(const S1, S2 : UnicodeString) : Integer;
 
 function UnicodeCompareP(p1 : PWideChar; n1 : Integer; p2 : PWideChar; n2 : Integer) : Integer; overload;
 function UnicodeCompareP(p1, p2 : PWideChar; n : Integer) : Integer; overload;
 
-function UnicodeLowerCase(const s : UnicodeString) : UnicodeString;
-function UnicodeUpperCase(const s : UnicodeString) : UnicodeString;
+function UnicodeLowerCase(const s : UnicodeString) : UnicodeString; overload;
+function UnicodeUpperCase(const s : UnicodeString) : UnicodeString; overload;
 
-function ASCIICompareText(const s1, s2 : UnicodeString) : Integer; inline;
-function ASCIISameText(const s1, s2 : UnicodeString) : Boolean; inline;
+{$ifdef FPC}
+function UnicodeLowerCase(const s : String) : String; overload;
+function UnicodeUpperCase(const s : String) : String; overload;
+{$endif}
 
-function NormalizeString(const s, form : UnicodeString) : UnicodeString;
-function StripAccents(const s : UnicodeString) : UnicodeString;
+function ASCIICompareText(const s1, s2 : String) : Integer; inline;
+function ASCIISameText(const s1, s2 : String) : Boolean; inline;
+
+function NormalizeString(const s, form : String) : String;
+function StripAccents(const s : String) : String;
 
 function InterlockedIncrement(var val : Integer) : Integer; overload; {$IFDEF PUREPASCAL} inline; {$endif}
 function InterlockedDecrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} inline; {$endif}
@@ -219,18 +224,20 @@ function InterlockedCompareExchangePointer(var destination : Pointer; exchange, 
 
 procedure SetThreadName(const threadName : PAnsiChar; threadID : Cardinal = Cardinal(-1));
 
-procedure OutputDebugString(const msg : UnicodeString);
+procedure OutputDebugString(const msg : String);
 
-procedure WriteToOSEventLog(const logName, logCaption, logDetails : UnicodeString;
+procedure WriteToOSEventLog(const logName, logCaption, logDetails : String;
                             const logRawData : RawByteString = ''); overload;
 
-function TryTextToFloat(const s : PWideChar; var value : Extended;
+function TryTextToFloat(const s : PChar; var value : Extended;
+                        const formatSettings : TFormatSettings) : Boolean; {$ifndef FPC} inline; {$endif}
+function TryTextToFloatW(const s : PWideChar; var value : Extended;
                         const formatSettings : TFormatSettings) : Boolean; {$ifndef FPC} inline; {$endif}
 
 {$ifdef FPC}
 procedure VarCopy(out dest : Variant; const src : Variant); inline;
 {$else}
-function VarToUnicodeStr(const v : Variant) : UnicodeString; inline;
+function VarToUnicodeStr(const v : Variant) : String; inline;
 {$endif}
 
 {$ifdef FPC}
@@ -241,40 +248,40 @@ function RawByteStringToBytes(const buf : RawByteString) : TBytes;
 function BytesToRawByteString(const buf : TBytes; startIndex : Integer = 0) : RawByteString; overload;
 function BytesToRawByteString(p : Pointer; size : Integer) : RawByteString; overload;
 
-function LoadDataFromFile(const fileName : UnicodeString) : TBytes;
-procedure SaveDataToFile(const fileName : UnicodeString; const data : TBytes);
+function LoadDataFromFile(const fileName : TFileName) : TBytes;
+procedure SaveDataToFile(const fileName : TFileName; const data : TBytes);
 
-function LoadRawBytesFromFile(const fileName : UnicodeString) : RawByteString;
-function SaveRawBytesToFile(const fileName : UnicodeString; const data : RawByteString) : Integer;
+function LoadRawBytesFromFile(const fileName : TFileName) : RawByteString;
+function SaveRawBytesToFile(const fileName : TFileName; const data : RawByteString) : Integer;
 
-procedure LoadRawBytesAsScriptStringFromFile(const fileName : UnicodeString; var result : UnicodeString);
+procedure LoadRawBytesAsScriptStringFromFile(const fileName : TFileName; var result : String);
 
 function LoadTextFromBuffer(const buf : TBytes) : UnicodeString;
 function LoadTextFromRawBytes(const buf : RawByteString) : UnicodeString;
 function LoadTextFromStream(aStream : TStream) : UnicodeString;
-function LoadTextFromFile(const fileName : UnicodeString) : UnicodeString;
-procedure SaveTextToUTF8File(const fileName, text : UnicodeString);
+function LoadTextFromFile(const fileName : TFileName) : UnicodeString;
+procedure SaveTextToUTF8File(const fileName : TFileName; const text : String);
 procedure AppendTextToUTF8File(const fileName : TFileName; const text : UTF8String);
-function OpenFileForSequentialReadOnly(const fileName : UnicodeString) : THandle;
-function OpenFileForSequentialWriteOnly(const fileName : UnicodeString) : THandle;
+function OpenFileForSequentialReadOnly(const fileName : TFileName) : THandle;
+function OpenFileForSequentialWriteOnly(const fileName : TFileName) : THandle;
 procedure CloseFileHandle(hFile : THandle);
 function FileWrite(hFile : THandle; buffer : Pointer; byteCount : Integer) : Cardinal;
 function FileFlushBuffers(hFile : THandle) : Boolean;
-function FileCopy(const existing, new : UnicodeString; failIfExists : Boolean) : Boolean;
-function FileMove(const existing, new : UnicodeString) : Boolean;
-function FileDelete(const fileName : UnicodeString) : Boolean;
-function FileRename(const oldName, newName : UnicodeString) : Boolean;
-function FileSize(const name : UnicodeString) : Int64;
-function FileDateTime(const name : UnicodeString) : TDateTime;
+function FileCopy(const existing, new : TFileName; failIfExists : Boolean) : Boolean;
+function FileMove(const existing, new : TFileName) : Boolean;
+function FileDelete(const fileName : TFileName) : Boolean;
+function FileRename(const oldName, newName : TFileName) : Boolean;
+function FileSize(const name : TFileName) : Int64;
+function FileDateTime(const name : TFileName) : TDateTime;
 procedure FileSetDateTime(hFile : THandle; aDateTime : TDateTime);
-function DeleteDirectory(const path : UnicodeString) : Boolean;
+function DeleteDirectory(const path : String) : Boolean;
 
 function DirectSet8087CW(newValue : Word) : Word; register;
 function DirectSetMXCSR(newValue : Word) : Word; register;
 
 function SwapBytes(v : Cardinal) : Cardinal;
 
-function GetCurrentUserName : UnicodeString;
+function GetCurrentUserName : String;
 
 {$ifndef FPC}
 // Generics helper functions to handle Delphi 2009 issues - HV
@@ -284,16 +291,6 @@ procedure GetMemForT(var T; Size: integer); inline;
 {$endif}
 
 procedure InitializeWithDefaultFormatSettings(var fmt : TFormatSettings);
-
-// Functions missing in D2009
-{$ifdef FPC}
-   {$define NEED_FindDelimiter}
-{$else}
-   {$IF RTLVersion < 21}{$define NEED_FindDelimiter}{$ifend}
-{$endif}
-{$ifdef NEED_FindDelimiter}
-function FindDelimiter(const Delimiters, S: UnicodeString; StartIdx: Integer = 1): Integer;
-{$endif}
 
 type
    TTimerEvent = procedure of object;
@@ -334,10 +331,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-{$ifndef FPC}
-uses Variants;
-{$endif}
 
 {$ifdef FPC}
 type
@@ -489,21 +482,56 @@ begin
       Windows.Sleep(msec);
 end;
 
-// UnicodeFormat
+// FirstWideCharOfString
 //
-function UnicodeFormat(const fmt : UnicodeString; const args : array of const) : UnicodeString;
+function FirstWideCharOfString(const s : String; const default : WideChar = #0) : WideChar;
 begin
    {$ifdef FPC}
-   Result := UnicodeString(Format(String(fmt), args));
+   if s <> '' then
+      Result := PWideChar(String(s))^
+   else Result := default;
    {$else}
-   Result := Format(fmt, args);
+   if s <> '' then
+      Result := PWideChar(Pointer(s))^
+   else Result := default;
    {$endif}
+end;
+
+// CodePointToUnicodeString
+//
+procedure CodePointToUnicodeString(c : Integer; var result : UnicodeString);
+begin
+   case c of
+      0..$FFFF :
+         Result := WideChar(c);
+      $10000..$10FFFF : begin
+         c := c-$10000;
+         Result := WideChar($D800+(c shr 10))+WideChar($DC00+(c and $3FF));
+      end;
+   else
+      raise EConvertError.CreateFmt('Invalid codepoint: %d', [c]);
+   end;
+end;
+
+// CodePointToString
+//
+procedure CodePointToString(const c : Integer; var result : String); inline;
+{$ifdef FPC}
+var
+   buf : UnicodeString;
+begin
+   CodePointToUnicodeString(c, buf);
+   result := String(buf);
+{$else}
+begin
+   CodePointToUnicodeString(c, result);
+{$endif}
 end;
 
 // UnicodeCompareStr
 //
 {$ifndef FPC}
-function UnicodeCompareStr(const S1, S2 : UnicodeString) : Integer;
+function UnicodeCompareStr(const S1, S2 : String) : Integer;
 begin
    Result:=CompareStr(S1, S2);
 end;
@@ -516,27 +544,6 @@ begin
    Result := SysUtils.StringReplace(s, oldPattern, newPattern, flags);
 end;
 
-// AnsiCompareText
-//
-function AnsiCompareText(const S1, S2: UnicodeString) : Integer;
-begin
-   {$ifdef FPC}
-   Result:=widestringmanager.CompareUnicodeStringProc(s1,s2, [coIgnoreCase]);
-   {$else}
-   Result:=SysUtils.AnsiCompareText(S1, S2);
-   {$endif}
-end;
-
-// AnsiCompareStr
-//
-function AnsiCompareStr(const S1, S2: UnicodeString) : Integer;
-begin
-   {$ifdef FPC}
-   Result:=widestringmanager.CompareUnicodeStringProc(s1,s2, []);
-   {$else}
-   Result:=SysUtils.AnsiCompareStr(S1, S2);
-   {$endif}
-end;
 
 // UnicodeCompareP
 //
@@ -578,9 +585,25 @@ begin
    end else Result:=s;
 end;
 
+{$ifdef FPC}
+// UnicodeLowerCase
+//
+function UnicodeLowerCase(const s : String) : String;
+begin
+   Result := String(UnicodeLowerCase(UnicodeString(s)));
+end;
+
+// UnicodeUpperCase
+//
+function UnicodeUpperCase(const s : String) : String;
+begin
+   Result := String(UnicodeUpperCase(UnicodeString(s)));
+end;
+{$endif}
+
 // ASCIICompareText
 //
-function ASCIICompareText(const s1, s2 : UnicodeString) : Integer; inline;
+function ASCIICompareText(const s1, s2 : String) : Integer; inline;
 begin
    {$ifdef FPC}
    Result:=CompareText(UTF8Encode(s1), UTF8Encode(s2));
@@ -591,7 +614,7 @@ end;
 
 // ASCIISameText
 //
-function ASCIISameText(const s1, s2 : UnicodeString) : Boolean; inline;
+function ASCIISameText(const s1, s2 : String) : Boolean; inline;
 begin
    {$ifdef FPC}
    Result:=(ASCIICompareText(s1, s2)=0);
@@ -605,7 +628,7 @@ end;
 function APINormalizeString(normForm : Integer; lpSrcString : LPCWSTR; cwSrcLength : Integer;
                             lpDstString : LPWSTR; cwDstLength : Integer) : Integer;
                             stdcall; external 'Normaliz.dll' name 'NormalizeString' {$ifndef FPC}delayed{$endif};
-function NormalizeString(const s, form : UnicodeString) : UnicodeString;
+function NormalizeString(const s, form : String) : String;
 var
    nf, len : Integer;
 begin
@@ -629,7 +652,7 @@ end;
 
 // StripAccents
 //
-function StripAccents(const s : UnicodeString) : UnicodeString;
+function StripAccents(const s : String) : String;
 var
    i : Integer;
    pSrc, pDest : PWideChar;
@@ -766,14 +789,14 @@ end;
 
 // OutputDebugString
 //
-procedure OutputDebugString(const msg : UnicodeString);
+procedure OutputDebugString(const msg : String);
 begin
    Windows.OutputDebugStringW(PWideChar(msg));
 end;
 
 // WriteToOSEventLog
 //
-procedure WriteToOSEventLog(const logName, logCaption, logDetails : UnicodeString;
+procedure WriteToOSEventLog(const logName, logCaption, logDetails : String;
                             const logRawData : RawByteString = '');
 var
   eventSource : THandle;
@@ -835,7 +858,7 @@ type
 
 // CollectFilesMasked
 //
-procedure CollectFilesMasked(const directory : UnicodeString;
+procedure CollectFilesMasked(const directory : TFileName;
                              mask : TMask; list : TStrings;
                              recurseSubdirectories: Boolean = False;
                              onProgress : TCollectFileProgressEvent = nil);
@@ -845,7 +868,7 @@ const
 var
    searchRec : TFindDataRec;
    infoLevel : TFindexInfoLevels;
-   fileName : UnicodeString;
+   fileName : TFileName;
    skipScan : Boolean;
 begin
    // 6.1 required for FindExInfoBasic (Win 2008 R2 or Win 7)
@@ -860,9 +883,9 @@ begin
    end;
 
    fileName:=directory+'*';
-   searchRec.Handle:=FindFirstFileExW(PWideChar(Pointer(fileName)), infoLevel,
-                                      @searchRec.Data, FINDEX_SEARCH_OPS.FindExSearchNameMatch,
-                                      nil, 0);
+   searchRec.Handle:=FindFirstFileEx(PChar(fileName), infoLevel,
+                                     @searchRec.Data, FINDEX_SEARCH_OPS.FindExSearchNameMatch,
+                                     nil, 0);
    if searchRec.Handle<>INVALID_HANDLE_VALUE then begin
       repeat
          if (searchRec.Data.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY)=0 then begin
@@ -891,7 +914,7 @@ end;
 
 // CollectFiles
 //
-procedure CollectFiles(const directory, fileMask : UnicodeString; list : TStrings;
+procedure CollectFiles(const directory, fileMask : TFileName; list : TStrings;
                        recurseSubdirectories: Boolean = False;
                        onProgress : TCollectFileProgressEvent = nil);
 var
@@ -918,9 +941,9 @@ end;
 {$else}
 // VarToUnicodeStr
 //
-function VarToUnicodeStr(const v : Variant) : UnicodeString; inline;
+function VarToUnicodeStr(const v : Variant) : String; inline;
 begin
-   Result:=VarToStr(v);
+   Result := VarToStr(v);
 end;
 {$endif FPC}
 
@@ -970,7 +993,7 @@ end;
 
 // TryTextToFloat
 //
-function TryTextToFloat(const s : PWideChar; var value : Extended; const formatSettings : TFormatSettings) : Boolean;
+function TryTextToFloat(const s : PChar; var value : Extended; const formatSettings : TFormatSettings) : Boolean;
 {$ifdef FPC}
 var
    cw : Word;
@@ -983,6 +1006,24 @@ begin
       value:=0;
    asm fclex end;
    Set8087CW(cw);
+{$else}
+begin
+   Result:=TextToFloat(s, value, fvExtended, formatSettings)
+{$endif}
+end;
+
+// TryTextToFloatW
+//
+function TryTextToFloatW(const s : PWideChar; var value : Extended;
+                        const formatSettings : TFormatSettings) : Boolean;
+{$ifdef FPC}
+var
+   bufU : UnicodeString;
+   buf : String;
+begin
+   bufU := s;
+   buf := String(bufU);
+   Result := TryTextToFloat(PChar(buf), value, formatSettings);
 {$else}
 begin
    Result:=TextToFloat(s, value, fvExtended, formatSettings)
@@ -1047,7 +1088,7 @@ end;
 
 // LoadTextFromFile
 //
-function LoadTextFromFile(const fileName : UnicodeString) : UnicodeString;
+function LoadTextFromFile(const fileName : TFileName) : UnicodeString;
 var
    buf : TBytes;
 begin
@@ -1085,7 +1126,7 @@ end;
 
 // LoadDataFromFile
 //
-function LoadDataFromFile(const fileName : UnicodeString) : TBytes;
+function LoadDataFromFile(const fileName : TFileName) : TBytes;
 const
    INVALID_FILE_SIZE = DWORD($FFFFFFFF);
 var
@@ -1112,7 +1153,7 @@ end;
 
 // SaveDataToFile
 //
-procedure SaveDataToFile(const fileName : UnicodeString; const data : TBytes);
+procedure SaveDataToFile(const fileName : TFileName; const data : TBytes);
 var
    hFile : THandle;
    n, nWrite : DWORD;
@@ -1130,7 +1171,7 @@ end;
 
 // LoadRawBytesFromFile
 //
-function LoadRawBytesFromFile(const fileName : UnicodeString) : RawByteString;
+function LoadRawBytesFromFile(const fileName : TFileName) : RawByteString;
 const
    INVALID_FILE_SIZE = DWORD($FFFFFFFF);
 var
@@ -1157,7 +1198,7 @@ end;
 
 // SaveRawBytesToFile
 //
-function SaveRawBytesToFile(const fileName : UnicodeString; const data : RawByteString) : Integer;
+function SaveRawBytesToFile(const fileName : TFileName; const data : RawByteString) : Integer;
 var
    hFile : THandle;
    nWrite : DWORD;
@@ -1177,7 +1218,7 @@ end;
 
 // LoadRawBytesAsScriptStringFromFile
 //
-procedure LoadRawBytesAsScriptStringFromFile(const fileName : UnicodeString; var result : UnicodeString);
+procedure LoadRawBytesAsScriptStringFromFile(const fileName : TFileName; var result : String);
 const
    INVALID_FILE_SIZE = DWORD($FFFFFFFF);
 var
@@ -1221,7 +1262,7 @@ end;
 
 // SaveTextToUTF8File
 //
-procedure SaveTextToUTF8File(const fileName, text : UnicodeString);
+procedure SaveTextToUTF8File(const fileName : TFileName; const text : String);
 begin
    SaveRawBytesToFile(fileName, UTF8Encode(text));
 end;
@@ -1246,7 +1287,7 @@ end;
 
 // OpenFileForSequentialReadOnly
 //
-function OpenFileForSequentialReadOnly(const fileName : UnicodeString) : THandle;
+function OpenFileForSequentialReadOnly(const fileName : TFileName) : THandle;
 begin
    Result:=CreateFileW(PWideChar(fileName), GENERIC_READ, FILE_SHARE_READ+FILE_SHARE_WRITE,
                        nil, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, 0);
@@ -1258,7 +1299,7 @@ end;
 
 // OpenFileForSequentialWriteOnly
 //
-function OpenFileForSequentialWriteOnly(const fileName : UnicodeString) : THandle;
+function OpenFileForSequentialWriteOnly(const fileName : TFileName) : THandle;
 begin
    Result:=CreateFileW(PWideChar(fileName), GENERIC_WRITE, 0, nil, CREATE_ALWAYS,
                        FILE_ATTRIBUTE_NORMAL+FILE_FLAG_SEQUENTIAL_SCAN, 0);
@@ -1291,35 +1332,35 @@ end;
 
 // FileCopy
 //
-function FileCopy(const existing, new : UnicodeString; failIfExists : Boolean) : Boolean;
+function FileCopy(const existing, new : TFileName; failIfExists : Boolean) : Boolean;
 begin
    Result:=Windows.CopyFileW(PWideChar(existing), PWideChar(new), failIfExists);
 end;
 
 // FileMove
 //
-function FileMove(const existing, new : UnicodeString) : Boolean;
+function FileMove(const existing, new : TFileName) : Boolean;
 begin
    Result:=Windows.MoveFileW(PWideChar(existing), PWideChar(new));
 end;
 
 // FileDelete
 //
-function FileDelete(const fileName : UnicodeString) : Boolean;
+function FileDelete(const fileName : TFileName) : Boolean;
 begin
    Result:=SysUtils.DeleteFile(fileName);
 end;
 
 // FileRename
 //
-function FileRename(const oldName, newName : UnicodeString) : Boolean;
+function FileRename(const oldName, newName : TFileName) : Boolean;
 begin
    Result:=RenameFile(oldName, newName);
 end;
 
 // FileSize
 //
-function FileSize(const name : UnicodeString) : Int64;
+function FileSize(const name : TFileName) : Int64;
 var
    info : TWin32FileAttributeData;
 begin
@@ -1330,7 +1371,7 @@ end;
 
 // FileDateTime
 //
-function FileDateTime(const name : UnicodeString) : TDateTime;
+function FileDateTime(const name : TFileName) : TDateTime;
 var
    info : TWin32FileAttributeData;
    localTime : TFileTime;
@@ -1352,7 +1393,7 @@ end;
 
 // DeleteDirectory
 //
-function DeleteDirectory(const path : UnicodeString) : Boolean;
+function DeleteDirectory(const path : String) : Boolean;
 begin
    {$ifdef FPC}
    Result := RemoveDir(path);
@@ -1368,7 +1409,7 @@ end;
 
 // DirectSet8087CW
 //
-function DirectSet8087CW(newValue : Word) : Word;
+function DirectSet8087CW(newValue: Word): Word; register;
 {$IFNDEF WIN32_ASM}
 begin
    Result:=newValue;
@@ -1421,7 +1462,7 @@ end;
 
 // GetCurrentUserName
 //
-function GetCurrentUserName : UnicodeString;
+function GetCurrentUserName : String;
 var
    len : Cardinal;
 begin
@@ -1470,18 +1511,6 @@ begin
    {$endif}
 end;
 
-// FindDelimiter
-//
-{$ifdef NEED_FindDelimiter}
-function FindDelimiter(const Delimiters, S: UnicodeString; StartIdx: Integer = 1): Integer;
-begin
-  for Result := StartIdx to Length(S) do
-    if IsDelimiter(Delimiters, S, Result) then
-      Exit;
-  Result := -1;
-end;
-{$endif}
-
 // ------------------
 // ------------------ TdwsCriticalSection ------------------
 // ------------------
@@ -1527,7 +1556,7 @@ end;
 
 // GetTempPath
 //
-class function TPath.GetTempPath : UnicodeString;
+class function TPath.GetTempPath : String;
 {$IFDEF WINDOWS}
 var
    tempPath : array [0..MAX_PATH] of WideChar; // Buf sizes are MAX_PATH+1
@@ -1545,7 +1574,7 @@ end;
 
 // GetTempFileName
 //
-class function TPath.GetTempFileName : UnicodeString;
+class function TPath.GetTempFileName : String;
 {$IFDEF WINDOWS}
 var
    tempPath, tempFileName : array [0..MAX_PATH] of WideChar; // Buf sizes are MAX_PATH+1
@@ -1569,7 +1598,7 @@ end;
 
 // ReadAllBytes
 //
-class function TFile.ReadAllBytes(const filename : UnicodeString) : TBytes;
+class function TFile.ReadAllBytes(const filename : String) : TBytes;
 {$IFDEF VER200} // Delphi 2009
 var
    fileStream : TFileStream;

@@ -17,7 +17,7 @@ uses
    {$ifdef UNSAFE_DEP_OFF}
    Windows,
    {$endif}
-   SysUtils, Variants,
+   SysUtils,
    dwsUtils,
    dwsSymbols, dwsVMTOffsets;
 

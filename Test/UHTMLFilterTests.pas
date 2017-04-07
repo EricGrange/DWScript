@@ -19,7 +19,7 @@ type
       procedure SetUp; override;
       procedure TearDown; override;
 
-      procedure DoInclude(const scriptName: UnicodeString; var scriptSource: UnicodeString);
+      procedure DoInclude(const scriptName: String; var scriptSource: UnicodeString);
 
    published
       procedure TestHTMLScript;
@@ -97,7 +97,7 @@ begin
          if FileExists(resultFileName) then
             sl.LoadFromFile(ChangeFileExt(resultFileName, '.txt'))
          else sl.Clear;
-         CheckEquals(sl.Text, exec.Result.ToUnicodeString, s);
+         CheckEquals(sl.Text, exec.Result.ToString, s);
       end;
    finally
       sl.Free;
@@ -152,27 +152,27 @@ var
 begin
    prog:=FCompiler.Compile('hello'#10'world');
    exec:=prog.Execute;
-   CheckEquals('hello'#10'world', exec.Result.ToUnicodeString, '#10');
+   CheckEquals('hello'#10'world', exec.Result.ToString, '#10');
 
    prog:=FCompiler.Compile('hello'#9'world');
    exec:=prog.Execute;
-   CheckEquals('hello'#9'world', exec.Result.ToUnicodeString, '#9');
+   CheckEquals('hello'#9'world', exec.Result.ToString, '#9');
 
    prog:=FCompiler.Compile('''');
    exec:=prog.Execute;
-   CheckEquals('''', exec.Result.ToUnicodeString, 'apos 0');
+   CheckEquals('''', exec.Result.ToString, 'apos 0');
 
    prog:=FCompiler.Compile('''#13''');
    exec:=prog.Execute;
-   CheckEquals('''#13''', exec.Result.ToUnicodeString, 'apos 1');
+   CheckEquals('''#13''', exec.Result.ToString, 'apos 1');
 
    prog:=FCompiler.Compile('''''''');
    exec:=prog.Execute;
-   CheckEquals('''''''', exec.Result.ToUnicodeString, 'apos 2');
+   CheckEquals('''''''', exec.Result.ToString, 'apos 2');
 
    prog:=FCompiler.Compile(''''#13'''');
    exec:=prog.Execute;
-   CheckEquals(''''#13'''', exec.Result.ToUnicodeString, 'apos 3');
+   CheckEquals(''''#13'''', exec.Result.ToString, 'apos 3');
 end;
 
 // TestNotClosed
@@ -184,11 +184,11 @@ var
 begin
    prog:=FCompiler.Compile('<?pas Send(''hello'');');
    exec:=prog.Execute;
-   CheckEquals('hello', exec.Result.ToUnicodeString, 'hello prog');
+   CheckEquals('hello', exec.Result.ToString, 'hello prog');
 
    prog:=FCompiler.Compile('<?pas var hello="world";?><?pas=hello');
    exec:=prog.Execute;
-   CheckEquals('world', exec.Result.ToUnicodeString, 'hello eval');
+   CheckEquals('world', exec.Result.ToString, 'hello eval');
 end;
 
 // TestIncludeFiltered
@@ -200,16 +200,16 @@ var
 begin
    prog:=FCompiler.Compile('a<?pas'#13#10'{$F "B"}'#13#10'?>c');
    exec:=prog.Execute;
-   CheckEquals('aBc', exec.Result.ToUnicodeString, 'include filtered 1');
+   CheckEquals('aBc', exec.Result.ToString, 'include filtered 1');
 end;
 
 // DoInclude
 //
-procedure THTMLFilterTests.DoInclude(const scriptName: UnicodeString; var scriptSource: UnicodeString);
+procedure THTMLFilterTests.DoInclude(const scriptName: String; var scriptSource: UnicodeString);
 begin
    if scriptName='B' then
       scriptSource:='B'
-   else scriptSource:=LoadTextFromFile('SimpleScripts\'+scriptName);
+   else scriptSource := LoadTextFromFile('SimpleScripts\'+scriptName);
 end;
 
 // TestEditorMode

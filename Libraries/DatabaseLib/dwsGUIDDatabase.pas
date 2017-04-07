@@ -23,25 +23,25 @@ unit dwsGUIDDatabase;
 interface
 
 uses
-   Classes, Variants, SysUtils,
+   Classes, SysUtils,
    dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform, dwsDataContext, dwsSymbols;
 
 type
 
    TdwsGUIDDataBase = class (TdwsDataBase, IdwsDataBase)
       public
-         constructor Create(const parameters : array of UnicodeString);
+         constructor Create(const parameters : array of String);
 
          procedure BeginTransaction;
          procedure Commit;
          procedure Rollback;
          function InTransaction : Boolean;
-         function CanReleaseToPool : UnicodeString;
+         function CanReleaseToPool : String;
 
-         procedure Exec(const sql : UnicodeString; const parameters : TData; context : TExprBase);
-         function Query(const sql : UnicodeString; const parameters : TData; context : TExprBase) : IdwsDataSet;
+         procedure Exec(const sql : String; const parameters : TData; context : TExprBase);
+         function Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
 
-         function VersionInfoText : UnicodeString;
+         function VersionInfoText : String;
    end;
 
    TdwsGUIDDataSet = class (TdwsDataSet)
@@ -60,15 +60,15 @@ type
 
    TdwsGUIDDataField = class (TdwsDataField)
       protected
-         function GetName : UnicodeString; override;
+         function GetName : String; override;
          function GetDataType : TdwsDataFieldType; override;
-         function GetDeclaredType : UnicodeString; override;
+         function GetDeclaredType : String; override;
 
       public
          constructor Create(dataSet : TdwsGUIDDataSet; fieldIndex : Integer);
 
          function IsNull : Boolean; override;
-         function AsString : UnicodeString; override;
+         function AsString : String; override;
          function AsInteger : Int64; override;
          function AsFloat : Double; override;
          function AsBlob : RawByteString; override;
@@ -138,7 +138,7 @@ end;
 
 // Create
 //
-constructor TdwsGUIDDataBase.Create(const parameters : array of UnicodeString);
+constructor TdwsGUIDDataBase.Create(const parameters : array of String);
 begin
    // nothing
 end;
@@ -173,21 +173,21 @@ end;
 
 // CanReleaseToPool
 //
-function TdwsGUIDDataBase.CanReleaseToPool : UnicodeString;
+function TdwsGUIDDataBase.CanReleaseToPool : String;
 begin
    Result:='';
 end;
 
 // Exec
 //
-procedure TdwsGUIDDataBase.Exec(const sql : UnicodeString; const parameters : TData; context : TExprBase);
+procedure TdwsGUIDDataBase.Exec(const sql : String; const parameters : TData; context : TExprBase);
 begin
    raise Exception.Create('Exec not supported');
 end;
 
 // Query
 //
-function TdwsGUIDDataBase.Query(const sql : UnicodeString; const parameters : TData; context : TExprBase) : IdwsDataSet;
+function TdwsGUIDDataBase.Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
 var
    ds : TdwsGUIDDataSet;
 begin
@@ -197,7 +197,7 @@ end;
 
 // VersionInfoText
 //
-function TdwsGUIDDataBase.VersionInfoText : UnicodeString;
+function TdwsGUIDDataBase.VersionInfoText : String;
 begin
    Result:='GUID pseudo-database';
 end;
@@ -259,7 +259,7 @@ end;
 
 // GetName
 //
-function TdwsGUIDDataField.GetName : UnicodeString;
+function TdwsGUIDDataField.GetName : String;
 begin
    case Index of
       1 : Result:='GUID32';
@@ -277,14 +277,14 @@ end;
 
 // GetDeclaredType
 //
-function TdwsGUIDDataField.GetDeclaredType : UnicodeString;
+function TdwsGUIDDataField.GetDeclaredType : String;
 begin
    Result:='Text';
 end;
 
 // AsString
 //
-function TdwsGUIDDataField.AsString : UnicodeString;
+function TdwsGUIDDataField.AsString : String;
 var
    ds : TdwsGUIDDataSet;
 begin

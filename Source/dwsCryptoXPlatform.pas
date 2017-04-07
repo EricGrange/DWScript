@@ -31,13 +31,13 @@ interface
 
 procedure CryptographicRandom(buf : Pointer; nb : Integer); overload;
 function CryptographicRandom(nb : Integer) : AnsiString; overload;
-function CryptographicToken(bitStrength : Integer = 0) : UnicodeString;
-function ProcessUniqueRandom : UnicodeString;
+function CryptographicToken(bitStrength : Integer = 0) : String;
+function ProcessUniqueRandom : String;
 
 // only encodes 6 bits of each bytes using URI-safe base 64 alphabet
-function DigestToSimplifiedBase64(digest : PByte; size : Integer) : UnicodeString;
+function DigestToSimplifiedBase64(digest : PByte; size : Integer) : String;
 // only encodes 5.8 bits of each bytes (using 62 alphanumeric characters)
-function DigestToSimplifiedBase62(digest : PByte; size : Integer) : UnicodeString;
+function DigestToSimplifiedBase62(digest : PByte; size : Integer) : String;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -55,11 +55,11 @@ const
    cCryptographicTokenDefaultBitStrength = 120;
 
 var
-   vProcessUniqueRandom : UnicodeString;
+   vProcessUniqueRandom : String;
 
 procedure GenerateUniqueRandom;
 var
-   buf : UnicodeString;
+   buf : String;
 begin
    // 6 bits per character, 42 characters, 252 bits of random
    buf:=CryptographicToken(6*42);
@@ -67,7 +67,7 @@ begin
                                                    Pointer(buf), nil);
 end;
 
-function ProcessUniqueRandom : UnicodeString;
+function ProcessUniqueRandom : String;
 begin
    if vProcessUniqueRandom='' then
       GenerateUniqueRandom;
@@ -143,7 +143,7 @@ const
 
 // DigestToSimplifiedBase64
 //
-function DigestToSimplifiedBase64(digest : PByte; size : Integer) : UnicodeString;
+function DigestToSimplifiedBase64(digest : PByte; size : Integer) : String;
 var
    i : Integer;
 begin
@@ -154,7 +154,7 @@ end;
 
 // DigestToSimplifiedBase62
 //
-function DigestToSimplifiedBase62(digest : PByte; size : Integer) : UnicodeString;
+function DigestToSimplifiedBase62(digest : PByte; size : Integer) : String;
 var
    i : Integer;
 begin
@@ -165,7 +165,7 @@ end;
 
 // CryptographicToken
 //
-function CryptographicToken(bitStrength : Integer = 0) : UnicodeString;
+function CryptographicToken(bitStrength : Integer = 0) : String;
 var
    n : Integer;
    rand : AnsiString;

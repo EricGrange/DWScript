@@ -37,11 +37,11 @@ type
 
          procedure Release;
 
-         procedure WriteToFiler(writer: TWriter; const Name : UnicodeString);
-         procedure ReadFromFiler(reader: TReader; var Name : UnicodeString);
+         procedure WriteToFiler(writer: TWriter; const Name : String);
+         procedure ReadFromFiler(reader: TReader; var Name : String);
    end;
 
-   TNamesEnumerationCallback = procedure (const name : UnicodeString) of object;
+   TNamesEnumerationCallback = procedure (const name : String) of object;
 
    TGlobalVarsGarbageCollector = class;
 
@@ -52,9 +52,9 @@ type
       procedure Initialize;
       procedure Finalize;
 
-      function GetObjects(hashCode : Cardinal; const aName : UnicodeString) : TGlobalVar; inline;
-      procedure SetObjects(hashCode : Cardinal; const aName : UnicodeString; obj : TGlobalVar); inline;
-      property Objects[hashCode : Cardinal; const aName : UnicodeString] : TGlobalVar read GetObjects write SetObjects; default;
+      function GetObjects(hashCode : Cardinal; const aName : String) : TGlobalVar; inline;
+      procedure SetObjects(hashCode : Cardinal; const aName : String; obj : TGlobalVar); inline;
+      property Objects[hashCode : Cardinal; const aName : String] : TGlobalVar read GetObjects write SetObjects; default;
 
       procedure Clean;
       procedure Cleanup(mask : TMask);
@@ -74,20 +74,20 @@ type
          procedure Initialize;
          procedure Finalize;
 
-         function Write(const aName : UnicodeString; const aValue : Variant; expirationSeconds : Double) : Boolean;
-         function TryRead(const aName : UnicodeString; var value : Variant) : Boolean;
+         function Write(const aName : String; const aValue : Variant; expirationSeconds : Double) : Boolean;
+         function TryRead(const aName : String; var value : Variant) : Boolean;
 
-         function  Delete(const aName : UnicodeString) : Boolean;
-         procedure Cleanup(const filter : UnicodeString = '*');
+         function  Delete(const aName : String) : Boolean;
+         procedure Cleanup(const filter : String = '*');
 
-         procedure EnumerateNames(const filter : UnicodeString; callback : TNamesEnumerationCallback);
-         function  NamesCommaText : UnicodeString;
+         procedure EnumerateNames(const filter : String; callback : TNamesEnumerationCallback);
+         function  NamesCommaText : String;
 
          procedure SaveToFiler(writer : TWriter);
          procedure LoadFromFiler(reader : TReader);
 
-         function Increment(const aName : UnicodeString; const delta : Int64) : Int64;
-         function CompareExchange(const aName : UnicodeString; const value, comparand : Variant) : Variant;
+         function Increment(const aName : String; const delta : Int64) : Int64;
+         function CompareExchange(const aName : String; const value, comparand : Variant) : Variant;
 
          procedure Collect;
          procedure IncrementalCollect;
@@ -130,7 +130,7 @@ var
 
 // WriteToFiler
 //
-procedure TGlobalVar.WriteToFiler(writer: TWriter; const Name : UnicodeString);
+procedure TGlobalVar.WriteToFiler(writer: TWriter; const Name : String);
 begin
    writer.WriteString(String(Name));
    WriteVariant(writer, Value);
@@ -138,9 +138,9 @@ end;
 
 // ReadFromFiler
 //
-procedure TGlobalVar.ReadFromFiler(reader: TReader; var Name : UnicodeString);
+procedure TGlobalVar.ReadFromFiler(reader: TReader; var Name : String);
 begin
-   Name:=UnicodeString(reader.ReadString);
+   Name:=String(reader.ReadString);
    Value:=ReadVariant(reader);
 end;
 
@@ -178,14 +178,14 @@ end;
 
 // GetObjects
 //
-function TGlobalVarsHashMap.GetObjects(hashCode : Cardinal; const aName : UnicodeString) : TGlobalVar;
+function TGlobalVarsHashMap.GetObjects(hashCode : Cardinal; const aName : String) : TGlobalVar;
 begin
    Result:=TGlobalVar(Hash.HashedObjects[aName, hashCode]);
 end;
 
 // SetObjects
 //
-procedure TGlobalVarsHashMap.SetObjects(hashCode : Cardinal; const aName : UnicodeString; obj : TGlobalVar);
+procedure TGlobalVarsHashMap.SetObjects(hashCode : Cardinal; const aName : String; obj : TGlobalVar);
 begin
    Hash.HashedObjects[aName, hashCode]:=obj;
 end;
@@ -356,7 +356,7 @@ end;
 
 // Write
 //
-function TGlobalVars.Write(const aName : UnicodeString; const aValue : Variant; expirationSeconds : Double) : Boolean;
+function TGlobalVars.Write(const aName : String; const aValue : Variant; expirationSeconds : Double) : Boolean;
 var
    gv : TGlobalVar;
    expire : UInt64;
@@ -387,7 +387,7 @@ end;
 
 // TryRead
 //
-function TGlobalVars.TryRead(const aName : UnicodeString; var value : Variant) : Boolean;
+function TGlobalVars.TryRead(const aName : String; var value : Variant) : Boolean;
 var
    gv : TGlobalVar;
    t : UInt64;
@@ -414,7 +414,7 @@ end;
 
 // Delete
 //
-function TGlobalVars.Delete(const aName : UnicodeString) : Boolean;
+function TGlobalVars.Delete(const aName : String) : Boolean;
 var
    gv : TGlobalVar;
    map : PGlobalVarsHashMap;
@@ -440,7 +440,7 @@ end;
 
 // Cleanup
 //
-procedure TGlobalVars.Cleanup(const filter : UnicodeString = '*');
+procedure TGlobalVars.Cleanup(const filter : String = '*');
 var
    i : Integer;
    mask : TMask;
@@ -467,7 +467,7 @@ end;
 
 // EnumerateNames
 //
-procedure TGlobalVars.EnumerateNames(const filter : UnicodeString; callback : TNamesEnumerationCallback);
+procedure TGlobalVars.EnumerateNames(const filter : String; callback : TNamesEnumerationCallback);
 var
    i : Integer;
    mask : TMask;
@@ -487,13 +487,13 @@ end;
 //
 type
    TStringsAdder = class(TStrings)
-      procedure Add(const name : UnicodeString); reintroduce;
+      procedure Add(const name : String); reintroduce;
    end;
-procedure TStringsAdder.Add(const name : UnicodeString);
+procedure TStringsAdder.Add(const name : String);
 begin
    inherited Add(name);
 end;
-function TGlobalVars.NamesCommaText : UnicodeString;
+function TGlobalVars.NamesCommaText : String;
 var
    list : TStringList;
 begin
@@ -539,7 +539,7 @@ procedure TGlobalVars.LoadFromFiler(reader : TReader);
 var
    i : Integer;
    h : Cardinal;
-   name : UnicodeString;
+   name : String;
    gv : TGlobalVar;
    map : PGlobalVarsHashMap;
 begin
@@ -570,7 +570,7 @@ end;
 
 // Increment
 //
-function TGlobalVars.Increment(const aName : UnicodeString; const delta : Int64) : Int64;
+function TGlobalVars.Increment(const aName : String; const delta : Int64) : Int64;
 var
    gv : TGlobalVar;
    t : Int64;
@@ -603,7 +603,7 @@ end;
 
 // CompareExchange
 //
-function TGlobalVars.CompareExchange(const aName : UnicodeString; const value, comparand : Variant) : Variant;
+function TGlobalVars.CompareExchange(const aName : String; const value, comparand : Variant) : Variant;
 var
    gv : TGlobalVar;
    t : Int64;

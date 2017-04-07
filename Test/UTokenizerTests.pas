@@ -66,7 +66,7 @@ end;
 procedure TTokenizerTests.EmptyTokenBuffer;
 var
    w : TTokenBufferWrapper;
-   s : UnicodeString;
+   s : String;
 begin
    w:=TTokenBufferWrapper.Create;
    try
@@ -202,15 +202,15 @@ begin
 
       t.BeginSourceFile(FSourceFile);
       CheckTrue(t.TestName, '$a');
-      CheckEquals(t.GetToken.AsString, '$a');
+      CheckEquals(t.GetToken.AsString, UnicodeString('$a'));
       t.KillToken;
 
       CheckTrue(t.TestName, 'a$');
-      CheckEquals(t.GetToken.AsString, 'a$');
+      CheckEquals(t.GetToken.AsString, UnicodeString('a$'));
       t.KillToken;
 
       CheckTrue(t.TestName, '$a$');
-      CheckEquals(t.GetToken.AsString, '$a$');
+      CheckEquals(t.GetToken.AsString, UnicodeString('$a$'));
       t.KillToken;
 
       t.EndSourceFile;

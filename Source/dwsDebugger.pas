@@ -24,7 +24,7 @@ unit dwsDebugger;
 interface
 
 uses
-   Classes, SysUtils, Variants,
+   Classes, SysUtils,
    dwsSymbols, dwsXPlatform, dwsCompiler, dwsErrors, dwsDataContext,
    dwsExprs, dwsCoreExprs, dwsInfo, dwsEvaluate, dwsScriptSource,
    dwsUtils, dwsXPlatformUI, dwsStrings, dwsUnitSymbols, dwsStack, dwsInfoClasses;
@@ -34,7 +34,7 @@ type
 
    TOnDebugStartStopEvent = procedure(exec: TdwsExecution) of object;
    TOnDebugEvent = procedure(exec: TdwsExecution; expr: TExprBase) of object;
-   TOnDebugMessageEvent = procedure(const msg : UnicodeString) of object;
+   TOnDebugMessageEvent = procedure(const msg : String) of object;
    TOnNotifyExceptionEvent = procedure (const exceptObj : IInfo) of object;
 
    // TdwsSimpleDebugger
@@ -58,7 +58,7 @@ type
          procedure EnterFunc(exec : TdwsExecution; funcExpr : TExprBase); virtual;
          procedure LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase); virtual;
          function  LastDebugStepExpr : TExprBase; virtual;
-         procedure DebugMessage(const msg : UnicodeString); virtual;
+         procedure DebugMessage(const msg : String); virtual;
          procedure NotifyException(exec : TdwsExecution; const exceptObj : IScriptObj); virtual;
 
       public
@@ -96,7 +96,7 @@ type
       private
          FEnabled : Boolean;
          FLine : Integer;
-         FSourceName : UnicodeString;
+         FSourceName : String;
 
       protected
 
@@ -105,7 +105,7 @@ type
 
          property Enabled : Boolean read FEnabled write FEnabled;
          property Line : Integer read FLine write FLine;
-         property SourceName : UnicodeString read FSourceName write FSourceName;
+         property SourceName : String read FSourceName write FSourceName;
    end;
 
    // TdwsDebuggerBreakpoints
@@ -122,7 +122,7 @@ type
          constructor Create(aDebugger : TdwsDebugger);
          destructor Destroy; override;
 
-         procedure Add(aLine : Integer; const aSourceName : UnicodeString);
+         procedure Add(aLine : Integer; const aSourceName : String);
 
          procedure Clear; inline;
 
@@ -139,7 +139,7 @@ type
       private
          FData : TData;
       public
-         constructor Create(const name : UnicodeString; typ : TTypeSymbol);
+         constructor Create(const name : String; typ : TTypeSymbol);
          property Data : TData read FData;
    end;
 
@@ -149,14 +149,14 @@ type
    //
    TdwsDebuggerWatch = class (TRefCountedObject)
       private
-         FExpressionText : UnicodeString;
+         FExpressionText : String;
          FEvaluator : IdwsEvaluateExpr;
          FValueData : TdwsDebuggerTempValueSymbol;
          FValueInfo : IInfo;
          FEvaluationError : TdwsDebuggerWatchEvaluationError;
 
       protected
-         procedure SetExpressionText(const val : UnicodeString);
+         procedure SetExpressionText(const val : String);
 
       public
          destructor Destroy; override;
@@ -164,7 +164,7 @@ type
          procedure Update(debugger : TdwsDebugger);
          procedure ClearEvaluator;
 
-         property ExpressionText : UnicodeString read FExpressionText write SetExpressionText;
+         property ExpressionText : String read FExpressionText write SetExpressionText;
          property Evaluator : IdwsEvaluateExpr read FEvaluator write FEvaluator;
          property ValueData : TdwsDebuggerTempValueSymbol read FValueData;
          property ValueInfo : IInfo read FValueInfo;
@@ -183,7 +183,7 @@ type
       public
          constructor Create(aDebugger : TdwsDebugger);
 
-         function Add(const exprText : UnicodeString) : TdwsDebuggerWatch;
+         function Add(const exprText : String) : TdwsDebuggerWatch;
 
          procedure Update;
          procedure ClearEvaluators;
@@ -239,12 +239,12 @@ type
    //
    TdwsDSCStepDetail = class (TdwsDSCStep)
       private
-         FSourceFileName : UnicodeString;
+         FSourceFileName : String;
 
       public
          function SuspendExecution : Boolean; override;
 
-         property SourceFileName : UnicodeString read FSourceFileName write FSourceFileName;
+         property SourceFileName : String read FSourceFileName write FSourceFileName;
    end;
 
    // TdwsDSCStepOver
@@ -332,17 +332,17 @@ type
          procedure Resume;
 
          procedure StepDetailed;
-         procedure StepDetailedInSource(const sourceFileName : UnicodeString);
+         procedure StepDetailedInSource(const sourceFileName : String);
          procedure StepOver;
-         procedure StepOverInSource(const sourceFileName : UnicodeString);
+         procedure StepOverInSource(const sourceFileName : String);
          procedure StepOut;
-         procedure StepOutInSource(const sourceFileName : UnicodeString);
-         procedure StepToLine(line : Integer; const sourceFileName : UnicodeString);
+         procedure StepOutInSource(const sourceFileName : String);
+         procedure StepToLine(line : Integer; const sourceFileName : String);
 
          procedure ClearSuspendConditions;
 
-         function Evaluate(const expression : UnicodeString; scriptPos : PScriptPos = nil) : IdwsEvaluateExpr;
-         function EvaluateAsString(const expression : UnicodeString; scriptPos : PScriptPos = nil) : UnicodeString;
+         function Evaluate(const expression : String; scriptPos : PScriptPos = nil) : IdwsEvaluateExpr;
+         function EvaluateAsString(const expression : String; scriptPos : PScriptPos = nil) : String;
 
          function AllowedActions : TdwsDebuggerActions;
 
@@ -366,9 +366,9 @@ type
 
    TBreakpointBits = class(TBits)
       private
-         FSourceName : UnicodeString;
+         FSourceName : String;
       public
-         property SourceName : UnicodeString read FSourceName write FSourceName;
+         property SourceName : String read FSourceName write FSourceName;
    end;
 
    TNamesBitsHash = TSimpleNameObjectHash<TBreakpointBits>;
@@ -383,7 +383,7 @@ type
          FLastBreakpointLines : TBreakpointBits;
 
       protected
-         function GetSourceLines(const sourceName : UnicodeString) : TBits; inline;
+         function GetSourceLines(const sourceName : String) : TBits; inline;
 
          procedure EnumeratorCallback(parent, expr : TExprBase; var abort : Boolean);
          procedure RegisterScriptPos(const scriptPos : TScriptPos);
@@ -398,10 +398,10 @@ type
          constructor Create(const prog : IdwsProgram);
          destructor Destroy; override;
 
-         property SourceLines[const sourceName : UnicodeString] : TBits read GetSourceLines;
+         property SourceLines[const sourceName : String] : TBits read GetSourceLines;
          function Count : Integer; inline;
 
-         function IsExecutable(const sourceName : UnicodeString; line : Integer) : Boolean;
+         function IsExecutable(const sourceName : String; line : Integer) : Boolean;
 
          procedure Enumerate(destinationList : TStrings);
    end;
@@ -434,7 +434,7 @@ type
       procedure EnterFunc(exec : TdwsExecution; funcExpr : TExprBase);
       procedure LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase);
       function  LastDebugStepExpr : TExprBase;
-      procedure DebugMessage(const msg : UnicodeString);
+      procedure DebugMessage(const msg : String);
       procedure NotifyException(exec : TdwsExecution; const exceptObj : IScriptObj);
    end;
    {$endif}
@@ -550,7 +550,7 @@ end;
 
 // DebugMessage
 //
-procedure TSynchronizedThreadedDebugger.DebugMessage(const msg : UnicodeString);
+procedure TSynchronizedThreadedDebugger.DebugMessage(const msg : String);
 begin
    Synchronize(procedure begin FMain.DebugMessage(msg) end);
 end;
@@ -608,7 +608,7 @@ end;
 
 // DebugMessage
 //
-procedure TdwsSimpleDebugger.DebugMessage(const msg : UnicodeString);
+procedure TdwsSimpleDebugger.DebugMessage(const msg : String);
 begin
    if Assigned(FOnDebugMessage) then
       FOnDebugMessage(msg);
@@ -816,7 +816,7 @@ end;
 
 // StepDetailedInSource
 //
-procedure TdwsDebugger.StepDetailedInSource(const sourceFileName : UnicodeString);
+procedure TdwsDebugger.StepDetailedInSource(const sourceFileName : String);
 var
    step : TdwsDSCStepDetail;
 begin
@@ -836,7 +836,7 @@ end;
 
 // StepOverInSource
 //
-procedure TdwsDebugger.StepOverInSource(const sourceFileName : UnicodeString);
+procedure TdwsDebugger.StepOverInSource(const sourceFileName : String);
 var
    step : TdwsDSCStepOver;
 begin
@@ -857,7 +857,7 @@ end;
 
 // StepOutInSource
 //
-procedure TdwsDebugger.StepOutInSource(const sourceFileName : UnicodeString);
+procedure TdwsDebugger.StepOutInSource(const sourceFileName : String);
 var
    step : TdwsDSCStepOut;
 begin
@@ -871,7 +871,7 @@ end;
 
 // StepToLine
 //
-procedure TdwsDebugger.StepToLine(line : Integer; const sourceFileName : UnicodeString);
+procedure TdwsDebugger.StepToLine(line : Integer; const sourceFileName : String);
 var
    step : TdwsDSCStepToLine;
 begin
@@ -903,7 +903,7 @@ end;
 
 // Evaluate
 //
-function TdwsDebugger.Evaluate(const expression : UnicodeString; scriptPos : PScriptPos = nil) : IdwsEvaluateExpr;
+function TdwsDebugger.Evaluate(const expression : String; scriptPos : PScriptPos = nil) : IdwsEvaluateExpr;
 begin
    Assert(daCanEvaluate in AllowedActions, 'Evaluate not allowed');
 
@@ -914,7 +914,7 @@ end;
 
 // EvaluateAsString
 //
-function TdwsDebugger.EvaluateAsString(const expression : UnicodeString; scriptPos : PScriptPos = nil) : UnicodeString;
+function TdwsDebugger.EvaluateAsString(const expression : String; scriptPos : PScriptPos = nil) : String;
 var
    expr : IdwsEvaluateExpr;
 begin
@@ -1094,7 +1094,7 @@ end;
 
 // Add
 //
-procedure TdwsDebuggerBreakpoints.Add(aLine : Integer; const aSourceName : UnicodeString);
+procedure TdwsDebuggerBreakpoints.Add(aLine : Integer; const aSourceName : String);
 var
    bp : TdwsDebuggerBreakpoint;
 begin
@@ -1386,7 +1386,7 @@ end;
 
 // SetExpressionText
 //
-procedure TdwsDebuggerWatch.SetExpressionText(const val : UnicodeString);
+procedure TdwsDebuggerWatch.SetExpressionText(const val : String);
 begin
    if FExpressionText<>val then begin
       FExpressionText:=val;
@@ -1408,7 +1408,7 @@ end;
 
 // Add
 //
-function TdwsDebuggerWatches.Add(const exprText : UnicodeString) : TdwsDebuggerWatch;
+function TdwsDebuggerWatches.Add(const exprText : String) : TdwsDebuggerWatch;
 begin
    Result:=TdwsDebuggerWatch.Create;
    Result.ExpressionText:=exprText;
@@ -1453,7 +1453,7 @@ end;
 
 // Create
 //
-constructor TdwsDebuggerTempValueSymbol.Create(const name : UnicodeString; typ : TTypeSymbol);
+constructor TdwsDebuggerTempValueSymbol.Create(const name : String; typ : TTypeSymbol);
 begin
    inherited;
    SetLength(FData, Size);
@@ -1503,11 +1503,11 @@ end;
 
 // IsExecutable
 //
-function TdwsBreakpointableLines.IsExecutable(const sourceName : UnicodeString; line : Integer) : Boolean;
+function TdwsBreakpointableLines.IsExecutable(const sourceName : String; line : Integer) : Boolean;
 var
    bits : TBits;
 begin
-   bits:=FSources.Objects[sourceName];
+   bits:=FSources.Objects[UnicodeLowerCase(sourceName)];
    if bits<>nil then
       Result:=(Cardinal(line)<Cardinal(bits.Size)) and bits[line]
    else Result:=False;
@@ -1530,7 +1530,7 @@ end;
 
 // GetSourceLines
 //
-function TdwsBreakpointableLines.GetSourceLines(const sourceName : UnicodeString) : TBits;
+function TdwsBreakpointableLines.GetSourceLines(const sourceName : String) : TBits;
 begin
    Result:=FSources.Objects[UnicodeLowerCase(sourceName)];
 end;
@@ -1547,7 +1547,7 @@ end;
 //
 procedure TdwsBreakpointableLines.RegisterScriptPos(const scriptPos : TScriptPos);
 
-   function CountLines(const src : UnicodeString) : Integer;
+   function CountLines(const src : String) : Integer;
    var
       i : Integer;
       p : PWideChar;

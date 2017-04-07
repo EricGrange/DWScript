@@ -20,8 +20,8 @@ unit dwsJSON;
 interface
 
 uses
-   Classes, SysUtils, Variants, Math,
-   dwsUtils, dwsXPlatform, dwsXXHash;
+   Classes, SysUtils, Math,
+   dwsUtils, dwsXPlatform, dwsXXHash, dwsUnicode;
 
 type
 
@@ -59,10 +59,15 @@ type
          procedure BeginArray(const aName : UnicodeString); overload; inline;
          procedure EndArray; virtual;
 
-         function  WriteName(const aName : UnicodeString) : TdwsJSONWriter; inline;
+         function  WriteName(const aName : UnicodeString) : TdwsJSONWriter; overload; inline;
          function  WriteNameP(const aName : PWideChar) : TdwsJSONWriter; virtual;
          procedure WriteString(const str : UnicodeString); overload; inline;
          procedure WriteString(const name, str : UnicodeString); overload; inline;
+         {$ifdef FPC}
+         function  WriteName(const aName : String) : TdwsJSONWriter; overload; inline;
+         procedure WriteString(const str : String); overload; inline;
+         procedure WriteString(const name, str : String); overload; inline;
+         {$endif}
          procedure WriteStringP(const p : PWideChar);
          procedure WriteNumber(const n : Double); overload;
          procedure WriteNumber(const name : UnicodeString; const n : Double); overload; inline;
@@ -70,12 +75,13 @@ type
          procedure WriteInteger(const name : UnicodeString; const n : Int64); overload; inline;
          procedure WriteBoolean(b : Boolean); overload;
          procedure WriteBoolean(const name : UnicodeString; b : Boolean); overload; inline;
-         procedure WriteNull; overload;
+         procedure WriteNull;
 
          // ISO 8601 Date Time
-         procedure WriteDate(dt : TDateTime); overload;
+         procedure WriteDate(dt : TDateTime; utc : Boolean = False);
 
          procedure WriteStrings(const str : TStrings); overload;
+         procedure WriteStrings(const str : TUnicodeStringList); overload;
          procedure WriteStrings(const str : array of UnicodeString); overload;
 
          procedure WriteJSON(const json : UnicodeString);
@@ -125,27 +131,27 @@ type
          Line : Integer;
          FTrailCharacter : WideChar;
          DuplicatesOption : TdwsJSONDuplicatesOptions;
-         UnifyStrings : Boolean;
+         UnifyUnicodeStrings : Boolean;
 
          function ParseEscapedCharacter : WideChar;
 
       public
          constructor Create(const aStr : UnicodeString);
 
-         function Location : UnicodeString;
+         function Location : String;
 
          property TrailCharacter : WideChar read FTrailCharacter write FTrailCharacter;
          function NeedChar : WideChar; inline;
          function SkipBlanks(currentChar : WideChar) : WideChar; inline;
 
-         procedure ParseJSONString(initialChar : WideChar; var result : UnicodeString);
+         procedure ParseJSONUnicodeString(initialChar : WideChar; var result : UnicodeString);
          procedure ParseHugeJSONNumber(initialChars : PWideChar; initialCharCount : Integer; var result : Double);
          procedure ParseJSONNumber(initialChar : WideChar; var result : Double);
 
          // reads from [ to ]
          procedure ParseIntegerArray(dest : TSimpleInt64List);
          procedure ParseNumberArray(dest : TSimpleDoubleList);
-         procedure ParseStringArray(dest : TStringList);
+         procedure ParseStringArray(dest : TUnicodeStringList);
    end;
 
    TdwsJSONValueType = (jvtUndefined, jvtNull, jvtObject, jvtArray, jvtString, jvtNumber, jvtBoolean);
@@ -216,7 +222,7 @@ type
 
          class function ParseString(const json : UnicodeString;
                                     duplicatesOption : TdwsJSONDuplicatesOptions = jdoOverwrite) : TdwsJSONValue; static;
-         class function ParseFile(const fileName : UnicodeString) : TdwsJSONValue; static;
+         class function ParseFile(const fileName : TFileName) : TdwsJSONValue; static;
 
          function  Clone : TdwsJSONValue;
          procedure Extend(other : TdwsJSONValue);
@@ -225,7 +231,8 @@ type
          procedure WriteToStream(aStream : TStream); overload;
          procedure WriteToStream(aStream : TWriteOnlyBlockStream); overload;
 
-         function  ToUnicodeString : UnicodeString; reintroduce;
+         function  ToString : String; override; final;
+         function  ToUnicodeString : UnicodeString;
          function  ToBeautifiedString(initialTabs : Integer = 0; indentTabs : Integer = 1) : UnicodeString;
 
          procedure Detach;
@@ -505,16 +512,16 @@ end;
 
 // Location
 //
-function TdwsJSONParserState.Location : UnicodeString;
+function TdwsJSONParserState.Location : String;
 begin
    if (Line=0) then begin
-      Result:=UnicodeFormat('line 1, col %d',
+      Result:=Format('line 1, col %d',
                             [(NativeUInt(Ptr)-NativeUInt(ColStart)) div SizeOf(WideChar)]);
    end else begin
-      Result:=UnicodeFormat('line %d, col %d (offset %d)',
-                            [Line+1,
-                             (NativeUInt(Ptr)-NativeUInt(ColStart)) div SizeOf(WideChar),
-                             (NativeUInt(Ptr)-NativeUInt(PWideChar(Str))) div SizeOf(WideChar)]);
+      Result:=Format('line %d, col %d (offset %d)',
+                     [Line+1,
+                      (NativeUInt(Ptr)-NativeUInt(ColStart)) div SizeOf(WideChar),
+                      (NativeUInt(Ptr)-NativeUInt(PWideChar(Str))) div SizeOf(WideChar)]);
    end;
 end;
 
@@ -571,9 +578,9 @@ begin
    end;
 end;
 
-// ParseJSONString
+// ParseJSONUnicodeString
 //
-procedure TdwsJSONParserState.ParseJSONString(initialChar : WideChar; var result : UnicodeString);
+procedure TdwsJSONParserState.ParseJSONUnicodeString(initialChar : WideChar; var result : UnicodeString);
 var
    c : WideChar;
    wobs : TWriteOnlyBlockStream;
@@ -592,8 +599,8 @@ begin
             #0..#31 :
                if c=#0 then begin
                   Ptr:=startPr;
-                  TdwsJSONValue.RaiseJSONParseError('Unterminated string')
-               end else TdwsJSONValue.RaiseJSONParseError('Invalid string character %s', c);
+                  TdwsJSONValue.RaiseJSONParseError('Unterminated UnicodeString')
+               end else TdwsJSONValue.RaiseJSONParseError('Invalid UnicodeString character %s', c);
             '"' : Break;
             '\' : localBufferPtr^:=ParseEscapedCharacter;
          else
@@ -623,8 +630,10 @@ begin
    finally
       wobs.ReturnToPool;
    end;
-   if UnifyStrings then
+   {$ifndef FPC}
+   if UnifyUnicodeStrings then
       Result:=UnifiedString(Result);
+   {$endif}
 end;
 
 // ParseJSONNumber
@@ -632,20 +641,20 @@ end;
 procedure TdwsJSONParserState.ParseHugeJSONNumber(
       initialChars : PWideChar; initialCharCount : Integer; var result : Double);
 var
-   buf : UnicodeString;
+   buf : String;
    c : WideChar;
 begin
    SetString(buf, initialChars, initialCharCount);
    repeat
-      c:=NeedChar();
+      c := NeedChar();
       case c of
-         '0'..'9', '-', '+', 'e', 'E', '.' : buf:=buf+WideChar(c);
+         '0'..'9', '-', '+', 'e', 'E', '.' : buf := buf + Char(c);
       else
-         TrailCharacter:=c;
+         TrailCharacter := c;
          Break;
       end;
    until False;
-   Result:=StrToFloat(String(buf), vJSONFormatSettings);
+   Result:=StrToFloat(buf, vJSONFormatSettings);
 end;
 
 // ParseJSONNumber
@@ -719,7 +728,7 @@ begin
          end;
    end;
    bufPtr^:=#0;
-   TryTextToFloat(PWideChar(@buf[0]), resultBuf, vJSONFormatSettings);
+   TryTextToFloatW(PWideChar(@buf[0]), resultBuf, vJSONFormatSettings);
    Result:=resultBuf;
 end;
 
@@ -791,7 +800,7 @@ end;
 
 // ParseStringArray
 //
-procedure TdwsJSONParserState.ParseStringArray(dest : TStringList);
+procedure TdwsJSONParserState.ParseStringArray(dest : TUnicodeStringList);
 var
    c : WideChar;
    buf : UnicodeString;
@@ -804,7 +813,7 @@ begin
       Exit;
    repeat
       if c='"' then begin
-         ParseJSONString(c, buf);
+         ParseJSONUnicodeString(c, buf);
          dest.Add(buf);
       end else begin
          raise EdwsJSONParseError.CreateFmt('Unexpected character U+%.04x', [Ord(c)]);
@@ -873,10 +882,8 @@ begin
             destStream.WriteString('\\');
          Ord('/') : // XSS protection when used for inline scripts in HTML
             destStream.WriteString('\/');
-         {$ifndef FPC}
          $100..$FFFF :
             WriteUTF16(destStream, Ord(c));
-         {$endif}
       else
          destStream.Write(p^, SizeOf(WideChar));
       end;
@@ -966,7 +973,7 @@ begin
    Result:=nil;
    parserState := TdwsJSONParserState.Create(json);
    try
-      parserState.UnifyStrings := (Length(json) >= cAutoUnifierTreshold);
+      parserState.UnifyUnicodeStrings := (Length(json) >= cAutoUnifierTreshold);
       try
          parserState.DuplicatesOption:=duplicatesOption;
          Result:=TdwsJSONValue.Parse(parserState);
@@ -978,7 +985,7 @@ begin
          raise;
       end;
    finally
-      if parserState.UnifyStrings then
+      if parserState.UnifyUnicodeStrings then
          TidyStringsUnifier;
       parserState.Free;
    end;
@@ -986,7 +993,7 @@ end;
 
 // ParseFile
 //
-class function TdwsJSONValue.ParseFile(const fileName : UnicodeString) : TdwsJSONValue;
+class function TdwsJSONValue.ParseFile(const fileName : TFileName) : TdwsJSONValue;
 begin
    Result:=ParseString(LoadTextFromFile(fileName));
 end;
@@ -1042,6 +1049,13 @@ begin
    finally
       writer.Free;
    end;
+end;
+
+// ToString
+//
+function TdwsJSONValue.ToString : String;
+begin
+   Result := String(ToUnicodeString);
 end;
 
 // ToUnicodeString
@@ -1142,7 +1156,7 @@ end;
 function TdwsJSONValue.GetValue(const index : Variant) : TdwsJSONValue;
 begin
    if Assigned(Self) then begin
-      if VarIsOrdinal(index) then
+      if VariantIsOrdinal(index) then
          Result:=Elements[index]
       else Result:=Items[index];
    end else Result:=nil;
@@ -1153,7 +1167,7 @@ end;
 procedure TdwsJSONValue.SetValue(const index : Variant; const aValue : TdwsJSONValue);
 begin
    Assert(Assigned(Self));
-   if VarIsOrdinal(index) then
+   if VariantIsOrdinal(index) then
       Elements[index]:=aValue
    else Items[index]:=aValue;
 end;
@@ -1552,7 +1566,7 @@ begin
    end;
 end;
 
-// AddValue (string)
+// AddValue (UnicodeString)
 //
 function TdwsJSONObject.AddValue(const name, value : UnicodeString) : TdwsJSONImmediate;
 begin
@@ -1654,7 +1668,7 @@ begin
 
    end else if value<>nil then begin
 
-      Add(IntToStrU(index), value);
+      Add(Int32ToStrU(index), value);
 
    end;
 end;
@@ -1722,7 +1736,7 @@ begin
          if FCount=0 then Break;
          RaiseJSONParseError('Invalid object pair name start character "%s"', c)
       end;
-      parserState.ParseJSONString(c, name);
+      parserState.ParseJSONUnicodeString(c, name);
       c:=parserState.SkipBlanks(parserState.NeedChar());
       if c<>':' then
          RaiseJSONParseError('Invalid object pair name separator character "%s"', c);
@@ -2071,16 +2085,16 @@ end;
 //
 function TdwsJSONArray.DoGetName(index : Integer) : UnicodeString;
 begin
-   if Cardinal(index)<Cardinal(FCount) then
-      Result:=IntToStr(index)
-   else Result:='';
+   if Cardinal(index) < Cardinal(FCount) then
+      Result := Int32ToStrU(index)
+   else Result := '';
 end;
 
 // DoGetElement
 //
 function TdwsJSONArray.DoGetElement(index : Integer) : TdwsJSONValue;
 begin
-   if Cardinal(index)<Cardinal(FCount) then
+   if Cardinal(index) < Cardinal(FCount) then
       Result:=TdwsJSONValue(FElements^[index])
    else Result:=nil;
 end;
@@ -2129,7 +2143,7 @@ function TdwsJSONArray.DoGetItem(const name : UnicodeString) : TdwsJSONValue;
 var
    i : Integer;
 begin
-   i:=StrToIntDef(name, -1);
+   i := StrUToInt64(name, -1);
    Result:=DoGetElement(i);
 end;
 
@@ -2139,7 +2153,8 @@ procedure TdwsJSONArray.DoSetItem(const name : UnicodeString; const value : Tdws
 var
    i : Integer;
 begin
-   if not TryStrToInt(name, i) then
+   i := StrUToInt64(name, -1);
+   if i < 0 then
       raise EdwsJSONException.CreateFmt('Invalid array member "%s"', [name])
    else DoSetElement(i, value);
 end;
@@ -2211,7 +2226,7 @@ end;
 destructor TdwsJSONImmediate.Destroy;
 begin
    if FType=jvtString then
-      PString(@FData)^:='';
+      PUnicodeString(@FData)^:='';
    inherited;
 end;
 
@@ -2221,9 +2236,9 @@ function TdwsJSONImmediate.GetAsString : UnicodeString;
 begin
    if Assigned(Self) then
       case FType of
-         jvtNull : Result:='null';
-         jvtString : Result:=PString(@FData)^;
-         jvtNumber : Result:=FloatToStr(FData);
+         jvtNull : Result := 'null';
+         jvtString : Result := PUnicodeString(@FData)^;
+         jvtNumber : Result := UnicodeString(FloatToStr(FData));
          jvtBoolean :
             if PBoolean(@FData)^ then
                Result:='true'
@@ -2240,7 +2255,7 @@ procedure TdwsJSONImmediate.SetAsString(const val : UnicodeString);
 begin
    if FType<>jvtString then
       PPointer(@FData)^:=nil;
-   PString(@FData)^:=val;
+   PUnicodeString(@FData)^:=val;
    FType:=jvtString;
 end;
 
@@ -2260,7 +2275,7 @@ begin
    if val<>GetIsNull then begin
       if val then begin
          if FType=jvtString then
-            PString(@FData)^:='';
+            PUnicodeString(@FData)^:='';
          FType:=jvtNull;
       end else AsString:='';
    end;
@@ -2274,7 +2289,7 @@ begin
    case FType of
       jvtBoolean : Result:=PBoolean(@FData)^;
       jvtNumber : Result:=(FData<>0);
-      jvtString : Result:=(PString(@FData)^='true');
+      jvtString : Result:=(PUnicodeString(@FData)^='true');
    else
       Result:=False;
    end;
@@ -2285,7 +2300,7 @@ end;
 procedure TdwsJSONImmediate.SetAsBoolean(const val : Boolean);
 begin
    if FType=jvtString then
-      PString(@FData)^:='';
+      PUnicodeString(@FData)^:='';
    PBoolean(@FData)^:=val;
    FType:=jvtBoolean;
 end;
@@ -2298,7 +2313,7 @@ begin
    case FType of
       jvtBoolean : if PBoolean(@FData)^ then Result:=-1 else Result:=0;
       jvtNumber : Result:=FData;
-      jvtString : Result:=StrToFloatDef(PString(@FData)^, 0)
+      jvtString : Result := StrToFloatDef(String(PUnicodeString(@FData)^), 0)
    else
       Result:=0;
    end;
@@ -2309,7 +2324,7 @@ end;
 procedure TdwsJSONImmediate.SetAsNumber(const val : Double);
 begin
    if FType=jvtString then
-      PString(@FData)^:='';
+      PUnicodeString(@FData)^:='';
    FData:=val;
    FType:=jvtNumber;
 end;
@@ -2342,7 +2357,7 @@ begin
    parserState.TrailCharacter:=' ';
    case initialChar of
       '"' : begin
-         parserState.ParseJSONString(initialChar, PUnicodeString(@FData)^);
+         parserState.ParseJSONUnicodeString(initialChar, PUnicodeString(@FData)^);
          FType:=jvtString;
       end;
       '0'..'9', '-' : begin
@@ -2380,7 +2395,7 @@ begin
    Result:=vImmediate.Create;
    TdwsJSONImmediate(Result).FType:=FType;
    if FType=jvtString then
-      PString(@TdwsJSONImmediate(Result).FData)^:=PString(@FData)^
+      PUnicodeString(@TdwsJSONImmediate(Result).FData)^:=PUnicodeString(@FData)^
    else PInt64(@TdwsJSONImmediate(Result).FData)^:=PInt64(@FData)^;
 end;
 
@@ -2399,7 +2414,7 @@ begin
       jvtUndefined, jvtNull :
          Result:=True;
       jvtString :
-         Result:=PString(@FData)^='';
+         Result:=PUnicodeString(@FData)^='';
       jvtNumber :
          Result:=FData=0;
       jvtBoolean :
@@ -2430,7 +2445,7 @@ begin
       jvtNumber :
          writer.WriteNumber(FData);
       jvtString :
-         writer.WriteString(PString(@FData)^);
+         writer.WriteString(PUnicodeString(@FData)^);
    else
       Assert(False, 'Unsupported type');
    end;
@@ -2485,12 +2500,12 @@ end;
 procedure TdwsJSONImmediate.GetAsVariant(var result : Variant);
 begin
    case FType of
-      jvtNull : Result:=Null;
-      jvtString : Result:=PString(@FData)^;
-      jvtNumber : Result:=FData;
-      jvtBoolean : Result:=PBoolean(@FData)^;
+      jvtNull : VarSetNull(Result);
+      jvtString : VarCopySafe(Result, PUnicodeString(@FData)^);
+      jvtNumber : VarCopySafe(Result, FData);
+      jvtBoolean : VarCopySafe(Result, PBoolean(@FData)^);
    else
-      Result:=Unassigned;
+      VarClearSafe(Result);
    end;
 end;
 
@@ -2505,18 +2520,18 @@ end;
 //
 procedure TdwsJSONImmediate.SetAsVariant(const val : Variant);
 begin
-   case VarType(val) of
+   case VariantType(val) of
       varNull : IsNull:=True;
       varUString : AsString:=val;
       varDouble : AsNumber:=val;
       varBoolean : AsBoolean:=val;
    else
-      if VarIsNumeric(val) then
-         AsNumber:=Double(val)
-      else if VarIsStr(val) then
-         AsString:=UnicodeString(val)
+      if VariantIsString(val) then
+         AsString := VariantToUnicodeString(val)
+      else if VariantIsFloat(val) or VariantIsOrdinal(val) then
+         AsNumber := VariantToFloat(val)
       else raise EdwsJSONException.CreateFmt('Unsupported VarType in FromVariant (%d)',
-                                             [VarType(val)]);
+                                             [VariantType(val)]);
    end;
 end;
 
@@ -2648,6 +2663,29 @@ begin
    WriteStringP(PWideChar(Pointer(str)));
 end;
 
+{$ifdef FPC}
+// WriteName
+//
+function TdwsJSONWriter.WriteName(const aName : String) : TdwsJSONWriter;
+begin
+   Result:=WriteName(UnicodeString(aName));
+end;
+
+// WriteString
+//
+procedure TdwsJSONWriter.WriteString(const str : String);
+begin
+   WriteString(UnicodeString(str));
+end;
+
+// WriteString
+//
+procedure TdwsJSONWriter.WriteString(const name, str : String);
+begin
+   WriteName(UnicodeString(name)).WriteString(UnicodeString(str));
+end;
+{$endif}
+
 // WriteString
 //
 procedure TdwsJSONWriter.WriteString(const name, str : UnicodeString);
@@ -2669,7 +2707,7 @@ end;
 procedure TdwsJSONWriter.WriteNumber(const n : Double);
 begin
    BeforeWriteImmediate;
-   FStream.WriteString(FloatToStr(n, vJSONFormatSettings));
+   FStream.WriteString(UnicodeString(FloatToStr(n, vJSONFormatSettings)));
    AfterWriteImmediate;
 end;
 
@@ -2725,7 +2763,7 @@ end;
 
 // WriteDate
 //
-procedure TdwsJSONWriter.WriteDate(dt : TDateTime);
+procedure TdwsJSONWriter.WriteDate(dt : TDateTime; utc : Boolean = False);
 var
    y, m, d, h, n, s, z : Word;
 begin
@@ -2755,7 +2793,9 @@ begin
       FStream.WriteDigits(s, 2);
    end;
 
-   FStream.WriteChar('"');
+   if utc then
+      FStream.WriteString('Z"')
+   else FStream.WriteChar('"');
 
    AfterWriteImmediate;
 end;
@@ -2763,6 +2803,18 @@ end;
 // WriteStrings
 //
 procedure TdwsJSONWriter.WriteStrings(const str : TStrings);
+var
+   i : Integer;
+begin
+   BeginArray;
+   for i:=0 to str.Count-1 do
+      WriteString(UnicodeString(str[i]));
+   EndArray;
+end;
+
+// WriteStrings
+//
+procedure TdwsJSONWriter.WriteStrings(const str : TUnicodeStringList);
 var
    i : Integer;
 begin
@@ -2797,7 +2849,7 @@ end;
 //
 function TdwsJSONWriter.ToString : String;
 begin
-   Result:=FStream.ToUnicodeString;
+   Result:=FStream.ToString;
 end;
 
 // ToUnicodeString
@@ -2859,7 +2911,7 @@ end;
 //
 procedure TdwsJSONBeautifiedWriter.WriteIndents;
 begin
-   FStream.WriteString(StringOfChar(#9, FTabs));
+   FStream.WriteString(UnicodeString(StringOfChar(#9, FTabs)));
 end;
 
 // EnterIndent
@@ -2951,8 +3003,20 @@ end;
 // ToString
 //
 function TdwsJSONValueList.ToString : String;
+var
+   wr : TdwsJSONWriter;
+   wobs : TWriteOnlyBlockStream;
 begin
-   Result := ToUnicodeString;
+   if Count=0 then Exit('[]');
+   wobs:=TWriteOnlyBlockStream.AllocFromPool;
+   wr:=TdwsJSONWriter.Create(wobs);
+   try
+      WriteTo(wr);
+      Result:=wobs.ToString;
+   finally
+      wr.Free;
+      wobs.ReturnToPool;
+   end;
 end;
 
 // ToUnicodeString

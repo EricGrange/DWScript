@@ -15,6 +15,8 @@
 {**********************************************************************}
 unit dwsXPlatformTests;
 
+{$I dws.inc}
+
 interface
 
 uses
@@ -31,8 +33,10 @@ type
    {$ifdef FPC}
    TTestCase = class (fpcunit.TTestCase)
       public
+         procedure CheckEquals(const expected, actual: String; const msg: String = ''); overload;
          procedure CheckEquals(const expected, actual: UnicodeString; const msg: String = ''); overload;
          procedure CheckEquals(const expected : String; const actual: UnicodeString; const msg: String = ''); overload;
+         procedure CheckEquals(const expected : String; const actual: Variant; const msg: String = ''); overload;
    end;
 
    ETestFailure = class (Exception);
@@ -73,15 +77,25 @@ end;
 // CheckEquals
 //
 {$ifdef FPC}
+procedure TTestCase.CheckEquals(const expected, actual: String; const msg: String = '');
+begin
+   AssertTrue(msg + ComparisonMsg(expected, actual),
+              (expected = actual));
+end;
 procedure TTestCase.CheckEquals(const expected, actual: UnicodeString; const msg: String = '');
 begin
-   AssertTrue(msg + ComparisonMsg(UTF8Encode(expected), UTF8Encode(actual)),
+   AssertTrue(msg + ComparisonMsg(String(expected), String(actual)),
               UnicodeCompareStr(expected, actual) = 0);
 end;
 procedure TTestCase.CheckEquals(const expected : String; const actual: UnicodeString; const msg: String = '');
 begin
-   AssertTrue(msg + ComparisonMsg(UTF8Encode(expected), UTF8Encode(actual)),
-              AnsiCompareStr(expected, UTF8Encode(actual)) = 0);
+   AssertTrue(msg + ComparisonMsg(expected, String(actual)),
+              UnicodeCompareStr(UnicodeString(expected), actual) = 0);
+end;
+procedure TTestCase.CheckEquals(const expected : String; const actual: Variant; const msg: String = '');
+begin
+   AssertTrue(msg + ComparisonMsg(expected, actual),
+              AnsiCompareStr(expected, actual) = 0);
 end;
 
 {$else}

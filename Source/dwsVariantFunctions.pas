@@ -62,7 +62,7 @@ type
    end;
 
    TVarToStrFunc = class(TInternalMagicStringFunction)
-      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
       procedure CompileTimeCheck(context : TdwsCompilerContext; expr : TFuncExprBase); override;
    end;
 
@@ -158,12 +158,12 @@ end;
 
 // DoEvalAsString
 //
-procedure TVarToStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+procedure TVarToStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 var
    v : Variant;
 begin
    args.ExprBase[0].EvalAsVariant(args.Exec, v);
-   Result:=VarToUnicodeStr(v);
+   VariantToString(v, Result);
 end;
 
 // CompileTimeCheck
@@ -179,7 +179,7 @@ end;
 procedure InitVariants(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                        unitTable : TSymbolTable);
 type
-   TVarTypeRec = packed record n : UnicodeString; v : Word; end;
+   TVarTypeRec = packed record n : String; v : Word; end;
 const
    cVarTypes : array [0..25] of TVarTypeRec = (
       (n:'Empty'; v:varEmpty),         (n:'Null'; v:varNull),

@@ -42,8 +42,8 @@ type
       procedure SetAsFloat(addr : Integer; const value : Double);
       function GetAsBoolean(addr : Integer) : Boolean;
       procedure SetAsBoolean(addr : Integer; const value : Boolean);
-      function GetAsString(addr : Integer) : UnicodeString;
-      procedure SetAsString(addr : Integer; const value : UnicodeString);
+      function GetAsString(addr : Integer) : String;
+      procedure SetAsString(addr : Integer; const value : String);
       function GetAsInterface(addr : Integer) : IUnknown;
       procedure SetAsInterface(addr : Integer; const value : IUnknown);
 
@@ -62,11 +62,11 @@ type
       property  AsInteger[addr : Integer] : Int64 read GetAsInteger write SetAsInteger;
       property  AsBoolean[addr : Integer] : Boolean read GetAsBoolean write SetAsBoolean;
       property  AsFloat[addr : Integer] : Double read GetAsFloat write SetAsFloat;
-      property  AsString[addr : Integer] : UnicodeString read GetAsString write SetAsString;
+      property  AsString[addr : Integer] : String read GetAsString write SetAsString;
       property  AsInterface[addr : Integer] : IUnknown read GetAsInterface write SetAsInterface;
 
       procedure EvalAsVariant(addr : Integer; var result : Variant);
-      procedure EvalAsString(addr : Integer; var result : UnicodeString);
+      procedure EvalAsString(addr : Integer; var result : String);
       procedure EvalAsInterface(addr : Integer; var result : IUnknown);
 
       procedure CopyData(const destData : TData; destAddr, size : Integer);
@@ -120,8 +120,8 @@ type
          procedure SetAsFloat(addr : Integer; const value : Double); inline;
          function GetAsBoolean(addr : Integer) : Boolean; inline;
          procedure SetAsBoolean(addr : Integer; const value : Boolean); inline;
-         function GetAsString(addr : Integer) : UnicodeString; inline;
-         procedure SetAsString(addr : Integer; const value : UnicodeString); inline;
+         function GetAsString(addr : Integer) : String; inline;
+         procedure SetAsString(addr : Integer; const value : String); inline;
          function GetAsInterface(addr : Integer) : IUnknown; inline;
          procedure SetAsInterface(addr : Integer; const value : IUnknown); inline;
 
@@ -148,13 +148,13 @@ type
          procedure CreateOffset(offset : Integer; var result : IDataContext);
 
          procedure EvalAsVariant(addr : Integer; var result : Variant); inline;
-         procedure EvalAsString(addr : Integer; var result : UnicodeString); inline;
+         procedure EvalAsString(addr : Integer; var result : String); inline;
          procedure EvalAsInterface(addr : Integer; var result : IUnknown); inline;
 
          property  AsInteger[addr : Integer] : Int64 read GetAsInteger write SetAsInteger;
          property  AsBoolean[addr : Integer] : Boolean read GetAsBoolean write SetAsBoolean;
          property  AsFloat[addr : Integer] : Double read GetAsFloat write SetAsFloat;
-         property  AsString[addr : Integer] : UnicodeString read GetAsString write SetAsString;
+         property  AsString[addr : Integer] : String read GetAsString write SetAsString;
          property  AsInterface[addr : Integer] : IUnknown read GetAsInterface write SetAsInterface;
 
          procedure InternalCopyData(destAddr, sourceAddr, size : Integer); inline;
@@ -170,9 +170,6 @@ type
          procedure SetDataLength(n : Integer);
 
          function  HashCode(size : Integer) : Cardinal;
-
-         function ToString : String; override; deprecated 'Use ToUnicodeString'; final;
-         function ToUnicodeString : UnicodeString; virtual;
    end;
 
    TGetPDataFunc = function : PData of object;
@@ -181,8 +178,6 @@ type
       private
          FGetPData : TGetPDataFunc;
          FAddr : Integer;
-
-         function ToUnicodeString : UnicodeString;
 
       public
          constructor Create(const getPData : TGetPDataFunc; addr : Integer);
@@ -197,8 +192,8 @@ type
          procedure SetAsFloat(addr : Integer; const value : Double);
          function GetAsBoolean(addr : Integer) : Boolean;
          procedure SetAsBoolean(addr : Integer; const value : Boolean);
-         function GetAsString(addr : Integer) : UnicodeString;
-         procedure SetAsString(addr : Integer; const value : UnicodeString);
+         function GetAsString(addr : Integer) : String;
+         procedure SetAsString(addr : Integer; const value : String);
          function GetAsInterface(addr : Integer) : IUnknown;
          procedure SetAsInterface(addr : Integer; const value : IUnknown);
 
@@ -213,7 +208,7 @@ type
          procedure CreateOffset(offset : Integer; var result : IDataContext);
 
          procedure EvalAsVariant(addr : Integer; var result : Variant);
-         procedure EvalAsString(addr : Integer; var result : UnicodeString);
+         procedure EvalAsString(addr : Integer; var result : String);
          procedure EvalAsInterface(addr : Integer; var result : IUnknown);
 
          procedure CopyData(const destData : TData; destAddr, size : Integer);
@@ -300,7 +295,7 @@ begin
          varDouble :
             Result:=TVarData(v1).VDouble=TVarData(v2).VDouble;
          varUString :
-            Result:=UnicodeString(TVarData(v1).VString)=UnicodeString(TVarData(v2).VString);
+            Result:=String(TVarData(v1).VString)=String(TVarData(v2).VString);
          varUnknown :
             Result:=TVarData(v1).VUnknown=TVarData(v2).VUnknown;
       else
@@ -332,7 +327,7 @@ begin
       end;
       varUString : begin
          if p.VString <> nil then begin
-            buf := SimpleStringHash(UnicodeString(p.VString));
+            buf := SimpleStringHash(String(p.VString));
             k := @buf;
          end else buf := 0;
          n := 4;
@@ -475,20 +470,6 @@ begin
       FPool.Push(Self);
 end;
 
-// ToString
-//
-function TDataContext.ToString : String;
-begin
-   Result := ToUnicodeString;
-end;
-
-// ToUnicodeString
-//
-function TDataContext.ToUnicodeString : UnicodeString;
-begin
-   Result := ClassName;
-end;
-
 // CreateStandalone
 //
 constructor TDataContext.CreateStandalone(size : Integer);
@@ -592,24 +573,24 @@ end;
 
 // GetAsString
 //
-function TDataContext.GetAsString(addr : Integer) : UnicodeString;
+function TDataContext.GetAsString(addr : Integer) : String;
 begin
    EvalAsString(addr, Result);
 end;
 
 // SetAsString
 //
-procedure TDataContext.SetAsString(addr : Integer; const value : UnicodeString);
+procedure TDataContext.SetAsString(addr : Integer; const value : String);
 var
    p : PVarData;
 begin
    p:=@FData[FAddr+addr];
    {$ifdef FPC}
    if p.VType=varString then
-      UnicodeString(p.VString):=value
+      String(p.VString):=value
    {$else}
    if p.VType=varUString then
-      UnicodeString(p.VUString):=value
+      String(p.VUString):=value
    {$endif}
    else VarCopySafe(PVariant(p)^, value);
 end;
@@ -713,13 +694,13 @@ end;
 
 // EvalAsString
 //
-procedure TDataContext.EvalAsString(addr : Integer; var result : UnicodeString);
+procedure TDataContext.EvalAsString(addr : Integer; var result : String);
 var
    p : PVarData;
 begin
    p:=@FData[FAddr+addr];
    if p.VType=varUString then
-      result:=UnicodeString(p.VString)
+      result:=String(p.VString)
    else VariantToString(PVariant(p)^, result);
 end;
 
@@ -898,14 +879,14 @@ end;
 
 // GetAsString
 //
-function TRelativeDataContext.GetAsString(addr : Integer) : UnicodeString;
+function TRelativeDataContext.GetAsString(addr : Integer) : String;
 begin
    Result := FGetPData^[FAddr+addr];
 end;
 
 // SetAsString
 //
-procedure TRelativeDataContext.SetAsString(addr : Integer; const value : UnicodeString);
+procedure TRelativeDataContext.SetAsString(addr : Integer; const value : String);
 begin
    VarCopySafe(FGetPData^[FAddr+addr], value);
 end;
@@ -982,7 +963,7 @@ end;
 
 // EvalAsString
 //
-procedure TRelativeDataContext.EvalAsString(addr : Integer; var result : UnicodeString);
+procedure TRelativeDataContext.EvalAsString(addr : Integer; var result : String);
 begin
    result := FGetPData^[FAddr+addr];
 end;
@@ -1027,13 +1008,6 @@ end;
 function TRelativeDataContext.HashCode(size : Integer) : Cardinal;
 begin
    Result:=DWSHashCode(FGetPData^, FAddr, size);
-end;
-
-// ToUnicodeString
-//
-function TRelativeDataContext.ToUnicodeString : UnicodeString;
-begin
-   Result := ClassName;
 end;
 
 end.

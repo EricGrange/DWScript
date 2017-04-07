@@ -71,7 +71,7 @@ type
 
    // String(variant x)
    TConvVarToStringExpr = class (TUnaryOpStringExpr)
-     procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
+     procedure EvalAsString(exec : TdwsExecution; var result : String); override;
    end;
 
    // Boolean(int x)
@@ -226,7 +226,7 @@ class function TConvExpr.WrapWithConvCast(context : TdwsCompilerContext; const s
 
    procedure ReportIncompatibleTypes;
    var
-      cleft, cright: UnicodeString;
+      cleft, cright: String;
    begin
       if reportError='' then Exit;
       if toTyp = nil then
@@ -417,7 +417,7 @@ end;
 
 // EvalAsString
 //
-procedure TConvVarToStringExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
+procedure TConvVarToStringExpr.EvalAsString(exec : TdwsExecution; var result : String);
 var
    v : Variant;
 begin

@@ -19,7 +19,7 @@ unit dwsOverviewDlg;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   Dialogs, ComCtrls, ImgList, ToolWin, StdCtrls, TypInfo,
   dwsExprs, dwsScriptSource, dwsSymbolDictionary, dwsSymbols, dwsUtils,
   dwsJSON;

@@ -22,12 +22,12 @@ unit dwsUtils;
 interface
 
 uses
-   Classes, SysUtils, Variants, Types, StrUtils, Masks,
+   Classes, SysUtils, Types, StrUtils, Masks, Variants,
    dwsStrings, dwsXPlatform, Math, dwsXXHash;
 
 type
 
-   TStringDynArray = array of UnicodeString;
+   TStringDynArray = array of String;
    TInt64DynArray = array of Int64;
 
    TInt64Array = array [0..High(MaxInt) shr 4] of Int64;
@@ -49,9 +49,6 @@ type
          function  DecRefCount : Integer;
          property  RefCount : Integer read GetRefCount write SetRefCount;
          procedure Free;
-
-         function ToString : String; override; deprecated 'Use ToUnicodeString'; final;
-         function ToUnicodeString : UnicodeString; virtual;
    end;
    PRefCountedObject = ^TRefCountedObject;
 
@@ -60,7 +57,7 @@ type
    IGetSelf = interface
       ['{77D8EA0B-311C-422B-B8DE-AA5BDE726E41}']
       function GetSelf : TObject;
-      function ToUnicodeString : UnicodeString;
+      function ToString : String;
    end;
 
    // TInterfacedSelfObject
@@ -131,7 +128,7 @@ type
       private
          FIntegers : array of Int64;
          FFloats : array of Extended;
-         FStrings : array of UnicodeString;
+         FStrings : array of String;
 
          function AddVarRec : PVarRec;
 
@@ -145,7 +142,7 @@ type
          procedure AddBoolean(const b : Boolean);
          procedure AddInteger(const i : Int64);
          procedure AddFloat(const f : Double);
-         procedure AddString(const s : UnicodeString);
+         procedure AddString(const s : String);
 
          procedure Initialize;
    end;
@@ -252,15 +249,15 @@ type
          FCount : Integer;
 
       protected
-         function GetItems(i : Integer) : UnicodeString; inline;
-         procedure SetItems(i : Integer; const s : UnicodeString); inline;
+         function GetItems(i : Integer) : String; inline;
+         procedure SetItems(i : Integer; const s : String); inline;
 
       public
-         procedure Add(const s : UnicodeString);
-         function IndexOf(const s : UnicodeString) : Integer;
+         procedure Add(const s : String);
+         function IndexOf(const s : String) : Integer;
          procedure Clear;
 
-         property Items[i : Integer] : UnicodeString read GetItems write SetItems; default;
+         property Items[i : Integer] : String read GetItems write SetItems; default;
          property Count : Integer read FCount;
    end;
 
@@ -461,7 +458,7 @@ type
 
    TNameObjectHashBucket = record
       HashCode : Cardinal;
-      Name : UnicodeString;
+      Name : String;
       Obj : TObject;
    end;
    PNameObjectHashBucket = ^TNameObjectHashBucket;
@@ -479,40 +476,40 @@ type
          procedure Grow;
          procedure Resize(newSize : Integer);
 
-         function GetHashedIndex(const aName : UnicodeString; aHash : Cardinal) : Integer;
-         function GetIndex(const aName : UnicodeString) : Integer;
+         function GetHashedIndex(const aName : String; aHash : Cardinal) : Integer;
+         function GetIndex(const aName : String) : Integer;
 
-         function GetHashedObjects(const aName : UnicodeString; aHash : Cardinal) : TObject; inline;
-         function GetObjects(const aName : UnicodeString) : TObject; inline;
+         function GetHashedObjects(const aName : String; aHash : Cardinal) : TObject; inline;
+         function GetObjects(const aName : String) : TObject; inline;
 
-         procedure SetHashedObjects(const aName : UnicodeString; aHash : Cardinal; obj : TObject); inline;
-         procedure SetObjects(const aName : UnicodeString; obj : TObject); inline;
+         procedure SetHashedObjects(const aName : String; aHash : Cardinal; obj : TObject); inline;
+         procedure SetObjects(const aName : String; obj : TObject); inline;
 
          function GetBucket(index : Integer) : PNameObjectHashBucket; inline;
 
          function GetBucketObject(index : Integer) : TObject; inline;
          procedure SetBucketObject(index : Integer; obj : TObject); inline;
-         function GetBucketName(index : Integer) : UnicodeString; inline;
+         function GetBucketName(index : Integer) : String; inline;
 
       public
          constructor Create(initialCapacity : Integer = 0);
 
-         class function HashName(const aName : UnicodeString) : Cardinal; static; inline;
-         function AddObject(const aName : UnicodeString; aObj : TObject; replace : Boolean = False) : Boolean;
-         function AddHashedObject(const aName : UnicodeString; aHash : Cardinal; aObj : TObject; replace : Boolean = False) : Boolean;
+         class function HashName(const aName : String) : Cardinal; static; inline;
+         function AddObject(const aName : String; aObj : TObject; replace : Boolean = False) : Boolean;
+         function AddHashedObject(const aName : String; aHash : Cardinal; aObj : TObject; replace : Boolean = False) : Boolean;
 
          procedure Clean;
          procedure Clear;
          procedure Pack;
 
-         property Objects[const aName : UnicodeString] : TObject read GetObjects write SetObjects; default;
-         property HashedObjects[const aName : UnicodeString; aHash : Cardinal] : TObject read GetHashedObjects write SetHashedObjects;
+         property Objects[const aName : String] : TObject read GetObjects write SetObjects; default;
+         property HashedObjects[const aName : String; aHash : Cardinal] : TObject read GetHashedObjects write SetHashedObjects;
 
          property Bucket[index : Integer] : PNameObjectHashBucket read GetBucket;
          property BucketObject[index : Integer] : TObject read GetBucketObject write SetBucketObject;
-         property BucketName[index : Integer] : UnicodeString read GetBucketName;
-         property BucketIndex[const aName : UnicodeString] : Integer read GetIndex;
-         property BucketHashedIndex[const aName : UnicodeString; aHash : Cardinal] : Integer read GetHashedIndex;
+         property BucketName[index : Integer] : String read GetBucketName;
+         property BucketIndex[const aName : String] : Integer read GetIndex;
+         property BucketHashedIndex[const aName : String; aHash : Cardinal] : Integer read GetHashedIndex;
 
          property Count : Integer read FCount;
          property HighIndex : Integer read FHighIndex;
@@ -527,28 +524,28 @@ type
          FHash : TNameObjectHash;
 
       protected
-         function GetIndex(const aName : UnicodeString) : Integer; inline;
-         function GetObjects(const aName : UnicodeString) : T; inline;
-         procedure SetObjects(const aName : UnicodeString; obj : T); inline;
+         function GetIndex(const aName : String) : Integer; inline;
+         function GetObjects(const aName : String) : T; inline;
+         procedure SetObjects(const aName : String; obj : T); inline;
          function GetBucketObject(index : Integer) : T; inline;
          procedure SetBucketObject(index : Integer; obj : T); inline;
-         function GetBucketName(index : Integer) : UnicodeString; inline;
+         function GetBucketName(index : Integer) : String; inline;
 
       public
          constructor Create(initialCapacity : Integer = 0);
          destructor Destroy; override;
 
-         function AddObject(const aName : UnicodeString; aObj : T; replace : Boolean = False) : Boolean; inline;
+         function AddObject(const aName : String; aObj : T; replace : Boolean = False) : Boolean; inline;
 
          procedure Clean; inline;
          procedure Clear; inline;
          procedure Pack; inline;
 
-         property Objects[const aName : UnicodeString] : T read GetObjects write SetObjects; default;
+         property Objects[const aName : String] : T read GetObjects write SetObjects; default;
 
          property BucketObject[index : Integer] : T read GetBucketObject write SetBucketObject;
-         property BucketName[index : Integer] : UnicodeString read GetBucketName;
-         property BucketIndex[const aName : UnicodeString] : Integer read GetIndex;
+         property BucketName[index : Integer] : String read GetBucketName;
+         property BucketIndex[const aName : String] : Integer read GetIndex;
 
          function Count : Integer; inline;
          function HighIndex : Integer; inline;
@@ -563,7 +560,7 @@ type
       type
          TObjectObjectHashBucket = record
             HashCode : Cardinal;
-            Name : UnicodeString;
+            Name : String;
             Key : TKey;
             Value : TValue;
          end;
@@ -597,7 +594,7 @@ type
 
    TStringUnifierBucket = record
       Hash : Cardinal;
-      Str : UnicodeString;
+      Str : String;
    end;
    PStringUnifierBucket = ^TStringUnifierBucket;
    TStringUnifierBuckets = array of TStringUnifierBucket;
@@ -617,8 +614,8 @@ type
       public
          constructor Create;
 
-         procedure UnifyAssign(const aString : UnicodeString; var unifiedString : UnicodeString); inline;
-         procedure UnifyAssignP(p : PWideChar; size : Integer; var unifiedString : UnicodeString);
+         procedure UnifyAssign(const aString : String; var unifiedString : String); inline;
+         procedure UnifyAssignP(p : PChar; size : Integer; var unifiedString : String);
 
          property Count : Integer read FCount;
          procedure Clear;
@@ -737,8 +734,11 @@ type
          procedure WriteInt32(const i : Integer); inline;
          procedure WriteDWord(const dw : DWORD); inline;
 
-         // must be strictly an utf16 UnicodeString
+         // must be strictly an utf16 String
          procedure WriteString(const utf16String : UnicodeString); overload; inline;
+         {$ifdef FPC}
+         procedure WriteString(const s : String); overload; inline;
+         {$endif}
          procedure WriteString(const i : Int32); overload; inline;
          procedure WriteString(const i : Int64); overload; inline;
          procedure WriteSubString(const utf16String : UnicodeString; startPos : Integer); overload;
@@ -749,7 +749,7 @@ type
          procedure WriteChar(utf16Char : WideChar); inline;
          procedure WriteDigits(value : Int64; digits : Integer);
 
-         {$ifndef FPC}function ToString : String; override; deprecated 'use ToUnicodeString'; final;{$endif}
+         function ToString : String; override; final;
          function ToUnicodeString : UnicodeString;
          function ToUTF8String : RawByteString;
          function ToBytes : TBytes;
@@ -782,19 +782,19 @@ type
          function Sum : Double;
    end;
 
-   TSimpleStringHash = class(TSimpleHash<UnicodeString>)
+   TSimpleStringHash = class(TSimpleHash<String>)
       protected
-         function SameItem(const item1, item2 : UnicodeString) : Boolean; override;
-         function GetItemHashCode(const item1 : UnicodeString) : Integer; override;
+         function SameItem(const item1, item2 : String) : Boolean; override;
+         function GetItemHashCode(const item1 : String) : Integer; override;
    end;
 
    TFastCompareTextList = class (TStringList)
       {$ifdef FPC}
       function DoCompareText(const s1,s2 : String) : PtrInt; override;
       {$else}
-      function CompareStrings(const S1, S2: UnicodeString): Integer; override;
-      function FindName(const name : UnicodeString; var index : Integer) : Boolean;
-      function IndexOfName(const name : UnicodeString): Integer; override;
+      function CompareStrings(const S1, S2: String): Integer; override;
+      function FindName(const name : String; var index : Integer) : Boolean;
+      function IndexOfName(const name : String): Integer; override;
       {$endif}
    end;
 
@@ -821,24 +821,24 @@ type
 
    TStringIterator = class
       private
-         FStr : UnicodeString;
-         FPStr : PWideChar;
+         FStr : String;
+         FPStr : PChar;
          FPosition : Integer;
          FLength : Integer;
 
       public
-         constructor Create(const s : UnicodeString);
+         constructor Create(const s : String);
 
-         function Current : WideChar; inline;
+         function Current : Char; inline;
          function EOF : Boolean; inline;
          procedure Next; inline;
          procedure SkipWhiteSpace;
 
-         function CollectQuotedString : UnicodeString;
-         function CollectAlphaNumeric : UnicodeString;
+         function CollectQuotedString : String;
+         function CollectAlphaNumeric : String;
          function CollectInteger : Int64;
 
-         property Str : UnicodeString read FStr;
+         property Str : String read FStr;
          property Length : Integer read FLength write FLength;
    end;
 
@@ -846,7 +846,7 @@ type
 
    EdwsVariantTypeCastError = class(EVariantTypeCastError)
       public
-         constructor Create(const v : Variant; const desiredType : UnicodeString;
+         constructor Create(const v : Variant; const desiredType : String;
                             originalException : Exception);
    end;
 
@@ -888,15 +888,22 @@ const
 function AcquireUnifier : TStringUnifier;
 procedure ReleaseUnifier(unifier : TStringUnifier);
 
-procedure UnifyAssignString(const fromStr : UnicodeString; var toStr : UnicodeString); inline;
-procedure UnifyAssignP(p : PWideChar; size : Integer; var toStr : UnicodeString);
-procedure UnifyAssignChar(p : PWideChar; var toStr : UnicodeString);
-function  UnifiedString(const fromStr : UnicodeString) : UnicodeString; inline;
+procedure UnifyAssignString(const fromStr : String; var toStr : String); inline;
+procedure UnifyAssignP(p : PChar; size : Integer; var toStr : String);
+procedure UnifyAssignChar(p : PChar; var toStr : String);
+function  UnifiedString(const fromStr : String) : String; inline;
 function  TidyStringsUnifier : Integer;
 
 function UnicodeCompareLen(p1, p2 : PWideChar; n : Integer) : Integer;
-function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
-function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
+function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer; overload;
+function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean; overload;
+function UnicodeCompareStr(const s1, s2 : UnicodeString) : Integer; overload; inline;
+
+{$ifdef FPC}
+function UnicodeCompareText(const s1, s2 : String) : Integer; overload;
+function UnicodeCompareStr(const s1, s2 : String) : Integer; overload; inline;
+function UnicodeSameText(const s1, s2 : String) : Boolean; overload;
+{$endif}
 
 function AsciiCompareLen(p1, p2 : PAnsiChar; n : Integer) : Integer; overload;
 function AsciiCompareText(p : PAnsiChar; const s : RawByteString) : Integer;
@@ -904,39 +911,43 @@ function AsciiSameText(p : PAnsiChar; const s : RawByteString) : Boolean;
 
 function PosA(const sub, main : RawByteString) : Integer; inline;
 
-function StrIsASCII(const s : UnicodeString) : Boolean;
+function StrIsASCII(const s : String) : Boolean;
 
-function StrNonNilLength(const aString : UnicodeString) : Integer; inline;
+function StrNonNilLength(const aString : String) : Integer; inline;
 
-function StrIBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
-function StrBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
+function StrIBeginsWith(const aStr, aBegin : String) : Boolean;
+function StrBeginsWith(const aStr, aBegin : String) : Boolean;
 function StrBeginsWithA(const aStr, aBegin : RawByteString) : Boolean;
 function StrBeginsWithBytes(const aStr : RawByteString; const bytes : array of Byte) : Boolean;
-function StrIEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
+function StrIEndsWith(const aStr, aEnd : String) : Boolean;
 function StrIEndsWithA(const aStr, aEnd : RawByteString) : Boolean;
-function StrEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
+function StrEndsWith(const aStr, aEnd : String) : Boolean;
 function StrEndsWithA(const aStr, aEnd : RawByteString) : Boolean;
-function StrContains(const aStr, aSubStr : UnicodeString) : Boolean; overload;
-function StrContains(const aStr : UnicodeString; aChar : WideChar) : Boolean; overload;
-function StrIndexOfChar(const aStr : UnicodeString; aChar : WideChar) : Integer;
+function StrContains(const aStr, aSubStr : String) : Boolean; overload;
+function StrContains(const aStr : String; aChar : Char) : Boolean; overload;
+function StrIndexOfChar(const aStr : String; aChar : Char) : Integer;
 function LowerCaseA(const aStr : RawByteString) : RawByteString;
 
-function StrMatches(const aStr, aMask : UnicodeString) : Boolean;
+function StrMatches(const aStr, aMask : String) : Boolean;
 
-function StrDeleteLeft(const aStr : UnicodeString; n : Integer) : UnicodeString;
-function StrDeleteRight(const aStr : UnicodeString; n : Integer) : UnicodeString;
+function StrDeleteLeft(const aStr : String; n : Integer) : String; inline;
+function StrDeleteRight(const aStr : String; n : Integer) : String; inline;
 
-function StrAfterChar(const aStr : UnicodeString; aChar : WideChar) : UnicodeString;
-function StrBeforeChar(const aStr : UnicodeString; aChar : WideChar) : UnicodeString;
+function StrAfterChar(const aStr : String; aChar : WideChar) : String;
+function StrBeforeChar(const aStr : String; aChar : WideChar) : String;
 
-function StrReplaceChar(const aStr : UnicodeString; oldChar, newChar : WideChar) : UnicodeString;
+function StrReplaceChar(const aStr : String; oldChar, newChar : WideChar) : String;
 
-function StrCountChar(const aStr : UnicodeString; c : WideChar) : Integer;
+function StrCountChar(const aStr : String; c : WideChar) : Integer;
 
 function Min(a, b : Integer) : Integer; inline;
 
 function WhichPowerOfTwo(const v : Int64) : Integer;
 
+{$ifdef FPC}
+function SimpleStringHash(const s : String) : Cardinal; overload;
+function SimpleStringHash(p : PAnsiChar; sizeInChars : Integer) : Cardinal; overload;
+{$endif}
 function SimpleStringHash(const s : UnicodeString) : Cardinal; overload; inline;
 function SimpleStringHash(p : PWideChar; sizeInChars : Integer) : Cardinal; overload; inline;
 function SimpleByteHash(p : PByte; n : Integer) : Cardinal;
@@ -945,57 +956,81 @@ function SimpleIntegerHash(x : Cardinal) : Cardinal;
 function SimplePointerHash(x : Pointer) : Cardinal;
 function SimpleInt64Hash(x : Int64) : Cardinal;
 
-function RawByteStringToScriptString(const s : RawByteString) : UnicodeString; overload; inline;
-procedure RawByteStringToScriptString(const s : RawByteString; var result : UnicodeString); inline; overload;
-procedure BytesToScriptString(const p : PByte; n : Integer; var result : UnicodeString);
-function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString; overload; inline;
-procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
+function RawByteStringToScriptString(const s : RawByteString) : String; overload; inline;
+procedure RawByteStringToScriptString(const s : RawByteString; var result : String); inline; overload;
+procedure BytesToScriptString(const p : PByte; n : Integer; var result : String);
+function ScriptStringToRawByteString(const s : String) : RawByteString; overload; inline;
+procedure ScriptStringToRawByteString(const s : String; var result : RawByteString); overload;
 
-procedure StringBytesToWords(var buf : UnicodeString; swap : Boolean);
-procedure StringWordsToBytes(var buf : UnicodeString; swap : Boolean);
-
-type
-   EHexEncodingException = class (Exception);
-
-function BinToHex(const data; n : Integer) : UnicodeString; overload;
-function BinToHex(const data : RawByteString) : UnicodeString; overload; inline;
-
-function HexToBin(const data : UnicodeString) : RawByteString; overload;
+procedure StringBytesToWords(var buf : String; swap : Boolean);
+procedure StringWordsToBytes(var buf : String; swap : Boolean);
 
 type
-   TInt64StringBuffer = array [0..21] of WideChar;
-   TInt32StringBuffer = array [0..11] of WideChar;
+   EHexEncodingException = class (Exception)
+   end;
+
+function BinToHex(const data; n : Integer) : String; overload;
+function BinToHex(const data : RawByteString) : String; overload; inline;
+
+function HexToBin(const data : String) : RawByteString; overload;
+
+type
+   TInt64StringBuffer = array [0..21] of Char;
+   TInt32StringBuffer = array [0..11] of Char;
 
 function FastInt32ToBuffer(const val : Int32; var buf : TInt32StringBuffer) : Integer;
 function FastInt64ToBuffer(const val : Int64; var buf : TInt64StringBuffer) : Integer;
-procedure FastInt64ToStr(const val : Int64; var s : UnicodeString); overload;
-function  FastInt64ToStr(const val : Int64) : UnicodeString; overload; inline;
-procedure FastInt64ToHex(val : Int64; digits : Integer; var s : UnicodeString);
+procedure FastInt64ToStr(const val : Int64; var s : String); overload;
+function  FastInt64ToStr(const val : Int64) : String; overload; inline;
+procedure FastInt64ToHex(val : Int64; digits : Integer; var s : String);
 
-function Int64ToHex(val : Int64; digits : Integer) : UnicodeString; inline;
-function IntToStrU(const val : Integer) : UnicodeString; inline;
+function  Int32ToStrU(val : Integer) : UnicodeString;
+function  StrUToInt64(const s : UnicodeString; const default : Int64) : Int64;
+
+function Int64ToHex(val : Int64; digits : Integer) : String; inline;
 
 function DivMod100(var dividend : Cardinal) : Cardinal;
 
-procedure FastStringReplace(var str : UnicodeString; const sub, newSub : UnicodeString);
+procedure FastStringReplace(var str : UnicodeString; const sub, newSub : UnicodeString); overload;
+{$ifdef FPC}
+procedure FastStringReplace(var str : String; const sub, newSub : String); overload;
+{$endif}
 
+procedure VariantToString(const v : Variant; var s : String); overload;
+{$ifdef FPC}
 procedure VariantToString(const v : Variant; var s : UnicodeString); overload;
-function VariantToString(const v : Variant) : UnicodeString; overload; inline;
-procedure VariantToInt64(const v : Variant; var r : Int64);
-function VariantToBool(const v : Variant) : Boolean;
-function VariantToFloat(const v : Variant) : Double;
+{$endif}
+function  VariantToString(const v : Variant) : String; overload; inline;
+function  VariantToUnicodeString(const v : Variant) : UnicodeString; inline;
+procedure VariantToInt64(const v : Variant; var r : Int64); overload;
+function  VariantToInt64(const v : Variant) : Int64; overload; inline;
+function  VariantToBool(const v : Variant) : Boolean;
+function  VariantToFloat(const v : Variant) : Double;
+
+function  VariantType(const v : Variant) : TVarType; inline;
+function  VariantIsOrdinal(const v : Variant) : Boolean; inline;
+function  VariantIsFloat(const v : Variant) : Boolean; inline;
+function  VariantIsString(const v : Variant) : Boolean; inline;
+function  VariantIsArray(const v : Variant) : Boolean; inline;
 
 procedure VarClearSafe(var v : Variant);
 procedure VarCopySafe(var dest : Variant; const src : Variant); overload;
 procedure VarCopySafe(var dest : Variant; const src : IUnknown); overload;
 procedure VarCopySafe(var dest : Variant; const src : IDispatch); overload;
 procedure VarCopySafe(var dest : Variant; const src : Int64); overload;
+procedure VarCopySafe(var dest : Variant; const src : String); overload;
+{$ifdef FPC}
 procedure VarCopySafe(var dest : Variant; const src : UnicodeString); overload;
+{$endif}
 procedure VarCopySafe(var dest : Variant; const src : Double); overload;
 procedure VarCopySafe(var dest : Variant; const src : Boolean); overload;
 
+procedure VarSetNull(var v : Variant); inline;
 procedure VarSetDefaultInt64(var dest : Variant); inline;
 procedure VarSetDefaultString(var dest : Variant); inline;
+procedure VarSetDateTime(var dest : Variant; const dt : Double);
+
+function  VariantArrayHighBound(const v : Variant; index : Integer) : Integer; inline;
 
 procedure WriteVariant(writer: TWriter; const value: Variant);
 function ReadVariant(reader: TReader): Variant;
@@ -1003,9 +1038,9 @@ function ReadVariant(reader: TReader): Variant;
 type
    EISO8601Exception = class (Exception);
 
-function TryISO8601ToDateTime(const v : UnicodeString; var aResult : TDateTime) : Boolean;
-function ISO8601ToDateTime(const v : UnicodeString) : TDateTime;
-function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : UnicodeString;
+function TryISO8601ToDateTime(const v : String; var aResult : TDateTime) : Boolean;
+function ISO8601ToDateTime(const v : String) : TDateTime;
+function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : String;
 
 procedure dwsFreeAndNil(var O); // transitional function, do not use
 
@@ -1063,18 +1098,37 @@ begin
    else obj.Free;
 end;
 
+{$ifdef FPC}
 // SimpleStringHash
 //
-function SimpleStringHash(p : PWideChar; sizeInChars : Integer) : Cardinal; overload; inline;
+function SimpleStringHash(const s : String) : Cardinal;
 begin
-   Result := xxHash32.Full(p, sizeInChars*SizeOf(WideChar));
+   Result := SimpleStringHash(UnicodeString(s));
 end;
 
 // SimpleStringHash
 //
-function SimpleStringHash(const s : UnicodeString) : Cardinal; inline;
+function SimpleStringHash(p : PAnsiChar; sizeInChars : Integer) : Cardinal;
+var
+   s : String;
+begin
+   SetString(s, p, sizeInChars);
+   Result := SimpleStringHash(s);
+end;
+{$endif FPC}
+
+// SimpleStringHash
+//
+function SimpleStringHash(const s : UnicodeString) : Cardinal;
 begin
    Result := xxHash32.Full(Pointer(s), Length(s)*SizeOf(WideChar));
+end;
+
+// SimpleStringHash
+//
+function SimpleStringHash(p : PWideChar; sizeInChars : Integer) : Cardinal;
+begin
+   Result := xxHash32.Full(p, sizeInChars*SizeOf(WideChar));
 end;
 
 // SimpleByteHash
@@ -1134,7 +1188,7 @@ end;
 
 // StringBytesToWords
 //
-procedure StringBytesToWords(var buf : UnicodeString; swap : Boolean);
+procedure StringBytesToWords(var buf : String; swap : Boolean);
 type
    TTwoBytes = array [0..1] of Byte;
    TTwoWords = array [0..1] of Word;
@@ -1168,7 +1222,7 @@ end;
 
 // StringWordsToBytes
 //
-procedure StringWordsToBytes(var buf : UnicodeString; swap : Boolean);
+procedure StringWordsToBytes(var buf : String; swap : Boolean);
 type
    TTwoBytes = array [0..1] of Byte;
    TTwoWords = array [0..1] of Word;
@@ -1203,7 +1257,7 @@ end;
 
 // BinToHex
 //
-function BinToHex(const data; n : Integer) : UnicodeString;
+function BinToHex(const data; n : Integer) : String;
 const
    cHexDigits : array [0..15] of WideChar = (
       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
@@ -1229,14 +1283,14 @@ end;
 
 // BinToHex
 //
-function BinToHex(const data : RawByteString) : UnicodeString; overload;
+function BinToHex(const data : RawByteString) : String; overload;
 begin
    Result:=BinToHex(Pointer(data)^, Length(data));
 end;
 
 // HexToBin
 //
-function HexToBin(const data : UnicodeString) : RawByteString;
+function HexToBin(const data : String) : RawByteString;
 var
    i, n, b : Integer;
    c : WideChar;
@@ -1439,7 +1493,7 @@ end;
 // InitializeSmallIntegers
 //
 var
-   vSmallIntegers : array [0..39] of UnicodeString;
+   vSmallIntegers : array [0..39] of String;
 procedure InitializeSmallIntegers;
 var
    i : Integer;
@@ -1447,12 +1501,12 @@ begin
    // we can't use a constant array here, as obtaining a string from a constant
    // array implies a memory allocations, which would defeat the whole purpose
    for i := 0 to High(vSmallIntegers) do
-      vSmallIntegers[i] := IntToStrU(i);
+      vSmallIntegers[i] := IntToStr(i);
 end;
 
 // FastInt64ToStr
 //
-procedure FastInt64ToStr(const val : Int64; var s : UnicodeString);
+procedure FastInt64ToStr(const val : Int64; var s : String);
 var
    buf : TInt64StringBuffer;
    n : Integer;
@@ -1461,27 +1515,27 @@ begin
       s:=vSmallIntegers[Int64Rec(val).Lo]
    else begin
       n:=FastInt64ToBuffer(val, buf{%H-});
-      SetString(s, PWideChar(@buf[n]), (High(buf)+1)-n);
+      SetString(s, PChar(@buf[n]), (High(buf)+1)-n);
    end;
 end;
 
 // FastInt64ToStr
 //
-function FastInt64ToStr(const val : Int64) : UnicodeString;
+function FastInt64ToStr(const val : Int64) : String;
 begin
    FastInt64ToStr(val, Result);
 end;
 
 // FastInt64ToHex
 //
-procedure FastInt64ToHex(val : Int64; digits : Integer; var s : UnicodeString);
+procedure FastInt64ToHex(val : Int64; digits : Integer; var s : String);
 const
-   cIntToHex : array [0..15] of WideChar = (
+   cIntToHex : array [0..15] of Char = (
       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
    );
 var
-   buf : array [0..15] of WideChar;
-   p : PWideChar;
+   buf : array [0..15] of Char;
+   p : PChar;
    d, i : Integer;
 begin
    if Cardinal(digits)>16 then begin
@@ -1512,19 +1566,19 @@ begin
       p^:='0';
       Dec(p);
    end;
-   SetString(s, PWideChar(@p[1]), (NativeUInt(@buf[15])-NativeUInt(p)) div SizeOf(WideChar));
+   SetString(s, PChar(@p[1]), (NativeUInt(@buf[15])-NativeUInt(p)) div SizeOf(Char));
 end;
 
 // Int64ToHex
 //
-function Int64ToHex(val : Int64; digits : Integer) : UnicodeString;
+function Int64ToHex(val : Int64; digits : Integer) : String;
 begin
    FastInt64ToHex(val, digits, Result);
 end;
 
-// IntToStrU
+// Int32ToStrU
 //
-function IntToStrU(const val : Integer) : UnicodeString;
+function Int32ToStrU(val : Integer) : UnicodeString;
 var
    buf : TInt32StringBuffer;
    n : Integer;
@@ -1533,13 +1587,20 @@ begin
    SetString(Result, PWideChar(@buf[n]), (High(buf)+1)-n);
 end;
 
+// StrUToInt64
+//
+function StrUToInt64(const s : UnicodeString; const default : Int64) : Int64;
+begin
+   Result := StrToInt64Def(String(s), default);
+end;
+
 // FastStringReplace
 //
 procedure FastStringReplace(var str : UnicodeString; const sub, newSub : UnicodeString);
 
    procedure FallBack;
    begin
-      str := UnicodeStringReplace(str, sub, newSub, [rfReplaceAll]);
+      str := StringReplace(str, sub, newSub, [rfReplaceAll]);
    end;
 
    procedure ReplaceChars(pStr : PWideChar; oldChar, newChar : WideChar; n : Integer);
@@ -1622,30 +1683,39 @@ begin
 
    end;
 end;
+{$ifdef FPC}
+procedure FastStringReplace(var str : String; const sub, newSub : String);
+var
+   buf : String;
+begin
+   buf := StringReplace(str, sub, newSub, [rfReplaceAll]);
+   str := buf;
+end;
+{$endif}
 
 // VariantToString
 //
-procedure VariantToString(const v : Variant; var s : UnicodeString);
+procedure VariantToString(const v : Variant; var s : String);
 
-   procedure DispatchAsString(const disp : Pointer; var Result : UnicodeString);
+   procedure DispatchAsString(const disp : Pointer; var Result : String);
    begin
-      Result:=UnicodeFormat('IDispatch (%p)', [disp]);
+      Result := Format('IDispatch (%p)', [disp]);
    end;
 
-   procedure UnknownAsString(const unknown : IUnknown; var Result : UnicodeString);
+   procedure UnknownAsString(const unknown : IUnknown; var Result : String);
    var
       intf : IGetSelf;
    begin
       if unknown=nil then
          Result:='nil'
       else if unknown.QueryInterface(IGetSelf, intf)=0 then
-         Result:=intf.ToUnicodeString
-      else Result:='[IUnknown]';
+         Result := intf.ToString
+      else Result := '[IUnknown]';
    end;
 
-   procedure FloatAsString(var v : Double; var Result : UnicodeString);
+   procedure FloatAsString(var v : Double; var Result : String);
    begin
-      Result := UnicodeString(FloatToStr(v));
+      Result := FloatToStr(v);
    end;
 
 var
@@ -1655,12 +1725,12 @@ begin
    case varData^.VType of
       {$ifdef FPC}
       varString :
-         s:=UnicodeString(varData^.VString);
+         s := String(varData^.VString);
       {$else}
       varString :
          RawByteStringToScriptString(RawByteString(varData^.VString), s);
       varUString :
-         s:=UnicodeString(varData^.VUString);
+         s:=String(varData^.VUString);
       {$endif}
       varInt64 :
          FastInt64ToStr(varData^.VInt64, s);
@@ -1674,16 +1744,34 @@ begin
          s:='Null';
       varUnknown :
          UnknownAsString(IUnknown(varData^.VUnknown), s);
+      varError :
+         s := '[varError]';
    else
       s:=v;
    end;
 end;
 
+{$ifdef FPC}
 // VariantToString
 //
-function VariantToString(const v : Variant) : UnicodeString;
+procedure VariantToString(const v : Variant; var s : UnicodeString);
+begin
+   s := UnicodeString(VariantToString(v));
+end;
+{$endif FPC}
+
+// VariantToString
+//
+function VariantToString(const v : Variant) : String;
 begin
    VariantToString(v, Result);
+end;
+
+// VariantToString
+//
+function VariantToUnicodeString(const v : Variant) : UnicodeString;
+begin
+   Result := UnicodeString(VariantToString(v));
 end;
 
 // VariantToInt64
@@ -1718,6 +1806,13 @@ begin
    else
       DefaultCast;
    end;
+end;
+
+// VariantToInt64
+//
+function VariantToInt64(const v : Variant) : Int64;
+begin
+   VariantToInt64(v, Result);
 end;
 
 // VariantToBool
@@ -1760,6 +1855,44 @@ begin
    end;
 end;
 
+// VariantType
+//
+function  VariantType(const v : Variant) : TVarType; inline;
+begin
+   Result := TVarData(v).VType;
+end;
+
+// VariantIsOrdinal
+//
+function  VariantIsOrdinal(const v : Variant) : Boolean; inline;
+begin
+   Result := TVarData(v).VType in [
+      varSmallInt, varInteger, varShortInt, varByte, varWord, varLongWord, varInt64, varUInt64,
+      varBoolean
+      ];
+end;
+
+// VariantIsFloat
+//
+function  VariantIsFloat(const v : Variant) : Boolean; inline;
+begin
+   Result := VarIsFloat(v);
+end;
+
+// VariantIsString
+//
+function  VariantIsString(const v : Variant) : Boolean; inline;
+begin
+   Result := VarIsStr(v);
+end;
+
+// VariantIsArray
+//
+function  VariantIsArray(const v : Variant) : Boolean; inline;
+begin
+   Result := VarIsArray(v, False);
+end;
+
 // VarClearSafe
 //
 procedure VarClearSafe(var v : Variant);
@@ -1786,7 +1919,7 @@ begin
       end;
       varUString : begin
          TVarData(v).VType:=varEmpty;
-         UnicodeString(TVarData(v).VString):='';
+         String(TVarData(v).VString):='';
       end;
    else
       VarClear(v);
@@ -1830,7 +1963,7 @@ begin
       varUString : begin
          {$ifdef DEBUG} Assert(TVarData(dest).VUString=nil); {$endif}
          TVarData(dest).VType:=varUString;
-         UnicodeString(TVarData(dest).VString):=UnicodeString(TVarData(src).VString);
+         String(TVarData(dest).VString):=String(TVarData(src).VString);
       end;
       varSmallint..varSingle, varCurrency..varDate, varError, varShortInt..varLongWord, varUInt64 : begin
          TVarData(dest).VType := TVarData(src).VType;
@@ -1841,6 +1974,14 @@ begin
    else
       dest:=src;
    end;
+end;
+
+// VarSetNull
+//
+procedure VarSetNull(var v : Variant);
+begin
+   VarClearSafe(v);
+   TVarData(v).VType := varNull;
 end;
 
 // VarCopySafe (iunknown)
@@ -1875,13 +2016,22 @@ end;
 
 // VarCopySafe (string)
 //
-procedure VarCopySafe(var dest : Variant; const src : UnicodeString);
+procedure VarCopySafe(var dest : Variant; const src : String);
 begin
    VarClearSafe(dest);
 
    TVarData(dest).VType:=varUString;
-   UnicodeString(TVarData(dest).VString):=src;
+   String(TVarData(dest).VString):=src;
 end;
+
+{$ifdef FPC}
+// VarCopySafe (unicode)
+//
+procedure VarCopySafe(var dest : Variant; const src : UnicodeString);
+begin
+   VarCopySafe(dest, String(src));
+end;
+{$endif}
 
 // VarCopySafe (double)
 //
@@ -1923,6 +2073,22 @@ begin
    TVarData(dest).VString := nil;
 end;
 
+// VarSetDateTime
+//
+procedure VarSetDateTime(var dest : Variant; const dt : Double);
+begin
+   VarClearSafe(dest);
+   TVarData(dest).VType := varDate;
+   TVarData(dest).VDate := dt;
+end;
+
+// VariantArrayHighBound
+//
+function  VariantArrayHighBound(const v : Variant; index : Integer) : Integer;
+begin
+   Result := VarArrayHighBound(v, index);
+end;
+
 // WriteVariant
 //
 procedure WriteVariant(writer: TWriter; const value: Variant);
@@ -1938,9 +2104,9 @@ begin
          writer.WriteInteger(PVarData(@value).VInt64);
       varUString :
          {$ifdef FPC}
-         writer.WriteUnicodeString(UnicodeString(PVarData(@value).VString));
+         Assert(False, 'varUString not supported in FPC');
          {$else}
-         writer.WriteString(UnicodeString(PVarData(@value).VUString));
+         writer.WriteString(String(PVarData(@value).VUString));
          {$endif}
       varDouble :
          writer.WriteFloat(PVarData(@value).VDouble);
@@ -1952,8 +2118,10 @@ begin
          WriteValue(vaNull);
       varByte, varSmallInt, varInteger :
          writer.WriteInteger(value);
-      varString, varOleStr :
+      varString :
          writer.WriteString(value);
+      varOleStr :
+         writer.WriteWideString(value);
       varSingle :
          writer.WriteSingle(value);
       varCurrency :
@@ -2014,7 +2182,7 @@ begin
       vaCurrency: TVarData(Result).VCurrency := reader.ReadCurrency;
       vaDate: TVarData(Result).VDate := reader.ReadDate;
       vaString, vaLString, vaUTF8String:
-         Result := UnicodeString(reader.ReadString);
+         Result := String(reader.ReadString);
       vaWString: Result := reader.ReadString;
       vaFalse, vaTrue:
          TVarData(Result).VBoolean := (reader.ReadValue = vaTrue);
@@ -2026,7 +2194,7 @@ end;
 
 // DateTimeToISO8601
 //
-function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : UnicodeString;
+function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : String;
 var
    buf : array [0..31] of WideChar;
    p : PWideChar;
@@ -2076,7 +2244,7 @@ end;
 
 // ISO8601ToDateTime
 //
-function ISO8601ToDateTime(const v : UnicodeString) : TDateTime;
+function ISO8601ToDateTime(const v : String) : TDateTime;
 var
    p : PWideChar;
 
@@ -2176,7 +2344,7 @@ end;
 
 // TryISO8601ToDateTime
 //
-function TryISO8601ToDateTime(const v : UnicodeString; var aResult : TDateTime) : Boolean;
+function TryISO8601ToDateTime(const v : String; var aResult : TDateTime) : Boolean;
 begin
    try
       aResult:=ISO8601ToDateTime(v);
@@ -2213,14 +2381,14 @@ end;
 
 // RawByteStringToScriptString
 //
-function RawByteStringToScriptString(const s : RawByteString) : UnicodeString;
+function RawByteStringToScriptString(const s : RawByteString) : String;
 begin
    RawByteStringToScriptString(s, Result);
 end;
 
 // RawByteStringToScriptString
 //
-procedure RawByteStringToScriptString(const s : RawByteString; var result : UnicodeString); overload;
+procedure RawByteStringToScriptString(const s : RawByteString; var result : String); overload;
 begin
    if s='' then begin
       result:='';
@@ -2231,7 +2399,7 @@ end;
 
 // BytesToScriptString
 //
-procedure BytesToScriptString(const p : PByte; n : Integer; var result : UnicodeString);
+procedure BytesToScriptString(const p : PByte; n : Integer; var result : String);
 var
    pSrc : PByteArray;
    pDest : PWordArray;
@@ -2257,14 +2425,14 @@ end;
 
 // ScriptStringToRawByteString
 //
-function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString;
+function ScriptStringToRawByteString(const s : String) : RawByteString;
 begin
    ScriptStringToRawByteString(s, Result);
 end;
 
 // ScriptStringToRawByteString
 //
-procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
+procedure ScriptStringToRawByteString(const s : String; var result : RawByteString); overload;
 type
   PByteArray = ^TByteArray;
   TByteArray = array[0..maxInt shr 1] of Byte;
@@ -2296,7 +2464,7 @@ end;
 
 var
    vUnifiedStrings : array [0..1] of Pointer;
-   vUnifiedCharacters : array [0..Ord(TStringUnifier.HighestUnifiedChar)] of UnicodeString;
+   vUnifiedCharacters : array [0..Ord(TStringUnifier.HighestUnifiedChar)] of String;
 
 // ------------------
 // ------------------ TStringUnifier ------------------
@@ -2312,14 +2480,14 @@ end;
 
 // UnifyAssign
 //
-procedure TStringUnifier.UnifyAssign(const aString : UnicodeString; var unifiedString : UnicodeString);
+procedure TStringUnifier.UnifyAssign(const aString : String; var unifiedString : String);
 begin
    UnifyAssignP(Pointer(aString), Length(aString), unifiedString);
 end;
 
 // UnifyAssignP
 //
-procedure TStringUnifier.UnifyAssignP(p : PWideChar; size : Integer; var unifiedString : UnicodeString);
+procedure TStringUnifier.UnifyAssignP(p : PChar; size : Integer; var unifiedString : String);
 var
    i : Integer;
    h : Cardinal;
@@ -2342,7 +2510,7 @@ begin
    repeat
       bucket := @FBuckets[i];
       if bucket^.Hash = h then begin
-         if (Length(bucket^.Str)=size) and CompareMem(p, Pointer(bucket^.Str), size*SizeOf(WideChar)) then begin
+         if (Length(bucket^.Str)=size) and CompareMem(p, Pointer(bucket^.Str), size*SizeOf(Char)) then begin
             unifiedString := bucket^.Str;
             Exit;
          end;
@@ -2399,26 +2567,22 @@ begin
 end;
 
 // ------------------
-// ------------------ UnicodeString Unifier ------------------
+// ------------------ String Unifier ------------------
 // ------------------
 
+{$IFNDEF FPC}
 type
-   {$IFNDEF FPC}
    {$IF CompilerVersion > 22}
    TStringListList = TStringItemList;
    {$ELSE}
    TStringListList = PStringItemList;
    {$IFEND}
-   {$ELSE}
-   TStringListList = PStringItemList;
-   {$ENDIF}
 
-   {$ifndef FPC}
    TStringListCracker = class (TStrings)
       private
          FList : TStringListList;
    end;
-   {$endif}
+{$ENDIF}
 
 // InitializeStringsUnifier
 //
@@ -2432,7 +2596,7 @@ begin
    end;
 
    for i := Low(vUnifiedCharacters) to High(vUnifiedCharacters) do
-      vUnifiedCharacters[i] := WideChar(Ord(i));
+      vUnifiedCharacters[i] := Char(Ord(i));
 end;
 
 // FinalizeStringsUnifier
@@ -2469,14 +2633,14 @@ end;
 
 // UnifyAssignString
 //
-procedure UnifyAssignString(const fromStr : UnicodeString; var toStr : UnicodeString);
+procedure UnifyAssignString(const fromStr : String; var toStr : String);
 begin
    UnifyAssignP(Pointer(fromStr), Length(fromStr), toStr);
 end;
 
 // UnifyAssignP
 //
-procedure UnifyAssignP(p : PWideChar; size : Integer; var toStr : UnicodeString);
+procedure UnifyAssignP(p : PChar; size : Integer; var toStr : String);
 var
    su : TStringUnifier;
 begin
@@ -2499,7 +2663,7 @@ end;
 
 // UnifyAssignChar
 //
-procedure UnifyAssignChar(p : PWideChar; var toStr : UnicodeString);
+procedure UnifyAssignChar(p : PChar; var toStr : String);
 begin
    if Cardinal(Ord(p^)) <= Cardinal(High(vUnifiedCharacters)) then
       toStr := vUnifiedCharacters[Ord(p^)]
@@ -2508,7 +2672,7 @@ end;
 
 // UnifiedString
 //
-function UnifiedString(const fromStr : UnicodeString) : UnicodeString;
+function UnifiedString(const fromStr : String) : String;
 begin
    UnifyAssignString(fromStr, Result);
 end;
@@ -2570,8 +2734,8 @@ var
    n1, n2 : Integer;
    ps1, ps2 : PWideChar;
 begin
-   ps1:=PWideChar(NativeInt(s1));
-   ps2:=PWideChar(NativeInt(s2));
+   ps1:=PWideChar(Pointer(s1));
+   ps2:=PWideChar(Pointer(s2));
    if ps1 = ps2 then Exit(0);
    if ps1<>nil then begin
       if ps2<>nil then begin
@@ -2603,6 +2767,40 @@ function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
 begin
    Result:=(Length(s1)=Length(s2)) and (UnicodeCompareText(s1, s2)=0)
 end;
+
+// UnicodeCompareStr
+//
+function UnicodeCompareStr(const s1, s2 : UnicodeString) : Integer;
+begin
+   {$ifdef FPC}
+   Result := UnicodeCompareStr(s1, s2);
+   {$else}
+   Result := CompareStr(s1, s2);
+   {$endif}
+end;
+
+{$ifdef FPC}
+// UnicodeCompareText
+//
+function UnicodeCompareText(const s1, s2 : String) : Integer; overload;
+begin
+   Result := UnicodeCompareText(UnicodeString(s1), UnicodeString(s2));
+end;
+
+// UnicodeCompareStr
+//
+function UnicodeCompareStr(const s1, s2 : String) : Integer; inline;
+begin
+   Result := CompareStr(s1, s2);
+end;
+
+// UnicodeSameText
+//
+function UnicodeSameText(const s1, s2 : String) : Boolean;
+begin
+   Result := UnicodeSameText(UnicodeString(s1), UnicodeString(s2));
+end;
+{$endif FPC}
 
 // AsciiCompareLen
 //
@@ -2660,7 +2858,7 @@ end;
 
 // StrIsASCII
 //
-function StrIsASCII(const s : UnicodeString) : Boolean;
+function StrIsASCII(const s : String) : Boolean;
 var
    i : Integer;
 begin
@@ -2676,14 +2874,14 @@ end;
 
 // StrNonNilLength
 //
-function StrNonNilLength(const aString : UnicodeString) : Integer;
+function StrNonNilLength(const aString : String) : Integer;
 begin
    Result:=PInteger(NativeUInt(Pointer(aString))-4)^;
 end;
 
 // StrIBeginsWith
 //
-function StrIBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
+function StrIBeginsWith(const aStr, aBegin : String) : Boolean;
 var
    n1, n2 : Integer;
 begin
@@ -2696,7 +2894,7 @@ end;
 
 // StrBeginsWith
 //
-function StrBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
+function StrBeginsWith(const aStr, aBegin : String) : Boolean;
 var
    n1, n2 : Integer;
 begin
@@ -2738,7 +2936,7 @@ end;
 
 // StrIEndsWith
 //
-function StrIEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
+function StrIEndsWith(const aStr, aEnd : String) : Boolean;
 var
    n1, n2 : Integer;
 begin
@@ -2764,7 +2962,7 @@ end;
 
 // StrEndsWith
 //
-function StrEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
+function StrEndsWith(const aStr, aEnd : String) : Boolean;
 var
    n1, n2 : Integer;
 begin
@@ -2790,7 +2988,7 @@ end;
 
 // StrContains (sub string)
 //
-function StrContains(const aStr, aSubStr : UnicodeString) : Boolean;
+function StrContains(const aStr, aSubStr : String) : Boolean;
 begin
    if aSubStr='' then
       Result:=True
@@ -2801,14 +2999,14 @@ end;
 
 // StrContains (sub character)
 //
-function StrContains(const aStr : UnicodeString; aChar : WideChar) : Boolean;
+function StrContains(const aStr : String; aChar : Char) : Boolean;
 begin
    Result := (StrIndexOfChar(aStr, aChar) > 0)
 end;
 
 // StrIndexOfChar
 //
-function StrIndexOfChar(const aStr : UnicodeString; aChar : WideChar) : Integer;
+function StrIndexOfChar(const aStr : String; aChar : Char) : Integer;
 var
    i : Integer;
 begin
@@ -2843,7 +3041,7 @@ end;
 
 // StrMatches
 //
-function StrMatches(const aStr, aMask : UnicodeString) : Boolean;
+function StrMatches(const aStr, aMask : String) : Boolean;
 var
    mask : TMask;
 begin
@@ -2857,21 +3055,21 @@ end;
 
 // StrDeleteLeft
 //
-function StrDeleteLeft(const aStr : UnicodeString; n : Integer) : UnicodeString;
+function StrDeleteLeft(const aStr : String; n : Integer) : String;
 begin
    Result:=Copy(aStr, n+1);
 end;
 
 // StrDeleteRight
 //
-function StrDeleteRight(const aStr : UnicodeString; n : Integer) : UnicodeString;
+function StrDeleteRight(const aStr : String; n : Integer) : String;
 begin
    Result:=Copy(aStr, 1, Length(aStr)-n);
 end;
 
 // StrAfterChar
 //
-function StrAfterChar(const aStr : UnicodeString; aChar : WideChar) : UnicodeString;
+function StrAfterChar(const aStr : String; aChar : WideChar) : String;
 var
    p : Integer;
 begin
@@ -2883,7 +3081,7 @@ end;
 
 // StrBeforeChar
 //
-function StrBeforeChar(const aStr : UnicodeString; aChar : WideChar) : UnicodeString;
+function StrBeforeChar(const aStr : String; aChar : WideChar) : String;
 var
    p : Integer;
 begin
@@ -2895,7 +3093,7 @@ end;
 
 // StrReplaceChar
 //
-function StrReplaceChar(const aStr : UnicodeString; oldChar, newChar : WideChar) : UnicodeString;
+function StrReplaceChar(const aStr : String; oldChar, newChar : WideChar) : String;
 var
    i : Integer;
 begin
@@ -2907,7 +3105,7 @@ end;
 
 // StrCountChar
 //
-function StrCountChar(const aStr : UnicodeString; c : WideChar) : Integer;
+function StrCountChar(const aStr : String; c : WideChar) : Integer;
 var
    i : Integer;
 begin
@@ -2975,17 +3173,17 @@ begin
    Result:=UnicodeCompareText(s1, s2);
 end;
 {$else}
-function TFastCompareTextList.CompareStrings(const S1, S2: UnicodeString): Integer;
+function TFastCompareTextList.CompareStrings(const S1, S2: String): Integer;
 begin
    Result:=UnicodeCompareText(s1, s2);
 end;
 
 // FindName
 //
-function TFastCompareTextList.FindName(const name : UnicodeString; var index : Integer) : Boolean;
+function TFastCompareTextList.FindName(const name : String; var index : Integer) : Boolean;
 var
    lo, hi, mid, cmp, n, nc : Integer;
-   initial : UnicodeString;
+   initial : String;
    list : TStringListList;
 begin
    Result:=False;
@@ -3020,7 +3218,7 @@ end;
 
 // IndexOfName
 //
-function TFastCompareTextList.IndexOfName(const name : UnicodeString): Integer;
+function TFastCompareTextList.IndexOfName(const name : String): Integer;
 var
    n, nc : Integer;
    nvs : WideChar;
@@ -3140,7 +3338,7 @@ end;
 
 // AddString
 //
-procedure TVarRecArrayContainer.AddString(const s : UnicodeString);
+procedure TVarRecArrayContainer.AddString(const s : String);
 var
    n : Integer;
 begin
@@ -3814,7 +4012,7 @@ procedure TWriteOnlyBlockStream.StoreUTF8Data(destStream : TStream);
 var
    buf : UTF8String;
 begin
-   buf := UTF8Encode(ToUnicodeString);
+   buf := UTF8Encode(ToString);
    if buf <> '' then
       destStream.Write(buf[1], Length(buf));
 end;
@@ -3981,6 +4179,16 @@ begin
 {$endif}
 end;
 
+{$ifdef FPC}
+// WriteString
+//
+procedure TWriteOnlyBlockStream.WriteString(const s : String);
+begin
+   if s<>'' then
+      WriteString(UnicodeString(s));
+end;
+{$endif}
+
 // WriteString (Int32)
 //
 procedure TWriteOnlyBlockStream.WriteString(const i : Int32);
@@ -4035,12 +4243,10 @@ end;
 
 // ToString
 //
-{$ifndef FPC}
 function TWriteOnlyBlockStream.ToString : String;
 begin
-   Result := ToUnicodeString;
+   Result := String(ToUnicodeString);
 end;
-{$endif}
 
 // ToUnicodeString
 //
@@ -4049,7 +4255,7 @@ begin
    if FTotalSize>0 then begin
 
       Assert((FTotalSize and 1) = 0);
-      SetLength(Result, FTotalSize div SizeOf(WideChar));
+      SetLength(Result, FTotalSize div SizeOf(Char));
       StoreData(Result[1]);
 
    end else Result:='';
@@ -4059,7 +4265,7 @@ end;
 //
 function TWriteOnlyBlockStream.ToUTF8String : RawByteString;
 begin
-   Result := UTF8Encode(ToUnicodeString);
+   Result := UTF8Encode(ToString);
 end;
 
 // ToBytes
@@ -4745,7 +4951,7 @@ end;
 
 // HashName
 //
-class function TNameObjectHash.HashName(const aName : UnicodeString) : Cardinal;
+class function TNameObjectHash.HashName(const aName : String) : Cardinal;
 begin
    Result := xxHash32.Full(Pointer(aName), Length(aName)*SizeOf(WideChar), vHashSalt);
    if Result=0 then
@@ -4842,7 +5048,7 @@ end;
 
 // GetHashedIndex
 //
-function TNameObjectHash.GetHashedIndex(const aName : UnicodeString; aHash : Cardinal) : Integer;
+function TNameObjectHash.GetHashedIndex(const aName : String; aHash : Cardinal) : Integer;
 var
    i : Integer;
 begin
@@ -4863,14 +5069,14 @@ end;
 
 // GetIndex
 //
-function TNameObjectHash.GetIndex(const aName : UnicodeString) : Integer;
+function TNameObjectHash.GetIndex(const aName : String) : Integer;
 begin
    Result:=GetHashedIndex(aName, HashName(aName));
 end;
 
 // GetHashedObjects
 //
-function TNameObjectHash.GetHashedObjects(const aName : UnicodeString; aHash : Cardinal) : TObject;
+function TNameObjectHash.GetHashedObjects(const aName : String; aHash : Cardinal) : TObject;
 var
    i : Integer;
 begin
@@ -4882,28 +5088,28 @@ end;
 
 // GetObjects
 //
-function TNameObjectHash.GetObjects(const aName : UnicodeString) : TObject;
+function TNameObjectHash.GetObjects(const aName : String) : TObject;
 begin
    Result:=GetHashedObjects(aName, HashName(aName));
 end;
 
 // SetHashedObjects
 //
-procedure TNameObjectHash.SetHashedObjects(const aName : UnicodeString; aHash : Cardinal; obj : TObject);
+procedure TNameObjectHash.SetHashedObjects(const aName : String; aHash : Cardinal; obj : TObject);
 begin
    AddHashedObject(aName, HashName(aName), obj, True);
 end;
 
 // SetObjects
 //
-procedure TNameObjectHash.SetObjects(const aName : UnicodeString; obj : TObject);
+procedure TNameObjectHash.SetObjects(const aName : String; obj : TObject);
 begin
    AddObject(aName, obj, True);
 end;
 
 // AddObject
 //
-function TNameObjectHash.AddObject(const aName : UnicodeString; aObj : TObject;
+function TNameObjectHash.AddObject(const aName : String; aObj : TObject;
                                             replace : Boolean = False) : Boolean;
 begin
    Result:=AddHashedObject(aName, HashName(aName), aObj, replace);
@@ -4911,7 +5117,7 @@ end;
 
 // AddHashedObject
 //
-function TNameObjectHash.AddHashedObject(const aName : UnicodeString; aHash : Cardinal; aObj : TObject; replace : Boolean = False) : Boolean;
+function TNameObjectHash.AddHashedObject(const aName : String; aHash : Cardinal; aObj : TObject; replace : Boolean = False) : Boolean;
 var
    i : Integer;
 begin
@@ -4973,7 +5179,7 @@ end;
 
 // GetBucketName
 //
-function TNameObjectHash.GetBucketName(index : Integer) : UnicodeString;
+function TNameObjectHash.GetBucketName(index : Integer) : String;
 begin
    Result:=FBuckets[index].Name;
 end;
@@ -5019,28 +5225,28 @@ end;
 
 // GetIndex
 //
-function TSimpleNameObjectHash<T>.GetIndex(const aName : UnicodeString) : Integer;
+function TSimpleNameObjectHash<T>.GetIndex(const aName : String) : Integer;
 begin
    Result := FHash.BucketIndex[aName];
 end;
 
 // GetObjects
 //
-function TSimpleNameObjectHash<T>.GetObjects(const aName : UnicodeString) : T;
+function TSimpleNameObjectHash<T>.GetObjects(const aName : String) : T;
 begin
    Result:=T(FHash.Objects[aName]);
 end;
 
 // SetObjects
 //
-procedure TSimpleNameObjectHash<T>.SetObjects(const aName : UnicodeString; obj : T);
+procedure TSimpleNameObjectHash<T>.SetObjects(const aName : String; obj : T);
 begin
    FHash.Objects[aName] := obj;
 end;
 
 // AddObject
 //
-function TSimpleNameObjectHash<T>.AddObject(const aName : UnicodeString; aObj : T;
+function TSimpleNameObjectHash<T>.AddObject(const aName : String; aObj : T;
                                             replace : Boolean = False) : Boolean;
 begin
    Result:=FHash.AddObject(aName, aObj, replace);
@@ -5062,7 +5268,7 @@ end;
 
 // GetBucketName
 //
-function TSimpleNameObjectHash<T>.GetBucketName(index : Integer) : UnicodeString;
+function TSimpleNameObjectHash<T>.GetBucketName(index : Integer) : String;
 begin
    Result := FHash.BucketName[index];
 end;
@@ -5105,20 +5311,6 @@ procedure TRefCountedObject.Free;
 begin
    if Self <> nil then
       DecRefCount;
-end;
-
-// ToString
-//
-function TRefCountedObject.ToString : String;
-begin
-   Result := String(ToUnicodeString);
-end;
-
-// ToUnicodeString
-//
-function TRefCountedObject.ToUnicodeString : UnicodeString;
-begin
-   Result := UnicodeString(ClassName);
 end;
 
 // IncRefCount
@@ -5739,7 +5931,7 @@ end;
 // Create
 //
 constructor EdwsVariantTypeCastError.Create(const v : Variant;
-      const desiredType : UnicodeString; originalException : Exception);
+      const desiredType : String; originalException : Exception);
 begin
    inherited CreateFmt(RTE_VariantCastFailed,
                        [VarTypeAsText(VarType(v)), desiredType, originalException.ClassName])
@@ -5752,17 +5944,17 @@ end;
 
 // Create
 //
-constructor TStringIterator.Create(const s : UnicodeString);
+constructor TStringIterator.Create(const s : String);
 begin
    FStr:=s;
-   FPStr:=PWideChar(Pointer(s));
+   FPStr:=PChar(Pointer(s));
    FLength:=System.Length(s);
    FPosition:=0;
 end;
 
 // Current
 //
-function TStringIterator.Current : WideChar;
+function TStringIterator.Current : Char;
 begin
    if Cardinal(FPosition)<Cardinal(FLength) then
       Result:=FPstr[FPosition]
@@ -5793,9 +5985,9 @@ end;
 
 // CollectQuotedString
 //
-function TStringIterator.CollectQuotedString : UnicodeString;
+function TStringIterator.CollectQuotedString : String;
 var
-   quoteChar : WideChar;
+   quoteChar : Char;
 begin
    quoteChar:=Current;
    Inc(FPosition);
@@ -5814,7 +6006,7 @@ end;
 
 // CollectAlphaNumeric
 //
-function TStringIterator.CollectAlphaNumeric : UnicodeString;
+function TStringIterator.CollectAlphaNumeric : String;
 var
    start : Integer;
 begin
@@ -5862,14 +6054,14 @@ end;
 
 // SameItem
 //
-function TSimpleStringHash.SameItem(const item1, item2 : UnicodeString) : Boolean;
+function TSimpleStringHash.SameItem(const item1, item2 : String) : Boolean;
 begin
    Result:=UnicodeSameText(item1, item2);
 end;
 
 // GetItemHashCode
 //
-function TSimpleStringHash.GetItemHashCode(const item1 : UnicodeString) : Integer;
+function TSimpleStringHash.GetItemHashCode(const item1 : String) : Integer;
 begin
    Result:=SimpleStringHash(UnicodeLowerCase(item1));
 end;
@@ -6140,7 +6332,7 @@ end;
 
 // Add
 //
-procedure TSimpleStringList.Add(const s : UnicodeString);
+procedure TSimpleStringList.Add(const s : String);
 begin
    if FCount = FCapacity then begin
       Inc(FCapacity, 8);
@@ -6152,7 +6344,7 @@ end;
 
 // IndexOf
 //
-function TSimpleStringList.IndexOf(const s : UnicodeString) : Integer;
+function TSimpleStringList.IndexOf(const s : String) : Integer;
 begin
    for Result := 0 to FCount-1 do
       if FItems[Result] = s then Exit;
@@ -6168,14 +6360,14 @@ end;
 
 // GetItems
 //
-function TSimpleStringList.GetItems(i : Integer) : UnicodeString;
+function TSimpleStringList.GetItems(i : Integer) : String;
 begin
    Result := FItems[i];
 end;
 
 // SetItems
 //
-procedure TSimpleStringList.SetItems(i : Integer; const s : UnicodeString);
+procedure TSimpleStringList.SetItems(i : Integer; const s : String);
 begin
    FItems[i] := s;
 end;

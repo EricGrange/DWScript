@@ -19,7 +19,7 @@ interface
 
 uses
    Classes, SysUtils, Math,
-   dwsXPlatformTests, dwsJSON, dwsXPlatform, dwsUtils, dwsJSONPath;
+   dwsXPlatformTests, dwsJSON, dwsXPlatform, dwsUtils, dwsJSONPath, dwsUnicode;
 
 type
 
@@ -560,10 +560,10 @@ end;
 procedure TdwsJSONTests.JSONStringArrayBadComma;
 var
    state : TdwsJSONParserState;
-   dest : TStringList;
+   dest : TUnicodeStringList;
 begin
    state := TdwsJSONParserState.Create('["1","2" bug');
-   dest := TStringList.Create;
+   dest := TUnicodeStringList.Create;
    try
       state.ParseStringArray(dest);
    finally

@@ -24,7 +24,7 @@ unit dwsScriptSource;
 interface
 
 uses
-   dwsStrings, dwsUtils, dwsXPlatform;
+   SysUtils, dwsStrings, dwsUtils, dwsXPlatform;
 
 type
 
@@ -35,14 +35,9 @@ type
          FLineCount : Integer;
          FCode : UnicodeString;
 
-      {$ifdef FPC}
-      protected
-         procedure SetCode(const sourceCode : UnicodeString);
-      {$endif}
-
       public
-         Name : UnicodeString;
-         property Code : UnicodeString read FCode write {$ifdef FPC}SetCode{$else}FCode{$endif};
+         Name : String;
+         property Code : UnicodeString read FCode write FCode;
          function LineCount : Integer;
    end;
 
@@ -63,8 +58,8 @@ type
 
          function SamePosAs(const aPos : TScriptPos) : Boolean;
          function IsMainModule : Boolean;
-         function IsSourceFile(const name : UnicodeString) : Boolean;
-         function SourceName : UnicodeString; inline;
+         function IsSourceFile(const name : String) : Boolean;
+         function SourceName : String; inline;
          function SourceCode : UnicodeString; inline;
          function Defined : Boolean;
 
@@ -76,7 +71,7 @@ type
          function IsBeforeOrEqual(const aPos : TScriptPos) : Boolean;
          function Compare(const aPos : TScriptPos) : Integer;
 
-         function AsInfo : UnicodeString;
+         function AsInfo : String;
    end;
    TScriptPosArray = array of TScriptPos; // dynamic array that can hold ScriptPos settings (needed for ReadNameList)
 
@@ -85,15 +80,15 @@ type
    // A specific ScriptSource entry. The text of the script contained in that unit.
    TScriptSourceItem = class (TRefCountedObject)
       private
-         FNameReference : UnicodeString;
+         FNameReference : String;
          FSourceFile : TSourceFile;
          FSourceType : TScriptSourceType;
 
       public
-         constructor Create(const ANameReference: UnicodeString; ASourceFile: TSourceFile; ASourceType: TScriptSourceType);
+         constructor Create(const ANameReference: String; ASourceFile: TSourceFile; ASourceType: TScriptSourceType);
          destructor Destroy; override;
 
-         property NameReference : UnicodeString read FNameReference write FNameReference;
+         property NameReference : String read FNameReference write FNameReference;
          property SourceFile : TSourceFile read FSourceFile;
          property SourceType : TScriptSourceType read FSourceType;
    end;
@@ -112,11 +107,11 @@ type
          destructor Destroy; override;
 
          procedure Clear;
-         function Add(const nameReference, code: UnicodeString; sourceType: TScriptSourceType) : TSourceFile;
+         function Add(const nameReference : String; const code: UnicodeString; sourceType: TScriptSourceType) : TSourceFile;
 
-         function FindScriptSourceItem(const sourceFileName: UnicodeString): TScriptSourceItem; overload;
+         function FindScriptSourceItem(const sourceFileName: String): TScriptSourceItem; overload;
 
-         function IndexOf(const sourceFileName: UnicodeString): Integer; overload;
+         function IndexOf(const sourceFileName: String): Integer; overload;
 
          property Count : Integer read FSourceList.FCount;
 
@@ -188,14 +183,14 @@ end;
 
 // IsSourceFile
 //
-function TScriptPos.IsSourceFile(const name : UnicodeString) : Boolean;
+function TScriptPos.IsSourceFile(const name : String) : Boolean;
 begin
    Result:=(SourceFile<>nil) and UnicodeSameText(SourceFile.Name, name);
 end;
 
 // SourceName
 //
-function TScriptPos.SourceName : UnicodeString;
+function TScriptPos.SourceName : String;
 begin
    if SourceFile<>nil then
       Result:=SourceFile.Name
@@ -278,23 +273,23 @@ end;
 
 // AsInfo
 //
-function TScriptPos.AsInfo : UnicodeString;
+function TScriptPos.AsInfo : String;
 begin
    if SourceFile=nil then
       Result:=''
    else begin
       if not IsMainModule then
-         Result:=UnicodeFormat(MSG_ScriptPosFile, [SourceFile.Name])
+         Result:=Format(MSG_ScriptPosFile, [SourceFile.Name])
       else Result:='';
       if Col<>cNullPos.Col then begin
          if Result<>'' then
             Result:=', '+Result;
-         Result:=UnicodeFormat(MSG_ScriptPosColumn, [Col])+Result;
+         Result:=Format(MSG_ScriptPosColumn, [Col])+Result;
       end;
       if Line<>cNullPos.Line then begin
          if Result<>'' then
             Result:=', '+Result;
-         Result:=UnicodeFormat(MSG_ScriptPosLine, [Line])+Result;
+         Result:=Format(MSG_ScriptPosLine, [Line])+Result;
       end;
       if Result<>'' then
          Result:=' ['+Result+']';
@@ -304,27 +299,6 @@ end;
 // ------------------
 // ------------------ TSourceFile ------------------
 // ------------------
-
-{$ifdef FPC}
-// SetCode
-//
-procedure TSourceFile.SetCode(const sourceCode: UnicodeString);
-begin
-   if Length(sourceCode)>3 then begin
-      if (Ord(sourceCode[1])=$EF) and (Ord(sourceCode[2])=$BB) and (Ord(sourceCode[3])=$BF) then begin
-         // UTF-8
-         FCode:=StrDeleteLeft(sourceCode, 3);
-      end else if (Ord(sourceCode[1])=$FE) and (Ord(sourceCode[2])=$FF) then begin
-         // UTF-16 BE
-         FCode:=UTF8Encode(StrDeleteLeft(sourceCode, 2));
-      end else if (Ord(sourceCode[1])=$FF) and (Ord(sourceCode[2])=$FE) then begin
-         // UTF-16 LE
-         // TODO: revert bytes...
-         FCode:=UTF8Encode(StrDeleteLeft(sourceCode, 2));
-      end else FCode:=sourceCode;
-   end else FCode:=sourceCode;
-end;
-{$endif}
 
 // LineCount
 //
@@ -345,7 +319,7 @@ end;
 // ------------------ TScriptSourceItem ------------------
 // ------------------
 
-constructor TScriptSourceItem.Create(const ANameReference: UnicodeString; ASourceFile: TSourceFile;
+constructor TScriptSourceItem.Create(const ANameReference: String; ASourceFile: TSourceFile;
   ASourceType: TScriptSourceType);
 begin
    FNameReference := ANameReference;
@@ -384,8 +358,9 @@ end;
 
 // Add
 //
-function TScriptSourceList.Add(const nameReference, code: UnicodeString;
-   sourceType: TScriptSourceType) : TSourceFile;
+function TScriptSourceList.Add(
+      const nameReference : String; const code : UnicodeString;
+      sourceType: TScriptSourceType) : TSourceFile;
 var
    srcItem : TScriptSourceItem;
 begin
@@ -421,7 +396,7 @@ end;
 
 // FindScriptSourceItem
 //
-function TScriptSourceList.FindScriptSourceItem(const sourceFileName: UnicodeString): TScriptSourceItem;
+function TScriptSourceList.FindScriptSourceItem(const sourceFileName: String): TScriptSourceItem;
 var
    x : Integer;
 begin
@@ -431,7 +406,7 @@ begin
    else Result:=nil;
 end;
 
-function TScriptSourceList.IndexOf(const SourceFileName: UnicodeString): Integer;
+function TScriptSourceList.IndexOf(const SourceFileName: String): Integer;
 var
    x: Integer;
 begin

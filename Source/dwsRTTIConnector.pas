@@ -21,10 +21,10 @@ unit dwsRTTIConnector;
 interface
 
 uses
-   Windows, Forms, Variants, Classes, SysUtils, SysConst, TypInfo, RTTI,
-   dwsComp, dwsSymbols, dwsDataContext, dwsErrors, dwsUnitSymbols,
+   Windows, Forms, Classes, SysUtils, SysConst, TypInfo, RTTI, Variants,
+   dwsComp, dwsSymbols, dwsDataContext, dwsErrors, dwsUnitSymbols, dwsUtils,
    dwsExprs, dwsStrings, dwsFunctions, dwsStack, dwsOperators, dwsLegacy,
-   dwsUtils, dwsLanguageExtension, dwsCompiler, dwsConnectorSymbols,
+   dwsLanguageExtension, dwsCompiler, dwsConnectorSymbols,
    dwsCompilerContext, dwsScriptSource;
 
 const
@@ -289,7 +289,7 @@ begin
       tkClass, tkRecord :
          result:=TdwsRTTIVariant.FromValue(v);
    else
-      result:=Null;
+      VarSetNull(result);
    end;
 end;
 
@@ -297,7 +297,7 @@ end;
 //
 procedure VariantToValue(const v : Variant; var result : TValue);
 begin
-   if (VarType(v)=varUnknown) and (IUnknown(v) is TdwsRTTIVariant) then
+   if (VariantType(v)=varUnknown) and (IUnknown(v) is TdwsRTTIVariant) then
       Result:=(IUnknown(v) as TdwsRTTIVariant).AsValue
    else Result:=TValue.FromVariant(v)
 end;
@@ -414,7 +414,7 @@ var
 begin
    c:=Application.FindComponent(Info.ParamAsString[0]);
    if not (c is TForm) then
-      Info.ResultAsVariant:=Null
+      Info.ResultSetNull
    else begin
       Info.ResultAsVariant:=TdwsRTTIVariant.FromObject(c);
    end;
@@ -728,7 +728,7 @@ begin
 
    if Length(data)<>1 then
       raise EdwsRTTIException.Create('Unsupported Rtti write of this data type');
-   case VarType(data[0]) of
+   case VariantType(data[0]) of
       varUnknown : begin
          intf:=IUnknown(data[0]);
          if intf is TdwsRTTIVariant then
@@ -1168,7 +1168,7 @@ begin
    instance:=IUnknown(base) as TdwsRTTIVariant;
    instanceClass:=instance.RTTIType.AsInstance.MetaclassType;
 
-   argVarType:=VarType(args[0][0]);
+   argVarType:=VariantType(args[0][0]);
 
    for i:=0 to High(vIndexedProperties) do begin
 

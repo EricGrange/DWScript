@@ -174,7 +174,7 @@ end;
 procedure TdwsEncodingLib.dwsEncodingClassesUTF16BigEndianEncoderMethodsDecodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
-   buf : UnicodeString;
+   buf : String;
 begin
    buf := Info.ParamAsString[0];
    StringWordsToBytes(buf, True);
@@ -184,7 +184,7 @@ end;
 procedure TdwsEncodingLib.dwsEncodingClassesUTF16BigEndianEncoderMethodsEncodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
-   buf : UnicodeString;
+   buf : String;
 begin
    buf := Info.ParamAsString[0];
    StringBytesToWords(buf, True);
@@ -194,7 +194,7 @@ end;
 procedure TdwsEncodingLib.dwsEncodingClassesUTF16LittleEndianEncoderMethodsDecodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
-   buf : UnicodeString;
+   buf : String;
 begin
    buf := Info.ParamAsString[0];
    StringWordsToBytes(buf, False);
@@ -204,7 +204,7 @@ end;
 procedure TdwsEncodingLib.dwsEncodingClassesUTF16LittleEndianEncoderMethodsEncodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
-   buf : UnicodeString;
+   buf : String;
 begin
    buf := Info.ParamAsString[0];
    StringBytesToWords(buf, False);
@@ -214,13 +214,13 @@ end;
 procedure TdwsEncodingLib.dwsEncodingClassesUTF8EncoderMethodsDecodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsString := UTF8DecodeToUnicodeString(Info.ParamAsDataString[0]);
+   Info.ResultAsString := UTF8ToString(Info.ParamAsDataString[0]);
 end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesUTF8EncoderMethodsEncodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsDataString := UnicodeStringToUtf8(Info.ParamAsString[0]);
+   Info.ResultAsDataString := StringToUTF8(Info.ParamAsString[0]);
 end;
 
 end.

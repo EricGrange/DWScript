@@ -132,7 +132,7 @@ var
    i : Integer;
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
-   resultText, resultsFileName : UnicodeString;
+   resultText, resultsFileName : String;
 begin
    source:=TStringList.Create;
    expectedResult:=TStringList.Create;
@@ -147,7 +147,7 @@ begin
          CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
          exec:=prog.Execute;
 
-         resultText:=exec.Result.ToUnicodeString;
+         resultText:=exec.Result.ToString;
          if exec.Msgs.Count>0 then
             resultText:=resultText+#13#10'>>>> Error(s): '#13#10+exec.Msgs.AsInfo;
 

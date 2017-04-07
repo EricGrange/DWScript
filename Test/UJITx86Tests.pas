@@ -119,7 +119,7 @@ begin
          d.SecurityBlock:=blockEnd-d.EIP;
       end else Break;
    until d.SecurityBlock<=0;
-   Result:=FStream.ToUnicodeString;
+   Result:=FStream.ToString;
    FStream.Clear;
 end;
 

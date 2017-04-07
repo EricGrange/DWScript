@@ -97,7 +97,7 @@ type
          function GetPosition(index : Integer) : TSymbolPosition; inline;
 
          // Used by TSymbolDictionary. Not meaningful to make public (symbol is known).
-         function FindSymbolAtPosition(aCol, aLine : Integer; const sourceFile : UnicodeString) : TSymbol; overload;
+         function FindSymbolAtPosition(aCol, aLine : Integer; const sourceFile : String) : TSymbol; overload;
 
       public
          constructor Create(aDictionary : TdwsSymbolDictionary; aSymbol: TSymbol);
@@ -170,14 +170,14 @@ type
          procedure ReplaceSymbolAt(oldSym, newSym : TSymbol; const scriptPos : TScriptPos);
          procedure ChangeUsageAt(const scriptPos : TScriptPos; const addUsages, removeUsages : TSymbolUsages);
 
-         function FindSymbolAtPosition(aCol, aLine: Integer; const sourceFile : UnicodeString): TSymbol; overload;
+         function FindSymbolAtPosition(aCol, aLine: Integer; const sourceFile : String): TSymbol; overload;
          function FindSymbolAtPosition(const aScriptPos : TScriptPos) : TSymbol; overload;
          function FindSymbolPosList(sym : TSymbol) : TSymbolPositionList; overload; // return list of symbol
-         function FindSymbolPosList(const symName : UnicodeString) : TSymbolPositionList; overload;  // return list of symbol
-         function FindSymbolPosListOfType(const symName : UnicodeString; symbolType : TSymbolClass) : TSymbolPositionList; // return list of symbol given the desired type
+         function FindSymbolPosList(const symName : String) : TSymbolPositionList; overload;  // return list of symbol
+         function FindSymbolPosListOfType(const symName : String; symbolType : TSymbolClass) : TSymbolPositionList; // return list of symbol given the desired type
          function FindSymbolUsage(symbol : TSymbol; symbolUse: TSymbolUsage) : TSymbolPosition; overload;
-         function FindSymbolUsage(const symName : UnicodeString; symbolUse: TSymbolUsage) : TSymbolPosition; overload;
-         function FindSymbolUsageOfType(const symName : UnicodeString; symbolType : TSymbolClass; symbolUse : TSymbolUsage) : TSymbolPosition;
+         function FindSymbolUsage(const symName : String; symbolUse: TSymbolUsage) : TSymbolPosition; overload;
+         function FindSymbolUsageOfType(const symName : String; symbolType : TSymbolClass; symbolUse : TSymbolUsage) : TSymbolPosition;
          function FindSymbolByUsageAtLine(const scriptPos : TScriptPos; symbolUse : TSymbolUsage) : TSymbol;
 
          function GetEnumerator : TdwsSymbolDictionaryEnumerator;
@@ -351,7 +351,7 @@ end;
 
 // FindSymbolAtPosition
 //
-function TSymbolPositionList.FindSymbolAtPosition(aCol, aLine : Integer; const sourceFile : UnicodeString): TSymbol;
+function TSymbolPositionList.FindSymbolAtPosition(aCol, aLine : Integer; const sourceFile : String): TSymbol;
 var
    i : Integer;
    symPos : TSymbolPosition;
@@ -479,7 +479,7 @@ begin
 
    wr.BeginObject('symbol');
       wr.WriteString('name', Symbol.Name);
-      wr.WriteString('class', UnicodeString(Symbol.ClassName));
+      wr.WriteString('class', String(Symbol.ClassName));
    wr.EndObject;
 
    wr.BeginArray('positions');
@@ -488,7 +488,7 @@ begin
          wr.BeginArray('usages');
          for u := Low(TSymbolUsage) to High(TSymbolUsage) do begin
             if u in Items[i].SymbolUsages then
-               wr.WriteString(UnicodeString(GetEnumName(TypeInfo(TSymbolUsage), Ord(u))));
+               wr.WriteString(String(GetEnumName(TypeInfo(TSymbolUsage), Ord(u))));
          end;
          wr.EndArray;
          wr.WriteString('position', Items[i].ScriptPos.AsInfo);
@@ -600,7 +600,7 @@ end;
 
 // FindSymbolAtPosition
 //
-function TdwsSymbolDictionary.FindSymbolAtPosition(aCol, aLine : Integer; const sourceFile : UnicodeString) : TSymbol;
+function TdwsSymbolDictionary.FindSymbolAtPosition(aCol, aLine : Integer; const sourceFile : String) : TSymbol;
 var
    i : Integer;
    symPosList : TSymbolPositionList;
@@ -729,7 +729,7 @@ end;
 
 // FindSymbolPosList
 //
-function TdwsSymbolDictionary.FindSymbolPosList(const symName : UnicodeString) : TSymbolPositionList;
+function TdwsSymbolDictionary.FindSymbolPosList(const symName : String) : TSymbolPositionList;
 var
    symPosList : TSymbolPositionList;
 begin
@@ -916,7 +916,7 @@ begin
    else Result:=nil;
 end;
 
-function TdwsSymbolDictionary.FindSymbolUsage(const SymName: UnicodeString;
+function TdwsSymbolDictionary.FindSymbolUsage(const SymName: String;
   SymbolUse: TSymbolUsage): TSymbolPosition;
 var
   list: TSymbolPositionList;
@@ -927,7 +927,7 @@ begin
     Result := list.FindUsage(SymbolUse);
 end;
 
-function TdwsSymbolDictionary.FindSymbolUsageOfType(const SymName: UnicodeString;
+function TdwsSymbolDictionary.FindSymbolUsageOfType(const SymName: String;
   SymbolType: TSymbolClass; SymbolUse: TSymbolUsage): TSymbolPosition;
 var
    list: TSymbolPositionList;
@@ -961,7 +961,7 @@ begin
    Result:=nil;
 end;
 
-function TdwsSymbolDictionary.FindSymbolPosListOfType(const SymName: UnicodeString;
+function TdwsSymbolDictionary.FindSymbolPosListOfType(const SymName: String;
   SymbolType: TSymbolClass): TSymbolPositionList;
 var
    symPosList : TSymbolPositionList;

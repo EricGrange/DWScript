@@ -3,7 +3,7 @@ unit dwsDatabaseLibModule;
 interface
 
 uses
-  SysUtils, Classes, Masks, Variants,
+  SysUtils, Classes, Masks,
   dwsStrings, dwsUtils, dwsExprList, dwsXPlatform, dwsInfo,
   dwsComp, dwsExprs, dwsSymbols, dwsStack, dwsDatabase, dwsJSON, dwsErrors;
 
@@ -817,7 +817,7 @@ end;
 function TdwsDatabaseLib.dwsDatabaseFunctionsDateParameterFastEval(
   const args: TExprBaseListExec): Variant;
 begin
-   Result := VarFromDateTime(args.AsFloat[0]);
+   VarSetDateTime(Result, args.AsFloat[0]);
 end;
 
 // ------------------------------------------------------------------

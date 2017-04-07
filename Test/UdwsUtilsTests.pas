@@ -558,9 +558,9 @@ end;
 //
 procedure TdwsUtilsTests.UnifierTest;
 var
-   s1, s2 : UnicodeString;
+   s1, s2 : String;
 begin
-   s1 := IntToStrU(123);
+   s1 := IntToStr(123);
    s2 := '123';
 
    Check(Pointer(s1)<>Pointer(s2), 'initial');
@@ -580,7 +580,7 @@ var
 begin
    TidyStringsUnifier;
    for i := 1 to 10000 do
-      UnifiedString(UnicodeString(IntToStr(i)));
+      UnifiedString(String(IntToStr(i)));
    TidyStringsUnifier;
    for i := Low(before) to High(before) do
       CheckEquals(before[i], after[i], IntToStr(i));
@@ -672,7 +672,7 @@ procedure TdwsUtilsTests.FastIntToStrTest;
 var
    i : Integer;
    n : Int64;
-   s : UnicodeString;
+   s : String;
 begin
    FastInt64ToStr(0, s);
    CheckEquals('0', s);
@@ -916,7 +916,7 @@ begin
    DWSHashCode(h, AnsiString(''));
    CheckEquals(1345077009, h, 'ansi');
    h := 1;
-   DWSHashCode(h, UnicodeString(''));
+   DWSHashCode(h, String(''));
    CheckEquals(1345077009, h, 'uni');
 end;
 
@@ -1092,7 +1092,7 @@ procedure TdwsUtilsTests.NameObjectHashTest;
 var
    i : Integer;
    h : Cardinal;
-   name1, name2, name1c : UnicodeString;
+   name1, name2, name1c : String;
    noh : TNameObjectHash;
 begin
    // generate names for test, name1 & name2 should not collide
@@ -1100,12 +1100,12 @@ begin
    name1:='0';
    h:=SimpleStringHash(name1) and (cNameObjectHashMinSize-1);
    for i:=1 to cNameObjectHashMinSize*4 do begin
-      if (SimpleStringHash(IntToStrU(i)) and (cNameObjectHashMinSize-1))=h then begin
+      if (SimpleStringHash(IntToStr(i)) and (cNameObjectHashMinSize-1))=h then begin
          if name1c='' then
-            name1c:=IntToStrU(i);
+            name1c:=IntToStr(i);
       end else begin
          if name2='' then
-            name2:=IntToStrU(i);
+            name2:=IntToStr(i);
       end;
    end;
    Assert((name2<>'') and (name1c<>''), 'either you got darn unlucky or the hash function is bugged...');
@@ -1281,11 +1281,11 @@ procedure TGlobalVarStress.Execute;
 var
    i : Integer;
    v : Variant;
-   names : array [0..15] of UnicodeString;
+   names : array [0..15] of String;
 begin
    FreeOnTerminate:=False;
    for i:=0 to High(names) do
-      names[i]:=UnicodeString(IntToHex(i, 4));
+      names[i]:=String(IntToHex(i, 4));
    for i:=1 to 50000 do begin
       vGlobals.TryRead(names[(i + 60) and High(names)], v);
       vGlobals.Write(names[i and High(names)], i, 0);
@@ -1316,9 +1316,9 @@ end;
 //
 type
    TSieveResult = class(TSimpleInt64List)
-      procedure AddFind(const s : UnicodeString);
+      procedure AddFind(const s : String);
    end;
-procedure TSieveResult.AddFind(const s : UnicodeString);
+procedure TSieveResult.AddFind(const s : String);
 begin
    Add(StrToInt64(String(s)));
 end;
@@ -1328,7 +1328,7 @@ const
 var
    i, j : Integer;
    v : Variant;
-   si : UnicodeString;
+   si : String;
    primes : TSieveResult;
 begin
    vGlobals.Initialize;
@@ -1339,7 +1339,7 @@ begin
             vGlobals.Write(si, 1, 0);
             j:=i+i;
             while j<=cMAX do begin
-               vGlobals.Write(IntToStrU(j), 0, 0);
+               vGlobals.Write(IntToStr(j), 0, 0);
                j:=j+i;
             end;
          end;
@@ -1393,7 +1393,7 @@ begin
          end;
       end;
       for i:=1 to 10 do begin
-         CheckTrue(gv.TryRead('survivor'+IntToStrU(i), v));
+         CheckTrue(gv.TryRead('survivor'+IntToStr(i), v));
          CheckEquals(i, v);
       end;
    finally
@@ -1405,7 +1405,7 @@ end;
 //
 procedure TdwsUtilsTests.BytesWords;
 var
-   buf : UnicodeString;
+   buf : String;
 begin
    buf := 'Example';
    StringBytesToWords(buf, False);
@@ -1486,7 +1486,7 @@ begin
       wr := TWriter.Create(wobs, 16384);
       try
          WriteVariant(wr, Int64(123456789123456789));
-         WriteVariant(wr, UnicodeString('hello'));
+         WriteVariant(wr, String('hello'));
          WriteVariant(wr, cDouble);
          WriteVariant(wr, True);
          WriteVariant(wr, False);

@@ -203,7 +203,7 @@ begin
          // TODO: make compiler program independent from manager
          FCompiler.Compiler.ExternalFunctionsManager:=nil;
 
-         resultText:=exec.Result.ToUnicodeString;
+         resultText:=exec.Result.ToString;
          if exec.Msgs.Count>0 then
             resultText:=resultText+#13#10'>>>> Error(s): '#13#10+exec.Msgs.AsInfo;
 

@@ -24,7 +24,7 @@ unit dwsCustomData;
 interface
 
 uses
-   SysUtils, Variants,
+   SysUtils,
    dwsUtils;
 
 type
@@ -48,7 +48,7 @@ type
          property States[const index : TGUID] : Variant read GetState write SetState; default;
 
          function IntegerStateDef(const index : TGUID; const default : Integer) : Integer;
-         function StringStateDef(const index : TGUID; const default : UnicodeString) : UnicodeString;
+         function StringStateDef(const index : TGUID; const default : String) : String;
 
          function Clone : TdwsCustomStates;
    end;
@@ -114,8 +114,8 @@ var
 begin
    s.Key:=index;
    if Match(s) then
-      Result:=s.Value
-   else Result:=Unassigned;
+      VarCopySafe(Result, s.Value)
+   else VarClearSafe(Result);
 end;
 
 // SetState
@@ -136,20 +136,20 @@ var
    s : TdwsCustomState;
 begin
    s.Key:=index;
-   if Match(s) and VarIsOrdinal(s.Value) then
+   if Match(s) and VariantIsOrdinal(s.Value) then
       Result:=s.Value
    else Result:=default;
 end;
 
 // StringStateDef
 //
-function TdwsCustomStates.StringStateDef(const index : TGUID; const default : UnicodeString) : UnicodeString;
+function TdwsCustomStates.StringStateDef(const index : TGUID; const default : String) : String;
 var
    s : TdwsCustomState;
 begin
    s.Key:=index;
-   if Match(s) and VarIsStr(s.Value) then
-      Result:=s.Value
+   if Match(s) and VariantIsString(s.Value) then
+      VariantToString(s.Value, Result)
    else Result:=default;
 end;
 

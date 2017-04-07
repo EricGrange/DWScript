@@ -219,13 +219,13 @@ begin
          end;
 
          if prog.Msgs.Count+exec.Msgs.Count=0 then
-            output:=exec.Result.ToUnicodeString
+            output:=exec.Result.ToString
          else begin
             output:= 'Errors >>>>'#13#10
                     +prog.Msgs.AsInfo
                     +exec.Msgs.AsInfo
                     +'Result >>>>'#13#10
-                    +exec.Result.ToUnicodeString;
+                    +exec.Result.ToString;
          end;
 
          expectedResult:=GetExpectedResult(FTests[i]);

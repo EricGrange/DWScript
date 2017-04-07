@@ -67,7 +67,7 @@ type
       public
          destructor Destroy; override;
 
-         class function Evaluate(exec : IdwsProgramExecution; const anExpression : UnicodeString;
+         class function Evaluate(exec : IdwsProgramExecution; const anExpression : String;
                                  options : TdwsEvaluateOptions = [];
                                  const scriptPos : PScriptPos = nil) : IdwsEvaluateExpr; static;
 
@@ -100,7 +100,7 @@ type
 // Evaluate
 //
 class function TdwsEvaluateExpr.Evaluate(exec : IdwsProgramExecution;
-                                     const anExpression : UnicodeString;
+                                     const anExpression : String;
                                      options : TdwsEvaluateOptions = [];
                                      const scriptPos : PScriptPos = nil) : IdwsEvaluateExpr;
 var

@@ -42,7 +42,7 @@ type
    EdwsFSInvalidFileName = class (EdwsFileSystemException)
    end;
 
-   TFileStreamOpenedEvent = procedure (Sender : TObject; const fileName : UnicodeString; const mode : TdwsFileOpenMode) of object;
+   TFileStreamOpenedEvent = procedure (Sender : TObject; const fileName : TFileName; const mode : TdwsFileOpenMode) of object;
 
    // IdwsFileSystem
    //
@@ -348,7 +348,7 @@ const
    cDummyFileName = 'dummy.file';
 var
    i : Integer;
-   buf : UnicodeString;
+   buf : TFileName;
 begin
    if FPathsPrepared then Exit;
    for i:=FPaths.Count-1 downto 0 do begin
@@ -368,7 +368,7 @@ end;
 function TdwsRestrictedOSFileSystem.ValidateFileName(const aFilename : TFilename) : TFilename;
 var
    i : Integer;
-   fileName, path : UnicodeString;
+   fileName, path : TFileName;
 begin
    fileName := ApplyStringVariables(aFileName, FVariables, '%');
    if StrContains(fileName, ':') then begin

@@ -51,7 +51,7 @@ type
          property NilConst : TConstNilExpr read FNil;
 
          function CreateEmptyString : TConstStringExpr;
-         function CreateString(const s : UnicodeString) : TConstStringExpr;
+         function CreateString(const s : String) : TConstStringExpr;
          function CreateInteger(const i : Int64) : TConstIntExpr;
          function CreateFloat(const f : Double) : TConstFloatExpr;
          function CreateNil : TConstNilExpr;
@@ -118,7 +118,7 @@ end;
 
 // CreateString
 //
-function TUnifiedConstants.CreateString(const s : UnicodeString) : TConstStringExpr;
+function TUnifiedConstants.CreateString(const s : String) : TConstStringExpr;
 begin
    if s = '' then
       Result := CreateEmptyString

@@ -40,7 +40,7 @@ type
                         const hotPos : TScriptPos;
                         const msg : String = CPE_IncompatibleTypes) : TTypedExpr; static;
 
-         class procedure AddProcHelper(const name : UnicodeString;
+         class procedure AddProcHelper(const name : String;
                                        table : TSymbolTable; func : TFuncSymbol;
                                        unitSymbol : TUnitMainSymbol); static;
 
@@ -84,7 +84,7 @@ type
    );
 
 
-function NameToArrayMethod(const name : UnicodeString; msgs : TdwsCompileMessageList;
+function NameToArrayMethod(const name : String; msgs : TdwsCompileMessageList;
                            const namePos : TScriptPos) : TArrayMethodKind;
 
 function CreateAssignExpr(context : TdwsCompilerContext;
@@ -107,7 +107,7 @@ function CreateMethodExpr(context : TdwsCompilerContext; meth: TMethodSymbol; va
 procedure TypeCheckArguments(context : TdwsCompilerContext; funcExpr : TFuncExprBase;
                              const argPosArray : TScriptPosArray);
 
-function CreateConstParamSymbol(const name : UnicodeString; typ : TTypeSymbol) : TParamSymbol;
+function CreateConstParamSymbol(const name : String; typ : TTypeSymbol) : TParamSymbol;
 
 function ResolveOperatorFor(currentProg : TdwsProgram; token : TTokenType;
                             aLeftType, aRightType : TTypeSymbol) : TOperatorSymbol;
@@ -129,7 +129,7 @@ uses dwsGenericExprs;
 //
 var
    vArrayMethods : TStringToEnum;
-function NameToArrayMethod(const name : UnicodeString; msgs : TdwsCompileMessageList;
+function NameToArrayMethod(const name : String; msgs : TdwsCompileMessageList;
                            const namePos : TScriptPos) : TArrayMethodKind;
 
    procedure CheckExactMatch(i : Integer);
@@ -319,18 +319,18 @@ end;
 type
    TCheckAbstractClassConstruction = class (TErrorMessage)
       FClassSym : TClassSymbol;
-      constructor Create(msgs: TdwsMessageList; const text : UnicodeString; const p : TScriptPos;
+      constructor Create(msgs: TdwsMessageList; const text : String; const p : TScriptPos;
                          classSym : TClassSymbol); overload;
       function IsValid : Boolean; override;
    end;
 
 // Create
 //
-constructor TCheckAbstractClassConstruction.Create(msgs: TdwsMessageList; const text : UnicodeString; const p : TScriptPos;
+constructor TCheckAbstractClassConstruction.Create(msgs: TdwsMessageList; const text : String; const p : TScriptPos;
                                                    classSym : TClassSymbol);
 begin
    FClassSym:=classSym;
-   inherited Create(msgs, UnicodeFormat(MSG_Error, [text]), p);
+   inherited Create(msgs, Format(MSG_Error, [text]), p);
 end;
 
 // IsValid
@@ -675,7 +675,7 @@ end;
 
 // CreateConstParamSymbol
 //
-function CreateConstParamSymbol(const name : UnicodeString; typ : TTypeSymbol) : TParamSymbol;
+function CreateConstParamSymbol(const name : String; typ : TTypeSymbol) : TParamSymbol;
 var
    utyp : TTypeSymbol;
 begin
@@ -781,7 +781,7 @@ end;
 
 // AddProcHelper
 //
-class procedure CompilerUtils.AddProcHelper(const name : UnicodeString;
+class procedure CompilerUtils.AddProcHelper(const name : String;
                                             table : TSymbolTable; func : TFuncSymbol;
                                             unitSymbol : TUnitMainSymbol);
 var

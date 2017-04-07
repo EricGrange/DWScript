@@ -21,8 +21,8 @@ type
       public
          procedure SetUp; override;
          procedure TearDown; override;
-         procedure DoOnInclude(const scriptName : UnicodeString; var scriptSource : UnicodeString);
-         procedure DoOnResource(compiler : TdwsCompiler; const resName : UnicodeString);
+         procedure DoOnInclude(const scriptName : String; var scriptSource : UnicodeString);
+         procedure DoOnResource(compiler : TdwsCompiler; const resName : String);
 
          procedure ReExec(info : TProgramInfo);
          procedure HostExcept(info : TProgramInfo);
@@ -270,7 +270,7 @@ end;
 
 // DoOnInclude
 //
-procedure TCornerCasesTests.DoOnInclude(const scriptName : UnicodeString; var scriptSource : UnicodeString);
+procedure TCornerCasesTests.DoOnInclude(const scriptName : String; var scriptSource : UnicodeString);
 begin
    if scriptName='comment.inc' then
       scriptSource:='{'
@@ -286,7 +286,7 @@ end;
 
 // DoOnResource
 //
-procedure TCornerCasesTests.DoOnResource(compiler : TdwsCompiler; const resName : UnicodeString);
+procedure TCornerCasesTests.DoOnResource(compiler : TdwsCompiler; const resName : String);
 begin
    FLastResource:=resName;
    if resName='missing' then
@@ -334,13 +334,13 @@ begin
 
    CheckEquals('', prog.Msgs.AsInfo, 'include via event');
    exec:=prog.Execute;
-   CheckEquals('hello', exec.Result.ToUnicodeString, 'exec include via event');
+   CheckEquals('hello', exec.Result.ToString, 'exec include via event');
 
    prog:=FCompiler.Compile('{$include ''test.dummy''}print(" world");');
 
    CheckEquals('', prog.Msgs.AsInfo, 'include via event followup');
    exec:=prog.Execute;
-   CheckEquals('hello world', exec.Result.ToUnicodeString, 'exec include via event followup');
+   CheckEquals('hello world', exec.Result.ToString, 'exec include via event followup');
 end;
 
 // IncludeViaFile
@@ -385,7 +385,7 @@ begin
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
    CheckEquals('', prog.Msgs.AsInfo, 'include via file');
    exec:=prog.Execute;
-   CheckEquals('world', exec.Result.ToUnicodeString, 'exec include via file');
+   CheckEquals('world', exec.Result.ToString, 'exec include via file');
 
    CheckEquals(2, prog.SourceList.Count, 'source list count');
    CheckEquals(MSG_MainModule, prog.SourceList[0].NameReference, 'source list 0');
@@ -394,7 +394,7 @@ begin
    prog:=FCompiler.Compile('{$include ''test.dummy''}print(" happy");');
    CheckEquals('', prog.Msgs.AsInfo, 'include via file followup');
    exec:=prog.Execute;
-   CheckEquals('world happy', exec.Result.ToUnicodeString, 'exec include via file followup');
+   CheckEquals('world happy', exec.Result.ToString, 'exec include via file followup');
 
    FCompiler.Config.ScriptPaths.Clear;
    DeleteFile(tempFile);
@@ -454,7 +454,7 @@ begin
       prog:=FCompiler.Compile('{$include ''test.dummy''}');
       CheckEquals('', prog.Msgs.AsInfo, 'include via file restricted - dot path');
       exec:=prog.Execute;
-      CheckEquals('world', exec.Result.ToUnicodeString, 'exec include via file');
+      CheckEquals('world', exec.Result.ToString, 'exec include via file');
 
       DeleteFile(tempFile);
    finally
@@ -509,7 +509,7 @@ const
 var
    prog : IdwsProgram;
    opts : TCompilerOptions;
-   buf : UnicodeString;
+   buf : String;
 begin
    opts:=FCompiler.Config.CompilerOptions;
    FCompiler.Config.CompilerOptions:=opts+[coSymbolDictionary];
@@ -676,17 +676,17 @@ begin
                            +'if ParamCount>0 then Print(Param(0));'
                            +'for i:=0 to ParamCount-1 do PrintLn(ParamStr(i));');
 
-   CheckEquals('1'#13#10'hello worldhello world'#13#10, prog.ExecuteParam('hello world').Result.ToUnicodeString);
-   CheckEquals('2'#13#10'hellohello'#13#10'world'#13#10, prog.ExecuteParam(VarArrayOf(['hello','world'])).Result.ToUnicodeString);
+   CheckEquals('1'#13#10'hello worldhello world'#13#10, prog.ExecuteParam('hello world').Result.ToString);
+   CheckEquals('2'#13#10'hellohello'#13#10'world'#13#10, prog.ExecuteParam(VarArrayOf(['hello','world'])).Result.ToString);
 
    SetLength(params, 0);
-   CheckEquals('0'#13#10, prog.ExecuteParam(params).Result.ToUnicodeString);
+   CheckEquals('0'#13#10, prog.ExecuteParam(params).Result.ToString);
    SetLength(params, 1);
    params[0]:='hello';
-   CheckEquals('1'#13#10'hellohello'#13#10, prog.ExecuteParam(params).Result.ToUnicodeString);
+   CheckEquals('1'#13#10'hellohello'#13#10, prog.ExecuteParam(params).Result.ToString);
    SetLength(params, 2);
    params[1]:=123;
-   CheckEquals('2'#13#10'hellohello'#13#10'123'#13#10, prog.ExecuteParam(params).Result.ToUnicodeString);
+   CheckEquals('2'#13#10'hellohello'#13#10'123'#13#10, prog.ExecuteParam(params).Result.ToString);
 end;
 
 // CallFuncThatReturnsARecord
@@ -742,7 +742,7 @@ begin
    try
       info:=exec.Info.Vars['TScriptClass'].GetConstructor('Create', nil).Call;
       info.Method['Free'].Call;
-      CheckEquals('create-destroy', exec.Result.ToUnicodeString);
+      CheckEquals('create-destroy', exec.Result.ToString);
    finally
       exec.EndProgram;
    end;
@@ -773,7 +773,7 @@ procedure TCornerCasesTests.SubExprTest;
       sb:=TWriteOnlyBlockStream.Create;
       try
          SubExprTree(sb, expr, 0);
-         Result:=sb.ToUnicodeString;
+         Result:=sb.ToString;
       finally
          sb.Free;
       end;
@@ -834,14 +834,14 @@ begin
 
    CheckEquals(0, prog.Msgs.Count, 'Compile: '+prog.Msgs.AsInfo);
    exec:=prog.Execute;
-   CheckEquals('hello', exec.Result.ToUnicodeString, 'Compile Result');
+   CheckEquals('hello', exec.Result.ToString, 'Compile Result');
 
    FCompiler.RecompileInContext(prog, 'Print(hello);');
 
    CheckEquals(0, prog.Msgs.Count, 'Recompile: '+prog.Msgs.AsInfo);
 
    exec:=prog.Execute;
-   CheckEquals('world', exec.Result.ToUnicodeString, 'Recompile Result');
+   CheckEquals('world', exec.Result.ToString, 'Recompile Result');
 end;
 
 // RecompileInContext2
@@ -868,7 +868,7 @@ begin
 
       exec.RunProgram(0);
 
-      CheckEquals('', exec.Result.ToUnicodeString, 'Compile Result');
+      CheckEquals('', exec.Result.ToString, 'Compile Result');
 
       FCompiler.RecompileInContext(prog, 't.Test;');
 
@@ -876,7 +876,7 @@ begin
 
       exec.RunProgram(0);
 
-      CheckEquals('TTest', exec.Result.ToUnicodeString, 'Recompile Result');
+      CheckEquals('TTest', exec.Result.ToString, 'Recompile Result');
 
    finally
       exec.EndProgram;
@@ -896,15 +896,15 @@ begin
    exec:=prog.BeginNewExecution;
 
    exec.RunProgram(0);
-   CheckEquals('Hello', exec.Result.ToUnicodeString, 'compile');
+   CheckEquals('Hello', exec.Result.ToString, 'compile');
 
    FCompiler.RecompileInContext(prog, 'x := 2; Print(x);');
    exec.RunProgram(0);
-   CheckEquals('Hello2', exec.Result.ToUnicodeString, 're compile');
+   CheckEquals('Hello2', exec.Result.ToString, 're compile');
 
    FCompiler.RecompileInContext(prog, 'x:=x+1; Print(x);');
    exec.RunProgram(0);
-   CheckEquals('Hello23', exec.Result.ToUnicodeString, 're re compile');
+   CheckEquals('Hello23', exec.Result.ToString, 're re compile');
 
    exec.EndProgram;
 end;
@@ -923,15 +923,15 @@ begin
 
       FCompiler.RecompileInContext(prog, 'var x := 2');
       exec.RunProgram(0);
-      CheckEquals('', exec.Result.ToUnicodeString, 'compile');
+      CheckEquals('', exec.Result.ToString, 'compile');
 
       FCompiler.RecompileInContext(prog, 'Print(x)');
       exec.RunProgram(0);
-      CheckEquals('2', exec.Result.ToUnicodeString, 're compile');
+      CheckEquals('2', exec.Result.ToString, 're compile');
 
       FCompiler.RecompileInContext(prog, 'var y := x+1; Print(y);');
       exec.RunProgram(0);
-      CheckEquals('23', exec.Result.ToUnicodeString, 're re compile');
+      CheckEquals('23', exec.Result.ToString, 're re compile');
 
    finally
       exec.EndProgram;
@@ -1083,7 +1083,7 @@ begin
                   +#9#9']'#13#10
                   +#9'}'#13#10
                   +']',
-                  wobs.ToUnicodeString, 'JSON map');
+                  wobs.ToString, 'JSON map');
    finally
       writer.Free;
       wobs.Free;
@@ -1226,7 +1226,7 @@ begin
    try
       prog:=FCompiler.Compile('{$F "test.dummy"}');
       CheckEquals('', prog.Msgs.AsInfo);
-      CheckEquals('hello', prog.Execute.Result.ToUnicodeString);
+      CheckEquals('hello', prog.Execute.Result.ToString);
 
       prog:=FCompiler.Compile('{$F "test.dummy"');
       CheckEquals('Syntax Error: "}" expected [line: 1, column: 5]'#13#10, prog.Msgs.AsInfo);
@@ -1417,7 +1417,7 @@ begin
 
    exec:=prog.Execute;
    CheckEquals('Runtime Error: Script is already running'#13#10, exec.Msgs.AsInfo);
-   CheckEquals('Here', exec.Result.ToUnicodeString);
+   CheckEquals('Here', exec.Result.ToString);
 end;
 
 // MultipleHostExceptions
@@ -1433,7 +1433,7 @@ begin
 
    exec:=prog.Execute;
    CheckEquals('Runtime Error: boom in HostExcept [line: 2, column: 1]'#13#10, exec.Msgs.AsInfo);
-   CheckEquals('gobbled', exec.Result.ToUnicodeString);
+   CheckEquals('gobbled', exec.Result.ToString);
 end;
 
 // OverloadOverrideIndwsUnit
@@ -1623,7 +1623,7 @@ begin
    CheckEquals('', prog.Msgs.AsInfo);
 
    exec:=prog.Execute;
-   CheckEquals('test', exec.Result.ToUnicodeString);
+   CheckEquals('test', exec.Result.ToString);
 end;
 
 // MethodDestroy
@@ -1644,7 +1644,7 @@ begin
    CheckEquals('', prog.Msgs.AsInfo);
 
    exec:=prog.Execute;
-   CheckEquals('test', exec.Result.ToUnicodeString);
+   CheckEquals('test', exec.Result.ToString);
 end;
 
 // PropertyDefault
@@ -1706,7 +1706,7 @@ begin
    CheckEquals('', prog.Msgs.AsInfo);
 
    exec:=prog.Execute;
-   CheckEquals('here'#13#10, exec.Result.ToUnicodeString);
+   CheckEquals('here'#13#10, exec.Result.ToString);
    CheckEquals('Runtime Error: Assertion failed [line: 2, column: 1]'#13#10, exec.Msgs.AsInfo);
 end;
 
@@ -1811,7 +1811,7 @@ begin
 
    CheckEquals('', prog.Msgs.AsInfo, 'no finalization compile');
 
-   CheckEquals('hello', prog.Execute.Result.ToUnicodeString, 'no finalization exec');
+   CheckEquals('hello', prog.Execute.Result.ToString, 'no finalization exec');
 end;
 
 // IsAbstractFlag
@@ -1910,14 +1910,14 @@ begin
                            +'   world'');');
    exec := prog.CreateNewExecution;
    exec.Execute(0);
-   CheckEquals('hello'#13#10'world'#13#10, exec.Result.ToUnicodeString, 'CRLF');
+   CheckEquals('hello'#13#10'world'#13#10, exec.Result.ToString, 'CRLF');
 
    prog:=FCompiler.Compile( 'PrintLn(#'''#10
                            +'   hello'#10
                            +'   world'');');
    exec := prog.CreateNewExecution;
    exec.Execute(0);
-   CheckEquals('hello'#10'world'#13#10, exec.Result.ToUnicodeString, 'LF');
+   CheckEquals('hello'#10'world'#13#10, exec.Result.ToString, 'LF');
 
 end;
 

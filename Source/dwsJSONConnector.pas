@@ -26,7 +26,7 @@ uses
    dwsExprs, dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs, dwsStack,
    dwsStrings, dwsXPlatform, dwsUtils, dwsOperators, dwsUnitSymbols,
    dwsFunctions, dwsJSON, dwsMagicExprs, dwsConnectorSymbols, dwsScriptSource,
-   dwsXXHash, dwsCompilerContext, dwsCompilerUtils;
+   dwsXXHash, dwsCompilerContext, dwsCompilerUtils, dwsUnicode;
 
 type
 
@@ -62,16 +62,16 @@ type
          FLengthMember : IConnectorMember;
 
       protected
-         function ConnectorCaption : UnicodeString;
+         function ConnectorCaption : String;
          function AutoVarParams : Boolean;
          function AcceptsParams(const params : TConnectorParamArray) : Boolean;
-         function WritableReads(const memberName : UnicodeString) : Boolean;
+         function WritableReads(const memberName : String) : Boolean;
 
-         function HasMethod(const methodName : UnicodeString; const params : TConnectorParamArray;
+         function HasMethod(const methodName : String; const params : TConnectorParamArray;
                             var typSym : TTypeSymbol) : IConnectorCall;
-         function HasMember(const memberName : UnicodeString; var typSym : TTypeSymbol;
+         function HasMember(const memberName : String; var typSym : TTypeSymbol;
                             isWrite : Boolean) : IConnectorMember;
-         function HasIndex(const propName : UnicodeString; const params : TConnectorParamArray;
+         function HasIndex(const propName : String; const params : TConnectorParamArray;
                            var typSym : TTypeSymbol; isWrite : Boolean) : IConnectorCall;
          function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
          function HasCast(typSym: TTypeSymbol) : IConnectorCast;
@@ -135,7 +135,7 @@ type
          FPropName : UnicodeString;
 
       public
-         constructor Create(const propName : UnicodeString);
+         constructor Create(const propName : String);
 
          property CallPropName : UnicodeString read FPropName write FPropName;
    end;
@@ -166,7 +166,7 @@ type
          procedure FastWrite(const exec : TdwsExecution; const base, value : TExprBase); override;
 
       public
-         constructor Create(const memberName : UnicodeString);
+         constructor Create(const memberName : String);
 
          property MemberName : UnicodeString read FMemberName write SetMemberName;
    end;
@@ -224,9 +224,9 @@ type
    // TJSONStringifyMethod
    //
    TJSONStringifyMethod = class (TInternalMagicStringFunction)
-      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
 
-      class procedure Stringify(const args : TExprBaseListExec; var Result : UnicodeString); static;
+      class procedure Stringify(const args : TExprBaseListExec; var Result : String); static;
 
       class procedure StringifyVariant(exec : TdwsExecution; writer : TdwsJSONWriter; const v : Variant); static;
       class procedure StringifyUnknown(exec : TdwsExecution; writer : TdwsJSONWriter;
@@ -269,8 +269,6 @@ implementation
 uses dwsConstExprs;
 
 const
-   cDefaultSymbolMarker = ttAT;
-
    SYS_JSON = 'JSON';
    SYS_JSONVARIANT = 'JSONVariant';
    SYS_JSON_STRINGIFY = 'Stringify';
@@ -308,7 +306,7 @@ type
    TBoxedNilJSONValue = class (TInterfacedObject, IBoxedJSONValue, ICoalesceable, IGetSelf, IUnknown)
       function GetSelf : TObject;
       function ToString : String; override; final;
-      function ToUnicodeString : UnicodeString;
+      function ToUnicodeString : String;
       function Value : TdwsJSONValue;
       function IsFalsey : Boolean;
    end;
@@ -444,7 +442,7 @@ end;
 
 // ToUnicodeString
 //
-function TBoxedNilJSONValue.ToUnicodeString : UnicodeString;
+function TBoxedNilJSONValue.ToUnicodeString : String;
 begin
    Result := '';
 end;
@@ -567,7 +565,7 @@ end;
 
 // ConnectorCaption
 //
-function TdwsJSONConnectorType.ConnectorCaption : UnicodeString;
+function TdwsJSONConnectorType.ConnectorCaption : String;
 begin
    Result:='JSON Connector 2.0';
 end;
@@ -588,14 +586,14 @@ end;
 
 // WritableReads
 //
-function TdwsJSONConnectorType.WritableReads(const memberName : UnicodeString) : Boolean;
+function TdwsJSONConnectorType.WritableReads(const memberName : String) : Boolean;
 begin
    Result := False;
 end;
 
 // HasMethod
 //
-function TdwsJSONConnectorType.HasMethod(const methodName : UnicodeString; const params : TConnectorParamArray;
+function TdwsJSONConnectorType.HasMethod(const methodName : String; const params : TConnectorParamArray;
                                          var typSym : TTypeSymbol) : IConnectorCall;
 var
    paramTyp : TTypeSymbol;
@@ -677,18 +675,18 @@ end;
 
 // HasMember
 //
-function TdwsJSONConnectorType.HasMember(const memberName : UnicodeString; var typSym : TTypeSymbol;
+function TdwsJSONConnectorType.HasMember(const memberName : String; var typSym : TTypeSymbol;
                                          isWrite : Boolean) : IConnectorMember;
 begin
    typSym:=TypJSONVariant;
    if memberName='length' then
       Result:=FLengthMember
-   else Result:=TdwsJSONConnectorMember.Create(memberName);
+   else Result := TdwsJSONConnectorMember.Create(memberName);
 end;
 
 // HasIndex
 //
-function TdwsJSONConnectorType.HasIndex(const propName : UnicodeString; const params : TConnectorParamArray;
+function TdwsJSONConnectorType.HasIndex(const propName : String; const params : TConnectorParamArray;
                                         var typSym : TTypeSymbol; isWrite : Boolean) : IConnectorCall;
 begin
    typSym:=TypJSONVariant;
@@ -869,7 +867,11 @@ begin
             case pParam^.VType of
                varInt64 : baseArray.Add(pParam^.VInt64);
                varDouble : baseArray.Add(pParam^.VDouble);
-               varUString : baseArray.Add(UnicodeString(pParam^.VString));
+               {$ifdef FPC}
+               varString : baseArray.Add(UnicodeString(String(pParam^.VString)));
+               {$else}
+               varUString : baseArray.Add(String(pParam^.VString));
+               {$endif}
                varBoolean : baseArray.Add(pParam^.VBoolean);
                varUnknown : begin
                   if pParam.VUnknown<>nil then begin
@@ -902,7 +904,7 @@ end;
 procedure TdwsJSONToStringCall.FastCall(const args : TExprBaseListExec; var result : Variant);
 begin
    VarCopySafe(result, '');
-   TJSONStringifyMethod.Stringify(args, UnicodeString(PVarData(@Result)^.VString));
+   TJSONStringifyMethod.Stringify(args, String(PVarData(@Result)^.VString));
 end;
 
 // ------------------
@@ -911,10 +913,10 @@ end;
 
 // Create
 //
-constructor TdwsJSONIndexCall.Create(const propName : UnicodeString);
+constructor TdwsJSONIndexCall.Create(const propName : String);
 begin
    inherited Create;
-   FPropName:=propName;
+   FPropName := UnicodeString(propName);
 end;
 
 // ------------------
@@ -978,10 +980,17 @@ begin
             argValue:=TdwsJSONImmediate.Create;
             argValue.AsNumber:=pVal^.VDouble;
          end;
+         {$ifdef FPC}
+         varString : begin
+            argValue:=TdwsJSONImmediate.Create;
+            argValue.AsString:=UnicodeString(String(pVal^.VString));
+         end;
+         {$else}
          varUString : begin
             argValue:=TdwsJSONImmediate.Create;
-            argValue.AsString:=UnicodeString(pVal^.VString);
+            argValue.AsString:=String(pVal^.VUString);
          end;
+         {$endif}
          varBoolean : begin
             argValue:=TdwsJSONImmediate.Create;
             argValue.AsBoolean:=pVal^.VBoolean;
@@ -1011,10 +1020,10 @@ end;
 
 // Create
 //
-constructor TdwsJSONConnectorMember.Create(const memberName : UnicodeString);
+constructor TdwsJSONConnectorMember.Create(const memberName : String);
 begin
    inherited Create;
-   SetMemberName(memberName);
+   SetMemberName(UnicodeString(memberName));
 end;
 
 // Read
@@ -1159,7 +1168,7 @@ var
    v : TdwsJSONValue;
    box : TBoxedJSONValue;
 begin
-   v:=TdwsJSONValue.ParseString(args.AsString[0]);
+   v:=TdwsJSONValue.ParseString(UnicodeString(args.AsString[0]));
    if v=nil then
       box:=nil
    else box:=TBoxedJSONValue.Create(v);
@@ -1181,7 +1190,7 @@ var
    newPData : PData;
    s : UnicodeString;
 begin
-   s := args.AsString[0];
+   s := UnicodeString(args.AsString[0]);
 
    tokenizer:=TdwsJSONParserState.Create(s);
    values:=TSimpleInt64List.Create;
@@ -1216,7 +1225,7 @@ var
    newPData : PData;
    s : UnicodeString;
 begin
-   s := args.AsString[0];
+   s := UnicodeString(args.AsString[0]);
 
    tokenizer:=TdwsJSONParserState.Create(s);
    values:=TSimpleDoubleList.Create;
@@ -1245,16 +1254,16 @@ end;
 procedure TJSONParseStringArrayMethod.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    tokenizer : TdwsJSONParserState;
-   values : TStringList;
+   values : TUnicodeStringList;
    i : Integer;
    newArray : TScriptDynamicArray;
    newPData : PData;
    s : UnicodeString;
 begin
-   s := args.AsString[0];
+   s := UnicodeString(args.AsString[0]);
 
    tokenizer:=TdwsJSONParserState.Create(s);
-   values:=TStringList.Create;
+   values := TUnicodeStringList.Create;
    try
       tokenizer.ParseStringArray(values);
 
@@ -1309,14 +1318,14 @@ end;
 
 // DoEvalAsString
 //
-procedure TJSONStringifyMethod.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+procedure TJSONStringifyMethod.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 begin
    Stringify(args, Result);
 end;
 
 // Stringify
 //
-class procedure TJSONStringifyMethod.Stringify(const args : TExprBaseListExec; var Result : UnicodeString);
+class procedure TJSONStringifyMethod.Stringify(const args : TExprBaseListExec; var Result : String);
 var
    writer : TdwsJSONWriter;
    stream : TWriteOnlyBlockStream;
@@ -1339,7 +1348,7 @@ begin
          dataExpr:=(expr as TDataExpr);
          StringifySymbol(args.Exec, writer, expr.Typ, dataExpr.DataPtr[args.Exec]);
       end;
-      Result:=stream.ToUnicodeString;
+      Result:=stream.ToString;
    finally
       writer.Free;
       stream.ReturnToPool;
@@ -1419,7 +1428,7 @@ begin
 
          end else if selfObj<>nil then begin
 
-            writer.WriteString(UnicodeString(selfObj.ToString))
+            writer.WriteString(selfObj.ToString)
 
          end else writer.WriteString('null');
 
@@ -1450,7 +1459,7 @@ begin
       StringifyAssociativeArray(exec, writer, IScriptAssociativeArray(dataPtr.AsInterface[0]).GetSelf as TScriptAssociativeArray)
    else if ct=TNilSymbol then
       writer.WriteNull
-   else writer.WriteString(UnicodeString(sym.ClassName));
+   else writer.WriteString(sym.ClassName);
 end;
 
 // StringifyArray
@@ -1595,7 +1604,7 @@ begin
             progExec.CompilerContext, stringifyMeth,
             selfExpr, rkObjRef, cNullPos, []
             );
-         methExpr.EvalAsString(exec, buf);
+         methExpr.EvalAsUnicodeString(exec, buf);
          writer.WriteJSON(buf);
       finally
          methExpr.Free;

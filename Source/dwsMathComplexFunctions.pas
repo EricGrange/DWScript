@@ -34,7 +34,7 @@ type
 
    TComplexToStrExpr = class(TInternalMagicStringFunction)
       public
-         procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+         procedure DoEvalAsString(const args : TExprBaseListExec; var result : String); override;
    end;
 
    TAbsComplexExpr = class(TUnaryOpFloatExpr)
@@ -142,7 +142,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TComplexToStrExpr.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+procedure TComplexToStrExpr.DoEvalAsString(const args : TExprBaseListExec; var result : String);
 var
    cmplxData : IDataContext;
    r, i : Double;
@@ -151,10 +151,10 @@ begin
    r:=cmplxData.AsFloat[0];
    i:=cmplxData.AsFloat[1];
    if i>0 then
-      Result:=UnicodeFormat('%f + %fi', [r, i])
+      Result := Format('%f + %fi', [r, i])
    else if i<0 then
-      Result:=UnicodeFormat('%f - %fi', [r, Abs(i)])
-   else Result:=UnicodeFormat('%f', [r]);
+      Result := Format('%f - %fi', [r, Abs(i)])
+   else Result := Format('%f', [r]);
 end;
 
 // ------------------

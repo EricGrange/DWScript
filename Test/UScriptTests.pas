@@ -17,7 +17,7 @@ type
          procedure SetUp; override;
          procedure TearDown; override;
 
-         procedure DoInclude(const scriptName: UnicodeString; var scriptSource: UnicodeString);
+         procedure DoInclude(const scriptName: String; var scriptSource: UnicodeString);
 
          procedure Compilation;
          procedure Execution;
@@ -116,17 +116,9 @@ end;
 
 // DoInclude
 //
-procedure TScriptTests.DoInclude(const scriptName: UnicodeString; var scriptSource: UnicodeString);
-var
-   sl : TStringList;
+procedure TScriptTests.DoInclude(const scriptName: String; var scriptSource: UnicodeString);
 begin
-   sl:=TStringList.Create;
-   try
-      sl.LoadFromFile('SimpleScripts\'+scriptName);
-      scriptSource:=sl.Text;
-   finally
-      sl.Free;
-   end;
+   scriptSource := LoadTextFromFile('SimpleScripts\'+scriptName);
 end;
 
 // Compilation
@@ -209,13 +201,13 @@ begin
             end;
          end;
          if prog.Msgs.Count+exec.Msgs.Count=0 then
-            output:=exec.Result.ToUnicodeString
+            output:=exec.Result.ToString
          else begin
             output:= 'Errors >>>>'#13#10
                     +prog.Msgs.AsInfo
                     +exec.Msgs.AsInfo
                     +'Result >>>>'#13#10
-                    +exec.Result.ToUnicodeString;
+                    +exec.Result.ToString;
          end;
 
          if coOptimize in FCompiler.Config.CompilerOptions then begin

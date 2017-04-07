@@ -85,11 +85,11 @@ type
    end;
 
    TGlobalVarsNamesCommaText = class(TInternalMagicStringFunction)
-      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
    end;
 
    TSaveGlobalVarsToString = class(TInternalMagicStringFunction)
-      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
    end;
 
    TLoadGlobalVarsFromString = class(TInternalMagicProcedure)
@@ -147,30 +147,30 @@ type
    end;
 
 {: Directly write a global var.<p> }
-function WriteGlobalVar(const aName: UnicodeString; const aValue: Variant; expirationSeconds : Double) : Boolean;
+function WriteGlobalVar(const aName: String; const aValue: Variant; expirationSeconds : Double) : Boolean;
 {: Directly read a global var.<p> }
-function ReadGlobalVar(const aName: UnicodeString): Variant; inline;
-function TryReadGlobalVar(const aName: UnicodeString; var value: Variant): Boolean;
+function ReadGlobalVar(const aName: String): Variant; inline;
+function TryReadGlobalVar(const aName: String; var value: Variant): Boolean;
 {: Directly read a global var, using a default value if variable does not exists.<p> }
-function ReadGlobalVarDef(const aName: UnicodeString; const aDefault: Variant): Variant;
+function ReadGlobalVarDef(const aName: String; const aDefault: Variant): Variant;
 {: Increments an integer global var. If not an integer, conversion is attempted.<p>
    Returns the value after the incrementation }
-function IncrementGlobalVar(const aName : UnicodeString; const delta : Int64) : Int64;
+function IncrementGlobalVar(const aName : String; const delta : Int64) : Int64;
 {: Compares aName with comparand, if equal exchanges with value, returns initial value of aName }
-function CompareExchangeGlobalVar(const aName : UnicodeString; const value, comparand : Variant) : Variant;
+function CompareExchangeGlobalVar(const aName : String; const value, comparand : Variant) : Variant;
 {: Delete specified global var if it exists. }
-function DeleteGlobalVar(const aName : UnicodeString) : Boolean;
+function DeleteGlobalVar(const aName : String) : Boolean;
 {: Resets all global vars.<p> }
 procedure CleanupGlobalVars(const filter : String = '*');
 
-{: Save current global vars and their values to a UnicodeString. }
+{: Save current global vars and their values to a String. }
 function SaveGlobalVarsToString : RawByteString;
 {: Load global vars and their values to a file. }
 procedure LoadGlobalVarsFromString(const srcString : RawByteString);
 {: Save current global vars and their values to a file. }
-procedure SaveGlobalVarsToFile(const destFileName : UnicodeString);
+procedure SaveGlobalVarsToFile(const destFileName : String);
 {: Load global vars and their values to a file. }
-procedure LoadGlobalVarsFromFile(const srcFileName : UnicodeString);
+procedure LoadGlobalVarsFromFile(const srcFileName : String);
 {: Save current global vars and their values to a file. }
 procedure SaveGlobalVarsToStream(destStream : TStream);
 {: Load global vars and their values to a file. }
@@ -236,14 +236,14 @@ end;
 
 // WriteGlobalVar
 //
-function WriteGlobalVar(const aName : UnicodeString; const aValue : Variant; expirationSeconds : Double) : Boolean;
+function WriteGlobalVar(const aName : String; const aValue : Variant; expirationSeconds : Double) : Boolean;
 begin
    Result:=vGlobalVars.Write(aName, aValue, expirationSeconds);
 end;
 
 // ReadGlobalVarDef
 //
-function ReadGlobalVarDef(const aName : UnicodeString; const aDefault : Variant) : Variant;
+function ReadGlobalVarDef(const aName : String; const aDefault : Variant) : Variant;
 begin
    if not vGlobalVars.TryRead(aName, Result) then
       Result:=aDefault;
@@ -251,21 +251,21 @@ end;
 
 // IncrementGlobalVar
 //
-function IncrementGlobalVar(const aName : UnicodeString; const delta : Int64) : Int64;
+function IncrementGlobalVar(const aName : String; const delta : Int64) : Int64;
 begin
    Result:=vGlobalVars.Increment(aName, delta);
 end;
 
 // CompareExchangeGlobalVar
 //
-function CompareExchangeGlobalVar(const aName : UnicodeString; const value, comparand : Variant) : Variant;
+function CompareExchangeGlobalVar(const aName : String; const value, comparand : Variant) : Variant;
 begin
    Result:=vGlobalVars.CompareExchange(aName, value, comparand);
 end;
 
 // ReadGlobalVar
 //
-function ReadGlobalVar(const aName : UnicodeString) : Variant;
+function ReadGlobalVar(const aName : String) : Variant;
 begin
    // Result (empty) is our default value when calling...
    if not TryReadGlobalVar(aName, Result) then
@@ -274,14 +274,14 @@ end;
 
 // TryReadGlobalVar
 //
-function TryReadGlobalVar(const aName: UnicodeString; var value: Variant): Boolean;
+function TryReadGlobalVar(const aName: String; var value: Variant): Boolean;
 begin
    Result:=vGlobalVars.TryRead(aName, value);
 end;
 
 // DeleteGlobalVar
 //
-function DeleteGlobalVar(const aName : UnicodeString) : Boolean;
+function DeleteGlobalVar(const aName : String) : Boolean;
 begin
    Result:=vGlobalVars.Delete(aName);
 end;
@@ -328,7 +328,7 @@ begin
    end;
 end;
 
-procedure SaveGlobalVarsToFile(const destFileName : UnicodeString);
+procedure SaveGlobalVarsToFile(const destFileName : String);
 var
    fs : TFileStream;
 begin
@@ -340,7 +340,7 @@ begin
    end;
 end;
 
-procedure LoadGlobalVarsFromFile(const srcFileName : UnicodeString);
+procedure LoadGlobalVarsFromFile(const srcFileName : String);
 var
    fs : TFileStream;
 begin
@@ -632,7 +632,7 @@ end;
 
 { TGlobalVarsNamesCommaText }
 
-procedure TGlobalVarsNamesCommaText.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+procedure TGlobalVarsNamesCommaText.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 begin
    Result:=vGlobalVars.NamesCommaText;
 end;
@@ -641,7 +641,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TSaveGlobalVarsToString.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+procedure TSaveGlobalVarsToString.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 begin
    Result:=RawByteStringToScriptString(SaveGlobalVarsToString);
 end;
@@ -783,9 +783,9 @@ type
    TPrivateVarEnumerator = class
       FArray : TScriptDynamicStringArray;
       FOffset : Integer;
-      procedure Add(const s : UnicodeString);
+      procedure Add(const s : String);
    end;
-procedure TPrivateVarEnumerator.Add(const s : UnicodeString);
+procedure TPrivateVarEnumerator.Add(const s : String);
 begin
    FArray.Add(Copy(s, FOffset));
 end;

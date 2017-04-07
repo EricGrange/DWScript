@@ -67,7 +67,7 @@ var
 
    procedure EvalString(Result : TdwsResult);
    var
-      buf : UnicodeString;
+      buf : String;
    begin
       exprBase.EvalAsString(args.Exec, buf);
       Result:=TdwsProgramExecution(args.Exec).Result;

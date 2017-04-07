@@ -40,15 +40,15 @@ type
 
          constructor Create;
 
-         function FormatDateTime(const fmt : UnicodeString; dt : Double; tz : TdwsTimeZone) : UnicodeString;
-         function DateTimeToStr(const dt : TDateTime; tz : TdwsTimeZone) : UnicodeString;
-         function DateToStr(const dt : TDateTime; tz : TdwsTimeZone) : UnicodeString;
-         function TimeToStr(const dt : TDateTime; tz : TdwsTimeZone) : UnicodeString;
+         function FormatDateTime(const fmt : String; dt : Double; tz : TdwsTimeZone) : String;
+         function DateTimeToStr(const dt : TDateTime; tz : TdwsTimeZone) : String;
+         function DateToStr(const dt : TDateTime; tz : TdwsTimeZone) : String;
+         function TimeToStr(const dt : TDateTime; tz : TdwsTimeZone) : String;
 
-         function TryStrToDateTime(const fmt : UnicodeString; const str : UnicodeString; var dt : Double; tz : TdwsTimeZone) : Boolean; overload;
-         function TryStrToDateTime(const str : UnicodeString; var dt : Double; tz : TdwsTimeZone) : Boolean; overload;
-         function TryStrToDate(const str : UnicodeString; var dt : Double; tz : TdwsTimeZone) : Boolean;
-         function TryStrToTime(const str : UnicodeString; var dt : Double; tz : TdwsTimeZone) : Boolean;
+         function TryStrToDateTime(const fmt : String; const str : String; var dt : Double; tz : TdwsTimeZone) : Boolean; overload;
+         function TryStrToDateTime(const str : String; var dt : Double; tz : TdwsTimeZone) : Boolean; overload;
+         function TryStrToDate(const str : String; var dt : Double; tz : TdwsTimeZone) : Boolean;
+         function TryStrToTime(const str : String; var dt : Double; tz : TdwsTimeZone) : Boolean;
 
          function TryEncodeDate(y, m, d : Integer; tz : TdwsTimeZone; var dt : Double) : Boolean;
          function EncodeDate(y, m, d : Integer; tz : TdwsTimeZone) : Double;
@@ -77,7 +77,7 @@ end;
 
 // FormatDateTime
 //
-function TdwsFormatSettings.FormatDateTime(const fmt : UnicodeString; dt : Double; tz : TdwsTimeZone) : UnicodeString;
+function TdwsFormatSettings.FormatDateTime(const fmt : String; dt : Double; tz : TdwsTimeZone) : String;
 begin
    if (dt<-693592) or (dt>2146790052) then
       raise EConvertError.Create('Invalid date/time');
@@ -90,35 +90,35 @@ end;
 
 // DateTimeToStr
 //
-function TdwsFormatSettings.DateTimeToStr(const dt : TDateTime; tz : TdwsTimeZone) : UnicodeString;
+function TdwsFormatSettings.DateTimeToStr(const dt : TDateTime; tz : TdwsTimeZone) : String;
 begin
    Result:=FormatDateTime(Settings.ShortDateFormat+' '+Settings.LongTimeFormat, dt, tz);
 end;
 
 // DateToStr
 //
-function TdwsFormatSettings.DateToStr(const dt : TDateTime; tz : TdwsTimeZone) : UnicodeString;
+function TdwsFormatSettings.DateToStr(const dt : TDateTime; tz : TdwsTimeZone) : String;
 begin
    Result:=FormatDateTime(Settings.ShortDateFormat, dt, tz);
 end;
 
 // TimeToStr
 //
-function TdwsFormatSettings.TimeToStr(const dt : TDateTime; tz : TdwsTimeZone) : UnicodeString;
+function TdwsFormatSettings.TimeToStr(const dt : TDateTime; tz : TdwsTimeZone) : String;
 begin
    Result:=FormatDateTime(Settings.LongTimeFormat, dt, tz);
 end;
 
 // TryStrToDateTime
 //
-// Clean Room implementation based strictly on the format UnicodeString
+// Clean Room implementation based strictly on the format String
 function TdwsFormatSettings.TryStrToDateTime(
-      const fmt : UnicodeString; const str : UnicodeString; var dt : Double; tz : TdwsTimeZone) : Boolean;
+      const fmt : String; const str : String; var dt : Double; tz : TdwsTimeZone) : Boolean;
 var
    year, month, day, hours, minutes, seconds, msec : Integer;
    i, j, p, value, fmtLength, digit : Integer;
-   c : WideChar;
-   tok, litteral : UnicodeString;
+   c : Char;
+   tok, litteral : String;
    dth : Double;
    match, previousWasHour, hourToken : Boolean;
 
@@ -285,7 +285,7 @@ end;
 
 // TryStrToDate
 //
-function TdwsFormatSettings.TryStrToDate(const str : UnicodeString; var dt : Double; tz : TdwsTimeZone) : Boolean;
+function TdwsFormatSettings.TryStrToDate(const str : String; var dt : Double; tz : TdwsTimeZone) : Boolean;
 begin
    Result:=   TryStrToDateTime(settings.ShortDateFormat, str, dt, tz)
            or TryStrToDateTime(settings.LongDateFormat, str, dt, tz);
@@ -293,7 +293,7 @@ end;
 
 // TryStrToTime
 //
-function TdwsFormatSettings.TryStrToTime(const str : UnicodeString; var dt : Double; tz : TdwsTimeZone) : Boolean;
+function TdwsFormatSettings.TryStrToTime(const str : String; var dt : Double; tz : TdwsTimeZone) : Boolean;
 begin
    Result:=   TryStrToDateTime(settings.ShortTimeFormat, str, dt, tz)
            or TryStrToDateTime(settings.LongTimeFormat, str, dt, tz);
@@ -301,7 +301,7 @@ end;
 
 // TryStrToDateTime
 //
-function TdwsFormatSettings.TryStrToDateTime(const str : UnicodeString; var dt : Double; tz : TdwsTimeZone) : Boolean;
+function TdwsFormatSettings.TryStrToDateTime(const str : String; var dt : Double; tz : TdwsTimeZone) : Boolean;
 begin
    Result:=   TryStrToDateTime(settings.ShortDateFormat+' '+settings.ShortTimeFormat, str, dt, tz)
            or TryStrToDateTime(settings.ShortDateFormat+' '+settings.LongTimeFormat, str, dt, tz)

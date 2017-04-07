@@ -31,7 +31,7 @@ type
       HashCode : Integer;
       Token : String;
       DataHashCode : Integer;
-      Data : String;
+      Data : UnicodeString;
       Expire : TDateTime;
    end;
 

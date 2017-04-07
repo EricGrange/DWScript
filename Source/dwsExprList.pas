@@ -72,11 +72,11 @@ type
          procedure SetAsBoolean(const x : Integer; const value : Boolean);
          function GetAsFloat(const x : Integer) : Double; inline;
          procedure SetAsFloat(const x : Integer; const value : Double);
-         function GetAsString(const x : Integer) : UnicodeString; inline;
-         procedure SetAsString(const x : Integer; const value : UnicodeString);
+         function GetAsString(const x : Integer) : String; inline;
+         procedure SetAsString(const x : Integer; const value : String);
          function GetAsDataString(const x : Integer) : RawByteString; inline;
          procedure SetAsDataString(const x : Integer; const value : RawByteString);
-         function GetAsFileName(const x : Integer) : UnicodeString;
+         function GetAsFileName(const x : Integer) : String;
          function GetFormatSettings : TdwsFormatSettings; inline;
 
       public
@@ -90,17 +90,17 @@ type
          property ExprBase[const x : Integer] : TExprBase read GetExprBase write SetExprBase; default;
 
          procedure EvalAsVariant(const x : Integer; var result : Variant); inline;
-         procedure EvalAsString(const x : Integer; var result : UnicodeString); inline;
+         procedure EvalAsString(const x : Integer; var result : String); inline;
 
          function AsChar(x : Integer; default : WideChar) : WideChar;
 
          property AsInteger[const x : Integer] : Int64 read GetAsInteger write SetAsInteger;
          property AsBoolean[const x : Integer] : Boolean read GetAsBoolean write SetAsBoolean;
          property AsFloat[const x : Integer] : Double read GetAsFloat write SetAsFloat;
-         property AsString[const x : Integer] : UnicodeString read GetAsString write SetAsString;
+         property AsString[const x : Integer] : String read GetAsString write SetAsString;
          property AsDataString[const x : Integer] : RawByteString read GetAsDataString write SetAsDataString;
 
-         property AsFileName[const x : Integer] : UnicodeString read GetAsFileName;
+         property AsFileName[const x : Integer] : String read GetAsFileName;
    end;
 
    TSortedExprBaseList = class(TSortedList<TExprBase>);
@@ -243,14 +243,14 @@ end;
 
 // GetAsString
 //
-function TExprBaseListExec.GetAsString(const x : Integer) : UnicodeString;
+function TExprBaseListExec.GetAsString(const x : Integer) : String;
 begin
    ExprBase[x].EvalAsString(Exec, Result);
 end;
 
 // SetAsString
 //
-procedure TExprBaseListExec.SetAsString(const x : Integer; const value : UnicodeString);
+procedure TExprBaseListExec.SetAsString(const x : Integer; const value : String);
 begin
    ExprBase[x].AssignValueAsString(Exec, value);
 end;
@@ -271,7 +271,7 @@ end;
 
 // GetAsFileName
 //
-function TExprBaseListExec.GetAsFileName(const x : Integer) : UnicodeString;
+function TExprBaseListExec.GetAsFileName(const x : Integer) : String;
 begin
    Result:=Exec.ValidateFileName(AsString[x]);
 end;
@@ -292,7 +292,7 @@ end;
 
 // EvalAsString
 //
-procedure TExprBaseListExec.EvalAsString(const x : Integer; var result : UnicodeString);
+procedure TExprBaseListExec.EvalAsString(const x : Integer; var result : String);
 begin
    ExprBase[x].EvalAsString(Exec, result);
 end;
@@ -301,12 +301,10 @@ end;
 //
 function TExprBaseListExec.AsChar(x : Integer; default : WideChar) : WideChar;
 var
-   s : UnicodeString;
+   s : String;
 begin
    EvalAsString(x, s);
-   if s <> '' then
-      Result := PWideChar(Pointer(s))^
-   else Result := default;
+   Result := FirstWideCharOfString(s, default)
 end;
 
 end.

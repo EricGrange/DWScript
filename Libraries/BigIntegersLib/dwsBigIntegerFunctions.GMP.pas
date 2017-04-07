@@ -49,8 +49,8 @@ type
 
       function BitLength : Integer;
 
-      function ToStringBase(base : Integer) : UnicodeString;
-      function ToHexString : UnicodeString;
+      function ToStringBase(base : Integer) : String;
+      function ToHexString : String;
 
       function ToInt64 : Int64;
    end;
@@ -66,16 +66,15 @@ type
 
          constructor CreateZero;
          constructor CreateInt64(const i : Int64);
-         constructor CreateString(const s : UnicodeString; base : Integer);
+         constructor CreateString(const s : String; base : Integer);
          constructor Wrap(const v : mpz_t);
          destructor Destroy; override;
 
          function BitLength : Integer;
 
-         function ToStringBase(base : Integer) : UnicodeString;
-         function ToHexString : UnicodeString;
-         function ToString : String; override; deprecated 'Use ToUnicodeString'; final;
-         function ToUnicodeString : UnicodeString;
+         function ToStringBase(base : Integer) : String;
+         function ToHexString : String;
+         function ToString : String; override;
 
          function ToInt64 : Int64;
    end;
@@ -183,13 +182,13 @@ type
    end;
 
    TBigIntegerToStringFunc = class(TInternalMagicStringFunction)
-      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
    end;
    TStringToBigIntegerFunc = class(TInternalMagicVariantFunction)
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
    TBigIntegerToHexFunc = class(TInternalMagicStringFunction)
-      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
    end;
    THexToBigIntegerFunc = class(TInternalMagicVariantFunction)
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
@@ -486,7 +485,7 @@ end;
 
 // CreateString
 //
-constructor TBigIntegerWrapper.CreateString(const s : UnicodeString; base : Integer);
+constructor TBigIntegerWrapper.CreateString(const s : String; base : Integer);
 var
    buf : RawByteString;
    p : PAnsiChar;
@@ -550,7 +549,7 @@ end;
 
 // ToStringBase
 //
-function TBigIntegerWrapper.ToStringBase(base : Integer) : UnicodeString;
+function TBigIntegerWrapper.ToStringBase(base : Integer) : String;
 var
    size : Integer;
    buf : RawByteString;
@@ -572,7 +571,7 @@ end;
 
 // ToHexString
 //
-function TBigIntegerWrapper.ToHexString : UnicodeString;
+function TBigIntegerWrapper.ToHexString : String;
 begin
    Result := ToStringBase(16);
 end;
@@ -580,13 +579,6 @@ end;
 // ToString
 //
 function TBigIntegerWrapper.ToString : String;
-begin
-   Result := String(ToUnicodeString);
-end;
-
-// ToUnicodeString
-//
-function TBigIntegerWrapper.ToUnicodeString : UnicodeString;
 begin
    Result := ToStringBase(10);
 end;
@@ -866,7 +858,7 @@ end;
 
 procedure TConvStringToBigIntegerExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
 var
-   s : UnicodeString;
+   s : String;
 begin
    Expr.EvalAsString(exec, s);
    result := TBigIntegerWrapper.CreateString( s, 10 ) as IdwsBigInteger;
@@ -895,7 +887,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TBigIntegerToStringFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+procedure TBigIntegerToStringFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 begin
    Result := ArgBigInteger(args, 0).ToStringBase(args.AsInteger[1]);
 end;
@@ -917,7 +909,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TBigIntegerToHexFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
+procedure TBigIntegerToHexFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 begin
    Result := ArgBigInteger(args, 0).ToStringBase(16);
 end;

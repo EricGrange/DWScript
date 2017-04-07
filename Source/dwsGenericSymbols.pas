@@ -55,7 +55,7 @@ type
          FConstraints : TTightList;  // owned
 
       public
-         constructor Create(aGeneric : TGenericSymbol; const name : UnicodeString);
+         constructor Create(aGeneric : TGenericSymbol; const name : String);
          destructor Destroy; override;
 
          procedure AddConstraint(aConstraint : TGenericConstraint);
@@ -69,8 +69,8 @@ type
       function  GetParameter(index : Integer) : TGenericTypeParameterSymbol;
       property  Parameters[index : Integer] : TGenericTypeParameterSymbol read GetParameter; default;
       function  Count : Integer;
-      function  Find(const name : UnicodeString) : TGenericTypeParameterSymbol;
-      function  Caption : UnicodeString;
+      function  Find(const name : String) : TGenericTypeParameterSymbol;
+      function  Caption : String;
    end;
 
    TGenericParameters = class (TInterfacedObject, IGenericParameters)
@@ -80,7 +80,7 @@ type
       protected
          function GetSelf : TObject;
 
-         function ToUnicodeString : UnicodeString;
+         function ToUnicodeString : String;
 
       public
          constructor Create;
@@ -90,15 +90,15 @@ type
 
          procedure Add(param : TGenericTypeParameterSymbol);
          function  GetParameter(index : Integer) : TGenericTypeParameterSymbol;
-         function  Find(const name : UnicodeString) : TGenericTypeParameterSymbol;
+         function  Find(const name : String) : TGenericTypeParameterSymbol;
 
          function Count : Integer;
 
-         function  Caption : UnicodeString;
+         function  Caption : String;
    end;
 
    TGenericSymbolSpecialization = record
-      Signature : UnicodeString;
+      Signature : String;
       Specialization : TTypeSymbol;
       SpecializedObjects : TSpecializationMap;
    end;
@@ -112,13 +112,13 @@ type
          FBinaryOps : TTightList;
 
       protected
-         class function Signature(params : TUnSortedSymbolTable) : UnicodeString; static;
+         class function Signature(params : TUnSortedSymbolTable) : String; static;
 
-         function GetCaption : UnicodeString; override;
+         function GetCaption : String; override;
          procedure AcquireSymbol(sym : TSymbol);
 
       public
-         constructor Create(const name : UnicodeString; const params : IGenericParameters);
+         constructor Create(const name : String; const params : IGenericParameters);
          destructor Destroy; override;
 
          function SpecializeType(const context : ISpecializationContext) : TTypeSymbol; override;
@@ -195,7 +195,7 @@ implementation
 
 // Create
 //
-constructor TGenericSymbol.Create(const name : UnicodeString; const params : IGenericParameters);
+constructor TGenericSymbol.Create(const name : String; const params : IGenericParameters);
 var
    i : Integer;
 begin
@@ -238,7 +238,7 @@ function TGenericSymbol.SpecializationFor(const aScriptPos : TScriptPos; aUnit :
                                           const aOperators : TOperators) : TTypeSymbol;
 var
    context : TSpecializationContext;
-   sig, n : UnicodeString;
+   sig, n : String;
    i, k : Integer;
 begin
    sig := Signature(values);
@@ -335,7 +335,7 @@ end;
 
 // GetCaption
 //
-function TGenericSymbol.GetCaption : UnicodeString;
+function TGenericSymbol.GetCaption : String;
 begin
    Result := Name + FParameters.Caption;
 end;
@@ -351,7 +351,7 @@ end;
 
 // Signature
 //
-class function TGenericSymbol.Signature(params : TUnSortedSymbolTable) : UnicodeString;
+class function TGenericSymbol.Signature(params : TUnSortedSymbolTable) : String;
 var
    i : Integer;
    sym : TSymbol;
@@ -368,7 +368,7 @@ end;
 
 // Create
 //
-constructor TGenericTypeParameterSymbol.Create(aGeneric : TGenericSymbol; const name : UnicodeString);
+constructor TGenericTypeParameterSymbol.Create(aGeneric : TGenericSymbol; const name : String);
 begin
    inherited Create(name, nil);
    FGenericSymbol := aGeneric;
@@ -437,9 +437,9 @@ end;
 
 // ToUnicodeString
 //
-function TGenericParameters.ToUnicodeString : UnicodeString;
+function TGenericParameters.ToUnicodeString : String;
 begin
-   Result := UnicodeString(ClassName);
+   Result := String(ClassName);
 end;
 
 // Add
@@ -458,7 +458,7 @@ end;
 
 // Find
 //
-function TGenericParameters.Find(const name : UnicodeString) : TGenericTypeParameterSymbol;
+function TGenericParameters.Find(const name : String) : TGenericTypeParameterSymbol;
 begin
    Result := TGenericTypeParameterSymbol(FList.FindLocal(name));
 end;
@@ -472,7 +472,7 @@ end;
 
 // Caption
 //
-function TGenericParameters.Caption : UnicodeString;
+function TGenericParameters.Caption : String;
 var
    i : Integer;
    p : TGenericTypeParameterSymbol;

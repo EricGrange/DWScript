@@ -19,7 +19,7 @@ unit dwsWinHTTP;
 interface
 
 uses
-   Windows, SysUtils, Variants,
+   Windows, SysUtils,
    SynCrtSock, SynCommons,
    dwsUtils, dwsWebEnvironment;
 
@@ -140,7 +140,7 @@ end;
 //
 procedure TdwsWinHttpConnection.SetCredentials(const credentials : Variant);
 begin
-   if VarIsArray(credentials, False) then begin
+   if VariantIsArray(credentials) then begin
       case TWebRequestAuthentication(credentials[0]) of
          wraBasic : FWinHttp.AuthScheme := THttpRequestAuthentication.wraBasic;
          wraDigest : FWinHttp.AuthScheme := THttpRequestAuthentication.wraDigest;
@@ -162,7 +162,7 @@ end;
 //
 procedure TdwsWinHttpConnection.SetCustomHeaders(const customHeaders : Variant);
 begin
-   if VarType(customHeaders) = varUnknown then
+   if VariantType(customHeaders) = varUnknown then
       FWinHttp.CustomHeaders := IGetSelf(TVarData(customHeaders).VUnknown).GetSelf as TdwsCustomHeaders
    else FWinHttp.CustomHeaders := nil;
 end;
@@ -171,7 +171,7 @@ end;
 //
 procedure TdwsWinHttpConnection.SetIgnoreSSLErrors(const ignore : Variant);
 begin
-   if (VarType(ignore)=varBoolean) and TVarData(ignore).VBoolean then
+   if (VariantType(ignore)=varBoolean) and TVarData(ignore).VBoolean then
        FWinHttp.IgnoreSSLCertificateErrors := True
    else FWinHttp.IgnoreSSLCertificateErrors := False;
 end;

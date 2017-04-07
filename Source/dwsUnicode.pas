@@ -222,7 +222,7 @@ begin
    FCount := src.Count;
    SetLength(FItems, FCount);
    for i := 0 to FCount-1 do
-      FItems[i] := src[i];
+      FItems[i] := UnicodeString(src[i]);
    if usflSorted in FFlags then
       Sort;
 end;

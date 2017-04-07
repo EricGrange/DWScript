@@ -48,12 +48,12 @@ type
       procedure Rollback;
       function InTransaction : Boolean;
       // if can't should return string with descriptive reason
-      function CanReleaseToPool : UnicodeString;
+      function CanReleaseToPool : String;
 
-      procedure Exec(const sql : UnicodeString; const parameters : TData; context : TExprBase);
-      function Query(const sql : UnicodeString; const parameters : TData; context : TExprBase) : IdwsDataSet;
+      procedure Exec(const sql : String; const parameters : TData; context : TExprBase);
+      function Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
 
-      function VersionInfoText : UnicodeString;
+      function VersionInfoText : String;
    end;
 
    IdwsDataSet = interface
@@ -68,12 +68,12 @@ type
 
    IdwsDataField = interface
       ['{1376FC38-6BDB-4E24-99A0-7987C02B2E23}']
-      function Name : UnicodeString;
+      function Name : String;
       function DataType : TdwsDataFieldType;
-      function DeclaredType : UnicodeString;
+      function DeclaredType : String;
 
       function IsNull : Boolean;
-      function AsString : UnicodeString;
+      function AsString : String;
       function AsInteger : Int64;
       function AsFloat : Double;
       function AsBoolean : Boolean;
@@ -94,7 +94,7 @@ type
          function CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase; virtual; abstract;
    end;
 
-   TdwsDataBaseApplyPathVariablesEvent = function (const path : UnicodeString) : UnicodeString of object;
+   TdwsDataBaseApplyPathVariablesEvent = function (const path : String) : String of object;
 
    TdwsDataBase = class (TInterfacedSelfObject)
       private
@@ -102,10 +102,10 @@ type
 
       public
          class property OnApplyPathVariables : TdwsDataBaseApplyPathVariablesEvent read vOnApplyPathVariables write vOnApplyPathVariables;
-         class function ApplyPathVariables(const path : UnicodeString) : UnicodeString; static;
+         class function ApplyPathVariables(const path : String) : String; static;
 
-         class procedure RegisterDriver(const driverName : UnicodeString; const factory : IdwsDataBaseFactory); static;
-         class function CreateDataBase(const driverName : UnicodeString; const parameters : TStringDynArray) : IdwsDataBase; static;
+         class procedure RegisterDriver(const driverName : String; const factory : IdwsDataBaseFactory); static;
+         class function CreateDataBase(const driverName : String; const parameters : TStringDynArray) : IdwsDataBase; static;
    end;
 
    TdwsDataSet = class (TInterfacedSelfObject, IUnknown, IdwsDataSet)
@@ -138,14 +138,14 @@ type
       private
          FDataSet : IdwsDataSet;
          FIndex : Integer;
-         FName : UnicodeString;
+         FName : String;
          FDataType : TdwsDataFieldType;
-         FDeclaredType : UnicodeString;
+         FDeclaredType : String;
 
       protected
-         function GetName : UnicodeString; virtual; abstract;
+         function GetName : String; virtual; abstract;
          function GetDataType : TdwsDataFieldType; virtual; abstract;
-         function GetDeclaredType : UnicodeString; virtual; abstract;
+         function GetDeclaredType : String; virtual; abstract;
 
          procedure RaiseNoActiveRecord;
 
@@ -155,12 +155,12 @@ type
          property DataSet : IdwsDataSet read FDataSet;
          property Index : Integer read FIndex;
 
-         function Name : UnicodeString;
+         function Name : String;
          function DataType : TdwsDataFieldType; virtual;
-         function DeclaredType : UnicodeString;
+         function DeclaredType : String;
 
          function IsNull : Boolean; virtual; abstract;
-         function AsString : UnicodeString; virtual; abstract;
+         function AsString : String; virtual; abstract;
          function AsInteger : Int64; virtual; abstract;
          function AsFloat : Double; virtual; abstract;
          function AsBoolean : Boolean; virtual;
@@ -179,7 +179,7 @@ implementation
 
 type
    TRegisteredDriver = record
-      Name : UnicodeString;
+      Name : String;
       Factory : IdwsDataBaseFactory;
    end;
 
@@ -188,7 +188,7 @@ var
 
 // RegisterDriver
 //
-class procedure TdwsDatabase.RegisterDriver(const driverName : UnicodeString; const factory : IdwsDataBaseFactory);
+class procedure TdwsDatabase.RegisterDriver(const driverName : String; const factory : IdwsDataBaseFactory);
 var
    n : Integer;
 begin
@@ -200,7 +200,7 @@ end;
 
 // CreateDataBase
 //
-class function TdwsDatabase.CreateDataBase(const driverName : UnicodeString; const parameters : TStringDynArray) : IdwsDataBase;
+class function TdwsDatabase.CreateDataBase(const driverName : String; const parameters : TStringDynArray) : IdwsDataBase;
 var
    i : Integer;
 begin
@@ -212,7 +212,7 @@ end;
 
 // ApplyPathVariables
 //
-class function TdwsDataBase.ApplyPathVariables(const path : UnicodeString) : UnicodeString;
+class function TdwsDataBase.ApplyPathVariables(const path : String) : String;
 begin
    if Assigned(vOnApplyPathVariables) then
       Result:=vOnApplyPathVariables(path)
@@ -296,7 +296,7 @@ end;
 
 // Name
 //
-function TdwsDataField.Name : UnicodeString;
+function TdwsDataField.Name : String;
 begin
    if FName='' then
       FName:=GetName;
@@ -314,7 +314,7 @@ end;
 
 // DeclaredType
 //
-function TdwsDataField.DeclaredType : UnicodeString;
+function TdwsDataField.DeclaredType : String;
 begin
    if FDeclaredType='' then
       FDeclaredType:=GetDeclaredType;

@@ -17,7 +17,7 @@ type
       private
          FCompiler : TDelphiWebScript;
 
-         function NeedUnitHandler(const unitName : UnicodeString; var unitSource : UnicodeString) : IdwsUnit;
+         function NeedUnitHandler(const unitName : String; var unitSource : UnicodeString) : IdwsUnit;
 
       public
          procedure SetUp; override;
@@ -278,7 +278,7 @@ begin
    CheckEquals('Create', sugg.Code[3], 'v. 3');
 end;
 
-function TSourceUtilsTests.NeedUnitHandler(const unitName: UnicodeString;
+function TSourceUtilsTests.NeedUnitHandler(const unitName: String;
   var unitSource: UnicodeString): IdwsUnit;
 begin
   CheckEquals('SomeUnit', unitName, 'Only the unit ''SomeUnit'' is handled properly!');
@@ -620,7 +620,7 @@ end;
 procedure TSourceUtilsTests.BigEnumerationNamesAndValues;
 var
    i : Integer;
-   s : UnicodeString;
+   s : String;
    prog : IdwsProgram;
    enum : TEnumerationSymbol;
 begin
@@ -728,7 +728,7 @@ begin
                            +'var xyz := "";'#13#10
                            +'x');
 
-   CheckNotEquals(UnicodeString(''), prog.Msgs.AsInfo, 'should have compiled with errors');
+   CheckNotEquals(String(''), prog.Msgs.AsInfo, 'should have compiled with errors');
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 3, 2);
 
@@ -743,9 +743,9 @@ end;
 //
 type
    TTestNormalizer = class (TStringList)
-      procedure Normalize(line, col : Integer; const name : UnicodeString);
+      procedure Normalize(line, col : Integer; const name : String);
    end;
-procedure TTestNormalizer.Normalize(line, col : Integer; const name : UnicodeString);
+procedure TTestNormalizer.Normalize(line, col : Integer; const name : String);
 begin
    Add(Format('%d, %d, %s', [line, col, name]));
 end;

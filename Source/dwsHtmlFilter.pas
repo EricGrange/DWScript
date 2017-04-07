@@ -31,7 +31,7 @@ unit dwsHtmlFilter;
 interface
 
 uses
-   Variants, Classes, SysUtils, StrUtils,
+   Classes, SysUtils, StrUtils,
    dwsComp, dwsExprs, dwsFunctions, dwsSymbols, dwsExprList, dwsFilter,
    dwsErrors, dwsCompiler, dwsStrings, dwsUtils, dwsMagicExprs,
    dwsResultFunctions;
@@ -44,18 +44,18 @@ type
    //
    TdwsHtmlFilter = class(TdwsFilter)
       private
-         FPatternOpen : UnicodeString;
+         FPatternOpen : String;
          FPatternOpenLength : Integer;
-         FPatternClose : UnicodeString;
+         FPatternClose : String;
          FPatternCloseLength : Integer;
-         FPatternEval : UnicodeString;
+         FPatternEval : String;
          FPatternEvalLength : Integer;
          FCheckPatternEval : TCheckPatternEvalFunc;
 
       protected
-         procedure SetPatternOpen(const val : UnicodeString);
-         procedure SetPatternClose(const val : UnicodeString);
-         procedure SetPatternEval(const val : UnicodeString);
+         procedure SetPatternOpen(const val : String);
+         procedure SetPatternClose(const val : String);
+         procedure SetPatternEval(const val : String);
 
       public
          constructor Create(AOwner: TComponent); override;
@@ -67,9 +67,9 @@ type
          function Process(const aText : UnicodeString; msgs: TdwsMessageList) : UnicodeString; override;
 
       published
-         property PatternOpen : UnicodeString read FPatternOpen write SetPatternOpen;
-         property PatternClose : UnicodeString read FPatternClose write SetPatternClose;
-         property PatternEval : UnicodeString read FPatternEval write SetPatternEval;
+         property PatternOpen : String read FPatternOpen write SetPatternOpen;
+         property PatternClose : String read FPatternClose write SetPatternClose;
+         property PatternEval : String read FPatternEval write SetPatternEval;
    end;
 
    TdwsHtmlUnit = class(TdwsUnitComponent)
@@ -232,7 +232,7 @@ begin
    endQuote[0]:='''';
 
    input:=inherited Process(aText, Msgs);
-   inputPtr:=PWideChar(Pointer(input));
+   inputPtr:=PWideChar(input);
 
    output:=TWriteOnlyBlockStream.AllocFromPool;
    try
@@ -272,7 +272,7 @@ begin
 
       until (stop<=0);
 
-      Result:=output.ToUnicodeString;
+      Result:=output.ToString;
 
    finally
       output.ReturnToPool;
@@ -305,7 +305,7 @@ end;
 
 // SetPatternOpen
 //
-procedure TdwsHtmlFilter.SetPatternOpen(const val : UnicodeString);
+procedure TdwsHtmlFilter.SetPatternOpen(const val : String);
 begin
    FPatternOpen:=val;
    FPatternOpenLength:=Length(val);
@@ -313,7 +313,7 @@ end;
 
 // SetPatternClose
 //
-procedure TdwsHtmlFilter.SetPatternClose(const val : UnicodeString);
+procedure TdwsHtmlFilter.SetPatternClose(const val : String);
 begin
    FPatternClose:=val;
    FPatternCloseLength:=Length(val);
@@ -321,7 +321,7 @@ end;
 
 // SetPatternEval
 //
-procedure TdwsHtmlFilter.SetPatternEval(const val : UnicodeString);
+procedure TdwsHtmlFilter.SetPatternEval(const val : String);
 begin
    FPatternEval:=val;
    FPatternEvalLength:=Length(val);

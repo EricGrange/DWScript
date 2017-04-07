@@ -18,8 +18,8 @@ type
          procedure SetUp; override;
          procedure TearDown; override;
 
-         procedure DoInclude(const scriptName : UnicodeString; var scriptSource : UnicodeString);
-         function DoNeedUnit(const unitName : UnicodeString; var unitSource : UnicodeString) : IdwsUnit;
+         procedure DoInclude(const scriptName : String; var scriptSource : UnicodeString);
+         function DoNeedUnit(const unitName : String; var unitSource : UnicodeString) : IdwsUnit;
 
          procedure Compilation;
          procedure Execution;
@@ -81,9 +81,9 @@ end;
 
 // DoInclude
 //
-procedure TBuildTests.DoInclude(const scriptName: UnicodeString; var scriptSource: UnicodeString);
+procedure TBuildTests.DoInclude(const scriptName: String; var scriptSource: UnicodeString);
 var
-   fileName : UnicodeString;
+   fileName : String;
 begin
    fileName:='BuildScripts\'+scriptName;
    if FileExists(fileName) then
@@ -93,7 +93,7 @@ end;
 
 // DoNeedUnit
 //
-function TBuildTests.DoNeedUnit(const unitName : UnicodeString; var unitSource : UnicodeString) : IdwsUnit;
+function TBuildTests.DoNeedUnit(const unitName : String; var unitSource : UnicodeString) : IdwsUnit;
 begin
    Result:=nil;
    DoInclude(unitName+'.pas', unitSource);
@@ -137,8 +137,8 @@ begin
                   contextMapFileName:=ChangeFileExt(FTests[i], '.cmap');
                   if FileExists(contextMapFileName) then begin
                      expectedResult.LoadFromFile(contextMapFileName);
-                     CheckEquals(Trim(expectedResult.Text), json.Stream.ToUnicodeString, FTests[i]);
-                  end else CheckEquals('', json.Stream.ToUnicodeString, FTests[i]);
+                     CheckEquals(Trim(expectedResult.Text), json.Stream.ToString, FTests[i]);
+                  end else CheckEquals('', json.Stream.ToString, FTests[i]);
 
                finally
                   json.Free;
@@ -187,13 +187,13 @@ begin
             end;
          end;
          if prog.Msgs.Count+exec.Msgs.Count=0 then
-            output:=exec.Result.ToUnicodeString
+            output:=exec.Result.ToString
          else begin
             output:= 'Errors >>>>'#13#10
                     +prog.Msgs.AsInfo
                     +exec.Msgs.AsInfo
                     +'Result >>>>'#13#10
-                    +exec.Result.ToUnicodeString;
+                    +exec.Result.ToString;
          end;
       end else begin
          output:= 'Errors >>>>'#13#10

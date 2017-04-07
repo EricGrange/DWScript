@@ -24,7 +24,7 @@ unit dwsConstExprs;
 interface
 
 uses
-   Variants, SysUtils,
+   SysUtils,
    dwsUtils, dwsDataContext, dwsStack, dwsXPlatform, dwsErrors, dwsStrings,
    dwsExprs, dwsExprList, dwsSymbols, dwsUnitSymbols, dwsScriptSource,
    dwsCompilerContext;
@@ -48,7 +48,7 @@ type
          constructor CreateNull(aTyp: TTypeSymbol);
          procedure Orphan(context : TdwsCompilerContext); override;
 
-         procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
+         procedure EvalAsString(exec : TdwsExecution; var result : String); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
          procedure EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface); override;
@@ -126,15 +126,15 @@ type
    //
    TConstStringExpr = class(TConstExpr)
       private
-         FValue : UnicodeString;
+         FValue : String;
 
-         procedure SetValue(const v : UnicodeString);
+         procedure SetValue(const v : String);
 
       public
-         constructor Create(typ : TTypeSymbol; const aValue : UnicodeString);
+         constructor Create(typ : TTypeSymbol; const aValue : String);
 
-         procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
-         property Value : UnicodeString read FValue write SetValue;
+         procedure EvalAsString(exec : TdwsExecution; var result : String); override;
+         property Value : String read FValue write SetValue;
    end;
 
    // TConstArrayExpr
@@ -252,7 +252,7 @@ begin
    inherited Create(aTyp);
    SetLength(FData, aTyp.Size);
    for i:=0 to aTyp.Size-1 do
-      FData[i]:=Null;
+      VarSetNull(FData[i]);
 end;
 
 // Orphan
@@ -264,7 +264,7 @@ end;
 
 // EvalAsString
 //
-procedure TConstExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
+procedure TConstExpr.EvalAsString(exec : TdwsExecution; var result : String);
 begin
    VariantToString(FData[0], Result);
 end;
@@ -346,7 +346,7 @@ end;
 class function TConstExpr.CreateTyped(context : TdwsCompilerContext; Typ: TTypeSymbol; const Data: TData; addr : Integer = 0) : TConstExpr;
 begin
    case Length(Data) of
-      0 : Result := TConstExpr.Create(Typ, Null);
+      0 : Result := TConstExpr.CreateNull(Typ);
       1 : Result := (context.CreateConstExpr(typ, data[addr]) as TConstExpr);
    else
       Result := TConstExpr.Create(Typ, Data, addr);
@@ -514,18 +514,18 @@ end;
 
 // Create
 //
-constructor TConstStringExpr.Create(typ : TTypeSymbol; const aValue : UnicodeString);
+constructor TConstStringExpr.Create(typ : TTypeSymbol; const aValue : String);
 begin
    FTyp := typ;
    FValue := aValue;
    SetLength(FData, 1);
    TVarData(FData[0]).VType := varUString;
-   UnicodeString(TVarData(FData[0]).VString) := aValue;
+   String(TVarData(FData[0]).VString) := aValue;
 end;
 
 // EvalAsString
 //
-procedure TConstStringExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
+procedure TConstStringExpr.EvalAsString(exec : TdwsExecution; var result : String);
 {$ifndef WIN32_ASM}
 begin
    Result:=FValue;
@@ -539,7 +539,7 @@ end;
 
 // SetValue
 //
-procedure TConstStringExpr.SetValue(const v : UnicodeString);
+procedure TConstStringExpr.SetValue(const v : String);
 begin
    FValue := v;
    FData[0] := FValue;

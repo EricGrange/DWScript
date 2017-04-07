@@ -70,7 +70,7 @@ var
       end;
    end;
 
-   function ResourceSHA3 : UnicodeString;
+   function ResourceSHA3 : String;
    var
       buf : RawByteString;
    begin
@@ -80,7 +80,7 @@ var
       SetLength(buf, resourceSize);
       System.Move(dataPtr^, Pointer(buf)^, resourceSize);
 
-      Result := Trim(UnicodeString(buf));
+      Result := Trim(String(buf));
 
       CloseResource;
    end;
@@ -102,7 +102,7 @@ var
 
 var
    buf : RawByteString;
-   sha3 : UnicodeString;
+   sha3 : String;
 begin
    if vDLLFileName <> '' then Exit(vDLLFileName);
    sha3 := ResourceSHA3;

@@ -34,9 +34,9 @@ type
 
    IConnector = interface
       ['{8D534D1A-4C6B-11D5-8DCB-0000216D9E86}']
-      function ConnectorCaption: UnicodeString;
-      function ConnectorName: UnicodeString;
-      function GetUnit(const UnitName: UnicodeString): IConnectorType;
+      function ConnectorCaption: String;
+      function ConnectorName: String;
+      function GetUnit(const UnitName: String): IConnectorType;
    end;
 
    TConnectorArgs = array of TData;
@@ -92,14 +92,14 @@ type
 
    IConnectorType = interface
      ['{8D534D1D-4C6B-11D5-8DCB-0000216D9E86}']
-     function ConnectorCaption: UnicodeString;
+     function ConnectorCaption: String;
      function AutoVarParams : Boolean;
      function AcceptsParams(const params: TConnectorParamArray) : Boolean;
-     function WritableReads(const memberName : UnicodeString) : Boolean;
-     function HasMethod(const MethodName: UnicodeString; const Params: TConnectorParamArray;
+     function WritableReads(const memberName : String) : Boolean;
+     function HasMethod(const MethodName: String; const Params: TConnectorParamArray;
                         var TypSym: TTypeSymbol): IConnectorCall;
-     function HasMember(const MemberName: UnicodeString; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
-     function HasIndex(const PropName: UnicodeString; const Params: TConnectorParamArray;
+     function HasMember(const MemberName: String; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
+     function HasIndex(const PropName: String; const Params: TConnectorParamArray;
                        var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
      function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
      function HasCast(typSym: TTypeSymbol) : IConnectorCast;
@@ -113,9 +113,9 @@ type
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
       public
-         constructor Create(const name : UnicodeString; const connectorType : IConnectorType);
+         constructor Create(const name : String; const connectorType : IConnectorType);
 
-         function SpecializeConnector(table : TSymbolTable; const qualifier : UnicodeString) : TConnectorSymbol; virtual;
+         function SpecializeConnector(table : TSymbolTable; const qualifier : String) : TConnectorSymbol; virtual;
          function CreateAssignExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                    left : TDataExpr; right : TTypedExpr) : TProgramExpr; virtual;
 
@@ -145,7 +145,7 @@ uses dwsCoreExprs;
 
 // Create
 //
-constructor TConnectorSymbol.Create(const name : UnicodeString; const connectorType : IConnectorType);
+constructor TConnectorSymbol.Create(const name : String; const connectorType : IConnectorType);
 begin
    inherited Create(name);
    FConnectorType:=ConnectorType;
@@ -161,7 +161,7 @@ end;
 
 // SpecializeConnector
 //
-function TConnectorSymbol.SpecializeConnector(table : TSymbolTable; const qualifier : UnicodeString) : TConnectorSymbol;
+function TConnectorSymbol.SpecializeConnector(table : TSymbolTable; const qualifier : String) : TConnectorSymbol;
 begin
    Result:=Self;
 end;

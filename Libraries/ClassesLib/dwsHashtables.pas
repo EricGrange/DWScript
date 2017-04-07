@@ -41,7 +41,7 @@ type
 
    TStringHashItem = class(THashItem)
       private
-         Key : UnicodeString;
+         Key : String;
 
       public
          function HashCode : Integer; override;
@@ -54,10 +54,10 @@ type
   public
     constructor Create(InitCapacity: Integer = 256; LoadFactor: Integer = 75);
     destructor Destroy; override;
-    function Get(const Key: UnicodeString): ValueType;
-    procedure Put(const Key: UnicodeString; Value: ValueType);
-    function HasKey(const Key: UnicodeString): Boolean;
-    function RemoveKey(const Key: UnicodeString): ValueType;
+    function Get(const Key: String): ValueType;
+    procedure Put(const Key: String; Value: ValueType);
+    function HasKey(const Key: String): Boolean;
+    function RemoveKey(const Key: String): ValueType;
   end;
 
    TIntegerHashItem = class(THashItem)
@@ -305,19 +305,19 @@ begin
   FTestItem.Free;
 end;
 
-function TStringHashTable.Get(const Key: UnicodeString): ValueType;
+function TStringHashTable.Get(const Key: String): ValueType;
 begin
   FTestItem.Key := Key;
   Result := InternalGet(FTestItem);
 end;
 
-function TStringHashTable.HasKey(const Key: UnicodeString): Boolean;
+function TStringHashTable.HasKey(const Key: String): Boolean;
 begin
   FTestItem.Key := Key;
   Result := InternalHasKey(FTestItem);
 end;
 
-procedure TStringHashTable.Put(const Key: UnicodeString; Value: ValueType);
+procedure TStringHashTable.Put(const Key: String; Value: ValueType);
 var
   item: TStringHashItem;
 begin
@@ -327,7 +327,7 @@ begin
   InternalPut(item);
 end;
 
-function TStringHashTable.RemoveKey(const Key: UnicodeString): ValueType;
+function TStringHashTable.RemoveKey(const Key: String): ValueType;
 begin
   FTestItem.Key := Key;
   Result := InternalRemoveKey(FTestItem);

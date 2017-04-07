@@ -55,8 +55,8 @@ type
          FLocalizer : TdwsCustomLocalizer;
 
       protected
-         procedure DoOnLocalize(Sender : TObject; const aString : UnicodeString;
-                                var result : UnicodeString);
+         procedure DoOnLocalize(Sender : TObject; const aString : String;
+                                var result : String);
 
       public
          procedure SetUp; override;
@@ -167,20 +167,20 @@ begin
          exec:=prog.Execute;
 
          if prog.Msgs.Count+exec.Msgs.Count=0 then
-            output:=exec.Result.ToUnicodeString
+            output:=exec.Result.ToString
          else begin
             output:= 'Errors >>>>'#13#10
                     +prog.Msgs.AsInfo
                     +exec.Msgs.AsInfo
                     +'Result >>>>'#13#10
-                    +exec.Result.ToUnicodeString;
+                    +exec.Result.ToString;
          end;
 
          resultsFileName:=ChangeFileExt(FTests[i], '.txt');
          if FileExists(resultsFileName) then begin
             expectedResult.LoadFromFile(resultsFileName);
             CheckEquals(expectedResult.Text, output, FTests[i]);
-         end else CheckEquals('', exec.Result.ToUnicodeString, FTests[i]);
+         end else CheckEquals('', exec.Result.ToString, FTests[i]);
 
       end;
 
@@ -288,8 +288,8 @@ end;
 
 // DoOnLocalize
 //
-procedure TdwsFuncFunctionsTestsString.DoOnLocalize(Sender : TObject; const aString : UnicodeString;
-                                                    var result : UnicodeString);
+procedure TdwsFuncFunctionsTestsString.DoOnLocalize(Sender : TObject; const aString : String;
+                                                    var result : String);
 begin
    Result:='['+aString+']';
 end;
@@ -304,7 +304,7 @@ begin
    prog:=FCompiler.Compile('Print(_("Test"));');
    exec:=prog.CreateNewExecution;
    exec.Execute;
-   CheckEquals('[Test]', exec.Result.ToUnicodeString);
+   CheckEquals('[Test]', exec.Result.ToString);
 end;
 
 // ------------------

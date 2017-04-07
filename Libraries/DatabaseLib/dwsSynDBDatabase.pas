@@ -27,7 +27,7 @@ unit dwsSynDBDatabase;
 interface
 
 uses
-   Classes, Variants, SysUtils,
+   Classes, SysUtils,
    SynDB, SynCommons,
    dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform, dwsDataContext, dwsSymbols;
 

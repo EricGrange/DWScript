@@ -38,20 +38,20 @@ type
    IdwsUnit = interface
       ['{8D534D12-4C6B-11D5-8DCB-0000216D9E86}']
       procedure BeforeAdditionTo(dwscript : TObject);
-      function GetUnitName : UnicodeString;
+      function GetUnitName : String;
       function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                             operators : TOperators; rootTable : TSymbolTable) : TUnitSymbolTable;
-      function GetDependencies : TUnicodeStringList;
+      function GetDependencies : TStringList;
       function GetUnitFlags : TIdwsUnitFlags;
-      function GetDeprecatedMessage : UnicodeString;
+      function GetDeprecatedMessage : String;
    end;
 
    TIdwsUnitList = class (TSimpleList<IdwsUnit>)
       public
-         function IndexOfName(const unitName : UnicodeString) : Integer;
+         function IndexOfName(const unitName : String) : Integer;
          function IndexOf(const aUnit : IdwsUnit) : Integer;
          procedure AddUnits(list : TIdwsUnitList);
-         function FindDuplicateUnitName : UnicodeString;
+         function FindDuplicateUnitName : String;
    end;
 
    TEmptyFunc = class sealed (TInterfacedSelfObject, ICallable, IExecutable)
@@ -91,16 +91,16 @@ type
 
    TInternalFunction = class(TFunctionPrototype, IUnknown, ICallable)
       public
-         constructor Create(table : TSymbolTable; const funcName : UnicodeString;
-                            const params : TParamArray; const funcType : UnicodeString;
+         constructor Create(table : TSymbolTable; const funcName : String;
+                            const params : TParamArray; const funcType : String;
                             const flags : TInternalFunctionFlags;
                             compositeSymbol : TCompositeTypeSymbol;
-                            const helperName : UnicodeString); overload; virtual;
-         constructor Create(table : TSymbolTable; const funcName : UnicodeString;
-                            const params : array of UnicodeString; const funcType : UnicodeString;
+                            const helperName : String); overload; virtual;
+         constructor Create(table : TSymbolTable; const funcName : String;
+                            const params : array of String; const funcType : String;
                             const flags : TInternalFunctionFlags = [];
                             compositeSymbol : TCompositeTypeSymbol = nil;
-                            const helperName : UnicodeString = ''); overload;
+                            const helperName : String = ''); overload;
          function Specialize(const context : ISpecializationContext) : IExecutable;
    end;
    TInternalFunctionClass = class of TInternalFunction;
@@ -116,8 +116,8 @@ type
    TInternalBaseMethod = class(TFunctionPrototype, IUnknown, ICallable)
       public
          constructor Create(methKind : TMethodKind; attributes : TMethodAttributes;
-                            const methName : UnicodeString; const methParams : array of UnicodeString;
-                            const methType : UnicodeString; cls : TCompositeTypeSymbol;
+                            const methName : String; const methParams : array of String;
+                            const methType : String; cls : TCompositeTypeSymbol;
                             aVisibility : TdwsVisibility;
                             table : TSymbolTable;
                             overloaded : Boolean = False);
@@ -133,8 +133,8 @@ type
    TInternalRecordMethod = class(TInternalFunction)
       public
          constructor Create(methKind : TMethodKind; attributes : TMethodAttributes;
-                            const methName : UnicodeString; const methParams : array of UnicodeString;
-                            const methType : UnicodeString; rec : TRecordSymbol;
+                            const methName : String; const methParams : array of String;
+                            const methType : String; rec : TRecordSymbol;
                             aVisibility : TdwsVisibility;
                             table : TSymbolTable;
                             overloaded : Boolean = False);
@@ -152,7 +152,7 @@ type
 
    TInternalUnit = class(TObject, IdwsUnit)
       private
-         FDependencies : TUnicodeStringList;
+         FDependencies : TStringList;
          FSymbolsRegistrationProcs : array of TSymbolsRegistrationProc;
          FOperatorsRegistrationProcs : array of TOperatorsRegistrationProc;
          FRegisteredInternalFunctions : TList;
@@ -167,10 +167,10 @@ type
          function _AddRef : Integer; stdcall;
          function _Release : Integer; stdcall;
          function QueryInterface({$ifdef FPC}constref{$else}const{$endif} IID: TGUID; out Obj): HResult; stdcall;
-         function GetDependencies : TUnicodeStringList;
+         function GetDependencies : TStringList;
          procedure BeforeAdditionTo(dwscript : TObject);
-         function GetUnitName : UnicodeString;
-         function GetDeprecatedMessage : UnicodeString;
+         function GetUnitName : String;
+         function GetDeprecatedMessage : String;
 
          procedure InitUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                  unitTable : TSymbolTable);
@@ -204,34 +204,34 @@ type
 
    TSourceUnit = class(TInterfacedObject, IdwsUnit)
       private
-         FDependencies : TUnicodeStringList;
+         FDependencies : TStringList;
          FSymbol : TUnitMainSymbol;
 
       protected
 
       public
-         constructor Create(const unitName : UnicodeString; rootTable : TSymbolTable;
+         constructor Create(const unitName : String; rootTable : TSymbolTable;
                             unitSyms : TUnitMainSymbols);
          destructor Destroy; override;
 
          procedure BeforeAdditionTo(dwscript : TObject);
-         function GetUnitName : UnicodeString;
+         function GetUnitName : String;
          function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                operators : TOperators; rootTable : TSymbolTable) : TUnitSymbolTable;
-         function GetDependencies : TUnicodeStringList;
+         function GetDependencies : TStringList;
          function GetUnitFlags : TIdwsUnitFlags;
-         function GetDeprecatedMessage : UnicodeString;
+         function GetDeprecatedMessage : String;
 
          property Symbol : TUnitMainSymbol read FSymbol write FSymbol;
    end;
 
 procedure RegisterInternalFunction(InternalFunctionClass: TInternalFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString;
-      const FuncType: UnicodeString; const flags : TInternalFunctionFlags = [];
-      const helperName : UnicodeString = '');
+      const FuncName: String; const FuncParams: array of String;
+      const FuncType: String; const flags : TInternalFunctionFlags = [];
+      const helperName : String = '');
 procedure RegisterInternalProcedure(InternalFunctionClass: TInternalFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString;
-      const helperName : UnicodeString = ''; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String;
+      const helperName : String = ''; const flags : TInternalFunctionFlags = []);
 
 procedure RegisterInternalSymbolsProc(proc : TSymbolsRegistrationProc);
 procedure RegisterInternalOperatorsProc(proc : TOperatorsRegistrationProc);
@@ -276,13 +276,13 @@ end;
 
 // ConvertFuncParams
 //
-function ConvertFuncParams(const funcParams : array of UnicodeString) : TParamArray;
+function ConvertFuncParams(const funcParams : array of String) : TParamArray;
 
-   procedure ParamSpecifier(c : WideChar; paramRec : PParamRec);
+   procedure ParamSpecifier(c : Char; paramRec : PParamRec);
    begin
       paramRec.IsVarParam:=(c='@');
       paramRec.IsConstParam:=(c='&');
-      paramRec.ParamName:=StrDeleteLeft(paramRec.ParamName, 1)
+      paramRec.ParamName := Copy(paramRec.ParamName, 2);
    end;
 
    procedure ParamDefaultValue(p : Integer; paramRec : PParamRec);
@@ -302,7 +302,7 @@ function ConvertFuncParams(const funcParams : array of UnicodeString) : TParamAr
 
 var
    x, p : Integer;
-   c : WideChar;
+   c : Char;
    paramRec : PParamRec;
 begin
    SetLength(Result, Length(funcParams) div 2);
@@ -336,9 +336,9 @@ end;
 type
    TRegisteredInternalFunction = record
       InternalFunctionClass : TInternalFunctionClass;
-      FuncName, HelperName : UnicodeString;
+      FuncName, HelperName : String;
       FuncParams : TParamArray;
-      FuncType : UnicodeString;
+      FuncType : String;
       Flags : TInternalFunctionFlags;
    end;
    PRegisteredInternalFunction = ^TRegisteredInternalFunction;
@@ -346,11 +346,11 @@ type
 // RegisterInternalFunction
 //
 procedure RegisterInternalFunction(internalFunctionClass : TInternalFunctionClass;
-                                   const funcName : UnicodeString;
-                                   const funcParams : array of UnicodeString;
-                                   const funcType : UnicodeString;
+                                   const funcName : String;
+                                   const funcParams : array of String;
+                                   const funcType : String;
                                    const flags : TInternalFunctionFlags = [];
-                                   const helperName : UnicodeString = '');
+                                   const helperName : String = '');
 var
    rif : PRegisteredInternalFunction;
 begin
@@ -368,8 +368,8 @@ end;
 // RegisterInternalProcedure
 //
 procedure RegisterInternalProcedure(InternalFunctionClass: TInternalFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString;
-      const helperName : UnicodeString = ''; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String;
+      const helperName : String = ''; const flags : TInternalFunctionFlags = []);
 begin
    RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, '', flags, helperName);
 end;
@@ -454,11 +454,11 @@ end;
 // ------------------ TInternalFunction ------------------
 // ------------------
 
-constructor TInternalFunction.Create(table : TSymbolTable; const funcName : UnicodeString;
-                                     const params : TParamArray; const funcType : UnicodeString;
+constructor TInternalFunction.Create(table : TSymbolTable; const funcName : String;
+                                     const params : TParamArray; const funcType : String;
                                      const flags : TInternalFunctionFlags;
                                      compositeSymbol : TCompositeTypeSymbol;
-                                     const helperName : UnicodeString);
+                                     const helperName : String);
 var
    sym: TFuncSymbol;
 begin
@@ -485,11 +485,11 @@ end;
 
 // Create
 //
-constructor TInternalFunction.Create(table: TSymbolTable; const funcName : UnicodeString;
-                                     const params : array of UnicodeString; const funcType : UnicodeString;
+constructor TInternalFunction.Create(table: TSymbolTable; const funcName : String;
+                                     const params : array of String; const funcType : String;
                                      const flags : TInternalFunctionFlags = [];
                                      compositeSymbol : TCompositeTypeSymbol = nil;
-                                     const helperName : UnicodeString = '');
+                                     const helperName : String = '');
 begin
    Create(table,
           funcName, ConvertFuncParams(params), funcType,
@@ -504,8 +504,8 @@ end;
 // Create
 //
 constructor TInternalBaseMethod.Create(methKind: TMethodKind; attributes: TMethodAttributes;
-                                       const methName: UnicodeString; const methParams: array of UnicodeString;
-                                       const methType: UnicodeString; cls: TCompositeTypeSymbol;
+                                       const methName: String; const methParams: array of String;
+                                       const methType: String; cls: TCompositeTypeSymbol;
                                        aVisibility : TdwsVisibility;
                                        table: TSymbolTable;
                                        overloaded : Boolean = False);
@@ -574,8 +574,8 @@ end;
 // Create
 //
 constructor TInternalRecordMethod.Create(methKind : TMethodKind; attributes : TMethodAttributes;
-                            const methName : UnicodeString; const methParams : array of UnicodeString;
-                            const methType : UnicodeString; rec : TRecordSymbol;
+                            const methName : String; const methParams : array of String;
+                            const methType : String; rec : TRecordSymbol;
                             aVisibility : TdwsVisibility;
                             table : TSymbolTable;
                             overloaded : Boolean = False);
@@ -676,7 +676,7 @@ end;
 //
 constructor TInternalUnit.Create;
 begin
-   FDependencies := TUnicodeStringList.Create;
+   FDependencies := TStringList.Create;
    FRegisteredInternalFunctions:=TList.Create;
    FStaticSymbols:=True;
    FCriticalSection:=TdwsCriticalSection.Create;
@@ -777,7 +777,7 @@ end;
 
 // GetDependencies
 //
-function TInternalUnit.GetDependencies : TUnicodeStringList;
+function TInternalUnit.GetDependencies : TStringList;
 begin
    Result := FDependencies;
 end;
@@ -791,14 +791,14 @@ end;
 
 // GetUnitName
 //
-function TInternalUnit.GetUnitName : UnicodeString;
+function TInternalUnit.GetUnitName : String;
 begin
    Result:=SYS_INTERNAL;
 end;
 
 // GetDeprecatedMessage
 //
-function TInternalUnit.GetDeprecatedMessage : UnicodeString;
+function TInternalUnit.GetDeprecatedMessage : String;
 begin
    Result:='';
 end;
@@ -928,7 +928,7 @@ end;
 
 // IndexOf (name)
 //
-function TIdwsUnitList.IndexOfName(const unitName : UnicodeString) : Integer;
+function TIdwsUnitList.IndexOfName(const unitName : String) : Integer;
 begin
    for Result:=0 to Count-1 do
       if UnicodeSameText(Items[Result].GetUnitName, unitName) then
@@ -948,7 +948,7 @@ end;
 
 // FindDuplicateUnitName
 //
-function TIdwsUnitList.FindDuplicateUnitName : UnicodeString;
+function TIdwsUnitList.FindDuplicateUnitName : String;
 var
    i : Integer;
 begin
@@ -978,14 +978,14 @@ end;
 
 // Create
 //
-constructor TSourceUnit.Create(const unitName : UnicodeString; rootTable : TSymbolTable;
+constructor TSourceUnit.Create(const unitName : String; rootTable : TSymbolTable;
                                unitSyms : TUnitMainSymbols);
 var
    ums : TUnitMainSymbol;
    ust : TUnitSymbolTable;
 begin
    inherited Create;
-   FDependencies := TUnicodeStringList.Create;
+   FDependencies := TStringList.Create;
    ust:=TUnitSymbolTable.Create(nil, rootTable.AddrGenerator);
    FSymbol:=TUnitMainSymbol.Create(unitName, ust, unitSyms);
    ust.UnitMainSymbol:=FSymbol;
@@ -1017,7 +1017,7 @@ end;
 
 // GetUnitName
 //
-function TSourceUnit.GetUnitName : UnicodeString;
+function TSourceUnit.GetUnitName : String;
 begin
    Result:=Symbol.Name;
 end;
@@ -1032,7 +1032,7 @@ end;
 
 // GetDependencies
 //
-function TSourceUnit.GetDependencies : TUnicodeStringList;
+function TSourceUnit.GetDependencies : TStringList;
 begin
    Result := FDependencies;
 end;
@@ -1046,7 +1046,7 @@ end;
 
 // GetDeprecatedMessage
 //
-function TSourceUnit.GetDeprecatedMessage : UnicodeString;
+function TSourceUnit.GetDeprecatedMessage : String;
 begin
    Result:=Symbol.DeprecatedMessage;
 end;

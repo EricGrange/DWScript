@@ -20,7 +20,7 @@ type
       public
          procedure SetUp; override;
          procedure TearDown; override;
-         procedure DoOnInclude(const scriptName : UnicodeString; var scriptSource : UnicodeString);
+         procedure DoOnInclude(const scriptName : String; var scriptSource : String);
 
       published
          procedure BasicForward;
@@ -84,7 +84,7 @@ end;
 
 // DoOnInclude
 //
-procedure TSymbolDictionaryTests.DoOnInclude(const scriptName : UnicodeString; var scriptSource : UnicodeString);
+procedure TSymbolDictionaryTests.DoOnInclude(const scriptName : String; var scriptSource : String);
 begin
    if scriptName='comment.inc' then
       scriptSource:='{'

@@ -52,7 +52,7 @@ type
          destructor Destroy; override;
 
          function IsPositionInContext(const aPos : TScriptPos) : Boolean; overload;
-         function IsPositionInContext(aCol, aLine : Integer; const sourceName : UnicodeString) : Boolean; overload;
+         function IsPositionInContext(aCol, aLine : Integer; const sourceName : String) : Boolean; overload;
          function HasParentSymbolOfClass(SymbolType: TSymbolClass; SearchParents: Boolean): Boolean;
 
          function FindContext(parentSymbol : TSymbol) : TdwsSourceContext;
@@ -103,7 +103,7 @@ type
          // return the first context group based on its parent
          function FindContext(AParentSymbol : TSymbol) : TdwsSourceContext; overload;
          function FindContext(aCol, aLine : Integer; sourceFile : TSourceFile) : TdwsSourceContext; overload;
-         function FindContext(aCol, aLine : Integer; const sourceName : UnicodeString) : TdwsSourceContext; overload;
+         function FindContext(aCol, aLine : Integer; const sourceName : String) : TdwsSourceContext; overload;
          function FindContext(const ScriptPos : TScriptPos) : TdwsSourceContext; overload;
          function FindContextByToken(aToken : TTokenType) : TdwsSourceContext;
          procedure EnumerateContextsOfSymbol(aParentSymbol : TSymbol; const callBack : TdwsSourceContextCallBack);
@@ -229,7 +229,7 @@ begin
       writer.WriteName('Class');
       writer.WriteString(UnicodeString(ParentSym.ClassName));
       writer.WriteName('Name');
-      writer.WriteString(ParentSym.Name);
+      writer.WriteString(UnicodeString(ParentSym.Name));
       writer.EndObject;
    end;
 
@@ -251,7 +251,7 @@ end;
 
 // IsPositionInContext
 //
-function TdwsSourceContext.IsPositionInContext(aCol, aLine : Integer; const sourceName : UnicodeString) : Boolean;
+function TdwsSourceContext.IsPositionInContext(aCol, aLine : Integer; const sourceName : String) : Boolean;
 begin
    // check if the position is in the same SourceFile
    if sourceName<>'' then begin // if empty, don't check it
@@ -352,7 +352,7 @@ end;
 
 // FindContext
 //
-function TdwsSourceContextMap.FindContext(aCol, aLine : Integer; const sourceName : UnicodeString) : TdwsSourceContext;
+function TdwsSourceContextMap.FindContext(aCol, aLine : Integer; const sourceName : String) : TdwsSourceContext;
 var
    returnContext : TdwsSourceContext;    // Gets set to the context found
    hitEnd : Boolean;            // Followed branch to end, stop searching

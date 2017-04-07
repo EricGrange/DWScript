@@ -19,7 +19,7 @@ unit dwsJSCodeGen;
 interface
 
 uses
-   Classes, SysUtils, Variants, Math,
+   Classes, SysUtils, Math, Variants,
    dwsUtils, dwsSymbols, dwsCodeGen, dwsTextCodeGen, dwsCoreExprs, dwsDataContext,
    dwsExprs, dwsRelExprs, dwsJSON, dwsMagicExprs, dwsStrings, dwsMethodExprs,
    dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs, dwsCompilerUtils,
@@ -3055,7 +3055,7 @@ end;
 //
 procedure TdwsJSCodeGen.WriteVariant(typ : TTypeSymbol; const v : Variant);
 begin
-   case VarType(v) of
+   case VariantType(v) of
       varEmpty :
          WriteString('undefined');
       varNull :
@@ -3075,7 +3075,7 @@ begin
                                                         [typ.ClassName]);
    else
       raise ECodeGenUnsupportedSymbol.CreateFmt('Value of type %s (VarType = %d)',
-                                                [typ.ClassName, VarType(v)]);
+                                                [typ.ClassName, VariantType(v)]);
    end;
 end;
 
@@ -3112,7 +3112,7 @@ begin
       WriteString('null')
    end else if typ is TClassOfSymbol then begin
       dataPtr.EvalAsVariant(0, v);
-      case VarType(v) of
+      case VariantType(v) of
          varNull, varEmpty :
             WriteString('null');
          varUnknown : begin
@@ -3127,7 +3127,7 @@ begin
             end;
          end;
       else
-         Assert(False, 'Unsupported VarType '+IntToStr(VarType(v)));
+         Assert(False, 'Unsupported VarType '+IntToStr(VariantType(v)));
       end;
    end else if typ is TSetOfSymbol then begin
       setOfSym:=TSetOfSymbol(typ);

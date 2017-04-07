@@ -30,7 +30,7 @@ type
    //
    TSpecializationContext = class (TInterfacedSelfObject, ISpecializationContext)
       private
-         FName : UnicodeString;
+         FName : String;
          FParameters, FValues : TUnSortedSymbolTable; // referred
          FValuesPosList : TScriptPosArray;
          FUnitSymbol : TSymbol;
@@ -46,7 +46,7 @@ type
          FAcquireSymbol : TSpecializationAcquireSymbolProc;
 
       protected
-         function Name : UnicodeString;
+         function Name : String;
          function Parameters : TUnSortedSymbolTable;
          function Values : TUnSortedSymbolTable;
          function UnitSymbol : TSymbol;
@@ -56,7 +56,7 @@ type
          function ExistingSpecialization(sym : TSymbol) : TSymbol;
 
       public
-         constructor Create(const aName : UnicodeString; aParams, aValues : TUnSortedSymbolTable;
+         constructor Create(const aName : String; aParams, aValues : TUnSortedSymbolTable;
                             const aScriptPos : TScriptPos; aUnit : TSymbol;
                             const aValuesPosList : TScriptPosArray;
                             const aCompilerContext : TdwsCompilerContext;
@@ -136,7 +136,7 @@ end;
 // Create
 //
 constructor TSpecializationContext.Create(
-      const aName : UnicodeString; aParams, aValues : TUnSortedSymbolTable;
+      const aName : String; aParams, aValues : TUnSortedSymbolTable;
       const aScriptPos : TScriptPos; aUnit : TSymbol;
       const aValuesPosList : TScriptPosArray;
       const aCompilerContext : TdwsCompilerContext;
@@ -387,7 +387,7 @@ end;
 
 // Name
 //
-function TSpecializationContext.Name : UnicodeString;
+function TSpecializationContext.Name : String;
 begin
    Result := FName;
 end;

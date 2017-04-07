@@ -38,12 +38,12 @@ type
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; virtual;
          function ReadUnknownName(compiler: TdwsCompiler) : TTypedExpr; virtual;
          function ReadInstrSwitch(compiler : TdwsCompiler) : Boolean; virtual;
-         function FindUnknownName(compiler : TdwsCompiler; const name : UnicodeString) : TSymbol; virtual;
+         function FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol; virtual;
          procedure SectionChanged(compiler : TdwsCompiler); virtual;
          procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                               scriptType : TScriptSourceType); virtual;
          procedure GetDefaultEnvironment(var enviro : IdwsEnvironment); virtual;
-         function RootExternalClass(compiler : TdwsCompiler; const externalName : UnicodeString) : TClassSymbol; virtual;
+         function RootExternalClass(compiler : TdwsCompiler; const externalName : String) : TClassSymbol; virtual;
          procedure ApplyConditionalDefines(defines : TStrings); virtual;
    end;
 
@@ -69,13 +69,13 @@ type
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; override;
          function ReadUnknownName(compiler: TdwsCompiler) : TTypedExpr; override;
          function ReadInstrSwitch(compiler : TdwsCompiler) : Boolean; override;
-         function FindUnknownName(compiler : TdwsCompiler; const name : UnicodeString) : TSymbol; override;
+         function FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol; override;
          procedure SectionChanged(compiler : TdwsCompiler); override;
          procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                               scriptType : TScriptSourceType); override;
          procedure GetDefaultEnvironment(var enviro : IdwsEnvironment); override;
          function DefaultEnvironment : IdwsEnvironment;
-         function RootExternalClass(compiler : TdwsCompiler; const externalName : UnicodeString) : TClassSymbol; override;
+         function RootExternalClass(compiler : TdwsCompiler; const externalName : String) : TClassSymbol; override;
          procedure ApplyConditionalDefines(defines : TStrings); override;
    end;
 
@@ -144,7 +144,7 @@ end;
 
 // FindUnknownName
 //
-function TdwsLanguageExtension.FindUnknownName(compiler : TdwsCompiler; const name : UnicodeString) : TSymbol;
+function TdwsLanguageExtension.FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol;
 begin
    Result:=nil;
 end;
@@ -173,7 +173,7 @@ end;
 
 // RootExternalClass
 //
-function TdwsLanguageExtension.RootExternalClass(compiler : TdwsCompiler; const externalName : UnicodeString) : TClassSymbol;
+function TdwsLanguageExtension.RootExternalClass(compiler : TdwsCompiler; const externalName : String) : TClassSymbol;
 begin
    Result := compiler.CompilerContext. TypObject;
 end;
@@ -322,7 +322,7 @@ end;
 
 // FindUnknownName
 //
-function TdwsLanguageExtensionAggregator.FindUnknownName(compiler : TdwsCompiler; const name : UnicodeString) : TSymbol;
+function TdwsLanguageExtensionAggregator.FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol;
 var
    i : Integer;
    ext : TdwsLanguageExtension;
@@ -385,7 +385,7 @@ end;
 
 // RootExternalClass
 //
-function TdwsLanguageExtensionAggregator.RootExternalClass(compiler : TdwsCompiler; const externalName : UnicodeString) : TClassSymbol;
+function TdwsLanguageExtensionAggregator.RootExternalClass(compiler : TdwsCompiler; const externalName : String) : TClassSymbol;
 var
    i : Integer;
    ext : TdwsLanguageExtension;

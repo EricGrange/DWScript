@@ -21,7 +21,7 @@ unit dwsWebIDL;
 interface
 
 uses
-  Classes, SysUtils, Variants, dwsUtils, dwsErrors, dwsTokenizer,
+  Classes, SysUtils, dwsUtils, dwsErrors, dwsTokenizer,
   dwsWebIDLTokenizer;
 
 type

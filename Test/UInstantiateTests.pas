@@ -139,7 +139,7 @@ begin
 
    CheckEquals('', exec.Msgs.AsInfo, 'exec');
 
-   CheckEquals('TObjectTObject', exec.Result.ToUnicodeString, 'Result');
+   CheckEquals('TObjectTObject', exec.Result.ToString, 'Result');
 
    exec:=nil;
 
@@ -193,7 +193,7 @@ begin
    exec:=prog.Execute(0);
    CheckEquals('', exec.Msgs.AsInfo, 'exec');
 
-   CheckEquals('nil', exec.Result.ToUnicodeString, 'Result');
+   CheckEquals('nil', exec.Result.ToString, 'Result');
 end;
 
 // InfoAccess

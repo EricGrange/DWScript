@@ -26,24 +26,24 @@ uses SysUtils;
 type
    TBase64Alphabet = array [0..63] of WideChar;
 
-function Base58Encode(const data : RawByteString) : UnicodeString; overload; inline;
-function Base58Encode(data : Pointer; len : Integer) : UnicodeString; overload;
-function Base58Decode(const data : UnicodeString) : RawByteString;
+function Base58Encode(const data : RawByteString) : String; overload; inline;
+function Base58Encode(data : Pointer; len : Integer) : String; overload;
+function Base58Decode(const data : String) : RawByteString;
 
 // RFC 4648 without padding
-function Base32Encode(const data : RawByteString) : UnicodeString; overload; inline;
-function Base32Encode(data : Pointer; len : Integer) : UnicodeString; overload;
-function Base32Decode(const data : UnicodeString) : RawByteString;
+function Base32Encode(const data : RawByteString) : String; overload; inline;
+function Base32Encode(data : Pointer; len : Integer) : String; overload;
+function Base32Decode(const data : String) : RawByteString;
 
-function Base64EncodeURI(const data : RawByteString) : UnicodeString; overload; inline;
-function Base64EncodeURI(data : Pointer; len : Integer) : UnicodeString; overload; inline;
-function Base64Encode(const data : RawByteString) : UnicodeString; overload; inline;
-function Base64Encode(data : Pointer; len : Integer) : UnicodeString; overload; inline;
-function Base64Encode(data : Pointer; len : Integer; const alphabet : TBase64Alphabet) : UnicodeString; overload;
-function Base64Decode(const data : UnicodeString) : RawByteString;
+function Base64EncodeURI(const data : RawByteString) : String; overload; inline;
+function Base64EncodeURI(data : Pointer; len : Integer) : String; overload; inline;
+function Base64Encode(const data : RawByteString) : String; overload; inline;
+function Base64Encode(data : Pointer; len : Integer) : String; overload; inline;
+function Base64Encode(data : Pointer; len : Integer; const alphabet : TBase64Alphabet) : String; overload;
+function Base64Decode(const data : String) : RawByteString;
 
 const
-   cBase58 : UnicodeString = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+   cBase58 : String = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
    cBase64 : TBase64Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
    cBase64URI : TBase64Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 
@@ -77,14 +77,14 @@ end;
 
 // Base58Encode
 //
-function Base58Encode(const data : RawByteString) : UnicodeString;
+function Base58Encode(const data : RawByteString) : String;
 begin
    Result := Base58Encode(Pointer(data), Length(data));
 end;
 
 // Base58Encode
 //
-function Base58Encode(data : Pointer; len : Integer) : UnicodeString;
+function Base58Encode(data : Pointer; len : Integer) : String;
 var
    i, j, carry, nextCarry, n : Integer;
    digits : array of Integer;
@@ -129,7 +129,7 @@ end;
 
 // Base58Decode
 //
-function Base58Decode(const data : UnicodeString) : RawByteString;
+function Base58Decode(const data : String) : RawByteString;
 var
    i, j, carry, n, d : Integer;
    bytes : array of Integer;
@@ -184,7 +184,7 @@ const
       'Q','R','S','T','U','V','W','X','Y','Z','2','3','4','5','6','7'
    );
 
-function Base32Encode(data : Pointer; len : Integer) : UnicodeString;
+function Base32Encode(data : Pointer; len : Integer) : String;
 var
    i, n, c, b : Integer;
    pIn : PByteArray;
@@ -216,7 +216,7 @@ end;
 
 // Base32Encode
 //
-function Base32Encode(const data : RawByteString) : UnicodeString;
+function Base32Encode(const data : RawByteString) : String;
 begin
    Result:=Base32Encode(Pointer(data), Length(data));
 end;
@@ -225,7 +225,7 @@ end;
 //
 var
    vBase32DecodeTable : array [#0..'z'] of Byte;
-function Base32Decode(const data : UnicodeString) : RawByteString;
+function Base32Decode(const data : String) : RawByteString;
 
    procedure PrepareTable;
    var
@@ -313,35 +313,35 @@ end;
 
 // Base64EncodeURI
 //
-function Base64EncodeURI(const data : RawByteString) : UnicodeString;
+function Base64EncodeURI(const data : RawByteString) : String;
 begin
    Result := Base64Encode(Pointer(data), Length(data), cBase64URI);
 end;
 
 // Base64EncodeURI
 //
-function Base64EncodeURI(data : Pointer; len : Integer) : UnicodeString;
+function Base64EncodeURI(data : Pointer; len : Integer) : String;
 begin
    Result := Base64Encode(data, len, cBase64URI);
 end;
 
 // Base64Encode
 //
-function Base64Encode(const data : RawByteString) : UnicodeString;
+function Base64Encode(const data : RawByteString) : String;
 begin
    Result := Base64Encode(Pointer(data), Length(data), cBase64);
 end;
 
 // Base64Encode
 //
-function Base64Encode(data : Pointer; len : Integer) : UnicodeString;
+function Base64Encode(data : Pointer; len : Integer) : String;
 begin
    Result := Base64Encode(data, len, cBase64);
 end;
 
 // Base64Encode
 //
-function Base64Encode(data : Pointer; len : Integer; const alphabet : TBase64Alphabet) : UnicodeString; overload;
+function Base64Encode(data : Pointer; len : Integer; const alphabet : TBase64Alphabet) : String; overload;
 var
    outLen, blocks, tail, i : Integer;
    dest : PWideChar;
@@ -384,7 +384,7 @@ end;
 
 // Base64Decode
 //
-function Base64Decode(const data : UnicodeString) : RawByteString;
+function Base64Decode(const data : String) : RawByteString;
 
    function Base64Decode(src, srcLast : PBase64Block; dest : PByte) : PByte;
    var

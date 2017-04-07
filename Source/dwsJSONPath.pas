@@ -84,14 +84,14 @@ type
 
    TdwsJSONPathQuery = class
       private
-         FQuery : UnicodeString;
+         FQuery : String;
          FOperators : TdwsJSONPathOperator;
 
       protected
          procedure Parse;
 
       public
-         constructor Create(const aQuery : UnicodeString);
+         constructor Create(const aQuery : String);
          destructor Destroy; override;
 
          function Apply(value : TdwsJSONValue) : TdwsJSONValueList;
@@ -99,8 +99,8 @@ type
 
    JSONPath = class
 
-      class function Query(const aQuery : UnicodeString; aJSON : TdwsJSONValue) : TdwsJSONValueList; overload; static;
-      class function Query(const aQuery, aJSON : UnicodeString) : TdwsJSONValueList; overload; static;
+      class function Query(const aQuery : String; aJSON : TdwsJSONValue) : TdwsJSONValueList; overload; static;
+      class function Query(const aQuery, aJSON : String) : TdwsJSONValueList; overload; static;
 
    end;
 
@@ -135,7 +135,7 @@ begin
    FreeAndNil(vJSONCache);
 end;
 
-function AcquireFromJSONCache(const json : UnicodeString) : TdwsJSONValue;
+function AcquireFromJSONCache(const json : String) : TdwsJSONValue;
 var
    h : Cardinal;
    i : Integer;
@@ -156,10 +156,10 @@ begin
       vJSONCacheLock.EndWrite;
    end;
    if Result = nil then
-      Result := TdwsJSONValue.ParseString(json);
+      Result := TdwsJSONValue.ParseString(UnicodeString(json));
 end;
 
-procedure ReleaseToJSONCache(const json : UnicodeString; jv : TdwsJSONValue);
+procedure ReleaseToJSONCache(const json : String; jv : TdwsJSONValue);
 var
    h : Cardinal;
    i : Integer;
@@ -259,7 +259,7 @@ procedure TdwsJSONPathOperatorIndex.Apply(value : TdwsJSONValue; result : TdwsJS
 
    procedure ObjFallBack;
    begin
-      Child.Apply(value.Items[IntToStr(Index)], result);
+      Child.Apply(value.Items[Int32ToStrU(Index)], result);
    end;
 
 begin
@@ -283,9 +283,9 @@ constructor TdwsJSONPathOperatorProperty.Create(iter : TStringIterator);
 begin
    case iter.Current of
       '"', '''' :
-         FProp:=iter.CollectQuotedString;
+         FProp:=UnicodeString(iter.CollectQuotedString);
       '0'..'9', 'a'..'z', 'A'..'Z' :
-         FProp:=iter.CollectAlphaNumeric;
+         FProp:=UnicodeString(iter.CollectAlphaNumeric);
    else
       raise EJSONPathException.Create('Invalid property');
    end;
@@ -301,7 +301,7 @@ begin
       jvtObject :
          Child.Apply(value.Items[Prop], result);
       jvtArray :
-         if TryStrToInt(Prop, i) then
+         if TryStrToInt(String(Prop), i) then
             Child.Apply(value.Elements[i], result)
          else for i:=0 to value.ElementCount-1 do
             Apply(value.Elements[i], result);
@@ -328,7 +328,7 @@ begin
          end else Child.Apply(sub, result);
       end;
       jvtArray : begin
-         if TryStrToInt(Prop, i) then begin
+         if TryStrToInt(String(Prop), i) then begin
             sub:=value.Elements[i];
             if sub<>nil then begin
                Child.Apply(sub, result);
@@ -347,7 +347,7 @@ end;
 
 // Create
 //
-constructor TdwsJSONPathQuery.Create(const aQuery : UnicodeString);
+constructor TdwsJSONPathQuery.Create(const aQuery : String);
 begin
    FQuery:=aQuery;
    Parse;
@@ -448,7 +448,7 @@ end;
 
 // Query (json parsed)
 //
-class function JSONPath.Query(const aQuery : UnicodeString; aJSON : TdwsJSONValue) : TdwsJSONValueList;
+class function JSONPath.Query(const aQuery : String; aJSON : TdwsJSONValue) : TdwsJSONValueList;
 var
    q : TdwsJSONPathQuery;
 begin
@@ -462,7 +462,7 @@ end;
 
 // Query (json string)
 //
-class function JSONPath.Query(const aQuery, aJSON : UnicodeString) : TdwsJSONValueList;
+class function JSONPath.Query(const aQuery, aJSON : String) : TdwsJSONValueList;
 var
    jv : TdwsJSONValue;
 begin

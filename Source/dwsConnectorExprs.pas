@@ -24,7 +24,7 @@ unit dwsConnectorExprs;
 interface
 
 uses
-   Variants, SysUtils,
+   SysUtils, Variants,
    dwsUtils, dwsDataContext, dwsStack, dwsXPlatform, dwsErrors, dwsStrings,
    dwsExprs, dwsExprList, dwsSymbols, dwsUnitSymbols, dwsConnectorSymbols,
    dwsCoreExprs, dwsScriptSource, dwsCompilerContext;
@@ -37,7 +37,7 @@ type
    TBaseConnectorCallExpr = class(TPosDataExpr)
       private
          FArguments : TExprBaseListRec;
-         FName : UnicodeString;
+         FName : String;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
@@ -47,7 +47,7 @@ type
 
       public
          constructor Create(const aScriptPos: TScriptPos;
-                            const aName: UnicodeString; aBaseExpr: TTypedExpr);
+                            const aName: String; aBaseExpr: TTypedExpr);
          destructor Destroy; override;
 
          procedure AddArg(expr : TTypedExpr);
@@ -72,7 +72,7 @@ type
          procedure FastEvalAsVariant(exec : TdwsExecution; var result : Variant);
 
       public
-         constructor Create(const aScriptPos: TScriptPos; const aName: UnicodeString;
+         constructor Create(const aScriptPos: TScriptPos; const aName: String;
                             aBaseExpr: TTypedExpr; isWrite: Boolean = True; isIndex: Boolean = False);
 
          function AssignConnectorSym(prog : TdwsProgram; const connectorType : IConnectorType) : Boolean;
@@ -92,7 +92,7 @@ type
    TConnectorReadMemberExpr = class (TPosDataExpr)
       private
          FBaseExpr : TTypedExpr;
-         FName : UnicodeString;
+         FName : String;
          FWritable : Boolean;
 
       protected
@@ -100,7 +100,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         class function CreateNew(const aScriptPos: TScriptPos; const aName: UnicodeString;
+         class function CreateNew(const aScriptPos: TScriptPos; const aName: String;
                                   aBaseExpr: TTypedExpr; const aConnectorType : IConnectorType
                                   ) : TConnectorReadMemberExpr; static;
          destructor Destroy; override;
@@ -108,7 +108,7 @@ type
          function IsWritable : Boolean; override;
 
          property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
-         property Name : UnicodeString read FName write FName;
+         property Name : String read FName write FName;
    end;
 
    // TConnectorReadExpr
@@ -142,7 +142,7 @@ type
       private
          FBaseExpr: TTypedExpr;
          FValueExpr: TTypedExpr;
-         FName: UnicodeString;
+         FName: String;
          FScriptPos : TScriptPos;
 
       protected
@@ -151,7 +151,7 @@ type
 
       public
          class function CreateNew(context: TdwsCompilerContext; const scriptPos: TScriptPos;
-                                  const aName: UnicodeString;
+                                  const aName: String;
                                   aBaseExpr, aValueExpr: TTypedExpr;
                                   const connectorType : IConnectorType) : TConnectorWriteMemberExpr;
          destructor Destroy; override;
@@ -159,7 +159,7 @@ type
          function  ScriptPos : TScriptPos; override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
 
-         property Name : UnicodeString read FName write FName;
+         property Name : String read FName write FName;
          property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
          property ValueExpr : TTypedExpr read FValueExpr write FValueExpr;
    end;
@@ -236,7 +236,7 @@ implementation
 // Create
 //
 constructor TBaseConnectorCallExpr.Create(const aScriptPos: TScriptPos;
-                                          const aName: UnicodeString; aBaseExpr: TTypedExpr);
+                                          const aName: String; aBaseExpr: TTypedExpr);
 begin
    inherited Create(aScriptPos, nil);
    FName:=aName;
@@ -293,7 +293,7 @@ end;
 // Create
 //
 constructor TConnectorCallExpr.Create(const aScriptPos: TScriptPos;
-  const aName: UnicodeString; aBaseExpr: TTypedExpr; isWrite: Boolean; isIndex: Boolean);
+  const aName: String; aBaseExpr: TTypedExpr; isWrite: Boolean; isIndex: Boolean);
 begin
    inherited Create(aScriptPos, aName, aBaseExpr);
    if isWrite then
@@ -535,7 +535,7 @@ end;
 // Create
 //
 class function TConnectorReadMemberExpr.CreateNew(
-      const aScriptPos: TScriptPos; const aName: UnicodeString;
+      const aScriptPos: TScriptPos; const aName: String;
       aBaseExpr: TTypedExpr; const aConnectorType : IConnectorType
       ) : TConnectorReadMemberExpr;
 var
@@ -665,7 +665,7 @@ end;
 //
 class function TConnectorWriteMemberExpr.CreateNew(
       context : TdwsCompilerContext; const scriptPos: TScriptPos;
-      const aName: UnicodeString;
+      const aName: String;
       aBaseExpr, aValueExpr: TTypedExpr;
       const connectorType : IConnectorType) : TConnectorWriteMemberExpr;
 var
