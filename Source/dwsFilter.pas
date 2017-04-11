@@ -49,7 +49,7 @@ type
          constructor Create(AOwner: TComponent); override;
          destructor Destroy; override;
 
-         function Process(const aText : UnicodeString; aMsgs : TdwsMessageList) : UnicodeString; virtual;
+         function Process(const aText : String; aMsgs : TdwsMessageList) : String; virtual;
 
          property Dependencies : TStrings read GetDependencies;
 
@@ -142,7 +142,7 @@ end;
 
 // Process
 //
-function TdwsFilter.Process(const aText : UnicodeString; aMsgs : TdwsMessageList) : UnicodeString;
+function TdwsFilter.Process(const aText : String; aMsgs : TdwsMessageList) : String;
 begin
    if Assigned(FSubFilter) then
       Result := FSubFilter.Process(aText, aMsgs)

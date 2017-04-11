@@ -21,7 +21,7 @@ type
       public
          procedure SetUp; override;
          procedure TearDown; override;
-         procedure DoOnInclude(const scriptName : String; var scriptSource : UnicodeString);
+         procedure DoOnInclude(const scriptName : String; var scriptSource : String);
          procedure DoOnResource(compiler : TdwsCompiler; const resName : String);
 
          procedure ReExec(info : TProgramInfo);
@@ -112,6 +112,15 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+function GetTemporaryFilesPath : String;
+var
+   n: Integer;
+begin
+   SetLength(Result, MAX_PATH);
+   n:=GetTempPath(MAX_PATH-1, PChar(Result));
+   SetLength(Result, n);
+end;
+
 type
    TScriptThread = class (TdwsThread)
       private
@@ -143,7 +152,7 @@ end;
 type
    TTestFilter = class(TdwsFilter)
       constructor TestCreate(const s : String);
-      function Process(const aText : UnicodeString; aMsgs : TdwsMessageList) : UnicodeString; override;
+      function Process(const aText : String; aMsgs : TdwsMessageList) : String; override;
    end;
 
 // TTestFilter
@@ -157,7 +166,7 @@ end;
 
 // Process
 //
-function TTestFilter.Process(const aText : UnicodeString; aMsgs : TdwsMessageList) : UnicodeString;
+function TTestFilter.Process(const aText : String; aMsgs : TdwsMessageList) : String;
 begin
    if EditorMode then begin
       if SubFilter <> nil then
@@ -270,7 +279,7 @@ end;
 
 // DoOnInclude
 //
-procedure TCornerCasesTests.DoOnInclude(const scriptName : String; var scriptSource : UnicodeString);
+procedure TCornerCasesTests.DoOnInclude(const scriptName : String; var scriptSource : String);
 begin
    if scriptName='comment.inc' then
       scriptSource:='{'
@@ -346,16 +355,6 @@ end;
 // IncludeViaFile
 //
 procedure TCornerCasesTests.IncludeViaFile;
-
-   function GetTemporaryFilesPath : String;
-   var
-      n: Integer;
-   begin
-      SetLength(Result, MAX_PATH);
-      n:=GetTempPath(MAX_PATH-1, PChar(Result));
-      SetLength(Result, n);
-   end;
-
 var
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
@@ -403,16 +402,6 @@ end;
 // IncludeViaFileRestricted
 //
 procedure TCornerCasesTests.IncludeViaFileRestricted;
-
-   function GetTemporaryFilesPath : String;
-   var
-      n: Integer;
-   begin
-      SetLength(Result, MAX_PATH);
-      n:=GetTempPath(MAX_PATH-1, PChar(Result));
-      SetLength(Result, n);
-   end;
-
 var
    prog : IdwsProgram;
    exec : IdwsProgramExecution;

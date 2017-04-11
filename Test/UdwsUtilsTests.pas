@@ -1,4 +1,4 @@
-{**********************************************************************}
+Ôªø{**********************************************************************}
 {                                                                      }
 {    "The contents of this file are subject to the Mozilla Public      }
 {    License Version 1.1 (the "License"); you may not use this         }
@@ -84,8 +84,8 @@ type
 
          procedure VariantClearAssignString;
 
-         procedure MultiThreadedTokenStore;
          procedure TokenStoreData;
+         procedure MultiThreadedTokenStore;
 
          procedure Base32EncoderTest;
 
@@ -594,8 +594,8 @@ begin
 
    CheckTrue(UnicodeCompareText('a', '')>0, 'a, empty');
    CheckTrue(UnicodeCompareText('', 'a')<0, 'empty, a');
-   CheckTrue(UnicodeCompareText('È', '')>0, 'È, empty');
-   CheckTrue(UnicodeCompareText('', 'È')<0, 'empty, È');
+   CheckTrue(UnicodeCompareText('√©', '')>0, '√©, empty');
+   CheckTrue(UnicodeCompareText('', '√©')<0, 'empty, √©');
 
    CheckTrue(UnicodeCompareText('abc', 'abc')=0, 'abc, abc');
    CheckTrue(UnicodeCompareText('abcd', 'abc')>0, 'abcd, abc');
@@ -603,30 +603,30 @@ begin
    CheckTrue(UnicodeCompareText('abc', 'abd')<0, 'abc, abd');
    CheckTrue(UnicodeCompareText('abd', 'abc')>0, 'abc, abd');
 
-   CheckTrue(UnicodeCompareText('abe', 'abÈ')<0, 'abe, abÈ');
-   CheckTrue(UnicodeCompareText('abÈ', 'abe')>0, 'abÈ, abe');
-   CheckTrue(UnicodeCompareText('abÈa', 'abÈz')<0, 'abÈa, abÈz');
-   CheckTrue(UnicodeCompareText('abÈz', 'abÈa')>0, 'abÈz, abÈa');
+   CheckTrue(UnicodeCompareText('abe', 'ab√©')<0, 'abe, ab√©');
+   CheckTrue(UnicodeCompareText('ab√©', 'abe')>0, 'ab√©, abe');
+   CheckTrue(UnicodeCompareText('ab√©a', 'ab√©z')<0, 'ab√©a, ab√©z');
+   CheckTrue(UnicodeCompareText('ab√©z', 'ab√©a')>0, 'ab√©z, ab√©a');
 
-   CheckTrue(UnicodeCompareText('abÈ', 'ab…')=0, 'abÈ, ab…');
-   CheckTrue(UnicodeCompareText('abÈaa', 'ab…z')<0, 'abÈaa, ab…z');
-   CheckTrue(UnicodeCompareText('abÈz', 'ab…aa')>0, 'abÈz, ab…aa');
+   CheckTrue(UnicodeCompareText('ab√©', 'ab√â')=0, 'ab√©, ab√â');
+   CheckTrue(UnicodeCompareText('ab√©aa', 'ab√âz')<0, 'ab√©aa, ab√âz');
+   CheckTrue(UnicodeCompareText('ab√©z', 'ab√âaa')>0, 'ab√©z, ab√âaa');
 
-   CheckTrue(UnicodeCompareText('se', 'sÈ')<0, 'se, sÈ');
-   CheckTrue(UnicodeCompareText('sÈ', 'sÈ')=0, 'sÈ, sÈ');
+   CheckTrue(UnicodeCompareText('se', 's√©')<0, 'se, s√©');
+   CheckTrue(UnicodeCompareText('s√©', 's√©')=0, 's√©, s√©');
    CheckTrue(UnicodeCompareText('se', 'se')=0, 'se, se');
-   CheckTrue(UnicodeCompareText('sÈ', 'se')>0, 'sÈ, se');
+   CheckTrue(UnicodeCompareText('s√©', 'se')>0, 's√©, se');
 
-   CheckTrue(UnicodeCompareText('su', 'sÈ')>0, 'su, sÈ');
+   CheckTrue(UnicodeCompareText('su', 's√©')>0, 'su, s√©');
    CheckTrue(UnicodeCompareText('su', 'se')>0, 'su, se');
-   CheckTrue(UnicodeCompareText('sÈ', 'su')<0, 'sÈ, su');
+   CheckTrue(UnicodeCompareText('s√©', 'su')<0, 's√©, su');
    CheckTrue(UnicodeCompareText('se', 'su')<0, 'se, su');
    CheckTrue(UnicodeCompareText('su', 'se')>0, 'su, se');
    CheckTrue(UnicodeCompareText('se', 'su')<0, 'se, su');
 
-   CheckTrue(UnicodeCompareText('sup', 'sÈ')>0, 'su, sÈ');
+   CheckTrue(UnicodeCompareText('sup', 's√©')>0, 'su, s√©');
    CheckTrue(UnicodeCompareText('sup', 'se')>0, 'su, se');
-   CheckTrue(UnicodeCompareText('sÈ', 'sup')<0, 'sÈ, su');
+   CheckTrue(UnicodeCompareText('s√©', 'sup')<0, 's√©, su');
    CheckTrue(UnicodeCompareText('se', 'sup')<0, 'se, su');
    CheckTrue(UnicodeCompareText('sup', 'se')>0, 'su, se');
    CheckTrue(UnicodeCompareText('se', 'sup')<0, 'se, su');
@@ -942,10 +942,10 @@ procedure TdwsUtilsTests.LoadTextFromBufferTest;
 
 begin
    CheckEquals('hello', LoadTextFromBuffer(Buffer(['h', 'e', 'l', 'l', 'o'])), 'hello');
-   CheckEquals('h'#$00E9'l', LoadTextFromBuffer(Buffer(['h', $C3, $A9, 'l'])), 'hÈl');
-   CheckEquals('utf8'#$00E9, LoadTextFromBuffer(Buffer([$EF, $BB, $BF, 'u', 't', 'f', '8', $C3, $A9])), 'utf8È');
-   CheckEquals('B'#$00E9, LoadTextFromBuffer(Buffer([$FE, $FF, 0, 'B', 0, $E9])), 'BÈ');
-   CheckEquals('L'#$00E9, LoadTextFromBuffer(Buffer([$FF, $FE, 'L', 0, $E9, 0])), 'LÈ');
+   CheckEquals('h'#$00E9'l', LoadTextFromBuffer(Buffer(['h', $C3, $A9, 'l'])), 'h√©l');
+   CheckEquals('utf8'#$00E9, LoadTextFromBuffer(Buffer([$EF, $BB, $BF, 'u', 't', 'f', '8', $C3, $A9])), 'utf8√©');
+   CheckEquals('B'#$00E9, LoadTextFromBuffer(Buffer([$FE, $FF, 0, 'B', 0, $E9])), 'B√©');
+   CheckEquals('L'#$00E9, LoadTextFromBuffer(Buffer([$FF, $FE, 'L', 0, $E9, 0])), 'L√©');
 end;
 
 // URLEncodedEncoder
@@ -1285,7 +1285,7 @@ var
 begin
    FreeOnTerminate:=False;
    for i:=0 to High(names) do
-      names[i]:=String(IntToHex(i, 4));
+      names[i]:=IntToHex(i, 4);
    for i:=1 to 50000 do begin
       vGlobals.TryRead(names[(i + 60) and High(names)], v);
       vGlobals.Write(names[i and High(names)], i, 0);
@@ -1405,7 +1405,7 @@ end;
 //
 procedure TdwsUtilsTests.BytesWords;
 var
-   buf : String;
+   buf : UnicodeString;
 begin
    buf := 'Example';
    StringBytesToWords(buf, False);
@@ -1508,9 +1508,7 @@ begin
             CheckEquals(cDouble, ReadVariant(rd));
             CheckEquals(True, ReadVariant(rd));
             CheckEquals(False, ReadVariant(rd));
-            {$ifndef FPC}
             CheckEquals(Unassigned, ReadVariant(rd));
-            {$endif}
             Check(VarIsNull(ReadVariant(rd)));
             CheckEquals(123, ReadVariant(rd));
             CheckEquals('world', ReadVariant(rd));

@@ -17,7 +17,7 @@ type
          procedure SetUp; override;
          procedure TearDown; override;
 
-         procedure DoInclude(const scriptName: String; var scriptSource: UnicodeString);
+         procedure DoInclude(const scriptName: String; var scriptSource: String);
 
          procedure Compilation;
          procedure Execution;
@@ -116,7 +116,7 @@ end;
 
 // DoInclude
 //
-procedure TScriptTests.DoInclude(const scriptName: String; var scriptSource: UnicodeString);
+procedure TScriptTests.DoInclude(const scriptName: String; var scriptSource: String);
 begin
    scriptSource := LoadTextFromFile('SimpleScripts\'+scriptName);
 end;

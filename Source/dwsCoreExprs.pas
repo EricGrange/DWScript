@@ -5210,7 +5210,7 @@ begin
          Result := Round(TVarData(v).VDouble);
       varCurrency :
          Result := Round(TVarData(v).VCurrency);
-      varString, varUString, varOleStr :
+      varString, {$ifndef FPC}varUString,{$endif} varOleStr :
          Result := Ord(FirstWideCharOfString(v));
    else
       RaiseScriptError(exec, EScriptError.Create(RTE_OrdinalExpected));
@@ -6058,7 +6058,7 @@ begin
       end;
       varSingle, varCurrency, varDouble, varDate :
          if Double(Result)<>0 then Exit;
-      varString, varUString :
+      varString{$ifndef FPC}, varUString{$endif} :
          if TVarData(result).VString<>nil then Exit;
       varUnknown : begin
          if not CoalesceableIsFalsey(IUnknown(TVarData(result).VUnknown)) then Exit;

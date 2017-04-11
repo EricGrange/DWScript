@@ -705,7 +705,7 @@ procedure TInfoData.SetValue(const Value: Variant);
 begin
    if Assigned(FTypeSym) and (FTypeSym.Size = 1) then
       case VariantType(Value) of
-         varInt64, varDouble, varBoolean, varUString, varUnknown :
+         varInt64, varDouble, varBoolean, {$ifdef FPC}varString{$else}varUString{$endif}, varUnknown :
             FDataPtr[0] := Value;
       else
          if VariantIsFloat(Value) then

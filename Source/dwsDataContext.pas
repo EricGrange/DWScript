@@ -294,8 +294,13 @@ begin
             Result:=TVarData(v1).VBoolean=TVarData(v2).VBoolean;
          varDouble :
             Result:=TVarData(v1).VDouble=TVarData(v2).VDouble;
-         varUString :
+         {$ifdef FPC}
+         varString :
             Result:=String(TVarData(v1).VString)=String(TVarData(v2).VString);
+         {$else}
+         varUString :
+            Result:=String(TVarData(v1).VUString)=String(TVarData(v2).VUString);
+         {$endif}
          varUnknown :
             Result:=TVarData(v1).VUnknown=TVarData(v2).VUnknown;
       else
@@ -325,6 +330,7 @@ begin
       varInt64, varDouble, varCurrency, varDate, varUInt64 : begin // 64 bits
          n := 8;
       end;
+      {$ifndef FPC}
       varUString : begin
          if p.VString <> nil then begin
             buf := SimpleStringHash(String(p.VString));
@@ -332,6 +338,7 @@ begin
          end else buf := 0;
          n := 4;
       end;
+      {$endif}
       varString : begin
          if p.VString <> nil then begin
             k := p.VString;
@@ -699,9 +706,15 @@ var
    p : PVarData;
 begin
    p:=@FData[FAddr+addr];
-   if p.VType=varUString then
+   {$ifdef FPC}
+   if p.VType=varString then
       result:=String(p.VString)
    else VariantToString(PVariant(p)^, result);
+   {$else}
+   if p.VType=varUString then
+      result:=String(p.VUString)
+   else VariantToString(PVariant(p)^, result);
+   {$endif}
 end;
 
 // EvalAsInterface

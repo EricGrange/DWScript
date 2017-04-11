@@ -181,7 +181,7 @@ procedure InitVariants(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSym
 type
    TVarTypeRec = packed record n : String; v : Word; end;
 const
-   cVarTypes : array [0..25] of TVarTypeRec = (
+   cVarTypes : array [0..24] of TVarTypeRec = (
       (n:'Empty'; v:varEmpty),         (n:'Null'; v:varNull),
       (n:'Smallint'; v:varSmallint),   (n:'Integer'; v:varInteger),
       (n:'Single'; v:varSingle),       (n:'Double'; v:varDouble),
@@ -192,7 +192,11 @@ const
       (n:'ShortInt'; v:varShortInt),   (n:'Byte'; v:varByte),
       (n:'Word'; v:varWord),           (n:'LongWord'; v:varLongWord),
       (n:'Int64'; v:varInt64),         (n:'StrArg'; v:varStrArg),
-      (n:'String'; v:varUString),      (n:'String'; v:varUString),
+      {$ifdef FPC}
+      (n:'String'; v:varString),
+      {$else}
+      (n:'String'; v:varUString),
+      {$endif}
       (n:'Any'; v:varAny),             (n:'TypeMask'; v:varTypeMask),
       (n:'Array'; v:varArray),         (n:'ByRef'; v:varByRef) );
 var

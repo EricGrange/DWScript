@@ -416,13 +416,13 @@ begin
             Inc(pDest, 3);
          end;
       else
-         pDest^ := WideChar(pSrc^);
+         pDest^ := Char(pSrc^);
          Inc(pDest);
       end;
       Inc(pSrc);
    until False;
 
-   SetLength(Result, (NativeUInt(PDest)-NativeUInt(Pointer(Result))) div SizeOf(WideChar));
+   SetLength(Result, (NativeUInt(PDest)-NativeUInt(Pointer(Result))) div SizeOf(Char));
 end;
 
 // DecodeURLEncoded
@@ -887,7 +887,7 @@ class function WebUtils.HTMLCharacterDecode(p : PWideChar) : WideChar;
    var
       entity : TNamedEntity;
    begin
-      entity.Name := AsString(p);
+      entity.Name := String(AsString(p));
       if vAllNamedEntities.Match(entity) then begin
          Result := WideChar(entity.Code);  // UCS-2 only !
       end else Result:=#0;

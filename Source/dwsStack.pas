@@ -423,9 +423,15 @@ var
    varData : PVarData;
 begin
    varData:=@Data[SourceAddr];
-   if varData.VType=varUString then
-      Result:=String(varData.VString)
+   {$ifdef FPC}
+   if varData.VType = varString then
+      Result := String(varData.VString)
    else VariantToString(PVariant(varData)^, Result);
+   {$else}
+   if varData.VType = varUString then
+      Result := String(varData.VUString)
+   else VariantToString(PVariant(varData)^, Result);
+   {$endif}
 end;
 
 // ReadBoolValue
@@ -481,8 +487,13 @@ var
    varData : PVarData;
 begin
    varData:=@FBaseData[addr];
-   Assert(varData.VType=varUString);
-   Result:=@varData.VString;
+   {$ifdef FPC}
+   Assert(varData.VType = varString);
+   Result := @varData.VString;
+   {$else}
+   Assert(varData.VType = varUString);
+   Result := @varData.VUString;
+   {$endif}
 end;
 
 // PointerToInterfaceValue_BaseRelative
@@ -559,8 +570,13 @@ var
    varData : PVarData;
 begin
    varData:=@FBaseData[destAddr];
-   Assert(varData.VType=varUString);
-   String(varData.VString):=String(varData.VString)+value
+   {$ifdef FPC}
+   Assert(varData.VType = varString);
+   String(varData.VString) := String(varData.VString) + value
+   {$else}
+   Assert(varData.VType = varUString);
+   String(varData.VUString) := String(varData.VUString) + value
+   {$endif}
 end;
 
 // WriteData
@@ -637,9 +653,15 @@ var
    varData : PVarData;
 begin
    varData:=@Data[DestAddr];
-   if varData.VType=varUString then
-      String(varData.VString):=Value
+   {$ifdef FPC}
+   if varData.VType = varString then
+      String(varData.VString) := Value
    else VarCopySafe(PVariant(varData)^, Value);
+   {$else}
+   if varData.VType = varUString then
+      String(varData.VUString) := Value
+   else VarCopySafe(PVariant(varData)^, Value);
+   {$endif}
 end;
 
 // WriteStrValue_BaseRelative
@@ -649,9 +671,15 @@ var
    varData : PVarData;
 begin
    varData:=@FBaseData[DestAddr];
-   if varData.VType=varUString then
-      String(varData.VString):=Value
+   {$ifdef FPC}
+   if varData.VType = varString then
+      String(varData.VString) := Value
    else VarCopySafe(PVariant(varData)^, Value);
+   {$else}
+   if varData.VType = varUString then
+      String(varData.VUString) := Value
+   else VarCopySafe(PVariant(varData)^, Value);
+   {$endif}
 end;
 
 // WriteBoolValue
@@ -685,11 +713,19 @@ var
    varData : PVarData;
 begin
    varData:=@Data[DestAddr];
-   if varData.VType=varUString then
+   {$ifdef FPC}
+   if varData.VType=varString then
       if index>Length(String(varData.VString)) then
          Exit(False)
       else String(varData.VString)[index]:=c
    else PVariant(varData)^[index]:=c;
+   {$else}
+   if varData.VType=varUString then
+      if index>Length(String(varData.VUString)) then
+         Exit(False)
+      else String(varData.VUString)[index]:=c
+   else PVariant(varData)^[index]:=c;
+   {$endif}
    Result:=True;
 end;
 

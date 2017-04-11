@@ -47,11 +47,11 @@ const
 type
    TdwsCompiler = class;
 
-   TIncludeEvent = procedure (const scriptName: String; var scriptSource: UnicodeString) of object;
-   TdwsOnNeedUnitEvent = function (const unitName : String; var unitSource : UnicodeString) : IdwsUnit of object;
+   TIncludeEvent = procedure (const scriptName: String; var scriptSource: String) of object;
+   TdwsOnNeedUnitEvent = function (const unitName : String; var unitSource : String) : IdwsUnit of object;
    TdwsResourceEvent = procedure (compiler : TdwsCompiler; const resourceName : String) of object;
    TdwsCodeGenEvent = procedure (compiler : TdwsCompiler; const switchPos : TScriptPos; const code : String) of object;
-   TdwsFilterEvent = procedure (compiler : TdwsCompiler; const sourceName : String; var sourceCode : UnicodeString; var filter : TdwsFilter) of object;
+   TdwsFilterEvent = procedure (compiler : TdwsCompiler; const sourceName : String; var sourceCode : String; var filter : TdwsFilter) of object;
 
    TCompilerCreateBaseVariantSymbolEvent = function (table : TSystemSymbolTable) : TBaseVariantSymbol of object;
    TCompilerCreateSystemSymbolsEvent = procedure (table : TSystemSymbolTable) of object;
@@ -287,9 +287,9 @@ type
       // direct access to the underlying instance, use with caution!!!
       function Compiler : TdwsCompiler;
 
-      function Compile(const aCodeText : UnicodeString; aConf : TdwsConfiguration;
+      function Compile(const aCodeText : String; aConf : TdwsConfiguration;
                        const mainFileName : String = '') : IdwsProgram;
-      procedure RecompileInContext(const context : IdwsProgram; const aCodeText : UnicodeString;
+      procedure RecompileInContext(const context : IdwsProgram; const aCodeText : String;
                                    aConf : TdwsConfiguration);
 
       procedure AbortCompilation;
@@ -766,7 +766,7 @@ type
          property  CurrentUnitSymbol : TUnitMainSymbol read FCurrentUnitSymbol;
          procedure EnterUnit(srcUnit : TSourceUnit; var oldSrcUnit : TSourceUnit);
          procedure LeaveUnit(oldSrcUnit : TSourceUnit);
-         procedure SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : UnicodeString);
+         procedure SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : String);
 
          procedure SetupCompileOptions(conf : TdwsConfiguration);
          procedure SetupMsgsOptions(conf : TdwsConfiguration);
@@ -805,9 +805,9 @@ type
          constructor Create;
          destructor Destroy; override;
 
-         function Compile(const aCodeText : UnicodeString; aConf : TdwsConfiguration;
+         function Compile(const aCodeText : String; aConf : TdwsConfiguration;
                           const mainFileName : String = '') : IdwsProgram;
-         procedure RecompileInContext(const context : IdwsProgram; const aCodeText : UnicodeString; aConf : TdwsConfiguration);
+         procedure RecompileInContext(const context : IdwsProgram; const aCodeText : String; aConf : TdwsConfiguration);
 
          class procedure Evaluate; static; deprecated 'Moved to TdwsEvaluateExpr.Evaluate';
 
@@ -823,8 +823,8 @@ type
          procedure ReplaceSymbolUse(oldSym, newSym : TSymbol; const scriptPos : TScriptPos);
 
          function OpenStreamForFile(const fileName : String) : TStream;
-         function GetScriptSource(const scriptName : String) : UnicodeString;
-         function GetIncludeScriptSource(const scriptName : String) : UnicodeString;
+         function GetScriptSource(const scriptName : String) : String;
+         function GetIncludeScriptSource(const scriptName : String) : String;
 
          property CurrentProg : TdwsProgram read FCurrentProg write SetCurrentProg;
          property CompilerContext : TdwsCompilerContext read FCompilerContext;
@@ -1567,11 +1567,11 @@ end;
 
 // Compile
 //
-function TdwsCompiler.Compile(const aCodeText : UnicodeString; aConf : TdwsConfiguration;
+function TdwsCompiler.Compile(const aCodeText : String; aConf : TdwsConfiguration;
                               const mainFileName : String = '') : IdwsProgram;
 var
    stackParams : TStackParameters;
-   codeText : UnicodeString;
+   codeText : String;
    sourceFile : TSourceFile;
    compileStartTicks : Int64;
 begin
@@ -1734,7 +1734,7 @@ var
    unitTable : TUnitSymbolTable;
    unitMain : TUnitMainSymbol;
    dependencies : TStringList;
-   unitSource : UnicodeString;
+   unitSource : String;
    srcUnit : TSourceUnit;
    oldContext : TdwsSourceContext;
 begin
@@ -2112,9 +2112,9 @@ end;
 // RecompileInContext
 //
 procedure TdwsCompiler.RecompileInContext(const context : IdwsProgram;
-               const aCodeText : UnicodeString; aConf : TdwsConfiguration);
+               const aCodeText : String; aConf : TdwsConfiguration);
 var
-   codeText : UnicodeString;
+   codeText : String;
    sourceFile : TSourceFile;
 begin
    SetupCompileOptions(aConf);
@@ -11730,7 +11730,7 @@ function TdwsCompiler.ReadInstrSwitch(const switchName : String) : Boolean;
 var
    switch : TSwitchInstruction;
    name : String;
-   scriptSource : UnicodeString;
+   scriptSource : String;
    i : Integer;
    conditionalTrue : Boolean;
    switchPos, condPos, fileNamePos : TScriptPos;
@@ -12261,7 +12261,7 @@ end;
 
 // GetScriptSource
 //
-function TdwsCompiler.GetScriptSource(const scriptName : String) : UnicodeString;
+function TdwsCompiler.GetScriptSource(const scriptName : String) : String;
 var
    stream : TStream;
 begin
@@ -12281,7 +12281,7 @@ end;
 
 // GetIncludeScriptSource
 //
-function TdwsCompiler.GetIncludeScriptSource(const scriptName : String) : UnicodeString;
+function TdwsCompiler.GetIncludeScriptSource(const scriptName : String) : String;
 begin
    Result:='';
 
@@ -13195,7 +13195,7 @@ end;
 
 // SwitchTokenizerToUnit
 //
-procedure TdwsCompiler.SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : UnicodeString);
+procedure TdwsCompiler.SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : String);
 var
    sourceFile : TSourceFile;
    oldUnit : TSourceUnit;

@@ -24,7 +24,7 @@ interface
 uses SysUtils;
 
 type
-   TBase64Alphabet = array [0..63] of WideChar;
+   TBase64Alphabet = array [0..63] of Char;
 
 function Base58Encode(const data : RawByteString) : String; overload; inline;
 function Base58Encode(data : Pointer; len : Integer) : String; overload;
@@ -179,7 +179,7 @@ begin
 end;
 
 const
-   cBase32 : array [0..31] of WideChar = (
+   cBase32 : array [0..31] of Char = (
       'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P',
       'Q','R','S','T','U','V','W','X','Y','Z','2','3','4','5','6','7'
    );
@@ -188,7 +188,7 @@ function Base32Encode(data : Pointer; len : Integer) : String;
 var
    i, n, c, b : Integer;
    pIn : PByteArray;
-   pOut : PWideChar;
+   pOut : PChar;
 begin
    if (len = 0) or (data = nil) then Exit('');
    n := len;
@@ -210,7 +210,7 @@ begin
       pOut^ := cBase32[(c shl (5-b)) and $1F];
       Inc(pOut);
    end;
-   n := (NativeUInt(pOut)-NativeUInt(Pointer(Result))) div SizeOf(WideChar);
+   n := (NativeUInt(pOut)-NativeUInt(Pointer(Result))) div SizeOf(Char);
    SetLength(Result, n);
 end;
 
@@ -229,7 +229,7 @@ function Base32Decode(const data : String) : RawByteString;
 
    procedure PrepareTable;
    var
-      c : WideChar;
+      c : Char;
    begin
       for c := #0 to High(vBase32DecodeTable) do begin
          case c of
@@ -245,7 +245,7 @@ function Base32Decode(const data : String) : RawByteString;
 
 var
    c, b, i, n, d : Integer;
-   pIn : PWideChar;
+   pIn : PChar;
    pOut : PByte;
 begin
    if data = '' then Exit('');
@@ -298,7 +298,7 @@ begin
    // -2 is for characters that are allowed (and ignored) between blocks
    // table should be filled sequentially so preparation does not need a threading lock
    for i := 0 to High(vBase64Decode) do begin
-      case WideChar(i) of
+      case Char(i) of
          #1..#32 : vBase64Decode[i] := -2;
          'A'..'Z' : vBase64Decode[i] := i - Ord('A');
          'a'..'z' : vBase64Decode[i] := i + (26 - Ord('a'));
@@ -344,7 +344,7 @@ end;
 function Base64Encode(data : Pointer; len : Integer; const alphabet : TBase64Alphabet) : String; overload;
 var
    outLen, blocks, tail, i : Integer;
-   dest : PWideChar;
+   dest : PChar;
    src : PByte;
    c : Cardinal;
 begin
@@ -422,7 +422,7 @@ function Base64Decode(const data : String) : RawByteString;
                end;
             end;
          end else if ch = -2 then begin
-            src := @PWideChar(src)[1];
+            src := @PChar(src)[1];
             Continue;
          end;
          dest[0] := c shr 10;

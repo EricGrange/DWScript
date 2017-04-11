@@ -59,6 +59,12 @@ const
    // following is missing from D2010
    INVALID_HANDLE_VALUE = DWORD(-1);
 
+   {$ifdef FPC}
+   // FreePascal RTL declares this constant, but does not support it,
+   // so it just leads to runtime crashes, this attempts to trigger compile-time crashes instead
+   varUString = 'varUString is not supported by FreePascal';
+   {$endif}
+
 type
 
    // see http://delphitools.info/2011/11/30/fixing-tcriticalsection/
@@ -260,7 +266,7 @@ function LoadTextFromBuffer(const buf : TBytes) : UnicodeString;
 function LoadTextFromRawBytes(const buf : RawByteString) : UnicodeString;
 function LoadTextFromStream(aStream : TStream) : UnicodeString;
 function LoadTextFromFile(const fileName : TFileName) : UnicodeString;
-procedure SaveTextToUTF8File(const fileName : TFileName; const text : String);
+procedure SaveTextToUTF8File(const fileName : TFileName; const text : UTF8String);
 procedure AppendTextToUTF8File(const fileName : TFileName; const text : UTF8String);
 function OpenFileForSequentialReadOnly(const fileName : TFileName) : THandle;
 function OpenFileForSequentialWriteOnly(const fileName : TFileName) : THandle;
@@ -1080,7 +1086,7 @@ var
    n : Integer;
    buf : TBytes;
 begin
-   n:=aStream.Size-aStream.Position;
+   n := aStream.Size-aStream.Position;
    SetLength(buf, n);
    aStream.Read(buf[0], n);
    Result:=LoadTextFromBuffer(buf);
@@ -1262,7 +1268,7 @@ end;
 
 // SaveTextToUTF8File
 //
-procedure SaveTextToUTF8File(const fileName : TFileName; const text : String);
+procedure SaveTextToUTF8File(const fileName : TFileName; const text : UTF8String);
 begin
    SaveRawBytesToFile(fileName, UTF8Encode(text));
 end;
@@ -1289,8 +1295,8 @@ end;
 //
 function OpenFileForSequentialReadOnly(const fileName : TFileName) : THandle;
 begin
-   Result:=CreateFileW(PWideChar(fileName), GENERIC_READ, FILE_SHARE_READ+FILE_SHARE_WRITE,
-                       nil, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, 0);
+   Result:=CreateFile(PChar(fileName), GENERIC_READ, FILE_SHARE_READ+FILE_SHARE_WRITE,
+                      nil, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, 0);
    if Result=INVALID_HANDLE_VALUE then begin
       if GetLastError<>ERROR_FILE_NOT_FOUND then
          RaiseLastOSError;
@@ -1301,8 +1307,8 @@ end;
 //
 function OpenFileForSequentialWriteOnly(const fileName : TFileName) : THandle;
 begin
-   Result:=CreateFileW(PWideChar(fileName), GENERIC_WRITE, 0, nil, CREATE_ALWAYS,
-                       FILE_ATTRIBUTE_NORMAL+FILE_FLAG_SEQUENTIAL_SCAN, 0);
+   Result:=CreateFile(PChar(fileName), GENERIC_WRITE, 0, nil, CREATE_ALWAYS,
+                      FILE_ATTRIBUTE_NORMAL+FILE_FLAG_SEQUENTIAL_SCAN, 0);
    if Result=INVALID_HANDLE_VALUE then
       RaiseLastOSError;
 end;
@@ -1507,7 +1513,7 @@ begin
    {$ifdef DELPHI_XE_PLUS}
    fmt:=SysUtils.FormatSettings;
    {$else}
-   fmt:=SysUtils.TFormatSettings((@CurrencyString)^);
+   fmt:=SysUtils.TFormatSettings((@CurrencyString{%H-})^);
    {$endif}
 end;
 

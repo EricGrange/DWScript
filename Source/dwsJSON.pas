@@ -609,7 +609,7 @@ begin
          if localBufferPtr=@localBuffer[High(localBuffer)] then begin
             if wobs=nil then
                wobs:=TWriteOnlyBlockStream.AllocFromPool;
-            wobs.Write(localBuffer[0], Length(localBuffer)*SizeOf(WideChar));
+            wobs.WriteP(@localBuffer, Length(localBuffer));
             localBufferPtr:=@localBuffer[0];
          end else Inc(localBufferPtr);
       until False;
@@ -853,7 +853,7 @@ procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; p : PWideCha
       hex[3]:=cIntToHex[(c shr 8) and $F];
       hex[4]:=cIntToHex[(c shr 4) and $F];
       hex[5]:=cIntToHex[c and $F];
-      destStream.Write(hex[0], 6*SizeOf(WideChar));
+      destStream.WriteP(@hex, 6);
    end;
 
 const
@@ -861,7 +861,7 @@ const
 var
    c : WideChar;
 begin
-   destStream.Write(cQUOTE, SizeOf(WideChar));
+   destStream.WriteP(@cQUOTE, 1);
    if p<>nil then while True do begin
       c:=p^;
       case Ord(c) of
@@ -885,11 +885,11 @@ begin
          $100..$FFFF :
             WriteUTF16(destStream, Ord(c));
       else
-         destStream.Write(p^, SizeOf(WideChar));
+         destStream.WriteP(p, 1);
       end;
       Inc(p);
    end;
-   destStream.Write(cQUOTE, SizeOf(WideChar));
+   destStream.WriteP(@cQUOTE, 1);
 end;
 
 // ------------------
@@ -2522,7 +2522,11 @@ procedure TdwsJSONImmediate.SetAsVariant(const val : Variant);
 begin
    case VariantType(val) of
       varNull : IsNull:=True;
+      {$ifdef FPC}
+      varString : AsString:=val;
+      {$else}
       varUString : AsString:=val;
+      {$endif}
       varDouble : AsNumber:=val;
       varBoolean : AsBoolean:=val;
    else

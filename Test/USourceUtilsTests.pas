@@ -17,7 +17,7 @@ type
       private
          FCompiler : TDelphiWebScript;
 
-         function NeedUnitHandler(const unitName : String; var unitSource : UnicodeString) : IdwsUnit;
+         function NeedUnitHandler(const unitName : String; var unitSource : String) : IdwsUnit;
 
       public
          procedure SetUp; override;
@@ -279,7 +279,7 @@ begin
 end;
 
 function TSourceUtilsTests.NeedUnitHandler(const unitName: String;
-  var unitSource: UnicodeString): IdwsUnit;
+  var unitSource: String): IdwsUnit;
 begin
   CheckEquals('SomeUnit', unitName, 'Only the unit ''SomeUnit'' is handled properly!');
   unitSource := 'unit SomeUnit;';

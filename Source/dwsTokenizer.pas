@@ -349,7 +349,7 @@ implementation
 // ------------------------------------------------------------------
 
 const
-   cFormatSettings : TFormatSettings = ( DecimalSeparator : '.' );
+   cFormatSettings : TFormatSettings = ( DecimalSeparator : {%H-}'.' );
 
 // TokenTypesToString
 //

@@ -33,11 +33,11 @@ type
    TSourceFile = class (TRefCountedObject)
       private
          FLineCount : Integer;
-         FCode : UnicodeString;
+         FCode : String;
 
       public
          Name : String;
-         property Code : UnicodeString read FCode write FCode;
+         property Code : String read FCode write FCode;
          function LineCount : Integer;
    end;
 
@@ -60,7 +60,7 @@ type
          function IsMainModule : Boolean;
          function IsSourceFile(const name : String) : Boolean;
          function SourceName : String; inline;
-         function SourceCode : UnicodeString; inline;
+         function SourceCode : String; inline;
          function Defined : Boolean;
 
          procedure IncCol; inline;
@@ -107,7 +107,7 @@ type
          destructor Destroy; override;
 
          procedure Clear;
-         function Add(const nameReference : String; const code: UnicodeString; sourceType: TScriptSourceType) : TSourceFile;
+         function Add(const nameReference : String; const code: String; sourceType: TScriptSourceType) : TSourceFile;
 
          function FindScriptSourceItem(const sourceFileName: String): TScriptSourceItem; overload;
 
@@ -199,7 +199,7 @@ end;
 
 // SourceCode
 //
-function TScriptPos.SourceCode : UnicodeString;
+function TScriptPos.SourceCode : String;
 begin
    if SourceFile<>nil then
       Result:=SourceFile.Code
@@ -359,7 +359,7 @@ end;
 // Add
 //
 function TScriptSourceList.Add(
-      const nameReference : String; const code : UnicodeString;
+      const nameReference : String; const code : String;
       sourceType: TScriptSourceType) : TSourceFile;
 var
    srcItem : TScriptSourceItem;

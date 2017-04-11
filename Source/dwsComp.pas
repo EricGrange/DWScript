@@ -134,12 +134,8 @@ type
          procedure AddUnit(const aUnit : IdwsUnit); overload;
          function RemoveUnit(const aUnit : IdwsUnit): Boolean;
 
-         function Compile(const text : UnicodeString; const mainFileName : String = '') : IdwsProgram; overload; virtual;
-         procedure RecompileInContext(const prog : IdwsProgram; const text : UnicodeString); overload; virtual;
-         {$ifdef FPC}
          function Compile(const text : String; const mainFileName : String = '') : IdwsProgram; overload;
          procedure RecompileInContext(const prog : IdwsProgram; const text : String); overload;
-         {$endif}
 
          procedure AbortCompilation;
 
@@ -1498,7 +1494,7 @@ begin
          Result := 'Unassigned';
       varNull :
          Result := 'Null';
-      varString, varUString, varOleStr, varStrArg :
+      varString, {$ifndef FPC}varUString,{$endif} varOleStr, varStrArg :
          Result := Format('''%s''', [VariantToString(value)]);
       varDate :
          Result := Format('DateTime(%f)', [TVarData(value).VDate]);
@@ -1527,7 +1523,7 @@ begin
          Result := SYS_INTEGER;
       varSingle, varDouble, varCurrency :
          Result := SYS_FLOAT;
-      varOleStr, varString, varUString :
+      varOleStr, varString{$ifndef FPC}, varUString{$endif} :
          Result := SYS_STRING;
       varBoolean :
          Result := SYS_BOOLEAN;
@@ -1680,7 +1676,7 @@ end;
 
 // Compile
 //
-function TDelphiWebScript.Compile(const Text: UnicodeString; const mainFileName : String = ''): IdwsProgram;
+function TDelphiWebScript.Compile(const Text: String; const mainFileName : String = ''): IdwsProgram;
 begin
    Lock;
    try
@@ -1693,7 +1689,7 @@ end;
 
 // RecompileInContext
 //
-procedure TDelphiWebScript.RecompileInContext(const prog : IdwsProgram; const text : UnicodeString);
+procedure TDelphiWebScript.RecompileInContext(const prog : IdwsProgram; const text : String);
 begin
    Lock;
    try
@@ -1703,17 +1699,6 @@ begin
       UnLock;
    end;
 end;
-
-{$ifdef FPC}
-function TDelphiWebScript.Compile(const text : String; const mainFileName : String = '') : IdwsProgram; overload;
-begin
-   Result := Compile(UnicodeString(text), mainFileName);
-end;
-procedure TDelphiWebScript.RecompileInContext(const prog : IdwsProgram; const text : String); overload;
-begin
-   RecompileInContext(prog, UnicodeString(text));
-end;
-{$endif}
 
 // AbortCompilation
 //

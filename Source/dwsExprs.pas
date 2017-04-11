@@ -7221,9 +7221,15 @@ begin
    if fromIndex<ArrayLength then begin
       varData:=@AsPData^[fromIndex];
       for i:=fromIndex to ArrayLength-1 do begin
-         Assert(varData^.VType=varUString);
+         {$ifdef FPC}
+         Assert(varData^.VType=varString);
          if String(varData^.VString)=item then
             Exit(i);
+         {$else}
+         Assert(varData^.VType=varUString);
+         if String(varData^.VUString)=item then
+            Exit(i);
+         {$endif}
          Inc(varData);
       end;
    end;
@@ -7350,8 +7356,13 @@ begin
    p:=@DirectData[0];
    v1:=@p[i1];
    v2:=@p[i2];
-   Assert((v1.VType=varUString) and (v2.VType=varUString));
+   {$ifdef FPC}
+   Assert((v1.VType=varString) and (v2.VType=varString));
    Result:=UnicodeCompareStr(String(v1.VString), String(v2.VString));
+   {$else}
+   Assert((v1.VType=varUString) and (v2.VType=varUString));
+   Result:=UnicodeCompareStr(String(v1.VUString), String(v2.VUString));
+   {$endif}
 end;
 
 // CompareInteger

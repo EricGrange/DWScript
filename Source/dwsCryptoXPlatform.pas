@@ -149,7 +149,7 @@ var
 begin
    SetLength(Result, size);
    for i := 0 to size-1 do
-      PWideChar(Pointer(Result))[i] := WideChar(cBase64Chars[(digest[i] and 63)+1]);
+      PChar(Pointer(Result))[i] := Char(cBase64Chars[(digest[i] and 63)+1]);
 end;
 
 // DigestToSimplifiedBase62
@@ -160,7 +160,7 @@ var
 begin
    SetLength(Result, size);
    for i := 0 to size-1 do
-      PWideChar(Pointer(Result))[i] := WideChar(cBase64Chars[((digest[i]*62) shr 8)+1]);
+      PChar(Pointer(Result))[i] := Char(cBase64Chars[((digest[i]*62) shr 8)+1]);
 end;
 
 // CryptographicToken

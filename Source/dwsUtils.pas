@@ -734,6 +734,8 @@ type
          procedure WriteInt32(const i : Integer); inline;
          procedure WriteDWord(const dw : DWORD); inline;
 
+         procedure WriteP(p : PWideChar; nbWideChars : Integer); inline;
+
          // must be strictly an utf16 String
          procedure WriteString(const utf16String : UnicodeString); overload; inline;
          {$ifdef FPC}
@@ -933,12 +935,12 @@ function StrMatches(const aStr, aMask : String) : Boolean;
 function StrDeleteLeft(const aStr : String; n : Integer) : String; inline;
 function StrDeleteRight(const aStr : String; n : Integer) : String; inline;
 
-function StrAfterChar(const aStr : String; aChar : WideChar) : String;
-function StrBeforeChar(const aStr : String; aChar : WideChar) : String;
+function StrAfterChar(const aStr : String; aChar : Char) : String;
+function StrBeforeChar(const aStr : String; aChar : Char) : String;
 
-function StrReplaceChar(const aStr : String; oldChar, newChar : WideChar) : String;
+function StrReplaceChar(const aStr : String; oldChar, newChar : Char) : String;
 
-function StrCountChar(const aStr : String; c : WideChar) : Integer;
+function StrCountChar(const aStr : String; c : Char) : Integer;
 
 function Min(a, b : Integer) : Integer; inline;
 
@@ -956,21 +958,21 @@ function SimpleIntegerHash(x : Cardinal) : Cardinal;
 function SimplePointerHash(x : Pointer) : Cardinal;
 function SimpleInt64Hash(x : Int64) : Cardinal;
 
-function RawByteStringToScriptString(const s : RawByteString) : String; overload; inline;
-procedure RawByteStringToScriptString(const s : RawByteString; var result : String); inline; overload;
-procedure BytesToScriptString(const p : PByte; n : Integer; var result : String);
-function ScriptStringToRawByteString(const s : String) : RawByteString; overload; inline;
-procedure ScriptStringToRawByteString(const s : String; var result : RawByteString); overload;
+function RawByteStringToScriptString(const s : RawByteString) : UnicodeString; overload; inline;
+procedure RawByteStringToScriptString(const s : RawByteString; var result : UnicodeString); inline; overload;
+procedure BytesToScriptString(const p : PByte; n : Integer; var result : UnicodeString);
+function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString; overload; inline;
+procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
 
-procedure StringBytesToWords(var buf : String; swap : Boolean);
-procedure StringWordsToBytes(var buf : String; swap : Boolean);
+procedure StringBytesToWords(var buf : UnicodeString; swap : Boolean);
+procedure StringWordsToBytes(var buf : UnicodeString; swap : Boolean);
 
 type
    EHexEncodingException = class (Exception)
    end;
 
-function BinToHex(const data; n : Integer) : String; overload;
-function BinToHex(const data : RawByteString) : String; overload; inline;
+function BinToHex(const data; n : Integer) : UnicodeString; overload;
+function BinToHex(const data : RawByteString) : UnicodeString; overload; inline;
 
 function HexToBin(const data : String) : RawByteString; overload;
 
@@ -1050,7 +1052,7 @@ function ApplyStringVariables(const str : TFilename; const variables : TStrings;
                               const delimiter : String = '%') : TFilename;
 
 type
-   TTwoChars = packed array [0..1] of WideChar;
+   TTwoChars = packed array [0..1] of Char;
    PTwoChars = ^TTwoChars;
 const
    cTwoDigits : packed array [0..99] of TTwoChars = (
@@ -1188,7 +1190,7 @@ end;
 
 // StringBytesToWords
 //
-procedure StringBytesToWords(var buf : String; swap : Boolean);
+procedure StringBytesToWords(var buf : UnicodeString; swap : Boolean);
 type
    TTwoBytes = array [0..1] of Byte;
    TTwoWords = array [0..1] of Word;
@@ -1222,7 +1224,7 @@ end;
 
 // StringWordsToBytes
 //
-procedure StringWordsToBytes(var buf : String; swap : Boolean);
+procedure StringWordsToBytes(var buf : UnicodeString; swap : Boolean);
 type
    TTwoBytes = array [0..1] of Byte;
    TTwoWords = array [0..1] of Word;
@@ -1257,9 +1259,9 @@ end;
 
 // BinToHex
 //
-function BinToHex(const data; n : Integer) : String;
+function BinToHex(const data; n : Integer) : UnicodeString;
 const
-   cHexDigits : array [0..15] of WideChar = (
+   cHexDigits : array [0..15] of Char = (
       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
       'a', 'b', 'c', 'd', 'e', 'f'
    );
@@ -1283,7 +1285,7 @@ end;
 
 // BinToHex
 //
-function BinToHex(const data : RawByteString) : String; overload;
+function BinToHex(const data : RawByteString) : UnicodeString; overload;
 begin
    Result:=BinToHex(Pointer(data)^, Length(data));
 end;
@@ -1293,8 +1295,8 @@ end;
 function HexToBin(const data : String) : RawByteString;
 var
    i, n, b : Integer;
-   c : WideChar;
-   pSrc : PWideChar;
+   c : Char;
+   pSrc : PChar;
    pDest : PByte;
 begin
    n:=Length(data);
@@ -1303,7 +1305,7 @@ begin
 
    n:=n shr 1;
    SetLength(Result, n);
-   pSrc:=PWideChar(Pointer(data));
+   pSrc:=PChar(Pointer(data));
    pDest:=PByte(Result);
    for i:=1 to n do begin
       c:=pSrc[0];
@@ -1353,7 +1355,7 @@ asm
 {$endif}
 end;
 
-function EightDigits(i : Cardinal; p : PWideChar) : Integer;
+function EightDigits(i : Cardinal; p : PChar) : Integer;
 var
    r : Integer;
 begin
@@ -1371,7 +1373,7 @@ begin
          Dec(p, 2);
          Inc(Result, 2);
       end else begin
-         p[1]:=WideChar(Ord('0')+r);
+         p[1]:=Char(Ord('0')+r);
          if i>0 then begin
             p[0]:='0';
             Dec(p, 2);
@@ -1584,7 +1586,7 @@ var
    n : Integer;
 begin
    n := FastInt32ToBuffer(val, buf);
-   SetString(Result, PWideChar(@buf[n]), (High(buf)+1)-n);
+   SetString(Result, PChar(@buf[n]), (High(buf)+1)-n);
 end;
 
 // StrUToInt64
@@ -1826,8 +1828,13 @@ begin
          Result := (TVarData(v).VInt64<>0);
       varUnknown :
          Result := not CoalesceableIsFalsey(IUnknown(TVarData(v).VUnknown));
-      varUString :
+      {$ifdef FPC}
+      varString :
          Result := TVarData(v).VString <> nil;
+      {$else}
+      varUString :
+         Result := TVarData(v).VUString <> nil;
+      {$endif}
       varDouble :
          Result := TVarData(v).VDouble <> 0;
       varNull, varEmpty :
@@ -1917,9 +1924,15 @@ begin
          TVarData(v).VType:=varEmpty;
          IDispatch(TVarData(v).VDispatch):=nil;
       end;
+      {$ifndef FPC}
       varUString : begin
          TVarData(v).VType:=varEmpty;
-         String(TVarData(v).VString):='';
+         String(TVarData(v).VUString):='';
+      end;
+      {$endif}
+      varString : begin
+         TVarData(v).VType:=varEmpty;
+         AnsiString(TVarData(v).VString):='';
       end;
    else
       VarClear(v);
@@ -1960,10 +1973,17 @@ begin
          TVarData(dest).VType:=varDispatch;
          IDispatch(TVarData(dest).VDispatch):=IDispatch(TVarData(src).VDispatch);
       end;
+      {$ifndef FPC}
       varUString : begin
          {$ifdef DEBUG} Assert(TVarData(dest).VUString=nil); {$endif}
-         TVarData(dest).VType:=varUString;
-         String(TVarData(dest).VString):=String(TVarData(src).VString);
+         TVarData(dest).VType := varUString;
+         String(TVarData(dest).VString) := String(TVarData(src).VString);
+      end;
+      {$endif}
+      varString : begin
+         {$ifdef DEBUG} Assert(TVarData(dest).VString=nil); {$endif}
+         TVarData(dest).VType := varString;
+         AnsiString(TVarData(dest).VString) := AnsiString(TVarData(src).VString);
       end;
       varSmallint..varSingle, varCurrency..varDate, varError, varShortInt..varLongWord, varUInt64 : begin
          TVarData(dest).VType := TVarData(src).VType;
@@ -2020,8 +2040,13 @@ procedure VarCopySafe(var dest : Variant; const src : String);
 begin
    VarClearSafe(dest);
 
-   TVarData(dest).VType:=varUString;
-   String(TVarData(dest).VString):=src;
+   {$ifdef FPC}
+   TVarData(dest).VType := varString;
+   String(TVarData(dest).VString) := src;
+   {$else}
+   TVarData(dest).VType := varUString;
+   String(TVarData(dest).VUString) := src;
+   {$endif}
 end;
 
 {$ifdef FPC}
@@ -2069,8 +2094,11 @@ procedure VarSetDefaultString(var dest : Variant);
 begin
    VarClearSafe(dest);
 
+   {$ifdef FPC}
+   TVarData(dest).VType := varString;
+   {$else}
    TVarData(dest).VType := varUString;
-   TVarData(dest).VString := nil;
+   {$endif}
 end;
 
 // VarSetDateTime
@@ -2102,12 +2130,10 @@ begin
    case VarType(Value) of
       varInt64 :
          writer.WriteInteger(PVarData(@value).VInt64);
+      {$ifndef FPC}
       varUString :
-         {$ifdef FPC}
-         Assert(False, 'varUString not supported in FPC');
-         {$else}
          writer.WriteString(String(PVarData(@value).VUString));
-         {$endif}
+      {$endif}
       varDouble :
          writer.WriteFloat(PVarData(@value).VDouble);
       varBoolean :
@@ -2196,10 +2222,10 @@ end;
 //
 function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : String;
 var
-   buf : array [0..31] of WideChar;
-   p : PWideChar;
+   buf : array [0..31] of Char;
+   p : PChar;
 
-   procedure WriteChar(c : WideChar);
+   procedure WriteChar(c : Char);
    begin
       p^:=c;
       Inc(p);
@@ -2246,11 +2272,11 @@ end;
 //
 function ISO8601ToDateTime(const v : String) : TDateTime;
 var
-   p : PWideChar;
+   p : PChar;
 
    function ReadDigit : Integer;
    var
-      c : WideChar;
+      c : Char;
    begin
       c := p^;
       case c of
@@ -2381,14 +2407,14 @@ end;
 
 // RawByteStringToScriptString
 //
-function RawByteStringToScriptString(const s : RawByteString) : String;
+function RawByteStringToScriptString(const s : RawByteString) : UnicodeString;
 begin
    RawByteStringToScriptString(s, Result);
 end;
 
 // RawByteStringToScriptString
 //
-procedure RawByteStringToScriptString(const s : RawByteString; var result : String); overload;
+procedure RawByteStringToScriptString(const s : RawByteString; var result : UnicodeString); overload;
 begin
    if s='' then begin
       result:='';
@@ -2399,7 +2425,7 @@ end;
 
 // BytesToScriptString
 //
-procedure BytesToScriptString(const p : PByte; n : Integer; var result : String);
+procedure BytesToScriptString(const p : PByte; n : Integer; var result : UnicodeString);
 var
    pSrc : PByteArray;
    pDest : PWordArray;
@@ -2425,14 +2451,14 @@ end;
 
 // ScriptStringToRawByteString
 //
-function ScriptStringToRawByteString(const s : String) : RawByteString;
+function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString;
 begin
    ScriptStringToRawByteString(s, Result);
 end;
 
 // ScriptStringToRawByteString
 //
-procedure ScriptStringToRawByteString(const s : String; var result : RawByteString); overload;
+procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
 type
   PByteArray = ^TByteArray;
   TByteArray = array[0..maxInt shr 1] of Byte;
@@ -2889,7 +2915,11 @@ begin
    n2:=Length(aBegin);
    if (n2>n1) or (n2=0) then
       Result:=False
+   {$ifdef FPC}
+   else Result:=(UnicodeCompareText(Copy(aStr, 1, n2), Copy(aBegin, 1, n2))=0);
+   {$else}
    else Result:=(UnicodeCompareLen(PWideChar(aStr), PWideChar(aBegin), n2)=0);
+   {$endif}
 end;
 
 // StrBeginsWith
@@ -2902,7 +2932,7 @@ begin
    n2:=Length(aBegin);
    if (n2>n1) or (n2=0) then
       Result:=False
-   else Result:=CompareMem(Pointer(aStr), Pointer(aBegin), n2*SizeOf(WideChar));
+   else Result:=CompareMem(Pointer(aStr), Pointer(aBegin), n2*SizeOf(Char));
 end;
 
 // StrBeginsWithA
@@ -2944,7 +2974,11 @@ begin
    n2:=Length(aEnd);
    if (n2>n1) or (n2=0) then
       Result:=False
+   {$ifdef FPC}
+   else Result:=(UnicodeCompareText(Copy(aStr, n1-n2+1), aEnd)=0);
+   {$else}
    else Result:=(UnicodeCompareLen(@aStr[n1-n2+1], Pointer(aEnd), n2)=0);
+   {$endif}
 end;
 
 // StrIEndsWithA
@@ -2970,7 +3004,7 @@ begin
    n2:=Length(aEnd);
    if (n2>n1) or (n2=0) then
       Result:=False
-   else Result:=CompareMem(@aStr[n1-n2+1], Pointer(aEnd), n2*SizeOf(WideChar));
+   else Result:=CompareMem(@aStr[n1-n2+1], Pointer(aEnd), n2*SizeOf(Char));
 end;
 
 // StrEndsWithA
@@ -3069,7 +3103,7 @@ end;
 
 // StrAfterChar
 //
-function StrAfterChar(const aStr : String; aChar : WideChar) : String;
+function StrAfterChar(const aStr : String; aChar : Char) : String;
 var
    p : Integer;
 begin
@@ -3081,7 +3115,7 @@ end;
 
 // StrBeforeChar
 //
-function StrBeforeChar(const aStr : String; aChar : WideChar) : String;
+function StrBeforeChar(const aStr : String; aChar : Char) : String;
 var
    p : Integer;
 begin
@@ -3093,7 +3127,7 @@ end;
 
 // StrReplaceChar
 //
-function StrReplaceChar(const aStr : String; oldChar, newChar : WideChar) : String;
+function StrReplaceChar(const aStr : String; oldChar, newChar : Char) : String;
 var
    i : Integer;
 begin
@@ -3105,7 +3139,7 @@ end;
 
 // StrCountChar
 //
-function StrCountChar(const aStr : String; c : WideChar) : Integer;
+function StrCountChar(const aStr : String; c : Char) : Integer;
 var
    i : Integer;
 begin
@@ -4162,6 +4196,13 @@ begin
    WriteBuf(@dw, 4);
 end;
 
+// WriteP
+//
+procedure TWriteOnlyBlockStream.WriteP(p : PWideChar; nbWideChars : Integer);
+begin
+   WriteBuf(Pointer(p), nbWideChars*SizeOf(WideChar));
+end;
+
 // WriteString
 //
 procedure TWriteOnlyBlockStream.WriteString(const utf16String : UnicodeString);
@@ -4255,7 +4296,7 @@ begin
    if FTotalSize>0 then begin
 
       Assert((FTotalSize and 1) = 0);
-      SetLength(Result, FTotalSize div SizeOf(Char));
+      SetLength(Result, FTotalSize div SizeOf(WideChar));
       StoreData(Result[1]);
 
    end else Result:='';
@@ -4953,7 +4994,7 @@ end;
 //
 class function TNameObjectHash.HashName(const aName : String) : Cardinal;
 begin
-   Result := xxHash32.Full(Pointer(aName), Length(aName)*SizeOf(WideChar), vHashSalt);
+   Result := xxHash32.Full(Pointer(aName), Length(aName)*SizeOf(Char), vHashSalt);
    if Result=0 then
       Result:=1;
 end;

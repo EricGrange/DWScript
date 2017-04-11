@@ -31,7 +31,7 @@ type
       HashCode : Integer;
       Token : String;
       DataHashCode : Integer;
-      Data : UnicodeString;
+      Data : String;
       Expire : TDateTime;
    end;
 
@@ -407,13 +407,13 @@ begin
          elem:=json.Elements[i];
          if elem.ValueType=jvtObject then begin
             token.Expire:=elem['expire'].AsNumber;
-            token.Data:=elem['data'].AsString;
+            token.Data:=String(elem['data'].AsString);
          end else begin
             token.Expire:=elem.AsNumber;
             token.Data:='';
          end;
          if token.Expire>t then begin
-            token.Token:=json.Names[i];
+            token.Token:=String(json.Names[i]);
             token.HashCode:=HashToken(token.Token);
             FHash.Add(token);
          end;
@@ -432,7 +432,7 @@ begin
    wr:=TdwsJSONWriter.Create(nil);
    try
       SaveToJSON(wr);
-      SaveTextToUTF8File(fileName, wr.ToString);
+      SaveTextToUTF8File(fileName, wr.ToUTF8String);
    finally
       wr.Free;
    end;

@@ -191,7 +191,9 @@ begin
       case p.VType of
          varInt64 : rq.Bind(i, p.VInt64);
          varDouble : rq.Bind(i, p.VDouble);
-         varUString : rq.BindS(i, String(p.VString));
+         {$ifndef FPC}
+         varUString : rq.BindS(i, String(p.VUString));
+         {$endif}
          varBoolean : rq.Bind(i, Ord(p.VBoolean));
          varNull : rq.BindNull(i);
          varString : rq.Bind(i, p.VString, Length(RawByteString(p.VString)));

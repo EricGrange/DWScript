@@ -132,7 +132,7 @@ var
 //
 procedure TGlobalVar.WriteToFiler(writer: TWriter; const Name : String);
 begin
-   writer.WriteString(String(Name));
+   writer.WriteString(Name);
    WriteVariant(writer, Value);
 end;
 
@@ -140,7 +140,7 @@ end;
 //
 procedure TGlobalVar.ReadFromFiler(reader: TReader; var Name : String);
 begin
-   Name:=String(reader.ReadString);
+   Name:=reader.ReadString;
    Value:=ReadVariant(reader);
 end;
 
@@ -208,7 +208,7 @@ procedure TGlobalVarsHashMap.Cleanup(mask : TMask);
 var
    i, n : Integer;
    gv : TGlobalVar;
-   t : Int64;
+   t : UInt64;
    shouldCollect : Boolean;
    bucket : PNameObjectHashBucket;
 begin
@@ -245,7 +245,7 @@ function TGlobalVarsHashMap.Collect : Integer;
 var
    i : Integer;
    gv : TGlobalVar;
-   t : Int64;
+   t : UInt64;
    bucket : PNameObjectHashBucket;
 begin
    Result:=0;
@@ -285,7 +285,7 @@ end;
 procedure TGlobalVarsHashMap.EnumerateNames(mask : TMask; callback : TNamesEnumerationCallback);
 var
    i : Integer;
-   t : Int64;
+   t : UInt64;
    bucket : PNameObjectHashBucket;
    gv : TGlobalVar;
 begin
@@ -500,7 +500,9 @@ begin
    list:=TStringList.Create;
    try
       EnumerateNames('*', TStringsAdder(list).Add);
-      Result:=list.CommaText;
+      if list.Count > 0 then
+         Result := list.CommaText
+      else Result := '';
    finally
       list.Free;
    end;
@@ -573,7 +575,7 @@ end;
 function TGlobalVars.Increment(const aName : String; const delta : Int64) : Int64;
 var
    gv : TGlobalVar;
-   t : Int64;
+   t : UInt64;
    h : Cardinal;
    map : PGlobalVarsHashMap;
 begin
@@ -606,7 +608,7 @@ end;
 function TGlobalVars.CompareExchange(const aName : String; const value, comparand : Variant) : Variant;
 var
    gv : TGlobalVar;
-   t : Int64;
+   t : UInt64;
    h : Cardinal;
    map : PGlobalVarsHashMap;
 begin

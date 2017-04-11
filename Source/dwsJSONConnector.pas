@@ -773,8 +773,13 @@ begin
    case PVarData(@base)^.VType of
       varUnknown :
          vt:=TBoxedJSONValue.UnBox(base).ValueType;
+      {$ifdef FPC}
+      varString :
+         vt:=jvtString;
+      {$else}
       varUString :
          vt:=jvtString;
+      {$endif}
       varDouble :
          vt:=jvtNumber;
       varBoolean :

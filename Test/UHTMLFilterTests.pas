@@ -19,7 +19,7 @@ type
       procedure SetUp; override;
       procedure TearDown; override;
 
-      procedure DoInclude(const scriptName: String; var scriptSource: UnicodeString);
+      procedure DoInclude(const scriptName: String; var scriptSource: String);
 
    published
       procedure TestHTMLScript;
@@ -205,7 +205,7 @@ end;
 
 // DoInclude
 //
-procedure THTMLFilterTests.DoInclude(const scriptName: String; var scriptSource: UnicodeString);
+procedure THTMLFilterTests.DoInclude(const scriptName: String; var scriptSource: String);
 begin
    if scriptName='B' then
       scriptSource:='B'

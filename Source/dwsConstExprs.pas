@@ -519,8 +519,13 @@ begin
    FTyp := typ;
    FValue := aValue;
    SetLength(FData, 1);
-   TVarData(FData[0]).VType := varUString;
+   {$ifdef FPC}
+   TVarData(FData[0]).VType := varString;
    String(TVarData(FData[0]).VString) := aValue;
+   {$else}
+   TVarData(FData[0]).VType := varUString;
+   String(TVarData(FData[0]).VUString) := aValue;
+   {$endif}
 end;
 
 // EvalAsString
