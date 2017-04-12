@@ -627,7 +627,7 @@ type
 
          function ReadRecordDecl(const typeName : String; allowNonConstExpressions : Boolean) : TRecordSymbol;
          procedure ReadFieldsDecl(struct : TStructuredTypeSymbol; visibility : TdwsVisibility;
-                                  allowNonConstExpressions : Boolean);
+                                  allowNonConstExpressions : Boolean; forceExternal : Boolean);
 
          function ReadHelperDecl(const typeName : String;
                                  qualifierToken : TTokenType;
@@ -8800,7 +8800,7 @@ begin
 
                else
 
-                  ReadFieldsDecl(Result, visibility, allowNonConstExpressions);
+                  ReadFieldsDecl(Result, visibility, allowNonConstExpressions, False);
                   if not (FTok.TestDelete(ttSEMI) or FTok.Test(ttEND)) then
                      Break;
 
@@ -9488,14 +9488,17 @@ var
    hotPos : TScriptPos;
    visibility : TdwsVisibility;
    tt : TTokenType;
+   externalRecord : Boolean;
 begin
    Result:=TRecordSymbol.Create(typeName, CurrentUnitSymbol);
    try
       CurrentProg.Table.AddSymbol(Result); // auto-forward
       try
-         if typeName='' then
-            visibility:=cvPublished
-         else visibility:=cvPublic;
+         if typeName = '' then
+            visibility := cvPublished
+         else visibility := cvPublic;
+
+         externalRecord := FTok.TestDelete(ttEXTERNAL);
 
          repeat
 
@@ -9543,7 +9546,7 @@ begin
                if Result.Members.HasMethods then
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_RecordFieldsMustBeBeforeMethods);
 
-               ReadFieldsDecl(Result, visibility, allowNonConstExpressions);
+               ReadFieldsDecl(Result, visibility, allowNonConstExpressions, externalRecord);
 
                if not FTok.TestDelete(ttSEMI) then
                   Break;
@@ -9556,7 +9559,8 @@ begin
       if not FTok.TestDelete(ttEND) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
       if Result.Size=0 then
-         FMsgs.AddCompilerError(FTok.HotPos, RTE_NoRecordFields);
+         FMsgs.AddCompilerError(FTok.HotPos, RTE_NoRecordFields)
+      else;
       CheckNoPendingAttributes;
 
       Result.IsFullyDefined:=True;
@@ -9569,7 +9573,7 @@ end;
 // ReadFieldsDecl
 //
 procedure TdwsCompiler.ReadFieldsDecl(struct : TStructuredTypeSymbol; visibility : TdwsVisibility;
-                                      allowNonConstExpressions : Boolean);
+                                      allowNonConstExpressions : Boolean; forceExternal : Boolean);
 var
    x : Integer;
    names : TSimpleStringList;
@@ -9681,6 +9685,8 @@ begin
          struct.AddField(member);
          if exprData<>nil then
             member.DefaultValue:=exprData;
+         if forceExternal then
+            member.ExternalName := member.Name;
 
          // Add member symbols and positions
          RecordSymbolUse(member, posArray[x], [suDeclaration]);
