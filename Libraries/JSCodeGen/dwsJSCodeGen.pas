@@ -7340,6 +7340,8 @@ begin
 
       if typ.LowBound=0 then
          codeGen.CompileNoWrap(e.IndexExpr)
+      else if e.IndexExpr.ClassType = TConstIntExpr then
+         codeGen.WriteInteger(TConstIntExpr(e.IndexExpr).Value - typ.LowBound)
       else begin
          codeGen.WriteString('(');
          codeGen.CompileNoWrap(e.IndexExpr);
