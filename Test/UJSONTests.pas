@@ -47,6 +47,8 @@ type
          procedure JSONNumberArrayBadStart;
          procedure JSONNumberArrayBadChar;
          procedure JSONNumberArrayBadComma;
+
+         procedure JSONStringArrayEmpty;
          procedure JSONStringArrayBadStart;
          procedure JSONStringArrayBadChar;
          procedure JSONStringArrayBadComma;
@@ -75,6 +77,7 @@ type
          procedure JSONLongNumber;
          procedure JSONInvalidStuff;
          procedure JSONParseArrayInvalid;
+         procedure JSONParseArrayLarge;
          procedure NestedArrays;
          procedure MultipleElementsWithSameName;
          procedure SetItemTest;
@@ -527,6 +530,20 @@ begin
    end;
 end;
 
+// JSONStringArrayEmpty
+//
+procedure TdwsJSONTests.JSONStringArrayEmpty;
+var
+   state : TdwsJSONParserState;
+begin
+   state := TdwsJSONParserState.Create('');
+   try
+      state.ParseStringArray(nil);
+   finally
+      state.Free;
+   end;
+end;
+
 // JSONStringArrayBadStart
 //
 procedure TdwsJSONTests.JSONStringArrayBadStart;
@@ -727,9 +744,38 @@ begin
    CheckException(JSONNumberArrayBadChar, EdwsJSONParseError, 'bad char n');
    CheckException(JSONNumberArrayBadComma, EdwsJSONParseError, 'bad comma n');
 
+   CheckException(JSONStringArrayEmpty, EdwsJSONParseError, 'empty s');
    CheckException(JSONStringArrayBadStart, EdwsJSONParseError, 'bad start s');
    CheckException(JSONStringArrayBadChar, EdwsJSONParseError, 'bad char s');
    CheckException(JSONStringArrayBadComma, EdwsJSONParseError, 'bad comma s');
+end;
+
+// JSONParseArrayLarge
+//
+procedure TdwsJSONTests.JSONParseArrayLarge;
+var
+   i : Integer;
+   s, buf : UnicodeString;
+   state : TdwsJSONParserState;
+   list : TUnicodeStringList;
+begin
+   s := '[""';
+   buf := 'a';
+   for i := 1 to 128 do begin
+      s := s + ',"' + buf + '"';
+      buf := buf + 'a';
+   end;
+   list := TUnicodeStringList.Create;
+   state := TdwsJSONParserState.Create(s + ']');
+   try
+      state.ParseStringArray(list);
+      CheckEquals(129, list.Count);
+      for i := 0 to list.Count-1 do
+         CheckEquals(i, Length(list[i]));
+   finally
+      state.Free;
+      list.Free;
+   end;
 end;
 
 // NestedArrays

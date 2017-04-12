@@ -613,7 +613,7 @@ begin
             localBufferPtr:=@localBuffer[0];
          end else Inc(localBufferPtr);
       until False;
-      n:=(NativeUInt(localBufferPtr)-NativeUInt(@localBuffer[0])) shr (SizeOf(WideChar)-1);
+      n:=(NativeUInt(localBufferPtr)-NativeUInt(@localBuffer[0])) div SizeOf(WideChar);
       if wobs<>nil then begin
          nw:=(wobs.Size div SizeOf(WideChar));
          SetLength(Result, n+nw);

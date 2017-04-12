@@ -310,7 +310,7 @@ begin
       Insert(Result, s);
    end else begin
       if FCount = Length(FItems) then
-         SetLength(FItems, (FCount div 4)+4);
+         SetLength(FItems, FCount+(FCount div 4)+4);
       FItems[FCount] := s;
       Result := FCount;
       Inc(FCount);
