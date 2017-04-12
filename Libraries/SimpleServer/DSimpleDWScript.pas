@@ -131,7 +131,7 @@ type
 
       function WaitForCPULimit : Boolean;
 
-      procedure DoSourceFileStreamOpened(Sender : TObject; const fileName : String; const mode : TdwsFileOpenMode);
+      procedure DoSourceFileStreamOpened(Sender : TObject; const fileName : TFileName; const mode : TdwsFileOpenMode);
 
       procedure DoBackgroundWork(const request : TWebRequest);
 
@@ -822,7 +822,7 @@ end;
 
 // DoSourceFileStreamOpened
 //
-procedure TSimpleDWScript.DoSourceFileStreamOpened(Sender : TObject; const fileName : String; const mode : TdwsFileOpenMode);
+procedure TSimpleDWScript.DoSourceFileStreamOpened(Sender : TObject; const fileName : TFileName; const mode : TdwsFileOpenMode);
 begin
    FCompilerFiles.Value.Add(fileName);
 end;
