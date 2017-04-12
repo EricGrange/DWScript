@@ -5441,19 +5441,24 @@ end;
 procedure TJSAssociativeArrayGetExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TAssociativeArrayGetExpr;
-   keyTyp : TTypeSymbol;
+   keyTyp, valueTyp : TTypeSymbol;
 begin
    e:=TAssociativeArrayGetExpr(expr);
 
    keyTyp := e.KeyExpr.Typ;
    Assert(keyTyp.UnAliasedTypeIs(TBaseStringSymbol) or keyTyp.UnAliasedTypeIs(TBaseIntegerSymbol),
           'Only String or Integer keys supported');
-   Assert(e.Typ.UnAliasedTypeIs(TBaseSymbol), 'Base type value required');
+   valueTyp := e.Typ.UnAliasedType;
+   Assert(not ((valueTyp is TRecordSymbol) or (valueTyp is TStaticArraySymbol)),
+          'Associative array record or static array values are not supported yet');
 
+   codeGen.WriteString('(');
    codeGen.Compile(e.BaseExpr);
    codeGen.WriteString('[');
    codeGen.CompileNoWrap(e.KeyExpr);
-   codeGen.WriteString(']');
+   codeGen.WriteString(']||');
+   TdwsJSCodeGen(codeGen).WriteDefaultValue(e.Typ, False);
+   codeGen.WriteString(')');
 end;
 
 // ------------------
@@ -5465,14 +5470,16 @@ end;
 procedure TJSAssociativeArraySetExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TAssociativeArraySetExpr;
-   keyTyp : TTypeSymbol;
+   keyTyp, valueTyp : TTypeSymbol;
 begin
    e:=TAssociativeArraySetExpr(expr);
 
    keyTyp := e.KeyExpr.Typ;
    Assert(keyTyp.UnAliasedTypeIs(TBaseStringSymbol) or keyTyp.UnAliasedTypeIs(TBaseIntegerSymbol),
           'Only String or Integer keys supported');
-   Assert(e.ValueExpr.Typ.UnAliasedTypeIs(TBaseSymbol), 'Base type value required');
+   valueTyp := e.ValueExpr.Typ.UnAliasedType;
+   Assert(not ((valueTyp is TRecordSymbol) or (valueTyp is TStaticArraySymbol)),
+          'Associative array record or static array values are not supported yet');
 
    codeGen.Compile(e.BaseExpr);
    codeGen.WriteString('[');
@@ -5498,7 +5505,6 @@ begin
    keyTyp := e.Left.Typ;
    Assert(keyTyp.UnAliasedTypeIs(TBaseStringSymbol) or keyTyp.UnAliasedTypeIs(TBaseIntegerSymbol),
           'Only String or Integer keys supported');
-   Assert(e.Typ.UnAliasedTypeIs(TBaseSymbol), 'Base type value required');
 
    codeGen.Compile(e.Right);
    codeGen.WriteString('.hasOwnProperty(');
