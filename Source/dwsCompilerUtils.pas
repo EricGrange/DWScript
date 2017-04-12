@@ -230,6 +230,7 @@ begin
                end else if     right.InheritsFrom(TDataExpr)
                            and (   (right.Typ.Size<>1)
                                 or (right.Typ is TArraySymbol)
+                                or (right.Typ is TRecordSymbol)
                                 or (right.Typ is TSetOfSymbol)) then begin
                   if right.InheritsFrom(TFuncExpr) then
                      TFuncExpr(right).SetResultAddr(context.Prog as TdwsProgram, nil);
