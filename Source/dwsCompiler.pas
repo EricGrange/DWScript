@@ -9488,7 +9488,6 @@ var
    hotPos : TScriptPos;
    visibility : TdwsVisibility;
    tt : TTokenType;
-   externalRecord : Boolean;
 begin
    Result:=TRecordSymbol.Create(typeName, CurrentUnitSymbol);
    try
@@ -9498,7 +9497,8 @@ begin
             visibility := cvPublished
          else visibility := cvPublic;
 
-         externalRecord := FTok.TestDelete(ttEXTERNAL);
+         if FTok.TestDelete(ttEXTERNAL)then
+            Result.SetIsExternal;
 
          repeat
 
@@ -9546,7 +9546,7 @@ begin
                if Result.Members.HasMethods then
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_RecordFieldsMustBeBeforeMethods);
 
-               ReadFieldsDecl(Result, visibility, allowNonConstExpressions, externalRecord);
+               ReadFieldsDecl(Result, visibility, allowNonConstExpressions, Result.IsExternal);
 
                if not FTok.TestDelete(ttSEMI) then
                   Break;
@@ -11027,6 +11027,7 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       scriptPos:=FTok.HotPos;
       recordType:=ReadRecordDecl('', True);
       CurrentProg.Table.AddSymbol(recordType);
+      recordType.SetIsExternal;
 
       RecordSymbolUseImplicitReference(recordType, scriptPos, False);
 

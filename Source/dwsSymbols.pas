@@ -1408,7 +1408,7 @@ type
          property NextField : TFieldSymbol read FNextField write FNextField;
    end;
 
-   TRecordSymbolFlag = (rsfDynamic, rsfFullyDefined, rsfImmutable);
+   TRecordSymbolFlag = (rsfDynamic, rsfFullyDefined, rsfImmutable, rsfExternal);
    TRecordSymbolFlags = set of TRecordSymbolFlag;
 
    // record member1: Integer; member2: Integer end;
@@ -1426,6 +1426,7 @@ type
          procedure SetIsImmutable(const val : Boolean);
          function GetIsFullyDefined : Boolean; inline;
          procedure SetIsFullyDefined(const val : Boolean);
+         function GetIsExternal : Boolean; override;
 
       public
          constructor Create(const name : String; aUnit : TSymbol);
@@ -1448,6 +1449,8 @@ type
          property IsDynamic : Boolean read GetIsDynamic write SetIsDynamic;
          property IsImmutable : Boolean read GetIsImmutable write SetIsImmutable;
          property IsFullyDefined : Boolean read GetIsFullyDefined write SetIsFullyDefined;
+
+         procedure SetIsExternal;
    end;
 
    // interface
@@ -3020,6 +3023,13 @@ begin
    Result := specializedRecord;
 end;
 
+// SetIsExternal
+//
+procedure TRecordSymbol.SetIsExternal;
+begin
+   Include(FFlags, rsfExternal);
+end;
+
 // GetCaption
 //
 function TRecordSymbol.GetCaption : String;
@@ -3089,6 +3099,13 @@ begin
    if val then
       Include(FFlags, rsfFullyDefined)
    else Exclude(FFlags, rsfFullyDefined);
+end;
+
+// GetIsExternal
+//
+function TRecordSymbol.GetIsExternal : Boolean;
+begin
+   Result := rsfExternal in FFlags;
 end;
 
 // ------------------

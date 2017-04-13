@@ -651,22 +651,26 @@ type
       procedure CodeGenBeginParams(codeGen : TdwsCodeGen; expr : TFuncExprBase); override;
    end;
 
-   TJSConnectorCallExpr = class (TJSExprCodeGen)
+   TJSConnectorExpr = class (TJSExprCodeGen)
+      procedure CodeGenValue(codeGen : TdwsCodeGen; expr : TTypedExpr);
+   end;
+
+   TJSConnectorCallExpr = class (TJSConnectorExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
-   TJSConnectorReadExpr = class (TJSExprCodeGen)
+   TJSConnectorReadExpr = class (TJSConnectorExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSConnectorWriteExpr = class (TJSExprCodeGen)
-      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
-   end;
-
-   TJSConnectorForInExpr = class (TJSExprCodeGen)
+   TJSConnectorWriteExpr = class (TJSConnectorExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
-   TJSConnectorCastExpr = class (TJSExprCodeGen)
+   TJSConnectorForInExpr = class (TJSConnectorExpr)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
+   TJSConnectorCastExpr = class (TJSConnectorExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
@@ -5166,6 +5170,46 @@ begin
 end;
 
 // ------------------
+// ------------------ TJSConnectorExpr ------------------
+// ------------------
+
+// CodeGenValue
+//
+procedure TJSConnectorExpr.CodeGenValue(codeGen : TdwsCodeGen; expr : TTypedExpr);
+var
+   valueTyp : TTypeSymbol;
+   recordSym : TRecordSymbol;
+begin
+   valueTyp := expr.Typ;
+   if valueTyp is TRecordSymbol then begin
+      recordSym := TRecordSymbol(valueTyp);
+      if recordSym.IsExternal then begin
+         if expr.IsConstant then
+            codeGen.CompileNoWrap(expr)
+         else begin
+            codeGen.WriteString('Clone$');
+            codeGen.WriteSymbolName(recordSym);
+            codeGen.WriteString('(');
+            codeGen.CompileNoWrap(expr);
+            codeGen.WriteString(')');
+         end;
+      end else if cvPublished in recordSym.MembersVisibilities then begin
+         codeGen.WriteString('Pub$');
+         codeGen.WriteSymbolName(recordSym);
+         codeGen.WriteString('(');
+         codeGen.CompileNoWrap(expr);
+         codeGen.WriteString(')');
+      end else begin
+         codeGen.WriteString('{}');
+      end;
+   end else if valueTyp is TStaticArraySymbol then begin
+      codeGen.Compile(expr);
+      if not expr.IsConstant then
+         codeGen.WriteString('.slice()');
+   end else codeGen.CompileNoWrap(expr);
+end;
+
+// ------------------
 // ------------------ TJSConnectorCallExpr ------------------
 // ------------------
 
@@ -5202,13 +5246,13 @@ begin
    for i:=1 to n do begin
       if i>1 then
          codeGen.WriteString(',');
-      codeGen.CompileNoWrap(e.SubExpr[i] as TTypedExpr);
+      CodeGenValue(codeGen, e.SubExpr[i] as TTypedExpr);
    end;
    if e.IsIndex then begin
       codeGen.WriteString(']');
       if isWrite then begin
          codeGen.WriteString(' = ');
-         codeGen.CompileNoWrap(e.SubExpr[n+1] as TTypedExpr);
+         CodeGenValue(codeGen, e.SubExpr[n+1] as TTypedExpr);
       end;
    end else codeGen.WriteString(')');
 end;
@@ -5242,8 +5286,6 @@ procedure TJSConnectorWriteExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase)
 var
    e : TConnectorWriteExpr;
    jsMember : TdwsJSConnectorMember;
-   valueTyp : TTypeSymbol;
-   recordSym : TRecordSymbol;
 begin
    e:=TConnectorWriteExpr(Expr);
    jsMember:=(e.ConnectorMember.GetSelf as TdwsJSConnectorMember);
@@ -5252,23 +5294,7 @@ begin
    codeGen.WriteString('.');
    codeGen.WriteString(jsMember.MemberName);
    codeGen.WriteString(' = ');
-   valueTyp:=e.ValueExpr.Typ;
-   if valueTyp is TRecordSymbol then begin
-      recordSym := TRecordSymbol(valueTyp);
-      if cvPublished in TRecordSymbol(valueTyp).MembersVisibilities then begin
-         codeGen.WriteString('Pub$');
-         codeGen.WriteSymbolName(valueTyp);
-         codeGen.WriteString('(');
-         codeGen.Compile(e.ValueExpr);
-         codeGen.WriteString(')');
-      end else begin
-         codeGen.WriteString('{}');
-      end;
-   end else if valueTyp is TStaticArraySymbol then begin
-      codeGen.Compile(e.ValueExpr);
-      if not e.ValueExpr.IsConstant then
-         codeGen.WriteString('.slice()');
-   end else codeGen.Compile(e.ValueExpr);
+   CodeGenValue(codeGen, e.ValueExpr);
 end;
 
 // ------------------
