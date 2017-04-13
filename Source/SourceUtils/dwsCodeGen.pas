@@ -1743,7 +1743,7 @@ begin
 
    // remove unused field members
    for member in structSymbol.Members do begin
-      if member is TFieldSymbol then begin
+      if (member is TFieldSymbol) and not TFieldSymbol(member).HasExternalName then begin
          if FSymbolDictionary.FindSymbolPosList(member)<>nil then
             SmartLinkFilterMemberFieldSymbol(TFieldSymbol(member), changed);
       end;

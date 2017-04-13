@@ -1999,7 +1999,7 @@ var
    field : TFieldSymbol;
    fieldTyp : TTypeSymbol;
    prop : TPropertySymbol;
-   firstField : Boolean;
+   firstField, skipValue : Boolean;
    publishedName : String;
    locData : IDataContext;
    activeFields : array of TFieldSymbol;
@@ -2161,44 +2161,51 @@ begin
             firstField:=False
          else WriteString(',');
          WriteLiteralString(publishedName);
-         WriteString(' : ');
+         WriteString(':');
 
+         skipValue := False;
          if sym.Typ is TRecordSymbol then begin
-            WriteString('Pub$');
-            WriteSymbolName(sym.Typ);
-            WriteString('(');
-         end;
-
-         if sym.ClassType=TFieldSymbol then begin
-
-            WriteString('$');
-            WriteFieldAccessor(TFieldSymbol(sym));
-
-         end else if sym is TMethodSymbol then begin
-
-            if TMethodSymbol(sym).IsClassMethod then begin
-               WriteSymbolName(sym);
-               WriteString('()');
+            if cvPublished in TRecordSymbol(sym.Typ).MembersVisibilities then begin
+               WriteString('Pub$');
+               WriteSymbolName(sym.Typ);
+               WriteString('(');
             end else begin
-               WriteSymbolName(rec);
-               WriteString('$');
-               WriteSymbolName(sym);
-               WriteString('($)');
+               WriteString('{}');
+               skipValue := True;
             end;
+         end;
+         if not skipValue then begin
+            if sym.ClassType=TFieldSymbol then begin
 
-         end else if sym is TClassVarSymbol then begin
+               WriteString('$');
+               WriteFieldAccessor(TFieldSymbol(sym));
 
-            WriteSymbolName(sym);
+            end else if sym is TMethodSymbol then begin
 
-         end else if sym is TClassConstSymbol then begin
+               if TMethodSymbol(sym).IsClassMethod then begin
+                  WriteSymbolName(sym);
+                  WriteString('()');
+               end else begin
+                  WriteSymbolName(rec);
+                  WriteString('$');
+                  WriteSymbolName(sym);
+                  WriteString('($)');
+               end;
 
-            CreateDataContext(TClassConstSymbol(sym).Data, 0, locData);
-            WriteValue(sym.Typ, locData);
+            end else if sym is TClassVarSymbol then begin
 
-         end else Assert(False);
+               WriteSymbolName(sym);
 
-         if sym.Typ is TRecordSymbol then
-            WriteString(')');
+            end else if sym is TClassConstSymbol then begin
+
+               CreateDataContext(TClassConstSymbol(sym).Data, 0, locData);
+               WriteValue(sym.Typ, locData);
+
+            end else Assert(False);
+
+            if sym.Typ is TRecordSymbol then
+               WriteString(')');
+         end;
 
          WriteStringLn('');
       end;
@@ -5236,6 +5243,7 @@ var
    e : TConnectorWriteExpr;
    jsMember : TdwsJSConnectorMember;
    valueTyp : TTypeSymbol;
+   recordSym : TRecordSymbol;
 begin
    e:=TConnectorWriteExpr(Expr);
    jsMember:=(e.ConnectorMember.GetSelf as TdwsJSConnectorMember);
@@ -5246,6 +5254,7 @@ begin
    codeGen.WriteString(' = ');
    valueTyp:=e.ValueExpr.Typ;
    if valueTyp is TRecordSymbol then begin
+      recordSym := TRecordSymbol(valueTyp);
       if cvPublished in TRecordSymbol(valueTyp).MembersVisibilities then begin
          codeGen.WriteString('Pub$');
          codeGen.WriteSymbolName(valueTyp);
