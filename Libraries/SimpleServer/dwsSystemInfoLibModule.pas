@@ -81,6 +81,20 @@ type
       ExtObject: TObject);
     function dwsSystemInfoFunctionsSystemMillisecondsFastEval(
       const args: TExprBaseListExec): Variant;
+    procedure dwsSystemInfoClassesRegistryMethodsReadValueEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesRegistryMethodsWriteValueEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesRegistryMethodsDeleteValueEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesRegistryMethodsCreateKeyEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesRegistryMethodsDeleteKeyEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesRegistryMethodsKeyValueNamesEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesRegistryMethodsSubKeysEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
     FOSNameVersion : TOSNameVersion;
@@ -95,6 +109,27 @@ implementation
 
 {$R *.dfm}
 
+// ProcessIsWow64
+//
+function IsWow64Process(h: THandle; var isWow64: BOOL): BOOL; stdcall; external 'kernel32';
+var
+   vIsWow64 : ShortInt = 0;
+function ProcessIsWow64 : Boolean;
+var
+   r : BOOL;
+begin
+   if vIsWow64 = 0 then begin
+      if not IsWow64Process(GetCurrentProcess, r) then
+         RaiseLastOSError;
+      if r then
+         vIsWow64 := 1
+      else vIsWow64 := -1;
+   end;
+   Result := (vIsWow64 = 1);
+end;
+
+// GetWin32_OSNameVersion
+//
 procedure GetWin32_OSNameVersion(var osnv : TOSNameVersion);
 var
    reg : TRegistry;
@@ -115,6 +150,8 @@ begin
    end;
 end;
 
+// GetGlobalMemory
+//
 function GetGlobalMemory(var ms : TMemoryStatusEx) : TSimpleCallbackStatus;
 begin
    ms.dwLength:=SizeOf(ms);
@@ -170,6 +207,24 @@ begin
    GetComputerNameExW(nameFormat, nil, n);
    SetLength(Result, n-1);
    GetComputerNameExW(nameFormat, PWideChar(Pointer(Result)), n);
+end;
+
+// CreateRootedRegistry
+//
+function CreateRootedRegistry(Info : TProgramInfo; access : LongWord) : TRegistry;
+var
+   rootKey : HKEY;
+begin
+   rootKey := Info.ParamAsInteger[0];
+   if (rootKey = HKEY_LOCAL_MACHINE) and ProcessIsWow64 then
+      access := access or $100;
+   Result := TRegistry.Create(access);
+   try
+      Result.RootKey := rootKey;
+   except
+      Result.Free;
+      raise;
+   end;
 end;
 
 procedure TdwsSystemInfoLibModule.DataModuleCreate(Sender: TObject);
@@ -360,6 +415,179 @@ function TdwsSystemInfoLibModule.dwsSystemInfoFunctionsSystemMillisecondsFastEva
   const args: TExprBaseListExec): Variant;
 begin
    Result := GetSystemMilliseconds;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesRegistryMethodsReadValueEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   reg : TRegistry;
+   path, valueName : String;
+   binary : RawByteString;
+   dataInfo : TRegDataInfo;
+begin
+   reg := CreateRootedRegistry(Info, STANDARD_RIGHTS_READ or KEY_QUERY_VALUE);
+   try
+      path := Info.ParamAsString[1];
+      valueName := Info.ParamAsString[2];
+      if     reg.KeyExists(path)
+         and reg.OpenKeyReadOnly(path)
+         and reg.GetDataInfo(valueName, dataInfo) then begin
+
+         case dataInfo.RegData of
+            rdString, rdExpandString :
+               Info.ResultAsString := reg.ReadString(valueName);
+            rdInteger :
+               Info.ResultAsInteger := reg.ReadInteger(valueName);
+            rdBinary : begin
+               SetLength(binary, dataInfo.DataSize);
+               reg.ReadBinaryData(valueName, PAnsiChar(binary)^, dataInfo.DataSize);
+               Info.ResultAsDataString := binary;
+            end;
+         else
+            raise Exception.CreateFmt('Unsupported registry value type (%d)', [Ord(dataInfo.RegData)]);
+         end;
+         Exit;
+
+      end else begin
+
+         Info.ResultAsVariant := Info.ParamAsVariant[3];
+
+      end;
+   finally
+      reg.Free;
+   end;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesRegistryMethodsWriteValueEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   reg : TRegistry;
+   path, valueName : String;
+   value : Variant;
+begin
+   reg := CreateRootedRegistry(Info, KEY_WRITE);
+   try
+      path := Info.ParamAsString[1];
+      if reg.OpenKey(path, True) then begin
+         valueName := Info.ParamAsString[2];
+         value := Info.ParamAsVariant[3];
+         case VariantType(value) of
+            varUString : reg.WriteString(valueName, VariantToString(value));
+            varInt64, varBoolean : reg.WriteInteger(valueName, VariantToInt64(value));
+         else
+            reg.WriteString(valueName, VariantToString(value));
+         end;
+         Info.ResultAsBoolean := True;
+      end else Info.ResultAsBoolean := False;
+   finally
+      reg.Free;
+   end;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesRegistryMethodsDeleteValueEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   reg : TRegistry;
+   path, valueName : String;
+begin
+   reg := CreateRootedRegistry(Info, STANDARD_RIGHTS_WRITE or KEY_SET_VALUE);
+   try
+      path := Info.ParamAsString[1];
+      if reg.KeyExists(path) and reg.OpenKey(path, False) then begin
+         valueName := Info.ParamAsString[2];
+         Info.ResultAsBoolean := reg.DeleteValue(valueName);
+      end else Info.ResultAsBoolean := False;
+   finally
+      reg.Free;
+   end;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesRegistryMethodsCreateKeyEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   reg : TRegistry;
+   path : String;
+begin
+   reg := CreateRootedRegistry(Info, STANDARD_RIGHTS_WRITE or KEY_CREATE_SUB_KEY);
+   try
+      path := Info.ParamAsString[1];
+      Info.ResultAsBoolean := reg.CreateKey(path);
+   finally
+      reg.Free;
+   end;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesRegistryMethodsDeleteKeyEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   reg : TRegistry;
+   path : String;
+begin
+   reg := CreateRootedRegistry(Info, STANDARD_RIGHTS_WRITE or KEY_WRITE);
+   try
+      path := Info.ParamAsString[1];
+      Info.ResultAsBoolean := reg.DeleteKey(path);
+   finally
+      reg.Free;
+   end;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesRegistryMethodsSubKeysEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   reg : TRegistry;
+   path : String;
+   result : TStringDynArray;
+   i : Integer;
+   sl : TStringList;
+begin
+   reg := CreateRootedRegistry(Info, KEY_READ);
+   try
+      path := Info.ParamAsString[1];
+      if reg.KeyExists(path) and reg.OpenKey(path, False) then begin
+         sl := TStringList.Create;
+         try
+            reg.GetKeyNames(sl);
+            SetLength(result, sl.Count);
+            for i := 0 to sl.Count-1 do
+               result[i] := sl[i];
+         finally
+            sl.Free;
+         end;
+      end;
+      Info.ResultAsStringArray := result;
+   finally
+      reg.Free;
+   end;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesRegistryMethodsKeyValueNamesEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   reg : TRegistry;
+   path : String;
+   result : TStringDynArray;
+   i : Integer;
+   sl : TStringList;
+begin
+   reg := CreateRootedRegistry(Info, KEY_READ);
+   try
+      path := Info.ParamAsString[1];
+      if reg.KeyExists(path) and reg.OpenKey(path, False) then begin
+         sl := TStringList.Create;
+         try
+            reg.GetValueNames(sl);
+            SetLength(result, sl.Count);
+            for i := 0 to sl.Count-1 do
+               result[i] := sl[i];
+         finally
+            sl.Free;
+         end;
+      end;
+      Info.ResultAsStringArray := result;
+   finally
+      reg.Free;
+   end;
 end;
 
 end.

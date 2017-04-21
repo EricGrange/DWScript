@@ -76,7 +76,8 @@ uses
   dwsSpecializationContext in '..\Source\dwsSpecializationContext.pas',
   dwsGenericExprs in '..\Source\dwsGenericExprs.pas',
   dwsSpecializationMap in '..\Source\dwsSpecializationMap.pas',
-  dwsUnicode in '..\Source\dwsUnicode.pas';
+  dwsUnicode in '..\Source\dwsUnicode.pas',
+  UdwsSystemInfoTests in 'UdwsSystemInfoTests.pas';
 
 {$R *.res}
 

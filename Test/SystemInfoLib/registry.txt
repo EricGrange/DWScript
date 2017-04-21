@@ -1,0 +1,27 @@
+Initial:
+False
+
+
+Create Keys:
+True
+True
+Test
+Sub
+Write Values:
+True
+True
+
+Read Values:
+World
+123
+Delete Value:
+True
+123
+?
+Delete Keys:
+False
+True
+True
+
+
+456
