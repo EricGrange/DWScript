@@ -23,7 +23,7 @@ interface
 uses
    Classes, SysUtils, RTTI, TypInfo,
    dwsXPlatform, dwsStrings,
-   dwsComp, dwsSymbols, dwsExprs, dwsStack;
+   dwsComp, dwsSymbols, dwsExprs, dwsStack, dwsInfo;
 
 type
 
