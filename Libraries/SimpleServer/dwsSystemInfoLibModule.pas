@@ -31,6 +31,7 @@ type
 
   TdwsSystemInfoLibModule = class(TDataModule)
     dwsSystemInfo: TdwsUnit;
+    dwsSystemRegistry: TdwsUnit;
     procedure dwsSystemInfoClassesMemoryStatusConstructorsCreateEval(
       Info: TProgramInfo; var ExtObject: TObject);
     procedure dwsSystemInfoClassesOSVersionInfoMethodsNameEval(
@@ -81,28 +82,32 @@ type
       ExtObject: TObject);
     function dwsSystemInfoFunctionsSystemMillisecondsFastEval(
       const args: TExprBaseListExec): Variant;
-    procedure dwsSystemInfoClassesRegistryMethodsReadValueEval(
+    procedure dwsSystemRegistryClassesRegistryMethodsReadValueEval(
       Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsSystemInfoClassesRegistryMethodsWriteValueEval(
+    procedure dwsSystemRegistryClassesRegistryMethodsWriteValueEval(
       Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsSystemInfoClassesRegistryMethodsDeleteValueEval(
+    procedure dwsSystemRegistryClassesRegistryMethodsDeleteValueEval(
       Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsSystemInfoClassesRegistryMethodsCreateKeyEval(
+    procedure dwsSystemRegistryClassesRegistryMethodsCreateKeyEval(
       Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsSystemInfoClassesRegistryMethodsDeleteKeyEval(
+    procedure dwsSystemRegistryClassesRegistryMethodsDeleteKeyEval(
       Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsSystemInfoClassesRegistryMethodsKeyValueNamesEval(
+    procedure dwsSystemRegistryClassesRegistryMethodsSubKeysEval(
       Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsSystemInfoClassesRegistryMethodsSubKeysEval(Info: TProgramInfo;
-      ExtObject: TObject);
+    procedure dwsSystemRegistryClassesRegistryMethodsValueNamesEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FOSNameVersion : TOSNameVersion;
     FGlobalMemory : TThreadCached<TMemoryStatusEx>;
     class var FRunningAsService : Boolean;
+    function GetScript : TDelphiWebScript;
+    procedure SetScript(const val : TDelphiWebScript);
+
   public
     { Public declarations }
     class property RunningAsService : Boolean read FRunningAsService write FRunningAsService;
+    property Script : TDelphiWebScript read GetScript write SetScript;
   end;
 
 implementation
@@ -417,7 +422,7 @@ begin
    Result := GetSystemMilliseconds;
 end;
 
-procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesRegistryMethodsReadValueEval(
+procedure TdwsSystemInfoLibModule.dwsSystemRegistryClassesRegistryMethodsReadValueEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    reg : TRegistry;
@@ -458,7 +463,7 @@ begin
    end;
 end;
 
-procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesRegistryMethodsWriteValueEval(
+procedure TdwsSystemInfoLibModule.dwsSystemRegistryClassesRegistryMethodsWriteValueEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    reg : TRegistry;
@@ -484,7 +489,7 @@ begin
    end;
 end;
 
-procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesRegistryMethodsDeleteValueEval(
+procedure TdwsSystemInfoLibModule.dwsSystemRegistryClassesRegistryMethodsDeleteValueEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    reg : TRegistry;
@@ -502,7 +507,7 @@ begin
    end;
 end;
 
-procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesRegistryMethodsCreateKeyEval(
+procedure TdwsSystemInfoLibModule.dwsSystemRegistryClassesRegistryMethodsCreateKeyEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    reg : TRegistry;
@@ -517,7 +522,7 @@ begin
    end;
 end;
 
-procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesRegistryMethodsDeleteKeyEval(
+procedure TdwsSystemInfoLibModule.dwsSystemRegistryClassesRegistryMethodsDeleteKeyEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    reg : TRegistry;
@@ -532,7 +537,7 @@ begin
    end;
 end;
 
-procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesRegistryMethodsSubKeysEval(
+procedure TdwsSystemInfoLibModule.dwsSystemRegistryClassesRegistryMethodsSubKeysEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    reg : TRegistry;
@@ -561,7 +566,7 @@ begin
    end;
 end;
 
-procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesRegistryMethodsKeyValueNamesEval(
+procedure TdwsSystemInfoLibModule.dwsSystemRegistryClassesRegistryMethodsValueNamesEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    reg : TRegistry;
@@ -588,6 +593,21 @@ begin
    finally
       reg.Free;
    end;
+end;
+
+// GetScript
+//
+function TdwsSystemInfoLibModule.GetScript : TDelphiWebScript;
+begin
+   Result := dwsSystemInfo.Script;
+end;
+
+// SetScript
+//
+procedure TdwsSystemInfoLibModule.SetScript(const val : TDelphiWebScript);
+begin
+   dwsSystemInfo.Script := val;
+   dwsSystemRegistry.Script := val;
 end;
 
 end.

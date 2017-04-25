@@ -4,7 +4,7 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
   OnDestroy = DataModuleDestroy
   Left = 726
   Top = 113
-  Height = 135
+  Height = 205
   Width = 165
   object dwsSystemInfo: TdwsUnit
     Classes = <
@@ -222,185 +222,6 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
             OnEval = dwsSystemInfoClassesCPUInfoMethodsUpTimeEval
             Kind = mkClassFunction
           end>
-      end
-      item
-        Name = 'Registry'
-        IsStatic = True
-        Methods = <
-          item
-            Name = 'ReadValue'
-            Parameters = <
-              item
-                Name = 'root'
-                DataType = 'HKEY'
-              end
-              item
-                Name = 'path'
-                DataType = 'String'
-              end
-              item
-                Name = 'valueName'
-                DataType = 'String'
-              end
-              item
-                Name = 'default'
-                DataType = 'Variant'
-                HasDefaultValue = True
-              end>
-            ResultType = 'Variant'
-            Attributes = [maStatic]
-            OnEval = dwsSystemInfoClassesRegistryMethodsReadValueEval
-            Kind = mkClassFunction
-          end
-          item
-            Name = 'WriteValue'
-            Parameters = <
-              item
-                Name = 'root'
-                DataType = 'HKEY'
-              end
-              item
-                Name = 'path'
-                DataType = 'String'
-              end
-              item
-                Name = 'valueName'
-                DataType = 'String'
-              end
-              item
-                Name = 'value'
-                DataType = 'Variant'
-              end>
-            ResultType = 'Boolean'
-            Attributes = [maStatic]
-            OnEval = dwsSystemInfoClassesRegistryMethodsWriteValueEval
-            Kind = mkClassFunction
-          end
-          item
-            Name = 'DeleteValue'
-            Parameters = <
-              item
-                Name = 'root'
-                DataType = 'HKEY'
-              end
-              item
-                Name = 'path'
-                DataType = 'String'
-              end
-              item
-                Name = 'valueName'
-                DataType = 'String'
-              end>
-            ResultType = 'Boolean'
-            Attributes = [maStatic]
-            OnEval = dwsSystemInfoClassesRegistryMethodsDeleteValueEval
-            Kind = mkClassFunction
-          end
-          item
-            Name = 'CreateKey'
-            Parameters = <
-              item
-                Name = 'root'
-                DataType = 'HKEY'
-              end
-              item
-                Name = 'path'
-                DataType = 'String'
-              end>
-            ResultType = 'Boolean'
-            Attributes = [maStatic]
-            OnEval = dwsSystemInfoClassesRegistryMethodsCreateKeyEval
-            Kind = mkClassFunction
-          end
-          item
-            Name = 'DeleteKey'
-            Parameters = <
-              item
-                Name = 'root'
-                DataType = 'HKEY'
-              end
-              item
-                Name = 'path'
-                DataType = 'String'
-              end>
-            ResultType = 'Boolean'
-            Attributes = [maStatic]
-            OnEval = dwsSystemInfoClassesRegistryMethodsDeleteKeyEval
-            Kind = mkClassFunction
-          end
-          item
-            Name = 'SubKeys'
-            Parameters = <
-              item
-                Name = 'root'
-                DataType = 'HKEY'
-              end
-              item
-                Name = 'path'
-                DataType = 'String'
-              end>
-            ResultType = 'array of String'
-            Attributes = [maStatic]
-            OnEval = dwsSystemInfoClassesRegistryMethodsSubKeysEval
-            Kind = mkClassFunction
-          end
-          item
-            Name = 'ValueNames'
-            Parameters = <
-              item
-                Name = 'root'
-                DataType = 'HKEY'
-              end
-              item
-                Name = 'path'
-                DataType = 'String'
-              end>
-            ResultType = 'array of String'
-            Attributes = [maStatic]
-            OnEval = dwsSystemInfoClassesRegistryMethodsKeyValueNamesEval
-            Kind = mkClassFunction
-          end>
-      end>
-    Enumerations = <
-      item
-        Name = 'HKEY'
-        Elements = <
-          item
-            Name = 'ClassesRoot'
-            UserDefValue = -2147483648
-            IsUserDef = True
-          end
-          item
-            Name = 'CurrentUser'
-            UserDefValue = -2147483647
-            IsUserDef = True
-          end
-          item
-            Name = 'LocalMachine'
-            UserDefValue = -2147483646
-            IsUserDef = True
-          end
-          item
-            Name = 'Users'
-            UserDefValue = -2147483645
-            IsUserDef = True
-          end
-          item
-            Name = 'PerformanceData'
-            UserDefValue = -2147483644
-            IsUserDef = True
-          end
-          item
-            Name = 'CurrentConfig'
-            UserDefValue = -2147483643
-            IsUserDef = True
-          end
-          item
-            Name = 'DynData'
-            UserDefValue = -2147483642
-            IsUserDef = True
-          end>
-        Style = enumScoped
       end>
     Functions = <
       item
@@ -447,5 +268,191 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
     StaticSymbols = True
     Left = 56
     Top = 24
+  end
+  object dwsSystemRegistry: TdwsUnit
+    Classes = <
+      item
+        Name = 'Registry'
+        IsStatic = True
+        Methods = <
+          item
+            Name = 'ReadValue'
+            Parameters = <
+              item
+                Name = 'root'
+                DataType = 'HKEY'
+              end
+              item
+                Name = 'path'
+                DataType = 'String'
+              end
+              item
+                Name = 'valueName'
+                DataType = 'String'
+              end
+              item
+                Name = 'default'
+                DataType = 'Variant'
+                HasDefaultValue = True
+              end>
+            ResultType = 'Variant'
+            Attributes = [maStatic]
+            OnEval = dwsSystemRegistryClassesRegistryMethodsReadValueEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'WriteValue'
+            Parameters = <
+              item
+                Name = 'root'
+                DataType = 'HKEY'
+              end
+              item
+                Name = 'path'
+                DataType = 'String'
+              end
+              item
+                Name = 'valueName'
+                DataType = 'String'
+              end
+              item
+                Name = 'value'
+                DataType = 'Variant'
+              end>
+            ResultType = 'Boolean'
+            Attributes = [maStatic]
+            OnEval = dwsSystemRegistryClassesRegistryMethodsWriteValueEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'DeleteValue'
+            Parameters = <
+              item
+                Name = 'root'
+                DataType = 'HKEY'
+              end
+              item
+                Name = 'path'
+                DataType = 'String'
+              end
+              item
+                Name = 'valueName'
+                DataType = 'String'
+              end>
+            ResultType = 'Boolean'
+            Attributes = [maStatic]
+            OnEval = dwsSystemRegistryClassesRegistryMethodsDeleteValueEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'CreateKey'
+            Parameters = <
+              item
+                Name = 'root'
+                DataType = 'HKEY'
+              end
+              item
+                Name = 'path'
+                DataType = 'String'
+              end>
+            ResultType = 'Boolean'
+            Attributes = [maStatic]
+            OnEval = dwsSystemRegistryClassesRegistryMethodsCreateKeyEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'DeleteKey'
+            Parameters = <
+              item
+                Name = 'root'
+                DataType = 'HKEY'
+              end
+              item
+                Name = 'path'
+                DataType = 'String'
+              end>
+            ResultType = 'Boolean'
+            Attributes = [maStatic]
+            OnEval = dwsSystemRegistryClassesRegistryMethodsDeleteKeyEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'SubKeys'
+            Parameters = <
+              item
+                Name = 'root'
+                DataType = 'HKEY'
+              end
+              item
+                Name = 'path'
+                DataType = 'String'
+              end>
+            ResultType = 'array of String'
+            Attributes = [maStatic]
+            OnEval = dwsSystemRegistryClassesRegistryMethodsSubKeysEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'ValueNames'
+            Parameters = <
+              item
+                Name = 'root'
+                DataType = 'HKEY'
+              end
+              item
+                Name = 'path'
+                DataType = 'String'
+              end>
+            ResultType = 'array of String'
+            Attributes = [maStatic]
+            OnEval = dwsSystemRegistryClassesRegistryMethodsValueNamesEval
+            Kind = mkClassFunction
+          end>
+      end>
+    Enumerations = <
+      item
+        Name = 'HKEY'
+        Elements = <
+          item
+            Name = 'ClassesRoot'
+            UserDefValue = -2147483648
+            IsUserDef = True
+          end
+          item
+            Name = 'CurrentUser'
+            UserDefValue = -2147483647
+            IsUserDef = True
+          end
+          item
+            Name = 'LocalMachine'
+            UserDefValue = -2147483646
+            IsUserDef = True
+          end
+          item
+            Name = 'Users'
+            UserDefValue = -2147483645
+            IsUserDef = True
+          end
+          item
+            Name = 'PerformanceData'
+            UserDefValue = -2147483644
+            IsUserDef = True
+          end
+          item
+            Name = 'CurrentConfig'
+            UserDefValue = -2147483643
+            IsUserDef = True
+          end
+          item
+            Name = 'DynData'
+            UserDefValue = -2147483642
+            IsUserDef = True
+          end>
+        Style = enumScoped
+      end>
+    UnitName = 'System.Registry'
+    StaticSymbols = True
+    Left = 56
+    Top = 88
   end
 end
