@@ -93,6 +93,10 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsCryptoClassesECCsecp256r1MethodsECDSAVerifyEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsCryptoClassesHashSHA512MethodsHashDataEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsCryptoClassesHashSHA512MethodsHMACEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
     FNonces : TdwsTokenStore;
@@ -333,6 +337,18 @@ procedure TdwsCryptoLib.dwsCryptoClassesHashSHA256MethodsHMACEval(Info: TProgram
       ExtObject: TObject);
 begin
    PerformHMAC(Info, HashSHA256, 64);
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesHashSHA512MethodsHashDataEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   PerformHashData(Info, HashSHA512);
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesHashSHA512MethodsHMACEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   PerformHMAC(Info, HashSHA512, 128);
 end;
 
 procedure TdwsCryptoLib.dwsCryptoFunctionsCryptographicRandomEval(

@@ -20,7 +20,8 @@ interface
 
 uses
    SysUtils, SynCrypto, SynZip,
-   dwsRipeMD160, dwsCryptProtect, dwsSHA3, dwsUtils, dwsXPlatform;
+   dwsRipeMD160, dwsCryptProtect, dwsSHA3, dwsUtils, dwsXPlatform,
+   dwsSHA512;
 
 type
    THashFunction = function (const data : RawByteString) : RawByteString;
@@ -29,6 +30,7 @@ function HMAC(const key, msg : RawByteString; h : THashFunction; blockSize : Int
 
 function HashSHA3_256(const data : RawByteString) : RawByteString;
 function HashSHA256(const data : RawByteString) : RawByteString;
+function HashSHA512(const data : RawByteString) : RawByteString;
 function HashRIPEMD160(const data : RawByteString) : RawByteString;
 function HashSHA1(const data : RawByteString) : RawByteString;
 function HashMD5(const data : RawByteString) : RawByteString;
@@ -79,6 +81,20 @@ var
    digest : TSHA256Digest;
 begin
    SHA.Full(Pointer(data), Length(data), digest);
+   SetLength(Result, SizeOf(digest));
+   System.Move(digest, Result[1], SizeOf(digest));
+end;
+
+// HashSHA512
+//
+function HashSHA512(const data : RawByteString) : RawByteString;
+var
+   dcp : TSHA512State;
+   digest : TSHA512Digest;
+begin
+   dcp.Init;
+   dcp.Update(Pointer(data), Length(data));
+   dcp.FinalHash(digest);
    SetLength(Result, SizeOf(digest));
    System.Move(digest, Result[1], SizeOf(digest));
 end;

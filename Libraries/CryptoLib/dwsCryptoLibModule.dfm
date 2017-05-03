@@ -75,6 +75,40 @@ object dwsCryptoLib: TdwsCryptoLib
           end>
       end
       item
+        Name = 'HashSHA512'
+        Ancestor = 'HashAlgorithm'
+        IsStatic = True
+        Methods = <
+          item
+            Name = 'HashData'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsCryptoClassesHashSHA512MethodsHashDataEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'HMAC'
+            Parameters = <
+              item
+                Name = 'key'
+                DataType = 'String'
+              end
+              item
+                Name = 'message'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsCryptoClassesHashSHA512MethodsHMACEval
+            Kind = mkClassFunction
+          end>
+      end
+      item
         Name = 'HashSHA1'
         Ancestor = 'HashAlgorithm'
         IsStatic = True
