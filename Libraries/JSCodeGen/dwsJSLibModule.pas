@@ -252,7 +252,6 @@ begin
    hotPos:=tok.HotPos;
    tok.KillToken;
    startPos:=tok.PosPtr;
-   tok.TestName;
 
    ptsr := (tok.Rules as TPascalTokenizerStateRules);
 
@@ -262,6 +261,8 @@ begin
       jsCode:='';
       ptsr.CurlyComments:=False;
       ptsr.DollarNames:=True;
+
+      tok.TestName;
 
       // collect everything until 'end'
       while tok.HasTokens do begin
