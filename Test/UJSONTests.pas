@@ -93,6 +93,7 @@ type
          procedure EnumerateNil;
          procedure EnumerateArray;
          procedure ImmediateCasts;
+         procedure DecimalSeparator;
 
          procedure JSONPathBasic;
          procedure JSONPathFails;
@@ -1147,6 +1148,22 @@ begin
    CheckEquals(0, v.AsNumber, 'null');
    CheckEquals(0, v.AsInteger, 'null');
    v.Free;
+end;
+
+// DecimalSeparator
+//
+procedure TdwsJSONTests.DecimalSeparator;
+var
+   v : TdwsJSONValue;
+begin
+   FormatSettings.DecimalSeparator := '!';
+   try
+      v := TdwsJSONValue.ParseString('12.5');
+      CheckEquals('12.5', v.ToString);
+      v.Free;
+   finally
+      FormatSettings.DecimalSeparator := '.';
+   end;
 end;
 
 // JSONPathBasic

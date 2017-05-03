@@ -221,11 +221,9 @@ type
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
-   // TJSONStringifyMethod
+   // JSONScript
    //
-   TJSONStringifyMethod = class (TInternalMagicStringFunction)
-      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
-
+   JSONScript = class {static sealed}
       class procedure Stringify(const args : TExprBaseListExec; var Result : String); static;
 
       class procedure StringifyVariant(exec : TdwsExecution; writer : TdwsJSONWriter; const v : Variant); static;
@@ -244,6 +242,18 @@ type
                                          const dataPtr : IDataContext); static;
       class procedure StringifyClass(exec : TdwsExecution; writer : TdwsJSONWriter;
                                      const obj : IScriptObj); static;
+   end;
+
+   // TJSONStringifyMethod
+   //
+   TJSONStringifyMethod = class (TInternalMagicStringFunction)
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
+   end;
+
+   // TJSONSerializeMethod
+   //
+   TJSONSerializeMethod = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    IBoxedJSONValue = interface
@@ -278,6 +288,7 @@ const
    SYS_JSON_PARSE_STRING_ARRAY = 'ParseStringArray';
    SYS_JSON_NEWOBJECT = 'NewObject';
    SYS_JSON_NEWARRAY = 'NewArray';
+   SYS_JSON_SERIALIZE = 'Serialize';
 
 type
    TBoxedJSONValue = class (TInterfacedObject, IBoxedJSONValue, ICoalesceable, IGetSelf, IUnknown)
@@ -525,6 +536,11 @@ begin
    );
    TJSONNewArray.Create(
       table, SYS_JSON_NEWARRAY, [], SYS_JSONVARIANT,
+      [iffStaticMethod], jsonObject, ''
+   );
+
+   TJSONSerializeMethod.Create(
+      table, SYS_JSON_SERIALIZE, ['val', SYS_ANY_TYPE], SYS_JSONVARIANT,
       [iffStaticMethod], jsonObject, ''
    );
 end;
@@ -909,7 +925,7 @@ end;
 procedure TdwsJSONToStringCall.FastCall(const args : TExprBaseListExec; var result : Variant);
 begin
    VarCopySafe(result, '');
-   TJSONStringifyMethod.Stringify(args, String(PVarData(@Result)^.VString));
+   JSONScript.Stringify(args, String(PVarData(@Result)^.VString));
 end;
 
 // ------------------
@@ -1318,19 +1334,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TJSONStringifyMethod ------------------
+// ------------------ JSONScript ------------------
 // ------------------
-
-// DoEvalAsString
-//
-procedure TJSONStringifyMethod.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
-begin
-   Stringify(args, Result);
-end;
 
 // Stringify
 //
-class procedure TJSONStringifyMethod.Stringify(const args : TExprBaseListExec; var Result : String);
+class procedure JSONScript.Stringify(const args : TExprBaseListExec; var Result : String);
 var
    writer : TdwsJSONWriter;
    stream : TWriteOnlyBlockStream;
@@ -1362,7 +1371,7 @@ end;
 
 // StringifyVariant
 //
-class procedure TJSONStringifyMethod.StringifyVariant(exec : TdwsExecution; writer : TdwsJSONWriter; const v : Variant);
+class procedure JSONScript.StringifyVariant(exec : TdwsExecution; writer : TdwsJSONWriter; const v : Variant);
 
    procedure StringifyString(writer : TdwsJSONWriter; const v : Variant);
    var
@@ -1396,7 +1405,7 @@ end;
 
 // StringifyUnknown
 //
-class procedure TJSONStringifyMethod.StringifyUnknown(exec : TdwsExecution; writer : TdwsJSONWriter; const unk : IUnknown);
+class procedure JSONScript.StringifyUnknown(exec : TdwsExecution; writer : TdwsJSONWriter; const unk : IUnknown);
 var
    getSelf : IGetSelf;
    selfObj : TObject;
@@ -1444,7 +1453,7 @@ end;
 
 // StringifySymbol
 //
-class procedure TJSONStringifyMethod.StringifySymbol(exec : TdwsExecution; writer : TdwsJSONWriter; sym : TSymbol; const dataPtr : IDataContext);
+class procedure JSONScript.StringifySymbol(exec : TdwsExecution; writer : TdwsJSONWriter; sym : TSymbol; const dataPtr : IDataContext);
 var
    ct : TClass;
 begin
@@ -1469,7 +1478,7 @@ end;
 
 // StringifyArray
 //
-class procedure TJSONStringifyMethod.StringifyArray(exec : TdwsExecution;
+class procedure JSONScript.StringifyArray(exec : TdwsExecution;
    writer : TdwsJSONWriter; elemSym : TTypeSymbol; const dataPtr : IDataContext; nb : Integer);
 var
    i, s : Integer;
@@ -1499,7 +1508,7 @@ end;
 
 // StringifyDynamicArray
 //
-class procedure TJSONStringifyMethod.StringifyDynamicArray(exec : TdwsExecution;
+class procedure JSONScript.StringifyDynamicArray(exec : TdwsExecution;
    writer : TdwsJSONWriter; dynArray : TScriptDynamicArray);
 var
    locData : IDataContext;
@@ -1510,7 +1519,7 @@ end;
 
 // StringifyAssociativeArray
 //
-class procedure TJSONStringifyMethod.StringifyAssociativeArray(exec : TdwsExecution;
+class procedure JSONScript.StringifyAssociativeArray(exec : TdwsExecution;
    writer : TdwsJSONWriter; assocArray : TScriptAssociativeArray);
 var
    i : Integer;
@@ -1534,7 +1543,7 @@ end;
 
 // StringifyComposite
 //
-class procedure TJSONStringifyMethod.StringifyComposite(exec : TdwsExecution;
+class procedure JSONScript.StringifyComposite(exec : TdwsExecution;
    writer : TdwsJSONWriter; compSym : TCompositeTypeSymbol; const dataPtr : IDataContext);
 var
    i : Integer;
@@ -1576,7 +1585,7 @@ end;
 
 // StringifyClass
 //
-class procedure TJSONStringifyMethod.StringifyClass(exec : TdwsExecution;
+class procedure JSONScript.StringifyClass(exec : TdwsExecution;
    writer : TdwsJSONWriter; const obj : IScriptObj);
 var
    stringifyMeth : TMethodSymbol;
@@ -1617,6 +1626,37 @@ begin
       end;
 
    end;
+end;
+
+// ------------------
+// ------------------ TJSONStringifyMethod ------------------
+// ------------------
+
+// DoEvalAsString
+//
+procedure TJSONStringifyMethod.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+begin
+   JSONScript.Stringify(args, Result);
+end;
+
+// ------------------
+// ------------------ TJSONSerializeMethod ------------------
+// ------------------
+
+// DoEvalAsVariant
+//
+procedure TJSONSerializeMethod.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
+var
+   v : TdwsJSONValue;
+   box : TBoxedJSONValue;
+   js : String;
+begin
+   JSONScript.Stringify(args, js);
+   v:=TdwsJSONValue.ParseString(js);
+   if v=nil then
+      box:=nil
+   else box:=TBoxedJSONValue.Create(v);
+   VarCopySafe(result, IBoxedJSONValue(box));
 end;
 
 // ------------------

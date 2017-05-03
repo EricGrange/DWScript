@@ -3062,7 +3062,9 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+   vJSONFormatSettings := FormatSettings;
    vJSONFormatSettings.DecimalSeparator:='.';
+
    vImmediate.Initialize(TdwsJSONImmediate.Create);
    vObject.Initialize(TdwsJSONObject.Create);
    vArray.Initialize(TdwsJSONArray.Create);
