@@ -148,6 +148,13 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
             Attributes = [maStatic]
             OnEval = dwsSystemInfoClassesApplicationInfoMethodsMemoryCountersEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'UserName'
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesApplicationInfoMethodsUserNameEval
+            Kind = mkClassFunction
           end>
         Properties = <
           item

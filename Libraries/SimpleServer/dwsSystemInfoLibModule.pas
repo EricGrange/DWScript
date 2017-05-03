@@ -96,6 +96,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsSystemRegistryClassesRegistryMethodsValueNamesEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesApplicationInfoMethodsUserNameEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FOSNameVersion : TOSNameVersion;
@@ -297,6 +299,22 @@ begin
    if GetModuleVersion(HInstance, major, minor, release, build) then
       Info.ResultAsString:=Format('%d.%d.%d.%d', [major, minor, release, build])
    else Info.ResultAsString:='?.?.?.?';
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsUserNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   buf : String;
+   n : Cardinal;
+begin
+   n := 0;
+   GetUserName(nil, n);
+   if n <= 0 then
+      RaiseLastOSError;
+   SetLength(buf, n-1);
+   if not GetUserName(PChar(buf), n) then
+      RaiseLastOSError;
+   Info.ResultAsString := buf;
 end;
 
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesCPUInfoMethodsCountEval(
