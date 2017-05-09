@@ -1,0 +1,27 @@
+unit rss;
+
+interface
+
+resourcestring
+    R1 = 'Rone';
+    R2 = 'Rtwo';
+ 
+const
+    c1 = 'alpha';
+    c2 = 'beta';
+    
+resourcestring
+    gamma = 'gamma';
+    
+const c3 = '3333';
+resourcestring r3 = 'rthree';
+
+implementation
+
+initialization
+
+begin
+    R1 := c3;
+end;
+    
+    

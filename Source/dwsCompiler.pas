@@ -2652,13 +2652,20 @@ var
    resStringSym : TResourceStringSymbol;
 begin
    action:=saNoSemiColon;
-   repeat
-      resStringSym:=ReadResourceStringDecl;
-      CurrentProg.Table.AddSymbol(resStringSym);
-      ReadSemiColon;
-   until not (    (UnitSection in [secInterface, secImplementation])
-              and (CurrentProg.Level=0)
-              and FTok.TestName);
+   if coContextMap in FOptions then
+      FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttRESOURCESTRING);
+   try
+      repeat
+         resStringSym:=ReadResourceStringDecl;
+         CurrentProg.Table.AddSymbol(resStringSym);
+         ReadSemiColon;
+      until not (    (UnitSection in [secInterface, secImplementation])
+                 and (CurrentProg.Level=0)
+                 and FTok.TestName);
+   finally
+      if coContextMap in FOptions then
+         FSourceContextMap.CloseContext(FTok.CurrentPos, ttRESOURCESTRING);
+   end;
 end;
 
 // ReadVarDeclBlock

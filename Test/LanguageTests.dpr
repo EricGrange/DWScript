@@ -77,7 +77,8 @@ uses
   dwsGenericExprs in '..\Source\dwsGenericExprs.pas',
   dwsSpecializationMap in '..\Source\dwsSpecializationMap.pas',
   dwsUnicode in '..\Source\dwsUnicode.pas',
-  UdwsSystemInfoTests in 'UdwsSystemInfoTests.pas';
+  UdwsSystemInfoTests in 'UdwsSystemInfoTests.pas',
+  dwsSHA512 in '..\Libraries\CryptoLib\dwsSHA512.pas';
 
 {$R *.res}
 
@@ -92,8 +93,9 @@ begin
    DirectSet8087CW($133F);
    GetProcessAffinityMask(GetCurrentProcess, procAffinity, systAffinity);
    SetProcessAffinityMask(GetCurrentProcess, systAffinity);
-   SetDecimalSeparator('.');
    Application.Initialize;
+   Application.UpdateFormatSettings := False;
+   SetDecimalSeparator('.');
    GUITestRunner.RunRegisteredTests;
 end.
 
