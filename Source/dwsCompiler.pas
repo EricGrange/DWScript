@@ -12053,7 +12053,10 @@ begin
       value:=FormatDateTime('yyyy-mm-dd', Date)
    else if ASCIISameText(name, 'TIME') then
       value:=FormatDateTime('hh:nn:ss', Time)
-   else if ASCIISameText(name, 'FUNCTION') then begin
+   else if ASCIISameText(name, 'TIMESTAMP') then begin
+      asNum := True;
+      numValue := UnixTime;
+   end else if ASCIISameText(name, 'FUNCTION') then begin
       if CurrentProg is TdwsProcedure then begin
          funcSym:=TdwsProcedure(CurrentProg).Func;
          if funcSym is TMethodSymbol then
