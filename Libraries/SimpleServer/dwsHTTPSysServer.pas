@@ -710,6 +710,7 @@ function THttpApi2Server.AddUrl(const info : THttpSys2URLInfo) : Integer;
 var
    s : String;
    n : Integer;
+   err : HRESULT;
 begin
    result := -1;
    if (Self = nil) or (FReqQueue = 0) or (HttpAPI.Module = 0) then
@@ -718,9 +719,15 @@ begin
    if s = '' then
       exit; // invalid parameters
 
-   HttpAPI.Check(
-      HttpAPI.AddUrlToUrlGroup(FUrlGroupID, Pointer(s)),
-      hAddUrlToUrlGroup);
+   err := HttpAPI.AddUrlToUrlGroup(FUrlGroupID, Pointer(s));
+   case err of
+      NO_ERROR, ERROR_NETNAME_DELETED : ; // netname deleted is ignored
+   else
+      raise EHttpApiServer.CreateFmt(
+         'AddUrlToUrlGroup failed: %s (%d) for %s',
+         [SysErrorMessage(err), err, info.ToString]
+      );
+   end;
 
    n := length(FRegisteredUrl);
    SetLength(FRegisteredUrl, n+1);
