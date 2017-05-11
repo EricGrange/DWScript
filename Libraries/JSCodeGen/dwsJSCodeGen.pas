@@ -1131,7 +1131,7 @@ begin
    RegisterCodeGen(TBoolImpliesExpr,
       TdwsExprGenericCodeGen.Create(['(!', 0, ' || ', 1, ')']));
    RegisterCodeGen(TNotBoolExpr,
-      TdwsExprGenericCodeGen.Create(['(', '!', 0, ')']));
+      TdwsExprGenericCodeGen.Create(['(', '!', '(', 0, ')', ')']));
 
    RegisterCodeGen(TVariantAndExpr,    TJSBinOpExpr.Create('&&', 6, [associativeLeft, associativeRight]));
    RegisterCodeGen(TVariantOrExpr,     TJSBinOpExpr.Create('||', 5, [associativeLeft, associativeRight]));

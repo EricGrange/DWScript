@@ -5,3 +5,9 @@
 10
 True
 a not in A..Z
+False
+True
+True
+True
+False
+False
