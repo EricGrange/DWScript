@@ -34,6 +34,7 @@ type
          procedure StaticArrayTest;
          procedure DynamicArrayTest;
          procedure ObjectArrayTest;
+         procedure AssociativeArrayTest;
          procedure HelperSuggestTest;
          procedure SuggestInUsesSection;
          procedure SuggestAfterCall;
@@ -413,6 +414,27 @@ begin
    CheckEquals('Destroy', sugg.Code[4], 'a[0]. 4');
    CheckEquals('Free', sugg.Code[5], 'a[0]. 5');
    CheckEquals('X', sugg.Code[6], 'a[0]. 6');
+end;
+
+// AssociativeArrayTest
+//
+procedure TSourceUtilsTests.AssociativeArrayTest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile('var d : array [Integer] of Integer;'#13#10'd.');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+
+   CheckEquals(5, sugg.Count, 'd.');
+   CheckEquals('Clear', sugg.Code[0], 'd. 0');
+   CheckEquals('Count', sugg.Code[1], 'd. 1');
+   CheckEquals('Delete', sugg.Code[2], 'd. 2');
+   CheckEquals('Keys', sugg.Code[3], 'd. 3');
+   CheckEquals('Length', sugg.Code[4], 'd. 4');
 end;
 
 // HelperSuggestTest

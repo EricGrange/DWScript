@@ -110,6 +110,7 @@ type
          FSymbolClassFilter : TSymbolClass;
          FStaticArrayHelpers : TSymbolTable;
          FDynArrayHelpers : TSymbolTable;
+         FAssocArrayHelpers : TSymbolTable;
          FEnumElementHelpers : TSymbolTable;
          FOptions: TdwsSuggestionsOptions;
 
@@ -133,6 +134,7 @@ type
          procedure AddEnumerationElementHelpers(list : TSimpleSymbolList);
          procedure AddStaticArrayHelpers(list : TSimpleSymbolList);
          procedure AddDynamicArrayHelpers(dyn : TDynamicArraySymbol; list : TSimpleSymbolList);
+         procedure AddAssociativeArrayHelpers(assoc : TAssociativeArraySymbol; list : TSimpleSymbolList);
          procedure AddTypeHelpers(typ : TTypeSymbol; meta : Boolean; list : TSimpleSymbolList);
          procedure AddUnitSymbol(unitSym : TUnitSymbol; list : TSimpleSymbolList);
 
@@ -224,6 +226,7 @@ begin
    FCleanupList.Clean;
    FStaticArrayHelpers.Free;
    FDynArrayHelpers.Free;
+   FAssocArrayHelpers.Free;
    FEnumElementHelpers.Free;
    inherited;
 end;
@@ -521,6 +524,25 @@ begin
    list.AddSymbolTable(FDynArrayHelpers);
 end;
 
+// AddAssociativeArrayHelpers
+//
+procedure TdwsSuggestions.AddAssociativeArrayHelpers(assoc : TAssociativeArraySymbol; list : TSimpleSymbolList);
+var
+   p : TdwsCompilerContext;
+begin
+   if FAssocArrayHelpers=nil then begin
+      p:=FProg.ProgramObject.CompilerContext;
+      FAssocArrayHelpers:=TSystemSymbolTable.Create;
+      FAssocArrayHelpers.AddSymbol(CreateHelper('Count', p.TypInteger, []));
+      FAssocArrayHelpers.AddSymbol(CreateHelper('Length', p.TypInteger, []));
+      FAssocArrayHelpers.AddSymbol(CreateHelper('Clear', nil, []));
+      FAssocArrayHelpers.AddSymbol(CreateHelper('Delete', nil, ['key', assoc.KeyType]));
+      FAssocArrayHelpers.AddSymbol(CreateHelper('Keys', assoc.KeysArrayType(p.TypInteger), []));
+   end;
+
+   list.AddSymbolTable(FAssocArrayHelpers);
+end;
+
 // AddTypeHelpers
 //
 procedure TdwsSuggestions.AddTypeHelpers(typ : TTypeSymbol; meta : Boolean; list : TSimpleSymbolList);
@@ -671,6 +693,10 @@ begin
             if FPreviousSymbol.Typ is TDynamicArraySymbol then begin
                AddDynamicArrayHelpers(TDynamicArraySymbol(FPreviousSymbol.Typ), list);
             end;
+
+         end else if FPreviousSymbol.Typ is TAssociativeArraySymbol then begin
+
+            AddAssociativeArrayHelpers(TAssociativeArraySymbol(FPreviousSymbol.Typ), list);
 
          end else if FPreviousSymbol.Typ is TBaseStringSymbol then begin
 

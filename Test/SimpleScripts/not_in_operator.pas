@@ -11,7 +11,7 @@ if 'A' not in ['A'..'Z'] then
 if 'a' not in ['A'..'Z'] then
    PrintLn('a not in A..Z');
    
-var i := 1;
+i := 1;
 PrintLn(i in [2]);
 PrintLn(not (i in [2]));
 PrintLn(i not in [2]);
