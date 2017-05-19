@@ -169,6 +169,8 @@ end;
 //
 procedure TdwsSynDBDataBase.BeginTransaction;
 begin
+   if not FConn.IsConnected then
+      FConn.Connect;
    FConn.StartTransaction;
 end;
 
