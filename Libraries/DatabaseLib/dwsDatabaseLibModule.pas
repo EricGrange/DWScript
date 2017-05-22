@@ -642,7 +642,7 @@ end;
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsIsNullEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsBoolean:=(ExtObject as TDataField).Intf.AsBoolean;
+   Info.ResultAsBoolean:=(ExtObject as TDataField).Intf.IsNull;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsNameEval(
