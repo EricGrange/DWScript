@@ -73,6 +73,7 @@ type
       public
          procedure Initialize;
          procedure Finalize;
+         function  Initialized : Boolean; inline;
 
          function Write(const aName : String; const aValue : Variant; expirationSeconds : Double) : Boolean;
          function TryRead(const aName : String; var value : Variant) : Boolean;
@@ -352,6 +353,13 @@ begin
    if vGVPoolUsers=0 then begin
       vGVPool.Finalize;
    end;
+end;
+
+// Initialized
+//
+function TGlobalVars.Initialized : Boolean;
+begin
+   Result := (GC<>nil);
 end;
 
 // Write
