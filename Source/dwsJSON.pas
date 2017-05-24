@@ -251,6 +251,8 @@ type
 
          function IsFalsey : Boolean;
 
+         procedure Clear;
+
          property AsString : UnicodeString read GetAsString write SetAsString;
          property IsNull : Boolean read GetIsNull write SetIsNull;
          property IsDefined : Boolean read GetIsDefined;
@@ -459,6 +461,8 @@ type
          property AsBoolean : Boolean read GetAsBoolean write SetAsBoolean;
          property AsNumber : Double read GetAsNumber write SetAsNumber;
          property AsInteger : Int64 read GetAsInteger write SetAsInteger;
+
+         procedure Clear;
    end;
 
    EdwsJSONException = class (Exception);
@@ -1149,6 +1153,13 @@ end;
 function TdwsJSONValue.IsFalsey : Boolean;
 begin
    Result:=(not Assigned(Self)) or DoIsFalsey;
+end;
+
+// Clear
+//
+procedure TdwsJSONValue.Clear;
+begin
+   Value.Clear;
 end;
 
 // GetValue
@@ -2509,6 +2520,14 @@ begin
    end;
 end;
 
+// Clear
+//
+procedure TdwsJSONImmediate.Clear;
+begin
+   IsNull := True;
+   FType := jvtUndefined;
+end;
+
 // GetAsVariant
 //
 function TdwsJSONImmediate.GetAsVariant : Variant;
@@ -2521,6 +2540,7 @@ end;
 procedure TdwsJSONImmediate.SetAsVariant(const val : Variant);
 begin
    case VariantType(val) of
+      varEmpty : Clear;
       varNull : IsNull:=True;
       {$ifdef FPC}
       varString : AsString:=val;

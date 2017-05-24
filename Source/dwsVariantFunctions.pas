@@ -107,11 +107,30 @@ end;
 { TVarIsClearFunc }
 
 function TVarIsClearFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+
+   function CheckUnknown(const unk : IUnknown) : Boolean;
+   var
+      nullable : INullable;
+   begin
+      if unk.QueryInterface(INullable, nullable) = S_OK then
+         Result := not nullable.IsDefined
+      else Result := False;
+   end;
+
 var
    v : Variant;
 begin
    args.ExprBase[0].EvalAsVariant(args.Exec, v);
-   Result:=VarIsClear(v);
+   case VarType(v) of
+      varEmpty : Result := True;
+      varUnknown : begin
+         if TVarData(v).VUnknown <> nil then
+            Result := CheckUnknown(IUnknown(TVarData(v).VUnknown))
+         else Result := False;
+      end;
+   else
+      Result := VarIsClear(v);
+   end;
 end;
 
 { TVarIsArrayFunc }

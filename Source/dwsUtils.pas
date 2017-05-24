@@ -122,6 +122,13 @@ type
       function IsFalsey : Boolean;
    end;
 
+   // Interface for null-able IUnknown
+   INullable = interface
+      ['{65BF25C1-837C-4C98-AF71-C8A6A028F678}']
+      function IsNull : Boolean;
+      function IsDefined : Boolean;
+   end;
+
    // TVarRecArrayContainer
    //
    TVarRecArrayContainer = class
