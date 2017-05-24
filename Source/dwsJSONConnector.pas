@@ -58,6 +58,7 @@ type
          FCloneCall : IConnectorCall;
          FExtendCall : IConnectorCall;
          FAddCall : IConnectorCall;
+         FDeleteCall : IConnectorCall;
          FToStringCall : IConnectorCall;
          FLengthMember : IConnectorMember;
 
@@ -121,6 +122,11 @@ type
    end;
 
    TdwsJSONAddCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
+      public
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+   end;
+
+   TdwsJSONDeleteCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
       public
          procedure FastCall(const args : TExprBaseListExec; var result : Variant);
    end;
@@ -590,6 +596,7 @@ begin
    FCloneCall:=TdwsJSONCloneCall.Create;
    FExtendCall:=TdwsJSONExtendCall.Create;
    FAddCall:=TdwsJSONAddCall.Create;
+   FDeleteCall:=TdwsJSONDeleteCall.Create;
    FToStringCall:=TdwsJSONToStringCall.Create;
 
    FLengthMember:=TdwsJSONConnectorLengthMember.Create('length');
@@ -673,6 +680,17 @@ begin
 
       Result:=FAddCall;
       typSym:=FTable.TypInteger;
+
+   end else if UnicodeSameText(methodName, 'delete') then begin
+
+      if Length(params)<>1 then
+         raise ECompileException.CreateFmt(CPE_BadNumberOfParameters, [1, Length(params)]);
+      paramTyp := params[0].TypSym;
+      if not (paramTyp.UnAliasedType is TBaseStringSymbol) then
+         raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_STRING, paramTyp.Caption]);
+
+      Result:=FDeleteCall;
+      typSym:=nil;
 
    end else begin
 
@@ -933,6 +951,26 @@ begin
 end;
 
 // ------------------
+// ------------------ TdwsJSONDeleteCall ------------------
+// ------------------
+
+// FastCall
+//
+procedure TdwsJSONDeleteCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+var
+   base : Variant;
+   baseValue : TdwsJSONValue;
+   name : String;
+begin
+   args.EvalAsVariant(0, base);
+   baseValue:=TBoxedJSONValue.UnBox(base);
+   if baseValue.ValueType <> jvtObject then
+      raise EdwsJSONException.Create('JSON Object required for Delete method');
+   args.EvalAsString(1, name);
+   TdwsJSONObject(baseValue).Delete(name);
+end;
+
+// ------------------
 // ------------------ TdwsJSONToStringCall ------------------
 // ------------------
 
@@ -1036,7 +1074,7 @@ begin
             argValue:=TdwsJSONImmediate.FromVariant(Null);
          end;
          varEmpty : begin
-            argValue:=nil;
+            argValue:=TdwsJSONImmediate.Create;
          end;
       else
          if VarIsNumeric(val) then begin
@@ -1124,11 +1162,11 @@ begin
             end;
          end;
          varEmpty :
-            dataValue := nil;
+            dataValue := TdwsJSONImmediate.Create;
       else
          dataValue := TdwsJSONImmediate.FromVariant(v);
       end;
-   end else dataValue := nil;
+   end else dataValue := TdwsJSONImmediate.Create;
 
    baseValue.HashedItems[FMemberHash, FMemberName]:=dataValue;
 end;

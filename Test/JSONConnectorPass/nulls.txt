@@ -4,8 +4,8 @@ Undefined
 
 Undefined
 [null]
-[]
+[null]
 {"Field":null}
-{}
+{"Field":null}
 
 Null

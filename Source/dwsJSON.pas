@@ -346,6 +346,8 @@ type
          function AddValue(const name : UnicodeString; const value : Double) : TdwsJSONImmediate; overload;
          function AddValue(const name : UnicodeString; const value : Boolean) : TdwsJSONImmediate; overload;
 
+         procedure Delete(const name : UnicodeString);
+
          procedure WriteTo(writer : TdwsJSONWriter); override;
 
          procedure MergeDuplicates;
@@ -1528,6 +1530,8 @@ end;
 //
 procedure TdwsJSONObject.AddHashed(hash : Cardinal; const aName : UnicodeString; aValue : TdwsJSONValue);
 begin
+   if aValue = nil then
+      aValue := vImmediate.Create;
    Assert(aValue.Owner=nil);
    aValue.FOwner:=Self;
    if FCount=FCapacity then Grow;
@@ -1559,6 +1563,17 @@ function TdwsJSONObject.AddValue(const name : UnicodeString) : TdwsJSONImmediate
 begin
    Result:=vImmediate.Create;
    Add(name, Result);
+end;
+
+// Delete
+//
+procedure TdwsJSONObject.Delete(const name : UnicodeString);
+var
+   i : Integer;
+begin
+   i := IndexOfName(name);
+   if i >= 0 then
+      DetachIndex(i);
 end;
 
 // MergeDuplicates
@@ -2130,7 +2145,7 @@ begin
          if index=FCount-1 then begin
             DeleteIndex(index);
             Exit;
-         end else v:=TdwsJSONImmediate.Create
+         end else v:=vImmediate.Create
       else v:=value;
 
       FElements[index].ClearOwner;
