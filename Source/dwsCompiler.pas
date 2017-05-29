@@ -1060,7 +1060,14 @@ end;
 //
 function TStandardSymbolFactory.ReadArrayConstantExpr(closingToken : TTokenType; expecting : TTypeSymbol) : TArrayConstantExpr;
 begin
-   Result:=FCompiler.ReadArrayConstant(closingToken, expecting);
+   if coContextMap in FCompiler.Options then
+      FCompiler.FSourceContextMap.OpenContext(FCompiler.FTok.CurrentPos, expecting.Typ, ttARRAY);
+   try
+      Result:=FCompiler.ReadArrayConstant(closingToken, expecting);
+   finally
+      if coContextMap in FCompiler.Options then
+         FCompiler.FSourceContextMap.CloseContext(FCompiler.FTok.CurrentPos, ttARRAY);
+   end;
 end;
 
 // ReadInitExpr

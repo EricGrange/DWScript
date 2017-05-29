@@ -37,7 +37,7 @@ type
                              scProperty,
                              scEnum, scElement,
                              scParameter,
-                             scVariable, scConst,
+                             scField, scVariable, scConst,
                              scReservedWord,
                              scSpecialFunction);
 
@@ -62,6 +62,11 @@ type
    TReservedWordSymbol = class(TSymbol);
    TSpecialFunctionSymbol = class(TSymbol);
 
+   TSuggestionFuncSymbol = class (TFuncSymbol)
+   end;
+   TSuggestionForcedParenthesisFuncSymbol = class (TSuggestionFuncSymbol)
+   end;
+
    TSimpleSymbolList = class;
 
    TProcAddToList = procedure (aList : TSimpleSymbolList) of object;
@@ -78,7 +83,8 @@ type
 
          procedure AddEnumeration(enum : TEnumerationSymbol; const addToList : TProcAddToList = nil);
          procedure AddMembers(struc : TCompositeTypeSymbol; from : TSymbol;
-                              const addToList : TProcAddToList = nil);
+                              const addToList : TProcAddToList = nil;
+                              restrictTo : TSymbolClass = nil);
          procedure AddMetaMembers(struc : TCompositeTypeSymbol; from : TSymbol;
                                   const addToList : TProcAddToList = nil);
          procedure AddNameSpace(unitSym : TUnitSymbol);
@@ -112,6 +118,7 @@ type
          FDynArrayHelpers : TSymbolTable;
          FAssocArrayHelpers : TSymbolTable;
          FEnumElementHelpers : TSymbolTable;
+         FJSONVariantHelpers : TSymbolTable;
          FOptions: TdwsSuggestionsOptions;
 
       protected
@@ -130,11 +137,13 @@ type
          function IsContextSymbol(sym : TSymbol) : Boolean;
 
          function CreateHelper(const name : String; resultType : TTypeSymbol;
-                               const args : array of const) : TFuncSymbol;
+                               const args : array of const;
+                               forceParenthesis : Boolean = False) : TFuncSymbol;
          procedure AddEnumerationElementHelpers(list : TSimpleSymbolList);
          procedure AddStaticArrayHelpers(list : TSimpleSymbolList);
          procedure AddDynamicArrayHelpers(dyn : TDynamicArraySymbol; list : TSimpleSymbolList);
          procedure AddAssociativeArrayHelpers(assoc : TAssociativeArraySymbol; list : TSimpleSymbolList);
+         procedure AddJSONVariantHelpers(list : TSimpleSymbolList);
          procedure AddTypeHelpers(typ : TTypeSymbol; meta : Boolean; list : TSimpleSymbolList);
          procedure AddUnitSymbol(unitSym : TUnitSymbol; list : TSimpleSymbolList);
 
@@ -228,6 +237,7 @@ begin
    FDynArrayHelpers.Free;
    FAssocArrayHelpers.Free;
    FEnumElementHelpers.Free;
+   FJSONVariantHelpers.Free;
    inherited;
 end;
 
@@ -442,17 +452,22 @@ end;
 // CreateHelper
 //
 function TdwsSuggestions.CreateHelper(const name : String; resultType : TTypeSymbol;
-                                      const args : array of const) : TFuncSymbol;
+                                      const args : array of const;
+                                      forceParenthesis : Boolean = False) : TFuncSymbol;
 var
    i : Integer;
    p : TParamSymbol;
+   funcKind : TFuncKind;
 begin
-   if resultType=nil then
-      Result:=TFuncSymbol.Create(name, fkProcedure, 0)
-   else begin
-      Result:=TFuncSymbol.Create(name, fkFunction, 0);
-      Result.Typ:=resultType;
-   end;
+   if resultType = nil then
+      funcKind := fkProcedure
+   else funcKind := fkFunction;
+   if forceParenthesis then
+      Result := TSuggestionForcedParenthesisFuncSymbol.Create(name, funcKind, 0)
+   else Result:=TSuggestionFuncSymbol.Create(name, funcKind, 0);
+   if resultType <> nil then
+      Result.Typ := resultType;
+
    for i:=0 to (Length(args) div 2)-1 do begin
       Assert(args[i*2].VType=vtUnicodeString);
       Assert(args[i*2+1].VType=vtObject);
@@ -541,6 +556,31 @@ begin
    end;
 
    list.AddSymbolTable(FAssocArrayHelpers);
+end;
+
+// AddJSONVariantHelpers
+//
+procedure TdwsSuggestions.AddJSONVariantHelpers(list : TSimpleSymbolList);
+var
+   p : TdwsCompilerContext;
+begin
+   if FJSONVariantHelpers=nil then begin
+      p:=FProg.ProgramObject.CompilerContext;
+      FJSONVariantHelpers:=TSystemSymbolTable.Create;
+      FJSONVariantHelpers.AddSymbol(CreateHelper('Add', p.TypInteger, ['item', p.TypAnyType]));
+      FJSONVariantHelpers.AddSymbol(CreateHelper('Push', p.TypInteger, ['item', p.TypAnyType]));
+      FJSONVariantHelpers.AddSymbol(CreateHelper('Length', p.TypInteger, [], True));
+      FJSONVariantHelpers.AddSymbol(CreateHelper('Low', p.TypInteger, [], True));
+      FJSONVariantHelpers.AddSymbol(CreateHelper('High', p.TypInteger, [], True));
+      FJSONVariantHelpers.AddSymbol(CreateHelper('Clone', p.TypVariant, [], True));
+      FJSONVariantHelpers.AddSymbol(CreateHelper('ToString', p.TypString, [], True));
+      FJSONVariantHelpers.AddSymbol(CreateHelper('Extend', p.TypVariant, ['obj', p.TypVariant]));
+      FJSONVariantHelpers.AddSymbol(CreateHelper('Delete', nil, ['name', p.TypString]));
+      FJSONVariantHelpers.AddSymbol(CreateHelper('TypeName', p.TypString, [], True));
+      FJSONVariantHelpers.AddSymbol(CreateHelper('ElementName', p.TypString, ['index', p.TypInteger]));
+   end;
+
+   list.AddSymbolTable(FJSONVariantHelpers);
 end;
 
 // AddTypeHelpers
@@ -711,6 +751,10 @@ begin
 
             AddEnumerationElementHelpers(list);
 
+         end else if (FPreviousSymbol.Typ is TBaseVariantSymbol) and (FPreviousSymbol.Typ.Name='JSONVariant') then begin
+
+            AddJSONVariantHelpers(list);
+
          end else if list.Count=0 then
 
             FPreviousSymbol:=nil;
@@ -756,7 +800,11 @@ begin
                   list.AddMetaMembers(methSym.StructSymbol, methSym.StructSymbol, AddToList)
                else list.AddMembers(methSym.StructSymbol, methSym.StructSymbol, AddToList);
             end;
-        end;
+         end;
+
+         if (context.Token = ttARRAY) and (context.ParentSym is TRecordSymbol) then begin
+            list.AddMembers(TRecordSymbol(context.ParentSym), TRecordSymbol(context.ParentSym), AddToList, TFieldSymbol);
+         end;
 
          context:=context.Parent;
       end;
@@ -824,7 +872,7 @@ end;
 //
 function TdwsSuggestions.GetCode(i : Integer) : String;
 begin
-   Result:=FList[i].Name;
+   Result := FList[i].Name;
 end;
 
 // GetCategory
@@ -869,7 +917,9 @@ begin
 
    end else if symbolClass.InheritsFrom(TValueSymbol) then begin
 
-      if symbolClass.InheritsFrom(TParamSymbol) then
+      if symbolClass.InheritsFrom(TFieldSymbol) then
+         Result:=scField
+      else if symbolClass.InheritsFrom(TParamSymbol) then
          Result:=scParameter
       else if symbolClass.InheritsFrom(TPropertySymbol) then
          Result:=scProperty
@@ -1043,7 +1093,8 @@ end;
 // AddMembers
 //
 procedure TSimpleSymbolList.AddMembers(struc : TCompositeTypeSymbol; from : TSymbol;
-                                       const addToList : TProcAddToList = nil);
+                                       const addToList : TProcAddToList = nil;
+                                       restrictTo : TSymbolClass = nil);
 var
    sym : TSymbol;
    symClass : TClass;
@@ -1057,12 +1108,14 @@ begin
 
    repeat
       for sym in struc.Members do begin
+         if sym.Name = '' then continue;
          symClass:=sym.ClassType;
          if    (symClass=TClassOperatorSymbol)
             or (symClass=TClassConstSymbol)
             or (symClass=TClassVarSymbol)
             then continue;
          if not sym.IsVisibleFor(visibility) then continue;
+         if (restrictTo <> nil) and not symClass.InheritsFrom(restrictTo) then continue;
          Add(sym);
       end;
       if first then begin
