@@ -1591,6 +1591,8 @@ procedure TdwsUtilsTests.URLRewriter;
             rule.Free;
          end;
 
+         rw := '';
+
          if     (Pos('*', pattern) = Length(pattern))
             and (Pos('$1', rewrite) = Length(rewrite)-1) then begin
             rule := TdwsURLRewriteRuleStartMatch.Create(pattern, rewrite);
@@ -1648,6 +1650,10 @@ begin
    CheckPass('a*a*', '$2c$1z', 'a1a2', '2c1z');
 
    CheckPass('a*b*c*d*e*f*g*h*i*j', '$1a$2b$3c$4d$5e$6f$7g$8h$9', 'a1b2c3d4e5f6g7h8i9j', '1a2b3c4d5e6f7g8h9');
+
+   CheckPass('/helloworldxyz/*', '/$1', '/helloworldxyz/', '/');
+   CheckPass('/helloworldxyz/*', '/$1', '/helloworldxyz/abcdef.ghi', '/abcdef.ghi');
+   CheckPass('/helloworldxyz/*', '/$1', '/helloworldxyz', '/helloworldxyz');
 end;
 
 // ------------------------------------------------------------------

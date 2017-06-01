@@ -516,7 +516,7 @@ begin
       System.Move(Pointer(FRewrite)^, p^, FRewriteLength*SizeOf(Char));
       Inc(p, FRewriteLength);
       if n > FStartLength then
-         System.Move(originURL[FStartLength+1], p^, n - FStartLength);
+         System.Move(originURL[FStartLength+1], p^, (n - FStartLength)*SizeOf(Char));
    end;
    Inc(FHitCount);
    Result := True;
