@@ -9161,6 +9161,9 @@ begin
 
    RecordSymbolUse(propSym, propNamePos, [suDeclaration]);
 
+   if coContextMap in FOptions then
+      FSourceContextMap.OpenContext(propStartPos, propSym, ttPROPERTY);
+
    if FTok.TestDelete(ttEXTERNAL) then begin
       if not FTok.Test(ttStrVal) then
          FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected)
@@ -9297,11 +9300,8 @@ begin
    if FTok.Test(ttDEPRECATED) then
       propSym.DeprecatedMessage:=ReadDeprecatedMessage;
 
-   // register context only if we're sure the property symbol will survive
-   if coContextMap in FOptions then begin
-      FSourceContextMap.OpenContext(propStartPos, propSym, ttPROPERTY);
+   if coContextMap in FOptions then
       FSourceContextMap.CloseContext(FTok.CurrentPos);
-   end;
 end;
 
 // ReadPropertyDeclAutoField

@@ -71,6 +71,9 @@ type
 
    TProcAddToList = procedure (aList : TSimpleSymbolList) of object;
 
+   TAddMembersOption = (amoMeta, amoInstance, amoTypedOnly);
+   TAddMembersOptions = set of TAddMembersOption;
+
    TSimpleSymbolList = class(TSimpleList<TSymbol>)
       protected
          function ScopeStruct(symbol : TSymbol) : TCompositeTypeSymbol;
@@ -83,11 +86,12 @@ type
 
          procedure AddEnumeration(enum : TEnumerationSymbol; const addToList : TProcAddToList = nil);
          procedure AddMembers(struc : TCompositeTypeSymbol; from : TSymbol;
+                              options : TAddMembersOptions;
                               const addToList : TProcAddToList = nil;
                               restrictTo : TSymbolClass = nil);
-         procedure AddMetaMembers(struc : TCompositeTypeSymbol; from : TSymbol;
-                                  const addToList : TProcAddToList = nil);
          procedure AddNameSpace(unitSym : TUnitSymbol);
+
+         procedure Remove(sym : TSymbol);
    end;
 
    TdwsSuggestionsOption = (soNoReservedWords, soNoUnits);
@@ -180,10 +184,13 @@ type
 // OnHelper
 //
 function THelperFilter.OnHelper(helper : THelperSymbol) : Boolean;
+var
+   opt : TAddMembersOptions;
 begin
+   opt := [amoMeta];
    if not Meta then
-      List.AddMembers(helper, nil);
-   List.AddMetaMembers(helper, nil);
+      Include(opt, amoInstance);
+   List.AddMembers(helper, nil, opt);
    Result:=False;
 end;
 
@@ -396,6 +403,7 @@ var
    tmp : TStringList;
    sym : TSymbol;
 begin
+   if aList.Count = 0 then Exit;
    tmp:=TFastCompareTextList.Create;
    try
       tmp.CaseSensitive:=False;
@@ -699,29 +707,29 @@ begin
          end else if FPreviousSymbol is TStructuredTypeSymbol then begin
 
             if not FPreviousSymbolIsMeta then
-               list.AddMembers(TStructuredTypeSymbol(FPreviousSymbol), FContextSymbol)
+               list.AddMembers(TStructuredTypeSymbol(FPreviousSymbol), FContextSymbol, [amoInstance, amoMeta])
             else begin
                if FPreviousToken in [ttPROCEDURE, ttFUNCTION, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR]  then begin
                   FSymbolClassFilter:=TFuncSymbol;
-                  list.AddMembers(TStructuredTypeSymbol(FPreviousSymbol), FContextSymbol);
-               end else list.AddMetaMembers(TStructuredTypeSymbol(FPreviousSymbol), FContextSymbol);
+                  list.AddMembers(TStructuredTypeSymbol(FPreviousSymbol), FContextSymbol, [amoInstance, amoMeta]);
+               end else list.AddMembers(TStructuredTypeSymbol(FPreviousSymbol), FContextSymbol, [amoMeta]);
             end;
 
          end else if     (FPreviousSymbol is TMethodSymbol)
                      and (TMethodSymbol(FPreviousSymbol).Kind=fkConstructor) then begin
 
-            list.AddMembers(TMethodSymbol(FPreviousSymbol).StructSymbol, FContextSymbol);
+            list.AddMembers(TMethodSymbol(FPreviousSymbol).StructSymbol, FContextSymbol, [amoInstance]);
 
          end else if FPreviousSymbol.Typ is TStructuredTypeSymbol then begin
 
             if     (FContextSymbol is TMethodSymbol)
                and (TMethodSymbol(FContextSymbol).StructSymbol=FPreviousSymbol.Typ) then
-               list.AddMembers(TStructuredTypeSymbol(FPreviousSymbol.Typ), FContextSymbol, AddToList)
-            else list.AddMembers(TStructuredTypeSymbol(FPreviousSymbol.Typ), FContextSymbol);
+               list.AddMembers(TStructuredTypeSymbol(FPreviousSymbol.Typ), FContextSymbol, [amoInstance, amoMeta], AddToList)
+            else list.AddMembers(TStructuredTypeSymbol(FPreviousSymbol.Typ), FContextSymbol, [amoInstance, amoMeta]);
 
          end else if FPreviousSymbol.Typ is TStructuredTypeMetaSymbol then begin
 
-            list.AddMetaMembers(TStructuredTypeMetaSymbol(FPreviousSymbol.Typ).StructSymbol, FContextSymbol);
+            list.AddMembers(TStructuredTypeMetaSymbol(FPreviousSymbol.Typ).StructSymbol, FContextSymbol, [amoMeta]);
 
          end else if FPreviousSymbol is TUnitSymbol then begin
 
@@ -797,13 +805,20 @@ begin
             if funcSym is TMethodSymbol then begin
                methSym:=TMethodSymbol(funcSym);
                if methSym.IsClassMethod then
-                  list.AddMetaMembers(methSym.StructSymbol, methSym.StructSymbol, AddToList)
-               else list.AddMembers(methSym.StructSymbol, methSym.StructSymbol, AddToList);
+                  list.AddMembers(methSym.StructSymbol, methSym.StructSymbol, [amoMeta], AddToList)
+               else list.AddMembers(methSym.StructSymbol, methSym.StructSymbol, [amoInstance, amoMeta], AddToList);
             end;
          end;
 
-         if (context.Token = ttARRAY) and (context.ParentSym is TRecordSymbol) then begin
-            list.AddMembers(TRecordSymbol(context.ParentSym), TRecordSymbol(context.ParentSym), AddToList, TFieldSymbol);
+         case context.Token of
+            ttARRAY : begin
+               if context.ParentSym is TRecordSymbol then
+                  list.AddMembers(TRecordSymbol(context.ParentSym), TRecordSymbol(context.ParentSym), [amoInstance, amoMeta], AddToList, TFieldSymbol);
+            end;
+            ttPROPERTY : if context.ParentSym is TPropertySymbol then begin
+               list.AddMembers(TPropertySymbol(context.ParentSym).OwnerSymbol, nil, [amoInstance, amoMeta, amoTypedOnly], AddToList);
+               FList.Remove(context.ParentSym);
+            end;
          end;
 
          context:=context.Parent;
@@ -1093,48 +1108,9 @@ end;
 // AddMembers
 //
 procedure TSimpleSymbolList.AddMembers(struc : TCompositeTypeSymbol; from : TSymbol;
+                                       options : TAddMembersOptions;
                                        const addToList : TProcAddToList = nil;
                                        restrictTo : TSymbolClass = nil);
-var
-   sym : TSymbol;
-   symClass : TClass;
-   scope : TCompositeTypeSymbol;
-   visibility : TdwsVisibility;
-   first : Boolean;
-begin
-   scope:=ScopeStruct(from);
-   visibility:=ScopeVisiblity(scope, struc);
-   first:=True;
-
-   repeat
-      for sym in struc.Members do begin
-         if sym.Name = '' then continue;
-         symClass:=sym.ClassType;
-         if    (symClass=TClassOperatorSymbol)
-            or (symClass=TClassConstSymbol)
-            or (symClass=TClassVarSymbol)
-            then continue;
-         if not sym.IsVisibleFor(visibility) then continue;
-         if (restrictTo <> nil) and not symClass.InheritsFrom(restrictTo) then continue;
-         Add(sym);
-      end;
-      if first then begin
-         first:=False;
-         if Assigned(addToList) then begin
-            addToList(Self);
-            Clear;
-         end;
-      end;
-      if visibility=cvPrivate then
-         visibility:=cvProtected;
-      struc:=struc.Parent;
-   until struc=nil;
-end;
-
-// AddMetaMembers
-//
-procedure TSimpleSymbolList.AddMetaMembers(struc : TCompositeTypeSymbol; from : TSymbol;
-                                           const addToList : TProcAddToList = nil);
 
    function IsMetaAccessor(sym : TSymbol) : Boolean;
    var
@@ -1149,9 +1125,9 @@ procedure TSimpleSymbolList.AddMetaMembers(struc : TCompositeTypeSymbol; from : 
 
 var
    sym : TSymbol;
-   methSym : TMethodSymbol;
-   propSym : TPropertySymbol;
+   symClass : TClass;
    scope : TCompositeTypeSymbol;
+   methSym : TMethodSymbol;
    visibility : TdwsVisibility;
    first, allowConstructors : Boolean;
 begin
@@ -1162,22 +1138,31 @@ begin
 
    repeat
       for sym in struc.Members do begin
+         if sym.Name = '' then continue;
+         symClass:=sym.ClassType;
+         if symClass=TClassOperatorSymbol then continue;
+         if (restrictTo <> nil) and not symClass.InheritsFrom(restrictTo) then continue;
          if not sym.IsVisibleFor(visibility) then continue;
-         if sym is TMethodSymbol then begin
-            methSym:=TMethodSymbol(sym);
-            if     methSym.IsClassMethod
-               or (    allowConstructors
-                   and (methSym.Kind=fkConstructor)) then
-               Add(Sym);
-         end else if sym is TClassConstSymbol then begin
-            Add(sym);
-         end else if sym is TClassVarSymbol then begin
-            Add(sym);
-         end else if sym is TPropertySymbol then begin
-            propSym:=TPropertySymbol(sym);
-            if IsMetaAccessor(propSym.ReadSym) or IsMetaAccessor(propSym.WriteSym) then
-               Add(sym);
+
+         if    (symClass=TClassConstSymbol)
+            or (symClass=TClassVarSymbol) then begin
+
+            if not (amoMeta in options) then continue;
+
+         end else if sym is TMethodSymbol then begin
+
+            methSym := TMethodSymbol(sym);
+
+            if methSym.IsClassMethod then begin
+               if not (amoMeta in options) then continue;
+            end else if methSym.Kind=fkConstructor then begin
+               if not allowConstructors then continue;
+            end else if not (amoInstance in options) then continue;
+
          end;
+
+         if (sym.Typ <> nil) or not (amoTypedOnly in options) then
+            Add(sym);
       end;
       if first then begin
          first:=False;
@@ -1199,6 +1184,20 @@ begin
    if unitSym.Main<>nil then
       Add(unitSym)
    else unitSym.EnumerateNameSpaceUnits(AddNameSpace);
+end;
+
+// Remove
+//
+procedure TSimpleSymbolList.Remove(sym : TSymbol);
+var
+   i : Integer;
+begin
+   for i := Count-1 downto 0 do begin
+      if Items[i] = sym then begin
+         Extract(i);
+         Break;
+      end;
+   end;
 end;
 
 end.

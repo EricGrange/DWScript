@@ -470,14 +470,14 @@ end;
 //
 function SystemMillisecondsToUnixTime(t : Int64) : Int64;
 begin
-   Result := UnixTime + (GetSystemTimeMilliseconds-t) div 1000;
+   Result := UnixTime - (GetSystemTimeMilliseconds-t) div 1000;
 end;
 
 // UnixTimeToSystemMilliseconds
 //
 function UnixTimeToSystemMilliseconds(ut : Int64) : Int64;
 begin
-   Result := (UnixTime-ut)*1000 + GetSystemTimeMilliseconds;
+   Result := GetSystemTimeMilliseconds - (UnixTime-ut)*1000;
 end;
 
 // SystemSleep
