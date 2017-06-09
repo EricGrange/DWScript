@@ -178,6 +178,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesWebRequestMethodsRawURLEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsWebClassesWebResponseMethodsSetContentFileEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FServer :  IWebServerInfo;
@@ -838,6 +840,20 @@ begin
       json := (intf as IBoxedJSONValue).Value.ToUnicodeString
    else json := '';
    Info.WebResponse.ContentJSON := json;
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetContentFileEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   fileName : String;
+   response : TWebResponse;
+begin
+   fileName := Info.Execution.FileSystem.ValidateFileName(Info.ParamAsString[0]);
+   if fileName = '' then
+      raise Exception.Create('SetContentFile failed: file does not exists or access denied');
+   response := Info.WebResponse;
+   response.ContentData := UTF8Encode(fileName);
+   response.ContentType := HTTP_RESP_STATICFILE;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetContentTextEval(

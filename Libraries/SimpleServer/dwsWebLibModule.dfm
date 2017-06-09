@@ -357,6 +357,16 @@ object dwsWebLib: TdwsWebLib
             Kind = mkClassProcedure
           end
           item
+            Name = 'SetContentFile'
+            Parameters = <
+              item
+                Name = 'fileName'
+                DataType = 'String'
+              end>
+            OnEval = dwsWebClassesWebResponseMethodsSetContentFileEval
+            Kind = mkClassProcedure
+          end
+          item
             Name = 'RequestAuthentication'
             Parameters = <
               item

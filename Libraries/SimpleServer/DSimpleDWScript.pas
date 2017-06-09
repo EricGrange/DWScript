@@ -30,7 +30,7 @@ uses
    dwsWebServerHelpers, dwsZipLibModule,
    dwsDataBase, dwsDataBaseLibModule, dwsWebServerInfo, dwsWebServerLibModule,
    dwsBackgroundWorkersLibModule, dwsSynapseLibModule, dwsCryptoLibModule,
-   dwsEncodingLibModule, dwsComConnector, dwsXXHash,
+   dwsEncodingLibModule, dwsComConnector, dwsXXHash, dwsHTTPSysServer,
    dwsBigIntegerFunctions.GMP, dwsMPIR.Bundle, dwsCompilerContext, dwsFilter;
 
 type
@@ -51,10 +51,11 @@ type
    TDWSHandlingOption = (optWorker);
    TDWSHandlingOptions = set of TDWSHandlingOption;
 
+   PIdwsProgramExecution = ^IdwsProgramExecution;
    PExecutingScript = ^TExecutingScript;
    TExecutingScript = record
       ID : Integer;
-      Exec : IdwsProgramExecution;
+      Exec : PIdwsProgramExecution;
       Start : Int64;
       Options : TDWSHandlingOptions;
       Prev, Next : PExecutingScript;
@@ -334,15 +335,31 @@ procedure TSimpleDWScript.HandleDWS(const fileName : String; typ : TFileAccessTy
                                     request : TWebRequest; response : TWebResponse;
                                     const options : TDWSHandlingOptions);
 
+   procedure HandleStaticFileWebResponse(response : TWebResponse);
+   var
+      fileName : String;
+   begin
+      fileName := ApplyPathVariables(UTF8ToString(response.ContentData));
+      fileName :=  dwsRuntimeFileSystem.AllocateFileSystem.ValidateFileName(fileName);
+      if fileName <> '' then begin
+         response.ContentData := UTF8Encode(fileName);
+      end else begin
+         response.StatusCode := 501;
+         response.ContentData := 'Unsupported server-side request';
+         response.ContentType := 'text/plain';
+      end;
+   end;
+
    procedure HandleScriptResult(response : TWebResponse; scriptResult : TdwsResult);
    begin
-      if (response.ContentEncoding='') and StrBeginsWithA(response.ContentType, 'text/') then
-         response.ContentData:=scriptResult.ToUTF8String
-      else response.ContentData:=scriptResult.ToDataString;
+      if (response.ContentEncoding = '') and StrBeginsWithA(response.ContentType, 'text/') then
+         response.ContentData := scriptResult.ToUTF8String
+      else response.ContentData := scriptResult.ToDataString;
    end;
 
 var
    prog : IdwsProgram;
+   exec : IdwsProgramExecution;
    webenv : TWebEnvironment;
    executing : TExecutingScript;
    staticCache : TWebStaticCacheEntry;
@@ -367,17 +384,18 @@ begin
       Exit;
    end;
 
-   executing.Start:=GetSystemMilliseconds;
-   executing.Exec:=prog.CreateNewExecution;
-   executing.Options:=options;
-   executing.ID:=InterlockedIncrement(FExecutingID);
+   executing.Start := GetSystemMilliseconds;
+   exec := prog.CreateNewExecution;
+   executing.Exec := @exec;
+   executing.Options := options;
+   executing.ID := InterlockedIncrement(FExecutingID);
 
-   webenv:=TWebEnvironment.Create;
-   webenv.WebRequest:=request;
-   webenv.WebResponse:=response;
-   executing.Exec.Environment:=webenv;
+   webenv := TWebEnvironment.Create;
+   webenv.WebRequest := request;
+   webenv.WebResponse := response;
+   exec.Environment := webenv;
    try
-      executing.Exec.BeginProgram;
+      exec.BeginProgram;
 
       // insert into executing queue
       executing.Prev:=nil;
@@ -389,8 +407,8 @@ begin
       FExecutingScriptsLock.EndWrite;
 
       if optWorker in options then
-         executing.Exec.RunProgram(WorkerTimeoutMilliseconds)
-      else executing.Exec.RunProgram(ScriptTimeoutMilliseconds);
+         exec.RunProgram(WorkerTimeoutMilliseconds)
+      else exec.RunProgram(ScriptTimeoutMilliseconds);
 
       // extract from executing queue
       FExecutingScriptsLock.BeginWrite;
@@ -401,15 +419,18 @@ begin
          executing.Next.Prev:=executing.Prev;
       FExecutingScriptsLock.EndWrite;
 
-      executing.Exec.EndProgram;
+      exec.EndProgram;
    finally
-      executing.Exec.Environment:=nil;
+      exec.Environment:=nil;
    end;
 
-   if executing.Exec.Msgs.Count>0 then
-      Handle500(response, executing.Exec.Msgs)
-   else if (response<>nil) and (response.ContentData='') then begin
-      HandleScriptResult(response, executing.Exec.Result);
+   if exec.Msgs.Count>0 then
+      Handle500(response, exec.Msgs)
+   else if response <> nil then begin
+      if response.ContentData = '' then
+         HandleScriptResult(response, exec.Result);
+      if response.ContentType = HTTP_RESP_STATICFILE then
+         HandleStaticFileWebResponse(response);
       if shStatic in response.Hints then
          prog.ProgramObject.TagInterface := TWebStaticCacheEntry.Create(response);
    end;
@@ -424,7 +445,7 @@ begin
    FExecutingScriptsLock.BeginRead;
    p:=FExecutingScripts;
    while p<>nil do begin
-      p^.Exec.Stop;
+      p^.Exec^.Stop;
       p:=p.Next;
    end;
    FExecutingScriptsLock.EndRead;
@@ -1053,7 +1074,7 @@ begin
          t := GetSystemMilliseconds;
          exec := FExecutingScripts;
          while exec <> nil do begin
-            webEnv := exec.Exec.Environment.GetSelf as TWebEnvironment;
+            webEnv := exec.Exec^.Environment.GetSelf as TWebEnvironment;
             wr.BeginObject;
             wr.WriteName('id').WriteInteger(Cardinal(exec.ID));
             if optWorker in exec.Options then begin
@@ -1065,7 +1086,7 @@ begin
             end;
             wr.WriteName('ip').WriteString(webEnv.WebRequest.RemoteIP);
             wr.WriteName('ms').WriteInteger(t-exec.Start);
-            wr.WriteName('sleeping').WriteBoolean(exec.Exec.Sleeping);
+            wr.WriteName('sleeping').WriteBoolean(exec.Exec^.Sleeping);
             wr.WriteName('options').BeginArray;
                if optWorker in exec.Options then wr.WriteString('worker');
             wr.EndArray;

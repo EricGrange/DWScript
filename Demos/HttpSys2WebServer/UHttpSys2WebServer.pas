@@ -559,13 +559,13 @@ procedure THttpSys2WebServer.ProcessStandardError(
 var
    errorFile : String;
 begin
-   response.StatusCode:=statusCode;
-   errorFile:=FErrorPagesPath+IntToStr(statusCode)+'.htm';
+   response.StatusCode := statusCode;
+   errorFile := FErrorPagesPath+IntToStr(statusCode)+'.htm';
 
    if FileExists(errorFile) then begin
 
-      response.ContentData:=UnicodeStringToUtf8(errorFile);
-      response.ContentType:=HTTP_RESP_STATICFILE;
+      response.ContentData := UnicodeStringToUtf8(errorFile);
+      response.ContentType := HTTP_RESP_STATICFILE;
 
    end else begin
 
