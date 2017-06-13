@@ -785,9 +785,15 @@ end;
 // DoInclude
 //
 procedure TSimpleDWScript.DoInclude(const scriptName: String; var scriptSource: String);
+var
+   pathName : String;
 begin
-   if FHotPath<>'' then
-      scriptSource := dwsCompileSystem.AllocateFileSystem.LoadTextFile(FHotPath+scriptName);
+   if Pos('%', scriptName) > 0 then
+      pathName := ApplyPathVariables(scriptName)
+   else if FHotPath <> '' then
+      pathName := FHotPath + scriptName;
+   if pathName <> '' then
+      scriptSource := dwsCompileSystem.AllocateFileSystem.LoadTextFile(pathName);
 end;
 
 // DoNeedUnit
