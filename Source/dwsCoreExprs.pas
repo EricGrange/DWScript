@@ -10671,7 +10671,7 @@ var
    dyn : TScriptDynamicArray;
 begin
    Expr.EvalAsScriptAssociativeArray(exec, a);
-   dyn := TScriptDynamicArray.CreateNew(Typ);
+   dyn := TScriptDynamicArray.CreateNew(Typ.Typ);
    Result := dyn;
    if a <> nil then
       dyn.ReplaceData((a.GetSelf as TScriptAssociativeArray).CopyKeys);
