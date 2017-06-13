@@ -166,44 +166,6 @@ begin
    Result:=csContinue;
 end;
 
-// Adapted from Ian Boyd code published in
-// http://stackoverflow.com/questions/10854958/how-to-get-version-of-running-executable
-function GetModuleVersion(instance : THandle; var major, minor, release, build : Integer) : Boolean;
-var
-   fileInformation : PVSFIXEDFILEINFO;
-   verlen : Cardinal;
-   rs : TResourceStream;
-   m : TMemoryStream;
-   resource : HRSRC;
-begin
-   Result:=False;
-
-   // Workaround bug in Delphi if resource doesn't exist
-   resource:=FindResource(instance, PChar(1), RT_VERSION);
-   if resource=0 then Exit;
-
-   m:=TMemoryStream.Create;
-   try
-      rs:=TResourceStream.CreateFromID(instance, 1, RT_VERSION);
-      try
-         m.CopyFrom(rs, rs.Size);
-      finally
-         rs.Free;
-      end;
-
-      m.Position:=0;
-      if VerQueryValue(m.Memory, '\', Pointer(fileInformation), verlen) then begin
-         major := fileInformation.dwFileVersionMS shr 16;
-         minor := fileInformation.dwFileVersionMS and $FFFF;
-         release := fileInformation.dwFileVersionLS shr 16;
-         build := fileInformation.dwFileVersionLS and $FFFF;
-         Result:=True;
-      end;
-   finally
-      m.Free;
-   end;
-end;
-
 // GetHostName
 //
 function GetHostName(nameFormat : TComputerNameFormat) : UnicodeString;
@@ -293,12 +255,8 @@ end;
 
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsVersionEval(
   Info: TProgramInfo; ExtObject: TObject);
-var
-   major, minor, release, build : Integer;
 begin
-   if GetModuleVersion(HInstance, major, minor, release, build) then
-      Info.ResultAsString:=Format('%d.%d.%d.%d', [major, minor, release, build])
-   else Info.ResultAsString:='?.?.?.?';
+   Info.ResultAsString := ApplicationVersion;
 end;
 
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsUserNameEval(

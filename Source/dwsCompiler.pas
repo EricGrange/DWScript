@@ -12063,6 +12063,8 @@ begin
    else if ASCIISameText(name, 'TIMESTAMP') then begin
       asNum := True;
       numValue := UnixTime;
+   end else if ASCIISameText(name, 'EXEVERSION') then begin
+      value := ApplicationVersion;
    end else if ASCIISameText(name, 'FUNCTION') then begin
       if CurrentProg is TdwsProcedure then begin
          funcSym:=TdwsProcedure(CurrentProg).Func;
