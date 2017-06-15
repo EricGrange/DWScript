@@ -1187,6 +1187,9 @@ type
          FKeyType : TTypeSymbol;
          FKeyArrayType : TDynamicArraySymbol;
 
+      protected
+         function GetCaption : String; override;
+
       public
          constructor Create(const name : String; elementType, keyType : TTypeSymbol);
          destructor Destroy; override;
@@ -7174,6 +7177,13 @@ begin
    if FKeyArrayType = nil then
       FKeyArrayType := TDynamicArraySymbol.Create('', KeyType, integerType);
    Result := FKeyArrayType;
+end;
+
+// GetCaption
+//
+function TAssociativeArraySymbol.GetCaption : String;
+begin
+   Result := 'array [' + KeyType.Caption + '] of ' + Typ.Caption;
 end;
 
 // ------------------

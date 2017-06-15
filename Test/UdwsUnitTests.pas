@@ -1244,7 +1244,7 @@ var
    sym : TSymbol;
    symClass : TClassSymbol;
 begin
-   prog:=FCompiler.Compile('');
+   prog:=FCompiler.Compile('var aaa : array [String] of Integer;');
 
    sym:=prog.Table.FindSymbol('Func1', cvMagic);
    CheckEquals('function Func1(): Integer', sym.Description);
@@ -1284,6 +1284,10 @@ begin
    sym:=symClass.Members.FindLocal('ArrayProp');
    CheckEquals('property ArrayProp[v: String]: Integer read GetArrayProp', sym.Description);
    CheckEquals('property ArrayProp[v: String]: Integer read GetArrayProp', sym.Caption);
+
+   sym:=prog.Table.FindSymbol('aaa', cvMagic);
+   CheckEquals('array [String] of Integer', sym.Typ.Description);
+   CheckEquals('aaa: array [String] of Integer', sym.Description);
 end;
 
 // CompilationNormal
