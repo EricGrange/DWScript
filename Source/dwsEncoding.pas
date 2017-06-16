@@ -440,8 +440,9 @@ begin
       PrepareBase64DecodeTable;
    len := Length(data);
    outLen := (len shr 2)*3;
+   while (data[len] <= ' ') and (len > 1) do Dec(len);
    if data[len] = '=' then begin
-      if data[len-1] = '=' then
+      if (len > 1) and (data[len-1] = '=') then
          Dec(outLen, 2)
       else Dec(outLen);
    end;

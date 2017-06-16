@@ -7,3 +7,5 @@ PrintLn(u);
 var encoder := Base64Encoder;
 
 PrintLn(encoder.Decode(u)); 
+
+PrintLn(Base64Encoder.Decode('aGVs'#13'bG8='#10));
