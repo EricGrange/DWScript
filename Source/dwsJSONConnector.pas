@@ -197,6 +197,12 @@ type
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
+   // TJSONParseUTF8Method
+   //
+   TJSONParseUTF8Method = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
+   end;
+
    // TJSONParseIntegerArrayMethod
    //
    TJSONParseIntegerArrayMethod = class(TInternalMagicVariantFunction)
@@ -256,6 +262,12 @@ type
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
    end;
 
+   // TJSONStringifyUTF8Method
+   //
+   TJSONStringifyUTF8Method = class (TInternalMagicStringFunction)
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
+   end;
+
    // TJSONSerializeMethod
    //
    TJSONSerializeMethod = class(TInternalMagicVariantFunction)
@@ -288,7 +300,9 @@ const
    SYS_JSON = 'JSON';
    SYS_JSONVARIANT = 'JSONVariant';
    SYS_JSON_STRINGIFY = 'Stringify';
+   SYS_JSON_STRINGIFY_UTF8 = 'StringifyUTF8';
    SYS_JSON_PARSE = 'Parse';
+   SYS_JSON_PARSE_UTF8 = 'ParseUTF8';
    SYS_JSON_PARSE_INTEGER_ARRAY = 'ParseIntegerArray';
    SYS_JSON_PARSE_FLOAT_ARRAY = 'ParseFloatArray';
    SYS_JSON_PARSE_STRING_ARRAY = 'ParseStringArray';
@@ -533,9 +547,17 @@ begin
       table, SYS_JSON_STRINGIFY, ['val', SYS_ANY_TYPE], SYS_STRING,
       [iffStateLess, iffStaticMethod], jsonObject
    );
+   TJSONStringifyUTF8Method.Create(
+      table, SYS_JSON_STRINGIFY_UTF8, ['val', SYS_ANY_TYPE], SYS_STRING,
+      [iffStateLess, iffStaticMethod], jsonObject
+   );
 
    TJSONParseMethod.Create(
       table, SYS_JSON_PARSE, ['str', SYS_STRING], SYS_JSONVARIANT,
+      [iffStaticMethod], jsonObject, ''
+   );
+   TJSONParseUTF8Method.Create(
+      table, SYS_JSON_PARSE_UTF8, ['str', SYS_STRING], SYS_JSONVARIANT,
       [iffStaticMethod], jsonObject, ''
    );
 
@@ -1255,6 +1277,29 @@ begin
 end;
 
 // ------------------
+// ------------------ TJSONParseUTF8Method ------------------
+// ------------------
+
+procedure TJSONParseUTF8Method.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
+var
+   v : TdwsJSONValue;
+   box : TBoxedJSONValue;
+   json : String;
+   jsonUTF8 : RawByteString;
+begin
+   args.EvalAsString(0, json);
+   if json <> '' then begin
+      ScriptStringToRawByteString(json, jsonUTF8);
+      json := UTF8ToString(jsonUTF8);
+      v:=TdwsJSONValue.ParseString(json);
+      if v=nil then
+         box:=nil
+      else box:=TBoxedJSONValue.Create(v);
+      VarCopySafe(result, IBoxedJSONValue(box));
+   end else VarClearSafe(result);
+end;
+
+// ------------------
 // ------------------ TJSONParseIntegerArrayMethod ------------------
 // ------------------
 
@@ -1695,6 +1740,21 @@ end;
 procedure TJSONStringifyMethod.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 begin
    JSONScript.Stringify(args, Result);
+end;
+
+// ------------------
+// ------------------ TJSONStringifyUTF8Method ------------------
+// ------------------
+
+// DoEvalAsString
+//
+procedure TJSONStringifyUTF8Method.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+var
+   bufUTF8 : RawByteString;
+begin
+   JSONScript.Stringify(args, Result);
+   bufUTF8 := UTF8Encode(Result);
+   RawByteStringToScriptString(bufUTF8, Result);
 end;
 
 // ------------------
