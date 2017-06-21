@@ -473,9 +473,9 @@ end;
 //
 procedure TSourceUtilsTests.JSONVariantSuggestTest;
 const
-   cSugg : array [0..10] of String = (
+   cSugg : array [0..11] of String = (
       'Add', 'Clone', 'Delete', 'ElementName', 'Extend', 'High', 'Length',
-      'Low', 'Push', 'ToString', 'TypeName'
+      'Low', 'Push', 'Swap', 'ToString', 'TypeName'
       );
 
 var

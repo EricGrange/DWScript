@@ -583,7 +583,8 @@ begin
       FJSONVariantHelpers.AddSymbol(CreateHelper('Clone', p.TypVariant, [], True));
       FJSONVariantHelpers.AddSymbol(CreateHelper('ToString', p.TypString, [], True));
       FJSONVariantHelpers.AddSymbol(CreateHelper('Extend', p.TypVariant, ['obj', p.TypVariant]));
-      FJSONVariantHelpers.AddSymbol(CreateHelper('Delete', nil, ['name', p.TypString]));
+      FJSONVariantHelpers.AddSymbol(CreateHelper('Delete', nil, ['item', p.TypAnyType]));
+      FJSONVariantHelpers.AddSymbol(CreateHelper('Swap', nil, ['index1', p.TypInteger, 'index2', p.TypInteger]));
       FJSONVariantHelpers.AddSymbol(CreateHelper('TypeName', p.TypString, [], True));
       FJSONVariantHelpers.AddSymbol(CreateHelper('ElementName', p.TypString, ['index', p.TypInteger]));
    end;
