@@ -59,6 +59,7 @@ type
          FExtendCall : IConnectorCall;
          FAddCall : IConnectorCall;
          FDeleteCall : IConnectorCall;
+         FSwapCall : IConnectorCall;
          FToStringCall : IConnectorCall;
          FLengthMember : IConnectorMember;
 
@@ -127,6 +128,11 @@ type
    end;
 
    TdwsJSONDeleteCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
+      public
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+   end;
+
+   TdwsJSONSwapCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
       public
          procedure FastCall(const args : TExprBaseListExec; var result : Variant);
    end;
@@ -619,6 +625,7 @@ begin
    FExtendCall:=TdwsJSONExtendCall.Create;
    FAddCall:=TdwsJSONAddCall.Create;
    FDeleteCall:=TdwsJSONDeleteCall.Create;
+   FSwapCall:=TdwsJSONSwapCall.Create;
    FToStringCall:=TdwsJSONToStringCall.Create;
 
    FLengthMember:=TdwsJSONConnectorLengthMember.Create('length');
@@ -708,10 +715,21 @@ begin
       if Length(params)<>1 then
          raise ECompileException.CreateFmt(CPE_BadNumberOfParameters, [1, Length(params)]);
       paramTyp := params[0].TypSym;
-      if not (paramTyp.UnAliasedType is TBaseStringSymbol) then
-         raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_STRING, paramTyp.Caption]);
+      if not ((paramTyp.UnAliasedType is TBaseStringSymbol) or (paramTyp.UnAliasedType is TBaseIntegerSymbol)) then
+         raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_STRING + ' or ' + SYS_INTEGER, paramTyp.Caption]);
 
       Result:=FDeleteCall;
+      typSym:=nil;
+
+   end else if UnicodeSameText(methodName, 'swap') then begin
+
+      if Length(params)<>2 then
+         raise ECompileException.CreateFmt(CPE_BadNumberOfParameters, [2, Length(params)]);
+      paramTyp := params[0].TypSym;
+      if not (paramTyp.UnAliasedType is TBaseIntegerSymbol) then
+         raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_INTEGER, paramTyp.Caption]);
+
+      Result:=FSwapCall;
       typSym:=nil;
 
    end else begin
@@ -985,11 +1003,41 @@ var
    name : String;
 begin
    args.EvalAsVariant(0, base);
-   baseValue:=TBoxedJSONValue.UnBox(base);
-   if baseValue.ValueType <> jvtObject then
-      raise EdwsJSONException.Create('JSON Object required for Delete method');
-   args.EvalAsString(1, name);
-   TdwsJSONObject(baseValue).Delete(name);
+   baseValue := TBoxedJSONValue.UnBox(base);
+   case baseValue.ValueType of
+      jvtObject : begin
+         args.EvalAsString(1, name);
+         TdwsJSONObject(baseValue).Delete(name);
+      end;
+      jvtArray  : begin
+         TdwsJSONArray(baseValue).Delete(args.ExprBase[1].EvalAsInteger(args.Exec));
+      end;
+   else
+      raise EdwsJSONException.Create('JSON Object or Array required for Delete method');
+   end;
+end;
+
+// ------------------
+// ------------------ TdwsJSONSwapCall ------------------
+// ------------------
+
+// FastCall
+//
+procedure TdwsJSONSwapCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+var
+   base : Variant;
+   baseValue : TdwsJSONValue;
+begin
+   args.EvalAsVariant(0, base);
+   baseValue := TBoxedJSONValue.UnBox(base);
+   case baseValue.ValueType of
+      jvtArray  : begin
+         TdwsJSONArray(baseValue).Swap(args.ExprBase[1].EvalAsInteger(args.Exec),
+                                       args.ExprBase[2].EvalAsInteger(args.Exec));
+      end;
+   else
+      raise EdwsJSONException.Create('JSON Array required for Swap method');
+   end;
 end;
 
 // ------------------
