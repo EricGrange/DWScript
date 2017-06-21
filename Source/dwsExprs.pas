@@ -1622,6 +1622,7 @@ type
    TScriptDynamicStringArray = class (TScriptDynamicValueArray)
       public
          procedure Add(const s : String);
+         procedure AddStrings(sl : TStrings);
    end;
 
    TScriptAssociativeArrayHashCodes = array of Cardinal;
@@ -7408,6 +7409,18 @@ begin
    ArrayLength:=ArrayLength+1;
    if s<>'' then
       AsString[ArrayLength-1]:=s;
+end;
+
+// AddStrings
+//
+procedure TScriptDynamicStringArray.AddStrings(sl : TStrings);
+var
+   i, n : Integer;
+begin
+   n := ArrayLength;
+   ArrayLength := n+sl.Count;
+   for i := 0 to sl.Count-1 do
+      AsString[n+i] := sl[i];
 end;
 
 // ------------------

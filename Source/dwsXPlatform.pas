@@ -140,6 +140,7 @@ type
 procedure CollectFiles(const directory, fileMask : TFileName;
                        list : TStrings; recurseSubdirectories: Boolean = False;
                        onProgress : TCollectFileProgressEvent = nil);
+procedure CollectSubDirs(const directory : TFileName; list : TStrings);
 
 type
    {$IFNDEF FPC}
@@ -945,6 +946,43 @@ begin
                          list, recurseSubdirectories, onProgress);
    finally
       mask.Free;
+   end;
+end;
+
+// CollectSubDirs
+//
+procedure CollectSubDirs(const directory : TFileName; list : TStrings);
+const
+   // contant defined in Windows.pas is incorrect
+   FindExInfoBasic = 1;
+var
+   searchRec : TFindDataRec;
+   infoLevel : TFindexInfoLevels;
+   fileName : TFileName;
+begin
+   // 6.1 required for FindExInfoBasic (Win 2008 R2 or Win 7)
+   if ((Win32MajorVersion shl 8) or Win32MinorVersion)>=$601 then
+      infoLevel:=TFindexInfoLevels(FindExInfoBasic)
+   else infoLevel:=FindExInfoStandard;
+
+   fileName := directory+'*';
+   searchRec.Handle:=FindFirstFileEx(PChar(fileName), infoLevel,
+                                     @searchRec.Data, FINDEX_SEARCH_OPS.FindExSearchLimitToDirectories,
+                                     nil, 0);
+   if searchRec.Handle<>INVALID_HANDLE_VALUE then begin
+      repeat
+         if (searchRec.Data.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY)<>0 then begin
+            if searchRec.Data.cFileName[0]='.' then begin
+               if searchRec.Data.cFileName[1]='.' then begin
+                  if searchRec.Data.cFileName[2]=#0 then continue;
+               end else if searchRec.Data.cFileName[1]=#0 then continue;
+            end;
+            // decomposed cast and concatenation to avoid implicit string variable
+            fileName := searchRec.Data.cFileName;
+            list.Add(fileName);
+         end;
+      until not FindNextFileW(searchRec.Handle, searchRec.Data);
+      Windows.FindClose(searchRec.Handle);
    end;
 end;
 

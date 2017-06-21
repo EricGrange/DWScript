@@ -195,6 +195,10 @@ type
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
+   TEnumerateSubDirsFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -759,17 +763,36 @@ end;
 procedure TEnumerateDirFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    sl : TStringList;
-   newArray : TScriptDynamicArray;
-   i : Integer;
+   newArray : TScriptDynamicStringArray;
 begin
-   sl:=TStringList.Create;
+   sl := TStringList.Create;
    try
       CollectFiles(args.AsFileName[0], args.AsString[1], sl, args.AsBoolean[2]);
-      newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).Prog.SystemTable.SymbolTable.TypString);
-      Result:=IScriptDynArray(newArray);
-      newArray.ArrayLength:=sl.Count;
-      for i:=0 to newArray.ArrayLength-1 do
-         newArray.AsString[i]:=sl[i];
+      newArray := TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).CompilerContext.TypString) as TScriptDynamicStringArray;
+      Result := IScriptDynArray(newArray);
+      newArray.AddStrings(sl);
+   finally
+      sl.Free;
+   end;
+end;
+
+// ------------------
+// ------------------ TEnumerateSubDirsFunc ------------------
+// ------------------
+
+// DoEvalAsVariant
+//
+procedure TEnumerateSubDirsFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
+var
+   sl : TStringList;
+   newArray : TScriptDynamicStringArray;
+begin
+   sl := TStringList.Create;
+   try
+      CollectSubDirs(args.AsFileName[0], sl);
+      newArray := TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).CompilerContext.TypString) as TScriptDynamicStringArray;
+      Result := IScriptDynArray(newArray);
+      newArray.AddStrings(sl);
    finally
       sl.Free;
    end;
@@ -828,6 +851,7 @@ initialization
    RegisterInternalBoolFunction(TRemoveDirFunc, 'RemoveDir', ['path', SYS_STRING, 'evenIfNotEmpty=False', SYS_BOOLEAN], []);
 
    RegisterInternalFunction(TEnumerateDirFunc, 'EnumerateDir', ['path', SYS_STRING, 'mask', SYS_STRING, 'recursive', SYS_BOOLEAN], SYS_ARRAY_OF_STRING, []);
+   RegisterInternalFunction(TEnumerateSubDirsFunc, 'EnumerateSubDirs', ['path', SYS_STRING], SYS_ARRAY_OF_STRING, []);
 
 end.
 
