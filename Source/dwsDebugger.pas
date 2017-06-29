@@ -1255,15 +1255,20 @@ end;
 // SuspendExecution
 //
 function TdwsDSCStepDetail.SuspendExecution : Boolean;
+var
+   sourceFile : TSourceFile;
 begin
+   sourceFile := Debugger.CurrentExpression.ScriptPos.SourceFile;
+   if sourceFile.NotSteppable then Exit(False);
+
    if SourceFileName = '' then begin
-      Debugger.Execution.Prog.ProgramObject.UnitList. .Find(SourceFileName).
       Result := True;
-   end else begin
-      Result := Debugger.CurrentExpression.ScriptPos.IsSourceFile(SourceFileName);
-   end;
-   if Result then
       Free;
+   end else begin
+      Result := UnicodeSameText(SourceFileName, sourceFile.Name);
+      if Result then
+         Free;
+   end;
 end;
 
 // ------------------

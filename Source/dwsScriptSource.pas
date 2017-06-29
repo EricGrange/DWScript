@@ -33,12 +33,15 @@ type
    TSourceFile = class (TRefCountedObject)
       private
          FLineCount : Integer;
-         FCode : String;
+         FName, FCode : String;
+         FNotSteppable : Boolean;
 
       public
-         Name : String;
+         property Name : String read FName write FName;
          property Code : String read FCode write FCode;
          function LineCount : Integer;
+
+         property NotSteppable : Boolean read FNotSteppable write FNotSteppable;
    end;
 
    // TScriptPos
