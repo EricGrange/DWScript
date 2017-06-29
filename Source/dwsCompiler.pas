@@ -42,7 +42,7 @@ const
    cDefaultStackChunkSize = 4096;  // 64 kB in 32bit Delphi, each stack entry is a Variant
 
    // compiler version is date in YYYYMMDD format, dot subversion number
-   cCompilerVersion = 20170117.0;
+   cCompilerVersion = 20170627.0;
 
 type
    TdwsCompiler = class;
@@ -10650,6 +10650,7 @@ begin
                   OrphanAndNil(right);
                end;
                ttQUESTIONQUESTION : begin
+                  FCompilerContext.WrapWithImplicitCast(Result.Typ, hotPos, right);
                   rightTyp:=right.Typ;
                   if not Result.Typ.IsCompatible(rightTyp) then begin
                      if Result.Typ.UnAliasedTypeIs(TClassSymbol) and right.Typ.UnAliasedTypeIs(TClassSymbol) then begin
@@ -10677,6 +10678,8 @@ begin
                      Result:=TCoalesceDynArrayExpr.Create(FCompilerContext, hotPos, tt, Result, right);
                   end else if Result.Typ.IsOfType(FCompilerContext.TypInteger) then begin
                      Result:=TCoalesceIntExpr.Create(FCompilerContext, hotPos, tt, Result, right);
+                  end else if Result.Typ.IsOfType(FCompilerContext.TypFloat) then begin
+                     Result:=TCoalesceFloatExpr.Create(FCompilerContext, hotPos, tt, Result, right);
                   end else begin
                      FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                      // fake result to keep compiler going and report further issues

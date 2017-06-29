@@ -1072,6 +1072,7 @@ begin
    RegisterCodeGen(TCoalesceExpr,         TJSCoalesceExpr.Create);
    RegisterCodeGen(TCoalesceStrExpr,      TJSCoalesceExpr.Create);
    RegisterCodeGen(TCoalesceIntExpr,      TJSCoalesceExpr.Create);
+   RegisterCodeGen(TCoalesceFloatExpr,    TJSCoalesceExpr.Create);
    RegisterCodeGen(TCoalesceClassExpr,    TJSCoalesceExpr.Create);
    RegisterCodeGen(TCoalesceDynArrayExpr, TJSCoalesceExpr.Create);
 
