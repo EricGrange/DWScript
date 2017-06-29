@@ -160,16 +160,6 @@ begin
    DoInitialize;
 end;
 
-function SQLiteTypeToDataType(sqliteType : Integer) : TdwsDataFieldType;
-const
-   cSQLiteTypeToDataType : array [SQLITE_INTEGER..SQLITE_NULL] of TdwsDataFieldType = (
-      dftInteger, dftFloat, dftString, dftBlob, dftNull
-   );
-begin
-   Assert(sqliteType in [Low(cSQLiteTypeToDataType)..High(SQLITE_NULL)]);
-   Result:=cSQLiteTypeToDataType[sqliteType]
-end;
-
 // SQLAssignParameters
 //
 procedure SQLAssignParameters(var rq : TSQLRequest; const params : TData);
@@ -482,8 +472,41 @@ end;
 // GetDataType
 //
 function TdwsSynSQLiteDataField.GetDataType : TdwsDataFieldType;
+var
+   sqlt : Integer;
+   r : RawUTF8;
 begin
-   Result:=SQLiteTypeToDataType(TdwsSynSQLiteDataSet(DataSet).FRequest.FieldType(Index));
+   sqlt := TdwsSynSQLiteDataSet(DataSet).FRequest.FieldType(Index);
+   case sqlt of
+      SQLITE_INTEGER : begin
+         r := TdwsSynSQLiteDataSet(DataSet).FRequest.FieldDeclaredType(Index);
+         if (Length(r) >= 4) and (r[1] in ['B', 'b'])
+                             and (r[2] in ['O', 'o'])
+                             and (r[3] in ['O', 'o'])
+                             and (r[4] in ['L', 'l']) then
+            Result := dftBoolean
+         else if (Length(r) >= 4) and (r[1] in ['D', 'd'])
+                             and (r[2] in ['A', 'a'])
+                             and (r[3] in ['T', 't'])
+                             and (r[4] in ['E', 'e']) then
+            Result := dftDateTime
+         else Result := dftInteger;
+      end;
+      SQLITE_FLOAT : begin
+         r := TdwsSynSQLiteDataSet(DataSet).FRequest.FieldDeclaredType(Index);
+         if (Length(r) >= 4) and (r[1] in ['D', 'd'])
+                             and (r[2] in ['A', 'a'])
+                             and (r[3] in ['T', 't'])
+                             and (r[4] in ['E', 'e']) then
+            Result := dftDateTime
+         else Result := dftFloat;
+      end;
+      SQLITE_TEXT : Result := dftString;
+      SQLITE_BLOB : Result := dftBlob;
+      SQLITE_NULL : Result := dftNull;
+   else
+      raise EDWSDataBase.CreateFmt('Unknown field SQLite type %d', [sqlt]);
+   end;
 end;
 
 // GetDeclaredType
