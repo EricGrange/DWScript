@@ -8,7 +8,7 @@ uses
    dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, Variants,
    dwsSymbols, dwsPascalTokenizer, dwsStrings, dwsJSON, dwsFunctions,
    dwsFilter, dwsScriptSource, dwsSymbolDictionary, dwsContextMap,
-   dwsCompilerContext;
+   dwsCompilerContext, dwsUnitSymbols;
 
 type
 

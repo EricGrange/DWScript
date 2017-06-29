@@ -24,11 +24,32 @@ unit dwsUnitSymbols;
 interface
 
 uses
-   SysUtils,
+   SysUtils, Classes,
    dwsUtils, dwsSymbols, dwsErrors, dwsXPlatform,
    dwsStrings, dwsTokenizer, dwsDataContext, dwsUnicode, dwsXXHash;
 
 type
+
+   TIdwsUnitFlag = (ufImplicitUse, ufOwnsSymbolTable);
+   TIdwsUnitFlags = set of TIdwsUnitFlag;
+
+   // Interface for units
+   IdwsUnit = interface
+      procedure BeforeAdditionTo(dwscript : TObject);
+      function  GetSelf : TObject;
+      function  GetUnitName : String;
+      function  GetDependencies : TStringList;
+      function  GetUnitFlags : TIdwsUnitFlags;
+      function  GetDeprecatedMessage : String;
+   end;
+
+   TIdwsUnitList = class (TSimpleList<IdwsUnit>)
+      public
+         function IndexOfName(const unitName : String) : Integer;
+         function IndexOf(const aUnit : IdwsUnit) : Integer;
+         procedure AddUnits(list : TIdwsUnitList);
+         function FindDuplicateUnitName : String;
+   end;
 
    TSystemSymbolTable = class;
    TUnitSymbolTable = class;
@@ -319,6 +340,55 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+// ------------------
+// ------------------ TIdwsUnitList ------------------
+// ------------------
+
+// IndexOf (name)
+//
+function TIdwsUnitList.IndexOfName(const unitName : String) : Integer;
+begin
+   for Result:=0 to Count-1 do
+      if UnicodeSameText(Items[Result].GetUnitName, unitName) then
+         Exit;
+   Result:=-1;
+end;
+
+// AddUnits
+//
+procedure TIdwsUnitList.AddUnits(list : TIdwsUnitList);
+var
+   i : Integer;
+begin
+   for i:=0 to list.Count-1 do
+      Add(list[i]);
+end;
+
+// FindDuplicateUnitName
+//
+function TIdwsUnitList.FindDuplicateUnitName : String;
+var
+   i : Integer;
+begin
+   // Check for duplicate unit names
+   for i:=0 to Count-1 do begin
+      Result:=Items[i].GetUnitName;
+      if IndexOfName(Result)<>i then
+         Exit;
+   end;
+   Result:='';
+end;
+
+// IndexOf (IdwsUnit)
+//
+function TIdwsUnitList.IndexOf(const aUnit : IdwsUnit) : Integer;
+begin
+   for Result:=0 to Count-1 do
+      if Items[Result]=aUnit then
+         Exit;
+   Result:=-1;
+end;
 
 // ------------------
 // ------------------ TStaticSymbolTable ------------------

@@ -60,7 +60,7 @@ type
          property Script : TDelphiWebScript read FScript write SetScript;
    end;
 
-   TdwsEmptyUnit = class (TComponent, IUnknown, IdwsUnit)
+   TdwsEmptyUnit = class (TComponent, IUnknown, IdwsUnit, IdwsUnitTableFactory)
       private
          procedure BeforeAdditionTo(dwscript : TObject);
          function GetUnitName: String;
@@ -76,6 +76,8 @@ type
          FUnitName : String;
          FDependencies : TStringList;
          procedure AddUnitSymbols(SymbolTable: TSymbolTable); virtual; abstract;
+
+         function  GetSelf : TObject;
 
       public
          constructor Create(AOwner: TComponent); override;
@@ -193,7 +195,7 @@ type
 
    // TdwsAbstractUnit
    //
-   TdwsAbstractUnit = class(TComponent, IUnknown, IdwsUnit)
+   TdwsAbstractUnit = class(TComponent, IUnknown, IdwsUnit, IdwsUnitTableFactory)
       private
          FDependencies : TStringList;
          FScript : TDelphiWebScript;
@@ -209,6 +211,7 @@ type
          procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
          procedure BeforeAdditionTo(dwscript : TObject);
+         function GetSelf : TObject;
          function GetUnitName: String;
          function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                operators : TOperators; rootTable : TSymbolTable) : TUnitSymbolTable; virtual; abstract;
@@ -5125,6 +5128,13 @@ begin
    end;
 end;
 
+// GetSelf
+//
+function TdwsAbstractUnit.GetSelf : TObject;
+begin
+   Result := Self;
+end;
+
 // SetScript
 //
 procedure TdwsAbstractUnit.SetScript(const Value: TDelphiWebScript);
@@ -5233,6 +5243,13 @@ end;
 procedure TdwsEmptyUnit.BeforeAdditionTo(dwscript : TObject);
 begin
    // nothing
+end;
+
+// GetSelf
+//
+function TdwsEmptyUnit.GetSelf : TObject;
+begin
+   Result := Self;
 end;
 
 { TdwsEmptyUnit }

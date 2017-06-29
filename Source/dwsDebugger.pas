@@ -1256,8 +1256,12 @@ end;
 //
 function TdwsDSCStepDetail.SuspendExecution : Boolean;
 begin
-   Result:=   (SourceFileName='')
-           or Debugger.CurrentExpression.ScriptPos.IsSourceFile(SourceFileName);
+   if SourceFileName = '' then begin
+      Debugger.Execution.Prog.ProgramObject.UnitList. .Find(SourceFileName).
+      Result := True;
+   end else begin
+      Result := Debugger.CurrentExpression.ScriptPos.IsSourceFile(SourceFileName);
+   end;
    if Result then
       Free;
 end;

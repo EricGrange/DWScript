@@ -46,6 +46,7 @@ type
          FUnifiedConstants : TObject;
          FBaseTypes : TdwsBaseSymbolTypes;
          FOrphanedObjects : TSimpleStack<TRefCountedObject>;
+         FUnitList : TIdwsUnitList;
 
          FTypDefaultConstructor : TMethodSymbol;
          FTypDefaultDestructor : TMethodSymbol;
@@ -80,6 +81,7 @@ type
          property SystemTable : TSystemSymbolTable read FSystemTable write SetSystemTable;
          property Prog : TObject read FProg write FProg;
          property UnifiedConstants : TObject read FUnifiedConstants write FUnifiedConstants;
+         property UnitList : TIdwsUnitList read FUnitList write FUnitList;
 
          property Execution : TdwsExecution read FExecution write FExecution;
          property Options : TCompilerOptions read FOptions write FOptions;
