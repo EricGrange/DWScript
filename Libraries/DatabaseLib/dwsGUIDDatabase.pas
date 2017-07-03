@@ -154,14 +154,14 @@ end;
 //
 procedure TdwsGUIDDataBase.Commit;
 begin
-   BeginTransaction;
+   raise Exception.Create('Transactions not supported');
 end;
 
 // Rollback
 //
 procedure TdwsGUIDDataBase.Rollback;
 begin
-   Rollback;
+   raise Exception.Create('Transactions not supported');
 end;
 
 // InTransaction
