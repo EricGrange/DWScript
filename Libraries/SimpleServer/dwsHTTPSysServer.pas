@@ -86,6 +86,7 @@ type
    );
 
    TOnHttpServerRequest = procedure(inRequest : TWebRequest; outResponse : TWebResponse) of object;
+   TOnHttpServerThreadException = procedure (sender : TThread; var e : Exception) of object;
 
    /// event prototype used e.g. by THttpServerGeneric.OnHttpThreadStart
    TNotifyThreadEvent = procedure(Sender : TThread) of object;
@@ -109,7 +110,8 @@ type
          /// set by RegisterCompress method
          FCompressAcceptEncoding : RawByteString;
          FOnHttpThreadStart : TNotifyThreadEvent;
-         FOnHttpThreadTerminate : TNotifyEvent;
+         FOnHttpThreadTerminate : TNotifyThreadEvent;
+         FOnHttpThreadException : TOnHttpServerThreadException;
 
          procedure DoTerminate; override;
          /// server main loop: just launch FOnHttpThreadStart event (if any)
@@ -151,7 +153,9 @@ type
          // ! begin // TSQLDBConnectionPropertiesThreadSafe
          // !   fMyConnectionProps.EndCurrentThread;
          // ! end;
-         property OnHttpThreadTerminate : TNotifyEvent read FOnHttpThreadTerminate write FOnHttpThreadTerminate;
+         property OnHttpThreadTerminate : TNotifyThreadEvent read FOnHttpThreadTerminate write FOnHttpThreadTerminate;
+         /// event handler called when an exception occurred in an http thread
+         property OnHttpThreadException : TOnHttpServerThreadException read FOnHttpThreadException write FOnHttpThreadException;
    end;
 
    THttpApiFragmentCache = class
@@ -619,6 +623,7 @@ begin
    ServerName := From.ServerName;
    OnHttpThreadStart := From.OnHttpThreadStart;
    OnHttpThreadTerminate := From.OnHttpThreadTerminate;
+   OnHttpThreadException := From.OnHttpThreadException;
    FCompressAcceptEncoding := From.FCompressAcceptEncoding;
    if From.Logging then begin
       FLogDataPtr:=@FLogFieldsData;
@@ -1001,6 +1006,7 @@ var
    pRespServer : PHTTP_KNOWN_HEADER;
 begin
    NameThreadForDebugging('THttpApi2Server');
+   try
 
    // THttpServerGeneric thread preparation: launch any OnHttpThreadStart event
    inherited Execute;
@@ -1149,6 +1155,14 @@ begin
       end;
    until Terminated;
    CoUninitialize;
+
+   except
+      on E : Exception do begin
+         if Assigned(FOnHttpThreadException) then
+            FOnHttpThreadException(Self, E);
+         if E <> nil then raise;
+      end;
+   end;
 end;
 
 procedure THttpApi2Server.RegisterCompress(aFunction : THttpSocketCompress);
