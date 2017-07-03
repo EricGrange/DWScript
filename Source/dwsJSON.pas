@@ -20,7 +20,7 @@ unit dwsJSON;
 interface
 
 uses
-   Classes, SysUtils, Math,
+   Classes, SysUtils, Math, Variants,
    dwsUtils, dwsXPlatform, dwsXXHash, dwsUnicode;
 
 type
@@ -85,6 +85,8 @@ type
          procedure WriteStrings(const str : array of UnicodeString); overload;
 
          procedure WriteJSON(const json : UnicodeString);
+
+         procedure WriteVariant(const v : Variant);
 
          function ToString : String; override; final;
          function ToUnicodeString : UnicodeString;
@@ -2906,6 +2908,34 @@ begin
    BeforeWriteImmediate;
    FStream.WriteString(json);
    AfterWriteImmediate;
+end;
+
+// WriteVariant
+//
+procedure TdwsJSONWriter.WriteVariant(const v : Variant);
+var
+   i : Integer;
+begin
+   if VarIsArray(v) then begin
+      BeginArray;
+      for i := VarArrayLowBound(v, 1) to VarArrayHighBound(v, 1) do
+         WriteVariant(v[i]);
+      EndArray;
+   end else case VarType(v) of
+      varInteger, varInt64, varSmallint, varShortInt,
+      varUInt64, varWord, varByte, varLongWord :
+         WriteInteger(v);
+      varSingle, varDouble :
+         WriteNumber(v);
+      varBoolean :
+         WriteBoolean(v);
+      varDate :
+         WriteDate(v);
+      varNull, varEmpty :
+         WriteNull;
+   else
+      WriteString(v);
+   end;
 end;
 
 // WriteStrings
