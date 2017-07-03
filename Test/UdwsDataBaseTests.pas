@@ -6,7 +6,8 @@ uses
    Classes, SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsDataBaseLibModule, dwsXPlatform, dwsSymbols, dwsUtils,
-   dwsGUIDDatabase, dwsSynSQLiteDatabase, dwsCompilerContext;
+   dwsGUIDDatabase, dwsSynSQLiteDatabase, dwsCompilerContext,
+   dwsWMIDatabase;
 
 type
 

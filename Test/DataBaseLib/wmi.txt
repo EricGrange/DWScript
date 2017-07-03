@@ -1,0 +1,4 @@
+UInt16
+String
+True
+Win32_Processor
