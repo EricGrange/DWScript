@@ -93,10 +93,61 @@ object dwsBackgroundWorkersLib: TdwsBackgroundWorkersLib
             Attributes = [maStatic]
             OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueDelayedWorkEval
             Kind = mkClassProcedure
+          end
+          item
+            Name = 'GetWorkerCount'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end>
+            ResultType = 'Integer'
+            Attributes = [maStatic]
+            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsGetWorkerCountEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'SetWorkerCount'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end
+              item
+                Name = 'n'
+                DataType = 'Integer'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsSetWorkerCountEval
+            Kind = mkClassProcedure
+          end
+          item
+            Name = 'QueueStatusAsJSON'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsBackgroundWorkersClassesBackgroundWorkersMethodsQueueStatusAsJSONEval
+            Kind = mkClassFunction
+          end>
+        Properties = <
+          item
+            Name = 'WorkerCount'
+            DataType = 'Integer'
+            ReadAccess = 'GetWorkerCount'
+            WriteAccess = 'SetWorkerCount'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end>
           end>
       end>
     UnitName = 'System.Workers'
-    StaticSymbols = False
+    StaticSymbols = True
     Left = 80
     Top = 16
   end

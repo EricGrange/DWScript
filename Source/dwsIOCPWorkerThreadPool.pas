@@ -21,7 +21,7 @@ interface
 {$I dws.inc}
 
 uses
-   Windows, Classes, SysUtils, ActiveX,
+   Windows, Classes, SysUtils, ActiveX, Math,
    dwsXPlatform, dwsUtils;
 
 type
@@ -47,6 +47,12 @@ type
          destructor Destroy; override;
    end;
 
+   TWorkerThreadQueueSizeInfo = record
+      Total : Integer;
+      Delayed : Integer;
+      Peak : Integer;
+   end;
+
    IWorkerThreadPool = interface (IGetSelf)
       ['{775D71DC-6F61-4A52-B9DC-250682F4D696}']
       procedure Shutdown(timeoutMilliSeconds : Cardinal = INFINITE);
@@ -62,6 +68,7 @@ type
       procedure QueueWork(const workUnit : TNotifyEvent; sender : TObject); overload;
 
       function QueueSize : Integer;
+      function QueueSizeInfo : TWorkerThreadQueueSizeInfo;
 
       function IsIdle : Boolean;
    end;
@@ -73,6 +80,7 @@ type
          FLiveWorkerCount : Integer;
          FActiveWorkerCount : Integer;
          FQueueSize : Integer;
+         FPeakQueueSize : Integer;
          FTimerQueue : THandle;
          FDelayed : TIOCPDelayedWork;
          FDelayedLock : TMultiReadSingleWrite;
@@ -80,6 +88,8 @@ type
       protected
          function GetWorkerCount : Integer;
          procedure SetWorkerCount(val : Integer);
+
+         procedure IncrementQueueSize; inline;
 
       public
          constructor Create(aWorkerCount : Integer);
@@ -93,7 +103,8 @@ type
 
          procedure QueueDelayedWork(delayMillisecSeconds : Cardinal; const workUnit : TNotifyEvent; sender : TObject);
 
-         function QueueSize : Integer;
+         function QueueSize : Integer; inline;
+         function QueueSizeInfo : TWorkerThreadQueueSizeInfo;
 
          property WorkerCount : Integer read FWorkerCount write SetWorkerCount;
          function LiveWorkerCount : Integer;
@@ -327,13 +338,24 @@ begin
       Sleep(10);
 end;
 
+// IncrementQueueSize
+//
+procedure TIOCPWorkerThreadPool.IncrementQueueSize;
+var
+   n : Integer;
+begin
+   n := InterlockedIncrement(FQueueSize);
+   if n > FQueueSize then
+      FQueueSize := n;
+end;
+
 // QueueWork
 //
 procedure TIOCPWorkerThreadPool.QueueWork(const workUnit : TAnonymousWorkUnit);
 var
    lpOverlapped : Pointer;
 begin
-   InterlockedIncrement(FQueueSize);
+   IncrementQueueSize;
    lpOverlapped:=nil;
    PAnonymousWorkUnit(@lpOverlapped)^:=workUnit;
    PostQueuedCompletionStatus(FIOCP, WORK_UNIT_ANONYMOUS, 0, lpOverlapped);
@@ -345,7 +367,7 @@ procedure TIOCPWorkerThreadPool.QueueWork(const workUnit : TProcedureWorkUnit);
 var
    lpOverlapped : Pointer;
 begin
-   InterlockedIncrement(FQueueSize);
+   IncrementQueueSize;
    lpOverlapped:=Pointer(@workUnit);
    PostQueuedCompletionStatus(FIOCP, WORK_UNIT_PROCEDURE, 0, lpOverlapped);
 end;
@@ -356,7 +378,7 @@ procedure TIOCPWorkerThreadPool.QueueWork(const workUnit : TNotifyEvent; sender 
 var
    data : TIOCPData;
 begin
-   InterlockedIncrement(FQueueSize);
+   IncrementQueueSize;
    data.notifyEvent:=workUnit;
    data.sender:=sender;
    PostQueuedCompletionStatus(FIOCP, data.lpNumberOfBytesTransferred, data.lpCompletionKey, data.lpOverlapped);
@@ -386,7 +408,7 @@ begin
       CreateTimerQueueTimer(dw.FTimer, FTimerQueue, @DelayedWorkCallBack, dw,
                             delayMillisecSeconds, 0,
                             WT_EXECUTEDEFAULT or WT_EXECUTELONGFUNCTION or WT_EXECUTEONLYONCE);
-      InterlockedIncrement(FQueueSize);
+      IncrementQueueSize;
    except
       dw.Free;
       raise;
@@ -397,7 +419,31 @@ end;
 //
 function TIOCPWorkerThreadPool.QueueSize : Integer;
 begin
-   Result:=FQueueSize;
+   Result := FQueueSize;
+end;
+
+// QueueSizeInfo
+//
+function TIOCPWorkerThreadPool.QueueSizeInfo : TWorkerThreadQueueSizeInfo;
+var
+   p : TIOCPDelayedWork;
+begin
+   FDelayedLock.BeginRead;
+   try
+      Result.Delayed := 0;
+      p := FDelayed;
+      while p <> nil do begin
+         Inc(Result.Delayed);
+         p := p.FNext;
+      end;
+   finally
+      FDelayedLock.EndRead;
+   end;
+   // prettify the info: minor incoherencies are possible since we do not do a full freeze
+   Result.Total := Max(FQueueSize, Result.Delayed);
+   if Result.Total > FPeakQueueSize then
+      FPeakQueueSize := Result.Total;
+   Result.Peak := FPeakQueueSize;
 end;
 
 // LiveWorkerCount

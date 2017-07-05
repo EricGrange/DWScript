@@ -89,7 +89,6 @@ type
          function PrepareContentFields : TStrings; virtual;
 
       public
-         constructor Create;
          destructor Destroy; override;
 
          procedure ResetCookies; inline;
@@ -301,13 +300,6 @@ end;
 // ------------------
 // ------------------ TWebRequest ------------------
 // ------------------
-
-// Create
-//
-constructor TWebRequest.Create;
-begin
-   inherited;
-end;
 
 // Destroy
 //
