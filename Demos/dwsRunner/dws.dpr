@@ -37,6 +37,8 @@ uses
   dwsComConnector,
   dwsJSONConnector,
   dwsSynSQLiteDatabase,
+  dwsSynODBCDatabase,
+  dwsWMIDatabase,
   dwsRunnerProject in 'dwsRunnerProject.pas';
 
 {$SetPEFlags IMAGE_FILE_LARGE_ADDRESS_AWARE or IMAGE_FILE_RELOCS_STRIPPED}

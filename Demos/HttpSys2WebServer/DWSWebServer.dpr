@@ -56,7 +56,7 @@ uses
   dwsSynODBCDatabase in '..\..\Libraries\DatabaseLib\dwsSynODBCDatabase.pas',
   dwsSynOleDBDatabase in '..\..\Libraries\DatabaseLib\dwsSynOleDBDatabase.pas',
   dwsDatabase in '..\..\Libraries\DatabaseLib\dwsDatabase.pas',
-  dwsGUIDDatabase in '..\..\Libraries\DatabaseLib\dwsGUIDDatabase.pas',
+  dwsWMIDatabase in '..\..\Libraries\DatabaseLib\dwsWMIDatabase.pas',
   dwsWebServerLibModule in '..\..\Libraries\SimpleServer\dwsWebServerLibModule.pas' {dwsWebServerLib: TDataModule},
   dwsWebServerInfo in '..\..\Libraries\SimpleServer\dwsWebServerInfo.pas',
   dwsFileFunctions in '..\..\Source\dwsFileFunctions.pas',

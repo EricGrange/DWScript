@@ -4,7 +4,7 @@ interface
 
 uses
    Classes, SysUtils,
-   dwsUtils, dwsXPlatform, dwsComp, dwsFunctions,
+   dwsUtils, dwsXPlatform, dwsComp, dwsUnitSymbols,
    SynZip;
 
 type

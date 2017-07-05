@@ -24,7 +24,7 @@ uses
    Windows, SysUtils, Classes, StrUtils, Masks,
    dwsFileSystem, dwsGlobalVarsFunctions, dwsExprList,
    dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils, dwsXPlatform,
-   dwsJSONConnector, dwsJSON, dwsErrors, dwsFunctions, dwsSymbols,
+   dwsJSONConnector, dwsJSON, dwsErrors, dwsUnitSymbols, dwsSymbols,
    dwsJIT, dwsJITx86, dwsJSFilter, dwsJSLibModule, dwsCodeGen,
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
    dwsWebServerHelpers, dwsZipLibModule,
