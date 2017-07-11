@@ -881,9 +881,11 @@ end;
 //
 class procedure TSimpleDWScript.Handle503(response : TWebResponse);
 begin
-   response.StatusCode:=503;
-   response.ContentData:='CPU Usage limit reached, please try again later';
-   response.ContentType:='text/plain';
+   if response<>nil then begin
+      response.StatusCode:=503;
+      response.ContentData:='CPU Usage limit reached, please try again later';
+      response.ContentType:='text/plain';
+   end else OutputDebugString('CPU Usage limit reached');
 end;
 
 // CheckDirectoryChanges
@@ -1039,19 +1041,29 @@ end;
 // Startup
 //
 procedure TSimpleDWScript.Startup;
+var
+   startupWebRequest : TWebRequest;
 begin
    FBackgroundFileSystem:=dwsRuntimeFileSystem.AllocateFileSystem;
 
    GetSystemTimeAsFileTime(FLastCheckTime);
    CheckDirectoryChanges;
 
-   if StartupScriptName<>'' then
-      HandleDWS(StartupScriptName, fatPAS, nil, nil, [optWorker]);
+   if StartupScriptName <> '' then begin
+      startupWebRequest := TEmptyWebRequest.Create;
+      try
+         HandleDWS(StartupScriptName, fatPAS, startupWebRequest, nil, [optWorker]);
+      finally
+         startupWebRequest.Free;
+      end;
+   end;
 end;
 
 // Shutdown
 //
 procedure TSimpleDWScript.Shutdown;
+var
+   shutdownWebRequest : TWebRequest;
 begin
    FCheckDirectoryChanges := nil;
 
@@ -1059,8 +1071,14 @@ begin
 
    StopDWS;
 
-   if ShutdownScriptName<>'' then
-      HandleDWS(ShutdownScriptName, fatPAS, nil, nil, [optWorker]);
+   if ShutdownScriptName <> '' then begin
+      shutdownWebRequest := TEmptyWebRequest.Create;
+      try
+         HandleDWS(ShutdownScriptName, fatPAS, shutdownWebRequest, nil, [optWorker]);
+      finally
+         shutdownWebRequest.Free;
+      end;
+   end;
 end;
 
 // LiveQueries

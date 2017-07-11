@@ -112,15 +112,17 @@ end;
 //
 destructor TWorkWebRequest.Destroy;
 begin
-   FOwner.FWorkUnitLock.BeginWrite;
-   try
-      if FPrev = nil then
-         FOwner.FWorkUnitHead := FNext
-      else FPrev.FNext := FNext;
-      if FNext <> nil then
-         FNext.FPrev := FPrev;
-   finally
-      FOwner.FWorkUnitLock.EndWrite;
+   if FOwner <> nil then begin
+      FOwner.FWorkUnitLock.BeginWrite;
+      try
+         if FPrev = nil then
+            FOwner.FWorkUnitHead := FNext
+         else FPrev.FNext := FNext;
+         if FNext <> nil then
+            FNext.FPrev := FPrev;
+      finally
+         FOwner.FWorkUnitLock.EndWrite;
+      end;
    end;
    FHeaders.Free;
    inherited;
@@ -131,15 +133,15 @@ end;
 function TWorkWebRequest.GetHeaders : TStrings;
 begin
    if FHeaders=nil then
-      FHeaders:=TStringList.Create;
-   Result:=FHeaders;
+      FHeaders := TStringList.Create;
+   Result := FHeaders;
 end;
 
 // RemoteIP
 //
 function TWorkWebRequest.RemoteIP : String;
 begin
-   Result:='127.0.0.1';
+   Result := '127.0.0.1';
 end;
 
 // RawURL
@@ -153,7 +155,7 @@ end;
 //
 function TWorkWebRequest.URL : String;
 begin
-   Result:=Task;
+   Result := Task;
 end;
 
 // FullURL
@@ -167,49 +169,49 @@ end;
 //
 function TWorkWebRequest.Method : String;
 begin
-   Result:='POST';
+   Result := 'POST';
 end;
 
 // MethodVerb
 //
 function TWorkWebRequest.MethodVerb : TWebRequestMethodVerb;
 begin
-   Result:=wrmvPOST
+   Result := wrmvPOST
 end;
 
 // Security
 //
 function TWorkWebRequest.Security : String;
 begin
-   Result:='';
+   Result := '';
 end;
 
 // Secure
 //
 function TWorkWebRequest.Secure : Boolean;
 begin
-   Result:=False;
+   Result := False;
 end;
 
 // ContentLength
 //
 function TWorkWebRequest.ContentLength : Integer;
 begin
-   Result:=Length(Data);
+   Result := Length(Data);
 end;
 
 // ContentData
 //
 function TWorkWebRequest.ContentData : RawByteString;
 begin
-   Result:=Data;
+   Result := Data;
 end;
 
 // ContentType
 //
 function TWorkWebRequest.ContentType : RawByteString;
 begin
-   Result:='application/octet-stream';
+   Result := 'application/octet-stream';
 end;
 
 // Execute
@@ -366,24 +368,24 @@ var
 begin
    if not Assigned(FOnBackgroundWork) then Exit;
 
-   name:=Info.ParamAsString[0];
+   name := Info.ParamAsString[0];
 
    delayMilliseconds := Round(Info.ParamAsFloat[1] * 1000);
 
-   workUnit:=TWorkWebRequest.Create(Self);
-   workUnit.Task:=Info.ParamAsString[2];
-   workUnit.Data:=Info.ParamAsDataString[3];
+   workUnit := TWorkWebRequest.Create(Self);
+   workUnit.Task := Info.ParamAsString[2];
+   workUnit.Data := Info.ParamAsDataString[3];
 
    FPoolsCS.BeginRead;
    try
-      pool:=FPools[name];
-      if pool<>nil then
+      pool := FPools[name];
+      if pool <> nil then
          pool.QueueDelayedWork(delayMilliseconds, workUnit.Execute, Self);
    finally
       FPoolsCS.EndRead;
    end;
 
-   if pool=nil then begin
+   if pool = nil then begin
       workUnit.Free;
       raise Exception.CreateFmt('Unknown Work Queue "%s"', [name]);
    end;
@@ -460,6 +462,7 @@ begin
                wr.WriteInteger('count', pool.WorkerCount);
                wr.WriteInteger('live', pool.LiveWorkerCount);
                wr.WriteInteger('active', pool.ActiveWorkerCount);
+               wr.WriteInteger('peak', pool.PeakActiveWorkerCount);
             wr.EndObject;
             wr.BeginObject('queue');
                sizeInfo := pool.QueueSizeInfo;
@@ -473,6 +476,8 @@ begin
    finally
       wr.Free;
    end;
+   if (pool <> nil) and Info.ParamAsBoolean[1] then
+      pool.ResetPeakStats;
 end;
 
 end.

@@ -257,6 +257,31 @@ type
          function Size : Integer;
    end;
 
+   TEmptyWebRequest = class(TWebRequest)
+      protected
+         FHeaders : TStringList;
+
+         function GetHeaders : TStrings; override;
+
+      public
+         destructor Destroy; override;
+
+         function RemoteIP : String; override;
+
+         function RawURL : String; override;
+         function URL : String; override;
+         function FullURL : String; override;
+         function Method : String; override;
+         function MethodVerb : TWebRequestMethodVerb; override;
+         function Security : String; override;
+         function Secure : Boolean; override;
+         function Host : String; override;
+
+         function ContentLength : Integer; override;
+         function ContentData : RawByteString; override;
+         function ContentType : RawByteString; override;
+   end;
+
 const
    cWebRequestAuthenticationToString : array [TWebRequestAuthentication] of String = (
       'None', 'Failed', 'Basic', 'Digest', 'NTLM', 'Negotiate', 'Kerberos', 'Header'
@@ -754,6 +779,83 @@ end;
 function TWebStaticCacheEntry.Size : Integer;
 begin
    Result:=Length(FContentData);
+end;
+
+// ------------------
+// ------------------ TEmptyWebRequest ------------------
+// ------------------
+
+destructor TEmptyWebRequest.Destroy;
+begin
+   inherited;
+   FHeaders.Free;
+end;
+
+function TEmptyWebRequest.GetHeaders : TStrings;
+begin
+   if FHeaders = nil then
+      FHeaders := TStringList.Create;
+   Result := FHeaders;
+end;
+
+function TEmptyWebRequest.RemoteIP : String;
+begin
+   Result := '';
+end;
+
+function TEmptyWebRequest.RawURL : String;
+begin
+   Result := '';
+end;
+
+function TEmptyWebRequest.URL : String;
+begin
+   Result := '';
+end;
+
+function TEmptyWebRequest.FullURL : String;
+begin
+   Result := '';
+end;
+
+function TEmptyWebRequest.Method : String;
+begin
+   Result := '';
+end;
+
+function TEmptyWebRequest.MethodVerb : TWebRequestMethodVerb;
+begin
+   Result := wrmvUnknown;
+end;
+
+function TEmptyWebRequest.Security : String;
+begin
+   Result := '';
+end;
+
+function TEmptyWebRequest.Secure : Boolean;
+begin
+   Result := False;
+end;
+
+function TEmptyWebRequest.Host : String;
+begin
+   Result := '';
+end;
+
+function TEmptyWebRequest.ContentLength : Integer;
+begin
+   Result := 0;
+end;
+
+function TEmptyWebRequest.ContentData : RawByteString;
+begin
+   Result := '';
+end;
+
+function TEmptyWebRequest.ContentType : RawByteString;
+begin
+   Result := '';
 end;
 
 end.

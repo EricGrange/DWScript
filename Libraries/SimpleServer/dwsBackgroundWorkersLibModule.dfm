@@ -122,11 +122,17 @@ object dwsBackgroundWorkersLib: TdwsBackgroundWorkersLib
             Kind = mkClassProcedure
           end
           item
-            Name = 'QueueStatusAsJSON'
+            Name = 'WorkQueueStatusAsJSON'
             Parameters = <
               item
                 Name = 'name'
                 DataType = 'String'
+              end
+              item
+                Name = 'resetPeakStats'
+                DataType = 'Boolean'
+                HasDefaultValue = True
+                DefaultValue = False
               end>
             ResultType = 'String'
             Attributes = [maStatic]

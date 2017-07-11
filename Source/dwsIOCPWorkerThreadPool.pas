@@ -62,6 +62,7 @@ type
       property WorkerCount : Integer read GetWorkerCount write SetWorkerCount;
       function LiveWorkerCount : Integer;
       function ActiveWorkerCount : Integer;
+      function PeakActiveWorkerCount : Integer;
 
       procedure QueueWork(const workUnit : TAnonymousWorkUnit); overload;
       procedure QueueWork(const workUnit : TProcedureWorkUnit); overload;
@@ -71,6 +72,8 @@ type
       function QueueSizeInfo : TWorkerThreadQueueSizeInfo;
 
       function IsIdle : Boolean;
+
+      procedure ResetPeakStats;
    end;
 
    TIOCPWorkerThreadPool = class (TInterfacedSelfObject, IWorkerThreadPool)
@@ -79,6 +82,7 @@ type
          FWorkerCount : Integer;
          FLiveWorkerCount : Integer;
          FActiveWorkerCount : Integer;
+         FPeakActiveWorkerCount : Integer;
          FQueueSize : Integer;
          FPeakQueueSize : Integer;
          FTimerQueue : THandle;
@@ -109,7 +113,10 @@ type
          property WorkerCount : Integer read FWorkerCount write SetWorkerCount;
          function LiveWorkerCount : Integer;
          function ActiveWorkerCount : Integer;
+         function PeakActiveWorkerCount : Integer;
          function IsIdle : Boolean;
+
+         procedure ResetPeakStats;
    end;
 
 // ------------------------------------------------------------------
@@ -177,6 +184,7 @@ destructor TIOCPDelayedWork.Destroy;
 begin
    Cancel;
    Detach;
+   inherited;
 end;
 
 // Detach
@@ -190,7 +198,7 @@ begin
          FPrev.FNext := FNext
       else FPool.FDelayed := FNext;
       if FNext <> nil then
-         FNext.FPrev := nil;
+         FNext.FPrev := FPrev;
    finally
       FPool.FDelayedLock.EndWrite;
    end;
@@ -261,6 +269,8 @@ begin
          FastInterlockedDecrement(FPool.FQueueSize);
          FastInterlockedIncrement(FPool.FActiveWorkerCount);
          try
+            if FPool.FActiveWorkerCount > FPool.FPeakActiveWorkerCount then
+               FPool.FPeakActiveWorkerCount := FPool.FActiveWorkerCount;
             case data.lpNumberOfBytesTransferred of
                WORK_UNIT_ANONYMOUS :
                   ExecuteAnonymousFunction(PAnonymousWorkUnit(@data.lpOverlapped));
@@ -460,11 +470,26 @@ begin
    Result:=FActiveWorkerCount;
 end;
 
+// PeakActiveWorkerCount
+//
+function TIOCPWorkerThreadPool.PeakActiveWorkerCount : Integer;
+begin
+   Result := FPeakActiveWorkerCount;
+end;
+
 // IsIdle
 //
 function TIOCPWorkerThreadPool.IsIdle : Boolean;
 begin
    Result := (FQueueSize=0) and (FActiveWorkerCount=0);
+end;
+
+// ResetPeakStats
+//
+procedure TIOCPWorkerThreadPool.ResetPeakStats;
+begin
+   FPeakQueueSize := FQueueSize;
+   FPeakActiveWorkerCount := FActiveWorkerCount;
 end;
 
 // SetWorkerCount

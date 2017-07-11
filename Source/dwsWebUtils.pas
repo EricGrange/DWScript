@@ -47,6 +47,9 @@ type
 
          class function HTMLAttributeEncode(const s : UnicodeString) : UnicodeString; static;
          class function HTMLAttributeDecode(const s : UnicodeString) : UnicodeString; static;
+
+         class function XMLTextEncode(const s : UnicodeString) : UnicodeString; static;
+         class function XMLTextDecode(const s : UnicodeString) : UnicodeString; static;
    end;
 
 
@@ -993,6 +996,79 @@ end;
 class function WebUtils.HTMLAttributeDecode(const s : UnicodeString) : UnicodeString;
 begin
    Result:=WebUtils.HTMLTextDecode(s);
+end;
+
+// XMLTextEncode
+//
+class function WebUtils.XMLTextEncode(const s : UnicodeString) : UnicodeString;
+var
+   i : Integer;
+   wobs : TWriteOnlyBlockStream;
+begin
+   wobs := TWriteOnlyBlockStream.AllocFromPool;
+   try
+      for i := 1 to Length(s) do begin
+         case s[i] of
+            '"' : wobs.WriteString('&quot;');
+            '''' : wobs.WriteString('&apos;');
+            '<' : wobs.WriteString('&lt;');
+            '>' : wobs.WriteString('&gt;');
+            '&' : wobs.WriteString('&amp;');
+         else
+            wobs.WriteChar(s[i]);
+         end;
+      end;
+      Result := wobs.ToUnicodeString;
+   finally
+      wobs.ReturnToPool;
+   end;
+end;
+
+// XMLTextDecode
+//
+class function WebUtils.XMLTextDecode(const s : UnicodeString) : UnicodeString;
+var
+   i, p : Integer;
+   wobs : TWriteOnlyBlockStream;
+   tag : String;
+begin
+   wobs := TWriteOnlyBlockStream.AllocFromPool;
+   try
+      p := 1;
+      repeat
+         i := PosEx('&', s, p);
+         if i <= 0 then begin
+            wobs.WriteSubString(s, p);
+            Break;
+         end;
+         if i > p then
+            wobs.WriteSubString(s, p, i-p);
+         tag := Copy(s, i, 6);
+         if tag = '&quot;' then begin
+            wobs.WriteChar('"');
+            p := i + 6;
+         end else if tag = '&apos;' then begin
+            wobs.WriteChar('''');
+            p := i + 6;
+         end else if StrBeginsWith(tag, '&lt;') then begin
+            wobs.WriteChar('<');
+            p := i + 4;
+         end else if StrBeginsWith(tag, '&gt;') then begin
+            wobs.WriteChar('>');
+            p := i + 4;
+         end else if StrBeginsWith(tag, '&amp;') then begin
+            wobs.WriteChar('&');
+            p := i + 5;
+         end else begin
+            // leave as-is
+            wobs.WriteChar('&');
+            Inc(p);
+         end;
+      until False;
+      Result := wobs.ToUnicodeString;
+   finally
+      wobs.ReturnToPool;
+   end;
 end;
 
 // ------------------------------------------------------------------
