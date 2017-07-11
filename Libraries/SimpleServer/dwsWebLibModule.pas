@@ -180,6 +180,8 @@ type
       ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsSetContentFileEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesWebResponseMethodsSetStatusPlainTextEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FServer :  IWebServerInfo;
@@ -785,48 +787,74 @@ end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsContentDataEval(
   Info: TProgramInfo; ExtObject: TObject);
+var
+   wr : TWebResponse;
 begin
-   Info.WebResponse.ContentData:=Info.ParamAsDataString[0];
+   wr := Info.WebResponse;
+   if wr <> nil then
+      wr.ContentData := Info.ParamAsDataString[0];
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsContentEncodingEval(
   Info: TProgramInfo; ExtObject: TObject);
+var
+   wr : TWebResponse;
 begin
-   Info.WebResponse.ContentEncoding:=Info.ParamAsDataString[0];
+   wr := Info.WebResponse;
+   if wr <> nil then
+      wr.ContentEncoding := Info.ParamAsDataString[0];
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsContentTypeEval(
   Info: TProgramInfo; ExtObject: TObject);
+var
+   wr : TWebResponse;
 begin
-   Info.WebResponse.ContentType:=Info.ParamAsDataString[0];
+   wr := Info.WebResponse;
+   if wr <> nil then
+      wr.ContentType := Info.ParamAsDataString[0];
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsRequestAuthenticationEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    wra : TWebRequestAuthentication;
+var
+   wr : TWebResponse;
 begin
-   wra:=TWebRequestAuthentication(Info.ParamAsInteger[0]);
-   Info.WebResponse.Headers.Values['WWW-Authenticate']:=cWebRequestAuthenticationToString[wra];
-   Info.WebResponse.StatusCode:=401;
+   wr := Info.WebResponse;
+   if wr <> nil then begin
+      wra := TWebRequestAuthentication(Info.ParamAsInteger[0]);
+      wr.Headers.Values['WWW-Authenticate'] := cWebRequestAuthenticationToString[wra];
+      wr.StatusCode := 401;
+   end;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetCompressionEval(
   Info: TProgramInfo; ExtObject: TObject);
+var
+   wr : TWebResponse;
 begin
-   Info.WebResponse.Compression:=Info.ParamAsBoolean[0];
+   wr := Info.WebResponse;
+   if wr <> nil then
+      wr.Compression := Info.ParamAsBoolean[0];
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetContentEventStreamEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    sourceName : String;
+var
+   wr : TWebResponse;
 begin
-   sourceName := Info.ParamAsString[0];
-   if sourceName = '' then
-      sourceName := CryptographicToken;
-   Info.WebResponse.ContentType := 'text/event-stream,' + ScriptStringToRawByteString(sourceName);
-   Info.ResultAsString := sourceName;
+   wr := Info.WebResponse;
+   if wr <> nil then begin
+      sourceName := Info.ParamAsString[0];
+      if sourceName = '' then
+         sourceName := CryptographicToken;
+      wr.ContentType := 'text/event-stream,' + ScriptStringToRawByteString(sourceName);
+      Info.ResultAsString := sourceName;
+   end;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetContentJSONEval(
@@ -834,86 +862,136 @@ procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetContentJSONEval(
 var
    intf : IUnknown;
    json : String;
+var
+   wr : TWebResponse;
 begin
-   intf := IUnknown(Info.ParamAsVariant[0]);
-   if intf <> nil then
-      json := (intf as IBoxedJSONValue).Value.ToUnicodeString
-   else json := '';
-   Info.WebResponse.ContentJSON := json;
+   wr := Info.WebResponse;
+   if wr <> nil then begin
+      intf := IUnknown(Info.ParamAsVariant[0]);
+      if intf <> nil then
+         json := (intf as IBoxedJSONValue).Value.ToUnicodeString
+      else json := '';
+      wr.ContentJSON := json;
+   end;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetContentFileEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    fileName : String;
-   response : TWebResponse;
+var
+   wr : TWebResponse;
 begin
-   fileName := Info.Execution.FileSystem.ValidateFileName(Info.ParamAsString[0]);
-   if fileName = '' then
-      raise Exception.Create('SetContentFile failed: file does not exists or access denied');
-   response := Info.WebResponse;
-   response.ContentData := UTF8Encode(fileName);
-   response.ContentType := HTTP_RESP_STATICFILE;
+   wr := Info.WebResponse;
+   if wr <> nil then begin
+      fileName := Info.Execution.FileSystem.ValidateFileName(Info.ParamAsString[0]);
+      if fileName = '' then
+         raise Exception.Create('SetContentFile failed: file does not exists or access denied');
+      wr.ContentData := UTF8Encode(fileName);
+      wr.ContentType := HTTP_RESP_STATICFILE;
+   end;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetContentTextEval(
   Info: TProgramInfo; ExtObject: TObject);
+var
+   wr : TWebResponse;
 begin
-   Info.WebResponse.ContentText[Info.ParamAsDataString[0]]:=Info.ParamAsString[1];
+   wr := Info.WebResponse;
+   if wr <> nil then
+      wr.ContentText[Info.ParamAsDataString[0]]:=Info.ParamAsString[1];
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetStatusPlainTextEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   wr : TWebResponse;
+begin
+   wr := Info.WebResponse;
+   if wr <> nil then begin
+      wr.StatusCode := Info.ParamAsInteger[0];
+      wr.ContentText['plain'] := Info.ParamAsString[1];
+   end;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetCookieEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    cookie : TWebResponseCookie;
+var
+   wr : TWebResponse;
 begin
-   cookie:=Info.WebResponse.Cookies.AddCookie(Info.ParamAsString[0]);
-   cookie.Value:=Info.ParamAsString[1];
-   cookie.ExpiresGMT:=Info.ParamAsFloat[2];
+   wr := Info.WebResponse;
+   if wr <> nil then begin
+      cookie := wr.Cookies.AddCookie(Info.ParamAsString[0]);
+      cookie.Value := Info.ParamAsString[1];
+      cookie.ExpiresGMT := Info.ParamAsFloat[2];
+   end;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetCookie2Eval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    cookie : TWebResponseCookie;
+   wr : TWebResponse;
 begin
-   cookie := Info.WebResponse.Cookies.AddCookie(Info.ParamAsString[0]);
-   cookie.Value := Info.ParamAsString[1];
-   cookie.ExpiresGMT := Info.ParamAsFloat[2];
-   cookie.Path := Info.ParamAsString[3];
-   cookie.Domain := Info.ParamAsString[4];
-   cookie.Flags := Info.ParamAsInteger[5];
-   cookie.SameSite := TWebResponseCookieSameSite(Info.ParamAsInteger[6]);
+   wr := Info.WebResponse;
+   if wr <> nil then begin
+      cookie := wr.Cookies.AddCookie(Info.ParamAsString[0]);
+      cookie.Value := Info.ParamAsString[1];
+      cookie.ExpiresGMT := Info.ParamAsFloat[2];
+      cookie.Path := Info.ParamAsString[3];
+      cookie.Domain := Info.ParamAsString[4];
+      cookie.Flags := Info.ParamAsInteger[5];
+      cookie.SameSite := TWebResponseCookieSameSite(Info.ParamAsInteger[6]);
+   end;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetHeaderEval(
   Info: TProgramInfo; ExtObject: TObject);
+var
+   wr : TWebResponse;
 begin
-   Info.WebResponse.Headers.Values[Info.ParamAsString[0]]:=Info.ParamAsString[1];
+   wr := Info.WebResponse;
+   if wr <> nil then
+      wr.Headers.Values[Info.ParamAsString[0]] := Info.ParamAsString[1];
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetLastModifiedEval(
   Info: TProgramInfo; ExtObject: TObject);
+var
+   wr : TWebResponse;
 begin
-   Info.WebResponse.LastModified:=Info.ParamAsFloat[0];
+   wr := Info.WebResponse;
+   if wr <> nil then
+      wr.LastModified := Info.ParamAsFloat[0];
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetStaticEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    h : TWebResponseHints;
+var
+   wr : TWebResponse;
 begin
-   h:=Info.WebResponse.Hints;
-   if Info.ParamAsBoolean[0] then
-      h:=h+[shStatic]
-   else h:=h-[shStatic];
-   Info.WebResponse.Hints:=h;
+   wr := Info.WebResponse;
+   if wr <> nil then begin
+      h := wr.Hints;
+      if Info.ParamAsBoolean[0] then
+         Include(h, shStatic)
+      else Exclude(h, shStatic);
+      wr.Hints := h;
+   end;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetStatusCodeEval(
   Info: TProgramInfo; ExtObject: TObject);
+var
+   wr : TWebResponse;
 begin
-   Info.WebResponse.StatusCode:=Info.ParamAsInteger[0];
+   wr := Info.WebResponse;
+   if wr <> nil then
+      wr.StatusCode := Info.ParamAsInteger[0];
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebServerSentEventMethodsPostEval(

@@ -487,6 +487,21 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maStatic]
             OnEval = dwsWebClassesWebResponseMethodsSetContentEventStreamEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'SetStatusPlainText'
+            Parameters = <
+              item
+                Name = 'status'
+                DataType = 'Integer'
+              end
+              item
+                Name = 'text'
+                DataType = 'String'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebResponseMethodsSetStatusPlainTextEval
+            Kind = mkClassProcedure
           end>
         Properties = <
           item
