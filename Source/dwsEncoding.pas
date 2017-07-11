@@ -434,21 +434,23 @@ function Base64Decode(const data : String) : RawByteString;
 
 var
    len, outLen : Integer;
+   decodedPtr : PByte;
 begin
    if data = '' then Exit;
    if vBase64Decode[High(vBase64Decode)] = 0 then
       PrepareBase64DecodeTable;
    len := Length(data);
-   outLen := (len shr 2)*3;
    while (data[len] <= ' ') and (len > 1) do Dec(len);
+   outLen := (len shr 2)*3;
    if data[len] = '=' then begin
       if (len > 1) and (data[len-1] = '=') then
          Dec(outLen, 2)
       else Dec(outLen);
    end;
    SetLength(Result, outLen);
-   if Base64Decode(Pointer(data), Pointer(@data[len-3]), Pointer(Result)) <> @PByte(Result)[outLen] then
-      Result := '';
+   decodedPtr := Base64Decode(Pointer(data), Pointer(@data[len-3]), Pointer(Result));
+   if decodedPtr <> @PByte(Result)[outLen] then
+      SetLength(Result, NativeUInt(decodedPtr) - NativeUInt(Pointer(Result)));
 end;
 
 end.
