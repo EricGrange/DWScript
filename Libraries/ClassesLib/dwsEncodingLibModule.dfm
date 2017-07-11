@@ -322,6 +322,35 @@ object dwsEncodingLib: TdwsEncodingLib
             OnEval = dwsEncodingClassesHTMLAttributeEncoderMethodsDecodeEval
             Kind = mkClassFunction
           end>
+      end
+      item
+        Name = 'XMLTextEncoder'
+        Ancestor = 'Encoder'
+        Methods = <
+          item
+            Name = 'Encode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsEncodingClassesXMLTextEncoderMethodsEncodeEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'Decode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsEncodingClassesXMLTextEncoderMethodsDecodeEval
+            Kind = mkClassFunction
+          end>
       end>
     UnitName = 'System.Encoding'
     StaticSymbols = True

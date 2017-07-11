@@ -66,6 +66,10 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsEncodingClassesUTF16LittleEndianEncoderMethodsDecodeEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesXMLTextEncoderMethodsEncodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesXMLTextEncoderMethodsDecodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -221,6 +225,18 @@ procedure TdwsEncodingLib.dwsEncodingClassesUTF8EncoderMethodsEncodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsDataString := StringToUTF8(Info.ParamAsString[0]);
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesXMLTextEncoderMethodsEncodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := WebUtils.XMLTextEncode(Info.ParamAsString[0]);
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesXMLTextEncoderMethodsDecodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := WebUtils.XMLTextDecode(Info.ParamAsString[0]);
 end;
 
 end.
