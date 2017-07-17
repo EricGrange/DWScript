@@ -217,6 +217,8 @@ const
          +'"PatternOpen": "<?pas",'
          +'"PatternEval": "=",'
          +'"PatternClose": "?>",'
+         // Maximum background worker count allowed per work queue
+         +'"MaxWorkersPerQueue": 32,'
          // Startup Script Name
          +'"Startup": "%www%\\.startup.pas",'
          // Shutdown Script Name
@@ -644,6 +646,8 @@ begin
       dwsHtmlFilter.PatternOpen:=dws['PatternOpen'].AsString;
       dwsHtmlFilter.PatternClose:=dws['PatternClose'].AsString;
       dwsHtmlFilter.PatternEval:=dws['PatternEval'].AsString;
+
+      FBkgndWorkers.MaxWorkersPerQueue := dws['MaxWorkersPerQueue'].AsInteger;
 
       FEnableJIT:=dws['JIT'].AsBoolean;
 

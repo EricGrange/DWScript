@@ -50,6 +50,7 @@ uses
   dwsXPlatform,
   DSimpleDWScript,
   dwsSystemInfoLibModule,
+  dwsCompiler,
   UHttpSys2WebServer in 'UHttpSys2WebServer.pas',
   dwsDatabaseLibModule in '..\..\Libraries\DatabaseLib\dwsDatabaseLibModule.pas' {dwsDatabaseLib: TDataModule},
   dwsSynSQLiteDatabase in '..\..\Libraries\DatabaseLib\dwsSynSQLiteDatabase.pas',
@@ -153,9 +154,25 @@ var
    serverOptions : TdwsJSONValue;
    infos : THttpSys2URLInfos;
    i : Integer;
-   msg : String;
+   msg, param : String;
+   json : TdwsJSONValue;
 begin
-   if (ParamCount>=1) and ((ParamStr(1)='/authorize') or (ParamStr(1)='/unauthorize')) then begin
+   param := ParamStr(1);
+
+   if param='/options-defaults' then begin
+
+      json := TdwsJSONObject.Create;
+      try
+         json.Items['Service'] := TdwsJSONValue.ParseString(DefaultServiceOptions);
+         json.Items['Server'] := TdwsJSONValue.ParseString(cDefaultServerOptions);
+         json.Items['CPU'] := TdwsJSONValue.ParseString(cDefaultCPUOptions);
+         json.Items['DWScript'] := TdwsJSONValue.ParseString(cDefaultDWScriptOptions);
+         Writeln(json.ToBeautifiedString);
+      finally
+         json.Free;
+      end;
+
+   end else if (param='/authorize') or (param='/unauthorize') then begin
 
       authorize := (ParamStr(1)='/authorize');
 
@@ -180,6 +197,12 @@ end;
 procedure TWebServerHttpService.WriteCommandLineHelpExtra;
 begin
    Writeln('* /authorize & /unauthorize : enable/disable ACL (must be run as administrator)');
+   Writeln('* /options-defaults : prints the default options.json settings');
+   Writeln;
+   Writeln(  'Compiler version ' + Format('%.01f', [cCompilerVersion])
+           + ', compiled on ' + FormatDateTime('yyyy-mm-dd hh:nn:ss', ExecutableLinkTimeStamp/SecsPerDay+UnixDateDelta) + ' Z');
+
+   inherited WriteCommandLineHelpExtra;
 end;
 
 

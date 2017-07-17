@@ -241,18 +241,19 @@ end;
 //
 procedure TdwsWindowsService.WriteCommandLineHelp;
 begin
-   Writeln( ServiceName+#13#10#13#10
+   Writeln( ServiceName + ' (' + ServiceDisplayName + ')' + #13#10#13#10
            +'Parameters:'#13#10
            +'* none : run as application'#13#10
            +'* /install & /uninstall : install & uninstall service'#13#10
            +'* /start & /stop : start & stop service');
+   WriteCommandLineHelpExtra;
 end;
 
 // WriteCommandLineHelpExtra
 //
 procedure TdwsWindowsService.WriteCommandLineHelpExtra;
 begin
-   Writeln(#13#10'For more information, go to https://www.delphitools.info/');
+   Writeln(#13#10'For more information, go to https://www.delphitools.info/'#13#10);
 end;
 
 // ServiceState
