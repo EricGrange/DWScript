@@ -8,7 +8,7 @@ uses
   dwsIOCPWorkerThreadPool, dwsWebEnvironment, dwsJSON;
 
 const
-   cDefaultMaxWorkersPerQueue = 16;
+   cDefaultMaxWorkersPerQueue = 32;
 
 type
    TBackgroundWorkEvent = procedure (const request : TWebRequest) of object;
