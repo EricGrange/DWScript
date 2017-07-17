@@ -4276,19 +4276,20 @@ var
    expr : TExprBase;
    dataExpr : TDataExpr;
    fieldSym : TFieldSymbol;
+   fieldAddr : Integer;
 begin
    recType:=TRecordSymbol(Typ);
    for sym in recType.Members do begin
       if sym.ClassType=TFieldSymbol then begin
          fieldSym:=TFieldSymbol(sym);
          expr:=fieldSym.DefaultExpr;
+         fieldAddr := exec.Stack.BasePointer+FAddr+fieldSym.Offset;
          if expr=nil then
-            fieldSym.InitData(exec.Stack.Data, exec.Stack.BasePointer+FAddr)
-         else if expr is TDataExpr then begin
+            fieldSym.InitData(exec.Stack.Data, fieldAddr)
+         else if (expr is TDataExpr) and (TDataExpr(expr).Typ.Size > 1) then begin
             dataExpr:=TDataExpr(expr);
-            dataExpr.DataPtr[exec].CopyData(exec.Stack.Data, exec.Stack.BasePointer+FAddr+fieldSym.Offset,
-                                            fieldSym.Size);
-         end else expr.EvalAsVariant(exec, exec.Stack.Data[exec.Stack.BasePointer+FAddr+fieldSym.Offset]);
+            dataExpr.DataPtr[exec].CopyData(exec.Stack.Data, fieldAddr, fieldSym.Size);
+         end else expr.EvalAsVariant(exec, exec.Stack.Data[fieldAddr]);
       end;
    end;
 end;
