@@ -155,6 +155,13 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
             Attributes = [maStatic]
             OnEval = dwsSystemInfoClassesApplicationInfoMethodsUserNameEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'ExeLinkTimeStamp'
+            ResultType = 'Integer'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesApplicationInfoMethodsExeLinkTimeEval
+            Kind = mkClassFunction
           end>
         Properties = <
           item

@@ -19,7 +19,7 @@ unit dwsSystemInfoLibModule;
 interface
 
 uses
-  Windows, SysUtils, Classes, Registry, PsAPI,
+  Windows, SysUtils, Classes, Registry, PsAPI, ImageHlp,
   dwsExprList, dwsDataContext, dwsComp, dwsExprs, dwsUtils, dwsCPUUsage,
   dwsXPlatform, dwsInfo;
 
@@ -55,6 +55,8 @@ type
     procedure dwsSystemInfoClassesApplicationInfoMethodsVersionEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsSystemInfoClassesApplicationInfoMethodsExeNameEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesApplicationInfoMethodsExeLinkTimeEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsSystemInfoClassesApplicationInfoMethodsRunningAsServiceEval(
       Info: TProgramInfo; ExtObject: TObject);
@@ -111,6 +113,8 @@ type
     class property RunningAsService : Boolean read FRunningAsService write FRunningAsService;
     property Script : TDelphiWebScript read GetScript write SetScript;
   end;
+
+function ExecutableLinkTimeStamp : Int64;
 
 implementation
 
@@ -196,6 +200,31 @@ begin
    end;
 end;
 
+var
+   vExeLinkTimeStamp : Int64;
+function ExecutableLinkTimeStamp : Int64;
+
+  procedure PrepareExeLinkTimeStamp;
+   var
+      li : TLoadedImage;
+      fileName : AnsiString;
+  begin
+      fileName := AnsiString(ParamStr(0));
+      if MapAndLoad(PAnsiChar(fileName), nil, @li, False, True) then begin
+         try
+            vExeLinkTimeStamp := li.FileHeader.FileHeader.TimeDateStamp;
+         finally
+            UnMapAndLoad(@li);
+         end;
+      end else vExeLinkTimeStamp := -1;
+  end;
+
+begin
+   if vExeLinkTimeStamp = 0 then
+      PrepareExeLinkTimeStamp;
+   Result := vExeLinkTimeStamp;
+end;
+
 procedure TdwsSystemInfoLibModule.DataModuleCreate(Sender: TObject);
 begin
    // limit query rate to 10 Hz
@@ -214,6 +243,12 @@ procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsExeN
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString:=ParamStr(0);
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsExeLinkTimeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger := ExecutableLinkTimeStamp;
 end;
 
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsGetEnvironmentVariableEval(
