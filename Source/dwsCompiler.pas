@@ -7421,15 +7421,18 @@ var
 
    function CheckBound(bound : TTypedExpr) : Boolean;
    begin
-      Result:=False;
-      if    (bound.typ=nil)
-         or not (   bound.Typ.IsOfType(FCompilerContext.TypInteger)
-                 or (bound.Typ is TEnumerationSymbol)
-                 or bound.Typ.IsOfType(FCompilerContext.TypBoolean)) then
-         FMsgs.AddCompilerError(hotPos, CPE_ArrayBoundNotOrdinal)
-      else if not bound.IsConstant then
-         FMsgs.AddCompilerError(hotPos, CPE_ArrayBoundNotAConstant)
-      else Result:=True;
+      if bound = nil then
+         Result := False // error message already signaled
+      else if    (bound.typ=nil)
+              or not (   bound.Typ.IsOfType(FCompilerContext.TypInteger)
+                      or (bound.Typ is TEnumerationSymbol)
+                      or bound.Typ.IsOfType(FCompilerContext.TypBoolean)) then begin
+         FMsgs.AddCompilerError(hotPos, CPE_ArrayBoundNotOrdinal);
+         Result := False;
+      end else if not bound.IsConstant then begin
+         FMsgs.AddCompilerError(hotPos, CPE_ArrayBoundNotAConstant);
+         Result := False;
+      end else Result := True;
    end;
 
 var
@@ -7508,9 +7511,9 @@ begin
                hotPos:=FTok.HotPos;
                max.Insert0(ReadExpr);
 
-               boundsOk:=boundsOK and CheckBound(max[0]);
+               boundsOk := boundsOK and CheckBound(max[0]);
 
-               if max[0].Typ<>min[0].Typ then
+               if boundsOk and (max[0].Typ <> min[0].Typ) then
                   FMsgs.AddCompilerError(hotPos, CPE_ArrayBoundsOfDifferentTypes);
 
                if boundsOk and (max[0].EvalAsInteger(FExec)<min[0].EvalAsInteger(FExec)) then begin

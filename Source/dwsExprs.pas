@@ -5517,9 +5517,13 @@ end;
 procedure TTypedExprList.OrphanItems(context : TdwsCompilerContext);
 var
    i : Integer;
+   e : TProgramExpr;
 begin
-   for i := 0 to Count-1 do
-      Expr[i].Orphan(context);
+   for i := 0 to Count-1 do begin
+      e := Expr[i];
+      if e <> nil then
+         e.Orphan(context);
+   end;
    FList.Clear;
 end;
 

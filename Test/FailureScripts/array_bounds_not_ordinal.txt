@@ -1,2 +1,1 @@
 Syntax Error: Bound isn't of an ordinal type [line: 1, column: 14]
-Syntax Error: Array bounds are of different types [line: 1, column: 23]

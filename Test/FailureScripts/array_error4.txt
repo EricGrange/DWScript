@@ -1,4 +1,3 @@
 Syntax Error: Function expected [line: 3, column: 20]
 Syntax Error: Bound isn't of an ordinal type [line: 3, column: 18]
-Syntax Error: Array bounds are of different types [line: 3, column: 18]
 Syntax Error: "]" expected [line: 3, column: 25]
