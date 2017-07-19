@@ -52,6 +52,8 @@ type
 
          function TryEncodeDate(y, m, d : Integer; tz : TdwsTimeZone; var dt : Double) : Boolean;
          function EncodeDate(y, m, d : Integer; tz : TdwsTimeZone) : Double;
+
+         function YearOf(const dt : TDateTime) : Integer;
    end;
 
 // ------------------------------------------------------------------
@@ -116,7 +118,7 @@ function TdwsFormatSettings.TryStrToDateTime(
       const fmt : String; const str : String; var dt : Double; tz : TdwsTimeZone) : Boolean;
 var
    year, month, day, hours, minutes, seconds, msec : Integer;
-   i, j, p, value, fmtLength, digit : Integer;
+   i, j, p, value, fmtLength, digit, currentYear : Integer;
    c : Char;
    tok, litteral : String;
    dth : Double;
@@ -136,7 +138,6 @@ var
          end;
       end;
    end;
-
 
 begin
    Result:=False;
@@ -242,8 +243,14 @@ begin
                if not match then Exit;
             end;
          'y' :
-            if (tok='yy') or (tok='yyyy') then
-               year:=value;
+            if tok = 'yyyy' then
+               year := value
+            else if tok = 'yy' then begin
+               currentYear := YearOf(Now);
+               year := (currentYear div 100)*100 + value;
+               if year > currentYear + 50 then
+                  year := year - 100;
+            end;
          'h' :
             if (tok='h') or (tok='hh') then begin
                hours:=value;
@@ -327,6 +334,16 @@ function TdwsFormatSettings.EncodeDate(y, m, d : Integer; tz : TdwsTimeZone) : D
 begin
    if not TryEncodeDate(y, m, d, tz, Result) then
       raise EConvertError.Create('Invalid date/time');
+end;
+
+// YearOf
+//
+function TdwsFormatSettings.YearOf(const dt : TDateTime) : Integer;
+var
+   y, m, d : Word;
+begin
+   DecodeDate(dt, y, m, d);
+   Result := y;
 end;
 
 end.

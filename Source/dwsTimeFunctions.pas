@@ -855,13 +855,11 @@ end;
 function TYearOfFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 var
    dt : TDateTime;
-   y, m, d : Word;
 begin
-   dt:=args.AsFloat[0];
-   if dt=0 then
-      dt:=Now;
-   DecodeDate(dt, y, m, d);
-   Result:=y;
+   dt := args.AsFloat[0];
+   if dt = 0 then
+      dt := Now;
+   Result := args.FormatSettings.YearOf(dt);
 end;
 
 // ------------------
