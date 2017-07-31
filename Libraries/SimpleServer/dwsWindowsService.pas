@@ -43,7 +43,7 @@ type
 
          class function DefaultServiceOptions : String; virtual; abstract;
 
-         procedure ExecuteCommandLineParameters; virtual;
+         procedure ExecuteCommandLineParameters(var abortExecution : Boolean); virtual;
          procedure WriteCommandLineHelp; virtual;
          procedure WriteCommandLineHelpExtra; virtual;
 
@@ -103,7 +103,7 @@ end;
 
 // ExecuteCommandLineParameters
 //
-procedure TdwsWindowsService.ExecuteCommandLineParameters;
+procedure TdwsWindowsService.ExecuteCommandLineParameters(var abortExecution : Boolean);
 type
    TServiceStateEx = (ssNotInstalled, ssStopped, ssStarting, ssStopping, ssRunning,
         ssResuming, ssPausing, ssPaused, ssErrorRetrievingState, ssAccessDenied);
@@ -140,6 +140,7 @@ begin
          end;
       end;
       for i:=1 to ParamCount do begin
+         abortExecution := True;
          param:=ParamStr(i);
          if param='/install' then begin
             case serviceState of

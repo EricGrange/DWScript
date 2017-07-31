@@ -82,7 +82,7 @@ type
 
          class function DefaultServiceOptions : String; override;
 
-         procedure ExecuteCommandLineParameters; override;
+         procedure ExecuteCommandLineParameters(var abortExecution : Boolean); override;
          procedure WriteCommandLineHelpExtra; override;
    end;
 
@@ -148,7 +148,7 @@ begin
    end;
 end;
 
-procedure TWebServerHttpService.ExecuteCommandLineParameters;
+procedure TWebServerHttpService.ExecuteCommandLineParameters(var abortExecution : Boolean);
 var
    authorize : Boolean;
    serverOptions : TdwsJSONValue;
@@ -160,6 +160,8 @@ begin
    param := ParamStr(1);
 
    if param='/options-defaults' then begin
+
+      abortExecution := True;
 
       json := TdwsJSONObject.Create;
       try
@@ -174,6 +176,7 @@ begin
 
    end else if (param='/authorize') or (param='/unauthorize') then begin
 
+      abortExecution := True;
       authorize := (ParamStr(1)='/authorize');
 
       serverOptions:=TdwsJSONValue.ParseString(cDefaultServerOptions);
@@ -191,13 +194,18 @@ begin
          serverOptions.Free;
       end;
 
-   end else inherited ExecuteCommandLineParameters;
+   end else if param='/report-memory-leaks' then begin
+
+      ReportMemoryLeaksOnShutdown := True;
+
+   end else inherited ExecuteCommandLineParameters(abortExecution);
 end;
 
 procedure TWebServerHttpService.WriteCommandLineHelpExtra;
 begin
    Writeln('* /authorize & /unauthorize : enable/disable ACL (must be run as administrator)');
    Writeln('* /options-defaults : prints the default options.json settings');
+   Writeln('* /report-memory-leaks : memory leaks report on shutdown');
    Writeln;
    Writeln(  'Compiler version ' + Format('%.01f', [cCompilerVersion])
            + ', compiled on ' + FormatDateTime('yyyy-mm-dd hh:nn:ss', ExecutableLinkTimeStamp/SecsPerDay+UnixDateDelta) + ' Z');
@@ -234,6 +242,7 @@ var
    optionsFileName, url, log : String;
    options : TdwsJSONValue;
    service : TWebServerHttpService;
+   abortExecution : Boolean;
 begin
    options:=nil;
    if Win32MajorVersion<6 then begin
@@ -258,8 +267,10 @@ begin
    try
       try
          if ParamCount<>0 then begin
-            service.ExecuteCommandLineParameters;
-            Exit;
+            abortExecution := False;
+            service.ExecuteCommandLineParameters(abortExecution);
+            if abortExecution then
+               Exit;
          end;
 
          if service.LaunchedBySCM then begin
