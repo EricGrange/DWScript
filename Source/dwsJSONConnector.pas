@@ -242,7 +242,8 @@ type
    // JSONScript
    //
    JSONScript = class {static sealed}
-      class procedure Stringify(const args : TExprBaseListExec; var Result : String); static;
+      class procedure StringifyExpr(expr : TTypedExpr; exec : TdwsExecution; writer : TdwsJSONWriter); static;
+      class procedure StringifyArgs(const args : TExprBaseListExec; var Result : String); static;
 
       class procedure StringifyVariant(exec : TdwsExecution; writer : TdwsJSONWriter; const v : Variant); static;
       class procedure StringifyUnknown(exec : TdwsExecution; writer : TdwsJSONWriter;
@@ -1049,7 +1050,7 @@ end;
 procedure TdwsJSONToStringCall.FastCall(const args : TExprBaseListExec; var result : Variant);
 begin
    VarCopySafe(result, '');
-   JSONScript.Stringify(args, String(PVarData(@Result)^.VString));
+   JSONScript.StringifyArgs(args, String(PVarData(@Result)^.VString));
 end;
 
 // ------------------
@@ -1107,6 +1108,14 @@ begin
       baseValue:=TBoxedJSONValue.UnBox(b);
       if FPropName<>'' then
          baseValue:=baseValue.Items[FPropName];
+      case baseValue.ValueType of
+         jvtObject, jvtArray : ;
+         jvtUndefined :
+            raise EdwsJSONException.Create('Cannot set items of Undefined');
+      else
+         raise EdwsJSONException.Create('Cannot set items of Immediate');
+      end;
+
       args.ExprBase[2].EvalAsVariant(args.Exec, val);
       pVal:=@val;
       case pVal^.VType of
@@ -1153,9 +1162,9 @@ begin
          end else raise Exception.Create('Unsupported assignment');
       end;
       args.ExprBase[1].EvalAsVariant(args.Exec, val);
-      baseValue.Values[val]:=argValue;
+      baseValue.Values[val] := argValue;
    end else begin
-      raise Exception.CreateFmt('Invalid JSON write to %s', [FPropName]);
+      raise EdwsJSONException.Create('Cannot set items of Undefined');
    end;
 end;
 
@@ -1219,26 +1228,34 @@ var
 begin
    base.EvalAsVariant(exec, b);
    baseValue := TBoxedJSONValue.UnBox(b);
-   if baseValue<>nil then begin
-      value.EvalAsVariant(exec, v);
-      case PVarData(@v)^.VType of
-         varUnknown : begin
-            dataValue := TBoxedJSONValue.UnBox(v);
-            if dataValue=nil then
-               dataValue := TdwsJSONImmediate.FromVariant(Null)
-            else begin
-               if dataValue.Owner=nil then
-                  dataValue.IncRefCount;
-            end;
-         end;
-         varEmpty :
-            dataValue := TdwsJSONImmediate.Create;
-      else
-         dataValue := TdwsJSONImmediate.FromVariant(v);
-      end;
-   end else dataValue := TdwsJSONImmediate.Create;
+   case baseValue.ValueType of
+      jvtObject : ;
+      jvtArray :
+         if StrUToInt64(FMemberName, -1) < 0 then
+            raise EdwsJSONException.CreateFmt('Invalid array member "%s"', [FMemberName]);
+      jvtUndefined :
+         raise EdwsJSONException.CreateFmt('Cannot set member "%s" of Undefined', [FMemberName]);
+   else
+      raise EdwsJSONException.CreateFmt('Cannot set member "%s" of Immediate', [FMemberName]);
+   end;
 
-   baseValue.HashedItems[FMemberHash, FMemberName]:=dataValue;
+   value.EvalAsVariant(exec, v);
+   case PVarData(@v)^.VType of
+      varUnknown : begin
+         dataValue := TBoxedJSONValue.UnBox(v);
+         if dataValue = nil then
+            dataValue := TdwsJSONImmediate.FromVariant(Null)
+         else begin
+            if dataValue.Owner=nil then
+               dataValue.IncRefCount;
+         end;
+      end;
+      varEmpty :
+         dataValue := TdwsJSONImmediate.Create;
+   else
+      dataValue := TdwsJSONImmediate.FromVariant(v);
+   end;
+   baseValue.HashedItems[FMemberHash, FMemberName] := dataValue;
 end;
 
 // ------------------
@@ -1488,35 +1505,40 @@ end;
 // ------------------ JSONScript ------------------
 // ------------------
 
-// Stringify
+// StringifyExpr
 //
-class procedure JSONScript.Stringify(const args : TExprBaseListExec; var Result : String);
+class procedure JSONScript.StringifyExpr(expr : TTypedExpr; exec : TdwsExecution; writer : TdwsJSONWriter);
 var
-   writer : TdwsJSONWriter;
-   stream : TWriteOnlyBlockStream;
-   expr : TTypedExpr;
    dataExpr : TDataExpr;
    v : Variant;
    dc : IDataContext;
 begin
-   stream:=TWriteOnlyBlockStream.AllocFromPool;
-   writer:=TdwsJSONWriter.Create(stream);
+   if expr.Typ.Size=1 then begin
+      expr.EvalAsVariant(exec, v);
+      if expr.Typ.UnAliasedTypeIs(TRecordSymbol) or expr.Typ.UnAliasedTypeIs(TStaticArraySymbol) then begin
+         exec.DataContext_CreateValue(v, dc);
+         StringifySymbol(exec, writer, expr.Typ, dc);
+      end else StringifyVariant(exec, writer, v);
+   end else begin
+      dataExpr:=(expr as TDataExpr);
+      StringifySymbol(exec, writer, expr.Typ, dataExpr.DataPtr[exec]);
+   end;
+end;
+
+// StringifyArgs
+//
+class procedure JSONScript.StringifyArgs(const args : TExprBaseListExec; var Result : String);
+var
+   writer : TdwsJSONWriter;
+   expr : TTypedExpr;
+begin
+   writer:=TdwsJSONWriter.Create;
    try
       expr:=(args.ExprBase[0] as TTypedExpr);
-      if expr.Typ.Size=1 then begin
-         expr.EvalAsVariant(args.Exec, v);
-         if expr.Typ.UnAliasedTypeIs(TRecordSymbol) or expr.Typ.UnAliasedTypeIs(TStaticArraySymbol) then begin
-            args.Exec.DataContext_CreateValue(v, dc);
-            StringifySymbol(args.Exec, writer, expr.Typ, dc);
-         end else StringifyVariant(args.Exec, writer, v);
-      end else begin
-         dataExpr:=(expr as TDataExpr);
-         StringifySymbol(args.Exec, writer, expr.Typ, dataExpr.DataPtr[args.Exec]);
-      end;
-      Result:=stream.ToString;
+      StringiFyExpr(expr, args.Exec, writer);
+      Result:=writer.ToString;
    finally
       writer.Free;
-      stream.ReturnToPool;
    end;
 end;
 
@@ -1787,7 +1809,7 @@ end;
 //
 procedure TJSONStringifyMethod.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 begin
-   JSONScript.Stringify(args, Result);
+   JSONScript.StringifyArgs(args, Result);
 end;
 
 // ------------------
@@ -1800,7 +1822,7 @@ procedure TJSONStringifyUTF8Method.DoEvalAsString(const args : TExprBaseListExec
 var
    bufUTF8 : RawByteString;
 begin
-   JSONScript.Stringify(args, Result);
+   JSONScript.StringifyArgs(args, Result);
    bufUTF8 := UTF8Encode(Result);
    RawByteStringToScriptString(bufUTF8, Result);
 end;
@@ -1817,7 +1839,7 @@ var
    box : TBoxedJSONValue;
    js : String;
 begin
-   JSONScript.Stringify(args, js);
+   JSONScript.StringifyArgs(args, js);
    v:=TdwsJSONValue.ParseString(js);
    if v=nil then
       box:=nil

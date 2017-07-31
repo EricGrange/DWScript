@@ -1352,7 +1352,7 @@ procedure TdwsJSONValue.SetElement(index : Integer; const value : TdwsJSONValue)
 begin
    if Assigned(Self) then
       DoSetElement(index, value)
-   else raise EdwsJSONException.CreateFmt('Can''t set element "%d" of Undefined', [index]);
+   else raise EdwsJSONException.CreateFmt('Cannot set element "%d" of Undefined', [index]);
 end;
 
 // GetItem
@@ -1393,7 +1393,7 @@ procedure TdwsJSONValue.SetItem(const name : UnicodeString; const value : TdwsJS
 begin
    if Assigned(Self) then
       DoSetItem(name, value)
-   else raise EdwsJSONException.CreateFmt('Can''t set member "%s" of Undefined', [name]);
+   else raise EdwsJSONException.CreateFmt('Cannot set member "%s" of Undefined', [name]);
 end;
 
 // SetHashedItem
@@ -2542,14 +2542,14 @@ end;
 //
 procedure TdwsJSONImmediate.DoSetItem(const name : UnicodeString; const value : TdwsJSONValue);
 begin
-   raise EdwsJSONException.CreateFmt('Can''t set member "%s" of immediate value', [name]);
+   raise EdwsJSONException.CreateFmt('Cannot set member "%s" of immediate value', [name]);
 end;
 
 // DoSetElement
 //
 procedure TdwsJSONImmediate.DoSetElement(index : Integer; const value : TdwsJSONValue);
 begin
-   raise EdwsJSONException.CreateFmt('Can''t set element "%d" of immediate value', [index]);
+   raise EdwsJSONException.CreateFmt('Cannot set element "%d" of immediate value', [index]);
 end;
 
 // GetValueType
