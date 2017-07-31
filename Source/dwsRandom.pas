@@ -23,6 +23,8 @@ unit dwsRandom;
 
 interface
 
+uses dwsXPlatform;
+
 type
    // Algorithm by David Blackman and Sebastiano Vigna
    TXoroShiro128Plus = record
@@ -44,13 +46,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-// RDTSC
-//
-function RDTSC : UInt64;
-asm
-   RDTSC
-end;
 
 // RotL
 //

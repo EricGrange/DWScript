@@ -81,11 +81,6 @@ var
 
 procedure CryptographicRandom(buf : Pointer; nb : Integer);
 
-   function RDTSC : UInt64;
-   asm
-      RDTSC;
-   end;
-
    function XorShift(var seed : UInt64) : Cardinal; inline;
    var
       buf : UInt64;

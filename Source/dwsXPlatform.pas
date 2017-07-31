@@ -288,6 +288,8 @@ function DirectSetMXCSR(newValue : Word) : Word; register;
 
 function SwapBytes(v : Cardinal) : Cardinal;
 
+function RDTSC : UInt64;
+
 function GetCurrentUserName : String;
 
 {$ifndef FPC}
@@ -1513,6 +1515,13 @@ begin
    TCardinalBytes(Result)[2]:=TCardinalBytes(v)[1];
    TCardinalBytes(Result)[3]:=TCardinalBytes(v)[0];
 {$endif}
+end;
+
+// RDTSC
+//
+function RDTSC : UInt64;
+asm
+   RDTSC
 end;
 
 // GetCurrentUserName

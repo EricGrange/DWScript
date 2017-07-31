@@ -52,6 +52,7 @@ type
          procedure NormalizeOverload;
          procedure OptimizedIfThenBlockSymbol;
          procedure MemberVisibilities;
+         procedure UnitNamesSuggest;
    end;
 
 // ------------------------------------------------------------------
@@ -61,6 +62,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsEncodingLibModule;
 
 // ------------------
 // ------------------ TSourceUtilsTests ------------------
@@ -827,6 +830,50 @@ begin
    CheckEquals('abc', sugg.Code[0]);
    CheckEquals('xyz', sugg.Code[1]);
 end;
+
+// UnitNamesSuggest
+//
+procedure TSourceUtilsTests.UnitNamesSuggest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+   encodingLib : TdwsEncodingLib;
+begin
+   encodingLib := TdwsEncodingLib.Create(nil);
+   try
+      encodingLib.dwsEncoding.Script := FCompiler;
+
+      prog:=FCompiler.Compile('uses System.En');
+
+      scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 10);
+
+      sugg:=TdwsSuggestions.Create(prog, scriptPos);
+      CheckEquals(2, sugg.Count, 'Syst');
+      CheckEquals('System', sugg.Code[0]);
+      CheckEquals('System.Encoding', sugg.Code[1]);
+
+      scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 13);
+
+      sugg:=TdwsSuggestions.Create(prog, scriptPos);
+      CheckEquals(4, sugg.Count, 'System.');
+      CheckEquals('Default', sugg.Code[0]);
+      CheckEquals('Internal', sugg.Code[1]);
+      CheckEquals('System', sugg.Code[2]);
+      CheckEquals('System.Encoding', sugg.Code[3]);
+
+      scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 15);
+
+      sugg:=TdwsSuggestions.Create(prog, scriptPos);
+      CheckEquals(1, sugg.Count, 'System.En');
+      CheckEquals('System.Encoding', sugg.Code[0]);
+
+   finally
+      encodingLib.Free;
+   end;
+end;
+
+
 
 // SuggestInBlockWithError
 //

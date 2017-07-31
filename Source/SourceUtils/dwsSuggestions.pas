@@ -22,7 +22,8 @@ interface
 uses
    Classes, SysUtils,
    dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsTokenizer, dwsScriptSource,
-   dwsUnitSymbols, dwsPascalTokenizer, dwsCompiler, dwsContextMap, dwsCompilerContext;
+   dwsUnitSymbols, dwsPascalTokenizer, dwsCompiler, dwsContextMap, dwsCompilerContext,
+   dwsSymbolDictionary;
 
 type
 
@@ -109,6 +110,7 @@ type
          FListLookup : TObjectsLookup;
          FNamesLookup : TNameSymbolHash;
          FPartialToken : String;
+         FFullToken : String;
          FPreviousSymbol : TSymbol;
          FPreviousSymbolIsMeta : Boolean;
          FPreviousTokenString : String;
@@ -361,7 +363,9 @@ begin
          Dec(p, 2);
          arrayItem:=SkipBrackets;
          MoveToTokenStart;
+         FFullToken := Copy(codeLine, p, FSourcePos.Col-p);
          FPreviousSymbol:=FProg.SymbolDictionary.FindSymbolAtPosition(p, lineNumber+1, FSourceFile.Name);
+
          if FPreviousSymbol<>nil then begin
             if FPreviousSymbol is TAliasSymbol then
                FPreviousSymbol:=TAliasSymbol(FPreviousSymbol).UnAliasedType;

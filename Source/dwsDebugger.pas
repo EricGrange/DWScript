@@ -285,7 +285,6 @@ type
 
    // TdwsDebugger
    //
-   // Work in progres, compiles, but is NOT operational yet
    TdwsDebugger = class (TdwsSimpleDebugger)
       private
          FExecution : IdwsProgramExecution;

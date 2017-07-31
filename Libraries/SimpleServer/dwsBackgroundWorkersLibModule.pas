@@ -24,7 +24,7 @@ type
          FPrev, FNext : TWorkWebRequest;
 
       protected
-         function  GetHeaders : TStrings; override;
+         function GetHeaders : TStrings; override;
 
       public
          Task : String;
