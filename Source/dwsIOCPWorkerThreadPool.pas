@@ -355,8 +355,8 @@ var
    n : Integer;
 begin
    n := InterlockedIncrement(FQueueSize);
-   if n > FQueueSize then
-      FQueueSize := n;
+   if n > FPeakQueueSize then
+      FPeakQueueSize := n;
 end;
 
 // QueueWork
@@ -368,7 +368,10 @@ begin
    IncrementQueueSize;
    lpOverlapped:=nil;
    PAnonymousWorkUnit(@lpOverlapped)^:=workUnit;
-   PostQueuedCompletionStatus(FIOCP, WORK_UNIT_ANONYMOUS, 0, lpOverlapped);
+   if not PostQueuedCompletionStatus(FIOCP, WORK_UNIT_ANONYMOUS, 0, lpOverlapped) then begin
+      FastInterlockedDecrement(FQueueSize);
+      RaiseLastOSError;
+   end;
 end;
 
 // QueueWork
@@ -379,7 +382,10 @@ var
 begin
    IncrementQueueSize;
    lpOverlapped:=Pointer(@workUnit);
-   PostQueuedCompletionStatus(FIOCP, WORK_UNIT_PROCEDURE, 0, lpOverlapped);
+   if not PostQueuedCompletionStatus(FIOCP, WORK_UNIT_PROCEDURE, 0, lpOverlapped) then begin
+      FastInterlockedDecrement(FQueueSize);
+      RaiseLastOSError;
+   end;
 end;
 
 // QueueWork
@@ -391,7 +397,10 @@ begin
    IncrementQueueSize;
    data.notifyEvent:=workUnit;
    data.sender:=sender;
-   PostQueuedCompletionStatus(FIOCP, data.lpNumberOfBytesTransferred, data.lpCompletionKey, data.lpOverlapped);
+   if not PostQueuedCompletionStatus(FIOCP, data.lpNumberOfBytesTransferred, data.lpCompletionKey, data.lpOverlapped) then begin
+      FastInterlockedDecrement(FQueueSize);
+      RaiseLastOSError;
+   end;
 end;
 
 // QueueDelayedWork
