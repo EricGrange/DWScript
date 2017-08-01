@@ -188,6 +188,9 @@ procedure CleanupGlobalQueues(const filter : String = '*');
 function InternalGlobalVars : PGlobalVars;
 function InternalPrivateVars : PGlobalVars;
 
+var
+   vGlobalQueuePoolSize : Integer = 64;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -393,10 +396,10 @@ end;
 //
 function TNameGlobalQueueHash.GetOrCreate(const aName : String) : TGlobalQueue;
 begin
-   Result:=Objects[aName];
-   if Result=nil then begin
-      Result:=TGlobalQueue.Create;
-      Objects[aName]:=Result;
+   Result := Objects[aName];
+   if Result = nil then begin
+      Result := TGlobalQueue.Create(vGlobalQueuePoolSize);
+      Objects[aName] := Result;
    end;
 end;
 
