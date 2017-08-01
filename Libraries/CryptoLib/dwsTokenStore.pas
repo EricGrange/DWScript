@@ -38,7 +38,7 @@ type
    TdwsTokenHash = class(TSimpleHash<TdwsToken>)
       protected
          function SameItem(const item1, item2 : TdwsToken) : Boolean; override;
-         function GetItemHashCode(const item1 : TdwsToken) : Integer; override;
+         function GetItemHashCode(const item1 : TdwsToken) : Cardinal; override;
    end;
 
    TdwsTokenStore = class
@@ -113,7 +113,7 @@ end;
 
 // GetItemHashCode
 //
-function TdwsTokenHash.GetItemHashCode(const item1 : TdwsToken) : Integer;
+function TdwsTokenHash.GetItemHashCode(const item1 : TdwsToken) : Cardinal;
 begin
    Result:=item1.HashCode;
 end;

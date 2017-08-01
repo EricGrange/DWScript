@@ -433,7 +433,7 @@ type
          function LinearFind(const item : T; var index : Integer) : Boolean;
          function SameItem(const item1, item2 : T) : Boolean; virtual; abstract;
          // hashCode must be non-null
-         function GetItemHashCode(const item1 : T) : Integer; virtual; abstract;
+         function GetItemHashCode(const item1 : T) : Cardinal; virtual; abstract;
 
          const cSimpleHashMinCapacity = 32;
 
@@ -457,7 +457,7 @@ type
    TSimpleObjectHash<T{$IFNDEF FPC}: TRefCountedObject{$ENDIF}> = class(TSimpleHash<T>)
       protected
          function SameItem(const item1, item2 : T) : Boolean; override;
-         function GetItemHashCode(const item1 : T) : Integer; override;
+         function GetItemHashCode(const item1 : T) : Cardinal; override;
 
       public
          procedure Clean;
@@ -794,7 +794,7 @@ type
    TSimpleStringHash = class(TSimpleHash<String>)
       protected
          function SameItem(const item1, item2 : String) : Boolean; override;
-         function GetItemHashCode(const item1 : String) : Integer; override;
+         function GetItemHashCode(const item1 : String) : Cardinal; override;
    end;
 
    TFastCompareTextList = class (TStringList)
@@ -4718,11 +4718,11 @@ end;
 
 // GetItemHashCode
 //
-function TSimpleObjectHash<T>.GetItemHashCode(const item1 : T) : Integer;
+function TSimpleObjectHash<T>.GetItemHashCode(const item1 : T) : Cardinal;
 var
-   p : NativeInt;
+   p : NativeUInt;
 begin
-   p:=PNativeInt(@item1)^; // workaround compiler issue
+   p:=PNativeUInt(@item1)^; // workaround compiler issue
    Result:=(p shr 4)+1;
 end;
 
@@ -6109,7 +6109,7 @@ end;
 
 // GetItemHashCode
 //
-function TSimpleStringHash.GetItemHashCode(const item1 : String) : Integer;
+function TSimpleStringHash.GetItemHashCode(const item1 : String) : Cardinal;
 begin
    Result:=SimpleStringHash(UnicodeLowerCase(item1));
 end;

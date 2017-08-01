@@ -37,7 +37,7 @@ type
    TdwsCustomStates = class (TSimpleHash<TdwsCustomState>)
       protected
          function SameItem(const item1, item2 : TdwsCustomState) : Boolean; override;
-         function GetItemHashCode(const item1 : TdwsCustomState) : Integer; override;
+         function GetItemHashCode(const item1 : TdwsCustomState) : Cardinal; override;
 
          function AddClonedState(const item : TdwsCustomState) : TSimpleHashAction;
 
@@ -61,7 +61,7 @@ type
    TdwsCustomInterfaces = class (TSimpleHash<TdwsCustomInterface>)
       protected
          function SameItem(const item1, item2 : TdwsCustomInterface) : Boolean; override;
-         function GetItemHashCode(const item1 : TdwsCustomInterface) : Integer; override;
+         function GetItemHashCode(const item1 : TdwsCustomInterface) : Cardinal; override;
 
          function  GetInterface(const index : TGUID) : IInterface; inline;
          procedure SetInterface(const index : TGUID; const intf : IInterface); inline;
@@ -101,7 +101,7 @@ end;
 
 // GetItemHashCode
 //
-function TdwsCustomStates.GetItemHashCode(const item1 : TdwsCustomState) : Integer;
+function TdwsCustomStates.GetItemHashCode(const item1 : TdwsCustomState) : Cardinal;
 begin
    Result := GUIDToHash(item1.Key);
 end;
@@ -182,7 +182,7 @@ end;
 
 // GetItemHashCode
 //
-function TdwsCustomInterfaces.GetItemHashCode(const item1 : TdwsCustomInterface) : Integer;
+function TdwsCustomInterfaces.GetItemHashCode(const item1 : TdwsCustomInterface) : Cardinal;
 begin
    Result := GUIDToHash(item1.Key);
 end;

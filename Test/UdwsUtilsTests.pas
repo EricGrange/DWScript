@@ -1160,27 +1160,27 @@ end;
 type
    TSimpleIntegerHash = class (TSimpleHash<Integer>)
       function SameItem(const item1, item2 : Integer) : Boolean; override;
-      function GetItemHashCode(const item1 : Integer) : Integer; override;
+      function GetItemHashCode(const item1 : Integer) : Cardinal; override;
    end;
    TSimpleIntegerHash2 = class (TSimpleIntegerHash)
-      function GetItemHashCode(const item1 : Integer) : Integer; override;
+      function GetItemHashCode(const item1 : Integer) : Cardinal; override;
    end;
    TSimpleIntegerHash3 = class (TSimpleIntegerHash)
-      function GetItemHashCode(const item1 : Integer) : Integer; override;
+      function GetItemHashCode(const item1 : Integer) : Cardinal; override;
    end;
 function TSimpleIntegerHash.SameItem(const item1, item2 : Integer) : Boolean;
 begin
    Result := item1 = item2;
 end;
-function TSimpleIntegerHash.GetItemHashCode(const item1 : Integer) : Integer;
+function TSimpleIntegerHash.GetItemHashCode(const item1 : Integer) : Cardinal;
 begin
    Result := SimpleIntegerHash(item1);
 end;
-function TSimpleIntegerHash2.GetItemHashCode(const item1 : Integer) : Integer;
+function TSimpleIntegerHash2.GetItemHashCode(const item1 : Integer) : Cardinal;
 begin
    Result := item1; // NOT a good hash, will cause many collision but that's what we want in this test
 end;
-function TSimpleIntegerHash3.GetItemHashCode(const item1 : Integer) : Integer;
+function TSimpleIntegerHash3.GetItemHashCode(const item1 : Integer) : Cardinal;
 begin
    Result := item1*4; // NOT a good hash, will cause many collision but that's what we want in this test
 end;

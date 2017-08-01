@@ -1583,7 +1583,7 @@ type
    TResolvedInterfaces = class (TSimpleHash<TResolvedInterface>)
       protected
          function SameItem(const item1, item2 : TResolvedInterface) : Boolean; override;
-         function GetItemHashCode(const item1 : TResolvedInterface) : Integer; override;
+         function GetItemHashCode(const item1 : TResolvedInterface) : Cardinal; override;
    end;
 
    TObjectDestroyEvent = procedure (ExternalObject: TObject) of object;
@@ -8056,9 +8056,9 @@ end;
 
 // GetItemHashCode
 //
-function TResolvedInterfaces.GetItemHashCode(const item1 : TResolvedInterface) : Integer;
+function TResolvedInterfaces.GetItemHashCode(const item1 : TResolvedInterface) : Cardinal;
 begin
-   Result:=(NativeInt(item1.IntfSymbol) shr 4);
+   Result:=(NativeUInt(item1.IntfSymbol) shr 4);
 end;
 
 // ------------------

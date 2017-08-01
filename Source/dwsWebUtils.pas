@@ -281,7 +281,7 @@ type
 
    TNamedEntities = class(TSimpleHash<TNamedEntity>)
       function SameItem(const item1, item2 : TNamedEntity) : Boolean; override;
-      function GetItemHashCode(const item1 : TNamedEntity) : Integer; override;
+      function GetItemHashCode(const item1 : TNamedEntity) : Cardinal; override;
    end;
 
 function TNamedEntities.SameItem(const item1, item2 : TNamedEntity) : Boolean;
@@ -289,7 +289,7 @@ begin
    Result := (item1.Name = item2.Name);
 end;
 
-function TNamedEntities.GetItemHashCode(const item1 : TNamedEntity) : Integer;
+function TNamedEntities.GetItemHashCode(const item1 : TNamedEntity) : Cardinal;
 begin
    Result := SimpleStringHash(item1.Name);
 end;

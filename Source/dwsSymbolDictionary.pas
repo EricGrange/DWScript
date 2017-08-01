@@ -126,7 +126,7 @@ type
    TSymbolPositionListHash = class(TSimpleHash<TSymbolPositionList>)
       protected
          function SameItem(const item1, item2 : TSymbolPositionList) : Boolean; override;
-         function GetItemHashCode(const item1 : TSymbolPositionList) : Integer; override;
+         function GetItemHashCode(const item1 : TSymbolPositionList) : Cardinal; override;
 
          function MatchSymbol(sym : TSymbol) : TSymbolPositionList;
    end;
@@ -527,7 +527,7 @@ end;
 
 // GetItemHashCode
 //
-function TSymbolPositionListHash.GetItemHashCode(const item1 : TSymbolPositionList) : Integer;
+function TSymbolPositionListHash.GetItemHashCode(const item1 : TSymbolPositionList) : Cardinal;
 begin
    Result := SimplePointerHash(item1.FSymbol);
 end;
