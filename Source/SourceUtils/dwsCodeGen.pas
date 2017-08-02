@@ -40,7 +40,7 @@ type
    TdwsMappedSymbolHash = class(TSimpleHash<TdwsMappedSymbol>)
       protected
          function SameItem(const item1, item2 : TdwsMappedSymbol) : Boolean; override;
-         function GetItemHashCode(const item1 : TdwsMappedSymbol) : Integer; override;
+         function GetItemHashCode(const item1 : TdwsMappedSymbol) : Cardinal; override;
    end;
 
    TdwsCodeGenSymbolScope = (cgssGlobal, cgssClass, cgssLocal, cgssNoMap);
@@ -1995,7 +1995,7 @@ end;
 
 // GetItemHashCode
 //
-function TdwsMappedSymbolHash.GetItemHashCode(const item1 : TdwsMappedSymbol) : Integer;
+function TdwsMappedSymbolHash.GetItemHashCode(const item1 : TdwsMappedSymbol) : Cardinal;
 begin
    Result:=NativeInt(item1.Symbol) shr 3;
    Result:=Result xor (Result shr 15);

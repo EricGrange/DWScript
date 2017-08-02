@@ -180,7 +180,7 @@ type
    TSimpleClassHash = class(TSimpleHash<TClass>)
       protected
          function SameItem(const item1, item2 : TClass) : Boolean; override;
-         function GetItemHashCode(const item1 : TClass) : Integer; override;
+         function GetItemHashCode(const item1 : TClass) : Cardinal; override;
    end;
 
    TdwsJSCodeGenEnvironment = class(TInterfacedSelfObject, IdwsEnvironment)
@@ -8663,9 +8663,9 @@ end;
 
 // GetItemHashCode
 //
-function TSimpleClassHash.GetItemHashCode(const item1 : TClass) : Integer;
+function TSimpleClassHash.GetItemHashCode(const item1 : TClass) : Cardinal;
 begin
-   Result := NativeInt(item1) * 16777619;
+   Result := NativeUInt(item1) * 16777619;
 end;
 
 end.
