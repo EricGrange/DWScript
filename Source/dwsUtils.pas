@@ -756,7 +756,8 @@ type
          procedure WriteCRLF; inline;
          procedure WriteAsciiCRLF; inline;
          procedure WriteChar(utf16Char : WideChar); inline;
-         procedure WriteDigits(value : Int64; digits : Integer);
+         procedure WriteDigits(value : Int64; digits : Integer); overload;
+         procedure WriteDigits(value : Cardinal; digits : Integer); overload;
 
          function ToString : String; override; final;
          function ToUnicodeString : UnicodeString;
@@ -998,6 +999,7 @@ function  StrUToInt64(const s : UnicodeString; const default : Int64) : Int64;
 
 function Int64ToHex(val : Int64; digits : Integer) : String; inline;
 
+function DivMod10(var dividend : Cardinal) : Cardinal;
 function DivMod100(var dividend : Cardinal) : Cardinal;
 
 procedure FastStringReplace(var str : UnicodeString; const sub, newSub : UnicodeString); overload;
@@ -1335,6 +1337,31 @@ begin
       Inc(pDest);
       pSrc := @pSrc[2];
    end;
+end;
+
+// DivMod10
+//
+function DivMod10(var dividend : Cardinal) : Cardinal;
+{$ifndef WIN32_ASM}
+var
+   divided : Cardinal;
+begin
+   divided:=dividend div 10;
+   Result:=dividend-divided*10;
+   dividend:=divided;
+{$else}
+const
+   c10 : Cardinal = 10;
+asm
+   mov   ecx, eax
+
+   mov   eax, [eax]
+   xor   edx, edx
+   div   c10
+
+   mov   [ecx], eax
+   mov   eax, edx
+{$endif}
 end;
 
 // DivMod100
@@ -4283,6 +4310,28 @@ begin
          buf[n]:=WideChar(Ord('0')+(value mod 10));
          value:=value div 10;
       end else buf[n]:='0';
+      Dec(digits);
+   end;
+
+   WriteBuf(@buf[n], (Length(buf)-n)*SizeOf(WideChar));
+end;
+
+// WriteDigits
+//
+procedure TWriteOnlyBlockStream.WriteDigits(value : Cardinal; digits : Integer);
+var
+   buf : array [0..10] of WideChar;
+   n : Integer;
+begin
+   if digits<=0 then Exit;
+
+   Assert(digits<Length(buf));
+   n:=Length(buf);
+   while digits>0 do begin
+      Dec(n);
+      if value<>0 then
+         buf[n] := WideChar(Ord('0')+DivMod10(value))
+      else buf[n] := '0';
       Dec(digits);
    end;
 
