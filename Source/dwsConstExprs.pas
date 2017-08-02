@@ -42,7 +42,7 @@ type
 
       public
          constructor Create(aTyp: TTypeSymbol; const Value: Variant); overload;
-         constructor Create(aTyp: TTypeSymbol; const Data: TData; addr : Integer); overload;
+         constructor Create(aTyp: TTypeSymbol; const initData : TData; addr : Integer); overload;
          constructor Create(aTyp: TTypeSymbol); overload;
          constructor CreateRef(aTyp: TTypeSymbol; const Data: TData);
          constructor CreateNull(aTyp: TTypeSymbol);
@@ -221,10 +221,11 @@ end;
 
 // Create
 //
-constructor TConstExpr.Create(aTyp: TTypeSymbol; const Data: TData; addr : Integer);
+constructor TConstExpr.Create(aTyp: TTypeSymbol; const initData: TData; addr : Integer);
 begin
    Create(aTyp);
-   DWSCopyData(Data, addr, FData, 0, aTyp.Size);
+   if initData <> nil then
+      DWSCopyData(initData, addr, FData, 0, aTyp.Size);
 end;
 
 // Create

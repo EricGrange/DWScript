@@ -188,7 +188,7 @@ function CreateRootedRegistry(Info : TProgramInfo; access : LongWord) : TRegistr
 var
    rootKey : HKEY;
 begin
-   rootKey := Info.ParamAsInteger[0];
+   rootKey := HKEY(Info.ParamAsInteger[0]);
    if (rootKey = HKEY_LOCAL_MACHINE) and ProcessIsWow64 then
       access := access or $100;
    Result := TRegistry.Create(access);

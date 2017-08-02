@@ -12,8 +12,7 @@ PrintLn(DateToStr(t));
 PrintLn(TimeToStr(t));
 PrintLn(DateTimeToStr(t));
 
-PrintLn(FormatDateTime('ddddd @ dddddd', t));
-PrintLn(FormatDateTime('t @ tt', t));
+PrintLn(FormatDateTime('dd/mm dd-mm dd.mm', t));
 
 PrintLn(FormatDateTime('hh:nn am/pm', t));
 PrintLn(FormatDateTime('hh:nn a/p', t));

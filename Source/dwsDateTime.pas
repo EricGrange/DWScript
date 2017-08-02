@@ -22,7 +22,7 @@ interface
 
 uses
    Classes, SysUtils,
-   dwsUtils, dwsXPlatform;
+   dwsUtils, dwsXPlatform, dwsXXHash;
 
 type
 
@@ -64,6 +64,316 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+type
+   TDateTimeToken = (
+      _string,
+      _d, _dd, _ddd, _dddd,
+      _m, _mm, _mmm, _mmmm,
+      _yy, _yyyy,
+      _h24, _hh24, _h12, _hh12,
+      _n, _nn, _s, _ss, _z, _zzz,
+      _ampm, _am_pm, _a_p
+      );
+
+   TDateTimeItem = record
+      Token : TDateTimeToken;
+      Literal : String;
+   end;
+
+   TdwsDateTimeFormatter = class
+      private
+         HashCode : Cardinal;
+         Format : String;
+         Items : array of TDateTimeItem;
+         TimeNeeded, DateNeeded, DOWNeeded : Boolean;
+
+         procedure AddToken(tok : TDateTimeToken);
+         procedure AddLitteral(const s : String);
+
+      public
+         constructor Create(const fmt : String);
+
+         function Apply(dt : TDateTime; const settings : TFormatSettings) : String;
+   end;
+
+// Create
+//
+constructor TdwsDateTimeFormatter.Create(const fmt : String);
+var
+   p : PChar;
+   quoteStart : PChar;
+   buf : String;
+begin
+   inherited Create;
+   Format := fmt;
+   HashCode := SimpleStringHash(fmt);
+
+   if fmt = '' then Exit;
+   p := PChar(fmt);
+
+   while p^ <> #0 do begin
+      case p^ of
+         'd', 'D' : begin
+            if (p[1] = 'd') or (p[1] = 'D') then begin
+               if (p[2] = 'd') or (p[2] = 'D') then begin
+                  if (p[3] = 'd') or (p[3] = 'D') then begin
+                     AddToken(_dddd);
+                     Inc(p, 4);
+                  end else begin
+                     AddToken(_ddd);
+                     Inc(p, 3);
+                  end;
+               end else begin
+                  AddToken(_dd);
+                  Inc(p, 2);
+               end;
+            end else begin
+               AddToken(_d);
+               Inc(p);
+            end;
+         end;
+         'm', 'M' : begin
+            if (p[1] = 'm') or (p[1] = 'M')  then begin
+               if (p[2] = 'm') or (p[2] = 'M') then begin
+                  if (p[3] = 'm') or (p[3] = 'm') then begin
+                     AddToken(_mmmm);
+                     Inc(p, 4);
+                  end else begin
+                     AddToken(_mmm);
+                     Inc(p, 3);
+                  end;
+               end else begin
+                  AddToken(_mm);
+                  Inc(p, 2);
+               end;
+            end else begin
+               AddToken(_m);
+               Inc(p);
+            end;
+         end;
+         'y', 'Y' : begin
+            if (p[1] = 'y') or (p[1] = 'Y') then begin
+               if ((p[2] = 'y') or (p[2] = 'Y')) and ((p[3] = 'y') or (p[3] = 'Y')) then begin
+                  AddToken(_yyyy);
+                  Inc(p, 4);
+               end else begin
+                  AddToken(_yy);
+                  Inc(p, 2);
+               end;
+            end else begin
+               AddLitteral('y');
+               Inc(p);
+            end;
+         end;
+         'h', 'H' : begin
+            if (p[1] = 'h') or (p[1] = 'H') then begin
+               AddToken(_hh24);
+               Inc(p, 2);
+            end else begin
+               AddToken(_h24);
+               Inc(p);
+            end;
+         end;
+         'n', 'N' : begin
+            if (p[1] = 'n') or (p[1] = 'n') then begin
+               AddToken(_nn);
+               Inc(p, 2);
+            end else begin
+               AddToken(_n);
+               Inc(p);
+            end;
+         end;
+         's', 'S' : begin
+            if (p[1] = 's') or (p[1] = 's') then begin
+               AddToken(_ss);
+               Inc(p, 2);
+            end else begin
+               AddToken(_s);
+               Inc(p);
+            end;
+         end;
+         'z', 'Z' : begin
+            if ((p[1] = 'z') or (p[1] = 'Z')) and ((p[2] = 'z') or (p[2] = 'Z')) then begin
+               AddToken(_zzz);
+               Inc(p, 3);
+            end else begin
+               AddToken(_z);
+               Inc(p);
+            end;
+         end;
+         'a' : begin
+            if StrComp(p, 'ampm')=0 then begin
+               AddToken(_ampm);
+               Inc(p, 4);
+            end else if StrComp(p, 'am/pm')=0 then begin
+               AddToken(_am_pm);
+               Inc(p, 5);
+            end else if StrComp(p, 'a/p')=0 then begin
+               AddToken(_a_p);
+               Inc(p, 3);
+            end else begin
+               AddLitteral('a');
+               Inc(p);
+            end;
+         end;
+         '"', '''' : begin
+            quoteStart := p;
+            Inc(p);
+            while (p^ <> #0) and (p^ <> quoteStart^) do
+               Inc(p);
+            Inc(quoteStart);
+            if quoteStart <> p then begin
+               SetString(buf, quoteStart, (NativeUInt(p)-NativeUInt(quoteStart)) div SizeOf(Char));
+               AddLitteral(buf);
+            end;
+            if p^ <> #0 then
+               Inc(p);
+         end;
+      else
+         AddLitteral(p^);
+         Inc(p);
+      end;
+   end;
+end;
+
+// Apply
+//
+function TdwsDateTimeFormatter.Apply(dt : TDateTime; const settings : TFormatSettings) : String;
+var
+   i : Integer;
+   hours, minutes, seconds, msec : Word;
+   year, month, day, dow : Word;
+   wobs : TWriteOnlyBlockStream;
+begin
+   if DateNeeded then begin
+      if DOWNeeded then
+         DecodeDateFully(dt, year, month, day, dow)
+      else DecodeDate(dt, year, month, day);
+      if (month = 0) or (date = 0) then
+         raise Exception.CreateFmt('Invalid date (%f)', [dt]);
+   end;
+   if TimeNeeded then
+      DecodeTime(dt, hours, minutes, seconds, msec);
+
+   wobs := TWriteOnlyBlockStream.AllocFromPool;
+   try
+      for i := 0 to High(Items) do begin
+         case Items[i].Token of
+            _d : wobs.WriteString(day);
+            _dd : wobs.WriteDigits(day, 2);
+            _ddd : wobs.WriteString(settings.ShortDayNames[dow]);
+            _dddd : wobs.WriteString(settings.LongDayNames[dow]);
+            _m : wobs.WriteString(month);
+            _mm : wobs.WriteDigits(month, 2);
+            _mmm : wobs.WriteString(settings.ShortMonthNames[month]);
+            _mmmm : wobs.WriteString(settings.LongMonthNames[month]);
+            _yy : wobs.WriteDigits(year mod 100, 2);
+            _yyyy : wobs.WriteDigits(year, 4);
+            _h24 : wobs.WriteString(hours);
+            _hh24 : wobs.WriteDigits(hours, 2);
+            _h12 : wobs.WriteString((hours + 11) mod 12 + 1);
+            _hh12 : wobs.WriteDigits((hours + 11) mod 12 + 1, 2);
+            _n : wobs.WriteString(minutes);
+            _nn : wobs.WriteDigits(minutes, 2);
+            _s : wobs.WriteString(seconds);
+            _ss : wobs.WriteDigits(seconds, 2);
+            _z : wobs.WriteString(msec);
+            _zzz : wobs.WriteDigits(msec, 3);
+            _ampm : begin
+               if hours in [1..12] then
+                  wobs.WriteString(settings.TimeAMString)
+               else wobs.WriteString(settings.TimePMString);
+            end;
+            _am_pm : begin
+               if hours in [1..12] then
+                  wobs.WriteString('am')
+               else wobs.WriteString('pm');
+            end;
+            _a_p : begin
+               if hours in [1..12] then
+                  wobs.WriteString('a')
+               else wobs.WriteString('p');
+            end;
+            _string : wobs.WriteString(Items[i].Literal);
+         else
+            Assert(False);
+         end;
+      end;
+      Result := wobs.ToString;
+   finally
+      wobs.ReturnToPool;
+   end;
+end;
+
+// AddToken
+//
+procedure TdwsDateTimeFormatter.AddToken(tok : TDateTimeToken);
+var
+   i, n : Integer;
+begin
+   n := Length(Items);
+   SetLength(Items, n+1);
+   case tok of
+      _d, _dd, _mmm.._yyyy : DateNeeded := True;
+      _m, _mm : begin
+         // if immediately after an hour, interpret as  minutes, otherwise interpret as month
+         for i := n-1 downto 0 do begin
+            case Items[i].Token of
+               _string : ;
+               _h24.._hh12 : begin
+                  if tok = _m then
+                     tok := _n
+                  else tok := _nn;
+                  Break; // TimeNeeded already set by hour token
+               end;
+            else
+               DateNeeded := True;
+               Break;
+            end;
+         end;
+      end;
+      _ddd, _dddd : begin
+         DOWNeeded := True;
+         DateNeeded := True;
+      end;
+      _h24.._zzz : TimeNeeded := True;
+      _ampm.._a_p : begin
+         TimeNeeded := True;
+         // affects the previous hour token to make it 12 rather than 24
+         for i := n-1 downto 0 do begin
+            case Items[i].Token of
+               _h24 : begin
+                  Items[i].Token := _h12;
+                  Break;
+               end;
+               _hh24 : begin
+                  Items[i].Token := _hh12;
+                  Break;
+               end;
+               _h12, _hh12 : Break;
+            end;
+         end;
+      end;
+   end;
+   Items[n].Token := tok;
+end;
+
+// AddLitteral
+//
+procedure TdwsDateTimeFormatter.AddLitteral(const s : String);
+var
+   n : Integer;
+begin
+   n := Length(Items);
+   if (n > 0) and (Items[n-1].Token = _string) then begin
+      Items[n-1].Literal := Items[n-1].Literal + s;
+   end else begin
+      SetLength(Items, n+1);
+      Items[n].Token := _string;
+      Items[n].Literal := s;
+   end;
+end;
+
 // ------------------
 // ------------------ TdwsFormatSettings ------------------
 // ------------------
@@ -79,15 +389,26 @@ end;
 
 // FormatDateTime
 //
+// Clean Room implementation based strictly on the format String
 function TdwsFormatSettings.FormatDateTime(const fmt : String; dt : Double; tz : TdwsTimeZone) : String;
+var
+   formatter : TdwsDateTimeFormatter;
 begin
+   if fmt = '' then Exit;
+
    if (dt<-693592) or (dt>2146790052) then
       raise EConvertError.Create('Invalid date/time');
    if tz = tzDefault then
       tz := TimeZone;
    if tz = tzUTC then
       dt := UTCDateTimeToLocalDateTime(dt);
-   Result:=SysUtils.FormatDateTime(fmt, dt, Settings);
+
+   formatter := TdwsDateTimeFormatter.Create(fmt);
+   try
+      Result := formatter.Apply(dt, Settings);
+   finally
+      formatter.Free;
+   end;
 end;
 
 // DateTimeToStr
@@ -190,7 +511,7 @@ begin
             else if tok='ddd' then begin
                match:=False;
                Dec(p, 3);
-               for j:=0 to High(settings.ShortDayNames) do begin
+               for j:=Low(Settings.ShortDayNames) to High(Settings.ShortDayNames) do begin
                   if UnicodeSameText(Copy(fmt, p, Length(settings.ShortDayNames[j])),
                                      settings.ShortDayNames[j]) then begin
                      Inc(p, Length(settings.ShortDayNames[j]));
@@ -202,7 +523,7 @@ begin
             end else if tok='dddd' then begin
                match:=False;
                Dec(p, 4);
-               for j:=0 to High(settings.LongDayNames) do begin
+               for j:=Low(Settings.LongDayNames) to High(Settings.LongDayNames) do begin
                   if UnicodeSameText(Copy(fmt, p, Length(settings.LongDayNames[j])),
                                      settings.LongDayNames[j]) then begin
                      Inc(p, Length(settings.LongDayNames[j]));
@@ -220,7 +541,7 @@ begin
             end else if tok='mmm' then begin
                match:=False;
                Dec(p, 3);
-               for j:=0 to High(settings.ShortMonthNames) do begin
+               for j:=Low(settings.ShortMonthNames) to High(settings.ShortMonthNames) do begin
                   if UnicodeSameText(Copy(fmt, p, Length(settings.ShortDayNames[j])),
                                      settings.ShortDayNames[j]) then begin
                      Inc(p, Length(settings.ShortDayNames[j]));
@@ -232,7 +553,7 @@ begin
             end else if tok='mmmm' then begin
                match:=False;
                Dec(p, 4);
-               for j:=0 to High(settings.LongMonthNames) do begin
+               for j:=Low(settings.LongMonthNames) to High(settings.LongMonthNames) do begin
                   if UnicodeSameText(Copy(fmt, p, Length(settings.LongDayNames[j])),
                                      settings.LongDayNames[j]) then begin
                      Inc(p, Length(settings.LongDayNames[j]));

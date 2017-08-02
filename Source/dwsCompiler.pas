@@ -2851,8 +2851,8 @@ begin
             SetLength(initData, sym.Typ.Size);
             TDataSymbol(sym).Typ.InitData(initData, 0);
 
-            constExpr:=TConstExpr.Create(sym.Typ, initData, 0);
-            assignExpr:=TAssignConstDataToVarExpr.Create(FCompilerContext, scriptPos, varExpr, constExpr);
+            constExpr := TConstExpr.Create(sym.Typ, initData, 0);
+            assignExpr := TAssignConstDataToVarExpr.Create(FCompilerContext, scriptPos, varExpr, constExpr);
          end;
          CurrentProg.InitExpr.AddStatement(assignExpr);
 

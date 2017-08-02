@@ -1,4 +1,6 @@
-﻿var a,b,c,d : float;
+﻿FormatSettings.ShortDateFormat := 'dd/mm/yyyy';
+
+var a,b,c,d : float;
 var myDate:='06/01/2017';
 a:=StrToDateTime(myDate);
 b:=StrToDateTimeDef(myDate,0);

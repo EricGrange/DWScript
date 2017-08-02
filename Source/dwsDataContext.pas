@@ -245,8 +245,8 @@ procedure DWSCopyData(const sourceData: TData; sourceAddr: Integer;
 var
    src, dest : PVariant;
 begin
-   src:=@sourceData[sourceAddr];
-   dest:=@destData[destAddr];
+   src := @sourceData[sourceAddr];
+   dest := @destData[destAddr];
    while size > 0 do begin
       VarCopySafe(dest^, src^);
       Inc(src);

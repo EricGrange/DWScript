@@ -1340,7 +1340,7 @@ end;
 //
 function TBigIntegerTestBitFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
-   Result := mpz_tstbit(ArgBigInteger(args, 0).Value^, args.AsInteger[1]) <> 0;
+   Result := mpz_tstbit(ArgBigInteger(args, 0).Value^, Cardinal(args.AsInteger[1])) <> 0;
 end;
 
 // ------------------
@@ -1351,7 +1351,7 @@ end;
 //
 procedure TBigIntegerSetBitFunc.DoEvalProc(const args : TExprBaseListExec);
 begin
-   mpz_setbit(ArgVarBigInteger(args, 0).Value^, args.AsInteger[1]);
+   mpz_setbit(ArgVarBigInteger(args, 0).Value^, Cardinal(args.AsInteger[1]));
 end;
 
 // ------------------

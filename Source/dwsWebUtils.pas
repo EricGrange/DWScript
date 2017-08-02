@@ -367,6 +367,7 @@ var
    pSrc, pDest : PAnsiChar;
    c : AnsiChar;
 begin
+   if count = 0 then Exit;
    SetLength(raw, count);
    pSrc:=@src[start];
    pDest:=PAnsiChar(Pointer(raw));
