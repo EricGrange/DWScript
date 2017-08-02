@@ -80,12 +80,15 @@ type
       Literal : String;
    end;
 
-   TdwsDateTimeFormatter = class
+   IdwsDateTimeFormatter = interface
+      function Apply(dt : TDateTime; const settings : TFormatSettings) : String;
+   end;
+
+   TdwsDateTimeFormatter = class (TInterfacedObject, IdwsDateTimeFormatter)
       private
-         HashCode : Cardinal;
          Format : String;
          Items : array of TDateTimeItem;
-         TimeNeeded, DateNeeded, DOWNeeded : Boolean;
+         TimeNeeded, DateNeeded : Boolean;
 
          procedure AddToken(tok : TDateTimeToken);
          procedure AddLitteral(const s : String);
@@ -93,8 +96,65 @@ type
       public
          constructor Create(const fmt : String);
 
+         class function Acquire(const fmt : String) : IdwsDateTimeFormatter; static;
+         class procedure FlushCache; static;
+
          function Apply(dt : TDateTime; const settings : TFormatSettings) : String;
    end;
+
+var
+   vFormattersCacheLock : TMultiReadSingleWrite;
+   vFormattersCache : TNameObjectHash;
+
+// Acquire
+//
+class function TdwsDateTimeFormatter.Acquire(const fmt : String) : IdwsDateTimeFormatter;
+var
+   hash : Cardinal;
+   formatter, other : TdwsDateTimeFormatter;
+begin
+   hash := vFormattersCache.HashName(fmt);
+   vFormattersCacheLock.BeginRead;
+   try
+      formatter := TdwsDateTimeFormatter(vFormattersCache.HashedObjects[fmt, hash]);
+      if formatter <> nil then
+         Exit(formatter);
+   finally
+      vFormattersCacheLock.EndRead;
+   end;
+   formatter := TdwsDateTimeFormatter.Create(fmt);
+   vFormattersCacheLock.BeginWrite;
+   try
+      other := TdwsDateTimeFormatter(vFormattersCache.HashedObjects[fmt, hash]);
+      if other = nil then begin
+         vFormattersCache.HashedObjects[fmt, hash] := formatter;
+         formatter._AddRef;
+      end else begin
+         formatter.Free;
+         formatter := other;
+      end;
+      Result := formatter;
+   finally
+      vFormattersCacheLock.EndWrite;
+   end;
+end;
+
+// FlushCache
+//
+class procedure TdwsDateTimeFormatter.FlushCache;
+var
+   i : Integer;
+begin
+   vFormattersCacheLock.BeginWrite;
+   try
+      for i := 0 to vFormattersCache.HighIndex do
+         if vFormattersCache.BucketObject[i] <> nil then
+            TdwsDateTimeFormatter(vFormattersCache.BucketObject[i])._Release;
+      vFormattersCache.Clear;
+   finally
+      vFormattersCacheLock.EndWrite;
+   end;
+end;
 
 // Create
 //
@@ -106,7 +166,6 @@ var
 begin
    inherited Create;
    Format := fmt;
-   HashCode := SimpleStringHash(fmt);
 
    if fmt = '' then Exit;
    p := PChar(fmt);
@@ -246,10 +305,8 @@ var
    wobs : TWriteOnlyBlockStream;
 begin
    if DateNeeded then begin
-      if DOWNeeded then
-         DecodeDateFully(dt, year, month, day, dow)
-      else DecodeDate(dt, year, month, day);
-      if (month = 0) or (date = 0) then
+      DecodeDateFully(dt, year, month, day, dow);
+      if (month = 0) or (day = 0) then
          raise Exception.CreateFmt('Invalid date (%f)', [dt]);
    end;
    if TimeNeeded then
@@ -260,23 +317,23 @@ begin
       for i := 0 to High(Items) do begin
          case Items[i].Token of
             _d : wobs.WriteString(day);
-            _dd : wobs.WriteDigits(day, 2);
+            _dd : wobs.WriteP(@cTwoDigits[day], 2);
             _ddd : wobs.WriteString(settings.ShortDayNames[dow]);
             _dddd : wobs.WriteString(settings.LongDayNames[dow]);
             _m : wobs.WriteString(month);
-            _mm : wobs.WriteDigits(month, 2);
+            _mm : wobs.WriteP(@cTwoDigits[month], 2);
             _mmm : wobs.WriteString(settings.ShortMonthNames[month]);
             _mmmm : wobs.WriteString(settings.LongMonthNames[month]);
-            _yy : wobs.WriteDigits(year mod 100, 2);
+            _yy : wobs.WriteP(@cTwoDigits[year mod 100], 2);
             _yyyy : wobs.WriteDigits(year, 4);
             _h24 : wobs.WriteString(hours);
-            _hh24 : wobs.WriteDigits(hours, 2);
+            _hh24 : wobs.WriteP(@cTwoDigits[hours], 2);
             _h12 : wobs.WriteString((hours + 11) mod 12 + 1);
-            _hh12 : wobs.WriteDigits((hours + 11) mod 12 + 1, 2);
+            _hh12 : wobs.WriteP(@cTwoDigits[(hours + 11) mod 12 + 1], 2);
             _n : wobs.WriteString(minutes);
-            _nn : wobs.WriteDigits(minutes, 2);
+            _nn : wobs.WriteP(@cTwoDigits[minutes], 2);
             _s : wobs.WriteString(seconds);
-            _ss : wobs.WriteDigits(seconds, 2);
+            _ss : wobs.WriteP(@cTwoDigits[seconds], 2);
             _z : wobs.WriteString(msec);
             _zzz : wobs.WriteDigits(msec, 3);
             _ampm : begin
@@ -314,7 +371,7 @@ begin
    n := Length(Items);
    SetLength(Items, n+1);
    case tok of
-      _d, _dd, _mmm.._yyyy : DateNeeded := True;
+      _d.._dddd, _mmm.._yyyy : DateNeeded := True;
       _m, _mm : begin
          // if immediately after an hour, interpret as  minutes, otherwise interpret as month
          for i := n-1 downto 0 do begin
@@ -331,10 +388,6 @@ begin
                Break;
             end;
          end;
-      end;
-      _ddd, _dddd : begin
-         DOWNeeded := True;
-         DateNeeded := True;
       end;
       _h24.._zzz : TimeNeeded := True;
       _ampm.._a_p : begin
@@ -391,8 +444,6 @@ end;
 //
 // Clean Room implementation based strictly on the format String
 function TdwsFormatSettings.FormatDateTime(const fmt : String; dt : Double; tz : TdwsTimeZone) : String;
-var
-   formatter : TdwsDateTimeFormatter;
 begin
    if fmt = '' then Exit;
 
@@ -403,12 +454,7 @@ begin
    if tz = tzUTC then
       dt := UTCDateTimeToLocalDateTime(dt);
 
-   formatter := TdwsDateTimeFormatter.Create(fmt);
-   try
-      Result := formatter.Apply(dt, Settings);
-   finally
-      formatter.Free;
-   end;
+   Result := TdwsDateTimeFormatter.Acquire(fmt).Apply(dt, Settings);
 end;
 
 // DateTimeToStr
@@ -666,5 +712,22 @@ begin
    DecodeDate(dt, y, m, d);
    Result := y;
 end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   vFormattersCache := TNameObjectHash.Create;
+   vFormattersCacheLock := TMultiReadSingleWrite.Create;
+
+finalization
+
+   TdwsDateTimeFormatter.FlushCache;
+   FreeAndNil(vFormattersCacheLock);
+   FreeAndNil(vFormattersCache);
 
 end.
