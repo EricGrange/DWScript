@@ -45,7 +45,7 @@ type
    TCompiledProgramHash = class (TSimpleHash<TCompiledProgram>)
       protected
          function SameItem(const item1, item2 : TCompiledProgram) : Boolean; override;
-         function GetItemHashCode(const item1 : TCompiledProgram) : Integer; override;
+         function GetItemHashCode(const item1 : TCompiledProgram) : Cardinal; override;
    end;
 
    TDWSHandlingOption = (optWorker);
@@ -1144,7 +1144,7 @@ end;
 
 // GetItemHashCode
 //
-function TCompiledProgramHash.GetItemHashCode(const item1 : TCompiledProgram) : Integer;
+function TCompiledProgramHash.GetItemHashCode(const item1 : TCompiledProgram) : Cardinal;
 begin
    Result:=SimpleStringHash(item1.Name);
 end;
