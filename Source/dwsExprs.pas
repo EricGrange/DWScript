@@ -515,6 +515,7 @@ type
          FDefaultLocalizer : IdwsLocalizer;
          FOnExecutionStarted : TdwsExecutionEvent;
          FOnExecutionEnded : TdwsExecutionEvent;
+         FOnDestroy : TNotifyEvent;
 
          FExecutionsClass : TdwsProgramExecutionClass;
 
@@ -593,7 +594,6 @@ type
          property SymbolDictionary: TdwsSymbolDictionary read FSymbolDictionary;
          property Attributes : TdwsSymbolAttributes read FAttributes;
          property SourceList : TScriptSourceList read FSourceList;
-         property UnitList : TIdwsUnitList read FUnitList;
          property LineCount : Integer read FLineCount write FLineCount;
          property TimeStamp : TDateTime read FTimeStamp write FTimeStamp;
          property CompileDurationMSec : Integer read FCompileDurationMSec write FCompileDurationMSec;
@@ -605,6 +605,8 @@ type
 
          property OnExecutionStarted : TdwsExecutionEvent read FOnExecutionStarted write FOnExecutionStarted;
          property OnExecutionEnded : TdwsExecutionEvent read FOnExecutionEnded write FOnExecutionEnded;
+
+         property OnDestroy : TNotifyEvent read FOnDestroy write FOnDestroy;
 
          property ProgramType : TdwsProgramType read FProgramType write FProgramType;
          property TagInterface : IGetSelf read FTagInterface write FTagInterface;
@@ -2820,11 +2822,15 @@ begin
    finally
       FExecutionsLock.Leave;
    end;
+   if Assigned(FOnDestroy) then
+      FOnDestroy(Self);
+
    FExecutionsLock.Free;
 
    inherited;
 
    FCompilerContext.Free;
+   FUnitList.Clear;
    FUnitList.Free;
 
    FFinalExpr.Free;

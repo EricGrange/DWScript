@@ -123,9 +123,10 @@ begin
    compiler := TdwsCompilerForEvaluate.Create;
    try
       if exec=nil then begin
-         config:=TdwsConfiguration.Create(nil);
+         config := TdwsConfiguration.Create(nil);
          try
-            exec:=compiler.Compile('', config).CreateNewExecution;
+            exec := compiler.Compile('', config).CreateNewExecution;
+            (exec.Prog as TdwsMainProgram).OnDestroy := nil;
          finally
             config.Free;
          end;

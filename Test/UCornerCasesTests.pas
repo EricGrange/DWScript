@@ -31,15 +31,20 @@ type
 
       published
          procedure TokenizerErrorTransition;
+
+         procedure ReleaseCompilerBeforeProg;
+
          procedure TimeOutTestFinite;
          procedure TimeOutTestInfinite;
          procedure TimeOutTestSequence;
+
          procedure IncludeViaEvent;
          procedure IncludeViaFile;
          procedure IncludeViaFileRestricted;
          procedure IncludeCommentStart;
          procedure IncludeStringStart;
          procedure IncludeInSections;
+
          procedure StackMaxRecursion;
          procedure StackOverFlow;
          procedure StackOverFlowOnFuncPtr;
@@ -210,6 +215,30 @@ begin
    prog:=FCompiler.Compile('var s = $'#25);
 
    CheckEquals('Syntax Error: Hexadecimal digit expected (found #25) [line: 1, column: 10]'#13#10, prog.Msgs.AsInfo);
+end;
+
+// ReleaseCompilerBeforeProg
+//
+procedure TCornerCasesTests.ReleaseCompilerBeforeProg;
+var
+   dws : TDelphiWebScript;
+   prog : IdwsProgram;
+begin
+   dws := TDelphiWebScript.Create(nil);
+   try
+      prog := dws.Compile(' ');
+   finally
+      try
+         dws.Free;
+      except
+         on E : Exception do begin
+            CheckEquals(EdwsActivePrograms, E.ClassType);
+            prog := nil;
+            dws.Free;
+         end;
+      end;
+   end;
+   Check(prog = nil, 'Faield to warn');
 end;
 
 // TimeOutTestFinite
@@ -1432,6 +1461,7 @@ var
    un : TdwsUnit;
    cls : TdwsClass;
    cst : TdwsConstructor;
+   prog : IdwsProgram;
 begin
    un:=TdwsUnit.Create(nil);
    try
@@ -1473,8 +1503,9 @@ begin
       cst.Parameters.Add('Test', 'Float');
       cst.Parameters.Add('B', 'Integer');
 
-      CheckEquals('', FCompiler.Compile('').Msgs.AsInfo);
-
+      prog := FCompiler.Compile('');
+      CheckEquals('', prog.Msgs.AsInfo);
+      prog := nil;
    finally
       un.Free;
    end;

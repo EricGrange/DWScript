@@ -1463,6 +1463,7 @@ type
    end;
 
    EdwsInvalidUnitAddition = class (Exception);
+   EdwsActivePrograms = class (Exception);
 
 // Return the external object for a variable name.
 function GetExternalObjForID(Info: TProgramInfo; const AVarName: String): TObject;
@@ -1594,7 +1595,18 @@ end;
 // Destroy
 //
 destructor TDelphiWebScript.Destroy;
+var
+   n : Integer;
 begin
+   n := FCompiler.ActiveProgramCount;
+   if n > 0 then begin
+      // A current limitation is that all IdwsProgram instances must have been
+      // released before the TDelphiWebScript is released.
+      // This is in part because TDelphiWebScript and accompanying TdwsUnits
+      // are components, and are not reference-counted.
+      raise EdwsActivePrograms.CreateFmt('TDelphiWebScript instance "%s" still has %d active IdwsProgram instance(s)', [Name, n]);
+   end;
+
    inherited;
    FCompiler:=nil;
    FConfig.Free;

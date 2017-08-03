@@ -300,6 +300,8 @@ type
       function CompileTimeExecution : TdwsExecution;
       function GetCompilerContext : TdwsCompilerContext;
 
+      function ActiveProgramCount : Integer;
+
       procedure SetExternalFunctionsManager(const value : IdwsExternalFunctionsManager);
       function  GetExternalFunctionsManager : IdwsExternalFunctionsManager;
 
@@ -384,6 +386,8 @@ type
          FOnApplyConditionalDefines : TCompilerApplyConditionalDefines;
          FOnExecutionStarted : TdwsExecutionEvent;
          FOnExecutionEnded : TdwsExecutionEvent;
+
+         FActiveProgramCount : Integer;
 
          F8087CW : Cardinal;
          FCompilerAbort : Boolean;
@@ -723,6 +727,8 @@ type
 
          function GetCompilerContext : TdwsCompilerContext;
 
+         procedure DoProgramDestroyed(Sender : TObject);
+
       protected
          procedure EnterLoop(loopExpr : TProgramExpr);
          procedure MarkLoopExitable(level : TLoopExitable);
@@ -811,6 +817,8 @@ type
          class procedure Evaluate; static; deprecated 'Moved to TdwsEvaluateExpr.Evaluate';
 
          procedure AbortCompilation;
+
+         function ActiveProgramCount : Integer;
 
          procedure WarnForVarUsage(varExpr : TVarExpr; const scriptPos : TScriptPos);
 
@@ -1354,6 +1362,13 @@ begin
    Result := FCompilerContext;
 end;
 
+// DoProgramDestroyed
+//
+procedure TdwsCompiler.DoProgramDestroyed(Sender : TObject);
+begin
+   FastInterlockedDecrement(FActiveProgramCount);
+end;
+
 // EnterLoop
 //
 procedure TdwsCompiler.EnterLoop(loopExpr : TProgramExpr);
@@ -1614,6 +1629,10 @@ begin
    FMainProg.ConditionalDefines.Value.Assign(FDefaultConditionals.Value);
    FMainProg.OnExecutionStarted:=FOnExecutionStarted;
    FMainProg.OnExecutionEnded:=FOnExecutionEnded;
+
+   FastInterlockedIncrement(FActiveProgramCount);
+   FMainProg.OnDestroy := DoProgramDestroyed;
+
    FSourceContextMap:=FMainProg.SourceContextMap;
    FSymbolDictionary:=FMainProg.SymbolDictionary;
    FUnitSection:=secMixed;
@@ -2185,6 +2204,13 @@ end;
 procedure TdwsCompiler.AbortCompilation;
 begin
    FCompilerAbort:=True;
+end;
+
+// ActiveProgramCount
+//
+function TdwsCompiler.ActiveProgramCount : Integer;
+begin
+   Result := FActiveProgramCount;
 end;
 
 // Optimize

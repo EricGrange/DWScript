@@ -2515,8 +2515,9 @@ begin
       un.Dependencies.Add('Bogus');
       un.Script:=FCompiler;
 
-      prog:=FCompiler.Compile('');
+      prog := FCompiler.Compile('');
       CheckEquals('Syntax Error: Unit "Bogus" referenced in unit "TestBug" not found'#13#10, prog.Msgs.AsInfo);
+      prog := nil;
    finally
       un.Free;
    end;
@@ -2535,8 +2536,9 @@ begin
       un.Dependencies.Add('TestBug');
       un.Script:=FCompiler;
 
-      prog:=FCompiler.Compile('');
+      prog := FCompiler.Compile('');
       CheckEquals('Syntax Error: Circular referencing units detected'#13#10, prog.Msgs.AsInfo);
+      prog := nil;
    finally
       un.Free;
    end;
@@ -2554,8 +2556,9 @@ begin
       un.UnitName:='Test';
       un.Script:=FCompiler;
 
-      prog:=FCompiler.Compile('');
+      prog := FCompiler.Compile('');
       CheckEquals('Syntax Error: Unit "Test" redeclared'#13#10, prog.Msgs.AsInfo);
+      prog := nil;
    finally
       un.Free;
    end;

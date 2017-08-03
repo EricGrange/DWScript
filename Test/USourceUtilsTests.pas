@@ -844,30 +844,33 @@ begin
    try
       encodingLib.dwsEncoding.Script := FCompiler;
 
-      prog:=FCompiler.Compile('uses System.En');
+      prog := FCompiler.Compile('uses System.En');
+      try
+         scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 10);
 
-      scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 10);
+         sugg:=TdwsSuggestions.Create(prog, scriptPos);
+         CheckEquals(2, sugg.Count, 'Syst');
+         CheckEquals('System', sugg.Code[0]);
+         CheckEquals('System.Encoding', sugg.Code[1]);
 
-      sugg:=TdwsSuggestions.Create(prog, scriptPos);
-      CheckEquals(2, sugg.Count, 'Syst');
-      CheckEquals('System', sugg.Code[0]);
-      CheckEquals('System.Encoding', sugg.Code[1]);
+         scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 13);
 
-      scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 13);
+         sugg:=TdwsSuggestions.Create(prog, scriptPos);
+         CheckEquals(4, sugg.Count, 'System.');
+         CheckEquals('Default', sugg.Code[0]);
+         CheckEquals('Internal', sugg.Code[1]);
+         CheckEquals('System', sugg.Code[2]);
+         CheckEquals('System.Encoding', sugg.Code[3]);
 
-      sugg:=TdwsSuggestions.Create(prog, scriptPos);
-      CheckEquals(4, sugg.Count, 'System.');
-      CheckEquals('Default', sugg.Code[0]);
-      CheckEquals('Internal', sugg.Code[1]);
-      CheckEquals('System', sugg.Code[2]);
-      CheckEquals('System.Encoding', sugg.Code[3]);
+         scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 15);
 
-      scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 15);
-
-      sugg:=TdwsSuggestions.Create(prog, scriptPos);
-      CheckEquals(1, sugg.Count, 'System.En');
-      CheckEquals('System.Encoding', sugg.Code[0]);
-
+         sugg:=TdwsSuggestions.Create(prog, scriptPos);
+         CheckEquals(1, sugg.Count, 'System.En');
+         CheckEquals('System.Encoding', sugg.Code[0]);
+      finally
+         sugg := nil;
+         prog := nil;
+      end;
    finally
       encodingLib.Free;
    end;
