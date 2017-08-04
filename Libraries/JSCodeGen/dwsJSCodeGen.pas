@@ -1551,7 +1551,7 @@ begin
    if func.Name<>'' then
       WriteStatementEnd;
    if func.IsExport then begin
-      if func.ExternalName<>'' then
+      if func.HasExternalName then
          WriteString(func.ExternalName)
       else begin
          WriteString('window.');
