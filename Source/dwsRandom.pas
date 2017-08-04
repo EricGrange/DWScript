@@ -20,6 +20,7 @@
 unit dwsRandom;
 
 {$I ../dws.inc}
+{$R-}
 
 interface
 
@@ -28,12 +29,12 @@ uses dwsXPlatform;
 type
    // Algorithm by David Blackman and Sebastiano Vigna
    TXoroShiro128Plus = record
-         Seed : array [0..1] of UInt64;
+      Seed : array [0..1] of UInt64;
 
-         procedure SetSeed64(seed64 : UInt64);
-         procedure Randomize;
+      procedure SetSeed64(seed64 : UInt64);
+      procedure Randomize;
 
-         function Next : UInt64;
+      function Next : UInt64;
    end;
 
 // Algorithm by by Sebastiano Vigna
