@@ -303,6 +303,7 @@ type
          destructor Destroy; override;
          function Add(const anItem : T) : Integer;
          function IndexOf(const anItem : T) : Integer;
+         procedure Insert(idx : Integer; const anItem : T);
          function Extract(idx : Integer) : T;
          procedure ExtractAll;
          procedure Clear;
@@ -3727,6 +3728,19 @@ begin
    for i:=0 to Count-1 do
       if FItems[i]=anItem then Exit(i);
    Result:=-1;
+end;
+
+// Insert
+//
+procedure TObjectList<T>.Insert(idx : Integer; const anItem : T);
+begin
+   Assert(Cardinal(idx) <= Cardinal(FCount), 'Index out of range');
+   if FCount = Length(FItems) then
+      SetLength(FItems, Count+8+(Count shr 4));
+   if idx < FCount then
+      System.Move(FItems[idx], FItems[idx+1], SizeOf(T)*(FCount-idx));
+   FItems[idx] := anItem;
+   Inc(FCount);
 end;
 
 // Extract
