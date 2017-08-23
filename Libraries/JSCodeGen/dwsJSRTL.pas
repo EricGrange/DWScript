@@ -87,6 +87,11 @@ type
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
+   TJSStrReplaceFuncExpr = class (TJSFuncBaseExpr)
+      public
+         procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
    TJSGetTextFuncExpr = class (TJSFuncBaseExpr)
       private
          FCodeGen : TdwsCodeGen;
@@ -1290,7 +1295,7 @@ begin
    FMagicCodeGens.AddObject('StrFind', TJSStrFindExpr.Create);
    FMagicCodeGens.AddObject('StrJoin', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.join', '(', 1, ')']));
    FMagicCodeGens.AddObject('StrMatches', TJSStrMatchesFuncExpr.Create);
-   FMagicCodeGens.AddObject('StrReplace', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.replace', '(', 1, ',', 2, ')']));
+   FMagicCodeGens.AddObject('StrReplace', TJSStrReplaceFuncExpr.Create);
    FMagicCodeGens.AddObject('StrSplit', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.split', '(', 1, ')']));
    FMagicCodeGens.AddObject('StrToFloat', TdwsExprGenericCodeGen.Create(['parseFloat', '(', 0, ')']));
    FMagicCodeGens.AddObject('StrToInt', TdwsExprGenericCodeGen.Create(['parseInt', '(', 0, ',', '10)']));
@@ -1737,6 +1742,74 @@ begin
       codeGen.WriteString(')');
 
    end;
+end;
+
+// ------------------
+// ------------------ TJSStrReplaceFuncExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSStrReplaceFuncExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+
+   function EscapeRegExpSpecials(const s : String) : String;
+   var
+      pSrc, pDest : PChar;
+   begin
+      SetLength(Result, Length(s));
+      pSrc := Pointer(s);
+      pDest := Pointer(Result);
+      repeat
+         case pSrc^ of
+            #0 : begin
+               SetLength(Result, (NativeUInt(pDest)-NativeUInt(Result)) div SizeOf(Char));
+               Exit;
+            end;
+            '-', '!', '[', ']', '(', ')', '?', '+', '*', '{', '}', '.', '^', '$', '|' : begin
+               pDest[0] := '\';
+               pDest[1] := pSrc^;
+               Inc(pDest, 2);
+            end;
+            '0'..'>', '@'..'Z', #$005F..'z' : begin
+               pDest^ := pSrc^;
+               Inc(pDest);
+            end;
+         else
+            Exit('');
+         end;
+         Inc(pSrc);
+      until False;
+//       Code : 'function StrRegExp(s) { return s.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&") }'),
+   end;
+
+var
+   e : TMagicFuncExpr;
+   pattern : TExprBase;
+   s  : String;
+begin
+   e := TMagicFuncExpr(expr);
+
+   codeGen.Compile(e.Args[0]);
+
+   pattern := e.Args[1];
+   if pattern is TConstStringExpr then begin
+      if TConstStringExpr(pattern).Value = '' then Exit;
+      s := EscapeRegExpSpecials(TConstStringExpr(pattern).Value);
+      if s <> '' then begin
+         codeGen.WriteString('.replace(/');
+         codeGen.WriteString(s);
+         codeGen.WriteString('/g,');
+         pattern := nil;
+      end;
+   end;
+   if pattern <> nil then begin
+      codeGen.Dependencies.Add('StrRegExp');
+      codeGen.WriteString('.replace(new RegExp(StrRegExp(');
+      codeGen.CompileNoWrap(pattern as TTypedExpr);
+      codeGen.WriteString('), "g"),');
+   end;
+   codeGen.CompileNoWrap(e.Args[2] as TTypedExpr);
+   codeGen.WriteString(')');
 end;
 
 // ------------------
