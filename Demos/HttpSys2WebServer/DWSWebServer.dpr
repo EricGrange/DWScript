@@ -137,7 +137,7 @@ begin
    if basePath='' then
       basePath:=ExtractFilePath(ParamStr(0))+'www';
 
-   Server:=THttpSys2WebServer.Create(basePath, Options);
+   Server := THttpSys2WebServer.Create(basePath, Options, ServiceName);
 end;
 
 procedure TWebServerHttpService.DoStop(Sender: TService);

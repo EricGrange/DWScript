@@ -829,7 +829,9 @@ type
       hSetServerSessionProperty, hQueryServerSessionProperty,
       hCreateUrlGroup, hCloseUrlGroup,
       hAddUrlToUrlGroup, hRemoveUrlFromUrlGroup,
-      hSetUrlGroupProperty, hQueryUrlGroupProperty);
+      hSetUrlGroupProperty, hQueryUrlGroupProperty,
+      hSetRequestQueueProperty, hQueryRequestQueueProperty
+      );
 
 const
    HttpNames : array[THttpAPIs] of PChar = (
@@ -846,7 +848,8 @@ const
       'HttpSetServerSessionProperty', 'HttpQueryServerSessionProperty',
       'HttpCreateUrlGroup', 'HttpCloseUrlGroup',
       'HttpAddUrlToUrlGroup', 'HttpRemoveUrlFromUrlGroup',
-      'HttpSetUrlGroupProperty', 'HttpQueryUrlGroupProperty'
+      'HttpSetUrlGroupProperty', 'HttpQueryUrlGroupProperty',
+      'HttpSetRequestQueueProperty', 'HttpQueryRequestQueueProperty'
       );
 
 type
@@ -945,6 +948,14 @@ type
       QueryUrlGroupProperty : function(UrlGroupId : HTTP_URL_GROUP_ID;
             aProperty : HTTP_SERVER_PROPERTY; pPropertyInformation : Pointer;
             PropertyInformationLength : ULONG; pReturnLength : PULONG = nil) : HRESULT; stdcall;
+
+      SetRequestQueueProperty: function(ReqQueueHandle: THandle;
+            aProperty: HTTP_SERVER_PROPERTY; pPropertyInformation: Pointer;
+            PropertyInformationLength: ULONG; Reserved: ULONG; pReserved: Pointer): HRESULT; stdcall;
+      QueryRequestQueueProperty: function(ReqQueueHandle: THandle;
+            aProperty: HTTP_SERVER_PROPERTY; pPropertyInformation: Pointer;
+            PropertyInformationLength: ULONG; Reserved: ULONG; pReturnLength: PULONG;
+            pReserved: Pointer) : HRESULT; stdcall;
 
       class procedure InitializeAPI; static;
 

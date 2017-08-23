@@ -84,7 +84,8 @@ type
 
          function ParseMethodList(list : TdwsJSONValue) : TWebRequestMethodVerbs;
 
-         procedure Initialize(const basePath : TFileName; options : TdwsJSONValue); virtual;
+         procedure Initialize(const basePath : TFileName; options : TdwsJSONValue;
+                              const aServiceName : String); virtual;
 
          function FileAccessTypeFromFileName(const fileName : TFileName) : TFileAccessType;
 
@@ -93,7 +94,8 @@ type
 
       public
          constructor Create; overload;
-         class function Create(const basePath : TFileName; options : TdwsJSONValue) : THttpSys2WebServer; overload;
+         class function Create(const basePath : TFileName; options : TdwsJSONValue;
+                               const aServiceName : String) : THttpSys2WebServer; overload;
          destructor Destroy; override;
 
          procedure Shutdown;
@@ -168,6 +170,9 @@ const
          // Maximum number of connections
          // Zero means "infinite"
          +'"MaxConnections": 0,'
+         // Adjust http server queue length
+         // Zero means default
+         +'"MaxQueueLength": 0,'
          // Maximum bandwidth in bytes per second
          // Zero means "infinite"
          +'"MaxBandwidth": 0,'
@@ -236,10 +241,11 @@ end;
 
 // Create
 //
-class function THttpSys2WebServer.Create(const basePath : TFileName; options : TdwsJSONValue) : THttpSys2WebServer;
+class function THttpSys2WebServer.Create(const basePath : TFileName; options : TdwsJSONValue;
+                                         const aServiceName : String) : THttpSys2WebServer;
 begin
    Result:=Self.Create;
-   Result.Initialize(basePath, options);
+   Result.Initialize(basePath, options, aServiceName);
 end;
 
 // Destroy
@@ -294,7 +300,8 @@ end;
 
 // Initialize
 //
-procedure THttpSys2WebServer.Initialize(const basePath : TFileName; options : TdwsJSONValue);
+procedure THttpSys2WebServer.Initialize(const basePath : TFileName; options : TdwsJSONValue;
+                                        const aServiceName : String);
 var
    logPath, errorLogPath : TdwsJSONValue;
    serverOptions : TdwsJSONValue;
@@ -335,7 +342,7 @@ begin
 
       FDWS.Startup;
 
-      FServer:=THttpApi2Server.Create(False);
+      FServer:=THttpApi2Server.Create(False, aServiceName);
 
       RegisterExtensions(serverOptions['ScriptedExtensions'], fatDWS);
       RegisterExtensions(serverOptions['P2JSExtensions'], fatP2JS);
@@ -365,6 +372,8 @@ begin
       LoadAuthenticateOptions(serverOptions['Authentication']);
 
       FServer.MaxConnections:=serverOptions['MaxConnections'].AsInteger;
+
+      FServer.MaxQueueLength := serverOptions['MaxQueueLength'].AsInteger;
 
       FServer.MaxBandwidth:=serverOptions['MaxBandwidth'].AsInteger;
 

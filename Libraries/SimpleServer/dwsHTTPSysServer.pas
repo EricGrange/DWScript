@@ -212,7 +212,8 @@ type
          FLogRolloverSize : Cardinal;
          FServerName : UTF8String;
          FServerNameLength : Integer;
-         FServiceName : UTF8String;
+         FServiceNameA : UTF8String;
+         FServiceNameW : UnicodeString;
          FMaxBandwidth : Cardinal;
          FMaxConnections : Cardinal;
          FAuthentication : Cardinal;
@@ -259,6 +260,9 @@ type
          procedure SetMaxBandwidth(val : Cardinal);
          procedure SetMaxConnections(val : Cardinal);
 
+         function GetMaxQueueLength : Cardinal;
+         procedure SetMaxQueueLength(const val : Cardinal);
+
       public
          /// initialize the HTTP Service
          // - will raise an exception if http.sys is not available (e.g. before
@@ -268,7 +272,7 @@ type
          // - if you will call AddUrl() methods later, set CreateSuspended to FALSE,
          // then call explicitely the Resume method, after all AddUrl() calls, in
          // order to start the server
-         constructor Create(CreateSuspended : Boolean);
+         constructor Create(CreateSuspended : Boolean; const aServiceName : String);
          /// release all associated memory and handles
          destructor Destroy; override;
 
@@ -325,10 +329,12 @@ type
          property LogFields : Cardinal read FLogFields write SetLogFields;
          property LogRolloverSize : Cardinal read FLogRolloverSize write SetLogRolloverSize;
          property ServerName : String read GetServerName write SetServerName;
-         property ServiceName : String read GetServiceName write SetServiceName;
+         property ServiceName : String read FServiceNameW;
 
          property MaxBandwidth : Cardinal read FMaxBandwidth write SetMaxBandwidth;
          property MaxConnections : Cardinal read FMaxConnections write SetMaxConnections;
+         property MaxQueueLength : Cardinal read GetMaxQueueLength write SetMaxQueueLength;
+
          property Authentication : Cardinal read FAuthentication;
 
          property ServerEvents : IdwsHTTPServerEvents read FServerEvents write FServerEvents;
@@ -536,7 +542,7 @@ end;
 
 // Create
 //
-constructor THttpApi2Server.Create(CreateSuspended : Boolean);
+constructor THttpApi2Server.Create(CreateSuspended : Boolean; const aServiceName : String);
 var
    bindInfo : HTTP_BINDING_INFO;
 begin
@@ -558,8 +564,9 @@ begin
       HttpAPI.CreateUrlGroup(FServerSessionID, FUrlGroupID),
       hCreateUrlGroup);
 
+   SetServiceName(aServiceName);
    HttpAPI.Check(
-      HttpAPI.CreateRequestQueue(HTTPAPI_VERSION_2, nil, nil, 0, FReqQueue),
+      HttpAPI.CreateRequestQueue(HTTPAPI_VERSION_2, Pointer(FServiceNameW), nil, 0, FReqQueue),
       hCreateRequestQueue);
 
    bindInfo.Flags := 1;
@@ -627,7 +634,8 @@ begin
    FCompressAcceptEncoding := From.FCompressAcceptEncoding;
    if From.Logging then begin
       FLogDataPtr:=@FLogFieldsData;
-      ServiceName:=From.ServiceName;
+      FServiceNameA := From.FServiceNameA;
+      FServiceNameW := From.FServiceNameW;
    end;
    FServerEvents := From.FServerEvents;
    FURLRewriter := From.URLRewriter;
@@ -919,16 +927,17 @@ end;
 //
 function THttpApi2Server.GetServiceName : String;
 begin
-   Result := UTF8ToString(FServiceName);
+   Result := FServiceNameW;
 end;
 
 // SetServiceName
 //
 procedure THttpApi2Server.SetServiceName(const val : String);
 begin
-   FServiceName := UTF8Encode(val);
-   FLogFieldsData.ServerNameLength := Length(FServiceName);
-   FLogFieldsData.ServerName := Pointer(FServiceName);
+   FServiceNameW := val;
+   FServiceNameA := UTF8Encode(val);
+   FLogFieldsData.ServerNameLength := Length(FServiceNameA);
+   FLogFieldsData.ServerName := Pointer(FServiceNameA);
 end;
 
 // SetMaxBandwidth
@@ -979,6 +988,32 @@ begin
       hSetServerSessionProperty);
 end;
 
+// GetMaxQueueLength
+//
+function THttpApi2Server.GetMaxQueueLength : Cardinal;
+var
+   returnLength : ULONG;
+begin
+   HttpAPI.Check(
+      HttpAPI.QueryRequestQueueProperty(FReqQueue, HttpServerQueueLengthProperty,
+                                        @Result, SizeOf(Result),
+                                        0, @returnLength, nil),
+      hQueryRequestQueueProperty);
+end;
+
+// SetMaxQueueLength
+//
+procedure THttpApi2Server.SetMaxQueueLength(const val : Cardinal);
+begin
+   if val = 0 then Exit;
+   HttpAPI.Check(
+      HttpAPI.SetRequestQueueProperty(FReqQueue, HttpServerQueueLengthProperty,
+                                      @val, SizeOf(val), 0, nil),
+      hSetRequestQueueProperty);
+end;
+
+// Execute
+//
 procedure THttpApi2Server.Execute;
 
    procedure SetKnownHeader(var h : HTTP_KNOWN_HEADER; const value : RawByteString);
@@ -986,7 +1021,6 @@ procedure THttpApi2Server.Execute;
       h.RawValueLength := Length(value);
       h.pRawValue := Pointer(value);
    end;
-
 
 var
    request : PHTTP_REQUEST_V2;
