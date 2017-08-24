@@ -261,70 +261,73 @@ begin
       jsCode:='';
       ptsr.CurlyComments:=False;
       ptsr.DollarNames:=True;
+      try
+         tok.TestName;
 
-      tok.TestName;
+         // collect everything until 'end'
+         while tok.HasTokens do begin
 
-      // collect everything until 'end'
-      while tok.HasTokens do begin
-
-         if tok.Test(SymbolMarker) then begin
-            tok.KillToken;
-            jsCode:=jsCode+FlushCode(1);
-
-            table:=compiler.CurrentProg.Table;
-            firstSymbol:=True;
-
-            repeat
-
-               if not tok.TestDeleteNamePos(name, hotPos) then
-                  compiler.Msgs.AddCompilerStop(hotPos, CPE_NameExpected);
-
+            if tok.Test(SymbolMarker) then begin
                tok.KillToken;
-               FlushCode(0);
+               jsCode:=jsCode+FlushCode(1);
 
-               sym:=table.FindSymbol(name, cvMagic);
-               if sym=nil then begin
+               table:=compiler.CurrentProg.Table;
+               firstSymbol:=True;
 
-                  compiler.Msgs.AddCompilerErrorFmt(hotPos, CPE_UnknownName, [name]);
+               repeat
 
-               end else begin
+                  if not tok.TestDeleteNamePos(name, hotPos) then
+                     compiler.Msgs.AddCompilerStop(hotPos, CPE_NameExpected);
 
-                  compiler.RecordSymbolUseReference(sym, hotPos, True);
+                  tok.KillToken;
+                  FlushCode(0);
 
-                  blockExpr.RegisterSymbol(sym, Length(jsCode)+1);
-                  if firstSymbol then begin
-                     firstSymbol:=False;
-                     if sym.ClassType=TFieldSymbol then
-                        blockExpr.RegisterPrefix(table.FindSymbol(SYS_SELF, cvMagic));
+                  sym:=table.FindSymbol(name, cvMagic);
+                  if sym=nil then begin
+
+                     compiler.Msgs.AddCompilerErrorFmt(hotPos, CPE_UnknownName, [name]);
+
+                  end else begin
+
+                     compiler.RecordSymbolUseReference(sym, hotPos, True);
+
+                     blockExpr.RegisterSymbol(sym, Length(jsCode)+1);
+                     if firstSymbol then begin
+                        firstSymbol:=False;
+                        if sym.ClassType=TFieldSymbol then
+                           blockExpr.RegisterPrefix(table.FindSymbol(SYS_SELF, cvMagic));
+                     end;
+
+                     if sym is TDataSymbol then
+                        sym:=sym.Typ;
+                     if sym is TStructuredTypeSymbol then
+                        table:=TStructuredTypeSymbol(sym).Members;
+
                   end;
 
-                  if sym is TDataSymbol then
-                     sym:=sym.Typ;
-                  if sym is TStructuredTypeSymbol then
-                     table:=TStructuredTypeSymbol(sym).Members;
+                  if not tok.TestDelete(ttDOT) then Break;
 
-               end;
+                  jsCode:=jsCode+'.';
 
-               if not tok.TestDelete(ttDOT) then Break;
+               until False;
 
-               jsCode:=jsCode+'.';
+            end;
 
-            until False;
+            if tok.Test(ttEND) then begin
+               jsCode:=jsCode+FlushCode(3);
+               tok.KillToken;
+               Break;
+            end;
 
-         end;
-
-         if tok.Test(ttEND) then begin
-            jsCode:=jsCode+FlushCode(3);
             tok.KillToken;
-            Break;
          end;
 
-         tok.KillToken;
-      end;
+         blockExpr.Code:=jsCode;
 
-      blockExpr.Code:=jsCode;
-      ptsr.CurlyComments:=True;
-      ptsr.DollarNames:=False;
+      finally
+         ptsr.CurlyComments := True;
+         ptsr.DollarNames := False;
+      end;
 
    except
       blockExpr.Free;
