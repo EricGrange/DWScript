@@ -33,11 +33,12 @@ type
    TSourceFile = class (TRefCountedObject)
       private
          FLineCount : Integer;
-         FName, FCode : String;
+         FName, FLocation, FCode : String;
          FNotSteppable : Boolean;
 
       public
          property Name : String read FName write FName;
+         property Location : String read FLocation write FLocation;
          property Code : String read FCode write FCode;
          function LineCount : Integer;
 
@@ -110,7 +111,8 @@ type
          destructor Destroy; override;
 
          procedure Clear;
-         function Add(const nameReference : String; const code: String; sourceType: TScriptSourceType) : TSourceFile;
+         function Add(const nameReference : String; const code: String; sourceType: TScriptSourceType;
+                      const location : String) : TSourceFile;
 
          function FindScriptSourceItem(const sourceFileName: String): TScriptSourceItem; overload;
 
@@ -282,7 +284,9 @@ begin
       Result:=''
    else begin
       if not IsMainModule then
-         Result:=Format(MSG_ScriptPosFile, [SourceFile.Name])
+         if SourceFile.Location <> '' then
+            Result:=Format(MSG_ScriptPosFileFull, [SourceFile.Name, SourceFile.Location])
+         else Result:=Format(MSG_ScriptPosFile, [SourceFile.Name])
       else Result:='';
       if Col<>cNullPos.Col then begin
          if Result<>'' then
@@ -363,22 +367,26 @@ end;
 //
 function TScriptSourceList.Add(
       const nameReference : String; const code : String;
-      sourceType: TScriptSourceType) : TSourceFile;
+      sourceType: TScriptSourceType; const location : String) : TSourceFile;
 var
    srcItem : TScriptSourceItem;
 begin
-   srcItem:=FindScriptSourceItem(nameReference);
-   if srcItem=nil then begin
-      Result:=TSourceFile.Create;
-      Result.Name:=nameReference;
-      Result.Code:=code;
-      srcItem:=TScriptSourceItem.Create(nameReference, Result, sourceType);
+   srcItem := FindScriptSourceItem(nameReference);
+   if srcItem = nil then begin
+
+      Result := TSourceFile.Create;
+      Result.Name := nameReference;
+      Result.Location := location;
+      Result.Code := code;
+
+      srcItem := TScriptSourceItem.Create(nameReference, Result, sourceType);
       FSourceList.Add(srcItem);
       // get a pointer to the 'main' script item
-      if sourceType=stMain then
-         FMainScript:=srcItem;
+      if sourceType = stMain then
+         FMainScript := srcItem;
+
    end else begin
-      Result:=srcItem.SourceFile;
+      Result := srcItem.SourceFile;
    end;
 end;
 

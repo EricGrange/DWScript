@@ -100,8 +100,8 @@ end;
 
 destructor TWebServerHttpService.Destroy;
 begin
-  DoStop(nil);
-  inherited;
+   DoStop(nil);
+   inherited;
 end;
 
 // DefaultServiceOptions

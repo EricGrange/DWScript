@@ -530,6 +530,7 @@ const
   MSG_ScriptPosLine = 'line: %d';
   MSG_ScriptPosColumn = 'column: %d';
   MSG_ScriptPosFile = 'file: %s';
+  MSG_ScriptPosFileFull = 'file: %s (%s)';
   MSG_Hint = 'Hint: %s';
   MSG_Warning = 'Warning: %s';
   MSG_CompileError = 'Compile Error: %s';

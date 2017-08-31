@@ -4883,7 +4883,7 @@ begin
       Result:=-1
    else if NativeUInt(item1)=NativeUInt(item2) then
       Result:=0
-   else Result:=-1;
+   else Result:=1;
 end;
 
 // ------------------

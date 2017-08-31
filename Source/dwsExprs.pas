@@ -234,6 +234,7 @@ type
       procedure SetEnvironment(const env : IdwsEnvironment);
       function GetLocalizer : IdwsLocalizer;
       procedure SetLocalizer(const loc : IdwsLocalizer);
+      function GetExecutionTimedOut : Boolean;
 
       procedure Execute(aTimeoutMilliSeconds : Integer = 0); overload;
       procedure ExecuteParam(const params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0); overload;
@@ -242,6 +243,7 @@ type
       function  BeginProgram : Boolean;
       procedure RunProgram(aTimeoutMilliSeconds : Integer);
       procedure Stop;
+      procedure StopForTimeout;
       procedure EndProgram;
 
       property Prog : IdwsProgram read GetProg;
@@ -250,6 +252,7 @@ type
       property ObjectCount : Integer read GetObjectCount;
       property Environment : IdwsEnvironment read GetEnvironment write SetEnvironment;
       property Localizer : IdwsLocalizer read GetLocalizer write SetLocalizer;
+      property ExecutionTimedOut : Boolean read GetExecutionTimedOut;
    end;
 
    IdwsProgram = interface(IGetSelf)
@@ -327,6 +330,7 @@ type
 
          FDebuggerFieldAddr : Integer;
          FStartTicks : Int64;
+         FExecutionTimedOut : Boolean;
 
       protected
          procedure ReleaseObjects;
@@ -349,6 +353,7 @@ type
          function GetObjectCount : Integer;
          function GetLocalizer : IdwsLocalizer;
          procedure SetLocalizer(const val : IdwsLocalizer);
+         function GetExecutionTimedOut : Boolean;
 
          procedure RaiseMaxRecursionReached;
          procedure SetCurrentProg(const val : TdwsProgram); inline;
@@ -366,6 +371,7 @@ type
          function  BeginProgram : Boolean; virtual;
          procedure RunProgram(aTimeoutMilliSeconds : Integer);
          procedure Stop;
+         procedure StopForTimeout;
          procedure EndProgram; virtual;
 
          procedure EnterRecursion(caller : TExprBase);
@@ -413,6 +419,8 @@ type
          property RTTIRawAttributes : IScriptDynArray read FRTTIRawAttributes write FRTTIRawAttributes;
 
          property ObjectCount : Integer read FObjectCount;
+
+         property ExecutionTimedOut : Boolean read FExecutionTimedOut;
 
          property OnExecutionStarted : TdwsExecutionEvent read FOnExecutionStarted write FOnExecutionStarted;
          property OnExecutionEnded : TdwsExecutionEvent read FOnExecutionEnded write FOnExecutionEnded;
@@ -2038,9 +2046,10 @@ begin
       Exit;
    end;
 
-   if aTimeoutMilliSeconds=0 then
-      aTimeOutMilliseconds:=FProg.TimeoutMilliseconds;
-   if aTimeoutMilliSeconds>0 then
+   FExecutionTimedOut := False;
+   if aTimeoutMilliSeconds = 0 then
+      aTimeOutMilliseconds := FProg.TimeoutMilliseconds;
+   if aTimeoutMilliSeconds > 0 then
       TdwsGuardianThread.GuardExecution(Self, aTimeoutMilliSeconds);
 
    stackBaseReqSize:=FProg.FGlobalAddrGenerator.DataSize+FProg.DataSize;
@@ -2063,6 +2072,14 @@ procedure TdwsProgramExecution.Stop;
 begin
    if FProgramState=psRunning then
       FProgramState:=psRunningStopped;
+end;
+
+// StopForTimeout
+//
+procedure TdwsProgramExecution.StopForTimeout;
+begin
+   FExecutionTimedOut := True;
+   Stop;
 end;
 
 // EndProgram
@@ -2429,6 +2446,13 @@ end;
 procedure TdwsProgramExecution.SetLocalizer(const val : IdwsLocalizer);
 begin
    FLocalizer:=val;
+end;
+
+// GetExecutionTimedOut
+//
+function TdwsProgramExecution.GetExecutionTimedOut : Boolean;
+begin
+   Result := FExecutionTimedOut;
 end;
 
 // GetMsgs
@@ -3663,7 +3687,7 @@ begin
          try
             item:=FExecutions;
             while (item<>nil) and (item.TimeOutAt<=currentTime) do begin
-               item.Exec.Stop;
+               item.Exec.StopForTimeout;
                FExecutions:=item.Next;
                item.Exec:=nil;
                item.Next:=vExecutionsPool;

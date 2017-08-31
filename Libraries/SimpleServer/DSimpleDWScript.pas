@@ -124,6 +124,7 @@ type
 
       procedure LogCompileErrors(const fileName : String; const msgs : TdwsMessageList);
       procedure LogCompilation(const fmt : String; const params : array of const);
+      procedure LogExecutionTimeOut(const fileName : String);
 
       function FlushMatchingMask(const cp : TCompiledProgram) : TSimpleHashAction;
 
@@ -426,9 +427,11 @@ begin
       exec.Environment:=nil;
    end;
 
-   if exec.Msgs.Count>0 then
-      Handle500(response, exec.Msgs)
-   else if response <> nil then begin
+   if exec.Msgs.Count>0 then begin
+      if exec.ExecutionTimedOut then
+         LogExecutionTimeOut(fileName);
+      Handle500(response, exec.Msgs);
+   end else if response <> nil then begin
       if response.ContentData = '' then
          HandleScriptResult(response, exec.Result);
       if response.ContentType = HTTP_RESP_STATICFILE then
@@ -769,6 +772,13 @@ begin
    {$ifdef LogCompiles}
    LogError(Format(fmt, params));
    {$endif}
+end;
+
+// LogExecutionTimeOut
+//
+procedure TSimpleDWScript.LogExecutionTimeOut(const fileName : String);
+begin
+   LogError('timeout for '+fileName);
 end;
 
 // FlushMatchingMask

@@ -47,8 +47,10 @@ const
 type
    TdwsCompiler = class;
 
-   TIncludeEvent = procedure (const scriptName: String; var scriptSource: String) of object;
+   TIncludeEvent = procedure (const scriptName: String; var scriptSource : String) of object;
+   TdwsIncludeEventEx = procedure (const scriptName: String; var scriptSource, scriptLocation : String) of object;
    TdwsOnNeedUnitEvent = function (const unitName : String; var unitSource : String) : IdwsUnit of object;
+   TdwsOnNeedUnitEventEx = function (const unitName : String; var unitSource, unitLocation : String) : IdwsUnit of object;
    TdwsResourceEvent = procedure (compiler : TdwsCompiler; const resourceName : String) of object;
    TdwsCodeGenEvent = procedure (compiler : TdwsCompiler; const switchPos : TScriptPos; const code : String) of object;
    TdwsFilterEvent = procedure (compiler : TdwsCompiler; const sourceName : String; var sourceCode : String; var filter : TdwsFilter) of object;
@@ -93,7 +95,9 @@ type
          FMaxRecursionDepth : Integer;
          FMaxExceptionDepth : Integer;
          FOnInclude : TIncludeEvent;
+         FOnIncludeEx : TdwsIncludeEventEx;
          FOnNeedUnit : TdwsOnNeedUnitEvent;
+         FOnNeedUnitEx : TdwsOnNeedUnitEventEx;
          FOnResource : TdwsResourceEvent;
          FOnCodeGen : TdwsCodeGenEvent;
          FOnFilter : TdwsFilterEvent;
@@ -127,6 +131,9 @@ type
 
          function DoGetLocalizer : IdwsLocalizer;
 
+         procedure DoIncludeEx(const scriptName: String; var scriptSource, scriptLocation : String);
+         function  DoNeedUnitEx(const unitName : String; var unitSource, unitLocation : String) : IdwsUnit;
+
       public
          constructor Create(Owner: TComponent);
          destructor Destroy; override;
@@ -157,7 +164,9 @@ type
          property StackChunkSize : Integer read FStackChunkSize write FStackChunkSize default cDefaultStackChunkSize;
 
          property OnInclude : TIncludeEvent read FOnInclude write FOnInclude;
+         property OnIncludeEx : TdwsIncludeEventEx read FOnIncludeEx write FOnIncludeEx;
          property OnNeedUnit : TdwsOnNeedUnitEvent read FOnNeedUnit write FOnNeedUnit;
+         property OnNeedUnitEx : TdwsOnNeedUnitEventEx read FOnNeedUnitEx write FOnNeedUnitEx;
          property OnResource : TdwsResourceEvent read FOnResource write FOnResource;
          property OnCodeGen : TdwsCodeGenEvent read FOnCodeGen write FOnCodeGen;
          property OnFilter : TdwsFilterEvent read FOnFilter write FOnFilter;
@@ -338,8 +347,8 @@ type
          FExec : TdwsCompilerExecution;
          FConnectors : TStrings;
          FCompileFileSystem : IdwsFileSystem;
-         FOnInclude : TIncludeEvent;
-         FOnNeedUnit : TdwsOnNeedUnitEvent;
+         FOnInclude : TdwsIncludeEventEx;
+         FOnNeedUnit : TdwsOnNeedUnitEventEx;
          FOnResource : TdwsResourceEvent;
          FOnCodeGen : TdwsCodeGenEvent;
          FOnFilter : TdwsFilterEvent;
@@ -771,7 +780,7 @@ type
          property  CurrentUnitSymbol : TUnitMainSymbol read FCurrentUnitSymbol;
          procedure EnterUnit(srcUnit : TSourceUnit; var oldSrcUnit : TSourceUnit);
          procedure LeaveUnit(oldSrcUnit : TSourceUnit);
-         procedure SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : String);
+         procedure SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode, sourceLocation : String);
 
          procedure SetupCompileOptions(conf : TdwsConfiguration);
          procedure SetupMsgsOptions(conf : TdwsConfiguration);
@@ -831,7 +840,7 @@ type
 
          function OpenStreamForFile(const fileName : String) : TStream;
          function GetScriptSource(const scriptName : String) : String;
-         function GetIncludeScriptSource(const scriptName : String) : String;
+         function GetIncludeScriptSource(const scriptName : String; var scriptLocation : String) : String;
 
          property CurrentProg : TdwsProgram read FCurrentProg write SetCurrentProg;
          property CompilerContext : TdwsCompilerContext read FCompilerContext;
@@ -1486,8 +1495,8 @@ begin
    FFilter := conf.Filter;
    FConnectors := conf.Connectors;
    FOptions := conf.CompilerOptions;
-   FOnInclude := conf.OnInclude;
-   FOnNeedUnit := conf.OnNeedUnit;
+   FOnInclude := conf.DoIncludeEx;
+   FOnNeedUnit := conf.DoNeedUnitEx;
    FOnResource := conf.OnResource;
    FOnCodeGen := conf.OnCodeGen;
    FOnFilter := conf.OnFilter;
@@ -1655,7 +1664,7 @@ begin
          codeText := FFilter.Process(aCodeText, FMsgs)
       else codeText := aCodeText;
 
-      sourceFile:=FMainProg.SourceList.Add(MSG_MainModule, codeText, stMain);
+      sourceFile:=FMainProg.SourceList.Add(MSG_MainModule, codeText, stMain, mainFileName);
 
       // Start compilation
       CurrentProg.Expr := ReadScript(sourceFile, stMain);
@@ -1759,7 +1768,7 @@ var
    unitTable : TUnitSymbolTable;
    unitMain : TUnitMainSymbol;
    dependencies : TStringList;
-   unitSource : String;
+   unitSource, unitLocation : String;
    srcUnit : TSourceUnit;
    oldContext : TdwsSourceContext;
 begin
@@ -1776,7 +1785,7 @@ begin
    i := FCompilerContext.UnitList.IndexOfName(unitName);
    if i<0 then begin
       if Assigned(FOnNeedUnit) then
-         unitResolved:=FOnNeedUnit(unitName, unitSource);
+         unitResolved := FOnNeedUnit(unitName, unitSource, unitLocation);
       if unitResolved<>nil then
          FCompilerContext.UnitList.Add(unitResolved)
       else begin
@@ -1787,7 +1796,7 @@ begin
             unitResolved:=srcUnit;
             FCompilerContext.UnitList.Add(unitResolved);
             oldContext:=FSourceContextMap.SuspendContext;
-            SwitchTokenizerToUnit(srcUnit, unitSource);
+            SwitchTokenizerToUnit(srcUnit, unitSource, unitLocation);
             FSourceContextMap.ResumeContext(oldContext);
          end;
       end;
@@ -11782,7 +11791,7 @@ function TdwsCompiler.ReadInstrSwitch(const switchName : String) : Boolean;
 var
    switch : TSwitchInstruction;
    name : String;
-   scriptSource : String;
+   scriptSource, scriptLocation : String;
    i : Integer;
    conditionalTrue : Boolean;
    switchPos, condPos, fileNamePos : TScriptPos;
@@ -11843,14 +11852,14 @@ begin
                      if not Assigned(FFilter) then
                         FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoFilterAvailable);
                      // Include file is processed by the filter
-                     scriptSource := GetIncludeScriptSource(name);
+                     scriptSource := GetIncludeScriptSource(name, scriptLocation);
                      filter := FFilter;
                      if Assigned(FOnFilter) then
                         FOnFilter(Self, name, scriptSource, filter);
                      if filter <> nil then
                         scriptSource := filter.Process(scriptSource, FMsgs);
                   end else begin
-                     scriptSource := GetIncludeScriptSource(name);
+                     scriptSource := GetIncludeScriptSource(name, scriptLocation);
                   end;
 
                   if not FTok.TestDelete(ttCRIGHT) then
@@ -11858,7 +11867,7 @@ begin
 
                   if StrContains(FTok.PathName, '\') then
                      name:=Copy(FTok.PathName, 1, LastDelimiter('\', FTok.PathName))+name;
-                  sourceFile:=FMainProg.SourceList.Add(name, scriptSource, stInclude);
+                  sourceFile:=FMainProg.SourceList.Add(name, scriptSource, stInclude, scriptLocation);
                   FTok.BeginSourceFile(sourceFile);
                   if coContextMap in Options then begin
                      FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttSWITCH);
@@ -12338,13 +12347,14 @@ end;
 
 // GetIncludeScriptSource
 //
-function TdwsCompiler.GetIncludeScriptSource(const scriptName : String) : String;
+function TdwsCompiler.GetIncludeScriptSource(const scriptName : String; var scriptLocation : String) : String;
 begin
-   Result:='';
+   Result := '';
+   scriptLocation := '';
 
    if Assigned(FOnInclude) then begin
-      FOnInclude(ScriptName, Result);
-      if Result<>'' then Exit;
+      FOnInclude(ScriptName, Result, scriptLocation);
+      if Result <> '' then Exit;
    end;
 
    Result:=GetScriptSource(scriptName);
@@ -13252,12 +13262,12 @@ end;
 
 // SwitchTokenizerToUnit
 //
-procedure TdwsCompiler.SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : String);
+procedure TdwsCompiler.SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode, sourceLocation : String);
 var
    sourceFile : TSourceFile;
    oldUnit : TSourceUnit;
 begin
-   sourceFile:=FMainProg.SourceList.Add(srcUnit.GetUnitName, sourceCode, stUnit);
+   sourceFile:=FMainProg.SourceList.Add(srcUnit.GetUnitName, sourceCode, stUnit, sourceLocation);
 
    EnterUnit(srcUnit, oldUnit);
    CurrentProg.EnterSubTable(CurrentUnitSymbol.Table);
@@ -14387,6 +14397,30 @@ begin
    if FLocalizer<>nil then
       Result:=FLocalizer.GetLocalizer
    else Result:=nil;
+end;
+
+// DoIncludeEx
+//
+procedure TdwsConfiguration.DoIncludeEx(const scriptName: String; var scriptSource, scriptLocation : String);
+begin
+   if Assigned(FOnIncludeEx) then
+      FOnIncludeEx(scriptName, scriptSource, scriptLocation)
+   else if Assigned(FOnInclude) then begin
+      FOnInclude(scriptName, scriptSource);
+      scriptLocation := '';
+   end;
+end;
+
+// DoNeedUnitEx
+//
+function TdwsConfiguration.DoNeedUnitEx(const unitName : String; var unitSource, unitLocation : String) : IdwsUnit;
+begin
+   if Assigned(FOnNeedUnitEx) then
+      Result := FOnNeedUnitEx(unitName, unitSource, unitLocation)
+   else if Assigned(FOnNeedUnit) then begin
+      Result := FOnNeedUnit(unitName, unitSource);
+      unitLocation := '';
+   end;
 end;
 
 // ------------------
