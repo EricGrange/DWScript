@@ -53,6 +53,7 @@ type
          procedure OptimizedIfThenBlockSymbol;
          procedure MemberVisibilities;
          procedure UnitNamesSuggest;
+         procedure OverloadSuggest;
    end;
 
 // ------------------------------------------------------------------
@@ -865,8 +866,10 @@ begin
          scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 15);
 
          sugg:=TdwsSuggestions.Create(prog, scriptPos);
-         CheckEquals(1, sugg.Count, 'System.En');
-         CheckEquals('System.Encoding', sugg.Code[0]);
+         CheckEquals(3, sugg.Count, 'System.En');
+         CheckEquals('EncodeDate', sugg.Code[0]);
+         CheckEquals('Encoder', sugg.Code[1]);
+         CheckEquals('EncodeTime', sugg.Code[2]);
       finally
          sugg := nil;
          prog := nil;
@@ -876,7 +879,25 @@ begin
    end;
 end;
 
+// OverloadSuggest
+//
+procedure TSourceUtilsTests.OverloadSuggest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile( 'function Toto(s: string): string; overload; begin Result := s; end;'#13#10
+                           +'function Toto(i: integer): string; overload; begin Result := i.ToString; end;'#13#10
+                           +'toto');
 
+   scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 3, 4);
+
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(2, sugg.Count);
+   CheckEquals('Toto (s: String) : String', sugg.Caption[0]);
+   CheckEquals('Toto (i: Integer) : String', sugg.Caption[1]);
+end;
 
 // SuggestInBlockWithError
 //

@@ -95,7 +95,11 @@ type
          procedure Remove(sym : TSymbol);
    end;
 
-   TdwsSuggestionsOption = (soNoReservedWords, soNoUnits);
+   TdwsSuggestionsOption = (
+      soNoReservedWords,   // do not suggest reserved words
+      soNoUnits,           // do not suggest units
+      soUnifyOverloads     // for legacy behavior when overloads were not listed separately
+      );
    TdwsSuggestionsOptions = set of TdwsSuggestionsOption;
 
    TNameSymbolHash = TSimpleNameObjectHash<TSymbol>;
@@ -406,6 +410,7 @@ var
    i : Integer;
    tmp : TStringList;
    sym : TSymbol;
+   nameStr : String;
 begin
    if aList.Count = 0 then Exit;
    tmp:=TFastCompareTextList.Create;
@@ -432,9 +437,12 @@ begin
 
          if FListLookup.IndexOf(sym)<0 then begin
             FListLookup.Add(sym);
-            if FNamesLookup.Objects[sym.Name]=nil then begin
+            if soUnifyOverloads in FOptions then
+               nameStr := sym.Name
+            else nameStr := sym.Description;
+            if FNamesLookup.Objects[nameStr]=nil then begin
                tmp.AddObject(sym.Name, sym);
-               FNamesLookup.AddObject(sym.Name, sym);
+               FNamesLookup.AddObject(nameStr, sym);
             end;
          end;
       end;
