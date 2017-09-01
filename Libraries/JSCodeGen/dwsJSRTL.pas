@@ -146,7 +146,7 @@ implementation
 {$R dwsJSRTL.res dwsJSRTL.rc}
 
 const
-   cJSRTLDependencies : array [1..262] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..264] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -1051,10 +1051,15 @@ const
       (Name : 'StrToHtml';
        Code : 'function StrToHtml(v) { return v.replace(/[&<>"'']/g, StrToHtml.e) }'#13#10
               +'StrToHtml.e = function(c) { return { "&":"&amp;", "<":"&lt;", ">":"&gt;", ''"'':"&quot;", "''":"&#39;" }[c] }' ),
+      (Name : 'StrToHtmlAttribute';
+       Code : 'function StrToHtmlAttribute(v) { return StrToHtml(v) }';
+       Dependency : 'StrToHtml' ),
       (Name : 'StrToInt';
        Code : 'function StrToInt(v) { return parseInt(v,10) }'),
       (Name : 'StrToIntDef';
        Code : 'function StrToIntDef(v,d) { var r=parseInt(v,10); return isNaN(r)?d:r }'),
+      (Name : 'StrToJSON';
+       Code : 'function StrToJSON(v) { return JSON.stringify(v) }'),
       (Name : 'StrMatches';
        Code : 'function StrMatches(v,r) {'#13#10
                   +#9'if (!r) return false;'#13#10
@@ -1299,6 +1304,7 @@ begin
    FMagicCodeGens.AddObject('StrSplit', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.split', '(', 1, ')']));
    FMagicCodeGens.AddObject('StrToFloat', TdwsExprGenericCodeGen.Create(['parseFloat', '(', 0, ')']));
    FMagicCodeGens.AddObject('StrToInt', TdwsExprGenericCodeGen.Create(['parseInt', '(', 0, ',', '10)']));
+   FMagicCodeGens.AddObject('StrToJSON', TdwsExprGenericCodeGen.Create(['JSON.stringify', '(', 0, ')']));
    FMagicCodeGens.AddObject('SubStr', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(', '(', 1, ')', '-1)']));
    FMagicCodeGens.AddObject('SubString', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(', '(', 1, ')', '-1,', '(', 2, ')', '-2)']));
    FMagicCodeGens.AddObject('Tan', TdwsExprGenericCodeGen.Create(['Math.tan', '(', 0, ')']));
