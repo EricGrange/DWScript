@@ -132,20 +132,28 @@ end;
 //
 procedure TBCEditorSourceBuffer.InsertLine(line : Integer; const lineText : String);
 var
-   i : Integer;
+   i, nTabs : Integer;
    c : Char;
 begin
    EditorGoTo(1, line);
+   nTabs := 0;
    for i:=1 to Length(lineText) do begin
       c:=lineText[i];
       case c of
-         #9 : FEditor.ExecuteCommand(ecTab, #0, nil);
+         #9 : begin
+            FEditor.ExecuteCommand(ecTab, #0, nil);
+            Inc(nTabs);
+         end;
          '|' : FMark:=FEditor.TextCaretPosition;
       else
          FEditor.ExecuteCommand(ecChar, c, nil);
       end;
    end;
    FEditor.ExecuteCommand(ecLineBreak, #0, nil);
+   while nTabs > 0 do begin
+      FEditor.ExecuteCommand(ecShiftTab, #0, nil);
+      Dec(nTabs);
+   end;
 end;
 
 // DeleteLine
@@ -176,12 +184,9 @@ end;
 // EditorGoTo
 //
 procedure TBCEditorSourceBuffer.EditorGoTo(col, row : Integer);
-var
-   p : TBCEditorTextPosition;
 begin
-   p.Char:=col;
-   p.Line:=row;
-   FEditor.ExecuteCommand(ecGotoXY, #0, @p);
+   FEditor.ExecuteCommand(ecLineStart, #0, nil);
+   FEditor.ExecuteCommand(ecEditorBottom, #0, nil);
 end;
 
 end.
