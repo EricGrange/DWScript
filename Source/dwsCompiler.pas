@@ -14138,11 +14138,11 @@ begin
 
    sysTable.TypInteger:=TBaseIntegerSymbol.Create;
    sysTable.AddSymbol(sysTable.TypInteger);
-   sysTable.AddSymbol(TDynamicArraySymbol.Create('array of integer', sysTable.TypInteger, sysTable.TypInteger));
+   sysTable.AddSymbol(TDynamicArraySymbol.Create(SYS_ARRAY_OF_INTEGER, sysTable.TypInteger, sysTable.TypInteger));
 
    sysTable.TypFloat:=TBaseFloatSymbol.Create;
    sysTable.AddSymbol(sysTable.TypFloat);
-   sysTable.AddSymbol(TDynamicArraySymbol.Create('array of float', sysTable.TypFloat, sysTable.TypInteger));
+   sysTable.AddSymbol(TDynamicArraySymbol.Create(SYS_ARRAY_OF_FLOAT, sysTable.TypFloat, sysTable.TypInteger));
 
    sysTable.TypString:=TBaseStringSymbol.Create;
    sysTable.AddSymbol(sysTable.TypString);

@@ -59,6 +59,8 @@ const
   SYS_ANY_TYPE = 'Any Type';
 
   SYS_ARRAY_OF_STRING = 'array of String';
+  SYS_ARRAY_OF_INTEGER = 'array of Integer';
+  SYS_ARRAY_OF_FLOAT = 'array of Float';
 
   SYS_COMPILER_VERSION = 'CompilerVersion';
 
