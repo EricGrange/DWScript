@@ -27,7 +27,7 @@ uses
    Classes, SysUtils, StrUtils, Math, Masks, Character,
    dwsXPlatform, dwsUtils, dwsStrings,
    dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList,
-   dwsConstExprs, dwsMagicExprs, dwsDataContext, dwsWebUtils;
+   dwsConstExprs, dwsMagicExprs, dwsDataContext, dwsWebUtils, dwsJSON;
 
 type
 
@@ -89,6 +89,14 @@ type
   end;
 
   TStrToHtmlFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
+  end;
+
+  TStrToHtmlAttributeFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
+  end;
+
+  TStrToJSONFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
   end;
 
@@ -477,12 +485,33 @@ begin
    end;
 end;
 
-
 { TStrToHtmlFunc }
 
 procedure TStrToHtmlFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 begin
-   Result := String(WebUtils.HTMLTextEncode(UnicodeString(args.AsString[0])));
+   Result := WebUtils.HTMLTextEncode(args.AsString[0]);
+end;
+
+{ TStrToHtmlAttributeFunc }
+
+procedure TStrToHtmlAttributeFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+begin
+   Result := WebUtils.HTMLAttributeEncode(args.AsString[0]);
+end;
+
+{ TStrToJSONFunc }
+
+procedure TStrToJSONFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+var
+   wobs : TWriteOnlyBlockStream;
+begin
+   wobs := TWriteOnlyBlockStream.AllocFromPool;
+   try
+      WriteJavaScriptString(wobs, args.AsString[0]);
+      Result := wobs.ToString;
+   finally
+      wobs.ReturnToPool;
+   end;
 end;
 
 { TCopyFunc }
@@ -1168,6 +1197,8 @@ initialization
    RegisterInternalFloatFunction(TVarToFloatDefFunc, 'VarToFloatDef', ['val', SYS_VARIANT, 'def', SYS_FLOAT], [iffStateLess]);
 
    RegisterInternalStringFunction(TStrToHtmlFunc, 'StrToHtml', ['str', SYS_STRING], [iffStateLess], 'ToHtml');
+   RegisterInternalStringFunction(TStrToHtmlAttributeFunc, 'StrToHtmlAttribute', ['str', SYS_STRING], [iffStateLess], 'ToHtmlAttribute');
+   RegisterInternalStringFunction(TStrToJSONFunc, 'StrToJSON', ['str', SYS_STRING], [iffStateLess], 'ToJSON');
 
    RegisterInternalStringFunction(TFormatFunc, 'Format', ['fmt', SYS_STRING, 'args', 'array of const'], [iffStateLess], 'Format');
 

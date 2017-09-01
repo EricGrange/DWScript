@@ -1,1 +1,2 @@
 &lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;
+&#60;script&#62;alert&#40;&#34;xss&#34;&#41;&#60;&#47;script&#62;
