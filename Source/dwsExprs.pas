@@ -1462,6 +1462,7 @@ type
          function GetParamAsObject(index : Integer) : TObject;
          function GetParamAsScriptObj(index : Integer) : IScriptObj;
          function GetParamAsScriptDynArray(index : Integer) : IScriptDynArray;
+         function GetParamAsDataContext(index : Integer) : IDataContext;
 
          function CreateUnitList : TUnitSymbolRefList;
          function FindSymbolInUnits(aUnitList: TUnitSymbolRefList; const aName: String) : TSymbol; overload;
@@ -1496,6 +1497,7 @@ type
          property ResultVars: IInfo read GetResultVars;
          property Vars[const s: String]: IInfo read GetVars;
          property Params[const Index: Integer]: IInfo read GetParams;
+         function ParamCount : Integer;
 
          property ValueAsVariant[const s : String] : Variant read GetValueAsVariant write SetValueAsVariant;
          property ValueAsChar[const s : String] : WideChar read GetValueAsChar;
@@ -1519,6 +1521,7 @@ type
          property ParamAsObject[index : Integer] : TObject read GetParamAsObject;
          property ParamAsScriptObj[index : Integer] : IScriptObj read GetParamAsScriptObj;
          property ParamAsScriptDynArray[index : Integer] : IScriptDynArray read GetParamAsScriptDynArray;
+         property ParamAsDataContext[index : Integer] : IDataContext read GetParamAsDataContext;
 
          property ResultAsString : String write SetResultAsString;
          property ResultAsDataString : RawByteString write SetResultAsDataString;
@@ -6301,6 +6304,14 @@ begin
    end;
 end;
 
+// ParamCount
+//
+function TProgramInfo.ParamCount : Integer;
+begin
+   Result := FuncSym.Params.Count;
+end;
+
+
 // GetFunc
 //
 function TProgramInfo.GetFunc(const s: String): IInfo;
@@ -6736,6 +6747,19 @@ begin
    Assert(p.VType=varUnknown);
    if p.VUnknown<>nil then
       Result:=IUnknown(p.VUnknown) as IScriptDynArray
+   else Result:=nil;
+end;
+
+// GetParamAsDataContext
+//
+function TProgramInfo.GetParamAsDataContext(index : Integer) : IDataContext;
+var
+   p : PVarData;
+begin
+   p:=PVarData(GetParamAsPVariant(index));
+   Assert(p.VType=varUnknown);
+   if p.VUnknown<>nil then
+      Result:=IUnknown(p.VUnknown) as IDataContext
    else Result:=nil;
 end;
 
