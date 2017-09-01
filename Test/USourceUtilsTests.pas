@@ -463,7 +463,7 @@ begin
    prog:=FCompiler.Compile( 'type TIntegerHelper = helper for Integer const Hello = 123; '
                               +'function Next : Integer; begin Result:=Self+1; end; end;'#13#10
                            +'var d : Integer;'#13#10
-                           +'d.');
+                           +'d.Nex');
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 3, 3);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
@@ -471,6 +471,13 @@ begin
    CheckEquals(Length(cSugg), sugg.Count, 'd.');
    for i:=0 to High(cSugg) do
       CheckEquals(cSugg[i], sugg.Code[i], 'd. '+IntToStr(i));
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 3, 6);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+   CheckEquals(1, sugg.Count, 'd.Nex');
+   CheckEquals('Next', sugg.Code[0]);
+   CheckEquals(Ord(scFunction), Ord(sugg.Category[0]), 'scFunction');
+   CheckEquals('Next () : Integer', sugg.Caption[0]);
 end;
 
 // JSONVariantSuggestTest

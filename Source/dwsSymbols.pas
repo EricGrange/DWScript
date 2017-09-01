@@ -467,7 +467,10 @@ type
    TParamsSymbolTable = class (TUnSortedSymbolTable)
       protected
          function GetSymbol(x : Integer) : TParamSymbol;
+
       public
+         function Description(skip : Integer) : String;
+
          property Symbols[x : Integer] : TParamSymbol read GetSymbol; default;
    end;
 
@@ -935,6 +938,7 @@ type
          procedure SetIsStatic;
          procedure InitData(const data : TData; offset : Integer); override;
          function QualifiedName : String; override;
+         function ParamsDescription : String; override;
          function HasConditions : Boolean;
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
          function IsSameOverloadOf(other : TFuncSymbol) : Boolean; override;
@@ -3961,15 +3965,8 @@ end;
 // ParamsDescription
 //
 function TFuncSymbol.ParamsDescription : String;
-var
-   i : Integer;
 begin
-   if Params.Count>0 then begin
-      Result:=Params.Symbols[0].Description;
-      for i:=1 to Params.Count-1 do
-         Result:=Result+'; '+Params.Symbols[i].Description;
-      Result:='('+Result+')';
-  end else Result:='()';
+   Result := Params.Description(0);
 end;
 
 // SetForwardedPos
@@ -4333,6 +4330,15 @@ end;
 function TMethodSymbol.QualifiedName : String;
 begin
    Result := String(StructSymbol.QualifiedName+'.'+Name);
+end;
+
+// ParamsDescription
+//
+function TMethodSymbol.ParamsDescription : String;
+begin
+   if IsStatic or not (StructSymbol is THelperSymbol) then
+      Result := Params.Description(0)
+   else Result := Params.Description(1);
 end;
 
 // HasConditions
@@ -5599,6 +5605,20 @@ function TParamsSymbolTable.GetSymbol(x : Integer) : TParamSymbol;
 begin
    Result:=TParamSymbol(inherited Symbols[x]);
    Assert(Result is TParamSymbol);
+end;
+
+// Description
+//
+function TParamsSymbolTable.Description(skip : Integer) : String;
+var
+   i : Integer;
+begin
+   if Count > skip then begin
+      Result := Symbols[skip].Description;
+      for i := skip+1 to Count-1 do
+         Result := Result + '; ' + Symbols[i].Description;
+      Result := '(' + Result + ')';
+   end else Result := '()';
 end;
 
 // ------------------
@@ -8278,15 +8298,8 @@ end;
 // ParamsDescription
 //
 function TAliasMethodSymbol.ParamsDescription : String;
-var
-   i : Integer;
 begin
-   if Params.Count>1 then begin
-      Result:=Params.Symbols[1].Description;
-      for i:=2 to Params.Count-1 do
-         Result:=Result+'; '+Params.Symbols[i].Description;
-      Result:='('+Result+')';
-  end else Result:='()';
+   Result := Params.Description(1);
 end;
 
 // SpecializeType
