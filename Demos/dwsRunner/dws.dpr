@@ -11,7 +11,7 @@ program dws;
 {$r *.dres}
 
 uses
-  Windows,
+  Windows, ActiveX,
   Classes,
   SysUtils,
   dwsXPlatform,
@@ -65,7 +65,9 @@ end;
 
 {$WARN SYMBOL_PLATFORM OFF}
 
-procedure MakeExe;
+// MakeExecutable
+//
+procedure MakeExecutable;
 var
    zw : TZipWrite;
    sourceName, zipFileName, exeName : TFileName;
@@ -158,14 +160,66 @@ begin
    WriteLn('..."', exeName, '" generated successfully!');
 end;
 
+// Execute
+//
+procedure Execute(project : TRunnerProject; paramOffset : Integer; embedded, compileOnly : Boolean);
+var
+   script : TDelphiWebScript;
+   source : String;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   i : Integer;
+   params : array of Variant;
+begin
+   try
+      script:=CreateScript;
+      try
+         source:=project.Attach(script);
+
+         prog:=script.Compile(source);
+         try
+            if compileOnly then begin
+               Writeln(prog.Msgs.AsInfo);
+               Writeln('Compiled with ', prog.Msgs.Count, ' message(s)');
+               Exit;
+            end;
+
+            if prog.Msgs.Count>0 then begin
+               if prog.Msgs.HasErrors or not embedded then
+                  Writeln(prog.Msgs.AsInfo);
+               if prog.Msgs.HasErrors then Exit;
+            end;
+
+            SetLength(params, ParamCount-paramOffset+2);
+            params[0]:=ParamStr(0);
+            for i:=paramOffset to ParamCount do
+               params[i-paramOffset+1]:=ParamStr(i);
+            exec:=prog.ExecuteParam(params);
+            try
+               Writeln(exec.Result.ToString);
+               if exec.Msgs.Count>0 then
+                  Writeln(exec.Msgs.AsInfo);
+            finally
+               exec := nil;
+            end;
+         finally
+            prog := nil;
+         end;
+      finally
+         project.Free;
+         script.Free;
+      end;
+   except
+      on E: Exception do
+         Writeln(E.ClassName, ': ', E.Message);
+   end;
+end;
+
+
 var
    fileName : String;
    source : String;
-   script : TDelphiWebScript;
-   prog : IdwsProgram;
-   exec : IdwsProgramExecution;
-   i, paramOffset : Integer;
-   params : array of Variant;
+   paramOffset : Integer;
    project : TRunnerProject;
    zr : TZipRead;
    embedded, compileOnly : Boolean;
@@ -201,7 +255,7 @@ begin
       end;
       fileName:=ParamStr(1);
       if fileName='make' then begin
-         MakeExe;
+         MakeExecutable;
          Exit;
       end;
       if fileName = 'compile' then begin
@@ -219,39 +273,6 @@ begin
          Exit;
       end;
    end;
-   try
-      script:=CreateScript;
-      try
-         source:=project.Attach(script);
-
-         prog:=script.Compile(source);
-
-         if compileOnly then begin
-            Writeln(prog.Msgs.AsInfo);
-            Writeln('Compiled with ', prog.Msgs.Count, ' message(s)');
-            Exit;
-         end;
-
-         if prog.Msgs.Count>0 then begin
-            if prog.Msgs.HasErrors or not embedded then
-               Writeln(prog.Msgs.AsInfo);
-            if prog.Msgs.HasErrors then Exit;
-         end;
-
-         SetLength(params, ParamCount-paramOffset+2);
-         params[0]:=ParamStr(0);
-         for i:=paramOffset to ParamCount do
-            params[i-paramOffset+1]:=ParamStr(i);
-         exec:=prog.ExecuteParam(params);
-         Writeln(exec.Result.ToString);
-         if exec.Msgs.Count>0 then
-            Writeln(exec.Msgs.AsInfo);
-      finally
-         project.Free;
-         script.Free;
-      end;
-   except
-      on E: Exception do
-         Writeln(E.ClassName, ': ', E.Message);
-   end;
+   CoInitialize(nil);
+   Execute(project, paramOffset, embedded, compileOnly);
 end.
