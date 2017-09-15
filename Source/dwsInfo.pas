@@ -25,7 +25,7 @@ interface
 
 uses
    Classes,
-   dwsDataContext, dwsSymbols;
+   dwsDataContext, dwsSymbols, dwsJSON;
 
 type
 
@@ -58,6 +58,8 @@ type
       procedure SetValue(const Value: Variant);
       procedure SetValueAsInteger(const value : Int64);
       procedure SetValueAsString(const value : String);
+
+      procedure WriteToJSON(writer : TdwsJSONWriter);
 
       property Data: TData read GetData write SetData;
       property ExternalObject: TObject read GetExternalObject write SetExternalObject;

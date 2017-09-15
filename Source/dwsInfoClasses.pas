@@ -28,7 +28,7 @@ uses
    dwsUtils, dwsXPlatform, dwsDataContext, dwsInfo, dwsScriptSource,
    dwsSymbols, dwsConnectorSymbols, dwsStack, dwsExprs, dwsFunctions, dwsConstExprs,
    dwsConnectorExprs, dwsConvExprs, dwsMethodExprs, dwsResultFunctions,
-   dwsStrings, dwsErrors, dwsCompilerUtils, dwsCompilerContext;
+   dwsStrings, dwsErrors, dwsCompilerUtils, dwsCompilerContext, dwsJSON, dwsJSONScript;
 
 type
 
@@ -74,6 +74,7 @@ type
          procedure SetValue(const Value: Variant); virtual;
          procedure SetValueAsInteger(const value : Int64); virtual;
          procedure SetValueAsString(const value : String); virtual;
+         procedure WriteToJSON(writer : TdwsJSONWriter); virtual;
 
       public
          constructor Create(ProgramInfo: TProgramInfo; TypeSym: TSymbol;
@@ -112,6 +113,8 @@ type
          procedure SetData(const Value: TData); override;
          procedure SetValue(const Value: Variant); override;
          procedure SetValueAsInteger(const Value: Int64); override;
+
+         procedure WriteToJSON(writer : TdwsJSONWriter); override;
    end;
 
   TInfoClass = class(TInfoData)
@@ -567,6 +570,13 @@ begin
    SetValue(value);
 end;
 
+// WriteToJSON
+//
+procedure TInfo.WriteToJSON(writer : TdwsJSONWriter);
+begin
+   JSONScript.StringifyVariant(ProgramInfo.Execution, writer, GetValue);
+end;
+
 // GetInherited
 //
 function TInfo.GetInherited: IInfo;
@@ -583,7 +593,7 @@ end;
 
 { TInfoData }
 
-function TInfoData.GetData;
+function TInfoData.GetData : TData;
 begin
   if Assigned(FDataMaster) then
     FDataMaster.Read(FExec, FDataPtr.AsPData^);
@@ -730,6 +740,13 @@ begin
 
    if Assigned(FDataMaster) then
       FDataMaster.Write(FExec, FDataPtr.AsPData^);
+end;
+
+// WriteToJSON
+//
+procedure TInfoData.WriteToJSON(writer : TdwsJSONWriter);
+begin
+   JSONScript.StringifySymbol(ProgramInfo.Execution, writer, GetTypeSym, FDataPtr);
 end;
 
 { TInfoClass }

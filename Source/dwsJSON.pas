@@ -95,6 +95,11 @@ type
          property Stream : TWriteOnlyBlockStream read FStream write FStream;
    end;
 
+   IJSONWriteAble = interface
+      ['{742CFFF7-3799-4B4B-8610-D7C8A131FCDC}']
+      procedure WriteToJSON(writer : TdwsJSONWriter);
+   end;
+
    // TdwsJSONBeautifiedWriter
    //
    TdwsJSONBeautifiedWriter = class (TdwsJSONWriter)

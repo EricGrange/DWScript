@@ -68,6 +68,8 @@ const
 
   SYS_EXTERNAL_ARRAY = '[]';
 
+  SYS_JSON_STRINGIFY = 'Stringify';
+
   // Compiler switches
   SWI_INCLUDE_LONG = 'INCLUDE';
   SWI_INCLUDE_SHORT = 'I';
