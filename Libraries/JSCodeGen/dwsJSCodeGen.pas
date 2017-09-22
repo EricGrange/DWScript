@@ -1046,6 +1046,7 @@ begin
       TdwsExprGenericCodeGen.Create(['(', 0, '===', 1, ')']));
 
    RegisterCodeGen(TAddStrExpr,           TJSBinOpExpr.Create('+', 13, [associativeLeft, associativeRight]));
+   RegisterCodeGen(TAddStrConstExpr,      TJSBinOpExpr.Create('+', 13, [associativeLeft, associativeRight]));
 
    RegisterCodeGen(TAddIntExpr,           TJSAddOpExpr.Create);
    RegisterCodeGen(TAddFloatExpr,         TJSAddOpExpr.Create);

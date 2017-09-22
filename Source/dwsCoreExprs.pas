@@ -1163,6 +1163,10 @@ type
    end;
    TAddStrExpr = class sealed (TStringBinOpExpr)
       procedure EvalAsString(exec : TdwsExecution; var result : String); override;
+      function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
+   end;
+   TAddStrConstExpr = class sealed (TStringBinOpExpr)
+      procedure EvalAsString(exec : TdwsExecution; var result : String); override;
    end;
    TAddIntExpr = class sealed (TIntegerBinOpExpr)
       function EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -5378,6 +5382,30 @@ begin
    FLeft.EvalAsString(exec, Result);
    FRight.EvalAsString(exec, buf);
    Result:=Result+buf;
+end;
+
+// Optimize
+//
+function TAddStrExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
+begin
+   if FRight.InheritsFrom(TConstStringExpr) then begin
+      Result := TAddStrConstExpr.Create(context, ScriptPos, ttPLUS, FLeft, FRight);
+      FLeft := nil;
+      FRight := nil;
+      Free;
+   end else Result := Self;
+end;
+
+// ------------------
+// ------------------ TAddStrConstExpr ------------------
+// ------------------
+
+// EvalAsString
+//
+procedure TAddStrConstExpr.EvalAsString(exec : TdwsExecution; var result : String);
+begin
+   FLeft.EvalAsString(exec, Result);
+   Result:=Result+(FRight as TConstStringExpr).Value;
 end;
 
 // ------------------
