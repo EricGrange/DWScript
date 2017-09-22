@@ -1,3 +1,5 @@
+dwsByteBuffer
+dwsByteBufferFunctions
 dwsComConnector
 dwsComp
 dwsCompiler

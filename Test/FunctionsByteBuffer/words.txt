@@ -1,0 +1,6 @@
+Out of range (index 2, size 2 for length 3) [line: 7, column: 8]
+[12,34,86]
+22050
+Out of range (index 3, size 2 for length 3) [line: 18, column: 8]
+8716
+22050

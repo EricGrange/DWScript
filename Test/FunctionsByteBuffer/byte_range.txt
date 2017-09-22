@@ -1,0 +1,7 @@
+Out of range (index 0, size 1 for length 0) [line: 4, column: 8]
+Out of range (index 1, size 1 for length 0) [line: 10, column: 8]
+Out of range (index -1, size 1 for length 1) [line: 18, column: 8]
+Out of range (index 1, size 1 for length 1) [line: 30, column: 8]
+Position -1 out of range (1) [line: 36, column: 8]
+Position 2 out of range (1) [line: 42, column: 8]
+Out of range (index 1, size 1 for length 1) [line: 50, column: 8]

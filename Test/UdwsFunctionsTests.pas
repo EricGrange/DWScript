@@ -5,7 +5,8 @@ interface
 uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
    dwsTokenizer, dwsSymbols, dwsXPlatform, dwsUtils,
    dwsMathFunctions, dwsTimeFunctions, dwsGlobalVarsFunctions, dwsVariantFunctions,
-   dwsMathComplexFunctions, dwsMath3DFunctions, dwsCompilerContext;
+   dwsMathComplexFunctions, dwsMath3DFunctions, dwsCompilerContext,
+   dwsByteBufferFunctions;
 
 type
 
@@ -82,6 +83,11 @@ type
    end;
 
    TdwsFuncFunctionsTestsDebug = class (TdwsFunctionsTestsBase)
+      public
+         procedure SetUp; override;
+   end;
+
+   TdwsFuncFunctionsTestsByteBuffer = class (TdwsFunctionsTestsBase)
       public
          procedure SetUp; override;
    end;
@@ -355,6 +361,18 @@ begin
    inherited;
 end;
 
+// ------------------
+// ------------------ TdwsFuncFunctionsTestsByteBuffer ------------------
+// ------------------
+
+// SetUp
+//
+procedure TdwsFuncFunctionsTestsByteBuffer.SetUp;
+begin
+   FFolder:='FunctionsByteBuffer';
+   inherited;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -372,5 +390,6 @@ initialization
    RegisterTest('Functions', TdwsFuncFunctionsTestsGlobalVars);
    RegisterTest('Functions', TdwsFuncFunctionsTestsRTTI);
    RegisterTest('Functions', TdwsFuncFunctionsTestsDebug);
+   RegisterTest('Functions', TdwsFuncFunctionsTestsByteBuffer);
 
 end.
