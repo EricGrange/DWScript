@@ -34,6 +34,7 @@ uses
   dwsCryptoLibModule,
   dwsWebLibModule,
   dwsDatabaseLibModule,
+  dwsSystemInfoLibModule,
   dwsComConnector,
   dwsJSONConnector,
   dwsSynSQLiteDatabase,
@@ -55,6 +56,7 @@ begin
    TdwsZipLib.Create(Result).dwsZip.Script:=Result;
    TdwsWebLib.Create(Result).dwsWeb.Script:=Result;
    TdwsDatabaseLib.Create(Result).dwsDatabase.Script:=Result;
+   TdwsSystemInfoLibModule.Create(Result).Script:=Result;
 end;
 
 procedure WriteHeader;
