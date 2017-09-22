@@ -259,7 +259,7 @@ begin
    FPathVariables:=TFastCompareTextList.Create;
 
    FSystemInfo:=TdwsSystemInfoLibModule.Create(Self);
-   FSystemInfo.dwsSystemInfo.Script:=DelphiWebScript;
+   FSystemInfo.Script:=DelphiWebScript;
 
    FDataBase:=TdwsDatabaseLib.Create(Self);
    FDataBase.dwsDatabase.Script:=DelphiWebScript;
