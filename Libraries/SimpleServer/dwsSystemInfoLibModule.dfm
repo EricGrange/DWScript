@@ -235,6 +235,13 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
             Attributes = [maStatic]
             OnEval = dwsSystemInfoClassesCPUInfoMethodsUpTimeEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'DomainControllerInfo'
+            ResultType = 'DomainControllerInfo'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesHostInfoMethodsDomainControllerInfoEval
+            Kind = mkClassFunction
           end>
       end>
     Functions = <
@@ -250,10 +257,12 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
           item
             Name = 'Total'
             DataType = 'Integer'
+            Visibility = cvPublished
           end
           item
             Name = 'Available'
             DataType = 'Integer'
+            Visibility = cvPublished
           end>
         Properties = <>
       end
@@ -263,18 +272,72 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
           item
             Name = 'WorkingSetSize'
             DataType = 'Integer'
+            Visibility = cvPublished
           end
           item
             Name = 'PeakWorkingSetSize'
             DataType = 'Integer'
+            Visibility = cvPublished
           end
           item
             Name = 'PagefileUsage'
             DataType = 'Integer'
+            Visibility = cvPublished
           end
           item
             Name = 'PeakPagefileUsage'
             DataType = 'Integer'
+            Visibility = cvPublished
+          end>
+        Properties = <>
+      end
+      item
+        Name = 'DomainControllerInfo'
+        Members = <
+          item
+            Name = 'DCName'
+            DataType = 'String'
+            Visibility = cvPublished
+          end
+          item
+            Name = 'DCAddress'
+            DataType = 'String'
+            Visibility = cvPublished
+          end
+          item
+            Name = 'DCAddressType'
+            DataType = 'Integer'
+            Visibility = cvPublished
+          end
+          item
+            Name = 'GUID'
+            DataType = 'String'
+            Visibility = cvPublished
+          end
+          item
+            Name = 'Name'
+            DataType = 'String'
+            Visibility = cvPublished
+          end
+          item
+            Name = 'ForestName'
+            DataType = 'String'
+            Visibility = cvPublished
+          end
+          item
+            Name = 'DCSiteName'
+            DataType = 'String'
+            Visibility = cvPublished
+          end
+          item
+            Name = 'ClientSiteName'
+            DataType = 'String'
+            Visibility = cvPublished
+          end
+          item
+            Name = 'Flags'
+            DataType = 'Integer'
+            Visibility = cvPublished
           end>
         Properties = <>
       end>

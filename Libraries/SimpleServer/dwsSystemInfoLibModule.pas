@@ -100,6 +100,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsSystemInfoClassesApplicationInfoMethodsUserNameEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesHostInfoMethodsDomainControllerInfoEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FOSNameVersion : TOSNameVersion;
@@ -619,6 +621,68 @@ procedure TdwsSystemInfoLibModule.SetScript(const val : TDelphiWebScript);
 begin
    dwsSystemInfo.Script := val;
    dwsSystemRegistry.Script := val;
+end;
+
+type
+  NET_API_STATUS = DWORD;
+
+  NETSETUP_JOIN_STATUS = (
+    NetSetupUnknownStatus,
+    NetSetupUnjoined,
+    NetSetupWorkgroupName,
+    NetSetupDomainName);
+
+  PNETSETUP_JOIN_STATUS = ^NETSETUP_JOIN_STATUS;
+
+  TDomainControllerInfoW = record
+    DomainControllerName: LPCWSTR;
+    DomainControllerAddress: LPCWSTR;
+    DomainControllerAddressType: ULONG;
+    DomainGuid: TGUID;
+    DomainName: LPCWSTR;
+    DnsForestName: LPCWSTR;
+    Flags: ULONG;
+    DcSiteName: LPCWSTR;
+    ClientSiteName: LPCWSTR;
+  end;
+  PDomainControllerInfoW = ^TDomainControllerInfoW;
+
+const
+  NET_API_DLL='netapi32.dll';
+  NERR_Success = 0;
+  DS_IS_FLAT_NAME = $00010000;
+  DS_RETURN_DNS_NAME = $40000000;
+
+function DSGetDCName(ComputerName, DomainName: LPCWSTR; DomainGuid: PGUID; SiteName: LPCWSTR; Flags: ULONG; var DomainControllerInfo: PDomainControllerInfoW):  NET_API_STATUS; stdcall; external NET_API_DLL name 'DsGetDcNameW';
+function NetApiBufferFree(Buffer: Pointer): NET_API_STATUS; stdcall; external NET_API_DLL;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesHostInfoMethodsDomainControllerInfoEval(
+               Info: TProgramInfo; ExtObject: TObject);
+var
+   dcInfo : PDomainControllerInfoW;
+   emptyDCInfo : TDomainControllerInfoW;
+   result : IInfo;
+begin
+   result := Info.ResultVars;
+   if DSGetDCName(nil, nil, nil, nil, 0, dcInfo) <> ERROR_SUCCESS then begin
+      dcInfo := @emptyDCInfo;
+      FillChar(emptyDCInfo, 0, SizeOf(emptyDCInfo));
+   end;
+   try
+      result.Member['DCName'].ValueAsString := dcInfo.DomainControllerName;
+      result.Member['DCAddress'].ValueAsString := dcInfo.DomainControllerAddress;
+      result.Member['DCAddressType'].ValueAsInteger := dcInfo.DomainControllerAddressType;
+      result.Member['GUID'].ValueAsString := GUIDToString(dcInfo.DomainGuid);
+      result.Member['Name'].ValueAsString := dcInfo.DomainName;
+      result.Member['ForestName'].ValueAsString := dcInfo.DomainName;
+      result.Member['Name'].ValueAsString := dcInfo.DnsForestName;
+      result.Member['DCSiteName'].ValueAsString := dcInfo.DcSiteName;
+      result.Member['ClientSiteName'].ValueAsString := dcInfo.ClientSiteName;
+      result.Member['Flags'].ValueAsInteger := dcInfo.Flags;
+   finally
+      if dcInfo <> @emptyDCInfo then
+         NetApiBufferFree(dcInfo);
+   end;
 end;
 
 end.
