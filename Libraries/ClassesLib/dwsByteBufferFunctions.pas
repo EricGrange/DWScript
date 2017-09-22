@@ -89,6 +89,22 @@ type
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
+   TByteBufferGetDWordFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+   end;
+
+   TByteBufferSetDWordFunc = class(TInternalMagicProcedure)
+      procedure DoEvalProc(const args : TExprBaseListExec); override;
+   end;
+
+   TByteBufferGetInt32Func = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+   end;
+
+   TByteBufferSetInt32Func = class(TInternalMagicProcedure)
+      procedure DoEvalProc(const args : TExprBaseListExec); override;
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -360,6 +376,70 @@ begin
    else buffer.SetInt16A(args.AsInteger[1], args.AsInteger[2])
 end;
 
+// ------------------
+// ------------------ TByteBufferGetDWordFunc ------------------
+// ------------------
+
+// DoEvalAsInteger
+//
+function TByteBufferGetDWordFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+var
+   buffer : IdwsByteBuffer;
+begin
+   args.GetBuffer(buffer);
+   if args.Count = 2 then
+      Result := buffer.GetDWordA(args.AsInteger[1])
+   else Result := buffer.GetDWordP;
+end;
+
+// ------------------
+// ------------------ TByteBufferSetDWordFunc ------------------
+// ------------------
+
+// DoEvalProc
+//
+procedure TByteBufferSetDWordFunc.DoEvalProc(const args : TExprBaseListExec);
+var
+   buffer : IdwsByteBuffer;
+begin
+   args.GetBuffer(buffer);
+   if args.Count = 2 then
+      buffer.SetDWordP(args.AsInteger[1])
+   else buffer.SetDWordA(args.AsInteger[1], args.AsInteger[2])
+end;
+
+// ------------------
+// ------------------ TByteBufferGetInt32Func ------------------
+// ------------------
+
+// DoEvalAsInteger
+//
+function TByteBufferGetInt32Func.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+var
+   buffer : IdwsByteBuffer;
+begin
+   args.GetBuffer(buffer);
+   if args.Count = 2 then
+      Result := buffer.GetInt32A(args.AsInteger[1])
+   else Result := buffer.GetInt32P;
+end;
+
+// ------------------
+// ------------------ TByteBufferSetInt32Func ------------------
+// ------------------
+
+// DoEvalProc
+//
+procedure TByteBufferSetInt32Func.DoEvalProc(const args : TExprBaseListExec);
+var
+   buffer : IdwsByteBuffer;
+begin
+   args.GetBuffer(buffer);
+   if args.Count = 2 then
+      buffer.SetInt32P(args.AsInteger[1])
+   else buffer.SetInt32A(args.AsInteger[1], args.AsInteger[2])
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -382,6 +462,10 @@ initialization
    RegisterInternalIntFunction(TByteBufferGetWordFunc,  '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER], [iffOverloaded], 'GetWord');
    RegisterInternalIntFunction(TByteBufferGetInt16Func,  '', ['buffer', SYS_BYTEBUFFER], [iffOverloaded], 'GetInt16');
    RegisterInternalIntFunction(TByteBufferGetInt16Func,  '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER], [iffOverloaded], 'GetInt16');
+   RegisterInternalIntFunction(TByteBufferGetDWordFunc,  '', ['buffer', SYS_BYTEBUFFER], [iffOverloaded], 'GetDWord');
+   RegisterInternalIntFunction(TByteBufferGetDWordFunc,  '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER], [iffOverloaded], 'GetDWord');
+   RegisterInternalIntFunction(TByteBufferGetInt32Func,  '', ['buffer', SYS_BYTEBUFFER], [iffOverloaded], 'GetInt32');
+   RegisterInternalIntFunction(TByteBufferGetInt32Func,  '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER], [iffOverloaded], 'GetInt32');
 
    RegisterInternalProcedure(TByteBufferSetByteFunc,  '', ['buffer', SYS_BYTEBUFFER, 'v', SYS_INTEGER], 'SetByte', [iffOverloaded]);
    RegisterInternalProcedure(TByteBufferSetByteFunc,  '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER, 'v', SYS_INTEGER], 'SetByte', [iffOverloaded]);
@@ -389,4 +473,8 @@ initialization
    RegisterInternalProcedure(TByteBufferSetWordFunc,  '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER, 'v', SYS_INTEGER], 'SetWord', [iffOverloaded]);
    RegisterInternalProcedure(TByteBufferSetInt16Func,  '', ['buffer', SYS_BYTEBUFFER, 'v', SYS_INTEGER], 'SetInt16', [iffOverloaded]);
    RegisterInternalProcedure(TByteBufferSetInt16Func,  '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER, 'v', SYS_INTEGER], 'SetInt16', [iffOverloaded]);
+   RegisterInternalProcedure(TByteBufferSetDWordFunc,  '', ['buffer', SYS_BYTEBUFFER, 'v', SYS_INTEGER], 'SetDWord', [iffOverloaded]);
+   RegisterInternalProcedure(TByteBufferSetDWordFunc,  '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER, 'v', SYS_INTEGER], 'SetDWord', [iffOverloaded]);
+   RegisterInternalProcedure(TByteBufferSetInt32Func,  '', ['buffer', SYS_BYTEBUFFER, 'v', SYS_INTEGER], 'SetInt32', [iffOverloaded]);
+   RegisterInternalProcedure(TByteBufferSetInt32Func,  '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER, 'v', SYS_INTEGER], 'SetInt32', [iffOverloaded]);
 end.

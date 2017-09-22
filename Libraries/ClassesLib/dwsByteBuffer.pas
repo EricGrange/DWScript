@@ -478,7 +478,7 @@ end;
 procedure TdwsByteBuffer.SetDWordA(index : NativeInt; v : DWORD);
 begin
    RangeCheck(index, 4);
-   PWord(@FData[index])^ := v;
+   PDWord(@FData[index])^ := v;
 end;
 
 // SetInt32A
