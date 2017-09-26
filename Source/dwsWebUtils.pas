@@ -52,6 +52,7 @@ type
          class function XMLTextDecode(const s : UnicodeString) : UnicodeString; static;
    end;
 
+   EXMLDecodeError = class (Exception);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -1003,73 +1004,121 @@ end;
 //
 class function WebUtils.XMLTextEncode(const s : UnicodeString) : UnicodeString;
 var
-   i : Integer;
-   wobs : TWriteOnlyBlockStream;
-begin
-   wobs := TWriteOnlyBlockStream.AllocFromPool;
-   try
-      for i := 1 to Length(s) do begin
-         case s[i] of
-            '"' : wobs.WriteString('&quot;');
-            '''' : wobs.WriteString('&apos;');
-            '<' : wobs.WriteString('&lt;');
-            '>' : wobs.WriteString('&gt;');
-            '&' : wobs.WriteString('&amp;');
-         else
-            wobs.WriteChar(s[i]);
-         end;
-      end;
-      Result := wobs.ToUnicodeString;
-   finally
-      wobs.ReturnToPool;
+   capacity : Integer;
+   pSrc, pDest : PWideChar;
+
+   procedure Grow;
+   var
+      nr, dnr : Integer;
+      k : NativeUInt;
+   begin
+      k := NativeUInt(pDest)-NativeUInt(Pointer(Result));
+      nr := Length(Result);
+      dnr := (nr div 4) + 8;
+      SetLength(Result, nr + dnr);
+      Inc(capacity, dnr);
+      pDest := Pointer(NativeUInt(Pointer(Result))+k);
    end;
+
+   procedure Append(const a : UnicodeString);
+   var
+      n : Integer;
+   begin
+      n := Length(a);
+      if n>capacity then Grow;
+      System.Move(Pointer(a)^, pDest^, n*SizeOf(WideChar));
+      Inc(pDest, n);
+      Dec(capacity, n);
+   end;
+
+begin
+   if s='' then exit;
+   capacity:=Length(s);
+   SetLength(Result, capacity);
+   pSrc:=Pointer(s);
+   pDest:=Pointer(Result);
+   repeat
+      case pSrc^ of
+         #0 : break;
+         '<' : Append('&lt;');
+         '>' : Append('&gt;');
+         '&' : Append('&amp;');
+         '"' : Append('&quot;');
+         '''' : Append('&apos;');
+      else
+         if capacity=0 then
+            Grow;
+         pDest^ := pSrc^;
+         Inc(pDest);
+         Dec(capacity);
+      end;
+      Inc(pSrc);
+   until False;
+   if capacity>0 then
+      SetLength(Result, Length(Result)-capacity);
 end;
 
 // XMLTextDecode
 //
 class function WebUtils.XMLTextDecode(const s : UnicodeString) : UnicodeString;
 var
-   i, p : Integer;
-   wobs : TWriteOnlyBlockStream;
-   tag : String;
+   pSrc, pDest, pAmp : PWideChar;
+   c : WideChar;
 begin
-   wobs := TWriteOnlyBlockStream.AllocFromPool;
-   try
-      p := 1;
-      repeat
-         i := PosEx('&', s, p);
-         if i <= 0 then begin
-            wobs.WriteSubString(s, p);
-            Break;
+   if s = '' then exit;
+   SetLength(Result, Length(s));
+   pAmp := nil;
+   pSrc := Pointer(s);
+   pDest := Pointer(Result);
+   repeat
+      c := pSrc^;
+      if c = #0 then break;
+      if pAmp = nil then begin
+         case c of
+            '&' :
+               pAmp := pSrc;
+         else
+            pDest^ := c;
+            Inc(pDest);
          end;
-         if i > p then
-            wobs.WriteSubString(s, p, i-p);
-         tag := Copy(s, i, 6);
-         if tag = '&quot;' then begin
-            wobs.WriteChar('"');
-            p := i + 6;
-         end else if tag = '&apos;' then begin
-            wobs.WriteChar('''');
-            p := i + 6;
-         end else if StrBeginsWith(tag, '&lt;') then begin
-            wobs.WriteChar('<');
-            p := i + 4;
-         end else if StrBeginsWith(tag, '&gt;') then begin
-            wobs.WriteChar('>');
-            p := i + 4;
-         end else if StrBeginsWith(tag, '&amp;') then begin
-            wobs.WriteChar('&');
-            p := i + 5;
-         end else begin
-            // leave as-is
-            wobs.WriteChar('&');
-            Inc(p);
+      end else begin
+         case c of
+            'a'..'z' : ; // alowed characters
+         else
+            if c = ';' then begin
+               c := #0;
+               case pAmp[1] of
+                  'a' : case pAmp[2] of
+                     'm' :
+                        if (pAmp[3] = 'p') and (pAmp[4] = ';') then
+                           c := '&';
+                     'p' :
+                        if (pAmp[3] = 'o') and (pAmp[4] = 's') and (pAmp[5] = ';') then
+                           c := '''';
+                  end;
+                  'g' :
+                     if (pAmp[2] = 't') and (pAmp[3] = ';') then
+                        c := '>';
+                  'l' :
+                     if (pAmp[2] = 't') and (pAmp[3] = ';') then
+                        c := '<';
+                  'q' :
+                     if (pAmp[2] = 'u') and (pAmp[3] = 'o') and (pAmp[4] = 't') and (pAmp[5] = ';') then
+                        c := '"';
+               end;
+            end else c := #0;
+            if c = #0 then
+               raise EXMLDecodeError.CreateFmt('Invalid entity at position %d',
+                                               [1 + (NativeUInt(pAmp)-NativeUInt(Pointer(s))) div 2]);
+            pDest^ := c;
+            Inc(pDest);
+            pAmp := nil;
          end;
-      until False;
-      Result := wobs.ToUnicodeString;
-   finally
-      wobs.ReturnToPool;
-   end;
+      end;
+      Inc(pSrc);
+   until False;
+
+   SetLength(Result, (NativeUInt(pDest)-NativeUInt(Pointer(Result))) div SizeOf(WideChar));
 end;
 
 // ------------------------------------------------------------------
