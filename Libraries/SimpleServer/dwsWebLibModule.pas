@@ -596,7 +596,7 @@ begin
       headers := TdwsCustomHeaders.Create;
       SetLength(headers.Headers, n);
       for i := 0 to n-1 do
-         ScriptStringToRawByteString(dyn.AsString[i], headers.Headers[i]);
+         headers.Headers[i] := dyn.AsString[i];
       Info.Execution.CustomStates[cWinHttpCustomHeaders] := headers as IGetSelf;
    end else Info.Execution.CustomStates[cWinHttpCustomHeaders] := Unassigned;
 end;

@@ -19,18 +19,18 @@ unit dwsWinHTTP;
 interface
 
 uses
-   Windows, SysUtils,
+   Windows, SysUtils, WinInet,
    SynCrtSock, SynCommons,
    dwsUtils, dwsWebEnvironment;
 
 type
    TdwsCustomHeaders = class (TInterfacedSelfObject)
-      Headers : array of RawByteString;
+      Headers : array of String;
    end;
 
    TdwsWinHTTP = class (TWinHTTP)
       protected
-         AuthorizationHeader : RawByteString;
+         AuthorizationHeader : String;
          CustomHeaders : TdwsCustomHeaders;
          procedure InternalConnect(ConnectionTimeOut,SendTimeout,ReceiveTimeout: DWORD); override;
          procedure InternalSendRequest(const aData: SockString); override;
@@ -67,6 +67,21 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+const
+   WINHTTP_ADDREQ_FLAG_COALESCE = $40000000;
+   WINHTTP_ADDREQ_FLAG_REPLACE  = $80000000;
+
+   WINHTTP_FLAG_REFRESH = $00000100;
+   WINHTTP_FLAG_SECURE  = $00800000;
+
+   winhttpdll = 'winhttp.dll';
+
+function WinHttpOpenRequest(hConnect: HINTERNET; pwszVerb: PWideChar;
+  pwszObjectName: PWideChar; pwszVersion: PWideChar; pwszReferer: PWideChar;
+  ppwszAcceptTypes: PLPWSTR; dwFlags: DWORD): HINTERNET; stdcall; external winhttpdll;
+function WinHttpAddRequestHeaders(hRequest: HINTERNET; pwszHeaders: PWideChar; dwHeadersLength: DWORD;
+                                  dwModifiers: DWORD): BOOL; stdcall; external winhttpdll;
+
 // ------------------
 // ------------------ TdwsWinHttp ------------------
 // ------------------
@@ -84,13 +99,30 @@ end;
 procedure TdwsWinHTTP.InternalSendRequest(const aData: SockString);
 var
    i : Integer;
+   header : String;
+   acceptSeen : Boolean;
+   flag : DWORD;
 begin
    if AuthorizationHeader<>'' then
-      InternalAddHeader('Authorization: '+AuthorizationHeader);
-   if Assigned(CustomHeaders) then
-      for i := 0 to High(CustomHeaders.Headers) do
-         InternalAddHeader(CustomHeaders.Headers[i]);
-
+      if not WinHttpAddRequestHeaders(FRequest, Pointer(AuthorizationHeader), Length(AuthorizationHeader),
+                                      WINHTTP_ADDREQ_FLAG_REPLACE) then
+         RaiseLastOSError;
+   acceptSeen := False;
+   if Assigned(CustomHeaders) then begin
+      for i := 0 to High(CustomHeaders.Headers) do begin
+         header := CustomHeaders.Headers[i];
+         if header = '' then continue;
+         flag := WINHTTP_ADDREQ_FLAG_COALESCE;
+         if not acceptSeen then begin
+            if StrBeginsWith(header, 'Accept:') then begin
+               flag := WINHTTP_ADDREQ_FLAG_REPLACE;
+               acceptSeen := True;
+            end;
+         end;
+         if not WinHttpAddRequestHeaders(FRequest, Pointer(header), Length(header), flag) then
+            RaiseLastOSError;
+      end;
+   end;
    inherited;
 end;
 
@@ -145,7 +177,7 @@ begin
          wraBasic : FWinHttp.AuthScheme := THttpRequestAuthentication.wraBasic;
          wraDigest : FWinHttp.AuthScheme := THttpRequestAuthentication.wraDigest;
          wraNegotiate : FWinHttp.AuthScheme := THttpRequestAuthentication.wraNegotiate;
-         wraAuthorization : FWinHttp.AuthorizationHeader := UTF8Encode(credentials[1]);
+         wraAuthorization : FWinHttp.AuthorizationHeader := 'Authorization: ' + credentials[1];
       else
          FWinHttp.AuthScheme := THttpRequestAuthentication.wraNone;
       end;
