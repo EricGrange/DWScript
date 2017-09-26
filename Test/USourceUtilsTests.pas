@@ -244,8 +244,9 @@ begin
    CheckTrue(sugg.Count>10, 'column 8');
    CheckEquals('BigInteger', sugg.Code[0], 'sugg 8, 0');
    CheckEquals('Boolean', sugg.Code[1], 'sugg 8, 1');
-   CheckEquals('CompilerVersion', sugg.Code[2], 'sugg 8, 2');
-   CheckEquals('DateTimeZone', sugg.Code[3], 'sugg 8, 3');
+   CheckEquals('ByteBuffer', sugg.Code[2], 'sugg 8, 1');
+   CheckEquals('CompilerVersion', sugg.Code[3], 'sugg 8, 2');
+   CheckEquals('DateTimeZone', sugg.Code[4], 'sugg 8, 3');
 
    scriptPos.Col:=9;
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
