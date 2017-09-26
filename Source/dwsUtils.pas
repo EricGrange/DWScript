@@ -1306,10 +1306,7 @@ end;
 //
 function HexToBin(const data : String) : RawByteString;
 var
-   i, n, b : Integer;
-   c : Char;
-   pSrc : PChar;
-   pDest : PByte;
+   n : Integer;
 begin
    n := Length(data);
    if (n and 1)<>0 then
@@ -1318,14 +1315,14 @@ begin
    n:=n shr 1;
    SetLength(Result, n);
    if n > 0 then
-      HexToBin(Pointer(data), Pointer(Result), n);
+      HexToBin(PChar(Pointer(data)), PByte(Pointer(Result)), n);
 end;
 
 // HexToBin
 //
 procedure HexToBin(src : PChar; dest : PByte; nbBytes : Integer);
 var
-   i, n, b : Integer;
+   i, b : Integer;
    c : Char;
 begin
    for i := 1 to nbBytes do begin
