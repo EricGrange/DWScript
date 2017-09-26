@@ -32,6 +32,7 @@ for var a in WebServer.Authentications do
 	<li><a href="authenticated.dws">authentication</a> (<?pas=if auths.Count=0 then 'not enabled' else auths.join(',')?>)</li>
 	<li><a href="uses.dws">uses Test</a></li>
 	<li><a href="sqlite.dws">SQLite Test</a></li>
+    <li><a href="cookies.dws">Cookies</a></li>
 	<li><a href="op4js.dws">Object Pascal to JavaScript</a> (with <a href="op4js.uses.dws">uses</a>)</li>
 	<li><a href="op4js.lib.htm">IncrementCounter, Pascal to Javascript library</a></li>
 	</ul></p>

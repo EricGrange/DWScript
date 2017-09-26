@@ -1,0 +1,20 @@
+﻿<html>
+<body>
+<p>
+<?pas
+uses System.Net;
+
+var myCookie := WebRequest.Cookie['MyCookie'];
+
+if WebRequest.HasContentField('cookie') then begin
+   myCookie := WebRequest.ContentField['cookie'];
+   WebResponse.SetCookie('MyCookie', myCookie);
+end;
+
+?>
+MyCookie = <?pas= myCookie.ToHtml ?>
+</p><form action="cookie.dws" method="post">
+   <input type="text" name="cookie" value="<?pas= myCookie.ToHtmlAttribute ?>">
+   <input type="submit">
+</form>
+

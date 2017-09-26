@@ -141,7 +141,7 @@ type
    TWebResponseCookieFlag = (wrcfSecure = 1, wrcfHttpOnly = 2);
    TWebResponseCookieSameSite = (wrcssUnspecified = 0, wrcssStrict = 1, wrcssLax = 2);
 
-   TWebResponseCookie = class
+   TWebResponseCookie = class (TRefCountedObject)
       public
          Name : String;
          Value : String;
@@ -155,7 +155,7 @@ type
          procedure WriteStringLn(dest : TWriteOnlyBlockStream);
    end;
 
-   TWebResponseCookies = class (TSimpleList<TWebResponseCookie>)
+   TWebResponseCookies = class (TObjectList<TWebResponseCookie>)
       public
          function AddCookie(const name : String) : TWebResponseCookie;
    end;
