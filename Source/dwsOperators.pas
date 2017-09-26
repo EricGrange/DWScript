@@ -72,6 +72,8 @@ type
          function EnumerateUnaryOperatorsFor(aToken : TTokenType; aType : TTypeSymbol;
                                              const callback : TOperatorSymbolEnumerationCallback) : Boolean;
 
+         function FindUnaryOperatorFor(aToken : TTokenType; aType : TTypeSymbol) : TOperatorSymbol;
+
          // strict check
          function HasOperatorFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : Boolean;
 
@@ -239,6 +241,23 @@ begin
       end;
    end;
    Result:=False;
+end;
+
+// FindUnaryOperatorFor
+//
+function TOperators.FindUnaryOperatorFor(aToken : TTokenType; aType : TTypeSymbol) : TOperatorSymbol;
+var
+   i : Integer;
+   p : PRegisteredOperator;
+begin
+   for i:=0 to High(FOperators[aToken]) do begin
+      p:=@FOperators[aToken][i];
+      if     (p.LeftType=nil)
+         and ((aType=p.RighType) or aType.IsOfType(p.RighType)) then begin
+         Exit(p.OperatorSym);
+      end;
+   end;
+   Result:=nil;
 end;
 
 // HasOperatorFor

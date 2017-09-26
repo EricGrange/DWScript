@@ -482,6 +482,8 @@ const
   CPE_ResultTypeExpected = 'Result type expected';
   CPE_NoResultRequired = 'No result required';
 
+  CPE_NotSupportedFor = '"%s" is not supported for "%s"';
+
   CPE_CanNotOverride = 'Method %s not found in parent class. Cannot override';
   CPE_InvalidArgCombination = 'Invalid argument combination';
   CPE_InvalidArgumentType = 'Invalid argument type';

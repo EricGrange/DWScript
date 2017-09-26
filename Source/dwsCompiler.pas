@@ -601,6 +601,7 @@ type
          procedure ReadExternalName(funcSym : TFuncSymbol);
          function  ReadNew(restrictTo : TClassSymbol; asAttribute : Boolean) : TProgramExpr;
          function  ReadNewArray(elementTyp : TTypeSymbol) : TNewArrayExpr;
+         function  ReadNewOperator(opSym : TOperatorSymbol; elementTyp : TTypeSymbol) : TTypedExpr;
          procedure ReadArrayParams(ArrayIndices: TSymbolTable);
          // Don't want to add param symbols to dictionary when a method implementation (they get thrown away)
          procedure ReadParams(const hasParamMeth : THasParamSymbolMethod;
@@ -8342,6 +8343,7 @@ var
    overloads : TFuncSymbolList;
    i : Integer;
    funcExpr : TFuncExprBase;
+   opSym : TOperatorSymbol;
 begin
    baseExpr:=nil;
    classSym:=nil;
@@ -8416,6 +8418,17 @@ begin
 
             classSym:=TClassOfSymbol(sym.Typ).TypClassSymbol;
             RecordSymbolUseReference(sym, hotPos, False);
+
+         end else if sym is TTypeSymbol then begin
+
+            opSym := FOperators.FindUnaryOperatorFor(ttNEW, TTypeSymbol(sym));
+            if opSym <> nil then begin
+
+               Result := ReadNewOperator(opSym, TTypeSymbol(sym));
+               Exit;
+
+            end else FMsgs.AddCompilerStopFmt(hotPos, CPE_NotSupportedFor,
+                                              [cTokenStrings[ttNEW], sym.Name]);
 
          end else FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
 
@@ -8506,6 +8519,13 @@ begin
       raise;
    end;
    Result:=newExpr;
+end;
+
+// ReadNewOperator
+//
+function TdwsCompiler.ReadNewOperator(opSym : TOperatorSymbol; elementTyp : TTypeSymbol) : TTypedExpr;
+begin
+   Result := TUnaryOpExprClass(opSym.OperatorExprClass).Create(FCompilerContext, nil);
 end;
 
 // ReadAliasedNameSymbol

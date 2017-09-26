@@ -972,6 +972,7 @@ procedure RawByteStringToScriptString(const s : RawByteString; var result : Unic
 procedure BytesToScriptString(const p : PByte; n : Integer; var result : UnicodeString);
 function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString; overload; inline;
 procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
+procedure WordsToBytes(src : PWord; dest : PByte; nbWords : Integer);
 
 procedure StringBytesToWords(var buf : UnicodeString; swap : Boolean);
 procedure StringWordsToBytes(var buf : UnicodeString; swap : Boolean);
@@ -984,6 +985,7 @@ function BinToHex(const data; n : Integer) : UnicodeString; overload;
 function BinToHex(const data : RawByteString) : UnicodeString; overload; inline;
 
 function HexToBin(const data : String) : RawByteString; overload;
+procedure HexToBin(src : PChar; dest : PByte; nbBytes : Integer); overload;
 
 type
    TInt64StringBuffer = array [0..21] of Char;
@@ -1309,16 +1311,25 @@ var
    pSrc : PChar;
    pDest : PByte;
 begin
-   n:=Length(data);
+   n := Length(data);
    if (n and 1)<>0 then
       raise EHexEncodingException.Create('Even hexadecimal character count expected');
 
    n:=n shr 1;
    SetLength(Result, n);
-   pSrc:=PChar(Pointer(data));
-   pDest:=PByte(Result);
-   for i:=1 to n do begin
-      c:=pSrc[0];
+   if n > 0 then
+      HexToBin(Pointer(data), Pointer(Result), n);
+end;
+
+// HexToBin
+//
+procedure HexToBin(src : PChar; dest : PByte; nbBytes : Integer);
+var
+   i, n, b : Integer;
+   c : Char;
+begin
+   for i := 1 to nbBytes do begin
+      c := src[0];
       case c of
          '0'..'9' : b := (Ord(c) shl 4)-(Ord('0') shl 4);
          'A'..'F' : b := (Ord(c) shl 4)+(160-(Ord('A') shl 4));
@@ -1326,7 +1337,7 @@ begin
       else
          raise EHexEncodingException.CreateFmt('Invalid hexadecimal character at index %d', [2*i-1]);
       end;
-      c:=pSrc[1];
+      c := src[1];
       case c of
          '0'..'9' : b := b + Ord(c) - Ord('0');
          'A'..'F' : b := b + Ord(c) + (10-Ord('A'));
@@ -1334,11 +1345,12 @@ begin
       else
          raise EHexEncodingException.CreateFmt('Invalid hexadecimal character at index %d', [2*i]);
       end;
-      pDest^ := b;
-      Inc(pDest);
-      pSrc := @pSrc[2];
+      dest^ := b;
+      Inc(dest);
+      Inc(src, 2);
    end;
 end;
+
 
 // DivMod10
 //
@@ -2494,32 +2506,36 @@ end;
 // ScriptStringToRawByteString
 //
 procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
-type
-  PByteArray = ^TByteArray;
-  TByteArray = array[0..maxInt shr 1] of Byte;
 var
    n : Integer;
-   pSrc : PWordArray;
-   pDest : PByteArray;
 begin
-   n := Length(s);
-   SetLength(Result, n);
-   if n = 0 then Exit;
-   pSrc := PWordArray(Pointer(s));
-   pDest := PByteArray(Pointer(Result));
-   while n >= 4 do begin
-      Dec(n, 4);
-      pDest[0] := pSrc[0];
-      pDest[1] := pSrc[1];
-      pDest[2] := pSrc[2];
-      pDest[3] := pSrc[3];
-      pDest := @pDest[4];
-      pSrc := @pSrc[4];
+   if s = '' then
+      result := ''
+   else begin
+      n := Length(s);
+      SetLength(Result, n);
+      WordsToBytes(Pointer(s), Pointer(Result), n);
    end;
-   for n := 1 to n do begin
-      pDest[0] := pSrc[0];
-      pDest := @pDest[1];
-      pSrc := @pSrc[1];
+end;
+
+// WordsToBytes
+//
+procedure WordsToBytes(src : PWord; dest : PByte; nbWords : Integer);
+begin
+   while nbWords >= 4 do begin
+      Dec(nbWords, 4);
+      dest[0] := PWordArray(src)[0];
+      dest[1] := PWordArray(src)[1];
+      dest[2] := PWordArray(src)[2];
+      dest[3] := PWordArray(src)[3];
+      Inc(dest, 4);
+      Inc(src, 4);
+   end;
+   while nbWords > 0 do begin
+      Dec(nbWords);
+      dest[0] := PWordArray(src)[0];
+      Inc(dest);
+      Inc(src);
    end;
 end;
 

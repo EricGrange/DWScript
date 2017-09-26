@@ -10,7 +10,7 @@ except
 end;
 bb.SetByte($56);
 
-PrintLn(bb);
+PrintLn(bb.ToJSON);
 
 bb.SetPosition(1);
 PrintLn(bb.GetWord);

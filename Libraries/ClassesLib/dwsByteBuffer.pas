@@ -25,48 +25,67 @@ uses
 
 type
 
-   IdwsByteBuffer = interface
+   IdwsByteBuffer = interface(IGetSelf)
       ['{6AC89DF7-11B9-4136-B9B9-1F2EE0727158}']
 
-      function GetLength : NativeInt;
-      procedure SetLength(n : NativeInt);
+      function GetCount : NativeInt;
+      procedure SetCount(n : NativeInt);
 
       function GetPosition : NativeInt;
       procedure SetPosition(n : NativeInt);
 
-         function GetByteP : Byte;
-         function GetByteA(index : NativeInt) : Byte;
-         function GetWordP : Word;
-         function GetWordA(index : NativeInt) : Word;
-         function GetInt16P : Int16;
-         function GetInt16A(index : NativeInt) : Int16;
-         function GetDWordP : DWord;
-         function GetDWordA(index : NativeInt) : DWord;
-         function GetInt32P : Int32;
-         function GetInt32A(index : NativeInt) : Int32;
-         function GetInt64P : Int64;
-         function GetInt64A(index : NativeInt) : Int64;
-         function GetSingleP : Double;
-         function GetSingleA(index : NativeInt) : Double;
-         function GetDoubleP : Double;
-         function GetDoubleA(index : NativeInt) : Double;
+      procedure Assign(const buffer : IdwsByteBuffer);
+      procedure AssignDataString(const s : String);
+      procedure AssignJSON(const s : String);
+      procedure AssignBase64(const s : String);
+      procedure AssignHexString(const s : String);
 
-         procedure SetByteP(v : Byte);
-         procedure SetByteA(index : NativeInt; v : Byte);
-         procedure SetWordP(v : Word);
-         procedure SetWordA(index : NativeInt; v : Word);
-         procedure SetInt16P(v : Word);
-         procedure SetInt16A(index : NativeInt; v : Int16);
-         procedure SetDWordP(v : DWord);
-         procedure SetDWordA(index : NativeInt; v : DWORD);
-         procedure SetInt32P(v : Int32);
-         procedure SetInt32A(index : NativeInt; v : Int32);
-         procedure SetInt64P(v : Int64);
-         procedure SetInt64A(index : NativeInt; v : Int64);
-         procedure SetSingleP(v : Single);
-         procedure SetSingleA(index : NativeInt; v : Single);
-         procedure SetDoubleP(v : Double);
-         procedure SetDoubleA(index : NativeInt; v : Double);
+      procedure ToDataString(var s : String);
+      procedure ToJSON(var s : String);
+      procedure ToBase64(var s : String);
+      procedure ToHexString(var s : String);
+
+      function Copy(offset, size : NativeInt) : IdwsByteBuffer;
+
+      function GetByteP : Byte;
+      function GetWordP : Word;
+      function GetInt16P : Int16;
+      function GetDWordP : DWord;
+      function GetInt32P : Int32;
+      function GetInt64P : Int64;
+      function GetSingleP : Double;
+      function GetDoubleP : Double;
+      procedure GetDataStringP(size : NativeInt; var result : String);
+
+      function GetByteA(index : NativeInt) : Byte;
+      function GetWordA(index : NativeInt) : Word;
+      function GetInt16A(index : NativeInt) : Int16;
+      function GetDWordA(index : NativeInt) : DWord;
+      function GetInt32A(index : NativeInt) : Int32;
+      function GetInt64A(index : NativeInt) : Int64;
+      function GetSingleA(index : NativeInt) : Double;
+      function GetDoubleA(index : NativeInt) : Double;
+      procedure GetDataStringA(index : NativeInt; size : NativeInt; var result : String);
+
+      procedure SetByteP(v : Byte);
+      procedure SetWordP(v : Word);
+      procedure SetInt16P(v : Word);
+      procedure SetDWordP(v : DWord);
+      procedure SetInt32P(v : Int32);
+      procedure SetInt64P(v : Int64);
+      procedure SetSingleP(v : Single);
+      procedure SetDoubleP(v : Double);
+      procedure SetDataStringP(const v : String);
+
+      procedure SetByteA(index : NativeInt; v : Byte);
+      procedure SetWordA(index : NativeInt; v : Word);
+      procedure SetInt16A(index : NativeInt; v : Int16);
+      procedure SetDWordA(index : NativeInt; v : DWORD);
+      procedure SetInt32A(index : NativeInt; v : Int32);
+      procedure SetInt64A(index : NativeInt; v : Int64);
+      procedure SetSingleA(index : NativeInt; v : Single);
+      procedure SetDoubleA(index : NativeInt; v : Double);
+      procedure SetDataStringA(index : NativeInt; const v : String);
    end;
 
    TdwsByteBuffer = class (TInterfacedObject, IdwsByteBuffer, IGetSelf, IJSONWriteAble)
@@ -81,8 +100,8 @@ type
 
          function GetSelf : TObject;
 
-         function GetLength : NativeInt;
-         procedure SetLength(n : NativeInt);
+         function GetCount : NativeInt;
+         procedure SetCount(n : NativeInt);
 
          function GetPosition : NativeInt;
          procedure SetPosition(n : NativeInt);
@@ -91,8 +110,18 @@ type
          function ToString : String; override;
          procedure WriteToJSON(writer : TdwsJSONWriter);
 
-         procedure AssignString(const s : UnicodeString); inline;
-         procedure EvalAsString(var s : UnicodeString); inline;
+         procedure Assign(const buffer : IdwsByteBuffer);
+         procedure AssignDataString(const s : String);
+         procedure AssignJSON(const s : String);
+         procedure AssignBase64(const s : String);
+         procedure AssignHexString(const s : String);
+
+         procedure ToDataString(var s : String);
+         procedure ToJSON(var s : String);
+         procedure ToBase64(var s : String);
+         procedure ToHexString(var s : String);
+
+         function Copy(offset, size : NativeInt) : IdwsByteBuffer;
 
          function GetByteP : Byte;
          function GetWordP : Word;
@@ -102,6 +131,7 @@ type
          function GetInt64P : Int64;
          function GetSingleP : Double;
          function GetDoubleP : Double;
+         procedure GetDataStringP(size : NativeInt; var result : String);
 
          function GetByteA(index : NativeInt) : Byte;
          function GetWordA(index : NativeInt) : Word;
@@ -111,6 +141,7 @@ type
          function GetInt64A(index : NativeInt) : Int64;
          function GetSingleA(index : NativeInt) : Double;
          function GetDoubleA(index : NativeInt) : Double;
+         procedure GetDataStringA(index : NativeInt; size : NativeInt; var result : String);
 
          procedure SetByteP(v : Byte);
          procedure SetWordP(v : Word);
@@ -120,6 +151,7 @@ type
          procedure SetInt64P(v : Int64);
          procedure SetSingleP(v : Single);
          procedure SetDoubleP(v : Double);
+         procedure SetDataStringP(const v : String);
 
          procedure SetByteA(index : NativeInt; v : Byte);
          procedure SetWordA(index : NativeInt; v : Word);
@@ -129,8 +161,9 @@ type
          procedure SetInt64A(index : NativeInt; v : Int64);
          procedure SetSingleA(index : NativeInt; v : Single);
          procedure SetDoubleA(index : NativeInt; v : Double);
+         procedure SetDataStringA(index : NativeInt; const v : String);
 
-         property Count : NativeInt read FCount write SetLength;
+         property Count : NativeInt read FCount write SetCount;
          property Position : NativeInt read FPosition write SetPosition;
          property ReadOnly : Boolean read FReadOnly write FReadOnly;
    end;
@@ -144,6 +177,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsEncoding;
 
 type
    PInt16 = ^Int16;
@@ -161,16 +196,16 @@ begin
    Result := Self;
 end;
 
-// GetLength
+// GetCount
 //
-function TdwsByteBuffer.GetLength : NativeInt;
+function TdwsByteBuffer.GetCount : NativeInt;
 begin
    Result := FCount;
 end;
 
-// SetLength
+// SetCount
 //
-procedure TdwsByteBuffer.SetLength(n : NativeInt);
+procedure TdwsByteBuffer.SetCount(n : NativeInt);
 begin
    if n < 0 then n := 0;
    if n = FCount then Exit;
@@ -197,24 +232,16 @@ end;
 //
 procedure TdwsByteBuffer.SetPosition(n : NativeInt);
 begin
-   if Cardinal(n) >= Cardinal(FCount) then
-      raise EdwsByteBuffer.CreateFmt('Position %d out of range (%d)', [n, FCount]);
+   if NativeUInt(n) >= NativeUInt(Count) then
+      raise EdwsByteBuffer.CreateFmt('Position %d out of range (length %d)', [n, Count]);
    FPosition := n;
 end;
 
 // ToString
 //
 function TdwsByteBuffer.ToString : String;
-var
-   wr : TdwsJSONWriter;
 begin
-   wr := TdwsJSONWriter.Create;
-   try
-      WriteToJSON(wr);
-      Result := wr.ToString;
-   finally
-      wr.Free;
-   end;
+   ToDataString(Result);
 end;
 
 // WriteToJSON
@@ -238,23 +265,122 @@ begin
                                      [index, size, FCount]);
 end;
 
-// AssignString
+// Assign
 //
-procedure TdwsByteBuffer.AssignString(const s : UnicodeString);
+procedure TdwsByteBuffer.Assign(const buffer : IdwsByteBuffer);
 var
-   i : Integer;
+   bb : TdwsByteBuffer;
+begin
+   bb := buffer.GetSelf as TdwsByteBuffer;
+   Count := bb.Count;
+   if Count > 0 then
+      System.Move(bb.FData[0], FData[0], Count);
+end;
+
+// AssignDataString
+//
+procedure TdwsByteBuffer.AssignDataString(const s : UnicodeString);
 begin
    Count := Length(s);
-   for i := 1 to Count do
-      FData[i-1] := Byte(Ord(s[i]));
+   if Count > 0 then
+      WordsToBytes(Pointer(s), @FData[0], Count);
    Position := 0;
 end;
 
-// EvalAsString
+// AssignJSON
 //
-procedure TdwsByteBuffer.EvalAsString(var s : UnicodeString);
+procedure TdwsByteBuffer.AssignJSON(const s : String);
+var
+   i : Integer;
+   v : TdwsJSONValue;
+begin
+   v := TdwsJSONValue.ParseString(s);
+   try
+      if v.ValueType <> jvtArray then
+         raise EdwsByteBuffer.Create(CPE_ArrayExpected);
+      Count := v.ElementCount;
+      for i := 0 to Count-1 do
+         FData[i] := Byte(v.Elements[i].AsInteger);
+   finally
+      v.Free;
+   end;
+end;
+
+// AssignBase64
+//
+procedure TdwsByteBuffer.AssignBase64(const s : String);
+var
+   buf : RawByteString;
+begin
+   buf := Base64Decode(s);
+   Count := Length(buf);
+   if Count > 0 then
+      System.Move(Pointer(buf), FData[0], Count);
+end;
+
+// AssignHexString
+//
+procedure TdwsByteBuffer.AssignHexString(const s : String);
+begin
+   Count := Length(s) div 2;
+   if Count > 0 then
+      HexToBin(PChar(Pointer(s)), @FData[0], Count);
+end;
+
+// ToDataString
+//
+procedure TdwsByteBuffer.ToDataString(var s : UnicodeString);
 begin
    BytesToScriptString(PByte(FData), Count, s);
+end;
+
+// ToJSON
+//
+procedure TdwsByteBuffer.ToJSON(var s : String);
+var
+   wr : TdwsJSONWriter;
+begin
+   wr := TdwsJSONWriter.Create;
+   try
+      WriteToJSON(wr);
+      s := wr.ToString;
+   finally
+      wr.Free;
+   end;
+end;
+
+// ToBase64
+//
+procedure TdwsByteBuffer.ToBase64(var s : String);
+begin
+   s := Base64Encode(Pointer(FData), Count, cBase64);
+end;
+
+// ToHexString
+//
+procedure TdwsByteBuffer.ToHexString(var s : String);
+begin
+   s := BinToHex(FData, Count);
+end;
+
+// Copy
+//
+function TdwsByteBuffer.Copy(offset, size : NativeInt) : IdwsByteBuffer;
+var
+   newBuffer : TdwsByteBuffer;
+begin
+   if (offset < 0) or (offset >= Count) then
+      raise EdwsByteBuffer.CreateFmt('Offset out of range (index %d for length %d)',
+                                     [offset, Count]);
+
+   if offset + size > Count then
+      size := Count-offset;
+
+   newBuffer := TdwsByteBuffer.Create;
+   if size > 0 then begin
+      newBuffer.SetCount(size);
+      System.Move(FData[offset], newBuffer.FData[0], size);
+   end;
 end;
 
 // GetByteP
@@ -321,6 +447,14 @@ begin
    Inc(FPosition, 8);
 end;
 
+// GetDataStringP
+//
+procedure TdwsByteBuffer.GetDataStringP(size : NativeInt; var result : String);
+begin
+   GetDataStringA(FPosition, size, result);
+   Inc(FPosition, size);
+end;
+
 // GetByteA
 //
 function TdwsByteBuffer.GetByteA(index : NativeInt) : Byte;
@@ -383,6 +517,20 @@ function TdwsByteBuffer.GetDoubleA(index : NativeInt) : Double;
 begin
    RangeCheck(index, 8);
    Result := PDouble(@FData[index])^;
+end;
+
+// GetDataStringA
+//
+procedure TdwsByteBuffer.GetDataStringA(index : NativeInt; size : NativeInt; var result : String);
+begin
+   if size < 0 then
+      raise EdwsByteBuffer.CreateFmt('Invalid size %d', [size]);
+   if size = 0 then
+      result := ''
+   else begin
+      RangeCheck(index, size);
+      BytesToScriptString(@FData[index], size, Result);
+   end;
 end;
 
 // SetByteP
@@ -449,6 +597,14 @@ begin
    Inc(FPosition, 8);
 end;
 
+// SetDataStringP
+//
+procedure TdwsByteBuffer.SetDataStringP(const v : String);
+begin
+   SetDataStringA(FPosition, v);
+   Inc(FPosition, Length(v));
+end;
+
 // SetByteA
 //
 procedure TdwsByteBuffer.SetByteA(index : NativeInt; v : Byte);
@@ -511,6 +667,18 @@ procedure TdwsByteBuffer.SetDoubleA(index : NativeInt; v : Double);
 begin
    RangeCheck(index, 8);
    PDouble(@FData[index])^ := v;
+end;
+
+// SetDataStringA
+//
+procedure TdwsByteBuffer.SetDataStringA(index : NativeInt; const v : String);
+var
+   n : Integer;
+begin
+   if v = '' then Exit;
+   n := Length(v);
+   RangeCheck(index, n);
+   WordsToBytes(Pointer(v), @FData[index], n);
 end;
 
 end.

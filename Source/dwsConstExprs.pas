@@ -46,6 +46,7 @@ type
          constructor Create(aTyp: TTypeSymbol); overload;
          constructor CreateRef(aTyp: TTypeSymbol; const Data: TData);
          constructor CreateNull(aTyp: TTypeSymbol);
+         constructor CreateDefault(aTyp: TTypeSymbol);
          procedure Orphan(context : TdwsCompilerContext); override;
 
          procedure EvalAsString(exec : TdwsExecution; var result : String); override;
@@ -254,6 +255,14 @@ begin
    SetLength(FData, aTyp.Size);
    for i:=0 to aTyp.Size-1 do
       VarSetNull(FData[i]);
+end;
+
+// CreateDefault
+//
+constructor TConstExpr.CreateDefault(aTyp: TTypeSymbol);
+begin
+   Create(aTyp);
+   aTyp.InitData(FData, 0);
 end;
 
 // Orphan
