@@ -105,7 +105,7 @@ var
 begin
    if AuthorizationHeader<>'' then
       if not WinHttpAddRequestHeaders(FRequest, Pointer(AuthorizationHeader), Length(AuthorizationHeader),
-                                      WINHTTP_ADDREQ_FLAG_REPLACE) then
+                                      WINHTTP_ADDREQ_FLAG_COALESCE) then
          RaiseLastOSError;
    acceptSeen := False;
    if Assigned(CustomHeaders) then begin
