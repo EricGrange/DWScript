@@ -146,7 +146,7 @@ implementation
 {$R dwsJSRTL.res dwsJSRTL.rc}
 
 const
-   cJSRTLDependencies : array [1..264] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..265] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -1081,6 +1081,9 @@ const
       (Name : 'StrToTimeDef';
        Code : 'function StrToTimeDef(s,d) { return strToDateTimeDef($fmt.LongTimeFormat, s, 0)||strToDateTimeDef($fmt.ShortTimeFormat, s, 0)||d }';
        Dependency : '!strToDateTimeDef_js'; Dependency2 : '$TZ'),
+      (Name : 'StrToXML';
+       Code : 'function StrToXML(v) { return v.replace(/[&<>"'']/g, StrToXML.e) }'#13#10
+              +'StrToXML.e = function(c) { return { "&":"&amp;", "<":"&lt;", ">":"&gt;", ''"'':"&quot;", "''":"&apos;" }[c] }' ),
       (Name : 'SubStr';
        Code : 'function SubStr(s,f) { return s.substr(f-1) }'),
       (Name : 'SubString';

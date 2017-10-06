@@ -100,6 +100,10 @@ type
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
   end;
 
+  TStrToXMLFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
+  end;
+
   TFormatFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
   end;
@@ -512,6 +516,13 @@ begin
    finally
       wobs.ReturnToPool;
    end;
+end;
+
+{ TStrToXMLFunc }
+
+procedure TStrToXMLFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+begin
+   Result := WebUtils.XMLTextEncode(args.AsString[0]);
 end;
 
 { TCopyFunc }
@@ -1199,6 +1210,7 @@ initialization
    RegisterInternalStringFunction(TStrToHtmlFunc, 'StrToHtml', ['str', SYS_STRING], [iffStateLess], 'ToHtml');
    RegisterInternalStringFunction(TStrToHtmlAttributeFunc, 'StrToHtmlAttribute', ['str', SYS_STRING], [iffStateLess], 'ToHtmlAttribute');
    RegisterInternalStringFunction(TStrToJSONFunc, 'StrToJSON', ['str', SYS_STRING], [iffStateLess], 'ToJSON');
+   RegisterInternalStringFunction(TStrToXMLFunc, 'StrToXML', ['str', SYS_STRING], [iffStateLess], 'ToXML');
 
    RegisterInternalStringFunction(TFormatFunc, 'Format', ['fmt', SYS_STRING, 'args', 'array of const'], [iffStateLess], 'Format');
 
