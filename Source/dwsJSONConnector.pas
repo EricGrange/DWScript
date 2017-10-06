@@ -295,7 +295,7 @@ const
 type
    TBoxedJSONValue = class (TInterfacedObject,
                             IBoxedJSONValue, IJSONWriteAble,
-                            ICoalesceable, INullable, IGetSelf, IUnknown)
+                            ICoalesceable, INumeric, INullable, IGetSelf, IUnknown)
       FValue : TdwsJSONValue;
 
       constructor Create(wrapped : TdwsJSONValue);
@@ -307,6 +307,8 @@ type
 
       function ToString : String; override; final;
       function ToUnicodeString : UnicodeString; virtual;
+      function ToFloat : Double;
+      function ToInteger : Int64;
 
       function Value : TdwsJSONValue;
 
@@ -322,10 +324,12 @@ type
       class function UnBox(const v : Variant) : TdwsJSONValue; static;
    end;
 
-   TBoxedNilJSONValue = class (TInterfacedObject, IBoxedJSONValue, ICoalesceable, IGetSelf, IUnknown)
+   TBoxedNilJSONValue = class (TInterfacedObject, IBoxedJSONValue, ICoalesceable, INumeric, IGetSelf, IUnknown)
       function GetSelf : TObject;
       function ToString : String; override; final;
       function ToUnicodeString : String;
+      function ToFloat : Double;
+      function ToInteger : Int64;
       function Value : TdwsJSONValue;
       function IsFalsey : Boolean;
    end;
@@ -385,6 +389,20 @@ begin
    if FValue.ValueType = jvtString then
       Result := FValue.AsString
    else Result := FValue.ToUnicodeString;
+end;
+
+// ToFloat
+//
+function TBoxedJSONValue.ToFloat : Double;
+begin
+   Result := FValue.AsNumber;
+end;
+
+// ToInteger
+//
+function TBoxedJSONValue.ToInteger : Int64;
+begin
+   Result := FValue.AsInteger;
 end;
 
 // IsFalsey
@@ -487,6 +505,20 @@ end;
 function TBoxedNilJSONValue.ToUnicodeString : String;
 begin
    Result := '';
+end;
+
+// ToFloat
+//
+function TBoxedNilJSONValue.ToFloat : Double;
+begin
+   Result := 0;
+end;
+
+// ToInteger
+//
+function TBoxedNilJSONValue.ToInteger : Int64;
+begin
+   Result := 0;
 end;
 
 // IsFalsey

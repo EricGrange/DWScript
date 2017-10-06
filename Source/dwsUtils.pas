@@ -129,6 +129,12 @@ type
       function IsDefined : Boolean;
    end;
 
+   INumeric = interface
+      ['{11C48916-A0E4-4D4E-B534-89020D9842A7}']
+      function ToFloat : Double;
+      function ToInteger : Int64;
+   end;
+
    // TVarRecArrayContainer
    //
    TVarRecArrayContainer = class
@@ -1824,10 +1830,21 @@ end;
 //
 procedure VariantToInt64(const v : Variant; var r : Int64);
 
-   procedure DefaultCast;
+   procedure UnknownAsInteger(const unknown : IUnknown; var r : Int64);
+   var
+      intf : INumeric;
+   begin
+      if unknown = nil then
+         r := 0
+      else if unknown.QueryInterface(INumeric, intf)=0 then
+         r := intf.ToInteger
+      else raise EVariantTypeCastError.CreateFmt(CPE_AssignIncompatibleTypes, ['[IUnknown]', SYS_INTEGER]);
+   end;
+
+   procedure DefaultCast(const v : Variant; var r : Int64);
    begin
       try
-         r:=v;
+         r := v;
       except
          // workaround for RTL bug that will sometimes report a failed cast to Int64
          // as being a failed cast to Boolean
@@ -1840,17 +1857,15 @@ procedure VariantToInt64(const v : Variant; var r : Int64);
 begin
    case TVarData(v).VType of
       varInt64 :
-         r:=TVarData(v).VInt64;
+         r := TVarData(v).VInt64;
       varBoolean :
-         r:=Ord(Boolean(TVarData(v).VBoolean));
+         r := Ord(Boolean(TVarData(v).VBoolean));
       varUnknown :
-         if TVarData(v).VUnknown=nil then
-            r:=0
-         else DefaultCast;
+         UnknownAsInteger(IUnknown(TVarData(v).VUnknown), r);
       varNull :
          r := 0;
    else
-      DefaultCast;
+      DefaultCast(v, r);
    end;
 end;
 
@@ -1891,6 +1906,18 @@ end;
 // VariantToFloat
 //
 function VariantToFloat(const v : Variant) : Double;
+
+   procedure UnknownAsFloat(const unknown : IUnknown; var Result : Double);
+   var
+      intf : INumeric;
+   begin
+      if unknown = nil then
+         Result := 0
+      else if unknown.QueryInterface(INumeric, intf)=0 then
+         Result := intf.ToFloat
+      else raise EVariantTypeCastError.CreateFmt(CPE_AssignIncompatibleTypes, ['[IUnknown]', SYS_FLOAT]);
+   end;
+
 begin
    case TVarData(v).VType of
       varDouble :
@@ -1901,6 +1928,8 @@ begin
          Result := Ord(Boolean(TVarData(v).VBoolean));
       varNull :
          Result := 0;
+      varUnknown :
+         UnknownAsFloat(IUnknown(TVarData(v).VUnknown), Result);
    else
       Result := v;
    end;
