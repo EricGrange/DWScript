@@ -194,6 +194,36 @@ begin
    end;
 end;
 
+type
+   TdwsSQLDatabase = class (TSQLDatabase)
+      function DBOpen: integer; override;
+   end;
+
+procedure InternalSqrt(Context: TSQLite3FunctionContext;
+                       argc: integer; var argv: TSQLite3ValueArray); cdecl;
+var
+   a : Double;
+begin
+   if argc<>1 then begin
+      ErrorWrongNumberOfArgs(Context);
+      exit; // one parameters expected
+   end;
+   a := sqlite3.value_double(argv[0]);
+   if a <= 0 then
+      sqlite3.result_null(Context)
+   else sqlite3.result_double(Context, Sqrt(a));
+end;
+
+// DBOpen
+//
+function TdwsSQLDatabase.DBOpen: integer;
+begin
+   Result := inherited DBOpen;
+   if result = SQLITE_OK then begin
+      sqlite3.create_function(DB, 'SQRT', 1, SQLITE_ANY, nil, InternalSqrt, nil, nil);
+   end;
+end;
+
 // ------------------
 // ------------------ TdwsSynSQLiteDataBaseFactory ------------------
 // ------------------
@@ -236,8 +266,8 @@ begin
    end;
 
    try
-      FDB:=TSQLDatabase.Create(dbName, '', flags);
-      FDB.BusyTimeout:=1500;
+      FDB := TdwsSQLDatabase.Create(dbName, '', flags);
+      FDB.BusyTimeout := 1500;
    except
       RefCount:=0;
       raise;
