@@ -234,6 +234,7 @@ type
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
 
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+         procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
@@ -3105,6 +3106,13 @@ end;
 procedure TByRefParentParamExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
    VarCopySafe(Result, DataPtr[exec].AsVariant[0]);
+end;
+
+// EvalAsInterface
+//
+procedure TByRefParentParamExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
+begin
+   result := DataPtr[exec].AsInterface[0];
 end;
 
 // EvalAsFloat
