@@ -74,6 +74,14 @@ object dwsOverviewDialog: TdwsOverviewDialog
       'Source Order'
       'Alphabetic Order')
   end
+  object EDFilter: TEdit
+    Left = 392
+    Top = 4
+    Width = 113
+    Height = 22
+    Hint = 'Full text filter (root level)'
+    TabOrder = 3
+  end
   object ImageList: TImageList
     ColorDepth = cd32Bit
     Left = 360

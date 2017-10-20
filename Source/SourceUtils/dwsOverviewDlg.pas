@@ -37,6 +37,7 @@ type
     ImageList: TImageList;
     ToolBar: TToolBar;
     CBSort: TComboBox;
+    EDFilter: TEdit;
     procedure FormCreate(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure TreeViewExpanding(Sender: TObject; Node: TTreeNode;
@@ -145,6 +146,8 @@ begin
       TreeView.Items.Clear;
    end;
    FProg := nil;
+   EDFilter.OnChange := nil;
+   EDFilter.Text := '';
 end;
 
 procedure TdwsOverviewDialog.FormDeactivate(Sender: TObject);
@@ -171,6 +174,7 @@ begin
    else Caption := 'Overview';
 
    RefreshTree;
+   EDFilter.OnChange := CBSortChange;
 
    Show;
 end;
@@ -445,7 +449,10 @@ var
    localSymbols : TList;
    iconIndex : TIconIndex;
    i : Integer;
+   textFilter : String;
 begin
+   textFilter := LowerCase(EDFilter.Text);
+
    localSymbols := TList.Create;
    try
       for symPosList in FProg.SymbolDictionary do begin
@@ -483,13 +490,19 @@ begin
             iconIndex := iiFunction
          else iconIndex := iiType;
 
-         if iconIndex in FFilter then begin
+         if     (iconIndex in FFilter)
+            and (
+                    (textFilter = '')
+                 or (Pos(textFilter, LowerCase(symPosList.Symbol.Name)) > 0)
+                ) then begin
+
             node := TreeView.Items.AddChild(root, symPosList.Symbol.Name);
             if iconIndex in [iiClass, iiRecord, iiInterface, iiHelper, iiFunction] then
                TreeView.Items.AddChild(node, '');
             node.Data := symPosList;
             node.ImageIndex := Ord(iconIndex);
             node.SelectedIndex := Ord(iconIndex);
+
          end;
       end;
    finally
