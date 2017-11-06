@@ -370,7 +370,6 @@ type
          FPendingAttributes : TdwsSymbolAttributes;
          FStringListPool : TSimpleStringListPool;
          FDefaultConditionals : IAutoStrings;
-         FHelperMemberNames : TSimpleStringHash;
          FGenericSymbol : TSimpleStack<TGenericSymbol>;
 
          // if set we're in a setter write expression or statement
@@ -1227,8 +1226,6 @@ begin
 
    FExec:=TdwsCompilerExecution.Create(stackParams, Self);
 
-   FHelperMemberNames:=TSimpleStringHash.Create;
-
    FGenericSymbol := TSimpleStack<TGenericSymbol>.Create;
 end;
 
@@ -1237,8 +1234,6 @@ end;
 destructor TdwsCompiler.Destroy;
 begin
    FGenericSymbol.Free;
-
-   FHelperMemberNames.Free;
 
    FPendingAttributes.Free;
 
@@ -1589,8 +1584,6 @@ begin
    FLoopExprs.Clear;
    FLoopExitable.Clear;
    FFinallyExprs.Clear;
-
-   FHelperMemberNames.Clear;
 end;
 
 // Compile
@@ -1606,10 +1599,6 @@ begin
    compileStartTicks := GetSystemMilliseconds;
 
    SetupCompileOptions(aConf);
-
-   // prepare Helper Member names lookup
-   FHelperMemberNames.Clear;
-   dwsInternalUnit.EnumerateHelperMemberNames(FHelperMemberNames);
 
    FGenericSymbol.Clear;
 
@@ -1656,6 +1645,9 @@ begin
 
    if Assigned(FExternalRoutinesManager) then
       FExternalRoutinesManager.BeginCompilation(Self);
+
+   FCompilerContext.HelperMemberNames.Clear;
+   dwsInternalUnit.EnumerateHelperMemberNames(FCompilerContext.HelperMemberNames);
 
    try
       CheckFilterDependencies(aConf.Units);
@@ -5750,7 +5742,7 @@ begin
 
          baseType:=expr.BaseType;
 
-         if (baseType<>nil) and FHelperMemberNames.Contains(name) then begin
+         if (baseType<>nil) and FCompilerContext.HelperMemberNames.Contains(name) then begin
             helperExpr:=ReadTypeHelper(expr as TTypedExpr,
                                        name, namePos, expecting, isWrite, False);
             if helperExpr<>nil then begin
@@ -9865,7 +9857,7 @@ begin
       CheckNoPendingAttributes;
 
       for member in Result.Members do
-         FHelperMemberNames.Add(member.Name);
+         FCompilerContext.HelperMemberNames.Add(member.Name);
 
    except
       OrphanObject(Result);
@@ -13938,7 +13930,7 @@ begin
    if param=nil then Exit;
 
    CompilerUtils.AddProcHelper(name, CurrentProg.Table, func, CurrentUnitSymbol);
-   FHelperMemberNames.Add(name);
+   FCompilerContext.HelperMemberNames.Add(name);
 end;
 
 // EnumerateHelpers

@@ -45,6 +45,7 @@ type
          procedure EvaluateLocalVar;
          procedure EvaluateBlockVar;
          procedure EvaluateAfterBlock;
+         procedure EvaluateArray;
 
          procedure ExecutableLines;
 
@@ -414,6 +415,64 @@ begin
       end;
    finally
       FCompiler.Config.CompilerOptions := FCompiler.Config.CompilerOptions - [coOptimize];
+      prog:=nil;
+   end;
+end;
+
+// EvaluateArray
+//
+procedure TDebuggerTests.EvaluateArray;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'var a : array of String; for var i := 1 to 3 do a.Add("*"+i.ToString);'#13#10
+                           +'PrintLn(a.Join(","));');
+   try
+      FDebugEvalAtLine:=2;
+
+      exec:=prog.CreateNewExecution;
+      try
+         FDebugEvalExpr:='a';
+         FDebugLastEvalResult:='';
+         FDebugger.BeginDebug(exec);
+         try
+            CheckEquals('array of String', FDebugLastEvalResult, 'a at line 2');
+         finally
+            FDebugger.EndDebug;
+         end;
+      finally
+         exec:=nil;
+      end;
+
+      exec:=prog.CreateNewExecution;
+      try
+         FDebugEvalExpr:='a.Length';
+         FDebugLastEvalResult:='';
+         FDebugger.BeginDebug(exec);
+         try
+            CheckEquals('3', FDebugLastEvalResult, 'a.Length at line 2');
+         finally
+            FDebugger.EndDebug;
+         end;
+      finally
+         exec:=nil;
+      end;
+
+      exec:=prog.CreateNewExecution;
+      try
+         FDebugEvalExpr:='a.Join(";")';
+         FDebugLastEvalResult:='';
+         FDebugger.BeginDebug(exec);
+         try
+            CheckEquals('*1;*2;*3', FDebugLastEvalResult, 'a.Join(";") at line 2');
+         finally
+            FDebugger.EndDebug;
+         end;
+      finally
+         exec:=nil;
+      end;
+   finally
       prog:=nil;
    end;
 end;

@@ -47,6 +47,7 @@ type
          FBaseTypes : TdwsBaseSymbolTypes;
          FOrphanedObjects : TSimpleStack<TRefCountedObject>;
          FUnitList : TIdwsUnitList;
+         FHelperMemberNames : TSimpleStringHash;
 
          FTypDefaultConstructor : TMethodSymbol;
          FTypDefaultDestructor : TMethodSymbol;
@@ -82,6 +83,7 @@ type
          property Prog : TObject read FProg write FProg;
          property UnifiedConstants : TObject read FUnifiedConstants write FUnifiedConstants;
          property UnitList : TIdwsUnitList read FUnitList write FUnitList;
+         property HelperMemberNames : TSimpleStringHash read FHelperMemberNames;
 
          property Execution : TdwsExecution read FExecution write FExecution;
          property Options : TCompilerOptions read FOptions write FOptions;
@@ -123,6 +125,7 @@ begin
    inherited;
    FOrphanedObjects := TSimpleStack<TRefCountedObject>.Create;
    FStringsUnifier := TStringUnifier.Create;
+   FHelperMemberNames := TSimpleStringHash.Create;
 end;
 
 // Destroy
@@ -140,6 +143,8 @@ begin
    FOrphanedObjects.Free;
 
    FStringsUnifier.Free;
+
+   FHelperMemberNames.Free;
 
    inherited;
 end;
