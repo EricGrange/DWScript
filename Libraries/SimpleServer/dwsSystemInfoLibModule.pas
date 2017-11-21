@@ -102,6 +102,20 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsSystemInfoClassesHostInfoMethodsDomainControllerInfoEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesPerformanceCounterMethodsStartEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesPerformanceCounterMethodsStopEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesPerformanceCounterMethodsElapsedEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesPerformanceCounterMethodsRunningEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesPerformanceCounterMethodsNowEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesPerformanceCounterCleanUp(
+      ExternalObject: TObject);
+    procedure dwsSystemInfoClassesPerformanceCounterConstructorsCreateEval(
+      Info: TProgramInfo; var ExtObject: TObject);
   private
     { Private declarations }
     FOSNameVersion : TOSNameVersion;
@@ -121,6 +135,16 @@ function ExecutableLinkTimeStamp : Int64;
 implementation
 
 {$R *.dfm}
+
+var
+   vPerformanceFrequency : Int64;
+   vPerformanceInverseFrequency : Double;
+
+type
+   TPerformanceCounter = class
+      StartTime : Int64;
+      StopTime : Int64;
+   end;
 
 // ProcessIsWow64
 //
@@ -228,12 +252,22 @@ begin
 end;
 
 procedure TdwsSystemInfoLibModule.DataModuleCreate(Sender: TObject);
+var
+   f : Double;
+   i : Integer;
 begin
    // limit query rate to 10 Hz
    FGlobalMemory:=TThreadCached<TMemoryStatusEx>.Create(GetGlobalMemory, 100);
 
    GetWin32_OSNameVersion(FOSNameVersion);
    SystemCPU.Track;
+
+   QueryPerformanceFrequency(vPerformanceFrequency);
+   vPerformanceInverseFrequency := 1 / vPerformanceFrequency;
+
+   f := vPerformanceFrequency;
+   i := dwsSystemInfo.Classes.IndexOf('PerformanceCounter');
+   ((dwsSystemInfo.Classes.Items[i] as TdwsClass).Constants.Items[0] as TdwsClassConstant).Value := f;
 end;
 
 procedure TdwsSystemInfoLibModule.DataModuleDestroy(Sender: TObject);
@@ -683,6 +717,60 @@ begin
       if dcInfo <> @emptyDCInfo then
          NetApiBufferFree(dcInfo);
    end;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterConstructorsCreateEval(
+  Info: TProgramInfo; var ExtObject: TObject);
+begin
+   ExtObject := TPerformanceCounter.Create;
+   QueryPerformanceCounter(TPerformanceCounter(ExtObject).StartTime);
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsStartEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   TPerformanceCounter(ExtObject).StopTime := 0;
+   QueryPerformanceCounter(TPerformanceCounter(ExtObject).StartTime);
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsStopEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   if TPerformanceCounter(ExtObject).StopTime = 0 then
+      QueryPerformanceCounter(TPerformanceCounter(ExtObject).StopTime);
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsElapsedEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   t : Int64;
+begin
+   t := TPerformanceCounter(ExtObject).StopTime;
+   if t = 0 then
+      QueryPerformanceCounter(t);
+   t := t - TPerformanceCounter(ExtObject).StartTime;
+   Info.ResultAsFloat := t * vPerformanceInverseFrequency;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsRunningEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean := (TPerformanceCounter(ExtObject).StopTime = 0)
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsNowEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   t : Int64;
+begin
+   QueryPerformanceCounter(t);
+   Info.ResultAsFloat := t * vPerformanceInverseFrequency;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterCleanUp(
+  ExternalObject: TObject);
+begin
+   ExternalObject.Free;
 end;
 
 end.

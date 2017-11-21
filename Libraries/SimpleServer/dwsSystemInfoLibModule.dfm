@@ -243,6 +243,51 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
             OnEval = dwsSystemInfoClassesHostInfoMethodsDomainControllerInfoEval
             Kind = mkClassFunction
           end>
+      end
+      item
+        Name = 'PerformanceCounter'
+        Constructors = <
+          item
+            Name = 'Create'
+            OnEval = dwsSystemInfoClassesPerformanceCounterConstructorsCreateEval
+          end>
+        Methods = <
+          item
+            Name = 'Now'
+            ResultType = 'Float'
+            Attributes = [maClassMethod, maStatic]
+            OnEval = dwsSystemInfoClassesPerformanceCounterMethodsNowEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'Restart'
+            OnEval = dwsSystemInfoClassesPerformanceCounterMethodsStartEval
+            Kind = mkProcedure
+          end
+          item
+            Name = 'Stop'
+            OnEval = dwsSystemInfoClassesPerformanceCounterMethodsStopEval
+            Kind = mkProcedure
+          end
+          item
+            Name = 'Elapsed'
+            ResultType = 'Float'
+            OnEval = dwsSystemInfoClassesPerformanceCounterMethodsElapsedEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'Running'
+            ResultType = 'Boolean'
+            OnEval = dwsSystemInfoClassesPerformanceCounterMethodsRunningEval
+            Kind = mkFunction
+          end>
+        Constants = <
+          item
+            Name = 'Frequency'
+            DataType = 'Float'
+            Value = '0'
+          end>
+        OnCleanUp = dwsSystemInfoClassesPerformanceCounterCleanUp
       end>
     Functions = <
       item
