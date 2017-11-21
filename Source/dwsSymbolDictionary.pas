@@ -358,7 +358,8 @@ var
 begin
    for i:=0 to FCount-1 do begin
       symPos:=FPosList[i];
-      if     (symPos.ScriptPos.Line=ALine)
+      if     (not (suImplicit in symPos.FSymUsages))
+         and (symPos.ScriptPos.Line=ALine)
          and (symPos.ScriptPos.Col=ACol)
          and UnicodeSameText(symPos.ScriptPos.SourceFile.Name, sourceFile) then begin
          Exit(FSymbol);
