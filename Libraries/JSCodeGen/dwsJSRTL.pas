@@ -146,7 +146,7 @@ implementation
 {$R dwsJSRTL.res dwsJSRTL.rc}
 
 const
-   cJSRTLDependencies : array [1..265] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..267] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -193,6 +193,14 @@ const
               +#9'return a.slice($Idx(i,0,a.length-1,z),$Idx(i+l-1,0,a.length-1,z)-i+1,z)'#13#10
               +'}';
        Dependency : '$Idx' ),
+      (Name : '$ArrayMove';
+       Code : 'function $ArrayMove(a,s,d) { var e=a[s]; a.splice(s, 1); a.splice(d, 0, e) }' ),
+      (Name : '$ArrayMoveChk';
+       Code : 'function $ArrayMoveChk(a,s,d,z) {'#13#10
+              +#9'var n=a.length-1;'#13#10
+              +#9'$ArrayMove(a,$Idx(s,0,n,z),$Idx(d,0,n,z));'#13#10
+              +'}';
+       Dependency : '$Idx'; Dependency2 : '$ArrayMove' ),
       (Name : '$ArraySwap';
        Code : 'function $ArraySwap(a,i1,i2) { var t=a[i1]; a[i1]=a[i2]; a[i2]=t }' ),
       (Name : '$ArraySwapChk';

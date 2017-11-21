@@ -990,7 +990,7 @@ type
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
-   // Insert an elemet at a given index of a dynamic array
+   // Insert an element at a given index of a dynamic array
    TArrayInsertExpr = class(TArrayPseudoMethodExpr)
       private
          FIndexExpr : TTypedExpr;
@@ -1008,6 +1008,26 @@ type
 
          property IndexExpr : TTypedExpr read FIndexExpr;
          property ItemExpr : TTypedExpr read FItemExpr;
+   end;
+
+   // Move an element from one index to another, shifting other items in the procees
+   TArrayMoveExpr = class(TArrayPseudoMethodExpr)
+      private
+         FOriginIndexExpr : TTypedExpr;
+         FDestinationIndexExpr : TTypedExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(const scriptPos: TScriptPos;
+                            aBase, anOriginIndex, aDestinationIndex : TTypedExpr);
+         destructor Destroy; override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
+
+         property OriginIndexExpr : TTypedExpr read FOriginIndexExpr;
+         property DestinationIndexExpr : TTypedExpr read FDestinationIndexExpr;
    end;
 
    // Concatenates two or more arrays
@@ -10138,7 +10158,7 @@ begin
    if index=n then
       dyn.ArrayLength:=n+1
    else begin
-      BoundsCheck(exec, dyn.ArrayLength, index);
+      BoundsCheck(exec, n, index);
       dyn.Insert(index);
    end;
 
@@ -10164,6 +10184,70 @@ end;
 function TArrayInsertExpr.GetSubExprCount : Integer;
 begin
    Result:=3;
+end;
+
+// ------------------
+// ------------------ TArrayMoveExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TArrayMoveExpr.Create(const scriptPos: TScriptPos;
+                            aBase, anOriginIndex, aDestinationIndex : TTypedExpr);
+begin
+   inherited Create(scriptPos, aBase);
+   FOriginIndexExpr := anOriginIndex;
+   FDestinationIndexExpr := aDestinationIndex;
+end;
+
+// Destroy
+//
+destructor TArrayMoveExpr.Destroy;
+begin
+   inherited;
+   FOriginIndexExpr.Free;
+   FDestinationIndexExpr.Free;
+end;
+
+// EvalNoResult
+//
+procedure TArrayMoveExpr.EvalNoResult(exec : TdwsExecution);
+var
+   base : IScriptDynArray;
+   dyn : TScriptDynamicArray;
+   n, indexOrigin, indexDest : Integer;
+begin
+   BaseExpr.EvalAsScriptDynArray(exec, base);
+   dyn:=TScriptDynamicArray(base.GetSelf);
+
+   n:=dyn.ArrayLength;
+
+   indexOrigin := OriginIndexExpr.EvalAsInteger(exec);
+   BoundsCheck(exec, n, indexOrigin);
+   indexDest := DestinationIndexExpr.EvalAsInteger(exec);
+   BoundsCheck(exec, n, indexDest);
+
+   if indexOrigin <> indexDest then
+      dyn.MoveItem(indexOrigin, indexDest);
+end;
+
+// GetSubExpr
+//
+function TArrayMoveExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result := FBaseExpr;
+      1 : Result := FOriginIndexExpr;
+   else
+      Result := FDestinationIndexExpr;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TArrayMoveExpr.GetSubExprCount : Integer;
+begin
+   Result := 3;
 end;
 
 // ------------------

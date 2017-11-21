@@ -546,6 +546,7 @@ begin
       FDynArrayHelpers.AddSymbol(CreateHelper('Delete', nil, ['index', dyn.Typ, 'count', p.TypInteger]));
       FDynArrayHelpers.AddSymbol(CreateHelper('IndexOf', p.TypInteger, ['item', dyn.Typ, 'fromIndex', p.TypInteger]));
       FDynArrayHelpers.AddSymbol(CreateHelper('Insert', nil, ['index', p.TypInteger, 'item', dyn.Typ]));
+      FDynArrayHelpers.AddSymbol(CreateHelper('Move', nil, ['fromIndex', p.TypInteger, 'toIndex', p.TypInteger]));
       FDynArrayHelpers.AddSymbol(CreateHelper('SetLength', nil, ['newLength', p.TypInteger]));
       FDynArrayHelpers.AddSymbol(CreateHelper('Clear', nil, []));
       FDynArrayHelpers.AddSymbol(CreateHelper('Remove', p.TypInteger, ['item', dyn.Typ]));

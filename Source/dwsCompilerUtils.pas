@@ -80,7 +80,7 @@ type
       amkNone,
       amkAdd, amkPush, amkIndexOf, amkRemove, amkSort, amkMap, amkHigh, amkLow,
       amkLength, amkCount, amkPop, amkPeek, amkDelete, amkInsert, amkSetLength,
-      amkClear, amkSwap, amkCopy, amkReverse, amkDimCount, amkKeys
+      amkClear, amkSwap, amkCopy, amkReverse, amkDimCount, amkKeys, amkMove
    );
 
 

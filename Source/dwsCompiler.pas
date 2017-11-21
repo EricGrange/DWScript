@@ -7904,6 +7904,18 @@ begin
                end else Result:=TArrayInsertExpr.Create(namePos, baseExpr, nil, nil);
             end;
 
+            amkMove : begin
+               CheckRestricted;
+               if CheckArguments(2, 2) then begin
+                  if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FCompilerContext.TypInteger) then
+                     FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
+                  if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FCompilerContext.TypInteger) then
+                     FMsgs.AddCompilerError(argPosArray[1], CPE_IntegerExpressionExpected);
+                  Result := TArrayMoveExpr.Create(namePos, baseExpr, argList[0], argList[1]);
+                  argList.Clear;
+               end else Result:=TArrayMoveExpr.Create(namePos, baseExpr, nil, nil);
+            end;
+
             amkSetLength : begin
                CheckRestricted;
                if CheckArguments(1, 1) then begin

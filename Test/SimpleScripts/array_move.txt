@@ -1,0 +1,13 @@
+Upper bound exceeded! Index 0 [line: 4, column: 7]
+Upper bound exceeded! Index 1 [line: 11, column: 7]
+Upper bound exceeded! Index 1 [line: 16, column: 7]
+a
+a,b
+b,a
+a,b
+a,b,c
+b,c,a
+a,b,c
+a,c,b
+c,a,b
+c,b,a

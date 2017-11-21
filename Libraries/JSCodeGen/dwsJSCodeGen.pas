@@ -411,6 +411,9 @@ type
    TJSArrayInsertExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
+   TJSArrayMoveExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
    TJSArrayCopyExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -1265,6 +1268,7 @@ begin
    RegisterCodeGen(TArrayIndexOfExpr,              TJSArrayIndexOfExpr.Create);
    RegisterCodeGen(TArrayRemoveExpr,               TJSArrayRemoveExpr.Create);
    RegisterCodeGen(TArrayInsertExpr,               TJSArrayInsertExpr.Create);
+   RegisterCodeGen(TArrayMoveExpr,                 TJSArrayMoveExpr.Create);
    RegisterCodeGen(TArrayCopyExpr,                 TJSArrayCopyExpr.Create);
    RegisterCodeGen(TArraySwapExpr,                 TJSArraySwapExpr.Create);
    RegisterCodeGen(TArrayReverseExpr,              TdwsExprGenericCodeGen.Create([0, '.reverse()'], gcgStatement));
@@ -7208,6 +7212,43 @@ begin
       codeGen.WriteStringLn(');');
 
    end;
+end;
+
+// ------------------
+// ------------------ TJSArrayMoveExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSArrayMoveExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TArrayMoveExpr;
+   noRangeCheck : Boolean;
+begin
+   e:=TArrayMoveExpr(expr);
+
+   noRangeCheck:=(cgoNoRangeChecks in codeGen.Options);
+
+   if noRangeCheck then begin
+      codeGen.Dependencies.Add('$ArrayMove');
+      codeGen.WriteString('$ArrayMove(');
+   end else begin
+      codeGen.Dependencies.Add('$ArrayMoveChk');
+      codeGen.WriteString('$ArrayMoveChk(');
+   end;
+
+   codeGen.Compile(e.BaseExpr);
+   codeGen.WriteString(',');
+   codeGen.Compile(e.OriginIndexExpr);
+   codeGen.WriteString(',');
+   codeGen.Compile(e.DestinationIndexExpr);
+
+   if not noRangeCheck then begin
+      codeGen.WriteString(',');
+      WriteLocationString(codeGen, expr);
+   end;
+
+   codeGen.WriteStringLn(');');
 end;
 
 // ------------------

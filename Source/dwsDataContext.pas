@@ -222,6 +222,8 @@ type
 
 procedure DWSCopyData(const sourceData : TData; sourceAddr : Integer;
                       const destData : TData; destAddr : Integer; size : Integer);
+procedure DWSMoveData(const data : TData; sourceAddr, destAddr, size : Integer);
+
 function DWSSameData(const data1, data2 : TData; offset1, offset2, size : Integer) : Boolean; overload;
 function DWSSameData(const data1, data2 : TData) : Boolean; overload;
 function DWSSameVariant(const v1, v2 : Variant) : Boolean;
@@ -254,6 +256,33 @@ begin
       Inc(dest);
       Dec(size);
    end;
+end;
+
+// DWSMoveData
+//
+procedure DWSMoveData(const data : TData; sourceAddr, destAddr, size : Integer);
+const
+   cStaticBufferSize = 4*SizeOf(Variant);
+var
+   bufVariant : array[0..cStaticBufferSize-1] of Byte;
+   buf : Pointer;
+   sizeBytes : Integer;
+begin
+   if sourceAddr = destAddr then Exit;
+
+   sizeBytes := size * SizeOf(Variant);
+   if sizeBytes <= cStaticBufferSize then
+      buf := @bufVariant
+   else buf := GetMemory(sizeBytes);
+
+   System.Move(data[sourceAddr], buf^, sizeBytes);
+   if sourceAddr < destAddr then
+      System.Move(data[sourceAddr+size], data[sourceAddr], SizeOf(Variant)*(destAddr-sourceAddr))
+   else System.Move(data[destAddr], data[destAddr+size], SizeOf(Variant)*(sourceAddr-destAddr));
+   System.Move(buf^, data[destAddr], sizeBytes);
+
+   if buf <> @bufVariant then
+      FreeMemory(buf);
 end;
 
 // DWSSameData

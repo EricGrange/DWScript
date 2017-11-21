@@ -1602,6 +1602,7 @@ type
          procedure Copy(src : TScriptDynamicArray; index, count : Integer);
          procedure RawCopy(const src : TData; rawIndex, rawCount : Integer);
          procedure Concat(src : TScriptDynamicArray);
+         procedure MoveItem(srcIndex, dstIndex : Integer);
 
          function IndexOfData(const item : IDataContext; fromIndex : Integer) : Integer;
          function IndexOfValue(const item : Variant; fromIndex : Integer) : Integer;
@@ -7244,6 +7245,13 @@ begin
       SetDataLength(FArrayLength*ElementSize);
       DWSCopyData(src.AsData, 0, AsData, n*ElementSize, nSrc*ElementSize);
    end;
+end;
+
+// MoveItem
+//
+procedure TScriptDynamicArray.MoveItem(srcIndex, dstIndex : Integer);
+begin
+   DWSMoveData(AsData, srcIndex*ElementSize, dstIndex*ElementSize, ElementSize);
 end;
 
 // IndexOfData
