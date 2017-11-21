@@ -1004,6 +1004,7 @@ type
          procedure StaticPostCall(exec : TdwsExecution; var Result : Variant);
          procedure StaticPostCallInteger(exec : TdwsExecution; var Result : Int64);
          procedure StaticPostCallFloat(exec : TdwsExecution; var Result : Double);
+         procedure StaticPostCallString(exec : TdwsExecution; var Result : String);
 
          procedure EvalPushExprs(exec : TdwsExecution); inline;
 
@@ -1035,6 +1036,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
+         procedure EvalAsString(exec : TdwsExecution; var result : String); override;
    end;
 
    IFuncPointer = interface
@@ -5022,11 +5024,12 @@ begin
    // But the frame is already restored so its relative to the stackpointer here
    sourceAddr:=exec.Stack.StackPointer+FuncSym.Result.StackAddr;
    // Copy return value
-   exec.Stack.ReadValue(sourceAddr, Result);
+   if FuncSym.Typ.Size = 1 then
+      exec.Stack.ReadValue(sourceAddr, Result);
 
    if ResultAddr>=0 then begin
       destAddr:=exec.Stack.BasePointer+ResultAddr;
-      exec.Stack.CopyData(sourceAddr, destAddr, FFunc.Typ.Size);
+      exec.Stack.CopyData(sourceAddr, destAddr, FuncSym.Typ.Size);
    end;
 end;
 
@@ -5037,11 +5040,12 @@ var
    sourceAddr, destAddr: Integer;
 begin
    sourceAddr:=exec.Stack.StackPointer+FuncSym.Result.StackAddr;
-   Result:=exec.Stack.ReadIntValue(sourceAddr);
+   if FuncSym.Typ.Size = 1 then
+      Result:=exec.Stack.ReadIntValue(sourceAddr);
 
    if ResultAddr>=0 then begin
       destAddr:=exec.Stack.BasePointer+ResultAddr;
-      exec.Stack.CopyData(sourceAddr, destAddr, FFunc.Typ.Size);
+      exec.Stack.CopyData(sourceAddr, destAddr, FuncSym.Typ.Size);
    end;
 end;
 
@@ -5052,11 +5056,28 @@ var
    sourceAddr, destAddr: Integer;
 begin
    sourceAddr:=exec.Stack.StackPointer+FuncSym.Result.StackAddr;
-   Result:=exec.Stack.ReadFloatValue(sourceAddr);
+   if FuncSym.Typ.Size = 1 then
+      Result:=exec.Stack.ReadFloatValue(sourceAddr);
 
    if ResultAddr>=0 then begin
       destAddr:=exec.Stack.BasePointer+ResultAddr;
-      exec.Stack.CopyData(sourceAddr, destAddr, FFunc.Typ.Size);
+      exec.Stack.CopyData(sourceAddr, destAddr, FuncSym.Typ.Size);
+   end;
+end;
+
+// StaticPostCallString
+//
+procedure TFuncExpr.StaticPostCallString(exec : TdwsExecution; var Result : String);
+var
+   sourceAddr, destAddr: Integer;
+begin
+   sourceAddr:=exec.Stack.StackPointer+FuncSym.Result.StackAddr;
+   if FuncSym.Typ.Size = 1 then
+      exec.Stack.ReadStrValue(sourceAddr, Result);
+
+   if ResultAddr>=0 then begin
+      destAddr:=exec.Stack.BasePointer+ResultAddr;
+      exec.Stack.CopyData(sourceAddr, destAddr, FuncSym.Typ.Size);
    end;
 end;
 
@@ -5181,6 +5202,24 @@ begin
       try
          DoEvalCall(exec, FuncSym);
          StaticPostCallFloat(exec, Result);
+      finally
+         exec.Stack.Pop(ParamSize);
+      end;
+   except
+      exec.SetScriptError(Self);
+      raise;
+   end;
+end;
+
+// EvalAsString
+//
+procedure TFuncSimpleExpr.EvalAsString(exec : TdwsExecution; var result : String);
+begin
+   try
+      exec.Stack.Push(ParamSize);
+      try
+         DoEvalCall(exec, FuncSym);
+         StaticPostCallString(exec, Result);
       finally
          exec.Stack.Pop(ParamSize);
       end;

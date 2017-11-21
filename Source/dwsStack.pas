@@ -181,6 +181,8 @@ begin
       FBpStore[i].Free;
 end;
 
+// CopyData
+//
 procedure TStackMixIn.CopyData(SourceAddr, DestAddr, Size: Integer);
 begin
    while Size > 0 do begin
