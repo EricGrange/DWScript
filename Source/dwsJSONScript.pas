@@ -21,7 +21,7 @@ unit dwsJSONScript;
 interface
 
 uses
-   dwsJSON, dwsUtils,
+   dwsJSON, dwsUtils, dwsStack,
    dwsExprList, dwsDataContext, dwsSymbols, dwsExprs, dwsStrings, dwsScriptSource;
 
 type
