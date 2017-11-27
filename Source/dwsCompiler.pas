@@ -42,7 +42,7 @@ const
    cDefaultStackChunkSize = 4096;  // 64 kB in 32bit Delphi, each stack entry is a Variant
 
    // compiler version is date in YYYYMMDD format, dot subversion number
-   cCompilerVersion = 20170627.0;
+   cCompilerVersion = 20171121.0;
 
 type
    TdwsCompiler = class;
@@ -772,6 +772,8 @@ type
          function CreateAssignOperatorExpr(token : TTokenType; const scriptPos : TScriptPos;
                                            exec : TdwsExecution;
                                            aLeft : TDataExpr; aRight : TTypedExpr) : TProgramExpr;
+         function CreateSetOperatorExpr(token : TTokenType; const scriptPos : TScriptPos;
+                                        aLeft, aRight : TTypedExpr) : TTypedExpr;
 
          procedure DoSectionChanged;
          procedure DoTokenizerEndSourceFile(sourceFile : TSourceFile);
@@ -13208,7 +13210,10 @@ begin
    Result:=nil;
    if (aLeft=nil) or (aRight=nil) then Exit;
    opSym:=ResolveOperatorFor(CurrentProg, token, aLeft.Typ, aRight.Typ);
-   if opSym=nil then Exit;
+   if opSym=nil then begin
+      Result := CreateSetOperatorExpr(token, scriptPos, aLeft, aRight);
+      Exit;
+   end;
 
    if opSym.OperatorExprClass <> nil then begin
       Result := TBinaryOpExprClass(opSym.OperatorExprClass).Create(FCompilerContext, scriptPos, token, aLeft, aRight);
@@ -13237,6 +13242,45 @@ begin
       FCompilerContext, scriptPos,
       token, aLeft, aRight
    );
+end;
+
+// CreateSetOperatorExpr
+//
+function TdwsCompiler.CreateSetOperatorExpr(token : TTokenType; const scriptPos : TScriptPos;
+                                            aLeft, aRight : TTypedExpr) : TTypedExpr;
+var
+   leftData, rightData : TDataExpr;
+begin
+   Result := nil;
+   if (aLeft.Typ = nil) or (aRight.Typ = nil) then Exit;
+
+   if aLeft.Typ.UnAliasedTypeIs(TSetOfSymbol) then begin
+      if aRight.Typ.UnAliasedType = aLeft.Typ.UnAliasedType then begin
+         leftData := aLeft as TDataExpr;
+         rightData := aRight as TDataExpr;
+         case token of
+            ttPLUS :
+               Result := TSetOfAddExpr.Create(FCompilerContext, scriptPos, token, leftData, rightData);
+            ttMINUS :
+               Result := TSetOfSubExpr.Create(FCompilerContext, scriptPos, token, leftData, rightData);
+            ttTIMES :
+               Result := TSetOfMultExpr.Create(FCompilerContext, scriptPos, token, leftData, rightData);
+            ttEQ :
+               Result := TSetOfEqualExpr.Create(FCompilerContext, scriptPos, ttEQ, leftData, rightData);
+            ttNOTEQ :
+               Result := TNotBoolExpr.Create(FCompilerContext,
+                  TSetOfEqualExpr.Create(FCompilerContext, scriptPos, ttEQ, leftData, rightData)
+               );
+            ttLESSEQ :
+               Result := TSetOfLeftContainedInRightExpr.Create(FCompilerContext, scriptPos, ttLESSEQ, leftData, rightData);
+            ttGTREQ :
+               Result := TSetOfLeftContainedInRightExpr.Create(FCompilerContext, scriptPos, ttGTREQ, rightData, leftData);
+         end;
+      end;
+   end;
+
+   if (Result <> nil) and Optimize then
+      Result:=Result.OptimizeToTypedExpr(FCompilerContext, scriptPos);
 end;
 
 // DoSectionChanged

@@ -732,7 +732,7 @@ begin
                Exit(operatorResolver.Resolved);
          (currentProg.Root.Operators as TOperators).EnumerateOperatorsFor(token, aLeftType, aRightType, operatorResolver.Callback);
       end;
-      Result:=operatorResolver.Resolved;
+      Result := operatorResolver.Resolved;
    finally
       operatorResolver.Free;
    end;

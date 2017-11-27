@@ -19,7 +19,7 @@ unit dwsSetOfExprs;
 interface
 
 uses
-   dwsUtils, dwsErrors, dwsDataContext, dwsCompilerContext,
+   dwsUtils, dwsErrors, dwsDataContext, dwsCompilerContext, dwsStack,
    dwsSymbols, dwsExprs, dwsScriptSource, dwsTokenizer;
 
 type
@@ -77,6 +77,69 @@ type
    TSetOfSmallInExpr = class(TSetOfInExpr)
       public
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
+   TSetOfBooleanBinOpExpr = class(TBooleanBinOpExpr)
+      private
+         FSetType : TSetOfSymbol;
+
+      public
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                            const anOp : TTokenType; aLeft, aRight : TDataExpr); reintroduce;
+
+         property SetType : TSetOfSymbol read FSetType;
+   end;
+
+   TSetOfEqualExpr = class(TSetOfBooleanBinOpExpr)
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
+   TSetOfLeftContainedInRightExpr = class(TSetOfBooleanBinOpExpr)
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
+   TSetOfBinOpExpr = class(TPosDataExpr)
+      private
+         FLeft, FRight : TDataExpr;
+         FResultAddr : Integer;
+         FOp : TTokenType;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+         class function Perform(const aLeft, aRight : Int64) : Int64; virtual; abstract;
+
+      public
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                            const anOp : TTokenType; aLeft, aRight : TDataExpr);
+         destructor Destroy; override;
+
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+         function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
+         procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
+
+         property Op : TTokenType read FOp;
+         property Left : TDataExpr read FLeft;
+         property Right : TDataExpr read FRight;
+         property ResultAddr : Integer read FResultAddr;
+   end;
+
+   TSetOfAddExpr = class(TSetOfBinOpExpr)
+      protected
+         class function Perform(const aLeft, aRight : Int64) : Int64; override;
+   end;
+
+   TSetOfSubExpr = class(TSetOfBinOpExpr)
+      protected
+         class function Perform(const aLeft, aRight : Int64) : Int64; override;
+   end;
+
+   TSetOfMultExpr = class(TSetOfBinOpExpr)
+      protected
+         class function Perform(const aLeft, aRight : Int64) : Int64; override;
    end;
 
 implementation
@@ -217,6 +280,162 @@ begin
    else begin
       Result:=(Right.EvalAsInteger(exec) and (1 shl value))<>0;
    end;
+end;
+
+// ------------------
+// ------------------ TSetOfBooleanBinOpExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TSetOfBooleanBinOpExpr.Create(
+      context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+      const anOp : TTokenType; aLeft, aRight : TDataExpr);
+begin
+   inherited Create(context, aScriptPos, anOp, aLeft, aRight);
+   FSetType := aLeft.Typ.UnAliasedType as TSetOfSymbol;
+end;
+
+// ------------------
+// ------------------ TSetOfEqualExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TSetOfEqualExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   i : Integer;
+   leftDC, rightDC : IDataContext;
+begin
+   leftDC := (Left as TDataExpr).DataPtr[exec];
+   rightDC := (Right as TDataExpr).DataPtr[exec];
+   for i := 0 to SetType.Size-1 do begin
+      if rightDC.AsInteger[i] <> leftDC.AsInteger[i] then Exit(False);
+   end;
+   Result := True;
+end;
+
+// ------------------
+// ------------------ TSetOfLeftContainedInRightExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TSetOfLeftContainedInRightExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   i : Integer;
+   leftDC, rightDC : IDataContext;
+   leftItem : Int64;
+begin
+   leftDC := (Left as TDataExpr).DataPtr[exec];
+   rightDC := (Right as TDataExpr).DataPtr[exec];
+   for i := 0 to SetType.Size-1 do begin
+      leftItem := leftDC.AsInteger[i];
+      if (leftItem and rightDC.AsInteger[i]) <> leftItem then Exit(False);
+   end;
+   Result := True;
+end;
+
+// ------------------
+// ------------------ TSetOfBinOpExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TSetOfBinOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                                   const anOp : TTokenType; aLeft, aRight : TDataExpr);
+begin
+   inherited Create(aScriptPos, (aLeft.Typ.UnAliasedType as TSetOfSymbol));
+   FOp := anOp;
+   FLeft := aLeft;
+   FRight := aRight;
+   FResultAddr := context.GetTempAddr(FTyp.Size);
+end;
+
+// Destroy
+//
+destructor TSetOfBinOpExpr.Destroy;
+begin
+   inherited;
+   FLeft.Free;
+   FRight.Free;
+end;
+
+// EvalAsVariant
+//
+procedure TSetOfBinOpExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+begin
+   DataPtr[exec].EvalAsVariant(FResultAddr, result);
+end;
+
+// EvalAsInteger
+//
+function TSetOfBinOpExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   Result := DataPtr[exec].AsInteger[FResultAddr];
+end;
+
+// GetDataPtr
+//
+procedure TSetOfBinOpExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
+var
+   i : Integer;
+   leftDC, rightDC : IDataContext;
+begin
+   leftDC := left.DataPtr[exec];
+   rightDC := right.DataPtr[exec];
+   exec.DataContext_CreateBase(FResultAddr, result);
+   for i := 0 to Typ.Size-1 do
+      result.AsInteger[i] := Perform(leftDC.AsInteger[i], rightDC.AsInteger[i]);
+end;
+
+// GetSubExpr
+//
+function TSetOfBinOpExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if i = 0 then
+      Result := Left
+   else Result := Right;
+end;
+
+// GetSubExprCount
+//
+function TSetOfBinOpExpr.GetSubExprCount : Integer;
+begin
+   Result := 2;
+end;
+
+// ------------------
+// ------------------ TSetOfAddExpr ------------------
+// ------------------
+
+// Perform
+//
+class function TSetOfAddExpr.Perform(const aLeft, aRight : Int64) : Int64;
+begin
+   result := aLeft or aRight;
+end;
+
+// ------------------
+// ------------------ TSetOfSubExpr ------------------
+// ------------------
+
+// Perform
+//
+class function TSetOfSubExpr.Perform(const aLeft, aRight : Int64) : Int64;
+begin
+   Result := aLeft and not aRight;
+end;
+
+// ------------------
+// ------------------ TSetOfMultExpr ------------------
+// ------------------
+
+// Perform
+//
+class function TSetOfMultExpr.Perform(const aLeft, aRight : Int64) : Int64;
+begin
+   Result := aLeft and aRight;
 end;
 
 end.

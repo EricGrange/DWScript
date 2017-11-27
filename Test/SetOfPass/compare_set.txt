@@ -1,0 +1,24 @@
+- equal
+True
+False
+False
+True
+- diff
+False
+True
+True
+False
+- left contains right
+True
+False
+False
+True
+True
+False
+- right contains left
+True
+False
+False
+True
+False
+True
