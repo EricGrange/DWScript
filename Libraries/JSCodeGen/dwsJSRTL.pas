@@ -765,36 +765,40 @@ const
       (Name : 'Factorial';
        Code : 'function Factorial(i) { var r=1; while (i>1) { r*=i; i--; } return r }'),
       (Name : 'FirstDayOfMonth';
-       Code : 'function FirstDayOfMonth(v) {'#13#10
+       Code : 'function FirstDayOfMonth(v, u) {'#13#10
                +#9'var o=(v===0)?new Date():DateTimeToDate(v);'#13#10
-               +#9'return EncodeDate(o.getFullYear(), o.getMonth()+1, 1, 1)'#13#10
+               +#9'var y=((u||$TZ)===2) ? o.getUTCFullYear() : o.getFullYear();'#13#10
+               +#9'var m=((u||$TZ)===2) ? o.getUTCMonth() : o.getMonth();'#13#10
+               +#9'return EncodeDate(y, m+1, 1, u)'#13#10
                +'}';
        Dependency : 'DateTimeToDate,EncodeDate' ),
       (Name : 'FirstDayOfNextMonth';
-       Code : 'function FirstDayOfNextMonth(v) {'#13#10
+       Code : 'function FirstDayOfNextMonth(v,u) {'#13#10
                +#9'var o=(v==0)?new Date():DateTimeToDate(v);'#13#10
-               +#9'var y=o.getFullYear();'#13#10
-               +#9'var m=o.getMonth();'#13#10
+               +#9'var y=((u||$TZ)===2) ? o.getUTCFullYear() : o.getFullYear();'#13#10
+               +#9'var m=((u||$TZ)===2) ? o.getUTCMonth() : o.getMonth();'#13#10
                +#9'if (m==11) { m=0; y++ } else m++;'#13#10
-               +#9'return EncodeDate(y,m+1,1)'#13#10
+               +#9'return EncodeDate(y, m+1, 1, u)'#13#10
                +'}';
        Dependency : 'EncodeDate,DateTimeToDate' ),
       (Name : 'FirstDayOfNextYear';
-       Code : 'function FirstDayOfNextYear(v) {'#13#10
+       Code : 'function FirstDayOfNextYear(v,u) {'#13#10
                +#9'var o=(v==0)?new Date():DateTimeToDate(v);'#13#10
-               +#9'return EncodeDate(o.getFullYear()+1,1,1)'#13#10
+               +#9'var y=((u||$TZ)===2) ? o.getUTCFullYear() : o.getFullYear();'#13#10
+               +#9'return EncodeDate(y+1,1,1,u)'#13#10
                +'}';
        Dependency : 'EncodeDate,DateTimeToDate' ),
       (Name : 'FirstDayOfYear';
-       Code : 'function FirstDayOfYear(v) {'#13#10
+       Code : 'function FirstDayOfYear(v,u) {'#13#10
                +#9'var o=(v==0)?new Date():DateTimeToDate(v);'#13#10
-               +#9'return EncodeDate(o.getFullYear(),1,1)'#13#10
+               +#9'var y=((u||$TZ)===2) ? o.getUTCFullYear() : o.getFullYear();'#13#10
+               +#9'return EncodeDate(y,1,1)'#13#10
                +'}';
        Dependency : 'EncodeDate,DateTimeToDate' ),
       (Name : 'FirstDayOfWeek';
-       Code : 'function FirstDayOfWeek(v) {'#13#10
+       Code : 'function FirstDayOfWeek(v,u) {'#13#10
                +#9'var o=DateTimeToDate(v);'#13#10
-               +#9'var d=o.getDay();'#13#10
+               +#9'var d=((u||$TZ)===2) ? o.getUTCDay() : o.getDay();'#13#10
                +#9'return (d==0)?v-6:v-(d-1)'#13#10
                +'}';
        Dependency : 'DateTimeToDate' ),
