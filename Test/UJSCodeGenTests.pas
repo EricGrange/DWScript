@@ -5,8 +5,8 @@ interface
 uses
    Forms, Classes, SysUtils, TestFrameWork, Windows,
    cefvcl, ceflib,
-   dwsComp, dwsCompiler, dwsExprs, dwsUtils, dwsXPlatform,
-   dwsCodeGen, dwsJSCodeGen, dwsJSLibModule, dwsFunctions,
+   dwsComp, dwsCompiler, dwsExprs, dwsUtils, dwsXPlatform, dwsUnitSymbols,
+   dwsCodeGen, dwsJSCodeGen, dwsJSLibModule, dwsFunctions, dwsCompilerContext,
    dwsErrors, ClipBrd;
 
 type

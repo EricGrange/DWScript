@@ -364,6 +364,14 @@ type
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
+   TJSSetOfBinExpr = class (TJSExprCodeGen)
+      private
+         FBinFuncName : String;
+      public
+         constructor Create(const aBinFuncName : String);
+         procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
    TJSConvStaticArrayToSetOfExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -1254,6 +1262,11 @@ begin
    RegisterCodeGen(TSetOfExcludeExpr,     TJSSetOfFunctionExpr.Create);
    RegisterCodeGen(TSetOfInExpr,          TJSSetOfInExpr.Create);
    RegisterCodeGen(TSetOfSmallInExpr,     TJSSetOfInExpr.Create);
+   RegisterCodeGen(TSetOfEqualExpr,       TJSSetOfBinExpr.Create('$SetEqual'));
+   RegisterCodeGen(TSetOfLeftContainedInRightExpr, TJSSetOfBinExpr.Create('$SetLiR'));
+   RegisterCodeGen(TSetOfAddExpr,         TJSSetOfBinExpr.Create('$SetAdd'));
+   RegisterCodeGen(TSetOfSubExpr,         TJSSetOfBinExpr.Create('$SetSub'));
+   RegisterCodeGen(TSetOfMultExpr,        TJSSetOfBinExpr.Create('$SetMul'));
 
    RegisterCodeGen(TConvStaticArrayToSetOfExpr,    TJSConvStaticArrayToSetOfExpr.Create);
    RegisterCodeGen(TConvSetOfToIntegerExpr,        TJSConvSetOfToIntegerExpr.Create);
@@ -8456,6 +8469,34 @@ begin
    e:=TSetOfInExpr(expr);
 
    CodeGenFunc(codeGen, '$SetIn', e.Right, e.Left, e.SetType);
+end;
+
+// ------------------
+// ------------------ TJSSetOfBinExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TJSSetOfBinExpr.Create(const aBinFuncName : String);
+begin
+   inherited Create;
+   FBinFuncName := aBinFuncName;
+end;
+
+// CodeGen
+//
+procedure TJSSetOfBinExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+begin
+   Assert(expr.SubExprCount = 2);
+
+   codeGen.Dependencies.Add(FBinFuncName);
+
+   codeGen.WriteString(FBinFuncName);
+   codeGen.WriteString('(');
+   codeGen.CompileNoWrap(expr.SubExpr[0] as TTypedExpr);
+   codeGen.WriteString(',');
+   codeGen.CompileNoWrap(expr.SubExpr[1] as TTypedExpr);
+   codeGen.WriteString(')');
 end;
 
 // ------------------

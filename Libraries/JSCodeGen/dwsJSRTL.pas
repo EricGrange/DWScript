@@ -146,7 +146,7 @@ implementation
 {$R dwsJSRTL.res dwsJSRTL.rc}
 
 const
-   cJSRTLDependencies : array [1..267] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..272] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -500,6 +500,16 @@ const
        code : 'function $SetExc(s,v,m,n) { v-=m; if (v>=0 && v<n) s[v>>5]&=~(1<<(v&31)) }'),
       (Name : '$SetIn';
        code : 'function $SetIn(s,v,m,n) { v-=m; return (v<0 && v>=n)?false:(s[v>>5]&(1<<(v&31)))!=0 }'),
+      (Name : '$SetEqual';
+       code : 'function $SetEqual(a,b) { for(var i=0;i<a.length;i++) if (a[i]!==b[i]) return false; return true }'),
+      (Name : '$SetLiR';
+       code : 'function $SetLiR(a,b) { for(var i=0;i<a.length;i++) if ((a[i]&b[i])!=a[i]) return false; return true }'),
+      (Name : '$SetAdd';
+       code : 'function $SetAdd(a,b) { var r=[]; for(var i=0;i<a.length;i++) r.push(a[i]|b[i]); return r }'),
+      (Name : '$SetSub';
+       code : 'function $SetSub(a,b) { var r=[]; for(var i=0;i<a.length;i++) r.push(a[i]&(~b[i])); return r }'),
+      (Name : '$SetMul';
+       code : 'function $SetMul(a,b) { var r=[]; for(var i=0;i<a.length;i++) r.push(a[i]&b[i]); return r }'),
       (Name : '$TZ';
        code : 'var $TZ = 1;'#13#10
               +'var $fmt = { '#13#10

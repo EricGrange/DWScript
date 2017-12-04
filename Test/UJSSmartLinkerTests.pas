@@ -5,7 +5,7 @@ interface
 uses
   Forms, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
   dwsXPlatform, dwsUtils, dwsJSLibModule, StrUtils, dwsFunctions,
-  dwsJSCodeGen, dwsCodeGen;
+  dwsJSCodeGen, dwsCodeGen, dwsUnitSymbols, dwsCompilerContext;
 
 type
 
