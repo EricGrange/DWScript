@@ -26,7 +26,7 @@ interface
 uses
   Classes, SysUtils,
   dwsXPlatform, dwsUtils, dwsErrors, dwsCompilerContext, dwsUnicode,
-  dwsExprs, dwsSymbols, dwsStrings, dwsTokenizer,
+  dwsExprs, dwsSymbols, dwsStrings, dwsTokenizer, dwsScriptSource,
   dwsOperators, dwsUnitSymbols;
 
 type
@@ -131,8 +131,8 @@ type
    TOperatorsRegistrationProc = procedure (systemTable : TSystemSymbolTable; unitTable : TSymbolTable;
                                            operators : TOperators);
 
-   TInternalAbsHandler = function (context : TdwsCompilerContext; argExpr : TTypedExpr) : TTypedExpr;
-   TInternalSqrHandler = function (context : TdwsCompilerContext; argExpr : TTypedExpr) : TTypedExpr;
+   TInternalAbsHandler = function (context : TdwsCompilerContext; const aScriptPos : TScriptPos; argExpr : TTypedExpr) : TTypedExpr;
+   TInternalSqrHandler = function (context : TdwsCompilerContext; const aScriptPos : TScriptPos; argExpr : TTypedExpr) : TTypedExpr;
 
    TInternalUnit = class(TObject, IdwsUnit, IdwsUnitTableFactory)
       private
@@ -175,7 +175,7 @@ type
          procedure AddOperatorsRegistrationProc(proc : TOperatorsRegistrationProc);
 
          procedure AddAbsHandler(const handler : TInternalAbsHandler);
-         function HandleAbs(context : TdwsCompilerContext; argExpr : TTypedExpr) : TTypedExpr;
+         function HandleAbs(context : TdwsCompilerContext; const aScriptPos : TScriptPos; argExpr : TTypedExpr) : TTypedExpr;
 
          procedure InitStaticSymbols(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                      operators : TOperators);
@@ -735,13 +735,13 @@ end;
 
 // HandleAbs
 //
-function TInternalUnit.HandleAbs(context : TdwsCompilerContext; argExpr : TTypedExpr) : TTypedExpr;
+function TInternalUnit.HandleAbs(context : TdwsCompilerContext; const aScriptPos : TScriptPos; argExpr : TTypedExpr) : TTypedExpr;
 var
    i : Integer;
 begin
    Result:=nil;
    for i:=0 to High(FAbsHandlers) do begin
-      Result:=FAbsHandlers[i](context, argExpr);
+      Result:=FAbsHandlers[i](context, aScriptPos, argExpr);
       if Result<>nil then Exit;
    end;
    argExpr.Free;

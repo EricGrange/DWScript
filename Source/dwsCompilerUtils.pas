@@ -919,12 +919,15 @@ begin
 
       Result := expr;
 
+   end else if expr.Typ.IsOfType(context.TypVariant) then begin
+
+      Result := TConvExpr.WrapWithConvCast(context, hotPos, toTyp, expr, msg);
+
    end else begin
 
       // error & keep compiling
       IncompatibleTypes(context, hotPos, msg, toTyp, exprTyp);
-      Result:=TConvInvalidExpr.Create(context, expr, toTyp);
-      Exit;
+      Result := TConvInvalidExpr.Create(context, hotPos, expr, toTyp);
 
    end;
 end;

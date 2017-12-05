@@ -214,7 +214,8 @@ type
          FConnectorCast : IConnectorCast;
 
       public
-         constructor CreateCast(context : TdwsCompilerContext; expr : TTypedExpr; const cast : IConnectorCast);
+         constructor CreateCast(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                                expr : TTypedExpr; const cast : IConnectorCast);
 
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
 
@@ -893,9 +894,10 @@ end;
 
 // CreateCast
 //
-constructor TConnectorCastExpr.CreateCast(context : TdwsCompilerContext; expr : TTypedExpr; const cast : IConnectorCast);
+constructor TConnectorCastExpr.CreateCast(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                                          expr : TTypedExpr; const cast : IConnectorCast);
 begin
-   inherited Create(context, expr);
+   inherited Create(context, aScriptPos, expr);
    FConnectorCast:=cast;
 end;
 

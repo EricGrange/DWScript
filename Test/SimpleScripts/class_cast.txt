@@ -3,6 +3,6 @@ TChild
 TObject
 TChild
 TChild
-Cannot cast instance of type "TObject" to class "TChild"
+Cannot cast instance of type "TObject" to class "TChild" [line: 16, column: 19]
 TChild
-Cannot cast instance of type "TObject" to class "TChild"
+Cannot cast instance of type "TObject" to class "TChild" [line: 23, column: 15]

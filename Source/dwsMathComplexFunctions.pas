@@ -22,7 +22,7 @@ interface
 
 uses
    SysUtils,
-   dwsUtils, dwsXPlatform, dwsCompilerContext,
+   dwsUtils, dwsXPlatform, dwsCompilerContext, dwsScriptSource,
    dwsFunctions, dwsSymbols, dwsExprs, dwsStrings, dwsOperators, dwsExprList,
    dwsTokenizer,dwsMagicExprs, dwsUnitSymbols, dwsDataContext;
 
@@ -114,13 +114,13 @@ end;
 
 // HandleComplexAbs
 //
-function HandleComplexAbs(context : TdwsCompilerContext; argExpr : TTypedExpr) : TTypedExpr;
+function HandleComplexAbs(context : TdwsCompilerContext; const aScriptPos : TScriptPos; argExpr : TTypedExpr) : TTypedExpr;
 var
    typComplex : TRecordSymbol;
 begin
    typComplex:=context.SystemTable.FindTypeSymbol(SYS_COMPLEX, cvMagic) as TRecordSymbol;
    if argExpr.Typ.IsOfType(typComplex) then
-      Result:=TAbsComplexExpr.Create(context, argExpr)
+      Result:=TAbsComplexExpr.Create(context, aScriptPos, argExpr)
    else Result:=nil;
 end;
 

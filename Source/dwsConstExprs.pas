@@ -916,7 +916,7 @@ begin
    for x:=0 to FElementExprs.Count-1 do begin
       expr:=Elements[x];
       if expr.Typ.IsOfType(context.TypInteger) then begin
-         expr:=TConvIntToFloatExpr.Create(context, expr);
+         expr:=TConvIntToFloatExpr.Create(context, ScriptPos, expr);
          FElementExprs.List[x]:=expr;
       end;
    end;

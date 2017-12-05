@@ -251,10 +251,10 @@ begin
       Result := (casterClass <> nil);
       if Result then begin
          if casterClass.InheritsFrom(TUnaryOpExpr) then
-            typedExpr := TUnaryOpExprClass(casterClass).Create(Self, typedExpr)
+            typedExpr := TUnaryOpExprClass(casterClass).Create(Self, scriptPos, typedExpr)
          else begin
             Assert(casterClass.InheritsFrom(TUnaryOpDataExpr));
-            typedExpr := TUnaryOpDataExprClass(casterClass).Create(Self, typedExpr);
+            typedExpr := TUnaryOpDataExprClass(casterClass).Create(Self, scriptPos, typedExpr);
          end;
          TObject(expr) := typedExpr;
          if Optimize then

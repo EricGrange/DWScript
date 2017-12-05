@@ -80,7 +80,7 @@ type
    end;
 
    TBigIntegerNegateExpr = class(TUnaryOpExpr)
-      constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
+      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
       procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
@@ -164,7 +164,7 @@ type
 
    TBigIntegerUnaryOpExpr = class (TUnaryOpExpr)
       public
-         constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
@@ -378,10 +378,10 @@ end;
 
 // HandleBigIntegerAbs
 //
-function HandleBigIntegerAbs(context : TdwsCompilerContext; argExpr : TTypedExpr) : TTypedExpr;
+function HandleBigIntegerAbs(context : TdwsCompilerContext; const aScriptPos : TScriptPos; argExpr : TTypedExpr) : TTypedExpr;
 begin
    if argExpr.Typ.UnAliasedTypeIs(TBaseBigIntegerSymbol) then
-      Result:=TBigIntegerAbsExpr.Create(context, argExpr)
+      Result:=TBigIntegerAbsExpr.Create(context, aScriptPos, argExpr)
    else Result:=nil;
 end;
 
@@ -606,7 +606,7 @@ end;
 
 // Create
 //
-constructor TBigIntegerNegateExpr.Create(context : TdwsCompilerContext; expr : TTypedExpr);
+constructor TBigIntegerNegateExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
 begin
    inherited;
    Bind_MPIR_DLL;
@@ -830,9 +830,9 @@ end;
 // ------------------ TBigIntegerUnaryOpExpr ------------------
 // ------------------
 
-constructor TBigIntegerUnaryOpExpr.Create(context : TdwsCompilerContext; expr : TTypedExpr);
+constructor TBigIntegerUnaryOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
 begin
-   inherited Create(context, expr);
+   inherited Create(context, aScriptPos, expr);
    Typ := context.SystemTable.FindTypeSymbol(SYS_BIGINTEGER, cvMagic);
 end;
 

@@ -23,7 +23,7 @@ interface
 uses
    dwsXPlatform, dwsUtils, dwsStrings, dwsCompilerContext, dwsDataContext,
    dwsSymbols, dwsFunctions, dwsUnitSymbols, dwsOperators, dwsExprs,
-   dwsMagicExprs, dwsExprList, dwsTokenizer,
+   dwsMagicExprs, dwsExprList, dwsTokenizer, dwsScriptSource,
    dwsByteBuffer;
 
 const
@@ -41,7 +41,7 @@ type
 
    TByteBufferUnaryOpExpr = class (TUnaryOpExpr)
       public
-         constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
@@ -259,9 +259,9 @@ end;
 
 // Create
 //
-constructor TByteBufferUnaryOpExpr.Create(context : TdwsCompilerContext; expr : TTypedExpr);
+constructor TByteBufferUnaryOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
 begin
-   inherited Create(context, expr);
+   inherited Create(context, aScriptPos, expr);
    Typ := context.SystemTable.FindTypeLocal(SYS_BYTEBUFFER);
 end;
 

@@ -1214,7 +1214,7 @@ type
          function GetIsConstant : Boolean; override;
 
       public
-         constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); virtual;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr); virtual;
          destructor Destroy; override;
 
          property Expr : TTypedExpr read FExpr write FExpr;
@@ -1224,6 +1224,7 @@ type
    TUnaryOpExpr = class(TTypedExpr)
       protected
          FExpr : TTypedExpr;
+         FScriptPos : TScriptPos;
 
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
@@ -1231,8 +1232,10 @@ type
          function GetIsConstant : Boolean; override;
 
       public
-         constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); virtual;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr); virtual;
          destructor Destroy; override;
+
+         function ScriptPos : TScriptPos; override;
 
          property Expr : TTypedExpr read FExpr write FExpr;
    end;
@@ -1241,14 +1244,14 @@ type
    // bool unary result
    TUnaryOpBoolExpr = class(TUnaryOpExpr)
       public
-         constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
    // int unary result
    TUnaryOpIntExpr = class(TUnaryOpExpr)
       public
-         constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
          procedure Orphan(context : TdwsCompilerContext); override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override; final;
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
@@ -1257,7 +1260,7 @@ type
    // float unary result
    TUnaryOpFloatExpr = class(TUnaryOpExpr)
       public
-         constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
          procedure Orphan(context : TdwsCompilerContext); override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override; final;
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
@@ -1266,14 +1269,14 @@ type
    // String unary result
    TUnaryOpStringExpr = class(TUnaryOpExpr)
       public
-         constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override; final;
    end;
 
    // variant unary result
    TUnaryOpVariantExpr = class(TUnaryOpExpr)
       public
-         constructor Create(context : TdwsCompilerContext; expr : TTypedExpr); override;
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
    end;
 
    // wraps an expression with a result into a no-result one and discard the result
@@ -5954,8 +5957,9 @@ end;
 
 // Create
 //
-constructor TUnaryOpDataExpr.Create(context : TdwsCompilerContext; expr : TTypedExpr);
+constructor TUnaryOpDataExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
 begin
+   inherited Create(aScriptPos, expr.Typ);
    FExpr:=Expr;
 end;
 
@@ -5994,9 +5998,11 @@ end;
 
 // Create
 //
-constructor TUnaryOpExpr.Create(context : TdwsCompilerContext; expr : TTypedExpr);
+constructor TUnaryOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
 begin
-   FExpr:=Expr;
+   inherited Create;
+   FScriptPos := aScriptPos;
+   FExpr := Expr;
 end;
 
 // Destroy
@@ -6005,6 +6011,13 @@ destructor TUnaryOpExpr.Destroy;
 begin
    FExpr.Free;
    inherited;
+end;
+
+// ScriptPos
+//
+function TUnaryOpExpr.ScriptPos : TScriptPos;
+begin
+   Result := FScriptPos;
 end;
 
 // GetIsConstant
@@ -6034,7 +6047,7 @@ end;
 
 // Create
 //
-constructor TUnaryOpBoolExpr.Create(context : TdwsCompilerContext; expr : TTypedExpr);
+constructor TUnaryOpBoolExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
 begin
    inherited;
    Typ:=context.TypBoolean;
@@ -6053,7 +6066,7 @@ end;
 
 // Create
 //
-constructor TUnaryOpIntExpr.Create(context : TdwsCompilerContext; expr : TTypedExpr);
+constructor TUnaryOpIntExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
 begin
    inherited;
    Typ := context.TypInteger;
@@ -6095,7 +6108,7 @@ end;
 
 // Create
 //
-constructor TUnaryOpFloatExpr.Create(context : TdwsCompilerContext; expr : TTypedExpr);
+constructor TUnaryOpFloatExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
 begin
    inherited;
    Typ:=context.TypFloat;
@@ -6137,7 +6150,7 @@ end;
 
 // Create
 //
-constructor TUnaryOpStringExpr.Create(context : TdwsCompilerContext; expr : TTypedExpr);
+constructor TUnaryOpStringExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
 begin
    inherited;
    Typ:=context.TypString;
@@ -6159,7 +6172,7 @@ end;
 
 // Create
 //
-constructor TUnaryOpVariantExpr.Create(context : TdwsCompilerContext; expr : TTypedExpr);
+constructor TUnaryOpVariantExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
 begin
    inherited;
    Typ:=context.TypVariant;

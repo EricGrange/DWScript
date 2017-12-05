@@ -247,10 +247,10 @@ begin
    if IsConstant then
       Result := TConstBooleanExpr.Create(context.TypBoolean, EvalAsBoolean(context.Execution))
    else if FLeft.IsConstant and (FLeft.EvalAsInteger(context.Execution)=0) then begin
-      Result:=TRelIntIsZeroExpr.Create(context, FRight);
+      Result:=TRelIntIsZeroExpr.Create(context, ScriptPos, FRight);
       FRight:=nil;
    end else if FRight.IsConstant and (FRight.EvalAsInteger(context.Execution)=0) then begin
-      Result:=TRelIntIsZeroExpr.Create(context, FLeft);
+      Result:=TRelIntIsZeroExpr.Create(context, ScriptPos, FLeft);
       FLeft:=nil;
    end else Exit(Self);
    Orphan(context);
@@ -274,10 +274,10 @@ begin
    if IsConstant then
       Result := TConstBooleanExpr.Create(context.TypBoolean, EvalAsBoolean(context.Execution))
    else if FLeft.IsConstant and (FLeft.EvalAsInteger(context.Execution)=0) then begin
-      Result:=TRelIntIsNotZeroExpr.Create(context, FRight);
+      Result:=TRelIntIsNotZeroExpr.Create(context, ScriptPos, FRight);
       FRight:=nil;
    end else if FRight.IsConstant and (FRight.EvalAsInteger(context.Execution)=0) then begin
-      Result:=TRelIntIsNotZeroExpr.Create(context, FLeft);
+      Result:=TRelIntIsNotZeroExpr.Create(context, ScriptPos, FLeft);
       FLeft:=nil;
    end else Exit(Self);
    Orphan(context);
