@@ -1,0 +1,4 @@
+Syntax Error: String expected [line: 4, column: 51]
+Syntax Error: String expected [line: 5, column: 58]
+Syntax Error: ";" expected. [line: 5, column: 58]
+Syntax Error: Unexpected END [line: 6, column: 5]

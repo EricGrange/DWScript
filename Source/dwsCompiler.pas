@@ -9345,6 +9345,15 @@ begin
 
    end;
 
+   if FTok.TestDelete(ttDESCRIPTION) then begin
+     if FTok.Test(ttStrVal) then begin
+         propSym.UserDescription := FTok.GetToken.AsString;
+         FTok.KillToken;
+      end else begin
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected);
+      end;
+   end;
+
    ReadSemiColon;
 
    // Array-Prop can be default

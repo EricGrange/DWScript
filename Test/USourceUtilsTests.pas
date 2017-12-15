@@ -54,6 +54,7 @@ type
          procedure MemberVisibilities;
          procedure UnitNamesSuggest;
          procedure OverloadSuggest;
+         procedure PropertyDescription;
    end;
 
 // ------------------------------------------------------------------
@@ -906,6 +907,30 @@ begin
    CheckEquals(2, sugg.Count);
    CheckEquals('Toto (s: String) : String', sugg.Caption[0]);
    CheckEquals('Toto (i: Integer) : String', sugg.Caption[1]);
+end;
+
+// PropertyDescription
+//
+procedure TSourceUtilsTests.PropertyDescription;
+var
+   prog : IdwsProgram;
+   cls, prop : TSymbol;
+begin
+   prog := FCompiler.Compile(
+         'type TTest = class '
+         + 'function Func : String; begin Result := '''' ; end; '
+         + 'property Hello : String read Func description "world"; '
+       + 'end;'
+   );
+   CheckEquals(0, prog.Msgs.Count, prog.Msgs.AsInfo);
+
+   cls := prog.Table.FindSymbol('TTest', cvMagic, TClassSymbol);
+   Check(cls <> nil, 'TTest missing');
+
+   prop := (cls.Typ as TClassSymbol).Members.FindLocal('Hello', TPropertySymbol);
+   Check(prop <> nil, 'TTest.Hello missing');
+
+   CheckEquals('world', (prop as TPropertySymbol).UserDescription);
 end;
 
 // SuggestInBlockWithError
