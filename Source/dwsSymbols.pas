@@ -1542,7 +1542,7 @@ type
          property DeprecatedMessage : String read FDeprecatedMessage write FDeprecatedMessage;
          property IsDeprecated : Boolean read GetIsDeprecated;
          property ExternalName : String read GetExternalName write FExternalName;
-         property Description : String read FDescription write FDescription;
+         property UserDescription : String read FUserDescription write FUserDescription;
    end;
 
    // class operator X (params) uses method;
