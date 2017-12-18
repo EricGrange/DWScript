@@ -196,6 +196,16 @@ type
          property Count : Integer read GetMsgCount;
          property HasErrors : Boolean read GetHasErrors;
          property State : TdwsMessageListState read FState write FState;
+
+         type
+            TdwsMessageListEnumerator = record
+               Index : Integer;
+               List : TdwsMessageList;
+               function MoveNext : Boolean;
+               function GetCurrent : TdwsMessage;
+               property Current : TdwsMessage read GetCurrent;
+            end;
+         function GetEnumerator : TdwsMessageListEnumerator;
    end;
 
    // TdwsCompileMessageList
@@ -522,6 +532,27 @@ begin
       writer.EndObject;
    end;
    writer.EndArray;
+end;
+
+function TdwsMessageList.TdwsMessageListEnumerator.MoveNext : Boolean;
+begin
+   Inc(Index);
+   Result := Index < List.Count;
+end;
+
+function TdwsMessageList.TdwsMessageListEnumerator.GetCurrent : TdwsMessage;
+begin
+   if Index < List.Count then
+      Result := List.Msgs[Index]
+   else Result := nil;
+end;
+
+// GetEnumerator
+//
+function TdwsMessageList.GetEnumerator : TdwsMessageListEnumerator;
+begin
+   Result.List := Self;
+   Result.Index := -1;
 end;
 
 // ------------------

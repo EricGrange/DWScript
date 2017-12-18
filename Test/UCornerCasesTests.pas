@@ -103,6 +103,7 @@ type
          procedure MultiLineUnixStyle;
          procedure EmptyProgram;
          procedure MessagesToJSON;
+         procedure MessagesEnumerator;
 
          procedure LambdaAsConstParam;
    end;
@@ -1968,6 +1969,27 @@ begin
                  +'{"text":"Unexpected \"..\".","type":"SyntaxError","pos":{"file":"*MainModule*","line":2,"col":2}}]', wr.ToString);
    finally
       wr.Free;
+   end;
+end;
+
+// MessagesEnumerator
+//
+procedure TCornerCasesTests.MessagesEnumerator;
+var
+   prog : IdwsProgram;
+   n : Integer;
+   msg : TdwsMessage;
+begin
+   prog := FCompiler.Compile('{$HINT "hello"}'#13#10'{$WARNING "world"}'#13#10'...');
+   CheckEquals(3, prog.Msgs.Count, prog.Msgs.AsInfo);
+   n := 0;
+   for msg in prog.Msgs do begin
+      case n of
+         0 : CheckIs(msg, THintMessage);
+         1 : CheckIs(msg, TWarningMessage);
+         2 : CheckIs(msg, TSyntaxErrorMessage);
+      end;
+      Inc(n);
    end;
 end;
 
