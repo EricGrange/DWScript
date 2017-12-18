@@ -927,7 +927,7 @@ begin
    cls := prog.Table.FindSymbol('TTest', cvMagic, TClassSymbol);
    Check(cls <> nil, 'TTest missing');
 
-   prop := (cls.Typ as TClassSymbol).Members.FindLocal('Hello', TPropertySymbol);
+   prop := (cls as TClassSymbol).Members.FindLocal('Hello', TPropertySymbol);
    Check(prop <> nil, 'TTest.Hello missing');
 
    CheckEquals('world', (prop as TPropertySymbol).UserDescription);
