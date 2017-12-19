@@ -127,6 +127,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsSynSQLiteFunctions;
+
 var
    vSQLite3DynamicMRSW : TMultiReadSingleWrite;
 
@@ -199,28 +201,20 @@ type
       function DBOpen: integer; override;
    end;
 
-procedure InternalSqrt(Context: TSQLite3FunctionContext;
-                       argc: integer; var argv: TSQLite3ValueArray); cdecl;
-var
-   a : Double;
-begin
-   if argc<>1 then begin
-      ErrorWrongNumberOfArgs(Context);
-      exit; // one parameters expected
-   end;
-   a := sqlite3.value_double(argv[0]);
-   if a <= 0 then
-      sqlite3.result_null(Context)
-   else sqlite3.result_double(Context, Sqrt(a));
-end;
-
 // DBOpen
 //
-function TdwsSQLDatabase.DBOpen: integer;
+function TdwsSQLDatabase.DBOpen : Integer;
+const
+   SQLITE_DETERMINISTIC = $800;
 begin
    Result := inherited DBOpen;
    if result = SQLITE_OK then begin
-      sqlite3.create_function(DB, 'SQRT', 1, SQLITE_ANY, nil, InternalSqrt, nil, nil);
+      sqlite3.create_function(DB, 'SQRT', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, SQLiteFunc_Sqrt, nil, nil);
+      sqlite3.create_function(DB, 'MEDIAN', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, nil, SQLiteFunc_MedianStep, SQLiteFunc_MedianFinal);
+      sqlite3.create_function(DB, 'BOOL_AND', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, nil, SQLiteFunc_BoolAndStep, SQLiteFunc_BoolFinal);
+      sqlite3.create_function(DB, 'BOOL_OR', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, nil, SQLiteFunc_BoolOrStep, SQLiteFunc_BoolFinal);
+      sqlite3.create_function(DB, 'BIT_AND', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, nil, SQLiteFunc_BoolAndStep, SQLiteFunc_BoolFinal);
+      sqlite3.create_function(DB, 'BIT_OR', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, nil, SQLiteFunc_BoolOrStep, SQLiteFunc_BoolFinal);
    end;
 end;
 
