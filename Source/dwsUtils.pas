@@ -790,10 +790,10 @@ type
 
    TSimpleDoubleList = class(TSimpleList<Double>)
       protected
-         procedure DoExchange(index1, index2 : Integer); inline;
          procedure QuickSort(minIndex, maxIndex : Integer);
 
       public
+         procedure Exchange(index1, index2 : Integer); inline;
          procedure Sort;
          // Kahan summation
          function Sum : Double;
@@ -6320,7 +6320,7 @@ end;
 
 // DoExchange
 //
-procedure TSimpleDoubleList.DoExchange(index1, index2 : Integer);
+procedure TSimpleDoubleList.Exchange(index1, index2 : Integer);
 var
    buf : Double;
 begin
@@ -6339,16 +6339,16 @@ begin
    case n of
       1 : begin
          if FItems[minIndex]>FItems[maxIndex] then
-            DoExchange(minIndex, maxIndex);
+            Exchange(minIndex, maxIndex);
       end;
       2 : begin
          i:=minIndex+1;
          if FItems[minIndex]>FItems[i] then
-            DoExchange(minIndex, i);
+            Exchange(minIndex, i);
          if FItems[i]>FItems[maxIndex] then begin
-            DoExchange(i, maxIndex);
+            Exchange(i, maxIndex);
             if FItems[minIndex]>FItems[i] then
-               DoExchange(minIndex, i);
+               Exchange(minIndex, i);
          end;
       end;
    else
@@ -6361,7 +6361,7 @@ begin
             while FItems[i]<FItems[p] do Inc(i);
             while Fitems[j]>FItems[p] do Dec(j);
             if i<=j then begin
-               DoExchange(i, j);
+               Exchange(i, j);
                if p=i then
                   p:=j
                else if p=j then

@@ -46,6 +46,8 @@ type
          procedure SymDictInherited;
          procedure SymDictParamExplicit;
          procedure SymDictParamImplicit;
+
+         procedure EnumCastPos;
    end;
 
    ETestException = class (Exception);
@@ -632,6 +634,30 @@ begin
    CheckEquals(2, spl.Count, 'Test');
    CheckEquals(' [line: 2, column: 11]', spl.Items[0].ScriptPos.AsInfo);
    CheckEquals(' [line: 3, column: 1]', spl.Items[1].ScriptPos.AsInfo);
+end;
+
+// EnumCastPos
+//
+procedure TSymbolDictionaryTests.EnumCastPos;
+var
+   prog : IdwsProgram;
+   sym : TTypeSymbol;
+   spl : TSymbolPositionList;
+begin
+   prog:=FCompiler.Compile( 'type TTest = (one, two);'#13#10
+                           +'var a := 1;'#13#10
+                           +'var b := TTest(a);'#13#10);
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   sym := prog.Table.FindTypeSymbol('TTest', cvMagic);
+
+   spl := prog.SymbolDictionary.FindSymbolPosList(sym);
+
+   CheckEquals(3, spl.Count, 'TTest');
+   CheckEquals(' [line: 1, column: 6]', spl.Items[0].ScriptPos.AsInfo);
+   CheckEquals(' [line: 3, column: 10]', spl.Items[1].ScriptPos.AsInfo);
+   CheckEquals(' [line: 3, column: 7]', spl.Items[2].ScriptPos.AsInfo);
+   Check(suImplicit in spl.Items[2].SymbolUsages, '3rd use is implicit');
 end;
 
 // ------------------------------------------------------------------

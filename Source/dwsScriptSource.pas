@@ -54,8 +54,6 @@ type
          Col : Integer;
          SourceFile : TSourceFile;
 
-         const cLineMask = $FFFFF;
-
          class function Create(aSourceFile : TSourceFile; aLine, aCol : Integer) : TScriptPos; static;
 
          procedure Clear; inline;

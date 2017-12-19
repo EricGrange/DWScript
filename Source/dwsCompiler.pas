@@ -4931,7 +4931,7 @@ var
 begin
    if FTok.TestDelete(ttBLEFT) then begin
 
-      Result:=ReadTypeCast(elemPos, enumSym);
+      Result:=ReadTypeCast(enumPos, enumSym);
       Result:=ReadSymbol(Result, False, nil);
 
    end else if FTok.TestDelete(ttDOT) then begin

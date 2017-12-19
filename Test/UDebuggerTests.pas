@@ -6,7 +6,7 @@ uses
    Classes, SysUtils, Variants, ComObj,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors, dwsInfo,
    dwsUtils, dwsSymbols, dwsDebugger, dwsStrings, dwsEvaluate, dwsScriptSource,
-   dwsCompilerContext;
+   dwsCompilerContext, dwsXPlatform;
 
 type
 
@@ -57,6 +57,7 @@ type
 
          procedure BreakpointsStatic;
          procedure BreakpointsDynamic;
+         procedure BreakPointCastPos;
    end;
 
    TDebuggerOptimizedTests = class (TDebuggerTests)
@@ -712,6 +713,30 @@ begin
    finally
       FDebugger.Breakpoints.Clear;
    end;
+end;
+
+// BreakPointCastPos
+//
+procedure TDebuggerTests.BreakPointCastPos;
+var
+   prog : IdwsProgram;
+   bp : TdwsBreakpointableLines;
+   bits : TBits;
+begin
+   prog := FCompiler.Compile(  'type TTest = (one, two);'#13#10
+                             + 'var a := 1;'#13#10
+                             + 'var b := TTest(a);'#13#10);
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   bp := TdwsBreakpointableLines.Create(prog);
+   CheckEquals(1, bp.Count);
+
+   bits := bp.SourceLines[MSG_MainModule];
+   CheckEquals(5, bits.Size, '5 lines');  // 3 actual lines + one empty + line zero
+   CheckEquals(False, bits[0], '0 n/a');
+   CheckEquals(False, bits[1], '1 false');
+   CheckEquals(True, bits[2], '2 true');
+   CheckEquals(True, bits[3], '3 true');
 end;
 
 // ------------------
