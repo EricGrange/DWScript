@@ -27,7 +27,7 @@ uses
    dwsJSONConnector, dwsJSON, dwsErrors, dwsUnitSymbols, dwsSymbols,
    dwsJIT, dwsJITx86, dwsJSFilter, dwsJSLibModule, dwsCodeGen,
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
-   dwsWebServerHelpers, dwsZipLibModule,
+   dwsWebServerHelpers, dwsZipLibModule, dwsIniFileModule,
    dwsDataBase, dwsDataBaseLibModule, dwsWebServerInfo, dwsWebServerLibModule,
    dwsBackgroundWorkersLibModule, dwsSynapseLibModule, dwsCryptoLibModule,
    dwsEncodingLibModule, dwsComConnector, dwsXXHash, dwsHTTPSysServer,
@@ -281,6 +281,8 @@ begin
    TdwsEncodingLib.Create(Self).dwsEncoding.Script:=DelphiWebScript;
 
    TdwsZipLib.Create(Self).dwsZip.Script:=DelphiWebScript;
+
+   TdwsIniFileLib.Create(Self).dwsIniFile.Script:=DelphiWebScript;
 
    FCompiledPrograms := TCompiledProgramHash.Create;
    FCompiledProgramsLock := TMultiReadSingleWrite.Create;

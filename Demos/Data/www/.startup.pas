@@ -2,7 +2,7 @@
 
 WebServer.SetURLRewriteRulesJSON(#'[
    {
-      "pattern" : "/helloworldxyz",
-      "rewrite" : "/index.dws"
+      "pattern" : "\/helloworldxyz\/*",
+      "rewrite" : "\/$1"
    }
   ]');

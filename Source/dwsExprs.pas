@@ -1450,8 +1450,6 @@ type
          procedure SetResultAsBoolean(const value : Boolean);
          procedure SetResultAsFloat(const value : Double);
 
-         procedure SetResultAsStringArray(const a : TStringDynArray);
-
          function GetParamAsPVariant(index : Integer) : PVariant;
          function GetParamAsVariant(index : Integer) : Variant;
          procedure SetParamAsVariant(index : Integer; const v : Variant);
@@ -1487,6 +1485,9 @@ type
          function CompilerContext : TdwsCompilerContext; inline;
 
          procedure RaiseExceptObj(const msg : String; const obj : IScriptObj);
+
+         procedure SetResultAsStringArray(const a : TStringDynArray); overload;
+         procedure SetResultAsStringArray(const s : TStrings); overload;
 
          property Table : TSymbolTable read FTable write FTable;
          property SystemTable : TSystemSymbolTable read GetSystemTable;
@@ -6612,11 +6613,25 @@ var
    i, n : Integer;
    result : IScriptDynArray;
 begin
-   result:=ResultVars.ScriptDynArray;
-   n:=Length(a);
-   result.ArrayLength:=n;
-   for i:=0 to n-1 do
-      result.AsString[i]:=a[i];
+   result := ResultVars.ScriptDynArray;
+   n := Length(a);
+   result.ArrayLength := n;
+   for i := 0 to n-1 do
+      result.AsString[i] := a[i];
+end;
+
+// SetResultAsStringArray
+//
+procedure TProgramInfo.SetResultAsStringArray(const s : TStrings);
+var
+   i, n : Integer;
+   result : IScriptDynArray;
+begin
+   result := ResultVars.ScriptDynArray;
+   n := s.Count;
+   result.ArrayLength := n;
+   for i := 0 to n-1 do
+      result.AsString[i] := s[i];
 end;
 
 // GetParamAsPVariant
