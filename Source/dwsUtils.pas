@@ -791,12 +791,15 @@ type
    TSimpleDoubleList = class(TSimpleList<Double>)
       protected
          procedure QuickSort(minIndex, maxIndex : Integer);
+         procedure MedianSort(minIndex, maxIndex : Integer);
 
       public
          procedure Exchange(index1, index2 : Integer); inline;
          procedure Sort;
          // Kahan summation
          function Sum : Double;
+         // Computes median using a partial sort (alters the list)
+         function QuickMedian : Double;
    end;
 
    TSimpleStringHash = class(TSimpleHash<String>)
@@ -6293,13 +6296,6 @@ end;
 // ------------------ TSimpleDoubleList ------------------
 // ------------------
 
-// Sort
-//
-procedure TSimpleDoubleList.Sort;
-begin
-   QuickSort(0, Count-1);
-end;
-
 // Sum
 //
 function TSimpleDoubleList.Sum : Double;
@@ -6335,45 +6331,123 @@ procedure TSimpleDoubleList.QuickSort(minIndex, maxIndex : Integer);
 var
    i, j, p, n : Integer;
 begin
-   n:=maxIndex-minIndex;
+   n := maxIndex - minIndex;
    case n of
       1 : begin
-         if FItems[minIndex]>FItems[maxIndex] then
+         if FItems[minIndex] > FItems[maxIndex] then
             Exchange(minIndex, maxIndex);
       end;
       2 : begin
-         i:=minIndex+1;
-         if FItems[minIndex]>FItems[i] then
+         i := minIndex+1;
+         if FItems[minIndex] > FItems[i] then
             Exchange(minIndex, i);
-         if FItems[i]>FItems[maxIndex] then begin
+         if FItems[i] > FItems[maxIndex] then begin
             Exchange(i, maxIndex);
-            if FItems[minIndex]>FItems[i] then
+            if FItems[minIndex] > FItems[i] then
                Exchange(minIndex, i);
          end;
       end;
    else
-      if n<=0 then Exit;
       repeat
-         i:=minIndex;
-         j:=maxIndex;
-         p:=((i+j) shr 1);
+         i := minIndex;
+         j := maxIndex;
+         p := ((i+j) shr 1);
          repeat
-            while FItems[i]<FItems[p] do Inc(i);
-            while Fitems[j]>FItems[p] do Dec(j);
-            if i<=j then begin
+            while FItems[i] < FItems[p] do Inc(i);
+            while FItems[j] > FItems[p] do Dec(j);
+            if i <= j then begin
                Exchange(i, j);
-               if p=i then
-                  p:=j
-               else if p=j then
-                  p:=i;
+               if p = i then
+                  p := j
+               else if p = j then
+                  p := i;
                Inc(i);
                Dec(j);
             end;
-         until i>j;
-         if minIndex<j then
+         until i > j;
+         if minIndex < j then
             QuickSort(minIndex, j);
-         minIndex:=i;
-      until i>=maxIndex;
+         minIndex := i;
+      until i >= maxIndex;
+   end;
+end;
+
+// Sort
+//
+procedure TSimpleDoubleList.Sort;
+begin
+   if Count > 1 then
+      QuickSort(0, Count-1);
+end;
+
+// MedianSort
+//
+procedure TSimpleDoubleList.MedianSort(minIndex, maxIndex : Integer);
+// Median sorts aims only to sort accurately the two mid-point values
+// which are (potentially) used to compute the median
+var
+   i, j, p, n : Integer;
+begin
+   n := maxIndex - minIndex;
+   case n of
+      1 : begin
+         if FItems[minIndex] > FItems[maxIndex] then
+            Exchange(minIndex, maxIndex);
+      end;
+      2 : begin
+         i := minIndex+1;
+         if FItems[minIndex] > FItems[i] then
+            Exchange(minIndex, i);
+         if FItems[i] > FItems[maxIndex] then begin
+            Exchange(i, maxIndex);
+            if FItems[minIndex] > FItems[i] then
+               Exchange(minIndex, i);
+         end;
+      end;
+   else
+      repeat
+         i := minIndex;
+         j := maxIndex;
+         p := ((i+j) shr 1);
+         repeat
+            while FItems[i] < FItems[p] do Inc(i);
+            while FItems[j] > FItems[p] do Dec(j);
+            if i <= j then begin
+               Exchange(i, j);
+               if p = i then
+                  p := j
+               else if p = j then
+                  p := i;
+               Inc(i);
+               Dec(j);
+            end;
+         until i > j;
+         if minIndex < j then
+            if (j >= Count div 2 - 1) and (minIndex <= Count div 2) then
+               MedianSort(minIndex, j);
+         minIndex := i;
+      until i >= maxIndex;
+   end;
+end;
+
+// QuickMedian
+//
+function TSimpleDoubleList.QuickMedian : Double;
+var
+   n : Integer;
+begin
+   case Count of
+      0 : Result := 0;
+      1 : Result := FItems[0];
+      2 : Result := (FItems[0] + FItems[1])*0.5;
+   else
+      MedianSort(0, Count-1);
+      if (Count and 1)=0 then begin
+         n := Count shr 1;
+         Result := (FItems[n] + FItems[n-1])*0.5;
+      end else begin
+         Result := FItems[Count shr 1];
+      end;
    end;
 end;
 

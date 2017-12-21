@@ -146,7 +146,7 @@ implementation
 {$R dwsJSRTL.res dwsJSRTL.rc}
 
 const
-   cJSRTLDependencies : array [1..272] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..274] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -1013,8 +1013,12 @@ const
        Code : 'function Sleep(v) { for(v+=Date.now();Date.now()>v;); }'),
       (Name : 'StrAfter';
        Code : 'function StrAfter(s,d) { if (!d) return ""; var p=s.indexOf(d); return (p<0)?"":s.substr(p+d.length) }'),
+      (Name : 'StrAfterLast';
+       Code : 'function StrAfterLast(s,d) { if (!d) return ""; var p=s.lastIndexOf(d); return (p<0)?"":s.substr(p+d.length) }'),
       (Name : 'StrBefore';
        Code : 'function StrBefore(s,d) { if (!d) return s; var p=s.indexOf(d); return (p<0)?s:s.substr(0, p) }'),
+      (Name : 'StrBeforeLast';
+       Code : 'function StrBeforeLast(s,d) { if (!d) return s; var p=s.lastIndexOf(d); return (p<0)?s:s.substr(0, p) }'),
       (Name : 'StrBetween';
        Code : 'function StrBetween(s,d,f) { return StrBefore(StrAfter(s, d), f) }';
        Dependency: 'StrAfter'; Dependency2: 'StrBefore'),

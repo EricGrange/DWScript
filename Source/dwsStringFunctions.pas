@@ -276,7 +276,15 @@ type
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
   end;
 
+  TStrAfterLastFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
+  end;
+
   TStrBeforeFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
+  end;
+
+  TStrBeforeLastFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
   end;
 
@@ -315,6 +323,29 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+// StrRevFind
+//
+function StrRevFind(const stringSearched, stringToFind : String; startPos : Integer = 0) : Integer;
+var
+   i : Integer;
+begin
+   if (stringToFind='') or (stringSearched='') then begin
+      Result:=0;
+      Exit;
+   end;
+   if startPos<=0 then
+      startPos:=Length(stringSearched);
+   for i:=startPos-Length(stringToFind)+1 downto 1 do begin
+      if stringSearched[i]=stringToFind[1] then begin
+         if CompareMem(@stringSearched[i], @stringToFind[1], Length(stringToFind)*SizeOf(WideChar)) then begin
+            Result:=i;
+            Exit;
+         end;
+      end;
+   end;
+   Result:=0;
+end;
 
 { TChrFunc }
 
@@ -698,28 +729,6 @@ end;
 { TRevPosFunc }
 
 function TRevPosFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
-
-   function StrRevFind(const stringSearched, stringToFind : String; startPos : Integer = 0) : Integer;
-   var
-      i : Integer;
-   begin
-      if (stringToFind='') or (stringSearched='') then begin
-         Result:=0;
-         Exit;
-      end;
-      if startPos<=0 then
-         startPos:=Length(stringSearched);
-      for i:=startPos-Length(stringToFind)+1 downto 1 do begin
-         if stringSearched[i]=stringToFind[1] then begin
-            if CompareMem(@stringSearched[i], @stringToFind[1], Length(stringToFind)*SizeOf(WideChar)) then begin
-               Result:=i;
-               Exit;
-            end;
-         end;
-      end;
-      Result:=0;
-   end;
-
 begin
    Result:=StrRevFind(args.AsString[1], args.AsString[0]);
 end;
@@ -984,6 +993,21 @@ begin
    else Result:='';
 end;
 
+{ TStrAfterLastFunc }
+
+procedure TStrAfterLastFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+var
+   p : Integer;
+   str, delimiter : String;
+begin
+   args.EvalAsString(0, str);
+   args.EvalAsString(1, delimiter);
+   p:=StrRevFind(str, delimiter);
+   if p>0 then
+      Result:=Copy(str, p+Length(delimiter), MaxInt)
+   else Result:='';
+end;
+
 { TStrBeforeFunc }
 
 procedure TStrBeforeFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
@@ -994,6 +1018,21 @@ begin
    args.EvalAsString(0, str);
    args.EvalAsString(1, delimiter);
    p:=Pos(delimiter, str);
+   if p>0 then
+      Result:=Copy(str, 1, p-1)
+   else Result:=str;
+end;
+
+{ TStrBeforeLastFunc }
+
+procedure TStrBeforeLastFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+var
+   p : Integer;
+   str, delimiter : String;
+begin
+   args.EvalAsString(0, str);
+   args.EvalAsString(1, delimiter);
+   p:=StrRevFind(str, delimiter);
    if p>0 then
       Result:=Copy(str, 1, p-1)
    else Result:=str;
@@ -1276,7 +1315,9 @@ initialization
    RegisterInternalIntFunction(TStrFindFunc, 'StrFind', ['str', SYS_STRING, 'subStr', SYS_STRING, 'fromIndex=1', SYS_INTEGER], [iffStateLess], 'IndexOf');
 
    RegisterInternalStringFunction(TStrAfterFunc, 'StrAfter', ['str', SYS_STRING, 'delimiter', SYS_STRING], [iffStateLess], 'After');
+   RegisterInternalStringFunction(TStrAfterLastFunc, 'StrAfterLast', ['str', SYS_STRING, 'delimiter', SYS_STRING], [iffStateLess], 'AfterLast');
    RegisterInternalStringFunction(TStrBeforeFunc, 'StrBefore', ['str', SYS_STRING, 'delimiter', SYS_STRING], [iffStateLess], 'Before');
+   RegisterInternalStringFunction(TStrBeforeLastFunc, 'StrBeforeLast', ['str', SYS_STRING, 'delimiter', SYS_STRING], [iffStateLess], 'BeforeLast');
    RegisterInternalStringFunction(TStrBetweenFunc, 'StrBetween', ['str', SYS_STRING, 'start', SYS_STRING, 'stop', SYS_STRING], [iffStateLess], 'Between');
    RegisterInternalFunction(TStrSplitFunc, 'StrSplit', ['str', SYS_STRING, 'delimiter', SYS_STRING], SYS_ARRAY_OF_STRING, [], 'Split');
    RegisterInternalStringFunction(TStrJoinFunc, 'StrJoin', ['strs', SYS_ARRAY_OF_STRING, 'delimiter', SYS_STRING], [], 'Join');
