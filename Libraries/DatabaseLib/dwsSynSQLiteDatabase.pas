@@ -213,8 +213,8 @@ begin
       sqlite3.create_function(DB, 'MEDIAN', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, nil, SQLiteFunc_MedianStep, SQLiteFunc_MedianFinal);
       sqlite3.create_function(DB, 'BOOL_AND', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, nil, SQLiteFunc_BoolAndStep, SQLiteFunc_BoolFinal);
       sqlite3.create_function(DB, 'BOOL_OR', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, nil, SQLiteFunc_BoolOrStep, SQLiteFunc_BoolFinal);
-      sqlite3.create_function(DB, 'BIT_AND', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, nil, SQLiteFunc_BoolAndStep, SQLiteFunc_BoolFinal);
-      sqlite3.create_function(DB, 'BIT_OR', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, nil, SQLiteFunc_BoolOrStep, SQLiteFunc_BoolFinal);
+      sqlite3.create_function(DB, 'BIT_AND', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, nil, SQLiteFunc_BitAndStep, SQLiteFunc_BitFinal);
+      sqlite3.create_function(DB, 'BIT_OR', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, nil, SQLiteFunc_BitOrStep, SQLiteFunc_BitFinal);
    end;
 end;
 
