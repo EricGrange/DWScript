@@ -729,14 +729,18 @@ begin
    CheckEquals('', prog.Msgs.AsInfo);
 
    bp := TdwsBreakpointableLines.Create(prog);
-   CheckEquals(1, bp.Count);
+   try
+      CheckEquals(1, bp.Count);
 
-   bits := bp.SourceLines[MSG_MainModule];
-   CheckEquals(5, bits.Size, '5 lines');  // 3 actual lines + one empty + line zero
-   CheckEquals(False, bits[0], '0 n/a');
-   CheckEquals(False, bits[1], '1 false');
-   CheckEquals(True, bits[2], '2 true');
-   CheckEquals(True, bits[3], '3 true');
+      bits := bp.SourceLines[MSG_MainModule];
+      CheckEquals(5, bits.Size, '5 lines');  // 3 actual lines + one empty + line zero
+      CheckEquals(False, bits[0], '0 n/a');
+      CheckEquals(False, bits[1], '1 false');
+      CheckEquals(True, bits[2], '2 true');
+      CheckEquals(True, bits[3], '3 true');
+   finally
+      bp.Free;
+   end;
 end;
 
 // ------------------
