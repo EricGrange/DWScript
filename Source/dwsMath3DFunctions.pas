@@ -177,8 +177,8 @@ procedure TVectorAddOpExpr.DoEval(const args : TExprBaseListExec; var result : I
 var
    leftData, rightData : PVarDataArray;
 begin
-   leftData:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec].AsPVarDataArray;
-   rightData:=TDataExpr(args.ExprBase[1]).DataPtr[args.Exec].AsPVarDataArray;
+   leftData:=PVarDataArray(TDataExpr(args.ExprBase[0]).DataPtr[args.Exec].AsPVariant(0));
+   rightData:=PVarDataArray(TDataExpr(args.ExprBase[1]).DataPtr[args.Exec].AsPVariant(0));
 
    result.AsFloat[0] := leftData[0].VDouble+rightData[0].VDouble;
    result.AsFloat[1] := leftData[1].VDouble+rightData[1].VDouble;
@@ -198,7 +198,7 @@ var
    vec : PVarDataArray;
 begin
    f := args.AsFloat[0];
-   vec := TDataExpr(args.ExprBase[1]).DataPtr[args.Exec].AsPVarDataArray;
+   vec := PVarDataArray(TDataExpr(args.ExprBase[1]).DataPtr[args.Exec].AsPVariant(0));
 
    result.AsFloat[0] := vec[0].VDouble*f;
    result.AsFloat[1] := vec[1].VDouble*f;
@@ -218,7 +218,7 @@ var
    vec : PVarDataArray;
 begin
    f := args.AsFloat[1];
-   vec := TDataExpr(args.ExprBase[0]).DataPtr[args.Exec].AsPVarDataArray;
+   vec := PVarDataArray(TDataExpr(args.ExprBase[0]).DataPtr[args.Exec].AsPVariant(0));
 
    result.AsFloat[0] := vec[0].VDouble*f;
    result.AsFloat[1] := vec[1].VDouble*f;

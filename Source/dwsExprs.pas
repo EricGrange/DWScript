@@ -953,7 +953,7 @@ type
                         potResult,
                         potResultInteger, potResultFloat, potResultBoolean,
                         potResultString, potResultConstString,
-                        potData, potConstData,
+                        potData, potConstData, potArrayExpr,
                         potLazy, potInitResult);
    PPushOperator = ^TPushOperator;
    TPushOperator = packed record
@@ -965,12 +965,13 @@ type
       procedure InitPushTempAddr(stackAddr: Integer; argExpr: TTypedExpr);
       procedure InitPushTempArrayAddr(stackAddr: Integer; argExpr: TTypedExpr);
       procedure InitPushTempArray(stackAddr: Integer; argExpr: TTypedExpr);
+      procedure InitPushArrayExpr(stackAddr: Integer; argExpr: TTypedExpr);
       procedure InitPushResult(context : TdwsCompilerContext; stackAddr: Integer; argExpr: TTypedExpr);
       procedure InitPushData(stackAddr: Integer; argExpr: TTypedExpr; ParamSym: TSymbol);
       procedure InitPushInitResult(stackAddr: Integer; argExpr: TTypedExpr);
       procedure InitPushLazy(stackAddr: Integer; argExpr: TTypedExpr);
 
-      procedure Execute(exec : TdwsExecution); inline;
+      procedure Execute(exec : TdwsExecution); //inline;
 
       procedure ExecuteAddr(exec : TdwsExecution);
       procedure ExecutePassAddr(exec : TdwsExecution);
@@ -978,6 +979,7 @@ type
       procedure ExecuteTempData(exec : TdwsExecution);
       procedure ExecuteTempArrayAddr(exec : TdwsExecution);
       procedure ExecuteTempArray(exec : TdwsExecution);
+      procedure ExecuteArrayExpr(exec : TdwsExecution);
       procedure ExecuteResult(exec : TdwsExecution);
       procedure ExecuteResultBoolean(exec : TdwsExecution);
       procedure ExecuteResultInteger(exec : TdwsExecution);
@@ -4691,6 +4693,16 @@ begin
    else FArgExpr:=nil;  // error caught earlier, if not, ensure runtime crash
 end;
 
+// InitPushArrayExpr
+//
+procedure TPushOperator.InitPushArrayExpr(stackAddr: Integer; argExpr: TTypedExpr);
+begin
+   Assert(argExpr is TDynamicArrayExpr);
+   FTypeParamSym := TSymbol(potArrayExpr);
+   FStackAddr := stackAddr;
+   FArgExpr := argExpr;
+end;
+
 // InitPushResult
 //
 procedure TPushOperator.InitPushResult(context : TdwsCompilerContext; stackAddr : Integer; argExpr : TTypedExpr);
@@ -4753,6 +4765,7 @@ begin
       NativeInt(potTempData) : ExecuteTempData(exec);
       NativeInt(potTempArrayAddr) : ExecuteTempArrayAddr(exec);
       NativeInt(potTempArray) : ExecuteTempArray(exec);
+      NativeInt(potArrayExpr) : ExecuteArrayExpr(exec);
       NativeInt(potResultBoolean) : ExecuteResultBoolean(exec);
       NativeInt(potResultInteger) : ExecuteResultInteger(exec);
       NativeInt(potResultFloat) : ExecuteResultFloat(exec);
@@ -4841,6 +4854,19 @@ end;
 procedure TPushOperator.ExecuteTempArray(exec : TdwsExecution);
 begin
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, TConstParamExpr(FArgExpr).DataPtr[exec]);
+end;
+
+// ExecuteArrayExpr
+//
+procedure TPushOperator.ExecuteArrayExpr(exec : TdwsExecution);
+var
+   expr : TDynamicArrayExpr;
+   elementDC : IDataContext;
+begin
+   expr := TDynamicArrayExpr(FArgExpr); // type already checked at init
+   expr.CreateArrayElementDataContext(exec, elementDC);
+
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, elementDC);
 end;
 
 // ExecuteResult
@@ -5113,6 +5139,8 @@ begin
          end else if param is TByRefParamSymbol then begin
             if arg is TFuncExprBase then
                pushOperator.InitPushTempAddr(param.StackAddr, arg)
+            else if arg is TDynamicArrayExpr then
+               pushOperator.InitPushArrayExpr(param.StackAddr, arg)
             else pushOperator.InitPushAddr(param.StackAddr, arg);
          end else if param.Size>1 then
             pushOperator.InitPushData(param.StackAddr, TDataExpr(arg), param)

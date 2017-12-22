@@ -356,6 +356,8 @@ type
          procedure EvalAsString(exec : TdwsExecution; var result : String); override;
 
          function  SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
+
+         procedure CreateArrayElementDataContext(exec : TdwsExecution; var result : IDataContext);
    end;
 
    // Array expressions: x[index0] for dynamic arrays where BaseExpr is a TObjectVarExpr
@@ -2397,7 +2399,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsStringFunctions, dwsExternalSymbols, dwsSpecializationContext;
+uses
+   dwsStringFunctions, dwsExternalSymbols, dwsSpecializationContext,
+   dwsArrayElementContext;
 
 type
    // this needs to be in a helper (or more precisely implemented at the top of this unit)
@@ -3682,6 +3686,22 @@ begin
       BaseExpr.SpecializeDataExpr(context), IndexExpr.SpecializeTypedExpr(context),
       context.SpecializeType(BaseExpr.Typ) as TArraySymbol
       );
+end;
+
+// CreateArrayElementDataContext
+//
+procedure TDynamicArrayExpr.CreateArrayElementDataContext(
+      exec : TdwsExecution; var result : IDataContext);
+var
+   dyn : IScriptDynArray;
+   index : Integer;
+begin
+   FBaseExpr.EvalAsScriptDynArray(exec, dyn);
+
+   index := IndexExpr.EvalAsInteger(exec);
+   BoundsCheck(exec, dyn.ArrayLength, index);
+
+   result := TArrayElementDataContext.Create(dyn, index);
 end;
 
 // ------------------

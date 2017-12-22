@@ -53,7 +53,6 @@ type
 
       property AsVariant[addr : Integer] : Variant read GetAsVariant write SetAsVariant; default;
 
-      function AsPVarDataArray : PVarDataArray;
       function AsPData : PData;
       function AsData : TData;
       function AsPVariant(addr : Integer) : PVariant;
@@ -138,7 +137,6 @@ type
          function GetSelf : TObject;
 
          property AsVariant[addr : Integer] : Variant read GetAsVariant write SetAsVariant; default;
-         function AsPVarDataArray : PVarDataArray; inline;
          function AsPData : PData; inline;
          function AsData : TData;
          function AsPVariant(addr : Integer) : PVariant; inline;
@@ -201,7 +199,6 @@ type
          function Addr : Integer;
          function DataLength : Integer;
 
-         function AsPVarDataArray : PVarDataArray;
          function AsPData : PData;
          function AsData : TData;
          function AsPVariant(addr : Integer) : PVariant;
@@ -220,6 +217,8 @@ type
          function  HashCode(size : Integer) : Cardinal;
    end;
 
+procedure DWSCopyPVariants(src, dest : PVariant; size : Integer); inline;
+
 procedure DWSCopyData(const sourceData : TData; sourceAddr : Integer;
                       const destData : TData; destAddr : Integer; size : Integer);
 procedure DWSMoveData(const data : TData; sourceAddr, destAddr, size : Integer);
@@ -231,6 +230,7 @@ function DWSSameVariant(const v1, v2 : Variant) : Boolean;
 procedure DWSHashCode(var partial : Cardinal; const v : Variant); overload;
 function DWSHashCode(const v : Variant) : Cardinal; overload;
 function DWSHashCode(const data : TData; offset, size : Integer) : Cardinal; overload;
+function DWSHashCode(p : PVariant; size : Integer) : Cardinal; overload;
 
 
 // ------------------------------------------------------------------
@@ -241,6 +241,18 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+// DWSCopyPVariants
+//
+procedure DWSCopyPVariants(src, dest : PVariant; size : Integer); inline;
+begin
+   while size > 0 do begin
+      VarCopySafe(dest^, src^);
+      Inc(src);
+      Inc(dest);
+      Dec(size);
+   end;
+end;
+
 // DWSCopyData
 //
 procedure DWSCopyData(const sourceData: TData; sourceAddr: Integer;
@@ -250,12 +262,7 @@ var
 begin
    src := @sourceData[sourceAddr];
    dest := @destData[destAddr];
-   while size > 0 do begin
-      VarCopySafe(dest^, src^);
-      Inc(src);
-      Inc(dest);
-      Dec(size);
-   end;
+   DWSCopyPVariants(src, dest, size);
 end;
 
 // DWSMoveData
@@ -407,6 +414,16 @@ begin
       DWSHashCode(Result, data[i]);
 end;
 
+function DWSHashCode(p : PVariant; size : Integer) : Cardinal; overload;
+var
+   i : Integer;
+begin
+   Result := 2166136261;
+   for i := 1 to size do begin
+      DWSHashCode(Result, p^);
+      Inc(p);
+   end;
+end;
 
 // ------------------
 // ------------------ TDataContextPool ------------------
@@ -656,13 +673,6 @@ begin
    else VarCopySafe(PVariant(p)^, value);
 end;
 
-// AsPVarDataArray
-//
-function TDataContext.AsPVarDataArray : PVarDataArray;
-begin
-   Result:=@FData[FAddr];
-end;
-
 // AsPData
 //
 function TDataContext.AsPData : PData;
@@ -785,7 +795,7 @@ end;
 //
 procedure TDataContext.WriteData(const src : IDataContext; size : Integer);
 begin
-   DWSCopyData(src.AsPData^, src.Addr, FData, FAddr, size);
+   DWSCopyPVariants(src.AsPVariant(0), @FData[FAddr], size);
 end;
 
 // WriteData
@@ -960,13 +970,6 @@ end;
 function TRelativeDataContext.DataLength : Integer;
 begin
    Result:=System.Length(FGetPData^);
-end;
-
-// AsPVarDataArray
-//
-function TRelativeDataContext.AsPVarDataArray : PVarDataArray;
-begin
-   Result:=@FGetPData^[FAddr];
 end;
 
 // AsPData
