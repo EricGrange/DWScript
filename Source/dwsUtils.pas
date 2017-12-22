@@ -796,8 +796,11 @@ type
       public
          procedure Exchange(index1, index2 : Integer); inline;
          procedure Sort;
-         // Kahan summation
-         function Sum : Double;
+
+         function QuickSum : Double;
+         function KahanSum : Double;
+         function NeumaierSum : Double;
+
          // Computes median using a partial sort (alters the list)
          function QuickMedian : Double;
    end;
@@ -6296,24 +6299,6 @@ end;
 // ------------------ TSimpleDoubleList ------------------
 // ------------------
 
-// Sum
-//
-function TSimpleDoubleList.Sum : Double;
-var
-   c, y, t : Double;
-   i : Integer;
-begin
-   if Count=0 then Exit(0);
-   Result:=FItems[0];
-   c:=0;
-   for i:=1 to Count-1 do begin
-      y:=FItems[i]-c;
-      t:=Result+y;
-      c:=(t-Result)-y;
-      Result:=t;
-   end;
-end;
-
 // DoExchange
 //
 procedure TSimpleDoubleList.Exchange(index1, index2 : Integer);
@@ -6378,6 +6363,76 @@ procedure TSimpleDoubleList.Sort;
 begin
    if Count > 1 then
       QuickSort(0, Count-1);
+end;
+
+// QuickSum
+//
+function TSimpleDoubleList.QuickSum : Double;
+{$ifndef WIN32_ASM}
+var
+   i : Integer;
+   buf : Extended;
+begin
+   buf := 0;
+   for i := 0 to Count-1 do
+      buf := buf + FItems[i];
+   Result := buf;
+{$else}
+asm
+   fldz
+   mov   ecx, [eax + OFFSET FCount]
+   test  ecx, ecx
+   jz    @@done
+
+   mov   edx, [eax + OFFSET FItems]
+
+@@loop:
+   fadd  qword ptr [edx]
+   lea   edx, [edx+8]
+   dec   ecx
+   jnz   @@Loop
+
+@@done:
+   ret
+{$endif}
+end;
+
+// KahanSum
+//
+function TSimpleDoubleList.KahanSum : Double;
+var
+   c, y, t : Double;
+   i : Integer;
+begin
+   if Count = 0 then Exit(0);
+   Result := FItems[0];
+   c := 0;
+   for i := 1 to Count-1 do begin
+      y := FItems[i] - c;
+      t := Result + y;
+      c := (t-Result) - y;
+      Result := t;
+   end;
+end;
+
+// NeumaierSum
+//
+function TSimpleDoubleList.NeumaierSum : Double;
+var
+   c, t : Double;
+   i : Integer;
+begin
+   if Count = 0 then Exit(0);
+   Result := FItems[0];
+   c := 0;
+   for i := 1 to Count-1 do begin
+      t := Result + FItems[i];
+      if Abs(Result) >= Abs(FItems[i]) then
+         c := c + (Result - t) + FItems[i]
+      else c := c + (FItems[i] - t) + Result;
+      Result := t;
+   end;
+   Result := Result + c;
 end;
 
 // MedianSort

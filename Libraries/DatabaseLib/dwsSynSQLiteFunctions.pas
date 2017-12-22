@@ -99,27 +99,13 @@ procedure SQLiteFunc_MedianFinal(context: TSQLite3FunctionContext); cdecl;
 var
    list : TSimpleDoubleList;
    p : ^TSimpleDoubleList;
-   x : Double;
-   i : Integer;
 begin
    p := sqlite3.aggregate_context(context, SizeOf(p^));
    list := p^;
    if list = nil then
       sqlite3.result_null(context)
    else try
-      case list.Count of
-         0 : sqlite3.result_null(context);
-         1 : sqlite3.result_double(context, list[0]);
-         2 : sqlite3.result_double(context, (list[0] + list[1])*0.5);
-      else
-         list.Sort;
-         i := list.Count;
-         if (i and 1) = 0 then begin
-            i := i shr 1;
-            x := (list[i] + list[i-1])*0.5
-         end else x := list[i shr 1];
-         sqlite3.result_double(context, x);
-      end;
+      sqlite3.result_double(context, list.QuickMedian);
    finally
       list.Free;
    end;
