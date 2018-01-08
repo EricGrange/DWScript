@@ -1186,6 +1186,7 @@ var
 begin
    // based on xxHash finalizers
    {$ifdef CPU64}
+   mix := NativeUInt(x);
    mix := (mix xor (mix shr 33)) * 14029467366897019727;
    mix := (mix xor (mix shr 29)) * 1609587929392839161;
    mix := mix xor (mix shr 32);

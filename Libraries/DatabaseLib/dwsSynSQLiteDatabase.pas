@@ -396,9 +396,11 @@ end;
 //
 constructor TdwsSynSQLiteDataSet.Create(db : TdwsSynSQLiteDataBase; const sql : String; const parameters : TData);
 begin
-   FSQL:=sql;
-   FDB:=db;
+   FSQL := sql;
+   FDB := db;
+
    inherited Create(db);
+
    try
       FRequest.Prepare(db.FDB.DB, StringToUTF8(sql));
       try
@@ -466,7 +468,7 @@ end;
 //
 constructor TdwsSynSQLiteDataField.Create(dataSet : TdwsSynSQLiteDataSet; fieldIndex : Integer);
 begin
-   FDataSet:=dataSet;
+   FDataSet := dataSet;
    inherited Create(dataSet, fieldIndex);
 end;
 

@@ -247,7 +247,7 @@ begin
       PrepareFields;
       FFieldsPrepared:=True;
    end;
-   if Cardinal(index)<Cardinal(Length(FFields)) then
+   if Cardinal(index) < Cardinal(Length(FFields)) then
       Result:=FFields[index]
    else raise Exception.CreateFmt('Invalid field index %d', [index]);
 end;
