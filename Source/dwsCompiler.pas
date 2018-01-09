@@ -790,7 +790,7 @@ type
 
          procedure CheckFilterDependencies(confUnits : TIdwsUnitList);
          procedure HandleUnitDependencies(scriptType : TScriptSourceType);
-         function  HandleExplicitDependency(const unitName : String) : TUnitSymbol;
+         function  HandleExplicitDependency(const scriptPos : TScriptPos; const unitName : String) : TUnitSymbol;
 
          procedure SetupInitializationFinalization;
 
@@ -1756,7 +1756,7 @@ end;
 
 // HandleExplicitDependency
 //
-function TdwsCompiler.HandleExplicitDependency(const unitName : String) : TUnitSymbol;
+function TdwsCompiler.HandleExplicitDependency(const scriptPos : TScriptPos; const unitName : String) : TUnitSymbol;
 var
    i : Integer;
    unitResolved : IdwsUnit;
@@ -1769,7 +1769,7 @@ var
 begin
    for i:=0 to FUnitsFromStack.Count-1 do
       if UnicodeSameText(FUnitsFromStack.Items[i], unitName) then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_UnitCircularReference);
+         FMsgs.AddCompilerStop(scriptPos, CPE_UnitCircularReference);
 
    Result:=TUnitSymbol(CurrentProg.Table.FindLocal(unitName, TUnitSymbol));
    if (Result<>nil) and (Result.Main<>nil) then begin
@@ -1797,8 +1797,8 @@ begin
       end;
       if unitResolved=nil then begin
          if FUnitsFromStack.Count=0 then
-            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnknownUnit, [unitName])
-         else FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnitNotFound,
+            FMsgs.AddCompilerErrorFmt(scriptPos, CPE_UnknownUnit, [unitName])
+         else FMsgs.AddCompilerErrorFmt(scriptPos, CPE_UnitNotFound,
                                         [unitName, FUnitsFromStack.Peek]);
          Exit;
       end;
@@ -1808,7 +1808,7 @@ begin
    for i:=0 to dependencies.Count-1 do begin
       FUnitsFromStack.Push(unitName);
       try
-         HandleExplicitDependency(dependencies[i]);
+         HandleExplicitDependency(scriptPos, dependencies[i]);
       finally
          FUnitsFromStack.Pop;
       end;
@@ -13007,7 +13007,7 @@ begin
             Inc(y);
          end;
          if z<0 then begin
-            unitSymbol:=HandleExplicitDependency(names[x]);
+            unitSymbol:=HandleExplicitDependency(posArray[x], names[x]);
             if (unitSymbol<>nil) and (unitSymbol.Main<>nil) then begin
                if unitSymbol.IsDeprecated then
                   WarnDeprecatedSymbol(posArray[x], unitSymbol.Main, unitSymbol.Main.DeprecatedMessage);
