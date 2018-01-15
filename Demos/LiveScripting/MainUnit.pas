@@ -163,7 +163,7 @@ implementation
 {$R *.dfm}
 
 uses
-  Math, Registry, dwsUtils, dwsXPlatform;
+  Math, Registry, dwsUtils, dwsXPlatform, dwsScriptSource, dwsSymbolDictionary;
 
 { TRescanThread }
 
@@ -283,6 +283,7 @@ begin
 
   FreeAndNil(FCriticalSection);
 
+  FCompiledProgram := nil;
   FreeAndNil(FUnitRTTI);
 end;
 
@@ -494,7 +495,7 @@ var
 begin
   SynEditorOptionsContainer := TSynEditorOptionsContainer.Create(nil);
   SynEditorOptionsContainer.Assign(SynEdit);
-  SynEditOptionsDialog.Execute(SynEditorOptionsContainer, nil);
+  SynEditOptionsDialog.Execute(SynEditorOptionsContainer);
   SynEdit.Assign(SynEditorOptionsContainer);
 end;
 
@@ -554,20 +555,23 @@ begin
   begin
     SourceFile := TSourceFile.Create;
     try
+      SourceFile.Name := SYS_MainModule;
       SourceFile.Code := SynEdit.Lines.Text;
-      ScriptPos := TScriptPos.Create(SourceFile, SynEdit.CaretX, SynEdit.CaretY);
-    finally
-      SourceFile.Free;
-    end;
-    Suggestions := TDWSSuggestions.Create(FCompiledProgram, ScriptPos,
-      [soNoReservedWords]);
+      ScriptPos := TScriptPos.Create(SourceFile, SynEdit.CaretY, SynEdit.CaretX);
 
-    // now populate the suggestion box
-    for SuggestionIndex := 0 to Suggestions.Count - 1 do
-    begin
-      Proposal.ItemList.AddObject(Suggestions.Caption[SuggestionIndex],
-        TObject(Suggestions.Category[SuggestionIndex]));
-      Proposal.InsertList.Add(Suggestions.Code[SuggestionIndex]);
+      Suggestions := TDWSSuggestions.Create(FCompiledProgram, ScriptPos,
+        [soNoReservedWords]);
+
+      // now populate the suggestion box
+      for SuggestionIndex := 0 to Suggestions.Count - 1 do
+      begin
+        Proposal.ItemList.AddObject(Suggestions.Caption[SuggestionIndex],
+          TObject(Suggestions.Category[SuggestionIndex]));
+        Proposal.InsertList.Add(Suggestions.Code[SuggestionIndex]);
+      end;
+    finally
+      Suggestions:= nil;
+      SourceFile.Free;
     end;
   end;
 
@@ -636,6 +640,7 @@ procedure TFrmBasic.SynParametersExecute(Kind: SynCompletionType;
     FuncSymbol: TFuncSymbol;
 
     SymbolDictionary: TdwsSymbolDictionary;
+    SymbolPositionList: TSymbolPositionList;
     Symbol, TestSymbol: TSymbol;
   begin
     // make sure the string list is present
@@ -668,9 +673,9 @@ procedure TFrmBasic.SynParametersExecute(Kind: SynCompletionType;
 
       if TFuncSymbol(Symbol).IsOverloaded then
       begin
-        for ItemIndex := 0 to SymbolDictionary.Count - 1 do
+        for SymbolPositionList in SymbolDictionary do
         begin
-          TestSymbol := SymbolDictionary.Items[ItemIndex].Symbol;
+          TestSymbol := SymbolPositionList.Symbol;
 
           if (TestSymbol.ClassType = Symbol.ClassType) and
             SameText(TFuncSymbol(TestSymbol).Name, TFuncSymbol(Symbol).Name) and
