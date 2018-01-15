@@ -851,6 +851,7 @@ type
          procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
 
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+
          function IsWritable : Boolean; virtual;
          function IsExternal : Boolean; virtual;
 
@@ -1669,11 +1670,18 @@ type
          procedure IndexExprToKeyAndHashCode(exec : TdwsExecution; index : TTypedExpr;
                                              out key : IDataContext; out hashCode : Cardinal);
 
+         procedure DebugIntegrityCheck;
+
       public
          class function CreateNew(keyTyp, elemTyp : TTypeSymbol) : TScriptAssociativeArray; static;
 
          procedure GetDataPtr(exec : TdwsExecution; index : TTypedExpr; var result : IDataContext);
+         function GetDataAsBoolean(exec : TdwsExecution; index : TTypedExpr) : Boolean;
+         function GetDataAsInteger(exec : TdwsExecution; index : TTypedExpr) : Int64; overload;
+
          procedure GetValueDataPtr(exec : TdwsExecution; const keyValue : Variant; var result : IDataContext);
+         function GetDataAsInteger(exec : TdwsExecution; const keyValue : Variant) : Int64; overload;
+
          //procedure ReplaceData(exec : TdwsExecution; index : Int64; value : TDataExpr);
          procedure ReplaceValue(exec : TdwsExecution; index, value : TTypedExpr);
 
@@ -3821,12 +3829,9 @@ end;
 // EvalAsScriptAssociativeArray
 //
 procedure TProgramExpr.EvalAsScriptAssociativeArray(exec : TdwsExecution; var result : IScriptAssociativeArray);
-var
-   buf : Variant;
 begin
-   EvalAsVariant(exec, buf);
-   Assert(VariantType(buf)=varUnknown);
-   Result:=(IUnknown(TVarData(buf).VUnknown) as IScriptAssociativeArray);
+   EvalAsInterface(exec, IUnknown(result));
+   Result:=(result as IScriptAssociativeArray);
 end;
 
 // AssignValue
@@ -7542,7 +7547,9 @@ begin
    p:=@DirectData[0];
    v1:=@p[i1];
    v2:=@p[i2];
-   Assert((v1.VType=varInt64) and (v2.VType=varInt64));
+   if (v1.VType=varInt64) and (v2.VType=varInt64) then begin
+   end else
+      Assert((v1.VType=varInt64) and (v2.VType=varInt64));
    if v1.VInt64<v2.VInt64 then
       Result:=-1
    else Result:=Ord(v1.VInt64>v2.VInt64);
@@ -7727,23 +7734,16 @@ begin
    hashCode:=key.HashCode(FKeySize);
 end;
 
-// GetValueDataPtr
+// DebugIntegrityCheck
 //
-procedure TScriptAssociativeArray.GetValueDataPtr(exec : TdwsExecution; const keyValue : Variant; var result : IDataContext);
+procedure TScriptAssociativeArray.DebugIntegrityCheck;
 var
-   hashCode : Cardinal;
    i : Integer;
 begin
-   if FCount>0 then begin
-      hashCode := DWSHashCode(keyValue);
-      i:=(hashCode and (FCapacity-1));
-      if LinearValueFind(keyValue, i) then begin
-         CreateOffset(i*FElementSize, result);
-         Exit;
-      end;
+   for i := 0 to High(FHashCodes) do begin
+      if FHashCodes[i] <> 0 then
+         Assert(TVarData(AsVariant[i]).VType <> 0);
    end;
-   exec.DataContext_CreateEmpty(FElementSize, result);
-   FElementTyp.InitData(result);
 end;
 
 // GetDataPtr
@@ -7764,6 +7764,81 @@ begin
    end;
    exec.DataContext_CreateEmpty(FElementSize, result);
    FElementTyp.InitData(result);
+end;
+
+// GetDataAsBoolean
+//
+function TScriptAssociativeArray.GetDataAsBoolean(exec : TdwsExecution; index : TTypedExpr) : Boolean;
+var
+   i : Integer;
+   hashCode : Cardinal;
+   key : IDataContext;
+begin
+   if FCount>0 then begin
+      IndexExprToKeyAndHashCode(exec, index, key, hashCode);
+      i:=(hashCode and (FCapacity-1));
+      if LinearFind(key, i) then begin
+         Result := AsBoolean[i*FElementSize];
+         Exit;
+      end;
+   end;
+   Result := False;
+end;
+
+// GetDataAsInteger
+//
+function TScriptAssociativeArray.GetDataAsInteger(exec : TdwsExecution; index : TTypedExpr) : Int64;
+var
+   i : Integer;
+   hashCode : Cardinal;
+   key : IDataContext;
+begin
+   if FCount>0 then begin
+      IndexExprToKeyAndHashCode(exec, index, key, hashCode);
+      i:=(hashCode and (FCapacity-1));
+      if LinearFind(key, i) then begin
+         Result := AsInteger[i*FElementSize];
+         Exit;
+      end;
+   end;
+   Result := 0;
+end;
+
+// GetValueDataPtr
+//
+procedure TScriptAssociativeArray.GetValueDataPtr(exec : TdwsExecution; const keyValue : Variant; var result : IDataContext);
+var
+   hashCode : Cardinal;
+   i : Integer;
+begin
+   if FCount>0 then begin
+      hashCode := DWSHashCode(keyValue);
+      i:=(hashCode and (FCapacity-1));
+      if LinearValueFind(keyValue, i) then begin
+         CreateOffset(i*FElementSize, result);
+         Exit;
+      end;
+   end;
+   exec.DataContext_CreateEmpty(FElementSize, result);
+   FElementTyp.InitData(result);
+end;
+
+// GetDataAsInteger
+//
+function TScriptAssociativeArray.GetDataAsInteger(exec : TdwsExecution; const keyValue : Variant) : Int64;
+var
+   hashCode : Cardinal;
+   i : Integer;
+begin
+   if FCount>0 then begin
+      hashCode := DWSHashCode(keyValue);
+      i:=(hashCode and (FCapacity-1));
+      if LinearValueFind(keyValue, i) then begin
+         Result := AsInteger[i*FElementSize];
+         Exit;
+      end;
+   end;
+   Result := 0;
 end;
 
 // ReplaceValue
@@ -7827,17 +7902,22 @@ begin
       k := FHashCodes[i] and (FCapacity - 1);
 
       if ((gap >= k) or (k > i)) and ((i >= gap) or (k <= gap)) and ((i >= gap) or (k > i)) then begin
-         InternalCopyData(gap*FElementSize, i*FElementSize, FElementSize);
+         InternalCopyData(i*FElementSize, gap*FElementSize, FElementSize);
+         DWSCopyData(FKeys, i*FKeySize, gap*FKeySize, FKeySize);
+         FHashCodes[gap] := FHashCodes[i];
          FHashCodes[i] := 0;
          gap := i;
       end;
    until False;
 
    FHashCodes[gap] := 0;
+   FKeyTyp.InitData(FKeys, gap*FKeySize);
    FElementTyp.InitData(AsPData^, gap*FElementSize);
    Dec(FCount);
 
    Result := True;
+
+   DebugIntegrityCheck;
 end;
 
 // Clear

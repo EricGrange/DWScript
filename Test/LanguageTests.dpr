@@ -78,7 +78,8 @@ uses
   dwsSpecializationMap in '..\Source\dwsSpecializationMap.pas',
   dwsUnicode in '..\Source\dwsUnicode.pas',
   UdwsSystemInfoTests in 'UdwsSystemInfoTests.pas',
-  dwsSHA512 in '..\Libraries\CryptoLib\dwsSHA512.pas';
+  dwsSHA512 in '..\Libraries\CryptoLib\dwsSHA512.pas',
+  dwsArrayElementContext in '..\Source\dwsArrayElementContext.pas';
 
 {$R *.res}
 

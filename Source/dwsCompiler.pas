@@ -5710,7 +5710,9 @@ begin
 
       end else begin
 
-         baseExpr := TAssociativeArrayGetExpr.Create(FTok.HotPos, baseExpr, keyExpr, baseType);
+         if (keyExpr.Typ.Size = 1) and keyExpr.Typ.IsBaseType then
+            baseExpr := TAssociativeArrayValueKeyGetExpr.Create(FTok.HotPos, baseExpr, keyExpr, baseType)
+         else baseExpr := TAssociativeArrayGetExpr.Create(FTok.HotPos, baseExpr, keyExpr, baseType);
          keyExpr := nil;
 
       end;

@@ -156,7 +156,7 @@ type
          property  AsString[addr : Integer] : String read GetAsString write SetAsString;
          property  AsInterface[addr : Integer] : IUnknown read GetAsInterface write SetAsInterface;
 
-         procedure InternalCopyData(destAddr, sourceAddr, size : Integer); inline;
+         procedure InternalCopyData(sourceAddr, destAddr, size : Integer); inline;
          procedure CopyData(const destData : TData; destAddr, size : Integer); inline;
          procedure WriteData(const src : IDataContext; size : Integer); overload; inline;
          procedure WriteData(destAddr : Integer; const src : IDataContext; size : Integer); overload; inline;
@@ -220,7 +220,9 @@ type
 procedure DWSCopyPVariants(src, dest : PVariant; size : Integer); inline;
 
 procedure DWSCopyData(const sourceData : TData; sourceAddr : Integer;
-                      const destData : TData; destAddr : Integer; size : Integer);
+                      const destData : TData; destAddr : Integer; size : Integer); overload;
+procedure DWSCopyData(const data : TData; sourceAddr, destAddr : Integer; size : Integer); overload;
+
 procedure DWSMoveData(const data : TData; sourceAddr, destAddr, size : Integer);
 
 function DWSSameData(const data1, data2 : TData; offset1, offset2, size : Integer) : Boolean; overload;
@@ -263,6 +265,21 @@ begin
    src := @sourceData[sourceAddr];
    dest := @destData[destAddr];
    DWSCopyPVariants(src, dest, size);
+end;
+
+// DWSCopyData
+//
+procedure DWSCopyData(const data : TData; sourceAddr, destAddr : Integer; size : Integer);
+var
+   i : Integer;
+begin
+   if sourceAddr > destAddr then begin
+      for i := 0 to size-1 do
+         VarCopySafe(data[destAddr+i], data[sourceAddr+i])
+   end else begin
+      for i := size-1 downto 0 do
+         VarCopySafe(data[destAddr+i], data[sourceAddr+i])
+   end;
 end;
 
 // DWSMoveData
@@ -362,10 +379,16 @@ begin
          n := 1;
       varSmallint, varWord :  // 16 bits
          n := 2;
-      varInteger, varSingle, varLongWord, varUnknown, varDispatch : // 32 bits
+      varInteger, varSingle, varLongWord, varUnknown, varDispatch : begin // 32 bits
          n := 4;
+      end;
       varInt64, varDouble, varCurrency, varDate, varUInt64 : begin // 64 bits
-         n := 8;
+//         n := 8;
+//         buf := SimpleInt64Hash(p.VInt64);
+//         n := 4;
+         partial := (partial xor SimpleInt64Hash(p.VInt64))*16777619;
+         Assert(partial <> 0);
+         Exit;
       end;
       {$ifndef FPC}
       varUString : begin
@@ -412,6 +435,7 @@ begin
    Result := 2166136261;
    for i := offset to offset+size-1 do
       DWSHashCode(Result, data[i]);
+   Assert(Result <> 0);
 end;
 
 function DWSHashCode(p : PVariant; size : Integer) : Cardinal; overload;
@@ -423,6 +447,7 @@ begin
       DWSHashCode(Result, p^);
       Inc(p);
    end;
+   Assert(Result <> 0);
 end;
 
 // ------------------
@@ -771,17 +796,9 @@ end;
 
 // InternalCopyData
 //
-procedure TDataContext.InternalCopyData(destAddr, sourceAddr, size : Integer);
-var
-   i : Integer;
+procedure TDataContext.InternalCopyData(sourceAddr, destAddr, size : Integer);
 begin
-   if sourceAddr > destAddr then begin
-      for i := 0 to size-1 do
-         VarCopySafe(FData[destAddr+i], FData[sourceAddr+i])
-   end else begin
-      for i := size-1 downto 0 do
-         VarCopySafe(FData[destAddr+i], FData[sourceAddr+i])
-   end;
+   DWSCopyData(FData, sourceAddr, destAddr, size);
 end;
 
 // CopyData
