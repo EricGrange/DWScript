@@ -91,10 +91,6 @@ object FrmBasic: TFrmBasic
     object TabSheetOutput: TTabSheet
       Caption = '&Output'
       ImageIndex = 1
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object ListBoxOutput: TListBox
         Left = 0
         Top = 0
@@ -435,7 +431,9 @@ object FrmBasic: TFrmBasic
     TitleFont.Name = 'MS Sans Serif'
     TitleFont.Style = [fsBold]
     Columns = <>
+    ItemHeight = 19
     Images = ProposalImages
+    Margin = 4
     OnExecute = SynCompletionProposalExecute
     OnPaintItem = SynCompletionProposalPaintItem
     OnShow = SynCompletionProposalShow
@@ -694,6 +692,8 @@ object FrmBasic: TFrmBasic
     TitleFont.Name = 'MS Sans Serif'
     TitleFont.Style = [fsBold]
     Columns = <>
+    ItemHeight = 19
+    Margin = 4
     OnExecute = SynParametersExecute
     ShortCut = 24608
     Editor = SynEdit
