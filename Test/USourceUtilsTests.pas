@@ -16,6 +16,7 @@ type
    TSourceUtilsTests = class (TTestCase)
       private
          FCompiler : TDelphiWebScript;
+         FTestUnit : String;
 
          function NeedUnitHandler(const unitName : String; var unitSource : String) : IdwsUnit;
 
@@ -55,6 +56,7 @@ type
          procedure UnitNamesSuggest;
          procedure OverloadSuggest;
          procedure PropertyDescription;
+         procedure ImplementationSuggest;
    end;
 
 // ------------------------------------------------------------------
@@ -291,8 +293,10 @@ end;
 function TSourceUtilsTests.NeedUnitHandler(const unitName: String;
   var unitSource: String): IdwsUnit;
 begin
-  CheckEquals('SomeUnit', unitName, 'Only the unit ''SomeUnit'' is handled properly!');
-  unitSource := 'unit SomeUnit;';
+  CheckTrue((unitName = 'SomeUnit') or (unitName = 'Test'), 'Only the units ''SomeUnit'' & ''Test'' are handled properly!');
+  if unitName = 'SomeUnit' then
+     unitSource := 'unit SomeUnit;'
+  else unitSource := FTestUnit;
 end;
 
 // EmptyOptimizedLocalTable
@@ -933,6 +937,48 @@ begin
    Check(prop <> nil, 'TTest.Hello missing');
 
    CheckEquals('world', (prop as TPropertySymbol).UserDescription);
+end;
+
+// ImplementationSuggest
+//
+procedure TSourceUtilsTests.ImplementationSuggest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   FTestUnit :=   'unit test; interface implementation'#13#10
+                + 'var zxy : String;'#13#10
+                + 'procedure zzz; begin '#13#10
+                + 'zzz; end;';
+
+   prog := FCompiler.Compile(FTestUnit);
+
+   scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 4, 2);
+
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(2, sugg.Count);
+   CheckEquals('zxy : String', sugg.Caption[0]);
+   CheckEquals('zzz ()', sugg.Caption[1]);
+
+   prog := FCompiler.Compile(  'uses Test;'#13#10
+                             + 'var za := 0;'#13#10
+                             + 'za := 1;');
+
+   CheckEquals('*MainModule*', prog.SourceList[0].SourceFile.Name);
+   scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 3, 2);
+   sugg := TdwsSuggestions.Create(prog, scriptPos);
+
+   CheckEquals(1, sugg.Count);
+   CheckEquals('za : Integer', sugg.Caption[0]);
+
+   CheckEquals('Test', prog.SourceList[1].SourceFile.Name);
+   scriptPos := TScriptPos.Create(prog.SourceList[1].SourceFile, 4, 2);
+   sugg := TdwsSuggestions.Create(prog, scriptPos);
+
+   CheckEquals(2, sugg.Count);
+   CheckEquals('zxy : String', sugg.Caption[0]);
+   CheckEquals('zzz ()', sugg.Caption[1]);
 end;
 
 // SuggestInBlockWithError

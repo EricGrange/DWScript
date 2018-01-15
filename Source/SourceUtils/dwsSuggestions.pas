@@ -833,6 +833,9 @@ begin
                list.AddMembers(TPropertySymbol(context.ParentSym).OwnerSymbol, nil, [amoInstance, amoMeta, amoTypedOnly], AddToList);
                FList.Remove(context.ParentSym);
             end;
+            ttIMPLEMENTATION : if context.ParentSym is TUnitMainSymbol then begin
+               list.AddSymbolTable(TUnitMainSymbol(context.ParentSym).ImplementationTable);
+            end;
          end;
 
          context:=context.Parent;
