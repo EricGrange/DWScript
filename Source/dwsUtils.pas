@@ -2348,9 +2348,9 @@ begin
    Result:=buf;
 end;
 
-// ISO8601ToDateTime
+// ParseDateTimeISO8601
 //
-function ISO8601ToDateTime(const v : String) : TDateTime;
+procedure ParseDateTimeISO8601(const v : String ; var dt, utcOffset : TDateTime);
 var
    p : PChar;
 
@@ -2383,69 +2383,95 @@ var
    y, m, d, h, n, s : Integer;
    separator : Boolean;
 begin
-   if v='' then begin
-      Result:=0;
-      Exit;
-   end;
-   p:=Pointer(v);
+   dt := 0;
+   utcOffset := 1;
 
-   // parsing currently limited to basic Z variations with limited validation
+   if v = '' then Exit;
+   p := Pointer(v);
 
-   y:=Read4Digits;
-   separator:=(p^='-');
+   y := Read4Digits;
+   separator := (p^ = '-');
    if separator then
       Inc(p);
-   m:=Read2Digits;
+   m := Read2Digits;
    if separator then begin
-      if p^<>'-' then
+      if p^ <> '-' then
          raise EISO8601Exception.Create('"-" expected after month');
       Inc(p);
    end;
-   d:=Read2Digits;
+   d := Read2Digits;
    try
-      Result:=EncodeDate(y, m, d);
+      dt := EncodeDate(y, m, d);
    except
       on E: Exception do
          raise EISO8601Exception.Create(E.Message);
    end;
 
-   if p^=#0 then Exit;
    case p^ of
-      'T', ' ' : Inc(p);
+      #0 : Exit;
+      'T', 't', ' ' : Inc(p);
    else
       raise EISO8601Exception.Create('"T" expected after date');
    end;
 
-   h:=Read2Digits;
-   separator:=(p^=':');
+   h := Read2Digits;
+   separator := (p^ = ':');
    if separator then
       Inc(p);
-   n:=Read2Digits;
+   n := Read2Digits;
    case p^ of
       ':', '0'..'9' : begin
-         if (p^=':')<>separator then begin
-            if separator then
-               raise EISO8601Exception.Create('":" expected after minutes')
-            else raise EISO8601Exception.Create('Unexpected ":" after minutes');
-         end;
-         Inc(p);
+         if separator then begin
+            if (p^ <> ':') then
+               raise EISO8601Exception.Create('":" expected after minutes');
+            Inc(p);
+         end else if (p^ = ':') then
+            raise EISO8601Exception.Create('Unexpected ":" after minutes');
          s:=Read2Digits;
       end;
    else
-      s:=0;
+      s := 0;
    end;
 
-   Result:=Result+EncodeTime(h, n, s, 0);
+   dt := dt + EncodeTime(h, n, s, 0);
 
    case p^ of
       #0 : exit;
-      'Z' : Inc(p);
-   else
-      raise EISO8601Exception.Create('Unsupported ISO8601 time zone');
+      'Z', 'z' : Inc(p);
+      '+', '-' : begin
+         if p^ = '-' then
+            utcOffset := -1;
+         Inc(p);
+         h := Read2Digits;
+         case p^ of
+            ':', '0'..'9' : begin
+               if separator then begin
+                  if (p^ <> ':') then
+                     raise EISO8601Exception.Create('":" expected after offset hours');
+                  Inc(p);
+               end;
+               n := Read2Digits;
+            end;
+         else
+            n := 0;
+         end;
+         utcOffset := utcOffset * EncodeTime(h, n, 0, 0);
+      end;
    end;
 
-   if p^<>#0 then
+   if p^ <> #0 then
       raise EISO8601Exception.Create('Unsupported or invalid ISO8601 format');
+end;
+
+// ISO8601ToDateTime
+//
+function ISO8601ToDateTime(const v : String) : TDateTime;
+var
+   utcOffset : TDateTime;
+begin
+   ParseDateTimeISO8601(v, Result, utcOffset);
+   if utcOffset <> 1 then
+      Result := Result - utcOffset;
 end;
 
 // TryISO8601ToDateTime

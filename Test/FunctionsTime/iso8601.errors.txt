@@ -11,3 +11,6 @@ Unexpected character (121) instead of digit in TryParse [line: 4, column: 11] fo
 Unexpected character (121) instead of digit in TryParse [line: 4, column: 11] for "2017-01-01 01:02:y3"
 Unexpected ":" after minutes in TryParse [line: 4, column: 11] for "20170101T0102:03"
 ":" expected after minutes in TryParse [line: 4, column: 11] for "20170101T01:0203"
+Unsupported or invalid ISO8601 format in TryParse [line: 4, column: 11] for "20170101T0102y"
+Unexpected character (58) instead of digit in TryParse [line: 4, column: 11] for "20170101T0102+05:00"
+":" expected after offset hours in TryParse [line: 4, column: 11] for "2017-01-01T01:02+0500"
