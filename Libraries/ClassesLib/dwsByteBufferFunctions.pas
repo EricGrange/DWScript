@@ -21,6 +21,7 @@ unit dwsByteBufferFunctions;
 interface
 
 uses
+   Types,
    dwsXPlatform, dwsUtils, dwsStrings, dwsCompilerContext, dwsDataContext,
    dwsSymbols, dwsFunctions, dwsUnitSymbols, dwsOperators, dwsExprs,
    dwsMagicExprs, dwsExprList, dwsTokenizer, dwsScriptSource,
@@ -539,8 +540,8 @@ var
 begin
    args.GetBuffer(buffer);
    if args.Count = 2 then
-      buffer.SetByteP(args.AsInteger[1])
-   else buffer.SetByteA(args.AsInteger[1], args.AsInteger[2])
+      buffer.SetByteP(Byte(args.AsInteger[1]))
+   else buffer.SetByteA(args.AsInteger[1], Byte(args.AsInteger[2]))
 end;
 
 // ------------------
@@ -571,8 +572,8 @@ var
 begin
    args.GetBuffer(buffer);
    if args.Count = 2 then
-      buffer.SetWordP(args.AsInteger[1])
-   else buffer.SetWordA(args.AsInteger[1], args.AsInteger[2])
+      buffer.SetWordP(Word(args.AsInteger[1]))
+   else buffer.SetWordA(args.AsInteger[1], Word(args.AsInteger[2]))
 end;
 
 // ------------------
@@ -635,8 +636,8 @@ var
 begin
    args.GetBuffer(buffer);
    if args.Count = 2 then
-      buffer.SetDWordP(args.AsInteger[1])
-   else buffer.SetDWordA(args.AsInteger[1], args.AsInteger[2])
+      buffer.SetDWordP(DWord(args.AsInteger[1]))
+   else buffer.SetDWordA(args.AsInteger[1], DWord(args.AsInteger[2]))
 end;
 
 // ------------------

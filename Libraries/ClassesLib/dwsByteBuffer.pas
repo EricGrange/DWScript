@@ -69,7 +69,7 @@ type
 
       procedure SetByteP(v : Byte);
       procedure SetWordP(v : Word);
-      procedure SetInt16P(v : Word);
+      procedure SetInt16P(v : Int16);
       procedure SetDWordP(v : DWord);
       procedure SetInt32P(v : Int32);
       procedure SetInt64P(v : Int64);
@@ -145,7 +145,7 @@ type
 
          procedure SetByteP(v : Byte);
          procedure SetWordP(v : Word);
-         procedure SetInt16P(v : Word);
+         procedure SetInt16P(v : Int16);
          procedure SetDWordP(v : DWord);
          procedure SetInt32P(v : Int32);
          procedure SetInt64P(v : Int64);
@@ -551,7 +551,7 @@ end;
 
 // SetInt16P
 //
-procedure TdwsByteBuffer.SetInt16P(v : Word);
+procedure TdwsByteBuffer.SetInt16P(v : Int16);
 begin
    SetInt16A(FPosition, v);
    Inc(FPosition, 2);
