@@ -1,1 +1,1 @@
-<?pas Send('<?xml version="1.0" encoding="utf-8" ?'+'>'); ?>
+<?pas Print('<?xml version="1.0" encoding="utf-8" ?'+'>'); ?>

@@ -8,7 +8,7 @@ var s: string;
 
 for i := 1 to 10 do
 begin
-?><tr><td><?pas=i?></td><td><?pas Send(inttostr(i)); ?></td></tr><?pas
+?><tr><td><?pas=i?></td><td><?pas print(inttostr(i)); ?></td></tr><?pas
 end;
 ?>
 </table>

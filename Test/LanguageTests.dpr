@@ -33,6 +33,7 @@ uses
   dwsClasses in '..\Libraries\ClassesLib\dwsClasses.pas',
   UdwsDataBaseTests in 'UdwsDataBaseTests.pas',
   UdwsFunctionsTests in 'UdwsFunctionsTests.pas',
+  UdwsXPlatformTests,
   UCOMConnectorTests in 'UCOMConnectorTests.pas',
   UTestDispatcher in 'UTestDispatcher.pas',
   UDebuggerTests in 'UDebuggerTests.pas',

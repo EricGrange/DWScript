@@ -75,6 +75,9 @@ begin
    CollectFiles(ExtractFilePath(ParamStr(0))+'OverloadsPass'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'HelpersPass'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'PropertyExpressionsPass'+PathDelim, pasFilter, FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'SetOfPass'+PathDelim, pasFilter, FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'AssociativePass'+PathDelim, pasFilter, FTests);
+//   CollectFiles(ExtractFilePath(ParamStr(0))+'GenericsPass'+PathDelim, pasFilter, FTests);
 
    CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsMath'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsString'+PathDelim, pasFilter, FTests);

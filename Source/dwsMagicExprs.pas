@@ -477,6 +477,8 @@ begin
       compositeSymbol.AddMethod(ssym);
       Assert(helperName=''); // unsupported
       self.FuncSymbol := ssym;
+      if iffDeprecated in flags then
+         ssym.DeprecatedMessage := MSG_DeprecatedEmptyMsg;
    end else begin
       sym:=TMagicFuncSymbol.Generate(table, funcName, params, funcType);
       sym.params.AddParent(table);
@@ -487,9 +489,9 @@ begin
       self.FuncSymbol := sym;
       if helperName<>'' then
          CompilerUtils.AddProcHelper(helperName, table, sym, nil);
+      if iffDeprecated in flags then
+         sym.DeprecatedMessage := MSG_DeprecatedEmptyMsg;
    end;
-   if iffDeprecated in flags then
-      sym.DeprecatedMessage := MSG_DeprecatedEmptyMsg;
 end;
 
 // Call

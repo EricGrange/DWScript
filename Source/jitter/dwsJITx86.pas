@@ -4334,8 +4334,8 @@ var
 begin
    e:=TSetOfInExpr(expr);
 
-   if e.Right is TVarExpr then
-      rightVar:=TVarExpr(e.Right)
+   if e.Right.ClassType = TBaseTypeVarExpr then
+      rightVar := TVarExpr(e.Right)
    else begin
       inherited;
       Exit;
@@ -4401,7 +4401,7 @@ var
 begin
    e:=TSetOfFunctionExpr(expr);
 
-   if e.BaseExpr is TVarExpr then begin
+   if e.BaseExpr.ClassType = TBaseTypeVarExpr then begin
 
       varOffset:=StackAddrToOffset(TVarExpr(e.BaseExpr).StackAddr);
 

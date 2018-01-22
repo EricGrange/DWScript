@@ -1,1 +1,1 @@
-This is normal text<?pas send('This is not normal text');?>Other Text
+This is normal text<?pas print('This is not normal text');?>Other Text
