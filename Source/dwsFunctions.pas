@@ -454,7 +454,7 @@ begin
    sym.IsStateless:=(iffStateLess in flags);
    sym.IsOverloaded:=(iffOverloaded in flags);
    if iffDeprecated in flags then
-      sym.DeprecatedMessage:=SYS_INTEGER;
+      sym.DeprecatedMessage := MSG_DeprecatedEmptyMsg;
    FFuncSymbol:=sym;
    table.AddSymbol(sym);
 

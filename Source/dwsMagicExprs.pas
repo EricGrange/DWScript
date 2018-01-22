@@ -488,6 +488,8 @@ begin
       if helperName<>'' then
          CompilerUtils.AddProcHelper(helperName, table, sym, nil);
    end;
+   if iffDeprecated in flags then
+      sym.DeprecatedMessage := MSG_DeprecatedEmptyMsg;
 end;
 
 // Call
