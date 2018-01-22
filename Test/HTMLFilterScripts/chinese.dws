@@ -1,7 +1,7 @@
 ﻿<html>
 <body>
 <table>
-<?pas Send('test 中文'); ?>
+<?pas Print('test 中文'); ?>
 中文測試:戊
 </table>
 </body>
