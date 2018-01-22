@@ -565,6 +565,12 @@ begin
    Result := SysUtils.StringReplace(s, oldPattern, newPattern, flags);
 end;
 
+function CompareStringEx(
+   lpLocaleName: LPCWSTR; dwCmpFlags: DWORD;
+   lpString1: LPCWSTR; cchCount1: Integer;
+   lpString2: LPCWSTR; cchCount2: Integer;
+   lpVersionInformation: Pointer; lpReserved: LPVOID;
+   lParam: LPARAM): Integer; stdcall; external 'kernel32.dll';
 
 // UnicodeCompareP
 //
@@ -572,7 +578,7 @@ function UnicodeCompareP(p1 : PWideChar; n1 : Integer; p2 : PWideChar; n2 : Inte
 const
    CSTR_EQUAL = 2;
 begin
-   Result:=CompareStringW(LOCALE_USER_DEFAULT, NORM_IGNORECASE, p1, n1, p2, n2)-CSTR_EQUAL;
+   Result := CompareStringEx(nil, NORM_IGNORECASE, p1, n1, p2, n2, nil, nil, 0)-CSTR_EQUAL;
 end;
 
 // UnicodeCompareP
@@ -581,7 +587,7 @@ function UnicodeCompareP(p1, p2 : PWideChar; n : Integer) : Integer; overload;
 const
    CSTR_EQUAL = 2;
 begin
-   Result:=CompareStringW(LOCALE_USER_DEFAULT, NORM_IGNORECASE, p1, n, p2, n)-CSTR_EQUAL;
+   Result := CompareStringEx(nil, NORM_IGNORECASE, p1, n, p2, n, nil, nil, 0) - CSTR_EQUAL;
 end;
 
 // UnicodeLowerCase
