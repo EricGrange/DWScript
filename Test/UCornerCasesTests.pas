@@ -45,6 +45,7 @@ type
          procedure IncludeStringStart;
          procedure IncludeInSections;
 
+         procedure RestrictedFileSystem;
          procedure StackMaxRecursion;
          procedure StackOverFlow;
          procedure StackOverFlowOnFuncPtr;
@@ -573,6 +574,35 @@ begin
       Check(prog.SymbolDictionary.FindSymbolUsage('World', suDeclaration)=nil, 'Check 5');
    finally
       FCompiler.Config.CompilerOptions:=opts;
+   end;
+end;
+
+// RestrictedFileSystem
+//
+procedure TCornerCasesTests.RestrictedFileSystem;
+var
+   r : TdwsRestrictedFileSystem;
+   fs : IdwsFileSystem;
+begin
+   r := TdwsRestrictedFileSystem.Create(nil);
+   try
+      r.Paths.Add('c:\www');
+      r.Paths.Add('d:\foo\bar\');
+      fs := r.AllocateFileSystem;
+      CheckEquals('', fs.ValidateFileName('hello'), 'hello');
+      CheckNotEquals('', fs.ValidateFileName('c:\www\hello'), 'c:\www\hello');
+      CheckNotEquals('', fs.ValidateFileName('c:\www1'), 'c:\www1');
+      CheckNotEquals('', fs.ValidateFileName('c:\www\'), 'c:\www\');
+      CheckNotEquals('', fs.ValidateFileName('c:\www'), 'c:\www');
+      CheckNotEquals('', fs.ValidateFileName('C:\wWw\world.txt'), 'C:\wWw\world.txt');
+      CheckNotEquals('', fs.ValidateFileName('c:\www\abc\xyz\ghi.txt'), 'ghi.txt 1');
+      CheckEquals('', fs.ValidateFileName('d:\foo\abc'), 'd:\foo\abc');
+      CheckEquals('', fs.ValidateFileName('d:\foo\bars'), 'd:\foo\bars');
+      CheckNotEquals('', fs.ValidateFileName('d:\foo\bar\s'), 'd:\foo\bar\s');
+      CheckNotEquals('', fs.ValidateFileName('d:\foo\bar\abc\def\ghi.txt'), 'ghi.txt 2');
+      CheckEquals('', fs.ValidateFileName('c:\foo\bar\abc\def\ghi.txt'), 'ghi.txt 3');
+   finally
+      r.Free;
    end;
 end;
 
