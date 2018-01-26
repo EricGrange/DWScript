@@ -6816,7 +6816,7 @@ begin
          Result:=GetMethodExpr(methodSym, nil, rkClassOfRef, FTok.HotPos, options);
       end else begin
          Result:=GetMethodExpr(methodSym,
-                               GetVarExpr(FTok.HotPos, progMeth.SelfSym),
+                               GetSelfParamExpr(FTok.HotPos, progMeth.SelfSym),
                                rkObjRef, FTok.HotPos, options);
       end;
    end else begin
@@ -12464,7 +12464,7 @@ begin
    else if ct=TVarParamSymbol then
       Result:=GetVarParamExpr(TVarParamSymbol(selfSym))
    else begin
-      Assert((ct=TSelfSymbol) or (ct=TParamSymbol));
+      Assert((ct=TSelfSymbol) or (ct=TParamSymbol) or (ct=TConstByValueParamSymbol));
       Result:=GetVarExpr(aScriptPos, selfSym);
    end;
 end;

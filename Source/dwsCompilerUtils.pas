@@ -425,7 +425,6 @@ begin
 
    end;
 
-
    // Create the correct TExpr for a method symbol
    Result := nil;
 

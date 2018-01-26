@@ -355,6 +355,8 @@ type
          procedure SetLocalizer(const val : IdwsLocalizer);
          function GetExecutionTimedOut : Boolean;
 
+         function GetFileSystem : IdwsFileSystem;
+
          procedure RaiseMaxRecursionReached;
          procedure SetCurrentProg(const val : TdwsProgram); inline;
 
@@ -409,7 +411,7 @@ type
 
          property Parameters : TData read FParameters;
          property Result : TdwsResult read FResult;
-         property FileSystem : IdwsFileSystem read FFileSystem;
+         property FileSystem : IdwsFileSystem read GetFileSystem;
          property Environment : IdwsEnvironment read GetEnvironment write SetEnvironment;
          property CustomStates : TdwsCustomStates read GetCustomStates;
          function HasCustomStates : Boolean;
@@ -2279,11 +2281,9 @@ end;
 //
 function TdwsProgramExecution.ValidateFileName(const path : String) : String;
 begin
-   if Assigned(FileSystem) then
-      Result:=FileSystem.ValidateFileName(path)
-   else Result:='';
-   if Result='' then
-      Result:=inherited ValidateFileName(path);
+   Result := FileSystem.ValidateFileName(path);
+   if Result = '' then
+      raise EScriptException.CreateFmt(RTE_UnauthorizedFilePath, [path]);
 end;
 
 // HasCustomStates
@@ -2473,6 +2473,18 @@ end;
 function TdwsProgramExecution.GetExecutionTimedOut : Boolean;
 begin
    Result := FExecutionTimedOut;
+end;
+
+// GetFileSystem
+//
+function TdwsProgramExecution.GetFileSystem : IdwsFileSystem;
+begin
+   if FFileSystem = nil then begin
+      if FProg.RuntimeFileSystem <> nil then
+         FFileSystem := FProg.RuntimeFileSystem.AllocateFileSystem
+      else FFileSystem := TdwsOSFileSystem.Create;
+   end;
+   Result := FFileSystem;
 end;
 
 // GetMsgs
