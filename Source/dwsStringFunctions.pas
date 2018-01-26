@@ -316,6 +316,10 @@ type
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
   end;
 
+  TByteSizeToStrFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
+  end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -345,6 +349,25 @@ begin
       end;
    end;
    Result:=0;
+end;
+
+// ByteSizeToString
+//
+function ByteSizeToString(const size : Int64; const unitName : String = 'B') : String;
+var
+   floatSize : Double;
+begin
+   floatSize := size;
+   if Abs(size) < 1024 then
+      Result := Format('%d ', [ size ])
+   else if Abs(size) < 1024*1024 then
+      Result := Format('%.1f k', [ floatSize*(1/1024) ])
+   else if Abs(size) < 1024*1024*1024 then
+      Result := Format('%.2f M', [ floatSize*(1/(1024*1024)) ])
+   else if Abs(floatSize) < 1024*1024*1024*1024.0 then
+      Result := Format('%.2f G', [ floatSize*(1/(1024*1024*1024)) ])
+   else Result := Format('%.3f T', [ floatSize*(1/(1024*1024*1024*1024.0)) ]);
+   Result := Result + unitName;
 end;
 
 { TChrFunc }
@@ -1218,6 +1241,13 @@ begin
    Result := StripAccents(args.AsString[0]);
 end;
 
+{ TByteSizeToStrFunc }
+
+procedure TByteSizeToStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+begin
+   Result:=ByteSizeToString(args.AsInteger[0]);
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -1328,6 +1358,8 @@ initialization
    RegisterInternalStringFunction(TStripAccentsFunc, 'StripAccents', ['str', SYS_STRING], [iffStateLess], 'StripAccents');
 
    RegisterInternalStringFunction(TGetTextFunc, '_', ['str', SYS_STRING], []);
+
+   RegisterInternalStringFunction(TByteSizeToStrFunc, 'ByteSizeToStr', ['size', SYS_INTEGER], [iffStateLess]);
 
 end.
 
