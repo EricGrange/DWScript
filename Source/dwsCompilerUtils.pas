@@ -40,6 +40,9 @@ type
                         const hotPos : TScriptPos;
                         const msg : String = CPE_IncompatibleTypes) : TTypedExpr; static;
 
+         class function CanConvertArrayToSetOf(context : TdwsCompilerContext;
+                                               expr : TTypedExpr; setOf : TSetOfSymbol) : Boolean;
+
          class procedure AddProcHelper(const name : String;
                                        table : TSymbolTable; func : TFuncSymbol;
                                        unitSymbol : TUnitMainSymbol); static;
@@ -910,7 +913,7 @@ begin
 
    if     (expr.ClassType=TArrayConstantExpr)
       and toTyp.UnAliasedTypeIs(TSetOfSymbol)
-      and exprTyp.Typ.IsCompatible(toTyp.Typ) then begin
+      and CanConvertArrayToSetOf(context, expr, toTyp.UnAliasedType as TSetOfSymbol) then begin
 
       Result := TConvStaticArrayToSetOfExpr.Create(hotPos, TArrayConstantExpr(expr), toTyp.UnAliasedType as TSetOfSymbol);
 
@@ -928,6 +931,30 @@ begin
       IncompatibleTypes(context, hotPos, msg, toTyp, exprTyp);
       Result := TConvInvalidExpr.Create(context, hotPos, expr, toTyp);
 
+   end;
+end;
+
+// CanConvertArrayToSetOf
+//
+class function CompilerUtils.CanConvertArrayToSetOf(context : TdwsCompilerContext;
+                                                    expr : TTypedExpr; setOf : TSetOfSymbol) : Boolean;
+var
+   i : Integer;
+   val : Int64;
+   elem : TTypedExpr;
+begin
+   Result :=     (expr.ClassType=TArrayConstantExpr)
+             and expr.Typ.Typ.IsCompatible(setOf.Typ);
+   if not Result then Exit;
+
+   // perform range check on elements
+   for i := 0 to TArrayConstantExpr(expr).ElementCount-1 do begin
+      elem := TArrayConstantExpr(expr).Elements[i];
+      val := elem.EvalAsInteger(context.Execution);
+      if Cardinal(val - setOf.MinValue) >= Cardinal(setOf.CountValue) then begin
+         context.Msgs.AddCompilerError(elem.ScriptPos, CPE_ElementOutOfSetBound);
+         Break;
+      end;
    end;
 end;
 

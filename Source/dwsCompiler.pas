@@ -10526,7 +10526,7 @@ begin
 
                   end;
                else
-                  opExpr:=CreateTypedOperatorExpr(tt, hotPos, Result, right);
+                  opExpr := CreateTypedOperatorExpr(tt, hotPos, Result, right);
                   if opExpr=nil then begin
                      if     ((tt=ttEQ) or (tt=ttNOTEQ))
                         and (rightTyp<>nil)
@@ -13261,36 +13261,64 @@ function TdwsCompiler.CreateSetOperatorExpr(token : TTokenType; const scriptPos 
                                             aLeft, aRight : TTypedExpr) : TTypedExpr;
 var
    leftData, rightData : TDataExpr;
+   convertedData : TDataExpr;
+   leftTyp, rightTyp : TTypeSymbol;
+   setTyp : TSetOfSymbol;
 begin
    Result := nil;
    if (aLeft.Typ = nil) or (aRight.Typ = nil) then Exit;
 
-   if aLeft.Typ.UnAliasedTypeIs(TSetOfSymbol) then begin
-      if aRight.Typ.UnAliasedType = aLeft.Typ.UnAliasedType then begin
-         leftData := aLeft as TDataExpr;
-         rightData := aRight as TDataExpr;
-         case token of
-            ttPLUS :
-               Result := TSetOfAddExpr.Create(FCompilerContext, scriptPos, token, leftData, rightData);
-            ttMINUS :
-               Result := TSetOfSubExpr.Create(FCompilerContext, scriptPos, token, leftData, rightData);
-            ttTIMES :
-               Result := TSetOfMultExpr.Create(FCompilerContext, scriptPos, token, leftData, rightData);
-            ttEQ :
-               Result := TSetOfEqualExpr.Create(FCompilerContext, scriptPos, ttEQ, leftData, rightData);
-            ttNOTEQ :
-               Result := TNotBoolExpr.Create(FCompilerContext, scriptPos,
-                  TSetOfEqualExpr.Create(FCompilerContext, scriptPos, ttEQ, leftData, rightData)
-               );
-            ttLESSEQ :
-               Result := TSetOfLeftContainedInRightExpr.Create(FCompilerContext, scriptPos, ttLESSEQ, leftData, rightData);
-            ttGTREQ :
-               Result := TSetOfLeftContainedInRightExpr.Create(FCompilerContext, scriptPos, ttGTREQ, rightData, leftData);
-         end;
+   leftTyp := aLeft.Typ.UnAliasedType;
+   rightTyp := aRight.Typ.UnAliasedType;
+
+   convertedData := nil;
+   if leftTyp.ClassType = TSetOfSymbol then begin
+      setTyp := TSetOfSymbol(leftTyp);
+      if rightTyp <> leftTyp then begin
+         if     (aRight.ClassType = TArrayConstantExpr)
+            and CompilerUtils.CanConvertArrayToSetOf(FCompilerContext, aRight, setTyp) then begin
+            convertedData := TConvStaticArrayToSetOfExpr.Create(aRight.ScriptPos, TArrayConstantExpr(aRight), setTyp);
+            aRight := convertedData;
+         end else Exit;
       end;
+   end else if rightTyp.ClassType = TSetOfSymbol then begin
+      setTyp := TSetOfSymbol(rightTyp);
+      if     (aLeft.ClassType = TArrayConstantExpr)
+         and CompilerUtils.CanConvertArrayToSetOf(FCompilerContext, aLeft, setTyp) then begin
+         convertedData := TConvStaticArrayToSetOfExpr.Create(aLeft.ScriptPos, TArrayConstantExpr(aLeft), setTyp);
+         aLeft := convertedData;
+      end else Exit;
+   end else Exit;
+
+   try
+      leftData := aLeft as TDataExpr;
+      rightData := aRight as TDataExpr;
+      case token of
+         ttPLUS :
+            Result := TSetOfAddExpr.Create(FCompilerContext, scriptPos, token, leftData, rightData);
+         ttMINUS :
+            Result := TSetOfSubExpr.Create(FCompilerContext, scriptPos, token, leftData, rightData);
+         ttTIMES :
+            Result := TSetOfMultExpr.Create(FCompilerContext, scriptPos, token, leftData, rightData);
+         ttEQ :
+            Result := TSetOfEqualExpr.Create(FCompilerContext, scriptPos, ttEQ, leftData, rightData);
+         ttNOTEQ :
+            Result := TNotBoolExpr.Create(FCompilerContext, scriptPos,
+               TSetOfEqualExpr.Create(FCompilerContext, scriptPos, ttEQ, leftData, rightData)
+            );
+         ttLESSEQ :
+            Result := TSetOfLeftContainedInRightExpr.Create(FCompilerContext, scriptPos, ttLESSEQ, leftData, rightData);
+         ttGTREQ :
+            Result := TSetOfLeftContainedInRightExpr.Create(FCompilerContext, scriptPos, ttGTREQ, rightData, leftData);
+      end;
+   except
+      convertedData.Free;
+      raise;
    end;
 
-   if (Result <> nil) and Optimize then
+   if Result = nil then
+      convertedData.Free
+   else if Optimize then
       Result:=Result.OptimizeToTypedExpr(FCompilerContext, scriptPos);
 end;
 

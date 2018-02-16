@@ -305,6 +305,7 @@ const
 
   // Sets
   CPE_SetTooLargeForCastToInteger = 'Set has too many elements for cast to integer';
+  CPE_ElementOutOfSetBound = 'Element is out of set bounds';
 
   // Assign
   CPE_RightSideNeedsReturnType = 'Assignment''s right-side-argument has no return type';
