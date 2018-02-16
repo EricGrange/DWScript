@@ -549,6 +549,20 @@ object dwsDatabaseLib: TdwsDatabaseLib
         OnFastEval = dwsDatabaseFunctionsBlobHexParameterFastEval
       end
       item
+        Name = 'BlobHexParameterDef'
+        Parameters = <
+          item
+            Name = 'hexData'
+            DataType = 'String'
+          end
+          item
+            Name = 'default'
+            DataType = 'String'
+          end>
+        ResultType = 'Variant'
+        OnFastEval = dwsDatabaseFunctionsBlobHexParameterDefFastEval
+      end
+      item
         Name = 'DateParameter'
         Parameters = <
           item

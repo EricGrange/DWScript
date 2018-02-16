@@ -106,6 +106,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     function dwsDatabaseFunctionsDateParameterFastEval(
       const args: TExprBaseListExec): Variant;
+    function dwsDatabaseFunctionsBlobHexParameterDefFastEval(
+      const args: TExprBaseListExec): Variant;
   private
     { Private declarations }
     procedure SetScript(aScript : TDelphiWebScript);
@@ -805,7 +807,19 @@ end;
 function TdwsDatabaseLib.dwsDatabaseFunctionsBlobHexParameterFastEval(
   const args: TExprBaseListExec): Variant;
 begin
-   Result:=dwsUtils.HexToBin(args.AsString[0]);
+   Result := dwsUtils.HexToBin(args.AsString[0]);
+end;
+
+function TdwsDatabaseLib.dwsDatabaseFunctionsBlobHexParameterDefFastEval(
+  const args: TExprBaseListExec): Variant;
+begin
+   try
+      Result := dwsUtils.HexToBin(args.AsString[0]);
+   except
+      on E : EHexEncodingException do
+         Result := args.AsString[1]
+      else raise;
+   end;
 end;
 
 function TdwsDatabaseLib.dwsDatabaseFunctionsBlobParameterFastEval(
