@@ -42,7 +42,11 @@ type
    TStack = ^TStackMixIn;
    TStackMixIn = record
       private
+         {$IFDEF FPC}
+         FBaseData : Pointer;
+         {$ELSE}
          FBaseData : PDataArray;
+         {$ENDIF}
          FBasePointer : Integer;
          FBpStore : array of TSimpleIntegerStack;
          FParams : TStackParameters;
@@ -57,6 +61,8 @@ type
          procedure ClearBpStore;
 
          procedure GrowTo(desiredSize : Integer);
+
+         function GetBaseDataP(index : Integer) : PVarData; inline;
 
       public
 
@@ -87,14 +93,14 @@ type
          function  SetStrChar(DestAddr: Integer; index : Integer; c : WideChar) : Boolean;
 
          procedure ReadValue(sourceAddr : Integer; var result : Variant); inline;
-         function  ReadIntValue(SourceAddr: Integer): Int64; inline;
-         function  ReadIntValue_BaseRelative(SourceAddr: Integer) : Int64; inline;
-         function  ReadIntAsFloatValue_BaseRelative(SourceAddr: Integer) : Double; inline;
-         function  ReadFloatValue(SourceAddr: Integer) : Double; //inline;
-         function  ReadFloatValue_BaseRelative(SourceAddr: Integer) : Double; inline;
-         procedure ReadStrValue(SourceAddr: Integer; var Result : String);
-         function  ReadBoolValue(SourceAddr: Integer): Boolean;
-         procedure ReadInterfaceValue(SourceAddr: Integer; var Result : IUnknown);
+         function  ReadIntValue(sourceAddr : Integer): Int64; inline;
+         function  ReadIntValue_BaseRelative(sourceAddr : Integer) : Int64; inline;
+         function  ReadIntAsFloatValue_BaseRelative(sourceAddr : Integer) : Double; inline;
+         function  ReadFloatValue(sourceAddr : Integer) : Double; //inline;
+         function  ReadFloatValue_BaseRelative(sourceAddr : Integer) : Double; inline;
+         procedure ReadStrValue(sourceAddr : Integer; var Result : String);
+         function  ReadBoolValue(sourceAddr : Integer): Boolean;
+         procedure ReadInterfaceValue(sourceAddr : Integer; var Result : IUnknown);
 
          function  PointerToIntValue(addr : Integer) : PInt64;
          function  PointerToFloatValue_BaseRelative(addr : Integer) : PDouble;
@@ -183,11 +189,11 @@ end;
 
 // CopyData
 //
-procedure TStackMixIn.CopyData(SourceAddr, DestAddr, Size: Integer);
+procedure TStackMixIn.CopyData(sourceAddr, DestAddr, Size: Integer);
 begin
    while Size > 0 do begin
-      VarCopySafe(Data[DestAddr], Data[SourceAddr]);
-      Inc(SourceAddr);
+      VarCopySafe(Data[DestAddr], Data[sourceAddr]);
+      Inc(sourceAddr);
       Inc(DestAddr);
       Dec(Size);
    end;
@@ -223,6 +229,13 @@ begin
       FSize := FMaxSize;
    SetLength(FData, FSize);
    FBaseData:=@FData[FBasePointer];
+end;
+
+// GetBaseDataP
+//
+function TStackMixIn.GetBaseDataP(index : Integer) : PVarData;
+begin
+   Result := PVarData(NativeUInt(FBaseData) + NativeUInt(index * SizeOf(Variant)));
 end;
 
 // GetPData
@@ -339,12 +352,12 @@ begin
    FDataPtrPool.Cleanup;
 end;
 
-procedure TStackMixIn.ReadData(SourceAddr, DestAddr, Size: Integer; DestData: TData);
+procedure TStackMixIn.ReadData(sourceAddr, DestAddr, Size: Integer; DestData: TData);
 begin
   while Size > 0 do
   begin
-    VarCopySafe(DestData[DestAddr], Data[SourceAddr]);
-    Inc(SourceAddr);
+    VarCopySafe(DestData[DestAddr], Data[sourceAddr]);
+    Inc(sourceAddr);
     Inc(DestAddr);
     Dec(Size);
   end;
@@ -359,44 +372,44 @@ end;
 
 // ReadIntValue
 //
-function TStackMixIn.ReadIntValue(SourceAddr: Integer): Int64;
+function TStackMixIn.ReadIntValue(sourceAddr : Integer): Int64;
 var
    varData : PVarData;
 begin
-   varData:=@Data[SourceAddr];
+   varData := @Data[sourceAddr];
    Assert(varData.VType=varInt64);
    Result:=varData.VInt64
 end;
 
 // ReadIntValue
 //
-function TStackMixIn.ReadIntValue_BaseRelative(SourceAddr: Integer) : Int64;
+function TStackMixIn.ReadIntValue_BaseRelative(sourceAddr : Integer) : Int64;
 var
    varData : PVarData;
 begin
-   varData:=@FBaseData[SourceAddr];
+   varData := GetBaseDataP(sourceAddr);
    Assert(varData.VType=varInt64);
    Result:=varData.VInt64;
 end;
 
 // ReadIntAsFloatValue_BaseRelative
 //
-function TStackMixIn.ReadIntAsFloatValue_BaseRelative(SourceAddr: Integer) : Double;
+function TStackMixIn.ReadIntAsFloatValue_BaseRelative(sourceAddr : Integer) : Double;
 var
    varData : PVarData;
 begin
-   varData:=@FBaseData[SourceAddr];
+   varData := GetBaseDataP(sourceAddr);
    Assert(varData.VType=varInt64);
    Result:=varData.VInt64;
 end;
 
 // ReadFloatValue
 //
-function TStackMixIn.ReadFloatValue(SourceAddr: Integer) : Double;
+function TStackMixIn.ReadFloatValue(sourceAddr : Integer) : Double;
 var
    varData : PVarData;
 begin
-   varData:=@Data[SourceAddr];
+   varData := @Data[sourceAddr];
    if varData.VType=varDouble then
       Result:=varData.VDouble
    else if varData.VType=varInt64 then
@@ -406,11 +419,11 @@ end;
 
 // ReadFloatValue_BaseRelative
 //
-function TStackMixIn.ReadFloatValue_BaseRelative(SourceAddr: Integer) : Double;
+function TStackMixIn.ReadFloatValue_BaseRelative(sourceAddr : Integer) : Double;
 var
    varData : PVarData;
 begin
-   varData:=@FBaseData[SourceAddr];
+   varData := GetBaseDataP(sourceAddr);
    if varData.VType=varDouble then
       Result:=varData.VDouble
    else if varData.VType=varInt64 then
@@ -420,11 +433,11 @@ end;
 
 // ReadStrValue
 //
-procedure TStackMixIn.ReadStrValue(SourceAddr: Integer; var Result : String);
+procedure TStackMixIn.ReadStrValue(sourceAddr : Integer; var Result : String);
 var
    varData : PVarData;
 begin
-   varData:=@Data[SourceAddr];
+   varData := @Data[sourceAddr];
    {$ifdef FPC}
    if varData.VType = varString then
       Result := String(varData.VString)
@@ -438,11 +451,11 @@ end;
 
 // ReadBoolValue
 //
-function TStackMixIn.ReadBoolValue(SourceAddr: Integer): Boolean;
+function TStackMixIn.ReadBoolValue(sourceAddr : Integer): Boolean;
 var
    varData : PVarData;
 begin
-   varData:=@Data[SourceAddr];
+   varData := @Data[sourceAddr];
    if varData.VType=varBoolean then
       Result:=varData.VBoolean
    else Result:=VariantToBool(PVariant(varData)^);
@@ -450,11 +463,11 @@ end;
 
 // ReadInterfaceValue
 //
-procedure TStackMixIn.ReadInterfaceValue(SourceAddr: Integer; var Result : IUnknown);
+procedure TStackMixIn.ReadInterfaceValue(sourceAddr : Integer; var Result : IUnknown);
 var
    varData : PVarData;
 begin
-   varData:=@Data[SourceAddr];
+   varData := @Data[sourceAddr];
    if varData.VType=varUnknown then
       Result:=IUnknown(varData.VUnknown)
    else Result:=PVariant(varData)^;
@@ -477,7 +490,7 @@ function TStackMixIn.PointerToFloatValue_BaseRelative(addr : Integer) : PDouble;
 var
    varData : PVarData;
 begin
-   varData:=@FBaseData[addr];
+   varData := GetBaseDataP(addr);
    Assert(varData.VType=varDouble);
    Result:=@varData.VDouble;
 end;
@@ -488,7 +501,7 @@ function TStackMixIn.PointerToStringValue_BaseRelative(addr : Integer) : PString
 var
    varData : PVarData;
 begin
-   varData:=@FBaseData[addr];
+   varData := GetBaseDataP(addr);
    {$ifdef FPC}
    Assert(varData.VType = varString);
    Result := @varData.VString;
@@ -504,7 +517,7 @@ function TStackMixIn.PointerToInterfaceValue_BaseRelative(addr : Integer) : PIUn
 var
    varData : PVarData;
 begin
-   varData:=@FBaseData[addr];
+   varData := GetBaseDataP(addr);
    Assert(varData.VType=varUnknown);
    Result:=@varData.VUnknown;
 end;
@@ -560,7 +573,7 @@ procedure TStackMixIn.IncIntValue_BaseRelative(destAddr: Integer; const value: I
 var
    varData : PVarData;
 begin
-   varData:=@FBaseData[destAddr];
+   varData := GetBaseDataP(destAddr);
    Assert(varData.VType=varInt64);
    varData.VInt64:=varData.VInt64+value
 end;
@@ -571,7 +584,7 @@ procedure TStackMixIn.AppendStringValue_BaseRelative(destAddr : Integer; const v
 var
    varData : PVarData;
 begin
-   varData:=@FBaseData[destAddr];
+   varData := GetBaseDataP(destAddr);
    {$ifdef FPC}
    Assert(varData.VType = varString);
    String(varData.VString) := String(varData.VString) + value
@@ -618,7 +631,7 @@ procedure TStackMixIn.WriteIntValue_BaseRelative(DestAddr: Integer; const Value:
 var
    varData : PVarData;
 begin
-   varData:=@FBaseData[DestAddr];
+   varData := GetBaseDataP(destAddr);
    if varData.VType=varInt64 then
       varData.VInt64:=Value
    else VarCopySafe(PVariant(varData)^, Value);
@@ -642,7 +655,7 @@ procedure TStackMixIn.WriteFloatValue_BaseRelative(DestAddr: Integer; const valu
 var
    varData : PVarData;
 begin
-   varData:=@FBaseData[DestAddr];
+   varData := GetBaseDataP(destAddr);
    if varData.VType=varDouble then
       varData.VDouble:=Value
    else VarCopySafe(PVariant(varData)^, Value);
@@ -672,7 +685,7 @@ procedure TStackMixIn.WriteStrValue_BaseRelative(DestAddr: Integer; const Value:
 var
    varData : PVarData;
 begin
-   varData:=@FBaseData[DestAddr];
+   varData := GetBaseDataP(destAddr);
    {$ifdef FPC}
    if varData.VType = varString then
       String(varData.VString) := Value
