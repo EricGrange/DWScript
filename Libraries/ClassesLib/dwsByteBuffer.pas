@@ -279,7 +279,7 @@ end;
 
 // AssignDataString
 //
-procedure TdwsByteBuffer.AssignDataString(const s : UnicodeString);
+procedure TdwsByteBuffer.AssignDataString(const s : String);
 begin
    Count := Length(s);
    if Count > 0 then
@@ -329,7 +329,7 @@ end;
 
 // ToDataString
 //
-procedure TdwsByteBuffer.ToDataString(var s : UnicodeString);
+procedure TdwsByteBuffer.ToDataString(var s : String);
 begin
    BytesToScriptString(PByte(FData), Count, s);
 end;
