@@ -230,6 +230,7 @@ var
    prog : TdwsProgram;
    opSym : TOperatorSymbol;
    funcExpr : TFuncExprBase;
+   posArray : TScriptPosArray;
 begin
    typedExpr := TObject(expr) as TTypedExpr;
    if typedExpr.Typ = nil then Exit(False);
@@ -242,7 +243,9 @@ begin
       TObject(expr) := funcExpr;
       if opSym.UsesSym.Typ.Size>1 then
          funcExpr.SetResultAddr(prog, nil);
-      funcExpr.Initialize(Self);
+      SetLength(posArray, 1);
+      posArray[0] := scriptPos;
+      TypeCheckArguments(Self, funcExpr, posArray);
       if Optimize then
          TObject(expr) := funcExpr.OptimizeToTypedExpr(Self, scriptPos);
       Result := True;

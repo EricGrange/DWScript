@@ -749,6 +749,7 @@ type
 
          function IsOfType(typSym : TTypeSymbol) : Boolean;
          function IsGeneric : Boolean; virtual;
+         function AssignsAsDataExpr : Boolean; virtual;
 
          function SameDataExpr(expr : TTypedExpr) : Boolean; virtual;
 
@@ -856,6 +857,7 @@ type
 
          function IsWritable : Boolean; virtual;
          function IsExternal : Boolean; virtual;
+         function AssignsAsDataExpr : Boolean; override;
 
          function DataSymbol : TDataSymbol; virtual;
 
@@ -4125,6 +4127,13 @@ begin
    Result := (Typ <> nil) and (Typ.IsGeneric);
 end;
 
+// AssignsAsDataExpr
+//
+function TTypedExpr.AssignsAsDataExpr : Boolean;
+begin
+   Result := False;
+end;
+
 // SameDataExpr
 //
 function TTypedExpr.SameDataExpr(expr : TTypedExpr) : Boolean;
@@ -4399,6 +4408,13 @@ end;
 function TDataExpr.IsExternal : Boolean;
 begin
    Result:=False;
+end;
+
+// AssignsAsDataExpr
+//
+function TDataExpr.AssignsAsDataExpr : Boolean;
+begin
+   Result := Typ.AssignsAsDataExpr;
 end;
 
 // DataSymbol

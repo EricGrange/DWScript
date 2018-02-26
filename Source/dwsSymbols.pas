@@ -673,6 +673,7 @@ type
          function SameType(typSym : TTypeSymbol) : Boolean; virtual;
          function HasMetaSymbol : Boolean; virtual;
          function IsForwarded : Boolean; virtual;
+         function AssignsAsDataExpr : Boolean; virtual;
 
          function Specialize(const context : ISpecializationContext) : TSymbol; override; final;
          function SpecializeType(const context : ISpecializationContext) : TTypeSymbol; virtual;
@@ -1101,6 +1102,8 @@ type
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          procedure InitData(const data : TData; offset : Integer); override;
 
+         function AssignsAsDataExpr : Boolean; override;
+
          function ValueToOffsetMask(value : Integer; var mask : Int64) : Integer; inline;
          function ValueToByteOffsetMask(value : Integer; var mask : Byte) : Integer; inline;
 
@@ -1123,6 +1126,8 @@ type
          destructor Destroy; override;
 
          class function DynamicInitialization : Boolean; override;
+
+         function AssignsAsDataExpr : Boolean; override;
 
          function SortFunctionType(integerType : TTypeSymbol) : TFuncSymbol; virtual;
          function MapFunctionType(anyType : TTypeSymbol) : TFuncSymbol; virtual;
@@ -1450,6 +1455,7 @@ type
 
          procedure InitData(const data : TData; offset : Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function AssignsAsDataExpr : Boolean; override;
 
          function SpecializeType(const context : ISpecializationContext) : TTypeSymbol; override;
 
@@ -3012,6 +3018,13 @@ begin
       Exit(True);
 
    Result:=False;
+end;
+
+// AssignsAsDataExpr
+//
+function TRecordSymbol.AssignsAsDataExpr : Boolean;
+begin
+   Result := True;
 end;
 
 // SpecializeType
@@ -6846,6 +6859,13 @@ begin
       data[i]:=cZero64;
 end;
 
+// AssignsAsDataExpr
+//
+function TSetOfSymbol.AssignsAsDataExpr : Boolean;
+begin
+   Result := True;
+end;
+
 // ValueToOffsetMask
 //
 function TSetOfSymbol.ValueToOffsetMask(value : Integer; var mask : Int64) : Integer;
@@ -6893,6 +6913,13 @@ end;
 // DynamicInitialization
 //
 class function TArraySymbol.DynamicInitialization : Boolean;
+begin
+   Result := True;
+end;
+
+// AssignsAsDataExpr
+//
+function TArraySymbol.AssignsAsDataExpr : Boolean;
 begin
    Result := True;
 end;
@@ -7536,6 +7563,13 @@ end;
 function TTypeSymbol.IsForwarded : Boolean;
 begin
    Result := False;
+end;
+
+// AssignsAsDataExpr
+//
+function TTypeSymbol.AssignsAsDataExpr : Boolean;
+begin
+   Result := (Size <> 1);
 end;
 
 // Specialize

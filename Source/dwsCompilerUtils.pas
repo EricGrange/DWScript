@@ -177,6 +177,7 @@ end;
 function CreateAssignExpr(context : TdwsCompilerContext;
                           const scriptPos : TScriptPos; token : TTokenType;
                           left : TDataExpr; right : TTypedExpr) : TProgramExpr;
+
 var
    classOpSymbol : TClassOperatorSymbol;
    classOpExpr : TFuncExprBase;
@@ -230,11 +231,7 @@ begin
                   end else begin
                      Result:=TAssignExpr.Create(context, scriptPos, left, right);
                   end;
-               end else if     right.InheritsFrom(TDataExpr)
-                           and (   (right.Typ.Size<>1)
-                                or (right.Typ is TArraySymbol)
-                                or (right.Typ is TRecordSymbol)
-                                or (right.Typ is TSetOfSymbol)) then begin
+               end else if right.AssignsAsDataExpr or left.AssignsAsDataExpr then begin
                   if right.InheritsFrom(TFuncExpr) then
                      TFuncExpr(right).SetResultAddr(context.Prog as TdwsProgram, nil);
                   if right.InheritsFrom(TArrayConstantExpr) and (left.Typ is TArraySymbol) then
@@ -422,7 +419,7 @@ var
 begin
    if meth is TAliasMethodSymbol then begin
 
-      Result:=CreateSimpleFuncExpr(context, scriptPos, TAliasMethodSymbol(meth).Alias);
+      Result := CreateSimpleFuncExpr(context, scriptPos, TAliasMethodSymbol(meth).Alias);
       Result.AddArg(expr);
       Exit;
 
@@ -751,8 +748,8 @@ var
 begin
    Result := nil;
    if (aLeft=nil) or (aRight=nil) then Exit;
-   opSym:=ResolveOperatorFor(context.Prog as TdwsProgram, token, aLeft.Typ, aRight.Typ);
-   if opSym=nil then Exit;
+   opSym := ResolveOperatorFor(context.Prog as TdwsProgram, token, aLeft.Typ, aRight.Typ);
+   if opSym = nil then Exit;
 
    if opSym.OperatorExprClass <> nil then begin
       Result := TBinaryOpExprClass(opSym.OperatorExprClass).Create(context, scriptPos, token, aLeft, aRight);
