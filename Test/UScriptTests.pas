@@ -81,6 +81,9 @@ begin
    CollectFiles(basePath+'InterfacesPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'InterfacesFail'+PathDelim, cFilter, FFailures);
 
+   CollectFiles(basePath+'OperatorOverloadPass'+PathDelim, cFilter, FTests);
+   CollectFiles(basePath+'OperatorOverloadFail'+PathDelim, cFilter, FFailures);
+
    CollectFiles(basePath+'OverloadsPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'OverloadsFail'+PathDelim, cFilter, FFailures);
 
