@@ -214,6 +214,8 @@ const
          +'"LibraryPaths": ["%www%\\.lib"],'
          // Paths which scripts are allowed to perform file operations on
          +'"WorkPaths": ["%www%"],'
+         // Conditional Defines that should be preset
+         +'"Conditionals": [],'
          // HTML Filter patterns
          +'"PatternOpen": "<?pas",'
          +'"PatternEval": "=",'
@@ -628,6 +630,8 @@ end;
 procedure TSimpleDWScript.LoadDWScriptOptions(options : TdwsJSONValue);
 var
    dws : TdwsJSONValue;
+   conditionals : TdwsJSONValue;
+   i : Integer;
 begin
    dws:=TdwsJSONValue.ParseString(cDefaultDWScriptOptions);
    try
@@ -636,8 +640,8 @@ begin
       ScriptTimeoutMilliseconds:=dws['TimeoutMSec'].AsInteger;
       WorkerTimeoutMilliseconds:=dws['WorkerTimeoutMSec'].AsInteger;
 
-      DelphiWebScript.Config.MaxDataSize:=dws['StackMaxSize'].AsInteger;
-      DelphiWebScript.Config.MaxRecursionDepth:=dws['MaxRecursionDepth'].AsInteger;
+      DelphiWebScript.Config.MaxDataSize := dws['StackMaxSize'].AsInteger;
+      DelphiWebScript.Config.MaxRecursionDepth := dws['MaxRecursionDepth'].AsInteger;
 
       dwsCompileSystem.Paths.Clear;
       dwsCompileSystem.Paths.Add(IncludeTrailingPathDelimiter(PathVariables.Values['www']));
@@ -647,6 +651,10 @@ begin
       dwsRuntimeFileSystem.Paths.Clear;
       ApplyPathsVariables(dws['WorkPaths'], dwsRuntimeFileSystem.Paths);
       dwsRuntimeFileSystem.Variables := FPathVariables;
+
+      conditionals := dws['Conditionals'];
+      for i := 0 to conditionals.ElementCount-1 do
+         DelphiWebScript.Config.Conditionals.Add(conditionals.Elements[0].AsString);
 
       dwsHtmlFilter.PatternOpen:=dws['PatternOpen'].AsString;
       dwsHtmlFilter.PatternClose:=dws['PatternClose'].AsString;

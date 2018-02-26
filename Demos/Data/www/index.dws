@@ -17,7 +17,10 @@ for var a in WebServer.Authentications do
 	<a href="https://code.google.com/p/dwscript/"><img src="res/DWS_server.png" width=306 height=200></a><br />
 	<a href="http://delphitools.info">DelphiTools.info</a> - <a href="https://code.google.com/p/dwscript/">Get the code!</a><br />
 	Compiler Version <?pas=CompilerVersion?><br />
-	This page was generated at <?pas=FormatDateTime('hh:nn:ss.zzz', Now)?>.
+	This page was generated at <?pas=FormatDateTime('hh:nn:ss.zzz', Now)?>.<br>
+   Conditional 'Hello' is <?pas
+   {$ifdef Hello}Print('defined'){$else}Print('NOT defined'){$endif};
+   ?>
 </tr></td>
 <tr><td>
 	<hr>
