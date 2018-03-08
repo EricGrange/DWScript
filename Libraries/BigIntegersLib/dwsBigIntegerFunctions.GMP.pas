@@ -66,6 +66,7 @@ type
 
          constructor CreateZero;
          constructor CreateInt64(const i : Int64);
+         constructor CreateFloat(const f : Double);
          constructor CreateString(const s : String; base : Integer);
          constructor Wrap(const v : mpz_t);
          destructor Destroy; override;
@@ -172,6 +173,9 @@ type
       procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
    end;
    TConvStringToBigIntegerExpr = class(TBigIntegerUnaryOpExpr)
+      procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
+   end;
+   TConvFloatToBigIntegerExpr = class(TBigIntegerUnaryOpExpr)
       procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
    end;
    TConvBigIntegerToIntegerExpr = class(TUnaryOpIntExpr)
@@ -372,6 +376,7 @@ begin
 
    operators.RegisterCaster(typBigInteger, systemTable.TypInteger, TConvIntegerToBigIntegerExpr);
    operators.RegisterCaster(typBigInteger, systemTable.TypString,  TConvStringToBigIntegerExpr);
+   operators.RegisterCaster(typBigInteger, systemTable.TypFloat,   TConvFloatToBigIntegerExpr);
    operators.RegisterCaster(systemTable.TypInteger, typBigInteger, TConvBigIntegerToIntegerExpr);
    operators.RegisterCaster(systemTable.TypFloat, typBigInteger,   TConvBigIntegerToFloatExpr);
 end;
@@ -481,6 +486,15 @@ constructor TBigIntegerWrapper.CreateInt64(const i : Int64);
 begin
    CreateZero;
    mpz_set_int64(Value, i);
+end;
+
+// CreateFloat
+//
+constructor TBigIntegerWrapper.CreateFloat(const f : Double);
+begin
+   inherited;
+   CreateZero;
+   mpz_set_d(Value, f);
 end;
 
 // CreateString
@@ -863,6 +877,18 @@ begin
    Expr.EvalAsString(exec, s);
    result := TBigIntegerWrapper.CreateString( s, 10 ) as IdwsBigInteger;
 end;
+
+// ------------------
+// ------------------ TConvFloatToBigIntegerExpr ------------------
+// ------------------
+
+// EvalAsInterface
+//
+procedure TConvFloatToBigIntegerExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
+begin
+   Result := TBigIntegerWrapper.CreateFloat(Expr.EvalAsFloat(exec)) as IdwsBigInteger;
+end;
+
 // ------------------
 // ------------------ TConvBigIntegerToIntegerExpr ------------------
 // ------------------
