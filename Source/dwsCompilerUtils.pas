@@ -231,7 +231,7 @@ begin
                   end else begin
                      Result:=TAssignExpr.Create(context, scriptPos, left, right);
                   end;
-               end else if right.AssignsAsDataExpr or left.AssignsAsDataExpr then begin
+               end else if left.AssignsAsDataExpr then begin
                   if right.InheritsFrom(TFuncExpr) then
                      TFuncExpr(right).SetResultAddr(context.Prog as TdwsProgram, nil);
                   if right.InheritsFrom(TArrayConstantExpr) and (left.Typ is TArraySymbol) then
