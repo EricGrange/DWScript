@@ -10502,14 +10502,24 @@ begin
                case tt of
                   ttIS : begin
 
-                     if not (Result.Typ is TClassSymbol) then
-                        FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
-                     else if not (rightTyp is TClassOfSymbol) then
-                        FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected)
-                     else if not (   TClassSymbol(rightTyp.Typ).IsOfType(Result.Typ)
-                                  or TClassSymbol(Result.Typ).IsOfType(rightTyp.Typ)) then
-                        IncompatibleTypesWarn(hotPos, CPE_IncompatibleTypes, Result.Typ, rightTyp.Typ);
-                     Result:=TIsOpExpr.Create(FCompilerContext, hotPos, tt, Result, right)
+                     if Result.IsOfType(FCompilerContext.TypBoolean) and right.IsOfType(FCompilerContext.TypBoolean) then begin
+                        if right.ClassType = TConstBooleanExpr then begin
+                           if not TConstBooleanExpr(right).Value then
+                              Result := TNotBoolExpr.Create(FCompilerContext, hotPos, Result);
+                           right.Free;
+                        end else begin
+                           Result := TRelEqualBoolExpr.Create(FCompilerContext, hotPos, ttIS, Result, right);
+                        end;
+                     end else begin
+                        if not (Result.Typ is TClassSymbol) then
+                           FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
+                        else if not (rightTyp is TClassOfSymbol) then
+                           FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected)
+                        else if not (   TClassSymbol(rightTyp.Typ).IsOfType(Result.Typ)
+                                     or TClassSymbol(Result.Typ).IsOfType(rightTyp.Typ)) then
+                           IncompatibleTypesWarn(hotPos, CPE_IncompatibleTypes, Result.Typ, rightTyp.Typ);
+                        Result := TIsOpExpr.Create(FCompilerContext, hotPos, tt, Result, right)
+                     end;
 
                   end;
                   ttIMPLEMENTS : begin

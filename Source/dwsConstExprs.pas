@@ -83,7 +83,7 @@ type
 
    // TConstBooleanExpr
    //
-   TConstBooleanExpr = class(TConstExpr)
+   TConstBooleanExpr = class sealed(TConstExpr)
       protected
          FValue : Boolean;
 
