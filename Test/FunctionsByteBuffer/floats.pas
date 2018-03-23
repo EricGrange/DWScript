@@ -20,3 +20,8 @@ try
 except
     on E : Exception do PrintLn(E.Message);
 end;
+
+bb.SetLength(10);
+bb.SetExtended(0, 123456789.0);
+bb.SetByte(3, 3);
+PrintLn(bb.GetExtended(0));

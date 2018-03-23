@@ -176,6 +176,14 @@ type
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
+   TByteBufferGetExtendedFunc = class(TInternalMagicFloatFunction)
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+   end;
+
+   TByteBufferSetExtendedFunc = class(TInternalMagicProcedure)
+      procedure DoEvalProc(const args : TExprBaseListExec); override;
+   end;
+
    TByteBufferGetDataFunc = class(TInternalMagicStringFunction)
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
    end;
@@ -769,6 +777,38 @@ begin
 end;
 
 // ------------------
+// ------------------ TByteBufferGetExtendedFunc ------------------
+// ------------------
+
+// DoEvalAsFloat
+//
+procedure TByteBufferGetExtendedFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+var
+   buffer : IdwsByteBuffer;
+begin
+   args.GetBuffer(buffer);
+   if args.Count = 2 then
+      Result := buffer.GetExtendedA(args.AsInteger[1])
+   else Result := buffer.GetExtendedP;
+end;
+
+// ------------------
+// ------------------ TByteBufferSetExtendedFunc ------------------
+// ------------------
+
+// DoEvalProc
+//
+procedure TByteBufferSetExtendedFunc.DoEvalProc(const args : TExprBaseListExec);
+var
+   buffer : IdwsByteBuffer;
+begin
+   args.GetBuffer(buffer);
+   if args.Count = 2 then
+      buffer.SetExtendedP(args.AsFloat[1])
+   else buffer.SetExtendedA(args.AsInteger[1], args.AsFloat[2])
+end;
+
+// ------------------
 // ------------------ TByteBufferGetDataFunc ------------------
 // ------------------
 
@@ -847,6 +887,8 @@ initialization
    RegisterInternalFloatFunction(TByteBufferGetSingleFunc, '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER], [iffOverloaded], 'GetSingle');
    RegisterInternalFloatFunction(TByteBufferGetDoubleFunc, '', ['buffer', SYS_BYTEBUFFER], [iffOverloaded], 'GetDouble');
    RegisterInternalFloatFunction(TByteBufferGetDoubleFunc, '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER], [iffOverloaded], 'GetDouble');
+   RegisterInternalFloatFunction(TByteBufferGetExtendedFunc, '', ['buffer', SYS_BYTEBUFFER], [iffOverloaded], 'GetExtended');
+   RegisterInternalFloatFunction(TByteBufferGetExtendedFunc, '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER], [iffOverloaded], 'GetExtended');
    RegisterInternalStringFunction(TByteBufferGetDataFunc,  '', ['buffer', SYS_BYTEBUFFER, 'size', SYS_INTEGER], [iffOverloaded], 'GetData');
    RegisterInternalStringFunction(TByteBufferGetDataFunc,  '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER, 'size', SYS_INTEGER], [iffOverloaded], 'GetData');
 
@@ -866,6 +908,8 @@ initialization
    RegisterInternalProcedure(TByteBufferSetSingleFunc, '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER, 'v', SYS_FLOAT], 'SetSingle', [iffOverloaded]);
    RegisterInternalProcedure(TByteBufferSetDoubleFunc, '', ['buffer', SYS_BYTEBUFFER, 'v', SYS_FLOAT], 'SetDouble', [iffOverloaded]);
    RegisterInternalProcedure(TByteBufferSetDoubleFunc, '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER, 'v', SYS_FLOAT], 'SetDouble', [iffOverloaded]);
+   RegisterInternalProcedure(TByteBufferSetExtendedFunc, '', ['buffer', SYS_BYTEBUFFER, 'v', SYS_FLOAT], 'SetExtended', [iffOverloaded]);
+   RegisterInternalProcedure(TByteBufferSetExtendedFunc, '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER, 'v', SYS_FLOAT], 'SetExtended', [iffOverloaded]);
    RegisterInternalProcedure(TByteBufferSetDataFunc,   '', ['buffer', SYS_BYTEBUFFER, 'v', SYS_STRING], 'SetData', [iffOverloaded]);
    RegisterInternalProcedure(TByteBufferSetDataFunc,   '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER, 'v', SYS_STRING], 'SetData', [iffOverloaded]);
 end.

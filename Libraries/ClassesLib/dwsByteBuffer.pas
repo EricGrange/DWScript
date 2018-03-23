@@ -55,6 +55,7 @@ type
       function GetInt64P : Int64;
       function GetSingleP : Double;
       function GetDoubleP : Double;
+      function GetExtendedP : Double;
       procedure GetDataStringP(size : NativeInt; var result : String);
 
       function GetByteA(index : NativeInt) : Byte;
@@ -65,6 +66,7 @@ type
       function GetInt64A(index : NativeInt) : Int64;
       function GetSingleA(index : NativeInt) : Double;
       function GetDoubleA(index : NativeInt) : Double;
+      function GetExtendedA(index : NativeInt) : Double;
       procedure GetDataStringA(index : NativeInt; size : NativeInt; var result : String);
 
       procedure SetByteP(v : Byte);
@@ -75,6 +77,7 @@ type
       procedure SetInt64P(v : Int64);
       procedure SetSingleP(v : Single);
       procedure SetDoubleP(v : Double);
+      procedure SetExtendedP(v : Double);
       procedure SetDataStringP(const v : String);
 
       procedure SetByteA(index : NativeInt; v : Byte);
@@ -85,6 +88,7 @@ type
       procedure SetInt64A(index : NativeInt; v : Int64);
       procedure SetSingleA(index : NativeInt; v : Single);
       procedure SetDoubleA(index : NativeInt; v : Double);
+      procedure SetExtendedA(index : NativeInt; v : Double);
       procedure SetDataStringA(index : NativeInt; const v : String);
    end;
 
@@ -131,6 +135,7 @@ type
          function GetInt64P : Int64;
          function GetSingleP : Double;
          function GetDoubleP : Double;
+         function GetExtendedP : Double;
          procedure GetDataStringP(size : NativeInt; var result : String);
 
          function GetByteA(index : NativeInt) : Byte;
@@ -141,6 +146,7 @@ type
          function GetInt64A(index : NativeInt) : Int64;
          function GetSingleA(index : NativeInt) : Double;
          function GetDoubleA(index : NativeInt) : Double;
+         function GetExtendedA(index : NativeInt) : Double;
          procedure GetDataStringA(index : NativeInt; size : NativeInt; var result : String);
 
          procedure SetByteP(v : Byte);
@@ -151,6 +157,7 @@ type
          procedure SetInt64P(v : Int64);
          procedure SetSingleP(v : Single);
          procedure SetDoubleP(v : Double);
+         procedure SetExtendedP(v : Double);
          procedure SetDataStringP(const v : String);
 
          procedure SetByteA(index : NativeInt; v : Byte);
@@ -161,6 +168,7 @@ type
          procedure SetInt64A(index : NativeInt; v : Int64);
          procedure SetSingleA(index : NativeInt; v : Single);
          procedure SetDoubleA(index : NativeInt; v : Double);
+         procedure SetExtendedA(index : NativeInt; v : Double);
          procedure SetDataStringA(index : NativeInt; const v : String);
 
          property Count : NativeInt read FCount write SetCount;
@@ -215,6 +223,8 @@ begin
       FPosition := 0;
    end else begin
       System.SetLength(FData, n);
+      if n > FCount then
+         System.FillChar(FData[FCount], n-FCount, 0);
       FCount := n;
       if FPosition >= n then
          FPosition := n-1;
@@ -447,6 +457,14 @@ begin
    Inc(FPosition, 8);
 end;
 
+// GetExtendedP
+//
+function TdwsByteBuffer.GetExtendedP : Double;
+begin
+   Result := GetExtendedA(FPosition);
+   Inc(FPosition, 10);
+end;
+
 // GetDataStringP
 //
 procedure TdwsByteBuffer.GetDataStringP(size : NativeInt; var result : String);
@@ -517,6 +535,14 @@ function TdwsByteBuffer.GetDoubleA(index : NativeInt) : Double;
 begin
    RangeCheck(index, 8);
    Result := PDouble(@FData[index])^;
+end;
+
+// GetExtendedA
+//
+function TdwsByteBuffer.GetExtendedA(index : NativeInt) : Double;
+begin
+   RangeCheck(index, 10);
+   Result := PExtended(@FData[index])^;
 end;
 
 // GetDataStringA
@@ -597,6 +623,14 @@ begin
    Inc(FPosition, 8);
 end;
 
+// SetExtendedP
+//
+procedure TdwsByteBuffer.SetExtendedP(v : Double);
+begin
+   SetExtendedA(FPosition, v);
+   Inc(FPosition, 10);
+end;
+
 // SetDataStringP
 //
 procedure TdwsByteBuffer.SetDataStringP(const v : String);
@@ -667,6 +701,14 @@ procedure TdwsByteBuffer.SetDoubleA(index : NativeInt; v : Double);
 begin
    RangeCheck(index, 8);
    PDouble(@FData[index])^ := v;
+end;
+
+// SetExtendedA
+//
+procedure TdwsByteBuffer.SetExtendedA(index : NativeInt; v : Double);
+begin
+   RangeCheck(index, 10);
+   PExtended(@FData[index])^ := v;
 end;
 
 // SetDataStringA
