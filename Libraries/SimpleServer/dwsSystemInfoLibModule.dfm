@@ -2,8 +2,6 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
   OldCreateOrder = False
   OnCreate = DataModuleCreate
   OnDestroy = DataModuleDestroy
-  Left = 726
-  Top = 113
   Height = 205
   Width = 165
   object dwsSystemInfo: TdwsUnit
@@ -122,6 +120,11 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
           end
           item
             Name = 'GetEnvironmentVariable'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end>
             ResultType = 'String'
             Attributes = [maStatic]
             OnEval = dwsSystemInfoClassesApplicationInfoMethodsGetEnvironmentVariableEval
