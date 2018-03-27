@@ -8384,13 +8384,16 @@ begin
       if not FTok.TestName then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ClassRefExpected);
 
-      nameToken:=FTok.GetToken;
-      hotPos:=FTok.HotPos;
+      nameToken := FTok.GetToken;
+      hotPos := FTok.HotPos;
       if asAttribute then
-         sym:=FindAsAttribute(CurrentProg.Table, nameToken.AsString)
-      else sym:=nil;
-      if sym=nil then
-         sym:=CurrentProg.Table.FindSymbol(nameToken.AsString, cvPrivate);
+         sym := FindAsAttribute(CurrentProg.Table, nameToken.AsString)
+      else sym := nil;
+      if sym = nil then
+         sym := CurrentProg.Table.FindSymbol(nameToken.AsString, cvPrivate);
+      if sym <> nil then
+         CheckMatchingDeclarationCase(nameToken.AsString, sym, hotPos);
+
       FTok.KillToken;
 
       if (sym <> nil) and (sym.ClassType = TGenericSymbol) then

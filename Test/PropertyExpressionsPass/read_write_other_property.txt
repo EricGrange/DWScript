@@ -1,2 +1,5 @@
+Errors >>>>
+Hint: "Tbase" does not match case of declaration ("TBase") [line: 8, column: 14]
+Result >>>>
 1
 2

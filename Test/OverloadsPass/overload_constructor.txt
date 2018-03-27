@@ -3,6 +3,8 @@ Hint: "TObj" does not match case of declaration ("tobj") [line: 11, column: 10]
 Hint: "Create" does not match case of declaration ("create") [line: 11, column: 15]
 Hint: "TObj" does not match case of declaration ("tobj") [line: 13, column: 6]
 Hint: "Create" does not match case of declaration ("create") [line: 13, column: 11]
+Hint: "TObj" does not match case of declaration ("tobj") [line: 15, column: 10]
+Hint: "TObj" does not match case of declaration ("tobj") [line: 17, column: 10]
 Result >>>>
 0
 1
