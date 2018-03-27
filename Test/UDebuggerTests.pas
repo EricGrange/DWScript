@@ -21,6 +21,8 @@ type
          FDebugLastEvalResult : String;
          FDebugLastMessage : String;
          FDebugLastNotificationPos : TScriptPos;
+         FDebugLastEvalScriptPos : TScriptPos;
+         FDebugLastSuspendScriptPos : TScriptPos;
          FDebugResumed : Integer;
 
          procedure DoCreateExternal(Info: TProgramInfo; var ExtObject: TObject);
@@ -58,6 +60,8 @@ type
          procedure BreakpointsStatic;
          procedure BreakpointsDynamic;
          procedure BreakPointCastPos;
+
+         procedure BreakpointAndWatches;
    end;
 
    TDebuggerOptimizedTests = class (TDebuggerTests)
@@ -171,8 +175,10 @@ var
    p : TScriptPos;
 begin
    p:=expr.ScriptPos;
-   if p.Line=FDebugEvalAtLine then
-      FDebugLastEvalResult:=FDebugger.EvaluateAsString(FDebugEvalExpr, @p);
+   if p.Line=FDebugEvalAtLine then begin
+      FDebugLastEvalResult := FDebugger.EvaluateAsString(FDebugEvalExpr, @p);
+      FDebugLastEvalScriptPos := FDebugger.CurrentScriptPos;
+   end;
 end;
 
 // DoDebugMessage
@@ -201,6 +207,8 @@ end;
 procedure TDebuggerTests.DoDebugSuspended(sender : TObject);
 begin
    Inc(FDebugResumed);
+   FDebugger.Watches.Update;
+   FDebugLastSuspendScriptPos := FDebugger.CurrentScriptPos;
    FDebugger.Resume;
 end;
 
@@ -740,6 +748,50 @@ begin
       CheckEquals(True, bits[3], '3 true');
    finally
       bp.Free;
+   end;
+end;
+
+// BreakpointAndWatches
+//
+procedure TDebuggerTests.BreakpointAndWatches;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   FDebugger.Breakpoints.Add(2, SYS_MainModule);
+   try
+      prog := FCompiler.Compile( 'function Hello : Integer; begin Result := -123; end;'#13#10
+                                +'for var i := 0 to Hello do begin end;');
+      CheckEquals('', prog.Msgs.AsInfo);
+
+      exec := prog.CreateNewExecution;
+
+      FDebugLastEvalScriptPos.Clear;
+
+      FDebugEvalExpr := 'Hello*2';
+      FDebugEvalAtLine := 2;
+      FDebugger.BeginDebug(exec);
+      FDebugger.EndDebug;
+
+      CheckEquals(2, FDebugLastEvalScriptPos.Line, 'eval expr');
+      CheckEquals('-246', FDebugLastEvalResult);
+
+      FDebugLastEvalScriptPos.Clear;
+      FDebugEvalExpr := '';
+      FDebugger.Watches.Add('Hello');
+      try
+         FDebugger.BeginDebug(exec);
+         FDebugger.EndDebug;
+
+         CheckEquals(2, FDebugLastSuspendScriptPos.Line, 'watch');
+         CheckEquals('-123', FDebugger.Watches[0].ValueInfo.ValueAsString);
+      finally
+         FDebugger.Watches.Clear;
+      end;
+
+   finally
+      FDebugEvalExpr := '';
+      FDebugger.Breakpoints.Clear;
    end;
 end;
 

@@ -182,11 +182,13 @@ type
 
       public
          constructor Create(aDebugger : TdwsDebugger);
+         destructor Destroy; override;
 
          function Add(const exprText : String) : TdwsDebuggerWatch;
 
          procedure Update;
          procedure ClearEvaluators;
+         procedure Clear;
 
          property Debugger : TdwsDebugger read FDebugger;
    end;
@@ -906,9 +908,9 @@ function TdwsDebugger.Evaluate(const expression : String; scriptPos : PScriptPos
 begin
    Assert(daCanEvaluate in AllowedActions, 'Evaluate not allowed');
 
-   if FExecution<>nil then
-      Result:=TdwsEvaluateExpr.Evaluate(FExecution, expression, [], scriptPos)
-   else Result:=nil;
+   if FExecution <> nil then
+      Result := TdwsEvaluateExpr.Evaluate(FExecution, expression, [], scriptPos)
+   else Result := nil;
 end;
 
 // EvaluateAsString
@@ -917,15 +919,19 @@ function TdwsDebugger.EvaluateAsString(const expression : String; scriptPos : PS
 var
    expr : IdwsEvaluateExpr;
 begin
-   if FExecution=nil then
-      Exit(DBG_NotDebugging);
+   if FExecution=nil then Exit(DBG_NotDebugging);
    try
-      expr:=Evaluate(expression, scriptPos);
+      expr := Evaluate(expression, scriptPos);
       try
-         Result:=DBG_NoResult;
-         expr.Expression.EvalAsString(FExecution.ExecutionObject, Result);
+         Result := DBG_NoResult;
+         FExecution.SuspendDebug;
+         try
+            expr.Expression.EvalAsString(FExecution.ExecutionObject, Result);
+         finally
+            FExecution.ResumeDebug;
+         end;
       finally
-         expr:=nil;
+         expr := nil;
       end;
    except
       on E : Exception do
@@ -1346,8 +1352,8 @@ begin
    end;
 
    if (Evaluator=nil) or (not Evaluator.ContextIsValid) then begin
-      scriptPos:=debugger.GetCurrentScriptPos;
-      Evaluator:=TdwsEvaluateExpr.Evaluate(debugger.Execution, ExpressionText, [], @scriptPos);
+      scriptPos := debugger.GetCurrentScriptPos;
+      Evaluator := TdwsEvaluateExpr.Evaluate(debugger.Execution, ExpressionText, [], @scriptPos);
    end;
 
    expr:=Evaluator.Expression;
@@ -1361,14 +1367,21 @@ begin
    FValueData:=TdwsDebuggerTempValueSymbol.Create(ExpressionText, expr.Typ);
    exec:=debugger.Execution.ExecutionObject;
    try
-      if (FValueData.Typ<>nil) then begin
-         if (FValueData.Typ.Size>1) and (expr is TDataExpr) then begin
-            expr.EvalNoResult(exec);
-            TDataExpr(expr).DataPtr[exec].CopyData(FValueData.Data, 0, FValueData.Typ.Size);
-         end else if FValueData.Typ.Size=1 then begin
-            expr.EvalAsVariant(exec, FValueData.Data[0]);
+      if exec <> nil then
+         exec.SuspendDebug;
+      try
+         if (FValueData.Typ<>nil) then begin
+            if (FValueData.Typ.Size>1) and (expr is TDataExpr) then begin
+               expr.EvalNoResult(exec);
+               TDataExpr(expr).DataPtr[exec].CopyData(FValueData.Data, 0, FValueData.Typ.Size);
+            end else if FValueData.Typ.Size=1 then begin
+               expr.EvalAsVariant(exec, FValueData.Data[0]);
+            end else expr.EvalNoResult(exec);
          end else expr.EvalNoResult(exec);
-      end else expr.EvalNoResult(exec);
+      finally
+         if exec <> nil then
+            exec.ResumeDebug;
+      end;
    except
       on E: Exception do begin
          FEvaluationError:=dweeEvaluation;
@@ -1414,6 +1427,14 @@ begin
    FDebugger:=aDebugger;
 end;
 
+// Destroy
+//
+destructor TdwsDebuggerWatches.Destroy;
+begin
+   Clean;
+   inherited;
+end;
+
 // Add
 //
 function TdwsDebuggerWatches.Add(const exprText : String) : TdwsDebuggerWatch;
@@ -1453,6 +1474,13 @@ var
 begin
    for i:=0 to Count-1 do
       Items[i].ClearEvaluator;
+end;
+
+// Clear
+//
+procedure TdwsDebuggerWatches.Clear;
+begin
+   Clean;
 end;
 
 // ------------------

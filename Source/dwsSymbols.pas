@@ -99,6 +99,9 @@ type
       function GetCallStack : TdwsExprLocationArray;
       function GetLastScriptErrorExpr : TExprBase;
 
+      procedure SuspendDebug;
+      procedure ResumeDebug;
+
       property ProgramState : TProgramState read GetProgramState;
       property Sleeping : Boolean read GetSleeping;
       property Stack : TStack read GetStack;
@@ -1862,6 +1865,7 @@ type
 
          FDebugger : IDebugger;
          FIsDebugging : Boolean;
+         FDebugSuspended : Integer;
 
          FSleepTime : Integer;
          FSleeping : Boolean;
@@ -1924,6 +1928,9 @@ type
          function CallStackLastExpr : TExprBase; virtual; abstract;
          function CallStackLastProg : TObject; virtual; abstract;
          function CallStackDepth : Integer; virtual; abstract;
+
+         procedure SuspendDebug;
+         procedure ResumeDebug;
 
          procedure DataContext_Create(const data : TData; addr : Integer; var Result : IDataContext); inline;
          procedure DataContext_CreateEmpty(size : Integer; var Result : IDataContext); inline;
@@ -8000,6 +8007,38 @@ end;
 function TdwsExecution.GetStackPData : PData;
 begin
    Result := FStack.GetPData;
+end;
+
+// SuspendDebug
+//
+procedure TdwsExecution.SuspendDebug;
+begin
+   if FDebugSuspended = 0 then begin
+      if FIsDebugging then
+         FDebugSuspended := 1
+      else FDebugSuspended := -1;
+      FIsDebugging := False;
+   end else if FDebugSuspended > 0 then
+      Inc(FDebugSuspended)
+   else Dec(FDebugSuspended);
+end;
+
+// ResumeDebug
+//
+procedure TdwsExecution.ResumeDebug;
+begin
+   case FDebugSuspended of
+      0 : Assert(False);
+      1 : begin
+         FDebugSuspended := 0;
+         FIsDebugging := True;
+      end;
+      -1 : FDebugSuspended := 0;
+   else
+      if FDebugSuspended > 0 then
+         Dec(FDebugSuspended)
+      else Inc(FDebugSuspended);
+   end;
 end;
 
 // ------------------
