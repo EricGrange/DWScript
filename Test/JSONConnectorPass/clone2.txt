@@ -1,0 +1,4 @@
+{"str":"world","num":123,"bool":true}
+world
+123
+True

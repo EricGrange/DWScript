@@ -933,10 +933,15 @@ var
    v : TdwsJSONValue;
 begin
    args.EvalAsVariant(0, base);
-   v:=TBoxedJSONValue.UnBox(base);
-   if v<>nil then
-      VarCopySafe(result, IBoxedJSONValue(TBoxedJSONValue.Create(v.Clone)))
-   else VarClear(result);
+   case VarType(base) of
+      varInt64, varDouble, varString, varBoolean :
+         result := base;
+   else
+      v := TBoxedJSONValue.UnBox(base);
+      if v <> nil then
+         VarCopySafe(result, IBoxedJSONValue(TBoxedJSONValue.Create(v.Clone)))
+      else VarClear(result);
+   end;
 end;
 
 // ------------------
