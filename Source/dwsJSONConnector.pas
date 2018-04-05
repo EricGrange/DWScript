@@ -934,7 +934,7 @@ var
 begin
    args.EvalAsVariant(0, base);
    case VarType(base) of
-      varInt64, varDouble, varString, varBoolean :
+      varInt64, varDouble, varUString, varBoolean :
          result := base;
    else
       v := TBoxedJSONValue.UnBox(base);
