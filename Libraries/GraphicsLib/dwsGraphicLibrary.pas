@@ -18,7 +18,9 @@ unit dwsGraphicLibrary;
 
 {$I dws.inc}
 
-{$define USE_LIB_JPEG}
+{$ifdef WIN32}
+   {$define USE_LIB_JPEG}
+{$endif}
 
 interface
 
@@ -30,6 +32,7 @@ uses
    JPEG,
    {$endif}
    PNGImage,
+   dwsJPEGEncoderOptions,
    dwsXPlatform, dwsUtils, dwsStrings,
    dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList, dwsUnitSymbols,
    dwsConstExprs, dwsMagicExprs, dwsDataContext;
@@ -142,7 +145,7 @@ var
          for y:=0 to h-1 do begin
             scanLine:=bmp.ScanLine[y];
             for x:=0 to w-1 do begin
-               c:=dynArray.AsInteger[i];
+               c:=pixmap.AsInteger[i];
                scanLine^:=PRGB24(@c)^;
                Inc(i);
                Inc(scanLine);
@@ -153,7 +156,6 @@ var
          try
             jpg.Assign(bmp);
             jpg.CompressionQuality:=quality;
-            if jpgoOp
             jpg.SaveToStream(buf);
             Result:=RawByteStringToScriptString(buf.ToRawBytes);
          finally

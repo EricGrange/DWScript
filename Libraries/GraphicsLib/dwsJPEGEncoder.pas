@@ -24,15 +24,8 @@ interface
 uses
    SysUtils,
    dwsUtils,
-   libJPEG;
-
-type
-   TJPEGOption = (
-      jpgoOptimize,        // optimize Huffman tables
-      jpgoNoJFIFHeader,    // don't write JFIF header
-      jpgoProgressive      // progressive JPEG
-      );
-   TJPEGOptions = set of TJPEGOption;
+   libJPEG,
+   dwsJPEGEncoderOptions;
 
 function CompressJPEG(rgbData : Pointer; width, height, quality : Integer;
                       const options : TJPEGOptions = [];

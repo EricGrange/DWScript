@@ -57,7 +57,7 @@ const
 {$ENDIF}
 
    // following is missing from D2010
-   INVALID_HANDLE_VALUE = DWORD(-1);
+   INVALID_HANDLE_VALUE = NativeUInt(-1);
 
    {$ifdef FPC}
    // FreePascal RTL declares this constant, but does not support it,
@@ -322,16 +322,13 @@ type
    end;
 
 {$ifndef SRW_FALLBACK}
-type
-   SRWLOCK = Pointer;
+procedure AcquireSRWLockExclusive(var SRWLock : Pointer); stdcall; external 'kernel32.dll';
+function TryAcquireSRWLockExclusive(var SRWLock : Pointer) : BOOL; stdcall; external 'kernel32.dll';
+procedure ReleaseSRWLockExclusive(var SRWLock : Pointer); stdcall; external 'kernel32.dll';
 
-procedure AcquireSRWLockExclusive(var SRWLock : SRWLOCK); stdcall; external 'kernel32.dll';
-function TryAcquireSRWLockExclusive(var SRWLock : SRWLOCK) : BOOL; stdcall; external 'kernel32.dll';
-procedure ReleaseSRWLockExclusive(var SRWLock : SRWLOCK); stdcall; external 'kernel32.dll';
-
-procedure AcquireSRWLockShared(var SRWLock : SRWLOCK); stdcall; external 'kernel32.dll';
-function TryAcquireSRWLockShared(var SRWLock : SRWLOCK) : BOOL; stdcall; external 'kernel32.dll';
-procedure ReleaseSRWLockShared(var SRWLock : SRWLOCK); stdcall; external 'kernel32.dll';
+procedure AcquireSRWLockShared(var SRWLock : Pointer); stdcall; external 'kernel32.dll';
+function TryAcquireSRWLockShared(var SRWLock : Pointer) : BOOL; stdcall; external 'kernel32.dll';
+procedure ReleaseSRWLockShared(var SRWLock : Pointer); stdcall; external 'kernel32.dll';
 {$endif}
 
 type
@@ -1268,8 +1265,8 @@ var
    n, nRead : Cardinal;
 begin
    if fileName='' then Exit;
-   hFile:=OpenFileForSequentialReadOnly(fileName);
-   if hFile=INVALID_HANDLE_VALUE then Exit;
+   hFile := OpenFileForSequentialReadOnly(fileName);
+   if hFile = INVALID_HANDLE_VALUE then Exit;
    try
       n:=GetFileSize(hFile, nil);
       if n=INVALID_FILE_SIZE then
