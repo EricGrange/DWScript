@@ -1,0 +1,13 @@
+//
+// New Script
+//
+uses
+    CircA, CircB;
+
+ PA;
+ Println('---');
+ PB;
+ Println('---');
+ PC;
+
+
