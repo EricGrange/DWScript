@@ -15,27 +15,29 @@
 {                                                                      }
 unit dwsSynSQLiteFunctions;
 
+{$I dws.inc}
+
 interface
 
 uses
    SynSQLite3;
 
 // Sqrt()
-procedure SQLiteFunc_Sqrt(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+procedure SQLiteFunc_Sqrt(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); {$ifdef WIN32}cdecl;{$endif}
 
 // Median() aggregate
-procedure SQLiteFunc_MedianStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
-procedure SQLiteFunc_MedianFinal(context: TSQLite3FunctionContext); cdecl;
+procedure SQLiteFunc_MedianStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); {$ifdef WIN32}cdecl;{$endif}
+procedure SQLiteFunc_MedianFinal(context: TSQLite3FunctionContext); {$ifdef WIN32}cdecl;{$endif}
 
 // Bool_And() / Bool_Or() aggregates
-procedure SQLiteFunc_BoolAndStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
-procedure SQLiteFunc_BoolOrStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
-procedure SQLiteFunc_BoolFinal(context: TSQLite3FunctionContext); cdecl;
+procedure SQLiteFunc_BoolAndStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); {$ifdef WIN32}cdecl;{$endif}
+procedure SQLiteFunc_BoolOrStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); {$ifdef WIN32}cdecl;{$endif}
+procedure SQLiteFunc_BoolFinal(context: TSQLite3FunctionContext); {$ifdef WIN32}cdecl;{$endif}
 
 // Bit_And() / Bit_Or() aggregates
-procedure SQLiteFunc_BitAndStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
-procedure SQLiteFunc_BitOrStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
-procedure SQLiteFunc_BitFinal(context: TSQLite3FunctionContext); cdecl;
+procedure SQLiteFunc_BitAndStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); {$ifdef WIN32}cdecl;{$endif}
+procedure SQLiteFunc_BitOrStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); {$ifdef WIN32}cdecl;{$endif}
+procedure SQLiteFunc_BitFinal(context: TSQLite3FunctionContext); {$ifdef WIN32}cdecl;{$endif}
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -60,7 +62,7 @@ type
 // SQLiteFunc_Sqrt
 //
 procedure SQLiteFunc_Sqrt(context : TSQLite3FunctionContext;
-                          argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+                          argc : Integer; var argv : TSQLite3ValueArray);
 var
    a : Double;
 begin
@@ -76,7 +78,7 @@ end;
 // SQLiteFunc_MedianStep
 //
 procedure SQLiteFunc_MedianStep(context : TSQLite3FunctionContext;
-                                argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+                                argc : Integer; var argv : TSQLite3ValueArray);
 var
    list : TSimpleDoubleList;
    p : ^TSimpleDoubleList;
@@ -95,7 +97,7 @@ end;
 
 // SQLiteFunc_MedianFinal
 //
-procedure SQLiteFunc_MedianFinal(context: TSQLite3FunctionContext); cdecl;
+procedure SQLiteFunc_MedianFinal(context: TSQLite3FunctionContext);
 var
    list : TSimpleDoubleList;
    p : ^TSimpleDoubleList;
@@ -118,7 +120,7 @@ end;
 // SQLiteFunc_BoolAndStep
 //
 procedure SQLiteFunc_BoolAndStep(context : TSQLite3FunctionContext;
-                                 argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+                                 argc : Integer; var argv : TSQLite3ValueArray);
 var
    p : ^TNullableBoolean;
 begin
@@ -140,7 +142,7 @@ end;
 // SQLiteFunc_BoolOrStep
 //
 procedure SQLiteFunc_BoolOrStep(context : TSQLite3FunctionContext;
-                                argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+                                argc : Integer; var argv : TSQLite3ValueArray);
 var
    p : ^TNullableBoolean;
 begin
@@ -161,7 +163,7 @@ end;
 
 // SQLiteFunc_BoolFinal
 //
-procedure SQLiteFunc_BoolFinal(context: TSQLite3FunctionContext); cdecl;
+procedure SQLiteFunc_BoolFinal(context: TSQLite3FunctionContext);
 var
    p : ^TNullableBoolean;
 begin
@@ -181,7 +183,7 @@ end;
 // SQLiteFunc_BitAndStep
 //
 procedure SQLiteFunc_BitAndStep(context : TSQLite3FunctionContext;
-                                argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+                                argc : Integer; var argv : TSQLite3ValueArray);
 var
    p : ^TNullableInt64;
 begin
@@ -200,7 +202,7 @@ end;
 // SQLiteFunc_BitOrStep
 //
 procedure SQLiteFunc_BitOrStep(context : TSQLite3FunctionContext;
-                               argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+                               argc : Integer; var argv : TSQLite3ValueArray);
 var
    p : ^TNullableInt64;
 begin
@@ -218,7 +220,7 @@ end;
 
 // SQLiteFunc_BitFinal
 //
-procedure SQLiteFunc_BitFinal(context: TSQLite3FunctionContext); cdecl;
+procedure SQLiteFunc_BitFinal(context: TSQLite3FunctionContext);
 var
    p : ^TNullableInt64;
 begin
