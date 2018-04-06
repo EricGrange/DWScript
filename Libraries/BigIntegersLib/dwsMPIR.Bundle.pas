@@ -21,7 +21,20 @@
 }
 unit dwsMPIR.Bundle;
 
-{$R mpir.RES}
+{$I dws.inc}
+
+{.$define USE_MPIR3}
+
+{$ifdef USE_MPIR3}
+   {$ifdef WIN64}
+      {$R mpir3-64.RES}
+   {$endif}
+   {$ifdef WIN32}
+      {$R mpir3-32.RES}
+   {$endif}
+{$else}
+   {$R mpir.RES}
+{$endif}
 
 interface
 
