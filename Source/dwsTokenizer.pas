@@ -642,13 +642,10 @@ end;
 // ToFloat
 //
 function TTokenBuffer.ToFloat : Double;
-var
-   buf : Extended;
 begin
    AppendChar(#0);
-   if not TryTextToFloat(PChar(@Buffer[0]), buf, cFormatSettings) then
+   if not TryStrToDouble(PChar(@Buffer[0]), Result, cFormatSettings) then
       raise EConvertError.Create('');
-   Result:=buf;
 end;
 
 // ToType

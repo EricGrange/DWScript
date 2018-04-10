@@ -693,7 +693,6 @@ procedure TdwsJSONParserState.ParseJSONNumber(initialChar : WideChar; var result
 var
    bufPtr : PWideChar;
    c : WideChar;
-   resultBuf : Extended;
    buf : array [0..50] of WideChar;
 begin
    buf[0]:=initialChar;
@@ -757,9 +756,9 @@ begin
             end;
          end;
    end;
-   bufPtr^:=#0;
-   TryTextToFloatW(PWideChar(@buf[0]), resultBuf, vJSONFormatSettings);
-   Result:=resultBuf;
+   bufPtr^ := #0;
+   if not TryStrToDouble(PWideChar(@buf[0]), result) then
+      TdwsJSONValue.RaiseJSONParseError('Invalid number');
 end;
 
 // ParseIntegerArray

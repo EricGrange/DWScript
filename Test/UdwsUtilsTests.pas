@@ -107,6 +107,8 @@ type
          procedure xxHashTest;
 
          procedure URLRewriter;
+
+         procedure TryStrToDoubleTest;
    end;
 
 // ------------------------------------------------------------------
@@ -1654,6 +1656,89 @@ begin
    CheckPass('/helloworldxyz/*', '/$1', '/helloworldxyz/', '/');
    CheckPass('/helloworldxyz/*', '/$1', '/helloworldxyz/abcdef.ghi', '/abcdef.ghi');
    CheckPass('/helloworldxyz/*', '/$1', '/helloworldxyz', '/helloworldxyz');
+end;
+
+// TryStrToDoubleTest
+//
+procedure TdwsUtilsTests.TryStrToDoubleTest;
+
+   procedure CheckVal(expected : Double; const s : String);
+   var
+      v : Double;
+   begin
+      if TryStrToDouble(PChar(s), v) then begin
+         if (expected <> v) and (FloatToStr(v) <> FloatToStr(expected)) then
+            Check(False, Format('expected %f but got %f for "%s" (delta = %f)',
+                                [ expected, v, s, expected-v ]))
+         else Check(True, s);
+      end else Check(False, 'failed conversion for "' + s + '"');
+   end;
+
+   procedure CheckFail(const s : String);
+   var
+      v : Double;
+   begin
+      CheckFalse(TryStrToDouble(PChar(s), v), 'incorrectly accepted "' + s + '"');
+   end;
+
+var
+   i : Integer;
+   v : Double;
+   s : String;
+begin
+   CheckVal(0, '0');
+   CheckVal(0, '00');
+   CheckVal(0, '0.0');
+   CheckVal(0, '00.00');
+   CheckVal(0, '0.');
+   CheckVal(0, '.0');
+   CheckVal(0, '.0e0');
+   CheckVal(0, '0e1');
+   CheckVal(0, '+.00e100');
+   CheckVal(0, '-0.e-100');
+   CheckVal(3, ' 3');
+   CheckVal(4, #9'4');
+
+   CheckFail('');
+   CheckFail('.');
+   CheckFail('0.e');
+   CheckFail('.e-');
+   CheckFail('1e-');
+   CheckFail('1e+');
+   CheckFail('+');
+
+   CheckVal(1e2, '1e2');
+   CheckVal(1.5e+2, '1.5e+2');
+   CheckVal(-01.500e-03, '-01.500e-03');
+   CheckVal(-0.5E0, '-.5E0');
+   CheckVal(-0.5e0, '-0.5e0');
+
+   CheckFail('1e308');
+   CheckFail('1e-308');
+   CheckFail('1e99999999');
+   CheckFail('1e-99999999');
+   CheckFail('10000000000000000e300');
+   CheckFail('1a');
+   CheckFail('1_');
+   CheckFail('_1');
+   CheckFail('1..0');
+   CheckFail('1..');
+   CheckFail('2ee0');
+
+   CheckVal(3.14159265358979323846264338327950288, '3.14159265358979323846264338327950288');
+   CheckVal(-3.14159265358979323846264338327950288, '-3.14159265358979323846264338327950288');
+   CheckVal(0.314159265358979323846264338327950288, '0.314159265358979323846264338327950288');
+   CheckVal(0.0314159265358979323846264338327950288, '0.0314159265358979323846264338327950288');
+   CheckVal(0.00314159265358979323846264338327950288, '0.00314159265358979323846264338327950288');
+   CheckVal(3141592653589793238462643383279502.0, '3141592653589793238462643383279502');
+   CheckVal(31415926535897932384626433832795028.0, '31415926535897932384626433832795028.');
+   CheckVal(314159265358979323846264338327950288.0, '314159265358979323846264338327950288.0');
+
+   for i := -100 to 100 do begin
+      s := FloatToStr(PI*i*IntPower(Pi, i));
+      TryStrToDouble(PChar(s), v);
+      CheckEquals(s, FloatToStr(v), 'Pi x ' + IntToStr(i));
+   end;
 end;
 
 // ------------------------------------------------------------------

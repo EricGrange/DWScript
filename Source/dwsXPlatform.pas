@@ -236,11 +236,6 @@ procedure OutputDebugString(const msg : String);
 procedure WriteToOSEventLog(const logName, logCaption, logDetails : String;
                             const logRawData : RawByteString = ''); overload;
 
-function TryTextToFloat(const s : PChar; var value : Extended;
-                        const formatSettings : TFormatSettings) : Boolean; {$ifndef FPC} inline; {$endif}
-function TryTextToFloatW(const s : PWideChar; var value : Extended;
-                        const formatSettings : TFormatSettings) : Boolean; {$ifndef FPC} inline; {$endif}
-
 {$ifdef FPC}
 procedure VarCopy(out dest : Variant; const src : Variant); inline;
 {$else}
@@ -1094,7 +1089,9 @@ begin
    Set8087CW(cw);
 {$else}
 begin
-   Result:=TextToFloat(s, value, fvExtended, formatSettings)
+//   Result:=TextToFloat(s, value, fvExtended, formatSettings);
+   Result := TryStrToFloat(s, value, formatSettings);
+//   Result := StrToFloat(s, formatSettings);
 {$endif}
 end;
 

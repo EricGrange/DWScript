@@ -404,6 +404,8 @@ const
   CPE_RangeIncompatibleTypes = 'Range start and range stop are of incompatible types: "%s" and "%s"';
   CPE_TypeCouldNotBeInferenced = 'Type could not be inferenced';
   CPE_RangeTooLarge = 'Range is too large';
+  CPE_InvalidIntegerFormat = '"%s" is not a valid integer value';
+  CPE_InvalidFloatFormat = '"%s" is not a valid floating point value';
 
   CPE_LocalFunctionAsDelegate = 'Local procedure/function cannot be used as delegate';
   CPE_SymbolCannotBeCaptured = 'Symbol "%s" cannot be captured';

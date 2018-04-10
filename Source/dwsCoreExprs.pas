@@ -2844,7 +2844,7 @@ var
    buf : Variant;
 begin
    Expr.EvalAsVariant(exec, buf);
-   exec.Stack.Data[exec.Stack.BasePointer+FStackAddr] := buf;
+   VarCopySafe(exec.Stack.Data[exec.Stack.BasePointer+FStackAddr], buf);
 end;
 
 // EvalAsScriptObj

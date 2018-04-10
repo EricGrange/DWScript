@@ -391,8 +391,14 @@ end;
 { TStrToIntFunc }
 
 function TStrToIntFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+var
+   s : String;
+   e : Integer;
 begin
-   Result := StrToInt64(String(args.AsString[0]));
+   s := args.AsString[0];
+   Val(s, Result, e);
+   if e <> 0 then
+      raise EConvertError.CreateFmt(CPE_InvalidIntegerFormat, [ s ]);
 end;
 
 { TStrToIntDefFunc }
@@ -510,26 +516,26 @@ end;
 { TStrToFloatFunc }
 
 procedure TStrToFloatFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+var
+   s : String;
 begin
-   {$ifdef FPC}
-   Result:=StrToFloat(UTF8Encode(args.AsString[0]));
-   {$else}
-   Result:=StrToFloat(args.AsString[0]);
-   {$endif}
+   s := args.AsString[0];
+   if not TryStrToDouble(PChar(s), Result) then
+      raise EConvertError.CreateFmt(CPE_InvalidFloatFormat, [ s ]);
 end;
 
 { TStrToFloatDefFunc }
 
 procedure TStrToFloatDefFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+var
+   s : String;
 begin
-   {$ifdef FPC}
-   Result:=StrToFloatDef(UTF8Encode(args.AsString[0]), args.AsFloat[1]);
-   {$else}
-   Result:=StrToFloatDef(args.AsString[0], args.AsFloat[1]);
-   {$endif}
+   s := args.AsString[0];
+   if not TryStrToDouble(PChar(s), Result) then
+      Result := args.AsFloat[1];
 end;
 
-{ TStrToFloatDefFunc }
+{ TVarToFloatDefFunc }
 
 procedure TVarToFloatDefFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 var

@@ -446,9 +446,11 @@ begin
             end;
          end;
       end;
-      tmp.Sort;
-      for i:=0 to tmp.Count-1 do
-         FList.Add(TSymbol(tmp.Objects[i]));
+      if tmp.Count > 0 then begin
+         tmp.Sort;
+         for i:=0 to tmp.Count-1 do
+            FList.Add(TSymbol(tmp.Objects[i]));
+      end;
    finally
       tmp.Free;
    end;

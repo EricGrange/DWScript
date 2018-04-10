@@ -1014,6 +1014,10 @@ function  StrUToInt64(const s : UnicodeString; const default : Int64) : Int64;
 
 function Int64ToHex(val : Int64; digits : Integer) : String; inline;
 
+function TryStrToDouble(const s : String; var val : Double) : Boolean; overload; inline;
+function TryStrToDouble(const s : String; var val : Double; const formatSettings : TFormatSettings) : Boolean; overload; inline;
+function TryStrToDouble(p : PChar; var val : Double; formatSettings : PFormatSettings = nil) : Boolean; overload;
+
 function DivMod10(var dividend : Cardinal) : Cardinal;
 function DivMod100(var dividend : Cardinal) : Cardinal;
 
@@ -1633,6 +1637,163 @@ end;
 function Int64ToHex(val : Int64; digits : Integer) : String;
 begin
    FastInt64ToHex(val, digits, Result);
+end;
+
+// TryStrToDouble (string)
+//
+function TryStrToDouble(const s : String; var val : Double) : Boolean;
+begin
+   Result := TryStrToDouble(PChar(s), val);
+end;
+
+// TryStrToDouble (string, fmt)
+//
+function TryStrToDouble(const s : String; var val : Double; const formatSettings : TFormatSettings) : Boolean;
+begin
+   Result := TryStrToDouble(PChar(s), val, @formatSettings);
+end;
+
+// TryStrToDouble (PChar)
+//
+function TryStrToDouble(p : PChar; var val : Double; formatSettings : PFormatSettings = nil) : Boolean;
+const
+   cMaxExponent = 307;
+   cPowersOf10 : array [0..8] of Double = ( 10, 100, 1e4, 1e8, 1e16, 1e32, 1e64, 1e128, 1e256 );
+var
+   sign, expSign, gotDec, gotFrac : Boolean;
+   mantissa, mantissaFrac : Double;
+   dblExp : Double;
+   mantissaExp, exp, i : Integer;
+   pMantissaStart, pFrac, pFracStart : PChar;
+begin
+   if p = nil then Exit(False);
+
+   // skip leading whitespace & tabs
+   while (p^ = ' ') or (p^ = #9) do
+      Inc(p);
+
+   // grab the sign
+   case p^ of
+      '-' : begin
+         sign := True;
+         Inc(p);
+      end;
+      '+' : begin
+         sign := False;
+         Inc(p);
+      end;
+   else
+      sign := False;
+   end;
+
+   // grab mantissa, decimal part
+   case p^ of
+      '0'..'9' : begin
+         gotDec := True;
+         // skip leading zeroes, needed to figure out mantissa exponent
+         while p^ = '0' do
+            Inc(p);
+         if (p^ >= '0') and (p^ <= '9') then begin
+            pMantissaStart := p;
+            mantissa := Ord(p^)-Ord('0');
+            Inc(p);
+            while (p^ >= '0') and (p^ <= '9') do begin
+               mantissa := mantissa*10 + Ord(p^)-Ord('0');
+               Inc(p);
+            end;
+            mantissaExp := (NativeUInt(p) - NativeUInt(pMantissaStart)) div SizeOf(Char);
+         end else begin
+            mantissa := 0;
+            mantissaExp := 0;
+         end;
+      end;
+   else
+      gotDec := False;
+      mantissa := 0;
+      mantissaExp := 0;
+   end;
+
+   // grab mantissa, fractional part, if there is one, accept both '.' and ',' as decimal separator
+   gotFrac := False;
+   if    ((formatSettings = nil) and ((p^ = '.') or (p^ = ',')))
+      or ((formatSettings <> nil) and (p^ = formatSettings.DecimalSeparator)) then begin
+      Inc(p);
+      // skip to end of fractional part, then work backwards
+      pFracStart := p;
+      while (p^ >= '0') and (p^ <= '9') do
+         Inc(p);
+      pFrac := p;
+      Dec(pFrac);
+      if pFrac >= pFracStart then begin
+         gotFrac := True;
+         mantissaFrac := 0.1 * (Ord(pFrac^) - Ord('0'));
+         Dec(pFrac);
+         while pFrac >= pFracStart do begin
+            mantissaFrac := 0.1 * (mantissaFrac + (Ord(pFrac^) - Ord('0')));
+            Dec(pFrac);
+         end;
+         mantissa := mantissa + mantissaFrac;
+      end;
+   end;
+
+   // mantissa cannot be empty or a '.'/','
+   if not (gotFrac or gotDec) then
+      Exit(False);
+
+   if sign then
+      mantissa := -mantissa;
+
+   // grab exponent, if there is one
+   if (p^ = 'e') or (p^ = 'E') then begin
+      Inc(p);
+      case p^ of
+         '-' : begin
+            expSign := True;
+            Inc(p);
+         end;
+         '+' : begin
+            expSign := False;
+            Inc(p);
+         end;
+      else
+         expSign := False;
+      end;
+      case p^ of
+         '0'..'9' : begin
+            exp := Ord(p^) - Ord('0');
+            Inc(p);
+            while (p^ >= '0') and (p^ <= '9') do begin
+               exp := exp*10 + (Ord(p^) - Ord('0'));
+               if exp + mantissaExp > cMaxExponent then
+                  Exit(False);
+               Inc(p);
+            end;
+            i := 0;
+            dblExp := 1;
+            while exp > 0 do begin
+               if (exp and 1) <> 0 then
+                  dblExp := dblExp * cPowersOf10[i];
+               Inc(i);
+               exp := exp shr 1;
+            end;
+            if expSign then
+               mantissa := mantissa / dblExp
+            else mantissa := mantissa * dblExp;
+         end;
+      else
+         Exit(False);
+      end;
+   end;
+
+   case p^ of
+      #0, #9, #13, #10, ' ' : begin
+      end;
+   else
+      Exit(False);
+   end;
+
+   val := mantissa;
+   Result := True;
 end;
 
 // Int32ToStrU

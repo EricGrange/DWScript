@@ -1,3 +1,3 @@
-'z' is not a valid integer value [line: 13, column: 4]
-'z' is not a valid floating point value [line: 19, column: 4]
+"z" is not a valid integer value [line: 13, column: 4]
+"z" is not a valid floating point value [line: 19, column: 4]
 Invalid codepoint: -1 [line: 26, column: 4]
