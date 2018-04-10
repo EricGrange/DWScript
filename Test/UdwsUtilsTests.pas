@@ -1713,8 +1713,8 @@ begin
    CheckVal(-0.5E0, '-.5E0');
    CheckVal(-0.5e0, '-0.5e0');
 
-   CheckFail('1e308');
-   CheckFail('1e-308');
+   CheckFail('1e309');
+   CheckFail('1e-309');
    CheckFail('1e99999999');
    CheckFail('1e-99999999');
    CheckFail('10000000000000000e300');
@@ -1724,6 +1724,7 @@ begin
    CheckFail('1..0');
    CheckFail('1..');
    CheckFail('2ee0');
+   CheckFail('߀'); // not a zero but U+07C0
 
    CheckVal(3.14159265358979323846264338327950288, '3.14159265358979323846264338327950288');
    CheckVal(-3.14159265358979323846264338327950288, '-3.14159265358979323846264338327950288');
@@ -1733,6 +1734,11 @@ begin
    CheckVal(3141592653589793238462643383279502.0, '3141592653589793238462643383279502');
    CheckVal(31415926535897932384626433832795028.0, '31415926535897932384626433832795028.');
    CheckVal(314159265358979323846264338327950288.0, '314159265358979323846264338327950288.0');
+
+   // https://stackoverflow.com/questions/34109339/strtofloat-and-who-is-wrong-delphi-or-ase-sql-server
+   v := 0;
+   TryStrToDouble('-1.79E308', v);
+   CheckEquals('99bbad58f1dcefff', BinToHex(v, SizeOf(v)), '-1.79E308');
 
    for i := -100 to 100 do begin
       s := FloatToStr(PI*i*IntPower(Pi, i));

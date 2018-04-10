@@ -1657,7 +1657,7 @@ end;
 //
 function TryStrToDouble(p : PChar; var val : Double; formatSettings : PFormatSettings = nil) : Boolean;
 const
-   cMaxExponent = 307;
+   cMaxExponent = 308;
    cPowersOf10 : array [0..8] of Double = ( 10, 100, 1e4, 1e8, 1e16, 1e32, 1e64, 1e128, 1e256 );
 var
    sign, expSign, gotDec, gotFrac : Boolean;
@@ -1701,7 +1701,7 @@ begin
                mantissa := mantissa*10 + Ord(p^)-Ord('0');
                Inc(p);
             end;
-            mantissaExp := (NativeUInt(p) - NativeUInt(pMantissaStart)) div SizeOf(Char);
+            mantissaExp := (NativeUInt(p) - NativeUInt(pMantissaStart)) div SizeOf(Char) - 1;
          end else begin
             mantissa := 0;
             mantissaExp := 0;
