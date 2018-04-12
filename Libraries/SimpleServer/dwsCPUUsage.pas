@@ -95,12 +95,12 @@ begin
       Result[cpuIdle]:=FileTimeToDateTime(lpIdleTime);
       Result[cpuKernel]:=FileTimeToDateTime(lpKernelTime);
       Result[cpuUser]:=FileTimeToDateTime(lpUserTime);
-   end;
+   end else FillChar(Result, SizeOf(Result), 0);
 end;
 
 // GetCurrentSystemTimes
 //
-function GetCurrentProcessTimes(handle : Cardinal) : TCPUUsage;
+function GetCurrentProcessTimes(handle : THandle) : TCPUUsage;
 var
    lpStartTime, lpExitTime, lpKernelTime, lpUserTime : FILETIME;
 begin
@@ -108,7 +108,7 @@ begin
       Result[cpuIdle]:=0;
       Result[cpuKernel]:=FileTimeToDateTime(lpKernelTime);
       Result[cpuUser]:=FileTimeToDateTime(lpUserTime);
-   end;
+   end else FillChar(Result, SizeOf(Result), 0);
 end;
 
 // CPUUsageCallBack
