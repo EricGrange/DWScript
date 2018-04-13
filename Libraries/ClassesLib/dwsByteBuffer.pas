@@ -540,9 +540,22 @@ end;
 // GetExtendedA
 //
 function TdwsByteBuffer.GetExtendedA(index : NativeInt) : Double;
+
+   {$ifdef WIN64}
+   procedure Win64LoadExtended(d : PDouble; e : PExtended);
+   asm
+      fld tbyte ptr [e]
+      fstp qword ptr [d]
+   end;
+   {$endif}
+
 begin
    RangeCheck(index, 10);
+   {$ifdef WIN64}
+   Win64LoadExtended(@Result, PExtended(@FData[index]));
+   {$else}
    Result := PExtended(@FData[index])^;
+   {$endif}
 end;
 
 // GetDataStringA
@@ -706,9 +719,22 @@ end;
 // SetExtendedA
 //
 procedure TdwsByteBuffer.SetExtendedA(index : NativeInt; v : Double);
+
+   {$ifdef WIN64}
+   procedure Win64StoreExtended(d : PDouble; e : PExtended);
+   asm
+      fld qword ptr [d]
+      fstp tbyte ptr [e]
+   end;
+   {$endif}
+
 begin
    RangeCheck(index, 10);
+   {$ifdef WIN64}
+   Win64StoreExtended(@v, PExtended(@FData[index]));
+   {$else}
    PExtended(@FData[index])^ := v;
+   {$endif}
 end;
 
 // SetDataStringA
