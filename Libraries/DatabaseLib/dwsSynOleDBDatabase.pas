@@ -95,7 +95,9 @@ initialization
    RegisterSynOleDBDriver('OleDB MSSQL2008', TOleDBMSSQL2008ConnectionProperties);
    RegisterSynOleDBDriver('OleDB MSSQL2012', TOleDBMSSQL2012ConnectionProperties);
    RegisterSynOleDBDriver('OleDB MySQL', TOleDBMySQLConnectionProperties);
+   {$ifndef WIN64}
    RegisterSynOleDBDriver('OleDB Jet', TOleDBJetConnectionProperties);
+   {$endif}
    RegisterSynOleDBDriver('OleDB AS400', TOleDBAS400ConnectionProperties);
    RegisterSynOleDBDriver('OleDB ODBC', TOleDBODBCSQLConnectionProperties);
 

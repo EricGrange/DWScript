@@ -39,7 +39,7 @@ interface
 uses
   Windows, SysUtils, Classes,
   SynZip, SynCommons,
-  dwsHTTPSysServer, dwsHTTPSysAPI, dwsHTTPSysServerEvents,
+  dwsHTTPSysServer, dwsHTTPSysAPI, dwsHTTPSysServerEvents, dwsXXHash,
   dwsUtils, dwsWebEnvironment, dwsFileSystem,
   dwsJSON, dwsXPlatform, dwsURLRewriter,
   dwsWebServerHelpers, dwsWebServerInfo, dwsWebUtils,
@@ -305,7 +305,6 @@ procedure THttpSys2WebServer.Initialize(const basePath : TFileName; options : Td
 var
    logPath, errorLogPath : TdwsJSONValue;
    serverOptions : TdwsJSONValue;
-   extraDomains, domain : TdwsJSONValue;
    env: TdwsJSONObject;
    i, nbThreads : Integer;
 begin
@@ -704,7 +703,6 @@ class function THttpSys2WebServer.EnumerateURLInfos(options : TdwsJSONValue) : T
    end;
 
 var
-   info : THttpSys2URLInfo;
    i, port : Integer;
    extraDomains, domain : TdwsJSONValue;
 begin

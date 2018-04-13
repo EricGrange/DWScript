@@ -1331,9 +1331,11 @@ const
    cVERB_TEXT : array [hvOPTIONS..hvSEARCH] of String[9] = (
       'OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE',
       'CONNECT', 'TRACK', 'MOVE', 'COPY', 'PROPFIND', 'PROPPATCH',
-      'MKCOL', 'LOCK', 'UNLOCK', 'SEARCH' );
-var
-   verb : THttpVerb;
+      'MKCOL', 'LOCK', 'UNLOCK', 'SEARCH'
+      );
+
+var
+   verb : THttpVerb;
    request : PHTTP_REQUEST_V2;
 begin
    request := FWebRequest.Request;
@@ -1434,18 +1436,18 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   Assert((sizeof(HTTP_REQUEST_V2) = 464+8) and (sizeof(HTTP_SSL_INFO) = 28) and
-      (sizeof(HTTP_DATA_CHUNK_INMEMORY) = 24) and
-      (sizeof(HTTP_DATA_CHUNK_FILEHANDLE) = 32) and
-      (sizeof(HTTP_REQUEST_HEADERS) = 344) and
-      (sizeof(HTTP_RESPONSE_HEADERS) = 256) and (sizeof(HTTP_COOKED_URL) = 24) and
-      (sizeof(HTTP_RESPONSE_V2) = 288) and (ord(reqUserAgent) = 40) and
-      (ord(respLocation) = 23) and (sizeof(THttpHeader) = 4));
+//   Assert((sizeof(HTTP_REQUEST_V2) = 464+8) and (sizeof(HTTP_SSL_INFO) = 28) and
+//      (sizeof(HTTP_DATA_CHUNK_INMEMORY) = 24) and
+//      (sizeof(HTTP_DATA_CHUNK_FILEHANDLE) = 32) and
+//      (sizeof(HTTP_REQUEST_HEADERS) = 344) and
+//      (sizeof(HTTP_RESPONSE_HEADERS) = 256) and (sizeof(HTTP_COOKED_URL) = 24) and
+//      (sizeof(HTTP_RESPONSE_V2) = 288) and (ord(reqUserAgent) = 40) and
+//      (ord(respLocation) = 23) and (sizeof(THttpHeader) = 4));
 
    if InitSocketInterface then
       WSAStartup(WinsockLevel, vWsaDataOnce)
    else
-      fillchar(vWsaDataOnce, sizeof(vWsaDataOnce), 0);
+      FillChar(vWsaDataOnce, SizeOf(vWsaDataOnce), 0);
 
 finalization
 

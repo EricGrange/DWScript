@@ -20,7 +20,7 @@ interface
 
 uses
    Classes, SysUtils,
-   dwsUtils, dwsUnicode, dwsJSCodeGen, dwsTextCodeGen, dwsCodeGen,
+   dwsUtils, dwsUnicode, dwsJSCodeGen, dwsTextCodeGen, dwsCodeGen, dwsExprList,
    dwsExprs, dwsSymbols, dwsMagicExprs, dwsCoreExprs, dwsConstExprs;
 
 type

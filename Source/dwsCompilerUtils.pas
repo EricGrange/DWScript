@@ -23,7 +23,7 @@ interface
 uses
    SysUtils, TypInfo,
    dwsErrors, dwsStrings, dwsXPlatform, dwsUtils, dwsScriptSource,
-   dwsSymbols, dwsUnitSymbols, dwsCompilerContext,
+   dwsSymbols, dwsUnitSymbols, dwsCompilerContext, dwsExprList,
    dwsExprs, dwsCoreExprs, dwsConstExprs, dwsMethodExprs, dwsMagicExprs,
    dwsConvExprs, dwsTokenizer, dwsOperators, dwsConnectorSymbols;
 

@@ -32,7 +32,7 @@
 program DWSWebServer;
 
 {$IFNDEF VER200} // delphi 2009
-   {$WEAKLINKRTTI ON}
+   {$WEAKLINKRTTI ON}
    {$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
 {$ENDIF}
 
@@ -217,6 +217,7 @@ end;
 procedure LogServiceError(options : TdwsJSONValue; const msg : String); overload;
 var
    log : String;
+   h : THandle;
 begin
    if options<>nil then begin
       log:=options['Service']['DWSErrorLogDirectory'].AsString;
@@ -225,11 +226,9 @@ begin
          AppendTextToUTF8File(log, UTF8Encode(FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz ', Now)+msg+#13#10));
       end;
    end;
-   case GetStdHandle(STD_ERROR_HANDLE) of
-      0, INVALID_HANDLE_VALUE : ;
-   else
+   h := GetStdHandle(STD_ERROR_HANDLE);
+   if (h <> 0) and (h <> INVALID_HANDLE_VALUE) then
       WriteLn(ErrOutput, msg);
-   end;
 end;
 
 procedure LogServiceError(options : TdwsJSONValue; E: Exception); overload;
@@ -239,16 +238,18 @@ end;
 
 var
    i : Integer;
-   optionsFileName, url, log : String;
+   optionsFileName : String;
    options : TdwsJSONValue;
    service : TWebServerHttpService;
    abortExecution : Boolean;
 begin
    options:=nil;
+   {$if Defined(WIN32)}
    if Win32MajorVersion<6 then begin
       LogServiceError(options, 'This program requires at least Windows 2008 or Vista');
       exit;
    end;
+   {$ifend}
 
    SetDecimalSeparator('.');
 
@@ -298,9 +299,12 @@ begin
             Readln;
 
          end;
-      except
-         on E: Exception do
-            LogServiceError(options, E);
+
+      except
+
+         on E: Exception do
+
+            LogServiceError(options, E);
       end;
    finally
       try

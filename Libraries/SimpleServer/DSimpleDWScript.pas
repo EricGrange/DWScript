@@ -19,13 +19,21 @@ unit DSimpleDWScript;
 interface
 
 {.$define LogCompiles}
+{$define ALLOW_JIT}
+
+{$if not Defined(WIN32)}
+   {$undef ALLOW_JIT}
+{$ifend}
 
 uses
    Windows, SysUtils, Classes, StrUtils, Masks,
    dwsFileSystem, dwsGlobalVarsFunctions, dwsExprList,
    dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils, dwsXPlatform,
    dwsJSONConnector, dwsJSON, dwsErrors, dwsUnitSymbols, dwsSymbols,
-   dwsJIT, dwsJITx86, dwsJSFilter, dwsJSLibModule, dwsCodeGen,
+   {$ifdef ALLOW_JIT}
+   dwsJIT, dwsJITx86,
+   {$endif}
+   dwsJSFilter, dwsJSLibModule, dwsCodeGen,
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
    dwsWebServerHelpers, dwsZipLibModule, dwsIniFileModule,
    dwsDataBase, dwsDataBaseLibModule, dwsWebServerInfo, dwsWebServerLibModule,
@@ -705,7 +713,9 @@ procedure TSimpleDWScript.CompileDWS(const fileName : String; var prog : IdwsPro
 var
    code : String;
    cp : TCompiledProgram;
+   {$ifdef ALLOW_JIT}
    jit : TdwsJITx86;
+   {$endif}
 begin
    FCompilerLock.Enter;
    try
@@ -727,6 +737,7 @@ begin
       prog:=DelphiWebScript.Compile(code, fileName);
 
       if not prog.Msgs.HasErrors then begin
+         {$ifdef ALLOW_JIT}
          if FEnableJIT and (typ in [fatDWS, fatPAS]) then begin
             jit:=TdwsJITx86.Create;
             try
@@ -736,6 +747,7 @@ begin
                jit.Free;
             end;
          end;
+         {$endif}
       end else if ErrorLogDirectory<>'' then begin
          LogCompileErrors(fileName, prog.Msgs);
       end;

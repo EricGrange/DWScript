@@ -24,7 +24,7 @@ uses
    SynZip, SynCrtSock, SynCommons, SynWinSock,
    dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList, dwsSymbols,
    dwsJSONConnector, dwsCryptoXPlatform, dwsHTTPSysServerEvents, dwsWebServerInfo,
-   dwsXPlatform, dwsCustomData;
+   dwsXPlatform, dwsCustomData, dwsDataContext;
 
 type
   TdwsWebLib = class(TDataModule)
@@ -266,7 +266,11 @@ begin
          if strm.avail_out=0 then begin
             // need to increase buffer by chunk
             SetLength(tmp,length(tmp)+len);
+            {$if Defined(WIN64)}
+            strm.next_out := PByte(pointer(tmp))+length(tmp)-len;
+            {$else}
             strm.next_out := PAnsiChar(pointer(tmp))+length(tmp)-len;
+            {$ifend}
             strm.avail_out := len;
          end;
       until code=Z_STREAM_END;

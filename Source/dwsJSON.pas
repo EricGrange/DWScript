@@ -684,7 +684,9 @@ begin
          Break;
       end;
    until False;
-   Result:=StrToFloat(buf, vJSONFormatSettings);
+
+   if not TryStrToDouble(buf, Result, vJSONFormatSettings) then
+      TdwsJSONValue.RaiseJSONParseError('Invalid number');
 end;
 
 // ParseJSONNumber

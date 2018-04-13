@@ -135,7 +135,7 @@ const
 type
 
    {$IFNDEF VER270}
-   ULONG_PTR = {$IFDEF VER230}NativeUInt{$ELSE}DWORD{$ENDIF};
+   ULONG_PTR = {$IFDEF DELPHI_XE2_PLUS}NativeUInt{$ELSE}DWORD{$ENDIF};
    {$ENDIF}
 
    TIOCPData = packed record
@@ -244,6 +244,15 @@ end;
 //
 procedure TIOCPWorkerThread.Execute;
 
+   {$ifdef DELPHI_TOKYO_PLUS}
+   procedure ExecuteAnonymousFunction(p : PAnonymousWorkUnit);
+   var
+      wu : TAnonymousWorkUnit;
+   begin
+      PPointer(@wu)^ := PPointer(p)^;
+      wu();
+   end;
+   {$else}
    procedure ExecuteAnonymousFunction(p : PAnonymousWorkUnit);
    begin
       try
@@ -252,6 +261,7 @@ procedure TIOCPWorkerThread.Execute;
          p^._Release;
       end;
    end;
+   {$endif}
 
 var
    data : TIOCPData;
