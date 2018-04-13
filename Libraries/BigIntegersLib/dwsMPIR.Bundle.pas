@@ -23,7 +23,7 @@ unit dwsMPIR.Bundle;
 
 {$I dws.inc}
 
-{.$define USE_MPIR3}
+{$define USE_MPIR3}
 
 {$ifdef USE_MPIR3}
    {$ifdef WIN64}

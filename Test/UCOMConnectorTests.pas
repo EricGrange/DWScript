@@ -2,6 +2,8 @@ unit UCOMConnectorTests;
 
 interface
 
+{$IF Defined(WIN32)}
+
 uses
    Windows, Classes, SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
@@ -250,5 +252,9 @@ initialization
 // ------------------------------------------------------------------
 
    RegisterTest('COMConnectorTests', TCOMConnectorTests);
+
+{$else}
+implementation
+{$ifend}
 
 end.

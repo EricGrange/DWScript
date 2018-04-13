@@ -1,1 +1,1 @@
-EDelphi: Format '%d' invalid or incompatible with argument [line: 5, column: 12]
+EDelphi: Format invalid or incompatible with argument [line: 5, column: 12]
