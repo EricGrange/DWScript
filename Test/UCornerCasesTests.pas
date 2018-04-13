@@ -635,7 +635,7 @@ var
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
 begin
-   FCompiler.Config.MaxDataSize:=32;
+   FCompiler.Config.MaxDataSize := 2*SizeOf(Variant);
 
    prog:=FCompiler.Compile('procedure Dummy; var i : Integer; begin Dummy; end; Dummy;');
    CheckEquals('', prog.Msgs.AsInfo, 'compile');
@@ -655,25 +655,28 @@ var
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
    buf, buf2 : String;
+   oldOptions : TCompilerOptions;
 begin
-   FCompiler.Config.MaxRecursionDepth:=1500;
-   FCompiler.Config.CompilerOptions:=[coSymbolDictionary, coContextMap, coOptimize];
+   oldOptions := FCompiler.Config.CompilerOptions;
+   try
+      FCompiler.Config.CompilerOptions:=[coSymbolDictionary, coContextMap, coOptimize];
 
-   prog:=FCompiler.Compile( 'type TObj = Class'#13#10
-                           +' Procedure Proc;'#13#10
-                           +' Begin'#13#10
-                           +'  var p := @Proc;'#13#10
-                           +'  p;'#13#10
-                           +' End;'#13#10
-                           +'End;'#13#10
-                           +'TObj.Create.Proc;'#13#10);
-   CheckEquals('', prog.Msgs.AsInfo, 'compile');
-   exec:=prog.Execute;
-   buf:='TObj.Proc [line: 5, column: 4]'#13#10' [line: 8, column: 13]'#13#10;
-   buf2:=exec.Msgs.AsInfo;
-   CheckEquals(buf, Copy(buf2, Length(buf2)-Length(buf)+1, MaxInt), 'stack overflow');
-
-   FCompiler.Config.MaxRecursionDepth:=1024;
+      prog:=FCompiler.Compile( 'type TObj = Class'#13#10
+                              +' Procedure Proc;'#13#10
+                              +' Begin'#13#10
+                              +'  var p := @Proc;'#13#10
+                              +'  p;'#13#10
+                              +' End;'#13#10
+                              +'End;'#13#10
+                              +'TObj.Create.Proc;'#13#10);
+      CheckEquals('', prog.Msgs.AsInfo, 'compile');
+      exec:=prog.Execute;
+      buf:='TObj.Proc [line: 5, column: 4]'#13#10' [line: 8, column: 13]'#13#10;
+      buf2:=exec.Msgs.AsInfo;
+      CheckEquals(buf, Copy(buf2, Length(buf2)-Length(buf)+1, MaxInt), 'stack overflow');
+   finally
+      FCompiler.Config.CompilerOptions := oldOptions;
+   end;
 end;
 
 // Assertions
