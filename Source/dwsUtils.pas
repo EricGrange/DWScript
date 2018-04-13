@@ -1658,13 +1658,27 @@ end;
 function TryStrToDouble(p : PChar; var val : Double; formatSettings : PFormatSettings = nil) : Boolean;
 const
    cMaxExponent = 308;
-   cPowersOf10 : array [0..8] of Double = ( 10, 100, 1e4, 1e8, 1e16, 1e32, 1e64, 1e128, 1e256 );
+   cMinExponent = -323;
+   cSignificantDigits = 17;
+
+   cExp10table: array [0..31] of Double = (
+      1e00, 1e01, 1e02, 1e03, 1e04, 1e05, 1e06, 1e07, 1e08, 1e09,
+      1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19,
+      1e20, 1e21, 1e22, 1e23, 1e24, 1e25, 1e26, 1e27, 1e28, 1e29,
+      1e30, 1e31
+    );
+   cExp10postable32: array [0..9] of Double = (
+      1e00, 1e32, 1e64, 1e96, 1e128, 1e160, 1e192, 1e224, 1e256, 1e288
+    );
+   cExp10negtable32: array [0..10] of Double = (
+      1e-00, 1e-32, 1e-64, 1e-96, 1e-128, 1e-160, 1e-192, 1e-224, 1e-256, 1e-288, 1e-320
+    );
+
 var
+   intMantissa : Int64;
+   mantissaExp, mantissaDigits, exp : Integer;
    sign, expSign, gotDec, gotFrac : Boolean;
-   mantissa, mantissaFrac : Double;
-   dblExp : Double;
-   mantissaExp, exp, i : Integer;
-   pMantissaStart, pFrac, pFracStart : PChar;
+   mantissa : Double;
 begin
    if p = nil then Exit(False);
 
@@ -1686,7 +1700,8 @@ begin
       sign := False;
    end;
 
-   // grab mantissa, decimal part
+   mantissaDigits := 0;
+   mantissaExp := 0;
    case p^ of
       '0'..'9' : begin
          gotDec := True;
@@ -1694,57 +1709,47 @@ begin
          while p^ = '0' do
             Inc(p);
          if (p^ >= '0') and (p^ <= '9') then begin
-            pMantissaStart := p;
-            mantissa := Ord(p^)-Ord('0');
+            intMantissa := Ord(p^)-Ord('0');
             Inc(p);
             while (p^ >= '0') and (p^ <= '9') do begin
-               mantissa := mantissa*10 + Ord(p^)-Ord('0');
+               if mantissaDigits < cSignificantDigits then begin
+                  intMantissa := intMantissa*10 + (Ord(p^)-Ord('0'));
+                  Inc(mantissaDigits);
+               end else Inc(mantissaExp);
                Inc(p);
             end;
-            mantissaExp := (NativeUInt(p) - NativeUInt(pMantissaStart)) div SizeOf(Char) - 1;
          end else begin
-            mantissa := 0;
-            mantissaExp := 0;
+            intMantissa := 0;
          end;
       end;
    else
       gotDec := False;
-      mantissa := 0;
-      mantissaExp := 0;
+      intMantissa := 0;
    end;
 
-   // grab mantissa, fractional part, if there is one, accept both '.' and ',' as decimal separator
-   gotFrac := False;
    if    ((formatSettings = nil) and ((p^ = '.') or (p^ = ',')))
       or ((formatSettings <> nil) and (p^ = formatSettings.DecimalSeparator)) then begin
       Inc(p);
-      // skip to end of fractional part, then work backwards
-      pFracStart := p;
-      while (p^ >= '0') and (p^ <= '9') do
-         Inc(p);
-      pFrac := p;
-      Dec(pFrac);
-      if pFrac >= pFracStart then begin
-         gotFrac := True;
-         mantissaFrac := 0.1 * (Ord(pFrac^) - Ord('0'));
-         Dec(pFrac);
-         while pFrac >= pFracStart do begin
-            mantissaFrac := 0.1 * (mantissaFrac + (Ord(pFrac^) - Ord('0')));
-            Dec(pFrac);
+      gotFrac := (p^ >= '0') and (p^ <= '9');
+      if (p^ = '0') and (intMantissa = 0) then begin
+         while p^ = '0' do begin
+            Dec(mantissaExp);
+            Inc(p);
          end;
-         mantissa := mantissa + mantissaFrac;
       end;
-   end;
+      while (p^ >= '0') and (p^ <= '9') do begin
+         if mantissaDigits < cSignificantDigits then begin
+            intMantissa := intMantissa*10 + (Ord(p^)-Ord('0'));
+            Inc(mantissaDigits);
+            Dec(mantissaExp);
+         end;
+         Inc(p);
+      end;
+   end else gotFrac := False;
 
    // mantissa cannot be empty or a '.'/','
    if not (gotFrac or gotDec) then
       Exit(False);
-
-   if sign then begin
-      // workaround for compiler bug that implements negation as subtraction in Delphi 64,
-      // thus preventing a negative zero (cf. https://en.wikipedia.org/wiki/Signed_zero)
-      PByteArray(@mantissa)[7] := PByteArray(@mantissa)[7] xor $80;
-   end;
 
    // grab exponent, if there is one
    if (p^ = 'e') or (p^ = 'E') then begin
@@ -1761,31 +1766,39 @@ begin
       else
          expSign := False;
       end;
-      case p^ of
+      case p[0] of
          '0'..'9' : begin
-            exp := Ord(p^) - Ord('0');
-            Inc(p);
-            while (p^ >= '0') and (p^ <= '9') do begin
-               exp := exp*10 + (Ord(p^) - Ord('0'));
-               if exp + mantissaExp > cMaxExponent then
-                  Exit(False);
+            while p^ = '0' do
                Inc(p);
+            if (p^ >= '0') and (p^ <= '9') then begin
+               exp := Ord(p[0]) - Ord('0');
+               case p[1] of
+                  '0'..'9' : begin
+                     exp := exp * 10 + Ord(p[1]) - Ord('0');
+                     case p[2] of
+                        '0'..'9' : begin
+                           exp := exp * 10 + Ord(p[2]) - Ord('0');
+                           Inc(p, 3);
+                        end
+                     else
+                        Inc(p, 2);
+                     end
+                  end
+               else
+                  Inc(p);
+               end
+            end else begin
+               exp := 0;
             end;
-            i := 0;
-            dblExp := 1;
-            while exp > 0 do begin
-               if (exp and 1) <> 0 then
-                  dblExp := dblExp * cPowersOf10[i];
-               Inc(i);
-               exp := exp shr 1;
-            end;
-            if expSign then
-               mantissa := mantissa / dblExp
-            else mantissa := mantissa * dblExp;
-         end;
+         end
       else
          Exit(False);
       end;
+      if expSign then
+         exp := mantissaExp - exp
+      else exp := exp + mantissaExp;
+   end else begin
+      exp := mantissaExp;
    end;
 
    case p^ of
@@ -1793,6 +1806,30 @@ begin
       end;
    else
       Exit(False);
+   end;
+
+   case exp of
+      cMinExponent .. -32 :
+         mantissa := intMantissa * cExp10negtable32[(-exp and not 31) shr 5] / cExp10table[-exp and 31];
+      -31 .. -1 :
+         mantissa := intMantissa / cExp10table[-exp];
+      0 :
+         mantissa := intMantissa;
+      1 .. 31 :
+         mantissa := intMantissa * cExp10table[exp];
+      32 .. cMaxExponent : begin
+         if mantissaDigits + exp > cMaxExponent then
+            Exit(False);
+         mantissa := intMantissa * cExp10postable32[(exp and not 31) shr 5] * cExp10table[exp and 31]
+      end;
+   else
+      Exit(False);
+   end;
+
+   if sign then begin
+      // workaround for compiler bug that implements negation as subtraction in Delphi 64,
+      // thus preventing a negative zero (cf. https://en.wikipedia.org/wiki/Signed_zero)
+      PByteArray(@mantissa)[7] := PByteArray(@mantissa)[7] xor $80;
    end;
 
    val := mantissa;

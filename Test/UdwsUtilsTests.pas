@@ -1674,6 +1674,25 @@ procedure TdwsUtilsTests.TryStrToDoubleTest;
       end else Check(False, 'failed conversion for "' + s + '"');
    end;
 
+   procedure CheckValBin(const expected, s : String);
+   var
+      v : Double;
+      bv : String;
+      buf : array [0..SizeOf(Double)-1] of Byte;
+      i : Integer;
+   begin
+      if TryStrToDouble(PChar(s), v) then begin
+         for i := 0 to High(buf) do
+            buf[i] := PByteArray(@v)[High(buf)-i];
+         bv := SysUtils.UpperCase(BinToHex(buf, SizeOf(v)));
+         if bv <> expected  then
+            Check(False, Format('expected %s but got %s for "%s"',
+                                [ expected, bv, s ]))
+         else Check(True, s);
+      end else Check(False, 'failed conversion for "' + s + '"');
+   end;
+
+
    procedure CheckFail(const s : String);
    var
       v : Double;
@@ -1716,7 +1735,7 @@ begin
    CheckVal(-0.5e0, '-0.5e0');
 
    CheckFail('1e309');
-   CheckFail('1e-309');
+   CheckFail('1e-324');
    CheckFail('1e99999999');
    CheckFail('1e-99999999');
    CheckFail('10000000000000000e300');
@@ -1736,18 +1755,18 @@ begin
    CheckVal(0.314159265358979323846264338327950288, '0.314159265358979323846264338327950288');
    CheckVal(0.0314159265358979323846264338327950288, '0.0314159265358979323846264338327950288');
    CheckVal(0.00314159265358979323846264338327950288, '0.00314159265358979323846264338327950288');
-   CheckVal(3141592653589793238462643383279502.0, '3141592653589793238462643383279502');
-   CheckVal(31415926535897932384626433832795028.0, '31415926535897932384626433832795028.');
-   CheckVal(314159265358979323846264338327950288.0, '314159265358979323846264338327950288.0');
+   CheckValBin('46E35C8F2AF2D4F7', '3141592653589793238462643383279502');
+   CheckValBin('471833B2F5AF8A35', '31415926535897932384626433832795028.');
+   CheckValBin('474E409FB31B6CC2', '314159265358979323846264338327950288.0');
+
+   CheckValBin('3E8FBC4BFD1B4281', '2.36448157545192E-7');
+   CheckValBin('3F22AAD05F82204B', '0.000142419754187497');
 
    // https://stackoverflow.com/questions/34109339/strtofloat-and-who-is-wrong-delphi-or-ase-sql-server
-   v := 0;
-   TryStrToDouble('-1.79E308', v);
-   CheckEquals('99bbad58f1dcefff', BinToHex(v, SizeOf(v)), '-1.79E308');
+   CheckValBin('FFEFDCF158ADBB99', '-1.79E308');
 
    // Delphi 64 compiler bug, does not support literal negative zero, so binary check required
-   TryStrToDouble('-0', v);
-   CheckEquals('0000000000000080', BinToHex(v, SizeOf(v)), '-0');
+   CheckValBin('8000000000000000', '-0');
 
    for i := -100 to 100 do begin
       s := FloatToStr(PI*i*IntPower(Pi, i));
