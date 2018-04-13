@@ -1740,8 +1740,11 @@ begin
    if not (gotFrac or gotDec) then
       Exit(False);
 
-   if sign then
-      mantissa := -mantissa;
+   if sign then begin
+      // workaround for compiler bug that implements negation as subtraction in Delphi 64,
+      // thus preventing a negative zero (cf. https://en.wikipedia.org/wiki/Signed_zero)
+      PByteArray(@mantissa)[7] := PByteArray(@mantissa)[7] xor $80;
+   end;
 
    // grab exponent, if there is one
    if (p^ = 'e') or (p^ = 'E') then begin

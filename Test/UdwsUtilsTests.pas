@@ -1687,6 +1687,8 @@ var
    s : String;
 begin
    CheckVal(0, '0');
+   CheckVal(-0, '-0');
+   CheckVal(+0, '+0');
    CheckVal(0, '00');
    CheckVal(0, '0.0');
    CheckVal(0, '00.00');
@@ -1742,6 +1744,10 @@ begin
    v := 0;
    TryStrToDouble('-1.79E308', v);
    CheckEquals('99bbad58f1dcefff', BinToHex(v, SizeOf(v)), '-1.79E308');
+
+   // Delphi 64 compiler bug, does not support literal negative zero, so binary check required
+   TryStrToDouble('-0', v);
+   CheckEquals('0000000000000080', BinToHex(v, SizeOf(v)), '-0');
 
    for i := -100 to 100 do begin
       s := FloatToStr(PI*i*IntPower(Pi, i));
