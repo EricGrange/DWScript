@@ -403,6 +403,21 @@ begin
    FPreviousToken:=TTokenBuffer.StringToTokenType(FPreviousTokenString);
 end;
 
+// CompareSuggestions
+//
+function CompareSuggestions(list : TStringList; index1, index2 : Integer) : Integer;
+var
+   sym1, sym2 : TSymbol;
+begin
+   Result := UnicodeCompareText(list[index1], list[index2]);
+   if Result = 0 then begin
+      sym1 := TSymbol(list.Objects[index1]);
+      sym2 := TSymbol(list.Objects[index2]);
+      if (sym1 <> nil) and (sym2 <> nil) then
+         Result := UnicodeCompareText(sym1.Description, sym2.Description);
+   end;
+end;
+
 // AddToList
 //
 procedure TdwsSuggestions.AddToList(aList : TSimpleSymbolList);
@@ -413,10 +428,9 @@ var
    nameStr : String;
 begin
    if aList.Count = 0 then Exit;
-   tmp:=TFastCompareTextList.Create;
+   tmp := TStringList.Create;
    try
-      tmp.CaseSensitive:=False;
-      tmp.Capacity:=aList.Count;
+      tmp.Capacity := aList.Count;
       for i:=0 to aList.Count-1 do begin
          sym:=aList[i];
          if sym.Name='' then continue;
@@ -447,7 +461,7 @@ begin
          end;
       end;
       if tmp.Count > 0 then begin
-         tmp.Sort;
+         tmp.CustomSort(CompareSuggestions);
          for i:=0 to tmp.Count-1 do
             FList.Add(TSymbol(tmp.Objects[i]));
       end;

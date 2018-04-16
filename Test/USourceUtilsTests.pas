@@ -911,8 +911,8 @@ begin
 
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
    CheckEquals(2, sugg.Count);
-   CheckEquals('Toto (s: String) : String', sugg.Caption[0]);
-   CheckEquals('Toto (i: Integer) : String', sugg.Caption[1]);
+   CheckEquals('Toto (i: Integer) : String', sugg.Caption[0]);
+   CheckEquals('Toto (s: String) : String', sugg.Caption[1]);
 end;
 
 // PropertyDescription
