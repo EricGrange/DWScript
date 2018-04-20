@@ -1332,6 +1332,7 @@ const
       'OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE',
       'CONNECT', 'TRACK', 'MOVE', 'COPY', 'PROPFIND', 'PROPPATCH',
       'MKCOL', 'LOCK', 'UNLOCK', 'SEARCH'
+
       );
 
 var
@@ -1339,6 +1340,7 @@ var
    request : PHTTP_REQUEST_V2;
 begin
    request := FWebRequest.Request;
+
    verb := request^.Verb;
    FLogFieldsData.MethodNum := verb;
    case verb of

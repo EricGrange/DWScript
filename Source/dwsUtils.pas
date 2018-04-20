@@ -1715,7 +1715,9 @@ begin
                if mantissaDigits < cSignificantDigits then begin
                   intMantissa := intMantissa*10 + (Ord(p^)-Ord('0'));
                   Inc(mantissaDigits);
-               end else Inc(mantissaExp);
+               end else begin
+                  Inc(mantissaExp);
+               end;
                Inc(p);
             end;
          end else begin
@@ -1815,8 +1817,10 @@ begin
          mantissa := intMantissa / cExp10table[-exp];
       0 :
          mantissa := intMantissa;
-      1 .. 31 :
-         mantissa := intMantissa * cExp10table[exp];
+      1 .. 31 : begin
+         mantissa := intMantissa;
+         mantissa := mantissa * cExp10table[exp];
+      end;
       32 .. cMaxExponent : begin
          if mantissaDigits + exp > cMaxExponent then
             Exit(False);
@@ -2428,7 +2432,11 @@ begin
       varString :
          writer.WriteString(value);
       varOleStr :
+         {$ifdef DELPHI_TOKYO_PLUS}
+         writer.WriteString(value);
+         {$else}
          writer.WriteWideString(value);
+         {$endif}
       varSingle :
          writer.WriteSingle(value);
       varCurrency :

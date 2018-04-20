@@ -24,7 +24,7 @@ unit dwsCustomData;
 interface
 
 uses
-   SysUtils,
+   SysUtils, Variants,
    dwsUtils;
 
 type

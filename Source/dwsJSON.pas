@@ -1001,13 +1001,15 @@ const
 var
    parserState : TdwsJSONParserState;
 begin
-   Result:=nil;
+   {$ifndef DELPHI_TOKYO_PLUS}
+   Result := nil;
+   {$endif}
    parserState := TdwsJSONParserState.Create(json);
    try
       parserState.UnifyUnicodeStrings := (Length(json) >= cAutoUnifierTreshold);
       try
          parserState.DuplicatesOption:=duplicatesOption;
-         Result:=TdwsJSONValue.Parse(parserState);
+         Result := TdwsJSONValue.Parse(parserState);
       except
          on e : EdwsJSONParseError do
             raise EdwsJSONParseError.CreateFmt('%s, at %s',

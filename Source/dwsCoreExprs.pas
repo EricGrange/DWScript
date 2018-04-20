@@ -24,7 +24,7 @@ unit dwsCoreExprs;
 interface
 
 uses
-   Classes, SysUtils,
+   Classes, SysUtils, Variants,
    dwsUtils, dwsXPlatform, dwsUnicode,
    dwsDataContext, dwsCompilerContext, dwsExprList,
    dwsSymbols, dwsErrors, dwsStrings, dwsConvExprs,

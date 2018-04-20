@@ -24,7 +24,7 @@ unit dwsExprs;
 interface
 
 uses
-   Classes, SysUtils, TypInfo,
+   Classes, SysUtils, TypInfo, Variants,
    dwsSymbols, dwsErrors, dwsUtils, dwsDataContext, dwsExprList,
    dwsStrings, dwsStack, SyncObjs, dwsFileSystem, dwsTokenizer, dwsUnitSymbols,
    dwsJSON, dwsXPlatform, dwsInfo, dwsScriptSource, dwsCustomData, dwsSymbolDictionary,

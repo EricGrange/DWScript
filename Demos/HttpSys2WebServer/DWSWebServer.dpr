@@ -32,6 +32,7 @@
 program DWSWebServer;
 
 {$IFNDEF VER200} // delphi 2009
+
    {$WEAKLINKRTTI ON}
    {$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
 {$ENDIF}

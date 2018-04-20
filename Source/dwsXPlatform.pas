@@ -649,7 +649,7 @@ function APINormalizeString(normForm : Integer; lpSrcString : LPCWSTR; cwSrcLeng
                             stdcall; external 'Normaliz.dll' name 'NormalizeString' {$ifndef FPC}delayed{$endif};
 function NormalizeString(const s, form : String) : String;
 var
-   nf, len : Integer;
+   nf, len, n : Integer;
 begin
    if s = '' then Exit('');
    if (form = '') or (form = 'NFC') then
@@ -661,11 +661,22 @@ begin
    else if form = 'NFKD' then
       nf := 6
    else raise Exception.CreateFmt('Unsupported normalization form "%s"', [form]);
+   n := 10;
    len := APINormalizeString(nf, Pointer(s), Length(s), nil, 0);
-   SetLength(Result, len);
-   len := APINormalizeString(nf, PWideChar(s), Length(s), Pointer(Result), len);
-   if len <= 0 then
-      RaiseLastOSError;
+   repeat
+      SetLength(Result, len);
+      len := APINormalizeString(nf, PWideChar(s), Length(s), Pointer(Result), len);
+      if len <= 0 then begin
+         if GetLastError <> ERROR_INSUFFICIENT_BUFFER then
+            RaiseLastOSError;
+         Dec(n);
+         if n <= 0 then
+            RaiseLastOSError;
+         len := -len;
+         len := len + (len div 4); // extra margin since estimation failed
+         continue;
+      end;
+   until True;
    SetLength(Result, len);
 end;
 
