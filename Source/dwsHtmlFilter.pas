@@ -237,7 +237,7 @@ begin
    output:=TWriteOnlyBlockStream.AllocFromPool;
    try
 
-      stop:=1;
+      {$ifndef DELPHI_TOKYO_PLUS} stop:=1; {$endif}
       p:=1;
       repeat
          start:=PosEx(PatternOpen, input, p);

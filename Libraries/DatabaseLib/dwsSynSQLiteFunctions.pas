@@ -23,21 +23,21 @@ uses
    SynSQLite3;
 
 // Sqrt()
-procedure SQLiteFunc_Sqrt(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); {$ifdef WIN32}cdecl;{$endif}
+procedure SQLiteFunc_Sqrt(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
 
 // Median() aggregate
-procedure SQLiteFunc_MedianStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); {$ifdef WIN32}cdecl;{$endif}
-procedure SQLiteFunc_MedianFinal(context: TSQLite3FunctionContext); {$ifdef WIN32}cdecl;{$endif}
+procedure SQLiteFunc_MedianStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+procedure SQLiteFunc_MedianFinal(context: TSQLite3FunctionContext); cdecl;
 
 // Bool_And() / Bool_Or() aggregates
-procedure SQLiteFunc_BoolAndStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); {$ifdef WIN32}cdecl;{$endif}
-procedure SQLiteFunc_BoolOrStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); {$ifdef WIN32}cdecl;{$endif}
-procedure SQLiteFunc_BoolFinal(context: TSQLite3FunctionContext); {$ifdef WIN32}cdecl;{$endif}
+procedure SQLiteFunc_BoolAndStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+procedure SQLiteFunc_BoolOrStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+procedure SQLiteFunc_BoolFinal(context: TSQLite3FunctionContext); cdecl;
 
 // Bit_And() / Bit_Or() aggregates
-procedure SQLiteFunc_BitAndStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); {$ifdef WIN32}cdecl;{$endif}
-procedure SQLiteFunc_BitOrStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); {$ifdef WIN32}cdecl;{$endif}
-procedure SQLiteFunc_BitFinal(context: TSQLite3FunctionContext); {$ifdef WIN32}cdecl;{$endif}
+procedure SQLiteFunc_BitAndStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+procedure SQLiteFunc_BitOrStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+procedure SQLiteFunc_BitFinal(context: TSQLite3FunctionContext); cdecl;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------

@@ -126,7 +126,9 @@ var
    excepInfo : TExcepInfo;
 begin
    strCount := 0;
+   {$ifndef DELPHI_TOKYO_PLUS}
    Result := S_OK;
+   {$endif}
 
    // Fill in the dispParams struct
    FillChar(strings, MaxDispArgs*SizeOf(TStringDesc), 0);

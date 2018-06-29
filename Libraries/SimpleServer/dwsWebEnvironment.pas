@@ -259,6 +259,7 @@ type
 
    TEmptyWebRequest = class(TWebRequest)
       protected
+         FMethod : String;
          FHeaders : TStringList;
 
          function GetHeaders : TStrings; override;
@@ -280,6 +281,8 @@ type
          function ContentLength : Integer; override;
          function ContentData : RawByteString; override;
          function ContentType : RawByteString; override;
+
+         property DirectMethod : String read FMethod write FMethod;
    end;
 
 const
@@ -287,13 +290,16 @@ const
       'None', 'Failed', 'Basic', 'Digest', 'NTLM', 'Negotiate', 'Kerberos', 'Header'
    );
 
-const
-   cWebRequestMethodVerbs : array [TWebRequestMethodVerb] of String = (
+
+const
+
+   cWebRequestMethodVerbs : array [TWebRequestMethodVerb] of String = (
       '?', 'OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE',
       'CONNECT', 'TRACK', 'MOVE', 'COPY', 'PROPFIND', 'PROPPATCH',
       'MKCOL', 'LOCK', 'UNLOCK', 'SEARCH' );
 
-   cHTMTL_UTF8_CONTENT_TYPE = 'text/html; charset=utf-8';
+
+   cHTMTL_UTF8_CONTENT_TYPE = 'text/html; charset=utf-8';
 
 implementation
 
@@ -399,7 +405,6 @@ begin
    Result:=TFastCompareTextList.Create;
 
    cookieField:=Header('Cookie');
-   p:=0;
    base:=1;
    while True do begin
       p:=StrUtils.PosEx('=', cookieField, base);
@@ -820,7 +825,7 @@ end;
 
 function TEmptyWebRequest.Method : String;
 begin
-   Result := '';
+   Result := FMethod;
 end;
 
 function TEmptyWebRequest.MethodVerb : TWebRequestMethodVerb;

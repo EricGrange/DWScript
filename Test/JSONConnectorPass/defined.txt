@@ -1,0 +1,9 @@
+Initial:
+False
+False
+String:
+True
+False
+Unassigned:
+False
+False

@@ -26,6 +26,7 @@ type
 
          procedure ReExec(info : TProgramInfo);
          procedure HostExcept(info : TProgramInfo);
+         procedure RoundTrip(info : TProgramInfo);
 
          procedure InvalidAddUnit;
 
@@ -107,6 +108,8 @@ type
          procedure MessagesEnumerator;
 
          procedure LambdaAsConstParam;
+
+         procedure RoundTripTest;
    end;
 
    ETestException = class (Exception);
@@ -190,6 +193,9 @@ end;
 // SetUp
 //
 procedure TCornerCasesTests.SetUp;
+var
+   roundTripFunc : TdwsFunction;
+   roundTripFuncParam : TdwsParameter;
 begin
    FCompiler:=TDelphiWebScript.Create(nil);
 
@@ -197,6 +203,17 @@ begin
    FUnit.UnitName:='CornerCases';
    FUnit.Functions.Add('ReExec').OnEval:=ReExec;
    FUnit.Functions.Add('HostExcept').OnEval:=HostExcept;
+
+   roundTripFunc := FUnit.Functions.Add('RoundTrip');
+   roundTripFunc.ResultType := SYS_STRING;
+   roundTripFunc.OnEval := RoundTrip;
+   roundTripFuncParam := roundTripFunc.Parameters.Add;
+   roundTripFuncParam.Name := 'p';
+   roundTripFuncParam.DataType := SYS_STRING;
+   roundTripFuncParam := roundTripFunc.Parameters.Add;
+   roundTripFuncParam.Name := 'n';
+   roundTripFuncParam.DataType := SYS_INTEGER;
+
    FUnit.Script:=FCompiler;
 end;
 
@@ -347,6 +364,18 @@ end;
 procedure TCornerCasesTests.HostExcept(info : TProgramInfo);
 begin
    raise ETestException.Create('boom');
+end;
+
+// RoundTrip
+//
+procedure TCornerCasesTests.RoundTrip(info : TProgramInfo);
+var
+   func : IInfo;
+   n : Integer;
+begin
+   func := info.RootInfo(info.ParamAsString[0]);
+   n := info.ParamAsInteger[1];
+   Info.ResultAsString := func.Call([n-1]).ValueAsString;
 end;
 
 // IncludeViaEvent
@@ -2046,6 +2075,31 @@ begin
       CheckEquals('', prog.Msgs.AsInfo);
    finally
       FCompiler.Config.CompilerOptions := FCompiler.Config.CompilerOptions - [coAllowClosures];
+   end;
+end;
+
+// RoundTripTest
+//
+procedure TCornerCasesTests.RoundTripTest;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog := FCompiler.Compile(
+       'function Test(k : Integer) : String; begin'#13#10
+        + 'if k <= 0 then exit "done";'#13#10
+        + 'Print(k);'#13#10
+        + 'Result := "," + RoundTrip("Test", k);'#13#10
+     + 'end;'#13#10
+     + 'PrintLn(Test(5));'
+   );
+   CheckEquals('', prog.Msgs.AsInfo);
+   try
+      exec := prog.CreateNewExecution;
+      exec.Execute;
+      CheckEquals('54321,,,,,done'#13#10, exec.Result.ToString);
+   finally
+      exec := nil;
    end;
 end;
 

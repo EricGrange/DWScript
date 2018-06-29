@@ -24,3 +24,4 @@ f:=0;
 
 PrintLn(Boolean(i));
 PrintLn(Boolean(f));
+

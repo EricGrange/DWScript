@@ -37,7 +37,7 @@ unit BeaEngineDelphi;
 
 interface
 
-uses Windows, SysUtils;
+uses Windows, SysUtils, AnsiStrings;
 
 const
   INSTRUCT_LENGTH = 64;
@@ -334,17 +334,17 @@ implementation
 
 function strcmp(str1, str2: PAnsiChar): Integer;cdecl;
 begin
-  Result := SysUtils.StrComp(str1, str2);
+  Result := AnsiStrings.StrComp(str1, str2);
 end;
 
 function strcpy(dest, src: PAnsiChar): PAnsiChar;cdecl;
 begin
-  Result := SysUtils.StrCopy(dest, src);
+  Result := AnsiStrings.StrCopy(dest, src);
 end;
 
 function strlen(s: PAnsiChar): Cardinal; cdecl;
 begin
-  Result := SysUtils.StrLen(s);
+  Result := AnsiStrings.StrLen(s);
 end;
 
 function memset(Destination: Pointer; C: Integer; Count: Cardinal): Pointer; cdecl;

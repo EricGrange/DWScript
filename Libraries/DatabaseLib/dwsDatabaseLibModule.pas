@@ -108,6 +108,12 @@ type
       const args: TExprBaseListExec): Variant;
     function dwsDatabaseFunctionsBlobHexParameterDefFastEval(
       const args: TExprBaseListExec): Variant;
+    procedure dwsDatabaseClassesDataBaseMethodsGetOptionEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataBaseMethodsSetOptionEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataBaseMethodsOptionListEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     procedure SetScript(aScript : TDelphiWebScript);
@@ -549,6 +555,18 @@ begin
    db.Exec(Info.ParamAsString[0], scriptDyn.AsData, Info.Execution.CallStackLastExpr);
 end;
 
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsGetOptionEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=(ExtObject as TScriptDataBase).Intf.Options[Info.ParamAsString[0]];
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsSetOptionEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   (ExtObject as TScriptDataBase).Intf.Options[Info.ParamAsString[0]] := Info.ParamAsString[1];
+end;
+
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsInTransactionEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
@@ -559,6 +577,12 @@ procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsLowerCaseStringifyEva
   Info: TProgramInfo; ExtObject: TObject);
 begin
    (ExtObject as TScriptDataBase).LowerCaseStringify:=Info.ParamAsBoolean[0];
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsOptionListEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsStringArray := (ExtObject as TScriptDataBase).Intf.OptionList;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsQueryEval(

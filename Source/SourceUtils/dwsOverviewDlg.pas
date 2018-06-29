@@ -22,7 +22,7 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   Dialogs, ComCtrls, ImgList, ToolWin, StdCtrls, TypInfo,
   dwsExprs, dwsScriptSource, dwsSymbolDictionary, dwsSymbols, dwsUtils,
-  dwsJSON;
+  dwsJSON, dwsErrors, System.ImageList;
 
 type
    TIconIndex = (

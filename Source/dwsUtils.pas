@@ -1018,6 +1018,8 @@ function TryStrToDouble(const s : String; var val : Double) : Boolean; overload;
 function TryStrToDouble(const s : String; var val : Double; const formatSettings : TFormatSettings) : Boolean; overload; inline;
 function TryStrToDouble(p : PChar; var val : Double; formatSettings : PFormatSettings = nil) : Boolean; overload;
 
+function StringToBoolean(const s : String) : Boolean;
+
 function DivMod10(var dividend : Cardinal) : Cardinal;
 function DivMod100(var dividend : Cardinal) : Cardinal;
 
@@ -1078,6 +1080,8 @@ function CoalesceableIsFalsey(const unk : IUnknown) : Boolean;
 
 function ApplyStringVariables(const str : TFilename; const variables : TStrings;
                               const delimiter : String = '%') : TFilename;
+
+function ScanMemory(p : Pointer; size : IntPtr; const pattern : TBytes) : Pointer;
 
 type
    TTwoChars = packed array [0..1] of Char;
@@ -1840,6 +1844,51 @@ begin
    Result := True;
 end;
 
+// StringToBoolean
+//
+function StringToBoolean(const s : String) : Boolean;
+var
+   p : PChar;
+begin
+   if s = '' then Exit(False);
+   p := Pointer(s);
+   case Length(s) of
+      1 : case p[0] of
+         '1', 'T', 't', 'Y', 'y' : Exit(True);
+      end;
+      3 : begin
+         Exit(    ((p[0] = 'Y') or (p[0] = 'y'))
+              and ((p[1] = 'E') or (p[1] = 'e'))
+              and ((p[2] = 'S') or (p[2] = 's')));
+      end;
+      4 : begin
+         Exit(    ((p[0] = 'T') or (p[0] = 't'))
+              and ((p[1] = 'R') or (p[1] = 'r'))
+              and ((p[2] = 'U') or (p[2] = 'u'))
+              and ((p[3] = 'E') or (p[3] = 'e')));
+      end;
+   end;
+   // special case of integer: zero is false, everything else is true
+   Result := False;
+   case p^ of
+      '0'..'9' : begin
+         Inc(p);
+         repeat
+            case p^ of
+               '0' :  Inc(p);
+               '1'..'9' : begin
+                  Inc(p);
+                  Result := True;
+               end;
+               #0 : Exit;
+            else
+               Exit(False);
+            end;
+         until False;
+      end;
+   end;
+end;
+
 // Int32ToStrU
 //
 function Int32ToStrU(val : Integer) : UnicodeString;
@@ -2101,10 +2150,10 @@ begin
          Result := not CoalesceableIsFalsey(IUnknown(TVarData(v).VUnknown));
       {$ifdef FPC}
       varString :
-         Result := TVarData(v).VString <> nil;
+         Result := StringToBoolean(String(TVarData(v).VString));
       {$else}
       varUString :
-         Result := TVarData(v).VUString <> nil;
+         Result := StringToBoolean(String(TVarData(v).VUString));
       {$endif}
       varDouble :
          Result := TVarData(v).VDouble <> 0;
@@ -4462,6 +4511,7 @@ begin
    // if we reach here, everything fits in current block
    dest:=@PByteArray(@FCurrentBlock[2])[FBlockRemaining^];
    Inc(FBlockRemaining^, count);
+   {$ifdef WIN32}
    case Cardinal(count) of
       0 : ;
       1 : dest[0]:=source[0];
@@ -4475,6 +4525,10 @@ begin
    else
       System.Move(source^, dest^, count);
    end;
+   {$else}
+   // "case of" got nerfed in non-32bit compilers, while System.Move was improved
+   System.Move(source^, dest^, count);
+   {$endif}
 end;
 
 // Write
@@ -6941,6 +6995,28 @@ begin
       Dec(FCount);
       FPool[FCount].Free;
    end;
+end;
+
+// ScanMemory
+//
+function ScanMemory(p : Pointer; size : IntPtr; const pattern : TBytes) : Pointer;
+var
+   n : IntPtr;
+   tail : UIntPtr;
+   iter : PByte;
+begin
+   n := Length(pattern);
+   if n <= 0 then Exit(nil);
+   tail := UIntPtr(@PByte(p)[size - n]);
+   iter := p;
+   while UIntPtr(iter) <= tail do begin
+      if iter^ = pattern[0] then begin
+         if CompareMem(iter, pattern, n) then
+            Exit(iter);
+      end;
+      Inc(iter);
+   end;
+   Result := nil;
 end;
 
 // ------------------------------------------------------------------

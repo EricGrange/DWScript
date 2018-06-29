@@ -19,7 +19,7 @@ unit dwsWinHTTP;
 interface
 
 uses
-   Windows, SysUtils, WinInet,
+   Windows, SysUtils, WinInet, Variants,
    SynCrtSock, SynCommons,
    dwsUtils, dwsWebEnvironment;
 

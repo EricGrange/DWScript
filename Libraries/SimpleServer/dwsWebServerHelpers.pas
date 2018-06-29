@@ -135,7 +135,6 @@ begin
    end;
    SetLength(decodedBuffer, n);
 
-   c:=0; // workaround for spurious compiler warning
    paramsOffset:=nil;
    pIn:=Pointer(s);
    if pIn^='/' then

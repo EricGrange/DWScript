@@ -62,6 +62,10 @@ type
 
          property DB : TSQLDatabase read FDB;
          property Module[const name : String] : TObject read GetModule write SetModule;
+
+         function OptionList : TStringDynArray; override;
+         function GetOption(const name : String) : String; override;
+         procedure SetOption(const name, value : String); override;
    end;
 
    TdwsSynSQLiteDataSet = class (TdwsDataSet)
@@ -386,6 +390,42 @@ begin
    end else if FModules.Objects[name] <> nil then
       raise Exception.CreateFmt('Module "%s" already registered', [name]);
    FModules.Objects[name] := aModule;
+end;
+
+const
+   cSQLiteOptions : array [0..0] of String = (
+      'soft_heap_limit64'
+   );
+
+// OptionList
+//
+function TdwsSynSQLiteDataBase.OptionList : TStringDynArray;
+var
+   n, i : Integer;
+begin
+   Result := inherited OptionList;
+   n := Length(Result);
+   SetLength(Result, n + Length(cSQLiteOptions));
+   for i := 0 to High(cSQLiteOptions) do
+      Result[n+i] := cSQLiteOptions[i];
+end;
+
+// GetOption
+//
+function TdwsSynSQLiteDataBase.GetOption(const name : String) : String;
+begin
+   if name = cSQLiteOptions[0] then
+      Result := IntToStr(sqlite3.soft_heap_limit64(-1))
+   else Result := inherited GetOption(name);
+end;
+
+// SetOption
+//
+procedure TdwsSynSQLiteDataBase.SetOption(const name, value : String);
+begin
+   if name = cSQLiteOptions[0] then
+      sqlite3.soft_heap_limit64(StrToInt64(value))
+   else inherited SetOption(name, value);
 end;
 
 // ------------------

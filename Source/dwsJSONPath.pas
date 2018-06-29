@@ -375,7 +375,6 @@ var
    iter : TStringIterator;
    tail, op : TdwsJSONPathOperator;
 begin
-   op:=nil;
    tail:=nil;
    iter:=TStringIterator.Create(FQuery);
    try

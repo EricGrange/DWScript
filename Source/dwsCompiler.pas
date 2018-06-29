@@ -6749,14 +6749,14 @@ var
    tt : TTokenType;
    condExpr : TTypedExpr;
 begin
-   Result:=TRepeatExpr.Create(FTok.HotPos);
+   Result := TRepeatExpr.Create(FTok.HotPos);
    EnterLoop(Result);
    try
-      TRepeatExpr(Result).LoopExpr:=ReadBlocks([ttUNTIL], tt);
+      TRepeatExpr(Result).LoopExpr := ReadBlocks([ttUNTIL], tt);
       TRepeatExpr(Result).SetScriptPos(FTok.HotPos);
-      condExpr:=ReadBooleanExpr;
-      TRepeatExpr(Result).CondExpr:=condExpr;
-      if (not condExpr.IsConstant) or condExpr.EvalAsBoolean(FExec) then
+      condExpr := ReadBooleanExpr;
+      TRepeatExpr(Result).CondExpr := condExpr;
+      if (not condExpr.IsConstant) or condExpr.EvalAsBoolean(FExec) or FMsgs.HasErrors then
          MarkLoopExitable(leBreak);
    except
       OrphanAndNil(Result);
@@ -6765,7 +6765,7 @@ begin
    LeaveLoop;
 
    if Optimize then
-      Result:=Result.Optimize(FCompilerContext);
+      Result := Result.Optimize(FCompilerContext);
 end;
 
 // ReadAssign

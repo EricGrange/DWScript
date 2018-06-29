@@ -70,7 +70,7 @@ asm
    sub dword ptr [ecx], edx
 {$else}
 begin
-   Result := UInt64(cMagic)*v shr 37;
+   Result := UInt64(cMagic)*UInt64(v) shr 37;
    v := v - Result*58;
 {$endif}
 end;

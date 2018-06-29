@@ -470,20 +470,7 @@ var
    s : String;
 begin
    args.EvalAsString(0, s);
-
-   case Length(s) of
-      1 : begin
-         case s[1] of
-            '1', 'T', 't', 'Y', 'y' : Result:=True;
-         else
-            Result:=False;
-         end;
-      end;
-      3 : Result:=UnicodeSameText(s, 'Yes');
-      4 : Result:=UnicodeSameText(s, 'True');
-   else
-      Result:=False;
-   end;
+   Result := StringToBoolean(s);
 end;
 
 { TFloatToStrFunc }

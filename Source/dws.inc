@@ -88,7 +88,9 @@
 
 {$IF Defined(WIN32)}
    {$DEFINE WINDOWS}
+   {$DEFINE WIN32}
 {$ELSEIF Defined(WIN64)}
    {$DEFINE WINDOWS}
+   {$DEFINE WIN64}
 {$IFEND}
 

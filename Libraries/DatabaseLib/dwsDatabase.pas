@@ -54,6 +54,11 @@ type
       function Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
 
       function VersionInfoText : String;
+
+      function OptionList : TStringDynArray;
+      function GetOption(const name : String) : String;
+      procedure SetOption(const name, value : String);
+      property Options[const name : String] : String read GetOption write SetOption;
    end;
 
    IdwsDataSet = interface
@@ -106,6 +111,10 @@ type
 
          class procedure RegisterDriver(const driverName : String; const factory : IdwsDataBaseFactory); static;
          class function CreateDataBase(const driverName : String; const parameters : TStringDynArray) : IdwsDataBase; static;
+
+         function OptionList : TStringDynArray; virtual;
+         function GetOption(const name : String) : String; virtual;
+         procedure SetOption(const name, value : String); virtual;
    end;
 
    TdwsDataSet = class (TInterfacedSelfObject, IUnknown, IdwsDataSet)
@@ -217,6 +226,27 @@ begin
    if Assigned(vOnApplyPathVariables) then
       Result:=vOnApplyPathVariables(path)
    else Result:=path;
+end;
+
+// OptionList
+//
+function TdwsDataBase.OptionList : TStringDynArray;
+begin
+   Result := nil;
+end;
+
+// GetOption
+//
+function TdwsDataBase.GetOption(const name : String) : String;
+begin
+   raise EDWSDataBase.CreateFmt('Option "%s" cannot be read or does not exist', [ name ]);
+end;
+
+// SetOption
+//
+procedure TdwsDataBase.SetOption(const name, value : String);
+begin
+   raise EDWSDataBase.CreateFmt('Option "%s" cannot be written or does not exist', [ name ]);
 end;
 
 // ------------------

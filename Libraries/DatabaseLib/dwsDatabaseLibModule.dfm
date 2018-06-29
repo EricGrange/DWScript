@@ -2,8 +2,6 @@ object dwsDatabaseLib: TdwsDatabaseLib
   OldCreateOrder = False
   OnCreate = DataModuleCreate
   OnDestroy = DataModuleDestroy
-  Left = 646
-  Top = 86
   Height = 150
   Width = 215
   object dwsDatabase: TdwsUnit
@@ -119,6 +117,49 @@ object dwsDatabaseLib: TdwsDatabaseLib
               end>
             OnEval = dwsDatabaseClassesDataBaseMethodsLowerCaseStringifyEval
             Kind = mkProcedure
+          end
+          item
+            Name = 'GetOption'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            OnEval = dwsDatabaseClassesDataBaseMethodsGetOptionEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'SetOption'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end
+              item
+                Name = 'value'
+                DataType = 'String'
+              end>
+            OnEval = dwsDatabaseClassesDataBaseMethodsSetOptionEval
+            Kind = mkProcedure
+          end
+          item
+            Name = 'OptionList'
+            ResultType = 'array of String'
+            OnEval = dwsDatabaseClassesDataBaseMethodsOptionListEval
+            Kind = mkFunction
+          end>
+        Properties = <
+          item
+            Name = 'Options'
+            DataType = 'String'
+            ReadAccess = 'GetOption'
+            WriteAccess = 'SetOption'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end>
           end>
         OnCleanUp = dwsDatabaseClassesDataBaseCleanUp
       end

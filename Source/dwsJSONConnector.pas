@@ -54,6 +54,7 @@ type
          FLowCall, FHighCall, FLengthCall : IConnectorCall;
          FIndexReadCall, FIndexWriteCall : IConnectorCall;
          FTypeNameCall : IConnectorCall;
+         FDefinedCall : IConnectorCall;
          FElementNameCall : IConnectorCall;
          FCloneCall : IConnectorCall;
          FExtendCall : IConnectorCall;
@@ -108,6 +109,11 @@ type
    end;
 
    TdwsJSONElementNameCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
+      public
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+   end;
+
+   TdwsJSONDefinedCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
       public
          procedure FastCall(const args : TExprBaseListExec; var result : Variant);
    end;
@@ -641,6 +647,7 @@ begin
    FIndexReadCall:=TdwsJSONIndexReadCall.Create('');
    FIndexWriteCall:=TdwsJSONIndexWriteCall.Create('');
    FTypeNameCall:=TdwsJSONTypeNameCall.Create;
+   FDefinedCall:=TdwsJSONDefinedCall.Create;
    FElementNameCall:=TdwsJSONElementNameCall.Create;
    FCloneCall:=TdwsJSONCloneCall.Create;
    FExtendCall:=TdwsJSONExtendCall.Create;
@@ -688,7 +695,14 @@ var
    paramTyp : TTypeSymbol;
    i : Integer;
 begin
-   if UnicodeSameText(methodName, 'typename') then begin
+   if UnicodeSameText(methodName, 'defined') then begin
+
+      Result:=FDefinedCall;
+      typSym:=FTable.TypBoolean;
+      if Length(params)<>0 then
+         raise ECompileException.Create(CPE_NoParamsExpected);
+
+   end else if UnicodeSameText(methodName, 'typename') then begin
 
       Result:=FTypeNameCall;
       typSym:=FTable.TypString;
@@ -919,6 +933,22 @@ begin
    if v<>nil then
       VarCopySafe(result, v.Names[args.AsInteger[1]])
    else VarCopySafe(result, '');
+end;
+
+// ------------------
+// ------------------ TdwsJSONDefinedCall ------------------
+// ------------------
+
+// FastCall
+//
+procedure TdwsJSONDefinedCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+var
+   base : Variant;
+   v : TdwsJSONValue;
+begin
+   args.EvalAsVariant(0, base);
+   v := TBoxedJSONValue.UnBox(base);
+   Result := (v.ValueType <> jvtUndefined);
 end;
 
 // ------------------

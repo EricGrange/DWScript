@@ -479,7 +479,6 @@ var
    end;
 
 begin
-   Result := False;
    vBindMRSW.BeginWrite;
    try
       if dllName = '' then begin

@@ -24,6 +24,7 @@ type
          FDebugLastEvalScriptPos : TScriptPos;
          FDebugLastSuspendScriptPos : TScriptPos;
          FDebugResumed : Integer;
+         FStepTest : String;
 
          procedure DoCreateExternal(Info: TProgramInfo; var ExtObject: TObject);
          procedure DoCleanupExternal(externalObject : TObject);
@@ -62,6 +63,8 @@ type
          procedure BreakPointCastPos;
 
          procedure BreakpointAndWatches;
+
+         procedure StepTest;
    end;
 
    TDebuggerOptimizedTests = class (TDebuggerTests)
@@ -109,9 +112,11 @@ var
 begin
    FCompiler:=TDelphiWebScript.Create(nil);
    FCompiler.Config.CompilerOptions:=[coContextMap, coAssertions];
+
    FUnits:=TdwsUnit.Create(nil);
    FUnits.UnitName:='TestUnit';
    FUnits.Script:=FCompiler;
+
    FDebugger:=TdwsDebugger.Create(nil);
    FDebugger.OnDebug:=DoDebugEval;
    FDebugger.OnDebugMessage:=DoDebugMessage;
@@ -178,6 +183,10 @@ begin
    if p.Line=FDebugEvalAtLine then begin
       FDebugLastEvalResult := FDebugger.EvaluateAsString(FDebugEvalExpr, @p);
       FDebugLastEvalScriptPos := FDebugger.CurrentScriptPos;
+   end;
+   if FStepTest <> '' then begin
+      FStepTest := FStepTest + expr.ScriptPos.AsInfo + ', ';
+      TdwsDSCStepDetail.Create(FDebugger);
    end;
 end;
 
@@ -792,6 +801,43 @@ begin
    finally
       FDebugEvalExpr := '';
       FDebugger.Breakpoints.Clear;
+   end;
+end;
+
+// StepOnFunctionReturn
+//
+procedure TDebuggerTests.StepTest;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog := FCompiler.Compile(
+         'function Hello : Integer;'#13#10
+       + 'begin'#13#10
+         + #9'Result := 34;'#13#10
+       + 'end;'#13#10
+       + 'Print(12);'#13#10
+       + 'Print(Hello);'
+       );
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   exec := prog.CreateNewExecution;
+
+   FDebugLastEvalScriptPos.Clear;
+
+   FStepTest := ',';
+   try
+      FDebugger.BeginOptions := [ dboBeginSuspendedAnywhere ];
+      FDebugger.BeginDebug(exec);
+
+      FDebugger.EndDebug;
+
+      CheckEquals('1234', exec.Result.ToString);
+      CheckEquals(', [line: 5, column: 1],  [line: 6, column: 1],  [line: 3, column: 9], ', FStepTest);
+
+   finally
+      FStepTest := '';
+      FDebugger.BeginOptions := [];
    end;
 end;
 

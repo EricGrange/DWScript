@@ -1464,6 +1464,22 @@ begin
    CheckEquals(True, dc.AsBoolean[0], '05');
    CheckEquals('05', dc.AsString[0], '05');
 
+   dc.AsVariant[0] := '1';
+   CheckEquals(1, dc.AsInteger[0], '1');
+   CheckEquals(1.0, dc.AsFloat[0], '1');
+   CheckEquals(True, dc.AsBoolean[0], '1');
+   CheckEquals('1', dc.AsString[0], '1');
+
+   dc.AsVariant[0] := '0';
+   CheckEquals(0, dc.AsInteger[0], '0');
+   CheckEquals(0.0, dc.AsFloat[0], '0');
+   CheckEquals(False, dc.AsBoolean[0], '0');
+   CheckEquals('0', dc.AsString[0], '0');
+
+   dc.AsVariant[0] := '';
+   CheckEquals(False, dc.AsBoolean[0], 'empty string');
+   CheckEquals('', dc.AsString[0], 'empty string');
+
    dc.AsVariant[0] := Null;
    CheckEquals(0, dc.AsInteger[0], 'Null');
    CheckEquals(0.0, dc.AsFloat[0], 'Null');
@@ -1757,7 +1773,7 @@ begin
    CheckVal(0.00314159265358979323846264338327950288, '0.00314159265358979323846264338327950288');
    CheckValBin('46E35C8F2AF2D4F7', '3141592653589793238462643383279502');
    CheckValBin('471833B2F5AF8A35', '31415926535897932384626433832795028.');
-   CheckValBin('474E409FB31B6CC2', '314159265358979323846264338327950288.0');
+   CheckValBin('474E409FB31B6CC3', '314159265358979323846264338327950288.0');
 
    CheckValBin('3E8FBC4BFD1B4281', '2.36448157545192E-7');
    CheckValBin('3F22AAD05F82204B', '0.000142419754187497');

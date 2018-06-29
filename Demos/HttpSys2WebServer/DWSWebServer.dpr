@@ -292,7 +292,16 @@ begin
                   Exit;
                end;
             end;
-            writeln('Server is now running on');
+            {$ifndef CPU64BITS}
+               {$ifdef CPUX64}
+                  {$define CPU64BITS}     // not defined in XE2 to XE7
+               {$endif}
+            {$endif}
+            {$ifdef CPU64BITS}
+            write('DWScript 64bits Server is now running on');
+            {$else}
+            write('DWScript 32bits Server is now running on');
+            {$endif}
             for i := 0 to High(service.Server.URLInfos) do
                Writeln(service.Server.URLInfos[i].ToString);
             Writeln;

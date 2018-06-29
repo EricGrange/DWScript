@@ -616,6 +616,7 @@ begin
       FJSONVariantHelpers.AddSymbol(CreateHelper('Swap', nil, ['index1', p.TypInteger, 'index2', p.TypInteger]));
       FJSONVariantHelpers.AddSymbol(CreateHelper('TypeName', p.TypString, [], True));
       FJSONVariantHelpers.AddSymbol(CreateHelper('ElementName', p.TypString, ['index', p.TypInteger]));
+      FJSONVariantHelpers.AddSymbol(CreateHelper('Defined', p.TypBoolean, [], True));
    end;
 
    list.AddSymbolTable(FJSONVariantHelpers);

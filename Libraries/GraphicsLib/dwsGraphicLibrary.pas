@@ -25,7 +25,7 @@ unit dwsGraphicLibrary;
 interface
 
 uses
-   Classes, SysUtils, Graphics,
+   Classes, SysUtils, Vcl.Graphics,
    {$ifdef USE_LIB_JPEG}
    dwsJPEGEncoder,
    {$else}

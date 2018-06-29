@@ -24,3 +24,30 @@ i := Integer(v)+1;
 PrintLn(i);
 f := Float(v)+1;
 PrintLn(f);
+
+PrintLn('Booleans');
+
+v := True;
+PrintLn(Boolean(v));
+v := False;
+PrintLn(Boolean(v));
+
+PrintLn('Booleans strings');
+
+v := 'True';
+PrintLn(Boolean(v));
+v := 'true';
+PrintLn(Boolean(v));
+v := 'False';
+PrintLn(Boolean(v));
+v := 'false';
+PrintLn(Boolean(v));
+
+PrintLn('Booleans integer');
+
+v := 1;
+PrintLn(Boolean(v));
+v := 0;
+PrintLn(Boolean(v));
+v := -1;
+PrintLn(Boolean(v));

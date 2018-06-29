@@ -1,6 +1,6 @@
 program LanguageTests;
 
-{$SetPEFlags $0001}
+{$SetPEFlags $0020}
 
 {$IFNDEF VER200}
 {.$WEAKLINKRTTI ON}
@@ -14,7 +14,8 @@ uses
   Windows,
   TestFrameWork,
   GUITestRunner,
-  SysUtils, Math,
+  SysUtils,
+  Math,
   dwsXPlatform,
   dwsMathComplexFunctions in '..\Source\dwsMathComplexFunctions.pas',
   dwsMath3DFunctions in '..\Source\dwsMath3DFunctions.pas',
@@ -81,7 +82,8 @@ uses
   UdwsSystemInfoTests in 'UdwsSystemInfoTests.pas',
   dwsSHA512 in '..\Libraries\CryptoLib\dwsSHA512.pas',
   dwsArrayElementContext in '..\Source\dwsArrayElementContext.pas',
-  dwsJPEGEncoderOptions in '..\Libraries\GraphicsLib\dwsJPEGEncoderOptions.pas';
+  dwsJPEGEncoderOptions in '..\Libraries\GraphicsLib\dwsJPEGEncoderOptions.pas',
+  UdwsWebLibModuleTest in 'UdwsWebLibModuleTest.pas';
 
 {$R *.res}
 

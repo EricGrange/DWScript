@@ -7,3 +7,6 @@ PrintLn(db.Query('select null').IsNull(0));
 PrintLn(db.Query('select 0').Fields[0].IsNull);
 PrintLn(db.Query('select 1').Fields[0].IsNull);
 PrintLn(db.Query('select null').Fields[0].IsNull);
+
+PrintLn(db.Query('select 0 a, null b').IsNull('a'));
+PrintLn(db.Query('select 0 a, null b').IsNull('b'));

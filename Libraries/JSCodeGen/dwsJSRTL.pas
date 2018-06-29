@@ -143,7 +143,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-{$R dwsJSRTL.res dwsJSRTL.rc}
+{$R dwsJSRTL.res}
 
 const
    cJSRTLDependencies : array [1..274] of TJSRTLDependency = (

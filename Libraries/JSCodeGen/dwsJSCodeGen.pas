@@ -25,7 +25,7 @@ uses
    dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs, dwsCompilerUtils,
    dwsJSLibModule, dwsJSMin, dwsFunctions, dwsGlobalVarsFunctions, dwsErrors,
    dwsRTTIFunctions, dwsConstExprs, dwsInfo, dwsScriptSource, dwsSymbolDictionary,
-   dwsUnicode, dwsExprList;
+   dwsUnicode, dwsExprList, dwsXXHash;
 
 type
 
@@ -1108,6 +1108,8 @@ begin
       TdwsExprGenericCodeGen.Create([0, '+=', -1], gcgStatement));
    RegisterCodeGen(TDecIntVarExpr,
       TdwsExprGenericCodeGen.Create([0, '-=', -1], gcgStatement));
+   RegisterCodeGen(TIncIntVarWithConstExpr,
+      TdwsExprGenericCodeGen.Create([0, '+=', -1], gcgStatement));
 
    RegisterCodeGen(TIncVarFuncExpr,    TJSIncVarFuncExpr.Create);
    RegisterCodeGen(TDecVarFuncExpr,    TJSDecVarFuncExpr.Create);

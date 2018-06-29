@@ -1676,6 +1676,11 @@ type
      procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
+   // (int var) += (const inst)
+   TIncIntVarWithConstExpr = class(TIncIntVarExpr)
+     procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+
    // Abs(v) (int)
    TAbsIntExpr = class(TUnaryOpIntExpr)
       function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -6460,16 +6465,16 @@ begin
    end;
 
    Result:=Self;
-   rightClassType:=FRight.ClassType;
+   rightClassType := FRight.ClassType;
    if FLeft.InheritsFrom(TVarExpr)then begin
-      leftVarExpr:=TVarExpr(FLeft);
-      if leftVarExpr.ClassType=TIntVarExpr then begin
-         if rightClassType=TAddIntExpr then begin
-            addIntExpr:=TAddIntExpr(FRight);
+      leftVarExpr := TVarExpr(FLeft);
+      if leftVarExpr.ClassType = TIntVarExpr then begin
+         if rightClassType = TAddIntExpr then begin
+            addIntExpr := TAddIntExpr(FRight);
             if addIntExpr.Left.SameDataExpr(leftVarExpr) then begin
-               Result:=TIncIntVarExpr.Create(context, FScriptPos, FLeft, addIntExpr.Right);
-               FLeft:=nil;
-               addIntExpr.Right:=nil;
+               Result := TIncIntVarExpr.Create(context, FScriptPos, FLeft, addIntExpr.Right);
+               FLeft := nil;
+               addIntExpr.Right := nil;
                Free;
                Exit;
             end;
@@ -6997,9 +7002,13 @@ function TPlusAssignIntExpr.Optimize(context : TdwsCompilerContext) : TProgramEx
 begin
    Result:=Self;
    if FLeft is TIntVarExpr then begin
-      Result:=TIncIntVarExpr.Create(context, FScriptPos, FLeft, FRight);
-      FLeft:=nil;
-      FRight:=nil;
+      if FRight.ClassType = TConstIntExpr then begin
+         Result := TIncIntVarWithConstExpr.Create(context, FScriptPos, FLeft, FRight);
+      end else begin
+         Result := TIncIntVarExpr.Create(context, FScriptPos, FLeft, FRight);
+      end;
+      FLeft := nil;
+      FRight := nil;
       Orphan(context);
    end;
 end;
@@ -7163,6 +7172,16 @@ begin
    TIntVarExpr(FLeft).IncValue(exec, -FRight.EvalAsInteger(exec));
 end;
 
+// ------------------
+// ------------------ TIncIntVarWithConstExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TIncIntVarWithConstExpr.EvalNoResult(exec : TdwsExecution);
+begin
+   TIntVarExpr(FLeft).IncValue(exec, TConstIntExpr(FRight).Value);
+end;
 
 // ------------------
 // ------------------ TAbsIntExpr ------------------

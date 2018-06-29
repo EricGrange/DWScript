@@ -107,7 +107,7 @@ begin
    if not (aSymbolList.Symbol is TParamSymbol) then Exit;
    if aSymbolList.Symbol.Name='Self' then Exit;
 
-   if TCharacter.IsUpper(aSymbolList.Symbol.Name[1]) then
+   if aSymbolList.Symbol.Name[1].IsUpper() then
       TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
 end;
 
@@ -130,7 +130,7 @@ begin
    if    (aSymbolList.Symbol.ClassType<>TDataSymbol)
       or (TDataSymbol(aSymbolList.Symbol).Level<=0) then Exit;
 
-   if TCharacter.IsUpper(aSymbolList.Symbol.Name[1]) then
+   if aSymbolList.Symbol.Name[1].IsUpper() then
       TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
 end;
 
@@ -157,7 +157,7 @@ begin
 
    if funcSym.IsExport then Exit;
 
-   if TCharacter.IsLower(funcSym.Name[1]) then
+   if funcSym.Name[1].IsLower() then
       TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
 end;
 
@@ -179,7 +179,7 @@ procedure TGR_ConstantNamingRules.EvaluateSymbol(const aSymbolList : TSymbolPosi
 
    function ChecksCPrefix(const s : UnicodeString) : Boolean;
    begin
-      Result:=(Length(s)>=2) and (s[1]='c') and TCharacter.IsUpper(s[2]);
+      Result:=(Length(s)>=2) and (s[1]='c') and s[2].IsUpper();
    end;
 
    function ChecksAllCapsUpToUnderscore(const s : UnicodeString) : Boolean;
@@ -191,7 +191,7 @@ procedure TGR_ConstantNamingRules.EvaluateSymbol(const aSymbolList : TSymbolPosi
          c:=s[i];
          if c='_' then
             break
-         else if TCharacter.IsLower(c) then
+         else if c.IsLower() then
             Exit(False);
       end;
       Result:=True;
@@ -230,7 +230,7 @@ begin
    if sym.OwnerSymbol.IsStatic then Exit;
 
    if    (Length(sym.Name)<2)
-      or (sym.Name[1]<>'v') or TCharacter.IsLower(sym.Name[2]) then
+      or (sym.Name[1]<>'v') or sym.Name[2].IsLower() then
       TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
 end;
 
@@ -259,10 +259,10 @@ begin
 
    if not (fld.Visibility in [cvPublic, cvPublished]) then begin
       if    (Length(aSymbolList.Symbol.Name)<2)
-         or (aSymbolList.Symbol.Name[1]<>'F') or TCharacter.IsLower(aSymbolList.Symbol.Name[2]) then
+         or (aSymbolList.Symbol.Name[1]<>'F') or aSymbolList.Symbol.Name[2].IsLower() then
          TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
    end else begin
-      if TCharacter.IsLower(aSymbolList.Symbol.Name[1]) then
+      if aSymbolList.Symbol.Name[1].IsLower() then
          TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
    end;
 end;
@@ -285,7 +285,7 @@ procedure TGR_PascalCaseProperties.EvaluateSymbol(const aSymbolList : TSymbolPos
 begin
    if aSymbolList.Symbol.ClassType<>TPropertySymbol then Exit;
 
-   if TCharacter.IsLower(aSymbolList.Symbol.Name[1]) then
+   if aSymbolList.Symbol.Name[1].IsLower() then
       TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
 end;
 
@@ -309,7 +309,7 @@ begin
    if aSymbolList.Symbol.AsFuncSymbol<>nil then Exit;
    if aSymbolList.Symbol is TUnitSymbol then Exit;
 
-   if TCharacter.IsLower(aSymbolList.Symbol.Name[1]) then
+   if aSymbolList.Symbol.Name[1].IsLower() then
       TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
 end;
 
@@ -339,7 +339,7 @@ begin
    if cls.Name=SYS_TCUSTOMATTRIBUTE then Exit;
 
    if    (not StrEndsWith(cls.Name, 'Attribute'))
-      or (StrBeginsWith(cls.Name, 'T') and not TCharacter.IsLower((Copy(cls.Name, 2, 1)+'e')[1])) then begin
+      or (StrBeginsWith(cls.Name, 'T') and not (Copy(cls.Name, 2, 1)+'e')[1].IsLower()) then begin
       TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
    end;
 end;
