@@ -1613,7 +1613,6 @@ type
          procedure Swap(i1, i2 : Integer); virtual; abstract;
          procedure Reverse;
          procedure Copy(src : TScriptDynamicArray; index, count : Integer);
-         procedure RawCopy(const src : TData; rawIndex, rawCount : Integer);
          procedure Concat(src : TScriptDynamicArray);
          procedure MoveItem(srcIndex, dstIndex : Integer);
 
@@ -7349,19 +7348,8 @@ end;
 //
 procedure TScriptDynamicArray.Copy(src : TScriptDynamicArray; index, count : Integer);
 begin
-   RawCopy(src.AsData, index*ElementSize, count*ElementSize);
-end;
-
-// RawCopy
-//
-procedure TScriptDynamicArray.RawCopy(const src : TData; rawIndex, rawCount : Integer);
-var
-   i : Integer;
-begin
-   FArrayLength:=rawCount div ElementSize;
-   SetDataLength(rawCount);
-   for i:=rawIndex to rawIndex+rawCount-1 do
-      AsVariant[i-rawIndex]:=src[i];
+   ArrayLength := count;
+   WriteData(src, index*ElementSize, count*ElementSize);
 end;
 
 // Concat
@@ -7383,7 +7371,7 @@ end;
 //
 procedure TScriptDynamicArray.MoveItem(srcIndex, dstIndex : Integer);
 begin
-   DWSMoveData(AsData, srcIndex*ElementSize, dstIndex*ElementSize, ElementSize);
+   MoveData(srcIndex*ElementSize, dstIndex*ElementSize, ElementSize);
 end;
 
 // IndexOfData
@@ -7701,7 +7689,7 @@ begin
 
    oldHashCodes:=FHashCodes;
    oldKeys:=FKeys;
-   oldData:=AsData;
+   oldData := AsPData^;
 
    FHashCodes:=nil;
    SetLength(FHashCodes, FCapacity);
@@ -7720,7 +7708,7 @@ begin
          j:=(j+1) and n;
       FHashCodes[j]:=oldHashCodes[i];
       DWSCopyData(oldKeys, i*FKeySize, FKeys, j*FKeySize, FKeySize);
-      DWSCopyData(oldData, i*FElementSize, AsData, j*FElementSize, FElementSize);
+      DWSCopyData(oldData, i*FElementSize, AsPData^, j*FElementSize, FElementSize);
    end;
 end;
 

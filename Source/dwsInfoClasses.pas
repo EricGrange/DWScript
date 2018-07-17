@@ -1398,7 +1398,7 @@ end;
 //
 function TInfoDynamicArray.GetData : TData;
 begin
-   Result:=SelfDynArray.AsData;
+   Result := SelfDynArray.AsPData^;
 end;
 
 // SetData

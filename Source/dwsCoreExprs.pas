@@ -6677,7 +6677,7 @@ var
    dataPtr : IDataContext;
 begin
    srcData:=TArrayConstantExpr(FRight).EvalAsTData(exec);
-   if FLeft.Typ is TDynamicArraySymbol then begin
+   if FLeft.Typ.ClassType = TDynamicArraySymbol then begin
       // to dynamic array
       FLeft.EvalAsScriptDynArray(exec, dynIntf);
       if dynIntf=nil then begin
@@ -6687,7 +6687,8 @@ begin
       end else begin
          dynObj:=TScriptDynamicArray(dynIntf.GetSelf);
       end;
-      dynObj.RawCopy(srcData, 0, Length(srcData));
+      dynObj.ArrayLength := Length(srcData) div dynObj.ElementSize;
+      dynObj.WriteData(srcData, 0, Length(srcData));
    end else begin
       // to static array
       exec.DataContext_Create(srcData, 0, dataPtr);

@@ -55,7 +55,6 @@ type
          function DataLength : Integer;
 
          function AsPData : PData;
-         function AsData : TData;
          function AsPVariant(addr : Integer) : PVariant;
 
          procedure CreateOffset(offset : Integer; var result : IDataContext);
@@ -226,13 +225,6 @@ end;
 function TArrayElementDataContext.AsPData : PData;
 begin
    raise Exception.Create('TArrayElementDataContext.AsPData not implemented');
-end;
-
-// AsData
-//
-function TArrayElementDataContext.AsData : TData;
-begin
-   raise Exception.Create('TArrayElementDataContext.AsData not implemented');
 end;
 
 // AsPVariant

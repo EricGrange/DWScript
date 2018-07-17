@@ -54,7 +54,6 @@ type
       property AsVariant[addr : Integer] : Variant read GetAsVariant write SetAsVariant; default;
 
       function AsPData : PData;
-      function AsData : TData;
       function AsPVariant(addr : Integer) : PVariant;
 
       procedure CreateOffset(offset : Integer; var result : IDataContext);
@@ -138,7 +137,6 @@ type
 
          property AsVariant[addr : Integer] : Variant read GetAsVariant write SetAsVariant; default;
          function AsPData : PData; inline;
-         function AsData : TData;
          function AsPVariant(addr : Integer) : PVariant; inline;
          function Addr : Integer;
          function DataLength : Integer; inline;
@@ -157,11 +155,17 @@ type
          property  AsInterface[addr : Integer] : IUnknown read GetAsInterface write SetAsInterface;
 
          procedure InternalCopyData(sourceAddr, destAddr, size : Integer); inline;
+
          procedure CopyData(const destData : TData; destAddr, size : Integer); overload; inline;
          procedure CopyData(addr : Integer; const destData : TData; destAddr, size : Integer); overload; inline;
+
          procedure WriteData(const src : IDataContext; size : Integer); overload; inline;
+         procedure WriteData(const src : IDataContext; srcAddr, size : Integer); overload; inline;
          procedure WriteData(destAddr : Integer; const src : IDataContext; size : Integer); overload; inline;
          procedure WriteData(const srcData : TData; srcAddr, size : Integer); overload; inline;
+
+         procedure MoveData(srcAddr, destAddr, size : Integer); inline;
+
          function  SameData(addr : Integer; const otherData : TData; otherAddr, size : Integer) : Boolean; overload; inline;
          function  SameData(addr : Integer; const otherData : IDataContext; size : Integer) : Boolean; overload; inline;
 
@@ -201,7 +205,6 @@ type
          function DataLength : Integer;
 
          function AsPData : PData;
-         function AsData : TData;
          function AsPVariant(addr : Integer) : PVariant;
 
          procedure CreateOffset(offset : Integer; var result : IDataContext);
@@ -706,13 +709,6 @@ begin
    Result:=@FData;
 end;
 
-// AsData
-//
-function TDataContext.AsData : TData;
-begin
-   Result:=FData;
-end;
-
 // AsPVariant
 //
 function TDataContext.AsPVariant(addr : Integer) : PVariant;
@@ -825,6 +821,13 @@ end;
 
 // WriteData
 //
+procedure TDataContext.WriteData(const src : IDataContext; srcAddr, size : Integer);
+begin
+   DWSCopyData(src.AsPData^, srcAddr, Fdata, FAddr, size);
+end;
+
+// WriteData
+//
 procedure TDataContext.WriteData(destAddr : Integer; const src : IDataContext; size : Integer);
 begin
    DWSCopyData(src.AsPData^, src.Addr, FData, FAddr+destAddr, size);
@@ -835,6 +838,13 @@ end;
 procedure TDataContext.WriteData(const srcData : TData; srcAddr, size : Integer);
 begin
    DWSCopyData(srcData, srcAddr, FData, FAddr, size);
+end;
+
+// MoveData
+//
+procedure TDataContext.MoveData(srcAddr, destAddr, size : Integer);
+begin
+   DWSMoveData(FData, srcAddr, destAddr, size);
 end;
 
 // SameData
@@ -1002,13 +1012,6 @@ end;
 function TRelativeDataContext.AsPData : PData;
 begin
    Result:=FGetPData;
-end;
-
-// AsData
-//
-function TRelativeDataContext.AsData : TData;
-begin
-   Result:=FGetPData^;
 end;
 
 // AsPVariant
