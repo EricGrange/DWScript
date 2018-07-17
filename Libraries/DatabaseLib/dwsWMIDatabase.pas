@@ -41,8 +41,8 @@ type
          function InTransaction : Boolean;
          function CanReleaseToPool : String;
 
-         procedure Exec(const sql : String; const parameters : TData; context : TExprBase);
-         function Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
+         procedure Exec(const sql : String; const parameters : IDataContext; context : TExprBase);
+         function Query(const sql : String; const parameters : IDataContext; context : TExprBase) : IdwsDataSet;
 
          function VersionInfoText : String;
    end;
@@ -60,7 +60,7 @@ type
          procedure ClearFieldValues;
 
       public
-         procedure Open(const service : IDispatch; const sql : String; const parameters : TData);
+         procedure Open(const service : IDispatch; const sql : String; const parameters : IDataContext);
 
          function Eof : Boolean; override;
          procedure Next; override;
@@ -215,14 +215,14 @@ end;
 
 // Exec
 //
-procedure TdwsWMIDataBase.Exec(const sql : String; const parameters : TData; context : TExprBase);
+procedure TdwsWMIDataBase.Exec(const sql : String; const parameters : IDataContext; context : TExprBase);
 begin
    raise Exception.Create('Exec not supported');
 end;
 
 // Query
 //
-function TdwsWMIDataBase.Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
+function TdwsWMIDataBase.Query(const sql : String; const parameters : IDataContext; context : TExprBase) : IdwsDataSet;
 var
    ds : TdwsWMIDataSet;
 begin
@@ -244,11 +244,11 @@ end;
 
 // Open
 //
-procedure TdwsWMIDataSet.Open(const service : IDispatch; const sql : String; const parameters : TData);
+procedure TdwsWMIDataSet.Open(const service : IDispatch; const sql : String; const parameters : IDataContext);
 const
    wbemFlagForwardOnly = 32;
 begin
-   if Length(parameters) <> 0 then
+   if parameters.DataLength <> 0 then
       raise Exception.Create('Parameters not supported');
    FQuery := OleVariant(service).ExecQuery(sql, 'WQL', wbemFlagForwardOnly);
    FRowsEnum := IUnknown(FQuery._NewEnum) as IEnumVARIANT;

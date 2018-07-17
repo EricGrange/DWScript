@@ -49,8 +49,8 @@ type
          function InTransaction : Boolean;
          function CanReleaseToPool : String;
 
-         procedure Exec(const sql : String; const parameters : TData; context : TExprBase);
-         function Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
+         procedure Exec(const sql : String; const parameters : IDataContext; context : TExprBase);
+         function Query(const sql : String; const parameters : IDataContext; context : TExprBase) : IdwsDataSet;
 
          function VersionInfoText : String;
    end;
@@ -64,7 +64,7 @@ type
          procedure DoPrepareFields; override;
 
       public
-         constructor Create(db : TdwsUIBDataBase; const sql : String; const parameters : TData);
+         constructor Create(db : TdwsUIBDataBase; const sql : String; const parameters : IDataContext);
          destructor Destroy; override;
 
          function Eof : Boolean; override;
@@ -107,15 +107,15 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-procedure AssignParameters(var rq : TUIBQuery; const params : TData);
+procedure AssignParameters(var rq : TUIBQuery; const params : IDataContext);
 var
    i : Integer;
    p : PVarData;
    rqParams : TSQLParams;
 begin
    rqParams:=rq.Params;
-   for i:=0 to Length(params)-1 do begin
-      p:=PVarData(@params[i]);
+   for i:=0 to params.DataLength-1 do begin
+      p:=PVarData(params.AsPVariant(i));
       case p.VType of
          varInt64 : rqParams.AsInt64[i]:=p.VInt64;
          varDouble : rqParams.AsDouble[i]:=p.VDouble;
@@ -227,7 +227,7 @@ end;
 
 // Exec
 //
-procedure TdwsUIBDataBase.Exec(const sql : String; const parameters : TData; context : TExprBase);
+procedure TdwsUIBDataBase.Exec(const sql : String; const parameters : IDataContext; context : TExprBase);
 var
    rq : TUIBQuery;
 begin
@@ -245,7 +245,7 @@ end;
 
 // Query
 //
-function TdwsUIBDataBase.Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
+function TdwsUIBDataBase.Query(const sql : String; const parameters : IDataContext; context : TExprBase) : IdwsDataSet;
 var
    ds : TdwsUIBDataSet;
 begin
@@ -266,7 +266,7 @@ end;
 
 // Create
 //
-constructor TdwsUIBDataSet.Create(db : TdwsUIBDataBase; const sql : String; const parameters : TData);
+constructor TdwsUIBDataSet.Create(db : TdwsUIBDataBase; const sql : String; const parameters : IDataContext);
 begin
    FDB:=db;
    inherited Create(db);

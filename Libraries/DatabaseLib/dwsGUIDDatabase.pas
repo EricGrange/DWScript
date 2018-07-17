@@ -38,8 +38,8 @@ type
          function InTransaction : Boolean;
          function CanReleaseToPool : String;
 
-         procedure Exec(const sql : String; const parameters : TData; context : TExprBase);
-         function Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
+         procedure Exec(const sql : String; const parameters : IDataContext; context : TExprBase);
+         function Query(const sql : String; const parameters : IDataContext; context : TExprBase) : IdwsDataSet;
 
          function VersionInfoText : String;
    end;
@@ -180,14 +180,14 @@ end;
 
 // Exec
 //
-procedure TdwsGUIDDataBase.Exec(const sql : String; const parameters : TData; context : TExprBase);
+procedure TdwsGUIDDataBase.Exec(const sql : String; const parameters : IDataContext; context : TExprBase);
 begin
    raise Exception.Create('Exec not supported');
 end;
 
 // Query
 //
-function TdwsGUIDDataBase.Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
+function TdwsGUIDDataBase.Query(const sql : String; const parameters : IDataContext; context : TExprBase) : IdwsDataSet;
 var
    ds : TdwsGUIDDataSet;
 begin

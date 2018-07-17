@@ -318,7 +318,7 @@ begin
       dataFieldObj:=TDataField.Create;
       dataFieldObj.Intf:=Intf.Fields[i];
       dataFieldInfo.ExternalObject:=dataFieldObj;
-      dataFieldsArray.AsData[i]:=dataFieldInfo.Value;
+      dataFieldsArray.AsVariant[i]:=dataFieldInfo.Value;
    end;
 end;
 
@@ -552,7 +552,7 @@ begin
    scriptDyn:=Info.ParamAsScriptDynArray[1];
 
    db := (ExtObject as TScriptDataBase).Intf;
-   db.Exec(Info.ParamAsString[0], scriptDyn.AsData, Info.Execution.CallStackLastExpr);
+   db.Exec(Info.ParamAsString[0], scriptDyn, Info.Execution.CallStackLastExpr);
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsGetOptionEval(
@@ -597,7 +597,7 @@ begin
    scriptDyn:=Info.ParamAsScriptDynArray[1];
 
    dbo:=(ExtObject as TScriptDataBase);
-   ids:=dbo.Intf.Query(Info.ParamAsString[0], scriptDyn.AsData, Info.Execution.CallStackLastExpr);
+   ids:=dbo.Intf.Query(Info.ParamAsString[0], scriptDyn, Info.Execution.CallStackLastExpr);
 
    dataSetInfo:=Info.Vars['DataSet'].Method['Create'].Call;
 
