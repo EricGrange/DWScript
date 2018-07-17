@@ -3618,7 +3618,7 @@ begin
    index:=IndexExpr.EvalAsInteger(exec);
    BoundsCheck(exec, base.ArrayLength, index);
 
-   exec.DataContext_Create(base.AsData, index*FElementSize, Result);
+   exec.DataContext_CreateOffset(base, index*FElementSize, Result);
 end;
 
 // EvalItem
@@ -3884,9 +3884,8 @@ begin
    index:=IndexExpr.EvalAsInteger(exec);
    BoundsCheck(exec, dynArray.ArrayLength, index);
 
-   dataExpr:=(ValueExpr as TDataExpr);
-   dataExpr.DataPtr[exec].CopyData(dynArray.AsData, index*dynArray.ElementSize,
-                                   dynArray.ElementSize);
+   dataExpr := (ValueExpr as TDataExpr);
+   dynArray.WriteData(index*dynArray.ElementSize, dataExpr.DataPtr[exec], dynArray.ElementSize);
 end;
 
 // ------------------
@@ -4526,7 +4525,7 @@ end;
 //
 procedure TFieldExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   exec.DataContext_Create(GetScriptObj(exec).AsData, FieldSym.Offset, result);
+   exec.DataContext_CreateOffset(GetScriptObj(exec), FieldSym.Offset, result);
 end;
 
 // SameDataExpr
@@ -9361,7 +9360,7 @@ constructor TArraySortComparer.Create(exec : TdwsExecution; dyn : TScriptDynamic
 begin
    FExec:=exec;
    FDyn:=dyn;
-   FData:=dyn.AsData;
+   FData:=dyn.AsPData^;
    FLeftAddr:=exec.Stack.BasePointer+(compareFunc.Args[0] as TVarExpr).StackAddr;
    FRightAddr:=exec.Stack.BasePointer+(compareFunc.Args[1] as TVarExpr).StackAddr;
    FFunc:=compareFunc;
@@ -9680,7 +9679,7 @@ begin
          dyn.ArrayLength:=n+1;
          if arg.Typ.Size>1 then begin
             argData:=(arg as TDataExpr);
-            argData.DataPtr[exec].CopyData(dyn.AsData, n*dyn.ElementSize, dyn.ElementSize);
+            dyn.WriteData(n*dyn.ElementSize, argData.DataPtr[exec], dyn.ElementSize);
          end else arg.EvalAsVariant(exec, dyn.AsPVariant(n)^);
 
       end else if arg.Typ.ClassType=TDynamicArraySymbol then begin
@@ -9700,7 +9699,7 @@ begin
             dyn.ArrayLength:=n+k;
             if arg is TArrayConstantExpr then
                TArrayConstantExpr(arg).EvalToTData(exec, dyn.AsPData^, n*dyn.ElementSize)
-            else (arg as TDataExpr).DataPtr[exec].CopyData(dyn.AsData, n*dyn.ElementSize, k*dyn.ElementSize);
+            else dyn.WriteData(n*dyn.ElementSize, (arg as TDataExpr).DataPtr[exec], k*dyn.ElementSize);
          end;
 
       end;
@@ -9844,14 +9843,16 @@ var
    dyn : TScriptDynamicArray;
    idx : Integer;
 begin
-   dyn:=GetBaseDynArray(exec);
-   if dyn.ArrayLength=0 then
+   dyn := GetBaseDynArray(exec);
+   idx := dyn.ArrayLength - 1;
+   if idx < 0 then
       RaiseUpperExceeded(exec, 0);
 
-   idx:=(dyn.ArrayLength-1)*dyn.ElementSize;
-   DWSCopyData(dyn.AsData, idx,
-               exec.Stack.Data, exec.Stack.BasePointer+FResultAddr,
-               dyn.ElementSize);
+   if dyn.ElementSize = 1 then begin
+      dyn.EvalAsVariant(idx, exec.Stack.Data[exec.Stack.BasePointer+FResultAddr]);
+   end else begin
+      dyn.CopyData(idx*dyn.ElementSize, exec.Stack.Data, exec.Stack.BasePointer+FResultAddr, dyn.ElementSize);
+   end;
 end;
 
 // SpecializeDataExpr
@@ -10245,9 +10246,9 @@ begin
       dyn.Insert(index);
    end;
 
-   if ItemExpr.Typ.Size>1 then begin
-      (ItemExpr as TDataExpr).DataPtr[exec].CopyData(dyn.AsData, index*dyn.ElementSize, dyn.ElementSize);
-   end else ItemExpr.EvalAsVariant(exec, dyn.AsPVariant(index)^);
+   if ItemExpr.Typ.Size>1 then
+      dyn.WriteData(index*dyn.ElementSize, (ItemExpr as TDataExpr).DataPtr[exec], dyn.ElementSize)
+   else ItemExpr.EvalAsVariant(exec, dyn.AsPVariant(index)^);
 end;
 
 // GetSubExpr

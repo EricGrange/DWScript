@@ -1768,7 +1768,7 @@ constructor TScriptObjectWrapper.Create(scriptObj : TScriptObjInstance);
 begin
    inherited Create;
    FScriptObj:=scriptObj;
-   ReplaceData(scriptObj.AsData);
+   ReplaceData(scriptObj.AsPData^);
 end;
 
 // GetClassSym
@@ -6341,7 +6341,7 @@ procedure TProgramInfo.GetSymbolInfo(sym : TSymbol; var info : IInfo);
       if sym.StructSymbol is TRecordSymbol then begin
          Execution.DataContext_Create(Self.GetData(SYS_SELF), sym.Offset, locData);
       end else begin
-         Execution.DataContext_Create(FScriptObj.AsData, sym.Offset, locData);
+         Execution.DataContext_CreateOffset(FScriptObj, sym.Offset, locData);
       end;
       TInfo.SetChild(Result, Self, sym.Typ, locData);
    end;
@@ -7297,14 +7297,16 @@ end;
 procedure TScriptDynamicArray.Insert(index : Integer);
 var
    n : Integer;
+   p : PData;
 begin
    Inc(FArrayLength);
    SetDataLength(FArrayLength*ElementSize);
    n:=(FArrayLength-index-1)*ElementSize*SizeOf(Variant);
+   p := AsPData;
    if n>0 then
-      Move(AsData[index*ElementSize], AsData[(index+1)*ElementSize], n);
-   FillChar(AsData[index*ElementSize], ElementSize*SizeOf(Variant), 0);
-   FElementTyp.InitData(AsData, index*ElementSize);
+      Move(p^[index*ElementSize], p^[(index+1)*ElementSize], n);
+   FillChar(p^[index*ElementSize], ElementSize*SizeOf(Variant), 0);
+   FElementTyp.InitData(p^, index*ElementSize);
 end;
 
 // Delete
@@ -7312,6 +7314,7 @@ end;
 procedure TScriptDynamicArray.Delete(index, count : Integer);
 var
    i, d : Integer;
+   p : PData;
 begin
    if count<=0 then Exit;
    Dec(FArrayLength, count);
@@ -7320,9 +7323,10 @@ begin
    for i:=index to index+count-1 do
       VarClearSafe(AsPVariant(i)^);
    d:=(FArrayLength-1)*ElementSize+count-index;
+   p := AsPData;
    if d>0 then
-      System.Move(AsData[index+count], AsData[index], d*SizeOf(Variant));
-   System.FillChar(AsData[FArrayLength*ElementSize], count*SizeOf(Variant), 0);
+      System.Move(p^[index+count], p^[index], d*SizeOf(Variant));
+   System.FillChar(p^[FArrayLength*ElementSize], count*SizeOf(Variant), 0);
    SetDataLength(FArrayLength*ElementSize);
 end;
 
@@ -7366,12 +7370,12 @@ procedure TScriptDynamicArray.Concat(src : TScriptDynamicArray);
 var
    n, nSrc : Integer;
 begin
-   if src.ArrayLength>0 then begin
-      n:=ArrayLength;
-      nSrc:=src.ArrayLength;
-      FArrayLength:=n+nSrc;
+   if src.ArrayLength > 0 then begin
+      n := ArrayLength;
+      nSrc := src.ArrayLength;
+      FArrayLength := n + nSrc;
       SetDataLength(FArrayLength*ElementSize);
-      DWSCopyData(src.AsData, 0, AsData, n*ElementSize, nSrc*ElementSize);
+      WriteData(n*ElementSize, src, nSrc*ElementSize);
    end;
 end;
 

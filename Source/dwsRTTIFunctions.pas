@@ -420,7 +420,7 @@ begin
       propInfo:=TInfoProperty.Create(info, propSym.Typ, info.Execution.DataContext_Nil,
                                      TPropertySymbol(propSym), handle.ScriptObj)
    else if propSym.ClassType=TFieldSymbol then begin
-      info.Execution.DataContext_Create(handle.ScriptObj.AsData, TFieldSymbol(propSym).Offset, locData);
+      info.Execution.DataContext_CreateOffset(handle.ScriptObj, TFieldSymbol(propSym).Offset, locData);
       propInfo:=TInfoData.Create(info, propSym.Typ, locData);
    end;
 
@@ -446,7 +446,7 @@ begin
       propInfo:=TInfoProperty.Create(info, propSym.Typ, info.Execution.DataContext_Nil,
                                      TPropertySymbol(propSym), handle.ScriptObj)
    else if propSym.ClassType=TFieldSymbol then begin
-      info.Execution.DataContext_Create(handle.ScriptObj.AsData, TFieldSymbol(propSym).Offset, locData);
+      info.Execution.DataContext_CreateOffset(handle.ScriptObj, TFieldSymbol(propSym).Offset, locData);
       propInfo:=TInfoData.Create(info, propSym.Typ, locData);
    end;
 

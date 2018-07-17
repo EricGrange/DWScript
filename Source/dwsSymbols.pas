@@ -1937,6 +1937,7 @@ type
          procedure DataContext_CreateValue(const value : Variant; var Result : IDataContext); inline;
          procedure DataContext_CreateBase(addr : Integer; var Result : IDataContext); inline;
          procedure DataContext_CreateLevel(level, addr : Integer; var Result : IDataContext); inline;
+         procedure DataContext_CreateOffset(const data : IDataContext; offset : Integer; var Result : IDataContext); inline;
          function  DataContext_Nil : IDataContext; inline;
 
          function  GetStackPData : PData;
@@ -7993,6 +7994,13 @@ end;
 procedure TdwsExecution.DataContext_CreateLevel(level, addr : Integer; var Result : IDataContext);
 begin
    FStack.InitDataPtrLevel(Result, level, addr);
+end;
+
+// DataContext_CreateOffset
+//
+procedure TdwsExecution.DataContext_CreateOffset(const data : IDataContext; offset : Integer; var Result : IDataContext);
+begin
+   Result := FStack.CreateDataContext(data.AsPData^, offset);
 end;
 
 // DataContext_Nil

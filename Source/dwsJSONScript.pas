@@ -243,7 +243,7 @@ class procedure JSONScript.StringifyDynamicArray(exec : TdwsExecution;
 var
    locData : IDataContext;
 begin
-   exec.DataContext_Create(dynArray.AsData, 0, locData);
+   exec.DataContext_CreateOffset(dynArray, 0, locData);
    StringifyArray(exec, writer, dynArray.ElementTyp, locData, dynArray.ArrayLength);
 end;
 

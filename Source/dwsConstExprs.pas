@@ -782,18 +782,21 @@ end;
 //
 procedure TArrayConstantExpr.EvalToTData(exec : TdwsExecution; var result : TData; offset : Integer);
 var
-   i, p : Integer;
+   i, p, s : Integer;
    expr : TTypedExpr;
 begin
-   p:=offset;
+   p := offset;
    for i:=0 to FElementExprs.Count-1 do begin
       expr:=TTypedExpr(FElementExprs.List[i]);
+      s := expr.Typ.Size;
       if expr.ClassType=TArrayConstantExpr then
          TArrayConstantExpr(expr).EvalToTData(exec, result, p)
       else if expr is TConstExpr then
-         DWSCopyData(TConstExpr(expr).Data, 0, result, p, expr.Typ.Size)
-      else expr.EvalAsVariant(exec, result[p]);
-      Inc(p, expr.Typ.Size);
+         DWSCopyData(TConstExpr(expr).Data, 0, result, p, s)
+      else if s = 1 then
+         expr.EvalAsVariant(exec, result[p])
+      else (expr as TDataExpr).DataPtr[exec].CopyData(result, p, s);
+      Inc(p, s);
    end;
 end;
 

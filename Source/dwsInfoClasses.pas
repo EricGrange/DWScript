@@ -838,7 +838,7 @@ begin
       raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
 
    if member is TFieldSymbol then begin
-      FProgramInfo.Execution.DataContext_Create(FScriptObj.AsData, TFieldSymbol(member).Offset, locData);
+      FProgramInfo.Execution.DataContext_CreateOffset(FScriptObj, TFieldSymbol(member).Offset, locData);
       SetChild(Result, FProgramInfo, member.Typ, locData);
    end else if member is TPropertySymbol then
       Result:=TInfoProperty.Create(FProgramInfo, member.Typ, FProgramInfo.Execution.DataContext_Nil,
@@ -1370,7 +1370,7 @@ begin
       end;
    end;
 
-   FProgramInfo.Execution.DataContext_Create(dynArray.AsData, elemOff, locData);
+   FProgramInfo.Execution.DataContext_CreateOffset(dynArray, elemOff, locData);
    SetChild(Result, FProgramInfo, elemTyp, locData, FDataMaster);
 end;
 
@@ -1629,9 +1629,8 @@ begin
     AssignIndices(func, FPropSym.ReadSym.AsFuncSymbol.Params);
     result := func.Call.Data;
   end
-  else if FPropSym.ReadSym is TFieldSymbol then
-  begin
-    FProgramInfo.Execution.DataContext_Create(FScriptObj.AsData, TFieldSymbol(FPropSym.ReadSym).Offset, locData);
+  else if FPropSym.ReadSym is TFieldSymbol then begin
+    FProgramInfo.Execution.DataContext_CreateOffset(FScriptObj, TFieldSymbol(FPropSym.ReadSym).Offset, locData);
     SetChild(func, FProgramInfo,FPropSym.ReadSym.Typ, locData);
     result := func.Data;
 {
@@ -1666,7 +1665,7 @@ begin
   end
   else if FPropSym.WriteSym is TFieldSymbol then
   begin
-    FProgramInfo.Execution.DataContext_Create(FScriptObj.AsData, TFieldSymbol(FPropSym.WriteSym).Offset, locData);
+    FProgramInfo.Execution.DataContext_CreateOffset(FScriptObj, TFieldSymbol(FPropSym.WriteSym).Offset, locData);
     SetChild(func, FProgramInfo,FPropSym.WriteSym.Typ, locData);
     func.Data := Value;
   end
