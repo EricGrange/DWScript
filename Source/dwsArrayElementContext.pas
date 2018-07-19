@@ -65,6 +65,7 @@ type
 
          procedure CopyData(const destData : TData; destAddr, size : Integer);
          procedure WriteData(const src : IDataContext; size : Integer); overload;
+         procedure WriteData(destAddr : Integer; const src : IDataContext; size : Integer); overload;
          procedure WriteData(const srcData : TData; srcAddr, size : Integer); overload;
          function SameData(addr : Integer; const otherData : TData; otherAddr, size : Integer) : Boolean;
 
@@ -280,6 +281,13 @@ end;
 procedure TArrayElementDataContext.WriteData(const src : IDataContext; size : Integer);
 begin
    DWSCopyPVariants(src.AsPVariant(0), FArray.AsPVariant(ComputeWriteAddr(0)), size);
+end;
+
+// WriteData
+//
+procedure TArrayElementDataContext.WriteData(destAddr : Integer; const src : IDataContext; size : Integer);
+begin
+   raise Exception.Create('TArrayElementDataContext.WriteData(2) not implemented');
 end;
 
 // WriteData

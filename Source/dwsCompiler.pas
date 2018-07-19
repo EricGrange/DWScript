@@ -1436,7 +1436,7 @@ begin
    end;
 
    if (funcSym.Typ<>nil) and (funcSym.Typ.Size>1) and Result.InheritsFrom(TFuncExpr) then
-      TFuncExpr(Result).SetResultAddr(CurrentProg, nil);
+      TFuncExpr(Result).InitializeResultAddr(CurrentProg);
 end;
 
 // GetMethodExpr
@@ -2954,8 +2954,8 @@ begin
                if expr is TConstExpr then begin
                   Result:=factory.CreateConstSymbol(name, constPos, sas, TConstExpr(expr).Data);
                end else begin
-                  Result:=factory.CreateConstSymbol(name, constPos, sas,
-                                                    (expr as TArrayConstantExpr).EvalAsTData(FExec));
+                  (expr as TArrayConstantExpr).EvalAsTData(FExec, recordData);
+                  Result:=factory.CreateConstSymbol(name, constPos, sas, recordData);
                end;
 
             end else begin
@@ -5772,7 +5772,7 @@ begin
             RecordSymbolUseReference(member, namePos, isWrite);
 
             if (baseType is TRecordSymbol) and (Result is TFuncExpr) then
-               TFuncExpr(Result).SetResultAddr(CurrentProg, nil);
+               TFuncExpr(Result).InitializeResultAddr(CurrentProg);
 
             if member is TMethodSymbol then begin
 
@@ -11623,6 +11623,7 @@ procedure TdwsCompiler.ReadParams(const hasParamMeth : THasParamSymbolMethod;
                            var defaultExpr : TTypedExpr);
    var
       paramSym : TParamSymbol;
+      data : TData;
    begin
       case paramSemantics of
          pssLazy :
@@ -11634,8 +11635,8 @@ procedure TdwsCompiler.ReadParams(const hasParamMeth : THasParamSymbolMethod;
       else
          if Assigned(defaultExpr) then begin
             if defaultExpr.ClassType=TArrayConstantExpr then begin
-               paramSym:=TParamSymbolWithDefaultValue.Create(
-                              curName, paramType, TArrayConstantExpr(defaultExpr).EvalAsTData(FExec));
+               TArrayConstantExpr(defaultExpr).EvalAsTData(FExec, data);
+               paramSym:=TParamSymbolWithDefaultValue.Create(curName, paramType, data);
             end else begin
                paramSym:=TParamSymbolWithDefaultValue.Create(
                               curName, paramType,

@@ -242,7 +242,7 @@ begin
       funcExpr.AddArg(typedExpr);
       TObject(expr) := funcExpr;
       if opSym.UsesSym.Typ.Size>1 then
-         funcExpr.SetResultAddr(prog, nil);
+         funcExpr.InitializeResultAddr(prog);
       SetLength(posArray, 1);
       posArray[0] := scriptPos;
       TypeCheckArguments(Self, funcExpr, posArray);

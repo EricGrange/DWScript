@@ -661,7 +661,7 @@ type
 
       public
          procedure InitData(const data : TData; offset : Integer); overload; virtual;
-         procedure InitData(const data : IDataContext); overload; inline;
+         procedure InitDataContext(const data : IDataContext); overload; inline;
          class function DynamicInitialization : Boolean; virtual;
 
          function IsType : Boolean; override;
@@ -7609,9 +7609,9 @@ begin
    Assert(False);
 end;
 
-// InitData
+// InitDataContext
 //
-procedure TTypeSymbol.InitData(const data : IDataContext);
+procedure TTypeSymbol.InitDataContext(const data : IDataContext);
 begin
    InitData(data.AsPData^, data.Addr);
 end;

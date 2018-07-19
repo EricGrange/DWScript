@@ -931,7 +931,8 @@ type
 
          procedure Initialize(compiler : TdwsCompilerContext); virtual;
 
-         procedure SetResultAddr(prog : TdwsProgram; exec : TdwsExecution; ResultAddr: Integer = -1);
+         procedure InitializeResultAddr(prog : TdwsProgram);
+         procedure SetResultAddr(aResultAddr : Integer); inline;
          property ResultAddr : Integer read FResultAddr;
 
          function ChangeFuncSymbol(context : TdwsCompilerContext; newFuncSym : TFuncSymbol;
@@ -1051,7 +1052,7 @@ type
       function SameFunc(const v : Variant) : Boolean;
       procedure EvalAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
       function EvalAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Int64;
-      function EvalDataPtr(exec : TdwsExecution; caller : TFuncExpr) : IDataContext;
+      function EvalDataPtr(exec : TdwsExecution; caller : TFuncExpr; resultAddr : Integer) : IDataContext;
    end;
 
    TFuncPointerEvalAsVariant = procedure (exec : TdwsExecution; caller : TFuncExpr; var result : Variant) of object;
@@ -1076,7 +1077,7 @@ type
 
          procedure EvalAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
          function EvalAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Int64;
-         function EvalDataPtr(exec : TdwsExecution; caller : TFuncExpr) : IDataContext;
+         function EvalDataPtr(exec : TdwsExecution; caller : TFuncExpr; resultAddr : Integer) : IDataContext;
    end;
 
    // returns an IFuncPointer to the FuncExpr
@@ -4594,15 +4595,18 @@ begin
    Result:=True;
 end;
 
+// InitializeResultAddr
+//
+procedure TFuncExprBase.InitializeResultAddr(prog : TdwsProgram);
+begin
+   FResultAddr := prog.GetTempAddr(FTyp.Size);
+end;
+
 // SetResultAddr
 //
-procedure TFuncExprBase.SetResultAddr(prog : TdwsProgram; exec : TdwsExecution; ResultAddr: Integer = -1);
+procedure TFuncExprBase.SetResultAddr(aResultAddr: Integer);
 begin
-   if ResultAddr=-1 then begin
-      if (exec=nil) or (exec.ProgramState = psUndefined) then
-         FResultAddr:=prog.GetTempAddr(FTyp.Size)
-      else FResultAddr:=-1; // TFuncExpr.Create called from TInfoFunc.Call
-   end else FResultAddr:=ResultAddr;
+   FResultAddr := aResultAddr;
 end;
 
 // GetSubExpr
@@ -5452,7 +5456,7 @@ end;
 
 // EvalDataPtr
 //
-function TFuncPointer.EvalDataPtr(exec : TdwsExecution; caller : TFuncExpr) : IDataContext;
+function TFuncPointer.EvalDataPtr(exec : TdwsExecution; caller : TFuncExpr; resultAddr : Integer) : IDataContext;
 var
    funcExpr : TFuncExpr;
    i : Integer;
@@ -5464,6 +5468,7 @@ begin
       funcExpr.AddArg(caller.Args.ExprBase[i] as TTypedExpr);
    funcExpr.AddPushExprs((exec as TdwsProgramExecution).CompilerContext);
    funcExpr.CallerID:=caller;
+   funcExpr.SetResultAddr(resultAddr);
 
    try
       Result:=funcExpr.DataPtr[exec];
@@ -7783,7 +7788,7 @@ begin
       end;
    end;
    exec.DataContext_CreateEmpty(FElementSize, result);
-   FElementTyp.InitData(result);
+   FElementTyp.InitDataContext(result);
 end;
 
 // GetDataAsBoolean
@@ -7840,7 +7845,7 @@ begin
       end;
    end;
    exec.DataContext_CreateEmpty(FElementSize, result);
-   FElementTyp.InitData(result);
+   FElementTyp.InitDataContext(result);
 end;
 
 // GetDataAsInteger

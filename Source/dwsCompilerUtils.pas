@@ -233,7 +233,7 @@ begin
                   end;
                end else if left.AssignsAsDataExpr then begin
                   if right.InheritsFrom(TFuncExpr) then
-                     TFuncExpr(right).SetResultAddr(context.Prog as TdwsProgram, nil);
+                     TFuncExpr(right).InitializeResultAddr(context.Prog as TdwsProgram);
                   if right.InheritsFrom(TArrayConstantExpr) and (left.Typ is TArraySymbol) then
                      Result:=TAssignArrayConstantExpr.Create(context, scriptPos, left, TArrayConstantExpr(right))
                   else Result:=TAssignDataExpr.Create(context, scriptPos, left, right)
@@ -451,7 +451,7 @@ begin
          Result:=TFuncSimpleExpr.Create(context, scriptPos, meth);
          expr.Free;
          if (meth.Typ<>nil) and (meth.Typ.Size>1) then
-            Result.SetResultAddr(context.Prog as TdwsProgram, nil);
+            Result.InitializeResultAddr(context.Prog as TdwsProgram);
          Exit;
 
       end else if (expr.Typ is TClassOfSymbol) then begin
@@ -551,7 +551,7 @@ begin
    expr:=nil;
 
    if (meth.Typ<>nil) and (meth.Typ.Size>1) then
-      Result.SetResultAddr(context.Prog as TdwsProgram, nil);
+      Result.InitializeResultAddr(context.Prog as TdwsProgram);
 end;
 
 // TypeCheckArguments

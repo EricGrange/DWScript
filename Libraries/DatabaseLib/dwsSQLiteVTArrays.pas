@@ -344,7 +344,7 @@ begin
    Assert(FIndex < FDynArray.ArrayLength);
    case N of
       0 : SQLite3.result_int64(sContext, FIndex);
-      1 : ResultVarData(sContext, @FDynArray.AsPData^[FIndex]);
+      1 : ResultVarData(sContext, PVarData(FDynArray.AsPVariant(FIndex)));
    else
       Assert(False);
    end;
@@ -368,7 +368,7 @@ begin
    else begin
       Assert(N-1 < Length(FArray.FColumnAddr));
       addr := FIndex * FDynArray.ElementSize + FArray.FColumnAddr[N-1];
-      ResultVarData(sContext, @FDynArray.AsPData^[addr]);
+      ResultVarData(sContext, PVarData(FDynArray.AsPVariant(addr)));
    end;
    Result := SQLITE_OK;
 end;
@@ -389,7 +389,7 @@ begin
    else begin
       Assert(N-1 < Length(FArray.FColumnAddr));
       obj := FDynArray.AsInterface[FIndex] as IScriptObj;
-      ResultVarData(sContext, @obj.AsPData^[FArray.FColumnAddr[N-1]]);
+      ResultVarData(sContext, PVarData(obj.AsPVariant(FArray.FColumnAddr[N-1])));
    end;
    Result := SQLITE_OK;
 end;

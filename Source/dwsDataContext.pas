@@ -70,6 +70,7 @@ type
 
       procedure CopyData(const destData : TData; destAddr, size : Integer);
       procedure WriteData(const src : IDataContext; size : Integer); overload;
+      procedure WriteData(destAddr : Integer; const src : IDataContext; size : Integer); overload;
       procedure WriteData(const srcData : TData; srcAddr, size : Integer); overload;
       function  SameData(addr : Integer; const otherData : TData; otherAddr, size : Integer) : Boolean; overload;
 
@@ -215,6 +216,7 @@ type
 
          procedure CopyData(const destData : TData; destAddr, size : Integer);
          procedure WriteData(const src : IDataContext; size : Integer); overload;
+         procedure WriteData(destAddr : Integer; const src : IDataContext; size : Integer); overload;
          procedure WriteData(const srcData : TData; srcAddr, size : Integer); overload;
          function SameData(addr : Integer; const otherData : TData; otherAddr, size : Integer) : Boolean; overload;
 
@@ -572,7 +574,7 @@ end;
 //
 function TDataContext.GetAsVariant(addr : Integer) : Variant;
 begin
-   Result:=FData[FAddr+addr];
+   VarCopySafe(Result, FData[FAddr+addr]);
 end;
 
 // SetAsVariant
@@ -1061,6 +1063,13 @@ end;
 procedure TRelativeDataContext.WriteData(const src : IDataContext; size : Integer);
 begin
    DWSCopyData(src.AsPData^, src.Addr, FGetPData^, FAddr, size);
+end;
+
+// WriteData
+//
+procedure TRelativeDataContext.WriteData(destAddr : Integer; const src : IDataContext; size : Integer);
+begin
+   DWSCopyData(src.AsPData^, src.Addr, FGetPData^, FAddr+destAddr, size);
 end;
 
 // WriteData

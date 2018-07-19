@@ -1091,6 +1091,19 @@ end;
 { TFormatFunc }
 
 procedure TFormatFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+
+   function PrepareVarRecsFromByRefParam(expr : TByRefParamExpr) : TVarRecArrayContainer;
+   var
+      i : Integer;
+      dc : IDataContext;
+   begin
+      dc := expr.DataPtr[args.Exec];
+      Result := TVarRecArrayContainer.Create;
+      for i := 0 to dc.DataLength-1 do
+         Result.Add(dc.AsVariant[i]);
+      Result.Initialize;
+   end;
+
 var
    expr : TExprBase;
    varRecs : TVarRecArrayContainer;
@@ -1100,8 +1113,8 @@ begin
    if expr.ClassType=TArrayConstantExpr then
       varRecs:=TArrayConstantExpr(expr).EvalAsVarRecArray(args.Exec)
    else if expr is TByRefParamExpr then begin
-      if TByRefParamExpr(expr).Typ is TOpenArraySymbol then
-         varRecs:=TVarRecArrayContainer.Create(TByRefParamExpr(expr).DataPtr[args.Exec].AsPData^)
+      if TByRefParamExpr(expr).Typ.ClassType=TOpenArraySymbol then
+         varRecs := PrepareVarRecsFromByRefParam(TByRefParamExpr(expr))
    end;
    // current implementation, limitations may be relaxed later
    if varRecs=nil then

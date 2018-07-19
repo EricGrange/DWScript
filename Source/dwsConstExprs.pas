@@ -183,10 +183,9 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
-         function EvalAsTData(exec : TdwsExecution) : TData; overload; inline;
-         procedure EvalAsTData(exec : TdwsExecution; var result : TData); overload;
+         procedure EvalAsTData(exec : TdwsExecution; var result : TData);
          procedure EvalToTData(exec : TdwsExecution; var result : TData; offset : Integer);
-         function EvalAsVarRecArray(exec : TdwsExecution) : TVarRecArrayContainer;
+         function  EvalAsVarRecArray(exec : TdwsExecution) : TVarRecArrayContainer;
 
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
          function IsWritable : Boolean; override;
@@ -739,7 +738,7 @@ procedure TArrayConstantExpr.EvalNoResult(exec : TdwsExecution);
          addr:=0;
          for x:=0 to FElementExprs.Count-1 do begin
             dataExpr:=FElementExprs.List[x] as TDataExpr;
-            dataExpr.DataPtr[exec].CopyData(FArrayData.AsPData^, addr, elemSize);
+            FArrayData.WriteData(addr, dataExpr.DataPtr[exec], elemSize);
             Inc(addr, elemSize);
          end;
       end;
@@ -760,13 +759,6 @@ begin
    if Length(data)>0 then
       VarCopySafe(Result, data[0])
    else VarClearSafe(Result);
-end;
-
-// EvalAsTData
-//
-function TArrayConstantExpr.EvalAsTData(exec : TdwsExecution) : TData;
-begin
-   EvalAsTData(exec, Result);
 end;
 
 // EvalAsTData

@@ -388,6 +388,15 @@ procedure TConnectorCallExpr.ComplexEvalAsVariant(exec : TdwsExecution; var resu
 var
    callArgs : TConnectorArgs;
 
+   function DynamicArrayToVariantArray(const dyn : IScriptDynArray) : Variant;
+   var
+      i : Integer;
+   begin
+      Result := VarArrayCreate([0, dyn.DataLength-1], varVariant);
+      for i := 0 to dyn.DataLength-1 do
+         Result[i] := dyn.AsVariant[i];
+   end;
+
    procedure EvalComplexArgs;
    var
       i : Integer;
@@ -403,7 +412,7 @@ var
          if argTyp.Size=1 then begin
             if argTyp.ClassType=TDynamicArraySymbol then begin
                arg.EvalAsScriptDynArray(exec, dyn);
-               callArgs[i][0]:=VarArrayOf(dyn.AsPData^);
+               callArgs[i][0] := DynamicArrayToVariantArray(dyn);
             end else arg.EvalAsVariant(exec, callArgs[i][0]);
          end else begin
             sourcePtr:=TDataExpr(arg).DataPtr[exec];

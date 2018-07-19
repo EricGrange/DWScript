@@ -494,11 +494,13 @@ procedure TConvStaticArrayToDynamicExpr.EvalAsVariant(exec : TdwsExecution; var 
 var
    arr : TArrayConstantExpr;
    dynArray : TScriptDynamicArray;
+   data : TData;
 begin
    arr:=TArrayConstantExpr(Expr);
 
    dynArray:=TScriptDynamicArray.CreateNew(TDynamicArraySymbol(Typ).Typ);
-   dynArray.ReplaceData(arr.EvalAsTData(exec));
+   arr.EvalAsTData(exec, data);
+   dynArray.ReplaceData(data);
 
    VarCopySafe(Result, IScriptDynArray(dynArray));
 end;

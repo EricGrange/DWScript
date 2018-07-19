@@ -4334,10 +4334,10 @@ end;
 //
 procedure TInitDataExpr.EvalNoResult(exec : TdwsExecution);
 var
-   dataPtr : IDataContext;
+   dc : IDataContext;
 begin
-   dataPtr:=FExpr.DataPtr[exec];
-   FExpr.Typ.InitData(dataPtr.AsPData^, dataPtr.Addr);
+   FExpr.GetDataPtr(exec, dc);
+   FExpr.Typ.InitDataContext(dc);
 end;
 
 // GetSubExpr
@@ -4627,7 +4627,7 @@ var
 begin
    p:=PIScriptObj(exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FObjectExpr).StackAddr));
    CheckScriptObject(exec, p^);
-   exec.DataContext_Create(p^.AsPData^, FieldSym.Offset, result);
+   exec.DataContext_CreateOffset(p^, FieldSym.Offset, result);
 end;
 
 // SpecializeDataExpr
@@ -6676,7 +6676,7 @@ var
    srcData : TData;
    dataPtr : IDataContext;
 begin
-   srcData:=TArrayConstantExpr(FRight).EvalAsTData(exec);
+   TArrayConstantExpr(FRight).EvalAsTData(exec, srcData);
    if FLeft.Typ.ClassType = TDynamicArraySymbol then begin
       // to dynamic array
       FLeft.EvalAsScriptDynArray(exec, dynIntf);
@@ -6956,7 +6956,7 @@ var
    dataPtr : IDataContext;
 begin
    TVarExpr(FLeft).GetDataPtr(exec, dataPtr);
-   FLeft.Typ.InitData(dataPtr.AsPData^, dataPtr.Addr);
+   FLeft.Typ.InitDataContext(dataPtr);
 end;
 
 // ------------------
@@ -9543,7 +9543,7 @@ begin
       FItem:=TScriptDataSymbol.Create('', elemTyp);
       context.Table.AddSymbol(FItem);
       FMapFuncExpr.AddArg(TVarExpr.CreateTyped(context, FItem));
-      FMapFuncExpr.SetResultAddr(context.Prog as TdwsProgram, nil);
+      FMapFuncExpr.InitializeResultAddr(context.Prog as TdwsProgram);
    end;
 end;
 
@@ -9589,15 +9589,14 @@ begin
    newPData:=newArray.AsPData;
 
    itemAddr:=exec.Stack.BasePointer+FItem.StackAddr;
-   if (newArray.ElementSize or dyn.ElementSize)=1 then begin
-      for i:=0 to dyn.ArrayLength-1 do begin
-         exec.Stack.WriteValue(itemAddr, oldPData^[i]);
-         funcPointer.EvalAsVariant(exec, MapFuncExpr, newPData^[i]);
-      end;
-   end else begin
-      for i:=0 to dyn.ArrayLength-1 do begin
-         DWSCopyData(oldPData^, i*dyn.ElementSize, exec.Stack.Data, itemAddr, dyn.ElementSize);
-         dc:=funcPointer.EvalDataPtr(exec,  MapFuncExpr);
+   for i:=0 to dyn.ArrayLength-1 do begin
+      if dyn.ElementSize = 1 then
+         exec.Stack.WriteValue(itemAddr, oldPData^[i])
+      else dyn.CopyData(i*dyn.ElementSize, exec.Stack.Data, itemAddr, dyn.ElementSize);
+      if newArray.ElementSize = 1 then
+         funcPointer.EvalAsVariant(exec, MapFuncExpr, newPData^[i])
+      else begin
+         dc:=funcPointer.EvalDataPtr(exec,  MapFuncExpr, MapFuncExpr.ResultAddr);
          dc.CopyData(newPData^, i*newArray.ElementSize, newArray.ElementSize);
       end;
    end;

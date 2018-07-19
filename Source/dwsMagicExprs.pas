@@ -633,7 +633,7 @@ constructor TMagicDataFuncExpr.Create(context : TdwsCompilerContext; const scrip
 begin
    inherited Create(context, scriptPos, func, internalFunc);
    FOnEval:=(internalFunc as TInternalMagicDataFunction).DoEval;
-   SetResultAddr(context.Prog as TdwsProgram, nil);
+   InitializeResultAddr(context.Prog as TdwsProgram);
 end;
 
 // EvalNoResult
