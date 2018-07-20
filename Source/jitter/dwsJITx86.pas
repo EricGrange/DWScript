@@ -762,6 +762,7 @@ begin
    RegisterJITter(TArrayAddExpr,                FInterpretedJITter.IncRefCount);
    RegisterJITter(TArrayInsertExpr,             FInterpretedJITter.IncRefCount);
    RegisterJITter(TArrayIndexOfExpr,            FInterpretedJITter.IncRefCount);
+   RegisterJITter(TDynamicArrayIndexOfExpr,     FInterpretedJITter.IncRefCount);
    RegisterJITter(TArrayRemoveExpr,             FInterpretedJITter.IncRefCount);
    RegisterJITter(TArrayDeleteExpr,             FInterpretedJITter.IncRefCount);
    RegisterJITter(TArrayPopExpr,                FInterpretedJITter.IncRefCount);

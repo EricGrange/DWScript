@@ -1281,6 +1281,7 @@ begin
    RegisterCodeGen(TArrayPopExpr,                  TJSArrayPopExpr.Create);
    RegisterCodeGen(TArrayDeleteExpr,               TJSArrayDeleteExpr.Create);
    RegisterCodeGen(TArrayIndexOfExpr,              TJSArrayIndexOfExpr.Create);
+   RegisterCodeGen(TDynamicArrayIndexOfExpr,       TJSArrayIndexOfExpr.Create);
    RegisterCodeGen(TArrayRemoveExpr,               TJSArrayRemoveExpr.Create);
    RegisterCodeGen(TArrayInsertExpr,               TJSArrayInsertExpr.Create);
    RegisterCodeGen(TArrayMoveExpr,                 TJSArrayMoveExpr.Create);

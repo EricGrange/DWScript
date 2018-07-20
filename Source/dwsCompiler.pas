@@ -7941,10 +7941,10 @@ begin
                      FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
                   if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FCompilerContext.TypInteger) then
                      FMsgs.AddCompilerError(argPosArray[1], CPE_IntegerExpressionExpected);
-                  Result:=TArraySwapExpr.Create(namePos, baseExpr,
+                  Result:=TArraySwapExpr.Create(FCompilerContext, namePos, baseExpr,
                                                 argList[0], argList[1]);
                   argList.Clear;
-               end else Result:=TArraySwapExpr.Create(namePos, baseExpr, nil, nil);
+               end else Result:=TArraySwapExpr.Create(FCompilerContext, namePos, baseExpr, nil, nil);
             end;
 
             amkCopy : begin
@@ -8017,7 +8017,7 @@ begin
             amkReverse : begin
                CheckRestricted;
                CheckArguments(0, 0);
-               Result:=TArrayReverseExpr.Create(namePos, baseExpr);
+               Result:=TArrayReverseExpr.Create(FCompilerContext, namePos, baseExpr);
             end;
 
          else
