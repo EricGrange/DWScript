@@ -72,7 +72,7 @@ type
       procedure WriteData(const src : IDataContext; size : Integer); overload;
       procedure WriteData(destAddr : Integer; const src : IDataContext; size : Integer); overload;
       procedure WriteData(const srcData : TData; srcAddr, size : Integer); overload;
-      function  SameData(addr : Integer; const otherData : TData; otherAddr, size : Integer) : Boolean; overload;
+      function  SameData(addr : Integer; const otherData : TData; otherAddr, size : Integer) : Boolean;
 
       function  HashCode(size : Integer) : Cardinal;
    end;

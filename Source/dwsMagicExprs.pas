@@ -352,7 +352,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsCompilerUtils;
+uses dwsCompilerUtils, dwsCoreExprs;
 
 // RegisterInternalInterfaceFunction
 //
@@ -932,7 +932,7 @@ function TIncVarFuncExpr.DoInc(exec : TdwsExecution) : PVarData;
 var
    left : TDataExpr;
 begin
-   left:=TDataExpr(FArgs.ExprBase[0]);
+   left := TDataExpr(FArgs.ExprBase[0]);
    Result:=PVarData(left.DataPtr[exec].AsPVariant(0));
    Assert(Result.VType=varInt64);
    Inc(Result.VInt64, FArgs.ExprBase[1].EvalAsInteger(exec));

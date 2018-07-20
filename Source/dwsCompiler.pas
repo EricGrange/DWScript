@@ -6568,9 +6568,8 @@ function TdwsCompiler.ReadCase : TCaseExpr;
 var
    expr : TProgramExpr;
    condList : TTightList;
-   condition : TCaseCondition;
+   condition : TRefCountedObject;
    tt : TTokenType;
-   x : Integer;
 begin
    condList.Initialize;
    try
@@ -6596,13 +6595,12 @@ begin
                expr := ReadBlock;
 
                // Add case conditions to TCaseExpr
-               for x:=0 to condList.Count-1 do begin
-                  condition:=(condList.List[x] as TCaseCondition);
-                  condition.TrueExpr:=Expr;
-                  if x=0 then
-                     condition.OwnsTrueExpr:=True;
-                  Result.AddCaseCondition(condition);
+               for condition in condList do begin
+                  TCaseCondition(condition).TrueExpr := expr;
+                  expr.IncRefCount;
+                  Result.AddCaseCondition(TCaseCondition(condition));
                end;
+               expr.DecRefCount;
                condList.Clear;
 
                if not (FTok.Test(ttELSE) or FTok.Test(ttEND) or FTok.TestDelete(ttSEMI)) then
@@ -10944,9 +10942,9 @@ end;
 //
 function TdwsCompiler.ReadExprInConditions(var left : TTypedExpr) : TInOpExpr;
 var
-   i : Integer;
    condList : TTightList;
    hotPos : TScriptPos;
+   cond : TRefCountedObject;
 begin
    hotPos:=FTok.HotPos;
 
@@ -10979,8 +10977,8 @@ begin
       left:=nil;
 
       // Add case conditions to TCaseExpr
-      for i:=0 to condList.Count-1 do
-         Result.AddCaseCondition(condList.List[i] as TCaseCondition);
+      for cond in condList do
+         Result.AddCaseCondition(cond as TCaseCondition);
 
       Result.Prepare;
 

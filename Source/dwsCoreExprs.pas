@@ -1841,7 +1841,6 @@ type
    // Part of a case statement
    TCaseCondition = class (TRefCountedObject)
       private
-         FOwnsTrueExpr : Boolean;
          FTrueExpr : TProgramExpr;
          FScriptPos : TScriptPos;
 
@@ -1865,7 +1864,6 @@ type
          property ScriptPos : TScriptPos read FScriptPos;
 
          property TrueExpr : TProgramExpr read FTrueExpr write FTrueExpr;
-         property OwnsTrueExpr : Boolean read FOwnsTrueExpr write FOwnsTrueExpr;
    end;
 
    TCaseConditionClass = class of TCaseCondition;
@@ -7842,8 +7840,7 @@ end;
 //
 destructor TCaseCondition.Destroy;
 begin
-   if FOwnsTrueExpr then
-      FTrueExpr.Free;
+   FTrueExpr.Free;
    inherited;
 end;
 

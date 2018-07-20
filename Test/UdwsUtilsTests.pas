@@ -52,6 +52,7 @@ type
          procedure WOBSBigSecondTest;
          procedure WOBSToStream;
          procedure TightListTest;
+         procedure TightListEnumerator;
          procedure LookupTest;
          procedure SortedListExtract;
          procedure SimpleListOfInterfaces;
@@ -432,6 +433,8 @@ procedure TdwsUtilsTests.TightListTest;
 var
    s : TRefCountedObject;
 begin
+   FTightList.Clear;
+
    s:=TRefCountedObject.Create;
 
    CheckEquals(-1, FTightList.IndexOf(nil), 'empty search');
@@ -472,6 +475,39 @@ begin
    FTightList.Clear;
 
    s.Free;
+end;
+
+// TightListEnumerator
+//
+procedure TdwsUtilsTests.TightListEnumerator;
+var
+   e : TRefCountedObject;
+   n : Integer;
+begin
+   n := 0;
+   for e in FTightList do
+      Inc(n);
+   CheckEquals(0, n);
+
+   FTightList.Add(nil);
+   n := 0;
+   for e in FTightList do begin
+      CheckTrue(Pointer(e)=nil, 'nil 1');
+      Inc(n);
+   end;
+   CheckEquals(1, n);
+
+   FTightList.Add(Pointer(1));
+   n := 0;
+   for e in FTightList do begin
+      if n = 0 then
+         CheckTrue(Pointer(e)=nil, 'nil 2')
+      else CheckTrue(Pointer(e)=Pointer(1), 'Ptr 1');
+      Inc(n);
+   end;
+   CheckEquals(2, n);
+
+   FTightList.Clear;
 end;
 
 // LookupTest

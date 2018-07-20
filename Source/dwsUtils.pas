@@ -170,16 +170,23 @@ type
          FList : PObjectTightList;
 
          procedure RaiseIndexOutOfBounds;
-         function GetList : PObjectTightList; inline;
+
+         type TTightListEnumerator = record
+            FIter : PPointer;
+            FTail : PPointer;
+            function MoveNext : Boolean; inline;
+            function GetCurrent : TRefCountedObject; inline;
+            property Current : TRefCountedObject read GetCurrent;
+         end;
 
       public
          FCount : Integer;     // exposed so it can be used for direct property access
 
-         property List : PObjectTightList read GetList;
+         function List : PObjectTightList; inline;
          property Count : Integer read FCount;
 
          procedure Initialize; // in case of use as a local variable
-         procedure Free; // to posture as a regular TList
+         procedure Free; inline; // to posture as a regular TList
          procedure Clean;  // clear the list and free the item objects
          procedure Clear;  // clear the list without freeing the items
          function Add(item : TRefCountedObject) : Integer;
@@ -191,6 +198,8 @@ type
          procedure MoveItem(curIndex, newIndex : Integer); // Note: D2009 fails if this method is called Move (!) - HV
          procedure Exchange(index1, index2 : Integer);
          function ItemsAllOfClass(aClass : TClass) : Boolean;
+
+         function GetEnumerator : TTightListEnumerator;
    end;
 
    // TTightStack
@@ -3798,9 +3807,9 @@ begin
    Clear;
 end;
 
-// GetList
+// List
 //
-function TTightList.GetList : PObjectTightList;
+function TTightList.List : PObjectTightList;
 begin
    if Count=1 then
       Result:=@FList
@@ -3980,9 +3989,13 @@ function TTightList.ItemsAllOfClass(aClass : TClass) : Boolean;
 var
    i : Integer;
 begin
-   for i:=0 to FCount-1 do
-      if List[i].ClassType<>aClass then Exit(False);
-   Result:=True;
+   if FCount = 1 then
+      Result := (TRefCountedObject(FList).ClassType = aClass)
+   else begin
+      for i := 0 to FCount-1 do
+         if FList[i].ClassType <> aClass then Exit(False);
+      Result := True;
+   end;
 end;
 
 // RaiseIndexOutOfBounds
@@ -3990,6 +4003,43 @@ end;
 procedure TTightList.RaiseIndexOutOfBounds;
 begin
    raise ETightListOutOfBound.Create('List index out of bounds');
+end;
+
+// GetEnumerator
+//
+function TTightList.GetEnumerator : TTightListEnumerator;
+begin
+   case FCount of
+      0 : begin
+         Result.FIter := nil;
+         Result.FTail := nil;
+      end;
+      1 : begin
+         Result.FIter := @FList;
+         Dec(Result.FIter);
+         Result.FTail := @FList;
+      end;
+   else
+      Result.FIter := PPointer(IntPtr(@FList[0])-SizeOf(Pointer));
+      Result.FTail := @PObjectTightList(Result.FIter)[FCount];
+   end;
+end;
+
+// TTightListEnumerator.MoveNext
+//
+function TTightList.TTightListEnumerator.MoveNext : Boolean;
+begin
+   if FIter <> FTail then begin
+      Inc(FIter);
+      Result := True;
+   end else Result := False;
+end;
+
+// TTightListEnumerator.Current
+//
+function TTightList.TTightListEnumerator.GetCurrent : TRefCountedObject;
+begin
+   Result := FIter^;
 end;
 
 // ------------------

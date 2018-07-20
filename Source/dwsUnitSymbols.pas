@@ -640,13 +640,13 @@ end;
 //
 procedure TUnitMainSymbol.RestoreParents;
 var
-   i : Integer;
+   sp : TRefCountedObject;
 begin
    if Self=nil then Exit;
    if FStoredParents.Count=0 then Exit;
    Assert(Table.ParentCount=0);
-   for i:=0 to FStoredParents.Count-1 do
-      Table.AddParent(TSymbolTable(FStoredParents.List[i]));
+   for sp in FStoredParents do
+      Table.AddParent(TSymbolTable(sp));
    FStoredParents.Clear;
 end;
 

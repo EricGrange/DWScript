@@ -8214,11 +8214,11 @@ end;
 //
 destructor TSourceConditions.Destroy;
 var
-   i : Integer;
+   elem : TRefCountedObject;
 begin
    inherited;
-   for i:=0 to FItems.Count-1 do
-      TSourceCondition(FItems.List[i])._Release;
+   for elem in FItems do
+      TSourceCondition(elem)._Release;
    FItems.Clear;
 end;
 

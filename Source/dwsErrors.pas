@@ -417,12 +417,11 @@ end;
 //
 function TdwsMessageList.GetSourceFile(const scriptPos : TScriptPos) : TSourceFile;
 var
-   i : Integer;
+   sf : TRefCountedObject;
 begin
-   for i:=0 to FSourceFiles.Count-1 do begin
-      Result:=TSourceFile(FSourceFiles.List[i]);
-      if Result.Name=scriptPos.SourceName then Exit;
-   end;
+   for sf in FSourceFiles do
+      if TSourceFile(sf).Name = scriptPos.SourceName then
+         Exit(TSourceFile(sf));
    Result:=nil;
 end;
 
