@@ -1617,17 +1617,13 @@ type
          procedure Concat(src : TScriptDynamicArray);
          procedure MoveItem(srcIndex, dstIndex : Integer);
 
-         function IndexOfData(const item : IDataContext; fromIndex : Integer) : Integer;
-         function IndexOfValue(const item : Variant; fromIndex : Integer) : Integer;
-         function IndexOfString(const item : String; fromIndex : Integer) : Integer;
-         function IndexOfInteger(const item : Int64; fromIndex : Integer) : Integer;
-         function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
-
          function ToString : String; override;
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
 
          procedure ReplaceData(const newData : TData); override;
+
+         function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
 
          property ElementTyp : TTypeSymbol read FElementTyp;
          property ElementSize : Integer read FElementSize;
@@ -7296,6 +7292,29 @@ begin
    FArrayLength:=System.Length(newData) div ElementSize;
 end;
 
+// IndexOfFuncPtr
+//
+function TScriptDynamicArray.IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
+var
+   i : Integer;
+   itemFunc : IFuncPointer;
+   p : PVarData;
+begin
+   itemFunc:=IFuncPointer(IUnknown(item));
+   if itemFunc=nil then begin
+      for i:=fromIndex to ArrayLength-1 do begin
+         p:=PVarData(AsPVariant(i));
+         if (p.VType=varUnknown) and (p.VUnknown=nil) then
+            Exit(i);
+      end;
+   end else begin
+      for i:=fromIndex to ArrayLength-1 do
+         if itemFunc.SameFunc(AsPVariant(i)^) then
+            Exit(i);
+   end;
+   Result:=-1;
+end;
+
 // Insert
 //
 procedure TScriptDynamicArray.Insert(index : Integer);
@@ -7377,102 +7396,6 @@ end;
 procedure TScriptDynamicArray.MoveItem(srcIndex, dstIndex : Integer);
 begin
    MoveData(srcIndex*ElementSize, dstIndex*ElementSize, ElementSize);
-end;
-
-// IndexOfData
-//
-function TScriptDynamicArray.IndexOfData(const item : IDataContext; fromIndex : Integer) : Integer;
-var
-   i : Integer;
-   data : PData;
-begin
-   data:=AsPData;
-   for i:=fromIndex to ArrayLength-1 do
-      if item.SameData(0, data^, i*ElementSize, ElementSize) then
-         Exit(i);
-   Result:=-1;
-end;
-
-// IndexOfValue
-//
-function TScriptDynamicArray.IndexOfValue(const item : Variant; fromIndex : Integer) : Integer;
-var
-   i : Integer;
-   data : PData;
-begin
-   Assert(ElementSize=1);
-   data:=AsPData;
-   for i:=fromIndex to ArrayLength-1 do
-      if DWSSameVariant(data^[i], item) then
-         Exit(i);
-   Result:=-1;
-end;
-
-// IndexOfString
-//
-function TScriptDynamicArray.IndexOfString(const item : String; fromIndex : Integer) : Integer;
-var
-   i : Integer;
-   varData : PVarData;
-begin
-   if fromIndex<ArrayLength then begin
-      varData:=@AsPData^[fromIndex];
-      for i:=fromIndex to ArrayLength-1 do begin
-         {$ifdef FPC}
-         Assert(varData^.VType=varString);
-         if String(varData^.VString)=item then
-            Exit(i);
-         {$else}
-         Assert(varData^.VType=varUString);
-         if String(varData^.VUString)=item then
-            Exit(i);
-         {$endif}
-         Inc(varData);
-      end;
-   end;
-   Result:=-1;
-end;
-
-// IndexOfInteger
-//
-function TScriptDynamicArray.IndexOfInteger(const item : Int64; fromIndex : Integer) : Integer;
-var
-   i : Integer;
-   varData : PVarData;
-begin
-   if fromIndex<ArrayLength then begin
-      varData:=@AsPData^[fromIndex];
-      for i:=fromIndex to ArrayLength-1 do begin
-         Assert(varData^.VType=varInt64);
-         if varData^.VInt64=item then
-            Exit(i);
-         Inc(varData);
-      end;
-   end;
-   Result:=-1;
-end;
-
-// IndexOfFuncPtr
-//
-function TScriptDynamicArray.IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
-var
-   i : Integer;
-   itemFunc : IFuncPointer;
-   p : PVarData;
-begin
-   itemFunc:=IFuncPointer(IUnknown(item));
-   if itemFunc=nil then begin
-      for i:=fromIndex to ArrayLength-1 do begin
-         p:=PVarData(AsPVariant(i));
-         if (p.VType=varUnknown) and (p.VUnknown=nil) then
-            Exit(i);
-      end;
-   end else begin
-      for i:=fromIndex to ArrayLength-1 do
-         if itemFunc.SameFunc(AsPVariant(i)^) then
-            Exit(i);
-   end;
-   Result:=-1;
 end;
 
 // ToString

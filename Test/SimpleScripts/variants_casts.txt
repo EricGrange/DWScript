@@ -10,3 +10,5 @@ efgh
 True
 False
 False
+123.5
+12.35

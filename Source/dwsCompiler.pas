@@ -7867,12 +7867,12 @@ begin
                   if argList.Count>1 then begin
                      if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FCompilerContext.TypInteger) then
                         FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
-                     Result:=TArrayIndexOfExpr.Create(FCompilerContext, namePos, baseExpr,
-                                                      argList[0], argList[1]);
-                  end else Result:=TArrayIndexOfExpr.Create(FCompilerContext, namePos, baseExpr,
-                                                            argList[0], nil);
+                     Result:=TDynamicArrayIndexOfExpr.Create(FCompilerContext, namePos, baseExpr,
+                                                             argList[0], argList[1]);
+                  end else Result:=TDynamicArrayIndexOfExpr.Create(FCompilerContext, namePos, baseExpr,
+                                                                   argList[0], nil);
                   argList.Clear;
-               end else Result:=TArrayIndexOfExpr.Create(FCompilerContext, namePos, baseExpr, nil, nil);
+               end else Result:=TDynamicArrayIndexOfExpr.Create(FCompilerContext, namePos, baseExpr, nil, nil);
             end;
 
             amkRemove : begin
@@ -10844,9 +10844,9 @@ begin
             Exit;
          end;
 
-         if setExpr.Typ is TDynamicArraySymbol then begin
+         if setExpr.Typ is TArraySymbol then begin
 
-            elementType:=TDynamicArraySymbol(setExpr.Typ).Typ;
+            elementType:=TArraySymbol(setExpr.Typ).Typ;
             if (left.Typ=nil) or not left.Typ.IsOfType(elementType) then begin
                // attempt cast & typecheck harder
                if (left is TFuncExpr) and (TFuncExpr(left).Args.Count=0) then begin
@@ -10859,8 +10859,14 @@ begin
                end;
             end;
 
-            Result:=TArrayIndexOfExpr.Create(FCompilerContext, hotPos, setExpr, left, nil);
-            Result:=TRelGreaterEqualIntExpr.Create(FCompilerContext, hotPos, ttIN, Result,
+            if setExpr.Typ is TDynamicArraySymbol then
+               Result := TDynamicArrayIndexOfExpr.Create(FCompilerContext, hotPos, setExpr, left, nil)
+            else begin
+               Result := TStaticArrayIndexOfExpr.Create(FCompilerContext, hotPos, setExpr, left, nil);
+               if setExpr.Typ.ClassType <> TStaticArraySymbol then
+                  FMsgs.AddCompilerError(hotPos, CPE_IncompatibleOperands);
+            end;
+            Result := TRelGreaterEqualIntExpr.Create(FCompilerContext, hotPos, ttIN, Result,
                                                    FUnifiedConstants.CreateInteger(0));
 
          end else if setExpr.Typ is TSetOfSymbol then begin

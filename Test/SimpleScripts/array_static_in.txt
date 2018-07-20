@@ -1,0 +1,5 @@
+0010010010
+0011000010
+FalseTrueTrueTrueFalse
+FalseTrueTrue
+TrueTrueFalse

@@ -36,4 +36,9 @@ b:=v;
 PrintLn(b);
 PrintLn(v);
 
+v := '123.5';
+PrintLn(FloatToStr(v));
+v := '12,35';
+PrintLn(FloatToStr(v));
+
 

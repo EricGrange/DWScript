@@ -2197,6 +2197,9 @@ begin
          Result := 0;
       varUnknown :
          UnknownAsFloat(IUnknown(TVarData(v).VUnknown), Result);
+      varUString :
+         if not TryStrToDouble(PChar(TVarData(v).VUString), Result) then
+            raise EConvertError.CreateFmt(CPE_InvalidFloatFormat, [ String(TVarData(v).VUString) ]);
    else
       Result := v;
    end;

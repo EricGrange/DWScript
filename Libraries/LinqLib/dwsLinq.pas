@@ -208,7 +208,7 @@ begin
    try
       if not(expr is TRelOpExpr) then
          Error(compiler, 'Comparison expected');
-      if (expr.classtype = TRelGreaterEqualIntExpr) and (TRelOpExpr(expr).left.classtype = TArrayIndexOfExpr) then
+      if (expr.classtype = TRelGreaterEqualIntExpr) and (TRelOpExpr(expr).left is TArrayIndexOfExpr) then
          result := BuildInExpr(compiler, TRelGreaterEqualIntExpr(expr))
       else result := TRelOpExpr(expr);
    except

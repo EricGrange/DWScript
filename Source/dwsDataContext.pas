@@ -170,6 +170,11 @@ type
          function  SameData(addr : Integer; const otherData : TData; otherAddr, size : Integer) : Boolean; overload; inline;
          function  SameData(addr : Integer; const otherData : IDataContext; size : Integer) : Boolean; overload; inline;
 
+         function IndexOfData(const item : IDataContext; fromIndex, toIndex, itemSize : Integer) : Integer;
+         function IndexOfValue(const item : Variant; fromIndex, toIndex : Integer) : Integer;
+         function IndexOfString(const item : String; fromIndex : Integer) : Integer;
+         function IndexOfInteger(const item : Int64; fromIndex : Integer) : Integer;
+
          procedure ReplaceData(const newData : TData); virtual;
          procedure ClearData; virtual;
          procedure SetDataLength(n : Integer);
@@ -861,6 +866,78 @@ end;
 function TDataContext.SameData(addr : Integer; const otherData : IDataContext; size : Integer) : Boolean;
 begin
    Result:=DWSSameData(FData, otherData.AsPData^, FAddr+addr, otherData.Addr, size);
+end;
+
+// IndexOfData
+//
+function TDataContext.IndexOfData(const item : IDataContext; fromIndex, toIndex, itemSize : Integer) : Integer;
+var
+   i : Integer;
+   data : PData;
+begin
+   data := AsPData;
+   for i:=fromIndex to toIndex do
+      if item.SameData(0, data^, Addr+i*itemSize, itemSize) then
+         Exit(i);
+   Result:=-1;
+end;
+
+// IndexOfValue
+//
+function TDataContext.IndexOfValue(const item : Variant; fromIndex, toIndex : Integer) : Integer;
+var
+   i : Integer;
+   data : PData;
+begin
+   data:=AsPData;
+   for i:=fromIndex to toIndex do
+      if DWSSameVariant(data^[Addr+i], item) then
+         Exit(i);
+   Result:=-1;
+end;
+
+// IndexOfString
+//
+function TDataContext.IndexOfString(const item : String; fromIndex : Integer) : Integer;
+var
+   i : Integer;
+   varData : PVarData;
+begin
+   if fromIndex<DataLength then begin
+      varData:=@AsPData^[fromIndex];
+      for i:=fromIndex to DataLength-1 do begin
+         {$ifdef FPC}
+         Assert(varData^.VType=varString);
+         if String(varData^.VString)=item then
+            Exit(i);
+         {$else}
+         Assert(varData^.VType=varUString);
+         if String(varData^.VUString)=item then
+            Exit(i);
+         {$endif}
+         Inc(varData);
+      end;
+   end;
+   Result:=-1;
+end;
+
+// IndexOfInteger
+//
+function TDataContext.IndexOfInteger(const item : Int64; fromIndex : Integer) : Integer;
+var
+   i : Integer;
+   varData : PVarData;
+begin
+   if fromIndex<DataLength then begin
+      varData:=@AsPData^[fromIndex];
+      for i:=fromIndex to DataLength-1 do begin
+         Assert(varData^.VType=varInt64);
+         if varData^.VInt64=item then
+            Exit(i);
+         Inc(varData);
+      end;
+   end;
+   Result:=-1;
 end;
 
 // ReplaceData
