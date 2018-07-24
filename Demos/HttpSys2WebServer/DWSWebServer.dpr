@@ -298,9 +298,9 @@ begin
                {$endif}
             {$endif}
             {$ifdef CPU64BITS}
-            write('DWScript 64bits Server is now running on');
+            write('DWScript 64bits Server is now running on ');
             {$else}
-            write('DWScript 32bits Server is now running on');
+            write('DWScript 32bits Server is now running on ');
             {$endif}
             for i := 0 to High(service.Server.URLInfos) do
                Writeln(service.Server.URLInfos[i].ToString);
