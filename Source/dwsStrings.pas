@@ -301,6 +301,7 @@ const
   CPE_ArrayBoundsOfDifferentTypes = 'Array bounds are of different types';
   CPE_ArrayIndexMismatch = 'Array index expected "%s" but got "%s"';
   CPE_ArrayMethodRestrictedToDynamicArrays = 'Array method "%s" is restricted to dynamic arrays';
+  CPE_ArrayMethodNotAvailableOnOpenArrays = 'Array method "%s" not available on open arrays';
   CPE_ArrayDoesNotHaveNaturalSortOrder = 'Array does not have a natural sort order';
 
   // Sets

@@ -7730,6 +7730,7 @@ var
    i : Integer;
    mapFunctionType : TFuncSymbol;
    methodKind : TArrayMethodKind;
+   indexOfClass : TArrayIndexOfExprClass;
 
    procedure CheckNotTypeReference;
    begin
@@ -7741,6 +7742,13 @@ var
    begin
       if arraySym.ClassType<>TDynamicArraySymbol then
          FMsgs.AddCompilerErrorFmt(namePos, CPE_ArrayMethodRestrictedToDynamicArrays, [name])
+      else CheckNotTypeReference;
+   end;
+
+   procedure CheckDynamicOrStatic;
+   begin
+      if (arraySym.ClassType<>TDynamicArraySymbol) and (arraySym.ClassType<>TStaticArraySymbol) then
+         FMsgs.AddCompilerErrorFmt(namePos, CPE_ArrayMethodNotAvailableOnOpenArrays, [name])
       else CheckNotTypeReference;
    end;
 
@@ -7859,7 +7867,10 @@ begin
             end;
 
             amkIndexOf : begin
-               CheckRestricted;
+               CheckDynamicOrStatic;
+               if arraySym.ClassType = TDynamicArraySymbol then
+                  indexOfClass := TDynamicArrayIndexOfExpr
+               else indexOfClass := TStaticArrayIndexOfExpr;
                if CheckArguments(1, 2) then begin
                   if (argList[0].Typ=nil) or not arraySym.Typ.IsCompatible(argList[0].Typ) then
                      IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
@@ -7867,12 +7878,15 @@ begin
                   if argList.Count>1 then begin
                      if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FCompilerContext.TypInteger) then
                         FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
-                     Result:=TDynamicArrayIndexOfExpr.Create(FCompilerContext, namePos, baseExpr,
-                                                             argList[0], argList[1]);
-                  end else Result:=TDynamicArrayIndexOfExpr.Create(FCompilerContext, namePos, baseExpr,
-                                                                   argList[0], nil);
+                     Result := indexOfClass.Create(FCompilerContext, namePos, baseExpr,
+                                                   argList[0], argList[1]);
+                  end else begin
+                     Result := indexOfClass.Create(FCompilerContext, namePos, baseExpr, argList[0], nil);
+                  end;
                   argList.Clear;
-               end else Result:=TDynamicArrayIndexOfExpr.Create(FCompilerContext, namePos, baseExpr, nil, nil);
+               end else begin
+                  Result := indexOfClass.Create(FCompilerContext, namePos, baseExpr, nil, nil);
+               end;
             end;
 
             amkRemove : begin
@@ -10863,6 +10877,7 @@ begin
                Result := TDynamicArrayIndexOfExpr.Create(FCompilerContext, hotPos, setExpr, left, nil)
             else begin
                Result := TStaticArrayIndexOfExpr.Create(FCompilerContext, hotPos, setExpr, left, nil);
+               TStaticArrayIndexOfExpr(Result).ForceZeroBased := True;
                if setExpr.Typ.ClassType <> TStaticArraySymbol then
                   FMsgs.AddCompilerError(hotPos, CPE_IncompatibleOperands);
             end;

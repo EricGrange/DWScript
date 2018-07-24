@@ -978,7 +978,7 @@ type
 
       public
          constructor Create(context : TdwsCompilerContext; const scriptPos : TScriptPos;
-                            aBase : TTypedExpr; aItem : TTypedExpr; aFromIndex : TTypedExpr);
+                            aBase : TTypedExpr; aItem : TTypedExpr; aFromIndex : TTypedExpr); reintroduce; virtual;
          destructor Destroy; override;
 
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
@@ -986,6 +986,8 @@ type
          property ItemExpr : TTypedExpr read FItemExpr;
          property FromIndexExpr : TTypedExpr read FFromIndexExpr;
    end;
+
+   TArrayIndexOfExprClass = class of TArrayIndexOfExpr;
 
    TDynamicArrayIndexOfMethod = function (exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer of object;
 
@@ -1002,14 +1004,19 @@ type
 
       public
          constructor Create(context : TdwsCompilerContext; const scriptPos : TScriptPos;
-                            aBase : TTypedExpr; aItem : TTypedExpr; aFromIndex : TTypedExpr);
+                            aBase : TTypedExpr; aItem : TTypedExpr; aFromIndex : TTypedExpr); override;
 
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
    TStaticArrayIndexOfExpr = class(TArrayIndexOfExpr)
+      private
+         FForceZeroBased : Boolean;
+
       public
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
+
+         property ForceZeroBased : Boolean read FForceZeroBased write FForceZeroBased;
    end;
 
    // Remove an element in a dynamic array (shallow comparison)
@@ -10249,6 +10256,9 @@ begin
          FItemExpr.Typ.Size
       );
    end;
+   if not ForceZeroBased then
+      if (Result >= 0) or (arrayTyp.LowBound < 0) then
+         Result := Result + arrayTyp.LowBound;
 end;
 
 // ------------------
