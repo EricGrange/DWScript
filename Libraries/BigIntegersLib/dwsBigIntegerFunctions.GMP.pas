@@ -81,7 +81,7 @@ type
    end;
 
    TBigIntegerNegateExpr = class(TUnaryOpExpr)
-      constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
+      constructor Create(context : TdwsBaseSymbolsContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
       procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
@@ -165,7 +165,7 @@ type
 
    TBigIntegerUnaryOpExpr = class (TUnaryOpExpr)
       public
-         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
+         constructor Create(context : TdwsBaseSymbolsContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
@@ -623,7 +623,7 @@ end;
 
 // Create
 //
-constructor TBigIntegerNegateExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
+constructor TBigIntegerNegateExpr.Create(context : TdwsBaseSymbolsContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
 begin
    inherited;
    Bind_MPIR_DLL;
@@ -847,10 +847,10 @@ end;
 // ------------------ TBigIntegerUnaryOpExpr ------------------
 // ------------------
 
-constructor TBigIntegerUnaryOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
+constructor TBigIntegerUnaryOpExpr.Create(context : TdwsBaseSymbolsContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
 begin
    inherited Create(context, aScriptPos, expr);
-   Typ := context.SystemTable.FindTypeSymbol(SYS_BIGINTEGER, cvMagic);
+   Typ := context.FindType(SYS_BIGINTEGER);
 end;
 
 procedure TBigIntegerUnaryOpExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);

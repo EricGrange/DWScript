@@ -136,13 +136,13 @@ type
    end;
 
    // Class methods (non virtual)
-   TClassMethodStaticExpr = class(TMethodStaticExpr)
+   TClassMethodStaticExpr = class (TMethodStaticExpr)
       protected
          function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
    end;
 
    // Call to a virtual class method
-   TClassMethodVirtualExpr = class(TClassMethodStaticExpr)
+   TClassMethodVirtualExpr = class sealed (TClassMethodStaticExpr)
       protected
          function FindVirtualMethod(exec : TdwsExecution) : TMethodSymbol;
          function PreCall(exec : TdwsExecution) : TFuncSymbol; override;

@@ -11465,10 +11465,7 @@ begin
 
       end;
 
-      if (typ<>nil) and (typ.Size>1) then   // TODO !!!!!!!!!!!
-         FMsgs.AddCompilerError(hotPos, 'Implementation currently limited to arguments of size 1');
-
-      Result:=TIfThenElseValueExpr.Create(FCompilerContext, hotPos, typ, boolExpr, trueExpr, falseExpr);
+      Result := TIfThenElseValueExpr.Create(FCompilerContext, hotPos, typ, boolExpr, trueExpr, falseExpr);
    except
       OrphanAndNil(boolExpr);
       OrphanAndNil(trueExpr);

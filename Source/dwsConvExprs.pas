@@ -71,8 +71,9 @@ type
    end;
 
    // String(variant x)
-   TConvVarToStringExpr = class (TUnaryOpStringExpr)
+   TConvVarToStringExpr = class sealed (TUnaryOpStringExpr)
       procedure EvalAsString(exec : TdwsExecution; var result : String); override;
+      function SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr; override;
    end;
 
    // Boolean(int x)
@@ -89,8 +90,9 @@ type
    end;
 
    // Variant(simple)
-   TConvVariantExpr = class (TUnaryOpVariantExpr)
+   TConvVariantExpr = class sealed (TUnaryOpVariantExpr)
       procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+      function SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr; override;
    end;
 
    // Static Array to Dynamic Array
@@ -183,7 +185,7 @@ type
    // obj.ClassType
    TObjToClassTypeExpr = class(TUnaryOpExpr)
       public
-         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
+         constructor Create(context : TdwsBaseSymbolsContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
 
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
@@ -428,6 +430,13 @@ begin
    VariantToString(v, Result);
 end;
 
+// SpecializeTypedExpr
+//
+function TConvVarToStringExpr.SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr;
+begin
+   Result := TConvVarToStringExpr.Create(context.BaseSymbols, ScriptPos, Expr.SpecializeTypedExpr(context));
+end;
+
 // ------------------
 // ------------------ TConvIntToBoolExpr ------------------
 // ------------------
@@ -473,6 +482,16 @@ end;
 procedure TConvVariantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
    FExpr.EvalAsVariant(exec, Result);
+end;
+
+// SpecializeTypedExpr
+//
+function TConvVariantExpr.SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr;
+begin
+   Result := TConvVariantExpr.Create(
+      context.BaseSymbols, ScriptPos,
+      Expr.SpecializeTypedExpr(context)
+   );
 end;
 
 // ------------------
@@ -606,7 +625,7 @@ end;
 
 // Create
 //
-constructor TObjToClassTypeExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
+constructor TObjToClassTypeExpr.Create(context : TdwsBaseSymbolsContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
 begin
    inherited Create(context, aScriptPos, expr);
    Typ:=(expr.Typ as TStructuredTypeSymbol).MetaSymbol;

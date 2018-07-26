@@ -86,6 +86,7 @@ type
          property SpecializedObjects : TSpecializationMap read FSpecializedObjects write FSpecializedObjects;
 
          property CompilerContext : TdwsCompilerContext read FCompilerContext;
+         function BaseSymbols : TdwsBaseSymbolsContext; inline;
          property Operators : TOperators read FOperators;
          property ScriptPos : TScriptPos read FScriptPos;
          function ParameterValuePos(parameter : TSymbol) : TScriptPos;
@@ -300,6 +301,13 @@ procedure TSpecializationContext.AddCompilerErrorFmt(const msgFmt : String; cons
 begin
    FOptimize := False;
    FCompilerContext.Msgs.AddCompilerErrorFmt(ScriptPos, msgFmt, params);
+end;
+
+// BaseSymbols
+//
+function TSpecializationContext.BaseSymbols : TdwsBaseSymbolsContext;
+begin
+   Result := CompilerContext;
 end;
 
 // ParameterValuePos

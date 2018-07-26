@@ -38,13 +38,12 @@ type
       );
    TCompilerOptions = set of TCompilerOption;
 
-   TdwsCompilerContext = class
+   TdwsCompilerContext = class (TdwsBaseSymbolsContext)
       private
          FMsgs : TdwsCompileMessageList;
          FSystemTable : TSystemSymbolTable;
          FProg : TObject;
          FUnifiedConstants : TObject;
-         FBaseTypes : TdwsBaseSymbolTypes;
          FOrphanedObjects : TSimpleStack<TRefCountedObject>;
          FUnitList : TIdwsUnitList;
          FHelperMemberNames : TSimpleStringHash;
@@ -73,6 +72,7 @@ type
          function CreateConstExpr(typ : TTypeSymbol; const value : Variant) : TExprBase;
 
          function WrapWithImplicitCast(toTyp : TTypeSymbol; const scriptPos : TScriptPos; var expr) : Boolean;
+         function FindType(const typName : String) : TTypeSymbol; override;
 
          function Optimize : Boolean;
 
@@ -87,18 +87,6 @@ type
 
          property Execution : TdwsExecution read FExecution write FExecution;
          property Options : TCompilerOptions read FOptions write FOptions;
-
-         property TypBoolean: TBaseBooleanSymbol read FBaseTypes.TypBoolean;
-         property TypFloat: TBaseFloatSymbol read FBaseTypes.TypFloat;
-         property TypInteger: TBaseIntegerSymbol read FBaseTypes.TypInteger;
-         property TypNil: TNilSymbol read FBaseTypes.TypNil;
-         property TypObject: TClassSymbol read FBaseTypes.TypObject;
-         property TypTObject: TClassSymbol read FBaseTypes.TypTObject;
-         property TypString: TBaseStringSymbol read FBaseTypes.TypString;
-         property TypVariant: TBaseVariantSymbol read FBaseTypes.TypVariant;
-         property TypException: TClassSymbol read FBaseTypes.TypException;
-         property TypInterface : TInterfaceSymbol read FBaseTypes.TypInterface;
-         property TypAnyType: TAnyTypeSymbol read FBaseTypes.TypAnyType;
 
          property TypDefaultConstructor : TMethodSymbol read FTypDefaultConstructor;
          property TypDefaultDestructor : TMethodSymbol read FTypDefaultDestructor;
@@ -266,6 +254,13 @@ begin
    end;
 end;
 
+// FindType
+//
+function TdwsCompilerContext.FindType(const typName : String) : TTypeSymbol;
+begin
+   Result := SystemTable.FindTypeLocal(typName)
+end;
+
 // Optimize
 //
 function TdwsCompilerContext.Optimize : Boolean;
@@ -278,7 +273,7 @@ end;
 procedure TdwsCompilerContext.SetSystemTable(const val : TSystemSymbolTable);
 begin
    FSystemTable := val;
-   FBaseTypes := FSystemTable.BaseSymbolTypes;
+   SetBaseTypes(FSystemTable.BaseSymbolTypes);
 
    FTypDefaultConstructor := TypTObject.Members.FindSymbol(SYS_TOBJECT_CREATE, cvPublic) as TMethodSymbol;
    FTypDefaultDestructor := TypTObject.Members.FindSymbol(SYS_TOBJECT_DESTROY, cvPublic) as TMethodSymbol;

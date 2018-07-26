@@ -309,8 +309,8 @@ begin
 
    end else begin
 
-      left.Orphan(context);
-      right.Orphan(context);
+      context.OrphanObject(left);
+      context.OrphanObject(right);
       context.Msgs.AddCompilerError(scriptPos, CPE_RightSideNeedsReturnType);
       Result:=TNullExpr.Create(scriptPos);
 

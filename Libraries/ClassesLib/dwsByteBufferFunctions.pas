@@ -42,7 +42,7 @@ type
 
    TByteBufferUnaryOpExpr = class (TUnaryOpExpr)
       public
-         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
+         constructor Create(context : TdwsBaseSymbolsContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
@@ -268,10 +268,10 @@ end;
 
 // Create
 //
-constructor TByteBufferUnaryOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
+constructor TByteBufferUnaryOpExpr.Create(context : TdwsBaseSymbolsContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
 begin
    inherited Create(context, aScriptPos, expr);
-   Typ := context.SystemTable.FindTypeLocal(SYS_BYTEBUFFER);
+   Typ := context.FindType(SYS_BYTEBUFFER);
 end;
 
 // EvalAsVariant

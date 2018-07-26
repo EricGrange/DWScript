@@ -59,6 +59,7 @@ type
    EScriptError = class;
    EScriptErrorClass = class of EScriptError;
    TFuncSymbol = class;
+   TdwsBaseSymbolsContext = class;
 
    TdwsExprLocation = record
       Expr : TExprBase;
@@ -139,6 +140,7 @@ type
       function UnitSymbol : TSymbol;
       function Msgs : TdwsCompileMessageList;
       function Optimize : Boolean;
+      function BaseSymbols : TdwsBaseSymbolsContext;
 
       procedure EnterComposite(sym : TCompositeTypeSymbol);
       procedure LeaveComposite;
@@ -1851,6 +1853,29 @@ type
       TypInterface : TInterfaceSymbol;
       TypCustomAttribute : TClassSymbol;
       TypAnyType : TAnyTypeSymbol;
+   end;
+
+   TdwsBaseSymbolsContext = class
+      private
+         FBaseTypes : TdwsBaseSymbolTypes;
+
+      protected
+         procedure SetBaseTypes(const bt : TdwsBaseSymbolTypes);
+
+      public
+         function FindType(const typName : String) : TTypeSymbol; virtual; abstract;
+
+         property TypBoolean: TBaseBooleanSymbol read FBaseTypes.TypBoolean;
+         property TypFloat: TBaseFloatSymbol read FBaseTypes.TypFloat;
+         property TypInteger: TBaseIntegerSymbol read FBaseTypes.TypInteger;
+         property TypNil: TNilSymbol read FBaseTypes.TypNil;
+         property TypObject: TClassSymbol read FBaseTypes.TypObject;
+         property TypTObject: TClassSymbol read FBaseTypes.TypTObject;
+         property TypString: TBaseStringSymbol read FBaseTypes.TypString;
+         property TypVariant: TBaseVariantSymbol read FBaseTypes.TypVariant;
+         property TypException: TClassSymbol read FBaseTypes.TypException;
+         property TypInterface : TInterfaceSymbol read FBaseTypes.TypInterface;
+         property TypAnyType: TAnyTypeSymbol read FBaseTypes.TypAnyType;
    end;
 
    // TdwsExecution
@@ -3880,7 +3905,7 @@ begin
       context.RegisterSpecialization(Params[i], specializedParam);
    end;
 
-   // specialize reamining parameters
+   // specialize remaining parameters
    for i := destination.Params.Count to Params.Count-1 do begin
       param := Params[i];
       specializedParam := param.Specialize(context);
@@ -6396,7 +6421,8 @@ begin
             Result := TOperatorSymbol(sym);
             if     (Result.Token = ttIMPLICIT)
                and (Result.Typ = toType)
-               and (Result.Params[0] = fromType) then Exit;
+               and (Result.Params[0] = fromType)
+               and (Result.UsesSym <> nil) then Exit;
          end;
       end;
    end;
@@ -7680,6 +7706,17 @@ begin
    inherited Create(msgString);
    FExceptObj:=anExceptionObj;
    FScriptPos:=aScriptPos;
+end;
+
+// ------------------
+// ------------------ TdwsBaseSymbolsContext ------------------
+// ------------------
+
+// SetBaseTypes
+//
+procedure TdwsBaseSymbolsContext.SetBaseTypes(const bt : TdwsBaseSymbolTypes);
+begin
+   FBaseTypes := bt;
 end;
 
 // ------------------

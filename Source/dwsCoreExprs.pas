@@ -1117,7 +1117,7 @@ type
 
    TAssociativeArrayKeysExpr = class (TUnaryOpExpr)
       public
-         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
+         constructor Create(context : TdwsBaseSymbolsContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
 
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override; final;
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
@@ -1741,7 +1741,7 @@ type
          function EvalElement(exec : TdwsExecution) : TElementSymbol;
 
       public
-         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
+         constructor Create(context : TdwsBaseSymbolsContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
          procedure EvalAsString(exec : TdwsExecution; var result : String); override;
    end;
 
@@ -1836,7 +1836,7 @@ type
    end;
 
    // value := if FCond then FTrue else FFalse
-   TIfThenElseValueExpr = class(TTypedExpr)
+   TIfThenElseValueExpr = class sealed (TDataExpr)
       private
          FScriptPos : TScriptPos;
          FCondExpr : TTypedExpr;
@@ -1856,7 +1856,14 @@ type
          destructor Destroy; override;
 
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+         function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
+         function  EvalAsFloat(exec : TdwsExecution) : Double; override;
+         procedure EvalAsString(exec : TdwsExecution; var result : String); override;
+         procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
+
+         function ScriptPos : TScriptPos; override;
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
+         function SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
 
          property CondExpr : TTypedExpr read FCondExpr write FCondExpr;
          property TrueExpr : TTypedExpr read FTrueExpr write FTrueExpr;
@@ -2437,7 +2444,7 @@ implementation
 
 uses
    dwsStringFunctions, dwsExternalSymbols, dwsSpecializationContext,
-   dwsArrayElementContext;
+   dwsArrayElementContext, dwsCompilerUtils;
 
 type
    // this needs to be in a helper (or more precisely implemented at the top of this unit)
@@ -5159,7 +5166,7 @@ end;
 
 // Create
 //
-constructor TEnumerationElementNameExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
+constructor TEnumerationElementNameExpr.Create(context : TdwsBaseSymbolsContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
 begin
    inherited;
    Assert(expr.Typ is TEnumerationSymbol);
@@ -6601,11 +6608,18 @@ end;
 //
 function TAssignExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
 begin
-   Result := TAssignExprClass(ClassType).Create(
+   Result := CreateAssignExpr(
       CompilerContextFromSpecialization(context), ScriptPos,
+      ttASSIGN,
       FLeft.SpecializeDataExpr(context),
       FRight.SpecializeTypedExpr(context)
-      );
+   );
+//
+//   Result := TAssignExprClass(ClassType).Create(
+//      CompilerContextFromSpecialization(context), ScriptPos,
+//      FLeft.SpecializeDataExpr(context),
+//      FRight.SpecializeTypedExpr(context)
+//      );
 end;
 
 // GetSubExpr
@@ -9777,9 +9791,15 @@ begin
    for i := 0 to ArgCount-1 do begin
       arg := ArgExpr[i].SpecializeTypedExpr(context);
       if (arg <> nil) and (not arg.Typ.IsOfType(elemTyp)) then
-         context.AddCompilerErrorFmt(CPE_IncompatibleParameterTypes,
-                                     [elemTyp.Caption, arg.Typ.Caption]);
-      specialized.AddArg(arg);
+         specialized.AddArg(
+            CompilerUtils.WrapWithImplicitConversion(
+               (context.BaseSymbols as TdwsCompilerContext),
+               arg, elemTyp,
+               arg.ScriptPos,
+               CPE_IncompatibleParameterTypes
+            )
+         )
+      else specialized.AddArg(arg);
    end;
 end;
 
@@ -10725,9 +10745,8 @@ constructor TIfThenElseValueExpr.Create(context : TdwsCompilerContext; const aPo
                                         aTyp : TTypeSymbol;
                                         condExpr, trueExpr, falseExpr : TTypedExpr);
 begin
-   inherited Create;
+   inherited Create(aTyp);
    FScriptPos:=aPos;
-   Typ:=aTyp;
    FCondExpr:=condExpr;
    FTrueExpr:=trueExpr;
    FFalseExpr:=falseExpr;
@@ -10746,13 +10765,49 @@ end;
 // EvalAsVariant
 //
 procedure TIfThenElseValueExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
-var
-   buf : Variant;
 begin
    if FCondExpr.EvalAsBoolean(exec) then
-      FTrueExpr.EvalAsVariant(exec, buf)
-   else FFalseExpr.EvalAsVariant(exec, buf);
-   VarCopySafe(Result, buf);
+      FTrueExpr.EvalAsVariant(exec, Result)
+   else FFalseExpr.EvalAsVariant(exec, Result);
+end;
+
+// EvalAsInteger
+//
+function TIfThenElseValueExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   if FCondExpr.EvalAsBoolean(exec) then
+      Result := FTrueExpr.EvalAsInteger(exec)
+   else Result := FFalseExpr.EvalAsInteger(exec);
+end;
+
+// EvalAsFloat
+//
+function TIfThenElseValueExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+begin
+   if FCondExpr.EvalAsBoolean(exec) then
+      Result := FTrueExpr.EvalAsFloat(exec)
+   else Result := FFalseExpr.EvalAsFloat(exec);
+end;
+
+// EvalAsString
+//
+procedure TIfThenElseValueExpr.EvalAsString(exec : TdwsExecution; var result : String);
+begin
+   if FCondExpr.EvalAsBoolean(exec) then
+      FTrueExpr.EvalAsString(exec, result)
+   else FFalseExpr.EvalAsString(exec, result);
+end;
+
+// GetDataPtr
+//
+procedure TIfThenElseValueExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
+var
+   e : TTypedExpr;
+begin
+   if FCondExpr.EvalAsBoolean(exec) then
+      e := FTrueExpr
+   else e := FFalseExpr;
+   (e as TDataExpr).GetDataPtr(exec, result);
 end;
 
 // GetIsConstant
@@ -10792,6 +10847,19 @@ begin
    end;
 end;
 
+// SpecializeDataExpr
+//
+function TIfThenElseValueExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
+begin
+   Result := TIfThenElseValueExpr.Create(
+      CompilerContextFromSpecialization(context), ScriptPos,
+      context.SpecializeType(Typ),
+      CondExpr.SpecializeBooleanExpr(context),
+      TrueExpr.SpecializeTypedExpr(context),
+      FalseExpr.SpecializeTypedExpr(context)
+   );
+end;
+
 // GetSubExpr
 //
 function TIfThenElseValueExpr.GetSubExpr(i : Integer) : TExprBase;
@@ -10809,6 +10877,13 @@ end;
 function TIfThenElseValueExpr.GetSubExprCount : Integer;
 begin
    Result:=3;
+end;
+
+// ScriptPos
+//
+function TIfThenElseValueExpr.ScriptPos : TScriptPos;
+begin
+   Result := FScriptPos;
 end;
 
 // ------------------
@@ -10968,7 +11043,7 @@ end;
 
 // Create
 //
-constructor TAssociativeArrayKeysExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
+constructor TAssociativeArrayKeysExpr.Create(context : TdwsBaseSymbolsContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
 var
    a : TAssociativeArraySymbol;
 begin
