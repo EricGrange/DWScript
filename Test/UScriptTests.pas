@@ -59,7 +59,7 @@ end;
 //
 procedure TScriptTests.SetUp;
 const
-   cFilter = '*.pas';
+   cFilter = 'constructor_overload*.pas';
 var
    basePath : String;
 begin

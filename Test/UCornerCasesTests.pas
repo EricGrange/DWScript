@@ -110,6 +110,8 @@ type
          procedure LambdaAsConstParam;
 
          procedure RoundTripTest;
+
+         procedure ConstructorOverload;
    end;
 
    ETestException = class (Exception);
@@ -2100,6 +2102,60 @@ begin
       CheckEquals('54321,,,,,done'#13#10, exec.Result.ToString);
    finally
       exec := nil;
+   end;
+end;
+
+// ConstructorOverload
+//
+procedure TCornerCasesTests.ConstructorOverload;
+var
+   u : TdwsUnit;
+   cls : TdwsClass;
+   cst : TdwsConstructor;
+   p : TdwsParameter;
+   prog : IdwsProgram;
+begin
+   u := TdwsUnit.Create(nil);
+   try
+      u.UnitName := 'Test';
+
+      cls := u.Classes.Add;
+      cls.Name := 'TBase';
+
+      cst := cls.Constructors.Add;
+      cst.Name := 'Create';
+      cst.Attributes := [ maVirtual, maAbstract ];
+
+      cls := u.Classes.Add;
+      cls.Name := 'TDerived';
+      cls.Ancestor := 'TBase';
+
+      cst := cls.Constructors.Add;
+      cst.Name := 'Create';
+      cst.Overloaded := True;
+      cst.Attributes := [ maVirtual, maOverride ];
+
+      cst := cls.Constructors.Add;
+      cst.Name := 'Create';
+      cst.Overloaded := True;
+      p := cst.Parameters.Add;
+      p.Name := 'value';
+      p.DataType := 'boolean';
+
+      cls := u.Classes.Add;
+      cls.Name := 'TProblem';
+      cls.Ancestor := 'TDerived';
+
+      cst := cls.Constructors.Add;
+      cst.Name := 'Create';
+      cst.Attributes := [ maVirtual, maOverride ];
+
+      u.Script := FCompiler;
+
+      prog := FCompiler.Compile('begin end;');
+      CheckEquals(0, prog.Msgs.Count, prog.Msgs.AsInfo);
+   finally
+      u.Free;
    end;
 end;
 

@@ -4149,7 +4149,7 @@ begin
    GenerateParams(Table, MethParams);
 
    // Check if name is already used
-   if overloaded then begin
+   if overloaded or (maOverride in Attributes) then begin
       enumerator:=TPerfectMatchEnumerator.Create;
       try
          enumerator.FuncSym:=Self;
@@ -4177,7 +4177,7 @@ begin
    end;
 
    if overloaded then
-      IsOverloaded:=True;
+      IsOverloaded := True;
    if Assigned(meth) then
       SetOverlap(TMethodSymbol(meth));
 
