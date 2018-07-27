@@ -11,6 +11,13 @@
 // ====================================================================
 // [+] BranchTaken,BranchNotTaken added in TPREFIXINFO v3.1.0
 unit BeaEngineDelphi;
+
+{$i dws.inc}
+
+{$ifdef WIN64}
+   {$DEFINE USEDLL}
+{$endif}
+
 // ====================================================================
 // Default link type is static lib
 // comment below line to switch link with DLL
@@ -329,8 +336,15 @@ function BeaEngineVersion:longint;stdcall;
 function BeaEngineRevision:longint;stdcall;
   
 implementation
+
 {$IFNDEF USEDLL}
+
+{$ifdef WIN32}
 {$L BeaEngine32.obj}
+{$endif}
+{$ifdef WIN64}
+{$L BeaEngineLib.obj}
+{$endif}
 
 function strcmp(str1, str2: PAnsiChar): Integer;cdecl;
 begin
@@ -361,9 +375,16 @@ function BeaEngineRevision:longint;stdcall;external;
 
 {$ELSE}
 
-function Disasm(var aDisAsm:TDISASM):longint;stdcall;external 'BeaEngine.DLL' name '_Disasm@4';
-function BeaEngineVersion:longint;stdcall;external 'BeaEngine.DLL' name '_BeaEngineVersion@0';
-function BeaEngineRevision:longint;stdcall;external 'BeaEngine.DLL' name '_BeaEngineRevision@0';
+{$ifdef WIN32}
+function Disasm(var aDisAsm:TDISASM):longint;stdcall;external 'BeaEngine32.DLL' name '_Disasm@4';
+function BeaEngineVersion:longint;stdcall;external 'BeaEngine32.DLL' name '_BeaEngineVersion@0';
+function BeaEngineRevision:longint;stdcall;external 'BeaEngine32.DLL' name '_BeaEngineRevision@0';
+{$endif}
+{$ifdef WIN64}
+function Disasm(var aDisAsm:TDISASM):longint;stdcall;external 'BeaEngine64.DLL' index 3;
+function BeaEngineVersion:longint;stdcall;external 'BeaEngine64.DLL' index 2;
+function BeaEngineRevision:longint;stdcall;external 'BeaEngine64.DLL' index 1;
+{$endif}
 
 {$ENDIF}
 

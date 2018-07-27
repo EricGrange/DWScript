@@ -7,7 +7,7 @@ interface
 uses
    Classes, SysUtils, Variants,
    dwsXPlatformTests, dwsJITx86Intrinsics, dwsUtils,
-   BeaEngineDelphi;
+   BeaEngineDelphi, AnsiStrings;
 
 type
 
@@ -113,7 +113,7 @@ begin
    repeat
       len:=Disasm(d);
       if len>0 then begin
-         FStream.WriteString(UTF8ToString(StrPas(d.CompleteInstr)));
+         FStream.WriteString(UTF8ToString(AnsiStrings.StrPas(d.CompleteInstr)));
          FStream.WriteCRLF;
          d.EIP:=d.EIP+len;
          d.SecurityBlock:=blockEnd-d.EIP;

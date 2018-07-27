@@ -83,7 +83,8 @@ uses
   dwsSHA512 in '..\Libraries\CryptoLib\dwsSHA512.pas',
   dwsArrayElementContext in '..\Source\dwsArrayElementContext.pas',
   dwsJPEGEncoderOptions in '..\Libraries\GraphicsLib\dwsJPEGEncoderOptions.pas',
-  UdwsWebLibModuleTest in 'UdwsWebLibModuleTest.pas';
+  UdwsWebLibModuleTest in 'UdwsWebLibModuleTest.pas',
+  BeaEngineDelphi in '..\Tools\BeaEngine\BeaEngineDelphi.pas';
 
 {$R *.res}
 
