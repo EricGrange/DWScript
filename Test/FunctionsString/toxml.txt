@@ -1,0 +1,1 @@
+&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;

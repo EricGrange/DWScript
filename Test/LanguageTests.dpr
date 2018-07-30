@@ -14,6 +14,7 @@ uses
   Windows,
   TestFrameWork,
   GUITestRunner,
+  TextTestRunner,
   SysUtils,
   Math,
   dwsXPlatform,
@@ -106,6 +107,9 @@ begin
    Application.Initialize;
    Application.UpdateFormatSettings := False;
    SetDecimalSeparator('.');
-   GUITestRunner.RunRegisteredTests;
+   if ParamStr(1)='/text' then begin
+      AllocConsole;
+      TextTestRunner.RunRegisteredTests
+   end else GUITestRunner.RunRegisteredTests;
 end.
 

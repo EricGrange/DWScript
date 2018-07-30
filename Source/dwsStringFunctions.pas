@@ -366,7 +366,7 @@ begin
       Result := Format('%.2f M', [ floatSize*(1/(1024*1024)) ])
    else if Abs(floatSize) < 1024*1024*1024*1024.0 then
       Result := Format('%.2f G', [ floatSize*(1/(1024*1024*1024)) ])
-   else Result := Format('%.3f T', [ floatSize*(1/(1024*1024*1024*1024.0)) ]);
+   else Result := Format('%.2f T', [ floatSize*(1/(1024*1024*1024*1024.0)) ]);
    Result := Result + unitName;
 end;
 
@@ -530,7 +530,9 @@ var
 begin
    args.EvalAsVariant(0, v);
    try
-      Result := VariantToFloat(v);
+      if TVarData(v).VType = varEmpty then
+         Result := args.AsFloat[1]
+      else Result := VariantToFloat(v);
    except
       Result := args.AsFloat[1];
    end;

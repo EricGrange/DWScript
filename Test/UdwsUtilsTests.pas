@@ -1067,6 +1067,8 @@ procedure TdwsUtilsTests.TokenStoreData;
 var
    store : TdwsTokenStore;
    js : TdwsJSONWriter;
+   jsValue : TdwsJSONValue;
+   jsData : String;
 begin
    store:=TdwsTokenStore.Create;
    try
@@ -1083,10 +1085,25 @@ begin
       js := TdwsJSONWriter.Create;
       try
          store.SaveToJSON(js);
-         CheckTrue(StrMatches(js.ToString, '{"b":{"data":"bb","expire":*}}'), js.ToString);
+         jsData := js.ToString;
+         CheckTrue(StrMatches(jsData, '{"b":{"data":"bb","expire":*}}'), jsData);
       finally
          js.Free;
       end;
+   finally
+      store.Free;
+   end;
+
+   store:=TdwsTokenStore.Create;
+   try
+      jsValue := TdwsJSONValue.ParseString(jsData);
+      try
+         store.LoadFromJSON(jsValue);
+      finally
+         jsValue.Free;
+      end;
+      CheckEquals('', store.TokenData['a']);
+      CheckEquals('bb', store.TokenData['b']);
    finally
       store.Free;
    end;
