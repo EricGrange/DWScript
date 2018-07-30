@@ -2153,7 +2153,11 @@ begin
       u.Script := FCompiler;
 
       prog := FCompiler.Compile('begin end;');
-      CheckEquals(0, prog.Msgs.Count, prog.Msgs.AsInfo);
+      try
+         CheckEquals(0, prog.Msgs.Count, prog.Msgs.AsInfo);
+      finally
+         prog := nil;
+      end;
    finally
       u.Free;
    end;
