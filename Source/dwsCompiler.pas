@@ -11508,7 +11508,6 @@ var
    memberSet : array of Boolean;
    memberTyp : TTypeSymbol;
    expr : TTypedExpr;
-   constExpr : TConstExpr;
    exprPos : TScriptPos;
    factory : IdwsDataSymbolFactory;
 begin
@@ -11548,22 +11547,20 @@ begin
       exprPos:=FTok.HotPos;
       expr:=factory.ReadInitExpr(memberTyp);
       try
-         if not (expr is TConstExpr) then begin
-            if expr.IsConstant then
-               expr:=expr.OptimizeToTypedExpr(FCompilerContext, exprPos)
-            else begin
-               FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
-               OrphanAndNil(expr);
-            end;
+         if (expr = nil) or not expr.IsConstant then begin
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
+            OrphanAndNil(expr);
          end;
          if (expr<>nil) and (memberTyp<>nil) then begin
-            constExpr:=TConstExpr(expr);
-            if constExpr.Typ.IsOfType(FCompilerContext.TypInteger) and memberTyp.IsOfType(FCompilerContext.TypFloat) then
-               Result[memberSym.Offset]:=constExpr.EvalAsFloat(FExec)
-            else if not constExpr.Typ.IsCompatible(memberTyp) then
-               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidConstTypeVsExpected, [constExpr.Typ.Caption, memberTyp.Caption])
+            if expr.Typ.IsOfType(FCompilerContext.TypInteger) and memberTyp.IsOfType(FCompilerContext.TypFloat) then
+               Result[memberSym.Offset] := expr.EvalAsFloat(FExec)
+            else if not expr.Typ.IsCompatible(memberTyp) then
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidConstTypeVsExpected, [ expr.Typ.Caption, memberTyp.Caption ])
+            else if memberTyp.Size = 1 then
+               expr.EvalAsVariant(FExec, result[memberSym.Offset])
             else begin
-               constExpr.DataPtr[FExec].CopyData(result, memberSym.Offset, memberTyp.Size);
+               expr := expr.OptimizeToTypedExpr(FCompilerContext, exprPos);
+               (expr as TDataExpr).DataPtr[FExec].CopyData(result, memberSym.Offset, memberTyp.Size);
             end;
          end;
       finally
