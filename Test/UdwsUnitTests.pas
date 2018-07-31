@@ -149,6 +149,8 @@ type
          procedure DuplicateUnit;
 
          procedure CallLevels;
+
+         procedure InfoExceptions;
    end;
 
    EDelphiException = class (Exception)
@@ -2605,6 +2607,44 @@ begin
       end;
    finally
       un.Free;
+   end;
+end;
+
+// InfoExceptions
+//
+procedure TdwsUnitTests.InfoExceptions;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   msg : String;
+begin
+   prog := FCompiler.Compile('var v := 123;');
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   exec := prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+      try
+         exec.Info.ValueAsString['vvvv'];
+      except
+         on E : Exception do
+            msg := E.Message;
+      end;
+      CheckTrue(Pos('vvvv', msg) > 0, msg);
+
+      exec.RunProgram(0);
+      try
+         exec.Info.Params[1234];
+      except
+         on E : Exception do
+            msg := E.Message;
+      end;
+      CheckTrue(Pos('1234', msg) > 0, msg);
+
+   finally
+      exec.EndProgram;
+      exec:=nil;
+      prog:=nil;
    end;
 end;
 

@@ -1545,7 +1545,9 @@ type
          procedure ResultSetNull;
 
          property ResultAsStringArray : TStringDynArray write SetResultAsStringArray;
-  end;
+   end;
+
+   EdwsProgramInfoException = class (Exception) end;
 
    // An instance of a script class FClassSym. Instance data in FData,
    TScriptObj = class (TDataContext)
@@ -1809,21 +1811,21 @@ end;
 //
 procedure RaiseVariableNotFound(const s : String);
 begin
-   raise Exception.CreateFmt(RTE_VariableNotFound, [s]);
+   raise EdwsProgramInfoException.CreateFmt(RTE_VariableNotFound, [s]);
 end;
 
 // RaiseIncorrectParameterIndex
 //
 procedure RaiseIncorrectParameterIndex(i : Integer);
 begin
-   raise Exception.CreateFmt(RTE_IncorrectParameterIndex, [i]);
+   raise EdwsProgramInfoException.CreateFmt(RTE_IncorrectParameterIndex, [i]);
 end;
 
 // RaiseOnlyVarSymbols
 //
 procedure RaiseOnlyVarSymbols(sym : TSymbol);
 begin
-   raise Exception.CreateFmt(RTE_OnlyVarSymbols, [sym.Caption]);
+   raise EdwsProgramInfoException.CreateFmt(RTE_OnlyVarSymbols, [sym.Caption]);
 end;
 
 // ------------------
@@ -6405,14 +6407,14 @@ end;
 function TProgramInfo.GetParams(const Index: Integer): IInfo;
 var
    ip : TSymbolTable;
-   sym: TSymbol;
+   sym : TSymbol;
 begin
-   ip:=FuncSym.Params;
-   if Cardinal(index)>=Cardinal(ip.Count) then begin
+   if (FuncSym = nil) or (Cardinal(index) >= Cardinal(FuncSym.Params.Count)) then begin
       RaiseIncorrectParameterIndex(index);
-      Result:=nil;
+      Result := nil;
    end else begin
-      sym:=ip[index];
+      ip := FuncSym.Params;
+      sym := ip[index];
       if not Assigned(sym) then
          RaiseVariableNotFound(ip[index].Name)
       else GetSymbolInfo(sym, Result);
