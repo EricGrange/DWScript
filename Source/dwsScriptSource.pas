@@ -61,6 +61,7 @@ type
          function SamePosAs(const aPos : TScriptPos) : Boolean;
          function IsMainModule : Boolean;
          function IsSourceFile(const name : String) : Boolean;
+         procedure GetSourceName(var result : String); inline;
          function SourceName : String; inline;
          function SourceCode : String; inline;
          function Defined : Boolean;
@@ -191,13 +192,20 @@ begin
    Result:=(SourceFile<>nil) and UnicodeSameText(SourceFile.Name, name);
 end;
 
+// GetSourceName
+//
+procedure TScriptPos.GetSourceName(var result : String);
+begin
+   if SourceFile<>nil then
+      Result := SourceFile.Name
+   else Result := '';
+end;
+
 // SourceName
 //
 function TScriptPos.SourceName : String;
 begin
-   if SourceFile<>nil then
-      Result:=SourceFile.Name
-   else Result:='';
+   GetSourceName(Result);
 end;
 
 // SourceCode

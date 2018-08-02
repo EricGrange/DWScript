@@ -6,19 +6,21 @@ uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
    dwsTokenizer, dwsSymbols, dwsXPlatform, dwsUtils, dwsErrors,
    dwsMathFunctions, dwsTimeFunctions, dwsGlobalVarsFunctions, dwsVariantFunctions,
    dwsMathComplexFunctions, dwsMath3DFunctions, dwsCompilerContext,
-   dwsByteBufferFunctions;
+   dwsByteBufferFunctions, dwsUnitSymbols;
 
 type
 
    TdwsFunctionsTestsBase = class (TTestCase)
       private
-         FFolder : String;
+         FFolder, FFolderPath : String;
          FTests : TStringList;
          FCompiler : TDelphiWebScript;
 
       public
          procedure SetUp; override;
          procedure TearDown; override;
+
+         function DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
 
          procedure Compilation;
          procedure Execution;
@@ -111,9 +113,12 @@ begin
    SetDecimalSeparator('.');
 
    FCompiler:=TDelphiWebScript.Create(nil);
+   FCompiler.Config.OnNeedUnit := DoNeedUnit;
+
+   FFolderPath := ExtractFilePath(ParamStr(0))+FFolder+PathDelim;
 
    FTests:=TStringList.Create;
-   CollectFiles(ExtractFilePath(ParamStr(0))+FFolder+PathDelim, '*.pas', FTests);
+   CollectFiles(FFolderPath, '*.pas', FTests);
 end;
 
 // TearDown
@@ -123,6 +128,13 @@ begin
    FTests.Free;
 
    FCompiler.Free;
+end;
+
+// DoNeedUnit
+//
+function TdwsFunctionsTestsBase.DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+begin
+   unitSource := LoadTextFromFile(FFolderPath + unitName + '.pas');
 end;
 
 // Compilation

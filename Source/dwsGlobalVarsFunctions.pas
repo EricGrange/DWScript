@@ -222,10 +222,11 @@ var
    expr : TPosDataExpr;
 begin
    expr:=(args.Expr as TPosDataExpr);
-   scriptPos:=expr.ScriptPos;
+   scriptPos := expr.ScriptPos;
    if scriptPos.IsMainModule then
-      raise Exception.Create('Private variables cannot be referred from main module');
-   Result:=scriptPos.SourceName+' ';
+      raise EScriptError.Create('Private variables cannot be referred from main module');
+   scriptPos.GetSourceName(Result);
+   Result := Result + ' ';
 end;
 
 function PrivateVarName(const args : TExprBaseListExec) : String;
