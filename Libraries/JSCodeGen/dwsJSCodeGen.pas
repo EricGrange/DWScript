@@ -8091,7 +8091,7 @@ end;
 //
 class procedure TJSOpExpr.WriteWrappedIfNeeded(codeGen : TdwsCodeGen; expr : TTypedExpr);
 begin
-   if    (expr is TDataExpr)
+   if    ((expr is TDataExpr) and (expr.Typ.Size > 1))
       or (expr is TConstExpr) then begin
       codeGen.CompileNoWrap(expr);
    end else begin
