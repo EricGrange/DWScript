@@ -59,7 +59,7 @@ type
          FList : PObjectTightList;
          FCount : Integer;
          FExec : TdwsExecution;
-         FExpr : TObject;
+         FExpr : TExprBase;
 
          procedure SetListRec(const lr : TExprBaseListRec); inline;
 
@@ -85,7 +85,7 @@ type
          property Count : Integer read FCount;
          property Exec : TdwsExecution read FExec write FExec;
          property FormatSettings : TdwsFormatSettings read GetFormatSettings;
-         property Expr : TObject read FExpr write FExpr;
+         property Expr : TExprBase read FExpr write FExpr;
 
          property ExprBase[const x : Integer] : TExprBase read GetExprBase write SetExprBase; default;
 

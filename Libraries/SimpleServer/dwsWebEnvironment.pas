@@ -22,7 +22,8 @@ interface
 uses
    Classes, SysUtils, StrUtils, DateUtils,
    SynCrtSock, SynCommons,
-   dwsExprs, dwsUtils, dwsWebUtils, dwsWebServerUtils, dwsWebServerHelpers;
+   dwsExprs, dwsUtils, dwsWebUtils, dwsWebServerUtils, dwsWebServerHelpers,
+   dwsSymbols, dwsExprList;
 
 type
    TWebRequestAuthentication = (
@@ -234,6 +235,12 @@ type
       function WebResponse : TWebResponse; inline;
    end;
 
+   TWebEnvironmentRecordHelper = record helper for TExprBaseListExec
+      function WebEnvironment : IWebEnvironment; inline;
+      function WebRequest : TWebRequest; inline;
+      function WebResponse : TWebResponse; inline;
+   end;
+
    TWebStaticCacheEntry = class (TInterfacedSelfObject)
       private
          FStatusCode : Integer;
@@ -311,21 +318,46 @@ implementation
 //
 function TWebEnvironmentHelper.WebEnvironment : IWebEnvironment;
 begin
-   Result:=(Execution.Environment as IWebEnvironment);
+   Result := (Execution.Environment as IWebEnvironment);
 end;
 
 // WebRequest
 //
 function TWebEnvironmentHelper.WebRequest : TWebRequest;
 begin
-   Result:=WebEnvironment.WebRequest;
+   Result := (Execution.Environment as IWebEnvironment).WebRequest;
 end;
 
 // WebResponse
 //
 function TWebEnvironmentHelper.WebResponse : TWebResponse;
 begin
-   Result:=WebEnvironment.WebResponse;
+   Result := (Execution.Environment as IWebEnvironment).WebResponse;
+end;
+
+// ------------------
+// ------------------ TWebEnvironmentRecordHelper ------------------
+// ------------------
+
+// WebEnvironment
+//
+function TWebEnvironmentRecordHelper.WebEnvironment : IWebEnvironment;
+begin
+   Result := (Exec.Environment as IWebEnvironment);
+end;
+
+// WebRequest
+//
+function TWebEnvironmentRecordHelper.WebRequest : TWebRequest;
+begin
+   Result := (Exec.Environment as IWebEnvironment).WebRequest;
+end;
+
+// WebResponse
+//
+function TWebEnvironmentRecordHelper.WebResponse : TWebResponse;
+begin
+   Result := (Exec.Environment as IWebEnvironment).WebResponse;
 end;
 
 // ------------------

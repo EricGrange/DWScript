@@ -63,6 +63,9 @@ type
 
    TdwsExecutionEvent = procedure (exec : TdwsProgramExecution) of object;
 
+   TFuncFastEvalEvent = function(const args : TExprBaseListExec) : Variant of object;
+   TMethodFastEvalEvent = function(baseExpr : TTypedExpr; const args : TExprBaseListExec) : Variant of object;
+
    // Symbol attributes information
    TdwsSymbolAttribute = class (TRefCountedObject)
       private
@@ -211,11 +214,6 @@ type
          class procedure ForgetExecution(const exec : IdwsProgramExecution); static;
    end;
 
-   // Attached and owned by its program execution
-   IdwsEnvironment = interface (IGetSelf)
-      ['{CCAA438D-76F4-49C2-A3A2-82445BC2976A}']
-   end;
-
    IdwsLocalizer = interface (IGetSelf)
       ['{2AFDC297-FF85-43F5-9913-45DE5C1330AB}']
       procedure LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : String);
@@ -225,13 +223,11 @@ type
    TProgramInfo = class;
 
    IdwsProgramExecution = interface (IdwsExecution)
-      ['{D0603CA6-40E3-4CBA-9C75-BD87C7A84650}']
+      ['{3E955C01-E78D-4B5E-9A7E-F78ECDBE1DA8}']
       function GetInfo : TProgramInfo;
       function GetResult : TdwsResult;
       function GetObjectCount : Integer;
       function GetProg : IdwsProgram;
-      function GetEnvironment : IdwsEnvironment;
-      procedure SetEnvironment(const env : IdwsEnvironment);
       function GetLocalizer : IdwsLocalizer;
       procedure SetLocalizer(const loc : IdwsLocalizer);
       function GetExecutionTimedOut : Boolean;
@@ -250,7 +246,6 @@ type
       property Info : TProgramInfo read GetInfo;
       property Result : TdwsResult read GetResult;
       property ObjectCount : Integer read GetObjectCount;
-      property Environment : IdwsEnvironment read GetEnvironment write SetEnvironment;
       property Localizer : IdwsLocalizer read GetLocalizer write SetLocalizer;
       property ExecutionTimedOut : Boolean read GetExecutionTimedOut;
    end;
@@ -316,7 +311,6 @@ type
          FResult : TdwsResult;
          FParameters : TData;
          FFileSystem : IdwsFileSystem;
-         FEnvironment : IdwsEnvironment;
          FLocalizer : IdwsLocalizer;
          FRTTIRawAttributes : IScriptDynArray;
 
@@ -340,8 +334,6 @@ type
          procedure DestroyScriptObj(const scriptObj: IScriptObj);
 
          function GetMsgs : TdwsRuntimeMessageList; override;
-         function GetEnvironment : IdwsEnvironment;
-         procedure SetEnvironment(const val : IdwsEnvironment);
 
          function GetCustomStates : TdwsCustomStates;
          function GetCustomInterfaces : TdwsCustomInterfaces;
@@ -412,7 +404,6 @@ type
          property Parameters : TData read FParameters;
          property Result : TdwsResult read FResult;
          property FileSystem : IdwsFileSystem read GetFileSystem;
-         property Environment : IdwsEnvironment read GetEnvironment write SetEnvironment;
          property CustomStates : TdwsCustomStates read GetCustomStates;
          function HasCustomStates : Boolean;
          property CustomInterfaces : TdwsCustomInterfaces read GetCustomInterfaces;
@@ -2494,20 +2485,6 @@ begin
    if FRuntimeMsgs=nil then
       FRuntimeMsgs:=TdwsRuntimeMessageList.Create;
    Result:=FRuntimeMsgs;
-end;
-
-// GetEnvironment
-//
-function TdwsProgramExecution.GetEnvironment : IdwsEnvironment;
-begin
-   Result:=FEnvironment;
-end;
-
-// SetEnvironment
-//
-procedure TdwsProgramExecution.SetEnvironment(const val : IdwsEnvironment);
-begin
-   FEnvironment:=val;
 end;
 
 // GetCustomStates

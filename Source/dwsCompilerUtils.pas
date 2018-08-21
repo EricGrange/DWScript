@@ -434,7 +434,10 @@ begin
          dwsFreeAndNil(expr);
          internalFunc:=TMagicStaticMethodSymbol(meth).InternalFunction;
          Result:=internalFunc.MagicFuncExprClass.Create(context, scriptPos, meth, internalFunc);
-      end else Assert(False, 'not supported yet');
+      end else begin
+         Result := TMagicMethodExpr.Create(context, scriptPos, meth, expr);
+         TMagicMethodExpr(Result).OnFastEval := TMagicMethodSymbol(meth).OnFastEval;
+      end;
 
    end else if meth.StructSymbol is TInterfaceSymbol then begin
 

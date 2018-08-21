@@ -673,6 +673,7 @@ const
   UNT_CantChangeUnitname = 'Cannot change UnitName while property "Script" is assigned';
 
   UNT_InstancesNotSupportedInStaticUnits = 'Instances are not supported in static units';
+  UNT_FastEvalNotSupportedForVirtualMethods = 'FastEval not supported for virtual methods';
 
   ADP_ChainIsFormingLoop = 'Adapter chain is forming a loop';
   ADP_IncompatibleAdapters = 'Incompatible Adapters: %s -> %s';

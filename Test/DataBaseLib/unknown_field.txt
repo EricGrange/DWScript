@@ -1,2 +1,4 @@
 EDBException
 Field 'bug' not found
+EDelphi
+Unknown field "wtf" [line: 17, column: 8]

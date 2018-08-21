@@ -13,5 +13,13 @@ except
 	end;
 end;
 
+try
+	query.AsInteger('wtf');
+except
+   on E: Exception do begin
+		PrintLn(E.ClassName);
+		PrintLn(E.Message);
+	end;
+end;
 
 

@@ -27,7 +27,7 @@ uses
    Classes, SysUtils,
    dwsUtils, dwsErrors, dwsStrings, dwsScriptSource, dwsCompilerContext,
    dwsSymbols, dwsExprList, dwsStack, dwsDataContext,
-   dwsExprs, dwsFunctions;
+   dwsExprs, dwsFunctions, dwsMethodExprs;
 
 type
 
@@ -147,6 +147,7 @@ type
    TMagicMethodSymbol = class(TMethodSymbol)
       private
          FInternalFunction : TInternalFunction;
+         FOnFastEval : TMethodFastEvalEvent;
 
       public
          destructor Destroy; override;
@@ -155,6 +156,7 @@ type
          function IsType : Boolean; override;
 
          property InternalFunction : TInternalFunction read FInternalFunction write FInternalFunction;
+         property OnFastEval : TMethodFastEvalEvent read FOnFastEval write FOnFastEval;
    end;
 
    // TMagicStaticMethodSymbol
@@ -238,6 +240,17 @@ type
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
+   end;
+
+   // Method with a FastCall (raw, low-level evaluation)
+   TMagicMethodExpr = class (TMethodExpr)
+      private
+         FOnFastEval : TMethodFastEvalEvent;
+
+      public
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+
+         property OnFastEval : TMethodFastEvalEvent read FOnFastEval write FOnFastEval;
    end;
 
    // TMagicIntFuncExpr
@@ -670,6 +683,28 @@ begin
    except
       RaiseScriptError(exec);
       raise;
+   end;
+end;
+
+// ------------------
+// ------------------ TMagicMethodExpr ------------------
+// ------------------
+
+// EvalAsVariant
+//
+procedure TMagicMethodExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+var
+   execRec : TExprBaseListExec;
+begin
+   execRec.ListRec:=FArgs;
+   execRec.Exec:=exec;
+   execRec.Expr:=Self;
+   try
+      result := FOnFastEval(BaseExpr, execRec);
+   except
+      on E : EScriptError do
+         raise
+      else RaiseScriptError(exec);
    end;
 end;
 

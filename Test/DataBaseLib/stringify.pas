@@ -9,3 +9,5 @@ PrintLn(db.Query("select 1 a, 'hello' TXT union all select 2 a, 'World' TXT").St
 
 db.SetLowerCaseStringify(False);
 PrintLn(db.Query("select 1 a, 'hello' TXT union all select 2 a, 'World' TXT").StringifyAll(1));
+
+PrintLn(db.Query("select 1 a, 'hello' TXT union all select 2 a, 'World' TXT").StringifyMap(2));

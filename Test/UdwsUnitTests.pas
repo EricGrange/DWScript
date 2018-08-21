@@ -66,6 +66,7 @@ type
          procedure MethodPrintExternalEval(Info: TProgramInfo; ExtObject: TObject);
          procedure MethodGetIntEval(Info: TProgramInfo; ExtObject: TObject);
          procedure MethodSetIntEval(Info: TProgramInfo; ExtObject: TObject);
+         function  MethodFastGetIntEval(baseExpr : TTypedExpr; const args : TExprBaseListExec) : Variant;
          procedure MethodGetArrayIntEval(Info: TProgramInfo; ExtObject: TObject);
          procedure MethodOverloadIntEval(Info: TProgramInfo; ExtObject: TObject);
          procedure MethodOverloadStrEval(Info: TProgramInfo; ExtObject: TObject);
@@ -132,6 +133,8 @@ type
          procedure CallInNested;
          procedure OverloadedFunc;
          procedure FastEvalTest;
+         procedure FastMethodEvalTest;
+         procedure FastMethodEvalExceptTest;
          procedure ArrayOfObjects;
          procedure FuncVariantTest;
          procedure FuncVariantDateTest;
@@ -531,6 +534,11 @@ begin
    meth.Name:='Function';
    meth.ResultType:='Integer';
    meth.OnEval:=MethodGetIntEval;
+
+   meth:=cls.Methods.Add;
+   meth.Name:='FastGetInt';
+   meth.ResultType:='Integer';
+   meth.OnFastEval:=MethodFastGetIntEval;
 
    meth:=cls.Methods.Add;
    meth.Name:='GetArrayProp';
@@ -1048,6 +1056,18 @@ end;
 procedure TdwsUnitTestsContext.MethodSetIntEval(Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ValueAsInteger['FField']:=Info.ValueAsInteger['v'] div 10;
+end;
+
+// MethodFastGetIntEval
+//
+function TdwsUnitTestsContext.MethodFastGetIntEval(baseExpr : TTypedExpr; const args : TExprBaseListExec) : Variant;
+var
+   obj : IScriptObj;
+   sym : TSymbol;
+begin
+   baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
+   sym := obj.ClassSym.Members.FindSymbol('FField', cvMagic);
+   Result := obj.AsInteger[ (sym as TFieldSymbol).Offset ];
 end;
 
 // MethodGetArrayIntEval
@@ -2336,6 +2356,41 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'Compile 2');
 
    CheckEquals('2'#13#10'3'#13#10, prog.Execute.Result.ToString, 'exec 2');
+end;
+
+// FastMethodEvalTest
+//
+procedure TdwsUnitTests.FastMethodEvalTest;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'var o  := new TTestClass;'#13#10
+                           +'o.FField := 123;'#13#10
+                           +'Print(o.FastGetInt);');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile 1');
+
+   CheckEquals('123', prog.Execute.Result.ToString, 'exec 1');
+end;
+
+// FastMethodEvalExceptTest
+//
+procedure TdwsUnitTests.FastMethodEvalExceptTest;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'var o  : TTestClass;'#13#10
+                           +'try Print(o.FastGetInt); except on E: Exception do PrintLn(E.Message) end;'#13#10
+                           +'o := new TTestClass; o.Free;'#13#10
+                           +'try Print(o.FastGetInt); except on E: Exception do PrintLn(E.Message) end;'#13#10
+                           );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   CheckEquals( 'Object not instantiated'#13#10
+               +'Object already destroyed'#13#10,
+               prog.Execute.Result.ToString,
+               'exec');
 end;
 
 // ArrayOfObjects

@@ -398,7 +398,6 @@ type
    end;
 
    TFuncEvalEvent = procedure(info : TProgramInfo) of object;
-   TFuncFastEvalEvent = function(const args : TExprBaseListExec) : Variant of object;
    TInitSymbolEvent = procedure(sender : TObject; symbol : TSymbol) of object;
    TInitExprEvent = procedure(sender : TObject; expr : TExprBase) of object;
 
@@ -805,6 +804,7 @@ type
          FAttributes : TMethodAttributes;
          FKind : TMethodKind;
          FVisibility : TdwsVisibility;
+         FOnFastEval : TMethodFastEvalEvent;
 
       protected
          function GetDisplayName: String; override;
@@ -824,6 +824,7 @@ type
       published
          property Attributes: TMethodAttributes read FAttributes write SetAttributes default [];
          property OnEval : TMethodEvalEvent read GetOnEval write SetOnEval;
+         property OnFastEval : TMethodFastEvalEvent read FOnFastEval write FOnFastEval;
          property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
          property Kind: TMethodKind read FKind write FKind;
    end;
@@ -1468,6 +1469,14 @@ type
          procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
+   TCustomInternalMagicMethod = class(TInternalMagicFunction)
+      private
+         FOnFastEval : TMethodFastEvalEvent;
+      public
+         procedure DoEvalAsVariant(baseExpr : TTypedExpr; const args : TExprBaseListExec; var result : Variant);
+   end;
+
+
    EdwsInvalidUnitAddition = class (Exception);
    EdwsActivePrograms = class (Exception);
 
@@ -1582,6 +1591,18 @@ begin
    Assert(pvd.VType=varUnknown);
    result.WriteData(IDataContext(IUnknown(pvd.VUnknown)), FSize);
 end;
+
+// ------------------
+// ------------------ TCustomInternalMagicMethod ------------------
+// ------------------
+
+// DoEvalAsVariant
+//
+procedure TCustomInternalMagicMethod.DoEvalAsVariant(baseExpr : TTypedExpr; const args : TExprBaseListExec; var result : Variant);
+begin
+   result := FOnFastEval(baseExpr, args);
+end;
+
 
 { TDelphiWebScript }
 
@@ -3824,15 +3845,25 @@ begin
    if ResultType <> '' then
       GetUnit.GetSymbol(systemTable, table, ResultType);
 
-   methSymbol:=TMethodSymbol.Generate(table, Kind, Attributes, Name,
-                                      GetParameters(systemTable, table), ResultType,
-                                      TClassSymbol(parentSym), Visibility, Overloaded);
-   try
-      methSymbol.Params.AddParent(table);
-      methSymbol.DeprecatedMessage:=Deprecated;
-      methSymbol.IsOverloaded:=Overloaded;
+   if Assigned(FOnFastEval) then begin
+      if maVirtual in Attributes then
+         raise Exception.Create(UNT_FastEvalNotSupportedForVirtualMethods);
 
-      methSymbol.Executable:=FCallable;
+      methSymbol := TMagicMethodSymbol.Generate(table, Kind, Attributes, Name,
+                                            GetParameters(systemTable, table), ResultType,
+                                            TClassSymbol(parentSym), Visibility, Overloaded);
+      TMagicMethodSymbol(methSymbol).OnFastEval := FOnFastEval;
+   end else begin
+      methSymbol:=TMethodSymbol.Generate(table, Kind, Attributes, Name,
+                                         GetParameters(systemTable, table), ResultType,
+                                         TClassSymbol(parentSym), Visibility, Overloaded);
+   end;
+   try
+      methSymbol.Executable := FCallable;
+      methSymbol.Params.AddParent(table);
+      methSymbol.DeprecatedMessage := Deprecated;
+      methSymbol.IsOverloaded := Overloaded;
+
    except
       methSymbol.Free;
       raise;

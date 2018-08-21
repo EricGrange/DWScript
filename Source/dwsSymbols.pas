@@ -85,6 +85,11 @@ type
 
    TProgramState = (psUndefined, psReadyToRun, psRunning, psRunningStopped, psTerminated);
 
+   // Attached and owned by its program execution
+   IdwsEnvironment = interface (IGetSelf)
+      ['{CCAA438D-76F4-49C2-A3A2-82445BC2976A}']
+   end;
+
    IdwsExecution = interface (dwsUtils.IGetSelf)
       ['{8F2D1D7E-9954-4391-B919-86EF1EE21C8C}']
       function GetMsgs : TdwsRuntimeMessageList;
@@ -103,6 +108,9 @@ type
       procedure SuspendDebug;
       procedure ResumeDebug;
 
+      function GetEnvironment : IdwsEnvironment;
+      procedure SetEnvironment(const env : IdwsEnvironment);
+
       property ProgramState : TProgramState read GetProgramState;
       property Sleeping : Boolean read GetSleeping;
       property Stack : TStack read GetStack;
@@ -110,6 +118,7 @@ type
       property Debugger : IDebugger read GetDebugger write SetDebugger;
       property ExecutionObject : TdwsExecution read GetExecutionObject;
       property UserObject : TObject read GetUserObject write SetUserObject;
+      property Environment : IdwsEnvironment read GetEnvironment write SetEnvironment;
    end;
 
    ISpecializationContext = interface (IGetSelf)
@@ -222,6 +231,9 @@ type
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); virtual; abstract;
          procedure EvalAsScriptAssociativeArray(exec : TdwsExecution; var result : IScriptAssociativeArray); virtual; abstract;
          procedure EvalNoResult(exec : TdwsExecution); virtual;
+
+         procedure EvalAsSafeScriptObj(exec : TdwsExecution; var result : IScriptObj); overload;
+         function  EvalAsSafeScriptObj(exec : TdwsExecution) : IScriptObj; overload; inline;
 
          procedure AssignValue(exec : TdwsExecution; const value : Variant); virtual; abstract;
          procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); virtual; abstract;
@@ -1895,8 +1907,13 @@ type
          FSleepTime : Integer;
          FSleeping : Boolean;
 
+         FEnvironment : IdwsEnvironment;
+
       protected
          FProgramState : TProgramState;  // here to reduce its offset
+
+         function GetEnvironment : IdwsEnvironment;
+         procedure SetEnvironment(const val : IdwsEnvironment);
 
       private
          FExternalObject : TObject;
@@ -2004,6 +2021,9 @@ type
 
          // user object, to attach to an execution
          property UserObject : TObject read GetUserObject write SetUserObject;
+
+         // user environment
+         property Environment : IdwsEnvironment read FEnvironment write FEnvironment;
    end;
 
    // IScriptObj
@@ -2324,6 +2344,24 @@ end;
 function TExprBase.FuncSymQualifiedName : String;
 begin
    Result:='';
+end;
+
+// EvalAsSafeScriptObj
+//
+procedure TExprBase.EvalAsSafeScriptObj(exec : TdwsExecution; var result : IScriptObj);
+begin
+   EvalAsScriptObj(exec, result);
+   if result = nil then
+      RaiseObjectNotInstantiated(exec)
+   else if result.Destroyed then
+      RaiseObjectAlreadyDestroyed(exec);
+end;
+
+// EvalAsSafeScriptObj
+//
+function TExprBase.EvalAsSafeScriptObj(exec : TdwsExecution) : IScriptObj;
+begin
+   EvalAsSafeScriptObj(exec, Result);
 end;
 
 // ------------------
@@ -8084,6 +8122,20 @@ begin
          Dec(FDebugSuspended)
       else Inc(FDebugSuspended);
    end;
+end;
+
+// GetEnvironment
+//
+function TdwsExecution.GetEnvironment : IdwsEnvironment;
+begin
+   Result := FEnvironment;
+end;
+
+// SetEnvironment
+//
+procedure TdwsExecution.SetEnvironment(const val : IdwsEnvironment);
+begin
+   FEnvironment := val;
 end;
 
 // ------------------

@@ -1,6 +1,6 @@
 
-Even hexadecimal character count expected in TryDecode [line: 4, column: 3] for "1"
-Invalid hexadecimal character at index 1 in TryDecode [line: 4, column: 3] for "z1"
-Invalid hexadecimal character at index 2 in TryDecode [line: 4, column: 3] for "1z"
-Invalid hexadecimal character at index 3 in TryDecode [line: 4, column: 3] for "Aaz1"
-Invalid hexadecimal character at index 4 in TryDecode [line: 4, column: 3] for "Aa1z"
+Even hexadecimal character count expected in TryDecode [line: 4, column: 7] for "1"
+Invalid hexadecimal character at index 1 in TryDecode [line: 4, column: 7] for "z1"
+Invalid hexadecimal character at index 2 in TryDecode [line: 4, column: 7] for "1z"
+Invalid hexadecimal character at index 3 in TryDecode [line: 4, column: 7] for "Aaz1"
+Invalid hexadecimal character at index 4 in TryDecode [line: 4, column: 7] for "Aa1z"

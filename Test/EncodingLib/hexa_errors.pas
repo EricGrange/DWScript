@@ -1,11 +1,11 @@
 procedure TryDecode(s : String);
 begin
-	try
-		PrintLn(HexadecimalEncoder.Decode(s)); 
-	except
-		on E : Exception do 
-			PrintLn(E.Message + ' for "' + s + '"');
-	end;
+   try
+      PrintLn(HexadecimalEncoder.Decode(s)); 
+   except
+      on E : Exception do 
+         PrintLn(E.Message + ' for "' + s + '"');
+   end;
 end;
 
 TryDecode('');

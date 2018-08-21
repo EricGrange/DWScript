@@ -27,7 +27,7 @@ uses
    Variants,
    dwsErrors, dwsStrings, dwsUtils, dwsScriptSource, dwsCompilerContext,
    dwsSymbols, dwsDataContext, dwsStack, dwsFunctions,
-   dwsExprs, dwsExprList, dwsMagicExprs;
+   dwsExprs, dwsExprList;
 
 type
 
@@ -357,7 +357,9 @@ constructor TMethodExpr.Create(context : TdwsCompilerContext; const scriptPos: T
 begin
    inherited Create(context, scriptPos, Func);
    FBaseExpr:=BaseExpr;
-   FSelfAddr:=Func.SelfSym.StackAddr;
+   if Func.SelfSym <> nil then
+      FSelfAddr := Func.SelfSym.StackAddr
+   else FSelfAddr := MaxInt;
 end;
 
 // Destroy

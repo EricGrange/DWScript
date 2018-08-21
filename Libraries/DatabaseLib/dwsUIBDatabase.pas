@@ -272,9 +272,11 @@ begin
    inherited Create(db);
    FQuery:=TUIBQuery.Create{$ifndef UIB_NO_COMPONENT}(nil){$endif};
    try
-      FQuery.FetchBlobs:=True;
-      FQuery.Transaction:=db.FTransaction;
-      FQuery.SQL.Text:=sql;
+      FQuery.CachedFetch := False;
+      FQuery.UseCursor := False;
+      FQuery.FetchBlobs := True;
+      FQuery.Transaction := db.FTransaction;
+      FQuery.SQL.Text := sql;
       FQuery.Prepare(True);
       AssignParameters(FQuery, parameters);
       FQuery.Open;

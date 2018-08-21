@@ -29,51 +29,19 @@ uses
 type
   TdwsWebLib = class(TDataModule)
     dwsWeb: TdwsUnit;
-    procedure dwsWebClassesWebRequestMethodsURLEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsMethodEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsPathInfoEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsQueryStringEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsRemoteIPEval(Info: TProgramInfo;
-      ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsContentDataEval(Info: TProgramInfo;
       ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsContentTypeEval(Info: TProgramInfo;
       ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsContentEncodingEval(
       Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsHeaderEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsHeadersEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsCookieEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsCookiesEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsQueryFieldEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsQueryFieldsEval(Info: TProgramInfo;
-      ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsSetContentTextEval(
-      Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsSecureEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsUserAgentEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsAuthenticatedUserEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsSetStatusCodeEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsSetHeaderEval(Info: TProgramInfo;
       ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsAuthenticationEval(
-      Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsRequestAuthenticationEval(
-      Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsHasQueryFieldEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsSetCookieEval(Info: TProgramInfo;
       ExtObject: TObject);
@@ -81,28 +49,16 @@ type
       ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsSetCompressionEval(
       Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsContentTypeEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsContentDataEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsContentLengthEval(
-      Info: TProgramInfo; ExtObject: TObject);
     function dwsWebFunctionsDeflateCompressFastEval(
       const args: TExprBaseListExec): Variant;
     function dwsWebFunctionsDeflateDecompressionFastEval(
       const args: TExprBaseListExec): Variant;
-    procedure dwsWebClassesWebRequestMethodsGetContentFieldEval(
-      Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsHasContentFieldEval(
-      Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesHttpQueryMethodsGetDataEval(Info: TProgramInfo;
       ExtObject: TObject);
     procedure dwsWebClassesHttpQueryMethodsGetTextEval(Info: TProgramInfo;
       ExtObject: TObject);
     procedure dwsWebClassesHttpQueryMethodsPostDataEval(Info: TProgramInfo;
       ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsIfModifiedSinceEval(
-      Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsSetLastModifiedEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesHttpQueryMethodsSetCredentialsEval(
@@ -122,10 +78,6 @@ type
     procedure dwsWebFunctionsGetHostByAddrEval(info: TProgramInfo);
     procedure dwsWebFunctionsGetHostByNameEval(info: TProgramInfo);
     procedure dwsWebClassesWebResponseMethodsSetStaticEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsFullURLEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsHostEval(Info: TProgramInfo;
       ExtObject: TObject);
     procedure dwsWebClassesHttpQueryMethodsSetConnectTimeoutMSecEval(
       Info: TProgramInfo; ExtObject: TObject);
@@ -176,12 +128,60 @@ type
       ExtObject: TObject);
     procedure dwsWebClassesWebServerSentEventMethodsToRawDataEval(
       Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsWebClassesWebRequestMethodsRawURLEval(Info: TProgramInfo;
-      ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsSetContentFileEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsSetStatusPlainTextEval(
       Info: TProgramInfo; ExtObject: TObject);
+    function dwsWebClassesWebRequestMethodsGetQueryFieldFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsGetHeaderFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsHasQueryFieldFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsHasContentFieldFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsGetContentFieldFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsGetCookieFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsIfModifiedSinceFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsRemoteIPFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsFullURLFastEval(baseExpr: TTypedExpr;
+      const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsURLFastEval(baseExpr: TTypedExpr;
+      const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsRawURLFastEval(baseExpr: TTypedExpr;
+      const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsMethodFastEval(baseExpr: TTypedExpr;
+      const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsHostFastEval(baseExpr: TTypedExpr;
+      const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsPathInfoFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsQueryStringFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsHeadersFastEval(baseExpr: TTypedExpr;
+      const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsCookiesFastEval(baseExpr: TTypedExpr;
+      const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsQueryFieldsFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsSecurityFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsUserAgentFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsAuthenticatedUserFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsAuthenticationFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsContentTypeFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsContentDataFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
+    function dwsWebClassesWebRequestMethodsContentLengthFastEval(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
   private
     { Private declarations }
     FServer :  IWebServerInfo;
@@ -630,159 +630,161 @@ begin
    Info.Execution.CustomStates[cWinHttpProxyName]:=Info.ParamAsString[0];
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsAuthenticatedUserEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsAuthenticatedUserFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsString:=Info.WebRequest.AuthenticatedUser;
+   VarCopySafe(Result, args.WebRequest.AuthenticatedUser);
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsAuthenticationEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsAuthenticationFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsInteger:=Ord(Info.WebRequest.Authentication);
+   VarCopySafe(Result, Ord(args.WebRequest.Authentication));
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsContentDataEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsContentDataFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsDataString:=Info.WebRequest.ContentData;
+   VarCopySafe(Result, RawByteStringToScriptString(args.WebRequest.ContentData));
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsContentLengthEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsContentLengthFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsInteger:=Length(Info.WebRequest.ContentData);
+   VarCopySafe(Result, Length(args.WebRequest.ContentData));
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsContentTypeEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsContentTypeFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsDataString:=Info.WebRequest.ContentType;
+   VarCopySafe(Result, RawByteStringToScriptString(args.WebRequest.ContentType));
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsCookieEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsCookiesFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsString:=Info.WebRequest.Cookies.Values[Info.ParamAsString[0]];
+   VarCopySafe(Result, args.WebRequest.Cookies.Text);
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsCookiesEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsFullURLFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsString:=Info.WebRequest.Cookies.Text;
+   VarCopySafe(Result, args.WebRequest.FullURL);
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsFullURLEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsGetContentFieldFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsString:=Info.WebRequest.FullURL;
+   VarCopySafe(Result, args.WebRequest.ContentFields.Values[args.AsString[0]]);
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsGetContentFieldEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsGetCookieFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsString:=Info.WebRequest.ContentFields.Values[Info.ParamAsString[0]];
+   VarCopySafe(Result, args.WebRequest.Cookies.Values[args.AsString[0]]);
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsHasContentFieldEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsHasContentFieldFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsBoolean:=Info.WebRequest.HasContentField(Info.ParamAsString[0]);
+   VarCopySafe(Result, args.WebRequest.HasContentField(args.AsString[0]));
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsHasQueryFieldEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsHasQueryFieldFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsBoolean:=Info.WebRequest.HasQueryField(Info.ParamAsString[0]);
+   VarCopySafe(Result, args.WebRequest.HasQueryField(args.AsString[0]));
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsHeaderEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsGetHeaderFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsString:=Info.WebRequest.Header(Info.ParamAsString[0]);
+   VarCopySafe(Result, args.WebRequest.Header(args.AsString[0]));
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsHeadersEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsHeadersFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsString:=Info.WebRequest.Headers.Text;
+   VarCopySafe(Result, args.WebRequest.Headers.Text);
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsHostEval(Info: TProgramInfo;
-  ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsHostFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsString:=Info.WebRequest.Host;
+   VarCopySafe(Result, args.WebRequest.Host);
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsIfModifiedSinceEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsIfModifiedSinceFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsFloat:=Info.WebRequest.IfModifiedSince;
+   VarCopySafe(Result, args.WebRequest.IfModifiedSince);
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsMethodEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsMethodFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsString:=Info.WebRequest.Method;
+   VarCopySafe(Result, args.WebRequest.Method);
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsPathInfoEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsPathInfoFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsString:=Info.WebRequest.PathInfo;
+   VarCopySafe(Result, args.WebRequest.PathInfo);
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsQueryFieldEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsGetQueryFieldFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsString:=Info.WebRequest.QueryFields.Values[Info.ParamAsString[0]];
+   VarCopySafe(Result, args.WebRequest.QueryFields.Values[args.AsString[0]]);
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsQueryFieldsEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsQueryFieldsFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsString:=Info.WebRequest.QueryFields.Text;
+   VarCopySafe(Result, args.WebRequest.QueryFields.Text);
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsQueryStringEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsQueryStringFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsString:=Info.WebRequest.QueryString;
+   VarCopySafe(Result, args.WebRequest.QueryString);
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsRawURLEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsRawURLFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsString := Info.WebRequest.RawURL;
+   VarCopySafe(Result, args.WebRequest.RawURL);
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsRemoteIPEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsRemoteIPFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 var
    cloudflareIP : String;
+   wr : TWebRequest;
 begin
-   cloudflareIP:=Info.WebRequest.Header('CF-Connecting-IP');
-   if cloudflareIP<>'' then
-      Info.ResultAsString:=cloudflareIP
-   else Info.ResultAsString:=Info.WebRequest.RemoteIP;
+   wr := args.WebRequest;
+   cloudflareIP := wr.Header('CF-Connecting-IP');
+   if cloudflareIP <> '' then
+      VarCopySafe(Result,  cloudflareIP)
+   else VarCopySafe(Result, wr.RemoteIP);
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsSecureEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsSecurityFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsString:=Info.WebRequest.Security;
+   VarCopySafe(Result, args.WebRequest.Security);
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsURLEval(Info: TProgramInfo;
-  ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsURLFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsString:=Info.WebRequest.URL;
+   VarCopySafe(Result, args.WebRequest.URL);
 end;
 
-procedure TdwsWebLib.dwsWebClassesWebRequestMethodsUserAgentEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsWebLib.dwsWebClassesWebRequestMethodsUserAgentFastEval(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Variant;
 begin
-   Info.ResultAsString:=Info.WebRequest.UserAgent;
+   VarCopySafe(Result, args.WebRequest.UserAgent);
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsContentDataEval(
