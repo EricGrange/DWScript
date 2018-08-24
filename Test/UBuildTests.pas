@@ -118,7 +118,7 @@ begin
 
          source.LoadFromFile(FTests[i]);
 
-         prog:=FCompiler.Compile(source.Text);
+         prog:=FCompiler.Compile(source.Text, 'Test\'+ExtractFileName(FTests[i]));
 
          if prog.Msgs.HasErrors then begin
 
@@ -177,7 +177,7 @@ var
 begin
    for i:=0 to FTests.Count-1 do begin
 
-      prog:=FCompiler.Compile(LoadTextFromFile(FTests[i]));
+      prog:=FCompiler.Compile(LoadTextFromFile(FTests[i]), 'Test\'+ExtractFileName(FTests[i]));
 
       if not prog.Msgs.HasErrors then begin
          try

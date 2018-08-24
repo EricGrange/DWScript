@@ -25,7 +25,7 @@ interface
 
 uses
    dwsCompiler, dwsExprs, dwsErrors, dwsStrings, dwsConstExprs, dwsScriptSource,
-   dwsContextMap;
+   dwsContextMap, dwsUnitSymbols;
 
 type
 
@@ -114,6 +114,9 @@ var
    gotError : Boolean;
    previousMsgCount, i : Integer;
    messageString : String;
+   implemTable : TUnitImplementationTable;
+   unitMainSymbol : TUnitMainSymbol;
+   attachedDependencies : TUnitMainSymbolArray;
 begin
    { This will evaluate an expression by tokenizing it evaluating it in the
      Context provided. }
@@ -140,54 +143,75 @@ begin
       end;
       compiler.AttachContextProgram(contextProgram);
       try
-         previousMsgCount := contextProgram.CompileMsgs.Count;
 
-         sourceFile:=TSourceFile.Create;
-         try
-            sourceFile.Code:=anExpression;
-            sourceFile.Name:=MSG_MainModule;
-            compiler.AttachTokenizer(compiler.TokenizerRules.CreateTokenizer(compiler.Msgs, nil));
-            try
-               compiler.Tokenizer.BeginSourceFile(sourceFile);
-               try
-                  if scriptPos<>nil then begin
-                     sourceContext:=compiler.SourceContextMap.FindContext(scriptPos^);
-                     while sourceContext<>nil do begin
-                        if sourceContext.LocalTable<>nil then begin
-                           compiler.CurrentProg.EnterSubTable(sourceContext.LocalTable);
-                           Break;
-                        end;
-                        sourceContext:=sourceContext.Parent;
-                     end;
-                  end else sourceContext:=nil;
-                  try
-                     expr := compiler.ReadExpr;
-                  finally
-                     if sourceContext<>nil then
-                        compiler.CurrentProg.LeaveSubTable;
-                  end;
-               except
-                  gotError:=True;
+         if Assigned(scriptPos) and not scriptPos.IsMainModule then begin
+            unitMainSymbol := contextProgram.UnitMains.Find(scriptPos.SourceName);
+            if unitMainSymbol <> nil then begin
+               attachedDependencies := Copy(unitMainSymbol.Dependencies);
+               for i := 0 to High(attachedDependencies) do begin
+                  if contextProgram.Table.IndexOfParent(attachedDependencies[i].Table) >= 0 then
+                     attachedDependencies[i] := nil
+                  else contextProgram.Table.AddParent(attachedDependencies[i].Table);
                end;
-               if compiler.Msgs.HasErrors and (compiler.Msgs.Count > previousMsgCount) then begin
-                  gotError := True;
-                  messageString := compiler.Msgs[previousMsgCount].AsInfo;
-                  for i := previousMsgCount+1 to compiler.Msgs.Count-1 do begin
-                     messageString := messageString + #13#10
-                                    + compiler.Msgs[i].AsInfo;
-                  end;
-                  expr := TConstStringExpr.Create(contextProgram.Root.CompilerContext.TypString,
-                                                  messageString);
-               end;
-               while compiler.Msgs.Count > previousMsgCount do
-                  compiler.Msgs.Delete(compiler.Msgs.Count-1);
-            finally
-               compiler.Tokenizer.EndSourceFile;
-               compiler.DetachTokenizer.Free;
             end;
-         finally
-            sourceFile.Free;
          end;
+         try
+
+            previousMsgCount := contextProgram.CompileMsgs.Count;
+
+            sourceFile:=TSourceFile.Create;
+            try
+               sourceFile.Code:=anExpression;
+               sourceFile.Name:=MSG_MainModule;
+               compiler.AttachTokenizer(compiler.TokenizerRules.CreateTokenizer(compiler.Msgs, nil));
+               try
+                  compiler.Tokenizer.BeginSourceFile(sourceFile);
+                  try
+                     if scriptPos<>nil then begin
+                        sourceContext:=compiler.SourceContextMap.FindContext(scriptPos^);
+                        while sourceContext<>nil do begin
+                           if sourceContext.LocalTable<>nil then begin
+                              compiler.CurrentProg.EnterSubTable(sourceContext.LocalTable);
+                              Break;
+                           end;
+                           sourceContext:=sourceContext.Parent;
+                        end;
+                     end else sourceContext:=nil;
+                     try
+                        expr := compiler.ReadExpr;
+                     finally
+                        if sourceContext<>nil then
+                           compiler.CurrentProg.LeaveSubTable;
+                     end;
+                  except
+                     gotError:=True;
+                  end;
+                  if compiler.Msgs.HasErrors and (compiler.Msgs.Count > previousMsgCount) then begin
+                     gotError := True;
+                     messageString := compiler.Msgs[previousMsgCount].AsInfo;
+                     for i := previousMsgCount+1 to compiler.Msgs.Count-1 do begin
+                        messageString := messageString + #13#10
+                                       + compiler.Msgs[i].AsInfo;
+                     end;
+                     expr := TConstStringExpr.Create(contextProgram.Root.CompilerContext.TypString,
+                                                     messageString);
+                  end;
+                  while compiler.Msgs.Count > previousMsgCount do
+                     compiler.Msgs.Delete(compiler.Msgs.Count-1);
+               finally
+                  compiler.Tokenizer.EndSourceFile;
+                  compiler.DetachTokenizer.Free;
+               end;
+            finally
+               sourceFile.Free;
+            end;
+
+         finally
+            for i := 0 to High(attachedDependencies) do
+               if attachedDependencies[i] <> nil then
+                  contextProgram.Table.RemoveParent(attachedDependencies[i].Table);
+         end;
+
       finally
          compiler.DetachContextProgram;
       end;

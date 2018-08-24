@@ -5,9 +5,9 @@ uses
     CircA, CircB;
 
  PA;
- Println('---');
+ PrintLn('---');
  PB;
- Println('---');
+ PrintLn('---');
  PC;
 
 

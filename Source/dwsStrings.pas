@@ -503,6 +503,7 @@ const
   CPE_UnitExpected = '"unit" expected';
   CPE_UnitNotFound = 'Unit "%s" referenced in unit "%s" not found';
   CPE_UnitNameDoesntMatch = 'Unit name does not match file name';
+  CPH_UnitNameCaseDoesntMatch = 'Unit name case does not match file name';
   CPE_UnitCircularReference = 'Circular referencing units detected';
   CPE_FilterDependsOnUnit = 'The filter "%s" depends on unit "%s" that is not available.';
   CPE_ResultTypeDependsOnUnit = 'The result-type "%s" depends on unit "%s" that is not available.';

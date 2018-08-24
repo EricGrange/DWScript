@@ -13066,7 +13066,7 @@ end;
 //
 function TdwsCompiler.ReadUnitHeader : TScriptSourceType;
 var
-   name, part : String;
+   name, part, location : String;
    namePos, partPos : TScriptPos;
    contextFix : TdwsSourceContext;
 begin
@@ -13092,6 +13092,12 @@ begin
       CurrentSourceUnit.Symbol.InitializationRank := FCompilerContext.UnitList.Count;
       FCompilerContext.UnitList.Add(FCurrentSourceUnit);
       FCurrentUnitSymbol:=CurrentSourceUnit.Symbol;
+      location := ChangeFileExt(ExtractFileName(FTok.Location), '');
+      if (location <> '') and (location <> name) then begin
+         if SameText(location, name) then
+            FMsgs.AddCompilerHint(namePos, CPH_UnitNameCaseDoesntMatch)
+         else FMsgs.AddCompilerWarning(namePos, CPE_UnitNameDoesntMatch)
+      end;
    end;
 
    if coContextMap in Options then begin

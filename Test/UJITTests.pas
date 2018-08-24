@@ -196,7 +196,7 @@ begin
             FCompiler.Config.HintsLevel:=hlStrict
          else FCompiler.Config.HintsLevel:=hlPedantic;
 
-         prog:=FCompiler.Compile(source.Text);
+         prog:=FCompiler.Compile(source.Text, 'Test\'+ExtractFileName(FTests[i]));
 
          if prog.Msgs.HasErrors then begin
             CheckEquals(GetExpectedResult(FTests[i]),
@@ -230,7 +230,8 @@ begin
                     +prog.Msgs.AsInfo
                     +exec.Msgs.AsInfo
                     +'Result >>>>'#13#10
-                    +exec.Result.ToString;
+                    +exec.Result.ToString
+                    ;
          end;
 
          expectedResult:=GetExpectedResult(FTests[i]);

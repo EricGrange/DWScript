@@ -6,7 +6,7 @@ uses
    Classes, SysUtils, Variants, ComObj,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors, dwsInfo,
    dwsUtils, dwsSymbols, dwsDebugger, dwsStrings, dwsEvaluate, dwsScriptSource,
-   dwsCompilerContext, dwsXPlatform, dwsXXHash;
+   dwsCompilerContext, dwsXPlatform, dwsXXHash, dwsUnitSymbols;
 
 type
 
@@ -37,6 +37,8 @@ type
 
          procedure DoToggleBreakpointEnabled(info : TProgramInfo);
 
+         function  DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+
       public
          procedure SetUp; override;
          procedure TearDown; override;
@@ -49,6 +51,7 @@ type
          procedure EvaluateBlockVar;
          procedure EvaluateAfterBlock;
          procedure EvaluateArray;
+         procedure EvaluateEnumInUnit;
 
          procedure ExecutableLines;
 
@@ -112,6 +115,7 @@ var
 begin
    FCompiler:=TDelphiWebScript.Create(nil);
    FCompiler.Config.CompilerOptions:=[coContextMap, coAssertions];
+   FCompiler.OnNeedUnit := DoNeedUnit;
 
    FUnits:=TdwsUnit.Create(nil);
    FUnits.UnitName:='TestUnit';
@@ -229,6 +233,19 @@ var
 begin
    bp := FDebugger.Breakpoints[info.ParamAsInteger[0]];
    bp.Enabled := not bp.Enabled;
+end;
+
+// DoNeedUnit
+//
+function TDebuggerTests.DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+begin
+   if unitName = 'MyUnit' then
+      unitSource := 'unit MyUnit; interface uses MyType; procedure Test; implementation'#10
+                  + 'procedure Test; begin'#10
+                  + '  PrintLn(myEnumValue);'#10
+                  + 'end;'
+   else if unitName = 'MyType' then
+      unitSource := 'unit MyType; type MyEnum = (myEnumValue = 123);'
 end;
 
 // EvaluateSimpleTest
@@ -492,6 +509,37 @@ begin
       end;
    finally
       prog:=nil;
+   end;
+end;
+
+// EvaluateEnumInUnit
+//
+procedure TDebuggerTests.EvaluateEnumInUnit;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog := FCompiler.Compile( 'uses MyUnit;'#10
+                             +'Test;');
+   try
+      CheckEquals('', prog.Msgs.AsInfo);
+      FDebugEvalExpr := 'myEnumValue';
+      FDebugEvalAtLine := 3;
+
+      exec:=prog.CreateNewExecution;
+      try
+         FDebugger.BeginDebug(exec);
+         try
+            CheckEquals('123', FDebugLastEvalResult, 'a.Length at line 2');
+         finally
+            FDebugger.EndDebug;
+         end;
+         CheckEquals('123'#13#10, exec.Result.ToString);
+      finally
+         exec := nil;
+      end;
+   finally
+      prog := nil;
    end;
 end;
 

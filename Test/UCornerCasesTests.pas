@@ -106,6 +106,7 @@ type
          procedure EmptyProgram;
          procedure MessagesToJSON;
          procedure MessagesEnumerator;
+         procedure UnitNameTest;
 
          procedure LambdaAsConstParam;
 
@@ -2055,6 +2056,22 @@ begin
       end;
       Inc(n);
    end;
+end;
+
+// UnitNameTest
+//
+procedure TCornerCasesTests.UnitNameTest;
+var
+   prog : IdwsProgram;
+begin
+   prog := FCompiler.Compile('unit Hello;', 'World.pas');
+   CheckEquals('Warning: Unit name does not match file name [line: 1, column: 6]'#13#10, prog.Msgs.AsInfo);
+
+   prog := FCompiler.Compile('unit Hello.World;', 'Hello.World.pas');
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   prog := FCompiler.Compile('unit Hello.World;', 'Hello.world.pas');
+   CheckEquals('Hint: Unit name case does not match file name [line: 1, column: 6]'#13#10, prog.Msgs.AsInfo);
 end;
 
 // LambdaAsConstParam

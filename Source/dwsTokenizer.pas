@@ -210,6 +210,7 @@ type
 
    TTokenizerSourceInfo = record
       FPathName : TFileName;
+      FLocation : TFileName;
       FText : String;
       FDefaultPos : TScriptPos;
       FHotPos : TScriptPos;
@@ -295,6 +296,7 @@ type
          property HotPos : TScriptPos read FSource.FHotPos;
          property CurrentPos : TScriptPos read FSource.FCurPos;
          property PathName : TFileName read FSource.FPathName;
+         property Location : TFileName read FSource.FLocation;
 
          function SafePathName : String; inline;
 
@@ -1104,6 +1106,7 @@ begin
    if pathName<>'' then
       FSource.FPathName := pathName
    else FSource.FPathName := sourceFile.Name;
+   FSource.FLocation := sourceFile.Location;
    FSource.FText := sourceFile.Code + (cLineTerminator+#0);
    FSource.FDefaultPos := cNullPos;
    FSource.FDefaultPos.SourceFile := sourceFile;
