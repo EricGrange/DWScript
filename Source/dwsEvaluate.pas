@@ -114,7 +114,6 @@ var
    gotError : Boolean;
    previousMsgCount, i : Integer;
    messageString : String;
-   implemTable : TUnitImplementationTable;
    unitMainSymbol : TUnitMainSymbol;
    attachedDependencies : TUnitMainSymbolArray;
 begin
