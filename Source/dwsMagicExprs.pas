@@ -249,6 +249,10 @@ type
 
       public
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+         procedure EvalAsString(exec : TdwsExecution; var result : String); override;
 
          property OnFastEval : TMethodFastEvalEvent read FOnFastEval write FOnFastEval;
    end;
@@ -682,7 +686,6 @@ begin
       FOnEval(execRec, Result);
    except
       RaiseScriptError(exec);
-      raise;
    end;
 end;
 
@@ -702,9 +705,73 @@ begin
    try
       result := FOnFastEval(BaseExpr, execRec);
    except
-      on E : EScriptError do
-         raise
-      else RaiseScriptError(exec);
+      RaiseScriptError(exec);
+   end;
+end;
+
+// EvalNoResult
+//
+procedure TMagicMethodExpr.EvalNoResult(exec : TdwsExecution);
+var
+   execRec : TExprBaseListExec;
+begin
+   execRec.ListRec:=FArgs;
+   execRec.Exec:=exec;
+   execRec.Expr:=Self;
+   try
+      FOnFastEval(BaseExpr, execRec);
+   except
+      RaiseScriptError(exec);
+   end;
+end;
+
+// EvalAsInteger
+//
+function TMagicMethodExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+var
+   execRec : TExprBaseListExec;
+begin
+   execRec.ListRec:=FArgs;
+   execRec.Exec:=exec;
+   execRec.Expr:=Self;
+   try
+      VariantToInt64(FOnFastEval(BaseExpr, execRec), Result);
+   except
+      RaiseScriptError(exec);
+      Result := 0;
+   end;
+end;
+
+// EvalAsBoolean
+//
+function TMagicMethodExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   execRec : TExprBaseListExec;
+begin
+   execRec.ListRec:=FArgs;
+   execRec.Exec:=exec;
+   execRec.Expr:=Self;
+   try
+      Result := VariantToBool(FOnFastEval(BaseExpr, execRec));
+   except
+      RaiseScriptError(exec);
+      Result := False;
+   end;
+end;
+
+// EvalAsString
+//
+procedure TMagicMethodExpr.EvalAsString(exec : TdwsExecution; var result : String);
+var
+   execRec : TExprBaseListExec;
+begin
+   execRec.ListRec := FArgs;
+   execRec.Expr := Self;
+   execRec.Exec := exec;
+   try
+      VariantToString(FOnFastEval(BaseExpr, execRec), Result);
+   except
+      RaiseScriptError(exec);
    end;
 end;
 
@@ -747,11 +814,8 @@ begin
    try
       Result:=FOnEval(execRec);
    except
-      on E: EScriptException do
-         raise
-   else
-      Result:=0;
       RaiseScriptError(exec);
+      Result := 0;
    end;
 end;
 
@@ -885,8 +949,8 @@ begin
    try
       Result:=FOnEval(execRec);
    except
-      Result:=False;
       RaiseScriptError(exec);
+      Result := False;
    end;
 end;
 
@@ -915,9 +979,7 @@ begin
    try
       FOnEval(execRec);
    except
-      on E : EScriptError do
-         raise
-      else RaiseScriptError(exec);
+      RaiseScriptError(exec);
    end;
 end;
 

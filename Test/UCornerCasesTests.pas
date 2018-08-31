@@ -107,6 +107,7 @@ type
          procedure MessagesToJSON;
          procedure MessagesEnumerator;
          procedure UnitNameTest;
+         procedure ExceptionWithinMagic;
 
          procedure LambdaAsConstParam;
 
@@ -2072,6 +2073,31 @@ begin
 
    prog := FCompiler.Compile('unit Hello.World;', 'Hello.world.pas');
    CheckEquals('Hint: Unit name case does not match file name [line: 1, column: 6]'#13#10, prog.Msgs.AsInfo);
+end;
+
+// ExceptionWithinMagic
+//
+procedure TCornerCasesTests.ExceptionWithinMagic;
+var
+   prog : IdwsProgram;
+begin
+   prog := FCompiler.Compile(
+       'function Test : String; begin raise Exception.Create("hello"); end;'#13#10
+     + 'PrintLn(Test);'
+   );
+   CheckEquals(  'Runtime Error: User defined exception: hello [line: 1, column: 62]'#13#10
+               + ' [line: 2, column: 9]'#13#10,
+               prog.Execute.Msgs.AsInfo);
+
+   prog := FCompiler.Compile(
+       'procedure Stuff; begin raise Exception.Create("world"); end;'#13#10
+     + 'function Test : String; begin Stuff; end;'#13#10
+     + 'PrintLn(Test);'
+   );
+   CheckEquals(  'Runtime Error: User defined exception: world [line: 1, column: 55]'#13#10
+               + 'Test [line: 2, column: 31]'#13#10
+               + ' [line: 3, column: 9]'#13#10,
+               prog.Execute.Msgs.AsInfo);
 end;
 
 // LambdaAsConstParam

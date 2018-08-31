@@ -2288,10 +2288,11 @@ var
    exc : Exception;
    e : EScriptError;
 begin
-   Assert(ExceptObject is Exception);
-   exc:=Exception(ExceptObject);
-   e:=EScriptError.Create(exc.Message);
-   e.RawClassName:=exc.ClassName;
+   if (ExceptObject is EScriptError) or (ExceptObject is EScriptException) then
+      raise AcquireExceptionObject;
+   exc := ExceptObject as Exception;
+   e := EScriptError.Create(exc.Message);
+   e.RawClassName := exc.ClassName;
    RaiseScriptError(exec, e);
 end;
 

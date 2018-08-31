@@ -201,6 +201,7 @@ type
 
          function GetEnumerator : TTightListEnumerator;
    end;
+   PTightList = ^TTightList;
 
    // TTightStack
    //
