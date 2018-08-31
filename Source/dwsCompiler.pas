@@ -406,6 +406,7 @@ type
          function CheckPropertyFuncParams(paramsA : TParamsSymbolTable; methSym : TMethodSymbol;
                                           indexSym : TSymbol = nil; typSym : TTypeSymbol = nil) : Boolean;
          procedure CheckName(const name : String; const namePos : TScriptPos);
+         procedure CheckUnitName(const name : String; const namePos : TScriptPos; const locationName : String);
          function  IdentifySpecialName(const name : String) : TSpecialKeywordKind;
          procedure CheckSpecialName(const name : String);
          procedure CheckSpecialNameCase(const name : String; sk : TSpecialKeywordKind;
@@ -1665,8 +1666,8 @@ begin
       CurrentProg.Expr := ReadScript(sourceFile, stMain);
       ReadScriptImplementations;
 
-      if CurrentProg.Expr=nil then
-         CurrentProg.Expr:=TNullExpr.Create(cNullPos);
+      if CurrentProg.Expr = nil then
+         CurrentProg.Expr := TBlockExpr.Create(FCompilerContext, cNullPos);
 
       HintUnusedPrivateSymbols;
 
@@ -12296,6 +12297,37 @@ begin
    end;
 end;
 
+// CheckUnitName
+//
+procedure TdwsCompiler.CheckUnitName(const name : String; const namePos : TScriptPos; const locationName : String);
+var
+   location : String;
+begin
+   if locationName = '' then Exit;
+   if location = name then Exit;
+
+   location := ExtractFileName(locationName);
+   if UnicodeSameText(location, name) then begin
+      if location <> name then
+         FMsgs.AddCompilerHint(namePos, CPH_UnitNameCaseDoesntMatch);
+      exit;
+   end;
+
+   location := StrBeforeChar(location, ' ');
+   if UnicodeSameText(location, name) then begin
+      if location <> name then
+         FMsgs.AddCompilerHint(namePos, CPH_UnitNameCaseDoesntMatch);
+      exit;
+   end;
+
+   location := ChangeFileExt(location, '');
+   if location <> name then begin
+      if UnicodeSameText(location, name) then
+         FMsgs.AddCompilerHint(namePos, CPH_UnitNameCaseDoesntMatch)
+      else FMsgs.AddCompilerWarning(namePos, CPE_UnitNameDoesntMatch)
+   end;
+end;
+
 // IdentifySpecialName
 //
 function TdwsCompiler.IdentifySpecialName(const name : String) : TSpecialKeywordKind;
@@ -13066,7 +13098,7 @@ end;
 //
 function TdwsCompiler.ReadUnitHeader : TScriptSourceType;
 var
-   name, part, location : String;
+   name, part : String;
    namePos, partPos : TScriptPos;
    contextFix : TdwsSourceContext;
 begin
@@ -13092,12 +13124,7 @@ begin
       CurrentSourceUnit.Symbol.InitializationRank := FCompilerContext.UnitList.Count;
       FCompilerContext.UnitList.Add(FCurrentSourceUnit);
       FCurrentUnitSymbol:=CurrentSourceUnit.Symbol;
-      location := ChangeFileExt(ExtractFileName(FTok.Location), '');
-      if (location <> '') and (location <> name) then begin
-         if SameText(location, name) then
-            FMsgs.AddCompilerHint(namePos, CPH_UnitNameCaseDoesntMatch)
-         else FMsgs.AddCompilerWarning(namePos, CPE_UnitNameDoesntMatch)
-      end;
+      CheckUnitName(name, namePos, FTok.Location);
    end;
 
    if coContextMap in Options then begin
@@ -13111,9 +13138,8 @@ begin
    end;
 
    RecordSymbolUse(CurrentUnitSymbol, namePos, [suDeclaration]);
-   if not (   UnicodeSameText(name, namePos.SourceFile.Name)
-           or UnicodeSameText(MSG_MainModule, namePos.SourceFile.Name)) then
-      FMsgs.AddCompilerWarning(namePos, CPE_UnitNameDoesntMatch);
+   if namePos.SourceFile.Name <> MSG_MainModule then
+      CheckUnitName(name, namePos, namePos.SourceFile.Name);
 
    // usually deprecated statement follows after the semi
    // but for units, Delphi wants it before, this supports both forms

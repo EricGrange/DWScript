@@ -1,2 +1,5 @@
+Errors >>>>
+Hint: Unit name case does not match file name [line: 1, column: 6, file: subproc]
+Result >>>>
 Hello DWS
 Hello World
