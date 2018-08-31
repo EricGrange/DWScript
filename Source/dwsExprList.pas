@@ -180,9 +180,12 @@ end;
 // SetListRec
 //
 procedure TExprBaseListExec.SetListRec(const lr : TExprBaseListRec);
+var
+   p : PTightList;
 begin
-   FCount:=lr.FList.Count;
-   FList:=lr.FList.List;
+   p := @lr.FList;
+   FCount := p^.Count;
+   FList := p^.List;
 end;
 
 // GetExprBase
