@@ -433,7 +433,7 @@ end;
 
 function TLocalDateTimeToUnixTimeFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
-   Result := Trunc(LocalDateTimeToUTCDateTime(args.AsFloat[0])*86400)-Int64(25569)*86400;
+   Result := Round(LocalDateTimeToUTCDateTime(args.AsFloat[0])*86400)-Int64(25569)*86400;
 end;
 
 { TUnixTimeToLocalDateTimeFunc }
