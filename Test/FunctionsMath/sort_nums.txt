@@ -1,0 +1,20 @@
+initial
+   1 x 1.5
+   2 x 2.5
+   1 x 3.5
+   2 x 1.5
+sort by i then f
+   1 x 1.5
+   1 x 3.5
+   2 x 1.5
+   2 x 2.5
+sort by f then i
+   1 x 1.5
+   2 x 1.5
+   2 x 2.5
+   1 x 3.5
+sort by i then -f
+   1 x 3.5
+   1 x 1.5
+   2 x 2.5
+   2 x 1.5

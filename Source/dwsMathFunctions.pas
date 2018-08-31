@@ -182,6 +182,14 @@ type
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
+   TCompareNumIntsFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+   end;
+
+   TCompareNumFloatsFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+   end;
+
    TDivModFunc = class(TInternalMagicProcedure)
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
@@ -642,6 +650,36 @@ begin
    Result:=Sign(args.AsInteger[0]);
 end;
 
+{ TCompareNumIntsFunc }
+
+function TCompareNumIntsFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+var
+   a, b : Int64;
+begin
+   a := args.AsInteger[0];
+   b := args.AsInteger[1];
+   if a < b then
+      Result := -1
+   else if a = b then
+      Result := 0
+   else Result := 1;
+end;
+
+{ TCompareNumFloatsFunc }
+
+function TCompareNumFloatsFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+var
+   a, b : Double;
+begin
+   a := args.AsFloat[0];
+   b := args.AsFloat[1];
+   if a < b then
+      Result := -1
+   else if a = b then
+      Result := 0
+   else Result := 1;
+end;
+
 { TDivModFunc }
 
 procedure TDivModFunc.DoEvalProc(const args : TExprBaseListExec);
@@ -911,6 +949,11 @@ initialization
 
    RegisterInternalIntFunction(TSignFunc, 'Sign', ['v', SYS_FLOAT], [iffStateLess, iffOverloaded], 'Sign');
    RegisterInternalIntFunction(TSignIntFunc, 'Sign', ['v', SYS_INTEGER], [iffStateLess, iffOverloaded], 'Sign');
+
+   RegisterInternalIntFunction(TCompareNumIntsFunc, 'CompareNum', ['a', SYS_INTEGER, 'b', SYS_INTEGER], [iffStateLess, iffOverloaded], 'Compare');
+   RegisterInternalIntFunction(TCompareNumFloatsFunc, 'CompareNum', ['a', SYS_FLOAT, 'b', SYS_FLOAT], [iffStateLess, iffOverloaded], 'Compare');
+   RegisterInternalIntFunction(TCompareNumFloatsFunc, 'CompareNum', ['a', SYS_FLOAT, 'b', SYS_INTEGER], [iffStateLess, iffOverloaded], 'Compare');
+   RegisterInternalIntFunction(TCompareNumFloatsFunc, 'CompareNum', ['a', SYS_INTEGER, 'b', SYS_FLOAT], [iffStateLess, iffOverloaded], 'Compare');
 
    RegisterInternalProcedure(TDivModFunc, 'DivMod',
                              ['dividend', SYS_INTEGER, 'divisor', SYS_INTEGER,
