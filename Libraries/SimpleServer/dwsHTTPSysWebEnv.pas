@@ -139,7 +139,7 @@ end;
 procedure GetSinIP(const Sin: TVarSin; var Result : RawByteString);
 var
    p : PAnsiChar;
-   host : array[0..NI_MAXHOST] of AnsiChar;
+   host : array [0..NI_MAXHOST] of AnsiChar;
    hostlen, servlen : integer;
    r : integer;
 begin
@@ -151,13 +151,11 @@ begin
    end else begin
       hostlen := NI_MAXHOST;
       servlen := NI_MAXSERV;
-      r := getnameinfo(@sin, SizeOfVarSin(sin), host, hostlen,
+      r := GetNameInfo(@sin, SizeOfVarSin(sin), host, hostlen,
                        nil, servlen, NI_NUMERICHOST + NI_NUMERICSERV);
-      if r=0 then begin
-         hostlen := StrLen(PAnsiChar(@host));
-         SetLength(Result, hostlen);
-         Move(host, Pointer(Result)^, hostlen);
-      end else Result := '';
+      if r = 0 then
+         Result := PAnsiChar(@host)
+      else Result := '';
    end;
 end;
 

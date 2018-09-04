@@ -344,8 +344,7 @@ type
 const
    /// used by THttpApi2Server.Request for http.sys to send a static file
    // - the OutCustomHeader should contain the proper 'Content-type: ....'
-   // corresponding to the file (e.g. by calling GetMimeContentType() function
-   // from SynCommons supplyings the file name)
+   // corresponding to the file
    HTTP_RESP_STATICFILE = '!STATICFILE';
 
 function RegURL(aRoot : String; aPort : Integer; isHttps : boolean;
@@ -507,7 +506,7 @@ end;
 function RegURL(aRoot : String; aPort : Integer; isHttps : boolean;
    aDomainName : String) : String;
 const
-   Prefix : array[boolean] of String = ('http://', 'https://');
+   cPrefix : array [Boolean] of String = ('http://', 'https://');
 begin
    if aPort=0 then
       aPort := 80;
@@ -525,7 +524,7 @@ begin
    end else begin
       aRoot := '/'; // allow for instance 'http://*:2869/'
    end;
-   result := Prefix[isHttps]+aDomainName+':'+IntToStr(aPort)+aRoot;
+   result := cPrefix[isHttps]+aDomainName+':'+IntToStr(aPort)+aRoot;
 end;
 
 // ToString

@@ -285,8 +285,12 @@ type
    end;
 
    HTTP_REQUEST_INFO_TYPE = (
-      HttpRequestInfoTypeAuth
-      );
+      HttpRequestInfoTypeAuth,
+      HttpRequestInfoTypeChannelBind,
+      HttpRequestInfoTypeSslProtocol,
+      HttpRequestInfoTypeSslTokenBindingDraft,
+      HttpRequestInfoTypeSslTokenBinding
+   );
 
    HTTP_AUTH_STATUS = (
       HttpAuthStatusSuccess,
@@ -330,7 +334,7 @@ type
    /// structure used to handle data associated with a specific request
    HTTP_REQUEST_V2 = record
       // either 0 (Only Header), either HTTP_RECEIVE_REQUEST_FLAG_COPY_BODY
-      Flags : cardinal;
+      Flags : ULONG;
       // An identifier for the connection on which the request was received
       ConnectionId : HTTP_CONNECTION_ID;
       // A value used to identify the request when calling
@@ -345,9 +349,9 @@ type
       Verb : THttpVerb;
       // The length of the verb string if the Verb field is hvUnknown
       // (in bytes not including the last #0)
-      UnknownVerbLength : word;
+      UnknownVerbLength : USHORT;
       // The length of the raw (uncooked) URL (in bytes not including the last #0)
-      RawUrlLength : word;
+      RawUrlLength : USHORT;
       // Pointer to the verb string if the Verb field is hvUnknown
       pUnknownVerb : PAnsiChar;
       // Pointer to the raw (uncooked) URL
@@ -366,7 +370,9 @@ type
       // SSL connection information
       pSslInfo : PHTTP_SSL_INFO;
       // V2 new fields
+      {$ifndef WIN64}
       xxxPadding : DWORD;
+      {$endif}
       RequestInfoCount : USHORT;
       pRequestInfo : PHTTP_REQUEST_INFO;
    end;

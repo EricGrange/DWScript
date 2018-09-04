@@ -1,7 +1,5 @@
 object dwsEncodingLib: TdwsEncodingLib
   OldCreateOrder = False
-  Left = 695
-  Top = 86
   Height = 150
   Width = 215
   object dwsEncoding: TdwsUnit
@@ -146,6 +144,35 @@ object dwsEncodingLib: TdwsEncodingLib
             ResultType = 'String'
             Attributes = [maVirtual, maOverride]
             OnEval = dwsEncodingClassesBase64EncoderMethodsDecodeEval
+            Kind = mkClassFunction
+          end>
+      end
+      item
+        Name = 'Base64URIEncoder'
+        Ancestor = 'Encoder'
+        Methods = <
+          item
+            Name = 'Encode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsEncodingClassesBase64URLEncoderMethodsEncodeEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'Decode'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maVirtual, maOverride]
+            OnEval = dwsEncodingClassesBase64URLEncoderMethodsDecodeEval
             Kind = mkClassFunction
           end>
       end

@@ -20,8 +20,7 @@ interface
 
 uses
   SysUtils, Classes,
-  dwsExprs, dwsComp, dwsWebUtils, dwsUtils,
-  SynCommons;
+  dwsExprs, dwsComp, dwsWebUtils, dwsUtils;
 
 type
   TdwsEncodingLib = class(TDataModule)
@@ -69,6 +68,10 @@ type
     procedure dwsEncodingClassesXMLTextEncoderMethodsEncodeEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsEncodingClassesXMLTextEncoderMethodsDecodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesBase64URLEncoderMethodsEncodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsEncodingClassesBase64URLEncoderMethodsDecodeEval(
       Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
@@ -122,6 +125,18 @@ procedure TdwsEncodingLib.dwsEncodingClassesBase64EncoderMethodsEncodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString := Base64Encode(Info.ParamAsDataString[0]);
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesBase64URLEncoderMethodsDecodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString := Base64DecodeURI(Info.ParamAsString[0]);
+end;
+
+procedure TdwsEncodingLib.dwsEncodingClassesBase64URLEncoderMethodsEncodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := Base64EncodeURI(Info.ParamAsDataString[0]);
 end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesHexadecimalEncoderMethodsDecodeEval(
@@ -224,7 +239,7 @@ end;
 procedure TdwsEncodingLib.dwsEncodingClassesUTF8EncoderMethodsEncodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsDataString := StringToUTF8(Info.ParamAsString[0]);
+   Info.ResultAsDataString := UTF8Encode(Info.ParamAsString[0]);
 end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesXMLTextEncoderMethodsEncodeEval(

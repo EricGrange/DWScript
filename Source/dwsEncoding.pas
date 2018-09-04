@@ -35,12 +35,14 @@ function Base32Encode(const data : RawByteString) : String; overload; inline;
 function Base32Encode(data : Pointer; len : Integer) : String; overload;
 function Base32Decode(const data : String) : RawByteString;
 
-function Base64EncodeURI(const data : RawByteString) : String; overload; inline;
-function Base64EncodeURI(data : Pointer; len : Integer) : String; overload; inline;
 function Base64Encode(const data : RawByteString) : String; overload; inline;
 function Base64Encode(data : Pointer; len : Integer) : String; overload; inline;
 function Base64Encode(data : Pointer; len : Integer; const alphabet : TBase64Alphabet) : String; overload;
 function Base64Decode(const data : String) : RawByteString;
+
+function Base64EncodeURI(const data : RawByteString) : String; overload; inline;
+function Base64EncodeURI(data : Pointer; len : Integer) : String; overload; inline;
+function Base64DecodeURI(const data : String) : RawByteString;
 
 const
    cBase58 : String = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -303,26 +305,12 @@ begin
          'A'..'Z' : vBase64Decode[i] := i - Ord('A');
          'a'..'z' : vBase64Decode[i] := i + (26 - Ord('a'));
          '0'..'9' : vBase64Decode[i] := i + (52 - Ord('0'));
-         '+', '-' : vBase64Decode[Ord('+')] := 62;
-         '/', '_' : vBase64Decode[Ord('/')] := 63;
+         '+', '-' : vBase64Decode[i] := 62;
+         '/', '_' : vBase64Decode[i] := 63;
       else
          vBase64Decode[i] := -1;
       end;
    end;
-end;
-
-// Base64EncodeURI
-//
-function Base64EncodeURI(const data : RawByteString) : String;
-begin
-   Result := Base64Encode(Pointer(data), Length(data), cBase64URI);
-end;
-
-// Base64EncodeURI
-//
-function Base64EncodeURI(data : Pointer; len : Integer) : String;
-begin
-   Result := Base64Encode(data, len, cBase64URI);
 end;
 
 // Base64Encode
@@ -451,6 +439,44 @@ begin
    decodedPtr := Base64Decode(Pointer(data), Pointer(@data[len-3]), Pointer(Result));
    if decodedPtr <> @PByte(Result)[outLen] then
       SetLength(Result, NativeUInt(decodedPtr) - NativeUInt(Pointer(Result)));
+end;
+
+// Base64EncodeURI
+//
+function Base64EncodeURI(const data : RawByteString) : String;
+begin
+   Result := Base64EncodeURI(Pointer(data), Length(data));
+end;
+
+// Base64DecodeURI
+//
+function Base64DecodeURI(const data : String) : RawByteString;
+var
+   n : Integer;
+begin
+   n := Length(data);
+   case n and 3 of
+      1 : Result := Base64Decode(data+'=');
+      2 : Result := Base64Decode(data+'==');
+      3 : Result := Base64Decode(data+'===');
+   else
+      Result := Base64Decode(data);
+   end;
+end;
+
+// Base64EncodeURI
+//
+function Base64EncodeURI(data : Pointer; len : Integer) : String;
+var
+   n : Integer;
+begin
+   Result := Base64Encode(data, len, cBase64URI);
+   len := Length(Result);
+   n := len;
+   while (n > 0) and (Result[n] = '=') do
+      Dec(n);
+   if n <> len then
+      SetLength(Result, n);
 end;
 
 end.
