@@ -18,6 +18,14 @@
     This unit wraps Unified InterBase from Henri Gourvest (www.progdigy.com)
 
     http://sourceforge.net/projects/uib/
+
+    Parameters:
+    - server & database name (ex: 'server:path/to.db.fdb')
+    - user name, optional (ex: 'SYSDBA')
+    - password, optional (ex: 'masterkey')
+    - character set, optional (ex: 'WIN1252')
+    - library name, optional (ex: 'fbclient.dll')
+
 }
 unit dwsUIBDatabase;
 
@@ -150,22 +158,24 @@ end;
 //
 constructor TdwsUIBDataBase.Create(const parameters : array of String);
 var
-   dbName, userName, pwd : String;
+   nbParams : Integer;
+   dbName : String;
 begin
    if FDB=nil then begin
-      if Length(parameters)>0 then
-         dbName:=TdwsDataBase.ApplyPathVariables(parameters[0]);
-      if Length(parameters)>1 then
-         userName:=parameters[1]
-      else userName:='SYSDBA';
-      if Length(parameters)>2 then
-         pwd:=parameters[2]
-      else pwd:='masterkey';
+      nbParams := Length(parameters);
+      if nbParams > 0 then
+         dbName := TdwsDataBase.ApplyPathVariables(parameters[0]);
       try
          FDB:=TUIBDataBase.Create{$ifndef UIB_NO_COMPONENT}(nil){$endif};
          FDB.DatabaseName:=dbName;
-         FDB.UserName:=userName;
-         FDB.PassWord:=pwd;
+         if nbParams > 1 then
+            FDB.UserName := parameters[1];
+         if nbParams > 2 then
+            FDB.PassWord := parameters[2];
+         if nbParams > 3 then
+            FDB.CharacterSet := uiblib.StrToCharacterSet(ScriptStringToRawByteString(parameters[3]));
+         if nbParams > 4 then
+            FDB.LibraryName := parameters[4];
          FDB.Connected:=True;
       except
          RefCount:=0;
