@@ -464,6 +464,7 @@ type
          function DoGenerate(systemTable : TSystemSymbolTable; Table: TSymbolTable;
                              ParentSym: TSymbol = nil): TSymbol; override;
          function GetParameters(systemTable : TSystemSymbolTable; Table: TSymbolTable): TParamArray;
+         function GetNamePath: String; override;
 
       published
          property Parameters : TdwsParameters read FParameters write SetParameters stored StoreParameters;
@@ -805,6 +806,11 @@ type
          FKind : TMethodKind;
          FVisibility : TdwsVisibility;
          FOnFastEval : TMethodFastEvalEvent;
+         FOnFastEvalNoResult : TMethodFastEvalNoResultEvent;
+         FOnFastEvalString : TMethodFastEvalStringEvent;
+         FOnFastEvalInteger : TMethodFastEvalIntegerEvent;
+         FOnFastEvalFloat : TMethodFastEvalFloatEvent;
+         FOnFastEvalBolean : TMethodFastEvalBooleanEvent;
 
       protected
          function GetDisplayName: String; override;
@@ -825,6 +831,11 @@ type
          property Attributes: TMethodAttributes read FAttributes write SetAttributes default [];
          property OnEval : TMethodEvalEvent read GetOnEval write SetOnEval;
          property OnFastEval : TMethodFastEvalEvent read FOnFastEval write FOnFastEval;
+         property OnFastEvalNoResult : TMethodFastEvalNoResultEvent read FOnFastEvalNoResult write FOnFastEvalNoResult;
+         property OnFastEvalString : TMethodFastEvalStringEvent read FOnFastEvalString write FOnFastEvalString;
+         property OnFastEvalInteger : TMethodFastEvalIntegerEvent read FOnFastEvalInteger write FOnFastEvalInteger;
+         property OnFastEvalFloat : TMethodFastEvalFloatEvent read FOnFastEvalFloat write FOnFastEvalFloat;
+         property OnFastEvalBolean : TMethodFastEvalBooleanEvent read FOnFastEvalBolean write FOnFastEvalBolean;
          property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
          property Kind: TMethodKind read FKind write FKind;
    end;
@@ -3416,6 +3427,22 @@ begin
   Result := dwsComp.GetParameters(Self,Parameters, systemTable, Table);
 end;
 
+// GetNamePath
+//
+function TdwsFunctionSymbol.GetNamePath: String;
+var
+   i : Integer;
+begin
+   Result := inherited GetNamePath;
+   if Overloaded then begin
+      Result := Result + '_';         
+      for i := 0 to Parameters.Count-1 do 
+         Result := Result + (Parameters.Items[i] as TdwsParameter).DataType;
+      if Parameters.Count > 0 then
+         Result := Result + '_';
+   end;
+end;
+
 // GetDisplayName
 //
 function TdwsFunctionSymbol.GetDisplayName: String;
@@ -3845,7 +3872,9 @@ begin
    if ResultType <> '' then
       GetUnit.GetSymbol(systemTable, table, ResultType);
 
-   if Assigned(FOnFastEval) then begin
+   if    Assigned(FOnFastEval) or Assigned(FOnFastEvalNoResult)
+      or Assigned(FOnFastEvalString) or Assigned(FOnFastEvalInteger)
+      or Assigned(FOnFastEvalFloat) or Assigned(FOnFastEvalBolean) then begin
       if maVirtual in Attributes then
          raise Exception.Create(UNT_FastEvalNotSupportedForVirtualMethods);
 
@@ -3853,6 +3882,11 @@ begin
                                             GetParameters(systemTable, table), ResultType,
                                             TClassSymbol(parentSym), Visibility, Overloaded);
       TMagicMethodSymbol(methSymbol).OnFastEval := FOnFastEval;
+      TMagicMethodSymbol(methSymbol).OnFastEvalNoResult := FOnFastEvalNoResult;
+      TMagicMethodSymbol(methSymbol).OnFastEvalString := FOnFastEvalString;
+      TMagicMethodSymbol(methSymbol).OnFastEvalInteger := FOnFastEvalInteger;
+      TMagicMethodSymbol(methSymbol).OnFastEvalBoolean := FOnFastEvalBolean;
+      TMagicMethodSymbol(methSymbol).OnFastEvalFloat := FOnFastEvalFloat;
    end else begin
       methSymbol:=TMethodSymbol.Generate(table, Kind, Attributes, Name,
                                          GetParameters(systemTable, table), ResultType,
