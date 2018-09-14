@@ -87,7 +87,7 @@ type
          constructor Create(dataSet : TdwsSynDBDataSet; fieldIndex : Integer);
 
          function IsNull : Boolean; override;
-         function AsString : String; override;
+         procedure AsString(var Result : String); override;
          function AsInteger : Int64; override;
          function AsFloat : Double; override;
          function AsBlob : RawByteString; override;
@@ -356,7 +356,7 @@ end;
 
 // AsString
 //
-function TdwsSynDBDataField.AsString : String;
+procedure TdwsSynDBDataField.AsString(var Result : String);
 begin
    if FDataSet.FEOFReached then
       RaiseNoActiveRecord;

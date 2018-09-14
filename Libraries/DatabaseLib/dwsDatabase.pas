@@ -38,6 +38,7 @@ type
       dftBlob
       );
 
+   TdwsDataSet = class;
    IdwsDataSet = interface;
    IdwsDataField = interface;
 
@@ -62,7 +63,7 @@ type
    end;
 
    IdwsDataSet = interface
-      ['{59B7AFB8-A2C9-4252-8921-A9605879EEDD}']
+      ['{9D74E80C-B4D9-40CA-A469-CB8A0D427C7F}']
       function Eof : Boolean;
       procedure Next;
 
@@ -78,7 +79,7 @@ type
       function DeclaredType : String;
 
       function IsNull : Boolean;
-      function AsString : String;
+      procedure GetAsString(var Result : String);
       function AsInteger : Int64;
       function AsFloat : Double;
       function AsBoolean : Boolean;
@@ -120,7 +121,7 @@ type
    TdwsDataSet = class (TInterfacedSelfObject, IUnknown, IdwsDataSet)
       private
          FDataBase : IdwsDataBase;
-         FFieldsPrepared : Boolean;
+         FFieldCount : Integer;
 
       protected
          FFields : array of IdwsDataField;
@@ -168,8 +169,10 @@ type
          function DataType : TdwsDataFieldType; virtual;
          function DeclaredType : String;
 
+         procedure GetAsString(var Result : String);
+
          function IsNull : Boolean; virtual; abstract;
-         function AsString : String; virtual; abstract;
+         procedure AsString(var Result : String); virtual; abstract;
          function AsInteger : Int64; virtual; abstract;
          function AsFloat : Double; virtual; abstract;
          function AsBoolean : Boolean; virtual;
@@ -258,7 +261,8 @@ end;
 constructor TdwsDataSet.Create(const db : IdwsDataBase);
 begin
    inherited Create;
-   FDataBase:=db;
+   FDataBase := db;
+   FFieldCount := -1;
 end;
 
 // Destroy
@@ -266,6 +270,7 @@ end;
 destructor TdwsDataSet.Destroy;
 begin
    SetLength(FFields, 0);
+   FFieldCount := -1;
    inherited;
 end;
 
@@ -273,12 +278,10 @@ end;
 //
 function TdwsDataSet.GetField(index : Integer) : IdwsDataField;
 begin
-   if not FFieldsPrepared then begin
+   if FFieldCount < 0 then
       PrepareFields;
-      FFieldsPrepared:=True;
-   end;
-   if Cardinal(index) < Cardinal(Length(FFields)) then
-      Result:=FFields[index]
+   if Cardinal(index) < Cardinal(FFieldCount) then
+      Result := FFields[index]
    else raise Exception.CreateFmt('Invalid field index %d', [index]);
 end;
 
@@ -286,18 +289,18 @@ end;
 //
 function TdwsDataSet.FieldCount : Integer;
 begin
-   if not FFieldsPrepared then
+   if FFieldCount < 0 then
       PrepareFields;
-   Result:=Length(FFields);
+   Result := FFieldCount;
 end;
 
 // PrepareFields
 //
 procedure TdwsDataSet.PrepareFields;
 begin
-   if not FFieldsPrepared then begin
+   if FFieldCount < 0 then begin
       DoPrepareFields;
-      FFieldsPrepared:=True;
+      FFieldCount := Length(FFields);
    end;
 end;
 
@@ -305,11 +308,13 @@ end;
 //
 function TdwsDataSet._Release : Integer;
 begin
-   Result:=DecRefCount;
-   if Result=0 then
+   Result := DecRefCount;
+   if Result = 0 then
       Destroy
-   else if Result=Length(FFields) then
+   else if Result=Length(FFields) then begin
       SetLength(FFields, 0);
+      FFieldCount := -1;
+   end;
 end;
 
 // ------------------
@@ -349,6 +354,13 @@ begin
    if FDeclaredType='' then
       FDeclaredType:=GetDeclaredType;
    Result:=FDeclaredType;
+end;
+
+// GetAsString
+//
+procedure TdwsDataField.GetAsString(var Result : String);
+begin
+   AsString(Result);
 end;
 
 // AsBoolean

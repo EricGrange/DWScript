@@ -64,7 +64,13 @@ type
    TdwsExecutionEvent = procedure (exec : TdwsProgramExecution) of object;
 
    TFuncFastEvalEvent = function(const args : TExprBaseListExec) : Variant of object;
+
    TMethodFastEvalEvent = function(baseExpr : TTypedExpr; const args : TExprBaseListExec) : Variant of object;
+   TMethodFastEvalNoResultEvent = procedure(baseExpr : TTypedExpr; const args : TExprBaseListExec) of object;
+   TMethodFastEvalStringEvent = procedure(baseExpr : TTypedExpr; const args : TExprBaseListExec; var result : String) of object;
+   TMethodFastEvalIntegerEvent = function(baseExpr : TTypedExpr; const args : TExprBaseListExec) : Int64 of object;
+   TMethodFastEvalFloatEvent = function(baseExpr : TTypedExpr; const args : TExprBaseListExec) : Double of object;
+   TMethodFastEvalBooleanEvent = function(baseExpr : TTypedExpr; const args : TExprBaseListExec) : Boolean of object;
 
    // Symbol attributes information
    TdwsSymbolAttribute = class (TRefCountedObject)

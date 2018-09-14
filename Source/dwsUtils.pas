@@ -988,9 +988,13 @@ function SimpleInt64Hash(x : Int64) : Cardinal;
 
 function RawByteStringToScriptString(const s : RawByteString) : UnicodeString; overload; inline;
 procedure RawByteStringToScriptString(const s : RawByteString; var result : UnicodeString); inline; overload;
+procedure RawByteStringToScriptString(const s : RawByteString; var result : Variant); overload;
+
 procedure BytesToScriptString(const p : PByte; n : Integer; var result : UnicodeString);
+
 function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString; overload; inline;
 procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
+
 procedure WordsToBytes(src : PWord; dest : PByte; nbWords : Integer);
 
 procedure StringBytesToWords(var buf : UnicodeString; swap : Boolean);
@@ -1015,6 +1019,8 @@ function FastInt64ToBuffer(const val : Int64; var buf : TInt64StringBuffer) : In
 procedure FastInt64ToStr(const val : Int64; var s : String); overload;
 function  FastInt64ToStr(const val : Int64) : String; overload; inline;
 procedure FastInt64ToHex(val : Int64; digits : Integer; var s : String);
+
+procedure FastFloatToStr(const val : Extended; var s : String; const fmtSettings : TFormatSettings);
 
 function  Int32ToStrU(val : Integer) : UnicodeString;
 function  StrUToInt64(const s : UnicodeString; const default : Int64) : Int64;
@@ -1641,6 +1647,21 @@ begin
       Dec(p);
    end;
    SetString(s, PChar(@p[1]), (NativeUInt(@buf[15])-NativeUInt(p)) div SizeOf(Char));
+end;
+
+// FastFloatToStr
+//
+procedure FastFloatToStr(const val : Extended; var s : String; const fmtSettings : TFormatSettings);
+var
+   buffer : array [0..63] of Char;
+   n : Integer;
+begin
+   if val = 0 then
+      s := '0'
+   else begin
+      n := FloatToText(buffer, val, fvExtended, ffGeneral, 15, 0, fmtSettings);
+      SetString(s, buffer, n);
+   end;
 end;
 
 // Int64ToHex
@@ -2795,6 +2816,19 @@ begin
       exit;
    end;
    BytesToScriptString(Pointer(s), Length(s), result)
+end;
+
+// RawByteStringToScriptString
+//
+procedure RawByteStringToScriptString(const s : RawByteString; var result : Variant); overload;
+begin
+   if s = '' then
+      VarSetDefaultString(result)
+   else begin
+      VarClearSafe(result);
+      TVarData(result).VType := varUString;
+      RawByteStringToScriptString(s, String(TVarData(result).VString));
+   end;
 end;
 
 // BytesToScriptString

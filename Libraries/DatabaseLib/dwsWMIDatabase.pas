@@ -81,7 +81,7 @@ type
 
       public
          function IsNull : Boolean; override;
-         function AsString : String; override;
+         procedure AsString(var Result : String); override;
          function AsInteger : Int64; override;
          function AsFloat : Double; override;
          function AsBlob : RawByteString; override;
@@ -402,7 +402,7 @@ end;
 
 // AsString
 //
-function TdwsWMIDataField.AsString : String;
+procedure TdwsWMIDataField.AsString(var Result : String);
 var
    w : TdwsJSONWriter;
 begin

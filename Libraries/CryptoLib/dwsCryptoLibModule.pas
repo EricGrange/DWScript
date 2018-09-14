@@ -21,7 +21,7 @@ interface
 uses
    Windows, SysUtils, Classes, Types,
    dwsComp, dwsExprs, dwsUtils, dwsXPlatform, dwsTokenStore, dwsCryptoXPlatform,
-   dwsXXHash;
+   dwsXXHash, dwsExprList;
 
 type
   TdwsCryptoLib = class(TDataModule)
@@ -58,29 +58,8 @@ type
       ExtObject: TObject);
     procedure dwsCryptoClassesHashCRC32MethodsHMACEval(Info: TProgramInfo;
       ExtObject: TObject);
-    procedure dwsCryptoFunctionsCryptographicRandomEval(info: TProgramInfo);
-    procedure dwsCryptoFunctionsProcessUniqueRandomEval(info: TProgramInfo);
-    procedure dwsCryptoFunctionsCryptographicTokenEval(info: TProgramInfo);
     procedure DataModuleCreate(Sender: TObject);
     procedure DataModuleDestroy(Sender: TObject);
-    procedure dwsCryptoClassesNoncesMethodsGenerateEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsCryptoClassesNoncesMethodsClearEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsCryptoClassesNoncesMethodsGetDataEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsCryptoClassesNoncesMethodsRemoveEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsCryptoClassesNoncesMethodsRemoveByDataEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsCryptoClassesNoncesMethodsCheckAndKeepEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsCryptoClassesNoncesMethodsCheckAndRemoveEval(
-      Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsCryptoClassesNoncesMethodsRegisterEval(Info: TProgramInfo;
-      ExtObject: TObject);
-    procedure dwsCryptoClassesNoncesMethodsCollectEval(Info: TProgramInfo;
-      ExtObject: TObject);
     procedure dwsCryptoClassesEncryptionAESSHA3CTRMethodsEncryptDataEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsCryptoClassesEncryptionAESSHA3CTRMethodsDecryptDataEval(
@@ -97,6 +76,30 @@ type
       ExtObject: TObject);
     procedure dwsCryptoClassesHashSHA512MethodsHMACEval(Info: TProgramInfo;
       ExtObject: TObject);
+    function dwsCryptoFunctionsProcessUniqueRandomFastEval(
+      const args: TExprBaseListExec): Variant;
+    function dwsCryptoFunctionsCryptographicRandomFastEval(
+      const args: TExprBaseListExec): Variant;
+    function dwsCryptoFunctionsCryptographicTokenFastEval(
+      const args: TExprBaseListExec): Variant;
+    procedure dwsCryptoClassesNoncesMethodsRegisterFastEvalNoResult(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec);
+    procedure dwsCryptoClassesNoncesMethodsGenerateFastEvalString(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
+    function dwsCryptoClassesNoncesMethodsCheckAndKeepFastEvalBolean(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
+    function dwsCryptoClassesNoncesMethodsCheckAndRemoveFastEvalBolean(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
+    procedure dwsCryptoClassesNoncesMethodsGetDataFastEvalString(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
+    procedure dwsCryptoClassesNoncesMethodsRemoveFastEvalNoResult(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec);
+    procedure dwsCryptoClassesNoncesMethodsRemoveByDataFastEvalNoResult(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec);
+    procedure dwsCryptoClassesNoncesMethodsClearFastEvalNoResult(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec);
+    procedure dwsCryptoClassesNoncesMethodsCollectFastEvalNoResult(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec);
   private
     { Private declarations }
     FNonces : TdwsTokenStore;
@@ -241,26 +244,26 @@ begin
    PerformHashData(Info, HashMD5);
 end;
 
-procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsCheckAndKeepEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsCryptoLib.dwsCryptoClassesNoncesMethodsCheckAndKeepFastEvalBolean(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
 begin
-   Info.ResultAsBoolean:=FNonces.CheckAndKeep(Info.ParamAsString[0], Info.ParamAsString[1])
+   Result := FNonces.CheckAndKeep(args.AsString[0], args.AsString[1])
 end;
 
-procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsCheckAndRemoveEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsCryptoLib.dwsCryptoClassesNoncesMethodsCheckAndRemoveFastEvalBolean(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
 begin
-   Info.ResultAsBoolean:=FNonces.CheckAndRemove(Info.ParamAsString[0], Info.ParamAsString[1])
+   Result := FNonces.CheckAndRemove(args.AsString[0], args.AsString[1]);
 end;
 
-procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsClearEval(
-  Info: TProgramInfo; ExtObject: TObject);
+procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsClearFastEvalNoResult(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec);
 begin
    FNonces.Clear;
 end;
 
-procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsCollectEval(
-  Info: TProgramInfo; ExtObject: TObject);
+procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsCollectFastEvalNoResult(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec);
 begin
    FNonces.Collect;
 end;
@@ -274,39 +277,36 @@ begin
       FNonces.LoadFromFile(FNonceFilename);
 end;
 
-procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsGenerateEval(
-  Info: TProgramInfo; ExtObject: TObject);
-var
-   nonce : String;
+procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsGenerateFastEvalString(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
 begin
-   nonce:=CryptographicToken(120);
-   FNonces.Register(nonce, Info.ParamAsInteger[0]*0.001, Info.ParamAsString[1]);
-   Info.ResultAsString:=nonce;
+   Result := CryptographicToken(120);
+   FNonces.Register(result, args.AsInteger[0]*0.001, args.AsString[1]);
 end;
 
-procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsGetDataEval(
-  Info: TProgramInfo; ExtObject: TObject);
+procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsGetDataFastEvalString(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
 begin
-   Info.ResultAsString:=FNonces.TokenData[Info.ParamAsString[0]];
+   Result := FNonces.TokenData[args.AsString[0]];
 end;
 
-procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsRegisterEval(
-  Info: TProgramInfo; ExtObject: TObject);
+procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsRegisterFastEvalNoResult(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec);
 begin
-   FNonces.Register(Info.ParamAsString[0], Info.ParamAsInteger[1],
-                    Info.ParamAsString[2]);
+   FNonces.Register(args.AsString[0], args.AsInteger[1],
+                    args.AsString[2]);
 end;
 
-procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsRemoveByDataEval(
-  Info: TProgramInfo; ExtObject: TObject);
+procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsRemoveByDataFastEvalNoResult(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec);
 begin
-   FNonces.RemoveByData(Info.ParamAsString[0]);
+   FNonces.RemoveByData(args.AsString[0]);
 end;
 
-procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsRemoveEval(
-  Info: TProgramInfo; ExtObject: TObject);
+procedure TdwsCryptoLib.dwsCryptoClassesNoncesMethodsRemoveFastEvalNoResult(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec);
 begin
-   FNonces.Remove(Info.ParamAsString[0]);
+   FNonces.Remove(args.AsString[0]);
 end;
 
 procedure TdwsCryptoLib.dwsCryptoClassesHashMD5MethodsHMACEval(
@@ -351,16 +351,16 @@ begin
    PerformHMAC(Info, HashSHA512, 128);
 end;
 
-procedure TdwsCryptoLib.dwsCryptoFunctionsCryptographicRandomEval(
-  info: TProgramInfo);
+function TdwsCryptoLib.dwsCryptoFunctionsCryptographicRandomFastEval(
+  const args: TExprBaseListExec): Variant;
 begin
-   info.ResultAsDataString:=CryptographicRandom(info.ParamAsInteger[0]);
+   RawByteStringToScriptString(CryptographicRandom(args.AsInteger[0]), Result);
 end;
 
-procedure TdwsCryptoLib.dwsCryptoFunctionsCryptographicTokenEval(
-  info: TProgramInfo);
+function TdwsCryptoLib.dwsCryptoFunctionsCryptographicTokenFastEval(
+  const args: TExprBaseListExec): Variant;
 begin
-   info.ResultAsString:=CryptographicToken(info.ParamAsInteger[0]);
+   Result := CryptographicToken(args.AsInteger[0]);
 end;
 
 procedure TdwsCryptoLib.UseTemporaryStorageForNonces;
@@ -375,10 +375,10 @@ begin
                    + '.nonces';
 end;
 
-procedure TdwsCryptoLib.dwsCryptoFunctionsProcessUniqueRandomEval(
-  info: TProgramInfo);
+function TdwsCryptoLib.dwsCryptoFunctionsProcessUniqueRandomFastEval(
+  const args: TExprBaseListExec): Variant;
 begin
-   info.ResultAsString:=ProcessUniqueRandom;
+   VarCopySafe(Result, ProcessUniqueRandom);
 end;
 
 procedure TdwsCryptoLib.dwsCryptoClassesECCsecp256r1MethodsMakeKeyEval(

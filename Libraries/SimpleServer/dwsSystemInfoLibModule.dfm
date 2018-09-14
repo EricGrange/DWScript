@@ -259,29 +259,29 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
             Name = 'Now'
             ResultType = 'Float'
             Attributes = [maClassMethod, maStatic]
-            OnEval = dwsSystemInfoClassesPerformanceCounterMethodsNowEval
+            OnFastEvalFloat = dwsSystemInfoClassesPerformanceCounterMethodsNowFastEvalFloat
             Kind = mkClassFunction
           end
           item
             Name = 'Restart'
-            OnEval = dwsSystemInfoClassesPerformanceCounterMethodsStartEval
+            OnFastEvalNoResult = dwsSystemInfoClassesPerformanceCounterMethodsRestartFastEvalNoResult
             Kind = mkProcedure
           end
           item
             Name = 'Stop'
-            OnEval = dwsSystemInfoClassesPerformanceCounterMethodsStopEval
+            OnFastEvalNoResult = dwsSystemInfoClassesPerformanceCounterMethodsStopFastEvalNoResult
             Kind = mkProcedure
           end
           item
             Name = 'Elapsed'
             ResultType = 'Float'
-            OnEval = dwsSystemInfoClassesPerformanceCounterMethodsElapsedEval
+            OnFastEvalFloat = dwsSystemInfoClassesPerformanceCounterMethodsElapsedFastEvalFloat
             Kind = mkFunction
           end
           item
             Name = 'Running'
             ResultType = 'Boolean'
-            OnEval = dwsSystemInfoClassesPerformanceCounterMethodsRunningEval
+            OnFastEvalBolean = dwsSystemInfoClassesPerformanceCounterMethodsRunningFastEvalBolean
             Kind = mkFunction
           end>
         Constants = <

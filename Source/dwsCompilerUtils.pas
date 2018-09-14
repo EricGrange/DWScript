@@ -416,6 +416,7 @@ var
    helper : THelperSymbol;
    internalFunc : TInternalMagicFunction;
    classSymbol : TClassSymbol;
+   magicMethodSym : TMagicMethodSymbol;
 begin
    if meth is TAliasMethodSymbol then begin
 
@@ -430,13 +431,23 @@ begin
 
    if meth is TMagicMethodSymbol then begin
 
-      if meth is TMagicStaticMethodSymbol then begin
+      magicMethodSym := TMagicMethodSymbol(meth);
+      if magicMethodSym is TMagicStaticMethodSymbol then begin
          dwsFreeAndNil(expr);
-         internalFunc:=TMagicStaticMethodSymbol(meth).InternalFunction;
-         Result:=internalFunc.MagicFuncExprClass.Create(context, scriptPos, meth, internalFunc);
+         internalFunc := TMagicStaticMethodSymbol(meth).InternalFunction;
+         Result := internalFunc.MagicFuncExprClass.Create(context, scriptPos, meth, internalFunc);
       end else begin
-         Result := TMagicMethodExpr.Create(context, scriptPos, meth, expr);
-         TMagicMethodExpr(Result).OnFastEval := TMagicMethodSymbol(meth).OnFastEval;
+         if Assigned(magicMethodSym.OnFastEvalString) then
+            Result := TMagicMethodStringExpr.Create(context, scriptPos, magicMethodSym, expr)
+         else if Assigned(magicMethodSym.OnFastEvalInteger) then
+            Result := TMagicMethodIntegerExpr.Create(context, scriptPos, magicMethodSym, expr)
+         else if Assigned(magicMethodSym.OnFastEvalBoolean) then
+            Result := TMagicMethodBooleanExpr.Create(context, scriptPos, magicMethodSym, expr)
+         else if Assigned(magicMethodSym.OnFastEvalFloat) then
+            Result := TMagicMethodFloatExpr.Create(context, scriptPos, magicMethodSym, expr)
+         else if Assigned(magicMethodSym.OnFastEvalNoResult) then
+            Result := TMagicMethodNoResultExpr.Create(context, scriptPos, magicMethodSym, expr)
+         else Result := TMagicMethodExpr.Create(context, scriptPos, magicMethodSym, expr);
       end;
 
    end else if meth.StructSymbol is TInterfaceSymbol then begin

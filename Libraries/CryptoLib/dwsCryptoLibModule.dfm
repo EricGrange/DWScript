@@ -2,8 +2,6 @@ object dwsCryptoLib: TdwsCryptoLib
   OldCreateOrder = False
   OnCreate = DataModuleCreate
   OnDestroy = DataModuleDestroy
-  Left = 810
-  Top = 86
   Height = 215
   Width = 195
   object dwsCrypto: TdwsUnit
@@ -450,7 +448,7 @@ object dwsCryptoLib: TdwsCryptoLib
                 DefaultValue = ''
               end>
             Attributes = [maStatic]
-            OnEval = dwsCryptoClassesNoncesMethodsRegisterEval
+            OnFastEvalNoResult = dwsCryptoClassesNoncesMethodsRegisterFastEvalNoResult
             Kind = mkClassProcedure
           end
           item
@@ -468,7 +466,7 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maStatic]
-            OnEval = dwsCryptoClassesNoncesMethodsGenerateEval
+            OnFastEvalString = dwsCryptoClassesNoncesMethodsGenerateFastEvalString
             Kind = mkClassFunction
           end
           item
@@ -486,7 +484,7 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'Boolean'
             Attributes = [maStatic]
-            OnEval = dwsCryptoClassesNoncesMethodsCheckAndKeepEval
+            OnFastEvalBolean = dwsCryptoClassesNoncesMethodsCheckAndKeepFastEvalBolean
             Kind = mkClassFunction
           end
           item
@@ -504,7 +502,7 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'Boolean'
             Attributes = [maStatic]
-            OnEval = dwsCryptoClassesNoncesMethodsCheckAndRemoveEval
+            OnFastEvalBolean = dwsCryptoClassesNoncesMethodsCheckAndRemoveFastEvalBolean
             Kind = mkClassFunction
           end
           item
@@ -516,7 +514,7 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'String'
             Attributes = [maStatic]
-            OnEval = dwsCryptoClassesNoncesMethodsGetDataEval
+            OnFastEvalString = dwsCryptoClassesNoncesMethodsGetDataFastEvalString
             Kind = mkClassFunction
           end
           item
@@ -527,7 +525,7 @@ object dwsCryptoLib: TdwsCryptoLib
                 DataType = 'String'
               end>
             Attributes = [maStatic]
-            OnEval = dwsCryptoClassesNoncesMethodsRemoveEval
+            OnFastEvalNoResult = dwsCryptoClassesNoncesMethodsRemoveFastEvalNoResult
             Kind = mkClassProcedure
           end
           item
@@ -538,19 +536,19 @@ object dwsCryptoLib: TdwsCryptoLib
                 DataType = 'String'
               end>
             Attributes = [maStatic]
-            OnEval = dwsCryptoClassesNoncesMethodsRemoveByDataEval
+            OnFastEvalNoResult = dwsCryptoClassesNoncesMethodsRemoveByDataFastEvalNoResult
             Kind = mkClassProcedure
           end
           item
             Name = 'Clear'
             Attributes = [maStatic]
-            OnEval = dwsCryptoClassesNoncesMethodsClearEval
+            OnFastEvalNoResult = dwsCryptoClassesNoncesMethodsClearFastEvalNoResult
             Kind = mkClassProcedure
           end
           item
             Name = 'Collect'
             Attributes = [maStatic]
-            OnEval = dwsCryptoClassesNoncesMethodsCollectEval
+            OnFastEvalNoResult = dwsCryptoClassesNoncesMethodsCollectFastEvalNoResult
             Kind = mkClassProcedure
           end>
       end
@@ -638,12 +636,12 @@ object dwsCryptoLib: TdwsCryptoLib
             DataType = 'Integer'
           end>
         ResultType = 'String'
-        OnEval = dwsCryptoFunctionsCryptographicRandomEval
+        OnFastEval = dwsCryptoFunctionsCryptographicRandomFastEval
       end
       item
         Name = 'ProcessUniqueRandom'
         ResultType = 'String'
-        OnEval = dwsCryptoFunctionsProcessUniqueRandomEval
+        OnFastEval = dwsCryptoFunctionsProcessUniqueRandomFastEval
       end
       item
         Name = 'CryptographicToken'
@@ -655,7 +653,7 @@ object dwsCryptoLib: TdwsCryptoLib
             DefaultValue = 120
           end>
         ResultType = 'String'
-        OnEval = dwsCryptoFunctionsCryptographicTokenEval
+        OnFastEval = dwsCryptoFunctionsCryptographicTokenFastEval
       end>
     UnitName = 'System.Crypto'
     StaticSymbols = True

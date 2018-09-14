@@ -21,7 +21,7 @@ interface
 uses
   Windows, SysUtils, Classes, Registry, PsAPI, ImageHlp,
   dwsExprList, dwsDataContext, dwsComp, dwsExprs, dwsUtils, dwsCPUUsage,
-  dwsXPlatform, dwsInfo;
+  dwsXPlatform, dwsInfo, dwsSymbols;
 
 type
    TOSNameVersion = record
@@ -102,20 +102,20 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsSystemInfoClassesHostInfoMethodsDomainControllerInfoEval(
       Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsSystemInfoClassesPerformanceCounterMethodsStartEval(
-      Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsSystemInfoClassesPerformanceCounterMethodsStopEval(
-      Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsSystemInfoClassesPerformanceCounterMethodsElapsedEval(
-      Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsSystemInfoClassesPerformanceCounterMethodsRunningEval(
-      Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsSystemInfoClassesPerformanceCounterMethodsNowEval(
-      Info: TProgramInfo; ExtObject: TObject);
     procedure dwsSystemInfoClassesPerformanceCounterCleanUp(
       ExternalObject: TObject);
     procedure dwsSystemInfoClassesPerformanceCounterConstructorsCreateEval(
       Info: TProgramInfo; var ExtObject: TObject);
+    procedure dwsSystemInfoClassesPerformanceCounterMethodsRestartFastEvalNoResult(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec);
+    procedure dwsSystemInfoClassesPerformanceCounterMethodsStopFastEvalNoResult(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec);
+    function dwsSystemInfoClassesPerformanceCounterMethodsElapsedFastEvalFloat(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Double;
+    function dwsSystemInfoClassesPerformanceCounterMethodsRunningFastEvalBolean(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
+    function dwsSystemInfoClassesPerformanceCounterMethodsNowFastEvalFloat(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec): Double;
   private
     { Private declarations }
     FOSNameVersion : TOSNameVersion;
@@ -726,45 +726,59 @@ begin
    QueryPerformanceCounter(TPerformanceCounter(ExtObject).StartTime);
 end;
 
-procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsStartEval(
-  Info: TProgramInfo; ExtObject: TObject);
-begin
-   TPerformanceCounter(ExtObject).StopTime := 0;
-   QueryPerformanceCounter(TPerformanceCounter(ExtObject).StartTime);
-end;
-
-procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsStopEval(
-  Info: TProgramInfo; ExtObject: TObject);
-begin
-   if TPerformanceCounter(ExtObject).StopTime = 0 then
-      QueryPerformanceCounter(TPerformanceCounter(ExtObject).StopTime);
-end;
-
-procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsElapsedEval(
-  Info: TProgramInfo; ExtObject: TObject);
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsRestartFastEvalNoResult(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec);
 var
+   obj : IScriptObj;
+   pc : TPerformanceCounter;
+begin
+   baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
+   pc := (obj.ExternalObject as TPerformanceCounter);
+   pc.StopTime := 0;
+   QueryPerformanceCounter(pc.StartTime);
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsStopFastEvalNoResult(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec);
+var
+   obj : IScriptObj;
+   pc : TPerformanceCounter;
+begin
+   baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
+   pc := (obj.ExternalObject as TPerformanceCounter);
+   if pc.StopTime = 0 then
+      QueryPerformanceCounter(pc.StopTime);
+end;
+
+function TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsElapsedFastEvalFloat(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Double;
+var
+   obj : IScriptObj;
+   pc : TPerformanceCounter;
    t : Int64;
 begin
-   t := TPerformanceCounter(ExtObject).StopTime;
+   baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
+   pc := (obj.ExternalObject as TPerformanceCounter);
+   t := pc.StopTime;
    if t = 0 then
       QueryPerformanceCounter(t);
-   t := t - TPerformanceCounter(ExtObject).StartTime;
-   Info.ResultAsFloat := t * vPerformanceInverseFrequency;
+   t := t - pc.StartTime;
+   Result := t * vPerformanceInverseFrequency;
 end;
 
-procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsRunningEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsRunningFastEvalBolean(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
 begin
-   Info.ResultAsBoolean := (TPerformanceCounter(ExtObject).StopTime = 0)
+   Result := ((baseExpr.EvalAsSafeScriptObj(args.Exec).ExternalObject as TPerformanceCounter).StopTime = 0);
 end;
 
-procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsNowEval(
-  Info: TProgramInfo; ExtObject: TObject);
+function TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsNowFastEvalFloat(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec): Double;
 var
    t : Int64;
 begin
    QueryPerformanceCounter(t);
-   Info.ResultAsFloat := t * vPerformanceInverseFrequency;
+   Result := t * vPerformanceInverseFrequency;
 end;
 
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterCleanUp(

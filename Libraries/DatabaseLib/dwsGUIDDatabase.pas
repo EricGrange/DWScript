@@ -68,7 +68,7 @@ type
          constructor Create(dataSet : TdwsGUIDDataSet; fieldIndex : Integer);
 
          function IsNull : Boolean; override;
-         function AsString : String; override;
+         procedure AsString(var Result : String); override;
          function AsInteger : Int64; override;
          function AsFloat : Double; override;
          function AsBlob : RawByteString; override;
@@ -284,7 +284,7 @@ end;
 
 // AsString
 //
-function TdwsGUIDDataField.AsString : String;
+procedure TdwsGUIDDataField.AsString(var Result : String);
 var
    ds : TdwsGUIDDataSet;
 begin
