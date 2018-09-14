@@ -1,4 +1,5 @@
 var t := StrToTime('12:24:36');
+PrintLn(t.ToString(5));
 
 var s := TimeToStr(t);
 PrintLn(s);
