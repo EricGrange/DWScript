@@ -1,0 +1,7 @@
+*MainModule*,1
+*MainModule*,2
+include_expr.inc,1
+include_expr.inc,2
+*Main*
+MyFunc
+TMyClass.MyMethod

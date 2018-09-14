@@ -680,7 +680,7 @@ const
        Dependency : 'FormatDateTime' ),
       (Name : 'DateTimeToRFC822';
        Code : 'function DateTimeToRFC822(v) {'#13#10
-               +#9'return new Date(Math.round((v-25569)*864e5));'#13#10
+               +#9'return (new Date(Math.round((v-25569)*864e5))).toUTCString();'#13#10
                +'}' ),
       (Name : 'DateTimeToStr';
        Code : 'function DateTimeToStr(v, u) { return FormatDateTime($fmt.ShortDateFormat+" "+$fmt.LongTimeFormat, v, u) }';
@@ -865,7 +865,12 @@ const
       (Name : 'IntPower$_Float_Integer_';
        Code : 'var IntPower$_Float_Integer_ = Math.pow'),
       (Name : 'ISO8601ToDateTime';
-       Code : 'function ISO8601ToDateTime(s) { return Date.parse(s)/864e5+25569 }'),
+       Code : 'function ISO8601ToDateTime(s) {'#13#10
+              +#9'var r = Date.parse(s)/864e5+25569;'#13#10
+              +#9'if (isNaN(r)) throw Exception.Create($New(Exception),"Invalid ISO8601")'#13#10
+              +#9'return r;'#13#10
+              +'}';
+       Dependency : 'Exception' ),
       (Name : 'IntToBin';
        Code : 'function IntToBin(v,d) { var r=v.toString(2); while (r.length<d) r="0"+r; return r }'),
       (Name : 'IntToHex';
@@ -959,7 +964,7 @@ const
        Dependency : 'StringOfString' ),
       (Name : 'ParseDateTime';
        Code : 'function ParseDateTime(f, s, u) { return strToDateTimeDef(f, s, 0, u) }';
-       Dependency : '!strToDateTimeDef_js'; Dependency2 : '$TZ'),
+       Dependency : '!strToDateTimeDef_js'; Dependency2 : 'FormatDateTime'),
       (Name : 'Pos';
        Code : 'function Pos(a,b) { return b.indexOf(a)+1 }'),
       (Name : 'PosEx';
@@ -1071,16 +1076,16 @@ const
        Code : 'function StrToBool(s) { return (/^(t|y|1|true|yes)$/i).test(s) }'),
       (Name : 'StrToDate';
        Code : 'function StrToDate(s,u) { return strToDateTimeDef($fmt.ShortDateFormat, s, 0, u) }';
-       Dependency : '!strToDateTimeDef_js'; Dependency2 : '$TZ'),
+       Dependency : '!strToDateTimeDef_js'; Dependency2 : 'FormatDateTime'),
       (Name : 'StrToDateDef';
        Code : 'function StrToDateDef(s,d,u) { return strToDateTimeDef($fmt.ShortDateFormat, s, d, u) }';
-       Dependency : '!strToDateTimeDef_js'; Dependency2 : '$TZ'),
+       Dependency : '!strToDateTimeDef_js'; Dependency2 : 'FormatDateTime'),
       (Name : 'StrToDateTime';
-       Code : 'function StrToDateTime(s,u) { return strToDateTimeDef($fmt.ShortDateFormat+" "+$fmt.LongTimeFormat, s, 0, u) }';
-       Dependency : '!strToDateTimeDef_js'; Dependency2 : '$TZ'),
+       Code : 'function StrToDateTime(s,u) { return strToDateTimeDef($fmt.ShortDateFormat+" "+$fmt.LongTimeFormat, s, 0, u) || strToDateTimeDef($fmt.ShortDateFormat, s, 0, u) }';
+       Dependency : '!strToDateTimeDef_js'; Dependency2 : 'FormatDateTime'),
       (Name : 'StrToDateTimeDef';
-       Code : 'function StrToDateTimeDef(s,d,u) { return strToDateTimeDef($fmt.ShortDateFormat+" "+$fmt.LongTimeFormat, s, d, u) }';
-       Dependency : '!strToDateTimeDef_js'; Dependency2 : '$TZ'),
+       Code : 'function StrToDateTimeDef(s,d,u) { return strToDateTimeDef($fmt.ShortDateFormat+" "+$fmt.LongTimeFormat, s, 0, u) || strToDateTimeDef($fmt.ShortDateFormat, s, d, u) }';
+       Dependency : '!strToDateTimeDef_js'; Dependency2 : 'FormatDateTime'),
       (Name : 'StrToFloat';
        Code : 'function StrToFloat(v) { return parseFloat(v) }'),
       (Name : 'StrToFloatDef';

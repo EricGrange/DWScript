@@ -1,0 +1,6 @@
+Errors >>>>
+Hint: "println" does not match case of declaration ("PrintLn") [line: 6, column: 4]
+Hint: "println" does not match case of declaration ("PrintLn") [line: 13, column: 1]
+Result >>>>
+Object not instantiated [line: 6, column: 14]
+TObject

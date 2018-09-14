@@ -491,14 +491,16 @@ var
    dth : Double;
    match, previousWasHour, hourToken : Boolean;
 
-   procedure GrabDigits(nbDigits : Integer);
+   function GrabDigits(nbDigits : Integer) : Boolean;
    begin
+      Result := False;
       while (nbDigits>0) and (p<=Length(str)) do begin
          Dec(nbDigits);
          case str[p] of
             '0'..'9' : begin
                value:=value*10+Ord(str[p])-Ord('0');
                Inc(p);
+               Result := True;
             end;
          else
             break;
@@ -546,7 +548,10 @@ begin
                'm', 'd', 'h', 'n', 's' : GrabDigits(1);
                'z' : GrabDigits(2);
             end;
-         2 : if tok='yy' then GrabDigits(2);
+         2 : if tok='yy' then begin
+            if GrabDigits(2) then
+               tok := 'yyyy';
+         end;
       end;
 
       hourToken:=False;
