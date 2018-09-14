@@ -1,4 +1,4 @@
-var dt := 42000.42;
+var dt := EncodeDate(2014, 12, 13) + EncodeTime(10, 4, 0, 0);
 
 PrintLn(FormatDateTime('a yyy', dt));
 PrintLn(FormatDateTime('"hh" ''nn''', dt));

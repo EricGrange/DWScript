@@ -91,7 +91,7 @@ type
          TimeNeeded, DateNeeded : Boolean;
 
          procedure AddToken(tok : TDateTimeToken);
-         procedure AddLitteral(const s : String);
+         procedure AddLiteral(const s : String);
 
       public
          constructor Create(const fmt : String);
@@ -220,7 +220,7 @@ begin
                   Inc(p, 2);
                end;
             end else begin
-               AddLitteral('y');
+               AddLiteral('y');
                Inc(p);
             end;
          end;
@@ -234,7 +234,7 @@ begin
             end;
          end;
          'n', 'N' : begin
-            if (p[1] = 'n') or (p[1] = 'n') then begin
+            if (p[1] = 'n') or (p[1] = 'N') then begin
                AddToken(_nn);
                Inc(p, 2);
             end else begin
@@ -243,7 +243,7 @@ begin
             end;
          end;
          's', 'S' : begin
-            if (p[1] = 's') or (p[1] = 's') then begin
+            if (p[1] = 's') or (p[1] = 'S') then begin
                AddToken(_ss);
                Inc(p, 2);
             end else begin
@@ -271,7 +271,7 @@ begin
                AddToken(_a_p);
                Inc(p, 3);
             end else begin
-               AddLitteral('a');
+               AddLiteral('a');
                Inc(p);
             end;
          end;
@@ -283,13 +283,13 @@ begin
             Inc(quoteStart);
             if quoteStart <> p then begin
                SetString(buf, quoteStart, (NativeUInt(p)-NativeUInt(quoteStart)) div SizeOf(Char));
-               AddLitteral(buf);
+               AddLiteral(buf);
             end;
             if p^ <> #0 then
                Inc(p);
          end;
       else
-         AddLitteral(p^);
+         AddLiteral(p^);
          Inc(p);
       end;
    end;
@@ -411,9 +411,9 @@ begin
    Items[n].Token := tok;
 end;
 
-// AddLitteral
+// AddLiteral
 //
-procedure TdwsDateTimeFormatter.AddLitteral(const s : String);
+procedure TdwsDateTimeFormatter.AddLiteral(const s : String);
 var
    n : Integer;
 begin
