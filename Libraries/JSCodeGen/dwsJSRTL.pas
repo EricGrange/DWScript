@@ -146,7 +146,7 @@ implementation
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..274] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..280] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -511,15 +511,16 @@ const
       (Name : '$SetMul';
        code : 'function $SetMul(a,b) { var r=[]; for(var i=0;i<a.length;i++) r.push(a[i]&b[i]); return r }'),
       (Name : '$TZ';
-       code : 'var $TZ = 1;'#13#10
-              +'var $fmt = { '#13#10
-              +#9'ShortDayNames : [ "sun", "mon", "tue", "wed", "thu", "fri", "sat" ],'#13#10
-              +#9'LongDayNames : [ "sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday" ],'#13#10
-              +#9'ShortMonthNames : [ "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec" ],'#13#10
-              +#9'LongMonthNames : [ "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december" ],'#13#10
+       code : 'var $TZ = 1, $fmt = { '#13#10
+              +#9'ShortDayNames : [ "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" ],'#13#10
+              +#9'LongDayNames : [ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" ],'#13#10
+              +#9'ShortMonthNames : [ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ],'#13#10
+              +#9'LongMonthNames : [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ],'#13#10
               +#9'ShortDateFormat : "yyyy-mm-dd",'#13#10
               +#9'ShortTimeFormat : "hh:nn",'#13#10
-              +#9'LongTimeFormat : "hh:nn:ss"'#13#10
+              +#9'LongTimeFormat : "hh:nn:ss",'#13#10
+              +#9'TimeAMString : "AM",'#13#10
+              +#9'TimePMString : "PM"'#13#10
               +'}'),
 
       // RTL classes
@@ -648,6 +649,14 @@ const
       (Name : 'CompareText';
        Code : 'function CompareText(a,b) { return CompareStr(a.toUpperCase(), b.toUpperCase()) }';
        Dependency : 'CompareStr'),
+      (Name : 'CompareNum$_Integer_Integer_';
+       Code : 'function CompareNum$_Integer_Integer_(a,b) { return a>b?1:a<b?-1:0 }'),
+      (Name : 'CompareNum$_Float_Integer_';
+       Code : 'function CompareNum$_Float_Integer_(a,b) { return a>b?1:a<b?-1:0 }'),
+      (Name : 'CompareNum$_Integer_Float_';
+       Code : 'function CompareNum$_Integer_Float_(a,b) { return a>b?1:a<b?-1:0 }'),
+      (Name : 'CompareNum$_Float_Float_';
+       Code : 'function CompareNum$_Float_Float_(a,b) { return a>b?1:a<b?-1:0 }'),
       (Name : 'Copy';
        Code : 'function Copy(s,f,n) { return s.substr(f-1,n) }'),
       (Name : 'Cos';
@@ -902,6 +911,8 @@ const
        Code : 'function LogN(n,x) { return Math.log(x)/Math.log(n) }'),
       (Name : 'LowerCase';
        Code : 'function LowerCase(v) { return v.toLowerCase() }'),
+      (Name : 'MaxInt$_';
+       Code : 'function MaxInt$_() { return 9007199254740991 };'),
       (Name : 'Max$_Float_Float_';
        Code : 'function Max$_Float_Float_(a,b) { return (a>b)?a:b }'),
       (Name : 'Max$_Integer_Integer_';
@@ -1176,6 +1187,8 @@ const
        Code : 'function VarIsStr(v) { return typeof v === "string" }'),
       (Name : 'VarToStr';
        Code : 'function VarToStr(v) { return (typeof v === "undefined")?"":v.toString() }'),
+      (Name : 'VarToFloatDef';
+       Code : 'function VarToFloatDef(v, d) { if (v == null) return d; var r = parseFloat(v); return isNaN(r) ? d : r }'),
       (Name : 'VarType';
        Code : 'function VarType(v) {'#13#10
                +#9'switch (Object.prototype.toString.call(v)) {'#13#10
@@ -1284,8 +1297,8 @@ begin
    FMagicCodeGens.AddObject('ArcTan', TdwsExprGenericCodeGen.Create(['Math.atan', '(', 0, ')']));
    FMagicCodeGens.AddObject('ArcTan2', TdwsExprGenericCodeGen.Create(['Math.atan2', '(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('Ceil', TdwsExprGenericCodeGen.Create(['Math.ceil', '(', 0, ')']));
-   FMagicCodeGens.AddObject('Cos', TdwsExprGenericCodeGen.Create(['Math.cos', '(', 0, ')']));
    FMagicCodeGens.AddObject('Copy', TJSStrCopyFuncExpr.Create);
+   FMagicCodeGens.AddObject('Cos', TdwsExprGenericCodeGen.Create(['Math.cos', '(', 0, ')']));
    FMagicCodeGens.AddObject('MidStr', TJSStrCopyFuncExpr.Create);
    FMagicCodeGens.AddObject('Exp', TdwsExprGenericCodeGen.Create(['Math.exp', '(', 0, ')']));
    FMagicCodeGens.AddObject('FloatToStr$_Float_', TJSFloatToStrExpr.Create);
