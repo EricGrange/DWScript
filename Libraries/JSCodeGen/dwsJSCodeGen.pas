@@ -476,12 +476,17 @@ type
          procedure CodeGenCall(codeGen : TdwsCodeGen; expr : TStringArraySetExpr); override;
    end;
 
-   TJSAssociativeArrayGetExpr = class (TJSExprCodeGen)
+   TJSAssociativeArrayExpr = class (TJSExprCodeGen)
+      protected
+         class procedure CheckSupportedKeyType(keyTyp : TTypeSymbol); static;
+   end;
+
+   TJSAssociativeArrayGetExpr = class (TJSAssociativeArrayExpr)
       public
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
-   TJSAssociativeArraySetExpr = class (TJSExprCodeGen)
+   TJSAssociativeArraySetExpr = class (TJSAssociativeArrayExpr)
       public
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -1282,6 +1287,7 @@ begin
    RegisterCodeGen(TArrayDeleteExpr,               TJSArrayDeleteExpr.Create);
    RegisterCodeGen(TArrayIndexOfExpr,              TJSArrayIndexOfExpr.Create);
    RegisterCodeGen(TDynamicArrayIndexOfExpr,       TJSArrayIndexOfExpr.Create);
+   RegisterCodeGen(TStaticArrayIndexOfExpr,        TJSArrayIndexOfExpr.Create);
    RegisterCodeGen(TArrayRemoveExpr,               TJSArrayRemoveExpr.Create);
    RegisterCodeGen(TArrayInsertExpr,               TJSArrayInsertExpr.Create);
    RegisterCodeGen(TArrayMoveExpr,                 TJSArrayMoveExpr.Create);
@@ -5491,6 +5497,25 @@ begin
 end;
 
 // ------------------
+// ------------------ TJSAssociativeArrayExpr ------------------
+// ------------------
+
+// CheckSupportedKeyType
+//
+class procedure TJSAssociativeArrayExpr.CheckSupportedKeyType(keyTyp : TTypeSymbol);
+begin
+   if not (   keyTyp.UnAliasedTypeIs(TBaseStringSymbol)
+           or keyTyp.UnAliasedTypeIs(TBaseIntegerSymbol)
+           or keyTyp.UnAliasedTypeIs(TBaseFloatSymbol)
+           or keyTyp.UnAliasedTypeIs(TBaseBooleanSymbol)) then begin
+      raise ECodeGenException.CreateFmt(
+         'Only String, Integer, Float or Boolean keys are supported, got "%s"',
+         [ keyTyp.Name ]
+      );
+   end;
+end;
+
+// ------------------
 // ------------------ TJSAssociativeArrayGetExpr ------------------
 // ------------------
 
@@ -5504,8 +5529,7 @@ begin
    e:=TAssociativeArrayGetExpr(expr);
 
    keyTyp := e.KeyExpr.Typ;
-   Assert(keyTyp.UnAliasedTypeIs(TBaseStringSymbol) or keyTyp.UnAliasedTypeIs(TBaseIntegerSymbol),
-          'Only String or Integer keys supported');
+   CheckSupportedKeyType(keyTyp);
    valueTyp := e.Typ.UnAliasedType;
    Assert(not ((valueTyp is TRecordSymbol) or (valueTyp is TStaticArraySymbol)),
           'Associative array record or static array values are not supported yet');
@@ -5533,8 +5557,7 @@ begin
    e:=TAssociativeArraySetExpr(expr);
 
    keyTyp := e.KeyExpr.Typ;
-   Assert(keyTyp.UnAliasedTypeIs(TBaseStringSymbol) or keyTyp.UnAliasedTypeIs(TBaseIntegerSymbol),
-          'Only String or Integer keys supported');
+   CheckSupportedKeyType(keyTyp);
    valueTyp := e.ValueExpr.Typ.UnAliasedType;
    Assert(not ((valueTyp is TRecordSymbol) or (valueTyp is TStaticArraySymbol)),
           'Associative array record or static array values are not supported yet');

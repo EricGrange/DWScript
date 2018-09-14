@@ -77,6 +77,7 @@ const
 var
    pasFilter : String;
    dwsFilter : String;
+   i : Integer;
 begin
    SetDecimalSeparator('.');
 
@@ -99,7 +100,11 @@ begin
    CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsString'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsTime'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsVariant'+PathDelim, pasFilter, FTests);
-   CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsRTTI'+PathDelim, pasFilter, FTests);
+   //CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsRTTI'+PathDelim, pasFilter, FTests);
+
+   for i := FTests.Count-1 downto 0 do
+      if Pos('array_element_var', FTests[i]) > 0 then
+         FTests.Delete(i);
 
    FCompiler:=TDelphiWebScript.Create(nil);
    FCompiler.OnInclude:=DoInclude;
@@ -161,35 +166,22 @@ end;
 // DoInclude
 //
 procedure TJSCodeGenTests.DoInclude(const scriptName: string; var scriptSource: string);
-var
-   sl : TStringList;
 begin
-   sl:=TStringList.Create;
-   try
-      sl.LoadFromFile('SimpleScripts\'+scriptName);
-      scriptSource:=sl.Text;
-   finally
-      sl.Free;
-   end;
+   scriptSource := LoadTextFromFile('SimpleScripts\'+scriptName);
+   if scriptSource = '' then
+      scriptSource := LoadTextFromFile('BuildScripts\'+scriptName);
 end;
 
 // DoNeedUnit
 //
 function TJSCodeGenTests.DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
 var
-   sl : TStringList;
    fName : String;
 begin
-   fName:='BuildScripts\' + unitName + '.pas';
-   if not FileExists(fName) then Exit(nil);
-   sl := TStringList.Create;
-   try
-      sl.LoadFromFile(fName);
-      unitSource := sl.Text;
-   finally
-      sl.Free;
-   end;
-   Result:=nil;
+   Result := nil;
+   fName := 'BuildScripts\' + unitName + '.pas';
+   if FileExists(fName) then
+      unitSource := LoadTextFromFile(fName);
 end;
 
 // Compilation
@@ -214,7 +206,7 @@ begin
             FCompiler.Config.HintsLevel:=hlPedantic
          else FCompiler.Config.HintsLevel:=hlStrict;
 
-         prog:=FCompiler.Compile(source.Text);
+         prog:=FCompiler.Compile(source.Text, ExtractFileName(FTests[i]));
 
          if prog.Msgs.HasErrors then begin
             CheckEquals(GetExpectedResult(FTests[i]),
@@ -346,7 +338,7 @@ begin
             FCompiler.Config.HintsLevel:=hlStrict
          else FCompiler.Config.HintsLevel:=hlPedantic;
 
-         prog:=FCompiler.Compile(source.Text);
+         prog:=FCompiler.Compile(source.Text, ExtractFileName(FTests[i]));
 
          if prog.Msgs.HasErrors then begin
             CheckEquals(GetExpectedResult(FTests[i]),
