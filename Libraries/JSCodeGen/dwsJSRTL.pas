@@ -146,7 +146,7 @@ implementation
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..284] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..285] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -629,6 +629,9 @@ const
        Code : 'function ArcTanh(v) { return 0.5*Math.log((1+v)/(1-v)) }'),
       (Name : 'BoolToStr';
        Code : 'function BoolToStr(b) { return b?"True":"False" }'),
+      (Name : 'ByteSizeToStr';
+       Code : '';
+       Dependency : '!byteSizeToStr_js' ),
       (Name : 'Ceil';
        Code : 'var Ceil = Math.ceil'),
       (Name : 'CharAt';
@@ -1047,7 +1050,7 @@ const
        Code : 'function StrBetween(s,d,f) { return StrBefore(StrAfter(s, d), f) }';
        Dependency: 'StrAfter'; Dependency2: 'StrBefore'),
       (Name : 'StrBeginsWith';
-       Code : 'function StrBeginsWith(s,b) { return s.substr(0, b.length)==b }'),
+       Code : 'function StrBeginsWith(s,b) { return (b.length > 0) ? s.substr(0, b.length)==b : false }'),
       (Name : 'StrContains';
        Code : 'function StrContains(s,b) { return s.indexOf(b)>=0 }'),
       (Name : 'StrDeleteLeft';
@@ -1602,7 +1605,7 @@ begin
 
       c:=TConstStringExpr(a);
       case Length(c.Value) of
-         0 : codeGen.WriteString('true');
+         0 : codeGen.WriteString('false');
          1 : begin
             codeGen.WriteString('(');
             codeGen.Compile(e.Args[0]);
