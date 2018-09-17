@@ -21,7 +21,7 @@ interface
 uses
    Windows, SysUtils, Classes, Types,
    dwsComp, dwsExprs, dwsUtils, dwsXPlatform, dwsTokenStore, dwsCryptoXPlatform,
-   dwsXXHash, dwsExprList;
+   dwsXXHash, dwsExprList, dwsSymbols;
 
 type
   TdwsCryptoLib = class(TDataModule)
