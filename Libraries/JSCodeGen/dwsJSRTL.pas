@@ -146,7 +146,7 @@ implementation
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..287] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..290] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -469,6 +469,10 @@ const
       (Name : '$uniCharCodeAt';
        Code : '';
        Dependency : '!unicharcodeat_js' ),
+      (Name : '$Not';
+       Code : 'function $Not(v) { return typeof v === "number" ? ~v : !v }'),
+      (Name : '$Xor';
+       Code : 'function $Xor(a,b) { return typeof a === "number" ? a^b : a != b  && a || b }'),
       (Name : '$Div';
        Code : 'function $Div(a,b) { var r=a/b; return (r>=0)?Math.floor(r):Math.ceil(r) }'),
       (Name : '$Sign';
@@ -1218,6 +1222,8 @@ const
        Code : 'function VarIsStr(v) { return typeof v === "string" }'),
       (Name : 'VarToStr';
        Code : 'function VarToStr(v) { return (typeof v === "undefined")?"":v.toString() }'),
+      (Name : '$VarToBool';
+       Code : 'function $VarToBool(v) { return !!(typeof v == "string" ? {"1":1,"t":1,"y":1,"true":1}[v.toLowerCase()] : v) }'),
       (Name : 'VarToFloatDef';
        Code : 'function VarToFloatDef(v, d) {'#13#10
                + #9'if (v == null) return v === undefined ? d : 0;'#13#10

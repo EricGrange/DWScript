@@ -1042,7 +1042,7 @@ begin
    RegisterCodeGen(TConvVarToFloatExpr,   TJSConvFloatExpr.Create);
    RegisterCodeGen(TConvIntToBoolExpr,    TdwsExprGenericCodeGen.Create(['(', 0, '?true:false)']));
    RegisterCodeGen(TConvFloatToBoolExpr,  TdwsExprGenericCodeGen.Create(['(', 0, '?true:false)']));
-   RegisterCodeGen(TConvVarToBoolExpr,    TdwsExprGenericCodeGen.Create(['(', 0, '?true:false)']));
+   RegisterCodeGen(TConvVarToBoolExpr,    TdwsExprGenericCodeGen.Create(['$VarToBool', '(', 0, ')'], gcgExpression, '$VarToBool'));
    RegisterCodeGen(TConvVarToStringExpr,  TJSConvStringExpr.Create);
    RegisterCodeGen(TConvStaticArrayToDynamicExpr, TJSConvStaticArrayToDynamicExpr.Create);
    RegisterCodeGen(TConvVariantExpr,      TdwsExprGenericCodeGen.Create([0]));
@@ -1155,9 +1155,8 @@ begin
 
    RegisterCodeGen(TVariantAndExpr,    TJSBinOpExpr.Create('&&', 6, [associativeLeft, associativeRight]));
    RegisterCodeGen(TVariantOrExpr,     TJSBinOpExpr.Create('||', 5, [associativeLeft, associativeRight]));
-   RegisterCodeGen(TVariantXorExpr,    TJSBinOpExpr.Create('^', 8, [associativeLeft, associativeRight]));
-   RegisterCodeGen(TNotVariantExpr,
-      TdwsExprGenericCodeGen.Create(['(', '!', 0, ')']));
+   RegisterCodeGen(TVariantXorExpr,    TdwsExprGenericCodeGen.Create(['$Xor', '(', 0, ',', 1, ')'], gcgExpression, '$Xor'));
+   RegisterCodeGen(TNotVariantExpr,    TdwsExprGenericCodeGen.Create(['$Not', '(', 0, ')'], gcgExpression, '$Not'));
 
    RegisterCodeGen(TAssignedInstanceExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '!==null', ')']));

@@ -38,7 +38,7 @@ PrintLn(v);
 
 v := '123.5';
 PrintLn(FloatToStr(v));
-v := '12,35';
+v := {$ifdef JS_CODEGEN}'12.35'{$else}'12,35'{$endif};
 PrintLn(FloatToStr(v));
 
 
