@@ -410,9 +410,6 @@ type
    TJSArraySortExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSArrayReverseExpr = class (TJSExprCodeGen)
-      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
-   end;
    TJSArrayMapExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -1296,9 +1293,8 @@ begin
    RegisterCodeGen(TArrayMoveExpr,                 TJSArrayMoveExpr.Create);
    RegisterCodeGen(TArrayCopyExpr,                 TJSArrayCopyExpr.Create);
    RegisterCodeGen(TArraySwapExpr,                 TJSArraySwapExpr.Create);
-   RegisterCodeGen(TArrayReverseExpr,              TdwsExprGenericCodeGen.Create([0, '.reverse()'], gcgStatement));
+   RegisterCodeGen(TArrayReverseExpr,              TJSArrayTypedFluentExpr.Create('.reverse()', ''));
    RegisterCodeGen(TArraySortExpr,                 TJSArraySortExpr.Create);
-   RegisterCodeGen(TArrayReverseExpr,              TJSArrayReverseExpr.Create);
    RegisterCodeGen(TArrayMapExpr,                  TJSArrayMapExpr.Create);
    RegisterCodeGen(TArrayConcatExpr,               TJSArrayConcatExpr.Create);
    RegisterCodeGen(TArraySortNaturalStringExpr,    TJSArrayTypedFluentExpr.Create('.sort()', ''));
@@ -7167,23 +7163,6 @@ begin
 end;
 
 // ------------------
-// ------------------ TJSArrayReverseExpr ------------------
-// ------------------
-
-// CodeGen
-//
-procedure TJSArrayReverseExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
-var
-   e : TArrayReverseExpr;
-begin
-   e:=TArrayReverseExpr(expr);
-
-   codeGen.Compile(e.BaseExpr);
-   codeGen.WriteString('.reverse()');
-   codeGen.WriteStatementEnd;
-end;
-
-// ------------------
 // ------------------ TJSArraySortExpr ------------------
 // ------------------
 
@@ -7401,7 +7380,7 @@ begin
       WriteLocationString(codeGen, expr);
    end;
 
-   codeGen.WriteStringLn(');');
+   codeGen.WriteString(')');
 end;
 
 // ------------------

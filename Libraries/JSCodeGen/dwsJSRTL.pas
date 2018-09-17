@@ -202,12 +202,13 @@ const
               +'}';
        Dependency : '$Idx'; Dependency2 : '$ArrayMove' ),
       (Name : '$ArraySwap';
-       Code : 'function $ArraySwap(a,i1,i2) { var t=a[i1]; a[i1]=a[i2]; a[i2]=t }' ),
+       Code : 'function $ArraySwap(a,i1,i2) { var t=a[i1]; a[i1]=a[i2]; a[i2]=t; return a }' ),
       (Name : '$ArraySwapChk';
        Code : 'function $ArraySwapChk(a,i1,i2,z) {'#13#10
               +#9'var n=a.length-1, t=a[$Idx(i1,0,n,z)];'#13#10
               +#9'a[i1]=a[$Idx(i2,0,n,z)]'#13#10
               +#9'a[i2]=t;'#13#10
+              +#9'return a;'#13#10
               +'}';
        Dependency : '$Idx' ),
       (Name : '$CmpNum';
