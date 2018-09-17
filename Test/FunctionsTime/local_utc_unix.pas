@@ -7,5 +7,5 @@ var utc := LocalDateTimeToUTCDateTime(lt);
 
 PrintLn(Abs(UTCDateTimeToLocalDateTime(utc)-lt)*864e5 < 1);
 
-PrintLn(utc*86400 - ut); 
+PrintLn((utc*86400 - ut).ToString(1)); 
 

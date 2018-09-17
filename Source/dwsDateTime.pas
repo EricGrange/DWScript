@@ -40,7 +40,7 @@ type
 
          constructor Create;
 
-         function FormatDateTime(const fmt : String; dt : Double; tz : TdwsTimeZone) : String;
+         function FormatDateTime(const fmt : String; dt : TDateTime; tz : TdwsTimeZone) : String;
          function DateTimeToStr(const dt : TDateTime; tz : TdwsTimeZone) : String;
          function DateToStr(const dt : TDateTime; tz : TdwsTimeZone) : String;
          function TimeToStr(const dt : TDateTime; tz : TdwsTimeZone) : String;
@@ -443,7 +443,7 @@ end;
 // FormatDateTime
 //
 // Clean Room implementation based strictly on the format String
-function TdwsFormatSettings.FormatDateTime(const fmt : String; dt : Double; tz : TdwsTimeZone) : String;
+function TdwsFormatSettings.FormatDateTime(const fmt : String; dt : TDateTime; tz : TdwsTimeZone) : String;
 begin
    if fmt = '' then Exit;
 
@@ -656,7 +656,11 @@ begin
             Result:=True;
          end;
       end else begin
-         dt:=dth;
+         if (tz=tzUTC) or ((tz=tzDefault) and (TimeZone=tzUTC)) then begin
+            dt := Frac(LocalDateTimeToUTCDateTime(Trunc(Now) + dth));
+         end else begin
+            dt := dth;
+         end;
          Result:=True;
       end;
    end;

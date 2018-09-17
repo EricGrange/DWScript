@@ -42,7 +42,7 @@ function strToDateTimeDef(fmt, str_dt, def, utc) {
                         year = year * (( k == oldK + 1) ? 10 : 100) + decades;
                     } else {
                         var currentYear = (new Date()).getFullYear();
-                        year = Math.round(currentYear/100)*100 + getInt(2) + (getVar(2) || 0);
+                        year = Math.round(currentYear/100)*100 + year;
                         if (year > currentYear + 50) year -= 100;
                     }
                     if (isNaN(year)) return def;

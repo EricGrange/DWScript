@@ -118,7 +118,7 @@ begin
    FFolderPath := ExtractFilePath(ParamStr(0))+FFolder+PathDelim;
 
    FTests:=TStringList.Create;
-   CollectFiles(FFolderPath, 'strtodatedef*.pas', FTests);
+   CollectFiles(FFolderPath, '*.pas', FTests);
 end;
 
 // TearDown

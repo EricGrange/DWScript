@@ -1,4 +1,4 @@
-
+﻿
 FormatSettings.ShortDateFormat := '= mm-dd';
 FormatSettings.ShortTimeFormat := '= hh-nn';
 FormatSettings.LongDateFormat := '= yy-mm-dd';
@@ -6,7 +6,7 @@ FormatSettings.LongTimeFormat := '= hh-nn-ss';
 FormatSettings.TimeAMString := 'Xx';
 FormatSettings.TimePMString := 'Yy';
 
-var t := 42000.42;
+var t := ParseDateTime('dd/mm/yyyy hh:nn:ss', '27/12/2014 10:04:48');
 
 PrintLn(DateToStr(t));
 PrintLn(TimeToStr(t));
@@ -18,7 +18,7 @@ PrintLn(FormatDateTime('hh:nn am/pm', t));
 PrintLn(FormatDateTime('hh:nn a/p', t));
 PrintLn(FormatDateTime('hh:nn ampm', t));
 
-t := 42000.84;
+t := ParseDateTime('dd/mm/yyyy hh:nn:ss', '27/12/2014 20:09:10');
 
 PrintLn(FormatDateTime('hh:nn am/pm', t));
 PrintLn(FormatDateTime('hh:nn a/p', t));

@@ -311,28 +311,37 @@ procedure TFormatSettingsHandler.Assign(exec : TdwsExecution; symbol : TDataSymb
    {$endif}
 
 begin
-   handled:=False;
-   if symbol.Name='' then Exit;
+   if symbol.Name = '' then begin
+      handled := False;
+      Exit;
+   end;
 
+   handled := True;
    case symbol.Name[1] of
       'S' :
          if symbol.Name='ShortDateFormat' then
             EvalAsString(exec.FormatSettings.Settings.ShortDateFormat)
          else if symbol.Name='ShortTimeFormat' then
-            EvalAsString(exec.FormatSettings.Settings.ShortTimeFormat);
+            EvalAsString(exec.FormatSettings.Settings.ShortTimeFormat)
+         else handled := False;
       'L' :
          if symbol.Name='LongDateFormat' then
             EvalAsString(exec.FormatSettings.Settings.LongDateFormat)
          else if symbol.Name='LongTimeFormat' then
-            EvalAsString(exec.FormatSettings.Settings.LongTimeFormat);
+            EvalAsString(exec.FormatSettings.Settings.LongTimeFormat)
+         else handled := False;
       'T' :
          if symbol.Name='TimeAMString' then
             EvalAsString(exec.FormatSettings.Settings.TimeAMString)
          else if symbol.Name='TimePMString' then
-            EvalAsString(exec.FormatSettings.Settings.TimePMString);
+            EvalAsString(exec.FormatSettings.Settings.TimePMString)
+         else handled := False;
       'Z' :
          if symbol.Name='Zone' then
-            exec.FormatSettings.TimeZone:=TdwsTimeZone(expr.EvalAsInteger(exec));
+            exec.FormatSettings.TimeZone:=TdwsTimeZone(expr.EvalAsInteger(exec))
+         else handled := False;
+   else
+      handled := False;
    end;
 end;
 

@@ -1,19 +1,30 @@
+var t : Float;
+
 try
-	StrToDateTime('bug1');
+	t := StrToDateTime('bug1');
+    {$ifdef JS_CODEGEN}
+    if t = 0 then raise Exception.Create('ok 1');
+    {$endif}
 except
 	on E: Exception do
 		PrintLn(E.Message);
 end;
 
 try
-	StrToDate('bug2');
+	t := StrToDate('bug2');
+    {$ifdef JS_CODEGEN}
+    if t = 0 then raise Exception.Create('ok 2');
+    {$endif}
 except
 	on E: Exception do
 		PrintLn(E.Message);
 end;
 
 try
-	StrToTime('bug3');
+	t := StrToTime('bug3');
+    {$ifdef JS_CODEGEN}
+    if t = 0 then raise Exception.Create('ok 3');
+    {$endif}
 except
 	on E: Exception do
 		PrintLn(E.Message);

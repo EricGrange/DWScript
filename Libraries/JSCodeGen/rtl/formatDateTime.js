@@ -7,10 +7,8 @@ function FormatDateTime(fmt, v, u) {
         p = FormatDateTime.Parse(fmt);
         FormatDateTime.cache[fmt] = p;
     }
-    if (v >=0 && v < 1) {
-        dt = new Date();
-        dt.setUTCHours(0,0,0,0);
-        dt = new Date(dt.getTime() + Math.round(v*864e5));
+    if (Math.abs(v) <= 1) {
+        dt = new Date(-22091616e5 + Math.round(v*864e5));
     } else {
         v = Math.round((v-25569)*864e5);
         dt = new Date(v);

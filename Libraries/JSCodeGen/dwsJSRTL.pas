@@ -146,7 +146,7 @@ implementation
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..280] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..284] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -685,6 +685,14 @@ const
       (Name : 'DateTimeToStr';
        Code : 'function DateTimeToStr(v, u) { return FormatDateTime($fmt.ShortDateFormat+" "+$fmt.LongTimeFormat, v, u) }';
        Dependency : 'FormatDateTime' ),
+      (Name : 'UnixTimeToLocalDateTime';
+       Code : 'function UnixTimeToLocalDateTime(t) { return t/86400+25569-(new Date(t*1e3)).getTimezoneOffset()/1440 }' ),
+      (Name : 'LocalDateTimeToUnixTime';
+       Code : 'function LocalDateTimeToUnixTime(t) { var ut = (t-25569)*86400; return ut+(new Date(ut*1e3)).getTimezoneOffset()*60 }' ),
+      (Name : 'LocalDateTimeToUTCDateTime';
+       Code : 'function LocalDateTimeToUTCDateTime(t) { return t+(new Date((t-25569)*864e5)).getTimezoneOffset()/1440 }' ),
+      (Name : 'UTCDateTimeToLocalDateTime';
+       Code : 'function UTCDateTimeToLocalDateTime(t) { return t-(new Date((t-25569)*864e5)).getTimezoneOffset()/1440 }' ),
       (Name : 'DateTimeToUnixTime';
        Code : 'function DateTimeToUnixTime(t) { return Math.floor((t-25569)*86400) }' ),
       (Name : 'DateToISO8601';
