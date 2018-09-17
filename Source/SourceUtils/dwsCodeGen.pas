@@ -1737,6 +1737,7 @@ var
    srcContext : TdwsSourceContext;
 begin
    if FSymbolDictionary=nil then Exit;
+   if structSymbol.IsExternal then Exit;
 
    symPosList:=FSymbolDictionary.FindSymbolPosList(structSymbol);
    if symPosList=nil then Exit;
