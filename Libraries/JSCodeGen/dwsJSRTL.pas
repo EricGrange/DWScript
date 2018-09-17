@@ -146,13 +146,13 @@ implementation
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..285] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..287] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
        Dependency : 'Exception' ),
       (Name : '$W';  // only invoked from try..except codegen, which handles dependencies
-       Code : 'function $W(e) { return e.ClassType?e:Exception.Create($New(Exception),e.constructor.name+", "+e.message) }'),
+       Code : 'function $W(e) { return e.ClassType?e:Exception.Create($New(Exception),(typeof e == "string") ? e : e.constructor.name+", "+e.message) }'),
       (Name : '$New';
        Code : 'function $New(c) { var i={ClassType:c}; c.$Init(i); return i }'),
       (Name : '$NewDyn';
@@ -1105,7 +1105,17 @@ const
        Code : 'function StrToHtml(v) { return v.replace(/[&<>"'']/g, StrToHtml.e) }'#13#10
               +'StrToHtml.e = function(c) { return { "&":"&amp;", "<":"&lt;", ">":"&gt;", ''"'':"&quot;", "''":"&#39;" }[c] }' ),
       (Name : 'StrToHtmlAttribute';
-       Code : 'function StrToHtmlAttribute(v) { return StrToHtml(v) }';
+       Code : 'function StrToHtmlAttribute(v) {'#13#10
+              + #9'for (var r = "", i = 0; i < v.length; i++) {'#13#10
+                 + #9#9'var c = v.charCodeAt(i);'#13#10
+                 + #9#9'if ((c >= 64 && c < 91) || (c > 96 && c < 123) || (c > 47 && c < 58) || c > 127) {'#13#10
+                    + #9#9#9'r += v.charAt(i);'#13#10
+                 + #9#9'} else {'#13#10
+                    + #9#9#9'r += "&#" + c + ";";'#13#10
+                 + #9#9'}'#13#10
+              + #9'}'#13#10
+              + #9'return r;'#13#10
+              + '}';
        Dependency : 'StrToHtml' ),
       (Name : 'StrToInt';
        Code : 'function StrToInt(v) { return parseInt(v,10) }'),
@@ -1177,6 +1187,10 @@ const
        Code : 'function Unsigned32(v) { return v>>>0 }'),
       (Name : 'UpperCase';
        Code : 'function UpperCase(v) { return v.toUpperCase() }'),
+      (Name : 'ASCIIUpperCase';
+       Code : 'function ASCIIUpperCase(v) { return v.toUpperCase() }'),
+      (Name : 'ASCIILowerCase';
+       Code : 'function ASCIILowerCase(v) { return v.toLowerCase() }'),
       (Name : 'UTCDateTime';
        Code : 'function UTCDateTime() { var d=new Date(); return d.getTime()/8.64e7+25569 }'),
       (Name : 'VarAsType';
@@ -1204,7 +1218,14 @@ const
       (Name : 'VarToStr';
        Code : 'function VarToStr(v) { return (typeof v === "undefined")?"":v.toString() }'),
       (Name : 'VarToFloatDef';
-       Code : 'function VarToFloatDef(v, d) { if (v == null) return d; var r = parseFloat(v); return isNaN(r) ? d : r }'),
+       Code : 'function VarToFloatDef(v, d) {'#13#10
+               + #9'if (v == null) return v === undefined ? d : 0;'#13#10
+               + #9'var r = parseFloat(v);'#13#10
+               + #9'if (!isNaN(r)) return r;'#13#10
+               + #9'if (v === true) return 1;'#13#10
+               + #9'if (v === false) return 0;'#13#10
+               + #9'return d;'#13#10
+               + '}'),
       (Name : 'VarType';
        Code : 'function VarType(v) {'#13#10
                +#9'switch (Object.prototype.toString.call(v)) {'#13#10
