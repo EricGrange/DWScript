@@ -1856,7 +1856,7 @@ begin
    reg:=jit.AllocXMMReg(expr);
 
    // check below is necessary as -Nan will be reported equal to zero
-   if (e.Right=0) and not IsNaN(e.Right) then
+   if (not IsNaN(e.Right)) and (e.Right=0)  then
       x86._xorps_reg_reg(reg, reg)
    else x86._movsd_reg_absmem(reg, @e.Right);
 
