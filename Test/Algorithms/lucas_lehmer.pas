@@ -13,7 +13,7 @@ begin
    end;
 end;
 
-const upperBound = Floor(Log2(High(Integer))/2);
+const upperBound = Floor(Log2(High(Integer))/2) - 1;
 
 PrintLn('Finding Mersenne primes in M[2..' + IntToStr(upperBound) + ']: ');
 Print('M2');

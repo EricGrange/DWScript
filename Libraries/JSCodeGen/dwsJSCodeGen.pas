@@ -7110,8 +7110,15 @@ end;
 procedure TJSArrayIndexOfExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TArrayIndexOfExpr;
+   lowBound : Integer;
+   arrayTyp : TTypeSymbol;
 begin
-   e:=TArrayIndexOfExpr(expr);
+   e := TArrayIndexOfExpr(expr);
+
+   arrayTyp := e.BaseExpr.Typ.UnAliasedType;
+   if arrayTyp is TStaticArraySymbol then
+      lowBound := TStaticArraySymbol(arrayTyp).LowBound
+   else lowBound := 0;
 
    if    (e.ItemExpr.Typ is TRecordSymbol)
       or (e.ItemExpr.Typ is TStaticArraySymbol) then begin
@@ -7126,9 +7133,16 @@ begin
       if e.FromIndexExpr<>nil then
          codeGen.CompileNoWrap(e.FromIndexExpr)
       else codeGen.WriteString('0');
+      codeGen.WriteString(',');
+      codeGen.WriteInteger(lowBound);
       codeGen.WriteString(')');
 
    end else begin
+
+      if lowBound <> 0 then begin
+         codeGen.Dependencies.Add('$IndexOffset');
+         codeGen.WriteString('$IndexOffset(');
+      end;
 
       codeGen.Compile(e.BaseExpr);
       codeGen.WriteString('.indexOf(');
@@ -7138,6 +7152,12 @@ begin
          codeGen.CompileNoWrap(e.FromIndexExpr);
       end;
       codeGen.WriteString(')');
+
+      if lowBound <> 0 then begin
+         codeGen.WriteString(',');
+         codeGen.WriteInteger(lowBound);
+         codeGen.WriteString(')');
+      end;
 
    end;
 end;

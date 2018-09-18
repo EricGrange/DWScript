@@ -1,2 +1,2 @@
-Finding Mersenne primes in M[2..31]: 
-M2 M3 M5 M7 M13 M17 M19 M31
+Finding Mersenne primes in M[2..30]: 
+M2 M3 M5 M7 M13 M17 M19

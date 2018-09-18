@@ -146,7 +146,7 @@ implementation
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..290] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..291] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -371,11 +371,13 @@ const
                +#9'return s.charCodeAt(i-1);'#13#10
                +'}';
        Dependency : 'Exception' ),
+      (Name : '$IndexOffset';
+       Code : 'function $IndexOffset(i,b) { return i >= 0 ? i+b : i }'),
       (Name : '$IndexOfRecord';
-       Code : 'function $IndexOfRecord(a,i,f) {'#13#10
+       Code : 'function $IndexOfRecord(a,i,f,b) {'#13#10
                +#9'var ij = JSON.stringify(i);'#13#10
                +#9'for (var k=f,n=a.length;k<n;k++)'#13#10
-               +#9#9'if (JSON.stringify(a[k])==ij) return k;'#13#10
+               +#9#9'if (JSON.stringify(a[k])==ij) return k+b;'#13#10
                +#9'return -1'#13#10
                +'}'),
       (Name : '$RemoveRecord';

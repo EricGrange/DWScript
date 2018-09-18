@@ -1,4 +1,4 @@
-String, undefined
-String, undefined
-String, undefined
-String, undefined
+[sprintf] expecting number but found string
+[sprintf] expecting number but found null
+[sprintf] expecting number but found null
+[sprintf] expecting number but found array
