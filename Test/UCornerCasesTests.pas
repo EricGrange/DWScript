@@ -108,6 +108,7 @@ type
          procedure MessagesEnumerator;
          procedure UnitNameTest;
          procedure ExceptionWithinMagic;
+         procedure DiscardEmptyElse;
 
          procedure LambdaAsConstParam;
 
@@ -2098,6 +2099,26 @@ begin
                + 'Test [line: 2, column: 31]'#13#10
                + ' [line: 3, column: 9]'#13#10,
                prog.Execute.Msgs.AsInfo);
+end;
+
+// DiscardEmptyElse
+//
+procedure TCornerCasesTests.DiscardEmptyElse;
+var
+   prog : IdwsProgram;
+   e : TExprBase;
+begin
+   prog := FCompiler.Compile('procedure Test(a : Boolean); begin if a then Print(a) else ; end;');
+   e := prog.Table.FindSymbol('Test', cvMagic).AsFuncSymbol.SubExpr[1];
+   CheckEquals('TIfThenExpr', e.ClassName, 'empty else');
+
+   prog := FCompiler.Compile('procedure Test(a : Boolean); begin if a then Print(a) else Print(a); end;');
+   e := prog.Table.FindSymbol('Test', cvMagic).AsFuncSymbol.SubExpr[1];
+   CheckEquals('TIfThenElseExpr', e.ClassName);
+
+   prog := FCompiler.Compile('procedure Test(a : Boolean); begin if a then else Print(a); end;');
+   e := prog.Table.FindSymbol('Test', cvMagic).AsFuncSymbol.SubExpr[1];
+   CheckEquals('TIfThenExpr', e.ClassName, 'empty then');
 end;
 
 // LambdaAsConstParam

@@ -6535,8 +6535,8 @@ begin
       if FTok.TestDelete(ttELSE) then begin // if () then else;
 
          FMsgs.AddCompilerHint(FTok.HotPos, CPH_EmptyThenBlock);
-         condExpr:=TNotBoolExpr.Create(FCompilerContext, FTok.HotPos, condExpr);
-         thenExpr:=ReadBlock;
+         condExpr := TNotBoolExpr.Create(FCompilerContext, FTok.HotPos, condExpr);
+         thenExpr := ReadBlock;
 
       end else begin
 
@@ -6544,14 +6544,16 @@ begin
          if FTok.TestDelete(ttELSE) then begin
                if FTok.Test(ttSEMI) then
                FMsgs.AddCompilerHint(FTok.HotPos, CPH_EmptyElseBlock);
-            elseExpr:=ReadBlock;
+            elseExpr := ReadBlock;
+            if Optimize and (elseExpr is TNullExpr) then
+               FreeAndNil(elseExpr);
          end;
 
       end;
 
       if elseExpr=nil then
-         Result:=TIfThenExpr.Create(FCompilerContext, hotPos, condExpr, thenExpr)
-      else Result:=TIfThenElseExpr.Create(FCompilerContext, hotPos, condExpr, thenExpr, elseExpr);
+         Result := TIfThenExpr.Create(FCompilerContext, hotPos, condExpr, thenExpr)
+      else Result := TIfThenElseExpr.Create(FCompilerContext, hotPos, condExpr, thenExpr, elseExpr);
    except
       OrphanAndNil(condExpr);
       OrphanAndNil(thenExpr);
