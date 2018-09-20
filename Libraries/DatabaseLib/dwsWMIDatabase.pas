@@ -64,8 +64,6 @@ type
 
          function Eof : Boolean; override;
          procedure Next; override;
-
-         function FieldCount : Integer; override;
    end;
 
    TdwsWMIDataField = class (TdwsDataField)
@@ -272,13 +270,6 @@ begin
    if FRowsEnum.Next(1, FCurrentRow, nb) <> 0 then
       ClearFieldValues
    else ReadFieldValues;
-end;
-
-// FieldCount
-//
-function TdwsWMIDataSet.FieldCount : Integer;
-begin
-   Result := Length(FFields);
 end;
 
 // DoPrepareFields

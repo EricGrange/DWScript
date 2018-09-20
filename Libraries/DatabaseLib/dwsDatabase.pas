@@ -63,13 +63,20 @@ type
    end;
 
    IdwsDataSet = interface
-      ['{9D74E80C-B4D9-40CA-A469-CB8A0D427C7F}']
+      ['{8C1F4B26-C7C7-45A7-9699-4092F8DEA66F}']
       function Eof : Boolean;
       procedure Next;
 
       function GetField(index : Integer) : IdwsDataField;
       property Fields[index : Integer] : IdwsDataField read GetField;
       function FieldCount : Integer;
+
+      function GetIsNullField(index : Integer) : Boolean;
+      procedure GetStringField(index : Integer; var result : String);
+      function GetIntegerField(index : Integer) : Int64;
+      function GetFloatField(index : Integer) : Double;
+      function GetBooleanField(index : Integer) : Boolean;
+      function GetBlobField(index : Integer) : RawByteString;
    end;
 
    IdwsDataField = interface
@@ -133,6 +140,8 @@ type
 
          property DataBase : IdwsDataBase read FDataBase;
 
+         class procedure RaiseInvalidFieldIndex(index : Integer); static;
+
       public
          constructor Create(const db : IdwsDataBase);
          destructor Destroy; override;
@@ -140,8 +149,15 @@ type
          function Eof : Boolean; virtual; abstract;
          procedure Next; virtual; abstract;
 
-         function GetField(index : Integer) : IdwsDataField; virtual;
+         function GetField(index : Integer) : IdwsDataField;
          function FieldCount : Integer; virtual;
+
+         function GetIsNullField(index : Integer) : Boolean;
+         procedure GetStringField(index : Integer; var result : String);
+         function GetIntegerField(index : Integer) : Int64;
+         function GetFloatField(index : Integer) : Double;
+         function GetBooleanField(index : Integer) : Boolean;
+         function GetBlobField(index : Integer) : RawByteString;
    end;
 
    TdwsDataField = class (TInterfacedSelfObject, IdwsDataField)
@@ -274,6 +290,13 @@ begin
    inherited;
 end;
 
+// RaiseInvalidFieldIndex
+//
+class procedure TdwsDataSet.RaiseInvalidFieldIndex(index : Integer);
+begin
+   raise Exception.CreateFmt('Invalid field index %d', [index]);
+end;
+
 // GetField
 //
 function TdwsDataSet.GetField(index : Integer) : IdwsDataField;
@@ -282,7 +305,7 @@ begin
       PrepareFields;
    if Cardinal(index) < Cardinal(FFieldCount) then
       Result := FFields[index]
-   else raise Exception.CreateFmt('Invalid field index %d', [index]);
+   else RaiseInvalidFieldIndex(index);
 end;
 
 // FieldCount
@@ -292,6 +315,52 @@ begin
    if FFieldCount < 0 then
       PrepareFields;
    Result := FFieldCount;
+end;
+
+// GetIsNullField
+//
+function TdwsDataSet.GetIsNullField(index : Integer) : Boolean;
+begin
+   Result := GetField(index).IsNull;
+end;
+
+// GetStringField
+//
+procedure TdwsDataSet.GetStringField(index : Integer; var result : String);
+begin
+   if FFieldCount < 0 then
+      PrepareFields;
+   if Cardinal(index) < Cardinal(FFieldCount) then
+      FFields[index].GetAsString(result)
+   else RaiseInvalidFieldIndex(index);
+end;
+
+// GetIntegerField
+//
+function TdwsDataSet.GetIntegerField(index : Integer) : Int64;
+begin
+   Result := GetField(index).AsInteger;
+end;
+
+// GetFloatField
+//
+function TdwsDataSet.GetFloatField(index : Integer) : Double;
+begin
+   Result := GetField(index).AsFloat;
+end;
+
+// GetBooleanField
+//
+function TdwsDataSet.GetBooleanField(index : Integer) : Boolean;
+begin
+   Result := GetField(index).AsBoolean;
+end;
+
+// GetBlobField
+//
+function TdwsDataSet.GetBlobField(index : Integer) : RawByteString;
+begin
+   Result := GetField(index).AsBlob;
 end;
 
 // PrepareFields
