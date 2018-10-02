@@ -4971,9 +4971,21 @@ end;
 // ExecuteLazy
 //
 procedure TPushOperator.ExecuteLazy(exec : TdwsExecution);
+{$ifndef WIN32}
+var
+   p : PVarData;
+{$endif}
 begin
+   {$ifdef WIN32}
    exec.Stack.WriteIntValue(exec.Stack.StackPointer + FStackAddr,
                             Int64(FArgExpr)+(Int64(exec.Stack.BasePointer) shl 32));
+   {$else}
+   p := @exec.Stack.Data[exec.Stack.StackPointer + FStackAddr];
+   VarClearSafe(PVariant(p)^);
+   p.VType := varRecord;
+   p.VRecord.PRecord := FArgExpr;
+   p.VRecord.RecInfo := Pointer(exec.Stack.BasePointer);
+   {$endif}
 end;
 
 // ------------------

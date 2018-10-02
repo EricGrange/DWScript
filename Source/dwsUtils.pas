@@ -2299,6 +2299,10 @@ begin
          TVarData(v).VType:=varEmpty;
          AnsiString(TVarData(v).VString):='';
       end;
+      varRecord : begin
+         TVarData(v).VType := varEmpty;
+         TVarData(v).VInt64 := 0;
+      end;
    else
       VarClear(v);
       TVarData(v).VInt64:=0;

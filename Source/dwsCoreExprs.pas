@@ -4726,14 +4726,26 @@ end;
 procedure TLazyParamExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 var
    lazyExpr : TExprBase;
-   oldBasePointer: Integer;
+   oldBasePointer, lazyBasePointer : Integer;
+   {$ifdef WIN32}
    lazyContext : Int64;
+   {$else}
+   lazyContext : PVarData;
+   {$endif}
 begin
+   {$ifdef WIN32}
    lazyContext:=exec.Stack.ReadIntValue(exec.Stack.BasePointer + FStackAddr);
    lazyExpr:=TExprBase(lazyContext and $FFFFFFFF);
+   lazyBasePointer := lazyContext shr 32;
+   {$else}
+   lazyContext := @exec.Stack.Data[exec.Stack.BasePointer + FStackAddr];
+   Assert(lazyContext.VType = varRecord);
+   lazyExpr := TExprBase(lazyContext.VRecord.PRecord);
+   lazyBasePointer := Integer(lazyContext.VRecord.RecInfo);
+   {$endif}
 
-   oldBasePointer:=exec.Stack.BasePointer;
-   exec.Stack.SetBasePointer(lazyContext shr 32);//  stack.GetSavedBp(Level);
+   oldBasePointer := exec.Stack.BasePointer;
+   exec.Stack.SetBasePointer(lazyBasePointer);//  stack.GetSavedBp(Level);
    try
       lazyExpr.EvalAsVariant(exec, Result);
    finally
