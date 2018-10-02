@@ -80,12 +80,11 @@ implementation
 
 // GUIDToHash
 //
-function GUIDToHash(const guid : TGUID) : Integer; inline;
-var
-   p : PIntegerArray;
+function GUIDToHash(const guid : TGUID) : Cardinal; inline;
+type
+   TCardinal4 = array [0..3] of Cardinal;
 begin
-   p := PIntegerArray(@guid);
-   Result := p[0] xor p[1] xor p[2] xor p[3];
+   Result := TCardinal4(guid)[0] xor TCardinal4(guid)[1] xor TCardinal4(guid)[2] xor TCardinal4(guid)[3];
 end;
 
 // ------------------
