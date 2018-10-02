@@ -1156,7 +1156,7 @@ begin
    RegisterCodeGen(TVariantAndExpr,    TJSBinOpExpr.Create('&&', 6, [associativeLeft, associativeRight]));
    RegisterCodeGen(TVariantOrExpr,     TJSBinOpExpr.Create('||', 5, [associativeLeft, associativeRight]));
    RegisterCodeGen(TVariantXorExpr,    TdwsExprGenericCodeGen.Create(['$Xor', '(', 0, ',', 1, ')'], gcgExpression, '$Xor'));
-   RegisterCodeGen(TNotVariantExpr,    TdwsExprGenericCodeGen.Create(['$Not', '(', 0, ')'], gcgExpression, '$Not'));
+   RegisterCodeGen(TNotVariantExpr,    TdwsExprGenericCodeGen.Create(['(!', 0, ')']));
 
    RegisterCodeGen(TAssignedInstanceExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '!==null', ')']));
@@ -8794,7 +8794,7 @@ end;
 //
 function TSimpleClassHash.GetItemHashCode(const item1 : TClass) : Cardinal;
 begin
-   Result := NativeUInt(item1) * 16777619;
+   Result := Cardinal((NativeUInt(item1) shr 4) * 16777619);
 end;
 
 end.

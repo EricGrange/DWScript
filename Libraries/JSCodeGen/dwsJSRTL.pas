@@ -146,7 +146,7 @@ implementation
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..291] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..290] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -471,8 +471,6 @@ const
       (Name : '$uniCharCodeAt';
        Code : '';
        Dependency : '!unicharcodeat_js' ),
-      (Name : '$Not';
-       Code : 'function $Not(v) { return typeof v === "number" ? ~v : !v }'),
       (Name : '$Xor';
        Code : 'function $Xor(a,b) { return typeof a === "number" ? a^b : a != b  && a || b }'),
       (Name : '$Div';
