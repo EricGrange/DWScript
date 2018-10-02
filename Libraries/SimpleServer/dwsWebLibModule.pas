@@ -461,8 +461,10 @@ begin
       if not Finished then
          WaitFor;
       Free;
-   end else Released := True;
-   ReleaseLock.EndWrite;
+   end else begin
+      Released := True;
+      ReleaseLock.EndWrite;
+   end;
 end;
 
 // Wait
