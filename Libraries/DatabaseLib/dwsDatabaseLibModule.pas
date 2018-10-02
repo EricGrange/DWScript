@@ -423,30 +423,33 @@ var
    db : IdwsDataBase;
    q : TSimpleQueue<IdwsDataBase>;
 begin
-   name:=Info.ParamAsString[0];
-   obj:=Info.ParamAsObject[1];
+   name := Info.ParamAsString[0];
+   obj := Info.ParamAsObject[1];
    if obj is TScriptDataBase then begin
-      db:=TScriptDataBase(obj).Intf;
-      checkRelease:=db.CanReleaseToPool;
-      if checkRelease<>'' then begin
-         checkRelease:='Releasing to pool not allowed: '+checkRelease;
+      db := TScriptDataBase(obj).Intf;
+      checkRelease := db.CanReleaseToPool;
+      if checkRelease <> '' then begin
+         checkRelease := 'Releasing to pool not allowed: ' + checkRelease;
          RaiseDBException(Info, checkRelease);
       end;
    end;
-   nb:=Info.ParamAsInteger[2];
-   Info.ParamAsVariant[1]:=IUnknown(nil);
+   nb := Info.ParamAsInteger[2];
+   Info.ParamAsVariant[1] := IUnknown(nil);
+
    vPoolsCS.BeginWrite;
    try
-      q:=vPools[name];
-      if q=nil then begin
-         if db=nil then Exit;
-         q:=TSimpleQueue<IdwsDataBase>.Create;
-         vPools[name]:=q;
-      end;
-      if db<>nil then
+      q := vPools[name];
+      if (nb > 0) and (db <> nil) then begin
+         if q = nil then begin
+            q := TSimpleQueue<IdwsDataBase>.Create;
+            vPools[name] := q;
+         end;
          q.Push(db);
-      while q.Count>nb do
-         q.Pull(db);
+      end;
+      if q <> nil then begin
+         while q.Count > nb do
+            q.Pull(db);
+      end;
    finally
       vPoolsCS.EndWrite;
    end;

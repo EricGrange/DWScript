@@ -339,28 +339,56 @@ end;
 //
 function TdwsDataSet.GetIntegerField(index : Integer) : Int64;
 begin
-   Result := GetField(index).AsInteger;
+   if FFieldCount < 0 then
+      PrepareFields;
+   if Cardinal(index) < Cardinal(FFieldCount) then
+      Result := FFields[index].AsInteger
+   else begin
+      RaiseInvalidFieldIndex(index);
+      Result := 0;
+   end;
 end;
 
 // GetFloatField
 //
 function TdwsDataSet.GetFloatField(index : Integer) : Double;
 begin
-   Result := GetField(index).AsFloat;
+   if FFieldCount < 0 then
+      PrepareFields;
+   if Cardinal(index) < Cardinal(FFieldCount) then
+      Result := FFields[index].AsFloat
+   else begin
+      RaiseInvalidFieldIndex(index);
+      Result := 0;
+   end;
 end;
 
 // GetBooleanField
 //
 function TdwsDataSet.GetBooleanField(index : Integer) : Boolean;
 begin
-   Result := GetField(index).AsBoolean;
+   if FFieldCount < 0 then
+      PrepareFields;
+   if Cardinal(index) < Cardinal(FFieldCount) then
+      Result := FFields[index].AsBoolean
+   else begin
+      RaiseInvalidFieldIndex(index);
+      Result := False;
+   end;
 end;
 
 // GetBlobField
 //
 function TdwsDataSet.GetBlobField(index : Integer) : RawByteString;
 begin
-   Result := GetField(index).AsBlob;
+   if FFieldCount < 0 then
+      PrepareFields;
+   if Cardinal(index) < Cardinal(FFieldCount) then
+      Result := FFields[index].AsBlob
+   else begin
+      RaiseInvalidFieldIndex(index);
+      Result := '';
+   end;
 end;
 
 // PrepareFields
@@ -376,13 +404,21 @@ end;
 // _Release
 //
 function TdwsDataSet._Release : Integer;
+var
+   nbFields : Integer;
 begin
    Result := DecRefCount;
    if Result = 0 then
       Destroy
-   else if Result=Length(FFields) then begin
-      SetLength(FFields, 0);
-      FFieldCount := -1;
+   else begin
+      // each field holds a reference to dataset, so when RefCount = nbFields,
+      // the dataset is no longer referenced
+      nbFields := Length(FFields);
+      if Result = nbFields then begin
+         FFieldCount := -1;
+         if nbFields > 0 then
+            SetLength(FFields, 0);
+      end;
    end;
 end;
 
