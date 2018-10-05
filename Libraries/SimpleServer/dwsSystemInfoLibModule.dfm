@@ -281,7 +281,7 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
           item
             Name = 'Running'
             ResultType = 'Boolean'
-            OnFastEvalBolean = dwsSystemInfoClassesPerformanceCounterMethodsRunningFastEvalBolean
+            OnFastEvalBoolean = dwsSystemInfoClassesPerformanceCounterMethodsRunningFastEvalBoolean
             Kind = mkFunction
           end>
         Constants = <

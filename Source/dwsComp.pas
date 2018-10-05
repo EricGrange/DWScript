@@ -810,7 +810,7 @@ type
          FOnFastEvalString : TMethodFastEvalStringEvent;
          FOnFastEvalInteger : TMethodFastEvalIntegerEvent;
          FOnFastEvalFloat : TMethodFastEvalFloatEvent;
-         FOnFastEvalBolean : TMethodFastEvalBooleanEvent;
+         FOnFastEvalBoolean : TMethodFastEvalBooleanEvent;
 
       protected
          function GetDisplayName: String; override;
@@ -835,7 +835,7 @@ type
          property OnFastEvalString : TMethodFastEvalStringEvent read FOnFastEvalString write FOnFastEvalString;
          property OnFastEvalInteger : TMethodFastEvalIntegerEvent read FOnFastEvalInteger write FOnFastEvalInteger;
          property OnFastEvalFloat : TMethodFastEvalFloatEvent read FOnFastEvalFloat write FOnFastEvalFloat;
-         property OnFastEvalBolean : TMethodFastEvalBooleanEvent read FOnFastEvalBolean write FOnFastEvalBolean;
+         property OnFastEvalBoolean : TMethodFastEvalBooleanEvent read FOnFastEvalBoolean write FOnFastEvalBoolean;
          property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
          property Kind: TMethodKind read FKind write FKind;
    end;
@@ -3874,7 +3874,7 @@ begin
 
    if    Assigned(FOnFastEval) or Assigned(FOnFastEvalNoResult)
       or Assigned(FOnFastEvalString) or Assigned(FOnFastEvalInteger)
-      or Assigned(FOnFastEvalFloat) or Assigned(FOnFastEvalBolean) then begin
+      or Assigned(FOnFastEvalFloat) or Assigned(FOnFastEvalBoolean) then begin
       if maVirtual in Attributes then
          raise Exception.Create(UNT_FastEvalNotSupportedForVirtualMethods);
 
@@ -3885,7 +3885,7 @@ begin
       TMagicMethodSymbol(methSymbol).OnFastEvalNoResult := FOnFastEvalNoResult;
       TMagicMethodSymbol(methSymbol).OnFastEvalString := FOnFastEvalString;
       TMagicMethodSymbol(methSymbol).OnFastEvalInteger := FOnFastEvalInteger;
-      TMagicMethodSymbol(methSymbol).OnFastEvalBoolean := FOnFastEvalBolean;
+      TMagicMethodSymbol(methSymbol).OnFastEvalBoolean := FOnFastEvalBoolean;
       TMagicMethodSymbol(methSymbol).OnFastEvalFloat := FOnFastEvalFloat;
    end else begin
       methSymbol:=TMethodSymbol.Generate(table, Kind, Attributes, Name,

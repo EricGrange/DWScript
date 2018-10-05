@@ -484,7 +484,7 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'Boolean'
             Attributes = [maStatic]
-            OnFastEvalBolean = dwsCryptoClassesNoncesMethodsCheckAndKeepFastEvalBolean
+            OnFastEvalBoolean = dwsCryptoClassesNoncesMethodsCheckAndKeepFastEvalBoolean
             Kind = mkClassFunction
           end
           item
@@ -502,7 +502,7 @@ object dwsCryptoLib: TdwsCryptoLib
               end>
             ResultType = 'Boolean'
             Attributes = [maStatic]
-            OnFastEvalBolean = dwsCryptoClassesNoncesMethodsCheckAndRemoveFastEvalBolean
+            OnFastEvalBoolean = dwsCryptoClassesNoncesMethodsCheckAndRemoveFastEvalBoolean
             Kind = mkClassFunction
           end
           item

@@ -112,7 +112,7 @@ type
       baseExpr: TTypedExpr; const args: TExprBaseListExec);
     function dwsSystemInfoClassesPerformanceCounterMethodsElapsedFastEvalFloat(
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Double;
-    function dwsSystemInfoClassesPerformanceCounterMethodsRunningFastEvalBolean(
+    function dwsSystemInfoClassesPerformanceCounterMethodsRunningFastEvalBoolean(
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
     function dwsSystemInfoClassesPerformanceCounterMethodsNowFastEvalFloat(
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Double;
@@ -766,7 +766,7 @@ begin
    Result := t * vPerformanceInverseFrequency;
 end;
 
-function TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsRunningFastEvalBolean(
+function TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsRunningFastEvalBoolean(
   baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
 begin
    Result := ((baseExpr.EvalAsSafeScriptObj(args.Exec).ExternalObject as TPerformanceCounter).StopTime = 0);

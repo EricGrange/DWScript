@@ -64,7 +64,7 @@ object dwsDatabaseLib: TdwsDatabaseLib
           item
             Name = 'InTransaction'
             ResultType = 'Boolean'
-            OnFastEvalBolean = dwsDatabaseClassesDataBaseMethodsInTransactionFastEvalBolean
+            OnFastEvalBoolean = dwsDatabaseClassesDataBaseMethodsInTransactionFastEvalBoolean
             Kind = mkFunction
           end
           item
@@ -175,13 +175,13 @@ object dwsDatabaseLib: TdwsDatabaseLib
           item
             Name = 'Step'
             ResultType = 'Boolean'
-            OnFastEvalBolean = dwsDatabaseClassesDataSetMethodsStepFastEvalBolean
+            OnFastEvalBoolean = dwsDatabaseClassesDataSetMethodsStepFastEvalBoolean
             Kind = mkFunction
           end
           item
             Name = 'Eof'
             ResultType = 'Boolean'
-            OnFastEvalBolean = dwsDatabaseClassesDataSetMethodsEofFastEvalBolean
+            OnFastEvalBoolean = dwsDatabaseClassesDataSetMethodsEofFastEvalBoolean
             Kind = mkFunction
           end
           item
@@ -349,7 +349,7 @@ object dwsDatabaseLib: TdwsDatabaseLib
               end>
             ResultType = 'Boolean'
             Overloaded = True
-            OnFastEvalBolean = dwsDatabaseClassesDataSetMethodsIsNull_String_FastEvalBolean
+            OnFastEvalBoolean = dwsDatabaseClassesDataSetMethodsIsNull_String_FastEvalBoolean
             Kind = mkFunction
           end
           item
@@ -361,7 +361,7 @@ object dwsDatabaseLib: TdwsDatabaseLib
               end>
             ResultType = 'Boolean'
             Overloaded = True
-            OnFastEvalBolean = dwsDatabaseClassesDataSetMethodsIsNull_Integer_FastEvalBolean
+            OnFastEvalBoolean = dwsDatabaseClassesDataSetMethodsIsNull_Integer_FastEvalBoolean
             Kind = mkFunction
           end
           item
@@ -433,7 +433,7 @@ object dwsDatabaseLib: TdwsDatabaseLib
           item
             Name = 'IsNull'
             ResultType = 'Boolean'
-            OnFastEvalBolean = dwsDatabaseClassesDataFieldMethodsIsNullFastEvalBolean
+            OnFastEvalBoolean = dwsDatabaseClassesDataFieldMethodsIsNullFastEvalBoolean
             Kind = mkFunction
           end
           item
@@ -457,7 +457,7 @@ object dwsDatabaseLib: TdwsDatabaseLib
           item
             Name = 'AsBoolean'
             ResultType = 'Boolean'
-            OnFastEvalBolean = dwsDatabaseClassesDataFieldMethodsAsBooleanFastEvalBolean
+            OnFastEvalBoolean = dwsDatabaseClassesDataFieldMethodsAsBooleanFastEvalBoolean
             Kind = mkFunction
           end
           item

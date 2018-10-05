@@ -86,9 +86,9 @@ type
       baseExpr: TTypedExpr; const args: TExprBaseListExec);
     procedure dwsCryptoClassesNoncesMethodsGenerateFastEvalString(
       baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
-    function dwsCryptoClassesNoncesMethodsCheckAndKeepFastEvalBolean(
+    function dwsCryptoClassesNoncesMethodsCheckAndKeepFastEvalBoolean(
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
-    function dwsCryptoClassesNoncesMethodsCheckAndRemoveFastEvalBolean(
+    function dwsCryptoClassesNoncesMethodsCheckAndRemoveFastEvalBoolean(
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
     procedure dwsCryptoClassesNoncesMethodsGetDataFastEvalString(
       baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
@@ -244,13 +244,13 @@ begin
    PerformHashData(Info, HashMD5);
 end;
 
-function TdwsCryptoLib.dwsCryptoClassesNoncesMethodsCheckAndKeepFastEvalBolean(
+function TdwsCryptoLib.dwsCryptoClassesNoncesMethodsCheckAndKeepFastEvalBoolean(
   baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
 begin
    Result := FNonces.CheckAndKeep(args.AsString[0], args.AsString[1])
 end;
 
-function TdwsCryptoLib.dwsCryptoClassesNoncesMethodsCheckAndRemoveFastEvalBolean(
+function TdwsCryptoLib.dwsCryptoClassesNoncesMethodsCheckAndRemoveFastEvalBoolean(
   baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
 begin
    Result := FNonces.CheckAndRemove(args.AsString[0], args.AsString[1]);

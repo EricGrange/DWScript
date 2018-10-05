@@ -56,7 +56,7 @@ object dwsWebLib: TdwsWebLib
               end>
             ResultType = 'Boolean'
             Attributes = [maStatic]
-            OnFastEvalBolean = dwsWebClassesWebRequestMethodsHasQueryFieldFastEvalBolean
+            OnFastEvalBoolean = dwsWebClassesWebRequestMethodsHasQueryFieldFastEvalBoolean
             Kind = mkClassFunction
           end
           item
@@ -81,7 +81,7 @@ object dwsWebLib: TdwsWebLib
               end>
             ResultType = 'Boolean'
             Attributes = [maStatic]
-            OnFastEvalBolean = dwsWebClassesWebRequestMethodsHasContentFieldFastEvalBolean
+            OnFastEvalBoolean = dwsWebClassesWebRequestMethodsHasContentFieldFastEvalBoolean
             Kind = mkClassFunction
           end
           item

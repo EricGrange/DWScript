@@ -50,7 +50,7 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsDatabaseClassesDataBaseMethodsOptionListEval(
       Info: TProgramInfo; ExtObject: TObject);
-    function dwsDatabaseClassesDataSetMethodsStepFastEvalBolean(
+    function dwsDatabaseClassesDataSetMethodsStepFastEvalBoolean(
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
     procedure dwsDatabaseClassesDataFieldMethodsNameFastEvalString(
       baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
@@ -64,9 +64,9 @@ type
       baseExpr: TTypedExpr; const args: TExprBaseListExec);
     procedure dwsDatabaseClassesDataBaseMethodsRollbackFastEvalNoResult(
       baseExpr: TTypedExpr; const args: TExprBaseListExec);
-    function dwsDatabaseClassesDataBaseMethodsInTransactionFastEvalBolean(
+    function dwsDatabaseClassesDataBaseMethodsInTransactionFastEvalBoolean(
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
-    function dwsDatabaseClassesDataSetMethodsEofFastEvalBolean(
+    function dwsDatabaseClassesDataSetMethodsEofFastEvalBoolean(
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
     procedure dwsDatabaseClassesDataSetMethodsNextFastEvalNoResult(
       baseExpr: TTypedExpr; const args: TExprBaseListExec);
@@ -86,9 +86,9 @@ type
       baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
     procedure dwsDatabaseClassesDataSetMethodsAsBlob_Integer_FastEvalString(
       baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
-    function dwsDatabaseClassesDataSetMethodsIsNull_String_FastEvalBolean(
+    function dwsDatabaseClassesDataSetMethodsIsNull_String_FastEvalBoolean(
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
-    function dwsDatabaseClassesDataSetMethodsIsNull_Integer_FastEvalBolean(
+    function dwsDatabaseClassesDataSetMethodsIsNull_Integer_FastEvalBoolean(
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
     procedure dwsDatabaseClassesDataSetMethodsStringifyFastEvalString(
       baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
@@ -100,7 +100,7 @@ type
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Int64;
     procedure dwsDatabaseClassesDataFieldMethodsDeclaredTypeFastEvalString(
       baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
-    function dwsDatabaseClassesDataFieldMethodsIsNullFastEvalBolean(
+    function dwsDatabaseClassesDataFieldMethodsIsNullFastEvalBoolean(
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
     procedure dwsDatabaseClassesDataFieldMethodsAsStringFastEvalString(
       baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
@@ -108,7 +108,7 @@ type
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Int64;
     function dwsDatabaseClassesDataFieldMethodsAsFloatFastEvalFloat(
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Double;
-    function dwsDatabaseClassesDataFieldMethodsAsBooleanFastEvalBolean(
+    function dwsDatabaseClassesDataFieldMethodsAsBooleanFastEvalBoolean(
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
     procedure dwsDatabaseClassesDataFieldMethodsAsBlobFastEvalString(
       baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
@@ -565,7 +565,7 @@ begin
    (baseExpr.EvalAsSafeScriptObj(args.Exec).ExternalObject as TScriptDataBase).Intf.Rollback;
 end;
 
-function TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsInTransactionFastEvalBolean(
+function TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsInTransactionFastEvalBoolean(
   baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
 begin
    Result := (baseExpr.EvalAsSafeScriptObj(args.Exec).ExternalObject as TScriptDataBase).Intf.InTransaction;
@@ -645,7 +645,7 @@ begin
    RawByteStringToScriptString((baseExpr.EvalAsSafeScriptObj(args.Exec).ExternalObject as TDataField).Intf.AsBlob, result);
 end;
 
-function TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsAsBooleanFastEvalBolean(
+function TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsAsBooleanFastEvalBoolean(
   baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
 begin
    Result := (baseExpr.EvalAsSafeScriptObj(args.Exec).ExternalObject as TDataField).Intf.AsBoolean;
@@ -681,7 +681,7 @@ begin
    Result := (baseExpr.EvalAsSafeScriptObj(args.Exec).ExternalObject as TDataField).Intf.DeclaredType;
 end;
 
-function TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsIsNullFastEvalBolean(
+function TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsIsNullFastEvalBoolean(
   baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
 begin
    Result := (baseExpr.EvalAsSafeScriptObj(args.Exec).ExternalObject as TDataField).Intf.IsNull;
@@ -755,7 +755,7 @@ begin
       .AsFloat;
 end;
 
-function TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsIsNull_Integer_FastEvalBolean(
+function TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsIsNull_Integer_FastEvalBoolean(
   baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
 begin
    Result := (baseExpr.EvalAsSafeScriptObj(args.Exec).ExternalObject as TDataSet)
@@ -763,7 +763,7 @@ begin
       .GetIsNullField(args.AsInteger[0]);
 end;
 
-function TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsIsNull_String_FastEvalBolean(
+function TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsIsNull_String_FastEvalBoolean(
   baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
 begin
    Result := (baseExpr.EvalAsSafeScriptObj(args.Exec).ExternalObject as TDataSet)
@@ -771,7 +771,7 @@ begin
       .IsNull;
 end;
 
-function TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsEofFastEvalBolean(
+function TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsEofFastEvalBoolean(
   baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
 begin
    Result := (baseExpr.EvalAsSafeScriptObj(args.Exec).ExternalObject as TDataSet).Intf.Eof;
@@ -838,7 +838,7 @@ begin
    (baseExpr.EvalAsSafeScriptObj(args.Exec).ExternalObject as TDataSet).Intf.Next;
 end;
 
-function TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsStepFastEvalBolean(
+function TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsStepFastEvalBoolean(
   baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
 begin
    Result := (baseExpr.EvalAsSafeScriptObj(args.Exec).ExternalObject as TDataSet).Step;
