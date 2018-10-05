@@ -7,7 +7,7 @@ uses
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsDataBaseLibModule, dwsXPlatform, dwsSymbols, dwsUtils,
    dwsGUIDDatabase, dwsSynSQLiteDatabase, dwsCompilerContext,
-   dwsWMIDatabase;
+   dwsWMIDatabase, dwsTDataset;
 
 type
 

@@ -27,12 +27,20 @@ type
       FDataset: TDataset;
       FFields: TArray<IdwsDataField>;
       FOwner: boolean;
+      class procedure RaiseInvalidFieldIndex(index : Integer); static;
    private //IdwsDataset implementation
       function Eof : Boolean;
       procedure Next;
 
       function GetField(index : Integer) : IdwsDataField;
       function FieldCount : Integer;
+
+      function GetIsNullField(index : Integer) : Boolean;
+      procedure GetStringField(index : Integer; var result : String);
+      function GetIntegerField(index : Integer) : Int64;
+      function GetFloatField(index : Integer) : Double;
+      function GetBooleanField(index : Integer) : Boolean;
+      function GetBlobField(index : Integer) : RawByteString;
    public
       constructor Create(ds: TDataset; owner: boolean = true);
       destructor Destroy; override;
@@ -48,7 +56,7 @@ type
       function DeclaredType : String;
 
       function IsNull : Boolean;
-      function AsString : String;
+      procedure GetAsString(var Result : String);
       function AsInteger : Int64;
       function AsFloat : Double;
       function AsBoolean : Boolean;
@@ -82,6 +90,11 @@ begin
    inherited Destroy;
 end;
 
+class procedure TdwsTDataset.RaiseInvalidFieldIndex(index : Integer);
+begin
+   raise Exception.CreateFmt('Invalid field index %d', [index]);
+end;
+
 function TdwsTDataset.Eof: Boolean;
 begin
    result := FDataset.Eof;
@@ -94,12 +107,46 @@ end;
 
 function TdwsTDataset.GetField(index: Integer): IdwsDataField;
 begin
-   result := FFields[index];
+   if Cardinal(index) < Cardinal(FieldCount) then
+      result := FFields[index]
+   else RaiseInvalidFieldIndex(index);
 end;
 
 procedure TdwsTDataset.Next;
 begin
    FDataset.Next;
+end;
+
+function TdwsTDataset.GetIsNullField(index : Integer) : Boolean;
+begin
+   Result:= GetField(index).IsNull;
+end;
+
+procedure TdwsTDataset.GetStringField(index : Integer; var result : String);
+begin
+   if Cardinal(index) < Cardinal(FieldCount) then
+      FFields[index].GetAsString(result)
+   else RaiseInvalidFieldIndex(index);
+end;
+
+function TdwsTDataset.GetIntegerField(index : Integer) : Int64;
+begin
+   Result := GetField(index).AsInteger;
+end;
+
+function TdwsTDataset.GetFloatField(index : Integer) : Double;
+begin
+   Result := GetField(index).AsFloat;
+end;
+
+function TdwsTDataset.GetBooleanField(index : Integer) : Boolean;
+begin
+   Result := GetField(index).AsBoolean;
+end;
+
+function TdwsTDataset.GetBlobField(index : Integer) : RawByteString;
+begin
+   Result := GetField(index).AsBlob;
 end;
 
 { TdwsTField }
@@ -158,7 +205,7 @@ begin
    result := FField.AsLargeInt;
 end;
 
-function TdwsTField.AsString: String;
+procedure TdwsTField.GetAsString(var Result : String);
 begin
    result := FField.AsString;
 end;
