@@ -2289,7 +2289,7 @@ var
    e : EScriptError;
 begin
    if (ExceptObject is EScriptError) or (ExceptObject is EScriptException) then
-      raise AcquireExceptionObject;
+      raise Exception(AcquireExceptionObject);
    exc := ExceptObject as Exception;
    e := EScriptError.Create(exc.Message);
    e.RawClassName := exc.ClassName;
