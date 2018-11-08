@@ -2045,7 +2045,19 @@ type
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
-   TIntegerInOpExpr = class (TStringInOpExpr)
+   TCharacterInOpExpr = class (TInOpExpr)
+      private
+         FMap : array of Boolean;
+         FMapHigh : Integer;
+
+      public
+         class function AttemptCreate(context : TdwsCompilerContext; Left : TTypedExpr;
+                                      const conditionsList : TTightList) : TCharacterInOpExpr; static;
+
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
+   TIntegerInOpExpr = class (TInOpExpr)
       public
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
@@ -5096,6 +5108,90 @@ begin
          Exit(True);
    end;
    Result:=False;
+end;
+
+// ------------------
+// ------------------ TCharacterInOpExpr ------------------
+// ------------------
+
+// AttemptCreate
+//
+class function TCharacterInOpExpr.AttemptCreate(
+   context : TdwsCompilerContext; Left : TTypedExpr;
+   const conditionsList : TTightList
+   ) : TCharacterInOpExpr;
+const
+   cMaxChar = 127;
+var
+   failed : Boolean;
+
+   procedure AddRange(const minChar, maxChar : String);
+   var
+      c, minC, maxC : Integer;
+   begin
+      if (Length(minChar) <> 1) then Exit;
+      if (Length(maxChar) <> 1) then Exit;
+      minC := Ord(minChar[1]);
+      maxC := Ord(maxChar[1]);
+      if minC > cMaxChar then Exit;
+      if maxC > cMaxChar then Exit;
+
+      if Length(Result.FMap) <= maxC then
+         SetLength(Result.FMap, maxC+1);
+      for c := minC to maxC do
+         Result.FMap[c] := True;
+
+      failed := False;
+   end;
+
+   procedure AddCharacter(const s : String);
+   begin
+      AddRange(s, s);
+   end;
+
+var
+   cc : TRefCountedObject;
+   lowVal, highVal : String;
+   rcc : TRangeCaseCondition;
+begin
+   Result := TCharacterInOpExpr.Create(context, Left);
+   failed := True;
+   for cc in conditionsList do begin
+      failed := True;
+      if cc is TCompareConstStringCaseCondition then begin
+         AddCharacter(TCompareConstStringCaseCondition(cc).Value)
+      end else if cc is TRangeCaseCondition then begin
+         rcc := TRangeCaseCondition(cc);
+         if     rcc.FromExpr.IsConstant and rcc.ToExpr.IsConstant
+            and rcc.FromExpr.Typ.IsOfType(context.TypString)
+            and rcc.ToExpr.Typ.IsOfType(context.TypString) then begin
+
+            rcc.FromExpr.EvalAsString(context.Execution, lowVal);
+            rcc.ToExpr.EvalAsString(context.Execution, highVal);
+            AddRange(lowVal, highVal);
+         end;
+      end;
+      if failed then break;
+   end;
+
+   if failed then begin
+      Result.FLeft := nil;
+      FreeAndNil(Result);
+   end else Result.FMapHigh := High(Result.FMap);
+end;
+
+// EvalAsBoolean
+//
+function TCharacterInOpExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   value : String;
+   c : Integer;
+begin
+   FLeft.EvalAsString(exec, value);
+   if value <> '' then begin
+      c := Ord(PChar(Pointer(value))^);
+      Result := (c <= FMapHigh) and FMap[c];
+   end else Result := False;
 end;
 
 // ------------------

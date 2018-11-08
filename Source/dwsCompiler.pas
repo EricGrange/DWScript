@@ -10985,16 +10985,18 @@ begin
          if     TCaseConditionsHelper.CanOptimizeToTyped(condList, TConstStringExpr)
             and condList.ItemsAllOfClass(TCompareConstStringCaseCondition) then begin
 
-            Result:=TStringInOpStaticSetExpr.Create(FCompilerContext, left)
+            Result := TStringInOpStaticSetExpr.Create(FCompilerContext, left)
 
          end else begin
 
-            Result:=TStringInOpExpr.Create(FCompilerContext, left);
+            Result := TCharacterInOpExpr.AttemptCreate(FCompilerContext, left, condList);
+            if Result = nil then
+               Result := TStringInOpExpr.Create(FCompilerContext, left);
 
          end;
       end else begin
 
-         Result:=TInOpExpr.Create(FCompilerContext, left);
+         Result := TInOpExpr.Create(FCompilerContext, left);
 
       end;
 

@@ -1230,6 +1230,7 @@ begin
 
    RegisterCodeGen(TInOpExpr,                   TJSInOpExpr.Create);
    RegisterCodeGen(TStringInOpExpr,             TJSInOpExpr.Create);
+   RegisterCodeGen(TCharacterInOpExpr,          TJSInOpExpr.Create);
    RegisterCodeGen(TStringInOpStaticSetExpr,    TJSInOpExpr.Create);
    RegisterCodeGen(TIntegerInOpExpr,            TJSInOpExpr.Create);
    RegisterCodeGen(TBitwiseInOpExpr,            TJSBitwiseInOpExpr.Create);
