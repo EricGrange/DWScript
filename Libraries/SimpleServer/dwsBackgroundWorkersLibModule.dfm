@@ -2,8 +2,6 @@ object dwsBackgroundWorkersLib: TdwsBackgroundWorkersLib
   OldCreateOrder = False
   OnCreate = DataModuleCreate
   OnDestroy = DataModuleDestroy
-  Left = 695
-  Top = 86
   Height = 129
   Width = 220
   object dwsBackgroundWorkers: TdwsUnit

@@ -12,6 +12,7 @@ const
 
 type
    TBackgroundWorkEvent = procedure (const request : TWebRequest) of object;
+   TBackgroundWorkLogEvent = procedure (const message : String) of object;
 
    TWorkQueues = TSimpleNameObjectHash<TIOCPWorkerThreadPool>;
 
@@ -74,6 +75,7 @@ type
   private
     { Private declarations }
     FOnBackgroundWork : TBackgroundWorkEvent;
+    FOnBackgroundLogEvent : TBackgroundWorkLogEvent;
     FPools : TWorkQueues;
     FPoolsCS : TMultiReadSingleWrite;
     FWorkUnitHead : TWorkWebRequest;
@@ -84,6 +86,7 @@ type
   public
     { Public declarations }
     property OnBackgroundWork : TBackgroundWorkEvent read FOnBackgroundWork write FOnBackgroundWork;
+    property OnBackgroundLogEvent : TBackgroundWorkLogEvent read FOnBackgroundLogEvent write FOnBackgroundLogEvent;
     property MaxWorkersPerQueue : Integer read FMaxWorkersPerQueue write FMaxWorkersPerQueue;
   end;
 
@@ -217,13 +220,24 @@ end;
 // Execute
 //
 procedure TWorkWebRequest.Execute(Sender : TObject);
+
+   procedure DoLog(lib : TdwsBackgroundWorkersLib; E : Exception);
+   begin
+      if Assigned(lib.FOnBackgroundLogEvent) then
+         lib.FOnBackgroundLogEvent(E.ClassName + ': ' + E.Message);
+   end;
+
 var
    lib : TdwsBackgroundWorkersLib;
 begin
-   lib:=(Sender as TdwsBackgroundWorkersLib);
+   lib := (Sender as TdwsBackgroundWorkersLib);
    try
-      if Assigned(lib.FOnBackgroundWork) then
-         lib.FOnBackgroundWork(Self);
+      try
+         if Assigned(lib.FOnBackgroundWork) then
+            lib.FOnBackgroundWork(Self);
+      except
+         on E : Exception do DoLog(lib, E);
+      end;
    finally
       Free;
    end;

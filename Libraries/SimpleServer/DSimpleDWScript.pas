@@ -1048,6 +1048,7 @@ begin
    FBkgndWorkers:=TdwsBackgroundWorkersLib.Create(Self);
    FBkgndWorkers.dwsBackgroundWorkers.Script:=DelphiWebScript;
    FBkgndWorkers.OnBackgroundWork:=DoBackgroundWork;
+   FBkgndWorkers.OnBackgroundLogEvent:=LogError;
 end;
 
 // Finalize

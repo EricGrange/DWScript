@@ -2,8 +2,6 @@ object SimpleDWScript: TSimpleDWScript
   OldCreateOrder = False
   OnCreate = DataModuleCreate
   OnDestroy = DataModuleDestroy
-  Left = 745
-  Top = 94
   Height = 282
   Width = 341
   object dwsHtmlFilter: TdwsHtmlFilter
