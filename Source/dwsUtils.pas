@@ -970,8 +970,6 @@ function StrReplaceChar(const aStr : String; oldChar, newChar : Char) : String;
 
 function StrCountChar(const aStr : String; c : Char) : Integer;
 
-function Min(a, b : Integer) : Integer; inline;
-
 function WhichPowerOfTwo(const v : Int64) : Integer;
 
 {$ifdef FPC}
@@ -3563,15 +3561,6 @@ begin
    for i:=1 to Length(aStr) do
       if aStr[i]=c then
          Inc(Result);
-end;
-
-// Min
-//
-function Min(a, b : Integer) : Integer;
-begin
-   if a<b then
-      Result:=a
-   else Result:=b;
 end;
 
 // WhichPowerOfTwo
