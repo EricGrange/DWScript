@@ -1704,9 +1704,15 @@ function ApplicationVersion : String;
 var
    version : TModuleVersion;
 begin
+   {$ifdef WIN64}
    if GetApplicationVersion(version) then
-      Result := version.AsString
-   else Result := '?.?.?.?';
+      Result := version.AsString + ' 64bit'
+   else Result := '?.?.?.? 64bit';
+   {$else}
+   if GetApplicationVersion(version) then
+      Result := version.AsString + ' 32bit'
+   else Result := '?.?.?.? 32bit';
+   {$endif}
 end;
 
 // ------------------
