@@ -27,6 +27,7 @@ type
       FDataset: TDataset;
       FFields: TArray<IdwsDataField>;
       FOwner: boolean;
+      FID : Int64;
       class procedure RaiseInvalidFieldIndex(index : Integer); static;
    private //IdwsDataset implementation
       function Eof : Boolean;
@@ -41,6 +42,8 @@ type
       function GetFloatField(index : Integer) : Double;
       function GetBooleanField(index : Integer) : Boolean;
       function GetBlobField(index : Integer) : RawByteString;
+      procedure SetID(const id : Int64);
+      function GetID : Int64;
    public
       constructor Create(ds: TDataset; owner: boolean = true);
       destructor Destroy; override;
@@ -147,6 +150,20 @@ end;
 function TdwsTDataset.GetBlobField(index : Integer) : RawByteString;
 begin
    Result := GetField(index).AsBlob;
+end;
+
+// SetID
+//
+procedure TdwsTDataset.SetID(const id : Int64);
+begin
+   FID := id;
+end;
+
+// GetID
+//
+function TdwsTDataset.GetID : Int64;
+begin
+   Result := FID;
 end;
 
 { TdwsTField }

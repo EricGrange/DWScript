@@ -1,7 +1,5 @@
 object dwsSQLiteVTArraysLib: TdwsSQLiteVTArraysLib
   OldCreateOrder = False
-  Left = 282
-  Top = 170
   Height = 150
   Width = 215
   object dwsVTArrays: TdwsUnit

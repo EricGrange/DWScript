@@ -129,7 +129,6 @@ type
     property Script : TDelphiWebScript write SetScript;
   end;
 
-type
    TScriptDataBase = class
       Intf : IdwsDataBase;
       LowerCaseStringify : Boolean;
@@ -138,6 +137,8 @@ type
 implementation
 
 {$R *.dfm}
+
+uses dwsRandom;
 
 resourcestring
    FIELD_NOT_FOUND = 'Field ''%s'' not found';
@@ -164,13 +165,19 @@ type
       Intf : IdwsDataField;
    end;
 
-type
     TDataBaseQueue = TSimpleQueue<IdwsDataBase>;
 
 var
    vPools : TSimpleNameObjectHash<TDataBaseQueue>;
    vPoolsCS : TMultiReadSingleWrite;
    vPoolsCount : Integer;
+
+// NotifyDataSetCreate
+//
+function NotifyDataSetCreate(info : TProgramInfo) : NativeUInt;
+begin
+   Result := TdwsDataSet.NotifyCreate(Info.Execution.CallStackLastExpr.ScriptPos.AsInfo);
+end;
 
 // IndexOfField
 //
@@ -576,11 +583,19 @@ procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsExecEval(
 var
    scriptDyn : IScriptDynArray;
    db : IdwsDataBase;
+   dsID : NativeUInt;
 begin
-   scriptDyn:=Info.ParamAsScriptDynArray[1];
+   scriptDyn := Info.ParamAsScriptDynArray[1];
 
-   db := (ExtObject as TScriptDataBase).Intf;
-   db.Exec(Info.ParamAsString[0], scriptDyn, Info.Execution.CallStackLastExpr);
+   if TdwsDataSet.CallbacksRegistered then
+      dsID := NotifyDataSetCreate(Info)
+   else dsID := 0;
+   try
+      db := (ExtObject as TScriptDataBase).Intf;
+      db.Exec(Info.ParamAsString[0], scriptDyn, Info.Execution.CallStackLastExpr);
+   finally
+      TdwsDataSet.NotifyDestroy(dsID);
+   end;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsQueryEval(
@@ -591,22 +606,33 @@ var
    dbo : TScriptDataBase;
    dataSetInfo : IInfo;
    dataSet : TDataSet;
+   dsID : NativeUInt;
 begin
    scriptDyn:=Info.ParamAsScriptDynArray[1];
 
-   dbo:=(ExtObject as TScriptDataBase);
-   ids:=dbo.Intf.Query(Info.ParamAsString[0], scriptDyn, Info.Execution.CallStackLastExpr);
+   dbo := (ExtObject as TScriptDataBase);
 
-   dataSetInfo:=Info.Vars['DataSet'].Method['Create'].Call;
+   if TdwsDataSet.CallbacksRegistered then
+      dsID := NotifyDataSetCreate(Info)
+   else dsID := 0;
+   try
+      ids := dbo.Intf.Query(Info.ParamAsString[0], scriptDyn, Info.Execution.CallStackLastExpr);
+   except
+      TdwsDataSet.NotifyDestroy(dsID);
+      raise;
+   end;
+   ids.ID := dsID;
+
+   dataSetInfo := Info.Vars['DataSet'].Method['Create'].Call;
 
    dataSet:=TDataSet.Create;
-   dataSet.Intf:=ids;
+   dataSet.Intf := ids;
    if dbo.LowerCaseStringify then
-      dataSet.WriterOptions:=[woLowerCaseNames];
+      dataSet.WriterOptions := [woLowerCaseNames];
 
-   dataSetInfo.ExternalObject:=dataSet;
+   dataSetInfo.ExternalObject := dataSet;
 
-   Info.ResultAsVariant:=dataSetInfo.Value;
+   Info.ResultAsVariant := dataSetInfo.Value;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsGetOptionEval(
@@ -900,7 +926,7 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   vPoolsCS:=TMultiReadSingleWrite.Create;
+   vPoolsCS := TMultiReadSingleWrite.Create;
 
 finalization
 
