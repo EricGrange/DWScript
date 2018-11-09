@@ -6,7 +6,7 @@ uses
    Classes, SysUtils, Variants, ComObj,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors, dwsInfo,
    dwsUtils, dwsSymbols, dwsDebugger, dwsStrings, dwsEvaluate, dwsScriptSource,
-   dwsCompilerContext, dwsXPlatform, dwsXXHash, dwsUnitSymbols;
+   dwsCompilerContext, dwsXPlatform, dwsXXHash, dwsUnitSymbols, dwsCoverage;
 
 type
 
@@ -39,6 +39,8 @@ type
 
          function  DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
 
+         function ReportBreakpointables(breakpointables : TdwsBreakpointableLines) : String;
+
       public
          procedure SetUp; override;
          procedure TearDown; override;
@@ -54,6 +56,9 @@ type
          procedure EvaluateEnumInUnit;
 
          procedure ExecutableLines;
+         procedure ExecutableLinesVzOptimize;
+
+         procedure ExecutableCoverage;
 
          procedure AttachToScript;
 
@@ -246,6 +251,33 @@ begin
                   + 'end;'
    else if unitName = 'MyType' then
       unitSource := 'unit MyType; type MyEnum = (myEnumValue = 123);'
+end;
+
+// ReportBreakpointables
+//
+function TDebuggerTests.ReportBreakpointables(breakpointables : TdwsBreakpointableLines) : String;
+var
+   i, j : Integer;
+   lines : TBits;
+   sourceNames : TStringList;
+begin
+   Result:='';
+   sourceNames:=TStringList.Create;
+   try
+      breakpointables.Enumerate(sourceNames);
+      sourceNames.Sort;
+      for i:=0 to sourceNames.Count-1 do begin
+         if i>0 then
+            Result:=Result+#13#10;
+         Result:=Result+sourceNames[i]+': ';
+         lines:=sourceNames.Objects[i] as TBits;
+         for j:=0 to lines.Size-1 do
+            if lines[j] then
+               Result:=Result+IntToStr(j)+',';
+      end;
+   finally
+      sourceNames.Free;
+   end;
 end;
 
 // EvaluateSimpleTest
@@ -549,32 +581,6 @@ procedure TDebuggerTests.ExecutableLines;
 var
    prog : IdwsProgram;
    breakpointables : TdwsBreakpointableLines;
-
-   function ReportBreakpointables : String;
-   var
-      i, j : Integer;
-      lines : TBits;
-      sourceNames : TStringList;
-   begin
-      Result:='';
-      sourceNames:=TStringList.Create;
-      try
-         breakpointables.Enumerate(sourceNames);
-         sourceNames.Sort;
-         for i:=0 to sourceNames.Count-1 do begin
-            if i>0 then
-               Result:=Result+#13#10;
-            Result:=Result+sourceNames[i]+': ';
-            lines:=sourceNames.Objects[i] as TBits;
-            for j:=0 to lines.Size-1 do
-               if lines[j] then
-                  Result:=Result+IntToStr(j)+',';
-         end;
-      finally
-         sourceNames.Free;
-      end;
-   end;
-
 begin
    prog:=FCompiler.Compile( 'var i := 1;'#13#10
                            +'procedure Test;'#13#10
@@ -586,7 +592,7 @@ begin
    CheckEquals('2'#13#10, prog.Execute.Result.ToString, 'Result 1');
 
    breakpointables:=TdwsBreakpointableLines.Create(prog);
-   CheckEquals('*MainModule*: 1,3,5,7,', ReportBreakpointables, 'Case 1');
+   CheckEquals('*MainModule*: 1,3,5,7,', ReportBreakpointables(breakpointables), 'Case 1');
    breakpointables.Free;
 
    prog:=FCompiler.Compile( 'var i := 1;'#13#10
@@ -599,8 +605,79 @@ begin
    CheckEquals('', prog.Execute.Result.ToString, 'Result 2');
 
    breakpointables:=TdwsBreakpointableLines.Create(prog);
-   CheckEquals('*MainModule*: 1,4,5,7,', ReportBreakpointables, 'Case 2');
+   CheckEquals('*MainModule*: 1,4,5,7,', ReportBreakpointables(breakpointables), 'Case 2');
    breakpointables.Free;
+end;
+
+// ExecutableLinesVzOptimize
+//
+procedure TDebuggerTests.ExecutableLinesVzOptimize;
+var
+   prog : IdwsProgram;
+   breakpointables : TdwsBreakpointableLines;
+
+begin
+   prog:=FCompiler.Compile( 'var i := 2'#13#10
+                              + '+Round(Now);'#13#10
+                           +'while False do'#13#10
+                              + 'i += i '#13#10
+                                 + ' + Sqr(i);'#13#10
+                           +'if True then'#13#10
+                              +'i += 1;');
+   CheckEquals('', prog.Execute.Result.ToString, '3');
+
+   breakpointables:=TdwsBreakpointableLines.Create(prog);
+   try
+      if coOptimize in FCompiler.Config.CompilerOptions then
+         CheckEquals('*MainModule*: 1,7,', ReportBreakpointables(breakpointables), 'optimized')
+      else CheckEquals('*MainModule*: 1,3,4,6,7,', ReportBreakpointables(breakpointables), 'unoptimized');
+   finally
+      breakpointables.Free;
+   end;
+end;
+
+// ExecutableCoverage
+//
+procedure TDebuggerTests.ExecutableCoverage;
+var
+   i : Integer;
+   algos : TStrings;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   coverage : TdwsCoverageDebugger;
+   report : TdwsCodeCoverageReport;
+begin
+   algos := TStringList.Create;
+   try
+      CollectFiles(ExtractFilePath(ParamStr(0))+'Algorithms'+PathDelim, '*.pas', algos);
+      for i := 0 to algos.Count-1 do begin
+         prog := FCompiler.Compile(LoadTextFromFile(algos[i]));
+         CheckEquals(0, prog.Msgs.Count, 'Failed compiling ' + algos[i]);
+         exec := prog.CreateNewExecution;
+         coverage := TdwsCoverageDebugger.Create(nil);
+         try
+            FDebugger.Debugger := coverage;
+            FDebugEvalAtLine := -1;
+            coverage.Prog := prog;
+            FDebugger.BeginDebug(exec);
+            FDebugger.EndDebug;
+            CheckTrue(coverage.HasReport, 'has report');
+            report := coverage.CreateReport;
+            try
+               CheckTrue(Length(report.Entries) > 0, 'has entries '+algos[i]);
+               CheckTrue(report.Entries[0].Runnable >= 3, 'at least 3 runnables in '+algos[i]);
+               CheckTrue(report.Entries[0].NonCovered < report.Entries[0].Runnable, 'non covered below runnables '+algos[i]);
+            finally
+               report.Free;
+            end;
+         finally
+            FDebugger.Debugger := nil;
+            coverage.Free;
+         end;
+      end;
+   finally
+      algos.Free;
+   end;
 end;
 
 // AttachToScript

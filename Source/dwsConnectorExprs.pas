@@ -203,6 +203,8 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
 
+         procedure EnumerateSteppableExprs(const callback : TExprBaseProc); override;
+
          property ConnectorEnumerator : IConnectorEnumerator read FConnectorEnumerator write FConnectorEnumerator;
          property InExpr : TTypedExpr read FInExpr write FInExpr;
          property LoopVarExpr : TTypedExpr read FLoopVarExpr write FLoopVarExpr;
@@ -895,6 +897,13 @@ begin
          exec.DoStep(Self);
       end;
    end;
+end;
+
+// EnumerateSteppableExprs
+//
+procedure TConnectorForInExpr.EnumerateSteppableExprs(const callback : TExprBaseProc);
+begin
+   callback(DoExpr);
 end;
 
 // ------------------

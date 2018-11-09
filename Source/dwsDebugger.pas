@@ -25,9 +25,8 @@ interface
 
 uses
    Classes, SysUtils,
-   dwsSymbols, dwsXPlatform, dwsCompiler, dwsErrors, dwsDataContext,
-   dwsExprs, dwsCoreExprs, dwsInfo, dwsEvaluate, dwsScriptSource,
-   dwsUtils, dwsXPlatformUI, dwsStrings, dwsUnitSymbols, dwsStack, dwsInfoClasses;
+   dwsSymbols, dwsXPlatform, dwsCompiler, dwsDataContext, dwsExprs,
+   dwsInfo, dwsEvaluate, dwsScriptSource, dwsUtils, dwsUnitSymbols;
 
 type
    TdwsDebugger = class;
@@ -387,6 +386,7 @@ type
          function GetSourceLines(const sourceName : String) : TBits; inline;
 
          procedure EnumeratorCallback(parent, expr : TExprBase; var abort : Boolean);
+         procedure SteppableCallback(expr : TExprBase);
          procedure RegisterScriptPos(const scriptPos : TScriptPos);
 
          procedure ProcessProg(const prog : TdwsProgram);
@@ -414,6 +414,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsCoreExprs, dwsStack, dwsInfoClasses, dwsStrings, dwsXPlatformUI;
 
 type
    TThreadedDebugger = class (TdwsThread)
@@ -1575,8 +1577,16 @@ end;
 //
 procedure TdwsBreakpointableLines.EnumeratorCallback(parent, expr : TExprBase; var abort : Boolean);
 begin
-   if expr is TBlockExprBase then Exit;
-   RegisterScriptPos(expr.ScriptPos);
+   if expr is TProgramExpr then
+      TProgramExpr(expr).EnumerateSteppableExprs(SteppableCallback);
+end;
+                                                 //root block is not getting steppable callback called, must inject in ProcessProg
+// SteppableCallback
+//
+procedure TdwsBreakpointableLines.SteppableCallback(expr : TExprBase);
+begin
+   if expr <> nil then
+      RegisterScriptPos(expr.ScriptPos);
 end;
 
 // RegisterScriptPos
@@ -1623,16 +1633,21 @@ begin
 
    ProcessSymbolTable(prog.Table);
 
-   if (prog.InitExpr.ScriptPos.SourceFile<>nil) and (prog.InitExpr.SubExprCount>0) then
+   if (prog.InitExpr.ScriptPos.SourceFile<>nil) and (prog.InitExpr.SubExprCount>0) then begin
       prog.InitExpr.RecursiveEnumerateSubExprs(EnumeratorCallback);
+      prog.InitExpr.EnumerateSteppableExprs(SteppableCallback);
+   end;
 
    if not (prog.Expr is TBlockExprBase) then
       RegisterScriptPos(prog.Expr.ScriptPos);
 
+   prog.Expr.EnumerateSteppableExprs(SteppableCallback);
    prog.Expr.RecursiveEnumerateSubExprs(EnumeratorCallback);
 
-   if prog is TdwsMainProgram then
+   if (prog is TdwsMainProgram) and (TdwsMainProgram(prog).FinalExpr <> nil) then begin
       TdwsMainProgram(prog).FinalExpr.RecursiveEnumerateSubExprs(EnumeratorCallback);
+      TdwsMainProgram(prog).FinalExpr.EnumerateSteppableExprs(SteppableCallback);
+   end;
 end;
 
 // ProcessFuncSymbol

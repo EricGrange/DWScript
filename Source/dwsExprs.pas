@@ -714,6 +714,8 @@ type
 
          function ScriptLocation(prog : TObject) : String; override;
 
+         procedure EnumerateSteppableExprs(const callback : TExprBaseProc); virtual;
+
          function InterruptsFlow : Boolean; virtual;
 
          property Typ : TTypeSymbol read GetType;
@@ -819,6 +821,7 @@ type
          function ExtractStatement(index : Integer) : TProgramExpr;
 
          function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
+         procedure EnumerateSteppableExprs(const callback : TExprBaseProc); override;
 
          property StatementCount : Integer read FCount;
    end;
@@ -2626,12 +2629,13 @@ procedure TdwsProgramExecution.DebuggerNotifyException(const exceptObj : IScript
 var
    addr, i : Integer;
 begin
-   if not IsDebugging then Exit;
-   addr:=DebuggerFieldAddr;
-   i:=exceptObj.AsInteger[addr];
-   exceptObj.AsInteger[addr]:=i+1;
-   if i=0 then
-      Debugger.NotifyException(Self, exceptObj);
+   if (exceptObj <> nil) and IsDebugging then begin
+      addr := DebuggerFieldAddr;
+      i := exceptObj.AsInteger[addr];
+      exceptObj.AsInteger[addr] := i+1;
+      if i = 0 then
+         Debugger.NotifyException(Self, exceptObj);
+   end;
 end;
 
 // ------------------
@@ -3996,6 +4000,13 @@ begin
    else Result:=ScriptPos.AsInfo;
 end;
 
+// EnumerateSteppableExprs
+//
+procedure TProgramExpr.EnumerateSteppableExprs(const callback : TExprBaseProc);
+begin
+   // empty
+end;
+
 // InterruptsFlow
 //
 function TProgramExpr.InterruptsFlow : Boolean;
@@ -4320,6 +4331,16 @@ begin
       blockExpr.AddStatement(FStatements[i].SpecializeProgramExpr(context));
 
    Result := blockExpr;
+end;
+
+// EnumerateSteppableExprs
+//
+procedure TBlockExprBase.EnumerateSteppableExprs(const callback : TExprBaseProc);
+var
+   i : Integer;
+begin
+   for i := 0 to FCount-1 do
+      callback(FStatements[i]);
 end;
 
 // SpecializeTable

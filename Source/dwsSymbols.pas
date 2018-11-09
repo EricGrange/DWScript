@@ -182,6 +182,7 @@ type
 
    TExecutionStatusResult = (esrNone, esrExit, esrBreak, esrContinue);
 
+   TExprBaseProc = procedure (expr : TExprBase) of object;
    TExprBaseEnumeratorProc = procedure (parent, expr : TExprBase; var abort : Boolean) of object;
 
    // Is thrown by "raise" statements in script code

@@ -1808,6 +1808,7 @@ type
          procedure Orphan(context : TdwsCompilerContext); override;
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
          function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
+         procedure EnumerateSteppableExprs(const callback : TExprBaseProc); override;
 
          property CondExpr : TTypedExpr read FCond write FCond;
          property ThenExpr : TProgramExpr read FThen write FThen;
@@ -1831,6 +1832,7 @@ type
          procedure Orphan(context : TdwsCompilerContext); override;
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
          function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
+         procedure EnumerateSteppableExprs(const callback : TExprBaseProc); override;
 
          property ElseExpr : TProgramExpr read FElse write FElse;
    end;
@@ -1993,6 +1995,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
 
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
+         procedure EnumerateSteppableExprs(const callback : TExprBaseProc); override;
 
          property CaseConditions : TTightList read FCaseConditions;
          property ValueExpr: TTypedExpr read FValueExpr write FValueExpr;
@@ -2108,6 +2111,7 @@ type
          property VarExpr: TIntVarExpr read FVarExpr write FVarExpr;
 
          function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
+         procedure EnumerateSteppableExprs(const callback : TExprBaseProc); override;
    end;
 
    TForExprClass = class of TForExpr;
@@ -2170,6 +2174,8 @@ type
                             aVarExpr : TVarExpr; aInExpr : TTypedExpr);
          destructor Destroy; override;
 
+         procedure EnumerateSteppableExprs(const callback : TExprBaseProc); override;
+
          property DoExpr : TProgramExpr read FDoExpr write FDoExpr;
          property InExpr : TTypedExpr read FInExpr write FInExpr;
          property VarExpr : TVarExpr read FVarExpr write FVarExpr;
@@ -2209,6 +2215,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
 
          function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
+         procedure EnumerateSteppableExprs(const callback : TExprBaseProc); override;
 
          property CondExpr : TTypedExpr read FCondExpr write FCondExpr;
          property LoopExpr : TProgramExpr read FLoopExpr write FLoopExpr;
@@ -2306,6 +2313,8 @@ type
          constructor Create(tryExpr : TProgramExpr);
          destructor Destroy; override;
 
+         procedure EnumerateSteppableExprs(const callback : TExprBaseProc); override;
+
          property TryExpr : TProgramExpr read FTryExpr write FTryExpr;
          property HandlerExpr : TProgramExpr read FHandlerExpr write FHandlerExpr;
    end;
@@ -2331,6 +2340,8 @@ type
          procedure AddDoExpr(expr : TExceptDoExpr);
          property DoExpr[i : Integer] : TExceptDoExpr read GetDoExpr;
          function DoExprCount : Integer;
+
+         procedure EnumerateSteppableExprs(const callback : TExprBaseProc); override;
 
          property ElseExpr : TProgramExpr read FElseExpr write FElseExpr;
    end;
@@ -7672,6 +7683,13 @@ begin
    );
 end;
 
+// EnumerateSteppableExprs
+//
+procedure TIfThenExpr.EnumerateSteppableExprs(const callback : TExprBaseProc);
+begin
+   callback(ThenExpr);
+end;
+
 // GetSubExpr
 //
 function TIfThenExpr.GetSubExpr(i : Integer) : TExprBase;
@@ -7774,6 +7792,14 @@ begin
       ThenExpr.SpecializeProgramExpr(context),
       ElseExpr.SpecializeProgramExpr(context)
    );
+end;
+
+// EnumerateSteppableExprs
+//
+procedure TIfThenElseExpr.EnumerateSteppableExprs(const callback : TExprBaseProc);
+begin
+   callback(ThenExpr);
+   callback(ElseExpr);
 end;
 
 // GetSubExpr
@@ -7890,6 +7916,17 @@ begin
       end;
    end;
    Result:=Self;
+end;
+
+// EnumerateSteppableExprs
+//
+procedure TCaseExpr.EnumerateSteppableExprs(const callback : TExprBaseProc);
+var
+   i : Integer;
+begin
+   for i := 0 to CaseConditions.Count-1 do
+      callback(TCaseCondition(CaseConditions.List[i]).TrueExpr);
+   callback(ElseExpr);
 end;
 
 // GetSubExpr
@@ -8330,6 +8367,13 @@ begin
    Result := specialized;
 end;
 
+// EnumerateSteppableExprs
+//
+procedure TForExpr.EnumerateSteppableExprs(const callback : TExprBaseProc);
+begin
+   callback(DoExpr);
+end;
+
 // GetSubExpr
 //
 function TForExpr.GetSubExpr(i : Integer) : TExprBase;
@@ -8606,6 +8650,13 @@ begin
    Result := specialized;
 end;
 
+// EnumerateSteppableExprs
+//
+procedure TLoopExpr.EnumerateSteppableExprs(const callback : TExprBaseProc);
+begin
+   callback(LoopExpr);
+end;
+
 // GetSubExpr
 //
 function TLoopExpr.GetSubExpr(i : Integer) : TExprBase;
@@ -8798,6 +8849,14 @@ begin
   inherited;
 end;
 
+// EnumerateSteppableExprs
+//
+procedure TExceptionExpr.EnumerateSteppableExprs(const callback : TExprBaseProc);
+begin
+   callback(TryExpr);
+   callback(HandlerExpr);
+end;
+
 // GetSubExpr
 //
 function TExceptionExpr.GetSubExpr(i : Integer) : TExprBase;
@@ -8926,6 +8985,18 @@ end;
 function TExceptExpr.DoExprCount : Integer;
 begin
    Result:=FDoExprs.Count;
+end;
+
+// EnumerateSteppableExprs
+//
+procedure TExceptExpr.EnumerateSteppableExprs(const callback : TExprBaseProc);
+var
+   i : Integer;
+begin
+   inherited EnumerateSteppableExprs(callback);
+   for i := 0 to DoExprCount-1 do
+      callback(DoExpr[i]);
+   callback(ElseExpr);
 end;
 
 // GetSubExpr
@@ -10714,6 +10785,13 @@ begin
    FInExpr.Free;
    FVarExpr.Free;
    inherited;
+end;
+
+// EnumerateSteppableExprs
+//
+procedure TForInStrExpr.EnumerateSteppableExprs(const callback : TExprBaseProc);
+begin
+   callback(DoExpr);
 end;
 
 // GetSubExpr
