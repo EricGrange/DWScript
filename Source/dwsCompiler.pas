@@ -10172,7 +10172,7 @@ begin
       proc:=TdwsProcedure(CurrentProg);
       if proc.Func.Result=nil then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoResultRequired);
-      RecordSymbolUse(proc.Func.Result, exitPos, [suReference, suWrite]);
+      RecordSymbolUse(proc.Func.Result, exitPos, [suReference, suWrite, suImplicit]);
       leftExpr:=TVarExpr.CreateTyped(FCompilerContext, proc.Func.Result);
       try
          assignExpr:=ReadAssign(ttASSIGN, leftExpr) as TAssignExpr;
@@ -11906,7 +11906,7 @@ begin
                CurrentProg.Table.AddSymbol(includeSymbol);
                fileNamePos:=FTok.HotPos;
                fileNamePos.IncCol; // skip quote
-               RecordSymbolUse(includeSymbol, fileNamePos, [suReference]);
+               RecordSymbolUse(includeSymbol, fileNamePos, [suReference, suImplicit]);
             end;
 
             if (switch=siIncludeOnce) then begin

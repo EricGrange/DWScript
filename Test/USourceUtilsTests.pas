@@ -51,6 +51,7 @@ type
          procedure RecordConstSuggest;
          procedure SuggestInBlockWithError;
          procedure NormalizeOverload;
+         procedure NormalizeImplicit;
          procedure OptimizedIfThenBlockSymbol;
          procedure MemberVisibilities;
          procedure UnitNamesSuggest;
@@ -1027,9 +1028,9 @@ begin
                   +'procedure Test(const A, Blah: string; const C: string); overload;'#13#10
                   +'procedure Test; overload;'#13#10
                   +'implementation'#13#10
-                  +'procedure Test(const A, Blah: string; const C: string);'#13#10
+                  +'procedure test(const A, Blah: string; const C: string);'#13#10
                   +'begin end;'#13#10
-                  +'procedure Test;'#13#10
+                  +'procedure test;'#13#10
                   +'begin end;';
 
       prog:=FCompiler.Compile(lines.Text);
@@ -1040,6 +1041,39 @@ begin
       try
          NormalizeSymbolsCase(lines, prog.SourceList[0].SourceFile, prog.SymbolDictionary,
                               normalizer.Normalize);
+         CheckEquals('6, 11, Test'#13#10'8, 11, Test'#13#10, normalizer.Text);
+      finally
+         normalizer.Free;
+      end;
+   finally
+      lines.Free;
+   end;
+end;
+
+// NormalizeImplicit
+//
+procedure TSourceUtilsTests.NormalizeImplicit;
+var
+   prog : IdwsProgram;
+   lines : TStringList;
+   normalizer : TTestNormalizer;
+begin
+   lines := TStringList.Create;
+   try
+      lines.Text:= 'function Test(a : Integer) : Integer;'#13#10
+                  +'begin'#13#10
+                  +'Exit(a);'#13#10
+                  +'end;';
+
+      prog:=FCompiler.Compile(lines.Text);
+
+      CheckEquals('', prog.Msgs.AsInfo, 'should have compiled without errors');
+
+      normalizer:=TTestNormalizer.Create;
+      try
+         NormalizeSymbolsCase(lines, prog.SourceList[0].SourceFile, prog.SymbolDictionary,
+                              normalizer.Normalize);
+         CheckEquals('', normalizer.Text);
       finally
          normalizer.Free;
       end;
