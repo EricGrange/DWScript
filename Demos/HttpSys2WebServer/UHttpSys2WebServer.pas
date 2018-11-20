@@ -92,6 +92,8 @@ type
          function  GetURLRewriteRules : String;
          procedure SetURLRewriteRules(const json : String);
 
+         procedure DoOnHTTPThreadException(sender : TThread; var e : Exception);
+
       public
          constructor Create; overload;
          class function Create(const basePath : TFileName; options : TdwsJSONValue;
@@ -252,7 +254,11 @@ end;
 //
 destructor THttpSys2WebServer.Destroy;
 begin
-   FServer.Free;
+   if FServer <> nil then begin
+      FServer.OnHttpThreadException := nil;
+      FServer.Free;
+      FServer := nil;
+   end;
    FDWS.Free;
    FDirectoryIndex.Free;
    FURLRewriter.Free;
@@ -353,7 +359,8 @@ begin
       if serverOptions['Compression'].AsBoolean then
          FServer.RegisterCompress(CompressDeflate);
 
-      FServer.OnRequest:=Process;
+      FServer.OnHttpThreadException := DoOnHTTPThreadException;
+      FServer.OnRequest := Process;
 
       FServer.ServerName:=serverOptions['Name'].AsString;
 
@@ -420,6 +427,14 @@ end;
 procedure THttpSys2WebServer.SetURLRewriteRules(const json : String);
 begin
    FURLRewriter.AsJSON := json;
+end;
+
+// DoOnHTTPThreadException
+//
+procedure THttpSys2WebServer.DoOnHTTPThreadException(sender : TThread; var e : Exception);
+begin
+   if Assigned(FDWS) then
+      FDWS.LogError(e.ClassName + ': ' + e.Message);
 end;
 
 // Shutdown
