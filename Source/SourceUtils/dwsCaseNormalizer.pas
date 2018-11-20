@@ -103,9 +103,9 @@ begin
             if symPosList.Symbol.Name='' then continue;
 
             symbol:=symPosList.Symbol;
-            occurence:=Copy(sourceLines[symPos.ScriptPos.Line-1], symPos.ScriptPos.Col, Length(symbol.Name));
-            if occurence<>symbol.Name then begin
-               Assert(UnicodeSameText(symbol.Name, occurence));
+            occurence := Copy(sourceLines[symPos.ScriptPos.Line-1], symPos.ScriptPos.Col, Length(symbol.Name));
+            if occurence <> symbol.Name then begin
+               Assert(UnicodeSameText(symbol.Name, occurence), symPos.ScriptPos.AsInfo);
                location:=TSymbolLocation.Create;
                location.Line:=symPos.ScriptPos.Line;
                location.Col:=symPos.ScriptPos.Col;
