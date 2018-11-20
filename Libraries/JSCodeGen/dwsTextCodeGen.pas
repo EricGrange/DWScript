@@ -171,7 +171,7 @@ constructor TdwsExprGenericCodeGen.Create(const template : array of const;
                                           codeGenType : TdwsGenericCodeGenType = gcgExpression;
                                           const dependency : String = '');
 var
-   i : Integer;
+   i, k : Integer;
 begin
    inherited Create;
    FCodeGenType:=codeGenType;
@@ -179,10 +179,23 @@ begin
    for i:=0 to High(template) do
       FTemplate[i]:=template[i];
    if codeGenType<>gcgStatement then begin
-      i:=High(template);
+      i := High(template);
       FUnWrapable:=    (FTemplate[0].VType=vtWideChar) and (FTemplate[0].VWideChar='(')
                    and (FTemplate[i].VType=vtWideChar) and (FTemplate[i].VWideChar=')');
-   end else FUnWrapable:=False;
+      k := 0;
+      for i := 1 to High(template)-1 do begin
+         if FTemplate[i].VType <> vtWideChar then continue;
+         if FTemplate[i].VWideChar = '(' then
+            Inc(k)
+         else if FTemplate[i].VWideChar = ')' then begin
+            Dec(k);
+            if k < 0  then begin
+               FUnWrapable := False;
+               break;
+            end;
+         end;
+      end;
+   end else FUnWrapable := False;
    FDependency:=dependency;
 end;
 

@@ -278,7 +278,7 @@ type
    end;
 
    TJSCompoundExpr = class (TJSExprCodeGen)
-      Op : String;
+      Op, SpacedOp : String;
       DynCompound : String;
       constructor Create(const anOp, aDynCompound : String);
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
@@ -315,6 +315,7 @@ type
    end;
 
    TJSVarExpr = class (TJSExprCodeGen)
+      constructor Create(aWrap : TdwsExprCodeGenWrap);
       class function CodeGenSymbol(codeGen : TdwsCodeGen; expr : TExprBase) : TDataSymbol; static;
       class function CodeGenName(codeGen : TdwsCodeGen; expr : TExprBase) : TDataSymbol; static;
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
@@ -605,6 +606,10 @@ type
       procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
    end;
 
+   TJSIncIntVarFuncExpr = class (TJSIncDecVarFuncExpr)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
    TJSSarExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -613,6 +618,7 @@ type
       private
          FVirtualCall : Boolean;
       public
+         constructor Create;
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
          procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
          procedure CodeGenFunctionName(codeGen : TdwsCodeGen; expr : TFuncExprBase; funcSym : TFuncSymbol); virtual;
@@ -769,7 +775,7 @@ type
 
    TJSBinOpExpr = class (TJSOpExpr)
       protected
-         FOp : String;
+         FOp, FSpacedOp : String;
          FPrecedence : Integer;
          FAssociative : TJBinOpAssociativities;
 
@@ -814,6 +820,11 @@ type
    TJSCoalesceExpr = class (TJSBinOpExpr)
       public
          constructor Create;
+   end;
+
+   TJSAppendStringVarExpr = class(TJSExprCodeGen)
+      public
+         procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
 // ------------------------------------------------------------------
@@ -1014,26 +1025,26 @@ begin
 
    RegisterCodeGen(TAssignArrayConstantExpr,       TJAssignArrayConstantExpr.Create);
 
-   RegisterCodeGen(TVarExpr,              TJSVarExpr.Create);
-   RegisterCodeGen(TExternalVarExpr,      TJSVarExpr.Create);
-   RegisterCodeGen(TBaseTypeVarExpr,      TJSVarExpr.Create);
-   RegisterCodeGen(TSelfVarExpr,          TJSVarExpr.Create);
-   RegisterCodeGen(TSelfObjectVarExpr,    TJSVarExpr.Create);
-   RegisterCodeGen(TVarParentExpr,        TJSVarExpr.Create);
-   RegisterCodeGen(TVarParamExpr,         TJSVarParamExpr.Create);
-   RegisterCodeGen(TVarParamParentExpr,   TJSVarParamExpr.Create);
-   RegisterCodeGen(TLazyParamExpr,        TJSLazyParamExpr.Create);
-   RegisterCodeGen(TConstParamExpr,       TJSConstParamExpr.Create);
-   RegisterCodeGen(TConstParamParentExpr, TJSConstParamExpr.Create);
+   RegisterCodeGen(TVarExpr,              TJSVarExpr.Create(cgwNotNeeded));
+   RegisterCodeGen(TExternalVarExpr,      TJSVarExpr.Create(cgwUnknown));
+   RegisterCodeGen(TBaseTypeVarExpr,      TJSVarExpr.Create(cgwNotNeeded));
+   RegisterCodeGen(TSelfVarExpr,          TJSVarExpr.Create(cgwNotNeeded));
+   RegisterCodeGen(TSelfObjectVarExpr,    TJSVarExpr.Create(cgwNotNeeded));
+   RegisterCodeGen(TVarParentExpr,        TJSVarExpr.Create(cgwNotNeeded));
+   RegisterCodeGen(TVarParamExpr,         TJSVarParamExpr.Create(cgwNotNeeded));
+   RegisterCodeGen(TVarParamParentExpr,   TJSVarParamExpr.Create(cgwNotNeeded));
+   RegisterCodeGen(TLazyParamExpr,        TJSLazyParamExpr.Create(cgwNotNeeded));
+   RegisterCodeGen(TConstParamExpr,       TJSConstParamExpr.Create(cgwNotNeeded));
+   RegisterCodeGen(TConstParamParentExpr, TJSConstParamExpr.Create(cgwNotNeeded));
 
-   RegisterCodeGen(TIntVarExpr,           TJSVarExpr.Create);
-   RegisterCodeGen(TFloatVarExpr,         TJSVarExpr.Create);
-   RegisterCodeGen(TStrVarExpr,           TJSVarExpr.Create);
-   RegisterCodeGen(TBoolVarExpr,          TJSVarExpr.Create);
-   RegisterCodeGen(TObjectVarExpr,        TJSVarExpr.Create);
+   RegisterCodeGen(TIntVarExpr,           TJSVarExpr.Create(cgwNotNeeded));
+   RegisterCodeGen(TFloatVarExpr,         TJSVarExpr.Create(cgwNotNeeded));
+   RegisterCodeGen(TStrVarExpr,           TJSVarExpr.Create(cgwNotNeeded));
+   RegisterCodeGen(TBoolVarExpr,          TJSVarExpr.Create(cgwNotNeeded));
+   RegisterCodeGen(TObjectVarExpr,        TJSVarExpr.Create(cgwNotNeeded));
 
-   RegisterCodeGen(TRecordExpr,           TJSRecordExpr.Create);
-   RegisterCodeGen(TRecordVarExpr,        TJSRecordExpr.Create);
+   RegisterCodeGen(TRecordExpr,           TJSRecordExpr.Create(cgwNotNeeded));
+   RegisterCodeGen(TRecordVarExpr,        TJSRecordExpr.Create(cgwNotNeeded));
    RegisterCodeGen(TDynamicRecordExpr,    TJSDynamicRecordExpr.Create);
 
    RegisterCodeGen(TConvOrdToIntegerExpr, TJSConvIntegerExpr.Create);
@@ -1093,8 +1104,7 @@ begin
    RegisterCodeGen(TCoalesceClassExpr,    TJSCoalesceExpr.Create);
    RegisterCodeGen(TCoalesceDynArrayExpr, TJSCoalesceExpr.Create);
 
-   RegisterCodeGen(TAppendStringVarExpr,
-      TdwsExprGenericCodeGen.Create([0, '+=', -1], gcgStatement));
+   RegisterCodeGen(TAppendStringVarExpr,  TJSAppendStringVarExpr.Create);
    RegisterCodeGen(TAppendConstStringVarExpr,      TJSAppendConstStringVarExpr.Create);
 
    RegisterCodeGen(TPlusAssignIntExpr,    TJSCompoundExpr.Create('+=', '$DIdxAdd'));
@@ -1113,8 +1123,7 @@ begin
       TdwsExprGenericCodeGen.Create([0, '+=', -1], gcgStatement));
    RegisterCodeGen(TDecIntVarExpr,
       TdwsExprGenericCodeGen.Create([0, '-=', -1], gcgStatement));
-   RegisterCodeGen(TIncIntVarWithConstExpr,
-      TdwsExprGenericCodeGen.Create([0, '+=', -1], gcgStatement));
+   RegisterCodeGen(TIncIntVarWithConstExpr,  TJSIncIntVarFuncExpr.Create);
 
    RegisterCodeGen(TIncVarFuncExpr,    TJSIncVarFuncExpr.Create);
    RegisterCodeGen(TDecVarFuncExpr,    TJSDecVarFuncExpr.Create);
@@ -1381,9 +1390,9 @@ begin
    RegisterCodeGen(TFuncRefExpr,                TJSFuncRefExpr.Create);
    RegisterCodeGen(TAnonymousFuncRefExpr,       TJSAnonymousFuncRefExpr.Create);
 
-   RegisterCodeGen(TFieldExpr,                  TJSFieldExpr.Create);
-   RegisterCodeGen(TFieldVarExpr,               TJSFieldExpr.Create);
-   RegisterCodeGen(TReadOnlyFieldExpr,          TJSFieldExpr.Create);
+   RegisterCodeGen(TFieldExpr,                  TJSFieldExpr.Create(cgwNotNeeded));
+   RegisterCodeGen(TFieldVarExpr,               TJSFieldExpr.Create(cgwNotNeeded));
+   RegisterCodeGen(TReadOnlyFieldExpr,          TJSFieldExpr.Create(cgwNotNeeded));
 
    RegisterCodeGen(TAssertExpr,                 TJSAssertExpr.Create);
    RegisterCodeGen(TDeclaredExpr,               TJSDeclaredExpr.Create);
@@ -4095,6 +4104,14 @@ end;
 // ------------------ TJSVarExpr ------------------
 // ------------------
 
+// Create
+//
+constructor TJSVarExpr.Create(aWrap : TdwsExprCodeGenWrap);
+begin
+   inherited Create;
+   FWrap := aWrap;
+end;
+
 // CodeGen
 //
 procedure TJSVarExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
@@ -4324,8 +4341,9 @@ end;
 constructor TJSCompoundExpr.Create(const anOp, aDynCompound : String);
 begin
    inherited Create;
-   Op:=anOp;
-   DynCompound:=aDynCompound;
+   Op := anOp;
+   SpacedOp := ' ' + anOp + ' ';
+   DynCompound := aDynCompound;
 end;
 
 // CodeGen
@@ -4340,7 +4358,9 @@ begin
    if (cgoNoRangeChecks in codeGen.Options) or not (e.Left is TDynamicArrayExpr) then begin
 
       codeGen.CompileNoWrap(e.Left);
-      codeGen.WriteString(Op);
+      if cgoOptimizeForSize in codeGen.Options then
+         codeGen.WriteString(Op)
+      else codeGen.WriteString(SpacedOp);
       codeGen.CompileNoWrap(e.Right);
 
    end else begin
@@ -4746,6 +4766,13 @@ begin
    Result:=funcSym.QualifiedName+'$_';
    for i:=0 to funcSym.Params.Count-1 do
       Result:=Result+funcSym.GetParamType(i).Name+'_';
+end;
+
+// Create
+//
+constructor TJSFuncBaseExpr.Create;
+begin
+   FWrap := cgwNotNeeded;
 end;
 
 // ------------------
@@ -6058,6 +6085,29 @@ end;
 procedure TJSDecVarFuncExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
 begin
    DoCodeGen(codeGen, TIncVarFuncExpr(expr), '-', True);
+end;
+
+// ------------------
+// ------------------ TJSIncIntVarFuncExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSIncIntVarFuncExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TIncIntVarExpr;
+begin
+   e := TIncIntVarExpr(expr);
+   codeGen.Compile(e.SubExpr[0]);
+   if (e.Right is TConstIntExpr) and (TConstIntExpr(e.Right).Value = 1) then begin
+      codeGen.WriteString('++');
+   end else begin
+      if cgoOptimizeForSize in codeGen.Options then
+         codeGen.WriteString('+=')
+      else codeGen.WriteString(' += ');
+      codeGen.Compile(e.SubExpr[1]);
+   end;
+   codeGen.WriteStatementEnd;
 end;
 
 // ------------------
@@ -8151,9 +8201,10 @@ end;
 constructor TJSBinOpExpr.Create(const op : String; aPrecedence : Integer; associative : TJBinOpAssociativities);
 begin
    inherited Create;
-   FOp:=op;
-   FPrecedence:=aPrecedence;
-   FAssociative:=associative;
+   FOp := op;
+   FSpacedOp := ' ' + op + ' ';
+   FPrecedence := aPrecedence;
+   FAssociative := associative;
 end;
 
 // CodeGen
@@ -8182,8 +8233,10 @@ end;
 //
 function TJSBinOpExpr.WriteOp(codeGen : TdwsCodeGen; rightExpr : TTypedExpr) : Boolean;
 begin
-   codeGen.WriteString(FOp);
-   Result:=False;
+   if cgoOptimizeForSize in codeGen.Options then
+      codeGen.WriteString(FOp)
+   else codeGen.WriteString(FSpacedOp);
+   Result := False;
 end;
 
 // ExprJSPrecedence
@@ -8796,6 +8849,25 @@ end;
 function TSimpleClassHash.GetItemHashCode(const item1 : TClass) : Cardinal;
 begin
    Result := Cardinal((NativeUInt(item1) shr 4) * 16777619);
+end;
+
+// ------------------
+// ------------------ TJSAppendStringVarExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSAppendStringVarExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TAppendStringVarExpr;
+begin
+   e := TAppendStringVarExpr(expr);
+   codeGen.Compile(e.SubExpr[0]);
+   if cgoOptimizeForSize in codeGen.Options then
+      codeGen.WriteString('+=')
+   else codeGen.WriteString(' += ');
+   codeGen.CompileNoWrap(e.SubExpr[1] as TTypedExpr);
+   codeGen.WriteStatementEnd;
 end;
 
 end.

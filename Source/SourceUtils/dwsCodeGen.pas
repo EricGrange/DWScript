@@ -330,9 +330,14 @@ type
          property OnCustomCodeGen : TdwsCustomCodeGenEvent read FOnCustomCodeGen write FOnCustomCodeGen;
    end;
 
+   TdwsExprCodeGenWrap = (cgwUnknown, cgwNotNeeded);
+
    TdwsExprCodeGen = class abstract
       private
          FOwner : TdwsCodeGen;
+
+      protected
+         FWrap : TdwsExprCodeGenWrap;
 
       public
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); virtual;
@@ -341,6 +346,7 @@ type
          class function ExprIsConstantInteger(expr : TExprBase; value : Integer) : Boolean; static;
 
          property Owner : TdwsCodeGen read FOwner;
+         property Wrap : TdwsExprCodeGenWrap read FWrap;
    end;
 
    ECodeGenException = class (Exception);

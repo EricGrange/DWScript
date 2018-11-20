@@ -36,11 +36,14 @@ type
          class var vAliases : TUnicodeStringList;
          class procedure RegisterAlias(const aliasName, canonicalName : String); static;
 
+         procedure DoCodeGen(codeGen : TdwsCodeGen; e : TMagicFuncExpr; noWrap : Boolean);
+
       public
          constructor Create(const codeGen : TdwsCodeGen);
          destructor Destroy; override;
 
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+         procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
          procedure CodeGenFunctionName(codeGen : TdwsCodeGen; expr : TFuncExprBase; funcSym : TFuncSymbol); override;
 
          class function CanonicalName(const aName : String) : String; static;
@@ -90,6 +93,16 @@ type
    TJSStrReplaceFuncExpr = class (TJSFuncBaseExpr)
       public
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
+   // for simple methods that operate on Child[0], with a Child[1] parameter
+   TJSGenericSimpleMethodExpr = class (TJSFuncBaseExpr)
+      private
+         FSuffix0, FSuffix1 : String;
+      public
+         constructor Create(const suffix0, suffix1 : String);
+         procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+         procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
    end;
 
    TJSGetTextFuncExpr = class (TJSFuncBaseExpr)
@@ -643,8 +656,7 @@ const
        Code : 'function CharAt(s,p) { return s.charAt(p-1) }'),
       (Name : 'Chr';
        Code : 'function Chr(c) {'#13#10
-              +#9'if (c<=0xFFFF)'#13#10
-                 +#9#9'return String.fromCharCode(c);'#13#10
+              +#9'if (c<=0xFFFF) return String.fromCharCode(c);'#13#10
               +#9'c-=0x10000;'#13#10
               +#9'return String.fromCharCode(0xD800+(c>>10))+String.fromCharCode(0xDC00+(c&0x3FF));'#13#10
               +'}'),
@@ -1356,7 +1368,7 @@ begin
    FMagicCodeGens.AddObject('IntToStr', TJSIntToStrExpr.Create);
    FMagicCodeGens.AddObject('IsFinite', TdwsExprGenericCodeGen.Create(['isFinite', '(', 0, ')']));
    FMagicCodeGens.AddObject('IsNaN', TdwsExprGenericCodeGen.Create(['isNaN', '(', 0, ')']));
-   FMagicCodeGens.AddObject('LeftStr', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(0,', 1, ')']));
+   FMagicCodeGens.AddObject('LeftStr', TJSGenericSimpleMethodExpr.Create('.substr(0,', ')'));
    FMagicCodeGens.AddObject('Ln', TdwsExprGenericCodeGen.Create(['Math.log', '(', 0, ')']));
    FMagicCodeGens.AddObject('LowerCase', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.toLowerCase()']));
    FMagicCodeGens.AddObject('Max$_Float_Float_', TdwsExprGenericCodeGen.Create(['Math.max','(', 0, ',', 1, ')']));
@@ -1384,10 +1396,10 @@ begin
    // FMagicCodeGens.AddObject('StrDeleteRight', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.slice', '(0,-', '(', 1, ')', ')']));
    FMagicCodeGens.AddObject('StrContains', TdwsExprGenericCodeGen.Create(['(', '(', 0, ')', '.indexOf', '(', 1, ')', '>=0)']));
    FMagicCodeGens.AddObject('StrFind', TJSStrFindExpr.Create);
-   FMagicCodeGens.AddObject('StrJoin', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.join', '(', 1, ')']));
+   FMagicCodeGens.AddObject('StrJoin', TJSGenericSimpleMethodExpr.Create('.join(', ')'));
    FMagicCodeGens.AddObject('StrMatches', TJSStrMatchesFuncExpr.Create);
    FMagicCodeGens.AddObject('StrReplace', TJSStrReplaceFuncExpr.Create);
-   FMagicCodeGens.AddObject('StrSplit', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.split', '(', 1, ')']));
+   FMagicCodeGens.AddObject('StrSplit', TJSGenericSimpleMethodExpr.Create('.split(', ')'));
    FMagicCodeGens.AddObject('StrToFloat', TdwsExprGenericCodeGen.Create(['parseFloat', '(', 0, ')']));
    FMagicCodeGens.AddObject('StrToInt', TdwsExprGenericCodeGen.Create(['parseInt', '(', 0, ',', '10)']));
    FMagicCodeGens.AddObject('StrToJSON', TdwsExprGenericCodeGen.Create(['JSON.stringify', '(', 0, ')']));
@@ -1415,27 +1427,43 @@ begin
    FMagicCodeGens.Free;
 end;
 
-// CodeGen
+// DoCodeGen
 //
-procedure TJSMagicFuncExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+procedure TJSMagicFuncExpr.DoCodeGen(codeGen : TdwsCodeGen; e : TMagicFuncExpr; noWrap : Boolean);
 var
-   e : TMagicFuncExpr;
    name : String;
    i : Integer;
+   cg : TdwsExprCodeGen;
 begin
-   e:=TMagicFuncExpr(expr);
    if e.FuncSym.IsOverloaded then
       name:=TJSFuncBaseExpr.GetSignature(e.FuncSym)
    else name:=e.FuncSym.QualifiedName;
    if cgoNoInlineMagics in codeGen.Options then
       i:=-1
    else i:=FMagicCodeGens.IndexOf(name);
-   if i>=0 then
-      TdwsExprCodeGen(FMagicCodeGens.Objects[i]).CodeGen(codeGen, expr)
-   else begin
+   if i>=0 then begin
+      cg := TdwsExprCodeGen(FMagicCodeGens.Objects[i]);
+      if noWrap then
+         cg.CodeGenNoWrap(codeGen, e)
+      else cg.CodeGen(codeGen, e);
+   end else begin
       codeGen.Dependencies.Add(name);
-      inherited;
+      inherited CodeGen(codeGen, e);
    end;
+end;
+
+// CodeGen
+//
+procedure TJSMagicFuncExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+begin
+   DoCodeGen(codeGen, expr as TMagicFuncExpr, False);
+end;
+
+// CodeGenNoWrap
+//
+procedure TJSMagicFuncExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+begin
+   DoCodeGen(codeGen, expr as TMagicFuncExpr, True);
 end;
 
 // CodeGenFunctionName
@@ -1905,6 +1933,51 @@ begin
 end;
 
 // ------------------
+// ------------------ TJSGenericSimpleMethodExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TJSGenericSimpleMethodExpr.Create(const suffix0, suffix1 : String);
+begin
+   FSuffix0 := suffix0;
+   FSuffix1 := suffix1;
+end;
+
+// CodeGen
+//
+procedure TJSGenericSimpleMethodExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+begin
+   CodeGenNoWrap(codeGen, expr as TTypedExpr);
+end;
+
+// CodeGenNoWrap
+//
+procedure TJSGenericSimpleMethodExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+var
+   sub : TTypedExpr;
+   cg : TdwsExprCodeGen;
+begin
+   sub := expr.SubExpr[0] as TTypedExpr;
+
+   cg := codeGen.FindCodeGen(sub);
+   if (cg <> nil) and (cg.Wrap = cgwNotNeeded) then begin
+      cg.CodeGenNoWrap(codeGen, sub);
+   end else begin
+      codeGen.WriteString('(');
+      codeGen.CompileNoWrap(sub);
+      codeGen.WriteString(')');
+   end;
+
+   codeGen.WriteString(FSuffix0);
+
+   sub := expr.SubExpr[1] as TTypedExpr;
+   codeGen.CompileNoWrap(sub);
+   codeGen.WriteString(FSuffix1);
+end;
+
+
+// ------------------
 // ------------------ TJSGetTextFuncExpr ------------------
 // ------------------
 
@@ -1912,7 +1985,6 @@ end;
 //
 constructor TJSGetTextFuncExpr.Create(codeGen : TdwsCodeGen);
 begin
-   inherited Create;
    FCodegen:=codeGen;
 end;
 
