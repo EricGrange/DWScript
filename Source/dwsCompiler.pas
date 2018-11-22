@@ -10989,7 +10989,9 @@ begin
 
          end else begin
 
-            Result := TCharacterInOpExpr.AttemptCreate(FCompilerContext, left, condList);
+            if left is TStringArrayOpExpr then
+               Result := TCharacterInOpExpr.AttemptCreate(FCompilerContext, left, condList)
+            else Result := nil;
             if Result = nil then
                Result := TStringInOpExpr.Create(FCompilerContext, left);
 
