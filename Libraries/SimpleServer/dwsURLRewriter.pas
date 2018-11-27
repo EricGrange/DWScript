@@ -21,7 +21,7 @@ interface
 uses SysUtils, StrUtils, dwsUtils, dwsXPlatform, dwsJSON;
 
 const
-   cMAX_REWRITTEN_URL_SIZE = 2048;
+   cMAX_REWRITTEN_URL_SIZE = 8096;
 
 type
 
@@ -407,12 +407,22 @@ var
    buffer : array [0..cMAX_REWRITTEN_URL_SIZE-1] of Char;
    bufferIndex : Integer;
 
+   procedure RaiseURLTooLong;
+   begin
+      raise EdwsURLRewriterException.CreateFmt(
+        'Rewritten URL too long (%d) for %s [...]',
+        [ Length(originURL), Copy(originURL, 1, 40) ]
+      );
+   end;
+
    procedure Append(p : PChar; sizeInChars : Integer);
    begin
       if bufferIndex + sizeInChars >= cMAX_REWRITTEN_URL_SIZE then
-         raise EdwsURLRewriterException.Create('Rewritten URL too long');
-      System.Move(p^, buffer[bufferIndex], sizeInChars*SizeOf(Char));
-      Inc(bufferIndex, sizeInChars);
+         RaiseURLTooLong
+      else begin
+         System.Move(p^, buffer[bufferIndex], sizeInChars*SizeOf(Char));
+         Inc(bufferIndex, sizeInChars);
+      end;
    end;
 
    procedure AppendString(const s : String); inline;

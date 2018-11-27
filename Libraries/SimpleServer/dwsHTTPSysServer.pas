@@ -1066,7 +1066,17 @@ begin
       case errCode of
          NO_ERROR : begin
             // parse method and headers
-            FWebRequest.SetRequest(request, URLRewriter);
+            try
+               FWebRequest.SetRequest(request, URLRewriter);
+            except
+               on E : Exception do begin
+                  if Assigned(FOnHttpThreadException) then
+                     FOnHttpThreadException(Self, E);
+                  SendError(request, response, 400, 'Query string too long');
+                  requestID := 0;
+                  continue;
+               end;
+            end;
 
             with request^.Headers.KnownHeaders[reqContentType] do
                SetString(inContentType, pRawValue, RawValueLength);
