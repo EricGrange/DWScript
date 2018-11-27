@@ -36,13 +36,13 @@ uses
   dwsGenericExprs;
 
 const
-   cDefaultCompilerOptions = [coOptimize, coAssertions];
+   cDefaultCompilerOptions = [ coOptimize, coAssertions ];
    cDefaultMaxRecursionDepth = 1024;
    cDefaultMaxExceptionDepth = 10;
    cDefaultStackChunkSize = 4096;  // 64 kB in 32bit Delphi, each stack entry is a Variant
 
    // compiler version is date in YYYYMMDD format, dot subversion number
-   cCompilerVersion = 20180717.0;
+   cCompilerVersion = 20181127.0;
 
 type
    TdwsCompiler = class;

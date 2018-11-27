@@ -1663,6 +1663,7 @@ type
          FCapacity, FGrowth : Integer;
          FHashCodes : TScriptAssociativeArrayHashCodes;
          FKeys : TData;
+         FCreateKeyOnAccess : Boolean;
 
       protected
          procedure Grow;
@@ -1680,8 +1681,6 @@ type
          procedure GetDataPtr(exec : TdwsExecution; index : TTypedExpr; var result : IDataContext);
          function GetDataAsBoolean(exec : TdwsExecution; index : TTypedExpr) : Boolean;
          function GetDataAsInteger(exec : TdwsExecution; index : TTypedExpr) : Int64; overload;
-
-         procedure GetValueDataPtr(exec : TdwsExecution; const keyValue : Variant; var result : IDataContext);
          function GetDataAsInteger(exec : TdwsExecution; const keyValue : Variant) : Int64; overload;
 
          //procedure ReplaceData(exec : TdwsExecution; index : Int64; value : TDataExpr);
@@ -7604,20 +7603,23 @@ end;
 class function TScriptAssociativeArray.CreateNew(keyTyp, elemTyp : TTypeSymbol) : TScriptAssociativeArray;
 var
    size : Integer;
+   ct : TClass;
 begin
-   Result:=TScriptAssociativeArray.Create;
+   Result := TScriptAssociativeArray.Create;
 
-   if keyTyp<>nil then
-      size:=keyTyp.Size
-   else size:=0;
-   Result.FKeyTyp:=keyTyp;
-   Result.FKeySize:=size;
+   if keyTyp <> nil then
+      size := keyTyp.Size
+   else size := 0;
+   Result.FKeyTyp := keyTyp;
+   Result.FKeySize := size;
 
-   if elemTyp<>nil then
-      size:=elemTyp.Size
-   else size:=0;
-   Result.FElementTyp:=elemTyp;
-   Result.FElementSize:=size;
+   if elemTyp <> nil then begin
+      size := elemTyp.Size;
+      ct := elemTyp.UnAliasedType.ClassType;
+      Result.FCreateKeyOnAccess := (ct = TDynamicArraySymbol) or (ct = TAssociativeArraySymbol)
+   end else size := 0;
+   Result.FElementTyp := elemTyp;
+   Result.FElementSize := size;
 end;
 
 // Grow
@@ -7712,6 +7714,28 @@ begin
    end;
 end;
 
+// ReplaceValue
+//
+procedure TScriptAssociativeArray.ReplaceValue(exec : TdwsExecution; index, value : TTypedExpr);
+var
+   i : Integer;
+   hashCode : Cardinal;
+   key : IDataContext;
+begin
+   if FCount>=FGrowth then Grow;
+
+   IndexExprToKeyAndHashCode(exec, index, key, hashCode);
+   i:=(hashCode and (FCapacity-1));
+   if not LinearFind(key, i) then begin
+      FHashCodes[i]:=hashCode;
+      key.CopyData(FKeys, i*FKeySize, FKeySize);
+      Inc(FCount);
+   end;
+   if FElementSize > 1 then
+      WriteData(i*FElementSize, (value as TDataExpr).GetDataPtrFunc(exec), FElementSize)
+   else value.EvalAsVariant(exec, AsPVariant(i)^);
+end;
+
 // GetDataPtr
 //
 procedure TScriptAssociativeArray.GetDataPtr(exec : TdwsExecution; index : TTypedExpr; var result : IDataContext);
@@ -7720,7 +7744,10 @@ var
    hashCode : Cardinal;
    key : IDataContext;
 begin
-   if FCount>0 then begin
+   if FCreateKeyOnAccess then
+      if FCount >= FGrowth then Grow;
+
+   if (FCount > 0) or FCreateKeyOnAccess then begin
       IndexExprToKeyAndHashCode(exec, index, key, hashCode);
       i:=(hashCode and (FCapacity-1));
       if LinearFind(key, i) then begin
@@ -7728,8 +7755,17 @@ begin
          Exit;
       end;
    end;
+
    exec.DataContext_CreateEmpty(FElementSize, result);
    FElementTyp.InitDataContext(result);
+
+   if FCreateKeyOnAccess then begin
+      Assert(FElementSize = 1);
+      FHashCodes[i] := hashCode;
+      key.CopyData(FKeys, i*FKeySize, FKeySize);
+      Inc(FCount);
+      result.EvalAsVariant(0, AsPVariant(i)^);
+   end;
 end;
 
 // GetDataAsBoolean
@@ -7770,25 +7806,6 @@ begin
    Result := 0;
 end;
 
-// GetValueDataPtr
-//
-procedure TScriptAssociativeArray.GetValueDataPtr(exec : TdwsExecution; const keyValue : Variant; var result : IDataContext);
-var
-   hashCode : Cardinal;
-   i : Integer;
-begin
-   if FCount>0 then begin
-      hashCode := DWSHashCode(keyValue);
-      i:=(hashCode and (FCapacity-1));
-      if LinearValueFind(keyValue, i) then begin
-         CreateOffset(i*FElementSize, result);
-         Exit;
-      end;
-   end;
-   exec.DataContext_CreateEmpty(FElementSize, result);
-   FElementTyp.InitDataContext(result);
-end;
-
 // GetDataAsInteger
 //
 function TScriptAssociativeArray.GetDataAsInteger(exec : TdwsExecution; const keyValue : Variant) : Int64;
@@ -7805,28 +7822,6 @@ begin
       end;
    end;
    Result := 0;
-end;
-
-// ReplaceValue
-//
-procedure TScriptAssociativeArray.ReplaceValue(exec : TdwsExecution; index, value : TTypedExpr);
-var
-   i : Integer;
-   hashCode : Cardinal;
-   key : IDataContext;
-begin
-   if FCount>=FGrowth then Grow;
-
-   IndexExprToKeyAndHashCode(exec, index, key, hashCode);
-   i:=(hashCode and (FCapacity-1));
-   if not LinearFind(key, i) then begin
-      FHashCodes[i]:=hashCode;
-      key.CopyData(FKeys, i*FKeySize, FKeySize);
-      Inc(FCount);
-   end;
-   if FElementSize>1 then
-      WriteData(i*FElementSize, (value as TDataExpr).GetDataPtrFunc(exec), FElementSize)
-   else value.EvalAsVariant(exec, AsPVariant(i)^);
 end;
 
 // ContainsKey
