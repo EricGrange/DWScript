@@ -10,34 +10,103 @@
 {    or implied. See the License for the specific language             }
 {    governing rights and limitations under the License.               }
 {                                                                      }
+{    Portions inspired from mORMotService by Arnaud Bouchez            }
+{    https://github.com/synopse  &  https://synopse.info               }
+{                                                                      }
 {    Copyright Creative IT.                                            }
 {    Current maintainer: Eric Grange                                   }
 {                                                                      }
 {**********************************************************************}
 unit dwsWindowsService;
 
+{$I dws.inc}
+
 interface
 
 uses
-   Windows,
-   SysUtils, TypInfo,
-   mORMotService,
+   Windows, Winapi.WinSvc, SysUtils,
    dwsJSON;
 
 type
-   TdwsWindowsService = class (TServiceSingle)
+   EServiceException = class (Exception);
+
+   TServiceState = (
+      ssNotInstalled, ssStopped, ssStarting, ssStopping, ssRunning,
+      ssResuming, ssPausing, ssPaused, ssErrorRetrievingState, ssAccessDenied
+   );
+
+   TdwsServiceController = class
       private
+         FSCHandle : THandle;
+         FHandle : THandle;
+         FStatus : TServiceStatus;
+         FName : String;
+
+      private
+         function GetStatus : TServiceStatus;
+         function GetState : TServiceState;
+         procedure SetDescription(const aDescription : String);
+
+      public
+         constructor CreateNewService(
+            const TargetComputer, DatabaseName, Name, DisplayName, Path: String;
+            const OrderGroup: String = ''; const Dependencies: String = '';
+            const Username: String = ''; const Password: String = '';
+            DesiredAccess: DWORD = SERVICE_ALL_ACCESS;
+            ServiceType: DWORD = SERVICE_WIN32_OWN_PROCESS or SERVICE_INTERACTIVE_PROCESS;
+            StartType: DWORD = SERVICE_DEMAND_START;
+            ErrorControl: DWORD = SERVICE_ERROR_NORMAL
+            );
+      constructor CreateOpenService(
+            const TargetComputer, DataBaseName, Name: String;
+            DesiredAccess: DWORD = SERVICE_ALL_ACCESS
+            );
+      destructor Destroy; override;
+
+      property SCHandle : THandle read FSCHandle;
+      property Handle : THandle read FHandle;
+      property Status : TServiceStatus read GetStatus;
+      property State : TServiceState read GetState;
+
+      function Stop : Boolean;
+      function Delete : Boolean;
+      function Start(const args : array of PChar) : Boolean;
+   end;
+
+   TdwsWindowsService = class;
+
+   TServiceControlEvent = procedure (Sender : TdwsWindowsService; code : DWORD) of object;
+   TServiceEvent = procedure (Sender : TdwsWindowsService) of object;
+
+   TdwsWindowsService = class
+      private
+         FServiceName : String;
+         FServiceDisplayName : String;
+         FServiceDescription : String;
+
          FOptions : TdwsJSONValue;
+
+         FStatusRec : TServiceStatus;
+         FStatusHandle : THandle;
+
+         FOnControl : TServiceControlEvent;
+         FOnInterrogate : TServiceEvent;
+         FOnPause : TServiceEvent;
+         FOnShutdown : TServiceEvent;
+         FOnStart : TServiceEvent;
+         FOnExecute : TServiceEvent;
+         FOnResume : TServiceEvent;
+         FOnStop : TServiceEvent;
 
       protected
          procedure LoadOptions; virtual;
          procedure LoadServiceOptions(serviceOptions : TdwsJSONValue); virtual;
 
-      public
-         ServiceName : String;
-         ServiceDisplayName : String;
-         ServiceDescription : String;
+         procedure DoCtrlHandle(Code: DWORD); virtual;
+         function  ReportStatus(dwState, dwExitCode, dwWait: DWORD) : Boolean;
+         procedure Execute; virtual;
 
+      public
          constructor Create(aOptions : TdwsJSONValue); reintroduce; virtual;
          destructor Destroy; override;
 
@@ -51,9 +120,197 @@ type
          function LaunchedBySCM : Boolean;
 
          property Options : TdwsJSONValue read FOptions;
+
+         property ServiceName : String read FServiceName;
+         property ServiceDisplayName : String read FServiceDisplayName;
+         property ServiceDescription : String read FServiceDescription;
+
+         property OnStart : TServiceEvent read FOnStart write FOnStart;
+         property OnExecute : TServiceEvent read FOnExecute write FOnExecute;
+         property OnControl : TServiceControlEvent read FOnControl write FOnControl;
+         property OnStop : TServiceEvent read FOnStop write FOnStop;
+         property OnPause : TServiceEvent read FOnPause write FOnPause;
+         property OnResume : TServiceEvent read FOnResume write FOnResume;
+         property OnInterrogate : TServiceEvent read FOnInterrogate write FOnInterrogate;
+         property OnShutdown : TServiceEvent read FOnShutdown write FOnShutdown;
    end;
 
+function ServicesRun: Boolean;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+var
+   vService : TdwsWindowsService;
+
+// ServiceControlHandler
+//
+procedure ServiceControlHandler(Opcode: LongWord); stdcall;
+begin
+   if vService<>nil then
+      vService.DoCtrlHandle(Opcode);
+end;
+
+// ServiceProc
+//
+procedure ServiceProc(ArgCount: DWORD; Args: PLPWSTR); stdcall;
+begin
+   if vService = nil then Exit;
+   if vService.ServiceName <> Args^ then Exit;
+
+   vService.FStatusHandle := RegisterServiceCtrlHandler(
+      Pointer(vService.ServiceName),
+      @ServiceControlHandler
+   );
+   if vService.FStatusHandle = 0 then begin
+      vService.ReportStatus(SERVICE_STOPPED, GetLastError, 0);
+   end else begin
+      vService.ReportStatus(SERVICE_START_PENDING, 0, 0);
+      vService.Execute;
+   end;
+end;
+
+// ServicesRun
+//
+function ServicesRun : Boolean;
+var
+   serviceTable : TServiceTableEntry;
+begin
+   if vService = nil then Exit(False);
+   serviceTable.lpServiceName := Pointer(vService.ServiceName);
+   serviceTable.lpServiceProc := ServiceProc;
+   Result := StartServiceCtrlDispatcher(serviceTable);
+end;
+
+// CurrentStateToServiceState
+//
+function CurrentStateToServiceState(currentState : DWORD) : TServiceState;
+begin
+   case CurrentState of
+      SERVICE_STOPPED:          Result := ssStopped;
+      SERVICE_START_PENDING:    Result := ssStarting;
+      SERVICE_STOP_PENDING:     Result := ssStopping;
+      SERVICE_RUNNING:          Result := ssRunning;
+      SERVICE_CONTINUE_PENDING: Result := ssResuming;
+      SERVICE_PAUSE_PENDING:    Result := ssPausing;
+      SERVICE_PAUSED:           Result := ssPaused;
+   else
+      Result := ssNotInstalled;
+   end;
+end;
+
+// ------------------
+// ------------------ TdwsServiceController ------------------
+// ------------------
+
+// CreateNewService
+//
+constructor TdwsServiceController.CreateNewService(
+   const TargetComputer, DatabaseName, Name, DisplayName, Path, OrderGroup,
+         Dependencies, Username, Password : String;
+   DesiredAccess, ServiceType, StartType, ErrorControl : DWORD);
+begin
+   inherited Create;
+   FName := Name;
+   FSCHandle := OpenSCManager(Pointer(TargetComputer), Pointer(DatabaseName), SC_MANAGER_ALL_ACCESS);
+   if FSCHandle=0 then
+      RaiseLastOSError;
+   FHandle := CreateService(
+      FSCHandle, Pointer(Name), Pointer(DisplayName),
+      DesiredAccess, ServiceType, StartType, ErrorControl, Pointer(Path),
+      Pointer(OrderGroup), nil, Pointer(Dependencies),
+      Pointer(Username), Pointer(Password)
+   );
+   if FHandle=0 then
+      RaiseLastOSError;
+end;
+
+// CreateOpenService
+//
+constructor TdwsServiceController.CreateOpenService(
+   const TargetComputer, DataBaseName, Name: String; DesiredAccess: DWORD);
+begin
+   inherited Create;
+   FName := Name;
+   FSCHandle := OpenSCManager(Pointer(TargetComputer), Pointer(DatabaseName), GENERIC_READ);
+   if FSCHandle = 0 then
+      RaiseLastOSError;
+   FHandle := OpenService(FSCHandle, Pointer(Name), DesiredAccess);
+end;
+
+// Destroy
+//
+destructor TdwsServiceController.Destroy;
+begin
+   if FHandle <> 0 then
+      CloseServiceHandle(FHandle);
+   if FSCHandle <> 0 then
+      CloseServiceHandle(FSCHandle);
+   inherited;
+end;
+
+// Delete
+//
+function TdwsServiceController.Delete : Boolean;
+begin
+   Result := False;
+   if FHandle <> 0 then begin
+      if DeleteService(FHandle) then begin
+         Result := CloseServiceHandle(FHandle);
+         FHandle := 0;
+      end else RaiseLastOSError;
+   end;
+end;
+
+// GetState
+//
+function TdwsServiceController.GetState : TServiceState;
+begin
+   if (Self = nil) or (FSCHandle = 0) then
+      Result := ssErrorRetrievingState
+   else if FHandle = 0 then
+      Result := ssNotInstalled
+   else Result := CurrentStateToServiceState(Status.dwCurrentState);
+end;
+
+// SetDescription
+//
+procedure TdwsServiceController.SetDescription(const aDescription : String);
+begin
+  if aDescription <> '' then
+     ChangeServiceConfig2(FHandle, SERVICE_CONFIG_DESCRIPTION, @aDescription);
+end;
+
+// GetStatus
+//
+function TdwsServiceController.GetStatus : TServiceStatus;
+begin
+   FillChar(FStatus, Sizeof(FStatus), 0);
+   QueryServiceStatus(FHandle, FStatus);
+   Result := FStatus;
+end;
+
+// Start
+//
+function TdwsServiceController.Start(const args : array of PChar) : Boolean;
+var
+   a : PWideChar;
+begin
+   a := @args[0];
+   Result := StartService(FHandle, length(Args), a);
+end;
+
+// Stop
+//
+function TdwsServiceController.Stop: Boolean;
+begin
+  Result := ControlService(FHandle, SERVICE_CONTROL_STOP, FStatus);
+end;
 
 // ------------------
 // ------------------ TdwsWindowsService ------------------
@@ -63,17 +320,32 @@ implementation
 //
 constructor TdwsWindowsService.Create(aOptions : TdwsJSONValue);
 begin
-   FOptions:=aOptions.Clone;
-   LoadOptions;
-   inherited Create(ServiceName, ServiceDisplayName);
+   Assert(vService = nil);
+   vService := Self;
+   try
+      FOptions := aOptions.Clone;
+      LoadOptions;
+
+      if ServiceDisplayName = '' then
+         FServiceDisplayName := ServiceName;
+      FStatusRec.dwServiceType := SERVICE_WIN32_OWN_PROCESS or SERVICE_INTERACTIVE_PROCESS;
+      FStatusRec.dwCurrentState := SERVICE_STOPPED;
+      FStatusRec.dwControlsAccepted := 31;
+      FStatusRec.dwWin32ExitCode := NO_ERROR;
+   except
+      vService := nil;
+      raise;
+   end;
 end;
 
 // Destroy
 //
 destructor TdwsWindowsService.Destroy;
 begin
+   Assert((vService = nil) or (vService = Self));
    inherited;
    FOptions.Free;
+   vService := nil;
 end;
 
 // LoadServiceOptions
@@ -82,13 +354,13 @@ procedure TdwsWindowsService.LoadServiceOptions(serviceOptions : TdwsJSONValue);
 var
    options : TdwsJSONValue;
 begin
-   options:=TdwsJSONValue.ParseString(DefaultServiceOptions);
+   options := TdwsJSONValue.ParseString(DefaultServiceOptions);
    try
       options.Extend(serviceOptions);
 
-      ServiceName:=options['Name'].AsString;
-      ServiceDisplayName:=options['DisplayName'].AsString;
-      ServiceDescription:=options['Description'].AsString;
+      FServiceName := options['Name'].AsString;
+      FServiceDisplayName := options['DisplayName'].AsString;
+      FServiceDescription := options['Description'].AsString;
    finally
       options.Free;
    end;
@@ -110,13 +382,13 @@ type
 var
    i : Integer;
    param : String;
-   ctrl : TServiceController;
+   ctrl : TdwsServiceController;
    serviceState : TServiceStateEx;
    deviceCheck : array [0..2] of Char;
    buffer : array [0..MAX_PATH] of Char;
    err : Integer;
 begin
-   ctrl:=TServiceController.CreateOpenService('', '', ServiceName);
+   ctrl := TdwsServiceController.CreateOpenService('', '', ServiceName);
    try
       err := GetLastError;
       serviceState := TServiceStateEx(ctrl.State);
@@ -156,7 +428,7 @@ begin
                      or (buffer[1]='?') then
                      writeln('Must install from actual, non-subst''ed path')
                   else begin
-                     ctrl:=TServiceController.CreateNewService(
+                     ctrl:=TdwsServiceController.CreateNewService(
                         '','', ServiceName, ServiceDisplayName,
                         ParamStr(0), '', '', '', '',
                         SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START);
@@ -263,8 +535,9 @@ function TdwsWindowsService.ServiceStatus(var status : TServiceStatus) : Boolean
 var
    scHandle, svInfo : Integer;
 begin
-   Result:=False;
-   scHandle:=OpenSCManager(nil, nil, GENERIC_READ);
+   Result := False;
+
+   scHandle := OpenSCManager(nil, nil, GENERIC_READ);
    try
       svInfo:=OpenService(scHandle, PChar(ServiceName), GENERIC_READ);
       if svInfo<>0 then begin
@@ -287,8 +560,91 @@ var
    status : TServiceStatus;
 begin
    if ServiceStatus(status) then
-      Result:=status.dwCurrentState=SERVICE_START_PENDING
-   else Result:=False;
+      Result := (status.dwCurrentState=SERVICE_START_PENDING)
+   else Result := False;
+end;
+
+// DoCtrlHandle
+//
+procedure TdwsWindowsService.DoCtrlHandle(Code: DWORD);
+begin
+   case Code of
+      SERVICE_CONTROL_STOP: begin
+         ReportStatus(SERVICE_STOP_PENDING, NO_ERROR, 0);
+         try
+            if Assigned(FOnStop) then
+               FOnStop(Self);
+            ReportStatus(SERVICE_STOPPED, NO_ERROR, 0);
+         except
+            ReportStatus(SERVICE_STOPPED, ERROR_CAN_NOT_COMPLETE, 0);
+         end;
+      end;
+      SERVICE_CONTROL_PAUSE: begin
+         ReportStatus(SERVICE_PAUSE_PENDING, NO_ERROR, 0);
+         try
+            if Assigned(FOnPause) then
+               FOnPause(Self);
+            ReportStatus(SERVICE_PAUSED, NO_ERROR, 0)
+         except
+            ReportStatus(SERVICE_PAUSED, ERROR_CAN_NOT_COMPLETE, 0)
+         end;
+      end;
+      SERVICE_CONTROL_CONTINUE: begin
+         ReportStatus(SERVICE_CONTINUE_PENDING, NO_ERROR, 0);
+         try
+            if Assigned(FOnResume) then
+               FOnResume(Self);
+            ReportStatus(SERVICE_RUNNING, NO_ERROR, 0);
+         except
+            ReportStatus(SERVICE_RUNNING, ERROR_CAN_NOT_COMPLETE, 0);
+         end;
+      end;
+      SERVICE_CONTROL_SHUTDOWN: begin
+         if Assigned(FOnShutdown) then
+            FOnShutdown(Self);
+         Code := 0;
+      end;
+      SERVICE_CONTROL_INTERROGATE: begin
+         SetServiceStatus(FStatusHandle, FStatusRec);
+         if Assigned(FOnInterrogate) then
+            FOnInterrogate(Self);
+      end;
+   end;
+   if Assigned(FOnControl) then
+      FOnControl(Self, Code);
+end;
+
+// Execute
+//
+procedure TdwsWindowsService.Execute;
+begin
+   try
+      if Assigned(FOnStart) then
+         FOnStart(@Self);
+      ReportStatus(SERVICE_RUNNING, NO_ERROR, 0);
+      if Assigned(FOnExecute) then
+         FOnExecute(@Self);
+   except
+      ReportStatus(SERVICE_RUNNING, ERROR_CAN_NOT_COMPLETE, 0);
+   end;
+end;
+
+// ReportStatus
+//
+function TdwsWindowsService.ReportStatus(dwState, dwExitCode, dwWait: DWORD): Boolean;
+begin
+   if dwState = SERVICE_START_PENDING then
+      FStatusRec.dwControlsAccepted := 0
+   else FStatusRec.dwControlsAccepted := 31;
+   FStatusRec.dwCurrentState  := dwState;
+   FStatusRec.dwWin32ExitCode := dwExitCode;
+   FStatusRec.dwWaitHint := dwWait;
+   if (dwState = SERVICE_RUNNING) or (dwState = SERVICE_STOPPED) then
+      FStatusRec.dwCheckPoint := 0
+   else Inc(FStatusRec.dwCheckPoint);
+   Result := SetServiceStatus(FStatusHandle, FStatusRec);
+   if not Result then
+      RaiseLastOSError;
 end;
 
 end.

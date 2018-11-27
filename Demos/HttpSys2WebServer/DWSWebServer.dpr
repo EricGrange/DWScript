@@ -45,7 +45,6 @@ uses
   FastMM4,
   Windows,
   SysUtils,
-  mORMotService,
   dwsWindowsService,
   dwsJSON,
   dwsXPlatform,
@@ -75,8 +74,8 @@ type
       public
          Server: IHttpSys2WebServer;
 
-         procedure DoStart(Sender: TService);
-         procedure DoStop(Sender: TService);
+         procedure DoStart(Sender: TdwsWindowsService);
+         procedure DoStop(Sender: TdwsWindowsService);
 
          constructor Create(aOptions : TdwsJSONValue); override;
          destructor Destroy; override;
@@ -122,7 +121,7 @@ begin
       +'}';
 end;
 
-procedure TWebServerHttpService.DoStart(Sender: TService);
+procedure TWebServerHttpService.DoStart(Sender: TdwsWindowsService);
 var
    wwwPath : TdwsJSONValue;
    basePath : String;
@@ -141,7 +140,7 @@ begin
    Server := THttpSys2WebServer.Create(basePath, Options, ServiceName);
 end;
 
-procedure TWebServerHttpService.DoStop(Sender: TService);
+procedure TWebServerHttpService.DoStop(Sender: TdwsWindowsService);
 begin
    if Server<>nil then begin
       Server.Shutdown;
@@ -220,8 +219,8 @@ var
    log : String;
    h : THandle;
 begin
-   if options<>nil then begin
-      log:=options['Service']['DWSErrorLogDirectory'].AsString;
+   if options <> nil then begin
+      log := options['Server']['DWSErrorLogDirectory'].AsString;
       if log<>'undefined' then begin
          log:=IncludeTrailingPathDelimiter(log)+'service.log';
          AppendTextToUTF8File(log, UTF8Encode(FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz ', Now)+msg+#13#10));
