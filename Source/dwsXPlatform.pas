@@ -274,7 +274,7 @@ function FileMove(const existing, new : TFileName) : Boolean;
 function FileDelete(const fileName : TFileName) : Boolean;
 function FileRename(const oldName, newName : TFileName) : Boolean;
 function FileSize(const name : TFileName) : Int64;
-function FileDateTime(const name : TFileName) : TDateTime;
+function FileDateTime(const name : TFileName; lastAccess : Boolean = False) : TDateTime;
 procedure FileSetDateTime(hFile : THandle; aDateTime : TDateTime);
 function DeleteDirectory(const path : String) : Boolean;
 
@@ -1465,14 +1465,16 @@ end;
 
 // FileDateTime
 //
-function FileDateTime(const name : TFileName) : TDateTime;
+function FileDateTime(const name : TFileName; lastAccess : Boolean = False) : TDateTime;
 var
    info : TWin32FileAttributeData;
    localTime : TFileTime;
    systemTime : TSystemTime;
 begin
    if GetFileAttributesExW(PWideChar(Pointer(name)), GetFileExInfoStandard, @info) then begin
-      FileTimeToLocalFileTime(info.ftLastWriteTime, localTime);
+      if lastAccess then
+         FileTimeToLocalFileTime(info.ftLastAccessTime, localTime)
+      else FileTimeToLocalFileTime(info.ftLastWriteTime, localTime);
       FileTimeToSystemTime(localTime, systemTime);
       Result:=SystemTimeToDateTime(systemTime);
    end else Result:=0;

@@ -130,6 +130,10 @@ type
       procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
+   TFileAccessDateTimeFunc = class(TInternalMagicFloatFunction)
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+   end;
+
    TFileSetDateTimeFileFunc = class(TInternalMagicFloatFunction)
       procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
@@ -566,19 +570,24 @@ end;
 // ------------------ TFileDateTimeNameFunc ------------------
 // ------------------
 
-// DoEvalAsFloat
-//
 procedure TFileDateTimeNameFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    Result:=FileDateTime(args.AsFileName[0]);
 end;
 
 // ------------------
+// ------------------ TFileAccessDateTimeFunc ------------------
+// ------------------
+
+procedure TFileAccessDateTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result:=FileDateTime(args.AsFileName[0], True);
+end;
+
+// ------------------
 // ------------------ TFileSetDateTimeFileFunc ------------------
 // ------------------
 
-// DoEvalAsFloat
-//
 procedure TFileSetDateTimeFileFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    FileSetDateTime(GetFileHandle(args, 0), args.AsFloat[1]);
@@ -588,8 +597,6 @@ end;
 // ------------------ TFileSetDateTimeNameFunc ------------------
 // ------------------
 
-// DoEvalAsFloat
-//
 procedure TFileSetDateTimeNameFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
    FileSetDate(args.AsFileName[0], DateTimeToFileDate(args.AsFloat[1]));
@@ -829,6 +836,7 @@ initialization
 
    RegisterInternalFloatFunction(TFileDateTimeFileFunc, 'FileDateTime', ['f', SYS_FILE], [iffOverloaded], 'DateTime');
    RegisterInternalFloatFunction(TFileDateTimeNameFunc, 'FileDateTime', ['name', SYS_STRING], [iffOverloaded]);
+   RegisterInternalFloatFunction(TFileAccessDateTimeFunc, 'FileAccessDateTime', ['name', SYS_STRING], []);
    RegisterInternalFloatFunction(TFileSetDateTimeFileFunc, 'FileSetDateTime', ['f', SYS_FILE, 'dt', SYS_FLOAT], [iffOverloaded], 'SetDateTime');
    RegisterInternalFloatFunction(TFileSetDateTimeNameFunc, 'FileSetDateTime', ['name', SYS_STRING, 'dt', SYS_FLOAT], [iffOverloaded]);
 
