@@ -28,7 +28,7 @@ interface
 
 uses
    Classes, SysUtils,
-   SynDB, SynCommons,
+   SynDB, SynCommons, SynTable,
    dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform, dwsDataContext, dwsSymbols;
 
 type
