@@ -33,6 +33,11 @@ type
    TInt64Array = array [0..High(MaxInt) shr 4] of Int64;
    PInt64Array = ^TInt64Array;
 
+   TInt64DynArrayHelper = record helper for TInt64DynArray
+      function High : Integer; inline;
+      function Length : Integer; inline;
+   end;
+
    // TRefCountedObject
    //
    // Uses Monitor hidden field to store refcount, so not compatible with monitor use
@@ -2902,13 +2907,31 @@ begin
    end;
 end;
 
-var
-   vUnifiedStrings : array [0..1] of Pointer;
-   vUnifiedCharacters : array [0..Ord(TStringUnifier.HighestUnifiedChar)] of String;
+// ------------------
+// ------------------ TInt64DynArrayHelper ------------------
+// ------------------
+
+// High
+//
+function TInt64DynArrayHelper.High : Integer;
+begin
+   Result := System.High(Self);
+end;
+
+// Length
+//
+function TInt64DynArrayHelper.Length : Integer;
+begin
+   Result := System.Length(Self);
+end;
 
 // ------------------
 // ------------------ TStringUnifier ------------------
 // ------------------
+
+var
+   vUnifiedStrings : array [0..1] of Pointer;
+   vUnifiedCharacters : array [0..Ord(TStringUnifier.HighestUnifiedChar)] of String;
 
 // Create
 //

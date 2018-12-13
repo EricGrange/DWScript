@@ -48,6 +48,8 @@ type
       private
          FDebugger : IDebugger;
          FLastDebugStepExpr : TExprBase;
+         FLastSourceFile : TSourceFile;
+         FLastBits : TBits;
          FProgram : IdwsProgram;
          FNonCovered : TdwsBreakpointableLines;
          FAllLines : TdwsBreakpointableLines;
@@ -77,6 +79,10 @@ type
 
          function CreateReport : TdwsCodeCoverageReport;
          function HasReport : Boolean;
+
+         procedure GetCoverageFiles(destList : TStrings);
+         procedure GetCoverageLines(const fileName : String; var breakpointable, covered : TInt64DynArray);
+
    end;
 
 
@@ -106,6 +112,11 @@ end;
 //
 procedure TdwsCoverageDebugger.StartDebug(exec : TdwsExecution);
 begin
+   FLastSourceFile := nil;
+   FLastBits := nil;
+
+   SetProgram((exec as TdwsProgramExecution).Prog);
+
    if Assigned(FDebugger) then
       FDebugger.StartDebug(exec);
 end;
@@ -113,17 +124,32 @@ end;
 // DoDebug
 //
 procedure TdwsCoverageDebugger.DoDebug(exec : TdwsExecution; expr : TExprBase);
+
+   function BitsFromSourceFile(sourceFile : TSourceFile) : TBits;
+   var
+      loc : String;
+   begin
+      loc := sourceFile.Location;
+      if loc = '' then
+         loc := sourceFile.Name;
+      Result := FNonCovered.SourceLines[UnicodeLowerCase(loc)];
+      FLastSourceFile := sourceFile;
+      FLastBits := Result;
+   end;
+
 var
    p : TScriptPos;
    bits : TBits;
 begin
-   FLastDebugStepExpr:=expr;
+   FLastDebugStepExpr := expr;
 
-   p:=expr.ScriptPos;
-   if p.SourceFile<>nil then begin
-      bits:=FNonCovered.SourceLines[p.SourceFile.Name];
-      if (bits<>nil) and (p.Line<bits.Size) then
-         bits[p.Line]:=False;
+   p := expr.ScriptPos;
+   if p.SourceFile <> nil then begin
+      if p.SourceFile <> FLastSourceFile then
+         bits := BitsFromSourceFile(p.SourceFile)
+      else bits := FLastBits;
+      if (bits <> nil) and (p.Line < bits.Size) then
+         bits[p.Line] := False;
    end;
 
    if Assigned(FDebugger) then
@@ -134,7 +160,9 @@ end;
 //
 procedure TdwsCoverageDebugger.StopDebug(exec : TdwsExecution);
 begin
-   FLastDebugStepExpr:=nil;
+   FLastDebugStepExpr := nil;
+   FLastSourceFile := nil;
+   FLastBits := nil;
    if Assigned(FDebugger) then
       FDebugger.StopDebug(exec);
 end;
@@ -182,9 +210,11 @@ end;
 //
 procedure TdwsCoverageDebugger.SetProgram(const val : IdwsProgram);
 begin
-   FProgram:=val;
-   if val<>nil then
-      ResetCoverage;
+   if FProgram <> val then begin
+      FProgram := val;
+      if val <> nil then
+         ResetCoverage;
+   end;
 end;
 
 // ResetCoverage
@@ -262,6 +292,37 @@ end;
 function TdwsCoverageDebugger.HasReport : Boolean;
 begin
    Result:=(FAllLines<>nil);
+end;
+
+// GetCoverageFiles
+//
+procedure TdwsCoverageDebugger.GetCoverageFiles(destList : TStrings);
+begin
+   if FAllLines <> nil then
+      FAllLines.Enumerate(destList);
+end;
+
+// GetCoverageLines
+//
+procedure TdwsCoverageDebugger.GetCoverageLines(const fileName : String; var breakpointable, covered : TInt64DynArray);
+begin
+   var bitsAlls := FAllLines.SourceLines[fileName];
+   var bitsNonCovered := FNonCovered.SourceLines[fileName];
+   var nBP := 0;
+   var nCovered := 0;
+   SetLength(breakpointable, bitsAlls.Size);
+   SetLength(covered, bitsAlls.Size);
+   for var i := 0 to bitsAlls.Size-1 do begin
+      if not bitsAlls[i] then continue;
+      breakpointable[nBP] := i;
+      Inc(nBP);
+      if not bitsNonCovered[i] then begin
+         covered[nCovered] := i;
+         Inc(nCovered);
+      end;
+   end;
+   SetLength(breakpointable, nBP);
+   SetLength(covered, nCovered);
 end;
 
 end.

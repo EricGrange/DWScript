@@ -1216,6 +1216,7 @@ type
 
       protected
          function GetCaption : String; override;
+         function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
       public
          constructor Create(const name : String; elementType, keyType : TTypeSymbol);
@@ -7277,7 +7278,8 @@ end;
 function TAssociativeArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   Result :=     (typSym is TAssociativeArraySymbol)
-            and (Typ.IsCompatible(typSym.Typ) or (typSym.Typ is TNilSymbol));
+            and Typ.IsCompatible(typSym.Typ)
+            and KeyType.IsCompatible(TAssociativeArraySymbol(typSym).KeyType);
 end;
 
 // IsPointerType
@@ -7292,8 +7294,9 @@ end;
 function TAssociativeArraySymbol.SameType(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=    (typSym<>nil)
-           and (typSym.ClassType=ClassType)
-           and Typ.SameType(typSym.Typ);
+           and (typSym.ClassType=TAssociativeArraySymbol)
+           and Typ.SameType(typSym.Typ)
+           and KeyType.SameType(TAssociativeArraySymbol(typSym).KeyType);
 end;
 
 // KeysArrayType
@@ -7310,6 +7313,13 @@ end;
 function TAssociativeArraySymbol.GetCaption : String;
 begin
    Result := 'array [' + KeyType.Caption + '] of ' + Typ.Caption;
+end;
+
+// DoIsOfType
+//
+function TAssociativeArraySymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
+begin
+   Result := SameType(typSym.UnAliasedType);
 end;
 
 // ------------------

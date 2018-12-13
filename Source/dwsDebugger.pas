@@ -1598,30 +1598,35 @@ procedure TdwsBreakpointableLines.RegisterScriptPos(const scriptPos : TScriptPos
       i : Integer;
       p : PWideChar;
    begin
-      Result:=1;
-      p:=PWideChar(src);
-      for i:=0 to Length(src)-1 do
-         if p[i]=#10 then
+      Result := 1;
+      p := PWideChar(src);
+      for i := 0 to Length(src)-1 do
+         if p[i] = #10 then
             Inc(Result);
    end;
 
 var
    i : Integer;
+   location, locationLC : String;
 begin
-   if scriptPos.SourceFile=nil then Exit;
-   if scriptPos.SourceFile<>FLastSourceFile then begin
-      FLastSourceFile:=scriptPos.SourceFile;
-      FLastBreakpointLines:=FSources.Objects[UnicodeLowerCase(FLastSourceFile.Name)];
-      if FLastBreakpointLines=nil then begin
-         FLastBreakpointLines:=TBreakpointBits.Create;
-         FLastBreakpointLines.SourceName:=scriptPos.SourceFile.Name;
-         FSources.AddObject(UnicodeLowerCase(scriptPos.SourceFile.Name), FLastBreakpointLines);
-         FLastBreakpointLines.Size:=CountLines(scriptPos.SourceFile.Code)+1;
+   if scriptPos.SourceFile = nil then Exit;
+   if scriptPos.SourceFile <> FLastSourceFile then begin
+      FLastSourceFile := scriptPos.SourceFile;
+      location := FLastSourceFile.Location;
+      if location = '' then
+         location := FLastSourceFile.Name;
+      locationLC := UnicodeLowerCase(location);
+      FLastBreakpointLines := FSources.Objects[locationLC];
+      if FLastBreakpointLines = nil then begin
+         FLastBreakpointLines := TBreakpointBits.Create;
+         FLastBreakpointLines.SourceName := location;
+         FSources.AddObject(locationLC, FLastBreakpointLines);
+         FLastBreakpointLines.Size := CountLines(scriptPos.SourceFile.Code) + 1;
       end;
    end;
-   i:=scriptPos.Line;
-   Assert(i<FLastBreakpointLines.Size);
-   FLastBreakpointLines[i]:=True;
+   i := scriptPos.Line;
+   Assert(i < FLastBreakpointLines.Size);
+   FLastBreakpointLines[i] := True;
 end;
 
 // ProcessProg

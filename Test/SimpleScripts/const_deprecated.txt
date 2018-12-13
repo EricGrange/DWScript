@@ -1,0 +1,8 @@
+Errors >>>>
+Warning: "c1" has been deprecated [line: 5, column: 9]
+Warning: "c2" has been deprecated: use bye [line: 6, column: 9]
+Warning: "c3" has been deprecated [line: 7, column: 9]
+Result >>>>
+world
+hello
+123
