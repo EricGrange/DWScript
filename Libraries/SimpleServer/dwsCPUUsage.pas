@@ -121,8 +121,9 @@ var
    cat : SystemCPUCategory;
 begin
    if vAnalyzingCPUUsage then Exit;
+   if vCPUUsageTimerID = 0 then Exit;
 
-   vAnalyzingCPUUsage:=True;
+   vAnalyzingCPUUsage := True;
 
    systemCurrent:=GetCurrentSystemTimes;
    processCurrent:=GetCurrentProcessTimes(GetCurrentProcess);
