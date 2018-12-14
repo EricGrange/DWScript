@@ -42,7 +42,7 @@ const
    cDefaultStackChunkSize = 4096;  // 64 kB in 32bit Delphi, each stack entry is a Variant
 
    // compiler version is date in YYYYMMDD format, dot subversion number
-   cCompilerVersion = 20181127.0;
+   cCompilerVersion = 20181214.0;
 
 type
    TdwsCompiler = class;
@@ -2985,6 +2985,8 @@ begin
          OrphanAndNil(expr);
       end;
    end;
+   if FTok.Test(ttDEPRECATED) then
+      Result.DeprecatedMessage := ReadDeprecatedMessage(False);
 end;
 
 // ReadConstDecl
@@ -7056,6 +7058,12 @@ begin
                      Inc(matchDistance, 1);
 
                   end;
+
+               end else if     matchParamType.Typ.IsOfType(FCompilerContext.TypVariant)
+                           and matchParamType.Typ.IsCompatible(funcExprParamType.Typ) then begin
+
+                  // disfavor promotion to variant
+                  Inc(matchDistance, 128);
 
                end else if    (TStaticArraySymbol(funcExprParamType).ElementCount=0)
                            or (    (funcExprParamType.Typ=FCompilerContext.TypNil)
