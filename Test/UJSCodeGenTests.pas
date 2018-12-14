@@ -73,7 +73,7 @@ const
 //
 procedure TJSCodeGenTests.SetUp;
 const
-   cBaseFilter = 'string_in_op3*';
+   cBaseFilter = '*';
 var
    pasFilter : String;
    dwsFilter : String;
@@ -110,6 +110,8 @@ begin
    FCompiler.OnInclude:=DoInclude;
    FCompiler.OnNeedUnit:=DoNeedUnit;
    FCompiler.Config.HintsLevel:=hlPedantic;
+   FCompiler.Config.Conditionals.Add('CONDITION');
+   FCompiler.Config.Conditionals.Add('JS_CODEGEN');
 
    FCodeGen:=TdwsJSCodeGen.Create;
 
@@ -201,10 +203,6 @@ begin
       for i:=0 to FTests.Count-1 do begin
 
          source.LoadFromFile(FTests[i]);
-
-         if Pos('SimpleScripts', FTests[i])>1 then
-            FCompiler.Config.HintsLevel:=hlPedantic
-         else FCompiler.Config.HintsLevel:=hlStrict;
 
          prog:=FCompiler.Compile(source.Text, ExtractFileName(FTests[i]));
 
@@ -316,12 +314,14 @@ var
    output, expectedResult : String;
    diagnostic : TStringList;
 begin
-
-   FCompiler.Config.Conditionals.Clear;
-   FCompiler.Config.Conditionals.Add('CONDITION');
-   FCompiler.Config.Conditionals.Add('JS_CODEGEN');
-   if not (cgoNoInlineMagics in FCodeGen.Options) then
-      FCompiler.Config.Conditionals.Add('INLINE_MAGICS');
+   i := FCompiler.Config.Conditionals.IndexOf('INLINE_MAGICS');
+   if not (cgoNoInlineMagics in FCodeGen.Options) then begin
+      if i < 0 then
+         FCompiler.Config.Conditionals.Add('INLINE_MAGICS')
+   end else begin
+      if i >= 0 then
+         FCompiler.Config.Conditionals.Delete(i);
+   end;
 
    ignored:=0;
    diagnostic:=TStringList.Create;
@@ -333,8 +333,7 @@ begin
          source.LoadFromFile(FTests[i]);
 
          if    (Pos('Algorithms', FTests[i])>1)
-            or (Pos('Functions', FTests[i])>1)
-            or (Pos('Lambda', FTests[i])>1) then
+            or (Pos('Functions', FTests[i])>1) then
             FCompiler.Config.HintsLevel:=hlStrict
          else FCompiler.Config.HintsLevel:=hlPedantic;
 
@@ -404,7 +403,7 @@ begin
 
             expectedResult:=GetExpectedResult(FTests[i]);
             if not (expectedResult=output) then begin
-               Clipboard.AsText:=jsCode;
+//               Clipboard.AsText:=jsCode;
                diagnostic.Add( ExtractFileName(FTests[i])
                               +': expected <'+expectedResult
                               +'> but got <'+output+'>');//+jsCode);
@@ -469,7 +468,7 @@ end;
 //
 procedure TJSCodeGenTests.ExecutionOptimized;
 begin
-   FCompiler.Config.CompilerOptions:=cCompilerOptions+[coOptimize, coVariablesAsVarOnly]-[coSymbolDictionary];
+   FCompiler.Config.CompilerOptions:=cCompilerOptions+[coOptimize, coVariablesAsVarOnly, coSymbolDictionary];
    FCodeGen.Options:=FCodeGen.Options+[cgoNoInlineMagics];
    Execution;
 end;
@@ -478,7 +477,7 @@ end;
 //
 procedure TJSCodeGenTests.ExecutionOptimizedWithInlineMagics;
 begin
-   FCompiler.Config.CompilerOptions:=cCompilerOptions+[coOptimize, coVariablesAsVarOnly]-[coSymbolDictionary];
+   FCompiler.Config.CompilerOptions:=cCompilerOptions+[coOptimize, coVariablesAsVarOnly, coSymbolDictionary];
    FCodeGen.Options:=FCodeGen.Options-[cgoNoInlineMagics];
    Execution;
 end;

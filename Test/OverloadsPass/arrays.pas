@@ -44,7 +44,16 @@ var LObject2 := new TSub;
 
 Func(LObject1, 123);
 Func(LObject1, 'hello');
-Func([LObject1, LObject2], [GetValue1(), 0]);
 Func([LObject1, LObject2], 123);
+
+{$ifdef JS_CODEGEN}
+var va : VariantArray; // ambiguous in JS Codegen as [] and Variant are compatible
+va.Add(GetValue1(), 0);
+Func([LObject1, LObject2], va);
+va.Clear;
+Func([], va);
+{$else}
+Func([LObject1, LObject2], [GetValue1(), 0]);
 Func([], []);
+{$endif}
 

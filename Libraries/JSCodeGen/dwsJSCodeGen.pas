@@ -414,6 +414,9 @@ type
    TJSArrayMapExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
+   TJSArrayFilterExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
    TJSArrayRemoveExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -820,6 +823,15 @@ type
    TJSCoalesceExpr = class (TJSBinOpExpr)
       public
          constructor Create;
+   end;
+
+   TJSRelVarEqualNilExpr = class (TJSExprCodeGen)
+      public
+         procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
+   end;
+   TJSRelVarNotEqualNilExpr = class (TJSExprCodeGen)
+      public
+         procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
    end;
 
    TJSAppendStringVarExpr = class(TJSExprCodeGen)
@@ -1229,8 +1241,8 @@ begin
    RegisterCodeGen(TRelEqualMetaExpr,           TJSBinOpExpr.Create('==', 10, [associativeLeft, associativeRight]));
    RegisterCodeGen(TRelNotEqualMetaExpr,        TJSBinOpExpr.Create('!=', 10, [associativeLeft, associativeRight]));
 
-   RegisterCodeGen(TRelVarEqualNilExpr,         TdwsExprGenericCodeGen.Create(['(', '!(', 0, ')', ')']));
-   RegisterCodeGen(TRelVarNotEqualNilExpr,      TdwsExprGenericCodeGen.Create(['(', 0, ')']));
+   RegisterCodeGen(TRelVarEqualNilExpr,         TJSRelVarEqualNilExpr.Create);
+   RegisterCodeGen(TRelVarNotEqualNilExpr,      TJSRelVarNotEqualNilExpr.Create);
 
    RegisterCodeGen(TIfThenElseValueExpr,        TJSIfThenElseValueExpr.Create);
 
@@ -1305,6 +1317,7 @@ begin
    RegisterCodeGen(TArrayReverseExpr,              TJSArrayTypedFluentExpr.Create('.reverse()', ''));
    RegisterCodeGen(TArraySortExpr,                 TJSArraySortExpr.Create);
    RegisterCodeGen(TArrayMapExpr,                  TJSArrayMapExpr.Create);
+   RegisterCodeGen(TArrayFilterExpr,               TJSArrayFilterExpr.Create);
    RegisterCodeGen(TArrayConcatExpr,               TJSArrayConcatExpr.Create);
    RegisterCodeGen(TArraySortNaturalStringExpr,    TJSArrayTypedFluentExpr.Create('.sort()', ''));
    RegisterCodeGen(TArraySortNaturalIntegerExpr,   TJSArrayTypedFluentExpr.Create('.sort($CmpNum)', '$CmpNum'));
@@ -7233,7 +7246,7 @@ begin
 end;
 
 // ------------------
-// ------------------ TJSArraySortExpr ------------------
+// ------------------ TJSArrayMapExpr ------------------
 // ------------------
 
 // CodeGen
@@ -7247,6 +7260,24 @@ begin
    codeGen.Compile(e.BaseExpr);
    codeGen.WriteString('.map(');
    codeGen.CompileNoWrap((e.MapFuncExpr as TFuncPtrExpr).CodeExpr);
+   codeGen.WriteString(')');
+end;
+
+// ------------------
+// ------------------ TJSArrayFilterExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSArrayFilterExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TArrayFilterExpr;
+begin
+   e:=TArrayFilterExpr(expr);
+
+   codeGen.Compile(e.BaseExpr);
+   codeGen.WriteString('.filter(');
+   codeGen.CompileNoWrap((e.FilterFuncExpr as TFuncPtrExpr).CodeExpr);
    codeGen.WriteString(')');
 end;
 
@@ -8868,6 +8899,46 @@ begin
    else codeGen.WriteString(' += ');
    codeGen.CompileNoWrap(e.SubExpr[1] as TTypedExpr);
    codeGen.WriteStatementEnd;
+end;
+
+// ------------------
+// ------------------ TJSRelVarEqualNilExpr ------------------
+// ------------------
+
+// CodeGenNoWrap
+//
+procedure TJSRelVarEqualNilExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+var
+   e : TRelVarEqualNilExpr;
+begin
+   e := TRelVarEqualNilExpr(expr);
+   if e.Expr.Typ.IsOfType(codeGen.Context.Root.CompilerContext.TypVariant) then begin
+      codeGen.Compile(e.Expr);
+      codeGen.WriteString('==null');
+   end else begin
+      codeGen.WriteString('!');
+      codeGen.Compile(e.Expr);
+   end;
+end;
+
+// ------------------
+// ------------------ TJSRelVarNotEqualNilExpr ------------------
+// ------------------
+
+// CodeGenNoWrap
+//
+procedure TJSRelVarNotEqualNilExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+var
+   e : TRelVarEqualNilExpr;
+begin
+   e := TRelVarEqualNilExpr(expr);
+   if e.Expr.Typ.IsOfType(codeGen.Context.Root.CompilerContext.TypVariant) then begin
+      codeGen.Compile(e.Expr);
+      codeGen.WriteString('!=null');
+   end else begin
+      codeGen.WriteString('!!');
+      codeGen.Compile(e.Expr);
+   end;
 end;
 
 end.
