@@ -854,6 +854,27 @@ type
          property MapFuncExpr : TFuncPtrExpr read FMapFuncExpr write FMapFuncExpr;
    end;
 
+   // Filter a dynamic array
+   TArrayFilterExpr = class(TArrayTypedExpr)
+      private
+         FFilterFuncExpr : TFuncPtrExpr;
+         FItem : TDataSymbol;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
+                            aBase : TTypedExpr; aFilterFunc : TFuncPtrExpr);
+         destructor Destroy; override;
+
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+         procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
+
+         property FilterFuncExpr : TFuncPtrExpr read FFilterFuncExpr write FFilterFuncExpr;
+   end;
+
    // Reverse a dynamic array
    TArrayReverseExpr = class(TArrayTypedFluentExpr)
       public
@@ -9839,6 +9860,111 @@ end;
 function TArrayMapExpr.GetSubExprCount : Integer;
 begin
    Result:=2;
+end;
+
+// ------------------
+// ------------------ TArrayFilterExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TArrayFilterExpr.Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
+                                   aBase : TTypedExpr; aFilterFunc : TFuncPtrExpr);
+var
+   elemTyp : TTypeSymbol;
+begin
+   inherited Create(context, scriptPos, aBase);
+   FFilterFuncExpr := aFilterFunc;
+   Typ := aBase.Typ;
+
+   if aFilterFunc <> nil then begin
+      elemTyp := aFilterFunc.FuncSym.Params[0].Typ;
+      FItem := TScriptDataSymbol.Create('', elemTyp);
+      context.Table.AddSymbol(FItem);
+      FFilterFuncExpr.AddArg(TVarExpr.CreateTyped(context, FItem));
+      FFilterFuncExpr.InitializeResultAddr(context.Prog as TdwsProgram);
+   end;
+end;
+
+// Destroy
+//
+destructor TArrayFilterExpr.Destroy;
+begin
+   inherited;
+   FFilterFuncExpr.Free;
+end;
+
+// EvalAsVariant
+//
+procedure TArrayFilterExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+var
+   dyn : IScriptDynArray;
+begin
+   EvalAsScriptDynArray(exec, dyn);
+   VarCopySafe(Result, dyn);
+end;
+
+// EvalAsScriptDynArray
+//
+procedure TArrayFilterExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
+var
+   newArray : TScriptDynamicArray;
+   base : IScriptDynArray;
+   dyn : TScriptDynamicValueArray;
+   i, k, elementSize, itemAddr : Integer;
+   funcPointer : IFuncPointer;
+   newPData, oldPData : PData;
+begin
+   BaseExpr.EvalAsScriptDynArray(exec, base);
+   FilterFuncExpr.EvalAsFuncPointer(exec, funcPointer);
+
+   dyn := TScriptDynamicValueArray(base.GetSelf);
+   oldPData := dyn.AsPData;
+
+   newArray := TScriptDynamicArray.CreateNew(dyn.ElementTyp);
+   result := IScriptDynArray(newArray);
+   newArray.ArrayLength := dyn.ArrayLength;
+   newPData := newArray.AsPData;
+   elementSize := newArray.ElementSize;
+   k := 0;
+
+   itemAddr := exec.Stack.BasePointer + FItem.StackAddr;
+   if elementSize = 1 then begin
+      for i := 0 to dyn.ArrayLength-1 do begin
+         exec.Stack.WriteValue(itemAddr, oldPData^[i]);
+         if funcPointer.EvalAsBoolean(exec, FilterFuncExpr) then begin
+            VarCopySafe(newPData^[k], oldPData^[i]);
+            Inc(k);
+         end;
+      end;
+   end else begin
+      for i := 0 to dyn.ArrayLength-1 do begin
+         dyn.CopyData(i*dyn.ElementSize, exec.Stack.Data, itemAddr, dyn.ElementSize);
+         if funcPointer.EvalAsBoolean(exec, FilterFuncExpr) then begin
+            dyn.CopyData(i*dyn.ElementSize, newPData^, k*elementSize, elementSize);
+            Inc(k);
+         end;
+      end;
+   end;
+
+   if k <> newArray.ArrayLength then
+      newArray.ArrayLength := k;
+end;
+
+// GetSubExpr
+//
+function TArrayFilterExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if i = 0 then
+      Result := BaseExpr
+   else Result := FilterFuncExpr;
+end;
+
+// GetSubExprCount
+//
+function TArrayFilterExpr.GetSubExprCount : Integer;
+begin
+   Result := 2;
 end;
 
 // ------------------

@@ -1135,6 +1135,7 @@ type
          FIndexType : TTypeSymbol;
          FSortFunctionType : TFuncSymbol;
          FMapFunctionType : TFuncSymbol;
+         FFilterFunctionType : TFuncSymbol;
 
       protected
          function ElementSize : Integer;
@@ -1147,8 +1148,9 @@ type
 
          function AssignsAsDataExpr : Boolean; override;
 
-         function SortFunctionType(integerType : TTypeSymbol) : TFuncSymbol; virtual;
+         function SortFunctionType(integerType : TBaseIntegerSymbol) : TFuncSymbol; virtual;
          function MapFunctionType(anyType : TTypeSymbol) : TFuncSymbol; virtual;
+         function FilterFunctionType(booleanType : TBaseBooleanSymbol) : TFuncSymbol; virtual;
 
          property IndexType : TTypeSymbol read FIndexType write FIndexType;
    end;
@@ -6982,6 +6984,7 @@ destructor TArraySymbol.Destroy;
 begin
    FSortFunctionType.Free;
    FMapFunctionType.Free;
+   FFilterFunctionType.Free;
    inherited;
 end;
 
@@ -7010,7 +7013,7 @@ end;
 
 // SortFunctionType
 //
-function TArraySymbol.SortFunctionType(integerType : TTypeSymbol) : TFuncSymbol;
+function TArraySymbol.SortFunctionType(integerType : TBaseIntegerSymbol) : TFuncSymbol;
 begin
    if FSortFunctionType=nil then begin
       FSortFunctionType:=TFuncSymbol.Create('', fkFunction, 0);
@@ -7031,6 +7034,18 @@ begin
       FMapFunctionType.AddParam(TParamSymbol.Create('v', Typ));
    end;
    Result:=FMapFunctionType;
+end;
+
+// FilterFunctionType
+//
+function TArraySymbol.FilterFunctionType(booleanType : TBaseBooleanSymbol) : TFuncSymbol;
+begin
+   if FFilterFunctionType = nil then begin
+      FFilterFunctionType := TFuncSymbol.Create('', fkFunction, 0);
+      FFilterFunctionType.Typ := booleanType;
+      FFilterFunctionType.AddParam(TParamSymbol.Create('v', Typ));
+   end;
+   Result := FFilterFunctionType;
 end;
 
 // ------------------

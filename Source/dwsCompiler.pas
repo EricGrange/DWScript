@@ -7740,6 +7740,7 @@ var
    argSymTable : TUnSortedSymbolTable;
    i : Integer;
    mapFunctionType : TFuncSymbol;
+   filterFunctionType : TFuncSymbol;
    methodKind : TArrayMethodKind;
    indexOfClass : TArrayIndexOfExprClass;
 
@@ -7782,7 +7783,7 @@ begin
    try
       arraySym := baseExpr.Typ.UnAliasedType as TArraySymbol;
 
-      methodKind:=NameToArrayMethod(name, FMsgs, namePos);
+      methodKind := NameToArrayMethod(name, FMsgs, namePos);
 
       case methodKind of
 
@@ -7796,10 +7797,13 @@ begin
          end;
 
          amkSort :
-            argList.DefaultExpected:=TParamSymbol.Create('', arraySym.SortFunctionType(FCompilerContext.TypInteger));
+            argList.DefaultExpected := TParamSymbol.Create('', arraySym.SortFunctionType(FCompilerContext.TypInteger));
 
          amkMap :
-            argList.DefaultExpected:=TParamSymbol.Create('', arraySym.MapFunctionType(FCompilerContext.TypAnyType));
+            argList.DefaultExpected := TParamSymbol.Create('', arraySym.MapFunctionType(FCompilerContext.TypAnyType));
+
+         amkFilter :
+            argList.DefaultExpected := TParamSymbol.Create('', arraySym.FilterFunctionType(FCompilerContext.TypBoolean));
 
       end;
 
@@ -8007,7 +8011,7 @@ begin
                   end else begin
                      if not argList[0].Typ.IsCompatible(arraySym.SortFunctionType(FCompilerContext.TypInteger)) then begin
                         IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
-                                          arraySym.SortFunctionType(FCompilerContext.TypBoolean), argList[0].Typ);
+                                          arraySym.SortFunctionType(FCompilerContext.TypInteger), argList[0].Typ);
                         argList.OrphanItems(FCompilerContext);
                         argList.Clear;
                      end;
@@ -8037,6 +8041,25 @@ begin
                end;
                if Result=nil then
                   Result:=TArrayMapExpr.Create(FCompilerContext, namePos, baseExpr, nil);
+            end;
+
+            amkFilter : begin
+               CheckRestricted;
+               if CheckArguments(1, 1) then begin
+                  filterFunctionType := arraySym.FilterFunctionType(FCompilerContext.TypBoolean);
+                  if      argList[0].Typ.IsCompatible(filterFunctionType)
+                     and (argList[0].Typ.Typ <> nil) then begin
+                     Result := TArrayFilterExpr.Create(FCompilerContext, namePos, baseExpr,
+                                                       TFuncPtrExpr.Create(FCompilerContext, argPosArray[0], argList[0]));
+                     argList.Clear;
+                  end else begin
+                     IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
+                                       filterFunctionType, argList[0].Typ);
+                     argList.OrphanItems(FCompilerContext)
+                  end;
+               end;
+               if Result = nil then
+                  Result := TArrayFilterExpr.Create(FCompilerContext, namePos, baseExpr, nil);
             end;
 
             amkReverse : begin

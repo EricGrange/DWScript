@@ -73,7 +73,7 @@ const
 //
 procedure TJSCodeGenTests.SetUp;
 const
-   cBaseFilter = '*';
+   cBaseFilter = 'string_in_op3*';
 var
    pasFilter : String;
    dwsFilter : String;

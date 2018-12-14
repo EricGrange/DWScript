@@ -1052,6 +1052,7 @@ type
       function SameFunc(const v : Variant) : Boolean;
       procedure EvalAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
       function EvalAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Int64;
+      function EvalAsBoolean(exec : TdwsExecution; caller : TFuncExpr) : Boolean;
       function EvalDataPtr(exec : TdwsExecution; caller : TFuncExpr; resultAddr : Integer) : IDataContext;
    end;
 
@@ -1077,6 +1078,7 @@ type
 
          procedure EvalAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
          function EvalAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Int64;
+         function EvalAsBoolean(exec : TdwsExecution; caller : TFuncExpr) : Boolean;
          function EvalDataPtr(exec : TdwsExecution; caller : TFuncExpr; resultAddr : Integer) : IDataContext;
    end;
 
@@ -5454,17 +5456,47 @@ end;
 // EvalAsInteger
 //
 function TFuncPointer.EvalAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Int64;
+
+   function Fallback(var v : TVarData) : Int64;
+   begin
+      try
+         Result := VariantToInt64(Variant(v));
+      finally
+         VarClearSafe(Variant(v));
+      end;
+   end;
+
 var
    v : TVarData;
 begin
-   v.VType:=varInt64;
+   v.VType := varInt64;
    FDoEvalAsVariant(exec, caller, Variant(v));
-   if v.VType=varInt64 then
-      Result:=v.VInt64
-   else begin
-      Result:=Variant(v);
-      VarClearSafe(Variant(v));
+   if v.VType = varInt64 then
+      Result := v.VInt64
+   else Result := Fallback(v);
+end;
+
+// EvalAsBoolean
+//
+function TFuncPointer.EvalAsBoolean(exec : TdwsExecution; caller : TFuncExpr) : Boolean;
+
+   function Fallback(var v : TVarData) : Boolean;
+   begin
+      try
+         Result := VariantToBool(Variant(v));
+      finally
+         VarClearSafe(Variant(v));
+      end;
    end;
+
+var
+   v : TVarData;
+begin
+   v.VType := varBoolean;
+   FDoEvalAsVariant(exec, caller, Variant(v));
+   if v.VType = varBoolean then
+      Result := v.VBoolean
+   else Result := Fallback(v);
 end;
 
 // EvalDataPtr
