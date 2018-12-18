@@ -1,0 +1,6 @@
+proc: hello
+proc_Int: 246
+proc_Str: abcabc
+func: 314
+func_Int: 5016
+func_Str: 00000315

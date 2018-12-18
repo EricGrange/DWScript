@@ -1,0 +1,2 @@
+Syntax Error: The function "TestFunc" was forward declared but not implemented [line: 6, column: 11]
+Syntax Error: The function "TestProc" was forward declared but not implemented [line: 3, column: 11]

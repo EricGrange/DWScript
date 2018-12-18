@@ -838,6 +838,7 @@ type
 
          function  IsValidOverloadOf(other : TFuncSymbol) : Boolean;
          function  IsSameOverloadOf(other : TFuncSymbol) : Boolean; virtual;
+         function  SameType(typSym : TTypeSymbol) : Boolean; override;
 
          function  ParamsDescription : String; virtual;
 
@@ -4054,6 +4055,26 @@ begin
          end;
       end;
    end;
+end;
+
+// SameType
+//
+function TFuncSymbol.SameType(typSym : TTypeSymbol) : Boolean;
+var
+   otherFunc : TFuncSymbol;
+   i : Integer;
+begin
+   Result := False;
+   if (typSym = nil) or (ClassType <> typSym.ClassType) then Exit;
+   if (Typ = nil) xor (typSym.Typ = nil) then Exit;
+   if (Typ <> nil) and not Typ.SameType(typSym.Typ) then Exit;
+
+   otherFunc := TFuncSymbol(typSym);
+   if Params.Count <> otherFunc.Params.Count then Exit;
+   for i := 0 to Params.Count-1 do
+      if not Params[i].SameParam(otherFunc.Params[i]) then Exit;
+
+   Result := True;
 end;
 
 // ParamsDescription

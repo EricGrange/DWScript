@@ -59,7 +59,7 @@ end;
 //
 procedure TScriptTests.SetUp;
 const
-   cFilter = 'exception_nested_call2.pas';
+   cFilter = '*.pas';
 var
    basePath : String;
 begin
