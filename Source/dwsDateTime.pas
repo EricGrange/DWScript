@@ -652,8 +652,8 @@ begin
       dth:=(hours+(minutes+(seconds+msec*0.001)/60)/60)/24;
    	if (day or month or year)<>0 then begin
          if TryEncodeDate(year, month, day, tz, dt) then begin
-            dt:=dt+dth;
-            Result:=True;
+            dt := dt + dth;
+            Result := True;
          end;
       end else begin
          if (tz=tzUTC) or ((tz=tzDefault) and (TimeZone=tzUTC)) then begin
@@ -670,8 +670,8 @@ end;
 //
 function TdwsFormatSettings.TryStrToDate(const str : String; var dt : Double; tz : TdwsTimeZone) : Boolean;
 begin
-   Result:=   TryStrToDateTime(settings.ShortDateFormat, str, dt, tz)
-           or TryStrToDateTime(settings.LongDateFormat, str, dt, tz);
+   Result :=   TryStrToDateTime(settings.ShortDateFormat, str, dt, tz)
+            or TryStrToDateTime(settings.LongDateFormat, str, dt, tz);
 end;
 
 // TryStrToTime

@@ -26,8 +26,8 @@ if StrToDateTimeDef('dummy', 1)<>1 then PrintLn('UTC DateTimeDef failed');
 
 d := EncodeTime(13, 34, 45, 567);
 
-if Abs(UTCDateTimeToLocalDateTime(StrToTime(TimeToStr(d)))-Frac(d))>1/3600/24 then PrintLn('UTC Time roundtrip failed');
-if Abs(UTCDateTimeToLocalDateTime(StrToTimeDef(TimeToStr(d), 0))-Frac(d))>1/3600/24 then PrintLn('UTC Time roundtrip 2 failed');
+if Abs(StrToTime(TimeToStr(d))-Frac(d))>1/3600/24 then PrintLn('UTC Time roundtrip failed');
+if Abs(StrToTimeDef(TimeToStr(d), 0)-Frac(d))>1/3600/24 then PrintLn('UTC Time roundtrip 2 failed');
 if StrToTimeDef('dummy', 1)<>1 then PrintLn('UTC TimeDef failed');
 
 

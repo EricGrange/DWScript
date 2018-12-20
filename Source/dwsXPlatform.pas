@@ -444,11 +444,13 @@ var
    localSystemTime, universalSystemTime : TSystemTime;
    tzDynInfo : TDynamicTimeZoneInformation;
    tzInfo : TTimeZoneInformation;
+   y, m, d : Word;
 begin
    DateTimeToSystemTime(t, localSystemTime);
    if GetDynamicTimeZoneInformation(tzDynInfo) = TIME_ZONE_ID_INVALID then
       RaiseLastOSError;
-   if not GetTimeZoneInformationForYear(localSystemTime.wYear, @tzDynInfo, tzInfo) then
+   DecodeDate(t, y, m, d);
+   if not GetTimeZoneInformationForYear(y, @tzDynInfo, tzInfo) then
       RaiseLastOSError;
    if not TzSpecificLocalTimeToSystemTime(@tzInfo, localSystemTime, universalSystemTime) then
       RaiseLastOSError;
@@ -462,11 +464,13 @@ var
    tzDynInfo : TDynamicTimeZoneInformation;
    tzInfo : TTimeZoneInformation;
    localSystemTime, universalSystemTime : TSystemTime;
+   y, m, d : Word;
 begin
    DateTimeToSystemTime(t, universalSystemTime);
    if GetDynamicTimeZoneInformation(tzDynInfo) = TIME_ZONE_ID_INVALID then
       RaiseLastOSError;
-   if not GetTimeZoneInformationForYear(localSystemTime.wYear, @tzDynInfo, tzInfo) then
+   DecodeDate(t, y, m, d);
+   if not GetTimeZoneInformationForYear(y, @tzDynInfo, tzInfo) then
       RaiseLastOSError;
    if not SystemTimeToTzSpecificLocalTime(@tzInfo, universalSystemTime, localSystemTime) then
       RaiseLastOSError;
