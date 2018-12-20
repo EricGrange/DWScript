@@ -1,0 +1,6 @@
+Syntax Error: Expression expected [line: 3, column: 8]
+Syntax Error: Assignment's right-side-argument has no return type [line: 3, column: 7]
+Syntax Error: Assignment's right-side-argument has no return type [line: 8, column: 9]
+Warning: ";" expected. [line: 16, column: 1]
+Syntax Error: Expression expected [line: 17, column: 8]
+Syntax Error: Assignment's right-side-argument has no return type [line: 17, column: 7]

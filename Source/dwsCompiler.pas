@@ -10189,7 +10189,7 @@ function TdwsCompiler.ReadExit : TNoResultExpr;
 var
    gotParenthesis : Boolean;
    leftExpr : TDataExpr;
-   assignExpr : TAssignExpr;
+   assignExpr : TProgramExpr;
    proc : TdwsProcedure;
    exitPos : TScriptPos;
 begin
@@ -10206,14 +10206,19 @@ begin
       RecordSymbolUse(proc.Func.Result, exitPos, [suReference, suWrite, suImplicit]);
       leftExpr:=TVarExpr.CreateTyped(FCompilerContext, proc.Func.Result);
       try
-         assignExpr:=ReadAssign(ttASSIGN, leftExpr) as TAssignExpr;
+         assignExpr := ReadAssign(ttASSIGN, leftExpr);
          try
-            leftExpr:=nil;
+            leftExpr := nil;
             if gotParenthesis and not FTok.TestDelete(ttBRIGHT) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
-            Result:=TExitValueExpr.Create(FCompilerContext, exitPos, assignExpr);
+            if assignExpr is TNullExpr then begin
+               // in case of previous compile error, attempt to keep compiling
+               OrphanAndNil(assignExpr);
+               Result := TExitExpr.Create(exitPos);
+            end else
+            Result := TExitValueExpr.Create(FCompilerContext, exitPos, assignExpr as TAssignExpr);
          except
-            assignExpr.Orphan(FCompilerContext);
+            OrphanObject(assignExpr);
             raise;
          end;
       except
