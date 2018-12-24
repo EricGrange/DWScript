@@ -159,7 +159,7 @@ implementation
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..290] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..291] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -203,7 +203,7 @@ const
       (Name : '$ArrayCopyLen';
        Code : 'function $ArrayCopyLen(a,i,l,z) {'#13#10
               +#9'if (l<0) throw Exception.Create($New(Exception),"Positive count expected (got "+l.toString()+")"+z);'#13#10
-              +#9'return a.slice($Idx(i,0,a.length-1,z),$Idx(i+l-1,0,a.length-1,z)-i+1,z)'#13#10
+              +#9'return a.slice($Idx(i,0,a.length-1,z),i+l-1)'#13#10
               +'}';
        Dependency : '$Idx' ),
       (Name : '$ArrayMove';
@@ -1236,6 +1236,13 @@ const
        Code : 'function VarToStr(v) { return (typeof v === "undefined")?"":v.toString() }'),
       (Name : '$VarToBool';
        Code : 'function $VarToBool(v) { return !!(typeof v == "string" ? {"1":1,"t":1,"y":1,"true":1}[v.toLowerCase()] : v) }'),
+      (Name : '$VarToInt';
+       Code : 'function $VarToInt(v,z) {'#13#10
+               + #9'var r = parseInt(v, 10);'#13#10
+               + #9'if (isNaN(r)) throw Exception.Create($New(Exception),"Not a valid integer: "+v+z);'#13#10
+               + #9'return r'#13#10
+               + '}';
+       Dependency : 'Exception' ),
       (Name : 'VarToFloatDef';
        Code : 'function VarToFloatDef(v, d) {'#13#10
                + #9'if (v == null) return v === undefined ? d : 0;'#13#10

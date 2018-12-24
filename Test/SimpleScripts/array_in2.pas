@@ -4,7 +4,7 @@ if item in list then
    println('success')
 else println('fail');
 
-if not item in list then
+if not Integer(item) in list then
    println('bug');
    
 if not 5 in list then

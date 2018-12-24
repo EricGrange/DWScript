@@ -1,0 +1,11 @@
+Errors >>>>
+Hint: Result is never used [line: 11, column: 1]
+Hint: Result is never used [line: 19, column: 1]
+Hint: Result is never used [line: 27, column: 1]
+Hint: Result is never used [line: 35, column: 1]
+Result >>>>
+Object TObject, Integer 123
+Object TObject, Variant hello
+ObjectArray 2, Variant 123
+ObjectArray 2, VariantArray 2
+ObjectArray 0, VariantArray 0

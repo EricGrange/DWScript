@@ -11193,7 +11193,7 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       scriptPos:=FTok.HotPos;
       recordType:=ReadRecordDecl('', True);
       CurrentProg.Table.AddSymbol(recordType);
-      recordType.SetIsExternal;
+      //recordType.SetIsExternal;
 
       RecordSymbolUseImplicitReference(recordType, scriptPos, False);
 

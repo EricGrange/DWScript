@@ -234,11 +234,12 @@ type
    end;
 
    TJSAssignExpr = class (TJSExprCodeGen)
-      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override; final;
+      procedure CodeGenNoStatement(codeGen : TdwsCodeGen; expr : TExprBase); virtual;
       procedure CodeGenRight(codeGen : TdwsCodeGen; expr : TExprBase); virtual;
    end;
    TJSAssignDataExpr = class (TJSAssignExpr)
-      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+      procedure CodeGenNoStatement(codeGen : TdwsCodeGen; expr : TExprBase); override;
       procedure CodeGenRight(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
    TJSAssignClassOfExpr = class (TJSAssignExpr)
@@ -248,26 +249,32 @@ type
       procedure CodeGenRight(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
-   TJSAssignConstToIntegerVarExpr = class (TJSAssignExpr)
-      procedure CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase); override;
+   TJSAssignConstExpr = class (TJSAssignExpr)
    end;
-   TJSAssignConstToFloatVarExpr = class (TJSAssignExpr)
-      procedure CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase); override;
+   TJSAssignConstToIntegerVarExpr = class (TJSAssignConstExpr)
+      procedure CodeGenRight(codeGenRight : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSAssignConstToBoolVarExpr = class (TJSAssignExpr)
-      procedure CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase); override;
+   TJSAssignConstToFloatVarExpr = class (TJSAssignConstExpr)
+      procedure CodeGenRight(codeGenRight : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSAssignConstToStringVarExpr = class (TJSAssignExpr)
-      procedure CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase); override;
+   TJSAssignConstToBoolVarExpr = class (TJSAssignConstExpr)
+      procedure CodeGenRight(codeGenRight : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSAssignNilToVarExpr = class (TJSAssignExpr)
-      procedure CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase); override;
+   TJSAssignConstToStringVarExpr = class (TJSAssignConstExpr)
+      procedure CodeGenRight(codeGenRight : TdwsCodeGen; expr : TExprBase); override;
    end;
+   TJSAssignConstToVariantVarExpr = class (TJSAssignConstExpr)
+      procedure CodeGenRight(codeGenRight : TdwsCodeGen; expr : TExprBase); override;
+   end;
+   TJSAssignNilToVarExpr = class (TJSAssignConstExpr)
+      procedure CodeGenRight(codeGenRight : TdwsCodeGen; expr : TExprBase); override;
+   end;
+   TJSAssignConstDataToVarExpr = class (TJSAssignConstExpr)
+      procedure CodeGenRight(codeGenRight : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
    TJSAssignNilAsResetExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
-   end;
-   TJSAssignConstDataToVarExpr = class (TJSAssignExpr)
-      procedure CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase); override;
    end;
    TJAssignArrayConstantExpr = class (TJSAssignExpr)
       procedure CodeGenRight(codeGen : TdwsCodeGen; expr : TExprBase); override;
@@ -1029,7 +1036,7 @@ begin
    RegisterCodeGen(TAssignConstToFloatVarExpr,     TJSAssignConstToFloatVarExpr.Create);
    RegisterCodeGen(TAssignConstToBoolVarExpr,      TJSAssignConstToBoolVarExpr.Create);
    RegisterCodeGen(TAssignConstToStringVarExpr,    TJSAssignConstToStringVarExpr.Create);
-   RegisterCodeGen(TAssignConstToVariantVarExpr,   TJSAssignConstDataToVarExpr.Create);
+   RegisterCodeGen(TAssignConstToVariantVarExpr,   TJSAssignConstToVariantVarExpr.Create);
    RegisterCodeGen(TAssignNilToVarExpr,            TJSAssignNilToVarExpr.Create);
    RegisterCodeGen(TAssignNilClassToVarExpr,       TJSAssignNilToVarExpr.Create);
    RegisterCodeGen(TAssignNilAsResetExpr,          TJSAssignNilAsResetExpr.Create);
@@ -3936,6 +3943,19 @@ var
       end;
    end;
 
+   procedure WriteAssignConstExpr(ace : TAssignConstExpr);
+   var
+      cg : TdwsExprCodeGen;
+   begin
+      cg := codeGen.FindCodeGen(ace);
+      if cg is TJSAssignExpr then
+         TJSAssignExpr(cg).CodeGenNoStatement(codeGen, ace)
+      else begin
+         cg.CodeGen(codeGen, ace);
+         AbortVar;
+      end;
+   end;
+
 var
    i : Integer;
    blockInit : TBlockExprBase;
@@ -3944,6 +3964,7 @@ var
    sym : TDataSymbol;
    oldTable : TSymbolTable;
    vpm : Boolean;
+   cg : TdwsExprCodeGen;
 begin
    inVar:=False;
    blockInit:=TBlockExprBase(expr);
@@ -3993,21 +4014,34 @@ begin
 
                (codeGen as TdwsJSCodeGen).FDeclaredLocalVars.Add(sym);
                WriteVar;
-               vpm := IsLocalVarParam(codeGen, sym);
-               if vpm then begin
-                  codeGen.WriteSymbolName(sym);
-                  codeGen.WriteString(' = {}');
-                  EndVar;
-               end;
-               if     sym.Typ.IsOfType(codeGen.Context.Root.CompilerContext.TypVariant)
-                  and (initExpr is TAssignConstToVariantVarExpr)
-                  and (TAssignConstToVariantVarExpr(initExpr).Right=Unassigned) then begin
 
-                  if not vpm then
-                     codeGen.WriteSymbolName(sym);
+               vpm := IsLocalVarParam(codeGen, sym);
+
+               cg := codeGen.FindCodeGen(initExpr);
+               if cg is TJSAssignConstExpr then begin
+
+                  codeGen.WriteSymbolName(sym);
+                  codeGen.WriteString(' = ');
+
+                  // for const assignment switch to more compact codegen
+                  if vpm then begin
+                     codeGen.WriteString('{ ');
+                     codeGen.WriteString(TdwsJSCodeGen.cBoxFieldName);
+                     codeGen.WriteString(' : ');
+                  end;
+
+                  TJSAssignConstExpr(cg).CodeGenRight(codeGen, initExpr);
+
+                  if vpm then
+                     codeGen.WriteString(' }');
 
                end else begin
 
+                  if vpm then begin
+                     codeGen.WriteSymbolName(sym);
+                     codeGen.WriteString(' = {}');
+                     WriteVar;
+                  end;
                   codeGen.Compile(initExpr as TAssignExpr);
                   AbortVar;
 
@@ -4226,6 +4260,20 @@ var
 begin
    e:=TAssignConstToStringVarExpr(expr);
    CodeGenRight.WriteLiteralString(e.Right);
+end;
+
+// ------------------
+// ------------------ TJSAssignConstToVariantVarExpr ------------------
+// ------------------
+
+// CodeGenRight
+//
+procedure TJSAssignConstToVariantVarExpr.CodeGenRight(codeGenRight : TdwsCodeGen; expr : TExprBase);
+var
+   e : TAssignConstToVariantVarExpr;
+begin
+   e := TAssignConstToVariantVarExpr(expr);
+   (codeGenRight as TdwsJSCodeGen).WriteVariant(e.Left.Typ, e.RightValue);
 end;
 
 // ------------------
@@ -4553,14 +4601,21 @@ end;
 // CodeGen
 //
 procedure TJSAssignExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+begin
+   CodeGenNoStatement(codeGen, expr);
+   codeGen.WriteStatementEnd;
+end;
+
+// CodeGenNoStatement
+//
+procedure TJSAssignExpr.CodeGenNoStatement(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TAssignExpr;
 begin
-   e:=TAssignExpr(expr);
+   e := TAssignExpr(expr);
    codeGen.Compile(e.Left);
    codeGen.WriteString(' = ');
    CodeGenRight(codeGen, expr);
-   codeGen.WriteStatementEnd;
 end;
 
 // CodeGenRight
@@ -4579,7 +4634,7 @@ end;
 
 // CodeGen
 //
-procedure TJSAssignDataExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+procedure TJSAssignDataExpr.CodeGenNoStatement(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TAssignDataExpr;
    leftTyp : TTypeSymbol;
@@ -4599,9 +4654,8 @@ begin
       codeGen.WriteString(',');
       codeGen.Compile(e.Left);
       codeGen.WriteString(')');
-      codeGen.WriteStatementEnd;
 
-   end else inherited CodeGen(codeGen, expr);
+   end else inherited CodeGenNoStatement(codeGen, expr);
 end;
 
 // CodeGenRight
@@ -5695,9 +5749,11 @@ begin
       if (cond is TCompareCaseCondition) and (cond.IsConstant) then
          TJSCaseExpr.CodeGenCondition(codeGen, cond, writeOperand)
       else begin
-         codeGen.WriteString('(');
+         if e.Count > 1 then
+            codeGen.WriteString('(');
          TJSCaseExpr.CodeGenCondition(codeGen, cond, writeOperand);
-         codeGen.WriteString(')');
+         if e.Count > 1 then
+            codeGen.WriteString(')');
       end;
    end;
 
@@ -5959,15 +6015,14 @@ begin
       codeGen.WriteString('==');
       codeGen.Compile(TCompareCaseCondition(cond).CompareExpr);
    end else if cond is TRangeCaseCondition then begin
-      codeGen.WriteString('(');
+
       writeOperand();
       codeGen.WriteString('>=');
       codeGen.Compile(TRangeCaseCondition(cond).FromExpr);
-      codeGen.WriteString(')&&(');
+      codeGen.WriteString(' && ');
       writeOperand();
       codeGen.WriteString('<=');
       codeGen.Compile(TRangeCaseCondition(cond).ToExpr);
-      codeGen.WriteString(')');
    end else raise ECodeGenUnknownExpression.Create(cond.ClassName);
 end;
 
@@ -6186,9 +6241,12 @@ begin
    end else if etyp is TBaseIntegerSymbol then
       codeGen.Compile(e.Expr)
    else begin
-      codeGen.WriteString('parseInt(');
+      codeGen.Dependencies.Add('$VarToInt');
+      codeGen.WriteString('$VarToInt(');
       codeGen.Compile(e.Expr);
-      codeGen.WriteString(',10)');
+      codeGen.WriteString(',');
+      WriteLocationString(codeGen, e);
+      codeGen.WriteString(')');
    end;
 end;
 

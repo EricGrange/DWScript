@@ -21,5 +21,5 @@ v := 'bug';
 try
    i.Add(v); 
 except
-   on E: Exception do PrintLn(E.StackTrace); 
+   on E: Exception do PrintLn('Expected Failure'); 
 end;

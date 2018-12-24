@@ -484,7 +484,7 @@ type
    end;
 
 procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : UnicodeString); overload; inline;
-procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; p : PWideChar); overload;
+procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; p : PWideChar; size : Integer); overload;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -864,12 +864,12 @@ end;
 //
 procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : UnicodeString);
 begin
-   WriteJavaScriptString(destStream, PWideChar(Pointer(str)));
+   WriteJavaScriptString(destStream, PWideChar(Pointer(str)), Length(str));
 end;
 
 // WriteJavaScriptString
 //
-procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; p : PWideChar); overload;
+procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; p : PWideChar; size : Integer); overload;
 
    procedure WriteUTF16(destStream : TWriteOnlyBlockStream; c : Integer);
    const
@@ -893,10 +893,10 @@ var
    c : WideChar;
 begin
    destStream.WriteP(@cQUOTE, 1);
-   if p<>nil then while True do begin
-      c:=p^;
+   if p <> nil then while size > 0 do begin
+      c := p^;
       case Ord(c) of
-         0..31 :
+         1..31 :
             case Ord(c) of
                0 : Break;
                8 : destStream.WriteString('\b');
@@ -913,11 +913,12 @@ begin
             destStream.WriteString('\\');
          Ord('/') : // XSS protection when used for inline scripts in HTML
             destStream.WriteString('\/');
-         $100..$FFFF :
+         0, $100..$FFFF :
             WriteUTF16(destStream, Ord(c));
       else
          destStream.WriteP(p, 1);
       end;
+      Dec(size);
       Inc(p);
    end;
    destStream.WriteP(@cQUOTE, 1);
