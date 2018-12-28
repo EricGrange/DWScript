@@ -459,15 +459,6 @@ begin
              +Chr((dataWords[j]       ) and 0xFF);
 end;
 
-{$ifdef JS_CODEGEN}
-function UInt32(i : Integer) : Integer;
-begin
-   asm @Result = @i >>> 0 end; 
-end;
-{$else}
-type UInt32 = Integer;
-{$endif}
-
 function KeyExpansion(const key : String) : array of Integer; // 4, 6 or 8 words
 begin
    var nr:=0;
@@ -501,7 +492,7 @@ begin
                  or (S[(temp shr  8) and 0xFF] shl  8)
                  or (S[(temp       ) and 0xFF]       ));
 
-      Result.Add( UInt32(Result[j-nk] xor temp) );
+      Result.Add( Unsigned32(Result[j-nk] xor temp) );
    end;
 
    // Decryption key
