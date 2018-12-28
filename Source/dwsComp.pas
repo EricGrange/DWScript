@@ -2718,7 +2718,7 @@ begin
 
     instFunc := TDynamicInstantiateFunc.Create(funcSym, AInstance);
     instFunc.ClassSym := TClassSymbol(typSym);
-    instFunc.DataSym := TDataSymbol.Create('', typSym);
+    instFunc.DataSym := TScriptDataSymbol.Create('', typSym);
     Table.AddSymbol(instFunc.DataSym);
     funcSym.Executable := ICallable(instFunc);
 
@@ -5641,7 +5641,7 @@ begin
     funcSym := TFuncSymbol.Create('', fkFunction, 1);
     funcSym.Typ := typSym;
 
-    dataSym := TDataSymbol.Create('', typSym);
+    dataSym := TScriptDataSymbol.Create('', typSym);
     Table.AddSymbol(dataSym);
 
     instFunc := TInstantiateFunc.Create(funcSym);

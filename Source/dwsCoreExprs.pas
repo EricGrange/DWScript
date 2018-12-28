@@ -221,10 +221,10 @@ type
          function SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
    end;
 
-   // Encapsulates a var parameter
+   // Encapsulates a var parameter from the parent context
    TByRefParentParamExpr = class(TByRefParamExpr)
       protected
-         FLevel: Integer;
+         FLevel : Integer;
 
       public
          constructor Create(dataSym : TDataSymbol);
@@ -236,6 +236,7 @@ type
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
+         function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
    TVarParamParentExpr = class(TByRefParentParamExpr)
@@ -3195,14 +3196,15 @@ end;
 constructor TByRefParentParamExpr.Create(dataSym : TDataSymbol);
 begin
    inherited;
-   FLevel := DataSym.Level;
+   FLevel := dataSym.Level;
+   dataSym.UsedBySubLevel := True;
 end;
 
 // GetDataPtr
 //
 procedure TByRefParentParamExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   Result:=IDataContext(IUnknown(exec.Stack.Data[exec.Stack.GetSavedBp(FLevel) + FStackAddr]));
+   Result := IDataContext(IUnknown(exec.Stack.Data[exec.Stack.GetSavedBp(FLevel) + FStackAddr]));
 end;
 
 // AssignExpr
@@ -3230,7 +3232,14 @@ end;
 //
 function TByRefParentParamExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
-   Result:=DataPtr[exec].AsFloat[0];
+   Result := DataPtr[exec].AsFloat[0];
+end;
+
+// EvalAsInteger
+//
+function TByRefParentParamExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   Result := DataPtr[exec].AsInteger[0];
 end;
 
 // ------------------

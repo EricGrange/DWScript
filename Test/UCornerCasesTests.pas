@@ -1619,27 +1619,27 @@ var
    prog : IdwsProgram;
    sym : TSymbol;
 begin
-   prog:=FCompiler.Compile( 'var a external "alpha" : String;'#13#10
-                           +'var b external ''123'', c : Integer;'#13#10
-                           +'var d external := False;'#13#10
-                           +'procedure Test; begin var e external "gamma" : Float; end;');
+   prog:=FCompiler.Compile(  'var a external "alpha" : String;'#13#10
+                           + 'var b external ''123'', c : Integer;'#13#10
+                           + 'var d external := False;'#13#10
+                           + 'procedure Test; begin var e external "gamma" : Float; end;');
 
-   CheckEquals( 'Syntax Error: String expected [line: 3, column: 16]'#13#10
-               +'Syntax Error: External variables must be global [line: 4, column: 29]'#13#10,
+   CheckEquals(  'Syntax Error: String expected [line: 3, column: 16]'#13#10
+               + 'Syntax Error: External variables must be global [line: 4, column: 29]'#13#10,
                prog.Msgs.AsInfo);
 
    sym:=prog.Table.FindSymbol('a', cvMagic);
-   CheckEquals(TDataSymbol.ClassName, sym.ClassType.ClassName, 'a');
+   CheckEquals(TVarDataSymbol.ClassName, sym.ClassType.ClassName, 'a');
    CheckTrue(TDataSymbol(sym).HasExternalName, 'a');
    CheckEquals('alpha', TDataSymbol(sym).ExternalName, 'a');
 
    sym:=prog.Table.FindSymbol('b', cvMagic);
-   CheckEquals(TDataSymbol.ClassName, sym.ClassType.ClassName, 'b');
+   CheckEquals(TVarDataSymbol.ClassName, sym.ClassType.ClassName, 'b');
    Check(TDataSymbol(sym).HasExternalName, 'b');
    CheckEquals('123', TDataSymbol(sym).ExternalName, 'b');
 
    sym:=prog.Table.FindSymbol('c', cvMagic);
-   CheckEquals(TDataSymbol.ClassName, sym.ClassType.ClassName, 'c');
+   CheckEquals(TVarDataSymbol.ClassName, sym.ClassType.ClassName, 'c');
    CheckFalse(TDataSymbol(sym).HasExternalName, 'c');
    CheckEquals('c', TDataSymbol(sym).ExternalName, 'c');
 end;

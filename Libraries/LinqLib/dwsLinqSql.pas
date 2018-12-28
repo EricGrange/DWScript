@@ -440,7 +440,7 @@ begin
    FBase := base;
    FInto := into;
    prog := compiler.CurrentProg;
-   FData := TDataSymbol.Create('', FBase.Typ);
+   FData := TScriptDataSymbol.Create('', FBase.Typ);
    FData.AllocateStackAddr(prog.Table.AddrGenerator);
    dsVar := TObjectVarExpr.Create(FData);
    FBase.IncRefCount;

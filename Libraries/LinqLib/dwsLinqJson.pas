@@ -623,7 +623,7 @@ begin
    FInto := targetFunc;
    FTyp := Finto.typ;
    prog := compiler.CurrentProg;
-   FData := TDataSymbol.Create('', FBase.FTyp);
+   FData := TScriptDataSymbol.Create('', FBase.FTyp);
    FData.AllocateStackAddr(prog.Table.AddrGenerator);
    jsonVar := TVarExpr.Create(FData);
    FBase.IncRefCount;

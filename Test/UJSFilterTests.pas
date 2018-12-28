@@ -78,7 +78,7 @@ end;
 //
 procedure TJSFilterTests.SetUp;
 const
-   cFilter = 'type*.dws';
+   cFilter = '*.dws';
 begin
    FTests := TStringList.Create;
    FTestFailures := TStringList.Create;

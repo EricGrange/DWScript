@@ -1597,26 +1597,34 @@ begin
    WriteString('function ');
    if deAnonymize or (func.Name<>'') then
       WriteSymbolName(func);
-   WriteString('(');
-   WriteFuncParams(func);
-   WriteBlockBegin(') ');
 
-   CompileFuncBody(func);
+   EnterScope(func);
+   try
 
-   UnIndent;
-   WriteString('}');
-   if func.Name<>'' then
-      WriteStatementEnd;
-   if func.IsExport then begin
-      if func.HasExternalName then
-         WriteString(func.ExternalName)
-      else begin
-         WriteString('window.');
-         WriteString(func.Name);
+      WriteString('(');
+      WriteFuncParams(func);
+      WriteBlockBegin(') ');
+
+      CompileFuncBody(func);
+
+      UnIndent;
+      WriteString('}');
+      if func.Name<>'' then
+         WriteStatementEnd;
+      if func.IsExport then begin
+         if func.HasExternalName then
+            WriteString(func.ExternalName)
+         else begin
+            WriteString('window.');
+            WriteString(func.Name);
+         end;
+         WriteString(' = ');
+         WriteSymbolName(func);
+         WriteStatementEnd;
       end;
-      WriteString(' = ');
-      WriteSymbolName(func);
-      WriteStatementEnd;
+
+   finally
+      LeaveScope;
    end;
 end;
 
@@ -1728,7 +1736,6 @@ begin
 
             WriteSymbolVerbosity(methSym);
 
-            //EnterScope(methSym);
             EnterContext(proc);
             oldSelfSymbolName:=SelfSymbolName;
             try
@@ -2548,14 +2555,16 @@ var
    varSym : TDataSymbol;
    constSym : TConstSymbol;
    sym : TSymbol;
+   symClassType : TClass;
 begin
    inherited;
-   declaredOne:=False;
+   declaredOne := False;
    for sym in table do begin
-      if sym.ClassType=TDataSymbol then begin
+      symClassType := sym.ClassType;
+      if (symClassType = TVarDataSymbol) or (symClassType = TScriptDataSymbol)  then begin
 
-         varSym:=TDataSymbol(sym);
-         if FDeclaredLocalVars.IndexOf(varSym)<0 then begin
+         varSym := TDataSymbol(sym);
+         if FDeclaredLocalVars.IndexOf(varSym) < 0 then begin
             FDeclaredLocalVars.Add(varSym);
             if varSym.HasExternalName then continue;
             IssueSeparator;
@@ -2568,9 +2577,9 @@ begin
             end;
          end;
 
-      end else if (sym.ClassType=TConstSymbol) and (sym.Typ is TArraySymbol) then begin
+      end else if (symClassType = TConstSymbol) and (sym.Typ is TArraySymbol) then begin
 
-         constSym:=TConstSymbol(sym);
+         constSym := TConstSymbol(sym);
 
          IssueSeparator;
          WriteSymbolName(constSym);
@@ -2589,17 +2598,17 @@ procedure TdwsJSCodeGen.ReserveSymbolNames;
 var
    i : Integer;
 begin
-   for i:=Low(cJSReservedWords) to High(cJSReservedWords) do
+   for i := Low(cJSReservedWords) to High(cJSReservedWords) do
       SymbolMap.ReserveName(cJSReservedWords[i]);
 
    SymbolMap.ReserveName(MainBodyName);
 
    if cgoOptimizeForSize in Options then begin
-      SelfSymbolName:='S';
-      ResultSymbolName:='R';
+      SelfSymbolName := 'S';
+      ResultSymbolName := 'R';
    end else begin
-      SelfSymbolName:='Self';
-      ResultSymbolName:='Result';
+      SelfSymbolName := 'Self';
+      ResultSymbolName := 'Result';
    end;
 
    SymbolMap.ReserveName(SelfSymbolName);
@@ -2872,9 +2881,7 @@ begin
          if s is TdwsProgram then begin
             p:=TdwsProgram(s);
             if FLocalVarScannedProg.Add(p) then begin
-//               EnterScope(funcSym);
                CollectLocalVars(p);
-//               LeaveScope;
             end;
          end;
       end;
@@ -3355,6 +3362,7 @@ var
 begin
    exec:=func.Executable;
    if (exec=nil) or (exec.GetSelf.ClassType=TEmptyFunc) then Exit;
+
    proc:=(exec.GetSelf as TdwsProcedure);
 
    // box params that the function will pass as var
@@ -3456,8 +3464,8 @@ begin
    WriteString(',');
    WriteString(MemberName(meth, meth.StructSymbol));
 
-//   EnterScope(meth);
    EnterContext(proc);
+   EnterScope(meth);
    try
 
       WriteString(':function(');
@@ -3474,8 +3482,8 @@ begin
       WriteBlockEndLn;
 
    finally
+      LeaveScope;
       LeaveContext;
-//      LeaveScope;
    end;
 end;
 
@@ -3499,7 +3507,6 @@ begin
    end;
    WriteSymbolName(meth);
 
-//   EnterScope(meth);
    EnterContext(proc);
    try
 
@@ -3518,7 +3525,6 @@ begin
 
    finally
       LeaveContext;
-//      LeaveScope;
    end;
 end;
 
@@ -3542,7 +3548,6 @@ begin
    end;
    WriteSymbolName(meth);
 
-//   EnterScope(meth);
    EnterContext(proc);
    try
 
@@ -3561,7 +3566,6 @@ begin
 
    finally
       LeaveContext;
-//      LeaveScope;
    end;
 end;
 

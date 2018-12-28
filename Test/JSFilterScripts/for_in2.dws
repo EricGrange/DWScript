@@ -1,0 +1,43 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+
+function FuncA : array of Integer; begin Result := [ 1, 2, 3 ] end;
+function FuncB : array of Integer; begin Result := [ 4, 5 ] end;
+
+procedure TestA;
+begin
+   for var i in FuncA do
+      Print(i);
+   PrintLn('');
+end;
+
+procedure TestB;
+begin
+    for var i in FuncB do begin
+       var f = lambda (k : Integer) : Integer
+          var kk := [k];
+          for var i in kk do
+             Result := i + k;
+       end;
+       Print(f(i));
+    end;
+    PrintLn('');
+end;
+
+var before := '';
+asm @before = JSON.stringify(Object.keys(self).sort()); end;
+
+TestA;
+TestB;
+
+var after := '';
+asm @after = JSON.stringify(Object.keys(self).sort()); end;
+
+if after <> before then PrintLn('mismatch');
+   
+%>
+
+</script>

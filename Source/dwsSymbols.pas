@@ -395,7 +395,7 @@ type
          function FindLocalUnSorted(const name : String) : TSymbol;
 
       public
-         constructor Create(parent : TSymbolTable = nil; addrGenerator: TAddrGenerator = nil);
+         constructor Create(parent : TSymbolTable = nil; addrGenerator : TAddrGenerator = nil);
          destructor Destroy; override;
 
          procedure InsertParent(index : Integer; parent : TSymbolTable); virtual;
@@ -558,6 +558,7 @@ type
          FExternalName : String;
          FStackAddr : Integer;
          FLevel : SmallInt;
+         FUsedBySubLevel : Boolean;
 
          function GetDescription : String; override;
          function GetExternalName : String;
@@ -568,15 +569,22 @@ type
          function HasExternalName : Boolean;
          function IsWritable : Boolean; virtual;
 
-         function Specialize(const context : ISpecializationContext) : TSymbol; override;
-
          property ExternalName : String read GetExternalName write FExternalName;
          property Level : SmallInt read FLevel write FLevel;
+         property UsedBySubLevel : Boolean read FUsedBySubLevel write FUsedBySubLevel;
          property StackAddr: Integer read FStackAddr write FStackAddr;
    end;
 
    // used for script engine internal purposes
-   TScriptDataSymbol = class (TDataSymbol)
+   TScriptDataSymbol = class sealed (TDataSymbol)
+      public
+         function Specialize(const context : ISpecializationContext) : TSymbol; override;
+   end;
+
+   // used for variables
+   TVarDataSymbol = class sealed (TDataSymbol)
+      public
+         function Specialize(const context : ISpecializationContext) : TSymbol; override;
    end;
 
    TParamSymbolSemantics = (pssCopy, pssConst, pssVar, pssLazy);
@@ -5820,24 +5828,24 @@ end;
 //
 function TDataSymbol.GetExternalName : String;
 begin
-   if FExternalName='' then
-      Result:=Name
-   else Result:=FExternalName;
+   if FExternalName = '' then
+      Result := Name
+   else Result := FExternalName;
 end;
 
 // AllocateStackAddr
 //
 procedure TDataSymbol.AllocateStackAddr(generator : TAddrGenerator);
 begin
-   FLevel:=generator.Level;
-   FStackAddr:=generator.GetStackAddr(Size);
+   FLevel := generator.Level;
+   FStackAddr := generator.GetStackAddr(Size);
 end;
 
 // HasExternalName
 //
 function TDataSymbol.HasExternalName : Boolean;
 begin
-   Result:=(FExternalName<>'');
+   Result := (FExternalName <> '');
 end;
 
 // IsWritable
@@ -5847,14 +5855,26 @@ begin
    Result := True;
 end;
 
+// ------------------
+// ------------------ TScriptDataSymbol ------------------
+// ------------------
+
 // Specialize
 //
-function TDataSymbol.Specialize(const context : ISpecializationContext) : TSymbol;
+function TScriptDataSymbol.Specialize(const context : ISpecializationContext) : TSymbol;
 begin
-   if ClassType <> TDataSymbol then
-      Exit(inherited Specialize(context));
+   Result := TScriptDataSymbol.Create(Name, context.SpecializeType(Typ));
+end;
 
-   Result := TDataSymbol.Create(Name, context.SpecializeType(Typ));
+// ------------------
+// ------------------ TVarDataSymbol ------------------
+// ------------------
+
+// Specialize
+//
+function TVarDataSymbol.Specialize(const context : ISpecializationContext) : TSymbol;
+begin
+   Result := TScriptDataSymbol.Create(Name, context.SpecializeType(Typ));
 end;
 
 // ------------------

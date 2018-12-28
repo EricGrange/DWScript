@@ -630,12 +630,12 @@ begin
    CheckEquals('', prog.Msgs.AsInfo);
 
    sym:=TDataSymbol(prog.Table.FindSymbol('i', cvMagic, TDataSymbol));
-   CheckEquals('TDataSymbol', sym.ClassName, 'i class');
+   CheckEquals(TVarDataSymbol.ClassName, sym.ClassName, 'i class');
 
    CheckTrue(prog.ProgramObject.Expr.ReferencesVariable(sym), 'referenced in program');
 
    funcSym:=prog.Table.FindSymbol('Test', cvMagic);
-   CheckEquals('TSourceFuncSymbol', funcSym.ClassName, 'Test class');
+   CheckEquals(TSourceFuncSymbol.ClassName, funcSym.ClassName, 'Test class');
 
    funcExec:=(funcSym as TFuncSymbol).Executable;
    CheckFalse((funcExec.GetSelf as TdwsProgram).Expr.ReferencesVariable(sym), 'not referenced in test');
