@@ -3360,34 +3360,34 @@ var
    assignExpr : TAssignExpr;
    exec : IExecutable;
 begin
-   exec:=func.Executable;
-   if (exec=nil) or (exec.GetSelf.ClassType=TEmptyFunc) then Exit;
+   exec := func.Executable;
+   if (exec = nil) or (exec.GetSelf.ClassType = TEmptyFunc) then Exit;
 
-   proc:=(exec.GetSelf as TdwsProcedure);
+   proc := (exec.GetSelf as TdwsProcedure);
 
    // box params that the function will pass as var
-   for i:=0 to proc.Func.Params.Count-1 do begin
-      param:=proc.Func.Params[i] as TParamSymbol;
+   for i := 0 to proc.Func.Params.Count-1 do begin
+      param := proc.Func.Params[i] as TParamSymbol;
       if     (not ShouldBoxParam(param)) and TJSExprCodeGen.IsLocalVarParam(Self, param) then begin
          WriteSymbolName(param);
-         WriteString('={'+cBoxFieldName+':');
+         WriteString(' = { ' + cBoxFieldName + ' : ');
          WriteSymbolName(param);
-         WriteString('}');
+         WriteString(' }');
          WriteStatementEnd;
       end;
    end;
 
-   resultTyp:=func.Typ;
-   if resultTyp<>nil then begin
-      resultIsBoxed:=TJSExprCodeGen.IsLocalVarParam(Self, func.Result);
-      resultTyp:=resultTyp.UnAliasedType;
+   resultTyp := func.Typ;
+   if resultTyp <> nil then begin
+      resultIsBoxed := TJSExprCodeGen.IsLocalVarParam(Self, func.Result);
+      resultTyp := resultTyp.UnAliasedType;
 
       // optimize to a straight "return" statement for trivial functions
-      if     (not resultIsBoxed) and (proc.Table.Count=0)
-         and ((proc.InitExpr=nil) or (proc.InitExpr.SubExprCount=0))
+      if     (not resultIsBoxed) and (proc.Table.Count = 0)
+         and ((proc.InitExpr = nil) or (proc.InitExpr.SubExprCount = 0))
          and (proc.Expr is TAssignExpr) then begin
 
-         assignExpr:=TAssignExpr(proc.Expr);
+         assignExpr := TAssignExpr(proc.Expr);
 
          if     (assignExpr.Left is TVarExpr)
             and (TVarExpr(assignExpr.Left).DataSym is TResultSymbol) then begin
@@ -3969,29 +3969,33 @@ var
    oldTable : TSymbolTable;
    vpm : Boolean;
    cg : TdwsExprCodeGen;
+   iterSym : TSymbol;
+   symClassType : TClass;
+   jsCodeGen : TdwsJSCodeGen;
 begin
-   inVar:=False;
-   blockInit:=TBlockExprBase(expr);
-   for i:=0 to blockInit.SubExprCount-1 do begin
-      initExpr:=blockInit.SubExpr[i];
+   inVar := False;
+   jsCodeGen := (codeGen as TdwsJSCodeGen);
+   blockInit := TBlockExprBase(expr);
+   for i := 0 to blockInit.SubExprCount-1 do begin
+      initExpr := blockInit.SubExpr[i];
       if initExpr is TBlockExprBase then begin
 
          EndVar;
-         oldTable:=codeGen.LocalTable;
+         oldTable := codeGen.LocalTable;
          if initExpr is TBlockExpr then
-            codeGen.LocalTable:=TBlockExpr(initExpr).Table;
+            codeGen.LocalTable := TBlockExpr(initExpr).Table;
          try
             Self.CodeGen(codeGen, initExpr);
          finally
-            codeGen.LocalTable:=oldTable;
+            codeGen.LocalTable := oldTable;
          end;
 
-      end else if     (initExpr.SubExprCount>=1)
+      end else if     (initExpr.SubExprCount >= 1)
                   and (initExpr.SubExpr[0] is TVarExpr)
-                  and (   (initExpr.ClassType=TInitDataExpr)
+                  and (   (initExpr.ClassType = TInitDataExpr)
                        or (initExpr is TAssignExpr)) then begin
 
-         sym:=TJSVarExpr.CodeGenSymbol(codeGen, initExpr.SubExpr[0] as TVarExpr);
+         sym := TJSVarExpr.CodeGenSymbol(codeGen, initExpr.SubExpr[0] as TVarExpr);
 
          if not sym.HasExternalName then begin
 
@@ -4011,12 +4015,12 @@ begin
                codeGen.WriteSymbolName(sym);
                if sym.Typ<>codeGen.Context.Root.CompilerContext.TypVariant then begin
                   codeGen.WriteString(' = ');
-                  TdwsJSCodeGen(codeGen).WriteDefaultValue(sym.Typ, IsLocalVarParam(codeGen, sym));
+                  jsCodeGen.WriteDefaultValue(sym.Typ, IsLocalVarParam(codeGen, sym));
                end;
 
             end else begin
 
-               (codeGen as TdwsJSCodeGen).FDeclaredLocalVars.Add(sym);
+               jsCodeGen.FDeclaredLocalVars.Add(sym);
                WriteVar;
 
                vpm := IsLocalVarParam(codeGen, sym);
@@ -4030,7 +4034,7 @@ begin
                   // for const assignment switch to more compact codegen
                   if vpm then begin
                      codeGen.WriteString('{ ');
-                     codeGen.WriteString(TdwsJSCodeGen.cBoxFieldName);
+                     codeGen.WriteString(jsCodeGen.cBoxFieldName);
                      codeGen.WriteString(' : ');
                   end;
 
@@ -4066,6 +4070,24 @@ begin
             codeGen.WriteStatementEnd;
          end;
 
+      end;
+   end;
+   for iterSym in codeGen.LocalTable do begin
+      symClassType := iterSym.ClassType;
+      if (symClassType = TVarDataSymbol) or (symClassType = TScriptDataSymbol)  then begin
+         sym := TDataSymbol(iterSym);
+         if sym.HasExternalName then continue;
+         if jsCodeGen.FDeclaredLocalVars.IndexOf(sym) >= 0 then continue;
+
+         jsCodeGen.FDeclaredLocalVars.Add(sym);
+         WriteVar;
+         jsCodeGen.WriteSymbolName(sym);
+         if sym.Typ.ClassType = TBaseVariantSymbol then begin
+            // undefined is JS default for unassigned var
+         end else begin
+            jsCodeGen.WriteString(' = ');
+            jsCodeGen.WriteDefaultValue(sym.Typ, TJSExprCodeGen.IsLocalVarParam(jsCodeGen, sym));
+         end;
       end;
    end;
    EndVar;
