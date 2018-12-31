@@ -7119,9 +7119,11 @@ begin
          if i>skip then
             codeGen.WriteString(', ');
          arg := e.ArgExpr[i];
-         if arg is TArrayConstantExpr then
-            TJSArrayConstantExpr.CodeGenElements(codeGen, TArrayConstantExpr(arg))
-         else codeGen.CompileValue(e.ArgExpr[i]);
+         if arg is TArrayConstantExpr then begin
+            codeGen.WriteString('[');
+            TJSArrayConstantExpr.CodeGenElements(codeGen, TArrayConstantExpr(arg));
+            codeGen.WriteString(']');
+         end else codeGen.CompileValue(e.ArgExpr[i]);
       end;
       codeGen.WriteString(')');
 
