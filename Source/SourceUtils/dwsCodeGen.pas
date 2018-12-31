@@ -50,6 +50,7 @@ type
          FRoot : TdwsCodeGenSymbolMap;
          FParent : TdwsCodeGenSymbolMap;
          FSymbol : TSymbol;
+         FLevel : Integer;
          FHash : TdwsMappedSymbolHash;
          FNames : TSimpleNameObjectHash<TSymbol>;
          FLookup : TdwsMappedSymbol;
@@ -1963,11 +1964,16 @@ constructor TdwsCodeGenSymbolMap.Create(aCodeGen : TdwsCodeGen; aParent : TdwsCo
 begin
    inherited Create;
    FCodeGen := aCodeGen;
+
    FParent := aParent;
    if aParent <> nil then
       FRoot := aParent.Root
    else FRoot := Self;
+
    FSymbol := aSymbol;
+   if (aSymbol is TFuncSymbol) then
+      FLevel := TFuncSymbol(aSymbol).Level;
+
    FHash := TdwsMappedSymbolHash.Create;
    FNames := TSimpleNameObjectHash<TSymbol>.Create;
 
@@ -2089,6 +2095,7 @@ function TdwsCodeGenSymbolMap.MapSymbol(symbol : TSymbol; scope : TdwsCodeGenSym
    function NewName : String;
    var
       i : Integer;
+      map : TdwsCodeGenSymbolMap;
    begin
       i:=0;
       Result := DoNeedUniqueName(symbol, i, canObfuscate);
@@ -2096,10 +2103,17 @@ function TdwsCodeGenSymbolMap.MapSymbol(symbol : TSymbol; scope : TdwsCodeGenSym
          Inc(i);
          Result := DoNeedUniqueName(symbol, i, canObfuscate);
       end;
-      FNames.AddObject(Result, symbol);
       FLookup.Name := Result;
       FLookup.Symbol := symbol;
-      FHash.Add(FLookup);
+
+      // only add data symbols in submaps, place everything else in root
+      if symbol is TDataSymbol then begin
+         map := Self;
+         while (map.Parent <> nil) and (TDataSymbol(symbol).Level < map.FLevel) do
+            map := map.Parent;
+      end else map := FRoot;
+      map.FNames.AddObject(Result, symbol);
+      map.FHash.Add(FLookup);
    end;
 
 begin
