@@ -29,7 +29,11 @@ type
 
    WebServerUtils = class
       public
-         class function ETag(const data : array of const) : UnicodeString; static;
+         {$SCOPEDENUMS ON}
+         type ETagValidation = (Weak, Strong);
+         {$SCOPEDENUMS OFF}
+
+         class function ETag(const data : array of const; const validation : ETagValidation = ETagValidation.Weak) : UnicodeString; static;
    end;
 
 
@@ -43,7 +47,10 @@ implementation
 
 // ETag
 //
-class function WebServerUtils.ETag(const data : array of const) : UnicodeString;
+class function WebServerUtils.ETag(
+   const data : array of const;
+   const validation : ETagValidation = ETagValidation.Weak
+   ) : UnicodeString;
 var
    i : Integer;
    hash : TSHA256;
@@ -64,7 +71,9 @@ begin
       end;
    end;
    hash.Final(digest);
-   Result:='"'+RawByteStringToScriptString(BinToBase64URI(@digest, SizeOf(digest) div 2))+'"';
+   if validation = ETagValidation.Weak then
+      Result := 'W/"' + RawByteStringToScriptString(BinToBase64URI(@digest, SizeOf(digest) div 4)) + '"'
+   else Result := '"' + RawByteStringToScriptString(BinToBase64URI(@digest, SizeOf(digest) div 2)) + '"';
 end;
 
 end.

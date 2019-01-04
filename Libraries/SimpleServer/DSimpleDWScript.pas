@@ -472,30 +472,58 @@ end;
 // HandleP2JS
 //
 procedure TSimpleDWScript.HandleP2JS(const fileName : String; request : TWebRequest; response : TWebResponse);
+
+   function ProgETag(const prog : IdwsProgram) : String;
+   begin
+      Result := 'W/' + IntToHex(Round((prog.TimeStamp)*86400), 8);
+   end;
+
 var
    code, js : String;
    prog : IdwsProgram;
+   cp : TCompiledProgram;
+   staticCache : TWebStaticCacheEntry;
 begin
-   if (CPUUsageLimit>0) and not WaitForCPULimit then begin
+   if (CPUUsageLimit > 0) and not WaitForCPULimit then begin
       Handle503(response);
       Exit;
    end;
 
    TryAcquireDWS(fileName, prog);
+   if (prog <> nil) and (prog.ProgramObject.TagInterface <> nil) then begin
+      staticCache := prog.ProgramObject.TagInterface.GetSelf as TWebStaticCacheEntry;
+      staticCache.HandleStatic(request, response);
+      Exit;
+   end;
+
    FCompilerLock.Enter;
    try
       FCompilerFiles := TAutoStrings.Create;
       FCodeGenLock.Enter;
       try
-         if prog=nil then begin
-            code:=dwsCompileSystem.AllocateFileSystem.LoadTextFile(fileName);
-            FHotPath:=ExtractFilePath(fileName);
-            js:=FJSFilter.CompileToJS(prog, code);
+         if prog = nil then begin
+            code := dwsCompileSystem.AllocateFileSystem.LoadTextFile(fileName);
+            FHotPath := ExtractFilePath(fileName);
+            js := FJSFilter.CompileToJS(prog, code, '', True);
          end else begin
-            js:=FJSFilter.CompileToJS(prog, '');
+            js := FJSFilter.CompileToJS(prog, '');
          end;
       finally
          FCodeGenLock.Leave;
+      end;
+
+      prog.DropMapAndDictionary;
+      cp.Name  := fileName;
+
+      FCompiledProgramsLock.BeginWrite;
+      try
+         if not FCompiledPrograms.Match(cp) then begin
+            cp.Prog  := prog;
+            cp.Files := FCompilerFiles;
+            FCompiledPrograms.Replace(cp);
+         end;
+      finally
+         FCompiledProgramsLock.EndWrite;
       end;
    finally
       FCompilerFiles := nil;
@@ -504,8 +532,12 @@ begin
    if (prog<>nil) and prog.Msgs.HasErrors then
       Handle500(response, prog.Msgs)
    else begin
-      response.ContentData:='(function(){'#13#10+UTF8Encode(js)+'})();'#13#10;
-      response.ContentType:='text/javascript; charset=UTF-8';
+      response.ContentData := '(function(){'#10 + UTF8Encode(js) + '})();'#13;
+      response.ContentType := 'text/javascript; charset=UTF-8';
+      if prog <> nil then begin
+         prog.DropMapAndDictionary;
+         prog.ProgramObject.TagInterface := TWebStaticCacheEntry.Create(response);
+      end;
    end;
 end;
 
