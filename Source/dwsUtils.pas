@@ -2665,18 +2665,24 @@ var
 
    function Read2Digits : Integer; inline;
    begin
-      Result:=ReadDigit*10;
-      Result:=Result+ReadDigit;
+      Result := ReadDigit*10;
+      Result := Result + ReadDigit;
+   end;
+
+   function Read3Digits : Integer; inline;
+   begin
+      Result := Read2Digits*10;
+      Result := Result + ReadDigit;
    end;
 
    function Read4Digits : Integer; inline;
    begin
-      Result:=Read2Digits*100;
-      Result:=Result+Read2Digits;
+      Result := Read2Digits*100;
+      Result := Result + Read2Digits;
    end;
 
 var
-   y, m, d, h, n, s : Integer;
+   y, m, d, h, n, s, z : Integer;
    separator : Boolean;
 begin
    dt := 0;
@@ -2723,13 +2729,18 @@ begin
             Inc(p);
          end else if (p^ = ':') then
             raise EISO8601Exception.Create('Unexpected ":" after minutes');
-         s:=Read2Digits;
+         s := Read2Digits;
+         if p^ = '.' then begin
+            Inc(p);
+            z := Read3Digits;
+         end else z := 0;
       end;
    else
       s := 0;
+      z := 0;
    end;
 
-   dt := dt + EncodeTime(h, n, s, 0);
+   dt := dt + EncodeTime(h, n, s, z);
 
    case p^ of
       #0 : exit;
