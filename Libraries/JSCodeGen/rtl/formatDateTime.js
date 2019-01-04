@@ -7,7 +7,9 @@ function FormatDateTime(fmt, v, u) {
         p = FormatDateTime.Parse(fmt);
         FormatDateTime.cache[fmt] = p;
     }
-    if (Math.abs(v) <= 1) {
+    if (v instanceof Date) {
+        dt = v;
+    } else if (Math.abs(v) <= 1) {
         dt = new Date(-22091616e5 + Math.round(v*864e5));
     } else {
         v = Math.round((v-25569)*864e5);
