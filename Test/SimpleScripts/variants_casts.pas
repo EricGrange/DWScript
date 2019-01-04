@@ -41,4 +41,8 @@ PrintLn(FloatToStr(v));
 v := {$ifdef JS_CODEGEN}'12.35'{$else}'12,35'{$endif};
 PrintLn(FloatToStr(v));
 
+v := Null;
+PrintLn(IntToStr(v));
+v := False;
+PrintLn(IntToStr(v));
 

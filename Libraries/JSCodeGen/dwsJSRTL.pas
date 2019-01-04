@@ -1238,7 +1238,7 @@ const
        Code : 'function $VarToBool(v) { return !!(typeof v == "string" ? {"1":1,"t":1,"y":1,"true":1}[v.toLowerCase()] : v) }'),
       (Name : '$VarToInt';
        Code : 'function $VarToInt(v,z) {'#10
-               + #9'var r = parseInt(v, 10);'#10
+               + #9'var r = parseInt(v || 0, 10);'#10
                + #9'if (isNaN(r)) throw Exception.Create($New(Exception),"Not a valid integer: "+v+z);'#10
                + #9'return r'#10
                + '}';
