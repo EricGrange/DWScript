@@ -9199,6 +9199,7 @@ end;
 //
 procedure TExceptDoExpr.EvalNoResult(exec : TdwsExecution);
 begin
+   exec.DoStep(DoBlockExpr);
    DoBlockExpr.EvalNoResult(exec);
 end;
 
@@ -11370,7 +11371,7 @@ var
 begin
    inherited;
    a := (expr.Typ.UnAliasedType as TAssociativeArraySymbol);
-   Typ := a.KeysArrayType(context.TypInteger);
+   Typ := a.KeysArrayType(context);
 end;
 
 // EvalAsVariant

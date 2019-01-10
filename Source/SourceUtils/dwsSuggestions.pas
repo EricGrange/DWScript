@@ -125,7 +125,6 @@ type
          FContextSymbol : TSymbol;
          FSymbolClassFilter : TSymbolClass;
          FStaticStringHelpers : TSymbolTable;
-         FAssocArrayHelpers : TSymbolTable;
          FEnumElementHelpers : TSymbolTable;
          FJSONVariantHelpers : TSymbolTable;
          FOptions: TdwsSuggestionsOptions;
@@ -247,7 +246,6 @@ begin
    FList.Free;
    FCleanupList.Clean;
    FStaticStringHelpers.Free;
-   FAssocArrayHelpers.Free;
    FEnumElementHelpers.Free;
    FJSONVariantHelpers.Free;
    inherited;
@@ -577,20 +575,15 @@ end;
 // AddAssociativeArrayHelpers
 //
 procedure TdwsSuggestions.AddAssociativeArrayHelpers(assoc : TAssociativeArraySymbol; list : TSimpleSymbolList);
-var
-   p : TdwsCompilerContext;
 begin
-   if FAssocArrayHelpers=nil then begin
-      p:=FProg.ProgramObject.CompilerContext;
-      FAssocArrayHelpers:=TSystemSymbolTable.Create;
-      FAssocArrayHelpers.AddSymbol(CreateHelper('Count', p.TypInteger, []));
-      FAssocArrayHelpers.AddSymbol(CreateHelper('Length', p.TypInteger, []));
-      FAssocArrayHelpers.AddSymbol(CreateHelper('Clear', nil, []));
-      FAssocArrayHelpers.AddSymbol(CreateHelper('Delete', nil, ['key', assoc.KeyType]));
-      FAssocArrayHelpers.AddSymbol(CreateHelper('Keys', assoc.KeysArrayType(p.TypInteger), []));
+   var p := FProg.ProgramObject.CompilerContext;
+   for var amk in [
+         amkCount, amkLength,
+         amkClear, amkDelete,
+         amkKeys
+      ] do begin
+      list.Add(assoc.PseudoMethodSymbol(amk, p));
    end;
-
-   list.AddSymbolTable(FAssocArrayHelpers);
 end;
 
 // AddJSONVariantHelpers

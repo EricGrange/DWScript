@@ -391,7 +391,7 @@ begin
    var expected := [
       'Add', 'Clear', 'Copy', 'Count', 'Delete', 'Filter', 'High',
       'IndexOf', 'Insert', 'Length', 'Low', 'Map', 'Move',
-      'Peek', 'Pop', 'Push', 'Removed', 'Reverse',
+      'Peek', 'Pop', 'Push', 'Remove', 'Reverse',
       'SetLength', 'Sort', 'Swap'
    ];
    CheckEquals(Length(expected), sugg.Count, 'd. Length');

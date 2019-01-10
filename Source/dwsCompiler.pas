@@ -10008,32 +10008,40 @@ var
    doExpr : TExceptDoExpr;
    varName : String;
    classSym : TTypeSymbol;
+   onPos : TScriptPos;
 begin
    if FTok.Test(ttON) then begin
       while FTok.TestDelete(ttON) do begin
+         onPos := FTok.CurrentPos;
          if not FTok.TestName then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-         varName:=FTok.GetToken.AsString;
+         varName := FTok.GetToken.AsString;
          FTok.KillToken;
 
          if not FTok.TestDelete(ttCOLON) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
 
-         classSym:=ReadType('', tcExceptionClass);
+         classSym := ReadType('', tcExceptionClass);
          if not (classSym.BaseType is TClassSymbol) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_ClassRefExpected);
 
          if not FTok.TestDelete(ttDO) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
 
-         doExpr:=TExceptDoExpr.Create(FCompilerContext, FTok.HotPos);
+         doExpr := TExceptDoExpr.Create(FCompilerContext, FTok.HotPos);
          exceptExpr.AddDoExpr(DoExpr);
 
          doExpr.ExceptionTable.AddSymbol(TScriptDataSymbol.Create(varName, ClassSym));
          CurrentProg.EnterSubTable(doExpr.ExceptionTable);
+         if coContextMap in FOptions then begin
+            FSourceContextMap.OpenContext(onPos, nil, ttON);
+            FSourceContextMap.Current.LocalTable := doExpr.ExceptionTable;
+         end;
          try
             doExpr.DoBlockExpr:=ReadBlock;
          finally
+            if coContextMap in FOptions then
+               FSourceContextMap.CloseContext(FTok.CurrentPos);
             CurrentProg.LeaveSubTable;
          end;
 

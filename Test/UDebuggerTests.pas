@@ -54,6 +54,7 @@ type
          procedure EvaluateAfterBlock;
          procedure EvaluateArray;
          procedure EvaluateEnumInUnit;
+         procedure EvaluateExceptVariable;
 
          procedure ExecutableLines;
          procedure ExecutableLinesVzOptimize;
@@ -567,6 +568,54 @@ begin
             FDebugger.EndDebug;
          end;
          CheckEquals('123'#13#10, exec.Result.ToString);
+      finally
+         exec := nil;
+      end;
+   finally
+      prog := nil;
+   end;
+end;
+
+// EvaluateExceptVariable
+//
+procedure TDebuggerTests.EvaluateExceptVariable;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog := FCompiler.Compile( 'type EMy = class(Exception); try raise EMy.Create("hello"); except'#10
+                             +'on E : Exception do'#10
+                             +'PrintLn(E.Message);'#10
+                             +'end;');
+   try
+      CheckEquals('', prog.Msgs.AsInfo);
+      FDebugEvalExpr := 'E.Message';
+      FDebugEvalAtLine := 2;
+
+      exec:=prog.CreateNewExecution;
+      try
+         FDebugger.BeginDebug(exec);
+         try
+            CheckEquals('hello', FDebugLastEvalResult, 'E at line 2');
+         finally
+            FDebugger.EndDebug;
+         end;
+      finally
+         exec := nil;
+      end;
+
+      CheckEquals('', prog.Msgs.AsInfo);
+      FDebugEvalExpr := 'E.ClassName';
+      FDebugEvalAtLine := 3;
+
+      exec:=prog.CreateNewExecution;
+      try
+         FDebugger.BeginDebug(exec);
+         try
+            CheckEquals('EMy', FDebugLastEvalResult, 'E at line 3');
+         finally
+            FDebugger.EndDebug;
+         end;
       finally
          exec := nil;
       end;
