@@ -28,7 +28,7 @@ uses
    dwsUtils, dwsDataContext, dwsExprList, dwsConnectorSymbols, dwsXPlatform,
    dwsStrings, dwsFunctions, dwsStack, dwsMagicExprs, dwsErrors,
    dwsExprs, dwsComp, dwsSymbols, dwsOperators, dwsUnitSymbols,
-   dwsCompilerUtils, dwsScriptSource;
+   dwsCompilerUtils, dwsScriptSource, dwsArrayMethodKinds;
 
 const
    COM_ConnectorCaption = 'COM Connector 2.0';

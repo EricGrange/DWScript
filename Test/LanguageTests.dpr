@@ -85,7 +85,8 @@ uses
   dwsArrayElementContext in '..\Source\dwsArrayElementContext.pas',
   dwsJPEGEncoderOptions in '..\Libraries\GraphicsLib\dwsJPEGEncoderOptions.pas',
   UdwsWebLibModuleTest in 'UdwsWebLibModuleTest.pas',
-  BeaEngineDelphi in '..\Tools\BeaEngine\BeaEngineDelphi.pas';
+  BeaEngineDelphi in '..\Tools\BeaEngine\BeaEngineDelphi.pas',
+  dwsArrayMethodKinds in '..\Source\dwsArrayMethodKinds.pas';
 
 {$R *.res}
 

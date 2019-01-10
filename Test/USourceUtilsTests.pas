@@ -37,6 +37,7 @@ type
          procedure ObjectArrayTest;
          procedure AssociativeArrayTest;
          procedure HelperSuggestTest;
+         procedure FunctionReturningArrayTest;
          procedure JSONVariantSuggestTest;
          procedure SuggestInUsesSection;
          procedure SuggestAfterCall;
@@ -362,10 +363,11 @@ begin
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
 
-   CheckTrue(sugg.Count=3, 's.');
-   CheckEquals('High', sugg.Code[0], 's. 0');
-   CheckEquals('Length', sugg.Code[1], 's. 1');
-   CheckEquals('Low', sugg.Code[2], 's. 2');
+   CheckTrue(sugg.Count=4, 's.');
+   CheckEquals('Count', sugg.Code[0], 's. 0');
+   CheckEquals('High', sugg.Code[1], 's. 1');
+   CheckEquals('Length', sugg.Code[2], 's. 2');
+   CheckEquals('Low', sugg.Code[3], 's. 3');
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 4);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
@@ -386,27 +388,15 @@ begin
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
 
-   CheckEquals(20, sugg.Count, 'd.');
-   CheckEquals('Add', sugg.Code[0], 'd. 0');
-   CheckEquals('Clear', sugg.Code[1], 'd. 1');
-   CheckEquals('Copy', sugg.Code[2], 'd. 2');
-   CheckEquals('Count', sugg.Code[3], 'd. 3');
-   CheckEquals('Delete', sugg.Code[4], 'd. 4');
-   CheckEquals('High', sugg.Code[5], 'd. 5');
-   CheckEquals('IndexOf', sugg.Code[6], 'd. 6');
-   CheckEquals('Insert', sugg.Code[7], 'd. 7');
-   CheckEquals('Length', sugg.Code[8], 'd. 8');
-   CheckEquals('Low', sugg.Code[9], 'd. 9');
-   CheckEquals('Map', sugg.Code[10], 'd. 10');
-   CheckEquals('Move', sugg.Code[11], 'd. 11');
-   CheckEquals('Peek', sugg.Code[12], 'd. 12');
-   CheckEquals('Pop', sugg.Code[13], 'd. 13');
-   CheckEquals('Push', sugg.Code[14], 'd. 14');
-   CheckEquals('Remove', sugg.Code[15], 'd. 15');
-   CheckEquals('Reverse', sugg.Code[16], 'd. 16');
-   CheckEquals('SetLength', sugg.Code[17], 'd. 17');
-   CheckEquals('Sort', sugg.Code[18], 'd. 18');
-   CheckEquals('Swap', sugg.Code[19], 'd. 19');
+   var expected := [
+      'Add', 'Clear', 'Copy', 'Count', 'Delete', 'Filter', 'High',
+      'IndexOf', 'Insert', 'Length', 'Low', 'Map', 'Move',
+      'Peek', 'Pop', 'Push', 'Removed', 'Reverse',
+      'SetLength', 'Sort', 'Swap'
+   ];
+   CheckEquals(Length(expected), sugg.Count, 'd. Length');
+   for var i := 0 to High(expected) do
+      CheckEquals(expected[i], sugg.Code[i], 'd. ' + IntToStr(i));
 end;
 
 // ObjectArrayTest
@@ -488,6 +478,32 @@ begin
    CheckEquals('Next', sugg.Code[0]);
    CheckEquals(Ord(scFunction), Ord(sugg.Category[0]), 'scFunction');
    CheckEquals('Next () : Integer', sugg.Caption[0]);
+end;
+
+// FunctionReturningArrayTest
+//
+procedure TSourceUtilsTests.FunctionReturningArrayTest;
+
+   procedure CheckIsJoin(const code : String);
+   var
+      prog : IdwsProgram;
+      sugg : IdwsSuggestions;
+      scriptPos : TScriptPos;
+   begin
+      prog := FCompiler.Compile(code);
+
+      scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 2, Length(code)-Pos(#10, code)+1);
+      sugg := TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+
+      CheckEquals(1, sugg.Count, code);
+      CheckEquals('Join', sugg.Code[0], code);
+   end;
+
+begin
+//   CheckIsJoin('function Test : array of String; begin end;'#13#10'Test.Jo');
+//   CheckIsJoin('function Test : array of String; begin end;'#13#10'Test().Jo');
+//   CheckIsJoin('function Test : array of String; begin end;'#13#10'StrSplit("Test").Jo');
+   CheckIsJoin('function Test : array of String; begin end;'#13#10'Test.Map(Trim).Jo');
 end;
 
 // JSONVariantSuggestTest

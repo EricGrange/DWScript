@@ -25,7 +25,8 @@ uses
    dwsErrors, dwsStrings, dwsXPlatform, dwsUtils, dwsScriptSource,
    dwsSymbols, dwsUnitSymbols, dwsCompilerContext, dwsExprList,
    dwsExprs, dwsCoreExprs, dwsConstExprs, dwsMethodExprs, dwsMagicExprs,
-   dwsConvExprs, dwsTokenizer, dwsOperators, dwsConnectorSymbols;
+   dwsConvExprs, dwsTokenizer, dwsOperators, dwsConnectorSymbols,
+   dwsArrayMethodKinds;
 
 type
 
@@ -78,15 +79,6 @@ type
       public
          constructor Create(typ : PTypeInfo; low, high, prefixLength : Integer);
    end;
-
-   TArrayMethodKind = (
-      amkNone,
-      amkAdd, amkPush, amkIndexOf, amkRemove, amkSort, amkMap, amkHigh, amkLow,
-      amkLength, amkCount, amkPop, amkPeek, amkDelete, amkInsert, amkSetLength,
-      amkClear, amkSwap, amkCopy, amkReverse, amkDimCount, amkKeys, amkMove,
-      amkFilter
-   );
-
 
 function NameToArrayMethod(const name : String; msgs : TdwsCompileMessageList;
                            const namePos : TScriptPos) : TArrayMethodKind;

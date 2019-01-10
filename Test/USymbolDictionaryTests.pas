@@ -37,6 +37,8 @@ type
          procedure PartialClass;
          procedure PartialClassMethod;
 
+         procedure PseudoMethod;
+
          procedure OverloadForwardDictionary;
          procedure OverloadMethodDictionary;
          procedure ClassForwardDictionary;
@@ -356,6 +358,22 @@ begin
          +'{"usages":["suDeclaration"],"position":" [line: 1, column: 6]"},'
          +'{"usages":["suDeclaration"],"position":" [line: 2, column: 6]"},'
          +'{"usages":["suReference"],"position":" [line: 3, column: 11]"}]}]',
+      prog.SymbolDictionary.ToJSON);
+end;
+
+// PseudoMethod
+//
+procedure TSymbolDictionaryTests.PseudoMethod;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile(
+      'StrSplit('', '').Map(Trim);'
+      );
+   CheckEquals(
+          '[{"symbol":{"name":"Map","class":"TPseudoMethodSymbol"},"positions":[{"usages":["suReference"],"position":" [line: 1, column: 16]"}]},'
+        + '{"symbol":{"name":"StrSplit","class":"TMagicFuncSymbol"},"positions":[{"usages":["suReference","suWrite"],"position":" [line: 1, column: 1]"}]},'
+        + '{"symbol":{"name":"Trim","class":"TMagicFuncSymbol"},"positions":[{"usages":["suReference","suRead"],"position":" [line: 1, column: 20]"}]}]',
       prog.SymbolDictionary.ToJSON);
 end;
 

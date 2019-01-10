@@ -25,7 +25,7 @@ interface
 
 uses
   Classes, SysUtils, TypInfo, Variants, System.Math,
-  dwsFileSystem, dwsUtils, dwsXPlatform, dwsUnicode,
+  dwsFileSystem, dwsUtils, dwsXPlatform, dwsUnicode, dwsArrayMethodKinds,
   dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors, dwsDataContext, dwsExprList,
   dwsStrings, dwsFunctions, dwsStack, dwsConnectorSymbols, dwsFilter,
   dwsCoreExprs, dwsMagicExprs, dwsRelExprs, dwsMethodExprs, dwsConstExprs,
@@ -7741,6 +7741,7 @@ var
    filterFunctionType : TFuncSymbol;
    methodKind : TArrayMethodKind;
    indexOfClass : TArrayIndexOfExprClass;
+   pseudoMethod : TPseudoMethodSymbol;
 
    procedure CheckNotTypeReference;
    begin
@@ -7782,6 +7783,11 @@ begin
       arraySym := baseExpr.Typ.UnAliasedType as TArraySymbol;
 
       methodKind := NameToArrayMethod(name, FMsgs, namePos);
+      if coSymbolDictionary in Options then begin
+         pseudoMethod := arraySym.PseudoMethodSymbol(methodKind, FCompilerContext);
+         if pseudoMethod <> nil then
+            SymbolDictionary.AddSymbol(pseudoMethod, namePos, [ suReference ]);
+      end;
 
       case methodKind of
 
@@ -7795,13 +7801,13 @@ begin
          end;
 
          amkSort :
-            argList.DefaultExpected := TParamSymbol.Create('', arraySym.SortFunctionType(FCompilerContext.TypInteger));
+            argList.DefaultExpected := TParamSymbol.Create('', arraySym.SortFunctionType(FCompilerContext));
 
          amkMap :
-            argList.DefaultExpected := TParamSymbol.Create('', arraySym.MapFunctionType(FCompilerContext.TypAnyType));
+            argList.DefaultExpected := TParamSymbol.Create('', arraySym.MapFunctionType(FCompilerContext));
 
          amkFilter :
-            argList.DefaultExpected := TParamSymbol.Create('', arraySym.FilterFunctionType(FCompilerContext.TypBoolean));
+            argList.DefaultExpected := TParamSymbol.Create('', arraySym.FilterFunctionType(FCompilerContext));
 
       end;
 
@@ -8007,9 +8013,9 @@ begin
                         Result:=TArraySortNaturalExpr.Create(FCompilerContext, namePos, baseExpr);
                      end;
                   end else begin
-                     if not argList[0].Typ.IsCompatible(arraySym.SortFunctionType(FCompilerContext.TypInteger)) then begin
+                     if not argList[0].Typ.IsCompatible(arraySym.SortFunctionType(FCompilerContext)) then begin
                         IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
-                                          arraySym.SortFunctionType(FCompilerContext.TypInteger), argList[0].Typ);
+                                          arraySym.SortFunctionType(FCompilerContext), argList[0].Typ);
                         argList.OrphanItems(FCompilerContext);
                         argList.Clear;
                      end;
@@ -8025,7 +8031,7 @@ begin
             amkMap : begin
                CheckRestricted;
                if CheckArguments(1, 1) then begin
-                  mapFunctionType:=arraySym.MapFunctionType(FCompilerContext.TypAnyType);
+                  mapFunctionType:=arraySym.MapFunctionType(FCompilerContext);
                   if      argList[0].Typ.IsCompatible(mapFunctionType)
                      and (argList[0].Typ.Typ<>nil) then begin
                      Result:=TArrayMapExpr.Create(FCompilerContext, namePos, baseExpr,
@@ -8044,7 +8050,7 @@ begin
             amkFilter : begin
                CheckRestricted;
                if CheckArguments(1, 1) then begin
-                  filterFunctionType := arraySym.FilterFunctionType(FCompilerContext.TypBoolean);
+                  filterFunctionType := arraySym.FilterFunctionType(FCompilerContext);
                   if      argList[0].Typ.IsCompatible(filterFunctionType)
                      and (argList[0].Typ.Typ <> nil) then begin
                      Result := TArrayFilterExpr.Create(FCompilerContext, namePos, baseExpr,
@@ -8089,6 +8095,7 @@ var
    argSymTable : TUnSortedSymbolTable;
    arraySym : TAssociativeArraySymbol;
    methodKind : TArrayMethodKind;
+   pseudoMethod : TPseudoMethodSymbol;
 
    function CheckArguments(expectedMin, expectedMax : Integer) : Boolean;
    begin
@@ -8110,6 +8117,11 @@ begin
       arraySym := baseExpr.Typ.UnAliasedType as TAssociativeArraySymbol;
 
       methodKind := NameToArrayMethod(name, FMsgs, namePos);
+      if coSymbolDictionary in Options then begin
+         pseudoMethod := arraySym.PseudoMethodSymbol(methodKind, FCompilerContext);
+         if pseudoMethod <> nil then
+            SymbolDictionary.AddSymbol(pseudoMethod, namePos, [ suReference ]);
+      end;
 
       ReadArguments(argList.AddExpr, ttBLEFT, ttBRIGHT, argPosArray, argList.ExpectedArg);
 
