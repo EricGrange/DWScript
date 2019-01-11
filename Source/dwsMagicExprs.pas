@@ -183,6 +183,9 @@ type
    // TMagicFuncExpr
    //
    TMagicFuncExpr = class(TFuncExprBase)
+      private
+         FInternalFunc : TInternalMagicFunction;
+
       public
          class function CreateMagicFuncExpr(context : TdwsCompilerContext;
                            const scriptPos : TScriptPos; magicFuncSym : TMagicFuncSymbol) : TMagicFuncExpr;
@@ -197,6 +200,8 @@ type
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
          procedure CompileTimeCheck(context : TdwsCompilerContext); override;
+
+         property InternalFunc : TInternalMagicFunction read FInternalFunc;
    end;
 
    // TMagicVariantFuncExpr
