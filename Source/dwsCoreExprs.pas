@@ -834,8 +834,15 @@ type
          procedure SetCompareMethod(var qs : TQuickSort; {%H-}dyn : TScriptDynamicValueArray); override;
    end;
 
+   // Returns the storage to use for the next call, normal sequence is
+   // - first call with number of items as parameter (<0 if unknown), will return storage for 1st item
+   // - second call with n=0, after having stored the first item, returns storage for second item (can be same)
+   // - etc
+   TArrayDataEnumeratorCallback = reference to function(n : Integer) : PVariant;
+   TArrayDataEnumeratorCallbackString = reference to function(n : Integer) : PString;
+
    // Map a dynamic array
-   TArrayMapExpr = class(TArrayTypedExpr)
+   TArrayMapExpr = class sealed (TArrayTypedExpr)
       private
          FMapFuncExpr : TFuncPtrExpr;
          FItem : TDataSymbol;
@@ -844,6 +851,8 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
+         procedure BaseAsCallback(exec : TdwsExecution; const initial, callback : TArrayDataEnumeratorCallback);
+
       public
          constructor Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                             aBase : TTypedExpr; aMapFunc : TFuncPtrExpr);
@@ -851,6 +860,9 @@ type
 
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
+
+         procedure EvalAsCallback(exec : TdwsExecution; const initial, callback : TArrayDataEnumeratorCallback);
+         procedure EvalAsCallbackString(exec : TdwsExecution; const initial, callback : TArrayDataEnumeratorCallbackString);
 
          property MapFuncExpr : TFuncPtrExpr read FMapFuncExpr write FMapFuncExpr;
    end;
@@ -9854,6 +9866,113 @@ begin
          dc.CopyData(newPData^, i*newArray.ElementSize, newArray.ElementSize);
       end;
    end;
+end;
+
+// BaseAsCallback
+//
+procedure TArrayMapExpr.BaseAsCallback(exec : TdwsExecution; const initial, callback : TArrayDataEnumeratorCallback);
+var
+   base : IScriptDynArray;
+   dyn : TScriptDynamicValueArray;
+   destPVariant : PVariant;
+begin
+   if BaseExpr is TArrayMapExpr then begin
+
+      TArrayMapExpr(BaseExpr).EvalAsCallback(exec, initial, callback);
+
+   end else begin
+
+      BaseExpr.EvalAsScriptDynArray(exec, base);
+      dyn := TScriptDynamicValueArray(base.GetSelf);
+      destPVariant := initial(dyn.ArrayLength);
+      if dyn.ElementSize = 1 then begin
+         var i := 0;
+         while i < dyn.ArrayLength do begin
+            VarCopySafe(destPVariant^, dyn.AsPVariant(i)^);
+            destPVariant := callback(i);
+            Inc(i);
+         end;
+      end else begin
+         var i := 0;
+         while i < dyn.ArrayLength do begin
+            dyn.CopyData(i*dyn.ElementSize, destPVariant^, 0, dyn.ElementSize);
+            destPVariant := callback(i);
+            Inc(i);
+         end;
+      end;
+
+   end;
+end;
+
+// EvalAsCallback
+//
+procedure TArrayMapExpr.EvalAsCallback(exec : TdwsExecution; const initial, callback : TArrayDataEnumeratorCallback);
+var
+   itemAddr : Integer;
+   itemPtr : PVariant;
+   funcPointer : IFuncPointer;
+   destPVariant : PVariant;
+   loopCallback : TArrayDataEnumeratorCallback;
+begin
+   MapFuncExpr.EvalAsFuncPointer(exec, funcPointer);
+
+   itemAddr := exec.Stack.BasePointer + FItem.StackAddr;
+   itemPtr := @exec.Stack.Data[itemAddr];
+
+   var destSize := Typ.Typ.Size;
+   if destSize = 1 then begin
+      loopCallback := function (n : Integer) : PVariant
+                      begin
+                         funcPointer.EvalAsVariant(exec, MapFuncExpr, destPVariant^);
+                         destPVariant := callback(n);
+                         Result := itemPtr;
+                      end;
+   end else begin
+      loopCallback := function (n : Integer) : PVariant
+                      begin
+                         var dc := funcPointer.EvalDataPtr(exec,  MapFuncExpr, MapFuncExpr.ResultAddr);
+                         dc.CopyData(destPVariant^, 0, destSize);
+                         destPVariant := callback(n);
+                         Result := itemPtr;
+                      end;
+   end;
+   BaseAsCallback(exec,
+      function (n : Integer) : PVariant
+      begin
+         destPVariant := initial(n);
+         Result := itemPtr;
+      end,
+      loopCallback
+   );
+end;
+
+// EvalAsCallbackString
+//
+procedure TArrayMapExpr.EvalAsCallbackString(exec : TdwsExecution; const initial, callback : TArrayDataEnumeratorCallbackString);
+var
+   itemAddr : Integer;
+   itemPtr : PVariant;
+   funcPointer : IFuncPointer;
+   destString : PString;
+begin
+   MapFuncExpr.EvalAsFuncPointer(exec, funcPointer);
+
+   itemAddr := exec.Stack.BasePointer + FItem.StackAddr;
+   itemPtr := @exec.Stack.Data[itemAddr];
+
+   BaseAsCallback(exec,
+      function (n : Integer) : PVariant
+      begin
+         Result := itemPtr;
+         destString := initial(n);
+      end,
+      function (n : Integer) : PVariant
+      begin
+         funcPointer.EvalAsString(exec, MapFuncExpr, destString^);
+         Result := itemPtr;
+         destString := callback(n);
+      end
+   );
 end;
 
 // GetSubExpr

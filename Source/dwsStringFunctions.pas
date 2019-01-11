@@ -296,8 +296,12 @@ type
     procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
   end;
 
-  TStrJoinFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
+  TStrJoinFunc = class sealed (TInternalMagicStringFunction)
+    protected
+       procedure DoEvalFromArray(const args : TExprBaseListExec; var Result : String);
+       procedure DoEvalFromMap(const args : TExprBaseListExec; var Result : String);
+    public
+       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
   end;
 
   TReverseStringFunc = class(TInternalMagicStringFunction)
@@ -1199,6 +1203,15 @@ end;
 { TStrJoinFunc }
 
 procedure TStrJoinFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+begin
+   if args.ExprBase[0] is TArrayMapExpr then
+      DoEvalFromMap(args, Result)
+   else DoEvalFromArray(args, Result);
+end;
+
+// DoEvalFromArray
+//
+procedure TStrJoinFunc.DoEvalFromArray(const args : TExprBaseListExec; var Result : String);
 var
    delim, item : String;
    dynIntf : IScriptDynArray;
@@ -1232,6 +1245,38 @@ begin
       finally
          wobs.ReturnToPool;
       end;
+   end;
+end;
+
+// DoEvalFromMap
+//
+procedure TStrJoinFunc.DoEvalFromMap(const args : TExprBaseListExec; var Result : String);
+var
+   mapExpr : TArrayMapExpr;
+   wobs : TWriteOnlyBlockStream;
+   delim, buf : String;
+begin
+   mapExpr := args.ExprBase[0] as TArrayMapExpr;
+   args.EvalAsString(1, delim);
+   buf := '';
+   wobs := TWriteOnlyBlockStream.AllocFromPool;
+   try
+      mapExpr.EvalAsCallbackString(args.Exec,
+         function (n : Integer) : PString
+         begin
+            Result := @buf;
+         end,
+         function (n : Integer) : PString
+         begin
+            if n > 0 then
+               wobs.WriteString(delim);
+            wobs.WriteString(buf);
+            Result := @buf;
+         end
+      );
+      Result := wobs.ToString;
+   finally
+      wobs.ReturnToPool;
    end;
 end;
 
