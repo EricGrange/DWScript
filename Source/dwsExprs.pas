@@ -1053,21 +1053,24 @@ type
       procedure EvalAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
       function EvalAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Int64;
       function EvalAsBoolean(exec : TdwsExecution; caller : TFuncExpr) : Boolean;
+      procedure EvalAsString(exec : TdwsExecution; caller : TFuncExpr; var result : String);
       function EvalDataPtr(exec : TdwsExecution; caller : TFuncExpr; resultAddr : Integer) : IDataContext;
    end;
-
-   TFuncPointerEvalAsVariant = procedure (exec : TdwsExecution; caller : TFuncExpr; var result : Variant) of object;
-   TFuncPointerEvalAsInteger = procedure (exec : TdwsExecution; caller : TFuncExpr; var result : Int64) of object;
 
    // Encapsulates a function or method pointer
    TFuncPointer = class(TInterfacedObject, IUnknown, IFuncPointer)
       private
          FFuncExpr : TFuncExprBase;
-         FDoEvalAsVariant : TFuncPointerEvalAsVariant;
+         FEvalAsMagic : Boolean;
 
       protected
          procedure EvalMagicAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
+         procedure EvalMagicAsString(exec : TdwsExecution; caller : TFuncExpr; var result : String);
+         function  EvalMagicAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Int64;
+
          procedure EvalFuncAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
+         procedure EvalFuncAsString(exec : TdwsExecution; caller : TFuncExpr; var result : String);
+         function  EvalFuncAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Integer;
 
       public
          constructor Create(exec : TdwsExecution; funcExpr : TFuncExprBase);
@@ -1079,6 +1082,7 @@ type
          procedure EvalAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
          function EvalAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Int64;
          function EvalAsBoolean(exec : TdwsExecution; caller : TFuncExpr) : Boolean;
+         procedure EvalAsString(exec : TdwsExecution; caller : TFuncExpr; var result : String);
          function EvalDataPtr(exec : TdwsExecution; caller : TFuncExpr; resultAddr : Integer) : IDataContext;
    end;
 
@@ -5360,14 +5364,14 @@ begin
    end;
 
    if FFuncExpr is TMagicFuncExpr then
-      FDoEvalAsVariant:=EvalMagicAsVariant
+      FEvalAsMagic := True
    else begin
       Assert(FFuncExpr is TFuncExpr);
       // handled as Level 1 in the context it will be called from,
       // which may be different from the context in which it was acquired
       TFuncExpr(FFuncExpr).Level:=1;
 
-      FDoEvalAsVariant:=EvalFuncAsVariant;
+      FEvalAsMagic := False;
    end;
 end;
 
@@ -5422,6 +5426,36 @@ begin
    end;
 end;
 
+// EvalMagicAsString
+//
+procedure TFuncPointer.EvalMagicAsString(exec : TdwsExecution; caller : TFuncExpr; var result : String);
+var
+   oldArgs : TExprBaseListRec;
+begin
+   oldArgs := FFuncExpr.Args;
+   FFuncExpr.Args := caller.Args;
+   try
+      FFuncExpr.EvalAsString(exec, result);
+   finally
+      FFuncExpr.Args := oldArgs;
+   end;
+end;
+
+// EvalMagicAsInteger
+//
+function TFuncPointer.EvalMagicAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Int64;
+var
+   oldArgs : TExprBaseListRec;
+begin
+   oldArgs := FFuncExpr.Args;
+   FFuncExpr.Args := caller.Args;
+   try
+      Result := FFuncExpr.EvalAsInteger(exec);
+   finally
+      FFuncExpr.Args := oldArgs;
+   end;
+end;
+
 // EvalFuncAsVariant
 //
 procedure TFuncPointer.EvalFuncAsVariant(exec : TdwsExecution; caller : TFuncExpr; var result : Variant);
@@ -5445,35 +5479,43 @@ begin
    end;
 end;
 
+// EvalFuncAsString
+//
+procedure TFuncPointer.EvalFuncAsString(exec : TdwsExecution; caller : TFuncExpr; var result : String);
+var
+   v : Variant;
+begin
+   EvalFuncAsVariant(exec, caller, v);
+   VariantToString(v, result);
+end;
+
+// EvalFuncAsInteger
+//
+function TFuncPointer.EvalFuncAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Integer;
+var
+   v : Variant;
+begin
+   EvalFuncAsVariant(exec, caller, v);
+   Result := VariantToInt64(v);
+end;
+
 // EvalAsVariant
 //
 procedure TFuncPointer.EvalAsVariant(exec : TdwsExecution; caller : TFuncExpr;
                                      var result : Variant);
 begin
-   FDoEvalAsVariant(exec, caller, result);
+   if FEvalAsMagic then
+      EvalMagicAsVariant(exec, caller, result)
+   else EvalFuncAsVariant(exec, caller, result);
 end;
 
 // EvalAsInteger
 //
 function TFuncPointer.EvalAsInteger(exec : TdwsExecution; caller : TFuncExpr) : Int64;
-
-   function Fallback(var v : TVarData) : Int64;
-   begin
-      try
-         Result := VariantToInt64(Variant(v));
-      finally
-         VarClearSafe(Variant(v));
-      end;
-   end;
-
-var
-   v : TVarData;
 begin
-   v.VType := varInt64;
-   FDoEvalAsVariant(exec, caller, Variant(v));
-   if v.VType = varInt64 then
-      Result := v.VInt64
-   else Result := Fallback(v);
+   if FEvalAsMagic then
+      Result := EvalMagicAsInteger(exec, caller)
+   else Result := EvalFuncAsInteger(exec, caller);
 end;
 
 // EvalAsBoolean
@@ -5493,10 +5535,21 @@ var
    v : TVarData;
 begin
    v.VType := varBoolean;
-   FDoEvalAsVariant(exec, caller, Variant(v));
+   if FEvalAsMagic then
+      EvalMagicAsVariant(exec, caller, Variant(v))
+   else EvalFuncAsVariant(exec, caller, Variant(v));
    if v.VType = varBoolean then
       Result := v.VBoolean
    else Result := Fallback(v);
+end;
+
+// EvalAsString
+//
+procedure TFuncPointer.EvalAsString(exec : TdwsExecution; caller : TFuncExpr; var result : String);
+begin
+   if FEvalAsMagic then
+      EvalMagicAsString(exec, caller, result)
+   else EvalFuncAsString(exec, caller, result);
 end;
 
 // EvalDataPtr
