@@ -4,7 +4,9 @@ interface
 
 uses
   Forms, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-  dwsJSFilter, dwsHtmlFilter, dwsXPlatform, dwsUtils, cefvcl, ceflib, dwsJSLibModule,
+   uCEFChromium, uCEFChromiumWindow, uCEFInterfaces, uCEFTypes, uCEFApplication,
+  dwsJSFilter, dwsHtmlFilter, dwsXPlatform, dwsUtils,
+  dwsJSLibModule,
   StrUtils, dwsFunctions, dwsCodeGen, dwsUnitSymbols, dwsCompilerContext, dwsErrors;
 
 type
@@ -19,23 +21,23 @@ type
          FASMModule : TdwsJSLibModule;
          FHtmlFilter : TdwsHtmlFilter;
          FHtmlUnit : TdwsHtmlUnit;
-         FChromium : TChromium;
+         FChromium : TChromiumWindow;
          FChromiumForm : TForm;
          FLastJSResult : String;
          FConsole : String;
          FLoadEnded : Boolean;
-         FJSDone : Boolean;
 
       public
          procedure SetUp; override;
          procedure TearDown; override;
 
          procedure DoJSDialog(
-            Sender: TObject; const browser: ICefBrowser; const originUrl, acceptLang: ustring;
+            Sender: TObject; const browser: ICefBrowser; const originUrl: ustring;
             dialogType: TCefJsDialogType; const messageText, defaultPromptText: ustring;
-            callback: ICefJsDialogCallback; out suppressMessage: Boolean; out Result: Boolean);
-         procedure DoConsoleMessage(Sender: TObject; const browser: ICefBrowser;
-            const message, source: ustring; line: Integer; out Result: Boolean);
+            const callback: ICefJsDialogCallback; out suppressMessage: Boolean; out Result: Boolean);
+         procedure DoConsoleMessage(
+            Sender: TObject; const browser: ICefBrowser;
+            level: TCefLogSeverity; const message, source: ustring; line: Integer; out Result: Boolean);
          procedure DoLoadEnd(Sender: TObject; const browser: ICefBrowser; const frame: ICefFrame; httpStatusCode: Integer);
 
          procedure DoInclude(const scriptName: string; var scriptSource: string);
@@ -56,19 +58,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-type
-   TCefStringVisitor = class(TCefStringVisitorOwn)
-      Str : String;
-      procedure Visit(const astr: ustring); override;
-   end;
-
-// Visit
-//
-procedure TCefStringVisitor.Visit(const astr: ustring);
-begin
-   Str:=astr;
-end;
 
 // ------------------
 // ------------------ TJSFilterTests ------------------
@@ -117,12 +106,14 @@ begin
    FChromiumForm:=TForm.Create(nil);
    FChromiumForm.Show;
 
-   FChromium:=TChromium.Create(nil);
-   FChromium.OnJsdialog:=DoJSDialog;
-   FChromium.OnConsoleMessage:=DoConsoleMessage;
-   FChromium.OnLoadEnd:=DoLoadEnd;
+   FChromium:=TChromiumWindow.Create(nil);
+   FChromium.ChromiumBrowser.OnJsdialog:=DoJSDialog;
+   FChromium.ChromiumBrowser.OnConsoleMessage:=DoConsoleMessage;
+   FChromium.ChromiumBrowser.OnLoadEnd:=DoLoadEnd;
    FChromium.Parent:=FChromiumForm;
-   FChromium.Load('about:blank');
+   FChromium.CreateBrowser;
+   FChromium.ChromiumBrowser.LoadURL('about:blank');
+
 end;
 
 // TearDown
@@ -130,6 +121,7 @@ end;
 procedure TJSFilterTests.TearDown;
 begin
    FTestFailures.Free;
+   FChromium.CloseBrowser(True);
    FChromium.Free;
    FChromiumForm.Free;
    FASMModule.Free;
@@ -144,9 +136,9 @@ end;
 // DoJSDialog
 //
 procedure TJSFilterTests.DoJSDialog(
-            Sender: TObject; const browser: ICefBrowser; const originUrl, acceptLang: ustring;
+            Sender: TObject; const browser: ICefBrowser; const originUrl: ustring;
             dialogType: TCefJsDialogType; const messageText, defaultPromptText: ustring;
-            callback: ICefJsDialogCallback; out suppressMessage: Boolean; out Result: Boolean);
+            const callback: ICefJsDialogCallback; out suppressMessage: Boolean; out Result: Boolean);
 begin
    FLastJSResult:=messageText;
    Result:=True;
@@ -154,13 +146,12 @@ end;
 
 // DoConsoleMessage
 //
-procedure TJSFilterTests.DoConsoleMessage(Sender: TObject; const browser: ICefBrowser;
-            const message, source: ustring; line: Integer; out Result: Boolean);
+procedure TJSFilterTests.DoConsoleMessage(
+            Sender: TObject; const browser: ICefBrowser;
+            level: TCefLogSeverity; const message, source: ustring; line: Integer; out Result: Boolean);
 begin
-   if message='!done' then
-      FJSDone:=True
-   else FConsole:=FConsole+Format('Line %d: ', [line])+message+#13#10;
-   Result:=True;
+   FConsole := message;// Format('Line %d: ', [line])+message+#13#10;
+   Result := True;
 end;
 
 // DoLoadEnd
@@ -205,41 +196,47 @@ end;
 //
 function TJSFilterTests.BrowserLoadAndWait(const src : String) : String;
 var
-   v : TCefStringVisitor;
-   iv : ICefStringVisitor;
-   t : Integer;
+   i, t : Integer;
 begin
+   for i := 1 to 100 do
+      if not FChromium.Initialized then begin
+         FChromium.LoadURL('about:blank');
+         Application.ProcessMessages;
+         Sleep(10);
+      end;
+   Assert(FChromium.Initialized);
+
    // CEF3 is asynchronous, this is a quick & dirty synchronous-ification
    // as unit tests are not asynchronous
 
-   FJSDone:=False;
-   FLoadEnded:=False;
-   FChromium.Browser.MainFrame.LoadString(src+'<script>console.log("!done")</script>', 'http://localhost');
+   FConsole := '';
+
+   FLoadEnded := False;
+   FChromium.ChromiumBrowser.Browser.MainFrame.LoadString(src+'<script>console.log(document.body ? document.body.innerText : "!done")</script>', 'http://localhost');
    while not FLoadEnded do begin
       Sleep(1);
       Application.ProcessMessages;
    end;
 
-   // give JS time to complete
-   // JS state cannot be queried (?), so we wait a bit with a timeout
-   t:=200;
-   while (t>0) and not FJSDone do begin
+   t := 2000;
+   while (FConsole = '') and (t > 0) do begin
       Sleep(1);
       Application.ProcessMessages;
       Dec(t);
    end;
-   if t=0 then
-      FChromium.Browser.StopLoad;
-
-   v:=TCefStringVisitor.Create;
-   iv:=v;
-   v.Str:=#0;
-   FChromium.Browser.MainFrame.GetText(iv);
-   while v.Str=#0 do begin
-      Sleep(1);
-      Application.ProcessMessages;
+   if t = 0 then begin
+      if FLoadEnded then begin
+         Result := 'Timeout AFTER load ended';
+      end else begin
+         FChromium.ChromiumBrowser.Browser.StopLoad;
+         Result := 'Timeout before load ended'
+      end;
+   end else begin
+      if FConsole = '!done' then
+         Result := ''
+      else Result := FConsole;
+      FConsole := '';
    end;
-   Result:=v.Str;
 end;
 
 // TestScripts
@@ -270,7 +267,7 @@ begin
          FLastJSResult:=BrowserLoadAndWait(exec.Result.ToString);
 
          if prog.Msgs.Count=0 then
-            output:=FConsole+FLastJSResult
+            output := FConsole+FLastJSResult
          else begin
             output:= 'Errors >>>>'#10
                     +ReplaceStr(prog.Msgs.AsInfo, #13#10, #10)

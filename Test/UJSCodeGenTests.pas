@@ -4,7 +4,8 @@ interface
 
 uses
    Forms, Classes, SysUtils, TestFrameWork, Windows,
-   cefvcl, ceflib,
+//   cefvcl, ceflib,
+   uCEFChromium, uCEFChromiumWindow, uCEFInterfaces, uCEFTypes, uCEFApplication,
    dwsComp, dwsCompiler, dwsExprs, dwsUtils, dwsXPlatform, dwsUnitSymbols,
    dwsCodeGen, dwsJSCodeGen, dwsJSLibModule, dwsFunctions, dwsCompilerContext,
    dwsErrors, ClipBrd;
@@ -17,7 +18,7 @@ type
          FCompiler : TDelphiWebScript;
          FCodeGen : TdwsJSCodeGen;
          FASMModule : TdwsJSLibModule;
-         FChromium : TChromium;
+         FChromium : TChromiumWindow;
          FChromiumForm : TForm;
          FLastJSResult : String;
          FConsole : String;
@@ -27,11 +28,11 @@ type
          procedure TearDown; override;
 
          procedure DoJSDialog(
-            Sender: TObject; const browser: ICefBrowser; const originUrl, acceptLang: ustring;
+            Sender: TObject; const browser: ICefBrowser; const originUrl: ustring;
             dialogType: TCefJsDialogType; const messageText, defaultPromptText: ustring;
-            callback: ICefJsDialogCallback; out suppressMessage: Boolean; out Result: Boolean);
+            const callback: ICefJsDialogCallback; out suppressMessage: Boolean; out Result: Boolean);
          procedure DoConsoleMessage(Sender: TObject; const browser: ICefBrowser;
-            const message, source: ustring; line: Integer; out Result: Boolean);
+            level: TCefLogSeverity; const message, source: ustring; line: Integer; out Result: Boolean);
          procedure DoInclude(const scriptName: string; var scriptSource: string);
          function  DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
 
@@ -121,11 +122,14 @@ begin
    FChromiumForm:=TForm.Create(nil);
    FChromiumForm.Show;
 
-   FChromium:=TChromium.Create(nil);
-   FChromium.OnJsdialog:=DoJSDialog;
-   FChromium.OnConsoleMessage:=DoConsoleMessage;
+   Assert(GlobalCEFApp.GlobalContextInitialized);
+
+   FChromium:=TChromiumWindow.Create(nil);
+   FChromium.ChromiumBrowser.OnJsdialog:=DoJSDialog;
+   FChromium.ChromiumBrowser.OnConsoleMessage:=DoConsoleMessage;
    FChromium.Parent:=FChromiumForm;
-   FChromium.Load('about:blank');
+   FChromium.CreateBrowser;
+   FChromium.ChromiumBrowser.LoadURL('about:blank');
 end;
 
 // TearDown
@@ -147,9 +151,9 @@ end;
 // DoJSDialog
 //
 procedure TJSCodeGenTests.DoJSDialog(
-            Sender: TObject; const browser: ICefBrowser; const originUrl, acceptLang: ustring;
+            Sender: TObject; const browser: ICefBrowser; const originUrl: ustring;
             dialogType: TCefJsDialogType; const messageText, defaultPromptText: ustring;
-            callback: ICefJsDialogCallback; out suppressMessage: Boolean; out Result: Boolean);
+            const callback: ICefJsDialogCallback; out suppressMessage: Boolean; out Result: Boolean);
 begin
    FLastJSResult:=messageText;
    Result:=True;
@@ -157,8 +161,8 @@ end;
 
 // DoConsoleMessage
 //
-procedure TJSCodeGenTests.DoConsoleMessage(Sender: TObject;
-   const browser: ICefBrowser; const message, source: ustring; line: Integer; out Result: Boolean);
+procedure TJSCodeGenTests.DoConsoleMessage(Sender: TObject; const browser: ICefBrowser;
+            level: TCefLogSeverity; const message, source: ustring; line: Integer; out Result: Boolean);
 begin
    FLastJSResult:=message;
 //   FConsole:=FConsole+Format('Line %d: ', [line])+message+#13#10;
@@ -314,6 +318,15 @@ var
    output, expectedResult : String;
    diagnostic : TStringList;
 begin
+   for i := 1 to 100 do
+      if not FChromium.Initialized then begin
+         FChromium.LoadURL('about:blank');
+         Application.ProcessMessages;
+         Sleep(10);
+      end;
+   Assert(FChromium.Initialized);
+
+
    i := FCompiler.Config.Conditionals.IndexOf('INLINE_MAGICS');
    if not (cgoNoInlineMagics in FCodeGen.Options) then begin
       if i < 0 then
@@ -384,11 +397,17 @@ begin
             }
 
             // execute via chromium
-            FChromium.Browser.MainFrame.ExecuteJavaScript(jsCode, 'about:blank', 0);
-            for k:=1 to 100 do begin
-               if FLastJSResult<>'*no result*' then break;
+            FChromium.ChromiumBrowser.ExecuteJavaScript(jsCode, 'about:blank');
+            for k:=1 to 300 do begin
+               if FLastJSResult <> '*no result*' then break;
                Application.ProcessMessages;
-               Sleep(1);
+//               GlobalCEFApp.RunMessageLoop;
+               case k of
+                  0..99 : Sleep(1);
+                  100..199 : Sleep(10);
+               else
+                  Sleep(20);
+               end;
             end;
             //}
 
@@ -401,7 +420,9 @@ begin
                        +FConsole+FLastJSResult;
             end;
 
-            expectedResult:=GetExpectedResult(FTests[i]);
+            expectedResult := GetExpectedResult(FTests[i]);
+            FastStringReplace(expectedResult, #13#10, #10);
+            FastStringReplace(output, #13#10, #10);
             if not (expectedResult=output) then begin
 //               Clipboard.AsText:=jsCode;
                diagnostic.Add( ExtractFileName(FTests[i])
