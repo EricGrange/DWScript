@@ -4013,7 +4013,7 @@ begin
 
                WriteVar;
                codeGen.WriteSymbolName(sym);
-               if sym.Typ<>codeGen.Context.Root.CompilerContext.TypVariant then begin
+               if (codeGen.Context.Root.Compiler = nil) or (sym.Typ <> codeGen.Context.Root.CompilerContext.TypVariant) then begin
                   codeGen.WriteString(' = ');
                   jsCodeGen.WriteDefaultValue(sym.Typ, IsLocalVarParam(codeGen, sym));
                end;
@@ -4072,21 +4072,23 @@ begin
 
       end;
    end;
-   for iterSym in codeGen.LocalTable do begin
-      symClassType := iterSym.ClassType;
-      if (symClassType = TVarDataSymbol) or (symClassType = TScriptDataSymbol)  then begin
-         sym := TDataSymbol(iterSym);
-         if sym.HasExternalName then continue;
-         if jsCodeGen.FDeclaredLocalVars.IndexOf(sym) >= 0 then continue;
+   if codeGen.LocalTable <> nil then begin
+      for iterSym in codeGen.LocalTable do begin
+         symClassType := iterSym.ClassType;
+         if (symClassType = TVarDataSymbol) or (symClassType = TScriptDataSymbol)  then begin
+            sym := TDataSymbol(iterSym);
+            if sym.HasExternalName then continue;
+            if jsCodeGen.FDeclaredLocalVars.IndexOf(sym) >= 0 then continue;
 
-         jsCodeGen.FDeclaredLocalVars.Add(sym);
-         WriteVar;
-         jsCodeGen.WriteSymbolName(sym);
-         if sym.Typ.ClassType = TBaseVariantSymbol then begin
-            // undefined is JS default for unassigned var
-         end else begin
-            jsCodeGen.WriteString(' = ');
-            jsCodeGen.WriteDefaultValue(sym.Typ, TJSExprCodeGen.IsLocalVarParam(jsCodeGen, sym));
+            jsCodeGen.FDeclaredLocalVars.Add(sym);
+            WriteVar;
+            jsCodeGen.WriteSymbolName(sym);
+            if sym.Typ.ClassType = TBaseVariantSymbol then begin
+               // undefined is JS default for unassigned var
+            end else begin
+               jsCodeGen.WriteString(' = ');
+               jsCodeGen.WriteDefaultValue(sym.Typ, TJSExprCodeGen.IsLocalVarParam(jsCodeGen, sym));
+            end;
          end;
       end;
    end;

@@ -2074,7 +2074,7 @@ begin
       existing:=FNames[n];
       if (existing<>FReservedSymbol) and (existing<>sym) then begin
          // ignore duplicate external, the raise is mostly a debugging facility at the moment
-         RaiseAlreadyDefined(sym, existing)
+//         RaiseAlreadyDefined(sym, existing)
       end else FNames.Objects[n]:=sym;
    end;
 end;
