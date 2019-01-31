@@ -1301,8 +1301,9 @@ begin
          if dataValue = nil then
             dataValue := TdwsJSONImmediate.FromVariant(Null)
          else begin
-            if dataValue.Owner=nil then
-               dataValue.IncRefCount;
+            if dataValue.Owner = nil then
+               dataValue.IncRefCount
+            else dataValue.Detach;
          end;
       end;
       varEmpty :

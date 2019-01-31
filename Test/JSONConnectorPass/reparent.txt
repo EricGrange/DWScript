@@ -1,0 +1,3 @@
+{"Dati":{"Campo":{"IDValue":5}}}
+{"Dati":{},"SottoOggetto":{"IDValue":5}}
+{"Dati":{"Campo":{"IDValue":5}},"SottoOggetto":{"IDValue":5}}
