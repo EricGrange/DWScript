@@ -11490,6 +11490,10 @@ begin
 
          typ:=nil;
 
+      end else if trueTyp = falseTyp then begin
+
+         typ := trueTyp;
+
       end else begin
 
          if trueExpr.IsOfType(FCompilerContext.TypInteger) and falseExpr.IsOfType(FCompilerContext.TypFloat) then begin
@@ -11518,9 +11522,16 @@ begin
 
          else begin
 
-            typ:=trueTyp;
-            if not typ.IsCompatible(falseTyp) then
+            typ := trueTyp;
+            if not typ.IsCompatible(falseTyp) then begin
                FMsgs.AddCompilerError(hotPos, CPE_InvalidArgCombination);
+            end else begin
+               falseExpr := TConvExpr.WrapWithConvCast(
+                  CompilerContext, falseExpr.ScriptPos,
+                  typ, falseExpr,
+                  ''
+               );
+            end;
 
          end;
 
