@@ -1560,7 +1560,7 @@ procedure TdwsJSONObject.AddHashed(hash : Cardinal; const aName : UnicodeString;
 begin
    if aValue = nil then
       aValue := vImmediate.Create;
-   Assert(aValue.Owner=nil);
+   Assert(aValue.Owner = nil);
    aValue.FOwner:=Self;
    if FCount=FCapacity then Grow;
    FItems^[FCount].Value:=aValue;
