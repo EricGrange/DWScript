@@ -9875,6 +9875,7 @@ var
    base : IScriptDynArray;
    dyn : TScriptDynamicValueArray;
    destPVariant : PVariant;
+   i : Integer;
 begin
    if BaseExpr is TArrayMapExpr then begin
 
@@ -9886,14 +9887,14 @@ begin
       dyn := TScriptDynamicValueArray(base.GetSelf);
       destPVariant := initial(dyn.ArrayLength);
       if dyn.ElementSize = 1 then begin
-         var i := 0;
+         i := 0;
          while i < dyn.ArrayLength do begin
             VarCopySafe(destPVariant^, dyn.AsPVariant(i)^);
             destPVariant := callback(i);
             Inc(i);
          end;
       end else begin
-         var i := 0;
+         i := 0;
          while i < dyn.ArrayLength do begin
             dyn.CopyData(i*dyn.ElementSize, destPVariant^, 0, dyn.ElementSize);
             destPVariant := callback(i);
