@@ -1159,6 +1159,8 @@ type
          function InitializePseudoMethodSymbol(methodKind : TArrayMethodKind; baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol; virtual;
 
       public
+         destructor Destroy; override;
+
          function PseudoMethodSymbol(methodKind : TArrayMethodKind; baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol;
 
    end;
@@ -7061,6 +7063,17 @@ begin
    Result := nil;
 end;
 
+// Destroy
+//
+destructor TTypeWithPseudoMethodsSymbol.Destroy;
+var
+   f : TPseudoMethodSymbol;
+begin
+   inherited;
+   for f in FPseudoMethods do
+      f.Free;
+end;
+
 // PseudoMethodSymbol
 //
 function TTypeWithPseudoMethodsSymbol.PseudoMethodSymbol(methodKind : TArrayMethodKind; baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol;
@@ -7085,14 +7098,10 @@ end;
 // Destroy
 //
 destructor TArraySymbol.Destroy;
-var
-   f : TFuncSymbol;
 begin
    FSortFunctionType.Free;
    FMapFunctionType.Free;
    FFilterFunctionType.Free;
-   for f in FPseudoMethods do
-      f.Free;
    inherited;
 end;
 
