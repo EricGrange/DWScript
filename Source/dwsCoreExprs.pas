@@ -4485,15 +4485,17 @@ begin
    recType:=TRecordSymbol(Typ);
    for sym in recType.Members do begin
       if sym.ClassType=TFieldSymbol then begin
-         fieldSym:=TFieldSymbol(sym);
-         expr:=fieldSym.DefaultExpr;
-         fieldAddr := exec.Stack.BasePointer+FAddr+fieldSym.Offset;
-         if expr=nil then
-            fieldSym.InitData(exec.Stack.Data, fieldAddr)
-         else if (expr is TDataExpr) and (TDataExpr(expr).Typ.Size > 1) then begin
-            dataExpr:=TDataExpr(expr);
-            dataExpr.DataPtr[exec].CopyData(exec.Stack.Data, fieldAddr, fieldSym.Size);
-         end else expr.EvalAsVariant(exec, exec.Stack.Data[fieldAddr]);
+         fieldSym := TFieldSymbol(sym);
+         expr := fieldSym.DefaultExpr;
+         if expr = nil then
+            fieldSym.InitData(exec.Stack.Data, exec.Stack.BasePointer+FAddr)
+         else begin
+            fieldAddr := exec.Stack.BasePointer+FAddr+fieldSym.Offset;
+            if (expr is TDataExpr) and (TDataExpr(expr).Typ.Size > 1) then begin
+               dataExpr := TDataExpr(expr);
+               dataExpr.DataPtr[exec].CopyData(exec.Stack.Data, fieldAddr, fieldSym.Size);
+            end else expr.EvalAsVariant(exec, exec.Stack.Data[fieldAddr]);
+         end;
       end;
    end;
 end;
