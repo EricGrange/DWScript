@@ -9909,7 +9909,7 @@ end;
 //
 procedure TArrayMapExpr.EvalAsCallback(exec : TdwsExecution; const initial, callback : TArrayDataEnumeratorCallback);
 var
-   itemAddr : Integer;
+   itemAddr, destSize : Integer;
    itemPtr : PVariant;
    funcPointer : IFuncPointer;
    destPVariant : PVariant;
@@ -9920,7 +9920,7 @@ begin
    itemAddr := exec.Stack.BasePointer + FItem.StackAddr;
    itemPtr := @exec.Stack.Data[itemAddr];
 
-   var destSize := Typ.Typ.Size;
+   destSize := Typ.Typ.Size;
    if destSize = 1 then begin
       loopCallback := function (n : Integer) : PVariant
                       begin
@@ -9930,8 +9930,10 @@ begin
                       end;
    end else begin
       loopCallback := function (n : Integer) : PVariant
+                      var
+                         dc : IDataContext;
                       begin
-                         var dc := funcPointer.EvalDataPtr(exec,  MapFuncExpr, MapFuncExpr.ResultAddr);
+                         dc := funcPointer.EvalDataPtr(exec,  MapFuncExpr, MapFuncExpr.ResultAddr);
                          dc.CopyData(destPVariant^, 0, destSize);
                          destPVariant := callback(n);
                          Result := itemPtr;
