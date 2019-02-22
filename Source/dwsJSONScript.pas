@@ -94,7 +94,7 @@ begin
    writer:=TdwsJSONWriter.Create;
    try
       expr:=(args.ExprBase[0] as TTypedExpr);
-      StringiFyExpr(expr, args.Exec, writer);
+      StringifyExpr(expr, args.Exec, writer);
       Result:=writer.ToString;
    finally
       writer.Free;
