@@ -1,0 +1,11 @@
+﻿unit UnitWithImplemVarMain;
+
+uses UnitWithImplemVar;
+
+procedure Test;
+begin
+   PrintLn(GetValue('a'));
+end;
+
+Test;
+Test;

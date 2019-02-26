@@ -2387,7 +2387,7 @@ begin
                if coContextMap in Options then
                   FSourceContextMap.CloseAllContexts(FTok.CurrentPos);
             end;
-            CurrentProg.InitExpr.AddStatement(Result);
+            CurrentUnitSymbol.AddInitializationExpr(Result);
             Result:=nil;
          end;
          stMain, stRecompile : begin
@@ -2487,7 +2487,7 @@ begin
       if CurrentUnitSymbol<>nil then begin
          // this is a normal unit
          if initializationBlock<>nil then begin
-            CurrentUnitSymbol.InitializationExpr:=initializationBlock;
+            CurrentUnitSymbol.AddInitializationExpr(initializationBlock);
             initializationBlock:=nil;
          end;
          if finalizationBlock<>nil then begin
