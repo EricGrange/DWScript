@@ -74,6 +74,12 @@ type
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
+   TJSStrEndsWithExpr = class (TJSFuncBaseExpr)
+      public
+         procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+         procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
+   end;
+
    TJSStrFindExpr = class (TJSFuncBaseExpr)
       public
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
@@ -148,6 +154,8 @@ function FindJSRTLDependency(const name : String) : PJSRTLDependency;
 function All_RTL_JS : String;
 procedure IgnoreJSRTLDependencies(dependencies : TStrings);
 
+procedure SetJSRTL_TZ_FromSettings(const settings : TFormatSettings);
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -156,10 +164,12 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsJSON;
+
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..291] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..290] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -528,18 +538,6 @@ const
        code : 'function $SetSub(a,b) { var r=[]; for(var i=0;i<a.length;i++) r.push(a[i]&(~b[i])); return r }'),
       (Name : '$SetMul';
        code : 'function $SetMul(a,b) { var r=[]; for(var i=0;i<a.length;i++) r.push(a[i]&b[i]); return r }'),
-      (Name : '$TZ';
-       code : 'var $TZ = 1, $fmt = { '#10
-              +#9'ShortDayNames : [ "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" ],'#10
-              +#9'LongDayNames : [ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" ],'#10
-              +#9'ShortMonthNames : [ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ],'#10
-              +#9'LongMonthNames : [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ],'#10
-              +#9'ShortDateFormat : "yyyy-mm-dd",'#10
-              +#9'ShortTimeFormat : "hh:nn",'#10
-              +#9'LongTimeFormat : "hh:nn:ss",'#10
-              +#9'TimeAMString : "AM",'#10
-              +#9'TimePMString : "PM"'#10
-              +'}'),
 
       // RTL classes
 
@@ -1293,12 +1291,67 @@ const
 
    );
 
+var
+   vTZ_Dependency : TJSRTLDependency =
+      (Name : '$TZ';
+       code : 'var $TZ = 1, $fmt = { '#10
+              +#9'ShortDayNames : [ "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" ],'#10
+              +#9'LongDayNames : [ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" ],'#10
+              +#9'ShortMonthNames : [ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ],'#10
+              +#9'LongMonthNames : [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ],'#10
+              +#9'ShortDateFormat : "yyyy-mm-dd",'#10
+              +#9'ShortTimeFormat : "hh:nn",'#10
+              +#9'LongTimeFormat : "hh:nn:ss",'#10
+              +#9'TimeAMString : "AM",'#10
+              +#9'TimePMString : "PM"'#10
+              +'}');
+
+// SetJSRTL_TZ_FromSettings
+//
+procedure SetJSRTL_TZ_FromSettings(const settings : TFormatSettings);
+var
+   wr : TdwsJSONWriter;
+
+   procedure WriteStrings(p : PString; nb : Integer);
+   begin
+      wr.BeginArray;
+      while nb > 0 do begin
+         wr.WriteString(p^);
+         Inc(p);
+         Dec(nb);
+      end;
+      wr.EndArray;
+   end;
+
+begin
+   wr := TdwsJSONWriter.Create;
+   try
+      wr.BeginObject;
+         wr.WriteName('ShortDayNames'); WriteStrings(@settings.ShortDayNames[1], 7);
+         wr.WriteName('LongDayNames'); WriteStrings(@settings.LongDayNames[1], 7);
+         wr.WriteName('ShortMonthNames'); WriteStrings(@settings.ShortMonthNames[1], 12);
+         wr.WriteName('LongMonthNames'); WriteStrings(@settings.LongMonthNames[1], 12);
+         wr.WriteString('ShortDateFormat', settings.ShortDateFormat);
+         wr.WriteString('ShortTimeFormat', settings.ShortTimeFormat);
+         wr.WriteString('LongTimeFormat', settings.LongTimeFormat);
+         wr.WriteString('TimeAMString', settings.TimeAMString);
+         wr.WriteString('TimePMString', settings.TimePMString);
+      wr.EndObject;
+      vTZ_Dependency.code := 'var $TZ=1,$fmt=' + wr.ToUnicodeString;
+   finally
+      wr.Free;
+   end;
+end;
+
 // FindJSRTLDependency
 //
 function FindJSRTLDependency(const name : String) : PJSRTLDependency;
 var
    i : Integer;
 begin
+   if name = vTZ_Dependency.name then
+      Exit(@vTZ_Dependency);
+
    for i:=Low(cJSRTLDependencies) to High(cJSRTLDependencies) do begin
       Result:=@cJSRTLDependencies[i];
       if Result.Name=name then Exit;
@@ -1319,6 +1372,8 @@ begin
          wobs.WriteString(cJSRTLDependencies[i].Code);
          wobs.WriteString(#13#10);
       end;
+      wobs.WriteString(vTZ_Dependency.Code);
+      wobs.WriteString(#13#10);
       Result:=wobs.ToUnicodeString;
    finally
       wobs.Free;
@@ -1398,6 +1453,7 @@ begin
    FMagicCodeGens.AddObject('Sqr$_Float_', TJSSqrMagicExpr.Create);
    FMagicCodeGens.AddObject('Sqrt', TdwsExprGenericCodeGen.Create(['Math.sqrt', '(', 0, ')']));
    FMagicCodeGens.AddObject('StrBeginsWith', TJSStrBeginsWithExpr.Create);
+   FMagicCodeGens.AddObject('StrEndsWith', TJSStrEndsWithExpr.Create);
    FMagicCodeGens.AddObject('StrDeleteLeft', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substring', '(', 1, ')']));
    // slice not very efficient in browsers right now
    // FMagicCodeGens.AddObject('StrDeleteRight', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.slice', '(0,-', '(', 1, ')', ')']));
@@ -1705,6 +1761,76 @@ begin
    end;
 end;
 
+// ------------------
+// ------------------ TJSStrEndsWithExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSStrEndsWithExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+begin
+   if TMagicFuncExpr(expr).Args[1] is TConstStringExpr then begin
+      codeGen.WriteString('(');
+      CodeGenNoWrap(codeGen, expr as TTypedExpr);
+      codeGen.WriteString(')');
+   end else CodeGenNoWrap(codeGen, expr as TTypedExpr);
+end;
+
+// CodeGenNoWrap
+//
+procedure TJSStrEndsWithExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+var
+   e : TMagicFuncExpr;
+   a, s : TExprBase;
+   c : TConstStringExpr;
+begin
+   e := (expr as TMagicFuncExpr);
+
+   s := e.Args[0];
+   a := e.Args[1];
+   if a is TConstStringExpr then begin
+
+      c := TConstStringExpr(a);
+      if c.Value = '' then begin
+         codeGen.WriteString('false');
+         Exit;
+      end;
+      if (Length(c.Value)=1) and (s is TStrVarExpr) then begin
+         codeGen.Compile(s);
+         if cgoObfuscate in codeGen.Options then begin
+            // slightly faster but less readable, so activate only under obfuscation
+            codeGen.WriteString('.charCodeAt(');
+            codeGen.Compile(s);
+            codeGen.WriteString('.length-1)==');
+            codeGen.WriteString(IntToStr(Ord(c.Value[1])));
+         end else begin
+            codeGen.WriteString('.charAt(');
+            codeGen.Compile(s);
+            codeGen.WriteString('.length-1)==');
+            codeGen.WriteLiteralString(c.Value);
+         end;
+         Exit;
+      end;
+      codeGen.Compile(s);
+      codeGen.WriteString('.substr(-');
+      codeGen.WriteString(IntToStr(Length(c.Value)));
+      codeGen.WriteString(',');
+      codeGen.WriteString(IntToStr(Length(c.Value)));
+      codeGen.WriteString(')==');
+      codeGen.WriteLiteralString(c.Value);
+
+   end else begin
+
+      codeGen.Dependencies.Add('StrEndsWith');
+
+      codeGen.WriteString('StrEndsWith(');
+      codeGen.CompileNoWrap(s as TTypedExpr);
+      codeGen.WriteString(',');
+      codeGen.CompileNoWrap(a as TTypedExpr);
+      codeGen.WriteString(')');
+
+   end;
+end;
 
 // ------------------
 // ------------------ TJSStrFindExpr ------------------
