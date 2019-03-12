@@ -28,6 +28,7 @@ type
       procedure TestSpecialChars;
       procedure TestNotClosed;
       procedure TestIncludeFiltered;
+      procedure TestIncludeFiltered2;
       procedure TestEditorMode;
 
    end;
@@ -203,12 +204,28 @@ begin
    CheckEquals('aBc', exec.Result.ToString, 'include filtered 1');
 end;
 
+// TestIncludeFiltered2
+//
+procedure THTMLFilterTests.TestIncludeFiltered2;
+var
+   prog: IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile('a<?pas'#10'{$F "B"}'#10'{$F "C"}'#10'{$F "D"}'#10'?>f<?pas= "g" ?>');
+   exec:=prog.Execute;
+   CheckEquals('aB({C} )();'#9'D'#10'fg', exec.Result.ToString, 'include filtered 1');
+end;
+
 // DoInclude
 //
 procedure THTMLFilterTests.DoInclude(const scriptName: String; var scriptSource: String);
 begin
    if scriptName='B' then
       scriptSource:='B'
+   else if scriptName='C' then
+      scriptSource:='({C} )();'
+   else if scriptName='D' then
+      scriptSource:=#9'D'#10
    else scriptSource := LoadTextFromFile('SimpleScripts\'+scriptName);
 end;
 
