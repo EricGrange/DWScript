@@ -263,6 +263,8 @@ type
          function GetMaxQueueLength : Cardinal;
          procedure SetMaxQueueLength(const val : Cardinal);
 
+         function HttpThreadExceptionIntercepted(E : Exception) : Boolean;
+
       public
          /// initialize the HTTP Service
          // - will raise an exception if http.sys is not available (e.g. before
@@ -1009,6 +1011,18 @@ begin
       hSetRequestQueueProperty);
 end;
 
+// HttpThreadExceptionIntercepted
+//
+function THttpApi2Server.HttpThreadExceptionIntercepted(E : Exception) : Boolean;
+var
+   tmp : Exception;
+begin
+   if not Assigned(FOnHttpThreadException) then Exit(False);
+   tmp := E;
+   FOnHttpThreadException(Self, tmp);
+   Result := (tmp = nil);
+end;
+
 // Execute
 //
 procedure THttpApi2Server.Execute;
@@ -1035,6 +1049,7 @@ var
    dataChunkInMemory : HTTP_DATA_CHUNK_INMEMORY;
    pContentEncoding : PHTTP_KNOWN_HEADER;
    pRespServer : PHTTP_KNOWN_HEADER;
+   sendResult : HResult;
 begin
    NameThreadForDebugging('THttpApi2Server');
    try
@@ -1070,8 +1085,7 @@ begin
                FWebRequest.SetRequest(request, URLRewriter);
             except
                on E : Exception do begin
-                  if Assigned(FOnHttpThreadException) then
-                     FOnHttpThreadException(Self, E);
+                  HttpThreadExceptionIntercepted(E);
                   SendError(request, response, 400, 'Query string too long');
                   requestID := 0;
                   continue;
@@ -1163,19 +1177,18 @@ begin
                      if FWebResponse.StatusCode <> 304 then begin
                         response^.SetContent(dataChunkInMemory, FWebResponse.ContentData, FWebResponse.ContentType);
                      end;
-                     HttpAPI.Check(
-                        HttpAPI.SendHttpResponse(FReqQueue, request^.RequestId, GetHttpResponseFlags,
-                                                 response^, nil, bytesSent, nil, 0, nil, FLogDataPtr),
-                        hSendHttpResponse);
-
+                     sendResult := HttpAPI.SendHttpResponse(FReqQueue, request^.RequestId, GetHttpResponseFlags,
+                                                            response^, nil, bytesSent, nil, 0, nil, FLogDataPtr);
+                     if sendResult <> HTTPAPI_ERROR_NONEXISTENTCONNECTION then
+                        HttpAPI.Check(sendResult, hSendHttpResponse);
                   end;
                end;
             except
                // handle any exception raised during process: show must go on!
                on E : Exception do begin
-                  if Assigned(FOnHttpThreadException) then
-                     FOnHttpThreadException(Self, E);
-                  SendError(request, response, 500, E.Message);
+                  if HttpThreadExceptionIntercepted(E) then
+                     SendError(request, response, 500, 'Internal Server Error')
+                  else SendError(request, response, 500, E.Message)
                end;
             end;
             // reset Request ID to handle the next pending request
@@ -1201,9 +1214,8 @@ begin
 
    except
       on E : Exception do begin
-         if Assigned(FOnHttpThreadException) then
-            FOnHttpThreadException(Self, E);
-         if E <> nil then raise;
+         if not HttpThreadExceptionIntercepted(E) then
+            raise;
       end;
    end;
 end;

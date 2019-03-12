@@ -805,6 +805,9 @@ const
 
    HTTP_FLUSH_RESPONSE_FLAG_RECURSIVE = 1;
 
+   /// error raised by HTTP API when the client disconnected (e.g. after timeout)
+   HTTPAPI_ERROR_NONEXISTENTCONNECTION = 1229;
+
 type
    HTTP_SERVER_PROPERTY = (
       HttpServerAuthenticationProperty,
