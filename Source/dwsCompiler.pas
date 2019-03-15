@@ -3419,9 +3419,11 @@ begin
             RecordSymbolUse(Result, funcPos, [suDeclaration, suImplementation, suReference])
          else if isForward then
             RecordSymbolUse(Result, funcPos, [suDeclaration, suForward])
-         else if forwardedSym=nil then
-            RecordSymbolUse(Result, funcPos, [suDeclaration, suImplementation])
-         else RecordSymbolUse(Result, funcPos, [suImplementation]);
+         else if forwardedSym=nil then begin
+            if Result.Name = '' then
+               RecordSymbolUse(Result, funcPos, [suDeclaration, suImplementation, suImplicit])
+            else RecordSymbolUse(Result, funcPos, [suDeclaration, suImplementation]);
+         end else RecordSymbolUse(Result, funcPos, [suImplementation]);
       except
          OrphanObject(Result);
          raise;

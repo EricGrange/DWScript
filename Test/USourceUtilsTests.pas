@@ -53,6 +53,7 @@ type
          procedure SuggestInBlockWithError;
          procedure NormalizeOverload;
          procedure NormalizeImplicit;
+         procedure NormalizeTypes;
          procedure OptimizedIfThenBlockSymbol;
          procedure MemberVisibilities;
          procedure UnitNamesSuggest;
@@ -1090,6 +1091,42 @@ begin
          NormalizeSymbolsCase(lines, prog.SourceList[0].SourceFile, prog.SymbolDictionary,
                               normalizer.Normalize);
          CheckEquals('', normalizer.Text);
+      finally
+         normalizer.Free;
+      end;
+   finally
+      lines.Free;
+   end;
+end;
+
+// NormalizeTypes
+//
+procedure TSourceUtilsTests.NormalizeTypes;
+var
+   prog : IdwsProgram;
+   lines : TStringList;
+   normalizer : TTestNormalizer;
+begin
+   lines := TStringList.Create;
+   try
+      lines.Text:= 'type TProc = procedure;'#13#10
+                  +'type TFunc = function(proc : tproc): tProc;'#13#10
+                  +'var f : TFunC;'#13#10;
+
+      prog:=FCompiler.Compile(lines.Text);
+
+      CheckEquals('', prog.Msgs.AsInfo, 'should have compiled without errors');
+
+      normalizer:=TTestNormalizer.Create;
+      try
+         NormalizeSymbolsCase(lines, prog.SourceList[0].SourceFile, prog.SymbolDictionary,
+                              normalizer.Normalize);
+         CheckEquals(
+              'type TProc = procedure;'#13#10
+            + 'type TFunc = function(proc : TProc): TProc;'#13#10
+            + 'var f : TFunc;'#13#10,
+            lines.Text
+         );
       finally
          normalizer.Free;
       end;
