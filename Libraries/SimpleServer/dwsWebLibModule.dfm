@@ -216,6 +216,13 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maStatic]
             OnFastEvalFloat = dwsWebClassesWebRequestMethodsIfModifiedSinceFastEvalFloat
             Kind = mkClassFunction
+          end
+          item
+            Name = 'IfNoneMatch'
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnFastEvalString = dwsWebClassesWebRequestMethodsIfNoneMatchFastEvalString
+            Kind = mkClassFunction
           end>
         Properties = <
           item
@@ -500,6 +507,28 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maStatic]
             OnFastEvalNoResult = dwsWebClassesWebResponseMethodsSetStatusPlainTextFastEvalNoResult
             Kind = mkClassProcedure
+          end
+          item
+            Name = 'SetETag'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            Attributes = [maStatic]
+            OnFastEvalNoResult = dwsWebClassesWebResponseMethodsSetETagFastEvalNoResult
+            Kind = mkClassProcedure
+          end
+          item
+            Name = 'SetCacheControl'
+            Parameters = <
+              item
+                Name = 'v'
+                DataType = 'String'
+              end>
+            Attributes = [maStatic]
+            OnFastEvalNoResult = dwsWebClassesWebResponseMethodsSetCacheControlFastEvalNoResult
+            Kind = mkClassProcedure
           end>
         Properties = <
           item
@@ -556,6 +585,16 @@ object dwsWebLib: TdwsWebLib
             Name = 'Static'
             DataType = 'Boolean'
             WriteAccess = 'SetStatic'
+          end
+          item
+            Name = 'ETag'
+            DataType = 'String'
+            WriteAccess = 'SetETag'
+          end
+          item
+            Name = 'CacheControl'
+            DataType = 'String'
+            WriteAccess = 'SetCacheControl'
           end>
       end
       item

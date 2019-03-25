@@ -488,12 +488,12 @@ var
    nvs : WideChar;
    list : TStringListList;
 begin
-   nvs:=NameValueSeparator;
-   n:=Length(name);
-   list:=TStringListCracker(Self).FList;
-   for Result:=0 to Count-1 do begin
-      nc:=Length(list[Result].FString);
-      if     (nc>n) and (list[Result].FString[n+1]=nvs)
+   nvs := NameValueSeparator;
+   n := Length(name);
+   list := TStringListCracker(Self).FList;
+   for Result := 0 to Count-1 do begin
+      nc := Length(list[Result].FString);
+      if     (nc > n) and (list[Result].FString[n+1] = nvs)
          and CompareMem(PWideChar(Pointer(name)),
                         PWideChar(Pointer(list[Result].FString)), n) then Exit;
    end;

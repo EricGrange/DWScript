@@ -127,6 +127,7 @@ type
          function HasContentField(const name : String) : Boolean;
 
          function IfModifiedSince : TDateTime;
+         function IfNoneMatch : String;
 
          property Authentication : TWebRequestAuthentication read GetAuthentication;
          property AuthenticatedUser : String read GetAuthenticatedUser;
@@ -179,6 +180,8 @@ type
          procedure SetContentText(const textType : RawByteString; const text : String);
          procedure SetContentJSON(const json : String);
          procedure SetLastModified(v : TDateTime);
+         procedure SetETag(const v : String);
+         procedure SetCacheControl(const v : String);
          function  GetCookies : TWebResponseCookies;
          function  GetCompression : Boolean; inline;
          procedure SetCompression(v : Boolean);
@@ -204,6 +207,8 @@ type
          property Cookies : TWebResponseCookies read GetCookies;
          property Compression : Boolean read GetCompression write SetCompression;
          property LastModified : TDateTime write SetLastModified;
+         property ETag : String write SetETag;
+         property CacheControl : String write SetCacheControl;
          property Hints : TWebResponseHints read FHints write FHints;
 
          // optional, informative, time it took to process the response in microseconds
@@ -537,6 +542,13 @@ begin
    else Result:=0;
 end;
 
+// IfNoneMatch
+//
+function TWebRequest.IfNoneMatch : String;
+begin
+   Result := Header('If-None-Match');
+end;
+
 // GetUserAgent
 //
 function TWebRequest.GetUserAgent : String;
@@ -585,8 +597,8 @@ end;
 constructor TWebResponse.Create;
 begin
    inherited;
-   FHeaders:=TFastCompareStringList.Create;
-   FHints:=[shCompression];
+   FHeaders := TFastCompareStringList.Create;
+   FHints := [ shCompression ];
 end;
 
 // Destroy
@@ -657,7 +669,21 @@ end;
 //
 procedure TWebResponse.SetLastModified(v : TDateTime);
 begin
-   Headers.Add('Last-Modified='+WebUtils.DateTimeToRFC822(v));
+   Headers.Values['Last-Modified'] := WebUtils.DateTimeToRFC822(v);
+end;
+
+// SetETag
+//
+procedure TWebResponse.SetETag(const v : String);
+begin
+   Headers.Values['ETag'] := v;
+end;
+
+// SetCacheControl
+//
+procedure TWebResponse.SetCacheControl(const v : String);
+begin
+   Headers.Values['Cache-Control'] := v;
 end;
 
 // SetContentText
