@@ -668,8 +668,8 @@ end;
 //
 procedure TArrayConstantExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   EvalNoResult(exec);
-   result := FArrayData;
+   result := TDataContext.CreateStandalone(Size);
+   EvalToTData(exec, result.AsPData^, 0);
 end;
 
 // GetSubExpr
@@ -710,40 +710,10 @@ end;
 // EvalNoResult
 //
 procedure TArrayConstantExpr.EvalNoResult(exec : TdwsExecution);
-
-   procedure DoEval;
-   var
-      x, n, addr : Integer;
-      elemSize : Integer;
-      elemExpr : TTypedExpr;
-      dataExpr : TDataExpr;
-   begin
-      if FArrayData=nil then begin
-         if FTyp.Typ<>nil then
-            n:=FElementExprs.Count * FTyp.Typ.Size
-         else n:=0;
-         FArrayData := TDataContext.CreateStandalone(n);
-      end;
-
-      elemSize:=Typ.Typ.Size;
-      if elemSize=1 then begin
-         for x:=0 to FElementExprs.Count-1 do begin
-            elemExpr:=TTypedExpr(FElementExprs.List[x]);
-            elemExpr.EvalAsVariant(exec, FArrayData.AsPVariant(x)^);
-         end;
-      end else begin
-         addr:=0;
-         for x:=0 to FElementExprs.Count-1 do begin
-            dataExpr:=FElementExprs.List[x] as TDataExpr;
-            FArrayData.WriteData(addr, dataExpr.DataPtr[exec], elemSize);
-            Inc(addr, elemSize);
-         end;
-      end;
-   end;
-
+var
+   buf : TData;
 begin
-   if FArrayData=nil then
-      DoEval;
+   EvalAsTData(exec, buf);
 end;
 
 // EvalAsVariant
