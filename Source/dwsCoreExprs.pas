@@ -5938,7 +5938,7 @@ end;
 //
 function TDivideExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
-   Result:=FLeft.EvalAsFloat(exec)/FRight.EvalAsFloat(exec);
+   Result := FLeft.EvalAsFloat(exec) / FRight.EvalAsFloat(exec);
 end;
 
 // Optimize

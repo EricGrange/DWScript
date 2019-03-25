@@ -331,6 +331,9 @@ type
          FDebuggerFieldAddr : Integer;
          FStartTicks : Int64;
          FExecutionTimedOut : Boolean;
+         {$ifdef WIN32}
+         F8087CW : Cardinal;
+         {$endif}
 
       protected
          procedure ReleaseObjects;
@@ -1949,6 +1952,10 @@ begin
       FOnExecutionStarted(Self);
    FStartTicks := GetSystemMilliseconds;
 
+   {$ifdef WIN32}
+   F8087CW:=DirectSet8087CW($133F);
+   {$endif}
+
    FProgramState:=psRunning;
    try
       Msgs.Clear;
@@ -2150,6 +2157,10 @@ begin
       on e: Exception do
          Msgs.AddRuntimeError(e.Message);
    end;
+
+   {$ifdef WIN32}
+   DirectSet8087CW(F8087CW);
+   {$endif}
 
    FProg.RecordExecution(GetSystemMilliseconds-FStartTicks-FSleepTime);
    if Assigned(FOnExecutionEnded) then
