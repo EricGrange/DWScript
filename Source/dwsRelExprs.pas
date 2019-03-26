@@ -25,7 +25,7 @@ interface
 
 uses
    dwsExprs, dwsSymbols, dwsErrors, dwsConstExprs, Variants, dwsScriptSource,
-   dwsCompilerContext, dwsSpecializationContext, dwsTokenizer;
+   dwsCompilerContext, dwsSpecializationContext, dwsTokenizer, dwsUtils;
 
 type
 
@@ -507,7 +507,7 @@ var
 begin
    FLeft.EvalAsVariant(exec, lv);
    FRight.EvalAsVariant(exec, rv);
-   Result:=(lv=rv);
+   Result := VarCompareSafe(lv, rv) = vrEqual;
 end;
 
 // ------------------
@@ -522,7 +522,7 @@ var
 begin
    FLeft.EvalAsVariant(exec, lv);
    FRight.EvalAsVariant(exec, rv);
-   Result:=(lv<>rv);
+   Result := VarCompareSafe(lv, rv) <> vrEqual;
 end;
 
 // ------------------
@@ -537,7 +537,7 @@ var
 begin
    FLeft.EvalAsVariant(exec, lv);
    FRight.EvalAsVariant(exec, rv);
-   Result:=(lv<rv);
+   Result := VarCompareSafe(lv, rv) = vrLessThan;
 end;
 
 // ------------------
@@ -552,7 +552,7 @@ var
 begin
    FLeft.EvalAsVariant(exec, lv);
    FRight.EvalAsVariant(exec, rv);
-   Result:=(lv<=rv);
+   Result := VarCompareSafe(lv, rv) in [ vrLessThan, vrEqual ];
 end;
 
 // ------------------
@@ -567,7 +567,7 @@ var
 begin
    FLeft.EvalAsVariant(exec, lv);
    FRight.EvalAsVariant(exec, rv);
-   Result:=(lv>rv);
+   Result := VarCompareSafe(lv, rv) = vrGreaterThan;
 end;
 
 // ------------------
@@ -582,7 +582,7 @@ var
 begin
    FLeft.EvalAsVariant(exec, lv);
    FRight.EvalAsVariant(exec, rv);
-   Result:=(lv>=rv);
+   Result := VarCompareSafe(lv, rv) in [ vrGreaterThan, vrEqual ];
 end;
 
 // ------------------

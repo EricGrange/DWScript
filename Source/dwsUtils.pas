@@ -134,10 +134,15 @@ type
       function IsDefined : Boolean;
    end;
 
-   INumeric = interface
+   IToNumeric = interface
       ['{11C48916-A0E4-4D4E-B534-89020D9842A7}']
       function ToFloat : Double;
       function ToInteger : Int64;
+   end;
+
+   IToVariant = interface
+      ['{DE1A280D-5552-4F84-B557-957271D6EA62}']
+      procedure ToVariant(var result : Variant);
    end;
 
    // TVarRecArrayContainer
@@ -1072,6 +1077,8 @@ procedure VarCopySafe(var dest : Variant; const src : UnicodeString); overload;
 {$endif}
 procedure VarCopySafe(var dest : Variant; const src : Double); overload;
 procedure VarCopySafe(var dest : Variant; const src : Boolean); overload;
+
+function VarCompareSafe(const left, right : Variant) : TVariantRelationship;
 
 procedure VarSetNull(var v : Variant); inline;
 procedure VarSetDefaultInt64(var dest : Variant); inline;
@@ -2124,11 +2131,11 @@ procedure VariantToInt64(const v : Variant; var r : Int64);
 
    procedure UnknownAsInteger(const unknown : IUnknown; var r : Int64);
    var
-      intf : INumeric;
+      intf : IToNumeric;
    begin
       if unknown = nil then
          r := 0
-      else if unknown.QueryInterface(INumeric, intf)=0 then
+      else if unknown.QueryInterface(IToNumeric, intf)=0 then
          r := intf.ToInteger
       else raise EVariantTypeCastError.CreateFmt(CPE_AssignIncompatibleTypes, ['[IUnknown]', SYS_INTEGER]);
    end;
@@ -2201,11 +2208,11 @@ function VariantToFloat(const v : Variant) : Double;
 
    procedure UnknownAsFloat(const unknown : IUnknown; var Result : Double);
    var
-      intf : INumeric;
+      intf : IToNumeric;
    begin
       if unknown = nil then
          Result := 0
-      else if unknown.QueryInterface(INumeric, intf)=0 then
+      else if unknown.QueryInterface(IToNumeric, intf)=0 then
          Result := intf.ToFloat
       else raise EVariantTypeCastError.CreateFmt(CPE_AssignIncompatibleTypes, ['[IUnknown]', SYS_FLOAT]);
    end;
@@ -2366,6 +2373,57 @@ begin
    else
       dest:=src;
    end;
+end;
+
+// VarCompareSafe
+//
+function VarCompareSafe(const left, right : Variant) : TVariantRelationship;
+
+   function CompareUnknowns(const left, right : IUnknown) : TVariantRelationship;
+   var
+      intfLeft, intfRight : IToVariant;
+      varLeft, varRight : Variant;
+   begin
+      if left = right then
+         Result := vrEqual
+      else if     (left <> nil)  and (right <> nil)
+              and (left.QueryInterface(IToVariant, intfLeft)=0) and (right.QueryInterface(IToVariant, intfRight)=0) then begin
+         intfLeft.ToVariant(varLeft);
+         intfRight.ToVariant(varRight);
+         Result := VarCompareSafe(varLeft, varRight);
+      end else Result := vrNotEqual;
+   end;
+
+   function CompareUnknownToVar(const left : IUnknown; const right : Variant) : TVariantRelationship;
+   var
+      intfLeft : IToVariant;
+      varLeft : Variant;
+   begin
+      if (left <> nil) and (left.QueryInterface(IToVariant, intfLeft)=0) then begin
+         intfLeft.ToVariant(varLeft);
+         Result := VarCompareSafe(varLeft, right);
+      end else Result := vrNotEqual;
+   end;
+
+   function CompareVarToUnknown(const left : Variant; const right : IUnknown) : TVariantRelationship;
+   var
+      intfRight : IToVariant;
+      varRight : Variant;
+   begin
+      if (right <> nil) and (right.QueryInterface(IToVariant, intfRight)=0) then begin
+         intfRight.ToVariant(varRight);
+         Result := VarCompareSafe(left, varRight);
+      end else Result := vrNotEqual;
+   end;
+
+begin
+   if VarType(left) = varUnknown then
+      if VarType(right) = varUnknown then
+         Result := CompareUnknowns(IUnknown(TVarData(left).VUnknown), IUnknown(TVarData(right).VUnknown))
+      else Result := CompareUnknownToVar(IUnknown(TVarData(left).VUnknown), right)
+   else if VarType(right) = varUnknown then
+      Result := CompareVarToUnknown(left, IUnknown(TVarData(right).VUnknown))
+   else Result := VarCompareValue(left, right);
 end;
 
 // VarSetNull

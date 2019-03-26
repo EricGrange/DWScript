@@ -301,7 +301,8 @@ const
 type
    TBoxedJSONValue = class (TInterfacedObject,
                             IBoxedJSONValue, IJSONWriteAble,
-                            ICoalesceable, INumeric, INullable, IGetSelf, IUnknown)
+                            ICoalesceable, IToNumeric, INullable, IToVariant,
+                            IGetSelf, IUnknown)
       FValue : TdwsJSONValue;
 
       constructor Create(wrapped : TdwsJSONValue);
@@ -315,6 +316,7 @@ type
       function ToUnicodeString : UnicodeString; virtual;
       function ToFloat : Double;
       function ToInteger : Int64;
+      procedure ToVariant(var result : Variant);
 
       function Value : TdwsJSONValue;
 
@@ -330,12 +332,15 @@ type
       class function UnBox(const v : Variant) : TdwsJSONValue; static;
    end;
 
-   TBoxedNilJSONValue = class (TInterfacedObject, IBoxedJSONValue, ICoalesceable, INumeric, IGetSelf, IUnknown)
+   TBoxedNilJSONValue = class (TInterfacedObject,
+                               IBoxedJSONValue, ICoalesceable, IToNumeric, IToVariant,
+                               IGetSelf, IUnknown)
       function GetSelf : TObject;
       function ToString : String; override; final;
       function ToUnicodeString : String;
       function ToFloat : Double;
       function ToInteger : Int64;
+      procedure ToVariant(var result : Variant);
       function Value : TdwsJSONValue;
       function IsFalsey : Boolean;
    end;
@@ -409,6 +414,20 @@ end;
 function TBoxedJSONValue.ToInteger : Int64;
 begin
    Result := FValue.AsInteger;
+end;
+
+// ToVariant
+//
+procedure TBoxedJSONValue.ToVariant(var result : Variant);
+begin
+   case FValue.ValueType of
+      jvtNull : VarSetNull(result);
+      jvtString : VarCopySafe(result, FValue.AsString);
+      jvtNumber : VarCopySafe(result, FValue.AsNumber);
+      jvtBoolean : VarCopySafe(result, FValue.AsBoolean);
+   else
+      VarClearSafe(result);
+   end;
 end;
 
 // IsFalsey
@@ -525,6 +544,13 @@ end;
 function TBoxedNilJSONValue.ToInteger : Int64;
 begin
    Result := 0;
+end;
+
+// ToVariant
+//
+procedure TBoxedNilJSONValue.ToVariant(var result : Variant);
+begin
+   VarSetNull(result);
 end;
 
 // IsFalsey
