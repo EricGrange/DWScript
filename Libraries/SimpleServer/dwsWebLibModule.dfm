@@ -367,6 +367,12 @@ object dwsWebLib: TdwsWebLib
               item
                 Name = 'fileName'
                 DataType = 'String'
+              end
+              item
+                Name = 'contentType'
+                DataType = 'String'
+                HasDefaultValue = True
+                DefaultValue = ''
               end>
             OnFastEvalNoResult = dwsWebClassesWebResponseMethodsSetContentFileFastEvalNoResult
             Kind = mkClassProcedure

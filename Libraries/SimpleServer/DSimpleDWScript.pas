@@ -353,11 +353,20 @@ procedure TSimpleDWScript.HandleDWS(const fileName : String; typ : TFileAccessTy
 
    procedure HandleStaticFileWebResponse(response : TWebResponse);
    var
-      fileName : String;
+      fileName, contentType : String;
+      p : Integer;
    begin
+      fileName := UTF8ToString(response.ContentData);
+      p := Pos(#0, fileName);
+      if p > 0 then begin
+         contentType := Copy(fileName, p+1);
+         SetLength(fileName, p-1);
+      end;
       fileName := ApplyPathVariables(UTF8ToString(response.ContentData));
       fileName :=  dwsRuntimeFileSystem.AllocateFileSystem.ValidateFileName(fileName);
       if fileName <> '' then begin
+         if contentType <> '' then
+            fileName := fileName + #0 + contentType;
          response.ContentData := UTF8Encode(fileName);
       end else begin
          response.StatusCode := 501;

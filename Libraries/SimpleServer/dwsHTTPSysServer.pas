@@ -232,7 +232,6 @@ type
          constructor CreateClone(From : THttpApi2Server);
 
          procedure SendStaticFile(request : PHTTP_REQUEST_V2; response : PHTTP_RESPONSE_V2);
-         procedure AdjustContentTypeFromFileName(const fileName : String; response : PHTTP_RESPONSE_V2);
 
          procedure SendError(request : PHTTP_REQUEST_V2; response : PHTTP_RESPONSE_V2;
                              statusCode : Cardinal; const errorMsg : String);
@@ -649,10 +648,19 @@ var
    rangeStart, rangeLength : Int64;
    flags, bytesSent : Cardinal;
    fileName : String;
+   contentType : RawByteString;
    contentRange : RawByteString;
    R : PAnsiChar;
+   p : Integer;
 begin
-   fileName := UTF8ToUnicodeString(FWebResponse.ContentData);
+   p := Pos(#0, FWebResponse.ContentData);
+   if p > 1 then begin
+      fileName := UTF8ToUnicodeString(Copy(FWebResponse.ContentData, 1, p-1));
+      contentType := Copy(FWebResponse.ContentData, p+1);
+   end else begin
+      fileName := UTF8ToUnicodeString(FWebResponse.ContentData);
+      contentType := FMimeInfos.MIMEType(fileName);
+   end;
    fileHandle := FileOpen(fileName, fmOpenRead or fmShareDenyNone);
    if PtrInt(fileHandle)<0 then begin
       SendError(request, response, 404, SysErrorMessage(GetLastError));
@@ -683,26 +691,16 @@ begin
             end;
          end;
       end;
-      AdjustContentTypeFromFileName(fileName, response);
+      with response^.Headers.KnownHeaders[reqContentType] do begin
+         pRawValue := PAnsiChar(contentType);
+         RawValueLength := Length(contentType);
+      end;
       response^.EntityChunkCount := 1;
       response^.pEntityChunks := @dataChunkFile;
       HttpAPI.SendHttpResponse(FReqQueue, request^.RequestId, flags, response^,
                                nil, bytesSent, nil, 0, nil, FLogDataPtr);
    finally
       FileClose(fileHandle);
-   end;
-end;
-
-// AdjustContentTypeFromFileName
-//
-procedure THttpApi2Server.AdjustContentTypeFromFileName(const fileName : String; response : PHTTP_RESPONSE_V2);
-var
-   mimeType : RawByteString;
-begin
-   mimeType:=FMimeInfos.MIMEType(fileName);
-   with response^.Headers.KnownHeaders[reqContentType] do begin
-      pRawValue:=PAnsiChar(mimeType);
-      RawValueLength:=Length(mimeType);
    end;
 end;
 
