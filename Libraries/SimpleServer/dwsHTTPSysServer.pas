@@ -365,23 +365,6 @@ const
 var
    vWsaDataOnce : TWSADATA;
 
-function GetNextItemInt64(var p : PAnsiChar) : Int64;
-var
-   c : Integer;
-begin
-   if p = nil then
-      Exit(0);
-   Result := Byte(P^)-Ord('0');  // caller ensured that P^ in ['0'..'9']
-   Inc(p);
-   repeat
-      c := Byte(p^)-Ord('0');
-      if c > 9 then
-         Break
-      else Result := Result*10 + c;
-      Inc(p);
-   until False;
-end; // P^ will point to the first non digit char
-
 function GetCardinal(P, PEnd : PAnsiChar) : cardinal; overload;
 var
    c : cardinal;
@@ -645,15 +628,12 @@ procedure THttpApi2Server.SendStaticFile(request : PHTTP_REQUEST_V2; response : 
 var
    fileHandle : THandle;
    dataChunkFile : HTTP_DATA_CHUNK_FILEHANDLE;
-   rangeStart, rangeLength : Int64;
    flags, bytesSent : Cardinal;
    fileName : String;
    contentType : RawByteString;
-   contentRange : RawByteString;
-   R : PAnsiChar;
    p : Integer;
 begin
-   p := Pos(#0, FWebResponse.ContentData);
+   p := StrIndexOfCharA(FWebResponse.ContentData, #0);
    if p > 1 then begin
       fileName := UTF8ToUnicodeString(Copy(FWebResponse.ContentData, 1, p-1));
       contentType := Copy(FWebResponse.ContentData, p+1);
@@ -669,28 +649,13 @@ begin
    try
       dataChunkFile.DataChunkType := hctFromFileHandle;
       dataChunkFile.FileHandle := fileHandle;
-      flags := 0;
       dataChunkFile.ByteRange.StartingOffset.QuadPart := 0;
       Int64(dataChunkFile.ByteRange.Length.QuadPart) := -1; // to eof
-      with request^.Headers.KnownHeaders[reqRange] do begin
-         if     (RawValueLength>6)
-            and StrBeginsWithA(pRawValue, 'bytes=')
-            and (pRawValue[6] in ['0'..'9']) then begin
-            SetString(contentRange, pRawValue+6, RawValueLength-6); // need #0 end
-            R := pointer(contentRange);
-            rangeStart := GetNextItemInt64(R);
-            if R^ = '-' then begin
-               inc(R);
-               flags := HTTP_SEND_RESPONSE_FLAG_PROCESS_RANGES;
-               dataChunkFile.ByteRange.StartingOffset := ULARGE_INTEGER(rangeStart);
-               if R^ in ['0'..'9'] then begin
-                  rangeLength := GetNextItemInt64(R)-rangeStart+1;
-                  if rangeLength>=0 then // "bytes=0-499" -> start=0, len=500
-                     dataChunkFile.ByteRange.Length := ULARGE_INTEGER(rangeLength);
-               end; // "bytes=1000-" -> start=1000, len=-1 (to eof)
-            end;
-         end;
-      end;
+      if request^.Headers.KnownHeaders[reqRange].RawValueLength > 0 then
+        // Specifies that for a range request, the full response content is passed
+        // and the caller wants the HTTP API to process ranges appropriately.
+        flags := HTTP_SEND_RESPONSE_FLAG_PROCESS_RANGES
+      else flags := 0;
       with response^.Headers.KnownHeaders[reqContentType] do begin
          pRawValue := PAnsiChar(contentType);
          RawValueLength := Length(contentType);
