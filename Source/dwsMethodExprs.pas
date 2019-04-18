@@ -314,10 +314,15 @@ end;
 
 // Execute
 //
-procedure TExceptionDestroyMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+procedure TExceptionDestroyMethod.Execute(info : TProgramInfo; var externalObject : TObject);
+var
+   tmp : TObject;
 begin
-   ExternalObject.Free;
-   ExternalObject:=nil;
+   tmp := externalObject;
+   if tmp <> nil then begin
+      externalObject := nil;
+      tmp.Free;
+   end;
 end;
 
 // ------------------
@@ -326,12 +331,14 @@ end;
 
 // Execute
 //
-procedure TExceptionStackTraceMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+procedure TExceptionStackTraceMethod.Execute(info : TProgramInfo; var externalObject : TObject);
 var
    context : TdwsExceptionContext;
 begin
-   context:=ExternalObject as TdwsExceptionContext;
-   Info.ResultAsString:=info.Execution.CallStackToString(context.CallStack);
+   context := externalObject as TdwsExceptionContext;
+   if context <> nil then
+      Info.ResultAsString := info.Execution.CallStackToString(context.CallStack)
+   else Info.ResultAsString := '';
 end;
 
 // ------------------
