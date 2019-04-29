@@ -6306,24 +6306,27 @@ begin
          FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttFOR);
       CurrentProg.EnterSubTable(blockExpr.Table);
    end;
-   Result:=blockExpr;
+   Result := blockExpr;
    try
       try
-         Result:=ReadForStep(forPos, forExprClass, iterVarExpr,
-                             fromExpr, toExpr, readArrayItemExpr);
+         Result := ReadForStep(forPos, forExprClass, iterVarExpr,
+                               fromExpr, toExpr, readArrayItemExpr);
       except
-         OrphanAndNil(blockExpr);
+         Result := nil;
+         OrphanObject(blockExpr);
          raise;
       end;
       if Optimize then
-         Result:=Result.Optimize(FCompilerContext);
+         Result := Result.Optimize(FCompilerContext);
    finally
-      if blockExpr<>nil then begin
+      if blockExpr <> nil then begin
          CurrentProg.LeaveSubTable;
-         blockExpr.AddStatement(Result);
-         if Optimize then
-            Result:=blockExpr.Optimize(FCompilerContext)
-         else Result:=blockExpr;
+         if Result <> nil then begin
+            blockExpr.AddStatement(Result);
+            if Optimize then
+               Result := blockExpr.Optimize(FCompilerContext)
+            else Result := blockExpr;
+         end else Result := blockExpr;
          if coContextMap in FOptions then begin
             if blockExpr is TBlockExpr then
                FSourceContextMap.Current.LocalTable:=TBlockExpr(blockExpr).Table;
@@ -10826,8 +10829,10 @@ begin
                         Result.Typ:=TBinaryOpExpr(Result).Left.Typ;
                      end;
                   end else if Result.Typ.IsOfType(FCompilerContext.TypVariant) then begin
-                     Result:=TCoalesceExpr.Create(FCompilerContext, hotPos, tt, Result, right);
-                     Result.Typ:=FCompilerContext.TypVariant;
+                     Result := TCoalesceExpr.Create(FCompilerContext, hotPos, tt, Result, right);
+                     if TCoalesceExpr(Result).Right.IsOfType(TCoalesceExpr(Result).Left.Typ) then
+                        Result.Typ := TCoalesceExpr(Result).Left.Typ
+                     else Result.Typ := FCompilerContext.TypVariant;
                   end else if Result.Typ.IsOfType(FCompilerContext.TypString) then begin
                      Result:=TCoalesceStrExpr.Create(FCompilerContext, hotPos, tt, Result, right);
                   end else if Result.Typ.UnAliasedType.ClassType=TClassSymbol then begin

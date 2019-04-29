@@ -42,6 +42,7 @@ type
          procedure SuggestInUsesSection;
          procedure SuggestAfterCall;
          procedure SuggestAcrossLines;
+         procedure ForVariable;
          procedure ReferencesVars;
          procedure InvalidExceptSuggest;
          procedure EnumerationNamesAndValues;
@@ -629,6 +630,28 @@ begin
    CheckEquals(2, sugg.Count, '.Lo');
    CheckEquals('Low', sugg.Code[0], '.Lo 0');
    CheckEquals('LowerCase', sugg.Code[1], '.L 1');
+end;
+
+// ForVariable
+//
+procedure TSourceUtilsTests.ForVariable;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile('var a : array of String;'#10
+                           +'for var test1 := 0 to 10 do'#10
+                           +'for var test2 in a do begin'#10
+                           +'teS'#10
+                           +'end;');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 4, 4);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+
+   CheckEquals(2, sugg.Count, 'tes');
+   CheckEquals('test1', sugg.Code[0], 'tes 0');
+   CheckEquals('test2', sugg.Code[1], 'tes 1');
 end;
 
 // ReferencesVars
