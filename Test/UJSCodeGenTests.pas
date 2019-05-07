@@ -384,7 +384,7 @@ begin
             FLastJSResult:='*no result*';
             FConsole:='';
 
-            SaveTextToUTF8File('c:\temp\test.js', jscode);
+            SaveTextToUTF8File('c:\temp\test.js', UTF8Encode(jscode));
 
             {// execute via node
             fileName:=GetTempFileName('dws');
