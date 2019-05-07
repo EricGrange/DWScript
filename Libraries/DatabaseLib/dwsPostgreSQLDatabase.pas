@@ -48,8 +48,8 @@ type
          function InTransaction : Boolean;
          function CanReleaseToPool : String;
 
-         procedure Exec(const sql : String; const parameters : TData; context : TExprBase);
-         function Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
+         procedure Exec(const sql : String; const parameters : IDataContext; context : TExprBase);
+         function Query(const sql : String; const parameters : IDataContext; context : TExprBase) : IdwsDataSet;
 
          function VersionInfoText : String;
    end;
@@ -82,7 +82,7 @@ type
          function GetLength(index : Integer) : Integer;
 
       public
-         constructor Create(db : TdwsPostgreSQLDataBase; const sql : String; const parameters : TData;
+         constructor Create(db : TdwsPostgreSQLDataBase; const sql : String; const parameters : IDataContext;
                             aMode : TdwsPostgreSQLDataSetMode = dsmAutomatic);
          destructor Destroy; override;
 
@@ -110,7 +110,7 @@ type
          function DataType : TdwsDataFieldType; override;
 
          function IsNull : Boolean; override;
-         function AsString : String; override;
+         procedure AsString(var Result : String); override;
          function AsInteger : Int64; override;
          function AsFloat : Double; override;
          function AsBoolean : Boolean; override;
@@ -177,20 +177,20 @@ type
       Formats : TPGParamFormats;
    end;
 
-procedure PreparePGParams(const data : TData; var params : TPosgreSQLParams);
+procedure PreparePGParams(const data : IDataContext; var params : TPosgreSQLParams);
 var
    i, n : Integer;
    p : PVarData;
    dt : Int64;
 begin
-   n := Length(data);
+   n := data.DataLength;
    params.Length := n;
    SetLength(params.Types, n);
    SetLength(params.Values, n);
    SetLength(params.Lengths, n);
    SetLength(params.Formats, n);
    for i := 0 to n-1 do begin
-      p := @data[i];
+      p := PVarData(data.AsPVariant(i));
       case p.VType of
          varInt64 : begin
             if Abs(p.VInt64) < MaxInt then begin
@@ -371,7 +371,7 @@ end;
 
 // Exec
 //
-procedure TdwsPostgreSQLDataBase.Exec(const sql : String; const parameters : TData; context : TExprBase);
+procedure TdwsPostgreSQLDataBase.Exec(const sql : String; const parameters : IDataContext; context : TExprBase);
 var
    query : RawByteString;
 
@@ -416,7 +416,7 @@ end;
 
 // Query
 //
-function TdwsPostgreSQLDataBase.Query(const sql : String; const parameters : TData; context : TExprBase) : IdwsDataSet;
+function TdwsPostgreSQLDataBase.Query(const sql : String; const parameters : IDataContext; context : TExprBase) : IdwsDataSet;
 var
    ds : TdwsPostgreSQLDataSet;
 begin
@@ -433,7 +433,7 @@ var
 begin
    ds := TdwsPostgreSQLDataSet.Create(Self, 'SELECT version()', nil, dsmForceArrayMode);
    i := ds;
-   Result := i.GetField(0).AsString;
+   i.GetField(0).GetAsString(Result);
 end;
 
 // ------------------
@@ -467,7 +467,7 @@ end;
 //
 constructor TdwsPostgreSQLDataSet.Create(
       db : TdwsPostgreSQLDataBase;
-      const sql : String; const parameters : TData;
+      const sql : String; const parameters : IDataContext;
       aMode : TdwsPostgreSQLDataSetMode = dsmAutomatic
       );
 
@@ -766,13 +766,16 @@ end;
 
 // AsString
 //
-function TdwsPostgreSQLDataField.AsString : String;
+procedure TdwsPostgreSQLDataField.AsString(var Result : String);
 var
    oid : Integer;
    p : Pointer;
    buf : RawByteString;
 begin
-   if FDataSet.GetIsNull(Index) then Exit('');
+   if FDataSet.GetIsNull(Index) then begin
+      Result := '';
+      Exit;
+   end;
 
    p := FDataSet.GetPValue(Index);
    oid := FDataSet.GetType(Index);
@@ -790,6 +793,7 @@ begin
          dftInteger : Result := IntToStr(AsInteger);
          dftFloat : Result := FloatToStr(AsFloat);
          dftDateTime : Result := DateTimeToISO8601(AsFloat, True);
+         dftBlob : RawByteStringToScriptString(AsBlob, Result);
       else
          // unknown
          SetString(buf, PAnsiChar(p), FDataSet.GetLength(Index));
@@ -803,10 +807,15 @@ end;
 function TdwsPostgreSQLDataField.AsInteger : Int64;
 
    function Fallback : Int64;
+   var
+      s : String;
    begin
       case DataType of
          dftFloat : Result := Trunc(AsFloat);
-         dftString : Result := StrToInt64(AsString);
+         dftString : begin
+            GetAsString(s);
+            Result := StrToInt64(s);
+         end;
          dftDateTime : Result := Round((AsFloat+25596)*86400);
       else
          RaiseUnsupportedConversion('Integer');
