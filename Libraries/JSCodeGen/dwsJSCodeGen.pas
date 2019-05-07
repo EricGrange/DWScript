@@ -81,7 +81,6 @@ type
          procedure WriteStringArray(strings : TStrings); overload;
 
          procedure WriteFuncParams(func : TFuncSymbol);
-         procedure EnumerateAbortOnResultExpr(parent, expr : TExprBase; var abort : Boolean);
 
          procedure CompileFuncBody(func : TFuncSymbol);
          procedure CompileMethod(meth : TMethodSymbol);
@@ -3333,21 +3332,31 @@ begin
    end;
 end;
 
-// EnumerateAbortOnResultExpr
-//
-procedure TdwsJSCodeGen.EnumerateAbortOnResultExpr(parent, expr : TExprBase; var abort : Boolean);
-begin
-   abort:=    (expr is TVarExpr)
-          and (TVarExpr(expr).DataSym is TResultSymbol);
-end;
-
 // CompileFuncBody
 //
 procedure TdwsJSCodeGen.CompileFuncBody(func : TFuncSymbol);
 
-   function ResultIsNotUsedInExpr(anExpr : TExprBase) : Boolean;
+   function ProcExprIfResultAssignment(proc : TdwsProcedure) : TAssignExpr;
+   var
+      assignment : TAssignExpr;
+      resultPosList : TSymbolPositionList;
    begin
-      Result:=not anExpr.RecursiveEnumerateSubExprs(EnumerateAbortOnResultExpr);
+      Result := nil;
+      if proc.Expr is TAssignExpr then begin
+         // procedure has a single statement which is an assignment
+         assignment := TAssignExpr(proc.Expr);
+         if     (assignment.Left.DataSymbol = func.Result)
+            and (SymbolDictionary <> nil) then begin
+
+            resultPosList := SymbolDictionary.FindSymbolPosList(func.Result);
+            if     (resultPosList.Count = 1)
+               and (resultPosList[0].SymbolUsages * [suRead, suWrite] = [ suWrite ]) then begin
+
+               Result := assignment;
+
+            end;
+         end;
+      end;
    end;
 
 var
@@ -3383,17 +3392,16 @@ begin
       resultTyp := resultTyp.UnAliasedType;
 
       // optimize to a straight "return" statement for trivial functions
-      if     (not resultIsBoxed) and (proc.Table.Count = 0)
-         and ((proc.InitExpr = nil) or (proc.InitExpr.SubExprCount = 0))
-         and (proc.Expr is TAssignExpr) then begin
+      if     (not resultIsBoxed) and (proc.DataSize = 0)
+         and ((proc.InitExpr = nil) or (proc.InitExpr.SubExprCount = 0)) then begin
 
-         assignExpr := TAssignExpr(proc.Expr);
+         assignExpr := ProcExprIfResultAssignment(proc);
 
-         if     (assignExpr.Left is TVarExpr)
-            and (TVarExpr(assignExpr.Left).DataSym is TResultSymbol) then begin
+         if     (assignExpr <> nil)
+            and (assignExpr.Left is TVarExpr) then begin
 
-            cg:=FindCodeGen(assignExpr);
-            if (cg is TJSAssignExpr) and ResultIsNotUsedInExpr(assignExpr.Right) then begin
+            cg := FindCodeGen(assignExpr);
+            if cg is TJSAssignExpr then begin
 
                WriteString('return ');
                TJSAssignExpr(cg).CodeGenRight(Self, assignExpr);
@@ -3411,7 +3419,7 @@ begin
       WriteString(' = ');
       WriteDefaultValue(resultTyp, resultIsBoxed);
       WriteStatementEnd;
-   end else resultIsBoxed:=False;
+   end else resultIsBoxed := False;
 
    if resultIsBoxed then
       WriteBlockBegin('try ');
