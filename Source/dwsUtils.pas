@@ -988,6 +988,7 @@ function SimpleStringHash(const s : String) : Cardinal; overload;
 function SimpleStringHash(p : PAnsiChar; sizeInChars : Integer) : Cardinal; overload;
 {$endif}
 function SimpleStringHash(const s : UnicodeString) : Cardinal; overload; inline;
+function SimpleStringHash(const s : RawByteString) : Cardinal; overload; inline;
 function SimpleStringHash(p : PWideChar; sizeInChars : Integer) : Cardinal; overload; inline;
 function SimpleByteHash(p : PByte; n : Integer) : Cardinal;
 
@@ -1180,6 +1181,13 @@ end;
 function SimpleStringHash(const s : UnicodeString) : Cardinal;
 begin
    Result := xxHash32.Full(Pointer(s), Length(s)*SizeOf(WideChar));
+end;
+
+// SimpleStringHash
+//
+function SimpleStringHash(const s : RawByteString) : Cardinal;
+begin
+   Result := xxHash32.Full(Pointer(s), Length(s)*SizeOf(AnsiChar));
 end;
 
 // SimpleStringHash

@@ -66,8 +66,14 @@ type
                                   const paramLengths : TPGparamLengths;
                                   const paramFormats : TPGparamFormats;
                                   resultFormat : Integer) : PGresult; cdecl;
-         PQprepare : function(handle : PGconn; stmtName : PAnsiChar; query : PAnsiChar;
-                              nParams : Integer; const paramTypes : TPGParamTypes) : PGresult; cdecl;
+         PQexecPrepared : function (handle : PGconn; stmtName : PAnsiChar;
+                                    nParams : Integer;
+                                    const paramValues : TPGparamValues;
+                                    const paramLengths : TPGparamLengths;
+                                    const paramFormats : TPGparamFormats;
+                                    resultFormat : Integer) : PGresult; cdecl;
+         PQprepare : function (handle : PGconn; stmtName : PAnsiChar; query : PAnsiChar;
+                               nParams : Integer; const paramTypes : TPGParamTypes) : PGresult; cdecl;
          PQsendQueryParams : function (handle : PGconn; command : PAnsichar;
                                        nParams : Integer;
                                        const paramTypes : TPGParamTypes;
@@ -120,7 +126,9 @@ const
   	TIMESTAMPOID   = 1114;
   	NUMERICOID     = 1700;
 
-function PotsgreSQLNumericToFloat(p : PByte) : Double;
+function PostgreSQLNumericToFloat(p : PByte) : Double;
+
+function PostgreSQLSameParamTypes(const a, b : TPGParamTypes) : Boolean;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -130,9 +138,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-// PotsgreSQLNumericToFloat
+// PostgreSQLNumericToFloat
 //
-function PotsgreSQLNumericToFloat(p : PByte) : Double;
+function PostgreSQLNumericToFloat(p : PByte) : Double;
    (*
    from https://www.postgresql.org/message-id/16572.1091489720%40sss.pgh.pa.us
 
@@ -208,6 +216,19 @@ begin
       Result := -Result;
 end;
 
+// PostgreSQLSameParamTypes
+//
+function PostgreSQLSameParamTypes(const a, b : TPGParamTypes) : Boolean;
+var
+   n : Integer;
+begin
+   n := Length(a);
+   if n <> Length(b) then Exit(False);
+   if n = 0 then Exit(True);
+
+   Result := CompareMem(Pointer(a), Pointer(b), n * SizeOf(Oid));
+end;
+
 // ------------------
 // ------------------ TdwsLibpq ------------------
 // ------------------
@@ -238,6 +259,7 @@ begin
 
    PQexec := GetProcAddress(FDLLHandle, 'PQexec');
    PQexecParams := GetProcAddress(FDLLHandle, 'PQexecParams');
+   PQexecPrepared := GetProcAddress(FDLLHandle, 'PQexecPrepared');
    PQprepare := GetProcAddress(FDLLHandle, 'PQprepare');
    PQsendQueryParams := GetProcAddress(FDLLHandle, 'PQsendQueryParams');
 
