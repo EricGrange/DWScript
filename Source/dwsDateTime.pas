@@ -384,10 +384,11 @@ begin
                   Break; // TimeNeeded already set by hour token
                end;
             else
-               DateNeeded := True;
                Break;
             end;
          end;
+         if tok in [ _m, _mm ] then
+            DateNeeded := True;
       end;
       _h24.._zzz : TimeNeeded := True;
       _ampm.._a_p : begin
