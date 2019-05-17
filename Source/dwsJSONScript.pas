@@ -48,6 +48,8 @@ type
                                          const dataPtr : IDataContext); static;
       class procedure StringifyClass(exec : TdwsExecution; writer : TdwsJSONWriter;
                                      const obj : IScriptObj); static;
+      class procedure StringifySetOf(exec : TdwsExecution; writer : TdwsJSONWriter; setOf : TSetOfSymbol;
+                                     const dataPtr : IDataContext); static;
    end;
 
 // ------------------------------------------------------------------
@@ -71,10 +73,12 @@ var
    dataExpr : TDataExpr;
    v : Variant;
    dc : IDataContext;
+   typ : TTypeSymbol;
 begin
-   if expr.Typ.Size=1 then begin
+   typ := expr.Typ.UnAliasedType;
+   if (typ.Size=1) and (typ.ClassType <> TSetOfSymbol) then begin
       expr.EvalAsVariant(exec, v);
-      if expr.Typ.UnAliasedTypeIs(TRecordSymbol) or expr.Typ.UnAliasedTypeIs(TStaticArraySymbol) then begin
+      if (typ.ClassType = TRecordSymbol) or typ.InheritsFrom(TStaticArraySymbol) then begin
          exec.DataContext_CreateValue(v, dc);
          StringifySymbol(exec, writer, expr.Typ, dc);
       end else StringifyVariant(exec, writer, v);
@@ -187,22 +191,24 @@ class procedure JSONScript.StringifySymbol(exec : TdwsExecution; writer : TdwsJS
 var
    ct : TClass;
 begin
-   sym:=sym.BaseType;
-   ct:=sym.ClassType;
+   sym := sym.BaseType;
+   ct := sym.ClassType;
    if ct.InheritsFrom(TBaseSymbol) then
       StringifyVariant(exec, writer, dataPtr[0])
    else if ct=TDynamicArraySymbol then
       StringifyDynamicArray(exec, writer, IScriptDynArray(dataPtr.AsInterface[0]).GetSelf as TScriptDynamicArray)
    else if ct.InheritsFrom(TStaticArraySymbol) then
       StringifyArray(exec, writer, TStaticArraySymbol(sym).Typ, dataPtr, TStaticArraySymbol(sym).ElementCount)
-   else if ct=TRecordSymbol then
+   else if ct = TRecordSymbol then
       StringifyComposite(exec, writer, TRecordSymbol(sym), dataPtr)
-   else if ct=TClassSymbol then
+   else if ct = TClassSymbol then
       StringifyClass(exec, writer, IScriptObj(dataPtr.AsInterface[0]))
-   else if ct=TAssociativeArraySymbol then
+   else if ct = TAssociativeArraySymbol then
       StringifyAssociativeArray(exec, writer, IScriptAssociativeArray(dataPtr.AsInterface[0]).GetSelf as TScriptAssociativeArray)
-   else if ct=TNilSymbol then
+   else if ct = TNilSymbol then
       writer.WriteNull
+   else if ct = TSetOfSymbol then
+      StringifySetOf(exec, writer, TSetOfSymbol(sym), dataPtr)
    else writer.WriteString(sym.ClassName);
 end;
 
@@ -356,6 +362,36 @@ begin
       end;
 
    end;
+end;
+
+// StringifySetOf
+//
+class procedure JSONScript.StringifySetOf(exec : TdwsExecution; writer : TdwsJSONWriter; setOf : TSetOfSymbol;
+                                          const dataPtr : IDataContext);
+var
+   offset, n : Integer;
+   value, mask, elem : UInt64;
+   elemSym : TElementSymbol;
+begin
+   writer.BeginArray;
+   for offset := 0 to setOf.Size-1 do begin
+      value := UInt64(dataPtr.AsInteger[offset]);
+      if value = 0 then continue;
+      mask := 1;
+      for n := 0 to 63 do begin
+         if (mask and value) <> 0 then begin
+            elem := setOf.MinValue + (offset shl 6) + n;
+            elemSym := setOf.ElementByValue(elem);
+            if elemSym <> nil then
+               writer.WriteString(elemSym.StandardName)
+            else writer.WriteInteger(setOf.MinValue + (offset shl 6) + n);
+            value := value - mask;
+            if value = 0 then Break;
+         end;
+         mask := mask shl 1;
+      end;
+   end;
+   writer.EndArray;
 end;
 
 end.

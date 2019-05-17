@@ -1114,6 +1114,9 @@ type
          function SupportsEmptyParam : Boolean; virtual;
    end;
 
+   TEnumerationSymbol = class;
+   TElementSymbol = class;
+
    TSetOfSymbol = class sealed (TTypeSymbol)
       private
          FMinValue : Integer;
@@ -1133,6 +1136,8 @@ type
 
          function ValueToOffsetMask(value : Integer; var mask : Int64) : Integer; inline;
          function ValueToByteOffsetMask(value : Integer; var mask : Byte) : Integer; inline;
+
+         function ElementByValue(value : Integer) : TElementSymbol;
 
          property MinValue : Integer read FMinValue write FMinValue;
          property MaxValue : Integer read GetMaxValue;
@@ -1817,8 +1822,6 @@ type
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          procedure InitData(const data : TData; offset : Integer); override;
    end;
-
-   TEnumerationSymbol = class;
 
    // Element of an enumeration type. E. g. "type DummyEnum = (Elem1, Elem2, Elem3);"
    TElementSymbol = class sealed (TConstSymbol)
@@ -7029,8 +7032,15 @@ end;
 //
 function TSetOfSymbol.ValueToByteOffsetMask(value : Integer; var mask : Byte) : Integer;
 begin
-   Result:=(value-MinValue) shr 3;
-   mask:=1 shl (value and 7);
+   Result := (value-MinValue) shr 3;
+   mask := 1 shl (value and 7);
+end;
+
+// ElementByValue
+//
+function TSetOfSymbol.ElementByValue(value : Integer) : TElementSymbol;
+begin
+   Result := (Typ.UnAliasedType as TEnumerationSymbol).ElementByValue(value)
 end;
 
 // GetMaxValue

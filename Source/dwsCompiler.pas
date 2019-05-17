@@ -7454,7 +7454,7 @@ begin
 
    end else FMsgs.AddCompilerError(typePos, CPE_EnumerationExpected);
 
-   Result:=TSetOfSymbol.Create(typeName, elementType, aMin, aMax);
+   Result := TSetOfSymbol.Create(typeName, elementType, aMin, aMax);
 end;
 
 // ReadArrayType
