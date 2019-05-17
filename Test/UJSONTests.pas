@@ -693,8 +693,8 @@ begin
    CheckEquals(#9#10#13#8#12'\', json['test'].Value.AsString, 'specials check');
    CheckEquals('"\t\n\r\b\f\\"', json['test'].ToUnicodeString, 'specials toString');
 
-   json['test'].Value.AsString:=#25#0'bug';
-   CheckEquals('"\u0019"', json['test'].ToUnicodeString, 'very specials');
+   json['test'].Value.AsString:=#25#0'ok';
+   CheckEquals('"\u0019\u0000ok"', json['test'].ToUnicodeString, 'very specials');
 
    json.Free;
 end;
