@@ -48,6 +48,7 @@ type
          procedure EnumerationNamesAndValues;
          procedure BigEnumerationNamesAndValues;
          procedure EnumerationSuggest;
+         procedure SetOfSuggest;
          procedure StaticClassSuggest;
          procedure ClassFieldSuggest;
          procedure RecordConstSuggest;
@@ -773,7 +774,8 @@ begin
    prog:=FCompiler.Compile( 'type TTest = (One);'#13#10
                            +'Print(TTest.One.Name);'#13#10
                            +'var i : TTest;'#13#10
-                           +'Print(i.Value);'#13#10);
+                           +'Print(i.Value);'#13#10
+                           +'Print(i.QualifiedName);'#13#10);
 
    CheckEquals('', prog.Msgs.AsInfo, 'compiled with errors');
 
@@ -792,8 +794,35 @@ begin
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 4, 10);
 
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
-   CheckEquals(1, sugg.Count, 'column 10');
+   CheckEquals(1, sugg.Count, 'column 10 v');
    CheckEquals('Value', sugg.Code[0], 'sugg 4, 10, 0');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 5, 10);
+
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(1, sugg.Count, 'column 10 q');
+   CheckEquals('QualifiedName', sugg.Code[0], 'sugg 5, 10, 0');
+end;
+
+// SetOfSuggest
+//
+procedure TSourceUtilsTests.SetOfSuggest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile( 'type TTest = (One);'#13#10
+                           +'type TSet = set of TTest;'#13#10
+                           +'var i : TSet;'#13#10
+                           +'i.');
+
+   scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 4, 3);
+
+   sugg := TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(2, sugg.Count, 'set of methods');
+   CheckEquals('Exclude', sugg.Code[0], 'sugg 0');
+   CheckEquals('Include', sugg.Code[1], 'sugg 1');
 end;
 
 // StaticClassSuggest

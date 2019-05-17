@@ -1114,36 +1114,6 @@ type
          function SupportsEmptyParam : Boolean; virtual;
    end;
 
-   TEnumerationSymbol = class;
-   TElementSymbol = class;
-
-   TSetOfSymbol = class sealed (TTypeSymbol)
-      private
-         FMinValue : Integer;
-         FCountValue : Integer;
-
-      protected
-         function GetMaxValue : Integer; inline;
-
-      public
-         constructor Create(const name : String; indexType : TTypeSymbol;
-                            aMin, aMax : Integer);
-
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         procedure InitData(const data : TData; offset : Integer); override;
-
-         function AssignsAsDataExpr : Boolean; override;
-
-         function ValueToOffsetMask(value : Integer; var mask : Int64) : Integer; inline;
-         function ValueToByteOffsetMask(value : Integer; var mask : Byte) : Integer; inline;
-
-         function ElementByValue(value : Integer) : TElementSymbol;
-
-         property MinValue : Integer read FMinValue write FMinValue;
-         property MaxValue : Integer read GetMaxValue;
-         property CountValue : Integer read FCountValue write FCountValue;
-   end;
-
    TTypeWithPseudoMethodsSymbol = class;
 
    TPseudoMethodSymbol = class sealed (TFuncSymbol)
@@ -1168,6 +1138,38 @@ type
 
          function PseudoMethodSymbol(methodKind : TArrayMethodKind; baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol;
 
+   end;
+
+   TEnumerationSymbol = class;
+   TElementSymbol = class;
+
+   TSetOfSymbol = class sealed (TTypeWithPseudoMethodsSymbol)
+      private
+         FMinValue : Integer;
+         FCountValue : Integer;
+
+      protected
+         function GetMaxValue : Integer; inline;
+
+         function InitializePseudoMethodSymbol(methodKind : TArrayMethodKind; baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol; override;
+
+      public
+         constructor Create(const name : String; indexType : TTypeSymbol;
+                            aMin, aMax : Integer);
+
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         procedure InitData(const data : TData; offset : Integer); override;
+
+         function AssignsAsDataExpr : Boolean; override;
+
+         function ValueToOffsetMask(value : Integer; var mask : Int64) : Integer; inline;
+         function ValueToByteOffsetMask(value : Integer; var mask : Byte) : Integer; inline;
+
+         function ElementByValue(value : Integer) : TElementSymbol;
+
+         property MinValue : Integer read FMinValue write FMinValue;
+         property MaxValue : Integer read GetMaxValue;
+         property CountValue : Integer read FCountValue write FCountValue;
    end;
 
    TArraySymbol = class abstract (TTypeWithPseudoMethodsSymbol)
@@ -7048,6 +7050,25 @@ end;
 function TSetOfSymbol.GetMaxValue : Integer;
 begin
    Result:=MinValue+CountValue-1;
+end;
+
+// InitializePseudoMethodSymbol
+//
+function TSetOfSymbol.InitializePseudoMethodSymbol(methodKind : TArrayMethodKind; baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol;
+var
+   methodName : String;
+begin
+   Result := nil;
+
+   methodName := Copy(GetEnumName(TypeInfo(TArrayMethodKind), Ord(methodKind)), 4);
+   case methodKind of
+      amkInclude, amkExclude : begin
+         Result := TPseudoMethodSymbol.Create(Self, methodName, fkFunction, 0);
+         Result.Params.AddSymbol(TParamSymbol.Create('element', Typ));
+      end;
+   end;
+   if Result <> nil then
+      FPseudoMethods[methodKind] := Result
 end;
 
 // ------------------

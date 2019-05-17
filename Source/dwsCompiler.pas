@@ -653,7 +653,7 @@ type
          function ReadScript(sourceFile : TSourceFile; scriptType : TScriptSourceType) : TProgramExpr;
          procedure ReadScriptImplementations;
          function ReadSpecialFunction(const namePos : TScriptPos; specialKind : TSpecialKeywordKind) : TProgramExpr;
-         function ReadIncludeExclude(const namePos : TScriptPos; specialKind : TSpecialKeywordKind;
+         function ReadIncludeExclude(const namePos : TScriptPos; methodKind : TArrayMethodKind;
                                      var argExpr : TTypedExpr; const argPos : TScriptPos) : TProgramExpr;
 
          function ReadStatement(var action : TdwsStatementAction; initVarBlockExpr : TBlockExpr) : TProgramExpr;
@@ -8213,24 +8213,21 @@ end;
 function TdwsCompiler.ReadSetOfMethod(const name : String; const namePos : TScriptPos;
                                       baseExpr : TTypedExpr) : TProgramExpr;
 var
-   sk : TSpecialKeywordKind;
+   amk : TArrayMethodKind;
 begin
    try
       if not FTok.TestDelete(ttBLEFT) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
 
-      sk:=IdentifySpecialName(name);
+      amk := NameToArrayMethod(name, FMsgs, namePos);
 
-      case sk of
-         skInclude, skExclude :
-            Result:=ReadIncludeExclude(namePos, sk, baseExpr, namePos);
+      case amk of
+         amkInclude, amkExclude :
+            Result := ReadIncludeExclude(namePos, amk, baseExpr, namePos);
       else
          Result:=nil;
          FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
       end;
-
-      if not (coHintsDisabled in FOptions) then
-         CheckSpecialNameCase(name, sk, namePos);
 
       if not FTok.TestDelete(ttBRIGHT) then begin
          OrphanAndNil(Result);
@@ -13558,6 +13555,7 @@ var
    argExpr, msgExpr, operandExpr : TTypedExpr;
    argTyp : TTypeSymbol;
    argPos : TScriptPos;
+   amk : TArrayMethodKind;
 begin
    msgExpr:=nil;
 
@@ -13799,7 +13797,10 @@ begin
          skInclude, skExclude : begin
             if not FTok.TestDelete(ttCOMMA) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_CommaExpected);
-            Result:=ReadIncludeExclude(namePos, specialKind, argExpr, argPos);
+            if specialKind = skInclude then
+               amk := amkInclude
+            else amk := amkExclude;
+            Result := ReadIncludeExclude(namePos, amk, argExpr, argPos);
          end;
          skSwap : begin
             if not ((argExpr is TDataExpr) and TDataExpr(argExpr).IsWritable) then begin
@@ -13860,7 +13861,7 @@ end;
 
 // ReadIncludeExclude
 //
-function TdwsCompiler.ReadIncludeExclude(const namePos : TScriptPos; specialKind : TSpecialKeywordKind;
+function TdwsCompiler.ReadIncludeExclude(const namePos : TScriptPos; methodKind : TArrayMethodKind;
                                          var argExpr : TTypedExpr; const argPos : TScriptPos) : TProgramExpr;
 var
    operandExpr : TTypedExpr;
@@ -13885,10 +13886,10 @@ begin
    if (typ<>nil) and (operandExpr<>nil) and not operandExpr.IsOfType(typ) then
       IncompatibleTypes(operandPos, CPE_IncompatibleParameterTypes, typ, operandExpr.Typ);
 
-   if specialKind=skInclude then
-      Result:=TSetOfIncludeExpr.Create(FCompilerContext, namePos, TDataExpr(argExpr), operandExpr)
-   else Result:=TSetOfExcludeExpr.Create(FCompilerContext, namePos, TDataExpr(argExpr), operandExpr);
-   argExpr:=nil;
+   if methodKind = amkInclude then
+      Result := TSetOfIncludeExpr.Create(FCompilerContext, namePos, TDataExpr(argExpr), operandExpr)
+   else Result := TSetOfExcludeExpr.Create(FCompilerContext, namePos, TDataExpr(argExpr), operandExpr);
+   argExpr := nil;
 end;
 
 // ReadTypeCast
