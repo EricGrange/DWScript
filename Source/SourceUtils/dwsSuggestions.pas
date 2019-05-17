@@ -519,6 +519,7 @@ begin
       FEnumElementHelpers:=TSymbolTable.Create;
       p:=FProg.ProgramObject.CompilerContext;
       FEnumElementHelpers.AddSymbol(CreateHelper('Name', p.TypString, []));
+      FEnumElementHelpers.AddSymbol(CreateHelper('QualifiedName', p.TypString, []));
       FEnumElementHelpers.AddSymbol(CreateHelper('Value', p.TypInteger, []));
    end;
 
