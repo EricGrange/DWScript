@@ -581,7 +581,7 @@ begin
       if (aMode = dsmForceCursor) or (FDB.InTransaction and (aMode = dsmAutomatic)) then begin
          // within transactions, we use cursors by default for selects
          // they can be aborted mid-way and support multiple large blobs
-         if StrIBeginsWith(FSQL, 'select')  then begin
+         if StrIBeginsWith(sql, 'select')  then begin
             NewPGName(FCursorName);
             FSQL := 'DECLARE ' + FCursorName + ' NO SCROLL CURSOR FOR ' + FSQL;
             FFetchNext := cInitialFetch + FCursorName;
