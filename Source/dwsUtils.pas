@@ -922,6 +922,10 @@ type
          property Capacity : Integer read FCapacity write FCapacity;
    end;
 
+   TStringDynArrayHelper = record helper for TStringDynArray
+      function Join(const separator : String) : String;
+   end;
+
 const
    cMSecToDateTime : Double = 1/(24*3600*1000);
 
@@ -7068,6 +7072,34 @@ begin
    end;
    if obj<>nil then
       obj.Destroy;
+end;
+
+// ------------------
+// ------------------ TStringDynArrayHelper ------------------
+// ------------------
+
+function TStringDynArrayHelper.Join(const separator : String) : String;
+var
+   i : Integer;
+   wobs : TWriteOnlyBlockStream;
+begin
+   case Length(Self) of
+      0 : Result := '';
+      1 : Result := Self[0];
+      2 : Result := Self[0] + separator + Self[1];
+   else
+      wobs := TWriteOnlyBlockStream.AllocFromPool;
+      try
+         wobs.WriteString(Self[0]);
+         for i := 1 to High(Self) do begin
+            wobs.WriteString(separator);
+            wobs.WriteString(Self[i]);
+         end;
+         Result := wobs.ToString;
+      finally
+         wobs.ReturnToPool;
+      end;
+   end;
 end;
 
 // ------------------
