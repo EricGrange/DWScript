@@ -57,6 +57,7 @@ type
          FResultSymbolName : String;
          FUniqueGlobalVar : TUnicodeStringList;
          FCustomDependency : TUnicodeStringList;
+         FForceRepeatableRandom : Boolean;
 
       protected
          procedure CollectLocalVars(proc : TdwsProgram);
@@ -157,6 +158,8 @@ type
          const cVirtualPostfix = '$';
 
          property MainBodyName : String read FMainBodyName write FMainBodyName;
+
+         property ForceRepeatableRandom : Boolean read FForceRepeatableRandom write FForceRepeatableRandom;
    end;
 
    TdwsJSCodeGenEnvironment = class;
@@ -2707,6 +2710,13 @@ begin
             end;
          end;
       until Dependencies.List.Count=n;
+      // special handling for repeatable random
+      if not ForceRepeatableRandom then begin
+         if not Dependencies.Contains('SetRandSeed') then begin
+            if Dependencies.Remove('Random') then
+               destStream.WriteString('var Random = Math.random;'#13#10);
+         end;
+      end;
       // stream dependencies
       for i:=Dependencies.List.Count-1 downto 0 do begin
          dependency:=Dependencies.List[i];
@@ -3349,7 +3359,8 @@ procedure TdwsJSCodeGen.CompileFuncBody(func : TFuncSymbol);
             and (SymbolDictionary <> nil) then begin
 
             resultPosList := SymbolDictionary.FindSymbolPosList(func.Result);
-            if     (resultPosList.Count = 1)
+            if     (resultPosList <> nil)
+               and (resultPosList.Count = 1)
                and (resultPosList[0].SymbolUsages * [suRead, suWrite] = [ suWrite ]) then begin
 
                Result := assignment;
@@ -4021,7 +4032,11 @@ begin
 
                WriteVar;
                codeGen.WriteSymbolName(sym);
-               if (codeGen.Context.Root.Compiler = nil) or (sym.Typ <> codeGen.Context.Root.CompilerContext.TypVariant) then begin
+               if     (sym.Typ.UnAliasedType.ClassType <> TJSConnectorSymbol)
+                  and (
+                          (codeGen.Context.Root.Compiler = nil)
+                       or (sym.Typ <> codeGen.Context.Root.CompilerContext.TypVariant)
+                      ) then begin
                   codeGen.WriteString(' = ');
                   jsCodeGen.WriteDefaultValue(sym.Typ, IsLocalVarParam(codeGen, sym));
                end;

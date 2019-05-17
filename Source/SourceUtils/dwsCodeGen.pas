@@ -115,6 +115,7 @@ type
          destructor Destroy; override;
 
          procedure Add(const dep : String);
+         function Remove(const dep : String) : Boolean;
          procedure Clear;
 
          function Contains(const dep : String) : Boolean;
@@ -2180,6 +2181,18 @@ begin
       end else break;
    end;
    List.Add(s);
+end;
+
+// Remove
+//
+function TdwsCodeGenDependencies.Remove(const dep : String) : Boolean;
+var
+   k : Integer;
+begin
+   k := List.IndexOf(dep);
+   Result := (k >= 0);
+   if Result then
+      List.Delete(k);
 end;
 
 // Clear
