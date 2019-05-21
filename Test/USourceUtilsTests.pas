@@ -33,6 +33,7 @@ type
          procedure EmptyOptimizedLocalTable;
          procedure StringTest;
          procedure StaticArrayTest;
+         procedure StaticArrayRecordTest;
          procedure DynamicArrayTest;
          procedure ObjectArrayTest;
          procedure AssociativeArrayTest;
@@ -376,6 +377,24 @@ begin
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
    CheckTrue(sugg.Count=1, 's.h');
    CheckEquals('High', sugg.Code[0], 's.h 0');
+end;
+
+// StaticArrayRecordTest
+//
+procedure TSourceUtilsTests.StaticArrayRecordTest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile( 'const s : array [1..2] of record xy : Integer end = [('#13#10
+                           +' )];');
+
+   scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 1);
+   sugg := TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+
+   CheckTrue(sugg.Count > 0, 'rec field');
+   CheckEquals('xy', sugg.Code[0], 'sugg 0');
 end;
 
 // DynamicArrayTest

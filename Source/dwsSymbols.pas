@@ -5835,7 +5835,10 @@ end;
 
 function TConstSymbol.GetDescription : String;
 begin
-   Result := 'const ' + inherited GetDescription + ' = ' + VariantToString(FData[0]);
+   Result := 'const ' + inherited GetDescription + ' = ';
+   if Length(FData) > 0 then
+      Result := Result + VariantToString(FData[0])
+   else Result := Result + '???';
 end;
 
 // GetIsDeprecated
