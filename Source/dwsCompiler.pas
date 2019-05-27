@@ -13393,7 +13393,7 @@ function TdwsCompiler.CreateSetOperatorExpr(token : TTokenType; const scriptPos 
                                             aLeft, aRight : TTypedExpr) : TTypedExpr;
 var
    leftData, rightData : TDataExpr;
-   convertedData : TDataExpr;
+   convertedData : TConvStaticArrayToSetOfExpr;
    leftTyp, rightTyp : TTypeSymbol;
    setTyp : TSetOfSymbol;
 begin
@@ -13444,13 +13444,19 @@ begin
             Result := TSetOfLeftContainedInRightExpr.Create(FCompilerContext, scriptPos, ttGTREQ, rightData, leftData);
       end;
    except
-      convertedData.Free;
+      if convertedData <> nil then begin
+         convertedData.Expr := nil;
+         convertedData.Free;
+      end;
       raise;
    end;
 
-   if Result = nil then
-      convertedData.Free
-   else if Optimize then
+   if Result = nil then begin
+      if convertedData <> nil then begin
+         convertedData.Expr := nil;
+         convertedData.Free;
+      end;
+   end else if Optimize then
       Result:=Result.OptimizeToTypedExpr(FCompilerContext, scriptPos);
 end;
 
