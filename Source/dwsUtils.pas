@@ -982,6 +982,8 @@ function StrAfterChar(const aStr : String; aChar : Char) : String;
 function StrBeforeChar(const aStr : String; aChar : Char) : String;
 
 function StrReplaceChar(const aStr : String; oldChar, newChar : Char) : String;
+function StrReplaceMacros(const aStr : String; const macros : array of String;
+                          const startDelimiter, stopDelimiter : String) : String;
 
 function StrCountChar(const aStr : String; c : Char) : Integer;
 
@@ -3665,6 +3667,66 @@ begin
    for i:=1 to Length(Result) do
       if Result[i]=oldChar then
          Result[i]:=newChar;
+end;
+
+// StrReplaceMacros
+//
+function StrReplaceMacros(const aStr : String; const macros : array of String;
+                          const startDelimiter, stopDelimiter : String) : String;
+var
+   macro : String;
+   p, start, startAfterDelimiter, stop, i : Integer;
+   wobs : TWriteOnlyBlockStream;
+   replaced : Boolean;
+begin
+   Assert(not Odd(Length(macros)));
+   if aStr = '' then Exit('');
+   if startDelimiter = '' then Exit('');
+   start := Pos(startDelimiter, aStr);
+   if start <= 0 then Exit(aStr);
+   p := 1;
+   wobs := TWriteOnlyBlockStream.Create;
+   try
+      while True do begin
+         startAfterDelimiter := start + Length(startDelimiter);
+         if stopDelimiter <> '' then
+            stop := Pos(stopDelimiter, aStr, startAfterDelimiter)
+         else stop := Pos(startDelimiter, aStr, startAfterDelimiter);
+         if stop <= 0 then begin
+            wobs.WriteSubString(aStr, p);
+            break;
+         end;
+         if start > p then
+            wobs.WriteSubString(aStr, p, start-p);
+         macro := Copy(aStr, startAfterDelimiter,  stop-startAfterDelimiter);
+         replaced := False;
+         for i := 0 to (Length(macros) div 2) - 1 do begin
+            if macro = macros[i*2] then begin
+               wobs.WriteString(macros[i*2+1]);
+               replaced := True;
+               Break;
+            end;
+         end;
+         if not replaced then begin
+            wobs.WriteString(startDelimiter);
+            wobs.WriteString(macro);
+            if stopDelimiter <> '' then
+               wobs.WriteString(stopDelimiter)
+            else wobs.WriteString(startDelimiter);
+         end;
+         if stopDelimiter <> '' then
+            p := stop + Length(stopDelimiter)
+         else p := stop + Length(startDelimiter);
+         start := Pos(startDelimiter, aStr, p);
+         if start <= 0 then begin
+            wobs.WriteSubString(aStr, p);
+            Break;
+         end;
+      end;
+      Result := wobs.ToString;
+   finally
+      wobs.Free;
+   end;
 end;
 
 // StrCountChar

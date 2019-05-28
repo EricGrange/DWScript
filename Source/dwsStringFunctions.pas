@@ -152,6 +152,10 @@ type
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
   end;
 
+  TStrReplaceMacrosFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
+  end;
+
   TDeleteFunc = class(TInternalMagicProcedure)
     procedure DoEvalProc(const args : TExprBaseListExec); override;
   end;
@@ -682,6 +686,19 @@ procedure TStrReplaceFunc.DoEvalAsString(const args : TExprBaseListExec; var Res
 begin
    args.EvalAsString(0, Result);
    FastStringReplace(Result, args.AsString[1], args.AsString[2]);
+end;
+
+{ TStrReplaceMacrosFunc }
+
+procedure TStrReplaceMacrosFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+var
+   buf : String;
+   dynIntf : IScriptDynArray;
+   a : TStringDynArray;
+begin
+   args.EvalAsString(0, buf);
+   args.ExprBase[1].EvalAsScriptDynArray(args.Exec, dynIntf);
+   Result := StrReplaceMacros(buf, dynIntf.ToStringArray, args.AsString[2], args.AsString[3]);
 end;
 
 { TDeleteFunc }
@@ -1386,6 +1403,9 @@ initialization
    RegisterInternalStringFunction(TStrPadRightFunc, 'PadRight', ['str', SYS_STRING, 'count', SYS_INTEGER, 'char=', SYS_STRING], [iffStateLess], 'PadRight');
 
    RegisterInternalStringFunction(TStrReplaceFunc, 'StrReplace', ['str', SYS_STRING, 'sub', SYS_STRING,  'newSub', SYS_STRING], [iffStateLess], 'Replace');
+   RegisterInternalStringFunction(TStrReplaceMacrosFunc, 'StrReplaceMacros',
+                                  ['str', SYS_STRING, 'macros', 'array of String',
+                                   'macroStart', SYS_STRING, 'macroEnd=', SYS_STRING], [iffStateLess], 'ReplaceMacros');
 
    RegisterInternalStringFunction(TStringOfCharFunc, 'StringOfChar', ['ch', SYS_STRING, 'count', SYS_INTEGER], []);
    RegisterInternalStringFunction(TStringOfStringFunc, 'StringOfString', ['str', SYS_STRING, 'count', SYS_INTEGER], []);
