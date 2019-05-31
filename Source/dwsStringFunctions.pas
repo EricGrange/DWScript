@@ -694,7 +694,6 @@ procedure TStrReplaceMacrosFunc.DoEvalAsString(const args : TExprBaseListExec; v
 var
    buf : String;
    dynIntf : IScriptDynArray;
-   a : TStringDynArray;
 begin
    args.EvalAsString(0, buf);
    args.ExprBase[1].EvalAsScriptDynArray(args.Exec, dynIntf);

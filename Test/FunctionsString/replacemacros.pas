@@ -14,5 +14,6 @@ PrintLn(StrReplaceMacros('abcdef', ['', '+'], 'abc', 'def'));
 PrintLn(StrReplaceMacros('abcdef', ['', '+'], 'defg', 'ef'));
 PrintLn(StrReplaceMacros('abcdef', ['', '+'], 'abc', 'fg'));
 PrintLn(StrReplaceMacros('abcdefg', ['cd', '+'], 'b', 'e'));
+PrintLn(StrReplaceMacros('abcdefg', ['cd', '+'], 'b', ''));
 
 PrintLn(StrReplaceMacros('a<bc<d', ['', '+'], '<'));
