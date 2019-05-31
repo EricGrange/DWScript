@@ -110,6 +110,8 @@ type
          procedure ExceptionWithinMagic;
          procedure DiscardEmptyElse;
 
+         procedure DelphiDialectProcedureTypes;
+
          procedure LambdaAsConstParam;
 
          procedure RoundTripTest;
@@ -2119,6 +2121,33 @@ begin
    prog := FCompiler.Compile('procedure Test(a : Boolean); begin if a then else Print(a); end;');
    e := prog.Table.FindSymbol('Test', cvMagic).AsFuncSymbol.SubExpr[1];
    CheckEquals('TIfThenExpr', e.ClassName, 'empty then');
+end;
+
+// DelphiDialectProcedureTypes
+//
+procedure TCornerCasesTests.DelphiDialectProcedureTypes;
+var
+   opts : TCompilerOptions;
+   prog : IdwsProgram;
+begin
+   opts := FCompiler.Config.CompilerOptions;
+   try
+      FCompiler.Config.HintsLevel := hlPedantic;
+
+      FCompiler.Config.CompilerOptions := opts + [coDelphiDialect];
+      prog := FCompiler.Compile( 'type TProc = reference to procedure;'#13#10
+                                +'type TMethod = procedure of object;' );
+      CheckEquals(0, prog.Msgs.Count, prog.Msgs.AsInfo);
+
+      FCompiler.Config.CompilerOptions := opts - [coDelphiDialect];
+      prog := FCompiler.Compile( 'type TProc = reference to procedure;'#13#10
+                                +'type TMethod = procedure of object;' );
+      CheckEquals(2, prog.Msgs.Count, prog.Msgs.AsInfo);
+
+   finally
+      FCompiler.Config.HintsLevel := hlNormal;
+      FCompiler.Config.CompilerOptions := opts;
+   end;
 end;
 
 // LambdaAsConstParam

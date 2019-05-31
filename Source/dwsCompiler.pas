@@ -3273,9 +3273,11 @@ begin
             if pdoType in declOptions then begin
 
                if FTok.TestDelete(ttOF) then begin
-                  if FTok.TestDelete(ttOBJECT) then
-                     FMsgs.AddCompilerHint(FTok.HotPos, CPH_OfObjectIsLegacy, hlPedantic)
-                  else FMsgs.AddCompilerError(FTok.HotPos, CPE_OfObjectExpected);
+                  if FTok.TestDelete(ttOBJECT) then begin
+                     if not (coDelphiDialect in CompilerContext.Options) then
+                        FMsgs.AddCompilerHint(FTok.HotPos, CPH_OfObjectIsLegacy, hlPedantic);
+                     Result.IsOfObject := True;
+                  end else FMsgs.AddCompilerError(FTok.HotPos, CPE_OfObjectExpected);
                end;
                ReadProcCallQualifiers(result);
 
@@ -10298,15 +10300,30 @@ function TdwsCompiler.ReadType(const typeName : String; typeContext : TdwsReadTy
       end;
    end;
 
-   function ReadProcType(token : TTokenType; const hotPos : TScriptPos) : TTypeSymbol;
+   function ReadProcType(initialToken : TTokenType; const hotPos : TScriptPos) : TTypeSymbol;
+   var
+      token : TTokenType;
    begin
-      Result:=ReadProcDecl(token, hotPos, [pdoType]);
+      if initialToken = ttREFERENCE then begin
+         if FTok.TestDelete(ttTO) then begin
+            if not (coDelphiDialect in FCompilerContext.Options) then
+               FMsgs.AddCompilerHint(FTok.HotPos, CPH_ReferenceToIsLegacy, hlPedantic);
+         end else FMsgs.AddCompilerError(FTok.HotPos, CPE_ToExpected);
+         token := FTok.TestDeleteAny([ttPROCEDURE, ttFUNCTION]);
+         if token = ttNone then begin
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ProcOrFuncExpected);
+            token := ttFUNCTION; // keep compiling
+         end;
+      end else begin
+         Assert(initialToken in [ttPROCEDURE, ttFUNCTION]);
+         token := initialToken;
+      end;
+      Result := ReadProcDecl(token, hotPos, [pdoType]);
       Result.SetName(typeName);
       (Result as TFuncSymbol).SetIsType;
       // close declaration context
       if coContextMap in Options then
          FSourceContextMap.CloseContext(FTok.HotPos);
-
    end;
 
 var
@@ -10409,19 +10426,11 @@ begin
       end;
 
       ttREFERENCE : begin
-         if FTok.TestDelete(ttTO) then
-            FMsgs.AddCompilerHint(FTok.HotPos, CPH_ReferenceToIsLegacy, hlPedantic)
-         else FMsgs.AddCompilerError(FTok.HotPos, CPE_ToExpected);
-         tt:=FTok.TestDeleteAny([ttPROCEDURE, ttFUNCTION]);
-         if tt=ttNone then begin
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_ProcOrFuncExpected);
-            tt:=ttFUNCTION; // keep compiling
-         end;
-         Result:=ReadProcType(tt, hotPos)
+         Result := ReadProcType(tt, hotPos)
       end;
 
       ttPROCEDURE, ttFUNCTION : begin
-         Result:=ReadProcType(tt, hotPos);
+         Result := ReadProcType(tt, hotPos);
       end;
 
    else

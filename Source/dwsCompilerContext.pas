@@ -33,8 +33,9 @@ type
       coExplicitUnitUses,  // unit dependencies must be explicit via a "uses" clause
       coVariablesAsVarOnly,// only variable can be passed as "var" parameters
                            // (for CodeGen that does not support passing record fields or array elements)
-      coAllowClosures      // allow closures, ie. capture of local procedures as function pointers
+      coAllowClosures,     // allow closures, ie. capture of local procedures as function pointers
                            // (not suppported yet by script engine, may be supported by CodeGen)
+      coDelphiDialect      // do not warn or hint about Delphi language idioms
       );
    TCompilerOptions = set of TCompilerOption;
 
