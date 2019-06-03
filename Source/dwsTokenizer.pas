@@ -52,8 +52,9 @@ type
      ttAND, ttOR, ttXOR, ttDIV, ttMOD, ttNOT, ttSHL, ttSHR, ttSAR,
      ttPLUS, ttMINUS, ttIMPLIES, ttIMPLICIT,
      ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttTILDE,
-     ttDOLLAR, ttEXCLAMATION, ttQUESTION, ttQUESTIONQUESTION, ttQUESTIONDOT,
-     ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ, ttEQGTR,
+     ttDOLLAR, ttEXCLAMATION, ttEXCLEQ,
+     ttQUESTION, ttQUESTIONQUESTION, ttQUESTIONDOT,
+     ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ, ttEQGTR, ttEQEQ, ttEQEQEQ,
      ttLESSLESS, ttGTRGTR, ttPIPE, ttPIPEPIPE, ttAMP, ttAMPAMP,
      ttSEMI, ttCOMMA, ttCOLON,
      ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
@@ -330,8 +331,10 @@ const
      'TRUE', 'FALSE',
      'AND', 'OR', 'XOR', 'DIV', 'MOD', 'NOT', 'SHL', 'SHR', 'SAR',
      '+', '-', 'IMPLIES', 'IMPLICIT',
-     '*', '/', '%', '^', '@', '~', '$', '!', '?', '??', '?.',
-     '=', '<>', '>', '>=', '<', '<=', '=>',
+     '*', '/', '%', '^', '@', '~',
+     '$', '!', '!=',
+     '?', '??', '?.',
+     '=', '<>', '>', '>=', '<', '<=', '=>', '==', '===',
      '<<', '>>', '|', '||', '&', '&&',
      ';', ',', ':',
      ':=', '+=', '-=', '*=', '/=',
@@ -711,20 +714,29 @@ begin
       ')': Result := ttBRIGHT;
       '[': Result := ttALEFT;
       ']': Result := ttARIGHT;
-      '!': Result := ttEXCLAMATION;
+      '!':
+         if Len=1 then
+            Result := ttEXCLAMATION
+         else if Len=2 then
+            if Buffer[1]='=' then
+               Result := ttEXCLEQ;     // '!='
       '?':
          if Len=1 then
             Result := ttQUESTION
          else if Len=2 then case Buffer[1] of
-            '?' : Result:= ttQUESTIONQUESTION;  // ??
-            '.' : Result:= ttQUESTIONDOT;       // ?.
+            '?' : Result:= ttQUESTIONQUESTION;  // '??'
+            '.' : Result:= ttQUESTIONDOT;       // '?.'
          end;
       '=':
-         if Len=1 then
-            Result := ttEQ
-         else if Len=2 then
-            if Buffer[1]='>' then
-               Result := ttEQGTR;
+         case Len of
+            1 : Result := ttEQ;
+            2 : case Buffer[1] of
+               '>' : Result := ttEQGTR;      // '=>'
+               '=' : Result := ttEQEQ;       // '=='
+            end;
+            3 : if Buffer[2] = '=' then
+               Result := ttEQEQEQ;           // '==='
+         end;
       '<':
          if Len=1 then // '<'
             Result := ttLESS

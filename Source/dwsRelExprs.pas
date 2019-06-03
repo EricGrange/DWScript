@@ -142,6 +142,9 @@ type
    TRelNotEqualVariantExpr = class(TRelVariantOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
+   TRelEqualVariantStrictExpr = class(TRelVariantOpExpr)
+     function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
    TRelLessVariantExpr = class(TRelVariantOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
@@ -523,6 +526,32 @@ begin
    FLeft.EvalAsVariant(exec, lv);
    FRight.EvalAsVariant(exec, rv);
    Result := VarCompareSafe(lv, rv) <> vrEqual;
+end;
+
+// ------------------
+// ------------------ TRelEqualVariantStrictExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TRelEqualVariantStrictExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+
+   function NormalizedVarType(const v : Variant) : TVarType;
+   begin
+      Result := VarType(v);
+      case Result of
+         varSmallInt, varInteger, varShortInt : Result := varInt64;
+         varByte, varWord, varUInt32 : Result := varUInt64;
+         varSingle : Result := varDouble;
+      end;
+   end;
+
+var
+   lv, rv : Variant;
+begin
+   FLeft.EvalAsVariant(exec, lv);
+   FRight.EvalAsVariant(exec, rv);
+   Result := (NormalizedVarType(lv) = NormalizedVarType(rv)) and (VarCompareSafe(lv, rv) = vrEqual);
 end;
 
 // ------------------

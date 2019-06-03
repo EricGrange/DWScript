@@ -1,0 +1,10 @@
+True
+hello
+True
+False
+world
+False
+hello
+True
+world
+False

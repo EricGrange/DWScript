@@ -4199,7 +4199,8 @@ begin
                            ttIN, ttIMPLIES, ttIMPLICIT,
                            ttSHL, ttSHR, ttSAR,
                            ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
-                           ttLESSLESS, ttGTRGTR, ttCARET]);
+                           ttLESSLESS, ttGTRGTR, ttCARET,
+                           ttEQEQ, ttEXCLEQ]);
    if tt=ttNone then
       FMsgs.AddCompilerError(FTok.HotPos, CPE_OverloadableOperatorExpected);
 
@@ -10570,7 +10571,8 @@ begin
    try
       // Read operator
       repeat
-         tt:=FTok.TestDeleteAny([ttEQ, ttNOTEQ, ttLESS, ttLESSEQ, ttGTR, ttGTREQ,
+         tt:=FTok.TestDeleteAny([ttEQ, ttNOTEQ, ttEQEQ, ttEXCLEQ, ttEQEQEQ,
+                                 ttLESS, ttLESSEQ, ttGTR, ttGTREQ,
                                  ttIN, ttIS, ttIMPLEMENTS, ttIMPLIES]);
          case tt of
             ttNone :
@@ -10625,8 +10627,8 @@ begin
                   end;
                else
                   opExpr := CreateTypedOperatorExpr(tt, hotPos, Result, right);
-                  if opExpr=nil then begin
-                     if     ((tt=ttEQ) or (tt=ttNOTEQ))
+                  if opExpr = nil then begin
+                     if     (tt in [ ttEQ, ttNOTEQ, ttEQEQ, ttEXCLEQ ])
                         and (rightTyp<>nil)
                         and (
                                 (Result.Typ is TClassSymbol)
@@ -10642,7 +10644,7 @@ begin
                            else FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
                         end;
                         if Result.Typ is TClassSymbol then
-                           if tt=ttNOTEQ then
+                           if tt in [ ttNOTEQ, ttEXCLEQ ] then
                               Result:=TObjCmpNotEqualExpr.Create(FCompilerContext, hotPos, tt, Result, right)
                            else Result:=TObjCmpEqualExpr.Create(FCompilerContext, hotPos, tt, Result, right)
                         else if Result.Typ is TClassOfSymbol then begin
@@ -10652,13 +10654,13 @@ begin
                            OrphanAndNil(right);
                         end else begin
                            Result:=TIntfCmpExpr.Create(FCompilerContext, hotPos, tt, Result, right);
-                           if tt=ttNOTEQ then
+                           if tt in [ ttNOTEQ, ttEXCLEQ ] then
                               Result:=TNotBoolExpr.Create(FCompilerContext, hotPos, Result);
                         end;
-                     end else if     ((tt=ttEQ) or (tt=ttNOTEQ))
+                     end else if     (tt in [ ttEQ, ttNOTEQ, ttEQEQ, ttEXCLEQ ])
                                  and (rightTyp=FCompilerContext.TypNil)
                                  and (Result.Typ.IsOfType(FCompilerContext.TypVariant)) then begin
-                        if tt=ttEQ then
+                        if tt in [ ttEQ, ttEQEQ ] then
                            Result:=TRelVarEqualNilExpr.Create(FCompilerContext, hotPos, Result)
                         else Result:=TRelVarNotEqualNilExpr.Create(FCompilerContext, hotPos, Result);
                         OrphanAndNil(right);

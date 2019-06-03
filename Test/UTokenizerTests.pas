@@ -3,7 +3,7 @@ unit UTokenizerTests;
 interface
 
 uses Windows, Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsScriptSource,
-   dwsTokenizer, dwsXPlatform, dwsErrors, dwsUtils, dwsPascalTokenizer;
+   dwsTokenizer, dwsXPlatform, dwsErrors, dwsUtils, dwsPascalTokenizer, TypInfo;
 
 type
 
@@ -23,6 +23,7 @@ type
          procedure NoCurlyComments;
          procedure DollarNames;
          procedure NoBreakSpace;
+         procedure EqualsTokens;
    end;
 
 // ------------------------------------------------------------------
@@ -242,6 +243,38 @@ begin
 
       CheckTrue(t.Test(ttStrVal), '2nd string');
       CheckEquals(#$00A0, t.GetToken.AsString, '2nd string value');
+      t.KillToken;
+
+      t.EndSourceFile;
+   finally
+      t.Free;
+      rules.Free;
+   end;
+end;
+
+// EqualsTokens
+//
+procedure TTokenizerTests.EqualsTokens;
+var
+   rules : TPascalTokenizerStateRules;
+   t : TTokenizer;
+begin
+   FSourceFile.Code := '= == === =>';
+   rules := TPascalTokenizerStateRules.Create;
+   t := rules.CreateTokenizer(FMsgs, nil);
+   try
+      t.BeginSourceFile(FSourceFile);
+
+      CheckTrue(t.Test(ttEQ), '=');
+      t.KillToken;
+
+      CheckTrue(t.Test(ttEQEQ), '==');
+      t.KillToken;
+
+      CheckTrue(t.Test(ttEQEQEQ), '===');
+      t.KillToken;
+
+      CheckTrue(t.Test(ttEQGTR), '=>');
       t.KillToken;
 
       t.EndSourceFile;

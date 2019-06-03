@@ -1241,6 +1241,7 @@ begin
    RegisterCodeGen(TRelLessFloatExpr,           TJSBinOpExpr.Create('<', 11, [associativeLeft, associativeRight]));
 
    RegisterCodeGen(TRelEqualVariantExpr,        TJSBinOpExpr.Create('==', 10, [associativeLeft, associativeRight]));
+   RegisterCodeGen(TRelEqualVariantStrictExpr,  TJSBinOpExpr.Create('===', 10, [associativeLeft, associativeRight]));
    RegisterCodeGen(TRelNotEqualVariantExpr,     TJSBinOpExpr.Create('!=', 10, [associativeLeft, associativeRight]));
    RegisterCodeGen(TRelGreaterEqualVariantExpr, TJSBinOpExpr.Create('>=', 11, [associativeLeft, associativeRight]));
    RegisterCodeGen(TRelLessEqualVariantExpr,    TJSBinOpExpr.Create('<=', 11, [associativeLeft, associativeRight]));
