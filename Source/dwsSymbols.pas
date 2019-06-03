@@ -778,7 +778,8 @@ type
    end;
 
    TFuncSymbolFlag = (fsfStateless, fsfExternal, fsfType, fsfOverloaded, fsfLambda,
-                      fsfInline, fsfProperty, fsfExport, fsfOfObject);
+                      fsfInline, fsfProperty, fsfExport,
+                      fsfOfObject, fsfReferenceTo);
    TFuncSymbolFlags = set of TFuncSymbolFlag;
 
    // A script function / procedure: procedure X(param: Integer);
@@ -796,25 +797,30 @@ type
          FExternalName : String;
          FExternalConvention: TTokenType;
 
-         procedure SetType(const Value: TTypeSymbol);
+         procedure SetType(const value : TTypeSymbol);
+
          function GetCaption : String; override;
          function GetDescription : String; override;
          function GetLevel : SmallInt; inline;
          function GetParamSize : Integer; inline;
+
          function GetIsStateless : Boolean; inline;
-         procedure SetIsStateless(const val : Boolean);
+         procedure SetIsStateless(const val : Boolean); inline;
          function GetIsExternal : Boolean; inline;
-         procedure SetIsExternal(const val : Boolean);
+         procedure SetIsExternal(const val : Boolean); inline;
          function GetIsExport : Boolean; inline;
-         procedure SetIsExport(const val : Boolean);
+         procedure SetIsExport(const val : Boolean); inline;
          function GetIsProperty : Boolean; inline;
-         procedure SetIsProperty(const val : Boolean);
+         procedure SetIsProperty(const val : Boolean); inline;
          function GetIsOverloaded : Boolean; inline;
-         procedure SetIsOverloaded(const val : Boolean);
+         procedure SetIsOverloaded(const val : Boolean); inline;
          function GetIsLambda : Boolean; inline;
-         procedure SetIsLambda(const val : Boolean);
+         procedure SetIsLambda(const val : Boolean); inline;
          function GetIsOfObject : Boolean; inline;
-         procedure SetIsOfObject(const val : Boolean);
+         procedure SetIsOfObject(const val : Boolean); inline;
+         function GetIsReferenceTo : Boolean; inline;
+         procedure SetIsReferenceTo(const val : Boolean); inline;
+
          function GetSourcePosition : TScriptPos; virtual;
          procedure SetSourcePosition(const val : TScriptPos); virtual;
          function GetExternalName : String;
@@ -867,6 +873,7 @@ type
          property IsExport : Boolean read GetIsExport write SetIsExport;
          property IsProperty : Boolean read GetIsProperty write SetIsProperty;
          property IsOfObject : Boolean read GetIsOfObject write SetIsOfObject;
+         property IsReferenceTo : Boolean read GetIsReferenceTo write SetIsReferenceTo;
          property Kind : TFuncKind read FKind write FKind;
          property ExternalName : String read GetExternalName write FExternalName;
          function HasExternalName : Boolean;
@@ -3860,6 +3867,22 @@ begin
    if val then
       Include(FFlags, fsfOfObject)
    else Exclude(FFlags, fsfOfObject);
+end;
+
+// GetIsReferenceTo
+//
+function TFuncSymbol.GetIsReferenceTo : Boolean;
+begin
+   Result := (fsfReferenceTo in FFlags);
+end;
+
+// SetIsReferenceTo
+//
+procedure TFuncSymbol.SetIsReferenceTo(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, fsfReferenceTo)
+   else Exclude(FFlags, fsfReferenceTo);
 end;
 
 // GetSourcePosition

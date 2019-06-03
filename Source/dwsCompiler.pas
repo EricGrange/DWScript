@@ -232,7 +232,7 @@ type
                           tcParameter, tcResult, tcOperand, tcExceptionClass,
                           tcProperty, tcHelper, tcGeneric);
 
-   TdwsReadProcDeclOption = (pdoClassMethod, pdoType, pdoAnonymous);
+   TdwsReadProcDeclOption = (pdoClassMethod, pdoType, pdoAnonymous, pdoReferenceTo);
    TdwsReadProcDeclOptions = set of TdwsReadProcDeclOption;
 
    TdwsUnitSection = (secMixed, secHeader, secProgram, secInterface, secImplementation,
@@ -3279,6 +3279,8 @@ begin
                      Result.IsOfObject := True;
                   end else FMsgs.AddCompilerError(FTok.HotPos, CPE_OfObjectExpected);
                end;
+               if pdoReferenceTo in declOptions then
+                  Result.IsReferenceTo := True;
                ReadProcCallQualifiers(result);
 
             end else begin
@@ -10303,8 +10305,11 @@ function TdwsCompiler.ReadType(const typeName : String; typeContext : TdwsReadTy
    function ReadProcType(initialToken : TTokenType; const hotPos : TScriptPos) : TTypeSymbol;
    var
       token : TTokenType;
+      declOptions : TdwsReadProcDeclOptions;
    begin
+      declOptions := [ pdoType ];
       if initialToken = ttREFERENCE then begin
+         Include(declOptions, pdoReferenceTo);
          if FTok.TestDelete(ttTO) then begin
             if not (coDelphiDialect in FCompilerContext.Options) then
                FMsgs.AddCompilerHint(FTok.HotPos, CPH_ReferenceToIsLegacy, hlPedantic);
@@ -10318,7 +10323,7 @@ function TdwsCompiler.ReadType(const typeName : String; typeContext : TdwsReadTy
          Assert(initialToken in [ttPROCEDURE, ttFUNCTION]);
          token := initialToken;
       end;
-      Result := ReadProcDecl(token, hotPos, [pdoType]);
+      Result := ReadProcDecl(token, hotPos, declOptions);
       Result.SetName(typeName);
       (Result as TFuncSymbol).SetIsType;
       // close declaration context
