@@ -1,3 +1,2 @@
 Syntax Error: Field has already been set [line: 8, column: 2]
-Syntax Error: There is no accessible member with name "dummy" [line: 9, column: 2]
-Syntax Error: Name expected [line: 10, column: 2]
+Syntax Error: There is no accessible member with name "dummy" for type TRec [line: 9, column: 2]

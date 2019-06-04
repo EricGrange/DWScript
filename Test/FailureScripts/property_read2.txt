@@ -1,1 +1,1 @@
-Syntax Error: No member expected [line: 10, column: 21]
+Syntax Error: There is no accessible member with name "bug" for type Integer [line: 10, column: 21]

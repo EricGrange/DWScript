@@ -422,6 +422,9 @@ type
          procedure HintUnusedResult(resultSymbol : TDataSymbol);
          procedure HintReferenceConstVarParams(funcSym : TFuncSymbol);
 
+         procedure ReportNoMemberForType(const name : String; const namePos : TScriptPos; typ : TTypeSymbol; fatal : Boolean = True); overload;
+         procedure ReportNoMemberForType(const name : String; const namePos : TScriptPos; base : TTypedExpr); overload;
+
          function GetVarExpr(const aScriptPos: TScriptPos; dataSym : TDataSymbol): TVarExpr;
 
          function GetLazyParamExpr(dataSym : TLazyParamSymbol) : TLazyParamExpr;
@@ -5814,7 +5817,7 @@ begin
 
             end else begin
 
-               FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
+               ReportNoMemberForType(name, namePos, baseType);
 
             end;
 
@@ -5864,7 +5867,7 @@ begin
 
             end else begin
 
-               FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
+               ReportNoMemberForType(name, namePos, baseType);
 
             end;
 
@@ -5907,7 +5910,7 @@ begin
                raise;
             end;
 
-         end else FMsgs.AddCompilerStop(namePos, CPE_NoMemberExpected);
+         end else ReportNoMemberForType(name, namePos, baseType);
 
       end else begin
 
@@ -8083,7 +8086,7 @@ begin
             end;
 
          else
-            FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
+            ReportNoMemberForType(name, namePos, baseExpr);
          end;
       except
          OrphanAndNil(Result);
@@ -8164,7 +8167,7 @@ begin
             end;
 
          else
-            FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
+            ReportNoMemberForType(name, namePos, baseExpr);
          end;
       except
          OrphanAndNil(Result);
@@ -8200,7 +8203,7 @@ begin
             Result := FUnifiedConstants.CreateInteger(1);
          end else begin
             Result:=nil;
-            FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
+            ReportNoMemberForType(name, namePos, baseExpr);
          end;
 
       end;
@@ -8231,7 +8234,7 @@ begin
             Result := ReadIncludeExclude(namePos, amk, baseExpr, namePos);
       else
          Result:=nil;
-         FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
+         ReportNoMemberForType(name, namePos, baseExpr);
       end;
 
       if not FTok.TestDelete(ttBRIGHT) then begin
@@ -8254,6 +8257,7 @@ var
    enumeration : TEnumerationSymbol;
    element : TElementSymbol;
    meth : TElementMethod;
+   baseTyp : TTypeSymbol;
 begin
    enumeration:=(baseExpr.Typ.UnAliasedType as TEnumerationSymbol);
 
@@ -8306,8 +8310,11 @@ begin
    else
 
       Result:=nil;
+      if baseExpr <> nil then
+         baseTyp := baseExpr.Typ
+      else baseTyp := nil;
       OrphanAndNil(baseExpr);
-      FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [name]);
+      ReportNoMemberForType(name, namePos, baseTyp);
 
    end;
 end;
@@ -9253,7 +9260,7 @@ begin
    if (not classProperty) and FTok.TestDelete(ttSEMI) then begin
       // property visibility promotion
       if sym=nil then
-         FMsgs.AddCompilerErrorFmt(propNamePos, CPE_UnknownMember, [name])
+         ReportNoMemberForType(name, propNamePos, ownerSym, False)
       else if not (sym is TPropertySymbol) then
          FMsgs.AddCompilerErrorFmt(propNamePos, CPE_NotAProperty, [sym.Name])
       else begin
@@ -11620,8 +11627,8 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
       sym:=symbol.Members.FindLocal(FTok.GetToken.AsString);
       if not (sym is TFieldSymbol) then begin
-         FMsgs.AddCompilerErrorFmt(FTok.GetToken.FScriptPos, CPE_UnknownMember, [FTok.GetToken.AsString]);
-         sym:=nil;
+         ReportNoMemberForType(FTok.GetToken.AsString, FTok.GetToken.FScriptPos, symbol);
+         sym := nil;
       end;
       memberSym:=TFieldSymbol(sym);
       if memberSym<>nil then begin
@@ -12843,6 +12850,34 @@ begin
       end;
 
    end;
+end;
+
+// ReportNoMemberForType
+//
+procedure TdwsCompiler.ReportNoMemberForType(const name : String; const namePos : TScriptPos; typ : TTypeSymbol; fatal : Boolean = True);
+var
+   typeDescription : String;
+begin
+   if typ = nil then
+      typeDescription := SYS_VOID
+   else if typ.Name = '' then
+      typeDescription := typ.Caption
+   else typeDescription := typ.Name;
+   if fatal then
+      FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMemberForType, [ name, typeDescription ])
+   else FMsgs.AddCompilerErrorFmt(namePos, CPE_UnknownMemberForType, [ name, typeDescription ]);
+end;
+
+// ReportNoMemberForType
+//
+procedure TdwsCompiler.ReportNoMemberForType(const name : String; const namePos : TScriptPos; base : TTypedExpr);
+var
+   typ : TTypeSymbol;
+begin
+   if base <> nil then
+      typ := base.Typ
+   else typ := nil;
+   ReportNoMemberForType(name, namePos, typ);
 end;
 
 // ReadConnectorSym

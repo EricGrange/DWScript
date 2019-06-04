@@ -1,1 +1,1 @@
-Syntax Error: There is no accessible member with name "BugBugBug" [line: 6, column: 3]
+Syntax Error: There is no accessible member with name "BugBugBug" for type TMySet [line: 6, column: 3]

@@ -1,2 +1,2 @@
 Syntax Error: Class "TClassA" isn't defined completely [line: 3, column: 9]
-Syntax Error: There is no accessible member with name "ClassName" [line: 3, column: 17]
+Syntax Error: There is no accessible member with name "ClassName" for type class of TClassA [line: 3, column: 17]

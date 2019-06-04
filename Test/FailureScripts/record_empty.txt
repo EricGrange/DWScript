@@ -1,3 +1,3 @@
 Syntax Error: Field/method "Hello" has an incompatible type [line: 7, column: 41]
 Syntax Error: Record has no field members [line: 8, column: 4]
-Syntax Error: There is no accessible member with name "Bug" [line: 12, column: 3]
+Syntax Error: There is no accessible member with name "Bug" for type TRec [line: 12, column: 3]

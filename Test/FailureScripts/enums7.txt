@@ -1,2 +1,2 @@
 Hint: Enumeration element is unnamed or out of range [line: 5, column: 9]
-Syntax Error: There is no accessible member with name "Bugbug" [line: 9, column: 3]
+Syntax Error: There is no accessible member with name "Bugbug" for type TElement [line: 9, column: 3]

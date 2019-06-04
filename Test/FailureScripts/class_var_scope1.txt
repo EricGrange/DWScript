@@ -1,1 +1,1 @@
-Syntax Error: There is no accessible member with name "v2" [line: 9, column: 7]
+Syntax Error: There is no accessible member with name "v2" for type class of TTest [line: 9, column: 7]

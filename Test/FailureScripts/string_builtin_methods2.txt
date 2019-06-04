@@ -1,1 +1,1 @@
-Syntax Error: There is no accessible member with name "Whatever" [line: 3, column: 3]
+Syntax Error: There is no accessible member with name "Whatever" for type String [line: 3, column: 3]

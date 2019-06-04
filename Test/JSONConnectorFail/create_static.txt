@@ -1,4 +1,4 @@
 Syntax Error: Class "JSON" is static, instantiation not allowed [line: 1, column: 14]
 Syntax Error: Class "JSON" is static, no instances allowed [line: 1, column: 7]
 Syntax Error: Class "JSON" is static, no instances allowed [line: 3, column: 7]
-Syntax Error: There is no accessible member with name "Destroy" [line: 5, column: 3]
+Syntax Error: There is no accessible member with name "Destroy" for type JSON [line: 5, column: 3]

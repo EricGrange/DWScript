@@ -1,1 +1,1 @@
-Syntax Error: There is no accessible member with name "Bug" [line: 6, column: 11]
+Syntax Error: There is no accessible member with name "Bug" for type TTest [line: 6, column: 11]

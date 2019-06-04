@@ -3192,7 +3192,9 @@ end;
 //
 function TRecordSymbol.GetCaption : String;
 begin
-   Result:='record '+Name;
+   if Name = '' then
+      Result := 'anonymous record'
+   else Result := 'record ' + Name;
 end;
 
 // GetDescription

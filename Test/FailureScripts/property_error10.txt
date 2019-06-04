@@ -1,2 +1,2 @@
 Syntax Error: More arguments expected [line: 10, column: 4]
-Syntax Error: No member expected [line: 10, column: 8]
+Syntax Error: There is no accessible member with name "Bug" for type Integer [line: 10, column: 8]

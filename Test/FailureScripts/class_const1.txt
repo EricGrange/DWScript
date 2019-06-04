@@ -1,1 +1,1 @@
-Syntax Error: There is no accessible member with name "cPrivate" [line: 5, column: 15]
+Syntax Error: There is no accessible member with name "cPrivate" for type class of TBase [line: 5, column: 15]

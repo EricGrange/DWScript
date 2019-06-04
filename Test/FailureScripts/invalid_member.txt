@@ -1,1 +1,1 @@
-Syntax Error: There is no accessible member with name "Method" [line: 8, column: 10]
+Syntax Error: There is no accessible member with name "Method" for type TObject [line: 8, column: 10]
