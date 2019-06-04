@@ -10260,7 +10260,7 @@ var
    exprTable : TExpressionSymbolTable;
    oldStructure : TCompositeTypeSymbol;
 begin
-   exprTable:=TExpressionSymbolTable.Create(ownerSymbol.Members);
+   exprTable:=TExpressionSymbolTable.Create(ownerSymbol.Members, ownerSymbol.Members.AddrGenerator);
    oldStructure:=FCurrentStructure;
    try
       FCurrentStructure:=ownerSymbol;
@@ -10276,7 +10276,7 @@ begin
       if exprTable.Count>0 then
          exprTable.TransferSymbolsTo(CurrentProg.Table);
    finally
-      FCurrentStructure:=oldStructure;
+      FCurrentStructure := oldStructure;
       OrphanObject(exprTable);
    end;
 end;
@@ -11386,9 +11386,11 @@ begin
       ttRECORD :
          Result:=ReadAnonymousRecord;
       ttCLASS : begin
+         if FCompilerContext.Table.AddrGenerator = nil then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_AnonymousClassNotAllowedHere);
          if not (coAllowClosures in Options) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_AnonymousClassNotAllowed);
-         Result:=ReadAnonymousClass;
+         Result := ReadAnonymousClass;
       end;
    else
       if (FTok.TestAny([ttINHERITED, ttNEW])<>ttNone) or FTok.TestName then begin

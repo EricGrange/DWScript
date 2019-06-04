@@ -1355,7 +1355,7 @@ type
          FFirstField : TFieldSymbol;
 
       protected
-         function CreateMembersTable : TMembersSymbolTable; virtual;
+         function CreateMembersTable(addrGenerator : TAddrGenerator) : TMembersSymbolTable; virtual;
 
          function GetIsStatic : Boolean; virtual;
          function GetIsExternal : Boolean; virtual;
@@ -2579,9 +2579,9 @@ end;
 constructor TCompositeTypeSymbol.Create(const name : String; aUnit : TSymbol);
 begin
    inherited Create(name, nil);
-   FUnitSymbol:=aUnit;
-   FMembers:=CreateMembersTable;
-   FFirstField:=cFirstFieldUnprepared;
+   FUnitSymbol := aUnit;
+   FMembers := CreateMembersTable(nil);
+   FFirstField := cFirstFieldUnprepared;
 end;
 
 // Destroy
@@ -2672,9 +2672,9 @@ end;
 
 // CreateMembersTable
 //
-function TCompositeTypeSymbol.CreateMembersTable : TMembersSymbolTable;
+function TCompositeTypeSymbol.CreateMembersTable(addrGenerator : TAddrGenerator) : TMembersSymbolTable;
 begin
-   Result:=TMembersSymbolTable.Create(nil);
+   Result := TMembersSymbolTable.Create(nil, addrGenerator);
    Result.Owner:=Self;
 end;
 
