@@ -864,7 +864,7 @@ const
    cInlineStaticArrayLimit = 20;
 
 const
-   cJSReservedWords : array [1..203] of String = (
+   cJSReservedWords : array [1..204] of String = (
       // Main JS keywords
       // from https://developer.mozilla.org/en/JavaScript/Reference/Reserved_Words
       'break', 'case', 'catch', 'continue', 'debugger', 'default', 'delete',
@@ -917,7 +917,7 @@ const
       'onsubmit', 'onunload',
 
       // supplemental names
-      'JSON'
+      'CSS', 'JSON'
 
    );
 

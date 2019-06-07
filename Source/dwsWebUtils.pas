@@ -48,6 +48,8 @@ type
          class function HTMLAttributeEncode(const s : UnicodeString) : UnicodeString; static;
          class function HTMLAttributeDecode(const s : UnicodeString) : UnicodeString; static;
 
+         class function CSSTextEncode(const s : UnicodeString) : UnicodeString; static;
+
          class function XMLTextEncode(const s : UnicodeString) : UnicodeString; static;
          class function XMLTextDecode(const s : UnicodeString) : UnicodeString; static;
    end;
@@ -998,6 +1000,33 @@ end;
 class function WebUtils.HTMLAttributeDecode(const s : UnicodeString) : UnicodeString;
 begin
    Result:=WebUtils.HTMLTextDecode(s);
+end;
+
+// CSSTextEncode
+//
+class function WebUtils.CSSTextEncode(const s : UnicodeString) : UnicodeString;
+var
+   pSrc, pDest : PWideChar;
+begin
+   if s = '' then Exit;
+   SetLength(Result, Length(s)*2); // worst case all characters escaped
+   pSrc  := Pointer(s);
+   pDest := Pointer(Result);
+   repeat
+      case pSrc^ of
+         #0 : break;
+         'A'..'Z', 'a'..'z', '0'..'9', #256..#$FFFF : begin
+            pDest^ := pSrc^;
+            Inc(pDest);
+         end;
+      else
+         pDest[0] := '\';
+         pDest[1] := pSrc^;
+         Inc(pDest, 2);
+      end;
+      Inc(pSrc);
+   until False;
+   SetLength(Result, (NativeUInt(pDest)-NativeUInt(Pointer(Result))) div SizeOf(Char));
 end;
 
 // XMLTextEncode

@@ -169,7 +169,7 @@ uses dwsJSON;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..290] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..291] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -1100,6 +1100,8 @@ const
        Code : 'function StrSplit(s,d) { return s.split(d) }'),
       (Name : 'StrToBool';
        Code : 'function StrToBool(s) { return (/^(t|y|1|true|yes)$/i).test(s) }'),
+      (Name : 'StrToCSSText';
+       Code : 'function StrToCSSText(s) { return CSS.escape(s) }'),
       (Name : 'StrToDate';
        Code : 'function StrToDate(s,u) { return strToDateTimeDef($fmt.ShortDateFormat, s, 0, u) }';
        Dependency : '!strToDateTimeDef_js'; Dependency2 : 'FormatDateTime'),
@@ -1463,6 +1465,7 @@ begin
    FMagicCodeGens.AddObject('StrMatches', TJSStrMatchesFuncExpr.Create);
    FMagicCodeGens.AddObject('StrReplace', TJSStrReplaceFuncExpr.Create);
    FMagicCodeGens.AddObject('StrSplit', TJSGenericSimpleMethodExpr.Create('.split(', ')'));
+   FMagicCodeGens.AddObject('StrToCSSText', TdwsExprGenericCodeGen.Create(['CSS.text', '(', 0, ')']));
    FMagicCodeGens.AddObject('StrToFloat', TdwsExprGenericCodeGen.Create(['parseFloat', '(', 0, ')']));
    FMagicCodeGens.AddObject('StrToInt', TdwsExprGenericCodeGen.Create(['parseInt', '(', 0, ',', '10)']));
    FMagicCodeGens.AddObject('StrToJSON', TdwsExprGenericCodeGen.Create(['JSON.stringify', '(', 0, ')']));
