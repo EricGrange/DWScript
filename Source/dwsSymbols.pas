@@ -391,6 +391,8 @@ type
          function GetCount : Integer; inline;
 
          procedure SortSymbols(minIndex, maxIndex : Integer);
+
+      strict private
          function FindLocalSorted(const name : String) : TSymbol;
          function FindLocalUnSorted(const name : String) : TSymbol;
 
@@ -6396,12 +6398,14 @@ var
    i : Integer;
    ptrList : PObjectTightList;
 begin
-   ptrList:=FSymbols.List;
-   for i:=FSymbols.Count-1 downto 0 do begin
-      if UnicodeCompareText(TSymbol(ptrList[i]).Name, Name)=0 then
-         Exit(TSymbol(ptrList[i]));
+   if FSymbols.Count > 0 then begin
+      ptrList := FSymbols.List;
+      for i := FSymbols.Count-1 downto 0 do begin
+         if UnicodeCompareText(TSymbol(ptrList[i]).Name, Name)=0 then
+            Exit(TSymbol(ptrList[i]));
+      end;
    end;
-   Result:=nil;
+   Result := nil;
 end;
 
 // FindSymbol
@@ -6954,10 +6958,25 @@ end;
 // FindLocal
 //
 function TUnSortedSymbolTable.FindLocal(const aName : String; ofClass : TSymbolClass = nil) : TSymbol;
+var
+   n : Integer;
+   ptrList : PPointer;
 begin
-   Result:=FindLocalUnSorted(aName);
-   if (Result<>nil) and (ofClass<>nil) and (not (Result is ofClass)) then
-      Result:=nil;
+   n := FSymbols.Count;
+   if n > 0 then begin
+      ptrList := PPointer(FSymbols.List);
+      repeat
+         Result := TSymbol(ptrList^);
+         if UnicodeCompareText(Result.Name, aName) = 0 then begin
+            if (ofClass<>nil) and (not (Result is ofClass)) then
+               Result := nil;
+            Exit;
+         end;
+         Inc(ptrList);
+         Dec(n);
+      until n <= 0;
+   end;
+   Result := nil;
 end;
 
 // IndexOf
