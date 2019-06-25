@@ -22,7 +22,8 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   Dialogs, ComCtrls, ImgList, ToolWin, StdCtrls, TypInfo,
   dwsExprs, dwsScriptSource, dwsSymbolDictionary, dwsSymbols, dwsUtils,
-  dwsJSON, dwsErrors, System.ImageList;
+  dwsJSON, dwsErrors, System.ImageList, Vcl.VirtualImageList,
+  Vcl.BaseImageCollection, Vcl.ImageCollection;
 
 type
    TIconIndex = (
@@ -38,6 +39,8 @@ type
     ToolBar: TToolBar;
     CBSort: TComboBox;
     EDFilter: TEdit;
+    ImageCollection: TImageCollection;
+    VirtualImageList: TVirtualImageList;
     procedure FormCreate(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure TreeViewExpanding(Sender: TObject; Node: TTreeNode;
@@ -53,6 +56,7 @@ type
     procedure CBSortChange(Sender: TObject);
     procedure TreeViewMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
+    procedure FormResize(Sender: TObject);
 
    private
       { Private declarations }
@@ -160,6 +164,16 @@ procedure TdwsOverviewDialog.FormKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
    if Key = 27 then Close;
+end;
+
+procedure TdwsOverviewDialog.FormResize(Sender: TObject);
+begin
+   ToolBar.BorderWidth := 2 * CurrentPPI div 96;
+   CBSort.Left := ClientWidth - CBSort.Width - 2*ToolBar.BorderWidth;
+   EDFilter.Left := CBSort.Left - EDFilter.Width - 4*ToolBar.BorderWidth;
+//   EDFilter.ScaleForPPI(CurrentPPI);
+   CBSort.ScaleForPPI(CurrentPPI);
+   Constraints.MinWidth := 4*CBSort.Width;
 end;
 
 // Execute
@@ -296,16 +310,18 @@ begin
       if Node.ImageIndex >= 0 then begin
          symbol := TSymbolPositionList(Node.Data).Symbol;
          txt := symbol.Description;
-         p := Pos( LowerCase(symbol.Name), LowerCase(txt) );
-         if p > 0 then begin
-            txt := Trim(Copy(txt, 1, p-1)) + ' ' + Trim(Copy(txt, p + Length(symbol.Name)));
-            txt := Trim(StrBeforeChar(txt, #13));
-         end else txt := '';
+         p := Pos( ' '+LowerCase(symbol.Name), LowerCase(txt) );
+         if p > 0 then
+            txt := Trim(Copy(txt, 1, p-1)) + ' ' + Trim(Copy(txt, p + 1 + Length(symbol.Name)))
+         else if StrBeginsWith(LowerCase(txt), LowerCase(symbol.Name)) then
+            txt := Trim(Copy(txt, Length(symbol.Name)+1))
+         else txt := '';
+         txt := Trim(StrBeforeChar(txt, #13));
       end else begin
          txt := 'Line ' + IntToStr(Integer(Node.Data));
       end;
       if txt <> '' then begin
-         TreeView.Canvas.Font.Size := 8;
+         TreeView.Canvas.Font.Size := 8 * CurrentPPI div TreeView.Canvas.Font.PixelsPerInch;
          TreeView.Canvas.Font.Name := 'Segoe UI';
          TreeView.Canvas.Font.Color := $AAAAAA;
          TreeView.Canvas.TextRect(r, txt, [tfLeft, tfSingleLine, tfVerticalCenter, tfEndEllipsis]);
