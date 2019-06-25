@@ -171,9 +171,9 @@ begin
    ToolBar.BorderWidth := 2 * CurrentPPI div 96;
    CBSort.Left := ClientWidth - CBSort.Width - 2*ToolBar.BorderWidth;
    EDFilter.Left := CBSort.Left - EDFilter.Width - 4*ToolBar.BorderWidth;
-//   EDFilter.ScaleForPPI(CurrentPPI);
    CBSort.ScaleForPPI(CurrentPPI);
-   Constraints.MinWidth := 4*CBSort.Width;
+   if Width < 4*CBSort.Width then
+      Width := 4*CBSort.Width;
 end;
 
 // Execute
