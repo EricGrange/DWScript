@@ -358,8 +358,11 @@ end;
 // GetName
 //
 function TdwsUIBDataField.GetName : String;
+var
+   fields : TSQLResult;
 begin
-   Result:=TdwsUIBDataSet(DataSet).FQuery.Fields.SqlName[Index];
+   fields := TdwsUIBDataSet(DataSet).FQuery.Fields;
+   Result := fields.AliasName[Index];
 end;
 
 // GetDataType
