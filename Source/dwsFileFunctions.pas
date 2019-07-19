@@ -539,8 +539,8 @@ var
    h : THandle;
 begin
    h := GetFileHandle(args, 0);
-   p := FileSeek(h, 0, soFromCurrent);
-   Result := FileSeek(h, 0, soFromEnd);
+   p := FileSeek(h, Int64(0), soFromCurrent);
+   Result := FileSeek(h, Int64(0), soFromEnd);
    FileSeek(h, p, soFromBeginning);
 end;
 
