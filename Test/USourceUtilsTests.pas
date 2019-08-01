@@ -892,7 +892,7 @@ var
    sugg : IdwsSuggestions;
    scriptPos : TScriptPos;
 begin
-   prog:=FCompiler.Compile( 'type TTest = class fi : Integer; fs : String;'#13#10
+   prog:=FCompiler.Compile( 'type TTest = class private fb : Boolean; protected fi : Integer; fs : String; public'#13#10
                            +'class const fc = 123;'#13#10
                            +'property F : Integer read '#13#10
                            +'f');
@@ -900,11 +900,12 @@ begin
    scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 4, 2);
 
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
-   Check(sugg.Count > 3);
-   CheckEquals('fc', sugg.Code[0]);
-   CheckEquals('fi', sugg.Code[1]);
-   CheckEquals('fs', sugg.Code[2]);
-   CheckEquals('Factorial', sugg.Code[3]);
+   Check(sugg.Count > 4);
+   CheckEquals('fb', sugg.Code[0]);
+   CheckEquals('fc', sugg.Code[1]);
+   CheckEquals('fi', sugg.Code[2]);
+   CheckEquals('fs', sugg.Code[3]);
+   CheckEquals('Factorial', sugg.Code[4]);
 end;
 
 // RecordConstSuggest
