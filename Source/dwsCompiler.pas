@@ -6182,7 +6182,7 @@ var
    arraySymbol : TArraySymbol;
    enumSymbol : TTypeSymbol;
    inPos : TScriptPos;
-   inExprAssignExpr : TAssignExpr;
+   inExprAssignExpr : TProgramExpr;
    readArrayItemExpr : TProgramExpr;
    inExprVarExpr : TVarExpr;
    blockExpr : TBlockExpr;
@@ -6250,9 +6250,13 @@ begin
 
          end else if inExpr.Typ is TSetOfSymbol then begin
 
+            Result := ReadForInSetOf(forPos, inExpr as TDataExpr, loopVarExpr, loopVarName, loopVarNamePos);
             if inExprAssignExpr <> nil then
-               inExprAssignExpr.Orphan(FCompilerContext);
-            Result:=ReadForInSetOf(forPos, inExpr as TDataExpr, loopVarExpr, loopVarName, loopVarNamePos);
+               blockExpr := TBlockExpr.Create(FCompilerContext, forPos);
+               blockExpr.AddStatement(inExprAssignExpr);
+               blockExpr.AddStatement(Result);
+               Result := blockExpr;
+            end;
             Exit;
 
          end else begin
