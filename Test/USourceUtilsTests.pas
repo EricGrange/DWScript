@@ -63,6 +63,7 @@ type
          procedure OverloadSuggest;
          procedure PropertyDescription;
          procedure ImplementationSuggest;
+         procedure ParameterSuggest;
    end;
 
 // ------------------------------------------------------------------
@@ -1069,6 +1070,34 @@ begin
    CheckEquals(2, sugg.Count);
    CheckEquals('zxy : String', sugg.Caption[0]);
    CheckEquals('zzz ()', sugg.Caption[1]);
+end;
+
+// ParameterSuggest
+//
+procedure TSourceUtilsTests.ParameterSuggest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog := FCompiler.Compile(
+          'var myvariable: string;'#10
+         +#10
+         +'procedure foo(const att: Boolean);'#10
+         +'var'#10
+         +'  lcl: Boolean;'#10
+         +'begin'#10
+         +'  {here}'#10
+         +'end;'#10
+   );
+   CheckFalse(prog.Msgs.HasErrors, prog.Msgs.AsInfo);
+
+   scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 7, 3);
+   sugg := TdwsSuggestions.Create(prog, scriptPos);
+
+   CheckTrue(sugg.Count > 2);
+   CheckEquals('att : Boolean', sugg.Caption[0]);
+   CheckEquals('lcl : Boolean', sugg.Caption[1]);
 end;
 
 // SuggestInBlockWithError
