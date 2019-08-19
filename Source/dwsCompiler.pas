@@ -1167,8 +1167,9 @@ var
 begin
    CheckName(name, namePos);
 
-   cvs:=TClassVarSymbol.Create(name, typ, FVisibility);
-   cvs.AllocateStackAddr(FCompiler.CurrentProg.Table.AddrGenerator);
+   cvs := TClassVarSymbol.Create(name, typ, FVisibility);
+   cvs.Level := 0;
+   cvs.StackAddr := FCompiler.FMainProg.GetGlobalAddr(typ.Size);
    if externalName<>'' then
       cvs.ExternalName:=externalName;
    FOwnerType.AddClassVar(cvs);
@@ -11397,8 +11398,6 @@ begin
       ttRECORD :
          Result:=ReadAnonymousRecord;
       ttCLASS : begin
-         if FCompilerContext.Table.AddrGenerator = nil then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_AnonymousClassNotAllowedHere);
          if not (coAllowClosures in Options) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_AnonymousClassNotAllowed);
          Result := ReadAnonymousClass;

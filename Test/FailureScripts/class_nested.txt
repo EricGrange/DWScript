@@ -1,1 +1,3 @@
-Syntax Error: Anonymous classes not allowed here [line: 4, column: 10]
+Syntax Error: Anonymous class not allowed by compiler options [line: 4, column: 10]
+Syntax Error: Constant expression expected [line: 7, column: 6]
+Syntax Error: Name expected [line: 7, column: 6]

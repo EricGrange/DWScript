@@ -259,7 +259,6 @@ const
   CPE_AnonymousMethodsNotAllowedHere = 'Anonymous methods not allowed here';
   CPE_AnonymousClassesMustBeFullyDefined = 'Anonymous classes must be fully defined';
   CPE_AnonymousClassNotAllowed = 'Anonymous class not allowed by compiler options';
-  CPE_AnonymousClassNotAllowedHere = 'Anonymous classes not allowed here';
 
   CPE_AttributeConstructorExpected = 'Attribute constructor expected';
   CPE_DanglingAttribute = 'Dangling attribute declaration';

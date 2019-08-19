@@ -495,7 +495,6 @@ type
          FDefaultUserObject : TObject;
 
          FStackParameters : TStackParameters;
-         FGlobalAddrGenerator : TAddrGeneratorRec;
 
          FResultType : TdwsResultType;
          FRuntimeFileSystem : TdwsCustomFileSystem;
@@ -1970,7 +1969,7 @@ begin
       FProgramInfo.Execution := Self;
 
       // allocate global stack space
-      Stack.Push(FProg.FGlobalAddrGenerator.DataSize+FProg.DataSize);
+      Stack.Push(FProg.DataSize);
       Stack.PushBp(0, Stack.BasePointer);
 
       // Initialize Result
@@ -2086,7 +2085,7 @@ begin
    if aTimeoutMilliSeconds > 0 then
       TdwsGuardianThread.GuardExecution(Self, aTimeoutMilliSeconds);
 
-   stackBaseReqSize:=FProg.FGlobalAddrGenerator.DataSize+FProg.DataSize;
+   stackBaseReqSize := FProg.DataSize;
    if Stack.StackPointer<stackBaseReqSize then
       Stack.FixBaseStack(stackBaseReqSize);
 
@@ -2732,7 +2731,7 @@ end;
 
 function TdwsProgram.GetGlobalAddr(DataSize: Integer): Integer;
 begin
-  Result := FRoot.FGlobalAddrGenerator.GetStackAddr(DataSize);
+  Result := FRoot.FAddrGenerator.GetStackAddr(DataSize);
 end;
 
 function TdwsProgram.GetTempAddr(DataSize: Integer): Integer;
@@ -2832,8 +2831,6 @@ begin
 
    FStackParameters:=stackParameters;
    FStackParameters.MaxLevel:=1;
-
-   FGlobalAddrGenerator:=TAddrGeneratorRec.CreatePositive(0);
 
    FSourceContextMap:=TdwsSourceContextMap.Create;
 
