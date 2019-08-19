@@ -6251,7 +6251,7 @@ begin
          end else if inExpr.Typ is TSetOfSymbol then begin
 
             Result := ReadForInSetOf(forPos, inExpr as TDataExpr, loopVarExpr, loopVarName, loopVarNamePos);
-            if inExprAssignExpr <> nil then
+            if inExprAssignExpr <> nil then begin
                blockExpr := TBlockExpr.Create(FCompilerContext, forPos);
                blockExpr.AddStatement(inExprAssignExpr);
                blockExpr.AddStatement(Result);
