@@ -1263,6 +1263,7 @@ procedure THttpApi2Server.SetAuthentication(schemeFlags : Cardinal);
 var
    authInfo : HTTP_SERVER_AUTHENTICATION_INFO;
 begin
+   FAuthentication := schemeFlags;
    FillChar(authInfo, SizeOf(authInfo), 0);
    authInfo.Flags:=1;
    authInfo.AuthSchemes:=schemeFlags;

@@ -46,8 +46,16 @@ implementation
 
 procedure TdwsWebServerLib.dwsWebServerClassesWebServerMethodsAuthenticationsEval(
   Info: TProgramInfo; ExtObject: TObject);
+var
+   auth : TWebRequestAuthentications;
 begin
-   Info.ResultAsInteger:=0;
+   auth := FServer.Authentications;
+   Info.ResultAsInteger :=    (Ord(wraBasic in auth) shl Ord(wraBasic))
+                           or (Ord(wraDigest in auth) shl Ord(wraDigest))
+                           or (Ord(wraNTLM in auth) shl Ord(wraNTLM))
+                           or (Ord(wraNegotiate in auth) shl Ord(wraNegotiate))
+                           or (Ord(wraKerberos in auth) shl Ord(wraKerberos))
+                           or (Ord(wraAuthorization in auth) shl Ord(wraAuthorization));
 end;
 
 procedure TdwsWebServerLib.dwsWebServerClassesWebServerMethodsCompilationInfoJSONEval(
