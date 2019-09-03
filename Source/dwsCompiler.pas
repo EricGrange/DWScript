@@ -6192,7 +6192,7 @@ begin
 
    inPos:=FTok.HotPos;
 
-   inExpr:=ReadName(False, FCompilerContext.TypAnyType);
+   inExpr := ReadExpr(FCompilerContext.TypAnyType);
 
    readArrayItemExpr := nil;
    inExprAssignExpr := nil;
