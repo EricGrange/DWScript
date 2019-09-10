@@ -42,7 +42,6 @@ procedure SQLiteFunc_BitFinal(context: TSQLite3FunctionContext); cdecl;
 // Hamming Distance
 procedure SQLiteFunc_HammingDistance(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
 
-
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -51,7 +50,14 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsUtils;
+{$ifdef DELPHI_XE2_PLUS}
+   {$if Defined(WIN32_ASM) or Defined(WIN64_ASM)}
+      {$define TEST_POPCNT}
+   {$ifend}
+{$endif}
+
+uses dwsUtils
+   {$ifdef TEST_POPCNT}, System.Math{$endif};
 
 type
    TNullableBoolean = (nbNull = 0, nbTrue, nbFalse);
@@ -238,9 +244,9 @@ end;
 // Hamming distance ---------------------------------------------------
 //
 
-// BitCount32
+// PopCntPascal
 //
-function BitCount32(v : Integer): Integer; inline;
+function PopCntPascal(v : Integer): Integer;
 begin
    v      := (v and $55555555) + ((v shr  1) and $55555555);
    v      := (v and $33333333) + ((v shr  2) and $33333333);
@@ -249,27 +255,32 @@ begin
    Result := (v and $0000ffff) + ((v shr 16) and $0000ffff);
 end;
 
-// PopCnt
+// PopCntAsm
 //
-(*
-function PopCnt(v : NativeInt): Cardinal;
+{$ifdef TEST_POPCNT}
+function PopCntAsm(v : Integer): Integer;
 asm
-   {$IFNDEF CPUX64}
    POPCNT    eax, v
-   {$ELSE CPUX64}
-   POPCNT    rax, v
-   {$ENDIF CPUX64}
-end; *)
+end;
+{$endif}
 
 // HammingDistance
 //
 function HammingDistance(p1, p2 : PByte; n : Integer) : Integer;
 var
    v : Integer;
+   fnPopCnt : function (v : Integer) : Integer;
 begin
+   {$ifdef TEST_POPCNT}
+   if (System.TestSSE or sePOPCNT) <> 0 then
+      fnPopCnt := PopCntAsm
+   else fnPopCnt := PopCntPascal;
+   {$else}
+   fnPopCnt := PopCntPascal;
+   {$endif}
    Result := 0;
    while n >= 4 do begin
-      Inc(Result, BitCount32(PInteger(p1)^ xor PInteger(p2)^));
+      Inc(Result, fnPopCnt(PInteger(p1)^ xor PInteger(p2)^));
       Inc(p1, 4);
       Inc(p2, 4);
       Dec(n, 4);
@@ -282,7 +293,7 @@ begin
    else
       Exit
    end;
-   Inc(Result, BitCount32(v));
+   Inc(Result, fnPopCnt(v));
 end;
 
 // SQLiteFunc_HammingDistance
