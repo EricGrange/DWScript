@@ -1459,6 +1459,13 @@ type
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
 
+   // left ?? right (booleans)
+   TCoalesceBooleanExpr = class(TBooleanBinOpExpr)
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+         function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
+   end;
+
    // left ?? right (class)
    TCoalesceClassExpr = class(TBinaryOpExpr)
       public
@@ -6505,6 +6512,39 @@ begin
       end else begin
          Result := Left;
          FLeft := nil;
+      end;
+      Orphan(context);
+      Exit;
+   end else Result := inherited Optimize(context);
+end;
+
+// ------------------
+// ------------------ TCoalesceBooleanExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TCoalesceBooleanExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+begin
+   Result := Left.EvalAsBoolean(exec);
+   if not Result then
+      Result := Right.EvalAsBoolean(exec);
+end;
+
+// Optimize
+//
+function TCoalesceBooleanExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
+var
+   b : Boolean;
+begin
+   if Left.IsConstant then begin
+      b := Left.EvalAsBoolean(context.Execution);
+      if b then begin
+         Result := Left;
+         FLeft := nil;
+      end else begin
+         Result := Right;
+         FRight := nil;
       end;
       Orphan(context);
       Exit;

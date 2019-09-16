@@ -10868,6 +10868,8 @@ begin
                      Result:=TCoalesceIntExpr.Create(FCompilerContext, hotPos, tt, Result, right);
                   end else if Result.Typ.IsOfType(FCompilerContext.TypFloat) then begin
                      Result:=TCoalesceFloatExpr.Create(FCompilerContext, hotPos, tt, Result, right);
+                  end else if Result.Typ.IsOfType(FCompilerContext.TypBoolean) then begin
+                     Result:=TCoalesceBooleanExpr.Create(FCompilerContext, hotPos, tt, Result, right);
                   end else begin
                      FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                      // fake result to keep compiler going and report further issues

@@ -1,0 +1,12 @@
+-- with b False
+False
+True
+MyBool called with True
+True
+MyBool called with False
+False
+-- with b True
+True
+True
+True
+True
