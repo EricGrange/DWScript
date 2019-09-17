@@ -19,8 +19,8 @@ unit dwsCompilerContext;
 interface
 
 uses
-   dwsUtils, dwsSymbols, dwsErrors, dwsScriptSource,
-   dwsUnitSymbols, dwsStrings, dwsTokenizer;
+   dwsUtils, dwsSymbols, dwsErrors, dwsScriptSource, dwsXPlatform,
+   dwsUnitSymbols, dwsStrings, dwsTokenizer, dwsCustomData;
 
 type
    TCompilerOption = (
@@ -57,6 +57,9 @@ type
          FExecution : TdwsExecution;
          FOptions : TCompilerOptions;
 
+         FCustomStates : TdwsCustomStates;
+         FCustomStatesMRSW : TMultiReadSingleWrite;
+
       protected
          procedure SetSystemTable(const val : TSystemSymbolTable);
 
@@ -91,6 +94,10 @@ type
 
          property TypDefaultConstructor : TMethodSymbol read FTypDefaultConstructor;
          property TypDefaultDestructor : TMethodSymbol read FTypDefaultDestructor;
+
+         procedure CustomStateGet(const index : TGUID; var result : Variant);
+         procedure CustomStateSet(const index : TGUID; const value : Variant);
+         procedure CustomStateCompareExchange(const index : TGUID; const exchange, comparand : Variant; var result : Variant);
    end;
 
 // ------------------------------------------------------------------
@@ -101,7 +108,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsExprs, dwsUnifiedConstants, dwsConstExprs, dwsOperators, dwsCompilerUtils;
+uses Variants,
+   dwsExprs, dwsUnifiedConstants, dwsConstExprs, dwsOperators, dwsCompilerUtils;
 
 // ------------------
 // ------------------ TdwsCompilerContext ------------------
@@ -115,6 +123,7 @@ begin
    FOrphanedObjects := TSimpleStack<TRefCountedObject>.Create;
    FStringsUnifier := TStringUnifier.Create;
    FHelperMemberNames := TSimpleStringHash.Create;
+   FCustomStatesMRSW := TMultiReadSingleWrite.Create;
 end;
 
 // Destroy
@@ -134,6 +143,9 @@ begin
    FStringsUnifier.Free;
 
    FHelperMemberNames.Free;
+
+   FCustomStatesMRSW.Free;
+   FCustomStates.Free;
 
    inherited;
 end;
@@ -278,6 +290,53 @@ begin
 
    FTypDefaultConstructor := TypTObject.Members.FindSymbol(SYS_TOBJECT_CREATE, cvPublic) as TMethodSymbol;
    FTypDefaultDestructor := TypTObject.Members.FindSymbol(SYS_TOBJECT_DESTROY, cvPublic) as TMethodSymbol;
+end;
+
+// CustomStateGet
+//
+procedure TdwsCompilerContext.CustomStateGet(const index : TGUID; var result : Variant;
+begin
+   if FCustomStates = nil then
+      VarClearSafe(Result)
+   else begin
+      FCustomStatesMRSW.BeginRead;
+      try
+         VarCopySafe(Result, FCustomStates.States[index]);
+      finally
+         FCustomStatesMRSW.EndRead;
+      end;
+   end;
+end;
+
+// CustomStateSet
+//
+procedure TdwsCompilerContext.CustomStateSet(const index : TGUID; const value : Variant);
+begin
+   FCustomStatesMRSW.BeginWrite;
+   try
+      if FCustomStates = nil then
+         FCustomStates := TdwsCustomStates.Create;
+      FCustomStates.States[index] := value;
+   finally
+      FCustomStatesMRSW.EndWrite;
+   end;
+end;
+
+// CustomStateCompareExchange
+//
+procedure TdwsCompilerContext.CustomStateCompareExchange(
+   const index : TGUID; const exchange, comparand : Variant; var result : Variant);
+begin
+   FCustomStatesMRSW.BeginWrite;
+   try
+      if FCustomStates = nil then
+         FCustomStates := TdwsCustomStates.Create;
+      VarCopySafe(Result, FCustomStates[index]);
+      if VarCompareSafe(Result, comparand) = vrEqual then
+         FCustomStates[index] := exchange;
+   finally
+      FCustomStatesMRSW.EndWrite;
+   end;
 end;
 
 end.
