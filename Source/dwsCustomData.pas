@@ -41,11 +41,13 @@ type
 
          function AddClonedState(const item : TdwsCustomState) : TSimpleHashAction;
 
-         function GetState(const index : TGUID) : Variant;
+         function GetState(const index : TGUID) : Variant; inline;
          procedure SetState(const index : TGUID; const v : Variant);
 
       public
          property States[const index : TGUID] : Variant read GetState write SetState; default;
+
+         procedure VariantState(const index : TGUID; var result : Variant);
 
          function IntegerStateDef(const index : TGUID; const default : Integer) : Integer;
          function StringStateDef(const index : TGUID; const default : String) : String;
@@ -108,13 +110,8 @@ end;
 // GetState
 //
 function TdwsCustomStates.GetState(const index : TGUID) : Variant;
-var
-   s : TdwsCustomState;
 begin
-   s.Key:=index;
-   if Match(s) then
-      VarCopySafe(Result, s.Value)
-   else VarClearSafe(Result);
+   VariantState(index, Result);
 end;
 
 // SetState
@@ -126,6 +123,18 @@ begin
    s.Key:=index;
    s.Value:=v;
    Replace(s);
+end;
+
+// VariantState
+//
+procedure TdwsCustomStates.VariantState(const index : TGUID; var result : Variant);
+var
+   s : TdwsCustomState;
+begin
+   s.Key := index;
+   if Match(s) then
+      VarCopySafe(result, s.Value)
+   else VarClearSafe(result);
 end;
 
 // IntegerStateDef
