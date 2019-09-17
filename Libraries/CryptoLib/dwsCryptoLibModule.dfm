@@ -654,6 +654,11 @@ object dwsCryptoLib: TdwsCryptoLib
           end>
         ResultType = 'String'
         OnFastEval = dwsCryptoFunctionsCryptographicTokenFastEval
+      end
+      item
+        Name = 'CompilationUniqueRandom'
+        ResultType = 'String'
+        OnFastEval = dwsCryptoFunctionsCompilationUniqueRandomFastEval
       end>
     UnitName = 'System.Crypto'
     StaticSymbols = True
