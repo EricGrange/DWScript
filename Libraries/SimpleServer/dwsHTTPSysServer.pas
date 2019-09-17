@@ -217,7 +217,6 @@ type
          FMaxBandwidth : Cardinal;
          FMaxConnections : Cardinal;
          FAuthentication : Cardinal;
-         FMimeInfos : TMIMETypeCache;
 
          FServerEvents : IdwsHTTPServerEvents;
 
@@ -595,7 +594,6 @@ begin
 
    end;
 
-   FMimeInfos.Free;
    FWebRequest.Free;
    FWebResponse.Free;
 
@@ -639,7 +637,7 @@ begin
       contentType := Copy(FWebResponse.ContentData, p+1);
    end else begin
       fileName := UTF8ToUnicodeString(FWebResponse.ContentData);
-      contentType := FMimeInfos.MIMEType(fileName);
+      contentType := MIMETypeCache.MIMEType(fileName);
    end;
    fileHandle := FileOpen(fileName, fmOpenRead or fmShareDenyNone);
    if PtrInt(fileHandle)<0 then begin
@@ -1021,9 +1019,8 @@ begin
    inherited Execute;
    CoInitialize(nil);
 
-   FWebRequest:=THttpSysWebRequest.Create;
-   FWebResponse:=THttpSysWebResponse.Create;
-   FMimeInfos:=TMIMETypeCache.Create;
+   FWebRequest := THttpSysWebRequest.Create;
+   FWebResponse := THttpSysWebResponse.Create;
 
    // reserve working buffers
    SetLength(headers, 64);
@@ -1072,8 +1069,8 @@ begin
             end;
 
             // prepare WebRequest
-            FWebRequest.InContent:=inContent;
-            FWebRequest.InContentType:=inContentType;
+            FWebRequest.InContent := inContent;
+            FWebRequest.InContentType := inContentType;
 
             // cleanup response
             FillChar(response^, SizeOf(response^), 0);

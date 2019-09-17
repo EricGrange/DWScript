@@ -423,12 +423,12 @@ begin
       exec.BeginProgram;
 
       // insert into executing queue
-      executing.Prev:=nil;
+      executing.Prev := nil;
       FExecutingScriptsLock.BeginWrite;
-      executing.Next:=FExecutingScripts;
-      if FExecutingScripts<>nil then
-         FExecutingScripts.Prev:=@executing;
-      FExecutingScripts:=@executing;
+      executing.Next := FExecutingScripts;
+      if FExecutingScripts <> nil then
+         FExecutingScripts.Prev := @executing;
+      FExecutingScripts := @executing;
       FExecutingScriptsLock.EndWrite;
 
       if optWorker in options then
@@ -437,16 +437,16 @@ begin
 
       // extract from executing queue
       FExecutingScriptsLock.BeginWrite;
-      if executing.Prev<>nil then
-         executing.Prev.Next:=executing.Next
-      else FExecutingScripts:=executing.Next;
-      if executing.Next<>nil then
-         executing.Next.Prev:=executing.Prev;
+      if executing.Prev <> nil then
+         executing.Prev.Next := executing.Next
+      else FExecutingScripts := executing.Next;
+      if executing.Next <> nil then
+         executing.Next.Prev := executing.Prev;
       FExecutingScriptsLock.EndWrite;
 
       exec.EndProgram;
    finally
-      exec.Environment:=nil;
+      exec.Environment := nil;
    end;
 
    if exec.Msgs.Count>0 then begin

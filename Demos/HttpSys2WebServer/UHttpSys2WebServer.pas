@@ -273,9 +273,9 @@ var
 begin
    n:=Length(FDWSExtensions);
    SetLength(FDWSExtensions, n+list.ElementCount);
-   for i:=0 to list.ElementCount-1 do begin
-      FDWSExtensions[n+i].Str:=list.Elements[i].AsString;
-      FDWSExtensions[n+i].Typ:=typ;
+   for i := 0 to list.ElementCount-1 do begin
+      FDWSExtensions[n+i].Str := list.Elements[i].AsString;
+      FDWSExtensions[n+i].Typ := typ;
    end;
 end;
 
@@ -475,9 +475,10 @@ begin
    fileInfo := infoCache.FileAccessInfo(request.PathInfo);
    if (fileInfo = nil) or (Int64(t) > fileInfo.NextCheck) then begin
 
-      if fileInfo = nil then
-         fileInfo := infoCache.CreateFileAccessInfo(request.PathInfo)
-      else fileInfo.CookedPathName := request.PathInfo;
+      if fileInfo = nil then begin
+         fileInfo := infoCache.CreateFileAccessInfo(request.PathInfo);
+         fileInfo.DefaultMimeType := MIMETypeCache.MIMEType(fileInfo.CookedPathName);
+      end else fileInfo.CookedPathName := request.PathInfo;
       fileInfo.NextCheck := Int64(t) + cFileCacheExpiryMilliseconds * 10000;
 
       if not ExpandPathFileName(FPath, fileInfo.CookedPathName) then
@@ -537,6 +538,8 @@ begin
             FDWS.HandleP2JS(fileInfo.CookedPathName, request, response);
          {$endif}
       else
+         if fileInfo.DefaultMimeType <> '' then
+            response.ContentType := fileInfo.DefaultMimeType;
          FDWS.HandleDWS(fileInfo.CookedPathName, fileInfo.Typ, request, response, []);
       end;
    end;

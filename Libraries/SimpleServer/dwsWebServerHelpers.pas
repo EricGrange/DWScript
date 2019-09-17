@@ -58,6 +58,7 @@ type
    TFileAccessInfo = class(TRefCountedObject)
       public
          CookedPathName : String;
+         DefaultMimeType : RawByteString;
          FileAttribs : Cardinal;
          Typ : TFileAccessType;
          NextCheck : Int64;
@@ -111,6 +112,8 @@ type
 // Normalizes '/' to '\' for the pathInfo
 procedure HttpRequestUrlDecode(const s : RawByteString; var pathInfo, params : String);
 
+function MIMETypeCache : TMIMETypeCache;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -118,6 +121,16 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+const
+   cUnknownMIMEType = 'application/unknown';
+
+var
+   vMIMETypeCache : TMIMETypeCache;
+function MIMETypeCache : TMIMETypeCache;
+begin
+   Result := vMIMETypeCache;
+end;
 
 procedure HttpRequestUrlDecode(const s : RawByteString; var pathInfo, params : String);
 var
@@ -327,17 +340,17 @@ end;
 //
 function TFileAccessInfoCache.FileAccessInfo(const pathInfo : String) : TFileAccessInfo;
 begin
-   Result:=FHash.Objects[pathInfo];
+   Result := FHash.Objects[pathInfo];
 end;
 
 // CreateFileAccessInfo
 //
 function TFileAccessInfoCache.CreateFileAccessInfo(const pathInfo : String) : TFileAccessInfo;
 begin
-   if FSize=FMaxSize then
+   if FSize = FMaxSize then
       Flush;
-   Result:=TFileAccessInfo.Create;
-   Result.CookedPathName:=pathInfo;
+   Result := TFileAccessInfo.Create;
+   Result.CookedPathName := pathInfo;
    FHash.AddObject(pathInfo, Result);
    Inc(FSize);
 end;
@@ -375,8 +388,8 @@ begin
       if     reg.OpenKeyReadOnly(ext)
          and reg.ValueExists('Content Type') then
          MIMEType:=ScriptStringToRawByteString(reg.ReadString('Content Type'));
-      if MIMEType='' then
-         MIMEType:='application/unknown';
+      if MIMEType = '' then
+         MIMEType := cUnknownMIMEType;
    finally
       reg.Free;
    end;
@@ -400,6 +413,7 @@ begin
    Prime('.html', 'text/html');
    Prime('.js',  'text/javascript');
    Prime('.css', 'text/css');
+   Prime('.dws', 'text/html');
 
    Prime('.png', 'image/png');
    Prime('.jpg', 'image/jpeg');
@@ -426,24 +440,40 @@ end;
 // MIMEType
 //
 function TMIMETypeCache.MIMEType(const fileName : String) : RawByteString;
-var
-   ext : String;
-   info : TMIMETypeInfo;
-begin
-   ext:=ExtractFileExt(fileName);
 
-   FLock.BeginRead;
-   info:=FList.Objects[ext];
-   FLock.EndRead;
-
-   if info=nil then begin
-      info:=TMIMETypeInfo.CreateAuto(ext);
+   function NewFileInfo(const ext : String) : TMIMETypeInfo;
+   begin
+      Result := TMIMETypeInfo.CreateAuto(ext);
       FLock.BeginWrite;
-      FList.Objects[ext]:=info;
+      FList.Objects[ext] := Result;
       FLock.EndWrite;
    end;
 
-   Result:=info.MIMEType;
+var
+   ext : String;
+   info : TMIMETypeInfo;
+   i : Integer;
+begin
+   for i := Length(fileName) downto 1 do begin
+      case fileName[i] of
+         '.' : begin
+            ext := Copy(fileName, i);
+            break;
+         end;
+         PathDelim, DriveDelim :
+            break;
+      end;
+   end;
+   if ext = '' then Exit('');
+
+   FLock.BeginRead;
+   info := FList.Objects[ext];
+   FLock.EndRead;
+
+   if info = nil then
+      info := NewFileInfo(ext);
+
+   Result := info.MIMEType;
 end;
 
 // Prime
@@ -452,9 +482,9 @@ procedure TMIMETypeCache.Prime(const ext : String; const mimeType : RawByteStrin
 var
    info : TMIMETypeInfo;
 begin
-   info:=TMIMETypeInfo.Create;
-   info.MIMEType:=mimeType;
-   FList.Objects[ext]:=info;
+   info := TMIMETypeInfo.Create;
+   info.MIMEType := mimeType;
+   FList.Objects[ext] := info;
 end;
 
 // ------------------
@@ -499,5 +529,19 @@ begin
    end;
    Result:=-1;
 end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   vMIMETypeCache := TMIMETypeCache.Create;
+
+finalization
+
+   FreeAndNil(vMIMETypeCache);
 
 end.
