@@ -220,6 +220,7 @@ begin
       sqlite3.create_function(DB, 'BOOL_OR', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, nil, SQLiteFunc_BoolOrStep, SQLiteFunc_BoolFinal);
       sqlite3.create_function(DB, 'BIT_AND', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, nil, SQLiteFunc_BitAndStep, SQLiteFunc_BitFinal);
       sqlite3.create_function(DB, 'BIT_OR', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, nil, SQLiteFunc_BitOrStep, SQLiteFunc_BitFinal);
+      sqlite3.create_function(DB, 'BIT_POPCOUNT', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, SQLiteFunc_BitPopCount, nil, nil);
       sqlite3.create_function(DB, 'HAMMING_DISTANCE', 2, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, SQLiteFunc_HammingDistance, nil, nil);
    end;
 end;

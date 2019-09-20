@@ -39,6 +39,9 @@ procedure SQLiteFunc_BitAndStep(context : TSQLite3FunctionContext; argc : Intege
 procedure SQLiteFunc_BitOrStep(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
 procedure SQLiteFunc_BitFinal(context: TSQLite3FunctionContext); cdecl;
 
+// Bitwise Population count (for integers & blobs)
+procedure SQLiteFunc_BitPopCount(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+
 // Hamming Distance
 procedure SQLiteFunc_HammingDistance(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
 
@@ -241,46 +244,50 @@ begin
 end;
 
 //
+// Bitwise population count ---------------------------------------------------
+//
+
+// SQLiteFunc_BitPopCount
+//
+procedure SQLiteFunc_BitPopCount(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+var
+   v : Int64;
+begin
+   Assert(argc = 1);
+   case sqlite3.value_type(argv[0]) of
+      SQLITE_INTEGER : begin
+         v := sqlite3.value_int64(argv[0]);
+         sqlite3.result_int64(context, PopCount64(@v, 1));
+      end;
+      SQLITE_BLOB : begin
+         sqlite3.result_int64(context, PopCount(sqlite3.value_blob(argv[0]), sqlite3.value_bytes(argv[0])));
+      end
+   else
+      sqlite3.result_null(context);
+   end;
+end;
+
+//
 // Hamming distance ---------------------------------------------------
 //
-
-// PopCntPascal
-//
-function PopCntPascal(v : Integer): Integer;
-begin
-   v      := (v and $55555555) + ((v shr  1) and $55555555);
-   v      := (v and $33333333) + ((v shr  2) and $33333333);
-   v      := (v and $0f0f0f0f) + ((v shr  4) and $0f0f0f0f);
-   v      := (v and $00ff00ff) + ((v shr  8) and $00ff00ff);
-   Result := (v and $0000ffff) + ((v shr 16) and $0000ffff);
-end;
-
-// PopCntAsm
-//
-{$ifdef TEST_POPCNT}
-function PopCntAsm(v : Integer): Integer;
-asm
-   POPCNT    eax, v
-end;
-{$endif}
 
 // HammingDistance
 //
 function HammingDistance(p1, p2 : PByte; n : Integer) : Integer;
 var
    v : Integer;
-   fnPopCnt : function (v : Integer) : Integer;
+   x : Int64;
 begin
-   {$ifdef TEST_POPCNT}
-   if (System.TestSSE or sePOPCNT) <> 0 then
-      fnPopCnt := PopCntAsm
-   else fnPopCnt := PopCntPascal;
-   {$else}
-   fnPopCnt := PopCntPascal;
-   {$endif}
    Result := 0;
-   while n >= 4 do begin
-      Inc(Result, fnPopCnt(PInteger(p1)^ xor PInteger(p2)^));
+   while n >= 8 do begin
+      x := PInt64(p1)^ xor PInt64(p2)^;
+      Inc(Result, PopCount64(@x, 1));
+      Inc(p1, 8);
+      Inc(p2, 8);
+      Dec(n, 8);
+   end;
+   if n >= 4 then begin
+      Inc(Result, PopCount32(PInteger(p1)^ xor PInteger(p2)^));
       Inc(p1, 4);
       Inc(p2, 4);
       Dec(n, 4);
@@ -293,7 +300,7 @@ begin
    else
       Exit
    end;
-   Inc(Result, fnPopCnt(v));
+   Inc(Result, PopCount32(v));
 end;
 
 // SQLiteFunc_HammingDistance

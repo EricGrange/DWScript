@@ -1115,6 +1115,10 @@ function ApplyStringVariables(const str : TFilename; const variables : TStrings;
 
 function ScanMemory(p : Pointer; size : IntPtr; const pattern : TBytes) : Pointer;
 
+function PopCount32(v : Int32) : Integer;
+function PopCount64(p : PInt64; nbInt64s : Integer) : Integer;
+function PopCount(p : PByte; n : Integer) : Integer;
+
 type
    TTwoChars = packed array [0..1] of Char;
    PTwoChars = ^TTwoChars;
@@ -7297,6 +7301,88 @@ begin
    Result := nil;
 end;
 
+{$ifdef DELPHI_XE2_PLUS}
+   {$if Defined(WIN32_ASM) or Defined(WIN64_ASM)}
+      {$define TEST_POPCNT}
+   {$ifend}
+{$endif}
+
+// PopCount32
+//
+function PopCount32_Pascal(v : Int32) : Integer;
+begin
+   v      := (v and $55555555) + ((v shr  1) and $55555555);
+   v      := (v and $33333333) + ((v shr  2) and $33333333);
+   v      := (v and $0f0f0f0f) + ((v shr  4) and $0f0f0f0f);
+   v      := (v and $00ff00ff) + ((v shr  8) and $00ff00ff);
+   Result := (v and $0000ffff) + ((v shr 16) and $0000ffff);
+end;
+function PopCount32_asm(v : Int32) : Integer;
+asm
+   POPCNT    eax, v
+end;
+var vPopCount32 : function(v : Int32) : Integer;
+function PopCount32(v : Int32) : Integer;
+begin
+   Result := vPopCount32(v);
+end;
+
+// PopCount64a
+//
+{$ifdef WIN64_ASM}
+function PopCount64_asm(p : PInt64; nbInt64s : Integer) : Integer;
+asm
+   xor   rax, rax
+   test  rdx, rdx
+   jz    @@done
+@@loop:
+   popcnt r8, qword ptr [rcx]
+   add   rax, r8
+   add   rcx, 8
+   dec   rdx
+   jnz   @@loop
+@@done:
+end;
+{$endif}
+function PopCount64_Pascal(p : PInt64; nbInt64s : Integer) : Integer;
+begin
+   Result := 0;
+   while nbInt64s > 0 do begin
+      Inc(Result, vPopCount32(PIntegerArray(p)[0]) + vPopCount32(PIntegerArray(p)[1]));
+      Dec(nbInt64s);
+      Inc(p);
+   end;
+end;
+var vPopCount64 : function(p : PInt64; nbInt64s : Integer) : Integer;
+function PopCount64(p : PInt64; nbInt64s : Integer) : Integer;
+begin
+   Result := vPopCount64(p, nbInt64s);
+end;
+
+// PopCount
+//
+function PopCount(p : PByte; n : Integer) : Integer;
+var
+   n64 : Integer;
+begin
+   n64 := n shr 3;
+   if n64 > 0 then begin
+      Result := vPopCount64(PInt64(p), n64);
+      Inc(p, n64*SizeOf(Int64));
+      n := n and 7;
+   end else Result := 0;
+   if n >= SizeOf(Int32) then begin
+      Inc(Result, PopCount32(PInteger(p)^));
+      Inc(p, SizeOf(Int32));
+      Dec(n, SizeOf(Int32));
+   end;
+   case n of
+      1 : Inc(Result, PopCount32(p^));
+      2 : Inc(Result, PopCount32(PWord(p)^));
+      3 : Inc(Result, PopCount32((PWord(p)^ shl 16) or p[2]));
+   end;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -7309,6 +7395,17 @@ initialization
    InitializeStringsUnifier;
    TSimpleIntegerStack.vTemplate:=TSimpleIntegerStack.Create;
    TNameObjectHash.vHashSalt := Cardinal(GetSystemMilliseconds);
+
+   vPopCount32 := PopCount32_Pascal;
+   vPopCount64 := PopCount64_Pascal;
+   {$ifdef TEST_POPCNT}
+   if (System.TestSSE or sePOPCNT) <> 0 then begin
+      vPopCount32 := PopCount32_asm;
+      {$ifdef WIN64_ASM}
+      vPopCount64 := PopCount64_asm;
+      {$endif}
+   end;
+   {$endif}
 
 finalization
 

@@ -48,6 +48,7 @@ type
       property Value : pmpz_t read GetValue write SetValue;
 
       function BitLength : Integer;
+      function PopCount : Integer;
 
       function ToStringBase(base : Integer) : String;
       function ToHexString : String;
@@ -72,6 +73,7 @@ type
          destructor Destroy; override;
 
          function BitLength : Integer;
+         function PopCount : Integer;
 
          function ToStringBase(base : Integer) : String;
          function ToHexString : String;
@@ -241,6 +243,10 @@ type
 
    TBigIntegerClearBitFunc = class(TInternalMagicProcedure)
       procedure DoEvalProc(const args : TExprBaseListExec); override;
+   end;
+
+   TBigIntegerPopCountFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
    TBigIntegerAbsExpr = class(TBigIntegerUnaryOpExpr)
@@ -562,6 +568,15 @@ begin
    if Value.mp_size = 0 then
       Result := 0
    else Result := mpz_sizeinbase(Value, 2);
+end;
+
+// PopCount
+//
+function TBigIntegerWrapper.PopCount : Integer;
+begin
+   if Value.mp_size = 0 then
+      Result := 0
+   else Result := mpz_popcount(Value);
 end;
 
 // ToStringBase
@@ -1413,6 +1428,15 @@ begin
 end;
 
 // ------------------
+// ------------------ TBigIntegerPopCountFunc ------------------
+// ------------------
+
+function TBigIntegerPopCountFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+begin
+   Result := ArgBigInteger(args, 0).PopCount;
+end;
+
+// ------------------
 // ------------------ TBigIntegerModPowFunc ------------------
 // ------------------
 
@@ -1522,6 +1546,7 @@ initialization
    RegisterInternalFloatFunction(TBigIntegerToFloatFunc,    '',   ['v', SYS_BIGINTEGER], [iffStateLess], 'ToFloat');
    RegisterInternalIntFunction(TBigIntegerToIntegerFunc,    '',   ['v', SYS_BIGINTEGER], [iffStateLess], 'ToInteger');
 
+
    RegisterInternalBoolFunction(TBigIntegerOddFunc,   'Odd',      ['i', SYS_BIGINTEGER], [iffStateLess, iffOverloaded], 'IsOdd');
    RegisterInternalBoolFunction(TBigIntegerEvenFunc,  'Even',     ['i', SYS_BIGINTEGER], [iffStateLess, iffOverloaded], 'IsEven');
    RegisterInternalIntFunction(TBigIntegerSignFunc,   'Sign',     ['v', SYS_BIGINTEGER], [iffStateLess, iffOverloaded], 'Sign');
@@ -1530,6 +1555,7 @@ initialization
    RegisterInternalProcedure(TBigIntegerSetBitFunc,       '',     ['@i', SYS_BIGINTEGER, 'bit', SYS_INTEGER], 'SetBit', [iffOverloaded]);
    RegisterInternalProcedure(TBigIntegerSetBitValFunc,    '',     ['@i', SYS_BIGINTEGER, 'bit', SYS_INTEGER, 'v', SYS_BOOLEAN], 'SetBit', [iffOverloaded]);
    RegisterInternalProcedure(TBigIntegerClearBitFunc,     '',     ['@i', SYS_BIGINTEGER, 'bit', SYS_INTEGER], 'ClearBit', []);
+   RegisterInternalIntFunction(TBigIntegerPopCountFunc,   '',     ['@i', SYS_BIGINTEGER], [iffStateLess], 'PopCount');
 
    RegisterInternalFunction(TBigIntegerGcdFunc,        'Gcd',     ['a', SYS_BIGINTEGER, 'b', SYS_BIGINTEGER], SYS_BIGINTEGER, [iffStateLess, iffOverloaded]);
    RegisterInternalFunction(TBigIntegerLcmFunc,        'Lcm',     ['a', SYS_BIGINTEGER, 'b', SYS_BIGINTEGER], SYS_BIGINTEGER, [iffStateLess, iffOverloaded]);

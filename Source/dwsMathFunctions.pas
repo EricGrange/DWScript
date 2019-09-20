@@ -182,6 +182,14 @@ type
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
+   TTestBitFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
+   end;
+
+   TPopCountFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+   end;
+
    TCompareNumIntsFunc = class(TInternalMagicIntFunction)
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
@@ -650,6 +658,26 @@ begin
    Result:=Sign(args.AsInteger[0]);
 end;
 
+{ TTestBitFunc }
+
+function TTestBitFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+var
+   bit : Integer;
+begin
+   bit := args.AsInteger[1];
+   Result := (bit in [0..63]) and ((UInt64(args.AsInteger[0]) and (UInt64(1) shl bit)) <> 0);
+end;
+
+{ TPopCountFunc }
+
+function TPopCountFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+var
+   v : Int64;
+begin
+   v := args.AsInteger[0];
+   Result := PopCount64(@v, 1);
+end;
+
 { TCompareNumIntsFunc }
 
 function TCompareNumIntsFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
@@ -947,8 +975,11 @@ initialization
    RegisterInternalFloatFunction(TDegToRadFunc, 'DegToRad', ['a', SYS_FLOAT], [iffStateLess], 'DegToRad');
    RegisterInternalFloatFunction(TRadToDegFunc, 'RadToDeg', ['a', SYS_FLOAT], [iffStateLess], 'RadToDeg');
 
-   RegisterInternalIntFunction(TSignFunc, 'Sign', ['v', SYS_FLOAT], [iffStateLess, iffOverloaded], 'Sign');
+   RegisterInternalIntFunction(TSignFunc,    'Sign', ['v', SYS_FLOAT], [iffStateLess, iffOverloaded], 'Sign');
    RegisterInternalIntFunction(TSignIntFunc, 'Sign', ['v', SYS_INTEGER], [iffStateLess, iffOverloaded], 'Sign');
+
+   RegisterInternalBoolFunction(TTestBitFunc,    '', ['i', SYS_INTEGER, 'bit', SYS_INTEGER], [iffStateLess], 'TestBit');
+   RegisterInternalIntFunction(TPopCountFunc,    '', ['i', SYS_INTEGER], [iffStateLess], 'PopCount');
 
    RegisterInternalIntFunction(TCompareNumIntsFunc, 'CompareNum', ['a', SYS_INTEGER, 'b', SYS_INTEGER], [iffStateLess, iffOverloaded], 'Compare');
    RegisterInternalIntFunction(TCompareNumFloatsFunc, 'CompareNum', ['a', SYS_FLOAT, 'b', SYS_FLOAT], [iffStateLess, iffOverloaded], 'Compare');
