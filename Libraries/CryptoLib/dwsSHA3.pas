@@ -83,6 +83,7 @@ type
       procedure Burn; inline;
 
       procedure UpdateString(const s : String); inline;
+      procedure UpdateData(const d : RawByteString); inline;
       procedure UpdateInt64(const i : Int64); inline;
       procedure UpdateInteger(const i : Integer); inline;
       procedure UpdateDouble(const d : Double); inline;
@@ -544,6 +545,11 @@ end;
 procedure TSpongeState.UpdateString(const s : String);
 begin
    Update(Pointer(s), Length(s)*SizeOf(Char));
+end;
+
+procedure TSpongeState.UpdateData(const d : RawByteString);
+begin
+   Update(Pointer(d), Length(d));
 end;
 
 procedure TSpongeState.UpdateInt64(const i : Int64);
