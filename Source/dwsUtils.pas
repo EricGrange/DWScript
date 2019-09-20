@@ -950,8 +950,8 @@ function UnicodeSameText(const s1, s2 : String) : Boolean; overload;
 {$endif}
 
 function AsciiCompareLen(p1, p2 : PAnsiChar; n : Integer) : Integer; overload;
-function AsciiCompareText(p : PAnsiChar; const s : RawByteString) : Integer;
-function AsciiSameText(p : PAnsiChar; const s : RawByteString) : Boolean;
+function AsciiCompareText(p : PAnsiChar; const s : RawByteString) : Integer; deprecated;
+function AsciiSameText(p : PAnsiChar; const s : RawByteString) : Boolean; deprecated;
 
 function PosA(const sub, main : RawByteString) : Integer; inline;
 
