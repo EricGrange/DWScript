@@ -24,7 +24,7 @@ unit dwsSymbols;
 interface
 
 uses SysUtils, Classes, System.Math, TypInfo,
-   dwsStrings, dwsErrors, dwsUtils, dwsDateTime, dwsScriptSource,
+   dwsStrings, dwsErrors, dwsUtils, dwsDateTime, dwsScriptSource, dwsSpecialKeywords,
    dwsTokenizer, dwsStack, dwsXPlatform, dwsDataContext, dwsArrayMethodKinds
    {$ifdef FPC},LazUTF8{$endif};
 
@@ -60,6 +60,7 @@ type
    EScriptErrorClass = class of EScriptError;
    TFuncSymbol = class;
    TdwsBaseSymbolsContext = class;
+   TPseudoMethodSymbol = class;
 
    TdwsExprLocation = record
       Expr : TExprBase;
@@ -1104,10 +1105,22 @@ type
    end;
 
    TBaseStringSymbol = class (TBaseSymbol)
+      private
+         FLengthPseudoSymbol : TPseudoMethodSymbol;
+         FHighPseudoSymbol : TPseudoMethodSymbol;
+         FLowPseudoSymbol : TPseudoMethodSymbol;
+
+         function InitPseudoSymbol(var p : TPseudoMethodSymbol; sk : TSpecialKeywordKind; baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol;
+
       public
          constructor Create;
+         destructor Destroy; override;
 
          procedure InitData(const data : TData; offset : Integer); override;
+
+         function LengthPseudoSymbol(baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol; inline;
+         function HighPseudoSymbol(baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol; inline;
+         function LowPseudoSymbol(baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol; inline;
    end;
 
    TBaseBooleanSymbol = class (TBaseSymbol)
@@ -1130,12 +1143,12 @@ type
 
    TPseudoMethodSymbol = class sealed (TFuncSymbol)
       private
-         FOwnerTyp : TTypeWithPseudoMethodsSymbol;
+         FOwnerTyp : TTypeSymbol;
 
       public
-         constructor Create(owner : TTypeWithPseudoMethodsSymbol; const name : String; funcKind : TFuncKind; funcLevel : SmallInt);
+         constructor Create(owner : TTypeSymbol; const name : String; funcKind : TFuncKind; funcLevel : SmallInt);
 
-         property OwnerTyp : TTypeWithPseudoMethodsSymbol read FOwnerTyp write FOwnerTyp;
+         property OwnerTyp : TTypeSymbol read FOwnerTyp write FOwnerTyp;
    end;
 
    TTypeWithPseudoMethodsSymbol = class abstract (TTypeSymbol)
@@ -5730,11 +5743,59 @@ begin
    inherited Create(SYS_STRING);
 end;
 
+// Destroy
+//
+destructor TBaseStringSymbol.Destroy;
+begin
+   inherited;
+   FLengthPseudoSymbol.Free;
+   FHighPseudoSymbol.Free;
+   FLowPseudoSymbol.Free;
+end;
+
 // InitData
 //
 procedure TBaseStringSymbol.InitData(const data : TData; offset : Integer);
 begin
    VarSetDefaultString(data[offset]);
+end;
+
+// InitPseudoSymbol
+//
+function TBaseStringSymbol.InitPseudoSymbol(var p : TPseudoMethodSymbol; sk : TSpecialKeywordKind; baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol;
+
+   function DoInit(var p : TPseudoMethodSymbol; sk : TSpecialKeywordKind; baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol;
+   begin
+      p := TPseudoMethodSymbol.Create(Self, cSpecialKeywords[sk], fkFunction, 0);
+      p.Typ := baseSymbols.TypInteger;
+      Result := p;
+   end;
+
+begin
+   Result := p;
+   if Result = nil then
+      Result := DoInit(p, sk, baseSymbols);
+end;
+
+// LengthPseudoSymbol
+//
+function TBaseStringSymbol.LengthPseudoSymbol(baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol;
+begin
+   Result := InitPseudoSymbol(FLengthPseudoSymbol, skLength, baseSymbols);
+end;
+
+// HighPseudoSymbol
+//
+function TBaseStringSymbol.HighPseudoSymbol(baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol;
+begin
+   Result := InitPseudoSymbol(FHighPseudoSymbol, skHigh, baseSymbols);
+end;
+
+// LowPseudoSymbol
+//
+function TBaseStringSymbol.LowPseudoSymbol(baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol;
+begin
+   Result := InitPseudoSymbol(FLowPseudoSymbol, skLow, baseSymbols);
 end;
 
 // ------------------
@@ -7143,7 +7204,7 @@ end;
 
 // Create
 //
-constructor TPseudoMethodSymbol.Create(owner : TTypeWithPseudoMethodsSymbol; const name : String; funcKind : TFuncKind; funcLevel : SmallInt);
+constructor TPseudoMethodSymbol.Create(owner : TTypeSymbol; const name : String; funcKind : TFuncKind; funcLevel : SmallInt);
 begin
    inherited Create(name, funcKind, funcLevel);
    FOwnerTyp := owner;

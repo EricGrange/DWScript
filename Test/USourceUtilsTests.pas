@@ -57,10 +57,12 @@ type
          procedure NormalizeOverload;
          procedure NormalizeImplicit;
          procedure NormalizeTypes;
+         procedure NormalizeMagics;
          procedure OptimizedIfThenBlockSymbol;
          procedure MemberVisibilities;
          procedure UnitNamesSuggest;
          procedure OverloadSuggest;
+         procedure LengthDotSuggest;
          procedure PropertyDescription;
          procedure ImplementationSuggest;
          procedure ParameterSuggest;
@@ -1006,6 +1008,24 @@ begin
    CheckEquals('Toto (s: String) : String', sugg.Caption[1]);
 end;
 
+// LengthDotSuggest
+//
+procedure TSourceUtilsTests.LengthDotSuggest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog := FCompiler.Compile( 'var s : String;'#13#10
+                            + 'PrintLn(s.Length.tos');
+
+   scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 21);
+
+   sugg := TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(1, sugg.Count);
+   CheckEquals('ToString () : String', sugg.Caption[0]);
+end;
+
 // PropertyDescription
 //
 procedure TSourceUtilsTests.PropertyDescription;
@@ -1226,6 +1246,40 @@ begin
               'type TProc = procedure;'#13#10
             + 'type TFunc = function(proc : TProc): TProc;'#13#10
             + 'var f : TFunc;'#13#10,
+            lines.Text
+         );
+      finally
+         normalizer.Free;
+      end;
+   finally
+      lines.Free;
+   end;
+end;
+
+// NormalizeMagics
+//
+procedure TSourceUtilsTests.NormalizeMagics;
+var
+   prog : IdwsProgram;
+   lines : TStringList;
+   normalizer : TTestNormalizer;
+begin
+   lines := TStringList.Create;
+   try
+      lines.Text := 'var s : String; var a : array of String;'#13#10
+                  + 'PrintLn(s.length + s.high + s.low + a.length + a.high + a.low);'#13#10;
+
+      prog := FCompiler.Compile(lines.Text);
+
+      CheckEquals('', prog.Msgs.AsInfo, 'should have compiled without errors');
+
+      normalizer := TTestNormalizer.Create;
+      try
+         NormalizeSymbolsCase(lines, prog.SourceList[0].SourceFile, prog.SymbolDictionary,
+                              normalizer.Normalize);
+         CheckEquals(
+              'var s : String; var a : array of String;'#13#10
+            + 'PrintLn(s.Length + s.High + s.Low + a.Length + a.High + a.Low);'#13#10,
             lines.Text
          );
       finally

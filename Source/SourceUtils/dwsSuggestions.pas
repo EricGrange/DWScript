@@ -179,6 +179,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsSpecialKeywords;
+
 type
    THelperFilter = class (TSimpleSymbolList)
       private

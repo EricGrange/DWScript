@@ -294,7 +294,7 @@ end;
 
 // CustomStateGet
 //
-procedure TdwsCompilerContext.CustomStateGet(const index : TGUID; var result : Variant;
+procedure TdwsCompilerContext.CustomStateGet(const index : TGUID; var result : Variant);
 begin
    if FCustomStates = nil then
       VarClearSafe(Result)

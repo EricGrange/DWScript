@@ -33,7 +33,7 @@ uses
   dwsOperators, dwsPascalTokenizer, dwsSystemOperators, dwsContextMap,
   dwsUnitSymbols, dwsCompilerUtils, dwsScriptSource, dwsSymbolDictionary,
   dwsCompilerContext, dwsGenericSymbols, dwsSpecializationContext,
-  dwsGenericExprs;
+  dwsGenericExprs, dwsSpecialKeywords;
 
 const
    cDefaultCompilerOptions = [ coOptimize, coAssertions ];
@@ -176,15 +176,6 @@ type
 
    TAddArgProcedure = procedure (argExpr : TTypedExpr) of object;
    TExpectedArgFunction = function : TParamSymbol of object;
-
-   TSpecialKeywordKind = (skNone, skAbs, skAssert, skAssigned, skDefault,
-                          skHigh, skLength, skLow,
-                          skOrd, skSizeOf, skDefined, skDeclared,
-                          skInc, skDec, skSucc, skPred,
-                          skInclude, skExclude,
-                          skSwap,
-                          skConditionalDefined,
-                          skDebugBreak);
 
    TSwitchInstruction = (siNone,
                          siIncludeLong, siIncludeShort, siIncludeOnce,
@@ -407,7 +398,6 @@ type
                                           indexSym : TSymbol = nil; typSym : TTypeSymbol = nil) : Boolean;
          procedure CheckName(const name : String; const namePos : TScriptPos);
          procedure CheckUnitName(const name : String; const namePos : TScriptPos; const locationName : String);
-         function  IdentifySpecialName(const name : String) : TSpecialKeywordKind;
          procedure CheckSpecialName(const name : String);
          procedure CheckSpecialNameCase(const name : String; sk : TSpecialKeywordKind;
                                         const namePos : TScriptPos);
@@ -874,13 +864,6 @@ type
          property OnRootExternalClass : TCompilerOnRootExternalClassEvent read FOnRootExternalClass write FOnRootExternalClass;
          property OnApplyConditionalDefines : TCompilerApplyConditionalDefines read FOnApplyConditionalDefines write FOnApplyConditionalDefines;
    end;
-
-const
-   cSpecialKeywords : array [TSpecialKeywordKind] of String = (
-      '', 'Abs', 'Assert', 'Assigned', 'Default', 'High', 'Length', 'Low',
-      'Ord', 'SizeOf', 'Defined', 'Declared', 'Inc', 'Dec', 'Succ', 'Pred',
-      'Include', 'Exclude', 'Swap', 'ConditionalDefined', 'DebugBreak'
-   );
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -4727,7 +4710,7 @@ begin
    namePos := FTok.HotPos;
 
    // Test for special functions
-   sk:=IdentifySpecialName(nameToken.AsString);
+   sk := IdentifySpecialKeyword(nameToken.AsString);
    if sk<>skNone then begin
       if ReadSpecialName(nameToken.AsString, namePos, sk, Result) then Exit;
       nameToken := FTok.GetToken;
@@ -8195,22 +8178,27 @@ begin
       if FTok.TestDelete(ttBLEFT) and not FTok.TestDelete(ttBRIGHT) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoParamsExpected);
 
-      sk:=IdentifySpecialName(name);
+      sk := IdentifySpecialKeyword(name);
 
-      if sk in [skLength, skHigh] then
-
-         Result:=TStringLengthExpr.Create(FCompilerContext, namePos, baseExpr)
-
-      else begin
-
-         if sk=skLow then begin
+      case sk of
+         skLength, skHigh : begin
+            if coSymbolDictionary in FCompilerContext.Options then begin
+               if sk = skLength then
+                  RecordSymbolUseReference(FCompilerContext.TypString.LengthPseudoSymbol(FCompilerContext), namePos, False)
+               else RecordSymbolUseReference(FCompilerContext.TypString.HighPseudoSymbol(FCompilerContext), namePos, False)
+            end;
+            Result := TStringLengthExpr.Create(FCompilerContext, namePos, baseExpr)
+         end;
+         skLow : begin
+            if coSymbolDictionary in FCompilerContext.Options then begin
+               RecordSymbolUseReference(FCompilerContext.TypString.LowPseudoSymbol(FCompilerContext), namePos, False)
+            end;
             OrphanAndNil(baseExpr);
             Result := FUnifiedConstants.CreateInteger(1);
-         end else begin
-            Result:=nil;
-            ReportNoMemberForType(name, namePos, baseExpr);
          end;
-
+      else
+         Result := nil;
+         ReportNoMemberForType(name, namePos, baseExpr);
       end;
 
       if not (coHintsDisabled in FOptions) then
@@ -12432,61 +12420,11 @@ begin
    end;
 end;
 
-// IdentifySpecialName
-//
-function TdwsCompiler.IdentifySpecialName(const name : String) : TSpecialKeywordKind;
-var
-   n : Integer;
-begin
-   n:=Length(name);
-   case n of
-      3 : case name[1] of
-         'a', 'A' : if ASCIISameText(name, cSpecialKeywords[skAbs]) then Exit(skAbs);
-         'd', 'D' : if ASCIISameText(name, cSpecialKeywords[skDec]) then Exit(skDec);
-         'i', 'I' : if ASCIISameText(name, cSpecialKeywords[skInc]) then Exit(skInc);
-         'l', 'L' : if ASCIISameText(name, cSpecialKeywords[skLow]) then Exit(skLow);
-         'o', 'O' : if ASCIISameText(name, cSpecialKeywords[skOrd]) then Exit(skOrd);
-      end;
-      4 : case name[1] of
-         'h', 'H' : if ASCIISameText(name, cSpecialKeywords[skHigh]) then Exit(skHigh);
-         'p', 'P' : if ASCIISameText(name, cSpecialKeywords[skPred]) then Exit(skPred);
-         's', 'S' : case name[2] of
-            'u', 'U' : if ASCIISameText(name, cSpecialKeywords[skSucc]) then Exit(skSucc);
-            'w', 'W' : if ASCIISameText(name, cSpecialKeywords[skSwap]) then Exit(skSwap);
-         end;
-      end;
-      6 : case name[1] of
-         'a', 'A' : if ASCIISameText(name, cSpecialKeywords[skAssert]) then Exit(skAssert);
-         'l', 'L' : if ASCIISameText(name, cSpecialKeywords[skLength]) then Exit(skLength);
-         's', 'S' : if ASCIISameText(name, cSpecialKeywords[skSizeOf]) then Exit(skSizeOf);
-      end;
-      7 : case name[1] of
-         'd', 'D' :
-            if ASCIISameText(name, cSpecialKeywords[skDefined]) then  Exit(skDefined)
-            else if ASCIISameText(name, cSpecialKeywords[skDefault]) then  Exit(skDefault)
-            ;
-         'i', 'I' : if ASCIISameText(name, cSpecialKeywords[skInclude]) then Exit(skInclude);
-         'e', 'E' : if ASCIISameText(name, cSpecialKeywords[skExclude]) then Exit(skExclude);
-      end;
-      8 : case name[1] of
-         'a', 'A' : if ASCIISameText(name, cSpecialKeywords[skAssigned]) then Exit(skAssigned);
-         'd', 'D' : if ASCIISameText(name, cSpecialKeywords[skDeclared]) then Exit(skDeclared);
-      end;
-      10 : case name[1] of
-         'd', 'D' : if ASCIISameText(name, cSpecialKeywords[skDebugBreak]) then Exit(skDebugBreak);
-      end;
-      18 : case name[1] of
-         'c', 'C' : if ASCIISameText(name, cSpecialKeywords[skConditionalDefined]) then Exit(skConditionalDefined);
-      end;
-   end;
-   Result:=skNone;
-end;
-
 // CheckSpecialName
 //
 procedure TdwsCompiler.CheckSpecialName(const name : String);
 begin
-   case IdentifySpecialName(name) of
+   case IdentifySpecialKeyword(name) of
       skNone, skDefault : ;
    else
       FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameIsReserved, [Name]);
