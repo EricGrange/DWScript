@@ -61,32 +61,12 @@ uses
   UdwsEncodingTests in 'UdwsEncodingTests.pas',
   UInstantiateTests in 'UInstantiateTests.pas',
   UdwsWebUtilsTests in 'UdwsWebUtilsTests.pas',
-  dwsJSONPath in '..\Source\dwsJSONPath.pas',
-  dwsDateTime in '..\Source\dwsDateTime.pas',
-  dwsGlobalVars in '..\Source\dwsGlobalVars.pas',
   UBigIntegerTests in 'UBigIntegerTests.pas',
   dwsMPIR.Bundle in '..\Libraries\BigIntegersLib\dwsMPIR.Bundle.pas',
-  dwsEncoding in '..\Source\dwsEncoding.pas',
-  dwsInfo in '..\Source\dwsInfo.pas',
-  dwsEvaluate in '..\Source\dwsEvaluate.pas',
-  dwsFilter in '..\Source\dwsFilter.pas',
-  dwsScriptSource in '..\Source\dwsScriptSource.pas',
-  dwsSymbolDictionary in '..\Source\dwsSymbolDictionary.pas',
-  dwsContextMap in '..\Source\dwsContextMap.pas',
-  dwsUnifiedConstants in '..\Source\dwsUnifiedConstants.pas',
   USymbolDictionaryTests in 'USymbolDictionaryTests.pas',
-  dwsGenericSymbols in '..\Source\dwsGenericSymbols.pas',
-  dwsSpecializationContext in '..\Source\dwsSpecializationContext.pas',
-  dwsGenericExprs in '..\Source\dwsGenericExprs.pas',
-  dwsSpecializationMap in '..\Source\dwsSpecializationMap.pas',
-  dwsUnicode in '..\Source\dwsUnicode.pas',
   UdwsSystemInfoTests in 'UdwsSystemInfoTests.pas',
-  dwsSHA512 in '..\Libraries\CryptoLib\dwsSHA512.pas',
-  dwsArrayElementContext in '..\Source\dwsArrayElementContext.pas',
-  dwsJPEGEncoderOptions in '..\Libraries\GraphicsLib\dwsJPEGEncoderOptions.pas',
   UdwsWebLibModuleTest in 'UdwsWebLibModuleTest.pas',
-  BeaEngineDelphi in '..\Tools\BeaEngine\BeaEngineDelphi.pas',
-  dwsArrayMethodKinds in '..\Source\dwsArrayMethodKinds.pas';
+  BeaEngineDelphi in '..\Tools\BeaEngine\BeaEngineDelphi.pas';
 
 {$R *.res}
 
