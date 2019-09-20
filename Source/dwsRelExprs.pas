@@ -536,6 +536,10 @@ end;
 //
 function TRelEqualVariantStrictExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 
+   {$ifndef DELPHI_TOKYO_PLUS}
+   const varUInt32 = varLongWord;
+   {$endif}
+
    function NormalizedVarType(const v : Variant) : TVarType;
    begin
       Result := VarType(v);

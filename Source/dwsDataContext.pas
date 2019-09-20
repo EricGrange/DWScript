@@ -159,6 +159,7 @@ type
 
          procedure CopyData(const destData : TData; destAddr, size : Integer); overload; inline;
          procedure CopyData(addr : Integer; const destData : TData; destAddr, size : Integer); overload; inline;
+         procedure CopyData(addr : Integer; const destPVariant : PVariant; size : Integer); overload; inline;
 
          procedure WriteData(const src : IDataContext; size : Integer); overload; inline;
          procedure WriteData(const src : IDataContext; srcAddr, size : Integer); overload; inline;
@@ -817,6 +818,13 @@ end;
 procedure TDataContext.CopyData(addr : Integer; const destData : TData; destAddr, size : Integer);
 begin
    DWSCopyData(FData, FAddr+addr, destData, destAddr, size);
+end;
+
+// CopyData
+//
+procedure TDataContext.CopyData(addr : Integer; const destPVariant : PVariant; size : Integer);
+begin
+   DWSCopyPVariants(@FData[FAddr+addr], destPVariant, size);
 end;
 
 // WriteData
