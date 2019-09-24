@@ -180,6 +180,8 @@ type
 
       procedure LogError(const msg : String);
 
+      procedure SetCompileFileSystem(const sys : TdwsCustomFileSystem);
+
       property ScriptTimeoutMilliseconds : Integer read FScriptTimeoutMilliseconds write FScriptTimeoutMilliseconds;
       property WorkerTimeoutMilliseconds : Integer read FWorkerTimeoutMilliseconds write FWorkerTimeoutMilliseconds;
 
@@ -511,7 +513,7 @@ begin
       FCodeGenLock.Enter;
       try
          if prog = nil then begin
-            code := dwsCompileSystem.AllocateFileSystem.LoadTextFile(fileName);
+            code := FJSCompiler.Config.CompileFileSystem.AllocateFileSystem.LoadTextFile(fileName);
             FHotPath := ExtractFilePath(fileName);
             js := FJSFilter.CompileToJS(prog, code, '', True);
          end else begin
@@ -820,6 +822,19 @@ begin
    buf := FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', Now)
          +' '+msg+#13#10;
    AppendTextToUTF8File(ErrorLogDirectory+'error.log', UTF8Encode(buf));
+end;
+
+// SetCompileFileSystem
+//
+procedure TSimpleDWScript.SetCompileFileSystem(const sys : TdwsCustomFileSystem);
+begin
+   if sys = nil then begin
+      DelphiWebScript.Config.CompileFileSystem := dwsCompileSystem;
+      FJSCompiler.Config.CompileFileSystem := dwsCompileSystem;
+   end else begin
+      DelphiWebScript.Config.CompileFileSystem := sys;
+      FJSCompiler.Config.CompileFileSystem := sys;
+   end;
 end;
 
 // LogCompileErrors
