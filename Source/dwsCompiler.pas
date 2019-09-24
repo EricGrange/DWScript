@@ -7602,7 +7602,7 @@ begin
             // add outer arrays
             for x:=1 to min.Count - 1 do begin
                CurrentProg.RootTable.AddToDestructionList(Result);
-               Result := TStaticArraySymbol.Create('', Result, min[0].Typ,
+               Result := TStaticArraySymbol.Create('', Result, min[x].Typ,
                               min[x].EvalAsInteger(FExec),
                               max[x].EvalAsInteger(FExec));
             end;
