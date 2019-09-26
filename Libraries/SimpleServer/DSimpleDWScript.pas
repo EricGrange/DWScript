@@ -90,6 +90,7 @@ type
       FCPUAffinity : Cardinal;
 
       FPathVariables : TStrings;
+      FActiveCompileSystem : TdwsCustomFileSystem;
 
       FSystemInfo : TdwsSystemInfoLibModule;
       FHotPath : String;
@@ -151,6 +152,9 @@ type
 
       procedure CheckDirectoryChanges;
 
+      function GetCodeGenOptions : TdwsCodeGenOptions;
+      procedure SetCodeGenOptions(const val : TdwsCodeGenOptions);
+
    public
       procedure Initialize(const serverInfo : IWebServerInfo);
       procedure Finalize;
@@ -181,6 +185,7 @@ type
       procedure LogError(const msg : String);
 
       procedure SetCompileFileSystem(const sys : TdwsCustomFileSystem);
+      property CodeGenOptions : TdwsCodeGenOptions read GetCodeGenOptions write SetCodeGenOptions;
 
       property ScriptTimeoutMilliseconds : Integer read FScriptTimeoutMilliseconds write FScriptTimeoutMilliseconds;
       property WorkerTimeoutMilliseconds : Integer read FWorkerTimeoutMilliseconds write FWorkerTimeoutMilliseconds;
@@ -332,6 +337,7 @@ begin
    ];
 
    dwsCompileSystem.OnFileStreamOpened := DoSourceFileStreamOpened;
+   FActiveCompileSystem := dwsCompileSystem;
 end;
 
 procedure TSimpleDWScript.DataModuleDestroy(Sender: TObject);
@@ -559,7 +565,7 @@ var
    prog : IdwsProgram;
    fileName : String;
 begin
-   fileName := dwsCompileSystem.AllocateFileSystem.ValidateFileName(sourceName);
+   fileName := FActiveCompileSystem.AllocateFileSystem.ValidateFileName(sourceName);
    if (fileName = '') and Assigned(FBackgroundFileSystem) then
       fileName := FBackgroundFileSystem.ValidateFileName(sourceName);
    if fileName = '' then
@@ -581,7 +587,7 @@ var
    wr : TdwsJSONWriter;
    execStats : TdwsProgramExecStats;
 begin
-   fileName := dwsCompileSystem.AllocateFileSystem.ValidateFileName(sourceName);
+   fileName := FActiveCompileSystem.AllocateFileSystem.ValidateFileName(sourceName);
    if (fileName = '') and Assigned(FBackgroundFileSystem) then
       fileName := FBackgroundFileSystem.ValidateFileName(sourceName);
    if fileName = '' then
@@ -765,7 +771,7 @@ begin
       LogCompilation('Compiling "%s"', [fileName]);
       FCompilerFiles := TAutoStrings.Create;
 
-      code := dwsCompileSystem.AllocateFileSystem.LoadTextFile(fileName);
+      code := FActiveCompileSystem.AllocateFileSystem.LoadTextFile(fileName);
 
       // check after compiler lock in case of simultaneous requests
       TryAcquireDWS(fileName, prog);
@@ -828,13 +834,11 @@ end;
 //
 procedure TSimpleDWScript.SetCompileFileSystem(const sys : TdwsCustomFileSystem);
 begin
-   if sys = nil then begin
-      DelphiWebScript.Config.CompileFileSystem := dwsCompileSystem;
-      FJSCompiler.Config.CompileFileSystem := dwsCompileSystem;
-   end else begin
-      DelphiWebScript.Config.CompileFileSystem := sys;
-      FJSCompiler.Config.CompileFileSystem := sys;
-   end;
+   if sys = nil then
+      FActiveCompileSystem := dwsCompileSystem
+   else FActiveCompileSystem := sys;
+   DelphiWebScript.Config.CompileFileSystem := FActiveCompileSystem;
+   FJSCompiler.Config.CompileFileSystem := FActiveCompileSystem;
 end;
 
 // LogCompileErrors
@@ -886,7 +890,7 @@ begin
    else if FHotPath <> '' then
       pathName := FHotPath + scriptName;
    if pathName <> '' then
-      scriptSource := dwsCompileSystem.AllocateFileSystem.LoadTextFile(pathName);
+      scriptSource := FActiveCompileSystem.AllocateFileSystem.LoadTextFile(pathName);
 end;
 
 // DoNeedUnit
@@ -1089,6 +1093,20 @@ begin
       files.Free;
    end;
    FCheckDirectoryChanges := TTimerTimeout.Create(cCheckDirectoryChangesInterval, CheckDirectoryChanges);
+end;
+
+// GetCodeGenOptions
+//
+function TSimpleDWScript.GetCodeGenOptions : TdwsCodeGenOptions;
+begin
+   Result := FJSFilter.CodeGenOptions;
+end;
+
+// SetCodeGenOptions
+//
+procedure TSimpleDWScript.SetCodeGenOptions(const val : TdwsCodeGenOptions);
+begin
+   FJSFilter.CodeGenOptions := val;
 end;
 
 // Initialize
