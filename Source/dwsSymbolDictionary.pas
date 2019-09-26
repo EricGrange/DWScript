@@ -586,7 +586,7 @@ var
    symPosList : TSymbolPositionList;
 begin
    if sym=nil then Exit;         // don't add a nil pointer
-   if sym.IsBaseType then Exit;  // don't store references to base symbols
+   //if sym.IsBaseType then Exit;  // don't store references to base symbols
 
    // Check to see if symbol list already exists, if not create it
    symPosList := FindSymbolPosList(sym);
