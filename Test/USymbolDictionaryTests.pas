@@ -116,6 +116,9 @@ begin
       '[{"symbol":{"name":"a1","class":"TParamSymbol"},"positions":['
          +'{"usages":["suDeclaration"],"position":" [line: 1, column: 16]"},'
          +'{"usages":["suReference"],"position":" [line: 2, column: 16]"}]},'
+      +'{"symbol":{"name":"Integer","class":"TBaseIntegerSymbol"},"positions":['
+         +'{"usages":["suReference"],"position":" [line: 1, column: 21]"},'
+         +'{"usages":["suReference"],"position":" [line: 2, column: 21]"}]},'
       +'{"symbol":{"name":"Test","class":"TSourceFuncSymbol"},"positions":['
          +'{"usages":["suForward","suDeclaration"],"position":" [line: 1, column: 11]"},'
          +'{"usages":["suImplementation"],"position":" [line: 2, column: 11]"}]}]',
@@ -129,6 +132,9 @@ begin
       '[{"symbol":{"name":"a1","class":"TParamSymbol"},"positions":['
          +'{"usages":["suDeclaration"],"position":" [line: 1, column: 16]"},'
          +'{"usages":["suReference"],"position":" [line: 2, column: 16]"}]},'
+      +'{"symbol":{"name":"Integer","class":"TBaseIntegerSymbol"},"positions":['
+         +'{"usages":["suReference"],"position":" [line: 1, column: 21]"},'
+         +'{"usages":["suReference"],"position":" [line: 2, column: 21]"}]},'
       +'{"symbol":{"name":"Test","class":"TSourceFuncSymbol"},"positions":['
          +'{"usages":["suForward","suDeclaration"],"position":" [line: 1, column: 11]"},'
          +'{"usages":["suImplementation"],"position":" [line: 2, column: 11]"}]}]',
@@ -154,6 +160,11 @@ begin
       +'{"symbol":{"name":"a2","class":"TParamSymbol"},"positions":['
          +'{"usages":["suDeclaration"],"position":" [line: 2, column: 17]"},'
          +'{"usages":["suReference"],"position":" [line: 4, column: 17]"}]},'
+      +'{"symbol":{"name":"Integer","class":"TBaseIntegerSymbol"},"positions":['
+         +'{"usages":["suReference"],"position":" [line: 1, column: 22]"},'
+         +'{"usages":["suReference"],"position":" [line: 2, column: 22]"},'
+         +'{"usages":["suReference"],"position":" [line: 3, column: 22]"},'
+         +'{"usages":["suReference"],"position":" [line: 4, column: 22]"}]},'
       +'{"symbol":{"name":"Test1","class":"TSourceFuncSymbol"},"positions":['
          +'{"usages":["suForward","suDeclaration"],"position":" [line: 1, column: 11]"},'
          +'{"usages":["suImplementation"],"position":" [line: 3, column: 11]"}]},'
@@ -182,6 +193,11 @@ begin
       +'{"symbol":{"name":"a2","class":"TParamSymbol"},"positions":['
          +'{"usages":["suDeclaration"],"position":" [line: 2, column: 16]"},'
          +'{"usages":["suReference"],"position":" [line: 4, column: 16]"}]},'
+      +'{"symbol":{"name":"Integer","class":"TBaseIntegerSymbol"},"positions":['
+         +'{"usages":["suReference"],"position":" [line: 1, column: 21]"},'
+         +'{"usages":["suReference"],"position":" [line: 2, column: 21]"},'
+         +'{"usages":["suReference"],"position":" [line: 3, column: 21]"},'
+         +'{"usages":["suReference"],"position":" [line: 4, column: 21]"}]},'
       +'{"symbol":{"name":"Test","class":"TSourceFuncSymbol"},"positions":['
          +'{"usages":["suForward","suDeclaration"],"position":" [line: 1, column: 11]"},'
          +'{"usages":["suImplementation"],"position":" [line: 3, column: 11]"}]},'
@@ -215,6 +231,13 @@ begin
       +'{"symbol":{"name":"a3","class":"TParamSymbol"},"positions":['
          +'{"usages":["suDeclaration"],"position":" [line: 3, column: 17]"},'
          +'{"usages":["suReference"],"position":" [line: 6, column: 17]"}]},'
+      +'{"symbol":{"name":"Integer","class":"TBaseIntegerSymbol"},"positions":['
+         +'{"usages":["suReference"],"position":" [line: 1, column: 22]"},'
+         +'{"usages":["suReference"],"position":" [line: 2, column: 22]"},'
+         +'{"usages":["suReference"],"position":" [line: 3, column: 22]"},'
+         +'{"usages":["suReference"],"position":" [line: 4, column: 22]"},'
+         +'{"usages":["suReference"],"position":" [line: 5, column: 22]"},'
+         +'{"usages":["suReference"],"position":" [line: 6, column: 22]"}]},'
       +'{"symbol":{"name":"Test1","class":"TSourceFuncSymbol"},"positions":['
          +'{"usages":["suForward","suDeclaration"],"position":" [line: 1, column: 11]"},'
          +'{"usages":["suImplementation"],"position":" [line: 4, column: 11]"}]},'
@@ -245,12 +268,19 @@ begin
        '[{"symbol":{"name":"a1","class":"TParamSymbol"},"positions":['
          +'{"usages":["suDeclaration"],"position":" [line: 1, column: 16]"},'
          +'{"usages":["suReference"],"position":" [line: 4, column: 16]"}]},'
-      +'{"symbol":{"name":"a2","class":"TParamSymbol"},"positions":['
+       +'{"symbol":{"name":"a2","class":"TParamSymbol"},"positions":['
          +'{"usages":["suDeclaration"],"position":" [line: 2, column: 16]"},'
          +'{"usages":["suReference"],"position":" [line: 5, column: 16]"}]},'
-      +'{"symbol":{"name":"a3","class":"TParamSymbol"},"positions":['
+       +'{"symbol":{"name":"a3","class":"TParamSymbol"},"positions":['
          +'{"usages":["suDeclaration"],"position":" [line: 3, column: 16]"},'
          +'{"usages":["suReference"],"position":" [line: 6, column: 16]"}]},'
+       +'{"symbol":{"name":"Integer","class":"TBaseIntegerSymbol"},"positions":['
+         +'{"usages":["suReference"],"position":" [line: 1, column: 21]"},'
+         +'{"usages":["suReference"],"position":" [line: 2, column: 21]"},'
+         +'{"usages":["suReference"],"position":" [line: 3, column: 21]"},'
+         +'{"usages":["suReference"],"position":" [line: 4, column: 21]"},'
+         +'{"usages":["suReference"],"position":" [line: 5, column: 21]"},'
+         +'{"usages":["suReference"],"position":" [line: 6, column: 21]"}]},'
       +'{"symbol":{"name":"Test","class":"TSourceFuncSymbol"},"positions":['
          +'{"usages":["suForward","suDeclaration"],"position":" [line: 1, column: 11]"},'
          +'{"usages":["suImplementation"],"position":" [line: 4, column: 11]"}]},'
@@ -395,7 +425,7 @@ begin
 
    CheckEquals('', prog.Msgs.AsInfo, 'compile A');
    prog.SymbolDictionary.Pack;
-   CheckEquals(6, prog.SymbolDictionary.Count, 'nb symbols A');
+   CheckEquals(9, prog.SymbolDictionary.Count, 'nb symbols A');
    for symPosList in prog.SymbolDictionary do
       CheckEquals(2, symPosList.Count,
                    'A declared + reference for '+symPosList.Symbol.Name);
@@ -411,10 +441,10 @@ begin
 
    CheckEquals('', prog.Msgs.AsInfo, 'compile B');
    prog.SymbolDictionary.Pack;
-   CheckEquals(6, prog.SymbolDictionary.Count, 'nb symbols B');
+   CheckEquals(8, prog.SymbolDictionary.Count, 'nb symbols B');
    for symPosList in prog.SymbolDictionary do
       CheckEquals(2, symPosList.Count,
-                   'B declared + reference for '+symPosList.Symbol.Name);
+                  'B declared + reference for '+symPosList.Symbol.Name);
 end;
 
 // OverloadMethodDictionary
@@ -437,7 +467,7 @@ begin
 
    CheckEquals('', prog.Msgs.AsInfo, 'compile A');
    prog.SymbolDictionary.Pack;
-   CheckEquals(7, prog.SymbolDictionary.Count, 'nb symbols A');
+   CheckEquals(10, prog.SymbolDictionary.Count, 'nb symbols A');
    for symPosList in prog.SymbolDictionary do begin
       if symPosList.Symbol.Name='TTest' then
          CheckEquals(4, symPosList.Count, 'TTest A')
@@ -458,7 +488,7 @@ begin
 
    CheckEquals('', prog.Msgs.AsInfo, 'compile B');
    prog.SymbolDictionary.Pack;
-   CheckEquals(7, prog.SymbolDictionary.Count, 'nb symbols B');
+   CheckEquals(9, prog.SymbolDictionary.Count, 'nb symbols B');
    for symPosList in prog.SymbolDictionary do begin
       if symPosList.Symbol.Name='TTest' then
          CheckEquals(3, symPosList.Count, 'TTest B')

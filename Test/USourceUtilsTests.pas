@@ -58,6 +58,7 @@ type
          procedure NormalizeImplicit;
          procedure NormalizeTypes;
          procedure NormalizeMagics;
+         procedure NormalizeForVarIn;
          procedure OptimizedIfThenBlockSymbol;
          procedure MemberVisibilities;
          procedure UnitNamesSuggest;
@@ -1163,10 +1164,10 @@ begin
    try
       lines.Text:= 'unit Unit1;'#13#10
                   +'interface'#13#10
-                  +'procedure Test(const A, Blah: string; const C: string); overload;'#13#10
+                  +'procedure Test(const A, Blah: String; const C: string); overload;'#13#10
                   +'procedure Test; overload;'#13#10
                   +'implementation'#13#10
-                  +'procedure test(const A, Blah: string; const C: string);'#13#10
+                  +'procedure test(const A, Blah: string; const C: String);'#13#10
                   +'begin end;'#13#10
                   +'procedure test;'#13#10
                   +'begin end;';
@@ -1179,7 +1180,7 @@ begin
       try
          NormalizeSymbolsCase(lines, prog.SourceList[0].SourceFile, prog.SymbolDictionary,
                               normalizer.Normalize);
-         CheckEquals('6, 11, Test'#13#10'8, 11, Test'#13#10, normalizer.Text);
+         CheckEquals('3, 48, String'#13#10'6, 11, Test'#13#10'6, 31, String'#13#10'8, 11, Test'#13#10, normalizer.Text);
       finally
          normalizer.Free;
       end;
@@ -1290,15 +1291,54 @@ begin
    end;
 end;
 
+// NormalizeForVarIn
+//
+procedure TSourceUtilsTests.NormalizeForVarIn;
+var
+   prog : IdwsProgram;
+   lines : TStringList;
+   normalizer : TTestNormalizer;
+begin
+   lines := TStringList.Create;
+   try
+      lines.Text := 'var i : integer; type TEnum = (One, Two); var a := [1, 2];'#13#10
+                  + 'for var e in tenum do PrintLn(integer(E));'#13#10
+                  + 'for var j in A do PrintLn(A[J]);'#13#10
+                  + 'for I in A do PrintLn(A[I].tostring);'#13#10;
+
+      prog := FCompiler.Compile(lines.Text);
+
+      CheckEquals('', prog.Msgs.AsInfo, 'should have compiled without errors');
+
+      normalizer := TTestNormalizer.Create;
+      try
+         NormalizeSymbolsCase(lines, prog.SourceList[0].SourceFile, prog.SymbolDictionary,
+                              normalizer.Normalize);
+         CheckEquals(
+              'var i : Integer; type TEnum = (One, Two); var a := [1, 2];'#13#10
+            + 'for var e in TEnum do PrintLn(Integer(e));'#13#10
+            + 'for var j in a do PrintLn(a[j]);'#13#10
+            + 'for i in a do PrintLn(a[i].ToString);'#13#10,
+            lines.Text
+         );
+      finally
+         normalizer.Free;
+      end;
+   finally
+      lines.Free;
+   end;
+end;
+
 // OptimizedIfThenBlockSymbol
 //
 procedure TSourceUtilsTests.OptimizedIfThenBlockSymbol;
 
-   procedure CheckSymbols(dic : TdwsSymbolDictionary);
+   procedure CheckSymbols(const prefix : String; dic : TdwsSymbolDictionary);
    begin
-      CheckEquals(1, dic.Count, 'nb');
-      Check(dic.FindSymbolPosList('xyz') <> nil, 'exists');
-      CheckEquals(1, dic.FindSymbolPosList('xyz').Count, 'usage');
+      CheckEquals(2, dic.Count, prefix+'nb');
+      Check(dic.FindSymbolPosList('xyz') <> nil, prefix+'exists');
+      CheckEquals(1, dic.FindSymbolPosList('xyz').Count, prefix+'usage');
+      CheckEquals(1, dic.FindSymbolPosList('String').Count, prefix+'string');
    end;
 
 var
@@ -1314,7 +1354,7 @@ begin
                               +'end;');
       CheckEquals('', prog.Msgs.AsInfo, 'should have compiled without errors 1');
 
-      CheckSymbols(prog.SymbolDictionary);
+      CheckSymbols('a.', prog.SymbolDictionary);
 
       FCompiler.Config.CompilerOptions := options;
 
@@ -1323,7 +1363,7 @@ begin
                               +'end;');
       CheckEquals('', prog.Msgs.AsInfo, 'should have compiled without errors 2');
 
-      CheckSymbols(prog.SymbolDictionary);
+      CheckSymbols('b.', prog.SymbolDictionary);
    finally
       FCompiler.Config.CompilerOptions := options;
    end;

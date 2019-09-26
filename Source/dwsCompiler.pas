@@ -6165,15 +6165,15 @@ var
    forExprClass : TForExprClass;
    arraySymbol : TArraySymbol;
    enumSymbol : TTypeSymbol;
-   inPos : TScriptPos;
+   inPos, inExprPos : TScriptPos;
    inExprAssignExpr : TProgramExpr;
    readArrayItemExpr : TProgramExpr;
    inExprVarExpr : TVarExpr;
    blockExpr : TBlockExpr;
 begin
-   forExprClass:=TForUpwardExpr;
+   forExprClass := TForUpwardExpr;
 
-   inPos:=FTok.HotPos;
+   inPos := FTok.HotPos;
 
    inExpr := ReadExpr(FCompilerContext.TypAnyType);
 
@@ -6182,26 +6182,26 @@ begin
    blockExpr := nil;
    iterVarExpr := nil;
 
-   if (inExpr is TTypedExpr) and (inExpr.ClassType<>TTypeReferenceExpr) then begin
+   if (inExpr is TTypedExpr) and (inExpr.ClassType <> TTypeReferenceExpr) then begin
 
       if      inExpr.Typ.IsOfType(FCompilerContext.TypString)
-         and (   (loopVarExpr=nil)
+         and (   (loopVarExpr = nil)
               or loopVarExpr.Typ.IsOfType(FCompilerContext.TypInteger)
               or loopVarExpr.Typ.IsOfType(FCompilerContext.TypString)) then begin
 
-         Result:=ReadForInString(forPos, inExpr, loopVarExpr, loopVarName, loopVarNamePos);
+         Result := ReadForInString(forPos, inExpr, loopVarExpr, loopVarName, loopVarNamePos);
          Exit;
 
       end else if inExpr.Typ is TConnectorSymbol then begin
 
-         Result:=ReadForInConnector(forPos, inExpr as TTypedExpr, inPos, loopVarExpr, loopVarName, loopVarNamePos);
+         Result := ReadForInConnector(forPos, inExpr as TTypedExpr, inPos, loopVarExpr, loopVarName, loopVarNamePos);
          Exit;
 
       end else begin
 
          // if inExpr is an expression, create a temporary variable
          // so it is evaluated only once
-         if (inExpr.Typ<>nil) and not ((inExpr is TVarExpr) or (inExpr is TConstExpr)) then begin
+         if (inExpr.Typ <> nil) and not ((inExpr is TVarExpr) or (inExpr is TConstExpr)) then begin
             inExprVarSym := TScriptDataSymbol.Create('', inExpr.Typ);
             CurrentProg.Table.AddSymbol(inExprVarSym);
             inExprVarExpr := GetVarExpr(inPos, inExprVarSym);
@@ -6212,25 +6212,25 @@ begin
 
          if inExpr.Typ is TArraySymbol then begin
 
-            arraySymbol:=TArraySymbol(inExpr.Typ);
+            arraySymbol := TArraySymbol(inExpr.Typ);
 
             // create anonymous iter variables & its initialization expression
             iterVarSym := TScriptDataSymbol.Create('', arraySymbol.IndexType);
             CurrentProg.Table.AddSymbol(iterVarSym);
-            iterVarExpr:=GetVarExpr(inPos, iterVarSym) as TIntVarExpr;
-            initIterVarExpr:=TAssignConstToIntegerVarExpr.CreateVal(FCompilerContext, inPos, iterVarExpr, 0);
+            iterVarExpr := GetVarExpr(inPos, iterVarSym) as TIntVarExpr;
+            initIterVarExpr := TAssignConstToIntegerVarExpr.CreateVal(FCompilerContext, inPos, iterVarExpr, 0);
             CurrentProg.InitExpr.AddStatement(initIterVarExpr);
 
-            fromExpr:=CreateArrayLow(inPos, inExpr, arraySymbol, False);
-            toExpr:=CreateArrayHigh(inPos, inExpr, arraySymbol, False);
+            fromExpr := CreateArrayLow(inPos, inExpr, arraySymbol, False);
+            toExpr := CreateArrayHigh(inPos, inExpr, arraySymbol, False);
 
-            blockExpr:=EnsureLoopVarExpr(forPos, loopVarName, loopVarNamePos, loopVarExpr, arraySymbol.Typ);
+            blockExpr := EnsureLoopVarExpr(forPos, loopVarName, loopVarNamePos, loopVarExpr, arraySymbol.Typ);
 
-            iterVarExpr:=GetVarExpr(inPos, iterVarSym) as TIntVarExpr;
-            readArrayItemExpr:=CreateAssign(FTok.HotPos, ttASSIGN, loopVarExpr,
-                                            CreateArrayExpr(FTok.HotPos, (inExpr as TDataExpr), iterVarExpr));
+            iterVarExpr := GetVarExpr(inPos, iterVarSym) as TIntVarExpr;
+            readArrayItemExpr := CreateAssign(FTok.HotPos, ttASSIGN, loopVarExpr,
+                                              CreateArrayExpr(FTok.HotPos, (inExpr as TDataExpr), iterVarExpr));
 
-            iterVarExpr:=GetVarExpr(inPos, iterVarSym) as TIntVarExpr;
+            iterVarExpr := GetVarExpr(inPos, iterVarSym) as TIntVarExpr;
 
          end else if inExpr.Typ is TSetOfSymbol then begin
 
@@ -6254,8 +6254,8 @@ begin
                iterVarExpr.Orphan(FCompilerContext);
                iterVarExpr:=nil;
             end;
-            fromExpr:=nil;
-            toExpr:=nil;
+            fromExpr := nil;
+            toExpr := nil;
             OrphanAndNil(inExpr);
             FMsgs.AddCompilerStop(inPos, CPE_ArrayExpected);
 
@@ -6265,20 +6265,22 @@ begin
 
    end else begin
 
-      enumSymbol:=nil;
+      inExprPos := inExpr.ScriptPos;
+      enumSymbol := nil;
       if inExpr is TTypeReferenceExpr then begin
-         if inExpr.Typ.InheritsFrom(TEnumerationSymbol) then
-            enumSymbol:=TEnumerationSymbol(inExpr.Typ);
+         if inExpr.Typ.InheritsFrom(TEnumerationSymbol) then begin
+            enumSymbol := TEnumerationSymbol(inExpr.Typ);
+         end;
       end;
       OrphanAndNil(inExpr);
 
-      if enumSymbol=nil then begin
+      if enumSymbol = nil then begin
          FMsgs.AddCompilerError(inPos, CPE_EnumerationExpected);
-         enumSymbol:=FCompilerContext.TypInteger;
+         enumSymbol := FCompilerContext.TypInteger;
+      end else begin
+         RecordSymbolUse(enumSymbol, inExprPos, [suReference]);
       end;
-      blockExpr:=EnsureLoopVarExpr(forPos, loopVarName, loopVarNamePos, loopVarExpr, enumSymbol);
-
-      RecordSymbolUse(enumSymbol, inPos, [suReference]);
+      blockExpr := EnsureLoopVarExpr(forPos, loopVarName, loopVarNamePos, loopVarExpr, enumSymbol);
 
       if enumSymbol is TEnumerationSymbol then begin
          fromExpr := TConstIntExpr.Create(loopVarExpr.Typ, TEnumerationSymbol(enumSymbol).LowBound);
