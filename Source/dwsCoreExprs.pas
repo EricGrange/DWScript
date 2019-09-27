@@ -1747,19 +1747,6 @@ type
      procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
-   // Abs(v) (int)
-   TAbsIntExpr = class(TUnaryOpIntExpr)
-      function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
-   end;
-   // Abs(v) (float)
-   TAbsFloatExpr = class(TUnaryOpFloatExpr)
-      function  EvalAsFloat(exec : TdwsExecution) : Double; override;
-   end;
-   // Abs(v) (variant)
-   TAbsVariantExpr = class(TUnaryOpVariantExpr)
-      procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
-   end;
-
    // a += b (String var)
    TAppendStringVarExpr = class(TAssignExpr)
      procedure EvalNoResult(exec : TdwsExecution); override;
@@ -7430,40 +7417,6 @@ end;
 procedure TIncIntVarWithConstExpr.EvalNoResult(exec : TdwsExecution);
 begin
    TIntVarExpr(FLeft).IncValue(exec, TConstIntExpr(FRight).Value);
-end;
-
-// ------------------
-// ------------------ TAbsIntExpr ------------------
-// ------------------
-
-// EvalAsInteger
-//
-function TAbsIntExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
-begin
-   Result:=Abs(Expr.EvalAsInteger(exec));
-end;
-
-// ------------------
-// ------------------ TAbsFloatExpr ------------------
-// ------------------
-
-// EvalAsFloat
-//
-function TAbsFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
-begin
-   Result:=Abs(Expr.EvalAsFloat(exec));
-end;
-
-// ------------------
-// ------------------ TAbsVariantExpr ------------------
-// ------------------
-
-// EvalAsVariant
-//
-procedure TAbsVariantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
-begin
-   Expr.EvalAsVariant(exec, Result);
-   Result:=Abs(Result);
 end;
 
 // ------------------

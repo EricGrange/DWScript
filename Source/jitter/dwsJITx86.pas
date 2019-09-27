@@ -386,17 +386,11 @@ type
       function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
       function CompileFloatOperand(sqrExpr, operand : TTypedExpr) : TxmmRegister;
    end;
-   Tx86AbsFloat = class (TdwsJITter_x86)
-      function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
-   end;
    Tx86NegFloat = class (TdwsJITter_x86)
       function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
    end;
 
    Tx86NegInt = class (TdwsJITter_x86)
-      function CompileInteger(expr : TTypedExpr) : Integer; override;
-   end;
-   Tx86AbsInt = class (TdwsJITter_x86)
       function CompileInteger(expr : TTypedExpr) : Integer; override;
    end;
    Tx86NotInt = class (TdwsJITter_x86)
@@ -541,6 +535,13 @@ type
          function CompileInteger(expr : TTypedExpr) : Integer; override;
          procedure DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup); override;
          function CompileBooleanValue(expr : TTypedExpr) : Integer; override;
+   end;
+
+   Tx86AbsIntFunc = class (TdwsJITter_x86)
+      function CompileInteger(expr : TTypedExpr) : Integer; override;
+   end;
+   Tx86AbsFloatFunc = class (TdwsJITter_x86)
+      function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
    end;
 
    Tx86SqrtFunc = class (Tx86MagicFunc)
@@ -853,11 +854,9 @@ begin
    RegisterJITter(TSqrFloatExpr,                Tx86SqrFloat.Create(Self));
    RegisterJITter(TDivideExpr,                  Tx86FloatBinOp.Create(Self, xmm_divsd));
    RegisterJITter(TModFloatExpr,                Tx86ModFloat.Create(Self));
-   RegisterJITter(TAbsFloatExpr,                Tx86AbsFloat.Create(Self));
    RegisterJITter(TNegFloatExpr,                Tx86NegFloat.Create(Self));
 
    RegisterJITter(TNegIntExpr,                  Tx86NegInt.Create(Self));
-   RegisterJITter(TAbsIntExpr,                  Tx86AbsInt.Create(Self));
    RegisterJITter(TNotIntExpr,                  Tx86NotInt.Create(Self));
    RegisterJITter(TAddIntExpr,                  Tx86IntegerBinOpExpr.Create(Self, gpOp_add, gpOp_adc));
    RegisterJITter(TSubIntExpr,                  Tx86IntegerBinOpExpr.Create(Self, gpOp_sub, gpOp_sbb, False));
@@ -981,6 +980,9 @@ begin
    RegisterJITter(TMagicFloatFuncExpr,          Tx86MagicFunc.Create(Self));
    RegisterJITter(TMagicIntFuncExpr,            Tx86MagicFunc.Create(Self));
    RegisterJITter(TMagicBoolFuncExpr,           Tx86MagicFunc.Create(Self));
+
+   RegisterJITter(TAbsIntFunc,                  Tx86AbsIntFunc.Create(Self));
+   RegisterJITter(TAbsFloatFunc,                Tx86AbsFloatFunc.Create(Self));
 
    RegisterJITter(TSqrtFunc,                    Tx86SqrtFunc.Create(Self));
    RegisterJITter(TSqrFloatFunc,                Tx86SqrFloatFunc.Create(Self));
@@ -2564,27 +2566,6 @@ begin
 end;
 
 // ------------------
-// ------------------ Tx86AbsFloat ------------------
-// ------------------
-
-// DoCompileFloat
-//
-function Tx86AbsFloat.DoCompileFloat(expr : TTypedExpr) : TxmmRegister;
-var
-   e : TAbsFloatExpr;
-begin
-   e:=TAbsFloatExpr(expr);
-
-   Result:=jit.CompileFloat(e.Expr);
-
-   // andpd Result, dqword ptr [AbsMask]
-   x86.WriteBytes([$66, $0F, $54, $05+Ord(Result)*8]);
-   x86.WritePointer(jit.AbsMaskPD);
-
-   jit.ContainsXMMReg(Result, expr);
-end;
-
-// ------------------
 // ------------------ Tx86NegFloat ------------------
 // ------------------
 
@@ -3558,29 +3539,6 @@ begin
    Result:=jit.CompileInteger(TNegIntExpr(expr).Expr);
 
    x86._neg_eaxedx;
-end;
-
-// ------------------
-// ------------------ Tx86AbsInt ------------------
-// ------------------
-
-// CompileInteger
-//
-function Tx86AbsInt.CompileInteger(expr : TTypedExpr) : Integer;
-var
-   jump : TFixupJump;
-begin
-   Result:=jit.CompileInteger(TNegIntExpr(expr).Expr);
-
-   x86._test_reg_reg(gprEDX, gprEDX);
-
-   jump:=jit.Fixups.NewJump(flagsNL);
-
-   x86._neg_reg(gprEDX);
-   x86._neg_reg(gprEAX);
-   x86._sbb_reg_int32(gprEDX, 0);
-
-   jump.NewTarget(False);
 end;
 
 // ------------------
@@ -4722,6 +4680,46 @@ begin
 
    x86._op_reg_int32(gpOp_and, gprEAX, 1);
    Result:=0;
+end;
+
+// ------------------
+// ------------------ Tx86AbsIntFunc ------------------
+// ------------------
+
+// CompileInteger
+//
+function Tx86AbsIntFunc.CompileInteger(expr : TTypedExpr) : Integer;
+var
+   jump : TFixupJump;
+begin
+   Result := jit.CompileInteger(TMagicFuncExpr(expr).Args[0] as TTypedExpr);
+
+   x86._test_reg_reg(gprEDX, gprEDX);
+
+   jump:=jit.Fixups.NewJump(flagsNL);
+
+   x86._neg_reg(gprEDX);
+   x86._neg_reg(gprEAX);
+   x86._sbb_reg_int32(gprEDX, 0);
+
+   jump.NewTarget(False);
+end;
+
+// ------------------
+// ------------------ Tx86AbsFloatFunc ------------------
+// ------------------
+
+// DoCompileFloat
+//
+function Tx86AbsFloatFunc.DoCompileFloat(expr : TTypedExpr) : TxmmRegister;
+begin
+   Result:=jit.CompileFloat(TMagicFuncExpr(expr).Args[0] as TTypedExpr);
+
+   // andpd Result, dqword ptr [AbsMask]
+   x86.WriteBytes([$66, $0F, $54, $05+Ord(Result)*8]);
+   x86.WritePointer(jit.AbsMaskPD);
+
+   jit.ContainsXMMReg(Result, expr);
 end;
 
 // ------------------

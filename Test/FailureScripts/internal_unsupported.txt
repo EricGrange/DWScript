@@ -1,4 +1,4 @@
-Syntax Error: Numerical operand expected [line: 4, column: 5]
+Syntax Error: There is no overloaded version of "Abs" that can be called with these arguments [line: 4, column: 1]
 Syntax Error: Invalid argument type [line: 6, column: 8]
 Syntax Error: Invalid argument type [line: 8, column: 5]
 Syntax Error: Invalid argument type [line: 9, column: 6]

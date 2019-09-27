@@ -169,7 +169,7 @@ uses dwsJSON;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..291] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..294] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -620,6 +620,12 @@ const
 
       // RTL functions
 
+       (Name : 'Abs$_Float_';
+       Code : 'var Abs$_Float_ = Math.abs;'),
+       (Name : 'Abs$_Integer_';
+       Code : 'var Abs$_Integer_ = Math.abs;'),
+       (Name : 'Abs$_Variant_';
+       Code : 'var Abs$_Variant_ = Math.abs;'),
       (Name : 'AnsiCompareStr';
        Code : 'function AnsiCompareStr(a,b) { return a.localeCompare(b) }'),
       (Name : 'AnsiCompareText';
@@ -630,17 +636,17 @@ const
       (Name : 'AnsiUpperCase';
        Code : 'function AnsiUpperCase(v) { return v.toLocaleUpperCase() }'),
       (Name : 'ArcCos';
-       Code : 'var ArcCos = Math.acos'),
+       Code : 'var ArcCos = Math.acos;'),
       (Name : 'ArcCosh';
        Code : 'function ArcCosh(v) { return Math.log(v+Math.sqrt((v-1)/(v+1))*(v+1)) }'),
       (Name : 'ArcSin';
-       Code : 'var ArcSin = Math.asin'),
+       Code : 'var ArcSin = Math.asin;'),
       (Name : 'ArcSinh';
        Code : 'function ArcSinh(v) { return Math.log(v+Math.sqrt(v*v+1)) }'),
       (Name : 'ArcTan';
-       Code : 'var ArcTan = Math.atan'),
+       Code : 'var ArcTan = Math.atan;'),
       (Name : 'ArcTan2';
-       Code : 'var ArcTan2 = Math.atan2'),
+       Code : 'var ArcTan2 = Math.atan2;'),
       (Name : 'ArcTanh';
        Code : 'function ArcTanh(v) { return 0.5*Math.log((1+v)/(1-v)) }'),
       (Name : 'BoolToStr';
@@ -1410,6 +1416,9 @@ begin
    FMagicCodeGens.Duplicates:=dupError;
 
    FMagicCodeGens.AddObject('_', TJSGetTextFuncExpr.Create(codeGen));
+   FMagicCodeGens.AddObject('Abs$_Float_', TdwsExprGenericCodeGen.Create(['Math.abs', '(', 0, ')']));
+   FMagicCodeGens.AddObject('Abs$_Integer_', TdwsExprGenericCodeGen.Create(['Math.abs', '(', 0, ')']));
+   FMagicCodeGens.AddObject('Abs$_Variant_', TdwsExprGenericCodeGen.Create(['Math.abs', '(', 0, ')']));
    FMagicCodeGens.AddObject('AnsiLowerCase', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.toLocaleLowerCase()']));
    FMagicCodeGens.AddObject('AnsiUpperCase', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.toLocaleUpperCase()']));
    FMagicCodeGens.AddObject('ArcCos', TdwsExprGenericCodeGen.Create(['Math.acos', '(', 0, ')']));

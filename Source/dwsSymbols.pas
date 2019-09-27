@@ -603,6 +603,16 @@ type
          function SameParam(other : TParamSymbol) : Boolean; virtual;
          function GetDescriptionPrefix : String; virtual;
          function Semantics : TParamSymbolSemantics; virtual;
+         function AllowAutomaticConvCast : Boolean; virtual;
+   end;
+
+   // parameter: procedure P(x: Integer); without AutomaticConvCast
+   TParamSymbolNoConvCast = class (TParamSymbol)
+      protected
+         function GetDescription : String; override;
+
+      public
+         function AllowAutomaticConvCast : Boolean; override;
    end;
 
    THasParamSymbolMethod = function (param : TParamSymbol) : Boolean of object;
@@ -670,6 +680,7 @@ type
          function Specialize(const context : ISpecializationContext) : TSymbol; override;
          function GetDescriptionPrefix : String; override;
          function Semantics : TParamSymbolSemantics; override;
+         function AllowAutomaticConvCast : Boolean; override;
    end;
 
    TTypeSymbolClass = class of TTypeSymbol;
@@ -728,6 +739,7 @@ type
       IsVarParam : Boolean;
       IsConstParam : Boolean;
       HasDefaultValue : Boolean;
+      NoConvCast : Boolean;
       DefaultValue : TData;
    end;
    TParamArray = array of TParamRec;
@@ -851,6 +863,7 @@ type
          function  HasParam(param : TParamSymbol) : Boolean;
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
          function  GetParamType(idx : Integer) : TTypeSymbol;
+         function  ParamTypeAllowsConvCast(idx : Integer) : Boolean;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          procedure InitData(const data : TData; offset : Integer); override;
          procedure AddCondition(cond : TConditionSymbol);
@@ -3664,9 +3677,11 @@ begin
       end else begin
 
          if paramRec.IsVarParam then
-            paramSym:=TVarParamSymbol.Create(paramRec.ParamName, typSym)
+            paramSym := TVarParamSymbol.Create(paramRec.ParamName, typSym)
          else if paramRec.IsConstParam then
             paramSym := CreateConstParamSymbol(paramRec.ParamName, typSym)
+         else if paramRec.NoConvCast then
+            paramSym := TParamSymbolNoConvCast.Create(paramRec.ParamName, typSym)
          else paramSym := TParamSymbol.Create(paramRec.ParamName, typSym);
 
       end;
@@ -3690,6 +3705,15 @@ begin
    if Cardinal(idx)<Cardinal(Params.Count) then
       Result:=Params[idx].Typ
    else Result:=nil;
+end;
+
+// ParamTypeAllowsConvCast
+//
+function TFuncSymbol.ParamTypeAllowsConvCast(idx : Integer) : Boolean;
+begin
+   if Cardinal(idx) < Cardinal(Params.Count) then
+      Result := Params[idx].AllowAutomaticConvCast
+   else Result := False;
 end;
 
 // GetCaption
@@ -6054,6 +6078,13 @@ begin
    Result := pssCopy;
 end;
 
+// AllowAutomaticConvCast
+//
+function TParamSymbol.AllowAutomaticConvCast : Boolean;
+begin
+   Result := True;
+end;
+
 // Clone
 //
 function TParamSymbol.Clone : TParamSymbol;
@@ -6076,6 +6107,25 @@ begin
    if Result = '' then
       Result := inherited GetDescription
    else Result := Result + ' ' + inherited GetDescription;
+end;
+
+// ------------------
+// ------------------ TParamSymbolNoConvCast ------------------
+// ------------------
+
+// AllowAutomaticConvCast
+//
+function TParamSymbolNoConvCast.AllowAutomaticConvCast : Boolean;
+begin
+   Result := False;
+end;
+
+// GetDescription
+//
+function TParamSymbolNoConvCast.GetDescription : String;
+begin
+   Result := inherited GetDescription;
+   FastStringReplace(Result, ': ', ': type ');
 end;
 
 // ------------------
@@ -6294,6 +6344,13 @@ end;
 function TVarParamSymbol.Semantics : TParamSymbolSemantics;
 begin
    Result := pssVar;
+end;
+
+// AllowAutomaticConvCast
+//
+function TVarParamSymbol.AllowAutomaticConvCast : Boolean;
+begin
+   Result := False;
 end;
 
 // ------------------

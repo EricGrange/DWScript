@@ -225,6 +225,10 @@ type
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
+   TBigIntegerAbsFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
+   end;
+
    TBigIntegerBitLengthFunc = class(TInternalMagicIntFunction)
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
@@ -247,11 +251,6 @@ type
 
    TBigIntegerPopCountFunc = class(TInternalMagicIntFunction)
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
-   end;
-
-   TBigIntegerAbsExpr = class(TBigIntegerUnaryOpExpr)
-      public
-         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
    TBigIntegerGcdFunc = class(TInternalMagicVariantFunction)
@@ -388,15 +387,6 @@ begin
    operators.RegisterCaster(typBigInteger, systemTable.TypFloat,   TConvFloatToBigIntegerExpr);
    operators.RegisterCaster(systemTable.TypInteger, typBigInteger, TConvBigIntegerToIntegerExpr);
    operators.RegisterCaster(systemTable.TypFloat, typBigInteger,   TConvBigIntegerToFloatExpr);
-end;
-
-// HandleBigIntegerAbs
-//
-function HandleBigIntegerAbs(context : TdwsCompilerContext; const aScriptPos : TScriptPos; argExpr : TTypedExpr) : TTypedExpr;
-begin
-   if argExpr.Typ.UnAliasedTypeIs(TBaseBigIntegerSymbol) then
-      Result:=TBigIntegerAbsExpr.Create(context, aScriptPos, argExpr)
-   else Result:=nil;
 end;
 
 type
@@ -1015,17 +1005,15 @@ begin
 end;
 
 // ------------------
-// ------------------ TBigIntegerAbsExpr ------------------
+// ------------------ TBigIntegerAbsFunc ------------------
 // ------------------
 
-// EvalAsVariant
-//
-procedure TBigIntegerAbsExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+procedure TBigIntegerAbsFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    bi : TBigIntegerWrapper;
 begin
    bi := TBigIntegerWrapper.CreateZero;
-   bi.SetValue(Expr.EvalAsBigInteger(exec).Value);
+   bi.SetValue(ArgBigInteger(args, 0).Value);
    bi.Value.mp_size := Abs(bi.Value.mp_size);
    result := bi as IdwsBigInteger;
 end;
@@ -1505,8 +1493,6 @@ end;
 // ------------------ TBigJacobiFunc ------------------
 // ------------------
 
-// DoEvalAsInteger
-//
 function TBigJacobiFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result := mpz_jacobi(ArgBigInteger(args, 0).Value^, ArgBigInteger(args, 1).Value^);
@@ -1516,8 +1502,6 @@ end;
 // ------------------ TBigLegendreFunc ------------------
 // ------------------
 
-// DoEvalAsInteger
-//
 function TBigLegendreFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
    Result := mpz_legendre(ArgBigInteger(args, 0).Value^, ArgBigInteger(args, 1).Value^);
@@ -1533,7 +1517,6 @@ initialization
 
    dwsInternalUnit.AddSymbolsRegistrationProc(RegisterBigIntegerType);
    dwsInternalUnit.AddOperatorsRegistrationProc(RegisterBigIntegerOperators);
-   dwsInternalUnit.AddAbsHandler(HandleBigIntegerAbs);
 
    RegisterInternalStringFunction(TBigIntegerToStringFunc,  'BigIntegerToHex', ['v', SYS_BIGINTEGER, 'base=10', SYS_INTEGER], [iffStateLess], 'ToString');
    RegisterInternalFunction(TStringToBigIntegerFunc,        'StringToBigInteger', ['s', SYS_STRING, 'base=10', SYS_INTEGER], SYS_BIGINTEGER, [iffStateLess], 'ToBigInteger');
@@ -1550,6 +1533,8 @@ initialization
    RegisterInternalBoolFunction(TBigIntegerOddFunc,   'Odd',      ['i', SYS_BIGINTEGER], [iffStateLess, iffOverloaded], 'IsOdd');
    RegisterInternalBoolFunction(TBigIntegerEvenFunc,  'Even',     ['i', SYS_BIGINTEGER], [iffStateLess, iffOverloaded], 'IsEven');
    RegisterInternalIntFunction(TBigIntegerSignFunc,   'Sign',     ['v', SYS_BIGINTEGER], [iffStateLess, iffOverloaded], 'Sign');
+   RegisterInternalFunction(TBigIntegerAbsFunc,       'Abs',      ['v', SYS_BIGINTEGER], SYS_BIGINTEGER, [iffStateLess, iffOverloaded], 'Abs');
+
    RegisterInternalIntFunction(TBigIntegerBitLengthFunc,  '',     ['v', SYS_BIGINTEGER], [iffStateLess], 'BitLength');
    RegisterInternalBoolFunction(TBigIntegerTestBitFunc,   '',     ['i', SYS_BIGINTEGER, 'bit', SYS_INTEGER], [iffStateLess], 'TestBit');
    RegisterInternalProcedure(TBigIntegerSetBitFunc,       '',     ['@i', SYS_BIGINTEGER, 'bit', SYS_INTEGER], 'SetBit', [iffOverloaded]);

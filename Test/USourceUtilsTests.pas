@@ -474,8 +474,8 @@ end;
 //
 procedure TSourceUtilsTests.HelperSuggestTest;
 const
-   cSugg : array [0..18] of String = (
-      'Clamp', 'Compare', 'Compare', 'Factorial', 'Hello', 'IsOdd', 'IsPrime',
+   cSugg : array [0..19] of String = (
+      'Abs', 'Clamp', 'Compare', 'Compare', 'Factorial', 'Hello', 'IsOdd', 'IsPrime',
       'LeastFactor', 'Max', 'Min', 'Next', 'PopCount', 'Sign', 'Sqr', 'TestBit',
       'ToBin', 'ToHexString', 'ToString', 'Unsigned32'
       );

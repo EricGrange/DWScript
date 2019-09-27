@@ -26,7 +26,7 @@ interface
 uses SysUtils;
 
 type
-   TSpecialKeywordKind = (skNone, skAbs, skAssert, skAssigned, skDefault,
+   TSpecialKeywordKind = (skNone, skAssert, skAssigned, skDefault,
                           skHigh, skLength, skLow,
                           skOrd, skSizeOf, skDefined, skDeclared,
                           skInc, skDec, skSucc, skPred,
@@ -37,7 +37,7 @@ type
 
 const
    cSpecialKeywords : array [TSpecialKeywordKind] of String = (
-      '', 'Abs', 'Assert', 'Assigned', 'Default', 'High', 'Length', 'Low',
+      '', 'Assert', 'Assigned', 'Default', 'High', 'Length', 'Low',
       'Ord', 'SizeOf', 'Defined', 'Declared', 'Inc', 'Dec', 'Succ', 'Pred',
       'Include', 'Exclude', 'Swap', 'ConditionalDefined', 'DebugBreak'
    );
@@ -55,7 +55,6 @@ begin
    n:=Length(name);
    case n of
       3 : case name[1] of
-         'a', 'A' : if ASCIISameText(name, cSpecialKeywords[skAbs]) then Exit(skAbs);
          'd', 'D' : if ASCIISameText(name, cSpecialKeywords[skDec]) then Exit(skDec);
          'i', 'I' : if ASCIISameText(name, cSpecialKeywords[skInc]) then Exit(skInc);
          'l', 'L' : if ASCIISameText(name, cSpecialKeywords[skLow]) then Exit(skLow);

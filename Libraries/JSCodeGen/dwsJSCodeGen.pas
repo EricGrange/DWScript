@@ -1154,13 +1154,6 @@ begin
    RegisterCodeGen(TPredFuncExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '-', 1, ')']));
 
-   RegisterCodeGen(TAbsIntExpr,
-      TdwsExprGenericCodeGen.Create(['Math.abs', '(', 0, ')']));
-   RegisterCodeGen(TAbsFloatExpr,
-      TdwsExprGenericCodeGen.Create(['Math.abs', '(', 0, ')']));
-   RegisterCodeGen(TAbsVariantExpr,
-      TdwsExprGenericCodeGen.Create(['Math.abs', '(', 0, ')']));
-
    RegisterCodeGen(TSarExpr,           TJSSarExpr.Create);
    RegisterCodeGen(TShrExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '>>>', 1, ')']));

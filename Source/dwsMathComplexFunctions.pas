@@ -37,8 +37,8 @@ type
          procedure DoEvalAsString(const args : TExprBaseListExec; var result : String); override;
    end;
 
-   TAbsComplexExpr = class(TUnaryOpFloatExpr)
-      function  EvalAsFloat(exec : TdwsExecution) : Double; override;
+   TComplexAbsExpr = class(TInternalMagicFloatFunction)
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
 
    TComplexOpExpr = class(TInternalMagicDataFunction);
@@ -112,18 +112,6 @@ begin
    operators.RegisterOperator(ttDIVIDE, unitTable.FindSymbol('ComplexDiv', cvMagic) as TFuncSymbol, typComplex, typComplex);
 end;
 
-// HandleComplexAbs
-//
-function HandleComplexAbs(context : TdwsCompilerContext; const aScriptPos : TScriptPos; argExpr : TTypedExpr) : TTypedExpr;
-var
-   typComplex : TRecordSymbol;
-begin
-   typComplex:=context.SystemTable.FindTypeSymbol(SYS_COMPLEX, cvMagic) as TRecordSymbol;
-   if argExpr.Typ.IsOfType(typComplex) then
-      Result:=TAbsComplexExpr.Create(context, aScriptPos, argExpr)
-   else Result:=nil;
-end;
-
 // ------------------
 // ------------------ TComplexMakeExpr ------------------
 // ------------------
@@ -158,17 +146,18 @@ begin
 end;
 
 // ------------------
-// ------------------ TAbsComplexExpr ------------------
+// ------------------ TComplexAbsExpr ------------------
 // ------------------
 
-// EvalAsFloat
+// DoEvalAsFloat
 //
-function TAbsComplexExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+procedure TComplexAbsExpr.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 var
-   cmplxData : IDataContext;
+   v : IDataContext;
 begin
-   cmplxData:=TDataExpr(Expr).DataPtr[exec];
-   Result:=Sqrt(Sqr(cmplxData.AsFloat[0])+Sqr(cmplxData.AsFloat[1]));
+   v := TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
+
+   Result := Sqrt(Sqr(v.AsFloat[0])+Sqr(v.AsFloat[1]));
 end;
 
 // ------------------
@@ -267,12 +256,13 @@ initialization
 
    dwsInternalUnit.AddSymbolsRegistrationProc(RegisterComplexType);
    dwsInternalUnit.AddOperatorsRegistrationProc(RegisterComplexOperators);
-   dwsInternalUnit.AddAbsHandler(HandleComplexAbs);
+
+   RegisterInternalFloatFunction(TComplexAbsExpr,  'Abs',  ['v', SYS_COMPLEX], [iffOverloaded, iffStateLess]);
 
    RegisterInternalFunction(TComplexMakeExpr, 'Complex', ['real', SYS_FLOAT, 'imaginary', SYS_FLOAT], SYS_COMPLEX, [iffStateLess]);
    RegisterInternalStringFunction(TComplexToStrExpr, 'ComplexToStr', ['&c', SYS_COMPLEX], [iffStateLess]);
 
-   RegisterInternalFunction(TComplexNegOpExpr,  'ComplexNeg',  ['&v', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess]);
+   RegisterInternalFunction(TComplexNegOpExpr,  'ComplexNeg',  ['&v', SYS_COMPLEX], SYS_COMPLEX, []);
    RegisterInternalFunction(TComplexAddOpExpr,  'ComplexAdd',  ['&left', SYS_COMPLEX, '&right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess]);
    RegisterInternalFunction(TComplexSubOpExpr,  'ComplexSub',  ['&left', SYS_COMPLEX, '&right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess]);
    RegisterInternalFunction(TComplexMultOpExpr, 'ComplexMult', ['&left', SYS_COMPLEX, '&right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess]);

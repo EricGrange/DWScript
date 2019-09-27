@@ -109,7 +109,8 @@ implementation
 // ------------------------------------------------------------------
 
 uses Variants,
-   dwsExprs, dwsUnifiedConstants, dwsConstExprs, dwsOperators, dwsCompilerUtils;
+   dwsExprs, dwsUnifiedConstants, dwsConstExprs, dwsOperators, dwsCompilerUtils,
+   dwsSpecialKeywords;
 
 // ------------------
 // ------------------ TdwsCompilerContext ------------------

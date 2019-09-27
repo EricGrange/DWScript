@@ -7027,13 +7027,18 @@ begin
       if funcExprArgCount>match.Params.Count then continue;
       matchDistance:=0;
       for j:=0 to funcExprArgCount-1 do begin
-         matchParamType:=match.GetParamType(j);
-         if expecting<>nil then
-            funcExprParamType:=expecting.Params[j].Typ
-         else funcExprParamType:=funcExpr.GetArgType(j);
+         matchParamType := match.GetParamType(j);
+         if expecting <> nil then
+            funcExprParamType := expecting.Params[j].Typ
+         else funcExprParamType := funcExpr.GetArgType(j);
          if not matchParamType.IsOfType(funcExprParamType) then begin
 
-            if funcExprParamType.IsOfType(FCompilerContext.TypVariant) then begin
+            if not match.ParamTypeAllowsConvCast(j) then begin
+
+               match := nil;
+               break;
+
+            end else if funcExprParamType.IsOfType(FCompilerContext.TypVariant) then begin
 
                if not funcExprParamType.IsCompatible(matchParamType) then begin
                   match:=nil;
@@ -13607,20 +13612,6 @@ begin
       Result := nil;
 
       case specialKind of
-         skAbs : begin
-            if argTyp.IsOfType(FCompilerContext.TypInteger) then
-               Result:=TAbsIntExpr.Create(FCompilerContext, namePos, argExpr)
-            else if argTyp.IsOfType(FCompilerContext.TypFloat) then
-               Result:=TAbsFloatExpr.Create(FCompilerContext, namePos, argExpr)
-            else if argTyp.IsOfType(FCompilerContext.TypVariant) then
-               Result:=TAbsVariantExpr.Create(FCompilerContext, namePos, argExpr)
-            else begin
-               Result:=dwsInternalUnit.HandleAbs(FCompilerContext, namePos, argExpr);
-               if Result=nil then
-                  FMsgs.AddCompilerError(argPos, CPE_NumericalExpected);
-            end;
-            argExpr:=nil;
-         end;
          skAssert : begin
             if not argTyp.IsOfType(FCompilerContext.TypBoolean) then
                FMsgs.AddCompilerError(argPos, CPE_BooleanExpected);
