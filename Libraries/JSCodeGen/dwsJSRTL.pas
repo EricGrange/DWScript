@@ -169,7 +169,7 @@ uses dwsJSON;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..294] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..296] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -997,6 +997,16 @@ const
       (Name : 'ParseDateTime';
        Code : 'function ParseDateTime(f, s, u) { return strToDateTimeDef(f, s, 0, u) }';
        Dependency : '!strToDateTimeDef_js'; Dependency2 : 'FormatDateTime'),
+      (Name : 'PopCount';
+       Code : 'function PopCount(i) {'#10
+               + #9'if (i > 0xffffffff) return i.toString(2).replace(/0/g,"").length;'#10
+               + #9'i = i - ((i >> 1) & 0x55555555);'#10
+               + #9'i = (i & 0x33333333) + ((i >> 2) & 0x33333333);'#10
+               + #9'i = (i + (i >> 4)) & 0x0f0f0f0f;'#10
+               + #9'i = i + (i >> 8);'#10
+               + #9'i = i + (i >> 16);'#10
+               + #9'return i & 0x3f;'#10
+            + '}'),
       (Name : 'Pos';
        Code : 'function Pos(a,b) { return b.indexOf(a)+1 }'),
       (Name : 'PosEx';
@@ -1186,6 +1196,8 @@ const
        Code : 'var Tan = Math.tan'),
       (Name : 'Tanh';
        Code : 'function Tanh(v) { return (v==0)?0:(Math.exp(v)-Math.exp(-v))/(Math.exp(v)+Math.exp(-v)) }'),
+      (Name : 'TestBit';
+       Code : 'function TestBit(i, b) { return b >=0 && b < 32 && (i & (1 << b)) != 0 }'),
       (Name : 'Time';
        Code : 'function Time() { var r=Now(); return r-Math.floor(r) }';
        Dependency : 'Now'),

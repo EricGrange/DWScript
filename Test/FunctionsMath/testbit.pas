@@ -9,7 +9,11 @@ PrintLn('');
 v := -1;
 PrintLn(v.TestBit(-1));   
 PrintLn(v.TestBit(0));
+{$ifdef JS_CODEGEN}
+PrintLn(True); // only 32 bits in JS
+{$else}
 PrintLn(v.TestBit(63));
+{$endif}
 PrintLn(v.TestBit(64));
 
 v := 1;

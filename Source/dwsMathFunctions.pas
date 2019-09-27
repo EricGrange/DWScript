@@ -1018,8 +1018,8 @@ initialization
    RegisterInternalIntFunction(TAbsIntFunc,     'Abs', ['v', SYS_INTEGER], [iffStateLess, iffOverloaded], 'Abs');
    RegisterInternalFunction(TAbsVariantFunc,    'Abs', ['!v', SYS_VARIANT], SYS_VARIANT, [iffStateLess, iffOverloaded]);
 
-   RegisterInternalBoolFunction(TTestBitFunc,   '', ['i', SYS_INTEGER, 'bit', SYS_INTEGER], [iffStateLess], 'TestBit');
-   RegisterInternalIntFunction(TPopCountFunc,   '', ['i', SYS_INTEGER], [iffStateLess], 'PopCount');
+   RegisterInternalBoolFunction(TTestBitFunc,   'TestBit', ['i', SYS_INTEGER, 'bit', SYS_INTEGER], [iffStateLess], 'TestBit');
+   RegisterInternalIntFunction(TPopCountFunc,   'PopCount', ['i', SYS_INTEGER], [iffStateLess], 'PopCount');
 
    RegisterInternalIntFunction(TCompareNumIntsFunc, 'CompareNum', ['a', SYS_INTEGER, 'b', SYS_INTEGER], [iffStateLess, iffOverloaded], 'Compare');
    RegisterInternalIntFunction(TCompareNumFloatsFunc, 'CompareNum', ['a', SYS_FLOAT, 'b', SYS_FLOAT], [iffStateLess, iffOverloaded], 'Compare');

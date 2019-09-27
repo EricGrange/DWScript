@@ -673,9 +673,10 @@ begin
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 4, 4);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
 
-   CheckEquals(2, sugg.Count, 'tes');
+   CheckEquals(3, sugg.Count, 'tes');
    CheckEquals('test1', sugg.Code[0], 'tes 0');
    CheckEquals('test2', sugg.Code[1], 'tes 1');
+   CheckEquals('TestBit', sugg.Code[2], 'tes 2');
 end;
 
 // ReferencesVars
