@@ -7033,9 +7033,9 @@ begin
          else funcExprParamType := funcExpr.GetArgType(j);
          if not matchParamType.IsOfType(funcExprParamType) then begin
 
-            if not match.ParamTypeAllowsConvCast(j) then begin
+            if match.ParamTypeForbidsImplicitCasts(j) then begin
 
-               match := nil;
+               match:=nil;
                break;
 
             end else if funcExprParamType.IsOfType(FCompilerContext.TypVariant) then begin
@@ -7049,6 +7049,16 @@ begin
                      Inc(matchDistance, 256)
                   else Inc(matchDistance, 1);
                end;
+(*
+            end else if matchParamType.IsOfType(FCompilerContext.TypVariant) then begin
+
+               if not matchParamType.IsCompatible(funcExprParamType) then begin
+                  match := nil;
+                  break;
+               end else begin
+                  // disfavor casts to variants
+                  Inc(matchDistance, 256);
+               end; *)
 
             end else if     (funcExprParamType is TStaticArraySymbol)
                         and (matchParamType is TDynamicArraySymbol) then begin
@@ -7085,8 +7095,11 @@ begin
 
                end;
 
-            end else if not (   (matchParamType.IsOfType(FCompilerContext.TypFloat) and funcExprParamType.IsOfType(FCompilerContext.TypInteger))
-                             or matchParamType.IsCompatible(funcExprParamType)) then begin
+            end else if matchParamType.IsOfType(FCompilerContext.TypFloat) and funcExprParamType.IsOfType(FCompilerContext.TypInteger) then begin
+
+               Inc(matchDistance, 1);
+
+            end else if not matchParamType.IsCompatible(funcExprParamType) then begin
 
                match:=nil;
                break;
@@ -7098,6 +7111,11 @@ begin
                   if matchParamType is TStructuredTypeSymbol then
                      Inc(matchDistance, (matchParamType as TStructuredTypeSymbol).NthParentOf(TStructuredTypeSymbol(funcExprParamType)))
                   else Inc(matchDistance, 256);
+
+               end else if matchParamType.IsOfType(FCompilerContext.TypVariant) then begin
+
+                  // disfavor promotion to variant
+                  Inc(matchDistance, 128);
 
                end else begin
 
@@ -7136,7 +7154,11 @@ begin
          end else Inc(bestCount);
       end;
    end;
-   if (bestMatch<>nil) and (bestCount=1) then begin
+   if bestMatch <> nil then begin
+      if bestCount > 1 then begin
+         FMsgs.AddCompilerHintFmt(funcExpr.ScriptPos, CPH_AmbiguousMatchingOverloadsForCall,
+                                  [funcExpr.FuncSym.Name]);
+      end;
       if bestMatch.ClassType=TAliasMethodSymbol then
          bestMatch:=TAliasMethodSymbol(bestMatch).Alias;
       if bestMatch<>funcExpr.FuncSym then begin
@@ -7162,7 +7184,7 @@ begin
    end else begin
       FMsgs.AddCompilerErrorFmt(funcExpr.ScriptPos, CPE_NoMatchingOverloadForCall,
                                 [funcExpr.FuncSym.Name]);
-      Result:=False;
+      Result := False;
    end;
 end;
 
@@ -11734,7 +11756,8 @@ procedure TdwsCompiler.ReadParams(const hasParamMeth : THasParamSymbolMethod;
    procedure GenerateParam(const curName : String; const scriptPos : TScriptPos;
                            paramSemantics : TParamSymbolSemantics;
                            paramType : TTypeSymbol; const typScriptPos : TScriptPos;
-                           var defaultExpr : TTypedExpr);
+                           var defaultExpr : TTypedExpr;
+                           paramOptions : TParamSymbolOptions);
    var
       paramSym : TParamSymbol;
       data : TData;
@@ -11748,18 +11771,27 @@ procedure TdwsCompiler.ReadParams(const hasParamMeth : THasParamSymbolMethod;
             paramSym := CreateConstParamSymbol(curName, paramType);
       else
          if Assigned(defaultExpr) then begin
-            if defaultExpr.ClassType=TArrayConstantExpr then begin
+            if defaultExpr.ClassType = TArrayConstantExpr then begin
                TArrayConstantExpr(defaultExpr).EvalAsTData(FExec, data);
-               paramSym:=TParamSymbolWithDefaultValue.Create(curName, paramType, data);
+               paramSym := TParamSymbolWithDefaultValue.Create(
+                  curName, paramType, data, paramOptions
+               );
             end else begin
-               paramSym:=TParamSymbolWithDefaultValue.Create(
-                              curName, paramType,
-                              (defaultExpr as TConstExpr).Data);
+               paramSym := TParamSymbolWithDefaultValue.Create(
+                  curName, paramType,
+                  (defaultExpr as TConstExpr).Data,
+                  paramOptions
+               );
             end;
          end else begin
-            paramSym := TParamSymbol.Create(curName, paramType);
+            paramSym := TParamSymbol.Create(curName, paramType, paramOptions);
          end;
+         paramOptions := [];
       end;
+
+      if paramOptions <> [] then
+         FMsgs.AddCompilerErrorFmt(scriptPos, CPE_StrictParameterTypeCheckNotSupportedFor,
+                                   [cParamSymbolSemanticsPrefix[paramSemantics]]);
 
       if hasParamMeth(paramSym) then
          FMsgs.AddCompilerErrorFmt(scriptPos, CPE_NameAlreadyExists, [curName]);
@@ -11794,6 +11826,7 @@ var
    expectedParam : TParamSymbol;
    localPosArray : TScriptPosArray;
    paramSemantics : TParamSymbolSemantics;
+   paramOptions : TParamSymbolOptions;
 begin
    if FTok.TestDelete(ttBLEFT) then begin
 
@@ -11823,7 +11856,7 @@ begin
                      for i:=0 to names.Count-1 do begin
                         expectedParam := expectedLambdaParams[paramIdx+i];
                         paramSemantics := expectedParam.Semantics;
-                        GenerateParam(names[i], localPosArray[i], paramSemantics, expectedParam.Typ, cNullPos, defaultExpr);
+                        GenerateParam(names[i], localPosArray[i], paramSemantics, expectedParam.Typ, cNullPos, defaultExpr, []);
                      end;
 
                   end else begin
@@ -11834,7 +11867,11 @@ begin
 
                end else begin
 
-                  typ:=ReadType('', tcParameter);
+                  if FTok.TestDelete(ttTYPE) then
+                     paramOptions := [ psoForbidImplicitCasts ]
+                  else paramOptions := [ ];
+
+                  typ := ReadType('', tcParameter);
 
                   defaultExpr:=nil;
                   try
@@ -11877,7 +11914,7 @@ begin
                         defaultExpr:=defaultExpr.OptimizeToTypedExpr(FCompilerContext, exprPos);
 
                      for i:=0 to names.Count-1 do
-                        GenerateParam(names[i], localPosArray[i], paramSemantics, typ, typScriptPos, defaultExpr);
+                        GenerateParam(names[i], localPosArray[i], paramSemantics, typ, typScriptPos, defaultExpr, paramOptions);
 
                   finally
                      OrphanAndNil(defaultExpr);
@@ -11905,7 +11942,7 @@ begin
          expectedParam := expectedLambdaParams[i];
          paramSemantics := expectedParam.Semantics;
          GenerateParam('_implicit_'+expectedParam.Name, cNullPos,
-                       paramSemantics, expectedParam.Typ, cNullPos, defaultExpr);
+                       paramSemantics, expectedParam.Typ, cNullPos, defaultExpr, []);
       end;
 
    end;

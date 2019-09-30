@@ -1014,8 +1014,8 @@ initialization
    RegisterInternalIntFunction(TSignFunc,       'Sign', ['v', SYS_FLOAT], [iffStateLess, iffOverloaded], 'Sign');
    RegisterInternalIntFunction(TSignIntFunc,    'Sign', ['v', SYS_INTEGER], [iffStateLess, iffOverloaded], 'Sign');
 
-   RegisterInternalFloatFunction(TAbsFloatFunc, 'Abs', ['v', SYS_FLOAT], [iffStateLess, iffOverloaded], 'Abs');
-   RegisterInternalIntFunction(TAbsIntFunc,     'Abs', ['v', SYS_INTEGER], [iffStateLess, iffOverloaded], 'Abs');
+   RegisterInternalFloatFunction(TAbsFloatFunc, 'Abs', ['!v', SYS_FLOAT], [iffStateLess, iffOverloaded], 'Abs');
+   RegisterInternalIntFunction(TAbsIntFunc,     'Abs', ['!v', SYS_INTEGER], [iffStateLess, iffOverloaded], 'Abs');
    RegisterInternalFunction(TAbsVariantFunc,    'Abs', ['!v', SYS_VARIANT], SYS_VARIANT, [iffStateLess, iffOverloaded]);
 
    RegisterInternalBoolFunction(TTestBitFunc,   'TestBit', ['i', SYS_INTEGER, 'bit', SYS_INTEGER], [iffStateLess], 'TestBit');

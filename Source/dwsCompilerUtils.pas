@@ -635,7 +635,7 @@ begin
 
       argTyp:=arg.Typ;
       // Wrap-convert arguments if necessary and possible
-      if paramSymbol.AllowAutomaticConvCast then begin
+      if not paramSymbol.ForbidImplicitCasts then begin
          arg := TConvExpr.WrapWithConvCast(context, argPos, paramSymbol.Typ, arg, '');
       end;
       funcExpr.Args.ExprBase[i] := arg;

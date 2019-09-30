@@ -262,9 +262,11 @@ function ConvertFuncParams(const funcParams : array of String) : TParamArray;
 
    procedure ParamSpecifier(c : Char; paramRec : PParamRec);
    begin
-      paramRec.IsVarParam   := (c='@');
-      paramRec.IsConstParam := (c='&');
-      paramRec.NoConvCast   := (c='!');
+      case c of
+         '@' : paramRec.IsVarParam := True;
+         '&' : paramRec.IsConstParam := True;
+         '!' : paramRec.Options := [ psoForbidImplicitCasts ];
+      end;
       paramRec.ParamName    := Copy(paramRec.ParamName, 2);
    end;
 

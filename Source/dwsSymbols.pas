@@ -590,29 +590,26 @@ type
          function Specialize(const context : ISpecializationContext) : TSymbol; override;
    end;
 
-   TParamSymbolSemantics = (pssCopy, pssConst, pssVar, pssLazy);
+   TParamSymbolSemantics = ( pssCopy, pssConst, pssVar, pssLazy );
+   TParamSymbolOption = ( psoForbidImplicitCasts );
+   TParamSymbolOptions = set of TParamSymbolOption;
 
    // parameter: procedure P(x: Integer);
    TParamSymbol = class (TDataSymbol)
+      private
+         FOptions : TParamSymbolOptions;
+
       protected
          function GetDescription : String; override;
 
       public
+         constructor Create(const aName : String; aType : TTypeSymbol; options : TParamSymbolOptions = []);
+
          function Clone : TParamSymbol; virtual;
          function Specialize(const context : ISpecializationContext) : TSymbol; override;
          function SameParam(other : TParamSymbol) : Boolean; virtual;
-         function GetDescriptionPrefix : String; virtual;
          function Semantics : TParamSymbolSemantics; virtual;
-         function AllowAutomaticConvCast : Boolean; virtual;
-   end;
-
-   // parameter: procedure P(x: Integer); without AutomaticConvCast
-   TParamSymbolNoConvCast = class (TParamSymbol)
-      protected
-         function GetDescription : String; override;
-
-      public
-         function AllowAutomaticConvCast : Boolean; override;
+         function ForbidImplicitCasts : Boolean;
    end;
 
    THasParamSymbolMethod = function (param : TParamSymbol) : Boolean of object;
@@ -627,7 +624,7 @@ type
 
       public
          constructor Create(const aName : String; aType : TTypeSymbol;
-                            const data : TData);
+                            const data : TData; options : TParamSymbolOptions = []);
 
          function Clone : TParamSymbol; override;
          function Specialize(const context : ISpecializationContext) : TSymbol; override;
@@ -649,7 +646,6 @@ type
       public
          function Clone : TParamSymbol; override;
          function Specialize(const context : ISpecializationContext) : TSymbol; override;
-         function GetDescriptionPrefix : String; override;
          function Semantics : TParamSymbolSemantics; override;
    end;
 
@@ -659,7 +655,6 @@ type
          function Clone : TParamSymbol; override;
          function Specialize(const context : ISpecializationContext) : TSymbol; override;
          function IsWritable : Boolean; override;
-         function GetDescriptionPrefix : String; override;
          function Semantics : TParamSymbolSemantics; override;
    end;
 
@@ -669,7 +664,6 @@ type
          function Clone : TParamSymbol; override;
          function Specialize(const context : ISpecializationContext) : TSymbol; override;
          function IsWritable : Boolean; override;
-         function GetDescriptionPrefix : String; override;
          function Semantics : TParamSymbolSemantics; override;
    end;
 
@@ -678,9 +672,7 @@ type
       public
          function Clone : TParamSymbol; override;
          function Specialize(const context : ISpecializationContext) : TSymbol; override;
-         function GetDescriptionPrefix : String; override;
          function Semantics : TParamSymbolSemantics; override;
-         function AllowAutomaticConvCast : Boolean; override;
    end;
 
    TTypeSymbolClass = class of TTypeSymbol;
@@ -739,7 +731,7 @@ type
       IsVarParam : Boolean;
       IsConstParam : Boolean;
       HasDefaultValue : Boolean;
-      NoConvCast : Boolean;
+      Options : TParamSymbolOptions;
       DefaultValue : TData;
    end;
    TParamArray = array of TParamRec;
@@ -863,7 +855,7 @@ type
          function  HasParam(param : TParamSymbol) : Boolean;
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
          function  GetParamType(idx : Integer) : TTypeSymbol;
-         function  ParamTypeAllowsConvCast(idx : Integer) : Boolean;
+         function  ParamTypeForbidsImplicitCasts(idx : Integer) : Boolean;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          procedure InitData(const data : TData; offset : Integer); override;
          procedure AddCondition(cond : TConditionSymbol);
@@ -2195,6 +2187,9 @@ type
 const
    cFuncKindToString : array [Low(TFuncKind)..High(TFuncKind)] of String = (
       'function', 'procedure', 'constructor', 'destructor', 'method', 'lambda' );
+   cParamSymbolSemanticsPrefix : array [Low(TParamSymbolSemantics)..High(TParamSymbolSemantics)] of String = (
+      '', 'const', 'var', 'lazy'
+   );
    cFirstFieldUnprepared = Pointer(-1);
    cDefaultRandSeed : UInt64 = 88172645463325252;
 
@@ -3680,9 +3675,7 @@ begin
             paramSym := TVarParamSymbol.Create(paramRec.ParamName, typSym)
          else if paramRec.IsConstParam then
             paramSym := CreateConstParamSymbol(paramRec.ParamName, typSym)
-         else if paramRec.NoConvCast then
-            paramSym := TParamSymbolNoConvCast.Create(paramRec.ParamName, typSym)
-         else paramSym := TParamSymbol.Create(paramRec.ParamName, typSym);
+         else paramSym := TParamSymbol.Create(paramRec.ParamName, typSym, paramRec.Options);
 
       end;
 
@@ -3707,12 +3700,12 @@ begin
    else Result:=nil;
 end;
 
-// ParamTypeAllowsConvCast
+// ParamTypeForbidsImplicitCasts
 //
-function TFuncSymbol.ParamTypeAllowsConvCast(idx : Integer) : Boolean;
+function TFuncSymbol.ParamTypeForbidsImplicitCasts(idx : Integer) : Boolean;
 begin
    if Cardinal(idx) < Cardinal(Params.Count) then
-      Result := Params[idx].AllowAutomaticConvCast
+      Result := Params[idx].ForbidImplicitCasts
    else Result := False;
 end;
 
@@ -3721,8 +3714,9 @@ end;
 function TFuncSymbol.GetCaption : String;
 var
    i : Integer;
-   nam, pref : String;
+   nam : String;
    p : TParamSymbol;
+   semantics : TParamSymbolSemantics;
 begin
    nam:=cFuncKindToString[Kind]+' '+Name;
 
@@ -3732,9 +3726,9 @@ begin
          if i > 0 then
             Result := Result + ', ';
          p := Params[i];
-         pref := p.GetDescriptionPrefix;
-         if pref <> '' then
-            Result := Result + pref + ' ';
+         semantics := p.Semantics;
+         if cParamSymbolSemanticsPrefix[semantics] <> '' then
+            Result := Result + cParamSymbolSemanticsPrefix[semantics] + ' ';
          Result := Result + Params[i].Typ.Caption;
       end;
       Result := Result + ')';
@@ -3758,9 +3752,9 @@ end;
 //
 function TFuncSymbol.GetDescription : String;
 begin
-   Result:=cFuncKindToString[Kind]+' '+Name+ParamsDescription;
-   if Typ<>nil then
-      Result:=Result+': '+Typ.Name;
+   Result := cFuncKindToString[Kind] + ' ' + Name + ParamsDescription;
+   if Typ <> nil then
+      Result := Result + ': ' + Typ.Name;
 end;
 
 // Initialize
@@ -6053,6 +6047,14 @@ end;
 // ------------------ TParamSymbol ------------------
 // ------------------
 
+// Create
+//
+constructor TParamSymbol.Create(const aName : String; aType : TTypeSymbol; options : TParamSymbolOptions = []);
+begin
+   inherited Create(aName, aType);
+   FOptions := options;
+end;
+
 // SameParam
 //
 function TParamSymbol.SameParam(other : TParamSymbol) : Boolean;
@@ -6060,15 +6062,9 @@ begin
    Result:=    (   (ClassType=other.ClassType)
                 or (    (ClassType=TParamSymbol)
                     and (other.ClassType=TParamSymbolWithDefaultValue)))
-           and (Typ.SameType(other.Typ))
-           and UnicodeSameText(Name, other.Name);
-end;
-
-// GetDescriptionPrefix
-//
-function TParamSymbol.GetDescriptionPrefix : String;
-begin
-   Result := '';
+           and Typ.SameType(other.Typ)
+           and UnicodeSameText(Name, other.Name)
+           and (FOptions = other.FOptions);
 end;
 
 // Semantics
@@ -6078,11 +6074,11 @@ begin
    Result := pssCopy;
 end;
 
-// AllowAutomaticConvCast
+// ForbidImplicitCasts
 //
-function TParamSymbol.AllowAutomaticConvCast : Boolean;
+function TParamSymbol.ForbidImplicitCasts : Boolean;
 begin
-   Result := True;
+   Result := psoForbidImplicitCasts in FOptions;
 end;
 
 // Clone
@@ -6102,30 +6098,15 @@ end;
 // GetDescription
 //
 function TParamSymbol.GetDescription : String;
+var
+   semantics : TParamSymbolSemantics;
 begin
-   Result := GetDescriptionPrefix;
-   if Result = '' then
+   semantics := Self.Semantics;
+   if cParamSymbolSemanticsPrefix[semantics] = '' then
       Result := inherited GetDescription
-   else Result := Result + ' ' + inherited GetDescription;
-end;
-
-// ------------------
-// ------------------ TParamSymbolNoConvCast ------------------
-// ------------------
-
-// AllowAutomaticConvCast
-//
-function TParamSymbolNoConvCast.AllowAutomaticConvCast : Boolean;
-begin
-   Result := False;
-end;
-
-// GetDescription
-//
-function TParamSymbolNoConvCast.GetDescription : String;
-begin
-   Result := inherited GetDescription;
-   FastStringReplace(Result, ': ', ': type ');
+   else Result := cParamSymbolSemanticsPrefix[semantics] + ' ' + inherited GetDescription;
+   if psoForbidImplicitCasts in FOptions then
+      FastStringReplace(Result, ': ', ': type ');
 end;
 
 // ------------------
@@ -6135,9 +6116,9 @@ end;
 // Create
 //
 constructor TParamSymbolWithDefaultValue.Create(const aName : String; aType : TTypeSymbol;
-                                                const data : TData);
+                                                const data : TData; options : TParamSymbolOptions = []);
 begin
-   inherited Create(aName, aType);
+   inherited Create(aName, aType, options);
    SetLength(FDefaultValue, Typ.Size);
    if Length(data)>0 then
       DWSCopyData(data, 0, FDefaultValue, 0, Typ.Size);
@@ -6222,13 +6203,6 @@ begin
    Result := TLazyParamSymbol.Create(Name, context.SpecializeType(Typ));
 end;
 
-// GetDescriptionPrefix
-//
-function TLazyParamSymbol.GetDescriptionPrefix : String;
-begin
-   Result := 'lazy';
-end;
-
 // Semantics
 //
 function TLazyParamSymbol.Semantics : TParamSymbolSemantics;
@@ -6259,13 +6233,6 @@ end;
 function TConstByRefParamSymbol.IsWritable : Boolean;
 begin
    Result := False;
-end;
-
-// GetDescriptionPrefix
-//
-function TConstByRefParamSymbol.GetDescriptionPrefix : String;
-begin
-   Result := 'const';
 end;
 
 // Semantics
@@ -6300,13 +6267,6 @@ begin
    Result := False;
 end;
 
-// GetDescriptionPrefix
-//
-function TConstByValueParamSymbol.GetDescriptionPrefix : String;
-begin
-   Result := 'const';
-end;
-
 // Semantics
 //
 function TConstByValueParamSymbol.Semantics : TParamSymbolSemantics;
@@ -6332,25 +6292,11 @@ begin
    Result := TVarParamSymbol.Create(Name, context.SpecializeType(Typ));
 end;
 
-// GetDescriptionPrefix
-//
-function TVarParamSymbol.GetDescriptionPrefix : String;
-begin
-   Result := 'var';
-end;
-
 // Semantics
 //
 function TVarParamSymbol.Semantics : TParamSymbolSemantics;
 begin
    Result := pssVar;
-end;
-
-// AllowAutomaticConvCast
-//
-function TVarParamSymbol.AllowAutomaticConvCast : Boolean;
-begin
-   Result := False;
 end;
 
 // ------------------
