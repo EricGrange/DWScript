@@ -16,6 +16,8 @@
 {**********************************************************************}
 unit dwsJSCodeGen;
 
+{$I dws.inc}
+
 interface
 
 uses
@@ -25,7 +27,7 @@ uses
    dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs, dwsCompilerUtils,
    dwsJSLibModule, dwsJSMin, dwsFunctions, dwsGlobalVarsFunctions, dwsErrors,
    dwsRTTIFunctions, dwsConstExprs, dwsInfo, dwsScriptSource, dwsSymbolDictionary,
-   dwsUnicode, dwsExprList, dwsXXHash;
+   dwsUnicode, dwsExprList, dwsXXHash, dwsCodeGenWriters;
 
 type
 
@@ -52,6 +54,7 @@ type
          FAllLocalVarWithinTryExpr : Integer;
          FDeclaredLocalVars : TDataSymbolList;
          FDeclaredLocalVarsStack : TSimpleStack<TDataSymbolList>;
+         FCodeGenWriters : TdwsCodeGenSymbolWriters;
          FMainBodyName : String;
          FSelfSymbolName : String;
          FResultSymbolName : String;
@@ -75,9 +78,9 @@ type
          function  SameDefaultValue(fld1, fld2 : TFieldSymbol) : Boolean; overload;
 
          procedure WriteDefaultValue(typ : TTypeSymbol; box : Boolean);
-         procedure WriteVariant(typ : TTypeSymbol; const v : Variant);
          procedure WriteValue(typ : TTypeSymbol; const dataPtr : IDataContext);
          procedure WriteValueData(typ : TTypeSymbol; const data : TData);
+         procedure WriteVariant(typ : TTypeSymbol; const v : Variant);
          procedure WriteStringArray(destStream : TWriteOnlyBlockStream; strings : TStrings); overload;
          procedure WriteStringArray(strings : TStrings); overload;
 
@@ -856,12 +859,11 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsJSRTL;
+uses dwsJSRTL, dwsJSSymbolWriters;
 
 const
    cBoolToJSBool : array [False..True] of String = ('false', 'true');
    cFormatSettings : TFormatSettings = ( DecimalSeparator : '.' );
-   cInlineStaticArrayLimit = 20;
 
 const
    cJSReservedWords : array [1..204] of String = (
@@ -1000,9 +1002,33 @@ begin
    FUniqueGlobalVar := TUnicodeStringList.Create;
    FCustomDependency := TUnicodeStringList.Create;
 
-   FMainBodyName:='$dws';
-   FSelfSymbolName:='Self';
-   FResultSymbolName:='Result';
+   FCodeGenWriters := TdwsCodeGenSymbolWriters.Create(Self);
+
+   FMainBodyName := '$dws';
+   FSelfSymbolName := 'Self';
+   FResultSymbolName := 'Result';
+
+   FCodeGenWriters.RegisterWriter(TJSBaseIntegerSymbol.Create(TBaseIntegerSymbol));
+   FCodeGenWriters.RegisterWriter(TJSBaseFloatSymbol.Create(TBaseFloatSymbol));
+   FCodeGenWriters.RegisterWriter(TJSBaseStringSymbol.Create(TBaseStringSymbol));
+   FCodeGenWriters.RegisterWriter(TJSBaseBooleanSymbol.Create(TBaseBooleanSymbol));
+   FCodeGenWriters.RegisterWriter(TJSBaseVariantSymbol.Create(TBaseVariantSymbol));
+
+   FCodeGenWriters.RegisterWriter(TJSEnumerationSymbol.Create(TEnumerationSymbol));
+   FCodeGenWriters.RegisterWriter(TJSSetOfSymbol.Create(TSetOfSymbol));
+
+   FCodeGenWriters.RegisterWriter(TJSNilSymbol.Create(TNilSymbol));
+   FCodeGenWriters.RegisterWriter(TJSClassSymbol.Create(TClassSymbol));
+   FCodeGenWriters.RegisterWriter(TJSClassOfSymbol.Create(TClassOfSymbol));
+   FCodeGenWriters.RegisterWriter(TJSInterfaceSymbol.Create(TInterfaceSymbol));
+   FCodeGenWriters.RegisterWriter(TJSFuncSymbol.Create(TFuncSymbol));
+   FCodeGenWriters.RegisterWriter(TJSSourceFuncSymbol.Create(TSourceFuncSymbol));
+
+   FCodeGenWriters.RegisterWriter(TJSRecordSymbol.Create(TRecordSymbol));
+
+   FCodeGenWriters.RegisterWriter(TJSStaticArraySymbol.Create(TStaticArraySymbol));
+   FCodeGenWriters.RegisterWriter(TJSDynamicArraySymbol.Create(TDynamicArraySymbol));
+   FCodeGenWriters.RegisterWriter(TJSAssociativeArraySymbol.Create(TAssociativeArraySymbol));
 
    RegisterCodeGen(TBlockInitExpr,        TJSBlockInitExpr.Create);
    RegisterCodeGen(TBlockFinalExpr,       TJSBlockExprBase.Create);
@@ -1426,6 +1452,8 @@ begin
 
    FreeAndNil(FUniqueGlobalVar);
    FreeAndNil(FCustomDependency);
+
+   FreeAndNil(FCodeGenWriters);
 
    FreeAndNil(FLocalVarScannedProg);
    FreeAndNil(FAllLocalVarSymbols);
@@ -3045,90 +3073,32 @@ end;
 // WriteDefaultValue
 //
 procedure TdwsJSCodeGen.WriteDefaultValue(typ : TTypeSymbol; box : Boolean);
-var
-   i : Integer;
-   comma : Boolean;
-   sas : TStaticArraySymbol;
-   setOfSym : TSetOfSymbol;
-   recSym : TRecordSymbol;
-   member : TFieldSymbol;
 begin
-   typ:=typ.UnAliasedType;
+   if box then
+      WriteString('{' + cBoxFieldName + ':');
+   FCodeGenWriters.WriteDefaultValue(typ);
+   if box then
+      WriteString('}');
+end;
 
-   if box then
-      WriteString('{'+cBoxFieldName+':');
-   if typ is TBaseIntegerSymbol then
-      WriteString('0')
-   else if typ is TBaseFloatSymbol then
-      WriteString('0')
-   else if typ is TBaseStringSymbol then
-      WriteString('""')
-   else if typ is TBaseBooleanSymbol then
-      WriteString(cBoolToJSBool[false])
-   else if typ is TBaseVariantSymbol then
-      WriteString('undefined')
-   else if typ is TClassSymbol then
-      WriteString('null')
-   else if typ is TClassOfSymbol then
-      WriteString('null')
-   else if typ.AsFuncSymbol<>nil then
-      WriteString('null')
-   else if typ is TInterfaceSymbol then
-      WriteString('null')
-   else if typ is TEnumerationSymbol then
-      WriteInteger(TEnumerationSymbol(typ).DefaultValue)
-   else if typ is TStaticArraySymbol then begin
-      sas:=TStaticArraySymbol(typ);
-      if sas.ElementCount<cInlineStaticArrayLimit then begin
-         // initialize "small" static arrays inline
-         WriteString('[');
-         for i:=0 to sas.ElementCount-1 do begin
-            if i>0 then
-               WriteString(',');
-            WriteDefaultValue(sas.Typ, False);
-         end;
-         WriteString(']');
-      end else begin
-         // use a function for larger ones
-         WriteBlockBegin('function () ');
-         WriteString('for (var r=[],i=0; i<'+IntToStr(sas.ElementCount)+'; i++) r.push(');
-         WriteDefaultValue(sas.Typ, False);
-         WriteStringLn(');');
-         WriteStringLn('return r');
-         WriteBlockEnd;
-         WriteString('()');
-      end;
-   end else if typ is TDynamicArraySymbol then begin
-      WriteString('[]');
-   end else if typ is TAssociativeArraySymbol then begin
-      WriteString('{}');
-   end else if typ is TSetOfSymbol then begin
-      setOfSym:=TSetOfSymbol(typ);
-      WriteString('[');
-      for i:=0 to (setOfSym.CountValue div 32) do begin
-         if i>0 then
-            WriteString(',');
-         WriteString('0');
-      end;
-      WriteString(']');
-   end else if typ is TRecordSymbol then begin
-      recSym:=TRecordSymbol(typ);
-      WriteString('{');
-      comma:=False;
-      for i:=0 to recSym.Members.Count-1 do begin
-         if not (recSym.Members[i] is TFieldSymbol) then continue;
-         if comma then
-            WriteString(',')
-         else comma:=True;
-         member:=TFieldSymbol(recSym.Members[i]);
-         WriteSymbolName(member);
-         WriteString(':');
-         WriteDefaultValue(member.Typ, False);
-      end;
-      WriteString('}');
-   end else raise ECodeGenUnsupportedSymbol.CreateFmt('Default value of type %s', [typ.ClassName]);
-   if box then
-      WriteString('}');
+// WriteValue
+//
+procedure TdwsJSCodeGen.WriteValue(typ : TTypeSymbol; const dataPtr : IDataContext);
+begin
+   FCodeGenWriters.WriteValue(typ, dataPtr);
+end;
+
+// WriteValueData
+//
+procedure TdwsJSCodeGen.WriteValueData(typ : TTypeSymbol; const data : TData);
+var
+   dc : TDataContext;
+   idc : IDataContext;
+begin
+   dc:=TDataContext.Create;
+   dc.ReplaceData(data);
+   idc:=dc;
+   WriteValue(typ, idc);
 end;
 
 // WriteVariant
@@ -3157,138 +3127,6 @@ begin
       raise ECodeGenUnsupportedSymbol.CreateFmt('Value of type %s (VarType = %d)',
                                                 [typ.ClassName, VariantType(v)]);
    end;
-end;
-
-// WriteValue
-//
-procedure TdwsJSCodeGen.WriteValue(typ : TTypeSymbol; const dataPtr : IDataContext);
-var
-   i : Integer;
-   recSym : TRecordSymbol;
-   member : TFieldSymbol;
-   sas : TStaticArraySymbol;
-   setOfSym : TSetOfSymbol;
-   intf : IUnknown;
-   comma : Boolean;
-   locData : IDataContext;
-   v : Variant;
-   buf : String;
-begin
-   typ:=typ.UnAliasedType;
-
-   if (typ is TBaseIntegerSymbol) or (typ is TEnumerationSymbol) then
-      WriteInteger(dataPtr.AsInteger[0])
-   else if typ is TBaseFloatSymbol then
-      WriteFloat(dataPtr.AsFloat[0], cFormatSettings)
-   else if typ is TBaseStringSymbol then begin
-      dataPtr.EvalAsString(0, buf);
-      WriteLiteralString(buf);
-   end else if typ is TBaseBooleanSymbol then begin
-      WriteString(cBoolToJSBool[dataPtr.AsBoolean[0]])
-   end else if typ is TBaseVariantSymbol then begin
-      dataPtr.EvalAsVariant(0, v);
-      WriteVariant(typ, v);
-   end else if typ is TNilSymbol then begin
-      WriteString('null')
-   end else if typ is TClassOfSymbol then begin
-      dataPtr.EvalAsVariant(0, v);
-      case VariantType(v) of
-         varNull, varEmpty :
-            WriteString('null');
-         varUnknown : begin
-            Assert(TVarData(v).VUnknown=nil);
-            WriteString('null');
-         end;
-         varInt64 : begin
-            if TVarData(v).VInt64=0 then
-               WriteString('null')
-            else begin
-               WriteSymbolName(TObject(TVarData(v).VInt64) as TClassSymbol);
-            end;
-         end;
-      else
-         Assert(False, 'Unsupported VarType '+IntToStr(VariantType(v)));
-      end;
-   end else if typ is TSetOfSymbol then begin
-      setOfSym:=TSetOfSymbol(typ);
-      WriteString('[');
-      for i:=0 to (setOfSym.CountValue div 32) do begin
-         if i>0 then
-            WriteString(',');
-         if (i and 1)=0 then
-            WriteInteger(dataPtr.AsInteger[i shr 1] and $FFFFFFFF)
-         else WriteInteger(dataPtr.AsInteger[i shr 1] shr 32);
-      end;
-      WriteString(']');
-   end else if typ is TStaticArraySymbol then begin
-      sas:=TStaticArraySymbol(typ);
-      WriteString('[');
-      for i:=0 to sas.ElementCount-1 do begin
-         if i>0 then
-            WriteString(',');
-         dataPtr.CreateOffset(i*sas.Typ.Size, locData);
-         WriteValue(sas.Typ, locData);
-      end;
-      WriteString(']');
-   end else if typ is TRecordSymbol then begin
-      recSym:=TRecordSymbol(typ);
-      WriteString('{');
-      comma:=False;
-      for i:=0 to recSym.Members.Count-1 do begin
-         if recSym.Members[i].ClassType<>TFieldSymbol then continue;
-         member:=TFieldSymbol(recSym.Members[i]);
-         if (recSym.Name='') and (member.Visibility<>cvPublished) then continue;
-         if comma then
-            WriteString(',')
-         else comma:=True;
-         WriteSymbolName(member);
-         WriteString(':');
-         dataPtr.CreateOffset(member.Offset, locData);
-         WriteValue(member.Typ, locData);
-      end;
-      WriteString('}');
-   end else if typ is TClassSymbol then begin
-      intf:=dataPtr.AsInterface[0];
-      if intf=nil then
-         WriteString('null')
-      else raise ECodeGenUnsupportedSymbol.Create('Non nil class symbol');
-   end else if typ is TDynamicArraySymbol then begin
-      intf:=dataPtr.AsInterface[0];
-      if IScriptDynArray(intf).ArrayLength=0 then
-         WriteString('[]')
-      else raise ECodeGenUnsupportedSymbol.Create('Non empty dynamic array symbol');
-   end else if typ is TAssociativeArraySymbol then begin
-      intf:=dataPtr.AsInterface[0];
-      if IScriptAssociativeArray(intf).Count=0 then
-         WriteString('{}')
-      else raise ECodeGenUnsupportedSymbol.Create('Non empty assiocative array symbol');
-   end else if typ is TInterfaceSymbol then begin
-      intf:=dataPtr.AsInterface[0];
-      if intf=nil then
-         WriteString('null')
-      else raise ECodeGenUnsupportedSymbol.Create('Non nil interface symbol');
-   end else if typ is TSourceFuncSymbol then begin
-      intf:=dataPtr.AsInterface[0];
-      if intf=nil then
-         WriteString('null')
-      else raise ECodeGenUnsupportedSymbol.Create('Non nil function pointer symbol');
-   end else begin
-      raise ECodeGenUnsupportedSymbol.CreateFmt('Value of type %s',
-                                                [typ.ClassName]);
-   end;
-end;
-
-// WriteValueData
-//
-procedure TdwsJSCodeGen.WriteValueData(typ : TTypeSymbol; const data : TData);
-var
-   dc : TDataContext;
-   idc : IDataContext;
-begin
-   dc:=TDataContext.Create;
-   dc.ReplaceData(data);
-   idc:=dc;
-   WriteValue(typ, idc);
 end;
 
 // WriteStringArray

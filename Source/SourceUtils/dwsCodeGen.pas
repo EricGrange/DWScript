@@ -214,8 +214,6 @@ type
 
          function DoCustomCodeGen(expr : TExprBase) : TdwsExprCodeGen; virtual;
 
-         property Output : TWriteOnlyBlockStream read FOutput write FOutput;
-
       public
          constructor Create; virtual;
          destructor Destroy; override;
@@ -307,6 +305,7 @@ type
          property SymbolMap : TdwsCodeGenSymbolMap read FSymbolMap;
          property OutputLineOffset : Integer read FOutputLineOffset write FOutputLineOffset;
          property OutputLine : Integer read FOutputLine;
+         property Output : TWriteOnlyBlockStream read FOutput;
 
          property IndentChar : Char read FIndentChar write FIndentChar;
          property IndentSize : Integer read FIndentSize write FIndentSize;
