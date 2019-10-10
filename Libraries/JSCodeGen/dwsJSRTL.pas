@@ -16,6 +16,8 @@
 {**********************************************************************}
 unit dwsJSRTL;
 
+{$I dws.inc}
+
 interface
 
 uses
@@ -169,7 +171,7 @@ uses dwsJSON;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..296] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..296{$ifdef JS_BIGINTEGER} + 3{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -1308,6 +1310,16 @@ const
                +#9'return Math.floor((Math.floor(v)-EncodeDate(o.getFullYear(),1,1))/7)+1;'#10
                +'}';
        Dependency : 'DayOfWeek,Now,EncodeDate,DateTimeToDate')
+
+   {$ifdef JS_BIGINTEGER}
+      ,
+      (Name : 'BigIntegerToString';
+       Code : 'function BigIntegerToString(v,b) { return v.toString(b) }'),
+      (Name : 'BigIntegerToHex';
+       Code : 'function BigIntegerToHex(v) { return v.toString(16) }'),
+      (Name : 'StringToBigInteger';
+       Code : 'function StringToBigInteger(v) { return BigInt(v) }')
+   {$endif}
 
    );
 

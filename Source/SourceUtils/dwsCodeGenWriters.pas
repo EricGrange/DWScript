@@ -74,7 +74,7 @@ type
 
          procedure RegisterWriter(writer : TdwsCodeGenSymbolWriter);
 
-         function Writer(aSymbolClass : TClass) : TdwsCodeGenSymbolWriter; deprecated;
+         function Writer(aSymbolClass : TClass) : TdwsCodeGenSymbolWriter;
 
          procedure WriteDefaultValue(typ : TTypeSymbol);
          procedure WriteValue(typ : TTypeSymbol; const dataPtr : IDataContext);

@@ -785,34 +785,34 @@ type
    TJSOpExpr = class (TJSExprCodeGen)
       class procedure WriteWrappedIfNeeded(codeGen : TdwsCodeGen; expr : TTypedExpr); static;
    end;
-   TJBinOpAssociativity = (associativeLeft, associativeRight);
-   TJBinOpAssociativities = set of TJBinOpAssociativity;
 
    TJSBinOpExpr = class (TJSOpExpr)
       protected
          FOp, FSpacedOp : String;
          FPrecedence : Integer;
-         FAssociative : TJBinOpAssociativities;
+         FAssociative : TCodeGenBinOpAssociativities;
 
-         function WriteOp(codeGen : TdwsCodeGen; rightExpr : TTypedExpr) : Boolean; virtual;
+         function WriteOperator(codeGen : TdwsCodeGen; rightExpr : TTypedExpr) : Boolean; virtual;
+         procedure WriteLeftOperand(codeGen : TdwsCodeGen; leftExpr : TTypedExpr); virtual;
+         procedure WriteRightOperand(codeGen : TdwsCodeGen; rightExpr : TTypedExpr); virtual;
 
          function ExprJSPrecedence(expr : TTypedExpr) : Integer;
 
       public
-         constructor Create(const op : String; aPrecedence : Integer; associative : TJBinOpAssociativities);
+         constructor Create(const op : String; aPrecedence : Integer; associative : TCodeGenBinOpAssociativities);
          procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
    end;
 
    TJSAddOpExpr = class(TJSBinOpExpr)
       protected
-         function WriteOp(codeGen : TdwsCodeGen; rightExpr : TTypedExpr) : Boolean; override;
+         function WriteOperator(codeGen : TdwsCodeGen; rightExpr : TTypedExpr) : Boolean; override;
       public
          constructor Create;
    end;
 
    TJSSubOpExpr = class(TJSBinOpExpr)
       protected
-         function WriteOp(codeGen : TdwsCodeGen; rightExpr : TTypedExpr) : Boolean; override;
+         function WriteOperator(codeGen : TdwsCodeGen; rightExpr : TTypedExpr) : Boolean; override;
       public
          constructor Create;
    end;
@@ -859,14 +859,16 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsJSRTL, dwsJSSymbolWriters;
+uses dwsJSRTL, dwsJSSymbolWriters
+   {$ifdef JS_BIGINTEGER}, dwsJSBigInteger, dwsBigIntegerFunctions.GMP{$endif}
+   ;
 
 const
    cBoolToJSBool : array [False..True] of String = ('false', 'true');
    cFormatSettings : TFormatSettings = ( DecimalSeparator : '.' );
 
 const
-   cJSReservedWords : array [1..204] of String = (
+   cJSReservedWords : array [1..205] of String = (
       // Main JS keywords
       // from https://developer.mozilla.org/en/JavaScript/Reference/Reserved_Words
       'break', 'case', 'catch', 'continue', 'debugger', 'default', 'delete',
@@ -919,7 +921,7 @@ const
       'onsubmit', 'onunload',
 
       // supplemental names
-      'CSS', 'JSON'
+      'CSS', 'JSON', 'BigInt'
 
    );
 
@@ -1442,6 +1444,17 @@ begin
    RegisterCodeGen(TConditionalDefinedExpr,     TJSConditionalDefinedExpr.Create);
 
    RegisterCodeGen(TSwapExpr,                   TJSSwapExpr.Create);
+
+   {$ifdef JS_BIGINTEGER}
+   FCodeGenWriters.RegisterWriter(TJSbaseBigIntegerSymbol.Create);
+
+   RegisterCodeGen(TConvIntegerToBigIntegerExpr, TdwsExprGenericCodeGen.Create(['BigInt', '(', 0, ')']));
+   RegisterCodeGen(TBigIntegerAddOpExpr,         TJSBigIntegerAddOpExpr.Create);
+   RegisterCodeGen(TBigIntegerSubOpExpr,         TJSBigIntegerSubOpExpr.Create);
+   RegisterCodeGen(TBigIntegerMultOpExpr,        TJSBigIntegerBinOpExpr.Create('*', 14, [associativeLeft, associativeRight]));
+   RegisterCodeGen(TBigIntegerDivOpExpr,         TJSBigIntegerBinOpExpr.Create('/', 14, [associativeLeft, associativeRight]));
+   RegisterCodeGen(TBigIntegerModOpExpr,         TJSBigIntegerBinOpExpr.Create('%', 14, [associativeLeft, associativeRight]));
+   {$endif}
 end;
 
 // Destroy
@@ -8173,7 +8186,7 @@ end;
 
 // Create
 //
-constructor TJSBinOpExpr.Create(const op : String; aPrecedence : Integer; associative : TJBinOpAssociativities);
+constructor TJSBinOpExpr.Create(const op : String; aPrecedence : Integer; associative : TCodeGenBinOpAssociativities);
 begin
    inherited Create;
    FOp := op;
@@ -8187,31 +8200,46 @@ end;
 procedure TJSBinOpExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
 var
    e : TBinaryOpExpr;
-   p : Integer;
 begin
-   e:=TBinaryOpExpr(expr);
+   e := TBinaryOpExpr(expr);
 
-   p:=ExprJSPrecedence(e.Left);
-   if (p>FPrecedence) or ((p=FPrecedence) and (associativeLeft in FAssociative)) then
-      codeGen.CompileNoWrap(e.Left)
-   else WriteWrappedIfNeeded(codeGen, e.Left);
-
-   if WriteOp(codeGen, e.Right) then Exit;
-
-   p:=ExprJSPrecedence(e.Right);
-   if (p>FPrecedence) or ((p=FPrecedence) and (associativeRight in FAssociative)) then
-      codeGen.CompileNoWrap(e.Right)
-   else WriteWrappedIfNeeded(codeGen, e.Right);
+   WriteLeftOperand(codeGen, e.Left);
+   if not WriteOperator(codeGen, e.Right) then
+      WriteRightOperand(codeGen, e.Right);
 end;
 
-// WriteOp
+// WriteOperator
 //
-function TJSBinOpExpr.WriteOp(codeGen : TdwsCodeGen; rightExpr : TTypedExpr) : Boolean;
+function TJSBinOpExpr.WriteOperator(codeGen : TdwsCodeGen; rightExpr : TTypedExpr) : Boolean;
 begin
    if cgoOptimizeForSize in codeGen.Options then
       codeGen.WriteString(FOp)
    else codeGen.WriteString(FSpacedOp);
    Result := False;
+end;
+
+// WriteLeftOperand
+//
+procedure TJSBinOpExpr.WriteLeftOperand(codeGen : TdwsCodeGen; leftExpr : TTypedExpr);
+var
+   p : Integer;
+begin
+   p := ExprJSPrecedence(leftExpr);
+   if (p > FPrecedence) or ((p = FPrecedence) and (associativeLeft in FAssociative)) then
+      codeGen.CompileNoWrap(leftExpr)
+   else WriteWrappedIfNeeded(codeGen, leftExpr);
+end;
+
+// WriteRightOperand
+//
+procedure TJSBinOpExpr.WriteRightOperand(codeGen : TdwsCodeGen; rightExpr : TTypedExpr);
+var
+   p : Integer;
+begin
+   p := ExprJSPrecedence(rightExpr);
+   if (p > FPrecedence) or ((p = FPrecedence) and (associativeRight in FAssociative)) then
+      codeGen.CompileNoWrap(rightExpr)
+   else WriteWrappedIfNeeded(codeGen, rightExpr);
 end;
 
 // ExprJSPrecedence
@@ -8243,17 +8271,17 @@ begin
    inherited Create('+', 13, [associativeLeft, associativeRight]);
 end;
 
-// WriteOp
+// WriteOperator
 //
-function TJSAddOpExpr.WriteOp(codeGen : TdwsCodeGen; rightExpr : TTypedExpr) : Boolean;
+function TJSAddOpExpr.WriteOperator(codeGen : TdwsCodeGen; rightExpr : TTypedExpr) : Boolean;
 var
    v : Variant;
 begin
-   Result:=False;
+   Result := False;
    if rightExpr is TConstExpr then begin
       rightExpr.EvalAsVariant(nil, v);
       // right operand will write a minus
-      if v<0 then Exit;
+      if v < 0 then Exit;
    end;
    codeGen.WriteString(FOp);
 end;
@@ -8269,9 +8297,9 @@ begin
    inherited Create('-', 13, [associativeLeft]);
 end;
 
-// WriteOp
+// WriteOperator
 //
-function TJSSubOpExpr.WriteOp(codeGen : TdwsCodeGen; rightExpr : TTypedExpr) : Boolean;
+function TJSSubOpExpr.WriteOperator(codeGen : TdwsCodeGen; rightExpr : TTypedExpr) : Boolean;
 begin
    if (rightExpr is TConstExpr) and (rightExpr.EvalAsFloat(nil)<0) then begin
       // right operand would write a minus
@@ -8279,10 +8307,10 @@ begin
       if rightExpr is TConstIntExpr then
          codeGen.WriteInteger(-TConstIntExpr(rightExpr).Value)
       else codeGen.WriteFloat(-rightExpr.EvalAsFloat(nil), cFormatSettings);
-      Result:=True;
+      Result := True;
    end else begin
       codeGen.WriteString(FOp);
-      Result:=False;
+      Result := False;
    end;
 end;
 

@@ -337,6 +337,9 @@ type
          property Wrap : TdwsExprCodeGenWrap read FWrap;
    end;
 
+   TCodeGenBinOpAssociativity = (associativeLeft, associativeRight);
+   TCodeGenBinOpAssociativities = set of TCodeGenBinOpAssociativity;
+
    ECodeGenException = class (Exception);
    ECodeGenUnknownExpression = class (ECodeGenException);
    ECodeGenUnsupportedSymbol = class (ECodeGenException);
