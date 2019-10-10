@@ -294,6 +294,7 @@ type
       DynCompound : String;
       constructor Create(const anOp, aDynCompound : String);
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+      procedure CodeGenRightExpr(codeGen : TdwsCodeGen; rightExpr : TTypedExpr); virtual;
    end;
 
    TJSConstExpr = class (TJSExprCodeGen)
@@ -1449,11 +1450,22 @@ begin
    FCodeGenWriters.RegisterWriter(TJSbaseBigIntegerSymbol.Create);
 
    RegisterCodeGen(TConvIntegerToBigIntegerExpr, TdwsExprGenericCodeGen.Create(['BigInt', '(', 0, ')']));
+   RegisterCodeGen(TConvStringToBigIntegerExpr,  TdwsExprGenericCodeGen.Create(['BigInt', '(', 0, ')']));
+
+   RegisterCodeGen(TBigIntegerNegateExpr,        TdwsExprGenericCodeGen.Create(['-', '(', 0, ')']));
    RegisterCodeGen(TBigIntegerAddOpExpr,         TJSBigIntegerAddOpExpr.Create);
    RegisterCodeGen(TBigIntegerSubOpExpr,         TJSBigIntegerSubOpExpr.Create);
    RegisterCodeGen(TBigIntegerMultOpExpr,        TJSBigIntegerBinOpExpr.Create('*', 14, [associativeLeft, associativeRight]));
-   RegisterCodeGen(TBigIntegerDivOpExpr,         TJSBigIntegerBinOpExpr.Create('/', 14, [associativeLeft, associativeRight]));
-   RegisterCodeGen(TBigIntegerModOpExpr,         TJSBigIntegerBinOpExpr.Create('%', 14, [associativeLeft, associativeRight]));
+   RegisterCodeGen(TBigIntegerDivOpExpr,         TJSBigIntegerBinOpExpr.Create('/', 14, [associativeLeft]));
+   RegisterCodeGen(TBigIntegerModOpExpr,         TJSBigIntegerBinOpExpr.Create('%', 14, [associativeLeft]));
+
+   RegisterCodeGen(TBigIntegerAndOpExpr,         TJSBigIntegerBinOpExpr.Create('&', 9, [associativeLeft]));
+   RegisterCodeGen(TBigIntegerOrOpExpr,          TJSBigIntegerBinOpExpr.Create('|', 7, [associativeLeft]));
+   RegisterCodeGen(TBigIntegerXorOpExpr,         TJSBigIntegerBinOpExpr.Create('^', 8, [associativeLeft]));
+
+   RegisterCodeGen(TBigIntegerPlusAssignExpr,    TJSBigIntegerCompoundExpr.Create('+=', '$DIdxAdd'));
+   RegisterCodeGen(TBigIntegerMinusAssignExpr,    TJSBigIntegerCompoundExpr.Create('-=', '$DIdxSub'));
+   RegisterCodeGen(TBigIntegerMultAssignExpr,    TJSBigIntegerCompoundExpr.Create('*=', '$DIdxMult'));
    {$endif}
 end;
 
@@ -4319,7 +4331,7 @@ begin
       if cgoOptimizeForSize in codeGen.Options then
          codeGen.WriteString(Op)
       else codeGen.WriteString(SpacedOp);
-      codeGen.CompileNoWrap(e.Right);
+      CodeGenRightExpr(codeGen, e.Right);
 
    end else begin
 
@@ -4333,7 +4345,7 @@ begin
       codeGen.WriteString(',');
       codeGen.CompileNoWrap(eDyn.IndexExpr);
       codeGen.WriteString(',');
-      codeGen.CompileNoWrap(e.Right);
+      CodeGenRightExpr(codeGen, e.Right);
       codeGen.WriteString(',');
       WriteLocationString(codeGen, expr);
       codeGen.WriteString(')');
@@ -4341,6 +4353,13 @@ begin
    end;
 
    codeGen.WriteStatementEnd;
+end;
+
+// CodeGenRightExpr
+//
+procedure TJSCompoundExpr.CodeGenRightExpr(codeGen : TdwsCodeGen; rightExpr : TTypedExpr);
+begin
+   codeGen.CompileNoWrap(rightExpr);
 end;
 
 // ------------------

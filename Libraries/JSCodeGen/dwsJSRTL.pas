@@ -171,7 +171,7 @@ uses dwsJSON;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..296{$ifdef JS_BIGINTEGER} + 3{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..296{$ifdef JS_BIGINTEGER} + 9{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -1313,6 +1313,19 @@ const
 
    {$ifdef JS_BIGINTEGER}
       ,
+      (Name : 'BigInteger$BitLength';
+       Code : 'function BigInteger$BitLength(v) { return v ? ((b < 0 ? -b : b).toString(2).length) : 0 }'),
+      (Name : 'BigInteger$ClearBit';
+       Code : 'function BigInteger$ClearBit(v,b) { if (b<0) return; var m = 1n << BigInt(b); if (v.v & m) v.v ^= m }'),
+      (Name : 'BigInteger$PopCount';
+       Code : 'function BigInteger$PopCount(b) { return b.toString(2).replace(/0/g,"").length }'),
+      (Name : 'BigInteger$SetBit$_BigInteger_Integer_';
+       Code : 'function BigInteger$SetBit$_BigInteger_Integer_(v,b) { if (b >= 0) v.v |= 1n << BigInt(b) }'),
+      (Name : 'BigInteger$SetBit$_BigInteger_Integer_Boolean_';
+       Code : 'function BigInteger$SetBit$_BigInteger_Integer_Boolean_(v,b,t) { if (t) { BigInteger$SetBit$_BigInteger_Integer_(v,b) } else BigInteger$ClearBit(v,b) }';
+       Dependency : 'BigInteger$SetBit$_BigInteger_Integer_,BigInteger$ClearBit'),
+      (Name : 'BigInteger$TestBit';
+       Code : 'function BigInteger$TestBit(v,b) { return b >= 0 ? (((v >> BigInt(b)) & 1n) == 1n) : false }'),
       (Name : 'BigIntegerToString';
        Code : 'function BigIntegerToString(v,b) { return v.toString(b) }'),
       (Name : 'BigIntegerToHex';
@@ -1573,20 +1586,20 @@ procedure TJSMagicFuncExpr.CodeGenFunctionName(codeGen : TdwsCodeGen; expr : TFu
    var
       i : Integer;
    begin
-      Result:=funcSym.QualifiedName+'$_';
-      for i:=0 to funcSym.Params.Count-1 do
-         Result:=Result+funcSym.GetParamType(i).Name+'_';
+      Result := funcSym.QualifiedName+'$_';
+      for i := 0 to funcSym.Params.Count-1 do
+         Result := Result + funcSym.GetParamType(i).Name + '_';
    end;
 
 var
    e : TMagicFuncExpr;
    name : String;
 begin
-   e:=TMagicFuncExpr(expr);
+   e := TMagicFuncExpr(expr);
    if e.FuncSym.IsOverloaded then
-      name:=GetSignature(e.FuncSym)
-   else name:=e.FuncSym.QualifiedName;
-   name:=CanonicalName(name);
+      name := GetSignature(e.FuncSym)
+   else name := e.FuncSym.QualifiedName;
+   name := CanonicalName(name);
    codeGen.WriteString(name);
    codeGen.Dependencies.Add(name);
 end;

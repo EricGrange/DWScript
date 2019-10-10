@@ -1560,7 +1560,7 @@ initialization
    RegisterInternalProcedure(TBigIntegerSetBitFunc,       '',     ['@i', SYS_BIGINTEGER, 'bit', SYS_INTEGER], 'SetBit', [iffOverloaded]);
    RegisterInternalProcedure(TBigIntegerSetBitValFunc,    '',     ['@i', SYS_BIGINTEGER, 'bit', SYS_INTEGER, 'v', SYS_BOOLEAN], 'SetBit', [iffOverloaded]);
    RegisterInternalProcedure(TBigIntegerClearBitFunc,     '',     ['@i', SYS_BIGINTEGER, 'bit', SYS_INTEGER], 'ClearBit', []);
-   RegisterInternalIntFunction(TBigIntegerPopCountFunc,   '',     ['@i', SYS_BIGINTEGER], [iffStateLess], 'PopCount');
+   RegisterInternalIntFunction(TBigIntegerPopCountFunc,   '',     ['i', SYS_BIGINTEGER], [iffStateLess], 'PopCount');
 
    RegisterInternalFunction(TBigIntegerGcdFunc,        'Gcd',     ['a', SYS_BIGINTEGER, 'b', SYS_BIGINTEGER], SYS_BIGINTEGER, [iffStateLess, iffOverloaded]);
    RegisterInternalFunction(TBigIntegerLcmFunc,        'Lcm',     ['a', SYS_BIGINTEGER, 'b', SYS_BIGINTEGER], SYS_BIGINTEGER, [iffStateLess, iffOverloaded]);

@@ -46,6 +46,9 @@ type
    // TInternalMagicFunction
    //
    TInternalMagicFunction = class (TInternalFunction)
+      private
+         FHelperName : String;
+
       public
          constructor Create(table: TSymbolTable; const funcName: String;
                             const params : TParamArray; const funcType: String;
@@ -54,6 +57,9 @@ type
                             const helperName : String); override;
          function MagicFuncExprClass : TMagicFuncExprClass; virtual; abstract;
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); override; final;
+
+         property HelperName : String read FHelperName;
+         function QualifiedName : String;
    end;
 
    // TInternalMagicProcedure
@@ -138,6 +144,7 @@ type
 
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          function IsType : Boolean; override;
+         function QualifiedName : String; override;
 
          property InternalFunction : TInternalMagicFunction read FInternalFunction write FInternalFunction;
    end;
@@ -484,6 +491,15 @@ begin
    Result:=False;
 end;
 
+// QualifiedName
+//
+function TMagicFuncSymbol.QualifiedName : String;
+begin
+   Result := inherited QualifiedName;
+   if Result = '' then
+      Result := FInternalFunction.QualifiedName;
+end;
+
 // Destroy
 //
 destructor TMagicFuncSymbol.Destroy;
@@ -535,6 +551,7 @@ var
    sym : TMagicFuncSymbol;
    ssym : TMagicStaticMethodSymbol;
 begin
+   FHelperName := helperName;
    if iffStaticMethod in flags then begin
       ssym:=TMagicStaticMethodSymbol.Generate(table, mkClassMethod, [maStatic],
                                               funcName, params, funcType,
@@ -545,7 +562,7 @@ begin
       ssym.IsExternal:=True;
       compositeSymbol.AddMethod(ssym);
       Assert(helperName=''); // unsupported
-      self.FuncSymbol := ssym;
+      Self.FuncSymbol := ssym;
       if iffDeprecated in flags then
          ssym.DeprecatedMessage := MSG_DeprecatedEmptyMsg;
    end else begin
@@ -555,7 +572,7 @@ begin
       sym.IsStateless:=(iffStateLess in flags);
       sym.IsOverloaded:=(iffOverloaded in flags);
       table.AddSymbol(sym);
-      self.FuncSymbol := sym;
+      Self.FuncSymbol := sym;
       if helperName<>'' then
          CompilerUtils.AddProcHelper(helperName, table, sym, nil);
       if iffDeprecated in flags then
@@ -568,6 +585,18 @@ end;
 procedure TInternalMagicFunction.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
 begin
    Assert(False);
+end;
+
+// QualifiedName
+//
+function TInternalMagicFunction.QualifiedName : String;
+begin
+   Result := FuncSymbol.Name;
+   if Result = '' then begin
+      Assert(FuncSymbol.Params.Count > 0);
+      Assert(FHelperName <> '');
+      Result := FuncSymbol.Params[0].Typ.Name + '$' + FHelperName;
+   end;
 end;
 
 // ------------------

@@ -54,6 +54,11 @@ type
          constructor Create;
    end;
 
+   TJSBigIntegerCompoundExpr = class (TJSCompoundExpr)
+      procedure CodeGenRightExpr(codeGen : TdwsCodeGen; rightExpr : TTypedExpr); override;
+   end;
+
+
 implementation
 
 // ------------------
@@ -177,6 +182,23 @@ begin
    end;
    codeGen.WriteString(FOp);
    Result := False;
+end;
+
+// ------------------
+// ------------------ TJSBigIntegerCompoundExpr ------------------
+// ------------------
+
+// CodeGenRightExpr
+//
+procedure TJSBigIntegerCompoundExpr.CodeGenRightExpr(codeGen : TdwsCodeGen; rightExpr : TTypedExpr);
+begin
+   if rightExpr.Typ.UnAliasedTypeIs(TBaseBigIntegerSymbol) then
+      codeGen.CompileNoWrap(rightExpr)
+   else begin
+      codeGen.WriteString('BigInt(');
+      codeGen.CompileNoWrap(rightExpr);
+      codeGen.WriteString(')');
+   end;
 end;
 
 end.
