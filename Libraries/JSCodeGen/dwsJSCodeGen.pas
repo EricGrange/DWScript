@@ -1235,15 +1235,15 @@ begin
    RegisterCodeGen(TConstStringInVarStringExpr,
       TdwsExprGenericCodeGen.Create(['(', 1, '.indexOf', '(', 0, ')', '>=0)']));
 
-   RegisterCodeGen(TObjCmpEqualExpr,         TJSBinOpExpr.Create('===', 10, [associativeLeft, associativeRight]));
-   RegisterCodeGen(TObjCmpNotEqualExpr,      TJSBinOpExpr.Create('!==', 10, [associativeLeft, associativeRight]));
+   RegisterCodeGen(TObjCmpEqualExpr,         TJSBinOpExpr.Create('===', 10, [associativeLeft]));
+   RegisterCodeGen(TObjCmpNotEqualExpr,      TJSBinOpExpr.Create('!==', 10, [associativeLeft]));
 
-   RegisterCodeGen(TRelEqualIntExpr,         TJSBinOpExpr.Create('==', 10, [associativeLeft, associativeRight]));
-   RegisterCodeGen(TRelNotEqualIntExpr,      TJSBinOpExpr.Create('!=', 10, [associativeLeft, associativeRight]));
-   RegisterCodeGen(TRelGreaterEqualIntExpr,  TJSBinOpExpr.Create('>=', 11, [associativeLeft, associativeRight]));
-   RegisterCodeGen(TRelLessEqualIntExpr,     TJSBinOpExpr.Create('<=', 11, [associativeLeft, associativeRight]));
-   RegisterCodeGen(TRelGreaterIntExpr,       TJSBinOpExpr.Create('>', 11, [associativeLeft, associativeRight]));
-   RegisterCodeGen(TRelLessIntExpr,          TJSBinOpExpr.Create('<', 11, [associativeLeft, associativeRight]));
+   RegisterCodeGen(TRelEqualIntExpr,         TJSBinOpExpr.Create('==', 10, [associativeLeft]));
+   RegisterCodeGen(TRelNotEqualIntExpr,      TJSBinOpExpr.Create('!=', 10, [associativeLeft]));
+   RegisterCodeGen(TRelGreaterEqualIntExpr,  TJSBinOpExpr.Create('>=', 11, [associativeLeft]));
+   RegisterCodeGen(TRelLessEqualIntExpr,     TJSBinOpExpr.Create('<=', 11, [associativeLeft]));
+   RegisterCodeGen(TRelGreaterIntExpr,       TJSBinOpExpr.Create('>', 11, [associativeLeft]));
+   RegisterCodeGen(TRelLessIntExpr,          TJSBinOpExpr.Create('<', 11, [associativeLeft]));
    RegisterCodeGen(TRelIntIsZeroExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '==0)']));
    RegisterCodeGen(TRelIntIsNotZeroExpr,
@@ -1451,6 +1451,8 @@ begin
 
    RegisterCodeGen(TConvIntegerToBigIntegerExpr, TdwsExprGenericCodeGen.Create(['BigInt', '(', 0, ')']));
    RegisterCodeGen(TConvStringToBigIntegerExpr,  TdwsExprGenericCodeGen.Create(['BigInt', '(', 0, ')']));
+   RegisterCodeGen(TConvFloatToBigIntegerExpr,   TdwsExprGenericCodeGen.Create(['BigInt(Math.trunc', '(', 0, ')', ')']));
+   RegisterCodeGen(TConvBigIntegerToFloatExpr,   TdwsExprGenericCodeGen.Create(['Number', '(', 0, ')']));
 
    RegisterCodeGen(TBigIntegerNegateExpr,        TdwsExprGenericCodeGen.Create(['-', '(', 0, ')']));
    RegisterCodeGen(TBigIntegerAddOpExpr,         TJSBigIntegerAddOpExpr.Create);
@@ -1459,13 +1461,23 @@ begin
    RegisterCodeGen(TBigIntegerDivOpExpr,         TJSBigIntegerBinOpExpr.Create('/', 14, [associativeLeft]));
    RegisterCodeGen(TBigIntegerModOpExpr,         TJSBigIntegerBinOpExpr.Create('%', 14, [associativeLeft]));
 
+   RegisterCodeGen(TBigIntegerShiftRightExpr,    TJSBigIntegerBinOpExpr.Create('>>', 12, [associativeLeft]));
+   RegisterCodeGen(TBigIntegerShiftLeftExpr,     TJSBigIntegerBinOpExpr.Create('<<', 12, [associativeLeft]));
+
    RegisterCodeGen(TBigIntegerAndOpExpr,         TJSBigIntegerBinOpExpr.Create('&', 9, [associativeLeft]));
    RegisterCodeGen(TBigIntegerOrOpExpr,          TJSBigIntegerBinOpExpr.Create('|', 7, [associativeLeft]));
    RegisterCodeGen(TBigIntegerXorOpExpr,         TJSBigIntegerBinOpExpr.Create('^', 8, [associativeLeft]));
 
    RegisterCodeGen(TBigIntegerPlusAssignExpr,    TJSBigIntegerCompoundExpr.Create('+=', '$DIdxAdd'));
-   RegisterCodeGen(TBigIntegerMinusAssignExpr,    TJSBigIntegerCompoundExpr.Create('-=', '$DIdxSub'));
+   RegisterCodeGen(TBigIntegerMinusAssignExpr,   TJSBigIntegerCompoundExpr.Create('-=', '$DIdxSub'));
    RegisterCodeGen(TBigIntegerMultAssignExpr,    TJSBigIntegerCompoundExpr.Create('*=', '$DIdxMult'));
+
+   RegisterCodeGen(TBigIntegerEqualOpExpr,         TJSBigIntegerBinOpExpr.Create('==', 10, [associativeLeft]));
+   RegisterCodeGen(TBigIntegerNotEqualOpExpr,      TJSBigIntegerBinOpExpr.Create('!=', 10, [associativeLeft]));
+   RegisterCodeGen(TBigIntegerGreaterEqualOpExpr,  TJSBigIntegerBinOpExpr.Create('>=', 11, [associativeLeft]));
+   RegisterCodeGen(TBigIntegerLessEqualOpExpr,     TJSBigIntegerBinOpExpr.Create('<=', 11, [associativeLeft]));
+   RegisterCodeGen(TBigIntegerGreaterOpExpr,       TJSBigIntegerBinOpExpr.Create('>', 11, [associativeLeft]));
+   RegisterCodeGen(TBigIntegerLessOpExpr,          TJSBigIntegerBinOpExpr.Create('<', 11, [associativeLeft]));
    {$endif}
 end;
 
@@ -8293,14 +8305,11 @@ end;
 // WriteOperator
 //
 function TJSAddOpExpr.WriteOperator(codeGen : TdwsCodeGen; rightExpr : TTypedExpr) : Boolean;
-var
-   v : Variant;
 begin
    Result := False;
    if rightExpr is TConstExpr then begin
-      rightExpr.EvalAsVariant(nil, v);
       // right operand will write a minus
-      if v < 0 then Exit;
+      if rightExpr.EvalAsFloat(nil) < 0 then Exit;
    end;
    codeGen.WriteString(FOp);
 end;
