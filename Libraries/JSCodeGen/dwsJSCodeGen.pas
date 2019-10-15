@@ -1399,12 +1399,13 @@ begin
    RegisterCodeGen(TRecordMethodExpr,     TJSRecordMethodExpr.Create);
    RegisterCodeGen(THelperMethodExpr,     TJSHelperMethodExpr.Create);
 
-   RegisterCodeGen(TMagicIntFuncExpr,     TJSMagicFuncExpr.Create(Self));
-   RegisterCodeGen(TMagicStringFuncExpr,  TJSMagicFuncExpr.Create(Self));
-   RegisterCodeGen(TMagicFloatFuncExpr,   TJSMagicFuncExpr.Create(Self));
-   RegisterCodeGen(TMagicBoolFuncExpr,    TJSMagicFuncExpr.Create(Self));
-   RegisterCodeGen(TMagicVariantFuncExpr, TJSMagicFuncExpr.Create(Self));
-   RegisterCodeGen(TMagicProcedureExpr,   TJSMagicFuncExpr.Create(Self));
+   RegisterCodeGen(TMagicIntFuncExpr,        TJSMagicFuncExpr.Create(Self));
+   RegisterCodeGen(TMagicStringFuncExpr,     TJSMagicFuncExpr.Create(Self));
+   RegisterCodeGen(TMagicFloatFuncExpr,      TJSMagicFuncExpr.Create(Self));
+   RegisterCodeGen(TMagicBoolFuncExpr,       TJSMagicFuncExpr.Create(Self));
+   RegisterCodeGen(TMagicVariantFuncExpr,    TJSMagicFuncExpr.Create(Self));
+   RegisterCodeGen(TMagicInterfaceFuncExpr,  TJSMagicFuncExpr.Create(Self));
+   RegisterCodeGen(TMagicProcedureExpr,      TJSMagicFuncExpr.Create(Self));
 
    RegisterCodeGen(TConstructorStaticExpr,         TJSConstructorStaticExpr.Create);
    RegisterCodeGen(TConstructorStaticDefaultExpr,  TJSConstructorStaticExpr.Create);
@@ -1453,6 +1454,7 @@ begin
    RegisterCodeGen(TConvStringToBigIntegerExpr,  TdwsExprGenericCodeGen.Create(['BigInt', '(', 0, ')']));
    RegisterCodeGen(TConvFloatToBigIntegerExpr,   TdwsExprGenericCodeGen.Create(['BigInt(Math.trunc', '(', 0, ')', ')']));
    RegisterCodeGen(TConvBigIntegerToFloatExpr,   TdwsExprGenericCodeGen.Create(['Number', '(', 0, ')']));
+   RegisterCodeGen(TConvBigIntegerToIntegerExpr,   TdwsExprGenericCodeGen.Create(['Number', '(', 0, ')']));
 
    RegisterCodeGen(TBigIntegerNegateExpr,        TdwsExprGenericCodeGen.Create(['-', '(', 0, ')']));
    RegisterCodeGen(TBigIntegerAddOpExpr,         TJSBigIntegerAddOpExpr.Create);

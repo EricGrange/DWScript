@@ -171,7 +171,7 @@ uses dwsJSON;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..296{$ifdef JS_BIGINTEGER} + 9{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..296{$ifdef JS_BIGINTEGER} + 11{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -1326,10 +1326,20 @@ const
        Dependency : 'BigInteger$SetBit$_BigInteger_Integer_,BigInteger$ClearBit'),
       (Name : 'BigInteger$TestBit';
        Code : 'function BigInteger$TestBit(v,b) { return b >= 0 ? (((v >> BigInt(b)) & 1n) == 1n) : false }'),
+      (Name : 'BigIntegerToBlobParameter';
+       Code : 'function BigIntegerToBlobParameter(v) {'#10
+               +#9'if (v == 0) return "00";'#10
+               +#9'var p, r;'#10
+               +#9'if (v < 0) { p = "ff"; r = (-v).toString(16) } else { r = v.toString(16) };'#10
+               +#9'if (r.length % 1) r = "0" + r;'#10
+               +#9'return p + r'#10
+               +'}'),
       (Name : 'BigIntegerToString';
        Code : 'function BigIntegerToString(v,b) { return v.toString(b) }'),
       (Name : 'BigIntegerToHex';
        Code : 'function BigIntegerToHex(v) { return v.toString(16) }'),
+      (Name : 'BlobFieldToBigInteger';
+       Code : 'function BlobFieldToBigInteger(v) { return v.substring(0,1) == "ff" ? -BigInt("0x" + v.substring(2)) : BigInt("0x" + v)  }'),
       (Name : 'StringToBigInteger';
        Code : 'function StringToBigInteger(v) { return BigInt(v) }')
    {$endif}
