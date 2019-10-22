@@ -1,8 +1,12 @@
-﻿// Int64 would overflow on 2^90, but Float won't
+﻿// Int64 would overflow on 2^90
+// Float will not overflow and be correct internally,
+// but will lose precision when converted to scientific intermediate representation
 
 var b := BigInteger( IntPower(2, 90) );
 PrintLn(b);
-PrintLn(Float(b));
+
+var f := Float(b);
+PrintLn(if (f > 1.237940039285e27) and (f < 1.237940039286e27) then 'True' else 'False');
 
 PrintLn(Log2(Float(b+b)));
 

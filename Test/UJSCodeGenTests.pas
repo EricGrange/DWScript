@@ -97,7 +97,7 @@ begin
    if vChromium <> nil then Exit;
 
    vChromiumForm := TForm.Create(nil);
-   vChromiumForm.Show;
+//   vChromiumForm.Show;
 
    Assert(GlobalCEFApp.GlobalContextInitialized);
 

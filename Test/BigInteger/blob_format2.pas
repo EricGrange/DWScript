@@ -3,6 +3,13 @@
 procedure PrintBlob(r : Variant);
 begin
 	var s := String(r);
+   {$ifdef JS_CODEGEN}
+	if s.StartsWith('ff') then begin
+      Print('-');
+      s := s.DeleteLeft(2);
+   end;
+   PrintLn((if Odd(s.Length) then '0') + s);
+   {$else}
 	var i := 1;
 	if s.StartsWith(#$ff) then begin
 		Print('-');
@@ -14,6 +21,7 @@ begin
 		Print(cHex[b and 15]);
 	end;
 	PrintLn('');
+   {$endif}
 end;
 
 var bm := BigInteger($ff);

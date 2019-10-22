@@ -1452,7 +1452,7 @@ begin
 
    RegisterCodeGen(TConvIntegerToBigIntegerExpr, TdwsExprGenericCodeGen.Create(['BigInt', '(', 0, ')']));
    RegisterCodeGen(TConvStringToBigIntegerExpr,  TdwsExprGenericCodeGen.Create(['BigInt', '(', 0, ')']));
-   RegisterCodeGen(TConvFloatToBigIntegerExpr,   TdwsExprGenericCodeGen.Create(['BigInt(Math.trunc', '(', 0, ')', ')']));
+   RegisterCodeGen(TConvFloatToBigIntegerExpr,   TJSConvFloatToBigInteger.Create);
    RegisterCodeGen(TConvBigIntegerToFloatExpr,   TdwsExprGenericCodeGen.Create(['Number', '(', 0, ')']));
    RegisterCodeGen(TConvBigIntegerToIntegerExpr,   TdwsExprGenericCodeGen.Create(['Number', '(', 0, ')']));
 

@@ -58,6 +58,9 @@ type
       procedure CodeGenRightExpr(codeGen : TdwsCodeGen; rightExpr : TTypedExpr); override;
    end;
 
+   TJSConvFloatToBigInteger = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
 
 implementation
 
@@ -198,6 +201,26 @@ begin
       codeGen.WriteString('BigInt(');
       codeGen.CompileNoWrap(rightExpr);
       codeGen.WriteString(')');
+   end;
+end;
+
+// ------------------
+// ------------------ TJSConvFloatToBigInteger ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSConvFloatToBigInteger.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   bi : IInterface;
+begin
+   if expr.IsConstant then begin
+      expr.EvalAsInterface(nil, bi);
+      TJSBaseBigIntegerSymbol.WriteBigInteger(codeGen.Output, bi as IdwsBigInteger);
+   end else begin
+      codeGen.WriteString('BigInt(Math.trunc(');
+      codeGen.CompileNoWrap(expr as TTypedExpr);
+      codeGen.WriteString('))');
    end;
 end;
 

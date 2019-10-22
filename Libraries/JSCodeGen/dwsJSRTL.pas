@@ -73,7 +73,9 @@ type
 
    TJSStrBeginsWithExpr = class (TJSFuncBaseExpr)
       public
+         procedure DoCodeGen(codeGen : TdwsCodeGen; expr : TExprBase; wrap : Boolean);
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+         procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
    end;
 
    TJSStrEndsWithExpr = class (TJSFuncBaseExpr)
@@ -171,7 +173,7 @@ uses dwsJSON;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..296{$ifdef JS_BIGINTEGER} + 11{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..296{$ifdef JS_BIGINTEGER} + 13{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -1328,10 +1330,12 @@ const
        Code : 'function BigInteger$TestBit(v,b) { return b >= 0 ? (((v >> BigInt(b)) & 1n) == 1n) : false }'),
       (Name : 'BigIntegerToBlobParameter';
        Code : 'function BigIntegerToBlobParameter(v) {'#10
-               +#9'if (v == 0) return "00";'#10
-               +#9'var p, r;'#10
-               +#9'if (v < 0) { p = "ff"; r = (-v).toString(16) } else { r = v.toString(16) };'#10
-               +#9'if (r.length % 1) r = "0" + r;'#10
+               +#9'if (v == 0) return "";'#10
+               +#9'var p = "";'#10
+               +#9'if (v < 0) { p = "ff"; v = -v };'#10
+               +#9'var r = v.toString(16);'#10
+               +#9'if (r.length & 1) r = "0" + r;'#10
+               +#9'if (p == "" && r.substring(0,2) == "ff") p = "00";'#10
                +#9'return p + r'#10
                +'}'),
       (Name : 'BigIntegerToString';
@@ -1339,9 +1343,31 @@ const
       (Name : 'BigIntegerToHex';
        Code : 'function BigIntegerToHex(v) { return v.toString(16) }'),
       (Name : 'BlobFieldToBigInteger';
-       Code : 'function BlobFieldToBigInteger(v) { return v.substring(0,1) == "ff" ? -BigInt("0x" + v.substring(2)) : BigInt("0x" + v)  }'),
+       Code : 'function BlobFieldToBigInteger(v) { return v.substring(0,2) == "ff" ? -BigInt("0x" + (v.substring(2) || "0")) : BigInt("0x" + (v || "0"))  }'),
+      (Name : 'Odd$_BigInteger_';
+       Code : 'function Odd$_BigInteger_(v) { return (v&1n)==1n }'),
+      (Name : 'RandomBigInteger';
+       Code : 'function RandomBigInteger(m) {'#10
+              +#9'if (m <= 0) return 0;'#10
+              +#9'let b = m.toString(2).length, r, i;'#10
+              +#9'const h = "0123456789abcdef";'#10
+              +#9'do {'#10
+              +#9#9'let a = new Uint8Array((b >> 3) + (b & 7 ? 1 : 0)), rh = "0x";'#10
+              +#9#9'crypto.getRandomValues(a);'#10
+              +#9#9'if (b & 7) a[0] &= (1 << (b & 7) + 1) - 1;'#10
+              +#9#9'for (i = 0; i < a.length; i++) rh += h[a[i] >> 4] + h[a[i] & 15];'#10
+              +#9#9'r = BigInt(rh);'#10
+              +#9'} while (r >= m)'#10
+              +#9'return r'#10
+              +'}'),
       (Name : 'StringToBigInteger';
-       Code : 'function StringToBigInteger(v) { return BigInt(v) }')
+       Code : 'function StringToBigInteger(v, b) {'#10
+              +#9'if (!v) return 0n;'#10
+              +#9'if (b==16) {'#10
+              +#9#9'return v.charCodeAt(0)==45 ? -BigInt("0x" + v.substring(1)) : BigInt("0x" + v);'#10
+              +#9'}'#10
+              +#9'return BigInt(v)'#10
+              +'}')
    {$endif}
 
    );
@@ -1499,6 +1525,7 @@ begin
    FMagicCodeGens.AddObject('MinInt', TdwsExprGenericCodeGen.Create(['Math.min', '(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('NaN', TdwsExprGenericCodeGen.Create(['NaN']));
    FMagicCodeGens.AddObject('NormalizeString', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.normalize', '(', 1, ')']));
+   FMagicCodeGens.AddObject('Odd$_Integer_', TdwsExprGenericCodeGen.Create(['(', '(', 0, '&1)==1', ')']));
    FMagicCodeGens.AddObject('Pi', TdwsExprGenericCodeGen.Create(['Math.PI']));
    FMagicCodeGens.AddObject('Pos', TdwsExprGenericCodeGen.Create(['(', 1, '.indexOf', '(', 0, ')', '+1)']));
    FMagicCodeGens.AddObject('PosEx', TdwsExprGenericCodeGen.Create(['(', 1, '.indexOf', '(', 0, ',', '(', 2, ')', '-1)+1)']));
@@ -1535,6 +1562,12 @@ begin
    FMagicCodeGens.AddObject('VarIsClear', TdwsExprGenericCodeGen.Create(['(', 0 , '===undefined', ')']));
    FMagicCodeGens.AddObject('VarIsNull', TdwsExprGenericCodeGen.Create(['(', 0 , '===null', ')']));
    FMagicCodeGens.AddObject('VarIsStr', TdwsExprGenericCodeGen.Create(['(', 'typeof ', '(', 0 , ')', '==="string"', ')']));
+
+   {$ifdef JS_BIGINTEGER}
+   FMagicCodeGens.AddObject('BigIntegerToHex', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.toString(16)']));
+   FMagicCodeGens.AddObject('BigIntegerToString', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.toString', '(', 1, ')']));
+   FMagicCodeGens.AddObject('Odd$_BigInteger_', TdwsExprGenericCodeGen.Create(['(', '(', 0, '&1n)==1n', ')']));
+   {$endif}
 end;
 
 // Destroy
@@ -1768,9 +1801,9 @@ end;
 // ------------------ TJSStrBeginsWithExpr ------------------
 // ------------------
 
-// CodeGen
+// DoCodeGen
 //
-procedure TJSStrBeginsWithExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+procedure TJSStrBeginsWithExpr.DoCodeGen(codeGen : TdwsCodeGen; expr : TExprBase; wrap : Boolean);
 var
    e : TMagicFuncExpr;
    a : TExprBase;
@@ -1785,7 +1818,8 @@ begin
       case Length(c.Value) of
          0 : codeGen.WriteString('false');
          1 : begin
-            codeGen.WriteString('(');
+            if wrap then
+               codeGen.WriteString('(');
             codeGen.Compile(e.Args[0]);
             if cgoObfuscate in codeGen.Options then begin
                // slightly faster but less readable, so activate only under obfuscation
@@ -1795,16 +1829,19 @@ begin
                codeGen.WriteString('.charAt(0)==');
                codeGen.WriteLiteralString(c.Value);
             end;
-            codeGen.WriteString(')');
+            if wrap then
+               codeGen.WriteString(')');
          end;
       else
-         codeGen.WriteString('(');
+         if wrap then
+            codeGen.WriteString('(');
          codeGen.Compile(e.Args[0]);
          codeGen.WriteString('.substr(0,');
          codeGen.WriteString(IntToStr(Length(c.Value)));
          codeGen.WriteString(')==');
          codeGen.WriteLiteralString(c.Value);
-         codeGen.WriteString(')');
+         if wrap then
+            codeGen.WriteString(')');
       end;
 
    end else begin
@@ -1818,6 +1855,20 @@ begin
       codeGen.WriteString(')');
 
    end;
+end;
+
+// CodeGen
+//
+procedure TJSStrBeginsWithExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+begin
+   DoCodeGen(codeGen, expr, True);
+end;
+
+// CodeGenNoWrap
+//
+procedure TJSStrBeginsWithExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+begin
+   DoCodeGen(codeGen, expr, False);
 end;
 
 // ------------------
