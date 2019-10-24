@@ -1453,11 +1453,11 @@ var
    bi : TBigIntegerWrapper;
 begin
    bi := TBigIntegerWrapper.CreateZero;
+   Result := bi as IdwsBigInteger;
    mpz_powm(bi.Value,
             ArgBigInteger(args, 0).Value^,
             ArgBigInteger(args, 1).Value^,
             ArgBigInteger(args, 2).Value^);
-   Result := bi as IdwsBigInteger;
 end;
 
 // ------------------
@@ -1471,8 +1471,8 @@ var
    bi : TBigIntegerWrapper;
 begin
    bi := TBigIntegerWrapper.CreateZero;
-   mpz_invert(bi.Value, ArgBigInteger(args, 0).Value^, ArgBigInteger(args, 1).Value^);
    Result := bi as IdwsBigInteger;
+   mpz_invert(bi.Value, ArgBigInteger(args, 0).Value^, ArgBigInteger(args, 1).Value^);
 end;
 
 // ------------------
