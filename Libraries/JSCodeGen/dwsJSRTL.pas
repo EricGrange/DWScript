@@ -173,7 +173,7 @@ uses dwsJSON;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..296{$ifdef JS_BIGINTEGER} + 13{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..296{$ifdef JS_BIGINTEGER} + 14{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -1344,6 +1344,8 @@ const
        Code : 'function BigIntegerToHex(v) { return v.toString(16) }'),
       (Name : 'BlobFieldToBigInteger';
        Code : 'function BlobFieldToBigInteger(v) { return v.substring(0,2) == "ff" ? -BigInt("0x" + (v.substring(2) || "0")) : BigInt("0x" + (v || "0"))  }'),
+      (Name : 'ModInv';
+       Dependency : '!ModInv_js'),
       (Name : 'Odd$_BigInteger_';
        Code : 'function Odd$_BigInteger_(v) { return (v&1n)==1n }'),
       (Name : 'RandomBigInteger';
