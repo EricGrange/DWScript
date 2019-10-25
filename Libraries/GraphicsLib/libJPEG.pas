@@ -38,6 +38,9 @@ interface
 {$ALIGN 8}
 {$MINENUMSIZE 4}
 
+{$ifdef WIN32} {$define WINDOWS} {$endif}
+{$ifdef WIN64} {$define WINDOWS} {$endif}
+
 
 
 type
@@ -993,11 +996,14 @@ const
 
 
 const
-  {$ifdef win32}
-//    LIB_JPEG_NAME = 'jpeg62.dll'; // VC
-    LIB_JPEG_NAME = 'libjpeg-62.dll'; // gcc
+  {$ifdef WINDOWS}
+     {$ifdef WIN32}
+       LIB_JPEG_NAME = 'libjpeg-62.dll';
+     {$else}
+       LIB_JPEG_NAME = 'libjpeg-62-64.dll';
+     {$endif}
   {$else}
-    LIB_JPEG_NAME = 'libjpeg.so.62';
+     LIB_JPEG_NAME = 'libjpeg.so.62';
   {$endif}
 
   function init_libJPEG(const libJPEG_Name: AnsiString = LIB_JPEG_NAME): boolean;
@@ -1013,14 +1019,14 @@ implementation
 var
   libJPEG_RefCount: Integer;
 
-  {$ifdef win32}
+  {$ifdef WINDOWS}
     libJPEG_Handle: cardinal;
   {$else}
     libJPEG_Handle: pointer;
   {$endif}
 
 
-{$ifdef win32}
+{$ifdef WINDOWS}
 const
   Kernel32 = 'kernel32.dll';
 
@@ -1041,7 +1047,7 @@ const
 
 function GetProcAddr(Name: pAnsiChar): Pointer;
 begin
-  {$ifdef win32}
+  {$ifdef WINDOWS}
     GetProcAddr := GetProcAddress(libJPEG_Handle, Name);
   {$else}
     GetProcAddr := dlsym(libJPEG_Handle, Name);
@@ -1065,15 +1071,15 @@ function init_libJPEG(const libJPEG_Name: AnsiString): boolean;
 var
   Temp: Boolean;
 begin
-  if (libJPEG_RefCount = 0) or (libJPEG_Handle = {$ifdef win32} 0 {$else} nil {$endif}) then begin
-    if libJPEG_Handle = {$ifdef win32} 0 {$else} nil {$endif} then
-      {$ifdef win32}
+  if (libJPEG_RefCount = 0) or (libJPEG_Handle = {$ifdef WINDOWS} 0 {$else} nil {$endif}) then begin
+    if libJPEG_Handle = {$ifdef WINDOWS} 0 {$else} nil {$endif} then
+      {$ifdef WINDOWS}
         libJPEG_Handle := LoadLibrary(pAnsiChar(libJPEG_Name));
       {$else}
         libJPEG_Handle := dlopen(pAnsiChar(libJPEG_Name), RTLD_LAZY);
       {$endif}
 
-    if libJPEG_Handle <> {$ifdef win32} 0 {$else} nil {$endif} then begin
+    if libJPEG_Handle <> {$ifdef WINDOWS} 0 {$else} nil {$endif} then begin
       jpeg_std_error := GetProcAddr('jpeg_std_error');
       jpeg_CreateCompress := GetProcAddr('jpeg_CreateCompress');
       jpeg_CreateDecompress := GetProcAddr('jpeg_CreateDecompress');
@@ -1183,8 +1189,8 @@ begin
   Dec(libJPEG_RefCount);
   
   if libJPEG_RefCount <= 0 then begin
-    if libJPEG_Handle <> {$ifdef win32} 0 {$else} nil {$endif} then begin
-      {$ifdef win32}
+    if libJPEG_Handle <> {$ifdef WINDOWS} 0 {$else} nil {$endif} then begin
+      {$ifdef WINDOWS}
         FreeLibrary(libJPEG_Handle);
         libJPEG_Handle := 0;
       {$else}

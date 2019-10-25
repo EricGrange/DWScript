@@ -21,6 +21,11 @@ unit dwsGraphicLibrary;
 {$ifdef WIN32}
    {$define USE_LIB_JPEG}
 {$endif}
+{$ifdef WIN64}
+   {$define USE_LIB_JPEG}
+{$endif}
+
+{$undef USE_LIB_JPEG}
 
 interface
 
