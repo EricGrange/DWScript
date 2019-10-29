@@ -157,6 +157,7 @@ type
 function FindJSRTLDependency(const name : String) : PJSRTLDependency;
 function All_RTL_JS : String;
 procedure IgnoreJSRTLDependencies(dependencies : TStrings);
+function JSRTL_Resource(const name : String) : String;
 
 procedure SetJSRTL_TZ_FromSettings(const settings : TFormatSettings);
 
@@ -168,7 +169,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsJSON;
+uses dwsJSON, dwsXPlatform, SynZip;
 
 {$R dwsJSRTL.res}
 
@@ -494,10 +495,10 @@ const
                +'}'),
       (Name : '$uniCharAt';
        Code : '';
-       Dependency : '!unicharat_js' ),
+       Dependency : '!uniCharAt.js' ),
       (Name : '$uniCharCodeAt';
        Code : '';
-       Dependency : '!unicharcodeat_js' ),
+       Dependency : '!uniCharCodeAt.js' ),
       (Name : '$Xor';
        Code : 'function $Xor(a,b) { return typeof a === "number" ? a^b : a != b  && a || b }'),
       (Name : '$Div';
@@ -657,7 +658,7 @@ const
        Code : 'function BoolToStr(b) { return b?"True":"False" }'),
       (Name : 'ByteSizeToStr';
        Code : '';
-       Dependency : '!byteSizeToStr_js' ),
+       Dependency : '!byteSizeToStr.js' ),
       (Name : 'Ceil';
        Code : 'var Ceil = Math.ceil'),
       (Name : 'CharAt';
@@ -860,10 +861,10 @@ const
        Code : 'var Floor = Math.floor'),
       (Name : 'Format';
        Code : 'function Format(f,a) { a.unshift(f); return sprintf.apply(null,a) }';
-       Dependency : '!sprintf_js'),
+       Dependency : '!sprintf.js'),
       (Name : 'FormatDateTime';
        Code : '';
-       Dependency : '!formatDateTime_js'; Dependency2 : '$TZ' ),
+       Dependency : '!formatDateTime.js'; Dependency2 : '$TZ' ),
       (Name : 'Frac';
        Code : 'function Frac(v) { return v-((v>0)?Math.floor(v):Math.ceil(v)) }'),
       (Name : 'FindDelimiter';
@@ -1000,7 +1001,7 @@ const
        Dependency : 'StringOfString' ),
       (Name : 'ParseDateTime';
        Code : 'function ParseDateTime(f, s, u) { return strToDateTimeDef(f, s, 0, u) }';
-       Dependency : '!strToDateTimeDef_js'; Dependency2 : 'FormatDateTime'),
+       Dependency : '!strToDateTimeDef.js'; Dependency2 : 'FormatDateTime'),
       (Name : 'PopCount';
        Code : 'function PopCount(i) {'#10
                + #9'if (i > 0xffffffff) return i.toString(2).replace(/0/g,"").length;'#10
@@ -1023,7 +1024,7 @@ const
        Code : 'function RadToDeg(v) { return v*(180/Math.PI) }'),
       (Name : 'Random';
        Code : 'var Random = $alea()';
-       Dependency : '!alea_js' ),
+       Dependency : '!alea.js' ),
       (Name : 'RandG';
        Code : 'function RandG(m, s) {'#10
               +#9'var u, r, n;'#10
@@ -1124,16 +1125,16 @@ const
        Code : 'function StrToCSSText(s) { return CSS.escape(s) }'),
       (Name : 'StrToDate';
        Code : 'function StrToDate(s,u) { return strToDateTimeDef($fmt.ShortDateFormat, s, 0, u) }';
-       Dependency : '!strToDateTimeDef_js'; Dependency2 : 'FormatDateTime'),
+       Dependency : '!strToDateTimeDef.js'; Dependency2 : 'FormatDateTime'),
       (Name : 'StrToDateDef';
        Code : 'function StrToDateDef(s,d,u) { return strToDateTimeDef($fmt.ShortDateFormat, s, d, u) }';
-       Dependency : '!strToDateTimeDef_js'; Dependency2 : 'FormatDateTime'),
+       Dependency : '!strToDateTimeDef.js'; Dependency2 : 'FormatDateTime'),
       (Name : 'StrToDateTime';
        Code : 'function StrToDateTime(s,u) { return strToDateTimeDef($fmt.ShortDateFormat+" "+$fmt.LongTimeFormat, s, 0, u) || strToDateTimeDef($fmt.ShortDateFormat, s, 0, u) }';
-       Dependency : '!strToDateTimeDef_js'; Dependency2 : 'FormatDateTime'),
+       Dependency : '!strToDateTimeDef.js'; Dependency2 : 'FormatDateTime'),
       (Name : 'StrToDateTimeDef';
        Code : 'function StrToDateTimeDef(s,d,u) { return strToDateTimeDef($fmt.ShortDateFormat+" "+$fmt.LongTimeFormat, s, 0, u) || strToDateTimeDef($fmt.ShortDateFormat, s, d, u) }';
-       Dependency : '!strToDateTimeDef_js'; Dependency2 : 'FormatDateTime'),
+       Dependency : '!strToDateTimeDef.js'; Dependency2 : 'FormatDateTime'),
       (Name : 'StrToFloat';
        Code : 'function StrToFloat(v) { return parseFloat(v) }'),
       (Name : 'StrToFloatDef';
@@ -1177,10 +1178,10 @@ const
                +'}'#10),
       (Name : 'StrToTime';
        Code : 'function StrToTime(s) { return strToDateTimeDef($fmt.LongTimeFormat, s, 0)||strToDateTimeDef($fmt.ShortTimeFormat, s, 0) }';
-       Dependency : '!strToDateTimeDef_js'; Dependency2 : '$TZ'),
+       Dependency : '!strToDateTimeDef.js'; Dependency2 : '$TZ'),
       (Name : 'StrToTimeDef';
        Code : 'function StrToTimeDef(s,d) { return strToDateTimeDef($fmt.LongTimeFormat, s, 0)||strToDateTimeDef($fmt.ShortTimeFormat, s, 0)||d }';
-       Dependency : '!strToDateTimeDef_js'; Dependency2 : '$TZ'),
+       Dependency : '!strToDateTimeDef.js'; Dependency2 : '$TZ'),
       (Name : 'StrToXML';
        Code : 'function StrToXML(v) { return v.replace(/[&<>"'']/g, StrToXML.e) }'#10
               +'StrToXML.e = function(c) { return { "&":"&amp;", "<":"&lt;", ">":"&gt;", ''"'':"&quot;", "''":"&apos;" }[c] }' ),
@@ -1345,13 +1346,13 @@ const
       (Name : 'BlobFieldToBigInteger';
        Code : 'function BlobFieldToBigInteger(v) { return v.substring(0,2) == "ff" ? -BigInt("0x" + (v.substring(2) || "0")) : BigInt("0x" + (v || "0"))  }'),
       (Name : 'ModInv';
-       Dependency : '!ModInv_js'),
+       Dependency : '!ModInv.js'),
       (Name : 'ModPow$_BigInteger_Integer_BigInteger_';
        Code : 'function ModPow$_BigInteger_Integer_BigInteger_(v, e, m) { return ModPow$(v, BigInt(e), m) }';
-       Dependency : '!ModInv_js'; Dependency2 : '!ModPow_js'),
+       Dependency : 'ModPow$_BigInteger_BigInteger_BigInteger_'),
       (Name : 'ModPow$_BigInteger_BigInteger_BigInteger_';
-       Code : 'var ModPow$_BigInteger_Integer_BigInteger_ = ModPow$;';
-       Dependency : '!ModInv_js'; Dependency2 : '!ModPow_js'),
+       Code : 'var ModPow$_BigInteger_BigInteger_BigInteger_ = ModPow$;';
+       Dependency : '!ModInv.js'; Dependency2 : '!ModPow.js'),
       (Name : 'Odd$_BigInteger_';
        Code : 'function Odd$_BigInteger_(v) { return (v&1n)==1n }'),
       (Name : 'RandomBigInteger';
@@ -1480,6 +1481,30 @@ begin
       if k>=0 then
          Dependencies.Delete(k);
    end;
+end;
+
+// JSRTL_Resource
+//
+var
+   vJSLRTL_Resources : TFastCompareTextList;
+procedure Prepare_JSRTL_Resources;
+var
+   zip : TZipRead;
+   i : Integer;
+begin
+   vJSLRTL_Resources := TFastCompareTextList.Create;
+   zip := TZipRead.Create(0, 'dwsjsrtl', 'dwsjsrtl');
+   try
+      for i := 0 to zip.Count-1 do begin
+         vJSLRTL_Resources.Values[zip.Entry[i].zipName] := LoadTextFromRawBytes(zip.UnZip(i));
+      end;
+   finally
+      zip.Free;
+   end;
+end;
+function JSRTL_Resource(const name : String) : String;
+begin
+   Result := vJSLRTL_Resources.Values[name];
 end;
 
 // ------------------
@@ -2514,8 +2539,11 @@ initialization
    TJSMagicFuncExpr.vAliases.CaseSensitive := False;
    TJSMagicFuncExpr.vAliases.Sorted := True;
 
+   Prepare_JSRTL_Resources;
+
 finalization
 
    FreeAndNil(TJSMagicFuncExpr.vAliases);
+   FreeAndNil(vJSLRTL_Resources);
 
 end.

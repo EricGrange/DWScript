@@ -178,7 +178,7 @@ begin
 
    pasFilter:=cBaseFilter+'.pas';
    dwsFilter:=cBaseFilter+'.dws';
-(*
+
    CollectFiles(ExtractFilePath(ParamStr(0))+'Algorithms'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'SimpleScripts'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'BuildScripts'+PathDelim, dwsFilter, FTests);
@@ -194,7 +194,6 @@ begin
    CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsTime'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsVariant'+PathDelim, pasFilter, FTests);
    //CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsRTTI'+PathDelim, pasFilter, FTests);
-//*)
 
    {$ifdef JS_BIGINTEGER}
    CollectFiles(ExtractFilePath(ParamStr(0))+'BigInteger'+PathDelim, pasFilter, FTests);
