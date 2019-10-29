@@ -572,7 +572,7 @@ end;
 
 procedure TFileDateTimeNameFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
-   Result:=FileDateTime(args.AsFileName[0]);
+   Result := FileDateTime(args.AsFileName[0]).AsLocalDateTime;
 end;
 
 // ------------------
@@ -581,7 +581,7 @@ end;
 
 procedure TFileAccessDateTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
-   Result:=FileDateTime(args.AsFileName[0], True);
+   Result := FileDateTime(args.AsFileName[0], True).AsLocalDateTime;
 end;
 
 // ------------------
@@ -590,7 +590,7 @@ end;
 
 procedure TFileSetDateTimeFileFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
-   FileSetDateTime(GetFileHandle(args, 0), args.AsFloat[1]);
+   FileSetDateTime(GetFileHandle(args, 0), TdwsDateTime.FromLocalDateTime(args.AsFloat[1]));
 end;
 
 // ------------------

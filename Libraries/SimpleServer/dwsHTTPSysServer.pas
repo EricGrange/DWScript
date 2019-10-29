@@ -1008,8 +1008,7 @@ var
    response : PHTTP_RESPONSE_V2;
    headers : HTTP_UNKNOWN_HEADER_ARRAY;
    dataChunkInMemory : HTTP_DATA_CHUNK_INMEMORY;
-   pContentEncoding : PHTTP_KNOWN_HEADER;
-   pRespServer : PHTTP_KNOWN_HEADER;
+   pContentEncoding, pRespServer : PHTTP_KNOWN_HEADER;
    sendResult : HResult;
 begin
    NameThreadForDebugging('THttpApi2Server');
@@ -1091,9 +1090,9 @@ begin
 
                response^.SetStatus(FWebResponse.StatusCode, FOutStatus);
 
-               pRespServer:=@response^.Headers.KnownHeaders[respServer];
-               pRespServer^.pRawValue:=FLogFieldsData.ServerName;
-               pRespServer^.RawValueLength:=FLogFieldsData.ServerNameLength;
+               pRespServer := @response^.Headers.KnownHeaders[respServer];
+               pRespServer^.pRawValue := FLogFieldsData.ServerName;
+               pRespServer^.RawValueLength := FLogFieldsData.ServerNameLength;
 
                // send response
                response^.Version := request^.Version;

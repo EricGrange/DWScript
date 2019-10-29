@@ -38,7 +38,8 @@ type
 
          class function EncodeEncodedWord(const s : String) : String; static;
 
-         class function DateTimeToRFC822(const dt : TDateTime) : String; static;
+         class function DateTimeToRFC822(const dt : TdwsDateTime) : String; overload; static; inline;
+         class function DateTimeToRFC822(const dt : TDateTime) : String; overload; static;
          class function RFC822ToDateTime(const str : String) : TDateTime; static;
 
          class function HTMLTextEncode(const s : UnicodeString) : UnicodeString; static;
@@ -541,6 +542,13 @@ const
    cRFC822Days : array[1..7] of String = (
       'Sun','Mon','Tue','Wed','Thu', 'Fri','Sat'
    );
+
+// DateTimeToRFC822
+//
+class function WebUtils.DateTimeToRFC822(const dt : TdwsDateTime) : String;
+begin
+   Result := WebUtils.DateTimeToRFC822(dt.AsUTCDateTime);
+end;
 
 // DateTimeToRFC822
 //

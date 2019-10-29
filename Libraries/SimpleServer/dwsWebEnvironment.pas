@@ -23,7 +23,7 @@ uses
    Classes, SysUtils, StrUtils, DateUtils,
    SynCrtSock, SynCommons,
    dwsExprs, dwsUtils, dwsWebUtils, dwsWebServerUtils, dwsWebServerHelpers,
-   dwsSymbols, dwsExprList;
+   dwsSymbols, dwsExprList, dwsXPlatform;
 
 type
    TWebRequestAuthentication = (
@@ -126,7 +126,7 @@ type
          function HasQueryField(const name : String) : Boolean;
          function HasContentField(const name : String) : Boolean;
 
-         function IfModifiedSince : TDateTime;
+         function IfModifiedSince : TdwsDateTime;
          function IfNoneMatch : String;
 
          property Authentication : TWebRequestAuthentication read GetAuthentication;
@@ -179,7 +179,7 @@ type
       protected
          procedure SetContentText(const textType : RawByteString; const text : String);
          procedure SetContentJSON(const json : String);
-         procedure SetLastModified(v : TDateTime);
+         procedure SetLastModified(const v : TdwsDateTime);
          procedure SetETag(const v : String);
          procedure SetCacheControl(const v : String);
          function  GetCookies : TWebResponseCookies;
@@ -206,7 +206,7 @@ type
          property Headers : TStrings read FHeaders;
          property Cookies : TWebResponseCookies read GetCookies;
          property Compression : Boolean read GetCompression write SetCompression;
-         property LastModified : TDateTime write SetLastModified;
+         property LastModified : TdwsDateTime write SetLastModified;
          property ETag : String write SetETag;
          property CacheControl : String write SetCacheControl;
          property Hints : TWebResponseHints read FHints write FHints;
@@ -532,14 +532,14 @@ end;
 
 // IfModifiedSince
 //
-function TWebRequest.IfModifiedSince : TDateTime;
+function TWebRequest.IfModifiedSince : TdwsDateTime;
 var
    v : String;
 begin
-   v:=Header('If-Modified-Since');
+   v := Header('If-Modified-Since');
    if v<>'' then
-      Result:=WebUtils.RFC822ToDateTime(v)
-   else Result:=0;
+      Result.AsUTCDateTime := WebUtils.RFC822ToDateTime(v)
+   else Result.Clear;
 end;
 
 // IfNoneMatch
@@ -667,7 +667,7 @@ end;
 
 // SetLastModified
 //
-procedure TWebResponse.SetLastModified(v : TDateTime);
+procedure TWebResponse.SetLastModified(const v : TdwsDateTime);
 begin
    Headers.Values['Last-Modified'] := WebUtils.DateTimeToRFC822(v);
 end;

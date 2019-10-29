@@ -145,7 +145,7 @@ begin
          fileInfo.zfullSize := zipCompressor.SizeIn;
          fileInfo.zzipSize := zipCompressor.SizeOut;
          fileInfo.zzipMethod := Z_DEFLATED;
-         fileInfo.zlastMod := DateTimeToDosDateTime(FileDateTime(aFileName));
+         fileInfo.zlastMod := FileDateTime(aFileName).AsDosDateTime;
          offsetEnd := destStream.Position;
          destStream.Position := offsetHead+SizeOf(fMagic);
          destStream.Write(fhr.fileInfo, SizeOf(fhr.fileInfo));

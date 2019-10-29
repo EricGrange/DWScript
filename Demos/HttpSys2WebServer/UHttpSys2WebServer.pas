@@ -549,11 +549,11 @@ end;
 //
 procedure THttpSys2WebServer.ProcessStaticFile(const pathName : String; request : TWebRequest; response : TWebResponse);
 var
-   ifModifiedSince : TDateTime;
-   lastModified : TDateTime;
+   ifModifiedSince : TdwsDateTime;
+   lastModified : TdwsDateTime;
 begin
    lastModified := FileDateTime(pathName);
-   if lastModified = 0 then begin
+   if lastModified.IsZero then begin
       ProcessStandardError(request, 404, 'not found',  response);
       Exit;
    end;
@@ -561,7 +561,7 @@ begin
    ifModifiedSince := request.IfModifiedSince;
 
    // compare with a precision to the second and no more
-   if Round(lastModified*86400) > Round(ifModifiedSince*86400) then begin
+   if lastModified.MillisecondsAheadOf(ifModifiedSince) >= 1000 then begin
 
       // http.sys will send the specified file from kernel mode
 

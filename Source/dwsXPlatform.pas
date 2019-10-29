@@ -180,6 +180,51 @@ type
       {$ENDIF}
    end;
 
+   // Wrap in a record so it is not assignment compatible without explicit casts
+   // Internal representation is UnixTime in milliseconds (same as JavaScript)
+   TdwsDateTime = record
+      private
+         FValue : Int64;
+
+         function GetAsUnixTime : Int64;
+         procedure SetAsUnixTime(const val : Int64);
+
+         function GetAsFileTime : TFileTime;
+         procedure SetAsFileTime(const val : TFileTime);
+         function GetAsDosDateTime : Integer;
+
+         function GetAsLocalDateTime : TDateTime;
+         procedure SetAsLocalDateTime(const val : TDateTime);
+         function GetAsUTCDateTime : TDateTime;
+         procedure SetAsUTCDateTime(const val : TDateTime);
+
+      public
+         class function Now : TdwsDateTime; static;
+         class function FromLocalDateTime(const dt : TDateTime) : TdwsDateTime; static;
+
+         procedure Clear; inline;
+         function IsZero : Boolean; inline;
+
+         class operator Equal(const a, b : TdwsDateTime) : Boolean; static; inline;
+         class operator NotEqual(const a, b : TdwsDateTime) : Boolean; static; inline;
+         class operator GreaterThan(const a, b : TdwsDateTime) : Boolean; static; inline;
+         class operator GreaterThanOrEqual(const a, b : TdwsDateTime) : Boolean; static; inline;
+         class operator LessThan(const a, b : TdwsDateTime) : Boolean; static; inline;
+         class operator LessThanOrEqual(const a, b : TdwsDateTime) : Boolean; static; inline;
+
+         function MillisecondsAheadOf(const d : TdwsDateTime) : Int64; inline;
+         procedure IncMilliseconds(const msec : Int64); inline;
+
+         property Value : Int64 read FValue write FValue;
+
+         property AsUnixTime : Int64 read GetAsUnixTime write SetAsUnixTime;
+         property AsFileTime : TFileTime read GetAsFileTime write SetAsFileTime;
+         property AsDosDateTime : Integer read GetAsDosDateTime;
+
+         property AsLocalDateTime : TDateTime read GetAsLocalDateTime write SetAsLocalDateTime;
+         property AsUTCDateTime : TDateTime read GetAsUTCDateTime write SetAsUTCDateTime;
+   end;
+
 // 64bit system clock reference in milliseconds since boot
 function GetSystemMilliseconds : Int64;
 function UTCDateTime : TDateTime;
@@ -274,8 +319,8 @@ function FileMove(const existing, new : TFileName) : Boolean;
 function FileDelete(const fileName : TFileName) : Boolean;
 function FileRename(const oldName, newName : TFileName) : Boolean;
 function FileSize(const name : TFileName) : Int64;
-function FileDateTime(const name : TFileName; lastAccess : Boolean = False) : TDateTime;
-procedure FileSetDateTime(hFile : THandle; aDateTime : TDateTime);
+function FileDateTime(const name : TFileName; lastAccess : Boolean = False) : TdwsDateTime;
+procedure FileSetDateTime(hFile : THandle; const aDateTime : TdwsDateTime);
 function DeleteDirectory(const path : String) : Boolean;
 
 function DirectSet8087CW(newValue : Word) : Word; register;
@@ -353,12 +398,9 @@ type
 // GetSystemTimeMilliseconds
 //
 function GetSystemTimeMilliseconds : Int64; stdcall;
-var
-   fileTime : TFileTime;
 begin
 {$IFDEF WINDOWS}
-   GetSystemTimeAsFileTime(fileTime);
-   Result:=Round(PInt64(@fileTime)^*1e-4); // 181
+   Result := TdwsDateTime.Now.Value;
 {$ELSE}
    Not yet implemented!
 {$ENDIF}
@@ -464,13 +506,11 @@ var
    tzDynInfo : TDynamicTimeZoneInformation;
    tzInfo : TTimeZoneInformation;
    localSystemTime, universalSystemTime : TSystemTime;
-   y, m, d : Word;
 begin
    DateTimeToSystemTime(t, universalSystemTime);
    if GetDynamicTimeZoneInformation(tzDynInfo) = TIME_ZONE_ID_INVALID then
       RaiseLastOSError;
-   DecodeDate(t, y, m, d);
-   if not GetTimeZoneInformationForYear(y, @tzDynInfo, tzInfo) then
+   if not GetTimeZoneInformationForYear(universalSystemTime.wYear, @tzDynInfo, tzInfo) then
       RaiseLastOSError;
    if not SystemTimeToTzSpecificLocalTime(@tzInfo, universalSystemTime, localSystemTime) then
       RaiseLastOSError;
@@ -1469,26 +1509,31 @@ end;
 
 // FileDateTime
 //
-function FileDateTime(const name : TFileName; lastAccess : Boolean = False) : TDateTime;
+function FileDateTime(const name : TFileName; lastAccess : Boolean = False) : TdwsDateTime;
 var
    info : TWin32FileAttributeData;
-   localTime : TFileTime;
-   systemTime : TSystemTime;
+   fileTime : TFileTime;
+   buf : TdwsDateTime;
 begin
    if GetFileAttributesExW(PWideChar(Pointer(name)), GetFileExInfoStandard, @info) then begin
       if lastAccess then
-         FileTimeToLocalFileTime(info.ftLastAccessTime, localTime)
-      else FileTimeToLocalFileTime(info.ftLastWriteTime, localTime);
-      FileTimeToSystemTime(localTime, systemTime);
-      Result:=SystemTimeToDateTime(systemTime);
-   end else Result:=0;
+         FileTimeToLocalFileTime(info.ftLastAccessTime, fileTime)
+      else FileTimeToLocalFileTime(info.ftLastWriteTime, fileTime);
+      buf.AsFileTime := fileTime;
+   end else buf.Clear;
+   Result := buf;
 end;
 
 // FileSetDateTime
 //
-procedure FileSetDateTime(hFile : THandle; aDateTime : TDateTime);
+procedure FileSetDateTime(hFile : THandle; const aDateTime : TdwsDateTime);
+var
+   doNotChange, newTimeStamp : TFileTime;
 begin
-   FileSetDate(hFile, DateTimeToFileDate(aDateTime));
+   newTimeStamp := aDateTime.AsFileTime;
+   doNotChange.dwLowDateTime  := Cardinal(-1);
+   doNotChange.dwHighDateTime := Cardinal(-1);
+   SetFileTime(hFile, @doNotChange, @newTimeStamp, @newTimeStamp);
 end;
 
 // DeleteDirectory
@@ -2012,6 +2057,177 @@ begin
    if FTimer = 0 then Exit;
    DeleteTimerQueueTimer(0, FTimer, INVALID_HANDLE_VALUE);
    FTimer:=0;
+end;
+
+// ------------------
+// ------------------ TdwsDateTime ------------------
+// ------------------
+
+// Now
+//
+class function TdwsDateTime.Now : TdwsDateTime;
+var
+   fileTime : TFileTime;
+begin
+   GetSystemTimeAsFileTime(fileTime);
+   Result.AsFileTime := fileTime;
+end;
+
+// FromLocalDateTime
+//
+class function TdwsDateTime.FromLocalDateTime(const dt : TDateTime) : TdwsDateTime;
+begin
+   Result.AsLocalDateTime := dt;
+end;
+
+// Clear
+//
+procedure TdwsDateTime.Clear;
+begin
+   FValue := 0;
+end;
+
+// IsZero
+//
+function TdwsDateTime.IsZero : Boolean;
+begin
+   Result := FValue = 0;
+end;
+
+// Equal
+//
+class operator TdwsDateTime.Equal(const a, b : TdwsDateTime) : Boolean;
+begin
+   Result := a.FValue = b.FValue;
+end;
+
+// NotEqual
+//
+class operator TdwsDateTime.NotEqual(const a, b : TdwsDateTime) : Boolean;
+begin
+   Result := a.FValue <> b.FValue;
+end;
+
+// GreaterThan
+//
+class operator TdwsDateTime.GreaterThan(const a, b : TdwsDateTime) : Boolean;
+begin
+   Result := a.FValue > b.FValue;
+end;
+
+// GreaterThanOrEqual
+//
+class operator TdwsDateTime.GreaterThanOrEqual(const a, b : TdwsDateTime) : Boolean;
+begin
+   Result := a.FValue >= b.FValue;
+end;
+
+// LessThan
+//
+class operator TdwsDateTime.LessThan(const a, b : TdwsDateTime) : Boolean;
+begin
+   Result := a.FValue < b.FValue;
+end;
+
+// LessThanOrEqual
+//
+class operator TdwsDateTime.LessThanOrEqual(const a, b : TdwsDateTime) : Boolean;
+begin
+   Result := a.FValue <= b.FValue;
+end;
+
+// MillisecondsAheadOf
+//
+function TdwsDateTime.MillisecondsAheadOf(const d : TdwsDateTime) : Int64;
+begin
+   Result := FValue - d.FValue;
+end;
+
+// IncMilliseconds
+//
+procedure TdwsDateTime.IncMilliseconds(const msec : Int64);
+begin
+   Inc(FValue, msec);
+end;
+
+const
+   cFileTime_UnixTimeStart : Int64 = $019DB1DED53E8000; // January 1, 1970 (start of Unix epoch) in "ticks"
+   cFileTime_TicksPerMillisecond : Int64 = 10000;       // a tick is 100ns
+
+// SetAsFileTime
+//
+procedure TdwsDateTime.SetAsFileTime(const val : TFileTime);
+var
+   temp : LARGE_INTEGER;
+begin
+   temp.LowPart := val.dwLowDateTime;
+   temp.HighPart := val.dwHighDateTime;
+   FValue := (temp.QuadPart - cFileTime_UnixTimeStart) div cFileTime_TicksPerMillisecond;
+end;
+
+// GetAsDosDateTime
+//
+function TdwsDateTime.GetAsDosDateTime : Integer;
+var
+   fileTime : TFileTime;
+   dosTime : LongRec;
+begin
+   fileTime := AsFileTime;
+   FileTimeToDosDateTime(fileTime, dosTime.Hi, dosTime.Lo);
+   Result := Integer(dosTime);
+end;
+
+// GetAsFileTime
+//
+function TdwsDateTime.GetAsFileTime : TFileTime;
+var
+   temp : LARGE_INTEGER;
+begin
+   temp.QuadPart := (FValue * cFileTime_TicksPerMillisecond) + cFileTime_UnixTimeStart;
+   Result.dwLowDateTime := temp.LowPart;
+   Result.dwHighDateTime := temp.HighPart;
+end;
+
+// GetAsUnixTime
+//
+function TdwsDateTime.GetAsUnixTime : Int64;
+begin
+   Result := FValue div 1000;
+end;
+
+// SetAsUnixTime
+//
+procedure TdwsDateTime.SetAsUnixTime(const val : Int64);
+begin
+   FValue := val * 1000;
+end;
+
+// GetAsLocalDateTime
+//
+function TdwsDateTime.GetAsLocalDateTime : TDateTime;
+begin
+   Result := UTCDateTimeToLocalDateTime(AsUTCDateTime);
+end;
+
+// SetAsLocalDateTime
+//
+procedure TdwsDateTime.SetAsLocalDateTime(const val : TDateTime);
+begin
+   AsUTCDateTime := LocalDateTimeToUTCDateTime(val);
+end;
+
+// GetAsUTCDateTime
+//
+function TdwsDateTime.GetAsUTCDateTime : TDateTime;
+begin
+   Result := FValue / 864e5 + 25569;
+end;
+
+// SetAsUTCDateTime
+//
+procedure TdwsDateTime.SetAsUTCDateTime(const val : TDateTime);
+begin
+   FValue := Round((val - 25569) * 864e5);
 end;
 
 // ------------------------------------------------------------------
