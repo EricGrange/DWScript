@@ -173,7 +173,7 @@ uses dwsJSON;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..296{$ifdef JS_BIGINTEGER} + 14{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..296{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -1346,6 +1346,12 @@ const
        Code : 'function BlobFieldToBigInteger(v) { return v.substring(0,2) == "ff" ? -BigInt("0x" + (v.substring(2) || "0")) : BigInt("0x" + (v || "0"))  }'),
       (Name : 'ModInv';
        Dependency : '!ModInv_js'),
+      (Name : 'ModPow$_BigInteger_Integer_BigInteger_';
+       Code : 'function ModPow$_BigInteger_Integer_BigInteger_(v, e, m) { return ModPow$(v, BigInt(e), m) }';
+       Dependency : '!ModInv_js'; Dependency2 : '!ModPow_js'),
+      (Name : 'ModPow$_BigInteger_BigInteger_BigInteger_';
+       Code : 'var ModPow$_BigInteger_Integer_BigInteger_ = ModPow$;';
+       Dependency : '!ModInv_js'; Dependency2 : '!ModPow_js'),
       (Name : 'Odd$_BigInteger_';
        Code : 'function Odd$_BigInteger_(v) { return (v&1n)==1n }'),
       (Name : 'RandomBigInteger';

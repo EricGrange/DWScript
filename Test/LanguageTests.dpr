@@ -66,7 +66,8 @@ uses
   USymbolDictionaryTests in 'USymbolDictionaryTests.pas',
   UdwsSystemInfoTests in 'UdwsSystemInfoTests.pas',
   UdwsWebLibModuleTest in 'UdwsWebLibModuleTest.pas',
-  BeaEngineDelphi in '..\Tools\BeaEngine\BeaEngineDelphi.pas';
+  BeaEngineDelphi in '..\Tools\BeaEngine\BeaEngineDelphi.pas',
+  UdwsDateTimeTests in 'UdwsDateTimeTests.pas';
 
 {$R *.res}
 
