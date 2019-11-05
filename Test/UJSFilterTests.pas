@@ -4,7 +4,7 @@ interface
 
 uses
   Forms, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   uCEFChromium, uCEFChromiumWindow, uCEFInterfaces, uCEFTypes, uCEFApplication,
+  UJSTestChromium,
   dwsJSFilter, dwsHtmlFilter, dwsXPlatform, dwsUtils,
   dwsJSLibModule,
   StrUtils, dwsFunctions, dwsCodeGen, dwsUnitSymbols, dwsCompilerContext, dwsErrors;
@@ -21,24 +21,11 @@ type
          FASMModule : TdwsJSLibModule;
          FHtmlFilter : TdwsHtmlFilter;
          FHtmlUnit : TdwsHtmlUnit;
-         FChromium : TChromiumWindow;
-         FChromiumForm : TForm;
-         FLastJSResult : String;
-         FConsole : String;
-         FLoadEnded : Boolean;
+         FChromium : ITestChromium;
 
       public
          procedure SetUp; override;
          procedure TearDown; override;
-
-         procedure DoJSDialog(
-            Sender: TObject; const browser: ICefBrowser; const originUrl: ustring;
-            dialogType: TCefJsDialogType; const messageText, defaultPromptText: ustring;
-            const callback: ICefJsDialogCallback; out suppressMessage: Boolean; out Result: Boolean);
-         procedure DoConsoleMessage(
-            Sender: TObject; const browser: ICefBrowser;
-            level: TCefLogSeverity; const message, source: ustring; line: Integer; out Result: Boolean);
-         procedure DoLoadEnd(Sender: TObject; const browser: ICefBrowser; const frame: ICefFrame; httpStatusCode: Integer);
 
          procedure DoInclude(const scriptName: string; var scriptSource: string);
          function  DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
@@ -103,17 +90,8 @@ begin
    FASMModule:=TdwsJSLibModule.Create(nil);
    FASMModule.Script:=FJSCompiler;
 
-   FChromiumForm:=TForm.Create(nil);
-   FChromiumForm.Show;
-
-   FChromium:=TChromiumWindow.Create(nil);
-   FChromium.ChromiumBrowser.OnJsdialog:=DoJSDialog;
-   FChromium.ChromiumBrowser.OnConsoleMessage:=DoConsoleMessage;
-   FChromium.ChromiumBrowser.OnLoadEnd:=DoLoadEnd;
-   FChromium.Parent:=FChromiumForm;
-   FChromium.CreateBrowser;
-   FChromium.ChromiumBrowser.LoadURL('about:blank');
-
+   if FChromium = nil then
+      FChromium := CreateTestChromium;
 end;
 
 // TearDown
@@ -121,9 +99,6 @@ end;
 procedure TJSFilterTests.TearDown;
 begin
    FTestFailures.Free;
-   FChromium.CloseBrowser(True);
-   FChromium.Free;
-   FChromiumForm.Free;
    FASMModule.Free;
    FJSFilter.Free;
    FHtmlFilter.Free;
@@ -131,34 +106,6 @@ begin
    FJSCompiler.Free;
    FHtmlUnit.Free;
    FTests.Free;
-end;
-
-// DoJSDialog
-//
-procedure TJSFilterTests.DoJSDialog(
-            Sender: TObject; const browser: ICefBrowser; const originUrl: ustring;
-            dialogType: TCefJsDialogType; const messageText, defaultPromptText: ustring;
-            const callback: ICefJsDialogCallback; out suppressMessage: Boolean; out Result: Boolean);
-begin
-   FLastJSResult:=messageText;
-   Result:=True;
-end;
-
-// DoConsoleMessage
-//
-procedure TJSFilterTests.DoConsoleMessage(
-            Sender: TObject; const browser: ICefBrowser;
-            level: TCefLogSeverity; const message, source: ustring; line: Integer; out Result: Boolean);
-begin
-   FConsole := message;// Format('Line %d: ', [line])+message+#13#10;
-   Result := True;
-end;
-
-// DoLoadEnd
-//
-procedure TJSFilterTests.DoLoadEnd(Sender: TObject; const browser: ICefBrowser; const frame: ICefFrame; httpStatusCode: Integer);
-begin
-   FLoadEnded:=True;
 end;
 
 // DoInclude
@@ -209,33 +156,24 @@ begin
    // CEF3 is asynchronous, this is a quick & dirty synchronous-ification
    // as unit tests are not asynchronous
 
-   FConsole := '';
+   FChromium.Console := '';
 
-   FLoadEnded := False;
-   FChromium.ChromiumBrowser.Browser.MainFrame.LoadString(src+'<script>console.log(document.body ? document.body.innerText : "!done")</script>', 'http://localhost');
-   while not FLoadEnded do begin
-      Sleep(1);
-      Application.ProcessMessages;
-   end;
+   FChromium.LoadAndWait(src+'<script>console.log(document.body ? document.body.innerText : "!done")</script>', 'http://localhost');
 
    t := 2000;
-   while (FConsole = '') and (t > 0) do begin
+   while (FChromium.Console = '') and (FChromium.LastJSResult = '') and (t > 0) do begin
       Sleep(1);
       Application.ProcessMessages;
       Dec(t);
    end;
    if t = 0 then begin
-      if FLoadEnded then begin
-         Result := 'Timeout AFTER load ended';
-      end else begin
-         FChromium.ChromiumBrowser.Browser.StopLoad;
-         Result := 'Timeout before load ended'
-      end;
+      FChromium.StopLoad;
+      Result := 'Timeout';
    end else begin
-      if FConsole = '!done' then
+      if FChromium.Console = '!done' then
          Result := ''
-      else Result := FConsole;
-      FConsole := '';
+      else Result := FChromium.Console;
+      FChromium.Console := '';
    end;
 end;
 
@@ -261,18 +199,18 @@ begin
 
          CheckEquals('', exec.Msgs.AsInfo, 'exec '+s);
 
-         FLastJSResult:='*no result*';
-         FConsole:='';
+         FChromium.LastJSResult := '*no result*';
+         FChromium.Console := '';
 
-         FLastJSResult:=BrowserLoadAndWait(exec.Result.ToString);
+         FChromium.LastJSResult := BrowserLoadAndWait(exec.Result.ToString);
 
          if prog.Msgs.Count=0 then
-            output := FConsole+FLastJSResult
+            output := FChromium.Console + FChromium.LastJSResult
          else begin
-            output:= 'Errors >>>>'#10
-                    +ReplaceStr(prog.Msgs.AsInfo, #13#10, #10)
-                    +'Result >>>>'#10
-                    +FConsole+FLastJSResult;
+            output:=  'Errors >>>>'#10
+                    + ReplaceStr(prog.Msgs.AsInfo, #13#10, #10)
+                    + 'Result >>>>'#10
+                    + FChromium.Console + FChromium.LastJSResult;
          end;
 
          resultFileName:=ChangeFileExt(s, '.txt');
