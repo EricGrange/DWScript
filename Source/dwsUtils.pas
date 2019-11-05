@@ -2907,11 +2907,9 @@ end;
 //
 procedure RawByteStringToScriptString(const s : RawByteString; var result : UnicodeString); overload;
 begin
-   if s='' then begin
-      result:='';
-      exit;
-   end;
-   BytesToScriptString(Pointer(s), Length(s), result)
+   if s = '' then
+      result := ''
+   else BytesToScriptString(Pointer(s), Length(s), result)
 end;
 
 // RawByteStringToScriptString

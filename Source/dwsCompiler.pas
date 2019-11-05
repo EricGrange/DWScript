@@ -11364,9 +11364,9 @@ begin
                        ttFUNCTION, ttPROCEDURE, ttLAMBDA,
                        ttRECORD, ttCLASS,
                        ttBRIGHT]);
-   if tt <> ttNone then begin
-      // special logic for property write expressions
-      if tt=ttBRIGHT then begin
+   case tt of
+      ttBRIGHT : begin
+         // special logic for property write expressions
          if FPendingSetterValueExpr<>nil then begin
             Result:=FPendingSetterValueExpr;
             FPendingSetterValueExpr:=nil;
@@ -11375,10 +11375,9 @@ begin
             Result:=nil;
          end;
          Exit;
-      end else FTok.KillToken;
-   end;
-   case tt of
+      end;
       ttPLUS : begin
+         FTok.KillToken;
          FTok.TestName;
          hotPos:=FTok.HotPos;
          Result:=ReadTerm; // (redundant) plus sign
@@ -11387,41 +11386,65 @@ begin
                  or Result.IsOfType(FCompilerContext.TypVariant)) then
             FMsgs.AddCompilerError(hotPos, CPE_NumericalExpected);
       end;
-      ttMINUS :
-         Result:=ReadNegation;
-      ttALEFT :
-         Result:=ReadArrayConstant(ttARIGHT, expecting);
-      ttNOT :
-         Result:=ReadNotTerm;
-      ttBLEFT : begin
-         Result:=ReadBracket;
-         if FTok.Test(ttDOT) then
-            Result:=(ReadSymbol(Result, isWrite) as TTypedExpr);
+      ttMINUS : begin
+         FTok.KillToken;
+         Result := ReadNegation;
       end;
-      ttAT :
+      ttALEFT : begin
+         FTok.KillToken;
+         Result := ReadArrayConstant(ttARIGHT, expecting);
+      end;
+      ttNOT : begin
+         FTok.KillToken;
+         Result := ReadNotTerm;
+      end;
+      ttBLEFT : begin
+         FTok.KillToken;
+         Result := ReadBracket;
+         if FTok.Test(ttDOT) then
+            Result := (ReadSymbol(Result, isWrite) as TTypedExpr);
+      end;
+      ttAT : begin
+         FTok.KillToken;
          Result:=ReadAt(expecting);
-      ttTRUE :
+      end;
+      ttTRUE : begin
+         FTok.KillToken;
          Result := FUnifiedConstants.CreateBoolean(True);
-      ttFALSE :
+      end;
+      ttFALSE : begin
+         FTok.KillToken;
          Result := FUnifiedConstants.CreateBoolean(False);
-      ttNIL :
+      end;
+      ttNIL : begin
+         FTok.KillToken;
          Result := FUnifiedConstants.CreateNil;
-      ttIF :
-         Result:=ReadIfExpr;
+      end;
+      ttIF : begin
+         FTok.KillToken;
+         Result := ReadIfExpr;
+      end;
       ttPROCEDURE, ttFUNCTION : begin
-         Result:=ReadAnonymousMethod(tt, FTok.HotPos);
+         FTok.KillToken;
+         Result := ReadAnonymousMethod(tt, FTok.HotPos);
       end;
       ttLAMBDA : begin
-         Result:=ReadLambda(tt, FTok.HotPos);
+         FTok.KillToken;
+         Result := ReadLambda(tt, FTok.HotPos);
       end;
-      ttRECORD :
-         Result:=ReadAnonymousRecord;
+      ttRECORD : begin
+         FTok.KillToken;
+         Result := ReadAnonymousRecord;
+      end;
       ttCLASS : begin
+         FTok.KillToken;
          if not (coAllowClosures in Options) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_AnonymousClassNotAllowed);
          Result := ReadAnonymousClass;
       end;
    else
+      if tt <> ttNone then
+         FTok.KillToken;
       if (FTok.TestAny([ttINHERITED, ttNEW])<>ttNone) or FTok.TestName then begin
          // Variable or Function
          nameExpr:=ReadName(isWrite, expecting);
