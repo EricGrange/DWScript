@@ -910,6 +910,21 @@ object dwsWebLib: TdwsWebLib
             ResultType = 'Integer'
             OnEval = dwsWebClassesHttpRequestMethodsCurrentContentSizeEval
             Kind = mkFunction
+          end
+          item
+            Name = 'ContentSubData'
+            Parameters = <
+              item
+                Name = 'offset'
+                DataType = 'Integer'
+              end
+              item
+                Name = 'length'
+                DataType = 'Integer'
+              end>
+            ResultType = 'String'
+            OnEval = dwsWebClassesHttpRequestMethodsContentSubDataEval
+            Kind = mkFunction
           end>
         OnCleanUp = dwsWebClassesHttpRequestCleanUp
       end

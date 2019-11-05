@@ -188,6 +188,8 @@ type
       baseExpr: TTypedExpr; const args: TExprBaseListExec);
     procedure dwsWebClassesWebResponseMethodsSetCacheControlFastEvalNoResult(
       baseExpr: TTypedExpr; const args: TExprBaseListExec);
+    procedure dwsWebClassesHttpRequestMethodsContentSubDataEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FServer :  IWebServerInfo;
@@ -298,8 +300,8 @@ const
 function HttpQuery(exec : TdwsProgramExecution;
                    const method, url : RawByteString;
                    const requestData, requestContentType : RawByteString;
-                   var replyHeaders : SockString; var replyData : String;
-                   asText : Boolean; onProgress : TWinHttpProgress = nil;
+                   var replyHeaders, replyData : SockString;
+                   onProgress : TWinHttpProgress = nil;
                    customStates : TdwsCustomStates = nil) : Integer;
 var
    uri : TURI;
@@ -341,7 +343,7 @@ begin
       end;
       conn.SetOnProgress(onProgress);
 
-      Result := conn.Request(uri, method, 0, '', requestData, requestContentType, replyHeaders, replyData, asText);
+      Result := conn.Request(uri, method, 0, '', requestData, requestContentType, replyHeaders, replyData);
    except
       on EWinHTTP do begin
          if exec <> nil then
@@ -355,7 +357,7 @@ type
    THttpRequestThread = class (TThread)
       Method, URL : RawByteString;
       RequestData, RequestContentType : RawByteString;
-      ResponseData : String;
+      ResponseData : SockString;
       RawResponseHeaders : SockString;
       ResponseHeaders : TStrings;
       CustomStates : TdwsCustomStates;
@@ -438,7 +440,7 @@ procedure THttpRequestThread.Execute;
 begin
    if not Released then try
       StatusCode := HttpQuery(nil, Method, URL, RequestData, RequestContentType,
-                              RawResponseHeaders, ResponseData, False,
+                              RawResponseHeaders, ResponseData,
                               DoProgress, CustomStates);
       FreeAndNil(CustomStates);
       RequestData := '';
@@ -492,56 +494,89 @@ end;
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsDeleteEval(Info: TProgramInfo;
   ExtObject: TObject);
 var
-   replyHeaders : SockString;
-   buf : String;
+   replyHeaders, buf : SockString;
 begin
    Info.ResultAsInteger:=HttpQuery(Info.Execution, 'DELETE', Info.ParamAsDataString[0],
-                                   '', '', replyHeaders, buf, False);
+                                   '', '', replyHeaders, buf);
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsGetDataEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
-   replyHeaders : SockString;
-   buf : String;
+   replyHeaders, buf : SockString;
 begin
-   Info.ResultAsInteger:=HttpQuery(Info.Execution, 'GET', Info.ParamAsDataString[0],
-                                   '', '', replyHeaders, buf, False);
-   Info.ParamAsString[1]:=buf;
+   Info.ResultAsInteger := HttpQuery(Info.Execution, 'GET', Info.ParamAsDataString[0],
+                                     '', '', replyHeaders, buf);
+   Info.ParamAsDataString[1] := buf;
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsGetTextEval(
   Info: TProgramInfo; ExtObject: TObject);
+const
+   cContentType : RawUTF8 = 'Content-Type:';
 var
-   replyHeaders : SockString;
-   buf : String;
+   replyHeaders, buf : SockString;
+   mimeType : SockString;
+   p1, p2, n : Integer;
+   text : String;
+   isUTF8 : Boolean;
 begin
-   Info.ResultAsInteger:=HttpQuery(Info.Execution, 'GET', Info.ParamAsDataString[0],
-                                   '', '', replyHeaders, buf, True);
-   Info.ParamAsString[1]:=buf;
+   Info.ResultAsInteger := HttpQuery(Info.Execution, 'GET', Info.ParamAsDataString[0],
+                                     '', '', replyHeaders, buf);
+
+   p1 := Pos(cContentType, RawUTF8(replyHeaders));
+   if p1 > 0 then begin
+      Inc(p1, Length(cContentType));
+      p2 := PosEx(#13, replyHeaders, p1);
+      if p2 > p1 then
+         mimeType := Copy(replyHeaders, p1, p2-p1);
+   end;
+
+   n := Length(buf);
+   isUTF8 := StrIEndsWithA(mimeType, 'charset=utf-8');
+   if not isUTF8 then begin
+      if StrEndsWithA(mimeType, '/xml') or StrEndsWithA(mimeType, '+xml') then begin
+         // unqualified xml content, may still be utf-8, check data header
+         if (n >= 3) and (PByte(buf)[0] = $EF) and (PByte(buf)[0] = $BB) and (PByte(buf)[0] = $BF) then
+            isUTF8 := True
+         else begin
+            p1 := PosA('?>', buf);
+            isUTF8 :=     (p1>0)
+                      and (PosA('encoding="utf-8"', LowerCaseA(Copy(buf, 1, p1)))>0);
+         end;
+      end;
+   end;
+
+   if isUTF8 then begin
+      // strip BOM if present
+      if (n >= 3) and (PByte(buf)[0] = $EF) and (PByte(buf)[0] = $BB) and (PByte(buf)[0] = $BF) then
+         UTF8DecodeToUnicodeString(@PUTF8Char(buf)[3], n, text)
+      else UTF8DecodeToUnicodeString(PUTF8Char(buf), n, text);
+   end else RawByteStringToScriptString(buf, text);
+
+   Info.ParamAsString[1] := text;
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsPostDataEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
-   buf : String;
-   headers : SockString;
+   headers, buf : SockString;
 begin
-   Info.ResultAsInteger:=HttpQuery(
+   Info.ResultAsInteger := HttpQuery(
       Info.Execution, 'POST', Info.ParamAsDataString[0],
-      Info.ParamAsDataString[1], Info.ParamAsDataString[2], headers, buf, False);
-   Info.ParamAsString[3]:=buf;
+      Info.ParamAsDataString[1], Info.ParamAsDataString[2], headers, buf
+      );
+   Info.ParamAsDataString[3] := buf;
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsPutDataEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
-   buf : String;
-   headers : SockString;
+   headers, buf : SockString;
 begin
-   Info.ResultAsInteger:=HttpQuery(
+   Info.ResultAsInteger := HttpQuery(
       Info.Execution, 'PUT', Info.ParamAsDataString[0],
-      Info.ParamAsDataString[1], Info.ParamAsDataString[2], headers, buf, False);
+      Info.ParamAsDataString[1], Info.ParamAsDataString[2], headers, buf);
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsRequestEval(
@@ -1132,13 +1167,20 @@ end;
 procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsContentDataEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsString := (ExtObject as THttpRequestThread).Wait.ResponseData;
+   Info.ResultAsDataString := (ExtObject as THttpRequestThread).Wait.ResponseData;
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsContentLengthEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsInteger := (ExtObject as THttpRequestThread).ContentLength;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsContentSubDataEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString := Copy((ExtObject as THttpRequestThread).Wait.ResponseData,
+                                   Info.ParamAsInteger[0], Info.ParamAsInteger[1]);
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsContentTypeEval(

@@ -54,8 +54,9 @@ type
 
       function Request(const uri : TURI; const method: SockString; keepAlive: cardinal;
                        const inHeader, inData, inDataType : SockString;
-                       var replyHeaders : SockString; var replyData : String;
-                       asText : Boolean) : Integer;
+                       var replyHeaders, replyData : SockString) : Integer;
+      class procedure ReplyToText(const replyHeaders, replyData : SockString;
+                                  var textData : String);
 
    end;
 
@@ -219,15 +220,23 @@ end;
 //
 function TdwsWinHttpConnection.Request(const uri : TURI; const method: SockString; keepAlive: cardinal;
                                        const inHeader, inData, inDataType : SockString;
-                                       var replyHeaders : SockString; var replyData : String;
-                                       asText : Boolean) : Integer;
+                                       var replyHeaders, replyData : SockString) : Integer;
+begin
+   Result := FWinHttp.Request(uri.Address, method, keepAlive, inHeader, inData, inDataType,
+                              replyHeaders, replyData);
+end;
 
-   procedure ReplyToText(var buf : SockString; var replyData : String);
+// ReplyToText
+//
+class procedure TdwsWinHttpConnection.ReplyToText(const replyHeaders, replyData : SockString;
+                                                  var textData : String);
+
+   procedure ReplyToText(const buf : SockString; var replyData : String);
    const
       cContentType : RawUTF8 = 'Content-Type:';
    var
       mimeType : SockString;
-      p1, p2 : Integer;
+      p1, p2, n : Integer;
    begin
       p1:=Pos(cContentType, RawUTF8(replyHeaders));
       if p1>0 then begin
@@ -251,20 +260,15 @@ function TdwsWinHttpConnection.Request(const uri : TURI; const method: SockStrin
 
       if StrIEndsWithA(mimeType, 'charset=utf-8') then begin
          // strip BOM if present
-         if StrBeginsWithBytes(buf, [$EF, $BB, $BF]) then
-            Delete(buf, 1, 3);
-         replyData:=UTF8DecodeToUnicodeString(buf);
+         n := Length(buf);
+         if (n >= 3) and (PByte(buf)[0] = $EF) and (PByte(buf)[0] = $BB) and (PByte(buf)[0] = $BF) then
+            UTF8DecodeToUnicodeString(@PUTF8Char(buf)[3], n, replyData)
+         else UTF8DecodeToUnicodeString(PUTF8Char(buf), n, replyData);
       end else RawByteStringToScriptString(buf, replyData);
    end;
 
-var
-   buf : SockString;
 begin
-   Result := FWinHttp.Request(uri.Address, method, keepAlive, inHeader, inData, inDataType,
-                              replyHeaders, buf);
-   if asText then
-      ReplyToText(buf, replyData)
-   else RawByteStringToScriptString(buf, replyData);
+   ReplyToText(replyData, textData);
 end;
 
 end.
