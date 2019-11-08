@@ -1517,9 +1517,8 @@ var
 begin
    if GetFileAttributesExW(PWideChar(Pointer(name)), GetFileExInfoStandard, @info) then begin
       if lastAccess then
-         FileTimeToLocalFileTime(info.ftLastAccessTime, fileTime)
-      else FileTimeToLocalFileTime(info.ftLastWriteTime, fileTime);
-      buf.AsFileTime := fileTime;
+         buf.AsFileTime := info.ftLastAccessTime
+      else buf.AsFileTime := info.ftLastWriteTime;
    end else buf.Clear;
    Result := buf;
 end;
