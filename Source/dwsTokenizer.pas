@@ -77,6 +77,8 @@ type
       tcsHintCaseMismatch        // tokenizer alpha token are case insensitive but will hint when case is mismatched
    );
 
+   TTokenizer = class;
+
    // TTokenBuffer
    //
    TTokenBuffer = record
@@ -85,6 +87,7 @@ type
       CaseSensitive : TTokenizerCaseSensitivity;
       Buffer : array of Char;
       Unifier : TStringUnifier;
+      Owner : TTokenizer;
 
       procedure AppendChar(c : Char);
       procedure Grow;
@@ -105,6 +108,7 @@ type
       function ToType : TTokenType;
       function ToAlphaType : TTokenType;
       function ToAlphaTypeCaseSensitive : TTokenType;
+      function ToAlphaTypeHintMismatch : TTokenType;
 
       class function StringToTokenType(const str : String) : TTokenType; static;
    end;
@@ -185,8 +189,6 @@ type
    end;
 
    TSwitchHandler = function(const switchName : String) : Boolean of object;
-
-   TTokenizer = class;
 
    TTokenizerRules = class
       private
@@ -318,25 +320,25 @@ type
 
 const
    cTokenStrings : array [TTokenType] of String = (
-     '', 'UnicodeString Literal', 'Integer Literal', 'Float Literal', 'NAME', 'SWITCH',
-     'LAZY', 'VAR', 'CONST', 'RESOURCESTRING',
-     'TYPE', 'RECORD', 'ARRAY', 'SET', '.', '..', 'OF', 'ENUM', 'FLAGS',
-     'TRY', 'EXCEPT', 'RAISE', 'FINALLY', 'ON',
-     'READ', 'WRITE', 'PROPERTY', 'DESCRIPTION',
-     'FUNCTION', 'PROCEDURE', 'CONSTRUCTOR', 'DESTRUCTOR', 'METHOD', 'LAMBDA', 'OPERATOR',
-     'CLASS', 'NIL', 'IS', 'AS', 'IMPLEMENTS', 'INDEX', 'OBJECT',
-     'VIRTUAL', 'OVERRIDE', 'REINTRODUCE', 'INHERITED', 'FINAL', 'NEW',
-     'ABSTRACT', 'SEALED', 'STATIC', 'PARTIAL', 'DEPRECATED', 'OVERLOAD',
-     'EXTERNAL', 'EXPORT', 'FORWARD', 'INLINE', 'EMPTY', 'IN',
-     'ENSURE', 'REQUIRE', 'INVARIANTS', 'OLD',
-     'INTERFACE', 'IMPLEMENTATION', 'INITIALIZATION', 'FINALIZATION',
-     'HELPER', 'STRICT',
-     'ASM', 'BEGIN', 'END', 'BREAK', 'CONTINUE', 'EXIT',
-     'IF', 'THEN', 'ELSE', 'WITH', 'WHILE', 'REPEAT', 'UNTIL', 'FOR', 'TO', 'DOWNTO', 'DO',
-     'CASE',
-     'TRUE', 'FALSE',
-     'AND', 'OR', 'XOR', 'DIV', 'MOD', 'NOT', 'SHL', 'SHR', 'SAR',
-     '+', '-', 'IMPLIES', 'IMPLICIT',
+     '', 'UnicodeString Literal', 'Integer Literal', 'Float Literal', 'name', 'switch',
+     'lazy', 'var', 'const', 'resourcestring',
+     'type', 'record', 'array', 'set', '.', '..', 'of', 'enum', 'flags',
+     'try', 'except', 'raise', 'finally', 'on',
+     'read', 'write', 'property', 'description',
+     'function', 'procedure', 'constructor', 'destructor', 'method', 'lambda', 'operator',
+     'class', 'nil', 'is', 'as', 'implements', 'index', 'object',
+     'virtual', 'override', 'reintroduce', 'inherited', 'final', 'new',
+     'abstract', 'sealed', 'static', 'partial', 'deprecated', 'overload',
+     'external', 'export', 'forward', 'inline', 'empty', 'in',
+     'ensure', 'require', 'invariants', 'old',
+     'interface', 'implementation', 'initialization', 'finalization',
+     'helper', 'strict',
+     'asm', 'begin', 'end', 'break', 'continue', 'exit',
+     'if', 'then', 'else', 'with', 'while', 'repeat', 'until', 'for', 'to', 'downto', 'do',
+     'case',
+     'True', 'False',
+     'and', 'or', 'xor', 'div', 'mod', 'not', 'shl', 'shr', 'sar',
+     '+', '-', 'implies', 'implicit',
      '*', '/', '%', '^', '@', '~',
      '$', '!', '!=',
      '?', '??', '?.',
@@ -346,10 +348,10 @@ const
      ':=', '+=', '-=', '*=', '/=',
      '%=', '^=', '@=', '~=',
      '(', ')', '[', ']', '{', '}',
-     'DEFAULT', 'USES', 'UNIT', 'NAMESPACE',
-     'PRIVATE', 'PROTECTED', 'PUBLIC', 'PUBLISHED',
-     'PROGRAM', 'LIBRARY',
-     'REGISTER', 'PASCAL', 'CDECL', 'SAFECALL', 'STDCALL', 'FASTCALL', 'REFERENCE'
+     'default', 'uses', 'unit', 'namespace',
+     'private', 'protected', 'public', 'published',
+     'program', 'library',
+     'register', 'pascal', 'cdecl', 'safecall', 'stdcall', 'fastcall', 'reference'
      );
 
 function TokenTypesToString(const tt : TTokenTypes) : String;
@@ -783,6 +785,7 @@ begin
       case CaseSensitive of
          tcsCaseInsensitive : Result := ToAlphaType;
          tcsCaseSensitiveStrict : Result := ToAlphaTypeCaseSensitive;
+         tcsHintCaseMismatch : Result := ToAlphaTypeHintMismatch;
       else
          Assert(False);
       end;
@@ -816,7 +819,8 @@ const
       ttUNIT, ttUNTIL, ttUSES,
       ttVAR, ttVIRTUAL,
       ttWHILE, ttWITH, ttWRITE,
-      ttXOR ];
+      ttXOR
+      ];
 type
    TTokenAlphaLookup = record
       Alpha : String;
@@ -935,6 +939,32 @@ begin
    Result:=ttNAME;
 end;
 
+// ToAlphaTypeHintMismatch
+//
+function TTokenBuffer.ToAlphaTypeHintMismatch : TTokenType;
+
+   procedure HintMismatch;
+   var
+      buf : String;
+      hint : TCaseMismatchHintMessage;
+   begin
+      SetString(buf, PChar(Buffer), Len);
+      hint := TCaseMismatchHintMessage.Create(
+         Owner.FMsgs,
+         Format(CPH_KeywordCaseMismatch, [ buf, cTokenStrings[Result] ]),
+         Owner.FToken.FScriptPos,
+         hlPedantic
+      );
+      hint.Expected := cTokenStrings[Result];
+   end;
+
+begin
+   Result := ToAlphaType;
+   if (Result <> ttNAME) and (Owner.FMsgs.HintsLevel >= hlPedantic) then
+      if not CompareMem(Pointer(Buffer), Pointer(cTokenStrings[Result]), Len*SizeOf(Char)) then
+         HintMismatch;
+end;
+
 // StringToTokenType
 //
 class function TTokenBuffer.StringToTokenType(const str : String) : TTokenType;
@@ -946,7 +976,7 @@ begin
 
    buffer.Capacity := 0;
    buffer.Len := 0;
-   buffer.CaseSensitive := tcsCaseInsensitive;
+   buffer.CaseSensitive :=  tcsCaseInsensitive;
    for c in str do
       buffer.AppendChar(c);
 
@@ -1091,6 +1121,7 @@ begin
    FStartState := FRules.StartState;
    FTokenBuf.CaseSensitive := rules.CaseSensitive;
    FTokenBuf.Unifier := unifier;
+   FTokenBuf.Owner := Self;
 
    FConditionalDepth:=TSimpleStack<TTokenizerConditionalInfo>.Create;
 end;

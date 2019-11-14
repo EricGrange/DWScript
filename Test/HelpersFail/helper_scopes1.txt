@@ -1,4 +1,4 @@
-Hint: Redundant specifier, visibility is already "PUBLIC" [line: 4, column: 5]
-Hint: Redundant specifier, visibility is already "PUBLIC" [line: 5, column: 5]
+Hint: Redundant specifier, visibility is already "public" [line: 4, column: 5]
+Hint: Redundant specifier, visibility is already "public" [line: 5, column: 5]
 Syntax Error: Helpers do not supported "protected" visibility specifier [line: 6, column: 5]
 Syntax Error: END expected [line: 9, column: 29]

@@ -1,1 +1,1 @@
-Syntax Error: "END" expected but "ELSE" found. [line: 2, column: 4]
+Syntax Error: "end" expected but "else" found. [line: 2, column: 4]

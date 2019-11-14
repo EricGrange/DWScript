@@ -59,6 +59,7 @@ type
          procedure NormalizeTypes;
          procedure NormalizeMagics;
          procedure NormalizeForVarIn;
+         procedure NormalizeKeywords;
          procedure OptimizedIfThenBlockSymbol;
          procedure MemberVisibilities;
          procedure UnitNamesSuggest;
@@ -1345,6 +1346,49 @@ begin
             + 'for var e in TEnum do PrintLn(Integer(e));'#13#10
             + 'for var j in a do PrintLn(a[j]);'#13#10
             + 'for i in a do PrintLn(a[i].ToString);'#13#10,
+            lines.Text
+         );
+      finally
+         normalizer.Free;
+      end;
+   finally
+      lines.Free;
+   end;
+end;
+
+// NormalizeKeywords
+//
+procedure TSourceUtilsTests.NormalizeKeywords;
+var
+   prog : IdwsProgram;
+   lines : TStringList;
+   normalizer : TTestNormalizer;
+begin
+   lines := TStringList.Create;
+   try
+      lines.Text := 'Var b := TRUE; begIn IF nOt B tHEN b := false ELSE b := NIL <> nIL; enD;'#13#10
+                  + 'WHILE b do BREAK;'#13#10
+                  + 'FOR VAR i := 0 To 1 dO CASE I OF 1 : ; eLSE END;'#13#10;
+
+      FCompiler.Config.CompilerOptions := FCompiler.Config.CompilerOptions + [ coHintKeywordCaseMismatch ];
+      FCompiler.Config.HintsLevel := hlPedantic;
+      try
+         prog := FCompiler.Compile(lines.Text);
+      finally
+         FCompiler.Config.HintsLevel := hlStrict;
+         FCompiler.Config.CompilerOptions := FCompiler.Config.CompilerOptions - [ coHintKeywordCaseMismatch ];
+      end;
+
+      Check(prog.Msgs.Count > 0, 'should have compiled with hints');
+
+      normalizer := TTestNormalizer.Create;
+      try
+         NormalizeKeywordCase(lines, prog.SourceList[0].SourceFile, prog.Msgs,
+                              normalizer.Normalize);
+         CheckEquals(
+              'var b := True; begin if not B then b := False else b := nil <> nil; end;'#13#10
+            + 'while b do break;'#13#10
+            + 'for var i := 0 to 1 do case I of 1 : ; else end;'#13#10,
             lines.Text
          );
       finally

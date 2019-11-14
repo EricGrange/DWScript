@@ -141,6 +141,14 @@ type
          property Level : TdwsHintsLevel read FLevel;
    end;
 
+   TCaseMismatchHintMessage = class (THintMessage)
+      private
+         FExpected : String;
+
+      public
+         property Expected : String read FExpected write FExpected;
+   end;
+
    TWarningMessage = class(TScriptMessage)
       function AsInfo: String; override;
    end;
@@ -760,9 +768,9 @@ end;
 function TdwsCompileMessageList.AddCompilerHint(const aScriptPos: TScriptPos;
       const Text: String; const aLevel : TdwsHintsLevel = hlNormal) : TScriptMessage;
 begin
-   if aLevel<=HintsLevel then
-      Result:=THintMessage.Create(Self, Text, aScriptPos, aLevel)
-   else Result:=nil;
+   if aLevel <= HintsLevel then
+      Result := THintMessage.Create(Self, Text, aScriptPos, aLevel)
+   else Result := nil;
 end;
 
 // AddCompilerHintFmt
@@ -771,7 +779,7 @@ function TdwsCompileMessageList.AddCompilerHintFmt(const aScriptPos: TScriptPos;
                const textFormat : String; const args: array of const;
                const aLevel : TdwsHintsLevel = hlNormal) : TScriptMessage;
 begin
-   Result:=AddCompilerHint(aScriptPos, Format(textFormat, args), aLevel);
+   Result := AddCompilerHint(aScriptPos, Format(textFormat, args), aLevel);
 end;
 
 // AddCompilerWarning

@@ -380,6 +380,7 @@ const
   CPH_ReferenceToIsLegacy = 'REFERENCE TO modifier is legacy and ignored';
 
   CPH_CaseDoesNotMatchDeclaration = '"%s" does not match case of declaration ("%s")';
+  CPH_KeywordCaseMismatch = 'Case mismatch for "%s" should be "%s"';
 
   CPH_CallConventionIsNotSupportedAndIgnored = 'Call convention "%s" is not supported and ignored';
 

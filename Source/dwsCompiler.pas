@@ -1518,11 +1518,14 @@ end;
 //
 procedure TdwsCompiler.SetupMsgsOptions(conf : TdwsConfiguration);
 begin
-   FDefaultHintsLevel:=conf.HintsLevel;
+   FDefaultHintsLevel := conf.HintsLevel;
    if coHintsDisabled in conf.CompilerOptions then
-      FMsgs.HintsLevel:=hlDisabled
-   else FMsgs.HintsLevel:=conf.HintsLevel;
-   FMsgs.WarningsDisabled:=(coWarningsDisabled in conf.CompilerOptions);
+      FMsgs.HintsLevel := hlDisabled
+   else FMsgs.HintsLevel := conf.HintsLevel;
+   FMsgs.WarningsDisabled := (coWarningsDisabled in conf.CompilerOptions);
+   if (coHintKeywordCaseMismatch in conf.CompilerOptions) and (FMsgs.HintsLevel >= hlPedantic) then
+      FTokRules.CaseSensitive := tcsHintCaseMismatch
+   else FTokRules.CaseSensitive := tcsCaseInsensitive;
 end;
 
 // CleanupAfterCompile
@@ -3125,15 +3128,12 @@ begin
       end;
 
       ReadSemiColon;
-      endPos:=FTok.HotPos;
 
-      typNew.DeprecatedMessage:=ReadDeprecatedMessage;
-      if typNew.DeprecatedMessage<>'' then
-         endPos:=FTok.HotPos;
+      typNew.DeprecatedMessage := ReadDeprecatedMessage;
 
    finally
       if coContextMap in FOptions then
-         FSourceContextMap.CloseContext(endPos, ttName);
+         FSourceContextMap.CloseContext(FTok.HotPos, ttName);
    end;
 end;
 

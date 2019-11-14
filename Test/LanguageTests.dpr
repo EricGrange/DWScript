@@ -8,7 +8,7 @@ program LanguageTests;
 {$ENDIF}
 
 uses
-  FastMM4,
+  FastMM4Debug,
   Classes,
   Forms,
   Windows,

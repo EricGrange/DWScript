@@ -32,6 +32,9 @@ type
 procedure NormalizeSymbolsCase(sourceLines : TStrings; sourceFile : TSourceFile;
                                symbolDictionary : TdwsSymbolDictionary;
                                const onNormalize : TCaseNormalizerEvent = nil);
+procedure NormalizeKeywordCase(sourceLines : TStrings; sourceFile : TSourceFile;
+                               msgs : TdwsMessageList;
+                               const onNormalize : TCaseNormalizerEvent = nil);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -130,6 +133,32 @@ begin
       end;
    finally
       locations.Free;
+   end;
+end;
+
+// NormalizeKeywordCase
+//
+procedure NormalizeKeywordCase(sourceLines : TStrings; sourceFile : TSourceFile;
+                               msgs : TdwsMessageList;
+                               const onNormalize : TCaseNormalizerEvent = nil);
+var
+   i : Integer;
+   hint : TCaseMismatchHintMessage;
+   occurence, line : String;
+begin
+   for i := 0 to msgs.Count-1 do begin
+      if not (msgs[i] is TCaseMismatchHintMessage) then continue;
+      hint := TCaseMismatchHintMessage(msgs[i]);
+      if hint.ScriptPos.SourceFile <> sourceFile then continue;
+      line := sourceLines[hint.ScriptPos.Line-1];
+      occurence := Copy(line, hint.ScriptPos.Col, Length(hint.Expected));
+      if occurence <> hint.Expected then begin
+         Assert(UnicodeSameText(hint.Expected, occurence), hint.ScriptPos.AsInfo);
+         if Assigned(onNormalize) then
+            onNormalize(hint.ScriptPos.Line, hint.ScriptPos.Col, hint.Expected);
+         line := Copy(line, 1, hint.ScriptPos.Col-1) + hint.Expected + Copy(line, hint.ScriptPos.Col+Length(hint.Expected));
+         sourceLines[hint.ScriptPos.Line-1] := line;
+      end;
    end;
 end;
 

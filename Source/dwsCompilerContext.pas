@@ -24,18 +24,20 @@ uses
 
 type
    TCompilerOption = (
-      coOptimize,          // enable compiler optimizations
-      coSymbolDictionary,  // fillup symbol dictionary
-      coContextMap,        // fillup context map
-      coAssertions,        // compile assertions (if absent, ignores assertions)
-      coHintsDisabled,     // don't generate hints messages
-      coWarningsDisabled,  // don't generate warnings messages
-      coExplicitUnitUses,  // unit dependencies must be explicit via a "uses" clause
-      coVariablesAsVarOnly,// only variable can be passed as "var" parameters
-                           // (for CodeGen that does not support passing record fields or array elements)
-      coAllowClosures,     // allow closures, ie. capture of local procedures as function pointers
-                           // (not suppported yet by script engine, may be supported by CodeGen)
-      coDelphiDialect      // do not warn or hint about Delphi language idioms
+      coOptimize,             // enable compiler optimizations
+      coSymbolDictionary,     // fillup symbol dictionary
+      coContextMap,           // fillup context map
+      coAssertions,           // compile assertions (if absent, ignores assertions)
+      coHintsDisabled,        // don't generate hints messages
+      coWarningsDisabled,     // don't generate warnings messages
+      coExplicitUnitUses,     // unit dependencies must be explicit via a "uses" clause
+      coVariablesAsVarOnly,   // only variable can be passed as "var" parameters
+                              // (for CodeGen that does not support passing record fields or array elements)
+      coAllowClosures,        // allow closures, ie. capture of local procedures as function pointers
+                              // (not suppported yet by script engine, may be supported by CodeGen)
+      coDelphiDialect,        // do not warn or hint about Delphi language idioms
+      coHintKeywordCaseMismatch // when set, if pedantic hints are active, hints will be
+                                // created for all case-mismatching keywords
       );
    TCompilerOptions = set of TCompilerOption;
 

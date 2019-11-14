@@ -1,1 +1,1 @@
-Syntax Error: "END" expected but ")" found. [line: 3, column: 17]
+Syntax Error: "end" expected but ")" found. [line: 3, column: 17]

@@ -1,4 +1,4 @@
-Hint: Redundant specifier, visibility is already "PUBLIC" [line: 3, column: 7]
-Hint: Redundant specifier, visibility is already "PRIVATE" [line: 5, column: 7]
+Hint: Redundant specifier, visibility is already "public" [line: 3, column: 7]
+Hint: Redundant specifier, visibility is already "private" [line: 5, column: 7]
 Syntax Error: Records do not supported "protected" visibility specifier [line: 7, column: 7]
 Syntax Error: Record has no field members [line: 8, column: 4]

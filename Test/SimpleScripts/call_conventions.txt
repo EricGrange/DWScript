@@ -1,7 +1,7 @@
 Errors >>>>
-Hint: Call convention "SAFECALL" is not supported and ignored [line: 3, column: 30]
-Hint: Call convention "STDCALL" is not supported and ignored [line: 4, column: 24]
-Hint: Call convention "CDECL" is not supported and ignored [line: 5, column: 30]
-Hint: Call convention "REGISTER" is not supported and ignored [line: 8, column: 18]
-Hint: Call convention "PASCAL" is not supported and ignored [line: 12, column: 28]
+Hint: Call convention "safecall" is not supported and ignored [line: 3, column: 30]
+Hint: Call convention "stdcall" is not supported and ignored [line: 4, column: 24]
+Hint: Call convention "cdecl" is not supported and ignored [line: 5, column: 30]
+Hint: Call convention "register" is not supported and ignored [line: 8, column: 18]
+Hint: Call convention "pascal" is not supported and ignored [line: 12, column: 28]
 Result >>>>

@@ -1512,7 +1512,6 @@ end;
 function FileDateTime(const name : TFileName; lastAccess : Boolean = False) : TdwsDateTime;
 var
    info : TWin32FileAttributeData;
-   fileTime : TFileTime;
    buf : TdwsDateTime;
 begin
    if GetFileAttributesExW(PWideChar(Pointer(name)), GetFileExInfoStandard, @info) then begin
