@@ -73,16 +73,21 @@ var
 begin
    inherited Create;
 
-   typInteger:=systemTable.TypInteger;
-   typFloat:=systemTable.TypFloat;
-   typBoolean:=systemTable.TypBoolean;
-   typString:=systemTable.TypString;
-   typVariant:=systemTable.TypVariant;
-   typClassOf:=systemTable.TypClass;
+   typInteger := systemTable.TypInteger;
+   typFloat   := systemTable.TypFloat;
+   typBoolean := systemTable.TypBoolean;
+   typString  := systemTable.TypString;
+   typVariant := systemTable.TypVariant;
+   typClassOf := systemTable.TypClass;
 
    // implicit conversions
 
    RegisterCaster(typFloat,   typInteger,    TConvIntToFloatExpr,    True);
+
+   RegisterCaster(typInteger, typVariant,    TConvVarToIntegerExpr,  True);
+   RegisterCaster(typFloat,   typVariant,    TConvVarToFloatExpr,  True);
+   RegisterCaster(typBoolean, typVariant,    TConvVarToBoolExpr,  True);
+   RegisterCaster(typString,  typVariant,    TConvVarToStringExpr,  True);
 
    // computation operators
 

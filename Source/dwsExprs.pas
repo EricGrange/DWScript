@@ -1690,6 +1690,8 @@ type
          function GetDataAsBoolean(exec : TdwsExecution; index : TTypedExpr) : Boolean;
          function GetDataAsInteger(exec : TdwsExecution; index : TTypedExpr) : Int64; overload;
          function GetDataAsInteger(exec : TdwsExecution; const keyValue : Variant) : Int64; overload;
+         procedure GetDataAsString(exec : TdwsExecution; index : TTypedExpr; var result : String); overload;
+         procedure GetDataAsString(exec : TdwsExecution; const keyValue : Variant; var result : String); overload;
 
          //procedure ReplaceData(exec : TdwsExecution; index : Int64; value : TDataExpr);
          procedure ReplaceValue(exec : TdwsExecution; index, value : TTypedExpr);
@@ -7915,6 +7917,43 @@ begin
       end;
    end;
    Result := 0;
+end;
+
+// GetDataAsString
+//
+procedure TScriptAssociativeArray.GetDataAsString(exec : TdwsExecution; index : TTypedExpr; var result : String);
+var
+   i : Integer;
+   hashCode : Cardinal;
+   key : IDataContext;
+begin
+   if FCount>0 then begin
+      IndexExprToKeyAndHashCode(exec, index, key, hashCode);
+      i:=(hashCode and (FCapacity-1));
+      if LinearFind(key, i) then begin
+         EvalAsString(i*FElementSize, result);
+         Exit;
+      end;
+   end;
+   result := '';
+end;
+
+// GetDataAsString
+//
+procedure TScriptAssociativeArray.GetDataAsString(exec : TdwsExecution; const keyValue : Variant; var result : String);
+var
+   hashCode : Cardinal;
+   i : Integer;
+begin
+   if FCount>0 then begin
+      hashCode := DWSHashCode(keyValue);
+      i:=(hashCode and (FCapacity-1));
+      if LinearValueFind(keyValue, i) then begin
+         EvalAsString(i*FElementSize, result);
+         Exit;
+      end;
+   end;
+   result := '';
 end;
 
 // ContainsKey

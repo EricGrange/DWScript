@@ -3048,7 +3048,7 @@ function TdwsCompiler.ReadTypeDecl(firstInBlock : Boolean) : Boolean;
 var
    name : String;
    typNew, typOld : TTypeSymbol;
-   typePos, endPos : TScriptPos;
+   typePos : TScriptPos;
    oldSymPos : TSymbolPosition; // Mark *where* the old declaration was
    typContext : TdwsSourceContext;
    attributesBag : ISymbolAttributesBag;
@@ -3133,7 +3133,7 @@ begin
 
    finally
       if coContextMap in FOptions then
-         FSourceContextMap.CloseContext(FTok.HotPos, ttName);
+         FSourceContextMap.CloseContext(FTok.CurrentPos, ttName);
    end;
 end;
 

@@ -395,9 +395,6 @@ begin
          n := 4;
       end;
       varInt64, varDouble, varCurrency, varDate, varUInt64 : begin // 64 bits
-//         n := 8;
-//         buf := SimpleInt64Hash(p.VInt64);
-//         n := 4;
          partial := (partial xor SimpleInt64Hash(p.VInt64))*16777619;
          Assert(partial <> 0);
          Exit;

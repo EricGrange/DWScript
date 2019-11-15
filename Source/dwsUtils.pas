@@ -2118,7 +2118,7 @@ begin
       varError :
          s := '[varError]';
    else
-      s:=v;
+      s := v;
    end;
 end;
 
