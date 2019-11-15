@@ -1,19 +1,19 @@
 procedure Test1(p : array [String] of String);
 begin
     Print('Test1: ');
-    PrintLn(p.Keys.Join(','));
+    PrintLn(p.Keys.Sort.Join(','));
 end;
 
 procedure Test2(const p : array [String] of String);
 begin
     Print('Test2: ');
-    PrintLn(p.Keys.Join(','));
+    PrintLn(p.Keys.Sort.Join(','));
 end;
 
 procedure Test3(var p : array [String] of String);
 begin
     Print('Test3: ');
-    PrintLn(p.Keys.Join(','));
+    PrintLn(p.Keys.Sort.Join(','));
     var loc : array [String] of String;
     loc['gamma'] := 'g';
     p := loc;

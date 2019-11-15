@@ -379,55 +379,40 @@ end;
 //
 procedure DWSHashCode(var partial : Cardinal; const v : Variant); overload;
 var
-   buf : Cardinal;
-   k : PByte;
-   n : Integer;
    p : PVarData;
 begin
    p := @v;
-   k := @p.VByte;
    case p.VType of
       varByte, varBoolean, varShortInt : // 8 bits
-         n := 1;
-      varSmallint, varWord :  // 16 bits
-         n := 2;
+         partial := (partial xor SimpleIntegerHash(p.VByte)) * 16777619;
+      varSmallint, varWord : begin // 16 bits
+         partial := (partial xor SimpleIntegerHash(p.VWord)) * 16777619;
+      end;
       varInteger, varSingle, varLongWord, varUnknown, varDispatch : begin // 32 bits
-         n := 4;
+         partial := (partial xor SimpleIntegerHash(p.VLongWord)) * 16777619;
       end;
       varInt64, varDouble, varCurrency, varDate, varUInt64 : begin // 64 bits
-         partial := (partial xor SimpleInt64Hash(p.VInt64))*16777619;
-         Assert(partial <> 0);
-         Exit;
+         partial := (partial xor SimpleInt64Hash(p.VInt64)) * 16777619;
       end;
       {$ifndef FPC}
       varUString : begin
-         if p.VString <> nil then begin
-            buf := SimpleStringHash(String(p.VString));
-            k := @buf;
-         end else buf := 0;
-         n := 4;
+         if p.VUString <> nil then
+            partial := (partial xor SimpleStringHash(String(p.VUString))) * 16777619
+         else partial := partial * 16777619;
       end;
       {$endif}
       varString : begin
-         if p.VString <> nil then begin
-            k := p.VString;
-            n := Length(AnsiString(p.VString));
-         end else n := 4;
+         if p.VString <> nil then
+            partial := (partial xor SimpleByteHash(p.VString, Length(AnsiString(p.VString)))) * 16777619
+         else partial := partial * 16777619;
       end;
       varOleStr : begin
-         if p.VOleStr <> nil then begin
-            buf := SimpleStringHash(p.VOleStr, Length(p.VOleStr));
-            k := @buf;
-         end;
-         n := 4;
+         if p.VOleStr <> nil then
+            partial := (partial xor SimpleStringHash(p.VOleStr, Length(p.VOleStr))) * 16777619
+         else partial := partial * 16777619;
       end;
    else
-      k := @p.VType;
-      n := 1;
-   end;
-   for n:=n downto 1 do begin
-      partial := (partial xor k^)*16777619;
-      Inc(k);
+      partial := (partial xor p.VType) * 16777619;
    end;
 end;
 
@@ -435,6 +420,7 @@ function DWSHashCode(const v : Variant) : Cardinal;
 begin
    Result := 2166136261;
    DWSHashCode(Result, v);
+   Assert(Result <> 0);
 end;
 
 function DWSHashCode(const data : TData; offset, size : Integer) : Cardinal;

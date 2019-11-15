@@ -17,7 +17,7 @@ unit UdwsUtilsTests;
 
 interface
 
-uses Classes, SysUtils, Math, Variants, Types, SynCommons,
+uses Classes, SysUtils, Math, Variants, Types, SynCommons, Graphics,
    dwsXPlatformTests, dwsUtils,
    dwsXPlatform, dwsWebUtils, dwsTokenStore, dwsCryptoXPlatform,
    dwsEncodingLibModule, dwsGlobalVars, dwsEncoding, dwsDataContext,
@@ -78,6 +78,7 @@ type
 
          procedure TestDWSHashCode;
          procedure TestDWSHashCodeEmptyStrings;
+         procedure TestDWSHashCodeBuckets;
 
          procedure LoadTextFromBufferTest;
 
@@ -933,15 +934,15 @@ procedure TdwsUtilsTests.TestDWSHashCode;
 var
    h : Cardinal;
 begin
-   h := 0;
+   h := 2166136261;
    DWSHashCode(h, Byte(123));
-   CheckEquals(2063647137, h, 'after 123');
+   CheckEquals(1710468988, h, 'after 123');
    DWSHashCode(h, Word(12345));
-   CheckEquals(314712808, h, 'after 12345');
+   CheckEquals(424621595, h, 'after 12345');
    DWSHashCode(h, AnsiString('hello'));
-   CheckEquals(3004885648, h, 'after hello');
+   CheckEquals(1503265552, h, 'after hello');
    DWSHashCode(h, Null);
-   CheckEquals(2220835395, h, 'after null');
+   CheckEquals(510841795, h, 'after null');
 end;
 
 // TestDWSHashCodeEmptyStrings
@@ -950,12 +951,66 @@ procedure TdwsUtilsTests.TestDWSHashCodeEmptyStrings;
 var
    h : Cardinal;
 begin
-   h := 1;
+   h := 2166136261;
    DWSHashCode(h, AnsiString(''));
-   CheckEquals(1345077009, h, 'ansi');
-   h := 1;
+   CheckEquals(84696351, h, 'ansi');
+   h := 2166136261;
    DWSHashCode(h, String(''));
-   CheckEquals(1345077009, h, 'uni');
+   CheckEquals(84696351, h, 'uni');
+end;
+
+// TestDWSHashCodeBuckets
+//
+procedure TdwsUtilsTests.TestDWSHashCodeBuckets;
+const
+   cBucketHigh = 15;
+   cNbItems = 1000;
+var
+   buckets : array [0..cBucketHigh] of Integer;
+
+   procedure CheckBucketRatios(const info : String);
+   var
+      i, mi, ma, sum : Integer;
+   begin
+      mi := cNbItems;
+      ma := 0;
+      sum := 0;
+      for i := 0 to cBucketHigh do begin
+         Inc(sum, buckets[i]);
+         if buckets[i] < mi then mi := buckets[i];
+         if buckets[i] > ma then ma := buckets[i];
+      end;
+      CheckEquals(cNbItems, sum, 'Lost items in ' + info);
+      Check(mi > 0.5 * cNbItems / (cBucketHigh+1), 'Minimum too low (' + IntToStr(mi) + ') in ' + info);
+      Check(ma < 1.5 * cNbItems / (cBucketHigh+1), 'Maximum too high (' + IntToStr(ma) + ') in ' + info);
+   end;
+
+var
+   i, j : Integer;
+   h : Cardinal;
+begin
+   for i := 1 to cNbItems do
+      Inc(buckets[DWSHashCode(i) and cBucketHigh]);
+   CheckBucketRatios('Integers');
+
+   FillZero(buckets[0], Length(buckets)*SizeOf(Integer));
+   for i := 1 to cNbItems do
+      Inc(buckets[DWSHashCode(IntToStr(i*883)) and cBucketHigh]);
+   CheckBucketRatios('Integer strings');
+
+   FillZero(buckets[0], Length(buckets)*SizeOf(Integer));
+   for i := 1 to cNbItems do
+      Inc(buckets[DWSHashCode(i*PI) and cBucketHigh]);
+   CheckBucketRatios('Doubles');
+
+   FillZero(buckets[0], Length(buckets)*SizeOf(Integer));
+   for i := 1 to cNbItems do begin
+      h := i;
+      for j := 1 to 10 do
+         DWSHashCode(h, i);
+      Inc(buckets[h and cBucketHigh]);
+   end;
+   CheckBucketRatios('Low entropy');
 end;
 
 // LoadTextFromBufferTest

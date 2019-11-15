@@ -5700,7 +5700,9 @@ begin
                               valueExpr.Typ, baseType.Typ);
          end;
 
-         Result := TAssociativeArraySetExpr.Create(FTok.HotPos, baseExpr, keyExpr, valueExpr);
+         if baseType.KeyAndElementSizeAreBaseTypesOfSizeOne then
+            Result := TAssociativeArrayValueSetExpr.Create(FTok.HotPos, baseExpr, keyExpr, valueExpr)
+         else Result := TAssociativeArraySetExpr.Create(FTok.HotPos, baseExpr, keyExpr, valueExpr);
          keyExpr := nil;
          Exit;
 

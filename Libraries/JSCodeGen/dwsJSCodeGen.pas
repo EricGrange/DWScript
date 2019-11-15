@@ -1372,6 +1372,7 @@ begin
    RegisterCodeGen(TAssociativeArrayGetExpr,          TJSAssociativeArrayGetExpr.Create);
    RegisterCodeGen(TAssociativeArrayValueKeyGetExpr,  TJSAssociativeArrayGetExpr.Create);
    RegisterCodeGen(TAssociativeArraySetExpr,          TJSAssociativeArraySetExpr.Create);
+   RegisterCodeGen(TAssociativeArrayValueSetExpr,     TJSAssociativeArraySetExpr.Create);
    RegisterCodeGen(TAssociativeArrayLengthExpr, TdwsExprGenericCodeGen.Create(['Object.keys', '(', 0, ')', '.length']));
    RegisterCodeGen(TAssociativeArrayClearExpr,  TdwsExprGenericCodeGen.Create(['$Delete', '(', 0, ')'], gcgStatement, '$Delete'));
    RegisterCodeGen(TAssociativeArrayDeleteExpr, TdwsExprGenericCodeGen.Create(['(delete ', 0, '[', 1, ']', ')']));

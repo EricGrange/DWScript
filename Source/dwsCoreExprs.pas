@@ -442,7 +442,9 @@ type
    // Associative array x[key] when key is a value
    TAssociativeArrayValueKeyGetExpr = class (TAssociativeArrayGetExpr)
       public
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
+         function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          procedure EvalAsString(exec : TdwsExecution; var result : String); override;
    end;
 
@@ -465,6 +467,12 @@ type
          property BaseExpr : TDataExpr read FBaseExpr;
          property KeyExpr : TTypedExpr read FKeyExpr;
          property ValueExpr : TTypedExpr read FValueExpr;
+   end;
+
+   /// Associative array x[key] := v when key and v are values
+   TAssociativeArrayValueSetExpr = class (TAssociativeArraySetExpr)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TAssociativeArrayContainsKeyExpr = class (TBooleanBinOpExpr)
@@ -4097,6 +4105,18 @@ end;
 // ------------------ TAssociativeArrayValueKeyGetExpr ------------------
 // ------------------
 
+// EvalAsVariant
+//
+procedure TAssociativeArrayValueKeyGetExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+var
+   base : IScriptAssociativeArray;
+   key : Variant;
+begin
+   FBaseExpr.EvalAsScriptAssociativeArray(exec, base);
+   KeyExpr.EvalAsVariant(exec, key);
+   TScriptAssociativeArray(base.GetSelf).GetDataAsVariant(exec, key, result);
+end;
+
 // EvalAsInteger
 //
 function TAssociativeArrayValueKeyGetExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
@@ -4107,6 +4127,18 @@ begin
    FBaseExpr.EvalAsScriptAssociativeArray(exec, base);
    KeyExpr.EvalAsVariant(exec, key);
    Result := TScriptAssociativeArray(base.GetSelf).GetDataAsInteger(exec, key);
+end;
+
+// EvalAsBoolean
+//
+function TAssociativeArrayValueKeyGetExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   base : IScriptAssociativeArray;
+   key : Variant;
+begin
+   FBaseExpr.EvalAsScriptAssociativeArray(exec, base);
+   KeyExpr.EvalAsVariant(exec, key);
+   Result := TScriptAssociativeArray(base.GetSelf).GetDataAsBoolean(exec, key);
 end;
 
 // EvalAsString
@@ -4175,6 +4207,25 @@ begin
    FBaseExpr.EvalAsScriptAssociativeArray(exec, base);
    aa:=TScriptAssociativeArray(base.GetSelf);
    aa.ReplaceValue(exec, KeyExpr, valueExpr);
+end;
+
+// ------------------
+// ------------------ TAssociativeArrayValueSetExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TAssociativeArrayValueSetExpr.EvalNoResult(exec : TdwsExecution);
+var
+   aa : TScriptAssociativeArray;
+   base : IScriptAssociativeArray;
+   k, v : Variant;
+begin
+   FBaseExpr.EvalAsScriptAssociativeArray(exec, base);
+   KeyExpr.EvalAsVariant(exec, k);
+   ValueExpr.EvalAsVariant(exec, v);
+   aa := TScriptAssociativeArray(base.GetSelf);
+   aa.ReplaceValue(exec, k, v);
 end;
 
 // ------------------

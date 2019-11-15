@@ -689,8 +689,9 @@ type
          function GetIsDeprecated : Boolean; inline;
 
       public
-         procedure InitData(const data : TData; offset : Integer); overload; virtual;
-         procedure InitDataContext(const data : IDataContext); overload; inline;
+         procedure InitData(const data : TData; offset : Integer); virtual;
+         procedure InitDataContext(const data : IDataContext); inline;
+         procedure InitVariant(var v : Variant); virtual;
          class function DynamicInitialization : Boolean; virtual;
 
          function IsType : Boolean; override;
@@ -1079,6 +1080,7 @@ type
          function BaseType : TTypeSymbol; override;
          function UnAliasedType : TTypeSymbol; override;
          procedure InitData(const data : TData; offset : Integer); override;
+         procedure InitVariant(var v : Variant); virtual;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsPointerType : Boolean; override;
    end;
@@ -1099,6 +1101,7 @@ type
          constructor Create;
 
          procedure InitData(const data : TData; offset : Integer); override;
+         procedure InitVariant(var v : Variant); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
@@ -1107,6 +1110,7 @@ type
          constructor Create;
 
          procedure InitData(const data : TData; offset : Integer); override;
+         procedure InitVariant(var v : Variant); override;
    end;
 
    TBaseStringSymbol = class (TBaseSymbol)
@@ -1122,6 +1126,7 @@ type
          destructor Destroy; override;
 
          procedure InitData(const data : TData; offset : Integer); override;
+         procedure InitVariant(var v : Variant); override;
 
          function LengthPseudoSymbol(baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol; inline;
          function HighPseudoSymbol(baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol; inline;
@@ -1133,6 +1138,7 @@ type
          constructor Create;
 
          procedure InitData(const data : TData; offset : Integer); override;
+         procedure InitVariant(var v : Variant); override;
    end;
 
    TBaseVariantSymbol = class (TBaseSymbol)
@@ -1141,6 +1147,7 @@ type
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          procedure InitData(const data : TData; offset : Integer); override;
+         procedure InitVariant(var v : Variant); override;
          function SupportsEmptyParam : Boolean; virtual;
    end;
 
@@ -1243,6 +1250,7 @@ type
       public
          constructor Create(const name : String; elementType, indexType : TTypeSymbol);
          procedure InitData(const Data: TData; Offset: Integer); override;
+         procedure InitVariant(var v : Variant); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsPointerType : Boolean; override;
          function SameType(typSym : TTypeSymbol) : Boolean; override;
@@ -1304,6 +1312,7 @@ type
          destructor Destroy; override;
 
          procedure InitData(const Data: TData; Offset: Integer); override;
+         procedure InitVariant(var v : Variant); override;
          class function DynamicInitialization : Boolean; override;
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
@@ -1311,6 +1320,8 @@ type
          function SameType(typSym : TTypeSymbol) : Boolean; override;
 
          function KeysArrayType(baseSymbols : TdwsBaseSymbolsContext) : TDynamicArraySymbol; virtual;
+
+         function KeyAndElementSizeAreBaseTypesOfSizeOne : Boolean; inline;
 
          property KeyType : TTypeSymbol read FKeyType;
 
@@ -5719,6 +5730,13 @@ begin
    VarSetDefaultInt64(data[offset]);
 end;
 
+// InitVariant
+//
+procedure TBaseIntegerSymbol.InitVariant(var v : Variant);
+begin
+   VarSetDefaultInt64(v);
+end;
+
 // IsCompatible
 //
 function TBaseIntegerSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
@@ -5744,10 +5762,15 @@ end;
 // InitData
 //
 procedure TBaseFloatSymbol.InitData(const data : TData; offset : Integer);
-const
-   cZero : Double = 0;
 begin
-   data[offset]:=cZero;
+   VarSetDefaultDouble(data[offset]);
+end;
+
+// InitVariant
+//
+procedure TBaseFloatSymbol.InitVariant(var v : Variant);
+begin
+   VarSetDefaultDouble(v);
 end;
 
 // ------------------
@@ -5776,6 +5799,13 @@ end;
 procedure TBaseStringSymbol.InitData(const data : TData; offset : Integer);
 begin
    VarSetDefaultString(data[offset]);
+end;
+
+// InitVariant
+//
+procedure TBaseStringSymbol.InitVariant(var v : Variant);
+begin
+   VarSetDefaultString(v);
 end;
 
 // InitPseudoSymbol
@@ -5834,6 +5864,13 @@ begin
    data[offset]:=False;
 end;
 
+// InitVariant
+//
+procedure TBaseBooleanSymbol.InitVariant(var v : Variant);
+begin
+   v := False;
+end;
+
 // ------------------
 // ------------------ TBaseVariantSymbol ------------------
 // ------------------
@@ -5872,6 +5909,13 @@ end;
 procedure TBaseVariantSymbol.InitData(const data : TData; offset : Integer);
 begin
    VarClearSafe(data[offset]);
+end;
+
+// InitVariant
+//
+procedure TBaseVariantSymbol.InitVariant(var v : Variant);
+begin
+   VarClearSafe(v);
 end;
 
 // SupportsEmptyParam
@@ -7378,6 +7422,13 @@ begin
    vInitDynamicArray(Self.Typ, Data[Offset]);
 end;
 
+// InitVariant
+//
+procedure TDynamicArraySymbol.InitVariant(var v : Variant);
+begin
+   vInitDynamicArray(Self.Typ, v);
+end;
+
 // DoIsOfType
 //
 function TDynamicArraySymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
@@ -7659,6 +7710,13 @@ begin
    vInitAssociativeArray(Self, Data[Offset]);
 end;
 
+// InitVariant
+//
+procedure TAssociativeArraySymbol.InitVariant(var v : Variant);
+begin
+   vInitAssociativeArray(Self, v);
+end;
+
 // SetInitAssociativeArrayProc
 //
 class procedure TAssociativeArraySymbol.SetInitAssociativeArrayProc(const aProc : TInitDataProc);
@@ -7706,6 +7764,13 @@ begin
    if FKeyArrayType = nil then
       FKeyArrayType := TDynamicArraySymbol.Create('', KeyType, baseSymbols.TypInteger);
    Result := FKeyArrayType;
+end;
+
+// KeyAndElementSizeAreBaseTypesOfSizeOne
+//
+function TAssociativeArraySymbol.KeyAndElementSizeAreBaseTypesOfSizeOne : Boolean;
+begin
+   Result := (FKeyType.Size = 1) and (Typ.Size = 1) and FKeyType.IsBaseType and Typ.IsBaseType;
 end;
 
 // GetCaption
@@ -7957,6 +8022,13 @@ begin
    Typ.InitData(Data, Offset);
 end;
 
+// InitVariant
+//
+procedure TAliasSymbol.InitVariant(var v : Variant);
+begin
+   Typ.InitVariant(v);
+end;
+
 // IsCompatible
 //
 function TAliasSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
@@ -8122,6 +8194,18 @@ end;
 procedure TTypeSymbol.InitDataContext(const data : IDataContext);
 begin
    InitData(data.AsPData^, data.Addr);
+end;
+
+// InitVariant
+//
+procedure TTypeSymbol.InitVariant(var v : Variant);
+var
+   buf : TData;
+begin
+   Assert(Size = 1);
+   SetLength(buf, 1);
+   InitData(buf, 0);
+   VarCopySafe(v, buf[0]);
 end;
 
 // DynamicInitialization

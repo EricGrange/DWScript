@@ -1,4 +1,4 @@
-Test1: beta,alpha
-Test2: beta,alpha
-Test3: beta,alpha
+Test1: alpha,beta
+Test2: alpha,beta
+Test3: alpha,beta
 Test1: gamma

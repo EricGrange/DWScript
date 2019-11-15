@@ -1,5 +1,5 @@
 > alpha
 beta
-> delta,alpha
+> alpha,delta
 beta,gamma
 beta

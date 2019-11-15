@@ -1091,6 +1091,7 @@ function VarCompareSafe(const left, right : Variant) : TVariantRelationship;
 
 procedure VarSetNull(var v : Variant); inline;
 procedure VarSetDefaultInt64(var dest : Variant); inline;
+procedure VarSetDefaultDouble(var dest : Variant); inline;
 procedure VarSetDefaultString(var dest : Variant); inline;
 procedure VarSetDateTime(var dest : Variant; const dt : Double);
 
@@ -2536,6 +2537,16 @@ begin
 
    TVarData(dest).VType := varInt64;
    TVarData(dest).VInt64 := 0;
+end;
+
+// VarSetDefaultDouble
+//
+procedure VarSetDefaultDouble(var dest : Variant); inline;
+begin
+   VarClearSafe(dest);
+
+   TVarData(dest).VType := varDouble;
+   TVarData(dest).VDouble := 0;
 end;
 
 // VarSetDefaultString
