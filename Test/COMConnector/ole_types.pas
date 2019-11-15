@@ -6,3 +6,4 @@ PrintLn(VarType(OleCurrency(123)));
 PrintLn(VarType(OleDate(123)));
 PrintLn(VarType(OleSingle(123)));
 PrintLn(VarType(OleDouble(123)));
+PrintLn(VarType(OleString('123')));

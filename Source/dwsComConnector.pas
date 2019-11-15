@@ -28,7 +28,7 @@ uses
    dwsUtils, dwsDataContext, dwsExprList, dwsConnectorSymbols, dwsXPlatform,
    dwsStrings, dwsFunctions, dwsStack, dwsMagicExprs, dwsErrors,
    dwsExprs, dwsComp, dwsSymbols, dwsOperators, dwsUnitSymbols,
-   dwsCompilerUtils, dwsScriptSource, dwsArrayMethodKinds;
+   dwsCompilerUtils, dwsScriptSource, dwsArrayMethodKinds, dwsConvExprs;
 
 const
    COM_ConnectorCaption = 'COM Connector 2.0';
@@ -372,6 +372,10 @@ type
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
+   TOleStringFunc = class(TOleConversionFunc)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
+   end;
+
    TComVarClearFunc = class(TInternalMagicProcedure)
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
@@ -592,12 +596,18 @@ begin
    TOleDateFunc.Create(Table, 'OleDate', ['v', SYS_FLOAT], 'ComVariant', [iffStateLess]);
    TOleSingleFunc.Create(Table, 'OleSingle', ['v', SYS_FLOAT], 'ComVariant', [iffStateLess]);
    TOleDoubleFunc.Create(Table, 'OleDouble', ['v', SYS_FLOAT], 'ComVariant', [iffStateLess]);
+   TOleStringFunc.Create(Table, 'OleString', ['v', SYS_STRING], 'ComVariant', [iffStateLess]);
    TComVarClearFunc.Create(Table, 'VarClear', ['@v', 'ComVariant'], '', [iffOverloaded]);
 
    TBinaryToGUIDFunc.Create(Table, 'BinaryToGUID', ['b', SYS_STRING], SYS_STRING, [iffStateLess]);
    TGUIDToBinaryFunc.Create(Table, 'GUIDToBinary', ['guid', SYS_STRING], SYS_STRING, [iffStateLess]);
 
    Table.AddSymbol(TComVariantArraySymbol.Create('ComVariantArray', TComVariantArrayType.Create(systemTable), systemTable.TypVariant));
+
+   operators.RegisterCaster(systemTable.TypInteger, comVariantSym, TConvVarToIntegerExpr,  True);
+   operators.RegisterCaster(systemTable.TypFloat,   comVariantSym, TConvVarToFloatExpr,  True);
+   operators.RegisterCaster(systemTable.TypBoolean, comVariantSym, TConvVarToBoolExpr,  True);
+   operators.RegisterCaster(systemTable.TypString,  comVariantSym, TConvVarToStringExpr,  True);
 end;
 
 // ------------------
@@ -723,7 +733,19 @@ end;
 //
 procedure TOleDoubleFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 begin
-   Result := args.AsFloat[0];
+   VarCopySafe(result, args.AsFloat[0]);
+end;
+
+// ------------------
+// ------------------ TOleStringFunc ------------------
+// ------------------
+
+// DoEvalAsVariant
+//
+procedure TOleStringFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
+begin
+   VarClearSafe(result);
+   result := OleVariant(args.AsString[0]);
 end;
 
 // ------------------
