@@ -96,15 +96,20 @@ type
          FEnabled : Boolean;
          FLine : Integer;
          FSourceName : String;
+         FCondition : String;
 
       protected
+         function ConditionCheckPassed(const debugger : TdwsDebugger) : Boolean;
 
       public
          constructor Create;
 
+         function ConditionPassed(const debugger : TdwsDebugger) : Boolean; inline;
+
          property Enabled : Boolean read FEnabled write FEnabled;
          property Line : Integer read FLine write FLine;
          property SourceName : String read FSourceName write FSourceName;
+         property Condition : String read FCondition write FCondition;
    end;
 
    // TdwsDebuggerBreakpoints
@@ -121,7 +126,8 @@ type
          constructor Create(aDebugger : TdwsDebugger);
          destructor Destroy; override;
 
-         procedure Add(aLine : Integer; const aSourceName : String);
+         function Add(aLine : Integer; const aSourceName : String) : TdwsDebuggerBreakpoint;
+         function AddConditional(aLine : Integer; const aSourceName, aCondition : String) : TdwsDebuggerBreakpoint;
 
          procedure Clear; inline;
 
@@ -343,6 +349,7 @@ type
 
          function Evaluate(const expression : String; scriptPos : PScriptPos = nil) : IdwsEvaluateExpr;
          function EvaluateAsString(const expression : String; scriptPos : PScriptPos = nil) : String;
+         function EvaluateAsBoolean(const expression : String; scriptPos : PScriptPos = nil) : Boolean;
 
          function AllowedActions : TdwsDebuggerActions;
 
@@ -941,6 +948,30 @@ begin
    end;
 end;
 
+// EvaluateAsBoolean
+//
+function TdwsDebugger.EvaluateAsBoolean(const expression : String; scriptPos : PScriptPos = nil) : Boolean;
+var
+   expr : IdwsEvaluateExpr;
+begin
+   if FExecution=nil then Exit(False);
+   try
+      expr := Evaluate(expression, scriptPos);
+      try
+         FExecution.SuspendDebug;
+         try
+            Result := expr.Expression.EvalAsBoolean(FExecution.ExecutionObject);
+         finally
+            FExecution.ResumeDebug;
+         end;
+      finally
+         expr := nil;
+      end;
+   except
+      Result := False;
+   end;
+end;
+
 // AllowedActions
 //
 function TdwsDebugger.AllowedActions : TdwsDebuggerActions;
@@ -1076,6 +1107,20 @@ begin
    FEnabled:=True;
 end;
 
+// ConditionPassed
+//
+function TdwsDebuggerBreakpoint.ConditionPassed(const debugger : TdwsDebugger) : Boolean;
+begin
+   Result := (FCondition = '') or ConditionCheckPassed(debugger);
+end;
+
+// ConditionCheckPassed
+//
+function TdwsDebuggerBreakpoint.ConditionCheckPassed(const debugger : TdwsDebugger) : Boolean;
+begin
+   Result := debugger.EvaluateAsBoolean(FCondition);
+end;
+
 // ------------------
 // ------------------ TdwsDebuggerBreakpoints ------------------
 // ------------------
@@ -1101,14 +1146,20 @@ end;
 
 // Add
 //
-procedure TdwsDebuggerBreakpoints.Add(aLine : Integer; const aSourceName : String);
-var
-   bp : TdwsDebuggerBreakpoint;
+function TdwsDebuggerBreakpoints.Add(aLine : Integer; const aSourceName : String) : TdwsDebuggerBreakpoint;
 begin
-   bp:=TdwsDebuggerBreakpoint.Create;
-   bp.Line:=aLine;
-   bp.SourceName:=aSourceName;
-   inherited Add(bp);
+   Result := TdwsDebuggerBreakpoint.Create;
+   Result.Line := aLine;
+   Result.SourceName := aSourceName;
+   inherited Add(Result);
+end;
+
+// AddConditional
+//
+function TdwsDebuggerBreakpoints.AddConditional(aLine : Integer; const aSourceName, aCondition : String) : TdwsDebuggerBreakpoint;
+begin
+   Result := Add(aLine, aSourceName);
+   Result.Condition := aCondition;
 end;
 
 // Clear
@@ -1227,7 +1278,7 @@ begin
    scriptPos:=Debugger.CurrentScriptPos;
    if (scriptPos.Line<FBitmap.Size) and FBitmap.Bits[scriptPos.Line] then begin
       breakpoint := FBreakpoints.BreakpointAt(scriptPos);
-      if (breakpoint <> nil) and breakpoint.Enabled then
+      if (breakpoint <> nil) and breakpoint.Enabled and breakpoint.ConditionPassed(Debugger) then
          Exit(True);
    end;
 

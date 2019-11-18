@@ -17,8 +17,8 @@ type
          FDebugger : TdwsDebugger;
 
          FDebugEvalAtLine : Integer;
-         FDebugEvalExpr : String;
-         FDebugLastEvalResult : String;
+         FDebugEvalExpr, FDebugSuspendEvalExpr : String;
+         FDebugLastEvalResult, FDebugSuspendLastEvalResult : String;
          FDebugLastMessage : String;
          FDebugLastNotificationPos : TScriptPos;
          FDebugLastEvalScriptPos : TScriptPos;
@@ -72,6 +72,8 @@ type
          procedure BreakPointCastPos;
 
          procedure BreakpointAndWatches;
+
+         procedure BreakpointsConditional;
 
          procedure StepTest;
    end;
@@ -228,6 +230,8 @@ begin
    Inc(FDebugResumed);
    FDebugger.Watches.Update;
    FDebugLastSuspendScriptPos := FDebugger.CurrentScriptPos;
+   if FDebugSuspendEvalExpr <> '' then
+      FDebugSuspendLastEvalResult := FDebugger.EvaluateAsString(FDebugSuspendEvalExpr);
    FDebugger.Resume;
 end;
 
@@ -974,6 +978,51 @@ begin
 
    finally
       FDebugEvalExpr := '';
+      FDebugger.Breakpoints.Clear;
+   end;
+end;
+
+// BreakpointsConditional
+//
+procedure TDebuggerTests.BreakpointsConditional;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   FDebugger.Breakpoints.AddConditional(3, SYS_MainModule, 'j = 5');
+   try
+      prog := FCompiler.Compile( 'function Hello(j : Integer) : Integer;'#10
+                                +'begin'#10
+                                +#9'Result := j;'#10
+                                +'end;'#10
+                                +'for var i := 0 to 10 do Hello(i);');
+      CheckEquals('', prog.Msgs.AsInfo);
+
+      exec := prog.CreateNewExecution;
+
+      FDebugLastSuspendScriptPos.Clear;
+      FDebugSuspendEvalExpr := 'j';
+      FDebugSuspendLastEvalResult := '';
+
+      FDebugger.BeginDebug(exec);
+      FDebugger.EndDebug;
+
+      CheckEquals(3, FDebugLastSuspendScriptPos.Line, 'suspend line');
+      CheckEquals('5', FDebugSuspendLastEvalResult, 'eval expr');
+
+      FDebugLastEvalScriptPos.Clear;
+      FDebugEvalExpr := '';
+      FDebugSuspendLastEvalResult := '';
+
+      FDebugger.Breakpoints[0].Condition := 'j = 1';
+
+      FDebugger.BeginDebug(exec);
+      FDebugger.EndDebug;
+
+      CheckEquals(3, FDebugLastSuspendScriptPos.Line, 'suspend line');
+      CheckEquals('1', FDebugSuspendLastEvalResult, 'eval expr');
+   finally
+      FDebugSuspendEvalExpr := '';
       FDebugger.Breakpoints.Clear;
    end;
 end;
