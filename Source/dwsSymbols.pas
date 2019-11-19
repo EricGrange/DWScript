@@ -1080,7 +1080,7 @@ type
          function BaseType : TTypeSymbol; override;
          function UnAliasedType : TTypeSymbol; override;
          procedure InitData(const data : TData; offset : Integer); override;
-         procedure InitVariant(var v : Variant); virtual;
+         procedure InitVariant(var v : Variant); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsPointerType : Boolean; override;
    end;

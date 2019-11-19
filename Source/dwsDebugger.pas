@@ -96,21 +96,36 @@ type
          FEnabled : Boolean;
          FLine : Integer;
          FSourceName : String;
-         FCondition : String;
-
-      protected
-         function ConditionCheckPassed(const debugger : TdwsDebugger) : Boolean;
 
       public
          constructor Create;
 
-         function ConditionPassed(const debugger : TdwsDebugger) : Boolean; inline;
+         function ConditionPassed(const debugger : TdwsDebugger) : Boolean; virtual;
+         procedure ClearEvaluators; virtual;
 
          property Enabled : Boolean read FEnabled write FEnabled;
          property Line : Integer read FLine write FLine;
          property SourceName : String read FSourceName write FSourceName;
-         property Condition : String read FCondition write FCondition;
    end;
+
+   // TdwsDebuggerBreakpointConditional
+   //
+   TdwsDebuggerBreakpointConditional = class (TdwsDebuggerBreakpoint)
+      private
+         FCondition : String;
+         FEvaluator : IdwsEvaluateExpr;
+
+      protected
+         procedure SetCondition(const val : String);
+         procedure InitializeEvaluator(const debugger : TdwsDebugger);
+
+      public
+         function ConditionPassed(const debugger : TdwsDebugger) : Boolean; override;
+         procedure ClearEvaluators; override;
+
+         property Condition : String read FCondition write SetCondition;
+   end;
+
 
    // TdwsDebuggerBreakpoints
    //
@@ -127,13 +142,16 @@ type
          destructor Destroy; override;
 
          function Add(aLine : Integer; const aSourceName : String) : TdwsDebuggerBreakpoint;
-         function AddConditional(aLine : Integer; const aSourceName, aCondition : String) : TdwsDebuggerBreakpoint;
+         function AddConditional(aLine : Integer; const aSourceName, aCondition : String) : TdwsDebuggerBreakpointConditional;
 
          procedure Clear; inline;
 
-         function BreakpointAt(const scriptPos : TScriptPos) : TdwsDebuggerBreakpoint;
+         function BreakpointAt(const scriptPos : TScriptPos) : TdwsDebuggerBreakpoint; overload;
+         function BreakpointAt(const sourceName : String; sourceLine : Integer) : TdwsDebuggerBreakpoint; overload;
 
          procedure BreakPointsChanged;
+
+         procedure ClearEvaluators;
 
          property Debugger : TdwsDebugger read FDebugger;
    end;
@@ -927,9 +945,12 @@ end;
 function TdwsDebugger.EvaluateAsString(const expression : String; scriptPos : PScriptPos = nil) : String;
 var
    expr : IdwsEvaluateExpr;
+   locScriptPos : TScriptPos;
 begin
    if FExecution=nil then Exit(DBG_NotDebugging);
    try
+      if scriptPos = nil then
+         scriptPos := CurrentScriptPos
       expr := Evaluate(expression, scriptPos);
       try
          Result := DBG_NoResult;
@@ -1111,14 +1132,64 @@ end;
 //
 function TdwsDebuggerBreakpoint.ConditionPassed(const debugger : TdwsDebugger) : Boolean;
 begin
-   Result := (FCondition = '') or ConditionCheckPassed(debugger);
+   Result := True;
 end;
 
-// ConditionCheckPassed
+// ClearEvaluators
 //
-function TdwsDebuggerBreakpoint.ConditionCheckPassed(const debugger : TdwsDebugger) : Boolean;
+procedure TdwsDebuggerBreakpoint.ClearEvaluators;
 begin
-   Result := debugger.EvaluateAsBoolean(FCondition);
+   // nothing here
+end;
+
+// ------------------
+// ------------------ TdwsDebuggerBreakpointConditional ------------------
+// ------------------
+
+// SetCondition
+//
+procedure TdwsDebuggerBreakpointConditional.SetCondition(const val : String);
+begin
+   FCondition := val;
+   FEvaluator := nil;
+end;
+
+// InitializeEvaluator
+//
+procedure TdwsDebuggerBreakpointConditional.InitializeEvaluator(const debugger : TdwsDebugger);
+var
+   scriptPos : TScriptPos;
+begin
+   scriptPos := debugger.CurrentScriptPos;
+   FEvaluator := debugger.Evaluate(Condition, @scriptPos);
+end;
+
+// ConditionPassed
+//
+function TdwsDebuggerBreakpointConditional.ConditionPassed(const debugger : TdwsDebugger) : Boolean;
+var
+   exec : IdwsProgramExecution;
+begin
+   if FCondition = '' then Exit(True);
+
+   if FEvaluator = nil then
+      InitializeEvaluator(debugger);
+
+   exec := debugger.Execution;
+   exec.SuspendDebug;
+   try
+      Result := FEvaluator.Expression.EvalAsBoolean(exec.ExecutionObject);
+   finally
+      exec.ResumeDebug;
+   end;
+end;
+
+// ClearEvaluators
+//
+procedure TdwsDebuggerBreakpointConditional.ClearEvaluators;
+begin
+   FEvaluator := nil;
+   inherited;
 end;
 
 // ------------------
@@ -1156,10 +1227,13 @@ end;
 
 // AddConditional
 //
-function TdwsDebuggerBreakpoints.AddConditional(aLine : Integer; const aSourceName, aCondition : String) : TdwsDebuggerBreakpoint;
+function TdwsDebuggerBreakpoints.AddConditional(aLine : Integer; const aSourceName, aCondition : String) : TdwsDebuggerBreakpointConditional;
 begin
-   Result := Add(aLine, aSourceName);
+   Result := TdwsDebuggerBreakpointConditional.Create;
+   Result.Line := aLine;
+   Result.SourceName := aSourceName;
    Result.Condition := aCondition;
+   inherited Add(Result);
 end;
 
 // Clear
@@ -1181,14 +1255,21 @@ end;
 // BreakpointAt
 //
 function TdwsDebuggerBreakpoints.BreakpointAt(const scriptPos : TScriptPos) : TdwsDebuggerBreakpoint;
+begin
+   Result := BreakpointAt(scriptPos.SourceFile.Name, scriptPos.Line);
+end;
+
+// BreakpointAt
+//
+function TdwsDebuggerBreakpoints.BreakpointAt(const sourceName : String; sourceLine : Integer) : TdwsDebuggerBreakpoint;
 var
    i : Integer;
 begin
-   FLookupVar.Line:=scriptPos.Line;
-   FLookupVar.SourceName:=scriptPos.SourceFile.Name;
+   FLookupVar.Line := sourceLine;
+   FLookupVar.SourceName := sourceName;
    if Find(FLookupVar, i) then
-      Result:=Items[i]
-   else Result:=nil;
+      Result := Items[i]
+   else Result := nil;
 end;
 
 // BreakPointsChanged
@@ -1196,6 +1277,16 @@ end;
 procedure TdwsDebuggerBreakpoints.BreakPointsChanged;
 begin
    Debugger.BreakpointsChanged;
+end;
+
+// ClearEvaluators
+//
+procedure TdwsDebuggerBreakpoints.ClearEvaluators;
+var
+   i : Integer;
+begin
+   for i := 0 to Count-1 do
+      Items[i].ClearEvaluators;
 end;
 
 // ------------------
@@ -1275,8 +1366,8 @@ var
    scriptPos : TScriptPos;
    breakpoint : TdwsDebuggerBreakpoint;
 begin
-   scriptPos:=Debugger.CurrentScriptPos;
-   if (scriptPos.Line<FBitmap.Size) and FBitmap.Bits[scriptPos.Line] then begin
+   scriptPos := Debugger.CurrentScriptPos;
+   if (scriptPos.Line < FBitmap.Size) and FBitmap.Bits[scriptPos.Line] then begin
       breakpoint := FBreakpoints.BreakpointAt(scriptPos);
       if (breakpoint <> nil) and breakpoint.Enabled and breakpoint.ConditionPassed(Debugger) then
          Exit(True);

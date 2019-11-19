@@ -24,7 +24,7 @@ unit dwsFileFunctions;
 interface
 
 uses
-   Classes, SysUtils,
+   Classes, SysUtils, Winapi.Windows,
    dwsXPlatform, dwsUtils, dwsStrings,
    dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList, dwsUnitSymbols,
    dwsConstExprs, dwsMagicExprs, dwsDataContext;
