@@ -1180,7 +1180,7 @@ procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsContentSubDataEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsDataString := Copy((ExtObject as THttpRequestThread).Wait.ResponseData,
-                                   Info.ParamAsInteger[0], Info.ParamAsInteger[1]);
+                                   Info.ParamAsInteger[0]+1, Info.ParamAsInteger[1]);
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsContentTypeEval(
