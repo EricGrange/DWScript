@@ -949,8 +949,10 @@ var
 begin
    if FExecution=nil then Exit(DBG_NotDebugging);
    try
-      if scriptPos = nil then
-         scriptPos := CurrentScriptPos
+      if scriptPos = nil then begin
+         locScriptPos := CurrentScriptPos;
+         scriptPos := @locScriptPos;
+      end;
       expr := Evaluate(expression, scriptPos);
       try
          Result := DBG_NoResult;
