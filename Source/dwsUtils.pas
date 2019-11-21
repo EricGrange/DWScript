@@ -7326,10 +7326,12 @@ begin
    v      := (v and $00ff00ff) + ((v shr  8) and $00ff00ff);
    Result := (v and $0000ffff) + ((v shr 16) and $0000ffff);
 end;
+{$ifdef WIN32_ASM}
 function PopCount32_asm(v : Int32) : Integer;
 asm
    POPCNT    eax, v
 end;
+{$endif}
 var vPopCount32 : function(v : Int32) : Integer;
 function PopCount32(v : Int32) : Integer;
 begin
@@ -7409,7 +7411,9 @@ initialization
    vPopCount64 := PopCount64_Pascal;
    {$ifdef TEST_POPCNT}
    if (System.TestSSE or sePOPCNT) <> 0 then begin
+      {$ifdef WIN32_ASM}
       vPopCount32 := PopCount32_asm;
+      {$endif}
       {$ifdef WIN64_ASM}
       vPopCount64 := PopCount64_asm;
       {$endif}

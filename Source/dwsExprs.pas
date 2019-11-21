@@ -3589,7 +3589,7 @@ begin
 
    inherited Create(True);
 
-   Priority:=tpTimeCritical;
+   SetTimeCriticalPriority;
 end;
 
 // Destroy

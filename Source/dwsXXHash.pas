@@ -81,8 +81,8 @@ const
    cPRIME32_5 = Cardinal(374761393);
 
 type
-   PCardinalArray = ^TCardinalArray;
-   TCardinalArray = array[0..(MaxLongint div SizeOf(Cardinal))-1] of Cardinal;
+   PCardinal4Array = ^TCardinal4Array;
+   TCardinal4Array = array [0..3] of Cardinal;
 
 // RotateLeft32
 //
@@ -94,7 +94,7 @@ end;
 // Kernel
 //
 {$ifndef FPC}{$CODEALIGN 16}{$endif}
-function Kernel(v : PCardinalArray; ptrData, ptrDataLimit : NativeUInt) : NativeUInt;
+function Kernel(v : PCardinal4Array; ptrData, ptrDataLimit : NativeUInt) : NativeUInt;
 {$ifdef WIN32_ASM}
 asm
    // eax = v, edx = ptrData, ecx = ptrDataLimit
@@ -156,10 +156,10 @@ asm
 {$else}
 begin
    repeat
-      v[0] := cPRIME32_1 * RotateLeft32(v[0] + cPRIME32_2 * {%H-}PCardinalArray(ptrData)[0], 13);
-      v[1] := cPRIME32_1 * RotateLeft32(v[1] + cPRIME32_2 * {%H-}PCardinalArray(ptrData)[1], 13);
-      v[2] := cPRIME32_1 * RotateLeft32(v[2] + cPRIME32_2 * {%H-}PCardinalArray(ptrData)[2], 13);
-      v[3] := cPRIME32_1 * RotateLeft32(v[3] + cPRIME32_2 * {%H-}PCardinalArray(ptrData)[3], 13);
+      v[0] := cPRIME32_1 * RotateLeft32(v[0] + cPRIME32_2 * {%H-}PCardinal4Array(ptrData)[0], 13);
+      v[1] := cPRIME32_1 * RotateLeft32(v[1] + cPRIME32_2 * {%H-}PCardinal4Array(ptrData)[1], 13);
+      v[2] := cPRIME32_1 * RotateLeft32(v[2] + cPRIME32_2 * {%H-}PCardinal4Array(ptrData)[2], 13);
+      v[3] := cPRIME32_1 * RotateLeft32(v[3] + cPRIME32_2 * {%H-}PCardinal4Array(ptrData)[3], 13);
       Inc(ptrData, 16);
    until ptrData > ptrDataLimit;
    Result := ptrData;
@@ -169,7 +169,7 @@ end;
 // MixKernel
 //
 {$ifdef WIN32_ASM}
-function MixKernel(v : PCardinalArray) : Cardinal;
+function MixKernel(v : PCardinal4Array) : Cardinal;
 asm
    mov   edx, [eax]
    rol   edx, 1
@@ -184,7 +184,7 @@ asm
    lea   eax, [edx+ecx]
 end;
 {$else}
-function MixKernel(v : PCardinalArray) : Cardinal; inline;
+function MixKernel(v : PCardinal4Array) : Cardinal; inline;
 begin
    Result := RotateLeft32(v[0],  1) + RotateLeft32(v[1],  7)
            + RotateLeft32(v[2], 12) + RotateLeft32(v[3], 18);

@@ -32,6 +32,16 @@ unit dwsXPlatform;
 {$IFDEF FPC}
    {$DEFINE VER200}  // FPC compatibility = D2009
 {$ENDIF}
+{$IFDEF MSWINDOWS}
+   {$DEFINE WINDOWS}  // Define Delphi <==> FPC "WINDOWS" Compiler Switch
+{$ENDIF}
+{$IFDEF LINUX}
+   {$DEFINE UNIX}  // Define Delphi <==> FPC "UNIX" Compiler Switch
+{$ENDIF}
+
+{$ifdef UNIX}
+   {$DEFINE POSIXSYSLOG} // If defined Posix Syslog is used in Unix environments
+{$endif}
 
 interface
 
@@ -46,15 +56,20 @@ uses
    {$ELSE}
       Windows
       {$IFNDEF VER200}, IOUtils{$ENDIF}
+      {$IFDEF UNIX}
+         {$IFDEF POSIXSYSLOG}, Posix.Syslog{$ENDIF}
+         Posix.Unistd, Posix.Time, Posix.Pthread,
+         dwsXPlatformTimer,
+      {$ENDIF}
    {$ENDIF}
    ;
 
 const
-{$IFDEF UNIX}
+   {$IFDEF UNIX}
    cLineTerminator  = #10;
-{$ELSE}
+   {$ELSE}
    cLineTerminator  = #13#10;
-{$ENDIF}
+   {$ENDIF}
 
    // following is missing from D2010
    INVALID_HANDLE_VALUE = NativeUInt(-1);
@@ -163,13 +178,24 @@ type
    PUInt64 = ^UInt64;
    {$ENDIF}
 
+   TdwsLargeInteger = record
+      case Integer of
+      0: (
+         LowPart: DWORD;
+         HighPart: Longint
+      );
+      1: (
+         QuadPart: Int64
+      );
+   end;
+
    TPath = class
       class function GetTempPath : String; static;
       class function GetTempFileName : String; static;
    end;
 
    TFile = class
-      class function ReadAllBytes(const filename : String) : TBytes; static;
+      class function ReadAllBytes(const filename : String) : TBytes; static; inline;
    end;
 
    TdwsThread = class (TThread)
@@ -178,6 +204,8 @@ type
       procedure Start;
       {$ENDIF}
       {$ENDIF}
+
+      procedure SetTimeCriticalPriority;
    end;
 
    // Wrap in a record so it is not assignment compatible without explicit casts
@@ -834,6 +862,7 @@ end;
 
 // SetThreadName
 //
+{$ifdef WINDOWS}
 function IsDebuggerPresent : BOOL; stdcall; external kernel32 name 'IsDebuggerPresent';
 procedure SetThreadName(const threadName : PAnsiChar; threadID : Cardinal = Cardinal(-1));
 // http://www.codeproject.com/Articles/8549/Name-your-threads-in-the-VC-debugger-thread-list
@@ -860,18 +889,28 @@ begin
    end;
    {$endif}
 end;
+{$else}
+procedure SetThreadName(const threadName : PAnsiChar; threadID : Cardinal = Cardinal(-1));
+begin
+   // This one appears limited to Embarcadero debuggers
+   TThread.NameThreadForDebugging(threadName, threadID);
+end;
+{$endif}
 
 // OutputDebugString
 //
 procedure OutputDebugString(const msg : String);
 begin
+   {$ifdef WINDOWS}
    Windows.OutputDebugStringW(PWideChar(msg));
+   {$endif}
 end;
 
 // WriteToOSEventLog
 //
 procedure WriteToOSEventLog(const logName, logCaption, logDetails : String;
                             const logRawData : RawByteString = '');
+{$ifdef WINDOWS}
 var
   eventSource : THandle;
   detailsPtr : array [0..1] of PWideChar;
@@ -891,18 +930,25 @@ begin
       end;
    end;
 end;
+{$else}
+begin
+   {$ifdef POSIXSYSLOG}
+   Posix.Syslog.syslog(LOG_INFO,logCaption + ': ' + logDetails + '(' + logRawData + ')');
+   {$endif}
+end;
+{$endif}
 
 // SetDecimalSeparator
 //
 procedure SetDecimalSeparator(c : Char);
 begin
    {$IFDEF FPC}
-      FormatSettings.DecimalSeparator:=c;
+      FormatSettings.DecimalSeparator := c;
    {$ELSE}
       {$IF CompilerVersion >= 22.0}
-      FormatSettings.DecimalSeparator:=c;
+      FormatSettings.DecimalSeparator := c;
       {$ELSE}
-      DecimalSeparator:=c;
+      DecimalSeparator := c;
       {$IFEND}
    {$ENDIF}
 end;
@@ -912,12 +958,12 @@ end;
 function GetDecimalSeparator : Char;
 begin
    {$IFDEF FPC}
-      Result:=FormatSettings.DecimalSeparator;
+      Result := FormatSettings.DecimalSeparator;
    {$ELSE}
       {$IF CompilerVersion >= 22.0}
-      Result:=FormatSettings.DecimalSeparator;
+      Result := FormatSettings.DecimalSeparator;
       {$ELSE}
-      Result:=DecimalSeparator;
+      Result := DecimalSeparator;
       {$IFEND}
    {$ENDIF}
 end;
@@ -925,10 +971,12 @@ end;
 // CollectFiles
 //
 type
+   {$ifdef WINDOWS}
    TFindDataRec = record
       Handle : THandle;
       Data : TWin32FindDataW;
    end;
+   {$endif}
 
    TMasks = array of TMask;
 
@@ -938,6 +986,7 @@ procedure CollectFilesMasked(const directory : TFileName;
                              const masks : TMasks; list : TStrings;
                              recurseSubdirectories: Boolean = False;
                              onProgress : TCollectFileProgressEvent = nil);
+{$ifdef WINDOWS}
 const
    // contant defined in Windows.pas is incorrect
    FindExInfoBasic = 1;
@@ -954,12 +1003,12 @@ begin
    else infoLevel:=FindExInfoStandard;
 
    if Assigned(onProgress) then begin
-      skipScan:=False;
+      skipScan := False;
       onProgress(directory, skipScan);
-      if skipScan then exit;
+      if skipScan then Exit;
    end;
 
-   fileName:=directory+'*';
+   fileName := directory+'*';
    searchRec.Handle:=FindFirstFileEx(PChar(fileName), infoLevel,
                                      @searchRec.Data, FINDEX_SEARCH_OPS.FindExSearchNameMatch,
                                      nil, 0);
@@ -974,7 +1023,7 @@ begin
                if addToList then Break;
             end;
             if addToList then begin
-               fileName:=directory+fileName;
+               fileName := directory + fileName;
                list.Add(fileName);
             end;
          end else if recurseSubdirectories then begin
@@ -993,6 +1042,50 @@ begin
       Windows.FindClose(searchRec.Handle);
    end;
 end;
+{$else}
+var
+   searchRec : TSearchRec;
+   fileName : TFileName;
+   skipScan : Boolean;
+   addToList : Boolean;
+   i  : Integer;
+begin
+   try
+      if Assigned(onProgress) then begin
+         skipScan := False;
+         onProgress(directory, skipScan);
+         if skipScan then Exit;
+      end;
+
+      fileName := directory + '*';
+      if SysUtils.FindFirst(fileName,faAnyfile,searchRec) = 0 then begin
+         repeat
+            if (searchRec.Attr and faVolumeId) = 0 then begin
+               if (searchRec.Attr and faDirectory) = 0 then begin
+                  fileName  := searchRec.Name;
+                  addToList := True;
+                  for i := 0 to High(masks) do begin
+                     addToList := masks[i].Matches(fileName);
+                     if addToList then Break;
+                  end;
+                  if addToList then begin
+                     fileName := directory+fileName;
+                     list.Add(fileName);
+                  end;
+               end else if     recurseSubdirectories
+                           and (searchRec.Name <> '.')
+                           and (searchRec.Name <> '..') then begin
+                  fileName := directory + searchRec.Name + PathDelim;
+                  CollectFilesMasked(fileName, masks, list, recurseSubdirectories, onProgress);
+               end;
+            end;
+         until SysUtils.FindNext(searchRec) <> 0;
+      end;
+   finally
+      SysUtils.FindClose(searchRec);
+   end;
+end;
+{$endif}
 
 // CollectFiles
 //
@@ -1033,6 +1126,7 @@ end;
 // CollectSubDirs
 //
 procedure CollectSubDirs(const directory : TFileName; list : TStrings);
+{$ifdef WINDOWS}
 const
    // contant defined in Windows.pas is incorrect
    FindExInfoBasic = 1;
@@ -1066,6 +1160,24 @@ begin
       Windows.FindClose(searchRec.Handle);
    end;
 end;
+{$else}
+var
+   searchRec : TSearchRec;
+begin
+   try
+      if SysUtils.FindFirst(directory + '*', faDirectory, searchRec) = 0 then begin
+         repeat
+            if     (searchRec.Attr and faDirectory > 0)
+               and (searchRec.Name <> '.' )
+               and (searchRec.Name <> '..' ) then
+               list.Add(searchRec.Name);
+         until SysUtils.FindNext(searchRec) <> 0;
+      end;
+   finally
+      SysUtils.FindClose(searchRec);
+   end;
+end;
+{$endif}
 
 {$ifdef FPC}
 // VarCopy
@@ -1230,8 +1342,8 @@ function LoadTextFromFile(const fileName : TFileName) : UnicodeString;
 var
    buf : TBytes;
 begin
-   buf:=LoadDataFromFile(fileName);
-   Result:=LoadTextFromBuffer(buf);
+   buf := LoadDataFromFile(fileName);
+   Result := LoadTextFromBuffer(buf);
 end;
 
 // ReadFileChunked
@@ -1265,6 +1377,7 @@ end;
 // LoadDataFromFile
 //
 function LoadDataFromFile(const fileName : TFileName) : TBytes;
+{$ifdef WINDOWS}
 const
    INVALID_FILE_SIZE = DWORD($FFFFFFFF);
 var
@@ -1285,9 +1398,16 @@ begin
             SetLength(Result, nRead);
       end else Result:=nil;
    finally
-      CloseHandle(hFile);
+      CloseFileHandle(hFile);
    end;
 end;
+{$else}
+begin
+   if fileName = '' then
+      Result := nil
+   else Result := IOUTils.TFile.ReadAllBytes(filename);
+end;
+{$endif}
 
 // SaveDataToFile
 //
@@ -1303,7 +1423,7 @@ begin
          if not WriteFile(hFile, data[0], n, nWrite, nil) then
             RaiseLastOSError;
    finally
-      CloseHandle(hFile);
+      CloseFileHandle(hFile);
    end;
 end;
 
@@ -1330,7 +1450,7 @@ begin
             SetLength(Result, nRead);
       end;
    finally
-      CloseHandle(hFile);
+      CloseFileHandle(hFile);
    end;
 end;
 
@@ -1350,7 +1470,7 @@ begin
             RaiseLastOSError;
       end;
    finally
-      CloseHandle(hFile);
+      CloseFileHandle(hFile);
    end;
 end;
 
@@ -1394,7 +1514,7 @@ begin
          until n <= 0;
       end;
    finally
-      CloseHandle(hFile);
+      CloseFileHandle(hFile);
    end;
 end;
 
@@ -1439,9 +1559,13 @@ end;
 //
 function OpenFileForSequentialWriteOnly(const fileName : TFileName) : THandle;
 begin
+   {$ifdef WINDOWS}
    Result:=CreateFile(PChar(fileName), GENERIC_WRITE, 0, nil, CREATE_ALWAYS,
                       FILE_ATTRIBUTE_NORMAL+FILE_FLAG_SEQUENTIAL_SCAN, 0);
-   if Result=INVALID_HANDLE_VALUE then
+   {$else}
+   Result := SysUtils.FileCreate(fileName, fmOpenWrite, $007);
+   {$endif}
+   if Result = INVALID_HANDLE_VALUE then
       RaiseLastOSError;
 end;
 
@@ -1449,7 +1573,7 @@ end;
 //
 procedure CloseFileHandle(hFile : THandle);
 begin
-   CloseHandle(hFile);
+   SysUtils.FileClose(hFile);
 end;
 
 // FileWrite
@@ -1499,17 +1623,32 @@ end;
 // FileSize
 //
 function FileSize(const name : TFileName) : Int64;
+{$ifdef WINDOWS}
 var
    info : TWin32FileAttributeData;
 begin
    if GetFileAttributesExW(PWideChar(Pointer(name)), GetFileExInfoStandard, @info) then
-      Result:=info.nFileSizeLow or (Int64(info.nFileSizeHigh) shl 32)
-   else Result:=-1;
+      Result := info.nFileSizeLow or (Int64(info.nFileSizeHigh) shl 32)
+   else Result := -1;
 end;
+{$else}
+var
+   searchRec : TSearchRec;
+begin
+   try
+      if SysUtils.FindFirst(name, faAnyFile, searchRec) = 0 then
+         Result := searchRec.Size
+      else Result := 0;
+   finally
+      SysUtils.FindClose(searchRec);
+   end;
+end;
+{$endif}
 
 // FileDateTime
 //
 function FileDateTime(const name : TFileName; lastAccess : Boolean = False) : TdwsDateTime;
+{$ifdef WINDOWS}
 var
    info : TWin32FileAttributeData;
    buf : TdwsDateTime;
@@ -1521,6 +1660,21 @@ begin
    end else buf.Clear;
    Result := buf;
 end;
+{$else}
+var
+   searchRec : TSearchRec;
+   buf : TdwsDateTime;
+begin
+   try
+      if SysUtils.FindFirst(name, faAnyFile, searchRec) = 0 then
+         buf.AsLocalDateTime := searchRec.TimeStamp
+      else buf.Clear;
+   finally
+      SysUtils.FindClose(searchRec);
+   end;
+   Result := buf;
+end;
+{$endif}
 
 // FileSetDateTime
 //
@@ -1852,24 +2006,8 @@ end;
 // ReadAllBytes
 //
 class function TFile.ReadAllBytes(const filename : String) : TBytes;
-{$IFDEF VER200} // Delphi 2009
-var
-   fileStream : TFileStream;
-   n : Integer;
 begin
-   fileStream:=TFileStream.Create(filename, fmOpenRead or fmShareDenyWrite);
-   try
-      n:=fileStream.Size;
-      SetLength(Result, n);
-      if n>0 then
-         fileStream.ReadBuffer(Result[0], n);
-   finally
-      fileStream.Free;
-   end;
-{$ELSE}
-begin
-   Result:=IOUTils.TFile.ReadAllBytes(filename);
-{$ENDIF}
+   Result := LoadDataFromFile(fileName)
 end;
 
 // ------------------
@@ -1888,6 +2026,16 @@ end;
 
 {$ENDIF}
 {$ENDIF}
+
+// SetTimeCriticalPriority
+//
+procedure TdwsThread.SetTimeCriticalPriority;
+begin
+   {$ifdef WINDOWS}
+   // only supported in Windows
+   Priority := tpTimeCritical;
+   {$endif}
+end;
 
 // ------------------
 // ------------------ TMultiReadSingleWrite ------------------
@@ -2156,7 +2304,7 @@ const
 //
 procedure TdwsDateTime.SetAsFileTime(const val : TFileTime);
 var
-   temp : LARGE_INTEGER;
+   temp : TdwsLargeInteger;
 begin
    temp.LowPart := val.dwLowDateTime;
    temp.HighPart := val.dwHighDateTime;
@@ -2179,7 +2327,7 @@ end;
 //
 function TdwsDateTime.GetAsFileTime : TFileTime;
 var
-   temp : LARGE_INTEGER;
+   temp : TdwsLargeInteger;
 begin
    temp.QuadPart := (FValue * cFileTime_TicksPerMillisecond) + cFileTime_UnixTimeStart;
    Result.dwLowDateTime := temp.LowPart;
