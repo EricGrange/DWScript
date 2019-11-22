@@ -326,6 +326,8 @@ function RawByteStringToBytes(const buf : RawByteString) : TBytes;
 function BytesToRawByteString(const buf : TBytes; startIndex : Integer = 0) : RawByteString; overload;
 function BytesToRawByteString(p : Pointer; size : Integer) : RawByteString; overload;
 
+procedure BytesToScriptString(const p : PByte; n : Integer; var result : UnicodeString);
+
 function LoadDataFromFile(const fileName : TFileName) : TBytes;
 procedure SaveDataToFile(const fileName : TFileName; const data : TBytes);
 
@@ -1293,6 +1295,32 @@ begin
    System.Move(p^, Pointer(Result)^, size);
 end;
 
+// BytesToScriptString
+//
+procedure BytesToScriptString(const p : PByte; n : Integer; var result : UnicodeString);
+var
+   pSrc : PByteArray;
+   pDest : PWordArray;
+begin
+   SetLength(result, n);
+   pSrc := PByteArray(p);
+   pDest := PWordArray(Pointer(result));
+   while n >= 4 do begin
+      Dec(n, 4);
+      pDest[0] := pSrc[0];
+      pDest[1] := pSrc[1];
+      pDest[2] := pSrc[2];
+      pDest[3] := pSrc[3];
+      pDest := @pDest[4];
+      pSrc := @pSrc[4];
+   end;
+   for n := 1 to n do begin
+      pDest[0] := pSrc[0];
+      pDest := @pDest[1];
+      pSrc := @pSrc[1];
+   end;
+end;
+
 // TryTextToFloat
 //
 function TryTextToFloat(const s : PChar; var value : Extended; const formatSettings : TFormatSettings) : Boolean;
@@ -1565,7 +1593,7 @@ end;
 // LoadRawBytesAsScriptStringFromFile
 //
 procedure LoadRawBytesAsScriptStringFromFile(const fileName : TFileName; var result : String);
-{$ifndef WINDOWS}
+{$ifdef WINDOWS}
 const
    INVALID_FILE_SIZE = DWORD($FFFFFFFF);
 var
@@ -1607,8 +1635,13 @@ begin
    end;
 end;
 {$else}
+var
+   buf : RawByteString;
 begin
-   Result := LoadRawBytesFromFile(fileName);
+   buf := LoadRawBytesFromFile(fileName);
+   if buf <> '' then
+      BytesToScriptString(Pointer(buf), Length(buf), Result)
+   else Result := '';
 end;
 {$endif}
 

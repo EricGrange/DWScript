@@ -21,7 +21,7 @@ interface
 uses
    Windows, SysUtils, WinInet, Variants,
    SynCrtSock, SynCommons,
-   dwsUtils, dwsWebEnvironment;
+   dwsUtils, dwsWebEnvironment, dwsXPlatform;
 
 type
    TdwsCustomHeaders = class (TInterfacedSelfObject)

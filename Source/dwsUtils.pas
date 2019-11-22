@@ -1007,8 +1007,6 @@ function RawByteStringToScriptString(const s : RawByteString) : UnicodeString; o
 procedure RawByteStringToScriptString(const s : RawByteString; var result : UnicodeString); inline; overload;
 procedure RawByteStringToScriptString(const s : RawByteString; var result : Variant); overload;
 
-procedure BytesToScriptString(const p : PByte; n : Integer; var result : UnicodeString);
-
 function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString; overload; inline;
 procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
 
@@ -2933,32 +2931,6 @@ begin
       VarClearSafe(result);
       TVarData(result).VType := varUString;
       RawByteStringToScriptString(s, String(TVarData(result).VString));
-   end;
-end;
-
-// BytesToScriptString
-//
-procedure BytesToScriptString(const p : PByte; n : Integer; var result : UnicodeString);
-var
-   pSrc : PByteArray;
-   pDest : PWordArray;
-begin
-   SetLength(result, n);
-   pSrc := PByteArray(p);
-   pDest := PWordArray(Pointer(result));
-   while n >= 4 do begin
-      Dec(n, 4);
-      pDest[0] := pSrc[0];
-      pDest[1] := pSrc[1];
-      pDest[2] := pSrc[2];
-      pDest[3] := pSrc[3];
-      pDest := @pDest[4];
-      pSrc := @pSrc[4];
-   end;
-   for n := 1 to n do begin
-      pDest[0] := pSrc[0];
-      pDest := @pDest[1];
-      pSrc := @pSrc[1];
    end;
 end;
 
