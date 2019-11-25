@@ -181,27 +181,45 @@ const
     'ἀἁἂἃἄἅἆἇἐἑἒἓἔἕἠἡἢἣἤἥἦἧἰἱἲἳἴἵἶἷὀὁὂὃὄὅὑὓὕὗὠὡὢὣὤὥὦὧᾀᾁᾂᾃᾄᾅ';
   TestStringLowerCaseFullWidth =
     'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ';
+
+   procedure CheckLower(const expected, test : String);
+   var
+      buf : String;
+   begin
+      UnicodeLowerCase(test, buf);
+      CheckEquals(expected, buf);
+   end;
+
+   procedure CheckUpper(const expected, test : String);
+   var
+      buf : String;
+   begin
+      UnicodeUpperCase(test, buf);
+      CheckEquals(expected, buf);
+   end;
+
 begin
-   CheckEquals(TestStringLowerCaseBasic, UnicodeLowerCase(TestStringUpperCaseBasic));
-   CheckEquals(TestStringLowerCaseSupplement, UnicodeLowerCase(TestStringUpperCaseSupplement));
-   CheckEquals(TestStringLowerCaseExtendedA, UnicodeLowerCase(TestStringUpperCaseExtendedA));
-   CheckEquals(TestStringLowerCaseExtendedB, UnicodeLowerCase(TestStringUpperCaseExtendedB));
-   CheckEquals(TestStringLowerCaseGreek, UnicodeLowerCase(TestStringUpperCaseGreek));
-   CheckEquals(TestStringLowerCaseCyrillic, UnicodeLowerCase(TestStringUpperCaseCyrillic));
-   CheckEquals(TestStringLowerCaseArmenian, UnicodeLowerCase(TestStringUpperCaseArmenian));
-   CheckEquals(TestStringLowerCaseExtendedAdditional, UnicodeLowerCase(TestStringUpperCaseExtendedAdditional));
-   CheckEquals(TestStringLowerCaseGreekExtended, UnicodeLowerCase(TestStringUpperCaseGreekExtended));
-   CheckEquals(TestStringLowerCaseFullWidth, UnicodeLowerCase(TestStringUpperCaseFullWidth));
-   CheckEquals(TestStringUpperCaseBasic, UnicodeUpperCase(TestStringLowerCaseBasic));
-   CheckEquals(TestStringUpperCaseSupplement, UnicodeUpperCase(TestStringLowerCaseSupplement));
-   CheckEquals(TestStringUpperCaseExtendedA, UnicodeUpperCase(TestStringLowerCaseExtendedA));
-   CheckEquals(TestStringUpperCaseExtendedB, UnicodeUpperCase(TestStringLowerCaseExtendedB));
-   CheckEquals(TestStringUpperCaseGreek, UnicodeUpperCase(TestStringLowerCaseGreek));
-   CheckEquals(TestStringUpperCaseCyrillic, UnicodeUpperCase(TestStringLowerCaseCyrillic));
-   CheckEquals(TestStringUpperCaseArmenian, UnicodeUpperCase(TestStringLowerCaseArmenian));
-   CheckEquals(TestStringUpperCaseExtendedAdditional, UnicodeUpperCase(TestStringLowerCaseExtendedAdditional));
-   CheckEquals(TestStringUpperCaseGreekExtended, UnicodeUpperCase(TestStringLowerCaseGreekExtended));
-   CheckEquals(TestStringUpperCaseFullWidth, UnicodeUpperCase(TestStringLowerCaseFullWidth));
+   CheckLower(TestStringLowerCaseBasic, TestStringUpperCaseBasic);
+   CheckLower(TestStringLowerCaseSupplement, TestStringUpperCaseSupplement);
+   CheckLower(TestStringLowerCaseExtendedA, TestStringUpperCaseExtendedA);
+   CheckLower(TestStringLowerCaseExtendedB, TestStringUpperCaseExtendedB);
+   CheckLower(TestStringLowerCaseGreek, TestStringUpperCaseGreek);
+   CheckLower(TestStringLowerCaseCyrillic, TestStringUpperCaseCyrillic);
+   CheckLower(TestStringLowerCaseArmenian, TestStringUpperCaseArmenian);
+   CheckLower(TestStringLowerCaseExtendedAdditional, TestStringUpperCaseExtendedAdditional);
+   CheckLower(TestStringLowerCaseGreekExtended, TestStringUpperCaseGreekExtended);
+   CheckLower(TestStringLowerCaseFullWidth, TestStringUpperCaseFullWidth);
+
+   CheckUpper(TestStringUpperCaseBasic, TestStringLowerCaseBasic);
+   CheckUpper(TestStringUpperCaseSupplement, TestStringLowerCaseSupplement);
+   CheckUpper(TestStringUpperCaseExtendedA, TestStringLowerCaseExtendedA);
+   CheckUpper(TestStringUpperCaseExtendedB, TestStringLowerCaseExtendedB);
+   CheckUpper(TestStringUpperCaseGreek, TestStringLowerCaseGreek);
+   CheckUpper(TestStringUpperCaseCyrillic, TestStringLowerCaseCyrillic);
+   CheckUpper(TestStringUpperCaseArmenian, TestStringLowerCaseArmenian);
+   CheckUpper(TestStringUpperCaseExtendedAdditional, TestStringLowerCaseExtendedAdditional);
+   CheckUpper(TestStringUpperCaseGreekExtended, TestStringLowerCaseGreekExtended);
+   CheckUpper(TestStringUpperCaseFullWidth, TestStringLowerCaseFullWidth);
 end;
 
 

@@ -989,6 +989,7 @@ var
    i, j : Integer;
    h : Cardinal;
 begin
+   FillZero(buckets[0], Length(buckets)*SizeOf(Integer));
    for i := 1 to cNbItems do
       Inc(buckets[DWSHashCode(i) and cBucketHigh]);
    CheckBucketRatios('Integers');

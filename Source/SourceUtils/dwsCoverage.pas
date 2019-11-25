@@ -127,12 +127,13 @@ procedure TdwsCoverageDebugger.DoDebug(exec : TdwsExecution; expr : TExprBase);
 
    function BitsFromSourceFile(sourceFile : TSourceFile) : TBits;
    var
-      loc : String;
+      loc, lcLoc : String;
    begin
       loc := sourceFile.Location;
       if loc = '' then
          loc := sourceFile.Name;
-      Result := FNonCovered.SourceLines[UnicodeLowerCase(loc)];
+      UnicodeLowerCase(loc, lcLoc);
+      Result := FNonCovered.SourceLines[lcLoc];
       FLastSourceFile := sourceFile;
       FLastBits := Result;
    end;

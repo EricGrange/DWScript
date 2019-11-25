@@ -281,8 +281,11 @@ function UnicodeStringReplace(const s, oldPattern, newPattern: String; flags: TR
 function UnicodeCompareP(p1 : PWideChar; n1 : Integer; p2 : PWideChar; n2 : Integer) : Integer; overload;
 function UnicodeCompareP(p1, p2 : PWideChar; n : Integer) : Integer; overload;
 
-function UnicodeLowerCase(const s : UnicodeString) : UnicodeString; overload;
-function UnicodeUpperCase(const s : UnicodeString) : UnicodeString; overload;
+procedure UnicodeLowerCase(const s : UnicodeString; var result : UnicodeString); overload;
+function  UnicodeLowerCase(const s : UnicodeString) : UnicodeString; overload; inline; deprecated 'use procedure form';
+
+procedure UnicodeUpperCase(const s : UnicodeString; var result : UnicodeString); overload;
+function  UnicodeUpperCase(const s : UnicodeString) : UnicodeString; overload; inline; deprecated 'use procedure form';
 
 {$ifdef FPC}
 function UnicodeLowerCase(const s : String) : String; overload;
@@ -653,51 +656,99 @@ begin
    Result := SysUtils.StringReplace(s, oldPattern, newPattern, flags);
 end;
 
+{$ifdef WINDOWS}
 function CompareStringEx(
    lpLocaleName: LPCWSTR; dwCmpFlags: DWORD;
    lpString1: LPCWSTR; cchCount1: Integer;
    lpString2: LPCWSTR; cchCount2: Integer;
    lpVersionInformation: Pointer; lpReserved: LPVOID;
    lParam: LPARAM): Integer; stdcall; external 'kernel32.dll';
+{$endif}
 
 // UnicodeCompareP
 //
 function UnicodeCompareP(p1 : PWideChar; n1 : Integer; p2 : PWideChar; n2 : Integer) : Integer;
+{$ifdef WINDOWS}
 const
    CSTR_EQUAL = 2;
 begin
    Result := CompareStringEx(nil, NORM_IGNORECASE, p1, n1, p2, n2, nil, nil, 0)-CSTR_EQUAL;
 end;
+{$else}
+begin
+   if IsICUAvailable then
+      Result := Integer(ucol_strcoll(GetCollator(UTF8CompareLocale, [coIgnoreCase]), p1, n1, p2, n2))
+   else raise Exception.Create('ICU not available (http://site.icu-project.org/home)');
+end;
+{$endif}
 
 // UnicodeCompareP
 //
 function UnicodeCompareP(p1, p2 : PWideChar; n : Integer) : Integer; overload;
+{$ifdef WINDOWS}
 const
    CSTR_EQUAL = 2;
 begin
    Result := CompareStringEx(nil, NORM_IGNORECASE, p1, n, p2, n, nil, nil, 0) - CSTR_EQUAL;
+end;
+{$else}
+begin
+   if IsICUAvailable then
+      Result := Integer(ucol_strcoll(GetCollator(UTF8CompareLocale, [coIgnoreCase]), p1, n, p2, n))
+   else raise Exception.Create('ICU not available (http://site.icu-project.org/home)');
+end;
+{$endif}
+
+// UnicodeLowerCase
+//
+procedure UnicodeLowerCase(const s : UnicodeString; var result : UnicodeString);
+var
+   n : Integer;
+begin
+   n := Length(s);
+   if n > 0 then begin
+      {$ifdef WINDOWS}
+      SetLength(result, n);
+      Windows.LCMapStringEx(nil, LCMAP_LOWERCASE or LCMAP_LINGUISTIC_CASING,
+                            PWideChar(Pointer(s)), n, PWideChar(Pointer(result)), n,
+                            nil, nil, 0);
+      {$else}
+      result := s.ToLower;
+      {$endif}
+   end else Result := '';
 end;
 
 // UnicodeLowerCase
 //
 function UnicodeLowerCase(const s : UnicodeString) : UnicodeString;
 begin
-   if s<>'' then begin
-      Result:=s;
-      UniqueString(Result);
-      Windows.CharLowerBuffW(PWideChar(Pointer(Result)), Length(Result));
-   end else Result:=s;
+   UnicodeLowerCase(s, Result);
+end;
+
+// UnicodeUpperCase
+//
+procedure UnicodeUpperCase(const s : UnicodeString; var result : UnicodeString);
+var
+   n : Integer;
+begin
+   n := Length(s);
+   if n > 0 then begin
+      {$ifdef WINDOWS}
+      SetLength(result, n);
+      Windows.LCMapStringEx(nil, LCMAP_UPPERCASE or LCMAP_LINGUISTIC_CASING,
+                            PWideChar(Pointer(s)), n, PWideChar(Pointer(result)), n,
+                            nil, nil, 0);
+      {$else}
+      Result := s.ToUpper;
+      {$endif}
+   end else Result := '';
 end;
 
 // UnicodeUpperCase
 //
 function UnicodeUpperCase(const s : UnicodeString) : UnicodeString;
 begin
-   if s<>'' then begin
-      Result:=s;
-      UniqueString(Result);
-      Windows.CharUpperBuffW(PWideChar(Pointer(Result)), Length(Result));
-   end else Result:=s;
+   UnicodeUpperCase(s, Result);
 end;
 
 {$ifdef FPC}
@@ -721,9 +772,9 @@ end;
 function ASCIICompareText(const s1, s2 : String) : Integer; inline;
 begin
    {$ifdef FPC}
-   Result:=CompareText(UTF8Encode(s1), UTF8Encode(s2));
+   Result := CompareText(UTF8Encode(s1), UTF8Encode(s2));
    {$else}
-   Result:=CompareText(s1, s2);
+   Result := CompareText(s1, s2);
    {$endif}
 end;
 
@@ -732,9 +783,9 @@ end;
 function ASCIISameText(const s1, s2 : String) : Boolean; inline;
 begin
    {$ifdef FPC}
-   Result:=(ASCIICompareText(s1, s2)=0);
+   Result := (ASCIICompareText(s1, s2)=0);
    {$else}
-   Result:=SameText(s1, s2);
+   Result := SameText(s1, s2);
    {$endif}
 end;
 

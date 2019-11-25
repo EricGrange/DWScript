@@ -2721,8 +2721,11 @@ end;
 function TdwsJSONWriter.WriteNameP(const aName : PWideChar) : TdwsJSONWriter;
 
    procedure WriteLowerCase(stream : TWriteOnlyBlockStream; aName : PWideChar);
+   var
+      buf : String;
    begin
-      WriteJavaScriptString(FStream, UnicodeLowerCase(aName));
+      UnicodeLowerCase(aName, buf);
+      WriteJavaScriptString(FStream, buf);
    end;
 
 begin

@@ -6746,8 +6746,11 @@ end;
 // GetItemHashCode
 //
 function TSimpleStringHash.GetItemHashCode(const item1 : String) : Cardinal;
+var
+   lc : String;
 begin
-   Result:=SimpleStringHash(UnicodeLowerCase(item1));
+   UnicodeLowerCase(item1, lc);
+   Result := SimpleStringHash(lc);
 end;
 
 // ------------------

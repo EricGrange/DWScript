@@ -1688,8 +1688,10 @@ end;
 function TdwsBreakpointableLines.IsExecutable(const sourceName : String; line : Integer) : Boolean;
 var
    bits : TBits;
+   locationLC : String;
 begin
-   bits:=FSources.Objects[UnicodeLowerCase(sourceName)];
+   UnicodeLowerCase(sourceName, locationLC);
+   bits := FSources.Objects[locationLC];
    if bits<>nil then
       Result:=(Cardinal(line)<Cardinal(bits.Size)) and bits[line]
    else Result:=False;
@@ -1713,8 +1715,11 @@ end;
 // GetSourceLines
 //
 function TdwsBreakpointableLines.GetSourceLines(const sourceName : String) : TBits;
+var
+   lcName : String;
 begin
-   Result:=FSources.Objects[UnicodeLowerCase(sourceName)];
+   UnicodeLowerCase(sourceName, lcName);
+   Result := FSources.Objects[lcName];
 end;
 
 // EnumeratorCallback
@@ -1759,7 +1764,7 @@ begin
       location := FLastSourceFile.Location;
       if location = '' then
          location := FLastSourceFile.Name;
-      locationLC := UnicodeLowerCase(location);
+      UnicodeLowerCase(location, locationLC);
       FLastBreakpointLines := FSources.Objects[locationLC];
       if FLastBreakpointLines = nil then begin
          FLastBreakpointLines := TBreakpointBits.Create;

@@ -39,7 +39,7 @@ program DWSWebServer;
 
 {$APPTYPE CONSOLE}
 
-{$R *.dres}
+{$R *.res}
 
 uses
   FastMM4,

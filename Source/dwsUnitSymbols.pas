@@ -822,11 +822,14 @@ end;
 // RegisterNameSpaceUnit
 //
 procedure TUnitSymbol.RegisterNameSpaceUnit(unitSymbol : TUnitSymbol);
+var
+   lcName : String;
 begin
    if FNameSpace=nil then begin
-      FNameSpace:=TNameObjectHash.Create;
+      FNameSpace := TNameObjectHash.Create;
    end;
-   FNameSpace[UnicodeLowerCase(unitSymbol.Name)] := unitSymbol;
+   UnicodeLowerCase(unitSymbol.Name, lcName);
+   FNameSpace[lcName] := unitSymbol;
 end;
 
 // FindNameSpaceUnit
@@ -834,8 +837,11 @@ end;
 function TUnitSymbol.FindNameSpaceUnit(const name : String) : TUnitSymbol;
 
    function FindInNameSpace : TUnitSymbol;
+   var
+      lcName : String;
    begin
-      Result := TUnitSymbol(FNameSpace[UnicodeLowerCase(name)]);
+      UnicodeLowerCase(name, lcName);
+      Result := TUnitSymbol(FNameSpace[lcName]);
    end;
 
 begin
