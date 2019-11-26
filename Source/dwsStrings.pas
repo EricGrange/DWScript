@@ -202,6 +202,7 @@ const
   CPE_InheritedWithoutName = 'Name expected after "inherited"';
   CPE_InheritedMethodNotFound = 'Method "%s" not found in ancestor class';
   CPE_StaticMethodExpected = 'Class method or constructor expected';
+  CPE_InternalConstructorCall = 'Constructing internal class "%s" is not allowed';
   CPE_UnexpectedConstructor = 'Constructor invoked on instance outside of constructor';
   CPE_UnexpectedDestructor = 'Destructor can only be invoked on instance';
   CPE_UnexpectedMethodImplementation = 'Unexpected method implementation';
@@ -224,6 +225,7 @@ const
   CPE_ForwardNotImplemented = 'The function "%s" was forward declared but not implemented';
   CPE_CantImplementAFunctionType = 'Cannot implement a function type';
   CPE_ClassIsSealed = 'Class "%s" is sealed, inheriting is not allowed';
+  CPE_ClassIsInternal = 'Class "%s" is internal, inheriting is not allowed';
   CPE_ClassIsStaticNoInstantiation = 'Class "%s" is static, instantiation not allowed';
   CPE_ClassIsStaticNoInstances = 'Class "%s" is static, no instances allowed';
   CPE_ClassAncestorNotStatic = 'Class "%s" is not static, cannot inherit as static';

@@ -479,12 +479,16 @@ begin
 
       // Return the right expression
       case meth.Kind of
-         fkFunction, fkProcedure, fkMethod, fkLambda:
+         fkFunction, fkProcedure, fkMethod, fkLambda: begin
+
             if meth.IsClassMethod then begin
+
                if not (cfoForceStatic in options) and meth.IsVirtual then
                   Result := TClassMethodVirtualExpr.Create(context, scriptPos, meth, expr)
                else Result := TClassMethodStaticExpr.Create(context, scriptPos, meth, expr)
+
             end else begin
+
                if RefKind=rkClassOfRef then
                   context.Msgs.AddCompilerError(scriptPos, CPE_StaticMethodExpected)
                else if expr.Typ is TClassOfSymbol then
@@ -492,29 +496,46 @@ begin
                if not (cfoForceStatic in options) and meth.IsVirtual then
                   Result := TMethodVirtualExpr.Create(context, scriptPos, meth, expr)
                else Result := TMethodStaticExpr.Create(context, scriptPos, meth, expr);
+
             end;
-         fkConstructor:
+
+         end;
+         fkConstructor: begin
+
             if RefKind = rkClassOfRef then begin
+
+               if expr.Typ.ClassType = TClassOfSymbol then
+                  classSymbol := TClassOfSymbol(expr.Typ).TypClassSymbol
+               else classSymbol := expr.Typ as TClassSymbol;
+               if classSymbol.IsInternal then
+                  context.Msgs.AddCompilerErrorFmt(scriptPos, CPE_InternalConstructorCall, [ classSymbol.Name ]);
+
                if not (cfoForceStatic in options) and meth.IsVirtual then
                   Result := TConstructorVirtualExpr.Create(context, scriptPos, meth, expr)
                else if meth = context.TypDefaultConstructor then
                   Result := TConstructorStaticDefaultExpr.Create(context, scriptPos, meth, expr)
                else Result := TConstructorStaticExpr.Create(context, scriptPos, meth, expr);
+
             end else begin
+
                if not ((context.Prog is TdwsProcedure) and (TdwsProcedure(context.Prog).Func.Kind=fkConstructor)) then
                   context.Msgs.AddCompilerWarning(scriptPos, CPE_UnexpectedConstructor);
                if not (cfoForceStatic in options) and meth.IsVirtual then
                   Result := TConstructorVirtualObjExpr.Create(context, scriptPos, meth, expr)
                else Result := TConstructorStaticObjExpr.Create(context, scriptPos, meth, expr);
+
             end;
-         fkDestructor:
-            begin
-               if RefKind=rkClassOfRef then
-                  context.Msgs.AddCompilerError(scriptPos, CPE_UnexpectedDestructor);
-               if not (cfoForceStatic in options) and meth.IsVirtual then
-                  Result := TDestructorVirtualExpr.Create(context, scriptPos, meth, expr)
-               else Result := TDestructorStaticExpr.Create(context, scriptPos, meth, expr)
-            end;
+
+         end;
+         fkDestructor: begin
+
+            if RefKind=rkClassOfRef then
+               context.Msgs.AddCompilerError(scriptPos, CPE_UnexpectedDestructor);
+            if not (cfoForceStatic in options) and meth.IsVirtual then
+               Result := TDestructorVirtualExpr.Create(context, scriptPos, meth, expr)
+            else Result := TDestructorStaticExpr.Create(context, scriptPos, meth, expr)
+
+         end;
       else
          Assert(False);
       end;

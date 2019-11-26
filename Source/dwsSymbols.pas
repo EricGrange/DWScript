@@ -1394,6 +1394,7 @@ type
          function GetExternalName : String; virtual;
          function GetIsPartial : Boolean; virtual;
          function GetIsImmutable : Boolean; virtual;
+         function GetIsInternal : Boolean; virtual;
 
          procedure CheckMethodsImplemented(const msgs : TdwsCompileMessageList);
 
@@ -1449,6 +1450,7 @@ type
          property IsExternalRooted : Boolean read GetIsExternalRooted;
          property ExternalName : String read GetExternalName;
          property IsImmutable : Boolean read GetIsImmutable;
+         property IsInternal : Boolean read GetIsInternal;
    end;
 
    // class, record, interface
@@ -1711,13 +1713,24 @@ type
 
    TObjectDestroyEvent = procedure (ExternalObject: TObject) of object;
 
-   TClassSymbolFlag = (csfAbstract, csfExplicitAbstract, csfSealed,
-                       csfStatic, csfExternal, csfPartial,
-                       csfNoVirtualMembers, csfNoOverloads,
-                       csfHasOwnMethods, csfHasOwnFields,
-                       csfExternalRooted,
-                       csfInitialized,
-                       csfAttribute);
+   TClassSymbolFlag = (
+      // requirement or declarations flags
+      csfExplicitAbstract, // class that was explicity marked as abstract
+      csfSealed,           // class that cannot be sublclasses
+      csfStatic,           // class that cannot have instances
+      csfExternal,         // class exposed but not implemented in script
+      csfPartial,          // class whose declaration and implementation spans multiple units
+      csfInternal,         // class for internal use which cannot be subclassed or constructed from script
+      // script engine flags
+      csfAbstract,         // class was marked abstract or has abstract methods
+      csfNoVirtualMembers, // class does not have virtual members
+      csfNoOverloads,
+      csfHasOwnMethods,
+      csfHasOwnFields,
+      csfExternalRooted,
+      csfInitialized,
+      csfAttribute
+   );
    TClassSymbolFlags = set of TClassSymbolFlag;
 
    // type X = class ... end;
@@ -1745,6 +1758,8 @@ type
          function GetIsPartial : Boolean; override;
          function GetIsAttribute : Boolean; inline;
          procedure SetIsAttribute(const val : Boolean); inline;
+         function GetIsInternal : Boolean; inline;
+         procedure SetIsInternal(const val : Boolean); inline;
 
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
@@ -1809,6 +1824,7 @@ type
          property IsSealed : Boolean read GetIsSealed write SetIsSealed;
          property IsStatic : Boolean read GetIsStatic write SetIsStatic;
          property IsExternal : Boolean read GetIsExternal write SetIsExternal;
+         property IsInternal : Boolean read GetIsInternal write SetIsInternal;
          property IsPartial : Boolean read GetIsPartial;
          property IsAttribute : Boolean read GetIsAttribute write SetIsAttribute;
 
@@ -1999,6 +2015,8 @@ type
          FSleepTime : Integer;
          FSleeping : Boolean;
 
+         FInternalExecution : Integer;
+
          FEnvironment : IdwsEnvironment;
 
       protected
@@ -2100,6 +2118,10 @@ type
          property IsDebugging : Boolean read FIsDebugging;
 
          procedure DebuggerNotifyException(const exceptObj : IScriptObj); virtual; abstract;
+
+         procedure BeginInternalExecution; inline;
+         procedure EndInternalExecution; inline;
+         function  InternalExecution : Boolean; inline;
 
          property Msgs : TdwsRuntimeMessageList read GetMsgs;
 
@@ -2752,6 +2774,13 @@ end;
 function TCompositeTypeSymbol.GetIsImmutable : Boolean;
 begin
    Result:=False;
+end;
+
+// GetIsInternal
+//
+function TCompositeTypeSymbol.GetIsInternal : Boolean;
+begin
+   Result := False;
 end;
 
 // FindDefaultConstructor
@@ -5007,6 +5036,22 @@ begin
    if val then
       Include(FFlags, csfAttribute)
    else Exclude(FFlags, csfAttribute);
+end;
+
+// GetIsInternal
+//
+function TClassSymbol.GetIsInternal : Boolean;
+begin
+   Result := (csfInternal in FFlags);
+end;
+
+// SetIsInternal
+//
+procedure TClassSymbol.SetIsInternal(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, csfInternal)
+   else Exclude(FFlags, csfInternal);
 end;
 
 // SetIsPartial
@@ -8664,6 +8709,27 @@ end;
 procedure TdwsExecution.SetEnvironment(const val : IdwsEnvironment);
 begin
    FEnvironment := val;
+end;
+
+// BeginInternalExecution
+//
+procedure TdwsExecution.BeginInternalExecution;
+begin
+   Inc(FInternalExecution);
+end;
+
+// EndInternalExecution
+//
+procedure TdwsExecution.EndInternalExecution;
+begin
+   Dec(FInternalExecution);
+end;
+
+// InternalExecution
+//
+function TdwsExecution.InternalExecution : Boolean;
+begin
+   Result := (FInternalExecution > 0);
 end;
 
 // ------------------

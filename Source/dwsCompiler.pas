@@ -8851,6 +8851,8 @@ begin
 
             if ancestorTyp.IsSealed then
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassIsSealed, [ancestorTyp.Name]);
+            if ancestorTyp.IsInternal then
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassIsInternal, [ancestorTyp.Name]);
 
             while FTok.TestDelete(ttCOMMA) do begin
 

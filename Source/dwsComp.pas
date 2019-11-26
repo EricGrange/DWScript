@@ -935,6 +935,7 @@ type
          FIsSealed : Boolean;
          FIsAbstract : Boolean;
          FIsStatic : Boolean;
+         FIsInternal : Boolean;
          FDeprecated : String;
 
       protected
@@ -962,6 +963,7 @@ type
          property IsSealed : Boolean read FIsSealed write FIsSealed default False;
          property IsAbstract : Boolean read FIsAbstract write FIsAbstract default False;
          property IsStatic : Boolean read FIsStatic write FIsStatic default False;
+         property IsInternal : Boolean read FIsInternal write FIsInternal default False;
          property Deprecated : String read FDeprecated write FDeprecated;
          property Constructors : TdwsConstructors read FConstructors write FConstructors stored StoreConstructors;
          property Fields : TdwsFields read FFields write FFields stored StoreFields;
@@ -4270,8 +4272,9 @@ begin
 
       classSym.InheritFrom(ancestorSym);
 
-      classSym.IsSealed:=IsSealed;
-      classSym.IsExplicitAbstract:=IsAbstract;
+      classSym.IsSealed := IsSealed;
+      classSym.IsExplicitAbstract := IsAbstract;
+      classSym.IsInternal := IsInternal;
 
       classSym.DeprecatedMessage:=Self.Deprecated;
 
