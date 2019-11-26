@@ -19,7 +19,6 @@ type
          FCompiler : TDelphiWebScript;
          FCodeGen : TdwsJSCodeGen;
          FASMModule : TdwsJSLibModule;
-         FConsole : String;
          FChromium : ITestChromium;
 
       public
@@ -93,7 +92,7 @@ begin
    CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsMath'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsString'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsTime'+PathDelim, pasFilter, FTests);
-   CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsVariant'+PathDelim, pasFilter, FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsVariant'+PathDelim, pasFilter, FTests);       // *)
    //CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsRTTI'+PathDelim, pasFilter, FTests);
 
    {$ifdef JS_BIGINTEGER}
@@ -345,10 +344,9 @@ begin
                     +'} catch(e) {$testResult.splice(0,0,"Errors >>>>\r\nRuntime Error: "+((e.ClassType)?e.FMessage:e.message)+"\r\nResult >>>>\r\n")};'#13#10
                     +'console.log($testResult.join(""));'#13#10
                     +'})();';
-            FChromium.LastJSResult := '*no result*';
-            FConsole:='';
+            FChromium.ClearLastResult;
 
-            SaveTextToUTF8File('c:\temp\test.js', UTF8Encode(jscode));
+            //SaveTextToUTF8File('c:\temp\test.js', UTF8Encode(jscode));
 
             {// execute via node
             fileName:=GetTempFileName('dws');
@@ -361,6 +359,8 @@ begin
             }
 
             // execute via chromium
+            FChromium.ExecuteAndWait(jsCode, 'about:blank');
+            {
             FChromium.ExecuteJavaScript(jsCode, 'about:blank');
             for k := 1 to 300 do begin
                if FChromium.LastJSResult <> '*no result*' then break;
@@ -375,13 +375,12 @@ begin
             end;
             //}
 
-            if prog.Msgs.Count=0 then
-               output := FConsole + FChromium.LastJSResult
-            else begin
+            output := FChromium.LastResult;
+            if prog.Msgs.Count > 0 then begin
                output := 'Errors >>>>'#13#10
                        + prog.Msgs.AsInfo
                        + 'Result >>>>'#13#10
-                       + FConsole + FChromium.LastJSResult;
+                       + output;
             end;
 
             expectedResult := GetExpectedResult(FTests[i]);

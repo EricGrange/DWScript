@@ -19,13 +19,8 @@ type
       procedure ExecuteAndWait(const js, url : String);
       procedure LoadAndWait(const html, url : String);
 
-      function GetLastJSResult : String;
-      procedure SetLastJSResult(const v : String);
-      property LastJSResult : String read GetLastJSResult write SetLastJSResult;
-
-      function GetConsole : String;
-      procedure SetConsole(const v : String);
-      property Console : String read GetConsole write SetConsole;
+      procedure ClearLastResult;
+      function LastResult : String;
    end;
 
 function CreateTestChromium : ITestChromium;
@@ -34,12 +29,13 @@ implementation
 
 uses dwsUtils, dwsJSON;
 
+const cNoResult = '*no result*';
+
 type
    TTestChromium = class;
 
    TTestChromiumForm = class (TForm)
       public
-         FLastJSResult : String;
          FConsole : String;
          FChromium : TChromiumWindow;
          FSentinel : TCEFSentinel;
@@ -47,10 +43,6 @@ type
          destructor Destroy; override;
          procedure FormCloseQuery(Sender : TObject; var canClose : Boolean);
          procedure SentinelClose(Sender: TObject);
-         procedure DoJSDialog(
-            Sender: TObject; const browser: ICefBrowser; const originUrl: ustring;
-            dialogType: TCefJsDialogType; const messageText, defaultPromptText: ustring;
-            const callback: ICefJsDialogCallback; out suppressMessage: Boolean; out Result: Boolean);
          procedure DoConsoleMessage(Sender: TObject; const browser: ICefBrowser;
             level: TCefLogSeverity; const message, source: ustring; line: Integer; out Result: Boolean);
    end;
@@ -65,25 +57,16 @@ type
       procedure ExecuteJavaScript(const js, url : String);
       procedure ExecuteAndWait(const js, url : String);
       procedure LoadAndWait(const html, url : String);
-      function GetLastJSResult : String;
-      procedure SetLastJSResult(const v : String);
-      function GetConsole : String;
-      procedure SetConsole(const v : String);
+      procedure ClearLastResult;
+      function LastResult : String;
    end;
-
-procedure TTestChromiumForm.DoJSDialog(
-            Sender: TObject; const browser: ICefBrowser; const originUrl: ustring;
-            dialogType: TCefJsDialogType; const messageText, defaultPromptText: ustring;
-            const callback: ICefJsDialogCallback; out suppressMessage: Boolean; out Result: Boolean);
-begin
-   FLastJSResult := messageText;
-   Result := True;
-end;
 
 procedure TTestChromiumForm.DoConsoleMessage(Sender: TObject; const browser: ICefBrowser;
             level: TCefLogSeverity; const message, source: ustring; line: Integer; out Result: Boolean);
 begin
-   FConsole := FConsole + message;
+   if FConsole = cNoResult then
+      FConsole := message
+   else FConsole := FConsole + message;
    Result := True;
 end;
 
@@ -187,14 +170,13 @@ end;
 //
 procedure TTestChromium.ExecuteAndWait(const js, url : String);
 var
-   prevResult, prevConsole : String;
+   prevResult : String;
    k : Integer;
 begin
-   prevResult := GetLastJSResult;
-   prevConsole := GetConsole;
+   prevResult := LastResult;
    ExecuteJavaScript(js, url);
    for k := 1 to 300 do begin
-      if (GetLastJSResult <> prevResult) or (GetConsole <> prevConsole) then break;
+      if prevResult <> LastResult then Exit;
       Application.ProcessMessages;
       case k of
          0..99 : Sleep(1);
@@ -203,6 +185,10 @@ begin
          Sleep(20);
       end;
    end;
+   FForm.FChromium.ChromiumBrowser.StopLoad;
+   if FForm.FConsole = cNoResult then
+      FForm.FConsole := '';
+   FForm.FConsole := FForm.FConsole + 'Timeout';
 end;
 
 // LoadAndWait
@@ -222,33 +208,22 @@ begin
    end;
 end;
 
-// GetLastJSResult
+// LastResult
 //
-function TTestChromium.GetLastJSResult : String;
+function TTestChromium.LastResult : String;
 begin
-   Result := FForm.FLastJSResult;
+   if FForm.FConsole <> cNoResult then
+      Result := FForm.FConsole
+   else Result := cNoResult;
 end;
 
-// SetLastJSResult
+// ClearLastResult
 //
-procedure TTestChromium.SetLastJSResult(const v : String);
+procedure TTestChromium.ClearLastResult;
 begin
-   FForm.FLastJSResult := v;
+   FForm.FConsole := cNoResult;
 end;
 
-// GetConsole
-//
-function TTestChromium.GetConsole : String;
-begin
-   Result := FForm.FConsole;
-end;
-
-// SetConsole
-//
-procedure TTestChromium.SetConsole(const v : String);
-begin
-   FForm.FConsole := v;
-end;
 
 // CreateTestChromium
 //

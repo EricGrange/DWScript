@@ -143,7 +143,7 @@ end;
 //
 function TJSFilterTests.BrowserLoadAndWait(const src : String) : String;
 var
-   i, t : Integer;
+   i : Integer;
 begin
    for i := 1 to 100 do
       if not FChromium.Initialized then begin
@@ -153,28 +153,14 @@ begin
       end;
    Assert(FChromium.Initialized);
 
-   // CEF3 is asynchronous, this is a quick & dirty synchronous-ification
-   // as unit tests are not asynchronous
-
-   FChromium.Console := '';
+   FChromium.ClearLastResult;
 
    FChromium.LoadAndWait(src+'<script>console.log(document.body ? document.body.innerText : "!done")</script>', 'http://localhost');
 
-   t := 2000;
-   while (FChromium.Console = '') and (FChromium.LastJSResult = '') and (t > 0) do begin
-      Sleep(1);
-      Application.ProcessMessages;
-      Dec(t);
-   end;
-   if t = 0 then begin
-      FChromium.StopLoad;
-      Result := 'Timeout';
-   end else begin
-      if FChromium.Console = '!done' then
-         Result := ''
-      else Result := FChromium.Console;
-      FChromium.Console := '';
-   end;
+   Result := FChromium.LastResult;
+   if Result = '!done' then
+      Result := '';
+   FChromium.ClearLastResult;
 end;
 
 // TestScripts
@@ -199,18 +185,15 @@ begin
 
          CheckEquals('', exec.Msgs.AsInfo, 'exec '+s);
 
-         FChromium.LastJSResult := '*no result*';
-         FChromium.Console := '';
+         FChromium.ClearLastResult;
 
-         FChromium.LastJSResult := BrowserLoadAndWait(exec.Result.ToString);
+         output := BrowserLoadAndWait(exec.Result.ToString);
 
-         if prog.Msgs.Count=0 then
-            output := FChromium.Console + FChromium.LastJSResult
-         else begin
+         if prog.Msgs.Count > 0 then begin
             output:=  'Errors >>>>'#10
                     + ReplaceStr(prog.Msgs.AsInfo, #13#10, #10)
                     + 'Result >>>>'#10
-                    + FChromium.Console + FChromium.LastJSResult;
+                    + output;
          end;
 
          resultFileName:=ChangeFileExt(s, '.txt');
