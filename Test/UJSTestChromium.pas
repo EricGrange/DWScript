@@ -117,7 +117,6 @@ begin
 
    FForm.FChromium := TChromiumWindow.Create(FForm);
    FForm.FOwner := Self;
-   FForm.FChromium.ChromiumBrowser.OnJsdialog := FForm.DoJSDialog;
    FForm.FChromium.ChromiumBrowser.OnConsoleMessage := FForm.DoConsoleMessage;
    FForm.FChromium.Parent := FForm;
    FForm.FChromium.CreateBrowser;
