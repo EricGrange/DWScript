@@ -6207,7 +6207,8 @@ begin
             inExprVarSym := TScriptDataSymbol.Create('', inExpr.Typ);
             CurrentProg.Table.AddSymbol(inExprVarSym);
             inExprVarExpr := GetVarExpr(inPos, inExprVarSym);
-            inExprAssignExpr := TAssignExpr.Create(FCompilerContext, FTok.HotPos, inExprVarExpr, TTypedExpr(inExpr));
+            inExprAssignExpr := CreateAssignExpr(FCompilerContext, FTok.HotPos, ttASSIGN,
+                                                 inExprVarExpr, TTypedExpr(inExpr));
             inExpr := inExprVarExpr;
             inExpr.IncRefCount;
          end;
