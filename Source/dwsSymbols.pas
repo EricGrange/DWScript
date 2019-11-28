@@ -1394,7 +1394,6 @@ type
          function GetExternalName : String; virtual;
          function GetIsPartial : Boolean; virtual;
          function GetIsImmutable : Boolean; virtual;
-         function GetIsInternal : Boolean; virtual;
 
          procedure CheckMethodsImplemented(const msgs : TdwsCompileMessageList);
 
@@ -1450,7 +1449,6 @@ type
          property IsExternalRooted : Boolean read GetIsExternalRooted;
          property ExternalName : String read GetExternalName;
          property IsImmutable : Boolean read GetIsImmutable;
-         property IsInternal : Boolean read GetIsInternal;
    end;
 
    // class, record, interface
@@ -2774,13 +2772,6 @@ end;
 function TCompositeTypeSymbol.GetIsImmutable : Boolean;
 begin
    Result:=False;
-end;
-
-// GetIsInternal
-//
-function TCompositeTypeSymbol.GetIsInternal : Boolean;
-begin
-   Result := False;
 end;
 
 // FindDefaultConstructor
