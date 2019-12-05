@@ -359,7 +359,7 @@ type
       RequestData, RequestContentType : RawByteString;
       ResponseData : SockString;
       RawResponseHeaders : SockString;
-      ResponseHeaders : TStrings;
+      FResponseHeaders : TStrings;
       CustomStates : TdwsCustomStates;
       CurrentSize, ContentLength : DWORD;
       StatusCode : Integer;
@@ -370,7 +370,8 @@ type
                               const requestData, requestContentType : RawByteString;
                               const customStates : TdwsCustomStates);
       destructor Destroy; override;
-      procedure PrepareHeaders;
+      procedure PrepareResponseHeaders;
+      function GetResponseHeader(const name : String) : String;
       procedure Execute; override;
       procedure Release;
       function Wait : THttpRequestThread;
@@ -399,13 +400,13 @@ destructor THttpRequestThread.Destroy;
 begin
    inherited;
    ReleaseLock.Free;
-   ResponseHeaders.Free;
+   FResponseHeaders.Free;
    CustomStates.Free;
 end;
 
-// PrepareHeaders
+// PrepareResponseHeaders
 //
-procedure THttpRequestThread.PrepareHeaders;
+procedure THttpRequestThread.PrepareResponseHeaders;
 
    procedure AddHeader(const s : String);
    var
@@ -413,25 +414,35 @@ procedure THttpRequestThread.PrepareHeaders;
    begin
       k := Pos(':', s);
       if k > 0 then
-         ResponseHeaders.Add(SysUtils.TrimRight(Copy(s, 1, k-1) + '=' + SysUtils.Trim(Copy(s, k+1))));
+         FResponseHeaders.Add(SysUtils.TrimRight(Copy(s, 1, k-1) + '=' + SysUtils.Trim(Copy(s, k+1))));
    end;
 
 var
    h : String;
    p, pn : Integer;
 begin
-   RawByteStringToScriptString(RawResponseHeaders, h);
-   ResponseHeaders := TFastCompareTextList.Create;
+   FResponseHeaders := TFastCompareTextList.Create;
+   if (RawResponseHeaders <> '') and (not Released) then begin
+      RawByteStringToScriptString(RawResponseHeaders, h);
 
-   p := 1;
-   while True do begin
-      pn := StrUtils.PosEx(#13#10, h, p);
-      if pn > 0 then begin
-         AddHeader(Copy(h, p, pn-p));
-         p := pn + 2;
-      end else break;
+      p := 1;
+      while True do begin
+         pn := StrUtils.PosEx(#13#10, h, p);
+         if pn > 0 then begin
+            AddHeader(Copy(h, p, pn-p));
+            p := pn + 2;
+         end else break;
+      end;
+      AddHeader(Copy(h, p));
    end;
-   AddHeader(Copy(h, p));
+end;
+
+// GetResponseHeader
+//
+function THttpRequestThread.GetResponseHeader(const name : String) : String;
+begin
+   if FResponseHeaders = nil then
+      PrepareResponseHeaders;
 end;
 
 // Execute
@@ -447,8 +458,6 @@ begin
       RequestContentType := '';
       ContentLength := Length(ResponseData);
       CurrentSize := ContentLength;
-      if not Released then
-         PrepareHeaders;
    except
       on E: Exception do
          Error := E.Message;
@@ -1186,7 +1195,7 @@ end;
 procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsContentTypeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsString := (ExtObject as THttpRequestThread).Wait.ResponseHeaders.Values['Content-Type'];
+   Info.ResultAsString := (ExtObject as THttpRequestThread).Wait.GetResponseHeader('Content-Type');
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsCurrentContentSizeEval(
@@ -1204,7 +1213,7 @@ end;
 procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsGetHeaderEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsString := (ExtObject as THttpRequestThread).Wait.ResponseHeaders.Values[Info.ParamAsString[0]];
+   Info.ResultAsString := (ExtObject as THttpRequestThread).Wait.GetResponseHeader(Info.ParamAsString[0]);
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsHeadersEval(
