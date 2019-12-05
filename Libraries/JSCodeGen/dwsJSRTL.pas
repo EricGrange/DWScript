@@ -564,7 +564,7 @@ const
        Code : 'var Exception={'#10
                +#9'$ClassName: "Exception",'#10
                +#9'$Parent: TObject,'#10
-               +#9'$Init: function (s) { FMessage="" },'#10
+               +#9'$Init: function (s) { s.FMessage="" },'#10
                +#9'Create: function (s,Msg) { s.FMessage=Msg; return s }'#10
                +'}';
        Dependency : 'TObject'),

@@ -27,7 +27,7 @@ uses
    dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs, dwsCompilerUtils,
    dwsJSLibModule, dwsJSMin, dwsFunctions, dwsGlobalVarsFunctions, dwsErrors,
    dwsRTTIFunctions, dwsConstExprs, dwsInfo, dwsScriptSource, dwsSymbolDictionary,
-   dwsUnicode, dwsExprList, dwsXXHash, dwsCodeGenWriters;
+   dwsUnicode, dwsExprList, dwsXXHash, dwsCodeGenWriters, dwsCompilerContext;
 
 type
 
@@ -2364,6 +2364,7 @@ var
    sym : TSymbol;
    meth : TMethodSymbol;
    staticAndSealed : Boolean;
+   compilerContext : TdwsCompilerContext;
 begin
    inherited;
 
@@ -2391,7 +2392,13 @@ begin
       WriteSymbolName(cls.Parent);
       WriteLineEnd;
 
-      Dependencies.Add('TObject');
+      compilerContext := Context.Root.CompilerContext;
+      if cls.Parent = compilerContext.TypTObject then begin
+        Dependencies.Add('TObject');
+      end else if cls.Parent = compilerContext.TypException then begin
+        Dependencies.Add('Exception');
+      end;
+
       if not cls.IsStatic then
          Dependencies.Add('$New');
 
