@@ -12002,13 +12002,14 @@ function TdwsCompiler.ReadSwitch(const switchName: String) : Boolean;
 var
    sw : TSwitchInstruction;
 begin
-   sw:=StringToSwitchInstruction(SwitchName);
-   if sw<>siNone then
+   sw := StringToSwitchInstruction(SwitchName);
+   if sw <> siNone then
       Exit(True);
 
    Result := False;
 
-   FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_CompilerSwitchUnknown, [SwitchName]);
+   if Assigned(FTok.SwitchProcessor) then
+      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_CompilerSwitchUnknown, [SwitchName]);
 
    while FTok.HasTokens and not FTok.TestDelete(ttCRIGHT) do
       FTok.KillToken;
