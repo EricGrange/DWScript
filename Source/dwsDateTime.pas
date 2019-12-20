@@ -550,23 +550,24 @@ begin
                'z' : GrabDigits(2);
             end;
          2 : if tok='yy' then begin
-            if GrabDigits(2) then
-               tok := 'yyyy';
-         end;
+               if GrabDigits(2) then
+                  tok := 'yyyy';
+            end;
       end;
 
       hourToken:=False;
       case tok[1] of
          'd' :
-            if (tok='d') or (tok='dd') then
-               day:=value
-            else if tok='ddd' then begin
+            if (tok='d') or (tok='dd') then begin
+               day := value
+            end else if tok='ddd' then begin
                match:=False;
                Dec(p, 3);
                for j:=Low(Settings.ShortDayNames) to High(Settings.ShortDayNames) do begin
-                  if UnicodeSameText(Copy(fmt, p, Length(settings.ShortDayNames[j])),
+                  if UnicodeSameText(Copy(str, p, Length(settings.ShortDayNames[j])),
                                      settings.ShortDayNames[j]) then begin
                      Inc(p, Length(settings.ShortDayNames[j]));
+                     day := j;
                      match:=True;
                      break;
                   end;
@@ -576,9 +577,10 @@ begin
                match:=False;
                Dec(p, 4);
                for j:=Low(Settings.LongDayNames) to High(Settings.LongDayNames) do begin
-                  if UnicodeSameText(Copy(fmt, p, Length(settings.LongDayNames[j])),
+                  if UnicodeSameText(Copy(str, p, Length(settings.LongDayNames[j])),
                                      settings.LongDayNames[j]) then begin
                      Inc(p, Length(settings.LongDayNames[j]));
+                     day := j;
                      match:=True;
                      break;
                   end;
@@ -594,9 +596,10 @@ begin
                match:=False;
                Dec(p, 3);
                for j:=Low(settings.ShortMonthNames) to High(settings.ShortMonthNames) do begin
-                  if UnicodeSameText(Copy(fmt, p, Length(settings.ShortDayNames[j])),
-                                     settings.ShortDayNames[j]) then begin
-                     Inc(p, Length(settings.ShortDayNames[j]));
+                  if UnicodeSameText(Copy(str, p, Length(settings.ShortMonthNames[j])),
+                                     settings.ShortMonthNames[j]) then begin
+                     Inc(p, Length(settings.ShortMonthNames[j]));
+                     month := j;
                      match:=True;
                      break;
                   end;
@@ -606,9 +609,10 @@ begin
                match:=False;
                Dec(p, 4);
                for j:=Low(settings.LongMonthNames) to High(settings.LongMonthNames) do begin
-                  if UnicodeSameText(Copy(fmt, p, Length(settings.LongDayNames[j])),
-                                     settings.LongDayNames[j]) then begin
-                     Inc(p, Length(settings.LongDayNames[j]));
+                  if UnicodeSameText(Copy(str, p, Length(settings.LongMonthNames[j])),
+                                     settings.LongMonthNames[j]) then begin
+                     Inc(p, Length(settings.LongMonthNames[j]));
+                     month := j;
                      match:=True;
                      break;
                   end;
@@ -650,7 +654,7 @@ begin
    dt:=0;
    if     (Cardinal(hours)<24) and (Cardinal(minutes)<60)
       and (Cardinal(seconds)<60) and (Cardinal(msec)<1000) then begin
-      dth:=(hours+(minutes+(seconds+msec*0.001)/60)/60)/24;
+      dth := (hours+(minutes+(seconds+msec*0.001)/60)/60)/24;
    	if (day or month or year)<>0 then begin
          if TryEncodeDate(year, month, day, tz, dt) then begin
             dt := dt + dth;

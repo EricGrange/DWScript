@@ -20,7 +20,7 @@ interface
 uses
    Winapi.Windows,
    SysUtils, DateUtils,
-   dwsXPlatformTests, dwsXPlatform, dwsWebUtils;
+   dwsXPlatformTests, dwsXPlatform, dwsWebUtils, dwsDateTime;
 
 type
 
@@ -35,6 +35,7 @@ type
          procedure LocalVsUTC;
          procedure RFC822;
          procedure FileTime;
+         procedure ParseDateTime;
 
    end;
 
@@ -145,6 +146,23 @@ begin
    t.Clear;
    t.AsFileTime := ft;
    CheckEquals(1234567890123, t.Value);
+end;
+
+// ParseDateTime
+//
+procedure TdwsDateTimeTests.ParseDateTime;
+var
+   fmt : TdwsFormatSettings;
+   dt : Double;
+begin
+   fmt := TdwsFormatSettings.Create;
+   try
+      CheckFalse(fmt.TryStrToDateTime('dd mmmm yyyy', '18 Dec 2019', dt, tzUTC), 'parse 1 fail');
+      CheckTrue(fmt.TryStrToDateTime('dd mmm yyyy', '18 Dec 2019', dt, tzUTC), 'parse 1 pass');
+      CheckEquals('18.12.2019 00:00:00', fmt.FormatDateTime('dd.mm.yyyy hh:nn:ss', dt, tzUTC), 'format 1');
+   finally
+      fmt.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------

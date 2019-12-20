@@ -62,10 +62,12 @@ function strToDateTimeDef(fmt, str_dt, def, utc) {
                 case "mmm": 
                     month = indexOfCI($fmt.ShortMonthNames);
                     if (month < 0) return def;
+                    month++;
                     break;
                 case "mmmm": 
                     month = indexOfCI($fmt.LongMonthNames);
                     if (month < 0) return def;
+                    month++;
                     break;
                 case "d": 
                     day = getVar(2);
@@ -76,10 +78,14 @@ function strToDateTimeDef(fmt, str_dt, def, utc) {
                     if (isNaN(day)) return def;
                     break;
                 case "ddd": 
-                    if (indexOfCI($fmt.ShortDayNames) < 0) return def;
+                    day = indexOfCI($fmt.ShortDayNames);
+                    if (day < 0) return def;
+                    day++;
                     break;
                 case "dddd": 
-                    if (indexOfCI($fmt.LongDayNames) < 0) return def;
+                    day = indexOfCI($fmt.LongDayNames);
+                    if (day < 0) return def;
+                    day++;
                     break;
                 case "h": 
                     hours = getVar(2);
