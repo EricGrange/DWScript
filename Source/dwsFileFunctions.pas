@@ -118,6 +118,10 @@ type
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
+   TFileSetSizeFileFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
+   end;
+
    TFileSizeNameFunc = class(TInternalMagicIntFunction)
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
@@ -545,6 +549,21 @@ begin
 end;
 
 // ------------------
+// ------------------ TFileSizeFileFunc ------------------
+// ------------------
+
+// DoEvalAsBoolean
+//
+function TFileSetSizeFileFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+var
+   h : THandle;
+begin
+   h := GetFileHandle(args, 0);
+   FileSeek(h, args.AsInteger[1], soFromBeginning);
+   Result := SetEndOfFile(h)
+end;
+
+// ------------------
 // ------------------ TFileSizeNameFunc ------------------
 // ------------------
 
@@ -842,6 +861,8 @@ initialization
 
    RegisterInternalIntFunction(TFileSizeFileFunc, 'FileSize', ['f', SYS_FILE], [iffOverloaded], 'Size');
    RegisterInternalIntFunction(TFileSizeNameFunc, 'FileSize', ['name', SYS_STRING], [iffOverloaded]);
+
+   RegisterInternalBoolFunction(TFileSetSizeFileFunc, 'FileSetSize', ['f', SYS_FILE, 'newSize', SYS_INTEGER], [], 'SetSize');
 
    RegisterInternalFloatFunction(TFileDateTimeFileFunc, 'FileDateTime', ['f', SYS_FILE], [iffOverloaded], 'DateTime');
    RegisterInternalFloatFunction(TFileDateTimeNameFunc, 'FileDateTime', ['name', SYS_STRING], [iffOverloaded]);
