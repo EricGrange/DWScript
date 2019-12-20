@@ -78,14 +78,10 @@ function strToDateTimeDef(fmt, str_dt, def, utc) {
                     if (isNaN(day)) return def;
                     break;
                 case "ddd": 
-                    day = indexOfCI($fmt.ShortDayNames);
-                    if (day < 0) return def;
-                    day++;
+                    if (indexOfCI($fmt.ShortDayNames) < 0) return def;
                     break;
                 case "dddd": 
-                    day = indexOfCI($fmt.LongDayNames);
-                    if (day < 0) return def;
-                    day++;
+                    if (indexOfCI($fmt.LongDayNames) < 0) return def;
                     break;
                 case "h": 
                     hours = getVar(2);
