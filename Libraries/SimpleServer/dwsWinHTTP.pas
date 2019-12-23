@@ -33,7 +33,7 @@ type
          AuthorizationHeader : String;
          CustomHeaders : TdwsCustomHeaders;
          procedure InternalConnect(ConnectionTimeOut,SendTimeout,ReceiveTimeout: DWORD); override;
-         procedure InternalSendRequest(const aData: SockString); override;
+         procedure InternalSendRequest(const aMethod,aData: SockString); override;
    end;
 
    TdwsWinHttpConnection = class (TInterfacedSelfObject)
@@ -97,7 +97,7 @@ end;
 
 // InternalSendRequest
 //
-procedure TdwsWinHTTP.InternalSendRequest(const aData: SockString);
+procedure TdwsWinHTTP.InternalSendRequest(const aMethod,aData: SockString);
 var
    i : Integer;
    header : String;
