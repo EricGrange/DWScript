@@ -2159,6 +2159,16 @@ procedure VariantToInt64(const v : Variant; var r : Int64);
       else raise EVariantTypeCastError.CreateFmt(CPE_AssignIncompatibleTypes, ['[IUnknown]', SYS_INTEGER]);
    end;
 
+   procedure StringToInt64(const s : String; var r : Int64);
+   begin
+      if not TryStrToInt64(s, r) then begin
+         raise EdwsVariantTypeCastError.CreateFmt(
+            RTE_VariantCastToFailed,
+            [ s, 'String', 'Integer' ]
+         );
+      end;
+   end;
+
    procedure DefaultCast(const v : Variant; var r : Int64);
    begin
       try
@@ -2180,6 +2190,8 @@ begin
          r := Ord(Boolean(TVarData(v).VBoolean));
       varUnknown :
          UnknownAsInteger(IUnknown(TVarData(v).VUnknown), r);
+      varUString :
+         StringToInt64(String(TVarData(v).VString), r);
       varNull :
          r := 0;
    else
