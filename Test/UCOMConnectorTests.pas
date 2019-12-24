@@ -1,8 +1,8 @@
 unit UCOMConnectorTests;
 
-interface
+{$I dws.inc}
 
-{$IF Defined(WIN32)}
+interface
 
 uses
    Windows, Classes, SysUtils,
@@ -92,12 +92,25 @@ var
 begin
    DeleteFile('Data\Db.mdb');
 
+   {$ifdef WIN32}
+
    cat := CreateOleObject('ADOX.Catalog');
    cat.Create('Provider=Microsoft.Jet.OLEDB.4.0;Data Source=Data\Db.mdb;');
 
    conn := CreateOleObject('ADODB.Connection');
    conn.ConnectionString := 'Provider=Microsoft.Jet.OLEDB.4.0;Data Source=Data\Db.mdb;Persist Security Info=False';
    conn.Open;
+
+   {$else}
+
+   cat := CreateOleObject('ADOX.Catalog');
+   cat.Create('Provider=Microsoft.ACE.OLEDB.12.0;Data Source=Data\Db.mdb;');
+
+   conn := CreateOleObject('ADODB.Connection');
+   conn.ConnectionString := 'Provider=Microsoft.ACE.OLEDB.12.0;Data Source=Data\Db.mdb;Persist Security Info=False';
+   conn.Open;
+
+   {$endif}
 
    conn.Execute('create table test (intCol INT, charCol VARCHAR(50), memoCol MEMO, dateCol DATE)');
    conn.Execute('insert into test values (10, ''ten'', ''value ten'', cdate(''2010-10-10''))');
@@ -252,9 +265,5 @@ initialization
 // ------------------------------------------------------------------
 
    RegisterTest('COMConnectorTests', TCOMConnectorTests);
-
-{$else}
-implementation
-{$ifend}
 
 end.

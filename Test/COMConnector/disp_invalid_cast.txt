@@ -1,4 +1,4 @@
-Could not cast variant from "Dispatch" to "Integer" (EVariantTypeCastError)
+Could not cast variant (9) to Integer
 Could not convert variant of type (Dispatch) into type (OleStr)
 Could not convert variant of type (Dispatch) into type (Double)
 Could not convert variant of type (Dispatch) into type (Boolean)

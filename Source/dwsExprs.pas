@@ -3913,7 +3913,7 @@ begin
    except
       // standardize RTL message
       on E : EVariantError do begin
-         raise EdwsVariantTypeCastError.Create(v, 'Boolean', E);
+         raise EVariantTypeCastError.CreateFmt(RTE_VariantVTCastFailed, [VarType(v), SYS_BOOLEAN]);
       end else raise;
    end;
 end;
@@ -3930,7 +3930,7 @@ begin
    except
       // standardize RTL message
       on E : EVariantError do begin
-         raise EdwsVariantTypeCastError.Create(v, 'Float', E);
+         raise EVariantTypeCastError.CreateFmt(RTE_VariantVTCastFailed, [Typ.Name, SYS_FLOAT]);
       end else raise;
    end;
 end;
@@ -3956,7 +3956,7 @@ begin
    except
       // standardize RTL message
       on E : EVariantError do begin
-         raise EdwsVariantTypeCastError.Create(v, SYS_STRING, E);
+         raise EVariantTypeCastError.CreateFmt(RTE_VariantVTCastFailed, [ VarType(v), SYS_STRING ]);
       end else raise;
    end;
 end;

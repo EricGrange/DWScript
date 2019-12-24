@@ -884,12 +884,6 @@ type
 
    EStringIterator = class (Exception) end;
 
-   EdwsVariantTypeCastError = class(EVariantTypeCastError)
-      public
-         constructor Create(const v : Variant; const desiredType : String;
-                            originalException : Exception);
-   end;
-
    PFormatSettings = ^TFormatSettings;
 
    TPooledObject = class
@@ -2156,16 +2150,13 @@ procedure VariantToInt64(const v : Variant; var r : Int64);
          r := 0
       else if unknown.QueryInterface(IToNumeric, intf)=0 then
          r := intf.ToInteger
-      else raise EVariantTypeCastError.CreateFmt(CPE_AssignIncompatibleTypes, ['[IUnknown]', SYS_INTEGER]);
+      else raise EVariantTypeCastError.CreateFmt(RTE_VariantCastFailed, [ 'IUnknown', SYS_INTEGER ]);
    end;
 
    procedure StringToInt64(const s : String; var r : Int64);
    begin
       if not TryStrToInt64(s, r) then begin
-         raise EdwsVariantTypeCastError.CreateFmt(
-            RTE_VariantCastToFailed,
-            [ s, 'String', 'Integer' ]
-         );
+         raise EVariantTypeCastError.CreateFmt(RTE_VariantCastFailed, [ SYS_STRING, SYS_INTEGER ]);
       end;
    end;
 
@@ -2177,7 +2168,10 @@ procedure VariantToInt64(const v : Variant; var r : Int64);
          // workaround for RTL bug that will sometimes report a failed cast to Int64
          // as being a failed cast to Boolean
          on E : EVariantError do begin
-            raise EdwsVariantTypeCastError.Create(v, 'Integer', E);
+            raise EVariantTypeCastError.CreateFmt(
+               RTE_VariantVTCastFailed,
+               [ VarType(v), SYS_INTEGER ]
+            );
          end else raise;
       end;
    end;
@@ -2245,7 +2239,7 @@ function VariantToFloat(const v : Variant) : Double;
          Result := 0
       else if unknown.QueryInterface(IToNumeric, intf)=0 then
          Result := intf.ToFloat
-      else raise EVariantTypeCastError.CreateFmt(CPE_AssignIncompatibleTypes, ['[IUnknown]', SYS_FLOAT]);
+      else raise EVariantTypeCastError.CreateFmt(RTE_VariantCastFailed, [ 'IUnknown', SYS_FLOAT]);
    end;
 
 begin
@@ -6618,20 +6612,6 @@ begin
    end;
    FFirst:=nil;
    FLast:=nil;
-end;
-
-// ------------------
-// ------------------ EdwsVariantTypeCastError ------------------
-// ------------------
-
-// Create
-//
-constructor EdwsVariantTypeCastError.Create(const v : Variant;
-      const desiredType : String; originalException : Exception);
-begin
-   inherited CreateFmt(RTE_VariantCastFailed,
-                       [VarTypeAsText(VarType(v)), desiredType, originalException.ClassName])
-
 end;
 
 // ------------------

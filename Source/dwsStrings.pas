@@ -576,8 +576,8 @@ const
   RTE_ClassInstanceCastFailed = 'Cannot cast instance of type "%s" to class "%s"';
   RTE_MetaClassCastFailed = 'Cannot cast "%s" to class "%s"';
   RTE_OrdinalExpected = 'Ordinal expected';
-  RTE_VariantCastFailed = 'Could not cast variant from "%s" to "%s" (%s)';
-  RTE_VariantCastToFailed = 'Could not cast variant from "%s" (%s) to %s';
+  RTE_VariantVTCastFailed = 'Could not cast variant (%d) to %s';
+  RTE_VariantCastFailed = 'Could not cast variant from %s to %s';
 
   RTE_ObjCastToIntfFailed = 'Class "%s" does not implement interface "%s"';
   RTE_IntfCastToObjFailed = 'Cannot cast interface of "%s" to class "%s"';

@@ -1,2 +1,2 @@
-Could not cast variant from "UnicodeString" to "Integer"
+Could not cast variant from String to Integer
 123
