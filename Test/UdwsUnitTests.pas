@@ -45,6 +45,7 @@ type
          procedure FuncPointEval(Info: TProgramInfo);
          procedure FuncPointVarParamEval(Info: TProgramInfo);
          procedure FuncPointArrayEval(Info: TProgramInfo);
+         procedure FuncCallbackFuncNameEval(Info: TProgramInfo);
          procedure FuncClassNameEval(Info: TProgramInfo);
          procedure FuncMetaClassNameEval(Info: TProgramInfo);
          procedure FuncOpenArrayEval(Info: TProgramInfo);
@@ -144,6 +145,7 @@ type
          procedure SetTest;
          procedure ClassNameTest;
          procedure VirtCreateFunc;
+         procedure CallbackFuncNameTest;
 
          procedure ParseNameTests;
 
@@ -435,6 +437,16 @@ begin
    param.Name:='p';
    param.DataType:='array of const';
    func.OnEval:=FuncOpenArrayEval;
+
+   FUnit.Delegates.Add.Name := 'TProcedure';
+   func := FUnit.Functions.Add;
+   func.Name := 'FuncCallbackFuncName';
+   func.ResultType := 'String';
+   param := func.Parameters.Add;
+   param.Name := 'cb';
+   param.DataType := 'TProcedure';
+   param.DefaultValue := IUnknown(nil);
+   func.OnEval := FuncCallbackFuncNameEval;
 
    func:=FUnit.Functions.Add;
    func.Name:='FuncOverload';
@@ -870,6 +882,19 @@ begin
    item:=a.Element([1]);
    item.Member['x'].Value:=3;
    item.Member['y'].Value:=4;
+end;
+
+// FuncCallbackFuncNameEval
+//
+procedure TdwsUnitTestsContext.FuncCallbackFuncNameEval(Info: TProgramInfo);
+var
+   a : IInfo;
+begin
+   a := Info.Params[0];
+
+   if a.ValueIsEmpty then
+      Info.ResultAsString := '-'
+   else Info.ResultAsString := IFuncPointer(IUnknown(a.Value)).GetFuncExpr.FuncSym.Name;
 end;
 
 // FuncClassNameEval
@@ -2554,6 +2579,28 @@ begin
    CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
    CheckEquals('TTestClass', prog.Execute.Result.ToString, 'exec result');
    CheckEquals('-1', FContext.FMagicVar, 'magic');
+end;
+
+// CallbackFuncNameTest
+//
+procedure TdwsUnitTests.CallbackFuncNameTest;
+var
+   prog : IdwsProgram;
+begin
+   prog := FCompiler.Compile(
+       'procedure Hello; begin end;'#10
+      +'procedure World; begin end;'#10
+      +'Print(FuncCallbackFuncName);'#10
+      +'Print(FuncCallbackFuncName(Hello));'#10
+      +'Print(FuncCallbackFuncName(nil));'#10
+      +'var p := @World;'#10
+      +'Print(FuncCallbackFuncName(p));'#10
+   );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
+   CheckEquals('-Hello-World', prog.Execute.Result.ToString, 'exec result');
 end;
 
 // ExplicitUses

@@ -62,6 +62,7 @@ type
          function GetParameter(const s : String) : IInfo; virtual;
          function GetTypeSym : TSymbol;
          function GetValue : Variant; virtual;
+         function GetValueIsEmpty : Boolean; virtual;
          function GetValueAsString : String; virtual;
          function GetValueAsDataString : AnsiString; virtual;
          function GetValueAsInteger : Int64; virtual;
@@ -77,8 +78,8 @@ type
          procedure WriteToJSON(writer : TdwsJSONWriter); virtual;
 
       public
-         constructor Create(ProgramInfo: TProgramInfo; TypeSym: TSymbol;
-                            const DataPtr: IDataContext; const DataMaster: IDataMaster = nil);
+         constructor Create(programInfo : TProgramInfo; typeSym : TSymbol;
+                            const dataPtr : IDataContext; const dataMaster : IDataMaster = nil);
 
          function Call : IInfo; overload; virtual;
          function Call(const params : array of Variant) : IInfo; overload; virtual;
@@ -121,6 +122,7 @@ type
     FScriptObj: IScriptObj;
     function GetConstructor(const MethName: String; ExtObject: TObject): IInfo; override;
     function GetMethod(const s: String): IInfo; override;
+    function GetValueIsEmpty : Boolean; override;
     function GetValueAsString : String; override;
     function GetScriptObj: IScriptObj; override;
     function GetInherited: IInfo; override;
@@ -248,6 +250,7 @@ type
                             const ScriptObj: IScriptObj;
                             ClassSym: TClassSymbol; ForceStatic: Boolean = False);
          destructor Destroy; override;
+         function GetValueIsEmpty : Boolean; override;
          function Call: IInfo; overload; override;
          function Call(const Params: array of Variant): IInfo; overload; override;
    end;
@@ -455,6 +458,13 @@ end;
 function TInfo.GetValue: Variant;
 begin
   raise Exception.CreateFmt(RTE_InvalidOp, ['Value', FTypeSym.Caption]);
+end;
+
+// GetValueIsEmpty
+//
+function TInfo.GetValueIsEmpty : Boolean;
+begin
+   Result := VarIsEmpty(GetValue);
 end;
 
 function TInfo.GetValueAsString : String;
@@ -783,6 +793,13 @@ begin
                              nil, FScriptObj, TClassSymbol(FTypeSym));
 end;
 
+// GetValueIsEmpty
+//
+function TInfoClass.GetValueIsEmpty : Boolean;
+begin
+   Result := (FScriptObj = nil);
+end;
+
 function TInfoClass.GetScriptObj: IScriptObj;
 begin
   Result := FScriptObj;
@@ -932,6 +949,21 @@ destructor TInfoFunc.Destroy;
 begin
    FTempParams.Free;
    inherited;
+end;
+
+// GetValueIsEmpty
+//
+function TInfoFunc.GetValueIsEmpty : Boolean;
+var
+   p : PVarData;
+begin
+   if FDataPtr.DataLength = 0 then Exit(True);
+   p := PVarData(FDataPtr.AsPVariant(0));
+   Result :=    (p.VType = varEmpty)
+             or (
+                     (p.VType = varUnknown)
+                 and (p.VUnknown = nil)
+                );
 end;
 
 // Call
