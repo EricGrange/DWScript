@@ -1,3 +1,4 @@
+Warning: Operator "--" is ambiguous [line: 5, column: 11]
 1
 -1
 1

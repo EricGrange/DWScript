@@ -59,6 +59,7 @@ type
      ttSEMI, ttCOMMA, ttCOLON,
      ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
      ttPERCENT_ASSIGN, ttCARET_ASSIGN, ttAT_ASSIGN, ttTILDE_ASSIGN,
+     ttPLUS_PLUS, ttMINUS_MINUS,
      ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCLEFT, ttCRIGHT,
      ttDEFAULT,
      ttUSES, ttUNIT, ttNAMESPACE,
@@ -347,6 +348,7 @@ const
      ';', ',', ':',
      ':=', '+=', '-=', '*=', '/=',
      '%=', '^=', '@=', '~=',
+     '++', '--',
      '(', ')', '[', ']', '{', '}',
      'default', 'uses', 'unit', 'namespace',
      'private', 'protected', 'public', 'published',
@@ -684,15 +686,17 @@ begin
       '+':
          if Len=1 then
             Result := ttPLUS
-         else if Len=2 then
-            if Buffer[1]='=' then
-               Result := ttPLUS_ASSIGN; // '+='
+         else if Len=2 then case Buffer[1] of
+            '=' : Result := ttPLUS_ASSIGN; // '+='
+            '+' : Result := ttPLUS_PLUS;   // '++'
+         end;
       '-':
          if Len=1 then
             Result := ttMINUS
-         else if Len=2 then
-            if Buffer[1]='=' then
-               Result := ttMINUS_ASSIGN; // '-='
+         else if Len=2 then case Buffer[1] of
+            '=': Result := ttMINUS_ASSIGN; // '-='
+            '-': Result := ttMINUS_MINUS; // '--'
+         end;
       '@':
          if Len=1 then
             Result := ttAT

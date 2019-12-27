@@ -81,7 +81,7 @@ begin
          source.LoadFromFile(FTests[i]);
 
          prog:=FCompiler.Compile(source.Text);
-         CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
+         CheckFalse(prog.Msgs.HasErrors, FTests[i]);
 
       end;
 
@@ -132,7 +132,7 @@ var
    i, j : Integer;
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
-   resultText, resultsFileName, expectedResultText : String;
+   resultBase, resultText, resultsFileName, expectedResultText : String;
 begin
    source:=TStringList.Create;
    expectedResult:=TStringList.Create;
@@ -142,9 +142,10 @@ begin
 
          source.LoadFromFile(testList[i]);
 
-         prog:=compiler.Compile(source.Text);
+         prog := compiler.Compile(source.Text);
 
-         checkEquals('', prog.Msgs.AsInfo, testList[i]);
+         resultBase := prog.Msgs.AsInfo;
+         checkEquals('False', BoolToStr(prog.Msgs.HasErrors), testList[i]);
 
          resultsFileName:=ChangeFileExt(testList[i], '.txt');
          if FileExists(resultsFileName) then begin
@@ -155,12 +156,11 @@ begin
          for j := 1 to rounds do begin
             exec:=prog.Execute;
 
-            resultText:=exec.Result.ToString;
-            if exec.Msgs.Count>0 then
-               resultText:=resultText+#13#10'>>>> Error(s): '#13#10+exec.Msgs.AsInfo;
+            resultText := resultBase + exec.Result.ToString;
+            if exec.Msgs.Count > 0 then
+               resultText := resultText + #13#10'>>>> Error(s): '#13#10 + exec.Msgs.AsInfo;
 
             checkEquals(expectedResultText, resultText, testList[i]);
-            checkEquals('', exec.Msgs.AsInfo, testList[i]);
          end;
 
       end;

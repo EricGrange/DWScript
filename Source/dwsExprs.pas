@@ -741,6 +741,7 @@ type
          function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override; final;
          function SpecializeTypedExpr(const context : ISpecializationContext) : TTypedExpr; virtual;
          function SpecializeBooleanExpr(const context : ISpecializationContext) : TTypedExpr;
+         function SpecializeIntegerExpr(const context : ISpecializationContext) : TTypedExpr;
 
          function ScriptPos : TScriptPos; override;
 
@@ -790,6 +791,7 @@ type
    TNullExpr = class (TNoResultExpr)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
+         function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
    end;
 
    // invalid statement
@@ -4083,6 +4085,15 @@ begin
       context.AddCompilerError(CPE_BooleanExpected);
 end;
 
+// SpecializeIntegerExpr
+//
+function TTypedExpr.SpecializeIntegerExpr(const context : ISpecializationContext) : TTypedExpr;
+begin
+   Result := SpecializeTypedExpr(context);
+   if (Result <> nil) and not Result.Typ.IsOfType(CompilerContextFromSpecialization(context).TypInteger) then
+      context.AddCompilerError(CPE_IntegerExpected);
+end;
+
 // ScriptPos
 //
 function TTypedExpr.ScriptPos : TScriptPos;
@@ -4251,6 +4262,13 @@ end;
 procedure TNullExpr.EvalNoResult(exec : TdwsExecution);
 begin
    //nothing
+end;
+
+// SpecializeProgramExpr
+//
+function TNullExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+begin
+   Result := TNullExpr.Create(ScriptPos);
 end;
 
 // ------------------

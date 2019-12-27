@@ -487,6 +487,8 @@ const
   CPW_ForwardIsMeaningless = '"forward" is meaningless for external functions';
   CPW_PropertyWriterDoesNothing = 'Property writer does nothing';
 
+  CPW_AmbiguousOperator = 'Operator "%s" is ambiguous';
+
   CPE_NoResultTypeRequired = 'No result type required';
   CPE_ResultTypeExpected = 'Result type expected';
   CPE_NoResultRequired = 'No result required';

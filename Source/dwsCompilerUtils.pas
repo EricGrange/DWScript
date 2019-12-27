@@ -111,6 +111,10 @@ function CreateTypedOperatorExpr(context : TdwsCompilerContext; token : TTokenTy
                                  const scriptPos : TScriptPos;
                                  aLeft, aRight : TTypedExpr) : TTypedExpr;
 
+function CreateDynamicArraySetExpr(context : TdwsCompilerContext; const scriptPos : TScriptPos;
+                                   arrayExpr, indexExpr, valueExpr : TTypedExpr) : TDynamicArraySetExpr;
+
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -792,6 +796,25 @@ begin
       TypeCheckArguments(context, funcExpr, nil);
       Result:=funcExpr;
    end;
+end;
+
+// CreateDynamicArraySetExpr
+//
+function CreateDynamicArraySetExpr(context : TdwsCompilerContext; const scriptPos : TScriptPos;
+                                   arrayExpr, indexExpr, valueExpr : TTypedExpr) : TDynamicArraySetExpr;
+var
+   typSize : Integer;
+begin
+   typSize := 1;
+   if valueExpr.Typ <> nil then begin
+      typSize := valueExpr.Typ.Size;
+      Assert(arrayExpr.Typ.Typ.Size = typSize);
+   end else typSize :=  1;
+   if typSize = 1 then
+      if arrayExpr is TObjectVarExpr then
+         Result := TDynamicArraySetVarExpr.Create(context, scriptPos, arrayExpr, indexExpr, valueExpr)
+      else Result := TDynamicArraySetExpr.Create(context, scriptPos, arrayExpr, indexExpr, valueExpr)
+   else Result := TDynamicArraySetDataExpr.Create(context, scriptPos, arrayExpr, indexExpr, valueExpr);
 end;
 
 // ------------------

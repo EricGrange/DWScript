@@ -2894,6 +2894,7 @@ var
    firstPropertyIndex : Integer;
 begin
    firstPropertyIndex := Members.Count;
+   // specialize fields in a first pass
    for i := 0 to Members.Count-1 do begin
       member := Members[i];
       if member is TFieldSymbol then begin
@@ -2902,6 +2903,14 @@ begin
          specializedField := TFieldSymbol.Create(field.Name, fieldType, field.Visibility);
          destination.AddField(specializedField);
          context.RegisterSpecialization(field, specializedField);
+      end;
+   end;
+   // specialize methods
+   for i := 0 to Members.Count-1 do begin
+      member := Members[i];
+      if member is TFieldSymbol then begin
+         // already specialized
+         continue;
       end else if member is TMethodSymbol then begin
          specialized := TMethodSymbol(member).SpecializeType(context);
          if specialized <> nil then begin
@@ -2917,6 +2926,7 @@ begin
          context.AddCompilerErrorFmt(CPE_SpecializationNotSupportedYet, [member.ClassName]);
       end;
    end;
+   // specialize properties
    for i := firstPropertyIndex to Members.Count-1 do begin
       member := Members[i];
       if member is TPropertySymbol then begin

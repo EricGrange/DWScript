@@ -24,6 +24,7 @@ type
          procedure DollarNames;
          procedure NoBreakSpace;
          procedure EqualsTokens;
+         procedure PlusMinus;
    end;
 
 // ------------------------------------------------------------------
@@ -275,6 +276,44 @@ begin
       t.KillToken;
 
       CheckTrue(t.Test(ttEQGTR), '=>');
+      t.KillToken;
+
+      t.EndSourceFile;
+   finally
+      t.Free;
+      rules.Free;
+   end;
+end;
+
+// PlusMinus
+//
+procedure TTokenizerTests.PlusMinus;
+var
+   rules : TPascalTokenizerStateRules;
+   t : TTokenizer;
+begin
+   FSourceFile.Code := '+ - ++ -- += -=';
+   rules := TPascalTokenizerStateRules.Create;
+   t := rules.CreateTokenizer(FMsgs, nil);
+   try
+      t.BeginSourceFile(FSourceFile);
+
+      CheckTrue(t.Test(ttPLUS), '+');
+      t.KillToken;
+
+      CheckTrue(t.Test(ttMINUS), '-');
+      t.KillToken;
+
+      CheckTrue(t.Test(ttPLUS_PLUS), '++');
+      t.KillToken;
+
+      CheckTrue(t.Test(ttMINUS_MINUS), '--');
+      t.KillToken;
+
+      CheckTrue(t.Test(ttPLUS_ASSIGN), '+=');
+      t.KillToken;
+
+      CheckTrue(t.Test(ttMINUS_ASSIGN), '-=');
       t.KillToken;
 
       t.EndSourceFile;

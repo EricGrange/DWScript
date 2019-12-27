@@ -54,9 +54,8 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
          procedure TypeCheckAssign(context : TdwsCompilerContext); override;
-         function  SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
 
-         property Token : TTokenType read FToken;
+         function Token : TTokenType; override;
    end;
 
 implementation
@@ -145,16 +144,11 @@ begin
    // TODO check vs constraints
 end;
 
-// SpecializeProgramExpr
+// Token
 //
-function TGenericAssignExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+function TGenericAssignExpr.Token : TTokenType;
 begin
-   Result := CreateAssignExpr(
-      CompilerContextFromSpecialization(context), ScriptPos,
-      Token,
-      Left.SpecializeDataExpr(context),
-      Right.SpecializeTypedExpr(context)
-   );
+   Result := FToken;
 end;
 
 end.

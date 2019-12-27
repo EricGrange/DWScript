@@ -5608,18 +5608,12 @@ begin
                   valueExpr:=ReadExpr(baseType.Typ);
                   if valueExpr.Typ <> baseType.Typ then
                      FCompilerContext.WrapWithImplicitCast(baseType.Typ, hotPos, valueExpr);
-
                   if not baseType.Typ.IsCompatible(valueExpr.Typ) then begin
                      IncompatibleTypes(hotPos, CPE_AssignIncompatibleTypes,
                                        valueExpr.Typ, baseType.Typ);
                   end;
-
-                  if baseType.Typ.Size=1 then
-                     if baseExpr is TObjectVarExpr then
-                        Result:=TDynamicArraySetVarExpr.Create(FCompilerContext, FTok.HotPos, baseExpr, indexExpr, valueExpr)
-                     else Result:=TDynamicArraySetExpr.Create(FCompilerContext, FTok.HotPos, baseExpr, indexExpr, valueExpr)
-                  else Result:=TDynamicArraySetDataExpr.Create(FCompilerContext, FTok.HotPos, baseExpr, indexExpr, valueExpr);
-                  indexExpr:=nil;
+                  Result := CreateDynamicArraySetExpr(FCompilerContext, FTok.HotPos, baseExpr, indexExpr, valueExpr);
+                  indexExpr := nil;
                end else begin
                   if baseExpr is TObjectVarExpr then begin
                      Result:=TDynamicArrayVarExpr.Create(FTok.HotPos, baseExpr, indexExpr,
@@ -10605,9 +10599,10 @@ begin
    try
       // Read operator
       repeat
-         tt:=FTok.TestDeleteAny([ttEQ, ttNOTEQ, ttEQEQ, ttEXCLEQ, ttEQEQEQ,
-                                 ttLESS, ttLESSEQ, ttGTR, ttGTREQ,
-                                 ttIN, ttIS, ttIMPLEMENTS, ttIMPLIES]);
+         tt:=FTok.TestDeleteAny([ ttEQ, ttNOTEQ, ttEQEQ, ttEXCLEQ, ttEQEQEQ,
+                                  ttLESS, ttLESSEQ, ttGTR, ttGTREQ,
+                                  ttIN, ttIS, ttIMPLEMENTS, ttIMPLIES,
+                                  ttPLUS_PLUS, ttMINUS_MINUS ]);
          case tt of
             ttNone :
                Break;
@@ -10616,6 +10611,10 @@ begin
          else
 
             hotPos := FTok.HotPos;
+            if tt in [ ttPLUS_PLUS, ttMINUS_MINUS ] then begin
+               FMsgs.AddCompilerWarningFmt(hotPos, CPW_AmbiguousOperator, [ cTokenStrings[tt] ]);
+               tt := ttPLUS;
+            end;
 
             // Read right argument
             right:=ReadExprAdd;
@@ -11364,11 +11363,12 @@ var
    nameExpr : TProgramExpr;
    hotPos : TScriptPos;
 begin
-   tt := FTok.TestAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT, ttAT,
-                       ttTRUE, ttFALSE, ttNIL, ttIF,
-                       ttFUNCTION, ttPROCEDURE, ttLAMBDA,
-                       ttRECORD, ttCLASS,
-                       ttBRIGHT]);
+   tt := FTok.TestAny([ ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT, ttAT,
+                        ttTRUE, ttFALSE, ttNIL, ttIF,
+                        ttFUNCTION, ttPROCEDURE, ttLAMBDA,
+                        ttRECORD, ttCLASS,
+                        ttBRIGHT,
+                        ttPLUS_PLUS, ttMINUS_MINUS ]);
    case tt of
       ttBRIGHT : begin
          // special logic for property write expressions
@@ -11381,14 +11381,14 @@ begin
          end;
          Exit;
       end;
-      ttPLUS : begin
+      ttPLUS, ttPLUS_PLUS, ttMINUS_MINUS : begin
          FTok.KillToken;
          FTok.TestName;
-         hotPos:=FTok.HotPos;
-         Result:=ReadTerm; // (redundant) plus sign
-         if not (   Result.IsOfType(FCompilerContext.TypFloat)
-                 or Result.IsOfType(FCompilerContext.TypInteger)
-                 or Result.IsOfType(FCompilerContext.TypVariant)) then
+         hotPos := FTok.HotPos;
+         if tt in [ ttPLUS_PLUS, ttMINUS_MINUS ] then
+            FMsgs.AddCompilerWarningFmt(hotPos, CPW_AmbiguousOperator, [ cTokenStrings[tt] ]);
+         Result := ReadTerm; // (redundant) plus sign
+         if ResolveOperatorFor(CurrentProg, ttMINUS, nil, Result.Typ) = nil then
             FMsgs.AddCompilerError(hotPos, CPE_NumericalExpected);
       end;
       ttMINUS : begin
@@ -13689,7 +13689,7 @@ begin
                   FMsgs.AddCompilerError(argPos, CPE_StringExpected);
             end;
             if coAssertions in FOptions then begin
-               Result:=TAssertExpr.Create(FCompilerContext, namePos, argExpr, msgExpr);
+               Result:=TAssertExpr.Create(namePos, argExpr, msgExpr);
                argExpr:=nil;
                msgExpr:=nil;
             end else begin

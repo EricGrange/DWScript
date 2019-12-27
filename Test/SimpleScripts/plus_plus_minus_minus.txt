@@ -1,0 +1,7 @@
+Errors >>>>
+Warning: Operator "++" is ambiguous [line: 3, column: 8]
+Warning: Operator "++" is ambiguous [line: 4, column: 7]
+Warning: Operator "--" is ambiguous [line: 6, column: 8]
+Warning: Operator "--" is ambiguous [line: 7, column: 7]
+Result >>>>
+0
