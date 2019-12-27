@@ -145,7 +145,7 @@ begin
          prog := compiler.Compile(source.Text);
 
          resultBase := prog.Msgs.AsInfo;
-         checkEquals('False', BoolToStr(prog.Msgs.HasErrors), testList[i]);
+         checkEquals('0', BoolToStr(prog.Msgs.HasErrors), testList[i]);
 
          resultsFileName:=ChangeFileExt(testList[i], '.txt');
          if FileExists(resultsFileName) then begin

@@ -805,7 +805,6 @@ function CreateDynamicArraySetExpr(context : TdwsCompilerContext; const scriptPo
 var
    typSize : Integer;
 begin
-   typSize := 1;
    if valueExpr.Typ <> nil then begin
       typSize := valueExpr.Typ.Size;
       Assert(arrayExpr.Typ.Typ.Size = typSize);
