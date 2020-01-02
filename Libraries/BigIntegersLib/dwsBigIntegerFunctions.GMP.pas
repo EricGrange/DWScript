@@ -382,11 +382,11 @@ begin
    operators.RegisterOperator(ttTIMES_ASSIGN, TBigIntegerMultAssignExpr, typBigInteger, systemTable.TypInteger);
 
    RegisterOperators(ttEQ,       TBigIntegerEqualOpExpr);
-   RegisterOperators(ttNOTEQ,    TBigIntegerNotEqualOpExpr);
+   RegisterOperators(ttNOT_EQ,   TBigIntegerNotEqualOpExpr);
    RegisterOperators(ttGTR,      TBigIntegerGreaterOpExpr);
-   RegisterOperators(ttGTREQ,    TBigIntegerGreaterEqualOpExpr);
+   RegisterOperators(ttGTR_EQ,   TBigIntegerGreaterEqualOpExpr);
    RegisterOperators(ttLESS,     TBigIntegerLessOpExpr);
-   RegisterOperators(ttLESSEQ,   TBigIntegerLessEqualOpExpr);
+   RegisterOperators(ttLESS_EQ,  TBigIntegerLessEqualOpExpr);
 
    operators.RegisterCaster(typBigInteger, systemTable.TypInteger, TConvIntegerToBigIntegerExpr);
    operators.RegisterCaster(typBigInteger, systemTable.TypString,  TConvStringToBigIntegerExpr);

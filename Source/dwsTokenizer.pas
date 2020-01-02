@@ -52,14 +52,14 @@ type
      ttAND, ttOR, ttXOR, ttDIV, ttMOD, ttNOT, ttSHL, ttSHR, ttSAR,
      ttPLUS, ttMINUS, ttIMPLIES, ttIMPLICIT,
      ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttTILDE,
-     ttDOLLAR, ttEXCLAMATION, ttEXCLEQ,
-     ttQUESTION, ttQUESTIONQUESTION, ttQUESTIONDOT,
-     ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ, ttEQGTR, ttEQEQ, ttEQEQEQ,
-     ttLESSLESS, ttGTRGTR, ttPIPE, ttPIPEPIPE, ttAMP, ttAMPAMP,
+     ttDOLLAR, ttEXCLAMATION, ttEXCL_EQ,
+     ttQUESTION, ttQUESTION_QUESTION, ttQUESTION_DOT,
+     ttEQ, ttNOT_EQ, ttGTR, ttGTR_EQ, ttLESS, ttLESS_EQ, ttEQ_GTR, ttEQ_EQ, ttEQ_EQ_EQ,
+     ttLESS_LESS, ttGTR_GTR, ttPIPE, ttPIPE_PIPE, ttAMP, ttAMP_AMP,
      ttSEMI, ttCOMMA, ttCOLON,
      ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
      ttPERCENT_ASSIGN, ttCARET_ASSIGN, ttAT_ASSIGN, ttTILDE_ASSIGN,
-     ttPLUS_PLUS, ttMINUS_MINUS,
+     ttPLUS_PLUS, ttMINUS_MINUS, ttTIMES_TIMES,
      ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCLEFT, ttCRIGHT,
      ttDEFAULT,
      ttUSES, ttUNIT, ttNAMESPACE,
@@ -348,7 +348,7 @@ const
      ';', ',', ':',
      ':=', '+=', '-=', '*=', '/=',
      '%=', '^=', '@=', '~=',
-     '++', '--',
+     '++', '--', '**',
      '(', ')', '[', ']', '{', '}',
      'default', 'uses', 'unit', 'namespace',
      'private', 'protected', 'public', 'published',
@@ -680,9 +680,10 @@ begin
       '*':
          if Len=1 then
             Result := ttTIMES
-         else if Len=2 then
-            if Buffer[1]='=' then
-               Result := ttTIMES_ASSIGN; // '*='
+         else if Len=2 then case Buffer[1] of
+            '=' : Result := ttTIMES_ASSIGN; // '*='
+            '*' : Result := ttTIMES_TIMES; // '**'
+         end;
       '+':
          if Len=1 then
             Result := ttPLUS
@@ -731,38 +732,38 @@ begin
             Result := ttEXCLAMATION
          else if Len=2 then
             if Buffer[1]='=' then
-               Result := ttEXCLEQ;     // '!='
+               Result := ttEXCL_EQ;     // '!='
       '?':
          if Len=1 then
             Result := ttQUESTION
          else if Len=2 then case Buffer[1] of
-            '?' : Result:= ttQUESTIONQUESTION;  // '??'
-            '.' : Result:= ttQUESTIONDOT;       // '?.'
+            '?' : Result:= ttQUESTION_QUESTION;  // '??'
+            '.' : Result:= ttQUESTION_DOT;       // '?.'
          end;
       '=':
          case Len of
             1 : Result := ttEQ;
             2 : case Buffer[1] of
-               '>' : Result := ttEQGTR;      // '=>'
-               '=' : Result := ttEQEQ;       // '=='
+               '>' : Result := ttEQ_GTR;      // '=>'
+               '=' : Result := ttEQ_EQ;       // '=='
             end;
             3 : if Buffer[2] = '=' then
-               Result := ttEQEQEQ;           // '==='
+               Result := ttEQ_EQ_EQ;           // '==='
          end;
       '<':
          if Len=1 then // '<'
             Result := ttLESS
          else if Len=2 then case Buffer[1] of
-            '=' : Result := ttLESSEQ;     // '<='
-            '>' : Result := ttNOTEQ;      // '<>'
-            '<' : Result := ttLESSLESS;   // '<<'
+            '=' : Result := ttLESS_EQ;     // '<='
+            '>' : Result := ttNOT_EQ;      // '<>'
+            '<' : Result := ttLESS_LESS;   // '<<'
          end;
       '>':
          if Len=1 then // '>'
             Result := ttGTR
          else if Len=2 then case Buffer[1] of
-            '=' : Result := ttGTREQ;      // '>='
-            '>' : Result := ttGTRGTR;     // '>>'
+            '=' : Result := ttGTR_EQ;      // '>='
+            '>' : Result := ttGTR_GTR;     // '>>'
          end;
       ':':
          if Len=1 then // ':'
@@ -784,7 +785,7 @@ begin
             Result := ttPIPE
          else if Len=2 then
             if Buffer[1]='|' then
-               Result := ttPIPEPIPE;
+               Result := ttPIPE_PIPE;
    else
       case CaseSensitive of
          tcsCaseInsensitive : Result := ToAlphaType;
@@ -1599,7 +1600,7 @@ procedure TTokenizer.ConsumeToken;
          caAmpAmp : begin
             FToken.FScriptPos:=CurrentPos;
             FToken.FScriptPos.Col:=FToken.FScriptPos.Col-2;
-            FToken.FTyp:=ttAMPAMP;
+            FToken.FTyp:=ttAMP_AMP;
          end;
       end;
       FTokenBuf.Len:=0;

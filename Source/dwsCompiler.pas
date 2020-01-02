@@ -4185,9 +4185,9 @@ begin
                            ttOR, ttAND, ttXOR,
                            ttIN, ttIMPLIES, ttIMPLICIT,
                            ttSHL, ttSHR, ttSAR,
-                           ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
-                           ttLESSLESS, ttGTRGTR, ttCARET,
-                           ttEQEQ, ttEXCLEQ]);
+                           ttEQ, ttNOT_EQ, ttGTR, ttGTR_EQ, ttLESS, ttLESS_EQ,
+                           ttLESS_LESS, ttGTR_GTR, ttCARET,
+                           ttEQ_EQ, ttEXCL_EQ]);
    if tt=ttNone then
       FMsgs.AddCompilerError(FTok.HotPos, CPE_OverloadableOperatorExpected);
 
@@ -4477,7 +4477,7 @@ begin
             locExpr:=ReadSymbol(ReadBracket, True)
          else locExpr:=ReadName(True);
          if locExpr is TTypedExpr then begin
-            if (FTok.TestAny([ttLESSLESS, ttGTRGTR])<>ttNone) then
+            if (FTok.TestAny([ttLESS_LESS, ttGTR_GTR])<>ttNone) then
                locExpr:=ReadExprMult(nil, TTypedExpr(locExpr));
          end;
          try
@@ -10599,8 +10599,8 @@ begin
    try
       // Read operator
       repeat
-         tt:=FTok.TestDeleteAny([ ttEQ, ttNOTEQ, ttEQEQ, ttEXCLEQ, ttEQEQEQ,
-                                  ttLESS, ttLESSEQ, ttGTR, ttGTREQ,
+         tt:=FTok.TestDeleteAny([ ttEQ, ttNOT_EQ, ttEQ_EQ, ttEXCL_EQ, ttEQ_EQ_EQ,
+                                  ttLESS, ttLESS_EQ, ttGTR, ttGTR_EQ,
                                   ttIN, ttIS, ttIMPLEMENTS, ttIMPLIES,
                                   ttPLUS_PLUS, ttMINUS_MINUS ]);
          case tt of
@@ -10661,7 +10661,7 @@ begin
                else
                   opExpr := CreateTypedOperatorExpr(tt, hotPos, Result, right);
                   if opExpr = nil then begin
-                     if     (tt in [ ttEQ, ttNOTEQ, ttEQEQ, ttEXCLEQ ])
+                     if     (tt in [ ttEQ, ttNOT_EQ, ttEQ_EQ, ttEXCL_EQ ])
                         and (rightTyp<>nil)
                         and (
                                 (Result.Typ is TClassSymbol)
@@ -10677,7 +10677,7 @@ begin
                            else FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
                         end;
                         if Result.Typ is TClassSymbol then
-                           if tt in [ ttNOTEQ, ttEXCLEQ ] then
+                           if tt in [ ttNOT_EQ, ttEXCL_EQ ] then
                               Result:=TObjCmpNotEqualExpr.Create(FCompilerContext, hotPos, tt, Result, right)
                            else Result:=TObjCmpEqualExpr.Create(FCompilerContext, hotPos, tt, Result, right)
                         else if Result.Typ is TClassOfSymbol then begin
@@ -10687,13 +10687,13 @@ begin
                            OrphanAndNil(right);
                         end else begin
                            Result:=TIntfCmpExpr.Create(FCompilerContext, hotPos, tt, Result, right);
-                           if tt in [ ttNOTEQ, ttEXCLEQ ] then
+                           if tt in [ ttNOT_EQ, ttEXCL_EQ ] then
                               Result:=TNotBoolExpr.Create(FCompilerContext, hotPos, Result);
                         end;
-                     end else if     (tt in [ ttEQ, ttNOTEQ, ttEQEQ, ttEXCLEQ ])
+                     end else if     (tt in [ ttEQ, ttNOT_EQ, ttEQ_EQ, ttEXCL_EQ ])
                                  and (rightTyp=FCompilerContext.TypNil)
                                  and (Result.Typ.IsOfType(FCompilerContext.TypVariant)) then begin
-                        if tt in [ ttEQ, ttEQEQ ] then
+                        if tt in [ ttEQ, ttEQ_EQ ] then
                            Result:=TRelVarEqualNilExpr.Create(FCompilerContext, hotPos, Result)
                         else Result:=TRelVarNotEqualNilExpr.Create(FCompilerContext, hotPos, Result);
                         OrphanAndNil(right);
@@ -10810,7 +10810,7 @@ begin
    try
       repeat
          tt := FTok.TestDeleteAny([ttTIMES, ttDIVIDE, ttMOD, ttDIV, ttAND,
-                                   ttCARET, ttAS, ttLESSLESS, ttGTRGTR, ttQUESTIONQUESTION,
+                                   ttCARET, ttAS, ttLESS_LESS, ttGTR_GTR, ttQUESTION_QUESTION,
                                    ttSHL, ttSHR, ttSAR]);
          if tt = ttNone then Break;
 
@@ -10856,7 +10856,7 @@ begin
                   end;
                   OrphanAndNil(right);
                end;
-               ttQUESTIONQUESTION : begin
+               ttQUESTION_QUESTION : begin
                   FCompilerContext.WrapWithImplicitCast(Result.Typ, hotPos, right);
                   rightTyp:=right.Typ;
                   if not Result.Typ.IsCompatible(rightTyp) then begin
@@ -11219,7 +11219,7 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
          if not (expectedType is TAnyTypeSymbol) then
             funcSym.Typ := expectedType;
 
-      if FTok.TestDelete(ttEQGTR) then begin
+      if FTok.TestDelete(ttEQ_GTR) then begin
 
          FTok.TestName;
          procPos:=FTok.HotPos;
@@ -13503,14 +13503,14 @@ begin
             Result := TSetOfMultExpr.Create(FCompilerContext, scriptPos, token, leftData, rightData);
          ttEQ :
             Result := TSetOfEqualExpr.Create(FCompilerContext, scriptPos, ttEQ, leftData, rightData);
-         ttNOTEQ :
+         ttNOT_EQ :
             Result := TNotBoolExpr.Create(FCompilerContext, scriptPos,
                TSetOfEqualExpr.Create(FCompilerContext, scriptPos, ttEQ, leftData, rightData)
             );
-         ttLESSEQ :
-            Result := TSetOfLeftContainedInRightExpr.Create(FCompilerContext, scriptPos, ttLESSEQ, leftData, rightData);
-         ttGTREQ :
-            Result := TSetOfLeftContainedInRightExpr.Create(FCompilerContext, scriptPos, ttGTREQ, rightData, leftData);
+         ttLESS_EQ :
+            Result := TSetOfLeftContainedInRightExpr.Create(FCompilerContext, scriptPos, ttLESS_EQ, leftData, rightData);
+         ttGTR_EQ :
+            Result := TSetOfLeftContainedInRightExpr.Create(FCompilerContext, scriptPos, ttGTR_EQ, rightData, leftData);
       end;
    except
       if convertedData <> nil then begin
