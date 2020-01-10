@@ -968,12 +968,12 @@ type
 
       class procedure InitializeAPI; static;
 
-      class procedure Check(error : HRESULT; api : THttpAPIs); static; inline;
+      class procedure Check(error : HRESULT; api : THttpAPIs; const where : String); static; inline;
    end;
 
    EHttpApiServer = class (Exception)
    public
-      constructor Create(api : THttpAPIs; Error : integer);
+      constructor Create(api : THttpAPIs; error : Integer; const where : String);
    end;
 
 var
@@ -1026,13 +1026,13 @@ begin
    end;
 end;
 
-class procedure THttpAPI.Check(error : HRESULT; api : THttpAPIs);
+class procedure THttpAPI.Check(error : HRESULT; api : THttpAPIs; const where : String);
 begin
    case error of
       NO_ERROR : ;
       ERROR_NETNAME_DELETED : ; // ignored
    else
-      raise EHttpApiServer.Create(api, error);
+      raise EHttpApiServer.Create(api, error, where);
    end;
 end;
 
@@ -1104,10 +1104,10 @@ begin
    result := true;
 end;
 
-constructor EHttpApiServer.Create(api : THttpAPIs; Error : integer);
+constructor EHttpApiServer.Create(api : THttpAPIs; error : Integer; const where : String);
 begin
-   inherited CreateFmt('%s failed: %s (%d)',
-      [HttpNames[api], SysErrorMessage(Error), Error]);
+   inherited CreateFmt('%s failed in %s with "%s" (0x%x)',
+      [HttpNames[api], where, SysErrorMessage(Error), error]);
 end;
 
 { HTTP_RESPONSE_V2 }

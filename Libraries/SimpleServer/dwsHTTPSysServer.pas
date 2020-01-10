@@ -534,20 +534,20 @@ begin
 
    HttpAPI.Check(
       HttpAPI.Initialize(HTTPAPI_VERSION_2, HTTP_INITIALIZE_SERVER),
-      hInitialize);
+      hInitialize, 'THttpApi2Server.Create');
 
    HttpAPI.Check(
       HttpAPI.CreateServerSession(HTTPAPI_VERSION_2, FServerSessionID),
-      hCreateServerSession);
+      hCreateServerSession, 'THttpApi2Server.Create');
 
    HttpAPI.Check(
       HttpAPI.CreateUrlGroup(FServerSessionID, FUrlGroupID),
-      hCreateUrlGroup);
+      hCreateUrlGroup, 'THttpApi2Server.Create');
 
    SetServiceName(aServiceName);
    HttpAPI.Check(
       HttpAPI.CreateRequestQueue(HTTPAPI_VERSION_2, Pointer(FServiceNameW), nil, 0, FReqQueue),
-      hCreateRequestQueue);
+      hCreateRequestQueue, 'THttpApi2Server.Create');
 
    bindInfo.Flags := 1;
    bindInfo.RequestQueueHandle := FReqQueue;
@@ -555,7 +555,7 @@ begin
    HttpAPI.Check(
       HttpAPI.SetUrlGroupProperty(FUrlGroupID, HttpServerBindingProperty,
                                   @bindInfo, SizeOf(bindInfo)),
-      hSetUrlGroupProperty);
+      hSetUrlGroupProperty, 'THttpApi2Server.Create');
 
    FClones := TSimpleList<THttpApi2Server>.Create;
    if not CreateSuspended then
@@ -723,7 +723,7 @@ begin
       if FRegisteredUrl[i] = s then begin
          HttpAPI.Check(
             HttpAPI.RemoveUrlFromUrlGroup(FUrlGroupID, Pointer(FRegisteredUrl[i])),
-            hRemoveUrlFromUrlGroup);
+            hRemoveUrlFromUrlGroup, 'THttpApi2Server.RemoveUrl');
          for j := i to n-1 do
             FRegisteredUrl[j] := FRegisteredUrl[j+1];
          SetLength(FRegisteredUrl, n);
@@ -752,7 +752,7 @@ begin
       else begin
          Error := HttpAPI.Initialize(HTTPAPI_VERSION_2, HTTP_INITIALIZE_CONFIG);
          if Error<>NO_ERROR then
-            raise EHttpApiServer.Create(hInitialize, Error);
+            raise EHttpApiServer.Create(hInitialize, Error, 'THttpApi2Server.AddUrlAuthorize');
          try
             fillchar(Config, sizeof(Config), 0);
             Config.KeyDesc.pUrlPrefix := pointer(prefix);
@@ -765,7 +765,7 @@ begin
                Error := HttpAPI.SetServiceConfiguration(0, hscUrlAclInfo, @Config, Sizeof(Config));
             end;
             if (Error<>NO_ERROR) and (Error<>ERROR_ALREADY_EXISTS) then
-               raise EHttpApiServer.Create(hSetServiceConfiguration, Error);
+               raise EHttpApiServer.Create(hSetServiceConfiguration, Error, 'THttpApi2Server.AddUrlAuthorize');
             result := ''; // success
          finally
             HttpAPI.Terminate(HTTP_INITIALIZE_CONFIG);
@@ -922,7 +922,7 @@ begin
    HttpAPI.Check(
       HttpAPI.SetServerSessionProperty(FServerSessionID, HttpServerQosProperty,
                                        @qosInfo, SizeOf(qosInfo)),
-      hSetServerSessionProperty);
+      hSetServerSessionProperty, 'THttpApi2Server.SetMaxBandwidth');
 end;
 
 // SetMaxConnections
@@ -945,7 +945,7 @@ begin
    HttpAPI.Check(
       HttpAPI.SetServerSessionProperty(FServerSessionID, HttpServerQosProperty,
                                        @qosInfo, SizeOf(qosInfo)),
-      hSetServerSessionProperty);
+      hSetServerSessionProperty, 'SetMaxConnections');
 end;
 
 // GetMaxQueueLength
@@ -958,7 +958,7 @@ begin
       HttpAPI.QueryRequestQueueProperty(FReqQueue, HttpServerQueueLengthProperty,
                                         @Result, SizeOf(Result),
                                         0, @returnLength, nil),
-      hQueryRequestQueueProperty);
+      hQueryRequestQueueProperty, 'THttpApi2Server.GetMaxQueueLength');
 end;
 
 // SetMaxQueueLength
@@ -969,7 +969,7 @@ begin
    HttpAPI.Check(
       HttpAPI.SetRequestQueueProperty(FReqQueue, HttpServerQueueLengthProperty,
                                       @val, SizeOf(val), 0, nil),
-      hSetRequestQueueProperty);
+      hSetRequestQueueProperty, 'THttpApi2Server.SetMaxQueueLength');
 end;
 
 // HttpThreadExceptionIntercepted
@@ -1139,7 +1139,7 @@ begin
                      sendResult := HttpAPI.SendHttpResponse(FReqQueue, request^.RequestId, GetHttpResponseFlags,
                                                             response^, nil, bytesSent, nil, 0, nil, FLogDataPtr);
                      if sendResult <> HTTPAPI_ERROR_NONEXISTENTCONNECTION then
-                        HttpAPI.Check(sendResult, hSendHttpResponse);
+                        HttpAPI.Check(sendResult, hSendHttpResponse, 'THttpApi2Server.Execute');
                   end;
                end;
             except
@@ -1268,7 +1268,7 @@ begin
    HttpAPI.Check(
       HttpAPI.SetUrlGroupProperty(FUrlGroupID, HttpServerAuthenticationProperty,
                                   @authInfo, SizeOf(authInfo)),
-      hSetServerSessionProperty);
+      hSetServerSessionProperty, 'THttpApi2Server.SetAuthentication(' + IntToHex(schemeFlags, 4) + ')');
 end;
 
 // UpdateLogInfo
@@ -1302,7 +1302,7 @@ begin
    HttpAPI.Check(
       HttpAPI.SetUrlGroupProperty(FUrlGroupID, HttpServerLoggingProperty,
                                   @logInfo, SizeOf(logInfo)),
-      hSetServerSessionProperty);
+      hSetServerSessionProperty, 'THttpApi2Server.UpdateLogInfo');
 end;
 
 // UpdateLogFieldsData

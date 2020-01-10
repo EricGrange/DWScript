@@ -172,7 +172,7 @@ begin
    if err <> NO_ERROR then begin
 
       req.Free;
-      HttpAPI.Check(err, hSendHttpResponse);
+      HttpAPI.Check(err, hSendHttpResponse, 'AddRequest');
 
    end else begin
 
