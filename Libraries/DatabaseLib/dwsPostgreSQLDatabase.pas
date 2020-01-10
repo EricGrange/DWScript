@@ -269,7 +269,10 @@ begin
          end;
          varDate : begin
             params.Types[i] := TIMESTAMPOID;
-            dt := Round((p.VDate - cPostgresEpochDeltaDays) * 86400e6);
+            // Double precision has 15 decimal places,
+            // for current date/times we have 5 for the day, 5 for seconds, 3 for milliseconds,
+            // this leaves only 2 for microseconds, so a precision of 10 microseconds
+            dt := Round(p.VDate*86400e5)*10 - Round(cPostgresEpochDeltaDays * 86400e6);
             SetLength(params.Values[i], SizeOf(Int64));
             SwapInt64(@dt, Pointer(params.Values[i]));
             params.Lengths[i] := SizeOf(Int64);
