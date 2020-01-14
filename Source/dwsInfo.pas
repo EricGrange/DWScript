@@ -48,7 +48,7 @@ type
       function GetValue : Variant;
       function GetValueIsEmpty : Boolean;
       function GetValueAsString : String;
-      function GetValueAsDataString : AnsiString;
+      function GetValueAsDataString : RawByteString;
       function GetValueAsInteger : Int64;
       function GetValueAsBoolean : Boolean;
       function GetValueAsFloat : Double;
@@ -59,6 +59,7 @@ type
       procedure SetValue(const Value: Variant);
       procedure SetValueAsInteger(const value : Int64);
       procedure SetValueAsString(const value : String);
+      procedure SetValueAsDataString(const value : RawByteString);
 
       procedure WriteToJSON(writer : TdwsJSONWriter);
 
@@ -76,7 +77,7 @@ type
       property Value: Variant read GetValue write SetValue;
       property ValueIsEmpty : Boolean read GetValueIsEmpty;
       property ValueAsString : String read GetValueAsString write SetValueAsString;
-      property ValueAsDataString : AnsiString read GetValueAsDataString;
+      property ValueAsDataString : RawByteString read GetValueAsDataString write SetValueAsDataString;
       property ValueAsInteger : Int64 read GetValueAsInteger write SetValueAsInteger;
       property ValueAsBoolean : Boolean read GetValueAsBoolean;
       property ValueAsFloat : Double read GetValueAsFloat;

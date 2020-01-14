@@ -64,7 +64,7 @@ type
          function GetValue : Variant; virtual;
          function GetValueIsEmpty : Boolean; virtual;
          function GetValueAsString : String; virtual;
-         function GetValueAsDataString : AnsiString; virtual;
+         function GetValueAsDataString : RawByteString; virtual;
          function GetValueAsInteger : Int64; virtual;
          function GetValueAsBoolean : Boolean; virtual;
          function GetValueAsFloat : Double; virtual;
@@ -75,6 +75,7 @@ type
          procedure SetValue(const Value: Variant); virtual;
          procedure SetValueAsInteger(const value : Int64); virtual;
          procedure SetValueAsString(const value : String); virtual;
+         procedure SetValueAsDataString(const value : RawByteString); virtual;
          procedure WriteToJSON(writer : TdwsJSONWriter); virtual;
 
       public
@@ -474,9 +475,9 @@ end;
 
 // GetValueAsDataString
 //
-function TInfo.GetValueAsDataString : AnsiString;
+function TInfo.GetValueAsDataString : RawByteString;
 begin
-   Result:=ScriptStringToRawByteString(GetValueAsString);
+   ScriptStringToRawByteString(GetValueAsString, Result);
 end;
 
 // GetValueAsInteger
@@ -578,6 +579,13 @@ end;
 procedure TInfo.SetValueAsString(const value : String);
 begin
    SetValue(value);
+end;
+
+// SetValueAsDataString
+//
+procedure TInfo.SetValueAsDataString(const value : RawByteString);
+begin
+   SetValue(RawByteStringToScriptString(value));
 end;
 
 // WriteToJSON
