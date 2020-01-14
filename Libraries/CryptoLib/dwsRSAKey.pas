@@ -107,7 +107,7 @@ var
    publicExponent, modulus, prime1, prime2 : RawByteString;
    blobType : PWideChar;
    blobData : RawByteString;
-   jv, jPrime : TdwsJSONValue;
+   jv, jPrime, jSize : TdwsJSONValue;
 begin
    Create;
 
@@ -116,13 +116,26 @@ begin
 
    jv := TdwsJSONValue.ParseString(jsonData);
    try
-      blob.BitLength := jv.Values['size'].AsInteger;
+      jSize := jv.Values['size'];
+      if jSize <> nil then
+         blob.BitLength := jSize.AsInteger
+      else blob.BitLength := 0;
 
-      publicExponent := HexToBin(jv.Values['exponent'].AsString);
-      blob.cbPublicExp := Length(publicExponent);
+      try
+         publicExponent := HexToBin(jv.Values['exponent'].AsString);
+         blob.cbPublicExp := Length(publicExponent);
+      except
+         on E: Exception do
+            raise EdwsRSAKeyException.CreateFmt('failed to parse exponent (%s)', [ E.Message ]);
+      end;
 
-      modulus := HexToBin(jv.Values['modulus'].AsString);
-      blob.cbModulus := Length(modulus);
+      try
+         modulus := HexToBin(jv.Values['modulus'].AsString);
+         blob.cbModulus := Length(modulus);
+      except
+         on E: Exception do
+            raise EdwsRSAKeyException.CreateFmt('failed to parse modulus (%s)', [ E.Message ]);
+      end;
 
       jPrime := jv.Values['prime1'];
       if jPrime <> nil then begin
@@ -134,6 +147,9 @@ begin
    finally
       jv.Free;
    end;
+
+   if blob.BitLength = 0 then
+      blob.BitLength := Length(modulus);
 
    if (prime1 <> '') and (prime2 <> '') then begin
       blob.Magic := BCRYPT_RSAPRIVATE_MAGIC;
