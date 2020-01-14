@@ -5,7 +5,8 @@ interface
 uses
    Classes, SysUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
-   dwsCryptoLibModule, dwsXPlatform, dwsCompilerContext;
+   dwsCryptoLibModule, dwsXPlatform, dwsCompilerContext, dwsEncodingLibModule,
+   dwsJSONConnector;
 
 type
 
@@ -14,6 +15,8 @@ type
          FTests : TStringList;
          FCompiler : TDelphiWebScript;
          FCryptoLib : TdwsCryptoLib;
+         FEncodingLib : TdwsEncodingLib;
+         FJSONLib : TdwsJSONLibModule;
 
       public
          procedure SetUp; override;
@@ -54,6 +57,12 @@ begin
 
    FCryptoLib:=TdwsCryptoLib.Create(nil);
    FCryptoLib.dwsCrypto.Script:=FCompiler;
+
+   FEncodingLib := TdwsEncodingLib.Create(nil);
+   FEncodingLib.dwsEncoding.Script := FCompiler;
+
+   FJSONLib := TdwsJSONLibModule.Create(nil);
+   FJSONLib.Script := FCompiler;
 end;
 
 // TearDown
@@ -61,6 +70,8 @@ end;
 procedure TdwsCryptoTests.TearDown;
 begin
    FCryptoLib.Free;
+   FEncodingLib.Free;
+   FJSONLib.Free;
 
    FCompiler.Free;
 
