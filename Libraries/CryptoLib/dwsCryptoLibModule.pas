@@ -102,6 +102,19 @@ type
       baseExpr: TTypedExpr; const args: TExprBaseListExec);
     function dwsCryptoFunctionsCompilationUniqueRandomFastEval(
       const args: TExprBaseListExec): Variant;
+    procedure dwsCryptoClassesTRSAKeyConstructorsGenerateEval(
+      Info: TProgramInfo; var ExtObject: TObject);
+    procedure dwsCryptoClassesTRSAKeyCleanUp(ExternalObject: TObject);
+    procedure dwsCryptoClassesTRSAKeyConstructorsImportJSONEval(
+      Info: TProgramInfo; var ExtObject: TObject);
+    procedure dwsCryptoClassesTRSAKeyMethodsDestroyKeyEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsCryptoClassesTRSAKeyMethodsSignHashEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsCryptoClassesTRSAKeyMethodsVerifyHashEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsCryptoClassesTRSAKeyMethodsExportJSONEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
     FNonces : TdwsTokenStore;
@@ -119,7 +132,9 @@ implementation
 
 {$R *.dfm}
 
-uses dwsCryptoUtils, SynCrypto, dwsCryptProtect, SynZip, SynEcc, dwsCompilerContext;
+uses
+   dwsCryptoUtils, SynCrypto, dwsCryptProtect, SynZip, SynEcc, dwsInfo,
+   dwsCompilerContext, dwsRSAKey, dwsBCryptCNG;
 
 procedure PerformHashData(Info: TProgramInfo; h : THashFunction);
 var
@@ -333,6 +348,49 @@ procedure TdwsCryptoLib.dwsCryptoClassesSHA256MethodsHashDataEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    PerformHashData(Info, HashSHA256);
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesTRSAKeyCleanUp(ExternalObject: TObject);
+begin
+   ExternalObject.Free;
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesTRSAKeyConstructorsGenerateEval(
+  Info: TProgramInfo; var ExtObject: TObject);
+begin
+   ExtObject := TdwsRSAKey.GenerateKeyPair(Info.ParamAsInteger[0]);
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesTRSAKeyConstructorsImportJSONEval(
+  Info: TProgramInfo; var ExtObject: TObject);
+begin
+   ExtObject := TdwsRSAKey.ImportJSON(Info.ParamAsString[0]);
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesTRSAKeyMethodsDestroyKeyEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   (ExtObject as TdwsRSAKey).DestroyKey;
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesTRSAKeyMethodsExportJSONEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := (ExtObject as TdwsRSAKey).ExportJSON;
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesTRSAKeyMethodsSignHashEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString := (ExtObject as TdwsRSAKey).SignHash(Info.ParamAsString[0], Info.ParamAsString[1]);
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesTRSAKeyMethodsVerifyHashEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean := (ExtObject as TdwsRSAKey).VerifyHash(
+      Info.ParamAsString[0], Info.ParamAsString[1], Info.ParamAsDataString[2]
+   );
 end;
 
 procedure TdwsCryptoLib.dwsCryptoClassesHashSHA256MethodsHMACEval(Info: TProgramInfo;

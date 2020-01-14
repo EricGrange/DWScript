@@ -626,6 +626,75 @@ object dwsCryptoLib: TdwsCryptoLib
             OnEval = dwsCryptoClassesECCsecp256r1MethodsECDSAVerifyEval
             Kind = mkClassFunction
           end>
+      end
+      item
+        Name = 'TRSAKey'
+        Constructors = <
+          item
+            Name = 'Generate'
+            Parameters = <
+              item
+                Name = 'bitSize'
+                DataType = 'Integer'
+              end>
+            OnEval = dwsCryptoClassesTRSAKeyConstructorsGenerateEval
+          end
+          item
+            Name = 'ImportJSON'
+            Parameters = <
+              item
+                Name = 'jsonData'
+                DataType = 'String'
+              end>
+            OnEval = dwsCryptoClassesTRSAKeyConstructorsImportJSONEval
+          end>
+        Methods = <
+          item
+            Name = 'DestroyKey'
+            OnEval = dwsCryptoClassesTRSAKeyMethodsDestroyKeyEval
+            Kind = mkProcedure
+          end
+          item
+            Name = 'SignHash'
+            Parameters = <
+              item
+                Name = 'paddingAlgorithm'
+                DataType = 'String'
+              end
+              item
+                Name = 'hashHex'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            OnEval = dwsCryptoClassesTRSAKeyMethodsSignHashEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'VerifyHash'
+            Parameters = <
+              item
+                Name = 'paddingAlgorithm'
+                DataType = 'String'
+              end
+              item
+                Name = 'hashHex'
+                DataType = 'String'
+              end
+              item
+                Name = 'signature'
+                DataType = 'String'
+              end>
+            ResultType = 'Boolean'
+            OnEval = dwsCryptoClassesTRSAKeyMethodsVerifyHashEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'ExportJSON'
+            ResultType = 'String'
+            OnEval = dwsCryptoClassesTRSAKeyMethodsExportJSONEval
+            Kind = mkFunction
+          end>
+        OnCleanUp = dwsCryptoClassesTRSAKeyCleanUp
       end>
     Functions = <
       item
