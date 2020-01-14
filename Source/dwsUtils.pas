@@ -1013,7 +1013,8 @@ type
    EHexEncodingException = class (Exception)
    end;
 
-function BinToHex(const data; n : Integer) : UnicodeString; overload;
+function BinToHex(data : Pointer; n : Integer) : UnicodeString; overload;
+function BinToHex(const data; n : Integer) : UnicodeString; overload; inline;
 function BinToHex(const data : RawByteString) : UnicodeString; overload; inline;
 
 function HexToBin(const data : String) : RawByteString; overload;
@@ -1328,7 +1329,7 @@ end;
 
 // BinToHex
 //
-function BinToHex(const data; n : Integer) : UnicodeString;
+function BinToHex(data : Pointer; n : Integer) : UnicodeString;
 const
    cHexDigits : array [0..15] of Char = (
       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
@@ -1344,12 +1345,19 @@ begin
    SetLength(Result, n*2);
 
    pDest:=Pointer(Result);
-   p:=@data;
+   p := data;
    for i:=1 to n do begin
       pDest^ := Ord(cHexDigits[p^ shr 4]) + (Ord(cHexDigits[p^ and 15]) shl 16);
       Inc(pDest);
       Inc(p);
    end;
+end;
+
+// BinToHex
+//
+function BinToHex(const data; n : Integer) : UnicodeString;
+begin
+   Result := BinToHex(@data, n);
 end;
 
 // BinToHex
