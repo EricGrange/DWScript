@@ -140,11 +140,44 @@ const
    BCRYPT_RNG_FIPS186_DSA_ALGORITHM    : PWideChar = 'FIPS128DSARNG';
    BCRYPT_RNG_DUAL_EC_ALGORITHM        : PWideChar = 'DUALECRNG';
 
-   BCRYPT_RSAFULLPRIVATE_BLOB :     PWideChar = 'RSAFULLPRIVATEBLOB';
-   BCRYPT_RSAPRIVATE_BLOB :         PWideChar = 'RSAPRIVATEBLOB';
-   BCRYPT_RSAPUBLIC_BLOB :          PWideChar = 'RSAPUBLICBLOB';
-   LEGACY_RSAPRIVATE_BLOB :         PWideChar = 'CAPIPRIVATEBLOB';
-   LEGACY_RSAPUBLIC_BLOB :          PWideChar = 'CAPIPUBLICBLOB';
+   BCRYPT_RSAFULLPRIVATE_BLOB          : PWideChar = 'RSAFULLPRIVATEBLOB';
+   BCRYPT_RSAPRIVATE_BLOB              : PWideChar = 'RSAPRIVATEBLOB';
+   BCRYPT_RSAPUBLIC_BLOB               : PWideChar = 'RSAPUBLICBLOB';
+   LEGACY_RSAPRIVATE_BLOB              : PWideChar = 'CAPIPRIVATEBLOB';
+   LEGACY_RSAPUBLIC_BLOB               : PWideChar = 'CAPIPUBLICBLOB';
+
+   // String properties
+   BCRYPT_OPAQUE_KEY_BLOB              : PWideChar = 'OpaqueKeyBlob';
+   BCRYPT_KEY_DATA_BLOB                : PWideChar = 'KeyDataBlob';
+   BCRYPT_AES_WRAP_KEY_BLOB            : PWideChar = 'Rfc3565KeyWrapBlob';
+   BCRYPT_OBJECT_LENGTH                : PWideChar = 'ObjectLength';
+   BCRYPT_ALGORITHM_NAME               : PWideChar = 'AlgorithmName';
+   BCRYPT_PROVIDER_HANDLE              : PWideChar = 'ProviderHandle';
+   BCRYPT_CHAINING_MODE                : PWideChar = 'ChainingMode';
+   BCRYPT_BLOCK_LENGTH                 : PWideChar = 'BlockLength';
+   BCRYPT_KEY_LENGTH                   : PWideChar = 'KeyLength';
+   BCRYPT_KEY_OBJECT_LENGTH            : PWideChar = 'KeyObjectLength';
+   BCRYPT_KEY_STRENGTH                 : PWideChar = 'KeyStrength';
+   BCRYPT_KEY_LENGTHS                  : PWideChar = 'KeyLengths';
+   BCRYPT_BLOCK_SIZE_LIST              : PWideChar = 'BlockSizeList';
+   BCRYPT_EFFECTIVE_KEY_LENGTH         : PWideChar = 'EffectiveKeyLength';
+   BCRYPT_HASH_LENGTH                  : PWideChar = 'HashDigestLength';
+   BCRYPT_HASH_OID_LIST                : PWideChar = 'HashOIDList';
+   BCRYPT_PADDING_SCHEMES              : PWideChar = 'PaddingSchemes';
+   BCRYPT_SIGNATURE_LENGTH             : PWideChar = 'SignatureLength';
+   BCRYPT_HASH_BLOCK_LENGTH            : PWideChar = 'HashBlockLength';
+   BCRYPT_AUTH_TAG_LENGTH              : PWideChar = 'AuthTagLength';
+   BCRYPT_PRIMITIVE_TYPE               : PWideChar = 'PrimitiveType';
+   BCRYPT_IS_KEYED_HASH                : PWideChar = 'IsKeyedHash';
+   BCRYPT_INITIALIZATION_VECTOR        : PWideChar = 'IV';
+   BCRYPT_CHAIN_MODE_NA                : PWideChar = 'ChainingModeN/A';
+   BCRYPT_CHAIN_MODE_CBC               : PWideChar = 'ChainingModeCBC';
+   BCRYPT_CHAIN_MODE_ECB               : PWideChar = 'ChainingModeECB';
+   BCRYPT_CHAIN_MODE_CFB               : PWideChar = 'ChainingModeCFB';
+   BCRYPT_CHAIN_MODE_CCM               : PWideChar = 'ChainingModeCCM';
+   BCRYPT_CHAIN_MODE_GCM               : PWideChar = 'ChainingModeGCM';
+   BCRYPT_DH_PARAMETERS                : PWideChar = 'DHParameters';
+   BCRYPT_DSA_PARAMETERS               : PWideChar = 'DSAParameters';
 
 function BCryptOpenAlgorithmProvider(
       out hAlgorithm: TBCryptHandle; pszAlgId, pszImplementation: PWideChar;
@@ -172,7 +205,7 @@ function BCryptImportKeyPair(
       ): NTSTATUS; stdcall; external 'bcrypt.dll';
 function BCryptExportKey(
       hKey: THandle; hExportKey: THandle; pszBlobType: PWideChar;
-      pbOutput: Pointer; cbOutput: Cardinal; out pcbResult: Cardinal;
+      pbOutput: Pointer; cbOutput: Cardinal; out cbResult: Cardinal;
       dwFlags: Cardinal
       ): NTSTATUS; stdcall; external 'bcrypt.dll';
 function BCryptDestroyKey(
@@ -187,6 +220,32 @@ function BCryptSignHash(
 function BCryptVerifySignature(
       hKey: TBCryptHandle; pPaddingInfo: Pointer;
       pbHash: Pointer; cbHash: Cardinal; pbSignature: Pointer; cbSignature: Cardinal;
+      dwFlags: Cardinal
+      ): NTSTATUS; stdcall; external 'bcrypt.dll';
+
+function BCryptEncrypt(
+      hKey: TBCryptHandle;
+      pbInput: Pointer; cbInput: Cardinal;
+      pPaddingInfo: Pointer;
+      pbIV: Pointer; cbIV: Cardinal;
+      pbOutput: Pointer; cbOutput: Cardinal;
+      out cbResult: Cardinal;
+      dwFlags: Cardinal
+      ): NTSTATUS; stdcall; external 'bcrypt.dll';
+function BCryptDecrypt(
+      hKey: TBCryptHandle;
+      pbInput: Pointer; cbInput: Cardinal;
+      pPaddingInfo: Pointer;
+      pbIV: Pointer; cbIV: Cardinal;
+      pbOutput: Pointer; cbOutput: Cardinal;
+      out cbResult: Cardinal;
+      dwFlags: Cardinal
+      ): NTSTATUS; stdcall; external 'bcrypt.dll';
+
+function BCryptGetProperty(
+      hObject: TBCryptHandle; pszProperty: PWideChar;
+      pbOutput: Pointer; cbOutput: Cardinal;
+      out cbResult: Cardinal;
       dwFlags: Cardinal
       ): NTSTATUS; stdcall; external 'bcrypt.dll';
 

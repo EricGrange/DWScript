@@ -54,6 +54,14 @@ type
                              const signature : RawByteString) : Boolean;
 
          function ExportJSON : String;
+
+         function Encrypt(const data : RawByteString;
+                          const paddingAlgorithm : String;
+                          const initializationVector : RawByteString) : RawByteString;
+         function Decrypt(const data : RawByteString;
+                          const paddingAlgorithm : String;
+                          const initializationVector : RawByteString) : RawByteString;
+         function BlockLength : Cardinal;
    end;
 
    EdwsRSAKeyException = class (Exception);
@@ -323,6 +331,104 @@ begin
    finally
       wr.Free;
    end;
+end;
+
+// Encrypt
+//
+function TdwsRSAKey.Encrypt(const data : RawByteString;
+                            const paddingAlgorithm : String;
+                            const initializationVector : RawByteString) : RawByteString;
+var
+   paddingInfo : Pointer;
+   flags : Cardinal;
+   outputSize : Cardinal;
+begin
+   if not (FKeyType in [ TdwsRSAKeyType.PublicKey, TdwsRSAKeyType.PrivateKey ]) then
+      raise EdwsRSAKeyException.Create('A public or private key is required to encrypt');
+
+   if paddingAlgorithm = '' then begin
+      paddingInfo := nil;
+      flags := 0;
+   end else if paddingAlgorithm = 'PKCS1' then begin
+      paddingInfo := nil;
+      flags := BCRYPT_PAD_PKCS1;
+   end else raise EdwsRSAKeyException.CreateFmt('Unsupported encryption padding "%s"', [ paddingAlgorithm ]);
+
+   BCryptCheck(
+      BCryptEncrypt(
+         FKeyHandle, Pointer(data), Length(data),
+         paddingInfo, Pointer(initializationVector), Length(initializationVector),
+         nil, 0, outputSize, flags
+      ),
+      'RSAKey.Encrypt.Size'
+   );
+
+   SetLength(Result, outputSize);
+   BCryptCheck(
+      BCryptEncrypt(
+         FKeyHandle, Pointer(data), Length(data),
+         paddingInfo, Pointer(initializationVector), Length(initializationVector),
+         Pointer(Result), outputSize, outputSize, flags
+      ),
+      'RSAKey.Encrypt.Perform'
+   );
+end;
+
+// Decrypt
+//
+function TdwsRSAKey.Decrypt(const data : RawByteString;
+                            const paddingAlgorithm : String;
+                            const initializationVector : RawByteString) : RawByteString;
+var
+   paddingInfo : Pointer;
+   flags : Cardinal;
+   outputSize : Cardinal;
+begin
+   if FKeyType <> TdwsRSAKeyType.PrivateKey then
+      raise EdwsRSAKeyException.Create('A private key is required to decrypt');
+
+   if paddingAlgorithm = '' then begin
+      paddingInfo := nil;
+      flags := 0;
+   end else if paddingAlgorithm = 'PKCS1' then begin
+      paddingInfo := nil;
+      flags := BCRYPT_PAD_PKCS1;
+   end else raise EdwsRSAKeyException.CreateFmt('Unsupported decryption padding "%s"', [ paddingAlgorithm ]);
+
+   BCryptCheck(
+      BCryptDecrypt(
+         FKeyHandle, Pointer(data), Length(data),
+         paddingInfo, Pointer(initializationVector), Length(initializationVector),
+         nil, 0, outputSize, flags
+      ),
+      'RSAKey.Decrypt.Size'
+   );
+
+   SetLength(Result, outputSize);
+   BCryptCheck(
+      BCryptDecrypt(
+         FKeyHandle, Pointer(data), Length(data),
+         paddingInfo, Pointer(initializationVector), Length(initializationVector),
+         Pointer(Result), outputSize, outputSize, flags
+      ),
+      'RSAKey.Decrypt.Perform'
+   );
+end;
+
+// BlockLength
+//
+function TdwsRSAKey.BlockLength : Cardinal;
+var
+   outputSize : Cardinal;
+begin
+   BCryptCheck(
+      BCryptGetProperty(
+         FKeyHandle, BCRYPT_BLOCK_LENGTH,
+         @Result, SizeOf(Result), outputSize, 0
+      ),
+      'RSAKey.BlockLength'
+   );
+   Assert(outputSize = SizeOf(Result));
 end;
 
 end.

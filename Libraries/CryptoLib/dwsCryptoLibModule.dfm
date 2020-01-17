@@ -693,6 +693,50 @@ object dwsCryptoLib: TdwsCryptoLib
             ResultType = 'String'
             OnEval = dwsCryptoClassesTRSAKeyMethodsExportJSONEval
             Kind = mkFunction
+          end
+          item
+            Name = 'Encrypt'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end
+              item
+                Name = 'paddingAlgorithm'
+                DataType = 'String'
+              end
+              item
+                Name = 'initializationVector'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            OnEval = dwsCryptoClassesTRSAKeyMethodsEncryptEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'Decrypt'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end
+              item
+                Name = 'paddingAlgorithm'
+                DataType = 'String'
+              end
+              item
+                Name = 'initializationVector'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            OnEval = dwsCryptoClassesTRSAKeyMethodsDecryptEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'BlockLength'
+            ResultType = 'Integer'
+            OnEval = dwsCryptoClassesTRSAKeyMethodsBlockLengthEval
+            Kind = mkFunction
           end>
         OnCleanUp = dwsCryptoClassesTRSAKeyCleanUp
       end>

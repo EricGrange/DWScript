@@ -115,6 +115,12 @@ type
       ExtObject: TObject);
     procedure dwsCryptoClassesTRSAKeyMethodsExportJSONEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsCryptoClassesTRSAKeyMethodsEncryptEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsCryptoClassesTRSAKeyMethodsBlockLengthEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsCryptoClassesTRSAKeyMethodsDecryptEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
     FNonces : TdwsTokenStore;
@@ -371,6 +377,28 @@ procedure TdwsCryptoLib.dwsCryptoClassesTRSAKeyMethodsDestroyKeyEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    (ExtObject as TdwsRSAKey).DestroyKey;
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesTRSAKeyMethodsBlockLengthEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger := (ExtObject as TdwsRSAKey).BlockLength;
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesTRSAKeyMethodsDecryptEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString := (ExtObject as TdwsRSAKey).Decrypt(
+      Info.ParamAsDataString[0], Info.ParamAsString[1], Info.ParamAsDataString[2]
+   );
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesTRSAKeyMethodsEncryptEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString := (ExtObject as TdwsRSAKey).Encrypt(
+      Info.ParamAsDataString[0], Info.ParamAsString[1], Info.ParamAsDataString[2]
+   );
 end;
 
 procedure TdwsCryptoLib.dwsCryptoClassesTRSAKeyMethodsExportJSONEval(
