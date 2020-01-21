@@ -7738,7 +7738,8 @@ var
 constructor TAssociativeArraySymbol.Create(const name : String; elementType, keyType : TTypeSymbol);
 begin
    inherited Create(name, elementType);
-   FKeyType:=keyType;
+   FKeyType := keyType;
+   FSize := 1;
 end;
 
 // Destroy
