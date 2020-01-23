@@ -9,10 +9,12 @@ end;
 
 PrintIJ;
 
-i:=i;
-j:=j;
+i := j;
+j := i;
 
 PrintIJ;
+
+i := 0;
 
 i:=i-1;
 j:=j+1;

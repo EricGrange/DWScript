@@ -376,6 +376,7 @@ const
   CPH_ReferenceTypeParamAsConst = '"%s" parameter is a reference type passed as CONST';
   CPH_UnitAlreadyReferred = 'Unit "%s" redeclared';
   CPH_UnitAlreadyReferredInInterface = 'Unit "%s" already declared in interface section';
+  CPH_AssigningToItself = 'Assigning %s to itself';
 
   CPH_OfObjectIsLegacy = 'OF OBJECT modifier is legacy and ignored';
   CPE_OfObjectExpected = 'OF OBJECT expected';

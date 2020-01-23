@@ -1,0 +1,4 @@
+Hint: Assigning a to itself [line: 2, column: 3]
+Hint: Assigning a to itself [line: 6, column: 6]
+Hint: Assigning TTest.F to itself [line: 12, column: 32]
+Hint: Assigning f to itself [line: 13, column: 45]

@@ -1,3 +1,4 @@
+Hint: Assigning s to itself [line: 15, column: 2]
 Syntax Error: Incompatible types: Cannot assign "Float" to "String" [line: 16, column: 2]
 Syntax Error: Incompatible types: Cannot assign "Integer" to "String" [line: 17, column: 2]
 Syntax Error: Incompatible types: Cannot assign "String" to "Float" [line: 19, column: 2]

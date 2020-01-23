@@ -6775,13 +6775,35 @@ function TdwsCompiler.ReadAssign(token : TTokenType; var left : TDataExpr) : TPr
 var
    hotPos : TScriptPos;
    right : TTypedExpr;
+
+   procedure CheckAssigningToSelf;
+   var
+      leftSymbol : TSymbol;
+   begin
+      if left.ClassType = right.ClassType then begin
+         if left is TVarExpr then begin
+            leftSymbol := TDataExpr(left).DataSymbol;
+            if (leftSymbol <> nil) and (leftSymbol = TDataExpr(right).DataSymbol) then
+               FMsgs.AddCompilerHintFmt(hotPos, CPH_AssigningToItself, [ leftSymbol.QualifiedName ])
+         end else if left is TFieldExpr then begin
+            leftSymbol := TFieldExpr(left).FieldSym;
+            if (leftSymbol <> nil) and (leftSymbol = TFieldExpr(right).FieldSym) then
+               FMsgs.AddCompilerHintFmt(hotPos, CPH_AssigningToItself, [ leftSymbol.QualifiedName ])
+         end;
+      end;
+   end;
+
 begin
-   hotPos:=FTok.HotPos;
-   right:=nil;
+   hotPos := FTok.HotPos;
+   right := nil;
    try
-      right:=ReadExpr(left.Typ);
-      Result:=CreateAssign(hotPos, token, left, right);
-      left:=nil;
+      right := ReadExpr(left.Typ);
+      // only check self assignment when no error have occurred, it is too sensitive otherwise
+      if (token = ttASSIGN) and not FMsgs.HasErrors then
+         CheckAssigningToSelf;
+
+      Result := CreateAssign(hotPos, token, left, right);
+      left := nil;
    except
       OrphanAndNil(left);
       OrphanAndNil(right);
