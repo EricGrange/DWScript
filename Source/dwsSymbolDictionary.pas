@@ -34,7 +34,7 @@ type
      suImplicit indicates that the symbol was only implicitly present
      suRTTI indicates explicit RTTI access of the symbol }
    TSymbolUsage = (suForward, suDeclaration, suImplementation, suReference,
-                   suRead, suWrite, suImplicit, suRTTI );
+                   suRead, suWrite, suImplicit, suRTTI, suString );
    TSymbolUsages = set of TSymbolUsage;
 
    TdwsSymbolDictionary = class;
@@ -596,6 +596,8 @@ begin
    end;
 
    // add the instance of the symbol to the position list
+   if sym.name ='action' then
+      symPosList.Add(scriptPos, useTypes);
    symPosList.Add(scriptPos, useTypes);
 end;
 

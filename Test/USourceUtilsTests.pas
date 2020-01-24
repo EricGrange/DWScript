@@ -60,6 +60,7 @@ type
          procedure NormalizeMagics;
          procedure NormalizeForVarIn;
          procedure NormalizeKeywords;
+         procedure NormalizeEscapedNames;
          procedure OptimizedIfThenBlockSymbol;
          procedure MemberVisibilities;
          procedure UnitNamesSuggest;
@@ -1389,6 +1390,46 @@ begin
               'var b := True; begin if not B then b := False else b := nil <> nil; end;'#13#10
             + 'while b do break;'#13#10
             + 'for var i := 0 to 1 do case I of 1 : ; else end;'#13#10,
+            lines.Text
+         );
+      finally
+         normalizer.Free;
+      end;
+   finally
+      lines.Free;
+   end;
+end;
+
+// NormalizeEscapedNames
+//
+procedure TSourceUtilsTests.NormalizeEscapedNames;
+var
+   prog : IdwsProgram;
+   lines : TStringList;
+   normalizer : TTestNormalizer;
+begin
+   lines := TStringList.Create;
+   try
+      lines.Text := 'var t := record "Hello" : String; &World : Boolean; end;'#13#10
+                  + 't.hello := "a";'#13#10
+                  + 't.&hello := "b";'#13#10
+                  + 't.world := True;'#13#10
+                  + 't.&world := False;'#13#10;
+
+      prog := FCompiler.Compile(lines.Text);
+
+      Check(prog.Msgs.Count = 0, Prog.Msgs.AsInfo);
+
+      normalizer := TTestNormalizer.Create;
+      try
+         NormalizeSymbolsCase(lines, prog.SourceList[0].SourceFile, prog.SymbolDictionary,
+                              normalizer.Normalize);
+         CheckEquals(
+              'var t := record "Hello" : String; &World : Boolean; end;'#13#10
+            + 't.Hello := "a";'#13#10
+            + 't.&Hello := "b";'#13#10
+            + 't.World := True;'#13#10
+            + 't.&World := False;'#13#10,
             lines.Text
          );
       finally

@@ -86,7 +86,7 @@ procedure NormalizeSymbolsCase(sourceLines : TStrings; sourceFile : TSourceFile;
                                symbolDictionary : TdwsSymbolDictionary;
                                const onNormalize : TCaseNormalizerEvent = nil);
 var
-   i, j : Integer;
+   i, j, col : Integer;
    symPosList : TSymbolPositionList;
    symPos : TSymbolPosition;
    locations : TSymbolLocations;
@@ -102,17 +102,24 @@ begin
          for j:=0 to symPosList.Count-1 do begin
             symPos:=symPosList[j];
             if suImplicit in symPos.SymbolUsages then continue;
+            if suDeclaration in symPos.SymbolUsages then continue;
             if symPos.ScriptPos.SourceFile<>sourceFile then continue;
             if symPosList.Symbol.Name='' then continue;
 
-            symbol:=symPosList.Symbol;
-            occurence := Copy(sourceLines[symPos.ScriptPos.Line-1], symPos.ScriptPos.Col, Length(symbol.Name));
+            symbol := symPosList.Symbol;
+
+            col := symPos.ScriptPos.Col;
+            line := sourceLines[symPos.ScriptPos.Line-1];
+            if (col < Length(line)) and (line[col] = '&') then
+               Inc(col);
+
+            occurence := Copy(line, col, Length(symbol.Name));
             if occurence <> symbol.Name then begin
                Assert(UnicodeSameText(symbol.Name, occurence), symPos.ScriptPos.AsInfo);
-               location:=TSymbolLocation.Create;
-               location.Line:=symPos.ScriptPos.Line;
-               location.Col:=symPos.ScriptPos.Col;
-               location.Symbol:=symbol;
+               location := TSymbolLocation.Create;
+               location.Line := symPos.ScriptPos.Line;
+               location.Col := col;
+               location.Symbol := symbol;
                locations.Add(location);
             end;
          end;
