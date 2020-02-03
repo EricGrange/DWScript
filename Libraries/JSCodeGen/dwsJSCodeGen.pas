@@ -2612,7 +2612,7 @@ var
    begin
       if not declaredOne then begin
          WriteString('var ');
-         declaredOne:=True;
+         declaredOne := True;
       end else begin
          if cgoOptimizeForSize in Options then
             WriteString(',')
@@ -2641,7 +2641,7 @@ begin
             if varSym.HasExternalName then continue;
             IssueSeparator;
             WriteSymbolName(varSym);
-            if varSym.Typ.ClassType=TBaseVariantSymbol then begin
+            if varSym.Typ.ClassType = TBaseVariantSymbol then begin
                // undefined is JS default for unassigned var
             end else begin
                WriteString(' = ');
@@ -3274,6 +3274,7 @@ begin
 
       // optimize to a straight "return" statement for trivial functions
       if     (not resultIsBoxed) and (proc.DataSize = 0)
+         and (proc.Table.Count = 0)
          and ((proc.InitExpr = nil) or (proc.InitExpr.SubExprCount = 0)) then begin
 
          assignExpr := ProcExprIfResultAssignment(proc);
