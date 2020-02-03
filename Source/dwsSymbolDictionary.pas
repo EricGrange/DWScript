@@ -596,8 +596,6 @@ begin
    end;
 
    // add the instance of the symbol to the position list
-   if sym.name ='action' then
-      symPosList.Add(scriptPos, useTypes);
    symPosList.Add(scriptPos, useTypes);
 end;
 
