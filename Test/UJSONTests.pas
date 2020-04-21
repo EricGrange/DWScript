@@ -96,6 +96,7 @@ type
          procedure DecimalSeparator;
 
          procedure JSONPathBasic;
+         procedure JSONPathObjectArray;
          procedure JSONPathFails;
    end;
 
@@ -1242,6 +1243,35 @@ begin
 
       CheckPath(' .books [ 2 ] .title ',
                 '["JavaScript: The Good Parts"]');
+   finally
+      js.Free;
+   end;
+end;
+
+// JSONPathObjectArray
+//
+procedure TdwsJSONTests.JSONPathObjectArray;
+var
+   js : TdwsJSONValue;
+
+   procedure CheckPath(const query, expected : String);
+   var
+      list : TdwsJSONValueList;
+   begin
+      list := JSONPath.Query(query, js);
+      try
+         CheckEquals(expected, list.ToUnicodeString, query);
+      finally
+         list.Free;
+      end;
+   end;
+
+begin
+   js := TdwsJSONValue.ParseString('[{"ID":"alpha"},{"ID":"beta"}]');
+   try
+      CheckPath('.ID', '["alpha","beta"]');
+      CheckPath('..ID', '["alpha","beta"]');
+      CheckPath('."0".ID', '["alpha"]');
    finally
       js.Free;
    end;

@@ -100,11 +100,14 @@ type
    JSONPath = class
 
       class function Query(const aQuery : String; aJSON : TdwsJSONValue) : TdwsJSONValueList; overload; static;
-      class function Query(const aQuery, aJSON : String) : TdwsJSONValueList; overload; static;
+      class function Query(const aQuery, aJSON : String) : TdwsJSONValueList; overload; static; deprecated;
 
    end;
 
    EJSONPathException = class (Exception) end;
+
+function AcquireFromJSONCache(const json : String) : TdwsJSONValue;
+procedure ReleaseToJSONCache(const json : String; jv : TdwsJSONValue);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -115,7 +118,7 @@ implementation
 // ------------------------------------------------------------------
 
 const
-   cJSONCacheMaxSize = 128*1024;
+   cJSONCacheMaxSize = 256*1024;
 
 var
    vJSONCacheLock : TMultiReadSingleWrite;
@@ -141,19 +144,21 @@ var
    i : Integer;
 begin
    Result := nil;
-   h := vJSONCache.HashName(json);
-   vJSONCacheLock.BeginWrite;
-   try
-      i := vJSONCache.BucketHashedIndex[json, h];
-      if i >= 0 then begin
-         Result := vJSONCache.BucketObject[i] as TdwsJSONValue;
-         if Result <> nil then begin
-            vJSONCache.Objects[json] := nil;
-            Dec(vJSONCacheSize, Length(json));
+   if Length(json) < cJSONCacheMaxSize div 2 then begin
+      h := vJSONCache.HashName(json);
+      vJSONCacheLock.BeginWrite;
+      try
+         i := vJSONCache.BucketHashedIndex[json, h];
+         if i >= 0 then begin
+            Result := vJSONCache.BucketObject[i] as TdwsJSONValue;
+            if Result <> nil then begin
+               vJSONCache.Objects[json] := nil;
+               Dec(vJSONCacheSize, Length(json));
+            end;
          end;
+      finally
+         vJSONCacheLock.EndWrite;
       end;
-   finally
-      vJSONCacheLock.EndWrite;
    end;
    if Result = nil then
       Result := TdwsJSONValue.ParseString(UnicodeString(json));
