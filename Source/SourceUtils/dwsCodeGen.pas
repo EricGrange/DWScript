@@ -23,7 +23,7 @@ uses
    Classes, SysUtils,
    dwsUtils, dwsSymbols, dwsExprs, dwsCoreExprs, dwsDataContext, dwsConstExprs,
    dwsStrings, dwsUnitSymbols, dwsErrors, dwsRTTIFunctions, dwsSymbolDictionary,
-   dwsContextMap;
+   dwsContextMap, dwsCompilerContext;
 
    // experimental codegen support classes for DWScipt
 
@@ -300,6 +300,7 @@ type
 
          property Context : TdwsProgram read FContext;
          property ContextSymbolDictionary : TdwsSymbolDictionary read FContextSymbolDictionary;
+         function CompilerContext : TdwsCompilerContext;
 
          property LocalTable : TSymbolTable read FLocalTable write FLocalTable;
          property SymbolMap : TdwsCodeGenSymbolMap read FSymbolMap;
@@ -597,6 +598,15 @@ begin
    if FContext<>nil then
       Result:=FContext.Root.DefaultLocalizer
    else Result:=nil;
+end;
+
+// CompilerContext
+//
+function TdwsCodeGen.CompilerContext : TdwsCompilerContext;
+begin
+   if FContext <> nil then
+      Result := FContext.Root.CompilerContext
+   else Result := nil;
 end;
 
 // Compile

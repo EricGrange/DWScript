@@ -508,6 +508,11 @@ type
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
+   TJSAssociativeArrayKeysExpr = class (TJSAssociativeArrayExpr)
+      public
+         procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
    TJSAssociativeArrayContainsKeyExpr = class (TJSExprCodeGen)
       public
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
@@ -1373,10 +1378,10 @@ begin
    RegisterCodeGen(TAssociativeArrayValueKeyGetExpr,  TJSAssociativeArrayGetExpr.Create);
    RegisterCodeGen(TAssociativeArraySetExpr,          TJSAssociativeArraySetExpr.Create);
    RegisterCodeGen(TAssociativeArrayValueSetExpr,     TJSAssociativeArraySetExpr.Create);
-   RegisterCodeGen(TAssociativeArrayLengthExpr, TdwsExprGenericCodeGen.Create(['Object.keys', '(', 0, ')', '.length']));
-   RegisterCodeGen(TAssociativeArrayClearExpr,  TdwsExprGenericCodeGen.Create(['$Delete', '(', 0, ')'], gcgStatement, '$Delete'));
-   RegisterCodeGen(TAssociativeArrayDeleteExpr, TdwsExprGenericCodeGen.Create(['(delete ', 0, '[', 1, ']', ')']));
-   RegisterCodeGen(TAssociativeArrayKeysExpr,   TdwsExprGenericCodeGen.Create(['Object.keys', '(', 0, ')']));
+   RegisterCodeGen(TAssociativeArrayLengthExpr,       TdwsExprGenericCodeGen.Create(['Object.keys', '(', 0, ')', '.length']));
+   RegisterCodeGen(TAssociativeArrayClearExpr,        TdwsExprGenericCodeGen.Create(['$Delete', '(', 0, ')'], gcgStatement, '$Delete'));
+   RegisterCodeGen(TAssociativeArrayDeleteExpr,       TdwsExprGenericCodeGen.Create(['(delete ', 0, '[', 1, ']', ')']));
+   RegisterCodeGen(TAssociativeArrayKeysExpr,         TJSAssociativeArrayKeysExpr.Create);
    RegisterCodeGen(TAssociativeArrayContainsKeyExpr, TJSAssociativeArrayContainsKeyExpr.Create);
 
    RegisterCodeGen(TStringLengthExpr,
@@ -5591,6 +5596,35 @@ begin
    codeGen.WriteString(']=');
    codeGen.CompileNoWrap(e.ValueExpr);
    codeGen.WriteStatementEnd;
+end;
+
+// ------------------
+// ------------------ TJSAssociativeArrayKeysExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSAssociativeArrayKeysExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TAssociativeArrayKeysExpr;
+   itemTyp : TTypeSymbol;
+begin
+   e := TAssociativeArrayKeysExpr(expr);
+
+   codeGen.WriteString('Object.keys(');
+   codeGen.CompileNoWrap(e.Expr);
+   codeGen.WriteString(')');
+   itemTyp := e.Typ.Typ;
+   if itemTyp.IsOfType(codeGen.CompilerContext.TypInteger) then
+      codeGen.WriteString('.map(parseInt)')
+   else if itemTyp.IsOfType(codeGen.CompilerContext.TypFloat) then
+      codeGen.WriteString('.map(parseFloat)')
+   else begin
+      Assert(
+         itemTyp.IsOfType(codeGen.CompilerContext.TypString),
+         'Unsupported codegen Keys type: '+ itemTyp.Caption
+      );
+   end;
 end;
 
 // ------------------
