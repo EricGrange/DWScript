@@ -5616,9 +5616,9 @@ begin
    codeGen.WriteString(')');
    itemTyp := e.Typ.Typ;
    if itemTyp.IsOfType(codeGen.CompilerContext.TypInteger) then
-      codeGen.WriteString('.map(parseInt)')
+      codeGen.WriteString('.map(x => parseInt(x))')
    else if itemTyp.IsOfType(codeGen.CompilerContext.TypFloat) then
-      codeGen.WriteString('.map(parseFloat)')
+      codeGen.WriteString('.map(x => parseFloat(x))')
    else begin
       Assert(
          itemTyp.IsOfType(codeGen.CompilerContext.TypString),
