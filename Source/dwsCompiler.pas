@@ -6787,8 +6787,11 @@ var
                FMsgs.AddCompilerHintFmt(hotPos, CPH_AssigningToItself, [ leftSymbol.QualifiedName ])
          end else if left is TFieldExpr then begin
             leftSymbol := TFieldExpr(left).FieldSym;
-            if (leftSymbol <> nil) and (leftSymbol = TFieldExpr(right).FieldSym) then
-               FMsgs.AddCompilerHintFmt(hotPos, CPH_AssigningToItself, [ leftSymbol.QualifiedName ])
+            if     (leftSymbol <> nil)
+               and (leftSymbol = TFieldExpr(right).FieldSym)
+               and TFieldExpr(left).ObjectExpr.SameDataExpr(TFieldExpr(right).ObjectExpr) then begin
+               FMsgs.AddCompilerHintFmt(hotPos, CPH_AssigningToItself, [ leftSymbol.QualifiedName ]);
+            end;
          end;
       end;
    end;
