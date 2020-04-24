@@ -5736,7 +5736,9 @@ begin
 
       if FTok.TestDeleteAnyNamePos(name, namePos) then begin
 
-         baseType:=expr.BaseType;
+         if expr <> nil then
+            baseType := expr.BaseType
+         else baseType := nil;
 
          if (baseType<>nil) and FCompilerContext.HelperMemberNames.Contains(name) then begin
             helperExpr:=ReadTypeHelper(expr as TTypedExpr,
@@ -5874,7 +5876,7 @@ begin
             Result:=ReadSetOfMethod(name, namePos, expr as TTypedExpr);
 
          // enumeration element symbol
-         end else if expr.Typ.UnAliasedTypeIs(TEnumerationSymbol) then begin
+         end else if (expr <> nil) and expr.Typ.UnAliasedTypeIs(TEnumerationSymbol) then begin
 
             Result:=nil;
             Result:=ReadElementMethod(name, namePos, expr as TTypedExpr);
