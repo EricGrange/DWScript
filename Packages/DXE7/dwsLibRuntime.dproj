@@ -1,0 +1,178 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{E849D2B5-6FEC-4AFF-8720-7CBF1B2939D0}</ProjectGuid>
+        <MainSource>dwsLibRuntime.dpk</MainSource>
+        <Base>True</Base>
+        <Config Condition="'$(Config)'==''">Debug</Config>
+        <TargetedPlatforms>5249</TargetedPlatforms>
+        <AppType>Package</AppType>
+        <FrameworkType>VCL</FrameworkType>
+        <ProjectVersion>18.7</ProjectVersion>
+        <Platform Condition="'$(Platform)'==''">Win32</Platform>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='Android' and '$(Base)'=='true') or '$(Base_Android)'!=''">
+        <Base_Android>true</Base_Android>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Base)'=='true') or '$(Base_Win32)'!=''">
+        <Base_Win32>true</Base_Win32>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_1)'!=''">
+        <Cfg_1>true</Cfg_1>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Debug' or '$(Cfg_2)'!=''">
+        <Cfg_2>true</Cfg_2>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base)'!=''">
+        <DCC_E>false</DCC_E>
+        <DCC_F>false</DCC_F>
+        <DCC_K>false</DCC_K>
+        <DCC_N>false</DCC_N>
+        <DCC_S>false</DCC_S>
+        <DCC_ImageBase>00400000</DCC_ImageBase>
+        <GenDll>true</GenDll>
+        <GenPackage>true</GenPackage>
+        <SanitizedProjectName>dwsLibRuntime</SanitizedProjectName>
+        <DCC_Description>DelphiWebScript Runtime</DCC_Description>
+        <RuntimeOnlyPackage>true</RuntimeOnlyPackage>
+        <DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
+        <DllSuffix>XE7</DllSuffix>
+        <DCC_Namespace>Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;System;Xml;Data;Datasnap;Web;Soap;DUnitX.Loggers.GUI;Winapi;System.Win;$(DCC_Namespace)</DCC_Namespace>
+        <VerInfo_Locale>1033</VerInfo_Locale>
+        <VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=;CFBundleName=</VerInfo_Keys>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base_Android)'!=''">
+        <VerInfo_Keys>package=com.embarcadero.$(MSBuildProjectName);label=$(MSBuildProjectName);versionCode=1;versionName=1.0.0;persistent=False;restoreAnyVersion=False;installLocation=auto;largeHeap=False;theme=TitleBar;hardwareAccelerated=true;apiKey=</VerInfo_Keys>
+        <BT_BuildType>Debug</BT_BuildType>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base_Win32)'!=''">
+        <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
+        <BT_BuildType>Debug</BT_BuildType>
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+        <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName)</VerInfo_Keys>
+        <VerInfo_Locale>1033</VerInfo_Locale>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Cfg_1)'!=''">
+        <DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
+        <DCC_DebugInformation>0</DCC_DebugInformation>
+        <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
+        <DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Cfg_2)'!=''">
+        <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
+        <DCC_Optimize>false</DCC_Optimize>
+        <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
+    </PropertyGroup>
+    <ItemGroup>
+        <DelphiCompile Include="$(MainSource)">
+            <MainSource>MainSource</MainSource>
+        </DelphiCompile>
+        <DCCReference Include="vcl.dcp"/>
+        <DCCReference Include="rtl.dcp"/>
+        <DCCReference Include="..\..\Source\dwsComConnector.pas"/>
+        <DCCReference Include="..\..\Source\dwsStrings.pas"/>
+        <DCCReference Include="..\..\Source\dwsSymbols.pas"/>
+        <DCCReference Include="..\..\Source\dwsUnitSymbols.pas"/>
+        <DCCReference Include="..\..\Source\dwsTimeFunctions.pas"/>
+        <DCCReference Include="..\..\Source\dwsTokenizer.pas"/>
+        <DCCReference Include="..\..\Source\dwsVariantFunctions.pas"/>
+        <DCCReference Include="..\..\Source\dwsVCLGUIFunctions.pas"/>
+        <DCCReference Include="..\..\Source\dwsComp.pas"/>
+        <DCCReference Include="..\..\Source\dwsCompiler.pas"/>
+        <DCCReference Include="..\..\Source\dwsDebugger.pas"/>
+        <DCCReference Include="..\..\Source\dwsErrors.pas"/>
+        <DCCReference Include="..\..\Source\dwsExprs.pas"/>
+        <DCCReference Include="..\..\Source\dwsInfo.pas"/>
+        <DCCReference Include="..\..\Source\dwsDateTime.pas"/>
+        <DCCReference Include="..\..\Source\dwsGlobalVarsFunctions.pas"/>
+        <DCCReference Include="..\..\Source\dwsMathFunctions.pas"/>
+        <DCCReference Include="..\..\Source\dwsStack.pas"/>
+        <DCCReference Include="..\..\Source\dwsStringFunctions.pas"/>
+        <DCCReference Include="..\..\Source\dwsCoreExprs.pas"/>
+        <DCCReference Include="..\..\Source\dwsUtils.pas"/>
+        <DCCReference Include="..\..\Source\dwsXPlatform.pas"/>
+        <DCCReference Include="..\..\Source\dwsFileSystem.pas"/>
+        <DCCReference Include="..\..\Source\dwsHtmlFilter.pas"/>
+        <DCCReference Include="..\..\Source\dwsLanguageExtension.pas"/>
+        <DCCReference Include="..\..\Source\dwsMagicExprs.pas"/>
+        <DCCReference Include="..\..\Source\dwsRelExprs.pas"/>
+        <DCCReference Include="..\..\source\dwsStringResult.pas"/>
+        <DCCReference Include="..\..\Source\dwsJSON.pas"/>
+        <DCCReference Include="..\..\Source\dwsJSONConnector.pas"/>
+        <DCCReference Include="..\..\Source\dwsOperators.pas"/>
+        <DCCReference Include="..\..\Source\dwsSystemOperators.pas"/>
+        <DCCReference Include="..\..\Source\dwsPascalTokenizer.pas"/>
+        <DCCReference Include="..\..\Source\dwsRTTIConnector.pas"/>
+        <DCCReference Include="..\..\Source\dwsXPlatformUI.pas"/>
+        <DCCReference Include="..\..\Source\dwsCompilerUtils.pas"/>
+        <DCCReference Include="..\..\Source\dwsConnectorExprs.pas"/>
+        <DCCReference Include="..\..\Source\dwsConstExprs.pas"/>
+        <DCCReference Include="..\..\Source\dwsConvExprs.pas"/>
+        <DCCReference Include="..\..\Source\dwsDataContext.pas"/>
+        <DCCReference Include="..\..\Source\dwsExprList.pas"/>
+        <DCCReference Include="..\..\Source\dwsMethodExprs.pas"/>
+        <DCCReference Include="..\..\Source\dwsConnectorSymbols.pas"/>
+        <DCCReference Include="..\..\Source\dwsResultFunctions.pas"/>
+        <DCCReference Include="..\..\Source\dwsSetOfExprs.pas"/>
+        <DCCReference Include="..\..\Source\dwsWebUtils.pas"/>
+        <DCCReference Include="..\..\Source\dwsFunctions.pas"/>
+        <DCCReference Include="..\..\Source\dwsExternalSymbols.pas"/>
+        <DCCReference Include="..\..\Source\dwsGlobalVars.pas"/>
+        <DCCReference Include="..\..\Libraries\asmLib\dwsAsmLibModule.pas"/>
+        <DCCReference Include="..\..\Libraries\ClassesLib\dwsClasses.pas"/>
+        <DCCReference Include="..\..\Libraries\ClassesLib\dwsClassesLibModule.pas">
+            <Form>dwsClassesLib</Form>
+            <DesignClass>TDataModule</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\..\Libraries\ClassesLib\dwsHashtables.pas"/>
+        <DCCReference Include="..\..\Libraries\SymbolsLib\dwsSymbolsLibModule.pas">
+            <Form>dwsSymbolsLib</Form>
+            <DesignClass>TDataModule</DesignClass>
+        </DCCReference>
+        <BuildConfiguration Include="Debug">
+            <Key>Cfg_2</Key>
+            <CfgParent>Base</CfgParent>
+        </BuildConfiguration>
+        <BuildConfiguration Include="Base">
+            <Key>Base</Key>
+        </BuildConfiguration>
+        <BuildConfiguration Include="Release">
+            <Key>Cfg_1</Key>
+            <CfgParent>Base</CfgParent>
+        </BuildConfiguration>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Delphi.Personality.12</Borland.Personality>
+        <Borland.ProjectType>Package</Borland.ProjectType>
+        <BorlandProject>
+            <Delphi.Personality>
+                <Source>
+                    <Source Name="MainSource">dwsLibRuntime.dpk</Source>
+                </Source>
+            </Delphi.Personality>
+            <Platforms>
+                <Platform value="Android">False</Platform>
+                <Platform value="iOSDevice32">False</Platform>
+                <Platform value="iOSDevice64">True</Platform>
+                <Platform value="iOSSimulator">False</Platform>
+                <Platform value="Linux64">True</Platform>
+                <Platform value="OSX64">True</Platform>
+                <Platform value="Win32">True</Platform>
+                <Platform value="Win64">False</Platform>
+            </Platforms>
+        </BorlandProject>
+        <ProjectFileVersion>12</ProjectFileVersion>
+    </ProjectExtensions>
+    <Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
+    <Import Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj" Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')"/>
+</Project>
