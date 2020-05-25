@@ -1,0 +1,2 @@
+Assertion failed [line: 4, column: 4] : empty
+Assertion failed [line: 20, column: 4] : ok

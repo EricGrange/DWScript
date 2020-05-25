@@ -13706,8 +13706,10 @@ begin
 
       case specialKind of
          skAssert : begin
-            if not argTyp.IsOfType(FCompilerContext.TypBoolean) then
-               FMsgs.AddCompilerError(argPos, CPE_BooleanExpected);
+            argExpr := TConvExpr.WrapWithConvCast(
+               FCompilerContext, argPos,
+               FCompilerContext.TypBoolean, argExpr, CPE_BooleanExpected
+            );
             if FTok.TestDelete(ttCOMMA) then begin
                FTok.HasTokens;
                argPos:=FTok.HotPos;
