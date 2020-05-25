@@ -69,6 +69,7 @@ const
   SYS_EXTERNAL_ARRAY = '[]';
 
   SYS_JSON_STRINGIFY = 'Stringify';
+  SYS_JSON_PRETTY_STRINGIFY = 'PrettyStringify';
 
   // Compiler switches
   SWI_INCLUDE_LONG = 'INCLUDE';
