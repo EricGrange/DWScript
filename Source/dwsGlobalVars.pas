@@ -637,7 +637,8 @@ begin
             gv:=TGlobalVar(vGVPool.Acquire);
             gv.Expire:=cNoExpire;
             map.Objects[h, aName]:=gv;
-         end;
+         end else if gv.Expire<t then
+            gv.Expire:=cNoExpire;
          gv.Value:=value;
       end;
    finally
