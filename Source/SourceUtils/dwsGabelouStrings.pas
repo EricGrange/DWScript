@@ -32,8 +32,11 @@ const
    GAB_PrefixedClassVariables_Name = 'Prefixed class variables';
    GAB_PrefixedClassVariables_Description = 'Class variables whould be prefixed by "v" followed by PascalCase';
 
-   GAB_PrefixedFields_Name = 'Prefixed fields';
-   GAB_PrefixedFields_Description = 'Private or protected fields should start with "F" followed by PascalCase. Public fields should follow PascalCase.';
+   GAB_PrefixedPrivateFields_Name = 'Prefixed private fields';
+   GAB_PrefixedPrivateFields_Description = 'Private or protected fields should start with "F" followed by PascalCase.';
+
+   GAB_PrefixedPublicFields_Name = 'Prefixed public fields';
+   GAB_PrefixedPublicFields_Description = 'Public fields should follow PascalCase.';
 
    GAB_ConstsNamingRules_Name = 'Constant naming rules';
    GAB_ConstsNamingRules_Description = 'Constant names should either start with a "c" followed by PascalCase or be ALL_CAPS up to the first "_"';
