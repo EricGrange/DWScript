@@ -257,6 +257,12 @@ type
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
    end;
 
+   // TJSONPrettyStringifyMethod
+   //
+   TJSONPrettyStringifyMethod = class (TInternalMagicStringFunction)
+      procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
+   end;
+
    // TJSONSerializeMethod
    //
    TJSONSerializeMethod = class(TInternalMagicVariantFunction)
@@ -608,6 +614,10 @@ begin
    );
    TJSONStringifyUTF8Method.Create(
       table, SYS_JSON_STRINGIFY_UTF8, ['val', SYS_ANY_TYPE], SYS_STRING,
+      [iffStateLess, iffStaticMethod], jsonObject
+   );
+   TJSONPrettyStringifyMethod.Create(
+      table, SYS_JSON_PRETTY_STRINGIFY, ['val', SYS_ANY_TYPE, 'indent=#9', SYS_STRING], SYS_STRING,
       [iffStateLess, iffStaticMethod], jsonObject
    );
 
@@ -1599,6 +1609,17 @@ begin
    JSONScript.StringifyArgs(args, Result);
    bufUTF8 := UTF8Encode(Result);
    RawByteStringToScriptString(bufUTF8, Result);
+end;
+
+// ------------------
+// ------------------ TJSONPrettyStringifyMethod ------------------
+// ------------------
+
+// DoEvalAsString
+//
+procedure TJSONPrettyStringifyMethod.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+begin
+   JSONScript.PrettyStringifyArgs(args, Result);
 end;
 
 // ------------------

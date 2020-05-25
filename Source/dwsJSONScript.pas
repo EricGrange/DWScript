@@ -31,6 +31,7 @@ type
    JSONScript = class {static sealed}
       class procedure StringifyExpr(expr : TTypedExpr; exec : TdwsExecution; writer : TdwsJSONWriter); static;
       class procedure StringifyArgs(const args : TExprBaseListExec; var Result : String); static;
+      class procedure PrettyStringifyArgs(const args : TExprBaseListExec; var Result : String); static;
 
       class procedure StringifyVariant(exec : TdwsExecution; writer : TdwsJSONWriter; const v : Variant); static;
       class procedure StringifyUnknown(exec : TdwsExecution; writer : TdwsJSONWriter;
@@ -96,6 +97,23 @@ var
    expr : TTypedExpr;
 begin
    writer:=TdwsJSONWriter.Create;
+   try
+      expr:=(args.ExprBase[0] as TTypedExpr);
+      StringifyExpr(expr, args.Exec, writer);
+      Result:=writer.ToString;
+   finally
+      writer.Free;
+   end;
+end;
+
+// PrettyStringifyArgs
+//
+class procedure JSONScript.PrettyStringifyArgs(const args : TExprBaseListExec; var Result : String);
+var
+   writer : TdwsJSONWriter;
+   expr : TTypedExpr;
+begin
+   writer := TdwsJSONBeautifiedWriter.Create(nil, 0, 1, args.AsString[1]);
    try
       expr:=(args.ExprBase[0] as TTypedExpr);
       StringifyExpr(expr, args.Exec, writer);

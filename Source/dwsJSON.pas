@@ -104,8 +104,10 @@ type
    //
    TdwsJSONBeautifiedWriter = class (TdwsJSONWriter)
       private
-         FTabs : Integer;
-         FIndent : Integer;
+         FSpaces : Integer;
+         FSpacesPerIndent : Integer;
+         FSpaceCharacter : String;
+         FIndents : String;
 
          procedure WriteIndents;
          procedure EnterIndent;
@@ -115,7 +117,7 @@ type
          procedure BeforeWriteImmediate; override;
 
       public
-         constructor Create(aStream : TWriteOnlyBlockStream; initialTabs, indentTabs : Integer);
+         constructor Create(aStream : TWriteOnlyBlockStream; initialSpaces, spacesPerIndent : Integer; const spaceCharacter : String = #9);
 
          procedure BeginObject; override;
          procedure EndObject; override;
@@ -3019,32 +3021,52 @@ end;
 
 // Create
 //
-constructor TdwsJSONBeautifiedWriter.Create(aStream : TWriteOnlyBlockStream; initialTabs, indentTabs : Integer);
+constructor TdwsJSONBeautifiedWriter.Create(aStream : TWriteOnlyBlockStream; initialSpaces, spacesPerIndent : Integer; const spaceCharacter : String = #9);
 begin
    inherited Create(aStream);
-   FTabs:=initialTabs;
-   FIndent:=indentTabs;
+   FSpaces := initialSpaces;
+   FSpacesPerIndent := spacesPerIndent;
+   FSpaceCharacter := spaceCharacter;
 end;
 
 // WriteIndents
 //
 procedure TdwsJSONBeautifiedWriter.WriteIndents;
+
+   procedure PrepareIndents;
+   begin
+   end;
+
+var
+   target, current : Integer;
 begin
-   FStream.WriteString(UnicodeString(StringOfChar(#9, FTabs)));
+   target := FSpaces * FSpacesPerIndent * FSpaceCharacter.Length;
+   current := Length(FIndents);
+   if current <> target then begin
+      if current > target then
+         SetLength(FIndents, target)
+      else while current < target do begin
+         FIndents := FIndents + FSpaceCharacter;
+         current := Length(FIndents);
+      end;
+   end;
+
+   if target > 0 then
+      FStream.WriteString(FIndents);
 end;
 
 // EnterIndent
 //
 procedure TdwsJSONBeautifiedWriter.EnterIndent;
 begin
-   Inc(FTabs, FIndent);
+   Inc(FSpaces, FSpacesPerIndent);
 end;
 
 // LeaveIndent
 //
 procedure TdwsJSONBeautifiedWriter.LeaveIndent;
 begin
-   Dec(FTabs, FIndent);
+   Dec(FSpaces, FSpacesPerIndent);
    if FState in [wsObjectName, wsArrayValue] then begin
       FStream.WriteString(#13#10);
       WriteIndents;
