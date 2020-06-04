@@ -169,6 +169,8 @@ type
          FOnCustomCodeGen : TdwsCustomCodeGenEvent;
 
       protected
+         property Output : TWriteOnlyBlockStream read FOutput;
+
          property SymbolDictionary : TdwsSymbolDictionary read FSymbolDictionary;
 
          procedure EnterContext(proc : TdwsProgram); virtual;
@@ -271,9 +273,11 @@ type
          procedure WriteBlockBegin(const prefix : String); virtual;
          procedure WriteBlockEnd; virtual;
          procedure WriteBlockEndLn;
+         procedure WriteBoolean(v : Boolean); virtual; abstract;
          procedure WriteLiteralString(const s : String); virtual; abstract;
          procedure WriteFloat(const v : Double; const fmt : TFormatSettings); virtual; abstract;
-         procedure WriteInteger(v : Int64);
+         procedure WriteInteger(v : Int64); virtual;
+         procedure WriteVariant(typ : TTypeSymbol; const v : Variant); virtual; abstract;
 
          procedure WriteSymbolName(sym : TSymbol; scope : TdwsCodeGenSymbolScope = cgssGlobal);
 
@@ -306,7 +310,6 @@ type
          property SymbolMap : TdwsCodeGenSymbolMap read FSymbolMap;
          property OutputLineOffset : Integer read FOutputLineOffset write FOutputLineOffset;
          property OutputLine : Integer read FOutputLine;
-         property Output : TWriteOnlyBlockStream read FOutput;
 
          property IndentChar : Char read FIndentChar write FIndentChar;
          property IndentSize : Integer read FIndentSize write FIndentSize;
@@ -1186,7 +1189,8 @@ end;
 //
 procedure TdwsCodeGen.WriteIndent;
 begin
-   FOutput.WriteString(FIndentString);
+   if not (cgoOptimizeForSize in Options) then
+      FOutput.WriteString(FIndentString);
 end;
 
 // WriteIndentIfNeeded
@@ -1259,8 +1263,8 @@ end;
 procedure TdwsCodeGen.WriteLineEnd;
 begin
    Inc(FOutputLine);
-   FOutput.WriteString(#13#10);
-   FNeedIndent:=True;
+   FOutput.WriteString(#10);
+   FNeedIndent := True;
 end;
 
 // WriteStatementEnd

@@ -807,7 +807,8 @@ var
 begin
    if valueExpr.Typ <> nil then begin
       typSize := valueExpr.Typ.Size;
-      Assert(arrayExpr.Typ.Typ.Size = typSize);
+      if typSize > 0 then
+         Assert(arrayExpr.Typ.Typ.Size = typSize, 'Mismtached element size at ' + scriptPos.AsInfo);
    end else typSize :=  1;
    if typSize = 1 then
       if arrayExpr is TObjectVarExpr then

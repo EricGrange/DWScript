@@ -783,6 +783,8 @@ type
          procedure WriteDigits(value : Int64; digits : Integer); overload;
          procedure WriteDigits(value : Cardinal; digits : Integer); overload;
 
+         function TailWord : Word;
+
          function ToString : String; override; final;
          function ToUnicodeString : UnicodeString;
          function ToUTF8String : RawByteString;
@@ -4915,6 +4917,30 @@ begin
    end;
 
    WriteBuf(@buf[n], (Length(buf)-n)*SizeOf(WideChar));
+end;
+
+// TailWord
+//
+function TWriteOnlyBlockStream.TailWord : Word;
+var
+   n : Integer;
+   iter : PPointerArray;
+begin
+   if FTotalSize = 0 then Exit(0);
+
+   n := FBlockRemaining^;
+   if n > 1 then
+      Exit(PWord(@PByteArray(@FCurrentBlock[2])[n-2])^)
+   else begin
+      Result := 0;
+      iter := FFirstBlock;
+      while iter <> nil do begin
+         n := PInteger(@iter[1])^;
+         if n > 1 then
+            Result := PWord(@PByteArray(@iter[2])[n-2])^;
+         iter := iter[0];
+      end;
+   end;
 end;
 
 // WriteDigits

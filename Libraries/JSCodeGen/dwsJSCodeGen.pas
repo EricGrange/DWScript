@@ -25,9 +25,9 @@ uses
    dwsUtils, dwsSymbols, dwsCodeGen, dwsTextCodeGen, dwsCoreExprs, dwsDataContext,
    dwsExprs, dwsRelExprs, dwsJSON, dwsMagicExprs, dwsStrings, dwsMethodExprs,
    dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs, dwsCompilerUtils,
-   dwsJSLibModule, dwsJSMin, dwsFunctions, dwsGlobalVarsFunctions, dwsErrors,
+   dwsJSLibModule, dwsFunctions, dwsGlobalVarsFunctions, dwsErrors,
    dwsRTTIFunctions, dwsConstExprs, dwsInfo, dwsScriptSource, dwsSymbolDictionary,
-   dwsUnicode, dwsExprList, dwsXXHash, dwsCodeGenWriters, dwsCompilerContext;
+   dwsUnicode, dwsExprList, dwsXXHash, dwsCodeGenWriters, dwsCompi3lerContext;
 
 type
 
@@ -80,9 +80,7 @@ type
          procedure WriteDefaultValue(typ : TTypeSymbol; box : Boolean);
          procedure WriteValue(typ : TTypeSymbol; const dataPtr : IDataContext);
          procedure WriteValueData(typ : TTypeSymbol; const data : TData);
-         procedure WriteVariant(typ : TTypeSymbol; const v : Variant);
-         procedure WriteStringArray(destStream : TWriteOnlyBlockStream; strings : TStrings); overload;
-         procedure WriteStringArray(strings : TStrings); overload;
+         procedure WriteStringArray(strings : TStrings);
 
          procedure WriteFuncParams(func : TFuncSymbol);
 
@@ -131,8 +129,11 @@ type
 
          procedure WriteSymbolVerbosity(sym : TSymbol); override;
 
+         procedure WriteBoolean(v : Boolean); override;
          procedure WriteLiteralString(const s : String); override;
+         procedure WriteInteger(v : Int64); override;
          procedure WriteFloat(const v : Double; const fmt : TFormatSettings); override;
+         procedure WriteVariant(typ : TTypeSymbol; const v : Variant); override;
 
          function MemberName(sym : TSymbol; cls : TCompositeTypeSymbol) : String;
 
@@ -865,12 +866,11 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsJSRTL, dwsJSSymbolWriters
+uses dwsJSRTL, dwsJSSymbolWriters, dwsJSMin
    {$ifdef JS_BIGINTEGER}, dwsJSBigInteger, dwsBigIntegerFunctions.GMP{$endif}
    ;
 
 const
-   cBoolToJSBool : array [False..True] of String = ('false', 'true');
    cFormatSettings : TFormatSettings = ( DecimalSeparator : '.' );
 
 const
@@ -1636,7 +1636,7 @@ begin
          elem:=enum.Elements[i] as TElementSymbol;
          if i>0 then
             WriteString(', ');
-         WriteJavaScriptString(Output, elem.Name);
+         WriteLiteralString(elem.Name);
       end;
       WriteString(' ]');
 
@@ -1651,7 +1651,7 @@ begin
             WriteString(IntToStr(elem.Value))
          else WriteString('"'+IntToStr(elem.Value)+'"');
          WriteString(':');
-         WriteJavaScriptString(Output, elem.Name);
+         WriteLiteralString(elem.Name);
       end;
       WriteString(' }');
 
@@ -1907,7 +1907,7 @@ begin
                WriteString('}, A: { ClassType: '+SYS_RTTIPROPERTYATTRIBUTE);
 
                WriteString(', N: ');
-               WriteJavaScriptString(Output, propSym.Name);
+               WriteLiteralString(propSym.Name);
 
                WriteString(', T: {ID:');
                CompileRTTISymbolName(propSym.Typ);
@@ -1948,7 +1948,7 @@ begin
                WriteString('}, A: { ClassType: '+SYS_RTTIPROPERTYATTRIBUTE);
 
                WriteString(', N: ');
-               WriteJavaScriptString(Output, fieldSym.Name);
+               WriteLiteralString(fieldSym.Name);
 
                WriteString(', T: {ID:');
                CompileRTTISymbolName(fieldSym.Typ);
@@ -1972,7 +1972,7 @@ begin
                WriteString('}, A: { ClassType: '+SYS_RTTIMETHODATTRIBUTE);
 
                WriteString(', N: ');
-               WriteJavaScriptString(Output, methSym.Name);
+               WriteLiteralString(methSym.Name);
 
                if methSym.Typ<>nil then begin
                   WriteString(', T: {ID:');
@@ -2793,7 +2793,7 @@ begin
             InsertDependency(jsRTL)
          else if dependency='$ConditionalDefines' then begin
             destStream.WriteString('var $ConditionalDefines=');
-            WriteStringArray(destStream, (prog as TdwsProgram).Root.ConditionalDefines.Value);
+            WriteStringArray((prog as TdwsProgram).Root.ConditionalDefines.Value);
             destStream.WriteString(';'#13#10);
          end;
          Dependencies.List.Delete(i);
@@ -2907,8 +2907,22 @@ procedure TdwsJSCodeGen.WriteSymbolVerbosity(sym : TSymbol);
    end;
 
 begin
-   if Verbosity>cgovNone then
+   if (Verbosity > cgovNone) and not (cgoOptimizeForSize in Options) then
       DoWrite;
+end;
+
+// WriteBoolean
+//
+procedure TdwsJSCodeGen.WriteBoolean(v : Boolean);
+begin
+   if cgoOptimizeForSize in Options then
+      if v then
+         WriteString('!0')
+      else WriteString('!1')
+   else
+      if v then
+         WriteString('true')
+      else WriteString('false');
 end;
 
 // WriteLiteralString
@@ -2919,17 +2933,39 @@ begin
    dwsJSON.WriteJavaScriptString(Output, s);
 end;
 
+// WriteInteger
+//
+procedure TdwsJSCodeGen.WriteInteger(v : Int64);
+begin
+   if (v < 0) and (Output.TailWord = Ord('-')) then begin
+      WriteString('(');
+      inherited WriteInteger(v);
+      WriteString(')');
+   end else begin
+      inherited WriteInteger(v);
+   end;
+end;
+
 // WriteFloat
 //
 procedure TdwsJSCodeGen.WriteFloat(const v : Double; const fmt : TFormatSettings);
+var
+   wrap : Boolean;
 begin
    if IsNan(v) then
       WriteString('NaN')
-   else if IsInfinite(v) then
-      if v>0 then
-         WriteString('Infinity')
-      else WriteString('(-Infinity)')
-   else WriteString(FloatToStr(v, fmt));
+   else begin
+      wrap := (v < 0) and (Output.TailWord = Ord('-'));
+      if wrap then
+         WriteString('(');
+      if IsInfinite(v) then begin
+         if v > 0 then
+            WriteString('Infinity')
+         else WriteString('-Infinity')
+      end else WriteString(FloatToStr(v, fmt));
+      if wrap then
+         WriteString(')');
+   end;
 end;
 
 // CollectLocalVars
@@ -3159,7 +3195,7 @@ begin
       varString, varUString, varOleStr :
          WriteLiteralString(v);
       varBoolean :
-         WriteString(cBoolToJSBool[Boolean(v)]);
+         WriteBoolean(v);
       varUnknown :
          if TVarData(v).VUnknown=nil then
             WriteString('null')
@@ -3173,24 +3209,17 @@ end;
 
 // WriteStringArray
 //
-procedure TdwsJSCodeGen.WriteStringArray(destStream  : TWriteOnlyBlockStream; strings : TStrings);
+procedure TdwsJSCodeGen.WriteStringArray(strings : TStrings);
 var
    i : Integer;
 begin
-   destStream.WriteString('[');
+   WriteString('[');
    for i:=0 to strings.Count-1 do begin
       if i<>0 then
-         destStream.WriteString(',');
-      dwsJSON.WriteJavaScriptString(destStream, strings[i]);
+         WriteString(',');
+      WriteLiteralString(strings[i]);
    end;
-   destStream.WriteString(']');
-end;
-
-// WriteStringArray
-//
-procedure TdwsJSCodeGen.WriteStringArray(strings : TStrings);
-begin
-   WriteStringArray(Output, strings);
+   WriteString(']');
 end;
 
 // WriteFuncParams
@@ -4227,8 +4256,8 @@ procedure TJSAssignConstToBoolVarExpr.CodeGenRight(CodeGenRight : TdwsCodeGen; e
 var
    e : TAssignConstToBoolVarExpr;
 begin
-   e:=TAssignConstToBoolVarExpr(expr);
-   CodeGenRight.WriteString(cBoolToJSBool[e.Right]);
+   e := TAssignConstToBoolVarExpr(expr);
+   CodeGenRight.WriteBoolean(e.Right);
 end;
 
 // ------------------
@@ -4467,7 +4496,7 @@ var
    e : TConstBooleanExpr;
 begin
    e:=TConstBooleanExpr(expr);
-   codeGen.WriteString(cBoolToJSBool[e.Value]);
+   codeGen.WriteBoolean(e.Value);
 end;
 
 // ------------------
@@ -5667,7 +5696,7 @@ begin
    e:=TInOpExpr(expr);
 
    if e.Count=0 then begin
-      codeGen.WriteString(cBoolToJSBool[false]);
+      codeGen.WriteBoolean(False);
       Exit;
    end;
 
@@ -8341,12 +8370,11 @@ end;
 //
 function TJSAddOpExpr.WriteOperator(codeGen : TdwsCodeGen; rightExpr : TTypedExpr) : Boolean;
 begin
-   Result := False;
    if rightExpr is TConstExpr then begin
       // right operand will write a minus
-      if rightExpr.EvalAsFloat(nil) < 0 then Exit;
+      if rightExpr.EvalAsFloat(nil) < 0 then Exit(False);
    end;
-   codeGen.WriteString(FOp);
+   Result := inherited WriteOperator(codeGen, rightExpr);
 end;
 
 // ------------------
@@ -8364,16 +8392,21 @@ end;
 //
 function TJSSubOpExpr.WriteOperator(codeGen : TdwsCodeGen; rightExpr : TTypedExpr) : Boolean;
 begin
-   if (rightExpr is TConstExpr) and (rightExpr.EvalAsFloat(nil)<0) then begin
+   if (rightExpr is TConstExpr) and (rightExpr.EvalAsFloat(nil) < 0) then begin
+
       // right operand would write a minus
-      codeGen.WriteString('+');
+      if cgoOptimizeForSize in codeGen.Options then
+         codeGen.WriteString('+')
+      else codeGen.WriteString(' + ');
+
       if rightExpr is TConstIntExpr then
          codeGen.WriteInteger(-TConstIntExpr(rightExpr).Value)
       else codeGen.WriteFloat(-rightExpr.EvalAsFloat(nil), cFormatSettings);
+
       Result := True;
+
    end else begin
-      codeGen.WriteString(FOp);
-      Result := False;
+      Result := inherited WriteOperator(codeGen, rightExpr);
    end;
 end;
 
@@ -8405,7 +8438,7 @@ begin
       raise ECodeGenUnknownExpression.Create('Declared Expr with non-constant parameter');
    e.Expr.EvalAsString(nil, name);
    sym:=TDeclaredExpr.FindSymbol(codeGen.Context.Table, name);
-   codeGen.WriteString(cBoolToJSBool[sym<>nil]);
+   codeGen.WriteBoolean(sym <> nil);
 end;
 
 // ------------------

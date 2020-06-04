@@ -1,0 +1,25 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+var a := 2;
+
+PrintLn(1 - (-2)*a);
+PrintLn(1 - (-2 + a));
+PrintLn(1 - a * -2);
+PrintLn(1 - (-2) div a);
+PrintLn(1 - (-2) / a);
+PrintLn(1 - (-2) - a);
+PrintLn(1 - (-2 - a));
+
+PrintLn(1 + (-2)*a);
+PrintLn(1 + (-2 + a));
+PrintLn(1 + a * -2);
+PrintLn(1 + (-2) div a);
+PrintLn(1 + (-2) / a);
+PrintLn(1 + (-2) - a);
+PrintLn(1 + (-2 - a));
+%>
+
+</script>

@@ -31,7 +31,7 @@ type
       constructor Create; reintroduce;
       procedure WriteDefaultValue(sym : TSymbol); override;
       procedure WriteValue(sym : TSymbol; const dataPtr : IDataContext); override;
-      class procedure WriteBigInteger(stream : TWriteOnlyBlockStream; const bi : IdwsBigInteger); static;
+      class procedure WriteBigInteger(codeGen : TdwsCodeGen; const bi : IdwsBigInteger); static;
    end;
 
    TJSBigIntegerBinOpExpr = class (TJSBinOpExpr)
@@ -79,7 +79,7 @@ end;
 //
 procedure TJSBaseBigIntegerSymbol.WriteDefaultValue(sym : TSymbol);
 begin
-   CodeGen.Output.WriteString('0n');
+   CodeGen.WriteString('0n');
 end;
 
 // WriteValue
@@ -89,16 +89,16 @@ var
    intf : IInterface;
 begin
    dataPtr.EvalAsInterface(0, intf);
-   TJSBaseBigIntegerSymbol.WriteBigInteger(CodeGen.Output, intf as IdwsBigInteger);
+   TJSBaseBigIntegerSymbol.WriteBigInteger(CodeGen, intf as IdwsBigInteger);
 end;
 
 // WriteBigInteger
 //
-class procedure TJSBaseBigIntegerSymbol.WriteBigInteger(stream : TWriteOnlyBlockStream; const bi : IdwsBigInteger);
+class procedure TJSBaseBigIntegerSymbol.WriteBigInteger(codeGen : TdwsCodeGen; const bi : IdwsBigInteger);
 begin
    if bi = nil then
-      stream.WriteString('0n')
-   else stream.WriteString(bi.ToStringBase(10)+'n');
+      codeGen.WriteString('0n')
+   else codeGen.WriteString(bi.ToStringBase(10)+'n');
 end;
 
 // ------------------
@@ -179,7 +179,7 @@ begin
       rightExpr.EvalAsInterface(nil, bi);
       if (bi as IdwsBigInteger).Sign < 0 then begin
          codeGen.WriteString('+');
-         TJSBaseBigIntegerSymbol.WriteBigInteger(codeGen.Output, (bi as IdwsBigInteger).ToNeg);
+         TJSBaseBigIntegerSymbol.WriteBigInteger(codeGen, (bi as IdwsBigInteger).ToNeg);
          Exit(True);
       end;
    end;
@@ -216,7 +216,7 @@ var
 begin
    if expr.IsConstant then begin
       expr.EvalAsInterface(nil, bi);
-      TJSBaseBigIntegerSymbol.WriteBigInteger(codeGen.Output, bi as IdwsBigInteger);
+      TJSBaseBigIntegerSymbol.WriteBigInteger(codeGen, bi as IdwsBigInteger);
    end else begin
       codeGen.WriteString('BigInt(Math.trunc(');
       codeGen.CompileNoWrap(expr as TTypedExpr);

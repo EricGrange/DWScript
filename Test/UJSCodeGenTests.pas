@@ -274,7 +274,7 @@ end;
 procedure TJSCodeGenTests.Execution;
 var
    source : TStringList;
-   i, k, ignored : Integer;
+   i, ignored : Integer;
    prog : IdwsProgram;
    jscode : String;
 //   fileName : String;

@@ -51,6 +51,7 @@ type
          procedure WOBSBigFirstTest;
          procedure WOBSBigSecondTest;
          procedure WOBSToStream;
+         procedure WOBSTailByte;
          procedure TightListTest;
          procedure TightListEnumerator;
          procedure LookupTest;
@@ -373,6 +374,32 @@ begin
       finally
          ms.Free;
       end;
+   finally
+      wobs.Free;
+   end;
+end;
+
+// WOBSTailByte
+//
+procedure TdwsUtilsTests.WOBSTailByte;
+var
+   wobs : TWriteOnlyBlockStream;
+begin
+   wobs := TWriteOnlyBlockStream.Create;
+   try
+      CheckEquals(0, wobs.TailWord);
+      wobs.WriteChar(Chr(1));
+      CheckEquals(1, wobs.TailWord);
+      wobs.WriteDWord($02030405);
+      CheckEquals($0203, wobs.TailWord);
+      wobs.WriteString(StringOfChar(Chr(127), cWriteOnlyBlockStreamBlockSize));
+      CheckEquals(Ord(Chr(127)), wobs.TailWord);
+      wobs.WriteChar(Chr(255));
+      CheckEquals(255, wobs.TailWord);
+      wobs.WriteString(StringOfChar(Chr(254), cWriteOnlyBlockStreamBlockSize));
+      CheckEquals(Ord(Chr(254)), wobs.TailWord);
+      wobs.WriteString('hello');
+      CheckEquals(Ord('o'), wobs.TailWord);
    finally
       wobs.Free;
    end;
