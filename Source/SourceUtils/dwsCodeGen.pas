@@ -125,6 +125,12 @@ type
 
    TdwsCustomCodeGenEvent = function (expr : TExprBase) : TdwsExprCodeGen of object;
 
+   TdwsOutputStackItem = record
+      Stream : TWriteOnlyBlockStream;
+      Line : Integer;
+   end;
+   TdwsOutputStack = TSimpleStack<TdwsOutputStackItem>;
+
    TdwsCodeGen = class
       private
          FCodeGenList : TdwsRegisteredCodeGenList;
@@ -168,6 +174,8 @@ type
 
          FOnCustomCodeGen : TdwsCustomCodeGenEvent;
 
+         FOutputStack : TdwsOutputStack;
+
       protected
          property Output : TWriteOnlyBlockStream read FOutput;
 
@@ -184,6 +192,9 @@ type
 //         function  EnterStructScope(struct : TCompositeTypeSymbol) : Integer;
 //         procedure LeaveScopes(n : Integer);
 //         function  IsScopeLevel(symbol : TSymbol) : Boolean;
+
+         procedure EnterOutput(destStream : TWriteOnlyBlockStream);
+         procedure LeaveOutput;
 
          procedure RaiseUnknowExpression(expr : TExprBase);
 
@@ -414,6 +425,11 @@ end;
 //
 destructor TdwsCodeGen.Destroy;
 begin
+   if FOutputStack <> nil then begin
+      Assert(FOutputStack.Count = 0);
+      FOutputStack.Free;
+   end;
+
    Clear;
    FRootSymbolMap.Free;
    FTempReg.Free;
@@ -585,6 +601,37 @@ procedure TdwsCodeGen.ClearOutput;
 begin
    FOutputLine:=1;
    FOutput.Clear;
+end;
+
+// EnterOutput
+//
+procedure TdwsCodeGen.EnterOutput(destStream : TWriteOnlyBlockStream);
+var
+   item : TdwsOutputStackItem;
+begin
+   if FOutputStack = nil then
+      FOutputStack := TdwsOutputStack.Create;
+   item.Stream := FOutput;
+   item.Line := FOutputLine;
+   FOutputStack.Push(item);
+   if FOutput <> destStream then
+      FOutputLine := 1;
+   FOutput := destStream;
+end;
+
+// LeaveOutput
+//
+procedure TdwsCodeGen.LeaveOutput;
+var
+   item : TdwsOutputStackItem;
+begin
+   Assert(FOutputStack <> nil);
+   Assert(FOutputStack.Count > 0);
+   item := FOutputStack.Peek;
+   FOutputStack.Pop;
+   if FOutput <> item.Stream then
+      FOutputLine := item.Line;
+   FOutput := item.Stream;
 end;
 
 // CreateDataContext
