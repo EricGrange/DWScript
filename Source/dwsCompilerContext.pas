@@ -112,7 +112,7 @@ implementation
 
 uses Variants,
    dwsExprs, dwsUnifiedConstants, dwsConstExprs, dwsOperators, dwsCompilerUtils,
-   dwsSpecialKeywords;
+   dwsSpecialKeywords, dwsConvExprs;
 
 // ------------------
 // ------------------ TdwsCompilerContext ------------------
@@ -266,6 +266,14 @@ begin
          TObject(expr) := typedExpr;
          if Optimize then
             TObject(expr) := typedExpr.OptimizeToTypedExpr(Self, scriptPos);
+      end else if     toTyp.UnAliasedTypeIs(TDynamicArraySymbol) and (typedExpr is TArrayConstantExpr)
+                  and toTyp.UnAliasedType.Typ.SameType(typedExpr.Typ.UnaliasedType.Typ) then begin
+         Result := True;
+         typedExpr := TConvStaticArrayToDynamicExpr.Create(
+            Self, scriptPos,
+            TArrayConstantExpr(typedExpr), TDynamicArraySymbol(toTyp.UnAliasedType)
+         );
+         TObject(expr) := typedExpr;
       end;
    end;
 end;
