@@ -96,11 +96,12 @@ type
    end;
 
    // Static Array to Dynamic Array
-   TConvStaticArrayToDynamicExpr = class (TUnaryOpExpr)
+   TConvStaticArrayToDynamicExpr = class sealed (TUnaryOpExpr)
       public
          constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
                             expr : TArrayConstantExpr; toTyp : TDynamicArraySymbol); reintroduce;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+         function GetIsConstant : Boolean; override;
    end;
 
    // ExternalClass(x)
@@ -522,6 +523,13 @@ begin
    dynArray.ReplaceData(data);
 
    VarCopySafe(Result, IScriptDynArray(dynArray));
+end;
+
+// GetIsConstant
+//
+function TConvStaticArrayToDynamicExpr.GetIsConstant : Boolean;
+begin
+   Result := False;
 end;
 
 // ------------------

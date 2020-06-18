@@ -2942,7 +2942,7 @@ begin
                   CurrentProg.Table.AddSymbol(sas);
                end;
                if expr is TConstExpr then begin
-                  Result:=factory.CreateConstSymbol(name, constPos, sas, TConstExpr(expr).Data);
+                  Result := factory.CreateConstSymbol(name, constPos, sas, TConstExpr(expr).Data);
                end else begin
                   (expr as TArrayConstantExpr).EvalAsTData(FExec, recordData);
                   Result:=factory.CreateConstSymbol(name, constPos, sas, recordData);
@@ -7743,8 +7743,8 @@ var
    expr : TTypedExpr;
    hotPos : TScriptPos;
 begin
-   factory:=TStandardSymbolFactory.Create(Self);
-   Result:=TArrayConstantExpr.Create(FCompilerContext, FTok.HotPos);
+   factory := TStandardSymbolFactory.Create(Self);
+   Result := TArrayConstantExpr.Create(FCompilerContext, FTok.HotPos);
    try
       if expecting<>nil then
          itemExpecting:=expecting.Typ
@@ -9698,7 +9698,7 @@ var
    visibility : TdwsVisibility;
    tt : TTokenType;
 begin
-   Result:=TRecordSymbol.Create(typeName, CurrentUnitSymbol);
+   Result := TRecordSymbol.Create(typeName, CurrentUnitSymbol);
    try
       CurrentProg.Table.AddSymbol(Result); // auto-forward
       try
@@ -9767,9 +9767,11 @@ begin
 
       if not FTok.TestDelete(ttEND) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
-      if Result.Size=0 then
-         FMsgs.AddCompilerError(FTok.HotPos, RTE_NoRecordFields)
-      else;
+      if Result.Size = 0 then begin
+         // accept zero size for anonymous records, provided they actually have a field
+         if (Result.FirstField = nil) or (Result.Name <> '') then
+            FMsgs.AddCompilerError(FTok.HotPos, RTE_NoRecordFields);
+      end;
       CheckNoPendingAttributes;
 
       Result.IsFullyDefined:=True;
@@ -9839,7 +9841,9 @@ begin
                   if not FMsgs.HasErrors then begin
                      SetLength(exprData, typ.Size);
                      case typ.Size of
-                        0 : FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantInstruction);
+                        0 : // accept zero-size on anonymous structures (useful for JSON f.i.)
+                           if struct.Name <> '' then
+                              FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantInstruction);
                         1 : expr.EvalAsVariant(FExec, exprData[0]);
                      else
                         if expr.ClassType=TArrayConstantExpr then
