@@ -1,0 +1,16 @@
+a vs b
+True
+True
+True
+b vs c
+True
+True
+False
+a vs c
+True
+True
+False
+strict self
+True
+True
+True
