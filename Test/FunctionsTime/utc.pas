@@ -8,8 +8,8 @@ if delta=0 then
 // check delta is the same for all functions
 
 PrintLn(StrToDateDef('2010-01-01', 0, DateTimeZone.Local)-StrToDateDef('2010-01-01', 0, DateTimeZone.UTC)-delta);
-PrintLn(StrToDateTime('2010-01-01 12:34:56', DateTimeZone.Local)-StrToDateTime('2010-01-01 12:34:56', DateTimeZone.UTC)-delta);
-PrintLn(StrToDateTimeDef('2010-01-01 12:34:56', 0, DateTimeZone.Local)-StrToDateTimeDef('2010-01-01 12:34:56', 0, DateTimeZone.UTC)-delta);
+PrintLn( Round( 1000*( StrToDateTime('2010-01-01 12:34:56', DateTimeZone.Local)-StrToDateTime('2010-01-01 12:34:56', DateTimeZone.UTC)-delta )) );
+PrintLn( Round( 1000*( StrToDateTimeDef('2010-01-01 12:34:56', 0, DateTimeZone.Local)-StrToDateTimeDef('2010-01-01 12:34:56', 0, DateTimeZone.UTC)-delta)) );
 
 // roundtrip vs UTC delta second accuracy as time format does not include milliseconds
 

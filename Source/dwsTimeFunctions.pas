@@ -1,4 +1,4 @@
-{**********************************************************************}
+﻿{**********************************************************************}
 {                                                                      }
 {    "The contents of this file are subject to the Mozilla Public      }
 {    License Version 1.1 (the "License"); you may not use this         }
@@ -157,6 +157,10 @@ type
 
   TDecodeDateFunc = class(TInternalMagicProcedure)
     procedure DoEvalProc(const args : TExprBaseListExec); override;
+  end;
+
+  TEncodeDateTimeFunc = class(TInternalMagicFloatFunction)
+    procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
   end;
 
   TEncodeDateFunc = class(TInternalMagicFloatFunction)
@@ -624,7 +628,7 @@ end;
 
 procedure TIncMonthFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
-   Result:=IncMonth(args.AsFloat[0], args.AsInteger[1]);
+   Result:=args.FormatSettings.IncMonth(args.AsFloat[0], args.AsInteger[1], TdwsTimeZone(args.AsInteger[2]));
 end;
 
 { TDecodeDateFunc }
@@ -639,6 +643,15 @@ begin
   args.AsInteger[1] := y;
   args.AsInteger[2] := m;
   args.AsInteger[3] := d;
+end;
+
+{ TEncodeDateTimeFunc }
+
+procedure TEncodeDateTimeFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result:=args.FormatSettings.EncodeDateTime(args.AsInteger[0], args.AsInteger[1], args.AsInteger[2],
+                           args.AsInteger[3], args.AsInteger[4], args.AsInteger[5], args.AsInteger[6],
+                           TdwsTimeZone(args.AsInteger[7]));
 end;
 
 { TEncodeDateFunc }
@@ -936,6 +949,7 @@ initialization
    RegisterInternalBoolFunction(TIsLeapYearFunc, 'IsLeapYear', ['year', SYS_INTEGER]);
    RegisterInternalFloatFunction(TIncMonthFunc, 'IncMonth', ['dt', cDateTime, 'nb', SYS_INTEGER, 'utc=0', SYS_DATE_TIME_ZONE]);
    RegisterInternalProcedure(TDecodeDateFunc, 'DecodeDate', ['dt', cDateTime, '@y', SYS_INTEGER, '@m', SYS_INTEGER, '@d', SYS_INTEGER, 'utc=0', SYS_DATE_TIME_ZONE]);
+   RegisterInternalFloatFunction(TEncodeDateTimeFunc, 'EncodeDateTime', ['y', SYS_INTEGER, 'm', SYS_INTEGER, 'd', SYS_INTEGER, 'h', SYS_INTEGER, 'm', SYS_INTEGER, 's', SYS_INTEGER, 'ms', SYS_INTEGER, 'utc=0', SYS_DATE_TIME_ZONE]);
    RegisterInternalFloatFunction(TEncodeDateFunc, 'EncodeDate', ['y', SYS_INTEGER, 'm', SYS_INTEGER, 'd', SYS_INTEGER, 'utc=0', SYS_DATE_TIME_ZONE]);
    RegisterInternalProcedure(TDecodeTimeFunc, 'DecodeTime', ['dt', cDateTime, '@h', SYS_INTEGER, '@m', SYS_INTEGER, '@s', SYS_INTEGER, '@ms', SYS_INTEGER, 'utc=0', SYS_DATE_TIME_ZONE]);
    RegisterInternalFloatFunction(TEncodeTimeFunc, 'EncodeTime', ['h', SYS_INTEGER, 'm', SYS_INTEGER, 's', SYS_INTEGER, 'ms', SYS_INTEGER], [iffStateLess]);

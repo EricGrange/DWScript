@@ -21,7 +21,7 @@ unit dwsDateTime;
 interface
 
 uses
-   Classes, SysUtils,
+   Classes, SysUtils, DateUtils,
    dwsUtils, dwsXPlatform, dwsXXHash;
 
 type
@@ -51,9 +51,13 @@ type
          function TryStrToTime(const str : String; var dt : Double; tz : TdwsTimeZone) : Boolean;
 
          function TryEncodeDate(y, m, d : Integer; tz : TdwsTimeZone; var dt : Double) : Boolean;
+         function TryEncodeDateTime(y, m, d, h, n, s, ms : Integer; tz : TdwsTimeZone; var dt : Double) : Boolean;
+
+         function EncodeDateTime(y, m, d, h, n, s, ms : Integer; tz : TdwsTimeZone) : Double;
          function EncodeDate(y, m, d : Integer; tz : TdwsTimeZone) : Double;
 
          function YearOf(const dt : TDateTime) : Integer;
+         function IncMonth(dt : TDateTime; nbMonths : Integer; tz : TdwsTimeZone) : Double;
    end;
 
 // ------------------------------------------------------------------
@@ -452,8 +456,11 @@ begin
       raise EConvertError.Create('Invalid date/time');
    if tz = tzDefault then
       tz := TimeZone;
-   if tz = tzUTC then
+   if tz = tzUTC then begin
+      if Abs(dt) < 1 then
+         dt := Trunc(UTCDateTime) + dt;
       dt := UTCDateTimeToLocalDateTime(dt);
+   end;
 
    Result := TdwsDateTimeFormatter.Acquire(fmt).Apply(dt, Settings);
 end;
@@ -654,13 +661,10 @@ begin
    dt:=0;
    if     (Cardinal(hours)<24) and (Cardinal(minutes)<60)
       and (Cardinal(seconds)<60) and (Cardinal(msec)<1000) then begin
-      dth := (hours+(minutes+(seconds+msec*0.001)/60)/60)/24;
    	if (day or month or year)<>0 then begin
-         if TryEncodeDate(year, month, day, tz, dt) then begin
-            dt := dt + dth;
-            Result := True;
-         end;
+         Result := TryEncodeDateTime(year, month, day, hours, minutes, seconds, msec, tz, dt);
       end else begin
+         dth := (hours+(minutes+(seconds+msec*0.001)/60)/60)/24;
          if (tz=tzUTC) or ((tz=tzDefault) and (TimeZone=tzUTC)) then begin
             dt := Frac(LocalDateTimeToUTCDateTime(Trunc(Now) + dth));
          end else begin
@@ -701,12 +705,40 @@ end;
 //
 function TdwsFormatSettings.TryEncodeDate(y, m, d : Integer; tz : TdwsTimeZone; var dt : Double) : Boolean;
 begin
-   Result:=SysUtils.TryEncodeDate(y, m, d, TDateTime(dt));
-
+   Result := SysUtils.TryEncodeDate(y, m, d, TDateTime(dt));
    if tz = tzDefault then
       tz := TimeZone;
    if tz = tzUTC then
       dt := LocalDateTimeToUTCDateTime(dt);
+end;
+
+// TryEncodeDate
+//
+function TdwsFormatSettings.TryEncodeDateTime(y, m, d, h, n, s, ms : Integer; tz : TdwsTimeZone; var dt : Double) : Boolean;
+var
+   outDT, outT : TDateTime;
+begin
+   Result := SysUtils.TryEncodeDate(y, m, d, outDT) and SysUtils.TryEncodeTime(h, n, s, ms, outT);
+   if Result then begin
+      outDT := outDT + outT;
+      try
+         if tz = tzDefault then
+            tz := TimeZone;
+         if tz = tzUTC then
+            outDT := LocalDateTimeToUTCDateTime(outDT); // exception if local date is invalid
+         dt := outDT;
+      except
+         Result := False;
+      end;
+   end;
+end;
+
+// EncodeDateTime
+//
+function TdwsFormatSettings.EncodeDateTime(y, m, d, h, n, s, ms : Integer; tz : TdwsTimeZone) : Double;
+begin
+   if not TryEncodeDateTime(y, m, d, h, n, s, ms, tz, Result) then
+      raise EConvertError.Create('Invalid date/time');
 end;
 
 // EncodeDate
@@ -725,6 +757,31 @@ var
 begin
    DecodeDate(dt, y, m, d);
    Result := y;
+end;
+
+function TdwsFormatSettings.IncMonth(dt : TDateTime; nbMonths : Integer; tz : TdwsTimeZone) : Double;
+
+   function UTCIncMonth(dt : TDateTime; nbMonths : Integer) : TDateTime;
+   var
+      d : TDateTime;
+   begin
+      try
+         d := UTCDateTimeToLocalDateTime(dt);
+         d := SysUtils.IncMonth(d, nbMonths);
+         Result := LocalDateTimeToUTCDateTime(d);
+      except
+         on E: ELocalTimeInvalid do
+            Result := SysUtils.IncMonth(dt, nbMonths);
+         else raise;
+      end;
+   end;
+
+begin
+   if tz = tzDefault then
+      tz := TimeZone;
+   if tz = tzUTC then
+      Result := UTCIncMonth(dt, nbMonths)
+   else Result := SysUtils.IncMonth(dt, nbMonths);
 end;
 
 // ------------------------------------------------------------------

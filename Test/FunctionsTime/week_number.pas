@@ -1,7 +1,7 @@
 var dt = EncodeDate(2010, 10, 25);
 
-PrintLn(WeekNumber(dt));
-PrintLn(YearOfWeek(dt));
+PrintLn(DateToWeekNumber(dt));
+PrintLn(DateToYearOfWeek(dt));
 
 dt := EncodeDate(2010, 12, 31);
 

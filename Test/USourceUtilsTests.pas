@@ -980,10 +980,11 @@ begin
          scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 15);
 
          sugg:=TdwsSuggestions.Create(prog, scriptPos);
-         CheckEquals(3, sugg.Count, 'System.En');
+         CheckEquals(4, sugg.Count, 'System.En');
          CheckEquals('EncodeDate', sugg.Code[0]);
-         CheckEquals('Encoder', sugg.Code[1]);
-         CheckEquals('EncodeTime', sugg.Code[2]);
+         CheckEquals('EncodeDateTime', sugg.Code[1]);
+         CheckEquals('Encoder', sugg.Code[2]);
+         CheckEquals('EncodeTime', sugg.Code[3]);
       finally
          sugg := nil;
          prog := nil;
