@@ -275,12 +275,12 @@ function ConvertFuncParams(const funcParams : array of String) : TParamArray;
       v : String;
    begin
       SetLength(paramRec.DefaultValue, 1);
-      v:=Trim(Copy(paramRec.ParamName, p+1, MaxInt));
-      if v='Unassigned' then
+      v := Copy(paramRec.ParamName, p+1, MaxInt);
+      if v = 'Unassigned' then
          VarClearSafe(paramRec.DefaultValue[0])
-      else if v='MaxInt' then
-         paramRec.DefaultValue[0]:=High(Int64)
-      else paramRec.DefaultValue[0]:=v;
+      else if v = 'MaxInt' then
+         paramRec.DefaultValue[0] := High(Int64)
+      else paramRec.DefaultValue[0] := v;
       paramRec.HasDefaultValue:=True;
       paramRec.ParamName:=Trim(Copy(paramRec.ParamName, 1, p-1));
    end;
