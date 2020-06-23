@@ -245,7 +245,20 @@ const
          // Turns on/off JIT compilation
          +'"JIT": true,'
          // Turns on/off COM support (breaks sandboxing!)
-         +'"COM": false'
+         +'"COM": false,'
+         // OP4JS Pascal to JavaScript options
+         +'"OP4JS": {'
+            +'"NoRangeChecks": true,'
+            +'"NoCheckInstantiated": true,'
+            +'"NoCheckLoopStep": true,'
+            +'"NoConditions": true,'
+            +'"NoSourceLocations": true,'
+            +'"Obfuscate": false,'
+            +'"OptimizeForSize": false,'
+            +'"SmartLink": true,'
+            +'"DeVirtualize": true,'
+            +'"NoRTTI": true'
+         +'}'
       +'}';
 
 // ------------------------------------------------------------------
@@ -255,6 +268,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses TypInfo;
 
 {$R *.dfm}
 
@@ -689,6 +704,9 @@ procedure TSimpleDWScript.LoadDWScriptOptions(options : TdwsJSONValue);
 var
    dws : TdwsJSONValue;
    conditionals : TdwsJSONValue;
+   dwsCGOptions : TdwsJSONValue;
+   opt : TdwsCodeGenOption;
+   cgOptions : TdwsCodeGenOptions;
    i : Integer;
 begin
    dws:=TdwsJSONValue.ParseString(cDefaultDWScriptOptions);
@@ -722,8 +740,17 @@ begin
 
       FEnableJIT:=dws['JIT'].AsBoolean;
 
-      FStartupScriptName:=ApplyPathVariables(dws['Startup'].AsString);
-      FShutdownScriptName:=ApplyPathVariables(dws['Shutdown'].AsString);
+
+      dwsCGOptions := dws['OP4JS'];
+      cgOptions := [];
+      for opt := Low(TdwsCodeGenOption) to High(TdwsCodeGenOption) do begin
+         if dwsCGOptions[Copy(GetEnumName(TypeInfo(TdwsCodeGenOption), Ord(opt)), 4)].AsBoolean then
+            Include(cgOptions, opt);
+      end;
+      FJSFilter.CodeGenOptions := cgOptions;
+
+      FStartupScriptName := ApplyPathVariables(dws['Startup'].AsString);
+      FShutdownScriptName := ApplyPathVariables(dws['Shutdown'].AsString);
 
       if dws['COM'].AsBoolean then
          dwsComConnector.Script:=DelphiWebScript;
