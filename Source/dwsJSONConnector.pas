@@ -617,7 +617,7 @@ begin
       [iffStateLess, iffStaticMethod], jsonObject
    );
    TJSONPrettyStringifyMethod.Create(
-      table, SYS_JSON_PRETTY_STRINGIFY, ['val', SYS_ANY_TYPE, 'indent=#9', SYS_STRING], SYS_STRING,
+      table, SYS_JSON_PRETTY_STRINGIFY, ['val', SYS_ANY_TYPE, 'indent='#9, SYS_STRING], SYS_STRING,
       [iffStateLess, iffStaticMethod], jsonObject
    );
 
