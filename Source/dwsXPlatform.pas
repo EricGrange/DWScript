@@ -329,6 +329,8 @@ function RawByteStringToBytes(const buf : RawByteString) : TBytes;
 function BytesToRawByteString(const buf : TBytes; startIndex : Integer = 0) : RawByteString; overload;
 function BytesToRawByteString(p : Pointer; size : Integer) : RawByteString; overload;
 
+function PosExA(const needle, haystack : RawByteString; hayStackOffset : Integer) : Integer;
+
 procedure BytesToScriptString(const p : PByte; n : Integer; var result : UnicodeString);
 
 function LoadDataFromFile(const fileName : TFileName) : TBytes;
@@ -1335,6 +1337,42 @@ begin
    else begin
       SetLength(Result, n);
       System.Move(buf[startIndex], Pointer(Result)^, n);
+   end;
+end;
+
+// PosExA
+//
+function PosExA(const needle, haystack : RawByteString; hayStackOffset : Integer) : Integer;
+var
+	lenNeedle : Integer;
+   charToFind : AnsiChar;
+   pHaystack, pEndSearch : PAnsiChar;
+begin
+	Result := 0;
+	if (haystack = '') or (needle = '') then Exit;
+   if hayStackOffset <= 0 then
+      hayStackOffset := 1;
+
+   lenNeedle := Length(needle);
+
+   charToFind := PAnsiChar(Pointer(needle))^;
+
+   pHaystack := Pointer(hayStack);
+   Inc(pHaystack, hayStackOffset - 1);
+
+   pEndSearch := Pointer(hayStack);
+   Inc(pEndSearch, Length(haystack) - lenNeedle + 1);
+
+   while pHaystack <= pEndSearch do begin
+      while pHaystack^ <> charToFind do begin
+         Inc(pHaystack);
+         if pHaystack > pEndSearch then Break;
+      end;
+      if CompareMem(pHaystack, Pointer(needle), lenNeedle) then begin
+         Result := NativeUInt(pHaystack) - NativeUInt(Pointer(haystack)) + 1;
+         Break;
+      end;
+      Inc(pHaystack);
    end;
 end;
 
