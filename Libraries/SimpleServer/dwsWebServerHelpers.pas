@@ -525,7 +525,7 @@ begin
       nc := Length(list[Result].FString);
       if     (nc > n) and (list[Result].FString[n+1] = nvs)
          and CompareMem(PWideChar(Pointer(name)),
-                        PWideChar(Pointer(list[Result].FString)), n) then Exit;
+                        PWideChar(Pointer(list[Result].FString)), n*SizeOf(Char)) then Exit;
    end;
    Result:=-1;
 end;
