@@ -25,6 +25,57 @@ uses
    dwsUtils, dwsXPlatform, dwsXXHash;
 
 type
+   TMIMEBodyPart = class;
+
+   IMIMEBodyPart = interface
+      ['{5B77EB7D-7794-42AA-AD72-0713477EC405}']
+      function GetSelf : TMIMEBodyPart;
+      function GetRawHeaders : RawByteString;
+      function GetRawData : RawByteString;
+      function GetHeaders : TStrings;
+
+      property RawHeaders : RawByteString read GetRawHeaders;
+      property RawData : RawByteString read GetRawData;
+      property Headers : TStrings read GetHeaders;
+
+      function ContentDisposition : String;
+      function ContentType : String;
+
+      function Name : String;
+      function FileName : String;
+   end;
+
+   TMIMEBodyPart = class (TInterfacedObject, IMIMEBodyPart)
+      private
+         FRawHeaders : RawByteString;
+         FRawData : RawByteString;
+         FHeaders : TStrings;
+         FContentDisposition  : TStrings;
+         FName : String;
+
+      protected
+         function GetSelf : TMIMEBodyPart;
+         function GetRawHeaders : RawByteString;
+         function GetRawData : RawByteString;
+         procedure PrepareHeaders;
+         function GetHeaders : TStrings;
+         procedure PrepareContentDisposition;
+
+      public
+         destructor Destroy; override;
+
+         property RawHeaders : RawByteString read FRawHeaders;
+         property RawData : RawByteString read FRawData;
+         property Headers : TStrings read GetHeaders;
+
+         function ContentDisposition : String;
+         function ContentType : String;
+
+         function Name : String;
+         function FileName : String;
+   end;
+
+   TIMIMEBodyParts = array of IMIMEBodyPart;
 
    WebUtils = class
       public
@@ -32,6 +83,10 @@ type
          class function DecodeURLEncoded(const src : RawByteString; start, count : Integer) : String; overload; static;
          class function DecodeURLEncoded(const src : RawByteString; start : Integer) : String; overload; static;
          class function EncodeURLEncoded(const src : String) : String; static;
+
+         class procedure ParseMIMEHeaderValue(const src : RawByteString; dest : TStrings); static;
+
+         class procedure ParseMultiPartFormData(const src, dashBoundary : RawByteString; var dest : TIMIMEBodyParts); static;
 
          class function DecodeHex2(p : PAnsiChar) : Integer; static;
          class function HasFieldName(const list : TStrings; const name : String) : Boolean; static;
@@ -431,6 +486,129 @@ begin
    until False;
 
    SetLength(Result, (NativeUInt(PDest)-NativeUInt(Pointer(Result))) div SizeOf(Char));
+end;
+
+// ParseMIMEHeaderValue
+//
+class procedure WebUtils.ParseMIMEHeaderValue(const src : RawByteString; dest : TStrings);
+
+   procedure AddValue(p, pEnd : PAnsiChar);
+   var
+      buf : String;
+      pBuf : PChar;
+      inQuote : Boolean;
+   begin
+      SetLength(buf, NativeUInt(pEnd) - NativeUInt(p));
+      pBuf := Pointer(buf);
+      inQuote := False;
+      while p < pEnd do begin
+         if inQuote then begin
+            case p^ of
+               '"' : begin
+                  inQuote := False;
+               end;
+               '\' : begin
+                  if p < pEnd-1 then begin
+                     pBuf^ := Char(p[1]);
+                     Inc(pBuf);
+                     Inc(p);
+                  end else break;
+               end;
+            else
+               pBuf^ := Char(p^);
+               Inc(pBuf);
+            end;
+         end else begin
+            case p^ of
+               '"' : begin
+                  inQuote := True;
+               end;
+            else
+               pBuf^ := Char(p^);
+               Inc(pBuf);
+            end;
+         end;
+         Inc(p);
+      end;
+      SetLength(buf, (NativeUInt(pBuf) - NativeUInt(Pointer(buf))) div SizeOf(Char));
+      dest.Add(buf);
+   end;
+
+var
+   pSrc, pStart : PAnsiChar;
+   inString, inLeadingSpaces : Boolean;
+begin
+   if src = '' then Exit;
+
+   pSrc := Pointer(src);
+   pStart := pSrc;
+   inString := False;
+   inLeadingSpaces := True;
+   while pSrc^ <> #0 do begin
+      if inString then begin
+         if pSrc^ = '"' then
+            inString := False;
+         Inc(pSrc);
+      end else begin
+         case pSrc^ of
+            ';' : begin
+               AddValue(pStart, pSrc);
+               Inc(pSrc);
+               pStart := pSrc;
+               inLeadingSpaces := True;
+            end;
+            '"' : begin
+               inString := True;
+               inLeadingSpaces := False;
+               Inc(pSrc);
+            end;
+            ' ' : begin
+               Inc(pSrc);
+               if inLeadingSpaces then
+                  pStart := pSrc;
+            end;
+         else
+            inLeadingSpaces := False;
+            Inc(pSrc);
+         end;
+      end;
+   end;
+   AddValue(pStart, pSrc);
+end;
+
+// ParseMultiPartFormData
+//
+class procedure WebUtils.ParseMultiPartFormData(const src, dashBoundary : RawByteString; var dest : TIMIMEBodyParts);
+const
+   cCRLFCRLF : RawByteString = #13#10#13#10;
+var
+   p, pBoundary, pBody : Integer;
+   lenBoundary, n : Integer;
+   part : TMIMEBodyPart;
+begin
+   if (src = '') or (dashBoundary = '') then Exit;
+
+   lenBoundary := Length(dashBoundary);
+   p := 1;
+   pBoundary := PosExA(dashBoundary, src, p);
+   while pBoundary > 0 do begin
+      p := pBoundary + lenBoundary;
+      if (src[p] <> #13) or (src[p+1] <> #10) then Exit;
+      Inc(p, 2);
+      pBody := PosExA(cCRLFCRLF, src, p);
+      if pBody <= 0 then Exit;
+      Inc(pBody, 4);
+      pBoundary := PosExA(dashBoundary, src, pBody);
+      if pBoundary > 0 then begin
+         if (src[pBoundary-2] <> #13) or (src[pBoundary-1] <> #10) then Exit;
+         part := TMIMEBodyPart.Create;
+         n := Length(dest);
+         SetLength(dest, n+1);
+         dest[n] := part;
+         part.FRawHeaders := Copy(src, p, pBody-p-4);
+         part.FRawData := Copy(src, pBody, pBoundary-2-pBody);
+      end;
+   end;
 end;
 
 // DecodeURLEncoded
@@ -1156,6 +1334,116 @@ begin
    until False;
 
    SetLength(Result, (NativeUInt(pDest)-NativeUInt(Pointer(Result))) div SizeOf(WideChar));
+end;
+
+// ------------------
+// ------------------ TMIMEBodyPart ------------------
+// ------------------
+
+// Destroy
+//
+destructor TMIMEBodyPart.Destroy;
+begin
+   FHeaders.Free;
+   FContentDisposition.Free;
+   inherited;
+end;
+
+// GetSelf
+//
+function TMIMEBodyPart.GetSelf : TMIMEBodyPart;
+begin
+   Result := Self;
+end;
+
+// GetRawHeaders
+//
+function TMIMEBodyPart.GetRawHeaders : RawByteString;
+begin
+   Result := FRawHeaders;
+end;
+
+// GetRawData
+//
+function TMIMEBodyPart.GetRawData : RawByteString;
+begin
+   Result := FRawData;
+end;
+
+// PrepareHeaders
+//
+procedure TMIMEBodyPart.PrepareHeaders;
+var
+   i, p : Integer;
+   buf : String;
+begin
+   Assert(FHeaders = nil);
+   FHeaders := TFastCompareTextList.Create;
+   FHeaders.Text := RawByteStringToScriptString(RawHeaders);
+   for i := 0 to FHeaders.Count-1 do begin
+      buf := FHeaders[i];
+      p := Pos(':', buf);
+      if p > 0 then begin
+         FHeaders[i] := TrimRight(Copy(buf, 1, p-1)) + '=' + TrimLeft(Copy(buf, p+1));
+      end;
+   end;
+end;
+
+// GetHeaders
+//
+function TMIMEBodyPart.GetHeaders : TStrings;
+begin
+   if FHeaders = nil then
+      PrepareHeaders;
+   Result := FHeaders;
+end;
+
+// ContentDisposition
+//
+function TMIMEBodyPart.ContentDisposition : String;
+begin
+   Result := Headers.Values['Content-Disposition'];
+end;
+
+// ContentType
+//
+function TMIMEBodyPart.ContentType : String;
+begin
+   Result := Headers.Values['Content-Type'];
+end;
+
+// PrepareContentDisposition
+//
+procedure TMIMEBodyPart.PrepareContentDisposition;
+begin
+   Assert(FContentDisposition = nil);
+   FContentDisposition := TFastCompareTextList.Create;
+   WebUtils.ParseMIMEHeaderValue(ScriptStringToRawByteString(ContentDisposition), FContentDisposition);
+end;
+
+// Name
+//
+function TMIMEBodyPart.Name : String;
+
+   procedure PrepareName(part : TMIMEBodyPart);
+   begin
+      part.PrepareContentDisposition;
+      part.FName := part.FContentDisposition.Values['name'];
+   end;
+
+begin
+   if FContentDisposition = nil then
+      PrepareName(Self);
+   Result := FName;
+end;
+
+// FileName
+//
+function TMIMEBodyPart.FileName : String;
+begin
+   if FContentDisposition = nil then
+      PrepareContentDisposition;
+   Result := FContentDisposition.Values['filename'];
 end;
 
 // ------------------------------------------------------------------

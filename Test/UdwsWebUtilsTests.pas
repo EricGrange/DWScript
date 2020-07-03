@@ -28,6 +28,8 @@ type
 
       published
          procedure ParseURLEncodedTest;
+         procedure ParseMIMEHeaderValueTest;
+         procedure ParseMultiPartFormDataTest;
          procedure HTMLAttributeTest;
    end;
 
@@ -73,6 +75,76 @@ begin
    finally
       decoded.Free;
    end;
+end;
+
+// ParseMIMEHeaderValueTest
+//
+procedure TdwsWebUtilsTests.ParseMIMEHeaderValueTest;
+var
+   decoded : TStringList;
+begin
+   decoded:=TStringList.Create;
+   try
+
+      WebUtils.ParseMIMEHeaderValue('test', decoded);
+      CheckEquals('test', decoded.CommaText);
+
+      decoded.Clear;
+      WebUtils.ParseMIMEHeaderValue('form-data; name=xml', decoded);
+      CheckEquals('form-data,name=xml', decoded.CommaText);
+
+      decoded.Clear;
+      WebUtils.ParseMIMEHeaderValue('form-data; name="a,b"', decoded);
+      CheckEquals('form-data,"name=a,b"', decoded.CommaText);
+
+   finally
+      decoded.Free;
+   end;
+end;
+
+// ParseMultiPartFormDataTest
+//
+procedure TdwsWebUtilsTests.ParseMultiPartFormDataTest;
+const
+   cData = #13#10
+      + '-----------------------------9051914041544843365972754266'#13#10
+      + 'Content-Disposition: form-data; name="text"'#13#10
+      + #13#10
+      + 'text default'
+      + #13#10'-----------------------------9051914041544843365972754266'#13#10
+      + 'Content-Disposition: form-data; name="file1"; filename="a.txt"'#13#10
+      + 'Content-Type: text/plain'#13#10
+      + #13#10
+      + 'Content of a.txt.'#13#10
+      + #13#10'-----------------------------9051914041544843365972754266'#13#10
+      + 'Content-Disposition: form-data; name="file2"; filename="a.html"'#13#10
+      + 'Content-Type: text/html'#13#10
+      + #13#10
+      + '<!DOCTYPE html><title>Content of a.html.</title>'
+      + #13#10'-----------------------------9051914041544843365972754266--'
+      + #13#10;
+var
+   data : TIMIMEBodyParts;
+begin
+   WebUtils.ParseMultiPartFormData(cData, '-----------------------------9051914041544843365972754266', data);
+   CheckEquals(3, Length(data));
+
+   CheckEquals('text default', data[0].RawData);
+   CheckEquals('form-data; name="text"', data[0].ContentDisposition);
+   CheckEquals('', data[0].ContentType, '0.ContenType');
+   CheckEquals('text', data[0].Name);
+
+   CheckEquals('Content of a.txt.'#13#10, data[1].RawData);
+   CheckEquals('form-data; name="file1"; filename="a.txt"', data[1].ContentDisposition);
+   CheckEquals('text/plain', data[1].ContentType);
+   CheckEquals('file1', data[1].Name);
+   CheckEquals('a.txt', data[1].FileName);
+
+   CheckEquals('<!DOCTYPE html><title>Content of a.html.</title>', data[2].RawData);
+   CheckEquals('form-data; name="file2"; filename="a.html"', data[2].ContentDisposition);
+   CheckEquals('text/html', data[2].ContentType);
+   CheckEquals('file2', data[2].Name);
+   CheckEquals('a.html', data[2].FileName);
 end;
 
 // HTMLAttributeTest
