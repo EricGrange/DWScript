@@ -190,6 +190,8 @@ type
       baseExpr: TTypedExpr; const args: TExprBaseListExec);
     procedure dwsWebClassesHttpRequestMethodsContentSubDataEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesWebRequestMethodsContentFieldsEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FServer :  IWebServerInfo;
@@ -698,6 +700,20 @@ procedure TdwsWebLib.dwsWebClassesWebRequestMethodsContentDataFastEvalString(
   baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
 begin
    RawByteStringToScriptString(args.WebRequest.ContentData, result);
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebRequestMethodsContentFieldsEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   names : TStringDynArray;
+   fields : TStrings;
+   i : Integer;
+begin
+   fields := Info.WebRequest.ContentFields;
+   SetLength(names, fields.Count);
+   for i := 0 to fields.Count-1 do
+      names[i] := fields.Names[i];
+   Info.ResultAsStringArray := names;
 end;
 
 function TdwsWebLib.dwsWebClassesWebRequestMethodsContentLengthFastEvalInteger(

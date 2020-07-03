@@ -275,8 +275,10 @@ const
       'Cookie', 'Expect', 'From', 'Host', 'If-Match', 'If-Modified-Since',
       'If-None-Match', 'If-Range', 'If-Unmodified-Since', 'Max-Forwards',
       'Proxy-Authorization', 'Referer', 'Range', 'TE', 'Translate', 'User-Agent');
-var
-   i: Integer;
+
+var
+
+   i: Integer;
    h : THttpHeader;
    p : PHTTP_UNKNOWN_HEADER;
    head : PHTTP_REQUEST_HEADERS;
@@ -326,8 +328,10 @@ begin
       p:=PVarSin(Request^.Address.pRemoteAddress)
    else p:=@cNullIPVarSin;
 
-   if not CompareMem(p, @FLastIP, SizeOf(FLastIP)) then begin
-      FLastIP:=p^;
+
+   if not CompareMem(p, @FLastIP, SizeOf(FLastIP)) then begin
+
+      FLastIP:=p^;
       GetSinIP(p^, FIP_UTF8);
    end;
 end;
@@ -479,6 +483,5 @@ function THttpSysWebRequest.ContentType : RawByteString;
 begin
    Result:=InContentType;
 end;
-
 
 end.

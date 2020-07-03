@@ -223,6 +223,13 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maStatic]
             OnFastEvalString = dwsWebClassesWebRequestMethodsIfNoneMatchFastEvalString
             Kind = mkClassFunction
+          end
+          item
+            Name = 'ContentFieldNames'
+            ResultType = 'array of String'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebRequestMethodsContentFieldsEval
+            Kind = mkClassFunction
           end>
         Properties = <
           item

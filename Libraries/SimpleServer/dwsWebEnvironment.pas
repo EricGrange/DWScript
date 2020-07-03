@@ -439,7 +439,7 @@ var
    base, next, p : Integer;
    cookieField : String;
 begin
-   Result:=TFastCompareTextList.Create;
+   Result := TFastCompareTextList.Create;
 
    cookieField:=Header('Cookie');
    base:=1;
@@ -459,19 +459,55 @@ end;
 //
 function TWebRequest.PrepareQueryFields : TStrings;
 begin
-   Result:=TStringList.Create;
+   Result := TFastCompareStringList.Create;
    WebUtils.ParseURLEncoded(ScriptStringToRawByteString(QueryString), Result);
 end;
 
 // PrepareContentFields
 //
 function TWebRequest.PrepareContentFields : TStrings;
-begin
-   Result:=TStringList.Create;
+var
+   ct : RawByteString;
 
-   if StrBeginsWithA(ContentType, 'application/x-www-form-urlencoded') then begin
+   procedure PrepareMultiPartFormData;
+   var
+      ctFields : TStrings;
+      boundary : RawByteString;
+      parts : TIMIMEBodyParts;
+      part : TMIMEBodyPart;
+      i : Integer;
+      name, partContentType : String;
+   begin
+      ctFields := TFastCompareStringList.Create;
+      try
+         WebUtils.ParseMIMEHeaderValue(ct, ctFields);
+         ScriptStringToRawByteString(ctFields.Values['boundary'], boundary);
+         if boundary <> '' then
+            WebUtils.ParseMultiPartFormData(ContentData, '--' + boundary, parts);
+         for i := 0 to High(parts) do begin
+            part := parts[i].GetSelf;
+            name := part.Name;
+            Result.Add(name + '=' + part.FileName);
+            partContentType := part.ContentType;
+            if partContentType <> '' then
+               Result.Add(name + '.ContentType=' + partContentType);
+            Result.Add(name + '.ContentData=' + RawByteStringToScriptString(part.RawData));
+         end;
+      finally
+         ctFields.Free;
+      end;
+   end;
+
+begin
+   Result := TFastCompareStringList.Create;
+
+   ct := ContentType;
+
+   if StrBeginsWithA(ct, 'application/x-www-form-urlencoded') then begin
       // TODO: handle case where encoding isn't utf-8
       WebUtils.ParseURLEncoded(ContentData, Result);
+   end else if StrBeginsWithA(ct, 'multipart/form-data') then begin
+      PrepareMultiPartFormData;
    end;
 end;
 
