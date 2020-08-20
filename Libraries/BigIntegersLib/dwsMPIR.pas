@@ -795,19 +795,26 @@ type
       m_hi: UInt32;
    end;
 begin
-   mpz_set_ui(dest, _UINT64(src).m_hi);
-   mpz_mul_2exp(dest, dest, 32);
-   mpz_add_ui(dest, dest, _UINT64(src).m_lo);
+   if _UINT64(src).m_hi = 0 then begin
+      mpz_set_ui(dest, _UINT64(src).m_lo);
+   end else begin
+      mpz_set_ui(dest, _UINT64(src).m_hi);
+      mpz_mul_2exp(dest, dest, 32);
+      mpz_add_ui(dest, dest, _UINT64(src).m_lo);
+   end;
 end;
 
 procedure mpz_set_int64(var dest: mpz_t; const src: Int64); // by delphi code
 var
    u64: UInt64;
 begin
-   u64 := Abs(src);
-   mpz_set_uint64(dest, u64);
-   if src < 0 then
+   if src < 0 then begin
+      u64 := Abs(src);
+      mpz_set_uint64(dest, u64);
       dest.mp_size := -dest.mp_size;
+   end else begin
+      mpz_set_uint64(dest, src);
+   end;
 end;
 
 function mpz_sgn(const src: mpz_t): Integer;
