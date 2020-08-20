@@ -1476,9 +1476,11 @@ begin
    RegisterCodeGen(TBigIntegerOrOpExpr,          TJSBigIntegerBinOpExpr.Create('|', 7, [associativeLeft]));
    RegisterCodeGen(TBigIntegerXorOpExpr,         TJSBigIntegerBinOpExpr.Create('^', 8, [associativeLeft]));
 
-   RegisterCodeGen(TBigIntegerPlusAssignExpr,    TJSBigIntegerCompoundExpr.Create('+=', '$DIdxAdd'));
-   RegisterCodeGen(TBigIntegerMinusAssignExpr,   TJSBigIntegerCompoundExpr.Create('-=', '$DIdxSub'));
-   RegisterCodeGen(TBigIntegerMultAssignExpr,    TJSBigIntegerCompoundExpr.Create('*=', '$DIdxMult'));
+   RegisterCodeGen(TBigIntegerPlusAssignExpr,      TJSBigIntegerCompoundExpr.Create('+=', '$DIdxAdd'));
+   RegisterCodeGen(TBigIntegerPlusAssignIntExpr,   TJSBigIntegerCompoundExpr.Create('+=', '$DIdxAdd'));
+   RegisterCodeGen(TBigIntegerMinusAssignExpr,     TJSBigIntegerCompoundExpr.Create('-=', '$DIdxSub'));
+   RegisterCodeGen(TBigIntegerMinusAssignIntExpr,  TJSBigIntegerCompoundExpr.Create('-=', '$DIdxSub'));
+   RegisterCodeGen(TBigIntegerMultAssignExpr,      TJSBigIntegerCompoundExpr.Create('*=', '$DIdxMult'));
 
    RegisterCodeGen(TBigIntegerEqualOpExpr,         TJSBigIntegerBinOpExpr.Create('==', 10, [associativeLeft]));
    RegisterCodeGen(TBigIntegerNotEqualOpExpr,      TJSBigIntegerBinOpExpr.Create('!=', 10, [associativeLeft]));

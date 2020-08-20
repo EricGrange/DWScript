@@ -59,20 +59,29 @@ type
       function ToNeg : IdwsBigInteger;
    end;
 
+   TdwsBigIntegerWrapperPool = class;
+
    TBigIntegerWrapper = class (TInterfacedObject, IdwsBigInteger, IGetSelf)
+      private
+         FNext : TBigIntegerWrapper;
+
       protected
+         function _Release: Integer; stdcall;
+
          function GetValue : pmpz_t; inline;
          procedure SetValue(const v : pmpz_t); inline;
          function GetSelf : TObject;
 
+         constructor CreateNewZero;
+         procedure Reset;
+
       public
          Value : mpz_t;
 
-         constructor CreateZero;
-         constructor CreateInt64(const i : Int64);
-         constructor CreateFloat(const f : Double);
-         constructor CreateString(const s : String; base : Integer);
-         constructor Wrap(const v : mpz_t);
+         class function CreateZero : TBigIntegerWrapper; static;
+         class function CreateInt64(const i : Int64) : TBigIntegerWrapper; static;
+         class function CreateFloat(const f : Double) : TBigIntegerWrapper; static;
+         class function CreateString(const s : String; base : Integer) : TBigIntegerWrapper; static;
          destructor Destroy; override;
 
          function BitLength : Integer;
@@ -86,6 +95,21 @@ type
          function ToInt64 : Int64;
 
          function ToNeg : IdwsBigInteger;
+   end;
+
+   TdwsBigIntegerWrapperPool = class
+      private
+         FLock : TMultiReadSingleWrite;
+         FHead : TBigIntegerWrapper;
+         FSize : Integer;
+
+      public
+         constructor Create;
+         destructor Destroy; override;
+
+         function Pop : TBigIntegerWrapper; inline;
+         procedure Push(ref : TBigIntegerWrapper); inline;
+         procedure Cleanup;
    end;
 
    TBigIntegerNegateExpr = class(TUnaryOpExpr)
@@ -139,7 +163,13 @@ type
    TBigIntegerPlusAssignExpr = class(TBigIntegerOpAssignExpr)
      procedure EvalNoResult(exec : TdwsExecution); override;
    end;
+   TBigIntegerPlusAssignIntExpr = class(TBigIntegerPlusAssignExpr)
+     procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
    TBigIntegerMinusAssignExpr = class(TBigIntegerOpAssignExpr)
+     procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+   TBigIntegerMinusAssignIntExpr = class(TBigIntegerMinusAssignExpr)
      procedure EvalNoResult(exec : TdwsExecution); override;
    end;
    TBigIntegerMultAssignExpr = class(TBigIntegerOpAssignExpr)
@@ -322,10 +352,14 @@ implementation
 
 const
    cLimbSize = SizeOf(NativeUInt);
+   cPoolMaxSize = 256;
 
 type
    TLimbArray = array [0..1024*1024*1024 div cLimbSize] of NativeUInt;
    PLimbArray = ^TLimbArray;
+
+var
+   vPool : TdwsBigIntegerWrapperPool;
 
 // RegisterBigIntegerType                                      
 //
@@ -375,9 +409,9 @@ begin
    operators.RegisterOperator(ttSAR, TBigIntegerShiftRightExpr,  typBigInteger, systemTable.TypInteger);
 
    operators.RegisterOperator(ttPLUS_ASSIGN,  TBigIntegerPlusAssignExpr, typBigInteger, typBigInteger);
-   operators.RegisterOperator(ttPLUS_ASSIGN,  TBigIntegerPlusAssignExpr, typBigInteger, systemTable.TypInteger);
+   operators.RegisterOperator(ttPLUS_ASSIGN,  TBigIntegerPlusAssignIntExpr, typBigInteger, systemTable.TypInteger);
    operators.RegisterOperator(ttMINUS_ASSIGN, TBigIntegerMinusAssignExpr, typBigInteger, typBigInteger);
-   operators.RegisterOperator(ttMINUS_ASSIGN, TBigIntegerMinusAssignExpr, typBigInteger, systemTable.TypInteger);
+   operators.RegisterOperator(ttMINUS_ASSIGN, TBigIntegerMinusAssignIntExpr, typBigInteger, systemTable.TypInteger);
    operators.RegisterOperator(ttTIMES_ASSIGN, TBigIntegerMultAssignExpr, typBigInteger, typBigInteger);
    operators.RegisterOperator(ttTIMES_ASSIGN, TBigIntegerMultAssignExpr, typBigInteger, systemTable.TypInteger);
 
@@ -414,13 +448,6 @@ end;
 function ArgBigInteger(const args : TExprBaseListExec; index : Integer) : IdwsBigInteger;
 begin
    Result := (args.ExprBase[index] as TTypedExpr).EvalAsBigInteger(args.Exec);
-end;
-
-// BigIntegerWrap
-//
-function BigIntegerWrap(const bi : mpz_t) : IInterface;
-begin
-   Result := TBigIntegerWrapper.Wrap(bi) as IdwsBigInteger;
 end;
 
 // ArgVarBigInteger
@@ -474,57 +501,71 @@ end;
 // ------------------ TBigIntegerWrapper ------------------
 // ------------------
 
-// CreateZero
+// CreateNewZero
 //
-constructor TBigIntegerWrapper.CreateZero;
+constructor TBigIntegerWrapper.CreateNewZero;
 begin
-   inherited Create;
+   Create;
    if not Bind_MPIR_DLL then
       raise Exception.Create('mpir.dll is required for BigInteger');
 
    mpz_init(Value);
 end;
 
+// Reset
+//
+procedure TBigIntegerWrapper.Reset;
+begin
+   mpz_set_ui(Value, 0);
+end;
+
+// _Release
+//
+function TBigIntegerWrapper._Release: Integer;
+begin
+   Result := InterlockedDecrement(FRefCount);
+   if Result = 0 then
+      vPool.Push(Self);
+end;
+
+// CreateZero
+//
+class function TBigIntegerWrapper.CreateZero : TBigIntegerWrapper;
+begin
+   Result := vPool.Pop;
+end;
+
 // CreateInt64
 //
-constructor TBigIntegerWrapper.CreateInt64(const i : Int64);
+class function TBigIntegerWrapper.CreateInt64(const i : Int64) : TBigIntegerWrapper;
 begin
-   CreateZero;
-   mpz_set_int64(Value, i);
+   Result := vPool.Pop;
+   mpz_set_int64(Result.Value, i);
 end;
 
 // CreateFloat
 //
-constructor TBigIntegerWrapper.CreateFloat(const f : Double);
+class function TBigIntegerWrapper.CreateFloat(const f : Double) : TBigIntegerWrapper;
 begin
-   inherited;
-   CreateZero;
-   mpz_set_d(Value, f);
+   Result := vPool.Pop;
+   mpz_set_d(Result.Value, f);
 end;
 
 // CreateString
 //
-constructor TBigIntegerWrapper.CreateString(const s : String; base : Integer);
+class function TBigIntegerWrapper.CreateString(const s : String; base : Integer) : TBigIntegerWrapper;
 var
    buf : RawByteString;
    p : PAnsiChar;
 begin
-   CreateZero;
+   Result := vPool.Pop;
    if s <> '' then begin
       ScriptStringToRawByteString(s, buf);
       p := Pointer(buf);
       if p^ = '+' then
          Inc(p);
-      mpz_set_str(Value, p, base);
+      mpz_set_str(Result.Value, p, base);
    end;
-end;
-
-// Wrap
-//
-constructor TBigIntegerWrapper.Wrap(const v : mpz_t);
-begin
-   CreateZero;
-   mpz_set(Value, v);
 end;
 
 // Destroy
@@ -644,6 +685,89 @@ begin
    biw := TBigIntegerWrapper.CreateZero;
    mpz_neg(biw.Value, Value);
    Result := biw;
+end;
+
+// ------------------
+// ------------------ TdwsBigIntegerWrapperPool ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsBigIntegerWrapperPool.Create;
+begin
+   inherited;
+   FLock := TMultiReadSingleWrite.Create;
+end;
+
+// Destroy
+//
+destructor TdwsBigIntegerWrapperPool.Destroy;
+begin
+   inherited;
+   Cleanup;
+end;
+
+// Pop
+//
+function TdwsBigIntegerWrapperPool.Pop : TBigIntegerWrapper;
+begin
+   if Self = nil then
+      Result := TBigIntegerWrapper.CreateNewZero
+   else begin
+      FLock.BeginWrite;
+      try
+         if FHead = nil then
+            Result := TBigIntegerWrapper.CreateNewZero
+         else begin
+            Result := FHead;
+            FHead := FHead.FNext;
+            Result.FNext := nil;
+            Dec(FSize);
+         end;
+      finally
+         FLock.EndWrite;
+      end;
+   end;
+end;
+
+// Push
+//
+procedure TdwsBigIntegerWrapperPool.Push(ref : TBigIntegerWrapper);
+begin
+   if (Self = nil) or (FSize >= cPoolMaxSize) then
+      ref.Free
+   else begin
+      FLock.BeginWrite;
+      try
+         ref.FNext := FHead;
+         FHead := ref;
+         ref.Reset;
+         Inc(FSize);
+      finally
+         FLock.EndWrite;
+      end;
+   end;
+end;
+
+// Cleanup
+//
+procedure TdwsBigIntegerWrapperPool.Cleanup;
+var
+   iter, next : TBigIntegerWrapper;
+begin
+   FLock.BeginWrite;
+   try
+      iter := FHead;
+      while iter <> nil do begin
+         next := iter.FNext;
+         iter.Free;
+         iter := next;
+      end;
+      FHead := nil;
+      FSize := 0;
+   finally
+      FLock.EndWrite;
+   end;
 end;
 
 // ------------------
@@ -1297,6 +1421,19 @@ begin
 end;
 
 // ------------------
+// ------------------ TBigIntegerPlusAssignIntExpr ------------------
+// ------------------
+
+procedure TBigIntegerPlusAssignIntExpr.EvalNoResult(exec : TdwsExecution);
+var
+   bi : TBigIntegerWrapper;
+begin
+   bi := TBigIntegerWrapper.CreateInt64(Right.EvalAsInteger(exec));
+   mpz_add(bi.Value, bi.Value, Left.EvalAsBigInteger(exec).Value^);
+   FLeft.AssignValue(exec, bi as IdwsBigInteger);
+end;
+
+// ------------------
 // ------------------ TBigIntegerMinusAssignExpr ------------------
 // ------------------
 
@@ -1306,6 +1443,19 @@ var
 begin
    bi := TBigIntegerWrapper.CreateZero;
    mpz_sub(bi.Value, Left.EvalAsBigInteger(exec).Value^, Right.EvalAsBigInteger(exec).Value^);
+   FLeft.AssignValue(exec, bi as IdwsBigInteger);
+end;
+
+// ------------------
+// ------------------ TBigIntegerMinusAssignIntExpr ------------------
+// ------------------
+
+procedure TBigIntegerMinusAssignIntExpr.EvalNoResult(exec : TdwsExecution);
+var
+   bi : TBigIntegerWrapper;
+begin
+   bi := TBigIntegerWrapper.CreateInt64(Right.EvalAsInteger(exec));
+   mpz_sub(bi.Value, Left.EvalAsBigInteger(exec).Value^, bi.Value);
    FLeft.AssignValue(exec, bi as IdwsBigInteger);
 end;
 
@@ -1535,6 +1685,8 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+   vPool := TdwsBigIntegerWrapperPool.Create;
+
    dwsInternalUnit.AddSymbolsRegistrationProc(RegisterBigIntegerType);
    dwsInternalUnit.AddOperatorsRegistrationProc(RegisterBigIntegerOperators);
 
@@ -1585,6 +1737,11 @@ initialization
    RegisterInternalIntFunction(TBigLegendreFunc,      'BigLegendre', ['a', SYS_BIGINTEGER, 'b', SYS_BIGINTEGER], [iffStateLess], 'Legendre');
 
    RegisterInternalFunction(TBigIntegerRandomFunc,    'RandomBigInteger', ['limitPlusOne', SYS_BIGINTEGER], SYS_BIGINTEGER);
+
+finalization
+
+   vPool.Cleanup;
+   FreeAndNil(vPool);
 
 end.
 
