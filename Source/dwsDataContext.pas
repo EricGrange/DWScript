@@ -125,7 +125,6 @@ type
          function GetAsInterface(addr : Integer) : IUnknown; inline;
          procedure SetAsInterface(addr : Integer; const value : IUnknown); inline;
 
-         function _AddRef: Integer; stdcall;
          function _Release: Integer; stdcall;
 
       protected
@@ -527,13 +526,6 @@ end;
 // ------------------
 // ------------------ TDataContext ------------------
 // ------------------
-
-// _AddRef
-//
-function TDataContext._AddRef: Integer;
-begin
-   Result := InterlockedIncrement(FRefCount);
-end;
 
 // _Release
 //
