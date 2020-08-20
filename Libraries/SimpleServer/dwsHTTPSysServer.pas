@@ -297,6 +297,8 @@ type
          // Create must have be called with CreateSuspended = TRUE and then call the
          // Resume method after all Url have been added
          function AddUrl(const info : THttpSys2URLInfo) : Integer;
+         function AddUrlACL(const acl : String) : Integer;
+
          /// un-register the URLs to Listen On
          // - this method expect the same parameters as specified to AddUrl()
          // - return 0 (NO_ERROR) on success, an error code if failed (e.g.
@@ -315,6 +317,7 @@ type
          // - if OnlyDelete is true, will delete but won't add the new authorization;
          // in this case, any error message at deletion will be returned
          class function AddUrlAuthorize(const info : THttpSys2URLInfo; OnlyDelete : boolean = false) : string;
+         class function AddUrlACLAuthorize(const acl : String; OnlyDelete : boolean = false) : string;
          /// will register a compression algorithm
          // - overriden method which will handle any cloned instances
          procedure RegisterCompress(aFunction : THttpSocketCompress); override;
@@ -682,8 +685,6 @@ end;
 function THttpApi2Server.AddUrl(const info : THttpSys2URLInfo) : Integer;
 var
    s : String;
-   n : Integer;
-   err : HRESULT;
 begin
    result := -1;
    if (Self = nil) or (FReqQueue = 0) or (HttpAPI.Module = 0) then
@@ -692,19 +693,28 @@ begin
    if s = '' then
       exit; // invalid parameters
 
-   err := HttpAPI.AddUrlToUrlGroup(FUrlGroupID, Pointer(s));
-   case err of
-      NO_ERROR, ERROR_NETNAME_DELETED : ; // netname deleted is ignored
+   Result := AddUrlACL(s);
+end;
+
+// AddUrlACL
+//
+function THttpApi2Server.AddUrlACL(const acl : String) : Integer;
+var
+   n : Integer;
+begin
+   Result := HttpAPI.AddUrlToUrlGroup(FUrlGroupID, Pointer(acl));
+   case Result of
+      NO_ERROR, ERROR_NETNAME_DELETED : Result := 0; // netname deleted is ignored
    else
       raise EHttpApiServer.CreateFmt(
          'AddUrlToUrlGroup failed: %s (%d) for %s',
-         [SysErrorMessage(err), err, info.ToString]
+         [SysErrorMessage(Result), Result, acl]
       );
    end;
 
    n := length(FRegisteredUrl);
    SetLength(FRegisteredUrl, n+1);
-   FRegisteredUrl[n] := s;
+   FRegisteredUrl[n] := acl;
 end;
 
 function THttpApi2Server.RemoveUrl(const info : THttpSys2URLInfo) : Integer;
@@ -741,35 +751,46 @@ const
 class function THttpApi2Server.AddUrlAuthorize(const info : THttpSys2URLInfo; OnlyDelete : boolean = false) : string;
 var
    prefix : String;
+begin
+   try
+      prefix := RegURL(info.RelativeURI, info.Port, info.HTTPS, info.DomainName);
+      if prefix = '' then
+         result := 'Invalid parameters'
+      else Result := AddUrlACLAuthorize(prefix, OnlyDelete);
+   except
+      on E : Exception do
+         result := E.Message;
+   end;
+end;
+
+// AddUrlACLAuthorize
+//
+class function THttpApi2Server.AddUrlACLAuthorize(const acl : String; OnlyDelete : boolean = false) : string;
+var
    Error : HRESULT;
    Config : HTTP_SERVICE_CONFIG_URLACL_SET;
 begin
    try
       HttpApi.InitializeAPI;
-      prefix := RegURL(info.RelativeURI, info.Port, info.HTTPS, info.DomainName);
-      if prefix = '' then
-         result := 'Invalid parameters'
-      else begin
-         Error := HttpAPI.Initialize(HTTPAPI_VERSION_2, HTTP_INITIALIZE_CONFIG);
-         if Error<>NO_ERROR then
-            raise EHttpApiServer.Create(hInitialize, Error, 'THttpApi2Server.AddUrlAuthorize');
-         try
-            fillchar(Config, sizeof(Config), 0);
-            Config.KeyDesc.pUrlPrefix := pointer(prefix);
-            // first delete any existing information
-            Error := HttpAPI.DeleteServiceConfiguration(0, hscUrlAclInfo, @Config, Sizeof(Config));
-            // then add authorization rule
-            if not OnlyDelete then begin
-               Config.KeyDesc.pUrlPrefix := pointer(prefix);
-               Config.ParamDesc.pStringSecurityDescriptor := HTTPADDURLSECDESC;
-               Error := HttpAPI.SetServiceConfiguration(0, hscUrlAclInfo, @Config, Sizeof(Config));
-            end;
-            if (Error<>NO_ERROR) and (Error<>ERROR_ALREADY_EXISTS) then
-               raise EHttpApiServer.Create(hSetServiceConfiguration, Error, 'THttpApi2Server.AddUrlAuthorize');
-            result := ''; // success
-         finally
-            HttpAPI.Terminate(HTTP_INITIALIZE_CONFIG);
+      Error := HttpAPI.Initialize(HTTPAPI_VERSION_2, HTTP_INITIALIZE_CONFIG);
+      if Error<>NO_ERROR then
+         raise EHttpApiServer.Create(hInitialize, Error, 'AddUrlACLAuthorize');
+      try
+         fillchar(Config, sizeof(Config), 0);
+         Config.KeyDesc.pUrlPrefix := pointer(acl);
+         // first delete any existing information
+         Error := HttpAPI.DeleteServiceConfiguration(0, hscUrlAclInfo, @Config, Sizeof(Config));
+         // then add authorization rule
+         if not OnlyDelete then begin
+            Config.KeyDesc.pUrlPrefix := pointer(acl);
+            Config.ParamDesc.pStringSecurityDescriptor := HTTPADDURLSECDESC;
+            Error := HttpAPI.SetServiceConfiguration(0, hscUrlAclInfo, @Config, Sizeof(Config));
          end;
+         if (Error<>NO_ERROR) and (Error<>ERROR_ALREADY_EXISTS) then
+            raise EHttpApiServer.Create(hSetServiceConfiguration, Error, 'AddUrlACLAuthorize');
+         result := ''; // success
+      finally
+         HttpAPI.Terminate(HTTP_INITIALIZE_CONFIG);
       end;
    except
       on E : Exception do
