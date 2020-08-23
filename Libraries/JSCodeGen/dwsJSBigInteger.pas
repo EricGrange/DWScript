@@ -219,7 +219,7 @@ begin
       TJSBaseBigIntegerSymbol.WriteBigInteger(codeGen, bi as IdwsBigInteger);
    end else begin
       codeGen.WriteString('BigInt(Math.trunc(');
-      codeGen.CompileNoWrap(expr as TTypedExpr);
+      codeGen.CompileNoWrap((expr as TConvFloatToBigIntegerExpr).Expr);
       codeGen.WriteString('))');
    end;
 end;
