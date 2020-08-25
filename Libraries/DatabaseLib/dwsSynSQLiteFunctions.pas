@@ -20,7 +20,7 @@ unit dwsSynSQLiteFunctions;
 interface
 
 uses
-   SynSQLite3;
+   SysUtils, SynSQLite3;
 
 // Sqrt()
 procedure SQLiteFunc_Sqrt(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
@@ -45,6 +45,9 @@ procedure SQLiteFunc_BitPopCount(context : TSQLite3FunctionContext; argc : Integ
 // Hamming Distance
 procedure SQLiteFunc_HammingDistance(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
 
+// base64 encoding
+procedure SQLiteFunc_Base64(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -59,7 +62,7 @@ implementation
    {$ifend}
 {$endif}
 
-uses dwsUtils
+uses dwsUtils, dwsEncoding
    {$ifdef TEST_POPCNT}, System.Math{$endif};
 
 type
@@ -376,6 +379,27 @@ begin
       SQLITE_BLOB : HandleBlob;
    else
       sqlite3.result_null(context);
+   end;
+end;
+
+// SQLiteFunc_Base64
+//
+procedure SQLiteFunc_Base64(context : TSQLite3FunctionContext; argc : Integer; var argv : TSQLite3ValueArray); cdecl;
+var
+   bytes : TBytes;
+begin
+   Assert(argc = 1);
+   case sqlite3.value_type(argv[0]) of
+      SQLITE_NULL : begin
+         sqlite3.result_null(context);
+      end;
+      SQLITE_BLOB : begin
+         bytes := Base64EncodeToBytes(sqlite3.value_blob(argv[0]), sqlite3.value_bytes(argv[0]), cBase64);
+         sqlite3.result_text(context, Pointer(bytes), Length(bytes), SQLITE_TRANSIENT);
+      end
+   else
+      bytes := Base64EncodeToBytes(sqlite3.value_text(argv[0]), sqlite3.value_bytes(argv[0]), cBase64);
+      sqlite3.result_text(context, Pointer(bytes), Length(bytes), SQLITE_TRANSIENT);
    end;
 end;
 

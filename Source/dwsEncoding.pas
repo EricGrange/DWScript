@@ -38,6 +38,7 @@ function Base32Decode(const data : String) : RawByteString;
 function Base64Encode(const data : RawByteString) : String; overload; inline;
 function Base64Encode(data : Pointer; len : Integer) : String; overload; inline;
 function Base64Encode(data : Pointer; len : Integer; const alphabet : TBase64Alphabet) : String; overload;
+function Base64EncodeToBytes(data : Pointer; len : Integer; const alphabet : TBase64Alphabet) : TBytes;
 function Base64Decode(const data : String) : RawByteString;
 
 function Base64EncodeURI(const data : RawByteString) : String; overload; inline;
@@ -366,6 +367,49 @@ begin
          dest[1] := alphabet[(c shr 6) and $3f];
          dest[2] := alphabet[c and $3f];
          dest[3] := '=';
+      end;
+   end;
+end;
+
+// Base64EncodeToBytes
+//
+function Base64EncodeToBytes(data : Pointer; len : Integer; const alphabet : TBase64Alphabet) : TBytes;
+var
+   outLen, blocks, tail, i : Integer;
+   dest : PByte;
+   src : PByte;
+   c : Cardinal;
+begin
+   outLen := ((len+2) div 3)*4;
+   SetLength(Result, outLen);
+   if outLen = 0 then Exit;
+   blocks := len div 3;
+   tail := len - blocks*3;
+   dest := Pointer(Result);
+   src := PByte(data);
+   for i := 1 to blocks do begin
+      c := (src[0] shl 16) + (src[1] shl 8) + src[2];
+      dest[0] := Ord(alphabet[(c shr 18) and $3f]);
+      dest[1] := Ord(alphabet[(c shr 12) and $3f]);
+      dest[2] := Ord(alphabet[(c shr 6) and $3f]);
+      dest[3] := Ord(alphabet[c and $3f]);
+      Inc(dest, 4);
+      Inc(src, 3);
+   end;
+   case tail of
+      1 : begin
+         c := src[0] shl 4;
+         dest[0] := Ord(alphabet[(c shr 6) and $3f]);
+         dest[1] := Ord(alphabet[c and $3f]);
+         dest[2] := Ord('=');
+         dest[3] := Ord('=');
+      end;
+      2 : begin
+         c := (src[0] shl 10) + (src[1] shl 2);
+         dest[0] := Ord(alphabet[(c shr 12) and $3f]);
+         dest[1] := Ord(alphabet[(c shr 6) and $3f]);
+         dest[2] := Ord(alphabet[c and $3f]);
+         dest[3] := Ord('=');
       end;
    end;
 end;

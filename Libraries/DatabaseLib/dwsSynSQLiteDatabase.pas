@@ -222,6 +222,7 @@ begin
       sqlite3.create_function(DB, 'BIT_OR', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, nil, SQLiteFunc_BitOrStep, SQLiteFunc_BitFinal);
       sqlite3.create_function(DB, 'BIT_POPCOUNT', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, SQLiteFunc_BitPopCount, nil, nil);
       sqlite3.create_function(DB, 'HAMMING_DISTANCE', 2, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, SQLiteFunc_HammingDistance, nil, nil);
+      sqlite3.create_function(DB, 'BASE64', 1, SQLITE_ANY or SQLITE_DETERMINISTIC, nil, SQLiteFunc_Base64, nil, nil);
    end;
 end;
 
