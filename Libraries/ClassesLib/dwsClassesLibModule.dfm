@@ -278,8 +278,8 @@ object dwsClassesLib: TdwsClassesLib
             Name = 'GetNames'
             Parameters = <
               item
-                Name = 's'
-                DataType = 'String'
+                Name = 'Index'
+                DataType = 'Integer'
                 IsWritable = False
               end>
             ResultType = 'String'
@@ -326,6 +326,18 @@ object dwsClassesLib: TdwsClassesLib
               end>
             ResultType = 'String'
             OnEval = dwsUnitClassesTStringsMethodsGetValuesEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'GetValueFromIndex'
+            Parameters = <
+              item
+                Name = 'Index'
+                DataType = 'Integer'
+                IsWritable = False
+              end>
+            ResultType = 'String'
+            OnEval = dwsUnitClassesTStringsMethodsGetValueFromIndexEval
             Kind = mkFunction
           end
           item
@@ -510,6 +522,22 @@ object dwsClassesLib: TdwsClassesLib
             Kind = mkProcedure
           end
           item
+            Name = 'SetValueFromIndex'
+            Parameters = <
+              item
+                Name = 'Index'
+                DataType = 'Integer'
+                IsWritable = False
+              end
+              item
+                Name = 'Value'
+                DataType = 'String'
+                IsWritable = False
+              end>
+            OnEval = dwsUnitClassesTStringsMethodsSetValueFromIndexEval
+            Kind = mkProcedure
+          end
+          item
             Name = 'Remove'
             Parameters = <
               item
@@ -595,8 +623,8 @@ object dwsClassesLib: TdwsClassesLib
             ReadAccess = 'GetNames'
             Parameters = <
               item
-                Name = 's'
-                DataType = 'String'
+                Name = 'x'
+                DataType = 'Integer'
                 IsWritable = False
               end>
           end
@@ -609,6 +637,18 @@ object dwsClassesLib: TdwsClassesLib
               item
                 Name = 's'
                 DataType = 'String'
+                IsWritable = False
+              end>
+          end
+          item
+            Name = 'ValueFromIndex'
+            DataType = 'String'
+            ReadAccess = 'GetValueFromIndex'
+            WriteAccess = 'SetValueFromIndex'
+            Parameters = <
+              item
+                Name = 'x'
+                DataType = 'Integer'
                 IsWritable = False
               end>
           end>

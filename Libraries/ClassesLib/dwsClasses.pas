@@ -22,10 +22,12 @@ type
     function GetDelimitedText: String;
     function GetName(Index: Integer): String;
     function GetValue(const Name: String): String;
+    function GetValueFromIndex(Index: Integer): String;
     procedure ReadData(Reader: TReader);
     procedure SetCommaText(const Value: String);
     procedure SetDelimitedText(const Value: String);
     procedure SetValue(const Name, Value: String);
+    procedure SetValueFromIndex(Index: Integer; const Value: String);
     procedure WriteData(Writer: TWriter);
     function GetDelimiter: Char;
     procedure SetDelimiter(const Value: Char);
@@ -86,6 +88,7 @@ type
     property Objects[Index: Integer]: IUnknown read GetObject write PutObject;
     property QuoteChar: Char read GetQuoteChar write SetQuoteChar;
     property Values[const Name: String]: String read GetValue write SetValue;
+    property ValueFromIndex[Index: Integer]: String read GetValueFromIndex write SetValueFromIndex;
     property Strings[Index: Integer]: String read Get write Put; default;
     property Text: String read GetTextStr write SetTextStr;
   end;
@@ -402,6 +405,16 @@ begin
     Result := '';
 end;
 
+function TdwsStrings.GetValueFromIndex(Index: Integer): String;
+var
+  P: Integer;
+begin
+  Result:= Get(Index);
+  P := Pos('=', Result);
+  if P <> 0 then
+    Result:= Copy(Result, P + 1, MaxInt);
+end;
+
 function TdwsStrings.IndexOf(const S: String): Integer;
 begin
   for Result := 0 to GetCount - 1 do
@@ -559,6 +572,17 @@ begin
   begin
     if I >= 0 then Delete(I);
   end;
+end;
+
+procedure TdwsStrings.SetValueFromIndex(Index: Integer; const Value: String);
+var
+  P: Integer;
+begin
+  P:= Pos('=', Get(Index));
+  if P <> 0 then
+    Put(Index, Copy(Get(Index), 1, P) + Value)
+  else
+    Put(Index, Value);
 end;
 
 procedure TdwsStrings.WriteData(Writer: TWriter);

@@ -83,6 +83,8 @@ type
       ExtObject: TObject);
     procedure dwsUnitClassesTStringsMethodsGetValuesEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsUnitClassesTStringsMethodsGetValueFromIndexEval(Info: TProgramInfo;
+      ExtObject: TObject);
     procedure dwsUnitClassesTStringsMethodsGetNamesEval(Info: TProgramInfo;
       ExtObject: TObject);
     procedure dwsUnitClassesTStringsMethodsClearEval(Info: TProgramInfo;
@@ -140,6 +142,8 @@ type
     procedure dwsUnitClassesTStringsMethodsSetObjectsEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsUnitClassesTStringsMethodsSetValuesEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTStringsMethodsSetValueFromIndexEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsUnitClassesTHashtableMethodsClearEval(Info: TProgramInfo;
       ExtObject: TObject);
@@ -340,7 +344,7 @@ end;
 procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsDeleteEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-  TdwsStrings(ExtObject).Delete(Info.ValueAsInteger['Index']);
+  TdwsStrings(ExtObject).Delete(Info.ParamAsInteger[0]);
 end;
 
 procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsRemoveEval(
@@ -358,7 +362,7 @@ end;
 procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsGetEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-  Info.ResultAsString := TdwsStrings(ExtObject)[Info.ValueAsInteger['Index']];
+  Info.ResultAsString := TdwsStrings(ExtObject)[Info.ParamAsInteger[0]];
 end;
 
 procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsGetCommaTextEval(
@@ -376,19 +380,19 @@ end;
 procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsGetNamesEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-  Info.ResultAsString := TdwsStrings(ExtObject).Names[Info.ValueAsInteger['s']];
+  Info.ResultAsString := TdwsStrings(ExtObject).Names[Info.ParamAsInteger[0]];
 end;
 
 procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsGetObjectsEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-  Info.ResultAsVariant := IUnknown(Pointer(TdwsStrings(ExtObject).Objects[Info.ValueAsInteger['Index']]));
+  Info.ResultAsVariant := IUnknown(Pointer(TdwsStrings(ExtObject).Objects[Info.ParamAsInteger[0]]));
 end;
 
 procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsGetStringsEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-  Info.ResultAsString := TdwsStrings(ExtObject)[Info.ValueAsInteger['Index']];
+  Info.ResultAsString := TdwsStrings(ExtObject)[Info.ParamAsInteger[0]];
 end;
 
 procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsGetTextEval(
@@ -400,7 +404,13 @@ end;
 procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsGetValuesEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-  Info.ResultAsString := TdwsStrings(ExtObject).Values[Info.ValueAsString['Str']];
+  Info.ResultAsString := TdwsStrings(ExtObject).Values[Info.ParamAsString[0]];
+end;
+
+procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsGetValueFromIndexEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+  Info.ResultAsString := TdwsStrings(ExtObject).ValueFromIndex[Info.ParamAsInteger[0]];
 end;
 
 procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsInsertObjectEval(
@@ -496,7 +506,13 @@ end;
 procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsSetValuesEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-  TdwsStrings(ExtObject).Values[Info.ValueAsString['Str']] := Info.ValueAsString['Value'];
+  TdwsStrings(ExtObject).Values[Info.ParamAsString[0]] := Info.ParamAsString[1];
+end;
+
+procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsSetValueFromIndexEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+  TdwsStrings(ExtObject).ValueFromIndex[Info.ParamAsInteger[0]] := Info.ParamAsString[1];
 end;
 
 procedure TdwsClassesLib.dwsUnitClassesTStringListMethodsSortEval(
