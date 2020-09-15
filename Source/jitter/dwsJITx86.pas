@@ -119,7 +119,7 @@ type
 
          FPreamble : TFixupPreamble;
          FPostamble : TFixupPostamble;
-         x86 : Tx86WriteOnlyStream;
+         x86 : Tx86_32_WriteOnlyStream;
 
          FAllocator : TdwsJITAllocatorWin;
 
@@ -201,11 +201,11 @@ type
    TdwsJITter_x86 = class (TdwsJITter)
       private
          FJIT : TdwsJITx86;
-         Fx86 : Tx86WriteOnlyStream;
+         Fx86 : Tx86_32_WriteOnlyStream;
 
       protected
          property jit : TdwsJITx86 read FJIT;
-         property x86 : Tx86WriteOnlyStream read Fx86;
+         property x86 : Tx86_32_WriteOnlyStream read Fx86;
 
       public
          constructor Create(jit : TdwsJITx86);
@@ -273,7 +273,7 @@ type
       procedure DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup); override;
    end;
    Tx86VarParam = class (TdwsJITter_x86)
-      class procedure CompileAsPVariant(x86 : Tx86WriteOnlyStream; expr : TByRefParamExpr);
+      class procedure CompileAsPVariant(x86 : Tx86_32_WriteOnlyStream; expr : TByRefParamExpr);
       function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
       function CompileInteger(expr : TTypedExpr) : Integer; override;
       procedure DoCompileAssignFloat(expr : TTypedExpr; source : TxmmRegister); override;
@@ -1028,7 +1028,7 @@ end;
 //
 function TdwsJITx86.CreateOutput : TWriteOnlyBlockStream;
 begin
-   x86:=Tx86WriteOnlyStream.Create;
+   x86:=Tx86_32_WriteOnlyStream.Create;
    Result:=x86;
 end;
 
@@ -1457,7 +1457,7 @@ end;
 //
 procedure TFixupAlignedTarget.Write(output : TWriteOnlyBlockStream);
 begin
-   (output as Tx86WriteOnlyStream)._nop(GetSize);
+   (output as Tx86_32_WriteOnlyStream)._nop(GetSize);
 end;
 
 // JumpLocation
@@ -1577,9 +1577,9 @@ end;
 //
 procedure TFixupPreamble.Write(output : TWriteOnlyBlockStream);
 var
-   x86 : Tx86WriteOnlyStream;
+   x86 : Tx86_32_WriteOnlyStream;
 begin
-   x86:=(output as Tx86WriteOnlyStream);
+   x86:=(output as Tx86_32_WriteOnlyStream);
 
    x86._push_reg(cExecMemGPR);
 
@@ -1647,9 +1647,9 @@ end;
 //
 procedure TFixupPostamble.Write(output : TWriteOnlyBlockStream);
 var
-   x86 : Tx86WriteOnlyStream;
+   x86 : Tx86_32_WriteOnlyStream;
 begin
-   x86:=(output as Tx86WriteOnlyStream);
+   x86:=(output as Tx86_32_WriteOnlyStream);
 
    if FPreamble.TempSpaceOnStack+FPreamble.AllocatedStackSpace>0 then
       x86._add_reg_int32(gprESP, FPreamble.TempSpaceOnStack+FPreamble.AllocatedStackSpace);
@@ -3040,7 +3040,7 @@ end;
 
 // CompileAsPVariant
 //
-class procedure Tx86VarParam.CompileAsPVariant(x86 : Tx86WriteOnlyStream; expr : TByRefParamExpr);
+class procedure Tx86VarParam.CompileAsPVariant(x86 : Tx86_32_WriteOnlyStream; expr : TByRefParamExpr);
 begin
    x86._mov_reg_execmem(gprEAX, expr.StackAddr);
    x86._xor_reg_reg(gprEDX, gprEDX);

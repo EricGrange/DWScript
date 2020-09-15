@@ -37,8 +37,8 @@ type
    private
       FProgram: TdwsProgram;
       FCompilerContext : TdwsCompilerContext;
-      FInitStream: Tx86WriteOnlyStream;
-      FStream: Tx86WriteOnlyStream;
+      FInitStream: Tx86_32_WriteOnlyStream;
+      FStream: Tx86_32_WriteOnlyStream;
       FReturnValue: TTypeSymbol;
       FParams: integer;
       FStackDepth: integer;
@@ -113,8 +113,8 @@ constructor Tx86RegisterJit.Create(prog: TdwsProgram; OnLookupType: TTypeLookupE
 begin
    FProgram := prog;
    FCompilerContext := prog.Root.CompilerContext;
-   FInitStream := Tx86WriteOnlyStream.Create;
-   FStream := Tx86WriteOnlyStream.Create;
+   FInitStream := Tx86_32_WriteOnlyStream.Create;
+   FStream := Tx86_32_WriteOnlyStream.Create;
    FOnLookupType := OnLookupType;
 end;
 

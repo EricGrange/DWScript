@@ -20,7 +20,6 @@ interface
 
 uses
    Types, SysUtils,
-   dwsDataContext,
    dwsUtils;
 
 type
@@ -97,9 +96,14 @@ type
 
    TgpShift = (gpShr = $E8, gpShl = $E0, gpSar = $F8, gpSal = $F0);
 
-   Tx86WriteOnlyStream = class(TWriteOnlyBlockStream)
-      private
+   Tx86BaseWriteOnlyStream = class(TWriteOnlyBlockStream)
+      protected
          procedure _modRMSIB_reg_reg(const opCode : array of Byte; dest, src : TxmmRegister);
+   end;
+
+
+   Tx86_32_WriteOnlyStream = class(Tx86BaseWriteOnlyStream)
+      private
          procedure _modRMSIB_reg_execmem(const opCode : array of Byte; reg : TxmmRegister; stackAddr : Integer); overload;
          procedure _modRMSIB_reg_execmem(const opCode : array of Byte; reg : TgpRegister; stackAddr, offset : Integer); overload;
          procedure _modRMSIB_reg_absmem(const opCode : array of Byte; reg : TxmmRegister; ptr : Pointer);
@@ -262,6 +266,11 @@ type
          function _end_finally_block(beginResult: integer): integer;
    end;
 
+   Tx86_64_WriteOnlyStream = class(Tx86BaseWriteOnlyStream)
+      public
+
+   end;
+
 const
    gpOp_add : TgpOp = (Short1: $83; SIB: $C0; Long1: $81; LongEAX: $05; RegReg: $01);
    gpOp_adc : TgpOp = (Short1: $83; SIB: $D0; Long1: $81; LongEAX: $15; RegReg: $11);
@@ -329,12 +338,12 @@ begin
 end;
 
 // ------------------
-// ------------------ Tx86WriteOnlyStream ------------------
+// ------------------ Tx86BaseWriteOnlyStream ------------------
 // ------------------
 
 // _modRMSIB_reg_reg
 //
-procedure Tx86WriteOnlyStream._modRMSIB_reg_reg(const opCode : array of Byte; dest, src : TxmmRegister);
+procedure Tx86BaseWriteOnlyStream._modRMSIB_reg_reg(const opCode : array of Byte; dest, src : TxmmRegister);
 begin
    Assert(dest in [xmm0..High(TxmmRegister)]);
    Assert(src in [xmm0..High(TxmmRegister)]);
@@ -344,9 +353,13 @@ begin
    WriteByte($C0+Ord(src)+Ord(dest)*8);
 end;
 
+// ------------------
+// ------------------ Tx86_32_WriteOnlyStream ------------------
+// ------------------
+
 // _modRMSIB_reg_execmem (xmm)
 //
-procedure Tx86WriteOnlyStream._modRMSIB_reg_execmem(const opCode : array of Byte; reg : TxmmRegister; stackAddr : Integer);
+procedure Tx86_32_WriteOnlyStream._modRMSIB_reg_execmem(const opCode : array of Byte; reg : TxmmRegister; stackAddr : Integer);
 begin
    Assert(reg in [xmm0..High(TxmmRegister)]);
 
@@ -355,7 +368,7 @@ end;
 
 // _modRMSIB_reg_execmem (gpr)
 //
-procedure Tx86WriteOnlyStream._modRMSIB_reg_execmem(const opCode : array of Byte; reg : TgpRegister; stackAddr, offset : Integer);
+procedure Tx86_32_WriteOnlyStream._modRMSIB_reg_execmem(const opCode : array of Byte; reg : TgpRegister; stackAddr, offset : Integer);
 begin
    Assert(reg in [gprEAX..High(gprEDI)]);
 
@@ -364,7 +377,7 @@ end;
 
 // _modRMSIB_reg_absmem
 //
-procedure Tx86WriteOnlyStream._modRMSIB_reg_absmem(const opCode : array of Byte; reg : TxmmRegister; ptr : Pointer);
+procedure Tx86_32_WriteOnlyStream._modRMSIB_reg_absmem(const opCode : array of Byte; reg : TxmmRegister; ptr : Pointer);
 begin
    Assert(reg in [xmm0..High(TxmmRegister)]);
 
@@ -376,7 +389,7 @@ end;
 
 // _modRMSIB_op_execmem_int32
 //
-procedure Tx86WriteOnlyStream._modRMSIB_op_execmem_int32(code1, code2 : Byte; stackAddr, offset, value : Integer);
+procedure Tx86_32_WriteOnlyStream._modRMSIB_op_execmem_int32(code1, code2 : Byte; stackAddr, offset, value : Integer);
 begin
    offset:=StackAddrToOffset(stackAddr)+offset;
 
@@ -408,7 +421,7 @@ end;
 
 // _modRMSIB_regnum_ptr_reg
 //
-procedure Tx86WriteOnlyStream._modRMSIB_regnum_ptr_reg(const opCode : array of Byte; destNum : Integer; src : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._modRMSIB_regnum_ptr_reg(const opCode : array of Byte; destNum : Integer; src : TgpRegister; offset : Integer);
 begin
    WriteBytes(opCode);
    _modRMSIB_ptr_reg(destNum*8, src, offset)
@@ -416,7 +429,7 @@ end;
 
 // _modRMSIB_ptr_reg
 //
-procedure Tx86WriteOnlyStream._modRMSIB_ptr_reg(rm : Integer; reg : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._modRMSIB_ptr_reg(rm : Integer; reg : TgpRegister; offset : Integer);
 begin
    Inc(rm, Ord(reg));
    if (offset<>0) or (reg=gprEBP) then begin
@@ -435,7 +448,7 @@ end;
 
 // _modRMSIB_ptr_reg_reg
 //
-procedure Tx86WriteOnlyStream._modRMSIB_ptr_reg_reg(rm : Integer; base, index : TgpRegister; scale, offset : Integer);
+procedure Tx86_32_WriteOnlyStream._modRMSIB_ptr_reg_reg(rm : Integer; base, index : TgpRegister; scale, offset : Integer);
 var
    sib : Integer;
 begin
@@ -469,7 +482,7 @@ end;
 
 // WritePointer
 //
-procedure Tx86WriteOnlyStream.WritePointer(const p : Pointer);
+procedure Tx86_32_WriteOnlyStream.WritePointer(const p : Pointer);
 var
    ip : NativeInt;
 begin
@@ -480,56 +493,56 @@ end;
 
 // _xmm_reg_reg
 //
-procedure Tx86WriteOnlyStream._xmm_reg_reg(op : TxmmOp; dest, src : TxmmRegister);
+procedure Tx86_32_WriteOnlyStream._xmm_reg_reg(op : TxmmOp; dest, src : TxmmRegister);
 begin
    _modRMSIB_reg_reg([$F2, $0F, Ord(op)], dest, src);
 end;
 
 // _xmm_reg_execmem
 //
-procedure Tx86WriteOnlyStream._xmm_reg_execmem(op : TxmmOp; reg : TxmmRegister; stackAddr : Integer);
+procedure Tx86_32_WriteOnlyStream._xmm_reg_execmem(op : TxmmOp; reg : TxmmRegister; stackAddr : Integer);
 begin
    _modRMSIB_reg_execmem([$F2, $0F, Ord(op)], reg, stackAddr);
 end;
 
 // _xmm_reg_absmem
 //
-procedure Tx86WriteOnlyStream._xmm_reg_absmem(op : TxmmOp; reg : TxmmRegister;  ptr : Pointer);
+procedure Tx86_32_WriteOnlyStream._xmm_reg_absmem(op : TxmmOp; reg : TxmmRegister;  ptr : Pointer);
 begin
    _modRMSIB_reg_absmem([$F2, $0F, Ord(op)], reg, ptr);
 end;
 
 // _xorps_reg_reg
 //
-procedure Tx86WriteOnlyStream._xorps_reg_reg(dest, src : TxmmRegister);
+procedure Tx86_32_WriteOnlyStream._xorps_reg_reg(dest, src : TxmmRegister);
 begin
    _modRMSIB_reg_reg([$0F, $57], dest, src);
 end;
 
 // _comisd_reg_reg
 //
-procedure Tx86WriteOnlyStream._comisd_reg_reg(dest, src : TxmmRegister);
+procedure Tx86_32_WriteOnlyStream._comisd_reg_reg(dest, src : TxmmRegister);
 begin
    _modRMSIB_reg_reg([$66, $0F, $2F], dest, src);
 end;
 
 // _comisd_reg_execmem
 //
-procedure Tx86WriteOnlyStream._comisd_reg_execmem(reg : TxmmRegister; stackAddr : Integer);
+procedure Tx86_32_WriteOnlyStream._comisd_reg_execmem(reg : TxmmRegister; stackAddr : Integer);
 begin
    _modRMSIB_reg_execmem([$66, $0F, $2F], reg, stackAddr);
 end;
 
 // _comisd_reg_absmem
 //
-procedure Tx86WriteOnlyStream._comisd_reg_absmem(reg : TxmmRegister;  ptr : Pointer);
+procedure Tx86_32_WriteOnlyStream._comisd_reg_absmem(reg : TxmmRegister;  ptr : Pointer);
 begin
    _modRMSIB_reg_absmem([$66, $0F, $2F], reg, ptr);
 end;
 
 // _movsd_reg_reg
 //
-procedure Tx86WriteOnlyStream._movsd_reg_reg(dest, src : TxmmRegister);
+procedure Tx86_32_WriteOnlyStream._movsd_reg_reg(dest, src : TxmmRegister);
 begin
    // really does a movaps to copy registers (shorter encoding)
    _modRMSIB_reg_reg([$0F, $28], dest, src);
@@ -537,49 +550,49 @@ end;
 
 // _movsd_reg_execmem
 //
-procedure Tx86WriteOnlyStream._movsd_reg_execmem(reg : TxmmRegister; stackAddr : Integer);
+procedure Tx86_32_WriteOnlyStream._movsd_reg_execmem(reg : TxmmRegister; stackAddr : Integer);
 begin
    _modRMSIB_reg_execmem([$F2, $0F, $10], reg, stackAddr);
 end;
 
 // _movsd_execmem_reg
 //
-procedure Tx86WriteOnlyStream._movsd_execmem_reg(stackAddr : Integer; reg : TxmmRegister);
+procedure Tx86_32_WriteOnlyStream._movsd_execmem_reg(stackAddr : Integer; reg : TxmmRegister);
 begin
    _modRMSIB_reg_execmem([$F2, $0F, $11], reg, stackAddr);
 end;
 
 // _movsd_reg_absmem
 //
-procedure Tx86WriteOnlyStream._movsd_reg_absmem(reg : TxmmRegister; ptr : Pointer);
+procedure Tx86_32_WriteOnlyStream._movsd_reg_absmem(reg : TxmmRegister; ptr : Pointer);
 begin
    _modRMSIB_reg_absmem([$F2, $0F, $10], reg, ptr);
 end;
 
 // _movsd_reg_esp
 //
-procedure Tx86WriteOnlyStream._movsd_reg_esp(reg : TxmmRegister; offset : Integer = 0);
+procedure Tx86_32_WriteOnlyStream._movsd_reg_esp(reg : TxmmRegister; offset : Integer = 0);
 begin
    _movsd_reg_qword_ptr_reg(reg, gprESP, offset);
 end;
 
 // _movsd_esp_reg
 //
-procedure Tx86WriteOnlyStream._movsd_esp_reg(reg : TxmmRegister);
+procedure Tx86_32_WriteOnlyStream._movsd_esp_reg(reg : TxmmRegister);
 begin
    _movsd_qword_ptr_reg_reg(gprESP, 0, reg);
 end;
 
 // _movsd_esp_reg
 //
-procedure Tx86WriteOnlyStream._movsd_esp_reg(offset : Integer; reg : TxmmRegister);
+procedure Tx86_32_WriteOnlyStream._movsd_esp_reg(offset : Integer; reg : TxmmRegister);
 begin
    _movsd_qword_ptr_reg_reg(gprESP, offset, reg);
 end;
 
 // _movsd_qword_ptr_reg_reg
 //
-procedure Tx86WriteOnlyStream._movsd_qword_ptr_reg_reg(dest : TgpRegister; offset : Integer; src : TxmmRegister);
+procedure Tx86_32_WriteOnlyStream._movsd_qword_ptr_reg_reg(dest : TgpRegister; offset : Integer; src : TxmmRegister);
 begin
    Assert(src in [xmm0..High(TxmmRegister)]);
 
@@ -588,7 +601,7 @@ end;
 
 // _movsd_reg_qword_ptr_reg
 //
-procedure Tx86WriteOnlyStream._movsd_reg_qword_ptr_reg(dest : TxmmRegister; src : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._movsd_reg_qword_ptr_reg(dest : TxmmRegister; src : TgpRegister; offset : Integer);
 begin
    Assert(dest in [xmm0..High(TxmmRegister)]);
 
@@ -597,7 +610,7 @@ end;
 
 // _movsd_reg_qword_ptr_indexed
 //
-procedure Tx86WriteOnlyStream._movsd_reg_qword_ptr_indexed(dest : TxmmRegister; base, index : TgpRegister; scale, offset : Integer);
+procedure Tx86_32_WriteOnlyStream._movsd_reg_qword_ptr_indexed(dest : TxmmRegister; base, index : TgpRegister; scale, offset : Integer);
 begin
    Assert(dest in [xmm0..High(TxmmRegister)]);
 
@@ -608,7 +621,7 @@ end;
 
 // _movsd_qword_ptr_indexed_reg
 //
-procedure Tx86WriteOnlyStream._movsd_qword_ptr_indexed_reg(base, index : TgpRegister; scale, offset : Integer; src : TxmmRegister);
+procedure Tx86_32_WriteOnlyStream._movsd_qword_ptr_indexed_reg(base, index : TgpRegister; scale, offset : Integer; src : TxmmRegister);
 begin
    Assert(src in [xmm0..High(TxmmRegister)]);
 
@@ -619,35 +632,35 @@ end;
 
 // _movq_execmem_reg
 //
-procedure Tx86WriteOnlyStream._movq_execmem_reg(stackAddr : Integer; reg : TxmmRegister);
+procedure Tx86_32_WriteOnlyStream._movq_execmem_reg(stackAddr : Integer; reg : TxmmRegister);
 begin
    _modRMSIB_reg_execmem([$66, $0F, $D6], reg, stackAddr);
 end;
 
 // _movq_reg_absmem
 //
-procedure Tx86WriteOnlyStream._movq_reg_absmem(reg : TxmmRegister; ptr : Pointer);
+procedure Tx86_32_WriteOnlyStream._movq_reg_absmem(reg : TxmmRegister; ptr : Pointer);
 begin
    _modRMSIB_reg_absmem([$F3, $0F, $7E], reg, ptr);
 end;
 
 // _mov_reg_execmem
 //
-procedure Tx86WriteOnlyStream._mov_reg_execmem(reg : TgpRegister; stackAddr : Integer; offset : Integer = 0);
+procedure Tx86_32_WriteOnlyStream._mov_reg_execmem(reg : TgpRegister; stackAddr : Integer; offset : Integer = 0);
 begin
    _modRMSIB_regnum_ptr_reg([$8B], Ord(reg), cExecMemGPR, StackAddrToOffset(stackAddr)+offset);
 end;
 
 // _mov_execmem_reg
 //
-procedure Tx86WriteOnlyStream._mov_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._mov_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
 begin
    _modRMSIB_reg_execmem([$89], reg, stackAddr, offset);
 end;
 
 // _mov_eaxedx_execmem
 //
-procedure Tx86WriteOnlyStream._mov_eaxedx_execmem(stackAddr : Integer);
+procedure Tx86_32_WriteOnlyStream._mov_eaxedx_execmem(stackAddr : Integer);
 begin
    _mov_reg_execmem(gprEAX, stackAddr, 0);
    _mov_reg_execmem(gprEDX, stackAddr, 4);
@@ -655,7 +668,7 @@ end;
 
 // _mov_execmem_eaxedx
 //
-procedure Tx86WriteOnlyStream._mov_execmem_eaxedx(stackAddr : Integer);
+procedure Tx86_32_WriteOnlyStream._mov_execmem_eaxedx(stackAddr : Integer);
 begin
    _mov_execmem_reg(stackAddr, 0, gprEAX);
    _mov_execmem_reg(stackAddr, 4, gprEDX);
@@ -663,7 +676,7 @@ end;
 
 // _mov_execmem_imm
 //
-procedure Tx86WriteOnlyStream._mov_execmem_imm(stackAddr : Integer; const imm : Int64);
+procedure Tx86_32_WriteOnlyStream._mov_execmem_imm(stackAddr : Integer; const imm : Int64);
 var
    v : DWORD;
 begin
@@ -685,7 +698,7 @@ end;
 
 // _mov_eaxedx_imm
 //
-procedure Tx86WriteOnlyStream._mov_eaxedx_imm(const imm : Int64);
+procedure Tx86_32_WriteOnlyStream._mov_eaxedx_imm(const imm : Int64);
 begin
    _mov_reg_dword(gprEAX, DWORD(imm));
    _mov_reg_dword(gprEDX, DWORD(imm shr 32));
@@ -693,7 +706,7 @@ end;
 
 // _mov_reg_reg
 //
-procedure Tx86WriteOnlyStream._mov_reg_reg(dest, src : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._mov_reg_reg(dest, src : TgpRegister);
 begin
    if dest<>src then
       WriteBytes([$89, $C0+Ord(dest)+8*Ord(src)]);
@@ -701,14 +714,14 @@ end;
 
 // _mov_reg_dword_ptr_reg
 //
-procedure Tx86WriteOnlyStream._mov_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer = 0);
+procedure Tx86_32_WriteOnlyStream._mov_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer = 0);
 begin
    _modRMSIB_regnum_ptr_reg([$8B], Ord(dest), src, offset);
 end;
 
 // _mov_reg_dword_ptr_indexed
 //
-procedure Tx86WriteOnlyStream._mov_reg_dword_ptr_indexed(dest, base, index : TgpRegister; scale, offset : Integer);
+procedure Tx86_32_WriteOnlyStream._mov_reg_dword_ptr_indexed(dest, base, index : TgpRegister; scale, offset : Integer);
 begin
    WriteBytes([$8B]);
 
@@ -717,14 +730,14 @@ end;
 
 // _mov_dword_ptr_reg_reg
 //
-procedure Tx86WriteOnlyStream._mov_dword_ptr_reg_reg(dest : TgpRegister; offset : Integer; src : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._mov_dword_ptr_reg_reg(dest : TgpRegister; offset : Integer; src : TgpRegister);
 begin
    _modRMSIB_regnum_ptr_reg([$89], Ord(src), dest, offset);
 end;
 
 // _mov_qword_ptr_reg_eaxedx
 //
-procedure Tx86WriteOnlyStream._mov_qword_ptr_reg_eaxedx(dest : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._mov_qword_ptr_reg_eaxedx(dest : TgpRegister; offset : Integer);
 begin
    _mov_dword_ptr_reg_reg(dest, offset, gprEAX);
    _mov_dword_ptr_reg_reg(dest, offset+4, gprEDX);
@@ -732,7 +745,7 @@ end;
 
 // _mov_eaxedx_qword_ptr_reg
 //
-procedure Tx86WriteOnlyStream._mov_eaxedx_qword_ptr_reg(src : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._mov_eaxedx_qword_ptr_reg(src : TgpRegister; offset : Integer);
 begin
    if src<>gprEAX then begin
       _mov_reg_dword_ptr_reg(gprEAX, src, offset);
@@ -745,7 +758,7 @@ end;
 
 // _mov_reg_dword
 //
-procedure Tx86WriteOnlyStream._mov_reg_dword(reg : TgpRegister; imm : DWORD);
+procedure Tx86_32_WriteOnlyStream._mov_reg_dword(reg : TgpRegister; imm : DWORD);
 begin
    if imm=0 then
       _xor_reg_reg(reg, reg)
@@ -757,7 +770,7 @@ end;
 
 // _add_eaxedx_imm
 //
-procedure Tx86WriteOnlyStream._add_eaxedx_imm(const imm : Int64);
+procedure Tx86_32_WriteOnlyStream._add_eaxedx_imm(const imm : Int64);
 begin
    if imm=0 then Exit;
 
@@ -767,7 +780,7 @@ end;
 
 // _add_eaxedx_execmem
 //
-procedure Tx86WriteOnlyStream._add_eaxedx_execmem(stackAddr : Integer);
+procedure Tx86_32_WriteOnlyStream._add_eaxedx_execmem(stackAddr : Integer);
 begin
    _add_reg_execmem(gprEAX, stackAddr, 0);
    _adc_reg_execmem(gprEDX, stackAddr, 4);
@@ -775,7 +788,7 @@ end;
 
 // _sub_eaxedx_imm
 //
-procedure Tx86WriteOnlyStream._sub_eaxedx_imm(const imm : Int64);
+procedure Tx86_32_WriteOnlyStream._sub_eaxedx_imm(const imm : Int64);
 begin
    if imm=0 then Exit;
 
@@ -785,7 +798,7 @@ end;
 
 // _sub_eaxedx_execmem
 //
-procedure Tx86WriteOnlyStream._sub_eaxedx_execmem(stackAddr : Integer);
+procedure Tx86_32_WriteOnlyStream._sub_eaxedx_execmem(stackAddr : Integer);
 begin
    _sub_reg_execmem(gprEAX, stackAddr, 0);
    _sbb_reg_execmem(gprEDX, stackAddr, 4);
@@ -793,42 +806,42 @@ end;
 
 // _cmp_execmem_int32
 //
-procedure Tx86WriteOnlyStream._cmp_execmem_int32(stackAddr, offset, value : Integer);
+procedure Tx86_32_WriteOnlyStream._cmp_execmem_int32(stackAddr, offset, value : Integer);
 begin
    _modRMSIB_op_execmem_int32($83, $78, stackAddr, offset, value);
 end;
 
 // _cmp_execmem_reg
 //
-procedure Tx86WriteOnlyStream._cmp_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._cmp_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
 begin
    _cmp_dword_ptr_reg_reg(cExecMemGPR, StackAddrToOffset(stackAddr)+offset, reg);
 end;
 
 // _cmp_reg_execmem
 //
-procedure Tx86WriteOnlyStream._cmp_reg_execmem(reg : TgpRegister; stackAddr, offset : Integer);
+procedure Tx86_32_WriteOnlyStream._cmp_reg_execmem(reg : TgpRegister; stackAddr, offset : Integer);
 begin
    _cmp_reg_dword_ptr_reg(reg, cExecMemGPR, StackAddrToOffset(stackAddr)+offset);
 end;
 
 // _cmp_execmem_reg
 //
-procedure Tx86WriteOnlyStream._cmp_dword_ptr_reg_reg(dest : TgpRegister; offset : Integer; reg : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._cmp_dword_ptr_reg_reg(dest : TgpRegister; offset : Integer; reg : TgpRegister);
 begin
    _modRMSIB_regnum_ptr_reg([$39], Ord(reg), dest, offset);
 end;
 
 // _cmp_reg_dword_ptr_reg
 //
-procedure Tx86WriteOnlyStream._cmp_reg_dword_ptr_reg(reg : TgpRegister; dest : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._cmp_reg_dword_ptr_reg(reg : TgpRegister; dest : TgpRegister; offset : Integer);
 begin
    _modRMSIB_regnum_ptr_reg([$3B], Ord(reg), dest, offset);
 end;
 
 // _test_reg_reg
 //
-procedure Tx86WriteOnlyStream._test_reg_reg(dest, src : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._test_reg_reg(dest, src : TgpRegister);
 begin
    WriteByte($85);
    WriteByte($C0+Ord(dest)+Ord(src)*8);
@@ -836,7 +849,7 @@ end;
 
 // _test_reg_imm
 //
-procedure Tx86WriteOnlyStream._test_reg_imm(reg : TgpRegister; imm : DWORD);
+procedure Tx86_32_WriteOnlyStream._test_reg_imm(reg : TgpRegister; imm : DWORD);
 begin
    if (imm<=$FF) and (reg in [gprEAX..gprEBX]) then begin
       if reg=gprEAX then
@@ -859,7 +872,7 @@ end;
 
 // _test_dword_ptr_reg_dword
 //
-procedure Tx86WriteOnlyStream._test_dword_ptr_reg_dword(dest : TgpRegister; offset : Integer; imm : DWORD);
+procedure Tx86_32_WriteOnlyStream._test_dword_ptr_reg_dword(dest : TgpRegister; offset : Integer; imm : DWORD);
 var
    i : Integer;
 begin
@@ -877,7 +890,7 @@ end;
 
 // _test_dword_ptr_reg_byte
 //
-procedure Tx86WriteOnlyStream._test_dword_ptr_reg_byte(dest : TgpRegister; offset : Integer; imm : Byte);
+procedure Tx86_32_WriteOnlyStream._test_dword_ptr_reg_byte(dest : TgpRegister; offset : Integer; imm : Byte);
 begin
    WriteByte($F6);
    _modRMSIB_ptr_reg(0, dest, offset);
@@ -886,35 +899,35 @@ end;
 
 // _test_dword_ptr_reg_reg
 //
-procedure Tx86WriteOnlyStream._test_dword_ptr_reg_reg(dest : TgpRegister; offset : Integer; src : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._test_dword_ptr_reg_reg(dest : TgpRegister; offset : Integer; src : TgpRegister);
 begin
    _modRMSIB_regnum_ptr_reg([$85], Ord(src), dest, offset);
 end;
 
 // _test_execmem_imm
 //
-procedure Tx86WriteOnlyStream._test_execmem_imm(stackAddr, offset : Integer; imm : DWORD);
+procedure Tx86_32_WriteOnlyStream._test_execmem_imm(stackAddr, offset : Integer; imm : DWORD);
 begin
    _test_dword_ptr_reg_dword(cExecMemGPR, StackAddrToOffset(stackAddr)+offset, imm);
 end;
 
 // _test_execmem_reg
 //
-procedure Tx86WriteOnlyStream._test_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._test_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
 begin
    _test_dword_ptr_reg_reg(cExecMemGPR, StackAddrToOffset(stackAddr)+offset, reg);
 end;
 
 // _set_al_flags
 //
-procedure Tx86WriteOnlyStream._set_al_flags(flags : TboolFlags);
+procedure Tx86_32_WriteOnlyStream._set_al_flags(flags : TboolFlags);
 begin
    WriteBytes([$0F, Ord(flags)+$20, $C0]);
 end;
 
 // _op_reg_int32
 //
-procedure Tx86WriteOnlyStream._op_reg_int32(const op : TgpOP; reg : TgpRegister; value : Integer);
+procedure Tx86_32_WriteOnlyStream._op_reg_int32(const op : TgpOP; reg : TgpRegister; value : Integer);
 begin
    if (value>=-128) and (value<=127) then
       WriteBytes([op.Short1, op.SIB+Ord(reg), Byte(value)])
@@ -928,131 +941,131 @@ end;
 
 // _op_reg_reg
 //
-procedure Tx86WriteOnlyStream._op_reg_reg(const op : TgpOP; dest, src : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._op_reg_reg(const op : TgpOP; dest, src : TgpRegister);
 begin
    WriteBytes([op.RegReg, $C0+Ord(dest)+8*Ord(src)])
 end;
 
 // _op_reg_dword_ptr_reg
 //
-procedure Tx86WriteOnlyStream._op_reg_dword_ptr_reg(const op : TgpOP; dest, src : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._op_reg_dword_ptr_reg(const op : TgpOP; dest, src : TgpRegister; offset : Integer);
 begin
    _modRMSIB_regnum_ptr_reg([op.RegReg+2], Ord(dest), src, offset);
 end;
 
 // _cmp_reg_int32
 //
-procedure Tx86WriteOnlyStream._cmp_reg_int32(reg : TgpRegister; value : Integer);
+procedure Tx86_32_WriteOnlyStream._cmp_reg_int32(reg : TgpRegister; value : Integer);
 begin
    _op_reg_int32(gpOp_cmp, reg, value);
 end;
 
 // _add_reg_reg
 //
-procedure Tx86WriteOnlyStream._add_reg_reg(dest, src : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._add_reg_reg(dest, src : TgpRegister);
 begin
    _op_reg_reg(gpOp_add, dest, src);
 end;
 
 // _adc_reg_reg
 //
-procedure Tx86WriteOnlyStream._adc_reg_reg(dest, src : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._adc_reg_reg(dest, src : TgpRegister);
 begin
    _op_reg_reg(gpOp_adc, dest, src);
 end;
 
 // _add_reg_int32
 //
-procedure Tx86WriteOnlyStream._add_reg_int32(reg : TgpRegister; value : Integer);
+procedure Tx86_32_WriteOnlyStream._add_reg_int32(reg : TgpRegister; value : Integer);
 begin
    _op_reg_int32(gpOp_add, reg, value);
 end;
 
 // _adc_reg_int32
 //
-procedure Tx86WriteOnlyStream._adc_reg_int32(reg : TgpRegister; value : Integer);
+procedure Tx86_32_WriteOnlyStream._adc_reg_int32(reg : TgpRegister; value : Integer);
 begin
    _op_reg_int32(gpOp_adc, reg, value);
 end;
 
 // _sub_reg_int32
 //
-procedure Tx86WriteOnlyStream._sub_reg_int32(reg : TgpRegister; value : Integer);
+procedure Tx86_32_WriteOnlyStream._sub_reg_int32(reg : TgpRegister; value : Integer);
 begin
    _op_reg_int32(gpOp_sub, reg, value);
 end;
 
 // _sbb_reg_int32
 //
-procedure Tx86WriteOnlyStream._sbb_reg_int32(reg : TgpRegister; value : Integer);
+procedure Tx86_32_WriteOnlyStream._sbb_reg_int32(reg : TgpRegister; value : Integer);
 begin
    _op_reg_int32(gpOp_sbb, reg, value);
 end;
 
 // _add_reg_execmem
 //
-procedure Tx86WriteOnlyStream._add_reg_execmem(reg : TgpRegister; stackAddr, offset : Integer);
+procedure Tx86_32_WriteOnlyStream._add_reg_execmem(reg : TgpRegister; stackAddr, offset : Integer);
 begin
    _modRMSIB_regnum_ptr_reg([$03], Ord(reg), cExecMemGPR, StackAddrToOffset(stackAddr)+offset);
 end;
 
 // _adc_reg_execmem
 //
-procedure Tx86WriteOnlyStream._adc_reg_execmem(reg : TgpRegister; stackAddr, offset : Integer);
+procedure Tx86_32_WriteOnlyStream._adc_reg_execmem(reg : TgpRegister; stackAddr, offset : Integer);
 begin
    _modRMSIB_regnum_ptr_reg([$13], Ord(reg), cExecMemGPR, StackAddrToOffset(stackAddr)+offset);
 end;
 
 // _sub_reg_execmem
 //
-procedure Tx86WriteOnlyStream._sub_reg_execmem(reg : TgpRegister; stackAddr, offset : Integer);
+procedure Tx86_32_WriteOnlyStream._sub_reg_execmem(reg : TgpRegister; stackAddr, offset : Integer);
 begin
    _modRMSIB_regnum_ptr_reg([$2B], Ord(reg), cExecMemGPR, StackAddrToOffset(stackAddr)+offset);
 end;
 
 // _sbb_reg_execmem
 //
-procedure Tx86WriteOnlyStream._sbb_reg_execmem(reg : TgpRegister; stackAddr, offset : Integer);
+procedure Tx86_32_WriteOnlyStream._sbb_reg_execmem(reg : TgpRegister; stackAddr, offset : Integer);
 begin
    _modRMSIB_regnum_ptr_reg([$1B], Ord(reg), cExecMemGPR, StackAddrToOffset(stackAddr)+offset);
 end;
 
 // _add_reg_dword_ptr_reg
 //
-procedure Tx86WriteOnlyStream._add_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._add_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 begin
    _op_reg_dword_ptr_reg(gpOp_add, dest, src, offset);
 end;
 
 // _adc_reg_dword_ptr_reg
 //
-procedure Tx86WriteOnlyStream._adc_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._adc_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 begin
    _op_reg_dword_ptr_reg(gpOp_adc, dest, src, offset);
 end;
 
 // _sub_reg_dword_ptr_reg
 //
-procedure Tx86WriteOnlyStream._sub_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._sub_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 begin
    _op_reg_dword_ptr_reg(gpOp_sub, dest, src, offset);
 end;
 
 // _sbb_reg_dword_ptr_reg
 //
-procedure Tx86WriteOnlyStream._sbb_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._sbb_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 begin
    _op_reg_dword_ptr_reg(gpOp_sbb, dest, src, offset);
 end;
 
 // _and_reg_dword_ptr_reg
 //
-procedure Tx86WriteOnlyStream._and_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._and_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 begin
    _op_reg_dword_ptr_reg(gpOp_and, dest, src, offset);
 end;
 
-function Tx86WriteOnlyStream._begin_tryf_frame: integer;
+function Tx86_32_WriteOnlyStream._begin_tryf_frame: integer;
 begin
    _xor_reg_reg(gprEAX, gprEAX);
    _push_reg(gprEBP);
@@ -1063,7 +1076,7 @@ begin
    WriteBytes([$64, $89, $20]); //mov fs:[eax],esp
 end;
 
-function Tx86WriteOnlyStream._begin_finally_block: integer;
+function Tx86_32_WriteOnlyStream._begin_finally_block: integer;
 begin
    _xor_reg_reg(gprEAX, gprEAX);
    _pop_reg(gprEDX);
@@ -1075,7 +1088,7 @@ begin
    WriteDWord(0);
 end;
 
-function Tx86WriteOnlyStream._end_finally_block(beginResult: integer): integer;
+function Tx86_32_WriteOnlyStream._end_finally_block(beginResult: integer): integer;
 begin
    _ret;
    WriteByte($E9); //push dword literal
@@ -1088,21 +1101,21 @@ end;
 
 // _or_reg_dword_ptr_reg
 //
-procedure Tx86WriteOnlyStream._or_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._or_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 begin
    _op_reg_dword_ptr_reg(gpOp_or, dest, src, offset);
 end;
 
 // _xor_reg_dword_ptr_reg
 //
-procedure Tx86WriteOnlyStream._xor_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._xor_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 begin
    _op_reg_dword_ptr_reg(gpOp_xor, dest, src, offset);
 end;
 
 // _inc_dword_ptr_reg
 //
-procedure Tx86WriteOnlyStream._inc_dword_ptr_reg(reg : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._inc_dword_ptr_reg(reg : TgpRegister; offset : Integer);
 begin
    WriteByte($FF);
    _modRMSIB_ptr_reg(0, reg, offset);
@@ -1110,14 +1123,14 @@ end;
 
 // _mul_reg
 //
-procedure Tx86WriteOnlyStream._mul_reg(reg : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._mul_reg(reg : TgpRegister);
 begin
    WriteBytes([$F7, $E0+Ord(reg)]);
 end;
 
 // _mul_dword_ptr_reg
 //
-procedure Tx86WriteOnlyStream._mul_dword_ptr_reg(reg : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._mul_dword_ptr_reg(reg : TgpRegister; offset : Integer);
 begin
    WriteByte($F7);
    _modRMSIB_ptr_reg($20, reg, offset);
@@ -1125,14 +1138,14 @@ end;
 
 // _imul_reg_reg
 //
-procedure Tx86WriteOnlyStream._imul_reg_reg(dest, src : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._imul_reg_reg(dest, src : TgpRegister);
 begin
    WriteBytes([$0F, $AF, $C0+Ord(dest)*8+Ord(src)]);
 end;
 
 // _imul_reg_dword_ptr_reg
 //
-procedure Tx86WriteOnlyStream._imul_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._imul_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 begin
    _modRMSIB_regnum_ptr_reg([$0F, $AF], Ord(dest), src, offset);
 //   asm
@@ -1142,21 +1155,21 @@ end;
 
 // _neg_reg
 //
-procedure Tx86WriteOnlyStream._neg_reg(reg : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._neg_reg(reg : TgpRegister);
 begin
    WriteBytes([$F7, $D8+Ord(reg)]);
 end;
 
 // _not_reg
 //
-procedure Tx86WriteOnlyStream._not_reg(reg : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._not_reg(reg : TgpRegister);
 begin
    WriteBytes([$F7, $D0+Ord(reg)]);
 end;
 
 // _neg_eaxedx
 //
-procedure Tx86WriteOnlyStream._neg_eaxedx;
+procedure Tx86_32_WriteOnlyStream._neg_eaxedx;
 begin
    _neg_reg(gprEDX);
    _neg_reg(gprEAX);
@@ -1165,7 +1178,7 @@ end;
 
 // _shift_reg_imm
 //
-procedure Tx86WriteOnlyStream._shift_reg_imm(shift : TgpShift; reg : TgpRegister; value : Integer);
+procedure Tx86_32_WriteOnlyStream._shift_reg_imm(shift : TgpShift; reg : TgpRegister; value : Integer);
 begin
    if value<>0 then begin
       if value=1 then
@@ -1176,14 +1189,14 @@ end;
 
 // _shift_reg_cl
 //
-procedure Tx86WriteOnlyStream._shift_reg_cl(shift : TgpShift; reg : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._shift_reg_cl(shift : TgpShift; reg : TgpRegister);
 begin
    WriteBytes([$D3, Ord(shift)+Ord(reg)])
 end;
 
 // _shr_eaxedx_imm
 //
-procedure Tx86WriteOnlyStream._shr_eaxedx_imm(value : Integer);
+procedure Tx86_32_WriteOnlyStream._shr_eaxedx_imm(value : Integer);
 begin
    if value<32 then begin
       // shrd eax, edx, value
@@ -1198,7 +1211,7 @@ end;
 
 // _shl_eaxedx_imm
 //
-procedure Tx86WriteOnlyStream._shl_eaxedx_imm(value : Integer);
+procedure Tx86_32_WriteOnlyStream._shl_eaxedx_imm(value : Integer);
 begin
    if value=1 then begin
       _add_reg_reg(gprEAX, gprEAX);
@@ -1216,7 +1229,7 @@ end;
 
 // _sar_eaxedx_imm
 //
-procedure Tx86WriteOnlyStream._sar_eaxedx_imm(value : Integer);
+procedure Tx86_32_WriteOnlyStream._sar_eaxedx_imm(value : Integer);
 begin
    if value<32 then begin
       // shrd eax, edx, value
@@ -1234,7 +1247,7 @@ end;
 
 // _shr_eaxedx_cl
 //
-procedure Tx86WriteOnlyStream._shr_eaxedx_cl;
+procedure Tx86_32_WriteOnlyStream._shr_eaxedx_cl;
 begin
    // shrd eax, edx, cl
    WriteBytes([$0F, $AD, $D0]);
@@ -1243,7 +1256,7 @@ end;
 
 // _shl_eaxedx_cl
 //
-procedure Tx86WriteOnlyStream._shl_eaxedx_cl;
+procedure Tx86_32_WriteOnlyStream._shl_eaxedx_cl;
 begin
    // shld edx, eax, cl
    WriteBytes([$0F, $A5, $C2]);
@@ -1252,7 +1265,7 @@ end;
 
 // _sar_eaxedx_cl
 //
-procedure Tx86WriteOnlyStream._sar_eaxedx_cl;
+procedure Tx86_32_WriteOnlyStream._sar_eaxedx_cl;
 begin
    // shrd eax, edx, cl
    WriteBytes([$0F, $AD, $D0]);
@@ -1261,63 +1274,63 @@ end;
 
 // _add_execmem_int32
 //
-procedure Tx86WriteOnlyStream._add_execmem_int32(stackAddr, offset, value : Integer);
+procedure Tx86_32_WriteOnlyStream._add_execmem_int32(stackAddr, offset, value : Integer);
 begin
    _modRMSIB_op_execmem_int32($83, $40, stackAddr, offset, value);
 end;
 
 // _adc_execmem_int32
 //
-procedure Tx86WriteOnlyStream._adc_execmem_int32(stackAddr, offset, value : Integer);
+procedure Tx86_32_WriteOnlyStream._adc_execmem_int32(stackAddr, offset, value : Integer);
 begin
    _modRMSIB_op_execmem_int32($83, $50, stackAddr, offset, value);
 end;
 
 // _sub_execmem_int32
 //
-procedure Tx86WriteOnlyStream._sub_execmem_int32(stackAddr, offset, value : Integer);
+procedure Tx86_32_WriteOnlyStream._sub_execmem_int32(stackAddr, offset, value : Integer);
 begin
    _modRMSIB_op_execmem_int32($83, $68, stackAddr, offset, value);
 end;
 
 // _sbb_execmem_int32
 //
-procedure Tx86WriteOnlyStream._sbb_execmem_int32(stackAddr, offset, value : Integer);
+procedure Tx86_32_WriteOnlyStream._sbb_execmem_int32(stackAddr, offset, value : Integer);
 begin
    _modRMSIB_op_execmem_int32($83, $58, stackAddr, offset, value);
 end;
 
 // _add_execmem_reg
 //
-procedure Tx86WriteOnlyStream._add_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._add_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
 begin
    _modRMSIB_reg_execmem([$01], reg, stackAddr, offset);
 end;
 
 // _adc_execmem_reg
 //
-procedure Tx86WriteOnlyStream._adc_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._adc_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
 begin
    _modRMSIB_reg_execmem([$11], reg, stackAddr, offset);
 end;
 
 // _sub_execmem_reg
 //
-procedure Tx86WriteOnlyStream._sub_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._sub_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
 begin
    _modRMSIB_reg_execmem([$29], reg, stackAddr, offset);
 end;
 
 // _sbb_execmem_reg
 //
-procedure Tx86WriteOnlyStream._sbb_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._sbb_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
 begin
    _modRMSIB_reg_execmem([$19], reg, stackAddr, offset);
 end;
 
 // _and_dword_ptr_reg_byte
 //
-procedure Tx86WriteOnlyStream._and_dword_ptr_reg_byte(dest : TgpRegister; offset : Integer; value : Byte);
+procedure Tx86_32_WriteOnlyStream._and_dword_ptr_reg_byte(dest : TgpRegister; offset : Integer; value : Byte);
 begin
    WriteByte($80);
    _modRMSIB_ptr_reg($20, dest, offset);
@@ -1326,7 +1339,7 @@ end;
 
 // _or_dword_ptr_reg_byte
 //
-procedure Tx86WriteOnlyStream._or_dword_ptr_reg_byte(dest : TgpRegister; offset : Integer; value : Byte);
+procedure Tx86_32_WriteOnlyStream._or_dword_ptr_reg_byte(dest : TgpRegister; offset : Integer; value : Byte);
 begin
    WriteByte($80);
    _modRMSIB_ptr_reg($08, dest, offset);
@@ -1335,7 +1348,7 @@ end;
 
 // _execmem32_inc
 //
-procedure Tx86WriteOnlyStream._execmem32_inc(stackAddr : Integer; const imm : Int32);
+procedure Tx86_32_WriteOnlyStream._execmem32_inc(stackAddr : Integer; const imm : Int32);
 begin
    if imm=0 then Exit;
    if imm=1 then
@@ -1345,7 +1358,7 @@ end;
 
 // _execmem64_inc
 //
-procedure Tx86WriteOnlyStream._execmem64_inc(stackAddr : Integer; const imm : Int64);
+procedure Tx86_32_WriteOnlyStream._execmem64_inc(stackAddr : Integer; const imm : Int64);
 begin
    _add_execmem_int32(stackAddr, 0, Integer(imm));
    _adc_execmem_int32(stackAddr, 4, Integer(imm shr 32));
@@ -1353,7 +1366,7 @@ end;
 
 // _execmem64_dec
 //
-procedure Tx86WriteOnlyStream._execmem64_dec(stackAddr : Integer; const imm : Int64);
+procedure Tx86_32_WriteOnlyStream._execmem64_dec(stackAddr : Integer; const imm : Int64);
 begin
    _sub_execmem_int32(stackAddr, 0, Integer(imm));
    _sbb_execmem_int32(stackAddr, 4, Integer(imm shr 32));
@@ -1361,7 +1374,7 @@ end;
 
 // _fild_execmem
 //
-procedure Tx86WriteOnlyStream._fild_execmem(stackAddr : Integer);
+procedure Tx86_32_WriteOnlyStream._fild_execmem(stackAddr : Integer);
 var
    offset : Integer;
 begin
@@ -1381,21 +1394,21 @@ end;
 
 // _fild_esp
 //
-procedure Tx86WriteOnlyStream._fild_esp;
+procedure Tx86_32_WriteOnlyStream._fild_esp;
 begin
    WriteBytes([$DF, $2C, $24]);
 end;
 
 // _fistp_esp
 //
-procedure Tx86WriteOnlyStream._fistp_esp;
+procedure Tx86_32_WriteOnlyStream._fistp_esp;
 begin
    WriteBytes([$DF, $3C, $24]);
 end;
 
 // _fld_esp
 //
-procedure Tx86WriteOnlyStream._fld_esp;
+procedure Tx86_32_WriteOnlyStream._fld_esp;
 begin
    // fld qword ptr [esp]
    WriteBytes([$DD, $04, $24]);
@@ -1403,7 +1416,7 @@ end;
 
 // _fstp_esp
 //
-procedure Tx86WriteOnlyStream._fstp_esp;
+procedure Tx86_32_WriteOnlyStream._fstp_esp;
 begin
    // fstp qword ptr [esp]
    WriteBytes([$DD, $1C, $24]);
@@ -1411,7 +1424,7 @@ end;
 
 // _ffree
 //
-procedure Tx86WriteOnlyStream._ffree(n : Integer);
+procedure Tx86_32_WriteOnlyStream._ffree(n : Integer);
 begin
    // ffree st(n)
    Assert(n in [0..7]);
@@ -1420,28 +1433,28 @@ end;
 
 // _push_reg
 //
-procedure Tx86WriteOnlyStream._push_reg(reg : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._push_reg(reg : TgpRegister);
 begin
    WriteBytes([$50+Ord(reg)]);
 end;
 
 // _pop_reg
 //
-procedure Tx86WriteOnlyStream._pop_reg(reg : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._pop_reg(reg : TgpRegister);
 begin
    WriteBytes([$58+Ord(reg)]);
 end;
 
 // _xor_reg_reg
 //
-procedure Tx86WriteOnlyStream._xor_reg_reg(dest, src : TgpRegister);
+procedure Tx86_32_WriteOnlyStream._xor_reg_reg(dest, src : TgpRegister);
 begin
    _op_reg_reg(gpOp_xor, dest, src);
 end;
 
 // _call_reg
 //
-procedure Tx86WriteOnlyStream._call_reg(reg : TgpRegister; offset : Integer);
+procedure Tx86_32_WriteOnlyStream._call_reg(reg : TgpRegister; offset : Integer);
 begin
    WriteByte($FF);
    _modRMSIB_ptr_reg($10, reg, offset)
@@ -1449,7 +1462,7 @@ end;
 
 // _call_absmem
 //
-procedure Tx86WriteOnlyStream._call_absmem(ptr : Pointer);
+procedure Tx86_32_WriteOnlyStream._call_absmem(ptr : Pointer);
 begin
    WriteBytes([$FF, $15]);
    WritePointer(ptr);
@@ -1457,14 +1470,14 @@ end;
 
 // _test_al_al
 //
-procedure Tx86WriteOnlyStream._test_al_al;
+procedure Tx86_32_WriteOnlyStream._test_al_al;
 begin
    WriteBytes([$84, $C0]);
 end;
 
 // _nop
 //
-procedure Tx86WriteOnlyStream._nop(nb : Integer);
+procedure Tx86_32_WriteOnlyStream._nop(nb : Integer);
 begin
    while nb>=3 do begin
       WriteBytes([$66, $66, $90]);
@@ -1478,7 +1491,7 @@ end;
 
 // _ret
 //
-procedure Tx86WriteOnlyStream._ret;
+procedure Tx86_32_WriteOnlyStream._ret;
 begin
    WriteBytes([$C3]);
 end;

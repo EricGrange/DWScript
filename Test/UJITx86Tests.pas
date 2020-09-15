@@ -13,7 +13,7 @@ type
 
    TJITx86Tests = class (TTestCase)
       private
-         FStream : Tx86WriteOnlyStream;
+         FStream : Tx86_32_WriteOnlyStream;
 
       protected
          function DisasmStream : String;
@@ -81,7 +81,7 @@ implementation
 //
 procedure TJITx86Tests.SetUp;
 begin
-   FStream:=Tx86WriteOnlyStream.Create;
+   FStream:=Tx86_32_WriteOnlyStream.Create;
 end;
 
 // TearDown
