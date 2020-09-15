@@ -118,6 +118,8 @@ type
          function SpecializeConnector(table : TSymbolTable; const qualifier : String) : TConnectorSymbol; virtual;
          function CreateAssignExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                    left : TDataExpr; right : TTypedExpr) : TProgramExpr; virtual;
+         function CreateConvExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
+                                 expr : TTypedExpr) : TTypedExpr; virtual;
 
 
          property ConnectorType : IConnectorType read FConnectorType write FConnectorType;
@@ -137,7 +139,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsCoreExprs;
+uses dwsCoreExprs, dwsStrings;
 
 // ------------------
 // ------------------ TConnectorSymbol ------------------
@@ -172,6 +174,22 @@ function TConnectorSymbol.CreateAssignExpr(context : TdwsCompilerContext; const 
                                            left : TDataExpr; right : TTypedExpr) : TProgramExpr;
 begin
    Result:=TAssignExpr.Create(context, aScriptPos, left, right);
+end;
+
+// CreateConvExpr
+//
+function TConnectorSymbol.CreateConvExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
+                                         expr : TTypedExpr) : TTypedExpr;
+var
+   exprTyp : TTypeSymbol;
+begin
+   Result := expr;
+   exprTyp := expr.Typ.UnAliasedType;
+   if exprTyp <> Self then begin
+      if not exprTyp.BaseType.InheritsFrom(TBaseSymbol) then
+         context.Msgs.AddCompilerErrorFmt(aScriptPos, CPE_IncompatibleTypes,
+                                          [ expr.Typ.Caption, Name ]);
+   end;
 end;
 
 // ------------------

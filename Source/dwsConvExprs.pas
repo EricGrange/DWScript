@@ -217,7 +217,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsCoreExprs;
+uses dwsCoreExprs, dwsConnectorSymbols;
 
 // ------------------
 // ------------------ TConvExpr ------------------
@@ -304,6 +304,14 @@ begin
          Result:=TObjToClassTypeExpr.Create(context, scriptPos, expr);
          if toTyp.Typ<>expr.Typ then
             Result:=TClassAsClassExpr.Create(context, scriptPos, Result, toTyp);
+      end;
+
+   end else if toTyp.UnAliasedTypeIs(TConnectorSymbol) then begin
+
+      if expr.Typ.UnAliasedType <> toTyp.UnAliasedType then begin
+         Result := TConnectorSymbol(toTyp.UnAliasedType).CreateConvExpr(
+            context, scriptPos, expr
+         );
       end;
 
    end else begin

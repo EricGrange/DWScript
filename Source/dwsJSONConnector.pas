@@ -26,7 +26,8 @@ uses
    dwsExprs, dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs, dwsStack,
    dwsStrings, dwsXPlatform, dwsUtils, dwsOperators, dwsUnitSymbols,
    dwsFunctions, dwsJSON, dwsMagicExprs, dwsConnectorSymbols, dwsScriptSource,
-   dwsXXHash, dwsCompilerContext, dwsCompilerUtils, dwsUnicode;
+   dwsXXHash, dwsCompilerContext, dwsCompilerUtils, dwsUnicode,
+   dwsConvExprs;
 
 type
 
@@ -201,6 +202,9 @@ type
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function CreateAssignExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                    left : TDataExpr; right : TTypedExpr) : TProgramExpr; override;
+         function CreateConvExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
+                                 expr : TTypedExpr) : TTypedExpr; override;
+
    end;
 
    // TJSONParseMethod
@@ -277,6 +281,13 @@ type
    TAssignBoxJSONExpr = class(TAssignExpr)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
+         procedure TypeCheckAssign(context : TdwsCompilerContext); override;
+   end;
+
+   TConvBoxJSONExpr = class(TConvExpr)
+      public
+         constructor Create(context : TdwsBaseSymbolsContext; const aScriptPos : TScriptPos; expr : TTypedExpr); override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
 function BoxedJSONValue(value : TdwsJSONValue): IBoxedJSONValue;
@@ -1413,6 +1424,23 @@ begin
    end;
 end;
 
+// CreateConvExpr
+//
+function TJSONConnectorSymbol.CreateConvExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
+                                             expr : TTypedExpr) : TTypedExpr;
+begin
+   if expr.Typ.UnAliasedTypeIs(TJSONConnectorSymbol) then
+      Exit(expr);
+
+   if expr.Typ.BaseType.InheritsFrom(TBaseSymbol) then
+      Result := TConvBoxJSONExpr.Create(context, aScriptPos, expr)
+   else begin
+      context.Msgs.AddCompilerErrorFmt(aScriptPos, CPE_AssignIncompatibleTypes,
+                                       [ expr.Typ.Caption, Name ]);
+      Result := expr;
+   end;
+end;
+
 // ------------------
 // ------------------ TJSONParseMethod ------------------
 // ------------------
@@ -1661,6 +1689,43 @@ begin
       v:=TdwsJSONImmediate.FromVariant(rv);
       box:=TBoxedJSONValue.Create(v);
       Left.AssignValue(exec, IBoxedJSONValue(box));
+   end;
+end;
+
+// TypeCheckAssign
+//
+procedure TAssignBoxJSONExpr.TypeCheckAssign(context : TdwsCompilerContext);
+begin
+   // nothing
+end;
+
+// ------------------
+// ------------------ TConvBoxJSONExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TConvBoxJSONExpr.Create(context : TdwsBaseSymbolsContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
+begin
+   inherited;
+   Typ := context.FindType(SYS_JSONVARIANT);
+end;
+
+// EvalAsVariant
+//
+procedure TConvBoxJSONExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+var
+   rv : Variant;
+   v : TdwsJSONValue;
+   box : TBoxedJSONValue;
+begin
+   Expr.EvalAsVariant(exec, rv);
+   if VarIsEmpty(rv) then
+      Result := rv
+   else begin
+      v := TdwsJSONImmediate.FromVariant(rv);
+      box := TBoxedJSONValue.Create(v);
+      Result := IBoxedJSONValue(box);
    end;
 end;
 

@@ -2605,14 +2605,15 @@ procedure TdwsJSONImmediate.SetAsVariant(const val : Variant);
 begin
    case VariantType(val) of
       varEmpty : Clear;
-      varNull : IsNull:=True;
+      varNull : IsNull := True;
+      varInt64 : AsInteger := val;
       {$ifdef FPC}
-      varString : AsString:=val;
+      varString : AsString := val;
       {$else}
-      varUString : AsString:=val;
+      varUString : AsString := val;
       {$endif}
-      varDouble : AsNumber:=val;
-      varBoolean : AsBoolean:=val;
+      varDouble : AsNumber := val;
+      varBoolean : AsBoolean := val;
    else
       if VariantIsString(val) then
          AsString := VariantToUnicodeString(val)
