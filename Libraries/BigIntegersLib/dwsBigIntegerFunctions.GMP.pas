@@ -705,6 +705,7 @@ destructor TdwsBigIntegerWrapperPool.Destroy;
 begin
    inherited;
    Cleanup;
+   FLock.Free;
 end;
 
 // Pop
