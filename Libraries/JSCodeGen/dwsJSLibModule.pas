@@ -25,7 +25,8 @@ uses
    dwsLanguageExtension, dwsComp, dwsCompiler, dwsDataContext, dwsConnectorSymbols,
    dwsExprs, dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs,
    dwsStrings, dwsXPlatform, StrUtils, dwsUtils, dwsOperators, dwsUnitSymbols,
-   dwsFunctions, dwsMagicExprs, dwsPascalTokenizer, dwsScriptSource;
+   dwsFunctions, dwsMagicExprs, dwsPascalTokenizer, dwsScriptSource,
+   dwsCompilerContext;
 
 type
 
@@ -170,6 +171,8 @@ type
       public
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function SupportsEmptyParam : Boolean; override;
+         function CreateConvExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
+                                 expr : TTypedExpr) : TTypedExpr; override;
    end;
 
    TTypeOfSymbol = class sealed(TFuncSymbol)
@@ -644,6 +647,14 @@ end;
 function TJSConnectorSymbol.SupportsEmptyParam : Boolean;
 begin
    Result:=False;
+end;
+
+// CreateConvExpr
+//
+function TJSConnectorSymbol.CreateConvExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
+                                 expr : TTypedExpr) : TTypedExpr;
+begin
+   Result := expr; // accept all
 end;
 
 // ------------------
