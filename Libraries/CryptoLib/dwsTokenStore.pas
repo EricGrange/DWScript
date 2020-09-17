@@ -432,7 +432,7 @@ begin
    wr:=TdwsJSONWriter.Create(nil);
    try
       SaveToJSON(wr);
-      SaveTextToUTF8File(fileName, wr.ToUTF8String);
+      SaveTextToUTF8File(fileName, wr.ToString);
    finally
       wr.Free;
    end;
