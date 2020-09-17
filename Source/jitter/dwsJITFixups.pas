@@ -18,7 +18,7 @@ interface
 
 uses
    Classes, SysUtils,
-   dwsUtils;
+   dwsUtils, dwsJITx86Intrinsics;
 
 type
    TFixup = class;
@@ -46,7 +46,7 @@ type
          function  NewTarget(align : Boolean) : TFixupTarget;
          function  NewHangingTarget(align : Boolean) : TFixupTarget; virtual;
 
-         procedure FlushFixups(const rawCode : TBytes; outStream : TWriteOnlyBlockStream);
+         procedure FlushFixups(const rawCode : TBytes; outStream : Tx86BaseWriteOnlyStream);
          procedure ClearFixups;
 
          property Base : TFixup read FBase write FBase;
@@ -277,7 +277,7 @@ end;
 
 // FlushFixups
 //
-procedure TFixupLogic.FlushFixups(const rawCode : TBytes; outStream : TWriteOnlyBlockStream);
+procedure TFixupLogic.FlushFixups(const rawCode : TBytes; outStream : Tx86BaseWriteOnlyStream);
 var
    fixup : TFixup;
    prevLocation, n : Integer;

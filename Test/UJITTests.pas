@@ -16,7 +16,7 @@ type
       private
          FTests : TStringList;
          FCompiler : TDelphiWebScript;
-         FStream : TWriteOnlyBlockStream;
+         FStream : Tx86BaseWriteOnlyStream;
          FFixups : TFixupLogic;
 
       protected
@@ -92,7 +92,7 @@ begin
    FCompiler.OnNeedUnit:=DoNeedUnit;
    FCompiler.Config.HintsLevel:=hlPedantic;
 
-   FStream:=TWriteOnlyBlockStream.Create;
+   FStream:=Tx86_Platform_WriteOnlyStream.Create;
    FFixups:=TFixupLogic.Create;
    FFixups.OnNeedLocation:=GetStreamPosition;
 end;

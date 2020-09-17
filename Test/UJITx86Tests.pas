@@ -891,6 +891,7 @@ begin
    end;
 
    buf:=DisasmStream;
+   buf:=StringReplace(buf, 'nop dword ptr [eax]'#13#10, 'n', [rfReplaceAll]);
    buf:=StringReplace(buf, 'nop '#13#10, 'n', [rfReplaceAll]);
    buf:=StringReplace(buf, 'ret '#13#10, 'r', [rfReplaceAll]);
 

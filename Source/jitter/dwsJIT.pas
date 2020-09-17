@@ -21,7 +21,7 @@ interface
 uses
    Classes, SysUtils,
    dwsExprs, dwsExprList, dwsSymbols, dwsErrors, dwsUtils, dwsCoreExprs, dwsXPlatform,
-   dwsRelExprs, dwsMagicExprs, dwsJITFixups, dwsScriptSource;
+   dwsRelExprs, dwsMagicExprs, dwsJITFixups, dwsScriptSource, dwsJITx86Intrinsics;
 
 type
 
@@ -153,7 +153,7 @@ type
       private
          FRegistered : TdwsRegisteredJITterList;
          FTempReg : TdwsRegisteredJITter;
-         FOutput : TWriteOnlyBlockStream;
+         FOutput : Tx86BaseWriteOnlyStream;
          FOutputFailedOn : TExprBase;
          FSeenByGreedy : TSimpleObjectHash<TSymbol>;
          FQueuedGreed : TQueuedJITGreed;
@@ -169,7 +169,7 @@ type
          FOptions : TdwsJITOptions;
 
       protected
-         function CreateOutput : TWriteOnlyBlockStream; virtual;
+         function CreateOutput : Tx86BaseWriteOnlyStream; virtual;
          function CreateFixupLogic : TFixupLogic; virtual;
 
          procedure SetOutputFailedOn(e : TExprBase);
@@ -233,7 +233,7 @@ type
          procedure QueueGreed(expr : TExprBase); overload;
          procedure QueueGreed(prog : TdwsProgram); overload;
 
-         property Output : TWriteOnlyBlockStream read FOutput;
+         property Output : Tx86BaseWriteOnlyStream read FOutput;
          property OutputFailedOn : TExprBase read FOutputFailedOn write SetOutputFailedOn;
    end;
 
@@ -408,9 +408,9 @@ end;
 
 // CreateOutput
 //
-function TdwsJIT.CreateOutput : TWriteOnlyBlockStream;
+function TdwsJIT.CreateOutput : Tx86BaseWriteOnlyStream;
 begin
-   Result:=TWriteOnlyBlockStream.Create;
+   Result:=Tx86_Platform_WriteOnlyStream.Create;
 end;
 
 // CreateFixupLogic

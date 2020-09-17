@@ -132,7 +132,7 @@ type
          FInterpretedJITter : TdwsJITter;
 
       protected
-         function CreateOutput : TWriteOnlyBlockStream; override;
+         function CreateOutput : Tx86BaseWriteOnlyStream; override;
          function CreateFixupLogic : TFixupLogic; override;
 
          procedure StartJIT(expr : TExprBase; exitable : Boolean); override;
@@ -1026,7 +1026,7 @@ end;
 
 // CreateOutput
 //
-function TdwsJITx86.CreateOutput : TWriteOnlyBlockStream;
+function TdwsJITx86.CreateOutput : Tx86BaseWriteOnlyStream;
 begin
    x86:=Tx86_32_WriteOnlyStream.Create;
    Result:=x86;
@@ -1494,12 +1494,8 @@ end;
 function TFixupJump.GetSize : Integer;
 begin
    if (Next=Target) and (Location=Next.Location) then
-      Result:=0
-   else if NearJump then
-      Result:=2
-   else if FFlags=flagsNone then
-      Result:=5
-   else Result:=6;
+      Result := 0
+   else Result := Tx86_Platform_WriteOnlyStream.SizeOf_jump(FFlags, Target.JumpLocation-FixedLocation);
 end;
 
 // NearJump
@@ -1525,25 +1521,7 @@ begin
       Exit;
 
    offset:=Target.JumpLocation-FixedLocation;
-   if NearJump then begin
-
-      if FFlags=flagsNone then
-         output.WriteByte($EB)
-      else output.WriteByte(Ord(FFlags));
-      output.WriteByte(Byte(offset-2));
-
-   end else begin
-
-      if FFlags=flagsNone then begin
-         output.WriteByte($E9);
-         output.WriteInt32(offset-5);
-      end else begin
-         output.WriteByte($0F);
-         output.WriteByte(Ord(FFlags)+$10);
-         output.WriteInt32(offset-6);
-      end;
-
-   end;
+   (output as Tx86_Platform_WriteOnlyStream)._jump(FFlags, offset);
 end;
 
 // ------------------
