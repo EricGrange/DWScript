@@ -28,10 +28,13 @@ uses
   ExtCtrls, StdCtrls, Menus, StdActns, ActnList, ExtDlgs, ComCtrls,
   Types, SyncObjs, ImgList, dwsComp, dwsExprs, dwsSymbols, dwsErrors,
   dwsSuggestions, dwsRTTIConnector, dwsVCLGUIFunctions, dwsStrings,
-  dwsUnitSymbols, {$IFDEF LLVM}dwsLLVMCodeGen, dwsLLVM, {$ENDIF}
-  {$IFDEF JS}dwsJSCodeGen, {$ENDIF} SynEdit, SynEditHighlighter,
+  dwsUnitSymbols, dwsCompilerContext,
+  {$IFDEF LLVM}dwsLLVMCodeGen, dwsLLVM, {$ENDIF}
+  {$IFDEF JS}dwsJSCodeGen, dwsJSLibModule, {$ENDIF}
+  SynEdit, SynEditHighlighter,
   SynHighlighterDWS, SynCompletionProposal, SynEditMiscClasses, SynEditSearch,
-  SynEditOptionsDialog, SynEditPlugins, SynMacroRecorder;
+  SynEditOptionsDialog, SynEditPlugins, SynMacroRecorder, System.Actions,
+  System.ImageList, dwsJSONConnector;
 
 type
   TRescanThread = class(TThread)
@@ -109,6 +112,7 @@ type
     SynParameters: TSynCompletionProposal;
     TabSheetCompiler: TTabSheet;
     TabSheetOutput: TTabSheet;
+    dwsJSONLibModule1: TdwsJSONLibModule;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
@@ -254,6 +258,10 @@ begin
 
   {$IFDEF JS}
   FJSCodeGen := TdwsJSCodeGen.Create;
+  DelphiWebScript.Config.CompilerOptions := DelphiWebScript.Config.CompilerOptions
+                                          + [ coSymbolDictionary, coContextMap,
+                                              coVariablesAsVarOnly, coAllowClosures ];
+  TdwsJSLibModule.Create(Self).Script := DelphiWebScript;
   MnuCodeGen.Visible := True;
   MnuCodeGenJS.Visible := True;
   AcnCodeGenJS.Enabled := True;
@@ -408,10 +416,24 @@ begin
 end;
 
 procedure TFrmBasic.AcnCodeGenJSExecute(Sender: TObject);
+{$IFDEF JS}
+var
+   output : String;
+  {$ENDIF}
 begin
   {$IFDEF JS}
-  FJSCodeGen.CompileProgram(FCompiledProgram);
-  SaveTextToUTF8File('dws.js', FJSCodeGen.CompiledOutput(FCompiledProgram));
+  if FCompiledProgram = nil then
+     CompileScript;
+  if not FCompiledProgram.Msgs.HasErrors then begin
+     FJSCodeGen.CompileProgram(FCompiledProgram);
+     try
+        output := FJSCodeGen.CompiledOutput(FCompiledProgram);
+     finally
+        FJSCodeGen.Clear;
+     end;
+     SaveTextToUTF8File('dws.js', output);
+  end;
+  ListBoxOutput.Items.Text := output;
   {$ENDIF}
 end;
 
