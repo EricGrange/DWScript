@@ -345,7 +345,7 @@ function LoadTextFromBuffer(const buf : TBytes) : UnicodeString;
 function LoadTextFromRawBytes(const buf : RawByteString) : UnicodeString;
 function LoadTextFromStream(aStream : TStream) : UnicodeString;
 function LoadTextFromFile(const fileName : TFileName) : UnicodeString;
-procedure SaveTextToUTF8File(const fileName : TFileName; const text : UTF8String);
+procedure SaveTextToUTF8File(const fileName : TFileName; const text : String);
 procedure AppendTextToUTF8File(const fileName : TFileName; const text : UTF8String);
 function OpenFileForSequentialReadOnly(const fileName : TFileName) : THandle;
 function OpenFileForSequentialWriteOnly(const fileName : TFileName) : THandle;
@@ -1736,7 +1736,7 @@ end;
 
 // SaveTextToUTF8File
 //
-procedure SaveTextToUTF8File(const fileName : TFileName; const text : UTF8String);
+procedure SaveTextToUTF8File(const fileName : TFileName; const text : String);
 begin
    SaveRawBytesToFile(fileName, UTF8Encode(text));
 end;
