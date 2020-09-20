@@ -31,7 +31,9 @@ type
       xmm8 = 8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15
    );
 
-   TxmmRegisters = set of xmm0..xmm7;
+   TymmRegister = (
+      ymm0 = 0, ymm1, ymm2, ymm3, ymm4, ymm5, ymm6, ymm7
+   );
 
    TxmmOp = (
       xmm_cvtsi2sd   = $2A,
@@ -102,7 +104,8 @@ type
 
    Tx86BaseWriteOnlyStream = class(TWriteOnlyBlockStream)
       protected
-         procedure _modRMSIB_reg_reg(const opCode : array of Byte; dest, src : TxmmRegister);
+         procedure _modRMSIB_reg_reg(const opCode : array of Byte; dest, src : TxmmRegister); overload;
+         procedure _modRMSIB_reg_reg(const opCode : array of Byte; dest, src : TymmRegister); overload;
          procedure _modRMSIB_ptr_reg8(rm, reg8, offset : Integer);
 
       public
@@ -142,6 +145,9 @@ type
 
          procedure _movshdup(dest, src : TxmmRegister);
          procedure _movhlps(dest, src : TxmmRegister);
+
+         procedure _vaddps(dest, src1, src2 : TxmmRegister); overload;
+         procedure _vaddps(dest, src1, src2 : TymmRegister); overload;
    end;
 
    Tx86_32_WriteOnlyStream = class(Tx86BaseWriteOnlyStream)
@@ -297,6 +303,8 @@ type
 
          procedure _add_reg_int32(reg : TgpRegister64; value : Int32); overload;
 
+         procedure _prefetch_ptr_reg(src : TgpRegister64; offset : Integer);
+
          procedure _movaps_reg_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
          procedure _movups_reg_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
 
@@ -389,6 +397,14 @@ begin
    WriteBytes(opCode);
 
    WriteByte($C0+Ord(src)+Ord(dest)*8);
+end;
+
+// _modRMSIB_reg_reg
+//
+procedure Tx86BaseWriteOnlyStream._modRMSIB_reg_reg(const opCode : array of Byte; dest, src : TymmRegister);
+begin
+   WriteBytes(opCode);
+   WriteByte($C0 + Ord(src) + Ord(dest)*8);
 end;
 
 // _modRMSIB_ptr_reg8
@@ -623,6 +639,20 @@ end;
 procedure Tx86BaseWriteOnlyStream._movhlps(dest, src : TxmmRegister);
 begin
    _modRMSIB_reg_reg([$0F, $12], dest, src);
+end;
+
+// _vaddps
+//
+procedure Tx86BaseWriteOnlyStream._vaddps(dest, src1, src2 : TxmmRegister);
+begin
+   _modRMSIB_reg_reg([$c5, $f8 - (Ord(src1) shl 3), $58], dest, src2);
+end;
+
+// _vaddps
+//
+procedure Tx86BaseWriteOnlyStream._vaddps(dest, src1, src2 : TymmRegister);
+begin
+   _modRMSIB_reg_reg([$c5, $f5 - (Ord(src1) shl 3), $58], dest, src2);
 end;
 
 // ------------------
@@ -1652,6 +1682,14 @@ end;
 procedure Tx86_64_WriteOnlyStream._add_reg_int32(reg : TgpRegister64; value : Int32);
 begin
    _op_reg_int32(gpOp_add, reg, value);
+end;
+
+// _prefetch_ptr_reg
+//
+procedure Tx86_64_WriteOnlyStream._prefetch_ptr_reg(src : TgpRegister64; offset : Integer);
+begin
+   WriteBytes([$0F, $0D]);
+   _modRMSIB_ptr_reg8(0, Ord(src), offset);
 end;
 
 // _movaps_reg_ptr_reg
