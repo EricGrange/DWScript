@@ -8777,18 +8777,16 @@ begin
 
       if Assigned(sym) then begin
          if sym is TClassSymbol then begin
-            Result:=TClassSymbol(sym);
-            if Result.IsForwarded or Result.IsPartial then
-               Result:=TClassSymbol(sym)
-            else begin
+            Result := TClassSymbol(sym);
+            if not (Result.IsForwarded or Result.IsPartial) then begin
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassAlreadyDefined, [sym.Name]);
-               Result:=nil;
+               Result := nil;
             end;
          end else begin
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameAlreadyExists, [sym.Name]);
          end;
-         if Result=nil then // make anonymous to keep compiling
-            Result:=TClassSymbol.Create('', CurrentUnitSymbol);
+         if Result = nil then // make anonymous to keep compiling
+            Result := TClassSymbol.Create('', CurrentUnitSymbol);
       end;
    end;
 
@@ -8834,6 +8832,7 @@ begin
             end;
          end;
          if FTok.TestDelete(ttPARTIAL) or (csfPartial in flags) then begin
+            Include(flags, csfPartial);
             Result.SetIsPartial;
             if isInSymbolTable then begin
                if not (csfPartial in previousClassFlags) then
@@ -8846,6 +8845,9 @@ begin
             CheckAndSetForwardDecl;
             Exit;
          end;
+
+         if Result.IsPartial and not (csfPartial in flags) then
+            FMsgs.AddCompilerHint(FTok.HotPos, CPH_ClassWasPartial);
 
          // inheritance
          if FTok.TestDelete(ttBLEFT) then begin

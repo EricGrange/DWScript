@@ -221,6 +221,7 @@ const
   CPE_ClassForwardAlreadyExists = 'There is already a forward declaration of the "%s" class';
   CPE_ClassAlreadyDefined = 'Class "%s" already defined';
   CPE_ClassWasNotPartial = 'Previous declaration of class was not "partial"';
+  CPH_ClassWasPartial = 'Previous declaration of class was "partial"';
   CPE_ClassPartialModifiersNotMatched = 'Modifiers do not match previous "partial" declaration of class';
   CPE_FuncForwardAlreadyExists = 'There is already a forward declaration of this function';
   CPE_ForwardNotImplemented = 'The function "%s" was forward declared but not implemented';

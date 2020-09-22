@@ -1,0 +1,5 @@
+Errors >>>>
+Hint: Previous declaration of class was "partial" [line: 6, column: 3]
+Result >>>>
+toto
+test
