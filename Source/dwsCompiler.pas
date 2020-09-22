@@ -448,7 +448,7 @@ type
          function ReadNameSymbol(var namePos : TScriptPos) : TSymbol;
          function ReadClassName : TClassSymbol;
          function ReadClassOf(const typeName : String) : TClassOfSymbol;
-         function ReadClassDecl(const typeName : String; const flags : TClassSymbolFlags;
+         function ReadClassDecl(const typeName : String; flags : TClassSymbolFlags;
                                 allowNonConstExpressions : Boolean) : TClassSymbol;
          procedure ReadClassVars(const ownerSymbol : TCompositeTypeSymbol; aVisibility : TdwsVisibility);
          procedure ReadClassConst(const ownerSymbol : TCompositeTypeSymbol; aVisibility : TdwsVisibility);
@@ -8739,7 +8739,7 @@ end;
 
 // ReadClassDeck
 //
-function TdwsCompiler.ReadClassDecl(const typeName : String; const flags : TClassSymbolFlags;
+function TdwsCompiler.ReadClassDecl(const typeName : String; flags : TClassSymbolFlags;
                                     allowNonConstExpressions : Boolean) : TClassSymbol;
 
    procedure CheckAndSetForwardDecl;
