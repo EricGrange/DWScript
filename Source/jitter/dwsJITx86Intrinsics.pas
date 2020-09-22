@@ -161,6 +161,8 @@ type
          procedure _vextract128_low(dest : TxmmRegister; src : TymmRegister);
          procedure _vextract128_high(dest : TxmmRegister; src : TymmRegister);
 
+         procedure _vfma231ps(dest, src1, src2 : TymmRegister);
+
          procedure _vzeroupper;
          procedure _vzeroall;
    end;
@@ -331,10 +333,14 @@ type
 
          procedure _mulss_reg_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
 
+         procedure _vmovaps_ptr_reg(dest : TymmRegister; src : TgpRegister64; offset : Integer); overload;
          procedure _vmovups_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer); overload;
          procedure _vmovups_ptr_reg(dest : TymmRegister; src : TgpRegister64; offset : Integer); overload;
 
          procedure _vmulps_ptr_reg(dest, src1 : TymmRegister; src2 : TgpRegister64; offset : Integer); overload;
+
+         procedure _vfma231ps_ptr_reg(dest, src1 : TymmRegister; src2 : TgpRegister64; offset : Int32);
+
    end;
 
     Tx86_Platform_WriteOnlyStream = {$ifdef WIN32}Tx86_32_WriteOnlyStream{$endif}{$ifdef WIN64}Tx86_64_WriteOnlyStream{$endif};
@@ -735,6 +741,13 @@ end;
 procedure Tx86BaseWriteOnlyStream._vextract128_high(dest : TxmmRegister; src : TymmRegister);
 begin
    WriteBytes([$c4, $e3, $7d, $19, $c0 + Ord(dest) + Ord(Src)*8, $01]);
+end;
+
+// _vfma231ps
+//
+procedure Tx86BaseWriteOnlyStream._vfma231ps(dest, src1, src2 : TymmRegister);
+begin
+   WriteBytes([$c4, $e2, $7d - Ord(src1)*8, $b8, $c0 + 8*Ord(dest) + Ord(src2)]);
 end;
 
 // _vzeroupper
@@ -1840,6 +1853,13 @@ begin
    _modRMSIB_regnum_ptr_reg([$F3, $0F, $59], Ord(dest), src, offset);
 end;
 
+// _vmovaps_ptr_reg
+//
+procedure Tx86_64_WriteOnlyStream._vmovaps_ptr_reg(dest : TymmRegister; src : TgpRegister64; offset : Integer);
+begin
+   _modRMSIB_regnum_ptr_reg([$C5, $FC, $28], Ord(dest), src, offset);
+end;
+
 // _vmovups_ptr_reg
 //
 procedure Tx86_64_WriteOnlyStream._vmovups_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
@@ -1860,6 +1880,15 @@ procedure Tx86_64_WriteOnlyStream._vmulps_ptr_reg(dest, src1 : TymmRegister; src
 begin
    _vex_modRMSIB_reg_reg_ptr_reg([ $59 ], dest, src1, src2, offset);
 end;
+
+// _vfma231ps_ptr_reg
+//
+procedure Tx86_64_WriteOnlyStream._vfma231ps_ptr_reg(dest, src1 : TymmRegister; src2 : TgpRegister64; offset : Int32);
+begin
+   WriteBytes([$c4, $e2, $7d - Ord(src1)*8, $b8]);
+   _modRMSIB_ptr_reg8(Ord(dest) shl 3, Ord(src2), offset);
+end;
+
 
 end.
 
