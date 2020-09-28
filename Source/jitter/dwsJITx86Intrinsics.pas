@@ -28,7 +28,7 @@ type
       xmm0 = 0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7,
       xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15
    );
-   TxmmRegisters = set of xmm0..xmm7;
+   TxmmRegisters = set of xmm0..xmm15;
 
    TymmRegister = (
       ymm0 = 0, ymm1, ymm2, ymm3, ymm4, ymm5, ymm6, ymm7,
@@ -326,6 +326,7 @@ type
 
          procedure _add_reg_int32(reg : TgpRegister64; value : Int32); overload;
          procedure _add_reg_reg(dest, src : TgpRegister64); overload;
+         procedure _sub_reg_int32(reg : TgpRegister64; value : Int32); overload;
 
          procedure _dec(reg : TgpRegister64d); overload;
 
@@ -362,6 +363,7 @@ type
          procedure _vmovaps_ptr_reg(dest : TymmRegister; src : TgpRegister64; offset : Integer);
          procedure _vmovups_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer); overload;
          procedure _vmovups_ptr_reg(dest : TymmRegister; src : TgpRegister64; offset : Integer); overload;
+         procedure _vmovups_ptr_reg_reg(dest : TgpRegister64; offset : Integer; src : TxmmRegister);
 
          procedure _vmovss_ptr_reg_reg(dest : TgpRegister64; offset : Integer; src : TxmmRegister);
          procedure _vmovss_reg_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
@@ -1881,6 +1883,13 @@ begin
    _op_reg_reg(gpOp_add, dest, src);
 end;
 
+// _sub_reg_int32
+//
+procedure Tx86_64_WriteOnlyStream._sub_reg_int32(reg : TgpRegister64; value : Int32);
+begin
+   _op_reg_int32(gpOp_sub, reg, value);
+end;
+
 // _dec
 //
 procedure Tx86_64_WriteOnlyStream._dec(reg : TgpRegister64d);
@@ -2009,6 +2018,16 @@ end;
 procedure Tx86_64_WriteOnlyStream._vmovups_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
 begin
    _modRMSIB_regnum_ptr_reg([$C5, $f8  - Ord(dest >= xmm8)*$80, $10], Ord(dest) and 7, src, offset);
+end;
+
+// _vmovups_ptr_reg_reg
+//
+procedure Tx86_64_WriteOnlyStream._vmovups_ptr_reg_reg(dest : TgpRegister64; offset : Integer; src : TxmmRegister);
+begin
+   if dest < gprR8 then
+      WriteBytes([$c5, $f8, $11])
+   else WriteBytes([$c4, $c1, $78, $11]);
+   _modRMSIB_ptr_reg8(Ord(src)*8, Ord(dest) and 7, offset);
 end;
 
 // _vmovups_ptr_reg
