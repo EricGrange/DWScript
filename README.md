@@ -10,6 +10,8 @@ This project is currently maintained by Eric Grange (http://delphitools.info), a
 
 DWScript lead platform is currently Delphi 10.3, compatibility with older Delphi version is not officially maintained, it may work, or it may not.
 
+The main repository is currently https://bitbucket.org/egrange/dwscript/, the GitHub mirror is updated infrequently.
+
 ## Licensing ##
 
 DWScript is released under Mozilla Public License 1.1 which, in short, means that it's free to use in open or closed source projects, free or commercial, provided you honor the following requirements:
