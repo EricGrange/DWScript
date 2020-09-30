@@ -1,5 +1,7 @@
 # DelphiWebScript Project #
 
+Main repository and issue tracker is at https://bitbucket.org/egrange/dwscript/
+
 DWScript is an object-oriented scripting engine for Delphi based on the [Delphi](http://en.wikipedia.org/wiki/Embarcadero_Delphi) language, with extensions borrowed from other Pascal languages ([FreePascal](http://www.freepascal.org/), [Prism](http://prismwiki.codegear.com/en/Main_Page), etc.). It introduces a few Pascal language extensions of its own as well.
 
 Goals of the project go beyond web usages, and cover general purpose scripting.
