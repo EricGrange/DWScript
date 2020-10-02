@@ -27,8 +27,8 @@
 				case "dddd": r += $fmt.LongDayNames[dt.getUTCDay()]; break;
 				case "m": r += dt.getUTCMonth()+1; break;
 				case "mm": r += pad2(dt.getUTCMonth()+1); break;
-				case "mmm": r += $fmt.ShortMonthNames[dt.getUTCMonth()+1]; break;
-				case "mmmm": r += $fmt.LongMonthNames[dt.getUTCMonth()+1]; break;
+				case "mmm": r += $fmt.ShortMonthNames[dt.getUTCMonth()]; break;
+				case "mmmm": r += $fmt.LongMonthNames[dt.getUTCMonth()]; break;
 				case "yy": r += pad2(dt.getUTCFullYear()%100); break;
 				case "yyyy": r += dt.getUTCFullYear(); break;
 				case "h": r += dt.getUTCHours(); break;
