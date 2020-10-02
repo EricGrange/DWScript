@@ -48,6 +48,11 @@ type
          procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
+   TComplexConjugateOpExpr = class(TComplexOpExpr)
+      public
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
+   end;
+
    TComplexAddOpExpr = class(TComplexOpExpr)
       public
          procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
@@ -177,6 +182,22 @@ begin
 end;
 
 // ------------------
+// ------------------ TComplexConjugateOpExpr ------------------
+// ------------------
+
+// DoEval
+//
+procedure TComplexConjugateOpExpr.DoEval(const args : TExprBaseListExec; var result : IDataContext);
+var
+   v : IDataContext;
+begin
+   v := TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
+
+   result.AsFloat[0] := v.AsFloat[0];
+   result.AsFloat[1] := -v.AsFloat[1];
+end;
+
+// ------------------
 // ------------------ TComplexAddOpExpr ------------------
 // ------------------
 
@@ -260,12 +281,14 @@ initialization
    RegisterInternalFloatFunction(TComplexAbsExpr,  'Abs',  ['v', SYS_COMPLEX], [iffOverloaded, iffStateLess]);
 
    RegisterInternalFunction(TComplexMakeExpr, 'Complex', ['real', SYS_FLOAT, 'imaginary', SYS_FLOAT], SYS_COMPLEX, [iffStateLess]);
-   RegisterInternalStringFunction(TComplexToStrExpr, 'ComplexToStr', ['&c', SYS_COMPLEX], [iffStateLess]);
+   RegisterInternalStringFunction(TComplexToStrExpr, 'ComplexToStr', ['&c', SYS_COMPLEX], [iffStateLess], 'ToString');
 
-   RegisterInternalFunction(TComplexNegOpExpr,  'ComplexNeg',  ['&v', SYS_COMPLEX], SYS_COMPLEX, []);
-   RegisterInternalFunction(TComplexAddOpExpr,  'ComplexAdd',  ['&left', SYS_COMPLEX, '&right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess]);
-   RegisterInternalFunction(TComplexSubOpExpr,  'ComplexSub',  ['&left', SYS_COMPLEX, '&right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess]);
-   RegisterInternalFunction(TComplexMultOpExpr, 'ComplexMult', ['&left', SYS_COMPLEX, '&right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess]);
-   RegisterInternalFunction(TComplexDivOpExpr,  'ComplexDiv',  ['&left', SYS_COMPLEX, '&right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess]);
+   RegisterInternalFunction(TComplexNegOpExpr,  'ComplexNeg',  ['&v', SYS_COMPLEX], SYS_COMPLEX, [ iffStateLess ], 'Negate');
+   RegisterInternalFunction(TComplexConjugateOpExpr,  'ComplexConjugate',  ['&v', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess], 'Conjugate');
+
+   RegisterInternalFunction(TComplexAddOpExpr,  'ComplexAdd',  ['&left', SYS_COMPLEX, '&right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess], 'Add');
+   RegisterInternalFunction(TComplexSubOpExpr,  'ComplexSub',  ['&left', SYS_COMPLEX, '&right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess], 'Sub');
+   RegisterInternalFunction(TComplexMultOpExpr, 'ComplexMult', ['&left', SYS_COMPLEX, '&right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess], 'Mult');
+   RegisterInternalFunction(TComplexDivOpExpr,  'ComplexDiv',  ['&left', SYS_COMPLEX, '&right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess], 'Div');
 
 end.
