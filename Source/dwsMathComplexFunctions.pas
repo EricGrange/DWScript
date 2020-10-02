@@ -37,6 +37,14 @@ type
          procedure DoEvalAsString(const args : TExprBaseListExec; var result : String); override;
    end;
 
+   TComplexToRealExpr = class(TInternalMagicFloatFunction)
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+   end;
+
+   TComplexToImagExpr = class(TInternalMagicFloatFunction)
+      procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+   end;
+
    TComplexAbsExpr = class(TInternalMagicFloatFunction)
       procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
    end;
@@ -73,6 +81,11 @@ type
          procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
    end;
 
+   TComplexExpOpExpr = class(TComplexOpExpr)
+      public
+         procedure DoEval(const args : TExprBaseListExec; var result : IDataContext); override;
+   end;
+
 const
    SYS_COMPLEX = 'TComplex';
 
@@ -83,6 +96,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses Math;
 
 // RegisterComplexType
 //
@@ -148,6 +163,28 @@ begin
    else if i<0 then
       Result := Format('%f - %fi', [r, Abs(i)])
    else Result := Format('%f', [r]);
+end;
+
+// ------------------
+// ------------------ TComplexToRealExpr ------------------
+// ------------------
+
+// DoEvalAsFloat
+//
+procedure TComplexToRealExpr.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result := TDataExpr(args.ExprBase[0]).DataPtr[args.Exec].AsFloat[0];
+end;
+
+// ------------------
+// ------------------ TComplexToImagExpr ------------------
+// ------------------
+
+// DoEvalAsFloat
+//
+procedure TComplexToImagExpr.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result := TDataExpr(args.ExprBase[0]).DataPtr[args.Exec].AsFloat[1];
 end;
 
 // ------------------
@@ -267,6 +304,29 @@ begin
    result[1]:=(leftData[1]*rightData[0]-leftData[0]*rightData[1])/d;
 end;
 
+// ------------------
+// ------------------ TComplexExpOpExpr ------------------
+// ------------------
+
+// DoEval
+//
+procedure TComplexExpOpExpr.DoEval(const args : TExprBaseListExec; var result : IDataContext);
+var
+   v : IDataContext;
+   theta, c, s : Double;
+   buf : array [0..1] of Double;
+begin
+   v := TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
+
+   buf[0] := Exp(v.AsFloat[0]);
+   buf[1] := v.AsFloat[1];
+   theta := buf[0];
+   SinCos(buf[1], c, s);
+
+   result.AsFloat[0] := theta * c;
+   result.AsFloat[1] := theta * s;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -283,6 +343,9 @@ initialization
    RegisterInternalFunction(TComplexMakeExpr, 'Complex', ['real', SYS_FLOAT, 'imaginary', SYS_FLOAT], SYS_COMPLEX, [iffStateLess]);
    RegisterInternalStringFunction(TComplexToStrExpr, 'ComplexToStr', ['&c', SYS_COMPLEX], [iffStateLess], 'ToString');
 
+   RegisterInternalFloatFunction(TComplexToRealExpr, 'ComplexReal', ['&c', SYS_COMPLEX], [iffStateLess], 'Real');
+   RegisterInternalFloatFunction(TComplexToImagExpr, 'ComplexImag', ['&c', SYS_COMPLEX], [iffStateLess], 'Imag');
+
    RegisterInternalFunction(TComplexNegOpExpr,  'ComplexNeg',  ['&v', SYS_COMPLEX], SYS_COMPLEX, [ iffStateLess ], 'Negate');
    RegisterInternalFunction(TComplexConjugateOpExpr,  'ComplexConjugate',  ['&v', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess], 'Conjugate');
 
@@ -290,5 +353,7 @@ initialization
    RegisterInternalFunction(TComplexSubOpExpr,  'ComplexSub',  ['&left', SYS_COMPLEX, '&right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess], 'Sub');
    RegisterInternalFunction(TComplexMultOpExpr, 'ComplexMult', ['&left', SYS_COMPLEX, '&right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess], 'Mult');
    RegisterInternalFunction(TComplexDivOpExpr,  'ComplexDiv',  ['&left', SYS_COMPLEX, '&right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess], 'Div');
+
+   RegisterInternalFunction(TComplexExpOpExpr,  'ComplexExp',  ['&v', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess], 'Exp');
 
 end.
