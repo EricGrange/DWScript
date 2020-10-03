@@ -38,6 +38,7 @@ type
    TMagicProcedureDoEvalEvent = procedure(const args : TExprBaseListExec) of object;
    TMagicFuncDoEvalDataEvent = procedure(const args : TExprBaseListExec; var result : IDataContext) of object;
    TMagicFuncDoEvalAsInterfaceEvent = procedure(const args : TExprBaseListExec; var Result : IUnknown) of object;
+   TMagicFuncDoEvalAsDynArrayEvent = procedure(const args : TExprBaseListExec; var Result : IScriptDynArray) of object;
    TMagicFuncDoEvalAsIntegerEvent = function(const args : TExprBaseListExec) : Int64 of object;
    TMagicFuncDoEvalAsBooleanEvent = function(const args : TExprBaseListExec) : Boolean of object;
    TMagicFuncDoEvalAsFloatEvent = procedure(const args : TExprBaseListExec; var Result : Double) of object;
@@ -96,6 +97,15 @@ type
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
    TInternalMagicInterfaceFunctionClass = class of TInternalMagicInterfaceFunction;
+
+   // TInternalMagicDynArrayFunction
+   //
+   TInternalMagicDynArrayFunction = class(TInternalMagicFunction)
+      public
+         procedure DoEvalAsDynArray(const args : TExprBaseListExec; var Result : IScriptDynArray); virtual; abstract;
+         function MagicFuncExprClass : TMagicFuncExprClass; override;
+   end;
+   TInternalMagicDynArrayFunctionClass = class of TInternalMagicDynArrayFunction;
 
    // TInternalMagicIntFunction
    //
@@ -232,6 +242,19 @@ type
                             func : TFuncSymbol; internalFunc : TInternalMagicFunction); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure EvalAsInterface(exec : TdwsExecution; var Result : IUnknown); override;
+   end;
+
+   // TMagicDynArrayFuncExpr
+   //
+   TMagicDynArrayFuncExpr = class(TMagicFuncExpr)
+      private
+         FOnEval : TMagicFuncDoEvalAsDynArrayEvent;
+      public
+         constructor Create(context : TdwsCompilerContext; const scriptPos : TScriptPos;
+                            func : TFuncSymbol; internalFunc : TInternalMagicFunction); override;
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+         procedure EvalAsInterface(exec : TdwsExecution; var Result : IUnknown); override;
+         procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
    end;
 
    // TMagicProcedureExpr
@@ -707,6 +730,55 @@ end;
 // EvalAsInterface
 //
 procedure TMagicInterfaceFuncExpr.EvalAsInterface(exec : TdwsExecution; var Result : IUnknown);
+var
+   execRec : TExprBaseListExec;
+begin
+   execRec.ListRec:=FArgs;
+   execRec.Exec:=exec;
+   execRec.Expr:=Self;
+   try
+      FOnEval(execRec, Result);
+   except
+      RaiseScriptError(exec);
+   end;
+end;
+
+// ------------------
+// ------------------ TMagicDynArrayFuncExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TMagicDynArrayFuncExpr.Create(context : TdwsCompilerContext; const scriptPos : TScriptPos;
+                                          func : TFuncSymbol; internalFunc : TInternalMagicFunction);
+begin
+   inherited Create(context, scriptPos, func, internalFunc);
+   FOnEval := (internalFunc as TInternalMagicDynArrayFunction).DoEvalAsDynArray;
+end;
+
+// EvalAsVariant
+//
+procedure TMagicDynArrayFuncExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+var
+   dyn : IScriptDynArray;
+begin
+   EvalAsScriptDynArray(exec, dyn);
+   VarCopySafe(Result, dyn);
+end;
+
+// EvalAsInterface
+//
+procedure TMagicDynArrayFuncExpr.EvalAsInterface(exec : TdwsExecution; var Result : IUnknown);
+var
+   dyn : IScriptDynArray;
+begin
+   EvalAsScriptDynArray(exec, dyn);
+   Result := dyn;
+end;
+
+// EvalAsScriptDynArray
+//
+procedure TMagicDynArrayFuncExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 var
    execRec : TExprBaseListExec;
 begin
@@ -1388,6 +1460,17 @@ end;
 function TInternalMagicInterfaceFunction.MagicFuncExprClass : TMagicFuncExprClass;
 begin
    Result:=TMagicInterfaceFuncExpr;
+end;
+
+// ------------------
+// ------------------ TInternalMagicDynArrayFunction ------------------
+// ------------------
+
+// MagicFuncExprClass
+//
+function TInternalMagicDynArrayFunction.MagicFuncExprClass : TMagicFuncExprClass;
+begin
+   Result := TMagicDynArrayFuncExpr;
 end;
 
 // ------------------

@@ -10346,6 +10346,12 @@ begin
 
          dyn.Concat(dynSrc);
 
+      end else if arg.Typ.UnAliasedTypeIs(TBaseIntegerSymbol) and dyn.ElementTyp.UnAliasedTypeIs(TBaseFloatSymbol)  then begin
+
+         n := dyn.ArrayLength;
+         dyn.ArrayLength := n+1;
+         dyn.AsFloat[n] := arg.EvalAsFloat(exec);
+
       end else begin
 
          Assert(arg.Typ is TStaticArraySymbol);

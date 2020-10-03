@@ -91,6 +91,7 @@ type
 
          procedure EvalAsVariant(const x : Integer; var result : Variant); inline;
          procedure EvalAsString(const x : Integer; var result : String); inline;
+         procedure EvalAsDynArray(const x : Integer; var result : IScriptDynArray); inline;
 
          function AsChar(x : Integer; default : WideChar) : WideChar;
 
@@ -298,6 +299,13 @@ end;
 procedure TExprBaseListExec.EvalAsString(const x : Integer; var result : String);
 begin
    ExprBase[x].EvalAsString(Exec, result);
+end;
+
+// EvalAsDynArray
+//
+procedure TExprBaseListExec.EvalAsDynArray(const x : Integer; var result : IScriptDynArray);
+begin
+   ExprBase[x].EvalAsScriptDynArray(Exec, result);
 end;
 
 // AsChar
