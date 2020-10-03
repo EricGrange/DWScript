@@ -41,7 +41,9 @@ interface
 {$ifdef WIN32} {$define WINDOWS} {$endif}
 {$ifdef WIN64} {$define WINDOWS} {$endif}
 
-
+{$ifdef WINDOWS}
+uses Windows;
+{$endif}
 
 type
   UINT8 = byte;
@@ -232,7 +234,17 @@ J_COLOR_SPACE = (
 	JCS_RGB,        { red/green/blue }
 	JCS_YCbCr,      { Y/Cb/Cr (also known as YUV) }
 	JCS_CMYK,       { C/M/Y/K }
-	JCS_YCCK        { Y/Cb/Cr/K }
+	JCS_YCCK,       { Y/Cb/Cr/K }
+   JCS_EXT_RGB,	 { red/green/blue }
+	JCS_EXT_RGBX,	 { red/green/blue/x }
+	JCS_EXT_BGR,	 { blue/green/red }
+	JCS_EXT_BGRX,	 { blue/green/red/x }
+	JCS_EXT_XBGR,	 { x/blue/green/red }
+	JCS_EXT_XRGB,	 { x/red/green/blue }
+  	JCS_EXT_RGBA,	 { red/green/blue/alpha }
+  	JCS_EXT_BGRA,	 { blue/green/red/alpha }
+  	JCS_EXT_ABGR,	 { alpha/blue/green/red }
+  	JCS_EXT_ARGB	 { alpha/red/green/blue }
 );
 
 
@@ -883,6 +895,9 @@ var
 //  jpeg_stdio_dest: procedure(cinfo: j_compress_ptr; FILE * outfile); cdecl;
 //  jpeg_stdio_src: procedure(cinfo: j_decompress_ptr; FILE * infile); cdecl;
 
+  jpeg_mem_src: procedure(cinfo: j_decompress_ptr; inbuffer: Pointer; insize: LongWord); cdecl;
+  jpeg_mem_dest: procedure(cinfo: j_compress_ptr; outbuffer: PPointer; outsize: PLongWord); cdecl;
+
 { Default parameter setup for compression }
   jpeg_set_defaults: procedure(cinfo: j_compress_ptr); cdecl;
   
@@ -998,15 +1013,15 @@ const
 const
   {$ifdef WINDOWS}
      {$ifdef WIN32}
-       LIB_JPEG_NAME = 'libjpeg-62.dll';
+       LIB_JPEG_NAME = 'jpeg62_32.dll';
      {$else}
-       LIB_JPEG_NAME = 'libjpeg-62-64.dll';
+       LIB_JPEG_NAME = 'turbojpeg.dll';// 'jpeg62_64.dll';
      {$endif}
   {$else}
      LIB_JPEG_NAME = 'libjpeg.so.62';
   {$endif}
 
-  function init_libJPEG(const libJPEG_Name: AnsiString = LIB_JPEG_NAME): boolean;
+  function init_libJPEG(const name : String = LIB_JPEG_NAME) : Boolean;
   procedure quit_libJPEG;
   function libJPEG_initialized : Boolean;
 
@@ -1020,39 +1035,10 @@ var
   libJPEG_RefCount: Integer;
 
   {$ifdef WINDOWS}
-    libJPEG_Handle: cardinal;
+    libJPEG_Handle: THandle;
   {$else}
     libJPEG_Handle: pointer;
   {$endif}
-
-
-{$ifdef WINDOWS}
-const
-  Kernel32 = 'kernel32.dll';
-
-  function LoadLibrary(lpFileName: pAnsiChar): LongWord; stdcall; external Kernel32 name 'LoadLibraryA';
-  function FreeLibrary(hModule: LongWord): LongBool; stdcall; external Kernel32 name 'FreeLibrary';
-  function GetProcAddress(hModule: LongWord; lpProcName: pAnsiChar): Pointer; stdcall; external Kernel32 name 'GetProcAddress';
-{$else}
-const
-  libdl = {$IFDEF Linux} 'libdl.so.2'{$ELSE} 'c'{$ENDIF};
-
-  RTLD_LAZY = $001;
-
-  function dlopen(Name: pAnsiChar; Flags: LongInt): Pointer; cdecl; external libdl name 'dlopen';
-  function dlclose(Lib: Pointer): LongInt; cdecl; external libdl name 'dlclose';
-  function dlsym(Lib: Pointer; Name: pAnsiChar): Pointer; cdecl; external libdl name 'dlsym';
-{$endif}
-
-
-function GetProcAddr(Name: pAnsiChar): Pointer;
-begin
-  {$ifdef WINDOWS}
-    GetProcAddr := GetProcAddress(libJPEG_Handle, Name);
-  {$else}
-    GetProcAddr := dlsym(libJPEG_Handle, Name);
-  {$endif}
-end;
 
 
 procedure jpeg_create_compress(cinfo: j_compress_ptr);
@@ -1067,65 +1053,67 @@ begin
 end;
 
 
-function init_libJPEG(const libJPEG_Name: AnsiString): boolean;
+function init_libJPEG(const name : String = LIB_JPEG_NAME) : Boolean;
 var
   Temp: Boolean;
 begin
   if (libJPEG_RefCount = 0) or (libJPEG_Handle = {$ifdef WINDOWS} 0 {$else} nil {$endif}) then begin
     if libJPEG_Handle = {$ifdef WINDOWS} 0 {$else} nil {$endif} then
       {$ifdef WINDOWS}
-        libJPEG_Handle := LoadLibrary(pAnsiChar(libJPEG_Name));
+        libJPEG_Handle := LoadLibrary(PChar(name));
       {$else}
-        libJPEG_Handle := dlopen(pAnsiChar(libJPEG_Name), RTLD_LAZY);
+        libJPEG_Handle := dlopen(LIB_JPEG_NAME, RTLD_LAZY);
       {$endif}
 
     if libJPEG_Handle <> {$ifdef WINDOWS} 0 {$else} nil {$endif} then begin
-      jpeg_std_error := GetProcAddr('jpeg_std_error');
-      jpeg_CreateCompress := GetProcAddr('jpeg_CreateCompress');
-      jpeg_CreateDecompress := GetProcAddr('jpeg_CreateDecompress');
-      jpeg_destroy_compress := GetProcAddr('jpeg_destroy_compress');
-      jpeg_destroy_decompress := GetProcAddr('jpeg_destroy_decompress');
-      jpeg_set_defaults := GetProcAddr('jpeg_set_defaults');
-      jpeg_set_colorspace := GetProcAddr('jpeg_set_colorspace');
-      jpeg_default_colorspace := GetProcAddr('jpeg_default_colorspace');
-      jpeg_set_quality := GetProcAddr('jpeg_set_quality');
-      jpeg_set_linear_quality := GetProcAddr('jpeg_set_linear_quality');
-      jpeg_add_quant_table := GetProcAddr('jpeg_add_quant_table');
-      jpeg_quality_scaling := GetProcAddr('jpeg_quality_scaling');
-      jpeg_simple_progression := GetProcAddr('jpeg_simple_progression');
-      jpeg_suppress_tables := GetProcAddr('jpeg_suppress_tables');
-      jpeg_alloc_quant_table := GetProcAddr('jpeg_alloc_quant_table');
-      jpeg_alloc_huff_table := GetProcAddr('jpeg_alloc_huff_table');
-      jpeg_start_compress := GetProcAddr('jpeg_start_compress');
-      jpeg_write_scanlines := GetProcAddr('jpeg_write_scanlines');
-      jpeg_finish_compress := GetProcAddr('jpeg_finish_compress');
-      jpeg_write_raw_data := GetProcAddr('jpeg_write_raw_data');
-      jpeg_write_marker := GetProcAddr('jpeg_write_marker');
-      jpeg_write_m_header := GetProcAddr('jpeg_write_m_header');
-      jpeg_write_m_byte := GetProcAddr('jpeg_write_m_byte');
-      jpeg_write_tables := GetProcAddr('jpeg_write_tables');
-      jpeg_read_header := GetProcAddr('jpeg_read_header');
-      jpeg_start_decompress := GetProcAddr('jpeg_start_decompress');
-      jpeg_read_scanlines := GetProcAddr('jpeg_read_scanlines');
-      jpeg_finish_decompress := GetProcAddr('jpeg_finish_decompress');
-      jpeg_read_raw_data := GetProcAddr('jpeg_read_raw_data');
-      jpeg_has_multiple_scans := GetProcAddr('jpeg_has_multiple_scans');
-      jpeg_start_output := GetProcAddr('jpeg_start_output');
-      jpeg_finish_output := GetProcAddr('jpeg_finish_output');
-      jpeg_input_complete := GetProcAddr('jpeg_input_complete');
-      jpeg_new_colormap := GetProcAddr('jpeg_new_colormap');
-      jpeg_consume_input := GetProcAddr('jpeg_consume_input');
-      jpeg_calc_output_dimensions := GetProcAddr('jpeg_calc_output_dimensions');
-      jpeg_save_markers := GetProcAddr('jpeg_save_markers');
-      jpeg_set_marker_processor := GetProcAddr('jpeg_set_marker_processor');
-      jpeg_read_coefficients := GetProcAddr('jpeg_read_coefficients');
-      jpeg_write_coefficients := GetProcAddr('jpeg_write_coefficients');
-      jpeg_copy_critical_parameters := GetProcAddr('jpeg_copy_critical_parameters');
-      jpeg_abort_compress := GetProcAddr('jpeg_abort_compress');
-      jpeg_abort_decompress := GetProcAddr('jpeg_abort_decompress');
-      jpeg_abort := GetProcAddr('jpeg_abort');
-      jpeg_destroy := GetProcAddr('jpeg_destroy');
-      jpeg_resync_to_restart := GetProcAddr('jpeg_resync_to_restart');
+      jpeg_std_error := GetProcAddress(libJPEG_Handle, 'jpeg_std_error');
+      jpeg_CreateCompress := GetProcAddress(libJPEG_Handle, 'jpeg_CreateCompress');
+      jpeg_CreateDecompress := GetProcAddress(libJPEG_Handle, 'jpeg_CreateDecompress');
+      jpeg_destroy_compress := GetProcAddress(libJPEG_Handle, 'jpeg_destroy_compress');
+      jpeg_destroy_decompress := GetProcAddress(libJPEG_Handle, 'jpeg_destroy_decompress');
+      jpeg_mem_src := GetProcAddress(libJPEG_Handle, 'jpeg_mem_src');
+      jpeg_mem_dest := GetProcAddress(libJPEG_Handle, 'jpeg_mem_dest');
+      jpeg_set_defaults := GetProcAddress(libJPEG_Handle, 'jpeg_set_defaults');
+      jpeg_set_colorspace := GetProcAddress(libJPEG_Handle, 'jpeg_set_colorspace');
+      jpeg_default_colorspace := GetProcAddress(libJPEG_Handle, 'jpeg_default_colorspace');
+      jpeg_set_quality := GetProcAddress(libJPEG_Handle, 'jpeg_set_quality');
+      jpeg_set_linear_quality := GetProcAddress(libJPEG_Handle, 'jpeg_set_linear_quality');
+      jpeg_add_quant_table := GetProcAddress(libJPEG_Handle, 'jpeg_add_quant_table');
+      jpeg_quality_scaling := GetProcAddress(libJPEG_Handle, 'jpeg_quality_scaling');
+      jpeg_simple_progression := GetProcAddress(libJPEG_Handle, 'jpeg_simple_progression');
+      jpeg_suppress_tables := GetProcAddress(libJPEG_Handle, 'jpeg_suppress_tables');
+      jpeg_alloc_quant_table := GetProcAddress(libJPEG_Handle, 'jpeg_alloc_quant_table');
+      jpeg_alloc_huff_table := GetProcAddress(libJPEG_Handle, 'jpeg_alloc_huff_table');
+      jpeg_start_compress := GetProcAddress(libJPEG_Handle, 'jpeg_start_compress');
+      jpeg_write_scanlines := GetProcAddress(libJPEG_Handle, 'jpeg_write_scanlines');
+      jpeg_finish_compress := GetProcAddress(libJPEG_Handle, 'jpeg_finish_compress');
+      jpeg_write_raw_data := GetProcAddress(libJPEG_Handle, 'jpeg_write_raw_data');
+      jpeg_write_marker := GetProcAddress(libJPEG_Handle, 'jpeg_write_marker');
+      jpeg_write_m_header := GetProcAddress(libJPEG_Handle, 'jpeg_write_m_header');
+      jpeg_write_m_byte := GetProcAddress(libJPEG_Handle, 'jpeg_write_m_byte');
+      jpeg_write_tables := GetProcAddress(libJPEG_Handle, 'jpeg_write_tables');
+      jpeg_read_header := GetProcAddress(libJPEG_Handle, 'jpeg_read_header');
+      jpeg_start_decompress := GetProcAddress(libJPEG_Handle, 'jpeg_start_decompress');
+      jpeg_read_scanlines := GetProcAddress(libJPEG_Handle, 'jpeg_read_scanlines');
+      jpeg_finish_decompress := GetProcAddress(libJPEG_Handle, 'jpeg_finish_decompress');
+      jpeg_read_raw_data := GetProcAddress(libJPEG_Handle, 'jpeg_read_raw_data');
+      jpeg_has_multiple_scans := GetProcAddress(libJPEG_Handle, 'jpeg_has_multiple_scans');
+      jpeg_start_output := GetProcAddress(libJPEG_Handle, 'jpeg_start_output');
+      jpeg_finish_output := GetProcAddress(libJPEG_Handle, 'jpeg_finish_output');
+      jpeg_input_complete := GetProcAddress(libJPEG_Handle, 'jpeg_input_complete');
+      jpeg_new_colormap := GetProcAddress(libJPEG_Handle, 'jpeg_new_colormap');
+      jpeg_consume_input := GetProcAddress(libJPEG_Handle, 'jpeg_consume_input');
+      jpeg_calc_output_dimensions := GetProcAddress(libJPEG_Handle, 'jpeg_calc_output_dimensions');
+      jpeg_save_markers := GetProcAddress(libJPEG_Handle, 'jpeg_save_markers');
+      jpeg_set_marker_processor := GetProcAddress(libJPEG_Handle, 'jpeg_set_marker_processor');
+      jpeg_read_coefficients := GetProcAddress(libJPEG_Handle, 'jpeg_read_coefficients');
+      jpeg_write_coefficients := GetProcAddress(libJPEG_Handle, 'jpeg_write_coefficients');
+      jpeg_copy_critical_parameters := GetProcAddress(libJPEG_Handle, 'jpeg_copy_critical_parameters');
+      jpeg_abort_compress := GetProcAddress(libJPEG_Handle, 'jpeg_abort_compress');
+      jpeg_abort_decompress := GetProcAddress(libJPEG_Handle, 'jpeg_abort_decompress');
+      jpeg_abort := GetProcAddress(libJPEG_Handle, 'jpeg_abort');
+      jpeg_destroy := GetProcAddress(libJPEG_Handle, 'jpeg_destroy');
+      jpeg_resync_to_restart := GetProcAddress(libJPEG_Handle, 'jpeg_resync_to_restart');
     end;
   end;
 

@@ -25,11 +25,14 @@ uses
    SysUtils,
    dwsUtils,
    libJPEG,
-   dwsJPEGEncoderOptions;
+   dwsJPEGEncoderOptions, dwsDataContext;
 
 function CompressJPEG(rgbData : Pointer; width, height, quality : Integer;
                       const options : TJPEGOptions = [];
                       const comment : RawByteString = '') : RawByteString;
+
+function DecompressJPEG_RGBA(jpegData : Pointer; jpegDataLength : Integer;
+                             downscale : Integer; var w, h : Integer) : TData;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -123,7 +126,8 @@ var
    y : Integer;
 begin
    if not libJPEG_initialized then
-      raise Exception.Create('libJPEG not found');
+      if not init_libJPEG then
+         raise Exception.CreateFmt('libJPEG not found (%s)', [ LIB_JPEG_NAME ]);
 
    wobs:=TWriteOnlyBlockStream.AllocFromPool;
    try
@@ -196,9 +200,80 @@ begin
       // destroy compression
       jpeg_destroy_compress(@jpeg);
 
-      Result:=wobs.ToRawBytes;
-   finally
+
+      Result:=wobs.ToRawBytes;
+
+   finally
       wobs.ReturnToPool;
+   end;
+end;
+
+// DecompressJPEG_RGBA
+//
+function DecompressJPEG_RGBA(jpegData : Pointer; jpegDataLength : Integer;
+                             downscale : Integer; var w, h : Integer) : TData;
+var
+   JpegErr: jpeg_error_mgr;
+   Jpeg: jpeg_decompress_struct;
+   x, y : Integer;
+   p : PVarData;
+   buf : array of Cardinal;
+begin
+   if not libJPEG_initialized then
+      if not init_libJPEG then
+         raise Exception.CreateFmt('libJPEG not found (%s)', [ LIB_JPEG_NAME ]);
+
+   FillChar(Jpeg, SizeOf(Jpeg), 0);
+   FillChar(JpegErr, SizeOf(JpegErr), 0);
+
+   jpeg_create_decompress(@Jpeg);
+   try
+      jpeg.err := jpeg_std_error(@JpegErr);
+      JpegErr.error_exit := error_exit;
+      JpegErr.output_message := output_message;
+      jpeg_mem_src(@Jpeg, jpegData, jpegDataLength);
+      jpeg_read_header(@jpeg, False);
+
+      jpeg.out_color_space := JCS_EXT_RGBA;
+
+      jpeg.scale_num := 1;
+      if downscale <= 0 then
+         jpeg.scale_denom := 1
+      else jpeg.scale_denom := downscale;
+
+      if downscale <= 0 then begin
+         jpeg.do_block_smoothing := 1;
+         jpeg.do_fancy_upsampling := 1;
+         jpeg.dct_method := JDCT_ISLOW;
+      end else begin
+         jpeg.do_block_smoothing := 0;
+         jpeg.do_fancy_upsampling := 0;
+         jpeg.dct_method := JDCT_IFAST;
+      end;
+
+      jpeg_start_decompress(@Jpeg);
+      try
+         w := jpeg.output_width;
+         h := jpeg.output_height;
+
+         SetLength(buf, w);
+         SetLength(Result, w*h);
+         p := @Result[0];
+
+         for y:=0 to h-1 do begin
+            var pbuf := @buf[0];
+            jpeg_read_scanlines(@jpeg, @pbuf, 1);
+            for x := 0 to w-1 do begin
+               p.VType := varInt64;
+               p.VInt64 := buf[x];
+               Inc(p);
+            end;
+         end;
+      finally
+         jpeg_finish_decompress(@Jpeg);
+      end;
+   finally
+      jpeg_destroy_decompress(@Jpeg);
    end;
 end;
 
@@ -209,8 +284,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-  init_libJPEG;
 
 finalization
 
