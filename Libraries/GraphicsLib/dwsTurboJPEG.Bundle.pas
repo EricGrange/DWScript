@@ -72,7 +72,7 @@ begin
             buf := '';
       end;
       if buf = '' then
-         SaveRawBytesToFile(vDLLFileName, zip.UnZip(1-sha3Index));
+         SaveRawBytesToFile(dllName, zip.UnZip(1-sha3Index));
    finally
       zip.Free;
    end;
