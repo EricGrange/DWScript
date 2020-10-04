@@ -34,8 +34,6 @@ type
 
    TBaseByteBufferSymbol = class (TBaseSymbol)
       public
-         constructor Create;
-
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          procedure InitData(const data : TData; offset : Integer); override;
    end;
@@ -209,7 +207,7 @@ var
 begin
    if systemTable.FindLocal(SYS_BYTEBUFFER) <> nil then exit;
 
-   typByteBuffer := TBaseByteBufferSymbol.Create;
+   typByteBuffer := TBaseByteBufferSymbol.Create(SYS_BYTEBUFFER);
    systemTable.AddSymbol(typByteBuffer);
 end;
 
@@ -237,13 +235,6 @@ type
 // ------------------
 // ------------------ TBaseByteBufferSymbol ------------------
 // ------------------
-
-// Create
-//
-constructor TBaseByteBufferSymbol.Create;
-begin
-   inherited Create(SYS_BYTEBUFFER);
-end;
 
 // IsCompatible
 //

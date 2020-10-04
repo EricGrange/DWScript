@@ -47,6 +47,8 @@ type
 
       function Copy(offset, size : NativeInt) : IdwsByteBuffer;
 
+      function DataPtr : Pointer;
+
       function GetByteP : Byte;
       function GetWordP : Word;
       function GetInt16P : Int16;
@@ -115,6 +117,7 @@ type
          procedure WriteToJSON(writer : TdwsJSONWriter);
 
          procedure Assign(const buffer : IdwsByteBuffer);
+         procedure AssignRaw(const p : PByte; size : Integer);
          procedure AssignDataString(const s : String);
          procedure AssignJSON(const s : String);
          procedure AssignBase64(const s : String);
@@ -126,6 +129,8 @@ type
          procedure ToHexString(var s : String);
 
          function Copy(offset, size : NativeInt) : IdwsByteBuffer;
+
+         function DataPtr : Pointer;
 
          function GetByteP : Byte;
          function GetWordP : Word;
@@ -287,6 +292,22 @@ begin
       System.Move(bb.FData[0], FData[0], Count);
 end;
 
+// AssignRaw
+//
+procedure TdwsByteBuffer.AssignRaw(const p : PByte; size : Integer);
+begin
+   if size <= 0 then begin
+      SetCount(0);
+      Exit;
+   end;
+
+   System.SetLength(FData, size);
+   FCount := size;
+   if FPosition >= size then
+      FPosition := size-1;
+   System.Move(p^, FData[0], size);
+end;
+
 // AssignDataString
 //
 procedure TdwsByteBuffer.AssignDataString(const s : String);
@@ -391,6 +412,13 @@ begin
       newBuffer.SetCount(size);
       System.Move(FData[offset], newBuffer.FData[0], size);
    end;
+end;
+
+// DataPtr
+//
+function TdwsByteBuffer.DataPtr : Pointer;
+begin
+   Result := Pointer(FData);
 end;
 
 // GetByteP

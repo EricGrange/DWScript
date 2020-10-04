@@ -32,14 +32,14 @@ interface
 uses
    Classes, SysUtils, Vcl.Graphics,
    {$ifdef USE_LIB_JPEG}
-   dwsJPEGEncoder,
+//   dwsJPEGEncoder,
+   dwsTurboJPEG,
    {$else}
    JPEG,
    {$endif}
-//   suJpegTurboHeadersUnit,
    PNGImage,
    dwsJPEGEncoderOptions,
-   dwsXPlatform, dwsUtils, dwsStrings,
+   dwsXPlatform, dwsUtils, dwsStrings, dwsByteBufferFunctions,
    dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList, dwsUnitSymbols,
    dwsConstExprs, dwsMagicExprs, dwsDataContext;
 
@@ -49,16 +49,19 @@ const
    SYS_TJPEGOptions = 'TJPEGOptions';
 
 type
+   TPixmapSymbol = class (TBaseByteBufferSymbol)
+      public
+   end;
 
    TPixmapToJPEGDataFunc = class(TInternalMagicStringFunction)
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
-   TJPEGDataToPixmapFunc = class(TInternalMagicDynArrayFunction)
-      procedure DoEvalAsDynArray(const args : TExprBaseListExec; var Result : IScriptDynArray); override;
+   TJPEGDataToPixmapFunc = class(TInternalMagicInterfaceFunction)
+      procedure DoEvalAsInterface(const args : TExprBaseListExec; var result : IUnknown); override;
    end;
 
-   TPNGDataToPixmapFunc = class(TInternalMagicDynArrayFunction)
-      procedure DoEvalAsDynArray(const args : TExprBaseListExec; var Result : IScriptDynArray); override;
+   TPNGDataToPixmapFunc = class(TInternalMagicInterfaceFunction)
+      procedure DoEvalAsInterface(const args : TExprBaseListExec; var result : IUnknown); override;
    end;
    TPixmapToPNGDataFunc = class(TInternalMagicStringFunction)
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
@@ -71,6 +74,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsByteBuffer;
 
 type
    TRGB24 = record r, g, b : Byte; end;
@@ -85,13 +90,13 @@ type
 procedure RegisterGraphicsTypes(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                 unitTable : TSymbolTable);
 var
-   typPixmap : TDynamicArraySymbol;
+   typPixmap : TBaseByteBufferSymbol;
    jpgOption : TEnumerationSymbol;
    jpgOptions : TSetOfSymbol;
 begin
    if unitTable.FindLocal(SYS_PIXMAP)<>nil then exit;
 
-   typPixmap:=TDynamicArraySymbol.Create(SYS_PIXMAP, systemTable.TypInteger, systemTable.TypInteger);
+   typPixmap := TBaseByteBufferSymbol.Create(SYS_PIXMAP);
    unitTable.AddSymbol(typPixmap);
 
    jpgOption:=TEnumerationSymbol.Create(SYS_TJPEGOption, systemTable.TypInteger, enumScoped);
@@ -114,27 +119,13 @@ procedure TPixmapToJPEGDataFunc.DoEvalAsString(const args : TExprBaseListExec; v
 var
    w, h, quality : Integer;
    jpegOptions : TJPEGOptions;
-   pixmap : IScriptDynArray;
+   pixmap : IdwsByteBuffer;
 
    {$ifdef USE_LIB_JPEG}
    procedure CompressWithLibJPEG(var Result : UnicodeString);
-   var
-      buf : array of TRGB24;
-      i, x, y, c : Integer;
-      outBuf : RawByteString;
    begin
-      SetLength(buf, w*h*3);
-      i:=0;
-      for y:=0 to h-1 do begin
-         for x:=0 to w-1 do begin
-            c:=pixmap.AsInteger[i];
-            buf[i]:=PRGB24(@c)^;
-            Inc(i);
-         end;
-      end;
-      outBuf:=CompressJPEG(Pointer(buf), w, h, quality, jpegOptions);
-      SetLength(buf, 0);
-      Result:=RawByteStringToScriptString(outBuf);
+      var outBuf := CompressJPEG(pixmap.DataPtr, w, h, quality, jpegOptions);
+      Result := RawByteStringToScriptString(outBuf);
    end;
    {$else}
    procedure CompressWithTJPEGImage(var Result : UnicodeString);
@@ -154,7 +145,7 @@ var
          for y:=0 to h-1 do begin
             scanLine:=bmp.ScanLine[y];
             for x:=0 to w-1 do begin
-               c:=pixmap.AsInteger[i];
+               c:=pixmap.GetDWordA(i);
                scanLine^:=PRGB24(@c)^;
                Inc(i);
                Inc(scanLine);
@@ -181,10 +172,10 @@ var
    opts : Integer;
    jpegOption : TJPEGOption;
 begin
-   args.ExprBase[0].EvalAsScriptDynArray(args.Exec, pixmap);
-   w:=args.AsInteger[1];
-   h:=args.AsInteger[2];
-   if w*h>pixmap.ArrayLength then
+   args.ExprBase[0].EvalAsInterface(args.Exec, IUnknown(pixmap));
+   w := args.AsInteger[1];
+   h := args.AsInteger[2];
+   if w*h*4 > pixmap.GetCount then
       raise Exception.Create('Not enough data in pixmap');
    quality:=args.AsInteger[3];
    opts:=StrToIntDef(args.AsString[4], 0);
@@ -201,85 +192,22 @@ end;
 
 {$ifdef USE_LIB_JPEG}
 
-// DoEvalAsDynArray
+// DoEvalAsInterface
 //
-procedure TJPEGDataToPixmapFunc.DoEvalAsDynArray(const args : TExprBaseListExec; var Result : IScriptDynArray);
+procedure TJPEGDataToPixmapFunc.DoEvalAsInterface(const args : TExprBaseListExec; var result : IUnknown);
 var
-   data : RawByteString;
-   JpegErr: jpeg_error_mgr;
-   Jpeg: jpeg_decompress_struct;
-   pixmapData : TData;
-   x, y, w, h, downscale : Integer;
-   buf : array of Cardinal;
-   p : PVarData;
+   w, h : Integer;
 begin
-   (*
+   var data := args.AsDataString[0];
+   var downscale := args.AsInteger[1];
 
-   if not init_libJPEG then
-      raise Exception.Create('jpeg62 dll missing');
+   var pixmapData : TBytes := DecompressJPEG_RGBA(Pointer(data), Length(data), downscale, w, h);
 
-   data := args.AsDataString[0];
-   downscale := args.AsInteger[1];
+   var pixmap := TdwsByteBuffer.Create;
+   Result := pixmap as IdwsByteBuffer;
 
-   FillChar(Jpeg, SizeOf(Jpeg), 0);
-   FillChar(JpegErr, SizeOf(JpegErr), 0);
+   pixmap.AssignRaw(Pointer(pixmapData), Length(pixmapData));
 
-   jpeg_create_decompress(@Jpeg);
-   try
-      jpeg.err := jpeg_std_error(@JpegErr);
-      JpegErr.error_exit := ErrorExit;
-      JpegErr.output_message := OutputMessage;
-      jpeg_mem_src(@Jpeg, Pointer(data), Length(data));
-      jpeg_read_header(@jpeg, False);
-
-      jpeg.out_color_space := JCS_EXT_RGBA;
-
-      jpeg.scale_num := 1;
-      if downscale <= 0 then
-         jpeg.scale_denom := 1
-      else jpeg.scale_denom := downscale;
-
-      if downscale <= 0 then begin
-         jpeg.do_block_smoothing := 1;
-         jpeg.do_fancy_upsampling := 1;
-         jpeg.dct_method := JDCT_ISLOW;
-      end else begin
-         jpeg.do_block_smoothing := 0;
-         jpeg.do_fancy_upsampling := 0;
-         jpeg.dct_method := JDCT_IFAST;
-      end;
-
-      jpeg_start_decompress(@Jpeg);
-      try
-         w := jpeg.output_width;
-         h := jpeg.output_height;
-         SetLength(buf, w);
-         SetLength(pixmapData, w*h);
-         p := @pixmapData[0];
-         for y:=0 to h-1 do begin
-            var pbuf := @buf[0];
-            jpeg_read_scanlines(@jpeg, @pbuf, 1);
-            for x := 0 to w-1 do begin
-               p.VType := varInt64;
-               p.VInt64 := buf[x];
-               Inc(p);
-            end;
-         end;
-      finally
-         jpeg_finish_decompress(@Jpeg);
-      end;
-   finally
-      jpeg_destroy_decompress(@Jpeg);
-   end;
-   *)
-
-   data := args.AsDataString[0];
-   downscale := args.AsInteger[1];
-
-   pixmapData := DecompressJPEG_RGBA(Pointer(data), Length(data), downscale, w, h);
-
-   Result := TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).CompilerContext.TypInteger);
-   Result.ReplaceData(pixmapData);
    args.AsInteger[2] := w;
    args.AsInteger[3] := h;
 end;
@@ -288,22 +216,18 @@ end;
 
 type TJPEGImageCracker = class(TJPEGImage);
 
-// DoEvalAsDynArray
+// DoEvalAsInterface
 //
-procedure TJPEGDataToPixmapFunc.DoEvalAsDynArray(const args : TExprBaseListExec; var Result : IScriptDynArray);
+procedure TJPEGDataToPixmapFunc.DoEvalAsInterface(const args : TExprBaseListExec; var result : IUnknown);
 
-   procedure CopyRowDefault(pixmap : PVarData; j : TJPEGImageCracker; y : Integer);
-   var
-      x : Integer;
-      scanLine : PRGB24;
+   procedure CopyRowDefault(pixmapRow : PCardinal; j : TJPEGImageCracker; y : Integer);
    begin
-      scanLine := j.Bitmap.ScanLine[y];
-      for x :=0 to j.Width-1 do begin
-         pixmap.VType := varInt64;
-         pixmap.VInt64 := $ff000000 or (scanLine.r shl 16)
-                                    or (scanLine.g shl 8)
-                                    or (scanLine.b) ;
-         Inc(pixmap);
+      var scanLine : PRGB24 := j.Bitmap.ScanLine[y];
+      for var x :=0 to j.Width-1 do begin
+         pixmapRow^ := $ff000000 or (scanLine.r shl 16)
+                                 or (scanLine.g shl 8)
+                                 or (scanLine.b);
+         Inc(pixmapRow);
          Inc(scanLine);
       end;
    end;
@@ -312,8 +236,7 @@ var
    data : RawByteString;
    stream : TMemoryStream;
    j : TJPEGImageCracker;
-   pixmapData : TData;
-   pixmap : IScriptDynArray;
+   pixmap : TdwsByteBuffer;
    y, w, h, downscale : Integer;
 begin
    data := args.AsDataString[0];
@@ -340,12 +263,14 @@ begin
          stream.Clear;
          w := j.Width;
          h := j.Height;
-         SetLength(pixmapData, w*h);
-         for y:=0 to h-1 do
-            CopyRowDefault(@pixmapData[y*w], j, y);
 
-         pixmap := TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).CompilerContext.TypInteger);
-         pixmap.ReplaceData(pixmapData);
+         pixmap := TdwsByteBuffer.Create;
+         Result := pixmap as IdwsByteBuffer;
+
+         pixmap.Count := w*h*4;
+
+         for y := 0 to h-1 do
+            CopyRowDefault(@PByteArray(pixmap.DataPtr)[y*w*4], j, y);
       finally
          j.Free;
       end;
@@ -354,7 +279,6 @@ begin
    end;
    args.AsInteger[2]:=w;
    args.AsInteger[3]:=h;
-   result:=pixmap;
 end;
 
 {$endif}
@@ -363,9 +287,9 @@ end;
 // ------------------ TPNGDataToPixmapFunc ------------------
 // ------------------
 
-// DoEvalAsVariant
+// DoEvalAsInterface
 //
-procedure TPNGDataToPixmapFunc.DoEvalAsDynArray(const args : TExprBaseListExec; var Result : IScriptDynArray);
+procedure TPNGDataToPixmapFunc.DoEvalAsInterface(const args : TExprBaseListExec; var result : IUnknown);
 
    procedure CopyRGBtoBGR(pixmap : PVarData; pngScan : PRGB24); inline;
    begin
@@ -517,11 +441,11 @@ end;
 procedure TPixmapToPNGDataFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString);
 var
    w, h : Integer;
-   pixmap : IScriptDynArray;
+   pixmap : IdwsByteBuffer;
 
    procedure CompressWithPNGImage(var Result : UnicodeString; withAlpha : Boolean);
    var
-      i, x, y : Integer;
+      x, y : Integer;
       bmp : TBitmap;
       scanLine24 : PRGB24;
       c : TRGB32;
@@ -542,15 +466,15 @@ var
                if withAlpha then
                   SetLength(alphaChannel, w*h);
                alphaPtr:=PByte(alphaChannel);
-               i:=0;
+               var pSrc : PCardinal := pixmap.DataPtr;
                for y:=0 to h-1 do begin
                   scanLine24:=bmp.ScanLine[y];
                   for x:=0 to w-1 do begin
-                     PInteger(@c)^:=pixmap.AsInteger[i];
+                     PCardinal(@c)^ := pSrc^;
                      scanLine24^.r:=c.b;
                      scanLine24^.g:=c.g;
                      scanLine24^.b:=c.r;
-                     Inc(i);
+                     Inc(pSrc);
                      Inc(scanLine24);
                      if withAlpha then begin
                         alphaPtr^:=c.a;
@@ -578,10 +502,10 @@ var
    end;
 
 begin
-   args.ExprBase[0].EvalAsScriptDynArray(args.Exec, pixmap);
-   w:=args.AsInteger[1];
-   h:=args.AsInteger[2];
-   if w*h>pixmap.ArrayLength then
+   args.ExprBase[0].EvalAsInterface(args.Exec, IUnknown(pixmap));
+   w := args.AsInteger[1];
+   h := args.AsInteger[2];
+   if w*h*4 > pixmap.GetCount then
       raise Exception.Create('Not enough data in pixmap');
    CompressWithPNGImage(Result, args.AsBoolean[3]);
 end;

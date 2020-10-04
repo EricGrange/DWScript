@@ -1015,7 +1015,7 @@ const
      {$ifdef WIN32}
        LIB_JPEG_NAME = 'jpeg62_32.dll';
      {$else}
-       LIB_JPEG_NAME = 'turbojpeg.dll';// 'jpeg62_64.dll';
+       LIB_JPEG_NAME = 'jpeg62_64.dll';
      {$endif}
   {$else}
      LIB_JPEG_NAME = 'libjpeg.so.62';
