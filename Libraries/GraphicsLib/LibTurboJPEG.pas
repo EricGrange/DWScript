@@ -210,7 +210,8 @@ type
 
 function TJ : TLibTurboJPeg;
 
-function LoadTurboJPEG(const dllName : String = TURBOJPEG_DLL) : Boolean;
+var vOnNeedTurboJPEGDLLName : function : String;
+function LoadTurboJPEG(dllName : String = '') : Boolean;
 procedure UnloadTurboJPEG;
 
 procedure RaiseLastTurboJPEGError(handle : TJHandle);
@@ -234,7 +235,7 @@ end;
 
 // LoadTurboJPEG
 //
-function LoadTurboJPEG(const dllName : String = TURBOJPEG_DLL) : Boolean;
+function LoadTurboJPEG(dllName : String = '') : Boolean;
 
    function GetProc(const name : String) : Pointer;
    begin
@@ -242,7 +243,15 @@ function LoadTurboJPEG(const dllName : String = TURBOJPEG_DLL) : Boolean;
       Assert(Assigned(Result), 'Missing tj' + name);
    end;
 
+
 begin
+   if dllName = '' then begin
+      if Assigned(vOnNeedTurboJPEGDLLName) then
+         dllName := vOnNeedTurboJPEGDLLName;
+      if dllName = '' then
+         dllName := TURBOJPEG_DLL;
+   end;
+
    EnterCriticalSection(vCS);
    try
       if vTJHandle <> 0 then Exit(True);

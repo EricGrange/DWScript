@@ -33,13 +33,13 @@ uses
    Classes, SysUtils, Vcl.Graphics,
    {$ifdef USE_LIB_JPEG}
 //   dwsJPEGEncoder,
-   dwsTurboJPEG,
+   dwsTurboJPEG, dwsTurboJPEG.Bundle,
    {$else}
    JPEG,
    {$endif}
    PNGImage,
    dwsJPEGEncoderOptions,
-   dwsXPlatform, dwsUtils, dwsStrings, dwsByteBufferFunctions,
+   dwsXPlatform, dwsUtils, dwsStrings,
    dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList, dwsUnitSymbols,
    dwsConstExprs, dwsMagicExprs, dwsDataContext;
 
@@ -49,9 +49,6 @@ const
    SYS_TJPEGOptions = 'TJPEGOptions';
 
 type
-   TPixmapSymbol = class (TBaseByteBufferSymbol)
-      public
-   end;
 
    TPixmapToJPEGDataFunc = class(TInternalMagicStringFunction)
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
@@ -75,7 +72,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsByteBuffer;
+uses dwsByteBuffer, dwsByteBufferFunctions;
 
 type
    TRGB24 = record r, g, b : Byte; end;
@@ -90,13 +87,14 @@ type
 procedure RegisterGraphicsTypes(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                 unitTable : TSymbolTable);
 var
-   typPixmap : TBaseByteBufferSymbol;
+   typPixmap : TAliasSymbol;
    jpgOption : TEnumerationSymbol;
    jpgOptions : TSetOfSymbol;
 begin
    if unitTable.FindLocal(SYS_PIXMAP)<>nil then exit;
 
-   typPixmap := TBaseByteBufferSymbol.Create(SYS_PIXMAP);
+//   typPixmap := TBaseByteBufferSymbol.Create(SYS_PIXMAP);
+   typPixmap := TAliasSymbol.Create(SYS_PIXMAP, systemTable.FindTypeLocal(SYS_BYTEBUFFER));
    unitTable.AddSymbol(typPixmap);
 
    jpgOption:=TEnumerationSymbol.Create(SYS_TJPEGOption, systemTable.TypInteger, enumScoped);

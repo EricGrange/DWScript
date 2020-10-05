@@ -31,12 +31,7 @@ unit dwsTurboJPEG.Bundle;
 
 interface
 
-uses
-   Windows, SysUtils,
-   dwsSHA3,
-   dwsXPlatform, LibTurboJPEG;
-
-procedure UnBundleTurboJPEG;
+function UnBundle_TurboJPEG_DLL : String;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -46,7 +41,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses SynZip;
+uses
+   Windows, SysUtils, Classes, System.Zip,
+   dwsSHA3, dwsXPlatform, LibTurboJPEG;
 
 var
    vDLLFileName : String;
@@ -55,34 +52,41 @@ var
 // DoUnBundle
 //
 procedure DoUnBundle;
-var
-   dllName : String;
-   sha3Index : Integer;
 begin
-   var zip := TZipRead.Create(0, 'turbojpeg', 'bundle');
+   var zip := TZipFile.Create;
    try
-      if zip.Entry[0].infoLocal.zfullSize < 99 then
-         sha3Index := 0
-      else sha3Index := 1;
-      var sha3 := String(zip.UnZip(sha3Index));
-      dllName := IncludeTrailingPathDelimiter(TPath.GetTempPath) + Copy(sha3, 1, 40)  + '.dll';
-      var buf := LoadRawBytesFromFile(dllName);
-      if buf <> '' then begin
-         if HashSHA3_256(buf) <> sha3 then
-            buf := '';
+      var stream := TResourceStream.Create(0, 'turbojpeg', 'bundle');
+      try
+         zip.Open(stream, zmRead);
+         var sha3Index := 0;
+         if zip.FileInfo[0].UncompressedSize > 99 then
+            sha3Index := 1;
+         var buf : TBytes;
+         zip.Read(sha3Index, buf);
+         var sha3 := '';
+         BytesToScriptString(Pointer(buf), Length(buf), sha3);
+         var dllName := IncludeTrailingPathDelimiter(TPath.GetTempPath) + Copy(sha3, 1, 40)  + '.dll';
+         var diskDllData := LoadRawBytesFromFile(dllName);
+         if diskDllData <> '' then begin
+            if HashSHA3_256(diskDllData) <> Trim(sha3) then
+               diskDllData := '';
+         end;
+         if diskDllData = '' then begin
+            zip.Read(1-sha3Index, buf);
+            SaveDataToFile(dllName, buf);
+         end;
+         vDLLFileName := dllName;   // only set if successful
+      finally
+         stream.Free
       end;
-      if buf = '' then
-         SaveRawBytesToFile(dllName, zip.UnZip(1-sha3Index));
    finally
       zip.Free;
    end;
-   vDLLFileName := dllName;   // only set if successful
-   LoadTurboJPEG(dllName);
 end;
 
-// UnBundleTurboJPEG
+// UnBundle_TurboJPEG_DLL
 //
-procedure UnBundleTurboJPEG;
+function UnBundle_TurboJPEG_DLL : String;
 begin
    if vDLLFileName = '' then begin
       EnterCriticalSection(vCS);
@@ -93,6 +97,7 @@ begin
          LeaveCriticalSection(vCS);
       end;
    end;
+   Result := vDLLFileName;
 end;
 
 // ------------------------------------------------------------------
@@ -104,9 +109,11 @@ initialization
 // ------------------------------------------------------------------
 
    InitializeCriticalSection(vCS);
+   vOnNeedTurboJPEGDLLName := UnBundle_TurboJPEG_DLL;
 
 finalization
 
+   vOnNeedTurboJPEGDLLName := nil;
    DeleteCriticalSection(vCS);
 
 end.

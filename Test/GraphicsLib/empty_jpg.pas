@@ -1,8 +1,8 @@
-uses System.Encoding;
+﻿uses System.Encoding;
 
-var pixmap : array of Integer;
+var pixmap : TPixmap;
 
-pixmap.Add(0);
+pixmap.AssignHexString('00000000');
 
 var r := PixmapToJPEGData(pixmap, 1, 1, 90, [TJPEGOption.Optimize, TJPEGOption.NoJFIFHeader]);
 

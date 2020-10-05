@@ -42,8 +42,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsTurboJPEG.Bundle;
-
 // CompressJPEG
 //
 function CompressJPEG(rgbData : Pointer; width, height, quality : Integer;
@@ -53,8 +51,6 @@ var
    outBuf : Pointer;
    outSize : Cardinal;
 begin
-   UnBundleTurboJPEG;
-
    var jpeg := TJ.InitCompress;
    try
       outBuf := nil;
@@ -82,8 +78,6 @@ end;
 function DecompressJPEG_RGBA(jpegData : Pointer; jpegDataLength : Integer;
                              downscale : Integer; var w, h : Integer) : TBytes;
 begin
-   UnBundleTurboJPEG;
-
    var jpeg := TJ.InitDecompress;
    try
       var jpegSubSamp := 0;
