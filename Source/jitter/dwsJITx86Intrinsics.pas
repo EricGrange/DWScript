@@ -25,14 +25,16 @@ uses
 type
    TxmmRegister = (
       xmmNone = -1,
-      xmm0 = 0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7,
+      xmm0 = 0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7 {$ifdef WIN64},
       xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15
+      {$endif}
    );
-   TxmmRegisters = set of xmm0..xmm15;
+   TxmmRegisters = set of xmm0..High(TxmmRegister);// xmm15;
 
    TymmRegister = (
-      ymm0 = 0, ymm1, ymm2, ymm3, ymm4, ymm5, ymm6, ymm7,
+      ymm0 = 0, ymm1, ymm2, ymm3, ymm4, ymm5, ymm6, ymm7{$ifdef WIN64},,
       ymm8, ymm9, ymm10, ymm11, ymm12, ymm13, ymm14, ymm15
+      {$endif}
    );
 
    TxmmOp = (
@@ -1757,7 +1759,7 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._vex_ps_modRMSIB_reg_reg(const opCode : array of Byte; dest, src1, src2 : TxmmRegister);
 begin
-   if src2 >= xmm8 then
+   if src2 > xmm7 then
       WriteBytes([ $c4, $c1 ])
    else WriteByte($c5);
    WriteByte($f8 - Ord(Ord(dest) >= 8)*$80 - Ord(src1)*8);
@@ -1768,11 +1770,11 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._vex_ss_modRMSIB_reg_reg(const opCode : array of Byte; dest, src1, src2 : TxmmRegister);
 begin
-   Assert(src1 < xmm8);
-   if src2 >= xmm8 then
+   Assert(src1 <= xmm7);
+   if src2 > xmm7 then
       WriteBytes([ $c4, $c1 ])
    else WriteByte($c5);
-   WriteByte($fa - Ord(dest >= xmm8)*$80 - Ord(src1)*8);
+   WriteByte($fa - Ord(dest > xmm7)*$80 - Ord(src1)*8);
    WriteBytes(opCode);
    WriteByte($C0 + (Ord(src2) and 7) + (Ord(dest) and 7)*8);
 end;
@@ -1781,9 +1783,9 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._vex_modRMSIB_reg_reg(const opCode : array of Byte; dest, src1, src2 : TymmRegister);
 begin
-   Assert(dest < ymm8);
-   Assert(src1 < ymm8);
-   Assert(src2 < ymm8);
+   Assert(dest <= ymm7);
+   Assert(src1 <= ymm7);
+   Assert(src2 <= ymm7);
    WriteByte($c5);
    WriteByte($fc - Ord(src1)*8);
    _modRMSIB_reg_reg(opCode, dest, src2);
@@ -1794,7 +1796,7 @@ end;
 procedure Tx86_64_WriteOnlyStream._vex_modRMSIB_reg_reg_ptr_reg(const opCode : array of Byte; dest, src1 : TymmRegister; src2 : TgpRegister64; offset : Integer);
 begin
    WriteByte($c5);
-   WriteByte($fc - Ord(dest >= ymm8)*$80 - Ord(src1 >= ymm8)*$40 - (Ord(src1) and 7)*8);
+   WriteByte($fc - Ord(dest > ymm7)*$80 - Ord(src1 > ymm7)*$40 - (Ord(src1) and 7)*8);
    _modRMSIB_regnum_ptr_reg(opCode, Ord(dest) and 7, src2, offset);
 end;
 
@@ -1803,7 +1805,7 @@ end;
 procedure Tx86_64_WriteOnlyStream._vex_modRMSIB_reg_reg_ptr_reg(const opCode : array of Byte; dest, src1 : TxmmRegister; src2 : TgpRegister64; offset : Integer);
 begin
    WriteByte($c5);
-   WriteByte($f8 - Ord(dest >= xmm8)*$80 - Ord(src1 >= xmm8)*$40 - (Ord(src1) and 7)*8);
+   WriteByte($f8 - Ord(dest > xmm7)*$80 - Ord(src1 > xmm7)*$40 - (Ord(src1) and 7)*8);
    _modRMSIB_regnum_ptr_reg(opCode, Ord(dest) and 7, src2, offset);
 end;
 
@@ -1812,7 +1814,7 @@ end;
 procedure Tx86_64_WriteOnlyStream._vex_modRMSIB_reg_ptr_reg(const opCode : array of Byte; dest : TymmRegister; src : TgpRegister64; offset : Integer);
 begin
    WriteByte($c5);
-   if dest < ymm8 then
+   if dest <= ymm7 then
       WriteByte($fc)
    else WriteByte($7c);
    _modRMSIB_regnum_ptr_reg(opCode, Ord(dest) and 7, src, offset);
@@ -1936,7 +1938,7 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._movss_ptr_reg_reg(dest : TgpRegister64; offset : Integer; src : TxmmRegister);
 begin
-   Assert(src < xmm8);
+   Assert(src <= xmm7);
    if dest >= gprR8 then
       WriteBytes([$f3, $41, $0F, $11])
    else WriteBytes([$f3, $0F, $11]);
@@ -1948,7 +1950,7 @@ end;
 procedure Tx86_64_WriteOnlyStream._movss_reg_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
 begin
    WriteByte($f3);
-   if dest >= xmm8 then
+   if dest > xmm7 then
       WriteByte($44);
    _modRMSIB_regnum_ptr_reg([$0F, $10], Ord(dest) and 7, src, offset);
 end;
@@ -1957,7 +1959,7 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._movaps_reg_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
 begin
-   Assert(dest < xmm8);
+   Assert(dest <= xmm7);
    _modRMSIB_regnum_ptr_reg([$0F, $28], Ord(dest), src, offset);
 end;
 
@@ -1965,7 +1967,7 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._movups_reg_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
 begin
-   if dest >= xmm8 then
+   if dest > xmm7 then
       WriteByte($44);
    _modRMSIB_regnum_ptr_reg([$0F, $10], Ord(dest) and 7, src, offset);
 end;
@@ -1974,7 +1976,7 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._mulps_reg_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
 begin
-   if dest >= xmm8 then
+   if dest > xmm7 then
       WriteByte($44);
    _modRMSIB_regnum_ptr_reg([$0F, $59], Ord(dest) and 7, src, offset);
 end;
@@ -2008,8 +2010,8 @@ end;
 procedure Tx86_64_WriteOnlyStream._vmovss_reg_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
 begin
    if src < gprR8 then
-      WriteBytes([$c5, $fa - Ord(dest >= xmm8)*$80, $10])
-   else WriteBytes([$c4, $c1 - Ord(dest >= xmm8)*$80, $7a, $10]);
+      WriteBytes([$c5, $fa - Ord(dest > xmm7)*$80, $10])
+   else WriteBytes([$c4, $c1 - Ord(dest > xmm7)*$80, $7a, $10]);
    _modRMSIB_ptr_reg8((Ord(dest) and 7)*8, Ord(src) and 7, offset);
 end;
 
@@ -2017,7 +2019,7 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._vmovups_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
 begin
-   _modRMSIB_regnum_ptr_reg([$C5, $f8  - Ord(dest >= xmm8)*$80, $10], Ord(dest) and 7, src, offset);
+   _modRMSIB_regnum_ptr_reg([$C5, $f8  - Ord(dest > xmm7)*$80, $10], Ord(dest) and 7, src, offset);
 end;
 
 // _vmovups_ptr_reg_reg
@@ -2113,7 +2115,7 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._vextract128_low(dest : TxmmRegister; src : TymmRegister);
 begin
-   Assert(src < ymm8);
+   Assert(src <= ymm7);
    WriteBytes([$c4, $e3, $7d, $19, $c0 + Ord(dest) + Ord(Src)*8, $00]);
 end;
 
@@ -2121,8 +2123,8 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._vextract128_high(dest : TxmmRegister; src : TymmRegister);
 begin
-   Assert(src < ymm8);
-   WriteBytes([$c4, $c3 + Ord(dest < xmm8)*$20, $7d, $19, $c0 + (Ord(dest) and 7) + (Ord(Src) and 7)*8, $01]);
+   Assert(src <= ymm7);
+   WriteBytes([$c4, $c3 + Ord(dest <= xmm7)*$20, $7d, $19, $c0 + (Ord(dest) and 7) + (Ord(Src) and 7)*8, $01]);
 end;
 
 // _vfmadd231ps
@@ -2136,9 +2138,9 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._vfmadd231ps(dest, src1, src2 : TymmRegister);
 begin
-   Assert(dest < ymm8);
-   Assert(src1 < ymm8);
-   Assert(src2 < ymm8);
+   Assert(dest <= ymm7);
+   Assert(src1 <= ymm7);
+   Assert(src2 <= ymm7);
    WriteBytes([$c4, $e2, $7d - Ord(src1)*8, $b8, $c0 + 8*Ord(dest) + Ord(src2)]);
 end;
 
@@ -2174,7 +2176,7 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._vfmadd231ss_ptr_reg(dest, src1 : TxmmRegister; src2 : TgpRegister64; offset : Int32);
 begin
-   WriteBytes([$c4, $e2, $79 - Ord(src1 >= xmm8)*$40 - (Ord(src1) and 7)*8, $b9]);
+   WriteBytes([$c4, $e2, $79 - Ord(src1 > xmm7)*$40 - (Ord(src1) and 7)*8, $b9]);
    _modRMSIB_ptr_reg8(Ord(dest) shl 3, Ord(src2), offset);
 end;
 
@@ -2182,7 +2184,7 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._vfmadd231ps_ptr_reg(dest, src1 : TxmmRegister; src2 : TgpRegister64; offset : Int32);
 begin
-   WriteBytes([$c4, $e2, $79 - Ord(src1 >= xmm8)*$40 - (Ord(src1) and 7)*8, $b8]);
+   WriteBytes([$c4, $e2, $79 - Ord(src1 > xmm7)*$40 - (Ord(src1) and 7)*8, $b8]);
    _modRMSIB_ptr_reg8(Ord(dest) shl 3, Ord(src2), offset);
 end;
 
@@ -2190,8 +2192,8 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._vfmadd231ps_ptr_reg(dest, src1 : TymmRegister; src2 : TgpRegister64; offset : Int32);
 begin
-   Assert(dest < ymm8);
-   WriteBytes([$c4, $e2, $7d - (Ord(src1) and 7)*8 - $40*Ord(src1 >= ymm8), $b8]);
+   Assert(dest <= ymm7);
+   WriteBytes([$c4, $e2, $7d - (Ord(src1) and 7)*8 - $40*Ord(src1 > ymm7), $b8]);
    _modRMSIB_ptr_reg8(Ord(dest) shl 3, Ord(src2), offset);
 end;
 
