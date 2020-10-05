@@ -38,10 +38,7 @@ unit dwsMPIR.Bundle;
 
 interface
 
-uses
-   Windows, SysUtils,
-   dwsSHA3,
-   dwsXPlatform, dwsMPIR;
+function UnBundle_MPIR_DLL : String;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -51,85 +48,62 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses
+   Windows, SysUtils, Classes, System.Zip,
+   dwsSHA3, dwsXPlatform, dwsMPIR;
+
 var
    vDLLFileName : String;
+   vCS : TRTLCriticalSection;
+
+// DoUnBundle
+//
+procedure DoUnBundle;
+begin
+   var zip := TZipFile.Create;
+   try
+      var stream := TResourceStream.Create(0, 'mpir', 'bundle');
+      try
+         zip.Open(stream, zmRead);
+         var sha3Index := 0;
+         if zip.FileInfo[0].UncompressedSize > 99 then
+            sha3Index := 1;
+         var buf : TBytes;
+         zip.Read(sha3Index, buf);
+         var sha3 := '';
+         BytesToScriptString(Pointer(buf), Length(buf), sha3);
+         var dllName := IncludeTrailingPathDelimiter(TPath.GetTempPath) + Copy(sha3, 1, 40)  + '.dll';
+         var diskDllData := LoadRawBytesFromFile(dllName);
+         if diskDllData <> '' then begin
+            if HashSHA3_256(diskDllData) <> Trim(sha3) then
+               diskDllData := '';
+         end;
+         if diskDllData = '' then begin
+            zip.Read(1-sha3Index, buf);
+            SaveDataToFile(dllName, buf);
+         end;
+         vDLLFileName := dllName;   // only set if successful
+      finally
+         stream.Free
+      end;
+   finally
+      zip.Free;
+   end;
+end;
 
 // UnBundle_MPIR_DLL
 //
 function UnBundle_MPIR_DLL : String;
-var
-   res : HRSRC;
-   hglob : HGLOBAL;
-   resourceSize : Integer;
-   dataPtr : Pointer;
-
-   procedure OpenResource(const name, typ : String);
-   begin
-      res := FindResource(0, PChar(name), PChar(typ));
-      if res = 0 then
-         dataPtr := nil
-      else begin
-         hglob := LoadResource(0, res);
-         resourceSize := SizeofResource(0, res);
-         dataPtr := LockResource(hglob);
-      end;
-   end;
-
-   procedure CloseResource;
-   begin
-      if hglob <> 0 then begin
-         UnlockResource(hglob);
-         hglob := 0;
-      end;
-   end;
-
-   function ResourceSHA3 : String;
-   var
-      buf : RawByteString;
-   begin
-      OpenResource('mpir', 'bundle_sha3');
-      Assert(dataPtr <> nil, 'mpir.dll.sha3 not bundled');
-
-      SetLength(buf, resourceSize);
-      System.Move(dataPtr^, Pointer(buf)^, resourceSize);
-
-      Result := Trim(String(buf));
-
-      CloseResource;
-   end;
-
-   procedure ExtractResource;
-   var
-      f : HFILE;
-   begin
-      OpenResource('mpir', 'bundle');
-      Assert(dataPtr <> nil, 'mpir.dll not bundled');
-
-      f := CreateFileW(PWideChar(vDLLFileName), GENERIC_WRITE, 0, nil, CREATE_ALWAYS,
-                       FILE_ATTRIBUTE_TEMPORARY, 0);
-      FileWrite(f, dataPtr, resourceSize);
-      CloseFileHandle(f);
-
-      CloseResource;
-   end;
-
-var
-   buf : RawByteString;
-   sha3 : String;
 begin
-   if vDLLFileName <> '' then Exit(vDLLFileName);
-   sha3 := ResourceSHA3;
-   vDLLFileName := IncludeTrailingPathDelimiter(TPath.GetTempPath) + Copy(sha3, 1, 40)  + '.dll';
-
-   buf := LoadRawBytesFromFile(vDLLFileName);
-   if buf <> '' then begin
-      if HashSHA3_256(buf) <> sha3 then
-         buf := '';
+   if vDLLFileName = '' then begin
+      EnterCriticalSection(vCS);
+      try
+         if vDLLFileName = '' then
+            DoUnBundle;
+      finally
+         LeaveCriticalSection(vCS);
+      end;
    end;
-
-   if buf = '' then
-      ExtractResource;
-
    Result := vDLLFileName;
 end;
 
@@ -141,6 +115,12 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+   InitializeCriticalSection(vCS);
    vOnNeedMPIRDynamicDLLName := UnBundle_MPIR_DLL;
+
+finalization
+
+   vOnNeedMPIRDynamicDLLName := nil;
+   DeleteCriticalSection(vCS);
 
 end.

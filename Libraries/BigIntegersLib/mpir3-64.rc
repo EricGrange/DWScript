@@ -1,2 +1,1 @@
-mpir bundle "mpir3-64.dll"
-mpir bundle_sha3 "mpir3-64.dll.sha3"
+mpir bundle "mpir3-64.zip"
