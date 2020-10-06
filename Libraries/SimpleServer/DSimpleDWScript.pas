@@ -39,8 +39,8 @@ uses
    dwsDataBase, dwsDataBaseLibModule, dwsWebServerInfo, dwsWebServerLibModule,
    dwsBackgroundWorkersLibModule, dwsSynapseLibModule, dwsCryptoLibModule,
    dwsEncodingLibModule, dwsComConnector, dwsXXHash, dwsHTTPSysServer,
-   dwsBigIntegerFunctions.GMP, dwsMPIR.Bundle, dwsCompilerContext, dwsFilter,
-   dwsByteBufferFunctions;
+   dwsBigIntegerFunctions.GMP, dwsMPIR.Bundle, dwsTurboJPEG.Bundle,
+   dwsCompilerContext, dwsFilter, dwsByteBufferFunctions;
 
 type
 

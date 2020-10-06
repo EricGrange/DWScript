@@ -33,7 +33,7 @@ uses
    Classes, SysUtils, Vcl.Graphics,
    {$ifdef USE_LIB_JPEG}
 //   dwsJPEGEncoder,
-   dwsTurboJPEG, dwsTurboJPEG.Bundle,
+   dwsTurboJPEG,
    {$else}
    JPEG,
    {$endif}
