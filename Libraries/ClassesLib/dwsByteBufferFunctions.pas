@@ -205,7 +205,7 @@ procedure RegisterByteBufferType(systemTable : TSystemSymbolTable; unitSyms : TU
 var
    typByteBuffer : TBaseByteBufferSymbol;
 begin
-   if systemTable.FindLocal(SYS_BYTEBUFFER) <> nil then exit;
+   if systemTable.FindLocal(SYS_BYTEBUFFER) <> nil then Exit;
 
    typByteBuffer := TBaseByteBufferSymbol.Create(SYS_BYTEBUFFER);
    systemTable.AddSymbol(typByteBuffer);

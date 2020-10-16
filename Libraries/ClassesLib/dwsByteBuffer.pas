@@ -92,6 +92,9 @@ type
       procedure SetDoubleA(index : NativeInt; v : Double);
       procedure SetExtendedA(index : NativeInt; v : Double);
       procedure SetDataStringA(index : NativeInt; const v : String);
+
+      function GetMeta(const index : Integer) : Int64;
+      procedure SetMeta(const index : Integer; const val : Int64);
    end;
 
    TdwsByteBuffer = class (TInterfacedObject, IdwsByteBuffer, IGetSelf, IJSONWriteAble)
@@ -100,6 +103,7 @@ type
          FCount : NativeInt;
          FPosition : NativeInt;
          FReadOnly : Boolean;
+         FMetaData : TInt64DynArray;
 
       protected
          procedure RangeCheck(index, size : Integer); inline;
@@ -111,6 +115,10 @@ type
 
          function GetPosition : NativeInt;
          procedure SetPosition(n : NativeInt);
+
+         procedure SetMetaData(const data : TInt64DynArray);
+         function GetMeta(const index : Integer) : Int64;
+         procedure SetMeta(const index : Integer; const val : Int64);
 
       public
          function ToString : String; override;
@@ -179,6 +187,9 @@ type
          property Count : NativeInt read FCount write SetCount;
          property Position : NativeInt read FPosition write SetPosition;
          property ReadOnly : Boolean read FReadOnly write FReadOnly;
+
+         property MetaData : TInt64DynArray read FMetaData write SetMetaData;
+         property Meta[const index : Integer] : Int64 read GetMeta write SetMeta;
    end;
 
    EdwsByteBuffer = class (Exception);
@@ -250,6 +261,40 @@ begin
    if NativeUInt(n) >= NativeUInt(Count) then
       raise EdwsByteBuffer.CreateFmt('Position %d out of range (length %d)', [n, Count]);
    FPosition := n;
+end;
+
+// SetMetaData
+//
+procedure TdwsByteBuffer.SetMetaData(const data : TInt64DynArray);
+begin
+   var n := Length(data);
+   SetLength(FMetaData, n);
+   if n > 0 then
+      System.Move(data[0], FMetaData[0], n*SizeOf(Int64));
+end;
+
+// GetMeta
+//
+function TdwsByteBuffer.GetMeta(const index : Integer) : Int64;
+begin
+   if index < 0 then
+      raise EdwsByteBuffer.CreateFmt('Invalid Meta index (%d)', [ index ]);
+   if index < Length(FMetaData) then
+      Result := FMetaData[index]
+   else Result := 0;
+end;
+
+// SetMeta
+//
+procedure TdwsByteBuffer.SetMeta(const index : Integer; const val : Int64);
+begin
+   if index < 0 then
+      raise EdwsByteBuffer.CreateFmt('Invalid Meta index (%d)', [ index ]);
+   if index >= Length(FMetaData) then begin
+      if val = 0 then Exit;
+      SetLength(FMetaData, index+1);
+   end;
+   FMetaData[index] := val;
 end;
 
 // ToString
