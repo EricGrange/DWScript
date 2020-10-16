@@ -32,7 +32,7 @@ type
    TxmmRegisters = set of xmm0..High(TxmmRegister);// xmm15;
 
    TymmRegister = (
-      ymm0 = 0, ymm1, ymm2, ymm3, ymm4, ymm5, ymm6, ymm7{$ifdef WIN64},,
+      ymm0 = 0, ymm1, ymm2, ymm3, ymm4, ymm5, ymm6, ymm7{$ifdef WIN64},
       ymm8, ymm9, ymm10, ymm11, ymm12, ymm13, ymm14, ymm15
       {$endif}
    );
