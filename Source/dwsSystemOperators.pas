@@ -39,6 +39,9 @@ type
 
          function AsCastClassOfSymbol(compilerContext : TdwsCompilerContext;
             operand : TTypedExpr; castType : TTypeSymbol; const scriptPos : TScriptPos) : TTypedExpr;
+
+         function AsCastVariantSymbol(compilerContext : TdwsCompilerContext;
+            operand : TTypedExpr; castType : TTypeSymbol; const scriptPos : TScriptPos) : TTypedExpr;
    end;
 
 // ------------------------------------------------------------------
@@ -297,6 +300,7 @@ begin
    RegisterAsCaster(AsCastInterfaceSymbol);
    RegisterAsCaster(AsCastInstanceSymbol);
    RegisterAsCaster(AsCastClassOfSymbol);
+   RegisterAsCaster(AsCastVariantSymbol);
 end;
 
 // AsCastInterfaceSymbol
@@ -355,6 +359,27 @@ begin
       end;
       Result := TClassAsClassExpr.Create(compilerContext, scriptPos, operand, TClassOfSymbol(castType));
    end else Result := nil;
+end;
+
+// AsCastVariantSymbol
+//
+function TSystemOperators.AsCastVariantSymbol(
+            compilerContext : TdwsCompilerContext;
+            operand : TTypedExpr; castType : TTypeSymbol;
+            const scriptPos : TScriptPos
+            ) : TTypedExpr;
+begin
+   Result := nil;
+   if operand.Typ = compilerContext.TypVariant then begin
+      if castType = compilerContext.TypInteger then
+         Result := TConvVarToIntegerExpr.Create(compilerContext, scriptPos, operand)
+      else if castType = compilerContext.TypFloat then
+         Result := TConvVarToFloatExpr.Create(compilerContext, scriptPos, operand)
+      else if castType = compilerContext.TypString then
+         Result := TConvVarToStringExpr.Create(compilerContext, scriptPos, operand)
+      else if castType = compilerContext.TypBoolean then
+         Result := TConvVarToBoolExpr.Create(compilerContext, scriptPos, operand);
+   end;
 end;
 
 end.

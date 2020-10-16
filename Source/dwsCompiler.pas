@@ -10851,7 +10851,9 @@ begin
          hotPos := FTok.HotPos;
 
          // Read right argument
-         right := ReadTerm;
+         if tt = ttAS then
+            right := ReadTerm(False, FCompilerContext.TypAnyType)
+         else right := ReadTerm;
          try
             if (Result.Typ=nil) or (right=nil) or(right.Typ=nil) then
                FMsgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands);
