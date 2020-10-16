@@ -362,6 +362,7 @@ const
   CPE_IncompatibleOperands = 'Incompatible operands';
 
   CPE_InvalidTypeCast = 'Invalid typecast';
+  CPE_CannotCastAs = 'Cannot cast "%s" as "%s"';
 
   CPE_FunctionOptimizationFailed = 'Evaluation of "%s" failed: %s %s';
 

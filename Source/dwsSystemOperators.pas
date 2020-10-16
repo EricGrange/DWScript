@@ -22,13 +22,23 @@ interface
 
 uses
    dwsSymbols, dwsTokenizer, dwsExprs, dwsCoreExprs, dwsRelExprs,
-   dwsOperators, dwsUnitSymbols, dwsConvExprs;
+   dwsOperators, dwsUnitSymbols, dwsConvExprs, dwsCompilerContext,
+   dwsScriptSource;
 
 type
 
    TSystemOperators = class (TOperators)
       public
          constructor Create(systemTable : TSystemSymbolTable);
+
+         function AsCastInterfaceSymbol(compilerContext : TdwsCompilerContext;
+            operand : TTypedExpr; castType : TTypeSymbol; const scriptPos : TScriptPos) : TTypedExpr;
+
+         function AsCastInstanceSymbol(compilerContext : TdwsCompilerContext;
+            operand : TTypedExpr; castType : TTypeSymbol; const scriptPos : TScriptPos) : TTypedExpr;
+
+         function AsCastClassOfSymbol(compilerContext : TdwsCompilerContext;
+            operand : TTypedExpr; castType : TTypeSymbol; const scriptPos : TScriptPos) : TTypedExpr;
    end;
 
 // ------------------------------------------------------------------
@@ -38,6 +48,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsStrings;
 
 // ------------------
 // ------------------ TSystemOperators ------------------
@@ -281,6 +293,68 @@ begin
    RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typVariant,     typFloat);
    RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typVariant,     typVariant);
    RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typVariant,     typInteger);
+
+   RegisterAsCaster(AsCastInterfaceSymbol);
+   RegisterAsCaster(AsCastInstanceSymbol);
+   RegisterAsCaster(AsCastClassOfSymbol);
+end;
+
+// AsCastInterfaceSymbol
+//
+function TSystemOperators.AsCastInterfaceSymbol(
+   compilerContext : TdwsCompilerContext;
+   operand : TTypedExpr; castType : TTypeSymbol;
+   const scriptPos : TScriptPos) : TTypedExpr;
+begin
+   if operand.Typ is TInterfaceSymbol then begin
+      if castType is TInterfaceSymbol then begin
+         Result := TIntfAsIntfExpr.Create(compilerContext, scriptPos, operand, TInterfaceSymbol(castType));
+      end else begin
+         if not (castType is TClassOfSymbol) then begin
+            compilerContext.Msgs.AddCompilerError(scriptPos, CPE_ClassRefExpected);
+            castType := compilerContext.TypTObject.MetaSymbol;
+         end;
+         Result := TIntfAsClassExpr.Create(compilerContext, scriptPos, operand, TClassOfSymbol(castType).Typ);
+      end;
+   end else Result := nil;
+end;
+
+// AsCastInstanceSymbol
+//
+function TSystemOperators.AsCastInstanceSymbol(
+            compilerContext : TdwsCompilerContext;
+            operand : TTypedExpr; castType : TTypeSymbol;
+            const scriptPos : TScriptPos
+            ) : TTypedExpr;
+begin
+   if operand.Typ is TClassSymbol then begin
+      if castType is TInterfaceSymbol then
+         Result := TObjAsIntfExpr.Create(compilerContext, scriptPos, operand, TInterfaceSymbol(castType))
+      else begin
+         if not (castType is TClassOfSymbol) then begin
+            compilerContext.Msgs.AddCompilerError(scriptPos, CPE_ClassRefExpected);
+            castType := compilerContext.TypTObject.MetaSymbol;
+         end;
+         Result := TObjAsClassExpr.Create(compilerContext, scriptPos, operand, TClassOfSymbol(castType).Typ);
+      end;
+   end else Result := nil;
+end;
+
+// AsCastClassOfSymbol
+//
+function TSystemOperators.AsCastClassOfSymbol(
+            compilerContext : TdwsCompilerContext;
+            operand : TTypedExpr; castType : TTypeSymbol;
+            const scriptPos : TScriptPos
+            ) : TTypedExpr;
+begin
+   if operand.Typ is TClassOfSymbol then begin
+      if not (castType is TClassOfSymbol) then begin
+         compilerContext.Msgs.AddCompilerStop(scriptPos, CPE_ClassRefExpected);
+         castType := compilerContext.TypTObject.MetaSymbol;
+      end;
+      Result := TClassAsClassExpr.Create(compilerContext, scriptPos, operand, TClassOfSymbol(castType));
+   end else Result := nil;
 end;
 
 end.

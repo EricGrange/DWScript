@@ -266,16 +266,17 @@ begin
 
    scriptPos.Col:=9;
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
-   CheckEquals(9, sugg.Count, 'column 9');
+   CheckEquals(10, sugg.Count, 'column 9');
    CheckEquals('TClass', sugg.Code[0], 'sugg 9, 0');
    CheckEquals('TComplex', sugg.Code[1], 'sugg 9, 1');
    CheckEquals('TCustomAttribute', sugg.Code[2], 'sugg 9, 2');
    CheckEquals('TObject', sugg.Code[3], 'sugg 9, 3');
-   CheckEquals('TRTTIRawAttribute', sugg.Code[4], 'sugg 9, 4');
-   CheckEquals('TRTTIRawAttributes', sugg.Code[5], 'sugg 9, 5');
-   CheckEquals('TRTTITypeInfo', sugg.Code[6], 'sugg 9, 6');
-   CheckEquals('TSourceCodeLocation', sugg.Code[7], 'sugg 9, 7');
-   CheckEquals('TVector', sugg.Code[8], 'sugg 9, 8');
+   CheckEquals('TPixmap', sugg.Code[4], 'sugg 9, 4');
+   CheckEquals('TRTTIRawAttribute', sugg.Code[5], 'sugg 9, 5');
+   CheckEquals('TRTTIRawAttributes', sugg.Code[6], 'sugg 9, 6');
+   CheckEquals('TRTTITypeInfo', sugg.Code[7], 'sugg 9, 7');
+   CheckEquals('TSourceCodeLocation', sugg.Code[8], 'sugg 9, 8');
+   CheckEquals('TVector', sugg.Code[9], 'sugg 9, 9');
 end;
 
 // MetaClassTest

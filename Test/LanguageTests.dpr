@@ -63,6 +63,7 @@ uses
   UdwsWebUtilsTests in 'UdwsWebUtilsTests.pas',
   UBigIntegerTests in 'UBigIntegerTests.pas',
   dwsMPIR.Bundle in '..\Libraries\BigIntegersLib\dwsMPIR.Bundle.pas',
+  dwsTurboJPEG.Bundle,
   USymbolDictionaryTests in 'USymbolDictionaryTests.pas',
   UdwsSystemInfoTests in 'UdwsSystemInfoTests.pas',
   UdwsWebLibModuleTest in 'UdwsWebLibModuleTest.pas',

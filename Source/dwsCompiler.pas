@@ -10858,34 +10858,12 @@ begin
             case tt of
                ttAS : begin
                   rightTyp:=right.Typ;
-                  if Result.Typ is TInterfaceSymbol then begin
-                     if rightTyp is TInterfaceSymbol then begin
-                        Result:=TIntfAsIntfExpr.Create(FCompilerContext, hotPos, Result, TInterfaceSymbol(rightTyp));
-                     end else begin
-                        if not (rightTyp is TClassOfSymbol) then begin
-                           FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
-                           rightTyp:=FCompilerContext.TypTObject.MetaSymbol;
-                        end;
-                        Result:=TIntfAsClassExpr.Create(FCompilerContext, hotPos, Result, TClassOfSymbol(rightTyp).Typ);
-                     end;
-                  end else if Result.Typ is TClassSymbol then begin
-                     if rightTyp is TInterfaceSymbol then
-                        Result:=TObjAsIntfExpr.Create(FCompilerContext, hotPos, Result, TInterfaceSymbol(rightTyp))
-                     else begin
-                        if not (rightTyp is TClassOfSymbol) then begin
-                           FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
-                           rightTyp:=FCompilerContext.TypTObject.MetaSymbol;
-                        end;
-                        Result:=TObjAsClassExpr.Create(FCompilerContext, hotPos, Result, TClassOfSymbol(rightTyp).Typ);
-                     end;
+                  var asCastExpr := FOperators.CreateAsCastExpr(FCompilerContext, Result, right.Typ, hotPos);
+                  if asCastExpr <> nil then begin
+                     Result := asCastExpr
                   end else begin
-                     if not (Result.Typ is TClassOfSymbol) then
-                        FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
-                     else if not (rightTyp is TClassOfSymbol) then begin
-                        FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
-                        rightTyp:=FCompilerContext.TypTObject.MetaSymbol;
-                     end;
-                     Result:=TClassAsClassExpr.Create(FCompilerContext, hotPos, Result, TClassOfSymbol(rightTyp));
+                     FMsgs.AddCompilerErrorFmt(hotPos, CPE_CannotCastAs, [ Result.Typ.Caption, rightTyp.Caption ]);
+                     Result := TConvInvalidExpr.Create(FCompilerContext, hotPos, Result, rightTyp);
                   end;
                   OrphanAndNil(right);
                end;
