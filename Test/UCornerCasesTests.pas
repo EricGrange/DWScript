@@ -61,6 +61,7 @@ type
          procedure RecompileInContext2;
          procedure RecompileInContext3;
          procedure RecompileInContext4;
+//         procedure RecompileInContextVarArray;
          procedure ScriptPos;
          procedure MonkeyTest;
          procedure SameVariantTest;
@@ -1025,7 +1026,34 @@ begin
       exec.EndProgram;
    end;
 end;
+(*
+procedure TCornerCasesTests.RecompileInContextVarArray;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
 
+   procedure Run(Line, Check: string);
+   begin
+      FCompiler.RecompileInContext(prog, Line);
+      exec.RunProgram(0);
+      CheckEquals(Check, exec.Result.ToString, 're compile line: "' + Line + '"');
+   end;
+
+begin
+   prog:=FCompiler.Compile('Print("Recompile Array of Integer");'#10
+                         + 'var j : array of integer;');
+
+   exec:=prog.BeginNewExecution;
+   try
+//      Run('j.add(56);', '');
+      Run('var i : array of integer;', '');
+      Run('i.add(78);', '');
+      Run('Print(i[0]);', '78');
+   finally
+      exec.EndProgram;
+   end;
+end;
+*)
 // ScriptPos
 //
 procedure TCornerCasesTests.ScriptPos;
