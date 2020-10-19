@@ -692,7 +692,7 @@ type
          procedure InitData(const data : TData; offset : Integer); virtual;
          procedure InitDataContext(const data : IDataContext); inline;
          procedure InitVariant(var v : Variant); virtual;
-         class function DynamicInitialization : Boolean; virtual;
+         function DynamicInitialization : Boolean; virtual;
 
          function IsType : Boolean; override;
          function BaseType : TTypeSymbol; override;
@@ -1225,7 +1225,7 @@ type
          constructor Create(const name : String; elementType, indexType : TTypeSymbol);
          destructor Destroy; override;
 
-         class function DynamicInitialization : Boolean; override;
+         function DynamicInitialization : Boolean; override;
 
          function AssignsAsDataExpr : Boolean; override;
 
@@ -1313,7 +1313,7 @@ type
 
          procedure InitData(const Data: TData; Offset: Integer); override;
          procedure InitVariant(var v : Variant); override;
-         class function DynamicInitialization : Boolean; override;
+         function DynamicInitialization : Boolean; override;
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsPointerType : Boolean; override;
@@ -1531,7 +1531,13 @@ type
          property NextField : TFieldSymbol read FNextField write FNextField;
    end;
 
-   TRecordSymbolFlag = (rsfDynamic, rsfFullyDefined, rsfImmutable, rsfExternal);
+   TRecordSymbolFlag = (
+      rsfDynamic,                // indicates some fields have non-constant initialization expressions (for anonymous records)
+      rsfFullyDefined,           // set when the declaration is complete
+      rsfImmutable,              // immutable record, cannot be altered at runtime
+      rsfExternal,               // external record
+      rsfDynamicInitialization   // contains fields that require dynamic initialization (dynamic arrays...)
+      );
    TRecordSymbolFlags = set of TRecordSymbolFlag;
 
    // record member1: Integer; member2: Integer end;
@@ -1565,6 +1571,7 @@ type
                                         isClassMethod : Boolean) : TMethodSymbol; override;
 
          procedure InitData(const data : TData; offset : Integer); override;
+         function DynamicInitialization : Boolean; override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function AssignsAsDataExpr : Boolean; override;
 
@@ -3139,10 +3146,12 @@ end;
 procedure TRecordSymbol.AddField(fieldSym : TFieldSymbol);
 begin
    inherited;
-   fieldSym.FOffset:=FSize;
-   FSize:=FSize+fieldSym.Typ.Size;
-   if fieldSym.DefaultExpr<>nil then
-      IsDynamic:=True;
+   fieldSym.FOffset := FSize;
+   FSize := FSize + fieldSym.Typ.Size;
+   if fieldSym.DefaultExpr <> nil then
+      IsDynamic := True;
+   if fieldSym.Typ.DynamicInitialization then
+      Include(FFlags, rsfDynamicInitialization);
 end;
 
 // AddMethod
@@ -3201,6 +3210,13 @@ begin
       field.InitData(data, offset);
       field:=field.NextField;
    end;
+end;
+
+// DynamicInitialization
+//
+function TRecordSymbol.DynamicInitialization : Boolean;
+begin
+   Result := rsfDynamicInitialization in FFlags;
 end;
 
 // IsCompatible
@@ -7358,7 +7374,7 @@ end;
 
 // DynamicInitialization
 //
-class function TArraySymbol.DynamicInitialization : Boolean;
+function TArraySymbol.DynamicInitialization : Boolean;
 begin
    Result := True;
 end;
@@ -7773,7 +7789,7 @@ end;
 
 // DynamicInitialization
 //
-class function TAssociativeArraySymbol.DynamicInitialization : Boolean;
+function TAssociativeArraySymbol.DynamicInitialization : Boolean;
 begin
    Result := True;
 end;
@@ -8257,7 +8273,7 @@ end;
 
 // DynamicInitialization
 //
-class function TTypeSymbol.DynamicInitialization : Boolean;
+function TTypeSymbol.DynamicInitialization : Boolean;
 begin
    Result:=False;
 end;
