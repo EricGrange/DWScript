@@ -106,7 +106,6 @@ begin
    var typePixmap := TBasePixmapSymbol.Create(SYS_PIXMAP);
    systemTable.AddSymbol(typePixmap);
 
-
 (*   var typRGBAHistogram := TClassSymbol.Create(SYS_TRGBAHISTOGRAM, nil);
    typRGBAHistogram.AddField(TFieldSymbol.Create('R', TDynamicArraySymbol.Create('', systemTable.TypInteger, systemTable.TypInteger), cvPublic));
    typRGBAHistogram.AddField(TFieldSymbol.Create('G', TDynamicArraySymbol.Create('', systemTable.TypInteger, systemTable.TypInteger), cvPublic));
@@ -115,13 +114,13 @@ begin
    unitTable.AddSymbol(typRGBAHistogram);*)
 
    var jpgOption := TEnumerationSymbol.Create(SYS_TJPEGOption, systemTable.TypInteger, enumScoped);
-   unitTable.AddSymbol(jpgOption);
+   systemTable.AddSymbol(jpgOption);
    jpgOption.AddElement(TElementSymbol.Create('Optimize', jpgOption, Ord(jpgoOptimize), False));
    jpgOption.AddElement(TElementSymbol.Create('NoJFIFHeader', jpgOption, Ord(jpgoNoJFIFHeader), False));
    jpgOption.AddElement(TElementSymbol.Create('Progressive', jpgOption, Ord(jpgoProgressive), False));
 
    var jpgOptions := TSetOfSymbol.Create(SYS_TJPEGOptions, jpgOption, jpgOption.LowBound, jpgOption.HighBound);
-   unitTable.AddSymbol(jpgOptions);
+   systemTable.AddSymbol(jpgOptions);
 end;
 
 // ByteBufferToJPEGData
