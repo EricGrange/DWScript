@@ -181,7 +181,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsCoreExprs;
+uses dwsCoreExprs, dwsConvExprs;
 
 // ------------------
 // ------------------ TRelOpExpr ------------------
@@ -232,14 +232,17 @@ begin
       if Right.IsConstant then begin
          Result := TConstBooleanExpr.Create(Typ, EvalAsBoolean(context.Execution));
       end else begin
-         if Left.EvalAsBoolean(context.Execution) then
-            Result := Right
-         else Result := TNotBoolExpr.Create(context, ScriptPos, Right);
+         if Left.EvalAsBoolean(context.Execution) then begin
+            Assert(Right.Typ.IsOfType(context.TypBoolean));
+            Result := Right;
+         end else Result := TNotBoolExpr.Create(context, ScriptPos, Right);
          FRight := nil;
       end;
    end else if Right.IsConstant then begin
       if Right.EvalAsBoolean(context.Execution) then
-         Result := Left
+         if Left.Typ.IsOfType(context.TypBoolean) then
+            Result := Left
+         else Result := TConvVarToBoolExpr.Create(context, ScriptPos, Left)
       else Result := TNotBoolExpr.Create(context, ScriptPos, Left);
       FLeft := nil;
    end else Exit(Self);

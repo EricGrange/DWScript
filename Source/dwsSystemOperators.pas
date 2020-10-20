@@ -294,6 +294,9 @@ begin
    RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typVariant,     typVariant);
    RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typVariant,     typInteger);
 
+   RegisterOperator(ttIS,            TRelEqualBoolExpr,     typBoolean,     typBoolean);
+   RegisterOperator(ttIS,            TRelEqualBoolExpr,     typVariant,     typBoolean);
+
    RegisterAsCaster(AsCastInterfaceSymbol);
    RegisterAsCaster(AsCastInstanceSymbol);
    RegisterAsCaster(AsCastClassOfSymbol);

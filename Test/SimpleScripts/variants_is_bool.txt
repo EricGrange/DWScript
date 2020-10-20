@@ -1,0 +1,30 @@
+- Undefined
+False
+True
+- Null
+False
+True
+- Integer -1
+True
+False
+- Float -0.5
+True
+False
+- Integer 0
+False
+True
+- Float 0.5
+True
+False
+- Integer 1
+True
+False
+- Float 1.5
+True
+False
+- Empty string
+False
+True
+- true string
+True
+False
