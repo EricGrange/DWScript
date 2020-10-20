@@ -44,6 +44,7 @@ type
 
    TRelEqualBoolExpr = class(TBoolRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+     function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
    TRelNotEqualBoolExpr = class(TBoolRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
@@ -180,6 +181,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsCoreExprs;
+
 // ------------------
 // ------------------ TRelOpExpr ------------------
 // ------------------
@@ -219,6 +222,28 @@ end;
 function TRelEqualBoolExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
    Result:=(FLeft.EvalAsBoolean(exec)=FRight.EvalAsBoolean(exec));
+end;
+
+// Optimize
+//
+function TRelEqualBoolExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
+begin
+   if Left.IsConstant then begin
+      if Right.IsConstant then begin
+         Result := TConstBooleanExpr.Create(Typ, EvalAsBoolean(context.Execution));
+      end else begin
+         if Left.EvalAsBoolean(context.Execution) then
+            Result := Right
+         else Result := TNotBoolExpr.Create(context, ScriptPos, Right);
+         FRight := nil;
+      end;
+   end else if Right.IsConstant then begin
+      if Right.EvalAsBoolean(context.Execution) then
+         Result := Left
+      else Result := TNotBoolExpr.Create(context, ScriptPos, Left);
+      FLeft := nil;
+   end else Exit(Self);
+   Orphan(context);
 end;
 
 // ------------------

@@ -33,13 +33,10 @@ type
 
          function AsCastInterfaceSymbol(compilerContext : TdwsCompilerContext;
             operand : TTypedExpr; castType : TTypeSymbol; const scriptPos : TScriptPos) : TTypedExpr;
-
          function AsCastInstanceSymbol(compilerContext : TdwsCompilerContext;
             operand : TTypedExpr; castType : TTypeSymbol; const scriptPos : TScriptPos) : TTypedExpr;
-
          function AsCastClassOfSymbol(compilerContext : TdwsCompilerContext;
             operand : TTypedExpr; castType : TTypeSymbol; const scriptPos : TScriptPos) : TTypedExpr;
-
          function AsCastVariantSymbol(compilerContext : TdwsCompilerContext;
             operand : TTypedExpr; castType : TTypeSymbol; const scriptPos : TScriptPos) : TTypedExpr;
    end;

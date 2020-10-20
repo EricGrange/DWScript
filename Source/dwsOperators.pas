@@ -72,8 +72,6 @@ type
          function RegisterUnaryOperator(aToken : TTokenType; aExprClass : TUnaryOpExprClass;
                                         aType : TTypeSymbol) : PRegisteredOperator; overload;
 
-         procedure RegisterAsCaster(const asCaster : TAsCasterExprCreator);
-
          function EnumerateOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
                                         const callback : TOperatorSymbolEnumerationCallback) : Boolean;
          function EnumerateOperatorSymbols(const callback : TOperatorSymbolEnumerationCallback) : Boolean;
@@ -92,11 +90,11 @@ type
          function FindCaster(aCastType, aOperandType : TTypeSymbol) : TTypedExprClass;
          function FindImplicitCaster(aCastType, aOperandType : TTypeSymbol) : TTypedExprClass;
 
-         function CreateAsCastExpr(
-            compilerContext : TdwsCompilerContext;
-            operand : TTypedExpr; castType : TTypeSymbol;
-            const scriptPos : TScriptPos
-            ) : TTypedExpr;
+         procedure RegisterAsCaster(const asCaster : TAsCasterExprCreator);
+
+         function CreateAsCastExpr(compilerContext : TdwsCompilerContext;
+                                   operand : TTypedExpr; castType : TTypeSymbol;
+                                   const scriptPos : TScriptPos) : TTypedExpr;
    end;
 
 
@@ -203,15 +201,6 @@ begin
    Result.OperatorSym.AddParam(nil);
    Result.OperatorSym.AddParam(aType);
    Result.Owned:=True;
-end;
-
-// RegisterAsCaster
-//
-procedure TOperators.RegisterAsCaster(const asCaster : TAsCasterExprCreator);
-begin
-   var n := Length(FAsCasters);
-   SetLength(FAsCasters, n+1);
-   FAsCasters[n] := asCaster;
 end;
 
 // EnumerateOperatorsFor
@@ -347,6 +336,15 @@ begin
          Exit(p.ExprClass);
    end;
    Result := nil;
+end;
+
+// RegisterAsCaster
+//
+procedure TOperators.RegisterAsCaster(const asCaster : TAsCasterExprCreator);
+begin
+   var n := Length(FAsCasters);
+   SetLength(FAsCasters, n+1);
+   FAsCasters[n] := asCaster;
 end;
 
 // CreateAsCastExpr

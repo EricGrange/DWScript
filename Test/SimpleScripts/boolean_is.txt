@@ -10,3 +10,10 @@ True
 True
 False
 True
+reverse
+False
+False
+True
+True
+True
+False

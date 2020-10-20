@@ -10650,7 +10650,9 @@ begin
             end;
 
             // Read right argument
-            right:=ReadExprAdd;
+            if tt = ttIS then
+               right := ReadExprAdd(FCompilerContext.TypAnyType)
+            else right := ReadExprAdd;
             if right=nil then
                rightTyp:=nil
             else rightTyp:=right.Typ;
@@ -10658,14 +10660,9 @@ begin
                case tt of
                   ttIS : begin
 
-                     if Result.IsOfType(FCompilerContext.TypBoolean) and right.IsOfType(FCompilerContext.TypBoolean) then begin
-                        if right.ClassType = TConstBooleanExpr then begin
-                           if not TConstBooleanExpr(right).Value then
-                              Result := TNotBoolExpr.Create(FCompilerContext, hotPos, Result);
-                           right.Free;
-                        end else begin
-                           Result := TRelEqualBoolExpr.Create(FCompilerContext, hotPos, ttIS, Result, right);
-                        end;
+                     opExpr := CreateTypedOperatorExpr(tt, hotPos, Result, right);
+                     if opExpr <> nil then begin
+                        Result := opExpr
                      end else begin
                         if not (Result.Typ is TClassSymbol) then
                            FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
