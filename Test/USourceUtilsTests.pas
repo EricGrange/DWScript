@@ -265,18 +265,18 @@ begin
    CheckEquals('DateTimeZone', sugg.Code[4], 'sugg 8, 3');
 
    scriptPos.Col:=9;
-   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
-   CheckEquals(10, sugg.Count, 'column 9');
-   CheckEquals('TClass', sugg.Code[0], 'sugg 9, 0');
-   CheckEquals('TComplex', sugg.Code[1], 'sugg 9, 1');
-   CheckEquals('TCustomAttribute', sugg.Code[2], 'sugg 9, 2');
-   CheckEquals('TObject', sugg.Code[3], 'sugg 9, 3');
-   CheckEquals('TPixmap', sugg.Code[4], 'sugg 9, 4');
-   CheckEquals('TRTTIRawAttribute', sugg.Code[5], 'sugg 9, 5');
-   CheckEquals('TRTTIRawAttributes', sugg.Code[6], 'sugg 9, 6');
-   CheckEquals('TRTTITypeInfo', sugg.Code[7], 'sugg 9, 7');
-   CheckEquals('TSourceCodeLocation', sugg.Code[8], 'sugg 9, 8');
-   CheckEquals('TVector', sugg.Code[9], 'sugg 9, 9');
+   sugg := TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+   var expected : TArray<String> := [
+      'TClass', 'TComplex', 'TCustomAttribute',
+      'TJPEGOption', 'TJPEGOptions',
+      'TObject', 'TPixmap',
+      'TRTTIRawAttribute', 'TRTTIRawAttributes', 'TRTTITypeInfo',
+      'TSourceCodeLocation', 'TVector'
+   ];
+
+   CheckEquals(12, Length(expected), 'column 9');
+   for var i := 0 to High(expected) do
+      CheckEquals(expected[i], sugg.Code[i], 'sugg 9, ' + IntToStr(i));
 end;
 
 // MetaClassTest
