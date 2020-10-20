@@ -407,7 +407,7 @@ end;
 //
 procedure TdwsByteBuffer.ToDataString(var s : String);
 begin
-   BytesToScriptString(PByte(FData), Count, s);
+   BytesToScriptString(PByteArray(FData), Count, s);
 end;
 
 // ToJSON

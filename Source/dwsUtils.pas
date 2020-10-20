@@ -1006,8 +1006,6 @@ procedure RawByteStringToScriptString(const s : RawByteString; var result : Vari
 function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString; overload; inline;
 procedure ScriptStringToRawByteString(const s : UnicodeString; var result : RawByteString); overload;
 
-procedure WordsToBytes(src : PWord; dest : PByte; nbWords : Integer);
-
 procedure StringBytesToWords(var buf : UnicodeString; swap : Boolean);
 procedure StringWordsToBytes(var buf : UnicodeString; swap : Boolean);
 
@@ -2969,27 +2967,6 @@ begin
       n := Length(s);
       SetLength(Result, n);
       WordsToBytes(Pointer(s), Pointer(Result), n);
-   end;
-end;
-
-// WordsToBytes
-//
-procedure WordsToBytes(src : PWord; dest : PByte; nbWords : Integer);
-begin
-   while nbWords >= 4 do begin
-      Dec(nbWords, 4);
-      dest[0] := PWordArray(src)[0];
-      dest[1] := PWordArray(src)[1];
-      dest[2] := PWordArray(src)[2];
-      dest[3] := PWordArray(src)[3];
-      Inc(dest, 4);
-      Inc(src, 4);
-   end;
-   while nbWords > 0 do begin
-      Dec(nbWords);
-      dest[0] := PWordArray(src)[0];
-      Inc(dest);
-      Inc(src);
    end;
 end;
 

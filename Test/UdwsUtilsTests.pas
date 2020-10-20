@@ -17,7 +17,7 @@ unit UdwsUtilsTests;
 
 interface
 
-uses Classes, SysUtils, Math, Variants, Types, SynCommons, Graphics,
+uses Classes, SysUtils, Math, Variants, Types, Graphics,
    dwsXPlatformTests, dwsUtils,
    dwsXPlatform, dwsWebUtils, dwsTokenStore, dwsCryptoXPlatform,
    dwsEncodingLibModule, dwsGlobalVars, dwsEncoding, dwsDataContext,
@@ -102,6 +102,9 @@ type
          procedure GlobalVarsCollect;
 
          procedure BytesWords;
+
+         procedure BytesToWordsTest;
+         procedure WordsToBytesTest;
 
          procedure DataContextCasts;
 
@@ -1016,22 +1019,22 @@ var
    i, j : Integer;
    h : Cardinal;
 begin
-   FillZero(buckets[0], Length(buckets)*SizeOf(Integer));
+   FillChar(buckets[0], Length(buckets)*SizeOf(Integer), 0);
    for i := 1 to cNbItems do
       Inc(buckets[DWSHashCode(i) and cBucketHigh]);
    CheckBucketRatios('Integers');
 
-   FillZero(buckets[0], Length(buckets)*SizeOf(Integer));
+   FillChar(buckets[0], Length(buckets)*SizeOf(Integer), 0);
    for i := 1 to cNbItems do
       Inc(buckets[DWSHashCode(IntToStr(i*883)) and cBucketHigh]);
    CheckBucketRatios('Integer strings');
 
-   FillZero(buckets[0], Length(buckets)*SizeOf(Integer));
+   FillChar(buckets[0], Length(buckets)*SizeOf(Integer), 0);
    for i := 1 to cNbItems do
       Inc(buckets[DWSHashCode(i*PI) and cBucketHigh]);
    CheckBucketRatios('Doubles');
 
-   FillZero(buckets[0], Length(buckets)*SizeOf(Integer));
+   FillChar(buckets[0], Length(buckets)*SizeOf(Integer), 0);
    for i := 1 to cNbItems do begin
       h := i;
       for j := 1 to 10 do
@@ -1559,6 +1562,50 @@ begin
    CheckEquals('Example', buf, 'words to bytes with swap');
 end;
 
+// BytesToWordsTest
+//
+procedure TdwsUtilsTests.BytesToWordsTest;
+const cNB = 70;
+var
+   buf1 : array of Byte;
+   buf2 : array of Word;
+begin
+   SetLength(buf1, cNB + 16);
+   SetLength(buf2, cNB + 16);
+   for var i := 0 to cNB-1 do begin
+      for var k := 0 to i do
+         buf1[k] := k + 10 + (i and 3);
+      for var k := 0 to High(buf2) do
+         buf2[k] := $abcd;
+      BytesToWords(PByteArray(@buf1[0]), PWordArray(@buf2[0]), i);
+      CheckEquals($abcd, buf2[i], 'write beyond buffer end at ' + IntToStr(i));
+      for var k := 0 to i-1 do
+         CheckEquals(k + 10 + (i and 3), buf2[k]);
+   end;
+end;
+
+// WordsToBytesTest
+//
+procedure TdwsUtilsTests.WordsToBytesTest;
+const cNB = 70;
+var
+   buf1 : array of Word;
+   buf2 : array of Byte;
+begin
+   SetLength(buf1, cNB + 16);
+   SetLength(buf2, cNB + 16);
+   for var i := 0 to cNB-1 do begin
+      for var k := 0 to i do
+         buf1[k] := k + 10 + (i and 3);
+      for var k := 0 to High(buf1) do
+         buf2[k] := $cd;
+      WordsToBytes(PWordArray(@buf1[0]), PByteArray(@buf2[0]), i);
+      CheckEquals($cd, buf2[i], 'write beyond buffer end at ' + IntToStr(i));
+      for var k := 0 to i-1 do
+         CheckEquals(k + 10 + (i and 3), buf2[k]);
+   end;
+end;
+
 // DataContextCasts
 //
 procedure TdwsUtilsTests.DataContextCasts;
@@ -1687,7 +1734,7 @@ procedure TdwsUtilsTests.xxHashTest;
    procedure CheckFull(const data : RawByteString; expected : Cardinal; seed : Cardinal = 0);
    begin
       CheckEquals(expected, xxHash32.Full(Pointer(data), Length(data), seed),
-                  'for ' + UTF8DecodeToUnicodeString(data));
+                  'for ' + UTF8ToString(data));
    end;
 
 var

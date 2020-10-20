@@ -331,7 +331,10 @@ function BytesToRawByteString(p : Pointer; size : Integer) : RawByteString; over
 
 function PosExA(const needle, haystack : RawByteString; hayStackOffset : Integer) : Integer;
 
-procedure BytesToScriptString(const p : PByte; n : Integer; var result : UnicodeString);
+procedure BytesToScriptString(const p : PByteArray; n : Integer; var result : UnicodeString);
+
+procedure WordsToBytes(src : PWordArray; dest : PByteArray; nbWords : Integer);
+procedure BytesToWords(src : PByteArray; dest : PWordArray; nbBytes : Integer);
 
 function LoadDataFromFile(const fileName : TFileName) : TBytes;
 procedure SaveDataToFile(const fileName : TFileName; const data : TBytes);
@@ -1386,29 +1389,151 @@ end;
 
 // BytesToScriptString
 //
-procedure BytesToScriptString(const p : PByte; n : Integer; var result : UnicodeString);
-var
-   pSrc : PByteArray;
-   pDest : PWordArray;
+procedure BytesToScriptString(const p : PByteArray; n : Integer; var result : UnicodeString);
 begin
    SetLength(result, n);
-   pSrc := PByteArray(p);
-   pDest := PWordArray(Pointer(result));
-   while n >= 4 do begin
-      Dec(n, 4);
-      pDest[0] := pSrc[0];
-      pDest[1] := pSrc[1];
-      pDest[2] := pSrc[2];
-      pDest[3] := pSrc[3];
-      pDest := @pDest[4];
-      pSrc := @pSrc[4];
+   BytesToWords(p, PWordArray(Pointer(result)), n);
+end;
+
+// WordsToBytes
+//
+procedure WordsToBytes(src : PWordArray; dest : PByteArray; nbWords : Integer);
+{$ifdef WIN64_ASM}
+asm  // src -> rcx     dest -> rdx      nbBytes -> r8
+   cmp         r8d, 16
+   jb          @@tail8
+
+   mov         eax, r8d
+   shr         eax, 4
+   and         r8d, 15
+
+@@loop16:
+   movdqu      xmm1, [rcx]
+   movdqu      xmm2, [rcx+16]
+   packuswb    xmm1, xmm2
+   movdqu      [rdx], xmm1
+   add         rcx,  32
+   add         rdx,  16
+   dec         eax
+   jnz         @@loop16
+
+@@tail8:
+   cmp         r8d, 8
+   jb          @@tail
+
+   and         r8d, 7
+   movq        mm1, [rcx]
+   movq        mm2, [rcx+8]
+   packuswb    mm1, mm2
+   movq        [rdx], mm1
+   add         rcx,  16
+   add         rdx,  8
+   emms
+
+@@tail:
+   test        r8d, r8d
+   jz          @@end
+
+@@loop1:
+   mov         ax, [rcx]
+   mov         [rdx], al
+   add         rcx, 2
+   add         rdx, 1
+   dec         r8d
+   jnz         @@loop1
+
+@@end:
+end;
+{$else}
+begin
+   while nbWords >= 4 do begin
+      Dec(nbWords, 4);
+      dest[0] := src[0];
+      dest[1] := src[1];
+      dest[2] := src[2];
+      dest[3] := src[3];
+      dest := @dest[4];
+      src := @src[4];
    end;
-   for n := 1 to n do begin
-      pDest[0] := pSrc[0];
-      pDest := @pDest[1];
-      pSrc := @pSrc[1];
+   while nbWords > 0 do begin
+      Dec(nbWords);
+      dest[0] := src[0];
+      dest := @dest[1];
+      src := @src[1];
    end;
 end;
+{$endif}
+
+// BytesToWords
+//
+procedure BytesToWords(src : PByteArray; dest : PWordArray; nbBytes : Integer);
+{$ifdef WIN64_ASM}
+asm  // src -> rcx     dest -> rdx      nbBytes -> r8
+   pxor        xmm0, xmm0
+
+   cmp         r8d, 16
+   jb          @@tail8
+
+   mov         eax, r8d
+   shr         eax, 4
+   and         r8d, 15
+
+@@loop16:
+   movq        xmm1, [rcx]
+   movq        xmm2, [rcx+8]
+   punpcklbw   xmm1, xmm0
+   punpcklbw   xmm2, xmm0
+   movdqu      [rdx], xmm1
+   movdqu      [rdx+16], xmm2
+   add         rcx,  16
+   add         rdx,  32
+   dec         eax
+   jnz         @@loop16
+
+@@tail8:
+   cmp         r8d, 8
+   jb          @@tail
+
+   and         r8d, 7
+   movq        xmm1, [rcx]
+   punpcklbw   xmm1, xmm0
+   movdqu      [rdx], xmm1
+   add         rcx,  8
+   add         rdx,  16
+
+@@tail:
+   test        r8d, r8d
+   jz          @@end
+
+@@loop1:
+   movzx       eax, [rcx]
+   mov         [rdx], ax
+   inc         rcx
+   add         rdx, 2
+   dec         r8d
+   jnz         @@loop1
+
+@@end:
+end;
+{$else}
+begin
+   while nbBytes >= 4 do begin
+      Dec(nbBytes, 4);
+      dest[0] := src[0];
+      dest[1] := src[1];
+      dest[2] := src[2];
+      dest[3] := src[3];
+      dest := @dest[4];
+      src := @src[4];
+   end;
+   while nbBytes > 0 do begin
+      Dec(nbBytes);
+      dest[0] := src[0];
+      dest := @dest[1];
+      src := @src[1];
+   end;
+end;
+{$endif}
 
 // TryTextToFloat
 //
