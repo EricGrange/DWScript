@@ -2131,7 +2131,7 @@ asm
    mov   rax, [rcx]
    bswap rax
    mov   [rdx], rax
-end
+end;
 {$else}{$ifdef WIN32_ASM}
 asm
    mov   ecx, [eax]
@@ -2140,7 +2140,7 @@ asm
    bswap eax
    mov   [edx+4], ecx
    mov   [edx], eax
-end
+end;
 {$else}
 begin
    PByteArray(dest)[0] := PByteArray(src)[7];
