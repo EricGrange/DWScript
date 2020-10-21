@@ -1400,12 +1400,12 @@ end;
 procedure WordsToBytes(src : PWordArray; dest : PByteArray; nbWords : Integer);
 {$ifdef WIN64_ASM}
 asm  // src -> rcx     dest -> rdx      nbBytes -> r8
-   cmp         r8d, 16
+   cmp         r8, 16
    jb          @@tail8
 
    mov         eax, r8d
    shr         eax, 4
-   and         r8d, 15
+   and         r8, 15
 
 @@loop16:
    movdqu      xmm1, [rcx]
@@ -1418,28 +1418,24 @@ asm  // src -> rcx     dest -> rdx      nbBytes -> r8
    jnz         @@loop16
 
 @@tail8:
-   cmp         r8d, 8
+   cmp         r8, 8
    jb          @@tail
 
-   and         r8d, 7
-   movq        mm1, [rcx]
-   movq        mm2, [rcx+8]
-   packuswb    mm1, mm2
-   movq        [rdx], mm1
+   and         r8, 7
+   movdqu      xmm1, [rcx]
+   packuswb    xmm1, xmm1
+   movq        [rdx], xmm1
    add         rcx,  16
    add         rdx,  8
-   emms
 
 @@tail:
-   test        r8d, r8d
+   test        r8, r8
    jz          @@end
 
 @@loop1:
-   mov         ax, [rcx]
-   mov         [rdx], al
-   add         rcx, 2
-   add         rdx, 1
-   dec         r8d
+   mov         ax, [rcx+r8*2-2]
+   mov         [rdx+r8-1], al
+   dec         r8
    jnz         @@loop1
 
 @@end:
@@ -1471,12 +1467,12 @@ procedure BytesToWords(src : PByteArray; dest : PWordArray; nbBytes : Integer);
 asm  // src -> rcx     dest -> rdx      nbBytes -> r8
    pxor        xmm0, xmm0
 
-   cmp         r8d, 16
+   cmp         r8, 16
    jb          @@tail8
 
    mov         eax, r8d
    shr         eax, 4
-   and         r8d, 15
+   and         r8, 15
 
 @@loop16:
    movq        xmm1, [rcx]
@@ -1491,10 +1487,10 @@ asm  // src -> rcx     dest -> rdx      nbBytes -> r8
    jnz         @@loop16
 
 @@tail8:
-   cmp         r8d, 8
+   cmp         r8, 8
    jb          @@tail
 
-   and         r8d, 7
+   and         r8, 7
    movq        xmm1, [rcx]
    punpcklbw   xmm1, xmm0
    movdqu      [rdx], xmm1
@@ -1502,15 +1498,13 @@ asm  // src -> rcx     dest -> rdx      nbBytes -> r8
    add         rdx,  16
 
 @@tail:
-   test        r8d, r8d
+   test        r8, r8
    jz          @@end
 
 @@loop1:
-   movzx       eax, [rcx]
-   mov         [rdx], ax
-   inc         rcx
-   add         rdx, 2
-   dec         r8d
+   movzx       eax, [rcx + r8 - 1]
+   mov         [rdx + r8*2 - 2], ax
+   dec         r8
    jnz         @@loop1
 
 @@end:
@@ -2132,7 +2126,13 @@ end;
 // SwapInt64
 //
 procedure SwapInt64(src, dest : PInt64);
-{$ifdef WIN32_ASM}
+{$ifdef WIN64_ASM}
+asm
+   mov   rax, [rcx]
+   bswap rax
+   mov   [rdx], rax
+end
+{$else}{$ifdef WIN32_ASM}
 asm
    mov   ecx, [eax]
    mov   eax, [eax+4]
@@ -2140,6 +2140,7 @@ asm
    bswap eax
    mov   [edx+4], ecx
    mov   [edx], eax
+end
 {$else}
 begin
    PByteArray(dest)[0] := PByteArray(src)[7];
@@ -2150,8 +2151,8 @@ begin
    PByteArray(dest)[5] := PByteArray(src)[2];
    PByteArray(dest)[6] := PByteArray(src)[1];
    PByteArray(dest)[7] := PByteArray(src)[0];
-{$endif}
 end;
+{$endif}{$endif}
 
 // RDTSC
 //
@@ -2159,6 +2160,10 @@ end;
 function RDTSC : UInt64;
 asm
    RDTSC
+   {$ifdef WIN64}
+   SHL   RDX, 32
+   OR    RAX, RDX
+   {$endif}
 end;
 {$else}
 var vFakeRDTSC :  Int64;

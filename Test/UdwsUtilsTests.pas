@@ -106,6 +106,8 @@ type
          procedure BytesToWordsTest;
          procedure WordsToBytesTest;
 
+         procedure SwapPrimitives;
+
          procedure DataContextCasts;
 
          procedure VariantPersist;
@@ -1604,6 +1606,17 @@ begin
       for var k := 0 to i-1 do
          CheckEquals(k + 10 + (i and 3), buf2[k]);
    end;
+end;
+
+// SwapPrimitives
+//
+procedure TdwsUtilsTests.SwapPrimitives;
+begin
+   var a64, b64 : Int64;
+   a64 := $0102030405060708;
+   b64 := a64 shl 1;
+   SwapInt64(@a64, @b64);
+   CheckEquals($0807060504030201, b64, 'SwapInt64');
 end;
 
 // DataContextCasts
