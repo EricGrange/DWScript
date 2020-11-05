@@ -166,7 +166,7 @@ type
          Seek : Boolean;
 
       public
-         constructor Create(nstate: TState; opts: TTransitionOptions; actn: TConvertAction);
+         constructor Create(aNextState: TState; opts: TTransitionOptions; actn: TConvertAction);
    end;
 
    TElseTransition = class(TTransition)
@@ -1058,7 +1058,8 @@ end;
 //
 constructor TTransition.Create;
 begin
-   NextState:=nstate;
+   inherited Create;
+   NextState := aNextState;
    Start:=toStart in opts;
    Final:=toFinal in opts;
    Action:=actn;
@@ -1072,9 +1073,7 @@ end;
 //
 constructor TElseTransition.Create(actn: TConvertAction);
 begin
-   NextState:=nil;
-   Start:=False;
-   Action:=actn;
+   inherited Create(nil, [], actn);
 end;
 
 // ------------------
@@ -1083,8 +1082,9 @@ end;
 
 constructor TErrorTransition.Create(const msg : String);
 begin
-   IsError:=True;
-   ErrorMessage:=msg;
+   inherited Create(nil, [], caNone);
+   IsError := True;
+   ErrorMessage := msg;
 end;
 
 // ------------------
@@ -1120,6 +1120,7 @@ end;
 constructor TTokenizer.Create(rules : TTokenizerRules; msgs : TdwsCompileMessageList;
                               unifier : TStringUnifier = nil);
 begin
+   inherited Create;
    FMsgs := Msgs;
    FTokenBuf.Grow;
    FRules := rules;

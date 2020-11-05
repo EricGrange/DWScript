@@ -509,8 +509,9 @@ end;
 //
 constructor TdwsDataField.Create(const dataSet : IdwsDataSet; fieldIndex : Integer);
 begin
-   FDataSet:=dataSet;
-   FIndex:=fieldIndex;
+   inherited Create;
+   FDataSet := dataSet;
+   FIndex := fieldIndex;
 end;
 
 // Name

@@ -318,7 +318,7 @@ begin
    if FSamplingInterval<1 then
       FSamplingInterval:=1;
    FTimerID:=timeSetEvent(FSamplingInterval, 0, @ProfilerTimeCallBack,
-                          Cardinal(Self), TIME_PERIODIC);
+                          NativeUInt(Self), TIME_PERIODIC);
    inherited;
 end;
 

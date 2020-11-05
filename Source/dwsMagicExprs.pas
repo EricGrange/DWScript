@@ -574,6 +574,7 @@ var
    sym : TMagicFuncSymbol;
    ssym : TMagicStaticMethodSymbol;
 begin
+   inherited Create;
    FHelperName := helperName;
    if iffStaticMethod in flags then begin
       ssym:=TMagicStaticMethodSymbol.Generate(table, mkClassMethod, [maStatic],

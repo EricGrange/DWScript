@@ -447,6 +447,7 @@ constructor TInternalFunction.Create(table : TSymbolTable; const funcName : Stri
 var
    sym: TFuncSymbol;
 begin
+   inherited Create;
    sym:=TFuncSymbol.Generate(table, funcName, params, funcType);
    sym.Params.AddParent(table);
    sym.Executable:=ICallable(Self);
@@ -498,6 +499,8 @@ var
    sym : TMethodSymbol;
    params : TParamArray;
 begin
+   inherited Create;
+
    params:=ConvertFuncParams(methParams);
 
    sym:=TMethodSymbol.Generate(table, methKind, attributes, methName, Params,
@@ -568,6 +571,8 @@ var
    sym : TMethodSymbol;
    params : TParamArray;
 begin
+   inherited Create;
+
    params:=ConvertFuncParams(methParams);
 
    sym:=TMethodSymbol.Generate(table, methKind, attributes, methName, Params,
@@ -587,6 +592,7 @@ end;
 
 constructor TAnonymousFunction.Create(FuncSym: TFuncSymbol);
 begin
+   inherited Create;
    FuncSym.Executable := ICallable(Self);
 end;
 

@@ -570,8 +570,9 @@ end;
 //
 constructor TdwsMessage.Create(aMessageList : TdwsMessageList; const Text: String);
 begin
-   FMsgs:=aMessageList;
-   FText:=Text;
+   inherited Create;
+   FMsgs := aMessageList;
+   FText := Text;
    aMessageList.AddMessage(Self);
 end;
 

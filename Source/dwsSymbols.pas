@@ -2495,6 +2495,7 @@ end;
 //
 constructor TSymbol.Create(const aName : String; aType : TTypeSymbol);
 begin
+   inherited Create;
    FName:=aName;
    FTyp:=aType;
    if Assigned(aType) then
@@ -6021,6 +6022,7 @@ end;
 //
 constructor TValueSymbol.Create(const aName : String; aType : TTypeSymbol);
 begin
+   inherited;
    FName := aName;
    FTyp:=aType;
    FSize:=aType.Size;
@@ -6413,6 +6415,7 @@ end;
 //
 constructor TSymbolTable.Create(Parent: TSymbolTable; AddrGenerator: TAddrGenerator);
 begin
+   inherited Create;
    FAddrGenerator := AddrGenerator;
    if Assigned(Parent) then
       AddParent(Parent);

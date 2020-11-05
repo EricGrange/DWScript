@@ -3214,6 +3214,7 @@ end;
 //
 constructor TdwsCallable.Create(owner : TObject);
 begin
+   inherited Create;
    FOwner:=owner;
    _AddRef;
 end;

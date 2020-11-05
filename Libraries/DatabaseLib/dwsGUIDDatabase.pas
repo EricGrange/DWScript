@@ -140,7 +140,7 @@ end;
 //
 constructor TdwsGUIDDataBase.Create(const parameters : array of String);
 begin
-   // nothing
+   inherited Create;
 end;
 
 // BeginTransaction

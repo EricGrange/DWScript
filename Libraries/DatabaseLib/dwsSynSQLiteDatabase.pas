@@ -253,6 +253,7 @@ var
    dbName : String;
    i, flags : Integer;
 begin
+   inherited Create;
    if Length(parameters)>0 then
       dbName:=TdwsDataBase.ApplyPathVariables(parameters[0])
    else dbName:=':memory:';

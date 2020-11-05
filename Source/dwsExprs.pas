@@ -2668,6 +2668,8 @@ end;
 //
 constructor TdwsProgram.Create(const systemTable : ISystemSymbolTable);
 begin
+   inherited Create;
+
    FCompileMsgs := TdwsCompileMessageList.Create;
 
    FAddrGenerator := TAddrGeneratorRec.CreatePositive(0);
@@ -4223,6 +4225,7 @@ end;
 //
 constructor TNoResultExpr.Create(const aPos: TScriptPos);
 begin
+   inherited Create;
    FScriptPos:=aPos;
 end;
 
@@ -4279,6 +4282,7 @@ end;
 //
 constructor TErrorValueExpr.Create(aTyp : TAnyTypeSymbol);
 begin
+   inherited Create;
    Typ := aTyp;
 end;
 
@@ -4415,6 +4419,7 @@ end;
 
 constructor TDataExpr.Create(aTyp: TTypeSymbol);
 begin
+   inherited Create;
    FTyp := aTyp;
 end;
 
@@ -5606,8 +5611,8 @@ end;
 //
 constructor TAnonymousFuncRefExpr.Create(context : TdwsCompilerContext; funcExpr : TFuncExprBase);
 begin
-   FFuncExpr:=funcExpr;
-   Typ:=funcExpr.FuncSym;
+   FFuncExpr := funcExpr;
+   inherited Create(funcExpr.FuncSym);
 end;
 
 // Destroy
@@ -5848,6 +5853,7 @@ end;
 constructor TBinaryOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
                                  const anOp : TTokenType; aLeft, aRight : TTypedExpr);
 begin
+   inherited Create;
    FScriptPos := aScriptPos;
    FOp := anOp;
    FLeft := aLeft;

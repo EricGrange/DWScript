@@ -19,6 +19,8 @@ unit dwsUtils;
 {$I dws.inc}
 {$R-}
 
+{.$define DOUBLE_FREE_PROTECTOR}
+
 interface
 
 uses
@@ -47,9 +49,16 @@ type
          {$ifdef FPC}
          FRefCount : Integer;
          {$endif}
+         {$ifdef DOUBLE_FREE_PROTECTOR}
+         FDoubleFreeProtector : Int64;
+         {$endif}
          function  GetRefCount : Integer; inline;
          procedure SetRefCount(n : Integer); inline;
       public
+         {$ifdef DOUBLE_FREE_PROTECTOR}
+         constructor Create;
+         destructor Destroy; override;
+         {$endif}
          function  IncRefCount : Integer; inline;
          function  DecRefCount : Integer;
          property  RefCount : Integer read GetRefCount write SetRefCount;
@@ -2894,29 +2903,6 @@ begin
          Result:=False;
       else raise
    end;
-end;
-
-// FastCompareFloat
-//
-function FastCompareFloat(d1, d2 : PDouble) : Integer;
-{$ifdef WIN32_ASM}
-asm
-   fld      qword ptr [edx]
-   fld      qword ptr [eax]
-   xor      eax, eax
-   fcomip   st, st(1)
-   setnbe   cl
-   setb     al
-   and      ecx, 1
-   neg      eax
-   or       eax, ecx
-   fstp     st(0)
-{$else}
-begin
-   if d1^<d2^ then
-      Result:=-1
-   else Result:=Ord(d1^>d2^);
-{$endif}
 end;
 
 // RawByteStringToScriptString
@@ -6005,6 +5991,21 @@ end;
 // ------------------
 // ------------------ TRefCountedObject ------------------
 // ------------------
+
+{$ifdef DOUBLE_FREE_PROTECTOR}
+constructor TRefCountedObject.Create;
+begin
+   inherited;
+   FDoubleFreeProtector := $0102030405060708;
+end;
+
+destructor TRefCountedObject.Destroy;
+begin
+   Assert(FDoubleFreeProtector = $0102030405060708, ClassName);
+   FDoubleFreeProtector := $0807060504030201;
+   inherited;
+end;
+{$endif}
 
 // Free
 //

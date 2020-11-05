@@ -133,6 +133,7 @@ implementation
 constructor TdwsSourceContext.Create(aParent : TdwsSourceContext; const aStartPos : TScriptPos;
                             aParentSymbol : TSymbol; aToken : TTokenType);
 begin
+   inherited Create;
    FParentContext := AParent;
    FParentSymbol  := AParentSymbol;
    FStartPos := AStartPos;

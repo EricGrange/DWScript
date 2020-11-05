@@ -233,7 +233,8 @@ end;
 constructor TConstExpr.Create(aTyp: TTypeSymbol);
 begin
    inherited Create(aTyp);
-   SetLength(FData, aTyp.Size);
+   if aTyp <> nil then
+      SetLength(FData, aTyp.Size);
 end;
 
 // CreateRef
@@ -380,6 +381,7 @@ end;
 //
 constructor TConstNilExpr.Create(aTyp : TTypeSymbol);
 begin
+   inherited Create(typ);
    FTyp := aTyp;
    SetLength(FData, 1);
    TVarData(FData[0]).VType := varUnknown;
@@ -429,6 +431,7 @@ end;
 //
 constructor TConstBooleanExpr.Create(aTyp : TTypeSymbol; const aValue : Boolean);
 begin
+   inherited Create(typ);
    FTyp := aTyp;
    FValue := aValue;
    SetLength(FData, 1);
@@ -458,6 +461,7 @@ end;
 //
 constructor TConstIntExpr.Create(typ : TTypeSymbol; const aValue : Int64);
 begin
+   inherited Create(typ);
    FTyp := typ;
    FValue := aValue;
    SetLength(FData, 1);
@@ -498,6 +502,7 @@ end;
 //
 constructor TConstFloatExpr.Create(typ : TTypeSymbol; const aValue : Double);
 begin
+   inherited Create(typ);
    FTyp := typ;
    FValue := aValue;
    SetLength(FData, 1);
@@ -525,6 +530,7 @@ end;
 //
 constructor TConstStringExpr.Create(typ : TTypeSymbol; const aValue : String);
 begin
+   inherited Create(typ);
    FTyp := typ;
    FValue := aValue;
    SetLength(FData, 1);

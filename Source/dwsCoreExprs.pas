@@ -3291,6 +3291,7 @@ end;
 constructor TArrayTypedExpr.Create(context : TdwsCompilerContext; const scriptPos: TScriptPos;
                                    aBaseExpr : TTypedExpr);
 begin
+   inherited Create;
    FScriptPos:=scriptPos;
    FBaseExpr:=aBaseExpr;
 end;
@@ -4877,10 +4878,11 @@ end;
 //
 constructor TLazyParamExpr.Create(context : TdwsCompilerContext; dataSym : TLazyParamSymbol);
 begin
-   FDataSym:=dataSym;
-   FTyp:=dataSym.Typ;
-   FLevel:=dataSym.Level;
-   FStackAddr:=dataSym.StackAddr;
+   inherited Create;
+   FDataSym := dataSym;
+   FTyp := dataSym.Typ;
+   FLevel := dataSym.Level;
+   FStackAddr := dataSym.StackAddr;
 end;
 
 // EvalAsVariant
@@ -5077,8 +5079,9 @@ end;
 //
 constructor TInOpExpr.Create(context : TdwsCompilerContext; Left: TTypedExpr);
 begin
-   FLeft:=Left;
-   FTyp:=context.TypBoolean;
+   inherited Create;
+   FLeft := Left;
+   FTyp := context.TypBoolean;
 end;
 
 // Destroy
@@ -8235,7 +8238,8 @@ end;
 //
 constructor TCaseCondition.Create(const aPos : TScriptPos);
 begin
-   FScriptPos:=aPos;
+   inherited Create;
+   FScriptPos := aPos;
 end;
 
 // Destroy

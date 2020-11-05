@@ -813,7 +813,8 @@ end;
 
 constructor TComConnectorType.Create(Table: TSymbolTable);
 begin
-  FTable := Table;
+   inherited Create;
+   FTable := Table;
 end;
 
 function TComConnectorType.HasIndex(const aPropName : UnicodeString; const aParams : TConnectorParamArray;
@@ -920,9 +921,10 @@ end;
 //
 constructor TComConnectorCall.Create(const aMethodName: UnicodeString; aMethodType: Cardinal);
 begin
-   FMethodName:=aMethodName;
-   FPMethodName:=PWideString(FMethodName);
-   FMethodType:=aMethodType;
+   inherited Create;
+   FMethodName := aMethodName;
+   FPMethodName := PWideString(FMethodName);
+   FMethodType := aMethodType;
 end;
 
 // Call
@@ -959,6 +961,7 @@ end;
 //
 constructor TComConnectorMember.Create(const memberName : UnicodeString);
 begin
+   inherited Create;
    FMemberName:=memberName;
    FPMemberName:=PWideString(FMemberName);
 end;
