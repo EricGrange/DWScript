@@ -475,6 +475,7 @@ begin
    h.Init(aSeed);
    h.Update(data, dataSize);
    Result := h.Digest;
+   if Result = 0 then Result := 1;
 end;
 {$endif}
 
