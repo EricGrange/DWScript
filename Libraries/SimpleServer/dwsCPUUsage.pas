@@ -115,7 +115,7 @@ end;
 //
 var
    vAnalyzingCPUUsage : Boolean;
-procedure CPUUsageCallBack(TimerID, Msg: Uint; dwUser, dw1, dw2: DWORD); pascal;
+procedure CPUUsageCallBack(uTimerID, uMessage: UINT; dwUser, dw1, dw2: DWORD_PTR); stdcall;
 var
    systemCurrent, processCurrent : TCPUUsage;
    cat : SystemCPUCategory;
