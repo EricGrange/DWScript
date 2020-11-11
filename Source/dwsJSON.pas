@@ -461,6 +461,7 @@ type
 
          class function ParseString(const json : UnicodeString) : TdwsJSONImmediate; static;
          class function FromVariant(const v : Variant) : TdwsJSONImmediate; static;
+         class function CreateNull : TdwsJSONImmediate; static;
 
          function Clone : TdwsJSONImmediate;
 
@@ -2547,6 +2548,14 @@ class function TdwsJSONImmediate.FromVariant(const v : Variant) : TdwsJSONImmedi
 begin
    Result:=TdwsJSONImmediate.Create;
    Result.AsVariant:=v;
+end;
+
+// CreateNull
+//
+class function TdwsJSONImmediate.CreateNull : TdwsJSONImmediate;
+begin
+   Result := TdwsJSONImmediate.Create;
+   Result.FType := jvtNull;
 end;
 
 // DoSetItem

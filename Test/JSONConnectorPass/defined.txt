@@ -7,3 +7,10 @@ False
 Unassigned:
 False
 False
+Object with array:
+True
+True
+False
+True
+False
+False

@@ -87,6 +87,9 @@ type
    end;
 
    TdwsJSONFastCallBase = class (TInterfacedSelfObject, IConnectorCall)
+      protected
+         class function JSONTypeName(const v : Variant) : String; static;
+         class procedure RaiseUnsupportedMethodForType(const methodName : String; const v : Variant); static;
    end;
 
    TdwsJSONLowCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
@@ -94,12 +97,17 @@ type
          procedure FastCall(const args : TExprBaseListExec; var result : Variant);
    end;
 
-   TdwsJSONHighCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
+   TdwsJSONLengthBase = class (TdwsJSONFastCallBase)
+      protected
+         class function FastCallLength(const args : TExprBaseListExec) : Integer; static;
+   end;
+
+   TdwsJSONHighCall = class (TdwsJSONLengthBase, IConnectorFastCall)
       public
          procedure FastCall(const args : TExprBaseListExec; var result : Variant);
    end;
 
-   TdwsJSONLengthCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
+   TdwsJSONLengthCall = class (TdwsJSONLengthBase, IConnectorFastCall)
       public
          procedure FastCall(const args : TExprBaseListExec; var result : Variant);
    end;
@@ -514,12 +522,10 @@ begin
             Result:=boxed.Value
          else Result:=nil;
       end;
-      varEmpty :
-         Result:=nil;
       varNull :
          Result:=vNilJSONValue.Value;
    else
-      raise EdwsJSONException.Create('Unsupported JSONVariant type');
+      Result := nil;
    end;
 end;
 
@@ -888,63 +894,18 @@ begin
 end;
 
 // ------------------
-// ------------------ TdwsJSONLowCall ------------------
+// ------------------ TdwsJSONFastCallBase ------------------
 // ------------------
 
-// FastCall
+// JSONTypeName
 //
-procedure TdwsJSONLowCall.FastCall(const args : TExprBaseListExec; var result : Variant);
-begin
-   VarCopySafe(result, 0);
-end;
-
-// ------------------
-// ------------------ TdwsJSONHighCall ------------------
-// ------------------
-
-// FastCall
-//
-procedure TdwsJSONHighCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+class function TdwsJSONFastCallBase.JSONTypeName(const v : Variant) : String;
 var
-   base : Variant;
-   v : TdwsJSONValue;
-begin
-   args.EvalAsVariant(0, base);
-   v:=TBoxedJSONValue.UnBox(base);
-   VarCopySafe(result, v.ElementCount-1);
-end;
-
-// ------------------
-// ------------------ TdwsJSONLengthCall ------------------
-// ------------------
-
-// FastCall
-//
-procedure TdwsJSONLengthCall.FastCall(const args : TExprBaseListExec; var result : Variant);
-var
-   base : Variant;
-   v : TdwsJSONValue;
-begin
-   args.EvalAsVariant(0, base);
-   v:=TBoxedJSONValue.UnBox(base);
-   VarCopySafe(result, v.ElementCount);
-end;
-
-// ------------------
-// ------------------ TdwsJSONTypeNameCall ------------------
-// ------------------
-
-// FastCall
-//
-procedure TdwsJSONTypeNameCall.FastCall(const args : TExprBaseListExec; var result : Variant);
-var
-   base : Variant;
    vt : TdwsJSONValueType;
 begin
-   args.EvalAsVariant(0, base);
-   case PVarData(@base)^.VType of
+   case PVarData(@v)^.VType of
       varUnknown :
-         vt:=TBoxedJSONValue.UnBox(base).ValueType;
+         vt := TBoxedJSONValue.UnBox(v).ValueType;
       {$ifdef FPC}
       varString :
          vt:=jvtString;
@@ -961,7 +922,86 @@ begin
    else
       vt:=jvtUndefined;
    end;
-   VarCopySafe(result, TdwsJSONValue.ValueTypeStrings[vt]);
+   Result := TdwsJSONValue.ValueTypeStrings[vt];
+end;
+
+// RaiseUnsupportedMethodForType
+//
+class procedure TdwsJSONFastCallBase.RaiseUnsupportedMethodForType(const methodName : String; const v : Variant);
+begin
+   raise EdwsJSONException.CreateFmt(
+      'JSON method %s() unsupported for type %s',
+      [ methodName, JSONTypeName(v) ]
+   );
+end;
+
+// ------------------
+// ------------------ TdwsJSONLowCall ------------------
+// ------------------
+
+// FastCall
+//
+procedure TdwsJSONLowCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+begin
+   VarCopySafe(result, 0);
+end;
+
+// ------------------
+// ------------------ TdwsJSONLengthBase ------------------
+// ------------------
+
+// FastCallLength
+//
+class function TdwsJSONLengthBase.FastCallLength(const args : TExprBaseListExec) : Integer;
+var
+   base : Variant;
+   v : TdwsJSONValue;
+begin
+   args.EvalAsVariant(0, base);
+   case VarType(base) of
+      varUnknown : begin
+         v := TBoxedJSONValue.UnBox(base);
+         Result := v.ElementCount;
+      end;
+   else
+      Result := 0;
+   end;
+end;
+
+// ------------------
+// ------------------ TdwsJSONHighCall ------------------
+// ------------------
+
+// FastCall
+//
+procedure TdwsJSONHighCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+begin
+   VarCopySafe(result, FastCallLength(args)-1);
+end;
+
+// ------------------
+// ------------------ TdwsJSONLengthCall ------------------
+// ------------------
+
+// FastCall
+//
+procedure TdwsJSONLengthCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+begin
+   VarCopySafe(result, FastCallLength(args));
+end;
+
+// ------------------
+// ------------------ TdwsJSONTypeNameCall ------------------
+// ------------------
+
+// FastCall
+//
+procedure TdwsJSONTypeNameCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+var
+   base : Variant;
+begin
+   args.EvalAsVariant(0, base);
+   VarCopySafe(result, JSONTypeName(base));
 end;
 
 // ------------------
@@ -995,7 +1035,9 @@ var
 begin
    args.EvalAsVariant(0, base);
    v := TBoxedJSONValue.UnBox(base);
-   Result := (v.ValueType <> jvtUndefined);
+   if v <> nil then
+      Result := (v.ValueType <> jvtUndefined)
+   else Result := not VarIsEmpty(base);
 end;
 
 // ------------------
@@ -1072,8 +1114,8 @@ begin
                {$endif}
                varBoolean : baseArray.Add(pParam^.VBoolean);
                varUnknown : begin
-                  if pParam.VUnknown<>nil then begin
-                     paramValue:=TBoxedJSONValue.UnBox(param);
+                  if pParam.VUnknown <> nil then begin
+                     paramValue := TBoxedJSONValue.UnBox(param);
                      if paramValue.Owner = nil then
                         paramValue.IncRefCount;
                      baseArray.Add(paramValue)
@@ -1090,7 +1132,7 @@ begin
          Exit;
       end;
    end;
-   raise EdwsJSONException.Create('JSON Array required for Add method');
+   RaiseUnsupportedMethodForType('Add', base);
 end;
 
 // ------------------
@@ -1179,15 +1221,17 @@ var
    b, idx : Variant;
 begin
    args.ExprBase[0].EvalAsVariant(args.Exec, b);
-   if PVarData(@b)^.VType=varUnknown then begin
-      v:=TBoxedJSONValue.UnBox(b);
-      if v<>nil then begin
-         if FPropName<>'' then
-            v:=v.Items[FPropName];
-         args.ExprBase[1].EvalAsVariant(args.Exec, idx);
-         v:=v.Values[idx];
-         TBoxedJSONValue.AllocateOrGetImmediate(v, Result);
-         Exit;
+   case PVarData(@b)^.VType of
+      varUnknown : begin
+         v:=TBoxedJSONValue.UnBox(b);
+         if v<>nil then begin
+            if FPropName<>'' then
+               v:=v.Items[FPropName];
+            args.ExprBase[1].EvalAsVariant(args.Exec, idx);
+            v:=v.Values[idx];
+            TBoxedJSONValue.AllocateOrGetImmediate(v, Result);
+            Exit;
+         end;
       end;
    end;
    VarClear(Result);
@@ -1200,6 +1244,12 @@ end;
 // FastCall
 //
 procedure TdwsJSONIndexWriteCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+
+   procedure RaiseCannotSetItems(const v : Variant);
+   begin
+      raise EdwsJSONException.CreateFmt('Cannot set items of %s', [ JSONTypeName(v) ]);
+   end;
+
 var
    b, val : Variant;
    pVal : PVarData;
@@ -1212,10 +1262,8 @@ begin
          baseValue:=baseValue.Items[FPropName];
       case baseValue.ValueType of
          jvtObject, jvtArray : ;
-         jvtUndefined :
-            raise EdwsJSONException.Create('Cannot set items of Undefined');
       else
-         raise EdwsJSONException.Create('Cannot set items of Immediate');
+         RaiseCannotSetItems(b);
       end;
 
       args.ExprBase[2].EvalAsVariant(args.Exec, val);
@@ -1224,7 +1272,7 @@ begin
          varUnknown : begin
             argValue:=TBoxedJSONValue.UnBox(val);
             if argValue=nil then
-               argValue:=TdwsJSONImmediate.FromVariant(Null)
+               argValue:=TdwsJSONImmediate.CreateNull
             else if argValue.Owner=nil then
                argValue.IncRefCount;
          end;
@@ -1252,7 +1300,7 @@ begin
             argValue.AsBoolean:=pVal^.VBoolean;
          end;
          varNull : begin
-            argValue:=TdwsJSONImmediate.FromVariant(Null);
+            argValue:=TdwsJSONImmediate.CreateNull;
          end;
          varEmpty : begin
             argValue:=TdwsJSONImmediate.Create;
@@ -1261,12 +1309,12 @@ begin
          if VarIsNumeric(val) then begin
             argValue:=TdwsJSONImmediate.Create;
             argValue.AsNumber:=val;
-         end else raise Exception.Create('Unsupported assignment');
+         end else raise Exception.CreateFmt('Unsupported assignment for type %d', [ pVal^.VType ]);
       end;
       args.ExprBase[1].EvalAsVariant(args.Exec, val);
       baseValue.Values[val] := argValue;
    end else begin
-      raise EdwsJSONException.Create('Cannot set items of Undefined');
+      RaiseCannotSetItems(b);
    end;
 end;
 
@@ -1346,7 +1394,7 @@ begin
       varUnknown : begin
          dataValue := TBoxedJSONValue.UnBox(v);
          if dataValue = nil then
-            dataValue := TdwsJSONImmediate.FromVariant(Null)
+            dataValue := TdwsJSONImmediate.CreateNull
          else begin
             if dataValue.Owner = nil then
                dataValue.IncRefCount
