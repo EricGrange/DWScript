@@ -25,7 +25,7 @@ uses
    dwsErrors, dwsStrings, dwsXPlatform, dwsUtils, dwsScriptSource,
    dwsSymbols, dwsUnitSymbols, dwsCompilerContext, dwsExprList,
    dwsExprs, dwsCoreExprs, dwsConstExprs, dwsMethodExprs, dwsMagicExprs,
-   dwsConvExprs, dwsTokenizer, dwsOperators, dwsConnectorSymbols,
+   dwsConvExprs, dwsTokenTypes, dwsOperators, dwsConnectorSymbols,
    dwsArrayMethodKinds;
 
 type

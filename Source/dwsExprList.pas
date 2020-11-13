@@ -24,8 +24,7 @@ unit dwsExprList;
 interface
 
 uses
-   dwsUtils, dwsXPlatform, dwsDateTime, dwsErrors,
-   dwsSymbols;
+   dwsUtils, dwsDateTime, dwsSymbols;
 
 type
 
@@ -113,6 +112,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsXPlatform;
 
 // ------------------
 // ------------------ TExprBaseListRec ------------------

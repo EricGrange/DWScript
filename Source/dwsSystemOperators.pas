@@ -21,7 +21,7 @@ unit dwsSystemOperators;
 interface
 
 uses
-   dwsSymbols, dwsTokenizer, dwsExprs, dwsCoreExprs, dwsRelExprs,
+   dwsSymbols, dwsTokenTypes, dwsExprs, dwsCoreExprs, dwsRelExprs,
    dwsOperators, dwsUnitSymbols, dwsConvExprs, dwsCompilerContext,
    dwsScriptSource;
 

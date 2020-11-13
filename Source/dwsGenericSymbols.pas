@@ -22,7 +22,7 @@ uses
    SysUtils,
    dwsXPlatform, dwsUtils,
    dwsSymbols, dwsDataContext, dwsScriptSource, dwsErrors, dwsStrings,
-   dwsSpecializationContext, dwsCompilerContext, dwsTokenizer, dwsOperators,
+   dwsSpecializationContext, dwsCompilerContext, dwsTokenTypes, dwsOperators,
    dwsCompilerUtils, dwsExprs, dwsSpecializationMap;
 
 type

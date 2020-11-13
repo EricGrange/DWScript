@@ -34,16 +34,27 @@ type
    // TdwsJSONLibModule
    //
    TdwsJSONLibModule = class (TdwsCustomLangageExtension)
+      private
+         FLegacyCastsToBoolean : Boolean;
+
       protected
          function CreateExtension : TdwsLanguageExtension; override;
+
+      published
+         property LegacyCastsToBoolean : Boolean read FLegacyCastsToBoolean write FLegacyCastsToBoolean default False;
    end;
 
    // TdwsJSONLanguageExtension
    //
    TdwsJSONLanguageExtension = class (TdwsLanguageExtension)
+      private
+         FLegacyCastsToBoolean : Boolean;
+
       public
          procedure CreateSystemSymbols(table : TSystemSymbolTable); override;
          function StaticSymbols : Boolean; override;
+
+         property LegacyCastsToBoolean : Boolean read FLegacyCastsToBoolean write FLegacyCastsToBoolean;
    end;
 
    // TdwsJSONConnectorType
@@ -64,6 +75,7 @@ type
          FSwapCall : IConnectorCall;
          FToStringCall : IConnectorCall;
          FLengthMember : IConnectorMember;
+         FLegacyCastsToBoolean : Boolean;
 
       protected
          function ConnectorCaption : String;
@@ -84,6 +96,7 @@ type
          constructor Create(table : TSystemSymbolTable);
 
          property TypJSONVariant : TConnectorSymbol read FTypJSONVariant write FTypJSONVariant;
+         property LegacyCastsToBoolean : Boolean read FLegacyCastsToBoolean write FLegacyCastsToBoolean;
    end;
 
    TdwsJSONFastCallBase = class (TInterfacedSelfObject, IConnectorCall)
@@ -183,6 +196,7 @@ type
       private
          FMemberName : UnicodeString;
          FMemberHash : Cardinal;
+         FLegacyCastsToBoolean : Boolean;
 
       protected
          procedure SetMemberName(const n : UnicodeString);
@@ -191,11 +205,13 @@ type
          procedure Write(const base : Variant; const data : TData);
          procedure FastRead(const exec : TdwsExecution; const base : TExprBase; var result : Variant); override;
          procedure FastWrite(const exec : TdwsExecution; const base, value : TExprBase); override;
+         function FastReadBoolean(const exec : TdwsExecution; const base : TExprBase) : Boolean; override;
 
       public
-         constructor Create(const memberName : String);
+         constructor Create(const memberName : String; legacyCastsToBoolean : Boolean);
 
          property MemberName : UnicodeString read FMemberName write SetMemberName;
+         property LegacyCastsToBoolean : Boolean read FLegacyCastsToBoolean write FLegacyCastsToBoolean;
    end;
 
    TdwsJSONConnectorLengthMember = class(TdwsJSONConnectorMember)
@@ -597,8 +613,12 @@ end;
 // CreateExtension
 //
 function TdwsJSONLibModule.CreateExtension : TdwsLanguageExtension;
+var
+   ext : TdwsJSONLanguageExtension;
 begin
-   Result:=TdwsJSONLanguageExtension.Create;
+   ext := TdwsJSONLanguageExtension.Create;
+   ext.LegacyCastsToBoolean := LegacyCastsToBoolean;
+   Result := ext;
 end;
 
 // ------------------
@@ -613,7 +633,9 @@ var
    connSym : TJSONConnectorSymbol;
    jsonObject : TClassSymbol;
 begin
-   connType:=TdwsJSONConnectorType.Create(table);
+   connType := TdwsJSONConnectorType.Create(table);
+   connType.LegacyCastsToBoolean := LegacyCastsToBoolean;
+
    connSym:=TJSONConnectorSymbol.Create(SYS_JSONVARIANT, connType);
    table.AddSymbol(connSym);
    connType.TypJSONVariant:=connSym;
@@ -709,7 +731,7 @@ begin
    FSwapCall:=TdwsJSONSwapCall.Create;
    FToStringCall:=TdwsJSONToStringCall.Create;
 
-   FLengthMember:=TdwsJSONConnectorLengthMember.Create('length');
+   FLengthMember:=TdwsJSONConnectorLengthMember.Create('length', False);
 end;
 
 // ConnectorCaption
@@ -856,10 +878,10 @@ end;
 function TdwsJSONConnectorType.HasMember(const memberName : String; var typSym : TTypeSymbol;
                                          isWrite : Boolean) : IConnectorMember;
 begin
-   typSym:=TypJSONVariant;
-   if memberName='length' then
-      Result:=FLengthMember
-   else Result := TdwsJSONConnectorMember.Create(memberName);
+   typSym := TypJSONVariant;
+   if memberName = 'length' then
+      Result := FLengthMember
+   else Result := TdwsJSONConnectorMember.Create(memberName, LegacyCastsToBoolean);
 end;
 
 // HasIndex
@@ -1324,10 +1346,11 @@ end;
 
 // Create
 //
-constructor TdwsJSONConnectorMember.Create(const memberName : String);
+constructor TdwsJSONConnectorMember.Create(const memberName : String; legacyCastsToBoolean : Boolean);
 begin
    inherited Create;
    SetMemberName(UnicodeString(memberName));
+   FLegacyCastsToBoolean := legacyCastsToBoolean;
 end;
 
 // Read
@@ -1407,6 +1430,31 @@ begin
       dataValue := TdwsJSONImmediate.FromVariant(v);
    end;
    baseValue.HashedItems[FMemberHash, FMemberName] := dataValue;
+end;
+
+// FastReadBoolean
+//
+function TdwsJSONConnectorMember.FastReadBoolean(const exec : TdwsExecution; const base : TExprBase) : Boolean;
+
+   function DoLegacyCast(v : TdwsJSONValue) : Boolean;
+   begin
+      if v.ValueType = jvtString then
+         Result := StringToBoolean(v.AsString)
+      else Result := not v.IsFalsey;
+   end;
+
+var
+   b : Variant;
+   v : TdwsJSONValue;
+begin
+   base.EvalAsVariant(exec, b);
+   v := TBoxedJSONValue.UnBox(b);
+   if v <> nil then begin
+      v := v.HashedItems[FMemberHash, FMemberName];
+      if LegacyCastsToBoolean then
+         Result := DoLegacyCast(v)
+      else Result := not v.IsFalsey;
+   end else Result := False;
 end;
 
 // ------------------

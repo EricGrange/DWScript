@@ -5,7 +5,7 @@ unit dwsExternalFunctionJitx86;
 interface
 
 uses
-   dwsTokenizer,
+   dwsTokenTypes,
    dwsExternalFunctionJit, dwsExprs, dwsJITx86Intrinsics, dwsExprList, dwsCompilerContext;
 
 function JitFactory(conv: TTokenType; prog: TdwsProgram;
@@ -89,7 +89,7 @@ type
    end;
 
 
-function JitFactory(conv: dwsTokenizer.TTokenType; prog: TdwsProgram;
+function JitFactory(conv: dwsTokenTypes.TTokenType; prog: TdwsProgram;
   OnLookupType: TTypeLookupEvent): IExternalFunctionJit;
 begin
    if conv = ttREGISTER then

@@ -3,7 +3,7 @@ unit UTokenizerTests;
 interface
 
 uses Windows, Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsScriptSource,
-   dwsTokenizer, dwsXPlatform, dwsErrors, dwsUtils, dwsPascalTokenizer, TypInfo;
+   dwsTokenizer, dwsTokenTypes, dwsXPlatform, dwsErrors, dwsUtils, dwsPascalTokenizer, TypInfo;
 
 type
 

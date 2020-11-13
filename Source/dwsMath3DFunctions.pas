@@ -24,7 +24,7 @@ uses
    Classes, SysUtils,
    dwsStrings, dwsUtils, dwsXPlatform,
    dwsFunctions, dwsExprs, dwsSymbols, dwsOperators, dwsDataContext,
-   dwsTokenizer, dwsMagicExprs, dwsUnitSymbols, dwsExprList;
+   dwsTokenTypes, dwsMagicExprs, dwsUnitSymbols, dwsExprList;
 
 type
    TVectorMakeExpr = class(TInternalMagicDataFunction)

@@ -24,7 +24,7 @@ uses
    SysUtils,
    dwsUtils, dwsXPlatform, dwsCompilerContext, dwsScriptSource,
    dwsFunctions, dwsSymbols, dwsExprs, dwsStrings, dwsOperators, dwsExprList,
-   dwsTokenizer,dwsMagicExprs, dwsUnitSymbols, dwsDataContext;
+   dwsTokenTypes, dwsMagicExprs, dwsUnitSymbols, dwsDataContext;
 
 type
    TComplexMakeExpr = class(TInternalMagicDataFunction)

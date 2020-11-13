@@ -20,7 +20,7 @@ unit dwsPascalTokenizer;
 
 interface
 
-uses dwsTokenizer, dwsStrings;
+uses dwsTokenizer, dwsTokenTypes, dwsStrings;
 
 type
    TPascalTokenizerStateRules = class(TTokenizerRules)

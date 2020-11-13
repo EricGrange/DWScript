@@ -25,7 +25,7 @@ interface
 
 uses
    SysUtils, Variants,
-   dwsUtils, dwsDataContext, dwsStack, dwsXPlatform, dwsErrors, dwsStrings,
+   dwsUtils, dwsDataContext, dwsStack, dwsXPlatform,
    dwsExprs, dwsExprList, dwsSymbols, dwsUnitSymbols, dwsConnectorSymbols,
    dwsCoreExprs, dwsScriptSource, dwsCompilerContext;
 
@@ -132,6 +132,7 @@ type
       public
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
 
          property ConnectorMember : IConnectorFastMember read FConnectorMember write FConnectorMember;
    end;
@@ -231,6 +232,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsStrings, dwsErrors;
 
 // ------------------
 // ------------------ TBaseConnectorCallExpr ------------------
@@ -658,6 +661,23 @@ procedure TConnectorFastReadExpr.EvalAsVariant(exec : TdwsExecution; var Result 
 begin
    try
       FConnectorMember.FastRead(exec, BaseExpr, Result);
+   except
+      on e: EScriptError do begin
+         EScriptError(e).ScriptPos:=FScriptPos;
+         raise;
+      end
+   else
+      exec.SetScriptError(Self);
+      raise;
+   end;
+end;
+
+// EvalAsBoolean
+//
+function TConnectorFastReadExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+begin
+   try
+      Result := FConnectorMember.FastReadBoolean(exec, BaseExpr);
    except
       on e: EScriptError do begin
          EScriptError(e).ScriptPos:=FScriptPos;

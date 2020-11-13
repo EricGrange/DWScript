@@ -20,7 +20,7 @@ interface
 
 uses
    dwsUtils, dwsErrors, dwsDataContext, dwsCompilerContext, dwsStack,
-   dwsSymbols, dwsExprs, dwsScriptSource, dwsTokenizer;
+   dwsSymbols, dwsExprs, dwsScriptSource, dwsTokenTypes;
 
 type
 

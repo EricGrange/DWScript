@@ -25,7 +25,7 @@ interface
 
 uses
    dwsExprs, dwsSymbols, dwsErrors, dwsConstExprs, Variants, dwsScriptSource,
-   dwsCompilerContext, dwsSpecializationContext, dwsTokenizer, dwsUtils;
+   dwsCompilerContext, dwsSpecializationContext, dwsTokenTypes, dwsUtils;
 
 type
 

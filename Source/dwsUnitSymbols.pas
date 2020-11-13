@@ -26,7 +26,7 @@ interface
 uses
    SysUtils, Classes,
    dwsUtils, dwsSymbols, dwsErrors, dwsXPlatform,
-   dwsStrings, dwsTokenizer, dwsDataContext, dwsUnicode, dwsXXHash;
+   dwsStrings, dwsTokenTypes, dwsDataContext, dwsUnicode, dwsXXHash;
 
 type
 

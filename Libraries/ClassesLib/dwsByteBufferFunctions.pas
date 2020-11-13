@@ -24,7 +24,7 @@ uses
    Types,
    dwsXPlatform, dwsUtils, dwsStrings, dwsCompilerContext, dwsDataContext,
    dwsSymbols, dwsFunctions, dwsUnitSymbols, dwsOperators, dwsExprs,
-   dwsMagicExprs, dwsExprList, dwsTokenizer, dwsScriptSource,
+   dwsMagicExprs, dwsExprList, dwsTokenTypes, dwsScriptSource,
    dwsByteBuffer;
 
 const

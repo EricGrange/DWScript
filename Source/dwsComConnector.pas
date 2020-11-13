@@ -459,6 +459,7 @@ type
    TComVariantArrayLengthMember = class (TComVariantArrayMember, IConnectorFastMember)
       procedure FastRead(const exec : TdwsExecution; const base : TExprBase; var result : Variant);
       procedure FastWrite(const exec : TdwsExecution; const base, value : TExprBase);
+      function  FastReadBoolean(const exec : TdwsExecution; const base : TExprBase) : Boolean;
    end;
    TComVariantArrayHighBoundMember = class (TComVariantArrayMember, IConnectorDataMember)
       function Read(const base: Variant): TData;
@@ -1279,6 +1280,16 @@ end;
 procedure TComVariantArrayLengthMember.FastWrite(const exec : TdwsExecution; const base, value : TExprBase);
 begin
    raise Exception.Create('FastWrite not supported by '+ClassName);
+end;
+
+// FastReadBoolean
+//
+function TComVariantArrayLengthMember.FastReadBoolean(const exec : TdwsExecution; const base : TExprBase) : Boolean;
+var
+   v : Variant;
+begin
+   FastRead(exec, base, v);
+   Result := VariantToBool(v);
 end;
 
 procedure TComVariantArrayLengthCall.FastCall(const args : TExprBaseListExec; var result : Variant);

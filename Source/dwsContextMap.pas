@@ -23,7 +23,7 @@ unit dwsContextMap;
 
 interface
 
-uses dwsUtils, dwsScriptSource, dwsSymbols, dwsTokenizer, dwsJSON, TypInfo;
+uses dwsUtils, dwsScriptSource, dwsSymbols, dwsTokenTypes, dwsJSON, TypInfo;
 
 type
 

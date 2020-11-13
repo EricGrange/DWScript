@@ -27,7 +27,8 @@ uses
   Classes, SysUtils, TypInfo, Variants,
   dwsCompiler, dwsExprs, dwsSymbols, dwsDataContext, dwsExprList, dwsScriptSource,
   dwsStack, dwsFunctions, dwsStrings, dwsLanguageExtension, dwsCompilerContext,
-  dwsTokenizer, dwsUtils, dwsOperators, dwsUnitSymbols, dwsXPlatform, dwsUnicode,
+  dwsTokenTypes, dwsTokenizer, dwsUtils, dwsOperators, dwsUnitSymbols,
+  dwsXPlatform, dwsUnicode,
   // Built-In functions
 {$IFNDEF DWS_NO_BUILTIN_FUNCTIONS}
   dwsMathFunctions, dwsStringFunctions, dwsTimeFunctions, dwsVariantFunctions,

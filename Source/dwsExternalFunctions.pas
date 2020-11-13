@@ -87,7 +87,7 @@ implementation
 uses
    Windows,
    dwsStrings,
-   dwsTokenizer{$IFDEF CPU386}, dwsExternalFunctionJitx86{$ENDIF};
+   dwsTokenTypes{$IFDEF CPU386}, dwsExternalFunctionJitx86{$ENDIF};
 
 type
    TdwsExternalStubJit = class

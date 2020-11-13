@@ -68,7 +68,8 @@ uses
   UdwsSystemInfoTests in 'UdwsSystemInfoTests.pas',
   UdwsWebLibModuleTest in 'UdwsWebLibModuleTest.pas',
   BeaEngineDelphi in '..\Tools\BeaEngine\BeaEngineDelphi.pas',
-  UdwsDateTimeTests in 'UdwsDateTimeTests.pas';
+  UdwsDateTimeTests in 'UdwsDateTimeTests.pas',
+  dwsTokenTypes in '..\Source\dwsTokenTypes.pas';
 
 {$R *.res}
 

@@ -20,7 +20,7 @@ unit dwsOperators;
 
 interface
 
-uses dwsSymbols, dwsTokenizer, dwsExprs, dwsCoreExprs, dwsCompilerContext, dwsScriptSource;
+uses dwsSymbols, dwsTokenTypes, dwsExprs, dwsCoreExprs, dwsCompilerContext, dwsScriptSource;
 
 type
 
@@ -51,7 +51,7 @@ type
    TOperators = class
       private
          FCount : Integer;
-         FOperators : array [TTokenType] of array of TRegisteredOperator;
+         FOperators : array [ TTokenType ] of array of TRegisteredOperator;
          FCasters : array [0..15] of array of TRegisteredCaster;
          FAsCasters : array of TAsCasterExprCreator;
 

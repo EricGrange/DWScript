@@ -1,0 +1,34 @@
+Serialized ------
+undefined is falsy
+true is true
+false is false
+intZero is false
+intOne is true
+floatZero is false
+-2.5 is true
+strEmpty is false
+strHello is true
+nullField is false
+arrayEmpty is true
+arrayOf1 is true
+objEmpty is true
+objWithField is true
+objWithField.Field is true
+objWithField.abc is false
+Stringified + Parsed ------
+undefined is falsy
+true is true
+false is false
+intZero is false
+intOne is true
+floatZero is false
+-2.5 is true
+strEmpty is false
+strHello is true
+nullField is false
+arrayEmpty is true
+arrayOf1 is true
+objEmpty is true
+objWithField is true
+objWithField.Field is true
+objWithField.abc is false

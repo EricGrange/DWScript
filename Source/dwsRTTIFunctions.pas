@@ -23,7 +23,7 @@ interface
 uses
    dwsFunctions, dwsSymbols, dwsExprs, dwsStrings, dwsOperators,
    dwsStack, dwsDataContext, dwsExprList, dwsInfo, dwsLegacy,
-   dwsTokenizer, SysUtils, dwsUtils, dwsMagicExprs, dwsUnitSymbols, dwsCoreExprs;
+   dwsTokenTypes, SysUtils, dwsUtils, dwsMagicExprs, dwsUnitSymbols, dwsCoreExprs;
 
 type
    TRTTIRawAttributesFunc = class(TInternalFunctionWithExecute)

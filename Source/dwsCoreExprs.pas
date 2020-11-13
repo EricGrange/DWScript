@@ -29,7 +29,7 @@ uses
    dwsDataContext, dwsCompilerContext, dwsExprList,
    dwsSymbols, dwsErrors, dwsStrings, dwsConvExprs,
    dwsStack, dwsExprs, dwsScriptSource,
-   dwsConstExprs, dwsTokenizer, dwsUnitSymbols;
+   dwsConstExprs, dwsTokenTypes, dwsUnitSymbols;
 
 type
 

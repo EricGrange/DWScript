@@ -19,7 +19,7 @@ unit dwsGenericExprs;
 interface
 
 uses
-   dwsTokenizer, dwsScriptSource,
+   dwsTokenTypes, dwsScriptSource,
    dwsSymbols, dwsGenericSymbols, dwsCompilerContext, dwsStrings,
    dwsExprs, dwsCoreExprs;
 
