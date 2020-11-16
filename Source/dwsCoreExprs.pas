@@ -6244,7 +6244,7 @@ begin
    if Result.ClassType=TBoolAndExpr then begin
       if Left.IsConstant then begin
          if Left.EvalAsBoolean(context.Execution) then begin
-            Result:=Right;
+            Result := TConvExpr.WrapWithConvCast(context, ScriptPos, Typ, Right, CPE_AssignIncompatibleTypes);
             Right:=nil;
          end else begin
             Result := TConstBooleanExpr.Create(context.TypBoolean, False)
@@ -6252,7 +6252,7 @@ begin
          Orphan(context);
       end else if Right.IsConstant then begin
          if Right.EvalAsBoolean(context.Execution) then begin
-            Result:=Left;
+            Result := TConvExpr.WrapWithConvCast(context, ScriptPos, Typ, Left, CPE_AssignIncompatibleTypes);
             Left:=nil;
          end else begin
             Result := TConstBooleanExpr.Create(context.TypBoolean, False)
@@ -6299,16 +6299,16 @@ begin
          if Left.EvalAsBoolean(context.Execution) then begin
             Result := TConstBooleanExpr.Create(context.TypBoolean, True)
          end else begin
-            Result:=Right;
-            Right:=nil;
+            Result := TConvExpr.WrapWithConvCast(context, ScriptPos, Typ, Right, CPE_AssignIncompatibleTypes);
+            Right := nil;
          end;
          Orphan(context);
       end else if Right.IsConstant then begin
          if Right.EvalAsBoolean(context.Execution) then begin
             Result := TConstBooleanExpr.Create(context.TypBoolean, True)
          end else begin
-            Result:=Left;
-            Left:=nil;
+            Result := TConvExpr.WrapWithConvCast(context, ScriptPos, Typ, Left, CPE_AssignIncompatibleTypes);
+            Left := nil;
          end;
          Orphan(context);
       end;
