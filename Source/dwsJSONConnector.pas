@@ -1632,7 +1632,7 @@ begin
    try
       tokenizer.ParseNumberArray(values);
 
-      newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).CompilerContext.TypInteger);
+      newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).CompilerContext.TypFloat);
       VarCopySafe(result, IScriptDynArray(newArray));
       newArray.ArrayLength:=values.Count;
 
