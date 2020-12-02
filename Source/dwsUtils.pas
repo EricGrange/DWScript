@@ -1220,6 +1220,7 @@ begin
       Result:=(Result xor p^)*16777619;
       Inc(p);
    end;
+   if Result = 0 then Result := 1;
 end;
 
 // SimpleIntegerHash
@@ -1230,6 +1231,7 @@ begin
    Result := x * $cc9e2d51;
    Result := (Result shl 15) or (Result shr 17);
    Result := Result * $1b873593 + $e6546b64;
+   if Result = 0 then Result := 1;
 end;
 
 // SimplePointerHash
@@ -1249,6 +1251,7 @@ begin
    mix := (mix xor (mix shr 15)) * Cardinal(3266489917);
    Result := (mix xor (mix shr 16));
    {$endif}
+   if Result = 0 then Result := 1;
 end;
 
 // SimpleInt64Hash
@@ -1265,6 +1268,7 @@ begin
    k := (x shr 32) * $cc9e2d51;
    k := (k shl 15) or (k shr 17);
    Result := k * $1b873593 xor Result;
+   if Result = 0 then Result := 1;
 end;
 
 // StringBytesToWords
@@ -2459,11 +2463,22 @@ function VarCompareSafe(const left, right : Variant) : TVariantRelationship;
    end;
 
 begin
-   if VarType(left) = varUnknown then
-      if VarType(right) = varUnknown then
-         Result := CompareUnknowns(IUnknown(TVarData(left).VUnknown), IUnknown(TVarData(right).VUnknown))
-      else Result := CompareUnknownToVar(IUnknown(TVarData(left).VUnknown), right)
-   else if VarType(right) = varUnknown then
+   case VarType(left) of
+      varUnknown : begin
+         if VarType(right) = varUnknown then
+            Result := CompareUnknowns(IUnknown(TVarData(left).VUnknown), IUnknown(TVarData(right).VUnknown))
+         else Result := CompareUnknownToVar(IUnknown(TVarData(left).VUnknown), right);
+         Exit;
+      end;
+      varEmpty : begin
+         case VarType(right) of
+            varInt64 : if TVarData(right).VInt64 = 0 then Exit(vrEqual) else Exit(vrNotEqual);
+            varUString : if TVarData(right).VUString = nil then Exit(vrEqual) else Exit(vrNotEqual);
+            varDouble : if TVarData(right).VDouble = 0 then Exit(vrEqual) else Exit(vrNotEqual);
+         end;
+      end;
+   end;
+   if VarType(right) = varUnknown then
       Result := CompareVarToUnknown(left, IUnknown(TVarData(right).VUnknown))
    else Result := VarCompareValue(left, right);
 end;
