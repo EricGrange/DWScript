@@ -712,14 +712,11 @@ end;
 //
 function TdwsBigIntegerWrapperPool.Pop : TBigIntegerWrapper;
 begin
-   if Self = nil then
-      Result := TBigIntegerWrapper.CreateNewZero
-   else begin
+   Result := nil;
+   if Self <> nil then begin
       FLock.BeginWrite;
       try
-         if FHead = nil then
-            Result := TBigIntegerWrapper.CreateNewZero
-         else begin
+         if FHead <> nil then begin
             Result := FHead;
             FHead := FHead.FNext;
             Result.FNext := nil;
@@ -729,6 +726,8 @@ begin
          FLock.EndWrite;
       end;
    end;
+   if Result = nil then
+      Result := TBigIntegerWrapper.CreateNewZero
 end;
 
 // Push
