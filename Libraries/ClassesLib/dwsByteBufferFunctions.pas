@@ -18,6 +18,8 @@ unit dwsByteBufferFunctions;
 
 {$I dws.inc}
 
+{$define BYTEBUFFER_FILE_FUNCTIONS}
+
 interface
 
 uses
@@ -190,6 +192,12 @@ type
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
+{$ifdef BYTEBUFFER_FILE_FUNCTIONS}
+   TFileWriteByteBuffer1Func = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+   end;
+{$endif}
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -197,6 +205,10 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+{$ifdef BYTEBUFFER_FILE_FUNCTIONS}
+uses dwsFileFunctions;
+{$endif}
 
 // RegisterByteBufferType
 //
@@ -831,6 +843,24 @@ begin
    else buffer.SetDataStringA(args.AsInteger[1], args.AsString[2])
 end;
 
+{$ifdef BYTEBUFFER_FILE_FUNCTIONS}
+
+// ------------------
+// ------------------ TFileWriteByteBuffer1Func ------------------
+// ------------------
+
+// DoEvalAsInteger
+//
+function TFileWriteByteBuffer1Func.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+var
+   buf : RawByteString;
+begin
+   buf := args.AsDataString[1];
+   Result := dwsXPlatform.FileWrite(GetIdwsFileHandle(args, 0), Pointer(buf), Length(buf));
+end;
+
+{$endif}
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -903,4 +933,9 @@ initialization
    RegisterInternalProcedure(TByteBufferSetExtendedFunc, '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER, 'v', SYS_FLOAT], 'SetExtended', [iffOverloaded]);
    RegisterInternalProcedure(TByteBufferSetDataFunc,   '', ['buffer', SYS_BYTEBUFFER, 'v', SYS_STRING], 'SetData', [iffOverloaded]);
    RegisterInternalProcedure(TByteBufferSetDataFunc,   '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER, 'v', SYS_STRING], 'SetData', [iffOverloaded]);
+
+   {$ifdef BYTEBUFFER_FILE_FUNCTIONS}
+   RegisterInternalIntFunction(TFileWriteByteBuffer1Func, 'FileWrite', ['f', SYS_FILE, 'buf', SYS_BYTEBUFFER], [iffOverloaded], 'Write');
+   {$endif}
+
 end.

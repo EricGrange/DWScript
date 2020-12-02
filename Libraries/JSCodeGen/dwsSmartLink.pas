@@ -126,11 +126,8 @@ end;
 // GetItemHashCode
 //
 function TdwsSmartLinkSymbolHash.GetItemHashCode(const item1 : TdwsSmartLinkSymbol) : Integer;
-var
-   p : NativeInt;
 begin
-   p:=PNativeInt(@item1.Symbol)^; // workaround compiler issue
-   Result:=(p shr 4)+1;
+   Result := SimplePointerHash(item1.Symbol);
 end;
 
 // ------------------

@@ -8954,7 +8954,7 @@ end;
 //
 function TSimpleClassHash.GetItemHashCode(const item1 : TClass) : Cardinal;
 begin
-   Result := Cardinal((NativeUInt(item1) shr 4) * 16777619);
+   Result := SimplePointerHash(item1);
 end;
 
 // ------------------

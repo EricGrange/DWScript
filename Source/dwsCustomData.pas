@@ -87,6 +87,7 @@ type
    TCardinal4 = array [0..3] of Cardinal;
 begin
    Result := TCardinal4(guid)[0] xor TCardinal4(guid)[1] xor TCardinal4(guid)[2] xor TCardinal4(guid)[3];
+   if Result = 0 then Result := 1;
 end;
 
 // ------------------

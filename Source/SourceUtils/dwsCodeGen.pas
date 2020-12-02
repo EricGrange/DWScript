@@ -2014,8 +2014,7 @@ end;
 //
 function TdwsMappedSymbolHash.GetItemHashCode(const item1 : TdwsMappedSymbol) : Cardinal;
 begin
-   Result:=NativeInt(item1.Symbol) shr 3;
-   Result:=Result xor (Result shr 15);
+   Result := SimplePointerHash(item1.Symbol);
 end;
 
 // ------------------

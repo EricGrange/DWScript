@@ -207,6 +207,8 @@ type
       procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
+function GetIdwsFileHandle(const args : TExprBaseListExec; index : Integer; checkValidity : Boolean = True) : THandle;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -242,9 +244,9 @@ begin
    systemTable.AddSymbol(TConstSymbol.CreateValue('soFromEnd', systemTable.TypInteger, soFromEnd));
 end;
 
-// GetFileHandle
+// GetIdwsFileHandle
 //
-function GetFileHandle(const args : TExprBaseListExec; index : Integer; checkValidity : Boolean = True) : THandle;
+function GetIdwsFileHandle(const args : TExprBaseListExec; index : Integer; checkValidity : Boolean = True) : THandle;
 var
    ih : IdwsFileHandle;
    v : Variant;
@@ -386,7 +388,7 @@ end;
 //
 function TFileIsValidFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
-   Result:=GetFileHandle(args, 0, False)<>INVALID_HANDLE_VALUE;
+   Result:=GetIdwsFileHandle(args, 0, False)<>INVALID_HANDLE_VALUE;
 end;
 
 // ------------------
@@ -403,7 +405,7 @@ begin
    n:=args.AsInteger[2];
    SetLength(buf, n);
    if n>0 then begin
-      n:=FileRead(GetFileHandle(args, 0), Pointer(buf)^, n);
+      n:=FileRead(GetIdwsFileHandle(args, 0), Pointer(buf)^, n);
       if n<0 then
          RaiseLastOSError
       else SetLength(buf, n);
@@ -426,7 +428,7 @@ begin
    n:=args.AsInteger[1];
    SetLength(buf, n);
    if n>0 then begin
-      n:=FileRead(GetFileHandle(args, 0), Pointer(buf)^, n);
+      n:=FileRead(GetIdwsFileHandle(args, 0), Pointer(buf)^, n);
       if n<0 then
          RaiseLastOSError
       else SetLength(buf, n);
@@ -446,7 +448,7 @@ var
    p, n : Int64;
    f : Integer;
 begin
-   f:=GetFileHandle(args, 0);
+   f:=GetIdwsFileHandle(args, 0);
    p:=FileSeek(f, 0, 1);
    n:=FileSeek(f, 0, 2)-p;
    FileSeek(f, p, 0);
@@ -482,7 +484,7 @@ var
    buf : RawByteString;
 begin
    buf:=args.AsDataString[1];
-   Result:=dwsXPlatform.FileWrite(GetFileHandle(args, 0), Pointer(buf), Length(buf));
+   Result:=dwsXPlatform.FileWrite(GetIdwsFileHandle(args, 0), Pointer(buf), Length(buf));
 end;
 
 // ------------------
@@ -502,7 +504,7 @@ end;
 
 function TFileSeekFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 begin
-   Result:=FileSeek(GetFileHandle(args, 0), args.AsInteger[1], args.AsInteger[2]);
+   Result:=FileSeek(GetIdwsFileHandle(args, 0), args.AsInteger[1], args.AsInteger[2]);
 end;
 
 // ------------------
@@ -511,7 +513,7 @@ end;
 
 function TFileFlushBuffersFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
 begin
-   Result := FileFlushBuffers(GetFileHandle(args, 0));
+   Result := FileFlushBuffers(GetIdwsFileHandle(args, 0));
 end;
 
 // ------------------
@@ -542,7 +544,7 @@ var
    p : Int64;
    h : THandle;
 begin
-   h := GetFileHandle(args, 0);
+   h := GetIdwsFileHandle(args, 0);
    p := FileSeek(h, Int64(0), soFromCurrent);
    Result := FileSeek(h, Int64(0), soFromEnd);
    FileSeek(h, p, soFromBeginning);
@@ -558,7 +560,7 @@ function TFileSetSizeFileFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : 
 var
    h : THandle;
 begin
-   h := GetFileHandle(args, 0);
+   h := GetIdwsFileHandle(args, 0);
    FileSeek(h, args.AsInteger[1], soFromBeginning);
    Result := SetEndOfFile(h)
 end;
@@ -582,7 +584,7 @@ end;
 //
 procedure TFileDateTimeFileFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
-   Result:=FileDateToDateTime(FileGetDate(GetFileHandle(args, 0)));
+   Result:=FileDateToDateTime(FileGetDate(GetIdwsFileHandle(args, 0)));
 end;
 
 // ------------------
@@ -609,7 +611,7 @@ end;
 
 procedure TFileSetDateTimeFileProc.DoEvalProc(const args : TExprBaseListExec);
 begin
-   FileSetDateTime(GetFileHandle(args, 0), TdwsDateTime.FromLocalDateTime(args.AsFloat[1]));
+   FileSetDateTime(GetIdwsFileHandle(args, 0), TdwsDateTime.FromLocalDateTime(args.AsFloat[1]));
 end;
 
 // ------------------

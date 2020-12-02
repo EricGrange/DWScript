@@ -305,6 +305,7 @@ begin
    hash.Update(Pointer(item1.SQL), Length(item1.SQL)*SizeOf(AnsiChar));
    hash.Update(Pointer(item1.ParamTypes), Length(item1.ParamTypes)*SizeOf(Oid));
    Result := hash.Digest;
+   if Result = 0 then Result := 1;
 end;
 
 // ------------------

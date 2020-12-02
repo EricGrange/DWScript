@@ -8868,7 +8868,7 @@ end;
 //
 function TResolvedInterfaces.GetItemHashCode(const item1 : TResolvedInterface) : Cardinal;
 begin
-   Result := Cardinal(NativeUInt(item1.IntfSymbol) shr 4);
+   Result := SimplePointerHash(item1.IntfSymbol);
 end;
 
 // ------------------

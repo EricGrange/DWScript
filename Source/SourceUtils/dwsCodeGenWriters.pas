@@ -111,7 +111,7 @@ end;
 //
 function TdwsCodeGenSymbolWriterLookup.GetItemHashCode(const item1 : TdwsCodeGenSymbolClassWriter) : Cardinal;
 begin
-   Result := SimplePointerHash(Pointer(item1.SymbolClass));
+   Result := SimplePointerHash(item1.SymbolClass);
 end;
 
 // ------------------
