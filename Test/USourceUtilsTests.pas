@@ -607,7 +607,7 @@ var
    sugg : IdwsSuggestions;
    scriptPos : TScriptPos;
 begin
-   prog:=FCompiler.Compile('uses SomeUnit;'#13#10'So');
+   prog:=FCompiler.Compile('uses SomeUnit;'#13#10'Som');
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 6);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
@@ -618,21 +618,21 @@ begin
    CheckEquals('SomeUnit', sugg.Code[2], 'Unit ''SomeUnit'' not found');
    CheckEquals('System', sugg.Code[3], 'Unit ''System'' not found');
 
-   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 4);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
 
    CheckEquals(1, sugg.Count, 'Should be only one suggestion');
    CheckEquals('SomeUnit', sugg.Code[0], 'The suggestion should be the unit ''SomeUnit''');
 
    // now check the same example without including units at all
-   prog:=FCompiler.Compile('uses SomeUnit;'#13#10'So');
+   prog:=FCompiler.Compile('uses SomeUnit;'#13#10'Som');
 
-   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 6);
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 7);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords, soNoUnits]);
 
    CheckEquals(0, sugg.Count, 'There shouldn''t be units in the suggestions at all');
 
-   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 4);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords, soNoUnits]);
 
    CheckEquals(0, sugg.Count, 'There shouldn''t be units in the suggestions at all');
@@ -981,7 +981,7 @@ begin
          scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 15);
 
          sugg:=TdwsSuggestions.Create(prog, scriptPos);
-         CheckEquals(4, sugg.Count, 'System.En');
+         Check(sugg.Count >= 4, 'System.En');
          CheckEquals('EncodeDate', sugg.Code[0]);
          CheckEquals('EncodeDateTime', sugg.Code[1]);
          CheckEquals('Encoder', sugg.Code[2]);
