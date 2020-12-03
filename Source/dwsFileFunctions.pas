@@ -446,7 +446,7 @@ procedure TFileRead3Func.DoEvalAsString(const args : TExprBaseListExec; var Resu
 var
    buf : RawByteString;
    p, n : Int64;
-   f : Integer;
+   f : THandle;
 begin
    f:=GetIdwsFileHandle(args, 0);
    p:=FileSeek(f, 0, 1);
