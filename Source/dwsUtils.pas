@@ -2475,6 +2475,7 @@ begin
             varInt64 : if TVarData(right).VInt64 = 0 then Exit(vrEqual) else Exit(vrNotEqual);
             varUString : if TVarData(right).VUString = nil then Exit(vrEqual) else Exit(vrNotEqual);
             varDouble : if TVarData(right).VDouble = 0 then Exit(vrEqual) else Exit(vrNotEqual);
+            varEmpty, varNull : Exit(vrEqual);
          end;
       end;
    end;
