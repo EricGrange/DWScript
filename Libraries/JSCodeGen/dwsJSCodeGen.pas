@@ -817,6 +817,11 @@ type
          constructor Create;
    end;
 
+   TJSAddStrManyExpr = class(TJSOpExpr)
+      public
+         procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
+   end;
+
    TJSSubOpExpr = class(TJSBinOpExpr)
       protected
          function WriteOperator(codeGen : TdwsCodeGen; rightExpr : TTypedExpr) : Boolean; override;
@@ -1128,7 +1133,7 @@ begin
       TdwsExprGenericCodeGen.Create(['(', 0, '===', 1, ')']));
 
    RegisterCodeGen(TAddStrExpr,           TJSBinOpExpr.Create('+', 13, [associativeLeft, associativeRight]));
-   RegisterCodeGen(TAddStrConstExpr,      TJSBinOpExpr.Create('+', 13, [associativeLeft, associativeRight]));
+   RegisterCodeGen(TAddStrManyExpr,       TJSAddStrManyExpr.Create);
 
    RegisterCodeGen(TAddIntExpr,           TJSAddOpExpr.Create);
    RegisterCodeGen(TAddFloatExpr,         TJSAddOpExpr.Create);
@@ -1412,6 +1417,7 @@ begin
    RegisterCodeGen(TMagicVariantFuncExpr,    TJSMagicFuncExpr.Create(Self));
    RegisterCodeGen(TMagicInterfaceFuncExpr,  TJSMagicFuncExpr.Create(Self));
    RegisterCodeGen(TMagicProcedureExpr,      TJSMagicFuncExpr.Create(Self));
+   RegisterCodeGen(TMagicDynArrayFuncExpr,   TJSMagicFuncExpr.Create(Self));
 
    RegisterCodeGen(TConstructorStaticExpr,         TJSConstructorStaticExpr.Create);
    RegisterCodeGen(TConstructorStaticDefaultExpr,  TJSConstructorStaticExpr.Create);
@@ -9013,6 +9019,29 @@ begin
    end else begin
       codeGen.WriteString('!!');
       codeGen.Compile(e.Expr);
+   end;
+end;
+
+// ------------------
+// ------------------ TJSAddStrManyExpr ------------------
+// ------------------
+
+// CodeGenNoWrap
+//
+procedure TJSAddStrManyExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+var
+   e : TAddStrManyExpr;
+   i : Integer;
+begin
+   e := TAddStrManyExpr(expr);
+   if e.SubExprCount = 0 then begin
+      codeGen.WriteLiteralString('');
+      Exit;
+   end;
+   WriteWrappedIfNeeded(codeGen, TTypedExpr(e.SubExpr[0]));
+   for i := 1 to e.SubExprCount-1 do begin
+      codeGen.WriteString('+');
+      WriteWrappedIfNeeded(codeGen, TTypedExpr(e.SubExpr[i]));
    end;
 end;
 

@@ -1269,8 +1269,30 @@ type
       procedure EvalAsString(exec : TdwsExecution; var result : String); override;
       function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
    end;
-   TAddStrConstExpr = class sealed (TStringBinOpExpr)
-      procedure EvalAsString(exec : TdwsExecution; var result : String); override;
+   TAddStrManyExpr = class sealed (TTypedExpr)
+      private
+         FSubOps : TTightList;
+         FScriptPos : TScriptPos;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+         function GetIsConstant : Boolean; override;
+
+      public
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos); virtual;
+         destructor Destroy; override;
+
+         procedure AddOperand(expr : TTypedExpr);
+         function  ExtractOperand(index : Integer) : TTypedExpr;
+
+         procedure Aggregate(context : TdwsCompilerContext; expr : TTypedExpr);
+
+         procedure EvalAsString(exec : TdwsExecution; var result : String); override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+
+         function ScriptPos : TScriptPos; override;
    end;
    TAddIntExpr = class sealed (TIntegerBinOpExpr)
       function EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -5797,25 +5819,151 @@ end;
 // Optimize
 //
 function TAddStrExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
+var
+   leftClass, rightClass : TClass;
+   addMany : TAddStrManyExpr;
 begin
-   if FRight.InheritsFrom(TConstStringExpr) then begin
-      Result := TAddStrConstExpr.Create(context, ScriptPos, ttPLUS, FLeft, FRight);
-      FLeft := nil;
-      FRight := nil;
-      Free;
+   leftClass := FLeft.ClassType;
+   rightClass := FRight.ClassType;
+   if    (leftClass = TAddStrExpr) or (rightClass = TAddStrExpr)
+      or (leftClass = TAddStrManyExpr) or (rightClass = TAddStrManyExpr) then begin
+      addMany := TAddStrManyExpr.Create(context, FScriptPos);
+      Result := addMany;
+      addMany.Aggregate(context, Self);
    end else Result := Self;
 end;
 
 // ------------------
-// ------------------ TAddStrConstExpr ------------------
+// ------------------ TAddStrManyExpr ------------------
 // ------------------
+
+// Create
+//
+constructor TAddStrManyExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos);
+begin
+   inherited Create;
+   FTyp := context.TypString;
+   FScriptPos := ScriptPos;
+end;
+
+// Destroy
+//
+destructor TAddStrManyExpr.Destroy;
+begin
+   FSubOps.Clean;
+   inherited;
+end;
+
+// AddOperand
+//
+procedure TAddStrManyExpr.AddOperand(expr : TTypedExpr);
+begin
+   FSubOps.Add(expr);
+end;
+
+// ExtractOperand
+//
+function TAddStrManyExpr.ExtractOperand(index : Integer) : TTypedExpr;
+begin
+   Assert(Cardinal(index) < Cardinal(FSubOps.Count));
+   Result := TTypedExpr(FSubOps.List[index]);
+   FSubOps.Delete(index);
+end;
+
+// Aggregate
+//
+procedure TAddStrManyExpr.Aggregate(context : TdwsCompilerContext; expr : TTypedExpr);
+var
+   ct : TClass;
+   lastObj : TObject;
+   last : TConstStringExpr;
+begin
+   ct := expr.ClassType;
+   if ct = TAddStrExpr then begin
+      Aggregate(context, TAddStrExpr(expr).Left);
+      Aggregate(context, TAddStrExpr(expr).Right);
+      TAddStrExpr(expr).Left := nil;
+      TAddStrExpr(expr).Right := nil;
+      context.OrphanObject(expr);
+   end else if ct = TAddStrManyExpr then begin
+      while TAddStrManyExpr(expr).SubExprCount > 0 do
+         Aggregate(context, TAddStrManyExpr(expr).ExtractOperand(0));
+      context.OrphanObject(expr);
+   end else begin
+      if (FSubOps.Count > 0) and (expr is TConstStringExpr) then begin
+         lastObj := FSubOps.List[FSubOps.Count-1];
+         if lastObj is TConstStringExpr then begin
+            last := TConstStringExpr(lastObj);
+            last.Value := last.Value + TConstStringExpr(expr).Value;
+            context.OrphanObject(expr);
+            Exit;
+         end;
+      end;
+      AddOperand(expr);
+   end;
+end;
+
+// GetSubExpr
+//
+function TAddStrManyExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if Cardinal(i) < Cardinal(FSubOps.Count) then
+      Result := TExprBase(FSubOps.List[i])
+   else Result := nil;
+end;
+
+// GetSubExprCount
+//
+function TAddStrManyExpr.GetSubExprCount : Integer;
+begin
+   Result := FSubOps.Count;
+end;
+
+// GetIsConstant
+//
+function TAddStrManyExpr.GetIsConstant : Boolean;
+var
+   i : Integer;
+begin
+   for i := 0 to FSubOps.Count-1 do
+      if not TExprBase(FSubOps.List[i]).IsConstant then
+         Exit(False);
+   Result := True;
+end;
+
+// EvalAsVariant
+//
+procedure TAddStrManyExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+var
+   buf : String;
+begin
+   EvalAsString(exec, buf);
+   VarCopySafe(result, buf);
+end;
+
+// ScriptPos
+//
+function TAddStrManyExpr.ScriptPos : TScriptPos;
+begin
+   Result := FScriptPos;
+end;
 
 // EvalAsString
 //
-procedure TAddStrConstExpr.EvalAsString(exec : TdwsExecution; var result : String);
+procedure TAddStrManyExpr.EvalAsString(exec : TdwsExecution; var result : String);
+var
+   buf : String;
+   i, n : Integer;
+   list : PObjectTightList;
 begin
-   FLeft.EvalAsString(exec, Result);
-   Result:=Result+(FRight as TConstStringExpr).Value;
+   n := FSubOps.Count;
+   if n = 0 then Exit;
+   list := FSubOps.List;
+   TTypedExpr(list[0]).EvalAsString(exec, result);
+   for i := 1 to n-1 do begin
+      TTypedExpr(list[i]).EvalAsString(exec, buf);
+      result := result + buf;
+   end;
 end;
 
 // ------------------
@@ -6809,7 +6957,8 @@ var
    i : Integer;
    leftVarExpr : TVarExpr;
    addIntExpr : TAddIntExpr;
-   addStrExpr : TAddStrExpr;
+   addStrExpr : TBinaryOpExpr;
+   addStrManyExpr : TAddStrManyExpr;
    subIntExpr : TSubIntExpr;
    rightClassType : TClass;
 begin
@@ -6845,8 +6994,8 @@ begin
          if (leftVarExpr.DataSym is TClassVarSymbol) and TClassVarSymbol(leftVarExpr.DataSym).OwnerSymbol.IsExternal then begin
             Exit;
          end;
-         if rightClassType=TAddStrExpr then begin
-            addStrExpr:=TAddStrExpr(FRight);
+         if (rightClassType = TAddStrExpr) then begin
+            addStrExpr := TBinaryOpExpr(FRight);
             if (addStrExpr.Left is TVarExpr) and (addStrExpr.Left.ReferencesVariable(leftVarExpr.DataSym)) then begin
                if addStrExpr.Right.InheritsFrom(TConstStringExpr) then begin
                   Result:=TAppendConstStringVarExpr.Create(context, FScriptPos, FLeft, addStrExpr.Right);
@@ -6855,6 +7004,16 @@ begin
                end;
                FLeft:=nil;
                addStrExpr.Right:=nil;
+               Free;
+               Exit;
+            end;
+         end else if (rightClassType = TAddStrManyExpr) then begin
+            addStrManyExpr := TAddStrManyExpr(FRight);
+            if (addStrManyExpr.SubExpr[0] is TVarExpr) and (addStrManyExpr.SubExpr[0].ReferencesVariable(leftVarExpr.DataSym)) then begin
+               context.OrphanObject(addStrManyExpr.ExtractOperand(0));
+               Result := TAppendStringVarExpr.Create(context, FScriptPos, FLeft, addStrManyExpr);
+               FLeft := nil;
+               FRight := nil;
                Free;
                Exit;
             end;
