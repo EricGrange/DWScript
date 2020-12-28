@@ -60,6 +60,10 @@ type
 
    EdwsPixmap = class (Exception);
 
+   TCreatePixmapFunc = class(TInternalMagicInterfaceFunction)
+      procedure DoEvalAsInterface(const args : TExprBaseListExec; var result : IUnknown); override;
+   end;
+
    TPixmapToJPEGDataFunc = class(TInternalMagicStringFunction)
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
    end;
@@ -72,6 +76,19 @@ type
    end;
    TPixmapToPNGDataFunc = class(TInternalMagicStringFunction)
       procedure DoEvalAsString(const args : TExprBaseListExec; var Result : UnicodeString); override;
+   end;
+
+   TPixmapSetPixelFunc = class(TInternalMagicProcedure)
+      procedure DoEvalProc(const args : TExprBaseListExec); override;
+   end;
+   TPixmapGetPixelFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+   end;
+   TPixmapSetDataFunc = class(TInternalMagicProcedure)
+      procedure DoEvalProc(const args : TExprBaseListExec); override;
+   end;
+   TPixmapGetDataFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
 (*
@@ -131,7 +148,7 @@ procedure ByteBufferToJPEGData(const buffer : IdwsByteBuffer; w, h : Integer;
 {$ifdef USE_LIB_JPEG}
 begin
    if w*h*4 > buffer.GetCount then
-      raise Exception.Create('Not enough data in pixmap');
+      raise EdwsPixmap.Create('Not enough data in pixmap');
    Result := CompressJPEG(buffer.DataPtr, w, h, quality, jpegOptions);
 end;
 {$else}
@@ -143,7 +160,7 @@ var
    buf : TWriteOnlyBlockStream;
 begin
    if w*h*4 > buffer.GetCount then
-   raise Exception.Create('Not enough data in pixmap');
+   raise EdwsPixmap.Create('Not enough data in pixmap');
    bmp:=TBitmap.Create;
    try
       bmp.PixelFormat:=pf24bit;
@@ -210,6 +227,17 @@ begin
 end;
 
 // ------------------
+// ------------------ TCreatePixmapFunc ------------------
+// ------------------
+
+// DoEvalAsInterface
+//
+procedure TCreatePixmapFunc.DoEvalAsInterface(const args : TExprBaseListExec; var result : IUnknown);
+begin
+   result := CreateTPixmap(args.AsInteger[0], args.AsInteger[1]) as IdwsByteBuffer;
+end;
+
+// ------------------
 // ------------------ TPixmapToJPEGDataFunc ------------------
 // ------------------
 
@@ -228,7 +256,7 @@ begin
    w := args.AsInteger[1];
    h := args.AsInteger[2];
    if w*h*4 > pixmap.GetCount then
-      raise Exception.Create('Not enough data in pixmap');
+      raise EdwsPixmap.Create('Not enough data in pixmap');
    quality:=args.AsInteger[3];
    opts:=StrToIntDef(args.AsString[4], 0);
    jpegOptions:=[];
@@ -529,8 +557,88 @@ begin
    w := args.AsInteger[1];
    h := args.AsInteger[2];
    if w*h*4 > pixmap.GetCount then
-      raise Exception.Create('Not enough data in pixmap');
+      raise EdwsPixmap.Create('Not enough data in pixmap');
    CompressWithPNGImage(Result, args.AsBoolean[3]);
+end;
+
+// ------------------
+// ------------------ TPixmapSetPixelFunc ------------------
+// ------------------
+
+// DoEvalProc
+//
+procedure TPixmapSetPixelFunc.DoEvalProc(const args : TExprBaseListExec);
+var
+   x, y, w : Integer;
+   pixmap : IdwsByteBuffer;
+begin
+   args.ExprBase[0].EvalAsInterface(args.Exec, IUnknown(pixmap));
+   x := args.AsInteger[1];
+   y := args.AsInteger[2];
+   w := pixmap.GetMeta(0);
+   if Cardinal(x) > Cardinal(w) then
+      raise EdwsPixmap.CreateFmt('SetPixel x out of bounds (%d)', [ x ]);
+   if Cardinal(y*w) > Cardinal(pixmap.GetCount) then
+      raise EdwsPixmap.CreateFmt('SetPixel y out of bounds (%d)', [ y ]);
+   pixmap.SetInt32A((x + y*w) * 4, args.AsInteger[3]);
+end;
+
+// ------------------
+// ------------------ TPixmapGetPixelFunc ------------------
+// ------------------
+
+// DoEvalAsInteger
+//
+function TPixmapGetPixelFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+var
+   x, y, w : Integer;
+   pixmap : IdwsByteBuffer;
+begin
+   args.ExprBase[0].EvalAsInterface(args.Exec, IUnknown(pixmap));
+   x := args.AsInteger[1];
+   y := args.AsInteger[2];
+   w := pixmap.GetMeta(0);
+   if Cardinal(x) > Cardinal(w) then
+      raise EdwsPixmap.CreateFmt('SetPixel x out of bounds (%d)', [ x ]);
+   if Cardinal(y*w) > Cardinal(pixmap.GetCount) then
+      raise EdwsPixmap.CreateFmt('SetPixel y out of bounds (%d)', [ y ]);
+   Result := pixmap.GetInt32A((x + y*w) * 4);
+end;
+
+// ------------------
+// ------------------ TPixmapSetDataFunc ------------------
+// ------------------
+
+// DoEvalProc
+//
+procedure TPixmapSetDataFunc.DoEvalProc(const args : TExprBaseListExec);
+var
+   offset : Integer;
+   pixmap : IdwsByteBuffer;
+begin
+   args.ExprBase[0].EvalAsInterface(args.Exec, IUnknown(pixmap));
+   offset := args.AsInteger[1];
+   if Cardinal(offset) > Cardinal(pixmap.GetCount) then
+      raise EdwsPixmap.CreateFmt('SetData out of bounds (%d)', [ offset ]);
+   pixmap.SetInt32A(offset*4, args.AsInteger[2]);
+end;
+
+// ------------------
+// ------------------ TPixmapGetDataFunc ------------------
+// ------------------
+
+// DoEvalAsInteger
+//
+function TPixmapGetDataFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+var
+   offset : Integer;
+   pixmap : IdwsByteBuffer;
+begin
+   args.ExprBase[0].EvalAsInterface(args.Exec, IUnknown(pixmap));
+   offset := args.AsInteger[1];
+   if Cardinal(offset) > Cardinal(pixmap.GetCount) then
+      raise EdwsPixmap.CreateFmt('SetData out of bounds (%d)', [ offset ]);
+   Result := pixmap.GetInt32A(offset*4);
 end;
 
 // ------------------
@@ -561,6 +669,9 @@ initialization
 
    dwsInternalUnit.AddSymbolsRegistrationProc(RegisterGraphicsTypes);
 
+   RegisterInternalFunction(TCreatePixmapFunc, 'CreatePixmap',
+         ['width', SYS_INTEGER, 'height', SYS_INTEGER], SYS_PIXMAP, []);
+
    RegisterInternalFunction(TJPEGDataToPixmapFunc, 'JPEGDataToPixmap',
          ['jpegData', SYS_STRING, 'downscale', SYS_INTEGER, '@width', SYS_INTEGER, '@height', SYS_INTEGER], SYS_PIXMAP, []);
    RegisterInternalStringFunction(TPixmapToJPEGDataFunc, 'PixmapToJPEGData',
@@ -573,6 +684,10 @@ initialization
          ['pixmap', SYS_PIXMAP, 'width', SYS_INTEGER, 'height', SYS_INTEGER, 'withAlpha=False', SYS_BOOLEAN], []);
 
    RegisterInternalProcedure(TByteBufferAssignHexStringFunc, '', ['pixmap', SYS_PIXMAP, 'hexData', SYS_STRING], 'AssignHexString');
+   RegisterInternalProcedure(TPixmapSetPixelFunc, '', ['pixmap', SYS_PIXMAP, 'x', SYS_INTEGER, 'y', SYS_INTEGER, 'color', SYS_INTEGER], 'SetPixel');
+   RegisterInternalIntFunction(TPixmapGetPixelFunc, '', ['pixmap', SYS_PIXMAP, 'x', SYS_INTEGER, 'y', SYS_INTEGER], [], 'GetPixel');
+   RegisterInternalProcedure(TPixmapSetDataFunc, '', ['pixmap', SYS_PIXMAP, 'offset', SYS_INTEGER, 'color', SYS_INTEGER], 'SetData');
+   RegisterInternalIntFunction(TPixmapGetDataFunc, '', ['pixmap', SYS_PIXMAP, 'offset', SYS_INTEGER ], [], 'GetData');
 
 //   RegisterInternalFunction(TPixmapHistogramFunc, 'PixmapHistogram',
 //         ['pixmap', SYS_PIXMAP, 'offset', SYS_INTEGER, 'width', SYS_INTEGER, 'stride', SYS_INTEGER, 'count', SYS_INTEGER ], SYS_TRGBAHISTOGRAM, []);
