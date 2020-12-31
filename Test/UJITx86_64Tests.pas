@@ -24,7 +24,7 @@ type
 
       published
          procedure xmm_ops;
-//         procedure comisd;
+         procedure comisd;
          procedure xor_ops;
          procedure movsd;
 //         procedure movq;
@@ -46,21 +46,22 @@ type
 //         procedure xor_and_or_cmp_32;
 //         procedure xor_and_or_cmp_reg;
 //         procedure mul_imul_reg;
-//         procedure mul_imul_dword_ptr_reg;
+         procedure mul_imul_dword_ptr_reg;
 //         procedure fpu_ops;
          procedure push_pop;
          procedure nops;
-//         procedure calls;
+         procedure calls;
 //         procedure cmp_execmem_int32;
 //         procedure cmp_dword_ptr_reg_reg;
-         procedure cmp_reg_int32;
-//         procedure test_reg_reg;
+         procedure cmp_reg_imm;
+         procedure ops;
+         procedure test_reg_reg;
 //         procedure test_reg_int32;
 //         procedure test_dword_ptr_reg_int32;
 //         procedure test_dword_ptr_reg_byte;
 //         procedure test_dword_ptr_reg_reg;
 //         procedure and_or_byte;
-//         procedure boolflags;
+         procedure boolflags;
 //         procedure movsd_indexed;
 //         procedure mov_indexed;
    end;
@@ -171,19 +172,29 @@ end;
 
 // comisd
 //
-//procedure TJITx86_64Tests.comisd;
-//begin
-//   FStream._comisd_reg_reg(xmm0, xmm7);
-//   FStream._comisd_reg_execmem(xmm1, $11);
-//   FStream._comisd_reg_execmem(xmm1, $2233);
-//   FStream._comisd_reg_absmem(xmm0, Pointer($1234));
-//
-//   CheckEquals( 'comisd xmm0, xmm7'#13#10
-//               +'comisd xmm1, qword ptr ['+cgpRegisterName[cExecMemGPR]+'+00000118h]'#13#10
-//               +'comisd xmm1, qword ptr ['+cgpRegisterName[cExecMemGPR]+'+00022338h]'#13#10
-//               +'comisd xmm0, qword ptr [00001234h]'#13#10
-//               , DisasmStream);
-//end;
+procedure TJITx86_64Tests.comisd;
+begin
+   FStream._comisd_reg_reg(xmm0, xmm7);
+   FStream._comisd_reg_reg(xmm8, xmm1);
+   FStream._comisd_reg_reg(xmm9, xmm15);
+   FStream._comisd_reg_execmem(xmm1, $11);
+   FStream._comisd_reg_execmem(xmm10, $22);
+   FStream._comisd_reg_execmem(xmm1, $2233);
+   FStream._comisd_reg_absmem(xmm0, Pointer($1234));
+   FStream._comisd_reg_absmem(xmm8, Pointer($123456));
+
+   CheckEquals( 'comisd xmm0, xmm7'#13#10
+               +'comisd xmm8, xmm1'#13#10
+               +'comisd xmm9, xmm15'#13#10
+               +'comisd xmm1, qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+000001A0h]'#13#10
+               +'comisd xmm10, qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+00000338h]'#13#10
+               +'comisd xmm1, qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+000334D0h]'#13#10
+               +'mov rax, 0000000000001234h'#13#10
+               +'comisd xmm0, qword ptr [rax]'#13#10
+               +'mov rax, 0000000000123456h'#13#10
+               +'comisd xmm8, qword ptr [rax]'#13#10
+               , DisasmStream);
+end;
 
 // xor_ops
 //
@@ -210,16 +221,18 @@ begin
 
    // TODO: reactivate pending resolution of https://github.com/BeaEngine/beaengine/issues/33
 
-//   FStream._movsd_reg_absmem(xmm0, Pointer($12345));
-//   FStream._movsd_reg_absmem(xmm10, Pointer($1234));
+   FStream._movsd_reg_absmem(xmm0, Pointer($12345));
+   FStream._movsd_reg_absmem(xmm10, Pointer($1234));
 
    CheckEquals( ''
                +'movsd xmm3, qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+000001A0h]'#13#10
                +'movsd xmm9, qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+00019B38h]'#13#10
                +'movsd qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+00000338h], xmm4'#13#10
                +'movsd qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+00033668h], xmm12'#13#10
-//               +'movsd xmm0, qword ptr [00012345h]'#13#10
-//               +'movsd xmm10, qword ptr [00001234h]'#13#10
+               +'mov rax, 0000000000012345h'#13#10
+               +'movsd xmm0, qword ptr [rax]'#13#10
+               +'mov rax, 0000000000001234h'#13#10
+               +'movsd xmm10, qword ptr [rax]'#13#10
                , DisasmStream);
 
 //   FStream._movsd_reg_esp(xmm1);
@@ -821,37 +834,38 @@ begin
       CheckEquals(expect, DisasmStream);
    end;
 end;
-
+}
 // mul_imul_dword_ptr_reg
 //
 procedure TJITx86_64Tests.mul_imul_dword_ptr_reg;
 var
-   reg, src : TgpRegister;
+   reg, src : TgpRegister64;
    offset : Integer;
    expect, offsetText : String;
 begin
    for offset:=0 to 2 do begin
-      for src:=gprEAX to gprEDI do begin
+      for src:=gprRAX to gprR15 do begin
          case offset of
             1 : offsetText:='+40h';
             2 : offsetText:='+00000080h';
          else
-            if src=gprEBP then
+            if src in [gprRBP, gprRSP, gprR12, gprR13] then
                offsetText:='+00h'
             else offsetText:='';
          end;
-         expect:='mul dword ptr ['+cgpRegisterName[src]+offsetText+']'#13#10;
-         FStream._mul_dword_ptr_reg(src, offset*$40);
-         for reg:=gprEAX to gprEDI do begin
-            FStream._imul_reg_dword_ptr_reg(reg, src, offset*$40);
-            expect:= expect+'imul '+cgpRegisterName[reg]+', dword ptr ['+cgpRegisterName[src]+offsetText+']'#13#10
+//         expect:='mul qword ptr ['+cgpRegisterName[src]+offsetText+']'#13#10;
+//         FStream._mul_qword_ptr_reg(src, offset*$40);
+         expect := '';
+         for reg:=gprRAX to gprR15 do begin
+            FStream._imul_reg_qword_ptr_reg(reg, src, offset*$40);
+            expect:= expect+'imul '+cgpRegister64Name[reg]+', qword ptr ['+cgpRegister64Name[src]+offsetText+']'#13#10
                  ;
          end;
          CheckEquals(expect, DisasmStream);
       end;
    end;
 end;
-
+{
 // fpu_ops
 //
 procedure TJITx86_64Tests.fpu_ops;
@@ -907,29 +921,29 @@ begin
 
    CheckEquals('rnrnrnrnnrnnrnnrnnnrnnnrnnnrnnnnrnnnnrnnnnrnnnnnrnnnnnrnnnnnr', buf);
 end;
-{
+
 // calls
 //
 procedure TJITx86_64Tests.calls;
 var
    offset : Integer;
-   reg : TgpRegister;
+   reg : TgpRegister64;
    expect : String;
 begin
-   for reg:=gprEAX to gprEDI do begin
+   for reg:=gprRAX to gprR15 do begin
       for offset:=0 to 2 do
          FStream._call_reg(reg, offset*$40);
-      expect:='call dword ptr ['+cgpRegisterName[reg];
-      if reg=gprEBP then
+      expect:='call qword ptr ['+cgpRegister64Name[reg];
+      if reg in [gprRBP, gprRSP, gprR12, gprR13] then
          expect:=expect+'+00h';
       expect:=expect+']'#13#10;
       CheckEquals( expect
-                  +'call dword ptr ['+cgpRegisterName[reg]+'+40h]'#13#10
-                  +'call dword ptr ['+cgpRegisterName[reg]+'+00000080h]'#13#10
+                  +'call qword ptr ['+cgpRegister64Name[reg]+'+40h]'#13#10
+                  +'call qword ptr ['+cgpRegister64Name[reg]+'+00000080h]'#13#10
                   , DisasmStream);
    end;
 end;
-
+{
 // cmp_execmem_int32
 //
 procedure TJITx86_64Tests.cmp_execmem_int32;
@@ -975,9 +989,9 @@ begin
    end;
 end;
 }
-// cmp_reg_int32
+// cmp_reg_imm
 //
-procedure TJITx86_64Tests.cmp_reg_int32;
+procedure TJITx86_64Tests.cmp_reg_imm;
 var
    reg : TgpRegister64;
    expect : String;
@@ -990,24 +1004,66 @@ begin
       CheckEquals(expect, DisasmStream);
    end;
 end;
-{
+
+// ops
+//
+procedure TJITx86_64Tests.ops;
+var
+   reg, src : TgpRegister64;
+   offset : Integer;
+   expect, offsetText : String;
+begin
+   for offset:=0 to 2 do begin
+      for src:=gprRAX to gprR15 do begin
+         case offset of
+            1 : offsetText:='+40h';
+            2 : offsetText:='+00000080h';
+         else
+            if src in [gprRBP, gprRSP, gprR12, gprR13] then
+               offsetText:='+00h'
+            else offsetText:='';
+         end;
+         for reg:=gprRAX to gprR15 do begin
+            expect := '';
+            FStream._op_reg_qword_ptr_reg(gpOp_add, reg, src, offset*$40);
+            expect:= expect+'add '+cgpRegister64Name[reg]+', qword ptr ['+cgpRegister64Name[src]+offsetText+']'#13#10;
+            FStream._op_reg_qword_ptr_reg(gpOp_adc, reg, src, offset*$40);
+            expect:= expect+'adc '+cgpRegister64Name[reg]+', qword ptr ['+cgpRegister64Name[src]+offsetText+']'#13#10;
+            FStream._op_reg_qword_ptr_reg(gpOp_sub, reg, src, offset*$40);
+            expect:= expect+'sub '+cgpRegister64Name[reg]+', qword ptr ['+cgpRegister64Name[src]+offsetText+']'#13#10;
+            FStream._op_reg_qword_ptr_reg(gpOp_sbb, reg, src, offset*$40);
+            expect:= expect+'sbb '+cgpRegister64Name[reg]+', qword ptr ['+cgpRegister64Name[src]+offsetText+']'#13#10;
+            FStream._op_reg_qword_ptr_reg(gpOp_xor, reg, src, offset*$40);
+            expect:= expect+'xor '+cgpRegister64Name[reg]+', qword ptr ['+cgpRegister64Name[src]+offsetText+']'#13#10;
+            FStream._op_reg_qword_ptr_reg(gpOp_and, reg, src, offset*$40);
+            expect:= expect+'and '+cgpRegister64Name[reg]+', qword ptr ['+cgpRegister64Name[src]+offsetText+']'#13#10;
+            FStream._op_reg_qword_ptr_reg(gpOp_or, reg, src, offset*$40);
+            expect:= expect+'or '+cgpRegister64Name[reg]+', qword ptr ['+cgpRegister64Name[src]+offsetText+']'#13#10;
+            FStream._op_reg_qword_ptr_reg(gpOp_cmp, reg, src, offset*$40);
+            expect:= expect+'cmp '+cgpRegister64Name[reg]+', qword ptr ['+cgpRegister64Name[src]+offsetText+']'#13#10;
+            CheckEquals(expect, DisasmStream);
+         end;
+      end;
+   end;
+end;
+
 // test_reg_reg
 //
 procedure TJITx86_64Tests.test_reg_reg;
 var
-   dest, src : TgpRegister;
+   dest, src : TgpRegister64;
    expect : String;
 begin
-   for dest:=gprEAX to gprEDI do begin
+   for dest:=gprRAX to gprR15 do begin
       expect:='';
-      for src:=gprEAX to gprEDI do begin
+      for src:=gprRAX to gprR15 do begin
          FStream._test_reg_reg(dest, src);
-         expect:=expect+'test '+cgpRegisterName[dest]+', '+cgpRegisterName[src]+#13#10;
+         expect:=expect+'test '+cgpRegister64Name[dest]+', '+cgpRegister64Name[src]+#13#10;
       end;
       CheckEquals(expect, DisasmStream);
    end;
 end;
-
+{
 // test_reg_int32
 //
 procedure TJITx86_64Tests.test_reg_int32;
@@ -1130,7 +1186,7 @@ begin
       CheckEquals(expect, DisasmStream);
    end;
 end;
-
+}
 // boolflags
 //
 procedure TJITx86_64Tests.boolflags;
@@ -1170,7 +1226,7 @@ begin
                +'setns al'#13#10
                , DisasmStream);
 end;
-
+{
 // movsd_indexed
 //
 procedure TJITx86_64Tests.movsd_indexed;
