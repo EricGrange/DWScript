@@ -581,6 +581,7 @@ implementation
 const
    cExecInstanceGPR = gprEDI;
    cExecInstanceEBPoffset = 4;
+   cVariant_DataOffset = 8;
 
 function int64_div(a, b : Int64) : Int64;
 begin
@@ -1572,7 +1573,7 @@ begin
    if TempSpaceOnStack+AllocatedStackSpace>0 then
       x86._sub_reg_int32(gprESP, TempSpaceOnStack+AllocatedStackSpace);
 
-   x86._mov_reg_dword_ptr_reg(cExecMemGPR, gprEDX, cStackMixinBaseDataOffset);
+   x86._mov_reg_dword_ptr_reg(cExecMemGPR, gprEDX, TdwsExecution.StackMixin_Offset);
 end;
 
 // NeedTempSpace

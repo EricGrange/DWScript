@@ -2076,6 +2076,7 @@ type
          property SelfScriptClassSymbol : TClassSymbol read FSelfScriptClassSymbol write FSelfScriptClassSymbol;
 
          class function Status_Offset : Integer;
+         class function StackMixin_Offset : Integer;
 
          function GetLastScriptErrorExpr : TExprBase;
          procedure SetScriptError(expr : TExprBase);
@@ -8399,13 +8400,15 @@ end;
 // Status_Offset
 //
 class function TdwsExecution.Status_Offset : Integer;
-{$ifdef WIN32_ASM}
-asm
-   mov eax, OFFSET FStatus
-{$else}
 begin
-   Result:=0;
-{$endif}
+   Result := IntPtr(@TdwsExecution(nil).FStatus);
+end;
+
+// StackMixin_Offset
+//
+class function TdwsExecution.StackMixin_Offset : Integer;
+begin
+   Result := IntPtr(@TdwsExecution(nil).FStack);
 end;
 
 // GetLastScriptErrorExpr

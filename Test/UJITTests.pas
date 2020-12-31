@@ -2,13 +2,11 @@ unit UJITTests;
 
 interface
 
-{$IF Defined(WIN32)}
-
 uses
    Classes, SysUtils, Variants,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsXPlatform,
    dwsTokenizer, dwsErrors, dwsUtils, dwsSymbols, dwsFunctions, dwsUnitSymbols,
-   dwsJITFixups, dwsJITx86, dwsJITx86Intrinsics, dwsCompilerContext;
+   dwsJITFixups, dwsJITx86, dwsJITx86_64, dwsJITx86Intrinsics, dwsCompilerContext;
 
 type
 
@@ -179,7 +177,7 @@ var
    exec : IdwsProgramExecution;
    output, expectedResult : String;
    diagnostic : TStringList;
-   jit : TdwsJITx86;
+   jit : {$ifdef WIN32} TdwsJITx86 {$endif}{$ifdef WIN64} TdwsJITx86_64 {$endif};
 begin
    ignored:=0;
    diagnostic:=TStringList.Create;
@@ -210,7 +208,7 @@ begin
          OutputDebugString(FTests[i]);
 
          try
-            jit:=TdwsJITx86.Create;
+            jit:={$ifdef WIN32} TdwsJITx86 {$endif}{$ifdef WIN64} TdwsJITx86_64 {$endif}.Create;
             try
                jit.GreedyJIT(prog.ProgramObject);
             finally
@@ -399,9 +397,5 @@ initialization
 // ------------------------------------------------------------------
 
    RegisterTest('jitTests', TJITTests);
-
-{$else}
-implementation
-{$ifend}
 
 end.

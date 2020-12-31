@@ -5,10 +5,14 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ExtCtrls, StdCtrls,
-  {$ifndef WIN64}
+  {$ifdef WIN32}
   dwsJIT, dwsJITx86,
   {$endif}
-  dwsComp, dwsExprs, dwsFunctions, dwsSymbols, dwsMagicExprs, dwsExprList;
+  {$ifdef WIN64}
+  dwsJIT, dwsJITx86_64,
+  {$endif}
+  dwsComp, dwsExprs, dwsFunctions, dwsSymbols, dwsMagicExprs, dwsExprList,
+  dwsErrors, dwsUtils;
 
 type
   TMainForm = class(TForm)

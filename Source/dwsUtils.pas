@@ -773,6 +773,7 @@ type
          procedure WriteBytes(const buffer : RawByteString); overload;
          procedure WriteInt32(const i : Integer); inline;
          procedure WriteDWord(const dw : DWORD); inline;
+         procedure WriteQWord(const qw : UInt64); inline;
 
          procedure WriteP(p : PWideChar; nbWideChars : Integer); inline;
 
@@ -4810,6 +4811,13 @@ end;
 procedure TWriteOnlyBlockStream.WriteDWord(const dw : DWORD);
 begin
    WriteBuf(@dw, 4);
+end;
+
+// WriteQWord
+//
+procedure TWriteOnlyBlockStream.WriteQWord(const qw : UInt64);
+begin
+   WriteBuf(@qw, 8);
 end;
 
 // WriteP
