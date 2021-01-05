@@ -18,7 +18,7 @@ unit dwsWin64FunctionTables;
 
 interface
 
-uses Types;
+uses Types, SysUtils;
 
 type
    DWORD64 = UInt64;
@@ -52,7 +52,7 @@ type
    _UNWIND_CODE = record
       CodeOffset : UBYTE;
       UnwindOp_OpInfo : UBYTE;   // 4 bits 4 bits
-      FrameOffset : USHORT;
+//      FrameOffset : USHORT;
 
       function GetUnwindOp : UNWIND_CODE_OPS;
       procedure SetUnwindOp(v : UNWIND_CODE_OPS);
@@ -70,6 +70,13 @@ const
    UNW_FLAG_CHAININFO = $04;
 
 type
+   UNWIND_REG = (
+      UNWIND_RAX = 0,   UNWIND_RCX = 1,   UNWIND_RDX = 2,   UNWIND_RBX = 3,
+      UNWIND_RSP = 4,   UNWIND_RBP = 5,   UNWIND_RSI = 6,   UNWIND_RDI = 7,
+      UNWIND_R8  = 8,   UNWIND_R9  = 9,   UNWIND_R10 = 10,  UNWIND_R11 = 11,
+      UNWIND_R12 = 12,  UNWIND_R13 = 13,  UNWIND_R14 = 14,  UNWIND_R15 = 15
+   );
+
    _UNWIND_INFO = record
       Version_Flags : UBYTE;    // 3 bits 5 bits
 
@@ -87,9 +94,9 @@ type
       procedure SetFlags(v : UBYTE);
       property Flags : UBYTE read GetFlags write SetFlags;
 
-      function GetFrameRegister : UBYTE;
-      procedure SetFrameRegister(v : UBYTE);
-      property FrameRegister : UBYTE read GetFrameRegister write SetFrameRegister;
+      function GetFrameRegister : UNWIND_REG;
+      procedure SetFrameRegister(v : UNWIND_REG);
+      property FrameRegister : UNWIND_REG read GetFrameRegister write SetFrameRegister;
       function GetFrameOffset : UBYTE;
       procedure SetFrameOffset(v : UBYTE);
       property FrameOffset : UBYTE read GetFrameOffset write SetFrameOffset;
@@ -97,6 +104,24 @@ type
    end;
    UNWIND_INFO = _UNWIND_INFO;
    PUNWIND_INFO = ^UNWIND_INFO;
+
+   // builds an UNWIND codes array
+   // record ops in the prolog order
+   TUnwindCodeBuilder = record
+      private
+         FCodes : array of UNWIND_CODE;
+
+         procedure Insert(nb : Integer);
+
+      public
+         procedure PushNonVolatile(codeOffset : Byte; reg : UNWIND_REG);
+         procedure AllocBytes(codeOffset : Byte; nbBytes : Integer);
+         procedure AllocSlots(codeOffset : Byte; nb8BytesSlots : Integer);
+
+         function SizeInOps : Integer; inline;
+         function SizeInBytes : Integer;
+         procedure CopyTo(dest : Pointer);
+   end;
 
 (*
 #define GetUnwindCodeEntry(info, index) \
@@ -115,8 +140,20 @@ type
     ((PVOID)((PULONG)GetLanguageSpecificData(info) + 1)
 *)
 
-function RtlAddFunctionTable(FunctionTable : PRUNTIME_FUNCTION; EntryCount : DWORD; BaseAddress: DWORD64) : BOOLEAN; external 'kernel32';
+   TRUNTIME_FUNCTION_Helper = record helper for RUNTIME_FUNCTION
+      function ToString(baseAddress : Pointer) : String;
+   end;
+
+const
+   cUNWIND_REG_NAMES : array [UNWIND_REG] of String = (
+      'RAX', 'RCX', 'RDX', 'RBX', 'RSP', 'RBP', 'RSI', 'RDI',
+      'R8',  'R9',  'R10', 'R11', 'R12', 'R13', 'R14', 'R15'
+   );
+
+function RtlAddFunctionTable(FunctionTable : PRUNTIME_FUNCTION; EntryCount : DWORD; BaseAddress: Pointer) : BOOLEAN; external 'kernel32';
 function RtlDeleteFunctionTable(FunctionTable : PRUNTIME_FUNCTION) : BOOLEAN; external 'kernel32';
+
+function RtlLookupFunctionEntry(controlPc : Pointer; var imageBase : Pointer; historyTable : Pointer) : PRUNTIME_FUNCTION; external 'kernel32';
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -125,6 +162,80 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+// ------------------
+// ------------------ UNWIND_CODE ------------------
+// ------------------
+
+// ToString
+//
+function TRUNTIME_FUNCTION_Helper.ToString(baseAddress : Pointer) : String;
+var
+   pUnwind : PUNWIND_INFO;
+   pCode : PUNWIND_CODE;
+   n : Integer;
+begin
+   if (baseAddress = nil) or (@Self = nil) then
+      Exit('No information available (nil pointer)');
+   pUnwind := PUNWIND_INFO(IntPtr(baseAddress) + UnwindInfoAddress);
+   Result := 'Base: ' + IntToHex(UInt64(baseAddress), 8) + #13#10
+           + 'BeginAddress: 0x' + IntToHex(BeginAddress, 4)
+                              + ' ('  + IntToHex(UInt64(baseAddress) + BeginAddress, 8) + ')' + #13#10
+           + 'EndAddress: 0x' + IntToHex(EndAddress, 4)
+                            + ' ('  + IntToHex(UInt64(baseAddress) + EndAddress, 8) + ')' + #13#10
+           + 'Unwind version: ' + IntToStr(pUnwind.Version_Flags) + #13#10
+           + 'Unwind flags: 0x' + IntToHex(pUnwind.Flags) + #13#10
+           + 'Size of prologue: 0x' + IntToHex(pUnwind.SizeOfProlog) + #13#10
+           + 'Count of codes: ' + IntToStr(pUnwind.CountOfCodes) + #13#10
+           + 'Frame register: ';
+   if pUnwind.FrameRegister <> UNWIND_RAX then begin
+      Result := Result + cUNWIND_REG_NAMES[pUnwind.FrameRegister]
+                       + ' (offset 0x' + IntToHex(pUnwind.FrameOffset*16, 2) + ')'#13#10;
+   end else Result := Result + 'none'#13#10;
+   n := pUnwind.CountOfCodes;
+   if n > 0 then begin
+      pCode := @pUnwind.UnwindCode[0];
+      Result := Result + 'Unwind codes:'#13#10;
+      while n > 0 do begin
+         Result := Result + '  ' + IntToHex(pCode.CodeOffset, 2) + ': ';
+         case pCode.UnwindOp of
+            UWOP_PUSH_NONVOL : begin
+               Result := Result + 'PUSH_NONVOL, register='
+                                + cUNWIND_REG_NAMES[UNWIND_REG(pCode.OpInfo)] + #13#10;
+            end;
+            UWOP_ALLOC_SMALL : begin
+               Result := Result + 'ALLOC_SMALL, size=0x' + IntToHex(pCode.OpInfo*8+8, 2) + #13#10;
+            end;
+            UWOP_ALLOC_LARGE : begin
+               Result := Result + 'ALLOC_LARGE, size=0x';
+               case pCode.OpInfo of
+                  0 : begin
+                     Inc(pCode); Dec(n);
+                     Result := Result + IntToHex(PWORD(pCode)^*8, 4) + #13#10;
+                  end;
+                  1 : begin
+                     Inc(pCode);
+                     Result := Result + IntToHex(PCardinal(pCode)^, 4) + #13#10;
+                     Inc(pCode);
+                     Dec(n, 2);
+                  end;
+               else
+                  Result := Result + '???'#13#10;
+               end;
+            end;
+            UWOP_SET_FPREG : begin
+               Result := Result + 'SET_FPREG, '
+                                + cUNWIND_REG_NAMES[pUnwind.FrameRegister] + '=RSP+'
+                                + IntToHex(pUnwind.FrameOffset*16, 2) + #13#10;
+            end;
+         else
+            Result := Result + '??? 0x' + IntToHex(pCode.UnwindOp_OpInfo, 2) + #13#10
+         end;
+         Inc(pCode);
+         Dec(n);
+      end;
+   end;
+end;
 
 // ------------------
 // ------------------ UNWIND_CODE ------------------
@@ -192,16 +303,16 @@ end;
 
 // GetFrameRegister
 //
-function UNWIND_INFO.GetFrameRegister : UBYTE;
+function UNWIND_INFO.GetFrameRegister : UNWIND_REG;
 begin
-   Result := (FrameRegister_FrameOffset and $F);
+   Result := UNWIND_REG(FrameRegister_FrameOffset and $F);
 end;
 
 // SetFrameRegister
 //
-procedure UNWIND_INFO.SetFrameRegister(v : UBYTE);
+procedure UNWIND_INFO.SetFrameRegister(v : UNWIND_REG);
 begin
-   FrameRegister_FrameOffset := (FrameRegister_FrameOffset and $F0) or (v and $F);
+   FrameRegister_FrameOffset := (FrameRegister_FrameOffset and $F0) or Byte(Ord(v) and $F);
 end;
 
 // GetFrameOffset
@@ -216,6 +327,92 @@ end;
 procedure UNWIND_INFO.SetFrameOffset(v : UBYTE);
 begin
    FrameRegister_FrameOffset := (FrameRegister_FrameOffset and $F) or ((v shl 4) and $F0);
+end;
+
+// ------------------
+// ------------------ TUnwindCodeBuilder ------------------
+// ------------------
+
+// Insert
+//
+procedure TUnwindCodeBuilder.Insert(nb : Integer);
+var
+   n : Integer;
+begin
+   n := Length(FCodes);
+   SetLength(FCodes, n+nb);
+   while n >= nb do begin
+      FCodes[n] := FCodes[n-nb];
+      Dec(n);
+   end;
+   FillChar(FCodes[0], nb*SizeOf(UNWIND_CODE), 0);
+end;
+
+// PushNonVolatile
+//
+procedure TUnwindCodeBuilder.PushNonVolatile(codeOffset : Byte; reg : UNWIND_REG);
+begin
+   Insert(1);
+   FCodes[0].CodeOffset := codeOffset;
+   FCodes[0].UnwindOp_OpInfo := Ord(UWOP_PUSH_NONVOL) + (Ord(reg) shl 4);
+end;
+
+// AllocBytes
+//
+procedure TUnwindCodeBuilder.AllocBytes(codeOffset : Byte; nbBytes : Integer);
+begin
+   Assert((nbBytes and 7) = 0, 'AllocBytes should be a multiple of 8');
+   AllocSlots(codeOffset, nbBytes shr 3);
+end;
+
+// AllocSlots
+//
+procedure TUnwindCodeBuilder.AllocSlots(codeOffset : Byte; nb8BytesSlots : Integer);
+begin
+   Assert(nb8BytesSlots > 0);
+   case nb8BytesSlots of
+      1..16 : begin
+         Insert(1);
+         FCodes[0].CodeOffset := codeOffset;
+         FCodes[0].UnwindOp_OpInfo := Ord(UWOP_ALLOC_SMALL) + ((nb8BytesSlots-1) shl 4);
+      end;
+      17 .. (512*1024 div 8)-1 : begin
+         Insert(2);
+         FCodes[0].CodeOffset := codeOffset;
+         FCodes[0].UnwindOp_OpInfo := Ord(UWOP_ALLOC_LARGE);
+         PWord(@FCodes[1])^ := nb8BytesSlots;
+      end;
+   else
+      Insert(3);
+      FCodes[0].CodeOffset := codeOffset;
+      FCodes[0].UnwindOp_OpInfo := Ord(UWOP_ALLOC_LARGE) + 1;
+      PCardinal(@FCodes[1])^ := nb8BytesSlots;
+   end;
+end;
+
+// SizeInOps
+//
+function TUnwindCodeBuilder.SizeInOps : Integer;
+begin
+   Result := Length(FCodes);
+end;
+
+// SizeInBytes
+//
+function TUnwindCodeBuilder.SizeInBytes : Integer;
+begin
+   Result := SizeInOps*SizeOf(UNWIND_CODE);
+end;
+
+// CopyTo
+//
+procedure TUnwindCodeBuilder.CopyTo(dest : Pointer);
+var
+   n : Integer;
+begin
+   n := SizeInBytes;
+   if n > 0 then
+      System.Move(FCodes[0], dest^, n);
 end;
 
 end.
