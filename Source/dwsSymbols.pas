@@ -2159,6 +2159,11 @@ type
       property ClassSym : TClassSymbol read GetClassSym;
       property ExternalObject : TObject read GetExternalObject write SetExternalObject;
       property Destroyed : Boolean read GetDestroyed write SetDestroyed;
+
+      function FieldAsString(const fieldName : String) : String;
+      function FieldAsInteger(const fieldName : String) : Int64;
+      function FieldAsFloat(const fieldName : String) : Double;
+      function FieldAsBoolean(const fieldName : String) : Boolean;
    end;
 
    // IScriptObjInterface

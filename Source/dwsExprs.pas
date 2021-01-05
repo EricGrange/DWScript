@@ -1599,6 +1599,11 @@ type
 
          function FieldAddress(const fieldName : String) : Integer;
 
+         function FieldAsString(const fieldName : String) : String;
+         function FieldAsInteger(const fieldName : String) : Int64;
+         function FieldAsFloat(const fieldName : String) : Double;
+         function FieldAsBoolean(const fieldName : String) : Boolean;
+
          property ClassSym : TClassSymbol read FClassSym;
          property ExecutionContext : TdwsProgramExecution read FExecutionContext write FExecutionContext;
          property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
@@ -1772,6 +1777,11 @@ type
 
       public
          constructor Create(scriptObj : TScriptObjInstance);
+
+         function FieldAsString(const fieldName : String) : String;
+         function FieldAsInteger(const fieldName : String) : Int64;
+         function FieldAsFloat(const fieldName : String) : Double;
+         function FieldAsBoolean(const fieldName : String) : Boolean;
    end;
 
 // Create
@@ -1840,6 +1850,34 @@ end;
 procedure RaiseOnlyVarSymbols(sym : TSymbol);
 begin
    raise EdwsProgramInfoException.CreateFmt(RTE_OnlyVarSymbols, [sym.Caption]);
+end;
+
+// FieldAsString
+//
+function TScriptObjectWrapper.FieldAsString(const fieldName : String) : String;
+begin
+   Result := FScriptObj.FieldAsString(fieldName);
+end;
+
+// FieldAsInteger
+//
+function TScriptObjectWrapper.FieldAsInteger(const fieldName : String) : Int64;
+begin
+   Result := FScriptObj.FieldAsInteger(fieldName);
+end;
+
+// FieldAsFloat
+//
+function TScriptObjectWrapper.FieldAsFloat(const fieldName : String) : Double;
+begin
+   Result := FScriptObj.FieldAsFloat(fieldName);
+end;
+
+// FieldAsBoolean
+//
+function TScriptObjectWrapper.FieldAsBoolean(const fieldName : String) : Boolean;
+begin
+   Result := FScriptObj.FieldAsBoolean(fieldName);
 end;
 
 // ------------------
@@ -7315,6 +7353,34 @@ begin
    if field = nil then
       raise Exception.CreateFmt(RTE_FieldNotFoundInClass, [fieldName, FClassSym.Name]);
    Result := field.Offset;
+end;
+
+// FieldAsString
+//
+function TScriptObjInstance.FieldAsString(const fieldName : String) : String;
+begin
+   Result := AsString[FieldAddress(fieldName)];
+end;
+
+// FieldAsInteger
+//
+function TScriptObjInstance.FieldAsInteger(const fieldName : String) : Int64;
+begin
+   Result := AsInteger[FieldAddress(fieldName)];
+end;
+
+// FieldAsFloat
+//
+function TScriptObjInstance.FieldAsFloat(const fieldName : String) : Double;
+begin
+   Result := AsFloat[FieldAddress(fieldName)];
+end;
+
+// FieldAsBoolean
+//
+function TScriptObjInstance.FieldAsBoolean(const fieldName : String) : Boolean;
+begin
+   Result := AsBoolean[FieldAddress(fieldName)];
 end;
 
 // GetClassSym
