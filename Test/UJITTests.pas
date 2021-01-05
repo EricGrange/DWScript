@@ -267,6 +267,7 @@ begin
    FStream.WriteByte(Ord('c'));
 
    FFixups.FlushFixups(FStream.ToBytes, FStream);
+   FFixups.ClearFixups;
    outBuf:=FStream.ToBytes;
 
    CheckEquals(4, Length(outbuf));
@@ -298,6 +299,7 @@ begin
    FFixups.AddFixup(jump);
 
    FFixups.FlushFixups(FStream.ToBytes, FStream);
+   FFixups.ClearFixups;
    outbuf:=FStream.ToBytes;
 
    CheckEquals(5, Length(outbuf));
@@ -331,6 +333,7 @@ begin
    jump1.Target:=target;
 
    FFixups.FlushFixups(FStream.ToBytes, FStream);
+   FFixups.ClearFixups;
    outbuf:=FStream.ToBytes;
 
    CheckEquals(5, Length(outbuf));
@@ -368,6 +371,7 @@ begin
    FStream.WriteByte($22);
 
    FFixups.FlushFixups(FStream.ToBytes, FStream);
+   FFixups.ClearFixups;
    outbuf:=FStream.ToBytes;
 
    CheckEquals(7, Length(outbuf));

@@ -30,7 +30,8 @@ uses
    dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsExprList, dwsXPlatform,
    dwsCoreExprs, dwsRelExprs, dwsMagicExprs, dwsConstExprs,
    dwsMathFunctions, dwsDataContext, dwsConvExprs, dwsSetOfExprs, dwsMethodExprs,
-   dwsJIT, dwsJITFixups, dwsJITAllocatorWin, dwsJITx86Intrinsics, dwsVMTOffsets;
+   dwsJIT, dwsJITFixups, dwsJITAllocatorWin, dwsJITx86Intrinsics, dwsVMTOffsets,
+   dwsWin64FunctionTables;
 
 type
 
@@ -65,22 +66,27 @@ type
 
    TFixupPreamble = class(TFixup)
       private
-         FPreserveExec : Boolean;
-         FTempSpaceOnStack : Integer;
          FAllocatedStackSpace : Integer;
+         FPrologSize : Integer;
+         FPreserveExec : Boolean;
+         FHasCalls : Boolean;
+         FUnwind : TUnwindCodeBuilder;
 
       public
          function  GetSize : Integer; override;
          procedure Write(output : TWriteOnlyBlockStream); override;
 
-         procedure NeedTempSpace(bytes : Integer);
          function AllocateStackSpace(bytes : Integer) : Integer;
 
+         function StackTotalSpace : Integer;
          function NeedRBP : Boolean; inline;
 
-         property PreserveExec : Boolean read FPreserveExec write FPreserveExec;
-         property TempSpaceOnStack : Integer read FTempSpaceOnStack write FTempSpaceOnStack;
          property AllocatedStackSpace : Integer read FAllocatedStackSpace write FAllocatedStackSpace;
+         property PreserveExec : Boolean read FPreserveExec write FPreserveExec;
+         property HasCalls : Boolean read FHasCalls write FHasCalls;
+
+         property PrologSize : Integer read FPrologSize;
+         property Unwind : TUnwindCodeBuilder read FUnwind;
    end;
 
    TFixupPostamble = class(TFixup)
@@ -114,6 +120,7 @@ type
    TdwsJITx86_64 = class (TdwsJIT)
       private
          FRegs : array [TxmmRegister] of TRegisterStatus;
+         FRegsStackAddr : array [TxmmRegister] of Integer;
          FXMMIter : TxmmRegister;
          FSavedXMM : TxmmRegisters;
 
@@ -122,10 +129,6 @@ type
          x86 : Tx86_64_WriteOnlyStream;
 
          FAllocator : TdwsJITAllocatorWin;
-
-         FAbsMaskPD : TdwsJITCodeBlock;
-         FSignMaskPD : TdwsJITCodeBlock;
-         FBufferBlock : TdwsJITCodeBlock;
 
          FInterpretedJITter : TdwsJITter;
 
@@ -147,14 +150,12 @@ type
          function  CurrentXMMReg(contains : TObject) : TxmmRegister;
          procedure ContainsXMMReg(reg : TxmmRegister; contains : TObject);
          procedure ResetXMMReg;
-         procedure SaveXMMRegs;
-         procedure RestoreXMMRegs;
+         procedure SaveXMMRegs(firstReg : TxmmRegister = xmm0);
+         procedure RestoreXMMRegs(firstReg : TxmmRegister = xmm0);
 
          function StackAddrOfFloat(expr : TTypedExpr) : Integer;
 
          property Allocator : TdwsJITAllocatorWin read FAllocator write FAllocator;
-         property AbsMaskPD : Pointer read FAbsMaskPD.Code;
-         property SignMaskPD : Pointer read FSignMaskPD.Code;
 
          function CompileFloat(expr : TTypedExpr) : TxmmRegister; inline;
          procedure CompileAssignFloat(expr : TTypedExpr; source : TxmmRegister); inline;
@@ -174,6 +175,18 @@ type
          procedure _DoStep(expr : TExprBase);
 //         procedure _RangeCheck(expr : TExprBase; reg : TgpRegister64;
 //                               delta, miniInclusive, maxiExclusive : Integer);
+   end;
+
+   TdwsJITCodeBlock86_64 = class (TdwsJITCodeBlock)
+      private
+         FRuntimeFunction : PRUNTIME_FUNCTION;
+         FRegistered : Boolean;
+
+      public
+         constructor Create(const aCodePtr : Pointer; const aSubAllocator : IdwsJITCodeSubAllocator); override;
+         destructor Destroy; override;
+
+         procedure RegisterTable(rtFn : PRUNTIME_FUNCTION);
    end;
 
    TProgramExpr86 = class (TJITTedProgramExpr)
@@ -574,7 +587,6 @@ implementation
 
 const
    cExecInstanceGPR = gprRDI;
-   cExecInstanceEBPoffset = 8;
 
 function int64_div(a, b : Int64) : Int64;
 begin
@@ -665,13 +677,6 @@ begin
    inherited;
 
    FAllocator:=TdwsJITAllocatorWin.Create;
-
-   FAbsMaskPD:=FAllocator.Allocate(TBytes.Create($FF, $FF, $FF, $FF, $FF, $FF, $FF, $7F,
-                                                 $FF, $FF, $FF, $FF, $FF, $FF, $FF, $7F));
-   FSignMaskPD:=FAllocator.Allocate(TBytes.Create($00, $00, $00, $00, $00, $00, $00, $80,
-                                                  $00, $00, $00, $00, $00, $00, $00, $80));
-   FBufferBlock:=FAllocator.Allocate(TBytes.Create($66, $66, $66, $90, $66, $66, $66, $90,
-                                                   $66, $66, $66, $90, $66, $66, $66, $90));
 
    JITTedProgramExprClass:=TProgramExpr86;
    JITTedFloatExprClass:=TFloatExpr86;
@@ -968,9 +973,6 @@ destructor TdwsJITx86_64.Destroy;
 begin
    inherited;
    FAllocator.Free;
-   FSignMaskPD.Free;
-   FAbsMaskPD.Free;
-   FBufferBlock.Free;
    FInterpretedJITter.Free;
 end;
 
@@ -1078,46 +1080,32 @@ end;
 
 // SaveXMMRegs
 //
-procedure TdwsJITx86_64.SaveXMMRegs;
+procedure TdwsJITx86_64.SaveXMMRegs(firstReg : TxmmRegister = xmm0);
 var
    i : TxmmRegister;
-   n : Integer;
 begin
    Assert(FSavedXMM=[]);
 
-   n:=0;
-   for i:=xmm0 to High(FRegs) do begin
-      if FRegs[i].Lock>0 then begin
+   for i:=firstReg to High(FRegs) do begin
+      if FRegs[i].Lock > 0 then begin
          Include(FSavedXMM, i);
-         Inc(n);
-      end;
-   end;
-
-   if n=0 then Exit;
-
-   FPreamble.NeedTempSpace(n*SizeOf(Double));
-   for i:=xmm0 to High(FRegs) do begin
-      if i in FSavedXMM then begin
-         Dec(n);
-         x86._movsd_rsp_reg(n*SizeOf(Double), i);
+         FRegsStackAddr[i] := FPreamble.AllocateStackSpace(SizeOf(Double));
+         x86._movsd_qword_ptr_reg_reg(gprRBP, FRegsStackAddr[i], i);
       end;
    end;
 end;
 
 // RestoreXMMRegs
 //
-procedure TdwsJITx86_64.RestoreXMMRegs;
+procedure TdwsJITx86_64.RestoreXMMRegs(firstReg : TxmmRegister = xmm0);
 var
    i : TxmmRegister;
-   n : Integer;
 begin
    if FSavedXMM=[] then Exit;
 
-   n:=0;
-   for i:=High(FRegs) downto xmm0 do begin
+   for i:=High(FRegs) downto firstReg do begin
       if i in FSavedXMM then begin
-         x86._movsd_reg_rsp(i, n*SizeOf(Double));
-         Inc(n);
+         x86._movsd_reg_qword_ptr_reg(i, gprRBP, FRegsStackAddr[i]);
       end else FRegs[i].Contains:=nil;
    end;
 
@@ -1157,11 +1145,63 @@ end;
 // CompiledOutput
 //
 function TdwsJITx86_64.CompiledOutput : TdwsJITCodeBlock;
+var
+   outputBytes : TBytes;
+   unwindBytes : TBytes;
+   ptr : Pointer;
+   sub : IdwsJITCodeSubAllocator;
+   block64 : TdwsJITCodeBlock86_64;
+   pUnwindInfo : PUNWIND_INFO;
+   pRuntimeFunction : PRUNTIME_FUNCTION;
+   unwindSize : Integer;
 begin
+   FPreamble.HasCalls := x86.FlagCalls;
+
    Fixups.FlushFixups(Output.ToBytes, Output);
 
-   Result:=Allocator.Allocate(Output.ToBytes);
-   Result.Steppable:=(jitoDoStep in Options);
+   outputBytes := Output.ToBytes;
+
+   unwindSize := SizeOf(RUNTIME_FUNCTION) + SizeOf(UNWIND_INFO)
+               + FPreamble.Unwind.SizeInBytes;
+   // round up to next multiple of 16
+   unwindSize := ((unwindSize + 15) div 16) * 16;
+   SetLength(unwindBytes, unwindSize);
+
+   pRuntimeFunction := @unwindBytes[0];
+   pUnwindInfo := @unwindBytes[SizeOf(RUNTIME_FUNCTION)];
+
+   pUnwindInfo.Version := 1;
+   pUnwindInfo.Flags := 0;
+
+   pUnwindInfo.SizeOfProlog := FPreamble.PrologSize;
+   if x86.FrameRegisterOffset > 0 then
+      pUnwindInfo.FrameRegister := UNWIND_RBP
+   else pUnwindInfo.FrameRegister := UNWIND_RAX;
+   pUnwindInfo.FrameOffset := x86.FrameRegisterOffset div 16;
+
+   pUnwindInfo.CountOfCodes := FPreamble.Unwind.SizeInOps;
+   FPreamble.Unwind.CopyTo(@pUnwindInfo.UnwindCode[0]);
+
+   pRuntimeFunction.BeginAddress := unwindSize;
+   pRuntimeFunction.EndAddress := unwindSize + Length(outputBytes);
+   pRuntimeFunction.UnwindInfoAddress := SizeOf(RUNTIME_FUNCTION);
+
+   ptr := Allocator.Allocate(unwindBytes + outputBytes, sub);
+   block64 := TdwsJITCodeBlock86_64.Create(Pointer(IntPtr(ptr) + unwindSize), sub);
+   block64.Steppable := (jitoDoStep in Options);
+
+   block64.RegisterTable(ptr);
+
+//   OutputDebugString(pRuntimeFunction.ToString(pRuntimeFunction));
+
+   var buf : Pointer := nil;
+//   var lookup := RtlLookupFunctionEntry(@CollectFiles, buf, nil);
+   var lookup := RtlLookupFunctionEntry(block64.CodePtr, buf, nil);
+   OutputDebugString(lookup.ToString(buf));
+
+   Fixups.ClearFixups;
+
+   Result := block64;
 end;
 
 // StartJIT
@@ -1280,15 +1320,16 @@ procedure TdwsJITx86_64._mov_reg_execInstance(reg : TgpRegister64);
 begin
    FPreamble.PreserveExec := True;
 
-   x86._mov_reg_qword_ptr_reg(reg, gprRBP, cExecInstanceEBPoffset);
+   x86._mov_reg_reg(reg, cExecInstanceGPR);
 end;
 
 // _mov_reg_execStatus
 //
 procedure TdwsJITx86_64._mov_reg_execStatus(reg : TgpRegister64);
 begin
-   _mov_reg_execInstance(reg);
-   x86._mov_reg_qword_ptr_reg(reg, reg, TdwsExecution.Status_Offset);
+   FPreamble.PreserveExec := True;
+
+   x86._mov_reg_qword_ptr_reg(reg, cExecInstanceGPR, TdwsExecution.Status_Offset);
 end;
 
 // _DoStep
@@ -1299,8 +1340,7 @@ procedure TdwsJITx86_64._DoStep(expr : TExprBase);
 begin
    if not (jitoDoStep in Options) then Exit;
 
-   _mov_reg_execInstance(gprRCX);
-   x86._mov_reg_qword(gprRDX, QWORD(expr));
+   _mov_reg_execInstance(gprRDX);
 
    x86._call_absmem(cPtr_TdwsExecution_DoStep);
 
@@ -1351,6 +1391,36 @@ begin
 
    Fixups.AddFixup(passed);
 end;        }
+
+// ------------------
+// ------------------ TdwsJITCodeBlock86_64 ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsJITCodeBlock86_64.Create(const aCodePtr : Pointer; const aSubAllocator : IdwsJITCodeSubAllocator);
+begin
+   inherited;
+end;
+
+// Destroy
+//
+destructor TdwsJITCodeBlock86_64.Destroy;
+begin
+   inherited;
+   if FRegistered then
+      RtlDeleteFunctionTable(FRuntimeFunction);
+end;
+
+// RegisterTable
+//
+procedure TdwsJITCodeBlock86_64.RegisterTable(rtFn : PRUNTIME_FUNCTION);
+begin
+   FRuntimeFunction := rtFn;
+   if not RtlAddFunctionTable(rtFn, 1, rtFn) then
+      raise Exception.Create('Failed RtlAddFunctionTable');
+   FRegistered := True;
+end;
 
 // ------------------
 // ------------------ TFixupAlignedTarget ------------------
@@ -1445,26 +1515,37 @@ end;
 // ------------------ TFixupPreamble ------------------
 // ------------------
 
+// StackTotalSpace
+//
+function TFixupPreamble.StackTotalSpace : Integer;
+begin
+   Result := AllocatedStackSpace;
+   if HasCalls then
+      Inc(Result, $20);
+end;
+
 // NeedRBP
 //
 function TFixupPreamble.NeedRBP : Boolean;
 begin
-   Result:=(AllocatedStackSpace>0) or FPreserveExec;
+   Result := AllocatedStackSpace > 0;
 end;
 
 // GetSize
 //
 function TFixupPreamble.GetSize : Integer;
 begin
-   Assert(TempSpaceOnStack+AllocatedStackSpace+$20 <= 127);
+   Assert(StackTotalSpace <= 127);
 
    Result := 1        // push ExecMemGPR
-           + 4        // prer ExecMemGPR
-           + 4;       // reserve stack space up to 127 bytes
+           + 4        // prep ExecMemGPR
+           ;
+   if StackTotalSpace > 0 then
+      Inc(Result, 4); // reserve stack space up to 127 bytes
    if NeedRBP then
-      Inc(Result, 3); // push + mov
+      Inc(Result, 1 + 3); // push + mov
    if FPreserveExec then
-      Inc(Result, 1);   // push
+      Inc(Result, 1 + 3); // push + mov
 end;
 
 // Write
@@ -1472,31 +1553,37 @@ end;
 procedure TFixupPreamble.Write(output : TWriteOnlyBlockStream);
 var
    x86 : Tx86_64_WriteOnlyStream;
+   p : Int64;
 begin
-   x86:=(output as Tx86_64_WriteOnlyStream);
+   x86 := (output as Tx86_64_WriteOnlyStream);
+   p := x86.Position;
 
    x86._push_reg(cExecMemGPR);
+   FUnwind.PushNonVolatile(x86.Position - p, UNWIND_REG(cExecMemGPR));
 
-   if FPreserveExec then
-      x86._push_reg(gprRDX);
+   if FPreserveExec then begin
+      x86._push_reg(cExecInstanceGPR);
+      FUnwind.PushNonVolatile(x86.Position - p, UNWIND_REG(cExecInstanceGPR));
+   end;
 
    if NeedRBP then begin
       x86._push_reg(gprRBP);
+      FUnwind.PushNonVolatile(x86.Position - p, UNWIND_RBP);
       x86._mov_reg_reg(gprRBP, gprRSP);
    end;
 
    // reserve $20 for "register parameter area"
-   x86._sub_reg_imm(gprRSP, TempSpaceOnStack+AllocatedStackSpace+$20);
+   if StackTotalSpace > 0 then begin
+      x86._sub_reg_imm(gprRSP, StackTotalSpace);
+      FUnwind.AllocBytes(x86.Position - p, StackTotalSpace);
+   end;
+
+   FPrologSize := x86.Position - p;
+
+   if FPreserveExec then
+      x86._mov_reg_reg(cExecInstanceGPR, gprRDX);
 
    x86._mov_reg_qword_ptr_reg(cExecMemGPR, gprRDX, TdwsExecution.StackMixin_Offset);
-end;
-
-// NeedTempSpace
-//
-procedure TFixupPreamble.NeedTempSpace(bytes : Integer);
-begin
-   if bytes>TempSpaceOnStack then
-      TempSpaceOnStack:=bytes;
 end;
 
 // AllocateStackSpace
@@ -1524,9 +1611,9 @@ end;
 function TFixupPostamble.GetSize : Integer;
 begin
    Result:=0;
-   if FPreamble.TempSpaceOnStack+FPreamble.AllocatedStackSpace>0 then begin
-      Assert(FPreamble.TempSpaceOnStack+FPreamble.AllocatedStackSpace<=127);
-      Inc(Result, 3);
+   if FPreamble.StackTotalSpace > 0 then begin
+      Assert(FPreamble.StackTotalSpace <= 127);
+      Inc(Result, 4);
    end;
    if FPreamble.NeedRBP then
       Inc(Result, 1);
@@ -1545,12 +1632,13 @@ var
 begin
    x86:=(output as Tx86_64_WriteOnlyStream);
 
-   x86._add_reg_imm(gprRSP, FPreamble.TempSpaceOnStack+FPreamble.AllocatedStackSpace+$20);
+   if FPreamble.StackTotalSpace > 0 then
+      x86._add_reg_imm(gprRSP, FPreamble.StackTotalSpace);
 
    if FPreamble.NeedRBP then
       x86._pop_reg(gprRBP);
    if FPreamble.PreserveExec then
-      x86._pop_reg(gprRDX);
+      x86._pop_reg(cExecInstanceGPR);
    x86._pop_reg(cExecMemGPR);
    x86._ret;
 end;
@@ -1702,7 +1790,7 @@ end;
 //
 procedure TProgramExpr86.EvalNoResult(exec : TdwsExecution);
 asm
-   jmp [rcx + OFFSET FCode]
+   call [rcx + OFFSET FCodePtr]
 end;
 
 // ------------------
@@ -1713,7 +1801,7 @@ end;
 //
 function TFloatExpr86.EvalAsFloat(exec : TdwsExecution) : Double;
 asm
-   jmp [rcx + OFFSET FCode]
+   call [rcx + OFFSET FCodePtr]
 end;
 
 // ------------------
@@ -1724,7 +1812,7 @@ end;
 //
 function TIntegerExpr86.EvalAsInteger(exec : TdwsExecution) : Int64;
 asm
-   jmp [rcx + OFFSET FCode]
+   call [rcx + OFFSET FCodePtr]
 end;
 
 // ------------------

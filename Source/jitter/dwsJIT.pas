@@ -74,27 +74,53 @@ type
          function Compare(const item1, item2 : TdwsRegisteredJITter) : Integer; override;
    end;
 
-   TdwsJITCodeBlock = record
-      public
-         Code : Pointer;
-         SubAllocator : TRefCountedObject;
-         Steppable : Boolean;
-
-         procedure Free;
+   IdwsJITCodeSubAllocator = interface
+      ['{62180935-76A0-496A-A392-3BED1CAD193E}']
+      function Allocate(aSize : Integer) : Pointer;
+      procedure Protect;
+      function GetNext : IdwsJITCodeSubAllocator;
+      procedure SetNext(const aNext : IdwsJITCodeSubAllocator);
+      property Next : IdwsJITCodeSubAllocator read GetNext write SetNext;
    end;
 
-   TJITTedProgramExpr = class (TNoResultExpr)
+   TdwsJITCodeBlockFlag = ( cbfSteppable );
+   TdwsJITCodeBlockFlags = set of TdwsJITCodeBlockFlag;
+
+   TdwsJITCodeBlock = class
       private
-         FOriginal : TProgramExpr;
+         FCodePtr : Pointer;
+         FSubAllocator : IdwsJITCodeSubAllocator;
+         FFlags : TdwsJITCodeBlockFlags;
 
       protected
-         FCode : TdwsJITCodeBlock;
+         function GetSteppable : Boolean; inline;
+         procedure SetSteppable(const val : Boolean);
 
+      public
+         constructor Create(const aCodePtr : Pointer; const aSubAllocator : IdwsJITCodeSubAllocator); virtual;
+         destructor Destroy; override;
+
+         function CodePtr : Pointer; inline;
+         property SubAllocator : IdwsJITCodeSubAllocator read FSubAllocator;
+         property Flags : TdwsJITCodeBlockFlags read FFlags;
+         property Steppable : Boolean read GetSteppable write SetSteppable;
+   end;
+   TdwsJITCodeBlockClass = class of TdwsJITCodeBlock;
+
+   TJITTedProgramExpr = class (TNoResultExpr)
+      protected
+         FCodePtr : Pointer;
+
+      private
+         FOriginal : TProgramExpr;
+         FCodeBlock : TdwsJITCodeBlock;
+
+      protected
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(original : TProgramExpr; const code : TdwsJITCodeBlock); virtual;
+         constructor Create(original : TProgramExpr; const aCodeBlock : TdwsJITCodeBlock); virtual;
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -104,17 +130,19 @@ type
    TJITTedProgramExprClass = class of TJITTedProgramExpr;
 
    TJITTedTypedExpr = class (TTypedExpr)
+      protected
+         FCodePtr : Pointer;
+
       private
          FOriginal : TTypedExpr;
+         FCodeBlock : TdwsJITCodeBlock;
 
       protected
-         FCode : TdwsJITCodeBlock;
-
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(original : TTypedExpr; const code : TdwsJITCodeBlock); virtual;
+         constructor Create(original : TTypedExpr; const aCodeBlock : TdwsJITCodeBlock); virtual;
          destructor Destroy; override;
 
          function ScriptPos : TScriptPos; override;
@@ -366,13 +394,43 @@ end;
 // ------------------ TdwsJITCodeBlock ------------------
 // ------------------
 
+// Create
+//
+constructor TdwsJITCodeBlock.Create(const aCodePtr : Pointer; const aSubAllocator : IdwsJITCodeSubAllocator);
+begin
+   inherited Create;
+   FCodePtr := aCodePtr;
+   FSubAllocator := aSubAllocator;
+end;
+
 // Free
 //
-procedure TdwsJITCodeBlock.Free;
+destructor TdwsJITCodeBlock.Destroy;
 begin
-   SubAllocator.DecRefCount;
-   Code:=nil;
-   SubAllocator:=nil;
+   FCodePtr := nil;
+   FSubAllocator := nil;
+   inherited;
+end;
+
+// CodePtr
+//
+function TdwsJITCodeBlock.CodePtr : Pointer;
+begin
+   Result := FCodePtr;
+end;
+
+// GetSteppable
+//
+function TdwsJITCodeBlock.GetSteppable : Boolean;
+begin
+   Result := cbfSteppable in FFlags;
+end;
+
+// SetSteppable
+//
+procedure TdwsJITCodeBlock.SetSteppable(const val : Boolean);
+begin
+   Include(FFlags, cbfSteppable);
 end;
 
 // ------------------
@@ -479,7 +537,7 @@ begin
    EndJIT;
 
    if OutputFailedOn=nil then
-      Result:=JITTedProgramExprClass.Create(expr, CompiledOutput)
+      Result := JITTedProgramExprClass.Create(expr, CompiledOutput)
    else begin
       OutputDebugString(OutputFailedOn.ClassName);
       GreedyJIT(expr);
@@ -932,11 +990,12 @@ end;
 
 // Create
 //
-constructor TJITTedProgramExpr.Create(original : TProgramExpr; const code : TdwsJITCodeBlock);
+constructor TJITTedProgramExpr.Create(original : TProgramExpr; const aCodeBlock : TdwsJITCodeBlock);
 begin
    inherited Create(original.ScriptPos);
-   FCode:=code;
-   FOriginal:=original;
+   FCodeBlock := aCodeBlock;
+   FCodePtr := aCodeBlock.CodePtr;
+   FOriginal := original;
    FOriginal.IncRefCount;
 end;
 
@@ -946,7 +1005,7 @@ destructor TJITTedProgramExpr.Destroy;
 begin
    inherited;
    FOriginal.Free;
-   FCode.Free;
+   FCodeBlock.Free;
 end;
 
 // EvalNoResult
@@ -967,7 +1026,7 @@ end;
 //
 function TJITTedProgramExpr.GetSubExprCount : Integer;
 begin
-   if FCode.Steppable then
+   if FCodeBlock.Steppable then
       Result:=FOriginal.SubExprCount
    else Result:=0;
 end;
@@ -978,10 +1037,11 @@ end;
 
 // Create
 //
-constructor TJITTedTypedExpr.Create(original : TTypedExpr; const code : TdwsJITCodeBlock);
+constructor TJITTedTypedExpr.Create(original : TTypedExpr; const aCodeBlock : TdwsJITCodeBlock);
 begin
    inherited Create;
-   FCode:=code;
+   FCodeBlock := aCodeBlock;
+   FCodePtr := aCodeBlock.CodePtr;
    FOriginal:=original;
    FOriginal.IncRefCount;
 end;
@@ -992,7 +1052,7 @@ destructor TJITTedTypedExpr.Destroy;
 begin
    inherited;
    FOriginal.Free;
-   FCode.Free;
+   FCodeBlock.Free;
 end;
 
 // ScriptPos
@@ -1013,7 +1073,7 @@ end;
 //
 function TJITTedTypedExpr.GetSubExprCount : Integer;
 begin
-   if FCode.Steppable then
+   if FCodeBlock.Steppable then
       Result:=FOriginal.SubExprCount
    else Result:=0;
 end;

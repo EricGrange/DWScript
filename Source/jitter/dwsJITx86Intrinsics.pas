@@ -311,6 +311,10 @@ type
 
    {$ifdef WIN64}
    Tx86_64_WriteOnlyStream = class(Tx86BaseWriteOnlyStream)
+      private
+         FFlagCalls : Boolean;
+         FFrameRegisterOffset : Integer;
+
       protected
          procedure _modRMSIB_regnum_ptr_reg(const prefix, opCode : array of Byte; destNum : Integer; src : TgpRegister64; offset : Integer);
 
@@ -323,8 +327,11 @@ type
 
          procedure _vex_modRMSIB_reg_ptr_reg(const opCode : array of Byte; dest : TymmRegister; src : TgpRegister64; offset : Integer);
 
-
       public
+         property FlagCalls : Boolean read FFlagCalls;
+         property FrameRegisterOffset : Integer read FFrameRegisterOffset write FFrameRegisterOffset;
+         procedure ClearFlagsAndUnwind;
+
          procedure _mov_reg_reg(dest, src : TgpRegister64); overload;
          procedure _mov_reg_reg(dest : TxmmRegister; src : TgpRegister64); overload;
          procedure _mov_reg_dword(reg : TgpRegister64d; imm : DWORD); overload;
@@ -1893,6 +1900,13 @@ begin
       opCode, Ord(dest) and 7, src, offset);
 end;
 
+// ClearFlagsAndUnwind
+//
+procedure Tx86_64_WriteOnlyStream.ClearFlagsAndUnwind;
+begin
+   FFlagCalls := False;
+end;
+
 // _mov_reg_reg
 //
 procedure Tx86_64_WriteOnlyStream._mov_reg_reg(dest, src : TgpRegister64);
@@ -2316,6 +2330,7 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._call_absmem(ptr : Pointer);
 begin
+   FFlagCalls := True;
    _mov_reg_qword(gprRAX, QWORD(ptr));
    WriteBytes([$ff, $d0]);  // call rax
 end;
@@ -2324,6 +2339,7 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._call_reg(reg : TgpRegister64; offset : Integer);
 begin
+   FFlagCalls := True;
    if reg >= gprR8 then
       WriteByte($41);
    WriteByte($FF);

@@ -309,8 +309,6 @@ begin
    end;
    if prevLocation<Length(rawCode) then
       outStream.Write(rawCode[prevLocation], Length(rawCode)-prevLocation);
-
-   ClearFixups;
 end;
 
 // ClearFixups
