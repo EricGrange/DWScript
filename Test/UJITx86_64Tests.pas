@@ -51,7 +51,7 @@ type
          procedure push_pop;
          procedure nops;
          procedure calls;
-//         procedure cmp_execmem_int32;
+         procedure cmp_execmem_imm;
 //         procedure cmp_dword_ptr_reg_reg;
          procedure cmp_reg_imm;
          procedure ops;
@@ -943,23 +943,24 @@ begin
                   , DisasmStream);
    end;
 end;
-{
-// cmp_execmem_int32
-//
-procedure TJITx86_64Tests.cmp_execmem_int32;
-begin
-   FStream._cmp_execmem_int32(0, 0, 0);
-   FStream._cmp_execmem_int32(0, 1, 1);
-   FStream._cmp_execmem_int32(1, 0, $10);
-   FStream._cmp_execmem_int32(2, 2, $112233);
 
-   CheckEquals( 'cmp dword ptr ['+cgpRegisterName[cExecMemGPR]+'+08h], 00000000h'#13#10
-               +'cmp dword ptr ['+cgpRegisterName[cExecMemGPR]+'+09h], 01h'#13#10
-               +'cmp dword ptr ['+cgpRegisterName[cExecMemGPR]+'+18h], 10h'#13#10
-               +'cmp dword ptr ['+cgpRegisterName[cExecMemGPR]+'+2Ah], 00112233h'#13#10
+// cmp_execmem_imm
+//
+procedure TJITx86_64Tests.cmp_execmem_imm;
+begin
+   FStream._cmp_execmem_imm(0, 0);
+   FStream._cmp_execmem_imm(0, 1);
+   FStream._cmp_execmem_imm(1, $10);
+   FStream._cmp_execmem_imm(2, $112233);
+//   FStream._cmp_execmem_imm(2, $123456789AB);    64bit compare is todo
+
+   CheckEquals( 'cmp qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+08h], 0000000000000000h'#13#10
+               +'cmp qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+08h], 01h'#13#10
+               +'cmp qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+20h], 10h'#13#10
+               +'cmp qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+38h], 0000000000112233h'#13#10
                , DisasmStream);
 end;
-
+{
 // cmp_dword_ptr_reg_reg
 //
 procedure TJITx86_64Tests.cmp_dword_ptr_reg_reg;

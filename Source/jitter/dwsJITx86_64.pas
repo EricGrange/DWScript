@@ -100,21 +100,59 @@ type
          procedure Write(output : TWriteOnlyBlockStream); override;
    end;
 
-   Tx86FixupLogic = class (TFixupLogic)
+   TStaticDataFixup = class(TFixup)
+      private
+         FDataIndex : Integer;
+
+      public
+         property DataIndex : Integer read FDataIndex write FDataIndex;
+         function RelativeOffset : Integer;
+   end;
+
+   TMovsdRegImmFixup = class(TStaticDataFixup)
+      private
+         FReg : TxmmRegister;
+
+      public
+         function  GetSize : Integer; override;
+         procedure Write(output : TWriteOnlyBlockStream); override;
+
+         property Reg : TxmmRegister read FReg write FReg;
+   end;
+
+   Tx86_64FixupLogic = class (TFixupLogic)
       private
          FOptions : TdwsJITOptions;
+         FStaticData : array of UInt64;
+         FStaticDataBase : Integer;
+
+      protected
+         procedure AfterResolve; override;
 
       public
          function NewHangingTarget(align : Boolean) : TFixupTarget; override;
 
          property Options : TdwsJITOptions read FOptions write FOptions;
+
+         function AddStaticData(const data : UInt64) : Integer;
+         property StaticDataBase : Integer read FStaticDataBase write FStaticDataBase;
+         function CompileStaticData : TBytes;
    end;
 
-   Tx86FixupLogicHelper = class helper for TFixupLogic
+   Tx86_64FixupLogicHelper = class helper for TFixupLogic
       function NewJump(flags : TboolFlags) : TFixupJump; overload;
       function NewJump(flags : TboolFlags; target : TFixup) : TFixupJump; overload;
       function NewJump(target : TFixup) : TFixupJump; overload;
       procedure NewConditionalJumps(flagsTrue : TboolFlags; targetTrue, targetFalse : TFixup);
+
+      function NewMovsdRegImm(reg : TxmmRegister; const value : Double) : TMovsdRegImmFixup;
+
+      function AddStaticData(const data : UInt64) : Integer;
+      function StaticData : TBytes;
+
+      function GetStaticDataBase : Integer;
+      procedure SetStaticDataBase(v : Integer);
+      property StaticDataBase : Integer read GetStaticDataBase write SetStaticDataBase;
    end;
 
    TdwsJITx86_64 = class (TdwsJIT)
@@ -166,6 +204,8 @@ type
 
          procedure _xmm_reg_expr(op : TxmmOp; dest : TxmmRegister; expr : TTypedExpr);
          procedure _comisd_reg_expr(dest : TxmmRegister; expr : TTypedExpr);
+
+         procedure _movsd_reg_imm(dest : TxmmRegister; const value : Double);
 
          function _store_rax : Integer;
          procedure _restore_rax(addr : Integer);
@@ -988,7 +1028,7 @@ end;
 //
 function TdwsJITx86_64.CreateFixupLogic : TFixupLogic;
 begin
-   Result:=Tx86FixupLogic.Create;
+   Result:=Tx86_64FixupLogic.Create;
 end;
 
 // AllocXMMReg
@@ -1027,8 +1067,6 @@ end;
 //
 procedure TdwsJITx86_64.ReleaseXMMReg(reg : TxmmRegister);
 begin
-   Assert(reg in [xmm0..xmm7]);
-
    if FRegs[reg].Lock>0 then
       Dec(FRegs[reg].Lock);
 end;
@@ -1146,20 +1184,22 @@ end;
 //
 function TdwsJITx86_64.CompiledOutput : TdwsJITCodeBlock;
 var
-   outputBytes : TBytes;
+   compiledBytes : TBytes;
    unwindBytes : TBytes;
+   staticDataBytes : TBytes;
+   outputBytes : TBytes;
    ptr : Pointer;
    sub : IdwsJITCodeSubAllocator;
    block64 : TdwsJITCodeBlock86_64;
    pUnwindInfo : PUNWIND_INFO;
    pRuntimeFunction : PRUNTIME_FUNCTION;
-   unwindSize : Integer;
+   unwindSize, i : Integer;
 begin
    FPreamble.HasCalls := x86.FlagCalls;
 
    Fixups.FlushFixups(Output.ToBytes, Output);
 
-   outputBytes := Output.ToBytes;
+   compiledBytes := Output.ToBytes;
 
    unwindSize := SizeOf(RUNTIME_FUNCTION) + SizeOf(UNWIND_INFO)
                + FPreamble.Unwind.SizeInBytes;
@@ -1183,21 +1223,28 @@ begin
    FPreamble.Unwind.CopyTo(@pUnwindInfo.UnwindCode[0]);
 
    pRuntimeFunction.BeginAddress := unwindSize;
-   pRuntimeFunction.EndAddress := unwindSize + Length(outputBytes);
+   pRuntimeFunction.EndAddress := unwindSize + Length(compiledBytes);
    pRuntimeFunction.UnwindInfoAddress := SizeOf(RUNTIME_FUNCTION);
 
-   ptr := Allocator.Allocate(unwindBytes + outputBytes, sub);
+   // complete output is unwind data + compiled bytes + nop padding + static data
+   staticDataBytes := Fixups.StaticData;
+   if Length(staticDataBytes) > 0 then begin
+      Assert(Length(compiledBytes) < Fixups.StaticDataBase);
+      outputBytes := unwindBytes + compiledBytes;
+      i := Length(outputBytes);
+      SetLength(outputBytes, i + Fixups.StaticDataBase - Length(compiledBytes));
+      while i < Length(outputBytes) do begin
+         outputBytes[i] := $90; // NOP
+         Inc(i);
+      end;
+      outputBytes := outputBytes + staticDataBytes;
+   end;
+
+   ptr := Allocator.Allocate(outputBytes, sub);
    block64 := TdwsJITCodeBlock86_64.Create(Pointer(IntPtr(ptr) + unwindSize), sub);
    block64.Steppable := (jitoDoStep in Options);
 
    block64.RegisterTable(ptr);
-
-//   OutputDebugString(pRuntimeFunction.ToString(pRuntimeFunction));
-
-   var buf : Pointer := nil;
-//   var lookup := RtlLookupFunctionEntry(@CollectFiles, buf, nil);
-   var lookup := RtlLookupFunctionEntry(block64.CodePtr, buf, nil);
-   OutputDebugString(lookup.ToString(buf));
 
    Fixups.ClearFixups;
 
@@ -1211,7 +1258,7 @@ begin
    inherited;
    ResetXMMReg;
    Fixups.ClearFixups;
-   (Fixups as Tx86FixupLogic).Options:=Options;
+   (Fixups as Tx86_64FixupLogic).Options:=Options;
    FPreamble:=TFixupPreamble.Create;
    Fixups.AddFixup(FPreamble);
    FPostamble:=TFixupPostamble.Create(FPreamble);
@@ -1297,6 +1344,13 @@ begin
       end;
 
    end;
+end;
+
+// _movsd_reg_imm
+//
+procedure TdwsJITx86_64._movsd_reg_imm(dest : TxmmRegister; const value : Double);
+begin
+   Fixups.NewMovsdRegImm(dest, value);
 end;
 
 // _store_rax
@@ -1488,11 +1542,14 @@ end;
 // NearJump
 //
 function TFixupJump.NearJump : Boolean;
+var
+   delta : Integer;
 begin
    if FLongJump then
       Result:=False
    else begin
-      Result:=(Abs(FixedLocation-Target.JumpLocation)<120);
+      delta := FixedLocation-Target.JumpLocation;
+      Result := (Int8(delta) = delta);
       if (FixedLocation<>0) and (Target.FixedLocation<>0) then
          FLongJump:=not Result;
    end;
@@ -1644,12 +1701,45 @@ begin
 end;
 
 // ------------------
-// ------------------ Tx86FixupLogic ------------------
+// ------------------ TStaticDataFixup ------------------
+// ------------------
+
+// RelativeOffset
+//
+function TStaticDataFixup.RelativeOffset : Integer;
+begin
+   Result := Logic.StaticDataBase + DataIndex*SizeOf(UInt64) - FixedLocation;
+end;
+
+// ------------------
+// ------------------ TMovsdRegImmFixup ------------------
+// ------------------
+
+// GetSize
+//
+function TMovsdRegImmFixup.GetSize : Integer;
+begin
+   Result := 8 + Ord(reg >= xmm8);
+end;
+
+// Write
+//
+procedure TMovsdRegImmFixup.Write(output : TWriteOnlyBlockStream);
+begin
+   output.WriteByte($F2);
+   if reg >= xmm8 then
+      output.WriteByte($44);
+   output.WriteBytes([$0F, $10, $05 + 8*(Ord(reg) and 7)]);
+   output.WriteInt32(RelativeOffset - 8 - Ord(reg >= xmm8));
+end;
+
+// ------------------
+// ------------------ Tx86_64FixupLogic ------------------
 // ------------------
 
 // NewHangingTarget
 //
-function Tx86FixupLogic.NewHangingTarget(align : Boolean) : TFixupTarget;
+function Tx86_64FixupLogic.NewHangingTarget(align : Boolean) : TFixupTarget;
 begin
    if align and not (jitoNoBranchAlignment in Options) then
       Result:=TFixupAlignedTarget.Create
@@ -1657,13 +1747,48 @@ begin
    Result.Logic:=Self;
 end;
 
+// AddStaticData
+//
+function Tx86_64FixupLogic.AddStaticData(const data : UInt64) : Integer;
+begin
+   Result := Length(FStaticData);
+   SetLength(FStaticData, Result+1);
+   FStaticData[Result] := data;
+end;
+
+// CompileStaticData
+//
+function Tx86_64FixupLogic.CompileStaticData : TBytes;
+var
+   n : Integer;
+begin
+   n := Length(FStaticData)*SizeOf(UInt64);
+   SetLength(Result, n);
+   if n > 0 then
+      System.Move(FStaticData[0], Result[0], n);
+end;
+
+// AfterResolve
+//
+procedure Tx86_64FixupLogic.AfterResolve;
+var
+   iter : TFixup;
+begin
+   iter := Base;
+   Assert(iter <> nil);
+   while iter.Next <> nil do
+      iter := iter.Next;
+   // StaticData Base is at least 16 bytes after tail, with 8-byte alignment
+   StaticDataBase := ((iter.FixedLocation + iter.GetSize + 16 + 7) shr 3) shl 3;
+end;
+
 // ------------------
-// ------------------ Tx86FixupLogicHelper ------------------
+// ------------------ Tx86_64FixupLogicHelper ------------------
 // ------------------
 
 // NewJump
 //
-function Tx86FixupLogicHelper.NewJump(flags : TboolFlags) : TFixupJump;
+function Tx86_64FixupLogicHelper.NewJump(flags : TboolFlags) : TFixupJump;
 begin
    Result:=TFixupJump.Create(flags);
    AddFixup(Result);
@@ -1671,7 +1796,7 @@ end;
 
 // NewJump
 //
-function Tx86FixupLogicHelper.NewJump(flags : TboolFlags; target : TFixup) : TFixupJump;
+function Tx86_64FixupLogicHelper.NewJump(flags : TboolFlags; target : TFixup) : TFixupJump;
 begin
    if target<>nil then begin
       Result:=NewJump(flags);
@@ -1681,14 +1806,14 @@ end;
 
 // NewJump
 //
-function Tx86FixupLogicHelper.NewJump(target : TFixup) : TFixupJump;
+function Tx86_64FixupLogicHelper.NewJump(target : TFixup) : TFixupJump;
 begin
    Result:=NewJump(flagsNone, target);
 end;
 
 // NewConditionalJumps
 //
-procedure Tx86FixupLogicHelper.NewConditionalJumps(flagsTrue : TboolFlags; targetTrue, targetFalse : TFixup);
+procedure Tx86_64FixupLogicHelper.NewConditionalJumps(flagsTrue : TboolFlags; targetTrue, targetFalse : TFixup);
 begin
    if (targetTrue<>nil) and (targetTrue.Location<>0) then begin
       NewJump(flagsTrue, targetTrue);
@@ -1697,6 +1822,45 @@ begin
       NewJump(NegateBoolFlags(flagsTrue), targetFalse);
       NewJump(flagsTrue, targetTrue);
    end;
+end;
+
+// NewMovsdRegImm
+//
+function Tx86_64FixupLogicHelper.NewMovsdRegImm(reg : TxmmRegister; const value : Double) : TMovsdRegImmFixup;
+begin
+   Result := TMovsdRegImmFixup.Create;
+   Result.Logic := Self;
+   Result.Reg := reg;
+   Result.DataIndex := AddStaticData(PUInt64(@value)^);
+   AddFixup(Result);
+end;
+
+// AddStaticData
+//
+function Tx86_64FixupLogicHelper.AddStaticData(const data : UInt64) : Integer;
+begin
+   Result := (Self as Tx86_64FixupLogic).AddStaticData(data);
+end;
+
+// StaticData
+//
+function Tx86_64FixupLogicHelper.StaticData : TBytes;
+begin
+   Result := (Self as Tx86_64FixupLogic).CompileStaticData;
+end;
+
+// GetStaticDataBase
+//
+function Tx86_64FixupLogicHelper.GetStaticDataBase : Integer;
+begin
+   Result := (Self as Tx86_64FixupLogic).StaticDataBase;
+end;
+
+// SetStaticDataBase
+//
+procedure Tx86_64FixupLogicHelper.SetStaticDataBase(v : Integer);
+begin
+   (Self as Tx86_64FixupLogic).StaticDataBase := v;
 end;
 
 // ------------------
@@ -2249,6 +2413,7 @@ begin
          stepCheckPassed:=jit.Fixups.NewJump(flagsGE);
 
          // todo fix registers
+         Assert(False);
          x86._push_reg(gprRDX);
          x86._push_reg(gprRAX);
          jit._mov_reg_execInstance(gprRDX);
@@ -2449,8 +2614,12 @@ begin
 
       Result:=jit.AllocXMMReg(operand);
 
-      x86._movsd_reg_reg(Result, reg);
-      x86._xmm_reg_reg(xmm_multsd, Result, reg);
+      if x86.SupportsAVX then begin
+         x86._vmulsd(Result, reg, reg);
+      end else begin
+         x86._movsd_reg_reg(Result, reg);
+         x86._xmm_reg_reg(xmm_multsd, Result, reg);
+      end;
 
       jit.ReleaseXMMReg(reg);
 
@@ -2500,7 +2669,8 @@ begin
 
    Result:=jit.AllocXMMReg(e);
 
-   x86._movsd_reg_absmem(Result, @e.Value);
+   jit.Fixups.NewMovsdRegImm(Result, e.Value);
+//   x86._movsd_reg_absmem(Result, @e.Value);
 end;
 
 // ------------------
