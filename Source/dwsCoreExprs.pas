@@ -5894,7 +5894,8 @@ begin
          lastObj := FSubOps.List[FSubOps.Count-1];
          if lastObj is TConstStringExpr then begin
             last := TConstStringExpr(lastObj);
-            last.Value := last.Value + TConstStringExpr(expr).Value;
+            FSubOps.List[FSubOps.Count-1] := context.CreateConstExpr(last.Typ, last.Value + TConstStringExpr(expr).Value);
+            context.OrphanObject(last);
             context.OrphanObject(expr);
             Exit;
          end;
