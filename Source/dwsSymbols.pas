@@ -8406,6 +8406,7 @@ end;
 //
 class function TdwsExecution.Status_Offset : Integer;
 begin
+   Assert(SizeOf(TdwsExecution(nil).FStatus) = 1);
    Result := IntPtr(@TdwsExecution(nil).FStatus);
 end;
 

@@ -29,10 +29,12 @@ type
          procedure movsd;
 //         procedure movq;
          procedure mov_reg_qword_ptr_reg;
-         procedure mov_dword_ptr_reg_reg;
+         procedure mov_qword_ptr_reg_reg;
+         procedure mov_reg_byte_ptr_reg;
+         procedure mov_byte_ptr_reg_imm;
          procedure mov_ops;
          procedure mov_reg_reg;
-         procedure mov_reg_dword;
+         procedure mov_reg_imm;
          procedure inc_dec_64;
 //         procedure mov_64;
 //         procedure add_sub_32;
@@ -304,9 +306,64 @@ begin
    end;
 end;
 
-// mov_dword_ptr_reg_reg
+// mov_reg_byte_ptr_reg
 //
-procedure TJITx86_64Tests.mov_dword_ptr_reg_reg;
+procedure TJITx86_64Tests.mov_reg_byte_ptr_reg;
+var
+   offset : Integer;
+   dest, src : TgpRegister64;
+   expect : String;
+begin
+   for dest:=gprRAX to gprR15 do begin
+      for src:=gprRAX to gprR15 do begin
+         expect:='';
+         for offset:=0 to 2 do begin
+            FStream._mov_reg_byte_ptr_reg(dest, src, offset*$40);
+            expect:=expect+'movzx '+cgpRegister64Name[dest]+', byte ptr ['
+                          +cgpRegister64Name[src];
+            case offset of
+               1 : expect:=expect+'+40h';
+               2 : expect:=expect+'+00000080h';
+            else
+               if src in [gprRBP, gprRSP, gprR12, gprR13] then
+                  expect:=expect+'+00h';
+            end;
+            expect:=expect+']'#13#10;
+         end;
+         CheckEquals(expect, DisasmStream);
+      end;
+   end;
+end;
+
+// mov_byte_ptr_reg_imm
+//
+procedure TJITx86_64Tests.mov_byte_ptr_reg_imm;
+var
+   offset : Integer;
+   dest : TgpRegister64;
+   expect : String;
+begin
+   for dest:=gprRAX to gprR15 do begin
+      expect:='';
+      for offset:=0 to 2 do begin
+         FStream._mov_byte_ptr_reg_imm(dest, offset*$40, $12);
+         expect := expect + 'mov byte ptr [' + cgpRegister64Name[dest];
+         case offset of
+            1 : expect:=expect+'+40h';
+            2 : expect:=expect+'+00000080h';
+         else
+            if dest in [gprRBP, gprRSP, gprR12, gprR13] then
+               expect:=expect+'+00h';
+         end;
+         expect:=expect+'], 12h'#13#10;
+      end;
+      CheckEquals(expect, DisasmStream);
+   end;
+end;
+
+// mov_qword_ptr_reg_reg
+//
+procedure TJITx86_64Tests.mov_qword_ptr_reg_reg;
 var
    offset : Integer;
    dest, src : TgpRegister64;
@@ -402,9 +459,9 @@ begin
    end;
 end;
 
-// mov_reg_dword
+// mov_reg_imm
 //
-procedure TJITx86_64Tests.mov_reg_dword;
+procedure TJITx86_64Tests.mov_reg_imm;
 var
    dest : TgpRegister64;
    expect : String;

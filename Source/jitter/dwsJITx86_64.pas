@@ -18,12 +18,8 @@ unit dwsJITx86_64;
 
 interface
 {$ifdef WIN64}
-{
-   TODO:
-   - range checking
-   - check object
-}
 
+{.$define ALIGN_JUMP_TARGETS}
 
 uses
    Classes, SysUtils, Math, Windows,
@@ -38,6 +34,8 @@ type
    TRegisterStatus = record
       Contains : TObject;
       Lock : Integer;
+      procedure Flush; inline;
+      function ContainsDataSymbol : TDataSymbol;
    end;
 
    TFixupAlignedTarget = class(TFixupTarget)
@@ -67,16 +65,23 @@ type
    TFixupPreamble = class(TFixup)
       private
          FAllocatedStackSpace : Integer;
-         FPrologSize : Integer;
          FPreserveExec : Boolean;
          FHasCalls : Boolean;
          FUnwind : TUnwindCodeBuilder;
+         FAlteredXMM : Cardinal;
+
+         procedure Prepare;
 
       public
+         constructor Create;
+         destructor Destroy; override;
+
+         function Optimize : TFixupOptimizeAction; override;
          function  GetSize : Integer; override;
          procedure Write(output : TWriteOnlyBlockStream); override;
 
          function AllocateStackSpace(bytes : Integer) : Integer;
+         procedure NotifyAlteration(xmm : TxmmRegister);
 
          function StackTotalSpace : Integer;
          function NeedRBP : Boolean; inline;
@@ -85,7 +90,6 @@ type
          property PreserveExec : Boolean read FPreserveExec write FPreserveExec;
          property HasCalls : Boolean read FHasCalls write FHasCalls;
 
-         property PrologSize : Integer read FPrologSize;
          property Unwind : TUnwindCodeBuilder read FUnwind;
    end;
 
@@ -102,22 +106,18 @@ type
 
    TStaticDataFixup = class(TFixup)
       private
+         FPrefixBytes : TBytes;
          FDataIndex : Integer;
 
       public
-         property DataIndex : Integer read FDataIndex write FDataIndex;
-         function RelativeOffset : Integer;
-   end;
+         constructor Create(const aPrefixBytes : TBytes);
 
-   TMovsdRegImmFixup = class(TStaticDataFixup)
-      private
-         FReg : TxmmRegister;
-
-      public
-         function  GetSize : Integer; override;
+         function GetSize : Integer; override;
          procedure Write(output : TWriteOnlyBlockStream); override;
 
-         property Reg : TxmmRegister read FReg write FReg;
+         property DataIndex : Integer read FDataIndex write FDataIndex;
+         property PrefixBytes : TBytes read FPrefixBytes;
+         function RelativeOffset : Integer;
    end;
 
    Tx86_64FixupLogic = class (TFixupLogic)
@@ -139,13 +139,17 @@ type
          function CompileStaticData : TBytes;
    end;
 
+   TxmmFlushOption = (xmmFlushAll, xmmFlushVolatile, xmmFlushIntermediateExprs);
+
    Tx86_64FixupLogicHelper = class helper for TFixupLogic
       function NewJump(flags : TboolFlags) : TFixupJump; overload;
       function NewJump(flags : TboolFlags; target : TFixup) : TFixupJump; overload;
       function NewJump(target : TFixup) : TFixupJump; overload;
       procedure NewConditionalJumps(flagsTrue : TboolFlags; targetTrue, targetFalse : TFixup);
 
-      function NewMovsdRegImm(reg : TxmmRegister; const value : Double) : TMovsdRegImmFixup;
+      function NewMovsdRegImm(reg : TxmmRegister; const value : Double) : TStaticDataFixup;
+      function NewComisdRegImm(reg : TxmmRegister; const value : Double) : TStaticDataFixup;
+      function NewOpRegImm(op : TxmmOp; reg : TxmmRegister; const value : Double) : TStaticDataFixup;
 
       function AddStaticData(const data : UInt64) : Integer;
       function StaticData : TBytes;
@@ -159,7 +163,6 @@ type
       private
          FRegs : array [TxmmRegister] of TRegisterStatus;
          FRegsStackAddr : array [TxmmRegister] of Integer;
-         FXMMIter : TxmmRegister;
          FSavedXMM : TxmmRegisters;
 
          FPreamble : TFixupPreamble;
@@ -174,6 +177,8 @@ type
          function CreateOutput : Tx86BaseWriteOnlyStream; override;
          function CreateFixupLogic : TFixupLogic; override;
 
+         procedure ResetXMMReg;
+
          procedure StartJIT(expr : TExprBase; exitable : Boolean); override;
          procedure EndJIT; override;
          procedure EndFloatJIT(resultHandle : Integer); override;
@@ -183,11 +188,11 @@ type
          constructor Create; override;
          destructor Destroy; override;
 
-         function  AllocXMMReg(expr : TExprBase; contains : TObject = nil) : TxmmRegister;
+         function  AllocXMMReg(expr : TExprBase) : TxmmRegister;
          procedure ReleaseXMMReg(reg : TxmmRegister);
-         function  CurrentXMMReg(contains : TObject) : TxmmRegister;
-         procedure ContainsXMMReg(reg : TxmmRegister; contains : TObject);
-         procedure ResetXMMReg;
+         procedure FlushXMMRegs(option : TxmmFlushOption);
+         function  CurrentXMMReg(expr : TExprBase) : TxmmRegister;
+         procedure SetContainsXMMReg(reg : TxmmRegister; expr : TExprBase);
          procedure SaveXMMRegs(firstReg : TxmmRegister = xmm0);
          procedure RestoreXMMRegs(firstReg : TxmmRegister = xmm0);
 
@@ -212,6 +217,7 @@ type
 
          procedure _mov_reg_execInstance(reg : TgpRegister64);
          procedure _mov_reg_execStatus(reg : TgpRegister64);
+         procedure _mov_execStatus_imm(value : Int32);
          procedure _DoStep(expr : TExprBase);
 //         procedure _RangeCheck(expr : TExprBase; reg : TgpRegister64;
 //                               delta, miniInclusive, maxiExclusive : Integer);
@@ -627,6 +633,7 @@ implementation
 
 const
    cExecInstanceGPR = gprRDI;
+   cVolatileXMM : TxmmRegisters = [ xmm0, xmm1, xmm2, xmm3, xmm4, xmm5 ];
 
 function int64_div(a, b : Int64) : Int64;
 begin
@@ -705,6 +712,23 @@ var
    vAddr_Cos : function (const v : Double) : Double = double_cos;
    vAddr_Sin : function (const v : Double) : Double = double_sin;
    vAddr_Tan : function (const v : Double) : Double = double_tan;
+
+// ------------------
+// ------------------ TdwsJITx86_64 ------------------
+// ------------------
+
+procedure TRegisterStatus.Flush;
+begin
+   Contains := nil;
+   Lock := 0;
+end;
+
+function TRegisterStatus.ContainsDataSymbol : TDataSymbol;
+begin
+   if Contains is TDataSymbol then
+      Result := TDataSymbol(Contains)
+   else Result := nil;
+end;
 
 // ------------------
 // ------------------ TdwsJITx86_64 ------------------
@@ -1033,34 +1057,37 @@ end;
 
 // AllocXMMReg
 //
-function TdwsJITx86_64.AllocXMMReg(expr : TExprBase; contains : TObject = nil) : TxmmRegister;
+function TdwsJITx86_64.AllocXMMReg(expr : TExprBase) : TxmmRegister;
 var
-   i, avail : TxmmRegister;
+   i : TxmmRegister;
+   contains : TObject;
 begin
-   avail:=xmmNone;
-   if contains=nil then
-      contains:=expr;
+   if expr is TVarExpr then
+      contains := TVarExpr(expr).DataSymbol
+   else contains := expr;
 
-   for i:=xmm0 to High(TxmmRegister) do begin
-      if FXMMIter=High(TxmmRegister) then
-         FXMMIter:=xmm0
-      else Inc(FXMMIter);
-      if FRegs[FXMMIter].Contains=nil then begin
-         FRegs[FXMMIter].Contains:=contains;
-         FRegs[FXMMIter].Lock:=1;
-         Exit(FXMMIter);
-      end else if (avail=xmmNone) and (FRegs[FXMMIter].Lock=0) then
-         avail:=FXMMIter;
+   // find unused register
+   for i := xmm1 to High(TxmmRegister) do begin
+      if FRegs[i].Contains = nil then begin
+         FRegs[i].Contains := contains;
+         FRegs[i].Lock := 1;
+         FPreamble.NotifyAlteration(i);
+         Exit(i);
+      end;
    end;
-   if avail=xmmNone then begin
-      OutputFailedOn:=expr;
-      Result:=xmm0;
-   end else begin
-      FRegs[avail].Contains:=contains;
-      FRegs[avail].Lock:=1;
-      FXMMIter:=avail;
-      Result:=avail;
+
+   // repurpose register if it's not locked
+   for i := xmm1 to High(TxmmRegister) do begin
+      if FRegs[i].Lock = 0 then begin
+         FRegs[i].Contains := contains;
+         FRegs[i].Lock := 1;
+         FPreamble.NotifyAlteration(i);
+         Exit(i);
+      end;
    end;
+
+   OutputFailedOn := expr;
+   Result := xmm0;
 end;
 
 // ReleaseXMMReg
@@ -1071,13 +1098,41 @@ begin
       Dec(FRegs[reg].Lock);
 end;
 
+// FlushXMMRegs
+//
+procedure TdwsJITx86_64.FlushXMMRegs(option : TxmmFlushOption);
+var
+   reg : TxmmRegister;
+begin
+   case option of
+      xmmFlushAll :
+         for reg := xmm0 to High(TxmmRegister) do
+            FRegs[reg].Flush;
+      xmmFlushVolatile :
+         for reg := xmm0 to High(TxmmRegister) do
+            if reg in cVolatileXMM then
+               FRegs[reg].Flush;
+      xmmFlushIntermediateExprs :
+         for reg := xmm0 to High(TxmmRegister) do
+            if FRegs[reg].ContainsDataSymbol = nil then
+               FRegs[reg].Flush;
+   else
+      Assert(False);
+   end;
+end;
+
 // CurrentXMMReg
 //
-function TdwsJITx86_64.CurrentXMMReg(contains : TObject) : TxmmRegister;
+function TdwsJITx86_64.CurrentXMMReg(expr : TExprBase) : TxmmRegister;
 var
    i : TxmmRegister;
+   contains : TObject;
 begin
-   for i:=xmm0 to High(TxmmRegister) do begin
+   if expr is TVarExpr then
+      contains := TVarExpr(expr).DataSymbol
+   else contains := expr;
+
+   for i := xmm0 to High(TxmmRegister) do begin
       if FRegs[i].Contains=contains then begin
          Inc(FRegs[i].Lock);
          Exit(i);
@@ -1086,18 +1141,21 @@ begin
    Result:=xmmNone;
 end;
 
-// ContainsXMMReg
+// SetContainsXMMReg
 //
-procedure TdwsJITx86_64.ContainsXMMReg(reg : TxmmRegister; contains : TObject);
+procedure TdwsJITx86_64.SetContainsXMMReg(reg : TxmmRegister; expr : TExprBase);
 var
    i : TxmmRegister;
+   contains : TObject;
 begin
+   if expr is TVarExpr then
+      contains := TVarExpr(expr).DataSymbol
+   else contains := expr;
+
    for i:=xmm0 to High(FRegs) do begin
       if FRegs[i].Contains=contains then begin
-         if i<>reg then begin
-            FRegs[i].Contains:=nil;
-            FRegs[i].Lock:=0;
-         end;
+         if i<>reg then
+            FRegs[i].Flush;
       end;
    end;
    FRegs[reg].Contains:=contains;
@@ -1106,13 +1164,10 @@ end;
 // ResetXMMReg
 //
 procedure TdwsJITx86_64.ResetXMMReg;
-var
-   i : TxmmRegister;
 begin
-   FXMMIter:=High(TxmmRegister);
-   for i:=xmm0 to High(FRegs) do begin
-      FRegs[i].Contains:=nil;
-      FRegs[i].Lock:=0;
+   for var i := xmm0 to High(FRegs) do begin
+      FRegs[i].Contains := nil;
+      FRegs[i].Lock := 0;
    end;
 end;
 
@@ -1154,7 +1209,7 @@ end;
 //
 function TdwsJITx86_64.StackAddrOfFloat(expr : TTypedExpr) : Integer;
 begin
-   if (expr.ClassType=TFloatVarExpr) and (CurrentXMMReg(TFloatVarExpr(expr).DataSym)=xmmNone) then
+   if expr.ClassType = TFloatVarExpr then
       Result:=TFloatVarExpr(expr).StackAddr
    else Result:=-1;
 end;
@@ -1203,9 +1258,14 @@ begin
 
    unwindSize := SizeOf(RUNTIME_FUNCTION) + SizeOf(UNWIND_INFO)
                + FPreamble.Unwind.SizeInBytes;
-   // round up to next multiple of 16
-   unwindSize := ((unwindSize + 15) div 16) * 16;
+   // round up to next multiple of 16 with at least 8 bytes of nop padding
+   i := unwindSize;
+   unwindSize := ((unwindSize + 8 + 15) div 16) * 16;
    SetLength(unwindBytes, unwindSize);
+   while i < Length(unwindBytes) do begin
+      unwindBytes[i] := $90; // NOP
+      Inc(i);
+   end;
 
    pRuntimeFunction := @unwindBytes[0];
    pUnwindInfo := @unwindBytes[SizeOf(RUNTIME_FUNCTION)];
@@ -1213,38 +1273,40 @@ begin
    pUnwindInfo.Version := 1;
    pUnwindInfo.Flags := 0;
 
-   pUnwindInfo.SizeOfProlog := FPreamble.PrologSize;
+   pUnwindInfo.SizeOfProlog := FPreamble.Unwind.PrologSize;
    if x86.FrameRegisterOffset > 0 then
       pUnwindInfo.FrameRegister := UNWIND_RBP
    else pUnwindInfo.FrameRegister := UNWIND_RAX;
    pUnwindInfo.FrameOffset := x86.FrameRegisterOffset div 16;
 
    pUnwindInfo.CountOfCodes := FPreamble.Unwind.SizeInOps;
-   FPreamble.Unwind.CopyTo(@pUnwindInfo.UnwindCode[0]);
+   FPreamble.Unwind.CopyUnwindCodesTo(@pUnwindInfo.UnwindCode[0]);
 
    pRuntimeFunction.BeginAddress := unwindSize;
    pRuntimeFunction.EndAddress := unwindSize + Length(compiledBytes);
    pRuntimeFunction.UnwindInfoAddress := SizeOf(RUNTIME_FUNCTION);
 
-   // complete output is unwind data + compiled bytes + nop padding + static data
-   staticDataBytes := Fixups.StaticData;
-   if Length(staticDataBytes) > 0 then begin
-      Assert(Length(compiledBytes) < Fixups.StaticDataBase);
-      outputBytes := unwindBytes + compiledBytes;
-      i := Length(outputBytes);
-      SetLength(outputBytes, i + Fixups.StaticDataBase - Length(compiledBytes));
-      while i < Length(outputBytes) do begin
-         outputBytes[i] := $90; // NOP
-         Inc(i);
-      end;
-      outputBytes := outputBytes + staticDataBytes;
+   // complete output is unwind data + compiled bytes + nop padding [ + static data ]
+   Assert(Length(compiledBytes) < Fixups.StaticDataBase);
+   outputBytes := unwindBytes + compiledBytes;
+   i := Length(outputBytes);
+   SetLength(outputBytes, i + Fixups.StaticDataBase - Length(compiledBytes));
+   while i < Length(outputBytes) do begin
+      outputBytes[i] := $90; // NOP
+      Inc(i);
    end;
+   staticDataBytes := Fixups.StaticData;
+   if Length(staticDataBytes) > 0 then
+      outputBytes := outputBytes + staticDataBytes;
 
    ptr := Allocator.Allocate(outputBytes, sub);
    block64 := TdwsJITCodeBlock86_64.Create(Pointer(IntPtr(ptr) + unwindSize), sub);
    block64.Steppable := (jitoDoStep in Options);
 
    block64.RegisterTable(ptr);
+
+//   var ib : Pointer;
+//   OutputDebugString(RtlLookupFunctionEntry(block64.CodePtr, ib, nil).ToString(ib));
 
    Fixups.ClearFixups;
 
@@ -1257,6 +1319,7 @@ procedure TdwsJITx86_64.StartJIT(expr : TExprBase; exitable : Boolean);
 begin
    inherited;
    ResetXMMReg;
+   x86.ClearFlags;
    Fixups.ClearFixups;
    (Fixups as Tx86_64FixupLogic).Options:=Options;
    FPreamble:=TFixupPreamble.Create;
@@ -1294,23 +1357,37 @@ procedure TdwsJITx86_64._xmm_reg_expr(op : TxmmOp; dest : TxmmRegister; expr : T
 var
    addrRight : Integer;
    regRight : TxmmRegister;
+   c : TConstFloatExpr;
 begin
    if expr.ClassType=TConstFloatExpr then begin
 
-      x86._xmm_reg_absmem(OP, dest, @TConstFloatExpr(expr).Value);
+      c := TConstFloatExpr(expr);
+      if (op = xmm_addsd) and (c.Value = 2) then
+         x86._xmm_reg_reg(xmm_addsd, dest, dest)
+      else Fixups.NewOpRegImm(OP, dest, c.Value);
 
    end else begin
 
-      addrRight:=StackAddrOfFloat(expr);
-      if addrRight>=0 then begin
+      regRight := CurrentXMMReg(expr);
+      if regRight <> xmmNone then begin
 
-         x86._xmm_reg_execmem(OP, dest, addrRight);
+         x86._xmm_reg_reg(OP, dest, regRight);
+         ReleaseXMMReg(regRight);
 
       end else begin
 
-         regRight:=CompileFloat(expr);
-         x86._xmm_reg_reg(OP, dest, regRight);
-         ReleaseXMMReg(regRight);
+         addrRight:=StackAddrOfFloat(expr);
+         if addrRight>=0 then begin
+
+            x86._xmm_reg_execmem(OP, dest, addrRight);
+
+         end else begin
+
+            regRight:=CompileFloat(expr);
+            x86._xmm_reg_reg(OP, dest, regRight);
+            ReleaseXMMReg(regRight);
+
+         end;
 
       end;
 
@@ -1326,20 +1403,30 @@ var
 begin
    if expr.ClassType=TConstFloatExpr then begin
 
-      x86._comisd_reg_absmem(dest, @TConstFloatExpr(expr).Value);
+      Fixups.NewComisdRegImm(dest, TConstFloatExpr(expr).Value);
 
    end else begin
 
-      addrRight:=StackAddrOfFloat(expr);
-      if addrRight>=0 then begin
+      regRight := CurrentXMMReg(expr);
+      if regRight <> xmmNone then begin
 
-         x86._comisd_reg_execmem(dest, addrRight);
+         x86._comisd_reg_reg(dest, regRight);
+         ReleaseXMMReg(regRight);
 
       end else begin
 
-         regRight:=CompileFloat(expr);
-         x86._comisd_reg_reg(dest, regRight);
-         ReleaseXMMReg(regRight);
+         addrRight:=StackAddrOfFloat(expr);
+         if addrRight>=0 then begin
+
+            x86._comisd_reg_execmem(dest, addrRight);
+
+         end else begin
+
+            regRight:=CompileFloat(expr);
+            x86._comisd_reg_reg(dest, regRight);
+            ReleaseXMMReg(regRight);
+
+         end;
 
       end;
 
@@ -1383,7 +1470,16 @@ procedure TdwsJITx86_64._mov_reg_execStatus(reg : TgpRegister64);
 begin
    FPreamble.PreserveExec := True;
 
-   x86._mov_reg_qword_ptr_reg(reg, cExecInstanceGPR, TdwsExecution.Status_Offset);
+   x86._mov_reg_byte_ptr_reg(reg, cExecInstanceGPR, TdwsExecution.Status_Offset);
+end;
+
+// _mov_execStatus_imm
+//
+procedure TdwsJITx86_64._mov_execStatus_imm(value : Int32);
+begin
+   FPreamble.PreserveExec := True;
+
+   x86._mov_byte_ptr_reg_imm(cExecInstanceGPR, TdwsExecution.Status_Offset, 0);
 end;
 
 // _DoStep
@@ -1398,7 +1494,7 @@ begin
 
    x86._call_absmem(cPtr_TdwsExecution_DoStep);
 
-   ResetXMMReg;
+   FlushXMMRegs(xmmFlushVolatile);
 end;
 
 // _RangeCheck
@@ -1484,14 +1580,17 @@ end;
 //
 function TFixupAlignedTarget.GetSize : Integer;
 begin
+   {$ifdef ALIGN_JUMP_TARGETS }
    if TargetCount=0 then begin
       Result:=0;
    end else begin
       Result:=(16-(FixedLocation and $F)) and $F;
       if Result>7 then
          Result:=0;
-//      Result:=(4-(FixedLocation and $3)) and $3;
    end;
+   {$else}
+   Result := 0;
+   {$endif}
 end;
 
 // Write
@@ -1572,6 +1671,22 @@ end;
 // ------------------ TFixupPreamble ------------------
 // ------------------
 
+// Create
+//
+constructor TFixupPreamble.Create;
+begin
+   inherited;
+   FUnwind := TUnwindCodeBuilder.Create;
+end;
+
+// Destroy
+//
+destructor TFixupPreamble.Destroy;
+begin
+   inherited;
+   FUnwind.Free;
+end;
+
 // StackTotalSpace
 //
 function TFixupPreamble.StackTotalSpace : Integer;
@@ -1588,21 +1703,42 @@ begin
    Result := AllocatedStackSpace > 0;
 end;
 
+// Prepare
+//
+procedure TFixupPreamble.Prepare;
+begin
+   FUnwind.PushNonVolatile(UNWIND_REG(cExecMemGPR));
+
+   if FPreserveExec then begin
+      FUnwind.PushNonVolatile(UNWIND_REG(cExecInstanceGPR));
+   end;
+
+   if NeedRBP then begin
+      FUnwind.PushNonVolatile(UNWIND_RBP);
+      FUnwind.AddCustomPrologOp([ $48, $89, $E5 ]); // mov rbp, rsp
+   end;
+
+   FUnwind.PushXMM128s(FAlteredXMM and not($3F));
+
+   FUnwind.Done(StackTotalSpace);
+end;
+
+// Optimize
+//
+function TFixupPreamble.Optimize : TFixupOptimizeAction;
+begin
+   if FUnwind.PrologSize = 0 then
+      Prepare;
+   Result := foaNone;
+end;
+
 // GetSize
 //
 function TFixupPreamble.GetSize : Integer;
 begin
-   Assert(StackTotalSpace <= 127);
-
-   Result := 1        // push ExecMemGPR
-           + 4        // prep ExecMemGPR
-           ;
-   if StackTotalSpace > 0 then
-      Inc(Result, 4); // reserve stack space up to 127 bytes
-   if NeedRBP then
-      Inc(Result, 1 + 3); // push + mov
-   if FPreserveExec then
-      Inc(Result, 1 + 3); // push + mov
+   Result := FUnwind.PrologSize
+           + 3*Ord(FPreserveExec) // mov execInstance, rdx
+           + 4; // mov execmem reg, [rdx + stack mixin]
 end;
 
 // Write
@@ -1610,32 +1746,10 @@ end;
 procedure TFixupPreamble.Write(output : TWriteOnlyBlockStream);
 var
    x86 : Tx86_64_WriteOnlyStream;
-   p : Int64;
 begin
    x86 := (output as Tx86_64_WriteOnlyStream);
-   p := x86.Position;
 
-   x86._push_reg(cExecMemGPR);
-   FUnwind.PushNonVolatile(x86.Position - p, UNWIND_REG(cExecMemGPR));
-
-   if FPreserveExec then begin
-      x86._push_reg(cExecInstanceGPR);
-      FUnwind.PushNonVolatile(x86.Position - p, UNWIND_REG(cExecInstanceGPR));
-   end;
-
-   if NeedRBP then begin
-      x86._push_reg(gprRBP);
-      FUnwind.PushNonVolatile(x86.Position - p, UNWIND_RBP);
-      x86._mov_reg_reg(gprRBP, gprRSP);
-   end;
-
-   // reserve $20 for "register parameter area"
-   if StackTotalSpace > 0 then begin
-      x86._sub_reg_imm(gprRSP, StackTotalSpace);
-      FUnwind.AllocBytes(x86.Position - p, StackTotalSpace);
-   end;
-
-   FPrologSize := x86.Position - p;
+   x86.WriteBytes(FUnwind.Prolog);
 
    if FPreserveExec then
       x86._mov_reg_reg(cExecInstanceGPR, gprRDX);
@@ -1649,6 +1763,13 @@ function TFixupPreamble.AllocateStackSpace(bytes : Integer) : Integer;
 begin
    Inc(FAllocatedStackSpace, bytes);
    Result:=-AllocatedStackSpace;
+end;
+
+// NotifyAlteration
+//
+procedure TFixupPreamble.NotifyAlteration(xmm : TxmmRegister);
+begin
+   FAlteredXMM := FAlteredXMM or (1 shl Ord(xmm));
 end;
 
 // ------------------
@@ -1667,18 +1788,7 @@ end;
 //
 function TFixupPostamble.GetSize : Integer;
 begin
-   Result:=0;
-   if FPreamble.StackTotalSpace > 0 then begin
-      Assert(FPreamble.StackTotalSpace <= 127);
-      Inc(Result, 4);
-   end;
-   if FPreamble.NeedRBP then
-      Inc(Result, 1);
-   if FPreamble.PreserveExec then
-      Inc(Result, 1);
-   Inc(Result, 2);
-
-   Inc(Result, ($10-(FixedLocation and $F)) and $F);
+   Result := FPreamble.FUnwind.EpilogSize;
 end;
 
 // Write
@@ -1689,48 +1799,41 @@ var
 begin
    x86:=(output as Tx86_64_WriteOnlyStream);
 
-   if FPreamble.StackTotalSpace > 0 then
-      x86._add_reg_imm(gprRSP, FPreamble.StackTotalSpace);
-
-   if FPreamble.NeedRBP then
-      x86._pop_reg(gprRBP);
-   if FPreamble.PreserveExec then
-      x86._pop_reg(cExecInstanceGPR);
-   x86._pop_reg(cExecMemGPR);
-   x86._ret;
+   x86.WriteBytes(FPreamble.FUnwind.Epilog);
 end;
 
 // ------------------
 // ------------------ TStaticDataFixup ------------------
 // ------------------
 
+// Create
+//
+constructor TStaticDataFixup.Create(const aPrefixBytes : TBytes);
+begin
+   inherited Create;
+   FPrefixBytes := Copy(aPrefixBytes);
+end;
+
+// GetSize
+//
+function TStaticDataFixup.GetSize : Integer;
+begin
+   Result := Length(FPrefixBytes) + 4;
+end;
+
+// Write
+//
+procedure TStaticDataFixup.Write(output : TWriteOnlyBlockStream);
+begin
+   output.WriteBytes(FPrefixBytes);
+   output.WriteInt32(RelativeOffset - GetSize);
+end;
+
 // RelativeOffset
 //
 function TStaticDataFixup.RelativeOffset : Integer;
 begin
    Result := Logic.StaticDataBase + DataIndex*SizeOf(UInt64) - FixedLocation;
-end;
-
-// ------------------
-// ------------------ TMovsdRegImmFixup ------------------
-// ------------------
-
-// GetSize
-//
-function TMovsdRegImmFixup.GetSize : Integer;
-begin
-   Result := 8 + Ord(reg >= xmm8);
-end;
-
-// Write
-//
-procedure TMovsdRegImmFixup.Write(output : TWriteOnlyBlockStream);
-begin
-   output.WriteByte($F2);
-   if reg >= xmm8 then
-      output.WriteByte($44);
-   output.WriteBytes([$0F, $10, $05 + 8*(Ord(reg) and 7)]);
-   output.WriteInt32(RelativeOffset - 8 - Ord(reg >= xmm8));
 end;
 
 // ------------------
@@ -1750,8 +1853,14 @@ end;
 // AddStaticData
 //
 function Tx86_64FixupLogic.AddStaticData(const data : UInt64) : Integer;
+var
+   i : Integer;
 begin
    Result := Length(FStaticData);
+   for i := 0 to Result-1 do
+      if FStaticData[i] = data then
+         Exit(i);
+
    SetLength(FStaticData, Result+1);
    FStaticData[Result] := data;
 end;
@@ -1778,8 +1887,8 @@ begin
    Assert(iter <> nil);
    while iter.Next <> nil do
       iter := iter.Next;
-   // StaticData Base is at least 16 bytes after tail, with 8-byte alignment
-   StaticDataBase := ((iter.FixedLocation + iter.GetSize + 16 + 7) shr 3) shl 3;
+   // StaticData Base is at least 8 bytes after tail, with 16-byte alignment
+   StaticDataBase := ((iter.FixedLocation + iter.GetSize + 8 + 15) shr 4) shl 4;
 end;
 
 // ------------------
@@ -1826,11 +1935,37 @@ end;
 
 // NewMovsdRegImm
 //
-function Tx86_64FixupLogicHelper.NewMovsdRegImm(reg : TxmmRegister; const value : Double) : TMovsdRegImmFixup;
+function Tx86_64FixupLogicHelper.NewMovsdRegImm(reg : TxmmRegister; const value : Double) : TStaticDataFixup;
 begin
-   Result := TMovsdRegImmFixup.Create;
+   if reg < xmm8 then
+      Result := TStaticDataFixup.Create([$F2, $0F, $10, $05 + 8*(Ord(reg) and 7)])
+   else Result := TStaticDataFixup.Create([$F2, $44, $0F, $10, $05 + 8*(Ord(reg) and 7)]);
    Result.Logic := Self;
-   Result.Reg := reg;
+   Result.DataIndex := AddStaticData(PUInt64(@value)^);
+   AddFixup(Result);
+end;
+
+// NewComisdRegImm
+//
+function Tx86_64FixupLogicHelper.NewComisdRegImm(reg : TxmmRegister; const value : Double) : TStaticDataFixup;
+begin
+   if reg < xmm8 then
+      Result := TStaticDataFixup.Create([$66, $0F, $2F, $05 + 8*(Ord(reg) and 7)])
+   else Result := TStaticDataFixup.Create([$66, $44, $0F, $2F, $05 + 8*(Ord(reg) and 7)]);
+   Result.Logic := Self;
+   Result.DataIndex := AddStaticData(PUInt64(@value)^);
+   AddFixup(Result);
+end;
+
+// NewOpRegImm
+//
+function Tx86_64FixupLogicHelper.NewOpRegImm(op : TxmmOp; reg : TxmmRegister; const value : Double) : TStaticDataFixup;
+begin
+   if reg < xmm8 then
+      Result := TStaticDataFixup.Create([$F2, $0F, Ord(op), $05 + 8*(Ord(reg) and 7)])
+   else Result := TStaticDataFixup.Create([$F2, $44, $0F, Ord(op), $05 + 8*(Ord(reg) and 7)]);
+   Assert(reg in [xmm0..High(TxmmRegister)]);
+   Result.Logic := Self;
    Result.DataIndex := AddStaticData(PUInt64(@value)^);
    AddFixup(Result);
 end;
@@ -1992,12 +2127,12 @@ var
 begin
    e:=TAssignConstToFloatVarExpr(expr);
 
-   reg:=jit.AllocXMMReg(expr);
+   reg := jit.AllocXMMReg(e.Left);
 
    // check below is necessary as -Nan will be reported equal to zero
    if (not IsNaN(e.Right)) and (e.Right=0)  then
       x86._xorps_reg_reg(reg, reg)
-   else x86._movsd_reg_absmem(reg, @e.Right);
+   else jit._movsd_reg_imm(reg, e.Right);
 
    jit.CompileAssignFloat(e.Left, reg);
 end;
@@ -2177,6 +2312,7 @@ begin
       subExpr:=expr.SubExpr[i];
       jit._DoStep(subExpr);
       jit.CompileStatement(subExpr);
+      jit.FlushXMMRegs(xmmFlushIntermediateExprs);
    end;
 end;
 {
@@ -2253,7 +2389,7 @@ var
 begin
    e:=TLoopExpr(expr);
 
-   jit.ResetXMMReg;
+   jit.FlushXMMRegs(xmmFlushAll);
 
    targetLoop:=jit.Fixups.NewTarget(True);
    targetExit:=jit.Fixups.NewHangingTarget(False);
@@ -2269,7 +2405,7 @@ begin
 
    jit.LeaveLoop;
 
-   jit.ResetXMMReg;
+   jit.FlushXMMRegs(xmmFlushAll);
 end;
 
 // ------------------
@@ -2285,7 +2421,7 @@ var
 begin
    e:=TLoopExpr(expr);
 
-   jit.ResetXMMReg;
+   jit.FlushXMMRegs(xmmFlushAll);
 
    targetLoop:=jit.Fixups.NewTarget(True);
    targetExit:=jit.Fixups.NewHangingTarget(False);
@@ -2302,7 +2438,7 @@ begin
 
    jit.LeaveLoop;
 
-   jit.ResetXMMReg;
+   jit.FlushXMMRegs(xmmFlushAll);
 end;
 {
 // ------------------
@@ -2366,7 +2502,7 @@ var
 begin
    e:=TForExpr(expr);
 
-   jit.ResetXMMReg;
+   jit.FlushXMMRegs(xmmFlushAll);
 
    toValueIsConstant:=(e.ToExpr is TConstIntExpr);
    if toValueIsConstant then begin
@@ -2463,7 +2599,7 @@ begin
    jit.Fixups.NewJump(flagsNone, loopStart);
 
    if JIT.LoopContext.Exited then
-      jit.ResetXMMReg;
+      jit.FlushXMMRegs(xmmFlushAll);
 
    jit.LeaveLoop;
 
@@ -2540,12 +2676,17 @@ function Tx86FloatBinOp.DoCompileFloat(expr : TTypedExpr) : TxmmRegister;
 var
    e : TFloatBinOpExpr;
 begin
-   e:=TFloatBinOpExpr(expr);
+   e := TFloatBinOpExpr(expr);
 
-   Result:=jit.CompileFloat(e.Left);
-   jit._xmm_reg_expr(OP, Result, e.Right);
+   if (OP in [ xmm_addsd, xmm_multsd ]) and (e.Left is TConstExpr) then begin
+      Result := jit.CompileFloat(e.Right);
+      jit._xmm_reg_expr(OP, Result, e.Left);
+   end else begin
+      Result := jit.CompileFloat(e.Left);
+      jit._xmm_reg_expr(OP, Result, e.Right);
+   end;
 
-   jit.ContainsXMMReg(Result, expr);
+   jit.SetContainsXMMReg(Result, expr);
 end;
 
 // ------------------
@@ -2612,7 +2753,7 @@ begin
 
    if operand.ClassType=TFloatVarExpr then begin
 
-      Result:=jit.AllocXMMReg(operand);
+      Result := jit.AllocXMMReg(sqrExpr);
 
       if x86.SupportsAVX then begin
          x86._vmulsd(Result, reg, reg);
@@ -2629,7 +2770,7 @@ begin
 
       x86._xmm_reg_reg(xmm_multsd, Result, Result);
 
-      jit.ContainsXMMReg(Result, sqrExpr);
+      jit.SetContainsXMMReg(Result, sqrExpr);
 
    end;
 end;
@@ -2683,11 +2824,11 @@ function Tx86ConstInt.DoCompileFloat(expr : TTypedExpr) : TxmmRegister;
 var
    e : TConstIntExpr;
 begin
-   e:=TConstIntExpr(expr);
+   e := TConstIntExpr(expr);
 
    if (e.Value>-MaxInt) and (e.Value<MaxInt) then begin
 
-      Result:=jit.AllocXMMReg(e, e);
+      Result := jit.AllocXMMReg(e);
 
       x86._xmm_reg_absmem(xmm_cvtsi2sd, Result, @e.Value);
 
@@ -2754,8 +2895,8 @@ begin
 
    x86._call_reg(gprRAX, vmt);
 
-   if jit.FSavedXMM=[] then
-      jit.ResetXMMReg;
+   if jit.FSavedXMM = [] then
+      jit.FlushXMMRegs(xmmFlushVolatile);
 
    jit.QueueGreed(expr);
 end;
@@ -2775,9 +2916,7 @@ begin
 
    if jit.LoopContext<>nil then begin
 
-      jit._mov_reg_execInstance(gprRDX);
-      x86._mov_reg_dword(gprECX, 0);
-      x86._mov_qword_ptr_reg_reg(gprRDX, TdwsExecution.Status_Offset, gprRCX);
+      jit._mov_execStatus_imm(0);
 
       x86._cmp_reg_imm(gprRAX, Ord(esrBreak));
       jit.Fixups.NewJump(flagsE, jit.LoopContext.TargetExit);
@@ -2891,13 +3030,13 @@ function Tx86FloatVar.DoCompileFloat(expr : TTypedExpr) : TxmmRegister;
 var
    e : TFloatVarExpr;
 begin
-   e:=TFloatVarExpr(expr);
+   e := TFloatVarExpr(expr);
 
-   Result:=jit.CurrentXMMReg(e.DataSym);
+   Result:=jit.CurrentXMMReg(e);
 
    if Result=xmmNone then begin
 
-      Result:=jit.AllocXMMReg(e, e.DataSym);
+      Result := jit.AllocXMMReg(e);
       x86._movsd_reg_execmem(Result, e.StackAddr);
 
    end;
@@ -2913,7 +3052,7 @@ begin
 
    x86._movsd_execmem_reg(e.StackAddr, source);
 
-   jit.ContainsXMMReg(source, e.DataSym);
+   jit.SetContainsXMMReg(source, e);
 end;
 
 // ------------------
@@ -4219,13 +4358,14 @@ end;
 procedure Tx86BoolOrExpr.DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup);
 var
    e : TBooleanBinOpExpr;
-   targetFirstFalse : TFixupTarget;
+//   targetFirstFalse : TFixupTarget;
 begin
-   e:=TBooleanBinOpExpr(expr);
+   e := TBooleanBinOpExpr(expr);
 
-   targetFirstFalse:=jit.Fixups.NewHangingTarget(False);
-   jit.CompileBoolean(e.Left, targetTrue, targetFirstFalse);
-   jit.Fixups.AddFixup(targetFirstFalse);
+//   targetFirstFalse:=jit.Fixups.NewHangingTarget(False);
+//   jit.CompileBoolean(e.Left, targetTrue, targetFirstFalse);
+//   jit.Fixups.AddFixup(targetFirstFalse);
+   jit.CompileBoolean(e.Left, targetTrue, nil);
    jit.CompileBoolean(e.Right, targetTrue, targetFalse);
 end;
 {

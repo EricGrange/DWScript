@@ -105,22 +105,48 @@ type
    UNWIND_INFO = _UNWIND_INFO;
    PUNWIND_INFO = ^UNWIND_INFO;
 
-   // builds an UNWIND codes array
+   (*
+   Builds an UNWIND codes array + prolog + epilog
+
+   1) PushNonVolatile first
+   2) PushXMM128 next
+   3) Done with number of extra slots to allocate
+
+   Layout will be non-volatiles + [padding +] pushXMM + { RBP } + allocated-space + [ padding ]
    // record ops in the prolog order
-   TUnwindCodeBuilder = record
+   *)
+   TUnwindCodeBuilder = class
       private
          FCodes : array of UNWIND_CODE;
+         FProlog : TBytes;
+         FEpilog : TBytes;
+         FStackSlotsUsed : Integer;
 
          procedure Insert(nb : Integer);
 
+         procedure AddOpcodes(const prologOp, epilogOp : TBytes);
+         function  AllocSlots(nb8BytesSlots : Integer) : Integer;
+         procedure SaveXMM128(reg : Byte; offset : Integer);
+
       public
-         procedure PushNonVolatile(codeOffset : Byte; reg : UNWIND_REG);
-         procedure AllocBytes(codeOffset : Byte; nbBytes : Integer);
-         procedure AllocSlots(codeOffset : Byte; nb8BytesSlots : Integer);
+         constructor Create;
+
+         procedure PushNonVolatile(reg : UNWIND_REG);
+         procedure PushXMM128s(bitwiseRegs : Cardinal);
+
+         procedure AddCustomPrologOp(const ops : TBytes);
+
+         procedure Done(stackSpaceReserveInBytes : Integer); // alloc space + add ret to epilog
 
          function SizeInOps : Integer; inline;
          function SizeInBytes : Integer;
-         procedure CopyTo(dest : Pointer);
+
+         procedure CopyUnwindCodesTo(dest : Pointer);
+
+         property Prolog : TBytes read FProlog;
+         property Epilog : TBytes read FEpilog;
+         function PrologSize : Integer;
+         function EpilogSize : Integer;
    end;
 
 (*
@@ -228,6 +254,45 @@ begin
                                 + cUNWIND_REG_NAMES[pUnwind.FrameRegister] + '=RSP+'
                                 + IntToHex(pUnwind.FrameOffset*16, 2) + #13#10;
             end;
+            UWOP_SAVE_NONVOL : begin
+               Result := Result + 'SAVE_NONVOL, '
+                                + cUNWIND_REG_NAMES[UNWIND_REG(pCode.OpInfo)] + ' at ';
+               Inc(pCode);
+               Dec(n);
+               Result := Result + IntToHex(PWORD(pCode)^*8, 4) + #13#10;
+            end;
+            UWOP_SAVE_NONVOL_FAR : begin
+               Result := Result + 'SAVE_NONVOL_FAR, '
+                                + cUNWIND_REG_NAMES[UNWIND_REG(pCode.OpInfo)] + ' at ';
+               Inc(pCode);
+               Result := Result + IntToHex(PCardinal(pCode)^, 4) + #13#10;
+               Inc(pCode);
+               Dec(n, 2);
+            end;
+            UWOP_SAVE_XMM128 : begin
+               Result := Result + 'SAVE_XMM128, '
+                                + cUNWIND_REG_NAMES[UNWIND_REG(pCode.OpInfo)] + ' at ';
+               Inc(pCode);
+               Dec(n);
+               Result := Result + IntToHex(PWORD(pCode)^*16, 4) + #13#10;
+            end;
+            UWOP_SAVE_XMM128_FAR : begin
+               Result := Result + 'SAVE_XMM128_FAR, '
+                                + cUNWIND_REG_NAMES[UNWIND_REG(pCode.OpInfo)] + ' at ';
+               Inc(pCode);
+               Result := Result + IntToHex(PCardinal(pCode)^, 4) + #13#10;
+               Inc(pCode);
+               Dec(n, 2);
+            end;
+            UWOP_PUSH_MACHFRAME : begin
+               Result := Result + 'PUSH_MACHFRAME, ' + IntToStr(pCode.OpInfo);
+               case pCode.OpInfo of
+                  0 : Result := Result + ' (without Error code)'#13#10;
+                  1 : Result := Result + ' (with Error code)'#13#10;
+               else
+                  Result := Result + ' (???)'#13#10
+               end;
+            end;
          else
             Result := Result + '??? 0x' + IntToHex(pCode.UnwindOp_OpInfo, 2) + #13#10
          end;
@@ -333,6 +398,14 @@ end;
 // ------------------ TUnwindCodeBuilder ------------------
 // ------------------
 
+// Create
+//
+constructor TUnwindCodeBuilder.Create;
+begin
+   inherited;
+   FEpilog := [ $C3 ]; // ret
+end;
+
 // Insert
 //
 procedure TUnwindCodeBuilder.Insert(nb : Integer);
@@ -348,44 +421,156 @@ begin
    FillChar(FCodes[0], nb*SizeOf(UNWIND_CODE), 0);
 end;
 
+// AddOpcodes
+//
+procedure TUnwindCodeBuilder.AddOpcodes(const prologOp, epilogOp : TBytes);
+begin
+   FProlog := FProlog + prologOp;
+   FEpilog := epilogOp + FEpilog;
+end;
+
 // PushNonVolatile
 //
-procedure TUnwindCodeBuilder.PushNonVolatile(codeOffset : Byte; reg : UNWIND_REG);
+procedure TUnwindCodeBuilder.PushNonVolatile(reg : UNWIND_REG);
 begin
+   if reg < UNWIND_R8 then
+      AddOpcodes([ $50 + (Ord(reg) and 7) ], [ $58 + (Ord(reg) and 7) ])
+   else AddOpcodes([ $41, $50 + (Ord(reg) and 7) ], [ $41, $58 + (Ord(reg) and 7) ]);
+
    Insert(1);
-   FCodes[0].CodeOffset := codeOffset;
+   Inc(FStackSlotsUsed);
+   FCodes[0].CodeOffset := Length(FProlog);
    FCodes[0].UnwindOp_OpInfo := Ord(UWOP_PUSH_NONVOL) + (Ord(reg) shl 4);
 end;
 
-// AllocBytes
+// SaveXMM128
 //
-procedure TUnwindCodeBuilder.AllocBytes(codeOffset : Byte; nbBytes : Integer);
+procedure TUnwindCodeBuilder.SaveXMM128(reg : Byte; offset : Integer);
+type
+   PInt16 = ^Int16;
+var
+   save, restore : TBytes;
 begin
-   Assert((nbBytes and 7) = 0, 'AllocBytes should be a multiple of 8');
-   AllocSlots(codeOffset, nbBytes shr 3);
+   Assert(reg in [0..15]);
+   Assert((Int16(offset div 16)*16) = offset);  // 16 byte alignment, FAR not supported yet
+
+   save := [
+      $0F, $7F,
+      $44 + 8*(Ord(reg) and 7) + $40*Ord(Int8(offset) <> offset), $24,
+      offset and $FF
+   ];
+
+   if Int8(offset) <> offset then
+      save := save + [ (offset shr 8) and $FF, (offset shr 16) and $FF, (offset shr 24) and $FF ];
+
+   restore := Copy(save);
+   restore[1] := $6F;
+
+   if reg < 8 then begin
+      save := [ $66 ] + save;
+      restore := [ $66 ] + restore;
+   end else begin
+      save := [ $66, $44 ] + save;
+      restore := [ $66, $44 ] + restore;
+   end;
+
+   AddOpcodes(save, restore);
+
+   Insert(2);
+   FCodes[0].CodeOffset := Length(FProlog);
+   FCodes[0].UnwindOp_OpInfo := Ord(UWOP_SAVE_XMM128) + (reg shl 4);
+   PInt16(@FCodes[1])^ := offset div 16;
+end;
+
+// PushXMM128s
+//
+function GetBitCount(num : NativeInt) : Integer;
+asm
+   {$IFDEF CPUX64}
+   popcnt    rax, num
+   {$ELSE}
+   popcnt    eax, num
+   {$ENDIF}
+end;
+procedure TUnwindCodeBuilder.PushXMM128s(bitwiseRegs : Cardinal);
+var
+   nbSlots : Integer;
+   reg, offset : Integer;
+begin
+   nbSlots := GetBitCount(bitwiseRegs and $FFFF);
+   if nbSlots = 0 then Exit;
+
+   AllocSlots(nbSlots*2);
+
+   offset := nbSlots * 16 - 16;
+   for reg := 0 to 15 do begin
+      if (bitwiseRegs and (1 shl reg)) <> 0 then begin
+         SaveXMM128(reg, offset);
+         Dec(offset, 16);
+      end;
+   end;
+end;
+
+// AddCustomPrologOp
+//
+procedure TUnwindCodeBuilder.AddCustomPrologOp(const ops : TBytes);
+begin
+   FProlog := FProlog + ops;
+end;
+
+// Done
+//
+procedure TUnwindCodeBuilder.Done(stackSpaceReserveInBytes : Integer);
+begin
+   if ((FStackSlotsUsed and 1) = 0) or (stackSpaceReserveInBytes > 0) then begin
+      Assert((stackSpaceReserveInBytes and 7) = 0);
+      AllocSlots(stackSpaceReserveInBytes div 8);
+   end;
 end;
 
 // AllocSlots
 //
-procedure TUnwindCodeBuilder.AllocSlots(codeOffset : Byte; nb8BytesSlots : Integer);
+function TUnwindCodeBuilder.AllocSlots(nb8BytesSlots : Integer) : Integer;
 begin
-   Assert(nb8BytesSlots > 0);
+   // maintain 16-byte alignment,
+   // there is an 8 byte offset created by the call for the return address that should be compensated
+   if ((FStackSlotsUsed + nb8BytesSlots) and 8) = 8 then begin
+      Inc(nb8BytesSlots);
+      Inc(FStackSlotsUsed);
+   end;
+   Result := nb8BytesSlots;
+   if nb8BytesSlots = 0 then Exit;
+
+   if nb8BytesSlots <= 15 then
+      AddOpcodes(
+         [ $48, $83, $EC, nb8bytesSlots*8 ],
+         [ $48, $83, $C4, nb8bytesSlots*8 ]
+      )
+   else begin
+      var nbBytes := nb8bytesSlots*8;
+      AddOpcodes(
+         [ $48, $81, $EC, nbBytes and $FF, (nbBytes shr 8) and $FF, (nbBytes shr 16) and $FF, (nbBytes shr 24) and $FF ],
+         [ $48, $81, $C4, nbBytes and $FF, (nbBytes shr 8) and $FF, (nbBytes shr 16) and $FF, (nbBytes shr 24) and $FF ]
+      );
+   end;
+
+   Inc(FStackSlotsUsed, nb8BytesSlots);
    case nb8BytesSlots of
       1..16 : begin
          Insert(1);
-         FCodes[0].CodeOffset := codeOffset;
+         FCodes[0].CodeOffset := Length(FProlog);
          FCodes[0].UnwindOp_OpInfo := Ord(UWOP_ALLOC_SMALL) + ((nb8BytesSlots-1) shl 4);
       end;
       17 .. (512*1024 div 8)-1 : begin
          Insert(2);
-         FCodes[0].CodeOffset := codeOffset;
+         FCodes[0].CodeOffset := Length(FProlog);
          FCodes[0].UnwindOp_OpInfo := Ord(UWOP_ALLOC_LARGE);
          PWord(@FCodes[1])^ := nb8BytesSlots;
       end;
    else
       Insert(3);
-      FCodes[0].CodeOffset := codeOffset;
-      FCodes[0].UnwindOp_OpInfo := Ord(UWOP_ALLOC_LARGE) + 1;
+      FCodes[0].CodeOffset := Length(FProlog);
+      FCodes[0].UnwindOp_OpInfo := Ord(UWOP_ALLOC_LARGE) + (1 shl 4);
       PCardinal(@FCodes[1])^ := nb8BytesSlots;
    end;
 end;
@@ -404,15 +589,29 @@ begin
    Result := SizeInOps*SizeOf(UNWIND_CODE);
 end;
 
-// CopyTo
+// CopyUnwindCodesTo
 //
-procedure TUnwindCodeBuilder.CopyTo(dest : Pointer);
+procedure TUnwindCodeBuilder.CopyUnwindCodesTo(dest : Pointer);
 var
    n : Integer;
 begin
    n := SizeInBytes;
    if n > 0 then
       System.Move(FCodes[0], dest^, n);
+end;
+
+// PrologSize
+//
+function TUnwindCodeBuilder.PrologSize : Integer;
+begin
+   Result := Length(FProlog);
+end;
+
+// EpilogSize
+//
+function TUnwindCodeBuilder.EpilogSize : Integer;
+begin
+   Result := Length(FEpilog);
 end;
 
 end.
