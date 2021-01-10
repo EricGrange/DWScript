@@ -101,6 +101,9 @@ end;
 //
 function TdwsJITCodeSubAllocator.Allocate(aSize : Integer) : Pointer;
 begin
+   // round up to multiple of 16
+   aSize := ((aSize + 15) shr 4) shl 4;
+
    if aSize>FRemaining then
       Exit(nil);
 

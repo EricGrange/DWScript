@@ -49,7 +49,7 @@ type
          function  NewHangingTarget(align : Boolean) : TFixupTarget; virtual;
 
          procedure FlushFixups(const rawCode : TBytes; outStream : Tx86BaseWriteOnlyStream); virtual;
-         procedure ClearFixups;
+         procedure ClearFixups; virtual;
 
          property Base : TFixup read FBase write FBase;
          property OnNeedLocation : TFixupNeedLocationEvent read FOnNeedLocation write FOnNeedLocation;

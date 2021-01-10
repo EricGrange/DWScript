@@ -125,7 +125,7 @@ type
          procedure Insert(nb : Integer);
 
          procedure AddOpcodes(const prologOp, epilogOp : TBytes);
-         function  AllocSlots(nb8BytesSlots : Integer) : Integer;
+         function  AllocSlots(nb8BytesSlots : Integer; align16 : Boolean) : Integer;
          procedure SaveXMM128(reg : Byte; offset : Integer);
 
       public
@@ -500,7 +500,8 @@ begin
    nbSlots := GetBitCount(bitwiseRegs and $FFFF);
    if nbSlots = 0 then Exit;
 
-   AllocSlots(nbSlots*2);
+   // ensure 16 bytes alignment for aligned mov
+   AllocSlots(nbSlots*2, True);
 
    offset := nbSlots * 16 - 16;
    for reg := 0 to 15 do begin
@@ -521,22 +522,28 @@ end;
 // Done
 //
 procedure TUnwindCodeBuilder.Done(stackSpaceReserveInBytes : Integer);
+var
+   nbSlots : Integer;
 begin
    if ((FStackSlotsUsed and 1) = 0) or (stackSpaceReserveInBytes > 0) then begin
       Assert((stackSpaceReserveInBytes and 7) = 0);
-      AllocSlots(stackSpaceReserveInBytes div 8);
+      nbSlots := stackSpaceReserveInBytes div 8;
+      // ensure alignment for sub-function calls (which have a ret pushed)
+      if ((FStackSlotsUsed + nbSlots) and 1) = 1 then
+         Inc(nbSlots);
+      AllocSlots(nbSlots, False);
    end;
 end;
 
 // AllocSlots
 //
-function TUnwindCodeBuilder.AllocSlots(nb8BytesSlots : Integer) : Integer;
+function TUnwindCodeBuilder.AllocSlots(nb8BytesSlots : Integer; align16 : Boolean) : Integer;
 begin
-   // maintain 16-byte alignment,
-   // there is an 8 byte offset created by the call for the return address that should be compensated
-   if ((FStackSlotsUsed + nb8BytesSlots) and 8) = 8 then begin
-      Inc(nb8BytesSlots);
-      Inc(FStackSlotsUsed);
+   if align16 then begin
+      // there is an 8 byte offset created by the call for the return address that should be compensated
+      if (FStackSlotsUsed and 1) = 1 then begin
+         Inc(nb8BytesSlots);
+      end;
    end;
    Result := nb8BytesSlots;
    if nb8BytesSlots = 0 then Exit;

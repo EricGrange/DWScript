@@ -377,6 +377,12 @@ type
          procedure _op_reg_qword_ptr_reg(const op : TgpOP; dest, operand : TgpRegister64; offset : Integer);
 
          procedure _imul_reg_qword_ptr_reg(dest, operand : TgpRegister64; offset : Integer);
+         procedure _imul_reg_reg_imm(dest, operand : TgpRegister64; value : Int64);
+
+         procedure _neg_reg(reg : TgpRegister64);
+         procedure _not_reg(reg : TgpRegister64);
+
+         procedure _shift_reg_imm(shift : TgpShift; reg : TgpRegister64; value : Byte);
 
          procedure _cmp_reg_imm(reg : TgpRegister64; value : Int64); overload;
          procedure _cmp_qword_ptr_reg_imm(reg : TgpRegister64; offset : Integer; value : Int64);
@@ -385,6 +391,7 @@ type
          procedure _cmp_execmem_reg(stackAddr : Integer; reg : TgpRegister64);
 
          procedure _test_reg_reg(dest, src : TgpRegister64);
+         procedure _test_reg_imm(reg : TgpRegister64; value : Int64);
 
          procedure _add_reg_imm(reg : TgpRegister64; value : Int64);
          procedure _add_reg_reg(dest, src : TgpRegister64); overload;
@@ -628,7 +635,7 @@ end;
 //
 procedure Tx86BaseWriteOnlyStream._op_reg_int32(const op : TgpOP; reg : TgpRegister; value : Integer);
 begin
-   if (value>=-128) and (value<=127) then
+   if Int8(value) = value then
       WriteBytes([op.Short1, op.SIB+Ord(reg), Byte(value)])
    else begin
       if reg=gprEAX then
@@ -722,7 +729,7 @@ procedure Tx86BaseWriteOnlyStream._jump(flags: TboolFlags; offset : Int32);
 begin
    if offset = 0 then
       // ignore
-   else if Int32(Int8(offset)) = offset then begin
+   else if Int8(offset) = offset then begin
 
       if flags = flagsNone then
          WriteByte($EB)
@@ -1978,8 +1985,13 @@ procedure Tx86_64_WriteOnlyStream._mov_reg_qword(reg : TgpRegister64; imm : QWOR
 begin
    if imm=0 then
       _xor_reg_reg(reg, reg)
-   else if Int64(Int32(imm)) = imm then begin
-      WriteBytes([$48 + Ord(reg >= gprR8), $c7, $c0 + (Ord(reg) and 7)]);
+   else if Int32(imm) = Int64(imm) then begin
+      if (Int32(imm) > 0) and (reg < gprR8) then begin
+         // 32 bit GPR assignment are zero extended on the higher bits
+         WriteByte($B8 + Ord(reg));
+      end else begin
+         WriteBytes([$48 + Ord(reg >= gprR8), $c7, $c0 + (Ord(reg) and 7)]);
+      end;
       WriteInt32(imm);
    end else begin
       WriteBytes([$48 + Ord(reg >= gprR8), $b8 + (Ord(reg) and 7)]);
@@ -1991,7 +2003,7 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._mov_reg_imm(reg : TgpRegister64; imm : Int64);
 begin
-   _mov_reg_qword(reg, QWORD(imm));
+   _mov_reg_qword(reg, QWORD(imm))
 end;
 
 // _mov_al_byte
@@ -2169,7 +2181,7 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._op_reg_imm(const op : TgpOP; reg : TgpRegister64; value : Int64);
 begin
-   if Int64(Int32(value)) = value then begin
+   if Int32(value) = value then begin
       WriteByte($48 + Ord(reg >= gprR8));
       if Int8(value) = value then begin
          WriteByte($83);
@@ -2185,7 +2197,12 @@ begin
          _mov_reg_imm(gprRAX, value);
          _op_reg_reg(op, reg, gprRAX);
       end else begin
-         Assert(False);
+         FFlagCalls := True; // TODO proper reservation
+         _mov_qword_ptr_reg_reg(gprRSP, -8, gprRAX);
+         _mov_reg_imm(gprRAX, value);
+         _mov_qword_ptr_reg_reg(gprRSP, -16, gprRAX);
+         _mov_reg_qword_ptr_reg(gprRAX, gprRSP, -8);
+         _op_reg_qword_ptr_reg(op, reg, gprRSP, -16);
       end;
    end;
 end;
@@ -2225,6 +2242,46 @@ begin
       $0F, $AF
    ]);
    _modRMSIB_ptr_reg8(8*(Ord(dest) and 7), Ord(operand) and 7, offset);
+end;
+
+// _imul_reg_reg_imm
+//
+procedure Tx86_64_WriteOnlyStream._imul_reg_reg_imm(dest, operand : TgpRegister64; value : Int64);
+begin
+   WriteByte($48 + Ord(operand >= gprR8) + 4*Ord(dest >= gprR8));
+   if Int8(value) = value then begin
+      WriteBytes([ $6B, $C0 + (Ord(operand) and 7) + 8*(Ord(dest) and 7) ]);
+      WriteByte(Byte(value));
+   end else if Int32(value) = value then begin
+      WriteBytes([ $69, $C0 + (Ord(operand) and 7) + 8*(Ord(dest) and 7) ]);
+      WriteInt32(value);
+   end else Assert(False);
+end;
+
+// _neg_reg
+//
+procedure Tx86_64_WriteOnlyStream._neg_reg(reg : TgpRegister64);
+begin
+   WriteBytes([ $48 + Ord(reg >= gprR8), $F8, $D8 + (Ord(reg) and 7) ]);
+end;
+
+// _shift_reg_imm
+//
+procedure Tx86_64_WriteOnlyStream._shift_reg_imm(shift : TgpShift; reg : TgpRegister64; value : Byte);
+begin
+   if value<>0 then begin
+      WriteByte($48 + Ord(reg >= gprR8));
+      if value=1 then
+         WriteBytes([$D1, Ord(shift) + (Ord(reg) and 7)])
+      else WriteBytes([$C1, Ord(shift) + (Ord(reg) and 7), value]);
+   end;
+end;
+
+// _not_reg
+//
+procedure Tx86_64_WriteOnlyStream._not_reg(reg : TgpRegister64);
+begin
+   WriteBytes([ $48 + Ord(reg >= gprR8), $F7, $D0 + (Ord(reg) and 7) ]);
 end;
 
 // _cmp_reg_imm
@@ -2281,6 +2338,23 @@ begin
    WriteByte($48 + Ord(dest >= gprR8) + 4*Ord(src >= gprR8));
    WriteByte($85);
    WriteByte($C0 + (Ord(dest) and 7) + (Ord(src) and 7)*8);
+end;
+
+// _test_reg_imm
+//
+procedure Tx86_64_WriteOnlyStream._test_reg_imm(reg : TgpRegister64; value : Int64);
+begin
+   if Int32(value) = value then begin
+      case reg of
+         gprRAX :
+            WriteBytes([ $48, $A9 ]);
+         gprRCX..gprRDI :
+            WriteBytes([ $48, $F7, $C0 + (Ord(reg) and 7) ]);
+      else
+         WriteBytes([ $49, $F7, $C0 + (Ord(reg) and 7) ]);
+      end;
+      WriteInt32(value);
+   end else Assert(False);
 end;
 
 // _add_reg_imm

@@ -183,7 +183,7 @@ begin
    FStream._comisd_reg_execmem(xmm10, $22);
    FStream._comisd_reg_execmem(xmm1, $2233);
    FStream._comisd_reg_absmem(xmm0, Pointer($1234));
-   FStream._comisd_reg_absmem(xmm8, Pointer($123456));
+   FStream._comisd_reg_absmem(xmm8, Pointer($123456789A));
 
    CheckEquals( 'comisd xmm0, xmm7'#13#10
                +'comisd xmm8, xmm1'#13#10
@@ -191,9 +191,9 @@ begin
                +'comisd xmm1, qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+000001A0h]'#13#10
                +'comisd xmm10, qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+00000338h]'#13#10
                +'comisd xmm1, qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+000334D0h]'#13#10
-               +'mov rax, 0000000000001234h'#13#10
+               +'mov eax, 00001234h'#13#10
                +'comisd xmm0, qword ptr [rax]'#13#10
-               +'mov rax, 0000000000123456h'#13#10
+               +'mov rax, 000000123456789Ah'#13#10
                +'comisd xmm8, qword ptr [rax]'#13#10
                , DisasmStream);
 end;
@@ -224,16 +224,16 @@ begin
    // TODO: reactivate pending resolution of https://github.com/BeaEngine/beaengine/issues/33
 
    FStream._movsd_reg_absmem(xmm0, Pointer($12345));
-   FStream._movsd_reg_absmem(xmm10, Pointer($1234));
+   FStream._movsd_reg_absmem(xmm10, Pointer($123456789A));
 
    CheckEquals( ''
                +'movsd xmm3, qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+000001A0h]'#13#10
                +'movsd xmm9, qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+00019B38h]'#13#10
                +'movsd qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+00000338h], xmm4'#13#10
                +'movsd qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+00033668h], xmm12'#13#10
-               +'mov rax, 0000000000012345h'#13#10
+               +'mov eax, 00012345h'#13#10
                +'movsd xmm0, qword ptr [rax]'#13#10
-               +'mov rax, 0000000000001234h'#13#10
+               +'mov rax, 000000123456789Ah'#13#10
                +'movsd xmm10, qword ptr [rax]'#13#10
                , DisasmStream);
 
@@ -425,6 +425,9 @@ begin
    FStream._mov_reg_imm(gprRAX, 1);
    FStream._mov_reg_imm(gprRAX, -1);
    FStream._mov_reg_imm(gprR8, 2);
+   FStream._mov_reg_imm(gprR8, -2);
+   FStream._mov_reg_imm(gprRAX, 3);
+   FStream._mov_reg_imm(gprRAX, -3);
    FStream._mov_reg_imm(gprRAX, $1122334455);
    FStream._mov_reg_imm(gprRAX, $11223344556677);
    FStream._mov_reg_imm(gprR11, $11223344556677);
@@ -432,9 +435,12 @@ begin
    CheckEquals( 'xor rax, rax'#13#10
                +'xor rdx, rdx'#13#10
                +'xor r9, r9'#13#10
-               +'mov rax, 0000000000000001h'#13#10
+               +'mov eax, 00000001h'#13#10
                +'mov rax, FFFFFFFFFFFFFFFFh'#13#10
                +'mov r8, 0000000000000002h'#13#10
+               +'mov r8, FFFFFFFFFFFFFFFEh'#13#10
+               +'mov eax, 00000003h'#13#10
+               +'mov rax, FFFFFFFFFFFFFFFDh'#13#10
                +'mov rax, 0000001122334455h'#13#10
                +'mov rax, 0011223344556677h'#13#10
                +'mov r11, 0011223344556677h'#13#10
@@ -464,17 +470,28 @@ end;
 procedure TJITx86_64Tests.mov_reg_imm;
 var
    dest : TgpRegister64;
-   expect : String;
+   expect, regName, reg32name : String;
 begin
    for dest:=gprRAX to gprR15 do begin
       FStream._mov_reg_dword(dest, 0);
       FStream._mov_reg_qword(dest, 1);
       FStream._mov_reg_imm(dest, $80);
       FStream._mov_reg_imm(dest, -1);
-      expect:= 'xor '+cgpRegister64Name[dest]+', '+cgpRegister64Name[dest]+#13#10
-              +'mov '+cgpRegister64Name[dest]+', 0000000000000001h'#13#10
-              +'mov '+cgpRegister64Name[dest]+', 0000000000000080h'#13#10
-              +'mov '+cgpRegister64Name[dest]+', FFFFFFFFFFFFFFFFh'#13#10;
+      FStream._mov_reg_imm(dest, -2);
+      regName := cgpRegister64Name[dest];
+      reg32Name := 'e' + Copy(regName, 2);
+      expect := 'xor ' + regName  + ', ' + regName + #13#10;
+      if dest < gprR8 then
+         expect := expect
+                 + 'mov '+reg32Name+', 00000001h'#13#10
+                 + 'mov '+reg32Name+', 00000080h'#13#10
+      else
+         expect := expect
+                 + 'mov '+regName+', 0000000000000001h'#13#10
+                 + 'mov '+regName+', 0000000000000080h'#13#10;
+      expect := expect
+              + 'mov '+regName+', FFFFFFFFFFFFFFFFh'#13#10
+              + 'mov '+regName+', FFFFFFFFFFFFFFFEh'#13#10;
       CheckEquals(expect, DisasmStream);
    end;
 end;
@@ -508,7 +525,7 @@ begin
 
    CheckEquals( ''
                +'inc qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+08h]'#13#10
-               +'mov rax, 0000000000000080h'#13#10
+               +'mov eax, 00000080h'#13#10
                +'add qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+20h], rax'#13#10
                +'mov rax, 0000000200030001h'#13#10
                +'add qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+00000C08h], rax'#13#10
