@@ -479,10 +479,9 @@ type
       procedure CompileVarOperand(expr : TTypedExpr; const varStackAddr : Integer);
    end;
 
-   Tx86Shr = class (TdwsJITter_x86)
-      function CompileInteger(expr : TTypedExpr) : Integer; override;
-   end;
-   Tx86Shl = class (TdwsJITter_x86)
+   Tx86Shift = class (TdwsJITter_x86)
+      FShiftOp : TgpShift;
+      constructor Create(jit : TdwsJITx86_64; const shiftOp : TgpShift);
       function CompileInteger(expr : TTypedExpr) : Integer; override;
    end;
 
@@ -900,8 +899,9 @@ begin
    RegisterJITter(TIntXorExpr,                  Tx86IntegerBinOpExpr.Create(Self, gpOp_xor));
    RegisterJITter(TIntOrExpr,                   Tx86IntegerBinOpExpr.Create(Self, gpOp_or));
 
-   RegisterJITter(TShrExpr,                     Tx86Shr.Create(Self));
-   RegisterJITter(TShlExpr,                     Tx86Shl.Create(Self));
+   RegisterJITter(TShrExpr,                     Tx86Shift.Create(Self, gpShr));
+   RegisterJITter(TShlExpr,                     Tx86Shift.Create(Self, gpShl));
+   RegisterJITter(TSarExpr,                     Tx86Shift.Create(Self, gpSar));
 
    RegisterJITter(TInOpExpr,                    FInterpretedJITter.IncRefCount);
    RegisterJITter(TStringInOpExpr,              FInterpretedJITter.IncRefCount);
@@ -4049,46 +4049,34 @@ begin
    x86._call_absmem(@@vAddr_mod);
 end;
 }
+
 // ------------------
-// ------------------ Tx86Shr ------------------
+// ------------------ Tx86Shift ------------------
 // ------------------
 
-// CompileInteger
+// Create
 //
-function Tx86Shr.CompileInteger(expr : TTypedExpr) : Integer;
-var
-   e : TShrExpr;
+constructor Tx86Shift.Create(jit : TdwsJITx86_64; const shiftOp : TgpShift);
 begin
-   e:=TShrExpr(expr);
-
-   Result:=jit.CompileInteger(e.Left);
-
-   if e.Right is TConstIntExpr then begin
-
-      x86._shift_reg_imm(gpShr, gprRAX, TConstIntExpr(e.Right).Value);
-
-   end else Result:=inherited;
+   inherited Create(jit);
+   FShiftOp := shiftOp;
 end;
 
-// ------------------
-// ------------------ Tx86Shl ------------------
-// ------------------
-
 // CompileInteger
 //
-function Tx86Shl.CompileInteger(expr : TTypedExpr) : Integer;
+function Tx86Shift.CompileInteger(expr : TTypedExpr) : Integer;
 var
-   e : TShlExpr;
+   e : TShiftExpr;
 begin
-   e:=TShlExpr(expr);
+   e := TShiftExpr(expr);
 
-   Result:=jit.CompileInteger(e.Left);
+   Result := jit.CompileInteger(e.Left);
 
    if e.Right is TConstIntExpr then begin
 
-      x86._shift_reg_imm(gpShr, gprRAX, TConstIntExpr(e.Right).Value);
+      x86._shift_reg_imm(FShiftOp, gprRAX, TConstIntExpr(e.Right).Value);
 
-   end else inherited;
+   end else Result:=inherited;
 end;
 
 // ------------------
