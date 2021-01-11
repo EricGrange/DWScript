@@ -1519,7 +1519,8 @@ procedure TdwsJITx86_64._DoStep(expr : TExprBase);
 begin
    if not (jitoDoStep in Options) then Exit;
 
-   _mov_reg_execInstance(gprRDX);
+   _mov_reg_execInstance(gprRCX);
+   x86._mov_reg_imm(IntPtr(expr));
 
    x86._call_absmem(cPtr_TdwsExecution_DoStep);
 
