@@ -57,7 +57,6 @@ type
          function EncodeDate(y, m, d : Integer; tz : TdwsTimeZone) : Double;
 
          function YearOf(const dt : TDateTime) : Integer;
-         function IncMonth(dt : TDateTime; nbMonths : Integer; tz : TdwsTimeZone) : Double;
    end;
 
 // ------------------------------------------------------------------
@@ -456,11 +455,8 @@ begin
       raise EConvertError.Create('Invalid date/time');
    if tz = tzDefault then
       tz := TimeZone;
-   if tz = tzUTC then begin
-      if Abs(dt) < 1 then
-         dt := Trunc(UTCDateTime) + dt;
+   if (tz = tzUTC) and (Abs(dt) >= 1) then // if only hours are provided, no UTC conversion is applied
       dt := UTCDateTimeToLocalDateTime(dt);
-   end;
 
    Result := TdwsDateTimeFormatter.Acquire(fmt).Apply(dt, Settings);
 end;
@@ -757,31 +753,6 @@ var
 begin
    DecodeDate(dt, y, m, d);
    Result := y;
-end;
-
-function TdwsFormatSettings.IncMonth(dt : TDateTime; nbMonths : Integer; tz : TdwsTimeZone) : Double;
-
-   function UTCIncMonth(dt : TDateTime; nbMonths : Integer) : TDateTime;
-   var
-      d : TDateTime;
-   begin
-      try
-         d := UTCDateTimeToLocalDateTime(dt);
-         d := SysUtils.IncMonth(d, nbMonths);
-         Result := LocalDateTimeToUTCDateTime(d);
-      except
-         on E: ELocalTimeInvalid do
-            Result := SysUtils.IncMonth(dt, nbMonths);
-         else raise;
-      end;
-   end;
-
-begin
-   if tz = tzDefault then
-      tz := TimeZone;
-   if tz = tzUTC then
-      Result := UTCIncMonth(dt, nbMonths)
-   else Result := SysUtils.IncMonth(dt, nbMonths);
 end;
 
 // ------------------------------------------------------------------

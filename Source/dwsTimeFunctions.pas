@@ -628,7 +628,7 @@ end;
 
 procedure TIncMonthFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
 begin
-   Result:=args.FormatSettings.IncMonth(args.AsFloat[0], args.AsInteger[1], TdwsTimeZone(args.AsInteger[2]));
+   Result:=IncMonth(args.AsFloat[0], args.AsInteger[1]);
 end;
 
 { TDecodeDateFunc }

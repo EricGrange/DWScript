@@ -122,14 +122,7 @@ function strToDateTimeDef(fmt, str_dt, def, utc) {
 	if ( hours<0 || hours>=24 || minutes<0 || minutes>=60 || seconds<0 || seconds>=60 || msec<0 || msec>=1000 ) {
 		return def;
 	} else if ((day | month | year) === 0) {
-		if ((utc||$TZ)==1) return (hours+(minutes+(seconds+msec*0.001)/60)/60)/24;
-		var o=new Date();
-		o.setHours(hours);
-		o.setMinutes(minutes);
-		o.setSeconds(seconds);
-		o.setMilliseconds(msec);
-		var dt=o.getTime()/864e5;
-		return dt-Math.trunc(dt);
+		return (hours+(minutes+(seconds+msec*0.001)/60)/60)/24;
 	} else {
 		var dt= (utc||$TZ)==1 ? Date.UTC(year, month-1, day, hours, minutes, seconds, msec) : new Date(year, month-1, day, hours, minutes, seconds, msec).getTime();
 		if (isNaN(dt)) return def;

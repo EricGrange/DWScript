@@ -1,25 +1,11 @@
-procedure Test(y,m,d,h,n,s,ms : Integer);
-begin
-   var a:=EncodeDateTime(y,m,d,h,n,s,ms);
-   var b:=IncMonth(a,2);
-   PrintLn(FormatDateTime('yyyy-mm-dd hh:nn:ss', a)+' => '+FormatDateTime('yyyy-mm-dd hh:nn:ss', b));
+FormatSettings.ShortDateFormat := 'yyyy-mm-dd';
+var d := StrToDateTime('2019-01-31 01:30:00');
+PrintLn(d);
+for var i := 1 to 2 do begin
+   PrintLn('---');
+   PrintLn(DateTimeToStr(d));
+   PrintLn(DateTimeToStr(IncMonth(d, 1))); // beware 29/02 !
+   PrintLn(DateTimeToStr(IncMonth(d, 2))); // DST unsupported !!
+   PrintLn(DateTimeToStr(IncMonth(d, 3))); // DST unsupported !!
+   FormatSettings.Zone := DateTimeZone.UTC;
 end;
-
-FormatSettings.Zone := DateTimeZone.Local;
-Test(2019,8,26,3,30,0,0);
-Test(2019,8,27,3,30,0,0);
-Test(2019,8,28,3,30,0,0);
-FormatSettings.Zone := DateTimeZone.UTC;
-Test(2019,8,26,3,30,0,0);
-Test(2019,8,27,3,30,0,0);
-Test(2019,8,28,3,30,0,0);
-FormatSettings.Zone := DateTimeZone.Local;
-Test(2020,1,28,2,30,0,0);
-Test(2020,1,29,1,30,0,0);
-Test(2020,1,29,2,30,0,0);
-Test(2020,1,30,2,30,0,0);
-FormatSettings.Zone := DateTimeZone.UTC;
-Test(2020,1,28,2,30,0,0);
-Test(2020,1,29,1,30,0,0);
-Test(2020,1,29,2,30,0,0);
-Test(2020,1,30,2,30,0,0);

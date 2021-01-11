@@ -698,44 +698,43 @@ const
        Code : 'function $Date(v) { return Math.round(Now()-0.5) }';
        Dependency : 'Now' ),
       (Name : 'DateTimeToDate';
-       Code : 'function DateTimeToDate(v,u,d) {'#10
-               +#9'var d=(v==0 && d);'#10
-               +#9'var o=d?new Date():new Date(Math.round((v-25569)*864e5));'#10
-               +#9'if (d||(u==2)) o.setTime(o.getTime()-o.getTimezoneOffset()*6e4);'#10
+       Code : 'function DateTimeToDate(v,d) {'#10
+               +#9'if(v||!d) return new Date(Math.round((v-25569)*864e5));'#10
+               +#9'var o=new Date();'#10
+               +#9'o.setTime(o.getTime()-o.getTimezoneOffset()*6e4);'#10
                +#9'return o'#10
                +'}' ),
       (Name : 'DateToDateTime';
-       Code : 'function DateToDateTime(o, u) {'#10
-               +#9'o=new Date(o.getUTCFullYear(), o.getUTCMonth(), o.getUTCDate(),'#10
-               +#9#9'o.getUTCHours(), o.getUTCMinutes(), o.getUTCSeconds(), o.getUTCMilliseconds());'#10
-               +#9'return (o.getTime()-(u==2?0:o.getTimezoneOffset()*6e4))/864e5+25569'#10
-               +'}' ),
+       Code : 'function DateToDateTime(o) { return o.getTime()/864e5+25569 }' ),
       (Name : 'DateTimeToISO8601';
        Code : 'function DateTimeToISO8601(v) {'#10
-               +#9'var s=new Date(Math.round((v-25569)*864e5)).toISOString().slice(0, -5);'#10
+               +#9'var s=DateTimeToDate(v).toISOString().slice(0, -5);'#10
                +#9'return (s.slice(-3)===":00" ? s.slice(0, -3) : s)+"Z"'#10
-               +'}' ),
+               +'}';
+       Dependency : 'DateTimeToDate' ),
       (Name : 'DateTimeToRFC822';
-       Code : 'function DateTimeToRFC822(v) {'#10
-               +#9'return (new Date(Math.round((v-25569)*864e5))).toUTCString();'#10
-               +'}' ),
+       Code : 'function DateTimeToRFC822(v) { return DateTimeToDate(v).toUTCString() }';
+       Dependency : 'DateTimeToDate' ),
       (Name : 'DateTimeToStr';
        Code : 'function DateTimeToStr(v, u) { return FormatDateTime($fmt.ShortDateFormat+" "+$fmt.LongTimeFormat, v, u) }';
        Dependency : 'FormatDateTime' ),
       (Name : 'UnixTimeToLocalDateTime';
-       Code : 'function UnixTimeToLocalDateTime(v) { return v/86400+25569-(new Date(v*1e3)).getTimezoneOffset()/1440 }' ),
+       Code : 'function UnixTimeToLocalDateTime(t) { return t/86400+25569-(new Date(t*1e3)).getTimezoneOffset()/1440 }' ),
       (Name : 'LocalDateTimeToUnixTime';
-       Code : 'function LocalDateTimeToUnixTime(v) { return Math.trunc((LocalDateTimeToUTCDateTime(v)-25569)*86400) }';
-       Dependency : 'LocalDateTimeToUTCDateTime' ),
+       Code : 'function LocalDateTimeToUnixTime(v) { return DateTimeToUnixTime(LocalDateTimeToUTCDateTime(v)) }';
+       Dependency : 'LocalDateTimeToUTCDateTime,DateTimeToUnixTime' ),
       (Name : 'LocalDateTimeToUTCDateTime';
-       Code : 'function LocalDateTimeToUTCDateTime(v) { return DateToDateTime(DateTimeToDate(v), 2) }';
-       Dependency : 'DateToDateTime,DateTimeToDate' ),
+       Code : 'function LocalDateTimeToUTCDateTime(v) {'#10
+               +#9'var o=new Date(Math.round((v-25569)*864e5));'#10
+               +#9'return (new Date(o.getUTCFullYear(), o.getUTCMonth(), o.getUTCDate(),'#10
+               +#9#9'o.getUTCHours(), o.getUTCMinutes(), o.getUTCSeconds(), o.getUTCMilliseconds())).getTime()/864e5+25569'#10
+               +'}' ),
       (Name : 'UTCDateTimeToLocalDateTime';
-       Code : 'function UTCDateTimeToLocalDateTime(v) { return v-(new Date((v-25569)*864e5)).getTimezoneOffset()/1440 }' ),
+       Code : 'function UTCDateTimeToLocalDateTime(t) { return t-(new Date((t-25569)*864e5)).getTimezoneOffset()/1440 }' ),
       (Name : 'DateTimeToUnixTime';
-       Code : 'function DateTimeToUnixTime(v) { return Math.trunc((v-25569)*86400) }' ),
+       Code : 'function DateTimeToUnixTime(t) { return Math.trunc((t-25569)*86400) }' ),
       (Name : 'DateToISO8601';
-       Code : 'function DateToISO8601(v, u) { return FormatDateTime("yyyy-mm-dd", v, u) }';
+       Code : 'function DateToISO8601(v) { return FormatDateTime("yyyy-mm-dd", v, 1) }';
        Dependency : 'FormatDateTime' ),
       (Name : 'DateToStr';
        Code : 'function DateToStr(v, u) { return FormatDateTime($fmt.ShortDateFormat, v, u) }';
@@ -744,38 +743,50 @@ const
        Code : 'var DateToWeekNumber = WeekNumber';
        Dependency : 'WeekNumber'),
       (Name : 'DayOfMonth';
-       Code : 'function DayOfMonth(v, u) { return DateTimeToDate(v, u, 1).getUTCDate(); }';
+       Code : 'function DayOfMonth(v) { return DateTimeToDate(v, 1).getUTCDate(); }';
        Dependency: 'DateTimeToDate'),
       (Name : 'DayOfYear';
-       Code : 'function DayOfYear(v, u) {'#10
-               +#9'var o=DateTimeToDate(v, u, 1);'#10
-               +#9'var y=o.getUTCFullYear(), m=o.getUTCMonth(), d=o.getUTCDate();'#10
-               +#9'return 1+Math.round((Date.UTC(y,m,d)-Date.UTC(y,0,1))/864e5);'#10
+       Code : 'function DayOfYear(v) {'#10
+               +#9'var o=DateTimeToDate(v, 1);'#10
+               +#9'return 1+Math.trunc((o.getTime()-Date.UTC(o.getUTCFullYear(),0,1))/864e5);'#10
                +'}';
        Dependency: 'DateTimeToDate'),
       (Name : 'DayOfWeek';
-       Code : 'function DayOfWeek(v, u) { return DateTimeToDate(v, u).getUTCDay()+1 }';
+       Code : 'function DayOfWeek(v) { return DateTimeToDate(v).getUTCDay()+1 }';
        Dependency : 'DateTimeToDate'),
       (Name : 'DayOfTheWeek';
-       Code : 'function DayOfTheWeek(v, u) { return DateTimeToDate(v, u).getUTCDay()||7 }';
+       Code : 'function DayOfTheWeek(v) { return DateTimeToDate(v).getUTCDay()||7 }';
        Dependency : 'DateTimeToDate' ),
       (Name : 'DecodeDate';
-       Code : 'function DecodeDate(v,y,m,d,u) {'#10
-               +#9'var o=DateTimeToDate(v, u);'#10
-               +#9'y.'+TdwsJSCodeGen.cBoxFieldName+'=o.getUTCFullYear();'#10
-               +#9'm.'+TdwsJSCodeGen.cBoxFieldName+'=o.getUTCMonth()+1;'#10
-               +#9'd.'+TdwsJSCodeGen.cBoxFieldName+'=o.getUTCDate();'#10
+       Code : 'function DecodeDate(dt,y,m,d,u) {'#10
+               +#9'var o=DateTimeToDate(dt);'#10
+               +#9'if ((u||$TZ)==1) {'#10
+               +#9#9'y.'+TdwsJSCodeGen.cBoxFieldName+'=o.getUTCFullYear();'#10
+               +#9#9'm.'+TdwsJSCodeGen.cBoxFieldName+'=o.getUTCMonth()+1;'#10
+               +#9#9'd.'+TdwsJSCodeGen.cBoxFieldName+'=o.getUTCDate();'#10
+               +#9'} else {'#10
+               +#9#9'y.'+TdwsJSCodeGen.cBoxFieldName+'=o.getFullYear();'#10
+               +#9#9'm.'+TdwsJSCodeGen.cBoxFieldName+'=o.getMonth()+1;'#10
+               +#9#9'd.'+TdwsJSCodeGen.cBoxFieldName+'=o.getDate();'#10
+               +#9'}'#10
                +'}';
-       Dependency : 'DateTimeToDate'),
+       Dependency : 'DateTimeToDate,$TZ'),
       (Name : 'DecodeTime';
-       Code : 'function DecodeTime(v,h,m,s,z,u) {'#10
-               +#9'var o=DateTimeToDate(v);'#10
+       Code : 'function DecodeTime(dt,h,m,s,z,u) {'#10
+               +#9'var o=DateTimeToDate(dt);'#10
+               +#9'if ((u||$TZ)==1) {'#10
                +#9'h.'+TdwsJSCodeGen.cBoxFieldName+'=o.getUTCHours();'#10
                +#9'm.'+TdwsJSCodeGen.cBoxFieldName+'=o.getUTCMinutes();'#10
                +#9's.'+TdwsJSCodeGen.cBoxFieldName+'=o.getUTCSeconds();'#10
                +#9'z.'+TdwsJSCodeGen.cBoxFieldName+'=o.getUTCMilliseconds();'#10
+               +#9'} else {'#10
+               +#9'h.'+TdwsJSCodeGen.cBoxFieldName+'=o.getHours();'#10
+               +#9'm.'+TdwsJSCodeGen.cBoxFieldName+'=o.getMinutes();'#10
+               +#9's.'+TdwsJSCodeGen.cBoxFieldName+'=o.getSeconds();'#10
+               +#9'z.'+TdwsJSCodeGen.cBoxFieldName+'=o.getMilliseconds();'#10
+               +#9'}'#10
                +'}';
-       Dependency : 'DateTimeToDate'),
+       Dependency : 'DateTimeToDate,$TZ'),
       (Name : 'DegToRad';
        Code : 'function DegToRad(v) { return v*(Math.PI/180) }'),
       (Name : 'Delete';
@@ -806,30 +817,31 @@ const
       (Name : 'Factorial';
        Code : 'function Factorial(i) { var r=1; while (i>1) { r*=i; i--; } return r }'),
       (Name : 'FirstDayOfMonth';
-       Code : 'function FirstDayOfMonth(v, u, n) { '#10
-               +#9'var o=DateTimeToDate(v, u, 1);'#10
-               +#9'return EncodeDate(o.getUTCFullYear(), o.getUTCMonth()+1+(n||0), 1, u)'#10
+       Code : 'function FirstDayOfMonth(v, n) { '#10
+               +#9'var o=DateTimeToDate(v, 1);'#10
+               +#9'o.setUTCMonth(o.getUTCMonth()+(n||0), 1);'#10
+               +#9'return Math.trunc(DateToDateTime(o))'#10
                +'}';
-       Dependency : 'DateTimeToDate,EncodeDate' ),
+       Dependency : 'DateTimeToDate,DateToDateTime' ),
       (Name : 'FirstDayOfNextMonth';
-       Code : 'function FirstDayOfNextMonth(v, u) { return FirstDayOfMonth(v, u, 1) }';
+       Code : 'function FirstDayOfNextMonth(v) { return FirstDayOfMonth(v, 1) }';
        Dependency : 'FirstDayOfMonth' ),
       (Name : 'FirstDayOfNextYear';
-       Code : 'function FirstDayOfNextYear(v, u) { return FirstDayOfYear(v, u, 1) }';
+       Code : 'function FirstDayOfNextYear(v) { return FirstDayOfYear(v, 1) }';
        Dependency : 'FirstDayOfYear' ),
       (Name : 'FirstDayOfYear';
-       Code : 'function FirstDayOfYear(v, u, n) {'#10
-               +#9'var o=DateTimeToDate(v, u, 1);'#10
-               +#9'return EncodeDate(o.getUTCFullYear()+(n||0), 1, 1, u)'#10
+       Code : 'function FirstDayOfYear(v, n) {'#10
+               +#9'var o=DateTimeToDate(v, 1);'#10
+               +#9'o.setUTCFullYear(o.getUTCFullYear()+(n||0), 0, 1);'#10
+               +#9'return Math.trunc(DateToDateTime(o))'#10
                +'}';
-       Dependency : 'EncodeDate,DateTimeToDate' ),
+       Dependency : 'DateTimeToDate,DateToDateTime' ),
       (Name : 'FirstDayOfWeek';
-       Code : 'function FirstDayOfWeek(v,u) {'#10
-               +#9'var o=DateTimeToDate(v, u);'#10
-               +#9'return EncodeDate(o.getUTCFullYear(), o.getUTCMonth()+1,'#10
-               +#9#9'o.getUTCDate()-(o.getUTCDay()||7)+1, u)'#10
+       Code : 'function FirstDayOfWeek(v) {'#10
+               +#9'var o=DateTimeToDate(v, 1);'#10
+               +#9'return Math.trunc(DateToDateTime(o))-(o.getUTCDay()||7)+1'#10
                +'}';
-       Dependency : 'DateTimeToDate,EncodeDate' ),
+       Dependency : 'DateTimeToDate,DateToDateTime' ),
       (Name : 'FloatToStr';
        Code : 'function FloatToStr$_Float_(i) { return i.toString() }'#10
               +'function FloatToStr$_Float_Integer_(i,p) { return (p==99)?i.toString():i.toFixed(p) }'),
@@ -863,12 +875,13 @@ const
       (Name : 'Hypot';
        Code : 'function Hypot(x,y) { return Math.sqrt(x*x+y*y) }'),
       (Name : 'IncMonth';
-       Code : 'function IncMonth(v, n, u) {'#10
+       Code : 'function IncMonth(v, n) {'#10
                +#9'var o=new Date(Math.round((v-25569)*864e5));'#10
-               +#9'if ((u||$TZ)==2) { o.setMonth(o.getMonth()+n) } else { o.setUTCMonth(o.getUTCMonth()+n) }'#10
-               +#9'return o.getTime()/864e5+25569'#10
-               +'}';
-       Dependency : '$TZ' ),
+               +#9'var d1=o.getUTCDate();'#10
+               +#9'o.setUTCMonth(o.getUTCMonth()+n);'#10
+               +#9'if(o.getUTCDate()<d1) o.setUTCDate(0);'#10  // cf. Delphi: If the input day of month is greater than the last day of the
+               +#9'return o.getTime()/864e5+25569'#10          // resulting month, the day is set to the last day of the resulting month
+               +'}'),
       (Name : 'Insert';
        Code : 'function Insert(s,d,i) { var v=d.'+TdwsJSCodeGen.cBoxFieldName+'; if (s=="") return; if (i<1) i=1; if (i>v.length) i=v.length+1;'
                +'d.'+TdwsJSCodeGen.cBoxFieldName+'=v.substr(0,i-1)+s+v.substr(i-1); }'),
@@ -945,14 +958,14 @@ const
       (Name : 'MinInt';
        Code : 'function MinInt(a,b) { return (a<b)?a:b }'),
       (Name : 'MonthOfYear';
-       Code : 'function MonthOfYear(v, u) { return DateTimeToDate(v, u, 1).getUTCMonth()+1; }';
+       Code : 'function MonthOfYear(v) { return DateTimeToDate(v, 1).getUTCMonth()+1; }';
        Dependency : 'DateTimeToDate'),
       (Name : 'NormalizeString';
        Code : 'function NormalizeString(s,f) { return s.normalize(f) }'),
       (Name : 'Now';
-       Code : 'function Now(u) {'#10
+       Code : 'function Now() {'#10
                +#9'var d=new Date();'#10
-               +#9'return (d.getTime()-(u==2?0:d.getTimezoneOffset()*6e4))/864e5+25569'#10
+               +#9'return (d.getTime()-d.getTimezoneOffset()*6e4)/864e5+25569'#10
                +'}'),
       (Name : 'Odd$_Integer_';
        Code : 'function Odd$_Integer_(v) { return (v&1)==1 }'),
@@ -1024,7 +1037,7 @@ const
       (Name : 'RevPos';
        Code : 'function RevPos(a,b) { return (a=="")?0:(b.lastIndexOf(a)+1) }'),
       (Name : 'RFC822ToDateTime';
-       Code : 'function RFC822ToDateTime(s) { return Date.parse(s)/864e5+25569||0 }'),
+       Code : 'function RFC822ToDateTime(s) { return (Date.parse(s)/864e5+25569)||0 }'),
       (Name : 'RightStr';
        Code : 'function RightStr(s,n) { return s.substr(s.length-n) }'),
       (Name : 'Round';
@@ -1207,8 +1220,7 @@ const
       (Name : 'ASCIILowerCase';
        Code : 'function ASCIILowerCase(v) { return v.toLowerCase() }'),
       (Name : 'UTCDateTime';
-       Code : 'function UTCDateTime() { return Now(2) }';
-       Dependency : 'Now' ),
+       Code : 'function UTCDateTime() { return Date.now()/864e5+25569 }'),
       (Name : 'VarAsType';
        Code : 'function VarAsType(v,t) {'#10
                +#9'switch (t) {'#10
@@ -1262,11 +1274,11 @@ const
                +#9'}'#10
                +'}'),
       (Name : 'YearOf';
-       Code : 'function YearOf(v, u) {return DateTimeToDate(v, u, 1).getUTCFullYear(); }';
+       Code : 'function YearOf(v) {return DateTimeToDate(v, 1).getUTCFullYear(); }';
        Dependency : 'DateTimeToDate'),
       (Name : 'YearOfWeek';
-       Code : 'function YearOfWeek(v, u) {'#10
-               +#9'var o=DateTimeToDate(v, u, 1);'#10
+       Code : 'function YearOfWeek(v) {'#10
+               +#9'var o=DateTimeToDate(v, 1);'#10
                +#9'var m=o.getUTCMonth(), d=o.getUTCDate();'#10
                +#9'return o.getUTCFullYear()'#10
                +#9#9'+ (m==11 && d>=29'#10
@@ -1277,8 +1289,8 @@ const
                +'}';
        Dependency : 'DateTimeToDate'),
       (Name : 'WeekNumber';
-       Code : 'function WeekNumber(v, u) {'#10
-               +#9'var o=DateTimeToDate(v, u, 1);'#10
+       Code : 'function WeekNumber(v) {'#10
+               +#9'var o=DateTimeToDate(v, 1);'#10
                +#9'o.setUTCDate(o.getUTCDate()-(o.getUTCDay()||7)+4);'#10
                +#9'return Math.floor((o.getTime()-new Date(o.getUTCFullYear(),0,1).getTime())/864e5/7)+1'#10
                +'}';
