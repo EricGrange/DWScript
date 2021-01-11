@@ -5020,11 +5020,6 @@ begin
    Result := 0;
 end;
 
-
-{$else}
-implementation
-{$endif}
-
 // ------------------
 // ------------------ Tx86Unsigned32Func ------------------
 // ------------------
@@ -5039,5 +5034,9 @@ begin
 
    Result := 0;
 end;
+
+{$else}
+implementation
+{$endif}
 
 end.
