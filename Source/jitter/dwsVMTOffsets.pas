@@ -39,6 +39,7 @@ var
    vmt_TExprBase_EvalAsDynArray: Integer;
    vmt_TExprBase_AssignValueAsFloat : Integer;
    vmt_TExprBase_AssignValueAsInteger : Integer;
+   vmt_TExprBase_AssignValueAsBoolean : Integer;
 
    vmt_ScriptDynamicArray_IScriptObj_To_FData : Integer;
    vmt_ScriptObjInstance_IScriptObj_To_FData : Integer;
@@ -83,6 +84,7 @@ asm
    mov vmt_TExprBase_EvalAsDynArray,  VMTOFFSET TExprBase.EvalAsScriptDynArray
    mov vmt_TExprBase_AssignValueAsFloat, VMTOFFSET TExprBase.AssignValueAsFloat
    mov vmt_TExprBase_AssignValueAsInteger, VMTOFFSET TExprBase.AssignValueAsInteger
+   mov vmt_TExprBase_AssignValueAsBoolean, VMTOFFSET TExprBase.AssignValueAsBoolean
 {$IF Defined(WIN32)}
    mov func_ustr_clear, offset System.@UStrClr
    mov func_intf_clear, offset System.@IntfClear

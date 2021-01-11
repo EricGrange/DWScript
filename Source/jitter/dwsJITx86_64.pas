@@ -305,6 +305,8 @@ type
 
       procedure DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup); override;
       function CompileBooleanValue(expr : TTypedExpr) : Integer; override;
+
+      procedure CompileAssignBoolean(expr : TTypedExpr; source : Integer); override;
    end;
 
    Tx86FloatVar = class (TdwsJITter_x86)
@@ -479,7 +481,7 @@ type
       procedure CompileVarOperand(expr : TTypedExpr; const varStackAddr : Integer);
    end;
 
-   Tx86Shift = class (TdwsJITter_x86)
+   Tx86Shift = class (Tx86InterpretedExpr)
       FShiftOp : TgpShift;
       constructor Create(jit : TdwsJITx86_64; const shiftOp : TgpShift);
       function CompileInteger(expr : TTypedExpr) : Integer; override;
@@ -3083,6 +3085,18 @@ begin
    Result:=0;
 end;
 
+// CompileAssignBoolean
+//
+procedure Tx86InterpretedExpr.CompileAssignBoolean(expr : TTypedExpr; source : Integer);
+begin
+   jit.SaveXMMRegs;
+
+   x86._mov_reg_reg(gprR8, gprRAX);
+   DoCallEval(expr, vmt_TExprBase_AssignValueAsBoolean);
+
+   jit.RestoreXMMRegs;
+end;
+
 // ------------------
 // ------------------ Tx86FloatVar ------------------
 // ------------------
@@ -4070,13 +4084,12 @@ var
 begin
    e := TShiftExpr(expr);
 
-   Result := jit.CompileInteger(e.Left);
-
    if e.Right is TConstIntExpr then begin
 
+      Result := jit.CompileInteger(e.Left);
       x86._shift_reg_imm(FShiftOp, gprRAX, TConstIntExpr(e.Right).Value);
 
-   end else Result:=inherited;
+   end else Result := inherited;
 end;
 
 // ------------------
