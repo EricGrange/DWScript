@@ -2262,7 +2262,7 @@ end;
 //
 procedure Tx86_64_WriteOnlyStream._neg_reg(reg : TgpRegister64);
 begin
-   WriteBytes([ $48 + Ord(reg >= gprR8), $F8, $D8 + (Ord(reg) and 7) ]);
+   WriteBytes([ $48 + Ord(reg >= gprR8), $F7, $D8 + (Ord(reg) and 7) ]);
 end;
 
 // _shift_reg_imm

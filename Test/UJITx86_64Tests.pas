@@ -42,9 +42,8 @@ type
 //         procedure inc_dword_ptr;
 //         procedure add_sub_dword_ptr_reg;
 //         procedure and_or_xor_dword_ptr_reg;
-//         procedure neg_not_32;
-//         procedure shr_shl_32;
-//         procedure shr_shl_64;
+         procedure neg_not;
+         procedure shr_shl_sar_sal;
 //         procedure xor_and_or_cmp_32;
 //         procedure xor_and_or_cmp_reg;
 //         procedure mul_imul_reg;
@@ -746,90 +745,53 @@ begin
       end;
    end;
 end;
-
-// neg_not_32
+}
+// neg_not
 //
-procedure TJITx86_64Tests.neg_not_32;
+procedure TJITx86_64Tests.neg_not;
 var
-   reg : TgpRegister;
+   reg : TgpRegister64;
    expect : String;
 begin
-   for reg:=gprEAX to gprEDI do begin
+   for reg:=gprRAX to gprR15 do begin
       FStream._neg_reg(reg);
       FStream._not_reg(reg);
-      expect:=expect+'neg '+cgpRegisterName[reg]+#13#10
-                    +'not '+cgpRegisterName[reg]+#13#10
-              ;
-   end;
-   CheckEquals(expect, DisasmStream);
-end;
-
-// shr_shl_32
-//
-procedure TJITx86_64Tests.shr_shl_32;
-var
-   reg : TgpRegister;
-   expect : String;
-begin
-   for reg:=gprEAX to gprEDI do begin
-      FStream._shift_reg_cl(gpShr, reg);
-      FStream._shift_reg_imm(gpShr, reg, 1);
-      FStream._shift_reg_imm(gpShr, reg, $7F);
-      FStream._shift_reg_cl(gpShl, reg);
-      FStream._shift_reg_imm(gpShl, reg, 1);
-      FStream._shift_reg_imm(gpShl, reg, $7F);
-      FStream._shift_reg_cl(gpSar, reg);
-      FStream._shift_reg_imm(gpSar, reg, 1);
-      FStream._shift_reg_imm(gpSar, reg, $7F);
-      FStream._shift_reg_cl(gpSal, reg);
-      FStream._shift_reg_imm(gpSal, reg, 1);
-      FStream._shift_reg_imm(gpSal, reg, $7F);
-      expect:= 'shr '+cgpRegisterName[reg]+', cl'#13#10
-              +'shr '+cgpRegisterName[reg]+', 1 '#13#10
-              +'shr '+cgpRegisterName[reg]+', 7Fh'#13#10
-              +'shl '+cgpRegisterName[reg]+', cl'#13#10
-              +'shl '+cgpRegisterName[reg]+', 1 '#13#10
-              +'shl '+cgpRegisterName[reg]+', 7Fh'#13#10
-              +'sar '+cgpRegisterName[reg]+', cl'#13#10
-              +'sar '+cgpRegisterName[reg]+', 1 '#13#10
-              +'sar '+cgpRegisterName[reg]+', 7Fh'#13#10
-              +'sal '+cgpRegisterName[reg]+', cl'#13#10
-              +'sal '+cgpRegisterName[reg]+', 1 '#13#10
-              +'sal '+cgpRegisterName[reg]+', 7Fh'#13#10
+      expect := 'neg '+cgpRegister64Name[reg]+#13#10
+              + 'not '+cgpRegister64Name[reg]+#13#10
               ;
       CheckEquals(expect, DisasmStream);
    end;
 end;
 
-// shr_shl_64
+// shr_shl_sar_sal
 //
-procedure TJITx86_64Tests.shr_shl_64;
+procedure TJITx86_64Tests.shr_shl_sar_sal;
+var
+   reg : TgpRegister64;
+   expect : String;
 begin
-   FStream._shr_eaxedx_imm(7);
-   FStream._shl_eaxedx_imm(7);
-   FStream._sar_eaxedx_imm(7);
-
-   CheckEquals( 'shrd eax, edx, 00000007h'#13#10
-               +'shr edx, 07h'#13#10
-               +'shld edx, eax, 00000007h'#13#10
-               +'shl eax, 07h'#13#10
-               +'shrd eax, edx, 00000007h'#13#10
-               +'sar edx, 07h'#13#10,
-               DisasmStream);
-
-   FStream._shr_eaxedx_cl;
-   FStream._shl_eaxedx_cl;
-   FStream._sar_eaxedx_cl;
-
-   CheckEquals( 'shrd eax, edx, cl'#13#10
-               +'shr edx, cl'#13#10
-               +'shld edx, eax, cl'#13#10
-               +'shl eax, cl'#13#10
-               +'shrd eax, edx, cl'#13#10
-               +'sar edx, cl'#13#10,
-               DisasmStream);
+   for reg:=gprRAX to gprR15 do begin
+      FStream._shift_reg_imm(gpShr, reg, 1);
+      FStream._shift_reg_imm(gpShr, reg, $7F);
+      FStream._shift_reg_imm(gpShl, reg, 1);
+      FStream._shift_reg_imm(gpShl, reg, $7F);
+      FStream._shift_reg_imm(gpSar, reg, 1);
+      FStream._shift_reg_imm(gpSar, reg, $7F);
+      FStream._shift_reg_imm(gpSal, reg, 1);
+      FStream._shift_reg_imm(gpSal, reg, $7F);
+      expect:= 'shr '+cgpRegister64Name[reg] + ', 1'#13#10
+              +'shr '+cgpRegister64Name[reg] + ', 7Fh'#13#10
+              +'shl '+cgpRegister64Name[reg] + ', 1'#13#10
+              +'shl '+cgpRegister64Name[reg] + ', 7Fh'#13#10
+              +'sar '+cgpRegister64Name[reg] + ', 1'#13#10
+              +'sar '+cgpRegister64Name[reg] + ', 7Fh'#13#10
+              +'sal '+cgpRegister64Name[reg] + ', 1'#13#10
+              +'sal '+cgpRegister64Name[reg] + ', 7Fh'#13#10
+              ;
+      CheckEquals(expect, DisasmStream);
+   end;
 end;
-
+{
 // xor_and_or_32
 //
 procedure TJITx86_64Tests.xor_and_or_cmp_32;
