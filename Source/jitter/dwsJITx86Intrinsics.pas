@@ -365,6 +365,8 @@ type
          procedure _mov_execmem_reg(stackAddr : Integer; const reg : TgpRegister64);
          procedure _mov_reg_execmem(reg : TgpRegister64; stackAddr : Integer; offset : Integer = 0);
 
+         procedure _cmov(flags : TboolFlags; dest, src : TgpRegister64);
+
          procedure _movsd_reg_reg(dest, src : TxmmRegister);
          procedure _movsd_reg_execmem(reg : TxmmRegister; stackAddr : Integer);
          procedure _movsd_execmem_reg(stackAddr : Integer; reg : TxmmRegister);
@@ -387,6 +389,7 @@ type
          procedure _shift_reg_imm(shift : TgpShift; reg : TgpRegister64; value : Byte);
 
          procedure _cmp_reg_imm(reg : TgpRegister64; value : Int64); overload;
+         procedure _cmp_reg_reg(left, right : TgpRegister64);
          procedure _cmp_qword_ptr_reg_imm(reg : TgpRegister64; offset : Integer; value : Int64);
          procedure _cmp_reg_execmem(reg : TgpRegister64; stackAddr : Integer);
          procedure _cmp_execmem_imm(stackAddr : Integer; value : Int64);
@@ -401,12 +404,16 @@ type
 
          procedure _xor_reg_reg(dest, src : TgpRegister64);
 
-         procedure _dec(reg : TgpRegister64d); overload;
+         procedure _inc(reg : TgpRegister64d); overload;
          procedure _inc_qword_ptr_reg(reg : TgpRegister64; offset : Integer);
+         procedure _dec_qword_ptr_reg(reg : TgpRegister64; offset : Integer);
          procedure _add_qword_ptr_reg(dest : TgpRegister64; offset : Integer; operand : TgpRegister64);
+         procedure _sub_qword_ptr_reg(dest : TgpRegister64; offset : Integer; operand : TgpRegister64);
 
          procedure _add_execmem_imm(stackAddr : Integer; stepValue : Int64);
+         procedure _sub_execmem_imm(stackAddr : Integer; stepValue : Int64);
          procedure _add_execmem_reg(stackAddr : Integer; operand : TgpRegister64);
+         procedure _sub_execmem_reg(stackAddr : Integer; operand : TgpRegister64);
 
          procedure _push_reg(reg : TgpRegister64);
          procedure _pop_reg(reg : TgpRegister64);
@@ -2170,6 +2177,17 @@ begin
    _mov_reg_qword_ptr_reg(reg, cExecMemGPR, offset);
 end;
 
+// _cmov
+//
+procedure Tx86_64_WriteOnlyStream._cmov(flags : TboolFlags; dest, src : TgpRegister64);
+begin
+   WriteBytes([
+      $48 + 4*Ord(dest >= gprR8) + Ord(src >= gprR8),
+      $0F, Ord(flags) - $30,
+      $C0 + 8*(Ord(dest) and 7) + (Ord(src) and 7)
+   ]);
+end;
+
 // _movsd_reg_reg
 //
 procedure Tx86_64_WriteOnlyStream._movsd_reg_reg(dest, src : TxmmRegister);
@@ -2344,6 +2362,13 @@ begin
    _op_reg_imm(gpOp_cmp, reg, value);
 end;
 
+// _cmp_reg_reg
+//
+procedure Tx86_64_WriteOnlyStream._cmp_reg_reg(left, right : TgpRegister64);
+begin
+   _op_reg_reg(gpOp_cmp, left, right);
+end;
+
 // _cmp_qword_ptr_reg_imm
 //
 procedure Tx86_64_WriteOnlyStream._cmp_qword_ptr_reg_imm(reg : TgpRegister64; offset : Integer; value : Int64);
@@ -2450,9 +2475,9 @@ begin
    _op_reg_reg(gpOp_xor, dest, src);
 end;
 
-// _dec
+// _inc
 //
-procedure Tx86_64_WriteOnlyStream._dec(reg : TgpRegister64d);
+procedure Tx86_64_WriteOnlyStream._inc(reg : TgpRegister64d);
 begin
    WriteByte($41);
    _dec(TgpRegister(Ord(reg) and 7));
@@ -2469,6 +2494,17 @@ begin
    _modRMSIB_ptr_reg8(0, Ord(reg) and 7, offset);
 end;
 
+// _dec_qword_ptr_reg
+//
+procedure Tx86_64_WriteOnlyStream._dec_qword_ptr_reg(reg : TgpRegister64; offset : Integer);
+begin
+   if reg < gprR8 then
+      WriteByte($48)
+   else WriteByte($49);
+   WriteByte($ff);
+   _modRMSIB_ptr_reg8($8, Ord(reg) and 7, offset);
+end;
+
 // _add_qword_ptr_reg
 //
 procedure Tx86_64_WriteOnlyStream._add_qword_ptr_reg(dest : TgpRegister64; offset : Integer; operand : TgpRegister64);
@@ -2476,6 +2512,17 @@ begin
    WriteBytes([
       $48 + Ord(dest >= gprR8) + 4*Ord(operand >= gprR8),
       $01
+   ]);
+   _modRMSIB_ptr_reg8($00, Ord(dest) and 7, offset);
+end;
+
+// _sub_qword_ptr_reg
+//
+procedure Tx86_64_WriteOnlyStream._sub_qword_ptr_reg(dest : TgpRegister64; offset : Integer; operand : TgpRegister64);
+begin
+   WriteBytes([
+      $48 + Ord(dest >= gprR8) + 4*Ord(operand >= gprR8),
+      $29
    ]);
    _modRMSIB_ptr_reg8($00, Ord(dest) and 7, offset);
 end;
@@ -2493,11 +2540,31 @@ begin
    end;
 end;
 
+// _sub_execmem_imm
+//
+procedure Tx86_64_WriteOnlyStream._sub_execmem_imm(stackAddr : Integer; stepValue : Int64);
+begin
+   if stepValue = 0 then Exit;
+   if stepValue = 1 then
+      _dec_qword_ptr_reg(cExecMemGPR, StackAddrToOffset(stackAddr))
+   else begin
+      _mov_reg_imm(gprRAX, stepValue);
+      _sub_qword_ptr_reg(cExecMemGPR, StackAddrToOffset(stackAddr), gprRAX);
+   end;
+end;
+
 // _add_execmem_reg
 //
 procedure Tx86_64_WriteOnlyStream._add_execmem_reg(stackAddr : Integer; operand : TgpRegister64);
 begin
    _add_qword_ptr_reg(cExecMemGPR, StackAddrToOffset(stackAddr), operand);
+end;
+
+// _sub_execmem_reg
+//
+procedure Tx86_64_WriteOnlyStream._sub_execmem_reg(stackAddr : Integer; operand : TgpRegister64);
+begin
+   _sub_qword_ptr_reg(cExecMemGPR, StackAddrToOffset(stackAddr), operand);
 end;
 
 // _push_reg

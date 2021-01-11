@@ -36,6 +36,7 @@ type
          procedure mov_ops;
          procedure mov_reg_reg;
          procedure mov_reg_imm;
+         procedure cmov_reg_reg;
          procedure inc_dec_64;
 //         procedure mov_64;
 //         procedure add_sub_32;
@@ -514,6 +515,22 @@ begin
    end;
 end;
 
+// cmov_reg_reg
+//
+procedure TJITx86_64Tests.cmov_reg_reg;
+begin
+   FStream._cmov(flagsNBE, gprRAX, gprRBP);
+   FStream._cmov(flagsB, gprRCX, gprR10);
+   FStream._cmov(flagsE, gprR8, gprR11);
+   FStream._cmov(flagsNZ, gprR9, gprRDX);
+   CheckEquals( ''
+               +'cmovnbe rax, rbp'#13#10
+               +'cmovb rcx, r10'#13#10
+               +'cmove r8, r11'#13#10
+               +'cmovne r9, rdx'#13#10
+               , DisasmStream);
+end;
+
 // inc_dec_64
 //
 procedure TJITx86_64Tests.inc_dec_64;
@@ -547,6 +564,37 @@ begin
                +'add qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+20h], rax'#13#10
                +'mov rax, 0000000200030001h'#13#10
                +'add qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+00000C08h], rax'#13#10
+               , DisasmStream);
+
+   FStream._sub_reg_imm(gprRAX, 0);
+   FStream._sub_reg_imm(gprRAX, 1);
+   FStream._sub_reg_imm(gprR8, 1);
+   FStream._sub_reg_imm(gprR9, -1);
+   FStream._sub_reg_imm(gprRCX, $1234);
+   FStream._sub_reg_imm(gprRDX, $200030001);
+   FStream._sub_reg_imm(gprR9, $112200000033);
+
+   CheckEquals( ''
+               +'dec rax'#13#10
+               +'dec r8'#13#10
+               +'inc r9'#13#10
+               +'sub rcx, 0000000000001234h'#13#10
+               +'mov rax, 0000000200030001h'#13#10
+               +'sub rdx, rax'#13#10
+               +'mov rax, 0000112200000033h'#13#10
+               +'sub r9, rax'#13#10
+               , DisasmStream);
+
+   FStream._sub_execmem_imm(0, 1);
+   FStream._sub_execmem_imm(1, $80);
+   FStream._sub_execmem_imm($80, $200030001);
+
+   CheckEquals( ''
+               +'dec qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+08h]'#13#10
+               +'mov eax, 00000080h'#13#10
+               +'sub qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+20h], rax'#13#10
+               +'mov rax, 0000000200030001h'#13#10
+               +'sub qword ptr ['+cgpRegister64Name[cExecMemGPR]+'+00000C08h], rax'#13#10
                , DisasmStream);
 end;
 {
