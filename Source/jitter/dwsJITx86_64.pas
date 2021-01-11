@@ -1374,7 +1374,7 @@ begin
    if expr.ClassType=TConstFloatExpr then begin
 
       c := TConstFloatExpr(expr);
-      if (op = xmm_addsd) and (c.Value = 2) then
+      if (op = xmm_multsd) and (c.Value = 2) then
          x86._xmm_reg_reg(xmm_addsd, dest, dest)
       else Fixups.NewOpRegImm(OP, dest, c.Value);
 
