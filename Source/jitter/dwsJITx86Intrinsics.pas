@@ -320,6 +320,7 @@ type
 
       protected
          procedure _modRMSIB_regnum_ptr_reg(const prefix, opCode : array of Byte; destNum : Integer; src : TgpRegister64; offset : Integer);
+         procedure _modRMSIB_ptr_reg8_reg8(rm : Integer; base, index : Integer; scale, offset : Integer);
 
          procedure _vex_ps_modRMSIB_reg_reg(const opCode : array of Byte; dest, src1, src2 : TxmmRegister); overload;
          procedure _vex_ss_modRMSIB_reg_reg(const opCode : array of Byte; dest, src1, src2 : TxmmRegister); overload;
@@ -350,6 +351,7 @@ type
 
          procedure _movsd_qword_ptr_reg_reg(dest : TgpRegister64; offset : Integer; src : TxmmRegister);
          procedure _movsd_reg_qword_ptr_reg(dest : TxmmRegister; src : TgpRegister64; offset : Integer);
+         procedure _movsd_reg_qword_ptr_indexed(dest : TxmmRegister; base, index : TgpRegister64; scale, offset : Integer);
          procedure _movsd_reg_absmem(reg : TxmmRegister; ptr : Pointer);
 
          procedure _mov_reg_qword_ptr_reg(dest, src : TgpRegister64; offset : Integer = 0);
@@ -416,6 +418,7 @@ type
          procedure _test_al_al;
 
          procedure _cvtsi2sd(dest : TxmmRegister; src : TgpRegister64);
+         procedure _cvtsd2si(dest : TgpRegister64; src : TxmmRegister);
 
          procedure _prefetch_ptr_reg(src : TgpRegister64; offset : Integer);
          procedure _prefetcht0_ptr_reg(src : TgpRegister64; offset : Integer);
@@ -1866,6 +1869,40 @@ begin
    _modRMSIB_ptr_reg8((destNum and 7) shl 3, Ord(src) and 7, offset);
 end;
 
+// _modRMSIB_ptr_reg8_reg8
+//
+procedure Tx86_64_WriteOnlyStream._modRMSIB_ptr_reg8_reg8(rm : Integer; base, index : Integer; scale, offset : Integer);
+var
+   sib : Integer;
+begin
+   Assert(scale in [1, 2, 4, 8]);
+
+   if (index=Ord(gprESP)) and (base<>Ord(gprESP)) then begin
+      Assert(scale=1);
+      _modRMSIB_ptr_reg8_reg8(rm, index, base, 1, offset);
+   end;
+
+   if (offset=0) and (base<>Ord(gprEBP)) then
+      Inc(rm, $04)
+   else if (offset>=-128) and (offset<127) then
+      Inc(rm, $44)
+   else Inc(rm, $84);
+   WriteByte(rm);
+
+   sib:=Ord(index)*8+Ord(base);
+   case scale of
+      2 : Inc(sib, $40);
+      4 : Inc(sib, $80);
+      8 : Inc(sib, $C0);
+   end;
+   WriteByte(sib);
+
+   if (rm and $40)<>0 then
+      WriteByte(Byte(offset))
+   else if (rm and $80)<>0 then
+      WriteInt32(offset);
+end;
+
 // _vex_modRMSIB_reg_reg
 //
 procedure Tx86_64_WriteOnlyStream._vex_ps_modRMSIB_reg_reg(const opCode : array of Byte; dest, src1, src2 : TxmmRegister);
@@ -2030,6 +2067,22 @@ begin
    Assert(dest in [xmm0..High(TxmmRegister)]);
 
    _modRMSIB_regnum_ptr_reg([$F2], [$0F, $10], Ord(dest), src, offset);
+end;
+
+// _movsd_reg_qword_ptr_indexed
+//
+procedure Tx86_64_WriteOnlyStream._movsd_reg_qword_ptr_indexed(dest : TxmmRegister; base, index : TgpRegister64; scale, offset : Integer);
+begin
+   Assert(dest in [xmm0..High(TxmmRegister)]);
+
+   WriteByte($F2);
+
+   if (dest >= xmm8) or (base >= gprR8) or (index >= gprR8) then
+      WriteByte($40 + 4*Ord(dest >= xmm8) + 2*Ord(index >= gprR8) + Ord(base >= gprR8));
+
+   WriteBytes([ $0F, $10 ]);
+
+   _modRMSIB_ptr_reg8_reg8((Ord(dest) and 7)*8, Ord(base), Ord(index), scale, offset);
 end;
 
 // _movsd_reg_absmem
@@ -2506,7 +2559,17 @@ procedure Tx86_64_WriteOnlyStream._cvtsi2sd(dest : TxmmRegister; src : TgpRegist
 begin
    WriteBytes([
       $F2, $48 + Ord(src >= gprR8) + 4*Ord(dest >= xmm8),
-      $0f, $2a, $c0 + (Ord(src) and 7) + 8*(Ord(dest) and 7)
+      $0F, $2A, $c0 + (Ord(src) and 7) + 8*(Ord(dest) and 7)
+   ]);
+end;
+
+// _cvtsd2si
+//
+procedure Tx86_64_WriteOnlyStream._cvtsd2si(dest : TgpRegister64; src : TxmmRegister);
+begin
+   WriteBytes([
+      $F2, $48 + Ord(src >= xmm8) + 4*Ord(dest >= gprR8),
+      $0F, $2D, $c0 + (Ord(src) and 7) + 8*(Ord(dest) and 7)
    ]);
 end;
 

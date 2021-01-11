@@ -25,6 +25,7 @@ type
       published
          procedure xmm_ops;
          procedure comisd;
+         procedure cvt_si2sd_sd2si;
          procedure xor_ops;
          procedure movsd;
 //         procedure movq;
@@ -195,6 +196,24 @@ begin
                +'mov rax, 000000123456789Ah'#13#10
                +'comisd xmm8, qword ptr [rax]'#13#10
                , DisasmStream);
+end;
+
+// cvt_si2sd_sd2si
+//
+procedure TJITx86_64Tests.cvt_si2sd_sd2si;
+var
+   reg : TgpRegister64;
+   xmm : TxmmRegister;
+begin
+   for reg := gprRAX to gprR15 do begin
+      for xmm := xmm0 to xmm15 do begin
+         FStream._cvtsi2sd(xmm, reg);
+         FStream._cvtsd2si(reg, xmm);
+         CheckEquals( 'cvtsi2sd xmm' + IntToStr(Ord(xmm)) + ', ' + cgpRegister64Name[reg] + #13#10
+                     +'cvtsd2si ' + cgpRegister64Name[reg] + ', xmm' + IntToStr(Ord(xmm)) + #13#10
+                     , DisasmStream);
+      end;
+   end;
 end;
 
 // xor_ops
