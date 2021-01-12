@@ -26,15 +26,20 @@ uses
   dwsTimeFunctions,
   dwsVariantFunctions,
   dwsFileFunctions,
+  dwsBigIntegerFunctions.GMP,
+  dwsMPIR.Bundle,
   dwsClassesLibModule,
   dwsZipLibModule,
   dwsEncodingLibModule,
   dwsCryptoLibModule,
   dwsWebLibModule,
   dwsDatabaseLibModule,
+  dwsGraphicLibrary,
+  dwsTurboJPEG.Bundle,
   dwsComConnector,
   dwsJSONConnector,
   dwsSynSQLiteDatabase,
+  dwsErrors,
   dwsRunnerProject in 'dwsRunnerProject.pas';
 
 function CreateScript : TDelphiWebScript;

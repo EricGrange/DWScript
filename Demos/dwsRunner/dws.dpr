@@ -40,6 +40,12 @@ uses
   dwsSynSQLiteDatabase,
   dwsSynODBCDatabase,
   dwsWMIDatabase,
+  dwsGraphicLibrary,
+  dwsTurboJPEG.Bundle,
+  dwsErrors,
+  dwsJIT,
+  {$ifdef WIN32} dwsJITx86, {$endif}
+  {$ifdef WIN64} dwsJITx86_64, {$endif}
   dwsRunnerProject in 'dwsRunnerProject.pas';
 
 {$SetPEFlags IMAGE_FILE_LARGE_ADDRESS_AWARE or IMAGE_FILE_RELOCS_STRIPPED}
@@ -192,6 +198,10 @@ begin
                if prog.Msgs.HasErrors then Exit;
             end;
 
+            var jit := TdwsJITx86.Create;
+            jit.GreedyJIT(prog.ProgramObject);
+            jit.Free;
+
             SetLength(params, ParamCount-paramOffset+2);
             params[0]:=ParamStr(0);
             for i:=paramOffset to ParamCount do
@@ -220,7 +230,6 @@ end;
 
 var
    fileName : String;
-   source : String;
    paramOffset : Integer;
    project : TRunnerProject;
    zr : TZipRead;
