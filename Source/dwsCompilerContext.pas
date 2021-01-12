@@ -20,7 +20,7 @@ interface
 
 uses
    dwsUtils, dwsSymbols, dwsErrors, dwsScriptSource, dwsXPlatform,
-   dwsUnitSymbols, dwsStrings, dwsTokenizer, dwsCustomData;
+   dwsUnitSymbols, dwsStrings, dwsTokenizer, dwsCustomData, dwsSpecialKeywords;
 
 type
    TCompilerOption = (
@@ -50,6 +50,7 @@ type
          FOrphanedObjects : TSimpleStack<TRefCountedObject>;
          FUnitList : TIdwsUnitList;
          FHelperMemberNames : TSimpleStringHash;
+         FSpecialSymbols : array [TSpecialKeywordKind] of TSymbol;
 
          FTypDefaultConstructor : TMethodSymbol;
          FTypDefaultDestructor : TMethodSymbol;
@@ -79,6 +80,8 @@ type
 
          function WrapWithImplicitCast(toTyp : TTypeSymbol; const scriptPos : TScriptPos; var expr) : Boolean;
          function FindType(const typName : String) : TTypeSymbol; override;
+
+         function SpecialSymbol(sk : TSpecialKeywordKind) : TSymbol;
 
          function Optimize : Boolean;
 
@@ -112,7 +115,7 @@ implementation
 
 uses Variants,
    dwsExprs, dwsUnifiedConstants, dwsConstExprs, dwsOperators, dwsCompilerUtils,
-   dwsSpecialKeywords, dwsConvExprs;
+   dwsConvExprs;
 
 // ------------------
 // ------------------ TdwsCompilerContext ------------------
@@ -134,6 +137,7 @@ end;
 destructor TdwsCompilerContext.Destroy;
 var
    obj : TRefCountedObject;
+   sk : TSpecialKeywordKind;
 begin
    // stack behavior is required to allow objects to orphan others while being cleaned up
    while FOrphanedObjects.Count > 0 do begin
@@ -149,6 +153,9 @@ begin
 
    FCustomStatesMRSW.Free;
    FCustomStates.Free;
+
+   for sk := Low(FSpecialSymbols) to High(FSpecialSymbols) do
+      FSpecialSymbols[sk].Free;
 
    inherited;
 end;
@@ -283,6 +290,29 @@ end;
 function TdwsCompilerContext.FindType(const typName : String) : TTypeSymbol;
 begin
    Result := SystemTable.FindTypeLocal(typName)
+end;
+
+// SpecialSymbol
+//
+function TdwsCompilerContext.SpecialSymbol(sk : TSpecialKeywordKind) : TSymbol;
+
+   function InitializeSymbol(sk : TSpecialKeywordKind) : TSymbol;
+   begin
+      Result := TPseudoMethodSymbol.Create(nil, cSpecialKeywords[sk], fkFunction, 0);
+      case sk of
+         skAssigned, skDefined, skDeclared, skConditionalDefined :
+            Result.Typ := TypBoolean;
+         skHigh, skLength, skLow, skOrd, skSizeOf, skInc, skDec :
+            Result.Typ := TypInteger;
+      end;
+   end;
+
+begin
+   Result := FSpecialSymbols[sk];
+   if Result = nil then begin
+      Result := InitializeSymbol(sk);
+      FSpecialSymbols[sk] := Result;
+   end;
 end;
 
 // Optimize

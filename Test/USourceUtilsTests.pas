@@ -61,6 +61,7 @@ type
          procedure NormalizeForVarIn;
          procedure NormalizeKeywords;
          procedure NormalizeEscapedNames;
+         procedure NormalizeIncDec;
          procedure OptimizedIfThenBlockSymbol;
          procedure MemberVisibilities;
          procedure UnitNamesSuggest;
@@ -1432,6 +1433,42 @@ begin
             + 't.&Hello := "b";'#13#10
             + 't.World := True;'#13#10
             + 't.&World := False;'#13#10,
+            lines.Text
+         );
+      finally
+         normalizer.Free;
+      end;
+   finally
+      lines.Free;
+   end;
+end;
+
+// NormalizeIncDec
+//
+procedure TSourceUtilsTests.NormalizeIncDec;
+var
+   prog : IdwsProgram;
+   lines : TStringList;
+   normalizer : TTestNormalizer;
+begin
+   lines := TStringList.Create;
+   try
+      lines.Text := 'var i : Integer;'#13#10
+                  + 'iNc(i);'#13#10
+                  + 'dec(i);'#13#10;
+
+      prog := FCompiler.Compile(lines.Text);
+
+      Check(prog.Msgs.Count = 0, Prog.Msgs.AsInfo);
+
+      normalizer := TTestNormalizer.Create;
+      try
+         NormalizeSymbolsCase(lines, prog.SourceList[0].SourceFile, prog.SymbolDictionary,
+                              normalizer.Normalize);
+         CheckEquals(
+                    'var i : Integer;'#13#10
+                  + 'Inc(i);'#13#10
+                  + 'Dec(i);'#13#10,
             lines.Text
          );
       finally

@@ -13644,6 +13644,8 @@ var
 begin
    msgExpr:=nil;
 
+   RecordSymbolUseReference(FCompilerContext.SpecialSymbol(specialKind), namePos, False);
+
    if specialKind=skDebugBreak then begin
 
       argExpr:=nil;
