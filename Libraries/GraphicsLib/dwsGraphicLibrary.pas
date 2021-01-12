@@ -34,9 +34,9 @@ uses
    {$ifdef USE_LIB_JPEG}
    dwsTurboJPEG,
    {$else}
-   JPEG,
+   VCL.Imaging.JPEG,
    {$endif}
-   PNGImage,
+   VCL.Imaging.PNGImage,
    dwsJPEGEncoderOptions,
    dwsXPlatform, dwsUtils, dwsStrings,
    dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList, dwsUnitSymbols,
@@ -182,7 +182,7 @@ begin
          jpg.Assign(bmp);
          jpg.CompressionQuality:=quality;
          jpg.SaveToStream(buf);
-         Result:=RawByteStringToScriptString(buf.ToRawBytes);
+         Result := buf.ToRawBytes;
       finally
          buf.ReturnToPool;
          jpg.Free;
