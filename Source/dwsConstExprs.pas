@@ -108,6 +108,8 @@ type
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
          property Value : Int64 read FValue write FValue;
+
+         function ValueIsInt32 : Boolean; inline;
    end;
 
    // TConstFloatExpr
@@ -492,6 +494,13 @@ asm
 begin
    Result:=FValue;
 {$ifend}
+end;
+
+// ValueIsInt32
+//
+function TConstIntExpr.ValueIsInt32 : Boolean;
+begin
+   Result := Int32(FValue) = FValue;
 end;
 
 // ------------------
