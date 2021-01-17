@@ -1,7 +1,7 @@
 //
 // This test answers Project Euler's Problem 5
 //
-// DO NOT READ IT if you
+// DO NOT READ IT if you want to participate
 //
 
 type TDivs = array [2..19] of Integer;

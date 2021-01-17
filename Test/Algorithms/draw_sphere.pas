@@ -1,5 +1,5 @@
 //
-// New Script
+// Ray-traced sphere
 //
 
 type
