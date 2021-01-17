@@ -2109,15 +2109,16 @@ begin
    jit.Fixups.AddFixup(targetTrue);
 
    jit.CompileStatement(e.ThenExpr);
+   jit.ResetXMMReg;
+
    jit.Fixups.NewJump(flagsNone, targetDone);
 
    jit.Fixups.AddFixup(targetFalse);
 
    jit.CompileStatement(e.ElseExpr);
+   jit.ResetXMMReg;
 
    jit.Fixups.AddFixup(targetDone);
-
-   jit.ResetXMMReg;
 end;
 
 // ------------------
