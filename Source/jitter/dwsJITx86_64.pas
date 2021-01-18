@@ -383,9 +383,10 @@ type
 //   end;
 
    Tx86ArrayBase = class (Tx86InterpretedExpr)
-      function CompileToItemPtr(expr : TStaticArrayExpr; var ptrReg : TgpRegister64; var offset : Integer) : Boolean;
    end;
    Tx86StaticArray = class (Tx86ArrayBase)
+      function CompileToItemPtr(expr : TStaticArrayExpr; var ptrReg : TgpRegister64; var offset : Integer) : Boolean;
+
       function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
       function  DoCompileInteger(expr : TTypedExpr) : TgpRegister64; override;
       procedure DoCompileAssignFloat(expr : TTypedExpr; source : TxmmRegister); override;
@@ -393,7 +394,7 @@ type
    end;
    Tx86DynamicArrayBase = class (Tx86ArrayBase)
       function CompileAsData(expr : TTypedExpr) : TgpRegister64;
-      function CompileAsItemPtr(base, index : TTypedExpr) : TgpRegister64;
+      function CompileAsItemPtr(base, index : TTypedExpr; var offset : Integer) : TgpRegister64;
    end;
    Tx86DynamicArray = class (Tx86DynamicArrayBase)
       function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
@@ -3856,13 +3857,14 @@ begin
    jit.Fixups.NewConditionalJumps(flagsNZ, targetTrue, targetFalse);
 end;
 }
+
 // ------------------
-// ------------------ Tx86ArrayBase ------------------
+// ------------------ Tx86StaticArray ------------------
 // ------------------
 
 // CompileToItemPtr
 //
-function Tx86ArrayBase.CompileToItemPtr(expr : TStaticArrayExpr; var ptrReg : TgpRegister64; var offset : Integer) : Boolean;
+function Tx86StaticArray.CompileToItemPtr(expr : TStaticArrayExpr; var ptrReg : TgpRegister64; var offset : Integer) : Boolean;
 var
    absPointer : IntPtr;
 begin
@@ -3923,10 +3925,6 @@ begin
 
    Result := True;
 end;
-
-// ------------------
-// ------------------ Tx86StaticArray ------------------
-// ------------------
 
 // DoCompileFloat
 //
@@ -4049,9 +4047,28 @@ end;
 
 // CompileAsItemPtr
 //
-function Tx86DynamicArrayBase.CompileAsItemPtr(base, index : TTypedExpr) : TgpRegister64;
+function Tx86DynamicArrayBase.CompileAsItemPtr(base, index : TTypedExpr; var offset : Integer) : TgpRegister64;
+var
+   indexClass : TClass;
 begin
+   indexClass := index.ClassType;
+   if indexClass = TAddIntExpr then begin
+      if TAddIntExpr(index).Right.ClassType = TConstIntExpr then begin
+         Result := CompileAsItemPtr(base, TAddIntExpr(index).Left, offset);
+         offset := offset + TConstIntExpr(TAddIntExpr(index).Right).Value * SizeOf(Variant);
+         Exit;
+      end;
+   end else if indexClass = TSubIntExpr then begin
+      if TSubIntExpr(index).Right.ClassType = TConstIntExpr then begin
+         Result := CompileAsItemPtr(base, TSubIntExpr(index).Left, offset);
+         offset := offset - TConstIntExpr(TSubIntExpr(index).Right).Value * SizeOf(Variant);
+         Exit;
+      end;
+   end;
+
    Result := CompileAsData(base);
+
+   offset := cVariant_DataOffset;
 
    if index is TConstIntExpr then begin
 
@@ -4076,15 +4093,17 @@ end;
 function Tx86DynamicArray.DoCompileFloat(expr : TTypedExpr) : TxmmRegister;
 var
    e : TDynamicArrayExpr;
+   regPtr : TgpRegister64;
+   offset : Integer;
 begin
    e:=TDynamicArrayExpr(expr);
 
    if jit.IsFloat(e) then begin
 
-      var regPtr := CompileAsItemPtr(e.BaseExpr, e.IndexExpr);
+      regPtr := CompileAsItemPtr(e.BaseExpr, e.IndexExpr, offset);
 
       Result := jit.AllocXMMReg(e);
-      x86._movsd_reg_qword_ptr_reg(Result, regPtr, cVariant_DataOffset);
+      x86._movsd_reg_qword_ptr_reg(Result, regPtr, offset);
 
       jit.ReleaseGPReg(regPtr);
 
@@ -4134,14 +4153,15 @@ var
    e : TDynamicArraySetExpr;
    reg : TxmmRegister;
    regPtr : TgpRegister64;
+   offset : Integer;
 begin
    e:=TDynamicArraySetExpr(expr);
 
    if jit.IsFloat(e.ArrayExpr.Typ.Typ) then begin
 
-      regPtr := CompileAsItemPtr(e.ArrayExpr, e.IndexExpr);
+      regPtr := CompileAsItemPtr(e.ArrayExpr, e.IndexExpr, offset);
       reg := jit.CompileFloat(e.ValueExpr);
-      x86._movsd_qword_ptr_reg_reg(regPtr, cVariant_DataOffset, reg);
+      x86._movsd_qword_ptr_reg_reg(regPtr, offset, reg);
       jit.ReleaseXMMReg(reg);
       jit.ReleaseGPReg(regPtr);
 
