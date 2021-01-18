@@ -307,17 +307,17 @@ type
 
    TFloatArrayProcessFunc = class(TInternalMagicDynArrayFunction)
       procedure DoEvalAsDynArray(const args : TExprBaseListExec; var result : IScriptDynArray); override;
-      procedure DoProcess(p : PVarData; n : Integer; const args : TExprBaseListExec); virtual; abstract;
+      procedure DoProcess(p : PDouble; n, stride : Integer; const args : TExprBaseListExec); virtual; abstract;
    end;
 
    TFloatArrayOffsetFunc = class(TFloatArrayProcessFunc)
-      procedure DoProcess(p : PVarData; n : Integer; const args : TExprBaseListExec); override;
+      procedure DoProcess(p : PDouble; n, stride : Integer; const args : TExprBaseListExec); override;
    end;
    TFloatArrayMultiplyFunc = class(TFloatArrayProcessFunc)
-      procedure DoProcess(p : PVarData; n : Integer; const args : TExprBaseListExec); override;
+      procedure DoProcess(p : PDouble; n, stride : Integer; const args : TExprBaseListExec); override;
    end;
    TFloatArrayReciprocalFunc = class(TFloatArrayProcessFunc)
-      procedure DoProcess(p : PVarData; n : Integer; const args : TExprBaseListExec); override;
+      procedure DoProcess(p : PDouble; n, stride : Integer; const args : TExprBaseListExec); override;
    end;
 
 function Gcd(a, b : Int64) : Int64;
@@ -985,12 +985,13 @@ end;
 //
 procedure TFloatArrayProcessFunc.DoEvalAsDynArray(const args : TExprBaseListExec; var result : IScriptDynArray);
 var
-   n : Integer;
+   n, stride : Integer;
+   p : PDouble;
 begin
    args.EvalAsDynArray(0, result);
-   n := result.ArrayLength;
-   if n > 0 then
-      DoProcess(PVarData(result.AsPVariant(0)), n, args);
+   p := result.AsPDouble(n, stride);
+   if p <> nil then
+      DoProcess(p, n, stride, args);
 end;
 
 // ------------------
@@ -999,15 +1000,15 @@ end;
 
 // DoProcess
 //
-procedure TFloatArrayOffsetFunc.DoProcess(p : PVarData; n : Integer; const args : TExprBaseListExec);
+procedure TFloatArrayOffsetFunc.DoProcess(p : PDouble; n, stride : Integer; const args : TExprBaseListExec);
 var
    operand : Double;
    i : Integer;
 begin
    operand := args.AsFloat[1];
    for i := 0 to n-1 do begin
-      p.VDouble := p.VDouble + operand;
-      Inc(p);
+      p^ := p^ + operand;
+      p := Pointer(IntPtr(p) + stride);
    end;
 end;
 
@@ -1017,15 +1018,15 @@ end;
 
 // DoProcess
 //
-procedure TFloatArrayMultiplyFunc.DoProcess(p : PVarData; n : Integer; const args : TExprBaseListExec);
+procedure TFloatArrayMultiplyFunc.DoProcess(p : PDouble; n, stride : Integer; const args : TExprBaseListExec);
 var
    operand : Double;
    i : Integer;
 begin
    operand := args.AsFloat[1];
    for i := 0 to n-1 do begin
-      p.VDouble := p.VDouble * operand;
-      Inc(p);
+      p^ := p^ * operand;
+      p := Pointer(IntPtr(p) + stride);
    end;
 end;
 
@@ -1035,13 +1036,13 @@ end;
 
 // DoProcess
 //
-procedure TFloatArrayReciprocalFunc.DoProcess(p : PVarData; n : Integer; const args : TExprBaseListExec);
+procedure TFloatArrayReciprocalFunc.DoProcess(p : PDouble; n, stride : Integer; const args : TExprBaseListExec);
 var
    i : Integer;
 begin
    for i := 0 to n-1 do begin
-      p.VDouble := 1 / p.VDouble;
-      Inc(p);
+      p^ := 1 / p^;
+      p := Pointer(IntPtr(p) * stride);
    end;
 end;
 

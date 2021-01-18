@@ -18,6 +18,8 @@ unit BeaEngineDelphi;
    {$DEFINE USEDLL}
 {$endif}
 
+{$WARN SYMBOL_PLATFORM OFF}
+
 // ====================================================================
 // Default link type is static lib
 // comment below line to switch link with DLL

@@ -68,6 +68,8 @@ type
       procedure EvalAsString(addr : Integer; var result : String);
       procedure EvalAsInterface(addr : Integer; var result : IUnknown);
 
+      function IsEmpty(addr : Integer) : Boolean;
+
       procedure CopyData(const destData : TData; destAddr, size : Integer);
       procedure WriteData(const src : IDataContext; size : Integer); overload;
       procedure WriteData(destAddr : Integer; const src : IDataContext; size : Integer); overload;
@@ -154,6 +156,8 @@ type
          property  AsString[addr : Integer] : String read GetAsString write SetAsString;
          property  AsInterface[addr : Integer] : IUnknown read GetAsInterface write SetAsInterface;
 
+         function IsEmpty(addr : Integer) : Boolean;
+
          procedure InternalCopyData(sourceAddr, destAddr, size : Integer); inline;
 
          procedure CopyData(const destData : TData; destAddr, size : Integer); overload; inline;
@@ -218,6 +222,8 @@ type
          procedure EvalAsVariant(addr : Integer; var result : Variant);
          procedure EvalAsString(addr : Integer; var result : String);
          procedure EvalAsInterface(addr : Integer; var result : IUnknown);
+
+         function IsEmpty(addr : Integer) : Boolean;
 
          procedure CopyData(const destData : TData; destAddr, size : Integer);
          procedure WriteData(const src : IDataContext; size : Integer); overload;
@@ -442,6 +448,17 @@ begin
       Inc(p);
    end;
    Assert(Result <> 0);
+end;
+
+// DWSVarIsEmpty
+//
+function DWSVarIsEmpty(const v : Variant) : Boolean; inline;
+begin
+   Result :=    (TVarData(v).VType = varEmpty)
+             or (
+                     (TVarData(v).VType = varUnknown)
+                 and (TVarData(v).VUnknown = nil)
+                );
 end;
 
 // ------------------
@@ -772,6 +789,13 @@ begin
    if p^.VType=varUnknown then
       result:=IUnknown(p^.VUnknown)
    else result:=PVariant(p)^;
+end;
+
+// IsEmpty
+//
+function TDataContext.IsEmpty(addr : Integer) : Boolean;
+begin
+   Result := DWSVarIsEmpty(FData[FAddr+addr]);
 end;
 
 // InternalCopyData
@@ -1109,6 +1133,13 @@ end;
 procedure TRelativeDataContext.EvalAsInterface(addr : Integer; var result : IUnknown);
 begin
    result := FGetPData^[FAddr+addr];
+end;
+
+// IsEmpty
+//
+function TRelativeDataContext.IsEmpty(addr : Integer) : Boolean;
+begin
+   Result := DWSVarIsEmpty(FGetPData^[FAddr+addr]);
 end;
 
 // CopyData

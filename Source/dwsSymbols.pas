@@ -2193,6 +2193,10 @@ type
 
       procedure Reverse;
 
+      function AsPVariant(addr : Integer) : PVariant;
+
+      function AsPDouble(var nbElements, stride : Integer) : PDouble;
+
       function GetAsFloat(index : Integer) : Double;
       procedure SetAsFloat(index : Integer; const v : Double);
       property AsFloat[index : Integer] : Double read GetAsFloat write SetAsFloat;
@@ -2212,6 +2216,8 @@ type
       procedure EvalAsVariant(index : Integer; var result : Variant);
       procedure EvalAsString(index : Integer; var result : String);
       procedure EvalAsInterface(index : Integer; var result : IUnknown);
+
+      function IsEmpty(addr : Integer) : Boolean;
    end;
 
    // IScriptAssociativeArray

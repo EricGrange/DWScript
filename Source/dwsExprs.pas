@@ -1640,6 +1640,8 @@ type
 
          procedure ReplaceData(const newData : TData); override;
 
+         function AsPDouble(var nbElements, stride : Integer) : PDouble; virtual;
+
          function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
 
          property ElementTyp : TTypeSymbol read FElementTyp;
@@ -1665,6 +1667,11 @@ type
       public
          procedure Add(const s : String);
          procedure AddStrings(sl : TStrings);
+   end;
+
+   TScriptDynamicFloatArray = class (TScriptDynamicValueArray)
+      public
+         function AsPDouble(var nbElements, stride : Integer) : PDouble; override;
    end;
 
    TScriptAssociativeArrayHashCodes = array of Cardinal;
@@ -7439,17 +7446,21 @@ end;
 class function TScriptDynamicArray.CreateNew(elemTyp : TTypeSymbol) : TScriptDynamicArray;
 var
    size : Integer;
+   elemTypClass : TClass;
 begin
    if elemTyp<>nil then
-      size:=elemTyp.Size
-   else size:=0;
-   if size=1 then
-      if elemTyp.ClassType=TBaseStringSymbol then
-         Result:=TScriptDynamicStringArray.Create
-      else Result:=TScriptDynamicValueArray.Create
-   else Result:=TScriptDynamicDataArray.Create;
-   Result.FElementTyp:=elemTyp;
-   Result.FElementSize:=size;
+      size := elemTyp.Size
+   else size := 0;
+   if size = 1 then begin
+      elemTypClass := elemTyp.UnAliasedType.ClassType;
+      if elemTypClass = TBaseStringSymbol then
+         Result := TScriptDynamicStringArray.Create
+      else if elemTypClass = TBaseFloatSymbol then
+         Result := TScriptDynamicFloatArray.Create
+      else Result := TScriptDynamicValueArray.Create
+   end else Result := TScriptDynamicDataArray.Create;
+   Result.FElementTyp := elemTyp;
+   Result.FElementSize := size;
 end;
 
 // TScriptDynamicArray_InitData
@@ -7486,6 +7497,13 @@ procedure TScriptDynamicArray.ReplaceData(const newData : TData);
 begin
    inherited;
    FArrayLength:=System.Length(newData) div ElementSize;
+end;
+
+// AsPDouble
+//
+function TScriptDynamicArray.AsPDouble(var nbElements, stride : Integer) : PDouble;
+begin
+   Result := nil;
 end;
 
 // IndexOfFuncPtr
@@ -7738,6 +7756,21 @@ begin
    ArrayLength := n+sl.Count;
    for i := 0 to sl.Count-1 do
       AsString[n+i] := sl[i];
+end;
+
+// ------------------
+// ------------------ TScriptDynamicFloatArray ------------------
+// ------------------
+
+// AsPDouble
+//
+function TScriptDynamicFloatArray.AsPDouble(var nbElements, stride : Integer) : PDouble;
+begin
+   nbElements := ArrayLength;
+   if nbElements = 0 then Exit(nil);
+
+   stride := SizeOf(Variant);
+   Result := @TVarData(AsPData^[0]).VDouble;
 end;
 
 // ------------------

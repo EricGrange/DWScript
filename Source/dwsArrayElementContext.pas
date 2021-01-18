@@ -63,6 +63,8 @@ type
          procedure EvalAsString(addr : Integer; var result : String);
          procedure EvalAsInterface(addr : Integer; var result : IUnknown);
 
+         function IsEmpty(addr : Integer) : Boolean;
+
          procedure CopyData(const destData : TData; destAddr, size : Integer);
          procedure WriteData(const src : IDataContext; size : Integer); overload;
          procedure WriteData(destAddr : Integer; const src : IDataContext; size : Integer); overload;
@@ -267,6 +269,13 @@ end;
 procedure TArrayElementDataContext.EvalAsInterface(addr : Integer; var result : IUnknown);
 begin
    FArray.EvalAsInterface(ComputeReadAddr(addr), result);
+end;
+
+// IsEmpty
+//
+function TArrayElementDataContext.IsEmpty(addr : Integer) : Boolean;
+begin
+   Result := FArray.IsEmpty(ComputeReadAddr(addr));
 end;
 
 // CopyData

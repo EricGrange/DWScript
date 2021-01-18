@@ -228,6 +228,7 @@ var
    propertySymbol : TPropertySymbol;
    fieldSymbol : TFieldSymbol;
    methSymbol : TMethodSymbol;
+   buf : Variant;
 begin
    typRawAttribute:=info.Execution.Prog.Table.FindTypeSymbol(SYS_TRTTIRAWATTRIBUTE, cvPublic) as TRecordSymbol;
    dynArray:=TScriptDynamicArray.CreateNew(typRawAttribute);
@@ -249,7 +250,8 @@ begin
          symbolClassType:=attrib.Symbol.ClassType;
          if symbolClassType=TClassSymbol then begin
             dynArray.AsInteger[i*2]:=Int64(attrib.Symbol);
-            attrib.AttributeConstructor.EvalAsVariant(info.Execution, dynArray.AsPVariant(i*2+1)^);
+            attrib.AttributeConstructor.EvalAsVariant(info.Execution, buf);
+            dynArray.AsVariant[i*2+1] := buf;
          end else Assert(False);
       end;
 

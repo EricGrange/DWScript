@@ -666,50 +666,28 @@ end;
 // GetValueAsString
 //
 function TInfoData.GetValueAsString : String;
-var
-   varData : PVarData;
 begin
-   if (FDataMaster=nil) and (FTypeSym<>nil) and (FTypeSym.Size=1) then begin
-      varData:=PVarData(FDataPtr.AsPVariant(0));
-      {$ifdef FPC}
-      if varData.VType=varString then begin
-         Result:=String(varData.VString);
-      {$else}
-      if varData.VType=varUString then begin
-         Result:=String(varData.VUString);
-      {$endif}
-         Exit;
-      end;
-   end;
-   Result:=inherited GetValueAsString;
+   if (FDataMaster=nil) and (FTypeSym<>nil) and (FTypeSym.Size=1) then
+      FDataPtr.EvalAsString(0, Result)
+   else Result := inherited GetValueAsString;
 end;
 
 // GetValueAsInteger
 //
 function TInfoData.GetValueAsInteger : Int64;
-var
-   varData : PVarData;
 begin
-   if (FDataMaster=nil) and (FTypeSym<>nil) and (FTypeSym.Size=1) then begin
-      varData:=PVarData(FDataPtr.AsPVariant(0));
-      if varData.VType=varInt64 then
-         Result:=varData.VInt64
-      else Result:=PVariant(varData)^;
-   end else Result:=inherited GetValueAsInteger;
+   if (FDataMaster=nil) and (FTypeSym<>nil) and (FTypeSym.Size=1) then
+      Result := FDataPtr.AsInteger[0]
+   else Result := inherited GetValueAsInteger;
 end;
 
 // GetValueAsFloat
 //
 function TInfoData.GetValueAsFloat : Double;
-var
-   varData : PVarData;
 begin
-   if (FDataMaster=nil) and (FTypeSym<>nil) and (FTypeSym.Size=1) then begin
-      varData:=PVarData(FDataPtr.AsPVariant(0));
-      if varData.VType=varDouble then
-         Result:=varData.VDouble
-      else Result:=PVariant(varData)^;
-   end else Result:=inherited GetValueAsFloat;
+   if (FDataMaster=nil) and (FTypeSym<>nil) and (FTypeSym.Size=1) then
+      Result := FDataPtr.AsFloat[0]
+   else Result := inherited GetValueAsFloat;
 end;
 
 procedure TInfoData.SetData(const Value: TData);
@@ -834,15 +812,9 @@ end;
 
 constructor TInfoClassObj.Create(ProgramInfo: TProgramInfo; TypeSym: TSymbol;
   const DataPtr: IDataContext; const DataMaster: IDataMaster);
-var
-   p : PVariant;
 begin
-  inherited;
-  p:=DataPtr.AsPVariant(0);
-  if VariantType(p^) = varUnknown then
-    FScriptObj := IScriptObj(IUnknown(p^))
-  else
-    FScriptObj := nil;
+   inherited;
+   DataPtr.EvalAsInterface(0, IUnknown(FScriptObj));
 end;
 
 destructor TInfoClassObj.Destroy;
@@ -962,16 +934,8 @@ end;
 // GetValueIsEmpty
 //
 function TInfoFunc.GetValueIsEmpty : Boolean;
-var
-   p : PVarData;
 begin
-   if FDataPtr.DataLength = 0 then Exit(True);
-   p := PVarData(FDataPtr.AsPVariant(0));
-   Result :=    (p.VType = varEmpty)
-             or (
-                     (p.VType = varUnknown)
-                 and (p.VUnknown = nil)
-                );
+   Result := (FDataPtr.DataLength = 0) or FDataPtr.IsEmpty(0);
 end;
 
 // Call
