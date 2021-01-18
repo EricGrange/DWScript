@@ -127,14 +127,14 @@ end;
 //
 function TArrayElementDataContext.GetAsVariant(addr : Integer) : Variant;
 begin
-   Result := FArray.AsVariant[ComputeReadAddr(addr)];
+   FArray.EvalAsVariant(ComputeReadAddr(addr), Result);
 end;
 
 // SetAsVariant
 //
 procedure TArrayElementDataContext.SetAsVariant(addr : Integer; const value : Variant);
 begin
-   FArray.AsVariant[ComputeWriteAddr(addr)] := value;
+   FArray.SetAsVariant(ComputeWriteAddr(addr), value);
 end;
 
 // GetAsInteger
@@ -183,28 +183,28 @@ end;
 //
 function TArrayElementDataContext.GetAsString(addr : Integer) : String;
 begin
-   Result := FArray.AsString[ComputeReadAddr(addr)];
+   FArray.EvalAsString(ComputeReadAddr(addr), Result);
 end;
 
 // SetAsString
 //
 procedure TArrayElementDataContext.SetAsString(addr : Integer; const value : String);
 begin
-   FArray.AsString[ComputeWriteAddr(addr)] := value;
+   FArray.SetAsString(ComputeWriteAddr(addr), value);
 end;
 
 // GetAsInterface
 //
 function TArrayElementDataContext.GetAsInterface(addr : Integer) : IUnknown;
 begin
-   Result := FArray.AsInterface[ComputeReadAddr(addr)];
+   FArray.EvalAsInterface(ComputeReadAddr(addr), Result);
 end;
 
 // SetAsInterface
 //
 procedure TArrayElementDataContext.SetAsInterface(addr : Integer; const value : IUnknown);
 begin
-   FArray.AsInterface[ComputeWriteAddr(addr)] := value;
+   FArray.SetAsInterface(ComputeWriteAddr(addr), value);
 end;
 
 // Addr

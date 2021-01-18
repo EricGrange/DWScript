@@ -2192,6 +2192,26 @@ type
       procedure ReplaceData(const v : TData);
 
       procedure Reverse;
+
+      function GetAsFloat(index : Integer) : Double;
+      procedure SetAsFloat(index : Integer; const v : Double);
+      property AsFloat[index : Integer] : Double read GetAsFloat write SetAsFloat;
+
+      function GetAsInteger(index : Integer) : Int64;
+      procedure SetAsInteger(index : Integer; const v : Int64);
+      property AsInteger[index : Integer] : Int64 read GetAsInteger write SetAsInteger;
+
+      function GetAsBoolean(index : Integer) : Boolean;
+      procedure SetAsBoolean(index : Integer; const v : Boolean);
+      property AsBoolean[index : Integer] : Boolean read GetAsBoolean write SetAsBoolean;
+
+      procedure SetAsVariant(index : Integer; const v : Variant);
+      procedure SetAsString(index : Integer; const v : String);
+      procedure SetAsInterface(index : Integer; const v : IUnknown);
+
+      procedure EvalAsVariant(index : Integer; var result : Variant);
+      procedure EvalAsString(index : Integer; var result : String);
+      procedure EvalAsInterface(index : Integer; var result : IUnknown);
    end;
 
    // IScriptAssociativeArray
