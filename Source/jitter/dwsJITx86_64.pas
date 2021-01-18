@@ -1755,7 +1755,11 @@ end;
 procedure TdwsJITx86_64._op_reg_imm(const op : TgpOp; reg : TgpRegister64; value : Int64);
 begin
    if Int32(value) = value then
-      x86._op_reg_imm(op, reg, value)
+      if op.SIB = gpOp_add.SIB then
+         x86._add_reg_imm(reg, value)
+      else if op.SIB = gpOp_sub.SIB then
+         x86._sub_reg_imm(reg, value)
+      else x86._op_reg_imm(op, reg, value)
    else Fixups.NewGPOpRegImm(op, reg, value);
 end;
 
@@ -3037,15 +3041,27 @@ begin
 
    jit.Fixups.AddFixup(loopContinue);
 
-   tmpReg := jit.CompileIntegerToRegister(e.VarExpr);
-   if stepValueIsConstant then begin
-      x86._add_reg_imm(tmpReg, stepValue);
-   end else begin
-      x86._op_reg_qword_ptr_reg(gpOp_add, tmpReg, gprRBP, stepValueOffset);
-   end;
+   if jit.CurrentGPReg(e.VarExpr, tmpReg) then begin
 
-   x86._mov_execmem_reg(e.VarExpr.StackAddr, tmpReg);
-   jit.ReleaseGPReg(tmpReg);
+      if stepValueIsConstant then begin
+         jit._op_reg_imm(gpOp_add, tmpReg, stepValue);
+      end else begin
+         x86._op_reg_qword_ptr_reg(gpOp_add, tmpReg, gprRBP, stepValueOffset);
+      end;
+
+      x86._mov_execmem_reg(e.VarExpr.StackAddr, tmpReg);
+      jit.ReleaseGPReg(tmpReg);
+
+   end else begin
+
+      if stepValueIsConstant then begin
+         x86._add_execmem_imm(e.VarExpr.StackAddr, stepValue);
+      end else begin
+         x86._mov_reg_qword_ptr_reg(gprRAX, gprRBP, stepValueOffset);
+         x86._add_execmem_reg(e.VarExpr.StackAddr, gprRAX);
+      end;
+
+   end;
 
    if stepValue <> 1 then
       jit.Fixups.NewJump(flagsO, loopAfter);
