@@ -112,7 +112,8 @@ var
    v : Variant;
 begin
    for i:=1 to params.DataLength do begin
-      p:=PVarData(params.AsPVariant(i-1));
+      params.EvalAsVariant(i-1, v);
+      p := PVarData(@v);
       case p.VType of
          varInt64 : stmt.Bind(i, p.VInt64);
          varDouble : stmt.Bind(i, p.VDouble);

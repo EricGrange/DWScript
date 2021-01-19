@@ -491,6 +491,7 @@ procedure TLinqIntoSingleValExpr.EvalAsVariant(exec : TdwsExecution; var Result 
 var
    dyn: TScriptDynamicArray;
    n: integer;
+   v : Variant;
 begin
    FAssign.EvalNoResult(exec);
    dyn := TScriptDynamicArray.CreateNew(FTyp);
@@ -499,7 +500,8 @@ begin
    while FStep.EvalAsBoolean(exec) do
    begin
       dyn.ArrayLength := n + 1;
-      FInto.EvalAsVariant(exec, dyn.AsPVariant(n)^);
+      FInto.EvalAsVariant(exec, v);
+      dyn.AsVariant[n] := v;
       inc(n);
    end;
    result := IScriptDynArray(dyn);

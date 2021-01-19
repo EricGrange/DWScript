@@ -2218,6 +2218,7 @@ type
       procedure EvalAsInterface(index : Integer; var result : IUnknown);
 
       function IsEmpty(addr : Integer) : Boolean;
+      function VarType(addr : Integer) : TVarType;
    end;
 
    // IScriptAssociativeArray

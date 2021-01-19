@@ -3753,17 +3753,8 @@ end;
 // GetDataPtr
 //
 procedure TDynamicArrayExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
-var
-   base : IScriptDynArray;
-   index : Integer;
 begin
-   FBaseExpr.EvalAsScriptDynArray(exec, base);
-
-   index:=IndexExpr.EvalAsInteger(exec);
-   BoundsCheck(exec, base.ArrayLength, index);
-
-   exec.DataContext_CreateOffset(base, index*FElementSize, Result);
-   //CreateArrayElementDataContext(exec, Result);
+   CreateArrayElementDataContext(exec, Result);
 end;
 
 // EvalItem

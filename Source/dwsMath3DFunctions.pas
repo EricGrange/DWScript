@@ -215,15 +215,15 @@ end;
 procedure TVectorScaleRightOpExpr.DoEval(const args : TExprBaseListExec; var result : IDataContext);
 var
    f : Double;
-   vec : PVarDataArray;
+   dc : IDataContext;
 begin
    f := args.AsFloat[1];
-   vec := PVarDataArray(TDataExpr(args.ExprBase[0]).DataPtr[args.Exec].AsPVariant(0));
+   dc := TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
 
-   result.AsFloat[0] := vec[0].VDouble*f;
-   result.AsFloat[1] := vec[1].VDouble*f;
-   result.AsFloat[2] := vec[2].VDouble*f;
-   result.AsFloat[3] := vec[3].VDouble*f;
+   result.AsFloat[0] := dc.AsFloat[0] * f;
+   result.AsFloat[1] := dc.AsFloat[1] * f;
+   result.AsFloat[2] := dc.AsFloat[2] * f;
+   result.AsFloat[3] := dc.AsFloat[3] * f;
 end;
 
 // ------------------

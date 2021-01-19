@@ -69,6 +69,7 @@ type
       procedure EvalAsInterface(addr : Integer; var result : IUnknown);
 
       function IsEmpty(addr : Integer) : Boolean;
+      function VarType(addr : Integer) : TVarType;
 
       procedure CopyData(const destData : TData; destAddr, size : Integer);
       procedure WriteData(const src : IDataContext; size : Integer); overload;
@@ -157,6 +158,7 @@ type
          property  AsInterface[addr : Integer] : IUnknown read GetAsInterface write SetAsInterface;
 
          function IsEmpty(addr : Integer) : Boolean;
+         function VarType(addr : Integer) : TVarType; virtual;
 
          procedure InternalCopyData(sourceAddr, destAddr, size : Integer); inline;
 
@@ -224,6 +226,7 @@ type
          procedure EvalAsInterface(addr : Integer; var result : IUnknown);
 
          function IsEmpty(addr : Integer) : Boolean;
+         function VarType(addr : Integer) : TVarType;
 
          procedure CopyData(const destData : TData; destAddr, size : Integer);
          procedure WriteData(const src : IDataContext; size : Integer); overload;
@@ -798,6 +801,13 @@ begin
    Result := DWSVarIsEmpty(FData[FAddr+addr]);
 end;
 
+// VarType
+//
+function TDataContext.VarType(addr : Integer) : TVarType;
+begin
+   Result := VarType(FData[FAddr+addr]);
+end;
+
 // InternalCopyData
 //
 procedure TDataContext.InternalCopyData(sourceAddr, destAddr, size : Integer);
@@ -830,21 +840,37 @@ end;
 //
 procedure TDataContext.WriteData(const src : IDataContext; size : Integer);
 begin
-   DWSCopyPVariants(src.AsPVariant(0), @FData[FAddr], size);
+   WriteData(src, 0, size);
 end;
 
 // WriteData
 //
 procedure TDataContext.WriteData(const src : IDataContext; srcAddr, size : Integer);
+var
+   i : Integer;
+   pDest : PVariant;
 begin
-   DWSCopyData(src.AsPData^, srcAddr, Fdata, FAddr, size);
+   Assert(FAddr + size <= Length(FData));
+   pDest := @FData[FAddr];
+   for i := srcAddr to srcAddr + size-1 do begin
+      src.EvalAsVariant(i, pDest^);
+      Inc(pDest);
+   end;
 end;
 
 // WriteData
 //
 procedure TDataContext.WriteData(destAddr : Integer; const src : IDataContext; size : Integer);
+var
+   i : Integer;
+   pDest : PVariant;
 begin
-   DWSCopyData(src.AsPData^, src.Addr, FData, FAddr+destAddr, size);
+   Assert(FAddr + destAddr + size <= Length(FData));
+   pDest := @FData[FAddr + destAddr];
+   for i := 0 to size-1 do begin
+      src.EvalAsVariant(i, pDest^);
+      Inc(pDest);
+   end;
 end;
 
 // WriteData
@@ -1140,6 +1166,13 @@ end;
 function TRelativeDataContext.IsEmpty(addr : Integer) : Boolean;
 begin
    Result := DWSVarIsEmpty(FGetPData^[FAddr+addr]);
+end;
+
+// VarType
+//
+function TRelativeDataContext.VarType(addr : Integer) : TVarType;
+begin
+   Result := VarType(FGetPData^[FAddr+addr]);
 end;
 
 // CopyData

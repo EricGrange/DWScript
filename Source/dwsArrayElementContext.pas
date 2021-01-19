@@ -64,6 +64,7 @@ type
          procedure EvalAsInterface(addr : Integer; var result : IUnknown);
 
          function IsEmpty(addr : Integer) : Boolean;
+         function VarType(addr : Integer) : TVarType;
 
          procedure CopyData(const destData : TData; destAddr, size : Integer);
          procedure WriteData(const src : IDataContext; size : Integer); overload;
@@ -278,11 +279,21 @@ begin
    Result := FArray.IsEmpty(ComputeReadAddr(addr));
 end;
 
+// VarType
+//
+function TArrayElementDataContext.VarType(addr : Integer) : TVarType;
+begin
+   Result := FArray.VarType(ComputeReadAddr(addr));
+end;
+
 // CopyData
 //
 procedure TArrayElementDataContext.CopyData(const destData : TData; destAddr, size : Integer);
+var
+   i : Integer;
 begin
-   raise Exception.Create('TArrayElementDataContext.CopyData not implemented');
+   for i := 0 to size-1 do
+      FArray.EvalAsVariant(ComputeReadAddr(i), destData[destAddr+i]);
 end;
 
 // WriteData

@@ -119,11 +119,13 @@ procedure AssignParameters(var rq : TUIBQuery; const params : IDataContext);
 var
    i : Integer;
    p : PVarData;
+   v : Variant;
    rqParams : TSQLParams;
 begin
    rqParams:=rq.Params;
    for i:=0 to params.DataLength-1 do begin
-      p:=PVarData(params.AsPVariant(i));
+      params.EvalAsVariant(i, v);
+      p := PVarData(@v);
       case p.VType of
          varInt64 : rqParams.AsInt64[i]:=p.VInt64;
          varDouble : rqParams.AsDouble[i]:=p.VDouble;

@@ -1667,11 +1667,13 @@ type
       public
          procedure Add(const s : String);
          procedure AddStrings(sl : TStrings);
+         function VarType(addr : Integer) : TVarType; override;
    end;
 
    TScriptDynamicFloatArray = class (TScriptDynamicValueArray)
       public
          function AsPDouble(var nbElements, stride : Integer) : PDouble; override;
+         function VarType(addr : Integer) : TVarType; override;
    end;
 
    TScriptAssociativeArrayHashCodes = array of Cardinal;
@@ -7758,6 +7760,13 @@ begin
       AsString[n+i] := sl[i];
 end;
 
+// VarType
+//
+function TScriptDynamicStringArray.VarType(addr : Integer) : TVarType;
+begin
+   Result := varUString;
+end;
+
 // ------------------
 // ------------------ TScriptDynamicFloatArray ------------------
 // ------------------
@@ -7771,6 +7780,13 @@ begin
 
    stride := SizeOf(Variant);
    Result := @TVarData(AsPData^[0]).VDouble;
+end;
+
+// VarType
+//
+function TScriptDynamicFloatArray.VarType(addr : Integer) : TVarType;
+begin
+   Result := varDouble;
 end;
 
 // ------------------

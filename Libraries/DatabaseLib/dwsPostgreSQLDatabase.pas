@@ -201,6 +201,7 @@ type
 procedure PreparePGParams(const data : IDataContext; var params : TPosgreSQLParams);
 var
    i, n : Integer;
+   v : Variant;
    p : PVarData;
    dt : Int64;
 begin
@@ -211,10 +212,11 @@ begin
    SetLength(params.Lengths, n);
    SetLength(params.Formats, n);
    for i := 0 to n-1 do begin
-      p := PVarData(data.AsPVariant(i));
+      data.EvalAsVariant(i, v);
+      p := @v;
       case p.VType of
          varInt64 : begin
-            if Abs(p.VInt64) < MaxInt then begin
+            if Int32(p.VInt64) = p.VInt64 then begin
                params.Types[i] := INT4OID;
                SetLength(params.Values[i], 4);
                PCardinal(params.Values[i])^ := SwapBytes(p.VLongWord);

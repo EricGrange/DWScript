@@ -8898,6 +8898,7 @@ var
    s : String;
    dynArray : TScriptDynamicArray;
    exec : TdwsExecution;
+   v : Variant;
 begin
    info := Environment.Exec.Info.FuncBySym[CallBack];
 
@@ -8909,8 +8910,10 @@ begin
 
    exec := Environment.Exec.ExecutionObject;
 
-   for i := 0 to expr.SubExprCount-1 do
-      expr.SubExpr[i].EvalAsVariant(exec, dynArray.AsPVariant(i)^);
+   for i := 0 to expr.SubExprCount-1 do begin
+      expr.SubExpr[i].EvalAsVariant(exec, v);
+      dynArray.AsVariant[i] := v;
+   end;
 
    info.Parameter['params'].Value := (dynArray as IScriptDynArray);
 
