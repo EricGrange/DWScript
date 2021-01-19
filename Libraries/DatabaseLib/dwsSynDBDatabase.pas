@@ -109,6 +109,7 @@ procedure AssignParameters(var stmt : TSQLDBStatement; const params : IDataConte
 var
    i : Integer;
    p : PVarData;
+   v : Variant;
 begin
    for i:=1 to params.DataLength do begin
       p:=PVarData(params.AsPVariant(i-1));

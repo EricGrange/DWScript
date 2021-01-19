@@ -3763,6 +3763,7 @@ begin
    BoundsCheck(exec, base.ArrayLength, index);
 
    exec.DataContext_CreateOffset(base, index*FElementSize, Result);
+   //CreateArrayElementDataContext(exec, Result);
 end;
 
 // EvalItem
@@ -10481,12 +10482,39 @@ end;
 // DoEval
 //
 procedure TArrayAddExpr.DoEval(exec : TdwsExecution; var base : IScriptDynArray);
+
+   procedure AddDataArg(dyn : TScriptDynamicArray; arg : TTypedExpr);
+   var
+      n : Integer;
+      argdata : TDataExpr;
+   begin
+      n := dyn.ArrayLength;
+      dyn.ArrayLength := n+1;
+      if arg.Typ.Size > 1 then begin
+         argData := (arg as TDataExpr);
+         dyn.WriteData(n*dyn.ElementSize, argData.DataPtr[exec], dyn.ElementSize);
+      end else arg.EvalAsVariant(exec, dyn.AsPVariant(n)^);
+   end;
+
+   procedure AddStaticArrayArg(dyn : TScriptDynamicArray; arg : TTypedExpr);
+   var
+      k, n : Integer;
+   begin
+      k := arg.Typ.Size div dyn.ElementSize;
+      if k > 0 then begin
+         n := dyn.ArrayLength;
+         dyn.ArrayLength := n + k;
+         if arg is TArrayConstantExpr then
+            TArrayConstantExpr(arg).EvalToTData(exec, dyn.AsPData^, n*dyn.ElementSize)
+         else dyn.WriteData(n*dyn.ElementSize, (arg as TDataExpr).DataPtr[exec], k*dyn.ElementSize);
+      end;
+   end;
+
 var
    src : IScriptDynArray;
    dyn, dynSrc : TScriptDynamicArray;
-   i, n, k : Integer;
+   i, n : Integer;
    arg : TTypedExpr;
-   argData : TDataExpr;
 begin
    BaseExpr.EvalAsScriptDynArray(exec, base);
    dyn:=TScriptDynamicArray(base.GetSelf);
@@ -10496,12 +10524,7 @@ begin
 
       if dyn.ElementTyp.IsCompatible(arg.Typ) then begin
 
-         n:=dyn.ArrayLength;
-         dyn.ArrayLength:=n+1;
-         if arg.Typ.Size>1 then begin
-            argData:=(arg as TDataExpr);
-            dyn.WriteData(n*dyn.ElementSize, argData.DataPtr[exec], dyn.ElementSize);
-         end else arg.EvalAsVariant(exec, dyn.AsPVariant(n)^);
+         AddDataArg(dyn, arg);
 
       end else if arg.Typ.ClassType=TDynamicArraySymbol then begin
 
@@ -10519,15 +10542,7 @@ begin
       end else begin
 
          Assert(arg.Typ is TStaticArraySymbol);
-
-         k:=arg.Typ.Size div dyn.ElementSize;
-         if k>0 then begin
-            n:=dyn.ArrayLength;
-            dyn.ArrayLength:=n+k;
-            if arg is TArrayConstantExpr then
-               TArrayConstantExpr(arg).EvalToTData(exec, dyn.AsPData^, n*dyn.ElementSize)
-            else dyn.WriteData(n*dyn.ElementSize, (arg as TDataExpr).DataPtr[exec], k*dyn.ElementSize);
-         end;
+         AddStaticArrayArg(dyn, arg);
 
       end;
    end;

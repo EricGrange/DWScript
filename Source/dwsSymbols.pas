@@ -2175,7 +2175,7 @@ type
 
    // IScriptDynArray
    //
-   IScriptDynArray = interface (IDataContext)
+   IScriptDynArray = interface (IDataContext)//(IGetSelf) //
       ['{29767B6E-05C0-40E1-A41A-94DF54142312}']
       function GetElementSize : Integer;
       property ElementSize : Integer read GetElementSize;

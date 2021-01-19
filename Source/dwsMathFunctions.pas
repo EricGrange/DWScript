@@ -1042,7 +1042,7 @@ var
 begin
    for i := 0 to n-1 do begin
       p^ := 1 / p^;
-      p := Pointer(IntPtr(p) * stride);
+      p := Pointer(IntPtr(p) + stride);
    end;
 end;
 

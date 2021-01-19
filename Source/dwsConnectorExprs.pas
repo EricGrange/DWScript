@@ -396,10 +396,15 @@ var
    function DynamicArrayToVariantArray(const dyn : IScriptDynArray) : Variant;
    var
       i : Integer;
+      len : Integer;
+      v : Variant;
    begin
-      Result := VarArrayCreate([0, dyn.DataLength-1], varVariant);
-      for i := 0 to dyn.DataLength-1 do
-         Result[i] := dyn.AsVariant[i];
+      len := dyn.ArrayLength;
+      Result := VarArrayCreate([0, len-1], varVariant);
+      for i := 0 to len-1 do begin
+         dyn.EvalAsVariant(i, v);
+         Result[i] := v;
+      end;
    end;
 
    procedure EvalComplexArgs;
