@@ -338,7 +338,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsCoreExprs;
+uses dwsCoreExprs, dwsArrayElementContext;
 
 // CreateInfoOnSymbol
 //
@@ -1341,7 +1341,7 @@ function TInfoDynamicArray.Element(const indices : array of Integer): IInfo;
 var
    x : Integer;
    elemTyp : TSymbol;
-   elemOff : Integer;
+   elemOff, elemIndex : Integer;
    dynArray : IScriptDynArray;
    p : PVarData;
    locData : IDataContext;
@@ -1349,7 +1349,7 @@ begin
    dynArray:=SelfDynArray;
 
    elemTyp:=FTypeSym;
-   elemOff:=0;
+   elemIndex:=0;
    if Length(indices)=0 then
       raise Exception.Create(RTE_TooFewIndices);
 
@@ -1364,7 +1364,8 @@ begin
          else raise Exception.CreateFmt(RTE_ArrayUpperBoundExceeded, [x]);
       end;
 
-      elemOff:=indices[x]*dynArray.ElementSize;
+      elemIndex := indices[x];
+      elemOff := elemIndex*dynArray.ElementSize;
 
       if x<High(indices) then begin
          p:=PVarData(dynArray.AsPVariant(elemOff));
@@ -1374,7 +1375,9 @@ begin
       end;
    end;
 
-   FProgramInfo.Execution.DataContext_CreateOffset(dynArray, elemOff, locData);
+//   FProgramInfo.Execution.DataContext_CreateOffset(dynArray, elemOff, locData);
+   locData :=  TArrayElementDataContext.Create(dynArray, elemIndex);
+
    SetChild(Result, FProgramInfo, elemTyp, locData, FDataMaster);
 end;
 
@@ -1402,7 +1405,7 @@ end;
 //
 function TInfoDynamicArray.GetData : TData;
 begin
-   Result := SelfDynArray.AsPData^;
+   Result := SelfDynArray.ToData;
 end;
 
 // SetData
@@ -1604,7 +1607,7 @@ end;
 
 function TInfoProperty.GetValue: Variant;
 begin
-  result := IInfo(Self).Data[0];
+  result := GetData[0]; //IInfo(Self).Data[0];
 end;
 
 procedure TInfoProperty.AssignIndices(const Func: IInfo; FuncParams: TSymbolTable);
@@ -1682,7 +1685,7 @@ var dat: TData;
 begin
   SetLength(dat,1);
   dat[0] := Value;
-  IInfo(Self).Data := dat;
+  SetData(dat);
 end;
 
 { TInfoConnector }

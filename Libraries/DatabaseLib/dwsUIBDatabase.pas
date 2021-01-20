@@ -57,8 +57,8 @@ type
          function InTransaction : Boolean;
          function CanReleaseToPool : String;
 
-         procedure Exec(const sql : String; const parameters : IDataContext; context : TExprBase);
-         function Query(const sql : String; const parameters : IDataContext; context : TExprBase) : IdwsDataSet;
+         procedure Exec(const sql : String; const parameters : IScriptDynArray; context : TExprBase);
+         function Query(const sql : String; const parameters : IScriptDynArray; context : TExprBase) : IdwsDataSet;
 
          function VersionInfoText : String;
    end;
@@ -72,7 +72,7 @@ type
          procedure DoPrepareFields; override;
 
       public
-         constructor Create(db : TdwsUIBDataBase; const sql : String; const parameters : IDataContext);
+         constructor Create(db : TdwsUIBDataBase; const sql : String; const parameters : IScriptDynArray);
          destructor Destroy; override;
 
          function Eof : Boolean; override;
@@ -239,7 +239,7 @@ end;
 
 // Exec
 //
-procedure TdwsUIBDataBase.Exec(const sql : String; const parameters : IDataContext; context : TExprBase);
+procedure TdwsUIBDataBase.Exec(const sql : String; const parameters : IScriptDynArray; context : TExprBase);
 var
    rq : TUIBQuery;
 begin
@@ -257,7 +257,7 @@ end;
 
 // Query
 //
-function TdwsUIBDataBase.Query(const sql : String; const parameters : IDataContext; context : TExprBase) : IdwsDataSet;
+function TdwsUIBDataBase.Query(const sql : String; const parameters : IScriptDynArray; context : TExprBase) : IdwsDataSet;
 var
    ds : TdwsUIBDataSet;
 begin
@@ -278,7 +278,7 @@ end;
 
 // Create
 //
-constructor TdwsUIBDataSet.Create(db : TdwsUIBDataBase; const sql : String; const parameters : IDataContext);
+constructor TdwsUIBDataSet.Create(db : TdwsUIBDataBase; const sql : String; const parameters : IScriptDynArray);
 begin
    FDB:=db;
    inherited Create(db);

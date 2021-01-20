@@ -64,6 +64,7 @@ type
       procedure WriteToJSON(writer : TdwsJSONWriter);
 
       property Data: TData read GetData write SetData;
+//      property Data: TData write SetData;
       property ExternalObject: TObject read GetExternalObject write SetExternalObject;
       property Member[const s : String]: IInfo read GetMember;
       property FieldMemberNames : TStrings read GetFieldMemberNames;

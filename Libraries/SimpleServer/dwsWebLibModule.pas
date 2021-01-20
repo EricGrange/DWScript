@@ -642,15 +642,13 @@ procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetCustomHeadersEval(
 var
    dyn : IScriptDynArray;
    headers : TdwsCustomHeaders;
-   i, n : Integer;
+   n : Integer;
 begin
    dyn := Info.ParamAsScriptDynArray[0];
    n := dyn.ArrayLength;
    if n > 0 then begin
       headers := TdwsCustomHeaders.Create;
-      SetLength(headers.Headers, n);
-      for i := 0 to n-1 do
-         headers.Headers[i] := dyn.AsString[i];
+      headers.Headers := dyn.ToStringArray;
       Info.Execution.CustomStates[cWinHttpCustomHeaders] := headers as IGetSelf;
    end else Info.Execution.CustomStates[cWinHttpCustomHeaders] := Unassigned;
 end;

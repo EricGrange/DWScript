@@ -381,6 +381,7 @@ end;
 //
 function TdwsSQLiteVTClassArrayCursor.xColumn(sContext: TSQLite3FunctionContext; N: Integer) : Integer;
 var
+   intf : IUnknown;
    obj : IScriptObj;
 begin
    Assert(FIndex < FDynArray.ArrayLength);
@@ -388,7 +389,8 @@ begin
       SQLite3.result_int64(sContext, FIndex)
    else begin
       Assert(N-1 < Length(FArray.FColumnAddr));
-      obj := FDynArray.AsInterface[FIndex] as IScriptObj;
+      FDynArray.EvalAsInterface(FIndex, intf);
+      obj := intf as IScriptObj;
       ResultVarData(sContext, PVarData(obj.AsPVariant(FArray.FColumnAddr[N-1])));
    end;
    Result := SQLITE_OK;

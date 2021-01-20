@@ -2175,7 +2175,7 @@ type
 
    // IScriptDynArray
    //
-   IScriptDynArray = interface (IDataContext)//(IGetSelf) //
+   IScriptDynArray = interface (IDataContext)//(IGetSelf)//
       ['{29767B6E-05C0-40E1-A41A-94DF54142312}']
       function GetElementSize : Integer;
       property ElementSize : Integer read GetElementSize;
@@ -2188,6 +2188,7 @@ type
 
       function ToStringArray : TStringDynArray;
       function ToInt64Array : TInt64DynArray;
+      function ToData : TData;
 
       procedure ReplaceData(const v : TData);
 

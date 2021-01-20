@@ -51,8 +51,8 @@ type
       // if can't should return string with descriptive reason
       function CanReleaseToPool : String;
 
-      procedure Exec(const sql : String; const parameters : IDataContext; context : TExprBase);
-      function Query(const sql : String; const parameters : IDataContext; context : TExprBase) : IdwsDataSet;
+      procedure Exec(const sql : String; const parameters : IScriptDynArray; context : TExprBase);
+      function Query(const sql : String; const parameters : IScriptDynArray; context : TExprBase) : IdwsDataSet;
 
       function VersionInfoText : String;
 

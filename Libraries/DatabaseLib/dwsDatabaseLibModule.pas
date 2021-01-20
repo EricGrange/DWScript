@@ -338,7 +338,7 @@ begin
       dataFieldObj:=TDataField.Create;
       dataFieldObj.Intf:=Intf.Fields[i];
       dataFieldInfo.ExternalObject:=dataFieldObj;
-      dataFieldsArray.AsVariant[i]:=dataFieldInfo.Value;
+      dataFieldsArray.SetAsVariant(i, dataFieldInfo.Value);
    end;
 end;
 

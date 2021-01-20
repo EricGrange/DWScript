@@ -49,8 +49,8 @@ type
          function InTransaction : Boolean;
          function CanReleaseToPool : String;
 
-         procedure Exec(const sql : String; const parameters : IDataContext; context : TExprBase);
-         function Query(const sql : String; const parameters : IDataContext; context : TExprBase) : IdwsDataSet;
+         procedure Exec(const sql : String; const parameters : IScriptDynArray; context : TExprBase);
+         function Query(const sql : String; const parameters : IScriptDynArray; context : TExprBase) : IdwsDataSet;
 
          function VersionInfoText : String;
    end;
@@ -65,7 +65,7 @@ type
          procedure DoPrepareFields; override;
 
       public
-         constructor Create(db : TdwsSynDBDataBase; const sql : String; const parameters : IDataContext);
+         constructor Create(db : TdwsSynDBDataBase; const sql : String; const parameters : IScriptDynArray);
          destructor Destroy; override;
 
          function Eof : Boolean; override;
@@ -105,13 +105,13 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-procedure AssignParameters(var stmt : TSQLDBStatement; const params : IDataContext);
+procedure AssignParameters(var stmt : TSQLDBStatement; const params : IScriptDynArray);
 var
    i : Integer;
    p : PVarData;
    v : Variant;
 begin
-   for i:=1 to params.DataLength do begin
+   for i:=1 to params.ArrayLength do begin
       params.EvalAsVariant(i-1, v);
       p := PVarData(@v);
       case p.VType of
@@ -210,7 +210,7 @@ end;
 
 // Exec
 //
-procedure TdwsSynDBDataBase.Exec(const sql : String; const parameters : IDataContext; context : TExprBase);
+procedure TdwsSynDBDataBase.Exec(const sql : String; const parameters : IScriptDynArray; context : TExprBase);
 var
    stmt : TSQLDBStatement;
 begin
@@ -226,7 +226,7 @@ end;
 
 // Query
 //
-function TdwsSynDBDataBase.Query(const sql : String; const parameters : IDataContext; context : TExprBase) : IdwsDataSet;
+function TdwsSynDBDataBase.Query(const sql : String; const parameters : IScriptDynArray; context : TExprBase) : IdwsDataSet;
 var
    ds : TdwsSynDBDataSet;
 begin
@@ -247,7 +247,7 @@ end;
 
 // Create
 //
-constructor TdwsSynDBDataSet.Create(db : TdwsSynDBDataBase; const sql : String; const parameters : IDataContext);
+constructor TdwsSynDBDataSet.Create(db : TdwsSynDBDataBase; const sql : String; const parameters : IScriptDynArray);
 begin
    FDB:=db;
    inherited Create(db);

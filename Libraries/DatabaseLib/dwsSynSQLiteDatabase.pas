@@ -55,8 +55,8 @@ type
          function InTransaction : Boolean;
          function CanReleaseToPool : String;
 
-         procedure Exec(const sql : String; const parameters : IDataContext; context : TExprBase);
-         function Query(const sql : String; const parameters : IDataContext; context : TExprBase) : IdwsDataSet;
+         procedure Exec(const sql : String; const parameters : IScriptDynArray; context : TExprBase);
+         function Query(const sql : String; const parameters : IScriptDynArray; context : TExprBase) : IdwsDataSet;
 
          function VersionInfoText : String;
 
@@ -79,7 +79,7 @@ type
          procedure DoPrepareFields; override;
 
       public
-         constructor Create(db : TdwsSynSQLiteDataBase; const sql : String; const parameters : IDataContext);
+         constructor Create(db : TdwsSynSQLiteDataBase; const sql : String; const parameters : IScriptDynArray);
          destructor Destroy; override;
 
          function Eof : Boolean; override;
@@ -169,7 +169,7 @@ end;
 
 // SQLAssignParameters
 //
-procedure SQLAssignParameters(var rq : TSQLRequest; const params : IDataContext);
+procedure SQLAssignParameters(var rq : TSQLRequest; const params : IScriptDynArray);
 
    procedure BindDateTime(var rq : TSQLRequest; i : Integer; p : PVarData);
    var
@@ -184,7 +184,7 @@ var
    p : PVarData;
    v : Variant;
 begin
-   for i:=1 to params.DataLength do begin
+   for i:=1 to params.ArrayLength do begin
       params.EvalAsVariant(i-1, v);
       p := PVarData(@v);
       case p.VType of
@@ -333,7 +333,7 @@ end;
 
 // Exec
 //
-procedure TdwsSynSQLiteDataBase.Exec(const sql : String; const parameters : IDataContext; context : TExprBase);
+procedure TdwsSynSQLiteDataBase.Exec(const sql : String; const parameters : IScriptDynArray; context : TExprBase);
 var
    err : Integer;
 begin
@@ -362,7 +362,7 @@ end;
 
 // Query
 //
-function TdwsSynSQLiteDataBase.Query(const sql : String; const parameters : IDataContext; context : TExprBase) : IdwsDataSet;
+function TdwsSynSQLiteDataBase.Query(const sql : String; const parameters : IScriptDynArray; context : TExprBase) : IdwsDataSet;
 var
    ds : TdwsSynSQLiteDataSet;
 begin
@@ -441,7 +441,7 @@ end;
 
 // Create
 //
-constructor TdwsSynSQLiteDataSet.Create(db : TdwsSynSQLiteDataBase; const sql : String; const parameters : IDataContext);
+constructor TdwsSynSQLiteDataSet.Create(db : TdwsSynSQLiteDataBase; const sql : String; const parameters : IScriptDynArray);
 begin
    FSQL := sql;
    FDB := db;

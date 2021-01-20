@@ -245,6 +245,7 @@ var
    dc : TArrayElementDataContext;
 begin
    Assert(offset < FElementSize);
+
    dc := TArrayElementDataContext.Create(FArray, FIndex);
    Inc(dc.FBase, offset);
    Dec(dc.FElementSize, offset);

@@ -68,8 +68,8 @@ type
          function InTransaction : Boolean;
          function CanReleaseToPool : String;
 
-         procedure Exec(const sql : String; const parameters : IDataContext; context : TExprBase);
-         function Query(const sql : String; const parameters : IDataContext; context : TExprBase) : IdwsDataSet;
+         procedure Exec(const sql : String; const parameters : IScriptDynArray; context : TExprBase);
+         function Query(const sql : String; const parameters : IScriptDynArray; context : TExprBase) : IdwsDataSet;
 
          function VersionInfoText : String;
    end;
@@ -103,7 +103,7 @@ type
          function GetLength(index : Integer) : Integer;
 
       public
-         constructor Create(db : TdwsPostgreSQLDataBase; const sql : String; const parameters : IDataContext;
+         constructor Create(db : TdwsPostgreSQLDataBase; const sql : String; const parameters : IScriptDynArray;
                             aMode : TdwsPostgreSQLDataSetMode = dsmAutomatic);
          destructor Destroy; override;
 
@@ -447,7 +447,7 @@ end;
 
 // Exec
 //
-procedure TdwsPostgreSQLDataBase.Exec(const sql : String; const parameters : IDataContext; context : TExprBase);
+procedure TdwsPostgreSQLDataBase.Exec(const sql : String; const parameters : IScriptDynArray; context : TExprBase);
 var
    query : RawByteString;
 
@@ -505,7 +505,7 @@ end;
 
 // Query
 //
-function TdwsPostgreSQLDataBase.Query(const sql : String; const parameters : IDataContext; context : TExprBase) : IdwsDataSet;
+function TdwsPostgreSQLDataBase.Query(const sql : String; const parameters : IScriptDynArray; context : TExprBase) : IdwsDataSet;
 var
    ds : TdwsPostgreSQLDataSet;
 begin
@@ -556,7 +556,7 @@ end;
 //
 constructor TdwsPostgreSQLDataSet.Create(
       db : TdwsPostgreSQLDataBase;
-      const sql : String; const parameters : IDataContext;
+      const sql : String; const parameters : IScriptDynArray;
       aMode : TdwsPostgreSQLDataSetMode = dsmAutomatic
       );
 

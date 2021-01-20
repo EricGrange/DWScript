@@ -1637,6 +1637,7 @@ type
          function ToString : String; override;
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
+         function ToData : TData;
 
          procedure ReplaceData(const newData : TData); override;
 
@@ -6855,7 +6856,7 @@ begin
    n := Length(a);
    result.ArrayLength := n;
    for i := 0 to n-1 do
-      result.AsString[i] := a[i];
+      result.SetAsString(i, a[i]);
 end;
 
 // SetResultAsStringArray
@@ -6869,7 +6870,7 @@ begin
    n := s.Count;
    result.ArrayLength := n;
    for i := 0 to n-1 do
-      result.AsString[i] := s[i];
+      result.SetAsString(i, s[i]);
 end;
 
 // GetParamAsPVariant
@@ -7645,6 +7646,22 @@ begin
    System.SetLength(Result, ArrayLength);
    for i:=0 to ArrayLength-1 do
       Result[i]:=AsInteger[i];
+end;
+
+// ToData
+//
+function TScriptDynamicArray.ToData : TData;
+var
+   i, j, p : Integer;
+begin
+   System.SetLength(Result, ArrayLength*ElementSize);
+   p := 0;
+   for i := 0 to ArrayLength-1 do begin
+      for j := 0 to ElementSize-1 do begin
+         EvalAsVariant(i, Result[p]);
+         Inc(p);
+      end;
+   end;
 end;
 
 // GetElementSize

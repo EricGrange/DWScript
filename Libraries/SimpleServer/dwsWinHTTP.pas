@@ -25,7 +25,7 @@ uses
 
 type
    TdwsCustomHeaders = class (TInterfacedSelfObject)
-      Headers : array of String;
+      Headers : TStringDynArray;
    end;
 
    TdwsWinHTTP = class (TWinHTTP)
