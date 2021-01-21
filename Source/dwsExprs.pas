@@ -1603,6 +1603,7 @@ type
          function FieldAsInteger(const fieldName : String) : Int64;
          function FieldAsFloat(const fieldName : String) : Double;
          function FieldAsBoolean(const fieldName : String) : Boolean;
+         function FieldAsScriptDynArray(const fieldName : String) : IScriptDynArray;
 
          property ClassSym : TClassSymbol read FClassSym;
          property ExecutionContext : TdwsProgramExecution read FExecutionContext write FExecutionContext;
@@ -1792,6 +1793,7 @@ type
          function FieldAsInteger(const fieldName : String) : Int64;
          function FieldAsFloat(const fieldName : String) : Double;
          function FieldAsBoolean(const fieldName : String) : Boolean;
+         function FieldAsScriptDynArray(const fieldName : String) : IScriptDynArray;
    end;
 
 // Create
@@ -1888,6 +1890,13 @@ end;
 function TScriptObjectWrapper.FieldAsBoolean(const fieldName : String) : Boolean;
 begin
    Result := FScriptObj.FieldAsBoolean(fieldName);
+end;
+
+// FieldAsScriptDynArray
+//
+function TScriptObjectWrapper.FieldAsScriptDynArray(const fieldName : String) : IScriptDynArray;
+begin
+   Result := FScriptObj.FieldAsScriptDynArray(fieldName);
 end;
 
 // ------------------
@@ -7391,6 +7400,16 @@ end;
 function TScriptObjInstance.FieldAsBoolean(const fieldName : String) : Boolean;
 begin
    Result := AsBoolean[FieldAddress(fieldName)];
+end;
+
+// FieldAsScriptDynArray
+//
+function TScriptObjInstance.FieldAsScriptDynArray(const fieldName : String) : IScriptDynArray;
+var
+   intf : IUnknown;
+begin
+   EvalAsInterface(FieldAddress(fieldName), intf);
+   Result := intf as IScriptDynArray;
 end;
 
 // GetClassSym

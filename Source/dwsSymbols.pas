@@ -2164,6 +2164,7 @@ type
       function FieldAsInteger(const fieldName : String) : Int64;
       function FieldAsFloat(const fieldName : String) : Double;
       function FieldAsBoolean(const fieldName : String) : Boolean;
+      function FieldAsScriptDynArray(const fieldName : String) : IScriptDynArray;
    end;
 
    // IScriptObjInterface
