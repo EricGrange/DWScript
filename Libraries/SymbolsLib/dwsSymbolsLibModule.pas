@@ -47,6 +47,10 @@ type
     procedure dwsUnitClassesTSymbolsConstructorsCreateMainEval(Info: TProgramInfo; var ExtObject: TObject);
     procedure dwsUnitClassesTSymbolsConstructorsCreateUidEval(Info: TProgramInfo; var ExtObject: TObject);
     procedure dwsUnitClassesTSymbolsConstructorsCreateUnitEval(Info: TProgramInfo; var ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsVisibilityEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsQualifiedNameEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     FScript: TDelphiWebScript;
     procedure SetScript(const Value: TDelphiWebScript);
@@ -81,7 +85,7 @@ type
     constructor Create(Symbol: TSymbol); overload;
     procedure SetIndex(Index: Integer);
     procedure SetSymbol(Symbol: TSymbol);
-    property CurrentSymbol: TSymbol read FCurrentSymbol;
+    function CurrentSymbol : TSymbol;
     property Count: Integer read FCount;
     property Index: Integer read FIndex;
   end;
@@ -129,6 +133,15 @@ begin
   FTable := nil;
   FCount := 0;
   FCurrentSymbol := Symbol;
+end;
+
+// CurrentSymbol
+//
+function TSymbols.CurrentSymbol : TSymbol;
+begin
+   if (Self = nil) or (FCurrentSymbol = nil) then
+      raise Exception.Create('No active symbol');
+   Result := FCurrentSymbol;
 end;
 
 { TdwsSymbolsLib }
@@ -239,6 +252,12 @@ begin
   TSymbols(ExtObject).SetIndex(TSymbols(ExtObject).Index - 1);
 end;
 
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsQualifiedNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := TSymbols(ExtObject).CurrentSymbol.QualifiedName;
+end;
+
 procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsEofEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
@@ -306,6 +325,21 @@ begin
     Info.ResultAsInteger := stInterface
   else
     Info.ResultAsInteger := stUnknown;
+end;
+
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsVisibilityEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   sym: TSymbol;
+begin
+   sym := TSymbols(ExtObject).CurrentSymbol;
+   if sym is TFieldSymbol then
+      Info.ResultAsInteger := Ord(TFieldSymbol(sym).Visibility)
+   else if sym is TPropertySymbol then
+      Info.ResultAsInteger := Ord(TPropertySymbol(sym).Visibility)
+   else if sym is TMethodSymbol then
+      Info.ResultAsInteger := Ord(TMethodSymbol(sym).Visibility)
+   else Info.ResultAsInteger := 0;
 end;
 
 procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsDestroyEval(

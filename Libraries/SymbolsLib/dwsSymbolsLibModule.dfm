@@ -87,6 +87,12 @@ object dwsSymbolsLib: TdwsSymbolsLib
             Kind = mkFunction
           end
           item
+            Name = 'Visibility'
+            ResultType = 'TSymbolVisibility'
+            OnEval = dwsUnitClassesTSymbolsMethodsVisibilityEval
+            Kind = mkFunction
+          end
+          item
             Name = 'GetMembers'
             ResultType = 'TSymbols'
             OnEval = dwsUnitClassesTSymbolsMethodsGetMembersEval
@@ -114,10 +120,14 @@ object dwsSymbolsLib: TdwsSymbolsLib
             ResultType = 'Boolean'
             OnEval = dwsUnitClassesTSymbolsMethodsLocateEval
             Kind = mkFunction
+          end
+          item
+            Name = 'QualifiedName'
+            ResultType = 'String'
+            OnEval = dwsUnitClassesTSymbolsMethodsQualifiedNameEval
+            Kind = mkFunction
           end>
       end>
-    Dependencies.Strings = (
-      'Classes')
     Enumerations = <
       item
         Name = 'TSymbolType'
@@ -186,8 +196,27 @@ object dwsSymbolsLib: TdwsSymbolsLib
             UserDefValue = 11
             IsUserDef = True
           end>
+      end
+      item
+        Name = 'TSymbolVisibility'
+        Elements = <
+          item
+            Name = 'visUnknown'
+          end
+          item
+            Name = 'visPrivate'
+          end
+          item
+            Name = 'visProtected'
+          end
+          item
+            Name = 'visPublic'
+          end
+          item
+            Name = 'visPublished'
+          end>
       end>
-    UnitName = 'Symbols'
+    UnitName = 'SystemSymbols'
     StaticSymbols = False
     Left = 52
     Top = 24
