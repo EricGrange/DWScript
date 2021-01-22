@@ -78,7 +78,7 @@ type
          function xRowid(var pRowid: Int64) : Integer; override;
 
          procedure ResultText16(sContext: TSQLite3FunctionContext; const s : UnicodeString);
-         procedure ResultVarData(sContext: TSQLite3FunctionContext; v : PVarData);
+         procedure ResultSetVariant(sContext: TSQLite3FunctionContext; const v : Variant);
 
       public
          constructor Create(vt : TdwsSQLiteVTArray);
@@ -319,14 +319,14 @@ begin
    SQLite3.result_text(sContext, Pointer(buf), Length(buf), SQLITE_TRANSIENT);
 end;
 
-// ResultVarData
+// ResultSetVariant
 //
-procedure TdwsSQLiteVTArrayCursor.ResultVarData(sContext: TSQLite3FunctionContext; v : PVarData);
+procedure TdwsSQLiteVTArrayCursor.ResultSetVariant(sContext: TSQLite3FunctionContext; const v : Variant);
 begin
-   case v.VType of
-      varInt64 : SQLite3.result_int64(sContext, v.VInt64);
-      varDouble : SQLite3.result_double(sContext, v.VDouble);
-      varUString : ResultText16(sContext, String(v.VUString));
+   case TVarData(v).VType of
+      varInt64 : SQLite3.result_int64(sContext, TVarData(v).VInt64);
+      varDouble : SQLite3.result_double(sContext, TVarData(v).VDouble);
+      varUString : ResultText16(sContext, String(TVarData(v).VUString));
       varNull : SQLite3.result_null(sContext);
    else
       SQLite3.result_null(sContext);
@@ -340,11 +340,16 @@ end;
 // xColumn
 //
 function TdwsSQLiteVTValueArrayCursor.xColumn(sContext: TSQLite3FunctionContext; N: Integer) : Integer;
+var
+   v : Variant;
 begin
    Assert(FIndex < FDynArray.ArrayLength);
    case N of
       0 : SQLite3.result_int64(sContext, FIndex);
-      1 : ResultVarData(sContext, PVarData(FDynArray.AsPVariant(FIndex)));
+      1 : begin
+         FDynArray.EvalAsVariant(FIndex, v);
+         ResultSetVariant(sContext, v);
+      end;
    else
       Assert(False);
    end;
@@ -361,6 +366,7 @@ end;
 function TdwsSQLiteVTRecordArrayCursor.xColumn(sContext: TSQLite3FunctionContext; N: Integer) : Integer;
 var
    addr : Integer;
+   v : Variant;
 begin
    Assert(FIndex < FDynArray.ArrayLength);
    if N = 0 then
@@ -368,7 +374,8 @@ begin
    else begin
       Assert(N-1 < Length(FArray.FColumnAddr));
       addr := FIndex * FDynArray.ElementSize + FArray.FColumnAddr[N-1];
-      ResultVarData(sContext, PVarData(FDynArray.AsPVariant(addr)));
+      FDynArray.EvalAsVariant(addr, v);
+      ResultSetVariant(sContext, v);
    end;
    Result := SQLITE_OK;
 end;
@@ -383,6 +390,7 @@ function TdwsSQLiteVTClassArrayCursor.xColumn(sContext: TSQLite3FunctionContext;
 var
    intf : IUnknown;
    obj : IScriptObj;
+   v : Variant;
 begin
    Assert(FIndex < FDynArray.ArrayLength);
    if N = 0 then
@@ -391,7 +399,8 @@ begin
       Assert(N-1 < Length(FArray.FColumnAddr));
       FDynArray.EvalAsInterface(FIndex, intf);
       obj := intf as IScriptObj;
-      ResultVarData(sContext, PVarData(obj.AsPVariant(FArray.FColumnAddr[N-1])));
+      obj.EvalAsVariant(FArray.FColumnAddr[N-1], v);
+      ResultSetVariant(sContext, v);
    end;
    Result := SQLITE_OK;
 end;

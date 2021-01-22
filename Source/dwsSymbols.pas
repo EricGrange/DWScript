@@ -2176,7 +2176,7 @@ type
 
    // IScriptDynArray
    //
-   IScriptDynArray = interface (IDataContext)//(IGetSelf)//
+   IScriptDynArray = interface (IGetSelf)//(IDataContext)//
       ['{29767B6E-05C0-40E1-A41A-94DF54142312}']
       function GetElementSize : Integer;
       property ElementSize : Integer read GetElementSize;
@@ -2195,6 +2195,7 @@ type
 
       procedure Reverse;
 
+      function AsPData : PData;
       function AsPVariant(addr : Integer) : PVariant;
 
       function AsPDouble(var nbElements, stride : Integer) : PDouble;
@@ -2221,6 +2222,8 @@ type
 
       function IsEmpty(addr : Integer) : Boolean;
       function VarType(addr : Integer) : TVarType;
+
+      function HashCode(addr : Integer; size : Integer) : Cardinal;
    end;
 
    // IScriptAssociativeArray

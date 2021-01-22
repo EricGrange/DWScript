@@ -4008,11 +4008,13 @@ procedure TDynamicArraySetVarExpr.EvalNoResult(exec : TdwsExecution);
 var
    dyn : IScriptDynArray;
    index : Integer;
+   v : Variant;
 begin
    ArrayExpr.EvalAsScriptDynArray(exec, dyn);
    index:=IndexExpr.EvalAsInteger(exec);
    BoundsCheck(exec, dyn.ArrayLength, index);
-   ValueExpr.EvalAsVariant(exec, dyn.AsPVariant(index)^);
+   ValueExpr.EvalAsVariant(exec, v);
+   dyn.SetAsVariant(index, v);
 end;
 
 // ------------------

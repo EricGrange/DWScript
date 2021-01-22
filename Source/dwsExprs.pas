@@ -1612,7 +1612,7 @@ type
          property ExternalObject : TObject read FExternalObject write FExternalObject;
    end;
 
-   TScriptDynamicArray = class abstract (TScriptObj, IScriptDynArray)
+   TScriptDynamicArray = class abstract (TDataContext, IScriptDynArray)
       private
          FElementTyp : TTypeSymbol;
          FElementSize : Integer;
@@ -1643,6 +1643,8 @@ type
          procedure ReplaceData(const newData : TData); override;
 
          function AsPDouble(var nbElements, stride : Integer) : PDouble; virtual;
+
+         function HashCode(addr : Integer; size : Integer) : Cardinal; virtual;
 
          function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
 
@@ -7526,6 +7528,13 @@ end;
 function TScriptDynamicArray.AsPDouble(var nbElements, stride : Integer) : PDouble;
 begin
    Result := nil;
+end;
+
+// HashCode
+//
+function TScriptDynamicArray.HashCode(addr : Integer; size : Integer) : Cardinal;
+begin
+   Result := DWSHashCode(@DirectData[addr], size);
 end;
 
 // IndexOfFuncPtr

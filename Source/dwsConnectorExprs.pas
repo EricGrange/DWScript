@@ -468,9 +468,9 @@ begin
 
       try
          // The call itself
-         if FConnectorArgsCall.NeedDirectReference then
+         if FConnectorArgsCall.NeedDirectReference then begin
             resultData := FConnectorArgsCall.Call(TDataExpr(BaseExpr).DataPtr[exec].AsPVariant(0)^, callArgs)
-         else begin
+         end else begin
             BaseExpr.EvalAsVariant(exec, buf);
             resultData := FConnectorArgsCall.Call(buf, callArgs);
          end;

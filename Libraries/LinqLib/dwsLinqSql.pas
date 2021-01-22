@@ -344,19 +344,21 @@ function TSqlFromExpr.Interpolate(exec: TdwsExecution; list: TObjectVarExpr; par
 var
    i, high: integer;
    paramList: TStringList;
-   obj: IScriptDynArray;
+   dyn: IScriptDynArray;
    prog: TdwsProgram;
+   v : Variant;
 begin
-   list.EvalAsScriptDynArray(exec, obj);
-   high := obj.ArrayLength - 1;
+   list.EvalAsScriptDynArray(exec, dyn);
+   high := dyn.ArrayLength - 1;
    prog := TdwsProgramExecution(exec).Prog;
    paramList := TStringList.Create;
    try
       for i := 0 to High do
       begin
          paramList.Add(':a' + intToStr(i));
+         dyn.EvalAsVariant(i, v);
          params.AddElementExpr(cNullPos, prog.Root.CompilerContext,
-                               TConstExpr.Create(prog.Root.CompilerContext.TypVariant, obj.AsVariant[i]));
+                               TConstExpr.Create(prog.Root.CompilerContext.TypVariant, v));
       end;
       result := StringReplace(query, param, format('(%s)', [paramList.CommaText]), []);
    finally

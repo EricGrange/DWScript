@@ -77,6 +77,8 @@ type
       procedure WriteData(const srcData : TData; srcAddr, size : Integer); overload;
       function  SameData(addr : Integer; const otherData : TData; otherAddr, size : Integer) : Boolean;
 
+      function  IncInteger(addr : Integer; delta : Int64) : Int64;
+
       function  HashCode(size : Integer) : Cardinal;
    end;
 
@@ -185,6 +187,8 @@ type
          procedure ClearData; virtual;
          procedure SetDataLength(n : Integer);
 
+         function  IncInteger(addr : Integer; delta : Int64) : Int64;
+
          function  HashCode(size : Integer) : Cardinal;
    end;
 
@@ -233,6 +237,8 @@ type
          procedure WriteData(destAddr : Integer; const src : IDataContext; size : Integer); overload;
          procedure WriteData(const srcData : TData; srcAddr, size : Integer); overload;
          function SameData(addr : Integer; const otherData : TData; otherAddr, size : Integer) : Boolean; overload;
+
+         function  IncInteger(addr : Integer; delta : Int64) : Int64;
 
          function  HashCode(size : Integer) : Cardinal;
    end;
@@ -995,6 +1001,18 @@ begin
    SetLength(FData, n);
 end;
 
+// IncInteger
+//
+function TDataContext.IncInteger(addr : Integer; delta : Int64) : Int64;
+var
+   p : PVarData;
+begin
+   p := @FData[FAddr+addr];
+   Assert(p.VType = varInt64);
+   Result := p.VInt64 + delta;
+   p.VInt64 := Result;
+end;
+
 // HashCode
 //
 function TDataContext.HashCode(size : Integer) : Cardinal;
@@ -1208,6 +1226,18 @@ end;
 function TRelativeDataContext.SameData(addr : Integer; const otherData : TData; otherAddr, size : Integer) : Boolean;
 begin
    Result:=DWSSameData(FGetPData^, otherData, FAddr+addr, otherAddr, size);
+end;
+
+// IncInteger
+//
+function TRelativeDataContext.IncInteger(addr : Integer; delta : Int64) : Int64;
+var
+   p : PVarData;
+begin
+   p := @FGetPData^[FAddr+addr];
+   Assert(p.VType = varInt64);
+   Result := p.VInt64 + delta;
+   p.VInt64 := Result;
 end;
 
 // HashCode

@@ -35,8 +35,7 @@ type
       protected
          function GetSelf : TObject;
 
-         function ComputeReadAddr(addr : Integer) : Integer; inline;
-         function ComputeWriteAddr(addr : Integer) : Integer; inline;
+         function ComputeAddr(addr : Integer) : Integer; inline;
 
          function GetAsVariant(addr : Integer) : Variant;
          procedure SetAsVariant(addr : Integer; const value : Variant);
@@ -72,6 +71,8 @@ type
          procedure WriteData(const srcData : TData; srcAddr, size : Integer); overload;
          function SameData(addr : Integer; const otherData : TData; otherAddr, size : Integer) : Boolean;
 
+         function  IncInteger(addr : Integer; delta : Int64) : Int64;
+
          function  HashCode(size : Integer) : Cardinal;
 
       public
@@ -106,19 +107,9 @@ begin
    Result := Self;
 end;
 
-// ComputeReadAddr
+// ComputeAddr
 //
-function TArrayElementDataContext.ComputeReadAddr(addr : Integer) : Integer;
-begin
-   Assert(Cardinal(addr) < Cardinal(FElementSize));
-   if FIndex >= FArray.ArrayLength then
-      raise EScriptError.CreateFmt(RTE_ArrayUpperBoundExceeded, [FIndex]);
-   Result := FBase + addr;
-end;
-
-// ComputeWriteAddr
-//
-function TArrayElementDataContext.ComputeWriteAddr(addr : Integer) : Integer;
+function TArrayElementDataContext.ComputeAddr(addr : Integer) : Integer;
 begin
    Assert(Cardinal(addr) < Cardinal(FElementSize));
    if FIndex >= FArray.ArrayLength then
@@ -130,42 +121,42 @@ end;
 //
 function TArrayElementDataContext.GetAsVariant(addr : Integer) : Variant;
 begin
-   FArray.EvalAsVariant(ComputeReadAddr(addr), Result);
+   FArray.EvalAsVariant(ComputeAddr(addr), Result);
 end;
 
 // SetAsVariant
 //
 procedure TArrayElementDataContext.SetAsVariant(addr : Integer; const value : Variant);
 begin
-   FArray.SetAsVariant(ComputeWriteAddr(addr), value);
+   FArray.SetAsVariant(ComputeAddr(addr), value);
 end;
 
 // GetAsInteger
 //
 function TArrayElementDataContext.GetAsInteger(addr : Integer) : Int64;
 begin
-   Result := FArray.AsInteger[ComputeReadAddr(addr)];
+   Result := FArray.AsInteger[ComputeAddr(addr)];
 end;
 
 // SetAsInteger
 //
 procedure TArrayElementDataContext.SetAsInteger(addr : Integer; const value : Int64);
 begin
-   FArray.AsInteger[ComputeWriteAddr(addr)] := value;
+   FArray.AsInteger[ComputeAddr(addr)] := value;
 end;
 
 // GetAsFloat
 //
 function TArrayElementDataContext.GetAsFloat(addr : Integer) : Double;
 begin
-   Result := FArray.AsFloat[ComputeReadAddr(addr)];
+   Result := FArray.AsFloat[ComputeAddr(addr)];
 end;
 
 // SetAsFloat
 //
 procedure TArrayElementDataContext.SetAsFloat(addr : Integer; const value : Double);
 begin
-   FArray.AsFloat[ComputeWriteAddr(addr)] := value;
+   FArray.AsFloat[ComputeAddr(addr)] := value;
 end;
 
 // GetAsBoolean
@@ -179,35 +170,35 @@ end;
 //
 procedure TArrayElementDataContext.SetAsBoolean(addr : Integer; const value : Boolean);
 begin
-   FArray.AsBoolean[ComputeWriteAddr(addr)] := value;
+   FArray.AsBoolean[ComputeAddr(addr)] := value;
 end;
 
 // GetAsString
 //
 function TArrayElementDataContext.GetAsString(addr : Integer) : String;
 begin
-   FArray.EvalAsString(ComputeReadAddr(addr), Result);
+   FArray.EvalAsString(ComputeAddr(addr), Result);
 end;
 
 // SetAsString
 //
 procedure TArrayElementDataContext.SetAsString(addr : Integer; const value : String);
 begin
-   FArray.SetAsString(ComputeWriteAddr(addr), value);
+   FArray.SetAsString(ComputeAddr(addr), value);
 end;
 
 // GetAsInterface
 //
 function TArrayElementDataContext.GetAsInterface(addr : Integer) : IUnknown;
 begin
-   FArray.EvalAsInterface(ComputeReadAddr(addr), Result);
+   FArray.EvalAsInterface(ComputeAddr(addr), Result);
 end;
 
 // SetAsInterface
 //
 procedure TArrayElementDataContext.SetAsInterface(addr : Integer; const value : IUnknown);
 begin
-   FArray.SetAsInterface(ComputeWriteAddr(addr), value);
+   FArray.SetAsInterface(ComputeAddr(addr), value);
 end;
 
 // Addr
@@ -235,7 +226,7 @@ end;
 //
 function TArrayElementDataContext.AsPVariant(addr : Integer) : PVariant;
 begin
-   Result := FArray.AsPVariant(ComputeReadAddr(addr));
+   Result := FArray.AsPVariant(ComputeAddr(addr));
 end;
 
 // CreateOffset
@@ -256,35 +247,35 @@ end;
 //
 procedure TArrayElementDataContext.EvalAsVariant(addr : Integer; var result : Variant);
 begin
-   FArray.EvalAsVariant(ComputeReadAddr(addr), result);
+   FArray.EvalAsVariant(ComputeAddr(addr), result);
 end;
 
 // EvalAsString
 //
 procedure TArrayElementDataContext.EvalAsString(addr : Integer; var result : String);
 begin
-   FArray.EvalAsString(ComputeReadAddr(addr), result);
+   FArray.EvalAsString(ComputeAddr(addr), result);
 end;
 
 // EvalAsInterface
 //
 procedure TArrayElementDataContext.EvalAsInterface(addr : Integer; var result : IUnknown);
 begin
-   FArray.EvalAsInterface(ComputeReadAddr(addr), result);
+   FArray.EvalAsInterface(ComputeAddr(addr), result);
 end;
 
 // IsEmpty
 //
 function TArrayElementDataContext.IsEmpty(addr : Integer) : Boolean;
 begin
-   Result := FArray.IsEmpty(ComputeReadAddr(addr));
+   Result := FArray.IsEmpty(ComputeAddr(addr));
 end;
 
 // VarType
 //
 function TArrayElementDataContext.VarType(addr : Integer) : TVarType;
 begin
-   Result := FArray.VarType(ComputeReadAddr(addr));
+   Result := FArray.VarType(ComputeAddr(addr));
 end;
 
 // CopyData
@@ -294,14 +285,21 @@ var
    i : Integer;
 begin
    for i := 0 to size-1 do
-      FArray.EvalAsVariant(ComputeReadAddr(i), destData[destAddr+i]);
+      FArray.EvalAsVariant(ComputeAddr(i), destData[destAddr+i]);
 end;
 
 // WriteData
 //
 procedure TArrayElementDataContext.WriteData(const src : IDataContext; size : Integer);
+var
+   p, i : Integer;
+   v : Variant;
 begin
-   DWSCopyPVariants(src.AsPVariant(0), FArray.AsPVariant(ComputeWriteAddr(0)), size);
+   p := ComputeAddr(0);
+   for i := 0 to size-1 do begin
+      src.EvalAsVariant(i, v);
+      FArray.SetAsVariant(p + i, v);
+   end;
 end;
 
 // WriteData
@@ -325,11 +323,20 @@ begin
    raise Exception.Create('TArrayElementDataContext.SameData not implemented');
 end;
 
+// IncInteger
+//
+function TArrayElementDataContext.IncInteger(addr : Integer; delta : Int64) : Int64;
+begin
+   addr := ComputeAddr(addr);
+   Result := FArray.AsInteger[addr] + delta;
+   FArray.AsInteger[addr] := Result;
+end;
+
 // HashCode
 //
 function TArrayElementDataContext.HashCode(size : Integer) : Cardinal;
 begin
-   Result := DWSHashCode(FArray.AsPVariant(0), size);
+   Result := FArray.HashCode(ComputeAddr(0), size);
 end;
 
 end.

@@ -403,7 +403,7 @@ type
    // result = Inc(left, right)
    TIncVarFuncExpr = class(TMagicIteratorFuncExpr)
       protected
-         function DoInc(exec : TdwsExecution) : PVarData;
+         function DoInc(exec : TdwsExecution) : Int64;
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -411,7 +411,7 @@ type
    // result = Dec(left, right)
    TDecVarFuncExpr = class(TMagicIteratorFuncExpr)
       protected
-         function DoDec(exec : TdwsExecution) : PVarData;
+         function DoDec(exec : TdwsExecution) : Int64;
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -1343,14 +1343,12 @@ end;
 
 // DoInc
 //
-function TIncVarFuncExpr.DoInc(exec : TdwsExecution) : PVarData;
+function TIncVarFuncExpr.DoInc(exec : TdwsExecution) : Int64;
 var
    left : TDataExpr;
 begin
    left := TDataExpr(FArgs.ExprBase[0]);
-   Result:=PVarData(left.DataPtr[exec].AsPVariant(0));
-   Assert(Result.VType=varInt64);
-   Inc(Result.VInt64, FArgs.ExprBase[1].EvalAsInteger(exec));
+   Result := left.DataPtr[exec].IncInteger(0, FArgs.ExprBase[1].EvalAsInteger(exec));
 end;
 
 // EvalNoResult
@@ -1364,7 +1362,7 @@ end;
 //
 function TIncVarFuncExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
-   Result:=DoInc(exec).VInt64;
+   Result := DoInc(exec);
 end;
 
 // ------------------
@@ -1373,14 +1371,12 @@ end;
 
 // DoDec
 //
-function TDecVarFuncExpr.DoDec(exec : TdwsExecution) : PVarData;
+function TDecVarFuncExpr.DoDec(exec : TdwsExecution) : Int64;
 var
    left : TDataExpr;
 begin
-   left:=TDataExpr(FArgs.ExprBase[0]);
-   Result:=PVarData(left.DataPtr[exec].AsPVariant(0));
-   Assert(Result.VType=varInt64);
-   Dec(Result.VInt64, FArgs.ExprBase[1].EvalAsInteger(exec));
+   left := TDataExpr(FArgs.ExprBase[0]);
+   Result := left.DataPtr[exec].IncInteger(0, -FArgs.ExprBase[1].EvalAsInteger(exec));
 end;
 
 // EvalNoResult
@@ -1394,7 +1390,7 @@ end;
 //
 function TDecVarFuncExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
-   Result:=DoDec(exec).VInt64;
+   Result := DoDec(exec);
 end;
 
 // ------------------

@@ -1343,8 +1343,8 @@ var
    elemTyp : TSymbol;
    elemOff, elemIndex : Integer;
    dynArray : IScriptDynArray;
-   p : PVarData;
    locData : IDataContext;
+   intf : IUnknown;
 begin
    dynArray:=SelfDynArray;
 
@@ -1368,14 +1368,13 @@ begin
       elemOff := elemIndex*dynArray.ElementSize;
 
       if x<High(indices) then begin
-         p:=PVarData(dynArray.AsPVariant(elemOff));
-         if p.VType<>varUnknown then
+         if dynArray.VarType(elemOff) <> varUnknown then
             raise Exception.Create(RTE_TooManyIndices);
-         dynArray:=IScriptDynArray(p.VUnknown);
+         dynArray.EvalAsInterface(elemOff, intf);
+         dynArray := intf as IScriptDynArray;
       end;
    end;
 
-//   FProgramInfo.Execution.DataContext_CreateOffset(dynArray, elemOff, locData);
    locData :=  TArrayElementDataContext.Create(dynArray, elemIndex);
 
    SetChild(Result, FProgramInfo, elemTyp, locData, FDataMaster);
