@@ -205,7 +205,7 @@ var
    p : PVarData;
    dt : Int64;
 begin
-   n := data.DataLength;
+   n := data.ArrayLength;
    params.Length := n;
    SetLength(params.Types, n);
    SetLength(params.Values, n);

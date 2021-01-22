@@ -123,7 +123,7 @@ var
    rqParams : TSQLParams;
 begin
    rqParams:=rq.Params;
-   for i:=0 to params.DataLength-1 do begin
+   for i:=0 to params.ArrayLength-1 do begin
       params.EvalAsVariant(i, v);
       p := PVarData(@v);
       case p.VType of
