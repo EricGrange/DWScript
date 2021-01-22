@@ -115,7 +115,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-procedure AssignParameters(var rq : TUIBQuery; const params : IDataContext);
+procedure AssignParameters(var rq : TUIBQuery; const params : IScriptDynArray);
 var
    i : Integer;
    p : PVarData;

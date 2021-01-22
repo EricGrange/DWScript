@@ -198,7 +198,7 @@ type
       Formats : TPGParamFormats;
    end;
 
-procedure PreparePGParams(const data : IDataContext; var params : TPosgreSQLParams);
+procedure PreparePGParams(const data : IScriptDynArray; var params : TPosgreSQLParams);
 var
    i, n : Integer;
    v : Variant;
