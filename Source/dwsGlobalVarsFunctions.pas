@@ -199,6 +199,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsDynamicArrays;
+
 type
 
    TGlobalQueue = TSimpleQueue<Variant>;

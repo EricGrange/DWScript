@@ -204,7 +204,7 @@ implementation
 
 {$R *.dfm}
 
-uses dwsWinHTTP;
+uses dwsWinHTTP, dwsDynamicArrays;
 
 // WebServerSentEventToRawData
 //

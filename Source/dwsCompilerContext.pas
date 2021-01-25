@@ -115,7 +115,7 @@ implementation
 
 uses Variants,
    dwsExprs, dwsUnifiedConstants, dwsConstExprs, dwsOperators, dwsCompilerUtils,
-   dwsConvExprs;
+   dwsConvExprs, dwsDynamicArrays;
 
 // ------------------
 // ------------------ TdwsCompilerContext ------------------

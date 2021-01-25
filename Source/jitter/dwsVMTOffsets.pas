@@ -63,7 +63,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses Variants;
+uses Variants, dwsDynamicArrays;
 
 // PrepareVMTOffsets
 //

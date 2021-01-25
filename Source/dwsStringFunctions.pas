@@ -340,6 +340,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsDynamicArrays, dwsArrayExprs;
+
 // StrRevFind
 //
 function StrRevFind(const stringSearched, stringToFind : String; startPos : Integer = 0) : Integer;

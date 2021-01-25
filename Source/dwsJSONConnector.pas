@@ -324,7 +324,7 @@ implementation
 // ------------------------------------------------------------------
 // -----------------------------------------------------------------
 
-uses dwsConstExprs, dwsJSONScript;
+uses dwsConstExprs, dwsJSONScript, dwsDynamicArrays;
 
 const
    SYS_JSON = 'JSON';

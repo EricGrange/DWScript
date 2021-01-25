@@ -26,7 +26,7 @@ uses
    dwsSymbols, dwsUnitSymbols, dwsCompilerContext, dwsExprList,
    dwsExprs, dwsCoreExprs, dwsConstExprs, dwsMethodExprs, dwsMagicExprs,
    dwsConvExprs, dwsTokenTypes, dwsOperators, dwsConnectorSymbols,
-   dwsArrayMethodKinds;
+   dwsArrayMethodKinds, dwsArrayExprs;
 
 type
 

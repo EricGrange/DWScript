@@ -72,7 +72,9 @@ uses
   BeaEngineDelphi64 in '..\Tools\BeaEngine\BeaEngineDelphi64.pas',
   UdwsDateTimeTests in 'UdwsDateTimeTests.pas',
   dwsTokenTypes in '..\Source\dwsTokenTypes.pas',
-  dwsSQLiteVTArraysLibModule;
+  dwsSQLiteVTArraysLibModule,
+  dwsDynamicArrays in '..\Source\dwsDynamicArrays.pas',
+  dwsArrayExprs in '..\Source\dwsArrayExprs.pas';
 
 {$R *.res}
 

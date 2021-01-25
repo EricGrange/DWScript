@@ -103,7 +103,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsInfoClasses;
+uses dwsInfoClasses, dwsDynamicArrays;
 
 // RegisterRTTITypes
 //

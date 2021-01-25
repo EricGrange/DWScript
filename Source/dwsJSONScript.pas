@@ -22,7 +22,8 @@ interface
 
 uses
    dwsJSON, dwsUtils, dwsStack,
-   dwsExprList, dwsDataContext, dwsSymbols, dwsExprs, dwsStrings, dwsScriptSource;
+   dwsExprList, dwsDataContext, dwsSymbols, dwsExprs, dwsStrings, dwsScriptSource,
+   dwsDynamicArrays;
 
 type
 

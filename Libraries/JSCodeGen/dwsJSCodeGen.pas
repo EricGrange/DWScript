@@ -27,7 +27,8 @@ uses
    dwsConnectorExprs, dwsConvExprs, dwsSetOfExprs, dwsCompilerUtils,
    dwsJSLibModule, dwsFunctions, dwsGlobalVarsFunctions, dwsErrors,
    dwsRTTIFunctions, dwsConstExprs, dwsInfo, dwsScriptSource, dwsSymbolDictionary,
-   dwsUnicode, dwsExprList, dwsXXHash, dwsCodeGenWriters, dwsCompilerContext;
+   dwsUnicode, dwsExprList, dwsXXHash, dwsCodeGenWriters, dwsCompilerContext,
+   dwsArrayExprs;
 
 type
 
@@ -871,7 +872,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsJSRTL, dwsJSSymbolWriters, dwsJSMin
+uses
+   dwsDynamicArrays,
+   dwsJSRTL, dwsJSSymbolWriters, dwsJSMin
    {$ifdef JS_BIGINTEGER}, dwsJSBigInteger, dwsBigIntegerFunctions.GMP{$endif}
    ;
 

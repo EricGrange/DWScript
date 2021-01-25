@@ -217,7 +217,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsCoreExprs, dwsConnectorSymbols;
+uses dwsCoreExprs, dwsConnectorSymbols, dwsDynamicArrays;
 
 // ------------------
 // ------------------ TConvExpr ------------------

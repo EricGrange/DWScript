@@ -33,7 +33,7 @@ uses
   dwsOperators, dwsPascalTokenizer, dwsSystemOperators, dwsContextMap,
   dwsUnitSymbols, dwsCompilerUtils, dwsScriptSource, dwsSymbolDictionary,
   dwsCompilerContext, dwsGenericSymbols, dwsSpecializationContext,
-  dwsGenericExprs, dwsSpecialKeywords;
+  dwsGenericExprs, dwsSpecialKeywords, dwsArrayExprs;
 
 const
    cDefaultCompilerOptions = [ coOptimize, coAssertions ];

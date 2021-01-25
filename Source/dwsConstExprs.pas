@@ -201,7 +201,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsConvExprs, dwsSpecializationContext;
+uses dwsConvExprs, dwsSpecializationContext, dwsDynamicArrays;
 
 // ------------------
 // ------------------ TConstExpr ------------------

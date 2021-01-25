@@ -127,7 +127,7 @@ type
 implementation
 uses
    Sysutils,
-   dwsExprList, dwsConvExprs, dwsUnitSymbols;
+   dwsExprList, dwsConvExprs, dwsUnitSymbols, dwsDynamicArrays;
 
 { TSqlFromExpr }
 

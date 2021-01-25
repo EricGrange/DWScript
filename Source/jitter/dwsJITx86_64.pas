@@ -24,7 +24,7 @@ interface
 uses
    Classes, SysUtils, Math, Windows,
    dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsExprList, dwsXPlatform,
-   dwsCoreExprs, dwsRelExprs, dwsMagicExprs, dwsConstExprs,
+   dwsCoreExprs, dwsRelExprs, dwsMagicExprs, dwsConstExprs, dwsArrayExprs,
    dwsMathFunctions, dwsDataContext, dwsConvExprs, dwsSetOfExprs, dwsMethodExprs,
    dwsJIT, dwsJITFixups, dwsJITAllocatorWin, dwsJITx86Intrinsics, dwsVMTOffsets,
    dwsWin64FunctionTables, dwsJITRegisterAllocator;
