@@ -975,7 +975,7 @@ end;
 //
 procedure TNewArrayExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 
-   function CreateDimension(d : Integer) : TScriptDynamicArray;
+   function CreateDimension(d : Integer) : IScriptDynArray;
    var
       i : Integer;
       n : Int64;
@@ -983,12 +983,12 @@ procedure TNewArrayExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : 
       n:=LengthExpr[d].EvalAsInteger(exec);
       if n<0 then
          RaiseScriptError(exec, EScriptOutOfBounds.CreatePosFmt(ScriptPos, RTE_ArrayLengthIncorrectForDimension, [n, d]));
-      Result:=TScriptDynamicArray.CreateNew(TDynamicArraySymbol(FTyps.List[FTyps.Count-1-d]).Typ);
+      Result := TScriptDynamicArray.CreateNew(TDynamicArraySymbol(FTyps.List[FTyps.Count-1-d]).Typ);
       Result.ArrayLength:=n;
       Inc(d);
       if d<LengthExprCount then begin
          for i:=0 to n-1 do
-            Result.AsInterface[i]:=IScriptDynArray(CreateDimension(d));
+            Result.SetAsInterface(i, CreateDimension(d));
       end;
    end;
 
@@ -2223,10 +2223,9 @@ end;
 //
 procedure TArrayMapExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 var
-   newArray : TScriptDynamicArray;
    base : IScriptDynArray;
    dyn : TScriptDynamicValueArray;
-   i, itemAddr : Integer;
+   i, itemAddr, elemSize : Integer;
    funcPointer : IFuncPointer;
    newPData, oldPData : PData;
    dc : IDataContext;
@@ -2237,21 +2236,21 @@ begin
    dyn:=TScriptDynamicValueArray(base.GetSelf);
    oldPData:=dyn.AsPData;
 
-   newArray:=TScriptDynamicArray.CreateNew(Typ.Typ);
-   result:=IScriptDynArray(newArray);
-   newArray.ArrayLength:=dyn.ArrayLength;
-   newPData:=newArray.AsPData;
+   result := TScriptDynamicArray.CreateNew(Typ.Typ);
+   result.ArrayLength := dyn.ArrayLength;
+   newPData := result.AsPData;
 
+   elemSize := result.ElementSize;
    itemAddr:=exec.Stack.BasePointer+FItem.StackAddr;
    for i:=0 to dyn.ArrayLength-1 do begin
       if dyn.ElementSize = 1 then
          exec.Stack.WriteValue(itemAddr, oldPData^[i])
       else dyn.CopyData(i*dyn.ElementSize, exec.Stack.Data, itemAddr, dyn.ElementSize);
-      if newArray.ElementSize = 1 then
+      if elemSize = 1 then
          funcPointer.EvalAsVariant(exec, MapFuncExpr, newPData^[i])
       else begin
          dc:=funcPointer.EvalDataPtr(exec,  MapFuncExpr, MapFuncExpr.ResultAddr);
-         dc.CopyData(newPData^, i*newArray.ElementSize, newArray.ElementSize);
+         dc.CopyData(newPData^, i*elemSize, elemSize);
       end;
    end;
 end;
@@ -2428,7 +2427,6 @@ end;
 //
 procedure TArrayFilterExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 var
-   newArray : TScriptDynamicArray;
    base : IScriptDynArray;
    dyn : TScriptDynamicValueArray;
    i, k, elementSize, itemAddr : Integer;
@@ -2441,11 +2439,10 @@ begin
    dyn := TScriptDynamicValueArray(base.GetSelf);
    oldPData := dyn.AsPData;
 
-   newArray := TScriptDynamicArray.CreateNew(dyn.ElementTyp);
-   result := IScriptDynArray(newArray);
-   newArray.ArrayLength := dyn.ArrayLength;
-   newPData := newArray.AsPData;
-   elementSize := newArray.ElementSize;
+   result := TScriptDynamicArray.CreateNew(dyn.ElementTyp);
+   result.ArrayLength := dyn.ArrayLength;
+   newPData := result.AsPData;
+   elementSize := result.ElementSize;
    k := 0;
 
    itemAddr := exec.Stack.BasePointer + FItem.StackAddr;
@@ -2467,8 +2464,8 @@ begin
       end;
    end;
 
-   if k <> newArray.ArrayLength then
-      newArray.ArrayLength := k;
+   if k <> result.ArrayLength then
+      result.ArrayLength := k;
 end;
 
 // GetSubExpr
@@ -2888,7 +2885,7 @@ end;
 procedure TArrayCopyExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 var
    base : IScriptDynArray;
-   dyn, newDyn : TScriptDynamicArray;
+   dyn : TScriptDynamicArray;
    index, count : Integer;
 begin
    BaseExpr.EvalAsScriptDynArray(exec, base);
@@ -2905,10 +2902,9 @@ begin
          count := dyn.ArrayLength-index;
    end else count:=dyn.ArrayLength-index;
 
-   newDyn:=TScriptDynamicArray.CreateNew(dyn.ElementTyp);
+   Result := TScriptDynamicArray.CreateNew(dyn.ElementTyp);
    if count>0 then
-      newDyn.Copy(dyn, index, count);
-   Result:=newDyn;
+      (Result.GetSelf as TScriptDynamicArray).Copy(dyn, index, count);
 end;
 
 // GetSubExpr
@@ -3459,13 +3455,11 @@ end;
 procedure TAssociativeArrayKeysExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 var
    a : IScriptAssociativeArray;
-   dyn : TScriptDynamicArray;
 begin
    Expr.EvalAsScriptAssociativeArray(exec, a);
-   dyn := TScriptDynamicArray.CreateNew(Typ.Typ);
-   Result := dyn;
+   Result := TScriptDynamicArray.CreateNew(Typ.Typ);
    if a <> nil then
-      dyn.ReplaceData((a.GetSelf as TScriptAssociativeArray).CopyKeys);
+      Result.ReplaceData((a.GetSelf as TScriptAssociativeArray).CopyKeys);
 end;
 
 end.

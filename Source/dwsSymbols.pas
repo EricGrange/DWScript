@@ -2191,6 +2191,8 @@ type
       function ToInt64Array : TInt64DynArray;
       function ToData : TData;
 
+      procedure Insert(index : Integer);
+
       procedure ReplaceData(const v : TData);
 
       procedure Reverse;
@@ -2213,12 +2215,16 @@ type
       property AsBoolean[index : Integer] : Boolean read GetAsBoolean write SetAsBoolean;
 
       procedure SetAsVariant(index : Integer; const v : Variant);
-      procedure SetAsString(index : Integer; const v : String);
-      procedure SetAsInterface(index : Integer; const v : IUnknown);
-
       procedure EvalAsVariant(index : Integer; var result : Variant);
+      property AsVariant[index : Integer] : Variant write SetAsVariant;
+
+      procedure SetAsString(index : Integer; const v : String);
       procedure EvalAsString(index : Integer; var result : String);
+      property AsString[index : Integer] : String write SetAsString;
+
+      procedure SetAsInterface(index : Integer; const v : IUnknown);
       procedure EvalAsInterface(index : Integer; var result : IUnknown);
+      property AsInterface[index : Integer] : IUnknown write SetAsInterface;
 
       function IsEmpty(addr : Integer) : Boolean;
       function VarType(addr : Integer) : TVarType;

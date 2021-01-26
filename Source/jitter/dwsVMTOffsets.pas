@@ -102,7 +102,7 @@ var
    ia : IScriptDynArray;
    io : IScriptObj;
 begin
-   sda:=TScriptDynamicArray.CreateNew(nil);
+   sda:=TScriptDynamicDataArray.Create(nil);
    ia:=IScriptDynArray(sda);
 
    vmt_ScriptDynamicArray_IScriptObj_To_FData:=NativeInt(ia.AsPData)-NativeInt(ia);

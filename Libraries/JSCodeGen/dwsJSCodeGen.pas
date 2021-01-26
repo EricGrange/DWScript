@@ -8899,7 +8899,7 @@ var
    i : Integer;
    info : IInfo;
    s : String;
-   dynArray : TScriptDynamicArray;
+   dynArray : IScriptDynArray;
    exec : TdwsExecution;
    v : Variant;
 begin

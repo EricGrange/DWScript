@@ -521,7 +521,7 @@ end;
 procedure TConvStaticArrayToDynamicExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 var
    arr : TArrayConstantExpr;
-   dynArray : TScriptDynamicArray;
+   dynArray : IScriptDynArray;
    data : TData;
 begin
    arr:=TArrayConstantExpr(Expr);
@@ -530,7 +530,7 @@ begin
    arr.EvalAsTData(exec, data);
    dynArray.ReplaceData(data);
 
-   VarCopySafe(Result, IScriptDynArray(dynArray));
+   VarCopySafe(Result, dynArray);
 end;
 
 // GetIsConstant

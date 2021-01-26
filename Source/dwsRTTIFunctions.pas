@@ -215,7 +215,7 @@ end;
 procedure PrepareRTTIRawAttributes(info : TProgramInfo; var scriptDynArray : IScriptDynArray);
 var
    typRawAttribute : TRecordSymbol;
-   dynArray : TScriptDynamicArray;
+   dynArray : TScriptDynamicDataArray;
    attributes : TdwsSymbolAttributes;
    publishedSymbols : TSimpleSymbolList;
    i, n : Integer;
@@ -231,7 +231,7 @@ var
    buf : Variant;
 begin
    typRawAttribute:=info.Execution.Prog.Table.FindTypeSymbol(SYS_TRTTIRAWATTRIBUTE, cvPublic) as TRecordSymbol;
-   dynArray:=TScriptDynamicArray.CreateNew(typRawAttribute);
+   dynArray:=TScriptDynamicDataArray.Create(typRawAttribute);
    scriptDynArray:=dynArray;
    info.Execution.RTTIRawAttributes:=scriptDynArray;
 

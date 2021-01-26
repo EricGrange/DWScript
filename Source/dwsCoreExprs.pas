@@ -5392,7 +5392,7 @@ end;
 procedure TAssignArrayConstantExpr.EvalNoResult(exec : TdwsExecution);
 var
    dynIntf : IScriptDynArray;
-   dynObj : TScriptDynamicArray;
+   dynObj : IScriptDynArray;
    srcData : TData;
    dataPtr : IDataContext;
 begin
@@ -5408,7 +5408,7 @@ begin
          dynObj:=TScriptDynamicArray(dynIntf.GetSelf);
       end;
       dynObj.ArrayLength := Length(srcData) div dynObj.ElementSize;
-      dynObj.WriteData(srcData, 0, Length(srcData));
+      (dynObj.GetSelf as TScriptDynamicArray).WriteData(srcData, 0, Length(srcData));
    end else begin
       // to static array
       exec.DataContext_Create(srcData, 0, dataPtr);

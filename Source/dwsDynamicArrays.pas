@@ -42,7 +42,9 @@ type
          function GetArrayLength : Integer;
 
       public
-         class function CreateNew(elemTyp : TTypeSymbol) : TScriptDynamicArray; static;
+         class function CreateNew(elemTyp : TTypeSymbol) : IScriptDynArray; static;
+
+         constructor Create(elemTyp : TTypeSymbol);
 
          procedure Delete(index, count : Integer);
          procedure Insert(index : Integer);
@@ -91,12 +93,19 @@ type
          function VarType(addr : Integer) : TVarType; override;
    end;
 
+   TScriptDynamicIntegerArray = class (TScriptDynamicValueArray)
+      public
+   end;
+
    TScriptDynamicFloatArray = class (TScriptDynamicValueArray)
       public
          function AsPDouble(var nbElements, stride : Integer) : PDouble; override;
          function VarType(addr : Integer) : TVarType; override;
    end;
 
+   TScriptDynamicBooleanArray = class (TScriptDynamicValueArray)
+      public
+   end;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -114,7 +123,7 @@ uses dwsExprs;
 
 // CreateNew
 //
-class function TScriptDynamicArray.CreateNew(elemTyp : TTypeSymbol) : TScriptDynamicArray;
+class function TScriptDynamicArray.CreateNew(elemTyp : TTypeSymbol) : IScriptDynArray;
 var
    size : Integer;
    elemTypClass : TClass;
@@ -125,13 +134,25 @@ begin
    if size = 1 then begin
       elemTypClass := elemTyp.UnAliasedType.ClassType;
       if elemTypClass = TBaseStringSymbol then
-         Result := TScriptDynamicStringArray.Create
+         Result := TScriptDynamicStringArray.Create(elemTyp)
       else if elemTypClass = TBaseFloatSymbol then
-         Result := TScriptDynamicFloatArray.Create
-      else Result := TScriptDynamicValueArray.Create
-   end else Result := TScriptDynamicDataArray.Create;
-   Result.FElementTyp := elemTyp;
-   Result.FElementSize := size;
+         Result := TScriptDynamicFloatArray.Create(elemTyp)
+      else if elemTypClass = TBaseIntegerSymbol then
+         Result := TScriptDynamicIntegerArray.Create(elemTyp)
+      else if elemTypClass = TBaseBooleanSymbol then
+         Result := TScriptDynamicBooleanArray.Create(elemTyp)
+      else Result := TScriptDynamicValueArray.Create(elemTyp)
+   end else Result := TScriptDynamicDataArray.Create(elemTyp);
+end;
+
+// Create
+//
+constructor TScriptDynamicArray.Create(elemTyp : TTypeSymbol);
+begin
+   inherited Create;
+   FElementTyp := elemTyp;
+   if elemTyp <> nil then
+      FElementSize := elemTyp.Size;
 end;
 
 // SetArrayLength

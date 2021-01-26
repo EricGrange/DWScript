@@ -1591,7 +1591,7 @@ var
    tokenizer : TdwsJSONParserState;
    values : TSimpleInt64List;
    i : Integer;
-   newArray : TScriptDynamicArray;
+   newArray : TScriptDynamicIntegerArray;
    s : String;
 begin
    args.EvalAsString(0, s);
@@ -1600,7 +1600,7 @@ begin
    try
       tokenizer.ParseIntegerArray(values);
 
-      newArray := TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).CompilerContext.TypInteger);
+      newArray := TScriptDynamicIntegerArray.Create((args.Exec as TdwsProgramExecution).CompilerContext.TypInteger);
       VarCopySafe(result, IScriptDynArray(newArray));
       newArray.ArrayLength := values.Count;
 
@@ -1623,7 +1623,7 @@ var
    tokenizer : TdwsJSONParserState;
    values : TSimpleDoubleList;
    i : Integer;
-   newArray : TScriptDynamicArray;
+   newArray : TScriptDynamicFloatArray;
    s : String;
 begin
    args.EvalAsString(0, s);
@@ -1632,7 +1632,7 @@ begin
    try
       tokenizer.ParseNumberArray(values);
 
-      newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).CompilerContext.TypFloat);
+      newArray:=TScriptDynamicFloatArray.Create((args.Exec as TdwsProgramExecution).CompilerContext.TypFloat);
       VarCopySafe(result, IScriptDynArray(newArray));
       newArray.ArrayLength:=values.Count;
 
@@ -1655,7 +1655,7 @@ var
    tokenizer : TdwsJSONParserState;
    values : TUnicodeStringList;
    i : Integer;
-   newArray : TScriptDynamicArray;
+   newArray : TScriptDynamicStringArray;
    s : String;
 begin
    args.EvalAsString(0, s);
@@ -1665,7 +1665,7 @@ begin
    try
       tokenizer.ParseStringArray(values);
 
-      newArray:=TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).CompilerContext.TypString);
+      newArray:=TScriptDynamicStringArray.Create((args.Exec as TdwsProgramExecution).CompilerContext.TypString);
       VarCopySafe(result, IScriptDynArray(newArray));
       newArray.ArrayLength:=values.Count;
 

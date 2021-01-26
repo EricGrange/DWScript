@@ -1166,14 +1166,14 @@ end;
 procedure TStrSplitFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    str, delim : String;
-   dyn : TScriptDynamicArray;
+   dyn : TScriptDynamicStringArray;
    p, pn, nDelim, k, n : Integer;
    c : WideChar;
 begin
    args.EvalAsString(0, str);
    args.EvalAsString(1, delim);
 
-   dyn:=TScriptDynamicArray.CreateNew((args.ExprBase[0] as TTypedExpr).Typ);
+   dyn:=TScriptDynamicStringArray.Create((args.ExprBase[0] as TTypedExpr).Typ);
 
    if delim='' then begin
 
