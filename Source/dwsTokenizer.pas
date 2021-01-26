@@ -702,7 +702,7 @@ end;
 //
 const
    cAlphaTypeTokens : TTokenTypes = [
-      ttAND, ttARRAY, ttABSTRACT, ttAS, ttASM,
+      ttAND, ttARRAY, ttABSTRACT, ttAS, ttASM, ttASYNC, ttAWAIT,
       ttBEGIN, ttBREAK,
       ttCONST, ttCLASS, ttCONSTRUCTOR, ttCASE, ttCDECL, ttCONTINUE,
       ttDO, ttDOWNTO, ttDIV, ttDEFAULT, ttDESCRIPTION, ttDESTRUCTOR, ttDEPRECATED,

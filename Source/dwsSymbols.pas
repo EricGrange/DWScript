@@ -787,7 +787,7 @@ type
 
    TFuncSymbolFlag = (fsfStateless, fsfExternal, fsfType, fsfOverloaded, fsfLambda,
                       fsfInline, fsfProperty, fsfExport,
-                      fsfOfObject, fsfReferenceTo);
+                      fsfOfObject, fsfReferenceTo, fsfAsync);
    TFuncSymbolFlags = set of TFuncSymbolFlag;
 
    // A script function / procedure: procedure X(param: Integer);
@@ -828,6 +828,8 @@ type
          procedure SetIsOfObject(const val : Boolean); inline;
          function GetIsReferenceTo : Boolean; inline;
          procedure SetIsReferenceTo(const val : Boolean); inline;
+         function GetIsAsync : Boolean; inline;
+         procedure SetIsAsync(const val : Boolean); inline;
 
          function GetSourcePosition : TScriptPos; virtual;
          procedure SetSourcePosition(const val : TScriptPos); virtual;
@@ -883,6 +885,7 @@ type
          property IsProperty : Boolean read GetIsProperty write SetIsProperty;
          property IsOfObject : Boolean read GetIsOfObject write SetIsOfObject;
          property IsReferenceTo : Boolean read GetIsReferenceTo write SetIsReferenceTo;
+         property IsAsync : Boolean read GetIsAsync write SetIsAsync;
          property Kind : TFuncKind read FKind write FKind;
          property ExternalName : String read GetExternalName write FExternalName;
          function HasExternalName : Boolean;
@@ -4020,6 +4023,22 @@ begin
    if val then
       Include(FFlags, fsfReferenceTo)
    else Exclude(FFlags, fsfReferenceTo);
+end;
+
+// GetIsAsync
+//
+function TFuncSymbol.GetIsAsync : Boolean;
+begin
+   Result := (fsfAsync in FFlags);
+end;
+
+// SetIsAsync
+//
+procedure TFuncSymbol.SetIsAsync(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, fsfAsync)
+   else Exclude(FFlags, fsfAsync);
 end;
 
 // GetSourcePosition

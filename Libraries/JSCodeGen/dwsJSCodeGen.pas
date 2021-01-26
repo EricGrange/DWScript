@@ -1160,6 +1160,8 @@ begin
    RegisterCodeGen(TNegFloatExpr,         TdwsExprGenericCodeGen.Create(['(', '-', 0, ')']));
    RegisterCodeGen(TNegVariantExpr,       TdwsExprGenericCodeGen.Create(['(', '-', 0, ')']));
 
+   RegisterCodeGen(TAwaitExpr,            TdwsExprGenericCodeGen.Create(['(await ', 0, ')']));
+
    RegisterCodeGen(TCoalesceExpr,         TJSCoalesceExpr.Create);
    RegisterCodeGen(TCoalesceStrExpr,      TJSCoalesceExpr.Create);
    RegisterCodeGen(TCoalesceIntExpr,      TJSCoalesceExpr.Create);
@@ -1675,6 +1677,8 @@ end;
 //
 procedure TdwsJSCodeGen.DoCompileFuncSymbol(func : TFuncSymbol; deAnonymize : Boolean = False);
 begin
+   if func.IsAsync then
+      WriteString('async ');
    WriteString('function ');
    if deAnonymize or (func.Name<>'') then
       WriteSymbolName(func);

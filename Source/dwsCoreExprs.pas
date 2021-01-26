@@ -797,6 +797,12 @@ type
          procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
    end;
 
+   // await
+   TAwaitExpr = class (TUnaryOpVariantExpr)
+      public
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+   end;
+
    // Assert(condition, message);
    TAssertExpr = class sealed (TNoResultExpr)
       protected
@@ -5065,6 +5071,17 @@ begin
    Left.EvalAsScriptDynArray(exec, result);
    if (result=nil) or (result.ArrayLength=0) then
       Right.EvalAsScriptDynArray(exec, result);
+end;
+
+// ------------------
+// ------------------ TAwaitExpr ------------------
+// ------------------
+
+// EvalAsVariant
+//
+procedure TAwaitExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+begin
+   raise Exception.Create(CPE_AwaitNotSupported);
 end;
 
 // ------------------

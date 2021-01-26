@@ -35,6 +35,7 @@ type
                               // (for CodeGen that does not support passing record fields or array elements)
       coAllowClosures,        // allow closures, ie. capture of local procedures as function pointers
                               // (not suppported yet by script engine, may be supported by CodeGen)
+      coAllowAsyncAwait,      // allow for assync/await keywords (only supported by JS-codegen)
       coDelphiDialect,        // do not warn or hint about Delphi language idioms
       coHintKeywordCaseMismatch // when set, if pedantic hints are active, hints will be
                                 // created for all case-mismatching keywords

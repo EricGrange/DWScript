@@ -605,6 +605,7 @@ type
          procedure ReadProcCallQualifiers(funcSymbol : TFuncSymbol);
          procedure AdaptParametersSymPos(guess, actual : TFuncSymbol; const useTypes : TSymbolUsages;
                                          var posArray : TScriptPosArray);
+         function ReadProcDeclAsync(const hotPos : TScriptPos) : TFuncSymbol;
          function ReadProcDecl(funcToken : TTokenType; const hotPos : TScriptPos;
                                declOptions : TdwsReadProcDeclOptions = [];
                                expectedLambdaParams : TParamsSymbolTable = nil) : TFuncSymbol;
@@ -2545,7 +2546,7 @@ begin
 
    token:=FTok.TestDeleteAny([ttTYPE, ttPROCEDURE, ttFUNCTION,
                               ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD, ttCLASS,
-                              ttUSES, ttIMPLEMENTATION, ttEND]);
+                              ttUSES, ttIMPLEMENTATION, ttEND, ttASYNC]);
    case token of
       ttTYPE : begin
          if UnitSection in [secInterface, secImplementation] then
@@ -2553,6 +2554,8 @@ begin
          else ReadTypeDecl(True);
          action:=saNoSemiColon
       end;
+      ttASYNC :
+         ReadProcBody(ReadProcDeclAsync(hotPos));
       ttPROCEDURE, ttFUNCTION, ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD :
          ReadProcBody(ReadProcDecl(token, hotPos));
       ttCLASS : begin
@@ -3468,6 +3471,26 @@ begin
                guessSymPosList.Delete(guessSymPosList.Count-1);
          end;
       end;
+   end;
+end;
+
+// ReadProcDeclAsync
+//
+function TdwsCompiler.ReadProcDeclAsync(const hotPos : TScriptPos) : TFuncSymbol;
+var
+   token : TTokenType;
+begin
+   if not (coAllowAsyncAwait in FCompilerContext.Options) then
+      FMsgs.AddCompilerError(hotPos, CPE_AsyncNotSupported);
+   token := FTok.TestDeleteAny([ttPROCEDURE, ttFUNCTION]);
+   case token of
+      ttPROCEDURE, ttFUNCTION : begin
+         Result := ReadProcDecl(token, hotPos);
+         Result.IsAsync := True;
+      end;
+   else
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
+      Result := nil;
    end;
 end;
 
@@ -11157,6 +11180,18 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       end;
    end;
 
+   function ReadAwaitTerm : TUnaryOpExpr;
+   var
+      operand : TTypedExpr;
+      hotPos : TScriptPos;
+   begin
+      hotPos := FTok.HotPos;
+      if not (coAllowAsyncAwait in Compiler.Options) then
+         FMsgs.AddCompilerError(hotPos, CPE_AwaitNotSupported);
+      operand := ReadTerm(False, FCompilerContext.TypAnyType);
+      Result := TAwaitExpr.Create(FCompilerContext, hotPos, operand);
+   end;
+
    function ReadNull(expecting : TTypeSymbol) : TConstExpr;
    begin
       Result:=TConstExpr.CreateNull(expecting);
@@ -11375,7 +11410,7 @@ var
 begin
    tt := FTok.TestAny([ ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT, ttAT,
                         ttTRUE, ttFALSE, ttNIL, ttIF,
-                        ttFUNCTION, ttPROCEDURE, ttLAMBDA,
+                        ttFUNCTION, ttPROCEDURE, ttLAMBDA, ttAWAIT,
                         ttRECORD, ttCLASS,
                         ttBRIGHT,
                         ttPLUS_PLUS, ttMINUS_MINUS ]);
@@ -11446,6 +11481,10 @@ begin
       ttLAMBDA : begin
          FTok.KillToken;
          Result := ReadLambda(tt, FTok.HotPos);
+      end;
+      ttAWAIT : begin
+         FTok.KillToken;
+         Result := ReadAwaitTerm;
       end;
       ttRECORD : begin
          FTok.KillToken;
