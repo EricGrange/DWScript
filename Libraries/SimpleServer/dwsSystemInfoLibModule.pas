@@ -116,6 +116,14 @@ type
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
     function dwsSystemInfoClassesPerformanceCounterMethodsNowFastEvalFloat(
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Double;
+    procedure dwsSystemInfoClassesThreadInfoMethodsIDEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsSystemInfoClassesThreadInfoMethodsPriorityEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesThreadInfoMethodsIsDebuggingEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesApplicationInfoMethods8Eval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FOSNameVersion : TOSNameVersion;
@@ -279,6 +287,12 @@ procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsExeN
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString:=ParamStr(0);
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethods8Eval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean := IsDebuggerPresent;
 end;
 
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsExeLinkTimeEval(
@@ -748,6 +762,24 @@ begin
    pc := (obj.ExternalObject as TPerformanceCounter);
    if pc.StopTime = 0 then
       QueryPerformanceCounter(pc.StopTime);
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesThreadInfoMethodsIDEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger := GetCurrentThreadId;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesThreadInfoMethodsIsDebuggingEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean := Info.Execution.IsDebugging;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesThreadInfoMethodsPriorityEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger := GetThreadPriority(GetCurrentThread);
 end;
 
 function TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsElapsedFastEvalFloat(
