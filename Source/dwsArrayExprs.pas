@@ -1271,12 +1271,15 @@ end;
 function TDynamicArrayExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 var
    dyn : IScriptDynArray;
-   p : PVarData;
+   index : Integer;
 begin
-   p:=PVarData(EvalItem(exec, dyn));
-   if p.VType=varInt64 then
-      Result:=p.VInt64
-   else VariantToInt64(PVariant(p)^, Result);
+   FBaseExpr.EvalAsScriptDynArray(exec, dyn);
+
+   index := IndexExpr.EvalAsInteger(exec);
+   if not dyn.BoundsCheckPassed(index) then
+      BoundsCheckFailed(exec, index);
+
+   Result := dyn.AsInteger[index];
 end;
 
 // EvalAsFloat
@@ -1284,12 +1287,15 @@ end;
 function TDynamicArrayExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 var
    dyn : IScriptDynArray;
-   p : PVarData;
+   index : Integer;
 begin
-   p:=PVarData(EvalItem(exec, dyn));
-   if p.VType=varDouble then
-      Result:=p.VDouble
-   else Result:=VariantToFloat(PVariant(p)^);
+   FBaseExpr.EvalAsScriptDynArray(exec, dyn);
+
+   index := IndexExpr.EvalAsInteger(exec);
+   if not dyn.BoundsCheckPassed(index) then
+      BoundsCheckFailed(exec, index);
+
+   Result := dyn.AsFloat[index];
 end;
 
 // EvalAsVariant
@@ -1297,8 +1303,15 @@ end;
 procedure TDynamicArrayExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 var
    dyn : IScriptDynArray;
+   index : Integer;
 begin
-   VarCopySafe(result, EvalItem(exec, dyn)^);
+   FBaseExpr.EvalAsScriptDynArray(exec, dyn);
+
+   index := IndexExpr.EvalAsInteger(exec);
+   if not dyn.BoundsCheckPassed(index) then
+      BoundsCheckFailed(exec, index);
+
+   dyn.EvalAsVariant(index, result);
 end;
 
 // EvalAsString
@@ -1306,17 +1319,15 @@ end;
 procedure TDynamicArrayExpr.EvalAsString(exec : TdwsExecution; var result : String);
 var
    dyn : IScriptDynArray;
-   p : PVarData;
+   index : Integer;
 begin
-   p:=PVarData(EvalItem(exec, dyn));
-   {$ifdef FPC}
-   if p.VType=varString then
-      Result:=String(p.VString)
-   {$else}
-   if p.VType=varUString then
-      Result:=String(p.VUString)
-   {$endif}
-   else VariantToString(PVariant(p)^, Result);
+   FBaseExpr.EvalAsScriptDynArray(exec, dyn);
+
+   index := IndexExpr.EvalAsInteger(exec);
+   if not dyn.BoundsCheckPassed(index) then
+      BoundsCheckFailed(exec, index);
+
+   dyn.EvalAsString(index, result);
 end;
 
 // SpecializeDataExpr
@@ -1341,7 +1352,8 @@ begin
    FBaseExpr.EvalAsScriptDynArray(exec, dyn);
 
    index := IndexExpr.EvalAsInteger(exec);
-   BoundsCheck(exec, dyn.ArrayLength, index);
+   if not dyn.BoundsCheckPassed(index) then
+      BoundsCheckFailed(exec, index);
 
    result := TArrayElementDataContext.Create(dyn, index);
 end;
@@ -1362,7 +1374,8 @@ begin
    dynArray := TScriptDynamicArray(IScriptDynArray(pIDyn^).GetSelf);
 
    index:=IndexExpr.EvalAsInteger(exec);
-   BoundsCheck(exec, dynArray.ArrayLength, index);
+   if not dynArray.BoundsCheckPassed(index) then
+      BoundsCheckFailed(exec, index);
 
    Result:=dynArray.AsPVariant(index*FElementSize);
 end;
@@ -1455,7 +1468,9 @@ begin
    FArrayExpr.EvalAsScriptDynArray(exec, base);
    dynArray:=TScriptDynamicArray(base.GetSelf);
    index:=IndexExpr.EvalAsInteger(exec);
-   BoundsCheck(exec, dynArray.ArrayLength, index);
+   if not dynArray.BoundsCheckPassed(index) then
+      BoundsCheckFailed(exec, index);
+
    ValueExpr.EvalAsVariant(exec, dynArray.AsPVariant(index)^);
 end;
 
@@ -1505,7 +1520,8 @@ var
 begin
    ArrayExpr.EvalAsScriptDynArray(exec, dyn);
    index:=IndexExpr.EvalAsInteger(exec);
-   BoundsCheck(exec, dyn.ArrayLength, index);
+   if not dyn.BoundsCheckPassed(index) then
+      BoundsCheckFailed(exec, index);
    ValueExpr.EvalAsVariant(exec, v);
    dyn.SetAsVariant(index, v);
 end;
@@ -1526,7 +1542,8 @@ begin
    FArrayExpr.EvalAsScriptDynArray(exec, base);
    dynArray:=TScriptDynamicArray(base.GetSelf);
    index:=IndexExpr.EvalAsInteger(exec);
-   BoundsCheck(exec, dynArray.ArrayLength, index);
+   if not dynArray.BoundsCheckPassed(index) then
+      BoundsCheckFailed(exec, index);
 
    dataExpr := (ValueExpr as TDataExpr);
    dynArray.WriteData(index*dynArray.ElementSize, dataExpr.DataPtr[exec], dynArray.ElementSize);
@@ -1908,8 +1925,10 @@ begin
    dyn:=TScriptDynamicArray(result.GetSelf);
    i1:=Index1Expr.EvalAsInteger(exec);
    i2:=Index2Expr.EvalAsInteger(exec);
-   BoundsCheck(exec, dyn.ArrayLength, i1);
-   BoundsCheck(exec, dyn.ArrayLength, i2);
+   if not dyn.BoundsCheckPassed(i1) then
+      BoundsCheckFailed(exec, i1);
+   if not dyn.BoundsCheckPassed(i2) then
+      BoundsCheckFailed(exec, i2);
    dyn.Swap(i1, i2);
 end;
 
@@ -2758,12 +2777,14 @@ begin
    BaseExpr.EvalAsScriptDynArray(exec, base);
    dyn:=TScriptDynamicArray(base.GetSelf);
    index:=IndexExpr.EvalAsInteger(exec);
-   BoundsCheck(exec, dyn.ArrayLength, index);
+   if not dyn.BoundsCheckPassed(index) then
+      BoundsCheckFailed(exec, index);
    if CountExpr<>nil then begin
       count:=CountExpr.EvalAsInteger(exec);
       if count<0 then
          RaiseScriptError(exec, EScriptError.CreateFmt(RTE_PositiveCountExpected, [count]));
-      BoundsCheck(exec, dyn.ArrayLength, index+count-1);
+      if not dyn.BoundsCheckPassed(index) then
+         BoundsCheckFailed(exec, index+count-1);
    end else count:=1;
    dyn.Delete(index, count);
 end;
@@ -2833,7 +2854,8 @@ begin
    dyn:=TScriptDynamicArray(base.GetSelf);
    if IndexExpr<>nil then begin
       index:=IndexExpr.EvalAsInteger(exec);
-      BoundsCheck(exec, dyn.ArrayLength, index);
+      if not dyn.BoundsCheckPassed(index) then
+         BoundsCheckFailed(exec, index);
    end else index:=0;
    if CountExpr<>nil then begin
       count:=CountExpr.EvalAsInteger(exec);
@@ -3182,7 +3204,7 @@ var
    a : IScriptAssociativeArray;
 begin
    Expr.EvalAsScriptAssociativeArray(exec, a);
-   Result := TScriptDynamicArray.CreateNew(Typ.Typ);
+   result := TScriptDynamicArray.CreateNew(Typ.Typ);
    if a <> nil then
       Result.ReplaceData((a.GetSelf as TScriptAssociativeArray).CopyKeys);
 end;

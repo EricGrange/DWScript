@@ -29,7 +29,7 @@ uses
 
 type
 
-   TScriptDynamicArray = class abstract (TDataContext, IScriptDynArray)
+   TScriptDynamicArray = class abstract (TDataContext, IScriptDynArray) //      function IsEmpty(addr : Integer) : Boolean;
       private
          FElementTyp : TTypeSymbol;
          FElementSize : Integer;
@@ -38,13 +38,34 @@ type
       protected
          function GetElementSize : Integer;
          function GetElementType : TTypeSymbol;
+
          procedure SetArrayLength(n : Integer);
          function GetArrayLength : Integer;
+
+         procedure SetAsVariant(index : Integer; const v : Variant);
+         procedure EvalAsVariant(index : Integer; var result : Variant);
+
+         function GetAsInteger(index : Integer) : Int64;
+         procedure SetAsInteger(index : Integer; const v : Int64);
+
+         function GetAsFloat(index : Integer) : Double;
+         procedure SetAsFloat(index : Integer; const v : Double);
+
+         function GetAsBoolean(index : Integer) : Boolean;
+         procedure SetAsBoolean(index : Integer; const v : Boolean);
+
+         procedure SetAsString(index : Integer; const v : String);
+         procedure EvalAsString(index : Integer; var result : String);
+
+         procedure SetAsInterface(index : Integer; const v : IUnknown);
+         procedure EvalAsInterface(index : Integer; var result : IUnknown);
 
       public
          class function CreateNew(elemTyp : TTypeSymbol) : IScriptDynArray; static;
 
          constructor Create(elemTyp : TTypeSymbol);
+
+         function BoundsCheckPassed(index : Integer) : Boolean;
 
          procedure Delete(index, count : Integer);
          procedure Insert(index : Integer);
@@ -70,6 +91,12 @@ type
          property ElementTyp : TTypeSymbol read FElementTyp;
          property ElementSize : Integer read FElementSize;
          property ArrayLength : Integer read FArrayLength write SetArrayLength;
+
+         function VarType(addr : Integer) : TVarType; reintroduce; virtual;
+         function IsEmpty(addr : Integer) : Boolean; virtual;
+
+         property AsInteger[index : Integer] : Int64 read GetAsInteger write SetAsInteger;
+         property AsFloat[index : Integer] : Double read GetAsFloat write SetAsFloat;
    end;
 
    TScriptDynamicDataArray = class (TScriptDynamicArray)
@@ -79,6 +106,8 @@ type
 
    TScriptDynamicValueArray = class (TScriptDynamicArray)
       public
+         procedure ReplaceData(const newData : TData); override;
+
          procedure Swap(i1, i2 : Integer); override;
 
          function CompareString(i1, i2 : Integer) : Integer;
@@ -116,6 +145,24 @@ implementation
 // ------------------------------------------------------------------
 
 uses dwsExprs;
+{
+// BoundsCheckFailed
+//
+procedure BoundsCheckFailed(exec : TdwsExecution; index : Integer);
+begin
+   if index<0 then
+      RaiseLowerExceeded(exec, index)
+   else RaiseUpperExceeded(exec, index);
+end;
+
+// BoundsCheck
+//
+procedure BoundsCheck(exec : TdwsExecution; aLength, index : Integer); inline;
+begin
+   if Cardinal(index)>=Cardinal(aLength) then
+      BoundsCheckFailed(exec, index);
+end;
+}
 
 // ------------------
 // ------------------ TScriptDynamicArray ------------------
@@ -176,6 +223,97 @@ begin
    Result:=FArrayLength;
 end;
 
+// SetAsVariant
+//
+procedure TScriptDynamicArray.SetAsVariant(index : Integer; const v : Variant);
+begin
+   inherited AsVariant[index] := v;
+end;
+
+// EvalAsVariant
+//
+procedure TScriptDynamicArray.EvalAsVariant(index : Integer; var result : Variant);
+begin
+   inherited EvalAsVariant(index, result);
+end;
+
+// BoundsCheckPassed
+//
+function TScriptDynamicArray.BoundsCheckPassed(index : Integer) : Boolean;
+begin
+   Result := Cardinal(index) < Cardinal(FArrayLength);
+end;
+
+// GetAsInteger
+//
+function TScriptDynamicArray.GetAsInteger(index : Integer) : Int64;
+begin
+   Result := inherited AsInteger[index];
+end;
+
+// SetAsInteger
+//
+procedure TScriptDynamicArray.SetAsInteger(index : Integer; const v : Int64);
+begin
+   inherited AsInteger[index] := v;
+end;
+
+// GetAsFloat
+//
+function TScriptDynamicArray.GetAsFloat(index : Integer) : Double;
+begin
+   Result := inherited AsFloat[index];
+end;
+
+// SetAsFloat
+//
+procedure TScriptDynamicArray.SetAsFloat(index : Integer; const v : Double);
+begin
+   inherited AsFloat[index] := v;
+end;
+
+// GetAsBoolean
+//
+function TScriptDynamicArray.GetAsBoolean(index : Integer) : Boolean;
+begin
+   Result := inherited AsBoolean[index];
+end;
+
+// SetAsBoolean
+//
+procedure TScriptDynamicArray.SetAsBoolean(index : Integer; const v : Boolean);
+begin
+   inherited AsBoolean[index] := v;
+end;
+
+// SetAsString
+//
+procedure TScriptDynamicArray.SetAsString(index : Integer; const v : String);
+begin
+   inherited AsString[index] := v;
+end;
+
+// EvalAsString
+//
+procedure TScriptDynamicArray.EvalAsString(index : Integer; var result : String);
+begin
+   inherited EvalAsString(index, result);
+end;
+
+// SetAsInterface
+//
+procedure TScriptDynamicArray.SetAsInterface(index : Integer; const v : IUnknown);
+begin
+   inherited AsInterface[index] := v;
+end;
+
+// EvalAsInterface
+//
+procedure TScriptDynamicArray.EvalAsInterface(index : Integer; var result : IUnknown);
+begin
+   inherited EvalAsInterface(index, result);
+end;
+
 // ReplaceData
 //
 procedure TScriptDynamicArray.ReplaceData(const newData : TData);
@@ -219,6 +357,20 @@ begin
             Exit(i);
    end;
    Result:=-1;
+end;
+
+// VarType
+//
+function TScriptDynamicArray.VarType(addr : Integer) : TVarType;
+begin
+   Result := inherited VarType(addr);
+end;
+
+// IsEmpty
+//
+function TScriptDynamicArray.IsEmpty(addr : Integer) : Boolean;
+begin
+   Result := inherited IsEmpty(addr);
 end;
 
 // Insert
@@ -370,6 +522,18 @@ end;
 // ------------------
 // ------------------ TScriptDynamicValueArray ------------------
 // ------------------
+
+// ReplaceData
+//
+procedure TScriptDynamicValueArray.ReplaceData(const newData : TData);
+var
+   i, n : Integer;
+begin
+   n := Length(newData);
+   ArrayLength := n;
+   for i := 0 to n-1 do
+      SetAsVariant(i, newData[i]);
+end;
 
 // Swap
 //

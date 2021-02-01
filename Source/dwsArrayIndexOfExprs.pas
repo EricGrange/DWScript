@@ -56,8 +56,6 @@ type
          property FromIndexExpr : TTypedExpr read FFromIndexExpr;
    end;
 
-   TDynamicArrayIndexOfMethod = function (exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer of object;
-
    TDynamicArrayIndexOfExpr = class abstract (TArrayIndexOfExpr)
       protected
          function DoEval(exec : TdwsExecution; const base : IScriptDynArray) : Integer; virtual; abstract;
@@ -434,6 +432,13 @@ end;
 function TArrayRemoveExpr.GetItemExpr : TTypedExpr;
 begin
    Result := FIndexOf.ItemExpr;
+end;
+
+// GetFromIndexExpr
+//
+function TArrayRemoveExpr.GetFromIndexExpr : TTypedExpr;
+begin
+   Result := FIndexOf.FromIndexExpr;
 end;
 
 // EvalAsInteger

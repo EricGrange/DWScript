@@ -2179,7 +2179,7 @@ type
 
    // IScriptDynArray
    //
-   IScriptDynArray = interface (IGetSelf)//(IDataContext)//
+   IScriptDynArray = interface (IGetSelf)
       ['{29767B6E-05C0-40E1-A41A-94DF54142312}']
       function GetElementSize : Integer;
       property ElementSize : Integer read GetElementSize;
@@ -2189,6 +2189,8 @@ type
       function GetArrayLength : Integer;
       procedure SetArrayLength(n : Integer);
       property ArrayLength : Integer read GetArrayLength write SetArrayLength;
+
+      function BoundsCheckPassed(index : Integer) : Boolean;
 
       function ToStringArray : TStringDynArray;
       function ToInt64Array : TInt64DynArray;
