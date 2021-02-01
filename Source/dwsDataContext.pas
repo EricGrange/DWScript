@@ -182,6 +182,7 @@ type
          function IndexOfValue(const item : Variant; fromIndex, toIndex : Integer) : Integer;
          function IndexOfString(const item : String; fromIndex : Integer) : Integer;
          function IndexOfInteger(const item : Int64; fromIndex : Integer) : Integer;
+         function IndexOfFloat(const item : Double; fromIndex : Integer) : Integer;
 
          procedure ReplaceData(const newData : TData); virtual;
          procedure ClearData; virtual;
@@ -979,6 +980,25 @@ begin
       for i:=fromIndex to DataLength-1 do begin
          Assert(varData^.VType=varInt64);
          if varData^.VInt64=item then
+            Exit(i);
+         Inc(varData);
+      end;
+   end;
+   Result:=-1;
+end;
+
+// IndexOfFloat
+//
+function TDataContext.IndexOfFloat(const item : Double; fromIndex : Integer) : Integer;
+var
+   i : Integer;
+   varData : PVarData;
+begin
+   if fromIndex<DataLength then begin
+      varData:=@AsPData^[fromIndex];
+      for i:=fromIndex to DataLength-1 do begin
+         Assert(varData^.VType=varDouble);
+         if varData^.VDouble=item then
             Exit(i);
          Inc(varData);
       end;

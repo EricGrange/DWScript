@@ -2195,6 +2195,7 @@ type
       function ToData : TData;
 
       procedure Insert(index : Integer);
+      procedure Delete(index, count : Integer);
 
       procedure ReplaceData(const v : TData);
 

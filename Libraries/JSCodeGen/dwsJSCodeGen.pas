@@ -1355,9 +1355,12 @@ begin
    RegisterCodeGen(TArrayPopExpr,                  TJSArrayPopExpr.Create);
    RegisterCodeGen(TArrayDeleteExpr,               TJSArrayDeleteExpr.Create);
 
-   RegisterCodeGen(TDynamicArrayIndexOfExpr,          TJSArrayIndexOfExpr.Create);
    RegisterCodeGen(TDynamicArrayIndexOfDataExpr,      TJSArrayIndexOfExpr.Create);
+   RegisterCodeGen(TDynamicArrayIndexOfVariantExpr,   TJSArrayIndexOfExpr.Create);
+   RegisterCodeGen(TDynamicArrayIndexOfFuncPtrExpr,   TJSArrayIndexOfExpr.Create);
    RegisterCodeGen(TDynamicArrayIndexOfIntegerExpr,   TJSArrayIndexOfExpr.Create);
+   RegisterCodeGen(TDynamicArrayIndexOfStringExpr,    TJSArrayIndexOfExpr.Create);
+   RegisterCodeGen(TDynamicArrayIndexOfFloatExpr,     TJSArrayIndexOfExpr.Create);
    RegisterCodeGen(TStaticArrayIndexOfExpr,           TJSArrayIndexOfExpr.Create);
 
    RegisterCodeGen(TArrayRemoveExpr,               TJSArrayRemoveExpr.Create);
