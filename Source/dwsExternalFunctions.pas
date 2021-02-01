@@ -1,4 +1,4 @@
-unit dwsExternalFunctions;
+unit dwsExternalFunctions; deprecated;
 
 {$I dws.inc}
 
@@ -39,7 +39,8 @@ type
          constructor Create;
          destructor Destroy; override;
 
-         procedure RegisterExternalFunction(const name: UnicodeString; address: pointer);
+         procedure RegisterExternalFunction(const name: UnicodeString; address: Pointer;
+                                            ignoreIfMissing : Boolean = False);
 
          property Compiler : IdwsCompiler read FCompiler;
 
@@ -360,15 +361,20 @@ end;
 
 // RegisterExternalFunction
 //
-procedure TExternalFunctionManager.RegisterExternalFunction(const name: UnicodeString; address: pointer);
+procedure TExternalFunctionManager.RegisterExternalFunction(
+   const name : UnicodeString; address: Pointer;
+   ignoreIfMissing : Boolean = False
+   );
 var
    func: TInternalFunction;
    ext: IExternalRoutine;
 begin
    func := FRoutines.Objects[name];
-   if func = nil then
+   if func = nil then begin
+      if ignoreIfMissing then Exit;
       raise Exception.CreateFmt('No external function named "%s" is registered', [name]);
-   assert(supports(func, IExternalRoutine, ext));
+   end;
+   Assert(supports(func, IExternalRoutine, ext));
    ext.SetExternalPointer(address);
 end;
 

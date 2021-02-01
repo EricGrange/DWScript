@@ -838,8 +838,12 @@ begin
    RegisterJITter(TArraySetLengthExpr,          FInterpretedJITter.IncRefCount);
    RegisterJITter(TArrayAddExpr,                FInterpretedJITter.IncRefCount);
    RegisterJITter(TArrayInsertExpr,             FInterpretedJITter.IncRefCount);
-   RegisterJITter(TArrayIndexOfExpr,            FInterpretedJITter.IncRefCount);
-   RegisterJITter(TDynamicArrayIndexOfExpr,     FInterpretedJITter.IncRefCount);
+
+   RegisterJITter(TArrayIndexOfExpr,               FInterpretedJITter.IncRefCount);
+   RegisterJITter(TDynamicArrayIndexOfExpr,        FInterpretedJITter.IncRefCount);
+   RegisterJITter(TDynamicArrayIndexOfDataExpr,    FInterpretedJITter.IncRefCount);
+   RegisterJITter(TDynamicArrayIndexOfIntegerExpr, FInterpretedJITter.IncRefCount);
+
    RegisterJITter(TArrayRemoveExpr,             FInterpretedJITter.IncRefCount);
    RegisterJITter(TArrayDeleteExpr,             FInterpretedJITter.IncRefCount);
    RegisterJITter(TArrayPopExpr,                FInterpretedJITter.IncRefCount);

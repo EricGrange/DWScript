@@ -260,7 +260,6 @@ function DWSHashCode(const v : Variant) : Cardinal; overload;
 function DWSHashCode(const data : TData; offset, size : Integer) : Cardinal; overload;
 function DWSHashCode(p : PVariant; size : Integer) : Cardinal; overload;
 
-
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -268,6 +267,11 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+const
+   // https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
+   cFNV_prime = 16777619;
+   cFNV_basis = 2166136261;
 
 // DWSCopyPVariants
 //
@@ -398,65 +402,68 @@ begin
    p := @v;
    case p.VType of
       varByte, varBoolean, varShortInt : // 8 bits
-         partial := (partial xor SimpleIntegerHash(p.VByte)) * 16777619;
+         partial := (partial xor SimpleIntegerHash(p.VByte)) * cFNV_prime;
       varSmallint, varWord : begin // 16 bits
-         partial := (partial xor SimpleIntegerHash(p.VWord)) * 16777619;
+         partial := (partial xor SimpleIntegerHash(p.VWord)) * cFNV_prime;
       end;
       varInteger, varSingle, varLongWord, varUnknown, varDispatch : begin // 32 bits
-         partial := (partial xor SimpleIntegerHash(p.VLongWord)) * 16777619;
+         partial := (partial xor SimpleIntegerHash(p.VLongWord)) * cFNV_prime;
       end;
       varInt64, varDouble, varCurrency, varDate, varUInt64 : begin // 64 bits
-         partial := (partial xor SimpleInt64Hash(p.VInt64)) * 16777619;
+         partial := (partial xor SimpleInt64Hash(p.VInt64)) * cFNV_prime;
       end;
       {$ifndef FPC}
       varUString : begin
          if p.VUString <> nil then
-            partial := (partial xor SimpleStringHash(String(p.VUString))) * 16777619
-         else partial := partial * 16777619;
+            partial := (partial xor SimpleStringHash(String(p.VUString))) * cFNV_prime
+         else partial := partial * cFNV_prime;
       end;
       {$endif}
       varString : begin
          if p.VString <> nil then
-            partial := (partial xor SimpleByteHash(p.VString, Length(AnsiString(p.VString)))) * 16777619
-         else partial := partial * 16777619;
+            partial := (partial xor SimpleByteHash(p.VString, Length(AnsiString(p.VString)))) * cFNV_prime
+         else partial := partial * cFNV_prime;
       end;
       varOleStr : begin
          if p.VOleStr <> nil then
-            partial := (partial xor SimpleStringHash(p.VOleStr, Length(p.VOleStr))) * 16777619
+            partial := (partial xor SimpleStringHash(p.VOleStr, Length(p.VOleStr))) * cFNV_prime
          else partial := partial * 16777619;
       end;
    else
-      partial := (partial xor p.VType) * 16777619;
+      partial := (partial xor p.VType) * cFNV_prime;
    end;
 end;
 
 function DWSHashCode(const v : Variant) : Cardinal;
 begin
-   Result := 2166136261;
+   Result := cFNV_basis;
    DWSHashCode(Result, v);
-   Assert(Result <> 0);
+   if Result = 0 then
+      Result := cFNV_basis;
 end;
 
 function DWSHashCode(const data : TData; offset, size : Integer) : Cardinal;
 var
    i : Integer;
 begin
-   Result := 2166136261;
+   Result := cFNV_basis;
    for i := offset to offset+size-1 do
       DWSHashCode(Result, data[i]);
-   Assert(Result <> 0);
+   if Result = 0 then
+      Result := cFNV_basis;
 end;
 
 function DWSHashCode(p : PVariant; size : Integer) : Cardinal; overload;
 var
    i : Integer;
 begin
-   Result := 2166136261;
+   Result := cFNV_basis;
    for i := 1 to size do begin
       DWSHashCode(Result, p^);
       Inc(p);
    end;
-   Assert(Result <> 0);
+   if Result = 0 then
+      Result := cFNV_basis;
 end;
 
 // DWSVarIsEmpty

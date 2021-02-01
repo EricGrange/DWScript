@@ -279,7 +279,7 @@ type
       function ConvertToMagicSymbol(value: TFuncSymbol) : TFuncSymbol;
       function CreateExternalFunction(funcSymbol : TFuncSymbol) : IExternalRoutine;
 
-      procedure RegisterExternalFunction(const name: String; address: pointer);
+      procedure RegisterExternalFunction(const name: String; address: pointer; ignoreIfMissing : Boolean = False);
       procedure RegisterTypeMapping(const name: String; const typ: TTypeLookupData);
    end;
 
@@ -7964,9 +7964,7 @@ begin
 
             amkIndexOf : begin
                CheckDynamicOrStatic;
-               if arraySym.ClassType = TDynamicArraySymbol then
-                  indexOfClass := TDynamicArrayIndexOfExpr
-               else indexOfClass := TStaticArrayIndexOfExpr;
+               indexOfClass := TArrayIndexOfExpr.ArrayIndexOfExprClass(arraySym);
                if CheckArguments(1, 2) then begin
                   if (argList[0].Typ=nil) or not arraySym.Typ.IsCompatible(argList[0].Typ) then
                      IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
@@ -10984,6 +10982,7 @@ var
    classOpSymbol : TClassOperatorSymbol;
    classOpExpr : TFuncExprBase;
    argPosArray : TScriptPosArray;
+   indexOfExprClass : TArrayIndexOfExprClass;
 begin
    hotPos:=FTok.HotPos;
 
@@ -11018,10 +11017,9 @@ begin
                end;
             end;
 
-            if setExpr.Typ is TDynamicArraySymbol then
-               Result := TDynamicArrayIndexOfExpr.Create(FCompilerContext, hotPos, setExpr, left, nil)
-            else begin
-               Result := TStaticArrayIndexOfExpr.Create(FCompilerContext, hotPos, setExpr, left, nil);
+            indexOfExprClass := TArrayIndexOfExpr.ArrayIndexOfExprClass(setExpr.Typ as TArraySymbol);
+            Result := indexOfExprClass.Create(FCompilerContext, hotPos, setExpr, left, nil);
+            if indexOfExprClass.InheritsFrom(TStaticArrayIndexOfExpr) then begin
                TStaticArrayIndexOfExpr(Result).ForceZeroBased := True;
                if setExpr.Typ.ClassType <> TStaticArraySymbol then
                   FMsgs.AddCompilerError(hotPos, CPE_IncompatibleOperands);

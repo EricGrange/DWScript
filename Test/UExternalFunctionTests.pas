@@ -16,7 +16,7 @@ type
          FCompiler : TDelphiWebScript;
          FUnit: TdwsUnit;
          procedure RegisterExternalRoutines(const manager : IdwsExternalFunctionsManager);
-    procedure FreeBoxedString(ExternalObject: TObject);
+         procedure FreeBoxedString(ExternalObject: TObject);
 
       public
          procedure SetUp; override;
@@ -142,18 +142,18 @@ end;
 
 procedure TExternalFunctionTests.RegisterExternalRoutines(const manager : IdwsExternalFunctionsManager);
 begin
-   manager.RegisterExternalFunction('Blank', @Blank);
-   manager.RegisterExternalFunction('Ints3', @Ints3);
-   manager.RegisterExternalFunction('TestString', @TestString);
-   manager.RegisterExternalFunction('TestStringExc', @TestStringExc);
-   manager.RegisterExternalFunction('TestBool', @TestBool);
-   manager.RegisterExternalFunction('TestStack', @TestStack);
-   manager.RegisterExternalFunction('TestFloat', @TestFloat);
-   manager.RegisterExternalFunction('TestObject', @TestObject);
-   manager.RegisterExternalFunction('TestObjectExc', @TestObjectExc);
-   manager.RegisterExternalFunction('TestReturnInt', @TestReturnInt);
-   manager.RegisterExternalFunction('TestReturnObject', @TestReturnObject);
-   manager.RegisterExternalFunction('TestArray', @TestArray);
+   manager.RegisterExternalFunction('Blank', @Blank, True);
+   manager.RegisterExternalFunction('Ints3', @Ints3, True);
+   manager.RegisterExternalFunction('TestString', @TestString, True);
+   manager.RegisterExternalFunction('TestStringExc', @TestStringExc, True);
+   manager.RegisterExternalFunction('TestBool', @TestBool, True);
+   manager.RegisterExternalFunction('TestStack', @TestStack, True);
+   manager.RegisterExternalFunction('TestFloat', @TestFloat, True);
+   manager.RegisterExternalFunction('TestObject', @TestObject, True);
+   manager.RegisterExternalFunction('TestObjectExc', @TestObjectExc, True);
+   manager.RegisterExternalFunction('TestReturnInt', @TestReturnInt, True);
+   manager.RegisterExternalFunction('TestReturnObject', @TestReturnObject, True);
+   manager.RegisterExternalFunction('TestArray', @TestArray, True);
 end;
 
 procedure ExtractStringArray(const source: IDataContext; var output {TStringDynArray});

@@ -9,7 +9,6 @@ procedure TestObject(a: integer; b: TBoxedString); external;
 procedure TestObjectExc(a: integer; b: TBoxedString); external;
 function  TestReturnInt(a, b: integer): integer; external;
 function  TestReturnObject: TBoxedString; external;
-procedure TestArray(a: integer; b: TStringDynArray); external;
 
 Blank();
 
@@ -39,5 +38,3 @@ end;
 var intReturn := TestReturnInt(a, b);
 if intReturn <> 6 then
    raise Exception.Create(format('Expected TestReturnInt to return 6 but got %d', [intReturn]));
-
-TestArray(a, ['Testing', 'testing', '123']);

@@ -58,7 +58,7 @@ uses
   UdwsCryptoTests in 'UdwsCryptoTests.pas',
   UdwsGraphicsTests in 'UdwsGraphicsTests.pas',
   dwsSymbolsLibModule in '..\Libraries\SymbolsLib\dwsSymbolsLibModule.pas',
-  UExternalFunctionTests in 'UExternalFunctionTests.pas',
+  //UExternalFunctionTests in 'UExternalFunctionTests.pas',
   UdwsEncodingTests in 'UdwsEncodingTests.pas',
   UInstantiateTests in 'UInstantiateTests.pas',
   UdwsWebUtilsTests in 'UdwsWebUtilsTests.pas',
