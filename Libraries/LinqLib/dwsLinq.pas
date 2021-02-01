@@ -135,7 +135,8 @@ type
 implementation
 uses
    SysUtils,
-   dwsExprList, dwsDatabaseLibModule, dwsUnitSymbols, dwsConvExprs, dwsArrayExprs;
+   dwsExprList, dwsDatabaseLibModule, dwsUnitSymbols, dwsConvExprs,
+   dwsArrayExprs, dwsArrayIndexOfExprs;
 
 { TdwsLinqFactory }
 

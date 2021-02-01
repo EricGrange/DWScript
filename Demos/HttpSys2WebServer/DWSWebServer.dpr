@@ -41,6 +41,8 @@ program DWSWebServer;
 
 {$R *.res}
 
+{$R *.dres}
+
 uses
   FastMM4,
   Windows,

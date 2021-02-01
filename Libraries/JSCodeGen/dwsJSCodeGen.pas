@@ -28,7 +28,7 @@ uses
    dwsJSLibModule, dwsFunctions, dwsGlobalVarsFunctions, dwsErrors,
    dwsRTTIFunctions, dwsConstExprs, dwsInfo, dwsScriptSource, dwsSymbolDictionary,
    dwsUnicode, dwsExprList, dwsXXHash, dwsCodeGenWriters, dwsCompilerContext,
-   dwsArrayExprs;
+   dwsArrayExprs, dwsArrayIndexOfExprs;
 
 type
 

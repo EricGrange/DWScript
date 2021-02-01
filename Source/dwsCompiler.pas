@@ -874,6 +874,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsArrayIndexOfExprs;
+
 const
    cSwitchInstructions : array [TSwitchInstruction] of String = (
       '',
