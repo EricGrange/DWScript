@@ -2811,9 +2811,11 @@ procedure TdwsJSONWriter.WriteNumber(const n : Double);
 var
    buffer : array [0..63] of WideChar;
    nc : Integer;
+   nExt : Extended;
 begin
    BeforeWriteImmediate;
-   nc := FloatToText(buffer, n, fvExtended, ffGeneral, 15, 0, vJSONFormatSettings);
+   nExt := n;
+   nc := FloatToText(buffer, nExt, fvExtended, ffGeneral, 15, 0, vJSONFormatSettings);
    FStream.Write(buffer, nc*SizeOf(WideChar));
    AfterWriteImmediate;
 end;
