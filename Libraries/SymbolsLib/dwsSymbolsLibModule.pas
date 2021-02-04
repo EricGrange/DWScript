@@ -51,6 +51,16 @@ type
       ExtObject: TObject);
     procedure dwsUnitClassesTSymbolsMethodsQualifiedNameEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsIsTypeEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsMetaSymbolEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsInternalClassNameEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsTypeNameEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsUnitClassesTSymbolsMethodsGetTypeEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     FScript: TDelphiWebScript;
     procedure SetScript(const Value: TDelphiWebScript);
@@ -68,10 +78,10 @@ implementation
 {$R *.DFM}
 
 uses
-  dwsSymbols;
+   dwsSymbols;
 
 resourcestring
-  RStrUnitSNotFound = 'Unit "%s" not found!';
+   RStrUnitSNotFound = 'Unit "%s" not found!';
 
 type
   TSymbols = class
@@ -83,6 +93,10 @@ type
   public
     constructor Create(Table: TSymbolTable); overload;
     constructor Create(Symbol: TSymbol); overload;
+
+    class function CreateSymbolAsVariant(info : TProgramInfo; sym : TSymbol) : Variant;
+    class function CreateTableAsVariant(info : TProgramInfo; table : TSymbolTable) : Variant;
+
     procedure SetIndex(Index: Integer);
     procedure SetSymbol(Symbol: TSymbol);
     function CurrentSymbol : TSymbol;
@@ -91,32 +105,58 @@ type
   end;
 
 const
-  stUnknown = -1;
-  stAlias = 0;
-  stArray = 1;
-  stClass = 2;
-  stConstant = 3;
-  stField = 4;
-  stFunction = 5;
-  stParam = 6;
-  stProperty = 7;
-  stRecord = 8;
-  stUnit = 9;
-  stVariable = 10;
-  stInterface = 11;
+   stUnknown = -1;
+   stAlias = 0;
+   stArray = 1;
+   stClass = 2;
+   stConstant = 3;
+   stField = 4;
+   stFunction = 5;
+   stParam = 6;
+   stProperty = 7;
+   stRecord = 8;
+   stUnit = 9;
+   stVariable = 10;
+   stInterface = 11;
+   stEnumeration = 12;
+   stMetaClass = 13;
 
 { TSymbols }
 
 constructor TSymbols.Create(Table: TSymbolTable);
 begin
-  FTable := Table;
-  FCount := Table.Count;
-  SetIndex(0)
+   FTable := Table;
+   FCount := Table.Count;
+   SetIndex(0);
 end;
 
 constructor TSymbols.Create(Symbol: TSymbol);
 begin
   SetSymbol(Symbol);
+end;
+
+// CreateSymbolAsVariant
+//
+class function TSymbols.CreateSymbolAsVariant(info : TProgramInfo; sym : TSymbol) : Variant;
+var
+   syms : TSymbols;
+begin
+   if sym <> nil then begin
+      syms := TSymbols.Create(sym);
+      Result := Info.Vars['TSymbols'].GetConstructor('Create', syms).Call.Value
+   end else Result := IUnknown(nil);
+end;
+
+// CreateTableAsVariant
+//
+class function TSymbols.CreateTableAsVariant(info : TProgramInfo; table : TSymbolTable) : Variant;
+var
+   syms : TSymbols;
+begin
+   if table <> nil then begin
+      syms := TSymbols.Create(table);
+      Result := Info.Vars['TSymbols'].GetConstructor('Create', syms).Call.Value
+   end else Result := IUnknown(nil);
 end;
 
 procedure TSymbols.SetIndex(Index: Integer);
@@ -172,19 +212,20 @@ end;
 procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsConstructorsCreateMainEval(
   Info: TProgramInfo; var ExtObject: TObject);
 begin
-  ExtObject := TSymbols.Create(Info.Execution.Prog.RootTable);
+   ExtObject := TSymbols.Create(Info.Execution.Prog.RootTable);
 end;
 
 procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsConstructorsCreateUnitEval(
   Info: TProgramInfo; var ExtObject: TObject);
 var
-  sym: TSymbol;
+   sym: TSymbol;
+   name : String;
 begin
-  sym := Info.Execution.Prog.RootTable.FindLocal(Info.ValueAsString['Name']);
-  if Assigned(sym) and (sym is TUnitSymbol) then
-    ExtObject := TSymbols.Create(TUnitSymbol(sym).Table)
-  else
-    raise Exception.CreateFmt(RStrUnitSNotFound, [Info.ValueAsString['Name']]);
+   name := Info.ParamAsString[0];
+   sym := Info.Execution.Prog.RootTable.FindSymbol(name, cvMagic, TUnitSymbol);
+   if Assigned(sym) and (sym is TUnitSymbol) then
+      ExtObject := TSymbols.Create(TUnitSymbol(sym).Table)
+   else raise Exception.CreateFmt(RStrUnitSNotFound, [ name ]);
 end;
 
 procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsConstructorsCreateUidEval(
@@ -231,13 +272,13 @@ end;
 procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsFirstEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-  TSymbols(ExtObject).SetIndex(0);
+   TSymbols(ExtObject).SetIndex(0);
 end;
 
 procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsLastEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-  TSymbols(ExtObject).SetIndex(TSymbols(ExtObject).Count - 1);
+   TSymbols(ExtObject).SetIndex(TSymbols(ExtObject).Count - 1);
 end;
 
 procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsNextEval(
@@ -279,52 +320,72 @@ end;
 procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsGetMembersEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
-  sym: TSymbol;
+   sym : TSymbol;
+   table : TSymbolTable;
 begin
-  sym := TSymbols(ExtObject).CurrentSymbol;
-  if sym is TRecordSymbol then
-    Info.ResultAsVariant := Info.Vars['TSymbols'].GetConstructor('Create',
-      TSymbols.Create(TRecordSymbol(sym).Members)).Call.Value
-  else if sym is TClassSymbol then
-    Info.ResultAsVariant := Info.Vars['TSymbols'].GetConstructor('Create',
-      TSymbols.Create(TClassSymbol(sym).Members)).Call.Value
-  else if sym is TUnitSymbol then
-    Info.ResultAsVariant := Info.Vars['TSymbols'].GetConstructor('Create',
-      TSymbols.Create(TUnitSymbol(sym).Table)).Call.Value
+   sym := TSymbols(ExtObject).CurrentSymbol;
+   if sym is TCompositeTypeSymbol then
+      table := TCompositeTypeSymbol(sym).Members
+   else if sym is TEnumerationSymbol then
+      table := TEnumerationSymbol(sym).Elements
+   else if sym is TUnitSymbol then
+      table := TUnitSymbol(sym).Table
+   else table := nil;
+
+   Info.ResultAsVariant := TSymbols.CreateTableAsVariant(Info, table);
 end;
 
 procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsSymbolTypeEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
-  sym: TSymbol;
+   sym : TSymbol;
+   result : Integer;
 begin
-  sym := TSymbols(ExtObject).CurrentSymbol;
-  if sym is TArraySymbol then
-    Info.ResultAsInteger := stArray
-  else if sym is TAliasSymbol then
-    Info.ResultAsInteger := stAlias
-  else if sym is TClassSymbol then
-    Info.ResultAsInteger := stClass
-  else if sym is TConstSymbol then
-    Info.ResultAsInteger := stConstant
-  else if sym is TFieldSymbol then
-    Info.ResultAsInteger := stField
-  else if sym.AsFuncSymbol<>nil then
-    Info.ResultAsInteger := stFunction
-  else if sym is TParamSymbol then
-    Info.ResultAsInteger := stParam
-  else if sym is TPropertySymbol then
-    Info.ResultAsInteger := stProperty
-  else if sym is TRecordSymbol then
-    Info.ResultAsInteger := stRecord
-  else if sym is TUnitSymbol then
-    Info.ResultAsInteger := stUnit
-  else if sym is TDataSymbol then
-    Info.ResultAsInteger := stVariable
-  else if sym is TInterfaceSymbol then
-    Info.ResultAsInteger := stInterface
-  else
-    Info.ResultAsInteger := stUnknown;
+   sym := TSymbols(ExtObject).CurrentSymbol;
+   result := stUnknown;
+
+   if sym is TArraySymbol then
+      result := stArray
+   else if sym is TAliasSymbol then
+      result := stAlias
+   else if sym is TCompositeTypeSymbol then begin
+      if sym is TClassSymbol then
+         result := stClass
+      else if sym is TInterfaceSymbol then
+         result := stInterface
+      else if sym is TRecordSymbol then
+         result := stRecord
+   end else if sym is TConstSymbol then
+      result := stConstant
+   else if sym is TFieldSymbol then
+      result := stField
+   else if sym.AsFuncSymbol<>nil then
+      result := stFunction
+   else if sym is TParamSymbol then
+      result := stParam
+   else if sym is TPropertySymbol then
+      result := stProperty
+   else if sym is TUnitSymbol then
+      result := stUnit
+   else if sym is TDataSymbol then
+      result := stVariable
+   else if sym is TEnumerationSymbol then
+      result := stEnumeration
+   else if sym is TStructuredTypeMetaSymbol then
+      result := stMetaClass;
+
+  Info.ResultAsInteger := result;
+end;
+
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsTypeNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   typ : TTypeSymbol;
+begin
+   typ := TSymbols(ExtObject).CurrentSymbol.Typ;
+   if typ <> nil then
+      Info.ResultAsString := typ.Name
+   else Info.ResultAsString := 'void';
 end;
 
 procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsVisibilityEval(
@@ -363,7 +424,7 @@ var
   wasFound: Boolean;
 begin
   table := TSymbols(ExtObject).FTable;
-  name := Info.ValueAsString['Name'];
+  name := Info.ParamAsString[0];
   wasFound := False;
   for x := 0 to table.Count - 1 do
     if UnicodeSameText(table[x].Name, name) then
@@ -375,27 +436,63 @@ begin
   Info.ResultAsBoolean := wasFound;
 end;
 
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsMetaSymbolEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   sym : TSymbol;
+begin
+   sym := TSymbols(ExtObject).CurrentSymbol;
+   if sym is TStructuredTypeSymbol then
+      sym := TStructuredTypeSymbol(sym).MetaSymbol
+   else sym := nil;
+   Info.ResultAsVariant := TSymbols.CreateSymbolAsVariant(Info, sym);
+end;
+
 procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsGetSuperClassEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
-  sym: TSymbol;
+   sym : TSymbol;
 begin
-  sym := TSymbols(ExtObject).CurrentSymbol;
-  if sym is TClassSymbol then
-    Info.ResultAsVariant := Info.Vars['TSymbols'].GetConstructor('Create',
-      TSymbols.Create(TClassSymbol(sym).Parent)).Call.Value
-  else
-    Info.ResultAsInteger := 0;
+   sym := TSymbols(ExtObject).CurrentSymbol;
+   if sym is TClassSymbol then
+      sym := TClassSymbol(sym).Parent
+   else if sym is TInterfaceSymbol then
+      sym := TInterfaceSymbol(sym).Parent
+   else sym := nil;
+
+   Info.ResultAsVariant := TSymbols.CreateSymbolAsVariant(Info, sym);
+end;
+
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsGetTypeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsVariant := TSymbols.CreateSymbolAsVariant(Info, TSymbols(ExtObject).CurrentSymbol.Typ);
+end;
+
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsInternalClassNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := TSymbols(ExtObject).CurrentSymbol.ClassName;
+end;
+
+procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsIsTypeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean := TSymbols(ExtObject).CurrentSymbol.IsType;
 end;
 
 procedure TdwsSymbolsLib.dwsUnitClassesTSymbolsMethodsGetParametersEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
-  sym: TSymbol;
+   sym : TSymbol;
+   table : TSymbolTable;
 begin
-  sym := TSymbols(ExtObject).CurrentSymbol;
-  Info.ResultAsVariant := Info.Vars['TSymbols'].GetConstructor('Create',
-    TSymbols.Create(TFuncSymbol(sym).Params)).Call.Value
+   sym := TSymbols(ExtObject).CurrentSymbol;
+   if sym is TFuncSymbol then
+      table := TFuncSymbol(sym).Params
+   else table := nil;
+
+  Info.ResultAsVariant := TSymbols.CreateTableAsVariant(Info, table);
 end;
 
 end.
