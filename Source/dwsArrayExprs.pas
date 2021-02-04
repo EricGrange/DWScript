@@ -2184,33 +2184,36 @@ end;
 procedure TArrayMapExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 var
    base : IScriptDynArray;
-   dyn : TScriptDynamicValueArray;
-   i, itemAddr, elemSize : Integer;
+   dyn : TScriptDynamicArray;
+   i, k, itemAddr, elemSize : Integer;
+   itemPVariant : PVariant;
    funcPointer : IFuncPointer;
-   newPData, oldPData : PData;
+   buf : Variant;
    dc : IDataContext;
 begin
    BaseExpr.EvalAsScriptDynArray(exec, base);
    MapFuncExpr.EvalAsFuncPointer(exec, funcPointer);
 
-   dyn:=TScriptDynamicValueArray(base.GetSelf);
-   oldPData:=dyn.AsPData;
+   dyn := TScriptDynamicArray(base.GetSelf);
 
    result := TScriptDynamicArray.CreateNew(Typ.Typ);
    result.ArrayLength := dyn.ArrayLength;
-   newPData := result.AsPData;
 
    elemSize := result.ElementSize;
-   itemAddr:=exec.Stack.BasePointer+FItem.StackAddr;
+   itemAddr := exec.Stack.BasePointer+FItem.StackAddr;
+   itemPVariant := @exec.Stack.Data[itemAddr];
+
    for i:=0 to dyn.ArrayLength-1 do begin
       if dyn.ElementSize = 1 then
-         exec.Stack.WriteValue(itemAddr, oldPData^[i])
+         dyn.EvalAsVariant(i, itemPVariant^)
       else dyn.CopyData(i*dyn.ElementSize, exec.Stack.Data, itemAddr, dyn.ElementSize);
-      if elemSize = 1 then
-         funcPointer.EvalAsVariant(exec, MapFuncExpr, newPData^[i])
-      else begin
-         dc:=funcPointer.EvalDataPtr(exec,  MapFuncExpr, MapFuncExpr.ResultAddr);
-         dc.CopyData(newPData^, i*elemSize, elemSize);
+      if elemSize = 1 then begin
+         funcPointer.EvalAsVariant(exec, MapFuncExpr, buf);
+         result.AsVariant[i] := buf;
+      end else begin
+         dc := funcPointer.EvalDataPtr(exec,  MapFuncExpr, MapFuncExpr.ResultAddr);
+         for k := 0 to elemSize-1 do
+            result.AsVariant[i*elemSize + k] := dc.AsPVariant(k)^;
       end;
    end;
 end;
@@ -2388,37 +2391,40 @@ end;
 procedure TArrayFilterExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 var
    base : IScriptDynArray;
-   dyn : TScriptDynamicValueArray;
-   i, k, elementSize, itemAddr : Integer;
+   dyn : TScriptDynamicArray;
+   i, j, k, elementSize, itemAddr : Integer;
    funcPointer : IFuncPointer;
-   newPData, oldPData : PData;
+   itemPVariant : PVariant;
+   buf : Variant;
 begin
    BaseExpr.EvalAsScriptDynArray(exec, base);
    FilterFuncExpr.EvalAsFuncPointer(exec, funcPointer);
 
-   dyn := TScriptDynamicValueArray(base.GetSelf);
-   oldPData := dyn.AsPData;
+   dyn := TScriptDynamicArray(base.GetSelf);
 
    result := TScriptDynamicArray.CreateNew(dyn.ElementTyp);
    result.ArrayLength := dyn.ArrayLength;
-   newPData := result.AsPData;
    elementSize := result.ElementSize;
    k := 0;
 
    itemAddr := exec.Stack.BasePointer + FItem.StackAddr;
+
    if elementSize = 1 then begin
+      itemPVariant := @exec.Stack.Data[itemAddr];
       for i := 0 to dyn.ArrayLength-1 do begin
-         exec.Stack.WriteValue(itemAddr, oldPData^[i]);
+         dyn.EvalAsVariant(i, itemPVariant^);
          if funcPointer.EvalAsBoolean(exec, FilterFuncExpr) then begin
-            VarCopySafe(newPData^[k], oldPData^[i]);
+            dyn.EvalAsVariant(i, buf);
+            Result.AsVariant[k] := buf;
             Inc(k);
          end;
       end;
    end else begin
       for i := 0 to dyn.ArrayLength-1 do begin
-         dyn.CopyData(i*dyn.ElementSize, exec.Stack.Data, itemAddr, dyn.ElementSize);
+         dyn.CopyData(i*elementSize, exec.Stack.Data, itemAddr, elementSize);
          if funcPointer.EvalAsBoolean(exec, FilterFuncExpr) then begin
-            dyn.CopyData(i*dyn.ElementSize, newPData^, k*elementSize, elementSize);
+            for j := 0 to elementSize-1 do
+               result.AsVariant[k*elementSize + j] := dyn.AsPVariant(i*elementSize + j)^;
             Inc(k);
          end;
       end;

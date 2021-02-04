@@ -41,7 +41,7 @@ var
    vmt_TExprBase_AssignValueAsInteger : Integer;
    vmt_TExprBase_AssignValueAsBoolean : Integer;
 
-   vmt_ScriptDynamicArray_IScriptObj_To_FData : Integer;
+//   vmt_ScriptDynamicArray_IScriptObj_To_FData : Integer;
    vmt_ScriptObjInstance_IScriptObj_To_FData : Integer;
 
    fld_TdwsExecution_Status : Integer;
@@ -105,7 +105,7 @@ begin
    sda:=TScriptDynamicDataArray.Create(nil);
    ia:=IScriptDynArray(sda);
 
-   vmt_ScriptDynamicArray_IScriptObj_To_FData:=NativeInt(ia.AsPData)-NativeInt(ia);
+//   vmt_ScriptDynamicArray_IScriptObj_To_FData:=NativeInt(ia.AsPData)-NativeInt(ia);
 
    soi:=TScriptObjInstance.Create(nil);
    io:=IScriptObj(soi);

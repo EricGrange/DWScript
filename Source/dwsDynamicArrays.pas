@@ -29,7 +29,7 @@ uses
 
 type
 
-   TScriptDynamicArray = class abstract (TDataContext, IScriptDynArray) //      function IsEmpty(addr : Integer) : Boolean;
+   TScriptDynamicArray = class abstract (TDataContext, IScriptDynArray)//(TInterfacedSelfObject, IScriptDynArray)//
       private
          FElementTyp : TTypeSymbol;
          FElementSize : Integer;
@@ -86,8 +86,6 @@ type
 
          function HashCode(addr : Integer; size : Integer) : Cardinal; virtual;
 
-         function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
-
          property ElementTyp : TTypeSymbol read FElementTyp;
          property ElementSize : Integer read FElementSize;
          property ArrayLength : Integer read FArrayLength write SetArrayLength;
@@ -109,6 +107,8 @@ type
          procedure ReplaceData(const newData : TData); override;
 
          procedure Swap(i1, i2 : Integer); override;
+
+         function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
 
          function CompareString(i1, i2 : Integer) : Integer;
          function CompareInteger(i1, i2 : Integer) : Integer;
@@ -326,6 +326,7 @@ end;
 //
 function TScriptDynamicArray.AsPDouble(var nbElements, stride : Integer) : PDouble;
 begin
+   Assert(False);
    Result := nil;
 end;
 
@@ -334,29 +335,6 @@ end;
 function TScriptDynamicArray.HashCode(addr : Integer; size : Integer) : Cardinal;
 begin
    Result := DWSHashCode(@DirectData[addr], size);
-end;
-
-// IndexOfFuncPtr
-//
-function TScriptDynamicArray.IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
-var
-   i : Integer;
-   itemFunc : IFuncPointer;
-   p : PVarData;
-begin
-   itemFunc:=IFuncPointer(IUnknown(item));
-   if itemFunc=nil then begin
-      for i:=fromIndex to ArrayLength-1 do begin
-         p:=PVarData(AsPVariant(i));
-         if (p.VType=varUnknown) and (p.VUnknown=nil) then
-            Exit(i);
-      end;
-   end else begin
-      for i:=fromIndex to ArrayLength-1 do
-         if itemFunc.SameFunc(AsPVariant(i)^) then
-            Exit(i);
-   end;
-   Result:=-1;
 end;
 
 // VarType
@@ -550,6 +528,29 @@ begin
    elem1^.VInt64:=elem2^.VInt64;
    elem2^.VType:=buf.VType;
    elem2^.VInt64:=buf.VInt64;
+end;
+
+// IndexOfFuncPtr
+//
+function TScriptDynamicValueArray.IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
+var
+   i : Integer;
+   itemFunc : IFuncPointer;
+   p : PVarData;
+begin
+   itemFunc := IFuncPointer(IUnknown(item));
+   if itemFunc = nil then begin
+      for i := fromIndex to ArrayLength-1 do begin
+         p:=PVarData(AsPVariant(i));
+         if (p.VType=varUnknown) and (p.VUnknown=nil) then
+            Exit(i);
+      end;
+   end else begin
+      for i:=fromIndex to ArrayLength-1 do
+         if itemFunc.SameFunc(AsPVariant(i)^) then
+            Exit(i);
+   end;
+   Result:=-1;
 end;
 
 // CompareString
