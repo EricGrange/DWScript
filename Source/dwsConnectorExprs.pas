@@ -444,6 +444,20 @@ var
       end;
    end;
 
+   procedure DirectReferenceCall(var resultData : TData);
+   var
+      buf : Variant;
+      dc : IDataContext;
+   begin
+      dc := TDataExpr(BaseExpr).DataPtr[exec];
+      dc.EvalAsVariant(0, buf);
+      try
+         resultData := FConnectorArgsCall.Call(buf, callArgs);
+      finally
+         dc.AsVariant[0] := buf;
+      end;
+   end;
+
 var
    i : Integer;
    arg : TExprBase;
@@ -469,7 +483,7 @@ begin
       try
          // The call itself
          if FConnectorArgsCall.NeedDirectReference then begin
-            resultData := FConnectorArgsCall.Call(TDataExpr(BaseExpr).DataPtr[exec].AsPVariant(0)^, callArgs)
+            DirectReferenceCall(resultData);
          end else begin
             BaseExpr.EvalAsVariant(exec, buf);
             resultData := FConnectorArgsCall.Call(buf, callArgs);

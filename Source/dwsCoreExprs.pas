@@ -185,11 +185,8 @@ type
    // Encapsulates a var parameter
    TByRefParamExpr = class (TVarExpr)
       public
-         constructor CreateFromVarExpr(expr : TVarExpr);
-
          function GetVarParamDataAsPointer(exec : TdwsExecution) : Pointer; inline;
          procedure GetVarParamData(exec : TdwsExecution; var result : IDataContext);
-         function GetVarParamEval(exec : TdwsExecution) : PVariant; inline;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
          procedure GetRelativeDataPtr(exec : TdwsExecution; var result : IDataContext); override;
@@ -2335,15 +2332,6 @@ end;
 // ------------------ TByRefParamExpr ------------------
 // ------------------
 
-// CreateFromVarExpr
-//
-constructor TByRefParamExpr.CreateFromVarExpr(expr : TVarExpr);
-begin
-   FTyp:=expr.Typ;
-   FStackAddr:=expr.FStackAddr;
-   FDataSym:=expr.DataSym;
-end;
-
 // GetVarParamDataPointer
 //
 function TByRefParamExpr.GetVarParamDataAsPointer(exec : TdwsExecution) : Pointer;
@@ -2356,13 +2344,6 @@ end;
 procedure TByRefParamExpr.GetVarParamData(exec : TdwsExecution; var result : IDataContext);
 begin
    result:=IDataContext(GetVarParamDataAsPointer(exec));
-end;
-
-// GetVarParamEval
-//
-function TByRefParamExpr.GetVarParamEval(exec : TdwsExecution) : PVariant;
-begin
-   Result:=IDataContext(GetVarParamDataAsPointer(exec)).AsPVariant(0);
 end;
 
 // GetDataPtr
@@ -2425,10 +2406,12 @@ end;
 //
 procedure TByRefParamExpr.AssignExpr(exec : TdwsExecution; expr : TTypedExpr);
 var
-   v : PVariant;
+   p : Pointer;
+   buf : Variant;
 begin
-   v:=GetVarParamEval(exec);
-   Expr.EvalAsVariant(exec, v^);
+   p := GetVarParamDataAsPointer(exec);
+   Expr.EvalAsVariant(exec, buf);
+   IDataContext(p).AsVariant[0] := buf;;
 end;
 
 // AssignDataExpr
@@ -2442,7 +2425,7 @@ end;
 //
 procedure TByRefParamExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
-   VarCopySafe(Result, GetVarParamEval(exec)^);
+   IDataContext(GetVarParamDataAsPointer(exec)).EvalAsVariant(0, result);
 end;
 
 // EvalAsInterface
@@ -2519,15 +2502,18 @@ end;
 // AssignExpr
 //
 procedure TByRefParentParamExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
+var
+   buf : Variant;
 begin
-   expr.EvalAsVariant(exec, DataPtr[exec].AsPVariant(0)^);
+   expr.EvalAsVariant(exec, buf);
+   DataPtr[exec].AsVariant[0] := buf;
 end;
 
 // EvalAsVariant
 //
 procedure TByRefParentParamExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
-   VarCopySafe(Result, DataPtr[exec].AsVariant[0]);
+   DataPtr[exec].EvalAsVariant(0, Result);
 end;
 
 // EvalAsInterface
@@ -2668,9 +2654,11 @@ end;
 procedure TRecordExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
 var
    context : IDataContext;
+   buf : Variant;
 begin
    FBaseExpr.GetDataPtr(exec, context);
-   Expr.EvalAsVariant(exec, context.AsPVariant(FMemberOffset)^);
+   Expr.EvalAsVariant(exec, buf);
+   context.AsVariant[FMemberOffset] := buf;
 end;
 
 // AssignValueAsInteger

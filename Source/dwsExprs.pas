@@ -1469,6 +1469,8 @@ type
          procedure SetResultAsFloat(const value : Double);
 
          function GetParamAsPVariant(index : Integer) : PVariant;
+         function GetParamAsDataContext(index : Integer) : IDataContext;
+
          function GetParamAsVariant(index : Integer) : Variant;
          procedure SetParamAsVariant(index : Integer; const v : Variant);
          function GetParamAsInteger(index : Integer) : Int64;
@@ -1483,7 +1485,6 @@ type
          function GetParamAsObject(index : Integer) : TObject;
          function GetParamAsScriptObj(index : Integer) : IScriptObj;
          function GetParamAsScriptDynArray(index : Integer) : IScriptDynArray;
-         function GetParamAsDataContext(index : Integer) : IDataContext;
 
          function CreateUnitList : TUnitSymbolRefList;
          function FindSymbolInUnits(aUnitList: TUnitSymbolRefList; const aName: String) : TSymbol; overload;
@@ -4483,8 +4484,11 @@ end;
 // AssignExpr
 //
 procedure TDataExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
+var
+   buf : Variant;
 begin
-   Expr.EvalAsVariant(exec, DataPtr[exec].AsPVariant(0)^);
+   Expr.EvalAsVariant(exec, buf);
+   DataPtr[exec].AsVariant[0] := buf;
 end;
 
 procedure TDataExpr.AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr);
@@ -7533,6 +7537,12 @@ end;
 // ReplaceValue
 //
 procedure TScriptAssociativeArray.ReplaceValue(exec : TdwsExecution; index, value : TTypedExpr);
+
+   procedure WriteDataExpr(index : Integer);
+   begin
+      WriteData(index*FElementSize, (value as TDataExpr).GetDataPtrFunc(exec), FElementSize)
+   end;
+
 var
    i : Integer;
    hashCode : Cardinal;
@@ -7548,8 +7558,8 @@ begin
       Inc(FCount);
    end;
    if FElementSize > 1 then
-      WriteData(i*FElementSize, (value as TDataExpr).GetDataPtrFunc(exec), FElementSize)
-   else value.EvalAsVariant(exec, AsPVariant(i)^);
+      WriteDataExpr(i)
+   else value.EvalAsVariant(exec, DirectData[Addr + i]);
 end;
 
 // ReplaceValue
@@ -7578,6 +7588,7 @@ var
    i : Integer;
    hashCode : Cardinal;
    key : IDataContext;
+   buf : Variant;
 begin
    if FCreateKeyOnAccess then
       if FCount >= FGrowth then Grow;
@@ -7599,7 +7610,8 @@ begin
       FHashCodes[i] := hashCode;
       key.CopyData(FKeys, i*FKeySize, FKeySize);
       Inc(FCount);
-      result.EvalAsVariant(0, AsPVariant(i)^);
+      result.EvalAsVariant(0, buf);
+      AsVariant[i] := buf;
    end;
 end;
 

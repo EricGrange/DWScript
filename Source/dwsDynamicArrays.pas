@@ -380,7 +380,7 @@ begin
    index:=index*ElementSize;
    count:=count*ElementSize;
    for i:=index to index+count-1 do
-      VarClearSafe(AsPVariant(i)^);
+      VarClearSafe(DirectData[i]);
    d:=(FArrayLength-1)*ElementSize+count-index;
    p := AsPData;
    if d>0 then
@@ -541,13 +541,13 @@ begin
    itemFunc := IFuncPointer(IUnknown(item));
    if itemFunc = nil then begin
       for i := fromIndex to ArrayLength-1 do begin
-         p:=PVarData(AsPVariant(i));
+         p := PVarData(@DirectData[i]);
          if (p.VType=varUnknown) and (p.VUnknown=nil) then
             Exit(i);
       end;
    end else begin
       for i:=fromIndex to ArrayLength-1 do
-         if itemFunc.SameFunc(AsPVariant(i)^) then
+         if itemFunc.SameFunc(DirectData[i]) then
             Exit(i);
    end;
    Result:=-1;
