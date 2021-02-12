@@ -57,6 +57,7 @@ type
    TScriptZipWrite = class (TZipWrite)
       procedure AddData(data : Pointer; size : Int64; compression : Integer; const name : TFileName);
       procedure AddFile(const aFileName : TFileName; compression : Integer; const nameInZip : TFileName);
+      procedure AddFromZip(reader : TZipRead; index : Integer);
    end;
 
 implementation
@@ -158,6 +159,24 @@ begin
    finally
       sourceStream.Free;
    end;
+end;
+
+// AddFromZip
+//
+procedure TScriptZipWrite.AddFromZip(reader : TZipRead; index : Integer);
+var
+   n : Integer;
+   size : Integer;
+begin
+   n := Count;
+   if n >= Length(Entry) then
+      SetLength(Entry, n + 20);
+   if not reader.RetrieveFileInfo(index, Entry[n].fhr.fileInfo) then
+      raise EdwsZIPException.CreateFmt('Failed to retrieve ZIP info for index %d', [ index ]);
+   if StrEndsWith(reader.Entry[index].zipName, '\') then
+   InternalAdd(reader.Entry[index].zipName, reader.Entry[index].data, Entry[n].fhr.fileInfo.zzipSize);
+   if StrEndsWith(reader.Entry[index].zipName, '\') then
+      Entry[n].fhr.extFileAttr := Entry[n].fhr.extFileAttr or $00000010;
 end;
 
 function TScriptZipRead.CheckedIndex(Info : TProgramInfo) : Integer;
@@ -329,7 +348,7 @@ begin
    if Cardinal(index)>=Cardinal(reader.Count) then
       raise Exception.CreateFmt('zipReader entry index out of bounds (%d)', [index]);
 
-   z.AddFromZip(reader.Entry[index]);
+   z.AddFromZip(reader, index);
 end;
 
 end.
