@@ -117,42 +117,56 @@ type
       procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
-   TBigIntegerOpExpr = class(TBinaryOpExpr)
+   TMPIRBinOpFunc = procedure (var dest: mpz_t; const src1, src2: mpz_t); cdecl;
+
+   TBigIntegerBinOpExpr = class(TBinaryOpExpr)
       constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
                          const anOp : TTokenType; aLeft, aRight : TTypedExpr); override;
       procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
 
-   TBigIntegerAddOpExpr = class(TBigIntegerOpExpr)
-      procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
-   end;
-   TBigIntegerSubOpExpr = class(TBigIntegerOpExpr)
-      procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
-   end;
-   TBigIntegerMultOpExpr = class(TBigIntegerOpExpr)
-      procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
-   end;
-   TBigIntegerDivOpExpr = class(TBigIntegerOpExpr)
-      procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
-   end;
-   TBigIntegerModOpExpr = class(TBigIntegerOpExpr)
-      procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
+   TBigIntegerBinOpFuncExpr = class(TBigIntegerBinOpExpr)
+      protected
+         FOpFunc : TMPIRBinOpFunc;
+         procedure InitOpFunc; virtual; abstract;
+
+      public
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                            const anOp : TTokenType; aLeft, aRight : TTypedExpr); override;
+
+         procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override; final;
    end;
 
-   TBigIntegerAndOpExpr = class(TBigIntegerOpExpr)
-      procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
+   TBigIntegerAddOpExpr = class(TBigIntegerBinOpFuncExpr)
+      procedure InitOpFunc; override;
    end;
-   TBigIntegerOrOpExpr = class(TBigIntegerOpExpr)
-      procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
+   TBigIntegerSubOpExpr = class(TBigIntegerBinOpFuncExpr)
+      procedure InitOpFunc; override;
    end;
-   TBigIntegerXorOpExpr = class(TBigIntegerOpExpr)
-      procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
+   TBigIntegerMultOpExpr = class(TBigIntegerBinOpFuncExpr)
+      procedure InitOpFunc; override;
+   end;
+   TBigIntegerDivOpExpr = class(TBigIntegerBinOpFuncExpr)
+      procedure InitOpFunc; override;
+   end;
+   TBigIntegerModOpExpr = class(TBigIntegerBinOpFuncExpr)
+      procedure InitOpFunc; override;
    end;
 
-   TBigIntegerShiftLeftExpr = class(TBigIntegerOpExpr)
+   TBigIntegerAndOpExpr = class(TBigIntegerBinOpFuncExpr)
+      procedure InitOpFunc; override;
+   end;
+   TBigIntegerOrOpExpr = class(TBigIntegerBinOpFuncExpr)
+      procedure InitOpFunc; override;
+   end;
+   TBigIntegerXorOpExpr = class(TBigIntegerBinOpFuncExpr)
+      procedure InitOpFunc; override;
+   end;
+
+   TBigIntegerShiftLeftExpr = class(TBigIntegerBinOpExpr)
       procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
    end;
-   TBigIntegerShiftRightExpr = class(TBigIntegerOpExpr)
+   TBigIntegerShiftRightExpr = class(TBigIntegerBinOpExpr)
       procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
    end;
 
@@ -779,7 +793,6 @@ end;
 constructor TBigIntegerNegateExpr.Create(context : TdwsBaseSymbolsContext; const aScriptPos : TScriptPos; expr : TTypedExpr);
 begin
    inherited;
-   Bind_MPIR_DLL;
    Typ := expr.Typ;
 end;
 
@@ -791,22 +804,15 @@ begin
 end;
 
 // ------------------
-// ------------------ TBigIntegerOpExpr ------------------
+// ------------------ TBigIntegerBinOpExpr ------------------
 // ------------------
 
 // Create
 //
-constructor TBigIntegerOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
-                                     const anOp : TTokenType; aLeft, aRight : TTypedExpr);
+constructor TBigIntegerBinOpExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                                        const anOp : TTokenType; aLeft, aRight : TTypedExpr);
 begin
-   inherited;
-   try
-      Bind_MPIR_DLL;
-   except
-      on E : Exception do begin
-         context.Msgs.AddCompilerErrorFmt(aScriptPos, 'mpir.dll binding failed, %s: %s', [E.ClassName, E.Message]);
-      end;
-   end;
+   inherited Create(context, aScriptPos, anOp, aLeft, aRight);
    if aLeft.Typ.UnAliasedTypeIs(TBaseIntegerSymbol) then
       Typ := aRight.Typ
    else Typ := aLeft.Typ;
@@ -815,7 +821,7 @@ end;
 
 // EvalAsVariant
 //
-procedure TBigIntegerOpExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+procedure TBigIntegerBinOpExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 var
    intf : IUnknown;
 begin
@@ -824,109 +830,102 @@ begin
 end;
 
 // ------------------
-// ------------------ TBigIntegerAddOpExpr ------------------
+// ------------------ TBigIntegerBinOpFuncExpr ------------------
 // ------------------
+
+// Create
+//
+constructor TBigIntegerBinOpFuncExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                                            const anOp : TTokenType; aLeft, aRight : TTypedExpr);
+begin
+   inherited Create(context, aScriptPos, anOp, aLeft, aRight);
+   InitOpFunc;
+end;
 
 // EvalAsInterface
 //
-procedure TBigIntegerAddOpExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
+procedure TBigIntegerBinOpFuncExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
 var
    bi : TBigIntegerWrapper;
+   biLeft, biRight : IdwsBigInteger;
 begin
+   biLeft := Left.EvalAsBigInteger(exec);
+   biRight := Right.EvalAsBigInteger(exec);
    bi := TBigIntegerWrapper.CreateZero;
-   mpz_add(bi.Value, Left.EvalAsBigInteger(exec).Value^, Right.EvalAsBigInteger(exec).Value^);
+   FOpFunc(bi.Value, biLeft.Value^, biRight.Value^);
    result := bi as IdwsBigInteger;
+end;
+
+// ------------------
+// ------------------ TBigIntegerAddOpExpr ------------------
+// ------------------
+
+procedure TBigIntegerAddOpExpr.InitOpFunc;
+begin
+   FOpFunc := mpz_add;
 end;
 
 // ------------------
 // ------------------ TBigIntegerSubOpExpr ------------------
 // ------------------
 
-procedure TBigIntegerSubOpExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
-var
-   bi : TBigIntegerWrapper;
+procedure TBigIntegerSubOpExpr.InitOpFunc;
 begin
-   bi := TBigIntegerWrapper.CreateZero;
-   mpz_sub(bi.Value, Left.EvalAsBigInteger(exec).Value^, Right.EvalAsBigInteger(exec).Value^);
-   result := bi as IdwsBigInteger;
+   FOpFunc := mpz_sub;
 end;
 
 // ------------------
 // ------------------ TBigIntegerMultOpExpr ------------------
 // ------------------
 
-procedure TBigIntegerMultOpExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
-var
-   bi : TBigIntegerWrapper;
+procedure TBigIntegerMultOpExpr.InitOpFunc;
 begin
-   bi := TBigIntegerWrapper.CreateZero;
-   mpz_mul(bi.Value, Left.EvalAsBigInteger(exec).Value^, Right.EvalAsBigInteger(exec).Value^);
-   result := bi as IdwsBigInteger;
+   FOpFunc := mpz_mul;
 end;
 
 // ------------------
 // ------------------ TBigIntegerDivOpExpr ------------------
 // ------------------
 
-procedure TBigIntegerDivOpExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
-var
-   bi : TBigIntegerWrapper;
+procedure TBigIntegerDivOpExpr.InitOpFunc;
 begin
-   bi := TBigIntegerWrapper.CreateZero;
-   mpz_tdiv_q(bi.Value, Left.EvalAsBigInteger(exec).Value^, Right.EvalAsBigInteger(exec).Value^);
-   result := bi as IdwsBigInteger;
+   FOpFunc := mpz_tdiv_q
 end;
 
 // ------------------
 // ------------------ TBigIntegerModOpExpr ------------------
 // ------------------
 
-procedure TBigIntegerModOpExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
-var
-   bi : TBigIntegerWrapper;
+procedure TBigIntegerModOpExpr.InitOpFunc;
 begin
-   bi := TBigIntegerWrapper.CreateZero;
-   mpz_mod(bi.Value, Left.EvalAsBigInteger(exec).Value^, Right.EvalAsBigInteger(exec).Value^);
-   result := bi as IdwsBigInteger;
+   FOpFunc := mpz_mod;
 end;
 
 // ------------------
 // ------------------ TBigIntegerAndOpExpr ------------------
 // ------------------
 
-procedure TBigIntegerAndOpExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
-var
-   bi : TBigIntegerWrapper;
+procedure TBigIntegerAndOpExpr.InitOpFunc;
 begin
-   bi := TBigIntegerWrapper.CreateZero;
-   mpz_and(bi.Value, Left.EvalAsBigInteger(exec).Value^, Right.EvalAsBigInteger(exec).Value^);
-   result := bi as IdwsBigInteger;
+   FOpFunc := mpz_and;
 end;
 
 // ------------------
 // ------------------ TBigIntegerOrOpExpr ------------------
 // ------------------
 
-procedure TBigIntegerOrOpExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
-var
-   bi : TBigIntegerWrapper;
+procedure TBigIntegerOrOpExpr.InitOpFunc;
 begin
-   bi := TBigIntegerWrapper.CreateZero;
-   mpz_ior(bi.Value, Left.EvalAsBigInteger(exec).Value^, Right.EvalAsBigInteger(exec).Value^);
-   result := bi as IdwsBigInteger;
+   FOpFunc := mpz_ior;
 end;
 
 // ------------------
 // ------------------ TBigIntegerXorOpExpr ------------------
 // ------------------
 
-procedure TBigIntegerXorOpExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
-var
-   bi : TBigIntegerWrapper;
+procedure TBigIntegerXorOpExpr.InitOpFunc;
 begin
-   bi := TBigIntegerWrapper.CreateZero;
-   mpz_xor(bi.Value, Left.EvalAsBigInteger(exec).Value^, Right.EvalAsBigInteger(exec).Value^);
-   result := bi as IdwsBigInteger;
+   FOpFunc := mpz_xor;
 end;
 
 // ------------------
@@ -1197,8 +1196,11 @@ var
    state : gmp_randstate_t;
 begin
    gmp_randinit_mt(state);
-   Result := mpz_probable_prime_p(ArgBigInteger(args, 0).Value^, state, args.AsInteger[1], 0) > 0;
-   gmp_randclear(state);
+   try
+      Result := mpz_probable_prime_p(ArgBigInteger(args, 0).Value^, state, args.AsInteger[1], 0) > 0;
+   finally
+      gmp_randclear(state);
+   end;
 end;
 
 // ------------------
@@ -1484,14 +1486,13 @@ procedure TBigIntegerRandomFunc.DoEvalAsVariant(const args : TExprBaseListExec; 
    var
       mask : Integer;
       bytes : TBytes;
-      rnd : RawByteString;
       bi : TBigIntegerWrapper;
    begin
+      Assert(nb > 0);
+
       // adapted from BigInteger.Create(NumBits: Integer; const Random: IRandom)
       // uses cryptographic random
-      rnd := CryptographicRandom( (nb + 7) div 8 + 1 );
-      Setlength(bytes, Length(rnd));
-      System.Move(rnd[1], bytes[0], Length(rnd));
+      bytes := RawByteStringToBytes(CryptographicRandom( (nb + 7) div 8 + 1 ));
 
       // One byte too many was allocated, to get a top byte of 0, i.e. always positive.
       bytes[High(bytes)] := 0;
@@ -1634,8 +1635,8 @@ var
    bi : TBigIntegerWrapper;
    i : Int64;
 begin
-   bi := TBigIntegerWrapper.CreateZero;
    i := args.AsInteger[0];
+   bi := TBigIntegerWrapper.CreateZero;
    if i <= 1 then
       mpz_set_uint64(bi.Value, 1)
    else mpz_fac_ui(bi.Value, i);
@@ -1651,8 +1652,8 @@ var
    bi : TBigIntegerWrapper;
    i : Int64;
 begin
-   bi := TBigIntegerWrapper.CreateZero;
    i := args.AsInteger[0];
+   bi := TBigIntegerWrapper.CreateZero;
    if i < 1 then
       mpz_set_uint64(bi.Value, 1)
    else mpz_primorial_ui(bi.Value, i);
