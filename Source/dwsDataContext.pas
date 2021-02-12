@@ -54,7 +54,6 @@ type
       property AsVariant[addr : Integer] : Variant read GetAsVariant write SetAsVariant; default;
 
       function AsPData : PData;
-      function AsPVariant(addr : Integer) : PVariant;
 
       procedure CreateOffset(offset : Integer; var result : IDataContext);
 
@@ -142,7 +141,6 @@ type
 
          property AsVariant[addr : Integer] : Variant read GetAsVariant write SetAsVariant; default;
          function AsPData : PData; inline;
-         function AsPVariant(addr : Integer) : PVariant; inline;
          function Addr : Integer;
          function DataLength : Integer; inline;
          procedure Offset(delta : Integer); inline;
@@ -222,7 +220,6 @@ type
          function DataLength : Integer;
 
          function AsPData : PData;
-         function AsPVariant(addr : Integer) : PVariant;
 
          procedure CreateOffset(offset : Integer; var result : IDataContext);
 

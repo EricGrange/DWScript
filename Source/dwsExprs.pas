@@ -1468,7 +1468,8 @@ type
          procedure SetResultAsBoolean(const value : Boolean);
          procedure SetResultAsFloat(const value : Double);
 
-         function GetParamAsPVariant(index : Integer) : PVariant;
+         function GetParamDataContext(index : Integer) : IDataContext;
+
          function GetParamAsDataContext(index : Integer) : IDataContext;
 
          function GetParamAsVariant(index : Integer) : Variant;
@@ -1535,7 +1536,7 @@ type
          property ValueAsClassSymbol[const s : String] : TClassSymbol read GetValueAsClassSymbol;
          property ValueAsTStrings[const s : String] : TStrings read GetValueAsTStrings;
 
-         property ParamAsPVariant[index : Integer] : PVariant read GetParamAsPVariant;
+         //property ParamAsPVariant[index : Integer] : PVariant read GetParamAsPVariant;
          property ParamAsVariant[index : Integer] : Variant read GetParamAsVariant write SetParamAsVariant;
          property ParamAsInteger[index : Integer] : Int64 read GetParamAsInteger write SetParamAsInteger;
          property ParamAsString[index : Integer] : String read GetParamAsString write SetParamAsString;
@@ -6827,18 +6828,9 @@ begin
       result.SetAsString(i, s[i]);
 end;
 
-// GetParamAsPVariant
+// GetParamDataContext
 //
-function TProgramInfo.GetParamAsPVariant(index : Integer) : PVariant;
-
-   function GetVarParam(stackAddr : Integer) : PVariant;
-   var
-      vpd : IDataContext;
-   begin
-      vpd:=IDataContext(IUnknown(Execution.Stack.Data[stackAddr]));
-      Result:=vpd.AsPVariant(0);
-   end;
-
+function TProgramInfo.GetParamDataContext(index : Integer) : IDataContext;
 var
    ip : TSymbolTable;
    sym : TDataSymbol;
@@ -6856,9 +6848,9 @@ begin
       if sym.Level=FLevel then
          stackAddr:=sym.StackAddr+exec.Stack.BasePointer
       else stackAddr:=sym.StackAddr+exec.Stack.GetSavedBp(Level);
-      if sym.InheritsFrom(TByRefParamSymbol) then
-         Result:=GetVarParam(stackAddr)
-      else Result:=@exec.Stack.Data[stackAddr];
+      if sym.InheritsFrom(TByRefParamSymbol) then begin
+         Result := IDataContext(IUnknown(Execution.Stack.Data[stackAddr]))
+      end else Result := exec.Stack.CreateDataContext(exec.Stack.Data, stackAddr);
    end;
 end;
 
@@ -6866,65 +6858,42 @@ end;
 //
 function TProgramInfo.GetParamAsVariant(index : Integer) : Variant;
 begin
-   Result:=GetParamAsPVariant(index)^;
+   GetParamDataContext(index).EvalAsVariant(0, Result);
 end;
 
 // SetParamAsVariant
 //
 procedure TProgramInfo.SetParamAsVariant(index : Integer; const v : Variant);
-var
-   p : PVariant;
 begin
-   p:=GetParamAsPVariant(index);
-   p^:=v;
+   GetParamDataContext(index).AsVariant[0] := v;
 end;
 
 // GetParamAsInteger
 //
 function TProgramInfo.GetParamAsInteger(index : Integer) : Int64;
-var
-   p : PVarData;
 begin
-   p:=PVarData(GetParamAsPVariant(index));
-   if p^.VType=varInt64 then
-      Result:=p.VInt64
-   else Result:=PVariant(p)^;
+   Result := GetParamDataContext(index).AsInteger[0];
 end;
 
 // SetParamAsInteger
 //
 procedure TProgramInfo.SetParamAsInteger(index : Integer; const v : Int64);
-var
-   p : PVarData;
 begin
-   p:=PVarData(GetParamAsPVariant(index));
-   if p^.VType=varInt64 then
-      p.VInt64:=v
-   else PVariant(p)^:=v;
+   GetParamDataContext(index).AsInteger[0] := v;
 end;
 
 // GetParamAsString
 //
 function TProgramInfo.GetParamAsString(index : Integer) : String;
-var
-   p : PVarData;
 begin
-   p:=PVarData(GetParamAsPVariant(index));
-   {$ifdef FPC}
-   if p^.VType=varString then
-      Result:=String(p.VString)
-   {$else}
-   if p^.VType=varUString then
-      Result:=String(p.VUString)
-   {$endif}
-   else VariantToString(PVariant(p)^, Result);
+   GetParamDataContext(index).EvalAsString(0, Result);
 end;
 
 // SetParamAsString
 //
 procedure TProgramInfo.SetParamAsString(index : Integer; const v : String);
 begin
-   GetParamAsPVariant(index)^:=v;
+   GetParamDataContext(index).AsString[0] := v;
 end;
 
 // GetParamAsDataString
@@ -6938,90 +6907,76 @@ end;
 //
 procedure TProgramInfo.SetParamAsDataString(index : Integer; const v : RawByteString);
 begin
-   GetParamAsPVariant(index)^:=RawByteStringToScriptString(v);
+   GetParamDataContext(index).AsString[0] := RawByteStringToScriptString(v);
 end;
 
 // GetParamAsFileName
 //
 function TProgramInfo.GetParamAsFileName(index : Integer) : String;
 begin
-   Result:=Execution.ValidateFileName(GetParamAsString(index));
+   Result := Execution.ValidateFileName(GetParamAsString(index));
 end;
 
 // GetParamAsFloat
 //
 function TProgramInfo.GetParamAsFloat(index : Integer) : Double;
-var
-   p : PVarData;
 begin
-   p:=PVarData(GetParamAsPVariant(index));
-   if p^.VType=varDouble then
-      Result:=p.VDouble
-   else Result:=PVariant(p)^;
+   Result := GetParamDataContext(index).AsFloat[0];
 end;
 
 // GetParamAsBoolean
 //
 function TProgramInfo.GetParamAsBoolean(index : Integer) : Boolean;
-var
-   p : PVarData;
 begin
-   p:=PVarData(GetParamAsPVariant(index));
-   if p^.VType=varBoolean then
-      Result:=p.VBoolean
-   else Result:=PVariant(p)^;
+   Result := GetParamDataContext(index).AsBoolean[0];
 end;
 
 // GetParamAsObject
 //
 function TProgramInfo.GetParamAsObject(index : Integer) : TObject;
 var
-   p : PVarData;
+   intf : IUnknown;
 begin
-   p:=PVarData(GetParamAsPVariant(index));
-   Assert(p.VType=varUnknown);
-   if p.VUnknown<>nil then
-      Result:=(IUnknown(p.VUnknown) as IScriptObj).ExternalObject
-   else Result:=nil;
+   GetParamDataContext(index).EvalAsInterface(0, intf);
+   if intf <> nil then
+      Result := (intf as IScriptObj).ExternalObject
+   else Result := nil;
 end;
 
 // GetParamAsScriptObj
 //
 function TProgramInfo.GetParamAsScriptObj(index : Integer) : IScriptObj;
 var
-   p : PVarData;
+   intf : IUnknown;
 begin
-   p:=PVarData(GetParamAsPVariant(index));
-   Assert(p.VType=varUnknown);
-   if p.VUnknown<>nil then
-      Result:=IUnknown(p.VUnknown) as IScriptObj
-   else Result:=nil;
+   GetParamDataContext(index).EvalAsInterface(0, intf);
+   if intf <> nil then
+      Result := intf as IScriptObj
+   else Result := nil;
 end;
 
 // GetParamAsScriptDynArray
 //
 function TProgramInfo.GetParamAsScriptDynArray(index : Integer) : IScriptDynArray;
 var
-   p : PVarData;
+   intf : IUnknown;
 begin
-   p:=PVarData(GetParamAsPVariant(index));
-   Assert(p.VType=varUnknown);
-   if p.VUnknown<>nil then
-      Result:=IUnknown(p.VUnknown) as IScriptDynArray
-   else Result:=nil;
+   GetParamDataContext(index).EvalAsInterface(0, intf);
+   if intf <> nil then
+      Result := intf as IScriptDynArray
+   else Result := nil;
 end;
 
 // GetParamAsDataContext
 //
 function TProgramInfo.GetParamAsDataContext(index : Integer) : IDataContext;
 var
-   p : PVarData;
+   intf : IUnknown;
 begin
-   p:=PVarData(GetParamAsPVariant(index));
-   Assert(p.VType=varUnknown);
-   if p.VUnknown<>nil then
-      Result:=IUnknown(p.VUnknown) as IDataContext
-   else Result:=nil;
+   GetParamDataContext(index).EvalAsInterface(index, intf);
+   if intf <> nil then
+      Result := intf as IDataContext
+   else Result := nil;
 end;
 
 function TProgramInfo.FindClassMatch(AObject: TObject; ExactMatch: Boolean): TClassSymbol;

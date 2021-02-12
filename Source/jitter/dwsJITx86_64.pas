@@ -368,13 +368,13 @@ type
 //      procedure CompileAssignInteger(expr : TTypedExpr; source : Integer); override;
 //      procedure DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup); override;
 //   end;
-   Tx86VarParam = class (Tx86InterpretedExpr)
-      class procedure CompileAsPVariant(x86 : Tx86_64_WriteOnlyStream; expr : TByRefParamExpr);
+//   Tx86VarParam = class (Tx86InterpretedExpr)
+//      class procedure CompileAsPVariant(x86 : Tx86_64_WriteOnlyStream; expr : TByRefParamExpr);
 //      function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
 //      function CompileInteger(expr : TTypedExpr) : Integer; override;
 //      procedure DoCompileAssignFloat(expr : TTypedExpr; source : TxmmRegister); override;
 //      procedure CompileAssignInteger(expr : TTypedExpr; source : Integer); override;
-   end;
+//   end;
 
 //   Tx86FieldVar = class (Tx86InterpretedExpr)
 //      procedure CompileToData(expr : TFieldVarExpr; dest : TgpRegister64);
@@ -823,7 +823,7 @@ begin
    RegisterJITter(TFieldExpr,                   FInterpretedJITter.IncRefCount);
    RegisterJITter(TFieldVarExpr,                FInterpretedJITter.IncRefCount);// Tx86FieldVar.Create(Self));
 
-   RegisterJITter(TVarParamExpr,                Tx86VarParam.Create(Self));
+   RegisterJITter(TVarParamExpr,                FInterpretedJITter.IncRefCount);// Tx86VarParam.Create(Self));
    RegisterJITter(TConstParamExpr,              FInterpretedJITter.IncRefCount);
    RegisterJITter(TLazyParamExpr,               FInterpretedJITter.IncRefCount);
    RegisterJITter(TVarParentExpr,               FInterpretedJITter.IncRefCount);
@@ -3715,7 +3715,7 @@ end;
 // ------------------
 // ------------------ Tx86VarParam ------------------
 // ------------------
-
+{
 // CompileAsPVariant
 //
 class procedure Tx86VarParam.CompileAsPVariant(x86 : Tx86_64_WriteOnlyStream; expr : TByRefParamExpr);
@@ -3725,7 +3725,7 @@ begin
    x86._mov_reg_qword_ptr_reg(gprRAX, gprRCX);
    x86._call_reg(gprRAX, vmt_IDataContext_AsPVariant);
 end;
-{
+
 // DoCompileFloat
 //
 function Tx86VarParam.DoCompileFloat(expr : TTypedExpr) : TxmmRegister;

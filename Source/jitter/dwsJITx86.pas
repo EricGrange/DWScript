@@ -274,13 +274,13 @@ type
       procedure CompileAssignInteger(expr : TTypedExpr; source : Integer); override;
       procedure DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup); override;
    end;
-   Tx86VarParam = class (TdwsJITter_x86)
-      class procedure CompileAsPVariant(x86 : Tx86_32_WriteOnlyStream; expr : TByRefParamExpr);
-      function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
-      function CompileInteger(expr : TTypedExpr) : Integer; override;
-      procedure DoCompileAssignFloat(expr : TTypedExpr; source : TxmmRegister); override;
-      procedure CompileAssignInteger(expr : TTypedExpr; source : Integer); override;
-   end;
+//   Tx86VarParam = class (TdwsJITter_x86)
+//      class procedure CompileAsPVariant(x86 : Tx86_32_WriteOnlyStream; expr : TByRefParamExpr);
+//      function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
+//      function CompileInteger(expr : TTypedExpr) : Integer; override;
+//      procedure DoCompileAssignFloat(expr : TTypedExpr; source : TxmmRegister); override;
+//      procedure CompileAssignInteger(expr : TTypedExpr; source : Integer); override;
+//   end;
 
    Tx86FieldVar = class (Tx86InterpretedExpr)
       procedure CompileToData(expr : TFieldVarExpr; dest : TgpRegister);
@@ -750,7 +750,7 @@ begin
    RegisterJITter(TFieldExpr,                   FInterpretedJITter.IncRefCount);
    RegisterJITter(TFieldVarExpr,                Tx86FieldVar.Create(Self));
 
-   RegisterJITter(TVarParamExpr,                Tx86VarParam.Create(Self));
+   RegisterJITter(TVarParamExpr,                FInterpretedJITter.IncRefCount); // Tx86VarParam.Create(Self));
    RegisterJITter(TConstParamExpr,              FInterpretedJITter.IncRefCount);
    RegisterJITter(TLazyParamExpr,               FInterpretedJITter.IncRefCount);
    RegisterJITter(TVarParentExpr,               FInterpretedJITter.IncRefCount);
@@ -3057,7 +3057,7 @@ end;
 // ------------------
 // ------------------ Tx86VarParam ------------------
 // ------------------
-
+(*
 // CompileAsPVariant
 //
 class procedure Tx86VarParam.CompileAsPVariant(x86 : Tx86_32_WriteOnlyStream; expr : TByRefParamExpr);
@@ -3142,7 +3142,7 @@ begin
 
    end else inherited;
 end;
-
+*)
 // ------------------
 // ------------------ Tx86FieldVar ------------------
 // ------------------
@@ -3272,7 +3272,7 @@ begin
 
    if jit.IsFloat(e) then begin
 
-      if (e.BaseExpr is TByRefParamExpr) and (e.IndexExpr is TConstIntExpr) then begin
+      (*if (e.BaseExpr is TByRefParamExpr) and (e.IndexExpr is TConstIntExpr) then begin
 
          index:=TConstIntExpr(e.IndexExpr).Value-e.LowBound;
 
@@ -3281,7 +3281,7 @@ begin
          Result:=jit.AllocXMMReg(e);
          x86._movsd_reg_qword_ptr_indexed(Result, gprEAX, gprECX, 1, cVariant_DataOffset);
 
-      end else if e.BaseExpr.ClassType=TVarExpr then begin
+      end else*) if e.BaseExpr.ClassType=TVarExpr then begin
 
          if e.IndexExpr is TConstIntExpr then begin
 
@@ -3372,7 +3372,7 @@ begin
 
    if jit.IsFloat(e) then begin
 
-      if (e.BaseExpr.ClassType=TVarParamExpr) and (e.IndexExpr is TConstIntExpr) then begin
+      (*if (e.BaseExpr.ClassType=TVarParamExpr) and (e.IndexExpr is TConstIntExpr) then begin
 
          index:=TConstIntExpr(e.IndexExpr).Value;
 
@@ -3380,7 +3380,7 @@ begin
          x86._mov_reg_dword(gprECX, index*SizeOf(Variant));
          x86._movsd_qword_ptr_indexed_reg(gprEAX, gprECX, 1, cVariant_DataOffset, source);
 
-      end else if (e.BaseExpr.ClassType=TVarExpr) and (e.IndexExpr is TConstIntExpr) then begin
+      end else *)if (e.BaseExpr.ClassType=TVarExpr) and (e.IndexExpr is TConstIntExpr) then begin
 
          index:=TConstIntExpr(e.IndexExpr).Value;
 

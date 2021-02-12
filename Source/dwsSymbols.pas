@@ -2203,8 +2203,6 @@ type
 
       procedure Reverse;
 
-      function AsPVariant(addr : Integer) : PVariant;
-
       function AsPDouble(var nbElements, stride : Integer) : PDouble;
 
       function GetAsFloat(index : Integer) : Double;

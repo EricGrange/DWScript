@@ -814,10 +814,12 @@ var
    dat : TData;
    tmp : Variant;
    base : PVariant;
+   dc : IDataContext;
 begin
-   if (FBaseExpr is TVarExpr) or (FBaseExpr.Typ.Size>1) then
-      base:=TDataExpr(FBaseExpr).DataPtr[exec].AsPVariant(0)
-   else begin
+   if (FBaseExpr is TVarExpr) or (FBaseExpr.Typ.Size>1) then begin
+      dc := TDataExpr(FBaseExpr).DataPtr[exec];
+      base  := @dc.AsPData^[0]
+   end else begin
       FBaseExpr.EvalAsVariant(exec, tmp);
       base:=@tmp;
    end;
