@@ -166,7 +166,6 @@ end;
 procedure TScriptZipWrite.AddFromZip(reader : TZipRead; index : Integer);
 var
    n : Integer;
-   size : Integer;
 begin
    n := Count;
    if n >= Length(Entry) then
