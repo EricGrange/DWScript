@@ -5407,13 +5407,13 @@ begin
       FLeft.EvalAsScriptDynArray(exec, dynIntf);
       if dynIntf=nil then begin
          // first init
-         dynObj:=TScriptDynamicArray.CreateNew(TDynamicArraySymbol(FLeft.Typ).Typ);
+         dynObj := CreateNewDynamicArray(TDynamicArraySymbol(FLeft.Typ).Typ);
          FLeft.AssignValueAsScriptDynArray(exec, dynObj);
       end else begin
-         dynObj:=TScriptDynamicArray(dynIntf.GetSelf);
+         dynObj := dynIntf;
       end;
       dynObj.ArrayLength := Length(srcData) div dynObj.ElementSize;
-      (dynObj.GetSelf as TScriptDynamicArray).WriteData(srcData, 0, Length(srcData));
+      dynObj.WriteData(srcData, 0, Length(srcData));
    end else begin
       // to static array
       exec.DataContext_Create(srcData, 0, dataPtr);

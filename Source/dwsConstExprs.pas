@@ -740,7 +740,7 @@ begin
    EvalAsTData(exec, data);
    if Length(data)>0 then
       VarCopySafe(Result, data[0])
-   else VarCopySafe(Result, IScriptDynArray(TScriptDynamicArray.CreateNew(Typ)));
+   else VarCopySafe(Result, CreateNewDynamicArray(Typ));
 end;
 
 // EvalAsTData

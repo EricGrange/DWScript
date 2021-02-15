@@ -25,7 +25,6 @@ var
    vmt_Prepared : Boolean;
 
    vmt_IDataContext_GetSelf : Integer;
-   vmt_IDataContext_AsPVariant : Integer;
    vmt_IDataContext_AsPData : Integer;
    vmt_IDataContext_FData : Integer;
    vmt_IScriptObj_ExternalObject : Integer;
@@ -72,7 +71,6 @@ asm
    mov vmt_Prepared, True
    mov vmt_IDataContext_GetSelf, VMTOFFSET IDataContext.GetSelf
    mov vmt_IDataContext_AsPData, VMTOFFSET IDataContext.AsPData
-   mov vmt_IDataContext_AsPVariant, VMTOFFSET IDataContext.AsPVariant
    mov vmt_IScriptObj_ExternalObject, VMTOFFSET IScriptObj.GetExternalObject
    mov vmt_TExprBase_EvalNoResult, VMTOFFSET TExprBase.EvalNoResult
    mov vmt_TExprBase_EvalAsInteger, VMTOFFSET TExprBase.EvalAsInteger

@@ -253,6 +253,11 @@ function DWSSameData(const data1, data2 : TData; offset1, offset2, size : Intege
 function DWSSameData(const data1, data2 : TData) : Boolean; overload;
 function DWSSameVariant(const v1, v2 : Variant) : Boolean;
 
+const
+   // https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
+   cFNV_prime = 16777619;
+   cFNV_basis = 2166136261;
+
 procedure DWSHashCode(var partial : Cardinal; const v : Variant); overload;
 function DWSHashCode(const v : Variant) : Cardinal; overload;
 function DWSHashCode(const data : TData; offset, size : Integer) : Cardinal; overload;
@@ -265,11 +270,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-const
-   // https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
-   cFNV_prime = 16777619;
-   cFNV_basis = 2166136261;
 
 // DWSCopyPVariants
 //
@@ -723,13 +723,6 @@ begin
    Result:=@FData;
 end;
 
-// AsPVariant
-//
-function TDataContext.AsPVariant(addr : Integer) : PVariant;
-begin
-   Result:=@FData[FAddr+addr];
-end;
-
 // Addr
 //
 function TDataContext.Addr : Integer;
@@ -1166,13 +1159,6 @@ end;
 function TRelativeDataContext.AsPData : PData;
 begin
    Result:=FGetPData;
-end;
-
-// AsPVariant
-//
-function TRelativeDataContext.AsPVariant(addr : Integer) : PVariant;
-begin
-   Result:=@FGetPData^[FAddr+addr];
 end;
 
 // CreateOffset

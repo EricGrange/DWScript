@@ -8918,7 +8918,7 @@ begin
    info.Parameter['exprClass'].Value := expr.ClassName;
    info.Parameter['qualifiedName'].Value := expr.FuncSymQualifiedName;
 
-   dynArray := TScriptDynamicArray.CreateNew(Environment.CodeGen.Context.Root.CompilerContext.TypVariant);
+   dynArray := CreateNewDynamicArray(Environment.CodeGen.Context.Root.CompilerContext.TypVariant);
    dynArray.ArrayLength := expr.SubExprCount;
 
    exec := Environment.Exec.ExecutionObject;

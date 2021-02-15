@@ -28,7 +28,6 @@ uses
    dwsSymbols, dwsUtils, dwsDataContext;
 
 type
-
    TScriptDynamicArray = class abstract (TDataContext, IScriptDynArray)//(TInterfacedSelfObject, IScriptDynArray)//
       private
          FElementTyp : TTypeSymbol;
@@ -56,13 +55,12 @@ type
 
          procedure SetAsString(index : Integer; const v : String);
          procedure EvalAsString(index : Integer; var result : String);
+         function  GetAsString(index : Integer) : String; inline;
 
          procedure SetAsInterface(index : Integer; const v : IUnknown);
          procedure EvalAsInterface(index : Integer; var result : IUnknown);
 
       public
-         class function CreateNew(elemTyp : TTypeSymbol) : IScriptDynArray; static;
-
          constructor Create(elemTyp : TTypeSymbol);
 
          function BoundsCheckPassed(index : Integer) : Boolean;
@@ -95,6 +93,7 @@ type
 
          property AsInteger[index : Integer] : Int64 read GetAsInteger write SetAsInteger;
          property AsFloat[index : Integer] : Double read GetAsFloat write SetAsFloat;
+         property AsString[index : Integer] : String read GetAsString write SetAsString;
    end;
 
    TScriptDynamicDataArray = class (TScriptDynamicArray)
@@ -113,6 +112,73 @@ type
          function CompareString(i1, i2 : Integer) : Integer;
          function CompareInteger(i1, i2 : Integer) : Integer;
          function CompareFloat(i1, i2 : Integer) : Integer;
+   end;
+
+   TScriptDynamicNativeArray = class abstract (TInterfacedSelfObject)
+      private
+         FElementTyp : TTypeSymbol;
+
+      protected
+         FArrayLength : Integer;
+
+         function GetElementSize : Integer;
+         function GetElementType : TTypeSymbol;
+
+         function GetArrayLength : Integer;
+
+      public
+         constructor Create(elemTyp : TTypeSymbol);
+
+         function BoundsCheckPassed(index : Integer) : Boolean;
+
+         property ElementTyp : TTypeSymbol read FElementTyp;
+   end;
+
+   TScriptDynamicNativeIntegerArray = class (TScriptDynamicNativeArray, IScriptDynArray)
+      protected
+         FData : TInt64DynArray;
+
+      public
+         procedure SetArrayLength(n : Integer);
+
+         function ToStringArray : TStringDynArray;
+         function ToInt64Array : TInt64DynArray;
+         function ToData : TData;
+
+         procedure Insert(index : Integer);
+         procedure Delete(index, count : Integer);
+         procedure MoveItem(source, destination : Integer);
+
+         procedure WriteData(const src : TData; srcAddr, size : Integer);
+         procedure ReplaceData(const v : TData);
+
+         procedure Reverse;
+
+         function AsPDouble(var nbElements, stride : Integer) : PDouble;
+
+         function GetAsFloat(index : Integer) : Double;
+         procedure SetAsFloat(index : Integer; const v : Double);
+
+         function GetAsInteger(index : Integer) : Int64;
+         procedure SetAsInteger(index : Integer; const v : Int64);
+
+         function GetAsBoolean(index : Integer) : Boolean;
+         procedure SetAsBoolean(index : Integer; const v : Boolean);
+
+         procedure SetAsVariant(index : Integer; const v : Variant);
+         procedure EvalAsVariant(index : Integer; var result : Variant);
+
+         procedure SetAsString(index : Integer; const v : String);
+         procedure EvalAsString(index : Integer; var result : String);
+
+         procedure SetAsInterface(index : Integer; const v : IUnknown);
+         procedure EvalAsInterface(index : Integer; var result : IUnknown);
+
+         function IsEmpty(addr : Integer) : Boolean;
+         function VarType(addr : Integer) : TVarType;
+
+         function HashCode(addr : Integer; size : Integer) : Cardinal;
+
    end;
 
    TScriptDynamicStringArray = class (TScriptDynamicValueArray)
@@ -136,6 +202,8 @@ type
       public
    end;
 
+function CreateNewDynamicArray(elemTyp : TTypeSymbol) : IScriptDynArray;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -145,7 +213,7 @@ implementation
 // ------------------------------------------------------------------
 
 uses dwsExprs;
-{
+(*
 // BoundsCheckFailed
 //
 procedure BoundsCheckFailed(exec : TdwsExecution; index : Integer);
@@ -162,15 +230,11 @@ begin
    if Cardinal(index)>=Cardinal(aLength) then
       BoundsCheckFailed(exec, index);
 end;
-}
+*)
 
-// ------------------
-// ------------------ TScriptDynamicArray ------------------
-// ------------------
-
-// CreateNew
+// CreateNewDynamicArray
 //
-class function TScriptDynamicArray.CreateNew(elemTyp : TTypeSymbol) : IScriptDynArray;
+function CreateNewDynamicArray(elemTyp : TTypeSymbol) : IScriptDynArray;
 var
    size : Integer;
    elemTypClass : TClass;
@@ -185,12 +249,17 @@ begin
       else if elemTypClass = TBaseFloatSymbol then
          Result := TScriptDynamicFloatArray.Create(elemTyp)
       else if elemTypClass = TBaseIntegerSymbol then
+//         Result := TScriptDynamicNativeIntegerArray.Create(elemTyp)
          Result := TScriptDynamicIntegerArray.Create(elemTyp)
       else if elemTypClass = TBaseBooleanSymbol then
          Result := TScriptDynamicBooleanArray.Create(elemTyp)
       else Result := TScriptDynamicValueArray.Create(elemTyp)
    end else Result := TScriptDynamicDataArray.Create(elemTyp);
 end;
+
+// ------------------
+// ------------------ TScriptDynamicArray ------------------
+// ------------------
 
 // Create
 //
@@ -298,6 +367,13 @@ end;
 procedure TScriptDynamicArray.EvalAsString(index : Integer; var result : String);
 begin
    inherited EvalAsString(index, result);
+end;
+
+// GetAsString
+//
+function TScriptDynamicArray.GetAsString(index : Integer) : String;
+begin
+   EvalAsString(index, Result);
 end;
 
 // SetAsInterface
@@ -681,6 +757,275 @@ begin
       Inc(elem1);
       Inc(elem2);
    end;
+end;
+
+// ------------------
+// ------------------ TScriptDynamicNativeArray ------------------
+// ------------------
+
+// Create
+//
+constructor TScriptDynamicNativeArray.Create(elemTyp : TTypeSymbol);
+begin
+   inherited Create;
+   FElementTyp := elemTyp;
+   Assert(elemTyp.Size = 1);
+end;
+
+// BoundsCheckPassed
+//
+function TScriptDynamicNativeArray.BoundsCheckPassed(index : Integer) : Boolean;
+begin
+   Result := Cardinal(index) < Cardinal(FArrayLength);
+end;
+
+// GetElementSize
+//
+function TScriptDynamicNativeArray.GetElementSize : Integer;
+begin
+   Result := 1;
+end;
+
+// GetElementType
+//
+function TScriptDynamicNativeArray.GetElementType : TTypeSymbol;
+begin
+   Result := FElementTyp;
+end;
+
+// GetArrayLength
+//
+function TScriptDynamicNativeArray.GetArrayLength : Integer;
+begin
+   Result := FArrayLength;
+end;
+
+// ------------------
+// ------------------ TScriptDynamicNativeIntegerArray ------------------
+// ------------------
+
+// SetArrayLength
+//
+procedure TScriptDynamicNativeIntegerArray.SetArrayLength(n : Integer);
+begin
+   SetLength(FData, n);
+   if n > 0 then
+      System.FillChar(FData[FArrayLength], (n-FArrayLength)*SizeOf(Int64), 0);
+   FArrayLength := n;
+end;
+
+// ToStringArray
+//
+function TScriptDynamicNativeIntegerArray.ToStringArray : TStringDynArray;
+var
+   i : Integer;
+begin
+   SetLength(Result, FArrayLength);
+   for i := 0 to FArrayLength-1 do
+      Result[i] := IntToStr(FData[i]);
+end;
+
+// ToInt64Array
+//
+function TScriptDynamicNativeIntegerArray.ToInt64Array : TInt64DynArray;
+begin
+   Result := Copy(FData);
+end;
+
+// ToData
+//
+function TScriptDynamicNativeIntegerArray.ToData : TData;
+var
+   i : Integer;
+begin
+   SetLength(Result, FArrayLength);
+   for i := 0 to FArrayLength-1 do
+      VarCopySafe(Result[i], FData[i]);
+end;
+
+// Insert
+//
+procedure TScriptDynamicNativeIntegerArray.Insert(index : Integer);
+begin
+   System.Insert(0, FData, index);
+end;
+
+// Delete
+//
+procedure TScriptDynamicNativeIntegerArray.Delete(index, count : Integer);
+begin
+   System.Delete(FData, index, count);
+end;
+
+// MoveItem
+//
+procedure TScriptDynamicNativeIntegerArray.MoveItem(source, destination : Integer);
+var
+   buf : Int64;
+begin
+   if source = destination then Exit;
+
+   buf := FData[source];
+   if source < destination then
+      System.Move(FData[source+1], FData[source], SizeOf(Int64)*(destination-source))
+   else System.Move(FData[destination], FData[destination+1], SizeOf(Int64)*(source-destination));
+   FData[destination] := buf;
+end;
+
+// WriteData
+//
+procedure TScriptDynamicNativeIntegerArray.WriteData(const src : TData; srcAddr, size : Integer);
+var
+   i : Integer;
+begin
+   for i := 0 to size-1 do
+      VariantToInt64(src[i + srcAddr], FData[i]);
+end;
+
+// ReplaceData
+//
+procedure TScriptDynamicNativeIntegerArray.ReplaceData(const v : TData);
+begin
+   FArrayLength := Length(v);
+   SetLength(FData, FArrayLength);
+   WriteData(v, 0, FArrayLength);
+end;
+
+// Reverse
+//
+procedure TScriptDynamicNativeIntegerArray.Reverse;
+var
+   i, j : Integer;
+   t : Int64;
+begin
+   i := 0;
+   j := FArrayLength-1;
+   while j > i do begin
+      t := FData[i];
+      FData[i] := FData[j];
+      FData[j] := t;
+      Inc(i);
+      Dec(j);
+   end;
+end;
+
+// AsPDouble
+//
+function TScriptDynamicNativeIntegerArray.AsPDouble(var nbElements, stride : Integer) : PDouble;
+begin
+   Assert(False);
+   Result := nil;
+end;
+
+// GetAsFloat
+//
+function TScriptDynamicNativeIntegerArray.GetAsFloat(index : Integer) : Double;
+begin
+   Result := FData[index];
+end;
+
+// SetAsFloat
+//
+procedure TScriptDynamicNativeIntegerArray.SetAsFloat(index : Integer; const v : Double);
+begin
+   FData[index] := Round(v);
+end;
+
+// GetAsInteger
+//
+function TScriptDynamicNativeIntegerArray.GetAsInteger(index : Integer) : Int64;
+begin
+   Result := FData[index];
+end;
+
+// SetAsInteger
+//
+procedure TScriptDynamicNativeIntegerArray.SetAsInteger(index : Integer; const v : Int64);
+begin
+   FData[index] := v;
+end;
+
+// GetAsBoolean
+//
+function TScriptDynamicNativeIntegerArray.GetAsBoolean(index : Integer) : Boolean;
+begin
+   Result := FData[index] <> 0;
+end;
+
+// SetAsBoolean
+//
+procedure TScriptDynamicNativeIntegerArray.SetAsBoolean(index : Integer; const v : Boolean);
+begin
+   FData[index] := Ord(v);
+end;
+
+// SetAsVariant
+//
+procedure TScriptDynamicNativeIntegerArray.SetAsVariant(index : Integer; const v : Variant);
+begin
+   FData[index] := VariantToInt64(v);
+end;
+
+// EvalAsVariant
+//
+procedure TScriptDynamicNativeIntegerArray.EvalAsVariant(index : Integer; var result : Variant);
+begin
+   VarCopySafe(result, FData[index]);
+end;
+
+// SetAsString
+//
+procedure TScriptDynamicNativeIntegerArray.SetAsString(index : Integer; const v : String);
+begin
+   FData[index] := StrToInt64(v);
+end;
+
+// EvalAsString
+//
+procedure TScriptDynamicNativeIntegerArray.EvalAsString(index : Integer; var result : String);
+begin
+   result := IntToStr(FData[index]);
+end;
+
+// SetAsInterface
+//
+procedure TScriptDynamicNativeIntegerArray.SetAsInterface(index : Integer; const v : IUnknown);
+begin
+   Assert(False);
+end;
+
+// EvalAsInterface
+//
+procedure TScriptDynamicNativeIntegerArray.EvalAsInterface(index : Integer; var result : IUnknown);
+begin
+   Assert(False);
+end;
+
+// IsEmpty
+//
+function TScriptDynamicNativeIntegerArray.IsEmpty(addr : Integer) : Boolean;
+begin
+   Result := False;
+end;
+
+// VarType
+//
+function TScriptDynamicNativeIntegerArray.VarType(addr : Integer) : TVarType;
+begin
+   Result := vtInt64;
+end;
+
+// HashCode
+//
+function TScriptDynamicNativeIntegerArray.HashCode(addr : Integer; size : Integer) : Cardinal;
+var
+   i : Integer;
+begin
+   Result := cFNV_basis;
+   for i := 0 to FArrayLength-1 do
+      Result := (Result xor SimpleInt64Hash(FData[i])) * cFNV_prime;
+   if Result = 0 then
+      Result := cFNV_basis;
 end;
 
 end.

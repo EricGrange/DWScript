@@ -1709,7 +1709,7 @@ uses dwsFunctions, dwsCoreExprs, dwsMagicExprs, dwsMethodExprs, dwsUnifiedConsta
 //
 procedure TScriptDynamicArray_InitData(elemTyp : TTypeSymbol; var result : Variant);
 begin
-   result:=IScriptDynArray(TScriptDynamicArray.CreateNew(elemTyp));
+   result := CreateNewDynamicArray(elemTyp);
 end;
 
 { TScriptObjectWrapper }
@@ -3833,9 +3833,11 @@ end;
 // EvalAsScriptDynArray
 //
 procedure TProgramExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
+var
+   intf : IUnknown;
 begin
-   EvalAsInterface(exec, IUnknown(result));
-   Assert(result.GetSelf is TScriptDynamicArray);
+   EvalAsInterface(exec, intf);
+   Result := intf as IScriptDynArray;
 end;
 
 // EvalAsScriptAssociativeArray

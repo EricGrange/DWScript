@@ -807,7 +807,7 @@ begin
    sl := TStringList.Create;
    try
       CollectFiles(args.AsFileName[0], args.AsString[1], sl, args.AsBoolean[2]);
-      newArray := TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).CompilerContext.TypString) as TScriptDynamicStringArray;
+      newArray := CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString) as TScriptDynamicStringArray;
       Result := IScriptDynArray(newArray);
       newArray.AddStrings(sl);
    finally
