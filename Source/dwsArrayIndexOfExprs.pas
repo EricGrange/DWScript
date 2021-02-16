@@ -234,7 +234,7 @@ end;
 //
 function TDynamicArrayIndexOfDataExpr.DoEval(exec : TdwsExecution; const base : IScriptDynArray) : Integer;
 var
-   dyn : TScriptDynamicArray;
+   dyn : TScriptDynamicDataArray;
    fromIndex : Integer;
 begin
    dyn := (base.GetSelf as TScriptDynamicDataArray);

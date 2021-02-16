@@ -829,7 +829,7 @@ begin
    sl := TStringList.Create;
    try
       CollectSubDirs(args.AsFileName[0], sl);
-      newArray := TScriptDynamicArray.CreateNew((args.Exec as TdwsProgramExecution).CompilerContext.TypString) as TScriptDynamicStringArray;
+      newArray := CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString) as TScriptDynamicStringArray;
       Result := IScriptDynArray(newArray);
       newArray.AddStrings(sl);
    finally

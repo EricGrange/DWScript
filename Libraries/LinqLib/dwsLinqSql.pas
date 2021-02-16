@@ -496,7 +496,7 @@ var
    v : Variant;
 begin
    FAssign.EvalNoResult(exec);
-   dyn := TScriptDynamicArray.CreateNew(FTyp);
+   dyn := CreateNewDynamicArray(FTyp);
    n := 0;
 
    while FStep.EvalAsBoolean(exec) do

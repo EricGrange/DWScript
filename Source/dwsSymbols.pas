@@ -2199,9 +2199,11 @@ type
       procedure Insert(index : Integer);
       procedure Delete(index, count : Integer);
       procedure MoveItem(source, destination : Integer);
+      procedure Swap(index1, index2 : Integer);
 
       procedure WriteData(const src : TData; srcAddr, size : Integer);
       procedure ReplaceData(const v : TData);
+      procedure Concat(const src : IScriptDynArray);
 
       procedure Reverse;
 

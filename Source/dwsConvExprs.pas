@@ -526,7 +526,7 @@ var
 begin
    arr:=TArrayConstantExpr(Expr);
 
-   dynArray:=TScriptDynamicArray.CreateNew(TDynamicArraySymbol(Typ).Typ);
+   dynArray := CreateNewDynamicArray(TDynamicArraySymbol(Typ).Typ);
    arr.EvalAsTData(exec, data);
    dynArray.ReplaceData(data);
 

@@ -70,7 +70,7 @@ type
          procedure Swap(i1, i2 : Integer); virtual; abstract;
          procedure Reverse;
          procedure Copy(src : TScriptDynamicArray; index, count : Integer);
-         procedure Concat(src : TScriptDynamicArray);
+         procedure Concat(const src : IScriptDynArray);
          procedure MoveItem(srcIndex, dstIndex : Integer);
 
          function ToString : String; override;
@@ -148,9 +148,11 @@ type
          procedure Insert(index : Integer);
          procedure Delete(index, count : Integer);
          procedure MoveItem(source, destination : Integer);
+         procedure Swap(index1, index2 : Integer);
 
          procedure WriteData(const src : TData; srcAddr, size : Integer);
          procedure ReplaceData(const v : TData);
+         procedure Concat(const src : IScriptDynArray);
 
          procedure Reverse;
 
@@ -490,16 +492,19 @@ end;
 
 // Concat
 //
-procedure TScriptDynamicArray.Concat(src : TScriptDynamicArray);
+procedure TScriptDynamicArray.Concat(const src : IScriptDynArray);
 var
    n, nSrc : Integer;
+   srcDyn : TScriptDynamicArray;
 begin
-   if src.ArrayLength > 0 then begin
+   Assert(src.GetSelf.ClassType = Self.ClassType);
+   srcDyn := TScriptDynamicArray(src.GetSelf);
+   if srcDyn.ArrayLength > 0 then begin
       n := ArrayLength;
-      nSrc := src.ArrayLength;
+      nSrc := srcDyn.ArrayLength;
       FArrayLength := n + nSrc;
       SetDataLength(FArrayLength*ElementSize);
-      WriteData(n*ElementSize, src, nSrc*ElementSize);
+      WriteData(n*ElementSize, srcDyn, nSrc*ElementSize);
    end;
 end;
 
@@ -872,6 +877,17 @@ begin
    FData[destination] := buf;
 end;
 
+// Swap
+//
+procedure TScriptDynamicNativeIntegerArray.Swap(index1, index2 : Integer);
+var
+   buf : Int64;
+begin
+   buf := FData[index1];
+   FData[index1] := FData[index2];
+   FData[index2] := buf;
+end;
+
 // WriteData
 //
 procedure TScriptDynamicNativeIntegerArray.WriteData(const src : TData; srcAddr, size : Integer);
@@ -889,6 +905,25 @@ begin
    FArrayLength := Length(v);
    SetLength(FData, FArrayLength);
    WriteData(v, 0, FArrayLength);
+end;
+
+// Concat
+//
+procedure TScriptDynamicNativeIntegerArray.Concat(const src : IScriptDynArray);
+var
+   srcSelf : TObject;
+   srcDyn : TScriptDynamicNativeIntegerArray;
+   i : Integer;
+begin
+   srcSelf := src.GetSelf;
+   Assert(srcSelf.ClassType = TScriptDynamicNativeIntegerArray);
+   srcDyn := TScriptDynamicNativeIntegerArray(src.GetSelf);
+   if srcDyn.FArrayLength > 0 then begin
+      i := FArrayLength;
+      Inc(FArrayLength, srcDyn.FArrayLength);
+      SetLength(FData, srcDyn.FArrayLength);
+      System.Move(srcDyn.FData[0], FData[i], srcDyn.FArrayLength*SizeOf(Int64));
+   end;
 end;
 
 // Reverse
