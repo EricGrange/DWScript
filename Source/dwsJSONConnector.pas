@@ -1591,7 +1591,7 @@ var
    tokenizer : TdwsJSONParserState;
    values : TSimpleInt64List;
    i : Integer;
-   newArray : TScriptDynamicIntegerArray;
+   newArray : IScriptDynArray;
    s : String;
 begin
    args.EvalAsString(0, s);
@@ -1600,8 +1600,8 @@ begin
    try
       tokenizer.ParseIntegerArray(values);
 
-      newArray := TScriptDynamicIntegerArray.Create((args.Exec as TdwsProgramExecution).CompilerContext.TypInteger);
-      VarCopySafe(result, IScriptDynArray(newArray));
+      newArray := CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypInteger);
+      VarCopySafe(result, newArray);
       newArray.ArrayLength := values.Count;
 
       for i := 0 to newArray.ArrayLength-1 do

@@ -254,14 +254,12 @@ function TDynamicArrayIndexOfVariantExpr.DoEval(exec : TdwsExecution; const base
 var
    fromIndex : Integer;
    v : Variant;
-   dyn : TScriptDynamicValueArray;
 begin
    if FFromIndexExpr <> nil then
       fromIndex := FFromIndexExpr.EvalAsInteger(exec)
    else fromIndex := 0;
    FItemExpr.EvalAsVariant(exec, v);
-   dyn := (base.GetSelf as TScriptDynamicValueArray);
-   Result := dyn.IndexOfValue(v, fromIndex, dyn.ArrayLength-1);
+   Result := base.IndexOfValue(v, fromIndex);
 end;
 
 // ------------------
@@ -292,14 +290,12 @@ end;
 //
 function TDynamicArrayIndexOfIntegerExpr.DoEval(exec : TdwsExecution; const base : IScriptDynArray) : Integer;
 var
-   dyn : TScriptDynamicIntegerArray;
    fromIndex : Integer;
 begin
    if FFromIndexExpr <> nil then
       fromIndex := FFromIndexExpr.EvalAsInteger(exec)
    else fromIndex := 0;
-   dyn := (base.GetSelf as TScriptDynamicIntegerArray);
-   Result := dyn.IndexOfInteger(FItemExpr.EvalAsInteger(exec), fromIndex);
+   Result := base.IndexOfInteger(FItemExpr.EvalAsInteger(exec), fromIndex);
 end;
 
 // ------------------

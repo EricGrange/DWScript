@@ -40,9 +40,9 @@ type
       class procedure StringifySymbol(exec : TdwsExecution; writer : TdwsJSONWriter;
                                       sym : TSymbol; const dataPtr : IDataContext); static;
       class procedure StringifyDynamicArray(exec : TdwsExecution; writer : TdwsJSONWriter;
-                                            dynArray : TScriptDynamicArray); static;
-      class procedure StringifyArray(exec : TdwsExecution; writer : TdwsJSONWriter; elemSym : TTypeSymbol;
-                                     const dataPtr : IDataContext; nb : Integer); static;
+                                            const dynArray : IScriptDynArray); static;
+      class procedure StringifyDataContextArray(exec : TdwsExecution; writer : TdwsJSONWriter; elemSym : TTypeSymbol;
+                                                const dataPtr : IDataContext; nb : Integer); static;
       class procedure StringifyAssociativeArray(exec : TdwsExecution; writer : TdwsJSONWriter;
                                                 assocArray : TScriptAssociativeArray); static;
       class procedure StringifyComposite(exec : TdwsExecution; writer : TdwsJSONWriter;
@@ -62,7 +62,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsCompilerUtils, dwsConstExprs;
+uses dwsCompilerUtils, dwsConstExprs, dwsArrayElementContext;
 
 // ------------------
 // ------------------ JSONScript ------------------
@@ -166,42 +166,39 @@ var
    selfObj : TObject;
    writeable : IJSONWriteAble;
    scriptObj : IScriptObj;
+   scryptDynArray : IScriptDynArray;
 begin
    if unk = nil then
 
       writer.WriteNull
 
-   else if unk.QueryInterface(IJSONWriteAble, writeable) = 0 then begin
+   else if unk.QueryInterface(IJSONWriteAble, writeable) = S_OK then begin
 
       writeable.WriteToJSON(writer);
 
-   end else begin
+   end else if unk.QueryInterface(IScriptDynArray, scryptDynArray) = S_OK then begin
 
-      if unk.QueryInterface(IGetSelf, getSelf)=0 then begin
+      StringifyDynamicArray(exec, writer, scryptDynArray);
 
-         selfObj:=getSelf.GetSelf;
-         if selfObj is TScriptObjInstance then begin
+   end else if unk.QueryInterface(IGetSelf, getSelf) = S_OK then begin
 
-            scriptObj:=TScriptObjInstance(selfObj);
-            StringifyClass(exec, writer, scriptObj);
+      selfObj:=getSelf.GetSelf;
+      if selfObj is TScriptObjInstance then begin
 
-         end else if selfObj is TScriptDynamicArray then begin
+         scriptObj:=TScriptObjInstance(selfObj);
+         StringifyClass(exec, writer, scriptObj);
 
-            StringifyDynamicArray(exec, writer, TScriptDynamicArray(selfObj))
+      end else if selfObj is TScriptAssociativeArray then begin
 
-         end else if selfObj is TScriptAssociativeArray then begin
+         StringifyAssociativeArray(exec, writer, TScriptAssociativeArray(selfObj))
 
-            StringifyAssociativeArray(exec, writer, TScriptAssociativeArray(selfObj))
+      end else if selfObj<>nil then begin
 
-         end else if selfObj<>nil then begin
+         writer.WriteString(selfObj.ToString)
 
-            writer.WriteString(selfObj.ToString)
+      end else writer.WriteString('null');
 
-         end else writer.WriteString('null');
-
-      end else writer.WriteString('IUnknown');
-
-   end;
+   end else writer.WriteString('IUnknown');
 end;
 
 // StringifySymbol
@@ -215,9 +212,9 @@ begin
    if ct.InheritsFrom(TBaseSymbol) then
       StringifyVariant(exec, writer, dataPtr[0])
    else if ct=TDynamicArraySymbol then
-      StringifyDynamicArray(exec, writer, IScriptDynArray(dataPtr.AsInterface[0]).GetSelf as TScriptDynamicArray)
+      StringifyDynamicArray(exec, writer, IScriptDynArray(dataPtr.AsInterface[0]))
    else if ct.InheritsFrom(TStaticArraySymbol) then
-      StringifyArray(exec, writer, TStaticArraySymbol(sym).Typ, dataPtr, TStaticArraySymbol(sym).ElementCount)
+      StringifyDataContextArray(exec, writer, TStaticArraySymbol(sym).Typ, dataPtr, TStaticArraySymbol(sym).ElementCount)
    else if ct = TRecordSymbol then
       StringifyComposite(exec, writer, TRecordSymbol(sym), dataPtr)
    else if ct = TClassSymbol then
@@ -231,9 +228,9 @@ begin
    else writer.WriteString(sym.ClassName);
 end;
 
-// StringifyArray
+// StringifyDataContextArray
 //
-class procedure JSONScript.StringifyArray(exec : TdwsExecution;
+class procedure JSONScript.StringifyDataContextArray(exec : TdwsExecution;
    writer : TdwsJSONWriter; elemSym : TTypeSymbol; const dataPtr : IDataContext; nb : Integer);
 var
    i, s : Integer;
@@ -264,12 +261,27 @@ end;
 // StringifyDynamicArray
 //
 class procedure JSONScript.StringifyDynamicArray(exec : TdwsExecution;
-   writer : TdwsJSONWriter; dynArray : TScriptDynamicArray);
+   writer : TdwsJSONWriter; const dynArray : IScriptDynArray);
 var
    locData : IDataContext;
+   dynData : TScriptDynamicDataArray;
+   elementType : TTypeSymbol;
+   i : Integer;
 begin
-   exec.DataContext_CreateOffset(dynArray, 0, locData);
-   StringifyArray(exec, writer, dynArray.ElementTyp, locData, dynArray.ArrayLength);
+   elementType := dynArray.elementType;
+   if dynArray.GetSelf is TScriptDynamicDataArray then begin
+      dynData := dynArray.GetSelf as TScriptDynamicDataArray;
+      exec.DataContext_CreateOffset(dynData, 0, locData);
+      StringifyDataContextArray(exec, writer, elementType, locData, dynData.ArrayLength);
+   end else begin
+      Assert(elementType.Size = 1);
+      writer.BeginArray;
+      for i := 0 to dynArray.ArrayLength-1 do begin
+         locData := TArrayElementDataContext.Create(dynArray, i);
+         StringifySymbol(exec, writer, elementType, locData);
+      end;
+      writer.EndArray;
+   end;
 end;
 
 // StringifyAssociativeArray

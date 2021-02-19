@@ -2201,11 +2201,15 @@ type
       procedure MoveItem(source, destination : Integer);
       procedure Swap(index1, index2 : Integer);
 
+      function IndexOfValue(const item : Variant; fromIndex : Integer) : Integer;
+      function IndexOfInteger(item : Int64; fromIndex : Integer) : Integer;
+
       procedure WriteData(const src : TData; srcAddr, size : Integer);
       procedure ReplaceData(const v : TData);
-      procedure Concat(const src : IScriptDynArray);
+      procedure Concat(const src : IScriptDynArray; index, size : Integer);
 
       procedure Reverse;
+      procedure NaturalSort;
 
       function AsPDouble(var nbElements, stride : Integer) : PDouble;
 
