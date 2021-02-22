@@ -299,8 +299,7 @@ begin
 
    FDataBase := TdwsDatabaseLib.Create(Self);
    FDataBase.dwsDatabase.Script := DelphiWebScript;
-   TdwsDataBase.OnApplyPathVariables:=ApplyPathVariables;
-   FDataBase.FileSystem := dwsDatabaseFileSystem.AllocateFileSystem;
+   TdwsDataBase.OnApplyPathVariables := ApplyPathVariables;
 
    FWebLib:=TdwsWebLib.Create(Self);
    FWebLib.dwsWeb.Script:=DelphiWebScript;
@@ -733,8 +732,9 @@ begin
       dwsRuntimeFileSystem.Variables := FPathVariables;
 
       dwsDatabaseFileSystem.Paths.Clear;
-      ApplyPathsVariables(dws['WorkPaths'], dwsDatabaseFileSystem.Paths);
+      ApplyPathsVariables(dws['DBPaths'], dwsDatabaseFileSystem.Paths);
       dwsDatabaseFileSystem.Variables := FPathVariables;
+      FDataBase.FileSystem := dwsDatabaseFileSystem.AllocateFileSystem;
 
       conditionals := dws['Conditionals'];
       for i := 0 to conditionals.ElementCount-1 do

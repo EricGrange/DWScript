@@ -287,7 +287,7 @@ end;
 //
 constructor TdwsSynSQLiteDataBase.Create(const parameters : array of String; const fileSystem : IdwsFileSystem);
 var
-   dbName : String;
+   dbName, validatedDBName : String;
    i, flags : Integer;
 begin
    inherited Create;
@@ -295,9 +295,10 @@ begin
    if Length(parameters) > 0 then begin
       dbName := TdwsDataBase.ApplyPathVariables(parameters[0]);
       if Assigned(fileSystem) then begin
-         dbName := fileSystem.ValidateFileName(dbName);
-         if dbName = '' then
-            raise ESQLite3Exception.CreateFmt('Database location not allowed "%s"', [ dbName ]);
+         validatedDBName := fileSystem.ValidateFileName(dbName);
+         if validatedDBName = '' then
+            raise ESQLite3Exception.CreateFmt('Database location not allowed "%s"', [ dbName ])
+         else dbName := validatedDBName;
       end;
    end else dbName := ':memory:';
 
