@@ -1623,7 +1623,7 @@ var
    tokenizer : TdwsJSONParserState;
    values : TSimpleDoubleList;
    i : Integer;
-   newArray : TScriptDynamicFloatArray;
+   newArray : IScriptDynArray;
    s : String;
 begin
    args.EvalAsString(0, s);
@@ -1632,9 +1632,9 @@ begin
    try
       tokenizer.ParseNumberArray(values);
 
-      newArray:=TScriptDynamicFloatArray.Create((args.Exec as TdwsProgramExecution).CompilerContext.TypFloat);
-      VarCopySafe(result, IScriptDynArray(newArray));
-      newArray.ArrayLength:=values.Count;
+      newArray := CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypFloat);
+      VarCopySafe(result, newArray);
+      newArray.ArrayLength := values.Count;
 
       for i:=0 to newArray.ArrayLength-1 do
          newArray.AsFloat[i] := values[i];

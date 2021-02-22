@@ -31,6 +31,7 @@ type
 
    TStringDynArray = array of String;
    TInt64DynArray = array of Int64;
+   TDoubleDynArray = array of Double;
 
    TInt64Array = array [0..High(MaxInt) shr 4] of Int64;
    PInt64Array = ^TInt64Array;

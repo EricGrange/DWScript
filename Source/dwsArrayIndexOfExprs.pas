@@ -328,14 +328,12 @@ function TDynamicArrayIndexOfFloatExpr.DoEval(exec : TdwsExecution; const base :
 var
    fromIndex : Integer;
    v : Double;
-   dyn : TScriptDynamicFloatArray;
 begin
    if FFromIndexExpr <> nil then
       fromIndex := FFromIndexExpr.EvalAsInteger(exec)
    else fromIndex := 0;
    v := FItemExpr.EvalAsFloat(exec);
-   dyn := (base.GetSelf as TScriptDynamicFloatArray);
-   Result := dyn.IndexOfFloat(v, fromIndex);
+   Result := base.IndexOfFloat(v, fromIndex);
 end;
 
 // ------------------
