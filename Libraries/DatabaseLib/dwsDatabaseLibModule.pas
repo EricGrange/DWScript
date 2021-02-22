@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, Classes, Masks,
-  dwsStrings, dwsUtils, dwsExprList, dwsXPlatform, dwsInfo,
+  dwsStrings, dwsUtils, dwsExprList, dwsXPlatform, dwsInfo, dwsFileSystem,
   dwsComp, dwsExprs, dwsSymbols, dwsStack, dwsDatabase, dwsJSON, dwsErrors;
 
 type
@@ -118,6 +118,8 @@ type
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Int64;
   private
     { Private declarations }
+    FFileSystem : IdwsFileSystem;
+
     procedure SetScript(aScript : TDelphiWebScript);
     procedure RaiseDBException(Info: TProgramInfo; const msg : String);
 
@@ -127,6 +129,7 @@ type
     function CountPooledDataBases(const filter : String = '*') : Integer;
 
     property Script : TDelphiWebScript write SetScript;
+    property FileSystem : IdwsFileSystem read FFileSystem write FFileSystem;
   end;
 
    TScriptDataBase = class
@@ -547,10 +550,10 @@ var
    db : IdwsDataBase;
    scriptDyn : IScriptDynArray;
 begin
-   scriptDyn:=Info.ParamAsScriptDynArray[1];
-   db:=TdwsDatabase.CreateDataBase(Info.ParamAsString[0], scriptDyn.ToStringArray);
+   scriptDyn := Info.ParamAsScriptDynArray[1];
+   db := TdwsDatabase.CreateDataBase(Info.ParamAsString[0], scriptDyn.ToStringArray, FileSystem);
 
-   ExtObject:=TScriptDataBase.Create;
+   ExtObject := TScriptDataBase.Create;
    TScriptDataBase(ExtObject).Intf:=db;
 end;
 

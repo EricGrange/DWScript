@@ -27,7 +27,7 @@ interface
 uses
    Classes, SysUtils,
    SynSQLite3, SynCommons,
-   dwsUtils, dwsExprs, dwsDatabase, dwsXPlatform, dwsXXHash,
+   dwsUtils, dwsExprs, dwsDatabase, dwsXPlatform, dwsXXHash, dwsFileSystem,
    dwsDataContext, dwsStack, dwsSymbols;
 
 type
@@ -40,13 +40,14 @@ type
          FExecRequest : TSQLRequest;
          FExecSQL : String;
          FModules : TNameObjectHash;
+         FFileSystem : IdwsFileSystem;
 
       protected
          function GetModule(const name : String) : TObject;
          procedure SetModule(const name : String; aModule : TObject);
 
       public
-         constructor Create(const parameters : array of String);
+         constructor Create(const parameters : array of String; const fileSystem : IdwsFileSystem);
          destructor Destroy; override;
 
          procedure BeginTransaction;
@@ -118,6 +119,7 @@ type
    TdwsSynSQLiteDataBaseFactory = class (TdwsDataBaseFactory)
       public
          function CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase; override;
+         function CreateDataBase(const parameters : TStringDynArray; const fileSystem : IdwsFileSystem) : IdwsDataBase; override;
    end;
 
 var
@@ -203,6 +205,32 @@ begin
    end;
 end;
 
+// SQLiteAuthorizer
+//
+function SQLiteAuthorizer(pUserData: Pointer; code: Integer; const zTab, zCol, zDb, zAuthContext: PAnsiChar): Integer; cdecl;
+
+   function ValidateFileName(db : TdwsSynSQLiteDataBase; p : PAnsiChar) : Integer;
+   var
+      buf : String;
+   begin
+      if db.FFileSystem <> nil then begin
+         buf := UTF8ToString(p);
+         buf := db.FFileSystem.ValidateFileName(buf);
+         if buf = '' then
+            Result := SQLITE_DENY
+         else Result := SQLITE_OK;
+      end else Result := SQLITE_OK;
+   end;
+
+begin
+   case code of
+      SQLITE_ATTACH :
+         Result := ValidateFileName(TdwsSynSQLiteDataBase(pUserData), zTab);
+   else
+      Result := SQLITE_OK;
+   end;
+end;
+
 type
    TdwsSQLDatabase = class (TSQLDatabase)
       function DBOpen: integer; override;
@@ -235,13 +263,20 @@ end;
 // CreateDataBase
 //
 function TdwsSynSQLiteDataBaseFactory.CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase;
+begin
+   Result := CreateDataBase(parameters, nil);
+end;
+
+// CreateDataBase
+//
+function TdwsSynSQLiteDataBaseFactory.CreateDataBase(const parameters : TStringDynArray; const fileSystem : IdwsFileSystem) : IdwsDataBase;
 var
    db : TdwsSynSQLiteDataBase;
 begin
    if sqlite3=nil then
       InitializeSQLite3Dynamic;
-   db:=TdwsSynSQLiteDataBase.Create(parameters);
-   Result:=db;
+   db := TdwsSynSQLiteDataBase.Create(parameters, fileSystem);
+   Result := db;
 end;
 
 // ------------------
@@ -250,15 +285,21 @@ end;
 
 // Create
 //
-constructor TdwsSynSQLiteDataBase.Create(const parameters : array of String);
+constructor TdwsSynSQLiteDataBase.Create(const parameters : array of String; const fileSystem : IdwsFileSystem);
 var
    dbName : String;
    i, flags : Integer;
 begin
    inherited Create;
-   if Length(parameters)>0 then
-      dbName:=TdwsDataBase.ApplyPathVariables(parameters[0])
-   else dbName:=':memory:';
+   FFileSystem := fileSystem;
+   if Length(parameters) > 0 then begin
+      dbName := TdwsDataBase.ApplyPathVariables(parameters[0]);
+      if Assigned(fileSystem) then begin
+         dbName := fileSystem.ValidateFileName(dbName);
+         if dbName = '' then
+            raise ESQLite3Exception.CreateFmt('Database location not allowed "%s"', [ dbName ]);
+      end;
+   end else dbName := ':memory:';
 
    flags:=SQLITE_OPEN_READWRITE or SQLITE_OPEN_CREATE;
    for i:=1 to High(parameters) do begin
@@ -273,6 +314,8 @@ begin
    try
       FDB := TdwsSQLDatabase.Create(dbName, '', flags);
       FDB.BusyTimeout := 1500;
+      if fileSystem <> nil then
+         sqlite3.set_authorizer(FDB.DB, SQLiteAuthorizer, Self);
    except
       RefCount:=0;
       raise;
@@ -647,7 +690,7 @@ initialization
 
    TdwsDatabase.RegisterDriver('SQLite', TdwsSynSQLiteDataBaseFactory.Create);
 
-   vSQLite3DynamicMRSW:=TMultiReadSingleWrite.Create;
+   vSQLite3DynamicMRSW := TMultiReadSingleWrite.Create;
 
    vFloatFormatSettings := FormatSettings;
    vFloatFormatSettings.DecimalSeparator := '.';

@@ -40,4 +40,8 @@ object SimpleDWScript: TSimpleDWScript
     Left = 208
     Top = 160
   end
+  object dwsDatabaseFileSystem: TdwsRestrictedFileSystem
+    Left = 72
+    Top = 224
+  end
 end

@@ -3,11 +3,11 @@ unit UdwsDataBaseTests;
 interface
 
 uses
-   Classes, SysUtils,
+   Classes, SysUtils, IOUtils,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
    dwsDataBaseLibModule, dwsXPlatform, dwsSymbols, dwsUtils,
    dwsGUIDDatabase, dwsSynSQLiteDatabase, dwsCompilerContext,
-   dwsWMIDatabase, dwsTDataset;
+   dwsWMIDatabase, dwsTDataset, dwsFileSystem;
 
 type
 
@@ -29,6 +29,8 @@ type
          procedure CompilationWithMapAndSymbols;
          procedure ExecutionNonOptimized;
          procedure ExecutionOptimized;
+
+         procedure FileSystemTest;
    end;
 
 // ------------------------------------------------------------------
@@ -123,6 +125,43 @@ procedure TdwsDataBaseTests.ExecutionOptimized;
 begin
    FCompiler.Config.CompilerOptions:=[coOptimize, coAssertions];
    Execution;
+end;
+
+// FileSystemTest
+//
+procedure TdwsDataBaseTests.FileSystemTest;
+var
+   prog1, prog2 : IdwsProgram;
+   temp : String;
+   rfs : TdwsRestrictedOSFileSystem;
+begin
+   temp := TPath.GetTempFileName;
+   try
+      prog1 := FCompiler.Compile('Print(new DataBase("SQLite", ["' + temp + '"]).Query("select 123").AsString(0));');
+      CheckEquals('123', prog1.Execute.Result.ToString);
+      prog2 := FCompiler.Compile('var db := new DataBase("SQLite");'
+                                +'db.Exec(''attach database "' + temp + '" as tmp'');'
+                                +'Print(db.Query("select 456").AsString(0));');
+      CheckEquals('456', prog2.Execute.Result.ToString);
+
+      rfs := TdwsRestrictedOSFileSystem.Create;
+      rfs.Paths.Add('Z:');  // asuming temp files are NOT in Z:
+      FDataBaseLib.FileSystem := rfs;
+      try
+         CheckNotEquals('123', prog1.Execute.Msgs.AsInfo);
+         CheckNotEquals('456', prog2.Execute.Msgs.AsInfo);
+
+         FDataBaseLib.FileSystem := nil;
+
+         CheckEquals('', prog1.Execute.Msgs.AsInfo);
+         CheckEquals('', prog2.Execute.Msgs.AsInfo);
+      finally
+         FDataBaseLib.FileSystem := nil;
+      end;
+
+   finally
+      DeleteFile(temp);
+   end;
 end;
 
 // Execution

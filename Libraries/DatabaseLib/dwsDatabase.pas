@@ -20,7 +20,7 @@ interface
 
 uses
    SysUtils,
-   dwsSymbols, dwsUtils, dwsExprs, dwsStack, dwsXPlatform, dwsDataContext;
+   dwsSymbols, dwsUtils, dwsExprs, dwsStack, dwsXPlatform, dwsDataContext, dwsFileSystem;
 
 // Simple database abstraction interfaces and optional base classes for DWS
 // exposes transaction & forward-only cursor, which are all one really needs :p
@@ -103,12 +103,13 @@ type
 
    IdwsDataBaseFactory = interface
       ['{0DB5DAED-FAAF-4ED3-A157-3914A5260607}']
-      function CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase;
+      function CreateDataBase(const parameters : TStringDynArray; const fileSystem : IdwsFileSystem) : IdwsDataBase;
    end;
 
-   TdwsDataBaseFactory = class (TInterfacedSelfObject, IdwsDataBaseFactory)
+   TdwsDataBaseFactory = class abstract (TInterfacedSelfObject, IdwsDataBaseFactory)
       public
-         function CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase; virtual; abstract;
+         function CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase; overload; virtual; abstract;
+         function CreateDataBase(const parameters : TStringDynArray; const fileSystem : IdwsFileSystem) : IdwsDataBase; overload; virtual;
    end;
 
    TdwsDataBaseApplyPathVariablesEvent = function (const path : String) : String of object;
@@ -122,7 +123,8 @@ type
          class function ApplyPathVariables(const path : String) : String; static;
 
          class procedure RegisterDriver(const driverName : String; const factory : IdwsDataBaseFactory); static;
-         class function CreateDataBase(const driverName : String; const parameters : TStringDynArray) : IdwsDataBase; static;
+         class function CreateDataBase(const driverName : String; const parameters : TStringDynArray;
+                                       const fileSystem : IdwsFileSystem) : IdwsDataBase; static;
 
          function OptionList : TStringDynArray; virtual;
          function GetOption(const name : String) : String; virtual;
@@ -251,13 +253,14 @@ end;
 
 // CreateDataBase
 //
-class function TdwsDatabase.CreateDataBase(const driverName : String; const parameters : TStringDynArray) : IdwsDataBase;
+class function TdwsDatabase.CreateDataBase(const driverName : String; const parameters : TStringDynArray;
+                                           const fileSystem : IdwsFileSystem) : IdwsDataBase;
 var
    i : Integer;
 begin
    for i:=0 to High(vDrivers) do
       if UnicodeSameText(vDrivers[i].Name, driverName) then
-         Exit(vDrivers[i].Factory.CreateDataBase(parameters));
+         Exit(vDrivers[i].Factory.CreateDataBase(parameters, fileSystem));
    raise EDWSDataBase.CreateFmt('No driver of name "%s"', [driverName]);
 end;
 
@@ -560,6 +563,17 @@ end;
 procedure TdwsDataField.RaiseNoActiveRecord;
 begin
    raise EDWSDataBase.Create('No active record');
+end;
+
+// ------------------
+// ------------------ TdwsDataBaseFactory ------------------
+// ------------------
+
+// CreateDataBase
+//
+function TdwsDataBaseFactory.CreateDataBase(const parameters : TStringDynArray; const fileSystem : IdwsFileSystem) : IdwsDataBase;
+begin
+   Result := CreateDataBase(parameters);
 end;
 
 end.

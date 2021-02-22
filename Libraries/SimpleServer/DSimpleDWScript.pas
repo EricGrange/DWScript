@@ -77,6 +77,7 @@ type
       dwsCompileSystem: TdwsRestrictedFileSystem;
       dwsRuntimeFileSystem: TdwsRestrictedFileSystem;
       dwsComConnector: TdwsComConnector;
+      dwsDatabaseFileSystem: TdwsRestrictedFileSystem;
       procedure DataModuleCreate(Sender: TObject);
       procedure DataModuleDestroy(Sender: TObject);
 
@@ -230,6 +231,8 @@ const
          +'"LibraryPaths": ["%www%\\.lib"],'
          // Paths which scripts are allowed to perform file operations on
          +'"WorkPaths": ["%www%"],'
+         // DB Paths which scripts are allowed to perform file operations on
+         +'"DBPaths": ["%www%"],'
          // Conditional Defines that should be preset
          +'"Conditionals": [],'
          // HTML Filter patterns
@@ -294,9 +297,10 @@ begin
    FSystemInfo:=TdwsSystemInfoLibModule.Create(Self);
    FSystemInfo.Script:=DelphiWebScript;
 
-   FDataBase:=TdwsDatabaseLib.Create(Self);
-   FDataBase.dwsDatabase.Script:=DelphiWebScript;
+   FDataBase := TdwsDatabaseLib.Create(Self);
+   FDataBase.dwsDatabase.Script := DelphiWebScript;
    TdwsDataBase.OnApplyPathVariables:=ApplyPathVariables;
+   FDataBase.FileSystem := dwsDatabaseFileSystem.AllocateFileSystem;
 
    FWebLib:=TdwsWebLib.Create(Self);
    FWebLib.dwsWeb.Script:=DelphiWebScript;
@@ -727,6 +731,10 @@ begin
       dwsRuntimeFileSystem.Paths.Clear;
       ApplyPathsVariables(dws['WorkPaths'], dwsRuntimeFileSystem.Paths);
       dwsRuntimeFileSystem.Variables := FPathVariables;
+
+      dwsDatabaseFileSystem.Paths.Clear;
+      ApplyPathsVariables(dws['WorkPaths'], dwsDatabaseFileSystem.Paths);
+      dwsDatabaseFileSystem.Variables := FPathVariables;
 
       conditionals := dws['Conditionals'];
       for i := 0 to conditionals.ElementCount-1 do
