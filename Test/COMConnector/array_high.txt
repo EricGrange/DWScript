@@ -1,0 +1,4 @@
+toto0
+toto1
+toto2
+Variant or safe array index out of bounds in Test [line: 9, column: 4]

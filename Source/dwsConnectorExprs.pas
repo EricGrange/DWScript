@@ -811,27 +811,19 @@ end;
 //
 procedure TConnectorWriteExpr.EvalNoResult(exec : TdwsExecution);
 var
-   dat : TData;
+   data : TData;
    tmp : Variant;
-   base : PVariant;
-   dc : IDataContext;
 begin
-   if (FBaseExpr is TVarExpr) or (FBaseExpr.Typ.Size>1) then begin
-      dc := TDataExpr(FBaseExpr).DataPtr[exec];
-      base  := @dc.AsPData^[0]
-   end else begin
-      FBaseExpr.EvalAsVariant(exec, tmp);
-      base:=@tmp;
-   end;
+   FBaseExpr.EvalAsVariant(exec, tmp);
 
-   SetLength(dat, 1);
-   FValueExpr.EvalAsVariant(exec, dat[0]);
-
+   SetLength(data, 1);
+   FValueExpr.EvalAsVariant(exec, data[0]);
    try
-      FConnectorMember.Write(base^, dat);
+      FConnectorMember.Write(tmp, data);
+      FBaseExpr.AssignValue(exec, tmp);
    except
       on e: EScriptError do begin
-         EScriptError(e).ScriptPos:=FScriptPos;
+         EScriptError(e).ScriptPos := FScriptPos;
          raise;
       end
    else
