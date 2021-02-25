@@ -2204,6 +2204,7 @@ type
       function IndexOfValue(const item : Variant; fromIndex : Integer) : Integer;
       function IndexOfInteger(item : Int64; fromIndex : Integer) : Integer;
       function IndexOfFloat(item : Double; fromIndex : Integer) : Integer;
+      function IndexOfString(const item : String; fromIndex : Integer) : Integer;
 
       procedure WriteData(const src : TData; srcAddr, size : Integer);
       procedure ReplaceData(const v : TData);
@@ -2211,6 +2212,8 @@ type
 
       procedure Reverse;
       procedure NaturalSort;
+
+      procedure AddStrings(sl : TStrings);
 
       function AsPDouble(var nbElements, stride : Integer) : PDouble;
 

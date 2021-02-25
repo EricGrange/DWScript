@@ -802,14 +802,14 @@ end;
 procedure TEnumerateDirFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    sl : TStringList;
-   newArray : TScriptDynamicStringArray;
+   base : IScriptDynArray;
 begin
    sl := TStringList.Create;
    try
       CollectFiles(args.AsFileName[0], args.AsString[1], sl, args.AsBoolean[2]);
-      newArray := CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString) as TScriptDynamicStringArray;
-      Result := IScriptDynArray(newArray);
-      newArray.AddStrings(sl);
+      base := CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString);
+      VarCopySafe(result, base);
+      base.AddStrings(sl);
    finally
       sl.Free;
    end;

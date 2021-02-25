@@ -74,6 +74,7 @@ type
          function IndexOfValue(const item : Variant; fromIndex : Integer) : Integer;
          function IndexOfInteger(item : Int64; fromIndex : Integer) : Integer;
          function IndexOfFloat(item : Double; fromIndex : Integer) : Integer;
+         function IndexOfString(const item : String; fromIndex : Integer) : Integer;
 
          procedure Copy(src : TScriptDynamicArray; index, count : Integer);
          procedure Concat(const src : IScriptDynArray; index, size : Integer);
@@ -85,6 +86,8 @@ type
          function ToData : TData;
 
          procedure ReplaceData(const newData : TData); override;
+
+         procedure AddStrings(sl : TStrings);
 
          function AsPDouble(var nbElements, stride : Integer) : PDouble; virtual;
 
@@ -160,6 +163,7 @@ type
          function IndexOfValue(const item : Variant; fromIndex : Integer) : Integer;
          function IndexOfInteger(item : Int64; fromIndex : Integer) : Integer;
          function IndexOfFloat(item : Double; fromIndex : Integer) : Integer;
+         function IndexOfString(const item : String; fromIndex : Integer) : Integer;
 
          procedure WriteData(const src : TData; srcAddr, size : Integer);
          procedure ReplaceData(const v : TData);
@@ -168,6 +172,8 @@ type
          procedure Reverse;
          function  Compare(index1, index2 : Integer) : Integer;
          procedure NaturalSort;
+
+         procedure AddStrings(sl : TStrings);
 
          function AsPDouble(var nbElements, stride : Integer) : PDouble;
 
@@ -216,6 +222,7 @@ type
          function IndexOfValue(const item : Variant; fromIndex : Integer) : Integer;
          function IndexOfInteger(item : Int64; fromIndex : Integer) : Integer;
          function IndexOfFloat(item : Double; fromIndex : Integer) : Integer;
+         function IndexOfString(const item : String; fromIndex : Integer) : Integer;
 
          procedure WriteData(const src : TData; srcAddr, size : Integer);
          procedure ReplaceData(const v : TData);
@@ -224,6 +231,67 @@ type
          procedure Reverse;
          function  Compare(index1, index2 : Integer) : Integer;
          procedure NaturalSort;
+
+         procedure AddStrings(sl : TStrings);
+
+         function AsPDouble(var nbElements, stride : Integer) : PDouble;
+
+         function GetAsFloat(index : Integer) : Double;
+         procedure SetAsFloat(index : Integer; const v : Double);
+
+         function GetAsInteger(index : Integer) : Int64;
+         procedure SetAsInteger(index : Integer; const v : Int64);
+
+         function GetAsBoolean(index : Integer) : Boolean;
+         procedure SetAsBoolean(index : Integer; const v : Boolean);
+
+         procedure SetAsVariant(index : Integer; const v : Variant);
+         procedure EvalAsVariant(index : Integer; var result : Variant);
+
+         procedure SetAsString(index : Integer; const v : String);
+         procedure EvalAsString(index : Integer; var result : String);
+
+         procedure SetAsInterface(index : Integer; const v : IUnknown);
+         procedure EvalAsInterface(index : Integer; var result : IUnknown);
+
+         function IsEmpty(addr : Integer) : Boolean;
+         function VarType(addr : Integer) : TVarType;
+
+         function HashCode(addr : Integer; size : Integer) : Cardinal;
+
+         procedure WriteToJSON(writer : TdwsJSONWriter);
+   end;
+
+   TScriptDynamicNativeStringArray = class (TScriptDynamicNativeArray, IScriptDynArray, IJSONWriteAble)
+      protected
+         FData : TStringDynArray;
+
+      public
+         procedure SetArrayLength(n : Integer);
+
+         function ToStringArray : TStringDynArray;
+         function ToInt64Array : TInt64DynArray;
+         function ToData : TData;
+
+         procedure Insert(index : Integer);
+         procedure Delete(index, count : Integer);
+         procedure MoveItem(source, destination : Integer);
+         procedure Swap(index1, index2 : Integer);
+
+         function IndexOfValue(const item : Variant; fromIndex : Integer) : Integer;
+         function IndexOfInteger(item : Int64; fromIndex : Integer) : Integer;
+         function IndexOfFloat(item : Double; fromIndex : Integer) : Integer;
+         function IndexOfString(const item : String; fromIndex : Integer) : Integer;
+
+         procedure WriteData(const src : TData; srcAddr, size : Integer);
+         procedure ReplaceData(const v : TData);
+         procedure Concat(const src : IScriptDynArray; index, size : Integer);
+
+         procedure Reverse;
+         function  Compare(index1, index2 : Integer) : Integer;
+         procedure NaturalSort;
+
+         procedure AddStrings(sl : TStrings);
 
          function AsPDouble(var nbElements, stride : Integer) : PDouble;
 
@@ -307,6 +375,18 @@ begin
       BoundsCheckFailed(exec, index);
 end;
 *)
+
+// DynamicArrayAddStrings
+//
+procedure DynamicArrayAddStrings(const dyn : IScriptDynArray; sl : TStrings);
+var
+   i, n : Integer;
+begin
+   n := dyn.ArrayLength;
+   dyn.ArrayLength := n + sl.Count;
+   for i := 0 to sl.Count-1 do
+      dyn.AsString[i+n] := sl[i];
+end;
 
 // CreateNewDynamicArray
 //
@@ -475,6 +555,13 @@ begin
    FArrayLength:=System.Length(newData) div ElementSize;
 end;
 
+// AddStrings
+//
+procedure TScriptDynamicArray.AddStrings(sl : TStrings);
+begin
+   DynamicArrayAddStrings(Self, sl);
+end;
+
 // AsPDouble
 //
 function TScriptDynamicArray.AsPDouble(var nbElements, stride : Integer) : PDouble;
@@ -581,6 +668,13 @@ end;
 // IndexOfFloat
 //
 function TScriptDynamicArray.IndexOfFloat(item : Double; fromIndex : Integer) : Integer;
+begin
+   Result := inherited IndexOfValue(item, fromIndex, FArrayLength-1);
+end;
+
+// IndexOfString
+//
+function TScriptDynamicArray.IndexOfString(const item : String; fromIndex : Integer) : Integer;
 begin
    Result := inherited IndexOfValue(item, fromIndex, FArrayLength-1);
 end;
@@ -1066,6 +1160,13 @@ begin
    else Result := -1;
 end;
 
+// IndexOfString
+//
+function TScriptDynamicNativeIntegerArray.IndexOfString(const item : String; fromIndex : Integer) : Integer;
+begin
+   Result := IndexOfInteger(StrToInt64(item), fromIndex);
+end;
+
 // WriteData
 //
 procedure TScriptDynamicNativeIntegerArray.WriteData(const src : TData; srcAddr, size : Integer);
@@ -1150,6 +1251,13 @@ begin
    qs.CompareMethod := Self.Compare;
    qs.SwapMethod := Self.Swap;
    qs.Sort(0, FArrayLength-1);
+end;
+
+// AddStrings
+//
+procedure TScriptDynamicNativeIntegerArray.AddStrings(sl : TStrings);
+begin
+   DynamicArrayAddStrings(self, sl);
 end;
 
 // AsPDouble
@@ -1401,6 +1509,13 @@ begin
    Result := -1;
 end;
 
+// IndexOfString
+//
+function TScriptDynamicNativeFloatArray.IndexOfString(const item : String; fromIndex : Integer) : Integer;
+begin
+   Result := IndexOfFloat(StrToFloat(item), fromIndex);
+end;
+
 // WriteData
 //
 procedure TScriptDynamicNativeFloatArray.WriteData(const src : TData; srcAddr, size : Integer);
@@ -1485,6 +1600,13 @@ begin
    qs.CompareMethod := Self.Compare;
    qs.SwapMethod := Self.Swap;
    qs.Sort(0, FArrayLength-1);
+end;
+
+// AddStrings
+//
+procedure TScriptDynamicNativeFloatArray.AddStrings(sl : TStrings);
+begin
+   DynamicArrayAddStrings(Self, sl);
 end;
 
 // AsPDouble
@@ -1616,6 +1738,351 @@ begin
    writer.BeginArray;
    for i := 0 to FArrayLength-1 do
       writer.WriteNumber(FData[i]);
+   writer.EndArray;
+end;
+
+// ------------------
+// ------------------ TScriptDynamicNativeStringArray ------------------
+// ------------------
+
+// SetArrayLength
+//
+procedure TScriptDynamicNativeStringArray.SetArrayLength(n : Integer);
+begin
+   SetLength(FData, n);
+   FArrayLength := n;
+end;
+
+// ToStringArray
+//
+function TScriptDynamicNativeStringArray.ToStringArray : TStringDynArray;
+begin
+   Result := Copy(FData);
+end;
+
+// ToInt64Array
+//
+function TScriptDynamicNativeStringArray.ToInt64Array : TInt64DynArray;
+var
+   i : Integer;
+begin
+   SetLength(Result, FArrayLength);
+   for i := 0 to FArrayLength-1 do
+      Result[i] := StrToInt64(FData[i]);
+end;
+
+// ToData
+//
+function TScriptDynamicNativeStringArray.ToData : TData;
+var
+   i : Integer;
+begin
+   SetLength(Result, FArrayLength);
+   for i := 0 to FArrayLength-1 do
+      VarCopySafe(Result[i], FData[i]);
+end;
+
+// Insert
+//
+procedure TScriptDynamicNativeStringArray.Insert(index : Integer);
+begin
+   System.Insert('', FData, index);
+   Inc(FArrayLength);
+end;
+
+// Delete
+//
+procedure TScriptDynamicNativeStringArray.Delete(index, count : Integer);
+begin
+   System.Delete(FData, index, count);
+   Dec(FArrayLength);
+end;
+
+// MoveItem
+//
+procedure TScriptDynamicNativeStringArray.MoveItem(source, destination : Integer);
+var
+   buf : Pointer;
+begin
+   if source = destination then Exit;
+
+   buf := PPointer(@FData[source])^;
+   if source < destination then
+      System.Move(FData[source+1], FData[source], SizeOf(Double)*(destination-source))
+   else System.Move(FData[destination], FData[destination+1], SizeOf(Double)*(source-destination));
+   PPointer(@FData[destination])^ := buf;
+end;
+
+// Swap
+//
+procedure TScriptDynamicNativeStringArray.Swap(index1, index2 : Integer);
+var
+   buf : Pointer;
+begin
+   buf := PPointer(FData[index1])^;
+   PPointer(FData[index1])^ := PPointer(FData[index2])^;
+   PPointer(FData[index2])^ := buf;
+end;
+
+// IndexOfValue
+//
+function TScriptDynamicNativeStringArray.IndexOfValue(const item : Variant; fromIndex : Integer) : Integer;
+begin
+   Result := IndexOfString(VariantToString(item), fromIndex);
+end;
+
+// IndexOfInteger
+//
+function TScriptDynamicNativeStringArray.IndexOfInteger(item : Int64; fromIndex : Integer) : Integer;
+begin
+   Result := IndexOfString(IntToStr(item), fromIndex);
+end;
+
+// IndexOfFloat
+//
+function TScriptDynamicNativeStringArray.IndexOfFloat(item : Double; fromIndex : Integer) : Integer;
+begin
+   Result := IndexOfString(FloatToStr(item), fromIndex);
+end;
+
+// IndexOfString
+//
+function TScriptDynamicNativeStringArray.IndexOfString(const item : String; fromIndex : Integer) : Integer;
+var
+   i : Integer;
+begin
+   if fromIndex < 0 then
+      fromIndex := 0;
+   for i := fromIndex to FArrayLength-1 do begin
+      if FData[i] = item then
+         Exit(i);
+   end;
+   Result := -1;
+end;
+
+// WriteData
+//
+procedure TScriptDynamicNativeStringArray.WriteData(const src : TData; srcAddr, size : Integer);
+var
+   i : Integer;
+begin
+   for i := 0 to size-1 do
+      FData[i] := VariantToString(src[i + srcAddr]);
+end;
+
+// ReplaceData
+//
+procedure TScriptDynamicNativeStringArray.ReplaceData(const v : TData);
+begin
+   FArrayLength := Length(v);
+   SetLength(FData, FArrayLength);
+   WriteData(v, 0, FArrayLength);
+end;
+
+// Concat
+//
+procedure TScriptDynamicNativeStringArray.Concat(const src : IScriptDynArray; index, size : Integer);
+var
+   srcSelf : TObject;
+   srcDyn : TScriptDynamicNativeIntegerArray;
+   n : Integer;
+begin
+   srcSelf := src.GetSelf;
+   Assert(srcSelf.ClassType = TScriptDynamicNativeIntegerArray);
+   Assert(index >= 0);
+
+   srcDyn := TScriptDynamicNativeIntegerArray(src.GetSelf);
+   if size > srcDyn.ArrayLength - index then
+      size := srcDyn.ArrayLength - index;
+   if size > 0 then begin
+      n := FArrayLength;
+      FArrayLength := n + size;
+      SetLength(FData, FArrayLength);
+      System.Move(srcDyn.FData[index], FData[n], size*SizeOf(Double));
+   end;
+end;
+
+// Reverse
+//
+procedure TScriptDynamicNativeStringArray.Reverse;
+var
+   pLow, pHigh : PDouble;
+   t : Double;
+begin
+   if FArrayLength <= 1 then Exit;
+
+   pLow := @FData[0];
+   pHigh := @FData[FArrayLength-1];
+   while NativeUInt(pHigh) > NativeUInt(pLow) do begin
+      t := pLow^;
+      pLow^ := pHigh^;
+      pHigh^ := t;
+      Inc(pLow);
+      Dec(pHigh);
+   end;
+end;
+
+// Compare
+//
+function TScriptDynamicNativeStringArray.Compare(index1, index2 : Integer) : Integer;
+begin
+   Result := CompareStr(FData[index1], FData[index2]);
+end;
+
+// NaturalSort
+//
+procedure TScriptDynamicNativeStringArray.NaturalSort;
+var
+   qs : TQuickSort;
+begin
+   qs.CompareMethod := Self.Compare;
+   qs.SwapMethod := Self.Swap;
+   qs.Sort(0, FArrayLength-1);
+end;
+
+// AddStrings
+//
+procedure TScriptDynamicNativeStringArray.AddStrings(sl : TStrings);
+var
+   i, n : Integer;
+begin
+   n := FArrayLength;
+   SetLength(FData, n + sl.Count);
+   for i := 0 to sl.Count-1 do
+      FData[i+n] := sl[i];
+end;
+
+// AsPDouble
+//
+function TScriptDynamicNativeStringArray.AsPDouble(var nbElements, stride : Integer) : PDouble;
+begin
+   Result := Pointer(FData);
+   nbElements := FArrayLength;
+   stride := SizeOf(Double);
+end;
+
+// GetAsFloat
+//
+function TScriptDynamicNativeStringArray.GetAsFloat(index : Integer) : Double;
+begin
+   Result := StrToFloat(FData[index]);
+end;
+
+// SetAsFloat
+//
+procedure TScriptDynamicNativeStringArray.SetAsFloat(index : Integer; const v : Double);
+begin
+   FData[index] := FloatToStr(v);
+end;
+
+// GetAsInteger
+//
+function TScriptDynamicNativeStringArray.GetAsInteger(index : Integer) : Int64;
+begin
+   Result := StrToInt64(FData[index]);
+end;
+
+// SetAsInteger
+//
+procedure TScriptDynamicNativeStringArray.SetAsInteger(index : Integer; const v : Int64);
+begin
+   FData[index] := IntToStr(v);
+end;
+
+// GetAsBoolean
+//
+function TScriptDynamicNativeStringArray.GetAsBoolean(index : Integer) : Boolean;
+begin
+   Result := StringToBoolean(FData[index]);
+end;
+
+// SetAsBoolean
+//
+procedure TScriptDynamicNativeStringArray.SetAsBoolean(index : Integer; const v : Boolean);
+begin
+   if v then
+      FData[index] := '1'
+   else FData[index] := '0';
+end;
+
+// SetAsVariant
+//
+procedure TScriptDynamicNativeStringArray.SetAsVariant(index : Integer; const v : Variant);
+begin
+   FData[index] := VariantToString(v);
+end;
+
+// EvalAsVariant
+//
+procedure TScriptDynamicNativeStringArray.EvalAsVariant(index : Integer; var result : Variant);
+begin
+   VarCopySafe(result, FData[index]);
+end;
+
+// SetAsString
+//
+procedure TScriptDynamicNativeStringArray.SetAsString(index : Integer; const v : String);
+begin
+   FData[index] := v;
+end;
+
+// EvalAsString
+//
+procedure TScriptDynamicNativeStringArray.EvalAsString(index : Integer; var result : String);
+begin
+   result := FData[index];
+end;
+
+// SetAsInterface
+//
+procedure TScriptDynamicNativeStringArray.SetAsInterface(index : Integer; const v : IUnknown);
+begin
+   Assert(False);
+end;
+
+// EvalAsInterface
+//
+procedure TScriptDynamicNativeStringArray.EvalAsInterface(index : Integer; var result : IUnknown);
+begin
+   Assert(False);
+end;
+
+// IsEmpty
+//
+function TScriptDynamicNativeStringArray.IsEmpty(addr : Integer) : Boolean;
+begin
+   Result := False;
+end;
+
+// VarType
+//
+function TScriptDynamicNativeStringArray.VarType(addr : Integer) : TVarType;
+begin
+   Result := varUString;
+end;
+
+// HashCode
+//
+function TScriptDynamicNativeStringArray.HashCode(addr : Integer; size : Integer) : Cardinal;
+var
+   i : Integer;
+begin
+   Result := cFNV_basis;
+   for i := 0 to FArrayLength-1 do
+      Result := (Result xor SimpleStringHash(FData[i])) * cFNV_prime;
+   if Result = 0 then
+      Result := cFNV_basis;
+end;
+
+// WriteToJSON
+//
+procedure TScriptDynamicNativeStringArray.WriteToJSON(writer : TdwsJSONWriter);
+var
+   i : Integer;
+begin
+   writer.BeginArray;
+   for i := 0 to FArrayLength-1 do
+      writer.WriteString(FData[i]);
    writer.EndArray;
 end;
 

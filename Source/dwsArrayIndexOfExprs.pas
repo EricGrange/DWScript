@@ -308,14 +308,12 @@ function TDynamicArrayIndexOfStringExpr.DoEval(exec : TdwsExecution; const base 
 var
    fromIndex : Integer;
    v : String;
-   dyn : TScriptDynamicStringArray;
 begin
    if FFromIndexExpr<>nil then
       fromIndex:=FFromIndexExpr.EvalAsInteger(exec)
    else fromIndex:=0;
    FItemExpr.EvalAsString(exec, v);
-   dyn := (base.GetSelf as TScriptDynamicStringArray);
-   Result := dyn.IndexOfString(v, fromIndex);
+   Result := base.IndexOfString(v, fromIndex);
 end;
 
 // ------------------
