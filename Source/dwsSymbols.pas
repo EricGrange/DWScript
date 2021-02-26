@@ -2205,6 +2205,7 @@ type
       function IndexOfInteger(item : Int64; fromIndex : Integer) : Integer;
       function IndexOfFloat(item : Double; fromIndex : Integer) : Integer;
       function IndexOfString(const item : String; fromIndex : Integer) : Integer;
+      function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
 
       procedure WriteData(const src : TData; srcAddr, size : Integer);
       procedure ReplaceData(const v : TData);

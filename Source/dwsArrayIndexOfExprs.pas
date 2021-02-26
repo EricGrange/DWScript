@@ -272,14 +272,12 @@ function TDynamicArrayIndexOfFuncPtrExpr.DoEval(exec : TdwsExecution; const base
 var
    fromIndex : Integer;
    v : Variant;
-   dyn : TScriptDynamicValueArray;
 begin
    if FFromIndexExpr<>nil then
       fromIndex:=FFromIndexExpr.EvalAsInteger(exec)
    else fromIndex:=0;
    FItemExpr.EvalAsVariant(exec, v);
-   dyn := (base.GetSelf as TScriptDynamicValueArray);
-   Result := dyn.IndexOfFuncPtr(v, fromIndex)
+   Result := base.IndexOfFuncPtr(v, fromIndex)
 end;
 
 // ------------------

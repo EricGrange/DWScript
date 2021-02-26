@@ -82,6 +82,7 @@ type
          procedure Cleanup(const filter : String = '*');
 
          procedure EnumerateNames(const filter : String; callback : TNamesEnumerationCallback);
+         procedure EnumerateNamesToStrings(const filter : String; dest : TStrings);
          function  NamesCommaText : String;
 
          procedure SaveToFiler(writer : TWriter);
@@ -491,7 +492,7 @@ begin
    end;
 end;
 
-// NamesCommaText
+// EnumerateNamesToStrings
 //
 type
    TStringsAdder = class(TStrings)
@@ -501,13 +502,20 @@ procedure TStringsAdder.Add(const name : String);
 begin
    inherited Add(name);
 end;
+procedure TGlobalVars.EnumerateNamesToStrings(const filter : String; dest : TStrings);
+begin
+   EnumerateNames(filter, TStringsAdder(dest).Add);
+end;
+
+// NamesCommaText
+//
 function TGlobalVars.NamesCommaText : String;
 var
    list : TStringList;
 begin
-   list:=TStringList.Create;
+   list := TStringList.Create;
    try
-      EnumerateNames('*', TStringsAdder(list).Add);
+      EnumerateNamesToStrings('*', list);
       if list.Count > 0 then
          Result := list.CommaText
       else Result := '';

@@ -75,6 +75,7 @@ type
          function IndexOfInteger(item : Int64; fromIndex : Integer) : Integer;
          function IndexOfFloat(item : Double; fromIndex : Integer) : Integer;
          function IndexOfString(const item : String; fromIndex : Integer) : Integer;
+         function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
 
          procedure Copy(src : TScriptDynamicArray; index, count : Integer);
          procedure Concat(const src : IScriptDynArray; index, size : Integer);
@@ -116,8 +117,6 @@ type
 
          procedure Swap(i1, i2 : Integer); override;
 
-         function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
-
          function CompareString(i1, i2 : Integer) : Integer;
          function CompareInteger(i1, i2 : Integer) : Integer;
          function CompareFloat(i1, i2 : Integer) : Integer;
@@ -137,6 +136,8 @@ type
 
       public
          constructor Create(elemTyp : TTypeSymbol);
+
+         function ToString : String; override;
 
          function BoundsCheckPassed(index : Integer) : Boolean;
 
@@ -164,6 +165,7 @@ type
          function IndexOfInteger(item : Int64; fromIndex : Integer) : Integer;
          function IndexOfFloat(item : Double; fromIndex : Integer) : Integer;
          function IndexOfString(const item : String; fromIndex : Integer) : Integer;
+         function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
 
          procedure WriteData(const src : TData; srcAddr, size : Integer);
          procedure ReplaceData(const v : TData);
@@ -223,6 +225,7 @@ type
          function IndexOfInteger(item : Int64; fromIndex : Integer) : Integer;
          function IndexOfFloat(item : Double; fromIndex : Integer) : Integer;
          function IndexOfString(const item : String; fromIndex : Integer) : Integer;
+         function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
 
          procedure WriteData(const src : TData; srcAddr, size : Integer);
          procedure ReplaceData(const v : TData);
@@ -282,6 +285,7 @@ type
          function IndexOfInteger(item : Int64; fromIndex : Integer) : Integer;
          function IndexOfFloat(item : Double; fromIndex : Integer) : Integer;
          function IndexOfString(const item : String; fromIndex : Integer) : Integer;
+         function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
 
          procedure WriteData(const src : TData; srcAddr, size : Integer);
          procedure ReplaceData(const v : TData);
@@ -319,14 +323,6 @@ type
          function HashCode(addr : Integer; size : Integer) : Cardinal;
 
          procedure WriteToJSON(writer : TdwsJSONWriter);
-   end;
-
-   TScriptDynamicStringArray = class (TScriptDynamicValueArray)
-      public
-         procedure Add(const s : String);
-         procedure AddStrings(sl : TStrings);
-         function VarType(addr : Integer) : TVarType; override;
-         procedure NaturalSort; override;
    end;
 
    TScriptDynamicBooleanArray = class (TScriptDynamicValueArray)
@@ -389,7 +385,7 @@ begin
    if size = 1 then begin
       elemTypClass := elemTyp.UnAliasedType.ClassType;
       if elemTypClass = TBaseStringSymbol then
-         Result := TScriptDynamicStringArray.Create(elemTyp)
+         Result := TScriptDynamicNativeStringArray.Create(elemTyp)
       else if elemTypClass = TBaseFloatSymbol then
          Result := TScriptDynamicNativeFloatArray.Create(elemTyp)
       else if elemTypClass = TBaseIntegerSymbol then
@@ -665,6 +661,29 @@ begin
    Result := inherited IndexOfValue(item, fromIndex, FArrayLength-1);
 end;
 
+// IndexOfFuncPtr
+//
+function TScriptDynamicArray.IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
+var
+   i : Integer;
+   itemFunc : IFuncPointer;
+   p : PVarData;
+begin
+   itemFunc := IFuncPointer(IUnknown(item));
+   if itemFunc = nil then begin
+      for i := fromIndex to ArrayLength-1 do begin
+         p := PVarData(@DirectData[i]);
+         if (p.VType=varUnknown) and (p.VUnknown=nil) then
+            Exit(i);
+      end;
+   end else begin
+      for i:=fromIndex to ArrayLength-1 do
+         if itemFunc.SameFunc(DirectData[i]) then
+            Exit(i);
+   end;
+   Result:=-1;
+end;
+
 // Copy
 //
 procedure TScriptDynamicArray.Copy(src : TScriptDynamicArray; index, count : Integer);
@@ -796,29 +815,6 @@ begin
    elem2^.VInt64:=buf.VInt64;
 end;
 
-// IndexOfFuncPtr
-//
-function TScriptDynamicValueArray.IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
-var
-   i : Integer;
-   itemFunc : IFuncPointer;
-   p : PVarData;
-begin
-   itemFunc := IFuncPointer(IUnknown(item));
-   if itemFunc = nil then begin
-      for i := fromIndex to ArrayLength-1 do begin
-         p := PVarData(@DirectData[i]);
-         if (p.VType=varUnknown) and (p.VUnknown=nil) then
-            Exit(i);
-      end;
-   end else begin
-      for i:=fromIndex to ArrayLength-1 do
-         if itemFunc.SameFunc(DirectData[i]) then
-            Exit(i);
-   end;
-   Result:=-1;
-end;
-
 // CompareString
 //
 function TScriptDynamicValueArray.CompareString(i1, i2 : Integer) : Integer;
@@ -873,49 +869,6 @@ begin
 end;
 
 // ------------------
-// ------------------ TScriptDynamicStringArray ------------------
-// ------------------
-
-// Add
-//
-procedure TScriptDynamicStringArray.Add(const s : String);
-begin
-   ArrayLength:=ArrayLength+1;
-   if s<>'' then
-      AsString[ArrayLength-1]:=s;
-end;
-
-// AddStrings
-//
-procedure TScriptDynamicStringArray.AddStrings(sl : TStrings);
-var
-   i, n : Integer;
-begin
-   n := ArrayLength;
-   ArrayLength := n+sl.Count;
-   for i := 0 to sl.Count-1 do
-      AsString[n+i] := sl[i];
-end;
-
-// VarType
-//
-function TScriptDynamicStringArray.VarType(addr : Integer) : TVarType;
-begin
-   Result := varUString;
-end;
-
-// NaturalSort
-//
-procedure TScriptDynamicStringArray.NaturalSort;
-var
-   qs : TQuickSort;
-begin
-   qs.CompareMethod := Self.CompareString;
-   qs.SwapMethod := Self.Swap;
-   qs.Sort(0, FArrayLength-1);
-end;
-
-// ------------------
 // ------------------ TScriptDynamicDataArray ------------------
 // ------------------
 
@@ -949,6 +902,13 @@ begin
    inherited Create;
    FElementTyp := elemTyp;
    Assert(elemTyp.Size = 1);
+end;
+
+// ToString
+//
+function TScriptDynamicNativeArray.ToString : String;
+begin
+   Result := 'array of ' + ElementTyp.Name;
 end;
 
 // BoundsCheckPassed
@@ -1105,6 +1065,13 @@ begin
    Result := IndexOfInteger(StrToInt64(item), fromIndex);
 end;
 
+// IndexOfFuncPtr
+//
+function TScriptDynamicNativeIntegerArray.IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
+begin
+   Result := -1;
+end;
+
 // WriteData
 //
 procedure TScriptDynamicNativeIntegerArray.WriteData(const src : TData; srcAddr, size : Integer);
@@ -1136,7 +1103,7 @@ begin
    Assert(srcSelf.ClassType = TScriptDynamicNativeIntegerArray);
    Assert(index >= 0);
 
-   srcDyn := TScriptDynamicNativeIntegerArray(src.GetSelf);
+   srcDyn := TScriptDynamicNativeIntegerArray(srcSelf);
    if size > srcDyn.ArrayLength - index then
       size := srcDyn.ArrayLength - index;
    if size > 0 then begin
@@ -1454,6 +1421,13 @@ begin
    Result := IndexOfFloat(StrToFloat(item), fromIndex);
 end;
 
+// IndexOfFuncPtr
+//
+function TScriptDynamicNativeFloatArray.IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
+begin
+   Result := -1;
+end;
+
 // WriteData
 //
 procedure TScriptDynamicNativeFloatArray.WriteData(const src : TData; srcAddr, size : Integer);
@@ -1478,14 +1452,14 @@ end;
 procedure TScriptDynamicNativeFloatArray.Concat(const src : IScriptDynArray; index, size : Integer);
 var
    srcSelf : TObject;
-   srcDyn : TScriptDynamicNativeIntegerArray;
+   srcDyn : TScriptDynamicNativeFloatArray;
    n : Integer;
 begin
    srcSelf := src.GetSelf;
-   Assert(srcSelf.ClassType = TScriptDynamicNativeIntegerArray);
+   Assert(srcSelf.ClassType = TScriptDynamicNativeFloatArray);
    Assert(index >= 0);
 
-   srcDyn := TScriptDynamicNativeIntegerArray(src.GetSelf);
+   srcDyn := TScriptDynamicNativeFloatArray(srcSelf);
    if size > srcDyn.ArrayLength - index then
       size := srcDyn.ArrayLength - index;
    if size > 0 then begin
@@ -1746,8 +1720,8 @@ begin
 
    buf := PPointer(@FData[source])^;
    if source < destination then
-      System.Move(FData[source+1], FData[source], SizeOf(Double)*(destination-source))
-   else System.Move(FData[destination], FData[destination+1], SizeOf(Double)*(source-destination));
+      System.Move(FData[source+1], FData[source], SizeOf(Pointer)*(destination-source))
+   else System.Move(FData[destination], FData[destination+1], SizeOf(Pointer)*(source-destination));
    PPointer(@FData[destination])^ := buf;
 end;
 
@@ -1757,9 +1731,9 @@ procedure TScriptDynamicNativeStringArray.Swap(index1, index2 : Integer);
 var
    buf : Pointer;
 begin
-   buf := PPointer(FData[index1])^;
-   PPointer(FData[index1])^ := PPointer(FData[index2])^;
-   PPointer(FData[index2])^ := buf;
+   buf := PPointer(@FData[index1])^;
+   PPointer(@FData[index1])^ := PPointer(@FData[index2])^;
+   PPointer(@FData[index2])^ := buf;
 end;
 
 // IndexOfValue
@@ -1798,6 +1772,13 @@ begin
    Result := -1;
 end;
 
+// IndexOfFuncPtr
+//
+function TScriptDynamicNativeStringArray.IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
+begin
+   Result := -1;
+end;
+
 // WriteData
 //
 procedure TScriptDynamicNativeStringArray.WriteData(const src : TData; srcAddr, size : Integer);
@@ -1822,21 +1803,22 @@ end;
 procedure TScriptDynamicNativeStringArray.Concat(const src : IScriptDynArray; index, size : Integer);
 var
    srcSelf : TObject;
-   srcDyn : TScriptDynamicNativeIntegerArray;
-   n : Integer;
+   srcDyn : TScriptDynamicNativeStringArray;
+   n, i : Integer;
 begin
    srcSelf := src.GetSelf;
-   Assert(srcSelf.ClassType = TScriptDynamicNativeIntegerArray);
+   Assert(srcSelf.ClassType = TScriptDynamicNativeStringArray);
    Assert(index >= 0);
 
-   srcDyn := TScriptDynamicNativeIntegerArray(src.GetSelf);
+   srcDyn := TScriptDynamicNativeStringArray(srcSelf);
    if size > srcDyn.ArrayLength - index then
       size := srcDyn.ArrayLength - index;
    if size > 0 then begin
       n := FArrayLength;
       FArrayLength := n + size;
       SetLength(FData, FArrayLength);
-      System.Move(srcDyn.FData[index], FData[n], size*SizeOf(Double));
+      for i := 0 to size-1 do
+         FData[n + i] := srcDyn.FData[index + i];
    end;
 end;
 
@@ -1844,8 +1826,8 @@ end;
 //
 procedure TScriptDynamicNativeStringArray.Reverse;
 var
-   pLow, pHigh : PDouble;
-   t : Double;
+   pLow, pHigh : PPointer;
+   t : Pointer;
 begin
    if FArrayLength <= 1 then Exit;
 
@@ -1885,7 +1867,8 @@ var
    i, n : Integer;
 begin
    n := FArrayLength;
-   SetLength(FData, n + sl.Count);
+   FArrayLength := n + sl.Count;
+   SetLength(FData, FArrayLength);
    for i := 0 to sl.Count-1 do
       FData[i+n] := sl[i];
 end;
@@ -1894,9 +1877,8 @@ end;
 //
 function TScriptDynamicNativeStringArray.AsPDouble(var nbElements, stride : Integer) : PDouble;
 begin
-   Result := Pointer(FData);
-   nbElements := FArrayLength;
-   stride := SizeOf(Double);
+   Assert(False);
+   Result := nil;
 end;
 
 // GetAsFloat

@@ -627,13 +627,18 @@ end;
 //
 procedure TGlobalVarsNamesFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
-   newArray : TScriptDynamicStringArray;
-   typString : TTypeSymbol;
+   newArray : IScriptDynArray;
+   sl : TStringList;
 begin
-   typString:=(args.Exec as TdwsProgramExecution).CompilerContext.TypString;
-   newArray := CreateNewDynamicArray(typString) as TScriptDynamicStringArray;
-   result:=IScriptDynArray(newArray);
-   vGlobalVars.EnumerateNames(args.AsString[0], newArray.Add);
+   sl := TStringList.Create;
+   try
+      vGlobalVars.EnumerateNamesToStrings(args.AsString[0], sl);
+      newArray := CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString);
+      result := newArray;
+      newArray.AddStrings(sl);
+   finally
+      sl.Free;
+   end;
 end;
 
 { TGlobalVarsNamesCommaText }
@@ -786,33 +791,35 @@ end;
 { TPrivateVarsNamesFunc }
 
 type
-   TPrivateVarEnumerator = class
-      FArray : TScriptDynamicStringArray;
-      FOffset : Integer;
-      procedure Add(const s : String);
+   TPrivateVarEnumerator = class (TStringList)
+      public
+         FOffset : Integer;
+         procedure Add(const s : String); reintroduce;
    end;
 procedure TPrivateVarEnumerator.Add(const s : String);
 begin
-   FArray.Add(Copy(s, FOffset));
+   inherited Add(Copy(s, FOffset));
 end;
 procedure TPrivateVarsNamesFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
 var
    typString : TTypeSymbol;
    filter, prefix : String;
    enum : TPrivateVarEnumerator;
+   dynArray : IScriptDynArray;
 begin
    typString:=(args.Exec as TdwsProgramExecution).CompilerContext.TypString;
    enum := TPrivateVarEnumerator.Create;
    try
-      enum.FArray := CreateNewDynamicArray(typString) as TScriptDynamicStringArray;
-      result := IScriptDynArray(enum.FArray);
-
       filter := args.AsString[0];
       if filter = '' then
          filter := '*';
       prefix := PrivateVarPrefix(args);
       enum.FOffset := Length(prefix)+1;
       vPrivateVars.EnumerateNames(prefix + filter, enum.Add);
+
+      dynArray := CreateNewDynamicArray(typString);
+      result := dynArray;
+      dynArray.AddStrings(enum);
    finally
       enum.Free;
    end;
