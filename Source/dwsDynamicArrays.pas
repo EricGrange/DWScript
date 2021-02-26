@@ -329,18 +329,6 @@ type
          procedure NaturalSort; override;
    end;
 
-   TScriptDynamicIntegerArray = class (TScriptDynamicValueArray)
-      public
-         procedure NaturalSort; override;
-   end;
-
-   TScriptDynamicFloatArray = class (TScriptDynamicValueArray)
-      public
-         function AsPDouble(var nbElements, stride : Integer) : PDouble; override;
-         function VarType(addr : Integer) : TVarType; override;
-         procedure NaturalSort; override;
-   end;
-
    TScriptDynamicBooleanArray = class (TScriptDynamicValueArray)
       public
    end;
@@ -355,7 +343,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsExprs;
+uses dwsExprs, dwsXXHash;
 
 (*
 // BoundsCheckFailed
@@ -404,10 +392,8 @@ begin
          Result := TScriptDynamicStringArray.Create(elemTyp)
       else if elemTypClass = TBaseFloatSymbol then
          Result := TScriptDynamicNativeFloatArray.Create(elemTyp)
-//         Result := TScriptDynamicFloatArray.Create(elemTyp)
       else if elemTypClass = TBaseIntegerSymbol then
          Result := TScriptDynamicNativeIntegerArray.Create(elemTyp)
-//         Result := TScriptDynamicIntegerArray.Create(elemTyp)
       else if elemTypClass = TBaseBooleanSymbol then
          Result := TScriptDynamicBooleanArray.Create(elemTyp)
       else Result := TScriptDynamicValueArray.Create(elemTyp)
@@ -925,54 +911,6 @@ var
    qs : TQuickSort;
 begin
    qs.CompareMethod := Self.CompareString;
-   qs.SwapMethod := Self.Swap;
-   qs.Sort(0, FArrayLength-1);
-end;
-
-// ------------------
-// ------------------ TScriptDynamicIntegerArray ------------------
-// ------------------
-
-// NaturalSort
-//
-procedure TScriptDynamicIntegerArray.NaturalSort;
-var
-   qs : TQuickSort;
-begin
-   qs.CompareMethod := Self.CompareInteger;
-   qs.SwapMethod := Self.Swap;
-   qs.Sort(0, FArrayLength-1);
-end;
-
-// ------------------
-// ------------------ TScriptDynamicFloatArray ------------------
-// ------------------
-
-// AsPDouble
-//
-function TScriptDynamicFloatArray.AsPDouble(var nbElements, stride : Integer) : PDouble;
-begin
-   nbElements := ArrayLength;
-   if nbElements = 0 then Exit(nil);
-
-   stride := SizeOf(Variant);
-   Result := @TVarData(AsPData^[0]).VDouble;
-end;
-
-// VarType
-//
-function TScriptDynamicFloatArray.VarType(addr : Integer) : TVarType;
-begin
-   Result := varDouble;
-end;
-
-// NaturalSort
-//
-procedure TScriptDynamicFloatArray.NaturalSort;
-var
-   qs : TQuickSort;
-begin
-   qs.CompareMethod := Self.CompareFloat;
    qs.SwapMethod := Self.Swap;
    qs.Sort(0, FArrayLength-1);
 end;
