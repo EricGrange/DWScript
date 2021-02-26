@@ -1,0 +1,12 @@
+False,True
+True,False
+True,False,True
+True,True,False
+2
+0
+False,True,True
+False,True,True,False,True,True
+True,False,True,False,True,True
+False,True,True
+False,True
+False,False,True

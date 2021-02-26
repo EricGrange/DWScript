@@ -4,8 +4,6 @@ type
 	end;
 	
 var ab : array of Boolean;
-ab.Sort;
-
 ab.Sort(1, 2, 3);
 
 var ar : array of TRec;

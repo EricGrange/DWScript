@@ -135,7 +135,7 @@ type
          function GetArrayLength : Integer;
 
       public
-         constructor Create(elemTyp : TTypeSymbol);
+         constructor Create(elemTyp : TTypeSymbol); virtual;
 
          function ToString : String; override;
 
@@ -325,8 +325,67 @@ type
          procedure WriteToJSON(writer : TdwsJSONWriter);
    end;
 
-   TScriptDynamicBooleanArray = class (TScriptDynamicValueArray)
+   TScriptDynamicNativeBooleanArray = class (TScriptDynamicNativeArray, IScriptDynArray, IJSONWriteAble)
+      protected
+         FBits : TBits;
+
       public
+         constructor Create(elemTyp : TTypeSymbol); override;
+         destructor Destroy; override;
+
+         procedure SetArrayLength(n : Integer);
+
+         function ToStringArray : TStringDynArray;
+         function ToInt64Array : TInt64DynArray;
+         function ToData : TData;
+
+         procedure Insert(index : Integer);
+         procedure Delete(index, count : Integer);
+         procedure MoveItem(source, destination : Integer);
+         procedure Swap(index1, index2 : Integer);
+
+         function IndexOfValue(const item : Variant; fromIndex : Integer) : Integer;
+         function IndexOfInteger(item : Int64; fromIndex : Integer) : Integer;
+         function IndexOfFloat(item : Double; fromIndex : Integer) : Integer;
+         function IndexOfString(const item : String; fromIndex : Integer) : Integer;
+         function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
+
+         procedure WriteData(const src : TData; srcAddr, size : Integer);
+         procedure ReplaceData(const v : TData);
+         procedure Concat(const src : IScriptDynArray; index, size : Integer);
+
+         procedure Reverse;
+         function  Compare(index1, index2 : Integer) : Integer;
+         procedure NaturalSort;
+
+         procedure AddStrings(sl : TStrings);
+
+         function AsPDouble(var nbElements, stride : Integer) : PDouble;
+
+         function GetAsFloat(index : Integer) : Double;
+         procedure SetAsFloat(index : Integer; const v : Double);
+
+         function GetAsInteger(index : Integer) : Int64;
+         procedure SetAsInteger(index : Integer; const v : Int64);
+
+         function GetAsBoolean(index : Integer) : Boolean;
+         procedure SetAsBoolean(index : Integer; const v : Boolean);
+
+         procedure SetAsVariant(index : Integer; const v : Variant);
+         procedure EvalAsVariant(index : Integer; var result : Variant);
+
+         procedure SetAsString(index : Integer; const v : String);
+         procedure EvalAsString(index : Integer; var result : String);
+
+         procedure SetAsInterface(index : Integer; const v : IUnknown);
+         procedure EvalAsInterface(index : Integer; var result : IUnknown);
+
+         function IsEmpty(addr : Integer) : Boolean;
+         function VarType(addr : Integer) : TVarType;
+
+         function HashCode(addr : Integer; size : Integer) : Cardinal;
+
+         procedure WriteToJSON(writer : TdwsJSONWriter);
    end;
 
 function CreateNewDynamicArray(elemTyp : TTypeSymbol) : IScriptDynArray;
@@ -391,7 +450,7 @@ begin
       else if elemTypClass = TBaseIntegerSymbol then
          Result := TScriptDynamicNativeIntegerArray.Create(elemTyp)
       else if elemTypClass = TBaseBooleanSymbol then
-         Result := TScriptDynamicBooleanArray.Create(elemTyp)
+         Result := TScriptDynamicNativeBooleanArray.Create(elemTyp)
       else Result := TScriptDynamicValueArray.Create(elemTyp)
    end else Result := TScriptDynamicDataArray.Create(elemTyp);
 end;
@@ -1162,7 +1221,7 @@ end;
 //
 procedure TScriptDynamicNativeIntegerArray.AddStrings(sl : TStrings);
 begin
-   DynamicArrayAddStrings(self, sl);
+   DynamicArrayAddStrings(Self, sl);
 end;
 
 // AsPDouble
@@ -2003,6 +2062,390 @@ begin
    writer.BeginArray;
    for i := 0 to FArrayLength-1 do
       writer.WriteString(FData[i]);
+   writer.EndArray;
+end;
+
+// ------------------
+// ------------------ TScriptDynamicNativeBooleanArray ------------------
+// ------------------
+
+// Create
+//
+constructor TScriptDynamicNativeBooleanArray.Create(elemTyp : TTypeSymbol);
+begin
+   inherited Create(elemTyp);
+   FBits := TBits.Create;
+end;
+
+// Destroy
+//
+destructor TScriptDynamicNativeBooleanArray.Destroy;
+begin
+   inherited;
+   FBits.Free;
+end;
+
+// SetArrayLength
+//
+procedure TScriptDynamicNativeBooleanArray.SetArrayLength(n : Integer);
+begin
+   FBits.Size := n;
+   FArrayLength := n;
+end;
+
+// ToStringArray
+//
+function TScriptDynamicNativeBooleanArray.ToStringArray : TStringDynArray;
+var
+   i : Integer;
+begin
+   SetLength(Result, FArrayLength);
+   for i := 0 to FArrayLength-1 do
+      if FBits[i] then
+         Result[i] := 'True'
+      else Result[i] := 'False';
+end;
+
+// ToInt64Array
+//
+function TScriptDynamicNativeBooleanArray.ToInt64Array : TInt64DynArray;
+var
+   i : Integer;
+begin
+   SetLength(Result, FArrayLength);
+   for i := 0 to FArrayLength-1 do
+      Result[i] := Ord(FBits[i]);
+end;
+
+// ToData
+//
+function TScriptDynamicNativeBooleanArray.ToData : TData;
+var
+   i : Integer;
+begin
+   SetLength(Result, FArrayLength);
+   for i := 0 to FArrayLength-1 do
+      VarCopySafe(Result[i], FBits[i]);
+end;
+
+// Insert
+//
+procedure TScriptDynamicNativeBooleanArray.Insert(index : Integer);
+var
+   i : Integer;
+begin
+   SetArrayLength(FArrayLength + 1);
+   for i := FArrayLength-1 downto index+1 do
+      FBits[i] := FBits[i-1];
+   FBits[index] := False;
+end;
+
+// Delete
+//
+procedure TScriptDynamicNativeBooleanArray.Delete(index, count : Integer);
+var
+   i : Integer;
+begin
+   for i := index to FArrayLength-count-1 do
+      FBits[i] := FBits[i+count];
+   SetArrayLength(FArrayLength - count);
+end;
+
+// MoveItem
+//
+procedure TScriptDynamicNativeBooleanArray.MoveItem(source, destination : Integer);
+var
+   buf : Boolean;
+   i : Integer;
+begin
+   if source = destination then Exit;
+
+   buf := FBits[source];
+
+   if source < destination then begin
+      for i := source to destination-1 do
+         FBits[i] := FBits[i+1];
+   end else begin
+      for i := source downto destination+1 do
+         FBits[i] := FBits[i-1];
+   end;
+   FBits[destination] := buf;
+end;
+
+// Swap
+//
+procedure TScriptDynamicNativeBooleanArray.Swap(index1, index2 : Integer);
+var
+   buf : Boolean;
+begin
+   buf := FBits[index1];
+   FBits[index1] := FBits[index2];
+   FBits[index2] := buf;
+end;
+
+// IndexOfValue
+//
+function TScriptDynamicNativeBooleanArray.IndexOfValue(const item : Variant; fromIndex : Integer) : Integer;
+begin
+   Result := IndexOfInteger(VariantToInt64(item), fromIndex);
+end;
+
+// IndexOfInteger
+//
+function TScriptDynamicNativeBooleanArray.IndexOfInteger(item : Int64; fromIndex : Integer) : Integer;
+var
+   i : Integer;
+   v : Boolean;
+begin
+   v := (item <> 0);
+   for i := fromIndex to FArrayLength-1 do
+      if FBits[i] = v then
+         Exit(i);
+   Result := -1;
+end;
+
+// IndexOfFloat
+//
+function TScriptDynamicNativeBooleanArray.IndexOfFloat(item : Double; fromIndex : Integer) : Integer;
+begin
+   Result := IndexOfInteger(Ord(item <> 0), fromIndex);
+end;
+
+// IndexOfString
+//
+function TScriptDynamicNativeBooleanArray.IndexOfString(const item : String; fromIndex : Integer) : Integer;
+begin
+   Result := IndexOfInteger(Ord(StringToBoolean(item)), fromIndex);
+end;
+
+// IndexOfFuncPtr
+//
+function TScriptDynamicNativeBooleanArray.IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
+begin
+   Result := -1;
+end;
+
+// WriteData
+//
+procedure TScriptDynamicNativeBooleanArray.WriteData(const src : TData; srcAddr, size : Integer);
+var
+   i : Integer;
+begin
+   for i := 0 to size-1 do
+      FBits[i] := VariantToBool(src[i + srcAddr]);
+end;
+
+// ReplaceData
+//
+procedure TScriptDynamicNativeBooleanArray.ReplaceData(const v : TData);
+begin
+   SetArrayLength(Length(v));
+   WriteData(v, 0, FArrayLength);
+end;
+
+// Concat
+//
+procedure TScriptDynamicNativeBooleanArray.Concat(const src : IScriptDynArray; index, size : Integer);
+var
+   srcSelf : TObject;
+   srcDyn : TScriptDynamicNativeBooleanArray;
+   i, n : Integer;
+begin
+   srcSelf := src.GetSelf;
+   Assert(srcSelf.ClassType = TScriptDynamicNativeBooleanArray);
+   Assert(index >= 0);
+
+   srcDyn := TScriptDynamicNativeBooleanArray(srcSelf);
+   if size > srcDyn.ArrayLength - index then
+      size := srcDyn.ArrayLength - index;
+   if size > 0 then begin
+      n := FArrayLength;
+      SetArrayLength(n + size);
+      for i := 0 to size-1 do
+         FBits[n + i] := srcDyn.FBits[index + i];
+   end;
+end;
+
+// Reverse
+//
+procedure TScriptDynamicNativeBooleanArray.Reverse;
+var
+   i, j : Integer;
+   buf : Boolean;
+begin
+   i := 0;
+   j := FArrayLength-1;
+   while i < j do begin
+      buf := FBits[i];
+      FBits[i] := FBits[j];
+      FBits[j] := buf;
+      Inc(i);
+      Dec(j);
+   end;
+end;
+
+// Compare
+//
+function TScriptDynamicNativeBooleanArray.Compare(index1, index2 : Integer) : Integer;
+begin
+   Result := Ord(FBits[index1]) - Ord(FBits[index2]);
+end;
+
+// NaturalSort
+//
+procedure TScriptDynamicNativeBooleanArray.NaturalSort;
+var
+   i, j : Integer;
+begin
+   j := FArrayLength;
+   for i := 0 to FArrayLength-1 do begin
+      if FBits[i] then begin
+         Dec(j);
+         if i < j then
+            FBits[i] := False;
+      end;
+   end;
+   for i := j to FArrayLength-1 do
+      FBits[i] := True;
+end;
+
+// AddStrings
+//
+procedure TScriptDynamicNativeBooleanArray.AddStrings(sl : TStrings);
+begin
+   DynamicArrayAddStrings(Self, sl);
+end;
+
+// AsPDouble
+//
+function TScriptDynamicNativeBooleanArray.AsPDouble(var nbElements, stride : Integer) : PDouble;
+begin
+   Assert(False);
+   Result := nil;
+end;
+
+// GetAsFloat
+//
+function TScriptDynamicNativeBooleanArray.GetAsFloat(index : Integer) : Double;
+begin
+   Result := Ord(FBits[index]);
+end;
+
+// SetAsFloat
+//
+procedure TScriptDynamicNativeBooleanArray.SetAsFloat(index : Integer; const v : Double);
+begin
+   FBits[index] := (v <> 0);
+end;
+
+// GetAsInteger
+//
+function TScriptDynamicNativeBooleanArray.GetAsInteger(index : Integer) : Int64;
+begin
+   Result := Ord(FBits[index]);
+end;
+
+// SetAsInteger
+//
+procedure TScriptDynamicNativeBooleanArray.SetAsInteger(index : Integer; const v : Int64);
+begin
+   FBits[index] := (v <> 0);
+end;
+
+// GetAsBoolean
+//
+function TScriptDynamicNativeBooleanArray.GetAsBoolean(index : Integer) : Boolean;
+begin
+   Result := FBits[index];
+end;
+
+// SetAsBoolean
+//
+procedure TScriptDynamicNativeBooleanArray.SetAsBoolean(index : Integer; const v : Boolean);
+begin
+   FBits[index] := v;
+end;
+
+// SetAsVariant
+//
+procedure TScriptDynamicNativeBooleanArray.SetAsVariant(index : Integer; const v : Variant);
+begin
+   FBits[index] := VariantToBool(v);
+end;
+
+// EvalAsVariant
+//
+procedure TScriptDynamicNativeBooleanArray.EvalAsVariant(index : Integer; var result : Variant);
+begin
+   VarCopySafe(result, FBits[index]);
+end;
+
+// SetAsString
+//
+procedure TScriptDynamicNativeBooleanArray.SetAsString(index : Integer; const v : String);
+begin
+   FBits[index] := StringToBoolean(v);
+end;
+
+// EvalAsString
+//
+procedure TScriptDynamicNativeBooleanArray.EvalAsString(index : Integer; var result : String);
+begin
+   if FBits[index] then
+      result := 'True'
+   else result := 'False';
+end;
+
+// SetAsInterface
+//
+procedure TScriptDynamicNativeBooleanArray.SetAsInterface(index : Integer; const v : IUnknown);
+begin
+   Assert(False);
+end;
+
+// EvalAsInterface
+//
+procedure TScriptDynamicNativeBooleanArray.EvalAsInterface(index : Integer; var result : IUnknown);
+begin
+   Assert(False);
+end;
+
+// IsEmpty
+//
+function TScriptDynamicNativeBooleanArray.IsEmpty(addr : Integer) : Boolean;
+begin
+   Result := False;
+end;
+
+// VarType
+//
+function TScriptDynamicNativeBooleanArray.VarType(addr : Integer) : TVarType;
+begin
+   Result := varBoolean;
+end;
+
+// HashCode
+//
+function TScriptDynamicNativeBooleanArray.HashCode(addr : Integer; size : Integer) : Cardinal;
+var
+   i : Integer;
+begin
+   Result := cFNV_basis;
+   for i := 0 to FArrayLength-1 do
+      Result := (Result xor SimpleIntegerHash(Ord(FBits[i]))) * cFNV_prime;
+   if Result = 0 then
+      Result := cFNV_basis;
+end;
+
+// WriteToJSON
+//
+procedure TScriptDynamicNativeBooleanArray.WriteToJSON(writer : TdwsJSONWriter);
+var
+   i : Integer;
+begin
+   writer.BeginArray;
+   for i := 0 to FArrayLength-1 do
+      writer.WriteBoolean(FBits[i]);
    writer.EndArray;
 end;
 
