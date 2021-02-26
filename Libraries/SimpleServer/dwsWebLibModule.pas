@@ -192,6 +192,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesWebRequestMethodsContentFieldsEval(
       Info: TProgramInfo; ExtObject: TObject);
+    function dwsWebFunctionsPingIPv4FastEval(
+      const args: TExprBaseListExec): Variant;
   private
     { Private declarations }
     FServer :  IWebServerInfo;
@@ -204,7 +206,7 @@ implementation
 
 {$R *.dfm}
 
-uses dwsWinHTTP, dwsDynamicArrays;
+uses dwsWinHTTP, dwsDynamicArrays, dwsICMP;
 
 // WebServerSentEventToRawData
 //
@@ -1173,6 +1175,12 @@ begin
    if host = 'localhost' then
       info.ResultAsString := '127.0.0.1'
    else info.ResultAsDataString := ResolveName(host);
+end;
+
+function TdwsWebLib.dwsWebFunctionsPingIPv4FastEval(
+  const args: TExprBaseListExec): Variant;
+begin
+   Result := PingIPv4(args.AsString[0], args.AsInteger[1]);
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpRequestCleanUp(ExternalObject: TObject);
