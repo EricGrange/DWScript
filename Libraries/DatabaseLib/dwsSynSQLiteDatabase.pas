@@ -294,7 +294,7 @@ begin
    FFileSystem := fileSystem;
    if Length(parameters) > 0 then begin
       dbName := TdwsDataBase.ApplyPathVariables(parameters[0]);
-      if Assigned(fileSystem) then begin
+      if (dbName <> ':memory:') and Assigned(fileSystem) then begin
          validatedDBName := fileSystem.ValidateFileName(dbName);
          if validatedDBName = '' then
             raise ESQLite3Exception.CreateFmt('Database location not allowed "%s"', [ dbName ])
