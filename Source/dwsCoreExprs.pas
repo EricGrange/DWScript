@@ -3613,7 +3613,7 @@ end;
 //
 function TStringInOpStaticSetExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
-   i : Integer;
+   i : NativeInt;
    value : UnicodeString;
 begin
    FLeft.EvalAsUnicodeString(exec, value);

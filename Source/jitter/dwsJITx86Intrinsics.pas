@@ -53,6 +53,10 @@ type
       xmm_movsd      = $10
    );
 
+   TxmmOp_pd = (
+      xmm_andpd      = $54
+   );
+
    TgpRegister = (
       gprEAX = 0, gprECX = 1, gprEDX = 2, gprEBX = 3,
       gprESP = 4, gprEBP = 5, gprESI = 6, gprEDI = 7

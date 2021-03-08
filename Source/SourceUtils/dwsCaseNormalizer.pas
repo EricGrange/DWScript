@@ -52,13 +52,13 @@ type
    end;
 
    TSymbolLocations = class(TObjectList<TSymbolLocation>)
-      function CompareLocations(a, b : Integer) : Integer;
-      procedure Swap(a, b : Integer);
+      function CompareLocations(a, b : NativeInt) : Integer;
+      procedure Swap(a, b : NativeInt);
    end;
 
 // CompareLocations
 //
-function TSymbolLocations.CompareLocations(a, b : Integer) : Integer;
+function TSymbolLocations.CompareLocations(a, b : NativeInt) : Integer;
 var
    locA, locB : TSymbolLocation;
 begin
@@ -71,7 +71,7 @@ end;
 
 // Swap
 //
-procedure TSymbolLocations.Swap(a, b : Integer);
+procedure TSymbolLocations.Swap(a, b : NativeInt);
 var
    tmp : TSymbolLocation;
 begin

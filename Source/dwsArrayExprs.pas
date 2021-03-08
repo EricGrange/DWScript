@@ -141,9 +141,11 @@ type
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
+         function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          procedure EvalAsString(exec : TdwsExecution; var result : String); override;
+         procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
 
          function  SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
 
@@ -154,6 +156,7 @@ type
    TDynamicArrayVarExpr = class sealed (TDynamicArrayExpr)
       public
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
+         function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
          procedure EvalAsString(exec : TdwsExecution; var result : String); override;
 
@@ -1259,6 +1262,22 @@ begin
    Result := dyn.AsInteger[index];
 end;
 
+// EvalAsBoolean
+//
+function TDynamicArrayExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   dyn : IScriptDynArray;
+   index : Integer;
+begin
+   FBaseExpr.EvalAsScriptDynArray(exec, dyn);
+
+   index := IndexExpr.EvalAsInteger(exec);
+   if not dyn.BoundsCheckPassed(index) then
+      BoundsCheckFailed(exec, index);
+
+   Result := dyn.AsBoolean[index];
+end;
+
 // EvalAsFloat
 //
 function TDynamicArrayExpr.EvalAsFloat(exec : TdwsExecution) : Double;
@@ -1307,6 +1326,22 @@ begin
    dyn.EvalAsString(index, result);
 end;
 
+// EvalAsInterface
+//
+procedure TDynamicArrayExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
+var
+   dyn : IScriptDynArray;
+   index : Integer;
+begin
+   FBaseExpr.EvalAsScriptDynArray(exec, dyn);
+
+   index := IndexExpr.EvalAsInteger(exec);
+   if not dyn.BoundsCheckPassed(index) then
+      BoundsCheckFailed(exec, index);
+
+   dyn.EvalAsInterface(index, result);
+end;
+
 // SpecializeDataExpr
 //
 function TDynamicArrayExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
@@ -1353,6 +1388,22 @@ begin
       BoundsCheckFailed(exec, index);
 
    Result := IScriptDynArray(pIDyn^).AsInteger[index*FElementSize];
+end;
+
+// EvalAsBoolean
+//
+function TDynamicArrayVarExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   pIDyn : PIUnknown;
+   index : Integer;
+begin
+   pIDyn := exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FBaseExpr).StackAddr);
+
+   index := IndexExpr.EvalAsInteger(exec);
+   if not IScriptDynArray(pIDyn^).BoundsCheckPassed(index) then
+      BoundsCheckFailed(exec, index);
+
+   Result := IScriptDynArray(pIDyn^).AsBoolean[index*FElementSize];
 end;
 
 // EvalAsFloat
@@ -1427,18 +1478,13 @@ end;
 //
 procedure TDynamicArraySetExpr.EvalNoResult(exec : TdwsExecution);
 var
+   dyn : IScriptDynArray;
    index : Integer;
-   base : IScriptDynArray;
-   buf : Variant;
 begin
-   FArrayExpr.EvalAsScriptDynArray(exec, base);
-
+   ArrayExpr.EvalAsScriptDynArray(exec, dyn);
    index := IndexExpr.EvalAsInteger(exec);
-   if not base.BoundsCheckPassed(index) then
+   if not dyn.SetFromExpr(index, exec, ValueExpr) then
       BoundsCheckFailed(exec, index);
-
-   ValueExpr.EvalAsVariant(exec, buf);
-   base.AsVariant[index] := buf;
 end;
 
 // SpecializeProgramExpr
@@ -1481,16 +1527,13 @@ end;
 //
 procedure TDynamicArraySetVarExpr.EvalNoResult(exec : TdwsExecution);
 var
-   dyn : IScriptDynArray;
+   p : PIUnknown;
    index : Integer;
-   v : Variant;
 begin
-   ArrayExpr.EvalAsScriptDynArray(exec, dyn);
-   index:=IndexExpr.EvalAsInteger(exec);
-   if not dyn.BoundsCheckPassed(index) then
+   p := exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(ArrayExpr).StackAddr);
+   index := IndexExpr.EvalAsInteger(exec);
+   if not IScriptDynArray(p^).SetFromExpr(index, exec, ValueExpr) then
       BoundsCheckFailed(exec, index);
-   ValueExpr.EvalAsVariant(exec, v);
-   dyn.SetAsVariant(index, v);
 end;
 
 // ------------------
@@ -1928,9 +1971,9 @@ type
       FFuncPointer : IFuncPointer;
       FLeftAddr, FRightAddr : Integer;
       constructor Create(exec : TdwsExecution; const dyn : IScriptDynArray; compareFunc : TFuncPtrExpr);
-      function CompareData(index1, index2 : Integer) : Integer;
-      function CompareValue(index1, index2 : Integer) : Integer;
-      procedure Swap(index1, index2 : Integer);
+      function CompareData(index1, index2 : NativeInt) : Integer;
+      function CompareValue(index1, index2 : NativeInt) : Integer;
+      procedure Swap(index1, index2 : NativeInt);
    end;
 
 // Create
@@ -1948,7 +1991,7 @@ end;
 
 // CompareData
 //
-function TArraySortComparer.CompareData(index1, index2 : Integer) : Integer;
+function TArraySortComparer.CompareData(index1, index2 : NativeInt) : Integer;
 var
    dyn : TScriptDynamicDataArray;
 begin
@@ -1960,7 +2003,7 @@ end;
 
 // CompareValue
 //
-function TArraySortComparer.CompareValue(index1, index2 : Integer) : Integer;
+function TArraySortComparer.CompareValue(index1, index2 : NativeInt) : Integer;
 begin
    FDyn.EvalAsVariant(index1, FExec.Stack.Data[FLeftAddr]);
    FDyn.EvalAsVariant(index2, FExec.Stack.Data[FRightAddr]);
@@ -1969,7 +2012,7 @@ end;
 
 // Swap
 //
-procedure TArraySortComparer.Swap(index1, index2 : Integer);
+procedure TArraySortComparer.Swap(index1, index2 : NativeInt);
 begin
    FDyn.Swap(index1, index2);
 end;

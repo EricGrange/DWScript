@@ -43,6 +43,10 @@ var
 //   vmt_ScriptDynamicArray_IScriptObj_To_FData : Integer;
    vmt_ScriptObjInstance_IScriptObj_To_FData : Integer;
 
+   vmt_ScriptDynamicFloatArray_IScriptDynArray_To_DataPointer : Integer;
+   vmt_ScriptDynamicIntegerArray_IScriptDynArray_To_DataPointer : Integer;
+   vmt_ScriptDynamicInterfaceArray_IScriptDynArray_To_DataPointer : Integer;
+
    fld_TdwsExecution_Status : Integer;
 
 {$IF Defined(WIN32)}
@@ -95,20 +99,18 @@ end;
 
 procedure PrepareDynArrayIDataContextToFDataOffset;
 var
-   sda : TScriptDynamicArray;
    soi : TScriptObjInstance;
-   ia : IScriptDynArray;
    io : IScriptObj;
 begin
-   sda:=TScriptDynamicDataArray.Create(nil);
-   ia:=IScriptDynArray(sda);
-
-//   vmt_ScriptDynamicArray_IScriptObj_To_FData:=NativeInt(ia.AsPData)-NativeInt(ia);
+   vmt_ScriptDynamicFloatArray_IScriptDynArray_To_DataPointer := TScriptDynamicNativeFloatArray.InterfaceToDataOffset;
+   vmt_ScriptDynamicIntegerArray_IScriptDynArray_To_DataPointer := TScriptDynamicNativeIntegerArray.InterfaceToDataOffset;
+   vmt_ScriptDynamicInterfaceArray_IScriptDynArray_To_DataPointer := TScriptDynamicNativeInterfaceArray.InterfaceToDataOffset;
 
    soi:=TScriptObjInstance.Create(nil);
    io:=IScriptObj(soi);
 
    vmt_ScriptObjInstance_IScriptObj_To_FData:=NativeInt(io.AsPData)-NativeInt(io);
+
 end;
 
 // ------------------------------------------------------------------

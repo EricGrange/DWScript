@@ -33,18 +33,18 @@ type
    TUnicodeStringList = class
       private
          FItems : array of UnicodeString;
-         FCount : Integer;
+         FCount : NativeInt;
          FFlags : TUnicodeStringListFlags;
 
       protected
-         function GetString(index : Integer) : UnicodeString; inline;
-         procedure SetString(index : Integer; const v : UnicodeString); inline;
-         function GetValueFromIndex(index : Integer) : UnicodeString; inline;
+         function GetString(index : NativeInt) : UnicodeString; inline;
+         procedure SetString(index : NativeInt; const v : UnicodeString); inline;
+         function GetValueFromIndex(index : NativeInt) : UnicodeString; inline;
          function GetValue(const name : UnicodeString) : UnicodeString;
          procedure SetValue(const name, value: UnicodeString);
 
          function Compare(const s1, s2 : UnicodeString) : Integer; virtual;
-         function CompareIndex(index1, index2 : Integer) : Integer;
+         function CompareIndex(index1, index2 : NativeInt) : Integer;
 
          function GetSorted : Boolean;
          procedure SetSorted(const val : Boolean);
@@ -55,26 +55,26 @@ type
          procedure Assign(src : TUnicodeStringList);
          procedure AssignFromTStrings(src : TStrings);
 
-         function Add(const s : UnicodeString) : Integer;
-         procedure Insert(index : Integer; const s : UnicodeString);
+         function Add(const s : UnicodeString) : NativeInt;
+         procedure Insert(index : NativeInt; const s : UnicodeString);
 
-         procedure Delete(index : Integer);
+         procedure Delete(index : NativeInt);
          procedure Clear;
 
-         function Find(const s : UnicodeString; var index : Integer) : Boolean;
-         function IndexOf(const s : UnicodeString) : Integer;
+         function Find(const s : UnicodeString; var index : NativeInt) : Boolean;
+         function IndexOf(const s : UnicodeString) : NativeInt;
          function Contains(const s : UnicodeString) : Boolean; inline;
 
-         function FindName(const name : UnicodeString; var index : Integer) : Boolean;
-         function IndexOfName(const name : UnicodeString) : Integer;
+         function FindName(const name : UnicodeString; var index : NativeInt) : Boolean;
+         function IndexOfName(const name : UnicodeString) : NativeInt;
 
-         procedure Exchange(index1, index2 : Integer);
+         procedure Exchange(index1, index2 : NativeInt);
          procedure Sort;
 
-         property Strings[index : Integer] : UnicodeString read GetString write SetString; default;
+         property Strings[index : NativeInt] : UnicodeString read GetString write SetString; default;
          property Values[const name : UnicodeString] : UnicodeString read GetValue write SetValue;
-         property ValueFromIndex[index : Integer] : UnicodeString read GetValueFromIndex;
-         property Count : Integer read FCount;
+         property ValueFromIndex[index : NativeInt] : UnicodeString read GetValueFromIndex;
+         property Count : NativeInt read FCount;
 
          property Sorted : Boolean read GetSorted write SetSorted;
          property CaseSensitive : Boolean read GetCaseSensitive write SetCaseSensitive;
@@ -94,23 +94,23 @@ implementation
 
 // GetString
 //
-function TUnicodeStringList.GetString(index : Integer) : UnicodeString;
+function TUnicodeStringList.GetString(index : NativeInt) : UnicodeString;
 begin
    Result := FItems[index];
 end;
 
 // SetString
 //
-procedure TUnicodeStringList.SetString(index : Integer; const v : UnicodeString);
+procedure TUnicodeStringList.SetString(index : NativeInt; const v : UnicodeString);
 begin
    FItems[index] := v;
 end;
 
 // GetValueFromIndex
 //
-function TUnicodeStringList.GetValueFromIndex(index : Integer) : UnicodeString;
+function TUnicodeStringList.GetValueFromIndex(index : NativeInt) : UnicodeString;
 var
-   p : Integer;
+   p : NativeInt;
 begin
    p := Pos('=', FItems[index]);
    if p > 0 then
@@ -122,7 +122,7 @@ end;
 //
 function TUnicodeStringList.GetValue(const name : UnicodeString) : UnicodeString;
 var
-   i : Integer;
+   i : NativeInt;
 begin
    i := IndexOfName(name);
    if i >= 0 then
@@ -134,7 +134,7 @@ end;
 //
 procedure TUnicodeStringList.SetValue(const name, value: UnicodeString);
 var
-   i : Integer;
+   i : NativeInt;
 begin
    i := IndexOfName(name);
    if i >= 0 then
@@ -153,7 +153,7 @@ end;
 
 // CompareIndex
 //
-function TUnicodeStringList.CompareIndex(index1, index2 : Integer) : Integer;
+function TUnicodeStringList.CompareIndex(index1, index2 : NativeInt) : Integer;
 begin
    Result := Compare(FItems[index1], FItems[index2]);
 end;
@@ -201,7 +201,7 @@ end;
 //
 procedure TUnicodeStringList.Assign(src : TUnicodeStringList);
 var
-   i : Integer;
+   i : NativeInt;
 begin
    FCount := src.FCount;
    SetLength(FItems, FCount);
@@ -217,7 +217,7 @@ end;
 //
 procedure TUnicodeStringList.AssignFromTStrings(src : TStrings);
 var
-   i : Integer;
+   i : NativeInt;
 begin
    FCount := src.Count;
    SetLength(FItems, FCount);
@@ -229,7 +229,7 @@ end;
 
 // IndexOf
 //
-function TUnicodeStringList.IndexOf(const s : UnicodeString) : Integer;
+function TUnicodeStringList.IndexOf(const s : UnicodeString) : NativeInt;
 begin
    if usflSorted in FFlags then begin
       if Find(s, Result) then Exit;
@@ -249,9 +249,9 @@ end;
 
 // FindName
 //
-function TUnicodeStringList.FindName(const name : UnicodeString; var index : Integer) : Boolean;
+function TUnicodeStringList.FindName(const name : UnicodeString; var index : NativeInt) : Boolean;
 var
-   lo, hi, mid, cmp, n, nc : Integer;
+   lo, hi, mid, cmp, n, nc : NativeInt;
    initial : UnicodeString;
 begin
    Result := False;
@@ -282,9 +282,9 @@ end;
 
 // IndexOfName
 //
-function TUnicodeStringList.IndexOfName(const name : UnicodeString) : Integer;
+function TUnicodeStringList.IndexOfName(const name : UnicodeString) : NativeInt;
 var
-   n, nc : Integer;
+   n, nc : NativeInt;
 begin
    if not Sorted then begin
       n:=Length(name);
@@ -303,7 +303,7 @@ end;
 
 // Add
 //
-function TUnicodeStringList.Add(const s : UnicodeString) : Integer;
+function TUnicodeStringList.Add(const s : UnicodeString) : NativeInt;
 begin
    if usflSorted in FFlags then begin
       Find(s, Result);
@@ -319,7 +319,7 @@ end;
 
 // Insert
 //
-procedure TUnicodeStringList.Insert(index : Integer; const s : UnicodeString);
+procedure TUnicodeStringList.Insert(index : NativeInt; const s : UnicodeString);
 begin
    if FCount = Length(FItems) then
       SetLength(FItems, (FCount div 4)+4);
@@ -332,9 +332,9 @@ end;
 
 // Delete
 //
-procedure TUnicodeStringList.Delete(index : Integer);
+procedure TUnicodeStringList.Delete(index : NativeInt);
 var
-   n : Integer;
+   n : NativeInt;
 begin
    FItems[index] := '';
    n := FCount-index-1;
@@ -352,9 +352,9 @@ end;
 
 // Find
 //
-function TUnicodeStringList.Find(const s : UnicodeString; var index : Integer) : Boolean;
+function TUnicodeStringList.Find(const s : UnicodeString; var index : NativeInt) : Boolean;
 var
-   low, high, mid, cmp : Integer;
+   low, high, mid, cmp : NativeInt;
 begin
    Result := False;
    low := 0;
@@ -376,7 +376,7 @@ end;
 
 // Exchange
 //
-procedure TUnicodeStringList.Exchange(index1, index2 : Integer);
+procedure TUnicodeStringList.Exchange(index1, index2 : NativeInt);
 var
    p1, p2 : PPointer;
    buf : Pointer;

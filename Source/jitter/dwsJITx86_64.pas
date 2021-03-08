@@ -153,6 +153,7 @@ type
       function NewGPOpRegImm(const op : TgpOp; reg : TgpRegister64; const value : Int64) : TStaticDataFixup;
       function NewNegRegImm(reg : TxmmRegister) : TStaticDataFixup;
       function NewXMMOpRegImm(op : TxmmOp; reg : TxmmRegister; const value : Double) : TStaticDataFixup;
+      function NewXMMOpRegPDImm(op : TxmmOp_pd; reg : TxmmRegister; const value1, value2 : Double) : TStaticDataFixup;
 
       function AddStaticData(const data : UInt64) : Integer;
       function AddStaticData128(const data1, data2 : UInt64) : Integer;
@@ -234,6 +235,7 @@ type
          procedure CompileAssignExprToInteger(dest, source : TTypedExpr);
 
          function CompileScriptObj(expr : TTypedExpr) : TgpRegister64;
+         function CompileScriptDynArray(expr : TTypedExpr) : TgpRegister64;
 
          procedure CompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup);
 
@@ -393,19 +395,19 @@ type
       procedure DoCompileAssignFloat(expr : TTypedExpr; source : TxmmRegister); override;
 //      procedure CompileAssignInteger(expr : TTypedExpr; source : Integer); override;
    end;
-(*   Tx86DynamicArrayBase = class (Tx86ArrayBase)
-      function CompileAsData(expr : TTypedExpr) : TgpRegister64;
-      function CompileAsItemPtr(base, index : TTypedExpr; var offset : Integer) : TgpRegister64;
+
+   Tx86DynamicArrayBase = class (Tx86ArrayBase)
+      function CompileAsData(expr : TTypedExpr; elementType : TVarType) : TgpRegister64;
+      function CompileAsItemPtr(base, index : TTypedExpr; var offset : Integer; elementType : TVarType) : TgpRegister64;
    end;
    Tx86DynamicArray = class (Tx86DynamicArrayBase)
       function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
-//      function CompileInteger(expr : TTypedExpr) : Integer; override;
-//      function CompileScriptObj(expr : TTypedExpr) : Integer; override;
+      function DoCompileInteger(expr : TTypedExpr) : TgpRegister64; override;
+      function DoCompileScriptObj(expr : TTypedExpr) : TgpRegister64; override;
    end;
    Tx86DynamicArraySet = class (Tx86DynamicArrayBase)
       procedure CompileStatement(expr : TExprBase); override;
    end;
-   *)
 
    Tx86AssignConstToFloatVar = class (TdwsJITter_x86)
       procedure CompileStatement(expr : TExprBase); override;
@@ -630,14 +632,14 @@ type
          procedure DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup); override;
          function CompileBooleanValue(expr : TTypedExpr) : Integer; override;
    end;
-{
+
    Tx86AbsIntFunc = class (TdwsJITter_x86)
-      function CompileInteger(expr : TTypedExpr) : Integer; override;
+      function DoCompileInteger(expr : TTypedExpr) : TgpRegister64; override;
    end;
    Tx86AbsFloatFunc = class (TdwsJITter_x86)
       function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
    end;
-}
+
    Tx86SqrtFunc = class (Tx86MagicFunc)
       function DoCompileFloat(expr : TTypedExpr) : TxmmRegister; override;
    end;
@@ -830,10 +832,10 @@ begin
    RegisterJITter(TVarParamParentExpr,          FInterpretedJITter.IncRefCount);
 
    RegisterJITter(TStaticArrayExpr,             Tx86StaticArray.Create(Self));
-   RegisterJITter(TDynamicArrayExpr,            FInterpretedJITter.IncRefCount); //Tx86DynamicArray.Create(Self));
-   RegisterJITter(TDynamicArrayVarExpr,         FInterpretedJITter.IncRefCount); //Tx86DynamicArray.Create(Self));
-   RegisterJITter(TDynamicArraySetExpr,         FInterpretedJITter.IncRefCount); //Tx86DynamicArraySet.Create(Self));
-   RegisterJITter(TDynamicArraySetVarExpr,      FInterpretedJITter.IncRefCount); //Tx86DynamicArraySet.Create(Self));
+   RegisterJITter(TDynamicArrayExpr,            Tx86DynamicArray.Create(Self));
+   RegisterJITter(TDynamicArrayVarExpr,         Tx86DynamicArray.Create(Self));
+   RegisterJITter(TDynamicArraySetExpr,         Tx86DynamicArraySet.Create(Self));
+   RegisterJITter(TDynamicArraySetVarExpr,      Tx86DynamicArraySet.Create(Self));
    RegisterJITter(TDynamicArraySetDataExpr,     FInterpretedJITter.IncRefCount);
 
    RegisterJITter(TArrayLengthExpr,             FInterpretedJITter.IncRefCount);
@@ -1000,7 +1002,7 @@ begin
    RegisterJITter(TRelNotEqualBoolExpr,         FInterpretedJITter.IncRefCount);
 
    RegisterJITter(TRelEqualMetaExpr,            Tx86RelEqualInt.Create(Self));
-   RegisterJITter(TRelNotEqualMetaExpr,         FInterpretedJITter.IncRefCount);// Tx86RelNotEqualInt.Create(Self));
+   RegisterJITter(TRelNotEqualMetaExpr,         Tx86RelNotEqualInt.Create(Self));
 
    RegisterJITter(TRelVarEqualNilExpr,          FInterpretedJITter.IncRefCount);
    RegisterJITter(TRelVarNotEqualNilExpr,       FInterpretedJITter.IncRefCount);
@@ -1066,8 +1068,8 @@ begin
    RegisterJITter(TMagicIntFuncExpr,            Tx86MagicFunc.Create(Self));
    RegisterJITter(TMagicBoolFuncExpr,           Tx86MagicFunc.Create(Self));
 
-   RegisterJITter(TAbsIntFunc,                  FInterpretedJITter.IncRefCount);// Tx86AbsIntFunc.Create(Self));
-   RegisterJITter(TAbsFloatFunc,                FInterpretedJITter.IncRefCount);// Tx86AbsFloatFunc.Create(Self));
+   RegisterJITter(TAbsIntFunc,                  Tx86AbsIntFunc.Create(Self));
+   RegisterJITter(TAbsFloatFunc,                Tx86AbsFloatFunc.Create(Self));
 
    RegisterJITter(TSqrtFunc,                    Tx86SqrtFunc.Create(Self));
    RegisterJITter(TSqrFloatFunc,                Tx86SqrFloatFunc.Create(Self));
@@ -1540,6 +1542,13 @@ end;
 function TdwsJITx86_64.CompileScriptObj(expr : TTypedExpr) : TgpRegister64;
 begin
    Result := TgpRegister64(inherited CompileScriptObj(expr));
+end;
+
+// CompileScriptDynArray
+//
+function TdwsJITx86_64.CompileScriptDynArray(expr : TTypedExpr) : TgpRegister64;
+begin
+   Result := TgpRegister64(inherited CompileScriptDynArray(expr));
 end;
 
 // CompileBoolean
@@ -2391,6 +2400,19 @@ begin
    AddFixup(Result);
 end;
 
+// NewXMMOpRegPDImm
+//
+function Tx86_64FixupLogicHelper.NewXMMOpRegPDImm(op : TxmmOp_pd; reg : TxmmRegister; const value1, value2 : Double) : TStaticDataFixup;
+begin
+   if reg < xmm8 then
+      Result := TStaticDataFixup.Create([$66, $0F, Ord(op), $05 + 8*(Ord(reg) and 7)])
+   else Result := TStaticDataFixup.Create([$66, $44, $0F, Ord(op), $05 + 8*(Ord(reg) and 7)]);
+   Assert(reg in [xmm0..High(TxmmRegister)]);
+   Result.Logic := Self;
+   Result.DataIndex := AddStaticData128(PUInt64(@value1)^, PUInt64(@value2)^);
+   AddFixup(Result);
+end;
+
 // AddStaticData
 //
 function Tx86_64FixupLogicHelper.AddStaticData(const data : UInt64) : Integer;
@@ -2554,7 +2576,7 @@ end;
 //
 procedure TdwsJITter_x86.DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup);
 begin
-   jit.OutputFailedOn:=expr;
+   jit.OutputFailedOn := expr;
 end;
 
 // ------------------
@@ -4037,59 +4059,83 @@ begin
    end else inherited;
 end;
 }
+
 // ------------------
 // ------------------ Tx86DynamicArrayBase ------------------
 // ------------------
-(*
+
 // CompileAsData
 //
-function Tx86DynamicArrayBase.CompileAsData(expr : TTypedExpr) : TgpRegister64;
+function Tx86DynamicArrayBase.CompileAsData(expr : TTypedExpr; elementType : TVarType) : TgpRegister64;
 var
-   regObj : TgpRegister64;
+   regDyn : TgpRegister64;
 begin
-   regObj := jit.CompileScriptObj(expr);
-   jit.ReleaseGPReg(regObj);
+   regDyn := jit.CompileScriptDynArray(expr);
+   jit.ReleaseGPReg(regDyn);
    Result := jit.AllocGPReg(nil);
-   x86._mov_reg_qword_ptr_reg(Result, regObj, vmt_ScriptDynamicArray_IScriptObj_To_FData);
+   case elementType of
+      varDouble :
+         x86._mov_reg_qword_ptr_reg(Result, regDyn, vmt_ScriptDynamicFloatArray_IScriptDynArray_To_DataPointer);
+      varInt64 :
+         x86._mov_reg_qword_ptr_reg(Result, regDyn, vmt_ScriptDynamicIntegerArray_IScriptDynArray_To_DataPointer);
+      varUnknown :
+         x86._mov_reg_qword_ptr_reg(Result, regDyn, vmt_ScriptDynamicInterfaceArray_IScriptDynArray_To_DataPointer);
+   else
+      Assert(False);
+   end;
 end;
 
 // CompileAsItemPtr
 //
-function Tx86DynamicArrayBase.CompileAsItemPtr(base, index : TTypedExpr; var offset : Integer) : TgpRegister64;
+function Tx86DynamicArrayBase.CompileAsItemPtr(base, index : TTypedExpr; var offset : Integer; elementType : TVarType) : TgpRegister64;
 var
    indexClass : TClass;
+   elementSize : Integer;
 begin
+   case elementType of
+      varDouble  : elementSize := SizeOf(Double);
+      varInt64   : elementSize := SizeOf(Int64);
+      varUnknown : elementSize := SizeOf(IUnknown);
+   else
+      elementSize := 0;
+      Assert(False);
+   end;
+
    indexClass := index.ClassType;
    if indexClass = TAddIntExpr then begin
       if TAddIntExpr(index).Right.ClassType = TConstIntExpr then begin
-         Result := CompileAsItemPtr(base, TAddIntExpr(index).Left, offset);
-         offset := offset + TConstIntExpr(TAddIntExpr(index).Right).Value * SizeOf(Variant);
+         offset := offset + TConstIntExpr(TAddIntExpr(index).Right).Value * elementSize;
+         Result := CompileAsItemPtr(base, TAddIntExpr(index).Left, offset, elementType);
          Exit;
       end;
    end else if indexClass = TSubIntExpr then begin
       if TSubIntExpr(index).Right.ClassType = TConstIntExpr then begin
-         Result := CompileAsItemPtr(base, TSubIntExpr(index).Left, offset);
-         offset := offset - TConstIntExpr(TSubIntExpr(index).Right).Value * SizeOf(Variant);
+         offset := offset - TConstIntExpr(TSubIntExpr(index).Right).Value * elementSize;
+         Result := CompileAsItemPtr(base, TSubIntExpr(index).Left, offset, elementType);
          Exit;
       end;
    end;
 
-   Result := CompileAsData(base);
-
-   offset := cVariant_DataOffset;
+   Result := CompileAsData(base, elementType);
 
    if index is TConstIntExpr then begin
 
-      x86._add_reg_imm(Result, TConstIntExpr(index).Value * SizeOf(Variant));
+      x86._add_reg_imm(Result, TConstIntExpr(index).Value * elementSize);
 
    end else begin
 
       var regIdx := jit.CompileIntegerToRegister(index);
-      x86._imul_reg_reg_imm(gprRAX, regIdx, SizeOf(Variant));
-      jit.ReleaseGPReg(regIdx);
-      x86._add_reg_reg(Result, gprRAX);
+      if (elementSize in [ 1, 2, 4, 8 ]) and not (regIdx in [ gprRSP, gprR12 ]) then begin
+         x86._lea_reg_ptr_indexed_reg(Result, Result, regIdx, elementSize, offset);
+         jit.ReleaseGPReg(regIdx);
+         offset := 0;
+      end else begin
+         x86._imul_reg_reg_imm(gprRAX, regIdx, elementSize);
+         jit.ReleaseGPReg(regIdx);
+         x86._add_reg_reg(Result, gprRAX);
+      end;
 
-    end;
+   end;
 end;
 
 // ------------------
@@ -4104,11 +4150,12 @@ var
    regPtr : TgpRegister64;
    offset : Integer;
 begin
-   e:=TDynamicArrayExpr(expr);
+   e := TDynamicArrayExpr(expr);
 
    if jit.IsFloat(e) then begin
 
-      regPtr := CompileAsItemPtr(e.BaseExpr, e.IndexExpr, offset);
+      offset := 0;
+      regPtr := CompileAsItemPtr(e.BaseExpr, e.IndexExpr, offset, varDouble);
 
       Result := jit.AllocXMMReg(e);
       x86._movsd_reg_qword_ptr_reg(Result, regPtr, offset);
@@ -4117,39 +4164,54 @@ begin
 
    end else Result:=inherited;
 end;
-{
-// CompileInteger
+
+
+// DoCompileInteger
 //
-function Tx86DynamicArray.CompileInteger(expr : TTypedExpr) : Integer;
+function Tx86DynamicArray.DoCompileInteger(expr : TTypedExpr) : TgpRegister64;
 var
    e : TDynamicArrayExpr;
-   delta : Integer;
+   regPtr : TgpRegister64;
+   offset : Integer;
 begin
-   e:=TDynamicArrayExpr(expr);
+   e := TDynamicArrayExpr(expr);
 
-   CompileAsItemPtr(e, delta);
+   if jit.IsInteger(e) then begin
 
-   x86._mov_reg_qword_ptr_indexed(gprRAW, gprRAX, gprRDX, 1, delta);
+      offset := 0;
+      regPtr := CompileAsItemPtr(e.BaseExpr, e.IndexExpr, offset, varInt64);
 
-   Result:=0;
+      Result := jit.AllocGPReg(e);
+      x86._mov_reg_qword_ptr_reg(Result, regPtr, offset);
+
+      jit.ReleaseGPReg(regPtr);
+
+   end else Result := inherited;
 end;
 
-// CompileScriptObj
+// DoCompileScriptObj
 //
-function Tx86DynamicArray.CompileScriptObj(expr : TTypedExpr) : Integer;
+function Tx86DynamicArray.DoCompileScriptObj(expr : TTypedExpr) : TgpRegister64;
 var
    e : TDynamicArrayExpr;
-   delta : Integer;
+   regPtr : TgpRegister64;
+   offset : Integer;
 begin
-   e:=TDynamicArrayExpr(expr);
+   e := TDynamicArrayExpr(expr);
 
-   CompileAsItemPtr(e, delta);
+   if jit.IsDynamicArray(e) then begin
 
-   x86._mov_reg_qword_ptr_indexed(gprRAW, gprRAX, gprRDX, 1, delta);
+      offset := 0;
+      regPtr := CompileAsItemPtr(e.BaseExpr, e.IndexExpr, offset, varUnknown);
 
-   Result:=0;
+      Result := jit.AllocGPReg(e);
+      x86._mov_reg_qword_ptr_reg(Result, regPtr, offset);
+
+      jit.ReleaseGPReg(regPtr);
+
+   end else Result := inherited;
 end;
-}
+
 // ------------------
 // ------------------ Tx86DynamicArraySet ------------------
 // ------------------
@@ -4159,23 +4221,37 @@ end;
 procedure Tx86DynamicArraySet.CompileStatement(expr : TExprBase);
 var
    e : TDynamicArraySetExpr;
-   reg : TxmmRegister;
+   regValueFloat : TxmmRegister;
+   regValueGP : TgpRegister64;
    regPtr : TgpRegister64;
    offset : Integer;
+   elementTypeClass : TClass;
 begin
    e:=TDynamicArraySetExpr(expr);
 
-   if jit.IsFloat(e.ArrayExpr.Typ.Typ) then begin
+   elementTypeClass := e.ArrayExpr.Typ.Typ.UnAliasedType.ClassType;
 
-      regPtr := CompileAsItemPtr(e.ArrayExpr, e.IndexExpr, offset);
-      reg := jit.CompileFloat(e.ValueExpr);
-      x86._movsd_qword_ptr_reg_reg(regPtr, offset, reg);
-      jit.ReleaseXMMReg(reg);
+   if elementTypeClass = TBaseIntegerSymbol then begin
+
+      offset := 0;
+      regPtr := CompileAsItemPtr(e.ArrayExpr, e.IndexExpr, offset, varInt64);
+      regValueGP := jit.CompileIntegerToRegister(e.ValueExpr);
+      x86._mov_qword_ptr_reg_reg(regPtr, offset, regValueGP);
+      jit.ReleaseGPReg(regValueGP);
+      jit.ReleaseGPReg(regPtr);
+
+   end else if elementTypeClass = TBaseFloatSymbol then begin
+
+      offset := 0;
+      regPtr := CompileAsItemPtr(e.ArrayExpr, e.IndexExpr, offset, varDouble);
+      regValueFloat := jit.CompileFloat(e.ValueExpr);
+      x86._movsd_qword_ptr_reg_reg(regPtr, offset, regValueFloat);
+      jit.ReleaseXMMReg(regValueFloat);
       jit.ReleaseGPReg(regPtr);
 
    end else inherited;
 end;
-*)
+
 // ------------------
 // ------------------ Tx86NegInt ------------------
 // ------------------
@@ -5200,26 +5276,37 @@ begin
    x86._op_reg_imm(gpOp_and, gprRAX, 1);
    Result:=0;
 end;
-{
+
 // ------------------
 // ------------------ Tx86AbsIntFunc ------------------
 // ------------------
 
-// CompileInteger
+// DoCompileInteger
 //
-function Tx86AbsIntFunc.CompileInteger(expr : TTypedExpr) : Integer;
+function Tx86AbsIntFunc.DoCompileInteger(expr : TTypedExpr) : TgpRegister64;
 var
    jump : TFixupJump;
+   opReg : TgpRegister64;
 begin
-   Result := jit.CompileInteger(TMagicFuncExpr(expr).Args[0] as TTypedExpr);
+   opReg := jit.CompileIntegerToRegister(TMagicFuncExpr(expr).Args[0] as TTypedExpr);
 
-   x86._test_reg_reg(gprEDX, gprEDX);
+   x86._test_reg_reg(opReg, opReg);
 
-   jump:=jit.Fixups.NewJump(flagsNL);
+   if jit.IsSymbolGPReg(opReg) then begin
 
-   x86._neg_reg(gprEDX);
-   x86._neg_reg(gprEAX);
-   x86._sbb_reg_int32(gprEDX, 0);
+      Result := jit.AllocGPReg(expr);
+      x86._mov_reg_reg(Result, opReg);
+      jit.ReleaseGPReg(opReg);
+
+   end else begin
+
+      Result := opReg;
+      jit.SetContainsGPReg(Result, expr);
+
+   end;
+   jump := jit.Fixups.NewJump(flagsNL);
+
+   x86._neg_reg(Result);
 
    jump.NewTarget(False);
 end;
@@ -5231,16 +5318,30 @@ end;
 // DoCompileFloat
 //
 function Tx86AbsFloatFunc.DoCompileFloat(expr : TTypedExpr) : TxmmRegister;
+const
+   cAbsMask : array [0..SizeOf(Double)-1] of Byte = ( $FF, $FF, $FF, $FF, $FF, $FF, $FF, $7F );
+var
+   opReg : TxmmRegister;
 begin
-   Result:=jit.CompileFloat(TMagicFuncExpr(expr).Args[0] as TTypedExpr);
+   opReg := jit.CompileFloat(TMagicFuncExpr(expr).Args[0] as TTypedExpr);
+
+   if jit.IsSymbolXMMReg(opReg) then begin
+
+      Result := jit.AllocXMMReg(expr);
+      x86._movsd_reg_reg(Result, opReg);
+      jit.ReleaseXMMReg(opReg);
+
+   end else begin
+
+      Result := opReg;
+      jit.SetContainsXMMReg(Result, expr);
+
+   end;
 
    // andpd Result, dqword ptr [AbsMask]
-   x86.WriteBytes([$66, $0F, $54, $05+Ord(Result)*8]);
-   x86.WritePointer(jit.AbsMaskPD);
-
-   jit.ContainsXMMReg(Result, expr);
+   jit.Fixups.NewXMMOpRegPDImm(xmm_andpd, Result, PDouble(@cAbsMask)^, PDouble(@cAbsMask)^);
 end;
-}
+
 // ------------------
 // ------------------ Tx86SqrtFunc ------------------
 // ------------------

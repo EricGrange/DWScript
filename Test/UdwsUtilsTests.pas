@@ -822,14 +822,14 @@ end;
 type
    TSortable = class
       Items : array of Integer;
-      function Compare(i1, i2 : Integer) : Integer;
-      procedure Swap(i1, i2 : Integer);
+      function Compare(i1, i2 : NativeInt) : Integer;
+      procedure Swap(i1, i2 : NativeInt);
    end;
-function TSortable.Compare(i1, i2 : Integer) : Integer;
+function TSortable.Compare(i1, i2 : NativeInt) : Integer;
 begin
    Result:=Items[i1]-Items[i2];
 end;
-procedure TSortable.Swap(i1, i2 : Integer);
+procedure TSortable.Swap(i1, i2 : NativeInt);
 var
    t : Integer;
 begin

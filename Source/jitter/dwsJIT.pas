@@ -231,6 +231,7 @@ type
          function  CompileBooleanValue(expr : TTypedExpr) : Integer;
          procedure CompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup);
          function  CompileScriptObj(expr : TTypedExpr) : Integer;
+         function  CompileScriptDynArray(expr : TTypedExpr) : Integer;
 
          procedure CompileAssignFloat(expr : TTypedExpr; source : Integer);
          procedure CompileAssignInteger(expr : TTypedExpr; source : Integer);
@@ -240,6 +241,8 @@ type
          function IsFloat(typ : TTypeSymbol) : Boolean; overload;
          function IsInteger(expr : TTypedExpr) : Boolean; overload;
          function IsBoolean(expr : TTypedExpr) : Boolean; overload;
+         function IsDynamicArray(expr : TTypedExpr) : Boolean; overload;
+         function IsInterface(expr : TTypedExpr) : Boolean; overload;
 
          property LoopContext : TJITLoopContext read FLoopContext;
          property ExitTarget : TFixupTarget read FExitTarget;
@@ -508,7 +511,7 @@ begin
    FTempReg.Expr:=exprClass;
    if FRegistered.Find(FTempReg, i) then
       Result:=FRegistered.Items[i].JIT
-   else Result:=nil;
+   else Result := nil;
 end;
 
 // FindJITter
@@ -658,6 +661,19 @@ begin
    end else Result:=jit.CompileScriptObj(expr);
 end;
 
+// CompileScriptDynArray
+//
+function TdwsJIT.CompileScriptDynArray(expr : TTypedExpr) : Integer;
+var
+   jit : TdwsJITter;
+begin
+   jit:=FindJITter(expr);
+   if jit=nil then begin
+      OutputFailedOn:=expr;
+      Result:=0;
+   end else Result:=jit.CompileScriptObj(expr);
+end;
+
 // CompileAssignFloat
 //
 procedure TdwsJIT.CompileAssignFloat(expr : TTypedExpr; source : Integer);
@@ -720,6 +736,26 @@ end;
 function TdwsJIT.IsBoolean(expr : TTypedExpr) : Boolean;
 begin
    Result:=(expr.Typ.UnAliasedType.ClassType=TBaseBooleanSymbol);
+end;
+
+// IsDynamicArray
+//
+function TdwsJIT.IsDynamicArray(expr : TTypedExpr) : Boolean;
+var
+   ct : TClass;
+begin
+   ct := expr.Typ.UnAliasedType.ClassType;
+   Result := (ct = TDynamicArraySymbol);
+end;
+
+// IsInterface
+//
+function TdwsJIT.IsInterface(expr : TTypedExpr) : Boolean;
+var
+   ct : TClass;
+begin
+   ct := expr.Typ.UnAliasedType.ClassType;
+   Result := (ct = TClassSymbol) or (ct = TDynamicArraySymbol) or (ct = TInterfaceSymbol);
 end;
 
 // EnterLoop

@@ -215,7 +215,6 @@ end;
 procedure PrepareRTTIRawAttributes(info : TProgramInfo; var scriptDynArray : IScriptDynArray);
 var
    typRawAttribute : TRecordSymbol;
-   dynArray : TScriptDynamicDataArray;
    attributes : TdwsSymbolAttributes;
    publishedSymbols : TSimpleSymbolList;
    i, n : Integer;
@@ -231,9 +230,8 @@ var
    buf : Variant;
 begin
    typRawAttribute:=info.Execution.Prog.Table.FindTypeSymbol(SYS_TRTTIRAWATTRIBUTE, cvPublic) as TRecordSymbol;
-   dynArray:=TScriptDynamicDataArray.Create(typRawAttribute);
-   scriptDynArray:=dynArray;
-   info.Execution.RTTIRawAttributes:=scriptDynArray;
+   scriptDynArray := CreateNewDynamicArray(typRawAttribute);
+   info.Execution.RTTIRawAttributes := scriptDynArray;
 
    rttiPropertyAttributeCreate:=Info.Vars[SYS_RTTIPROPERTYATTRIBUTE].Method[SYS_TOBJECT_CREATE];
    rttiMethodAttributeCreate:=Info.Vars[SYS_RTTIMETHODATTRIBUTE].Method[SYS_TOBJECT_CREATE];
@@ -241,43 +239,43 @@ begin
    publishedSymbols:=info.Execution.Prog.CollectAllPublishedSymbols(False);
    try
 
-      attributes:=info.Execution.Prog.Attributes;
+      attributes := info.Execution.Prog.Attributes;
 
-      dynArray.ArrayLength:=attributes.Count+publishedSymbols.Count*2;
+      scriptDynArray.ArrayLength := attributes.Count+publishedSymbols.Count*2;
 
       for i:=0 to attributes.Count-1 do begin
          attrib:=attributes[i];
          symbolClassType:=attrib.Symbol.ClassType;
          if symbolClassType=TClassSymbol then begin
-            dynArray.AsInteger[i*2]:=Int64(attrib.Symbol);
+            scriptDynArray.AsInteger[i*2] := Int64(attrib.Symbol);
             attrib.AttributeConstructor.EvalAsVariant(info.Execution, buf);
-            dynArray.AsVariant[i*2+1] := buf;
+            scriptDynArray.AsVariant[i*2+1] := buf;
          end else Assert(False);
       end;
 
-      n:=attributes.Count*2;
-      for i:=0 to publishedSymbols.Count-1 do begin
-         symbol:=publishedSymbols[i];
-         symbolClassType:=symbol.ClassType;
-         if symbolClassType=TPropertySymbol then begin
-            propertySymbol:=TPropertySymbol(symbol);
-            dynArray.AsInteger[n]:=Int64(propertySymbol.OwnerSymbol);
+      n := attributes.Count*2;
+      for i := 0 to publishedSymbols.Count-1 do begin
+         symbol := publishedSymbols[i];
+         symbolClassType := symbol.ClassType;
+         if symbolClassType = TPropertySymbol then begin
+            propertySymbol := TPropertySymbol(symbol);
+            scriptDynArray.AsInteger[n] := Int64(propertySymbol.OwnerSymbol);
             attribute:=rttiPropertyAttributeCreate.Call;
-            dynArray.AsVariant[n+1]:=attribute.Value;
-            attribute.ExternalObject:=propertySymbol;
+            scriptDynArray.AsVariant[n+1] := attribute.Value;
+            attribute.ExternalObject := propertySymbol;
             Inc(n, 2);
          end else if symbolClassType=TFieldSymbol then begin
             fieldSymbol:=TFieldSymbol(symbol);
-            dynArray.AsInteger[n]:=Int64(fieldSymbol.StructSymbol);
+            scriptDynArray.AsInteger[n]:=Int64(fieldSymbol.StructSymbol);
             attribute:=rttiPropertyAttributeCreate.Call;
-            dynArray.AsVariant[n+1]:=attribute.Value;
+            scriptDynArray.AsVariant[n+1]:=attribute.Value;
             attribute.ExternalObject:=fieldSymbol;
             Inc(n, 2);
          end else if symbolClassType.InheritsFrom(TMethodSymbol) then begin
             methSymbol:=TMethodSymbol(symbol);
-            dynArray.AsInteger[n]:=Int64(methSymbol.StructSymbol);
+            scriptDynArray.AsInteger[n]:=Int64(methSymbol.StructSymbol);
             attribute:=rttiMethodAttributeCreate.Call;
-            dynArray.AsVariant[n+1]:=attribute.Value;
+            scriptDynArray.AsVariant[n+1]:=attribute.Value;
             attribute.ExternalObject:=methSymbol;
             Inc(n, 2);
          end;

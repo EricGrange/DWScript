@@ -334,6 +334,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsDynamicArrays;
+
 // Gcd
 //
 function Gcd(a, b : Int64) : Int64;
@@ -985,11 +987,11 @@ end;
 //
 procedure TFloatArrayProcessFunc.DoEvalAsDynArray(const args : TExprBaseListExec; var result : IScriptDynArray);
 var
-   n, stride : Integer;
+   n, stride : NativeInt;
    p : PDouble;
 begin
    args.EvalAsDynArray(0, result);
-   p := result.AsPDouble(n, stride);
+   p := (result as IPDoubleArray).AsPDouble(n, stride);
    if p <> nil then
       DoProcess(p, n, stride, args);
 end;

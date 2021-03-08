@@ -2186,73 +2186,74 @@ type
       function GetElementType : TTypeSymbol;
       property ElementType : TTypeSymbol read GetElementType;
 
-      function GetArrayLength : Integer;
-      procedure SetArrayLength(n : Integer);
-      property ArrayLength : Integer read GetArrayLength write SetArrayLength;
+      function GetArrayLength : NativeInt;
+      procedure SetArrayLength(n : NativeInt);
+      property ArrayLength : NativeInt read GetArrayLength write SetArrayLength;
 
-      function BoundsCheckPassed(index : Integer) : Boolean;
+      function BoundsCheckPassed(index : NativeInt) : Boolean;
 
       function ToStringArray : TStringDynArray;
       function ToInt64Array : TInt64DynArray;
       function ToData : TData;
 
-      procedure Insert(index : Integer);
-      procedure Delete(index, count : Integer);
-      procedure MoveItem(source, destination : Integer);
-      procedure Swap(index1, index2 : Integer);
+      procedure Insert(index : NativeInt);
+      procedure Delete(index, count : NativeInt);
+      procedure MoveItem(source, destination : NativeInt);
+      procedure Swap(index1, index2 : NativeInt);
 
-      function IndexOfValue(const item : Variant; fromIndex : Integer) : Integer;
-      function IndexOfInteger(item : Int64; fromIndex : Integer) : Integer;
-      function IndexOfFloat(item : Double; fromIndex : Integer) : Integer;
-      function IndexOfString(const item : String; fromIndex : Integer) : Integer;
-      function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
+      function IndexOfValue(const item : Variant; fromIndex : NativeInt) : NativeInt;
+      function IndexOfInteger(item : Int64; fromIndex : NativeInt) : NativeInt;
+      function IndexOfFloat(item : Double; fromIndex : NativeInt) : NativeInt;
+      function IndexOfString(const item : String; fromIndex : NativeInt) : NativeInt;
+      function IndexOfInterface(const item : IUnknown; fromIndex : NativeInt) : NativeInt;
+      function IndexOfFuncPtr(const item : Variant; fromIndex : NativeInt) : NativeInt;
 
-      procedure WriteData(const src : TData; srcAddr, size : Integer);
+      procedure WriteData(const src : TData; srcAddr, size : NativeInt);
       procedure ReplaceData(const v : TData);
-      procedure Concat(const src : IScriptDynArray; index, size : Integer);
+      procedure Concat(const src : IScriptDynArray; index, size : NativeInt);
 
       procedure Reverse;
       procedure NaturalSort;
 
       procedure AddStrings(sl : TStrings);
 
-      function AsPDouble(var nbElements, stride : Integer) : PDouble;
+      function GetAsFloat(index : NativeInt) : Double;
+      procedure SetAsFloat(index : NativeInt; const v : Double);
+      property AsFloat[index : NativeInt] : Double read GetAsFloat write SetAsFloat;
 
-      function GetAsFloat(index : Integer) : Double;
-      procedure SetAsFloat(index : Integer; const v : Double);
-      property AsFloat[index : Integer] : Double read GetAsFloat write SetAsFloat;
+      function GetAsInteger(index : NativeInt) : Int64;
+      procedure SetAsInteger(index : NativeInt; const v : Int64);
+      property AsInteger[index : NativeInt] : Int64 read GetAsInteger write SetAsInteger;
 
-      function GetAsInteger(index : Integer) : Int64;
-      procedure SetAsInteger(index : Integer; const v : Int64);
-      property AsInteger[index : Integer] : Int64 read GetAsInteger write SetAsInteger;
+      function GetAsBoolean(index : NativeInt) : Boolean;
+      procedure SetAsBoolean(index : NativeInt; const v : Boolean);
+      property AsBoolean[index : NativeInt] : Boolean read GetAsBoolean write SetAsBoolean;
 
-      function GetAsBoolean(index : Integer) : Boolean;
-      procedure SetAsBoolean(index : Integer; const v : Boolean);
-      property AsBoolean[index : Integer] : Boolean read GetAsBoolean write SetAsBoolean;
+      procedure SetAsVariant(index : NativeInt; const v : Variant);
+      procedure EvalAsVariant(index : NativeInt; var result : Variant);
+      property AsVariant[index : NativeInt] : Variant write SetAsVariant;
 
-      procedure SetAsVariant(index : Integer; const v : Variant);
-      procedure EvalAsVariant(index : Integer; var result : Variant);
-      property AsVariant[index : Integer] : Variant write SetAsVariant;
+      procedure SetAsString(index : NativeInt; const v : String);
+      procedure EvalAsString(index : NativeInt; var result : String);
+      property AsString[index : NativeInt] : String write SetAsString;
 
-      procedure SetAsString(index : Integer; const v : String);
-      procedure EvalAsString(index : Integer; var result : String);
-      property AsString[index : Integer] : String write SetAsString;
+      procedure SetAsInterface(index : NativeInt; const v : IUnknown);
+      procedure EvalAsInterface(index : NativeInt; var result : IUnknown);
+      property AsInterface[index : NativeInt] : IUnknown write SetAsInterface;
 
-      procedure SetAsInterface(index : Integer; const v : IUnknown);
-      procedure EvalAsInterface(index : Integer; var result : IUnknown);
-      property AsInterface[index : Integer] : IUnknown write SetAsInterface;
+      function SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
 
-      function IsEmpty(addr : Integer) : Boolean;
-      function VarType(addr : Integer) : TVarType;
+      function IsEmpty(addr : NativeInt) : Boolean;
+      function VarType(addr : NativeInt) : TVarType;
 
-      function HashCode(addr : Integer; size : Integer) : Cardinal;
+      function HashCode(addr : NativeInt; size : NativeInt) : Cardinal;
    end;
 
    // IScriptAssociativeArray
    IScriptAssociativeArray = interface (IDataContext)
       ['{1162D4BD-6033-4505-8D8C-0715588C768C}']
       procedure Clear;
-      function Count : Integer;
+      function Count : NativeInt;
    end;
 
    TPerfectMatchEnumerator = class

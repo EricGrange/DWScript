@@ -1621,8 +1621,8 @@ type
          FElementTyp, FKeyTyp : TTypeSymbol;
          FElementSize, FKeySize : Integer;
 
-         FCount : Integer;
-         FCapacity, FGrowth : Integer;
+         FCount : NativeInt;
+         FCapacity, FGrowth : NativeInt;
          FHashCodes : TScriptAssociativeArrayHashCodes;
          FKeys : TData;
          FCreateKeyOnAccess : Boolean;
@@ -1661,8 +1661,8 @@ type
 
          function ReadBucket(index : Integer; var key : TData; var value : IDataContext) : Boolean;
 
-         function Count : Integer;
-         function Capacity : Integer;
+         function Count : NativeInt;
+         function Capacity : NativeInt;
 
          function CopyKeys : TData;
 
@@ -7796,14 +7796,14 @@ end;
 
 // Count
 //
-function TScriptAssociativeArray.Count : Integer;
+function TScriptAssociativeArray.Count : NativeInt;
 begin
-   Result:=FCount;
+   Result := FCount;
 end;
 
 // Capacity
 //
-function TScriptAssociativeArray.Capacity : Integer;
+function TScriptAssociativeArray.Capacity : NativeInt;
 begin
    Result := FCapacity;
 end;

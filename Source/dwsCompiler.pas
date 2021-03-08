@@ -1829,18 +1829,18 @@ type
 
    TRankedUnits = class
       Ranked : TUnitMainSymbolArray;
-      function Compare(index1, index2 : Integer) : Integer;
-      procedure Swap(index1, index2 : Integer);
+      function Compare(index1, index2 : NativeInt) : Integer;
+      procedure Swap(index1, index2 : NativeInt);
    end;
 
-function TRankedUnits.Compare(index1, index2 : Integer) : Integer;
+function TRankedUnits.Compare(index1, index2 : NativeInt) : Integer;
 begin
    Result:=Ranked[index1].InitializationRank-Ranked[index2].InitializationRank;
 end;
 
 // Swap
 //
-procedure TRankedUnits.Swap(index1, index2 : Integer);
+procedure TRankedUnits.Swap(index1, index2 : NativeInt);
 var
    t : TUnitMainSymbol;
 begin
