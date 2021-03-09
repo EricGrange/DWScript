@@ -1374,6 +1374,7 @@ begin
    RegisterCodeGen(TArrayFilterExpr,               TJSArrayFilterExpr.Create);
    RegisterCodeGen(TArrayConcatExpr,               TJSArrayConcatExpr.Create);
    RegisterCodeGen(TArraySortNaturalStringExpr,    TJSArrayTypedFluentExpr.Create('.sort()', ''));
+   RegisterCodeGen(TArraySortNaturalExpr,          TJSArrayTypedFluentExpr.Create('.sort()', ''));
    RegisterCodeGen(TArraySortNaturalIntegerExpr,   TJSArrayTypedFluentExpr.Create('.sort($CmpNum)', '$CmpNum'));
    RegisterCodeGen(TArraySortNaturalFloatExpr,     TJSArrayTypedFluentExpr.Create('.sort($CmpNum)', '$CmpNum'));
 

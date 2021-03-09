@@ -1,0 +1,29 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+
+type 
+   TFunc = procedure;
+
+var v : Variant;
+
+var f : TFunc;
+
+f := lambda PrintLn('hello') end;
+v := @f;
+
+v();
+
+var a : array of Variant;
+a.push(1);
+a.push("2");
+
+v := a;
+v.push(3);
+PrintLn(v.join(','));
+
+%>
+
+</script>

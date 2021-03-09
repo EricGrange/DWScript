@@ -318,6 +318,7 @@ type
          property TypInterface : TInterfaceSymbol read FBaseSymbolTypes.TypInterface write FBaseSymbolTypes.TypInterface;
 
          property TypAnyType : TAnyTypeSymbol read FBaseSymbolTypes.TypAnyType write FBaseSymbolTypes.TypAnyType;
+         property TypAnyFunc : TAnyFuncSymbol read FBaseSymbolTypes.TypAnyFunc write FBaseSymbolTypes.TypAnyFunc;
 
          property TypCustomAttribute : TClassSymbol read FBaseSymbolTypes.TypCustomAttribute write FBaseSymbolTypes.TypCustomAttribute;
    end;

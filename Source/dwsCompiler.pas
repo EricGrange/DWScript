@@ -356,7 +356,6 @@ type
          FCurrentSourceUnit : TSourceUnit;
          FCurrentUnitSymbol : TUnitMainSymbol;
          FCurrentStructure : TCompositeTypeSymbol;
-         FAnyFuncSymbol : TAnyFuncSymbol;
          FStandardDataSymbolFactory : IdwsDataSymbolFactory;
          FPendingAttributes : TdwsSymbolAttributes;
          FStringListPool : TSimpleStringListPool;
@@ -1207,7 +1206,6 @@ begin
    FFinallyExprs:=TSimpleStack<Boolean>.Create;
    FUnitsFromStack:=TSimpleStack<String>.Create;
    FUnitContextStack:=TdwsCompilerUnitContextStack.Create;
-   FAnyFuncSymbol:=TAnyFuncSymbol.Create('', fkFunction, 0);
 
    FPendingAttributes:=TdwsSymbolAttributes.Create;
 
@@ -1229,8 +1227,6 @@ begin
    FGenericSymbol.Free;
 
    FPendingAttributes.Free;
-
-   FAnyFuncSymbol.Free;
 
    FUnitsFromStack.Free;
    FUnitContextStack.Free;
@@ -5523,8 +5519,11 @@ begin
             ttBLEFT : begin
 
                baseType:=Result.BaseType;
-               funcSym:=baseType.AsFuncSymbol;
-               if funcSym<>nil then begin
+               funcSym := baseType.AsFuncSymbol;
+               if (funcSym = nil) and baseType.CanExpectAnyFuncSymbol then begin
+                  funcSym := FCompilerContext.TypAnyFunc;
+               end;
+               if funcSym <> nil then begin
                   codeExpr:=Result as TTypedExpr;
                   Result:=nil;
                   Result:=ReadFunc(funcSym, codeExpr);
@@ -11367,19 +11366,21 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
    var
       hotPos : TScriptPos;
    begin
-      hotPos:=FTok.HotPos;
-      if expecting=nil then
-         expecting:=FAnyFuncSymbol
-      else if expecting.AsFuncSymbol=nil then
+      hotPos := FTok.HotPos;
+      if (expecting = nil) or expecting.CanExpectAnyFuncSymbol then
+         expecting := FCompilerContext.TypAnyFunc
+      else if expecting.AsFuncSymbol = nil then
          FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
-      else if expecting=FAnyFuncSymbol then
+      else if expecting = FCompilerContext.TypAnyFunc then
          FMsgs.AddCompilerStop(hotPos, CPE_UnexpectedAt);
-      Result:=ReadTerm(isWrite, expecting);
+
+      Result := ReadTerm(isWrite, expecting);
+
       if Result = nil then begin
          // error was already reported
          Result := TBogusConstExpr.Create(FCompilerContext.TypNil, cNilIntf);
       end else if (Result.Typ=nil) or (Result.Typ.AsFuncSymbol=nil) then begin
-         if (expecting=FAnyFuncSymbol) or (Result is TConstExpr) then
+         if (expecting = FCompilerContext.TypAnyFunc) or (Result is TConstExpr) then
             FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
          else if Result <> nil then // if nil, error was already reported
             ReportIncompatibleAt(hotPos, Result);
@@ -14531,6 +14532,9 @@ begin
 
    sysTable.TypAnyType:=TAnyTypeSymbol.Create(SYS_ANY_TYPE, nil);
    sysTable.AddSymbol(sysTable.TypAnyType);
+
+   sysTable.TypAnyFunc := TAnyFuncSymbol.Create('', fkFunction, 0);
+   sysTable.AddSymbol(sysTable.TypAnyFunc);
 
    // Create "root" class Object
    sysTable.TypObject:=TClassSymbol.Create(SYS_OBJECT, nil);

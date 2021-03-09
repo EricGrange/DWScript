@@ -173,6 +173,7 @@ type
          function SupportsEmptyParam : Boolean; override;
          function CreateConvExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                  expr : TTypedExpr) : TTypedExpr; override;
+         function CanExpectAnyFuncSymbol : Boolean; override;
    end;
 
    TTypeOfSymbol = class sealed(TFuncSymbol)
@@ -639,7 +640,7 @@ begin
    Result:=   inherited IsCompatible(typSym)
            or (typSym.AsFuncSymbol<>nil)
            or (typSym is TRecordSymbol)
-           or (typSym is TStaticArraySymbol);
+           or (typSym is TArraySymbol);
 end;
 
 // SupportsEmptyParam
@@ -655,6 +656,13 @@ function TJSConnectorSymbol.CreateConvExpr(context : TdwsCompilerContext; const 
                                  expr : TTypedExpr) : TTypedExpr;
 begin
    Result := expr; // accept all
+end;
+
+// CanExpectAnyFuncSymbol
+//
+function TJSConnectorSymbol.CanExpectAnyFuncSymbol : Boolean;
+begin
+   Result := True;
 end;
 
 // ------------------

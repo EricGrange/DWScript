@@ -1,0 +1,41 @@
+<script>
+
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+type
+   TPromiseExecuteResult = procedure (execute : procedure (result : Variant));
+
+type
+   Promise = class external 'Promise'
+      constructor Create(p : TPromiseExecuteResult);
+   end;
+function setTimeout(p : procedure; millisecs : Integer) : Integer; external;
+
+var value := 'hello';
+
+function ResolveAfter2Milliseconds : Promise;
+begin
+   Result := new Promise(
+      lambda (resolve : procedure(r : Variant))
+         setTimeout(lambda resolve(value) end, 2);
+      end
+   );
+end;
+
+async procedure asyncCall;
+begin
+   PrintLn('calling');
+   var resolved := await ResolveAfter2Milliseconds();
+   value := 'world';
+   PrintLn(resolved);
+end;
+
+PrintLn(value);
+asyncCall();
+PrintLn('called');
+
+%>
+
+</script>

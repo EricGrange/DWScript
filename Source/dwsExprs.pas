@@ -1126,7 +1126,8 @@ type
          function GetIsConstant : Boolean; override;
 
       public
-         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; codeExpr : TTypedExpr);
+         constructor Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                            codeExpr : TTypedExpr);
          destructor Destroy; override;
 
          procedure EvalAsFuncPointer(exec : TdwsExecution; var result : IFuncPointer); inline;
@@ -5682,9 +5683,23 @@ end;
 
 // Create
 //
-constructor TFuncPtrExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos; codeExpr : TTypedExpr);
+constructor TFuncPtrExpr.Create(context : TdwsCompilerContext; const aScriptPos : TScriptPos;
+                                codeExpr : TTypedExpr);
+var
+   funcSym : TFuncSymbol;
+   codeExprType : TTypeSymbol;
 begin
-   inherited Create(context, aScriptPos, (codeExpr.Typ.UnAliasedType as TFuncSymbol));
+   codeExprType := codeExpr.Typ.UnAliasedType;
+   if codeExprType is TFuncSymbol then
+      funcSym := TFuncSymbol(codeExprType)
+   else begin
+      funcSym := codeExprType.AsFuncSymbol;
+      if funcSym = nil then begin
+         Assert(codeExprType.CanExpectAnyFuncSymbol);
+         funcSym := context.TypAnyFunc
+      end;
+   end;
+   inherited Create(context, aScriptPos, funcSym);
    FCodeExpr:=codeExpr;
 end;
 
