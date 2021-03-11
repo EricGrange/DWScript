@@ -914,8 +914,8 @@ var
    i : Integer;
    changed : Boolean;
 begin
-   Assert(FRootSymbolMap = nil);
-   FRootSymbolMap := CreateSymbolMap(nil, nil);
+   if FRootSymbolMap = nil then
+      FRootSymbolMap := CreateSymbolMap(nil, nil);
    FSymbolMap := FRootSymbolMap;
 
    ReserveSymbolNames;

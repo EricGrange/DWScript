@@ -59,4 +59,5 @@
 /Libraries/SymbolsLib/backup
 /Source/jitter/backup
 __recovery
-/Chromium88
+/Chromium*
+

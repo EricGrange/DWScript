@@ -1,0 +1,9 @@
+library JqTable;
+
+uses WebAPI.jQuery.Core;
+
+procedure makeTable(selector : String); export;
+begin
+   jQuery(selector).HTML('<table><tr><td>Hello<td>World<tr><td>1<td>2</table>');
+end;
+
