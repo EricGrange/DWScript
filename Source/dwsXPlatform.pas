@@ -249,6 +249,7 @@ type
          property Value : Int64 read FValue write FValue;
 
          property AsUnixTime : Int64 read GetAsUnixTime write SetAsUnixTime;
+         property AsJavaScriptTime : Int64 read FValue write FValue;
          property AsFileTime : TFileTime read GetAsFileTime write SetAsFileTime;
          property AsDosDateTime : Integer read GetAsDosDateTime;
 
