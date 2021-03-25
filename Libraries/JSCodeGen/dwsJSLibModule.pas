@@ -170,6 +170,8 @@ type
    TJSConnectorSymbol = class(TConnectorSymbol)
       public
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function IsCompatibleWithAnyFuncSymbol : Boolean; override;
+
          function SupportsEmptyParam : Boolean; override;
          function CreateConvExpr(context : TdwsCompilerContext; const aScriptPos: TScriptPos;
                                  expr : TTypedExpr) : TTypedExpr; override;
@@ -641,6 +643,13 @@ begin
            or (typSym.AsFuncSymbol<>nil)
            or (typSym is TRecordSymbol)
            or (typSym is TArraySymbol);
+end;
+
+// IsCompatibleWithAnyFuncSymbol
+//
+function TJSConnectorSymbol.IsCompatibleWithAnyFuncSymbol : Boolean;
+begin
+   Result := True;
 end;
 
 // SupportsEmptyParam

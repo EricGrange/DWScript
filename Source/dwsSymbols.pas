@@ -701,6 +701,7 @@ type
          function IsOfType(typSym : TTypeSymbol) : Boolean;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; virtual;
          function CanExpectAnyFuncSymbol : Boolean; virtual;
+         function IsCompatibleWithAnyFuncSymbol : Boolean; virtual;
 
          function DistanceTo(typeSym : TTypeSymbol) : Integer; virtual;
          // doesn't treat aliases of a type as the the same type,
@@ -911,8 +912,10 @@ type
 
    TAnyFuncSymbol = class(TFuncSymbol)
       public
-         function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-          procedure Initialize(const msgs : TdwsCompileMessageList); override;
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function IsCompatibleWithAnyFuncSymbol : Boolean; override;
+
+         procedure Initialize(const msgs : TdwsCompileMessageList); override;
    end;
 
    TSourceFuncSymbol = class sealed (TFuncSymbol)
@@ -1890,6 +1893,8 @@ type
          constructor Create;
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function IsCompatibleWithAnyFuncSymbol : Boolean; virtual;
+
          procedure InitData(const data : TData; offset : Integer); override;
    end;
 
@@ -4116,9 +4121,9 @@ var
    i : Integer;
    param, otherParam : TSymbol;
 begin
-   if typSym=nil then Exit(False);
-   typSym:=typSym.BaseType;
-   if (typSym.ClassType = TNilSymbol) or (typSym.ClassType = TAnyFuncSymbol) then
+   if typSym = nil then Exit(False);
+   typSym := typSym.BaseType;
+   if typSym.IsCompatibleWithAnyFuncSymbol then
       Result := True
    else begin
       Result:=False;
@@ -5755,6 +5760,13 @@ function TNilSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   typSym := typSym.BaseType;
   Result := (TypSym is TClassSymbol) or (TypSym is TNilSymbol);
+end;
+
+// IsCompatibleWithAnyFuncSymbol
+//
+function TNilSymbol.IsCompatibleWithAnyFuncSymbol : Boolean;
+begin
+   Result := True;
 end;
 
 // InitData
@@ -8272,6 +8284,13 @@ begin
    Result := False;
 end;
 
+// IsCompatibleWithAnyFuncSymbol
+//
+function TTypeSymbol.IsCompatibleWithAnyFuncSymbol : Boolean;
+begin
+   Result := False;
+end;
+
 // DistanceTo
 //
 function TTypeSymbol.DistanceTo(typeSym : TTypeSymbol) : Integer;
@@ -8969,7 +8988,14 @@ end;
 //
 function TAnyFuncSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-   Result:=(typSym.AsFuncSymbol<>nil);
+   Result := (typSym.AsFuncSymbol<>nil);
+end;
+
+// IsCompatibleWithAnyFuncSymbol
+//
+function TAnyFuncSymbol.IsCompatibleWithAnyFuncSymbol : Boolean;
+begin
+   Result := True;
 end;
 
 // Initialize

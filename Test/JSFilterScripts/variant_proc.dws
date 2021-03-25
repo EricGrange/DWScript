@@ -1,0 +1,19 @@
+<script>
+function PrintLn(s) { document.writeln(s+"<br/>") };
+
+<%pas2js
+function Test(p : procedure) : Boolean;
+begin
+   Result := Variant(@p);
+end;
+
+var v : Variant;
+
+PrintLn(Test(v));
+
+v := lambda end;
+
+PrintLn(Test(v));
+%>
+
+</script>
