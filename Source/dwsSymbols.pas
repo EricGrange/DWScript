@@ -1893,7 +1893,7 @@ type
          constructor Create;
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         function IsCompatibleWithAnyFuncSymbol : Boolean; virtual;
+         function IsCompatibleWithAnyFuncSymbol : Boolean; override;
 
          procedure InitData(const data : TData; offset : Integer); override;
    end;
