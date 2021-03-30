@@ -236,6 +236,23 @@ begin
    Result := PrivateVarPrefix(args) + args.AsString[0];
 end;
 
+procedure CheckVariantForGlobalStorage(const v : Variant);
+var
+   vt : TVarType;
+begin
+   vt := VarType(v);
+   case vt of
+      varEmpty, varNull,
+      varSmallint, varShortInt, varInteger, varInt64,
+      varByte, varWord, varUInt32, varUInt64,
+      varSingle, varDouble,
+      varCurrency, varDate, varBoolean,
+      varOleStr, varString, varUString : ;
+   else
+      raise EGlobalVarError.CreateFmt('Cannot store global of type %d',  [ vt ]);
+   end;
+end;
+
 // ------------------
 // ------------------ stubs ------------------
 // ------------------
@@ -244,6 +261,7 @@ end;
 //
 function WriteGlobalVar(const aName : String; const aValue : Variant; expirationSeconds : Double) : Boolean;
 begin
+   CheckVariantForGlobalStorage(aValue);
    Result:=vGlobalVars.Write(aName, aValue, expirationSeconds);
 end;
 
@@ -266,6 +284,8 @@ end;
 //
 function CompareExchangeGlobalVar(const aName : String; const value, comparand : Variant) : Variant;
 begin
+   CheckVariantForGlobalStorage(value);
+
    Result:=vGlobalVars.CompareExchange(aName, value, comparand);
 end;
 
@@ -412,6 +432,7 @@ function GlobalQueuePush(const aName : String; const aValue : Variant) : Integer
 var
    gq : TGlobalQueue;
 begin
+   CheckVariantForGlobalStorage(aValue);
    vGlobalQueuesCS.BeginWrite;
    try
       gq:=vGlobalQueues.GetOrCreate(aName);
@@ -428,6 +449,7 @@ function GlobalQueueInsert(const aName : String; const aValue : Variant) : Integ
 var
    gq : TGlobalQueue;
 begin
+   CheckVariantForGlobalStorage(aValue);
    vGlobalQueuesCS.BeginWrite;
    try
       gq:=vGlobalQueues.GetOrCreate(aName);
@@ -570,6 +592,7 @@ var
    buf : Variant;
 begin
    args.ExprBase[1].EvalAsVariant(args.Exec, buf);
+   CheckVariantForGlobalStorage(buf);
    Result:=vGlobalVars.Write(args.AsString[0], buf, 0);
 end;
 
@@ -580,6 +603,7 @@ var
    buf : Variant;
 begin
    args.ExprBase[1].EvalAsVariant(args.Exec, buf);
+   CheckVariantForGlobalStorage(buf);
    Result:=vGlobalVars.Write(args.AsString[0], buf, args.AsFloat[2]);
 end;
 
@@ -601,6 +625,7 @@ var
    value, comparand : Variant;
 begin
    args.ExprBase[1].EvalAsVariant(args.Exec, value);
+   CheckVariantForGlobalStorage(value);
    args.ExprBase[2].EvalAsVariant(args.Exec, comparand);
    result:=vGlobalVars.CompareExchange(args.AsString[0], value, comparand);
 end;
@@ -675,6 +700,7 @@ var
    buf : Variant;
 begin
    args.ExprBase[1].EvalAsVariant(args.Exec, buf);
+   CheckVariantForGlobalStorage(buf);
    Result:=GlobalQueuePush(args.AsString[0], buf);
 end;
 
@@ -689,6 +715,7 @@ var
    buf : Variant;
 begin
    args.ExprBase[1].EvalAsVariant(args.Exec, buf);
+   CheckVariantForGlobalStorage(buf);
    Result:=GlobalQueueInsert(args.AsString[0], buf);
 end;
 
@@ -767,6 +794,7 @@ var
    buf : Variant;
 begin
    args.ExprBase[1].EvalAsVariant(args.Exec, buf);
+   CheckVariantForGlobalStorage(buf);
    Result:=vPrivateVars.Write(PrivateVarName(args), buf, args.AsFloat[2]);
 end;
 
@@ -784,6 +812,7 @@ var
    value, comparand : Variant;
 begin
    args.ExprBase[1].EvalAsVariant(args.Exec, value);
+   CheckVariantForGlobalStorage(value);
    args.ExprBase[2].EvalAsVariant(args.Exec, comparand);
    result := vPrivateVars.CompareExchange(PrivateVarName(args), value, comparand);
 end;
