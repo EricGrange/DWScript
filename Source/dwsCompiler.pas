@@ -9894,8 +9894,11 @@ begin
                end;
             finally
                if detachTyp then begin
-                  if not CurrentProg.Table.HasSymbol(typ) then
+                  if not CurrentProg.Table.HasSymbol(typ) then begin
                      CurrentProg.Table.AddSymbol(typ);
+                     if typ.Name = '' then
+                        CurrentProg.RootTable.RemoveFromDestructionList(typ);
+                  end;
                   expr.Typ:=nil;
                end;
                OrphanAndNil(expr);
@@ -11312,8 +11315,8 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       recordType : TRecordSymbol;
       data : TData;
    begin
-      scriptPos:=FTok.HotPos;
-      recordType:=ReadRecordDecl('', True);
+      scriptPos := FTok.HotPos;
+      recordType := ReadRecordDecl('', True);
       CurrentProg.Table.AddSymbol(recordType);
       //recordType.SetIsExternal;
 

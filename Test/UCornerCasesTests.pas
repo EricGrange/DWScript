@@ -110,6 +110,7 @@ type
          procedure UnitNameTest;
          procedure ExceptionWithinMagic;
          procedure DiscardEmptyElse;
+         procedure AnonymousRecordWithConstArrayField;
 
          procedure DelphiDialectProcedureTypes;
 
@@ -2149,6 +2150,26 @@ begin
    prog := FCompiler.Compile('procedure Test(a : Boolean); begin if a then else Print(a); end;');
    e := prog.Table.FindSymbol('Test', cvMagic).AsFuncSymbol.SubExpr[1];
    CheckEquals('TIfThenExpr', e.ClassName, 'empty then');
+end;
+
+// AnonymousRecordWithConstArrayField
+//
+procedure TCornerCasesTests.AnonymousRecordWithConstArrayField;
+var
+   prog : IdwsProgram;
+   code : String;
+begin
+   code := 'const cC : array [0..0] of record i : Integer end = [ ( i : 123 ) ];'#10
+         + 'var b := record'#10
+            + 'f := cC;'#10
+         + 'end;';
+
+   prog := FCompiler.Compile(code);
+   CheckEquals(0, prog.Msgs.Count, 'first');
+   prog := nil;
+   prog := FCompiler.Compile(code);
+   CheckEquals(0, prog.Msgs.Count, 'second');
+   prog := nil;
 end;
 
 // DelphiDialectProcedureTypes
