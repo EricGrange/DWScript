@@ -232,7 +232,8 @@ const
          // Paths which scripts are allowed to perform file operations on
          +'"WorkPaths": ["%www%"],'
          // DB Paths which scripts are allowed to perform file operations on
-         +'"DBPaths": ["%www%"],'
+         // if undefined or not an array, assumed identical to WorkPaths
+         +'"DBPaths": null,'
          // Conditional Defines that should be preset
          +'"Conditionals": [],'
          // HTML Filter patterns
@@ -708,6 +709,7 @@ var
    dws : TdwsJSONValue;
    conditionals : TdwsJSONValue;
    dwsCGOptions : TdwsJSONValue;
+   workPaths, dbPaths : TdwsJSONValue;
    opt : TdwsCodeGenOption;
    cgOptions : TdwsCodeGenOptions;
    i : Integer;
@@ -728,11 +730,15 @@ begin
       dwsCompileSystem.Variables := FPathVariables;
 
       dwsRuntimeFileSystem.Paths.Clear;
-      ApplyPathsVariables(dws['WorkPaths'], dwsRuntimeFileSystem.Paths);
+      workPaths := dws['WorkPaths'];
+      ApplyPathsVariables(workPaths, dwsRuntimeFileSystem.Paths);
       dwsRuntimeFileSystem.Variables := FPathVariables;
 
       dwsDatabaseFileSystem.Paths.Clear;
-      ApplyPathsVariables(dws['DBPaths'], dwsDatabaseFileSystem.Paths);
+      dbPaths := dws['DBPaths'];
+      if dbPaths.ValueType <> jvtArray then
+         dbPaths := workPaths;
+      ApplyPathsVariables(dbPaths, dwsDatabaseFileSystem.Paths);
       dwsDatabaseFileSystem.Variables := FPathVariables;
       FDataBase.FileSystem := dwsDatabaseFileSystem.AllocateFileSystem;
 
