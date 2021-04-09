@@ -2129,9 +2129,12 @@ end;
 // SetFromExpr
 //
 function TScriptDynamicNativeStringArray.SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
+var
+   buf : String;
 begin
    if BoundsCheckPassed(index) then begin
-      valueExpr.EvalAsString(exec, FData[index]);
+      valueExpr.EvalAsString(exec, buf);
+      FData[index] := buf;
       Result := True;
    end else Result := False;
 end;
