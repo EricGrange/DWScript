@@ -486,6 +486,14 @@ begin
       Allocate(varExpr, Result);
 end;
 
+// Ensure_MPIR_DLL
+//
+procedure Ensure_MPIR_DLL; inline;
+begin
+   if not Bind_MPIR_DLL then
+      raise Exception.Create('mpir.dll is required for BigInteger');
+end;
+
 // ------------------
 // ------------------ TBaseBigIntegerSymbol ------------------
 // ------------------
@@ -519,10 +527,8 @@ end;
 //
 constructor TBigIntegerWrapper.CreateNewZero;
 begin
+   Ensure_MPIR_DLL;
    Create;
-   if not Bind_MPIR_DLL then
-      raise Exception.Create('mpir.dll is required for BigInteger');
-
    mpz_init(Value);
 end;
 
@@ -839,6 +845,7 @@ constructor TBigIntegerBinOpFuncExpr.Create(context : TdwsCompilerContext; const
                                             const anOp : TTokenType; aLeft, aRight : TTypedExpr);
 begin
    inherited Create(context, aScriptPos, anOp, aLeft, aRight);
+   Ensure_MPIR_DLL;
    InitOpFunc;
 end;
 
