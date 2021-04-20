@@ -174,7 +174,9 @@ begin
    sQuestion:=CreateState;
    sExclamation := CreateState;
 
-   sStart.AddTransition(cSPACE, TSeekTransition.Create(sStart, [], caNone));
+   sStart.AddTransition([' ', #9], TGalopTransition.Create(sStart, [], caNone));
+   sStart.AddTransition(cSPACE - [' ', #9], TSeekTransition.Create(sStart, [], caNone));
+//   sStart.AddTransition(cSPACE, TSeekTransition.Create(sStart, [], caNone));
    sStart.AddTransition(cNAM, TConsumeTransition.Create(sNameF, [toStart], caNone));
    sStart.AddTransition(['&'], TSeekTransition.Create(sNameEscapedS, [toStart], caNone));
    sStart.AddTransition(cINT, TConsumeTransition.Create(sIntS, [toStart], caNone));

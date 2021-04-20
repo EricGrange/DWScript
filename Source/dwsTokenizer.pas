@@ -91,11 +91,12 @@ type
 
    TCharsType = set of AnsiChar;
    TTransition = class;
+   TTransitionArray = array [#0..#127] of TTransition;
 
    TState = class (TRefCountedObject)
       private
          FOwnedTransitions : TTightList;
-         FTransitions : array [#0..#127] of TTransition;
+         FTransitions : TTransitionArray;
 
       public
          destructor Destroy; override;
@@ -122,6 +123,7 @@ type
          IsError : Boolean;
          Consume : Boolean;
          Seek : Boolean;
+         Galop : Boolean;
 
       public
          constructor Create(aNextState: TState; opts: TTransitionOptions; actn: TConvertAction);
@@ -144,6 +146,9 @@ type
       constructor Create(nstate: TState; opts: TTransitionOptions; actn: TConvertAction);
    end;
    TConsumeTransition = class (TSeekTransition) // Transition, consume Char, next Char
+      constructor Create(nstate: TState; opts: TTransitionOptions; actn: TConvertAction);
+   end;
+   TGalopTransition = class (TSeekTransition) // Eat characters
       constructor Create(nstate: TState; opts: TTransitionOptions; actn: TConvertAction);
    end;
 
@@ -1013,6 +1018,18 @@ begin
 end;
 
 // ------------------
+// ------------------ TGalopTransition ------------------
+// ------------------
+
+// Create
+//
+constructor TGalopTransition.Create(nstate: TState; opts: TTransitionOptions; actn: TConvertAction);
+begin
+   inherited;
+   Galop := True;
+end;
+
+// ------------------
 // ------------------ TTokenizer ------------------
 // ------------------
 
@@ -1568,18 +1585,27 @@ begin
       if trns.Start and (FToken.FScriptPos.Col=0) then
          FToken.FScriptPos:=CurrentPos;
 
-      // Add actual character to s
-      if trns.Consume then
-         FTokenBuf.AppendChar(pch^);
-
       // Proceed to the next character
       if trns.Seek then begin
-         Inc(FSource.FPosPtr);
-         if pch^=#10 then begin
-            Inc(FSource.FCurPos.Line);
-            FSource.FCurPos.Col:=1;
-         end else Inc(FSource.FCurPos.Col);
-         Inc(pch);
+
+         // Add actual character to s
+         if trns.Consume then
+            FTokenBuf.AppendChar(pch^);
+
+         if trns.Galop then begin
+            repeat
+               Inc(pch);
+               Inc(FSource.FPosPtr);
+               Inc(FSource.FCurPos.Col);
+            until pch^ <> ch;
+         end else begin
+            Inc(FSource.FPosPtr);
+            if ch = #10 then begin
+               Inc(FSource.FCurPos.Line);
+               FSource.FCurPos.Col:=1;
+            end else Inc(FSource.FCurPos.Col);
+            Inc(pch);
+         end;
       end;
 
       // The characters in 's' have to be converted

@@ -4438,6 +4438,7 @@ function TdwsCompiler.ReadInstr : TProgramExpr;
 var
    token : TTokenType;
    locExpr : TProgramExpr;
+   locExprClass : TClass;
    hotPos : TScriptPos;
    msgsCount : Integer;
    funcSym : TFuncSymbol;
@@ -4493,39 +4494,53 @@ begin
    else
       // Try to read a function call, method call or an assignment
       if (FTok.TestAny([ttBLEFT, ttINHERITED, ttNEW])<>ttNone) or FTok.TestName then begin // !! TestName must be the last !!
-         hotPos:=FTok.HotPos;
-         msgsCount:=FMsgs.Count;
+         hotPos := FTok.HotPos;
+         msgsCount := FMsgs.Count;
          if FTok.TestDelete(ttBLEFT) then // (X as TY)
-            locExpr:=ReadSymbol(ReadBracket, True)
-         else locExpr:=ReadName(True);
-         if locExpr is TTypedExpr then begin
-            if (FTok.TestAny([ttLESS_LESS, ttGTR_GTR])<>ttNone) then
-               locExpr:=ReadExprMult(nil, TTypedExpr(locExpr));
+            locExpr := ReadSymbol(ReadBracket, True)
+         else locExpr := ReadName(True);
+         if locExpr = nil then begin
+            FMsgs.AddCompilerStop(hotPos, CPE_InvalidInstruction);
+            Exit(nil);
+         end;
+         locExprClass := locExpr.ClassType;
+         if locExprClass.InheritsFrom(TTypedExpr) then begin
+            if FTok.TestAny([ttLESS_LESS, ttGTR_GTR]) <> ttNone then begin
+               locExpr := ReadExprMult(nil, TTypedExpr(locExpr));
+               locExprClass := locExpr.ClassType;
+            end;
          end;
          try
-            token:=FTok.TestDeleteAny(cAssignmentTokens);
-            if token<>ttNone then begin
-               if not (locExpr is TDataExpr) then begin
+            token := FTok.TestDeleteAny(cAssignmentTokens);
+            if token <> ttNone then begin
+
+               if not locExprClass.InheritsFrom(TDataExpr) then begin
                   FMsgs.AddCompilerError(hotPos, CPE_CantWriteToLeftSide);
                   OrphanAndNil(locExpr);
-                  Result:=ReadExpr; // keep compiling
+                  Result := ReadExpr; // keep compiling
                   OrphanAndNil(Result);
                end else begin
                   if not TDataExpr(locExpr).IsWritable then
                      FMsgs.AddCompilerError(FTok.HotPos, CPE_CantWriteToLeftSide);
-                  if locExpr is TVarExpr then
+                  if locExprClass.InheritsFrom(TVarExpr) then
                      WarnForVarUsage(TVarExpr(locExpr), hotPos);
                   Result := ReadAssign(token, TDataExpr(locExpr));
                end;
+
             end else begin
-               if locExpr is TDataExpr then begin
-                  funcSym:=locExpr.Typ.AsFuncSymbol;
-                  if funcSym<>nil then
-                     locExpr:=ReadFunc(funcSym, locExpr as TDataExpr);
+
+               if locExpr.InheritsFrom(TDataExpr) then begin
+                  funcSym := locExpr.Typ.AsFuncSymbol;
+                  if funcSym <> nil then begin
+                     locExpr := ReadFunc(funcSym, locExpr as TDataExpr);
+                     locExprClass := locExpr.ClassType;
+                  end;
                end;
 
-               if locExpr is TAssignExpr then
-                  Result:=TAssignExpr(locExpr)
+               if locExpr.InheritsFrom(TAssignExpr) then
+
+                  Result := locExpr
+
                else if    (locExpr is TFuncExprBase)
                        or (locExpr is TConnectorCallExpr) then begin
                   Result:=locExpr;
@@ -4533,32 +4548,24 @@ begin
                      if FMsgs.Count=msgsCount then   // avoid hint on calls with issues
                         FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
                   end;
-               end else if locExpr is TConnectorWriteExpr then
-                  Result:=locExpr
-               else if locExpr is TDynamicArraySetExpr then
-                  Result:=TDynamicArraySetExpr(locExpr)
-               else if locExpr is TStringArraySetExpr then
-                  Result:=TStringArraySetExpr(locExpr)
-               else if locExpr is TArrayPseudoMethodExpr then
-                  Result:=TArrayPseudoMethodExpr(locExpr)
-               else if locExpr is TConstExpr then begin
+               end else if    locExpr.InheritsFrom(TConnectorWriteExpr)
+                           or locExpr.InheritsFrom(TDynamicArraySetExpr)
+                           or locExpr.InheritsFrom(TStringArraySetExpr)
+                           or locExpr.InheritsFrom(TArrayPseudoMethodExpr) then
+                  Result := locExpr
+               else if locExpr.InheritsFrom(TConstExpr) then begin
                   OrphanAndNil(locExpr);
-                  Result:=TNullExpr.Create(hotPos);
-                  if FMsgs.Count=msgsCount then   // avoid hint on expression with issues
+                  Result := TNullExpr.Create(hotPos);
+                  if FMsgs.Count = msgsCount then   // avoid hint on expression with issues
                      FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
-               end else if locExpr is TNullExpr then begin
-                  Result:=TNullExpr(locExpr);
-                  locExpr:=nil;
-               end else if (FPendingSetterValueExpr<>nil) and (locExpr is TTypedExpr) then begin
-                  Result:=TNoResultWrapperExpr.Create(hotPos, TTypedExpr(locExpr));
-                  locExpr:=nil;
-               end else if locExpr is TProgramExpr then begin
-                  Result:=locExpr;
-                  locExpr:=nil;
+               end else if locExprClass.InheritsFrom(TNullExpr) then begin
+                  Result := locExpr;
+               end else if (FPendingSetterValueExpr <> nil) and locExpr.InheritsFrom(TTypedExpr) then begin
+                  Result := TNoResultWrapperExpr.Create(hotPos, TTypedExpr(locExpr));
                end else begin
-                  Result:=nil;
-                  FMsgs.AddCompilerStop(hotPos, CPE_InvalidInstruction)
+                  Result := locExpr;
                end;
+
             end;
          except
             OrphanAndNil(locExpr);
@@ -4709,6 +4716,7 @@ var
    progMeth : TMethodSymbol;
    selfSym : TDataSymbol;
    baseType : TTypeSymbol;
+   baseTypeClass : TClass;
    sk : TSpecialKeywordKind;
    symClassType : TClass;
 begin
@@ -4776,18 +4784,18 @@ begin
       if baseType<>nil then begin
 
          // Namespace prefix found
-         if baseType.ClassType=TUnitSymbol then begin
+         if baseType.ClassType = TUnitSymbol then begin
 
-            baseType:=ResolveUnitNameSpace(namePos, TUnitSymbol(baseType));
+            baseType := ResolveUnitNameSpace(namePos, TUnitSymbol(baseType));
 
             namePos := FTok.HotPos;
             sym := TUnitSymbol(baseType).Table.FindLocal(FTok.GetToken.AsString);
 
             if not Assigned(sym) then
                FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownNameDotName,
-                                        [baseType.Name, FTok.GetToken.AsString]);
+                                        [ baseType.Name, FTok.GetToken.AsString ]);
 
-            baseType:=sym.BaseType;
+            baseType := sym.BaseType;
 
             FTok.KillToken;
 
@@ -4798,133 +4806,150 @@ begin
 
       end;
 
-      // "Variables"
+      symClassType := sym.ClassType;
 
-      symClassType:=sym.ClassType;
+      if symClassType.InheritsFrom(TValueSymbol) then begin
 
-      if symClassType=TLazyParamSymbol then begin
+         // value symbols
 
-         Result:=ReadSymbol(GetLazyParamExpr(TLazyParamSymbol(sym)), IsWrite, expecting);
+         if symClassType.InheritsFrom(TConstSymbol) then begin
 
-      end else if symClassType=TVarParamSymbol then begin
+            Result := ReadConstName(namePos, TConstSymbol(sym), IsWrite);
 
-         Result:=ReadSymbol(GetVarParamExpr(TVarParamSymbol(sym)), IsWrite, expecting);
+         end else if symClassType.InheritsFrom(TDataSymbol) then begin
 
-      end else if symClassType=TConstByRefParamSymbol then begin
+            if symClassType = TLazyParamSymbol then begin
 
-         Result:=ReadSymbol(GetConstByRefParamExpr(TConstByRefParamSymbol(sym)), IsWrite, expecting);
+               Result:=ReadSymbol(GetLazyParamExpr(TLazyParamSymbol(sym)), IsWrite, expecting);
 
-      end else if symClassType=TResourceStringSymbol then begin
+            end else if symClassType = TVarParamSymbol then begin
 
-         Result:=ReadResourceStringName(TResourceStringSymbol(sym), namePos);
+               Result:=ReadSymbol(GetVarParamExpr(TVarParamSymbol(sym)), IsWrite, expecting);
 
-      end else if sym.InheritsFrom(TConstSymbol) then begin
+            end else if symClassType = TConstByRefParamSymbol then begin
 
-         Result:=ReadConstName(namePos, TConstSymbol(sym), IsWrite);
+               Result:=ReadSymbol(GetConstByRefParamExpr(TConstByRefParamSymbol(sym)), IsWrite, expecting);
 
-      end else if sym.InheritsFrom(TDataSymbol) then begin
+            end else begin
 
-         Result:=ReadDataSymbolName(namePos, TDataSymbol(sym), CurrentProg.Table, isWrite, expecting);
+               Result:=ReadDataSymbolName(namePos, TDataSymbol(sym), CurrentProg.Table, isWrite, expecting);
 
-      end else if sym.ClassType=TExternalVarSymbol then begin
+            end;
 
-         Result := ReadSymbol(ReadExternalVar(TExternalVarSymbol(sym), IsWrite), IsWrite, expecting);
-         Result := ReadSymbol(Result, IsWrite, expecting);
+         end else if symClassType.InheritsFrom(TFieldSymbol) then begin
 
-      // OOP related stuff
+            if TdwsProcedure(CurrentProg).Func is TMethodSymbol then begin
+               progMeth:=CurrentProg.ContextMethodSymbol;
+               selfSym:=progMeth.SelfSym;
+            end else begin
+               selfSym:=TDataSymbol(CurrentProg.Table.FindSymbol(SYS_SELF, cvMagic, TDataSymbol));
+            end;
 
-      end else if baseType is TStructuredTypeSymbol then begin
+            if (selfSym=nil) or (selfSym.Typ is TStructuredTypeMetaSymbol) then begin
 
-         WarnDeprecatedType(namePos, baseType);
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_ObjectReferenceExpected);
+               fieldExpr:=TFieldExpr.Create(namePos, TFieldSymbol(sym), nil);
 
-         if baseType.ClassType=TClassSymbol then begin
+            end else begin
 
-            Result:=ReadClassSymbolName(TClassSymbol(baseType), isWrite, expecting);
+               fieldExpr:=ReadField(namePos, selfSym, TFieldSymbol(sym));
 
-         end else if baseType.ClassType=TInterfaceSymbol then begin
+            end;
+            Result:=ReadImplicitCall(fieldExpr, IsWrite, expecting);
 
-            Result:=ReadInterfaceSymbolName(TInterfaceSymbol(baseType), isWrite, expecting);
+         end else if symClassType.InheritsFrom(TPropertySymbol) then begin
 
-         end else begin
-
-            Assert(baseType.ClassType=TRecordSymbol);
-            if FTok.TestDelete(ttBLEFT) then
-               Result:=ReadTypeCast(namePos, TTypeSymbol(sym))
-            else Result:=ReadRecordSymbolName(TRecordSymbol(baseType), isWrite, expecting);
-
-         end;
-
-      end else if sym.InheritsFrom(TFieldSymbol) then begin
-
-         if TdwsProcedure(CurrentProg).Func is TMethodSymbol then begin
             progMeth:=CurrentProg.ContextMethodSymbol;
             selfSym:=progMeth.SelfSym;
+
+            if selfSym=nil then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
+
+            if selfSym.ClassType=TVarParamSymbol then
+               varExpr:=GetVarParamExpr(progMeth.SelfSym as TVarParamSymbol)
+            else varExpr:=GetVarExpr(namePos, progMeth.SelfSym);
+            try
+               propExpr:=ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite);
+            except
+               OrphanAndNil(varExpr);
+               raise;
+            end;
+
+            Result:=ReadSymbol(propExpr, IsWrite, expecting);
+
+         end else if symClassType = TExternalVarSymbol then begin
+
+            Result := ReadSymbol(ReadExternalVar(TExternalVarSymbol(sym), IsWrite), IsWrite, expecting);
+            Result := ReadSymbol(Result, IsWrite, expecting);
+
          end else begin
-            selfSym:=TDataSymbol(CurrentProg.Table.FindSymbol(SYS_SELF, cvMagic, TDataSymbol));
+
+            FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_Unexpected_X, [sym.Name]);
+
          end;
 
-         if (selfSym=nil) or (selfSym.Typ is TStructuredTypeMetaSymbol) then begin
+      end else if symClassType.InheritsFrom(TTypeSymbol) then begin
 
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_ObjectReferenceExpected);
-            fieldExpr:=TFieldExpr.Create(namePos, TFieldSymbol(sym), nil);
+         // type symbols
+
+         if baseType is TStructuredTypeSymbol then begin
+
+            WarnDeprecatedType(namePos, baseType);
+            baseTypeClass := baseType.ClassType;
+
+            if baseTypeClass = TClassSymbol then begin
+
+               Result := ReadClassSymbolName(TClassSymbol(baseType), isWrite, expecting);
+
+            end else if baseTypeClass = TInterfaceSymbol then begin
+
+               Result:=ReadInterfaceSymbolName(TInterfaceSymbol(baseType), isWrite, expecting);
+
+            end else begin
+
+               Assert(baseTypeClass = TRecordSymbol);
+               if FTok.TestDelete(ttBLEFT) then
+                  Result := ReadTypeCast(namePos, TTypeSymbol(sym))
+               else Result := ReadRecordSymbolName(TRecordSymbol(baseType), isWrite, expecting);
+
+            end;
+
+         end else if symClassType.InheritsFrom(TFuncSymbol) then begin
+
+            if symClassType.InheritsFrom(TMethodSymbol) then begin
+
+                  if TMethodSymbol(sym).IsOverloaded then
+                     funcExpr:=ReadSelfMethOverloaded(TMethodSymbol(sym), isWrite, expecting, [])
+                  else funcExpr:=ReadSelfMethod(TMethodSymbol(sym), isWrite, expecting, nil, []);
+                  Result:=ReadSymbol(funcExpr, IsWrite, expecting);
+
+            end else begin
+
+               if TFuncSymbol(sym).IsOverloaded then
+                  funcExpr:=ReadFuncOverloaded(TFuncSymbol(sym), CurrentProg.Table, nil, expecting)
+               else funcExpr:=ReadFunc(TFuncSymbol(sym), nil, expecting);
+               Result:=ReadSymbol(funcExpr, IsWrite, expecting);
+
+            end;
+
+         end else if symClassType.InheritsFrom(TEnumerationSymbol) then begin
+
+            Result:=ReadEnumerationSymbolName(namePos, TEnumerationSymbol(sym), expecting=FCompilerContext.TypAnyType)
 
          end else begin
 
-            fieldExpr:=ReadField(namePos, selfSym, TFieldSymbol(sym));
+            WarnDeprecatedType(namePos, TTypeSymbol(baseType));
+
+            if FTok.TestDelete(ttBLEFT) then
+               castExpr:=ReadTypeCast(namePos, TTypeSymbol(sym))
+            else castExpr:=ReadTypeExpr(namePos, TTypeSymbol(sym), isWrite, expecting);
+            Result:=ReadSymbol(castExpr, IsWrite, expecting);
 
          end;
-         Result:=ReadImplicitCall(fieldExpr, IsWrite, expecting);
 
-      end else if sym.InheritsFrom(TPropertySymbol) then begin
+      end else if symClassType = TResourceStringSymbol then begin
 
-         progMeth:=CurrentProg.ContextMethodSymbol;
-         selfSym:=progMeth.SelfSym;
-
-         if selfSym=nil then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
-
-         if selfSym.ClassType=TVarParamSymbol then
-            varExpr:=GetVarParamExpr(progMeth.SelfSym as TVarParamSymbol)
-         else varExpr:=GetVarExpr(namePos, progMeth.SelfSym);
-         try
-            propExpr:=ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite);
-         except
-            OrphanAndNil(varExpr);
-            raise;
-         end;
-
-         Result:=ReadSymbol(propExpr, IsWrite, expecting);
-
-      // Methods
-      end else if sym.InheritsFrom(TMethodSymbol) then begin
-
-         if TMethodSymbol(sym).IsOverloaded then
-            funcExpr:=ReadSelfMethOverloaded(TMethodSymbol(sym), isWrite, expecting, [])
-         else funcExpr:=ReadSelfMethod(TMethodSymbol(sym), isWrite, expecting, nil, []);
-         Result:=ReadSymbol(funcExpr, IsWrite, expecting);
-
-      // Functions/Procedures
-      end else if sym.InheritsFrom(TFuncSymbol) then begin
-
-         if TFuncSymbol(sym).IsOverloaded then
-            funcExpr:=ReadFuncOverloaded(TFuncSymbol(sym), CurrentProg.Table, nil, expecting)
-         else funcExpr:=ReadFunc(TFuncSymbol(sym), nil, expecting);
-         Result:=ReadSymbol(funcExpr, IsWrite, expecting);
-
-      // Enumeration type cast or type symbol
-      end else if sym.InheritsFrom(TEnumerationSymbol) then begin
-
-         Result:=ReadEnumerationSymbolName(namePos, TEnumerationSymbol(sym), expecting=FCompilerContext.TypAnyType)
-
-      // helpers and generic type casts
-      end else if sym.InheritsFrom(TTypeSymbol) then begin
-
-         WarnDeprecatedType(namePos, TTypeSymbol(baseType));
-
-         if FTok.TestDelete(ttBLEFT) then
-            castExpr:=ReadTypeCast(namePos, TTypeSymbol(sym))
-         else castExpr:=ReadTypeExpr(namePos, TTypeSymbol(sym), isWrite, expecting);
-         Result:=ReadSymbol(castExpr, IsWrite, expecting);
+         Result:=ReadResourceStringName(TResourceStringSymbol(sym), namePos);
 
       end else begin
 
@@ -5781,50 +5806,56 @@ begin
          // Class, record, intf
          if baseType is TStructuredTypeSymbol then begin
 
-            member:=FindStructMember(TStructuredTypeSymbol(baseType), name);
-            if member<>nil then begin
-               memberClassType:=member.ClassType;
-               if not (coHintsDisabled in FOptions) then
-                  CheckMatchingDeclarationCase(name, member, namePos);
-            end else memberClassType:=nil;
-
-            RecordSymbolUseReference(member, namePos, isWrite);
-
             if (baseType is TRecordSymbol) and (Result is TFuncExpr) then
                TFuncExpr(Result).InitializeResultAddr(CurrentProg);
 
-            if member is TMethodSymbol then begin
+            member := FindStructMember(TStructuredTypeSymbol(baseType), name);
+            if member = nil then begin
 
-               baseExpr:=(Result as TTypedExpr);
-               Result:=nil;
-               meth:=TMethodSymbol(member);
-               if meth.IsOverloaded then
-                  Result:=ReadMethOverloaded(meth, baseExpr, namePos, expecting)
-               else Result:=ReadMethod(meth, baseExpr, namePos, expecting);
-
-            end else if member is TFieldSymbol then begin
-
-               Assert(Result is TTypedExpr);
-               Result:=ReadField(FTok.HotPos, nil, TFieldSymbol(member), TTypedExpr(Result));
-
-            end else if member is TPropertySymbol then begin
-
-               Assert(Result is TTypedExpr);
-               Result := ReadPropertyExpr(TTypedExpr(Result), TPropertySymbol(member), IsWrite)
-
-            end else if memberClassType=TClassVarSymbol then begin
-
-               OrphanAndNil(Result);
-               Result:=ReadDataSymbolName(namePos, TDataSymbol(member), TStructuredTypeSymbol(member).Members, IsWrite, expecting);
-
-            end else if memberClassType=TClassConstSymbol then begin
-
-               OrphanAndNil(Result);
-               Result:=ReadConstName(namePos, TConstSymbol(member), IsWrite);
+               ReportNoMemberForType(name, namePos, baseType);
 
             end else begin
 
-               ReportNoMemberForType(name, namePos, baseType);
+               RecordSymbolUseReference(member, namePos, isWrite);
+               if not (coHintsDisabled in FOptions) then
+                  CheckMatchingDeclarationCase(name, member, namePos);
+
+               memberClassType := member.ClassType;
+
+               if memberClassType.InheritsFrom(TMethodSymbol) then begin
+
+                  baseExpr := (Result as TTypedExpr);
+                  Result := nil;
+                  meth := TMethodSymbol(member);
+                  if meth.IsOverloaded then
+                     Result := ReadMethOverloaded(meth, baseExpr, namePos, expecting)
+                  else Result := ReadMethod(meth, baseExpr, namePos, expecting);
+
+               end else if memberClassType.InheritsFrom(TFieldSymbol) then begin
+
+                  Assert(Result is TTypedExpr);
+                  Result := ReadField(FTok.HotPos, nil, TFieldSymbol(member), TTypedExpr(Result));
+
+               end else if memberClassType.InheritsFrom(TPropertySymbol) then begin
+
+                  Assert(Result is TTypedExpr);
+                  Result := ReadPropertyExpr(TTypedExpr(Result), TPropertySymbol(member), IsWrite)
+
+               end else if memberClassType = TClassVarSymbol then begin
+
+                  OrphanAndNil(Result);
+                  Result := ReadDataSymbolName(namePos, TDataSymbol(member), TStructuredTypeSymbol(member).Members, IsWrite, expecting);
+
+               end else if memberClassType = TClassConstSymbol then begin
+
+                  OrphanAndNil(Result);
+                  Result := ReadConstName(namePos, TConstSymbol(member), IsWrite);
+
+               end else begin
+
+                  ReportNoMemberForType(name, namePos, baseType);
+
+               end;
 
             end;
 

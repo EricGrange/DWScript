@@ -4216,7 +4216,6 @@ end;
 //
 procedure TTightList.Sort(const comparer : TPointerComparer);
 var
-   locList : PObjectTightList;
    i, j : Integer;
 begin
    case Count of

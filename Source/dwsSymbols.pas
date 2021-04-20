@@ -385,7 +385,7 @@ type
          FFlags : TSymbolTableFlags;
 
          function GetParentCount : Integer;
-         function GetParents(Index: Integer) : TSymbolTable;
+         function GetParents(Index: Integer) : TSymbolTable; inline;
 
       protected
          function GetSymbol(Index: Integer): TSymbol; inline;
@@ -6642,7 +6642,7 @@ begin
       end;
    end;
    Result := nil;
-end;          //}
+end;
 
 // FindTypeLocal
 //
