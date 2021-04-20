@@ -5143,6 +5143,44 @@ end;
 // Optimize
 //
 function TAssignExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
+var
+   rightClassType : TClass;
+
+   function OptimizeStringConcat(leftVarExpr : TStrVarExpr) : TProgramExpr;
+   var
+      addStrExpr : TBinaryOpExpr;
+      addStrManyExpr : TAddStrManyExpr;
+   begin
+      Result := Self;
+      if     (leftVarExpr.DataSym is TClassVarSymbol)
+         and TClassVarSymbol(leftVarExpr.DataSym).OwnerSymbol.IsExternal then begin
+         Exit;
+      end;
+      if rightClassType = TAddStrExpr then begin
+         addStrExpr := TBinaryOpExpr(FRight);
+         if (addStrExpr.Left is TVarExpr) and (addStrExpr.Left.ReferencesVariable(leftVarExpr.DataSym)) then begin
+            if addStrExpr.Right.InheritsFrom(TConstStringExpr) then begin
+               Result:=TAppendConstStringVarExpr.Create(context, FScriptPos, FLeft, addStrExpr.Right);
+            end else begin
+               Result:=TAppendStringVarExpr.Create(context, FScriptPos, FLeft, addStrExpr.Right);
+            end;
+            FLeft:=nil;
+            addStrExpr.Right:=nil;
+            Free;
+         end;
+      end else if (rightClassType = TAddStrManyExpr) then begin
+         addStrManyExpr := TAddStrManyExpr(FRight);
+         if (addStrManyExpr.SubExpr[0] is TVarExpr) and (addStrManyExpr.SubExpr[0].ReferencesVariable(leftVarExpr.DataSym)) then begin
+            context.OrphanObject(addStrManyExpr.ExtractOperand(0));
+            Result := TAppendStringVarExpr.Create(context, FScriptPos, FLeft, addStrManyExpr);
+            FLeft := nil;
+            FRight := nil;
+            Free;
+         end;
+      end;
+   end;
+
+
 type
    TCombinedOp = record
       Op : TBinaryOpExprClass; Comb : TOpAssignExprClass;
@@ -5161,70 +5199,47 @@ var
    i : Integer;
    leftVarExpr : TVarExpr;
    addIntExpr : TAddIntExpr;
-   addStrExpr : TBinaryOpExpr;
-   addStrManyExpr : TAddStrManyExpr;
    subIntExpr : TSubIntExpr;
-   rightClassType : TClass;
 begin
    if FRight.IsConstant then begin
       Exit(OptimizeConstAssignment(context));
    end;
 
-   Result:=Self;
+   Result := Self;
    rightClassType := FRight.ClassType;
-   if FLeft.InheritsFrom(TVarExpr)then begin
-      leftVarExpr := TVarExpr(FLeft);
-      if leftVarExpr.ClassType = TIntVarExpr then begin
-         if rightClassType = TAddIntExpr then begin
-            addIntExpr := TAddIntExpr(FRight);
-            if addIntExpr.Left.SameDataExpr(leftVarExpr) then begin
-               Result := TIncIntVarExpr.Create(context, FScriptPos, FLeft, addIntExpr.Right);
-               FLeft := nil;
-               addIntExpr.Right := nil;
-               Free;
-               Exit;
-            end;
-         end else if rightClassType=TSubIntExpr then begin
-            subIntExpr:=TSubIntExpr(FRight);
-            if subIntExpr.Left.SameDataExpr(leftVarExpr) then begin
-               Result:=TDecIntVarExpr.Create(context, FScriptPos, FLeft, subIntExpr.Right);
-               FLeft:=nil;
-               subIntExpr.Right:=nil;
-               Free;
-               Exit;
-            end;
-         end;
-      end else if leftVarExpr.ClassType=TStrVarExpr then begin
-         if (leftVarExpr.DataSym is TClassVarSymbol) and TClassVarSymbol(leftVarExpr.DataSym).OwnerSymbol.IsExternal then begin
-            Exit;
-         end;
-         if (rightClassType = TAddStrExpr) then begin
-            addStrExpr := TBinaryOpExpr(FRight);
-            if (addStrExpr.Left is TVarExpr) and (addStrExpr.Left.ReferencesVariable(leftVarExpr.DataSym)) then begin
-               if addStrExpr.Right.InheritsFrom(TConstStringExpr) then begin
-                  Result:=TAppendConstStringVarExpr.Create(context, FScriptPos, FLeft, addStrExpr.Right);
-               end else begin
-                  Result:=TAppendStringVarExpr.Create(context, FScriptPos, FLeft, addStrExpr.Right);
+   if (rightClassType = TAddStrExpr) or (rightClassType = TAddStrManyExpr) then begin
+      if FLeft.ClassType = TStrVarExpr then
+         Result := OptimizeStringConcat(TStrVarExpr(FLeft));
+      Exit;
+   end;
+
+   if (rightClassType = TAddIntExpr) or (rightClassType = TSubIntExpr) then begin
+      if FLeft.InheritsFrom(TVarExpr)then begin
+         leftVarExpr := TVarExpr(FLeft);
+         if leftVarExpr.ClassType = TIntVarExpr then begin
+            if rightClassType = TAddIntExpr then begin
+               addIntExpr := TAddIntExpr(FRight);
+               if addIntExpr.Left.SameDataExpr(leftVarExpr) then begin
+                  Result := TIncIntVarExpr.Create(context, FScriptPos, FLeft, addIntExpr.Right);
+                  FLeft := nil;
+                  addIntExpr.Right := nil;
+                  Free;
+                  Exit;
                end;
-               FLeft:=nil;
-               addStrExpr.Right:=nil;
-               Free;
-               Exit;
-            end;
-         end else if (rightClassType = TAddStrManyExpr) then begin
-            addStrManyExpr := TAddStrManyExpr(FRight);
-            if (addStrManyExpr.SubExpr[0] is TVarExpr) and (addStrManyExpr.SubExpr[0].ReferencesVariable(leftVarExpr.DataSym)) then begin
-               context.OrphanObject(addStrManyExpr.ExtractOperand(0));
-               Result := TAppendStringVarExpr.Create(context, FScriptPos, FLeft, addStrManyExpr);
-               FLeft := nil;
-               FRight := nil;
-               Free;
-               Exit;
+            end else if rightClassType=TSubIntExpr then begin
+               subIntExpr:=TSubIntExpr(FRight);
+               if subIntExpr.Left.SameDataExpr(leftVarExpr) then begin
+                  Result:=TDecIntVarExpr.Create(context, FScriptPos, FLeft, subIntExpr.Right);
+                  FLeft:=nil;
+                  subIntExpr.Right:=nil;
+                  Free;
+                  Exit;
+               end;
             end;
          end;
       end;
    end;
-   if (Right is TBinaryOpExpr) and Left.SameDataExpr(TBinaryOpExpr(Right).Left) then begin
+   if rightClassType.InheritsFrom(TBinaryOpExpr) and Left.SameDataExpr(TBinaryOpExpr(Right).Left) then begin
       for i:=Low(cCombinedOps) to High(cCombinedOps) do begin
          if rightClassType=cCombinedOps[i].Op then begin
             Result:=cCombinedOps[i].Comb.Create(context, FScriptPos, FLeft, TBinaryOpExpr(Right).Right);
