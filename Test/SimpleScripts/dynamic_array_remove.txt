@@ -1,0 +1,6 @@
+Errors >>>>
+Hint: "join" does not match case of declaration ("Join") [line: 7, column: 13]
+Result >>>>
+True
+b
+False

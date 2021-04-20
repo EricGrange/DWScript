@@ -383,6 +383,7 @@ var
    indexOfClass : TArrayIndexOfExprClass;
 begin
    inherited Create(context, scriptPos, aBase);
+   Typ := context.TypInteger;
    indexOfClass := TArrayIndexOfExpr.ArrayIndexOfExprClass(aBase.Typ as TDynamicArraySymbol);
    FIndexOf := indexOfClass.Create(context, scriptPos, aBase, aItem, aFromIndex) as TDynamicArrayIndexOfExpr;
    aBase.IncRefCount;
