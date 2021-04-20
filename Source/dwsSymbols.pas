@@ -5650,9 +5650,11 @@ end;
 //
 procedure TClassSymbol.CollectPublishedSymbols(symbolList : TSimpleSymbolList);
 var
+   i : Integer;
    member : TSymbol;
 begin
-   for member in Members do begin
+   for i := 0 to Members.Count-1 do begin
+      member := Members[i];
       if member.ClassType=TPropertySymbol then begin
          if TPropertySymbol(member).Visibility=cvPublished then
             symbolList.Add(member);
