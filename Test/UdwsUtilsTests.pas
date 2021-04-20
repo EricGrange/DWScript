@@ -54,6 +54,7 @@ type
          procedure WOBSTailByte;
          procedure TightListTest;
          procedure TightListEnumerator;
+         procedure TightListSort;
          procedure LookupTest;
          procedure SortedListExtract;
          procedure SimpleListOfInterfaces;
@@ -126,6 +127,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsRandom;
 
 var
    vGlobals : TGlobalVars;
@@ -541,6 +544,36 @@ begin
    CheckEquals(2, n);
 
    FTightList.Clear;
+end;
+
+// TightListSort
+//
+function TestComparer(a, b : Pointer) : Integer;
+begin
+   Result := Integer(a) - Integer(b);
+end;
+procedure TdwsUtilsTests.TightListSort;
+var
+   i, j, k : Integer;
+   list : TTightList;
+   rnd : TXoroShiro128Plus;
+begin
+   rnd.SetSeed64(123456);
+   for i := 0 to 10 do begin
+      list.Initialize;
+      for j := 1 to 20 do begin
+
+         for k := 1 to i do begin
+            list.Add(TRefCountedObject(rnd.Next and $FFFF));
+         end;
+         list.Sort(TestComparer);
+         for k := 0 to i-2 do
+            Check(Integer(list.List[k]) < Integer(list.List[k+1]),
+                  'Size ' + IntToStr(i) + ' round ' + IntToStr(k));
+         list.Clear;
+
+      end;
+   end;
 end;
 
 // LookupTest

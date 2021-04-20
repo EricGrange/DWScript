@@ -1,4 +1,4 @@
 Hint: Variable "i" declared but not used [line: 10, column: 4]
 Hint: Result is never used [line: 12, column: 1]
-Hint: Private method "Dummy" declared but never used [line: 5, column: 19]
 Hint: Private field "Field" declared but never used [line: 4, column: 10]
+Hint: Private method "Dummy" declared but never used [line: 5, column: 19]

@@ -1702,7 +1702,7 @@ type
    // try..except on FExceptionVar: FExceptionVar.Typ do FDoBlockExpr; ... end;
    TExceptDoExpr = class(TNoResultExpr)
       private
-         FExceptionTable : TSymbolTable;
+         FExceptionTable : TUnSortedSymbolTable;
          FDoBlockExpr : TProgramExpr;
 
       protected
@@ -1719,7 +1719,7 @@ type
          function ExceptionVar : TDataSymbol;
 
          property DoBlockExpr : TProgramExpr read FDoBlockExpr write FDoBlockExpr;
-         property ExceptionTable : TSymbolTable read FExceptionTable;
+         property ExceptionTable : TUnSortedSymbolTable read FExceptionTable;
    end;
 
    // try FTryExpr finally FHandlerExpr end;
@@ -7674,7 +7674,8 @@ var
 begin
    FExceptionExpr.EvalAsScriptObj(exec, exceptObj);
    CheckScriptObject(exec, exceptObj);
-   exceptObj.EvalAsString(0, exceptMessage);
+   exceptMessage := exceptObj.FieldAsString(SYS_EXCEPTION_MESSAGE_FIELD);
+//   exceptObj.EvalAsString(, exceptMessage);
    if exceptObj.ClassSym.Name<>SYS_EDELPHI then begin
       if exceptMessage<>'' then
          exceptMessage:=Format(RTE_UserDefinedException_Msg, [exceptMessage])
@@ -7729,7 +7730,7 @@ end;
 constructor TExceptDoExpr.Create(context : TdwsCompilerContext; const aPos: TScriptPos);
 begin
    inherited Create(aPos);
-   FExceptionTable:=TSymbolTable.Create(context.Table, context.Table.AddrGenerator);
+   FExceptionTable := TUnSortedSymbolTable.Create(context.Table, context.Table.AddrGenerator);
 end;
 
 // Destroy

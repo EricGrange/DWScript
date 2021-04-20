@@ -1451,7 +1451,8 @@ begin
       msgFmt:=CPE_ClassConstRedefined
    else begin
       Assert(sym is TMethodSymbol);
-      msgFmt:=CPE_MethodRedefined
+      msgFmt := CPE_MethodRedefined;
+      TMethodSymbol(sym).IgnoreMissingImplementation := True;
    end;
    FMsgs.AddCompilerErrorFmt(hotPos, msgFmt, [sym.Name])
 end;

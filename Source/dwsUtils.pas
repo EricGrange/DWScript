@@ -186,6 +186,7 @@ type
       Make sure to Clear or Clean in the destructor of the Owner. }
    TTightListArray = array [0..MaxInt shr 4] of TRefCountedObject;
    PObjectTightList = ^TTightListArray;
+   TPointerComparer = function (a, b : Pointer) : Integer;
    TTightList = record
       private
          FList : PObjectTightList;
@@ -221,6 +222,8 @@ type
          function ItemsAllOfClass(aClass : TClass) : Boolean;
 
          function GetEnumerator : TTightListEnumerator;
+
+         procedure Sort(const comparer : TPointerComparer);
    end;
    PTightList = ^TTightList;
 
@@ -4207,6 +4210,42 @@ end;
 procedure TTightList.RaiseIndexOutOfBounds;
 begin
    raise ETightListOutOfBound.Create('List index out of bounds');
+end;
+
+// Sort
+//
+procedure TTightList.Sort(const comparer : TPointerComparer);
+var
+   locList : PObjectTightList;
+   i, j : Integer;
+begin
+   case Count of
+      0, 1 : Exit;
+      2 : begin
+         if comparer(FList[0], FList[1]) > 0 then
+            Exchange(0, 1);
+      end;
+      3 : begin
+         if comparer(FList[0], FList[1]) > 0 then
+            Exchange(0, 1);
+         if comparer(FList[1], FList[2]) > 0 then begin
+            Exchange(1, 2);
+            if comparer(FList[0], FList[1]) > 0 then
+               Exchange(0, 1);
+         end;
+      end;
+   else
+      // use an insertion sort, tight list is for very small lists
+      i := 1;
+      while i < Count do begin
+         j := i;
+         while (j > 0) and (comparer(FList[j-1], FList[j]) > 0) do begin
+            Exchange(j, j-1);
+            Dec(j);
+         end;
+         Inc(i);
+      end;
+   end;
 end;
 
 // GetEnumerator

@@ -1,1 +1,1 @@
-Syntax Error: Incompatible types: Cannot assign "TEnum2" to "TEnum1" [line: 7, column: 4]
+Syntax Error: Incompatible types: Cannot assign "TEnum1" to "TEnum2" [line: 8, column: 4]

@@ -1,15 +1,15 @@
 TRoot:
 function TRoot.Abst : String; virtual 1; abstract; overlap;
 TBase:
-procedure TBase.Overlap; virtual 3; overload;
-class function TBase.World : String; overlap; static;
 function TBase.Abst : String; virtual 1; override;
-function TBase.Virt : Integer; virtual 2; overlap;
 procedure TBase.Hello; overlap;
-TSub:
-procedure TSub.Overlap; virtual 4; overlap;
-function TSub.Abst : String; virtual 1; override; final;
-function TSub.Virt : Integer; virtual 2; override;
-procedure TBase.Overlap; virtual 3; overload;
+procedure TBase.Overlap; virtual 2; overload;
+function TBase.Virt : Integer; virtual 3; overlap;
 class function TBase.World : String; overlap; static;
+TSub:
+function TSub.Abst : String; virtual 1; override; final;
+procedure TSub.Overlap; virtual 4; overlap;
+function TSub.Virt : Integer; virtual 3; override;
 procedure TBase.Hello; overlap;
+procedure TBase.Overlap; virtual 2; overload;
+class function TBase.World : String; overlap; static;

@@ -7283,9 +7283,15 @@ end;
 //
 function TScriptObjInstance.FieldAddress(const fieldName : String) : Integer;
 var
+   clsSym : TClassSymbol;
    field : TFieldSymbol;
 begin
-   field := TFieldSymbol(FClassSym.Members.FindLocal(fieldName, TFieldSymbol));
+   clsSym := FClassSym;
+   repeat
+      field := TFieldSymbol(clsSym.Members.FindLocal(fieldName, TFieldSymbol));
+      if field <> nil then break;
+      clsSym := clsSym.Parent;
+   until clsSym = nil;
    if field = nil then
       raise Exception.CreateFmt(RTE_FieldNotFoundInClass, [fieldName, FClassSym.Name]);
    Result := field.Offset;

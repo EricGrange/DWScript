@@ -393,10 +393,6 @@ type
 
          procedure SortSymbols(minIndex, maxIndex : Integer);
 
-      strict private
-         function FindLocalSorted(const name : String) : TSymbol;
-         function FindLocalUnSorted(const name : String) : TSymbol;
-
       public
          constructor Create(parent : TSymbolTable = nil; addrGenerator : TAddrGenerator = nil);
          destructor Destroy; override;
@@ -942,7 +938,7 @@ type
                    mkClassProcedure, mkClassFunction, mkClassMethod );
    TMethodAttribute = ( maVirtual, maOverride, maReintroduce, maAbstract,
                         maOverlap, maClassMethod, maFinal, maDefault, maInterfaced,
-                        maStatic );
+                        maStatic, maIgnoreMissingImplementation );
    TMethodAttributes = set of TMethodAttribute;
 
    // A method of a script class: TMyClass = class procedure X(param: String); end;
@@ -972,6 +968,8 @@ type
          function GetIsDefault : Boolean; inline;
          procedure SetIsDefault(const val : Boolean); inline;
          function GetIsStatic : Boolean; inline;
+         function GetIgnoreMissingImplementation : Boolean;
+         procedure SetIgnoreMissingImplementation(const val : Boolean);
 
          function GetCaption : String; override;
          function GetDescription : String; override;
@@ -1003,6 +1001,7 @@ type
 
          property StructSymbol : TCompositeTypeSymbol read FStructSymbol;
          property VMTIndex : Integer read FVMTIndex;
+
          property IsDefault : Boolean read GetIsDefault write SetIsDefault;
          property IsAbstract : Boolean read GetIsAbstract write SetIsAbstract;
          property IsVirtual : Boolean read GetIsVirtual write SetIsVirtual;
@@ -1016,6 +1015,7 @@ type
          property RootParentMeth : TMethodSymbol read GetRootParentMeth;
          property SelfSym : TDataSymbol read FSelfSym;
          property Visibility : TdwsVisibility read FVisibility;
+         property IgnoreMissingImplementation : Boolean read GetIgnoreMissingImplementation write SetIgnoreMissingImplementation;
    end;
 
    TMethodSymbolClass = class of TMethodSymbol;
@@ -1814,6 +1814,8 @@ type
          function FindClassOperator(tokenType : TTokenType; paramType : TTypeSymbol) : TClassOperatorSymbol;
 
          function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; override;
+
+         procedure CollectPublishedSymbols(symbolList : TSimpleSymbolList);
 
          function AllowVirtualMembers : Boolean; override;
          function AllowOverloads : Boolean; override;
@@ -2871,41 +2873,64 @@ end;
 
 // CheckMethodsImplemented
 //
+function CompareSourceMethSymbolByDeclarePos(a, b : Pointer) : Integer;
+begin
+   Result := TSourceMethodSymbol(a).DeclarationPos.Compare(TSourceMethodSymbol(b).DeclarationPos);
+end;
 procedure TCompositeTypeSymbol.CheckMethodsImplemented(const msgs : TdwsCompileMessageList);
+
+   procedure CreateAutoFixAddImplementation(msg : TScriptMessage; methSym : TMethodSymbol);
+   var
+      afa : TdwsAFAAddImplementation;
+      buf : String;
+      k : Integer;
+   begin
+      afa := TdwsAFAAddImplementation.Create(msg, AFA_AddImplementation);
+      buf := methSym.GetDescription;
+      FastStringReplace(buf, '()', ' ');
+      afa.Text :=  #10
+                 + TrimRight(buf)
+                 + ';'#10'begin'#10#9'|'#10'end;'#10;
+      k := Pos(methSym.Name, afa.Text);
+      afa.Text := Copy(afa.Text, 1, k-1) + methSym.StructSymbol.Name + '.'
+                + Copy(afa.Text, k);
+   end;
+
 var
-   i, k : Integer;
+   i : Integer;
    methSym : TMethodSymbol;
    msg : TScriptMessage;
-   afa : TdwsAFAAddImplementation;
-   buf : String;
+   errorList : TTightList;
 begin
-   for i:=0 to FMembers.Count-1 do begin
+   errorList.Initialize;
+   for i := 0 to FMembers.Count-1 do begin
       if FMembers[i] is TMethodSymbol then begin
-         methSym:=TMethodSymbol(FMembers[i]);
+         methSym := TMethodSymbol(FMembers[i]);
          if methSym.ClassType=TAliasMethodSymbol then continue;
-         if not methSym.IsAbstract then begin
-            if Assigned(methSym.FExecutable) then
-               methSym.FExecutable.InitSymbol(FMembers[i], msgs)
-            else if not methSym.IsExternal then begin
-               if methSym is TSourceMethodSymbol then begin
-                  msg:=msgs.AddCompilerErrorFmt(TSourceMethodSymbol(methSym).DeclarationPos, CPE_MethodNotImplemented,
-                                                [methSym.Name, methSym.StructSymbol.Caption]);
-                  afa:=TdwsAFAAddImplementation.Create(msg, AFA_AddImplementation);
-                  buf:=methSym.GetDescription;
-                  FastStringReplace(buf, '()', ' ');
-                  afa.Text:= #13#10
-                            +TrimRight(buf)
-                            +';'#13#10'begin'#13#10#9'|'#13#10'end;'#13#10;
-                  k:=Pos(methSym.Name, afa.Text);
-                  afa.Text:=Copy(afa.Text, 1, k-1)+methSym.StructSymbol.Name+'.'
-                           +Copy(afa.Text, k, MaxInt);
-               end else begin
-                  msgs.AddCompilerErrorFmt(cNullPos, CPE_MethodNotImplemented,
-                                           [methSym.Name, methSym.StructSymbol.Caption]);
-               end;
+         if methSym.IgnoreMissingImplementation then continue;
+         if methSym.IsAbstract then continue;
+
+         if Assigned(methSym.FExecutable) then
+            methSym.FExecutable.InitSymbol(FMembers[i], msgs)
+         else if not methSym.IsExternal then begin
+            if methSym is TSourceMethodSymbol then begin
+               errorList.Add(methSym)
+            end else begin
+               msgs.AddCompilerErrorFmt(cNullPos, CPE_MethodNotImplemented,
+                                        [methSym.Name, methSym.StructSymbol.Caption]);
             end;
          end;
       end;
+   end;
+   if errorList.Count > 0 then begin
+      errorList.Sort(CompareSourceMethSymbolByDeclarePos);
+      for i := 0 to errorList.Count-1 do begin
+         methSym := TMethodSymbol(errorList.List[i]);
+         msg:=msgs.AddCompilerErrorFmt(TSourceMethodSymbol(methSym).DeclarationPos, CPE_MethodNotImplemented,
+                                       [methSym.Name, methSym.StructSymbol.Caption]);
+         CreateAutoFixAddImplementation(msg, methSym);
+      end;
+      errorList.Clear;
    end;
 end;
 
@@ -4650,6 +4675,22 @@ begin
    Result:=maStatic in FAttributes;
 end;
 
+// GetIgnoreMissingImplementation
+//
+function TMethodSymbol.GetIgnoreMissingImplementation : Boolean;
+begin
+   Result := maIgnoreMissingImplementation in FAttributes;
+end;
+
+// SetIgnoreMissingImplementation
+//
+procedure TMethodSymbol.SetIgnoreMissingImplementation(const val : Boolean);
+begin
+   if val then
+      Include(FAttributes, maIgnoreMissingImplementation)
+   else Exclude(FAttributes, maIgnoreMissingImplementation);
+end;
+
 // SetIsStatic
 //
 procedure TMethodSymbol.SetIsStatic;
@@ -5605,6 +5646,26 @@ begin
    end else Result:=nil;
 end;
 
+// CollectPublishedSymbols
+//
+procedure TClassSymbol.CollectPublishedSymbols(symbolList : TSimpleSymbolList);
+var
+   member : TSymbol;
+begin
+   for member in Members do begin
+      if member.ClassType=TPropertySymbol then begin
+         if TPropertySymbol(member).Visibility=cvPublished then
+            symbolList.Add(member);
+      end else if member.ClassType=TFieldSymbol then begin
+         if TFieldSymbol(member).Visibility=cvPublished then
+            symbolList.Add(member);
+      end else if member.InheritsFrom(TMethodSymbol) then begin
+         if TMethodSymbol(member).Visibility=cvPublished then
+            symbolList.Add(member);
+      end;
+   end;
+end;
+
 // AllowVirtualMembers
 //
 function TClassSymbol.AllowVirtualMembers : Boolean;
@@ -6550,21 +6611,36 @@ end;
 //
 function TSymbolTable.FindLocal(const aName : String; ofClass : TSymbolClass = nil) : TSymbol;
 var
-   n : Integer;
+   lo, hi, mid, cmpResult : Integer;
+   ptrList : PObjectTightList;
 begin
-   n:=FSymbols.Count;
-   if n>6 then begin
-      if not (stfSorted in FFlags) then begin
-         SortSymbols(0, n-1);
-         Include(FFlags, stfSorted);
-      end;
-      Result:=FindLocalSorted(aName);
-   end else begin
-      Result:=FindLocalUnSorted(aName);
+   hi := FSymbols.Count-1;
+   if hi < 0 then Exit(nil);
+
+   if not (stfSorted in FFlags) then begin
+      if hi > 0 then
+         SortSymbols(0, hi);
+      Include(FFlags, stfSorted);
    end;
-   if (Result<>nil) and (ofClass<>nil) and (not Result.InheritsFrom(ofClass)) then
-      Result:=nil;
-end;
+
+   lo := 0;
+   ptrList := FSymbols.List;
+   while lo <= hi do begin
+      mid := (lo + hi) shr 1;
+      Result := TSymbol(ptrList[mid]);
+      cmpResult := UnicodeCompareText(Result.Name, aName);
+      if cmpResult < 0 then
+         lo := mid+1
+      else begin
+         if cmpResult = 0 then begin
+            if (ofClass <> nil) and not Result.InheritsFrom(ofClass) then
+               Result := nil;
+            Exit;
+         end else hi := mid-1;
+      end;
+   end;
+   Result := nil;
+end;          //}
 
 // FindTypeLocal
 //
@@ -6605,72 +6681,31 @@ var
   pSym : TSymbol;
   ptrList : PObjectTightList;
 begin
-   if (maxIndex<=minIndex) then
+   if maxIndex <= minIndex then
       Exit;
-   ptrList:=FSymbols.List;
+   ptrList := FSymbols.List;
    repeat
-      i:=minIndex;
-      j:=maxIndex;
-      p:=((i+j) shr 1);
+      i := minIndex;
+      j := maxIndex;
+      p := ((i+j) shr 1);
       repeat
          pSym:=TSymbol(ptrList[p]);
-         while UnicodeCompareText(TSymbol(ptrList[i]).Name, pSym.Name)<0 do Inc(i);
-         while UnicodeCompareText(TSymbol(ptrList[j]).Name, pSym.Name)>0 do Dec(j);
-         if i<=j then begin
+         while UnicodeCompareText(TSymbol(ptrList[i]).Name, pSym.Name) < 0 do Inc(i);
+         while UnicodeCompareText(TSymbol(ptrList[j]).Name, pSym.Name) > 0 do Dec(j);
+         if i <= j then begin
             FSymbols.Exchange(i, j);
-            if p=i then
-               p:=j
-            else if p=j then
-               p:=i;
+            if p = i then
+               p := j
+            else if p = j then
+               p := i;
             Inc(i);
             Dec(j);
          end;
-      until i>j;
-      if minIndex<j then
+      until i > j;
+      if minIndex < j then
          SortSymbols(minIndex, j);
-      minIndex:=i;
-   until i>=maxIndex;
-end;
-
-// FindLocalSorted
-//
-function TSymbolTable.FindLocalSorted(const name : String) : TSymbol;
-var
-   lo, hi, mid, cmpResult: Integer;
-   ptrList : PObjectTightList;
-begin
-   lo:=0;
-   hi:=FSymbols.Count-1;
-   ptrList:=FSymbols.List;
-   while lo<=hi do begin
-      mid:=(lo+hi) shr 1;
-      cmpResult:=UnicodeCompareText(TSymbol(ptrList[mid]).Name, name);
-      if cmpResult<0 then
-         lo:=mid+1
-      else begin
-         if cmpResult=0 then
-            Exit(TSymbol(ptrList[mid]))
-         else hi:=mid-1;
-      end;
-   end;
-   Result:=nil;
-end;
-
-// FindLocalUnSorted
-//
-function TSymbolTable.FindLocalUnSorted(const name: String) : TSymbol;
-var
-   i : Integer;
-   ptrList : PObjectTightList;
-begin
-   if FSymbols.Count > 0 then begin
-      ptrList := FSymbols.List;
-      for i := FSymbols.Count-1 downto 0 do begin
-         if UnicodeCompareText(TSymbol(ptrList[i]).Name, Name)=0 then
-            Exit(TSymbol(ptrList[i]));
-      end;
-   end;
-   Result := nil;
+      minIndex := i;
+   until i >= maxIndex;
 end;
 
 // FindSymbol
@@ -6916,22 +6951,11 @@ end;
 //
 procedure TSymbolTable.CollectPublishedSymbols(symbolList : TSimpleSymbolList);
 var
-   sym, member : TSymbol;
+   sym : TSymbol;
 begin
    for sym in Self do begin
-      if sym.ClassType=TClassSymbol then begin
-         for member in TClassSymbol(sym).Members do begin
-            if member.ClassType=TPropertySymbol then begin
-               if TPropertySymbol(member).Visibility=cvPublished then
-                  symbolList.Add(member);
-            end else if member.ClassType=TFieldSymbol then begin
-               if TFieldSymbol(member).Visibility=cvPublished then
-                  symbolList.Add(member);
-            end else if member.InheritsFrom(TMethodSymbol) then begin
-               if TMethodSymbol(member).Visibility=cvPublished then
-                  symbolList.Add(member);
-            end;
-         end;
+      if sym.ClassType = TClassSymbol then begin
+         TClassSymbol(sym).CollectPublishedSymbols(symbolList);
       end;
    end;
 end;
@@ -7233,7 +7257,7 @@ begin
       repeat
          Result := TSymbol(ptrList^);
          if UnicodeCompareText(Result.Name, aName) = 0 then begin
-            if (ofClass<>nil) and (not (Result is ofClass)) then
+            if (ofClass<>nil) and not Result.InheritsFrom(ofClass) then
                Result := nil;
             Exit;
          end;

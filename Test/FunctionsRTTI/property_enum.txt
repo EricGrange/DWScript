@@ -1,9 +1,9 @@
 TBase:
-- Indirect, 3 : Integer = 10
-- Direct, 3 : Integer = 2
+- Direct, 3 : Integer = 1
+- Indirect, 3 : Integer = 20
 TSub:
 - Stuff, 3 : String = hello
-- Indirect, 3 : Integer = 10
-- Direct, 3 : Integer = 2
+- Direct, 3 : Integer = 1
+- Indirect, 3 : Integer = 20
 4
 hellohello
