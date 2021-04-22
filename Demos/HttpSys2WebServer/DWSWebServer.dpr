@@ -54,6 +54,7 @@ uses
   dwsSystemInfoLibModule,
   dwsCompiler,
   UHttpSys2WebServer in 'UHttpSys2WebServer.pas',
+//  UCustomUnit in 'UCustomUnit.pas',
   dwsDatabaseLibModule in '..\..\Libraries\DatabaseLib\dwsDatabaseLibModule.pas' {dwsDatabaseLib: TDataModule},
   dwsSynSQLiteDatabase in '..\..\Libraries\DatabaseLib\dwsSynSQLiteDatabase.pas',
   dwsSynODBCDatabase in '..\..\Libraries\DatabaseLib\dwsSynODBCDatabase.pas',

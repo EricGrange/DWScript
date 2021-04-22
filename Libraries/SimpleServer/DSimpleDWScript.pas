@@ -70,6 +70,8 @@ type
       Prev, Next : PExecutingScript;
    end;
 
+   TSimpleDWScriptLibraryBinder = reference to procedure (script : TDelphiWebScript);
+
    TSimpleDWScript = class(TDataModule)
       DelphiWebScript: TDelphiWebScript;
       dwsHtmlFilter: TdwsHtmlFilter;
@@ -78,6 +80,7 @@ type
       dwsRuntimeFileSystem: TdwsRestrictedFileSystem;
       dwsComConnector: TdwsComConnector;
       dwsDatabaseFileSystem: TdwsRestrictedFileSystem;
+
       procedure DataModuleCreate(Sender: TObject);
       procedure DataModuleDestroy(Sender: TObject);
 
@@ -199,6 +202,8 @@ type
       property ShutdownScriptName : String read FShutdownScriptName write FShutdownScriptName;
 
       property ErrorLogDirectory : String read FErrorLogDirectory write FErrorLogDirectory;
+
+      class procedure RegisterLibraryBinder(const binder : TSimpleDWScriptLibraryBinder);
   end;
 
 const
@@ -280,6 +285,9 @@ uses TypInfo;
 const
    cCheckDirectoryChangesInterval = 1000;
 
+var
+   vLibraryBinders : array of TSimpleDWScriptLibraryBinder;
+
 procedure TCompiledProgram.Flush;
 begin
    Prog := nil;
@@ -288,6 +296,7 @@ end;
 
 procedure TSimpleDWScript.DataModuleCreate(Sender: TObject);
 var
+   i : Integer;
    cryptoLib : TdwsCryptoLib;
 begin
    // attempt to minimize probability of ID collisions between server restarts
@@ -357,6 +366,9 @@ begin
 
    dwsCompileSystem.OnFileStreamOpened := DoSourceFileStreamOpened;
    FActiveCompileSystem := dwsCompileSystem;
+
+   for i := 0 to High(vLibraryBinders) do
+      vLibraryBinders[i](DelphiWebScript);
 end;
 
 procedure TSimpleDWScript.DataModuleDestroy(Sender: TObject);
@@ -880,6 +892,17 @@ begin
    else FActiveCompileSystem := sys;
    DelphiWebScript.Config.CompileFileSystem := FActiveCompileSystem;
    FJSCompiler.Config.CompileFileSystem := FActiveCompileSystem;
+end;
+
+// RegisterLibraryBinder
+//
+class procedure TSimpleDWScript.RegisterLibraryBinder(const binder : TSimpleDWScriptLibraryBinder);
+var
+   n : Integer;
+begin
+   n := Length(vLibraryBinders);
+   SetLength(vLibraryBinders, n+1);
+   vLibraryBinders[n] := binder;
 end;
 
 // LogCompileErrors
