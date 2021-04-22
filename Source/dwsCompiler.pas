@@ -5803,8 +5803,12 @@ begin
          end;
          Result:=expr;
 
+         if baseType = nil then
+
+            ReportNoMemberForType(name, namePos, baseType)
+
          // Class, record, intf
-         if baseType is TStructuredTypeSymbol then begin
+         else if baseType.InheritsFrom(TStructuredTypeSymbol) then begin
 
             if (baseType is TRecordSymbol) and (Result is TFuncExpr) then
                TFuncExpr(Result).InitializeResultAddr(CurrentProg);
@@ -5860,7 +5864,7 @@ begin
             end;
 
          // Meta (Class Of, Record Of)
-         end else if baseType is TStructuredTypeMetaSymbol then begin
+         end else if baseType.InheritsFrom(TStructuredTypeMetaSymbol) then begin
 
             member:=TStructuredTypeSymbol(baseType.Typ).Members.FindSymbolFromScope(Name, CurrentStruct);
             if member<>nil then begin
@@ -5910,23 +5914,23 @@ begin
             end;
 
          // Array symbol
-         end else if baseType is TArraySymbol then begin
+         end else if baseType.InheritsFrom(TArraySymbol) then begin
 
             Result:=ReadArrayMethod(name, namePos, Result as TTypedExpr);
 
          // String symbol
-         end else if baseType is TBaseStringSymbol then begin
+         end else if baseType.InheritsFrom(TBaseStringSymbol) then begin
 
             Result:=nil;
             Result:=ReadStringMethod(name, namePos, expr as TTypedExpr);
 
          // Associative Array symbol
-         end else if baseType is TAssociativeArraySymbol then begin
+         end else if baseType.InheritsFrom(TAssociativeArraySymbol) then begin
 
             Result:=ReadAssociativeArrayMethod(name, namePos, Result as TTypedExpr);
 
          // "set of" symbol
-         end else if baseType is TSetOfSymbol then begin
+         end else if baseType.InheritsFrom(TSetOfSymbol) then begin
 
             Result:=nil;
             Result:=ReadSetOfMethod(name, namePos, expr as TTypedExpr);
@@ -5938,7 +5942,7 @@ begin
             Result:=ReadElementMethod(name, namePos, expr as TTypedExpr);
 
          // Connector symbol
-         end else if (baseType is TConnectorSymbol) and not (Result is TTypeReferenceExpr) then begin
+         end else if baseType.InheritsFrom(TConnectorSymbol) and not (Result is TTypeReferenceExpr) then begin
 
             try
                Result:=ReadConnectorSym(Name, Result as TTypedExpr,
@@ -6070,7 +6074,7 @@ begin
 
       if loopVarExpr=nil then begin
          loopBlockExpr := TBlockExpr.Create(FCompilerContext, forPos);
-         loopVarSymbol := TScriptDataSymbol.Create(loopVarName, fromExpr.Typ);
+         loopVarSymbol := TScriptDataSymbol.Create(loopVarName, fromExpr.Typ, sdspLoopIterator);
          loopBlockExpr.Table.AddSymbol(loopVarSymbol);
          RecordSymbolUse(loopVarSymbol, loopVarNamePos, [suDeclaration, suReference, suWrite]);
          loopVarExpr:=GetVarExpr(loopVarNamePos, loopVarSymbol);

@@ -5014,7 +5014,6 @@ begin
 
    foundNameMatch := False;
    members := TClassSymbol(ParentSym).Members;
-   sym := nil;
    for i := 0 to members.Count-1 do begin
       sym := members[i];
       if     UnicodeSameText(sym.Name, FUsesAccess) and (sym is TMethodSymbol) then begin

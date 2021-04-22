@@ -2799,7 +2799,7 @@ var
    progIter : TdwsProgram;
 begin
    progIter:=Self;
-   while (progIter<>nil) and (progIter is TdwsProcedure) do begin
+   while (progIter<>nil) and (progIter.ClassType = TdwsProcedure) do begin
       if TdwsProcedure(progIter).Func is TMethodSymbol then begin
          Result:=TMethodSymbol(TdwsProcedure(progIter).Func);
          Exit;

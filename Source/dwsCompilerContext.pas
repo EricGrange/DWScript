@@ -66,6 +66,7 @@ type
 
       protected
          procedure SetSystemTable(const val : TSystemSymbolTable);
+         procedure SetProg(aProg : TObject);
 
       public
          constructor Create;
@@ -90,7 +91,7 @@ type
 
          property Msgs : TdwsCompileMessageList read FMsgs write FMsgs;
          property SystemTable : TSystemSymbolTable read FSystemTable write SetSystemTable;
-         property Prog : TObject read FProg write FProg;
+         property Prog : TObject read FProg write SetProg;
          property UnifiedConstants : TObject read FUnifiedConstants write FUnifiedConstants;
          property UnitList : TIdwsUnitList read FUnitList write FUnitList;
          property HelperMemberNames : TSimpleStringHash read FHelperMemberNames;
@@ -117,6 +118,18 @@ implementation
 uses Variants,
    dwsExprs, dwsUnifiedConstants, dwsConstExprs, dwsOperators, dwsCompilerUtils,
    dwsConvExprs, dwsDynamicArrays;
+
+type
+   TdwsCompilerContextHelper = class helper for TdwsCompilerContext
+      function GetProgram : TdwsProgram; inline;
+   end;
+
+// GetProgram
+//
+function TdwsCompilerContextHelper.GetProgram : TdwsProgram;
+begin
+   Result := TdwsProgram(FProg);
+end;
 
 // ------------------
 // ------------------ TdwsCompilerContext ------------------
@@ -173,21 +186,21 @@ end;
 //
 function TdwsCompilerContext.GetTempAddr(DataSize: Integer = -1): Integer;
 begin
-   Result := (FProg as TdwsProgram).GetTempAddr(DataSize);
+   Result := GetProgram.GetTempAddr(DataSize);
 end;
 
 // Level
 //
 function TdwsCompilerContext.Level : Integer;
 begin
-   Result := (FProg as TdwsProgram).Level;
+   Result := GetProgram.Level;
 end;
 
 // Table
 //
 function TdwsCompilerContext.Table : TSymbolTable;
 begin
-   Result := (FProg as TdwsProgram).Table;
+   Result := GetProgram.Table;
 end;
 
 // CreateConstExpr
@@ -247,7 +260,7 @@ begin
    typedExpr := TObject(expr) as TTypedExpr;
    if typedExpr.Typ = nil then Exit(False);
 
-   prog := FProg as TdwsProgram;
+   prog := GetProgram;
    opSym := prog.Table.FindImplicitCastOperatorFor(typedExpr.Typ, toTyp);
    if opSym <> nil then begin
       funcExpr := CreateSimpleFuncExpr(Self, scriptPos, opSym.UsesSym);
@@ -332,6 +345,13 @@ begin
 
    FTypDefaultConstructor := TypTObject.Members.FindSymbol(SYS_TOBJECT_CREATE, cvPublic) as TMethodSymbol;
    FTypDefaultDestructor := TypTObject.Members.FindSymbol(SYS_TOBJECT_DESTROY, cvPublic) as TMethodSymbol;
+end;
+
+// SetProg
+//
+procedure TdwsCompilerContext.SetProg(aProg : TObject);
+begin
+   FProg := aProg as TdwsProgram;
 end;
 
 // CustomStateGet

@@ -1841,24 +1841,24 @@ class function TVarExpr.CreateTyped(context : TdwsCompilerContext; dataSym : TDa
 var
    typ : TTypeSymbol;
 begin
-   typ:=dataSym.Typ;
-   if typ.IsOfType(context.TypInteger) then
-      Result:=TIntVarExpr.Create(dataSym)
-   else if typ.IsOfType(context.TypFloat) then
-      Result:=TFloatVarExpr.Create(dataSym)
-   else if typ.IsOfType(context.TypString) then
-      Result:=TStrVarExpr.Create(dataSym)
-   else if typ.IsOfType(context.TypBoolean) then
-      Result:=TBoolVarExpr.Create(dataSym)
-   else if dataSym.ClassType=TSelfSymbol then
-      if (typ is TClassSymbol) then
-         Result:=TSelfObjectVarExpr.Create(dataSym)
-      else Result:=TSelfVarExpr.Create(dataSym)
-   else if (typ is TClassSymbol) or (typ is TDynamicArraySymbol) then
-      Result:=TObjectVarExpr.Create(dataSym)
-   else if typ.Size=1 then
-      Result:=TBaseTypeVarExpr.Create(dataSym)
-   else Result:=TVarExpr.Create(dataSym);
+   typ := dataSym.Typ.UnAliasedType;
+   if dataSym.ClassType = TSelfSymbol then begin
+      if typ is TClassSymbol then
+         Result := TSelfObjectVarExpr.Create(dataSym)
+      else Result := TSelfVarExpr.Create(dataSym);
+   end else if typ.Size = 1 then begin
+      if typ.IsOfType(context.TypInteger) then
+         Result := TIntVarExpr.Create(dataSym)
+      else if typ.IsOfType(context.TypFloat) then
+         Result := TFloatVarExpr.Create(dataSym)
+      else if typ.IsOfType(context.TypString) then
+         Result := TStrVarExpr.Create(dataSym)
+      else if typ.IsOfType(context.TypBoolean) then
+         Result := TBoolVarExpr.Create(dataSym)
+      else if (typ is TClassSymbol) or (typ is TDynamicArraySymbol) then
+         Result := TObjectVarExpr.Create(dataSym)
+      else Result := TBaseTypeVarExpr.Create(dataSym)
+   end else Result := TVarExpr.Create(dataSym);
 end;
 
 // Orphan

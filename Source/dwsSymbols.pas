@@ -574,10 +574,21 @@ type
          property StackAddr: Integer read FStackAddr write FStackAddr;
    end;
 
+   TScriptDataSymbolPurpose = (
+      sdspGeneral,         // general purpose / unspecified use case
+      sdspLoopIterator     // iterator variable in a for loop
+   );
+
    // used for script engine internal purposes
    TScriptDataSymbol = class sealed (TDataSymbol)
+      private
+         FPurpose : TScriptDataSymbolPurpose;
+
       public
+         constructor Create(const aName : String; aType : TTypeSymbol; aPurpose : TScriptDataSymbolPurpose = sdspGeneral);
          function Specialize(const context : ISpecializationContext) : TSymbol; override;
+
+         property Purpose : TScriptDataSymbolPurpose read FPurpose write FPurpose;
    end;
 
    // used for variables
@@ -1343,11 +1354,14 @@ type
       private
          FOwner : TCompositeTypeSymbol;
 
+
       public
          procedure AddParent(parent : TMembersSymbolTable);
+
          function FindSymbol(const aName : String; minVisibility : TdwsVisibility; ofClass : TSymbolClass = nil) : TSymbol; override;
-         function VisibilityFromScope(scopeSym : TCompositeTypeSymbol) : TdwsVisibility;
          function FindSymbolFromScope(const aName : String; scopeSym : TCompositeTypeSymbol) : TSymbol; reintroduce;
+
+         function VisibilityFromScope(scopeSym : TCompositeTypeSymbol) : TdwsVisibility;
          function Visibilities : TdwsVisibilities;
 
          property Owner : TCompositeTypeSymbol read FOwner write FOwner;
@@ -6288,11 +6302,19 @@ end;
 // ------------------ TScriptDataSymbol ------------------
 // ------------------
 
+// Create
+//
+constructor TScriptDataSymbol.Create(const aName : String; aType : TTypeSymbol; aPurpose : TScriptDataSymbolPurpose = sdspGeneral);
+begin
+   inherited Create(aName, aType);
+   Purpose := aPurpose;
+end;
+
 // Specialize
 //
 function TScriptDataSymbol.Specialize(const context : ISpecializationContext) : TSymbol;
 begin
-   Result := TScriptDataSymbol.Create(Name, context.SpecializeType(Typ));
+   Result := TScriptDataSymbol.Create(Name, context.SpecializeType(Typ), Purpose);
 end;
 
 // ------------------
@@ -6716,10 +6738,9 @@ function TSymbolTable.FindSymbol(const aName : String; minVisibility : TdwsVisib
                                  ofClass : TSymbolClass = nil) : TSymbol;
 var
    i : Integer;
-   parentSymTable : TSymbolTable;
 begin
    // Find Symbol in the local List
-   Result:=FindLocal(aName, ofClass);
+   Result := FindLocal(aName, ofClass);
    if Assigned(Result) then begin
       if Result.IsVisibleFor(minVisibility) then
          Exit
@@ -6727,9 +6748,8 @@ begin
    end;
 
    // Find Symbol in all parent lists
-   for i:=0 to ParentCount-1 do begin
-      parentSymTable:=Parents[i];
-      Result:=parentSymTable.FindSymbol(aName, minVisibility, ofClass);
+   for i := 0 to ParentCount-1 do begin
+      Result := Parents[i].FindSymbol(aName, minVisibility, ofClass);
       if Assigned(Result) then Break;
    end;
 end;
@@ -7083,7 +7103,7 @@ end;
 
 // InsertParent
 //
-procedure TSymbolTable.InsertParent(Index: Integer; Parent: TSymbolTable);
+procedure TSymbolTable.InsertParent(Index: Integer; parent: TSymbolTable);
 begin
    Include(Parent.FFlags, stfHasChildTables);
    FParents.Insert(Index, Parent);
@@ -7180,7 +7200,7 @@ var
    i : Integer;
 begin
    // Find Symbol in the local List
-   Result:=FindLocal(aName, ofClass);
+   Result := FindLocal(aName, ofClass);
    if Assigned(Result) then begin
       if Result.IsVisibleFor(minVisibility) then Exit;
       // try harder in case of overload with different visibility
@@ -7192,12 +7212,12 @@ begin
    Result:=nil;
 
    // Find Symbol in all parent lists
-   if minVisibility=cvPrivate then
-      minVisibility:=cvProtected;
-   i:=0;
-   while not Assigned(Result) and (i<ParentCount) do begin
-      Result:=(Parents[i] as TMembersSymbolTable).FindSymbol(aName, minVisibility, ofClass);
-      Inc(i);
+   if minVisibility = cvPrivate then
+      minVisibility := cvProtected;
+
+   for i := 0 to ParentCount-1 do begin
+      Result := Parents[i].FindSymbol(aName, minVisibility, ofClass);
+      if Assigned(Result) then Break;
    end;
 end;
 
