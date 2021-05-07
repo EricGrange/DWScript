@@ -1415,11 +1415,45 @@ end;
 // ObjectListTest
 //
 procedure TdwsUtilsTests.ObjectListTest;
+   procedure InitRefList(refList : TObjectList<TRefCountedObject>; itemCount : Integer);
+   begin
+      for var i:=1 to itemCount do begin
+         var obj := TRefCountedObject.Create;
+         reflist.Add(obj);
+      end;
+   end;
+
+   procedure InitMoveList(refList,movelist : TObjectList<TRefCountedObject>);
+   begin
+      for var i:=0 to refList.Count -1 do begin
+         if i < movelist.Count  then begin
+            movelist[i]:=reflist.Items[i];
+         end else begin
+            movelist.Add(reflist.Items[i]);
+         end;
+      end;
+   end;
+
+   procedure CheckMove(refList,movelist : TObjectList<TRefCountedObject>; itemNewOrder : TArray<Integer>; errorPrefix : String);
+   begin
+      CheckEquals(refList.Count,moveList.Count,errorPrefix + ' : items count not equal');
+      for var i:=0 to moveList.Count - 1 do begin
+         Check(
+            moveList.Items[i] = refList.Items[itemNewOrder[i]],
+            errorPrefix + 'Moved item initial position '  + IntToStr(itemNewOrder[i]) + ' not in new position ' + IntToStr(i)
+         );
+      end;
+   end;
+
 var
-   list : TObjectList<TRefCountedObject>;
+   list, refList,moveList : TObjectList<TRefCountedObject>;
    obj1, obj2 : TRefCountedObject;
+   newItemOrder : TArray<Integer>;
+   errorPrefix : String ;
 begin
    list := TObjectList<TRefCountedObject>.Create;
+   refList := TObjectList<TRefCountedObject>.Create;
+   moveList := TObjectList<TRefCountedObject>.Create;
    try
       CheckEquals(0, list.Count);
       list.Add(nil);
@@ -1442,8 +1476,86 @@ begin
       Check(list[0] = obj1);
       list.Extract(0).Free;
       CheckEquals(0, list.Count);
+
+      // Init moves data
+      InitRefList(refList,10);
+      // Move items after index
+      InitMoveList(refList,moveList);
+      moveList.Move(3,6,2);
+      newItemOrder := [ 0,1,2,5,6,7,3,4,8,9 ];
+      CheckMove(refList, moveList, newItemOrder, 'Move after :');
+      // Move items before index
+      InitMoveList(refList,moveList);
+      moveList.Move(4,1,3);
+      newItemOrder := [ 0,4,5,6,1,2,3,7,8,9 ];
+      CheckMove(refList, moveList, newItemOrder, 'Move before :');
+      // Move end to begin
+      InitMoveList(refList, moveList);
+      moveList.Move(5,0,5);
+      newItemOrder := TArray<Integer>.Create(5,6,7,8,9,0,1,2,3,4);
+      CheckMove(refList, moveList, newItemOrder, 'Move end to begin :');
+      // Move begin to end
+      InitMoveList(refList, moveList);
+      moveList.Move(0,5,5);
+      newItemOrder := TArray<Integer>.Create(5,6,7,8,9,0,1,2,3,4);
+      CheckMove(refList, moveList, newItemOrder,'Move begin to end :');
+      // Move with no move
+      InitMoveList(refList, moveList);
+      moveList.Move(4,4,3);
+      newItemOrder := TArray<Integer>.Create(0,1,2,3,4,5,6,7,8,9);
+      CheckMove(refList, moveList, newItemOrder,'Move with no move');
+      // Move 0 item
+      InitMoveList(refList,moveList);
+      moveList.Move(4,1,0);
+      newItemOrder := TArray<Integer>.Create(0,1,2,3,4,5,6,7,8,9);
+      CheckMove(refList, moveList, newItemOrder,'Move with no move');
+      // Try Move with negative item count
+      errorPrefix := 'Move with negative item count : ';
+      try
+         InitMoveList(refList, moveList);
+         moveList.Move(4,1,-1);
+         Check(False, errorPrefix + 'No raise error');
+      except
+         on e : EAssertionFailed do begin
+            Check(
+               StrBeginsWith(e.Message,'Negative item count'),
+               errorPrefix + 'Unexpected error message :' + e.Message
+            );
+         end;
+      end;
+      // Try Move with too much items
+      errorPrefix := 'Move with too much items : ';
+      try
+         InitMoveList(refList, moveList);
+         moveList.Move(4,8,4);
+         Check(False, errorPrefix + 'No raise error');
+      except
+         on e : EAssertionFailed do begin
+            Check(
+               StrBeginsWith(e.Message,'New last item index out of range'),
+               errorPrefix + 'Unexpected error message :' + e.Message
+            );
+         end;
+      end;
+      // Try Move with new index out of range
+      errorPrefix := 'Move with new index out of range : ';
+      try
+         InitMoveList(refList,moveList);
+         moveList.Move(4,11,3);
+         Check(False, errorPrefix + 'No raise error');
+      except
+         on e : EAssertionFailed do begin
+            Check(
+               StrBeginsWith(e.Message,'New index out of range'),
+               errorPrefix + 'Unexpected error message :' + e.Message
+            );
+         end;
+      end;
    finally
       list.Free;
+      refList.Free;
+      moveList.ExtractAll();
+      moveList.Free;
    end;
 end;
 

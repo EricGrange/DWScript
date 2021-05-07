@@ -346,6 +346,7 @@ type
          procedure Clear;
          property Items[index : Integer] : T read GetItem write SetItem; default;
          property Count : Integer read FCount;
+         procedure Move(idx, idxNew, itemCount : Integer);
    end;
 
    // TSortedList
@@ -4345,6 +4346,37 @@ begin
       System.Move(FItems[idx], FItems[idx+1], SizeOf(T)*(FCount-idx));
    FItems[idx] := anItem;
    Inc(FCount);
+end;
+
+// Move
+//
+procedure TObjectList<T>.Move(idx, idxNew, itemCount : Integer);
+var
+   saveItems : ArrayT;
+   moveByteCount, saveByteCount : NativeInt;
+   idxSave, idxRestore, saveItemCount : Integer;
+begin
+   Assert(itemCount >= 0 , 'Negative item count');
+   Assert(Cardinal(idx) <= Cardinal(FCount), 'Index out of range');
+   Assert(Cardinal(idx + itemCount - 1) <= Cardinal(FCount), 'Last item index out of range');
+   Assert(Cardinal(idxNew) <= Cardinal(FCount), 'New index out of range');
+   Assert(Cardinal(idxNew + itemCount - 1) <= Cardinal(FCount), 'New last item index out of range');
+   if idx > idxNew then begin
+      idxSave := idxNew;
+      saveItemCount := idx - idxNew;
+      idxRestore := idxNew + itemCount;
+   end else begin
+      idxSave := idx + itemCount;
+      saveItemCount := idxNew - idx;
+      idxRestore := idx;
+   end;
+   if saveItemCount > 0 then begin
+      SetLength(saveItems, saveItemCount);
+      saveByteCount := SizeOf(T) * saveItemCount;
+      System.Move(FItems[idxSave], saveItems[0], saveByteCount);
+      System.Move(FItems[idx], FItems[idxNew], SizeOf(T)*itemCount);
+      System.Move(saveItems[0], FItems[idxRestore], saveByteCount);
+   end;
 end;
 
 // Extract
