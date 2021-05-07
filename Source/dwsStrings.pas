@@ -349,7 +349,8 @@ const
   CPE_OnlyVariablesAsVarParam = 'Only a variable can be be passed as Var-parameter';
   CPE_StrictParameterTypeCheckNotSupportedFor = 'Strict parameter typecheck is not support for "%s" parameters';
   CPE_MustExplicitOverloads = 'Overloaded procedure "%s" must be marked with the "overload" directive';
-  CPH_ShouldExplicitOverload = 'Overloaded method "%s" should be marked with the "overload" directive';
+  CPH_MustExplicitMethodOverload = 'Overloaded method "%s" must be marked with the "overload" directive';
+  CPH_ShouldExplicitMethodOverload = 'Overloaded method "%s" should be marked with the "overload" directive';
   CPE_NoMatchingOverloadDeclaration = 'There is no overloaded version of "%s" declared with these arguments';
   CPE_NoMatchingOverloadForCall = 'There is no overloaded version of "%s" that can be called with these arguments';
   CPE_MatchingOverload = 'Overload of "%s" will be ambiguous with a previously declared version';

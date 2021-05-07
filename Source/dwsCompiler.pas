@@ -524,7 +524,7 @@ type
                                   cfOptions : TCreateFunctionOptions) : Boolean;
 
          function FuncHasConflictingOverload(funcSym, forwardedSym : TFuncSymbol) : Boolean;
-         function MethHasConflictingOverload(methSym : TMethodSymbol) : Boolean;
+         function CheckMethodOverloads(newMethSym : TMethodSymbol) : Boolean;
 
          function FuncPerfectMatchOverload(funcSym : TFuncSymbol) : TFuncSymbol;
          function MethPerfectMatchOverload(methSym : TMethodSymbol; recurse : Boolean) : TMethodSymbol;
@@ -744,6 +744,8 @@ type
          procedure MemberSymbolWithNameAlreadyExists(sym : TSymbol; const hotPos : TScriptPos);
          procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : String; typ1, typ2 : TTypeSymbol);
          procedure IncompatibleTypesWarn(const scriptPos : TScriptPos; const fmt : String; typ1, typ2 : TTypeSymbol);
+         procedure ReportImplicitMethodOverload(const scriptPos : TScriptPos; const name : String;
+                                                const aLevel : TdwsHintsLevel = hlNormal);
 
          function CreateProgram(const systemTable : ISystemSymbolTable;
                                 resultType : TdwsResultType;
@@ -1470,6 +1472,16 @@ end;
 procedure TdwsCompiler.IncompatibleTypesWarn(const scriptPos : TScriptPos; const fmt : String; typ1, typ2 : TTypeSymbol);
 begin
    FMsgs.AddCompilerWarningFmt(scriptPos, fmt, [typ1.Caption, typ2.Caption]);
+end;
+
+// ReportImplicitMethodOverload
+//
+procedure TdwsCompiler.ReportImplicitMethodOverload(const scriptPos : TScriptPos; const name : String;
+                                                    const aLevel : TdwsHintsLevel = hlNormal);
+begin
+   if coMissingOverloadedAsErrors in FOptions then
+      FMsgs.AddCompilerErrorFmt(scriptPos, CPH_MustExplicitMethodOverload, [ name ])
+   else FMsgs.AddCompilerHintFmt(scriptPos, CPH_ShouldExplicitMethodOverload, [ name ], aLevel);
 end;
 
 // SetupCompileOptions
@@ -3514,8 +3526,8 @@ begin
       MemberSymbolWithNameAlreadyExists(sym, methPos);
 
    // Read declaration of method
-   Result:=TSourceMethodSymbol.Create(name, funcKind, intfSym, cvPublished, False);
-   Result.DeclarationPos:=methPos;
+   Result := TSourceMethodSymbol.Create(name, funcKind, intfSym, cvPublished, False);
+   Result.DeclarationPosition := methPos;
 
    try
       ReadParams(Result.HasParam, Result.AddParam, nil, nil, posArray);
@@ -3587,25 +3599,25 @@ begin
       FMsgs.AddCompilerErrorFmt(methPos, CPE_ClassIsStaticNoInstances, [ownerSym.Name]);
 
    // Read declaration of method implementation
-   funcResult:=TSourceMethodSymbol.Create(name, funcKind, ownerSym, aVisibility, isClassMethod);
-   funcResult.DeclarationPos:=methPos;
+   funcResult := TSourceMethodSymbol.Create(name, funcKind, ownerSym, aVisibility, isClassMethod);
+   funcResult.DeclarationPosition := methPos;
    try
       if FGenericSymbol.Count > 0 then
          funcResult.InternalParams.InsertParent(0, FGenericSymbol.Peek.Parameters.List);
 
       ReadParams(funcResult.HasParam, funcResult.AddParam, nil, nil, posArray);
 
-      funcResult.Typ:=ReadFuncResultType(funcKind);
+      funcResult.Typ := ReadFuncResultType(funcKind);
       ReadSemiColon;
 
-      if meth<>nil then
-         isReintroduced:=meth.IsVirtual
-      else isReintroduced:=False;
+      if meth <> nil then
+         isReintroduced := meth.IsVirtual
+      else isReintroduced := False;
 
       if FTok.TestDelete(ttREINTRODUCE) then begin
          if not isReintroduced then
             FMsgs.AddCompilerErrorFmt(methPos, CPE_CantReintroduce, [name]);
-         isReintroduced:=False;
+         isReintroduced := False;
          ReadSemiColon;
       end;
 
@@ -3614,7 +3626,7 @@ begin
 
          if not ownerSym.AllowOverloads then
             FMsgs.AddCompilerError(hotPos, CPE_OverloadNotAllowed);
-         if MethHasConflictingOverload(funcResult) then
+         if CheckMethodOverloads(funcResult) then
             FMsgs.AddCompilerErrorFmt(hotPos, CPE_MatchingOverload, [name]);
 
          funcResult.IsOverloaded:=True;
@@ -3623,25 +3635,25 @@ begin
       end else begin
 
          funcResult.SetOverlap(meth);
-         if meth<>nil then begin
+         if meth <> nil then begin
             if FTok.Test(ttOVERRIDE) then begin
                // this could actually be an override of an inherited method
                // and not just an overload of a local method
                // in that case 'overload' is optional (but recommand it)
                if meth.IsOverloaded then begin
-                  FMsgs.AddCompilerHintFmt(hotPos, CPH_ShouldExplicitOverload, [name], hlStrict);
-                  funcResult.IsOverloaded:=True;
+                  ReportImplicitMethodOverload(hotPos, name, hlStrict);
+                  funcResult.IsOverloaded := True;
                end else if meth.StructSymbol=ownerSym then begin
                   // name conflict or fogotten overload keyword
-                  FMsgs.AddCompilerErrorFmt(hotPos, CPE_MustExplicitOverloads, [name]);
+                  ReportImplicitMethodOverload(methPos, name);
                   // keep compiling, mark overloaded
                   funcResult.IsOverloaded:=True;
                end;
-            end else if meth.StructSymbol=ownerSym then begin
+            end else if meth.StructSymbol = ownerSym then begin
                // name conflict or fogotten overload keyword
-               FMsgs.AddCompilerErrorFmt(hotPos, CPE_MustExplicitOverloads, [name]);
+               ReportImplicitMethodOverload(methPos, name);
                // keep compiling, mark overloaded
-               funcResult.IsOverloaded:=True;
+               funcResult.IsOverloaded := True;
             end else if MethPerfectMatchOverload(funcResult, False)<>nil then
                MemberSymbolWithNameAlreadyExists(sym, Ftok.HotPos)
          end;
@@ -3652,16 +3664,16 @@ begin
          isReintroduced:=False;
 
       if ownerSym.AllowVirtualMembers then begin
-         qualifier:=FTok.TestDeleteAny([ttVIRTUAL, ttOVERRIDE, ttABSTRACT]);
+         qualifier := FTok.TestDeleteAny([ttVIRTUAL, ttOVERRIDE, ttABSTRACT]);
          if qualifier<>ttNone then begin
             case qualifier of
                ttVIRTUAL : begin
-                  if aVisibility=cvPrivate then
+                  if aVisibility = cvPrivate then
                      FMsgs.AddCompilerHint(FTok.HotPos, CPH_PrivateVirtualMethodCantBeOverridden);
                   funcResult.IsVirtual:=True;
                   ReadSemiColon;
                   if FTok.TestDelete(ttABSTRACT) then begin
-                     funcResult.IsAbstract:=True;
+                     funcResult.IsAbstract := True;
                      ReadSemiColon;
                   end;
                end;
@@ -3928,7 +3940,7 @@ begin
    if coContextMap in FOptions then
       FSourceContextMap.OpenContext(FTok.CurrentPos, funcSymbol, ttBEGIN);   // attach to symbol that it belongs to (perhaps a class)
 
-   funcSymbol.SourcePosition:=FTok.HotPos;
+   funcSymbol.ImplementationPosition := FTok.HotPos;
 
    try
       // Function Body
@@ -4064,12 +4076,12 @@ var
 begin
    FTok.KillToken;
 
-   funcSymbol.SourcePosition:=FTok.HotPos;
+   funcSymbol.ImplementationPosition := FTok.HotPos;
 
-   proc:=TdwsProcedure.Create(CurrentProg);
-   proc.SetBeginPos(funcSymbol.SourcePosition);
+   proc := TdwsProcedure.Create(CurrentProg);
+   proc.SetBeginPos(FTok.HotPos);
    proc.AssignTo(funcSymbol);
-   proc.Expr:=TNullExpr.Create(funcSymbol.SourcePosition);
+   proc.Expr := TNullExpr.Create(FTok.HotPos);
 
    ReadSemiColon;
 end;
@@ -7308,19 +7320,25 @@ begin
    end;
 end;
 
-// MethHasConflictingOverload
+// CheckMethodOverloads
 //
-function TdwsCompiler.MethHasConflictingOverload(methSym : TMethodSymbol) : Boolean;
+function TdwsCompiler.CheckMethodOverloads(newMethSym : TMethodSymbol) : Boolean;
 var
    struct : TCompositeTypeSymbol;
    member : TSymbol;
+   memberMeth : TMethodSymbol;
 begin
-   struct:=methSym.StructSymbol;
+   struct := newMethSym.StructSymbol;
    for member in struct.Members do begin
-      if not UnicodeSameText(member.Name, methSym.Name) then continue;
+      if not UnicodeSameText(member.Name, newMethSym.Name) then continue;
       if not (member is TMethodSymbol) then continue;
-      if not methSym.IsValidOverloadOf(TMethodSymbol(member)) then
+      memberMeth := TMethodSymbol(member);
+      if not newMethSym.IsValidOverloadOf(memberMeth) then
          Exit(True);
+      if not memberMeth.IsOverloaded then begin
+         ReportImplicitMethodOverload(memberMeth.DeclarationPosition, memberMeth.Name);
+         memberMeth.IsOverloaded := True;
+      end;
    end;
    Result:=False;
 end;

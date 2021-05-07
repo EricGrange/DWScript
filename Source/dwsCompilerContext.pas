@@ -37,8 +37,11 @@ type
                               // (not suppported yet by script engine, may be supported by CodeGen)
       coAllowAsyncAwait,      // allow for assync/await keywords (only supported by JS-codegen)
       coDelphiDialect,        // do not warn or hint about Delphi language idioms
-      coHintKeywordCaseMismatch // when set, if pedantic hints are active, hints will be
-                                // created for all case-mismatching keywords
+      coHintKeywordCaseMismatch, // when set, if pedantic hints are active, hints will be
+                                 // created for all case-mismatching keywords
+      coMissingOverloadedAsErrors // when set missing "overloaded" are treated as errors
+                                  // when not set, they are just reported as hints
+
       );
    TCompilerOptions = set of TCompilerOption;
 

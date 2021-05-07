@@ -85,6 +85,7 @@ type
          procedure MultiRunProtection;
          procedure MultipleHostExceptions;
          procedure OverloadOverrideIndwsUnit;
+         procedure OverloadMissing;
          procedure PartialClassParent;
          procedure ConstantAliasing;
          procedure ExternalVariables;
@@ -1607,6 +1608,44 @@ begin
       prog := nil;
    finally
       un.Free;
+   end;
+end;
+
+// OverloadMissing
+//
+procedure TCornerCasesTests.OverloadMissing;
+const
+   cCase1 =  'type TTest = class'#10
+              + 'procedure Hello;'#10
+              + 'procedure Hello(i : Integer); overload; begin end;'#10
+           + 'end;'#10
+           + 'procedure TTest.Hello; begin end;';
+   cCase2 =  'type TTest = class'#10
+              + 'procedure Hello(i : Integer); overload; begin end;'#10
+              + 'procedure Hello;'#10
+           + 'end;'#10
+           + 'procedure TTest.Hello; begin end;';
+var
+   prog : IdwsProgram;
+   opts : TCompilerOptions;
+begin
+   opts := FCompiler.Config.CompilerOptions;
+   try
+      FCompiler.Config.CompilerOptions := opts - [ coMissingOverloadedAsErrors ];
+
+      prog := FCompiler.Compile(cCase1);
+      CheckEquals('Hint: Overloaded method "Hello" should be marked with the "overload" directive [line: 2, column: 11]', Trim(prog.Msgs.AsInfo));
+      prog := FCompiler.Compile(cCase2);
+      CheckEquals('Hint: Overloaded method "Hello" should be marked with the "overload" directive [line: 3, column: 11]', Trim(prog.Msgs.AsInfo));
+
+      FCompiler.Config.CompilerOptions := opts + [ coMissingOverloadedAsErrors ];
+
+      prog := FCompiler.Compile(cCase1);
+      CheckEquals('Syntax Error: Overloaded method "Hello" must be marked with the "overload" directive [line: 2, column: 11]', Trim(prog.Msgs.AsInfo));
+      prog := FCompiler.Compile(cCase2);
+      CheckEquals('Syntax Error: Overloaded method "Hello" must be marked with the "overload" directive [line: 3, column: 11]', Trim(prog.Msgs.AsInfo));
+   finally
+      FCompiler.Config.CompilerOptions := opts;
    end;
 end;
 
