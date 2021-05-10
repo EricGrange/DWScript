@@ -21,7 +21,7 @@ interface
 
 uses
    SysUtils,
-   dwsJSON, dwsUtils, dwsXPlatform, dwsXXHash;
+   dwsJSON, dwsUtils, dwsXPlatform, dwsXXHash, dwsStringIterator;
 
 type
 
