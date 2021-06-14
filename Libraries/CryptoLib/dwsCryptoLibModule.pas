@@ -121,6 +121,12 @@ type
       ExtObject: TObject);
     procedure dwsCryptoClassesTRSAKeyMethodsDecryptEval(Info: TProgramInfo;
       ExtObject: TObject);
+    function dwsCryptoFunctionsPBKDF2_HMAC_SHA256FastEval(
+      const args: TExprBaseListExec): Variant;
+    procedure dwsCryptoClassesEncryptionAESnistCTRMethodsEncryptDataEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsCryptoClassesEncryptionAESnistCTRMethodsDecryptDataEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FNonces : TdwsTokenStore;
@@ -139,8 +145,8 @@ implementation
 {$R *.dfm}
 
 uses
-   dwsCryptoUtils, SynCrypto, dwsCryptProtect, SynZip, SynEcc, dwsInfo,
-   dwsCompilerContext, dwsRSAKey, dwsBCryptCNG;
+   dwsCryptoUtils, SynCrypto, dwsCryptProtect, SynZip, SynEcc,
+   dwsInfo, dwsCompilerContext, dwsRSAKey, dwsBCryptCNG;
 
 procedure PerformHashData(Info: TProgramInfo; h : THashFunction);
 var
@@ -182,6 +188,24 @@ begin
       else DeleteFile(FNonceFilename);
    end;
    FNonces.Free;
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesEncryptionAESnistCTRMethodsDecryptDataEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString := AES_nist_CTR(
+      Info.ParamAsDataString[0], Info.ParamAsDataString[1], Info.ParamAsDataString[2],
+      False
+   );
+end;
+
+procedure TdwsCryptoLib.dwsCryptoClassesEncryptionAESnistCTRMethodsEncryptDataEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsDataString := AES_nist_CTR(
+      Info.ParamAsDataString[0], Info.ParamAsDataString[1], Info.ParamAsDataString[2],
+      True
+   );
 end;
 
 procedure TdwsCryptoLib.dwsCryptoClassesEncryptionAESSHA256FullMethodsDecryptDataEval(
@@ -485,6 +509,18 @@ begin
    NonceFilename :=  IncludeTrailingPathDelimiter(TPath.GetTempPath)
                    + DigestToSimplifiedBase64(@digest, SizeOf(digest) div 2)
                    + '.nonces';
+end;
+
+function TdwsCryptoLib.dwsCryptoFunctionsPBKDF2_HMAC_SHA256FastEval(
+  const args: TExprBaseListExec): Variant;
+var
+   hash : TSHA256Digest;
+begin
+   PBKDF2_HMAC_SHA256(
+      UTF8Encode(args.AsString[0]), UTF8Encode(args.AsString[1]),
+      args.AsInteger[2], hash
+   );
+   VarCopySafe(Result, BinToHex(@hash, SizeOf(hash)));
 end;
 
 function TdwsCryptoLib.dwsCryptoFunctionsProcessUniqueRandomFastEval(

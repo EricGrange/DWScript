@@ -36,7 +36,11 @@ function HashSHA1(const data : RawByteString) : RawByteString;
 function HashMD5(const data : RawByteString) : RawByteString;
 function HashCRC32(const data : RawByteString) : RawByteString;
 
+// authenticated encryption, key hashing, PKCS7 padding
 function AES_SHA3_CTR(const data, key : RawByteString; encrypt : Boolean) : RawByteString;
+
+// raw nist-copatible encryption, no padding, no key hashing
+function AES_nist_CTR(const data, key, iv : RawByteString; encrypt : Boolean) : RawByteString;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -206,5 +210,52 @@ begin
    end;
 end;
 
+type
+   TAESCTR_nist = class(TAESCTR)
+      constructor Create(const aKey; aKeySize: cardinal); override;
+   end;
+
+constructor TAESCTR_nist.Create(const aKey; aKeySize: cardinal);
+begin
+   inherited;
+   fCTROffset := 15;
+end;
+
+// AES_nist_CTR
+//
+function AES_nist_CTR(const data, key, iv : RawByteString; encrypt : Boolean) : RawByteString;
+var
+   aes : TAESCTR_nist;
+   keySize, dataSize : Integer;
+begin
+   Result := '';
+
+   keySize := Length(key)*8;
+   case keySize of
+      128, 192, 256 : ;
+   else
+      raise Exception.CreateFmt('Invalid key length (%d bits) should be 128, 192 or 256', [ keySize ]);
+   end;
+
+   if Length(iv) <> SizeOf(TAESBlock) then
+      raise Exception.CreateFmt('Invalid IV length (%d) should be %d', [ Length(iv), SizeOf(TAESBlock) ]);
+
+   if data = '' then Exit;
+
+   dataSize := Length(data);
+   if (dataSize and (SizeOf(TAESBlock)-1)) <> 0 then
+      raise Exception.CreateFmt('Invalid data length, should be a multiple of %d', [ SizeOf(TAESBlock) ]);
+
+   aes := TAESCTR_nist.Create(Pointer(key)^, keySize);
+   try
+      aes.IV := PAESBlock(Pointer(iv))^;
+      SetLength(Result, dataSize);
+      if encrypt then
+         aes.Encrypt(Pointer(data), Pointer(Result), dataSize)
+      else aes.Decrypt(Pointer(data), Pointer(Result), dataSize);
+   finally
+      aes.Free;
+   end;
+end;
 
 end.

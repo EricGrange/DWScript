@@ -389,6 +389,51 @@ object dwsCryptoLib: TdwsCryptoLib
           end>
       end
       item
+        Name = 'EncryptionAESnistCTR'
+        IsStatic = True
+        Methods = <
+          item
+            Name = 'EncryptData'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end
+              item
+                Name = 'key'
+                DataType = 'String'
+              end
+              item
+                Name = 'iv'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsCryptoClassesEncryptionAESnistCTRMethodsEncryptDataEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'DecryptData'
+            Parameters = <
+              item
+                Name = 'data'
+                DataType = 'String'
+              end
+              item
+                Name = 'key'
+                DataType = 'String'
+              end
+              item
+                Name = 'iv'
+                DataType = 'String'
+              end>
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsCryptoClassesEncryptionAESnistCTRMethodsDecryptDataEval
+            Kind = mkClassFunction
+          end>
+      end
+      item
         Name = 'EncryptionCryptProtect'
         Ancestor = 'EncryptionAlgorithm'
         IsStatic = True
@@ -772,6 +817,24 @@ object dwsCryptoLib: TdwsCryptoLib
         Name = 'CompilationUniqueRandom'
         ResultType = 'String'
         OnFastEval = dwsCryptoFunctionsCompilationUniqueRandomFastEval
+      end
+      item
+        Name = 'PBKDF2_HMAC_SHA256'
+        Parameters = <
+          item
+            Name = 'password'
+            DataType = 'String'
+          end
+          item
+            Name = 'salt'
+            DataType = 'String'
+          end
+          item
+            Name = 'iterations'
+            DataType = 'Integer'
+          end>
+        ResultType = 'String'
+        OnFastEval = dwsCryptoFunctionsPBKDF2_HMAC_SHA256FastEval
       end>
     UnitName = 'System.Crypto'
     StaticSymbols = True
