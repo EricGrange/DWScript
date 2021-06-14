@@ -38,7 +38,8 @@ type
          Settings : TFormatSettings;
          TimeZone : TdwsTimeZone;
 
-         constructor Create;
+         constructor Create; overload;
+         constructor Create(const reference : TFormatSettings); overload;
 
          function FormatDateTime(const fmt : String; dt : TDateTime; tz : TdwsTimeZone) : String;
          function DateTimeToStr(const dt : TDateTime; tz : TdwsTimeZone) : String;
@@ -439,9 +440,18 @@ end;
 //
 constructor TdwsFormatSettings.Create;
 begin
-   inherited;
+   inherited Create;
    InitializeWithDefaultFormatSettings(Self.Settings);
-   TimeZone:=tzLocal;
+   TimeZone := tzLocal;
+end;
+
+// Create ( TFormatSettings )
+//
+constructor TdwsFormatSettings.Create(const reference : TFormatSettings);
+begin
+   inherited Create;
+   Self.Settings := reference;
+   TimeZone := tzLocal;
 end;
 
 // FormatDateTime
