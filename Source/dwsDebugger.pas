@@ -1774,8 +1774,8 @@ begin
       end;
    end;
    i := scriptPos.Line;
-   Assert(i < FLastBreakpointLines.Size);
-   FLastBreakpointLines[i] := True;
+   if i < FLastBreakpointLines.Size then
+      FLastBreakpointLines[i] := True;
 end;
 
 // ProcessProg
