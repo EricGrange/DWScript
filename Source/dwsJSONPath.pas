@@ -289,8 +289,13 @@ begin
    case iter.Current of
       '"', '''' :
          FProp:=UnicodeString(iter.CollectQuotedString);
-      '0'..'9', 'a'..'z', 'A'..'Z' :
+      '0'..'9', 'a'..'z', 'A'..'Z', '_' : begin
          FProp:=UnicodeString(iter.CollectAlphaNumeric);
+         while iter.Current = '_' do begin
+            iter.Next;
+            FProp := FProp + '_' + UnicodeString(iter.CollectAlphaNumeric);
+         end;
+      end;
    else
       raise EJSONPathException.Create('Invalid property');
    end;
