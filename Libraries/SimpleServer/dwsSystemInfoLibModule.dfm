@@ -172,6 +172,24 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
             Attributes = [maStatic]
             OnEval = dwsSystemInfoClassesApplicationInfoMethods8Eval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'GetCurrentDirectory'
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesApplicationInfoMethodsGetCurrentDirectoryEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'SetCurrentDirectory'
+            Parameters = <
+              item
+                Name = 'newDirectory'
+                DataType = 'String'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesApplicationInfoMethodsSetCurrentDirectoryEval
+            Kind = mkClassProcedure
           end>
         Properties = <
           item
@@ -184,6 +202,12 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
                 Name = 'name'
                 DataType = 'String'
               end>
+          end
+          item
+            Name = 'CurrentDirectory'
+            DataType = 'String'
+            ReadAccess = 'GetCurrentDirectory'
+            WriteAccess = 'SetCurrentDirectory'
           end>
       end
       item

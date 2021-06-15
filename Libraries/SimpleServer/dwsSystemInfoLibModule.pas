@@ -124,6 +124,10 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsSystemInfoClassesApplicationInfoMethods8Eval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesApplicationInfoMethodsGetCurrentDirectoryEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesApplicationInfoMethodsSetCurrentDirectoryEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FOSNameVersion : TOSNameVersion;
@@ -301,6 +305,12 @@ begin
    Info.ResultAsInteger := ExecutableLinkTimeStamp;
 end;
 
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsGetCurrentDirectoryEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString := IncludeTrailingPathDelimiter(GetCurrentDir);
+end;
+
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsGetEnvironmentVariableEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
@@ -330,6 +340,12 @@ procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsRunn
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsBoolean:=RunningAsService;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsSetCurrentDirectoryEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   SetCurrentDir(Info.ParamAsString[0]);
 end;
 
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesApplicationInfoMethodsSetEnvironmentVariableEval(
