@@ -8842,7 +8842,7 @@ var
    intfTyp : TInterfaceSymbol;
    interfaces : TList;
    missingMethod : TMethodSymbol;
-   isInSymbolTable, firstVisibilityToken : Boolean;
+   isInSymbolTable, firstVisibilityToken, hasSubTypes : Boolean;
    previousClassFlags  : TClassSymbolFlags;
    visibility : TdwsVisibility;
    tt : TTokenType;
@@ -8890,6 +8890,7 @@ begin
       Exit;
    end else Result.ClearIsForwarded;
 
+   hasSubTypes := False;
    if not isInSymbolTable then
       CurrentProg.Table.AddSymbol(Result);   // auto-forward
    interfaces:=TList.Create;
@@ -9027,7 +9028,7 @@ begin
                                        ttCONSTRUCTOR, ttDESTRUCTOR, ttOPERATOR,
                                        ttCLASS, ttPROPERTY, ttCONST,
                                        ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
-                                       ttALEFT]);
+                                       ttALEFT, ttTYPE]);
                case tt of
 
                   ttFUNCTION, ttPROCEDURE, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR :
@@ -9080,6 +9081,15 @@ begin
                   ttALEFT : begin
                      ReadAttributes(True);
                   end;
+                  ttTYPE : begin
+                     if not hasSubTypes then begin
+                        // only do this here when a subtype is explicitly requested, as full implications are still not clear
+                        hasSubTypes := True;
+                        TSymbolTable(Result.Members).AddParent(FCurrentProg.Table);
+                        FCurrentProg.EnterSubTable(Result.Members);
+                     end;
+                     ReadTypeDecl(True);
+                  end;
 
                else
 
@@ -9108,10 +9118,14 @@ begin
       except
          // Set Result to nil to prevent auto-forward removal then re-reraise
          if not isInSymbolTable then
-            Result:=nil;
+            Result := nil;
          raise;
       end;
    finally
+      if hasSubTypes then begin
+         FCurrentProg.LeaveSubTable;
+         TSymbolTable(Result.Members).RemoveParent(FCurrentProg.Table)
+      end;
       interfaces.Free;
       if not isInSymbolTable then
          CurrentProg.Table.Remove(Result);  // auto-forward
