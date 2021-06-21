@@ -21,8 +21,8 @@ interface
 
 uses
    Windows, Classes, SysUtils, dwsLanguageExtension,
-   dwsUtils, dwsComp, dwsCompiler, dwsScriptSource,
-   dwsExprs, dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs, dwsStack,
+   dwsUtils, dwsComp, dwsCompiler, dwsScriptSource, dwsTokenizer, dwsTokenTypes,
+   dwsExprs, dwsSymbols, dwsErrors, dwsCoreExprs, dwsStack,
    dwsStrings, dwsXPlatform;
 
 type
