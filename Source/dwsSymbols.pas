@@ -9031,7 +9031,7 @@ end;
 //
 constructor TOperatorSymbol.Create(const aTokenType : TTokenType);
 begin
-   inherited Create('operator '+cTokenStrings[aTokenType], nil);
+   inherited Create(UnifiedString('operator '+cTokenStrings[aTokenType]), nil);
    FToken:=aTokenType;
 end;
 
