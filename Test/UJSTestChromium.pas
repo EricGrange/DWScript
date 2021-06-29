@@ -178,10 +178,10 @@ begin
       if prevResult <> LastResult then Exit;
       Application.ProcessMessages;
       case k of
-         0..99 : Sleep(1);
-         100..199 : Sleep(10);
+         0..99 : Sleep(0);
+         100..199 : Sleep(1);
       else
-         Sleep(20);
+         Sleep(10);
       end;
    end;
    FForm.FChromium.ChromiumBrowser.StopLoad;
