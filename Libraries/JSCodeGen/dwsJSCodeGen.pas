@@ -1219,12 +1219,12 @@ begin
    RegisterCodeGen(TBoolImpliesExpr,
       TdwsExprGenericCodeGen.Create(['(!', 0, ' || ', 1, ')']));
    RegisterCodeGen(TNotBoolExpr,
-      TdwsExprGenericCodeGen.Create(['(', '!', '(', 0, ')', ')']));
+      TdwsExprGenericCodeGen.Create(['(', '!', 0, ')']));
 
    RegisterCodeGen(TVariantAndExpr,    TJSBinOpExpr.Create('&&', 6, [associativeLeft, associativeRight]));
    RegisterCodeGen(TVariantOrExpr,     TJSBinOpExpr.Create('||', 5, [associativeLeft, associativeRight]));
    RegisterCodeGen(TVariantXorExpr,    TdwsExprGenericCodeGen.Create(['$Xor', '(', 0, ',', 1, ')'], gcgExpression, '$Xor'));
-   RegisterCodeGen(TNotVariantExpr,    TdwsExprGenericCodeGen.Create(['(!', 0, ')']));
+   RegisterCodeGen(TNotVariantExpr,    TdwsExprGenericCodeGen.Create(['(', '!', 0, ')']));
 
    RegisterCodeGen(TAssignedInstanceExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '!==null', ')']));
