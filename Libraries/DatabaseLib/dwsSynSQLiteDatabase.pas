@@ -169,6 +169,31 @@ begin
    DoInitialize;
 end;
 
+// InMemoryDataBase
+//
+function InMemoryDataBase(const dbName : String) : Boolean;
+const
+   cMemoryMode = 'mode=memory';
+var
+   params : String;
+   p : Integer;
+begin
+   if dbName = ':memory:' then Exit(True);
+   if StrBeginsWith(dbName, 'file:') then begin
+      params := StrAfterChar(dbName, '?');
+      p := Pos(cMemoryMode, params);
+      if p >= 1 then begin
+        if (p = 1) or (params[p-1] = '&') then begin
+            p := p + Length(cMemoryMode);
+            if (p >= Length(params)) or (params[p] = '&') then
+            Exit(True);
+         end;
+        end;
+   end;
+   Result := False;
+end;
+
+
 // SQLAssignParameters
 //
 procedure SQLAssignParameters(var rq : TSQLRequest; const params : IScriptDynArray);
@@ -215,10 +240,14 @@ function SQLiteAuthorizer(pUserData: Pointer; code: Integer; const zTab, zCol, z
    begin
       if db.FFileSystem <> nil then begin
          buf := UTF8ToString(p);
-         buf := db.FFileSystem.ValidateFileName(buf);
-         if buf = '' then
-            Result := SQLITE_DENY
-         else Result := SQLITE_OK;
+         if InMemoryDataBase(buf) then
+            Result := SQLITE_OK
+         else begin
+            buf := db.FFileSystem.ValidateFileName(buf);
+            if buf = '' then
+               Result := SQLITE_DENY
+            else Result := SQLITE_OK;
+         end;
       end else Result := SQLITE_OK;
    end;
 
@@ -286,30 +315,37 @@ end;
 // Create
 //
 constructor TdwsSynSQLiteDataBase.Create(const parameters : array of String; const fileSystem : IdwsFileSystem);
+
+   procedure ValidateDataBaseName(var dbName : String);
+   var
+      validatedDBName : String;
+   begin
+      validatedDBName := fileSystem.ValidateFileName(dbName);
+      if validatedDBName = '' then
+         raise ESQLite3Exception.CreateFmt('Database location not allowed "%s"', [ dbName ])
+      else dbName := validatedDBName;
+   end;
+
 var
-   dbName, validatedDBName : String;
+   dbName : String;
    i, flags : Integer;
 begin
    inherited Create;
    FFileSystem := fileSystem;
    if Length(parameters) > 0 then begin
       dbName := TdwsDataBase.ApplyPathVariables(parameters[0]);
-      if (dbName <> ':memory:') and Assigned(fileSystem) then begin
-         validatedDBName := fileSystem.ValidateFileName(dbName);
-         if validatedDBName = '' then
-            raise ESQLite3Exception.CreateFmt('Database location not allowed "%s"', [ dbName ])
-         else dbName := validatedDBName;
-      end;
+      if Assigned(fileSystem) and not InMemoryDataBase(dbName) then
+         ValidateDataBaseName(dbName);
    end else dbName := ':memory:';
 
-   flags:=SQLITE_OPEN_READWRITE or SQLITE_OPEN_CREATE;
-   for i:=1 to High(parameters) do begin
+   flags := SQLITE_OPEN_READWRITE or SQLITE_OPEN_CREATE;
+   for i := 1 to High(parameters) do begin
       if UnicodeSameText(parameters[i], 'read_only') then
-         flags:=SQLITE_OPEN_READONLY
+         flags := SQLITE_OPEN_READONLY
       else if UnicodeSameText(parameters[i], 'shared_cache') then
-         flags:=flags or SQLITE_OPEN_SHAREDCACHE
+         flags := flags or SQLITE_OPEN_SHAREDCACHE
       else if UnicodeSameText(parameters[i], 'open_uri') then
-         flags:=flags or SQLITE_OPEN_URI;
+         flags := flags or SQLITE_OPEN_URI;
    end;
 
    try
