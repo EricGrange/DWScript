@@ -367,18 +367,18 @@ var
 begin
    if funcSym is TMethodSymbol then begin
       if Assigned(scriptObj) then begin
-         instanceExpr:=TConstExpr.Create(structSym, scriptObj);
+         instanceExpr := TConstExpr.Create(aScriptPos, structSym, scriptObj);
          Result:=CreateMethodExpr(context, TMethodSymbol(funcSym),
                                   instanceExpr, rkObjRef, aScriptPos, options)
       end else if structSym<>nil then begin
-         instanceExpr:=TConstExpr.Create(structSym.MetaSymbol, Int64(structSym));
+         instanceExpr:=TConstExpr.Create(aScriptPos, structSym.MetaSymbol, Int64(structSym));
          Result:=CreateMethodExpr(context, TMethodSymbol(funcSym),
                                   instanceExpr, rkClassOfRef, aScriptPos, options)
       end else begin
          // static method
          structSym:=TMethodSymbol(funcSym).StructSymbol;
          if structSym is TStructuredTypeSymbol then begin
-            instanceExpr:=TConstExpr.Create(structSym.MetaSymbol, Int64(structSym));
+            instanceExpr:=TConstExpr.Create(aScriptPos, structSym.MetaSymbol, Int64(structSym));
             Result:=CreateMethodExpr(context, TMethodSymbol(funcSym),
                                      instanceExpr, rkClassOfRef, aScriptPos, options)
          end else begin
@@ -400,9 +400,9 @@ var
    scriptIntf : TScriptInterface;
 begin
    scriptIntf:=(scriptObjIntf.GetSelf as TScriptInterface);
-   instanceExpr:=TConstExpr.Create(scriptIntf.Typ, scriptObjIntf);
-   Result:=CreateMethodExpr(context, TMethodSymbol(funcSym),
-                            instanceExpr, rkIntfRef, cNullPos, [])
+   instanceExpr := TConstExpr.Create(cNullPos, scriptIntf.Typ, scriptObjIntf);
+   Result := CreateMethodExpr(context, TMethodSymbol(funcSym),
+                              instanceExpr, rkIntfRef, cNullPos, [])
 end;
 
 // CreateMethodExpr

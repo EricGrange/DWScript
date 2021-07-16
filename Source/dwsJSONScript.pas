@@ -379,7 +379,7 @@ begin
 
       progExec := (exec as TdwsProgramExecution);
       methExpr := nil;
-      selfExpr := TConstExpr.Create(classSym, IUnknown(obj));
+      selfExpr := TConstExpr.Create(cNullPos, classSym, IUnknown(obj));
       try
          methExpr := CreateMethodExpr(
             progExec.CompilerContext, stringifyMeth,

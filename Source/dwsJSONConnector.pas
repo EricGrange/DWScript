@@ -352,6 +352,7 @@ type
       function QueryInterface({$IFDEF FPC_HAS_CONSTREF}constref{$ELSE}const{$ENDIF} IID: TGUID; out Obj): HResult; stdcall;
 
       function GetSelf : TObject;
+      function ScriptTypeName : String;
 
       function ToString : String; override; final;
       function ToUnicodeString : UnicodeString; virtual;
@@ -374,9 +375,11 @@ type
    end;
 
    TBoxedNilJSONValue = class (TInterfacedObject,
-                               IBoxedJSONValue, ICoalesceable, IToNumeric, IToVariant,
+                               IBoxedJSONValue,
+                               ICoalesceable, IToNumeric, INullable, IToVariant,
                                IGetSelf, IUnknown)
       function GetSelf : TObject;
+      function ScriptTypeName : String;
       function ToString : String; override; final;
       function ToUnicodeString : String;
       function ToFloat : Double;
@@ -384,6 +387,8 @@ type
       procedure ToVariant(var result : Variant);
       function Value : TdwsJSONValue;
       function IsFalsey : Boolean;
+      function IsNull : Boolean;
+      function IsDefined : Boolean;
    end;
 
 var
@@ -418,6 +423,13 @@ end;
 function TBoxedJSONValue.GetSelf : TObject;
 begin
    Result:=Self;
+end;
+
+// ScriptTypeName
+//
+function TBoxedJSONValue.ScriptTypeName : String;
+begin
+   Result := SYS_JSONVARIANT;
 end;
 
 // Value
@@ -467,7 +479,7 @@ begin
       jvtNumber : VarCopySafe(result, FValue.AsNumber);
       jvtBoolean : VarCopySafe(result, FValue.AsBoolean);
    else
-      VarClearSafe(result);
+      VarCopySafe(result, FValue.ToString);
    end;
 end;
 
@@ -599,11 +611,32 @@ begin
    Result:=True;
 end;
 
+// IsNull
+//
+function TBoxedNilJSONValue.IsNull : Boolean;
+begin
+   Result := True;
+end;
+
+// IsDefined
+//
+function TBoxedNilJSONValue.IsDefined : Boolean;
+begin
+   Result := False;
+end;
+
 // GetSelf
 //
 function TBoxedNilJSONValue.GetSelf : TObject;
 begin
    Result := Self;
+end;
+
+// ScriptTypeName
+//
+function TBoxedNilJSONValue.ScriptTypeName : String;
+begin
+   Result := SYS_JSONVARIANT;
 end;
 
 // ------------------

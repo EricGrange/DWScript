@@ -138,6 +138,7 @@ type
          constructor CreateStandalone(size : NativeInt);
 
          function GetSelf : TObject;
+         function ScriptTypeName : String; virtual;
 
          property AsVariant[addr : NativeInt] : Variant read GetAsVariant write SetAsVariant; default;
          function AsPData : PData; inline;
@@ -202,6 +203,7 @@ type
          constructor Create(const getPData : TGetPDataFunc; addr : NativeInt);
 
          function GetSelf : TObject;
+         function ScriptTypeName : String;
 
          function GetAsVariant(addr : NativeInt) : Variant;
          procedure SetAsVariant(addr : NativeInt; const value : Variant);
@@ -580,6 +582,13 @@ end;
 function TDataContext.GetSelf : TObject;
 begin
    Result:=Self;
+end;
+
+// ScriptTypeName
+//
+function TDataContext.ScriptTypeName : String;
+begin
+   Result := ClassName;
 end;
 
 // GetAsVariant
@@ -1054,6 +1063,13 @@ end;
 function TRelativeDataContext.GetSelf : TObject;
 begin
    Result:=Self;
+end;
+
+// ScriptTypeName
+//
+function TRelativeDataContext.ScriptTypeName : String;
+begin
+   Result := 'Relative DataContext';
 end;
 
 // GetAsVariant

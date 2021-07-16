@@ -109,6 +109,7 @@ type
          procedure RangeCheck(index, size : Integer); inline;
 
          function GetSelf : TObject;
+         function ScriptTypeName : String;
 
          function GetCount : NativeInt;
          procedure SetCount(n : NativeInt);
@@ -218,6 +219,13 @@ type
 function TdwsByteBuffer.GetSelf : TObject;
 begin
    Result := Self;
+end;
+
+// ScriptTypeName
+//
+function TdwsByteBuffer.ScriptTypeName : String;
+begin
+   Result := 'ByteBuffer';
 end;
 
 // GetCount

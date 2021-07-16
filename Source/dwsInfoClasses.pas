@@ -971,9 +971,9 @@ begin
             for x := 0 to FTempParams.Count - 1 do begin
                tp := TTempParam(FTempParams[x]);
                if tp.IsVarParam then begin
-                  funcExpr.AddArg(TVarExpr.Create(tp));
+                  funcExpr.AddArg(TVarExpr.Create(cNullPos, tp));
                end else begin
-                  funcExpr.AddArg(TConstExpr.Create(tp.Typ, tp.Data, 0));
+                  funcExpr.AddArg(TConstExpr.Create(cNullPos, tp.Typ, tp.Data, 0));
                end;
             end;
             funcExpr.Initialize(FExec.CompilerContext);
@@ -1052,7 +1052,7 @@ begin
             raise Exception.CreateFmt(RTE_UseParameter,
                                       [dataSym.Caption, funcSym.Caption]);
 
-         funcExpr.AddArg(TConstExpr.Create(dataSym.Typ, Params[x]));
+         funcExpr.AddArg(TConstExpr.Create(cNullPos, dataSym.Typ, Params[x]));
       end;
       funcExpr.Initialize(FExec.CompilerContext);
       if Assigned(funcExpr.Typ) then begin
@@ -1156,7 +1156,7 @@ var
 begin
    if FDataPtr.DataLength>0 then begin
       Result:=TFuncPtrExpr.Create(context, cNullPos,
-                                  TConstExpr.Create(FTypeSym.AsFuncSymbol, FDataPtr[0]));
+                                  TConstExpr.Create(cNullPos, FTypeSym.AsFuncSymbol, FDataPtr[0]));
    end else begin
       if FForceStatic then
          cf := [cfoForceStatic]
@@ -1720,11 +1720,11 @@ var
   locData : IDataContext;
 begin
   expr := TConnectorCallExpr.Create(cNullPos, FName,
-    TConstExpr.Create(FProgramInfo.CompilerContext.TypVariant, FDataPtr[0]));
+    TConstExpr.Create(cNullPos, FProgramInfo.CompilerContext.TypVariant, FDataPtr[0]));
 
   try
     for x := 0 to Length(Params) - 1 do
-      expr.AddArg(TConstExpr.Create(FProgramInfo.CompilerContext.TypVariant, Params[x]));
+      expr.AddArg(TConstExpr.Create(cNullPos, FProgramInfo.CompilerContext.TypVariant, Params[x]));
 
     if expr.AssignConnectorSym(FExec.Prog, FConnectorType) then
     begin
@@ -1812,7 +1812,7 @@ begin
       context := (exec as TdwsProgramExecution).CompilerContext;
       funcExpr := TFuncSimpleExpr.Create(context, cNullPos, TExternalVarSymbol(FSym).WriteFunc);
       try
-         funcExpr.AddArg(TConstExpr.Create(FSym.Typ, Data, 0));
+         funcExpr.AddArg(TConstExpr.Create(cNullPos, FSym.Typ, Data, 0));
          if (funcExpr is TFuncExpr) then
             TFuncExpr(funcExpr).AddPushExprs(context);
          funcExpr.EvalNoResult(exec);
@@ -1840,7 +1840,7 @@ var
    baseExpr : TConstExpr;
 begin
    dataSource := nil;
-   baseExpr := TConstExpr.Create(FCaller.Prog.Root.SystemTable.SymbolTable.TypVariant, FBaseValue);
+   baseExpr := TConstExpr.Create(cNullPos, FCaller.Prog.Root.SystemTable.SymbolTable.TypVariant, FBaseValue);
    readExpr := TConnectorReadMemberExpr.CreateNew(
       cNullPos, FName, baseExpr, TConnectorSymbol(FSym).ConnectorType
    );
@@ -1864,8 +1864,8 @@ var
    typVariant : TTypeSymbol;
 begin
    typVariant := FCaller.Prog.Root.SystemTable.SymbolTable.TypVariant;
-   baseExpr := TConstExpr.Create(typVariant, FBaseValue);
-   valueExpr := TConstExpr.Create(typVariant, Data, 0);
+   baseExpr := TConstExpr.Create(cNullPos, typVariant, FBaseValue);
+   valueExpr := TConstExpr.Create(cNullPos, typVariant, Data, 0);
    writeExpr := TConnectorWriteExpr.CreateNew(
       FCaller.CompilerContext, cNullPos, FName,
       baseExpr, valueExpr, TConnectorSymbol(FSym).ConnectorType

@@ -71,6 +71,7 @@ type
          function GetValue : pmpz_t; inline;
          procedure SetValue(const v : pmpz_t); inline;
          function GetSelf : TObject;
+         function ScriptTypeName : String;
 
          constructor CreateNewZero;
          procedure Reset;
@@ -616,6 +617,13 @@ end;
 function TBigIntegerWrapper.GetSelf : TObject;
 begin
    Result := Self;
+end;
+
+// ScriptTypeName
+//
+function TBigIntegerWrapper.ScriptTypeName : String;
+begin
+   Result := SYS_BIGINTEGER;
 end;
 
 // BitLength

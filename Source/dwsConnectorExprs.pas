@@ -34,7 +34,7 @@ type
                          ccfComplexArgs);
    TConnectorCallFlags = set of TConnectorCallFlag;
 
-   TBaseConnectorCallExpr = class(TPosDataExpr)
+   TBaseConnectorCallExpr = class(TDataExpr)
       private
          FArguments : TExprBaseListRec;
          FName : String;
@@ -89,7 +89,7 @@ type
 
    // TConnectorReadMemberExpr
    //
-   TConnectorReadMemberExpr = class (TPosDataExpr)
+   TConnectorReadMemberExpr = class (TDataExpr)
       private
          FBaseExpr : TTypedExpr;
          FName : String;
@@ -648,7 +648,7 @@ begin
       resultData:=FConnectorMember.Read(base);
    except
       on e: EScriptError do begin
-         EScriptError(e).ScriptPos:=FScriptPos;
+         EScriptError(e).ScriptPos := ScriptPos;
          raise;
       end
    else
@@ -682,7 +682,7 @@ begin
       FConnectorMember.FastRead(exec, BaseExpr, Result);
    except
       on e: EScriptError do begin
-         EScriptError(e).ScriptPos:=FScriptPos;
+         EScriptError(e).ScriptPos := ScriptPos;
          raise;
       end
    else
@@ -699,7 +699,7 @@ begin
       Result := FConnectorMember.FastReadBoolean(exec, BaseExpr);
    except
       on e: EScriptError do begin
-         EScriptError(e).ScriptPos:=FScriptPos;
+         EScriptError(e).ScriptPos := ScriptPos;
          raise;
       end
    else

@@ -100,7 +100,7 @@ type
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
-   TSetOfBinOpExpr = class(TPosDataExpr)
+   TSetOfBinOpExpr = class(TDataExpr)
       private
          FLeft, FRight : TDataExpr;
          FResultAddr : Integer;

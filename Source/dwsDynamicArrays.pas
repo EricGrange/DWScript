@@ -70,6 +70,8 @@ type
       public
          constructor Create(elemTyp : TTypeSymbol);
 
+         function ScriptTypeName : String; override;
+
          function BoundsCheckPassed(index : NativeInt) : Boolean; inline;
 
          procedure Delete(index, count : NativeInt);
@@ -136,6 +138,7 @@ type
 
          function GetSelf : TObject;
          function ToString : String; override;
+         function ScriptTypeName : String;
 
          class function InterfaceToDataOffset : Integer; virtual; abstract;
          function BoundsCheckPassed(index : NativeInt) : Boolean; inline;
@@ -563,6 +566,13 @@ begin
    FElementTyp := elemTyp;
    if elemTyp <> nil then
       FElementSize := elemTyp.Size;
+end;
+
+// ScriptTypeName
+//
+function TScriptDynamicDataArray.ScriptTypeName : String;
+begin
+   Result := 'array of ' + ElementTyp.Caption;
 end;
 
 // SetArrayLength
@@ -1022,6 +1032,13 @@ end;
 // ToString
 //
 function TScriptDynamicNativeArray.ToString : String;
+begin
+   Result := ScriptTypeName;
+end;
+
+// ScriptTypeName
+//
+function TScriptDynamicNativeArray.ScriptTypeName : String;
 begin
    Result := 'array of ' + ElementTyp.Name;
 end;

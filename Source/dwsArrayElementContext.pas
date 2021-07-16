@@ -34,6 +34,7 @@ type
 
       protected
          function GetSelf : TObject;
+         function ScriptTypeName : String;
 
          function ComputeAddr(addr : NativeInt) : NativeInt; inline;
 
@@ -104,6 +105,13 @@ end;
 function TArrayElementDataContext.GetSelf : TObject;
 begin
    Result := Self;
+end;
+
+// ScriptTypeName
+//
+function TArrayElementDataContext.ScriptTypeName : String;
+begin
+   Result := ClassName;
 end;
 
 // ComputeAddr

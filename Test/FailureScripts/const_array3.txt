@@ -1,4 +1,4 @@
 Syntax Error: Constant expression expected [line: 2, column: 32]
-Syntax Error: Constant expression expected [line: 4, column: 10]
-Syntax Error: Constant expression expected [line: 9, column: 13]
+Syntax Error: Constant expression expected [line: 4, column: 12]
+Syntax Error: Constant expression expected [line: 9, column: 15]
 Syntax Error: Constant expression expected [line: 14, column: 13]

@@ -373,11 +373,11 @@ var
    h : Cardinal;
 begin
    if expirationSeconds>0 then
-      expire:=GetSystemMilliseconds+Round(expirationSeconds*1000)
-   else expire:=cNoExpire;
+      expire := GetSystemMilliseconds+Round(expirationSeconds*1000)
+   else expire := cNoExpire;
 
-   h:=TNameObjectHash.HashName(aName);
-   map:=@Maps[h and High(Maps)];
+   h := TNameObjectHash.HashName(aName);
+   map := @Maps[h and High(Maps)];
 
    map.Lock.BeginWrite;
    try

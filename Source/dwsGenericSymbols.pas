@@ -79,6 +79,7 @@ type
 
       protected
          function GetSelf : TObject;
+         function ScriptTypeName : String;
 
          function ToUnicodeString : String;
 
@@ -433,6 +434,13 @@ end;
 function TGenericParameters.GetSelf : TObject;
 begin
    Result := Self;
+end;
+
+// ScriptTypeName
+//
+function TGenericParameters.ScriptTypeName : String;
+begin
+   Result := ToUnicodeString;
 end;
 
 // ToUnicodeString

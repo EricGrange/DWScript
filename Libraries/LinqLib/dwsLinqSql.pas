@@ -326,14 +326,14 @@ var
 begin
    query := (FDBSymbol.Typ as TClassSymbol).Members.FindSymbol('query', cvMagic) as TMethodSymbol;
    pos := compiler.Tokenizer.CurrentPos;
-   base := TVarExpr.CreateTyped(compiler.CompilerContext, FDBSymbol);
+   base := TVarExpr.CreateTyped(compiler.CompilerContext, pos, FDBSymbol);
 
    FParams := TArrayConstantExpr.Create(compiler.CompilerContext, pos);
    FParams.IncRefCount;
    BuildQuery(compiler);
 
    FMethod := TMethodStaticExpr.Create(compiler.CompilerContext, pos, query, base);
-   FMethod.AddArg(TConstStringExpr.Create(compiler.CompilerContext.TypString, FSql));
+   FMethod.AddArg(TConstStringExpr.Create(pos, compiler.CompilerContext.TypString, FSql));
    arr := TConvStaticArrayToDynamicExpr.Create(compiler.CompilerContext, pos, FParams, TDynamicArraySymbol(query.Params.Symbols[1].Typ));
    FMethod.AddArg(arr);
    FMethod.Initialize(compiler.CompilerContext);
@@ -358,7 +358,7 @@ begin
          paramList.Add(':a' + intToStr(i));
          dyn.EvalAsVariant(i, v);
          params.AddElementExpr(cNullPos, prog.Root.CompilerContext,
-                               TConstExpr.Create(prog.Root.CompilerContext.TypVariant, v));
+                               TConstExpr.Create(cNullPos, prog.Root.CompilerContext.TypVariant, v));
       end;
       result := StringReplace(query, param, format('(%s)', [paramList.CommaText]), []);
    finally
@@ -373,7 +373,7 @@ var
 begin
    method := TMethodStaticExpr.Create(prog.Root.CompilerContext, FMethod.ScriptPos, FMethod.FuncSym as TMethodSymbol, FMethod.BaseExpr);
    method.BaseExpr.IncRefCount;
-   method.AddArg(TConstStringExpr.Create(prog.Root.CompilerContext.TypString, query));
+   method.AddArg(TConstStringExpr.Create(FMethod.ScriptPos, prog.Root.CompilerContext.TypString, query));
    arr := TConvStaticArrayToDynamicExpr.Create(prog.Root.CompilerContext, cNullPos, params,
      TDynamicArraySymbol(method.FuncSym.Params.Symbols[1].Typ));
    method.AddArg(arr);
@@ -444,7 +444,7 @@ begin
    prog := compiler.CurrentProg;
    FData := TScriptDataSymbol.Create('', FBase.Typ);
    FData.AllocateStackAddr(prog.Table.AddrGenerator);
-   dsVar := TObjectVarExpr.Create(FData);
+   dsVar := TObjectVarExpr.Create(cNullPos, FData);
    FBase.IncRefCount;
    FAssign := TAssignExpr.Create(prog.Root.CompilerContext, aPos, dsVar, FBase);
    dsVar.IncRefCount;

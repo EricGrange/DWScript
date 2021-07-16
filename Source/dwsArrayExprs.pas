@@ -59,7 +59,7 @@ type
    end;
 
    // Array expressions x[index]
-   TArrayExpr = class(TPosDataExpr)
+   TArrayExpr = class(TDataExpr)
       protected
          FBaseExpr : TDataExpr;
          FIndexExpr : TTypedExpr;
@@ -201,7 +201,7 @@ type
    end;
 
    // Associative array x[key] for expressions
-   TAssociativeArrayGetExpr = class (TPosDataExpr)
+   TAssociativeArrayGetExpr = class (TDataExpr)
       protected
          FBaseExpr : TDataExpr;
          FKeyExpr : TTypedExpr;
@@ -272,7 +272,7 @@ type
    end;
 
    // returns a dynamic array
-   TDynamicArrayDataExpr = class(TPosDataExpr)
+   TDynamicArrayDataExpr = class(TDataExpr)
       public
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
@@ -512,7 +512,7 @@ type
    end;
 
    // base class for dynamic array expr that return a value
-   TArrayDataExpr = class(TPosDataExpr)
+   TArrayDataExpr = class(TDataExpr)
       private
          FBaseExpr : TTypedExpr;
          FResultAddr : Integer;
@@ -1077,10 +1077,10 @@ function TStaticArrayExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr
    begin
       if Typ.Size=1 then begin
          EvalAsVariant(exec, v);
-         Result := TConstExpr.Create(Typ, v);
+         Result := TConstExpr.Create(ScriptPos, Typ, v);
       end else begin
          dc := DataPtr[exec];
-         Result := TConstExpr.Create(Typ, dc.AsPData^, dc.Addr);
+         Result := TConstExpr.Create(ScriptPos, Typ, dc.AsPData^, dc.Addr);
       end;
       Orphan(context);
    end;
@@ -2036,8 +2036,8 @@ begin
       context.Table.AddSymbol(FLeft);
       FRight:=TScriptDataSymbol.Create('', elemTyp);
       context.Table.AddSymbol(FRight);
-      FCompareExpr.AddArg(TVarExpr.CreateTyped(context, FLeft));
-      FCompareExpr.AddArg(TVarExpr.CreateTyped(context, FRight));
+      FCompareExpr.AddArg(TVarExpr.CreateTyped(context, scriptPos, FLeft));
+      FCompareExpr.AddArg(TVarExpr.CreateTyped(context, scriptPos, FRight));
    end;
 end;
 
@@ -2125,7 +2125,7 @@ begin
       elemTyp:=aMapFunc.FuncSym.Params[0].Typ;
       FItem:=TScriptDataSymbol.Create('', elemTyp);
       context.Table.AddSymbol(FItem);
-      FMapFuncExpr.AddArg(TVarExpr.CreateTyped(context, FItem));
+      FMapFuncExpr.AddArg(TVarExpr.CreateTyped(context, scriptPos, FItem));
       FMapFuncExpr.InitializeResultAddr(context.Prog as TdwsProgram);
    end;
 end;
@@ -2333,7 +2333,7 @@ begin
       elemTyp := aFilterFunc.FuncSym.Params[0].Typ;
       FItem := TScriptDataSymbol.Create('', elemTyp);
       context.Table.AddSymbol(FItem);
-      FFilterFuncExpr.AddArg(TVarExpr.CreateTyped(context, FItem));
+      FFilterFuncExpr.AddArg(TVarExpr.CreateTyped(context, scriptPos, FItem));
       FFilterFuncExpr.InitializeResultAddr(context.Prog as TdwsProgram);
    end;
 end;

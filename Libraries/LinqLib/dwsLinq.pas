@@ -636,7 +636,7 @@ end;
 
 constructor TSqlIdentifier.Create(const name: string; const compiler: IdwsCompiler);
 begin
-   inherited Create(compiler.CompilerContext.TypVariant, name);
+   inherited Create(cNullPos, compiler.CompilerContext.TypVariant, name);
 end;
 
 

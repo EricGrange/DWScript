@@ -625,7 +625,7 @@ begin
    prog := compiler.CurrentProg;
    FData := TScriptDataSymbol.Create('', FBase.FTyp);
    FData.AllocateStackAddr(prog.Table.AddrGenerator);
-   jsonVar := TVarExpr.Create(FData);
+   jsonVar := TVarExpr.Create(cNullPos, FData);
    FBase.IncRefCount;
    FAssign := TAssignExpr.Create(compiler.CompilerContext, aPos, jsonVar, FBase);
    jsonVar.IncRefCount;

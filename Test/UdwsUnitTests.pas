@@ -2436,8 +2436,8 @@ begin
 
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
 
-   CheckEquals( 'Object not instantiated'#13#10
-               +'Object already destroyed'#13#10,
+   CheckEquals( 'Object not instantiated [line: 2, column: 11]'#13#10
+               +'Object already destroyed [line: 4, column: 11]'#13#10,
                prog.Execute.Result.ToString,
                'exec');
 end;

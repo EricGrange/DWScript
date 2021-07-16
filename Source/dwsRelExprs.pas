@@ -230,7 +230,7 @@ function TRelEqualBoolExpr.Optimize(context : TdwsCompilerContext) : TProgramExp
 begin
    if Left.IsConstant then begin
       if Right.IsConstant then begin
-         Result := TConstBooleanExpr.Create(Typ, EvalAsBoolean(context.Execution));
+         Result := TConstBooleanExpr.Create(ScriptPos, Typ, EvalAsBoolean(context.Execution));
       end else begin
          if Left.EvalAsBoolean(context.Execution) then begin
             Assert(Right.Typ.IsOfType(context.TypBoolean));
@@ -276,7 +276,7 @@ end;
 function TRelEqualIntExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
 begin
    if IsConstant then
-      Result := TConstBooleanExpr.Create(context.TypBoolean, EvalAsBoolean(context.Execution))
+      Result := TConstBooleanExpr.Create(ScriptPos, context.TypBoolean, EvalAsBoolean(context.Execution))
    else if FLeft.IsConstant and (FLeft.EvalAsInteger(context.Execution)=0) then begin
       Result:=TRelIntIsZeroExpr.Create(context, ScriptPos, FRight);
       FRight:=nil;
@@ -303,7 +303,7 @@ end;
 function TRelNotEqualIntExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr;
 begin
    if IsConstant then
-      Result := TConstBooleanExpr.Create(context.TypBoolean, EvalAsBoolean(context.Execution))
+      Result := TConstBooleanExpr.Create(ScriptPos, context.TypBoolean, EvalAsBoolean(context.Execution))
    else if FLeft.IsConstant and (FLeft.EvalAsInteger(context.Execution)=0) then begin
       Result:=TRelIntIsNotZeroExpr.Create(context, ScriptPos, FRight);
       FRight:=nil;

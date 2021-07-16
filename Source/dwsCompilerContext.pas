@@ -216,8 +216,8 @@ function TdwsCompilerContext.CreateConstExpr(typ : TTypeSymbol; const value : Va
    begin
       val := IUnknown(value) as IScriptDynArray;
       if val <> nil then
-         Result := TConstExpr.Create(typ, val)
-      else Result := TConstExpr.Create(typ, CreateNewDynamicArray(typ.Typ) as IScriptDynArray);
+         Result := TConstExpr.Create(cNullPos, typ, val)
+      else Result := TConstExpr.Create(cNullPos, typ, CreateNewDynamicArray(typ.Typ) as IScriptDynArray);
    end;
 
    function CreateAssociativeArrayValue(typ : TAssociativeArraySymbol) : TConstExpr;
@@ -226,8 +226,8 @@ function TdwsCompilerContext.CreateConstExpr(typ : TTypeSymbol; const value : Va
    begin
       val := IUnknown(value) as IScriptAssociativeArray;
       if val<>nil then
-         Result:=TConstExpr.Create(typ, val)
-      else Result:=TConstExpr.Create(typ, TScriptAssociativeArray.CreateNew(typ.KeyType, typ.Typ) as IScriptAssociativeArray);
+         Result:=TConstExpr.Create(cNullPos, typ, val)
+      else Result:=TConstExpr.Create(cNullPos, typ, TScriptAssociativeArray.CreateNew(typ.KeyType, typ.Typ) as IScriptAssociativeArray);
    end;
 
 begin
@@ -244,8 +244,8 @@ begin
    else if typ = TypInteger then
       Result := TUnifiedConstants(FUnifiedConstants).CreateInteger(value)
    else if typ.typ = TypInteger then
-      Result := TConstIntExpr.Create(typ, value)
-   else Result := TConstExpr.Create(typ, value);
+      Result := TConstIntExpr.Create(cNullPos, typ, value)
+   else Result := TConstExpr.Create(cNullPos, typ, value);
 end;
 
 // WrapWithImplicitCast

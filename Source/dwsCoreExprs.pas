@@ -39,8 +39,8 @@ type
          FDataSym : TDataSymbol;
 
       public
-         constructor Create(dataSym : TDataSymbol);
-         class function CreateTyped(context : TdwsCompilerContext; dataSym : TDataSymbol) : TVarExpr;
+         constructor Create(const scriptPos : TScriptPos; dataSym : TDataSymbol);
+         class function CreateTyped(context : TdwsCompilerContext; const scriptPos : TScriptPos; dataSym : TDataSymbol) : TVarExpr;
          procedure Orphan(context : TdwsCompilerContext); override;
 
          procedure AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr); override;
@@ -141,7 +141,6 @@ type
 
    TVarParentExpr = class(TVarExpr)
       protected
-         FScriptPos : TScriptPos;
          FLevel: Integer;
 
       public
@@ -152,8 +151,6 @@ type
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
-
-         function ScriptPos : TScriptPos; override;
 
          property Level : Integer read FLevel;
    end;
@@ -224,7 +221,7 @@ type
          FLevel : Integer;
 
       public
-         constructor Create(dataSym : TDataSymbol);
+         constructor Create(const scriptPos : TScriptPos; dataSym : TDataSymbol);
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
@@ -264,7 +261,7 @@ type
    end;
 
    // Record expression: record.member
-   TRecordExpr = class(TPosDataExpr)
+   TRecordExpr = class(TDataExpr)
       protected
          FBaseExpr : TDataExpr;
          FMemberOffset : Integer;
@@ -345,7 +342,7 @@ type
    end;
 
    // dynamic anonymous record
-   TDynamicRecordExpr = class(TPosDataExpr)
+   TDynamicRecordExpr = class(TDataExpr)
       private
          FAddr : Integer;
 
@@ -364,7 +361,7 @@ type
    end;
 
    // Field expression: obj.Field
-   TFieldExpr = class(TPosDataExpr)
+   TFieldExpr = class(TDataExpr)
       protected
          FObjectExpr : TTypedExpr;
          FFieldSym : TFieldSymbol;
@@ -1193,7 +1190,6 @@ type
    // value := if FCond then FTrue else FFalse
    TIfThenElseValueExpr = class sealed (TDataExpr)
       private
-         FScriptPos : TScriptPos;
          FCondExpr : TTypedExpr;
          FTrueExpr : TTypedExpr;
          FFalseExpr : TTypedExpr;
@@ -1216,7 +1212,6 @@ type
          procedure EvalAsString(exec : TdwsExecution; var result : String); override;
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
-         function ScriptPos : TScriptPos; override;
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
          function SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
 
@@ -1828,37 +1823,37 @@ uses
 
 // Create
 //
-constructor TVarExpr.Create(dataSym : TDataSymbol);
+constructor TVarExpr.Create(const scriptPos : TScriptPos; dataSym : TDataSymbol);
 begin
-   inherited Create(dataSym.Typ);
+   inherited Create(scriptPos, dataSym.Typ);
    FStackAddr:=dataSym.StackAddr;
    FDataSym:=dataSym;
 end;
 
 // CreateTyped
 //
-class function TVarExpr.CreateTyped(context : TdwsCompilerContext; dataSym : TDataSymbol) : TVarExpr;
+class function TVarExpr.CreateTyped(context : TdwsCompilerContext; const scriptPos : TScriptPos; dataSym : TDataSymbol) : TVarExpr;
 var
    typ : TTypeSymbol;
 begin
    typ := dataSym.Typ.UnAliasedType;
    if dataSym.ClassType = TSelfSymbol then begin
       if typ is TClassSymbol then
-         Result := TSelfObjectVarExpr.Create(dataSym)
-      else Result := TSelfVarExpr.Create(dataSym);
+         Result := TSelfObjectVarExpr.Create(scriptPos, dataSym)
+      else Result := TSelfVarExpr.Create(scriptPos, dataSym);
    end else if typ.Size = 1 then begin
       if typ.IsOfType(context.TypInteger) then
-         Result := TIntVarExpr.Create(dataSym)
+         Result := TIntVarExpr.Create(scriptPos, dataSym)
       else if typ.IsOfType(context.TypFloat) then
-         Result := TFloatVarExpr.Create(dataSym)
+         Result := TFloatVarExpr.Create(scriptPos, dataSym)
       else if typ.IsOfType(context.TypString) then
-         Result := TStrVarExpr.Create(dataSym)
+         Result := TStrVarExpr.Create(scriptPos, dataSym)
       else if typ.IsOfType(context.TypBoolean) then
-         Result := TBoolVarExpr.Create(dataSym)
+         Result := TBoolVarExpr.Create(scriptPos, dataSym)
       else if (typ is TClassSymbol) or (typ is TDynamicArraySymbol) then
-         Result := TObjectVarExpr.Create(dataSym)
-      else Result := TBaseTypeVarExpr.Create(dataSym)
-   end else Result := TVarExpr.Create(dataSym);
+         Result := TObjectVarExpr.Create(scriptPos, dataSym)
+      else Result := TBaseTypeVarExpr.Create(scriptPos, dataSym)
+   end else Result := TVarExpr.Create(scriptPos, dataSym);
 end;
 
 // Orphan
@@ -1897,6 +1892,7 @@ var
 begin
    specializedDataSym := context.SpecializeDataSymbol(FDataSym);
    Result := TVarExpr.CreateTyped(CompilerContextFromSpecialization(context),
+                                  ScriptPos,
                                   specializedDataSym);
 end;
 
@@ -2281,9 +2277,8 @@ end;
 //
 constructor TVarParentExpr.Create(const aScriptPos: TScriptPos; dataSym : TDataSymbol);
 begin
-   inherited Create(dataSym);
+   inherited Create(aScriptPos, dataSym);
    FLevel := dataSym.Level;
-   FScriptPos := aScriptPos;
 end;
 
 // GetDataPtr
@@ -2319,13 +2314,6 @@ end;
 function TVarParentExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
    Result:=exec.Stack.Data[exec.Stack.GetSavedBp(FLevel)+FStackAddr];
-end;
-
-// ScriptPos
-//
-function TVarParentExpr.ScriptPos : TScriptPos;
-begin
-   Result := FScriptPos;
 end;
 
 // ------------------
@@ -2458,7 +2446,7 @@ end;
 //
 function TVarParamExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
 begin
-   Result := TVarParamExpr.Create(context.SpecializeDataSymbol(DataSymbol));
+   Result := TVarParamExpr.Create(ScriptPos, context.SpecializeDataSymbol(DataSymbol));
 end;
 
 // ------------------
@@ -2476,7 +2464,7 @@ end;
 //
 function TConstParamExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
 begin
-   Result := TConstParamExpr.Create(context.SpecializeDataSymbol(DataSymbol));
+   Result := TConstParamExpr.Create(ScriptPos, context.SpecializeDataSymbol(DataSymbol));
 end;
 
 // ------------------
@@ -2485,7 +2473,7 @@ end;
 
 // Create
 //
-constructor TByRefParentParamExpr.Create(dataSym : TDataSymbol);
+constructor TByRefParentParamExpr.Create(const scriptPos : TScriptPos; dataSym : TDataSymbol);
 begin
    inherited;
    FLevel := dataSym.Level;
@@ -4588,7 +4576,7 @@ begin
             Result := TConvExpr.WrapWithConvCast(context, ScriptPos, Typ, Right, CPE_AssignIncompatibleTypes);
             Right:=nil;
          end else begin
-            Result := TConstBooleanExpr.Create(context.TypBoolean, False)
+            Result := TConstBooleanExpr.Create(ScriptPos, context.TypBoolean, False)
          end;
          Orphan(context);
       end else if Right.IsConstant then begin
@@ -4596,7 +4584,7 @@ begin
             Result := TConvExpr.WrapWithConvCast(context, ScriptPos, Typ, Left, CPE_AssignIncompatibleTypes);
             Left:=nil;
          end else begin
-            Result := TConstBooleanExpr.Create(context.TypBoolean, False)
+            Result := TConstBooleanExpr.Create(ScriptPos, context.TypBoolean, False)
          end;
          Orphan(context);
       end;
@@ -4638,7 +4626,7 @@ begin
    if Result.ClassType=TBoolOrExpr then begin
       if Left.IsConstant then begin
          if Left.EvalAsBoolean(context.Execution) then begin
-            Result := TConstBooleanExpr.Create(context.TypBoolean, True)
+            Result := TConstBooleanExpr.Create(ScriptPos, context.TypBoolean, True)
          end else begin
             Result := TConvExpr.WrapWithConvCast(context, ScriptPos, Typ, Right, CPE_AssignIncompatibleTypes);
             Right := nil;
@@ -4646,7 +4634,7 @@ begin
          Orphan(context);
       end else if Right.IsConstant then begin
          if Right.EvalAsBoolean(context.Execution) then begin
-            Result := TConstBooleanExpr.Create(context.TypBoolean, True)
+            Result := TConstBooleanExpr.Create(ScriptPos, context.TypBoolean, True)
          end else begin
             Result := TConvExpr.WrapWithConvCast(context, ScriptPos, Typ, Left, CPE_AssignIncompatibleTypes);
             Left := nil;
@@ -5132,9 +5120,9 @@ begin
    if FRight.ClassType=TArrayConstantExpr then
       TArrayConstantExpr(FRight).Prepare(context, FLeft.Typ.Typ);
 
-   rightScriptPos:=Right.ScriptPos;
+   rightScriptPos := Right.ScriptPos;
    if not rightScriptPos.Defined then
-      rightScriptPos:=Self.ScriptPos;
+      rightScriptPos := Self.ScriptPos;
 
    FRight:=TConvExpr.WrapWithConvCast(context, rightScriptPos,
                                       FLeft.Typ, FRight, CPE_AssignIncompatibleTypes);
@@ -8329,8 +8317,7 @@ constructor TIfThenElseValueExpr.Create(context : TdwsCompilerContext; const aPo
                                         aTyp : TTypeSymbol;
                                         condExpr, trueExpr, falseExpr : TTypedExpr);
 begin
-   inherited Create(aTyp);
-   FScriptPos:=aPos;
+   inherited Create(aPos, aTyp);
    FCondExpr:=condExpr;
    FTrueExpr:=trueExpr;
    FFalseExpr:=falseExpr;
@@ -8461,13 +8448,6 @@ end;
 function TIfThenElseValueExpr.GetSubExprCount : Integer;
 begin
    Result:=3;
-end;
-
-// ScriptPos
-//
-function TIfThenElseValueExpr.ScriptPos : TScriptPos;
-begin
-   Result := FScriptPos;
 end;
 
 // ------------------

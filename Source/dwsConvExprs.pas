@@ -110,7 +110,7 @@ type
    end;
 
    // convert to data expr
-   TConvDataExpr = class (TPosDataExpr)
+   TConvDataExpr = class (TDataExpr)
       private
          FExpr : TTypedExpr;
 
@@ -276,7 +276,7 @@ begin
                                                          TDynamicArraySymbol(toTyp))
       end else if toTyp is TSetOfSymbol then begin
          if arrayConst.ElementCount=0 then begin
-            Result:=TConstExpr.Create(toTyp);
+            Result:=TConstExpr.Create(cNullPos, toTyp);
             expr.Free;
          end else if arrayConst.Typ.Typ.IsOfType(toTyp.Typ) then begin
             staticArrayToSetOf:=TConvStaticArrayToSetOfExpr.Create(scriptPos, arrayConst, TSetOfSymbol(toTyp));
@@ -319,7 +319,7 @@ begin
       if     toTyp.IsOfType(context.TypFloat)
          and expr.IsOfType(context.TypInteger) then begin
          if expr is TConstIntExpr then begin
-            Result := TConstFloatExpr.Create(context.TypFloat, TConstIntExpr(expr).Value);
+            Result := TConstFloatExpr.Create(scriptPos, context.TypFloat, TConstIntExpr(expr).Value);
             expr.Free;
          end else Result := TConvIntToFloatExpr.Create(context, scriptPos, expr);
       end;
@@ -419,7 +419,7 @@ begin
          Expr:=nil;
       end else begin
          // requalify constant type
-         Result := TConstIntExpr.Create(Typ, TConstIntExpr(Expr).Value);
+         Result := TConstIntExpr.Create(ScriptPos, Typ, TConstIntExpr(Expr).Value);
       end;
       Free;
    end else Result:=Self;
@@ -839,7 +839,7 @@ var
    data : TData;
 begin
    EvalAsTData(exec, data);
-   Result:=TConstExpr.Create(Typ, data, 0);
+   Result := TConstExpr.Create(ScriptPos, Typ, data, 0);
 end;
 
 // GetDataPtr

@@ -268,6 +268,8 @@ var
 begin
    CoInitialize(nil);
 
+   NameThreadForDebugging(ClassName);
+
    while not Terminated do begin
       if not GetQueuedCompletionStatus(FIOCP,
                                        data.lpNumberOfBytesTransferred,

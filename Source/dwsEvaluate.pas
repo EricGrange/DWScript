@@ -192,7 +192,7 @@ begin
                         messageString := messageString + #13#10
                                        + compiler.Msgs[i].AsInfo;
                      end;
-                     expr := TConstStringExpr.Create(contextProgram.Root.CompilerContext.TypString,
+                     expr := TConstStringExpr.Create(cNullPos, contextProgram.Root.CompilerContext.TypString,
                                                      messageString);
                   end;
                   while compiler.Msgs.Count > previousMsgCount do
