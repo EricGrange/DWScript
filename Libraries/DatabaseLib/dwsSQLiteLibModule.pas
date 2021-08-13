@@ -18,9 +18,6 @@ type
     property Script : TDelphiWebScript write SetScript;
 end;
 
-var
-  dwsSQLiteLib: TdwsSQLiteLib;
-
 implementation
 
 uses dwsDatabaseLibModule, dwsSynSQLiteDataBase, SynSQLite3;

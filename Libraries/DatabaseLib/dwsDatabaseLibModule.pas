@@ -137,6 +137,10 @@ type
       LowerCaseStringify : Boolean;
    end;
 
+   TScriptDataSet = class
+      Intf : IdwsDataSet;
+   end;
+
 implementation
 
 {$R *.dfm}
@@ -147,8 +151,7 @@ resourcestring
    FIELD_NOT_FOUND = 'Field ''%s'' not found';
 
 type
-   TDataSet = class
-      Intf : IdwsDataSet;
+   TDataSet = class (TScriptDataSet)
       FirstDone : Boolean;
       ScriptFieldsPrepared : Boolean;
       WriterOptions : TdwsJSONWriterOptions;
