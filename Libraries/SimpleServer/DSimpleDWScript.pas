@@ -36,7 +36,7 @@ uses
    dwsJSFilter, dwsJSLibModule, dwsCodeGen,
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
    dwsWebServerHelpers, dwsZipLibModule, dwsIniFileModule,
-   dwsDataBase, dwsDataBaseLibModule, dwsSQLiteLibModule,
+   dwsDataBase, dwsDataBaseLibModule, dwsSQLiteLibModule, dwsTabularLibModule,
    dwsWebServerInfo, dwsWebServerLibModule,
    dwsBackgroundWorkersLibModule, dwsSynapseLibModule, dwsCryptoLibModule,
    dwsEncodingLibModule, dwsComConnector, dwsXXHash, dwsHTTPSysServer,
@@ -102,6 +102,7 @@ type
       FWebLib : TdwsWebLib;
       FDataBase : TdwsDatabaseLib;
       FSQLite : TdwsSQLiteLib;
+      FTabular : TdwsTabularLib;
       FJSON : TdwsJSONLibModule;
       FSynapse : TdwsSynapseLib;
       FWebServerLib : TdwsWebServerLib;
@@ -315,6 +316,9 @@ begin
 
    FSQLite := TdwsSQLiteLib.Create(Self);
    FSQLite.Script := DelphiWebScript;
+
+   FTabular := TdwsTabularLib.Create(Self);
+   FTabular.dwsTabular.Script := DelphiWebScript;
 
    FWebLib:=TdwsWebLib.Create(Self);
    FWebLib.dwsWeb.Script:=DelphiWebScript;
