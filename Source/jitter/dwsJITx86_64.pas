@@ -64,6 +64,7 @@ type
          FUnwind : TUnwindCodeBuilder;
          FAlteredXMM : Cardinal;
          FAlteredGP : Cardinal;
+         FNoExecMemRegister : Boolean;
 
          procedure Prepare;
 
@@ -84,6 +85,7 @@ type
 
          property AllocatedStackSpace : Integer read FAllocatedStackSpace write FAllocatedStackSpace;
          property PreserveExec : Boolean read FPreserveExec write FPreserveExec;
+         property NoExecMemRegister : Boolean read FNoExecMemRegister write FNoExecMemRegister;
          property HasCalls : Boolean read FHasCalls write FHasCalls;
 
          property Unwind : TUnwindCodeBuilder read FUnwind;
@@ -106,7 +108,7 @@ type
          FDataIndex : Integer;
 
       public
-         constructor Create(const aPrefixBytes : TBytes);
+         constructor Create(const aPrefixBytes : array of const);//TBytes);
 
          function GetSize : Integer; override;
          procedure Write(output : TWriteOnlyBlockStream); override;
@@ -135,6 +137,7 @@ type
 
          function AddStaticData(const data : UInt64) : Integer;
          function AddStaticData128(const data1, data2 : UInt64) : Integer;
+         function AddStaticData256(const data1, data2, data3, data4 : UInt64) : Integer;
          property StaticDataBase : Integer read FStaticDataBase write FStaticDataBase;
          function CompileStaticData : TBytes;
    end;
@@ -154,9 +157,11 @@ type
       function NewNegRegImm(reg : TxmmRegister) : TStaticDataFixup;
       function NewXMMOpRegImm(op : TxmmOp; reg : TxmmRegister; const value : Double) : TStaticDataFixup;
       function NewXMMOpRegPDImm(op : TxmmOp_pd; reg : TxmmRegister; const value1, value2 : Double) : TStaticDataFixup;
+      function NewYMMOpRegPDImm(op : TxmmOp_pd; reg : TymmRegister; const value1, value2, value3, value4 : Double) : TStaticDataFixup;
 
       function AddStaticData(const data : UInt64) : Integer;
       function AddStaticData128(const data1, data2 : UInt64) : Integer;
+      function AddStaticData256(const data1, data2, data3, data4 : UInt64) : Integer;
       function StaticData : TBytes;
 
       function GetStaticDataBase : Integer;
@@ -197,6 +202,8 @@ type
          procedure EndJIT; override;
          procedure EndFloatJIT(resultHandle : Integer); override;
          procedure EndIntegerJIT(resultHandle : Integer); override;
+
+         property Preamble : TFixupPreamble read FPreamble;
 
       public
          constructor Create; override;
@@ -2056,7 +2063,8 @@ end;
 //
 procedure TFixupPreamble.Prepare;
 begin
-   NotifyGPAlteration(cExecMemGPR);
+   if not NoExecMemRegister then
+      NotifyGPAlteration(cExecMemGPR);
 
    if FPreserveExec then
       NotifyGPAlteration(cExecInstanceGPR);
@@ -2092,7 +2100,7 @@ function TFixupPreamble.GetSize : Integer;
 begin
    Result := FUnwind.PrologSize
            + 3*Ord(FPreserveExec) // mov execInstance, rdx
-           + 4; // mov execmem reg, [rdx + stack mixin]
+           + 4*Ord(not NoExecMemRegister); // mov execmem reg, [rdx + stack mixin]
 end;
 
 // Write
@@ -2108,7 +2116,8 @@ begin
    if FPreserveExec then
       x86._mov_reg_reg(cExecInstanceGPR, gprRDX);
 
-   x86._mov_reg_qword_ptr_reg(cExecMemGPR, gprRDX, TdwsExecution.StackMixin_Offset);
+   if not NoExecMemRegister then
+      x86._mov_reg_qword_ptr_reg(cExecMemGPR, gprRDX, TdwsExecution.StackMixin_Offset);
 end;
 
 // AllocateStackSpace
@@ -2169,10 +2178,19 @@ end;
 
 // Create
 //
-constructor TStaticDataFixup.Create(const aPrefixBytes : TBytes);
+constructor TStaticDataFixup.Create(const aPrefixBytes : array of const);
+var
+   n, i : Integer;
+   vr : PVarRec;
 begin
    inherited Create;
-   FPrefixBytes := Copy(aPrefixBytes);
+   n := Length(aPrefixBytes);
+   SetLength(FPrefixBytes, n);
+   for i := 0 to n-1 do begin
+      vr := @aPrefixBytes[i];
+      Assert(vr.VType = vtInteger);
+      FPrefixBytes[i] := vr.VInteger;
+   end;
 end;
 
 // GetSize
@@ -2252,6 +2270,33 @@ begin
    SetLength(FStaticData, Result+2);
    FStaticData[Result] := data1;
    FStaticData[Result+1] := data2;
+end;
+
+// AddStaticData256
+//
+function Tx86_64FixupLogic.AddStaticData256(const data1, data2, data3, data4 : UInt64) : Integer;
+var
+   i : Integer;
+begin
+   Result := Length(FStaticData);
+   i := 0;
+   while i < Result-4 do begin
+      if     (FStaticData[i] = data1) and (FStaticData[i+1] = data2)
+         and (FStaticData[i+2] = data3)  and (FStaticData[i+3] = data4) then Exit(i);
+      Inc(i, 4);
+   end;
+
+   if (Result and 1) <> 0 then begin
+      // align 16
+      FStaticDataFree8BytesSlot := Result;
+      Inc(Result);
+   end;
+
+   SetLength(FStaticData, Result+4);
+   FStaticData[Result] := data1;
+   FStaticData[Result+1] := data2;
+   FStaticData[Result+2] := data3;
+   FStaticData[Result+3] := data4;
 end;
 
 // CompileStaticData
@@ -2413,6 +2458,23 @@ begin
    AddFixup(Result);
 end;
 
+// NewYMMOpRegPDImm
+//
+function Tx86_64FixupLogicHelper.NewYMMOpRegPDImm(op : TxmmOp_pd; reg : TymmRegister; const value1, value2, value3, value4 : Double) : TStaticDataFixup;
+var
+   srcReg : TymmRegister;
+begin
+   if op = xmm_movpd then
+      srcReg := ymm0
+   else srcReg := reg;
+   if reg < ymm8 then
+      Result := TStaticDataFixup.Create([$C5, $FD - 8*(Ord(srcReg) and 7), Ord(op), $05 + 8*(Ord(reg) and 7)])
+   else Result := TStaticDataFixup.Create([$C5, $3D - 8*(Ord(srcReg) and 7), Ord(op), $05 + 8*(Ord(reg) and 7)]);
+   Result.Logic := Self;
+   Result.DataIndex := AddStaticData256(PUInt64(@value1)^, PUInt64(@value2)^, PUInt64(@value3)^, PUInt64(@value4)^);
+   AddFixup(Result);
+end;
+
 // AddStaticData
 //
 function Tx86_64FixupLogicHelper.AddStaticData(const data : UInt64) : Integer;
@@ -2425,6 +2487,13 @@ end;
 function Tx86_64FixupLogicHelper.AddStaticData128(const data1, data2 : UInt64) : Integer;
 begin
    Result := (Self as Tx86_64FixupLogic).AddStaticData128(data1, data2);
+end;
+
+// AddStaticData256
+//
+function Tx86_64FixupLogicHelper.AddStaticData256(const data1, data2, data3, data4 : UInt64) : Integer;
+begin
+   Result := (Self as Tx86_64FixupLogic).AddStaticData256(data1, data2, data3, data4);
 end;
 
 // StaticData

@@ -80,6 +80,8 @@ begin
       end;
       scriptDS.Next;
    end;
+
+   tabular.InitializeJIT;
 end;
 
 procedure TdwsTabularLib.dwsTabularClassesTabularDataMethodsDropColumnEval(
@@ -98,11 +100,18 @@ begin
 
    var expr := PrepareExprFromOpcode(tabular, opCodes);
    try
+      expr.JITCompile;
       var stack := TdwsTabularStack.Create(expr.MaxStackDepth);
       try
          if aggregateFunc = 'sum' then begin
             var sum : Double := 0;
-            for var i := 0 to tabular.RowCount-1 do begin
+            var buf : TdwsTabularBatchResult;
+            stack.RowIndex := 0;
+            for var i := 1 to tabular.RowCount div Length(buf) do begin
+               expr.EvaluateBatch(stack, buf);
+               sum := sum + buf[0] + buf[1] + buf[2] + buf[3];
+            end;
+            for var i := stack.RowIndex to tabular.RowCount-1 do begin
                stack.RowIndex := i;
                sum := sum + expr.Evaluate(stack);
             end;
@@ -124,6 +133,7 @@ begin
 
    var expr := PrepareExprFromOpcode(tabular, opCodes);
    try
+      expr.JITCompile;
       var column := tabular.AddColumn(Info.ParamAsString[0]);
       var stack := TdwsTabularStack.Create(expr.MaxStackDepth);
       try
