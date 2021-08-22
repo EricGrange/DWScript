@@ -1268,7 +1268,7 @@ var
    sub : IdwsJITCodeSubAllocator;
    ptr : Pointer;
 begin
-   Fixups.FlushFixups(Output.ToBytes, Output);
+   Fixups.FlushFixups(Output);
    Fixups.ClearFixups;
 
    ptr := Allocator.Allocate(Output.ToBytes, sub);

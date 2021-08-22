@@ -104,17 +104,17 @@ type
 
    TStaticDataFixup = class(TFixup)
       private
-         FPrefixBytes : TBytes;
+         FPrefixBytes : array [0..7] of Byte;
+         FPrefixBytesCount : Integer;
          FDataIndex : Integer;
 
       public
-         constructor Create(const aPrefixBytes : array of const);//TBytes);
+         constructor Create(const aPrefixBytes : array of const);
 
          function GetSize : Integer; override;
          procedure Write(output : TWriteOnlyBlockStream); override;
 
          property DataIndex : Integer read FDataIndex write FDataIndex;
-         property PrefixBytes : TBytes read FPrefixBytes;
          function RelativeOffset : Integer;
    end;
 
@@ -122,11 +122,13 @@ type
       private
          FOptions : TdwsJITOptions;
          FStaticData : array of UInt64;
+         FStaticDataCount : Integer;
          FStaticDataBase : Integer;
          FStaticDataFree8BytesSlot : Integer;
 
       protected
          procedure AfterResolve; override;
+         procedure SetDataCount(n : Integer);
 
       public
          procedure ClearFixups; override;
@@ -139,7 +141,7 @@ type
          function AddStaticData128(const data1, data2 : UInt64) : Integer;
          function AddStaticData256(const data1, data2, data3, data4 : UInt64) : Integer;
          property StaticDataBase : Integer read FStaticDataBase write FStaticDataBase;
-         function CompileStaticData : TBytes;
+         procedure WriteStaticData(stream : TWriteOnlyBlockStream);
    end;
 
    TRegisterFlushOption = (regFlushAll, regFlushVolatile, regFlushIntermediateExprs, regFlushDataSymbols);
@@ -158,11 +160,13 @@ type
       function NewXMMOpRegImm(op : TxmmOp; reg : TxmmRegister; const value : Double) : TStaticDataFixup;
       function NewXMMOpRegPDImm(op : TxmmOp_pd; reg : TxmmRegister; const value1, value2 : Double) : TStaticDataFixup;
       function NewYMMOpRegPDImm(op : TxmmOp_pd; reg : TymmRegister; const value1, value2, value3, value4 : Double) : TStaticDataFixup;
+      function NewYMMBroadcastImm(reg : TymmRegister; const value1234 : Double) : TStaticDataFixup;
+      function NewYMM_FMA_Imm(dest, mult : TymmRegister; const add : Double) : TStaticDataFixup;
 
       function AddStaticData(const data : UInt64) : Integer;
       function AddStaticData128(const data1, data2 : UInt64) : Integer;
       function AddStaticData256(const data1, data2, data3, data4 : UInt64) : Integer;
-      function StaticData : TBytes;
+      procedure WriteStaticData(stream : TWriteOnlyBlockStream);
 
       function GetStaticDataBase : Integer;
       procedure SetStaticDataBase(v : Integer);
@@ -1571,8 +1575,6 @@ function TdwsJITx86_64.CompiledOutput : TdwsJITCodeBlock;
 var
    compiledBytes : TBytes;
    unwindBytes : TBytes;
-   staticDataBytes : TBytes;
-   outputBytes : TBytes;
    ptr : Pointer;
    sub : IdwsJITCodeSubAllocator;
    block64 : TdwsJITCodeBlock86_64;
@@ -1582,9 +1584,10 @@ var
 begin
    FPreamble.HasCalls := x86.FlagCalls;
 
-   Fixups.FlushFixups(Output.ToBytes, Output);
+   Fixups.FlushFixups(Output);
 
    compiledBytes := Output.ToBytes;
+   Output.Clear;
 
    unwindSize := SizeOf(RUNTIME_FUNCTION) + SizeOf(UNWIND_INFO)
                + FPreamble.Unwind.SizeInBytes;
@@ -1618,19 +1621,18 @@ begin
 
    // complete output is unwind data + compiled bytes + nop padding [ + static data ]
    Assert(Length(compiledBytes) < Fixups.StaticDataBase);
-   outputBytes := unwindBytes + compiledBytes;
-   i := Length(outputBytes);
-   SetLength(outputBytes, i + Fixups.StaticDataBase - Length(compiledBytes));
-   Assert((Length(outputBytes) and $F) = 0); // 16 bytes alignment
-   while i < Length(outputBytes) do begin
-      outputBytes[i] := $90; // NOP
+   Output.WriteBytes(unwindBytes);
+   Output.WriteBytes(compiledBytes);
+   i := Output.Size;
+   var ki := i + Fixups.StaticDataBase - Length(compiledBytes);
+   Assert((ki and $F) = 0); // 16 bytes alignment
+   while i < ki do begin
+      Output.WriteByte($90); // NOP
       Inc(i);
    end;
-   staticDataBytes := Fixups.StaticData;
-   if Length(staticDataBytes) > 0 then
-      outputBytes := outputBytes + staticDataBytes;
+   Fixups.WriteStaticData(Output);
 
-   ptr := Allocator.Allocate(outputBytes, sub);
+   ptr := Allocator.Allocate(Output.ToBytes, sub);
    block64 := TdwsJITCodeBlock86_64.Create(Pointer(IntPtr(ptr) + unwindSize), sub);
    block64.Steppable := (jitoDoStep in Options);
 
@@ -1913,9 +1915,9 @@ end;
 //
 destructor TdwsJITCodeBlock86_64.Destroy;
 begin
-   inherited;
    if FRegistered then
-      RtlDeleteFunctionTable(FRuntimeFunction);
+      SubAllocator.DeregisterFunctionTable(FRuntimeFunction);
+   inherited;
 end;
 
 // RegisterTable
@@ -1923,8 +1925,7 @@ end;
 procedure TdwsJITCodeBlock86_64.RegisterTable(rtFn : PRUNTIME_FUNCTION);
 begin
    FRuntimeFunction := rtFn;
-   if not RtlAddFunctionTable(rtFn, 1, rtFn) then
-      raise Exception.Create('Failed RtlAddFunctionTable');
+   SubAllocator.RegisterFunctionTable(rtFn);
    FRegistered := True;
 end;
 
@@ -2180,13 +2181,13 @@ end;
 //
 constructor TStaticDataFixup.Create(const aPrefixBytes : array of const);
 var
-   n, i : Integer;
+   i : Integer;
    vr : PVarRec;
 begin
    inherited Create;
-   n := Length(aPrefixBytes);
-   SetLength(FPrefixBytes, n);
-   for i := 0 to n-1 do begin
+   FPrefixBytesCount := Length(aPrefixBytes);
+   Assert(FPrefixBytesCount < Length(FPrefixBytes));
+   for i := 0 to FPrefixBytesCount-1 do begin
       vr := @aPrefixBytes[i];
       Assert(vr.VType = vtInteger);
       FPrefixBytes[i] := vr.VInteger;
@@ -2197,14 +2198,14 @@ end;
 //
 function TStaticDataFixup.GetSize : Integer;
 begin
-   Result := Length(FPrefixBytes) + 4;
+   Result := FPrefixBytesCount + 4;
 end;
 
 // Write
 //
 procedure TStaticDataFixup.Write(output : TWriteOnlyBlockStream);
 begin
-   output.WriteBytes(FPrefixBytes);
+   output.WriteBuffer(FPrefixBytes[0], FPrefixBytesCount);
    output.WriteInt32(RelativeOffset - GetSize);
 end;
 
@@ -2235,7 +2236,7 @@ function Tx86_64FixupLogic.AddStaticData(const data : UInt64) : Integer;
 var
    i : Integer;
 begin
-   Result := Length(FStaticData);
+   Result := FStaticDataCount;
    for i := 0 to Result-1 do
       if FStaticData[i] = data then
          Exit(i);
@@ -2243,7 +2244,7 @@ begin
    if FStaticDataFree8BytesSlot >= 0 then begin
       Result := FStaticDataFree8BytesSlot;
       FStaticDataFree8BytesSlot := -1;
-   end else SetLength(FStaticData, Result+1);
+   end else SetDataCount(Result+1);
 
    FStaticData[Result] := data;
 end;
@@ -2254,9 +2255,9 @@ function Tx86_64FixupLogic.AddStaticData128(const data1, data2 : UInt64) : Integ
 var
    i : Integer;
 begin
-   Result := Length(FStaticData);
+   Result := FStaticDataCount;
    i := 0;
-   while i < Result-2 do begin
+   while i <= Result-2 do begin
       if (FStaticData[i] = data1) and (FStaticData[i+1] = data2) then Exit(i);
       Inc(i, 2);
    end;
@@ -2267,7 +2268,7 @@ begin
       Inc(Result);
    end;
 
-   SetLength(FStaticData, Result+2);
+   SetDataCount(Result+2);
    FStaticData[Result] := data1;
    FStaticData[Result+1] := data2;
 end;
@@ -2278,9 +2279,9 @@ function Tx86_64FixupLogic.AddStaticData256(const data1, data2, data3, data4 : U
 var
    i : Integer;
 begin
-   Result := Length(FStaticData);
+   Result := FStaticDataCount;
    i := 0;
-   while i < Result-4 do begin
+   while i <= Result-4 do begin
       if     (FStaticData[i] = data1) and (FStaticData[i+1] = data2)
          and (FStaticData[i+2] = data3)  and (FStaticData[i+3] = data4) then Exit(i);
       Inc(i, 4);
@@ -2292,23 +2293,19 @@ begin
       Inc(Result);
    end;
 
-   SetLength(FStaticData, Result+4);
+   SetDataCount(Result+4);
    FStaticData[Result] := data1;
    FStaticData[Result+1] := data2;
    FStaticData[Result+2] := data3;
    FStaticData[Result+3] := data4;
 end;
 
-// CompileStaticData
+// WriteStaticData
 //
-function Tx86_64FixupLogic.CompileStaticData : TBytes;
-var
-   n : Integer;
+procedure Tx86_64FixupLogic.WriteStaticData(stream : TWriteOnlyBlockStream);
 begin
-   n := Length(FStaticData)*SizeOf(UInt64);
-   SetLength(Result, n);
-   if n > 0 then
-      System.Move(FStaticData[0], Result[0], n);
+   if FStaticDataCount > 0 then
+      stream.Write(FStaticData[0], FStaticDataCount*SizeOf(UInt64));
 end;
 
 // AfterResolve
@@ -2325,6 +2322,18 @@ begin
    StaticDataBase := ((iter.FixedLocation + iter.GetSize + 8 + 15) shr 4) shl 4;
 end;
 
+// SetDataCount
+//
+procedure Tx86_64FixupLogic.SetDataCount(n : Integer);
+var
+   capacity : Integer;
+begin
+   capacity := Length(FStaticData);
+   if n > capacity then
+      SetLength(FStaticData, n + n div 2);
+   FStaticDataCount := n;
+end;
+
 // ClearFixups
 //
 procedure Tx86_64FixupLogic.ClearFixups;
@@ -2333,6 +2342,7 @@ begin
    FStaticData := nil;
    FStaticDataBase := 0;
    FStaticDataFree8BytesSlot := -1;
+   FStaticDataCount := 0;
 end;
 
 // ------------------
@@ -2469,9 +2479,32 @@ begin
    else srcReg := reg;
    if reg < ymm8 then
       Result := TStaticDataFixup.Create([$C5, $FD - 8*(Ord(srcReg) and 7), Ord(op), $05 + 8*(Ord(reg) and 7)])
-   else Result := TStaticDataFixup.Create([$C5, $3D - 8*(Ord(srcReg) and 7), Ord(op), $05 + 8*(Ord(reg) and 7)]);
+   else Result := TStaticDataFixup.Create([$C5, $7D - 8*(Ord(srcReg) and 7), Ord(op), $05 + 8*(Ord(reg) and 7)]);
    Result.Logic := Self;
    Result.DataIndex := AddStaticData256(PUInt64(@value1)^, PUInt64(@value2)^, PUInt64(@value3)^, PUInt64(@value4)^);
+   AddFixup(Result);
+end;
+
+// NewYMMBroadcastImm
+//
+function Tx86_64FixupLogicHelper.NewYMMBroadcastImm(reg : TymmRegister; const value1234 : Double) : TStaticDataFixup;
+begin
+   Result := TStaticDataFixup.Create([$C4, $E2 - $40*(Ord(reg) and 7), $7D, $19, $05 + 8*(Ord(reg) and 7)]);
+   Result.Logic := Self;
+   Result.DataIndex := AddStaticData(PUInt64(@value1234)^);
+   AddFixup(Result);
+end;
+
+// NewYMM_FMA_Imm
+//
+function Tx86_64FixupLogicHelper.NewYMM_FMA_Imm(dest, mult : TymmRegister; const add : Double) : TStaticDataFixup;
+begin
+   Result := TStaticDataFixup.Create([
+      $C4, $E2 - $40*(Ord(dest) and 7),
+      $fd - 8*(Ord(mult) and 7) - $40*Ord(Ord(mult > ymm7)), $b8, $05 + 8*(Ord(dest) and 7)
+   ]);
+   Result.Logic := Self;
+   Result.DataIndex := AddStaticData(PUInt64(@add)^);
    AddFixup(Result);
 end;
 
@@ -2496,11 +2529,11 @@ begin
    Result := (Self as Tx86_64FixupLogic).AddStaticData256(data1, data2, data3, data4);
 end;
 
-// StaticData
+// WriteStaticData
 //
-function Tx86_64FixupLogicHelper.StaticData : TBytes;
+procedure Tx86_64FixupLogicHelper.WriteStaticData(stream : TWriteOnlyBlockStream);
 begin
-   Result := (Self as Tx86_64FixupLogic).CompileStaticData;
+   (Self as Tx86_64FixupLogic).WriteStaticData(stream);
 end;
 
 // GetStaticDataBase

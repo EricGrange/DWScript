@@ -73,7 +73,8 @@ uses
   dwsTokenTypes in '..\Source\dwsTokenTypes.pas',
   dwsSQLiteVTArraysLibModule,
   dwsDynamicArrays in '..\Source\dwsDynamicArrays.pas',
-  dwsArrayExprs in '..\Source\dwsArrayExprs.pas';
+  dwsArrayExprs in '..\Source\dwsArrayExprs.pas',
+  UdwsTabularTests in 'UdwsTabularTests.pas';
 
 {$R *.res}
 

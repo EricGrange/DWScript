@@ -124,7 +124,8 @@ type
 
          procedure Insert(nb : Integer);
 
-         procedure AddOpcodes(const prologOp, epilogOp : TBytes);
+         procedure AddOpcodes(const prologOp, epilogOp : TBytes); overload;
+         procedure AddOpcodes(const prologOp, epilogOp : array of const); overload;
          function  AllocSlots(nb8BytesSlots : Integer; align16 : Boolean) : Integer;
          procedure SaveXMM128(reg : Byte; offset : Integer);
 
@@ -170,6 +171,8 @@ type
       function ToString(baseAddress : Pointer) : String;
    end;
 
+   PGET_RUNTIME_FUNCTION_CALLBACK = function (ControlPc : DWORD64; Context : Pointer) : PRUNTIME_FUNCTION;
+
 const
    cUNWIND_REG_NAMES : array [UNWIND_REG] of String = (
       'RAX', 'RCX', 'RDX', 'RBX', 'RSP', 'RBP', 'RSI', 'RDI',
@@ -178,6 +181,9 @@ const
 
 function RtlAddFunctionTable(FunctionTable : PRUNTIME_FUNCTION; EntryCount : DWORD; BaseAddress: Pointer) : BOOLEAN; external 'kernel32';
 function RtlDeleteFunctionTable(FunctionTable : PRUNTIME_FUNCTION) : BOOLEAN; external 'kernel32';
+function RtlInstallFunctionTableCallback(TableIdentifier, BaseAddress : DWORD64; Length : DWORD;
+                                         Callback : PGET_RUNTIME_FUNCTION_CALLBACK; Context : Pointer;
+                                         OutOfProcessCallbackDll : PWideChar) : BOOLEAN; external 'kernel32';
 
 function RtlLookupFunctionEntry(controlPc : Pointer; var imageBase : Pointer; historyTable : Pointer) : PRUNTIME_FUNCTION; external 'kernel32';
 
@@ -188,6 +194,38 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+procedure AppendBytes(var a : TBytes; const bytes : array of const);
+var
+   na, nb, i : Integer;
+begin
+   nb := Length(bytes);
+   if nb > 0 then begin
+      na := Length(a);
+      SetLength(a, na + nb);
+      for i := 0 to nb-1 do begin
+         Assert(bytes[i].VType = vtInteger);
+         a[na+i] := bytes[i].VInteger;
+      end;
+   end;
+end;
+
+procedure PrependBytes(var a : TBytes; const bytes : array of const);
+var
+   na, nb, i : Integer;
+begin
+   nb := Length(bytes);
+   if nb > 0 then begin
+      na := Length(a);
+      SetLength(a, na + nb);
+      if na > 0 then
+         System.Move(a[0], a[nb], na);
+      for i := 0 to nb-1 do begin
+         Assert(bytes[i].VType = vtInteger);
+         a[i] := bytes[i].VInteger;
+      end;
+   end;
+end;
 
 // ------------------
 // ------------------ UNWIND_CODE ------------------
@@ -418,7 +456,8 @@ begin
       FCodes[n] := FCodes[n-nb];
       Dec(n);
    end;
-   FillChar(FCodes[0], nb*SizeOf(UNWIND_CODE), 0);
+   for n := 0 to nb-1 do
+      FCodes[0] := Default(UNWIND_CODE);
 end;
 
 // AddOpcodes
@@ -427,6 +466,14 @@ procedure TUnwindCodeBuilder.AddOpcodes(const prologOp, epilogOp : TBytes);
 begin
    FProlog := FProlog + prologOp;
    FEpilog := epilogOp + FEpilog;
+end;
+
+// AddOpcodes
+//
+procedure TUnwindCodeBuilder.AddOpcodes(const prologOp, epilogOp : array of const);
+begin
+   AppendBytes(FProlog, prologOp);
+   PrependBytes(FEpilog, epilogOp);
 end;
 
 // PushNonVolatile

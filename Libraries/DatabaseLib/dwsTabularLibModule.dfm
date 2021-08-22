@@ -13,6 +13,12 @@ object dwsTabularLib: TdwsTabularLib
               item
                 Name = 'ds'
                 DataType = 'DataSet'
+              end
+              item
+                Name = 'options'
+                DataType = 'array of String'
+                HasDefaultValue = True
+                DefaultValue = Null
               end>
             OnEval = dwsTabularClassesTabularDataConstructorsCreateFromDataSetEval
           end>
@@ -26,7 +32,7 @@ object dwsTabularLib: TdwsTabularLib
               end
               item
                 Name = 'opcodes'
-                DataType = 'array of String'
+                DataType = 'array of Variant'
               end>
             ResultType = 'Float'
             OnEval = dwsTabularClassesTabularDataMethodsEvaluateAggregateEval
@@ -41,7 +47,7 @@ object dwsTabularLib: TdwsTabularLib
               end
               item
                 Name = 'opcodes'
-                DataType = 'array of String'
+                DataType = 'array of Variant'
               end>
             ResultType = 'Float'
             OnEval = dwsTabularClassesTabularDataMethodsEvaluateNewColumnEval

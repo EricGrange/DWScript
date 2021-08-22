@@ -21,31 +21,44 @@ type
       Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
+    FScript : TDelphiWebScript;
+  protected
+    procedure SetScript(const val : TDelphiWebScript);
   public
-    { Public declarations }
+    property Script : TDelphiWebScript read FScript write SetScript;
   end;
 
 implementation
 
-uses dwsUtils, dwsTabular, dwsDatabaseLibModule, dwsDatabase;
+uses dwsUtils, dwsTabular, dwsDatabaseLibModule, dwsDatabase, dwsJIT;
 
 {$R *.dfm}
 
 function PrepareExprFromOpcode(const tabular : TdwsTabular; const opCodes : IScriptDynArray) : TdwsTabularExpression;
 var
-   buf : String;
+   bufStr : String;
    i : Integer;
 begin
    Result := TdwsTabularExpression.Create(tabular);
    try
       for i := 0 to opCodes.ArrayLength-1 do begin
-         opCodes.EvalAsString(i, buf);
-         Result.Opcode(buf);
+         case opCodes.VarType(i) of
+            varDouble, varInt64 :
+               Result.PushConst(opCodes.AsFloat[i]);
+         else
+            opCodes.EvalAsString(i, bufStr);
+            Result.Opcode(bufStr);
+         end;
       end;
    except
       Result.Free;
       raise;
    end;
+end;
+
+procedure TdwsTabularLib.SetScript(const val : TDelphiWebScript);
+begin
+   dwsTabular.Script := val;
 end;
 
 procedure TdwsTabularLib.dwsTabularClassesTabularDataCleanUp(
@@ -81,7 +94,20 @@ begin
       scriptDS.Next;
    end;
 
-   tabular.InitializeJIT;
+   var autoJIT := True;
+   var options := Info.ParamAsScriptDynArray[1];
+   for var i := 0 to options.ArrayLength-1 do begin
+      options.EvalAsString(i, buf);
+      if buf = 'jit' then
+         tabular.InitializeJIT
+      else if buf = 'nojit' then
+         autoJIT := False;
+   end;
+   if autoJIT then begin
+      // JIT overhead is not worth it for smaller datasets
+      if tabular.RowCount >= 256 then
+         tabular.InitializeJIT;
+   end;
 end;
 
 procedure TdwsTabularLib.dwsTabularClassesTabularDataMethodsDropColumnEval(
@@ -101,25 +127,9 @@ begin
    var expr := PrepareExprFromOpcode(tabular, opCodes);
    try
       expr.JITCompile;
-      var stack := TdwsTabularStack.Create(expr.MaxStackDepth);
-      try
-         if aggregateFunc = 'sum' then begin
-            var sum : Double := 0;
-            var buf : TdwsTabularBatchResult;
-            stack.RowIndex := 0;
-            for var i := 1 to tabular.RowCount div Length(buf) do begin
-               expr.EvaluateBatch(stack, buf);
-               sum := sum + buf[0] + buf[1] + buf[2] + buf[3];
-            end;
-            for var i := stack.RowIndex to tabular.RowCount-1 do begin
-               stack.RowIndex := i;
-               sum := sum + expr.Evaluate(stack);
-            end;
-            Info.ResultAsFloat := sum;
-         end else raise EdwsTabular.CreateFmt('Unsupported aggregate function "%s"', [ aggregateFunc ]);
-      finally
-         stack.Free;
-      end;
+      if aggregateFunc = 'sum' then begin
+         Info.ResultAsFloat := expr.EvaluateAggregate(tegSum);
+      end else raise EdwsTabular.CreateFmt('Unsupported aggregate function "%s"', [ aggregateFunc ]);
    finally
       expr.Free;
    end;

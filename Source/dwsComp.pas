@@ -3844,7 +3844,7 @@ begin
             FOnEval(info, info.ScriptObj.ExternalObject);
          end else if isClassMethod then
             FOnEval(info, nil)
-         else raise Exception.Create('Object not instantiated');
+         else raise Exception.Create(RTE_ObjectNotInstantiated);
       finally
          exec.ReleaseProgramInfo(info);
       end;

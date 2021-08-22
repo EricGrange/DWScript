@@ -78,9 +78,14 @@ type
       ['{62180935-76A0-496A-A392-3BED1CAD193E}']
       function Allocate(aSize : Integer) : Pointer;
       procedure Protect;
+      procedure Reset;
       function GetNext : IdwsJITCodeSubAllocator;
       procedure SetNext(const aNext : IdwsJITCodeSubAllocator);
       property Next : IdwsJITCodeSubAllocator read GetNext write SetNext;
+      function BlockSize : Integer;
+
+      procedure RegisterFunctionTable(rtFn : Pointer);
+      procedure DeregisterFunctionTable(rtFn : Pointer);
    end;
 
    TdwsJITCodeBlockFlag = ( cbfSteppable );

@@ -14599,6 +14599,7 @@ begin
       if sysTable.TypVariant.SupportsEmptyParam then
          sysTable.AddSymbol(TConstSymbol.CreateValue('EmptyParam', sysTable.TypVariant, EmptyParam));
       sysTable.AddSymbol(TOpenArraySymbol.Create('array of const', sysTable.TypVariant, sysTable.TypInteger));
+      sysTable.AddSymbol(TDynamicArraySymbol.Create(SYS_ARRAY_OF_VARIANT, sysTable.TypVariant, sysTable.TypInteger));
    end;
 
    sysTable.TypNil:=TNilSymbol.Create;

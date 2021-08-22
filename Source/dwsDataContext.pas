@@ -818,7 +818,7 @@ end;
 //
 function TDataContext.VarType(addr : NativeInt) : TVarType;
 begin
-   Result := VarType(FData[FAddr+addr]);
+   Result := TVarData(FData[FAddr+addr]).VType;
 end;
 
 // InternalCopyData

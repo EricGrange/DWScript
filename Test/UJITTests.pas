@@ -36,6 +36,7 @@ type
          procedure FixupConditionalBackwardJump;
          procedure FixupConditionalForwardJump;
          procedure FixupConditionalForwardJumpSpaced;
+         procedure FixupSorting;
 
          procedure ExecutionOptimized;
    end;
@@ -266,7 +267,7 @@ begin
    rel.NewTarget(False);
    FStream.WriteByte(Ord('c'));
 
-   FFixups.FlushFixups(FStream.ToBytes, FStream);
+   FFixups.FlushFixups(FStream);
    FFixups.ClearFixups;
    outBuf:=FStream.ToBytes;
 
@@ -298,7 +299,7 @@ begin
    jump.Target:=target;
    FFixups.AddFixup(jump);
 
-   FFixups.FlushFixups(FStream.ToBytes, FStream);
+   FFixups.FlushFixups(FStream);
    FFixups.ClearFixups;
    outbuf:=FStream.ToBytes;
 
@@ -332,7 +333,7 @@ begin
    jump0.Target:=target;
    jump1.Target:=target;
 
-   FFixups.FlushFixups(FStream.ToBytes, FStream);
+   FFixups.FlushFixups(FStream);
    FFixups.ClearFixups;
    outbuf:=FStream.ToBytes;
 
@@ -370,7 +371,7 @@ begin
 
    FStream.WriteByte($22);
 
-   FFixups.FlushFixups(FStream.ToBytes, FStream);
+   FFixups.FlushFixups(FStream);
    FFixups.ClearFixups;
    outbuf:=FStream.ToBytes;
 
@@ -382,6 +383,44 @@ begin
    CheckEquals($01, outbuf[4], '4');
    CheckEquals($90, outbuf[5], '5');
    CheckEquals($22, outbuf[6], '6');
+end;
+
+// FixupSorting
+//
+procedure TJITTests.FixupSorting;
+var
+   target0, target1 : TFixupTarget;
+   jump0, jump1 : TFixupJump;
+   outbuf : TBytes;
+begin
+   FStream.Clear;
+   FFixups.ClearFixups;
+
+   target0 := FFixups.NewTarget(False);
+   target1 := FFixups.NewHangingTarget(False);
+
+   jump0 := TFixupJump.Create(flagsZ);
+   jump0.Target := target1;
+   FFixups.AddFixup(jump0);
+
+   FStream.WriteByte($90);
+
+   FFixups.AddFixup(target1);
+
+   jump1 := TFixupJump.Create(flagsZ);
+   jump1.Target := target0;
+   FFixups.AddFixup(jump1);
+
+   FFixups.FlushFixups(FStream);
+   FFixups.ClearFixups;
+   outbuf:=FStream.ToBytes;
+
+   CheckEquals(5, Length(outbuf));
+   CheckEquals($74, outbuf[0], '0');
+   CheckEquals($01, outbuf[1], '1');
+   CheckEquals($90, outbuf[2], '2');
+   CheckEquals($74, outbuf[3], '3');
+   CheckEquals($fb, outbuf[4], '4');
 end;
 
 // ExecutionOptimized

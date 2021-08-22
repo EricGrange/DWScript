@@ -68,6 +68,14 @@ type
          procedure movsd_indexed;
          procedure mov_indexed;
          procedure lea;
+         procedure vpcmpeqq;
+         procedure vpblendvb;
+         procedure vbroadcast;
+         procedure v_op_pd;
+         procedure _vmovdqu_ptr_indexed;
+         procedure _vmovupd_ptr_indexed;
+         procedure _vmovupd_ptr_reg;
+         procedure _vfma;
    end;
 
 // ------------------------------------------------------------------
@@ -1449,6 +1457,173 @@ begin
                + 'lea r9, qword ptr [rbx+rbp+000001C8h]'#13#10
                + 'lea rsp, qword ptr [r10+rax*4]'#13#10
                + 'lea rdx, qword ptr [rdi+r15*8-05h]'#13#10
+               , DisasmStream);
+
+   FStream._lea_reg_reg(gprRAX, gprRCX, 3);
+   FStream._lea_reg_reg(gprR9, gprRBP, 456);
+   FStream._lea_reg_reg(gprRSP, gprR10, 0);
+   FStream._lea_reg_reg(gprRDX, gprRDI, -5);
+   FStream._lea_reg_reg(gprRBP, gprRBP, 128);
+   CheckEquals(  ''
+               + 'lea rax, qword ptr [rcx+03h]'#13#10
+               + 'lea r9, qword ptr [rbp+000001C8h]'#13#10
+               + 'lea rsp, qword ptr [r10]'#13#10
+               + 'lea rdx, qword ptr [rdi-05h]'#13#10
+               + 'lea rbp, qword ptr [rbp+00000080h]'#13#10
+               , DisasmStream);
+end;
+
+// vpcmpeqq
+//
+procedure TJITx86_64Tests.vpcmpeqq;
+begin
+   FStream._vpcmpeqq(ymm0, ymm0, ymm0);
+   FStream._vpcmpeqq(ymm1, ymm2, ymm3);
+   FStream._vpcmpeqq(ymm5, ymm0, ymm7);
+   FStream._vpcmpeqq(ymm9, ymm10, ymm15);
+   FStream._vpcmpeqq(ymm10, ymm7, ymm5);
+   FStream._vpcmpeqq(ymm3, ymm4, ymm8);
+   CheckEquals(  ''
+               + 'vpcmpeqq ymm0, ymm0, ymm0'#13#10
+               + 'vpcmpeqq ymm1, ymm2, ymm3'#13#10
+               + 'vpcmpeqq ymm5, ymm0, ymm7'#13#10
+               + 'vpcmpeqq ymm9, ymm10, ymm15'#13#10
+               + 'vpcmpeqq ymm10, ymm7, ymm5'#13#10
+               + 'vpcmpeqq ymm3, ymm4, ymm8'#13#10
+               , DisasmStream);
+end;
+
+// vpblendvb
+//
+procedure TJITx86_64Tests.vpblendvb;
+begin
+   FStream._vpblendvb(ymm0, ymm0, ymm0, ymm0);
+   FStream._vpblendvb(ymm1, ymm2, ymm3, ymm4);
+   FStream._vpblendvb(ymm5, ymm0, ymm7, ymm2);
+   FStream._vpblendvb(ymm9, ymm10, ymm15, ymm12);
+   FStream._vpblendvb(ymm1, ymm2, ymm8, ymm9);
+   CheckEquals(  ''
+               + 'vpblendvb ymm0, ymm0, ymm0, ymm0'#13#10
+               + 'vpblendvb ymm1, ymm2, ymm3, ymm4'#13#10
+               + 'vpblendvb ymm5, ymm0, ymm7, ymm2'#13#10
+               + 'vpblendvb ymm9, ymm10, ymm15, ymm12'#13#10
+               + 'vpblendvb ymm1, ymm2, ymm8, ymm9'#13#10
+               , DisasmStream);
+end;
+
+// vbroadcast
+//
+procedure TJITx86_64Tests.vbroadcast;
+begin
+   FStream._vbroadcastsd(ymm0, xmm0);
+   FStream._vbroadcastsd(ymm1, xmm2);
+   FStream._vbroadcastsd(ymm9, xmm12);
+   FStream._vbroadcastsd_ptr_reg(ymm0, gprRAX, 0);
+   FStream._vbroadcastsd_ptr_reg(ymm9, gprRCX, 123);
+   FStream._vbroadcastsd_ptr_reg(ymm2, gprR8, 123456);
+   FStream._vbroadcastsd_ptr_reg(ymm8, gprR9, -5);
+   CheckEquals(  ''
+               + 'vbroadcastsd ymm0, xmm0'#13#10
+               + 'vbroadcastsd ymm1, xmm2'#13#10
+               + 'vbroadcastsd ymm9, xmm12'#13#10
+               + 'vbroadcastsd ymm0, qword ptr [rax]'#13#10
+               + 'vbroadcastsd ymm9, qword ptr [rcx+7Bh]'#13#10
+               + 'vbroadcastsd ymm2, qword ptr [r8+0001E240h]'#13#10
+               + 'vbroadcastsd ymm8, qword ptr [r9-05h]'#13#10
+               , DisasmStream);
+end;
+
+// v_op_pd
+//
+procedure TJITx86_64Tests.v_op_pd;
+begin
+   FStream._v_op_pd(xmm_xorpd, ymm0, ymm1, ymm2);
+   FStream._v_op_pd(xmm_addpd, ymm8, ymm9, ymm10);
+   FStream._v_op_pd(xmm_mulpd, ymm15, ymm0, ymm9);
+   FStream._v_op_pd(xmm_minpd, ymm1, ymm12, ymm5);
+   FStream._v_op_pd(xmm_maxpd, ymm8, ymm0, ymm12);
+   FStream._v_op_pd(xmm_subpd, ymm2, ymm11, ymm13);
+   CheckEquals(  ''
+               + 'vxorpd ymm0, ymm1, ymm2'#13#10
+               + 'vaddpd ymm8, ymm9, ymm10'#13#10
+               + 'vmulpd ymm15, ymm0, ymm9'#13#10
+               + 'vminpd ymm1, ymm12, ymm5'#13#10
+               + 'vmaxpd ymm8, ymm0, ymm12'#13#10
+               + 'vsubpd ymm2, ymm11, ymm13'#13#10
+               , DisasmStream);
+end;
+
+// _vmovdqu_ptr_indexed
+//
+procedure TJITx86_64Tests._vmovdqu_ptr_indexed;
+begin
+   FStream._vmovdqu_ptr_indexed(ymm0, gprRAX, gprRAX, 1, 0);
+   FStream._vmovdqu_ptr_indexed(ymm8, gprRAX, gprRCX, 1, 1);
+   FStream._vmovdqu_ptr_indexed(ymm9, gprRCX, gprRDI, 2, 12);
+   FStream._vmovdqu_ptr_indexed(ymm7, gprRCX, gprRDI, 2, 123456);
+   CheckEquals(  ''
+               + 'vmovdqu ymm0, ymmword ptr [rax+rax]'#13#10
+               + 'vmovdqu ymm8, ymmword ptr [rax+rcx+01h]'#13#10
+               + 'vmovdqu ymm9, ymmword ptr [rcx+rdi*2+0Ch]'#13#10
+               + 'vmovdqu ymm7, ymmword ptr [rcx+rdi*2+0001E240h]'#13#10
+               , DisasmStream);
+end;
+
+// _vmovupd_ptr_indexed
+//
+procedure TJITx86_64Tests._vmovupd_ptr_indexed;
+begin
+   FStream._vmovupd_ptr_indexed(ymm0, gprRAX, gprRAX, 1, 0);
+   FStream._vmovupd_ptr_indexed(ymm8, gprRAX, gprRCX, 1, 0);
+   FStream._vmovupd_ptr_indexed(ymm8, gprRAX, gprRCX, 1, 1);
+   FStream._vmovupd_ptr_indexed(ymm9, gprRCX, gprRDI, 2, 12);
+   FStream._vmovupd_ptr_indexed(ymm7, gprRCX, gprRDI, 2, 123456);
+   CheckEquals(  ''
+               + 'vmovupd ymm0, ymmword ptr [rax+rax]'#13#10
+               + 'vmovupd ymm8, ymmword ptr [rax+rcx]'#13#10
+               + 'vmovupd ymm8, ymmword ptr [rax+rcx+01h]'#13#10
+               + 'vmovupd ymm9, ymmword ptr [rcx+rdi*2+0Ch]'#13#10
+               + 'vmovupd ymm7, ymmword ptr [rcx+rdi*2+0001E240h]'#13#10
+               , DisasmStream);
+end;
+
+// _vmovupd_ptr_reg
+//
+procedure TJITx86_64Tests._vmovupd_ptr_reg;
+begin
+   FStream._vmovupd_ptr_reg(ymm0, gprRAX, 0);
+   FStream._vmovupd_ptr_reg(ymm8, gprRBP, 1);
+   FStream._vmovupd_ptr_reg(ymm1, gprRDX, 123456);
+   FStream._vmovupd_ptr_reg_reg(gprRAX, 0, ymm0);
+   FStream._vmovupd_ptr_reg_reg(gprRBP, 1, ymm8);
+   FStream._vmovupd_ptr_reg_reg(gprRDX, 123456, ymm1);
+   FStream._vmovupd_ptr_reg_reg(gprRBP, -$d0, ymm9);
+   CheckEquals(  ''
+               + 'vmovupd ymm0, ymmword ptr [rax]'#13#10
+               + 'vmovupd ymm8, ymmword ptr [rbp+01h]'#13#10
+               + 'vmovupd ymm1, ymmword ptr [rdx+0001E240h]'#13#10
+               + 'vmovupd ymmword ptr [rax], ymm0'#13#10
+               + 'vmovupd ymmword ptr [rbp+01h], ymm8'#13#10
+               + 'vmovupd ymmword ptr [rdx+0001E240h], ymm1'#13#10
+               + 'vmovupd ymmword ptr [rbp-000000D0h], ymm9'#13#10
+               , DisasmStream);
+end;
+
+// _vfma
+//
+procedure TJITx86_64Tests._vfma;
+begin
+   FStream._vfmadd_pd(231, ymm0, ymm1, ymm2);
+   FStream._vfmadd_pd(213, ymm9, ymm0, ymm0);
+   FStream._vfmadd_pd(132, ymm1, ymm9, ymm1);
+   FStream._vfmadd_pd(213, ymm10, ymm8, ymm3);
+   FStream._vfmadd_pd(231, ymm11, ymm10, ymm12);
+   CheckEquals(  ''
+               + 'vfmadd231pd ymm0, ymm1, ymm2'#13#10
+               + 'vfmadd213pd ymm9, ymm0, ymm0'#13#10
+               + 'vfmadd132pd ymm1, ymm9, ymm1'#13#10
+               + 'vfmadd213pd ymm10, ymm8, ymm3'#13#10
+               + 'vfmadd231pd ymm11, ymm10, ymm12'#13#10
                , DisasmStream);
 end;
 

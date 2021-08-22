@@ -48,7 +48,7 @@ type
          function  NewTarget(align : Boolean) : TFixupTarget;
          function  NewHangingTarget(align : Boolean) : TFixupTarget; virtual;
 
-         procedure FlushFixups(const rawCode : TBytes; outStream : Tx86BaseWriteOnlyStream); virtual;
+         procedure FlushFixups(outStream : Tx86BaseWriteOnlyStream); virtual;
          procedure ClearFixups; virtual;
 
          property Base : TFixup read FBase write FBase;
@@ -57,13 +57,12 @@ type
 
    TFixupOptimizeAction = (foaNone, foaRemove);
 
-   TFixup = class (TRefCountedObject)
+   TFixup = class (TObject)
       private
          FLogic : TFixupLogic;
          FNext : TFixup;
          FLocation : Integer;
          FFixedLocation : Integer;
-         FOrder : Integer;
          FTargetCount : Integer;
 
       public
@@ -78,11 +77,6 @@ type
          property Location : Integer read FLocation write FLocation;
          property FixedLocation : Integer read FFixedLocation write FFixedLocation;
          property TargetCount : Integer read FTargetCount write FTargetCount;
-   end;
-
-   TSortedFixupList = class (TSortedList<TFixup>)
-      protected
-         function Compare(const item1, item2 : TFixup) : Integer; override;
    end;
 
    TFixupTarget = class(TFixup)
@@ -199,30 +193,32 @@ end;
 //
 procedure TFixupLogic.SortFixups;
 var
-   fixup : TFixup;
-   ordered : TSortedFixupList;
-   i : Integer;
+   next, candidate, iterator, iteratorPrev : TFixup;
 begin
    // sort fixups in ascending location order
-   ordered:=TSortedFixupList.Create;
-   try
-      fixup:=FBase;
-      i:=0;
-      while fixup<>nil do begin
-         fixup.FOrder:=i;
-         Inc(i);
-         ordered.Add(fixup);
-         fixup:=fixup.Next;
+   if FBase = nil then Exit;
+   candidate := FBase;
+   FBase := nil;
+   while candidate <> nil do begin
+      next := candidate.Next;
+      candidate.FNext := nil;
+
+      iterator := FBase;
+      iteratorPrev := nil;
+      while (iterator <> nil) and (candidate.Location > iterator.Location) do begin
+         iteratorPrev := iterator;
+         iterator := iterator.Next;
       end;
-      fixup:=ordered[0];
-      FBase:=fixup;
-      for i:=1 to ordered.Count-1 do begin
-         fixup.Next:=ordered[i];
-         fixup:=fixup.Next;
+
+      if iteratorPrev = nil then begin
+         candidate.FNext := FBase;
+         FBase := candidate;
+      end else begin
+         candidate.FNext := iteratorPrev.Next;
+         iteratorPrev.Next := candidate;
       end;
-      fixup.Next:=nil;
-   finally
-      ordered.Free;
+
+      candidate := next;
    end;
 end;
 
@@ -288,38 +284,44 @@ end;
 
 // FlushFixups
 //
-procedure TFixupLogic.FlushFixups(const rawCode : TBytes; outStream : Tx86BaseWriteOnlyStream);
+procedure TFixupLogic.FlushFixups(outStream : Tx86BaseWriteOnlyStream);
 var
    fixup : TFixup;
-   prevLocation, n : Integer;
+   prevLocation, n, rawCodeLength : Integer;
+   rawCode : PAnsiChar;
 begin
-   outStream.Clear;
-
-   if FBase=nil then begin
-      outStream.WriteBytes(rawCode);
+   if FBase = nil then
       Exit;
+
+   rawCodeLength := outStream.Size;
+   GetMem(rawCode, rawCodeLength);
+   try
+      outStream.StoreData(rawCode^);
+      outStream.Clear;
+
+      SortFixups;
+
+      OptimizeFixups;
+
+      ResolveFixups;
+
+      if FBase=nil then Exit;
+
+      fixup:=FBase;
+      prevLocation:=0;
+      while fixup<>nil do begin
+         n:=fixup.Location-prevLocation;
+         if n>0 then
+            outStream.Write(rawCode[prevLocation], n);
+         prevLocation:=fixup.Location;
+         fixup.Write(outStream);
+         fixup:=fixup.Next;
+      end;
+      if prevLocation<Length(rawCode) then
+         outStream.Write(rawCode[prevLocation], rawCodeLength-prevLocation);
+   finally
+      FreeMem(rawCode);
    end;
-
-   SortFixups;
-
-   OptimizeFixups;
-
-   ResolveFixups;
-
-   if FBase=nil then Exit;
-
-   fixup:=FBase;
-   prevLocation:=0;
-   while fixup<>nil do begin
-      n:=fixup.Location-prevLocation;
-      if n>0 then
-         outStream.Write(rawCode[prevLocation], n);
-      prevLocation:=fixup.Location;
-      fixup.Write(outStream);
-      fixup:=fixup.Next;
-   end;
-   if prevLocation<Length(rawCode) then
-      outStream.Write(rawCode[prevLocation], Length(rawCode)-prevLocation);
 end;
 
 // ClearFixups
@@ -333,19 +335,6 @@ begin
       FBase.Free;
       FBase:=fixup;
    end;
-end;
-
-// ------------------
-// ------------------ TSortedFixupList ------------------
-// ------------------
-
-// Compare
-//
-function TSortedFixupList.Compare(const item1, item2 : TFixup) : Integer;
-begin
-   Result:=item1.Location-item2.Location;
-   if Result=0 then
-      Result:=item2.FOrder-item1.FOrder;
 end;
 
 // ------------------
