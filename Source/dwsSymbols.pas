@@ -3931,7 +3931,9 @@ function TFuncSymbol.GetDescription : String;
 begin
    Result := cFuncKindToString[Kind] + ' ' + Name + ParamsDescription;
    if Typ <> nil then
-      Result := Result + ': ' + Typ.Name;
+      if Typ.Name <> '' then
+         Result := Result + ': ' + Typ.Name
+      else Result := Result + ': ' + Typ.Caption;
 end;
 
 // Initialize

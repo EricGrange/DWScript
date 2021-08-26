@@ -1133,12 +1133,14 @@ end;
 procedure TSourceUtilsTests.FunctionCaptionDescription;
 var
    prog : IdwsProgram;
+   symClassFn : TSymbol;
 begin
    prog := FCompiler.Compile(
           'function  Test1(a, b : Integer; const c : String; var d : Boolean; e : type Boolean) : String; begin end;'#10
          +'function  Test2(const a, b : String; c : String; var d : Boolean; var e : Boolean) : String; begin end;'#10
          +'procedure Test3(a, b : Integer; c : type Integer; d : Boolean; var e : Boolean); begin end;'#10
          +'procedure Test4(var a, b : Integer; const c : Integer; d : Boolean; e : Boolean); begin end;'#10
+         +'type TTest = class class function TestFC(a : array of TTest) : array of String; empty; end;'#10
    );
    CheckFalse(prog.Msgs.HasErrors, prog.Msgs.AsInfo);
 
@@ -1150,6 +1152,12 @@ begin
                prog.Table.FindSymbol('Test3', cvMagic).Description, 'Test3');
    CheckEquals('procedure Test4(var a: Integer; var b: Integer; const c: Integer; d: Boolean; e: Boolean)',
                prog.Table.FindSymbol('Test4', cvMagic).Description, 'Test4');
+
+   symClassFn := (prog.Table.FindLocal('TTest') as TClassSymbol).Members.FindSymbol('TestFC', cvMagic);
+   CheckEquals('class function TestFC(array of TTest): array of String',
+               symClassFn.Caption, 'TestFC');
+   CheckEquals('class function TestFC(a: array of TTest): array of String',
+               symClassFn.Description, 'TestFC');
 end;
 
 // SuggestInBlockWithError
