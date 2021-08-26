@@ -459,7 +459,7 @@ end;
 //
 function TWebRequest.PrepareQueryFields : TStrings;
 begin
-   Result := TFastCompareStringList.Create;
+   Result := TFastCompareTextList.Create;
    WebUtils.ParseURLEncoded(ScriptStringToRawByteString(QueryString), Result);
 end;
 
@@ -499,7 +499,7 @@ var
    end;
 
 begin
-   Result := TFastCompareStringList.Create;
+   Result := TFastCompareTextList.Create;
 
    ct := ContentType;
 

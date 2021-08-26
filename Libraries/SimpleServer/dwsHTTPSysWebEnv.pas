@@ -168,7 +168,7 @@ end;
 constructor THttpSysWebRequest.Create;
 begin
    inherited;
-   FHeaders:=TFastCompareStringList.Create;
+   FHeaders := TFastCompareTextList.Create;
 end;
 
 // Destroy
