@@ -6070,7 +6070,7 @@ var
    buf : String;
 begin
    EvalAsString(exec, buf);
-   Result:=buf;
+   VarCopySafe(Result, buf);
 end;
 
 // Optimize
