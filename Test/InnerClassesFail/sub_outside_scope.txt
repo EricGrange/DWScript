@@ -1,1 +1,1 @@
-Syntax Error: Class reference expected [line: 7, column: 14]
+Syntax Error: Unknown name "TSub" [line: 7, column: 14]

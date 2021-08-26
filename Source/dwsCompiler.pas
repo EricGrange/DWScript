@@ -8590,8 +8590,10 @@ begin
       else sym := nil;
       if sym = nil then
          sym := CurrentProg.Table.FindSymbol(nameToken.AsString, cvPrivate);
-      if sym <> nil then
-         CheckMatchingDeclarationCase(nameToken.AsString, sym, hotPos);
+
+      if sym = nil then
+         FMsgs.AddCompilerErrorFmt(hotPos, CPE_UnknownName, [ nameToken.AsString ])
+      else CheckMatchingDeclarationCase(nameToken.AsString, sym, hotPos);
 
       FTok.KillToken;
 
@@ -8608,7 +8610,8 @@ begin
 
          end else begin
 
-            FMsgs.AddCompilerError(hotPos, CPE_TypeExpected);
+            if sym <> nil then
+               FMsgs.AddCompilerError(hotPos, CPE_TypeExpected);
             Result:=ReadNewArray(FCompilerContext.TypVariant);
 
          end;
@@ -8617,7 +8620,11 @@ begin
       end else begin
 
          if sym is TAliasSymbol then
-            sym:=TAliasSymbol(sym).UnAliasedType;
+            sym := TAliasSymbol(sym).UnAliasedType
+         else if sym = nil then begin
+            // keep compiling
+            sym := FCompilerContext.TypTObject;
+         end;
 
          if sym is TClassSymbol then begin
 
@@ -8640,14 +8647,14 @@ begin
             end else FMsgs.AddCompilerStopFmt(hotPos, CPE_NotSupportedFor,
                                               [cTokenStrings[ttNEW], sym.Name]);
 
-         end else FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
+         end else if sym <> nil then
+            FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
 
       end;
 
       if sym is TClassSymbol then
-         baseExpr:=TConstExpr.Create(hotPos, classSym.MetaSymbol, Int64(classSym))
-      else baseExpr:=TVarExpr.CreateTyped(FCompilerContext, hotPos, TDataSymbol(sym));
-
+         baseExpr := TConstExpr.Create(hotPos, classSym.MetaSymbol, Int64(classSym))
+      else baseExpr := TVarExpr.CreateTyped(FCompilerContext, hotPos, TDataSymbol(sym));
    end;
 
    WarnDeprecatedType(hotPos, classSym);
