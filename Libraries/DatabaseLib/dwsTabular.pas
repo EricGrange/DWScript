@@ -69,6 +69,7 @@ type
          procedure Add(const v : String); overload;
          procedure Add(const v : Double); overload;
          procedure Add(const s : String; d : Double); overload;
+         procedure Add(const values : TDoubleDynArray); overload;
 
          property Count : Integer read FCount write SetCount;
          property CountEmpty : Integer read FCountEmpty;
@@ -114,6 +115,7 @@ type
          property ColumnData : TdwsTabularColumns read FColumnData;
 
          function RowCount : Integer;
+         function ColumnCount : Integer;
 
          property JIT : TdwsTabularJIT read FJIT;
          procedure InitializeJIT;
@@ -292,6 +294,7 @@ type
          function Evaluate(stack : TdwsTabularStack) : Double;
 
          function EvaluateAggregate(aggregate : TdwsTabularExpressionAggreggate) : Double;
+         function EvaluateAll : TDoubleDynArray;
    end;
 
    {$ifdef ENABLE_JIT64}
@@ -305,6 +308,9 @@ type
          function JITExpression(expr : TdwsTabularExpression) : Boolean;
    end;
    {$endif}
+
+var
+   vTabularDisableJIT : Boolean = False;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -376,14 +382,14 @@ end;
 //
 function TdwsTabularColumn.NumbersDataPtr : PDoubleArray;
 begin
-   Result := @FNumbers[0];
+   Result := PDoubleArray(FNumbers);
 end;
 
 // StringsDataPtr
 //
 function TdwsTabularColumn.StringsDataPtr : PStringArray;
 begin
-   Result := @FStrings[0];
+   Result := PStringArray(FStrings);
 end;
 
 // Add
@@ -429,6 +435,14 @@ begin
    if s = '' then
       Inc(FCountEmpty);
    FUnifier.UnifyAssign(s, FStrings[n]);
+end;
+
+// Add
+//
+procedure TdwsTabularColumn.Add(const values : TDoubleDynArray);
+begin
+   for var v in values do
+      Add(v);
 end;
 
 // NumberStats
@@ -527,7 +541,8 @@ end;
 function TdwsTabular.DoublePtrOfColumn(const name : String) : Pointer;
 begin
    var i := IndexOfColumn(name);
-   Assert(i >= 0);
+   if i < 0 then
+      raise EdwsTabular.CreateFmt('Unknown column "%s"', [ name ]);
    Result := FColumnData[i].NumbersDataPtr;
 end;
 
@@ -536,7 +551,8 @@ end;
 function TdwsTabular.StringPtrOfColumn(const name : String) : Pointer;
 begin
    var i := IndexOfColumn(name);
-   Assert(i >= 0);
+   if i < 0 then
+      raise EdwsTabular.CreateFmt('Unknown column "%s"', [ name ]);
    Result := FColumnData[i].StringsDataPtr;
 end;
 
@@ -547,6 +563,13 @@ begin
    if Length(FColumnData) > 0 then
       Result := FColumnData[0].Count
    else Result := 0;
+end;
+
+// ColumnCount
+//
+function TdwsTabular.ColumnCount : Integer;
+begin
+   Result := Length(FColumnData);
 end;
 
 // InitializeJIT
@@ -687,7 +710,8 @@ procedure TdwsNameValues.FromJSON(const j : String);
 begin
    var jv := TdwsJSONValue.ParseString(j);
    try
-      if jv.ValueType <> jvtObject then raise EdwsTabular.CreateFmt('JSON object expected but got %s', [ j ]);
+      if jv.ValueType <> jvtObject then
+         raise EdwsTabular.CreateFmt('JSON object expected but got %s', [ j ]);
       for var i := 0 to jv.ElementCount-1 do begin
          Values[jv.Names[i]] := jv.Elements[i].AsNumber;
       end;
@@ -1107,7 +1131,8 @@ end;
 //
 class procedure TdwsTabularExpression.DoSub(stack : TdwsTabularStack; op : PdwsTabularOpcode);
 begin
-   stack.Peek := stack.Pop - stack.Peek;
+   var p := stack.DecStackPtr;
+   p^ := p^ - PDoubleArray(p)[1];
 end;
 
 // DoMult
@@ -1128,28 +1153,32 @@ end;
 //
 class procedure TdwsTabularExpression.DoDiv(stack : TdwsTabularStack; op : PdwsTabularOpcode);
 begin
-   stack.Peek := stack.Pop / stack.Peek;
+   var p := stack.DecStackPtr;
+   p^ := p^ / PDoubleArray(p)[1];
 end;
 
 // DoMin
 //
 class procedure TdwsTabularExpression.DoMin(stack : TdwsTabularStack; op : PdwsTabularOpcode);
 begin
-   stack.Peek := System.Math.Min(stack.Pop, stack.Peek);
+   var p := stack.DecStackPtr;
+   p^ := System.Math.Min(p^, PDoubleArray(p)[1]);
 end;
 
 // DoMax
 //
 class procedure TdwsTabularExpression.DoMax(stack : TdwsTabularStack; op : PdwsTabularOpcode);
 begin
-   stack.Peek := System.Math.Max(stack.Pop, stack.Peek);
+   var p := stack.DecStackPtr;
+   p^ := System.Math.Max(p^, PDoubleArray(p)[1]);
 end;
 
 // DoReLu
 //
 class procedure TdwsTabularExpression.DoReLu(stack : TdwsTabularStack; op : PdwsTabularOpcode);
 begin
-   stack.Peek := System.Math.Max(0, stack.Pop + stack.Peek);
+   var p := stack.DecStackPtr;
+   p^ := System.Math.Max(0, p^ + PDoubleArray(p)[1]);
 end;
 
 // DoLn
@@ -1255,13 +1284,16 @@ begin
 
    var column := Tabular.ColumnByName(name);
 
+   var callJIT := True;
+
    var n := Length(FObjectBag);
    SetLength(FObjectBag, n+1);
    if values.Count < 12 then begin
       var lnv := TdwsLinearNameValues.Create(values, column.FUnifier);
-      if lnv.FUnified then
-         op.Method := @lnv.DoLookupUnified
-      else op.Method := @lnv.DoLookup;
+      if lnv.FUnified then begin
+         op.Method := @lnv.DoLookupUnified;
+         callJIT := False;
+      end else op.Method := @lnv.DoLookup;
       op.Lookup := lnv;
       FObjectBag[n] := lnv;
       FreeAndNil(values);
@@ -1275,7 +1307,7 @@ begin
    op.Operand1 := default;
    StackDelta(1);
 
-   FJITHasCalls := True;
+   FJITHasCalls := FJITHasCalls or callJIT;
 end;
 
 // MultAddConst
@@ -1441,6 +1473,8 @@ function TdwsTabularExpression.JITCompile : Boolean;
 begin
    Result := False;
    {$ifdef ENABLE_JIT64}
+   if vTabularDisableJIT then Exit;
+
    var jit := Tabular.JIT;
    if jit = nil then Exit;
 
@@ -1526,6 +1560,45 @@ begin
    var stack := TdwsTabularStack.Create(MaxStackDepth);
    try
       Result := SumAggregate(stack, Tabular.RowCount);
+   finally
+      stack.Free
+   end;
+end;
+
+// EvaluateAll
+//
+function TdwsTabularExpression.EvaluateAll : TDoubleDynArray;
+
+   {$ifdef ENABLE_JIT64}
+   function BatchEvaluate(stack : TdwsTabularStack; batches : Integer; p : PDouble) : PDouble;
+   begin
+      for var i := 1 to batches do begin
+         JITCall(stack, PdwsTabularBatchResult(p)^, @FOpcodes[0]);
+         stack.RowIndex := stack.RowIndex + (High(TdwsTabularBatchResult)+1);
+         Inc(p, (High(TdwsTabularBatchResult)+1));
+      end;
+      Result := p;
+   end;
+   {$endif}
+
+   procedure DoEvaluateAll(stack : TdwsTabularStack; rowCount : Integer; p : PDouble);
+   begin
+      {$ifdef ENABLE_JIT64}
+      if FCodeBlock <> nil then
+         p := BatchEvaluate(stack, rowCount div (High(TdwsTabularBatchResult)+1), p);
+      {$endif}
+      for var i := stack.RowIndex to rowCount-1 do begin
+         stack.RowIndex := i;
+         p^ := Evaluate(stack);
+         Inc(p);
+      end;
+   end;
+
+begin
+   var stack := TdwsTabularStack.Create(MaxStackDepth);
+   try
+      Setlength(Result, Tabular.RowCount);
+      DoEvaluateAll(stack, Tabular.RowCount, PDouble(Result));
    finally
       stack.Free
    end;
@@ -1627,6 +1700,7 @@ var
    destBatchGPR : TgpRegister64;
    rowIndexOffsetGPR : TgpRegister64;
    opcodesGPR : TgpRegister64;
+   alterationNotifiedUpTo : Integer;
 
    procedure SaveStateForFallback(nbYmmToStore : Integer);
    begin
@@ -1647,6 +1721,13 @@ var
       end;
    end;
 
+   procedure NotifyAlteration(reg : TymmRegister);
+   begin
+      for var x := alterationNotifiedUpTo+1 to Ord(reg) do
+         Preamble.NotifyXMMAlteration(TxmmRegister(x));
+      alterationNotifiedUpTo := Ord(reg);
+   end;
+
 begin
    Result := False;
    // we reserve extra ymm registers for temp stuff
@@ -1660,8 +1741,8 @@ begin
    Preamble.PreserveExec := False;
    Preamble.NoExecMemRegister := True;
 
-   for var i := 0 to expr.MaxStackDepth+2-1 do
-      Preamble.NotifyXMMAlteration(TxmmRegister(i));
+   alterationNotifiedUpTo := -1;
+   NotifyAlteration(TYmmRegister(expr.MaxStackDepth));
 
    x86 := Output as Tx86_64_WriteOnlyStream;
 
@@ -1699,6 +1780,7 @@ begin
       end else if @op.Method = @TdwsTabularExpression.DoPushNumFieldDef then begin
          var regDef := TymmRegister(op.StackDepth+2);
          Assert(regDef <= ymm15);
+         NotifyAlteration(regDef);
 
          var regZeros := TymmRegister(op.StackDepth+1);
          x86._v_op_pd(xmm_xorpd, regZeros, regZeros, regZeros);
@@ -1725,6 +1807,7 @@ begin
          var reg := TymmRegister(op.StackDepth-1);
          var regMul := TymmRegister(op.StackDepth);
          var regAdd := TymmRegister(op.StackDepth+1);
+         NotifyAlteration(regAdd);
          x86._vbroadcastsd_ptr_reg(regMul, opcodesGPR, IntPtr(@op.Operand1) - IntPtr(expr.FOpcodes));
          x86._vbroadcastsd_ptr_reg(regAdd, opcodesGPR, IntPtr(@op.Operand2) - IntPtr(expr.FOpcodes));
          x86._vfmadd_pd(213, reg, regMul, regAdd);
@@ -1788,7 +1871,7 @@ begin
          Fixups.NewYMMOpRegPDImm(xmm_andpd, regDest, 1.0, 1.0, 1.0, 1.0);
 
       end else if @op.Method = @TdwsLinearNameValues.DoLookupUnified then begin
-         SaveStateForFallback(op.StackDepth);
+{         SaveStateForFallback(op.StackDepth);
 
          x86._lea_reg_reg(gprRCX, gprRBP, storeStackOffset + (op.StackDepth) * 4 * SizeOf(Double));
          x86._mov_reg_imm(gprRDX, NativeInt(op));
@@ -1796,7 +1879,32 @@ begin
 
          x86._call_absmem(@DoLookupUnified4);
 
-         RestoreStateForFallback(op.StackDepth+1);
+         RestoreStateForFallback(op.StackDepth+1);   }
+
+         var regDest := TymmRegister(op.StackDepth);
+         var regStr  := TymmRegister(op.StackDepth+1);
+         var regLookup := TymmRegister(op.StackDepth+2);
+         var regOperand := TymmRegister(op.StackDepth+3);
+         Assert(regOperand <= ymm15);
+         NotifyAlteration(regOperand);
+
+         x86._mov_reg_qword(gprRAX, NativeUInt(@op.Operand1));
+         x86._vbroadcastsd_ptr_reg(regDest, gprRAX, 0);
+
+         x86._mov_reg_qword(gprRAX, NativeUInt(op.StringPtr));
+         x86._vmovdqu_ptr_indexed(regStr, gprRAX, rowIndexOffsetGPR, 1, 0);
+
+         x86._mov_reg_qword(gprR9, NativeUInt(TdwsLinearNameValues(op.Lookup).FNames));
+         x86._mov_reg_qword(gprRAX, NativeUInt(TdwsLinearNameValues(op.Lookup).FValues));
+
+         for var k := 0 to TdwsLinearNameValues(op.Lookup).FCount-1 do begin
+
+            x86._vpbroadcastq_ptr_reg(regLookup, gprR9, k * SizeOf(String));
+            x86._vpcmpeqq(regOperand, regStr, regLookup);
+            x86._vbroadcastsd_ptr_reg(regLookup, gprRAX, k * SizeOf(Double));
+            x86._vpblendvb(regDest, regDest, regLookup, regOperand);
+
+         end;
 
 //      end else if @op.Method = @TdwsNameValues.DoLookup then begin
 //         SaveStateForFallback(op.StackDepth);

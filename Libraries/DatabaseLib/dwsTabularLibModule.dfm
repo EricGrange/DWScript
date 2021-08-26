@@ -21,6 +21,17 @@ object dwsTabularLib: TdwsTabularLib
                 DefaultValue = Null
               end>
             OnEval = dwsTabularClassesTabularDataConstructorsCreateFromDataSetEval
+          end
+          item
+            Name = 'Create'
+            Parameters = <
+              item
+                Name = 'options'
+                DataType = 'array of String'
+                HasDefaultValue = True
+                DefaultValue = Null
+              end>
+            OnEval = dwsTabularClassesTabularDataConstructorsCreateEval
           end>
         Methods = <
           item
@@ -86,6 +97,20 @@ object dwsTabularLib: TdwsTabularLib
             ResultType = 'Boolean'
             OnEval = dwsTabularClassesTabularDataMethodsDropColumnEval
             Kind = mkFunction
+          end
+          item
+            Name = 'AddColumn'
+            Parameters = <
+              item
+                Name = 'name'
+                DataType = 'String'
+              end
+              item
+                Name = 'values'
+                DataType = 'array of Float'
+              end>
+            OnEval = dwsTabularClassesTabularDataMethodsAddColumnEval
+            Kind = mkProcedure
           end>
         OnCleanUp = dwsTabularClassesTabularDataCleanUp
       end>

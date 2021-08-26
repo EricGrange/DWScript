@@ -11,7 +11,7 @@ var tab := TabularData.CreateFromDataSet(db.Query('select * from test'));
 PrintLn(tab.ExportToSeparated(['a', 'b']));
 
 tab.EvaluateNewColumn('c', [ '"a"', '"b"', '+' ]);
-tab.EvaluateNewColumn('d', [ '"a"', '"b"', '-' ]);
+tab.EvaluateNewColumn('d', [ '"b"', '"a"', '-' ]);
 tab.EvaluateNewColumn('e', [ '"c"', '"d"', '*' ]);
 
 tab.DropColumn('d');

@@ -19,6 +19,10 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsTabularClassesTabularDataMethodsDropColumnEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsTabularClassesTabularDataMethodsAddColumnEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsTabularClassesTabularDataConstructorsCreateEval(
+      Info: TProgramInfo; var ExtObject: TObject);
   private
     { Private declarations }
     FScript : TDelphiWebScript;
@@ -56,6 +60,26 @@ begin
    end;
 end;
 
+procedure ParseOptions(tabular : TdwsTabular; const options : IScriptDynArray);
+var
+   buf : String;
+   autoJIT : Boolean;
+begin
+   autoJIT := True;
+   for var i := 0 to options.ArrayLength-1 do begin
+      options.EvalAsString(i, buf);
+      if buf = 'jit' then
+         tabular.InitializeJIT
+      else if buf = 'nojit' then
+         autoJIT := False;
+   end;
+   if autoJIT then begin
+      // JIT overhead is not worth it for smaller datasets
+      if tabular.RowCount >= 256 then
+         tabular.InitializeJIT;
+   end;
+end;
+
 procedure TdwsTabularLib.SetScript(const val : TDelphiWebScript);
 begin
    dwsTabular.Script := val;
@@ -65,6 +89,15 @@ procedure TdwsTabularLib.dwsTabularClassesTabularDataCleanUp(
   ExternalObject: TObject);
 begin
    ExternalObject.Free;
+end;
+
+procedure TdwsTabularLib.dwsTabularClassesTabularDataConstructorsCreateEval(
+  Info: TProgramInfo; var ExtObject: TObject);
+begin
+   var tabular := TdwsTabular.Create;
+   ExtObject := tabular;
+
+   ParseOptions(tabular, Info.ParamAsScriptDynArray[0]);
 end;
 
 procedure TdwsTabularLib.dwsTabularClassesTabularDataConstructorsCreateFromDataSetEval(
@@ -78,6 +111,8 @@ begin
 
    var tabular := TdwsTabular.Create;
    ExtObject := tabular;
+
+   ParseOptions(tabular, Info.ParamAsScriptDynArray[1]);
 
    var nbFields := scriptDS.FieldCount;
    SetLength(dsFields, nbFields);
@@ -93,21 +128,24 @@ begin
       end;
       scriptDS.Next;
    end;
+end;
 
-   var autoJIT := True;
-   var options := Info.ParamAsScriptDynArray[1];
-   for var i := 0 to options.ArrayLength-1 do begin
-      options.EvalAsString(i, buf);
-      if buf = 'jit' then
-         tabular.InitializeJIT
-      else if buf = 'nojit' then
-         autoJIT := False;
-   end;
-   if autoJIT then begin
-      // JIT overhead is not worth it for smaller datasets
-      if tabular.RowCount >= 256 then
-         tabular.InitializeJIT;
-   end;
+procedure TdwsTabularLib.dwsTabularClassesTabularDataMethodsAddColumnEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   var tabular := Info.ScriptObj.ExternalObject as TdwsTabular;
+   var name := Info.ParamAsString[0];
+   if name = '' then
+      raise Exception.Create('Name should not be empty');
+   if tabular.IndexOfColumn(name) >= 0 then
+      raise Exception.CreateFmt('Column with name "%s" already exists', [ name ]);
+   var values := Info.ParamAsScriptDynArray[1];
+   if (tabular.ColumnCount > 0) and (values.ArrayLength <> tabular.RowCount) then
+      raise Exception.CreateFmt('Mismatching number of elements (got %d, expected %d)',
+                                [ values.ArrayLength, tabular.RowCount ]);
+   var column := tabular.AddColumn(name);
+   for var i := 0 to values.ArrayLength-1 do
+      column.Add(values.AsFloat[i]);
 end;
 
 procedure TdwsTabularLib.dwsTabularClassesTabularDataMethodsDropColumnEval(
@@ -145,15 +183,7 @@ begin
    try
       expr.JITCompile;
       var column := tabular.AddColumn(Info.ParamAsString[0]);
-      var stack := TdwsTabularStack.Create(expr.MaxStackDepth);
-      try
-         for var i := 0 to tabular.RowCount-1 do begin
-            stack.RowIndex := i;
-            column.Add(expr.Evaluate(stack));
-         end;
-      finally
-         stack.Free;
-      end;
+      column.Add(expr.EvaluateAll);
    finally
       expr.Free;
    end;
