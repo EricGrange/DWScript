@@ -103,11 +103,15 @@ type
       protected
          class function JSONTypeName(const v : Variant) : String; static;
          class procedure RaiseUnsupportedMethodForType(const methodName : String; const v : Variant); static;
+
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant); virtual; abstract;
+         function FastCallInteger(const args : TExprBaseListExec) : Int64;
+         function FastCallFloat(const args : TExprBaseListExec) : Double;
    end;
 
    TdwsJSONLowCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
       public
-         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TdwsJSONLengthBase = class (TdwsJSONFastCallBase)
@@ -117,57 +121,57 @@ type
 
    TdwsJSONHighCall = class (TdwsJSONLengthBase, IConnectorFastCall)
       public
-         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TdwsJSONLengthCall = class (TdwsJSONLengthBase, IConnectorFastCall)
       public
-         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TdwsJSONTypeNameCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
       public
-         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TdwsJSONElementNameCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
       public
-         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TdwsJSONDefinedCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
       public
-         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TdwsJSONCloneCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
       public
-         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TdwsJSONExtendCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
       public
-         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TdwsJSONAddCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
       public
-         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TdwsJSONDeleteCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
       public
-         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TdwsJSONSwapCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
       public
-         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TdwsJSONToStringCall = class (TdwsJSONFastCallBase, IConnectorFastCall)
       public
-         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    TdwsJSONIndexCall = class(TdwsJSONFastCallBase)
@@ -182,12 +186,15 @@ type
 
    TdwsJSONIndexReadCall = class(TdwsJSONIndexCall, IConnectorFastCall)
       protected
-         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+         function FastCallGetValue(const args : TExprBaseListExec; var base : Variant) : TdwsJSONValue;
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant); override;
+         function FastCallInteger(const args : TExprBaseListExec) : Int64;
+         function FastCallFloat(const args : TExprBaseListExec) : Double;
    end;
 
    TdwsJSONIndexWriteCall = class(TdwsJSONIndexCall, IConnectorFastCall)
       protected
-         procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+         procedure FastCall(const args : TExprBaseListExec; var result : Variant); override;
    end;
 
    // TdwsJSONConnectorMember
@@ -206,6 +213,7 @@ type
          procedure FastRead(const exec : TdwsExecution; const base : TExprBase; var result : Variant); override;
          procedure FastWrite(const exec : TdwsExecution; const base, value : TExprBase); override;
          function FastReadBoolean(const exec : TdwsExecution; const base : TExprBase) : Boolean; override;
+         function FastReadFloat(const exec : TdwsExecution; const base : TExprBase) : Double;
 
       public
          constructor Create(const memberName : String; legacyCastsToBoolean : Boolean);
@@ -990,6 +998,26 @@ begin
    );
 end;
 
+// FastCallInteger
+//
+function TdwsJSONFastCallBase.FastCallInteger(const args : TExprBaseListExec) : Int64;
+var
+   v : Variant;
+begin
+   FastCall(args, v);
+   Result := VariantToInt64(v);
+end;
+
+// FastCallFloat
+//
+function TdwsJSONFastCallBase.FastCallFloat(const args : TExprBaseListExec) : Double;
+var
+   v : Variant;
+begin
+   FastCall(args, v);
+   Result := VariantToFloat(v);
+end;
+
 // ------------------
 // ------------------ TdwsJSONLowCall ------------------
 // ------------------
@@ -1268,28 +1296,65 @@ end;
 // ------------------ TdwsJSONIndexReadCall ------------------
 // ------------------
 
+// FastCallGetValue
+//
+function TdwsJSONIndexReadCall.FastCallGetValue(const args : TExprBaseListExec; var base : Variant) : TdwsJSONValue;
+var
+   v : TdwsJSONValue;
+   idx : Variant;
+begin
+   args.ExprBase[0].EvalAsVariant(args.Exec, base);
+   case PVarData(@base)^.VType of
+      varUnknown : begin
+         v := TBoxedJSONValue.UnBox(base);
+         if v <> nil then begin
+            if FPropName<>'' then
+               v := v.Items[FPropName];
+            args.ExprBase[1].EvalAsVariant(args.Exec, idx);
+            Exit(v.Values[idx]);
+         end;
+      end;
+   end;
+   Result := nil;
+end;
+
 // FastCall
 //
 procedure TdwsJSONIndexReadCall.FastCall(const args : TExprBaseListExec; var result : Variant);
 var
    v : TdwsJSONValue;
-   b, idx : Variant;
+   b : Variant;
 begin
-   args.ExprBase[0].EvalAsVariant(args.Exec, b);
-   case PVarData(@b)^.VType of
-      varUnknown : begin
-         v:=TBoxedJSONValue.UnBox(b);
-         if v<>nil then begin
-            if FPropName<>'' then
-               v:=v.Items[FPropName];
-            args.ExprBase[1].EvalAsVariant(args.Exec, idx);
-            v:=v.Values[idx];
-            TBoxedJSONValue.AllocateOrGetImmediate(v, Result);
-            Exit;
-         end;
-      end;
-   end;
-   VarClear(Result);
+   v := FastCallGetValue(args, b);
+   if v <> nil then
+      TBoxedJSONValue.AllocateOrGetImmediate(v, Result)
+   else VarClear(Result);
+end;
+
+// FastCallInteger
+//
+function TdwsJSONIndexReadCall.FastCallInteger(const args : TExprBaseListExec) : Int64;
+var
+   v : TdwsJSONValue;
+   b : Variant;
+begin
+   v := FastCallGetValue(args, b);
+   if v <> nil then
+      Result := v.AsInteger
+   else Result := 0;
+end;
+
+// FastCallFloat
+//
+function TdwsJSONIndexReadCall.FastCallFloat(const args : TExprBaseListExec) : Double;
+var
+   v : TdwsJSONValue;
+   b : Variant;
+begin
+   v := FastCallGetValue(args, b);
+   if v <> nil then
+      Result := v.AsNumber
+   else Result := 0;
 end;
 
 // ------------------
@@ -1488,6 +1553,21 @@ begin
          Result := DoLegacyCast(v)
       else Result := not v.IsFalsey;
    end else Result := False;
+end;
+
+// FastReadFloat
+//
+function TdwsJSONConnectorMember.FastReadFloat(const exec : TdwsExecution; const base : TExprBase) : Double;
+var
+   b : Variant;
+   v : TdwsJSONValue;
+begin
+   base.EvalAsVariant(exec, b);
+   v := TBoxedJSONValue.UnBox(b);
+   if v <> nil then begin
+      v := v.HashedItems[FMemberHash, FMemberName];
+      Result := v.AsNumber;
+   end else Result := 0;
 end;
 
 // ------------------

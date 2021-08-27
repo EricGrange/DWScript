@@ -70,6 +70,8 @@ type
 
          procedure ComplexEvalAsVariant(exec : TdwsExecution; var result : Variant);
          procedure FastEvalAsVariant(exec : TdwsExecution; var result : Variant);
+         function FastEvalAsFloat(exec : TdwsExecution) : Double;
+         function FastEvalAsInteger(exec : TdwsExecution) : Int64;
 
       public
          constructor Create(const aScriptPos: TScriptPos; const aName: String;
@@ -77,6 +79,8 @@ type
 
          function AssignConnectorSym(prog : TdwsProgram; const connectorType : IConnectorType) : Boolean;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+         function EvalAsFloat(exec : TdwsExecution) : Double; override;
          function IsWritable : Boolean; override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
@@ -133,6 +137,7 @@ type
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+         function EvalAsFloat(exec : TdwsExecution) : Double; override;
 
          property ConnectorMember : IConnectorFastMember read FConnectorMember write FConnectorMember;
    end;
@@ -387,6 +392,42 @@ begin
    else ComplexEvalAsVariant(exec, Result);
 end;
 
+// EvalAsInteger
+//
+function TConnectorCallExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+
+   function Fallback : Int64;
+   var
+      v : Variant;
+   begin
+      ComplexEvalAsVariant(exec, v);
+      Result := VariantToInt64(v);
+   end;
+
+begin
+   if FConnectorFastCall<>nil then
+      Result := FastEvalAsInteger(exec)
+   else Result := Fallback;
+end;
+
+// EvalAsFloat
+//
+function TConnectorCallExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+
+   function Fallback : Double;
+   var
+      v : Variant;
+   begin
+      ComplexEvalAsVariant(exec, v);
+      Result := VariantToFloat(v);
+   end;
+
+begin
+   if FConnectorFastCall<>nil then
+      Result := FastEvalAsFloat(exec)
+   else Result := Fallback;
+end;
+
 // ComplexEvalAsVariant
 //
 procedure TConnectorCallExpr.ComplexEvalAsVariant(exec : TdwsExecution; var result : Variant);
@@ -526,6 +567,43 @@ begin
       if exec.IsDebugging then
          exec.Debugger.LeaveFunc(exec, Self);
    end;
+end;
+
+// FastEvalAsFloat
+//
+function TConnectorCallExpr.FastEvalAsFloat(exec : TdwsExecution) : Double;
+var
+   callArgs : TExprBaseListExec;
+begin
+   if exec.IsDebugging then
+      exec.Debugger.EnterFunc(exec, Self);
+   try
+      callArgs.ListRec:=FArguments;
+      callArgs.Exec:=exec;
+      Result := FConnectorFastCall.FastCallFloat(callArgs);
+   finally
+      if exec.IsDebugging then
+         exec.Debugger.LeaveFunc(exec, Self);
+   end;
+end;
+
+// FastEvalAsInteger
+//
+function TConnectorCallExpr.FastEvalAsInteger(exec : TdwsExecution) : Int64;
+var
+   callArgs : TExprBaseListExec;
+begin
+   if exec.IsDebugging then
+      exec.Debugger.EnterFunc(exec, Self);
+   try
+      callArgs.ListRec:=FArguments;
+      callArgs.Exec:=exec;
+      Result := FConnectorFastCall.FastCallInteger(callArgs);
+   finally
+      if exec.IsDebugging then
+         exec.Debugger.LeaveFunc(exec, Self);
+   end;
+
 end;
 
 // GetDataPtr
@@ -697,6 +775,23 @@ function TConnectorFastReadExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
    try
       Result := FConnectorMember.FastReadBoolean(exec, BaseExpr);
+   except
+      on e: EScriptError do begin
+         EScriptError(e).ScriptPos := ScriptPos;
+         raise;
+      end
+   else
+      exec.SetScriptError(Self);
+      raise;
+   end;
+end;
+
+// EvalAsFloat
+//
+function TConnectorFastReadExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+begin
+   try
+      Result := FConnectorMember.FastReadFloat(exec, BaseExpr);
    except
       on e: EScriptError do begin
          EScriptError(e).ScriptPos := ScriptPos;

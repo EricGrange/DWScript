@@ -376,11 +376,8 @@ end;
 // EvalAsFloat
 //
 function TConvVarToFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
-var
-   v : Variant;
 begin
-   FExpr.EvalAsVariant(exec, v);
-   Result := VariantToFloat(v);
+   Result := FExpr.EvalAsFloat(exec);
 end;
 
 // ------------------
@@ -390,11 +387,8 @@ end;
 // EvalAsInteger
 //
 function TConvVarToIntegerExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
-var
-   v : Variant;
 begin
-   FExpr.EvalAsVariant(exec, v);
-   VariantToInt64(v, Result);
+   Result := FExpr.EvalAsInteger(exec);
 end;
 
 // ------------------

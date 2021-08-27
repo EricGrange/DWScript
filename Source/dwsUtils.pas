@@ -2251,7 +2251,7 @@ function VariantToFloat(const v : Variant) : Double;
          Result := 0
       else if unknown.QueryInterface(IToNumeric, intf)=0 then
          Result := intf.ToFloat
-      else raise EVariantTypeCastError.CreateFmt(RTE_VariantCastFailed, [ 'IUnknown', SYS_FLOAT]);
+      else Result := Variant(unknown);// raise EVariantTypeCastError.CreateFmt(RTE_VariantCastFailed, [ 'IUnknown', SYS_FLOAT]);
    end;
 
 begin

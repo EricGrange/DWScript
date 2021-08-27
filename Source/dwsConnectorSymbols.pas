@@ -54,6 +54,8 @@ type
    IConnectorFastCall = interface (IConnectorCall)
       ['{64CE8F29-6FC3-4595-BB42-B7FDB84582C2}']
       procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+      function FastCallInteger(const args : TExprBaseListExec) : Int64;
+      function FastCallFloat(const args : TExprBaseListExec) : Double;
    end;
 
    IConnectorMember = interface (IGetSelf)
@@ -72,6 +74,7 @@ type
       procedure FastWrite(const exec : TdwsExecution; const base, value : TExprBase);
 
       function FastReadBoolean(const exec : TdwsExecution; const base : TExprBase) : Boolean;
+      function FastReadFloat(const exec : TdwsExecution; const base : TExprBase) : Double;
    end;
 
    IConnectorEnumerator = interface (IGetSelf)
@@ -132,6 +135,7 @@ type
          procedure FastRead(const exec : TdwsExecution; const base : TExprBase; var result : Variant); virtual;
          procedure FastWrite(const exec : TdwsExecution; const base, value : TExprBase); virtual;
          function FastReadBoolean(const exec : TdwsExecution; const base : TExprBase) : Boolean; virtual;
+         function FastReadFloat(const exec : TdwsExecution; const base : TExprBase) : Double;
    end;
 
 // ------------------------------------------------------------------
@@ -224,6 +228,23 @@ begin
    FastRead(exec, base, v);
    try
       Result := VariantToBool(v);
+   except
+      // standardize RTL message
+      on E : EVariantError do begin
+         raise EVariantTypeCastError.CreateFmt(RTE_VariantVTCastFailed, [VarType(v), SYS_BOOLEAN]);
+      end else raise;
+   end;
+end;
+
+// FastReadFloat
+//
+function TConnectorFastMember.FastReadFloat(const exec : TdwsExecution; const base : TExprBase) : Double;
+var
+   v : Variant;
+begin
+   FastRead(exec, base, v);
+   try
+      Result := VariantToFloat(v);
    except
       // standardize RTL message
       on E : EVariantError do begin

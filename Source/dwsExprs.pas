@@ -3921,14 +3921,7 @@ var
    v : Variant;
 begin
    EvalAsVariant(exec, v);
-   try
-      Result := VariantToBool(v);
-   except
-      // standardize RTL message
-      on E : EVariantError do begin
-         raise EVariantTypeCastError.CreateFmt(RTE_VariantVTCastFailed, [VarType(v), SYS_BOOLEAN]);
-      end else raise;
-   end;
+   Result := VariantToBool(v);
 end;
 
 // EvalAsFloat
@@ -3938,14 +3931,7 @@ var
    v : Variant;
 begin
    EvalAsVariant(exec, v);
-   try
-      Result:=v;
-   except
-      // standardize RTL message
-      on E : EVariantError do begin
-         raise EVariantTypeCastError.CreateFmt(RTE_VariantVTCastFailed, [Typ.Name, SYS_FLOAT]);
-      end else raise;
-   end;
+   Result := VariantToFloat(v);
 end;
 
 // EvalAsString
@@ -3956,22 +3942,15 @@ var
    p : PVarData;
 begin
    EvalAsVariant(exec, v);
-   try
-      p:=PVarData(@v);
-      {$ifdef FPC}
-      if p^.VType=varString then
-         Result:=String(p.VString)
-      {$else}
-      if p^.VType=varUString then
-         Result:=String(p.VUString)
-      {$endif}
-      else VariantToString(v, Result);
-   except
-      // standardize RTL message
-      on E : EVariantError do begin
-         raise EVariantTypeCastError.CreateFmt(RTE_VariantVTCastFailed, [ VarType(v), SYS_STRING ]);
-      end else raise;
-   end;
+   p:=PVarData(@v);
+   {$ifdef FPC}
+   if p^.VType=varString then
+      Result:=String(p.VString)
+   {$else}
+   if p^.VType=varUString then
+      Result:=String(p.VUString)
+   {$endif}
+   else VariantToString(v, Result);
 end;
 
 // EvalAsUnicodeString

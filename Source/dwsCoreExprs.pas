@@ -388,6 +388,7 @@ type
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
+         procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
@@ -3046,6 +3047,13 @@ end;
 // EvalAsScriptObj
 //
 procedure TFieldExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
+begin
+   GetScriptObj(exec).EvalAsInterface(FieldSym.Offset, PIUnknown(@Result)^);
+end;
+
+// EvalAsInterface
+//
+procedure TFieldExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
 begin
    GetScriptObj(exec).EvalAsInterface(FieldSym.Offset, PIUnknown(@Result)^);
 end;

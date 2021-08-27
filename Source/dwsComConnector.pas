@@ -460,6 +460,8 @@ type
       procedure FastRead(const exec : TdwsExecution; const base : TExprBase; var result : Variant);
       procedure FastWrite(const exec : TdwsExecution; const base, value : TExprBase);
       function  FastReadBoolean(const exec : TdwsExecution; const base : TExprBase) : Boolean;
+      function FastReadInteger(const exec : TdwsExecution; const base : TExprBase) : Int64;
+      function FastReadFloat(const exec : TdwsExecution; const base : TExprBase) : Double;
    end;
    TComVariantArrayHighBoundMember = class (TComVariantArrayMember, IConnectorDataMember)
       function Read(const base: Variant): TData;
@@ -484,12 +486,18 @@ type
    end;
    TComVariantArrayLengthCall = class (TComVariantArrayCall, IConnectorFastCall)
       procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+      function FastCallInteger(const args : TExprBaseListExec) : Int64;
+      function FastCallFloat(const args : TExprBaseListExec) : Double;
    end;
    TComVariantArrayHighBoundCall = class (TComVariantArrayCall, IConnectorFastCall)
       procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+      function FastCallInteger(const args : TExprBaseListExec) : Int64;
+      function FastCallFloat(const args : TExprBaseListExec) : Double;
    end;
    TComVariantArrayLowBoundCall = class (TComVariantArrayCall, IConnectorFastCall)
       procedure FastCall(const args : TExprBaseListExec; var result : Variant);
+      function FastCallInteger(const args : TExprBaseListExec) : Int64;
+      function FastCallFloat(const args : TExprBaseListExec) : Double;
    end;
 
    TComVariantArrayEnumerator = class (TInterfacedSelfObject)
@@ -1236,11 +1244,25 @@ begin
 end;
 
 procedure TComVariantArrayLowBoundCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+begin
+   VarCopySafe(result, FastCallInteger(args));
+end;
+
+// FastCallInteger
+//
+function TComVariantArrayLowBoundCall.FastCallInteger(const args : TExprBaseListExec) : Int64;
 var
    base : Variant;
 begin
    args.EvalAsVariant(0, base);
    Result := VarArrayLowBound(base, args.AsInteger[1]);
+end;
+
+// FastCallFloat
+//
+function TComVariantArrayLowBoundCall.FastCallFloat(const args : TExprBaseListExec) : Double;
+begin
+   Result := FastCallInteger(args);
 end;
 
 procedure TComVariantArrayHighBoundMember.Write(const Base: Variant; const Data: TData);
@@ -1254,11 +1276,25 @@ begin
 end;
 
 procedure TComVariantArrayHighBoundCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+begin
+   VarCopySafe(result, FastCallInteger(args));
+end;
+
+// FastCallInteger
+//
+function TComVariantArrayHighBoundCall.FastCallInteger(const args : TExprBaseListExec) : Int64;
 var
    base : Variant;
 begin
    args.EvalAsVariant(0, base);
    Result := VarArrayHighBound(base, args.AsInteger[1]);
+end;
+
+// FastCallFloat
+//
+function TComVariantArrayHighBoundCall.FastCallFloat(const args : TExprBaseListExec) : Double;
+begin
+   Result := FastCallInteger(args);
 end;
 
 function TComVariantArrayHighBoundMember.Read(const Base: Variant): TData;
@@ -1268,11 +1304,8 @@ begin
 end;
 
 procedure TComVariantArrayLengthMember.FastRead(const exec : TdwsExecution; const base : TExprBase; var result : Variant);
-var
-   bv : Variant;
 begin
-   base.EvalAsVariant(exec, bv);
-   Result := VarArrayHighBound(bv, 1) - VarArrayLowBound(bv, 1) + 1;
+   VarCopySafe(result, FastReadInteger(exec, base));
 end;
 
 // FastWrite
@@ -1285,14 +1318,35 @@ end;
 // FastReadBoolean
 //
 function TComVariantArrayLengthMember.FastReadBoolean(const exec : TdwsExecution; const base : TExprBase) : Boolean;
-var
-   v : Variant;
 begin
-   FastRead(exec, base, v);
-   Result := VariantToBool(v);
+   Result := FastReadInteger(exec, base) <> 0;
+end;
+
+// FastReadInteger
+//
+function TComVariantArrayLengthMember.FastReadInteger(const exec : TdwsExecution; const base : TExprBase) : Int64;
+var
+   bv : Variant;
+begin
+   base.EvalAsVariant(exec, bv);
+   Result := VarArrayHighBound(bv, 1) - VarArrayLowBound(bv, 1) + 1;
+end;
+
+// FastReadFloat
+//
+function TComVariantArrayLengthMember.FastReadFloat(const exec : TdwsExecution; const base : TExprBase) : Double;
+begin
+   Result := FastReadInteger(exec, base);
 end;
 
 procedure TComVariantArrayLengthCall.FastCall(const args : TExprBaseListExec; var result : Variant);
+begin
+   VarCopySafe(result, FastCallInteger(args));
+end;
+
+// FastCallInteger
+//
+function TComVariantArrayLengthCall.FastCallInteger(const args : TExprBaseListExec) : Int64;
 var
    base : Variant;
    x : Integer;
@@ -1300,6 +1354,13 @@ begin
    args.EvalAsVariant(0, base);
    x := args.AsInteger[1];
    Result := VarArrayHighBound(base, x) - VarArrayLowBound(base, x) + 1;
+end;
+
+// FastCallFloat
+//
+function TComVariantArrayLengthCall.FastCallFloat(const args : TExprBaseListExec) : Double;
+begin
+   Result := FastCallInteger(args);
 end;
 
 // ------------------

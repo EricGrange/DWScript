@@ -1198,12 +1198,23 @@ end;
 // GetValue
 //
 function TdwsJSONValue.GetValue(const index : Variant) : TdwsJSONValue;
+
+   function Fallback : TdwsJSONValue;
+   begin
+      if VariantIsOrdinal(index) then
+         Result := Elements[index]
+      else Result := Items[index];
+   end;
+
 begin
    if Assigned(Self) then begin
-      if VariantIsOrdinal(index) then
-         Result:=Elements[index]
-      else Result:=Items[index];
-   end else Result:=nil;
+      case VarType(index) of
+         varInt64 : Result := Elements[TVarData(index).VInt64];
+         varUString : Result := Items[String(TVarData(index).VUString)];
+      else
+         Result := Fallback;
+      end;
+   end else Result := nil;
 end;
 
 // SetValue
