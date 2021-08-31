@@ -769,9 +769,36 @@ end;
 // ParseIntegerArray
 //
 procedure TdwsJSONParserState.ParseIntegerArray(dest : TSimpleInt64List);
+
+   function ParseJSONInteger(initialChar : WideChar) : Int64;
+   var
+      neg : Boolean;
+      d : Integer;
+      p : PWideChar;
+   begin
+      neg := (initialChar = '-');
+      // branchless "Result := if not neg then initialDigit else 0"
+      Result := (Ord(neg)-1) and (Ord(initialChar) - Ord('0'));
+      p := Ptr;
+      while True do begin
+         d := Ord(p^) - Ord('0');
+         if Cardinal(d) <= 9 then begin
+            Result := Result*10 + d;
+            Inc(p);
+            if Result < 0 then
+               raise EdwsJSONParseError.Create('Integer overflow');
+         end else begin
+            Ptr := p;
+            TrailCharacter := NeedChar;
+            Break;
+         end;
+      end;
+      if neg then
+         Result := -Result;
+   end;
+
 var
    c : WideChar;
-   num : Double;
 begin
    c:=SkipBlanks(' ');
    if c<>'[' then
@@ -782,20 +809,28 @@ begin
    repeat
       case c of
          '0'..'9', '-' : begin
-            ParseJSONNumber(c, num);
-            dest.Add(Round(num));
+            dest.Add(ParseJSONInteger(c));
          end;
       else
          raise EdwsJSONParseError.CreateFmt('Unexpected character U+%.04x', [Ord(c)]);
       end;
-      c:=SkipBlanks(TrailCharacter);
-      case c of
-         ',' : ;
-         ']' : break;
-      else
-         raise EdwsJSONParseError.CreateFmt('"," expected but U+%.04x encountered', [Ord(c)]);
+      if TrailCharacter <> ',' then begin
+         c := SkipBlanks(TrailCharacter);
+         case c of
+            ',' : ;
+            ']' : break;
+         else
+            raise EdwsJSONParseError.CreateFmt('"," expected but U+%.04x encountered', [Ord(c)]);
+         end;
       end;
-      c:=SkipBlanks(NeedChar)
+      case Ptr^ of
+         '0'..'9' : begin
+            c := Ptr^;
+            Inc(Ptr);
+         end;
+      else
+         c:=SkipBlanks(NeedChar)
+      end;
    until False;
 end;
 
