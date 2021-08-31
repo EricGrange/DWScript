@@ -2134,7 +2134,7 @@ procedure TJSStrReplaceFuncExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase)
    var
       pSrc, pDest : PChar;
    begin
-      SetLength(Result, Length(s));
+      SetLength(Result, 2*Length(s));
       pSrc := Pointer(s);
       pDest := Pointer(Result);
       repeat
