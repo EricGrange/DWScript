@@ -116,6 +116,8 @@ type
       baseExpr: TTypedExpr; const args: TExprBaseListExec);
     function dwsDatabaseClassesDataBasePoolMethodsCountFastEvalInteger(
       baseExpr: TTypedExpr; const args: TExprBaseListExec): Int64;
+    procedure dwsDatabaseClassesDataSetMethodsToSeparatedFastEvalString(
+      baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
   private
     { Private declarations }
     FFileSystem : IdwsFileSystem;
@@ -163,6 +165,7 @@ type
       function Stringify : String;
       function StringifyAll(maxRows : Integer) : String;
       function StringifyMap(maxRows : Integer) : String;
+      function ToSeparated(maxRows : Integer; const separator, quoteChar : String) : String;
       procedure PrepareScriptFields(programInfo : TProgramInfo; var fieldsInfo : IInfo);
       class procedure NeedScriptFields(programInfo : TProgramInfo; extObject: TObject; var fieldsInfo : IInfo);
    end;
@@ -317,6 +320,88 @@ begin
       Result:=wr.ToString;
    finally
       wr.Free;
+   end;
+end;
+
+// ToSeparated
+//
+function TDataSet.ToSeparated(maxRows : Integer; const separator, quoteChar : String) : String;
+var
+   wobs : TWriteOnlyBlockStream;
+   i : Integer;
+   s, doubleQuote : String;
+   fields : array of IdwsDataField;
+   needQuoteChars : array [ 32..127 ] of Boolean;
+
+   procedure WriteQuoted;
+   begin
+      wobs.WriteString(quoteChar);
+      FastStringReplace(s, quoteChar, doubleQuote);
+      wobs.WriteString(s);
+      wobs.WriteString(quoteChar);
+   end;
+
+   procedure WriteQuotedIfNecessary;
+   var
+      i : Integer;
+      p : PChar;
+   begin
+      p := Pointer(s);
+      for i := 1 to Length(s) do begin
+         case Ord(p[i-1]) of
+            Low(needQuoteChars)..High(needQuoteChars) :
+               if needQuoteChars[Ord(p[i-1])] then begin
+                  WriteQuoted;
+                  Exit;
+               end;
+         else
+            WriteQuoted;
+            Exit;
+         end;
+      end;
+      wobs.WriteString(s);
+   end;
+
+begin
+   // prepare needQuoteChars
+   FillChar(needQuoteChars[Low(needQuoteChars)], SizeOf(needQuoteChars), 0);
+   if separator <> '' then case separator[1] of
+      #32..#127 : needQuoteChars[Ord(separator[1])] := True;
+   end;
+   if quoteChar <> '' then case quoteChar[1] of
+      #32..#127 : needQuoteChars[Ord(quoteChar[1])] := True;
+   end;
+   doubleQuote := quoteChar + quoteChar;
+
+   // prepare local fields array
+   SetLength(fields, Intf.FieldCount);
+   for i := 0 to High(fields) do
+      fields[i] := Intf.Fields[i];
+
+   wobs := TWriteOnlyBlockStream.AllocFromPool;
+   try
+      for i := 0 to High(fields) do begin
+         if i > 0 then
+            wobs.WriteString(separator);
+         s := fields[i].Name;
+         WriteQuotedIfNecessary;
+      end;
+      wobs.WriteCRLF;
+      while not Intf.EOF do begin
+         for i := 0 to High(fields) do begin
+            if i > 0 then
+               wobs.WriteString(separator);
+            fields[i].GetAsString(s);
+            WriteQuotedIfNecessary;
+         end;
+         wobs.WriteCRLF;
+         Intf.Next;
+         Dec(maxRows);
+         if maxRows=0 then break;
+      end;
+      Result := wobs.ToString;
+   finally
+      wobs.ReturnToPool;
    end;
 end;
 
@@ -892,6 +977,14 @@ procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsStringifyMapFastEvalSt
   baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
 begin
    Result := (baseExpr.EvalAsSafeScriptObj(args.Exec).ExternalObject as TDataSet).StringifyMap(args.AsInteger[0]);
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsToSeparatedFastEvalString(
+  baseExpr: TTypedExpr; const args: TExprBaseListExec; var result: string);
+begin
+   Result := (baseExpr.EvalAsSafeScriptObj(args.Exec).ExternalObject as TDataSet).ToSeparated(
+      args.AsInteger[0], args.AsString[1], args.AsString[2]
+   );
 end;
 
 function TdwsDatabaseLib.dwsDatabaseFunctionsBlobHexParameterFastEval(

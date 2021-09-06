@@ -395,6 +395,31 @@ object dwsDatabaseLib: TdwsDatabaseLib
             ResultType = 'String'
             OnFastEvalString = dwsDatabaseClassesDataSetMethodsStringifyMapFastEvalString
             Kind = mkFunction
+          end
+          item
+            Name = 'ToSeparated'
+            Parameters = <
+              item
+                Name = 'maxRows'
+                DataType = 'Integer'
+                HasDefaultValue = True
+                DefaultValue = 0
+              end
+              item
+                Name = 'separator'
+                DataType = 'String'
+                HasDefaultValue = True
+                DefaultValue = ','
+              end
+              item
+                Name = 'quoteChar'
+                DataType = 'String'
+                HasDefaultValue = True
+                DefaultValue = '"'
+              end>
+            ResultType = 'String'
+            OnFastEvalString = dwsDatabaseClassesDataSetMethodsToSeparatedFastEvalString
+            Kind = mkFunction
           end>
         Properties = <
           item
