@@ -41,6 +41,9 @@ type
          Count : Integer;
    end;
 
+   TdwsTabularColumnValue = ( tcvNumeric, tcvString );
+   TdwsTabularColumnValues = set of TdwsTabularColumnValue;
+
    TdwsTabularColumn = class
       private
          FNumbers : TDoubleDynArray;
@@ -48,17 +51,20 @@ type
          FUnifier : TStringUnifier;
 
          FCount : Integer;
+         FCapacity : Integer;
          FCountEmpty : Integer;
          FCountNonNumeric : Integer;
 
+         FValues : TdwsTabularColumnValues;
          FNumberStats : PdwsTabularNumberStats;
 
       protected
          procedure ClearStats; inline;
          procedure SetCount(n : Integer);
+         procedure Grow(minCount : Integer);
 
       public
-         constructor Create;
+         constructor Create(aValues : TdwsTabularColumnValues = [ tcvNumeric, tcvString ]);
          destructor Destroy; override;
 
          property Numbers : TDoubleDynArray read FNumbers;
@@ -70,6 +76,9 @@ type
          procedure Add(const v : Double); overload;
          procedure Add(const s : String; d : Double); overload;
          procedure Add(const values : TDoubleDynArray); overload;
+         procedure AddNull;
+
+         property Values : TdwsTabularColumnValues read FValues;
 
          property Count : Integer read FCount write SetCount;
          property CountEmpty : Integer read FCountEmpty;
@@ -103,7 +112,7 @@ type
       public
          destructor Destroy; override;
 
-         function AddColumn(const name : String) : TdwsTabularColumn;
+         function AddColumn(const name : String; aValues : TdwsTabularColumnValues = [ tcvNumeric, tcvString ]) : TdwsTabularColumn;
          function DropColumn(const name : String) : Boolean;
          function IndexOfColumn(const name : String) : Integer;
          function ColumnByName(const name : String) : TdwsTabularColumn;
@@ -123,7 +132,7 @@ type
 
    TdwsTabularStack = class
       private
-         FRowIndex : Integer;
+         FRowIndex : NativeInt;
          FData : TDoubleDynArray;
          FStackPtr : PDouble;
          FStackSize : Integer;
@@ -135,7 +144,7 @@ type
       public
          constructor Create(stackSize : Integer = 256);
 
-         property RowIndex : Integer read FRowIndex write FRowIndex;
+         property RowIndex : NativeInt read FRowIndex write FRowIndex;
          property StackSize : Integer read FStackSize;
          property Peek : Double read GetPeek write SetPeek;
          property PeekPtr : PDouble read FStackPtr;
@@ -293,7 +302,8 @@ type
 
          function Evaluate(stack : TdwsTabularStack) : Double;
 
-         function EvaluateAggregate(aggregate : TdwsTabularExpressionAggreggate) : Double;
+         function EvaluateAggregate(aggregate : TdwsTabularExpressionAggreggate;
+                                    fromIndex : NativeInt = 0; toIndex : NativeInt = -1) : Double;
          function EvaluateAll : TDoubleDynArray;
    end;
 
@@ -327,16 +337,31 @@ uses System.Math, dwsJSON, dwsXXHash, dwsXPlatform;
 var
    vDotFormatSettings : TFormatSettings;
 
+const
+   cEmptyFloatAsInt64 : Int64 = $8000000000000000;
+
+function EmptyFloat : Double; inline;
+begin
+   Result := PDouble(@cEmptyFloatAsInt64)^;
+end;
+
+function IsEmptyFloat(var p : Double) : Boolean; inline;
+begin
+   Result := PInt64(@p)^ = cEmptyFloatAsInt64;
+end;
+
 // ------------------
 // ------------------ TdwsTabularColumn ------------------
 // ------------------
 
 // Create
 //
-constructor TdwsTabularColumn.Create;
+constructor TdwsTabularColumn.Create(aValues : TdwsTabularColumnValues = [ tcvNumeric, tcvString ]);
 begin
-   inherited;
-   FUnifier := TStringUnifier.Create;
+   inherited Create;
+   FValues := aValues;
+   if tcvString in aValues then
+      FUnifier := TStringUnifier.Create;
 end;
 
 // Destroy
@@ -366,16 +391,39 @@ var
 begin
    Assert((n >= 0) and (n <= Count), 'only removing rows is supported');
    if n < Count then begin
-      for var k := n-1 to Count-1 do begin
-         if FStrings[k] = '' then
-            Dec(FCountEmpty)
-         else if not TryStrToDouble(FStrings[k], buf) then
-            Dec(FCountNonNumeric);
+      if tcvString in Values then begin
+         for var k := n-1 to Count-1 do begin
+            if FStrings[k] = '' then
+               Dec(FCountEmpty)
+            else if not TryStrToDouble(FStrings[k], buf) then
+               Dec(FCountNonNumeric);
+         end;
+         SetLength(FStrings, n);
+         if tcvNumeric in Values then
+            SetLength(FNumbers, n);
+      end else if tcvNumeric in Values then begin
+         for var k := n-1 to Count-1 do begin
+            if IsEmptyFloat(FNumbers[k]) then
+               Dec(FCountEmpty);
+         end;
+         SetLength(FNumbers, n);
       end;
-      SetLength(FStrings, n);
-      SetLength(FNumbers, n);
       FCount := n;
+      FCapacity := n;
    end;
+end;
+
+// Grow
+//
+procedure TdwsTabularColumn.Grow(minCount : Integer);
+begin
+   FCapacity := FCapacity + FCapacity div 4 + 8;
+   if FCapacity < minCount then
+      FCapacity := minCount + 8;
+   if tcvNumeric in Values then
+      SetLength(FNumbers, FCapacity);
+   if tcvString in Values then
+      SetLength(FStrings, FCapacity);
 end;
 
 // DataPtr
@@ -395,46 +443,70 @@ end;
 // Add
 //
 procedure TdwsTabularColumn.Add(const v : String);
+var
+   d : Double;
 begin
-   ClearStats;
-   var n := FCount;
-   FCount := n+1;
-   SetLength(FNumbers, FCount);
-   SetLength(FStrings, FCount);
-   if v = '' then begin
-      Inc(FCountEmpty);
-      FNumbers[n] := 0;
-   end else begin
-      if not TryStrToDouble(v, FNumbers[n]) then begin
-         Inc(FCountNonNumeric);
-         FNumbers[n] := 0;
-      end;
-      FUnifier.UnifyAssign(v, FStrings[n]);
-   end;
+   if tcvNumeric in Values then begin
+      if v = '' then
+         Add('', EmptyFloat)
+      else if TryStrToDouble(v, d) then
+         Add(v, d)
+      else Add(v, 0);
+   end else if tcvString in Values then
+      Add(v, 0);
+end;
+
+// AddNull
+//
+procedure TdwsTabularColumn.AddNull;
+begin
+   Add('', EmptyFloat);
 end;
 
 // Add
 //
 procedure TdwsTabularColumn.Add(const v : Double);
+
+   procedure AddWithString;
+   begin
+      var buf : String;
+      FastFloatToStr(v, buf, vDotFormatSettings);
+      Add(buf, v);
+   end;
+
 begin
-   var buf : String;
-   FastFloatToStr(v, buf, vDotFormatSettings);
-   Add(buf, v);
+   if tcvString in Values then
+      AddWithString
+   else Add('', v);
 end;
 
 // Add
 //
 procedure TdwsTabularColumn.Add(const s : String; d : Double);
+var
+   n : Integer;
+   isEmpty : Boolean;
 begin
    ClearStats;
-   var n := FCount;
+   n := FCount;
    FCount := n+1;
-   SetLength(FNumbers, FCount);
-   SetLength(FStrings, FCount);
-   FNumbers[n] := d;
-   if s = '' then
+   if FCount >= FCapacity then
+      Grow(FCount);
+
+   if tcvString in Values then begin
+      FUnifier.UnifyAssign(s, FStrings[n]);
+      isEmpty := (s = '');
+   end else isEmpty := False;
+   if tcvNumeric in Values then begin
+      if isEmpty then
+         FNumbers[n] := EmptyFloat
+      else begin
+         FNumbers[n] := d;
+         isEmpty := IsEmptyFloat(FNumbers[n]);
+      end;
+   end;
+   if isEmpty then
       Inc(FCountEmpty);
-   FUnifier.UnifyAssign(s, FStrings[n]);
 end;
 
 // Add
@@ -449,6 +521,8 @@ end;
 //
 function TdwsTabularColumn.NumberStats : TdwsTabularNumberStats;
 begin
+   if not (tcvNumeric in Values) then
+      raise EdwsTabular.Create('Column is not numeric');
    if FNumberStats = nil then begin
       FNumberStats := AllocMem(SizeOf(TdwsTabularNumberStats));
       FNumberStats.Count := FCount;
@@ -475,14 +549,17 @@ end;
 //
 function TdwsTabularColumn.CountDistinctStrings : Integer;
 begin
-   Result := FUnifier.Count;
+   if tcvString in Values then
+      Result := FUnifier.Count
+   else Result := 0;
 end;
 
 // DistinctStrings
 //
 function TdwsTabularColumn.DistinctStrings : TStringDynArray;
 begin
-   Result := FUnifier.DistinctStrings;
+   if tcvString in Values then
+      Result := FUnifier.DistinctStrings;
 end;
 
 // ------------------
@@ -491,11 +568,11 @@ end;
 
 // AddColumn
 //
-function TdwsTabular.AddColumn(const name : String) : TdwsTabularColumn;
+function TdwsTabular.AddColumn(const name : String; aValues : TdwsTabularColumnValues = [ tcvNumeric, tcvString ]) : TdwsTabularColumn;
 var
    n : Integer;
 begin
-   Result := TdwsTabularColumn.Create;
+   Result := TdwsTabularColumn.Create(aValues);
    n := Length(FColumnNames);
    SetLength(FColumnNames, n+1);
    SetLength(FColumnData, n+1);
@@ -1099,7 +1176,7 @@ end;
 class procedure TdwsTabularExpression.DoPushNumFieldDef(stack : TdwsTabularStack; op : PdwsTabularOpcode);
 begin
    var i := stack.RowIndex;
-   if op.StringPtr[i] = '' then
+   if IsEmptyFloat(op.DoublePtr[i]) then
       stack.Push(op.Operand1)
    else stack.Push(op.DoublePtr[i]);
 end;
@@ -1522,7 +1599,8 @@ end;
 
 // EvaluateAggregate
 //
-function TdwsTabularExpression.EvaluateAggregate(aggregate : TdwsTabularExpressionAggreggate) : Double;
+function TdwsTabularExpression.EvaluateAggregate(aggregate : TdwsTabularExpressionAggreggate;
+                                                 fromIndex : NativeInt = 0; toIndex : NativeInt = -1) : Double;
 
    {$ifdef ENABLE_JIT64}
    function BatchSumAggregate(stack : TdwsTabularStack; batches : Integer) : Double;
@@ -1540,16 +1618,16 @@ function TdwsTabularExpression.EvaluateAggregate(aggregate : TdwsTabularExpressi
    end;
    {$endif}
 
-   function SumAggregate(stack : TdwsTabularStack; rowCount : Integer) : Double;
+   function SumAggregate(stack : TdwsTabularStack; toIndex : NativeInt) : Double;
    begin
       {$ifdef ENABLE_JIT64}
       if FCodeBlock <> nil then
-         Result := BatchSumAggregate(stack, rowCount div (High(TdwsTabularBatchResult)+1))
+         Result := BatchSumAggregate(stack, (toIndex-stack.RowIndex+1) div (High(TdwsTabularBatchResult)+1))
       else Result := 0;
       {$else}
       Result := 0;
       {$endif}
-      for var i := stack.RowIndex to rowCount-1 do begin
+      for var i := stack.RowIndex to toIndex do begin
          stack.RowIndex := i;
          Result := Result + Evaluate(stack);
       end;
@@ -1559,7 +1637,13 @@ begin
    Assert(aggregate = tegSum);
    var stack := TdwsTabularStack.Create(MaxStackDepth);
    try
-      Result := SumAggregate(stack, Tabular.RowCount);
+      if fromIndex > 0 then
+         stack.RowIndex := fromIndex;
+      if toIndex < 0 then
+         toIndex := Tabular.RowCount + toIndex
+      else if toIndex >= Tabular.RowCount-1 then
+         toIndex := Tabular.RowCount-1;
+      Result := SumAggregate(stack, toIndex);
    finally
       stack.Free
    end;
@@ -1693,7 +1777,6 @@ end;
 function TdwsTabularJIT.JITExpression(expr : TdwsTabularExpression) : Boolean;
 const
    cAbsMask : array [0..SizeOf(Double)-1] of Byte = ( $FF, $FF, $FF, $FF, $FF, $FF, $FF, $7F );
-
 var
    storeStackOffset : Integer;
    x86 : Tx86_64_WriteOnlyStream;
@@ -1783,9 +1866,12 @@ begin
          NotifyAlteration(regDef);
 
          var regZeros := TymmRegister(op.StackDepth+1);
-         x86._v_op_pd(xmm_xorpd, regZeros, regZeros, regZeros);
+//         x86._v_op_pd(xmm_xorpd, regZeros, regZeros, regZeros);
+         x86._mov_reg_qword(gprRAX, NativeUInt(@cEmptyFloatAsInt64));
+         x86._vpbroadcastq_ptr_reg(regZeros, gprRAX, 0);
 
-         x86._mov_reg_qword(gprRAX, NativeUInt(op.StringPtr));
+//         x86._mov_reg_qword(gprRAX, NativeUInt(op.StringPtr));
+         x86._mov_reg_qword(gprRAX, NativeUInt(op.DoublePtr));
          x86._vmovdqu_ptr_indexed(regDef, gprRAX, rowIndexOffsetGPR, 1, 0);
          x86._vpcmpeqq(regZeros, regDef, regZeros);
 

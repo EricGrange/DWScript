@@ -60,23 +60,25 @@ begin
    end;
 end;
 
-procedure ParseOptions(tabular : TdwsTabular; const options : IScriptDynArray);
+function ParseOptions(const options : IScriptDynArray) : TdwsTabular;
 var
    buf : String;
    autoJIT : Boolean;
 begin
    autoJIT := True;
+
+   Result := TdwsTabular.Create;
    for var i := 0 to options.ArrayLength-1 do begin
       options.EvalAsString(i, buf);
       if buf = 'jit' then
-         tabular.InitializeJIT
+         Result.InitializeJIT
       else if buf = 'nojit' then
          autoJIT := False;
    end;
    if autoJIT then begin
       // JIT overhead is not worth it for smaller datasets
-      if tabular.RowCount >= 256 then
-         tabular.InitializeJIT;
+      if Result.RowCount >= 256 then
+         Result.InitializeJIT;
    end;
 end;
 
@@ -94,37 +96,46 @@ end;
 procedure TdwsTabularLib.dwsTabularClassesTabularDataConstructorsCreateEval(
   Info: TProgramInfo; var ExtObject: TObject);
 begin
-   var tabular := TdwsTabular.Create;
+   var tabular := ParseOptions(Info.ParamAsScriptDynArray[0]);
    ExtObject := tabular;
-
-   ParseOptions(tabular, Info.ParamAsScriptDynArray[0]);
 end;
 
 procedure TdwsTabularLib.dwsTabularClassesTabularDataConstructorsCreateFromDataSetEval(
   Info: TProgramInfo; var ExtObject: TObject);
 var
    dsFields : array of IdwsDataField;
+   dsNumeric : array of Boolean;
    buf : String;
 begin
    var ds := Info.ParamAsScriptObj[0];
    var scriptDS := (ds.ExternalObject as TScriptDataSet).Intf;
 
-   var tabular := TdwsTabular.Create;
+   var tabular := ParseOptions(Info.ParamAsScriptDynArray[1]);
    ExtObject := tabular;
-
-   ParseOptions(tabular, Info.ParamAsScriptDynArray[1]);
 
    var nbFields := scriptDS.FieldCount;
    SetLength(dsFields, nbFields);
+   SetLength(dsNumeric, nbFields);
    for var i := 0 to nbFields-1 do begin
       dsFields[i] := scriptDS.Fields[i];
-      tabular.AddColumn(dsFields[i].Name);
+      var declaredType := LowerCase(dsFields[i].DeclaredType);
+      dsNumeric[i] := (declaredType = 'double') or (declaredType = 'float') or (declaredType = 'numeric');
+      if dsNumeric[i] then
+         tabular.AddColumn(dsFields[i].Name, [ tcvNumeric ])
+      else tabular.AddColumn(dsFields[i].Name)
    end;
 
    while not scriptDS.Eof do begin
       for var i := 0 to nbFields-1 do begin
-         dsFields[i].GetAsString(buf);
-         tabular.ColumnData[i].Add(buf, dsFields[i].AsFloat);
+         var column := tabular.ColumnData[i];
+         if dsNumeric[i] then begin
+            if dsFields[i].IsNull then
+               column.AddNull
+            else column.Add(dsFields[i].AsFloat);
+         end else begin
+            dsFields[i].GetAsString(buf);
+            column.Add(buf, dsFields[i].AsFloat);
+         end;
       end;
       scriptDS.Next;
    end;
@@ -161,12 +172,14 @@ begin
    var tabular := Info.ScriptObj.ExternalObject as TdwsTabular;
    var aggregateFunc := Info.ParamAsString[0];
    var opCodes := Info.ParamAsScriptDynArray[1];
+   var fromIndex := Info.ParamAsInteger[2];
+   var toIndex := Info.ParamAsInteger[3];
 
    var expr := PrepareExprFromOpcode(tabular, opCodes);
    try
       expr.JITCompile;
       if aggregateFunc = 'sum' then begin
-         Info.ResultAsFloat := expr.EvaluateAggregate(tegSum);
+         Info.ResultAsFloat := expr.EvaluateAggregate(tegSum, fromIndex, toIndex);
       end else raise EdwsTabular.CreateFmt('Unsupported aggregate function "%s"', [ aggregateFunc ]);
    finally
       expr.Free;

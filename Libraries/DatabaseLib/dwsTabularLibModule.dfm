@@ -44,6 +44,18 @@ object dwsTabularLib: TdwsTabularLib
               item
                 Name = 'opcodes'
                 DataType = 'array of Variant'
+              end
+              item
+                Name = 'fromIndex'
+                DataType = 'Integer'
+                HasDefaultValue = True
+                DefaultValue = 0
+              end
+              item
+                Name = 'toIndex'
+                DataType = 'Integer'
+                HasDefaultValue = True
+                DefaultValue = -1
               end>
             ResultType = 'Float'
             OnEval = dwsTabularClassesTabularDataMethodsEvaluateAggregateEval
