@@ -2507,13 +2507,17 @@ begin
                            +'s:=FuncVariant(1);'#13#10
                            +'Print(s);'#13#10
                            +'s:=FuncVariant("a");'#13#10
-                           +'Print(s);'#13#10
+                           +'PrintLn(s);'#13#10
+                           +'function TestStr : String; begin Result := "hello"; end;'#13#10
+                           +'Print(TestStr);'#13#10
+                           +'function TestInt : Integer; begin Result := 123; end;'#13#10
+                           +'Print(TestInt);'#13#10
                            );
 
    CheckEquals('', prog.Msgs.AsInfo, 'Compile 1');
 
    CheckEquals('', prog.Execute.Msgs.AsInfo, 'exec errs');
-   CheckEquals('123512.54567.51a', prog.Execute.Result.ToString, 'exec result');
+   CheckEquals('123512.54567.51a'#13#10'hello123', prog.Execute.Result.ToString, 'exec result');
 end;
 
 // FuncVariantDateTest

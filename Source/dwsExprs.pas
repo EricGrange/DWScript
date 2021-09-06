@@ -5146,8 +5146,9 @@ begin
    case FResultVarType of
       varInt64 :
          Result := exec.Stack.ReadIntValue(sourceAddr);
-      varVariant :
-         Result := Fallback(exec, sourceAddr);
+      TVarType(-1) : ;
+   else
+      Result := Fallback(exec, sourceAddr);
    end;
 
    if ResultAddr>=0 then begin
@@ -5177,8 +5178,9 @@ begin
          Result := exec.Stack.ReadFloatValue(sourceAddr);
       varInt64 :
          Result := exec.Stack.ReadIntValue(sourceAddr);
-      varVariant :
-         Result := Fallback(exec, sourceAddr);
+      TVarType(-1) : ;
+   else
+      Result := Fallback(exec, sourceAddr);
    end;
 
    if ResultAddr>=0 then begin
@@ -5196,7 +5198,7 @@ procedure TFuncExpr.StaticPostCallString(exec : TdwsExecution; var Result : Stri
       buf : Variant;
    begin
       exec.Stack.ReadValue(addr, buf);
-      VariantToString(buf);
+      VariantToString(buf, Result);
    end;
 
 var
@@ -5206,8 +5208,9 @@ begin
    case FResultVarType of
       varUString :
          exec.Stack.ReadStrValue(sourceAddr, Result);
-      varVariant :
-         Fallback(exec, sourceAddr, Result);
+      TVarType(-1) : ;
+   else
+      Fallback(exec, sourceAddr, Result);
    end;
 
    if ResultAddr>=0 then begin
