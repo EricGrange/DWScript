@@ -498,6 +498,7 @@ type
          procedure _vpcmpeqq(dest, src1, src2 : TymmRegister);
 
          procedure _vpblendvb(dest, src1, src2, src3 : TymmRegister);
+         procedure _vblendvpd(dest, src1, src2, src3 : TymmRegister);
 
          procedure _vbroadcastsd(dest: TymmRegister; src : TxmmRegister);
          procedure _vbroadcastsd_ptr_reg(dest: TymmRegister; src : TgpRegister64; offset : Integer);
@@ -3272,6 +3273,14 @@ end;
 procedure Tx86_64_WriteOnlyStream._vpblendvb(dest, src1, src2, src3 : TymmRegister);
 begin
    _vex_dq_modRMSIB_reg_reg($4C, dest, src1, src2, True);
+   WriteByte(Ord(src3) shl 4);
+end;
+
+// _vblendvpd
+//
+procedure Tx86_64_WriteOnlyStream._vblendvpd(dest, src1, src2, src3 : TymmRegister);
+begin
+   _vex_dq_modRMSIB_reg_reg($4B, dest, src1, src2, True);
    WriteByte(Ord(src3) shl 4);
 end;
 

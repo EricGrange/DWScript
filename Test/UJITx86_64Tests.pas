@@ -69,7 +69,7 @@ type
          procedure mov_indexed;
          procedure lea;
          procedure vpcmpeqq;
-         procedure vpblendvb;
+         procedure vblend;
          procedure vbroadcast;
          procedure v_op_pd;
          procedure _vmovdqu;
@@ -1495,19 +1495,30 @@ end;
 
 // vpblendvb
 //
-procedure TJITx86_64Tests.vpblendvb;
+procedure TJITx86_64Tests.vblend;
 begin
    FStream._vpblendvb(ymm0, ymm0, ymm0, ymm0);
    FStream._vpblendvb(ymm1, ymm2, ymm3, ymm4);
    FStream._vpblendvb(ymm5, ymm0, ymm7, ymm2);
    FStream._vpblendvb(ymm9, ymm10, ymm15, ymm12);
    FStream._vpblendvb(ymm1, ymm2, ymm8, ymm9);
+
+   FStream._vblendvpd(ymm0, ymm0, ymm0, ymm0);
+   FStream._vblendvpd(ymm1, ymm2, ymm3, ymm4);
+   FStream._vblendvpd(ymm5, ymm0, ymm7, ymm2);
+   FStream._vblendvpd(ymm9, ymm10, ymm15, ymm12);
+   FStream._vblendvpd(ymm1, ymm2, ymm8, ymm9);
    CheckEquals(  ''
                + 'vpblendvb ymm0, ymm0, ymm0, ymm0'#13#10
                + 'vpblendvb ymm1, ymm2, ymm3, ymm4'#13#10
                + 'vpblendvb ymm5, ymm0, ymm7, ymm2'#13#10
                + 'vpblendvb ymm9, ymm10, ymm15, ymm12'#13#10
                + 'vpblendvb ymm1, ymm2, ymm8, ymm9'#13#10
+               + 'vblendvpd ymm0, ymm0, ymm0, ymm0'#13#10
+               + 'vblendvpd ymm1, ymm2, ymm3, ymm4'#13#10
+               + 'vblendvpd ymm5, ymm0, ymm7, ymm2'#13#10
+               + 'vblendvpd ymm9, ymm10, ymm15, ymm12'#13#10
+               + 'vblendvpd ymm1, ymm2, ymm8, ymm9'#13#10
                , DisasmStream);
 end;
 

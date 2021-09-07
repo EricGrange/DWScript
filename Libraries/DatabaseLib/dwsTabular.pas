@@ -1866,22 +1866,22 @@ begin
          NotifyAlteration(regDef);
 
          var regZeros := TymmRegister(op.StackDepth+1);
-//         x86._v_op_pd(xmm_xorpd, regZeros, regZeros, regZeros);
          x86._mov_reg_qword(gprRAX, NativeUInt(@cEmptyFloatAsInt64));
          x86._vpbroadcastq_ptr_reg(regZeros, gprRAX, 0);
 
-//         x86._mov_reg_qword(gprRAX, NativeUInt(op.StringPtr));
          x86._mov_reg_qword(gprRAX, NativeUInt(op.DoublePtr));
          x86._vmovdqu_ptr_indexed(regDef, gprRAX, rowIndexOffsetGPR, 1, 0);
          x86._vpcmpeqq(regZeros, regDef, regZeros);
 
-         x86._vbroadcastsd_ptr_reg(regDef, opcodesGPR, IntPtr(@op.Operand1) - IntPtr(expr.FOpcodes));
+         if op.Operand1 = 0 then
+            x86._v_op_pd(xmm_xorpd, regDef, regDef, regDef)
+         else x86._vbroadcastsd_ptr_reg(regDef, opcodesGPR, IntPtr(@op.Operand1) - IntPtr(expr.FOpcodes));
 
          var regDest := TymmRegister(op.StackDepth);
          x86._mov_reg_qword(gprRAX, NativeUInt(op.DoublePtr));
          x86._vmovupd_ptr_indexed(regDest, gprRAX, rowIndexOffsetGPR, 1, 0);
 
-         x86._vpblendvb(regDest, regDest, regDef, regZeros);
+         x86._vblendvpd(regDest, regDest, regDef, regZeros);
 
       end else if @op.Method = @TdwsTabularExpression.DoPushConst then begin
          var reg := TymmRegister(op.StackDepth);
@@ -1988,7 +1988,7 @@ begin
             x86._vpbroadcastq_ptr_reg(regLookup, gprR9, k * SizeOf(String));
             x86._vpcmpeqq(regOperand, regStr, regLookup);
             x86._vbroadcastsd_ptr_reg(regLookup, gprRAX, k * SizeOf(Double));
-            x86._vpblendvb(regDest, regDest, regLookup, regOperand);
+            x86._vblendvpd(regDest, regDest, regLookup, regOperand);
 
          end;
 
