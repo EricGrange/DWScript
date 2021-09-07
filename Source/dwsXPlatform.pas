@@ -424,6 +424,8 @@ function GetModuleVersion(instance : THandle; var version : TModuleVersion) : Bo
 function GetApplicationVersion(var version : TModuleVersion) : Boolean;
 function ApplicationVersion : String;
 
+function Win64AVX2Supported : Boolean;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -2322,6 +2324,49 @@ begin
       {$endif}
    {$endif}
 end;
+
+// Win64AVX2Supported
+//
+{$if Defined(WIN64_ASM)}
+function TestAVX2supported: boolean;
+asm
+   mov   r10, rbx
+   //Check CPUID.0
+   xor   eax, eax
+   cpuid //modifies EAX,EBX,ECX,EDX
+   cmp   al, 7 // do we have a CPUID leaf 7 ?
+   jge   @@leaf7
+
+   xor   eax, eax
+   jmp   @@exit
+
+@@leaf7:
+   mov   eax, 7h
+   xor   ecx, ecx
+   cpuid
+   bt    ebx, 5 //AVX2: CPUID.(EAX=07H, ECX=0H):EBX.AVX2[bit 5]=1
+   setc  al
+
+@@exit:
+   mov   rbx, r10
+end;
+var
+   vWin64AVX2Supported : ShortInt = 0;
+function Win64AVX2Supported : Boolean;
+begin
+   if vWin64AVX2Supported = 0 then begin
+      if TestAVX2supported then
+         vWin64AVX2Supported := 1
+      else vWin64AVX2Supported := -1;
+   end;
+   Result := (vWin64AVX2Supported = 1);
+end;
+{$else}
+function Win64AVX2Supported : Boolean;
+begin
+   Result := False;
+end;
+{$endif}
 
 // ------------------
 // ------------------ TdwsCriticalSection ------------------

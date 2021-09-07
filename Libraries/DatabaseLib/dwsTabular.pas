@@ -1550,7 +1550,7 @@ function TdwsTabularExpression.JITCompile : Boolean;
 begin
    Result := False;
    {$ifdef ENABLE_JIT64}
-   if vTabularDisableJIT then Exit;
+   if vTabularDisableJIT or not Win64AVX2Supported then Exit;
 
    var jit := Tabular.JIT;
    if jit = nil then Exit;
