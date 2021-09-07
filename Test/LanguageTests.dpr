@@ -74,7 +74,8 @@ uses
   dwsSQLiteVTArraysLibModule,
   dwsDynamicArrays in '..\Source\dwsDynamicArrays.pas',
   dwsArrayExprs in '..\Source\dwsArrayExprs.pas',
-  UdwsTabularTests in 'UdwsTabularTests.pas';
+  UdwsTabularTests in 'UdwsTabularTests.pas',
+  UdwsCSSPackTests in 'UdwsCSSPackTests.pas';
 
 {$R *.res}
 
