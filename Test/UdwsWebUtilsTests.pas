@@ -27,6 +27,8 @@ type
       protected
 
       published
+         procedure URLEncodedEncoder;
+
          procedure ParseURLEncodedTest;
          procedure ParseMIMEHeaderValueTest;
          procedure ParseMultiPartFormDataTest;
@@ -71,6 +73,10 @@ begin
       decoded.Clear;
       WebUtils.ParseURLEncoded('&a&c=d&', decoded);
       CheckEquals('a,c=d', decoded.CommaText);
+
+      decoded.Clear;
+      WebUtils.ParseURLEncoded('a+"%20c', decoded);
+      CheckEquals('"a "" c"', decoded.CommaText);
 
    finally
       decoded.Free;
@@ -158,6 +164,17 @@ begin
    CheckEquals('a&#32;c', WebUtils.HTMLAttributeEncode('a c'), 'a c');
    CheckEquals('a&#34;&#60;&#62;', WebUtils.HTMLAttributeEncode('a"<>'), 'a"<>');
    CheckEquals('a&#47;hj', WebUtils.HTMLAttributeEncode('a/hj'), 'a/hj');
+end;
+
+// URLEncodedEncoder
+//
+procedure TdwsWebUtilsTests.URLEncodedEncoder;
+begin
+   CheckEquals('', WebUtils.EncodeURLEncoded(''), 'empty');
+   CheckEquals('a', WebUtils.EncodeURLEncoded('a'), 'a');
+   CheckEquals('a%3D', WebUtils.EncodeURLEncoded('a='), 'a=');
+   CheckEquals('%3D%3D%3D%3D%3D%3D', WebUtils.EncodeURLEncoded('======'), '======');
+   CheckEquals('a%20b%22c', WebUtils.EncodeURLEncoded('a b"c'), 'a b"c');
 end;
 
 

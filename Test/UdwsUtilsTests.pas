@@ -19,7 +19,7 @@ interface
 
 uses Classes, SysUtils, Math, Variants, Types, Graphics,
    dwsXPlatformTests, dwsUtils,
-   dwsXPlatform, dwsWebUtils, dwsTokenStore, dwsCryptoXPlatform,
+   dwsXPlatform, dwsTokenStore, dwsCryptoXPlatform,
    dwsEncodingLibModule, dwsGlobalVars, dwsEncoding, dwsDataContext,
    dwsXXHash, dwsURLRewriter, dwsJSON;
 
@@ -83,8 +83,6 @@ type
          procedure TestDWSHashCodeBuckets;
 
          procedure LoadTextFromBufferTest;
-
-         procedure URLEncodedEncoder;
 
          procedure VariantClearAssignString;
 
@@ -1105,16 +1103,6 @@ begin
    CheckEquals('utf8'#$00E9, LoadTextFromBuffer(Buffer([$EF, $BB, $BF, 'u', 't', 'f', '8', $C3, $A9])), 'utf8é');
    CheckEquals('B'#$00E9, LoadTextFromBuffer(Buffer([$FE, $FF, 0, 'B', 0, $E9])), 'Bé');
    CheckEquals('L'#$00E9, LoadTextFromBuffer(Buffer([$FF, $FE, 'L', 0, $E9, 0])), 'Lé');
-end;
-
-// URLEncodedEncoder
-//
-procedure TdwsUtilsTests.URLEncodedEncoder;
-begin
-   CheckEquals('', WebUtils.EncodeURLEncoded(''), 'empty');
-   CheckEquals('a', WebUtils.EncodeURLEncoded('a'), 'a');
-   CheckEquals('a%3D', WebUtils.EncodeURLEncoded('a='), 'a=');
-   CheckEquals('%3D%3D%3D%3D%3D%3D', WebUtils.EncodeURLEncoded('======'), '======');
 end;
 
 // VariantClearAssignString
