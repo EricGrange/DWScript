@@ -618,7 +618,7 @@ var
 begin
    args.ExprBase[0].EvalAsInterface(args.Exec, IUnknown(pixmap));
    offset := args.AsInteger[1];
-   if Cardinal(offset) > Cardinal(pixmap.GetCount) then
+   if Cardinal(offset*4) > Cardinal(pixmap.GetCount) then
       raise EdwsPixmap.CreateFmt('SetData out of bounds (%d)', [ offset ]);
    pixmap.SetInt32A(offset*4, args.AsInteger[2]);
 end;
