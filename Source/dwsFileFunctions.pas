@@ -641,8 +641,11 @@ end;
 // DoEvalAsBoolean
 //
 function TFileExistsFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+var
+   fileName : String;
 begin
-   Result:=FileExists(args.AsFileName[0]);
+   fileName := args.AsFileName[0];
+   Result := (fileName <> '') and FileExists(fileName)
 end;
 
 // ------------------
@@ -652,8 +655,11 @@ end;
 // DoEvalAsBoolean
 //
 function TDirectoryExistsFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+var
+   directoryName : String;
 begin
-   Result:=DirectoryExists(args.AsFileName[0]);
+   directoryName := args.AsFileName[0];
+   Result := (directoryName <> '') and DirectoryExists(args.AsFileName[0]);
 end;
 
 // ------------------
