@@ -244,7 +244,6 @@ function LoadTurboJPEG(dllName : String = '') : Boolean;
       Assert(Assigned(Result), 'Missing tj' + name);
    end;
 
-
 begin
    if dllName = '' then begin
       if Assigned(vOnNeedTurboJPEGDLLName) then

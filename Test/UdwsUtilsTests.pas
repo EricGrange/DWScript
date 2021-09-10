@@ -1731,13 +1731,13 @@ begin
    SetLength(buf2, cNB + 16);
    for var i := 0 to cNB-1 do begin
       for var k := 0 to i do
-         buf1[k] := k + 10 + (i and 3);
+         buf1[k] := (k + 10 + (i and 3)) and 255;
       for var k := 0 to High(buf1) do
          buf2[k] := $cd;
       WordsToBytes(PWordArray(@buf1[0]), PByteArray(@buf2[0]), i);
       CheckEquals($cd, buf2[i], 'write beyond buffer end at ' + IntToStr(i));
       for var k := 0 to i-1 do
-         CheckEquals(k + 10 + (i and 3), buf2[k]);
+         CheckEquals((k + 10 + (i and 3)) and 255, buf2[k]);
    end;
 end;
 
