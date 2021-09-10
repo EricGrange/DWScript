@@ -34,10 +34,13 @@ const
 
 type
 
-   TBaseByteBufferSymbol = class (TBaseSymbol)
+   TBaseByteBufferSymbol = class (TTypeSymbol)
       public
+         constructor Create(const aName : String);
+         function DynamicInitialization : Boolean; override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          procedure InitData(const data : TData; offset : Integer); override;
+         procedure InitVariant(var v : Variant); override;
    end;
 
    TByteBufferUnaryOpExpr = class (TUnaryOpExpr)
@@ -248,6 +251,21 @@ type
 // ------------------ TBaseByteBufferSymbol ------------------
 // ------------------
 
+// Create
+//
+constructor TBaseByteBufferSymbol.Create(const aName : String);
+begin
+   inherited Create(aName, nil);
+   FSize := 1;
+end;
+
+// DynamicInitialization
+//
+function TBaseByteBufferSymbol.DynamicInitialization : Boolean;
+begin
+   Result := True;
+end;
+
 // IsCompatible
 //
 function TBaseByteBufferSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
@@ -258,11 +276,15 @@ end;
 // InitData
 //
 procedure TBaseByteBufferSymbol.InitData(const data : TData; offset : Integer);
-var
-   p : PVariant;
 begin
-   p := @data[offset];
-   VarCopySafe(p^, IdwsByteBuffer(TdwsByteBuffer.Create));
+   InitVariant(data[offset]);
+end;
+
+// InitVariant
+//
+procedure TBaseByteBufferSymbol.InitVariant(var v : Variant);
+begin
+   VarCopySafe(v, IdwsByteBuffer(TdwsByteBuffer.Create));
 end;
 
 // ------------------
