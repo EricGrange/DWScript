@@ -492,8 +492,11 @@ function TTokenBuffer.BinToInt64 : Int64;
 var
    i : Integer;
 begin
-   Result:=0;
-   for i:=2 to Len-1 do begin
+   Result := 0;
+   if Buffer[0] = '%' then
+      i := 1
+   else i := 2;
+   for i := i to Len-1 do begin
       // highest bit already set, if we're still here we'll overflow
       if Result<0 then
          RaiseInvalidIntegerConstant;

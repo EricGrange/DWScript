@@ -12,3 +12,6 @@ PrintLn(0b0111 and 0x4);
 
 PrintLn(0b_101_111);
 PrintLn(0b101_101);
+
+PrintLn(%110011);
+PrintLn(%110_011);

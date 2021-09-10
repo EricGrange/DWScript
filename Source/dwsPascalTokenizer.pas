@@ -33,7 +33,7 @@ type
          sIntS, sIntF, sIntPoint, sIntPointF, sIntExp, sIntExp0, sIntExpF : TState;
          sBin, sBinF, sHex, sHexF : TState;
          sAssign0 : TState;
-         sPlus, sMinus, sTimes, sPipe : TState;
+         sPlus, sMinus, sTimes, sPipe, sPercent : TState;
          sStringSingle, sStringSingleF : TState;
          sStringDouble, sStringDoubleF : TState;
          sStringIndentDouble, sStringIndentDoubleF : TState;
@@ -166,6 +166,7 @@ begin
    sMinus:=CreateState;
    sTimes:=CreateState;
    sPipe:=CreateState;
+   sPercent:=CreateState;
    sGreaterF:=CreateState;
    sSmallerF:=CreateState;
    sEqualS:=CreateState;
@@ -184,11 +185,12 @@ begin
    sStart.AddTransition(['"'], TSeekTransition.Create(sStringDouble, [toStart], caNone));
    sStart.AddTransition(['#'], TSeekTransition.Create(sChar0, [toStart], caNone));
 
-   sStart.AddTransition([':', '@', '%', '^', '~'], TConsumeTransition.Create(sAssign0, [toStart], caNone));
+   sStart.AddTransition([':', '@', '^', '~'], TConsumeTransition.Create(sAssign0, [toStart], caNone));
    sStart.AddTransition(['+'], TConsumeTransition.Create(sPlus, [toStart], caNone));
    sStart.AddTransition(['-'], TConsumeTransition.Create(sMinus, [toStart], caNone));
    sStart.AddTransition(['*'], TConsumeTransition.Create(sTimes, [toStart], caNone));
    sStart.AddTransition(['|'], TConsumeTransition.Create(sPipe, [toStart], caNone));
+   sStart.AddTransition(['%'], TConsumeTransition.Create(sPercent, [toStart], caNone));
    sStart.AddTransition(['='], TConsumeTransition.Create(sEqualS, [toStart], caNone));
 
    sStart.AddTransition(cSPEC-['(', '?', '!'], TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
@@ -383,6 +385,11 @@ begin
    sPipe.AddTransition(['=', '|'], TConsumeTransition.Create(sStart, [toFinal], caName));
    sPipe.AddTransition(cStart + cSTOP, TCheckTransition.Create(sStart, [toFinal], caName));
    sPipe.SetElse(TErrorTransition.Create(TOK_EqualityExpected));
+
+   sPercent.AddTransition(['='], TConsumeTransition.Create(sStart, [toFinal], caName));
+   sPercent.AddTransition(['0', '1'], TConsumeTransition.Create(sBinF, [], caNone));
+   sPercent.AddTransition(cStart + cSTOP, TCheckTransition.Create(sStart, [toFinal], caName));
+   sPercent.SetElse(TErrorTransition.Create(TOK_NumberExpected));
 
    sGreaterF.AddTransition(['='], TConsumeTransition.Create(sStart, [toFinal], caName));
    sGreaterF.AddTransition(['>'], TConsumeTransition.Create(sStart, [toFinal], caName));
