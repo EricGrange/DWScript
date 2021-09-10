@@ -951,7 +951,7 @@ end;
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetContentFileFastEvalNoResult(
   baseExpr: TTypedExpr; const args: TExprBaseListExec);
 var
-   fileName, contenType : String;
+   fileName, contentType : String;
    wr : TWebResponse;
 begin
    wr := args.WebResponse;
@@ -959,9 +959,9 @@ begin
       fileName := (args.Exec as TdwsProgramExecution).FileSystem.ValidateFileName(args.AsString[0]);
       if fileName = '' then
          raise Exception.Create('SetContentFile failed: file does not exists or access denied');
-      args.EvalAsString(1, contenType);
-      if contenType <> '' then
-         fileName := fileName + #0 + contenType;
+      args.EvalAsString(1, contentType);
+      if contentType <> '' then
+         fileName := fileName + #0 + contentType;
       wr.ContentData := StringToUTF8(fileName);
       wr.ContentType := HTTP_RESP_STATICFILE;
    end;
