@@ -27,7 +27,7 @@ uses
    dwsXPlatform, dwsUtils, dwsStrings, dwsCompilerContext, dwsDataContext,
    dwsSymbols, dwsFunctions, dwsUnitSymbols, dwsOperators, dwsExprs,
    dwsMagicExprs, dwsExprList, dwsTokenTypes, dwsScriptSource,
-   dwsByteBuffer;
+   dwsByteBuffer, dwsDynamicArrays;
 
 const
    SYS_BYTEBUFFER = 'ByteBuffer';
@@ -201,6 +201,10 @@ type
 
    TByteBufferSetDataFunc = class(TInternalMagicProcedure)
       procedure DoEvalProc(const args : TExprBaseListExec); override;
+   end;
+
+   TByteBufferGetIntegersFunc = class(TInternalMagicDynArrayFunction)
+      procedure DoEvalAsDynArray(const args : TExprBaseListExec; var Result : IScriptDynArray); override;
    end;
 
 {$ifdef BYTEBUFFER_FILE_FUNCTIONS}
@@ -905,6 +909,76 @@ begin
    else buffer.SetDataStringA(args.AsInteger[1], args.AsString[2])
 end;
 
+// ------------------
+// ------------------ TByteBufferGetIntegersFunc ------------------
+// ------------------
+
+// DoEvalAsDynArray
+//
+procedure TByteBufferGetIntegersFunc.DoEvalAsDynArray(const args : TExprBaseListExec; var Result : IScriptDynArray);
+var
+   dyn : TScriptDynamicNativeIntegerArray;
+   buffer : IdwsByteBuffer;
+   index, count, elemSize : Integer;
+   i : NativeInt;
+   signed : Boolean;
+   pSrcInt64 : PInt64Array;
+   pSrcInt32 : PInt32Array;
+   pSrcUInt32 : PUInt32Array;
+   pSrcInt16 : PInt16Array;
+   pSrcUInt16 : PUInt16Array;
+   pSrcInt8 : PInt8Array;
+   pSrcUInt8 : PUInt8Array;
+begin
+   dyn := TScriptDynamicNativeIntegerArray.Create(TTypedExpr(args.Expr).Typ.Typ);
+   Result := dyn;
+   args.GetBuffer(buffer);
+   index := args.AsInteger[1];
+   count := args.AsInteger[2];
+   elemSize := args.AsInteger[3];
+   signed := args.AsBoolean[4];
+   buffer.RangeCheck(index, count*elemSize);
+   dyn.SetArrayLength(count);
+   case elemSize of
+      1 :  if signed then begin
+         pSrcInt8 := buffer.DataPtr;
+         for i := 0 to count-1 do
+            dyn.SetAsInteger(i, pSrcInt8[i]);
+      end else begin
+         pSrcUInt8 := buffer.DataPtr;
+         for i := 0 to count-1 do
+            dyn.SetAsInteger(i, pSrcUInt8[i]);
+      end;
+      2 :  if signed then begin
+         pSrcInt16 := buffer.DataPtr;
+         for i := 0 to count-1 do
+            dyn.SetAsInteger(i, pSrcInt16[i]);
+      end else begin
+         pSrcUInt16 := buffer.DataPtr;
+         for i := 0 to count-1 do
+            dyn.SetAsInteger(i, pSrcUInt16[i]);
+      end;
+      4 : if signed then begin
+         pSrcInt32 := buffer.DataPtr;
+         for i := 0 to count-1 do
+            dyn.SetAsInteger(i, pSrcInt32[i]);
+      end else begin
+         pSrcUInt32 := buffer.DataPtr;
+         for i := 0 to count-1 do
+            dyn.SetAsInteger(i, pSrcUInt32[i]);
+      end;
+      8 : begin
+         if not signed then
+            raise EdwsByteBuffer.Create('UInt64 is not supported');
+         pSrcInt64 := buffer.DataPtr;
+         for i := 0 to count-1 do
+            dyn.SetAsInteger(i, pSrcInt64[i]);
+      end;
+   else
+      raise EdwsByteBuffer.CreateFmt('Unsupported element size (%d)', [ elemSize ]);
+   end;
+end;
+
 {$ifdef BYTEBUFFER_FILE_FUNCTIONS}
 
 // ------------------
@@ -976,6 +1050,7 @@ initialization
    RegisterInternalFloatFunction(TByteBufferGetExtendedFunc, '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER], [iffOverloaded], 'GetExtended');
    RegisterInternalStringFunction(TByteBufferGetDataFunc,  '', ['buffer', SYS_BYTEBUFFER, 'size', SYS_INTEGER], [iffOverloaded], 'GetData');
    RegisterInternalStringFunction(TByteBufferGetDataFunc,  '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER, 'size', SYS_INTEGER], [iffOverloaded], 'GetData');
+   RegisterInternalFunction(TByteBufferGetIntegersFunc,  '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER, 'count', SYS_INTEGER, 'elemSize', SYS_INTEGER, 'signed', SYS_BOOLEAN], SYS_ARRAY_OF_INTEGER, [], 'GetIntegers');
 
    RegisterInternalProcedure(TByteBufferSetByteFunc,   '', ['buffer', SYS_BYTEBUFFER, 'v', SYS_INTEGER], 'SetByte', [iffOverloaded]);
    RegisterInternalProcedure(TByteBufferSetByteFunc,   '', ['buffer', SYS_BYTEBUFFER, 'index', SYS_INTEGER, 'v', SYS_INTEGER], 'SetByte', [iffOverloaded]);

@@ -48,6 +48,7 @@ type
       function Copy(offset, size : NativeInt) : IdwsByteBuffer;
 
       function DataPtr : Pointer;
+      procedure RangeCheck(index, size : Integer);
 
       function GetByteP : Byte;
       function GetInt8P : Int8;
