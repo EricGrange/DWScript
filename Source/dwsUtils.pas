@@ -37,6 +37,21 @@ type
    TInt64Array = array [0..High(MaxInt) shr 4] of Int64;
    PInt64Array = ^TInt64Array;
 
+   TInt32Array = array [0..High(MaxInt) shr 3] of Int32;
+   PInt32Array = ^TInt32Array;
+   TUInt32Array = array [0..High(MaxInt) shr 3] of UInt32;
+   PUInt32Array = ^TUInt32Array;
+
+   TInt16Array = array [0..High(MaxInt) shr 2] of Int16;
+   PInt16Array = ^TInt16Array;
+   TUInt16Array = array [0..High(MaxInt) shr 2] of UInt16;
+   PUInt16Array = ^TUInt16Array;
+
+   TInt8Array = array [0..High(MaxInt) shr 1] of Int8;
+   PInt8Array = ^TInt8Array;
+   TUInt8Array = array [0..High(MaxInt) shr 1] of UInt8;
+   PUInt8Array = ^TUInt8Array;
+
    TDoubleArray = array [0..High(MaxInt) shr 4] of Double;
    PDoubleArray = ^TDoubleArray;
 
