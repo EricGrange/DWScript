@@ -185,8 +185,8 @@ type
          function GetAsFloat(index : NativeInt) : Double;
          procedure SetAsFloat(index : NativeInt; const v : Double);
 
-         function GetAsInteger(index : NativeInt) : Int64;
-         procedure SetAsInteger(index : NativeInt; const v : Int64);
+         function GetAsInteger(index : NativeInt) : Int64; inline;
+         procedure SetAsInteger(index : NativeInt; const v : Int64); inline;
 
          function GetAsBoolean(index : NativeInt) : Boolean;
          procedure SetAsBoolean(index : NativeInt; const v : Boolean);
@@ -250,8 +250,8 @@ type
 
          function AsPDouble(var nbElements, stride : NativeInt) : PDouble;
 
-         function GetAsFloat(index : NativeInt) : Double;
-         procedure SetAsFloat(index : NativeInt; const v : Double);
+         function GetAsFloat(index : NativeInt) : Double; inline;
+         procedure SetAsFloat(index : NativeInt; const v : Double); inline;
 
          function GetAsInteger(index : NativeInt) : Int64;
          procedure SetAsInteger(index : NativeInt; const v : Int64);
@@ -325,8 +325,8 @@ type
          procedure SetAsVariant(index : NativeInt; const v : Variant);
          procedure EvalAsVariant(index : NativeInt; var result : Variant);
 
-         procedure SetAsString(index : NativeInt; const v : String);
-         procedure EvalAsString(index : NativeInt; var result : String);
+         procedure SetAsString(index : NativeInt; const v : String); inline;
+         procedure EvalAsString(index : NativeInt; var result : String); inline;
 
          procedure SetAsInterface(index : NativeInt; const v : IUnknown);
          procedure EvalAsInterface(index : NativeInt; var result : IUnknown);
@@ -391,8 +391,8 @@ type
          procedure SetAsString(index : NativeInt; const v : String);
          procedure EvalAsString(index : NativeInt; var result : String);
 
-         procedure SetAsInterface(index : NativeInt; const v : IUnknown);
-         procedure EvalAsInterface(index : NativeInt; var result : IUnknown);
+         procedure SetAsInterface(index : NativeInt; const v : IUnknown); inline;
+         procedure EvalAsInterface(index : NativeInt; var result : IUnknown); inline;
 
          function IsEmpty(addr : NativeInt) : Boolean;
          function VarType(addr : NativeInt) : TVarType;
@@ -459,8 +459,8 @@ type
          function GetAsInteger(index : NativeInt) : Int64;
          procedure SetAsInteger(index : NativeInt; const v : Int64);
 
-         function GetAsBoolean(index : NativeInt) : Boolean;
-         procedure SetAsBoolean(index : NativeInt; const v : Boolean);
+         function GetAsBoolean(index : NativeInt) : Boolean; inline;
+         procedure SetAsBoolean(index : NativeInt; const v : Boolean); inline;
 
          procedure SetAsVariant(index : NativeInt; const v : Variant);
          procedure EvalAsVariant(index : NativeInt; var result : Variant);
