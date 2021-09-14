@@ -51,6 +51,7 @@ unit dwsSHA3;
 
 {$I dws.inc}
 {$R-}
+{$Q-}
 
 interface
 

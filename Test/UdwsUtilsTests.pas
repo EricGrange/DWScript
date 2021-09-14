@@ -794,13 +794,13 @@ begin
    CheckEquals('-8301034833169298228', s);
 
    n:=1;
-   for i:=1 to 20 do begin
+   for i:=1 to 18 do begin
       FastInt64ToStr(n, s);
       CheckEquals(IntToStr(n), s);
       n:=n*10;
    end;
    n:=-1;
-   for i:=1 to 20 do begin
+   for i:=1 to 18 do begin
       FastInt64ToStr(n, s);
       CheckEquals(IntToStr(n), s);
       n:=n*10;

@@ -18,6 +18,8 @@ unit dwsUtils;
 
 {$I dws.inc}
 {$R-}
+{$Q-}
+
 
 {.$define DOUBLE_FREE_PROTECTOR}
 
@@ -1516,12 +1518,6 @@ end;
 
 // FastInt32ToBuffer
 //
-{$IFOPT R+}
-  {$DEFINE RANGEON}
-  {$R-}
-{$ELSE}
-  {$UNDEF RANGEON}
-{$ENDIF}
 function FastInt32ToBuffer(const val : Int32; var buf : TInt32StringBuffer) : Integer;
 var
    n, nd : Integer;
@@ -1530,8 +1526,6 @@ var
 begin
    if val<0 then begin
       neg:=True;
-//range checking is off here because the code causes range check errors
-//code here...
       i:=-val;
    end else begin
       if val=0 then begin
@@ -1563,18 +1557,9 @@ begin
    else Inc(n);
    Result:=n;
 end;
-{$IFDEF RANGEON}
-  {$R+}
-{$ENDIF}
 
 // FastInt64ToBuffer
 //
-{$IFOPT R+}
-  {$DEFINE RANGEON}
-  {$R-}
-{$ELSE}
-  {$UNDEF RANGEON}
-{$ENDIF}
 function FastInt64ToBuffer(const val : Int64; var buf : TInt64StringBuffer) : Integer;
 var
    n, nd : Integer;
@@ -1583,8 +1568,6 @@ var
 begin
    if val<0 then begin
       neg:=True;
-//range checking is off here because the code causes range check errors
-//code here...
       i:=-val;
    end else begin
       if val=0 then begin
@@ -1616,9 +1599,6 @@ begin
    else Inc(n);
    Result:=n;
 end;
-{$IFDEF RANGEON}
-  {$R+}
-{$ENDIF}
 
 // InitializeSmallIntegers
 //
@@ -3280,7 +3260,6 @@ end;
 
 // UnicodeCompareText
 //
-{$R-}
 function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
 var
    n1, n2 : Integer;

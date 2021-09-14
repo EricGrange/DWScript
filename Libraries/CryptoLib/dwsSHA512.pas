@@ -18,6 +18,7 @@ unit dwsSHA512;
 
 {$I dws.inc}
 {$R-}
+{$Q-}
 
 interface
 

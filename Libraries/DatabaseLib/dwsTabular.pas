@@ -333,6 +333,7 @@ implementation
 uses System.Math, dwsJSON, dwsXXHash, dwsXPlatform;
 
 {$R-}
+{$Q-}
 
 var
    vDotFormatSettings : TFormatSettings;

@@ -18,6 +18,7 @@ unit dwsEncoding;
 
 {$I dws.inc}
 {$R-}
+{$Q-}
 
 interface
 

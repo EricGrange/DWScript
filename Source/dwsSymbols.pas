@@ -8730,6 +8730,7 @@ end;
 {$ELSE}
   {$UNDEF RANGEON}
 {$ENDIF}
+{$Q-}
 function TdwsExecution.Random : Double;
 // Marsaglia, George (July 2003). "Xorshift RNGs". Journal of Statistical Software Vol. 8 (Issue  14).
 const

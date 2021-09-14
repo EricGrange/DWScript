@@ -18,6 +18,7 @@ unit dwsCryptoXPlatform;
 
 {$I dws.inc}
 {$R-}
+{$Q-}
 
 //
 // This unit should concentrate all cryptographic cross-platform aspects,

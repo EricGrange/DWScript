@@ -18,6 +18,8 @@ unit dwsStringIterator;
 
 {$I dws.inc}
 {$R-}
+{$Q-}
+
 
 interface
 

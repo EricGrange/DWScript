@@ -581,6 +581,7 @@ implementation
 // ------------------------------------------------------------------
 
 {$R-}
+{$Q-}
 
 const
    cExecInstanceGPR = gprEDI;

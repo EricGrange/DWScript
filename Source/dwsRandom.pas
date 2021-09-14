@@ -21,6 +21,8 @@ unit dwsRandom;
 
 {$I dws.inc}
 {$R-}
+{$Q-}
+
 
 interface
 

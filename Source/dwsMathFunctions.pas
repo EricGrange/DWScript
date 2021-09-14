@@ -935,6 +935,7 @@ end;
 {$ELSE}
   {$UNDEF RANGEON}
 {$ENDIF}
+{$Q-}
 var
    vSeedBase : UInt64;
 procedure TRandomizeFunc.DoEvalProc(const args : TExprBaseListExec);
