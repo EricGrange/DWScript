@@ -613,14 +613,14 @@ end;
 //
 procedure TPixmapSetDataFunc.DoEvalProc(const args : TExprBaseListExec);
 var
-   offset : Integer;
+   offset : NativeInt;
    pixmap : IdwsByteBuffer;
 begin
    args.ExprBase[0].EvalAsInterface(args.Exec, IUnknown(pixmap));
-   offset := args.AsInteger[1];
-   if Cardinal(offset*4) > Cardinal(pixmap.GetCount) then
-      raise EdwsPixmap.CreateFmt('SetData out of bounds (%d)', [ offset ]);
-   pixmap.SetInt32A(offset*4, args.AsInteger[2]);
+   offset := args.AsInteger[1] shl 2;
+   if NativeUInt(offset) >= NativeUInt(pixmap.GetCount) then
+      raise EdwsPixmap.CreateFmt('SetData out of bounds (%d)', [ offset shr 2 ]);
+   pixmap.SetInt32A(offset, args.AsInteger[2]);
 end;
 
 // ------------------
@@ -631,14 +631,14 @@ end;
 //
 function TPixmapGetDataFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 var
-   offset : Integer;
+   offset : NativeInt;
    pixmap : IdwsByteBuffer;
 begin
    args.ExprBase[0].EvalAsInterface(args.Exec, IUnknown(pixmap));
-   offset := args.AsInteger[1];
-   if Cardinal(offset) > Cardinal(pixmap.GetCount) then
-      raise EdwsPixmap.CreateFmt('SetData out of bounds (%d)', [ offset ]);
-   Result := pixmap.GetInt32A(offset*4);
+   offset := args.AsInteger[1] shl 2;
+   if NativeUInt(offset) >= NativeUInt(pixmap.GetCount) then
+      raise EdwsPixmap.CreateFmt('SetData out of bounds (%d)', [ offset shr 2 ]);
+   Result := pixmap.GetInt32A(offset);
 end;
 
 // ------------------
