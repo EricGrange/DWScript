@@ -467,7 +467,7 @@ begin
       raise EdwsByteBuffer.CreateFmt('Offset out of range (index %d for length %d)',
                                      [offset, Count]);
 
-   if offset + size > Count then
+   if NativeUInt(offset) + NativeUInt(size) > NativeUInt(Count) then
       size := Count-offset;
 
    newBuffer := TdwsByteBuffer.Create;
@@ -475,6 +475,7 @@ begin
       newBuffer.SetCount(size);
       System.Move(FData[offset], newBuffer.FData[0], size);
    end;
+   Result := newBuffer;
 end;
 
 // DataPtr
