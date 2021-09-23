@@ -598,8 +598,8 @@ end;
 //
 procedure SystemSleep(msec : Integer);
 begin
-   if msec>=0 then
-      Windows.Sleep(msec);
+   if msec >= 0 then
+      Sleep(msec);
 end;
 
 // FirstWideCharOfString
@@ -898,7 +898,7 @@ begin
    {$ifdef WINDOWS}
    Result := Windows.InterlockedDecrement(val);
    {$else}
-   Result := TInterlocked.Dencrement(val);
+   Result := TInterlocked.Decrement(val);
    {$endif}
 {$else}
 asm
@@ -2720,7 +2720,7 @@ begin
 end;
 {$else}
 begin
-   Result.AsLocalDateTime := Now;
+   Result.AsLocalDateTime := SysUtils.Now;
 end;
 {$endif}
 
