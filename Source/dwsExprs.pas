@@ -7554,7 +7554,7 @@ var
 begin
    for i := 0 to High(FHashCodes) do begin
       if FHashCodes[i] <> 0 then
-         Assert(TVarData(AsVariant[i]).VType <> 0);
+         Assert(TVarData(AsVariant[i*FElementSize]).VType <> 0);
    end;
 end;
 
@@ -7834,7 +7834,7 @@ begin
 
    Result := True;
 
-   DebugIntegrityCheck;
+   //DebugIntegrityCheck;
 end;
 
 // Clear
