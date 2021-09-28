@@ -830,6 +830,22 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maStatic]
             OnEval = dwsWebClassesHttpQueryMethodsSetCustomHeadersEval
             Kind = mkClassProcedure
+          end
+          item
+            Name = 'SetKeepAlive'
+            Parameters = <
+              item
+                Name = 'keepAlive'
+                DataType = 'Boolean'
+              end>
+            OnEval = dwsWebClassesHttpQueryMethodsSetKeepAliveEval
+            Kind = mkProcedure
+          end
+          item
+            Name = 'GetKeepAlive'
+            ResultType = 'Boolean'
+            OnEval = dwsWebClassesHttpQueryMethodsGetKeepAliveEval
+            Kind = mkFunction
           end>
         Properties = <
           item
@@ -842,6 +858,12 @@ object dwsWebLib: TdwsWebLib
             Name = 'ConnectTimeoutMSec'
             DataType = 'Integer'
             WriteAccess = 'SetConnectTimeoutMSec'
+          end
+          item
+            Name = 'KeepAlive'
+            DataType = 'Boolean'
+            ReadAccess = 'GetKeepAlive'
+            WriteAccess = 'SetKeepAlive'
           end>
       end
       item

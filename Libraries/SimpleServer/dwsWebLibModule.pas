@@ -194,6 +194,10 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     function dwsWebFunctionsPingIPv4FastEval(
       const args: TExprBaseListExec): Variant;
+    procedure dwsWebClassesHttpQueryMethodsSetKeepAliveEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsGetKeepAliveEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
     FServer :  IWebServerInfo;
@@ -207,6 +211,9 @@ implementation
 {$R *.dfm}
 
 uses dwsWinHTTP, dwsDynamicArrays, dwsICMP;
+
+const
+   cDefaultKeepAlive = True;
 
 // WebServerSentEventToRawData
 //
@@ -314,6 +321,7 @@ const
 
    cWinHttpCredentials : TGUID = '{FB60EB3D-1085-4A88-9923-DE895B5CAB76}';
    cWinHttpIgnoreSSLCertificateErrors : TGUID = '{42AC8563-761B-4E3D-9767-A21F8F32201C}';
+   cWinHttpKeepAlive : TGUID = '{6081C40E-EED1-4421-A7B4-15E4D1942A15}';
    cWinHttpProxyName : TGUID = '{2449F585-D6C6-4FDC-8D86-0266E01CA99C}';
    cWinHttpConnectTimeout : TGUID = '{8D322334-D1DD-4EBF-945F-193CFCA001FB}';
    cWinHttpSendTimeout : TGUID = '{1DE21769-65B5-4039-BB66-62D405FB00B7}';
@@ -333,6 +341,7 @@ var
    conn : TdwsWinHttpConnection;
    iconn : IGetSelf;
    unassignedVariant : Variant;
+   keepAlive : Boolean;
 begin
    if not uri.From(url) then
       raise Exception.CreateFmt('Invalid url "%s"', [url]);
@@ -360,15 +369,17 @@ begin
          conn.SetIgnoreSSLErrors(customStates[cWinHttpIgnoreSSLCertificateErrors]);
          conn.SetCredentials(customStates[cWinHttpCredentials]);
          conn.SetCustomHeaders(customStates[cWinHttpCustomHeaders]);
+         keepAlive := customStates.BooleanStateDef(cWinHttpKeepAlive, cDefaultKeepAlive);
       end else begin
          conn.ConnectServer(uri, '', HTTP_DEFAULT_CONNECTTIMEOUT, HTTP_DEFAULT_SENDTIMEOUT, HTTP_DEFAULT_RECEIVETIMEOUT);
          conn.SetIgnoreSSLErrors(unassignedVariant);
          conn.SetCredentials(unassignedVariant);
          conn.SetCustomHeaders(unassignedVariant);
+         keepAlive := cDefaultKeepAlive;
       end;
       conn.SetOnProgress(onProgress);
 
-      Result := conn.Request(uri, method, 0, '', requestData, requestContentType, replyHeaders, replyData);
+      Result := conn.Request(uri, method, Ord(keepAlive), '', requestData, requestContentType, replyHeaders, replyData);
    except
       on EWinHTTP do begin
          if exec <> nil then
@@ -688,6 +699,12 @@ begin
    Info.Execution.CustomStates[cWinHttpIgnoreSSLCertificateErrors]:=Info.ParamAsBoolean[0];
 end;
 
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetKeepAliveEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.Execution.CustomStates[cWinHttpKeepAlive]:=Info.ParamAsBoolean[0];
+end;
+
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsGetIgnoreSSLCertificateErrorsEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
@@ -699,10 +716,16 @@ begin
    Info.ResultAsBoolean:=v;
 end;
 
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsGetKeepAliveEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean := Info.Execution.CustomStates.BooleanStateDef(cWinHttpKeepAlive, cDefaultKeepAlive);
+end;
+
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetProxyNameEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.Execution.CustomStates[cWinHttpProxyName]:=Info.ParamAsString[0];
+   Info.Execution.CustomStates[cWinHttpProxyName] := Info.ParamAsString[0];
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsAuthenticatedUserFastEvalString(
