@@ -49,6 +49,7 @@ type
 
          procedure VariantState(const index : TGUID; var result : Variant);
 
+         function BooleanStateDef(const index : TGUID; const default : Boolean) : Boolean;
          function IntegerStateDef(const index : TGUID; const default : Integer) : Integer;
          function StringStateDef(const index : TGUID; const default : String) : String;
 
@@ -136,6 +137,23 @@ begin
    if Match(s) then
       VarCopySafe(result, s.Value)
    else VarClearSafe(result);
+end;
+
+// BooleanStateDef
+//
+function TdwsCustomStates.BooleanStateDef(const index : TGUID; const default : Boolean) : Boolean;
+var
+   s : TdwsCustomState;
+begin
+   s.Key:=index;
+   if Match(s) then begin
+      case VarType(s.Value) of
+         varBoolean : Result := TVarData(s.Value).VBoolean;
+         varNull, varEmpty : Result := default;
+      else
+         Result := VariantToBool(s.Value);
+      end;
+   end else Result := default;
 end;
 
 // IntegerStateDef
