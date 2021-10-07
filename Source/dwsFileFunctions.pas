@@ -114,6 +114,10 @@ type
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
 
+   TFileReadLinesFunc = class(TInternalMagicVariantFunction)
+      procedure DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant); override;
+   end;
+
    TFileSizeFileFunc = class(TInternalMagicIntFunction)
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
@@ -410,7 +414,11 @@ begin
       n:=FileRead(GetIdwsFileHandle(args, 0), Pointer(buf)^, n);
       if n<0 then
          RaiseLastOSError
-      else SetLength(buf, n);
+      else begin
+         SetLength(buf, n);
+         if Length(buf) <> n then
+            raise Exception.CreateFmt('File too large (%d)', [ n ]);
+      end;
    end;
    args.AsDataString[1]:=buf;
    Result:=n;
@@ -433,7 +441,11 @@ begin
       n:=FileRead(GetIdwsFileHandle(args, 0), Pointer(buf)^, n);
       if n<0 then
          RaiseLastOSError
-      else SetLength(buf, n);
+      else begin
+         SetLength(buf, n);
+         if Length(Result) <> n then
+            raise Exception.CreateFmt('File too large (%d)', [ n ]);
+      end;
    end;
    RawByteStringToScriptString(buf, Result);
 end;
@@ -456,6 +468,8 @@ begin
    FileSeek(f, p, 0);
    SetLength(buf, n);
    if n>0 then begin
+      if Length(Result) <> n then
+         raise Exception.CreateFmt('File too large (%d)', [ n ]);
       n:=FileRead(f, Pointer(buf)^, n);
       if n<0 then
          RaiseLastOSError
@@ -533,6 +547,83 @@ begin
       CloseFileHandle(i.GetHandle);
       i.Clear;
    end;
+end;
+
+// ------------------
+// ------------------ TFileReadLinesFunc ------------------
+// ------------------
+
+// DoEvalAsVariant
+//
+procedure TFileReadLinesFunc.DoEvalAsVariant(const args : TExprBaseListExec; var result : Variant);
+var
+   buf : String;
+   bytes : TBytes;
+   dyn : IScriptDynArray;
+   capacity, count : NativeInt;
+   encoding : TEncoding;
+
+   procedure FlushLine(i, i0 : NativeInt);
+   var
+      rawLength, decodedLength : NativeInt;
+   begin
+      if (i > 0) and (bytes[i-1] = 13) then
+         rawLength := i - i0 - 1
+      else rawLength := i - i0;
+      if rawLength > 0 then begin
+         if encoding = TEncoding.UTF8 then begin
+            SetLength(buf, rawLength);
+            decodedLength := Utf8ToUnicode(Pointer(buf), rawLength+1, @bytes[i0], rawLength)-1;
+            if decodedLength <> rawLength then
+               SetLength(buf, decodedLength);
+         end else begin
+            buf := encoding.GetString(bytes, i0, rawLength);
+         end;
+         dyn.AsString[count] := buf;
+      end; // entries are already empty by default, no need for an "else"
+      Inc(count);
+      if count = capacity then begin
+         // grow by 37.5%
+         capacity := capacity + (capacity shr 2) + (capacity shr 3);
+         dyn.ArrayLength := capacity;
+      end;
+   end;
+
+var
+   fileName : String;
+   p : PAnsiChar;
+   i, i0, n : NativeInt;
+begin
+   fileName := args.AsFileName[0];
+   dyn := CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypString);
+   VarCopySafe(result, dyn);
+
+   bytes := LoadDataFromFile(fileName);
+   n := Length(bytes);
+   if n = 0 then Exit;
+
+   count := 0;
+   // start by assuming average line length of 128 bytes, this is conservative
+   // in terms of array element size, in case the file actually contains huge lines
+   // (such as in minified js files)
+   capacity := 8 + n div 128;
+   dyn.ArrayLength := capacity;
+
+   encoding := nil;
+   i := TEncoding.GetBufferEncoding(bytes, encoding);
+   if i = 0 then
+      encoding := TEncoding.UTF8;
+   i0 := i;
+   p := PAnsiChar(bytes);
+   while i < n do begin
+      if p[i] = #10 then begin
+         FlushLine(i, i0);
+         i0 := i + 1;
+      end;
+      Inc(i);
+   end;
+   FlushLine(i, i0);
+   dyn.ArrayLength := count;
 end;
 
 // ------------------
@@ -868,6 +959,8 @@ initialization
    RegisterInternalBoolFunction(TFileFlushBuffersFunc, 'FileFlushBuffers', ['f', SYS_FILE]);
 
    RegisterInternalProcedure(TFileCloseFunc, 'FileClose', ['f', SYS_FILE], 'Close');
+
+   RegisterInternalFunction(TFileReadLinesFunc, 'FileReadLines', ['name', SYS_STRING], SYS_ARRAY_OF_STRING, [], '');
 
    RegisterInternalIntFunction(TFileSizeFileFunc, 'FileSize', ['f', SYS_FILE], [iffOverloaded], 'Size');
    RegisterInternalIntFunction(TFileSizeNameFunc, 'FileSize', ['name', SYS_STRING], [iffOverloaded]);
