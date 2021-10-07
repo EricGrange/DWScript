@@ -759,6 +759,7 @@ type
          procedure Clear;
 
          property Count : Integer read FCount;
+         property First : PItemT read FFirst;
    end;
 
 const

@@ -116,6 +116,10 @@ type
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
+   TGlobalQueueSnapshotFunc = class(TInternalMagicDynArrayFunction)
+      procedure DoEvalAsDynArray(const args : TExprBaseListExec; var Result : IScriptDynArray); override;
+   end;
+
    TCleanupGlobalQueuesFunc = class(TInternalMagicProcedure)
       procedure DoEvalProc(const args : TExprBaseListExec); override;
    end;
@@ -183,6 +187,7 @@ function GlobalQueueInsert(const aName : String; const aValue : Variant) : Integ
 function GlobalQueuePull(const aName : String; var aValue : Variant) : Boolean;
 function GlobalQueuePop(const aName : String; var aValue : Variant) : Boolean;
 function GlobalQueueLength(const aName : String) : Integer;
+procedure GlobalQueueSnapshot(const aName : String; const destination : IScriptDynArray);
 procedure CleanupGlobalQueues(const filter : String = '*');
 
 function InternalGlobalVars : PGlobalVars;
@@ -539,6 +544,28 @@ begin
    end;
 end;
 
+// GlobalQueueSnapshot
+//
+procedure GlobalQueueSnapshot(const aName : String; const destination : IScriptDynArray);
+begin
+   vGlobalQueuesCS.BeginRead;
+   try
+      var gq := vGlobalQueues.Objects[aName];
+      if gq <> nil then begin
+         destination.ArrayLength := gq.Count;
+         if gq.Count > 0 then begin
+            var iter := gq.First;
+            for var i := 0 to gq.Count-1 do begin
+               destination.AsVariant[i] := iter.Value;
+               iter := iter.Next;
+            end;
+         end;
+      end;
+   finally
+      vGlobalQueuesCS.EndRead;
+   end;
+end;
+
 // CleanupGlobalQueues
 //
 procedure CleanupGlobalQueues(const filter : String = '*');
@@ -800,6 +827,18 @@ begin
 end;
 
 // ------------------
+// ------------------ TGlobalQueueSnapshotFunc ------------------
+// ------------------
+
+// DoEvalAsDynArray
+//
+procedure TGlobalQueueSnapshotFunc.DoEvalAsDynArray(const args : TExprBaseListExec; var Result : IScriptDynArray);
+begin
+   result := TScriptDynamicValueArray.Create((args.Expr as TTypedExpr).Typ.Typ);
+   GlobalQueueSnapshot(args.AsString[0], Result);
+end;
+
+// ------------------
 // ------------------ TReadPrivateVarFunc ------------------
 // ------------------
 
@@ -920,6 +959,7 @@ initialization
    RegisterInternalBoolFunction(TGlobalQueuePullFunc, 'GlobalQueuePull', ['n', SYS_STRING, '@v', SYS_VARIANT]);
    RegisterInternalBoolFunction(TGlobalQueuePopFunc, 'GlobalQueuePop', ['n', SYS_STRING, '@v', SYS_VARIANT]);
    RegisterInternalIntFunction(TGlobalQueueLengthFunc, 'GlobalQueueLength', ['n', SYS_STRING]);
+   RegisterInternalFunction(TGlobalQueueSnapshotFunc, 'GlobalQueueSnapshot', ['n', SYS_STRING], SYS_ARRAY_OF_VARIANT);
    RegisterInternalProcedure(TCleanupGlobalQueuesFunc, 'CleanupGlobalQueues', ['filter=*', SYS_STRING]);
 
 finalization
