@@ -5512,8 +5512,10 @@ begin
       for sym in FMembers do begin
          if sym is TMethodSymbol then begin
             meth:=TMethodSymbol(sym);
-            if meth.IsVirtual then
-               FVirtualMethodTable[meth.FVMTIndex]:=meth;
+            if meth.IsVirtual and (meth.FVMTIndex >= 0) then begin
+               Assert(meth.FVMTIndex < v);
+               FVirtualMethodTable[meth.FVMTIndex] := meth;
+            end;
          end;
       end;
    end;
