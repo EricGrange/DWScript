@@ -821,6 +821,16 @@ object dwsWebLib: TdwsWebLib
             Kind = mkClassProcedure
           end
           item
+            Name = 'SetKeepAlive'
+            Parameters = <
+              item
+                Name = 'keepAlive'
+                DataType = 'Boolean'
+              end>
+            OnEval = dwsWebClassesHttpQueryMethodsSetKeepAliveEval
+            Kind = mkClassProcedure
+          end
+          item
             Name = 'SetCustomHeaders'
             Parameters = <
               item
@@ -832,20 +842,10 @@ object dwsWebLib: TdwsWebLib
             Kind = mkClassProcedure
           end
           item
-            Name = 'SetKeepAlive'
-            Parameters = <
-              item
-                Name = 'keepAlive'
-                DataType = 'Boolean'
-              end>
-            OnEval = dwsWebClassesHttpQueryMethodsSetKeepAliveEval
-            Kind = mkProcedure
-          end
-          item
             Name = 'GetKeepAlive'
             ResultType = 'Boolean'
             OnEval = dwsWebClassesHttpQueryMethodsGetKeepAliveEval
-            Kind = mkFunction
+            Kind = mkClassFunction
           end>
         Properties = <
           item
