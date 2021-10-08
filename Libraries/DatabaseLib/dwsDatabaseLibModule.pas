@@ -234,7 +234,9 @@ class procedure TDataSet.WriteValueToJSON(wr : TdwsJSONWriter; const fld : IdwsD
    end;
 
 begin
-   case fld.DataType of
+   if fld.IsNull then
+      wr.WriteNull
+   else case fld.DataType of
       dftInteger : wr.WriteInteger(fld.AsInteger);
       dftFloat : wr.WriteNumber(fld.AsFloat);
       dftString, dftBlob : ProcessString;

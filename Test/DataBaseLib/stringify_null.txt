@@ -1,0 +1,2 @@
+{"A":null,"B":null}
+[{"A":1,"B":"two"},{"A":null,"B":null}]
