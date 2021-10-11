@@ -1451,10 +1451,11 @@ begin
       msgFmt:=CPE_ClassVarRedefined
    else if sym is TConstSymbol then
       msgFmt:=CPE_ClassConstRedefined
-   else begin
-      Assert(sym is TMethodSymbol);
+   else if sym is TMethodSymbol then begin
       msgFmt := CPE_MethodRedefined;
       TMethodSymbol(sym).IgnoreMissingImplementation := True;
+   end else begin
+      msgFmt := CPE_NameAlreadyExists
    end;
    FMsgs.AddCompilerErrorFmt(hotPos, msgFmt, [sym.Name])
 end;
