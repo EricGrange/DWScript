@@ -114,8 +114,7 @@ begin
                Inc(col);
 
             occurence := Copy(line, col, Length(symbol.Name));
-            if occurence <> symbol.Name then begin
-               Assert(UnicodeSameText(symbol.Name, occurence), symPos.ScriptPos.AsInfo);
+            if (occurence <> symbol.Name) and UnicodeSameText(symbol.Name, occurence) then begin
                location := TSymbolLocation.Create;
                location.Line := symPos.ScriptPos.Line;
                location.Col := col;
