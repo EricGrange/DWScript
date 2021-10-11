@@ -72,9 +72,9 @@ begin
    Result := 'Lock = ' + IntToStr(Lock)
            + ', DataSymbol = ' + DataSymbol.Caption
            + ', Expr = ';
-   if Expr <> nil then
-      Result := Result + Expr.ClassName
-   else Result := Result + 'nil';
+   if Expr <> nil then begin
+      Result := Result + Expr.ClassName + ' (' + Expr.ScriptPos.AsInfo + ')';
+   end else Result := Result + 'nil';
 end;
 
 end.
