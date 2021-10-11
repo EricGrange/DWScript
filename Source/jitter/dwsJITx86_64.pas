@@ -5540,9 +5540,11 @@ end;
 //
 procedure Tx86OddFunc.DoCompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup);
 begin
-   jit.CompileInteger(TMagicFuncExpr(expr).Args[0] as TTypedExpr);
+   var gpr := jit.CompileIntegerToRegister(TMagicFuncExpr(expr).Args[0] as TTypedExpr);
 
-   x86._test_reg_imm(gprRAX, 1);
+   x86._test_reg_imm(gpr, 1);
+
+   jit.ReleaseGPReg(gpr);
 
    jit.Fixups.NewConditionalJumps(flagsNZ, targetTrue, targetFalse);
 end;
@@ -5551,13 +5553,13 @@ end;
 //
 function Tx86OddFunc.CompileBooleanValue(expr : TTypedExpr) : Integer;
 begin
-   jit.CompileInteger(TMagicFuncExpr(expr).Args[0] as TTypedExpr);
+   var gpr := jit.CompileIntegerToRegister(TMagicFuncExpr(expr).Args[0] as TTypedExpr);
 
-   x86._test_reg_imm(gprRAX, 1);
+   x86._test_reg_imm(gpr, 1);
    x86._set_al_flags(flagsNZ);
-   x86._op_reg_imm(gpOp_and, gprRAX, 1);
+   x86._op_reg_imm(gpOp_and, gpr, 1);
 
-   Result := 0;
+   Result := Ord(gpr);
 end;
 
 // ------------------
