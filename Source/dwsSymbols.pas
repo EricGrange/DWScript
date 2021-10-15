@@ -235,7 +235,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); virtual;
 
          procedure EvalAsSafeScriptObj(exec : TdwsExecution; var result : IScriptObj); overload;
-         function  EvalAsSafeScriptObj(exec : TdwsExecution) : IScriptObj; overload; inline;
+         function  EvalAsSafeScriptObj(exec : TdwsExecution) : IScriptObj; overload; inline; deprecated;
 
          procedure AssignValue(exec : TdwsExecution; const value : Variant); virtual; abstract;
          procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); virtual; abstract;

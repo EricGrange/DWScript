@@ -816,8 +816,11 @@ end;
 
 function TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsRunningFastEvalBoolean(
   baseExpr: TTypedExpr; const args: TExprBaseListExec): Boolean;
+var
+   obj : IScriptObj;
 begin
-   Result := ((baseExpr.EvalAsSafeScriptObj(args.Exec).ExternalObject as TPerformanceCounter).StopTime = 0);
+   baseExpr.EvalAsSafeScriptObj(args.Exec, obj);
+   Result := ((obj.ExternalObject as TPerformanceCounter).StopTime = 0);
 end;
 
 function TdwsSystemInfoLibModule.dwsSystemInfoClassesPerformanceCounterMethodsNowFastEvalFloat(
