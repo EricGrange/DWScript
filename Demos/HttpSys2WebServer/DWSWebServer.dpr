@@ -247,6 +247,11 @@ var
    abortExecution : Boolean;
 begin
    options:=nil;
+
+   // mask FPU & SSE2 exception
+   Set8087CW($133F);
+   SetMXCSR($1F80);
+
    {$if Defined(WIN32)}
    if Win32MajorVersion<6 then begin
       LogServiceError(options, 'This program requires at least Windows 2008 or Vista');
