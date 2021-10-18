@@ -67,6 +67,7 @@ type
          procedure UnitNamesSuggest;
          procedure OverloadSuggest;
          procedure LengthDotSuggest;
+         procedure DefaultPropertySuggest;
          procedure PropertyDescription;
          procedure ImplementationSuggest;
          procedure ParameterSuggest;
@@ -1032,6 +1033,28 @@ begin
    sugg := TdwsSuggestions.Create(prog, scriptPos);
    CheckEquals(1, sugg.Count);
    CheckEquals('ToString () : String', sugg.Caption[0]);
+end;
+
+// DefaultPropertySuggest
+//
+procedure TSourceUtilsTests.DefaultPropertySuggest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog := FCompiler.Compile( 'type TTest = class'#10
+                             +'   F : array of String;'#10
+                             +'   property Prop[i : Integer] : String read (F[i]); default;'#10
+                             +'end;'#10
+                             +'var t : TTest;'#10
+                             +'PrintLn(t[0].ToU');
+
+   scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 6, 17);
+
+   sugg := TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(1, sugg.Count);
+   CheckEquals('ToUpper () : String', sugg.Caption[0]);
 end;
 
 // PropertyDescription

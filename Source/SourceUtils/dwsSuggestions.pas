@@ -377,8 +377,12 @@ begin
                FPreviousSymbolIsMeta:=False;
                if FPreviousSymbol.Typ is TArraySymbol then
                   FPreviousSymbol:=TArraySymbol(FPreviousSymbol.Typ).Typ
-               else if FPreviousSymbol is TPropertySymbol then
-                  FPreviousSymbol:=TArraySymbol(FPreviousSymbol).Typ;
+               else begin
+                  if (PreviousSymbol.Typ is TCompositeTypeSymbol) and (TCompositeTypeSymbol(PreviousSymbol.Typ).DefaultProperty <> nil) then
+                     FPreviousSymbol := TCompositeTypeSymbol(PreviousSymbol.Typ).DefaultProperty;
+                  if FPreviousSymbol is TPropertySymbol then
+                     FPreviousSymbol := FPreviousSymbol.Typ
+               end;
             end else begin
                FPreviousSymbolIsMeta:=FPreviousSymbol.IsType;
             end;
