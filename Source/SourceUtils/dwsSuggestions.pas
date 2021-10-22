@@ -379,7 +379,9 @@ begin
                   FPreviousSymbol:=TArraySymbol(FPreviousSymbol.Typ).Typ
                else begin
                   if (PreviousSymbol.Typ is TCompositeTypeSymbol) and (TCompositeTypeSymbol(PreviousSymbol.Typ).DefaultProperty <> nil) then
-                     FPreviousSymbol := TCompositeTypeSymbol(PreviousSymbol.Typ).DefaultProperty;
+                     FPreviousSymbol := TCompositeTypeSymbol(PreviousSymbol.Typ).DefaultProperty
+                  else if (PreviousSymbol is TCompositeTypeSymbol) and (TCompositeTypeSymbol(PreviousSymbol).DefaultProperty <> nil) then
+                     FPreviousSymbol := TCompositeTypeSymbol(PreviousSymbol).DefaultProperty;
                   if FPreviousSymbol is TPropertySymbol then
                      FPreviousSymbol := FPreviousSymbol.Typ
                end;

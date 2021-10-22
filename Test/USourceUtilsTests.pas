@@ -1055,6 +1055,18 @@ begin
    sugg := TdwsSuggestions.Create(prog, scriptPos);
    CheckEquals(1, sugg.Count);
    CheckEquals('ToUpper () : String', sugg.Caption[0]);
+
+   prog := FCompiler.Compile( 'type TTest = class'#10
+                             +'   class function Get(i : Integer) : String;'#10
+                             +'   property Prop[i : Integer] : String read Get; default;'#10
+                             +'end;'#10
+                             +'PrintLn(TTest[0].ToL');
+
+   scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 5, 21);
+
+   sugg := TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(1, sugg.Count);
+   CheckEquals('ToLower () : String', sugg.Caption[0]);
 end;
 
 // PropertyDescription
