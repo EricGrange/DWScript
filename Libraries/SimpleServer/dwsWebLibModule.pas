@@ -479,6 +479,7 @@ function THttpRequestThread.GetResponseHeader(const name : String) : String;
 begin
    if FResponseHeaders = nil then
       PrepareResponseHeaders;
+   Result := FResponseHeaders.Values[name];
 end;
 
 // Execute
