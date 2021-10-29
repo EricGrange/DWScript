@@ -1128,7 +1128,11 @@ begin
                   if Assigned(FServerEvents) and StrBeginsWithA(FWebResponse.ContentType, 'text/event-stream') then begin
 
                      sourceName := StrAfterChar(UTF8ToString(FWebResponse.ContentType), ',');
-                     FWebResponse.ContentType := 'text/event-stream';
+                     if StrEndsWith(sourceName, '; charset=utf-8') then begin
+                        sourceName := Copy(sourceName, 1, Length(sourceName)-15);
+                        FWebResponse.ContentType := 'text/event-stream; charset=utf-8';
+                     end else
+                        FWebResponse.ContentType := 'text/event-stream';
                      SetKnownHeader(response^.Headers.KnownHeaders[reqCacheControl], 'no-cache');
                      SetKnownHeader(response^.Headers.KnownHeaders[reqConnection], 'keep-alive');
                      response^.SetContent(dataChunkInMemory, FWebResponse.ContentData, FWebResponse.ContentType);
@@ -1161,6 +1165,8 @@ begin
                                                             response^, nil, bytesSent, nil, 0, nil, FLogDataPtr);
                      if sendResult <> HTTPAPI_ERROR_NONEXISTENTCONNECTION then
                         HttpAPI.Check(sendResult, hSendHttpResponse, 'THttpApi2Server.Execute');
+
+                     FWebResponse.Clear;
                   end;
                end;
             except

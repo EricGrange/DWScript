@@ -201,6 +201,7 @@ type
   private
     { Private declarations }
     FServer :  IWebServerInfo;
+    function GetServerEvents : IdwsHTTPServerEvents;
   public
     { Public declaration }
     property Server : IWebServerInfo read FServer write FServer;
@@ -214,6 +215,13 @@ uses dwsWinHTTP, dwsDynamicArrays, dwsICMP;
 
 const
    cDefaultKeepAlive = True;
+
+function TdwsWebLib.GetServerEvents : IdwsHTTPServerEvents;
+begin
+   if (FServer = nil) or (FServer.ServerEvents = nil) then
+      raise Exception.Create('ServerEvents cannot be called from this context');
+   Result := FServer.ServerEvents
+end;
 
 // WebServerSentEventToRawData
 //
@@ -1140,7 +1148,7 @@ var
    obj : TScriptObjInstance;
 begin
    obj := Info.ScriptObj.GetSelf as TScriptObjInstance;
-   FServer.ServerEvents.PostEvent(Info.ParamAsString[0], WebServerSentEventToRawData(obj));
+   GetServerEvents.PostEvent(Info.ParamAsString[0], WebServerSentEventToRawData(obj));
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebServerSentEventMethodsToRawDataEval(
@@ -1155,25 +1163,25 @@ end;
 procedure TdwsWebLib.dwsWebClassesWebServerSentEventsMethodsCloseEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   FServer.ServerEvents.CloseRequests(Info.ParamAsString[0]);
+   GetServerEvents.CloseRequests(Info.ParamAsString[0]);
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebServerSentEventsMethodsConnectionsEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsStringArray := FServer.ServerEvents.SourceRequests(Info.ParamAsString[0]);
+   Info.ResultAsStringArray := GetServerEvents.SourceRequests(Info.ParamAsString[0]);
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebServerSentEventsMethodsPostRawEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   FServer.ServerEvents.PostEvent(Info.ParamAsString[0], Info.ParamAsDataString[1]);
+   GetServerEvents.PostEvent(Info.ParamAsString[0], Info.ParamAsDataString[1]);
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebServerSentEventsMethodsSourceNamesEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsStringArray := FServer.ServerEvents.SourceNames;
+   Info.ResultAsStringArray := GetServerEvents.SourceNames;
 end;
 
 function TdwsWebLib.dwsWebFunctionsDeflateCompressFastEval(

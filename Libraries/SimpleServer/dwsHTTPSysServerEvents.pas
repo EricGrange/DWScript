@@ -423,7 +423,8 @@ function TdwsHTTPServerEvents.SourceNames : TStringDynArray;
 begin
    FLock.BeginRead;
    try
-      Result := FItems.Names;
+      if FItems.Count > 0 then
+         Result := FItems.Names;
    finally
       FLock.EndRead;
    end;
