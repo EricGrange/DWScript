@@ -2449,6 +2449,41 @@ function VarCompareSafe(const left, right : Variant) : TVariantRelationship;
       end else Result := vrNotEqual;
    end;
 
+   function CompareDoubles(const left, right : Double) : TVariantRelationship;
+   begin
+      if left < right then
+         Result := vrLessThan
+      else if left > right then
+         Result := vrGreaterThan
+      else if left = right then
+         Result := vrEqual
+      else Result := vrNotEqual;
+   end;
+
+   function CompareInt64(const left, right : Int64) : TVariantRelationship;
+   begin
+      if left < right then
+         Result := vrLessThan
+      else if left > right then
+         Result := vrGreaterThan
+      else Result := vrEqual
+   end;
+
+   function CompareValues(const left, right : Variant) : TVariantRelationship;
+   begin
+      case VarType(left) of
+         varDouble : case VarType(right) of
+            varDouble : Exit(CompareDoubles(TVarData(left).VDouble, TVarData(right).VDouble));
+            varInt64 : Exit(CompareDoubles(TVarData(left).VDouble, TVarData(right).VInt64));
+         end;
+         varInt64 : case VarType(right) of
+            varDouble : Exit(CompareDoubles(TVarData(left).VInt64, TVarData(right).VDouble));
+            varInt64 : Exit(CompareInt64(TVarData(left).VInt64, TVarData(right).VInt64));
+         end;
+      end;
+      Result := VarCompareValue(left, right);
+   end;
+
 begin
    case VarType(left) of
       varUnknown : begin
@@ -2468,7 +2503,7 @@ begin
    end;
    if VarType(right) = varUnknown then
       Result := CompareVarToUnknown(left, IUnknown(TVarData(right).VUnknown))
-   else Result := VarCompareValue(left, right);
+   else Result := CompareValues(left, right);
 end;
 
 // VarSetNull
