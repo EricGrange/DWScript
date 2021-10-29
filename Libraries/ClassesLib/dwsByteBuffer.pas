@@ -467,6 +467,9 @@ begin
       raise EdwsByteBuffer.CreateFmt('Offset out of range (index %d for length %d)',
                                      [offset, Count]);
 
+   if size < 0 then
+      size := NativeUInt(Count);
+
    if NativeUInt(offset) + NativeUInt(size) > NativeUInt(Count) then
       size := Count-offset;
 
