@@ -1001,6 +1001,7 @@ function StrReplaceMacros(const aStr : String; const macros : array of String;
                           const startDelimiter, stopDelimiter : String) : String;
 
 function StrCountChar(const aStr : String; c : Char) : Integer;
+function StrCountStartChar(const aStr : String; c : Char) : Integer;
 
 function WhichPowerOfTwo(const v : Int64) : Integer;
 
@@ -3772,6 +3773,19 @@ begin
          Inc(Result);
 end;
 
+// StrCountStartChar
+//
+function StrCountStartChar(const aStr : String; c : Char) : Integer;
+var
+   i : Integer;
+begin
+   Result:=0;
+   for i:=1 to Length(aStr) do
+      if aStr[i]=c then
+         Inc(Result)
+      else Break;
+end;
+
 // WhichPowerOfTwo
 //
 function WhichPowerOfTwo(const v : Int64) : Integer;
@@ -5893,7 +5907,9 @@ end;
 //
 function TNameObjectHash.GetIndex(const aName : String) : Integer;
 begin
-   Result:=GetHashedIndex(aName, HashName(aName));
+   if Count = 0 then
+      Result := -1
+   else Result := GetHashedIndex(aName, HashName(aName));
 end;
 
 // GetHashedObjects
@@ -5912,7 +5928,9 @@ end;
 //
 function TNameObjectHash.GetObjects(const aName : String) : TObject;
 begin
-   Result:=GetHashedObjects(aName, HashName(aName));
+   if Count = 0 then
+      Result := nil
+   else Result := GetHashedObjects(aName, HashName(aName));
 end;
 
 // SetHashedObjects
