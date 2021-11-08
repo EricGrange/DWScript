@@ -158,7 +158,7 @@ type
          procedure ParseJSONNumber(initialChar : WideChar; var result : Double);
 
          // reads from [ to ]
-         procedure ParseIntegerArray(dest : TSimpleInt64List);
+         procedure ParseIntegerArray(dest : TSimpleInt64List; const nullValue : Int64 = 0);
          procedure ParseNumberArray(dest : TSimpleDoubleList);
          procedure ParseStringArray(dest : TUnicodeStringList);
    end;
@@ -768,7 +768,7 @@ end;
 
 // ParseIntegerArray
 //
-procedure TdwsJSONParserState.ParseIntegerArray(dest : TSimpleInt64List);
+procedure TdwsJSONParserState.ParseIntegerArray(dest : TSimpleInt64List; const nullValue : Int64 = 0);
 
    function ParseJSONInteger(initialChar : WideChar) : Int64;
    var
@@ -810,6 +810,12 @@ begin
       case c of
          '0'..'9', '-' : begin
             dest.Add(ParseJSONInteger(c));
+         end;
+         'n' : begin
+            if (NeedChar = 'u') and (NeedChar = 'l') and (NeedChar = 'l') then
+               dest.Add(nullValue)
+            else raise EdwsJSONParseError.Create('Unexpected character after "n"');
+            TrailCharacter := NeedChar;
          end;
       else
          raise EdwsJSONParseError.CreateFmt('Unexpected character U+%.04x', [Ord(c)]);
