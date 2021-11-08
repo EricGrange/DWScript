@@ -95,12 +95,20 @@ end;
 // Destroy
 //
 destructor TUnifiedConstants.Destroy;
+
+   procedure RaiseAssert(i, refCount : Integer);
+   begin
+      Assert(False, 'Int ' + FastInt64ToStr(i) + ' count ' + FastInt64ToStr(refCount));
+   end;
+
 var
-   i : Integer;
+   i, r : Integer;
 begin
    FEmptyString.Free;
-   for i:=Low(FIntegers) to High(FIntegers) do begin
-      Assert(FIntegers[i].RefCount=0);
+   for i := Low(FIntegers) to High(FIntegers) do begin
+      r := FIntegers[i].RefCount;
+      if r <> 0 then
+         RaiseAssert(i, r);
       FIntegers[i].Free;
    end;
    FZeroFloat.Free;
