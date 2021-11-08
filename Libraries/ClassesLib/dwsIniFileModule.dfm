@@ -1,7 +1,5 @@
 object dwsIniFileLib: TdwsIniFileLib
   OldCreateOrder = False
-  Left = 624
-  Top = 95
   Height = 150
   Width = 215
   object dwsIniFile: TdwsUnit
@@ -104,6 +102,29 @@ object dwsIniFileLib: TdwsIniFileLib
             ResultType = 'array of String'
             OnEval = dwsIniFileClassesTIniFileMethodsReadSectionNamesEval
             Kind = mkFunction
+          end
+          item
+            Name = 'GetEncoding'
+            ResultType = 'String'
+            OnEval = dwsIniFileClassesTIniFileMethodsGetEncodingEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'SetEncoding'
+            Parameters = <
+              item
+                Name = 'n'
+                DataType = 'String'
+              end>
+            OnEval = dwsIniFileClassesTIniFileMethodsSetEncodingEval
+            Kind = mkProcedure
+          end>
+        Properties = <
+          item
+            Name = 'Encoding'
+            DataType = 'String'
+            ReadAccess = 'GetEncoding'
+            WriteAccess = 'SetEncoding'
           end>
         OnCleanUp = dwsIniFileClassesTIniFileCleanUp
       end>

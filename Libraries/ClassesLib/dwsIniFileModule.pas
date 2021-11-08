@@ -28,6 +28,10 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsIniFileClassesTIniFileMethodsReadSectionNamesEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsIniFileClassesTIniFileMethodsGetEncodingEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsIniFileClassesTIniFileMethodsSetEncodingEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FOnCreateIniFile : TdwsIniFileConstructor;
@@ -49,7 +53,10 @@ begin
    fileName := Info.ParamAsFileName[0];
    if Assigned(FOnCreateIniFile) then
       ExtObject := FOnCreateIniFile(fileName)
-   else ExtObject := TIniFile.Create(fileName);
+   else begin
+      ExtObject := TMemIniFile.Create(fileName);
+      TMemIniFile(ExtObject).AutoSave := True;
+   end;
 end;
 
 procedure TdwsIniFileLib.dwsIniFileClassesTIniFileCleanUp(
@@ -62,6 +69,19 @@ procedure TdwsIniFileLib.dwsIniFileClassesTIniFileMethodsFileNameEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString := (ExtObject as TCustomIniFile).FileName;
+end;
+
+procedure TdwsIniFileLib.dwsIniFileClassesTIniFileMethodsGetEncodingEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   encoding : TEncoding;
+begin
+   if ExtObject is TMemIniFile then
+      encoding := TMemIniFile(ExtObject).Encoding
+   else encoding := nil;
+   if encoding <> nil then
+      Info.ResultAsString := encoding.MIMEName
+   else Info.ResultAsString := '';
 end;
 
 procedure TdwsIniFileLib.dwsIniFileClassesTIniFileMethodsEraseSectionEval(
@@ -82,6 +102,17 @@ begin
    Info.ResultAsString := (ExtObject as TCustomIniFile).ReadString(
       Info.ParamAsString[0], Info.ParamAsString[1], Info.ParamAsString[2]
    );
+end;
+
+procedure TdwsIniFileLib.dwsIniFileClassesTIniFileMethodsSetEncodingEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   encoding : TEncoding;
+begin
+   if ExtObject is TMemIniFile then begin
+      encoding := TEncoding.GetEncoding(Info.ParamAsString[0]);
+      TMemIniFile(ExtObject).Encoding := encoding;
+   end else raise Exception.Create('Setting encoding not supported');
 end;
 
 procedure TdwsIniFileLib.dwsIniFileClassesTIniFileMethodsWriteStringEval(
