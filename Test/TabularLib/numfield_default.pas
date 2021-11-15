@@ -8,15 +8,15 @@ for var i := 1 to 10 do begin
 
    var tab := TabularData.CreateFromDataSet(db.Query('select * from test'), [ 'nojit' ]);
 
-   Print(tab.EvaluateAggregate('sum', [ '"a" 0.1' ]));
+   Print(tab.EvaluateAggregate('sum', [ '"a" 0.1' ]).ToString(5));
    Print(#9);
-   PrintLn(tab.EvaluateAggregate('sum', [ '"a"' ]));
+   PrintLn(tab.EvaluateAggregate('sum', [ '"a"' ]).ToString(5));
 
    tab := TabularData.CreateFromDataSet(db.Query('select * from test'), [ 'jit' ]);
 
-   Print(tab.EvaluateAggregate('sum', [ '"a" 0.1' ]));
+   Print(tab.EvaluateAggregate('sum', [ '"a" 0.1' ]).ToString(5));
    Print(#9);
-   PrintLn(tab.EvaluateAggregate('sum', [ '"a"' ]));
+   PrintLn(tab.EvaluateAggregate('sum', [ '"a"' ]).ToString(5));
 
 end;
 

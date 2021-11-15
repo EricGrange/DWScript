@@ -8,7 +8,7 @@ var tab := TabularData.CreateFromDataSet(db.Query('select * from test'), [ 'jit'
 procedure Test(ops : array of String);
 begin
    PrintLn(ops.Join(','));
-   PrintLn(tab.EvaluateAggregate('sum', ops));
+   PrintLn(tab.EvaluateAggregate('sum', ops).ToString(5));
 end;
 
 Test([ '"a"', '"b"', '+', '"c"', '+' ]);
