@@ -68,13 +68,17 @@ type
          procedure movsd_indexed;
          procedure mov_indexed;
          procedure lea;
-         procedure vpcmpeqq;
+         procedure vcmp;
+         procedure vpcmpeq;
          procedure vblend;
          procedure vbroadcast;
          procedure v_op_pd;
+         procedure v_op_ps;
          procedure _vmovdqu;
          procedure _vmovupd_ptr_indexed;
+         procedure _vmovups_ptr_indexed;
          procedure _vmovupd_ptr_reg;
+         procedure _vmovups_ptr_reg;
          procedure _vfma;
    end;
 
@@ -1473,10 +1477,60 @@ begin
                , DisasmStream);
 end;
 
-// vpcmpeqq
+// vcmp
 //
-procedure TJITx86_64Tests.vpcmpeqq;
+procedure TJITx86_64Tests.vcmp;
 begin
+   FStream._vcmpps(ymm0, ymm0, ymm0, 0);
+   FStream._vcmpps(ymm1, ymm2, ymm3, 1);
+   FStream._vcmpps(ymm5, ymm0, ymm7, 2);
+   FStream._vcmpps(ymm9, ymm10, ymm15, 3);
+   FStream._vcmpps(ymm10, ymm7, ymm5, 4);
+   FStream._vcmpps(ymm3, ymm4, ymm8, 5);
+   CheckEquals(  ''
+               + 'vcmpeqps ymm0, ymm0, ymm0, 00h'#13#10
+               + 'vcmpltps ymm1, ymm2, ymm3, 01h'#13#10
+               + 'vcmpleps ymm5, ymm0, ymm7, 02h'#13#10
+               + 'vcmpunordps ymm9, ymm10, ymm15, 03h'#13#10
+               + 'vcmpneqps ymm10, ymm7, ymm5, 04h'#13#10
+               + 'vcmpnltps ymm3, ymm4, ymm8, 05h'#13#10
+               , DisasmStream);
+
+   FStream._vcmppd(ymm0, ymm0, ymm0, 0);
+   FStream._vcmppd(ymm1, ymm2, ymm3, 1);
+   FStream._vcmppd(ymm5, ymm0, ymm7, 2);
+   FStream._vcmppd(ymm9, ymm10, ymm15, 3);
+   FStream._vcmppd(ymm10, ymm7, ymm5, 4);
+   FStream._vcmppd(ymm3, ymm4, ymm8, 5);
+   CheckEquals(  ''
+               + 'vcmpeqpd ymm0, ymm0, ymm0, 00h'#13#10
+               + 'vcmpltpd ymm1, ymm2, ymm3, 01h'#13#10
+               + 'vcmplepd ymm5, ymm0, ymm7, 02h'#13#10
+               + 'vcmpunordpd ymm9, ymm10, ymm15, 03h'#13#10
+               + 'vcmpneqpd ymm10, ymm7, ymm5, 04h'#13#10
+               + 'vcmpnltpd ymm3, ymm4, ymm8, 05h'#13#10
+               , DisasmStream);
+end;
+
+// vpcmpeq
+//
+procedure TJITx86_64Tests.vpcmpeq;
+begin
+   FStream._vpcmpeqd(ymm0, ymm0, ymm0);
+   FStream._vpcmpeqd(ymm1, ymm2, ymm3);
+   FStream._vpcmpeqd(ymm5, ymm0, ymm7);
+   FStream._vpcmpeqd(ymm9, ymm10, ymm15);
+   FStream._vpcmpeqd(ymm10, ymm7, ymm5);
+   FStream._vpcmpeqd(ymm3, ymm4, ymm8);
+   CheckEquals(  ''
+               + 'vpcmpeqd ymm0, ymm0, ymm0'#13#10
+               + 'vpcmpeqd ymm1, ymm2, ymm3'#13#10
+               + 'vpcmpeqd ymm5, ymm0, ymm7'#13#10
+               + 'vpcmpeqd ymm9, ymm10, ymm15'#13#10
+               + 'vpcmpeqd ymm10, ymm7, ymm5'#13#10
+               + 'vpcmpeqd ymm3, ymm4, ymm8'#13#10
+               , DisasmStream);
+
    FStream._vpcmpeqq(ymm0, ymm0, ymm0);
    FStream._vpcmpeqq(ymm1, ymm2, ymm3);
    FStream._vpcmpeqq(ymm5, ymm0, ymm7);
@@ -1503,6 +1557,12 @@ begin
    FStream._vpblendvb(ymm9, ymm10, ymm15, ymm12);
    FStream._vpblendvb(ymm1, ymm2, ymm8, ymm9);
 
+   FStream._vblendvps(ymm0, ymm0, ymm0, ymm0);
+   FStream._vblendvps(ymm1, ymm2, ymm3, ymm4);
+   FStream._vblendvps(ymm5, ymm0, ymm7, ymm2);
+   FStream._vblendvps(ymm9, ymm10, ymm15, ymm12);
+   FStream._vblendvps(ymm1, ymm2, ymm8, ymm9);
+
    FStream._vblendvpd(ymm0, ymm0, ymm0, ymm0);
    FStream._vblendvpd(ymm1, ymm2, ymm3, ymm4);
    FStream._vblendvpd(ymm5, ymm0, ymm7, ymm2);
@@ -1514,6 +1574,11 @@ begin
                + 'vpblendvb ymm5, ymm0, ymm7, ymm2'#13#10
                + 'vpblendvb ymm9, ymm10, ymm15, ymm12'#13#10
                + 'vpblendvb ymm1, ymm2, ymm8, ymm9'#13#10
+               + 'vblendvps ymm0, ymm0, ymm0, ymm0'#13#10
+               + 'vblendvps ymm1, ymm2, ymm3, ymm4'#13#10
+               + 'vblendvps ymm5, ymm0, ymm7, ymm2'#13#10
+               + 'vblendvps ymm9, ymm10, ymm15, ymm12'#13#10
+               + 'vblendvps ymm1, ymm2, ymm8, ymm9'#13#10
                + 'vblendvpd ymm0, ymm0, ymm0, ymm0'#13#10
                + 'vblendvpd ymm1, ymm2, ymm3, ymm4'#13#10
                + 'vblendvpd ymm5, ymm0, ymm7, ymm2'#13#10
@@ -1541,6 +1606,34 @@ begin
                + 'vbroadcastsd ymm9, qword ptr [rcx+7Bh]'#13#10
                + 'vbroadcastsd ymm2, qword ptr [r8+0001E240h]'#13#10
                + 'vbroadcastsd ymm8, qword ptr [r9-05h]'#13#10
+               , DisasmStream);
+
+   FStream._vbroadcastss(ymm0, xmm0);
+   FStream._vbroadcastss(ymm1, xmm2);
+   FStream._vbroadcastss(ymm9, xmm12);
+   FStream._vbroadcastss_ptr_reg(ymm0, gprRAX, 0);
+   FStream._vbroadcastss_ptr_reg(ymm9, gprRCX, 123);
+   FStream._vbroadcastss_ptr_reg(ymm2, gprR8, 123456);
+   FStream._vbroadcastss_ptr_reg(ymm8, gprR9, -5);
+   CheckEquals(  ''
+               + 'vbroadcastss ymm0, xmm0'#13#10
+               + 'vbroadcastss ymm1, xmm2'#13#10
+               + 'vbroadcastss ymm9, xmm12'#13#10
+               + 'vbroadcastss ymm0, dword ptr [rax]'#13#10
+               + 'vbroadcastss ymm9, dword ptr [rcx+7Bh]'#13#10
+               + 'vbroadcastss ymm2, dword ptr [r8+0001E240h]'#13#10
+               + 'vbroadcastss ymm8, dword ptr [r9-05h]'#13#10
+               , DisasmStream);
+
+   FStream._vpbroadcastd_ptr_reg(ymm0, gprRAX, 0);
+   FStream._vpbroadcastd_ptr_reg(ymm9, gprRCX, 123);
+   FStream._vpbroadcastd_ptr_reg(ymm2, gprR8, 123456);
+   FStream._vpbroadcastd_ptr_reg(ymm8, gprR9, -5);
+   CheckEquals(  ''
+               + 'vpbroadcastd ymm0, dword ptr [rax]'#13#10
+               + 'vpbroadcastd ymm9, dword ptr [rcx+7Bh]'#13#10
+               + 'vpbroadcastd ymm2, dword ptr [r8+0001E240h]'#13#10
+               + 'vpbroadcastd ymm8, dword ptr [r9-05h]'#13#10
                , DisasmStream);
 
    FStream._vpbroadcastq_ptr_reg(ymm0, gprRAX, 0);
@@ -1580,6 +1673,26 @@ begin
                + 'vminpd ymm1, ymm12, ymm5'#13#10
                + 'vmaxpd ymm8, ymm0, ymm12'#13#10
                + 'vsubpd ymm2, ymm11, ymm13'#13#10
+               , DisasmStream);
+end;
+
+// v_op_ps
+//
+procedure TJITx86_64Tests.v_op_ps;
+begin
+   FStream._v_op_ps(xmm_xorpd, ymm0, ymm1, ymm2);
+   FStream._v_op_ps(xmm_addpd, ymm8, ymm9, ymm10);
+   FStream._v_op_ps(xmm_mulpd, ymm15, ymm0, ymm9);
+   FStream._v_op_ps(xmm_minpd, ymm1, ymm12, ymm5);
+   FStream._v_op_ps(xmm_maxpd, ymm8, ymm0, ymm12);
+   FStream._v_op_ps(xmm_subpd, ymm2, ymm11, ymm13);
+   CheckEquals(  ''
+               + 'vxorps ymm0, ymm1, ymm2'#13#10
+               + 'vaddps ymm8, ymm9, ymm10'#13#10
+               + 'vmulps ymm15, ymm0, ymm9'#13#10
+               + 'vminps ymm1, ymm12, ymm5'#13#10
+               + 'vmaxps ymm8, ymm0, ymm12'#13#10
+               + 'vsubps ymm2, ymm11, ymm13'#13#10
                , DisasmStream);
 end;
 
@@ -1623,6 +1736,24 @@ begin
                , DisasmStream);
 end;
 
+// _vmovups_ptr_indexed
+//
+procedure TJITx86_64Tests._vmovups_ptr_indexed;
+begin
+   FStream._vmovups_ptr_indexed(ymm0, gprRAX, gprRAX, 1, 0);
+   FStream._vmovups_ptr_indexed(ymm8, gprRAX, gprRCX, 1, 0);
+   FStream._vmovups_ptr_indexed(ymm8, gprRAX, gprRCX, 1, 1);
+   FStream._vmovups_ptr_indexed(ymm9, gprRCX, gprRDI, 2, 12);
+   FStream._vmovups_ptr_indexed(ymm7, gprRCX, gprRDI, 2, 123456);
+   CheckEquals(  ''
+               + 'vmovups ymm0, ymmword ptr [rax+rax]'#13#10
+               + 'vmovups ymm8, ymmword ptr [rax+rcx]'#13#10
+               + 'vmovups ymm8, ymmword ptr [rax+rcx+01h]'#13#10
+               + 'vmovups ymm9, ymmword ptr [rcx+rdi*2+0Ch]'#13#10
+               + 'vmovups ymm7, ymmword ptr [rcx+rdi*2+0001E240h]'#13#10
+               , DisasmStream);
+end;
+
 // _vmovupd_ptr_reg
 //
 procedure TJITx86_64Tests._vmovupd_ptr_reg;
@@ -1645,6 +1776,28 @@ begin
                , DisasmStream);
 end;
 
+// _vmovups_ptr_reg
+//
+procedure TJITx86_64Tests._vmovups_ptr_reg;
+begin
+   FStream._vmovups_ptr_reg(ymm0, gprRAX, 0);
+   FStream._vmovups_ptr_reg(ymm8, gprRBP, 1);
+   FStream._vmovups_ptr_reg(ymm1, gprRDX, 123456);
+   FStream._vmovups_ptr_reg_reg(gprRAX, 0, ymm0);
+   FStream._vmovups_ptr_reg_reg(gprRBP, 1, ymm8);
+   FStream._vmovups_ptr_reg_reg(gprRDX, 123456, ymm1);
+   FStream._vmovups_ptr_reg_reg(gprRBP, -$d0, ymm9);
+   CheckEquals(  ''
+               + 'vmovups ymm0, ymmword ptr [rax]'#13#10
+               + 'vmovups ymm8, ymmword ptr [rbp+01h]'#13#10
+               + 'vmovups ymm1, ymmword ptr [rdx+0001E240h]'#13#10
+               + 'vmovups ymmword ptr [rax], ymm0'#13#10
+               + 'vmovups ymmword ptr [rbp+01h], ymm8'#13#10
+               + 'vmovups ymmword ptr [rdx+0001E240h], ymm1'#13#10
+               + 'vmovups ymmword ptr [rbp-000000D0h], ymm9'#13#10
+               , DisasmStream);
+end;
+
 // _vfma
 //
 procedure TJITx86_64Tests._vfma;
@@ -1654,12 +1807,24 @@ begin
    FStream._vfmadd_pd(132, ymm1, ymm9, ymm1);
    FStream._vfmadd_pd(213, ymm10, ymm8, ymm3);
    FStream._vfmadd_pd(231, ymm11, ymm10, ymm12);
+
+   FStream._vfmadd_ps(231, ymm0, ymm1, ymm2);
+   FStream._vfmadd_ps(213, ymm9, ymm0, ymm0);
+   FStream._vfmadd_ps(132, ymm1, ymm9, ymm1);
+   FStream._vfmadd_ps(213, ymm10, ymm8, ymm3);
+   FStream._vfmadd_ps(231, ymm11, ymm10, ymm12);
+
    CheckEquals(  ''
                + 'vfmadd231pd ymm0, ymm1, ymm2'#13#10
                + 'vfmadd213pd ymm9, ymm0, ymm0'#13#10
                + 'vfmadd132pd ymm1, ymm9, ymm1'#13#10
                + 'vfmadd213pd ymm10, ymm8, ymm3'#13#10
                + 'vfmadd231pd ymm11, ymm10, ymm12'#13#10
+               + 'vfmadd231ps ymm0, ymm1, ymm2'#13#10
+               + 'vfmadd213ps ymm9, ymm0, ymm0'#13#10
+               + 'vfmadd132ps ymm1, ymm9, ymm1'#13#10
+               + 'vfmadd213ps ymm10, ymm8, ymm3'#13#10
+               + 'vfmadd231ps ymm11, ymm10, ymm12'#13#10
                , DisasmStream);
 end;
 

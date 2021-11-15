@@ -159,6 +159,7 @@ type
       function NewNegRegImm(reg : TxmmRegister) : TStaticDataFixup;
       function NewXMMOpRegImm(op : TxmmOp; reg : TxmmRegister; const value : Double) : TStaticDataFixup;
       function NewXMMOpRegPDImm(op : TxmmOp_pd; reg : TxmmRegister; const value1, value2 : Double) : TStaticDataFixup;
+      function NewYMMOpRegPSImm(op : TxmmOp_pd; reg : TymmRegister; const value1, value2, value3, value4 : Double) : TStaticDataFixup;
       function NewYMMOpRegPDImm(op : TxmmOp_pd; reg : TymmRegister; const value1, value2, value3, value4 : Double) : TStaticDataFixup;
       function NewYMMBroadcastImm(reg : TymmRegister; const value1234 : Double) : TStaticDataFixup;
       function NewYMM_FMA_Imm(dest, mult : TymmRegister; const add : Double) : TStaticDataFixup;
@@ -2466,6 +2467,23 @@ begin
    Assert(reg in [xmm0..High(TxmmRegister)]);
    Result.Logic := Self;
    Result.DataIndex := AddStaticData128(PUInt64(@value1)^, PUInt64(@value2)^);
+   AddFixup(Result);
+end;
+
+// NewYMMOpRegPSImm
+//
+function Tx86_64FixupLogicHelper.NewYMMOpRegPSImm(op : TxmmOp_pd; reg : TymmRegister; const value1, value2, value3, value4 : Double) : TStaticDataFixup;
+var
+   srcReg : TymmRegister;
+begin
+   if op = xmm_movpd then
+      srcReg := ymm0
+   else srcReg := reg;
+   if reg < ymm8 then
+      Result := TStaticDataFixup.Create([$C5, $FC - 8*(Ord(srcReg) and 7), Ord(op), $05 + 8*(Ord(reg) and 7)])
+   else Result := TStaticDataFixup.Create([$C5, $7C - 8*(Ord(srcReg) and 7), Ord(op), $05 + 8*(Ord(reg) and 7)]);
+   Result.Logic := Self;
+   Result.DataIndex := AddStaticData256(PUInt64(@value1)^, PUInt64(@value2)^, PUInt64(@value3)^, PUInt64(@value4)^);
    AddFixup(Result);
 end;
 
