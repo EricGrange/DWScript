@@ -23,6 +23,12 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsTabularClassesTabularDataConstructorsCreateEval(
       Info: TProgramInfo; var ExtObject: TObject);
+    procedure dwsTabularClassesTabularDataConstructorsConnectToSharedEval(
+      Info: TProgramInfo; var ExtObject: TObject);
+    procedure dwsTabularClassesTabularDataMethodsLockAndShareEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsTabularClassesTabularDataMethodsColumnNamesEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FScript : TDelphiWebScript;
@@ -34,16 +40,111 @@ type
 
 implementation
 
-uses dwsUtils, dwsTabular, dwsDatabaseLibModule, dwsDatabase, dwsJIT;
+uses dwsUtils, dwsTabular, dwsDatabaseLibModule, dwsDatabase, dwsJIT, dwsXPlatform;
 
 {$R *.dfm}
 
-function PrepareExprFromOpcode(const tabular : TdwsTabular; const opCodes : IScriptDynArray) : TdwsTabularExpression;
+var
+   vSharedTabulars : TSimpleNameObjectHash<TdwsTabular>;
+   vSharedTabularsLock : TdwsCriticalSection;
+
+procedure PurgeSharedTabulars;
+begin
+   vSharedTabularsLock.Enter;
+   try
+      for var i := 0 to vSharedTabulars.HighIndex do begin
+         var tab := vSharedTabulars.BucketObject[i];
+         if (tab <> nil) and (tab.SharedCount = 0) then begin
+            vSharedTabulars.BucketObject[i] := nil;
+            tab.Free;
+         end;
+      end;
+   finally
+      vSharedTabularsLock.Leave;
+   end;
+end;
+
+type
+   TScriptTabular = class
+      FTabular : TdwsTabular;
+      FJIT : TdwsTabularJIT;
+      FShareName : String;
+      constructor CreateNew;
+      constructor CreateFromShared(const name : String);
+      destructor Destroy; override;
+      procedure LockAndShare(const name : String);
+      procedure ParseOptions(const options : IScriptDynArray);
+      function PrepareExprFromOpcode(const opCodes : IScriptDynArray) : TdwsTabularExpression;
+   end;
+
+constructor TScriptTabular.CreateNew;
+begin
+   inherited Create;
+   FTabular := TdwsTabular.Create;
+end;
+
+constructor TScriptTabular.CreateFromShared(const name : String);
+begin
+   inherited Create;
+   if name = '' then
+      raise EdwsTabular.Create('Share name cannot be empty');
+   vSharedTabularsLock.Enter;
+   try
+      FTabular := vSharedTabulars.Objects[name];
+      if FTabular = nil then begin
+         FTabular := TdwsTabular.Create;
+         vSharedTabulars.Objects[name] := FTabular
+      end;
+      FTabular.IncSharedCount
+   finally
+      vSharedTabularsLock.Leave;
+   end;
+   FShareName := name;
+end;
+
+destructor TScriptTabular.Destroy;
+begin
+   inherited;
+   FreeAndNil(FJIT);
+   if FTabular <> nil then begin
+      if FTabular.SharedCount > 0 then
+         FTabular.DecSharedCount
+      else FreeAndNil(FTabular);
+   end;
+end;
+
+// LockAndShare
+//
+procedure TScriptTabular.LockAndShare(const name : String);
+var
+   existing : TdwsTabular;
+begin
+   if name = '' then
+      raise EdwsTabular.Create('Share name cannot be empty');
+   if FShareName <> '' then
+      raise EdwsTabular.CreateFmt('Already shared as "%s"', [ name ]);
+   vSharedTabularsLock.Enter;
+   try
+      existing := vSharedTabulars.Objects[name];
+      if existing <> nil then begin
+         if existing.SharedCount = 0 then
+            existing.Free
+         else raise EdwsTabular.CreateFmt('Shared tabular "%s" already in use', [ name ]);
+      end;
+      FTabular.IncSharedCount;
+      vSharedTabulars.Objects[name] := FTabular;
+   finally
+      vSharedTabularsLock.Leave;
+   end;
+   FShareName := name;
+end;
+
+function TScriptTabular.PrepareExprFromOpcode(const opCodes : IScriptDynArray) : TdwsTabularExpression;
 var
    bufStr : String;
    i : Integer;
 begin
-   Result := TdwsTabularExpression.Create(tabular);
+   Result := TdwsTabularExpression.Create(FTabular, FJIT);
    try
       for i := 0 to opCodes.ArrayLength-1 do begin
          case opCodes.VarType(i) of
@@ -60,26 +161,28 @@ begin
    end;
 end;
 
-function ParseOptions(const options : IScriptDynArray) : TdwsTabular;
+procedure TScriptTabular.ParseOptions(const options : IScriptDynArray);
 var
    buf : String;
-   autoJIT : Boolean;
+   autoJIT, initJIT : Boolean;
 begin
    autoJIT := True;
+   initJIT := False;
 
-   Result := TdwsTabular.Create;
    for var i := 0 to options.ArrayLength-1 do begin
       options.EvalAsString(i, buf);
       if buf = 'jit' then
-         Result.InitializeJIT
+         initJIT := True
       else if buf = 'nojit' then
          autoJIT := False;
    end;
-   if autoJIT then begin
+   if autoJIT and (FTabular <> nil) then begin
       // JIT overhead is not worth it for smaller datasets
-      if Result.RowCount >= 256 then
-         Result.InitializeJIT;
+      if FTabular.RowCount >= 256 then
+         initJIT := True;
    end;
+   if initJIT then
+      FJIT := TdwsTabularJIT.Create;
 end;
 
 procedure TdwsTabularLib.SetScript(const val : TDelphiWebScript);
@@ -96,7 +199,16 @@ end;
 procedure TdwsTabularLib.dwsTabularClassesTabularDataConstructorsCreateEval(
   Info: TProgramInfo; var ExtObject: TObject);
 begin
-   var tabular := ParseOptions(Info.ParamAsScriptDynArray[0]);
+   var tabular := TScriptTabular.CreateNew;
+   tabular.ParseOptions(Info.ParamAsScriptDynArray[0]);
+   ExtObject := tabular;
+end;
+
+procedure TdwsTabularLib.dwsTabularClassesTabularDataConstructorsConnectToSharedEval(
+  Info: TProgramInfo; var ExtObject: TObject);
+begin
+   var tabular := TScriptTabular.CreateFromShared(Info.ParamAsString[0]);
+   tabular.ParseOptions(Info.ParamAsScriptDynArray[1]);
    ExtObject := tabular;
 end;
 
@@ -110,8 +222,10 @@ begin
    var ds := Info.ParamAsScriptObj[0];
    var scriptDS := (ds.ExternalObject as TScriptDataSet).Intf;
 
-   var tabular := ParseOptions(Info.ParamAsScriptDynArray[1]);
-   ExtObject := tabular;
+   var scriptTabular := TScriptTabular.CreateNew;
+   ExtObject := scriptTabular;
+
+   var tabular := scriptTabular.FTabular;
 
    var nbFields := scriptDS.FieldCount;
    SetLength(dsFields, nbFields);
@@ -139,12 +253,15 @@ begin
       end;
       scriptDS.Next;
    end;
+
+   scriptTabular.ParseOptions(Info.ParamAsScriptDynArray[1]);
 end;
 
 procedure TdwsTabularLib.dwsTabularClassesTabularDataMethodsAddColumnEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   var tabular := Info.ScriptObj.ExternalObject as TdwsTabular;
+   var scriptTabular := Info.ScriptObj.ExternalObject as TScriptTabular;
+   var tabular := scriptTabular.FTabular;
    var name := Info.ParamAsString[0];
    if name = '' then
       raise Exception.Create('Name should not be empty');
@@ -159,23 +276,30 @@ begin
       column.Add(values.AsFloat[i]);
 end;
 
+procedure TdwsTabularLib.dwsTabularClassesTabularDataMethodsColumnNamesEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   var tabular := Info.ScriptObj.ExternalObject as TScriptTabular;
+   Info.ResultAsStringArray := tabular.FTabular.ColumnNames;
+end;
+
 procedure TdwsTabularLib.dwsTabularClassesTabularDataMethodsDropColumnEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   var tabular := Info.ScriptObj.ExternalObject as TdwsTabular;
-   info.ResultAsBoolean := tabular.DropColumn(Info.ParamAsString[0]);
+   var tabular := Info.ScriptObj.ExternalObject as TScriptTabular;
+   info.ResultAsBoolean := tabular.FTabular.DropColumn(Info.ParamAsString[0]);
 end;
 
 procedure TdwsTabularLib.dwsTabularClassesTabularDataMethodsEvaluateAggregateEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   var tabular := Info.ScriptObj.ExternalObject as TdwsTabular;
+   var tabular := Info.ScriptObj.ExternalObject as TScriptTabular;
    var aggregateFunc := Info.ParamAsString[0];
    var opCodes := Info.ParamAsScriptDynArray[1];
    var fromIndex := Info.ParamAsInteger[2];
    var toIndex := Info.ParamAsInteger[3];
 
-   var expr := PrepareExprFromOpcode(tabular, opCodes);
+   var expr := tabular.PrepareExprFromOpcode(opCodes);
    try
       expr.JITCompile;
       if aggregateFunc = 'sum' then begin
@@ -189,13 +313,13 @@ end;
 procedure TdwsTabularLib.dwsTabularClassesTabularDataMethodsEvaluateNewColumnEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   var tabular := Info.ScriptObj.ExternalObject as TdwsTabular;
+   var tabular := Info.ScriptObj.ExternalObject as TScriptTabular;
    var opCodes := Info.ParamAsScriptDynArray[1];
 
-   var expr := PrepareExprFromOpcode(tabular, opCodes);
+   var expr := tabular.PrepareExprFromOpcode(opCodes);
    try
       expr.JITCompile;
-      var column := tabular.AddColumn(Info.ParamAsString[0]);
+      var column := tabular.FTabular.AddColumn(Info.ParamAsString[0]);
       column.Add(expr.EvaluateAll);
    finally
       expr.Free;
@@ -236,7 +360,8 @@ var
 var
    buf : String;
 begin
-   var tabular := Info.ScriptObj.ExternalObject as TdwsTabular;
+   var scriptTabular := Info.ScriptObj.ExternalObject as TScriptTabular;
+   var tabular := scriptTabular.FTabular;
    var columnNames := Info.ParamAsScriptDynArray[0];
 
    quote := Info.ParamAsString[2];
@@ -277,5 +402,29 @@ begin
       wobs.Free;
    end;
 end;
+
+procedure TdwsTabularLib.dwsTabularClassesTabularDataMethodsLockAndShareEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   var scriptTabular := Info.ScriptObj.ExternalObject as TScriptTabular;
+   scriptTabular.LockAndShare(Info.ParamAsString[0]);
+end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   vSharedTabulars := TSimpleNameObjectHash<TdwsTabular>.Create;
+   vSharedTabularsLock := TdwsCriticalSection.Create;
+
+finalization
+
+   PurgeSharedTabulars;
+   FreeAndNil(vSharedTabularsLock);
+   FreeAndNil(vSharedTabulars);
 
 end.
