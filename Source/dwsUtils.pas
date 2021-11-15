@@ -33,6 +33,7 @@ type
 
    TStringDynArray = array of String;
    TInt64DynArray = array of Int64;
+   TSingleDynArray = array of Single;
    TDoubleDynArray = array of Double;
    TInterfaceDynArray = array of IUnknown;
 
@@ -54,6 +55,8 @@ type
    TUInt8Array = array [0..High(MaxInt) shr 1] of UInt8;
    PUInt8Array = ^TUInt8Array;
 
+   TSingleArray = array [0..High(MaxInt) shr 4] of Single;
+   PSingleArray = ^TSingleArray;
    TDoubleArray = array [0..High(MaxInt) shr 4] of Double;
    PDoubleArray = ^TDoubleArray;
 
