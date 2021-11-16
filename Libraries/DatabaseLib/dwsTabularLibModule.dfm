@@ -92,6 +92,17 @@ object dwsTabularLib: TdwsTabularLib
             Kind = mkFunction
           end
           item
+            Name = 'Evaluate'
+            Parameters = <
+              item
+                Name = 'opcodes'
+                DataType = 'array of Variant'
+              end>
+            ResultType = 'array of Float'
+            OnEval = dwsTabularClassesTabularDataMethodsEvaluateEval
+            Kind = mkFunction
+          end
+          item
             Name = 'ExportToSeparated'
             Parameters = <
               item
@@ -153,6 +164,17 @@ object dwsTabularLib: TdwsTabularLib
             Name = 'ColumnNames'
             ResultType = 'array of String'
             OnEval = dwsTabularClassesTabularDataMethodsColumnNamesEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'ColumnStrings'
+            Parameters = <
+              item
+                Name = 'columnName'
+                DataType = 'String'
+              end>
+            ResultType = 'array of String'
+            OnEval = dwsTabularClassesTabularDataMethodsColumnStringsEval
             Kind = mkFunction
           end>
         OnCleanUp = dwsTabularClassesTabularDataCleanUp

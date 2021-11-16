@@ -29,6 +29,10 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsTabularClassesTabularDataMethodsColumnNamesEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsTabularClassesTabularDataMethodsEvaluateEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsTabularClassesTabularDataMethodsColumnStringsEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FScript : TDelphiWebScript;
@@ -40,7 +44,9 @@ type
 
 implementation
 
-uses dwsUtils, dwsTabular, dwsDatabaseLibModule, dwsDatabase, dwsJIT, dwsXPlatform;
+uses
+   dwsUtils, dwsTabular, dwsDatabaseLibModule, dwsDatabase, dwsJIT, dwsXPlatform,
+   dwsDynamicArrays;
 
 {$R *.dfm}
 
@@ -283,6 +289,25 @@ begin
    Info.ResultAsStringArray := tabular.FTabular.ColumnNames;
 end;
 
+procedure TdwsTabularLib.dwsTabularClassesTabularDataMethodsColumnStringsEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   var tabular := Info.ScriptObj.ExternalObject as TScriptTabular;
+   var columnName := Info.ParamAsString[0];
+   var column := tabular.FTabular.ColumnByName(columnName);
+   if column = nil then
+      raise EdwsTabular.CreateFmt('Unknown column "%s"', [ columnName ]);
+   if tcvString in column.Values then
+      Info.ResultAsStringArray := column.Strings
+   else begin
+      var buf : TStringDynArray;
+      SetLength(buf, Length(column.Numbers));
+      for var i := 0 to High(buf) do
+         FastFloatToStr(column.Numbers[i], buf[i], FormatSettings);
+      Info.ResultAsStringArray := buf;
+   end;
+end;
+
 procedure TdwsTabularLib.dwsTabularClassesTabularDataMethodsDropColumnEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
@@ -324,6 +349,28 @@ begin
    finally
       expr.Free;
    end;
+end;
+
+procedure TdwsTabularLib.dwsTabularClassesTabularDataMethodsEvaluateEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   var tabular := Info.ScriptObj.ExternalObject as TScriptTabular;
+   var opCodes := Info.ParamAsScriptDynArray[0];
+   var data : TdwsTabularNumberArray;
+
+   var expr := tabular.PrepareExprFromOpcode(opCodes);
+   try
+      expr.JITCompile;
+      data := expr.EvaluateAll;
+   finally
+      expr.Free;
+   end;
+
+   var dyn := TScriptDynamicNativeFloatArray.Create(Info.FuncSym.Result.Typ);
+   dyn.SetArrayLength(Length(data));
+   for var i := 0 to dyn.ArrayLength-1 do
+      dyn.SetAsFloat(i, data[i]);
+   Info.ResultAsVariant := dyn as IScriptDynArray;
 end;
 
 procedure TdwsTabularLib.dwsTabularClassesTabularDataMethodsExportToSeparatedEval(
