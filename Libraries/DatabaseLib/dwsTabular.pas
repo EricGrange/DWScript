@@ -257,6 +257,7 @@ type
          class procedure DoPushNumField(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoPushNumFieldDef(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoMultAddConst(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
+         class procedure DoMultConstAdd(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoAdd(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoAddConst(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoSub(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
@@ -975,6 +976,7 @@ constructor TdwsTabularExpression.Create(aTabular : TdwsTabular; aJIT : TdwsTabu
 begin
    inherited Create;
    FTabular := aTabular;
+   FJIT := aJIT;
 end;
 
 // Destroy
@@ -1228,6 +1230,13 @@ begin
    p^ := p^ * op.Operand1 + op.Operand2;
 end;
 
+// DoMultConstAdd
+//
+class procedure TdwsTabularExpression.DoMultConstAdd(stack : TdwsTabularStack; op : PdwsTabularOpcode);
+begin
+   stack.PeekPtr^ := stack.Pop * op.Operand1 + stack.PeekPtr^;
+end;
+
 // DoAdd
 //
 class procedure TdwsTabularExpression.DoAdd(stack : TdwsTabularStack; op : PdwsTabularOpcode);
@@ -1448,6 +1457,8 @@ begin
       end else begin
          LastOpCode.Method := @DoAddConst;
       end;
+   end else if LastOpCodeIsMultConst then begin
+      LastOpCode.Method := @DoMultConstAdd;
    end else begin
       AddOpCode.Method := @DoAdd;
    end;
@@ -1943,6 +1954,14 @@ begin
          x86._vbroadcastss_ptr_reg(regAdd, opcodesGPR, IntPtr(@op.Operand2) - IntPtr(expr.FOpcodes));
          x86._vfmadd_ps(213, reg, regMul, regAdd);
 
+      end else if @op.Method = @TdwsTabularExpression.DoMultConstAdd then begin
+         var reg := TymmRegister(op.StackDepth-1);
+         var regMul := TymmRegister(op.StackDepth);
+         var regAdd := TymmRegister(op.StackDepth-2);
+         NotifyAlteration(regAdd);
+         x86._vbroadcastss_ptr_reg(regMul, opcodesGPR, IntPtr(@op.Operand1) - IntPtr(expr.FOpcodes));
+         x86._vfmadd_ps(231, regAdd, reg, regMul);
+
       end else if @op.Method = @TdwsTabularExpression.DoAdd then begin
          x86._v_op_ps(xmm_addpd, TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-1));
       end else if @op.Method = @TdwsTabularExpression.DoAddConst then begin
@@ -2203,6 +2222,14 @@ begin
          x86._vbroadcastsd_ptr_reg(regMul, opcodesGPR, IntPtr(@op.Operand1) - IntPtr(expr.FOpcodes));
          x86._vbroadcastsd_ptr_reg(regAdd, opcodesGPR, IntPtr(@op.Operand2) - IntPtr(expr.FOpcodes));
          x86._vfmadd_pd(213, reg, regMul, regAdd);
+
+      end else if @op.Method = @TdwsTabularExpression.DoMultConstAdd then begin
+         var reg := TymmRegister(op.StackDepth-1);
+         var regMul := TymmRegister(op.StackDepth);
+         var regAdd := TymmRegister(op.StackDepth-2);
+         NotifyAlteration(regAdd);
+         x86._vbroadcastsd_ptr_reg(regMul, opcodesGPR, IntPtr(@op.Operand1) - IntPtr(expr.FOpcodes));
+         x86._vfmadd_pd(231, regAdd, reg, regMul);
 
       end else if @op.Method = @TdwsTabularExpression.DoAdd then begin
          x86._v_op_pd(xmm_addpd, TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-1));
