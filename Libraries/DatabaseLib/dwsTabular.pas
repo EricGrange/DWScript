@@ -18,7 +18,7 @@ unit dwsTabular;
 
 {$i dws.inc}
 
-{$define TABULAR_SINGLES}
+{.$define TABULAR_SINGLES}
 
 {$ifdef WIN64}
    {$define ENABLE_JIT64}
@@ -1654,22 +1654,30 @@ function TdwsTabularExpression.EvaluateAggregate(aggregate : TdwsTabularExpressi
 
    {$ifdef ENABLE_JIT64}
    function BatchSumAggregate(stack : TdwsTabularStack; batches : Integer) : Double;
+   var
+      sum1, sum2, sum3 : Double;
+      buf : TdwsTabularBatchResult;
    begin
-      var buf : TdwsTabularBatchResult;
-      var sum2 : Double := 0;
       Result := 0;
-      for var i := 1 to batches do begin
+      sum1 := 0;
+      sum2 := 0;
+      sum3 := 0;
+      for batches := batches downto 1 do begin
          JITCall(stack, buf, @FOpcodes[0]);
          stack.RowIndex := stack.RowIndex + Length(buf);
          {$ifdef TABULAR_SINGLES}
-         Result := Result + buf[0] + buf[1] + buf[2] + buf[3];
-         sum2 := sum2 + buf[4] + buf[5] + buf[6] + buf[7];
-         {$else}
          Result := Result + buf[0] + buf[1];
-         sum2 := sum2 + buf[2] + buf[3];
+         sum1 := sum1 + buf[2] + buf[3];
+         sum2 := sum2 + buf[4] + buf[5];
+         sum3 := sum3 + buf[6] + buf[7];
+         {$else}
+         Result := Result + buf[0];
+         sum1 := sum1 + buf[1];
+         sum2 := sum2 + buf[2];
+         sum3 := sum3 + buf[3];
          {$endif}
       end;
-      Result := Result + sum2;
+      Result := (Result + sum1) + (sum2 + sum3);
    end;
    {$endif}
 
