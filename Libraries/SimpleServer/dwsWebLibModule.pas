@@ -198,6 +198,8 @@ type
       ExtObject: TObject);
     procedure dwsWebClassesHttpQueryMethodsGetKeepAliveEval(Info: TProgramInfo;
       ExtObject: TObject);
+    function dwsWebFunctionsPingIPv6FastEval(
+      const args: TExprBaseListExec): Variant;
   private
     { Private declarations }
     FServer :  IWebServerInfo;
@@ -1240,6 +1242,12 @@ function TdwsWebLib.dwsWebFunctionsPingIPv4FastEval(
   const args: TExprBaseListExec): Variant;
 begin
    Result := PingIPv4(args.AsString[0], args.AsInteger[1]);
+end;
+
+function TdwsWebLib.dwsWebFunctionsPingIPv6FastEval(
+  const args: TExprBaseListExec): Variant;
+begin
+   Result := PingIPv6(args.AsString[0], args.AsInteger[1]);
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpRequestCleanUp(ExternalObject: TObject);

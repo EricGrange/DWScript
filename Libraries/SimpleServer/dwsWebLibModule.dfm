@@ -1164,6 +1164,20 @@ object dwsWebLib: TdwsWebLib
           end>
         ResultType = 'Integer'
         OnFastEval = dwsWebFunctionsPingIPv4FastEval
+      end
+      item
+        Name = 'PingIPv6'
+        Parameters = <
+          item
+            Name = 'hostName'
+            DataType = 'String'
+          end
+          item
+            Name = 'timeOutMSec'
+            DataType = 'Integer'
+          end>
+        ResultType = 'Integer'
+        OnFastEval = dwsWebFunctionsPingIPv6FastEval
       end>
     UnitName = 'System.Net'
     StaticSymbols = True
