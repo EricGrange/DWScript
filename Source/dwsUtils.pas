@@ -2504,10 +2504,21 @@ begin
             varEmpty, varNull : Exit(vrEqual);
          end;
       end;
+   else
+      if VarIsArray(left) then begin
+         if VarIsArray(right) then
+            Exit(VarCompareValue(left, right))
+         else Exit(vrNotEqual);
+      end;
    end;
-   if VarType(right) = varUnknown then
-      Result := CompareVarToUnknown(left, IUnknown(TVarData(right).VUnknown))
-   else Result := CompareValues(left, right);
+   case VarType(right) of
+      varUnknown :
+         Result := CompareVarToUnknown(left, IUnknown(TVarData(right).VUnknown));
+   else
+      if VarIsArray(right) then
+         Result := vrNotEqual
+      else Result := CompareValues(left, right);
+   end;
 end;
 
 // VarSetNull
