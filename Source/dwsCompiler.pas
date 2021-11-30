@@ -742,7 +742,8 @@ type
                                 const scriptPos: TScriptPos; options : TCreateFunctionOptions) : TFuncExprBase;
 
          procedure MemberSymbolWithNameAlreadyExists(sym : TSymbol; const hotPos : TScriptPos);
-         procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : String; typ1, typ2 : TTypeSymbol);
+         procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : String; typ1, typ2 : TTypeSymbol); overload;
+         procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : String; typ1 : TTypeSymbol; expr2 : TTypedExpr); overload;
          procedure IncompatibleTypesWarn(const scriptPos : TScriptPos; const fmt : String; typ1, typ2 : TTypeSymbol);
          procedure ReportImplicitMethodOverload(const scriptPos : TScriptPos; const name : String;
                                                 const aLevel : TdwsHintsLevel = hlNormal);
@@ -1466,6 +1467,15 @@ procedure TdwsCompiler.IncompatibleTypes(const scriptPos : TScriptPos;
                                          const fmt : String; typ1, typ2 : TTypeSymbol);
 begin
    FMsgs.AddCompilerErrorFmt(scriptPos, fmt, [typ1.Caption, typ2.Caption]);
+end;
+
+// IncompatibleTypes
+//
+procedure TdwsCompiler.IncompatibleTypes(const scriptPos : TScriptPos; const fmt : String; typ1 : TTypeSymbol; expr2 : TTypedExpr);
+begin
+   if expr2 is TFuncSimpleExpr then
+      FMsgs.AddCompilerErrorFmt(scriptPos, fmt, [typ1.Caption, TFuncSimpleExpr(expr2).FuncSym.Caption])
+   else IncompatibleTypes(scriptPos, fmt, typ1, expr2.Typ);
 end;
 
 // IncompatibleTypesWarn
@@ -8177,7 +8187,7 @@ begin
                      argList.Clear;
                   end else begin
                      IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
-                                       mapFunctionType, argList[0].Typ);
+                                       mapFunctionType, argList[0]);
                      argList.OrphanItems(FCompilerContext)
                   end;
                end;

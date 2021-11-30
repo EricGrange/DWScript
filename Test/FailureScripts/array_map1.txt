@@ -1,0 +1,2 @@
+Syntax Error: More arguments expected [line: 8, column: 7]
+Syntax Error: Incompatible parameter types - "function (String): Any Type" expected (instead of "function Test(const String): String") [line: 8, column: 7]
