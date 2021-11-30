@@ -16,6 +16,8 @@
 {**********************************************************************}
 unit dwsICMP;
 
+{$I dws.inc}
+
 interface
 
 function PingIPv4(const hostName : String; timeoutMs : Integer) : Integer;
