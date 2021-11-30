@@ -427,7 +427,13 @@ var
    buffer : IdwsByteBuffer;
 begin
    args.GetBuffer(buffer);
-   result := buffer.Copy(args.AsInteger[1], args.AsInteger[2]);
+   var start := args.AsInteger[1];
+   var n := args.AsInteger[2];
+   {$if SizeOf(NativeInt) = 4}
+   if n > MaxInt then
+      n := MaxInt;
+   {$endif}
+   result := buffer.Copy(start, n);
 end;
 
 // ------------------
