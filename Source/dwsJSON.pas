@@ -489,6 +489,8 @@ type
 procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : UnicodeString); overload; inline;
 procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; p : PWideChar; size : Integer); overload;
 
+function JSONStringify(const f : Double) : String;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -909,6 +911,13 @@ end;
 procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : UnicodeString);
 begin
    WriteJavaScriptString(destStream, PWideChar(Pointer(str)), Length(str));
+end;
+
+// JSONStringify
+//
+function JSONStringify(const f : Double) : String;
+begin
+   FastFloatToStr(f, Result, vJSONFormatSettings);
 end;
 
 // WriteJavaScriptString
@@ -2866,9 +2875,13 @@ var
    nExt : Extended;
 begin
    BeforeWriteImmediate;
-   nExt := n;
-   nc := FloatToText(buffer, nExt, fvExtended, ffGeneral, 15, 0, vJSONFormatSettings);
-   FStream.Write(buffer, nc*SizeOf(WideChar));
+   if n = 0 then
+      FStream.WriteString('0')
+   else begin
+      nExt := n;
+      nc := FloatToText(buffer, nExt, fvExtended, ffGeneral, 15, 0, vJSONFormatSettings);
+      FStream.Write(buffer, nc*SizeOf(WideChar));
+   end;
    AfterWriteImmediate;
 end;
 
