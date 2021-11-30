@@ -116,7 +116,10 @@ type
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
   end;
 
-  TCopyFunc = class(TInternalMagicStringFunction)
+  TCopy2Func = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
+  end;
+  TCopy3Func = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
   end;
 
@@ -125,10 +128,6 @@ type
   end;
 
   TRightStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
-  end;
-
-  TSubStrFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
   end;
 
@@ -595,9 +594,16 @@ begin
    Result := WebUtils.XMLTextEncode(args.AsString[0]);
 end;
 
-{ TCopyFunc }
+{ TCopy2Func }
 
-procedure TCopyFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+procedure TCopy2Func.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+begin
+   Result := Copy(args.AsString[0], args.AsInteger[1]);
+end;
+
+{ TCopy3Func }
+
+procedure TCopy3Func.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 var
    n : Int64;
 begin
@@ -623,13 +629,6 @@ begin
    args.EvalAsString(0, buf);
    n:=args.AsInteger[1];
    Result:=Copy(buf, Length(buf)+1-n, n);
-end;
-
-{ TSubStrFunc }
-
-procedure TSubStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
-begin
-   Result:=Copy(args.AsString[0], args.AsInteger[1], MaxInt);
 end;
 
 { TSubStringFunc }
@@ -1403,12 +1402,13 @@ initialization
 
    RegisterInternalStringFunction(TQuotedStrFunc, 'QuotedStr', ['str', SYS_STRING, 'quoteChar=', SYS_STRING], [iffStateLess], 'QuotedString');
 
-   RegisterInternalStringFunction(TCopyFunc, 'Copy', ['str', SYS_STRING, 'index', SYS_INTEGER, 'len=MaxInt', SYS_INTEGER], [iffStateLess], 'Copy');
+   RegisterInternalStringFunction(TCopy2Func, 'Copy', ['str', SYS_STRING, 'index', SYS_INTEGER], [ iffStateLess, iffOverloaded ], 'Copy');
+   RegisterInternalStringFunction(TCopy3Func, 'Copy', ['str', SYS_STRING, 'index', SYS_INTEGER, 'len', SYS_INTEGER], [ iffStateLess, iffOverloaded ], 'Copy');
 
    RegisterInternalStringFunction(TLeftStrFunc, 'LeftStr', ['str', SYS_STRING, 'count', SYS_INTEGER], [iffStateLess], 'Left');
    RegisterInternalStringFunction(TRightStrFunc, 'RightStr', ['str', SYS_STRING, 'count', SYS_INTEGER], [iffStateLess], 'Right');
-   RegisterInternalStringFunction(TCopyFunc, 'MidStr', ['str', SYS_STRING, 'start', SYS_INTEGER, 'count', SYS_INTEGER], [iffStateLess]);
-   RegisterInternalStringFunction(TSubStrFunc, 'SubStr', ['str', SYS_STRING, 'start', SYS_INTEGER], [iffStateLess]);
+   RegisterInternalStringFunction(TCopy3Func, 'MidStr', ['str', SYS_STRING, 'start', SYS_INTEGER, 'count', SYS_INTEGER], [ iffStateLess ]);
+   RegisterInternalStringFunction(TCopy3Func, 'SubStr', ['str', SYS_STRING, 'start', SYS_INTEGER, 'length=MaxInt', SYS_INTEGER], [ iffStateLess ]);
    RegisterInternalStringFunction(TSubStringFunc, 'SubString', ['str', SYS_STRING, 'start', SYS_INTEGER, 'end', SYS_INTEGER], [iffStateLess]);
    RegisterInternalStringFunction(TStrDeleteLeftFunc, 'StrDeleteLeft', ['str', SYS_STRING, 'count', SYS_INTEGER], [iffStateLess], 'DeleteLeft');
    RegisterInternalStringFunction(TStrDeleteRightFunc, 'StrDeleteRight', ['str', SYS_STRING, 'count', SYS_INTEGER], [iffStateLess], 'DeleteRight');
