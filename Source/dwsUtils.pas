@@ -308,6 +308,9 @@ type
          procedure Enumerate(const callback : TSimpleCallback<T>);
          property Items[const position : Integer] : T read GetItems write SetItems; default;
          property Count : Integer read FCount;
+
+         type PItemPtr = ^T;
+         function ItemPtr(idx : Integer) : PItemPtr; inline;
    end;
 
    // TSimpleStringList
@@ -700,6 +703,19 @@ type
          const HighestUnifiedChar = #$007F;
    end;
 
+   TThread<T: constructor, class> = class
+      private
+         FLock : TdwsCriticalSection;
+         FValue : T;
+
+      public
+         constructor Create(const anObj : T);
+         destructor Destroy; override;
+
+         function Lock : T;
+         procedure Unlock;
+   end;
+
    TThreadCached<T> = class
       private
          FLock : TMultiReadSingleWrite;
@@ -808,8 +824,10 @@ type
          procedure WriteBytes(const b : array of Byte); overload;
          procedure WriteBytes(const buffer : RawByteString); overload;
          procedure WriteInt32(const i : Integer); inline;
+         procedure WriteInt64(const i : Int64); inline;
          procedure WriteDWord(const dw : DWORD); inline;
          procedure WriteQWord(const qw : UInt64); inline;
+         procedure WriteDouble(const d : Double); inline;
 
          procedure WriteP(p : PWideChar; nbWideChars : Integer); inline;
 
@@ -1003,6 +1021,7 @@ function StrReplaceChar(const aStr : String; oldChar, newChar : Char) : String;
 function StrReplaceMacros(const aStr : String; const macros : array of String;
                           const startDelimiter, stopDelimiter : String) : String;
 
+function StrCountString(const haystack, needle : String) : Integer;
 function StrCountChar(const aStr : String; c : Char) : Integer;
 function StrCountStartChar(const aStr : String; c : Char) : Integer;
 
@@ -3775,6 +3794,25 @@ begin
    end;
 end;
 
+// StrCountString
+//
+function StrCountString(const haystack, needle : String) : Integer;
+var
+   p, n : Integer;
+begin
+   Result := 0;
+   if (haystack = '') or (needle = '') then Exit;
+   n := Length(needle);
+   p := 1;
+   while True do begin
+      p := PosEx(needle, haystack, p);
+      if p > 0 then begin
+         p := p + n;
+         Inc(Result);
+      end else Break;
+   end;
+end;
+
 // StrCountChar
 //
 function StrCountChar(const aStr : String; c : Char) : Integer;
@@ -4938,6 +4976,13 @@ begin
    WriteBuf(@i, 4);
 end;
 
+// WriteInt64
+//
+procedure TWriteOnlyBlockStream.WriteInt64(const i : Int64);
+begin
+   WriteBuf(@i, 8);
+end;
+
 // WriteDWord
 //
 procedure TWriteOnlyBlockStream.WriteDWord(const dw : DWORD);
@@ -4950,6 +4995,13 @@ end;
 procedure TWriteOnlyBlockStream.WriteQWord(const qw : UInt64);
 begin
    WriteBuf(@qw, 8);
+end;
+
+// WriteDouble
+//
+procedure TWriteOnlyBlockStream.WriteDouble(const d : Double);
+begin
+   WriteBuf(@d, 8);
 end;
 
 // WriteP
@@ -5579,6 +5631,13 @@ begin
    for i:=0 to Count-1 do
       if callBack(FItems[i])=csAbort then
          Break;
+end;
+
+// ItemPtr
+//
+function TSimpleList<T>.ItemPtr(idx : Integer) : PItemPtr;
+begin
+   Result := @FItems[idx];
 end;
 
 // Grow
@@ -6374,6 +6433,43 @@ begin
    FCapacity:=0;
    FGrowth:=0;
    SetLength(FBuckets, 0);
+end;
+
+// ------------------
+// ------------------ TThread<T> ------------------
+// ------------------
+
+// Create
+//
+constructor TThread<T>.Create(const anObj : T);
+begin
+   inherited Create;
+   FLock := TdwsCriticalSection.Create;
+   FValue := anObj;
+end;
+
+// Destroy
+//
+destructor TThread<T>.Destroy;
+begin
+   inherited;
+   FLock.Free;
+   FValue.Free;
+end;
+
+// Lock
+//
+function TThread<T>.Lock : T;
+begin
+   FLock.Enter;
+   Result := FValue;
+end;
+
+// Unlock
+//
+procedure TThread<T>.Unlock;
+begin
+   FLock.Leave;
 end;
 
 // ------------------
