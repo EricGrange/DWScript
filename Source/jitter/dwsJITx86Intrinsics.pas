@@ -571,6 +571,9 @@ type
          procedure _vfmadd_ps(op : Integer; dest, src1, src2 : TymmRegister);
          procedure _vfmadd_pd(op : Integer; dest, src1, src2 : TymmRegister);
 
+         procedure _vround_pd(dest, src : TymmRegister; mode : Byte);
+         procedure _vround_ps(dest, src : TymmRegister; mode : Byte);
+
          procedure _vzeroupper;
          procedure _vzeroall;
    end;
@@ -3616,6 +3619,32 @@ begin
       $fd - Ord(Ord(src1) >= 8)*$40 - (Ord(src1) and 7)*8,
       op,
       $C0 + (Ord(src2) and 7) + (Ord(dest) and 7)*8
+   ]);
+end;
+
+// _vround_pd
+//
+procedure Tx86_64_WriteOnlyStream._vround_pd(dest, src : TymmRegister; mode : Byte);
+begin
+   WriteBytes([
+      $C4,
+      $E3 - Ord(Ord(dest) >= 8)*$80 - Ord(Ord(src) >= 8)*$20,
+      $7D, $09,
+      $C0 + (Ord(src) and 7) + (Ord(dest) and 7)*8,
+      mode
+   ]);
+end;
+
+// _vround_ps
+//
+procedure Tx86_64_WriteOnlyStream._vround_ps(dest, src : TymmRegister; mode : Byte);
+begin
+   WriteBytes([
+      $C4,
+      $E3 - Ord(Ord(dest) >= 8)*$80 - Ord(Ord(src) >= 8)*$20,
+      $7D, $08,
+      $C0 + (Ord(src) and 7) + (Ord(dest) and 7)*8,
+      mode
    ]);
 end;
 

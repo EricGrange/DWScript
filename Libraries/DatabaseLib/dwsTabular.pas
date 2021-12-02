@@ -275,6 +275,9 @@ type
          class procedure DoAbs(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoGTRE(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoGTREConst(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
+         class procedure DoRound(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
+         class procedure DoFloor(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
+         class procedure DoCeil(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
 
          {$ifdef ENABLE_JIT64}
          procedure JITCall(stack : TdwsTabularStack; var result : TdwsTabularBatchResult; ops : PdwsTabularOpcode);
@@ -309,6 +312,9 @@ type
          procedure Sqrt;
          procedure Abs;
          procedure GreaterOrEqual;
+         procedure Round;
+         procedure Floor;
+         procedure Ceil;
 
          property MaxStackDepth : Integer read FMaxStackDepth;
          property StackDepth : Integer read FStackDepth;
@@ -1082,11 +1088,26 @@ begin
             RaiseSyntaxError
          end;
       4 : case code[1] of
+            'c' :
+               if code = 'ceil' then Ceil
+               else RaiseSyntaxError;
             'r' :
                if code = 'relu' then ReLu
                else RaiseSyntaxError;
             's' :
                if code = 'sqrt' then Sqrt
+               else RaiseSyntaxError;
+            '"' : ParseField;
+            '0'..'9', '-', '.' : ParseNum;
+         else
+            RaiseSyntaxError
+         end;
+      5 : case code[1] of
+            'f' :
+               if code = 'floor' then Floor
+               else RaiseSyntaxError;
+            'r' :
+               if code = 'round' then Round
                else RaiseSyntaxError;
             '"' : ParseField;
             '0'..'9', '-', '.' : ParseNum;
@@ -1369,6 +1390,30 @@ begin
    p^ := Ord(p^ >= op.Operand1);
 end;
 
+// DoRound
+//
+class procedure TdwsTabularExpression.DoRound(stack : TdwsTabularStack; op : PdwsTabularOpcode);
+begin
+   var p := stack.PeekPtr;
+   p^ := System.Round(p^);
+end;
+
+// DoFloor
+//
+class procedure TdwsTabularExpression.DoFloor(stack : TdwsTabularStack; op : PdwsTabularOpcode);
+begin
+   var p := stack.PeekPtr;
+   p^ := System.Math.Floor(p^);
+end;
+
+// DoCeil
+//
+class procedure TdwsTabularExpression.DoCeil(stack : TdwsTabularStack; op : PdwsTabularOpcode);
+begin
+   var p := stack.PeekPtr;
+   p^ := System.Math.Ceil(p^);
+end;
+
 // PushConst
 //
 procedure TdwsTabularExpression.PushConst(const c : TdwsTabularNumber);
@@ -1579,6 +1624,27 @@ begin
       AddOpCode.Method := @DoGTRE;
    end;
    StackDelta(-1);
+end;
+
+// Round
+//
+procedure TdwsTabularExpression.Round;
+begin
+   AddOpCode.Method := @DoRound;
+end;
+
+// Floor
+//
+procedure TdwsTabularExpression.Floor;
+begin
+   AddOpCode.Method := @DoFloor;
+end;
+
+// Ceil
+//
+procedure TdwsTabularExpression.Ceil;
+begin
+   AddOpCode.Method := @DoCeil;
 end;
 
 {$ifdef ENABLE_JIT64}
@@ -2028,6 +2094,16 @@ begin
          x86._vcmpps(regDest, regDest, regOperand, 5);
          Fixups.NewYMMOpRegPSImm(xmm_andpd, regDest, 1.0, 1.0, 1.0, 1.0);
 
+      end else if @op.Method = @TdwsTabularExpression.DoRound then begin
+         var reg := TymmRegister(op.StackDepth-1);
+         x86._vround_ps(reg, reg, 0);
+      end else if @op.Method = @TdwsTabularExpression.DoFloor then begin
+         var reg := TymmRegister(op.StackDepth-1);
+         x86._vround_ps(reg, reg, 1);
+      end else if @op.Method = @TdwsTabularExpression.DoCeil then begin
+         var reg := TymmRegister(op.StackDepth-1);
+         x86._vround_ps(reg, reg, 2);
+
       end else if @op.Method = @TdwsLinearNameValues.DoLookupUnified then begin
 {         SaveStateForFallback(op.StackDepth);
 
@@ -2296,6 +2372,16 @@ begin
          else x86._vbroadcastsd_ptr_reg(regOperand, opcodesGPR, IntPtr(@op.Operand1) - IntPtr(expr.FOpcodes));
          x86._vcmppd(regDest, regDest, regOperand, 5);
          Fixups.NewYMMOpRegPDImm(xmm_andpd, regDest, 1.0, 1.0, 1.0, 1.0);
+
+      end else if @op.Method = @TdwsTabularExpression.DoRound then begin
+         var reg := TymmRegister(op.StackDepth-1);
+         x86._vround_pd(reg, reg, 0);
+      end else if @op.Method = @TdwsTabularExpression.DoFloor then begin
+         var reg := TymmRegister(op.StackDepth-1);
+         x86._vround_pd(reg, reg, 1);
+      end else if @op.Method = @TdwsTabularExpression.DoCeil then begin
+         var reg := TymmRegister(op.StackDepth-1);
+         x86._vround_pd(reg, reg, 2);
 
       end else if @op.Method = @TdwsLinearNameValues.DoLookupUnified then begin
 {         SaveStateForFallback(op.StackDepth);

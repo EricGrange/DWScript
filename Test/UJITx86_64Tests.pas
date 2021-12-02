@@ -80,6 +80,7 @@ type
          procedure _vmovupd_ptr_reg;
          procedure _vmovups_ptr_reg;
          procedure _vfma;
+         procedure _vpround;
    end;
 
 // ------------------------------------------------------------------
@@ -1825,6 +1826,32 @@ begin
                + 'vfmadd132ps ymm1, ymm9, ymm1'#13#10
                + 'vfmadd213ps ymm10, ymm8, ymm3'#13#10
                + 'vfmadd231ps ymm11, ymm10, ymm12'#13#10
+               , DisasmStream);
+end;
+
+// _vpround
+//
+procedure TJITx86_64Tests._vpround;
+begin
+   FStream._vround_pd(ymm0, ymm1, 0);
+   FStream._vround_pd(ymm9, ymm3, 1);
+   FStream._vround_pd(ymm1, ymm10, 127);
+   FStream._vround_pd(ymm12, ymm15, 255);
+
+   FStream._vround_ps(ymm0, ymm1, 0);
+   FStream._vround_ps(ymm9, ymm3, 1);
+   FStream._vround_ps(ymm1, ymm10, 127);
+   FStream._vround_ps(ymm12, ymm15, 255);
+
+   CheckEquals(  ''
+               + 'vroundpd ymm0, ymm1, 00h'#13#10
+               + 'vroundpd ymm9, ymm3, 01h'#13#10
+               + 'vroundpd ymm1, ymm10, 7Fh'#13#10
+               + 'vroundpd ymm12, ymm15, FFh'#13#10
+               + 'vroundps ymm0, ymm1, 00h'#13#10
+               + 'vroundps ymm9, ymm3, 01h'#13#10
+               + 'vroundps ymm1, ymm10, 7Fh'#13#10
+               + 'vroundps ymm12, ymm15, FFh'#13#10
                , DisasmStream);
 end;
 
