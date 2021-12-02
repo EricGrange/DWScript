@@ -174,7 +174,7 @@ uses dwsJSON, dwsXPlatform, SynZip;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..298{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..299{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -686,8 +686,10 @@ const
        Code : 'function CompareNum$_Integer_Float_(a,b) { return a>b?1:a<b?-1:0 }'),
       (Name : 'CompareNum$_Float_Float_';
        Code : 'function CompareNum$_Float_Float_(a,b) { return a>b?1:a<b?-1:0 }'),
-      (Name : 'Copy';
-       Code : 'function Copy(s,f,n) { return s.substr(f-1,n) }'),
+      (Name : 'Copy$_String_Integer_';
+       Code : 'function Copy$_String_Integer_(s,f,n) { return s.substr(f-1) }'),
+      (Name : 'Copy$_String_Integer_Integer_';
+       Code : 'function Copy$_String_Integer_Integer_(s,f,n) { return s.substr(f-1,n) }'),
       (Name : 'Cos';
        Code : 'var Cos = Math.cos'),
       (Name : 'Cosh';
@@ -1514,7 +1516,8 @@ begin
    FMagicCodeGens.AddObject('ArcTan', TdwsExprGenericCodeGen.Create(['Math.atan', '(', 0, ')']));
    FMagicCodeGens.AddObject('ArcTan2', TdwsExprGenericCodeGen.Create(['Math.atan2', '(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('Ceil', TdwsExprGenericCodeGen.Create(['Math.ceil', '(', 0, ')']));
-   FMagicCodeGens.AddObject('Copy', TJSStrCopyFuncExpr.Create);
+   FMagicCodeGens.AddObject('Copy$_String_Integer_', TJSStrCopyFuncExpr.Create);
+   FMagicCodeGens.AddObject('Copy$_String_Integer_Integer_', TJSStrCopyFuncExpr.Create);
    FMagicCodeGens.AddObject('Cos', TdwsExprGenericCodeGen.Create(['Math.cos', '(', 0, ')']));
    FMagicCodeGens.AddObject('MidStr', TJSStrCopyFuncExpr.Create);
    FMagicCodeGens.AddObject('Exp', TdwsExprGenericCodeGen.Create(['Math.exp', '(', 0, ')']));
@@ -2049,14 +2052,16 @@ begin
       codeGen.Compile(e.Args[1]);
       codeGen.WriteString('-1');
    end;
-   lenArg:=TStringLengthExpr(e.Args[2]);
-   if     (lenArg is TStringLengthExpr)
-      and (strArg is TTypedExpr)
-      and (TStringLengthExpr(lenArg).Expr.SameDataExpr(TTypedExpr(strArg))) then begin
-      // to end of string
-   end else begin
-      codeGen.WriteString(',');
-      codeGen.Compile(lenArg);
+   if e.Args.Count > 2 then begin
+      lenArg:=TStringLengthExpr(e.Args[2]);
+      if     (lenArg is TStringLengthExpr)
+         and (strArg is TTypedExpr)
+         and (TStringLengthExpr(lenArg).Expr.SameDataExpr(TTypedExpr(strArg))) then begin
+         // to end of string
+      end else begin
+         codeGen.WriteString(',');
+         codeGen.Compile(lenArg);
+      end;
    end;
    codeGen.WriteString(')');
 end;
