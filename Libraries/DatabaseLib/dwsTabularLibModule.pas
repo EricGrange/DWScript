@@ -326,7 +326,7 @@ begin
 
    var expr := tabular.PrepareExprFromOpcode(opCodes);
    try
-      expr.JITCompile;
+      expr.JITCompile([ tegSum ]);
       if aggregateFunc = 'sum' then begin
          Info.ResultAsFloat := expr.EvaluateAggregate(tegSum, fromIndex, toIndex);
       end else raise EdwsTabular.CreateFmt('Unsupported aggregate function "%s"', [ aggregateFunc ]);
@@ -343,7 +343,7 @@ begin
 
    var expr := tabular.PrepareExprFromOpcode(opCodes);
    try
-      expr.JITCompile;
+      expr.JITCompile([]);
       var column := tabular.FTabular.AddColumn(Info.ParamAsString[0]);
       column.Add(expr.EvaluateAll);
    finally
@@ -360,7 +360,7 @@ begin
 
    var expr := tabular.PrepareExprFromOpcode(opCodes);
    try
-      expr.JITCompile;
+      expr.JITCompile([]);
       data := expr.EvaluateAll;
    finally
       expr.Free;

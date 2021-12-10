@@ -222,8 +222,9 @@ type
    end;
 
    TdwsTabularExpressionAggreggate = (
-      tegSum
+      tegSum, tegMax, tegMin
    );
+   TdwsTabularExpressionAggreggates = array of TdwsTabularExpressionAggreggate;
 
    TdwsTabularExpression = class
       private
@@ -240,6 +241,7 @@ type
          {$endif}
          FJIT : TdwsTabularJIT;
          FJITHasCalls : Boolean;
+         FJITAggregates : TdwsTabularExpressionAggreggates;
 
       protected
          function AddOpCode : PdwsTabularOpcode;
@@ -275,6 +277,7 @@ type
          class procedure DoAbs(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoGTRE(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoGTREConst(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
+         class procedure DoEqual(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoRound(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoFloor(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoCeil(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
@@ -312,6 +315,7 @@ type
          procedure Sqrt;
          procedure Abs;
          procedure GreaterOrEqual;
+         procedure Equal;
          procedure Round;
          procedure Floor;
          procedure Ceil;
@@ -319,7 +323,7 @@ type
          property MaxStackDepth : Integer read FMaxStackDepth;
          property StackDepth : Integer read FStackDepth;
 
-         function JITCompile : Boolean;
+         function JITCompile(const batchAggregates : TdwsTabularExpressionAggreggates) : Boolean;
 
          function Evaluate(stack : TdwsTabularStack) : TdwsTabularNumber;
 
@@ -336,7 +340,7 @@ type
 
       public
          constructor Create; override;
-         function JITExpression(expr : TdwsTabularExpression) : Boolean;
+         function JITExpression(expr : TdwsTabularExpression; const batchAggregates : TdwsTabularExpressionAggreggates) : Boolean;
    end;
    {$endif}
 
@@ -1053,6 +1057,7 @@ begin
             '-' : Sub;
             '*' : Mult;
             '/' : Divide;
+            '=' : Equal;
             '0'..'9' : PushConst(Ord(Code[1])-Ord('0'));
          else
             RaiseSyntaxError;
@@ -1390,6 +1395,13 @@ begin
    p^ := Ord(p^ >= op.Operand1);
 end;
 
+// DoEqual
+//
+class procedure TdwsTabularExpression.DoEqual(stack : TdwsTabularStack; op : PdwsTabularOpcode);
+begin
+   stack.Peek := Ord(stack.Pop = stack.Peek)
+end;
+
 // DoRound
 //
 class procedure TdwsTabularExpression.DoRound(stack : TdwsTabularStack; op : PdwsTabularOpcode);
@@ -1626,6 +1638,14 @@ begin
    StackDelta(-1);
 end;
 
+// Equal
+//
+procedure TdwsTabularExpression.Equal;
+begin
+   AddOpCode.Method := @DoEqual;
+   StackDelta(-1);
+end;
+
 // Round
 //
 procedure TdwsTabularExpression.Round;
@@ -1662,7 +1682,7 @@ end;
 
 // JITCompile
 //
-function TdwsTabularExpression.JITCompile : Boolean;
+function TdwsTabularExpression.JITCompile(const batchAggregates : TdwsTabularExpressionAggreggates) : Boolean;
 begin
    Result := False;
    {$ifdef ENABLE_JIT64}
@@ -1671,13 +1691,15 @@ begin
    var jit := JIT;
    if jit = nil then Exit;
 
-   Result := jit.JITExpression(Self);
+   Result := jit.JITExpression(Self, batchAggregates);
 
    if Result then begin
+      FJITAggregates := Copy(batchAggregates);
       FCodeBlock := jit.CompiledOutput;
       FCodePtr := FCodeBlock.CodePtr;
       jit.Allocator.DetachSubAllocators;
    end else begin
+      SetLength(FJITAggregates, 0);
       jit.Fixups.ClearFixups;
    end;
    {$endif}
@@ -1745,13 +1767,35 @@ function TdwsTabularExpression.EvaluateAggregate(aggregate : TdwsTabularExpressi
       end;
       Result := (Result + sum1) + (sum2 + sum3);
    end;
+
+   function BatchJITAggregate(stack : TdwsTabularStack; batches : Integer) : Double;
+   var
+      buf : array of TdwsTabularBatchResult;
+   begin
+      SetLength(buf, Length(FJITAggregates));
+      for var i := 0 to High(FJITAggregates) do begin
+         case FJITAggregates[i] of
+            tegSum : buf[i] := Default(TdwsTabularBatchResult);
+         else
+            Assert(False);
+         end;
+      end;
+      var pbuf : PdwsTabularBatchResult := @buf[0];
+      for batches := batches downto 1 do begin
+         JITCall(stack, pbuf^, @FOpcodes[0]);
+         stack.RowIndex := stack.RowIndex + Length(pbuf^);
+      end;
+      Result := (pbuf[0] + pbuf[1]) + (pbuf[2] + pbuf[3]);
+   end;
    {$endif}
 
    function SumAggregate(stack : TdwsTabularStack; toIndex : NativeInt) : Double;
    begin
       {$ifdef ENABLE_JIT64}
       if FCodeBlock <> nil then
-         Result := BatchSumAggregate(stack, (toIndex-stack.RowIndex+1) div (High(TdwsTabularBatchResult)+1))
+         if Length(FJITAggregates) > 0 then
+            Result := BatchJITAggregate(stack, (toIndex-stack.RowIndex+1) div (High(TdwsTabularBatchResult)+1))
+         else Result := BatchSumAggregate(stack, (toIndex-stack.RowIndex+1) div (High(TdwsTabularBatchResult)+1))
       else Result := 0;
       {$else}
       Result := 0;
@@ -1903,7 +1947,7 @@ end;
 
 // JITExpression
 //
-function TdwsTabularJIT.JITExpression(expr : TdwsTabularExpression) : Boolean;
+function TdwsTabularJIT.JITExpression(expr : TdwsTabularExpression; const batchAggregates : TdwsTabularExpressionAggreggates) : Boolean;
 {$ifdef TABULAR_SINGLES}
 const
    cAbsMask : array [0..SizeOf(TdwsTabularNumber)-1] of Byte = ( $FF, $FF, $FF, $7F );
@@ -2084,6 +2128,9 @@ begin
       end else if @op.Method = @TdwsTabularExpression.DoGTRE then begin
          x86._vcmpps(TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-1), 5);
          Fixups.NewYMMOpRegPSImm(xmm_andpd, TymmRegister(op.StackDepth-2), 1.0, 1.0, 1.0, 1.0);
+      end else if @op.Method = @TdwsTabularExpression.DoEqual then begin
+         x86._vcmpps(TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-1), 8);
+         Fixups.NewYMMOpRegPDImm(xmm_andpd, TymmRegister(op.StackDepth-2), 1.0, 1.0, 1.0, 1.0);
 
       end else if @op.Method = @TdwsTabularExpression.DoGTREConst then begin
          var regDest := TymmRegister(op.StackDepth-1);
@@ -2363,6 +2410,9 @@ begin
       end else if @op.Method = @TdwsTabularExpression.DoGTRE then begin
          x86._vcmppd(TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-1), 5);
          Fixups.NewYMMOpRegPDImm(xmm_andpd, TymmRegister(op.StackDepth-2), 1.0, 1.0, 1.0, 1.0);
+      end else if @op.Method = @TdwsTabularExpression.DoEqual then begin
+         x86._vcmppd(TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-1), 8);
+         Fixups.NewYMMOpRegPDImm(xmm_andpd, TymmRegister(op.StackDepth-2), 1.0, 1.0, 1.0, 1.0);
 
       end else if @op.Method = @TdwsTabularExpression.DoGTREConst then begin
          var regDest := TymmRegister(op.StackDepth-1);
@@ -2456,7 +2506,25 @@ begin
       end;
    end;
 
-   x86._vmovupd_ptr_reg_reg(destBatchGPR, 0, ymm0);
+   if Length(batchAggregates) > 0 then begin
+      var offset := 0;
+      Assert(Length(batchAggregates) < 15);
+      for var i := 0 to High(batchAggregates) do begin
+         var reg := TymmRegister(i+1);
+         x86._vmovdqu_ptr_reg(reg, destBatchGPR, offset);
+         case batchAggregates[i] of
+            tegSum : x86._vaddpd(reg, reg, ymm0);
+            tegMax : x86._v_op_pd(xmm_maxpd, reg, reg, ymm0);
+            tegMin : x86._v_op_pd(xmm_minpd, reg, reg, ymm0);
+         else
+            Assert(False);
+         end;
+         x86._vmovupd_ptr_reg_reg(destBatchGPR, offset, reg);
+         offset := offset + 4 * SizeOf(TdwsTabularNumber);
+      end;
+   end else begin
+      x86._vmovupd_ptr_reg_reg(destBatchGPR, 0, ymm0);
+   end;
    x86._vzeroupper;
 
    EndJIT;
