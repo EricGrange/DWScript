@@ -85,6 +85,7 @@ type
          procedure LoadTextFromBufferTest;
 
          procedure VariantClearAssignString;
+         procedure VarCompareSafeEqualityTests;
 
          procedure TokenStoreData;
          procedure MultiThreadedTokenStore;
@@ -1131,6 +1132,29 @@ begin
    CheckEquals(123, v, '123');
    VarCopySafe(v, 'e');
    CheckEquals('e', v, 'e');
+end;
+
+// VarCompareSafeEqualityTests
+//
+procedure TdwsUtilsTests.VarCompareSafeEqualityTests;
+begin
+   Check(VarCompareSafe(Int64(1), '1') = vrEqual, 'int64 = int str');
+   Check(VarCompareSafe('1', Int64(1)) = vrEqual, 'int str = int64');
+   Check(VarCompareSafe(Int64(1), 1.0) = vrEqual, 'int64 = float');
+   Check(VarCompareSafe(Double(1.0), Int64(1)) = vrEqual, 'float = int64');
+   Check(VarCompareSafe(Int64(1), '1.0') = vrEqual, 'int64 = float str');
+   Check(VarCompareSafe('1.0', Int64(1)) = vrEqual, 'float str = int64');
+   Check(VarCompareSafe(Double(1.0), '1.0') = vrEqual, 'float = float str');
+   Check(VarCompareSafe('1.0', Int64(1)) = vrEqual, 'float str = float');
+
+   Check(VarCompareSafe(Int64(1), 'a') = vrNotEqual, 'int64 <> str');
+   Check(VarCompareSafe('a', Int64(1)) = vrNotEqual, 'str <> int64');
+   Check(VarCompareSafe(Double(1.0), 'a') = vrNotEqual, 'float <> str');
+   Check(VarCompareSafe('a', Double(1.0)) = vrNotEqual, 'str <> float');
+
+   Check(VarCompareSafe('a', 'a') = vrEqual, 'a = a');
+   Check(VarCompareSafe('a', 'A') = vrGreaterThan, 'a > A');
+   Check(VarCompareSafe('A', 'a') = vrLessThan, 'a < A');
 end;
 
 // MultiThreadedTokenStore

@@ -2472,6 +2472,18 @@ function VarCompareSafe(const left, right : Variant) : TVariantRelationship;
       end else Result := vrNotEqual;
    end;
 
+   function CompareStrings(const left, right : String) : TVariantRelationship;
+   var
+      c : Integer;
+   begin
+      c := CompareStr(left, right);
+      if c < 0 then
+         Result := vrLessThan
+      else if c = 0 then
+         Result := vrEqual
+      else Result := vrGreaterThan;
+   end;
+
    function CompareDoubles(const left, right : Double) : TVariantRelationship;
    begin
       if left < right then
@@ -2483,7 +2495,7 @@ function VarCompareSafe(const left, right : Variant) : TVariantRelationship;
       else Result := vrNotEqual;
    end;
 
-   function CompareInt64(const left, right : Int64) : TVariantRelationship;
+   function CompareInt64s(const left, right : Int64) : TVariantRelationship;
    begin
       if left < right then
          Result := vrLessThan
@@ -2492,19 +2504,40 @@ function VarCompareSafe(const left, right : Variant) : TVariantRelationship;
       else Result := vrEqual
    end;
 
-   function CompareValues(const left, right : Variant) : TVariantRelationship;
+   function CompareDoubleToString(const left : Double; const right : String) : TVariantRelationship;
+   var
+      rv : Double;
    begin
-      case VarType(left) of
-         varDouble : case VarType(right) of
-            varDouble : Exit(CompareDoubles(TVarData(left).VDouble, TVarData(right).VDouble));
-            varInt64 : Exit(CompareDoubles(TVarData(left).VDouble, TVarData(right).VInt64));
-         end;
-         varInt64 : case VarType(right) of
-            varDouble : Exit(CompareDoubles(TVarData(left).VInt64, TVarData(right).VDouble));
-            varInt64 : Exit(CompareInt64(TVarData(left).VInt64, TVarData(right).VInt64));
-         end;
-      end;
-      Result := VarCompareValue(left, right);
+      if TryStrToDouble(right, rv) then
+         Result := CompareDoubles(left, rv)
+      else Result := vrNotEqual;
+   end;
+
+   function CompareStringToDouble(const left : String; const right : Double) : TVariantRelationship;
+   var
+      lv : Double;
+   begin
+      if TryStrToDouble(left, lv) then
+         Result := CompareDoubles(lv, right)
+      else Result := vrNotEqual;
+   end;
+
+   function CompareInt64ToString(const left : Int64; const right : String) : TVariantRelationship;
+   var
+      rv : Int64;
+   begin
+      if TryStrToInt64(right, rv) then
+         Result := CompareInt64s(left, rv)
+      else Result := CompareDoubleToString(left, right);
+   end;
+
+   function CompareStringToInt64(const left : String; const right : Int64) : TVariantRelationship;
+   var
+      lv : Int64;
+   begin
+      if TryStrToInt64(left, lv) then
+         Result := CompareInt64s(lv, right)
+      else Result := CompareStringToDouble(left, right);
    end;
 
 begin
@@ -2523,6 +2556,36 @@ begin
             varEmpty, varNull : Exit(vrEqual);
          end;
       end;
+      varDouble : begin
+         case VarType(right) of
+            varDouble : Exit(CompareDoubles(TVarData(left).VDouble, TVarData(right).VDouble));
+            varInt64 : Exit(CompareDoubles(TVarData(left).VDouble, TVarData(right).VInt64));
+            varUString : Exit(CompareDoubleToString(TVarData(left).VDouble, String(TVarData(right).VUString)));
+         end;
+         if VarIsArray(right) then
+            Exit(vrNotEqual)
+         else Exit(VarCompareValue(left, right));
+      end;
+      varInt64 : begin
+         case VarType(right) of
+            varDouble : Exit(CompareDoubles(TVarData(left).VInt64, TVarData(right).VDouble));
+            varInt64 : Exit(CompareInt64s(TVarData(left).VInt64, TVarData(right).VInt64));
+            varUString : Exit(CompareInt64ToString(TVarData(left).VInt64, String(TVarData(right).VUString)));
+         end;
+         if VarIsArray(right) then
+            Exit(vrNotEqual)
+         else Exit(VarCompareValue(left, right));
+      end;
+      varUString : begin
+         case VarType(right) of
+            varDouble : Exit(CompareStringToDouble(String(TVarData(left).VUString), TVarData(right).VDouble));
+            varInt64 : Exit(CompareStringToInt64(String(TVarData(left).VUString), TVarData(right).VInt64));
+            varUString : Exit(CompareStrings(String(TVarData(left).VUString), String(TVarData(right).VUString)));
+         end;
+         if VarIsArray(right) then
+            Exit(vrNotEqual)
+         else Exit(VarCompareValue(left, right));
+      end;
    else
       if VarIsArray(left) then begin
          if VarIsArray(right) then
@@ -2536,7 +2599,7 @@ begin
    else
       if VarIsArray(right) then
          Result := vrNotEqual
-      else Result := CompareValues(left, right);
+      else Result := VarCompareValue(left, right);
    end;
 end;
 
