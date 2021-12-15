@@ -75,6 +75,7 @@ type
          procedure v_op_pd;
          procedure v_op_ps;
          procedure _vmovdqu;
+         procedure _vmovapd;
          procedure _vmovupd_ptr_indexed;
          procedure _vmovups_ptr_indexed;
          procedure _vmovupd_ptr_reg;
@@ -1716,6 +1717,24 @@ begin
                + 'vmovdqu ymm8, ymmword ptr [rax+rcx+01h]'#13#10
                + 'vmovdqu ymm9, ymmword ptr [rcx+rdi*2+0Ch]'#13#10
                + 'vmovdqu ymm7, ymmword ptr [rcx+rdi*2+0001E240h]'#13#10
+               , DisasmStream);
+end;
+
+// _vmovapd
+//
+procedure TJITx86_64Tests._vmovapd;
+begin
+   FStream._vmovapd_reg_reg(ymm0, ymm1);
+   FStream._vmovapd_reg_reg(ymm10, ymm3);
+   FStream._vmovapd_reg_reg(ymm4, ymm14);
+   FStream._vmovapd_reg_reg(ymm9, ymm8);
+   FStream._vmovapd_reg_reg(ymm8, ymm7);
+   CheckEquals(  ''
+               + 'vmovapd ymm0, ymm1'#13#10
+               + 'vmovapd ymm10, ymm3'#13#10
+               + 'vmovapd ymm4, ymm14'#13#10
+               + 'vmovapd ymm9, ymm8'#13#10
+               + 'vmovapd ymm8, ymm7'#13#10
                , DisasmStream);
 end;
 

@@ -543,6 +543,7 @@ type
          procedure _vmovups_ptr_reg_reg(dest : TgpRegister64; offset : Integer; src : TxmmRegister); overload;
          procedure _vmovups_ptr_indexed(dest : TymmRegister; base, index : TgpRegister64; scale, offset : Integer);
 
+         procedure _vmovapd_reg_reg(dest : TymmRegister; src : TymmRegister); overload;
          procedure _vmovupd_ptr_reg(dest : TymmRegister; src : TgpRegister64; offset : Integer); overload;
          procedure _vmovupd_ptr_indexed(dest : TymmRegister; base, index : TgpRegister64; scale, offset : Integer);
          procedure _vmovdqu_ptr_reg(dest : TymmRegister; src : TgpRegister64; offset : Integer);
@@ -3278,6 +3279,37 @@ end;
 procedure Tx86_64_WriteOnlyStream._vmovups_ptr_indexed(dest : TymmRegister; base, index : TgpRegister64; scale, offset : Integer);
 begin
    _vex_ps_modRMSIB_reg_ptr_indexed($10, dest, base, index, scale, offset);
+end;
+
+// _vmovapd_reg_reg
+//
+procedure Tx86_64_WriteOnlyStream._vmovapd_reg_reg(dest : TymmRegister; src : TymmRegister);
+begin
+   if dest < ymm8 then begin
+      if src < ymm8 then begin
+         WriteBytes([
+            $c5, $fd, $28,
+            $c0 + 8*Ord(dest) + Ord(src)
+         ]);
+      end else begin
+         WriteBytes([
+            $c5, $7d, $29,
+            $c0 + 8*(Ord(src) and 7) + Ord(dest)
+         ]);
+      end;
+   end else begin
+      if src < ymm8 then begin
+         WriteBytes([
+            $c5, $7d, $28,
+            $c0 + 8*(Ord(dest) and 7) + Ord(src)
+         ]);
+      end else begin
+         WriteBytes([
+            $c4, $41, $7d, $28,
+            $c0 + 8*(Ord(dest) and 7) + (Ord(src) and 7)
+         ]);
+      end;
+   end;
 end;
 
 // _vmovups_ptr_reg
