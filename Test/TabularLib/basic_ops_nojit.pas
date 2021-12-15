@@ -3,12 +3,12 @@
 db.Exec('create table test (a, b, c)');
 db.Exec('insert into test values (1.0, 2, 2.5)');
 
-var tab1 := TabularData.CreateFromDataSet(db.Query('select * from test'), [ 'jit' ]);
+var tab1 := TabularData.CreateFromDataSet(db.Query('select * from test'), [ 'nojit' ]);
 
 for var i := 2 to 100 do
 	db.Exec('insert into test values (?, ?, ?)', [ Float(i), 2*i, 2*i + 0.5 ]);
 
-var tab100 := TabularData.CreateFromDataSet(db.Query('select * from test'), [ 'jit' ]);
+var tab100 := TabularData.CreateFromDataSet(db.Query('select * from test'), [ 'nojit' ]);
 
 procedure Test(ops : array of String);
 begin

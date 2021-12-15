@@ -258,6 +258,7 @@ type
          class procedure DoPushConst(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoPushNumField(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoPushNumFieldDef(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
+         class procedure DoDup(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoMultAddConst(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoMultConstAdd(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoAdd(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
@@ -278,6 +279,7 @@ type
          class procedure DoGTRE(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoGTREConst(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoEqual(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
+         class procedure DoNotEqual(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoRound(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoFloor(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoCeil(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
@@ -300,6 +302,7 @@ type
          procedure PushNumField(const name : String);
          procedure PushNumFieldDef(const name : String; const default : TdwsTabularNumber);
          procedure PushLookupField(const name : String; values : TdwsNameValues; const default : TdwsTabularNumber);
+         procedure Dup;
 
          procedure MultAddConst(const m, a : TdwsTabularNumber);
          procedure Add;
@@ -316,6 +319,7 @@ type
          procedure Abs;
          procedure GreaterOrEqual;
          procedure Equal;
+         procedure NotEqual;
          procedure Round;
          procedure Floor;
          procedure Ceil;
@@ -1069,6 +1073,9 @@ begin
             '>' :
                if code = '>=' then GreaterOrEqual
                else RaiseSyntaxError;
+            '<' :
+               if code = '<>' then NotEqual
+               else RaiseSyntaxError;
             '0'..'9', '-', '.' : ParseNum;
          else
             RaiseSyntaxError;
@@ -1076,6 +1083,9 @@ begin
       3 : case code[1] of
             'a' :
                if code = 'abs' then Abs
+               else RaiseSyntaxError;
+            'd' :
+               if code = 'dup' then Dup
                else RaiseSyntaxError;
             'e' :
                if code = 'exp' then Exp
@@ -1248,6 +1258,13 @@ begin
    else stack.Push(op.NumberPtr[i]);
 end;
 
+// DoDup
+//
+class procedure TdwsTabularExpression.DoDup(stack : TdwsTabularStack; op : PdwsTabularOpcode);
+begin
+   stack.Push(stack.PeekPtr^);
+end;
+
 // DoMultConst
 //
 class procedure TdwsTabularExpression.DoMultAddConst(stack : TdwsTabularStack; op : PdwsTabularOpcode);
@@ -1402,6 +1419,13 @@ begin
    stack.Peek := Ord(stack.Pop = stack.Peek)
 end;
 
+// DoNotEqual
+//
+class procedure TdwsTabularExpression.DoNotEqual(stack : TdwsTabularStack; op : PdwsTabularOpcode);
+begin
+   stack.Peek := Ord(stack.Pop <> stack.Peek)
+end;
+
 // DoRound
 //
 class procedure TdwsTabularExpression.DoRound(stack : TdwsTabularStack; op : PdwsTabularOpcode);
@@ -1490,6 +1514,16 @@ begin
    StackDelta(1);
 
    FJITHasCalls := FJITHasCalls or callJIT;
+end;
+
+// Dup
+//
+procedure TdwsTabularExpression.Dup;
+begin
+   if FStackDepth > 0 then
+      raise EdwsTabular.Create('Dup requires at least one element in the stack');
+   var op := AddOpCode;
+   op.Method := @DoDup;
 end;
 
 // MultAddConst
@@ -1643,6 +1677,14 @@ end;
 procedure TdwsTabularExpression.Equal;
 begin
    AddOpCode.Method := @DoEqual;
+   StackDelta(-1);
+end;
+
+// NotEqual
+//
+procedure TdwsTabularExpression.NotEqual;
+begin
+   AddOpCode.Method := @DoNotEqual;
    StackDelta(-1);
 end;
 
@@ -2126,10 +2168,13 @@ begin
                                  TdwsTabularNumber(cAbsMask), TdwsTabularNumber(cAbsMask), TdwsTabularNumber(cAbsMask), TdwsTabularNumber(cAbsMask));
 
       end else if @op.Method = @TdwsTabularExpression.DoGTRE then begin
-         x86._vcmpps(TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-1), 5);
+         x86._vcmpps(TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-1), $11);
          Fixups.NewYMMOpRegPSImm(xmm_andpd, TymmRegister(op.StackDepth-2), 1.0, 1.0, 1.0, 1.0);
       end else if @op.Method = @TdwsTabularExpression.DoEqual then begin
-         x86._vcmpps(TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-1), 8);
+         x86._vcmpps(TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-1), 0);
+         Fixups.NewYMMOpRegPDImm(xmm_andpd, TymmRegister(op.StackDepth-2), 1.0, 1.0, 1.0, 1.0);
+      end else if @op.Method = @TdwsTabularExpression.DoNotEqual then begin
+         x86._vcmpps(TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-1), $C);
          Fixups.NewYMMOpRegPDImm(xmm_andpd, TymmRegister(op.StackDepth-2), 1.0, 1.0, 1.0, 1.0);
 
       end else if @op.Method = @TdwsTabularExpression.DoGTREConst then begin
@@ -2345,6 +2390,10 @@ begin
             x86._v_op_pd(xmm_xorpd, reg, reg, reg)
          else x86._vbroadcastsd_ptr_reg(reg, opcodesGPR, IntPtr(@op.Operand1) - IntPtr(expr.FOpcodes));
 
+      end else if @op.Method = @TdwsTabularExpression.DoDup then begin
+         var reg := TymmRegister(op.StackDepth);
+         x86._vmovapd_reg_reg(reg, Pred(reg));
+
       end else if @op.Method = @TdwsTabularExpression.DoMultAddConst then begin
          var reg := TymmRegister(op.StackDepth-1);
          var regMul := TymmRegister(op.StackDepth);
@@ -2408,10 +2457,13 @@ begin
                                  TdwsTabularNumber(cAbsMask), TdwsTabularNumber(cAbsMask), TdwsTabularNumber(cAbsMask), TdwsTabularNumber(cAbsMask));
 
       end else if @op.Method = @TdwsTabularExpression.DoGTRE then begin
-         x86._vcmppd(TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-1), 5);
+         x86._vcmppd(TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-1), $11);
          Fixups.NewYMMOpRegPDImm(xmm_andpd, TymmRegister(op.StackDepth-2), 1.0, 1.0, 1.0, 1.0);
       end else if @op.Method = @TdwsTabularExpression.DoEqual then begin
-         x86._vcmppd(TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-1), 8);
+         x86._vcmppd(TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-1), 0);
+         Fixups.NewYMMOpRegPDImm(xmm_andpd, TymmRegister(op.StackDepth-2), 1.0, 1.0, 1.0, 1.0);
+      end else if @op.Method = @TdwsTabularExpression.DoNotEqual then begin
+         x86._vcmppd(TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-2), TymmRegister(op.StackDepth-1), $C);
          Fixups.NewYMMOpRegPDImm(xmm_andpd, TymmRegister(op.StackDepth-2), 1.0, 1.0, 1.0, 1.0);
 
       end else if @op.Method = @TdwsTabularExpression.DoGTREConst then begin
