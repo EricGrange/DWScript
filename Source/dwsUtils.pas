@@ -1075,6 +1075,7 @@ procedure FastFloatToStr(const val : Extended; var s : String; const fmtSettings
 
 function  Int32ToStrU(val : Integer) : UnicodeString;
 function  StrUToInt64(const s : UnicodeString; const default : Int64) : Int64;
+function  TryStrToIntBase(const s : UnicodeString; base : Integer; var value : Int64) : Boolean;
 
 function Int64ToHex(val : Int64; digits : Integer) : String; inline;
 
@@ -1987,6 +1988,59 @@ end;
 function StrUToInt64(const s : UnicodeString; const default : Int64) : Int64;
 begin
    Result := StrToInt64Def(String(s), default);
+end;
+
+// TryStrToIntBase
+//
+function TryStrToIntBase(const s : UnicodeString; base : Integer; var value : Int64) : Boolean;
+var
+   p : PChar;
+   neg : Boolean;
+   d : Integer;
+   temp : Int64;
+begin
+   Result := False;
+   if (base < 2) or (base > 36) then
+      raise EConvertError.CreateFmt('Invalid base for string to integer conversion (%d)', [ base ]);
+   if s = '' then Exit;
+
+   p := Pointer(s);
+
+   neg := False;
+   case p^ of
+      '+' : Inc(p);
+      '-' : begin
+         neg := True;
+         Inc(p);
+      end;
+      '0' : begin
+         while p[1] = '0' do
+            Inc(p);
+      end;
+   end;
+
+   temp := 0;
+
+   while True do begin
+      case p^ of
+         #0 : Break;
+         '0'..'9' : d := Ord(p^) - Ord('0');
+         'a'..'z' : d := Ord(p^) + (10 - Ord('a'));
+         'A'..'Z' : d := Ord(p^) + (10 - Ord('A'));
+      else
+         Exit;
+      end;
+      if d >= base then
+         Exit;
+      temp := temp * base + d;
+      if temp < 0 then
+         exit;
+      Inc(p);
+   end;
+   if neg then
+      value := -temp
+   else value := temp;
+   Result := True;
 end;
 
 // FastStringReplace

@@ -1,0 +1,43 @@
+5  5
+10  10
+17  17
+26  26
+37  37
+50  50
+65  65
+82  82
+101  101
+122  122
+145  145
+170  170
+197  197
+226  226
+257  257
+290  290
+325  325
+362  362
+401  401
+442  442
+485  485
+530  530
+577  577
+626  626
+677  677
+730  730
+785  785
+842  842
+901  901
+962  962
+1025  1025
+1090  1090
+1157  1157
+1226  1226
+1297  1297
+"" is not a valid 64bit integer value in base 10 [line: 12, column: 12]
+Invalid base for string to integer conversion (1) [line: 18, column: 12]
+"&" is not a valid 64bit integer value in base 10 [line: 24, column: 12]
+34
+"z" is not a valid 64bit integer value in base 35 [line: 31, column: 12]
+9223372036854775807
+-9223372036854775807
+"zzzZzzzZzzzzzz" is not a valid 64bit integer value in base 36 [line: 39, column: 12]

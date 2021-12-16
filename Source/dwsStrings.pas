@@ -420,6 +420,7 @@ const
   CPE_TypeCouldNotBeInferenced = 'Type could not be inferenced';
   CPE_RangeTooLarge = 'Range is too large';
   CPE_InvalidIntegerFormat = '"%s" is not a valid integer value';
+  CPE_InvalidIntegerBaseFormat = '"%s" is not a valid 64bit integer value in base %d';
   CPE_InvalidFloatFormat = '"%s" is not a valid floating point value';
 
   CPE_LocalFunctionAsDelegate = 'Local procedure/function cannot be used as delegate';

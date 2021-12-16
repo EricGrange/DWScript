@@ -44,9 +44,15 @@ type
   TStrToIntFunc = class(TInternalMagicIntFunction)
     function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
-
   TStrToIntDefFunc = class(TInternalMagicIntFunction)
     function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+  end;
+
+  TStrToIntBaseFunc = class(TInternalMagicIntFunction)
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+  end;
+  TTryStrToIntBaseFunc = class(TInternalMagicBoolFunction)
+    function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
   end;
 
   TIntToHexFunc = class(TInternalMagicStringFunction)
@@ -394,8 +400,6 @@ end;
 
 { TIntToStrFunc }
 
-// DoEvalAsString
-//
 procedure TIntToStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 begin
    FastInt64ToStr(args.AsInteger[0], Result);
@@ -408,7 +412,7 @@ var
    s : String;
    e : Integer;
 begin
-   s := args.AsString[0];
+   args.EvalAsString(0, s);
    Val(s, Result, e);
    if e <> 0 then
       raise EConvertError.CreateFmt(CPE_InvalidIntegerFormat, [ s ]);
@@ -420,14 +424,41 @@ function TStrToIntDefFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int6
 var
    s : String;
 begin
-   s:=args.AsString[0];
+   args.EvalAsString(0, s);
    Result:=StrToInt64Def(s, args.AsInteger[1]);
 end;
 
+{ TStrToIntBaseFunc }
+
+function TStrToIntBaseFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+var
+   s : String;
+   base : Integer;
+begin
+   args.EvalAsString(0, s);
+   base := args.AsInteger[1];
+   if not TryStrToIntBase(s, base, Result) then
+      raise EConvertError.CreateFmt(CPE_InvalidIntegerBaseFormat, [ s, base ]);
+end;
+
+{ TTryStrToIntBaseFunc }
+
+function TTryStrToIntBaseFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+var
+   s : String;
+   base : Integer;
+   v : Int64;
+begin
+   args.EvalAsString(0, s);
+   base := args.AsInteger[1];
+   Result := TryStrToIntBase(s, base, v);
+   if Result then
+      args.AsInteger[2] := v;
+end;
+
+
 { TIntToHexFunc }
 
-// DoEvalAsString
-//
 procedure TIntToHexFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 begin
    FastInt64ToHex(args.AsInteger[0], args.AsInteger[1], Result);
@@ -1340,9 +1371,11 @@ initialization
    RegisterInternalStringFunction(TChrFunc, 'Chr', ['i', SYS_INTEGER], [iffStateLess]);
 
    RegisterInternalStringFunction(TIntToStrFunc, 'IntToStr', ['i', SYS_INTEGER], [iffStateLess], 'ToString');
-   RegisterInternalIntFunction(TStrToIntFunc, 'StrToInt', ['str', SYS_STRING], [iffStateLess], 'ToInteger');
+   RegisterInternalIntFunction(TStrToIntFunc, 'StrToInt', ['str', SYS_STRING], [ iffStateLess, iffOverloaded ], 'ToInteger');
    RegisterInternalIntFunction(TStrToIntDefFunc, 'StrToIntDef', ['str', SYS_STRING, 'def', SYS_INTEGER], [iffStateLess], 'ToIntegerDef');
    RegisterInternalIntFunction(TStrToIntDefFunc, 'VarToIntDef', ['val', SYS_VARIANT, 'def', SYS_INTEGER], [iffStateLess]);
+   RegisterInternalIntFunction(TStrToIntBaseFunc, 'StrToInt', ['str', SYS_STRING, 'base', SYS_INTEGER ], [ iffStateLess, iffOverloaded ]);
+   RegisterInternalBoolFunction(TTryStrToIntBaseFunc, 'TryStrToInt', ['str', SYS_STRING, 'base', SYS_INTEGER, '@value', SYS_INTEGER ], [ iffStateLess ], 'ToInteger');
 
    RegisterInternalStringFunction(TIntToHexFunc, 'IntToHex', ['v', SYS_INTEGER, 'digits', SYS_INTEGER], [iffStateLess], 'ToHexString');
    RegisterInternalIntFunction(THexToIntFunc, 'HexToInt', ['hexa', SYS_STRING], [iffStateLess], 'HexToInteger');
