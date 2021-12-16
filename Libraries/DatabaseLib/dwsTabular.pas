@@ -1520,10 +1520,11 @@ end;
 //
 procedure TdwsTabularExpression.Dup;
 begin
-   if FStackDepth > 0 then
+   if FStackDepth <= 0 then
       raise EdwsTabular.Create('Dup requires at least one element in the stack');
    var op := AddOpCode;
    op.Method := @DoDup;
+   StackDelta(1);
 end;
 
 // MultAddConst

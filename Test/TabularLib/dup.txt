@@ -1,0 +1,7 @@
+"a",dup,-
+0.00000
+0.00000
+"a",dup,"a",*,+
+2.00000
+343400.00000
+Dup requires at least one element in the stack

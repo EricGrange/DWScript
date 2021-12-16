@@ -14,10 +14,7 @@ procedure Test(ops : array of String);
 begin
    PrintLn(ops.Join(','));
    PrintLn(tab1.EvaluateAggregate('sum', ops).ToString(5));
-   if 'exp' in ops then
-	  PrintLn('N/A')
-   else
-      PrintLn(tab100.EvaluateAggregate('sum', ops).ToString(5));
+   PrintLn(tab100.EvaluateAggregate('sum', ops).ToString(5));
 end;
 
 Test([ '"a"', '"b"', '>=' ]);

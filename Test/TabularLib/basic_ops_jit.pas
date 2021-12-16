@@ -15,7 +15,7 @@ begin
    PrintLn(ops.Join(','));
    PrintLn(tab1.EvaluateAggregate('sum', ops).ToString(5));
    if 'exp' in ops then
-	  PrintLn('N/A')
+	   PrintLn('N/A')
    else
       PrintLn(tab100.EvaluateAggregate('sum', ops).ToString(5));
 end;
