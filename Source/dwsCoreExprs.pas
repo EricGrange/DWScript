@@ -3715,7 +3715,7 @@ procedure TAssertExpr.EvalNoResult(exec : TdwsExecution);
          FMessage.EvalAsString(exec, msg);
          msg:=' : '+msg;
       end else msg:='';
-      (exec as TdwsProgramExecution).RaiseAssertionFailed(Self, msg, FScriptPos);
+      (exec as TdwsProgramExecution).RaiseAssertionFailed(Self, msg, FScriptPos, exec);
    end;
 
 begin

@@ -389,8 +389,10 @@ type
          procedure DebuggerNotifyException(const exceptObj : IScriptObj); override;
 
          class function CallStackToString(const callStack : TdwsExprLocationArray) : String; static;
-         procedure RaiseAssertionFailed(fromExpr : TExprBase; const msg : String; const scriptPos : TScriptPos);
-         procedure RaiseAssertionFailedFmt(fromExpr : TExprBase; const fmt : String; const args : array of const; const scriptPos : TScriptPos);
+         procedure RaiseAssertionFailed(fromExpr : TExprBase; const msg : String;
+                                        const scriptPos : TScriptPos; exec : TdwsExecution);
+         procedure RaiseAssertionFailedFmt(fromExpr : TExprBase; const fmt : String; const args : array of const;
+                                           const scriptPos : TScriptPos; exec : TdwsExecution);
 
          function CreateEDelphiObj(const ClassName : String;
                                    const Message : String) : IScriptObj;
@@ -2190,17 +2192,20 @@ end;
 
 // RaiseAssertionFailed
 //
-procedure TdwsProgramExecution.RaiseAssertionFailed(fromExpr : TExprBase; const msg : String; const scriptPos : TScriptPos);
+procedure TdwsProgramExecution.RaiseAssertionFailed(fromExpr : TExprBase; const msg : String;
+                                                    const scriptPos : TScriptPos; exec : TdwsExecution);
 begin
-   RaiseAssertionFailedFmt(fromExpr, RTE_AssertionFailed, [scriptPos.AsInfo, msg], scriptPos);
+   RaiseAssertionFailedFmt(fromExpr, RTE_AssertionFailed, [scriptPos.AsInfo, msg], scriptPos, exec);
 end;
 
 // RaiseAssertionFailedFmt
 //
-procedure TdwsProgramExecution.RaiseAssertionFailedFmt(fromExpr : TExprBase; const fmt : String; const args : array of const; const scriptPos : TScriptPos);
+procedure TdwsProgramExecution.RaiseAssertionFailedFmt(fromExpr : TExprBase; const fmt : String; const args : array of const;
+                                                       const scriptPos : TScriptPos; exec : TdwsExecution);
 var
    exceptObj : IScriptObj;
    fmtMsg : String;
+   e : EScriptAssertionFailed;
 begin
    SetScriptError(fromExpr);
    fmtMsg:=Format(fmt, args);
@@ -2208,7 +2213,10 @@ begin
    (exceptObj.ExternalObject as TdwsExceptionContext).Skip(1); // temporary constructor expression
    if IsDebugging then
       DebuggerNotifyException(exceptObj);
-   raise EScriptAssertionFailed.Create(fmtMsg, exceptObj, scriptPos)
+   e := EScriptAssertionFailed.Create(fmtMsg, exceptObj, scriptPos);
+   if exec <> nil then
+      e.ScriptCallStack := exec.GetCallStack;
+   raise e;
 end;
 
 // CreateEDelphiObj
@@ -8175,7 +8183,7 @@ var
 begin
    msg.EvalAsString(exec, msgStr);
    (exec as TdwsProgramExecution).RaiseAssertionFailedFmt(nil,
-      RTE_PreConditionFailed, [funcSym.QualifiedName, scriptPos.AsInfo, msgStr], scriptPos);
+      RTE_PreConditionFailed, [funcSym.QualifiedName, scriptPos.AsInfo, msgStr], scriptPos, exec);
 end;
 
 // ------------------
@@ -8191,7 +8199,7 @@ var
 begin
    msg.EvalAsString(exec, msgStr);
    (exec as TdwsProgramExecution).RaiseAssertionFailedFmt(nil,
-      RTE_PostConditionFailed, [funcSym.QualifiedName, scriptPos.AsInfo, msgStr], scriptPos);
+      RTE_PostConditionFailed, [funcSym.QualifiedName, scriptPos.AsInfo, msgStr], scriptPos, exec);
 end;
 
 // ------------------

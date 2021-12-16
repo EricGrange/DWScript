@@ -1,0 +1,6 @@
+Pre-condition failed in RequirePositive [line: 2, column: 9], here
+TestProc [line: 15, column: 4]
+ [line: 26, column: 4]
+Post-condition failed in EnsureNegative [line: 10, column: 4], there
+TTest.TestMeth [line: 21, column: 7]
+ [line: 34, column: 16]
