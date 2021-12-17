@@ -2006,41 +2006,47 @@ begin
 
    p := Pointer(s);
 
-   neg := False;
-   case p^ of
-      '+' : Inc(p);
-      '-' : begin
-         neg := True;
+   try
+      neg := False;
+      case p^ of
+         '+' : Inc(p);
+         '-' : begin
+            neg := True;
+            Inc(p);
+         end;
+         '0' : begin
+            while p[1] = '0' do
+               Inc(p);
+         end;
+      end;
+
+      temp := 0;
+
+      while True do begin
+         case p^ of
+            #0 : Break;
+            '0'..'9' : d := Ord(p^) - Ord('0');
+            'a'..'z' : d := Ord(p^) + (10 - Ord('a'));
+            'A'..'Z' : d := Ord(p^) + (10 - Ord('A'));
+         else
+            Exit;
+         end;
+         if d >= base then
+            Exit;
+{$Q+}
+         temp := temp * base + d;
+{$Q-}
          Inc(p);
       end;
-      '0' : begin
-         while p[1] = '0' do
-            Inc(p);
-      end;
+      if neg then
+         value := -temp
+      else value := temp;
+      Result := True;
+   except
+      on E: EIntOverflow do
+         Exit(False);
+      else raise;
    end;
-
-   temp := 0;
-
-   while True do begin
-      case p^ of
-         #0 : Break;
-         '0'..'9' : d := Ord(p^) - Ord('0');
-         'a'..'z' : d := Ord(p^) + (10 - Ord('a'));
-         'A'..'Z' : d := Ord(p^) + (10 - Ord('A'));
-      else
-         Exit;
-      end;
-      if d >= base then
-         Exit;
-      temp := temp * base + d;
-      if temp < 0 then
-         exit;
-      Inc(p);
-   end;
-   if neg then
-      value := -temp
-   else value := temp;
-   Result := True;
 end;
 
 // FastStringReplace

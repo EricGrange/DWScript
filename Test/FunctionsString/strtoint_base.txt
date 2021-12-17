@@ -41,3 +41,5 @@ Invalid base for string to integer conversion (1) [line: 18, column: 12]
 9223372036854775807
 -9223372036854775807
 "zzzZzzzZzzzzzz" is not a valid 64bit integer value in base 36 [line: 39, column: 12]
+4919131752989213764
+"44444444444444444" is not a valid 64bit integer value in base 16 [line: 46, column: 12]

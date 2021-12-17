@@ -40,3 +40,10 @@ try
 except
    on E: Exception do PrintLn(E.Message);
 end;
+
+try
+   PrintLn(StrToInt('4444444444444444', base+6));
+   PrintLn(StrToInt('44444444444444444', base+6));
+except
+   on E: Exception do PrintLn(E.Message);
+end;
