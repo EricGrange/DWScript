@@ -2,7 +2,7 @@ procedure MyProc(a : Integer);
 begin
 end;
 
-IntToStr(45, 12);
+IntToBin(45, 12, 0);
 MyProc(45, 12);
 
 var v := '12';

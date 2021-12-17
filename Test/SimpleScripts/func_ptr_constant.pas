@@ -1,3 +1,3 @@
-var p := @IntToStr;
+var p := @IntToHex;
 
-if assigned(p) then PrintLn(p(5));
+if assigned(p) then PrintLn(p(5, 1));

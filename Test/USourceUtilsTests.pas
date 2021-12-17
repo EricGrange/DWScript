@@ -480,10 +480,10 @@ end;
 //
 procedure TSourceUtilsTests.HelperSuggestTest;
 const
-   cSugg : array [0..19] of String = (
+   cSugg : array [0..20] of String = (
       'Abs', 'Clamp', 'Compare', 'Compare', 'Factorial', 'Hello', 'IsOdd', 'IsPrime',
       'LeastFactor', 'Max', 'Min', 'Next', 'PopCount', 'Sign', 'Sqr', 'TestBit',
-      'ToBin', 'ToHexString', 'ToString', 'Unsigned32'
+      'ToBin', 'ToHexString', 'ToString', 'ToString', 'Unsigned32'
       );
 
 var
@@ -1031,8 +1031,9 @@ begin
    scriptPos := TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 21);
 
    sugg := TdwsSuggestions.Create(prog, scriptPos);
-   CheckEquals(1, sugg.Count);
+   CheckEquals(2, sugg.Count);
    CheckEquals('ToString () : String', sugg.Caption[0]);
+   CheckEquals('ToString (base: Integer) : String', sugg.Caption[1]);
 end;
 
 // DefaultPropertySuggest

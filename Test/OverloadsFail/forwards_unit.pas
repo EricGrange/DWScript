@@ -20,7 +20,7 @@ end;
 
 function Test(i : String) : String;
 begin
-   Result:='Hello '+IntToStr(i);
+   Result:='Hello '+IntToHex(i, 1);
 end;
 
 end.

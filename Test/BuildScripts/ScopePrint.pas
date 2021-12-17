@@ -1,4 +1,4 @@
-// comment
+﻿// comment
 unit ScopePrint;
 
 // comment
@@ -25,7 +25,7 @@ begin
    Default.PrintLn('>');
 end;
 
-function IntToStr(i : Integer) : String;
+function IntToHex(i : Integer) : String;
 begin
    Result:='bug';
 end;

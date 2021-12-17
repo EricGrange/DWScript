@@ -1077,6 +1077,8 @@ function  Int32ToStrU(val : Integer) : UnicodeString;
 function  StrUToInt64(const s : UnicodeString; const default : Int64) : Int64;
 function  TryStrToIntBase(const s : UnicodeString; base : Integer; var value : Int64) : Boolean;
 
+function Int64ToStrBase(val : Int64; base : Integer) : String;
+
 function Int64ToHex(val : Int64; digits : Integer) : String; inline;
 
 function TryStrToDouble(const s : String; var val : Double) : Boolean; overload; inline;
@@ -2047,6 +2049,43 @@ begin
          Exit(False);
       else raise;
    end;
+end;
+
+// Int64ToStrBase
+//
+function Int64ToStrBase(val : Int64; base : Integer) : String;
+var
+   uv : UInt64;
+   buf : array [0..64] of Char;
+   p, digit : Integer;
+   neg : Boolean;
+begin
+   if (base < 2) or (base > 36) then
+      raise EConvertError.CreateFmt('Invalid base for integer to string conversion (%d)', [ base ]);
+
+   if val = 0 then Exit('0');
+
+   neg := (val < 0);
+   if neg then
+      uv := -val
+   else uv := val;
+   p := High(buf);
+
+   while uv <> 0 do begin
+      digit := uv mod Cardinal(base);
+      uv := uv div Cardinal(base);
+      if digit < 10 then
+         buf[p] := Char(Ord('0') + digit)
+      else buf[p] := Char((Ord('A') - 10) + digit);
+      Dec(p);
+   end;
+
+   if neg then begin
+      buf[p] := '-';
+      Dec(p);
+   end;
+
+   SetString(Result, PChar(@buf[p+1]), High(buf)-p);
 end;
 
 // FastStringReplace

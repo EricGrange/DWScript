@@ -40,6 +40,9 @@ type
   TIntToStrFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
   end;
+  TIntToStrBaseFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(const args : TExprBaseListExec; var Result : String); override;
+  end;
 
   TStrToIntFunc = class(TInternalMagicIntFunction)
     function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
@@ -403,6 +406,20 @@ end;
 procedure TIntToStrFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 begin
    FastInt64ToStr(args.AsInteger[0], Result);
+end;
+
+{ TIntToStrBaseFunc }
+
+procedure TIntToStrBaseFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
+var
+   v : Int64;
+   base : Integer;
+begin
+   v := args.AsInteger[0];
+   base := args.AsInteger[1];
+   if base = 10 then
+      FastInt64ToStr(v, Result)
+   else Result := Int64ToStrBase(v, base);
 end;
 
 { TStrToIntFunc }
@@ -1370,11 +1387,12 @@ initialization
 
    RegisterInternalStringFunction(TChrFunc, 'Chr', ['i', SYS_INTEGER], [iffStateLess]);
 
-   RegisterInternalStringFunction(TIntToStrFunc, 'IntToStr', ['i', SYS_INTEGER], [iffStateLess], 'ToString');
+   RegisterInternalStringFunction(TIntToStrFunc, 'IntToStr', ['i', SYS_INTEGER], [ iffStateLess, iffOverloaded ], 'ToString');
+   RegisterInternalStringFunction(TIntToStrBaseFunc, 'IntToStr', ['i', SYS_INTEGER, 'base', SYS_INTEGER], [ iffStateLess, iffOverloaded ], 'ToString');
    RegisterInternalIntFunction(TStrToIntFunc, 'StrToInt', ['str', SYS_STRING], [ iffStateLess, iffOverloaded ], 'ToInteger');
    RegisterInternalIntFunction(TStrToIntDefFunc, 'StrToIntDef', ['str', SYS_STRING, 'def', SYS_INTEGER], [iffStateLess], 'ToIntegerDef');
    RegisterInternalIntFunction(TStrToIntDefFunc, 'VarToIntDef', ['val', SYS_VARIANT, 'def', SYS_INTEGER], [iffStateLess]);
-   RegisterInternalIntFunction(TStrToIntBaseFunc, 'StrToInt', ['str', SYS_STRING, 'base', SYS_INTEGER ], [ iffStateLess, iffOverloaded ]);
+   RegisterInternalIntFunction(TStrToIntBaseFunc, 'StrToInt', ['str', SYS_STRING, 'base', SYS_INTEGER], [ iffStateLess, iffOverloaded ]);
    RegisterInternalBoolFunction(TTryStrToIntBaseFunc, 'TryStrToInt', ['str', SYS_STRING, 'base', SYS_INTEGER, '@value', SYS_INTEGER ], [ iffStateLess ], 'ToInteger');
 
    RegisterInternalStringFunction(TIntToHexFunc, 'IntToHex', ['v', SYS_INTEGER, 'digits', SYS_INTEGER], [iffStateLess], 'ToHexString');

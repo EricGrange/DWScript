@@ -4177,17 +4177,36 @@ type
    TFindOverloadedFunc = class
       OpSymbol : TOperatorSymbol;
       CapturableUsesSym : TFuncSymbol;
-      function Callback(symbol : TSymbol) : Boolean;
+      function Callback1(symbol : TSymbol) : Boolean;
+      function Callback2(symbol : TSymbol) : Boolean;
    end;
 
-function TFindOverloadedFunc.Callback(symbol : TSymbol) : Boolean;
+function TFindOverloadedFunc.Callback1(symbol : TSymbol) : Boolean;
 var
    funcSym : TFuncSymbol;
 begin
    Result:=False;
    funcSym:=symbol.AsFuncSymbol;
    if (funcSym<>nil) and (not symbol.IsType) then begin
-      if     (funcSym.Params.Count=2) and (funcSym.Typ<>nil)
+      if     (funcSym.Params.Count = 1) and (funcSym.Typ<>nil)
+         and (Length(opSymbol.Params) = 1)
+         and funcSym.Typ.IsOfType(opSymbol.Typ)
+         and funcSym.Params[0].Typ.IsOfType(opSymbol.Params[0]) then begin
+         CapturableUsesSym:=funcSym;
+         Result:=True;
+      end;
+   end;
+end;
+
+function TFindOverloadedFunc.Callback2(symbol : TSymbol) : Boolean;
+var
+   funcSym : TFuncSymbol;
+begin
+   Result:=False;
+   funcSym:=symbol.AsFuncSymbol;
+   if (funcSym<>nil) and (not symbol.IsType) then begin
+      if     (funcSym.Params.Count = 2) and (funcSym.Typ<>nil)
+         and (Length(opSymbol.Params) = 2)
          and funcSym.Typ.IsOfType(opSymbol.Typ)
          and funcSym.Params[0].Typ.IsOfType(opSymbol.Params[0])
          and funcSym.Params[1].Typ.IsOfType(opSymbol.Params[1]) then begin
@@ -4202,15 +4221,21 @@ end;
 function TdwsCompiler.ReadOperatorDecl : TOperatorSymbol;
 
    procedure FindOverloadedFunc(var usesSym : TFuncSymbol; const usesName : String;
-                                fromTable : TSymbolTable; opSymbol : TOperatorSymbol);
+                                fromTable : TSymbolTable; opSymbol : TOperatorSymbol;
+                                nbParams : Integer);
    var
       finder : TFindOverloadedFunc;
    begin
-      finder:=TFindOverloadedFunc.Create;
+      finder := TFindOverloadedFunc.Create;
       try
          finder.CapturableUsesSym:=usesSym;
          finder.OpSymbol:=opSymbol;
-         fromTable.EnumerateSymbolsOfNameInScope(usesName, finder.Callback);
+         case nbParams of
+            1 : fromTable.EnumerateSymbolsOfNameInScope(usesName, finder.Callback1);
+            2 : fromTable.EnumerateSymbolsOfNameInScope(usesName, finder.Callback2);
+         else
+            Assert(False);
+         end;
          usesSym:=finder.CapturableUsesSym;
       finally
          finder.Free;
@@ -4295,7 +4320,7 @@ begin
       if usesSym<>nil then begin
 
          if usesSym.IsOverloaded then
-            FindOverloadedFunc(usesSym, usesName, fromTable, Result);
+            FindOverloadedFunc(usesSym, usesName, fromTable, Result, expectedNbParams);
 
          RecordSymbolUse(usesSym, usesPos, [suReference]);
 
@@ -5146,10 +5171,12 @@ begin
               and codeExprTyp.IsOfType(expecting)
               and not FTok.Test(ttBLEFT)) then
          Result:=codeExpr
+      else if not funcSym.IsOverloaded then
+         Result := ReadFunc(funcSym, codeExpr, expecting)
       else begin
-         Assert(not funcSym.IsOverloaded);
+         FMsgs.AddCompilerStopFmt(codeExpr.ScriptPos, CPH_AmbiguousMatchingOverloadsForCall, [ funcSym.Name ]);
+         Result := codeExpr;
          // Result:=ReadFuncOverloaded(funcSym, fromTable, varExpr, expecting)
-         Result:=ReadFunc(funcSym, codeExpr, expecting);
       end;
    end else Result:=codeExpr;
 

@@ -63,7 +63,7 @@ begin
 
    FTests:=TStringList.Create;
 
-   CollectFiles(ExtractFilePath(ParamStr(0))+'BuildScripts'+PathDelim, '*.dws', FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'BuildScripts'+PathDelim, 'scope_to_main*.dws', FTests);
 
    FCompiler:=TDelphiWebScript.Create(nil);
    FCompiler.OnInclude:=DoInclude;

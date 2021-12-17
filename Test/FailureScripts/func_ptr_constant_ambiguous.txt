@@ -1,0 +1,2 @@
+Hint: "assigned" does not match case of declaration ("Assigned") [line: 3, column: 4]
+Syntax Error: Ambiguous matching overloads of "IntToStr" [line: 3, column: 13]
