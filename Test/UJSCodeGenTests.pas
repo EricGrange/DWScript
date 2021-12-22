@@ -343,10 +343,11 @@ begin
                     +#13#10
                     +'} catch(e) {$testResult.splice(0,0,"Errors >>>>\r\nRuntime Error: "+((e.ClassType)?e.FMessage:e.message)+"\r\nResult >>>>\r\n")};'#13#10
                     +'console.log($testResult.join(""));'#13#10
+                    +'console.log("HF7dGrJxgqfa7VPz");'#13#10 // ensure something is sent to the console
                     +'})();';
             FChromium.ClearLastResult;
 
-            //SaveTextToUTF8File('c:\temp\test.js', UTF8Encode(jscode));
+            SaveTextToUTF8File('c:\temp\test.js', UTF8Encode(jscode));
 
             {// execute via node
             fileName:=GetTempFileName('dws');
@@ -376,6 +377,9 @@ begin
             //}
 
             output := FChromium.LastResult;
+            var p := Pos('HF7dGrJxgqfa7VPz', output);
+            if p > 0 then
+               SetLength(output, p-1);
             if prog.Msgs.Count > 0 then begin
                output := 'Errors >>>>'#13#10
                        + prog.Msgs.AsInfo
