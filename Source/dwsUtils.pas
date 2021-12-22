@@ -2076,7 +2076,7 @@ begin
       uv := uv div Cardinal(base);
       if digit < 10 then
          buf[p] := Char(Ord('0') + digit)
-      else buf[p] := Char((Ord('A') - 10) + digit);
+      else buf[p] := Char((Ord('a') - 10) + digit);
       Dec(p);
    end;
 
