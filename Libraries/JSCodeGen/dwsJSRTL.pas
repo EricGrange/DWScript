@@ -174,7 +174,7 @@ uses dwsJSON, dwsXPlatform, SynZip;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..304{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..305{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -1220,6 +1220,8 @@ const
        Code : 'function TrimRight(s) { return s.replace(/\s\s*$/, "") }'),
       (Name : 'Trunc';
        Code : 'function Trunc(v) { return (v>=0)?Math.floor(v):Math.ceil(v) }'),
+      (Name : 'TryStrToInt';
+       Code : 'function TryStrToInt(s,b,v) { var i=parseInt(s,b), r=isFinite(i); if (r) { v.v=i } return r }'),
       (Name : 'UnixTime';
        Code : 'function UnixTime() { return Math.trunc(Date.now()*1e-3) }'),
       (Name : 'UnixTimeToDateTime';
