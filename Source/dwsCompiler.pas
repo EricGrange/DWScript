@@ -8019,7 +8019,6 @@ begin
                         argList[i]:=CompilerUtils.WrapWithImplicitConversion(
                                              FCompilerContext, argList[i], arraySym.Typ, argPosArray[i],
                                              CPE_IncompatibleParameterTypes);
-                        Break;
                      end else if argList[i].ClassType=TArrayConstantExpr then begin
                         TArrayConstantExpr(argList[i]).Prepare(FCompilerContext, arraySym.Typ);
                      end;
