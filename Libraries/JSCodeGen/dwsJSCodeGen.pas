@@ -873,7 +873,7 @@ implementation
 // ------------------------------------------------------------------
 
 uses
-   dwsDynamicArrays,
+   dwsDynamicArrays, dwsMathFunctions, dwsStringFunctions,
    dwsJSRTL, dwsJSSymbolWriters, dwsJSMin
    {$ifdef JS_BIGINTEGER}, dwsJSBigInteger, dwsBigIntegerFunctions.GMP{$endif}
    ;
@@ -7140,7 +7140,6 @@ begin
 
          end else begin
 
-
             if inPushElems then begin
                codeGen.WriteString('])');
                inPushElems:=False;
@@ -7333,12 +7332,31 @@ end;
 procedure TJSArrayMapExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TArrayMapExpr;
+   codeExpr : TTypedExpr;
+   funcSym : TFuncSymbol;
+   magicFunc : TClass;
 begin
-   e:=TArrayMapExpr(expr);
+   e := TArrayMapExpr(expr);
 
    codeGen.Compile(e.BaseExpr);
    codeGen.WriteString('.map(');
-   codeGen.CompileNoWrap((e.MapFuncExpr as TFuncPtrExpr).CodeExpr);
+
+   codeExpr := (e.MapFuncExpr as TFuncPtrExpr).CodeExpr;
+
+   if (codeExpr is TFuncRefExpr) and not (cgoNoInlineMagics in codeGen.Options) then begin
+      funcSym := TFuncRefExpr(codeExpr).FuncExpr.FuncSym;
+      if funcSym is TMagicFuncSymbol then begin
+         magicFunc := TMagicFuncSymbol(funcSym).InternalFunction.ClassType;
+         if (magicFunc = TFloatToStrFunc) or (magicFunc = TIntToStrFunc) then begin
+            codeGen.WriteString('String');
+            codeExpr := nil;
+         end;
+      end;
+   end;
+
+   if codeExpr <> nil then
+      codeGen.CompileNoWrap(codeExpr);
+
    codeGen.WriteString(')');
 end;
 
