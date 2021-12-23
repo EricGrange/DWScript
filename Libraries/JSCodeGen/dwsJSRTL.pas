@@ -174,7 +174,7 @@ uses dwsJSON, dwsXPlatform, SynZip;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..301{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..304{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -625,11 +625,18 @@ const
 
       // RTL functions
 
-       (Name : 'Abs$_Float_';
+      (Name : 'array_of_Float$Multiply';
+       Code : 'function array_of_Float$Multiply(a,v) { for (var i=0;i<a.length;i++) a[i]*=v; return a }'),
+      (Name : 'array_of_Float$Offset';
+       Code : 'function array_of_Float$Offset(a,v) { for (var i=0;i<a.length;i++) a[i]+=v; return a }'),
+      (Name : 'array_of_Float$Reciprocal';
+       Code : 'function array_of_Float$Reciprocal(a,v) { for (var i=0;i<a.length;i++) a[i]=1/a[i]; return a }'),
+
+      (Name : 'Abs$_Float_';
        Code : 'var Abs$_Float_ = Math.abs;'),
-       (Name : 'Abs$_Integer_';
+      (Name : 'Abs$_Integer_';
        Code : 'var Abs$_Integer_ = Math.abs;'),
-       (Name : 'Abs$_Variant_';
+      (Name : 'Abs$_Variant_';
        Code : 'var Abs$_Variant_ = Math.abs;'),
       (Name : 'AnsiCompareStr';
        Code : 'function AnsiCompareStr(a,b) { return a.localeCompare(b) }'),
@@ -1616,7 +1623,7 @@ var
 begin
    if e.FuncSym.IsOverloaded then
       name:=TJSFuncBaseExpr.GetSignature(e.FuncSym)
-   else name:=e.FuncSym.QualifiedName;
+   else name := StrReplaceChar(e.FuncSym.QualifiedName, ' ', '_');
    if cgoNoInlineMagics in codeGen.Options then
       i:=-1
    else i:=FMagicCodeGens.IndexOf(name);
@@ -1666,6 +1673,7 @@ begin
    if e.FuncSym.IsOverloaded then
       name := GetSignature(e.FuncSym)
    else name := e.FuncSym.QualifiedName;
+   name := StrReplaceChar(name, ' ', '_');
    name := CanonicalName(name);
    codeGen.WriteString(name);
    codeGen.Dependencies.Add(name);
