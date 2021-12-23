@@ -177,7 +177,12 @@ begin
    Print(x[0].ToString(1));
    for var i := 1 to x.High do begin
       Print(';');
-      Print(x[i].ToString(1));
+      var v := x[i].ToString(1);
+      {$ifdef JS_CODEGEN}
+      if v = '-0.0' then    // normalize -0.0 to 0.0
+         v := '0.0';
+      {$endif}
+      Print(v);
    end;
    PrintLn('');
 end;
