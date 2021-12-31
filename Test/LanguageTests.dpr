@@ -46,6 +46,7 @@ uses
   ULocalizerTests in 'ULocalizerTests.pas',
   dwsRTTIFunctions,
   dwsRTTIConnector,
+  dwsRTTIExposer,
   dwsStringResult,
   dwsMetrics,
   UJSONTests in 'UJSONTests.pas',

@@ -203,7 +203,8 @@ const
     'Unknown', 'Integer', 'Char', 'Enumeration', 'Float',
     'String', 'Set', 'Class', 'Method', 'WChar', 'LString', 'WString',
     'Variant', 'Array', 'Record', 'Interface', 'Int64', 'DynArray', 'UString',
-    'ClassRef', 'Pointer', 'Procedure');
+    'ClassRef', 'Pointer', 'Procedure' {$ifndef FPC}, 'MRecord' {$endif}
+  );
 
 // ------------------
 // ------------------ dwsPublished ------------------

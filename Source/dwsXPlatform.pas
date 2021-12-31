@@ -46,22 +46,24 @@ unit dwsXPlatform;
 interface
 
 uses
-   Classes, SysUtils, Types, Masks, Registry, SyncObjs, Variants, StrUtils,
+   Classes, SysUtils, Types, Masks, SyncObjs, Variants, StrUtils,
    {$ifdef DELPHI_XE3_PLUS}
    DateUtils,
    {$endif}
    {$IFDEF FPC}
-      {$IFDEF Windows}
+      {$IFDEF WINDOWS}
          Windows
       {$ELSE}
          LCLIntf
       {$ENDIF}
    {$ELSE}
-      Windows
+      {$IFDEF WINDOWS}
+      Windows, Registry
+      {$ENDIF}
       {$IFNDEF VER200}, IOUtils{$ENDIF}
       {$IFDEF UNIX}
          {$IFDEF POSIXSYSLOG}, Posix.Syslog{$ENDIF}
-         Posix.Unistd, Posix.Time, Posix.Pthread,
+         Posix.Unistd, Posix.Time, Posix.Pthread, System.Internal.ICU,
          dwsXPlatformTimer,
       {$ENDIF}
    {$ENDIF}
@@ -577,19 +579,21 @@ end;
 // UTCDateTime
 //
 function UTCDateTime : TDateTime;
+{$ifdef WINDOWS}
 var
    systemTime : TSystemTime;
 begin
-   {$ifdef Windows}
    FillChar(systemTime, SizeOf(systemTime), 0);
    GetSystemTime(systemTime);
    with systemTime do
       Result:= EncodeDate(wYear, wMonth, wDay)
               +EncodeTime(wHour, wMinute, wSecond, wMilliseconds);
-   {$else}
-   Result := Now; // TODO : correct implementation
-   {$endif}
 end;
+{$else}
+begin
+   Result := Now; // TODO : correct implementation
+end;
+{$endif}
 
 // UnixTime
 //
@@ -598,6 +602,7 @@ begin
    Result:=Trunc(UTCDateTime*86400)-Int64(25569)*86400;
 end;
 
+{$IFNDEF LINUX}
 type
    TDynamicTimeZoneInformation = record
       Bias : Longint;
@@ -618,6 +623,7 @@ function GetTimeZoneInformationForYear(wYear: USHORT; lpDynamicTimeZoneInformati
       var lpTimeZoneInformation: TTimeZoneInformation): BOOL; stdcall; external 'kernel32' {$ifndef FPC}delayed{$endif};
 function TzSpecificLocalTimeToSystemTime(lpTimeZoneInformation: PTimeZoneInformation;
       var lpLocalTime, lpUniversalTime: TSystemTime): BOOL; stdcall; external 'kernel32' {$ifndef FPC}delayed{$endif};
+{$ENDIF}
 
 // LocalDateTimeToUTCDateTime
 //
@@ -941,7 +947,6 @@ begin
    // Possible solutions:
    // http://www.delphitop.com/html/danyuan/1472.html
    // https://github.com/graemeg/freepascal/blob/master/rtl/objpas/unicodedata.pas
-   }
    Result := s; // TODO
 end;
 {$endif}
@@ -1738,6 +1743,7 @@ end;
 
 // ReadFileChunked
 //
+{$IFDEF WINDOWS}
 function ReadFileChunked(hFile : THandle; const buffer; size : Integer) : Integer;
 const
    CHUNK_SIZE = 16384;
@@ -1763,6 +1769,7 @@ begin
    until nRemaining <= 0;
    Result := size;
 end;
+{$ENDIF}
 
 // LoadDataFromFile
 //
@@ -1802,6 +1809,7 @@ end;
 // SaveDataToFile
 //
 procedure SaveDataToFile(const fileName : TFileName; const data : TBytes);
+{$IFDEF WINDOWS}
 var
    hFile : THandle;
    n, nWrite : DWORD;
@@ -1816,6 +1824,11 @@ begin
       CloseFileHandle(hFile);
    end;
 end;
+{$ELSE}
+begin
+   IOUTils.TFile.WriteAllBytes(fileName, data);
+end;
+{$ENDIF}
 
 // LoadRawBytesFromFile
 //
@@ -1852,7 +1865,7 @@ begin
    fs := TFileStream.Create(fileName, fmOpenRead);
    try
       SetLength(Result, fs.Size);
-      if Read(Pointer(Result)^, fs.Size) <> fs.Size then
+      if fs.Read(Pointer(Result)^, fs.Size) <> fs.Size then
          raise Exception.Create('stream read exception - data size mismatch');
    finally
       fs.Free;
@@ -1984,12 +1997,18 @@ end;
 //
 function OpenFileForSequentialReadOnly(const fileName : TFileName) : THandle;
 begin
+   {$IFDEF WINDOWS}
    Result:=CreateFile(PChar(fileName), GENERIC_READ, FILE_SHARE_READ+FILE_SHARE_WRITE,
                       nil, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, 0);
    if Result=INVALID_HANDLE_VALUE then begin
       if GetLastError<>ERROR_FILE_NOT_FOUND then
          RaiseLastOSError;
    end;
+   {$ELSE}
+   Result := SysUtils.FileCreate(fileName, fmOpenRead, $007);
+   if Result = INVALID_HANDLE_VALUE then
+      raise Exception.Create('invalid file handle');
+   {$ENDIF}
 end;
 
 // OpenFileForSequentialWriteOnly
@@ -2147,6 +2166,7 @@ end;
 // FileSetDateTime
 //
 procedure FileSetDateTime(hFile : THandle; const aDateTime : TdwsDateTime);
+{$IFDEF WINDOWS}
 var
    doNotChange, newTimeStamp : TFileTime;
 begin
@@ -2155,6 +2175,12 @@ begin
    doNotChange.dwHighDateTime := Cardinal(-1);
    SetFileTime(hFile, @doNotChange, @newTimeStamp, @newTimeStamp);
 end;
+{$ELSE}
+begin
+  { TODO : Check unix implementation }
+  raise Exception.Create('not implemented');
+end;
+{$ENDIF}
 
 // DeleteDirectory
 //
@@ -2273,7 +2299,7 @@ function RDTSC : UInt64;
 begin
    // TODO : Implement true RDTSC function
    // if asm does not work we use a fake, monotonous, vaguely random ersatz
-   Result := Int64(InterlockedAdd64(vFakeRDTSC, (GetSystemTimeMilliseconds and $ffff)*7919));
+   Result := Int64(InterlockedAdd64(vFakeRDTSC, 1+(GetSystemTimeMilliseconds and $ffff)*7919));
 end;
 {$endif}
 
@@ -2395,6 +2421,15 @@ begin
    Result := (vApplicationVersionRetrieved = 1);
    if Result then
       version := vApplicationVersion;
+end;
+{$else}
+function GetModuleVersion(instance : THandle; var version : TModuleVersion) : Boolean;
+begin
+   Result := False;
+end;
+function GetApplicationVersion(var version : TModuleVersion) : Boolean;
+begin
+   Result := False;
 end;
 {$endif}
 
@@ -2918,6 +2953,7 @@ end;
 // GetAsDosDateTime
 //
 function TdwsDateTime.GetAsDosDateTime : Integer;
+{$IFDEF WINDOWS}
 var
    fileTime : TFileTime;
    dosTime : LongRec;
@@ -2926,6 +2962,11 @@ begin
    FileTimeToDosDateTime(fileTime, dosTime.Hi, dosTime.Lo);
    Result := Integer(dosTime);
 end;
+{$ELSE}
+begin
+   Result := Integer(SysUtils.DateTimeToFileDate(Self.AsLocalDateTime));
+end;
+{$ENDIF}
 
 // GetAsFileTime
 //
