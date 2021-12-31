@@ -353,8 +353,15 @@ type
 
          function Specialize(const context : ISpecializationContext) : TSymbol; virtual;
 
+         // Caption is a short way to describe the symbol,
+         // using the Name when set or a type summary for anonymous symbols
+         // it should be single-ligne
          property Caption : String read SafeGetCaption;
+
+         // Description is a more detailed description than Caption
+         // and can span multiple lines, explicit constant values, etc.
          property Description : String read GetDescription;
+
          property Name : String read FName;
          property Typ : TTypeSymbol read FTyp write FTyp;
          property Size : Integer read FSize;
@@ -2592,25 +2599,37 @@ end;
 constructor TSymbol.Create(const aName : String; aType : TTypeSymbol);
 begin
    inherited Create;
-   FName:=aName;
-   FTyp:=aType;
+   FName := aName;
+   FTyp := aType;
    if Assigned(aType) then
-      FSize:=aType.FSize
-   else FSize:=0;
+      FSize := aType.FSize;
+end;
+
+// SafeGetCaption
+//
+function TSymbol.SafeGetCaption : String;
+begin
+   if Self = nil then
+      Result := SYS_VOID
+   else Result := GetCaption;
 end;
 
 // GetCaption
 //
 function TSymbol.GetCaption : String;
 begin
-   Result := FName;
+   if Name <> '' then
+      Result := Name
+   else Result := ClassName;
 end;
 
 // GetDescription
 //
 function TSymbol.GetDescription : String;
 begin
-   Result:=Caption;
+   if FName <> '' then
+      Result := FName
+   else Result := Caption;
 end;
 
 // Initialize
@@ -2717,15 +2736,6 @@ procedure TSymbol.SetName(const newName : String; force : Boolean = False);
 begin
    Assert(force or (FName=''));
    FName:=newName;
-end;
-
-// SafeGetCaption
-//
-function TSymbol.SafeGetCaption : String;
-begin
-   if Self=nil then
-      Result:=SYS_VOID
-   else Result:=GetCaption;
 end;
 
 // ------------------
@@ -3394,7 +3404,7 @@ function TRecordSymbol.GetCaption : String;
 begin
    if Name = '' then
       Result := 'anonymous record'
-   else Result := 'record ' + Name;
+   else Result := Name;
 end;
 
 // GetDescription
@@ -5062,16 +5072,20 @@ end;
 //
 function TPropertySymbol.GetDescription : String;
 begin
-   Result := Format('property %s%s: %s', [Name, GetArrayIndicesDescription, Typ.Name]);
+   Result := Format('property %s%s: %s', [Name, GetArrayIndicesDescription, Typ.Caption]);
 
    if Assigned(FIndexSym) then
       Result := Result + ' index ' + VariantToString(FIndexValue[0]);
 
    if Assigned(FReadSym) then
-      Result := Result + ' read ' + FReadSym.Name;
+      if FReadSym.Name <> '' then
+         Result := Result + ' read ' + FReadSym.Name
+      else Result := Result + ' read';
 
    if Assigned(FWriteSym) then
-      Result := Result + ' write ' + FWriteSym.Name;
+      if FWriteSym.Name <> '' then
+         Result := Result + ' write ' + FWriteSym.Name
+      else Result := Result + ' write';
 
    if IsDefault then
       Result := Result + '; default;';

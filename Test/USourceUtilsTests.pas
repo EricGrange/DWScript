@@ -72,6 +72,7 @@ type
          procedure ImplementationSuggest;
          procedure ParameterSuggest;
          procedure FunctionCaptionDescription;
+         procedure PropertiesDescription;
    end;
 
 // ------------------------------------------------------------------
@@ -1194,6 +1195,36 @@ begin
                symClassFn.Caption, 'TestFC');
    CheckEquals('class function TestFC(a: array of TTest): array of String',
                symClassFn.Description, 'TestFC');
+end;
+
+// PropertiesDescription
+//
+procedure TSourceUtilsTests.PropertiesDescription;
+var
+   prog : IdwsProgram;
+   classSymMembers : TMembersSymbolTable;
+begin
+   prog := FCompiler.Compile(
+      'type TTestEnum = enum (Alpha = 0, Beta = 1, Gamma = 2, Unknown = -1);'#10+
+      'type TNameValue = record'#10+
+      '   Name : String;'#10+
+      '   Value : String;'#10+
+      'end;'#10+
+      'type TMyClass = class'#10+
+      '   private'#10+
+      '      FField : array[String] of TTestEnum;'#10+
+      '   public'#10+
+      '      property Prop : array of TTestEnum;'#10+
+      '      property Keys : array of String read (FField.Keys);'#10+
+      '      property NameValue : TNameValue;'#10+
+      'end;'
+   );
+   CheckFalse(prog.Msgs.HasErrors, prog.Msgs.AsInfo);
+   classSymMembers := (prog.Table.FindLocal('TMyClass') as TClassSymbol).Members;
+
+   CheckEquals('property Prop: array of TTestEnum read write', classSymMembers.FindSymbol('Prop', cvMagic).Description, 'Test1');
+   CheckEquals('property Keys: array of String read', classSymMembers.FindSymbol('Keys', cvMagic).Description, 'Test2');
+   CheckEquals('property NameValue: TNameValue read write', classSymMembers.FindSymbol('NameValue', cvMagic).Description, 'Test3');
 end;
 
 // SuggestInBlockWithError
