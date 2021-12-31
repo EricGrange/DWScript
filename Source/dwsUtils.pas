@@ -2212,6 +2212,19 @@ procedure VariantToString(const v : Variant; var s : String);
       Result := FloatToStr(v);
    end;
 
+   procedure VariantArrayToString(const v : Variant; var Result : String);
+   var
+      i : Integer;
+   begin
+      Result := '';
+      for i := VarArrayLowBound(v, 1) to VarArrayHighBound(v, 1) do begin
+         if Result <> '' then
+            Result := Result + ', ';
+         Result := Result + VariantToString(v[i]);
+      end;
+      Result := '[ ' + Result + ' ]';
+   end;
+
 var
    varData : PVarData;
 begin
@@ -2241,7 +2254,9 @@ begin
       varError :
          s := '[varError]';
    else
-      s := v;
+      if VarIsArray(v) then
+         VariantArrayToString(v, s)
+      else s := v;
    end;
 end;
 
