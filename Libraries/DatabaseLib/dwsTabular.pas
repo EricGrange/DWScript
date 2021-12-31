@@ -238,10 +238,10 @@ type
          {$ifdef ENABLE_JIT64}
          FCodeBlock : TdwsJITCodeBlock;
          FCodePtr : Pointer;
+         FJITAggregates : TdwsTabularExpressionAggreggates;
          {$endif}
          FJIT : TdwsTabularJIT;
          FJITHasCalls : Boolean;
-         FJITAggregates : TdwsTabularExpressionAggreggates;
 
       protected
          function AddOpCode : PdwsTabularOpcode;
