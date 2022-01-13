@@ -1,0 +1,10 @@
+alpha
+beta
+[test]
+alpha=beta
+
+[yo]
+aze=rty
+
+
+done

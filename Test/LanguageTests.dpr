@@ -76,7 +76,8 @@ uses
   dwsDynamicArrays in '..\Source\dwsDynamicArrays.pas',
   dwsArrayExprs in '..\Source\dwsArrayExprs.pas',
   UdwsTabularTests in 'UdwsTabularTests.pas',
-  UdwsCSSPackTests in 'UdwsCSSPackTests.pas';
+  UdwsCSSPackTests in 'UdwsCSSPackTests.pas',
+  UdwsIniFileTests in 'UdwsIniFileTests.pas';
 
 {$R *.res}
 

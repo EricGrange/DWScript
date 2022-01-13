@@ -40,9 +40,15 @@ type
     { Private declarations }
     FOnCreateIniFile : TdwsIniFileConstructor;
 
+    function GetScript : TDelphiWebScript; inline;
+    procedure SetScript(const val : TDelphiWebScript); inline;
+
   public
-    { Public declarations }
+   { Public declarations }
     property OnCreateIniFile : TdwsIniFileConstructor read FOnCreateIniFile write FOnCreateIniFile;
+
+    property Script : TDelphiWebScript read GetScript write SetScript;
+
   end;
 
 implementation
@@ -147,6 +153,20 @@ begin
    finally
       sl.Free;
    end;
+end;
+
+// GetScript
+//
+function TdwsIniFileLib.GetScript : TDelphiWebScript;
+begin
+   Result := dwsIniFile.Script;
+end;
+
+// SetScript
+//
+procedure TdwsIniFileLib.SetScript(const val : TDelphiWebScript);
+begin
+   dwsIniFile.Script := val;
 end;
 
 procedure TdwsIniFileLib.dwsIniFileClassesTIniFileMethodsWriteStringEval(
