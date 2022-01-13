@@ -32,6 +32,10 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsIniFileClassesTIniFileMethodsSetEncodingEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsIniFileClassesTIniFileConstructorsCreateInMemoryEval(
+      Info: TProgramInfo; var ExtObject: TObject);
+    procedure dwsIniFileClassesTIniFileMethodsToStringEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
     FOnCreateIniFile : TdwsIniFileConstructor;
@@ -56,6 +60,22 @@ begin
    else begin
       ExtObject := TMemIniFile.Create(fileName);
       TMemIniFile(ExtObject).AutoSave := True;
+   end;
+end;
+
+procedure TdwsIniFileLib.dwsIniFileClassesTIniFileConstructorsCreateInMemoryEval(
+  Info: TProgramInfo; var ExtObject: TObject);
+var
+   sl : TStringList;
+begin
+   ExtObject := TMemIniFile.Create('');
+   TMemIniFile(ExtObject).AutoSave := False;
+   sl := TStringList.Create;
+   try
+      sl.Text := Info.ParamAsString[0];
+      TMemIniFile(ExtObject).SetStrings(sl);
+   finally
+      sl.Free;
    end;
 end;
 
@@ -113,6 +133,20 @@ begin
       encoding := TEncoding.GetEncoding(Info.ParamAsString[0]);
       TMemIniFile(ExtObject).Encoding := encoding;
    end else raise Exception.Create('Setting encoding not supported');
+end;
+
+procedure TdwsIniFileLib.dwsIniFileClassesTIniFileMethodsToStringEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   sl : TStringList;
+begin
+   sl := TStringList.Create;
+   try
+      TMemIniFile(ExtObject).GetStrings(sl);
+      Info.ResultAsString := sl.Text;
+   finally
+      sl.Free;
+   end;
 end;
 
 procedure TdwsIniFileLib.dwsIniFileClassesTIniFileMethodsWriteStringEval(

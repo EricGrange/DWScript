@@ -15,6 +15,15 @@ object dwsIniFileLib: TdwsIniFileLib
                 DataType = 'String'
               end>
             OnEval = dwsIniFileClassesTIniFileConstructorsCreateEval
+          end
+          item
+            Name = 'CreateInMemory'
+            Parameters = <
+              item
+                Name = 'content'
+                DataType = 'String'
+              end>
+            OnEval = dwsIniFileClassesTIniFileConstructorsCreateInMemoryEval
           end>
         Methods = <
           item
@@ -118,6 +127,12 @@ object dwsIniFileLib: TdwsIniFileLib
               end>
             OnEval = dwsIniFileClassesTIniFileMethodsSetEncodingEval
             Kind = mkProcedure
+          end
+          item
+            Name = 'ToString'
+            ResultType = 'String'
+            OnEval = dwsIniFileClassesTIniFileMethodsToStringEval
+            Kind = mkFunction
           end>
         Properties = <
           item
