@@ -5,3 +5,10 @@
 2.00000
 343400.00000
 Dup requires at least one element in the stack
+"a",0.5,dup0,*,+
+1.25000
+5075.00000
+"a",0.5,dup1,*,+
+1.50000
+7575.00000
+Dup(2) requires at least 3 elements in the stack

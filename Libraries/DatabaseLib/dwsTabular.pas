@@ -270,6 +270,7 @@ type
          class procedure DoMin(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoMax(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoReLu(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
+         class procedure DoSMAPE(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoLn(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoExp(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
          class procedure DoDouble(stack : TdwsTabularStack; op : PdwsTabularOpcode); static;
@@ -302,7 +303,7 @@ type
          procedure PushNumField(const name : String);
          procedure PushNumFieldDef(const name : String; const default : TdwsTabularNumber);
          procedure PushLookupField(const name : String; values : TdwsNameValues; const default : TdwsTabularNumber);
-         procedure Dup;
+         procedure Dup(depth : Integer);
 
          procedure MultAddConst(const m, a : TdwsTabularNumber);
          procedure Add;
@@ -312,6 +313,7 @@ type
          procedure Min;
          procedure Max;
          procedure ReLu;
+         procedure SMAPE;
          procedure Ln;
          procedure Exp;
          procedure Sqr;
@@ -1085,7 +1087,7 @@ begin
                if code = 'abs' then Abs
                else RaiseSyntaxError;
             'd' :
-               if code = 'dup' then Dup
+               if code = 'dup' then Dup(0)
                else RaiseSyntaxError;
             'e' :
                if code = 'exp' then Exp
@@ -1106,6 +1108,13 @@ begin
             'c' :
                if code = 'ceil' then Ceil
                else RaiseSyntaxError;
+            'd' :
+               if StrBeginsWith(code, 'dup') then begin
+                  var offset := Ord(code[4])-Ord('0');
+                  if offset in [0..9] then
+                     Dup(offset)
+                  else RaiseSyntaxError;
+               end else RaiseSyntaxError;
             'r' :
                if code = 'relu' then ReLu
                else RaiseSyntaxError;
@@ -1123,6 +1132,9 @@ begin
                else RaiseSyntaxError;
             'r' :
                if code = 'round' then Round
+               else RaiseSyntaxError;
+            's' :
+               if code = 'smape' then SMAPE
                else RaiseSyntaxError;
             '"' : ParseField;
             '0'..'9', '-', '.' : ParseNum;
@@ -1262,7 +1274,7 @@ end;
 //
 class procedure TdwsTabularExpression.DoDup(stack : TdwsTabularStack; op : PdwsTabularOpcode);
 begin
-   stack.Push(stack.PeekPtr^);
+   stack.Push(PdwsTabularNumber(IntPtr(stack.PeekPtr)-PInteger(@op.Operand1)^)^);
 end;
 
 // DoMultConst
@@ -1347,6 +1359,15 @@ class procedure TdwsTabularExpression.DoReLu(stack : TdwsTabularStack; op : Pdws
 begin
    var p := stack.DecStackPtr;
    p^ := System.Math.Max(0, p^ + PdwsTabularNumberArray(p)[1]);
+end;
+
+// DoSMAPE
+//
+class procedure TdwsTabularExpression.DoSMAPE(stack : TdwsTabularStack; op : PdwsTabularOpcode);
+begin
+   var p1 := stack.DecStackPtr;
+   var p2 : PdwsTabularNumber := @PdwsTabularNumberArray(p1)[1];
+   p1^ := System.Abs(p1^ - p2^) / (System.Abs(p1^) + System.Abs(p2^));
 end;
 
 // DoLn
@@ -1494,7 +1515,7 @@ begin
 
    var n := Length(FObjectBag);
    SetLength(FObjectBag, n+1);
-   if values.Count < 12 then begin
+   if values.Count <= 30 then begin
       var lnv := TdwsLinearNameValues.Create(values, column.FUnifier);
       if lnv.FUnified then begin
          op.Method := @lnv.DoLookupUnified;
@@ -1518,12 +1539,17 @@ end;
 
 // Dup
 //
-procedure TdwsTabularExpression.Dup;
+procedure TdwsTabularExpression.Dup(depth : Integer);
 begin
-   if FStackDepth <= 0 then
-      raise EdwsTabular.Create('Dup requires at least one element in the stack');
+   if FStackDepth <= depth then begin
+      if depth = 0 then
+         raise EdwsTabular.Create('Dup requires at least one element in the stack')
+      else raise EdwsTabular.CreateFmt('Dup(%d) requires at least %d elements in the stack',
+                                       [ depth, depth+1 ]);
+   end;
    var op := AddOpCode;
    op.Method := @DoDup;
+   PInteger(@op.Operand1)^ := depth * SizeOf(TdwsTabularNumber);
    StackDelta(1);
 end;
 
@@ -1621,6 +1647,14 @@ end;
 procedure TdwsTabularExpression.ReLu;
 begin
    AddOpCode.Method := @DoReLu;
+   StackDelta(-1);
+end;
+
+// SMAPE
+//
+procedure TdwsTabularExpression.SMAPE;
+begin
+   AddOpCode.Method := @DoSMAPE;
    StackDelta(-1);
 end;
 
@@ -2393,7 +2427,7 @@ begin
 
       end else if @op.Method = @TdwsTabularExpression.DoDup then begin
          var reg := TymmRegister(op.StackDepth);
-         x86._vmovapd_reg_reg(reg, Pred(reg));
+         x86._vmovapd_reg_reg(reg, TymmRegister(Ord(reg) - 1 - PInteger(@op.Operand1)^ div SizeOf(TdwsTabularNumber)));
 
       end else if @op.Method = @TdwsTabularExpression.DoMultAddConst then begin
          var reg := TymmRegister(op.StackDepth-1);
@@ -2445,6 +2479,20 @@ begin
          x86._v_op_pd(xmm_addpd, regDest, regDest, regOperand);
          x86._v_op_pd(xmm_xorpd, regOperand, regOperand, regOperand);
          x86._v_op_pd(xmm_maxpd, regDest, regDest, regOperand);
+
+      end else if @op.Method = @TdwsTabularExpression.DoSMAPE then begin
+         var regDest := TymmRegister(op.StackDepth-2);
+         var regOperand := TymmRegister(op.StackDepth-1);
+         var regNumer := TymmRegister(op.StackDepth);
+         x86._v_op_pd(xmm_subpd, regNumer, regDest, regOperand);
+         Fixups.NewYMMOpRegPDImm(xmm_andpd, regNumer,
+                                 TdwsTabularNumber(cAbsMask), TdwsTabularNumber(cAbsMask), TdwsTabularNumber(cAbsMask), TdwsTabularNumber(cAbsMask));
+         Fixups.NewYMMOpRegPDImm(xmm_andpd, regDest,
+                                 TdwsTabularNumber(cAbsMask), TdwsTabularNumber(cAbsMask), TdwsTabularNumber(cAbsMask), TdwsTabularNumber(cAbsMask));
+         Fixups.NewYMMOpRegPDImm(xmm_andpd, regOperand,
+                                 TdwsTabularNumber(cAbsMask), TdwsTabularNumber(cAbsMask), TdwsTabularNumber(cAbsMask), TdwsTabularNumber(cAbsMask));
+         x86._v_op_pd(xmm_addpd, regOperand, regOperand, regDest);
+         x86._v_op_pd(xmm_divpd, regDest, regNumer, regOperand);
 
       end else if @op.Method = @TdwsTabularExpression.DoDouble then begin
          x86._v_op_pd(xmm_addpd, TymmRegister(op.StackDepth-1), TymmRegister(op.StackDepth-1), TymmRegister(op.StackDepth-1));
