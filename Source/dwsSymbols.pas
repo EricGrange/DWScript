@@ -1111,6 +1111,7 @@ type
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
          function GetAsFuncSymbol : TFuncSymbol; override;
          function GetDescription : String; override;
+         function GetCaption : String; override;
 
       public
          function BaseType : TTypeSymbol; override;
@@ -1278,6 +1279,7 @@ type
    TDynamicArraySymbol = class sealed (TArraySymbol)
       protected
          function GetCaption : String; override;
+         function GetDescription : String; override;
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
       protected
@@ -5072,7 +5074,7 @@ end;
 //
 function TPropertySymbol.GetDescription : String;
 begin
-   Result := Format('property %s%s: %s', [Name, GetArrayIndicesDescription, Typ.Caption]);
+   Result := 'property ' + Name + GetArrayIndicesDescription + ': ' + Typ.Caption;
 
    if Assigned(FIndexSym) then
       Result := Result + ' index ' + VariantToString(FIndexValue[0]);
@@ -7686,7 +7688,16 @@ end;
 //
 function TDynamicArraySymbol.GetCaption : String;
 begin
-   Result := 'array of '+Typ.Caption
+   if Name <> '' then
+      Result := Name
+   else Result := GetDescription;
+end;
+
+// GetDescription
+//
+function TDynamicArraySymbol.GetDescription : String;
+begin
+   Result := 'array of ' + Typ.Caption;
 end;
 
 // InitData
@@ -8337,6 +8348,15 @@ end;
 function TAliasSymbol.GetDescription : String;
 begin
    Result := Name + ' = ' + Typ.Name;
+end;
+
+// GetCaption
+//
+function TAliasSymbol.GetCaption : String;
+begin
+   if Name <> '' then
+      Result := Name
+   else Result := Typ.Caption;
 end;
 
 // ------------------
