@@ -7620,7 +7620,6 @@ var
    i : Integer;
    hashCode : Cardinal;
    key : IDataContext;
-   buf : Variant;
 begin
    if FCreateKeyOnAccess then
       if FCount >= FGrowth then Grow;
@@ -7642,6 +7641,9 @@ begin
       FHashCodes[i] := hashCode;
       key.CopyData(FKeys, i*FKeySize, FKeySize);
       Inc(FCount);
+
+//      result.EvalAsVariant(0, buf);
+//      AsVariant[i] := buf;
 
    end else begin
 
