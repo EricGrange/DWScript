@@ -2549,43 +2549,6 @@ end;
 //
 function VarCompareSafe(const left, right : Variant) : TVariantRelationship;
 
-   function CompareUnknowns(const left, right : IUnknown) : TVariantRelationship;
-   var
-      intfLeft, intfRight : IToVariant;
-      varLeft, varRight : Variant;
-   begin
-      if left = right then
-         Result := vrEqual
-      else if     (left <> nil)  and (right <> nil)
-              and (left.QueryInterface(IToVariant, intfLeft)=0) and (right.QueryInterface(IToVariant, intfRight)=0) then begin
-         intfLeft.ToVariant(varLeft);
-         intfRight.ToVariant(varRight);
-         Result := VarCompareSafe(varLeft, varRight);
-      end else Result := vrNotEqual;
-   end;
-
-   function CompareUnknownToVar(const left : IUnknown; const right : Variant) : TVariantRelationship;
-   var
-      intfLeft : IToVariant;
-      varLeft : Variant;
-   begin
-      if (left <> nil) and (left.QueryInterface(IToVariant, intfLeft)=0) then begin
-         intfLeft.ToVariant(varLeft);
-         Result := VarCompareSafe(varLeft, right);
-      end else Result := vrNotEqual;
-   end;
-
-   function CompareVarToUnknown(const left : Variant; const right : IUnknown) : TVariantRelationship;
-   var
-      intfRight : IToVariant;
-      varRight : Variant;
-   begin
-      if (right <> nil) and (right.QueryInterface(IToVariant, intfRight)=0) then begin
-         intfRight.ToVariant(varRight);
-         Result := VarCompareSafe(left, varRight);
-      end else Result := vrNotEqual;
-   end;
-
    function CompareStrings(const left, right : String) : TVariantRelationship;
    var
       c : Integer;
@@ -2654,6 +2617,69 @@ function VarCompareSafe(const left, right : Variant) : TVariantRelationship;
       else Result := CompareStringToDouble(left, right);
    end;
 
+   function CompareUnknowns(const left, right : IUnknown) : TVariantRelationship;
+   var
+      intfLeft, intfRight : IToVariant;
+      varLeft, varRight : Variant;
+   begin
+      if left = right then
+         Result := vrEqual
+      else if     (left <> nil)  and (right <> nil)
+              and (left.QueryInterface(IToVariant, intfLeft)=0) and (right.QueryInterface(IToVariant, intfRight)=0) then begin
+         intfLeft.ToVariant(varLeft);
+         intfRight.ToVariant(varRight);
+         Result := VarCompareSafe(varLeft, varRight);
+      end else Result := vrNotEqual;
+   end;
+
+   function CompareUnknownToVar(const left : IUnknown; const right : Variant) : TVariantRelationship;
+   var
+      intfLeft : IToVariant;
+      varLeft : Variant;
+   begin
+      if (left <> nil) and (left.QueryInterface(IToVariant, intfLeft)=0) then begin
+         intfLeft.ToVariant(varLeft);
+         Result := VarCompareSafe(varLeft, right);
+      end else Result := vrNotEqual;
+   end;
+
+   function CompareInt64ToUnknown(const left : Int64; const right : IUnknown) : TVariantRelationship; forward;
+
+   function CompareInt64ToVar(const left : Int64; const right : Variant) : TVariantRelationship;
+   begin
+      case VarType(right) of
+         varDouble : Exit(CompareDoubles(left, TVarData(right).VDouble));
+         varInt64 : Exit(CompareInt64s(left, TVarData(right).VInt64));
+         varUString : Exit(CompareInt64ToString(left, String(TVarData(right).VUString)));
+         varUnknown : Exit(CompareInt64ToUnknown(left, IUnknown(TVarData(right).VUnknown)));
+      end;
+      if VarIsArray(right) then
+         Exit(vrNotEqual)
+      else Exit(VarCompareValue(left, right));
+   end;
+
+   function CompareInt64ToUnknown(const left : Int64; const right : IUnknown) : TVariantRelationship;
+   var
+      intfRight : IToVariant;
+      varRight : Variant;
+   begin
+      if (right <> nil) and (right.QueryInterface(IToVariant, intfRight)=0) then begin
+         intfRight.ToVariant(varRight);
+         Result := CompareInt64ToVar(left, varRight);
+      end else Result := vrNotEqual;
+   end;
+
+   function CompareVarToUnknown(const left : Variant; const right : IUnknown) : TVariantRelationship;
+   var
+      intfRight : IToVariant;
+      varRight : Variant;
+   begin
+      if (right <> nil) and (right.QueryInterface(IToVariant, intfRight)=0) then begin
+         intfRight.ToVariant(varRight);
+         Result := VarCompareSafe(left, varRight);
+      end else Result := vrNotEqual;
+   end;
+
 begin
    case VarType(left) of
       varUnknown : begin
@@ -2680,16 +2706,8 @@ begin
             Exit(vrNotEqual)
          else Exit(VarCompareValue(left, right));
       end;
-      varInt64 : begin
-         case VarType(right) of
-            varDouble : Exit(CompareDoubles(TVarData(left).VInt64, TVarData(right).VDouble));
-            varInt64 : Exit(CompareInt64s(TVarData(left).VInt64, TVarData(right).VInt64));
-            varUString : Exit(CompareInt64ToString(TVarData(left).VInt64, String(TVarData(right).VUString)));
-         end;
-         if VarIsArray(right) then
-            Exit(vrNotEqual)
-         else Exit(VarCompareValue(left, right));
-      end;
+      varInt64 :
+         Exit(CompareInt64ToVar(TVarData(left).VInt64, right));
       varUString : begin
          case VarType(right) of
             varDouble : Exit(CompareStringToDouble(String(TVarData(left).VUString), TVarData(right).VDouble));
