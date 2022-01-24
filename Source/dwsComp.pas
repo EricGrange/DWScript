@@ -3663,18 +3663,18 @@ begin
 
    if ResultType='' then begin
       func:=TCustomInternalMagicProcedure.Create(table, Name, GetParameters(systemTable, table),
-                                                 ResultType, flags, nil, '');
+                                                 ResultType, flags, nil, '', '');
       TCustomInternalMagicProcedure(func).FOnFastEval:=FOnFastEval;
    end else begin
       resType:=GetDataType(systemTable, table, ResultType);
       if resType.Size<>1 then begin
          func:=TCustomInternalMagicDataFunction.Create(table, Name, GetParameters(systemTable, table),
-                                                       ResultType, flags, nil, '');
+                                                       ResultType, flags, nil, '', '');
          TCustomInternalMagicDataFunction(func).FOnFastEval:=FOnFastEval;
          TCustomInternalMagicDataFunction(func).FSize:=resType.Size;
       end else begin
          func:=TCustomInternalMagicFunction.Create(table, Name, GetParameters(systemTable, table),
-                                                   ResultType, flags, nil, '');
+                                                   ResultType, flags, nil, '', '');
          TCustomInternalMagicFunction(func).FOnFastEval:=FOnFastEval;
       end;
    end;

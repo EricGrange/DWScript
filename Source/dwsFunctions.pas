@@ -79,7 +79,7 @@ type
                             const params : TParamArray; const funcType : String;
                             const flags : TInternalFunctionFlags;
                             compositeSymbol : TCompositeTypeSymbol;
-                            const helperName : String); overload; virtual;
+                            const helperName, deprecatedMsg : String); overload; virtual;
          constructor Create(table : TSymbolTable; const funcName : String;
                             const params : array of String; const funcType : String;
                             const flags : TInternalFunctionFlags = [];
@@ -210,7 +210,8 @@ type
 procedure RegisterInternalFunction(InternalFunctionClass: TInternalFunctionClass;
       const FuncName: String; const FuncParams: array of String;
       const FuncType: String; const flags : TInternalFunctionFlags = [];
-      const helperName : String = '');
+      const helperName : String = '';
+      const deprecatedMsg : String = '');
 procedure RegisterInternalProcedure(InternalFunctionClass: TInternalFunctionClass;
       const FuncName: String; const FuncParams: array of String;
       const helperName : String = ''; const flags : TInternalFunctionFlags = []);
@@ -324,6 +325,7 @@ type
       FuncName, HelperName : String;
       FuncParams : TParamArray;
       FuncType : String;
+      DeprecatedMsg : String;
       Flags : TInternalFunctionFlags;
    end;
    PRegisteredInternalFunction = ^TRegisteredInternalFunction;
@@ -335,16 +337,20 @@ procedure RegisterInternalFunction(internalFunctionClass : TInternalFunctionClas
                                    const funcParams : array of String;
                                    const funcType : String;
                                    const flags : TInternalFunctionFlags = [];
-                                   const helperName : String = '');
+                                   const helperName : String = '';
+                                   const deprecatedMsg : String = '');
 var
    rif : PRegisteredInternalFunction;
 begin
+   if deprecatedMsg <> '' then Assert(iffDeprecated in flags);
+
    New(rif);
    rif.InternalFunctionClass:=internalFunctionClass;
    UnifyAssignString(funcName, rif.FuncName);
    rif.Flags:=flags;
    rif.FuncParams:=ConvertFuncParams(funcParams);
    rif.FuncType:=funcType;
+   rif.DeprecatedMsg := deprecatedMsg;
    UnifyAssignString(helperName, rif.HelperName);
 
    dwsInternalUnit.AddInternalFunction(rif);
@@ -443,7 +449,7 @@ constructor TInternalFunction.Create(table : TSymbolTable; const funcName : Stri
                                      const params : TParamArray; const funcType : String;
                                      const flags : TInternalFunctionFlags;
                                      compositeSymbol : TCompositeTypeSymbol;
-                                     const helperName : String);
+                                     const helperName, deprecatedMsg : String);
 var
    sym: TFuncSymbol;
 begin
@@ -480,7 +486,7 @@ begin
    Create(table,
           funcName, ConvertFuncParams(params), funcType,
           flags,
-          compositeSymbol, helperName);
+          compositeSymbol, helperName, '');
 end;
 
 // ------------------
@@ -869,7 +875,8 @@ begin
       rif := PRegisteredInternalFunction(FRegisteredInternalFunctions[i]);
       try
          rif.InternalFunctionClass.Create(unitTable, rif^.FuncName, rif^.FuncParams,
-                                          rif^.FuncType, rif^.Flags, nil, rif^.HelperName);
+                                          rif^.FuncType, rif^.Flags, nil, rif^.HelperName,
+                                          rif^.DeprecatedMsg);
       except
          on e: Exception do
             raise Exception.CreateFmt('AddInternalFunctions failed on %s'#13#10'%s',

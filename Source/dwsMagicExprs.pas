@@ -55,7 +55,7 @@ type
                             const params : TParamArray; const funcType: String;
                             const flags : TInternalFunctionFlags;
                             compositeSymbol : TCompositeTypeSymbol;
-                            const helperName : String); override;
+                            const helperName, deprecatedMsg : String); override;
          function MagicFuncExprClass : TMagicFuncExprClass; virtual; abstract;
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); override; final;
 
@@ -441,7 +441,8 @@ procedure RegisterInternalFloatFunction(InternalFunctionClass: TInternalMagicFlo
       const flags : TInternalFunctionFlags = []; const helperName : String = '');
 procedure RegisterInternalStringFunction(InternalFunctionClass: TInternalMagicStringFunctionClass;
       const FuncName: String; const FuncParams: array of String;
-      const flags : TInternalFunctionFlags = []; const helperName : String = '');
+      const flags : TInternalFunctionFlags = []; const helperName : String = '';
+      const deprecatedMsg : String = '');
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -493,9 +494,10 @@ end;
 //
 procedure RegisterInternalStringFunction(InternalFunctionClass: TInternalMagicStringFunctionClass;
       const FuncName: String; const FuncParams: array of String;
-      const flags : TInternalFunctionFlags = []; const helperName : String = '');
+      const flags : TInternalFunctionFlags = []; const helperName : String = '';
+      const deprecatedMsg : String = '');
 begin
-   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, SYS_STRING, flags, helperName);
+   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, SYS_STRING, flags, helperName, deprecatedMsg);
 end;
 
 // ------------------
@@ -569,7 +571,7 @@ constructor TInternalMagicFunction.Create(table : TSymbolTable;
       const funcName : String; const params : TParamArray; const funcType : String;
       const flags : TInternalFunctionFlags;
       compositeSymbol : TCompositeTypeSymbol;
-      const helperName : String);
+      const helperName, deprecatedMsg : String);
 var
    sym : TMagicFuncSymbol;
    ssym : TMagicStaticMethodSymbol;
@@ -588,7 +590,9 @@ begin
       Assert(helperName=''); // unsupported
       Self.FuncSymbol := ssym;
       if iffDeprecated in flags then
-         ssym.DeprecatedMessage := MSG_DeprecatedEmptyMsg;
+         if deprecatedMsg <> '' then
+            ssym.DeprecatedMessage := deprecatedMsg
+         else ssym.DeprecatedMessage := MSG_DeprecatedEmptyMsg;
    end else begin
       sym:=TMagicFuncSymbol.Generate(table, funcName, params, funcType);
       sym.params.AddParent(table);
@@ -600,7 +604,9 @@ begin
       if helperName<>'' then
          CompilerUtils.AddProcHelper(helperName, table, sym, nil);
       if iffDeprecated in flags then
-         sym.DeprecatedMessage := MSG_DeprecatedEmptyMsg;
+         if deprecatedMsg <> '' then
+            sym.DeprecatedMessage := deprecatedMsg
+         else sym.DeprecatedMessage := MSG_DeprecatedEmptyMsg;
    end;
 end;
 
