@@ -1913,6 +1913,62 @@ end;
 
 // LoadRawBytesAsScriptStringFromFile
 //
+procedure BytesToWordsInPlace(p : Pointer; n : NativeInt);
+{$ifdef WIN64_ASM}
+asm  // p -> rcx     n -> rdx
+   lea         r8,  [ rcx + rdx ]   //  r8 -> src
+   lea         rcx, [ rcx + rdx*2 ] // rcx -> dest
+
+   cmp         rdx, 16
+   jb          @@lessthan16
+
+   mov         eax, edx
+   shr         eax, 4
+   and         rdx, 15
+
+   pxor        xmm0, xmm0
+
+@@loop16:
+   sub         r8,  16
+   sub         rcx, 32
+
+   movq        xmm1, [r8]
+   movq        xmm2, [r8+8]
+   punpcklbw   xmm1, xmm0
+   punpcklbw   xmm2, xmm0
+   movdqu      [rcx], xmm1
+   movdqu      [rcx+16], xmm2
+
+   dec         eax
+   jnz         @@loop16
+
+@@lessthan16:
+   test        rdx, rdx
+   jz          @@end
+
+@@loop1:
+   dec         r8
+   sub         rcx, 2
+   mov         al, [r8]
+   mov         [rcx], ax
+   dec         rdx
+   jnz         @@loop1
+
+@@end:
+end;
+{$else}
+begin
+   var pw := PWord(IntPtr(p) + (n-1) * SizeOf(Word));
+   var pb := PByte(IntPtr(p) + (n-1) * SizeOf(Byte));
+   while n > 0 do begin
+      pw^ := pb^;
+      Dec(pw);
+      Dec(pb);
+      Dec(n);
+   end;
+end;
+{$endif}
+
 procedure LoadRawBytesAsScriptStringFromFile(const fileName : TFileName; var result : String);
 {$ifdef WINDOWS}
 const
@@ -1920,9 +1976,8 @@ const
 var
    hFile : THandle;
    n : Int64;
-   i, nRead : Cardinal;
+   nRead : Cardinal;
    pDest : PWord;
-   buffer : array [0..16383] of Byte;
 begin
    if fileName = '' then Exit;
    hFile := OpenFileForSequentialReadOnly(fileName);
@@ -1935,23 +1990,14 @@ begin
          if Length(Result) <> n then
             raise Exception.CreateFmt('File too large (%d)', [ n ]);
          pDest := Pointer(Result);
-         repeat
-            if n > SizeOf(Buffer) then
-               nRead := SizeOf(Buffer)
-            else nRead := n;
-            if not ReadFile(hFile, buffer, nRead, nRead, nil) then
-               RaiseLastOSError
-            else if nRead = 0 then begin
-               // file got trimmed while we were reading
-               SetLength(Result, Length(Result)-Integer(n));
-               Break;
-            end;
-            for i := 1 to nRead do begin
-               pDest^ := buffer[i-1];
-               Inc(pDest);
-            end;
-            Dec(n, nRead);
-         until n <= 0;
+         ReadFile(hFile, pDest^, n, nRead, nil);
+         if nRead <> n then begin
+            // file got trimmed while we were reading
+            SetLength(Result, nRead);
+            n := nRead;
+         end;
+         if n > 0 then
+            BytesToWordsInPlace(pDest, n);
       end;
    finally
       CloseFileHandle(hFile);
