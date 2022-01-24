@@ -2307,14 +2307,14 @@ end;
 //
 function TVarParentExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
-   Result:=exec.Stack.Data[exec.Stack.GetSavedBp(FLevel)+FStackAddr];
+   VariantToInt64(exec.Stack.Data[exec.Stack.GetSavedBp(FLevel)+FStackAddr], Result);
 end;
 
 // EvalAsFloat
 //
 function TVarParentExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
-   Result:=exec.Stack.Data[exec.Stack.GetSavedBp(FLevel)+FStackAddr];
+   Result := VariantToFloat(exec.Stack.Data[exec.Stack.GetSavedBp(FLevel)+FStackAddr]);
 end;
 
 // ------------------
