@@ -6696,7 +6696,7 @@ var
    buf : Variant;
 begin
    FCompareExpr.EvalAsVariant(exec, buf);
-   Result:=(buf=value);
+   Result := VarCompareSafe(buf, value) = vrEqual;
 end;
 
 // StringIsTrue
@@ -6770,8 +6770,21 @@ end;
 // IsTrue
 //
 function TCompareConstStringCaseCondition.IsTrue(exec : TdwsExecution; const value : Variant) : Boolean;
+
+   function Fallback : Boolean;
+   begin
+      if VariantIsString(value) then
+         Result := (value = FValue)
+      else Result := VarCompareSafe(value, FValue) = vrEqual;
+   end;
+
 begin
-   Result := VariantIsString(value) and (value = FValue);
+   case VarType(value) of
+      varUString :
+         Result := UnicodeString(TVarData(value).VUString) = FValue;
+   else
+      Result := Fallback;
+   end;
 end;
 
 // StringIsTrue
