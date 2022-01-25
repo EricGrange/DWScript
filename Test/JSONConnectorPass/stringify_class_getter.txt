@@ -1,0 +1,17 @@
+{
+	"Arr" : [
+		"abc",
+		"de"
+	],
+	"Bool" : true,
+	"Int" : 123,
+	"Num" : 3.14,
+	"Str" : "hello",
+	"Sub" : {
+		"Name" : "<hello>",
+		"Sub" : {
+			"Name" : "<world>",
+			"Sub" : null
+		}
+	}
+}

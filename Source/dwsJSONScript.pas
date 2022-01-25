@@ -62,7 +62,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsCompilerUtils, dwsConstExprs, dwsArrayElementContext;
+uses
+   dwsCompilerUtils, dwsConstExprs, dwsArrayElementContext,
+   dwsInfo, dwsInfoClasses;
 
 // ------------------
 // ------------------ JSONScript ------------------
@@ -319,7 +321,14 @@ var
    fieldSym : TFieldSymbol;
    propSym : TPropertySymbol;
    locData : IDataContext;
+   progInfo : TProgramInfo;
+   info : IInfo;
+   scriptObj : IScriptObj;
 begin
+   if exec is TdwsProgramExecution then
+      progInfo := TdwsProgramExecution(exec).ProgramInfo
+   else progInfo := nil;
+
    writer.BeginObject;
    while compSym <> nil do begin
       for i:=0 to compSym.Members.Count-1 do begin
@@ -340,9 +349,18 @@ begin
             fieldSym:=TFieldSymbol(sym);
             dataPtr.CreateOffset(fieldSym.Offset, locData);
             StringifySymbol(exec, writer, fieldSym.Typ, locData);
-         end else begin
-   //         SetLength(bufData, sym.Typ.Size);
-            Assert(False, 'published method getters not supported yet');
+         end else if sym is TFuncSymbol then begin
+            Assert(progInfo <> nil);
+            if compSym is TRecordSymbol then begin
+               Assert(False, 'JSON utility does not yet support published method getters for records');
+            end else begin
+               scriptObj := (dataPtr.GetSelf as  TScriptObjInstance) as IScriptObj;
+               info := TInfoFunc.Create(progInfo, sym, progInfo.Execution.DataContext_Nil,
+                                        nil, scriptObj, TClassSymbol(compSym));
+            end;
+            StringifySymbol(exec, writer, sym.Typ, info.Call.GetDataPtr);
+            info := nil;
+            scriptObj := nil;
          end;
       end;
       compSym := compSym.Parent;
