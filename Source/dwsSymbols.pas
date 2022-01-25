@@ -1981,6 +1981,7 @@ type
 
          procedure AddElement(element : TElementSymbol);
          function ElementByValue(const value : Int64) : TElementSymbol;
+         function ElementByName(const name : String) : TElementSymbol;
 
          property Elements : TSymbolTable read FElements;
          property Style : TEnumerationSymbolStyle read FStyle;
@@ -8246,6 +8247,13 @@ begin
       end;
    end;
    Result:=nil;
+end;
+
+// ElementByName
+//
+function TEnumerationSymbol.ElementByName(const name : String) : TElementSymbol;
+begin
+   Result := TElementSymbol(Elements.FindLocal(name));
 end;
 
 // GetCaption

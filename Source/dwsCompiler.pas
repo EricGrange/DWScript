@@ -5017,6 +5017,26 @@ end;
 //
 function TdwsCompiler.ReadEnumerationSymbolName(const enumPos : TScriptPos; enumSym : TEnumerationSymbol;
                                                 acceptTypeRef : Boolean) : TProgramExpr;
+
+   function ReadByName(const elemPos : TScriptPos) : TTypedExpr;
+   var
+      nameExpr : TTypedExpr;
+      namePos : TScriptPos;
+   begin
+      namePos := FTok.CurrentPos;
+      nameExpr := ReadBracket(FCompilerContext.TypString);
+      if (nameExpr = nil) or (nameExpr.Typ = nil) or not nameExpr.Typ.IsOfType(FCompilerContext.TypString) then begin
+         FMsgs.AddCompilerError(namePos, CPE_StringExpected);
+         // keep compiling
+         OrphanObject(nameExpr);
+         nameExpr := TConstStringExpr.Create(namePos, FCompilerContext.TypString, '');
+      end;
+      Result := TEnumerationElementByNameExpr.Create(
+         FCompilerContext, elemPos,
+         enumSym, nameExpr
+      );
+   end;
+
 var
    name : String;
    elemPos : TScriptPos;
@@ -5032,16 +5052,18 @@ begin
       if not FTok.TestDeleteNamePos(name, elemPos) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
       if FTok.TestDelete(ttBLEFT) then begin
-         if not FTok.TestDelete(ttBRIGHT) then
+         if UnicodeSameText(name, 'ByName') then begin
+            Exit(ReadByName(elemPos));
+         end else if not FTok.TestDelete(ttBRIGHT) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
          elem:=nil;
       end else begin
          elem:=enumSym.Elements.FindLocal(name);
       end;
       if elem=nil then begin
-         if UnicodeSameText(name, 'low') then
+         if UnicodeSameText(name, 'Low') then
             Result := TConstIntExpr.Create(elemPos, enumSym, enumSym.LowBound)
-         else if UnicodeSameText(name, 'high') then
+         else if UnicodeSameText(name, 'High') then
             Result := TConstIntExpr.Create(elemPos, enumSym, enumSym.HighBound)
          else begin
             FMsgs.AddCompilerErrorFmt(elemPos, CPE_UnknownNameDotName, [enumSym.Name, name]);
@@ -5162,7 +5184,10 @@ var
 begin
    if codeExpr=nil then Exit(nil);
    codeExprTyp:=codeExpr.Typ;
-   if codeExprTyp=nil then Exit(nil);
+   if codeExprTyp=nil then begin
+      OrphanObject(codeExpr);
+      Exit(nil);
+   end;
 
    funcSym:=codeExprTyp.AsFuncSymbol;
    if funcSym<>nil then begin
@@ -5174,9 +5199,9 @@ begin
       else if not funcSym.IsOverloaded then
          Result := ReadFunc(funcSym, codeExpr, expecting)
       else begin
+         OrphanObject(codeExpr);
          FMsgs.AddCompilerStopFmt(codeExpr.ScriptPos, CPH_AmbiguousMatchingOverloadsForCall, [ funcSym.Name ]);
-         Result := codeExpr;
-         // Result:=ReadFuncOverloaded(funcSym, fromTable, varExpr, expecting)
+         Result := nil;
       end;
    end else Result:=codeExpr;
 

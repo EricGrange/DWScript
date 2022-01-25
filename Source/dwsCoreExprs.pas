@@ -1102,6 +1102,14 @@ type
          procedure EvalAsString(exec : TdwsExecution; var result : String); override;
    end;
 
+   // retrieve an enumeration element value by its name
+   TEnumerationElementByNameExpr = class (TUnaryOpIntExpr)
+      public
+         constructor Create(context : TdwsBaseSymbolsContext; const aScriptPos : TScriptPos;
+                            enumSymbol : TEnumerationSymbol; expr : TTypedExpr); reintroduce;
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+   end;
+
    // statement; statement; statement;
    TBlockExpr = class sealed (TBlockExprBase)
       private
@@ -3680,6 +3688,45 @@ begin
       Result:=element.QualifiedName
    else Result:=TEnumerationSymbol(Expr.Typ).Name+'.?';
 end;
+
+// ------------------
+// ------------------ TEnumerationElementByNameExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TEnumerationElementByNameExpr.Create(
+   context : TdwsBaseSymbolsContext; const aScriptPos : TScriptPos;
+   enumSymbol : TEnumerationSymbol; expr : TTypedExpr);
+begin
+   inherited Create(context, aScriptPos, expr);
+   Typ := enumSymbol;
+end;
+
+// EvalAsInteger
+//
+function TEnumerationElementByNameExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+var
+   enumSymbol : TEnumerationSymbol;
+   elementSymbol : TElementSymbol;
+   name : String;
+   p : Integer;
+begin
+   enumSymbol := TEnumerationSymbol(Typ);
+   Expr.EvalAsString(exec, name);
+   p := StrIndexOfChar(name, '.');
+   if p > 0 then begin
+      Dec(p);
+      if (Length(enumSymbol.Name) <> p) or (UnicodeCompareLen(PChar(enumSymbol.Name), PChar(name), p) <> 0) then
+         Exit(0);
+      name := Copy(name, p+2);
+   end;
+   elementSymbol := enumSymbol.ElementByName(name);
+   if elementSymbol <> nil then
+      Result := elementSymbol.Value
+   else Result := 0;
+end;
+
 
 // ------------------
 // ------------------ TAssertExpr ------------------
