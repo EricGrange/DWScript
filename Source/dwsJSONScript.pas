@@ -334,7 +334,9 @@ begin
       for i:=0 to compSym.Members.Count-1 do begin
          sym:=compSym.Members[i];
          if sym.ClassType=TPropertySymbol then begin
-            propSym:=TPropertySymbol(sym);
+            propSym := TPropertySymbol(sym);
+            if propSym.HasArrayIndices then
+               continue;
             if (propSym.Visibility>=cvPublished) and (propSym.ReadSym<>nil) then
                sym:=propSym.ReadSym
             else continue;

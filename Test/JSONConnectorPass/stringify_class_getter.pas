@@ -22,6 +22,7 @@ type
          property Num : Float read (3.14);
          property Arr : array of String read (StrSplit('abc,de', ','));
          property Sub : TSubTest;
+		 property Indexed[i : Integer] : String read (i.ToString);
    end;
 
 var i := new TTest;
