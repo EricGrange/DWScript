@@ -38,6 +38,7 @@ type
       function GetConstructor(const MethName: String; ExtObject: TObject): IInfo;
       function GetData : TData;
       function GetExternalObject: TObject;
+      function GetDataPtr : IDataContext;
       function GetMember(const s: String): IInfo;
       function GetFieldMemberNames : TStrings;
       function GetMethod(const s: String): IInfo;

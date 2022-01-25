@@ -54,6 +54,7 @@ type
 
          function GetData : TData; virtual;
          function GetExternalObject : TObject; virtual;
+         function GetDataPtr : IDataContext; virtual;
          function GetMember(const s : String) : IInfo; virtual;
          function GetFieldMemberNames : TStrings; virtual;
          function GetMethod(const s : String) : IInfo; virtual;
@@ -413,6 +414,13 @@ end;
 function TInfo.GetExternalObject: TObject;
 begin
   raise Exception.CreateFmt(RTE_InvalidOp, ['ExternalObject', FTypeSym.Caption]);
+end;
+
+// GetDataPtr
+//
+function TInfo.GetDataPtr : IDataContext;
+begin
+   Result := FDataPtr;
 end;
 
 // GetMember
