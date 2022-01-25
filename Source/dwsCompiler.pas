@@ -5429,7 +5429,9 @@ begin
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_ObjectReferenceExpected);
                   OrphanAndNil(expr);
                end;
-               Result:=TReadOnlyFieldExpr.Create(FTok.HotPos, TFieldSymbol(sym), expr, propertySym.Typ);
+               if propertySym.OwnerSymbol is TRecordSymbol then
+                  Result := TRecordExpr.Create(FTok.HotPos, expr as TDataExpr, TFieldSymbol(sym))
+               else Result := TReadOnlyFieldExpr.Create(FTok.HotPos, TFieldSymbol(sym), expr, propertySym.Typ);
                expr:=nil;
 
             end else if sym is TClassVarSymbol then begin
