@@ -90,6 +90,7 @@ begin
    FCompiler.OnInclude:=DoInclude;
    FCompiler.OnNeedUnit:=DoNeedUnit;
    FCompiler.Config.HintsLevel:=hlPedantic;
+   FCompiler.Config.Conditionals.Add('CONDITION');
 
    FStream:=Tx86_Platform_WriteOnlyStream.Create;
    FFixups:=TFixupLogic.Create;
