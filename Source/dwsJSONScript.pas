@@ -206,28 +206,61 @@ end;
 // StringifySymbol
 //
 class procedure JSONScript.StringifySymbol(exec : TdwsExecution; writer : TdwsJSONWriter; sym : TSymbol; const dataPtr : IDataContext);
+
+   procedure DoBaseSymbol;
+   begin
+      StringifyVariant(exec, writer, dataPtr[0])
+   end;
+
+   procedure DoDynamicArray;
+   begin
+      StringifyDynamicArray(exec, writer, IScriptDynArray(dataPtr.AsInterface[0]))
+   end;
+
+   procedure DoAssociativeArray;
+   begin
+      StringifyAssociativeArray(exec, writer, IScriptAssociativeArray(dataPtr.AsInterface[0]).GetSelf as TScriptAssociativeArray)
+   end;
+
+   procedure DoClassSymbol;
+   begin
+      StringifyClass(exec, writer, IScriptObj(dataPtr.AsInterface[0]))
+   end;
+
+   procedure DoSetOfSymbol;
+   begin
+      StringifySetOf(exec, writer, TSetOfSymbol(sym), dataPtr);
+   end;
+
+   procedure DoFallback;
+   begin
+      writer.WriteString(sym.ClassName);
+   end;
+
 var
    ct : TClass;
 begin
    sym := sym.BaseType;
+   if sym.IsBaseType then begin
+      DoBaseSymbol;
+      Exit;
+   end;
    ct := sym.ClassType;
-   if ct.InheritsFrom(TBaseSymbol) then
-      StringifyVariant(exec, writer, dataPtr[0])
-   else if ct=TDynamicArraySymbol then
-      StringifyDynamicArray(exec, writer, IScriptDynArray(dataPtr.AsInterface[0]))
-   else if ct.InheritsFrom(TStaticArraySymbol) then
-      StringifyDataContextArray(exec, writer, TStaticArraySymbol(sym).Typ, dataPtr, TStaticArraySymbol(sym).ElementCount)
+   if ct = TDynamicArraySymbol then
+      DoDynamicArray
    else if ct = TRecordSymbol then
       StringifyComposite(exec, writer, TRecordSymbol(sym), dataPtr)
    else if ct = TClassSymbol then
-      StringifyClass(exec, writer, IScriptObj(dataPtr.AsInterface[0]))
+      DoClassSymbol
    else if ct = TAssociativeArraySymbol then
-      StringifyAssociativeArray(exec, writer, IScriptAssociativeArray(dataPtr.AsInterface[0]).GetSelf as TScriptAssociativeArray)
+      DoAssociativeArray
    else if ct = TNilSymbol then
       writer.WriteNull
    else if ct = TSetOfSymbol then
-      StringifySetOf(exec, writer, TSetOfSymbol(sym), dataPtr)
-   else writer.WriteString(sym.ClassName);
+      DoSetOfSymbol
+   else if ct.InheritsFrom(TStaticArraySymbol) then
+      StringifyDataContextArray(exec, writer, TStaticArraySymbol(sym).Typ, dataPtr, TStaticArraySymbol(sym).ElementCount)
+   else DoFallback;
 end;
 
 // StringifyDataContextArray
