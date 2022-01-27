@@ -21,8 +21,7 @@ unit dwsJSONScript;
 interface
 
 uses
-   dwsJSON, dwsUtils, dwsStack,
-   dwsExprList, dwsDataContext, dwsSymbols, dwsExprs, dwsStrings, dwsScriptSource,
+   dwsJSON, dwsExprList, dwsDataContext, dwsSymbols, dwsExprs, dwsScriptSource,
    dwsDynamicArrays;
 
 type
@@ -63,8 +62,8 @@ implementation
 // ------------------------------------------------------------------
 
 uses
-   dwsCompilerUtils, dwsConstExprs, dwsArrayElementContext,
-   dwsInfo, dwsInfoClasses;
+   dwsUtils, dwsCompilerUtils, dwsConstExprs, dwsArrayElementContext, dwsStrings,
+   dwsInfo, dwsInfoClasses, dwsStack;
 
 // ------------------
 // ------------------ JSONScript ------------------
@@ -103,7 +102,7 @@ begin
    try
       expr:=(args.ExprBase[0] as TTypedExpr);
       StringifyExpr(expr, args.Exec, writer);
-      Result:=writer.ToString;
+      writer.StoreToUnicodeString(Result);
    finally
       writer.Free;
    end;
@@ -120,7 +119,7 @@ begin
    try
       expr:=(args.ExprBase[0] as TTypedExpr);
       StringifyExpr(expr, args.Exec, writer);
-      Result:=writer.ToString;
+      writer.StoreToUnicodeString(Result);
    finally
       writer.Free;
    end;
@@ -348,15 +347,33 @@ end;
 class procedure JSONScript.StringifyComposite(exec : TdwsExecution;
    writer : TdwsJSONWriter; compSym : TCompositeTypeSymbol; const dataPtr : IDataContext);
 var
+   progInfo : TProgramInfo;
+   memberSymbol : TSymbol;
+
+   procedure DoGetter;
+   var
+      info : IInfo;
+      scriptObj : IScriptObj;
+   begin
+      Assert(progInfo <> nil);
+      if compSym.ClassType = TRecordSymbol then begin
+         Assert(False, 'JSON utility does not yet support published method getters for records');
+      end else begin
+         scriptObj := (dataPtr.GetSelf as  TScriptObjInstance) as IScriptObj;
+         info := TInfoFunc.Create(progInfo, memberSymbol, progInfo.Execution.DataContext_Nil,
+                                  nil, scriptObj, TClassSymbol(compSym));
+      end;
+      StringifySymbol(exec, writer, memberSymbol.Typ, info.Call.GetDataPtr);
+      info := nil;
+      scriptObj := nil;
+   end;
+
+var
    i : Integer;
-//   bufData : TData;
-   sym : TSymbol;
+   memberSymbolClass : TClass;
    fieldSym : TFieldSymbol;
    propSym : TPropertySymbol;
    locData : IDataContext;
-   progInfo : TProgramInfo;
-   info : IInfo;
-   scriptObj : IScriptObj;
 begin
    if exec is TdwsProgramExecution then
       progInfo := TdwsProgramExecution(exec).ProgramInfo
@@ -364,39 +381,30 @@ begin
 
    writer.BeginObject;
    while compSym <> nil do begin
-      for i:=0 to compSym.Members.Count-1 do begin
-         sym:=compSym.Members[i];
-         if sym.ClassType=TPropertySymbol then begin
-            propSym := TPropertySymbol(sym);
+      for i := 0 to compSym.Members.Count-1 do begin
+         memberSymbol := compSym.Members[i];
+         memberSymbolClass := memberSymbol.ClassType;
+         if memberSymbolClass = TPropertySymbol then begin
+            propSym := TPropertySymbol(memberSymbol);
             if propSym.HasArrayIndices then
                continue;
-            if (propSym.Visibility>=cvPublished) and (propSym.ReadSym<>nil) then
-               sym:=propSym.ReadSym
-            else continue;
+            if (propSym.Visibility >= cvPublished) and (propSym.ReadSym <> nil) then begin
+               memberSymbol := propSym.ReadSym;
+               memberSymbolClass := memberSymbol.ClassType;
+            end else continue;
             writer.WriteName(propSym.ExternalName);
-         end else if sym.ClassType=TFieldSymbol then begin
-            if TFieldSymbol(sym).Visibility<cvPublished then
+         end else if memberSymbolClass = TFieldSymbol then begin
+            if TFieldSymbol(memberSymbol).Visibility < cvPublished then
                continue;
-            writer.WriteName(sym.Name);
+            writer.WriteName(memberSymbol.Name);
          end else continue;
 
-         if sym.ClassType=TFieldSymbol then begin
-            fieldSym:=TFieldSymbol(sym);
+         if memberSymbolClass = TFieldSymbol then begin
+            fieldSym := TFieldSymbol(memberSymbol);
             dataPtr.CreateOffset(fieldSym.Offset, locData);
             StringifySymbol(exec, writer, fieldSym.Typ, locData);
-         end else if sym is TFuncSymbol then begin
-            Assert(progInfo <> nil);
-            if compSym is TRecordSymbol then begin
-               Assert(False, 'JSON utility does not yet support published method getters for records');
-            end else begin
-               scriptObj := (dataPtr.GetSelf as  TScriptObjInstance) as IScriptObj;
-               info := TInfoFunc.Create(progInfo, sym, progInfo.Execution.DataContext_Nil,
-                                        nil, scriptObj, TClassSymbol(compSym));
-            end;
-            StringifySymbol(exec, writer, sym.Typ, info.Call.GetDataPtr);
-            info := nil;
-            scriptObj := nil;
-         end;
+         end else if memberSymbolClass.InheritsFrom(TFuncSymbol) then
+            DoGetter;
       end;
       compSym := compSym.Parent;
    end;

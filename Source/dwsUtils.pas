@@ -849,8 +849,8 @@ type
 
          function TailWord : Word;
 
-         function ToString : String; override; final;
-         function ToUnicodeString : UnicodeString;
+         function ToString : String; overload; override; final;
+         function ToUnicodeString : UnicodeString; inline;
          function ToUTF8String : RawByteString;
          function ToBytes : TBytes;
          function ToRawBytes : RawByteString;
@@ -859,6 +859,7 @@ type
 
          procedure StoreData(var buffer); overload;
          procedure StoreData(destStream : TStream); overload;
+         procedure StoreData(var dest : UnicodeString); overload;
          procedure StoreUTF8Data(destStream : TStream); overload;
    end;
 
@@ -5019,6 +5020,19 @@ end;
 
 // StoreUTF8Data
 //
+procedure TWriteOnlyBlockStream.StoreData(var dest : UnicodeString);
+begin
+   if FTotalSize > 0 then begin
+
+      Assert((FTotalSize and 1) = 0);
+      SetLength(dest, FTotalSize div SizeOf(WideChar));
+      StoreData(Pointer(dest)^);
+
+   end else dest := '';
+end;
+
+// StoreUTF8Data
+//
 procedure TWriteOnlyBlockStream.StoreUTF8Data(destStream : TStream);
 var
    buf : UTF8String;
@@ -5089,35 +5103,35 @@ var
 begin
    Inc(FTotalSize, count);
 
-   fraction:=cWriteOnlyBlockStreamBlockSize-FBlockRemaining^;
-   if count>fraction then begin
+   fraction := cWriteOnlyBlockStreamBlockSize-FBlockRemaining^;
+   if count > fraction then begin
       // does not fit in current block
       // was current block started?
-      if FBlockRemaining^>0 then begin
+      if FBlockRemaining^ > 0 then begin
          WriteSpanning(source, fraction);
          Dec(count, fraction);
-         source:=@source[fraction];
+         source := @source[fraction];
       end;
-      if count>cWriteOnlyBlockStreamBlockSize div 2 then begin
+      if count > cWriteOnlyBlockStreamBlockSize div 2 then begin
          WriteLarge(source, count);
          Exit;
       end;
    end;
 
    // if we reach here, everything fits in current block
-   dest:=@PByteArray(@FCurrentBlock[2])[FBlockRemaining^];
+   dest := @PByteArray(@FCurrentBlock[2])[FBlockRemaining^];
    Inc(FBlockRemaining^, count);
    {$ifdef WIN32}
    case Cardinal(count) of
       0 : ;
-      1 : dest[0]:=source[0];
-      2 : PWord(dest)^:=PWord(source)^;
-      3 : PThreeBytes(dest)^:=PThreeBytes(source)^;
-      4 : PCardinal(dest)^:=PCardinal(source)^;
-      5 : PFiveBytes(dest)^:=PFiveBytes(source)^;
-      6 : PSixBytes(dest)^:=PSixBytes(source)^;
-      7 : PSevenBytes(dest)^:=PSevenBytes(source)^;
-      8 : PInt64(dest)^:=PInt64(source)^;
+      1 : dest[0] := source[0];
+      2 : PWord(dest)^ := PWord(source)^;
+      3 : PThreeBytes(dest)^ := PThreeBytes(source)^;
+      4 : PCardinal(dest)^ := PCardinal(source)^;
+      5 : PFiveBytes(dest)^ := PFiveBytes(source)^;
+      6 : PSixBytes(dest)^ := PSixBytes(source)^;
+      7 : PSevenBytes(dest)^ := PSevenBytes(source)^;
+      8 : PInt64(dest)^ := PInt64(source)^;
    else
       System.Move(source^, dest^, count);
    end;
@@ -5335,20 +5349,14 @@ end;
 //
 function TWriteOnlyBlockStream.ToString : String;
 begin
-   Result := String(ToUnicodeString);
+   StoreData(Result);
 end;
 
 // ToUnicodeString
 //
 function TWriteOnlyBlockStream.ToUnicodeString : UnicodeString;
 begin
-   if FTotalSize>0 then begin
-
-      Assert((FTotalSize and 1) = 0);
-      SetLength(Result, FTotalSize div SizeOf(WideChar));
-      StoreData(Result[1]);
-
-   end else Result:='';
+   StoreData(Result);
 end;
 
 // ToUTF8String

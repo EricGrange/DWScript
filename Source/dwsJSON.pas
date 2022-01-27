@@ -88,8 +88,10 @@ type
 
          procedure WriteVariant(const v : Variant);
 
+         procedure StoreToUnicodeString(var dest : UnicodeString); inline;
+
          function ToString : String; override; final;
-         function ToUnicodeString : UnicodeString;
+         function ToUnicodeString : UnicodeString; inline;
          function ToUTF8String : RawByteString; inline;
 
          property Stream : TWriteOnlyBlockStream read FStream write FStream;
@@ -924,57 +926,68 @@ end;
 //
 procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; p : PWideChar; size : Integer); overload;
 
-   procedure WriteUTF16(destStream : TWriteOnlyBlockStream; c : Integer);
+   function WriteUTF16(p : PWideChar; c : Integer) : PWideChar;
    const
       cIntToHex : array [0..15] of WideChar = (
          '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F');
-   var
-      hex : array [0..5] of WideChar;
    begin
-      hex[0]:='\';
-      hex[1]:='u';
-      hex[2]:=cIntToHex[c shr 12];
-      hex[3]:=cIntToHex[(c shr 8) and $F];
-      hex[4]:=cIntToHex[(c shr 4) and $F];
-      hex[5]:=cIntToHex[c and $F];
-      destStream.WriteP(@hex, 6);
+      p[0]:='\';
+      p[1]:='u';
+      p[2]:=cIntToHex[c shr 12];
+      p[3]:=cIntToHex[(c shr 8) and $F];
+      p[4]:=cIntToHex[(c shr 4) and $F];
+      p[5]:=cIntToHex[c and $F];
+      Result := p + 6;
    end;
 
 const
    cQUOTE : WideChar = '"';
 var
    c : WideChar;
+   buf : array [0..127] of WideChar;
+   pbuf : PWideChar;
 begin
-   destStream.WriteP(@cQUOTE, 1);
+   pbuf := @buf;
+   pbuf^ := cQUOTE;
+   Inc(pbuf);
    if p <> nil then while size > 0 do begin
       c := p^;
       case Ord(c) of
-         1..31 :
+         0..31 :
             case Ord(c) of
-               0 : Break;
-               8 : destStream.WriteString('\b');
-               9 : destStream.WriteString('\t');
-               10 : destStream.WriteString('\n');
-               12 : destStream.WriteString('\f');
-               13 : destStream.WriteString('\r');
+               8 : begin PCardinal(pbuf)^ := Ord('b')*$10000 + Ord('\'); Inc(pbuf, 2); end;
+               9 : begin PCardinal(pbuf)^ := Ord('t')*$10000 + Ord('\'); Inc(pbuf, 2); end;
+               10 : begin PCardinal(pbuf)^ := Ord('n')*$10000 + Ord('\'); Inc(pbuf, 2); end;
+               12 : begin PCardinal(pbuf)^ := Ord('f')*$10000 + Ord('\'); Inc(pbuf, 2); end;
+               13 : begin PCardinal(pbuf)^ := Ord('r')*$10000 + Ord('\'); Inc(pbuf, 2); end;
             else
-               WriteUTF16(destStream, Ord(c));
+               pbuf := WriteUTF16(pbuf, Ord(c));
             end;
-         Ord('"') :
-            destStream.WriteString('\"');
-         Ord('\') :
-            destStream.WriteString('\\');
-         Ord('/') : // XSS protection when used for inline scripts in HTML
-            destStream.WriteString('\/');
-         0, $100..$FFFF :
-            WriteUTF16(destStream, Ord(c));
+         Ord('"') : begin
+            PCardinal(pbuf)^ := Ord('"')*$10000 + Ord('\'); Inc(pbuf, 2);
+         end;
+         Ord('\') : begin
+            PCardinal(pbuf)^ := Ord('\')*$10000 + Ord('\'); Inc(pbuf, 2);
+         end;
+         Ord('/') : begin // XSS protection when used for inline scripts in HTML
+            PCardinal(pbuf)^ := Ord('/')*$10000 + Ord('\'); Inc(pbuf, 2);
+         end;
+         $100..$FFFF :
+            pbuf := WriteUTF16(pbuf, Ord(c));
       else
-         destStream.WriteP(p, 1);
+         pbuf^ := c;
+         Inc(pbuf);
       end;
       Dec(size);
       Inc(p);
+      if IntPtr(pbuf) > IntPtr(@buf[High(buf)-8]) then begin
+         destStream.Write(buf, IntPtr(pbuf)-IntPtr(@buf));
+         pbuf := @buf;
+      end;
    end;
-   destStream.WriteP(@cQUOTE, 1);
+   pbuf^ := cQUOTE;
+   Inc(pbuf);
+   destStream.Write(buf, IntPtr(pbuf)-IntPtr(@buf));
 end;
 
 // ------------------
@@ -3035,6 +3048,13 @@ begin
    end;
 end;
 
+// StoreToUnicodeString
+//
+procedure TdwsJSONWriter.StoreToUnicodeString(var dest : UnicodeString);
+begin
+   FStream.StoreData(dest);
+end;
+
 // WriteStrings
 //
 procedure TdwsJSONWriter.WriteStrings(const str : array of UnicodeString);
@@ -3051,14 +3071,14 @@ end;
 //
 function TdwsJSONWriter.ToString : String;
 begin
-   Result:=FStream.ToString;
+   StoreToUnicodeString(Result);
 end;
 
 // ToUnicodeString
 //
 function TdwsJSONWriter.ToUnicodeString : UnicodeString;
 begin
-   Result:=FStream.ToUnicodeString;
+   StoreToUnicodeString(Result);
 end;
 
 // ToUTF8String
