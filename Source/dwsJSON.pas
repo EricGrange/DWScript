@@ -60,7 +60,7 @@ type
          procedure EndArray; virtual;
 
          function  WriteName(const aName : UnicodeString) : TdwsJSONWriter; overload; inline;
-         function  WriteNameP(const aName : PWideChar) : TdwsJSONWriter; virtual;
+         function  WriteNameP(const aName : PWideChar; nbChars : Integer) : TdwsJSONWriter; virtual;
          procedure WriteString(const str : UnicodeString); overload;
          procedure WriteString(const name, str : UnicodeString); overload; inline;
          {$ifdef FPC}
@@ -68,7 +68,7 @@ type
          procedure WriteString(const str : String); overload; inline;
          procedure WriteString(const name, str : String); overload; inline;
          {$endif}
-         procedure WriteStringP(const p : PWideChar);
+         procedure WriteStringP(const p : PWideChar; nbChars : Integer);
          procedure WriteNumber(const n : Double); overload;
          procedure WriteNumber(const name : UnicodeString; const n : Double); overload; inline;
          procedure WriteInteger(const n : Int64); overload;
@@ -127,7 +127,7 @@ type
          procedure BeginArray; override;
          procedure EndArray; override;
 
-         function  WriteNameP(const aName : PWideChar) : TdwsJSONWriter; override;
+         function  WriteNameP(const aName : PWideChar; nbChars : Integer) : TdwsJSONWriter; override;
    end;
 
    TdwsJSONDuplicatesOptions = (jdoAccept, jdoOverwrite);
@@ -2799,18 +2799,19 @@ end;
 //
 function TdwsJSONWriter.WriteName(const aName : UnicodeString) : TdwsJSONWriter;
 begin
-   Result:=WriteNameP(PWideChar(aName));
+   Result:=WriteNameP(PWideChar(aName), Length(aName));
 end;
 
 // WriteNameP
 //
-function TdwsJSONWriter.WriteNameP(const aName : PWideChar) : TdwsJSONWriter;
+function TdwsJSONWriter.WriteNameP(const aName : PWideChar; nbChars : Integer) : TdwsJSONWriter;
 
-   procedure WriteLowerCase(stream : TWriteOnlyBlockStream; aName : PWideChar);
+   procedure WriteLowerCase(stream : TWriteOnlyBlockStream; aName : PWideChar; nbChars : Integer);
    var
-      buf : String;
+      name, buf : String;
    begin
-      UnicodeLowerCase(aName, buf);
+      SetString(name, aName, nbChars);
+      UnicodeLowerCase(name, buf);
       WriteJavaScriptString(FStream, buf);
    end;
 
@@ -2824,8 +2825,8 @@ begin
       Assert(False);
    end;
    if woLowerCaseNames in FOptions then
-      WriteLowerCase(FStream, aName)
-   else WriteJavaScriptString(FStream, aName);
+      WriteLowerCase(FStream, aName, nbChars)
+   else WriteJavaScriptString(FStream, aName, nbChars);
    FStream.WriteChar(':');
    FState:=wsObjectValue;
    Result:=Self;
@@ -2872,10 +2873,10 @@ end;
 
 // WriteStringP
 //
-procedure TdwsJSONWriter.WriteStringP(const p : PWideChar);
+procedure TdwsJSONWriter.WriteStringP(const p : PWideChar; nbChars : Integer);
 begin
    BeforeWriteImmediate;
-   WriteJavaScriptString(FStream, p);
+   WriteJavaScriptString(FStream, p, nbChars);
    AfterWriteImmediate;
 end;
 
@@ -3221,7 +3222,7 @@ end;
 
 // WriteNameP
 //
-function TdwsJSONBeautifiedWriter.WriteNameP(const aName : PWideChar) : TdwsJSONWriter;
+function TdwsJSONBeautifiedWriter.WriteNameP(const aName : PWideChar; nbChars : Integer) : TdwsJSONWriter;
 begin
    case FState of
       wsObject :
@@ -3232,7 +3233,7 @@ begin
       Assert(False);
    end;
    WriteIndents;
-   WriteJavaScriptString(FStream, aName);
+   WriteJavaScriptString(FStream, aName, nbChars);
    FStream.WriteString(' : ');
    FState:=wsObjectValue;
    Result:=Self;

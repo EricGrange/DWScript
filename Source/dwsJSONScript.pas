@@ -240,26 +240,26 @@ var
    ct : TClass;
 begin
    sym := sym.BaseType;
-   if sym.IsBaseType then begin
-      DoBaseSymbol;
-      Exit;
+   if sym.IsBaseType then
+      DoBaseSymbol
+   else begin
+      ct := sym.ClassType;
+      if ct = TDynamicArraySymbol then
+         DoDynamicArray
+      else if ct = TRecordSymbol then
+         StringifyComposite(exec, writer, TRecordSymbol(sym), dataPtr)
+      else if ct = TClassSymbol then
+         DoClassSymbol
+      else if ct = TAssociativeArraySymbol then
+         DoAssociativeArray
+      else if ct = TNilSymbol then
+         writer.WriteNull
+      else if ct = TSetOfSymbol then
+         DoSetOfSymbol
+      else if ct.InheritsFrom(TStaticArraySymbol) then
+         StringifyDataContextArray(exec, writer, TStaticArraySymbol(sym).Typ, dataPtr, TStaticArraySymbol(sym).ElementCount)
+      else DoFallback;
    end;
-   ct := sym.ClassType;
-   if ct = TDynamicArraySymbol then
-      DoDynamicArray
-   else if ct = TRecordSymbol then
-      StringifyComposite(exec, writer, TRecordSymbol(sym), dataPtr)
-   else if ct = TClassSymbol then
-      DoClassSymbol
-   else if ct = TAssociativeArraySymbol then
-      DoAssociativeArray
-   else if ct = TNilSymbol then
-      writer.WriteNull
-   else if ct = TSetOfSymbol then
-      DoSetOfSymbol
-   else if ct.InheritsFrom(TStaticArraySymbol) then
-      StringifyDataContextArray(exec, writer, TStaticArraySymbol(sym).Typ, dataPtr, TStaticArraySymbol(sym).ElementCount)
-   else DoFallback;
 end;
 
 // StringifyDataContextArray
