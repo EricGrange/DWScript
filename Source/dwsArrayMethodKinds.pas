@@ -28,7 +28,8 @@ type
       amkLength, amkCount, amkPop, amkPeek, amkDelete, amkInsert, amkSetLength,
       amkClear, amkSwap, amkCopy, amkReverse, amkDimCount, amkKeys, amkMove,
       amkFilter,
-      amkInclude, amkExclude
+      amkInclude, amkExclude,
+      amkByName
    );
 
 implementation

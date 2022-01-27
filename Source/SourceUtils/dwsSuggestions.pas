@@ -153,6 +153,7 @@ type
          procedure AddStaticArrayHelpers(a : TArraySymbol; list : TSimpleSymbolList);
          procedure AddDynamicArrayHelpers(dyn : TDynamicArraySymbol; list : TSimpleSymbolList);
          procedure AddAssociativeArrayHelpers(assoc : TAssociativeArraySymbol; list : TSimpleSymbolList);
+         procedure AddEnumerationHelpers(enum : TEnumerationSymbol; list : TSimpleSymbolList);
          procedure AddJSONVariantHelpers(list : TSimpleSymbolList);
          procedure AddTypeHelpers(typ : TTypeSymbol; meta : Boolean; list : TSimpleSymbolList);
          procedure AddUnitSymbol(unitSym : TUnitSymbol; list : TSimpleSymbolList);
@@ -608,6 +609,14 @@ begin
    end;
 end;
 
+// AddEnumerationHelpers
+//
+procedure TdwsSuggestions.AddEnumerationHelpers(enum : TEnumerationSymbol; list : TSimpleSymbolList);
+begin
+   var p := FProg.ProgramObject.CompilerContext;
+   list.Add(enum.PseudoMethodSymbol(amkByName, p));
+end;
+
 // AddJSONVariantHelpers
 //
 procedure TdwsSuggestions.AddJSONVariantHelpers(list : TSimpleSymbolList);
@@ -797,6 +806,7 @@ begin
          end else if FPreviousSymbol is TEnumerationSymbol then begin
 
             list.AddSymbolTable(TEnumerationSymbol(FPreviousSymbol).Elements);
+            AddEnumerationHelpers(TEnumerationSymbol(FPreviousSymbol), list);
 
          end else if    (FPreviousSymbol is TElementSymbol)
                      or (FPreviousSymbol.Typ is TEnumerationSymbol) then begin

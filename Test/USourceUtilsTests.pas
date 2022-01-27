@@ -813,8 +813,9 @@ begin
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 13);
 
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
-   CheckEquals(1, sugg.Count, 'column 13');
-   CheckEquals('One', sugg.Code[0], 'sugg 2, 13, 0');
+   CheckEquals(2, sugg.Count, 'column 13');
+   CheckEquals('ByName', sugg.Code[0], 'sugg 2, 13, 0');
+   CheckEquals('One', sugg.Code[1], 'sugg 2, 13, 1');
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 18);
 

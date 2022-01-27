@@ -1957,7 +1957,7 @@ type
    TEnumerationSymbolStyle = (enumClassic, enumScoped, enumFlags);
 
    // Enumeration type. E. g. "type myEnum = (One, Two, Three);"
-   TEnumerationSymbol = class sealed (TTypeSymbol)
+   TEnumerationSymbol = class sealed (TTypeWithPseudoMethodsSymbol)
       private
          FElements : TSymbolTable;
          FLowBound, FHighBound : Int64;
@@ -1968,6 +1968,8 @@ type
          function GetCaption : String; override;
          function GetDescription : String; override;
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+
+         function InitializePseudoMethodSymbol(methodKind : TArrayMethodKind; baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol; override;
 
       public
          constructor Create(const name : String; baseType : TTypeSymbol;
@@ -8212,6 +8214,25 @@ function TEnumerationSymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=   inherited DoIsOfType(typSym)
            or BaseType.DoIsOfType(typSym);
+end;
+
+// InitializePseudoMethodSymbol
+//
+function TEnumerationSymbol.InitializePseudoMethodSymbol(methodKind : TArrayMethodKind; baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol;
+var
+   methodName : String;
+begin
+   Result := nil;
+
+   methodName := Copy(GetEnumName(TypeInfo(TArrayMethodKind), Ord(methodKind)), 4);
+   case methodKind of
+      amkByName : begin
+         Result := TPseudoMethodSymbol.Create(Self, methodName, fkFunction, 0);
+         Result.Params.AddSymbol(TParamSymbol.Create('name', Typ));
+      end;
+   end;
+   if Result <> nil then
+      FPseudoMethods[methodKind] := Result
 end;
 
 // AddElement
