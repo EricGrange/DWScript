@@ -322,6 +322,7 @@ type
    TSymbol = class (TRefCountedObject)
       private
          FName : String;
+         FExternalName : String;
 
       protected
          FTyp : TTypeSymbol;
@@ -332,6 +333,7 @@ type
          function GetDescription : String; virtual;
          function GetAsFuncSymbol : TFuncSymbol; virtual;
          function GetIsGeneric : Boolean; virtual;
+         function GetExternalName : String;
 
       public
          constructor Create(const aName : String; aType : TTypeSymbol);
@@ -365,6 +367,9 @@ type
          property Name : String read FName;
          property Typ : TTypeSymbol read FTyp write FTyp;
          property Size : Integer read FSize;
+
+         function HasExternalName : Boolean; inline;
+         property ExternalName : String read GetExternalName write FExternalName;
    end;
 
    TSymbolClass = class of TSymbol;
@@ -561,21 +566,17 @@ type
    // variable: var x: Integer;
    TDataSymbol = class (TValueSymbol)
       protected
-         FExternalName : String;
          FStackAddr : Integer;
          FLevel : SmallInt;
          FUsedBySubLevel : Boolean;
 
          function GetDescription : String; override;
-         function GetExternalName : String;
 
       public
          procedure AllocateStackAddr(generator : TAddrGenerator);
 
-         function HasExternalName : Boolean;
          function IsWritable : Boolean; virtual;
 
-         property ExternalName : String read GetExternalName write FExternalName;
          property Level : SmallInt read FLevel write FLevel;
          property UsedBySubLevel : Boolean read FUsedBySubLevel write FUsedBySubLevel;
          property StackAddr: Integer read FStackAddr write FStackAddr;
@@ -819,7 +820,6 @@ type
          FConditions : TConditionsSymbolTable;
          FFlags : TFuncSymbolFlags;
          FKind : TFuncKind;
-         FExternalName : String;
          FExternalConvention: TTokenType;
 
          procedure SetType(const value : TTypeSymbol);
@@ -852,8 +852,6 @@ type
          procedure SetDeclarationPosition(const val : TScriptPos); virtual;
          function GetImplementationPosition : TScriptPos; virtual;
          procedure SetImplementationPosition(const val : TScriptPos); virtual;
-
-         function GetExternalName : String;
 
          function GetSourceSubExpr(i : Integer) : TExprBase;
          function GetSourceSubExprCount : Integer;
@@ -907,8 +905,6 @@ type
          property IsReferenceTo : Boolean read GetIsReferenceTo write SetIsReferenceTo;
          property IsAsync : Boolean read GetIsAsync write SetIsAsync;
          property Kind : TFuncKind read FKind write FKind;
-         property ExternalName : String read GetExternalName write FExternalName;
-         function HasExternalName : Boolean;
          property ExternalConvention: TTokenType read FExternalConvention write FExternalConvention;
          property IsLambda : Boolean read GetIsLambda write SetIsLambda;
          property Level : SmallInt read GetLevel;
@@ -1432,7 +1428,6 @@ type
          function GetIsStatic : Boolean; virtual;
          function GetIsExternal : Boolean; virtual;
          function GetIsExternalRooted : Boolean; virtual;
-         function GetExternalName : String; virtual;
          function GetIsPartial : Boolean; virtual;
          function GetIsImmutable : Boolean; virtual;
 
@@ -1488,7 +1483,6 @@ type
          property IsPartial : Boolean read GetIsPartial;
          property IsExternal : Boolean read GetIsExternal;
          property IsExternalRooted : Boolean read GetIsExternalRooted;
-         property ExternalName : String read GetExternalName;
          property IsImmutable : Boolean read GetIsImmutable;
    end;
 
@@ -1497,11 +1491,9 @@ type
       private
          FMetaSymbol : TStructuredTypeMetaSymbol;
          FForwardPosition : PScriptPos;
-         FExternalName : String;
 
       protected
          function GetIsExternal : Boolean; override;
-         function GetExternalName : String; override;
 
          function GetMetaSymbol : TStructuredTypeMetaSymbol; override;
 
@@ -1521,7 +1513,6 @@ type
          procedure ClearIsForwarded;
 
          function IsForwarded : Boolean; override;
-         property ExternalName : String read GetExternalName write FExternalName;
 
          property MetaSymbol : TStructuredTypeMetaSymbol read FMetaSymbol;
    end;
@@ -1547,10 +1538,7 @@ type
          FVisibility : TdwsVisibility;
          FDefaultValue : TData;
          FDefaultExpr : TExprBase;
-         FExternalName : String;
          FNextField : TFieldSymbol;
-
-         function GetExternalName : String;
 
       public
          constructor Create(const name : String; typ : TTypeSymbol;
@@ -1559,7 +1547,6 @@ type
 
          function QualifiedName : String; override;
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
-         function HasExternalName : Boolean; inline;
 
          procedure InitData(const data : TData; structOffset : Integer);
 
@@ -1568,7 +1555,6 @@ type
          property Visibility : TdwsVisibility read FVisibility write FVisibility;
          property DefaultValue : TData read FDefaultValue write FDefaultValue;
          property DefaultExpr : TExprBase read FDefaultExpr write FDefaultExpr;
-         property ExternalName : String read GetExternalName write FExternalName;
          property NextField : TFieldSymbol read FNextField write FNextField;
    end;
 
@@ -1669,7 +1655,6 @@ type
          FDefaultSym : TConstSymbol;
          FVisibility : TdwsVisibility;
          FDeprecatedMessage : String;
-         FExternalName : String;
          FUserDescription : String;
 
       protected
@@ -1679,7 +1664,6 @@ type
          function GetArrayIndices : TParamsSymbolTable;
          procedure AddParam(Param : TParamSymbol);
          function GetIsDeprecated : Boolean; inline;
-         function GetExternalName : String;
 
       public
          constructor Create(const name : String; typ : TTypeSymbol; aVisibility : TdwsVisibility;
@@ -1706,7 +1690,6 @@ type
          property DefaultSym : TConstSymbol read FDefaultSym write FDefaultSym;
          property DeprecatedMessage : String read FDeprecatedMessage write FDeprecatedMessage;
          property IsDeprecated : Boolean read GetIsDeprecated;
-         property ExternalName : String read GetExternalName write FExternalName;
          property UserDescription : String read FUserDescription write FUserDescription;
    end;
 
@@ -2680,6 +2663,15 @@ begin
    else Result := False;
 end;
 
+// GetExternalName
+//
+function TSymbol.GetExternalName : String;
+begin
+   if FExternalName <> '' then
+      Result := FExternalName
+   else Result := FName;
+end;
+
 // AsFuncSymbol
 //
 function TSymbol.AsFuncSymbol : TFuncSymbol;
@@ -2728,6 +2720,13 @@ function TSymbol.Specialize(const context : ISpecializationContext) : TSymbol;
 begin
    context.AddCompilerErrorFmt(CPE_SpecializationNotSupportedYet, [ClassName]);
    Result := nil;
+end;
+
+// HasExternalName
+//
+function TSymbol.HasExternalName : Boolean;
+begin
+   Result := (FExternalName <> '');
 end;
 
 function TSymbol.BaseType: TTypeSymbol;
@@ -2870,13 +2869,6 @@ end;
 function TCompositeTypeSymbol.GetIsExternalRooted : Boolean;
 begin
    Result:=IsExternal;
-end;
-
-// GetExternalName
-//
-function TCompositeTypeSymbol.GetExternalName : String;
-begin
-   Result:=Name;
 end;
 
 // GetIsPartial
@@ -3201,15 +3193,6 @@ end;
 function TStructuredTypeSymbol.GetIsExternal : Boolean;
 begin
    Result:=False;
-end;
-
-// GetExternalName
-//
-function TStructuredTypeSymbol.GetExternalName : String;
-begin
-   if FExternalName='' then
-      Result:=Name
-   else Result:=FExternalName;
 end;
 
 // GetMetaSymbol
@@ -3653,13 +3636,6 @@ begin
    Result:=(FVisibility>=aVisibility);
 end;
 
-// HasExternalName
-//
-function TFieldSymbol.HasExternalName : Boolean;
-begin
-   Result:=(FExternalName<>'');
-end;
-
 // InitData
 //
 procedure TFieldSymbol.InitData(const data : TData; structOffset : Integer);
@@ -3667,15 +3643,6 @@ begin
    if DefaultValue<>nil then
       DWSCopyData(DefaultValue, 0, data, structOffset+Offset, Typ.Size)
    else Typ.InitData(data, structOffset+Offset);
-end;
-
-// GetExternalName
-//
-function TFieldSymbol.GetExternalName : String;
-begin
-   if FExternalName='' then
-      Result:=Name
-   else Result:=FExternalName;
 end;
 
 // ------------------
@@ -4158,15 +4125,6 @@ begin
    Assert(False);
 end;
 
-// GetExternalName
-//
-function TFuncSymbol.GetExternalName : String;
-begin
-   if FExternalName='' then
-      Result:=Name
-   else Result:=FExternalName;
-end;
-
 // GetSourceSubExpr
 //
 function TFuncSymbol.GetSourceSubExpr(i : Integer) : TExprBase;
@@ -4269,10 +4227,10 @@ begin
 
    destination.FFlags := FFlags;
    if fsfExternal in FFlags then
-      if FExternalName <> '' then
-         destination.FExternalName := FExternalName
-      else destination.FExternalName := Name
-   else destination.FExternalName := FExternalName;
+      if HasExternalName then
+         destination.ExternalName := FExternalName
+      else destination.ExternalName := Name
+   else destination.ExternalName := FExternalName;
 
    destination.FExternalConvention := FExternalConvention;
 
@@ -4444,13 +4402,6 @@ procedure TFuncSymbol.ClearIsForwarded;
 begin
    Dispose(FForwardPosition);
    FForwardPosition:=nil;
-end;
-
-// HasExternalName
-//
-function TFuncSymbol.HasExternalName : Boolean;
-begin
-   Result:=(FExternalName<>'');
 end;
 
 // ------------------
@@ -4974,15 +4925,6 @@ end;
 function TPropertySymbol.GetIsDeprecated : Boolean;
 begin
    Result:=(FDeprecatedMessage<>'');
-end;
-
-// GetExternalName
-//
-function TPropertySymbol.GetExternalName : String;
-begin
-   if FExternalName <> '' then
-      Result := FExternalName
-   else Result := Name;
 end;
 
 procedure TPropertySymbol.GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
@@ -6343,28 +6285,12 @@ begin
   else Result:=Name+': ???';
 end;
 
-// GetExternalName
-//
-function TDataSymbol.GetExternalName : String;
-begin
-   if FExternalName = '' then
-      Result := Name
-   else Result := FExternalName;
-end;
-
 // AllocateStackAddr
 //
 procedure TDataSymbol.AllocateStackAddr(generator : TAddrGenerator);
 begin
    FLevel := generator.Level;
    FStackAddr := generator.GetStackAddr(Size);
-end;
-
-// HasExternalName
-//
-function TDataSymbol.HasExternalName : Boolean;
-begin
-   Result := (FExternalName <> '');
 end;
 
 // IsWritable

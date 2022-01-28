@@ -475,7 +475,6 @@ begin
    if func.ClassType=TAliasMethodSymbol then
       func:=TAliasMethodSymbol(func).Alias;
    inherited Create(context, scriptPos, func);
-
 end;
 
 // ------------------

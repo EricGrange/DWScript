@@ -392,7 +392,9 @@ begin
                memberSymbol := propSym.ReadSym;
                memberSymbolClass := memberSymbol.ClassType;
             end else continue;
-            writer.WriteName(propSym.ExternalName);
+            if propSym.HasExternalName then
+               writer.WriteName(propSym.ExternalName)
+            else writer.WriteName(propSym.Name);
          end else if memberSymbolClass = TFieldSymbol then begin
             if TFieldSymbol(memberSymbol).Visibility < cvPublished then
                continue;
