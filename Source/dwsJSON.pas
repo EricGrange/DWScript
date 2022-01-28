@@ -253,14 +253,14 @@ type
          property HashedItems[hash : Cardinal; const name : UnicodeString] : TdwsJSONValue read GetHashedItem write SetHashedItem;
          property Names[index : Integer] : UnicodeString read GetName;
          property Elements[index : Integer] : TdwsJSONValue read GetElement write SetElement;
-         function ElementCount : Integer;
+         function ElementCount : Integer; inline;
          property Values[const index : Variant] : TdwsJSONValue read GetValue write SetValue; default;
 
          function IsImmediateValue : Boolean; inline;
          function Value : TdwsJSONImmediate; inline;
          function ValueType : TdwsJSONValueType; inline;
 
-         function IsFalsey : Boolean;
+         function IsFalsey : Boolean; inline;
 
          procedure Clear;
 
@@ -1164,11 +1164,11 @@ function TdwsJSONValue.ToUnicodeString : UnicodeString;
 var
    writer : TdwsJSONWriter;
 begin
-   if Self=nil then Exit('');
-   writer:=TdwsJSONWriter.Create(nil);
+   if Self = nil then Exit('');
+   writer := TdwsJSONWriter.Create(nil);
    try
       WriteTo(writer);
-      Result:=writer.Stream.ToUnicodeString;
+      writer.StoreToUnicodeString(Result);
    finally
       writer.Free;
    end;
@@ -1184,7 +1184,7 @@ begin
    writer:=TdwsJSONBeautifiedWriter.Create(nil, initialTabs, indentTabs);
    try
       WriteTo(writer);
-      Result:=writer.Stream.ToUnicodeString;
+      writer.StoreToUnicodeString(Result);
    finally
       writer.Free;
    end;
@@ -2799,7 +2799,7 @@ end;
 //
 function TdwsJSONWriter.WriteName(const aName : UnicodeString) : TdwsJSONWriter;
 begin
-   Result:=WriteNameP(PWideChar(aName), Length(aName));
+   Result:=WriteNameP(PWideChar(Pointer(aName)), Length(aName));
 end;
 
 // WriteNameP

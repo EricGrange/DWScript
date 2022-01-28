@@ -368,7 +368,7 @@ type
       function ToInteger : Int64;
       procedure ToVariant(var result : Variant);
 
-      function Value : TdwsJSONValue;
+      function Value : TdwsJSONValue; inline;
 
       function IsFalsey : Boolean;
       function IsNull : Boolean;

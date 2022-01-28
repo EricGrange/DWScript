@@ -142,6 +142,8 @@ var
 begin
    p:=PVarData(@v);
    case p^.VType of
+      varUString :
+         writer.WriteStringP(Pointer(p^.VUString), Length(UnicodeString(p.VUString)));
       varInt64 :
          writer.WriteInteger(p^.VInt64);
       varDouble :
