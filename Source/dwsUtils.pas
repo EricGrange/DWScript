@@ -779,6 +779,7 @@ type
 
          property Count : Integer read FCount;
          property First : PItemT read FFirst;
+         property Last : PItemT read FLast;
    end;
 
 const
