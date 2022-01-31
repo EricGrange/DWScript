@@ -1,3 +1,3 @@
-var p := @IntToStr;
+var p := @IntToHex;
 
 p := @TObject.Destroy;

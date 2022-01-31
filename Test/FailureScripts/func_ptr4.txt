@@ -1,2 +1,2 @@
-Syntax Error: There is no overloaded version of "IntToStr" that can be called with these arguments [line: 3, column: 7]
-Syntax Error: Incompatible types: "class function ClassType: TClass" and "function IntToStr(Integer, Integer): String" [line: 3, column: 6]
+Syntax Error: More arguments expected [line: 3, column: 7]
+Syntax Error: Incompatible types: "class function ClassType: TClass" and "function IntToHex(Integer, Integer): String" [line: 3, column: 6]
