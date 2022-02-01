@@ -426,11 +426,8 @@ end;
 // EvalAsString
 //
 procedure TConvVarToStringExpr.EvalAsString(exec : TdwsExecution; var result : String);
-var
-   v : Variant;
 begin
-   FExpr.EvalAsVariant(exec, v);
-   VariantToString(v, Result);
+   FExpr.EvalAsString(exec, Result);
 end;
 
 // SpecializeTypedExpr
