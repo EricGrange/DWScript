@@ -72,6 +72,7 @@ type
 
    TBaseTypeVarExpr = class (TVarExpr)
       public
+         procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
    end;
@@ -1995,6 +1996,16 @@ end;
 // ------------------
 // ------------------ TBaseTypeVarExpr ------------------
 // ------------------
+
+// AssignExpr
+//
+procedure TBaseTypeVarExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
+var
+   buf : Variant;
+begin
+   Expr.EvalAsVariant(exec, buf);
+   exec.Stack.WriteValue(exec.Stack.BasePointer + FStackAddr, buf);
+end;
 
 // EvalAsVariant
 //
