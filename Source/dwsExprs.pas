@@ -926,6 +926,7 @@ type
          procedure ClearArgs;
          function ExpectedArg : TParamSymbol; virtual; abstract;
          function GetArgType(idx : Integer) : TTypeSymbol;
+         function ArgIsOfType(idx : Integer; aTyp : TTypeSymbol) : Boolean;
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
          procedure CompileTimeCheck(context : TdwsCompilerContext); virtual;
 
@@ -4701,6 +4702,16 @@ begin
          Result:=expr.Typ
       else Result:=nil;
    end else Result:=nil;
+end;
+
+// ArgIsOfType
+//
+function TFuncExprBase.ArgIsOfType(idx : Integer; aTyp : TTypeSymbol) : Boolean;
+var
+   argTyp : TTypeSymbol;
+begin
+   argTyp := GetArgType(idx);
+   Result := (argTyp <> nil) and argTyp.IsOfType(aTyp);
 end;
 
 // ------------------

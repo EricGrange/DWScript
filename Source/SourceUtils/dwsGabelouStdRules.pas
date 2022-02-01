@@ -22,7 +22,7 @@ interface
 uses Classes, SysUtils, Character,
    dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsCoreExprs, dwsTokenizer,
    dwsStrings, dwsUnitSymbols, dwsSymbolDictionary,
-   dwsGabelou, dwsGabelouStrings;
+   dwsGabelou, dwsGabelouStrings, dwsScriptSource;
 
 type
 
@@ -86,6 +86,18 @@ type
          procedure EvaluateSymbol(const aSymbolList : TSymbolPositionList; msgs : TdwsMessageList); override;
    end;
 
+   TGabelouFunctionUseMessage = class (TGabelouMessage)
+      public
+         constructor Create(msgs : TdwsMessageList; currentFunc : TFuncSymbol; const suggestedFunc : String;
+                            const scriptPos : TScriptPos);
+   end;
+
+   TGSR_StronglyTypedVarFunctionAlternatives = class (TdwsFunctionUseGabelouSubRule)
+      public
+         class procedure Evaluate(const aProg : TdwsProgram; msgs : TdwsMessageList;
+                                  funcExpr : TFuncExprBase); override;
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -93,6 +105,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsMagicExprs;
 
 // ------------------
 // ------------------ TGR_CamelCaseParameters ------------------
@@ -376,6 +390,39 @@ begin
    end;
 end;
 
+// ------------------
+// ------------------ TGabelouFunctionUseMessage ------------------
+// ------------------
+
+// Create
+//
+constructor TGabelouFunctionUseMessage.Create(msgs : TdwsMessageList; currentFunc : TFuncSymbol; const suggestedFunc : String;
+                                              const scriptPos : TScriptPos);
+begin
+   inherited Create(msgs, 'replace weakly typed %s with strongly typed function %s',
+                    [ currentFunc.Name, suggestedFunc ], scriptPos);;
+
+end;
+
+// ------------------
+// ------------------ TGSR_StronglyTypedVarFunctionAlternatives ------------------
+// ------------------
+
+// Evaluate
+//
+class procedure TGSR_StronglyTypedVarFunctionAlternatives.Evaluate(
+   const aProg : TdwsProgram; msgs : TdwsMessageList; funcExpr : TFuncExprBase);
+var
+   magic : TMagicFuncSymbol;
+begin
+   if funcExpr.Args.Count = 0 then Exit;
+   if funcExpr.FuncSym is TMagicFuncSymbol then begin
+      magic := TMagicFuncSymbol(funcExpr.FuncSym);
+      if (magic.Name = 'VarToIntDef') and funcExpr.ArgIsOfType(0, aProg.Root.CompilerContext.TypString) then
+         TGabelouFunctionUseMessage.Create(msgs, magic, 'StrToIntDef', funcExpr.ScriptPos);
+   end;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -392,7 +439,13 @@ initialization
       TGR_PascalCaseFunctions, TGR_PascalCaseProperties, TGR_PascalCaseTypes,
       TGR_AttributeClassNaming,
 
-      TGR_PrefixedPrivateFields, TGR_PrefixedPublicFields, TGR_PrefixedClassVariables
+      TGR_PrefixedPrivateFields, TGR_PrefixedPublicFields, TGR_PrefixedClassVariables,
+
+      TdwsFunctionUseGabelouRule
       ]);
+
+   TdwsFunctionUseGabelouRule.RegisterSubRule(
+      TGSR_StronglyTypedVarFunctionAlternatives
+   );
 
 end.

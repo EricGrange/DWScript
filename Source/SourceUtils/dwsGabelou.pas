@@ -100,6 +100,25 @@ type
          procedure EvaluateSymbol(const aSymbolList : TSymbolPositionList; msgs : TdwsMessageList); virtual; abstract;
    end;
 
+   TdwsFunctionUseGabelouSubRule = class abstract
+      public
+         class procedure Evaluate(const aProg : TdwsProgram; msgs : TdwsMessageList;
+                                  funcExpr : TFuncExprBase); virtual; abstract;
+   end;
+   TdwsFunctionUseGabelouSubRuleClass = class of TdwsFunctionUseGabelouSubRule;
+
+   TdwsFunctionUseGabelouRule = class (TdwsGabelouRule)
+      private
+         class var vSubRules : array of TdwsFunctionUseGabelouSubRuleClass;
+
+      public
+         procedure Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList;
+                            const restrictToSourceFile : TSourceFile); override;
+
+         class procedure RegisterSubRule(subRule : TdwsFunctionUseGabelouSubRuleClass); static;
+         class procedure UnRegisterSubRule(subRule : TdwsFunctionUseGabelouSubRuleClass); static;
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -317,6 +336,106 @@ end;
 function TGabelouMessage.AsInfo: UnicodeString;
 begin
    Result:=Format(GAB_HintMessage, [inherited AsInfo]);
+end;
+
+// ------------------
+// ------------------ TdwsFunctionUseGabelouRule ------------------
+// ------------------
+
+type
+   TdwsFunctionUseGabelouContext = class
+      Prog : TdwsProgram;
+      Msgs : TdwsMessageList;
+      Restrict : TSourceFile;
+      procedure EnumeratorProc(parent, expr : TExprBase; var abort : Boolean);
+   end;
+
+procedure TdwsFunctionUseGabelouContext.EnumeratorProc(parent, expr : TExprBase; var abort : Boolean);
+var
+   i : Integer;
+begin
+   if not (expr is TFuncExprBase) then Exit;
+   if (Restrict <> nil) and (expr.ScriptPos.SourceFile <> Restrict) then Exit;
+
+   for i := 0 to High(TdwsFunctionUseGabelouRule.vSubRules) do begin
+      TdwsFunctionUseGabelouRule.vSubRules[i].Evaluate(Prog, Msgs, TFuncExprBase(expr));
+   end;
+end;
+
+// Evaluate
+//
+procedure TdwsFunctionUseGabelouRule.Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList;
+                                              const restrictToSourceFile : TSourceFile);
+var
+   context : TdwsFunctionUseGabelouContext;
+
+   procedure EnumerateProgram(prog : TdwsProgram);
+   begin
+      context.Prog := prog;
+      prog.InitExpr.RecursiveEnumerateSubExprs(context.EnumeratorProc);
+      prog.Expr.RecursiveEnumerateSubExprs(context.EnumeratorProc);
+      if prog is TdwsMainProgram then
+         TdwsMainProgram(prog).FinalExpr.RecursiveEnumerateSubExprs(context.EnumeratorProc);
+   end;
+
+   procedure EnumerateExecutable(const exec : IExecutable);
+   var
+      obj : TObject;
+   begin
+      if exec = nil then Exit;
+      obj := exec.GetSelf;
+      if obj is TdwsProgram then
+         EnumerateProgram(TdwsProgram(obj));
+   end;
+
+var
+   symPosList : TSymbolPositionList;
+   sym : TSymbol;
+begin
+   context := TdwsFunctionUseGabelouContext.Create;
+   try
+      context.Msgs := msgs;
+      context.Restrict := restrictToSourceFile;
+
+      EnumerateProgram(aProg.ProgramObject);
+
+      for symPosList in aProg.SymbolDictionary do begin
+         sym := symPosList.Symbol;
+         if sym is TFuncSymbol then begin
+            if sym is TSourceFuncSymbol then
+               EnumerateExecutable(TSourceFuncSymbol(sym).Executable)
+            else if sym is TSourceMethodSymbol then
+               EnumerateExecutable(TSourceMethodSymbol(sym).Executable)
+         end;
+      end;
+   finally
+      context.Free;
+   end;
+end;
+
+// RegisterSubRule
+//
+class procedure TdwsFunctionUseGabelouRule.RegisterSubRule(subRule : TdwsFunctionUseGabelouSubRuleClass);
+var
+   n : Integer;
+begin
+   n := Length(vSubRules);
+   SetLength(vSubRules, n+1);
+   vSubRules[n] := subRule;
+end;
+
+// UnRegisterSubRule
+//
+class procedure TdwsFunctionUseGabelouRule.UnRegisterSubRule(subRule : TdwsFunctionUseGabelouSubRuleClass);
+var
+   i : Integer;
+begin
+   for i := 0 to High(vSubRules) do begin
+      if vSubRules[i] = subRule then begin
+         Delete(vSubRules, i, 1);
+         Break;
+      end;
+   end;
 end;
 
 end.
