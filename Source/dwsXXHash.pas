@@ -73,6 +73,8 @@ type
 
 implementation
 
+{$R-}
+
 const
    cPRIME32_1 = Cardinal(2654435761);
    cPRIME32_2 = Cardinal(2246822519);
