@@ -230,6 +230,7 @@ type
 
       public
          destructor Destroy; override;
+         procedure Release; virtual;
 
          class function ParseString(const json : UnicodeString;
                                     duplicatesOption : TdwsJSONDuplicatesOptions = jdoOverwrite) : TdwsJSONValue; static;
@@ -460,6 +461,7 @@ type
 
       public
          destructor Destroy; override;
+         procedure Release; override;
 
          class function ParseString(const json : UnicodeString) : TdwsJSONImmediate; static;
          class function FromVariant(const v : Variant) : TdwsJSONImmediate; static;
@@ -507,6 +509,44 @@ var
    vObject : TClassCloneConstructor<TdwsJSONObject>;
    vArray : TClassCloneConstructor<TdwsJSONArray>;
 
+   vImmediatePool : array [0..31] of TdwsJSONImmediate;
+   vImmediatePoolLock : TMultiReadSingleWrite;
+   vImmediatePoolCount : Integer;
+
+function AllocImmediate : TdwsJSONImmediate;
+begin
+   if (vImmediatePoolCount > 0) and vImmediatePoolLock.TryBeginWrite then begin
+      try
+         if vImmediatePoolCount > 0 then begin
+            Result := vImmediatePool[vImmediatePoolCount-1];
+            Dec(vImmediatePoolCount);
+            Exit;
+         end;
+      finally
+         vImmediatePoolLock.EndWrite;
+      end;
+   end;
+   Result := vImmediate.Create;
+end;
+
+procedure ReleaseImmediate(imm : TdwsJSONImmediate);
+begin
+   if imm = nil then Exit;
+   if (vImmediatePoolCount < High(vImmediatePool)) and vImmediatePoolLock.TryBeginWrite then begin
+      try
+         if vImmediatePoolCount < High(vImmediatePool) then begin
+            imm.Clear;
+            vImmediatePool[vImmediatePoolCount] := imm;
+            Inc(vImmediatePoolCount);
+            Exit;
+         end;
+      finally
+         vImmediatePoolLock.EndWrite;
+      end;
+   end;
+   imm.Free;
+end;
+
 // ------------------
 // ------------------ EdwsJSONIndexOutOfRange ------------------
 // ------------------
@@ -519,6 +559,7 @@ begin
       inherited CreateFmt('Array index (%d) out of range (empty array)', [idx])
    else inherited CreateFmt('Array index (%d) out of range [0..%d]', [idx, count-1]);
 end;
+
 // ------------------
 // ------------------ TdwsJSONParserState ------------------
 // ------------------
@@ -1024,6 +1065,13 @@ begin
    inherited;
 end;
 
+// Release
+//
+procedure TdwsJSONValue.Release;
+begin
+   Destroy;
+end;
+
 // Parse
 //
 class function TdwsJSONValue.Parse(parserState : TdwsJSONParserState) : TdwsJSONValue;
@@ -1039,7 +1087,7 @@ begin
          '{' : Result:=vObject.Create;
          '[' : Result:=vArray.Create;
          '0'..'9', '"', '-', 't', 'f', 'n' :
-            Result:=vImmediate.Create;
+            Result := AllocImmediate;
          ']', '}' : begin
             // empty array or object
             parserState.TrailCharacter:=c;
@@ -1599,7 +1647,9 @@ begin
    for i:=0 to FCount-1 do begin
       v:=FItems^[i].Value;
       v.ClearOwner;
-      v.DecRefCount;
+      if v.RefCount = 0 then
+         v.Release
+      else v.DecRefCount;
       FItems^[i].Name:='';
    end;
    FreeMem(FItems);
@@ -1636,7 +1686,7 @@ end;
 procedure TdwsJSONObject.AddHashed(hash : Cardinal; const aName : UnicodeString; aValue : TdwsJSONValue);
 begin
    if aValue = nil then
-      aValue := vImmediate.Create;
+      aValue := AllocImmediate;
    Assert(aValue.Owner = nil);
    aValue.FOwner:=Self;
    if FCount=FCapacity then Grow;
@@ -1666,7 +1716,7 @@ end;
 //
 function TdwsJSONObject.AddValue(const name : UnicodeString) : TdwsJSONImmediate;
 begin
-   Result:=vImmediate.Create;
+   Result := AllocImmediate;
    Add(name, Result);
 end;
 
@@ -2153,7 +2203,7 @@ end;
 //
 function TdwsJSONArray.AddValue : TdwsJSONImmediate;
 begin
-   Result:=vImmediate.Create;
+   Result := AllocImmediate;
    Add(Result);
 end;
 
@@ -2163,7 +2213,7 @@ procedure TdwsJSONArray.AddNull;
 var
    v : TdwsJSONImmediate;
 begin
-   v:=vImmediate.Create;
+   v := AllocImmediate;
    v.IsNull:=True;
    Add(v);
 end;
@@ -2269,7 +2319,7 @@ begin
          if index=FCount-1 then begin
             DeleteIndex(index);
             Exit;
-         end else v:=vImmediate.Create
+         end else v := AllocImmediate
       else v:=value;
 
       FElements[index].ClearOwner;
@@ -2375,9 +2425,15 @@ end;
 //
 destructor TdwsJSONImmediate.Destroy;
 begin
-   if FType=jvtString then
-      PUnicodeString(@FData)^:='';
+   Clear;
    inherited;
+end;
+
+// Release
+//
+procedure TdwsJSONImmediate.Release;
+begin
+   ReleaseImmediate(Self);
 end;
 
 // GetAsString
@@ -2542,7 +2598,7 @@ end;
 //
 function TdwsJSONImmediate.DoClone : TdwsJSONValue;
 begin
-   Result:=vImmediate.Create;
+   Result := AllocImmediate;
    TdwsJSONImmediate(Result).FType:=FType;
    if FType=jvtString then
       PUnicodeString(@TdwsJSONImmediate(Result).FData)^:=PUnicodeString(@FData)^
@@ -2671,7 +2727,9 @@ end;
 //
 procedure TdwsJSONImmediate.Clear;
 begin
-   IsNull := True;
+   if FType = jvtString then
+      PUnicodeString(@FData)^ := '';
+   FData := 0;
    FType := jvtUndefined;
 end;
 
@@ -3308,10 +3366,14 @@ initialization
    vObject.Initialize(TdwsJSONObject.Create);
    vArray.Initialize(TdwsJSONArray.Create);
 
+   vImmediatePoolLock := TMultiReadSingleWrite.Create;
+
 finalization
 
    vImmediate.Finalize;
    vObject.Finalize;
    vArray.Finalize;
+
+   FreeAndNil(vImmediatePoolLock);
 
 end.
