@@ -1756,19 +1756,16 @@ procedure TdwsBreakpointableLines.RegisterScriptPos(const scriptPos : TScriptPos
 
 var
    i : Integer;
-   location, locationLC : String;
+   locationLC : String;
 begin
    if scriptPos.SourceFile = nil then Exit;
    if scriptPos.SourceFile <> FLastSourceFile then begin
       FLastSourceFile := scriptPos.SourceFile;
-      location := FLastSourceFile.Location;
-      if location = '' then
-         location := FLastSourceFile.Name;
-      UnicodeLowerCase(location, locationLC);
+      UnicodeLowerCase(FLastSourceFile.Name, locationLC);
       FLastBreakpointLines := FSources.Objects[locationLC];
       if FLastBreakpointLines = nil then begin
          FLastBreakpointLines := TBreakpointBits.Create;
-         FLastBreakpointLines.SourceName := location;
+         FLastBreakpointLines.SourceName := FLastSourceFile.Name;
          FSources.AddObject(locationLC, FLastBreakpointLines);
          FLastBreakpointLines.Size := CountLines(scriptPos.SourceFile.Code) + 1;
       end;
