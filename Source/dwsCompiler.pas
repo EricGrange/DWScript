@@ -5108,7 +5108,9 @@ begin
          convExpr:=TObjAsClassExpr.Create(FCompilerContext, namePos, operandExpr, baseType);
          if operandExpr<>nil then begin
             castedExprTyp:=operandExpr.Typ;
-            if castedExprTyp<>FCompilerContext.TypNil then begin
+            if castedExprTyp <> FCompilerContext.TypNil then begin
+               if castedExprTyp <> nil then
+                  castedExprTyp := castedExprTyp.UnAliasedType;
                if    (not (castedExprTyp is TClassSymbol))
                   or (
                             (not TClassSymbol(castedExprTyp).IsOfType(baseType))
@@ -5869,6 +5871,11 @@ begin
             baseType := expr.BaseType
          else baseType := nil;
 
+         if baseType = nil then begin
+            ReportNoMemberForType(name, namePos, baseType);
+            Exit;
+         end;
+
          if (baseType<>nil) and FCompilerContext.HelperMemberNames.Contains(name) then begin
             helperExpr:=ReadTypeHelper(expr as TTypedExpr,
                                        name, namePos, expecting, isWrite, False);
@@ -5882,12 +5889,10 @@ begin
          end;
          Result:=expr;
 
-         if baseType = nil then
-
-            ReportNoMemberForType(name, namePos, baseType)
+         baseType := baseType.UnAliasedType;
 
          // Class, record, intf
-         else if baseType.InheritsFrom(TStructuredTypeSymbol) then begin
+         if baseType.InheritsFrom(TStructuredTypeSymbol) then begin
 
             if (baseType is TRecordSymbol) and (Result is TFuncExpr) then
                TFuncExpr(Result).InitializeResultAddr(CurrentProg);
@@ -10793,6 +10798,7 @@ function TdwsCompiler.ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
 var
    right : TTypedExpr;
    rightTyp : TTypeSymbol;
+   resultTyp : TTypeSymbol;
    tt : TTokenType;
    hotPos : TScriptPos;
    opExpr : TTypedExpr;
@@ -10862,26 +10868,27 @@ begin
                else
                   opExpr := CreateTypedOperatorExpr(tt, hotPos, Result, right);
                   if opExpr = nil then begin
+                     resultTyp := Result.Typ.UnAliasedType;
                      if     (tt in [ ttEQ, ttNOT_EQ, ttEQ_EQ, ttEXCL_EQ ])
                         and (rightTyp<>nil)
                         and (
-                                (Result.Typ is TClassSymbol)
-                             or (Result.Typ is TInterfaceSymbol)
-                             or (Result.Typ is TClassOfSymbol)
-                             or (Result.Typ=FCompilerContext.TypNil)
+                                (resultTyp is TClassSymbol)
+                             or (resultTyp is TInterfaceSymbol)
+                             or (resultTyp is TClassOfSymbol)
+                             or (resultTyp=FCompilerContext.TypNil)
                              ) then begin
                         if not ((rightTyp.ClassType=Result.Typ.ClassType) or (rightTyp=FCompilerContext.TypNil)) then begin
-                           if Result.Typ is TClassSymbol then
+                           if resultTyp is TClassSymbol then
                               FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
-                           else if Result.Typ is TClassOfSymbol then
+                           else if resultTyp is TClassOfSymbol then
                               FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected)
                            else FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
                         end;
-                        if Result.Typ is TClassSymbol then
+                        if resultTyp is TClassSymbol then
                            if tt in [ ttNOT_EQ, ttEXCL_EQ ] then
                               Result:=TObjCmpNotEqualExpr.Create(FCompilerContext, hotPos, tt, Result, right)
                            else Result:=TObjCmpEqualExpr.Create(FCompilerContext, hotPos, tt, Result, right)
-                        else if Result.Typ is TClassOfSymbol then begin
+                        else if resultTyp is TClassOfSymbol then begin
                            Result:=TAssignedMetaClassExpr.Create(FCompilerContext, hotPos, Result);
                            if tt=ttEQ then
                               Result:=TNotBoolExpr.Create(FCompilerContext, hotPos, Result);
@@ -10893,7 +10900,7 @@ begin
                         end;
                      end else if     (tt in [ ttEQ, ttNOT_EQ, ttEQ_EQ, ttEXCL_EQ ])
                                  and (rightTyp=FCompilerContext.TypNil)
-                                 and (Result.Typ.IsOfType(FCompilerContext.TypVariant)) then begin
+                                 and (resultTyp.IsOfType(FCompilerContext.TypVariant)) then begin
                         if tt in [ ttEQ, ttEQ_EQ ] then
                            Result:=TRelVarEqualNilExpr.Create(FCompilerContext, hotPos, Result)
                         else Result:=TRelVarNotEqualNilExpr.Create(FCompilerContext, hotPos, Result);

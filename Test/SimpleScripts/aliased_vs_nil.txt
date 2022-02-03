@@ -1,0 +1,3 @@
+class nil
+metaclass nil
+intf nil
