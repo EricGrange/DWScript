@@ -1585,7 +1585,7 @@ begin
    FMagicCodeGens.AddObject('StrToInt$_String_', TdwsExprGenericCodeGen.Create(['parseInt', '(', 0, ',', '10)']));
    FMagicCodeGens.AddObject('StrToInt$_String_Integer_', TdwsExprGenericCodeGen.Create(['parseInt', '(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('StrToJSON', TdwsExprGenericCodeGen.Create(['JSON.stringify', '(', 0, ')']));
-   FMagicCodeGens.AddObject('SubStr', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(', '(', 1, ')', '-1)']));
+   FMagicCodeGens.AddObject('SubStr', TJSStrCopyFuncExpr.Create);
    FMagicCodeGens.AddObject('SubString', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(', '(', 1, ')', '-1,', '(', 2, ')', '-2)']));
    FMagicCodeGens.AddObject('Tan', TdwsExprGenericCodeGen.Create(['Math.tan', '(', 0, ')']));
    FMagicCodeGens.AddObject('TypeOf$_TClass_', TdwsExprGenericCodeGen.Create([0]));
