@@ -518,8 +518,9 @@ begin
    if (vImmediatePoolCount > 0) and vImmediatePoolLock.TryBeginWrite then begin
       try
          if vImmediatePoolCount > 0 then begin
-            Result := vImmediatePool[vImmediatePoolCount-1];
             Dec(vImmediatePoolCount);
+            Result := vImmediatePool[vImmediatePoolCount];
+            vImmediatePool[vImmediatePoolCount] := nil;
             Exit;
          end;
       finally
@@ -532,10 +533,10 @@ end;
 procedure ReleaseImmediate(imm : TdwsJSONImmediate);
 begin
    if imm = nil then Exit;
-   if (vImmediatePoolCount < High(vImmediatePool)) and vImmediatePoolLock.TryBeginWrite then begin
+   imm.Clear;
+   if (vImmediatePoolCount <= High(vImmediatePool)) and vImmediatePoolLock.TryBeginWrite then begin
       try
-         if vImmediatePoolCount < High(vImmediatePool) then begin
-            imm.Clear;
+         if vImmediatePoolCount <= High(vImmediatePool) then begin
             vImmediatePool[vImmediatePoolCount] := imm;
             Inc(vImmediatePoolCount);
             Exit;
@@ -2729,7 +2730,7 @@ procedure TdwsJSONImmediate.Clear;
 begin
    if FType = jvtString then
       PUnicodeString(@FData)^ := '';
-   FData := 0;
+   PPointer(@FData)^ := nil;
    FType := jvtUndefined;
 end;
 
