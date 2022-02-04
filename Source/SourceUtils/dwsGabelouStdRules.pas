@@ -123,11 +123,14 @@ end;
 // EvaluateSymbol
 //
 procedure TGR_CamelCaseParameters.EvaluateSymbol(const aSymbolList : TSymbolPositionList; msgs : TdwsMessageList);
+var
+   paramSymbol : TParamSymbol;
 begin
    if not (aSymbolList.Symbol is TParamSymbol) then Exit;
-   if aSymbolList.Symbol.Name='Self' then Exit;
+   paramSymbol := TParamSymbol(aSymbolList.Symbol);
+   if paramSymbol.IsInternal then Exit;
 
-   if aSymbolList.Symbol.Name[1].IsUpper() then
+   if paramSymbol.Name[1].IsUpper() then
       TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
 end;
 
