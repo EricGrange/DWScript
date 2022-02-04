@@ -420,11 +420,11 @@ type
 
 {$ifndef SRW_FALLBACK}
 procedure AcquireSRWLockExclusive(var SRWLock : Pointer); stdcall; external 'kernel32.dll';
-function TryAcquireSRWLockExclusive(var SRWLock : Pointer) : BOOL; stdcall; external 'kernel32.dll';
+function TryAcquireSRWLockExclusive(var SRWLock : Pointer) : ByteBool; stdcall; external 'kernel32.dll';
 procedure ReleaseSRWLockExclusive(var SRWLock : Pointer); stdcall; external 'kernel32.dll';
 
 procedure AcquireSRWLockShared(var SRWLock : Pointer); stdcall; external 'kernel32.dll';
-function TryAcquireSRWLockShared(var SRWLock : Pointer) : BOOL; stdcall; external 'kernel32.dll';
+function TryAcquireSRWLockShared(var SRWLock : Pointer) : ByteBool; stdcall; external 'kernel32.dll';
 procedure ReleaseSRWLockShared(var SRWLock : Pointer); stdcall; external 'kernel32.dll';
 {$endif}
 
