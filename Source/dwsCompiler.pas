@@ -9808,7 +9808,7 @@ begin
       meth:=propSym.OwnerSymbol.CreateAnonymousMethod(fkProcedure, cvPrivate, classProperty);
 
       meth.AddParams(propSym.ArrayIndices);
-      paramSymbol := CreateConstParamSymbol('Value', propSym.Typ);
+      paramSymbol := CreateConstParamSymbol('Value', propSym.Typ, [ psoInternal ]);
       meth.Params.AddSymbol(paramSymbol);
 
       propSym.OwnerSymbol.AddMethod(meth);
@@ -11963,10 +11963,10 @@ begin
             typSym:=ReadType('', tcParameter);
             for i:=0 to names.Count-1 do begin
                if isVarParam then
-                  ArrayIndices.AddSymbol(TVarParamSymbol.Create(names[i], typSym))
+                  ArrayIndices.AddSymbol(TVarParamSymbol.Create(names[i], typSym, []))
                else if isConstParam then
                   ArrayIndices.AddSymbol(CreateConstParamSymbol(names[i], typSym))
-               else ArrayIndices.AddSymbol(TParamSymbol.Create(names[i], typSym));
+               else ArrayIndices.AddSymbol(TParamSymbol.Create(names[i], typSym, []));
             end;
          end;
       until not FTok.TestDelete(ttSEMI);
@@ -12000,7 +12000,7 @@ procedure TdwsCompiler.ReadParams(const hasParamMeth : THasParamSymbolMethod;
          pssLazy :
             paramSym := TLazyParamSymbol.Create(curName, paramType);
          pssVar :
-            paramSym := TVarParamSymbol.Create(curName, paramType);
+            paramSym := TVarParamSymbol.Create(curName, paramType, []);
          pssConst :
             paramSym := CreateConstParamSymbol(curName, paramType);
       else

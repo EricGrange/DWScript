@@ -103,7 +103,7 @@ function CreateMethodExpr(context : TdwsCompilerContext; meth: TMethodSymbol; va
 procedure TypeCheckArguments(context : TdwsCompilerContext; funcExpr : TFuncExprBase;
                              const argPosArray : TScriptPosArray);
 
-function CreateConstParamSymbol(const name : String; typ : TTypeSymbol) : TParamSymbol;
+function CreateConstParamSymbol(const name : String; typ : TTypeSymbol; options : TParamSymbolOptions = []) : TParamSymbol;
 
 function ResolveOperatorFor(currentProg : TdwsProgram; token : TTokenType;
                             aLeftType, aRightType : TTypeSymbol) : TOperatorSymbol;
@@ -708,7 +708,7 @@ end;
 
 // CreateConstParamSymbol
 //
-function CreateConstParamSymbol(const name : String; typ : TTypeSymbol) : TParamSymbol;
+function CreateConstParamSymbol(const name : String; typ : TTypeSymbol; options : TParamSymbolOptions = []) : TParamSymbol;
 var
    utyp : TTypeSymbol;
 begin
@@ -719,8 +719,8 @@ begin
             or (utyp is TDynamicArraySymbol)
             or (utyp is TInterfaceSymbol)
             ) then
-      Result := TConstByValueParamSymbol.Create(name, typ)
-   else Result := TConstByRefParamSymbol.Create(name, typ);
+      Result := TConstByValueParamSymbol.Create(name, typ, options)
+   else Result := TConstByRefParamSymbol.Create(name, typ, options);
 end;
 
 type

@@ -606,7 +606,7 @@ type
    end;
 
    TParamSymbolSemantics = ( pssCopy, pssConst, pssVar, pssLazy );
-   TParamSymbolOption = ( psoForbidImplicitCasts );
+   TParamSymbolOption = ( psoForbidImplicitCasts, psoInternal );
    TParamSymbolOptions = set of TParamSymbolOption;
 
    // parameter: procedure P(x: Integer);
@@ -625,6 +625,7 @@ type
          function SameParam(other : TParamSymbol) : Boolean; virtual;
          function Semantics : TParamSymbolSemantics; virtual;
          function ForbidImplicitCasts : Boolean;
+         function IsInternal : Boolean;
    end;
 
    THasParamSymbolMethod = function (param : TParamSymbol) : Boolean of object;
@@ -651,7 +652,7 @@ type
    // const/var parameter: procedure P(const/var x: Integer)
    TByRefParamSymbol = class(TParamSymbol)
       public
-         constructor Create(const Name: String; Typ: TTypeSymbol);
+         constructor Create(const aName : String; aTyp : TTypeSymbol; const options : TParamSymbolOptions);
          function Clone : TParamSymbol; override;
          function Specialize(const context : ISpecializationContext) : TSymbol; override;
    end;
@@ -3302,7 +3303,7 @@ begin
    if methSym.IsClassMethod then
       Result:=nil
    else begin
-      Result:=TVarParamSymbol.Create(SYS_SELF, Self);
+      Result := TVarParamSymbol.Create(SYS_SELF, Self, [ psoInternal ]);
       methSym.Params.AddSymbol(Result);
    end;
 end;
@@ -3831,7 +3832,7 @@ begin
       end else begin
 
          if paramRec.IsVarParam then
-            paramSym := TVarParamSymbol.Create(paramRec.ParamName, typSym)
+            paramSym := TVarParamSymbol.Create(paramRec.ParamName, typSym, [])
          else if paramRec.IsConstParam then
             paramSym := CreateConstParamSymbol(paramRec.ParamName, typSym)
          else paramSym := TParamSymbol.Create(paramRec.ParamName, typSym, paramRec.Options);
@@ -6368,6 +6369,13 @@ begin
    Result := psoForbidImplicitCasts in FOptions;
 end;
 
+// IsInternal
+//
+function TParamSymbol.IsInternal : Boolean;
+begin
+   Result := psoInternal in FOptions;
+end;
+
 // Clone
 //
 function TParamSymbol.Clone : TParamSymbol;
@@ -6452,9 +6460,9 @@ end;
 // ------------------ TByRefParamSymbol ------------------
 // ------------------
 
-constructor TByRefParamSymbol.Create(const Name: String; Typ: TTypeSymbol);
+constructor TByRefParamSymbol.Create(const aName : String; aTyp : TTypeSymbol; const options : TParamSymbolOptions);
 begin
-  inherited Create(Name, Typ);
+  inherited Create(aName, aTyp, options);
   FSize := 1;
 end;
 
@@ -6462,14 +6470,14 @@ end;
 //
 function TByRefParamSymbol.Clone : TParamSymbol;
 begin
-   Result:=TByRefParamSymbol.Create(Name, Typ);
+   Result:=TByRefParamSymbol.Create(Name, Typ, FOptions);
 end;
 
 // Specialize
 //
 function TByRefParamSymbol.Specialize(const context : ISpecializationContext) : TSymbol;
 begin
-   Result := TByRefParamSymbol.Create(Name, context.SpecializeType(Typ));
+   Result := TByRefParamSymbol.Create(Name, context.SpecializeType(Typ), FOptions);
 end;
 
 // ------------------
@@ -6505,14 +6513,14 @@ end;
 //
 function TConstByRefParamSymbol.Clone : TParamSymbol;
 begin
-   Result := TConstByRefParamSymbol.Create(Name, Typ);
+   Result := TConstByRefParamSymbol.Create(Name, Typ, FOptions);
 end;
 
 // Specialize
 //
 function TConstByRefParamSymbol.Specialize(const context : ISpecializationContext) : TSymbol;
 begin
-   Result := TConstByRefParamSymbol.Create(Name, context.SpecializeType(Typ));
+   Result := TConstByRefParamSymbol.Create(Name, context.SpecializeType(Typ), FOptions);
 end;
 
 // IsWritable
@@ -6569,14 +6577,14 @@ end;
 //
 function TVarParamSymbol.Clone : TParamSymbol;
 begin
-   Result:=TVarParamSymbol.Create(Name, Typ);
+   Result:=TVarParamSymbol.Create(Name, Typ, FOptions);
 end;
 
 // Specialize
 //
 function TVarParamSymbol.Specialize(const context : ISpecializationContext) : TSymbol;
 begin
-   Result := TVarParamSymbol.Create(Name, context.SpecializeType(Typ));
+   Result := TVarParamSymbol.Create(Name, context.SpecializeType(Typ), FOptions);
 end;
 
 // Semantics
