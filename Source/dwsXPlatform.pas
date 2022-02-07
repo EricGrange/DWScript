@@ -283,6 +283,7 @@ function UnicodeStringReplace(const s, oldPattern, newPattern: String; flags: TR
 
 function UnicodeCompareP(p1 : PWideChar; n1 : Integer; p2 : PWideChar; n2 : Integer) : Integer; overload;
 function UnicodeCompareP(p1, p2 : PWideChar; n : Integer) : Integer; overload;
+function UnicodeCompareEx(const a, b : UnicodeString; const locale : UnicodeString; caseSensitive : Boolean) : Integer;
 
 procedure UnicodeLowerCase(const s : UnicodeString; var result : UnicodeString); overload;
 function  UnicodeLowerCase(const s : UnicodeString) : UnicodeString; overload; inline; deprecated 'use procedure form';
@@ -768,6 +769,10 @@ begin
 end;
 
 {$ifdef WINDOWS}
+const
+   CSTR_LESS_THAN    = 1;
+   CSTR_EQUAL        = 2;
+   CSTR_GREATER_THAN = 3;
 function CompareStringEx(
    lpLocaleName: LPCWSTR; dwCmpFlags: DWORD;
    lpString1: LPCWSTR; cchCount1: Integer;
@@ -780,10 +785,11 @@ function CompareStringEx(
 //
 function UnicodeCompareP(p1 : PWideChar; n1 : Integer; p2 : PWideChar; n2 : Integer) : Integer;
 {$ifdef WINDOWS}
-const
-   CSTR_EQUAL = 2;
 begin
-   Result := CompareStringEx(nil, NORM_IGNORECASE, p1, n1, p2, n2, nil, nil, 0)-CSTR_EQUAL;
+   Result := CompareStringEx(nil, NORM_IGNORECASE, p1, n1, p2, n2, nil, nil, 0);
+   if Result = 0 then
+      RaiseLastOSError
+   else Dec(Result, CSTR_EQUAL);
 end;
 {$else}
 begin
@@ -793,14 +799,30 @@ begin
 end;
 {$endif}
 
+// UnicodeCompareEx
+//
+function UnicodeCompareEx(const a, b : UnicodeString; const locale : UnicodeString; caseSensitive : Boolean) : Integer;
+var
+   flags : Integer;
+begin
+   if caseSensitive then
+      flags := 0
+   else flags := NORM_IGNORECASE;
+   Result := CompareStringEx(PChar(locale), flags, PChar(a), Length(a), PChar(b), Length(b), nil, nil, 0);
+   if Result = 0 then
+      RaiseLastOSError
+   else Dec(Result, CSTR_EQUAL);
+end;
+
 // UnicodeCompareP
 //
 function UnicodeCompareP(p1, p2 : PWideChar; n : Integer) : Integer; overload;
 {$ifdef WINDOWS}
-const
-   CSTR_EQUAL = 2;
 begin
-   Result := CompareStringEx(nil, NORM_IGNORECASE, p1, n, p2, n, nil, nil, 0) - CSTR_EQUAL;
+   Result := CompareStringEx(nil, NORM_IGNORECASE, p1, n, p2, n, nil, nil, 0);
+   if Result = 0 then
+      RaiseLastOSError
+   else Dec(Result, CSTR_EQUAL);
 end;
 {$else}
 begin

@@ -244,6 +244,10 @@ type
     function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
 
+  TCompareLocaleStrFunc = class(TInternalMagicIntFunction)
+    function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
+  end;
+
   TMatchesStrFunc = class(TInternalMagicBoolFunction)
     function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
   end;
@@ -911,6 +915,14 @@ begin
    Result:=AnsiCompareStr(args.AsString[0], args.AsString[1]);
 end;
 
+{ TCompareLocaleStrFunc }
+
+function TCompareLocaleStrFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+begin
+   Result := UnicodeCompareEx(args.AsString[0], args.AsString[1], args.AsString[2], args.AsBoolean[3]);
+end;
+
+
 { TMatchesStrFunc }
 
 function TMatchesStrFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
@@ -1444,6 +1456,7 @@ initialization
    RegisterInternalIntFunction(TAnsiCompareTextFunc, 'AnsiCompareText', ['str1', SYS_STRING, 'str2', SYS_STRING], [iffStateLess]);
    RegisterInternalIntFunction(TCompareStrFunc, 'CompareStr', ['str1', SYS_STRING, 'str2', SYS_STRING], [iffStateLess], 'CompareTo');
    RegisterInternalIntFunction(TAnsiCompareStrFunc, 'AnsiCompareStr', ['str1', SYS_STRING, 'str2', SYS_STRING], [iffStateLess]);
+   RegisterInternalIntFunction(TCompareLocaleStrFunc, 'CompareLocaleStr', ['str1', SYS_STRING, 'str2', SYS_STRING, 'locale', SYS_STRING, 'caseSensitive', SYS_BOOLEAN], [], 'LocaleCompare');
 
    RegisterInternalBoolFunction(TMatchesStrFunc, 'StrMatches', ['str', SYS_STRING, 'mask', SYS_STRING], [iffStateLess], 'Matches');
 

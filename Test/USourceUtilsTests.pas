@@ -587,11 +587,12 @@ begin
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 7);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
 
-   CheckEquals(4, sugg.Count, '.L');
+   CheckEquals(5, sugg.Count, '.L');
    CheckEquals('Left', sugg.Code[0], '.L 0');
    CheckEquals('Length', sugg.Code[1], '.L 1');
-   CheckEquals('Low', sugg.Code[2], '.L 2');
-   CheckEquals('LowerCase', sugg.Code[3], '.L 3');
+   CheckEquals('LocaleCompare', sugg.Code[2], '.L 2');
+   CheckEquals('Low', sugg.Code[3], '.L 3');
+   CheckEquals('LowerCase', sugg.Code[4], '.L 4');
 
    prog:=FCompiler.Compile('function T(i : Integer) : String; forward;'#13#10
                            +'T(Ord(IntToStr(1)[1]+"])([")).Le');
@@ -653,14 +654,14 @@ begin
                            +'T('#13#10
                            +'1'#13#10
                            +')'#13#10
-                           +'.LO');
+                           +'.LOW');
 
-   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 5, 4);
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 5, 5);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
 
-   CheckEquals(2, sugg.Count, '.Lo');
-   CheckEquals('Low', sugg.Code[0], '.Lo 0');
-   CheckEquals('LowerCase', sugg.Code[1], '.L 1');
+   CheckEquals(2, sugg.Count, '.Low');
+   CheckEquals('Low', sugg.Code[0], '.Low 0');
+   CheckEquals('LowerCase', sugg.Code[1], '.Low 1');
 end;
 
 // ForVariable
