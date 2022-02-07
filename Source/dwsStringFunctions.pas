@@ -922,7 +922,6 @@ begin
    Result := UnicodeCompareEx(args.AsString[0], args.AsString[1], args.AsString[2], args.AsBoolean[3]);
 end;
 
-
 { TMatchesStrFunc }
 
 function TMatchesStrFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;

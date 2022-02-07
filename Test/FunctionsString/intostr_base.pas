@@ -3,4 +3,3 @@
    PrintLn(IntToStr(123456789, i));
    PrintLn(IntToStr(-123456789, i));
 end;
-
