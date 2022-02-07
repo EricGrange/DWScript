@@ -290,21 +290,16 @@ var
 begin
    symDict:=aProg.SymbolDictionary;
    for symPosList in symDict do begin
-      sym:=symPosList.Symbol;
+      sym := symPosList.Symbol;
       // skip magic symbols
-      if (sym.Name='') or StrContains(sym.Name, ' ') then
+      if (sym.Name = '') or StrContains(sym.Name, ' ') then
          continue;
-      if restrictToSourceFile<>nil then begin
-         symPos:=symPosList.FindUsage(suDeclaration);
-         if symPos=nil then begin
-            if restrictToSourceFile<>nil then
-               continue;
-         end else begin
-            if symPos.ScriptPos.SourceFile<>restrictToSourceFile then
-               continue;
-         end;
+      symPos := symPosList.FindUsage(suDeclaration);
+      if     (symPos <> nil)
+         and (   (restrictToSourceFile = nil)
+              or (symPos.ScriptPos.SourceFile <> restrictToSourceFile)) then begin
+         EvaluateSymbol(symPosList, msgs);
       end;
-      EvaluateSymbol(symPosList, msgs);
    end;
 end;
 
