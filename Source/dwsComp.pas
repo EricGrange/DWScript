@@ -5722,8 +5722,8 @@ end;
 function TdwsFunctions.Add(const name : String; const resultType : String = '') : TdwsFunction;
 begin
    Result:=Add;
-   Result.Name:=name;
    Result.ResultType:=resultType;
+   Result.Name:=name;
 end;
 
 { TdwsForwards }
