@@ -154,7 +154,35 @@ type
     function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
   end;
 
+  TIncYearFunc = class(TInternalMagicFloatFunction)
+    procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+  end;
+
   TIncMonthFunc = class(TInternalMagicFloatFunction)
+    procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+  end;
+
+  TIncWeekFunc = class(TInternalMagicFloatFunction)
+    procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+  end;
+
+  TIncDayFunc = class(TInternalMagicFloatFunction)
+    procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+  end;
+
+  TIncHourFunc = class(TInternalMagicFloatFunction)
+    procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+  end;
+
+  TIncMinuteFunc = class(TInternalMagicFloatFunction)
+    procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+  end;
+
+  TIncSecondFunc = class(TInternalMagicFloatFunction)
+    procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
+  end;
+
+  TIncMilliSecondFunc = class(TInternalMagicFloatFunction)
     procedure DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double); override;
   end;
 
@@ -626,8 +654,6 @@ end;
 
 { TFormatDateTimeFunc }
 
-// DoEvalAsString
-//
 procedure TFormatDateTimeFunc.DoEvalAsString(const args : TExprBaseListExec; var Result : String);
 begin
    Result:=args.FormatSettings.FormatDateTime(args.AsString[0], args.AsFloat[1], TdwsTimeZone(args.AsInteger[2]));
@@ -640,6 +666,13 @@ begin
    Result:=IsLeapYear(args.AsInteger[0]);
 end;
 
+{ TIncYearFunc }
+
+procedure TIncYearFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result := IncMonth(args.AsFloat[0], args.AsInteger[1]*12);
+end;
+
 { TIncMonthFunc }
 
 procedure TIncMonthFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
@@ -647,10 +680,50 @@ begin
    Result:=IncMonth(args.AsFloat[0], args.AsInteger[1]);
 end;
 
+{ TIncWeekFunc }
+
+procedure TIncWeekFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result := args.AsFloat[0] + 7*args.AsInteger[1];
+end;
+
+{ TIncDayFunc }
+
+procedure TIncDayFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result := args.AsFloat[0] + args.AsInteger[1];
+end;
+
+{ TIncHourFunc }
+
+procedure TIncHourFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result := args.AsFloat[0] + args.AsInteger[1]/24;
+end;
+
+{ TIncMinuteFunc }
+
+procedure TIncMinuteFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result := args.AsFloat[0] + args.AsInteger[1]/1440;
+end;
+
+{ TIncSecondFunc }
+
+procedure TIncSecondFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result := args.AsFloat[0] + args.AsInteger[1]/86400;
+end;
+
+{ TIncMilliSecondFunc }
+
+procedure TIncMilliSecondFunc.DoEvalAsFloat(const args : TExprBaseListExec; var Result : Double);
+begin
+   Result := args.AsFloat[0] + args.AsInteger[1]/864e5;
+end;
+
 { TDecodeDateFunc }
 
-// DoEvalProc
-//
 procedure TDecodeDateFunc.DoEvalProc(const args : TExprBaseListExec);
 var
   y, m, d: word;
@@ -966,12 +1039,20 @@ initialization
    RegisterInternalIntFunction(TDayOfTheWeekFunc, 'DayOfTheWeek', ['dt', cDateTime]);
    RegisterInternalStringFunction(TFormatDateTimeFunc, 'FormatDateTime', ['frm', SYS_STRING, 'dt', cDateTime, 'utc=0', SYS_DATE_TIME_ZONE]);
    RegisterInternalBoolFunction(TIsLeapYearFunc, 'IsLeapYear', ['year', SYS_INTEGER]);
-   RegisterInternalFloatFunction(TIncMonthFunc, 'IncMonth', ['dt', cDateTime, 'nb', SYS_INTEGER, 'utc=0', SYS_DATE_TIME_ZONE]);
    RegisterInternalProcedure(TDecodeDateFunc, 'DecodeDate', ['dt', cDateTime, '@y', SYS_INTEGER, '@m', SYS_INTEGER, '@d', SYS_INTEGER, 'utc=0', SYS_DATE_TIME_ZONE]);
    RegisterInternalFloatFunction(TEncodeDateTimeFunc, 'EncodeDateTime', ['y', SYS_INTEGER, 'm', SYS_INTEGER, 'd', SYS_INTEGER, 'h', SYS_INTEGER, 'm', SYS_INTEGER, 's', SYS_INTEGER, 'ms', SYS_INTEGER, 'utc=0', SYS_DATE_TIME_ZONE]);
    RegisterInternalFloatFunction(TEncodeDateFunc, 'EncodeDate', ['y', SYS_INTEGER, 'm', SYS_INTEGER, 'd', SYS_INTEGER, 'utc=0', SYS_DATE_TIME_ZONE]);
    RegisterInternalProcedure(TDecodeTimeFunc, 'DecodeTime', ['dt', cDateTime, '@h', SYS_INTEGER, '@m', SYS_INTEGER, '@s', SYS_INTEGER, '@ms', SYS_INTEGER, 'utc=0', SYS_DATE_TIME_ZONE]);
    RegisterInternalFloatFunction(TEncodeTimeFunc, 'EncodeTime', ['h', SYS_INTEGER, 'm', SYS_INTEGER, 's', SYS_INTEGER, 'ms', SYS_INTEGER], [iffStateLess]);
+
+   RegisterInternalFloatFunction(TIncYearFunc, 'IncYear', ['dt', cDateTime, 'numberOfYears=1', SYS_INTEGER]);
+   RegisterInternalFloatFunction(TIncMonthFunc, 'IncMonth', ['dt', cDateTime, 'numberOfMonths=1', SYS_INTEGER]);
+   RegisterInternalFloatFunction(TIncWeekFunc, 'IncWeek', ['dt', cDateTime, 'numberOfWeeks=1', SYS_INTEGER]);
+   RegisterInternalFloatFunction(TIncDayFunc, 'IncDay', ['dt', cDateTime, 'numberOfDays=1', SYS_INTEGER]);
+   RegisterInternalFloatFunction(TIncHourFunc, 'IncHour', ['dt', cDateTime, 'numberOfHours=1', SYS_INTEGER]);
+   RegisterInternalFloatFunction(TIncMinuteFunc, 'IncMinute', ['dt', cDateTime, 'numberOfMinutes=1', SYS_INTEGER]);
+   RegisterInternalFloatFunction(TIncSecondFunc, 'IncSecond', ['dt', cDateTime, 'numberOfSeconds=1', SYS_INTEGER]);
+   RegisterInternalFloatFunction(TIncMilliSecondFunc, 'IncMilliSecond', ['dt', cDateTime, 'numberOfMilliSeconds=1', SYS_INTEGER]);
 
    RegisterInternalFloatFunction(TFirstDayOfYearFunc, 'FirstDayOfYear', ['dt', cDateTime]);
    RegisterInternalFloatFunction(TFirstDayOfNextYearFunc, 'FirstDayOfNextYear', ['dt', cDateTime]);
