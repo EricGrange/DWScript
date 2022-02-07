@@ -174,7 +174,7 @@ uses dwsJSON, dwsXPlatform, SynZip;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..305{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..312{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -883,6 +883,9 @@ const
        Dependency : 'Exception' ),
       (Name : 'Hypot';
        Code : 'function Hypot(x,y) { return Math.sqrt(x*x+y*y) }'),
+      (Name : 'IncYear';
+       Code : 'function IncYear(v, n) { return IncMonth(v, n*12) }';
+       Dependency : 'IncMonth' ),
       (Name : 'IncMonth';
        Code : 'function IncMonth(v, n) {'#10
                +#9'var o=new Date(Math.round((v-25569)*864e5));'#10
@@ -891,6 +894,18 @@ const
                +#9'if(o.getUTCDate()<d1) o.setUTCDate(0);'#10  // cf. Delphi: If the input day of month is greater than the last day of the
                +#9'return o.getTime()/864e5+25569'#10          // resulting month, the day is set to the last day of the resulting month
                +'}'),
+      (Name : 'IncWeek';
+       Code : 'function IncWeek(v, n) { return v+n*7 }' ),
+      (Name : 'IncDay';
+       Code : 'function IncDay(v, n) { return v+n }' ),
+      (Name : 'IncHour';
+       Code : 'function IncHour(v, n) { return v+n/24 }' ),
+      (Name : 'IncMinute';
+       Code : 'function IncMinute(v, n) { return v+n/1440 }' ),
+      (Name : 'IncSecond';
+       Code : 'function IncSecond(v, n) { return v+n/86400 }' ),
+      (Name : 'IncMilliSecond';
+       Code : 'function IncMilliSecond(v, n) { return v+n/864e5 }' ),
       (Name : 'Insert';
        Code : 'function Insert(s,d,i) { var v=d.'+TdwsJSCodeGen.cBoxFieldName+'; if (s=="") return; if (i<1) i=1; if (i>v.length) i=v.length+1;'
                +'d.'+TdwsJSCodeGen.cBoxFieldName+'=v.substr(0,i-1)+s+v.substr(i-1); }'),
