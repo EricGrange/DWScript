@@ -347,7 +347,7 @@ begin
                     +'})();';
             FChromium.ClearLastResult;
 
-            SaveTextToUTF8File('c:\temp\test.js', UTF8Encode(jscode));
+            //SaveTextToUTF8File('c:\temp\test.js', jscode);
 
             {// execute via node
             fileName:=GetTempFileName('dws');
