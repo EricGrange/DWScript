@@ -374,7 +374,7 @@ var
 begin
    t := GetSystemMilliseconds;
    if expirationSeconds>0 then
-      expire := t + Round(expirationSeconds*1000)
+      expire := t + UInt64(Round(expirationSeconds*1000))
    else expire := cNoExpire;
 
    h := TNameObjectHash.HashName(aName);
