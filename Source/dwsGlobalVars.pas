@@ -368,12 +368,13 @@ end;
 function TGlobalVars.Write(const aName : String; const aValue : Variant; expirationSeconds : Double) : Boolean;
 var
    gv : TGlobalVar;
-   expire : UInt64;
+   t, expire : UInt64;
    map : PGlobalVarsHashMap;
    h : Cardinal;
 begin
+   t := GetSystemMilliseconds;
    if expirationSeconds>0 then
-      expire := GetSystemMilliseconds+Round(expirationSeconds*1000)
+      expire := t + Round(expirationSeconds*1000)
    else expire := cNoExpire;
 
    h := TNameObjectHash.HashName(aName);
@@ -385,8 +386,8 @@ begin
       if gv=nil then begin
          gv:=TGlobalVar(vGVPool.Acquire);
          map.Objects[h, aName]:=gv;
-         Result:=True;
-      end else Result:=False;
+         Result := True;
+      end else Result := (gv.Expire < t);
       gv.Value:=aValue;
       gv.Expire:=expire;
    finally
