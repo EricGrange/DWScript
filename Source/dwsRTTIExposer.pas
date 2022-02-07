@@ -22,7 +22,7 @@ interface
 
 uses
    Classes, SysUtils, RTTI, TypInfo,
-   dwsXPlatform, dwsStrings,
+   dwsXPlatform, dwsStrings, dwsDataContext, dwsInfoClasses,
    dwsComp, dwsSymbols, dwsExprs, dwsStack, dwsInfo;
 
 type
@@ -69,11 +69,16 @@ type
                                    const options : TdwsRTTIExposerOptions) : TdwsMethod;
          function ExposeRTTIProperty(prop : TRttiProperty; scriptClass : TdwsClass;
                                      const options : TdwsRTTIExposerOptions) : TdwsProperty;
+         function ExposeRTTIIndexedProperty(prop : TRttiIndexedProperty; scriptClass : TdwsClass;
+                                     const options : TdwsRTTIExposerOptions) : TdwsProperty;
          function ExposeRTTIParameter(param : TRttiParameter; scriptParameters : TdwsParameters;
                                       const options : TdwsRTTIExposerOptions) : TdwsParameter;
 
          function ExposeRTTIEnumeration(enum : TRttiEnumerationType;
                                         const options : TdwsRTTIExposerOptions) : TdwsEnumeration;
+
+         function ExposeRTTISet(rttiset : TRttiSetType;
+                                               const options : TdwsRTTIExposerOptions) : TdwsSet;
 
          function ExposeRTTIRecord(rec : TRttiRecordType;
                                    const options : TdwsRTTIExposerOptions) : TdwsRecord;
@@ -129,6 +134,8 @@ type
                                               asType : TRttiType); static;
          class procedure AssignRecordFromValue(const recInfo : IInfo; const value : TValue;
                                                asType : TRttiType); static;
+         class procedure AssignDynArrayFromValue(const Info : IInfo; const value : TValue;
+                                                 asType : TRttiType); static;
 
          class function ValueFromParam(progInfo : TProgramInfo; const paramName : String;
                                        asType : TRttiType) : TValue; static;
@@ -177,6 +184,19 @@ type
          constructor Create(aProperty : TRttiProperty);
    end;
 
+   // TdwsRTTIIndexedPropertyInvoker
+   //
+   TdwsRTTIIndexedPropertyInvoker = class (TdwsRTTIInvoker)
+      protected
+         FProperty : TRttiIndexedProperty;
+         FTyp, FItyp : TRttiType;
+
+         procedure Initialize(aProperty : TRttiIndexedProperty);
+
+      public
+         constructor Create(aProperty : TRttiIndexedProperty);
+   end;
+
    // TdwsRTTISetterInvoker
    //
    TdwsRTTISetterInvoker = class (TdwsRTTIPropertyInvoker)
@@ -187,6 +207,20 @@ type
    // TdwsRTTIGetterInvoker
    //
    TdwsRTTIGetterInvoker = class (TdwsRTTIPropertyInvoker)
+      public
+         procedure Invoke(info : TProgramInfo; externalObject : TObject); override;
+   end;
+
+      // TdwsRTTISetterIndexedInvoker
+   //
+   TdwsRTTISetterIndexedInvoker = class (TdwsRTTIIndexedPropertyInvoker)
+      public
+         procedure Invoke(info : TProgramInfo; externalObject : TObject); override;
+   end;
+
+   // TdwsRTTIGetterIndexedInvoker
+   //
+   TdwsRTTIGetterIndexedInvoker = class (TdwsRTTIIndexedPropertyInvoker)
       public
          procedure Invoke(info : TProgramInfo; externalObject : TObject); override;
    end;
@@ -300,6 +334,8 @@ begin
       Result:=ExposeRTTIClass(TRttiInstanceType(typ), options)
    else if typ is TRttiEnumerationType then
       Result:=ExposeRTTIEnumeration(TRttiEnumerationType(typ), options)
+   else if typ is TRttiSetType then
+      Result:=ExposeRTTISet(TRttiSetType(typ), options)
    else if typ is TRttiRecordType then
       Result:=ExposeRTTIRecord(TRttiRecordType(typ), options)
    else if typ is TRttiInterfaceType then
@@ -348,6 +384,7 @@ begin
                 LDynType := SYS_FLOAT;
               tkVariant:
                 LDynType := SYS_VARIANT;
+              tkClass: LDynType := SYS_TOBJECT; //why not?
               else
                 raise Exception.Create(
                   'Cannot handle this dynamic array RTTI type, maybe you haven''t exposed type"' + atype.name + '" yet?');
@@ -395,6 +432,7 @@ var
 var
    meth : TRttiMethod;
    prop : TRttiProperty;
+   iprop : TRttiIndexedProperty;
    helper : TdwsRTTIHelper;
    scriptConstructor : TdwsConstructor;
 begin
@@ -433,6 +471,17 @@ begin
          ExposeRTTIProperty(prop, Result, options);
       end;
    end;
+
+   for iprop in cls.GetIndexedProperties do begin
+      if ShouldExpose(iprop) then begin
+         ExposeRTTIIndexedProperty(iprop, Result, options);
+      end;
+   end;
+
+//if few overloaded constructors imported, we have error do to missing overloaded directive
+   if Result.Constructors.Count > 1 then
+     for var I := 0 to Result.Constructors.Count - 1 do
+       TdwsConstructor(Result.Constructors.Items[i]).Overloaded := True;
 end;
 
 // ExposeRTTIConstructor
@@ -475,6 +524,7 @@ begin
     tkChar, tkString, tkUString, tkWChar, tkLString, tkWString:
       LType := SYS_STRING;
     tkVariant: LType := SYS_VARIANT;
+    tkClass: LType := SYS_TOBJECT;
     else raise Exception.CreateFmt('Cannot expose dynamic array of type: %s', [
       cTYPEKIND_NAMES[LTypeKind]]);
   end; // case LTypeKind of
@@ -492,10 +542,27 @@ var
    param : TRttiParameter;
    helper : TdwsRTTIHelper;
    invoker : TdwsRTTIMethodInvoker;
+   Overloaded : Boolean;
 begin
+//same story with overloaded directive for methods
+   Overloaded := False;
+   if scriptClass.Methods.Count > 0 then
+     for var I := 0 to scriptClass.Methods.Count - 1 do
+       if TdwsMethod(scriptClass.Methods.Items[i]).Name.Equals(dwsPublished.NameOf(meth)) then
+       begin
+         Overloaded := True;
+         TdwsMethod(scriptClass.Methods.Items[i]).Overloaded := True;
+       end;
+
+   for param in meth.GetParameters do
+     if RTTITypeToScriptType(param.ParamType) = 'TExtended80Rec' then
+       Exit(nil);
    Result:=scriptClass.Methods.Add;
    Result.Name:=dwsPublished.NameOf(meth);
    Result.ResultType:=RTTITypeToScriptType(meth.ReturnType);
+
+   if Overloaded then
+     Result.Overloaded := True;
 
    case meth.MethodKind of
       TypInfo.mkClassProcedure :
@@ -539,7 +606,7 @@ begin
       getterInvoker:=TdwsRTTIGetterInvoker.Create(prop);
       helper.AddInvoker(getterInvoker);
       getterMethod:=(scriptClass.Methods.Add as TdwsMethod);
-      getterMethod.Name:='Get'+prop.Name;
+      getterMethod.Name:='eGet_'+prop.Name;
       Result.ReadAccess:=getterMethod.Name;
       getterMethod.ResultType:=RTTITypeToScriptType(prop.PropertyType);
       getterMethod.OnEval:=getterInvoker.Invoke;
@@ -549,8 +616,72 @@ begin
       setterInvoker:=TdwsRTTISetterInvoker.Create(prop);
       helper.AddInvoker(setterInvoker);
       setterMethod:=(scriptClass.Methods.Add as TdwsMethod);
-      setterMethod.Name:='Set'+prop.Name;
+      setterMethod.Name:='eSet_'+prop.Name;
       Result.WriteAccess:=setterMethod.Name;
+      setterParam:=setterMethod.Parameters.Add;
+      setterParam.Name:='v';
+      setterParam.DataType:=RTTITypeToScriptType(prop.PropertyType);
+      setterMethod.OnEval:=setterInvoker.Invoke;
+   end;
+end;
+
+// ExposeRTTIIndexedProperty
+//
+
+function TdwsRTTIExposer.ExposeRTTIIndexedProperty(prop : TRttiIndexedProperty; scriptClass : TdwsClass;
+                                            const options : TdwsRTTIExposerOptions) : TdwsProperty;
+var
+   helper : TdwsRTTIHelper;
+   setterInvoker : TdwsRTTISetterIndexedInvoker;
+   getterInvoker : TdwsRTTIGetterIndexedInvoker;
+   setterMethod, getterMethod : TdwsMethod;
+   indexparam, getterParam, setterParam : TdwsParameter;
+begin
+   Result:=scriptClass.Properties.Add;
+
+   Result.Name:=dwsPublished.NameOf(prop);
+   indexparam := Result.Parameters.Add;
+   if prop.IsReadable then
+   begin
+     indexparam.Name := prop.ReadMethod.GetParameters[0].Name;
+     indexparam.DataType := RTTITypeToScriptType(prop.ReadMethod.GetParameters[0].ParamType);
+   end
+   else
+     if prop.IsWritable then
+     begin
+       indexparam.Name := prop.WriteMethod.GetParameters[0].Name;
+       indexparam.DataType := RTTITypeToScriptType(prop.WriteMethod.GetParameters[0].ParamType);
+     end;
+
+   Result.DataType:=RTTITypeToScriptType(prop.PropertyType);
+
+   helper:=scriptClass.HelperObject as TdwsRTTIHelper;
+
+   if prop.IsDefault then
+     Result.IsDefault := True;
+
+   if prop.IsReadable then begin
+      getterInvoker:=TdwsRTTIGetterIndexedInvoker.Create(prop);
+      helper.AddInvoker(getterInvoker);
+      getterMethod:=(scriptClass.Methods.Add as TdwsMethod);
+      getterMethod.Name:='eiGet_'+prop.Name;
+      Result.ReadAccess:=getterMethod.Name;
+      getterParam:=getterMethod.Parameters.Add;
+      getterParam.Name:='a';
+      getterParam.DataType:=indexparam.DataType;
+      getterMethod.ResultType:=RTTITypeToScriptType(prop.PropertyType);
+      getterMethod.OnEval:=getterInvoker.Invoke;
+   end;
+
+   if prop.IsWritable then begin
+      setterInvoker:=TdwsRTTISetterIndexedInvoker.Create(prop);
+      helper.AddInvoker(setterInvoker);
+      setterMethod:=(scriptClass.Methods.Add as TdwsMethod);
+      setterMethod.Name:='eiSet_'+prop.Name;
+      Result.WriteAccess:=setterMethod.Name;
+      setterParam:=setterMethod.Parameters.Add;
+      setterParam.Name:='a';
+      setterParam.DataType:=indexparam.DataType;
       setterParam:=setterMethod.Parameters.Add;
       setterParam.Name:='v';
       setterParam.DataType:=RTTITypeToScriptType(prop.PropertyType);
@@ -590,6 +721,16 @@ begin
       element.Name:=enumName;
       element.UserDefValue:=i;
    end;
+end;
+
+// ExposeRTTISet
+//
+function TdwsRTTIExposer.ExposeRTTISet(rttiset : TRttiSetType;
+                                               const options : TdwsRTTIExposerOptions) : TdwsSet;
+begin
+   Result:=Sets.Add;
+   Result.Name:=dwsPublished.NameOf(rttiset);
+   Result.BaseType := RTTITypeToScriptType(rttiset.ElementType);
 end;
 
 // ExposeRTTIRecord
@@ -658,6 +799,8 @@ begin
          info.Value:=value.AsString;
       tkRecord :
          AssignRecordFromValue(info, value, asType);
+      tkDynArray :
+         AssignDynArrayFromValue(info, value, asType);
       tkEnumeration :
          if asType.Handle=TypeInfo(Boolean) then
             info.Value:=value.AsBoolean
@@ -665,6 +808,23 @@ begin
    else
       info.Value:=value.AsVariant;
    end;
+end;
+
+// AssignDynArrayFromValue
+//
+class procedure TdwsRTTIInvoker.AssignDynArrayFromValue(const Info : IInfo; const value : TValue; asType : TRttiType);
+var
+   LLen: Integer;
+begin
+  if not (Info is TInfoDynamicArray) then
+    Exit;
+
+   LLen := value.GetArrayLength;
+   if LLen = 0 then Exit;
+
+   Info.ScriptDynArray.ArrayLength := LLen;
+   for var i := 0 to LLen - 1 do
+     AssignIInfoFromValue(Info.Element([i]),value.GetArrayElement(i),TRttiDynamicArrayType(asType).ElementType);
 end;
 
 // AssignRecordFromValue
@@ -713,7 +873,8 @@ begin
       tkEnumeration :
          if asType.Handle=TypeInfo(Boolean) then
             Result:=info.ValueAsBoolean
-         else Result:=info.ValueAsInteger;
+         else
+           TValue.Make(info.ValueAsInteger, asType.Handle, Result);
       tkDynArray: begin
         LLen := Length(info.Data);
         TValue.MakeWithoutCopy(NIL, asType.Handle, Result);
@@ -843,6 +1004,27 @@ begin
 end;
 
 // ------------------
+// ------------------ TdwsRTTIIndexedPropertyInvoker ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsRTTIIndexedPropertyInvoker.Create(aProperty : TRttiIndexedProperty);
+begin
+   inherited Create;
+   Initialize(aProperty);
+end;
+
+// Initialize
+//
+procedure TdwsRTTIIndexedPropertyInvoker.Initialize(aProperty : TRttiIndexedProperty);
+begin
+   FProperty:=aProperty;
+   FTyp:=aProperty.PropertyType;
+   FITyp:=aProperty.ReadMethod.GetParameters[0].ParamType;
+end;
+
+// ------------------
 // ------------------ TdwsRTTISetterInvoker ------------------
 // ------------------
 
@@ -869,5 +1051,37 @@ begin
    resultValue:=FProperty.GetValue(externalObject);
    AssignIInfoFromValue(info.ResultVars, resultValue, FTyp);
 end;
+
+// ------------------
+// ------------------ TdwsRTTISetterIndexedInvoker ------------------
+// ------------------
+
+// Invoke
+//
+procedure TdwsRTTISetterIndexedInvoker.Invoke(info : TProgramInfo; externalObject : TObject);
+var
+   value, avalue : TValue;
+begin
+   avalue := ValueFromParam(info, 'a', FITyp);
+   value:=ValueFromParam(info, 'v', FTyp);
+   FProperty.SetValue(externalObject, [avalue], value);
+end;
+
+// ------------------
+// ------------------ TdwsRTTIGetterIndexedInvoker ------------------
+// ------------------
+
+// Invoke
+//
+procedure TdwsRTTIGetterIndexedInvoker.Invoke(info : TProgramInfo; externalObject : TObject);
+var
+   resultValue : TValue;
+   avalue : TValue;
+begin
+   avalue := ValueFromParam(info, 'a', FITyp);
+   resultValue:=FProperty.GetValue(externalObject, [avalue]);
+   AssignIInfoFromValue(info.ResultVars, resultValue, FTyp);
+end;
+
 
 end.
