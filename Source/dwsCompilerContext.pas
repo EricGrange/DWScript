@@ -291,7 +291,7 @@ begin
          if Optimize then
             TObject(expr) := typedExpr.OptimizeToTypedExpr(Self, scriptPos);
       end else if     toTyp.UnAliasedTypeIs(TDynamicArraySymbol) and (typedExpr is TArrayConstantExpr)
-                  and toTyp.UnAliasedType.Typ.SameType(typedExpr.Typ.UnaliasedType.Typ) then begin
+                  and toTyp.UnAliasedType.Typ.IsCompatible(typedExpr.Typ.UnaliasedType.Typ) then begin
          Result := True;
          typedExpr := TConvStaticArrayToDynamicExpr.Create(
             Self, scriptPos,
