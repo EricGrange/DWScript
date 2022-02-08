@@ -182,6 +182,9 @@ type
    IToVariant = interface
       ['{DE1A280D-5552-4F84-B557-957271D6EA62}']
       procedure ToVariant(var result : Variant);
+      function IsArray : Boolean;
+      function IsNumeric : Boolean;
+      function IsString : Boolean;
    end;
 
    // TVarRecArrayContainer

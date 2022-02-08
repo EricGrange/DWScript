@@ -337,6 +337,8 @@ procedure TdwsFuncFunctionsTestsVariant.SetUp;
 begin
    FFolder:='FunctionsVariant';
    inherited;
+   FJSON := TdwsJSONLibModule.Create(nil);
+   FJSON.Script := FCompiler;
 end;
 
 // ------------------

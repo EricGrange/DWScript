@@ -1,0 +1,11 @@
+ is not array
+hello is not array
+nil is not array
+TInterfaceSymbol is not array
+123 is not array
+[123] is array
+[] is array
+ is not array
+null is not array
+False is not array
+ is not array

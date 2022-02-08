@@ -53,6 +53,10 @@ type
       function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
    end;
 
+   TVarIsNumericFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean; override;
+   end;
+
    TVarTypeFunc = class(TInternalMagicIntFunction)
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
@@ -136,21 +140,88 @@ end;
 { TVarIsArrayFunc }
 
 function TVarIsArrayFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+
+   function CheckUnknown(const unk : IUnknown) : Boolean;
+   var
+      tovar : IToVariant;
+   begin
+      if unk.QueryInterface(IToVariant, tovar) = S_OK then
+         Result := tovar.IsArray
+      else Result := False;
+   end;
+
 var
    v : Variant;
 begin
    args.ExprBase[0].EvalAsVariant(args.Exec, v);
-   Result:=VarIsArray(v);
+   case VarType(v) of
+      varEmpty : Result := False;
+      varUnknown : begin
+         if TVarData(v).VUnknown <> nil then
+            Result := CheckUnknown(IUnknown(TVarData(v).VUnknown))
+         else Result := False;
+      end;
+   else
+      Result := VarIsArray(v);
+   end;
 end;
 
 { TVarIsStrFunc }
 
 function TVarIsStrFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+
+   function CheckUnknown(const unk : IUnknown) : Boolean;
+   var
+      tovar : IToVariant;
+   begin
+      if unk.QueryInterface(IToVariant, tovar) = S_OK then
+         Result := tovar.IsString
+      else Result := False;
+   end;
+
 var
    v : Variant;
 begin
    args.ExprBase[0].EvalAsVariant(args.Exec, v);
-   Result:=VarIsStr(v);
+   case VarType(v) of
+      varEmpty : Result := False;
+      varUnknown : begin
+         if TVarData(v).VUnknown <> nil then
+            Result := CheckUnknown(IUnknown(TVarData(v).VUnknown))
+         else Result := False;
+      end;
+   else
+      Result := VarIsStr(v);
+   end;
+end;
+
+{ TVarIsNumericFunc }
+
+function TVarIsNumericFunc.DoEvalAsBoolean(const args : TExprBaseListExec) : Boolean;
+
+   function CheckUnknown(const unk : IUnknown) : Boolean;
+   var
+      tovar : IToVariant;
+   begin
+      if unk.QueryInterface(IToVariant, tovar) = S_OK then
+         Result := tovar.IsNumeric
+      else Result := False;
+   end;
+
+var
+   v : Variant;
+begin
+   args.ExprBase[0].EvalAsVariant(args.Exec, v);
+   case VarType(v) of
+      varEmpty : Result := False;
+      varUnknown : begin
+         if TVarData(v).VUnknown <> nil then
+            Result := CheckUnknown(IUnknown(TVarData(v).VUnknown))
+         else Result := False;
+      end;
+   else
+      Result := VarIsNumeric(v);
+   end;
 end;
 
 { TVarTypeFunc }
@@ -244,6 +315,7 @@ initialization
    RegisterInternalBoolFunction(TVarIsClearFunc, 'VarIsClear', ['v', 'Variant']);
    RegisterInternalBoolFunction(TVarIsArrayFunc, 'VarIsArray', ['v', 'Variant']);
    RegisterInternalBoolFunction(TVarIsStrFunc, 'VarIsStr', ['v', 'Variant']);
+   RegisterInternalBoolFunction(TVarIsNumericFunc, 'VarIsNumeric', ['v', 'Variant']);
    RegisterInternalFunction(TVarTypeFunc, 'VarType', ['v', 'Variant'], 'TVarType');
    RegisterInternalFunction(TVarAsTypeFunc, 'VarAsType', ['v', 'Variant', 'VarType', 'TVarType'], 'Variant');
    RegisterInternalStringFunction(TVarToStrFunc, 'VarToStr', ['v', 'Variant']);

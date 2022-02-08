@@ -1,0 +1,13 @@
+ is not numeric
+1 is numeric
+Null is not numeric
+ is not numeric
+nil is not numeric
+TInterfaceSymbol is not numeric
+123 is numeric
+[123] is not numeric
+123.5 is numeric
+ is not numeric
+null is not numeric
+False is numeric
+ is not numeric

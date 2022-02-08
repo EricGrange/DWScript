@@ -1,0 +1,13 @@
+ is not string
+1 is not string
+Null is not string
+ is not string
+nil is not string
+TInterfaceSymbol is not string
+123 is not string
+[123] is not string
+hello is string
+ is not string
+null is not string
+False is not string
+ is not string

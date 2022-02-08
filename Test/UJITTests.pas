@@ -6,7 +6,8 @@ uses
    Classes, SysUtils, Variants,
    dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsXPlatform,
    dwsTokenizer, dwsErrors, dwsUtils, dwsSymbols, dwsFunctions, dwsUnitSymbols,
-   dwsJITFixups, dwsJITx86, dwsJITx86_64, dwsJITx86Intrinsics, dwsCompilerContext;
+   dwsJITFixups, dwsJITx86, dwsJITx86_64, dwsJITx86Intrinsics, dwsCompilerContext,
+   dwsJSONConnector;
 
 type
 
@@ -16,6 +17,7 @@ type
          FCompiler : TDelphiWebScript;
          FStream : Tx86BaseWriteOnlyStream;
          FFixups : TFixupLogic;
+         FJSON : TdwsJSONLibModule;
 
       protected
          procedure DoInclude(const scriptName : UnicodeString; var scriptSource: UnicodeString);
@@ -92,6 +94,9 @@ begin
    FCompiler.Config.HintsLevel:=hlPedantic;
    FCompiler.Config.Conditionals.Add('CONDITION');
 
+   FJSON := TdwsJSONLibModule.Create(nil);
+   FJSON.Script := FCompiler;
+
    FStream:=Tx86_Platform_WriteOnlyStream.Create;
    FFixups:=TFixupLogic.Create;
    FFixups.OnNeedLocation:=GetStreamPosition;
@@ -102,6 +107,7 @@ end;
 procedure TJITTests.TearDown;
 begin
    FStream.Free;
+   FJSON.Free;
    FCompiler.Free;
    FFixups.Free;
    FTests.Free;

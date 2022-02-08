@@ -1,0 +1,12 @@
+ is clear
+1 is not clear
+Null is not clear
+ is clear
+nil is not clear
+TInterfaceSymbol is not clear
+123 is not clear
+[123] is not clear
+ is clear
+null is not clear
+False is not clear
+ is clear

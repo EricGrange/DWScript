@@ -262,6 +262,9 @@ type
          function ValueType : TdwsJSONValueType; inline;
 
          function IsFalsey : Boolean; inline;
+         function IsArray : Boolean; inline;
+         function IsNumber : Boolean; inline;
+         function IsString : Boolean; inline;
 
          procedure Clear;
 
@@ -1315,6 +1318,27 @@ end;
 function TdwsJSONValue.IsFalsey : Boolean;
 begin
    Result:=(not Assigned(Self)) or DoIsFalsey;
+end;
+
+// IsArray
+//
+function TdwsJSONValue.IsArray : Boolean;
+begin
+   Result := (ValueType = jvtArray);
+end;
+
+// IsNumber
+//
+function TdwsJSONValue.IsNumber : Boolean;
+begin
+   Result := (ValueType = jvtNumber);
+end;
+
+// IsString
+//
+function TdwsJSONValue.IsString : Boolean;
+begin
+   Result := (ValueType = jvtString);
 end;
 
 // Clear

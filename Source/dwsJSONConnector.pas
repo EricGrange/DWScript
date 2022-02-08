@@ -373,6 +373,9 @@ type
       function IsFalsey : Boolean;
       function IsNull : Boolean;
       function IsDefined : Boolean;
+      function IsArray : Boolean;
+      function IsNumeric : Boolean;
+      function IsString : Boolean;
 
       procedure WriteToJSON(writer : TdwsJSONWriter);
 
@@ -397,6 +400,9 @@ type
       function IsFalsey : Boolean;
       function IsNull : Boolean;
       function IsDefined : Boolean;
+      function IsArray : Boolean;
+      function IsNumeric : Boolean;
+      function IsString : Boolean;
    end;
 
 var
@@ -510,6 +516,27 @@ end;
 function TBoxedJSONValue.IsDefined : Boolean;
 begin
    Result := FValue.IsDefined;
+end;
+
+// IsArray
+//
+function TBoxedJSONValue.IsArray : Boolean;
+begin
+   Result := FValue.IsArray;
+end;
+
+// IsNumeric
+//
+function TBoxedJSONValue.IsNumeric : Boolean;
+begin
+   Result := FValue.IsNumber;
+end;
+
+// IsString
+//
+function TBoxedJSONValue.IsString : Boolean;
+begin
+   Result := FValue.IsString;
 end;
 
 // WriteToJSON
@@ -629,6 +656,27 @@ end;
 // IsDefined
 //
 function TBoxedNilJSONValue.IsDefined : Boolean;
+begin
+   Result := False;
+end;
+
+// IsArray
+//
+function TBoxedNilJSONValue.IsArray : Boolean;
+begin
+   Result := False;
+end;
+
+// IsNumeric
+//
+function TBoxedNilJSONValue.IsNumeric : Boolean;
+begin
+   Result := False;
+end;
+
+// IsString
+//
+function TBoxedNilJSONValue.IsString : Boolean;
 begin
    Result := False;
 end;
