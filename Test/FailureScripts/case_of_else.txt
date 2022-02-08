@@ -1,0 +1,1 @@
+Hint: Redundant "begin" in clause of a case..of [line: 5, column: 6]

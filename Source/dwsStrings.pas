@@ -399,6 +399,7 @@ const
 
   CPH_EmptyThenBlock = 'Empty THEN block';
   CPH_EmptyElseBlock = 'Empty ELSE block';
+  CPH_BeginInCaseOfElseClause = 'Redundant "begin" in clause of a case..of';
 
   // TypeCheck
   CPE_BooleanExpected = 'Boolean expected';

@@ -6733,6 +6733,8 @@ begin
 
          while not FTok.TestDelete(ttEND) do begin
             if FTok.TestDelete(ttELSE) then begin
+               if FTok.Test(ttBEGIN) then
+                  FMsgs.AddCompilerHint(FTok.HotPos, CPH_BeginInCaseOfElseClause, hlPedantic);
                Result.ElseExpr := ReadBlocks([ttEND], tt);
                break;
             end else begin
