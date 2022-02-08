@@ -6,7 +6,7 @@ uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
    dwsTokenizer, dwsSymbols, dwsXPlatform, dwsUtils, dwsErrors,
    dwsMathFunctions, dwsTimeFunctions, dwsGlobalVarsFunctions, dwsVariantFunctions,
    dwsMathComplexFunctions, dwsMath3DFunctions, dwsCompilerContext,
-   dwsByteBufferFunctions, dwsUnitSymbols;
+   dwsByteBufferFunctions, dwsUnitSymbols, dwsJSONConnector;
 
 type
 
@@ -15,6 +15,7 @@ type
          FFolder, FFolderPath : String;
          FTests : TStringList;
          FCompiler : TDelphiWebScript;
+         FJSON : TdwsJSONLibModule;
 
       public
          procedure SetUp; override;
@@ -127,6 +128,7 @@ procedure TdwsFunctionsTestsBase.TearDown;
 begin
    FTests.Free;
 
+   FreeAndNil(FJSON);
    FCompiler.Free;
 end;
 
@@ -347,6 +349,8 @@ procedure TdwsFuncFunctionsTestsGlobalVars.SetUp;
 begin
    FFolder:='FunctionsGlobalVars';
    inherited;
+   FJSON := TdwsJSONLibModule.Create(nil);
+   FJSON.Script := FCompiler;
 end;
 
 // ------------------

@@ -1,3 +1,4 @@
+Private variables cannot be referred from main module
 hello
 123
 

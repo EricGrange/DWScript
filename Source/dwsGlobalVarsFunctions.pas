@@ -263,7 +263,9 @@ procedure CastVariantForGlobalStorage(const varIn : Variant; var varOut : Varian
       named : IGetSelf;
       toVariant : IToVariant;
    begin
-      if IUnknown(TVarData(varIn).VUnknown).QueryInterface(IToVariant, toVariant) = S_OK then begin
+      if TVarData(varIn).VUnknown = nil then
+         VarSetNull(varOut)
+      else if IUnknown(TVarData(varIn).VUnknown).QueryInterface(IToVariant, toVariant) = S_OK then begin
          toVariant.ToVariant(varOut);
       end else begin
          if IUnknown(TVarData(varIn).VUnknown).QueryInterface(IGetSelf, named) = S_OK then

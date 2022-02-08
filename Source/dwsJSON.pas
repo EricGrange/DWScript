@@ -548,6 +548,23 @@ begin
    imm.Free;
 end;
 
+procedure FlushImmediates;
+var
+   imm : TdwsJSONImmediate;
+begin
+   vImmediatePoolLock.BeginWrite;
+   try
+      while vImmediatePoolCount > 0 do begin
+         Dec(vImmediatePoolCount);
+         imm := vImmediatePool[vImmediatePoolCount];
+         vImmediatePool[vImmediatePoolCount] := nil;
+         imm.Free;
+      end;
+   finally
+      vImmediatePoolLock.EndWrite;
+   end;
+end;
+
 // ------------------
 // ------------------ EdwsJSONIndexOutOfRange ------------------
 // ------------------
@@ -3375,6 +3392,7 @@ finalization
    vObject.Finalize;
    vArray.Finalize;
 
+   FlushImmediates;
    FreeAndNil(vImmediatePoolLock);
 
 end.
