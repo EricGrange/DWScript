@@ -701,6 +701,7 @@ type
 
       protected
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; virtual;
+         function GetUnAliasedType : TTypeSymbol; virtual;
 
          function GetIsDeprecated : Boolean; inline;
 
@@ -712,7 +713,7 @@ type
 
          function IsType : Boolean; override;
          function BaseType : TTypeSymbol; override;
-         function UnAliasedType : TTypeSymbol; virtual;
+         function UnAliasedType : TTypeSymbol; inline;
          function UnAliasedTypeIs(const typeSymbolClass : TTypeSymbolClass) : Boolean; inline;
          function IsOfType(typSym : TTypeSymbol) : Boolean;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; virtual;
@@ -1106,13 +1107,13 @@ type
    TAliasSymbol = class sealed (TTypeSymbol)
       protected
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+         function GetUnAliasedType : TTypeSymbol; override;
          function GetAsFuncSymbol : TFuncSymbol; override;
          function GetDescription : String; override;
          function GetCaption : String; override;
 
       public
          function BaseType : TTypeSymbol; override;
-         function UnAliasedType : TTypeSymbol; override;
          procedure InitData(const data : TData; offset : Integer); override;
          procedure InitVariant(var v : Variant); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
@@ -6142,7 +6143,7 @@ var
    ct : TClass;
 begin
    if typSym<>nil then begin
-      typSym:=typSym.UnAliasedType;
+      typSym:=typSym.GetUnAliasedType;
       if typSym.InheritsFrom(TBaseSymbol) then
          Result:=True
       else begin
@@ -6956,8 +6957,8 @@ begin
    rightType:=anOpSym.Params[1];
    if (leftType=nil) or (rightType=nil) then Exit;
 
-   leftType:=leftType.UnAliasedType;
-   rightType:=rightType.UnAliasedType;
+   leftType:=leftType.GetUnAliasedType;
+   rightType:=rightType.GetUnAliasedType;
    for i:=0 to Count-1 do begin
       sym:=Symbols[i];
       if sym=anOpSym then continue;
@@ -7382,7 +7383,7 @@ end;
 //
 function TSetOfSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-   typSym:=typSym.UnAliasedType;
+   typSym := typSym.UnAliasedType;
    if typSym is TSetOfSymbol then begin
       Result:=     TSetOfSymbol(typSym).Typ.IsOfType(Typ)
               and  (TSetOfSymbol(typSym).MinValue=MinValue)
@@ -8257,9 +8258,9 @@ begin
    Result:=Typ.BaseType;
 end;
 
-// UnAliasedType
+// GetUnAliasedType
 //
-function TAliasSymbol.UnAliasedType : TTypeSymbol;
+function TAliasSymbol.GetUnAliasedType : TTypeSymbol;
 begin
    Result:=Typ.UnAliasedType;
 end;
@@ -8333,18 +8334,27 @@ begin
    Result:=Self;
 end;
 
-// UnAliasedType
+// GetUnAliasedType
 //
-function TTypeSymbol.UnAliasedType : TTypeSymbol;
+function TTypeSymbol.GetUnAliasedType : TTypeSymbol;
 begin
    Result:=Self;
+end;
+
+// UnaliasedType
+//
+function TTypeSymbol.UnaliasedType : TTypeSymbol;
+begin
+   if Self = nil then
+      Result := nil
+   else Result := GetUnAliasedType;
 end;
 
 // UnAliasedTypeIs
 //
 function TTypeSymbol.UnAliasedTypeIs(const typeSymbolClass : TTypeSymbolClass) : Boolean;
 begin
-   Result:=(Self<>nil) and UnAliasedType.InheritsFrom(typeSymbolClass);
+   Result:=(Self<>nil) and GetUnAliasedType.InheritsFrom(typeSymbolClass);
 end;
 
 // IsOfType
