@@ -5569,8 +5569,8 @@ begin
             ttDOT : begin
 
                FTok.KillToken;
-               Result:=nil;
-               Result:=ReadSymbolMemberExpr(expr, isWrite, expecting);
+               Result := nil;
+               Result := ReadSymbolMemberExpr(expr, isWrite, expecting);
 
             end;
             ttALEFT : begin
@@ -5872,6 +5872,7 @@ begin
          else baseType := nil;
 
          if baseType = nil then begin
+            OrphanAndNil(expr);
             ReportNoMemberForType(name, namePos, baseType);
             Exit;
          end;
