@@ -1,0 +1,6 @@
+Syntax Error: Incompatible types: Cannot assign "array of Float" to "array of Integer" [line: 5, column: 10]
+Syntax Error: Incompatible types: Cannot assign "array of Float" to "array of Integer" [line: 6, column: 15]
+Syntax Error: Incompatible types: Cannot assign "array of Float" to "array of Integer" [line: 9, column: 10]
+Syntax Error: Incompatible types: Cannot assign "array of Float" to "array of Integer" [line: 10, column: 10]
+Syntax Error: Incompatible types: "array of Boolean" and "array [0..0] of Integer" [line: 20, column: 10]
+Syntax Error: Incompatible types: Cannot assign "array of Float" to "array of Boolean" [line: 21, column: 10]

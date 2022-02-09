@@ -908,19 +908,37 @@ end;
 class function CompilerUtils.ArrayConcat(context : TdwsCompilerContext; const hotPos : TScriptPos;
                                          left, right : TTypedExpr) : TArrayConcatExpr;
 var
-   typ : TDynamicArraySymbol;
-   leftTyp, rightTyp : TArraySymbol;
+   resultArraySym : TDynamicArraySymbol;
+   leftArraySym, rightArraySym : TArraySymbol;
+   leftElementType, rightElementType : TTypeSymbol;
+   resultElementType : TTypeSymbol;
 begin
-   leftTyp:=left.Typ.UnAliasedType as TArraySymbol;
-   rightTyp:=left.Typ.UnAliasedType as TArraySymbol;
+   leftArraySym := left.Typ.UnAliasedType as TArraySymbol;
+   rightArraySym := right.Typ.UnAliasedType as TArraySymbol;
+   leftElementType := leftArraySym.Typ;
+   rightElementType := rightArraySym.Typ;
 
-   if leftTyp.Typ<>rightTyp.Typ then
-      IncompatibleTypes(context, hotPos, CPE_IncompatibleTypes, left.Typ, right.Typ);
+   resultElementType := leftElementType;
 
-   typ:=TDynamicArraySymbol.Create('', leftTyp.Typ, context.TypInteger);
-   context.Table.AddSymbol(typ);
+   if leftElementType <> rightElementType then begin
+      // not an exact match, check harder for compatible types
+      if not leftElementType.IsCompatible(rightElementType) then begin
+         if rightElementType.IsCompatible(leftElementType) then
+            resultElementType := rightElementType
+         else if leftElementType.UnAliasedTypeIs(TBaseIntegerSymbol) and rightElementType.UnAliasedTypeIs(TBaseFloatSymbol) then
+            resultElementType := rightElementType
+         else if leftElementType.UnAliasedTypeIs(TBaseFloatSymbol) and rightElementType.UnAliasedTypeIs(TBaseIntegerSymbol) then
+            resultElementType := leftElementType
+         else begin
+            IncompatibleTypes(context, hotPos, CPE_IncompatibleTypes, left.Typ, right.Typ);
+         end
+      end;
+   end;
 
-   Result:=TArrayConcatExpr.Create(hotPos, typ);
+   resultArraySym := TDynamicArraySymbol.Create('', resultElementType, context.TypInteger);
+   context.Table.AddSymbol(resultArraySym);
+
+   Result := TArrayConcatExpr.Create(hotPos, resultArraySym);
    Result.AddArg(left);
    Result.AddArg(right);
 end;
