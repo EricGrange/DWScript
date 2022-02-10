@@ -1,0 +1,22 @@
+Index 0
+   AsInteger: 1
+   AsFloat: 1
+   AsString: 1
+   AsBool: True
+Index 1
+   AsInteger: 2
+   AsFloat: 1.5
+   AsString: 1.5
+   AsBool: True
+Index 2
+   AsInteger: Could not cast variant from String to Integer in AsInteger [line: 7, column: 15]
+   AsFloat: "b" is not a valid floating point value in AsFloat [line: 18, column: 15]
+   AsString: b
+   AsBool: False
+Index 3
+   AsInteger: 1
+   AsFloat: 1
+   AsString: True
+   AsBool: True
+Lower bound exceeded! Index -1 [line: 58, column: 18]
+Upper bound exceeded! Index 4 [line: 65, column: 24]

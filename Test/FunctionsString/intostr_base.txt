@@ -103,3 +103,4 @@ aa44a1
 0
 21i3v9
 -21i3v9
+Invalid base for integer to string conversion (0) [line: 9, column: 4]

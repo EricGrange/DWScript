@@ -75,6 +75,7 @@ type
          procedure SortReverseTest;
 
          procedure IntToHexTest;
+         procedure Int32ToStr;
 
          procedure QueueTest;
 
@@ -948,11 +949,26 @@ end;
 //
 procedure TdwsUtilsTests.IntToHexTest;
 begin
+   CheckEquals(SysUtils.IntToHex(Int64(0), -1), Int64ToHex(0, -1));
+   CheckEquals(SysUtils.IntToHex(Int64(0), 16), Int64ToHex(0, 20));
    CheckEquals(SysUtils.IntToHex(Int64(-1), 1), Int64ToHex(-1, 1));
    CheckEquals(SysUtils.IntToHex(Int64(0), 3), Int64ToHex(0, 3));
    CheckEquals(SysUtils.IntToHex(Int64(12345), 3), Int64ToHex(12345, 3));
    CheckEquals(SysUtils.IntToHex(Int64(12345), 6), Int64ToHex(12345, 6));
    CheckEquals(SysUtils.IntToHex($123456789, 6), Int64ToHex($123456789, 6));
+end;
+
+// Int32ToStr
+//
+procedure TdwsUtilsTests.Int32ToStr;
+var
+   buf : TInt32StringBuffer;
+begin
+   CheckEquals('0', Int32ToStrU(0));
+   CheckEquals('12345', Int32ToStrU(12345));
+   CheckEquals('-123', Int32ToStrU(-123));
+   CheckEquals('2147483647', Int32ToStrU(High(Int32)));
+   CheckEquals('-2147483648', Int32ToStrU(Low(Int32)));
 end;
 
 // QueueTest
@@ -1707,6 +1723,11 @@ procedure TdwsUtilsTests.BytesWords;
 var
    buf : UnicodeString;
 begin
+   StringBytesToWords(buf, False);
+   CheckEquals('', buf, 'empty1');
+   StringWordsToBytes(buf, True);
+   CheckEquals('', buf, 'empty2');
+
    buf := 'Example';
    StringBytesToWords(buf, False);
    CheckEquals('4500780061006d0070006c006500', dwsUtils.BinToHex(ScriptStringToRawByteString(buf)), 'bytes to words no swap');
