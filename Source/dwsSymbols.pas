@@ -4351,7 +4351,11 @@ function TFuncSymbol.IsSameOverloadOf(other : TFuncSymbol) : Boolean;
 var
    i : Integer;
 begin
-   Result:=(Kind=other.Kind) and (Typ=other.Typ) and (Params.Count=other.Params.Count);
+   Result := (Kind=other.Kind) and (Params.Count=other.Params.Count);
+   if not Result then Exit;
+   if Typ = nil then
+      Result := (other.Typ = nil)
+   else Result := Typ.SameType(other.Typ);
    if Result then begin
       for i:=0 to Params.Count-1 do begin
          if not Params[i].SameParam(other.Params[i]) then begin
