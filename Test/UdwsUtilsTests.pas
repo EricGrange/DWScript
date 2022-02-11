@@ -961,8 +961,6 @@ end;
 // Int32ToStr
 //
 procedure TdwsUtilsTests.Int32ToStr;
-var
-   buf : TInt32StringBuffer;
 begin
    CheckEquals('0', Int32ToStrU(0));
    CheckEquals('12345', Int32ToStrU(12345));
