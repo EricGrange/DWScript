@@ -277,7 +277,8 @@ end;
 procedure TdwsByteBuffer.SetPosition(n : NativeInt);
 begin
    if NativeUInt(n) >= NativeUInt(Count) then
-      raise EdwsByteBuffer.CreateFmt('Position %d out of range (length %d)', [n, Count]);
+      if (n or Count) <> 0 then
+         raise EdwsByteBuffer.CreateFmt('Position %d out of range (length %d)', [n, Count]);
    FPosition := n;
 end;
 
@@ -409,7 +410,7 @@ begin
    buf := Base64Decode(s);
    Count := Length(buf);
    if Count > 0 then
-      System.Move(Pointer(buf), FData[0], Count);
+      System.Move(Pointer(buf)^, FData[0], Count);
 end;
 
 // AssignHexString

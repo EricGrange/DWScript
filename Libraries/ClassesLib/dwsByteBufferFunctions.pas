@@ -282,7 +282,7 @@ end;
 //
 function TBaseByteBufferSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-   Result:=(typSym<>nil) and (typSym.UnAliasedType.ClassType=TBaseByteBufferSymbol);
+   Result := typSym.UnAliasedTypeIs(TBaseByteBufferSymbol);
 end;
 
 // InitData

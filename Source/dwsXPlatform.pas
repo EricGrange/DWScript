@@ -1571,16 +1571,16 @@ end;
 begin
    while nbWords >= 4 do begin
       Dec(nbWords, 4);
-      dest[0] := src[0];
-      dest[1] := src[1];
-      dest[2] := src[2];
-      dest[3] := src[3];
+      dest[0] := Byte(src[0]);
+      dest[1] := Byte(src[1]);
+      dest[2] := Byte(src[2]);
+      dest[3] := Byte(src[3]);
       dest := @dest[4];
       src := @src[4];
    end;
    while nbWords > 0 do begin
       Dec(nbWords);
-      dest[0] := src[0];
+      dest[0] := Byte(src[0]);
       dest := @dest[1];
       src := @src[1];
    end;
