@@ -617,8 +617,8 @@ class function WebUtils.DecodeURLEncoded(const src : RawByteString; start : Inte
 var
    n : Integer;
 begin
-   n:=Length(src)-start+1;
-   if n>=0 then
+   n := Length(src)-start+1;
+   if n > 0 then
       Result:=DecodeURLEncoded(src, start, n)
    else Result:='';
 end;
@@ -869,16 +869,15 @@ begin
    else SplitStr(str, ' ', 1);
    if count<5 then // invalid date
       Exit;
-   if (count>5) and (Pos(':', list[4])>0) and StrBeginsWith(list[5], 'GMT+') then begin
-      // Thu Oct 08 2009 00:00:00 GMT+0200 (Romance Daylight Time)
+   if (count > 5) and (Pos(':', list[4])>0) and StrBeginsWith(list[5], 'GMT+') then begin
+      // Fri Feb 11 2022 10:25:55 GMT+0100 (Central European Standard Time)
       ParseMonth(list[1]);
       if Length(list[2])=2 then
          d:=ParseTwoDigits(Pointer(list[2]), 0)
       else d:=0;
       ParseYear(list[3]);
       ParseHMS(list[4]);
-      deltaHours:=0;
-      deltaDays:=0;
+      deltaHours := StrToIntDef(Copy(list[5], 4), 0);
    end else begin
       // Thu, 08 Oct 2009 00:00:00 GMT
       if Length(list[0])=2 then
@@ -888,11 +887,11 @@ begin
       ParseYear(list[2]);
       ParseHMS(list[3]);
       deltaHours:=StrToIntDef(list[4], 0);
-      deltaDays:=0;
-      while h>=24 do begin
-         Dec(h, 24);
-         Inc(deltaDays);
-      end;
+   end;
+   deltaDays:=0;
+   while h>=24 do begin
+      Dec(h, 24);
+      Inc(deltaDays);
    end;
    if not TryEncodeDate(y, mo, d, Result) then
       Result:=0

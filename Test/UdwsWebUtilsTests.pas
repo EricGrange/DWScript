@@ -33,6 +33,16 @@ type
          procedure ParseMIMEHeaderValueTest;
          procedure ParseMultiPartFormDataTest;
          procedure HTMLAttributeTest;
+
+         procedure DecodeHexTest;
+
+         procedure HasFieldNameTest;
+
+         procedure RFC822;
+
+         procedure HTMLEncoding;
+         procedure CSSEncoding;
+         procedure XMLEncoding;
    end;
 
 // ------------------------------------------------------------------
@@ -139,6 +149,7 @@ begin
    CheckEquals('form-data; name="text"', data[0].ContentDisposition);
    CheckEquals('', data[0].ContentType, '0.ContenType');
    CheckEquals('text', data[0].Name);
+   CheckEquals('Content-Disposition: form-data; name="text"', data[0].RawHeaders);
 
    CheckEquals('Content of a.txt.'#13#10, data[1].RawData);
    CheckEquals('form-data; name="file1"; filename="a.txt"', data[1].ContentDisposition);
@@ -166,6 +177,94 @@ begin
    CheckEquals('a&#47;hj', WebUtils.HTMLAttributeEncode('a/hj'), 'a/hj');
 end;
 
+// DecodeHexTest
+//
+procedure TdwsWebUtilsTests.DecodeHexTest;
+begin
+   CheckEquals(-1, WebUtils.DecodeHex2(''), 'empty');
+   CheckEquals(-1, WebUtils.DecodeHex2('z'), 'z');
+   CheckEquals(-1, WebUtils.DecodeHex2('6z'), '6z');
+
+   CheckEquals($af, WebUtils.DecodeHex2('af'), 'af');
+   CheckEquals($fa, WebUtils.DecodeHex2('FA'), 'FA');
+end;
+
+// HasFieldNameTest
+//
+procedure TdwsWebUtilsTests.HasFieldNameTest;
+var
+   list : TStringList;
+begin
+   list := TStringList.Create;
+   try
+      list.Add('hello');
+      list.Add('world=foo');
+
+      CheckTrue(WebUtils.HasFieldName(list, 'world'), 'world');
+      CheckFalse(WebUtils.HasFieldName(list, 'worl'), 'worl');
+      CheckFalse(WebUtils.HasFieldName(list, 'worlds'), 'worlds');
+      CheckTrue(WebUtils.HasFieldName(list, 'hello'), 'hello');
+      CheckFalse(WebUtils.HasFieldName(list, 'hellos'), 'hellos');
+   finally
+      list.Free;
+   end;
+end;
+
+// RFC822
+//
+procedure TdwsWebUtilsTests.RFC822;
+var
+   dt : TDateTime;
+begin
+   dt := EncodeDate(2022, 2, 1) + EncodeTime(7, 8, 9, 0);
+   CheckEquals('Tue, 01 Feb 2022 07:08:09 GMT', WebUtils.DateTimeToRFC822(dt));
+   CheckEquals(dt, WebUtils.RFC822ToDateTime('Tue, 01 Feb 2022 07:08:09 GMT'));
+   CheckEquals(Round((dt-1/24)*86400), Round(WebUtils.RFC822ToDateTime('Fri Feb 01 2022 07:08:09 GMT+0100')*86400));
+end;
+
+// HTMLEncoding
+//
+procedure TdwsWebUtilsTests.HTMLEncoding;
+begin
+   CheckEquals('', WebUtils.HTMLTextEncode(''), 'empty encode');
+   CheckEquals('', WebUtils.HTMLTextDecode(''), 'empty decode');
+
+   CheckEquals('&amp;;/&lt;&gt;&quot;%', WebUtils.HTMLTextEncode('&;/<>"%'), 'encode &;/<>"%');
+   CheckEquals('&;/<>"%', WebUtils.HTMLTextDecode('&amp;;/&lt;&gt;&quot;%'), 'decode 1 &;/<>"%');
+   CheckEquals('&;/<>"%', WebUtils.HTMLTextDecode('&#38;;/&#x3C;&GT;&#x00022;%'), 'decode 2 &;/<>"%');
+
+   CheckEquals('&#39;&nbsp;', WebUtils.HTMLTextEncode(''''#$00A0), 'encode NBSP apos');
+   CheckEquals(#$00A0'''', WebUtils.HTMLTextDecode('&nbsp;&apos;'), 'decode NBSP apos');
+
+   CheckEquals('hello world', WebUtils.HTMLTextDecode('<span a="b">hello<b c=''jj''> </b>world</span>'), 'decode with tag');
+
+   CheckEquals('&apos &#zz ', WebUtils.HTMLTextDecode('&apos &#zz &#x0zz'), 'broken entity');
+   CheckEquals('&zzzz;', WebUtils.HTMLTextDecode('&zzzz;'), 'unknown entity');
+end;
+
+// CSSEncoding
+//
+procedure TdwsWebUtilsTests.CSSEncoding;
+begin
+   CheckEquals('', WebUtils.CSSTextEncode(''), 'empty');
+
+   CheckEquals('hello\"world', WebUtils.CSSTextEncode('hello"world'), 'hello world');
+end;
+
+// XMLEncoding
+//
+procedure TdwsWebUtilsTests.XMLEncoding;
+begin
+   CheckEquals('', WebUtils.XMLTextEncode(''), 'empty encode');
+   CheckEquals('', WebUtils.XMLTextDecode(''), 'empty decode');
+
+   CheckEquals('&amp;;/&lt;&gt;&quot;%', WebUtils.XMLTextEncode('&;/<>"%'), 'encode &;/<>"%');
+   CheckEquals('&;/<>"%', WebUtils.XMLTextDecode('&amp;;/&lt;&gt;&quot;%'), 'decode &;/<>"%');
+
+   CheckEquals('&apos;'#$00A0, WebUtils.XMLTextEncode(''''#$00A0), 'encode NBSP apos');
+   CheckEquals(#$00A0'''', WebUtils.XMLTextDecode(#$00A0'&apos;'), 'decode NBSP apos');
+end;
+
 // URLEncodedEncoder
 //
 procedure TdwsWebUtilsTests.URLEncodedEncoder;
@@ -175,6 +274,12 @@ begin
    CheckEquals('a%3D', WebUtils.EncodeURLEncoded('a='), 'a=');
    CheckEquals('%3D%3D%3D%3D%3D%3D', WebUtils.EncodeURLEncoded('======'), '======');
    CheckEquals('a%20b%22c', WebUtils.EncodeURLEncoded('a b"c'), 'a b"c');
+
+   CheckEquals('', WebUtils.DecodeURLEncoded('', 1, 0), 'decode empty with length');
+   CheckEquals('', WebUtils.DecodeURLEncoded('', 1), 'decode empty not length');
+
+   CheckEquals('a b"c', WebUtils.DecodeURLEncoded('a%20b%22c', 1, 9), 'decode a b"c full');
+   CheckEquals('a b"c', WebUtils.DecodeURLEncoded('a%20b%22czzz', 1, 9), 'decode a b"c partial');
 end;
 
 

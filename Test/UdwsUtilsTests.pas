@@ -1932,6 +1932,7 @@ var
    i : Integer;
    abc : RawByteString;
 begin
+   CheckFull('', $2CC5D05);
    CheckFull('A', $10659A4D);
    CheckFull('ZOOLOGICALLY', $A5D0E117);
    CheckFull('ab', $4999fc53);
