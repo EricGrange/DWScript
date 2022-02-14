@@ -1404,7 +1404,7 @@ initialization
    RegisterInternalIntFunction(TStrToIntDefFunc, 'StrToIntDef', ['str', SYS_STRING, 'def', SYS_INTEGER], [iffStateLess], 'ToIntegerDef');
    RegisterInternalIntFunction(TStrToIntDefFunc, 'VarToIntDef', ['val', SYS_VARIANT, 'def', SYS_INTEGER], [iffStateLess]);
    RegisterInternalIntFunction(TStrToIntBaseFunc, 'StrToInt', ['str', SYS_STRING, 'base', SYS_INTEGER], [ iffStateLess, iffOverloaded ]);
-   RegisterInternalBoolFunction(TTryStrToIntBaseFunc, 'TryStrToInt', ['str', SYS_STRING, 'base', SYS_INTEGER, '@value', SYS_INTEGER ], [ iffStateLess ], 'ToInteger');
+   RegisterInternalBoolFunction(TTryStrToIntBaseFunc, 'TryStrToInt', ['str', SYS_STRING, 'base', SYS_INTEGER, '@value', SYS_INTEGER ], [ iffStateLess ]);
 
    RegisterInternalStringFunction(TIntToHexFunc, 'IntToHex', ['v', SYS_INTEGER, 'digits', SYS_INTEGER], [iffStateLess], 'ToHexString');
    RegisterInternalIntFunction(THexToIntFunc, 'HexToInt', ['hexa', SYS_STRING], [iffStateLess], 'HexToInteger');

@@ -11,3 +11,7 @@ except
    on E: Exception do
 	  PrintLn(E.Message);
 end;
+
+b := 123;
+PrintLn(b.ToString);
+PrintLn(b.ToString(4));
