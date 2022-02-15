@@ -504,6 +504,7 @@ var
    tok, litteral : String;
    dth : Double;
    match, previousWasHour, hourToken : Boolean;
+   ampm : Char; // #0 N/A, 'a' AM, 'p' PM
 
    function GrabDigits(nbDigits : Integer) : Boolean;
    begin
@@ -532,6 +533,7 @@ begin
    minutes:=0;
    seconds:=0;
    msec:=0;
+   ampm:=#0;
 
    fmtLength:=Length(fmt);
    i:=1;
@@ -547,11 +549,11 @@ begin
          else
             tok:=tok+c;
          end;
-         if p>Length(str) then Exit;
+         if p > Length(str) then Exit;
          digit:=Ord(str[p])-Ord('0');
          if (Cardinal(digit)<10) and (value>=0) then
             value:=value*10+digit
-         else value:=-1;
+         else value := -1;
          Inc(i);
          Inc(p);
       end;
@@ -559,7 +561,7 @@ begin
       // variable length fields
       case Length(tok) of
          1 : case tok[1] of
-               'm', 'd', 'h', 'n', 's' : GrabDigits(1);
+               'm', 'd', 'h', 'n', 's', 'a' : GrabDigits(1);
                'z' : GrabDigits(2);
             end;
          2 : if tok='yy' then begin
@@ -570,6 +572,18 @@ begin
 
       hourToken:=False;
       case tok[1] of
+         'a' :
+            if UnicodeSameText(Copy(fmt, i-1, 4), 'ampm') then begin
+               Inc(i, 3);
+               Dec(p);
+               if UnicodeSameText(Copy(str, p, Length(Settings.TimeAMString)), Settings.TimeAMString) then begin
+                  Inc(p, Length(Settings.TimeAMString));
+                  ampm := 'a';
+               end else if UnicodeSameText(Copy(str, p, Length(Settings.TimePMString)), Settings.TimePMString) then begin
+                  Inc(p, Length(Settings.TimePMString));
+                  ampm := 'p';
+               end else Exit;
+            end;
          'd' :
             if (tok='d') or (tok='dd') then begin
                day := value
@@ -664,6 +678,14 @@ begin
    end;
    if p<Length(str) then Exit;
 
+   case ampm of
+      #0 : ;
+      'a', 'p' :
+         if Cardinal(hours) > 12 then Exit;
+   else
+      Assert(False);
+   end;
+
    dt:=0;
    if     (Cardinal(hours)<24) and (Cardinal(minutes)<60)
       and (Cardinal(seconds)<60) and (Cardinal(msec)<1000) then begin
@@ -676,9 +698,12 @@ begin
          end else begin
             dt := dth;
          end;
-         Result:=True;
+         Result := True;
       end;
    end;
+
+   if Result and (ampm = 'p') then
+      dt := dt + 0.5;
 end;
 
 // TryStrToDate

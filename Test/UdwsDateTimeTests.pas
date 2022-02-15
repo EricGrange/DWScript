@@ -160,6 +160,16 @@ begin
       CheckFalse(fmt.TryStrToDateTime('dd mmmm yyyy', '18 Dec 2019', dt, tzUTC), 'parse 1 fail');
       CheckTrue(fmt.TryStrToDateTime('dd mmm yyyy', '18 Dec 2019', dt, tzUTC), 'parse 1 pass');
       CheckEquals('18.12.2019 00:00:00', fmt.FormatDateTime('dd.mm.yyyy hh:nn:ss', dt, tzUTC), 'format 1');
+
+      CheckFalse(fmt.TryStrToDateTime('m/d/yyyy h:nn:ss ampm', '1/2/2021 1:30:40 mm', dt, tzUTC), 'parse 2 fail');
+      CheckTrue(fmt.TryStrToDateTime('m/d/yyyy h:nn:ss ampm', '1/2/2021 1:30:40 am', dt, tzUTC), 'parse 2 pass');
+      CheckEquals('02.01.2021 01:30:40', fmt.FormatDateTime('dd.mm.yyyy hh:nn:ss', dt, tzUTC), 'format 2');
+
+      CheckTrue(fmt.TryStrToDateTime('m/d/yyyy h:nn:ss ampm', '1/2/2021 1:30:40 PM', dt, tzUTC), 'parse 4 pass');
+      CheckEquals('02.01.2021 01:30:40 PM', fmt.FormatDateTime('dd.mm.yyyy hh:nn:ss ampm', dt, tzUTC), 'format 3');
+
+      CheckTrue(fmt.TryStrToDateTime('h:m:s ampm d yyyy m', '12:22:33 pm 4 2020 5', dt, tzUTC), 'parse 5 pass');
+      CheckEquals('05.05.2020 00:22:33', fmt.FormatDateTime('dd.mm.yyyy hh:nn:ss', dt, tzUTC), 'format 4');
    finally
       fmt.Free;
    end;
