@@ -21,7 +21,7 @@ unit dwsRTTIConnector;
 interface
 
 uses
-   Windows, Forms, Classes, SysUtils, SysConst, TypInfo, RTTI, Variants,
+   Forms, Classes, SysUtils, SysConst, TypInfo, RTTI, Variants,
    dwsComp, dwsSymbols, dwsDataContext, dwsErrors, dwsUnitSymbols, dwsUtils,
    dwsExprs, dwsStrings, dwsFunctions, dwsStack, dwsOperators, dwsLegacy,
    dwsLanguageExtension, dwsCompiler, dwsConnectorSymbols,
