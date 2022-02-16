@@ -499,11 +499,10 @@ function TdwsFormatSettings.TryStrToDateTime(
       const fmt : String; const str : String; var dt : Double; tz : TdwsTimeZone) : Boolean;
 var
    year, month, day, hours, minutes, seconds, msec : Integer;
-   i, j, p, value, fmtLength, digit, currentYear : Integer;
+   i, p, value, fmtLength, digit, currentYear : Integer;
    c : Char;
-   tok, litteral : String;
    dth : Double;
-   match, previousWasHour, hourToken : Boolean;
+   previousWasHour, hourToken : Boolean;
    ampm : Char; // #0 N/A, 'a' AM, 'p' PM
 
    function GrabDigits(nbDigits : Integer) : Boolean;
@@ -523,6 +522,90 @@ var
       end;
    end;
 
+   function GrabShortDayName : Boolean;
+   var
+      j : Integer;
+   begin
+      Result := False;
+      Dec(p, 3);
+      for j := Low(Settings.ShortDayNames) to High(Settings.ShortDayNames) do begin
+         if UnicodeSameText(Copy(str, p, Length(settings.ShortDayNames[j])),
+                            settings.ShortDayNames[j]) then begin
+            Inc(p, Length(settings.ShortDayNames[j]));
+            Result := True;
+            Break;
+         end;
+      end;
+   end;
+
+   function GrabLongDayName : Boolean;
+   var
+      j : Integer;
+   begin
+      Result := False;
+      Dec(p, 4);
+      for j:=Low(Settings.LongDayNames) to High(Settings.LongDayNames) do begin
+         if UnicodeSameText(Copy(str, p, Length(settings.LongDayNames[j])),
+                            settings.LongDayNames[j]) then begin
+            Inc(p, Length(settings.LongDayNames[j]));
+            Result := True;
+            break;
+         end;
+      end;
+   end;
+
+   function GrabShortMonthName : Boolean;
+   var
+      j : Integer;
+   begin
+      Result := False;
+      Dec(p, 3);
+      for j:=Low(settings.ShortMonthNames) to High(settings.ShortMonthNames) do begin
+         if UnicodeSameText(Copy(str, p, Length(settings.ShortMonthNames[j])),
+                            settings.ShortMonthNames[j]) then begin
+            Inc(p, Length(settings.ShortMonthNames[j]));
+            month := j;
+            Result := True;
+            break;
+         end;
+      end;
+   end;
+
+   function GrabLongMonthName : Boolean;
+   var
+      j : Integer;
+   begin
+      Result := False;
+      Dec(p, 4);
+      for j:=Low(settings.LongMonthNames) to High(settings.LongMonthNames) do begin
+         if UnicodeSameText(Copy(str, p, Length(settings.LongMonthNames[j])),
+                            settings.LongMonthNames[j]) then begin
+            Inc(p, Length(settings.LongMonthNames[j]));
+            month := j;
+            Result := True;
+            break;
+         end;
+      end;
+   end;
+
+   function GrabAMPM : Boolean;
+   begin
+      Result := True;
+      Inc(i, 3);
+      Dec(p);
+      if UnicodeSameText(Copy(str, p, Length(Settings.TimeAMString)), Settings.TimeAMString) then begin
+         Inc(p, Length(Settings.TimeAMString));
+         ampm := 'a';
+      end else if UnicodeSameText(Copy(str, p, Length(Settings.TimePMString)), Settings.TimePMString) then begin
+         Inc(p, Length(Settings.TimePMString));
+         ampm := 'p';
+      end else Result := False;
+   end;
+
+const
+   cAMPM = 'ampm';
+var
+   tokStart, tokLen : Integer;
 begin
    Result:=False;
 
@@ -540,143 +623,109 @@ begin
    p:=1;
    previousWasHour:=False;
    while i<=fmtLength do begin
-      c:=fmt[i];
-      tok:='';
-      value:=0;
-      while (i<=fmtLength) and (fmt[i]=c) do begin
-         case c of
-            'A'..'Z' : tok:=tok+Chr(Ord(c)+(Ord('a')-Ord('A')));
-         else
-            tok:=tok+c;
-         end;
+      c := fmt[i];
+      tokStart := i;
+      value := 0;
+      repeat
          if p > Length(str) then Exit;
-         digit:=Ord(str[p])-Ord('0');
-         if (Cardinal(digit)<10) and (value>=0) then
-            value:=value*10+digit
+         digit := Ord(str[p])-Ord('0');
+         if (Cardinal(digit) < 10) and (value >= 0) then
+            value := value*10 + digit
          else value := -1;
          Inc(i);
          Inc(p);
+      until (i > fmtLength) or (fmt[i] <> c);
+
+      tokLen := i - tokStart;
+      case c of
+         'A'..'Z' : c := Char(Ord(c) + (Ord('a')-Ord('A')));
       end;
 
       // variable length fields
-      case Length(tok) of
-         1 : case tok[1] of
-               'm', 'd', 'h', 'n', 's', 'a' : GrabDigits(1);
+      case tokLen of
+         1 : case c of
+               'm', 'd', 'h', 'n', 's' : GrabDigits(1);
                'z' : GrabDigits(2);
             end;
-         2 : if tok='yy' then begin
+         2 : if c = 'y' then begin
                if GrabDigits(2) then
-                  tok := 'yyyy';
+                  tokLen := 4;
             end;
       end;
 
-      hourToken:=False;
-      case tok[1] of
+      hourToken := False;
+      case c of
          'a' :
-            if UnicodeSameText(Copy(fmt, i-1, 4), 'ampm') then begin
-               Inc(i, 3);
-               Dec(p);
-               if UnicodeSameText(Copy(str, p, Length(Settings.TimeAMString)), Settings.TimeAMString) then begin
-                  Inc(p, Length(Settings.TimeAMString));
-                  ampm := 'a';
-               end else if UnicodeSameText(Copy(str, p, Length(Settings.TimePMString)), Settings.TimePMString) then begin
-                  Inc(p, Length(Settings.TimePMString));
-                  ampm := 'p';
-               end else Exit;
+            if (tokStart + 3 <= fmtLength) and (UnicodeCompareLen(@fmt[tokStart], cAMPM, 4) = 0) then begin
+               if not GrabAMPM then Exit;
             end;
          'd' :
-            if (tok='d') or (tok='dd') then begin
-               day := value
-            end else if tok='ddd' then begin
-               match:=False;
-               Dec(p, 3);
-               for j:=Low(Settings.ShortDayNames) to High(Settings.ShortDayNames) do begin
-                  if UnicodeSameText(Copy(str, p, Length(settings.ShortDayNames[j])),
-                                     settings.ShortDayNames[j]) then begin
-                     Inc(p, Length(settings.ShortDayNames[j]));
-                     day := j;
-                     match:=True;
-                     break;
-                  end;
-               end;
-               if not match then Exit;
-            end else if tok='dddd' then begin
-               match:=False;
-               Dec(p, 4);
-               for j:=Low(Settings.LongDayNames) to High(Settings.LongDayNames) do begin
-                  if UnicodeSameText(Copy(str, p, Length(settings.LongDayNames[j])),
-                                     settings.LongDayNames[j]) then begin
-                     Inc(p, Length(settings.LongDayNames[j]));
-                     day := j;
-                     match:=True;
-                     break;
-                  end;
-               end;
-               if not match then Exit;
+            case tokLen of
+               1, 2 : day := value;
+               3 : if not GrabShortDayName then Exit;
+               4 : if not GrabLongDayName then Exit;
+            else
+               Exit;
             end;
          'm' :
-            if (tok='m') or (tok='mm') then begin
-               if previousWasHour then
-                  minutes:=value
-               else month:=value
-            end else if tok='mmm' then begin
-               match:=False;
-               Dec(p, 3);
-               for j:=Low(settings.ShortMonthNames) to High(settings.ShortMonthNames) do begin
-                  if UnicodeSameText(Copy(str, p, Length(settings.ShortMonthNames[j])),
-                                     settings.ShortMonthNames[j]) then begin
-                     Inc(p, Length(settings.ShortMonthNames[j]));
-                     month := j;
-                     match:=True;
-                     break;
-                  end;
+            case tokLen of
+               1, 2 : begin
+                  if previousWasHour then
+                     minutes:=value
+                  else month:=value
                end;
-               if not match then Exit;
-            end else if tok='mmmm' then begin
-               match:=False;
-               Dec(p, 4);
-               for j:=Low(settings.LongMonthNames) to High(settings.LongMonthNames) do begin
-                  if UnicodeSameText(Copy(str, p, Length(settings.LongMonthNames[j])),
-                                     settings.LongMonthNames[j]) then begin
-                     Inc(p, Length(settings.LongMonthNames[j]));
-                     month := j;
-                     match:=True;
-                     break;
-                  end;
-               end;
-               if not match then Exit;
+               3 : if not GrabShortMonthName then Exit;
+               4 : if not GrabLongMonthName then Exit;
+            else
+               Exit;
             end;
          'y' :
-            if tok = 'yyyy' then
-               year := value
-            else if tok = 'yy' then begin
-               currentYear := YearOf(Now);
-               year := (currentYear div 100)*100 + value;
-               if year > currentYear + 50 then
-                  year := year - 100;
+            case tokLen of
+               4 : year := value;
+               2 : begin
+                  currentYear := YearOf(Now);
+                  year := (currentYear div 100)*100 + value;
+                  if year > currentYear + 50 then
+                     year := year - 100;
+               end;
+            else
+               Exit;
             end;
          'h' :
-            if (tok='h') or (tok='hh') then begin
-               hours:=value;
-               hourToken:=True;
+            case tokLen of
+               1, 2 : begin
+                  hours := value;
+                  hourToken := True;
+               end;
+            else
+               Exit;
             end;
          'n' :
-            if (tok='n') or (tok='nn') then
-               minutes:=value;
+            case tokLen of
+               1, 2 : minutes := value;
+            else
+               Exit;
+            end;
          's' :
-            if (tok='s') or (tok='ss') then
-               seconds:=value;
+            case tokLen of
+               1, 2 : seconds := value;
+            else
+               Exit;
+            end;
          'z' :
-            if (tok='z') or (tok='zzz') then
-               msec:=value;
+            case tokLen of
+               1, 3 : msec := value;
+            else
+               Exit;
+            end;
       else
-         litteral := Copy(str, p-Length(tok), Length(tok));
-         if not UnicodeSameText(tok, litteral) then Exit;
-         hourToken:=previousWasHour;
+         if p - tokLen > Length(str) then Exit;
+         if UnicodeCompareLen(@str[p-tokLen], @fmt[tokStart], tokLen) <> 0 then Exit;
+         hourToken := previousWasHour;
       end;
-      previousWasHour:=hourToken;
+      previousWasHour := hourToken;
    end;
-   if p<Length(str) then Exit;
+   if p < Length(str) then Exit;
 
    case ampm of
       #0 : ;
@@ -687,8 +736,8 @@ begin
    end;
 
    dt:=0;
-   if     (Cardinal(hours)<24) and (Cardinal(minutes)<60)
-      and (Cardinal(seconds)<60) and (Cardinal(msec)<1000) then begin
+   if     (Cardinal(hours) < 24) and (Cardinal(minutes) < 60)
+      and (Cardinal(seconds) < 60) and (Cardinal(msec) < 1000) then begin
    	if (day or month or year)<>0 then begin
          Result := TryEncodeDateTime(year, month, day, hours, minutes, seconds, msec, tz, dt);
       end else begin
@@ -736,6 +785,8 @@ end;
 //
 function TdwsFormatSettings.TryEncodeDate(y, m, d : Integer; tz : TdwsTimeZone; var dt : Double) : Boolean;
 begin
+   // SysUtils.TryEncodeDate is incorrectly protected from year, month & days overflows
+   if (y < 1) or (y > 9999) or (m < 1) or (m > 12) or (d < 1) or (d > 31) then Exit(False);
    Result := SysUtils.TryEncodeDate(y, m, d, TDateTime(dt));
    if tz = tzDefault then
       tz := TimeZone;
@@ -749,6 +800,8 @@ function TdwsFormatSettings.TryEncodeDateTime(y, m, d, h, n, s, ms : Integer; tz
 var
    outDT, outT : TDateTime;
 begin
+   // SysUtils.TryEncodeDate is incorrectly protected from year, month & days overflows
+   if (y < 1) or (y > 9999) or (m < 1) or (m > 12) or (d < 1) or (d > 31) then Exit(False);
    Result := SysUtils.TryEncodeDate(y, m, d, outDT) and SysUtils.TryEncodeTime(h, n, s, ms, outT);
    if Result then begin
       outDT := outDT + outT;

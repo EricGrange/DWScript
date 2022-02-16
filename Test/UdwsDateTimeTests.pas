@@ -36,6 +36,8 @@ type
          procedure RFC822;
          procedure FileTime;
          procedure ParseDateTime;
+         procedure ParseDateTimeMonkey;
+         procedure ParseDateNames;
 
    end;
 
@@ -170,6 +172,77 @@ begin
 
       CheckTrue(fmt.TryStrToDateTime('h:m:s ampm d yyyy m', '12:22:33 pm 4 2020 5', dt, tzUTC), 'parse 5 pass');
       CheckEquals('05.05.2020 00:22:33', fmt.FormatDateTime('dd.mm.yyyy hh:nn:ss', dt, tzUTC), 'format 4');
+
+      CheckTrue(fmt.TryStrToDateTime('_yyyy_mm_dd_', '_2020_01_02_', dt, tzLocal), 'litterals pass');
+      CheckFalse(fmt.TryStrToDateTime('_yyyy_mm_dd_', '-2020_01_02_', dt, tzLocal), 'litterals fail head 1');
+      CheckFalse(fmt.TryStrToDateTime('_yyyy_mm_dd_', '2020_01_02_', dt, tzLocal), 'litterals fail head 2');
+      CheckFalse(fmt.TryStrToDateTime('_yyyy_mm_dd_', '_2020-01_02_', dt, tzLocal), 'litterals fail mid 1');
+      CheckFalse(fmt.TryStrToDateTime('_yyyy_mm_dd_', '_202001_02_', dt, tzLocal), 'litterals fail mid 2');
+      CheckFalse(fmt.TryStrToDateTime('_yyyy_mm_dd_', '_2020_01_02-', dt, tzLocal), 'litterals fail tail 1');
+      CheckFalse(fmt.TryStrToDateTime('_yyyy_mm_dd_', '_2020_01_02', dt, tzLocal), 'litterals fail tail 2');
+
+      CheckTrue(fmt.TryStrToDateTime('dd mmm yy', '18 dec 19', dt, tzUTC), 'two digits year');
+      CheckEquals('18.12.19', fmt.FormatDateTime('dd.mm.yy', dt, tzUTC), 'format two digits');
+      CheckTrue(fmt.TryStrToDateTime('d m yy', '8 12 2019', dt, tzUTC), 'two digits year with 4 actual');
+      CheckEquals('08.12.19', fmt.FormatDateTime('dd.mm.yy', dt, tzUTC), 'format two digits bis');
+      CheckTrue(fmt.TryStrToDateTime('dd mmm yy', '12 jan 99', dt, tzUTC), 'two digits year wrap');
+      CheckEquals('12.1.1999', fmt.FormatDateTime('dd.m.yyyy', dt, tzUTC), 'format four digits wrap');
+      CheckEquals('12.1.99', fmt.FormatDateTime('dd.m.yy', dt, tzUTC), 'format two digits wrap');
+   finally
+      fmt.Free;
+   end;
+end;
+
+// ParseDateTimeMonkey
+//
+procedure TdwsDateTimeTests.ParseDateTimeMonkey;
+var
+   fmt : TdwsFormatSettings;
+   ref, mutated : String;
+   i : Integer;
+   dt : Double;
+begin
+   fmt := TdwsFormatSettings.Create;
+   try
+      ref := '12:34:56 21/05/1987';
+      for i := 1 to Length(ref) do begin
+         mutated := ref;
+         mutated[i] := '_';
+         CheckFalse(fmt.TryStrToDateTime('hh:mm:ss dd/mm/yyyy', mutated, dt, tzLocal), mutated);
+         mutated := ref;
+         Delete(mutated, i, 1);
+         CheckFalse(fmt.TryStrToDateTime('hh:mm:ss dd/mm/yyyy', mutated, dt, tzLocal), mutated);
+         mutated := ref;
+         Insert('_', mutated, i);
+         CheckFalse(fmt.TryStrToDateTime('hh:mm:ss dd/mm/yyyy', mutated, dt, tzLocal), mutated);
+      end;
+   finally
+      fmt.Free;
+   end;
+end;
+
+// ParseDateNames
+//
+procedure TdwsDateTimeTests.ParseDateNames;
+var
+   fmt : TdwsFormatSettings;
+   dt, ref : Double;
+   s : String;
+
+   procedure CheckFmt(const f : String);
+   begin
+      s := fmt.FormatDateTime(f, ref, tzLocal);
+      CheckTrue(fmt.TryStrToDateTime(f, s, dt, tzLocal), f);
+      CheckEquals(ref, dt, f);
+   end;
+
+begin
+   fmt := TdwsFormatSettings.Create;
+   try
+      ref := EncodeDateTime(2021, 11, 1, 12, 23, 45, 678);
+      CheckFmt('ddd dd mmm yy hh.nn.ss.zzz ');
+      CheckFmt('d dddd mmmm yyyy h.m.s z');
+      CheckFmt('DDMMYYYYHHMMSSZZZ');
    finally
       fmt.Free;
    end;
