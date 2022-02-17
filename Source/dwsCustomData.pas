@@ -163,9 +163,13 @@ var
    s : TdwsCustomState;
 begin
    s.Key:=index;
-   if Match(s) and VariantIsOrdinal(s.Value) then
-      Result:=s.Value
-   else Result:=default;
+   if Match(s) then
+      if VariantIsOrdinal(s.Value) then
+         Result := s.Value
+      else if VarIsStr(s.Value) then
+         Result := StrToIntDef(s.Value, default)
+      else Result := default
+   else Result := default;
 end;
 
 // StringStateDef
@@ -175,9 +179,11 @@ var
    s : TdwsCustomState;
 begin
    s.Key:=index;
-   if Match(s) and VariantIsString(s.Value) then
-      VariantToString(s.Value, Result)
-   else Result:=default;
+   if Match(s) then
+      if VarIsStr(s.Value) or VarIsNumeric(s.Value) then
+         VariantToString(s.Value, Result)
+      else Result := default
+   else Result := default;
 end;
 
 // AddClonedState

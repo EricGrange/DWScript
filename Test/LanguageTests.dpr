@@ -77,7 +77,8 @@ uses
   dwsArrayExprs in '..\Source\dwsArrayExprs.pas',
   UdwsTabularTests in 'UdwsTabularTests.pas',
   UdwsCSSPackTests in 'UdwsCSSPackTests.pas',
-  UdwsIniFileTests in 'UdwsIniFileTests.pas';
+  UdwsIniFileTests in 'UdwsIniFileTests.pas',
+  UdwsCustomDataTests in 'UdwsCustomDataTests.pas';
 
 {$R *.res}
 
