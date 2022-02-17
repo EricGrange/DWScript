@@ -38,6 +38,7 @@ type
          procedure ParseDateTime;
          procedure ParseDateTimeMonkey;
          procedure ParseDateNames;
+         procedure ParseDateLitterals;
 
    end;
 
@@ -243,6 +244,44 @@ begin
       CheckFmt('ddd dd mmm yy hh.nn.ss.zzz ');
       CheckFmt('d dddd mmmm yyyy h.m.s z');
       CheckFmt('DDMMYYYYHHMMSSZZZ');
+   finally
+      fmt.Free;
+   end;
+end;
+
+// ParseDateLitterals
+//
+procedure TdwsDateTimeTests.ParseDateLitterals;
+var
+   fmt : TdwsFormatSettings;
+   dt, ref : Double;
+   s : String;
+
+   procedure CheckFmt(const f : String);
+   begin
+      s := fmt.FormatDateTime(f, ref, tzLocal);
+      CheckTrue(fmt.TryStrToDateTime(f, s, dt, tzLocal), f);
+      CheckEquals(ref, dt, f);
+   end;
+
+begin
+   ref := EncodeDateTime(2021, 11, 1, 12, 23, 45, 678);
+   CheckEquals('12h 23mn', fmt.FormatDateTime('hh"h" mm"mn"', ref, tzLocal));
+   CheckEquals('12hr 23''', fmt.FormatDateTime('h''hr'' m"''"', ref, tzLocal));
+
+   CheckTrue(fmt.TryStrToDateTime('"""z"dd mm yy', 'z01 02 03', dt, tzLocal));
+   CheckEquals(EncodeDate(2003, 2, 1), dt);
+
+   CheckFalse(fmt.TryStrToDateTime('"""z"dd mm yy', 'y01 02 03', dt, tzLocal));
+
+   CheckTrue(fmt.TryStrToDateTime('dd mm yy', '01 02 03', dt, tzLocal));
+   CheckTrue(fmt.TryStrToDateTime('dd mm yy""', '01 02 03', dt, tzLocal));
+   CheckFalse(fmt.TryStrToDateTime('dd mm yy"', '01 02 03', dt, tzLocal));
+
+   fmt := TdwsFormatSettings.Create;
+   try
+      CheckFmt('d"d" m"m" yyyy"y" hh"h" mm"mn" ss"sec" zzz');
+      CheckFmt('""dd''''mm""yyyyHHnn''''SS""zzz');
    finally
       fmt.Free;
    end;

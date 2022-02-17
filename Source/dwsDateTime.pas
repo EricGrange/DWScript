@@ -504,6 +504,7 @@ var
    dth : Double;
    previousWasHour, hourToken : Boolean;
    ampm : Char; // #0 N/A, 'a' AM, 'p' PM
+   tokStart, tokLen : Integer;
 
    function GrabDigits(nbDigits : Integer) : Boolean;
    begin
@@ -602,10 +603,33 @@ var
       end else Result := False;
    end;
 
+   function GrabLitteral : Boolean;
+   var
+      len : Integer;
+   begin
+      Dec(p, tokLen);
+      if tokLen >= 2 then begin
+         tokLen := tokLen and 1;
+         if tokLen = 0 then Exit(True);
+         tokStart := i - 1;
+      end;
+      while i <= fmtLength do begin
+         if fmt[i] = c then begin
+            len := i-tokStart-1;
+            if len > 0 then begin
+               if Copy(str, p, len) <> Copy(fmt, tokStart + 1, len) then
+                  Exit(False);
+               Inc(i);
+               Inc(p, len);
+            end;
+            Exit(True);
+         end else Inc(i);
+      end;
+      Result := False;
+   end;
+
 const
    cAMPM = 'ampm';
-var
-   tokStart, tokLen : Integer;
 begin
    Result:=False;
 
@@ -627,11 +651,12 @@ begin
       tokStart := i;
       value := 0;
       repeat
-         if p > Length(str) then Exit;
-         digit := Ord(str[p])-Ord('0');
-         if (Cardinal(digit) < 10) and (value >= 0) then
-            value := value*10 + digit
-         else value := -1;
+         if p <= Length(str) then begin
+            digit := Ord(str[p])-Ord('0');
+            if (Cardinal(digit) < 10) and (value >= 0) then
+               value := value*10 + digit
+            else value := -1;
+         end else value := -1;
          Inc(i);
          Inc(p);
       until (i > fmtLength) or (fmt[i] <> c);
@@ -718,6 +743,10 @@ begin
             else
                Exit;
             end;
+         '"', '''' : begin
+            if not GrabLitteral then Exit;
+            hourToken := previousWasHour;
+         end;
       else
          if p - tokLen > Length(str) then Exit;
          if UnicodeCompareLen(@str[p-tokLen], @fmt[tokStart], tokLen) <> 0 then Exit;
