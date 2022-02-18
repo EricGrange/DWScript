@@ -179,6 +179,7 @@ begin
    if funcSym=nil then Exit;
 
    if funcSym.IsExport then Exit;
+   if funcSym.IsExternal then Exit;
 
    if funcSym.Name[1].IsLower() then
       TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
@@ -224,6 +225,7 @@ begin
    if not (aSymbolList.Symbol is TConstSymbol) then Exit;
    if aSymbolList.Symbol is TElementSymbol then Exit;
    if aSymbolList.Symbol.Name='Null' then Exit;
+   if aSymbolList.Symbol is TClassConstSymbol then Exit;
 
    if not (ChecksCPrefix(aSymbolList.Symbol.Name) or ChecksAllCapsUpToUnderscore(aSymbolList.Symbol.Name)) then
       TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
@@ -333,6 +335,7 @@ end;
 procedure TGR_PascalCaseProperties.EvaluateSymbol(const aSymbolList : TSymbolPositionList; msgs : TdwsMessageList);
 begin
    if aSymbolList.Symbol.ClassType<>TPropertySymbol then Exit;
+   if TPropertySymbol(aSymbolList.Symbol).OwnerSymbol.IsExternal then Exit;
 
    if aSymbolList.Symbol.Name[1].IsLower() then
       TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
