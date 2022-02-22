@@ -19,7 +19,7 @@ unit dwsWebLibModule;
 interface
 
 uses
-   Windows, WinInet, Variants,
+   Windows, Winapi.WinInet, Winapi.WinHTTP, Variants,
    SysUtils, Classes, StrUtils,
    SynZip, SynCrtSock, SynCommons, SynWinSock,
    dwsUtils, dwsComp, dwsExprs, dwsWebEnvironment, dwsExprList, dwsSymbols,
@@ -200,6 +200,8 @@ type
       ExtObject: TObject);
     function dwsWebFunctionsPingIPv6FastEval(
       const args: TExprBaseListExec): Variant;
+    procedure dwsWebClassesHttpRequestMethodsGetCertificateInfoEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FServer :  IWebServerInfo;
@@ -213,7 +215,7 @@ implementation
 
 {$R *.dfm}
 
-uses dwsWinHTTP, dwsDynamicArrays, dwsICMP;
+uses dwsWinHTTP, dwsDynamicArrays, dwsICMP, dwsInfo, dwsStrings;
 
 const
    cDefaultKeepAlive = True;
@@ -345,7 +347,8 @@ function HttpQuery(exec : TdwsProgramExecution;
                    const requestData, requestContentType : RawByteString;
                    var replyHeaders, replyData : SockString;
                    onProgress : TWinHttpProgress = nil;
-                   customStates : TdwsCustomStates = nil) : Integer;
+                   customStates : TdwsCustomStates = nil;
+                   certificateInfo : TdwsHttpCertificateInfo = nil) : Integer;
 var
    uri : TURI;
    conn : TdwsWinHttpConnection;
@@ -388,8 +391,10 @@ begin
          keepAlive := cDefaultKeepAlive;
       end;
       conn.SetOnProgress(onProgress);
+      conn.FWinHttp.CertificateInfo := certificateInfo;
 
       Result := conn.Request(uri, method, Ord(keepAlive), '', requestData, requestContentType, replyHeaders, replyData);
+
    except
       on EWinHTTP do begin
          if exec <> nil then
@@ -412,6 +417,7 @@ type
       Error : String;
       Completed, Released : Boolean;
       ReleaseLock : TMultiReadSingleWrite;
+      CertificateInfo : TdwsHttpCertificateInfo;
       constructor CreateQuery(const method, url : RawByteString;
                               const requestData, requestContentType : RawByteString;
                               const customStates : TdwsCustomStates);
@@ -438,6 +444,7 @@ begin
    Self.CustomStates := customStates;
    FreeOnTerminate := False;
    ReleaseLock := TMultiReadSingleWrite.Create;
+   CertificateInfo := TdwsHttpCertificateInfo.Create;
 end;
 
 // Destroy
@@ -448,6 +455,7 @@ begin
    ReleaseLock.Free;
    FResponseHeaders.Free;
    CustomStates.Free;
+   CertificateInfo.Free;
 end;
 
 // PrepareResponseHeaders
@@ -499,7 +507,7 @@ begin
    if not Released then try
       StatusCode := HttpQuery(nil, Method, URL, RequestData, RequestContentType,
                               RawResponseHeaders, ResponseData,
-                              DoProgress, CustomStates);
+                              DoProgress, CustomStates, CertificateInfo);
       FreeAndNil(CustomStates);
       RequestData := '';
       RequestContentType := '';
@@ -1299,6 +1307,29 @@ procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsErrorEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString := (ExtObject as THttpRequestThread).Error;
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsGetCertificateInfoEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   certInfo : TdwsHttpCertificateInfo;
+   certifObj : IInfo;
+begin
+   certInfo := (ExtObject as THttpRequestThread).Wait.CertificateInfo;
+   if (certInfo <> nil) and (certInfo.Expiry <> 0) then begin
+
+      certifObj := Info.Vars['HttpCertificateInfo'].Method[SYS_TOBJECT_CREATE].Call([]);
+
+      certifObj.Member['FExpiry'].ValueAsInteger := certInfo.Expiry;
+      certifObj.Member['FExpiry'].ValueAsInteger := certInfo.Start;
+      certifObj.Member['FSubjectInfo'].ValueAsString := certInfo.SubjectInfo;
+      certifObj.Member['FIssuerInfo'].ValueAsString := certInfo.IssuerInfo;
+      certifObj.Member['FKeySize'].ValueAsInteger := certInfo.KeySize;
+
+      Info.ResultAsVariant := certifObj.Value;
+
+   end else Info.ResultAsVariant := IUnknown(nil);
+
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpRequestMethodsGetHeaderEval(

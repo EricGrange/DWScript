@@ -954,6 +954,12 @@ object dwsWebLib: TdwsWebLib
             ResultType = 'String'
             OnEval = dwsWebClassesHttpRequestMethodsContentSubDataEval
             Kind = mkFunction
+          end
+          item
+            Name = 'GetCertificateInfo'
+            ResultType = 'HttpCertificateInfo'
+            OnEval = dwsWebClassesHttpRequestMethodsGetCertificateInfoEval
+            Kind = mkFunction
           end>
         OnCleanUp = dwsWebClassesHttpRequestCleanUp
       end
@@ -1042,6 +1048,66 @@ object dwsWebLib: TdwsWebLib
             ResultType = 'String'
             OnEval = dwsWebClassesWebServerSentEventMethodsToRawDataEval
             Kind = mkFunction
+          end>
+      end
+      item
+        Name = 'HttpCertificateInfo'
+        Fields = <
+          item
+            Name = 'FExpiry'
+            DataType = 'Integer'
+            Visibility = cvProtected
+          end
+          item
+            Name = 'FStart'
+            DataType = 'Integer'
+            Visibility = cvProtected
+          end
+          item
+            Name = 'FSubjectInfo'
+            DataType = 'String'
+            Visibility = cvProtected
+          end
+          item
+            Name = 'FIssuerInfo'
+            DataType = 'String'
+            Visibility = cvProtected
+          end
+          item
+            Name = 'FKeySize'
+            DataType = 'Integer'
+            Visibility = cvProtected
+          end>
+        Properties = <
+          item
+            Name = 'ExpiryUnixTime'
+            DataType = 'Integer'
+            Visibility = cvPublished
+            ReadAccess = 'FExpiry'
+          end
+          item
+            Name = 'StartUnixTime'
+            DataType = 'Integer'
+            Visibility = cvPublished
+            ReadAccess = 'FStart'
+          end
+          item
+            Name = 'SubjectInfo'
+            DataType = 'String'
+            Visibility = cvPublished
+            ReadAccess = 'FSubjectInfo'
+          end
+          item
+            Name = 'IssuerInfo'
+            DataType = 'String'
+            Visibility = cvPublished
+            ReadAccess = 'FIssuerInfo'
+          end
+          item
+            Name = 'KeySize'
+            DataType = 'String'
+            Visibility = cvPublished
+            ReadAccess = 'FKeySize'
           end>
       end>
     Enumerations = <

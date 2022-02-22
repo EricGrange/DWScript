@@ -19,7 +19,7 @@ unit dwsWinHTTP;
 interface
 
 uses
-   Windows, SysUtils, WinInet, Variants,
+   Windows, SysUtils, Winapi.WinInet, Winapi.WinHTTP, Variants,
    SynCrtSock, SynCommons,
    dwsUtils, dwsWebEnvironment, dwsXPlatform;
 
@@ -28,12 +28,26 @@ type
       Headers : TStringDynArray;
    end;
 
+   TdwsWinHTTP = class;
+
+   TdwsHttpCertificateInfo = class
+      Expiry, Start : Int64;
+      SubjectInfo, IssuerInfo : String;
+      ProtocolName, SignatureAlgName, EncryptionAlgName : PWideChar;
+      KeySize : Cardinal;
+      procedure Clear;
+      procedure Read(conn : TdwsWinHTTP);
+   end;
+
    TdwsWinHTTP = class (TWinHTTP)
       protected
          AuthorizationHeader : String;
          CustomHeaders : TdwsCustomHeaders;
          procedure InternalConnect(ConnectionTimeOut,SendTimeout,ReceiveTimeout: DWORD); override;
          procedure InternalSendRequest(const aMethod,aData: SockString); override;
+      public
+         CertificateInfo : TdwsHttpCertificateInfo;
+         function GetCertificateInfo(var certInfo : WINHTTP_CERTIFICATE_INFO) : Boolean;
    end;
 
    TdwsWinHttpConnection = class (TInterfacedSelfObject)
@@ -125,6 +139,19 @@ begin
       end;
    end;
    inherited;
+   if CertificateInfo <> nil then
+      CertificateInfo.Read(Self);
+end;
+
+// GetCertificateInfo
+//
+function TdwsWinHTTP.GetCertificateInfo(var certInfo : WINHTTP_CERTIFICATE_INFO) : Boolean;
+var
+   bufLen : Cardinal;
+begin
+   bufLen := SizeOf(certInfo);
+   Result := WinHttpQueryOption(fRequest, WINHTTP_OPTION_SECURITY_CERTIFICATE_STRUCT, certInfo, bufLen);
+   if not Result then RaiseLastOSError;
 end;
 
 // ------------------
@@ -269,6 +296,49 @@ class procedure TdwsWinHttpConnection.ReplyToText(const replyHeaders, replyData 
 
 begin
    ReplyToText(replyData, textData);
+end;
+
+// ------------------
+// ------------------ TdwsHttpCertificateInfo ------------------
+// ------------------
+
+// Clear
+//
+procedure TdwsHttpCertificateInfo.Clear;
+begin
+   Expiry := 0;
+   Start := 0;
+   SubjectInfo := '';
+   IssuerInfo := '';
+   ProtocolName := nil;
+   SignatureAlgName := nil;
+   EncryptionAlgName := '';
+   KeySize := 0;
+end;
+
+// Read
+//
+procedure TdwsHttpCertificateInfo.Read(conn : TdwsWinHTTP);
+var
+   buf : WINHTTP_CERTIFICATE_INFO;
+   bufLen : Cardinal;
+begin
+   bufLen := SizeOf(buf);
+   if WinHttpQueryOption(conn.fRequest, WINHTTP_OPTION_SECURITY_CERTIFICATE_STRUCT, buf, bufLen) then begin
+      try
+         Expiry := FileTimeToUnixTime(buf.ftExpiry);
+         Start := FileTimeToUnixTime(buf.ftExpiry);
+         SubjectInfo := buf.lpszSubjectInfo;
+         IssuerInfo := buf.lpszIssuerInfo;
+         ProtocolName := buf.lpszProtocolName;
+         SignatureAlgName := buf.lpszSignatureAlgName;
+         EncryptionAlgName := buf.lpszEncryptionAlgName;
+         KeySize := buf.dwKeySize;
+      finally
+         LocalFree(buf.lpszSubjectInfo);
+         LocalFree(buf.lpszIssuerInfo);
+      end;
+   end else Clear;
 end;
 
 end.
