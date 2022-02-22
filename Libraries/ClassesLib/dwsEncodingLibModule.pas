@@ -245,7 +245,7 @@ end;
 procedure TdwsEncodingLib.dwsEncodingClassesXMLTextEncoderMethodsEncodeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsString := WebUtils.XMLTextEncode(Info.ParamAsString[0]);
+   Info.ResultAsString := WebUtils.XMLTextEncode(Info.ParamAsString[0], 0);
 end;
 
 procedure TdwsEncodingLib.dwsEncodingClassesXMLTextEncoderMethodsDecodeEval(

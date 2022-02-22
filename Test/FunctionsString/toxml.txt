@@ -1,1 +1,5 @@
 &lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;
+hello	world
+ab
+a&#11;b
+Unsupported character #11 [line: 13, column: 12]

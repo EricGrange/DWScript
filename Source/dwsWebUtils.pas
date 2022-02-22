@@ -106,11 +106,12 @@ type
 
          class function CSSTextEncode(const s : UnicodeString) : UnicodeString; static;
 
-         class function XMLTextEncode(const s : UnicodeString) : UnicodeString; static;
+         class function XMLTextEncode(const s : UnicodeString; unsupportedXML10CharactersMode : Integer = 0) : UnicodeString; static;
          class function XMLTextDecode(const s : UnicodeString) : UnicodeString; static;
    end;
 
    EXMLDecodeError = class (Exception);
+   EXMLEncodeError = class (Exception);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -1216,7 +1217,7 @@ end;
 
 // XMLTextEncode
 //
-class function WebUtils.XMLTextEncode(const s : UnicodeString) : UnicodeString;
+class function WebUtils.XMLTextEncode(const s : UnicodeString; unsupportedXML10CharactersMode : Integer = 0) : UnicodeString;
 var
    capacity : Integer;
    pSrc, pDest : PWideChar;
@@ -1245,6 +1246,18 @@ var
       Dec(capacity, n);
    end;
 
+   procedure AppendEncoded(const c : Char);
+   begin
+      if capacity < 5 then Grow;
+      pDest[0] := '&';
+      pDest[1] := '#';
+      pDest[2] := Char(Ord('0') + Ord(c) div 10);
+      pDest[3] := Char(Ord('0') + Ord(c) mod 10);
+      pDest[4] := ';';
+      Inc(pDest, 5);
+      Dec(capacity, 5);
+   end;
+
 begin
    if s='' then exit;
    capacity:=Length(s);
@@ -1254,6 +1267,13 @@ begin
    repeat
       case pSrc^ of
          #0 : break;
+         #1..#8, #11..#12, #14..#31 :
+            case unsupportedXML10CharactersMode of
+               0 : ; // ignore
+               1 : AppendEncoded(pSrc^);
+            else
+               raise EXMLEncodeError.CreateFmt('Unsupported character #%.2d', [ Ord(pSrc^) ]);
+            end;
          '<' : Append('&lt;');
          '>' : Append('&gt;');
          '&' : Append('&amp;');
