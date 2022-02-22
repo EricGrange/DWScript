@@ -33,7 +33,7 @@ type
    TdwsHttpCertificateInfo = class
       Expiry, Start : Int64;
       SubjectInfo, IssuerInfo : String;
-      ProtocolName, SignatureAlgName, EncryptionAlgName : PWideChar;
+      //ProtocolName, SignatureAlgName, EncryptionAlgName : PWideChar;
       KeySize : Cardinal;
       procedure Clear;
       procedure Read(conn : TdwsWinHTTP);
@@ -310,9 +310,9 @@ begin
    Start := 0;
    SubjectInfo := '';
    IssuerInfo := '';
-   ProtocolName := nil;
-   SignatureAlgName := nil;
-   EncryptionAlgName := '';
+   //ProtocolName := nil;
+   //SignatureAlgName := nil;
+   //EncryptionAlgName := '';
    KeySize := 0;
 end;
 
@@ -330,9 +330,9 @@ begin
          Start := FileTimeToUnixTime(buf.ftExpiry);
          SubjectInfo := buf.lpszSubjectInfo;
          IssuerInfo := buf.lpszIssuerInfo;
-         ProtocolName := buf.lpszProtocolName;
-         SignatureAlgName := buf.lpszSignatureAlgName;
-         EncryptionAlgName := buf.lpszEncryptionAlgName;
+         //ProtocolName := buf.lpszProtocolName;
+         //SignatureAlgName := buf.lpszSignatureAlgName;
+         //EncryptionAlgName := buf.lpszEncryptionAlgName;
          KeySize := buf.dwKeySize;
       finally
          LocalFree(buf.lpszSubjectInfo);
