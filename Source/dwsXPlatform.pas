@@ -599,8 +599,17 @@ end;
 // UnixTime
 //
 function UnixTime : Int64;
+const
+   cUNIX_TIME_START : Int64 = $019DB1DED53E8000;
+   cTICKS_PER_SECOND : Int64 = 10000000;  // 100ns
+var
+   ft : FILETIME;
+   t : TdwsLargeInteger;
 begin
-   Result:=Trunc(UTCDateTime*86400)-Int64(25569)*86400;
+   GetSystemTimeAsFileTime(ft);
+   t.LowPart := ft.dwLowDateTime;
+   t.HighPart := ft.dwHighDateTime;
+   Result := (t.QuadPart - cUNIX_TIME_START) div cTICKS_PER_SECOND;
 end;
 
 {$IFNDEF LINUX}
