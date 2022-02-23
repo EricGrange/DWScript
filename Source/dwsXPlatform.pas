@@ -339,6 +339,7 @@ procedure BytesToScriptString(const p : PByteArray; n : Integer; var result : Un
 
 procedure WordsToBytes(src : PWordArray; dest : PByteArray; nbWords : Integer);
 procedure BytesToWords(src : PByteArray; dest : PWordArray; nbBytes : Integer);
+procedure BytesToWordsInPlace(p : Pointer; n : NativeInt);
 
 function LoadDataFromFile(const fileName : TFileName) : TBytes;
 procedure SaveDataToFile(const fileName : TFileName; const data : TBytes);
@@ -1953,8 +1954,8 @@ asm  // p -> rcx     n -> rdx
    cmp         rdx, 16
    jb          @@lessthan16
 
-   mov         eax, edx
-   shr         eax, 4
+   mov         rax, rdx
+   shr         rax, 4
    and         rdx, 15
 
    pxor        xmm0, xmm0
@@ -1970,7 +1971,7 @@ asm  // p -> rcx     n -> rdx
    movdqu      [rcx], xmm1
    movdqu      [rcx+16], xmm2
 
-   dec         eax
+   sub         rax, 1
    jnz         @@loop16
 
 @@lessthan16:
@@ -1978,11 +1979,11 @@ asm  // p -> rcx     n -> rdx
    jz          @@end
 
 @@loop1:
-   dec         r8
+   sub         r8, 1
    sub         rcx, 2
-   mov         al, [r8]
+   movzx       ax, [r8]
    mov         [rcx], ax
-   dec         rdx
+   sub         rdx, 1
    jnz         @@loop1
 
 @@end:

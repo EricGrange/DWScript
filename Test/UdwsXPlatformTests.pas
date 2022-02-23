@@ -33,6 +33,7 @@ type
          procedure UnicodeLowerAndUpperCaseTest;
          procedure UnicodeCompareTest;
          procedure RawBytesStringTest;
+         procedure BytesToWordsTest;
    end;
 
 // ------------------------------------------------------------------
@@ -119,6 +120,24 @@ const
 begin
   Bytes := RawByteStringToBytes(RawByteString(cTestString));
   CheckEquals(cTestString, BytesToRawByteString(@Bytes[0], Length(Bytes)));
+end;
+
+// BytesToWordsTest
+//
+procedure TdwsXPlatformTests.BytesToWordsTest;
+var
+   buf : array [0..63] of Byte;
+   k, i, base : Integer;
+begin
+   for k := 0 to Length(buf) div 2 - 1 do begin
+      base := $0f + k*3;
+      for i := 0 to High(buf) do
+         buf[i] := i + base;
+      BytesToWordsInPlace(@buf[0], k);
+      for i := 0 to k-1 do
+         CheckEquals(base+i, buf[i*2+1]*256 + buf[i*2], 'n=' + IntToStr(k) + ' offset=' + IntToStr(i));
+      CheckEquals((base + k*2 + 1)*256 + (base + k*2), buf[k*2+1]*256 + buf[k*2], 'n=' + IntToStr(k) + ' tail');
+   end;
 end;
 
 // UnicodeLowerAndUpperCaseTest
