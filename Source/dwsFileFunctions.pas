@@ -51,7 +51,6 @@ type
       function SetEndOfFile : Boolean;
 
       procedure Close;
-      procedure Clear;
    end;
 
    TdwsFileHandle = class (TInterfacedSelfObject, IdwsFileHandle)
@@ -79,7 +78,6 @@ type
          function SetEndOfFile : Boolean;
 
          procedure Close;
-         procedure Clear;
    end;
 
    TBaseFileSymbol = class (TBaseSymbol)
@@ -417,14 +415,6 @@ begin
    if IsValid then
       CloseFileHandle(FHandle);
    FHandle := INVALID_HANDLE_VALUE;
-end;
-
-// Clear
-//
-procedure TdwsFileHandle.Clear;
-begin
-   FHandle := INVALID_HANDLE_VALUE;
-   FOSError := 0;
 end;
 
 // ------------------

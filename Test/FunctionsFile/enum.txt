@@ -1,0 +1,11 @@
+True
+True
+
+0
+1
+2
+foo\bar\world.bin,foo\hello.txt
+False
+True
+True
+False

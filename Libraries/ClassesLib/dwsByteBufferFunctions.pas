@@ -1000,7 +1000,7 @@ var
 begin
    buf := args.AsDataString[1];
    ih := GetIdwsFileHandle(args, 0);
-   Result := dwsXPlatform.FileWrite(ih.GetHandle, Pointer(buf), Length(buf));
+   Result := ih.Write(Pointer(buf), Length(buf));
 end;
 
 {$endif}
