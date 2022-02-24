@@ -180,6 +180,9 @@ begin
    end else if (param='/authorize') or (param='/unauthorize') then begin
 
       abortExecution := True;
+
+      if Process_ReRunIfNotElevated then Exit;
+
       authorize := (ParamStr(1)='/authorize');
 
       serverOptions:=TdwsJSONValue.ParseString(cDefaultServerOptions);

@@ -24,7 +24,7 @@ unit dwsWindowsService;
 interface
 
 uses
-   Windows, Winapi.WinSvc, SysUtils,
+   Windows, Winapi.WinSvc, ShellAPI, SysUtils,
    dwsJSON;
 
 type
@@ -137,6 +137,8 @@ type
 
 function ServicesRun: Boolean;
 
+function Process_ReRunIfNotElevated : Boolean;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -204,6 +206,68 @@ begin
    end;
 end;
 
+// IsElevated
+//
+function IsElevated : Integer;
+const
+   cTokenElevation = TTokenInformationClass(20);
+type
+   TOKEN_ELEVATION = record
+      TokenIsElevated : DWORD;
+   end;
+var
+   tokenHandle : THandle;
+   resultLength : Cardinal;
+   elevation : TOKEN_ELEVATION;
+   gotToken : Boolean;
+begin
+   Result := 0;
+   if not CheckWin32Version(6, 0) then Exit;
+
+   tokenHandle := 0;
+   gotToken := OpenThreadToken(GetCurrentThread, TOKEN_QUERY, True, tokenHandle);
+   if (not gotToken) and (GetLastError = ERROR_NO_TOKEN) then
+      gotToken := OpenProcessToken(GetCurrentProcess, TOKEN_QUERY, tokenHandle);
+   if gotToken then begin
+      try
+         resultLength := 0;
+         if GetTokenInformation(tokenHandle, cTokenElevation, @elevation, SizeOf(elevation), resultLength) then begin
+            if elevation.TokenIsElevated <> 0 then
+               Result := 1
+         end else Result := -1;
+      finally
+         CloseHandle(tokenHandle);
+      end;
+   end else Result := -1;
+end;
+
+// Process_ReRunIfNotElevated
+//
+function Process_ReRunIfNotElevated : Boolean;
+var
+   executeInfo : TShellExecuteInfo;
+   exeName : String;
+   parameters : String;
+   i : Integer;
+begin
+   // loop protection
+   if ParamStr(ParamCount) = '/is-rerun' then
+      Exit(False);
+
+   exeName := ParamStr(0);
+   for i := 1 to ParamCount do
+      parameters := parameters + '"' + StringReplace(ParamStr(i), '"', '""', [ rfReplaceAll ]) + '" ';
+   parameters := parameters + ' /is-rerun';
+
+   FillChar(executeInfo, SizeOf(executeInfo), 0);
+   executeInfo.cbSize := SizeOf(executeInfo);
+   executeInfo.lpVerb := 'runas';
+   executeInfo.lpFile := PChar(exeName);
+   executeInfo.lpParameters := PChar(parameters);
+
+   Result := ShellExecuteEx(@executeInfo);
+end;
+
 // ------------------
 // ------------------ TdwsServiceController ------------------
 // ------------------
@@ -218,8 +282,12 @@ begin
    inherited Create;
    FName := Name;
    FSCHandle := OpenSCManager(Pointer(TargetComputer), Pointer(DatabaseName), SC_MANAGER_ALL_ACCESS);
-   if FSCHandle=0 then
-      RaiseLastOSError;
+   if FSCHandle = 0 then begin
+      if GetLastError = 5 then begin
+         FStatus.dwCurrentState := Ord(ssAccessDenied);
+         Exit;
+      end else RaiseLastOSError;
+   end;
    FHandle := CreateService(
       FSCHandle, Pointer(Name), Pointer(DisplayName),
       DesiredAccess, ServiceType, StartType, ErrorControl, Pointer(Path),
@@ -424,7 +492,7 @@ begin
                   deviceCheck[2]:=#0;
                   // subst'ed path and services don't mix
                   // if the drive is a subst'ed one will return \??\xxxx
-                  if    (QueryDosDevice(@deviceCheck, @buffer, MAX_PATH)=0)
+                 if    (QueryDosDevice(@deviceCheck, @buffer, MAX_PATH)=0)
                      or (buffer[1]='?') then
                      writeln('Must install from actual, non-subst''ed path')
                   else begin
@@ -435,8 +503,10 @@ begin
                      case TServiceStateEx(ctrl.State) of
                         ssNotInstalled :
                            Writeln('Failed to install');
-                        ssErrorRetrievingState :
-                           Writeln('Account has insufficient rights, cannot install');
+                        ssErrorRetrievingState, ssAccessDenied : begin
+                           if not Process_ReRunIfNotElevated then
+                              Writeln('Account has insufficient rights, cannot install');
+                        end;
                      else
                         ctrl.SetDescription(ServiceDescription);
                         Writeln('Installed successfully');
@@ -444,7 +514,8 @@ begin
                   end;
                end;
                ssErrorRetrievingState, ssAccessDenied :
-                  Writeln('Account has insufficient rights');
+                  if not Process_ReRunIfNotElevated then
+                     Writeln('Account has insufficient rights');
             else
                 Writeln('Already installed');
             end;
@@ -453,7 +524,8 @@ begin
                ssNotInstalled :
                   Writeln('Not installed');
                ssErrorRetrievingState, ssAccessDenied :
-                  Writeln('Account has insufficient rights');
+                  if not Process_ReRunIfNotElevated then
+                     Writeln('Account has insufficient rights');
             else
                ctrl.Stop;
                if ctrl.State<>TServiceState.ssStopped then
@@ -470,7 +542,8 @@ begin
                ssNotInstalled :
                   Writeln('Not installed');
                ssErrorRetrievingState, ssAccessDenied :
-                  Writeln('Account has insufficient rights');
+                  if not Process_ReRunIfNotElevated then
+                     Writeln('Account has insufficient rights');
             else
                ctrl.Stop;
                Writeln('Stop command issued')
@@ -480,7 +553,8 @@ begin
                ssNotInstalled :
                   Writeln('Not installed');
                ssErrorRetrievingState, ssAccessDenied :
-                  Writeln('Account has insufficient rights');
+                  if not Process_ReRunIfNotElevated then
+                     Writeln('Account has insufficient rights');
             else
                ctrl.Start([]);
                Writeln('Start command issued')
