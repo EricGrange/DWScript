@@ -1,0 +1,24 @@
+""
+	ext = 
+	name = 
+	path = 
+"c:\dummy\filename.txt"
+	ext = .txt
+	name = filename.txt
+	path = c:\dummy\
+"filename.txt"
+	ext = .txt
+	name = filename.txt
+	path = 
+"\\server\folder\filename.txt"
+	ext = .txt
+	name = filename.txt
+	path = \\server\folder\
+"d:\base\sub\name"
+	ext = 
+	name = name
+	path = d:\base\sub\
+"d:\base\sub\name\"
+	ext = 
+	name = 
+	path = d:\base\sub\name\

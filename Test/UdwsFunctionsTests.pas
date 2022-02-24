@@ -95,6 +95,11 @@ type
          procedure SetUp; override;
    end;
 
+   TdwsFuncFunctionsTestsFile = class (TdwsFunctionsTestsBase)
+      public
+         procedure SetUp; override;
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -135,8 +140,14 @@ end;
 // DoNeedUnit
 //
 function TdwsFunctionsTestsBase.DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+var
+   tempPath : String;
 begin
-   unitSource := LoadTextFromFile(FFolderPath + unitName + '.pas');
+   if unitName = 'TestTempPath' then begin
+      tempPath := FFolderPath + 'Temp' + PathDelim;
+      FastStringReplace(tempPath, '"', '""');
+      unitSource := 'unit TestTempPath; const TempPath = "' + tempPath + '";';
+   end else unitSource := LoadTextFromFile(FFolderPath + unitName + '.pas');
 end;
 
 // Compilation
@@ -391,6 +402,18 @@ begin
    inherited;
 end;
 
+// ------------------
+// ------------------ TdwsFuncFunctionsTestsFile ------------------
+// ------------------
+
+// SetUp
+//
+procedure TdwsFuncFunctionsTestsFile.SetUp;
+begin
+   FFolder:='FunctionsFile';
+   inherited;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -409,5 +432,6 @@ initialization
    RegisterTest('Functions', TdwsFuncFunctionsTestsRTTI);
    RegisterTest('Functions', TdwsFuncFunctionsTestsDebug);
    RegisterTest('Functions', TdwsFuncFunctionsTestsByteBuffer);
+   RegisterTest('Functions', TdwsFuncFunctionsTestsFile);
 
 end.
