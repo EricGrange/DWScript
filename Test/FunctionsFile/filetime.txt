@@ -1,0 +1,8 @@
+0
+0
+1
+File already closed [line: 27, column: 14]
+File already closed [line: 34, column: 6]
+File is not open [line: 42, column: 7]
+System Error.  Code: 2.
+The system cannot find the file specified [line: 49, column: 4]

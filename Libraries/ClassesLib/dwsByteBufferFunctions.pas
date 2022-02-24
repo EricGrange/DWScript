@@ -996,9 +996,11 @@ end;
 function TFileWriteByteBuffer1Func.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 var
    buf : RawByteString;
+   ih : IdwsFileHandle;
 begin
    buf := args.AsDataString[1];
-   Result := dwsXPlatform.FileWrite(GetIdwsFileHandle(args, 0), Pointer(buf), Length(buf));
+   ih := GetIdwsFileHandle(args, 0);
+   Result := dwsXPlatform.FileWrite(ih.GetHandle, Pointer(buf), Length(buf));
 end;
 
 {$endif}

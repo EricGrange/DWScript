@@ -15,7 +15,7 @@
 {    Subsequent portions Copyright Creative IT.                        }
 {                                                                      }
 {    Current maintainer: Eric Grange                                   }
-{                                   }
+{                                                                      }
 {**********************************************************************}
 unit dwsFunctions;
 
