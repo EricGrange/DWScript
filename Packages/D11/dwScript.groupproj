@@ -1,0 +1,60 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{F627CF96-EC88-4EBE-8C98-CEE102171FCB}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="dwsLibRuntime.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="dwsLib.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="dwsLibDesignOnly.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="dwsLibRuntime">
+        <MSBuild Projects="dwsLibRuntime.dproj"/>
+    </Target>
+    <Target Name="dwsLibRuntime:Clean">
+        <MSBuild Projects="dwsLibRuntime.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="dwsLibRuntime:Make">
+        <MSBuild Projects="dwsLibRuntime.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="dwsLib">
+        <MSBuild Projects="dwsLib.dproj"/>
+    </Target>
+    <Target Name="dwsLib:Clean">
+        <MSBuild Projects="dwsLib.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="dwsLib:Make">
+        <MSBuild Projects="dwsLib.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="dwsLibDesignOnly">
+        <MSBuild Projects="dwsLibDesignOnly.dproj"/>
+    </Target>
+    <Target Name="dwsLibDesignOnly:Clean">
+        <MSBuild Projects="dwsLibDesignOnly.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="dwsLibDesignOnly:Make">
+        <MSBuild Projects="dwsLibDesignOnly.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="dwsLibRuntime;dwsLib;dwsLibDesignOnly"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="dwsLibRuntime:Clean;dwsLib:Clean;dwsLibDesignOnly:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="dwsLibRuntime:Make;dwsLib:Make;dwsLibDesignOnly:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>
