@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{00412BBE-ABE1-4C2C-A2C9-876BF0B9821D}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="Simple\Simple.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="SimpleFMX\SimpleFMX.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="Simple">
+        <MSBuild Projects="Simple\Simple.dproj"/>
+    </Target>
+    <Target Name="Simple:Clean">
+        <MSBuild Projects="Simple\Simple.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Simple:Make">
+        <MSBuild Projects="Simple\Simple.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="SimpleFMX">
+        <MSBuild Projects="SimpleFMX\SimpleFMX.dproj"/>
+    </Target>
+    <Target Name="SimpleFMX:Clean">
+        <MSBuild Projects="SimpleFMX\SimpleFMX.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SimpleFMX:Make">
+        <MSBuild Projects="SimpleFMX\SimpleFMX.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="Simple;SimpleFMX"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="Simple:Clean;SimpleFMX:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="Simple:Make;SimpleFMX:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

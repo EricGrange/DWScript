@@ -1,0 +1,84 @@
+object MainForm: TMainForm
+  Left = 0
+  Top = 0
+  Caption = 'SimpleFMX'
+  ClientHeight = 552
+  ClientWidth = 640
+  FormFactor.Width = 320
+  FormFactor.Height = 480
+  FormFactor.Devices = [Desktop]
+  DesignerMasterStyle = 0
+  object MainMenu1: TMainMenu
+    Left = 360
+    Top = 192
+    object MLoad: TMenuItem
+      Text = 'Load...'
+      OnClick = MLoadClick
+    end
+    object MSave: TMenuItem
+      Text = 'Save...'
+      OnClick = MSaveClick
+    end
+    object MRun: TMenuItem
+      Text = 'Run'
+      OnClick = MRunClick
+    end
+  end
+  object OpenDialog: TOpenDialog
+    Filter = 'Pascal files (*.pas)|*.pas'
+    Left = 424
+    Top = 192
+  end
+  object SaveDialog: TSaveDialog
+    DefaultExt = 'pas'
+    Filter = 'Pascal files (*.pas)|*.pas'
+    Left = 488
+    Top = 192
+  end
+  object MESourceCode: TMemo
+    Touch.InteractiveGestures = [Pan, LongTap, DoubleTap]
+    DataDetectorTypes = []
+    Lines.Strings = (
+      'var i : Integer;'
+      ''
+      'for i:=1 to 10 do'
+      '   PrintLn(IntToStr(i));')
+    StyledSettings = [Style, FontColor]
+    TextSettings.Font.Family = 'Courier New'
+    TextSettings.Font.Size = 18.000000000000000000
+    Align = Top
+    Size.Width = 640.000000000000000000
+    Size.Height = 249.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 4
+    Viewport.Width = 636.000000000000000000
+    Viewport.Height = 245.000000000000000000
+  end
+  object MEResult: TMemo
+    Touch.InteractiveGestures = [Pan, LongTap, DoubleTap]
+    DataDetectorTypes = []
+    StyledSettings = [Style, FontColor]
+    TextSettings.Font.Family = 'Courier New'
+    TextSettings.Font.Size = 18.000000000000000000
+    Align = Client
+    Size.Width = 640.000000000000000000
+    Size.Height = 294.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 3
+    Viewport.Width = 636.000000000000000000
+    Viewport.Height = 290.000000000000000000
+  end
+  object Splitter1: TSplitter
+    Align = Top
+    Cursor = crVSplit
+    MinSize = 20.000000000000000000
+    Position.Y = 249.000000000000000000
+    Size.Width = 640.000000000000000000
+    Size.Height = 9.000000000000000000
+    Size.PlatformDefault = False
+  end
+  object DelphiWebScript: TDelphiWebScript
+    Left = 304
+    Top = 264
+  end
+end
