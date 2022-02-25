@@ -1,0 +1,7 @@
+
+test.bin
+testtest
+test
+z:\foo\bar.bin
+z:\foo\bartest
+z:\foo\bar
