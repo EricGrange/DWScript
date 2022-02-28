@@ -1,0 +1,10 @@
+1; 1,2; 1
+1.5; 1.5,2.5; 1.5
+two; two,three; two
+False; False,Null; False
+Null; Null,0; Null
+Null; Null,0; Null
+False; False,Null; False
+two; two,three; two
+1.5; 1.5,2.5; 1.5
+1; 1,2; 1
