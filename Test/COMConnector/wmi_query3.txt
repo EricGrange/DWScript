@@ -1,0 +1,5 @@
+Invalid class string, ProgID: "WbemScripting.foobar" [line: 4, column: 15]
+Could not convert variant of type (Dispatch) into type (OleStr) [line: 12, column: 4]
+OLE Error 80020009 (Exception occurred) from SWbemLocator, Invalid namespace  [line: 19, column: 25]
+OLE Error 80020006 (Unknown name) [line: 26, column: 33]
+OLE Error 80020006 (Unknown name) [line: 33, column: 34]

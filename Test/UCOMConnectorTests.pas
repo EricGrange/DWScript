@@ -57,7 +57,7 @@ begin
    FTests:=TStringList.Create;
    FFailures:=TStringList.Create;
 
-   CollectFiles(ExtractFilePath(ParamStr(0))+'COMConnector'+PathDelim, 'disp_inval*.pas', FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'COMConnector'+PathDelim, '*.pas', FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'COMConnectorFailure'+PathDelim, '*.pas', FFailures);
 
    FCompiler:=TDelphiWebScript.Create(nil);

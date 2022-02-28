@@ -73,9 +73,8 @@ procedure DwsOleCheck(Result: HResult);
 
    procedure RaiseOleError;
    begin
-      raise EOleSysError.Create(Format('OLE Error %.8x (%s)',
-                                       [Cardinal(Result), SysErrorMessage(Cardinal(Result))]),
-                                Result, 0);
+      raise EScriptError.CreateFmt('OLE Error %.8x (%s)',
+                                   [Cardinal(Result), SysErrorMessage(Cardinal(Result))]);
    end;
 
 begin
@@ -97,8 +96,8 @@ begin
    end;
    if msg<>'' then
       msg:=' from '+msg;
-   raise EOleError.CreateFmt('OLE Error %.8x (%s)%s',
-                             [err, SysErrorMessage(Cardinal(err)), msg]);
+   raise EScriptError.CreateFmt('OLE Error %.8x (%s)%s',
+                                [err, SysErrorMessage(Cardinal(err)), msg]);
 end;
 
 type
