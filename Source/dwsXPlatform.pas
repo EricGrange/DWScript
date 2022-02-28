@@ -357,7 +357,7 @@ procedure SaveTextToUTF8File(const fileName : TFileName; const text : String);
 procedure AppendTextToUTF8File(const fileName : TFileName; const text : UTF8String);
 function OpenFileForSequentialReadOnly(const fileName : TFileName) : THandle;
 function OpenFileForSequentialWriteOnly(const fileName : TFileName) : THandle;
-procedure CloseFileHandle(hFile : THandle);
+function CloseFileHandle(hFile : THandle) : Boolean;
 function FileWrite(hFile : THandle; buffer : Pointer; byteCount : Int64) : Int64;
 function FileRead(hFile : THandle; buffer : Pointer; byteCount : Int64) : Int64;
 function FileFlushBuffers(hFile : THandle) : Boolean;
@@ -2107,9 +2107,14 @@ end;
 
 // CloseFileHandle
 //
-procedure CloseFileHandle(hFile : THandle);
+function CloseFileHandle(hFile : THandle) : Boolean;
 begin
+   {$IFDEF WINDOWS}
+   Result := CloseHandle(hFile);
+   {$else}
    SysUtils.FileClose(hFile);
+   Result := True; // assume success, as RTL does not say
+   {$endif}
 end;
 
 // FileWrite

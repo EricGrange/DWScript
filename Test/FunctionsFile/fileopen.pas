@@ -33,6 +33,7 @@ except
    on E: Exception do
       PrintLn(E.Message);
 end;
+f.Close;
 
 f := FileOpen(fileName, fmOpenReadWrite or fmShareDenyNone);
 PrintLn(FileOpenRead(fileName).Read);

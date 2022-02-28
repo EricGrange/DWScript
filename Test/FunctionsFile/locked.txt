@@ -1,0 +1,3 @@
+5
+Invalid file handle (32): The process cannot access the file because it is being used by another process [line: 20, column: 10]
+File already closed [line: 27, column: 7]

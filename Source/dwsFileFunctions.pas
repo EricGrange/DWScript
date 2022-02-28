@@ -286,29 +286,36 @@ begin
    systemTable.AddSymbol(TConstSymbol.CreateValue('soFromEnd', systemTable.TypInteger, soFromEnd));
 end;
 
+// CheckFileHandleValidity
+//
+procedure CheckFileHandleValidity(const ih : IdwsFileHandle);
+var
+   osError : Integer;
+begin
+   if ih = nil then
+      raise EdwsFileException.Create('File is not open')
+   else if not ih.IsValid then begin
+      osError := ih.GetOSError;
+      if osError = 0 then
+         raise EdwsFileException.Create('File already closed')
+      else raise EdwsFileException.CreateFmt('Invalid file handle (%d): %s',
+                                     [ osError, SysErrorMessage(osError) ]);
+   end;
+end;
+
 // GetIdwsFileHandle
 //
 function GetIdwsFileHandle(const args : TExprBaseListExec; index : Integer; checkValidity : Boolean = True) : IdwsFileHandle;
 var
    v : Variant;
-   osError : Integer;
 begin
    args.ExprBase[index].EvalAsVariant(args.Exec, v);
    if (TVarData(v).VType=varUnknown) and (TVarData(v).VUnknown<>nil) then begin
       Result := IdwsFileHandle(IUnknown(TVarData(v).VUnknown));
    end else Result := nil;
 
-   if checkValidity then begin
-      if Result = nil then
-         raise EdwsFileException.Create('File is not open')
-      else if not Result.IsValid then begin
-         osError := Result.GetOSError;
-         if osError = 0 then
-            raise EdwsFileException.Create('File already closed')
-         else raise EdwsFileException.CreateFmt('Invalid file handle (%d): %s',
-                                        [ osError, SysErrorMessage(osError) ]);
-      end;
-   end;
+   if checkValidity then
+      CheckFileHandleValidity(Result);
 end;
 
 // ------------------
@@ -450,9 +457,12 @@ end;
 //
 procedure TdwsFileHandle.Close;
 begin
-   if IsValid then
-      CloseFileHandle(FHandle);
-   FHandle := INVALID_HANDLE_VALUE;
+   FOSError := 0;
+   if FHandle <> INVALID_HANDLE_VALUE then begin
+      if not CloseFileHandle(FHandle) then
+         FOSError := GetLastError;
+      FHandle := INVALID_HANDLE_VALUE;
+   end;
 end;
 
 // ------------------
@@ -491,9 +501,10 @@ var
    h : THandle;
    i : IdwsFileHandle;
 begin
-   h:=FileOpen(args.AsFileName[0], args.AsInteger[1]);
-   i:=TdwsFileHandle.Create(h, GetLastError);
-   Result:=IUnknown(i);
+   h := FileOpen(args.AsFileName[0], args.AsInteger[1]);
+   i := TdwsFileHandle.Create(h, GetLastError);
+   CheckFileHandleValidity(i);
+   Result := IUnknown(i);
 end;
 
 // ------------------
@@ -507,8 +518,9 @@ var
    h : THandle;
    i : IdwsFileHandle;
 begin
-   h:=FileOpen(args.AsFileName[0], fmOpenRead+fmShareDenyNone);
-   i:=TdwsFileHandle.Create(h, GetLastError);
+   h := FileOpen(args.AsFileName[0], fmOpenRead+fmShareDenyNone);
+   i := TdwsFileHandle.Create(h, GetLastError);
+   CheckFileHandleValidity(i);
    Result:=IUnknown(i);
 end;
 
@@ -523,9 +535,10 @@ var
    h : THandle;
    i : IdwsFileHandle;
 begin
-   h:=FileCreate(args.AsFileName[0]);
-   i:=TdwsFileHandle.Create(h, GetLastError);
-   Result:=IUnknown(i);
+   h := FileCreate(args.AsFileName[0]);
+   i := TdwsFileHandle.Create(h, GetLastError);
+   CheckFileHandleValidity(i);
+   Result := IUnknown(i);
 end;
 
 // ------------------
@@ -1059,7 +1072,7 @@ initialization
    RegisterInternalIntFunction(TFileWrite2Func, 'FileWrite', ['name', SYS_STRING, 'buf', SYS_STRING], [iffOverloaded], '');
    RegisterInternalIntFunction(TFileSeekFunc, 'FileSeek', ['f', SYS_FILE, 'offset', SYS_INTEGER, 'origin', SYS_INTEGER], [], 'Seek');
    RegisterInternalIntFunction(TFilePositionFunc, 'FilePos', ['f', SYS_FILE], [], 'Position');
-   RegisterInternalBoolFunction(TFileFlushBuffersFunc, 'FileFlushBuffers', ['f', SYS_FILE]);
+   RegisterInternalBoolFunction(TFileFlushBuffersFunc, 'FileFlushBuffers', ['f', SYS_FILE], [], 'FlushBuffers');
 
    RegisterInternalProcedure(TFileCloseFunc, 'FileClose', ['f', SYS_FILE], 'Close');
 
