@@ -4485,8 +4485,8 @@ end;
 function TdwsInterface.DoGenerate(systemTable : TSystemSymbolTable; Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
 var
    x : Integer;
-   sym : TSymbol;
-   intfSym, ancestorSym : TInterfaceSymbol;
+   sym, ancestorSym : TSymbol;
+   intfSym : TInterfaceSymbol;
 begin
    FIsGenerating := True;
 
@@ -4508,9 +4508,11 @@ begin
       intfSym := TInterfaceSymbol.Create(Name, nil);
 
    try
-      ancestorSym := (GetUnit.GetSymbol(systemTable, Table, FAncestor) as TInterfaceSymbol);
-      if ancestorSym <> nil then
-         intfSym.InheritFrom(ancestorSym);
+      if FAncestor <> '' then begin
+         ancestorSym := GetUnit.GetSymbol(systemTable, Table, FAncestor);
+         if ancestorSym <> nil then
+            intfSym.InheritFrom(ancestorSym as TInterfaceSymbol);
+      end;
 
       GetUnit.Table.AddSymbol(intfSym);
 

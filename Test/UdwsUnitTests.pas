@@ -29,6 +29,7 @@ type
          procedure DeclareTestArrays;
          procedure DeclareTestRecords;
          procedure DeclareTestOperators;
+         procedure DeclareTestInterface;
 
          procedure Func1Eval(Info: TProgramInfo);
          procedure FuncOneEval(Info: TProgramInfo);
@@ -162,6 +163,8 @@ type
 
          procedure InternalClassStatic;
          procedure InternalClassDynamic;
+
+         procedure InterfaceTest;
    end;
 
    EDelphiException = class (Exception)
@@ -237,6 +240,7 @@ begin
    DeclareTestArrays;
    DeclareTestFuncs;
    DeclareTestOperators;
+   DeclareTestInterface;
 end;
 
 // Destroy
@@ -766,6 +770,27 @@ begin
    o.ResultType:='Float';
 
    o.UsesAccess:='FuncFloat';
+end;
+
+// DeclareTestInterface
+//
+procedure TdwsUnitTestsContext.DeclareTestInterface;
+var
+   i : TdwsInterface;
+   meth : TdwsMethod;
+   prop : TdwsProperty;
+begin
+   i := FUnit.Interfaces.Add;
+   i.Name := 'IHello';
+
+   meth := i.Methods.Add;
+   meth.Name := 'GetHello';
+   meth.ResultType := 'String';
+
+   prop := i.Properties.Add;
+   prop.DataType := 'String';
+   prop.Name := 'Hello';
+   prop.ReadAccess := meth.Name;
 end;
 
 // Func1Eval
@@ -2855,6 +2880,34 @@ begin
           'True'#13#10
          +'TInternalClass'#13#10
          +'Constructing internal class "TInternalClass" is not allowed'#13#10, exec.Result.ToString);
+   finally
+      exec.EndProgram;
+      exec := nil;
+      prog := nil;
+   end;
+end;
+
+// InterfaceTest
+//
+procedure TdwsUnitTests.InterfaceTest;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog := FCompiler.Compile(
+       'type TTest = class(IHello)'#10
+         +'function GetHello : String; begin Result := "World"; end;'#10
+      +'end;'#10
+      +'var i : IHello := new TTest;'#10
+      +'PrintLn(i.Hello);'
+   );
+   CheckEquals(0, prog.Msgs.Count, prog.Msgs.AsInfo);
+   exec := prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+      CheckEquals(
+          'World'#13#10
+          , exec.Result.ToString);
    finally
       exec.EndProgram;
       exec := nil;
