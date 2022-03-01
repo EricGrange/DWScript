@@ -385,29 +385,6 @@ type
       class function UnBox(const v : Variant) : TdwsJSONValue; static;
    end;
 
-   TBoxedNilJSONValue = class (TInterfacedObject,
-                               IBoxedJSONValue,
-                               ICoalesceable, IToNumeric, INullable, IToVariant,
-                               IGetSelf, IUnknown)
-      function GetSelf : TObject;
-      function ScriptTypeName : String;
-      function ToString : String; override; final;
-      function ToUnicodeString : String;
-      function ToFloat : Double;
-      function ToInteger : Int64;
-      procedure ToVariant(var result : Variant);
-      function Value : TdwsJSONValue;
-      function IsFalsey : Boolean;
-      function IsNull : Boolean;
-      function IsDefined : Boolean;
-      function IsArray : Boolean;
-      function IsNumeric : Boolean;
-      function IsString : Boolean;
-   end;
-
-var
-   vNilJSONValue : IBoxedJSONValue;
-
 // Create
 //
 constructor TBoxedJSONValue.Create(wrapped : TdwsJSONValue);
@@ -585,8 +562,6 @@ begin
             Result:=boxed.Value
          else Result:=nil;
       end;
-      varNull :
-         Result:=vNilJSONValue.Value;
    else
       Result := nil;
    end;
@@ -595,104 +570,6 @@ end;
 function BoxedJsonValue(Value : TdwsJSONValue): IBoxedJSONValue;
 begin
    result := TBoxedJSONValue.Create(value);
-end;
-
-// Value
-//
-function TBoxedNilJSONValue.Value : TdwsJSONValue;
-begin
-   Result:=nil;
-end;
-
-// ToString
-//
-function TBoxedNilJSONValue.ToString;
-begin
-   Result := '';
-end;
-
-// ToUnicodeString
-//
-function TBoxedNilJSONValue.ToUnicodeString : String;
-begin
-   Result := '';
-end;
-
-// ToFloat
-//
-function TBoxedNilJSONValue.ToFloat : Double;
-begin
-   Result := 0;
-end;
-
-// ToInteger
-//
-function TBoxedNilJSONValue.ToInteger : Int64;
-begin
-   Result := 0;
-end;
-
-// ToVariant
-//
-procedure TBoxedNilJSONValue.ToVariant(var result : Variant);
-begin
-   VarSetNull(result);
-end;
-
-// IsFalsey
-//
-function TBoxedNilJSONValue.IsFalsey : Boolean;
-begin
-   Result:=True;
-end;
-
-// IsNull
-//
-function TBoxedNilJSONValue.IsNull : Boolean;
-begin
-   Result := True;
-end;
-
-// IsDefined
-//
-function TBoxedNilJSONValue.IsDefined : Boolean;
-begin
-   Result := False;
-end;
-
-// IsArray
-//
-function TBoxedNilJSONValue.IsArray : Boolean;
-begin
-   Result := False;
-end;
-
-// IsNumeric
-//
-function TBoxedNilJSONValue.IsNumeric : Boolean;
-begin
-   Result := False;
-end;
-
-// IsString
-//
-function TBoxedNilJSONValue.IsString : Boolean;
-begin
-   Result := False;
-end;
-
-// GetSelf
-//
-function TBoxedNilJSONValue.GetSelf : TObject;
-begin
-   Result := Self;
-end;
-
-// ScriptTypeName
-//
-function TBoxedNilJSONValue.ScriptTypeName : String;
-begin
-   Result := SYS_JSONVARIANT;
 end;
 
 // ------------------
@@ -1985,19 +1862,5 @@ begin
       Result := IBoxedJSONValue(box);
    end;
 end;
-
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-initialization
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-
-   vNilJSONValue:=TBoxedNilJSONValue.Create;
-
-finalization
-
-   vNilJSONValue:=nil;
 
 end.
