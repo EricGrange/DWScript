@@ -1482,6 +1482,7 @@ var
    meth: TdwsMethod;
    fld: TdwsField;
    prty: TdwsProperty;
+   setof : TdwsSet;
 begin
    FUnit.ParseName:=pnAlways;
 
@@ -1693,6 +1694,15 @@ begin
       CheckEquals('SetTest', prty.WriteAccess, 'Check property write access');
    finally
       cls.Properties.Delete(prty.Index);
+   end;
+
+   setof := FUnit.Sets.Add;
+   try
+      setof.Name := 'TMySet = set of TMyEnum';
+      CheckEquals('TMySet', setof.Name);
+      CheckEquals('TMyEnum', setof.BaseType);
+   finally
+      FUnit.Sets.Delete(setof.Index);
    end;
 end;
 
