@@ -709,6 +709,7 @@ type
          procedure InitData(const data : TData; offset : Integer); virtual;
          procedure InitDataContext(const data : IDataContext); inline;
          procedure InitVariant(var v : Variant); virtual;
+         procedure InitString(var s : String); virtual;
          function DynamicInitialization : Boolean; virtual;
 
          function IsType : Boolean; override;
@@ -1137,6 +1138,7 @@ type
 
          procedure InitData(const data : TData; offset : Integer); override;
          procedure InitVariant(var v : Variant); override;
+         procedure InitString(var s : String); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
@@ -1146,6 +1148,7 @@ type
 
          procedure InitData(const data : TData; offset : Integer); override;
          procedure InitVariant(var v : Variant); override;
+         procedure InitString(var s : String); override;
    end;
 
    TBaseStringSymbol = class (TBaseSymbol)
@@ -1162,6 +1165,7 @@ type
 
          procedure InitData(const data : TData; offset : Integer); override;
          procedure InitVariant(var v : Variant); override;
+         procedure InitString(var s : String); override;
 
          function LengthPseudoSymbol(baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol; inline;
          function HighPseudoSymbol(baseSymbols : TdwsBaseSymbolsContext) : TPseudoMethodSymbol; inline;
@@ -1174,6 +1178,7 @@ type
 
          procedure InitData(const data : TData; offset : Integer); override;
          procedure InitVariant(var v : Variant); override;
+         procedure InitString(var s : String); override;
    end;
 
    TBaseVariantSymbol = class (TBaseSymbol)
@@ -1183,6 +1188,7 @@ type
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          procedure InitData(const data : TData; offset : Integer); override;
          procedure InitVariant(var v : Variant); override;
+         procedure InitString(var s : String); override;
          function SupportsEmptyParam : Boolean; virtual;
    end;
 
@@ -1631,6 +1637,7 @@ type
          procedure AddMethod(methSym : TMethodSymbol); override;
 
          procedure InitData(const Data: TData; Offset: Integer); override;
+         procedure InitString(var s : String); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function  IsPointerType : Boolean; override;
@@ -1817,6 +1824,7 @@ type
          function  FieldAtOffset(offset : Integer) : TFieldSymbol; override;
          procedure InheritFrom(ancestorClassSym : TClassSymbol);
          procedure InitData(const Data: TData; Offset: Integer); override;
+         procedure InitString(var s : String); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function  IsPointerType : Boolean; override;
@@ -3522,6 +3530,13 @@ const
    cNilIntf : IUnknown = nil;
 begin
    Data[Offset]:=cNilIntf;
+end;
+
+// InitString
+//
+procedure TInterfaceSymbol.InitString(var s : String);
+begin
+   s := 'nil';
 end;
 
 // Initialize
@@ -5422,6 +5437,13 @@ begin
    VarCopySafe(Data[Offset], IUnknown(nil));
 end;
 
+// InitString
+//
+procedure TClassSymbol.InitString(var s : String);
+begin
+   s := 'nil';
+end;
+
 // Initialize
 //
 procedure TClassSymbol.Initialize(const msgs : TdwsCompileMessageList);
@@ -5993,6 +6015,13 @@ begin
    VarSetDefaultInt64(v);
 end;
 
+// InitString
+//
+procedure TBaseIntegerSymbol.InitString(var s : String);
+begin
+   s := '0';
+end;
+
 // IsCompatible
 //
 function TBaseIntegerSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
@@ -6029,6 +6058,13 @@ begin
    VarSetDefaultDouble(v);
 end;
 
+// InitString
+//
+procedure TBaseFloatSymbol.InitString(var s : String);
+begin
+   s := '0';
+end;
+
 // ------------------
 // ------------------ TBaseStringSymbol ------------------
 // ------------------
@@ -6062,6 +6098,13 @@ end;
 procedure TBaseStringSymbol.InitVariant(var v : Variant);
 begin
    VarSetDefaultString(v);
+end;
+
+// InitString
+//
+procedure TBaseStringSymbol.InitString(var s : String);
+begin
+   s := '';
 end;
 
 // InitPseudoSymbol
@@ -6127,6 +6170,13 @@ begin
    v := False;
 end;
 
+// InitString
+//
+procedure TBaseBooleanSymbol.InitString(var s : String);
+begin
+   s := 'False';
+end;
+
 // ------------------
 // ------------------ TBaseVariantSymbol ------------------
 // ------------------
@@ -6172,6 +6222,13 @@ end;
 procedure TBaseVariantSymbol.InitVariant(var v : Variant);
 begin
    VarClearSafe(v);
+end;
+
+// InitString
+//
+procedure TBaseVariantSymbol.InitString(var s : String);
+begin
+   s := '';
 end;
 
 // SupportsEmptyParam
@@ -8492,6 +8549,13 @@ begin
    SetLength(buf, 1);
    InitData(buf, 0);
    VarCopySafe(v, buf[0]);
+end;
+
+// InitString
+//
+procedure TTypeSymbol.InitString(var s : String);
+begin
+   Assert(False);
 end;
 
 // DynamicInitialization
