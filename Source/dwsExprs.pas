@@ -7784,7 +7784,7 @@ begin
          Exit;
       end;
    end;
-   ElementType.InitString(result);
+   FElementTyp.InitString(result);
 end;
 
 // GetDataAsString
@@ -7802,7 +7802,7 @@ begin
          Exit;
       end;
    end;
-   ElementType.InitString(result);
+   FElementTyp.InitString(result);
 end;
 
 // ContainsKey
