@@ -365,14 +365,18 @@ end;
 //
 procedure TSetOfBinOpExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
-   DataPtr[exec].EvalAsVariant(FResultAddr, result);
+   VarCopySafe(result, EvalAsInteger(exec));
 end;
 
 // EvalAsInteger
 //
 function TSetOfBinOpExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+var
+   leftV, rightV : Int64;
 begin
-   Result := DataPtr[exec].AsInteger[FResultAddr];
+   leftV := FLeft.EvalAsInteger(exec);
+   rightV := FRight.EvalAsInteger(exec);
+   Result := Perform(leftV, rightV);
 end;
 
 // GetDataPtr
@@ -382,8 +386,8 @@ var
    i : Integer;
    leftDC, rightDC : IDataContext;
 begin
-   leftDC := left.DataPtr[exec];
-   rightDC := right.DataPtr[exec];
+   leftDC := FLeft.DataPtr[exec];
+   rightDC := FRight.DataPtr[exec];
    exec.DataContext_CreateBase(FResultAddr, result);
    for i := 0 to Typ.Size-1 do
       result.AsInteger[i] := Perform(leftDC.AsInteger[i], rightDC.AsInteger[i]);
