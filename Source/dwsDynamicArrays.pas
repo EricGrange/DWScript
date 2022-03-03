@@ -40,6 +40,8 @@ type
          FArrayLength : NativeInt;
 
       protected
+         constructor Create(elemTyp : TTypeSymbol);
+
          function GetElementSize : Integer;
          function GetElementType : TTypeSymbol;
 
@@ -68,7 +70,6 @@ type
          function SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
 
       public
-         constructor Create(elemTyp : TTypeSymbol);
 
          function ScriptTypeName : String; override;
 
