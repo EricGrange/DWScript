@@ -8138,8 +8138,9 @@ begin
                   if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FCompilerContext.TypInteger) then
                      FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
                   if (argList[1].Typ=nil) or not arraySym.Typ.IsCompatible(argList[1].Typ) then
-                     IncompatibleTypes(argPosArray[1], CPE_IncompatibleParameterTypes,
-                                       arraySym.Typ, argList[1].Typ);
+                     argList[1] := CompilerUtils.WrapWithImplicitConversion(
+                                          FCompilerContext, argList[1], arraySym.Typ, argPosArray[1],
+                                          CPE_IncompatibleParameterTypes);
                   Result:=TArrayInsertExpr.Create(namePos, baseExpr,
                                                   argList[0], argList[1]);
                   argList.Clear;
