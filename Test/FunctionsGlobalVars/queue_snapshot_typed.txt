@@ -1,0 +1,12 @@
+[123,456]
+["hello","world"]
+[1.75,2.25]
+floats from ints
+[123,456]
+strings from floats
+["1.75","2.25"]
+ints from floats
+[2,2]
+ints from strings
+Could not cast variant from String to Integer [line: 35, column: 12]
+[2,2]

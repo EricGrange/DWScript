@@ -911,8 +911,11 @@ end;
 // DoEvalAsDynArray
 //
 procedure TGlobalQueueSnapshotFunc.DoEvalAsDynArray(const args : TExprBaseListExec; var Result : IScriptDynArray);
+var
+   elementType : TTypeSymbol;
 begin
-   result := TScriptDynamicValueArray.Create((args.Expr as TTypedExpr).Typ.Typ);
+   elementType := (args.Expr as TTypedExpr).Typ.Typ;
+   result := CreateNewDynamicArray(elementType);
    GlobalQueueSnapshot(args.AsString[0], Result);
 end;
 
@@ -1040,6 +1043,9 @@ initialization
    RegisterInternalBoolFunction(TGlobalQueueFirstFunc, 'GlobalQueueFirst', ['n', SYS_STRING, '@v', SYS_VARIANT]);
    RegisterInternalIntFunction(TGlobalQueueLengthFunc, 'GlobalQueueLength', ['n', SYS_STRING]);
    RegisterInternalFunction(TGlobalQueueSnapshotFunc, 'GlobalQueueSnapshot', ['n', SYS_STRING], SYS_ARRAY_OF_VARIANT);
+   RegisterInternalFunction(TGlobalQueueSnapshotFunc, 'GlobalQueueSnapshotStrings', ['n', SYS_STRING], SYS_ARRAY_OF_STRING);
+   RegisterInternalFunction(TGlobalQueueSnapshotFunc, 'GlobalQueueSnapshotFloats', ['n', SYS_STRING], SYS_ARRAY_OF_FLOAT);
+   RegisterInternalFunction(TGlobalQueueSnapshotFunc, 'GlobalQueueSnapshotIntegers', ['n', SYS_STRING], SYS_ARRAY_OF_INTEGER);
    RegisterInternalProcedure(TCleanupGlobalQueuesFunc, 'CleanupGlobalQueues', ['filter=*', SYS_STRING]);
 
 finalization
