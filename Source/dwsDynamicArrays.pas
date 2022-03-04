@@ -545,8 +545,8 @@ begin
          Result := TScriptDynamicNativeIntegerArray.Create(elemTyp)
       else if ct = TBaseBooleanSymbol then
          Result := TScriptDynamicNativeBooleanArray.Create(elemTyp)
-//      else if ct = TClassSymbol then
-//         Result := TScriptDynamicNativeObjectArray.Create(elemTyp)
+      else if ct = TClassSymbol then
+         Result := TScriptDynamicNativeObjectArray.Create(elemTyp)
       else if ct = TDynamicArraySymbol then
          Result := TScriptDynamicNativeDynArrayArray.Create(elemTyp)
 //      else if ct = TInterfaceSymbol then
@@ -1149,12 +1149,8 @@ end;
 // Swap
 //
 procedure TScriptDynamicNativeIntegerArray.Swap(index1, index2 : NativeInt);
-var
-   buf : Int64;
 begin
-   buf := FData[index1];
-   FData[index1] := FData[index2];
-   FData[index2] := buf;
+   SwapInt64(FData[index1], FData[index2]);
 end;
 
 // IndexOfValue
@@ -1530,12 +1526,8 @@ end;
 // Swap
 //
 procedure TScriptDynamicNativeFloatArray.Swap(index1, index2 : NativeInt);
-var
-   buf : Double;
 begin
-   buf := FData[index1];
-   FData[index1] := FData[index2];
-   FData[index2] := buf;
+   SwapDoubles(FData[index1], FData[index2]);
 end;
 
 // IndexOfValue
@@ -1909,12 +1901,8 @@ end;
 // Swap
 //
 procedure TScriptDynamicNativeStringArray.Swap(index1, index2 : NativeInt);
-var
-   buf : Pointer;
 begin
-   buf := PPointer(@FData[index1])^;
-   PPointer(@FData[index1])^ := PPointer(@FData[index2])^;
-   PPointer(@FData[index2])^ := buf;
+   SwapPointers(PPointer(@FData[index1])^, PPointer(@FData[index2])^);
 end;
 
 // IndexOfValue
@@ -2284,12 +2272,8 @@ end;
 // Swap
 //
 procedure TScriptDynamicNativeBaseInterfaceArray.Swap(index1, index2 : NativeInt);
-var
-   buf : Pointer;
 begin
-   buf := PPointer(@FData[index1])^;
-   PPointer(@FData[index1])^ := PPointer(@FData[index2])^;
-   PPointer(@FData[index2])^ := buf;
+   SwapPointers(PPointer(@FData[index1])^, PPointer(@FData[index2])^);
 end;
 
 // IndexOfValue

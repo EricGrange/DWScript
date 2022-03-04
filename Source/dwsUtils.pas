@@ -1142,9 +1142,6 @@ function  VariantArrayHighBound(const v : Variant; index : Integer) : Integer; i
 procedure WriteVariant(writer: TWriter; const value: Variant);
 function ReadVariant(reader: TReader): Variant;
 
-type
-   EISO8601Exception = class (Exception);
-
 function TryISO8601ToDateTime(const v : String; var aResult : TDateTime) : Boolean;
 function ISO8601ToDateTime(const v : String) : TDateTime;
 function DateTimeToISO8601(dt : TDateTime; extendedFormat : Boolean) : String;
@@ -1162,7 +1159,13 @@ function PopCount32(v : Int32) : Integer;
 function PopCount64(p : PInt64; nbInt64s : Integer) : Integer;
 function PopCount(p : PByte; n : Integer) : Integer;
 
+procedure SwapInt64(var a, b : Int64); inline;
+procedure SwapDoubles(var a, b : Double); inline;
+procedure SwapPointers(var a, b : Pointer); inline;
+
 type
+   EISO8601Exception = class (Exception);
+
    TTwoChars = packed array [0..1] of Char;
    PTwoChars = ^TTwoChars;
 const
@@ -7731,6 +7734,39 @@ begin
       2 : Inc(Result, PopCount32(PWord(p)^));
       3 : Inc(Result, PopCount32((PWord(p)^ shl 16) or p[2]));
    end;
+end;
+
+// SwapInt64
+//
+procedure SwapInt64(var a, b : Int64);
+var
+   buf : Int64;
+begin
+   buf := a;
+   a := b;
+   b := buf;
+end;
+
+// SwapDoubles
+//
+procedure SwapDoubles(var a, b : Double);
+var
+   buf : Double;
+begin
+   buf := a;
+   a := b;
+   b := buf;
+end;
+
+// SwapPointers
+//
+procedure SwapPointers(var a, b : Pointer); inline;
+var
+   buf : Pointer;
+begin
+   buf := a;
+   a := b;
+   b := buf;
 end;
 
 // ------------------------------------------------------------------
