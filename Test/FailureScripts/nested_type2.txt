@@ -1,0 +1,2 @@
+Syntax Error: Name "R1" already exists [line: 6, column: 12]
+Syntax Error: Name expected [line: 9, column: 8]

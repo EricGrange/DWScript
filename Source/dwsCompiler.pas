@@ -9205,8 +9205,8 @@ begin
       end;
    finally
       if hasSubTypes then begin
+         FCurrentProg.Table.RemoveParent(FCurrentProg.Table);
          FCurrentProg.LeaveSubTable;
-         TSymbolTable(Result.Members).RemoveParent(FCurrentProg.Table)
       end;
       interfaces.Free;
       if not isInSymbolTable then
