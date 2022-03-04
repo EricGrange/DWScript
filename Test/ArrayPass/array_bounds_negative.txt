@@ -1,0 +1,17 @@
+minus one-based array
+-1
+0
+1
+-1
+0
+1
+-1
+0
+1
+minus 3-based array
+-3
+-2
+-1
+-3
+-2
+-1

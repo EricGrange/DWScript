@@ -1,0 +1,17 @@
+Errors >>>>
+Hint: "indexof" does not match case of declaration ("IndexOf") [line: 43, column: 14]
+Hint: "indexof" does not match case of declaration ("IndexOf") [line: 44, column: 14]
+Result >>>>
+Integers
+-1
+0
+1
+-1
+1
+Records
+0
+1
+-1
+Objects
+-1
+1

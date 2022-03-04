@@ -1,0 +1,14 @@
+Integers
+False
+True
+True
+True
+False
+False
+Records
+True
+True
+False
+Objects
+False
+True

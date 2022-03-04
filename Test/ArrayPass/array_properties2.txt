@@ -1,0 +1,12 @@
+Sub 0
+Sub 1
+Sub 2
+SetProp 0: a
+SetProp 1: b
+SetProp 2: c
+Sub 10
+Sub 11
+Sub 12
+SetProp 10: a
+SetProp 11: b
+SetProp 12: c

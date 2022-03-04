@@ -1,0 +1,16 @@
+zero-based array
+0
+1
+2
+3
+4
+Lower bound exceeded! Index -1 [line: 13, column: 8]
+Upper bound exceeded! Index 5 [line: 20, column: 8]
+five-based array
+5
+6
+7
+8
+9
+Lower bound exceeded! Index 0 [line: 33, column: 7]
+Upper bound exceeded! Index 10 [line: 40, column: 8]

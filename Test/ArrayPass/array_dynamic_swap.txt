@@ -1,0 +1,23 @@
+Errors >>>>
+Hint: "low" does not match case of declaration ("Low") [line: 16, column: 13]
+Hint: "high" does not match case of declaration ("High") [line: 16, column: 22]
+Result >>>>
+0 elements
+1 elements
+0: 0
+1 elements
+0: 0
+2 elements
+0: 1
+1: 0
+2 elements
+0: 0
+1: 1
+3 elements
+0: 2
+1: 1
+2: 0
+3 elements
+0: 0
+1: 1
+2: 2

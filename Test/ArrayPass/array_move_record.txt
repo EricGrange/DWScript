@@ -1,0 +1,6 @@
+aA0,bB1,cC2
+bB1,cC2,aA0
+aA0,bB1,cC2
+aA0,cC2,bB1
+cC2,aA0,bB1
+cC2,bB1,aA0

@@ -1,0 +1,6 @@
+aA,bB,cC
+bB,cC,aA
+aA,bB,cC
+aA,cC,bB
+cC,aA,bB
+cC,bB,aA

@@ -71,6 +71,7 @@ begin
    basePath:=ExtractFilePath(ParamStr(0));
 
    CollectFiles(basePath+'SimpleScripts'+PathDelim, cFilter, FTests);
+   CollectFiles(basePath+'ArrayPass'+PathDelim, cFilter, FTests);
 
    CollectFiles(basePath+'FailureScripts'+PathDelim, cFilter, FFailures);
    CollectFiles(basePath+'AttributesFail'+PathDelim, cFilter, FFailures);

@@ -1,0 +1,11 @@
+Errors >>>>
+Hint: "add" does not match case of declaration ("Add") [line: 10, column: 3]
+Hint: "println" does not match case of declaration ("PrintLn") [line: 13, column: 3]
+Hint: "println" does not match case of declaration ("PrintLn") [line: 15, column: 3]
+Hint: "println" does not match case of declaration ("PrintLn") [line: 17, column: 3]
+Hint: "println" does not match case of declaration ("PrintLn") [line: 20, column: 3]
+Hint: "println" does not match case of declaration ("PrintLn") [line: 22, column: 3]
+Result >>>>
+0
+1
+2

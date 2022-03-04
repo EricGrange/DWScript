@@ -1,0 +1,4 @@
+Errors >>>>
+Hint: "A" does not match case of declaration ("a") [line: 16, column: 1]
+Result >>>>
+ok

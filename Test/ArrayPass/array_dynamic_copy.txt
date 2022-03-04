@@ -1,0 +1,7 @@
+1233
+232
+1233
+Upper bound exceeded! Index 3 [line: 22, column: 11]
+Positive count expected (got -1) [line: 28, column: 11]
+1,2,3
+Lower bound exceeded! Index -1 [line: 41, column: 11]

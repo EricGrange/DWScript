@@ -1,0 +1,12 @@
+Errors >>>>
+Hint: "add" does not match case of declaration ("Add") [line: 2, column: 9]
+Hint: "add" does not match case of declaration ("Add") [line: 3, column: 9]
+Hint: "add" does not match case of declaration ("Add") [line: 4, column: 9]
+Hint: "add" does not match case of declaration ("Add") [line: 5, column: 9]
+Result >>>>
+0
+1
+2
+b - beta
+g - gamma
+a - alpha

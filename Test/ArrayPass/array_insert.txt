@@ -1,0 +1,6 @@
+2:{10,20}
+3:{0,10,20}
+4:{0,10,15,20}
+Lower bound exceeded! Index -1 [line: 27, column: 6]
+Upper bound exceeded! Index 5 [line: 33, column: 6]
+4:{0,10,15,20}

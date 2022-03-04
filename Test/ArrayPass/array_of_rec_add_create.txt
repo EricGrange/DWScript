@@ -1,0 +1,16 @@
+Errors >>>>
+Hint: "result" does not match case of declaration ("Result") [line: 11, column: 3]
+Hint: "result" does not match case of declaration ("Result") [line: 12, column: 3]
+Hint: "add" does not match case of declaration ("Add") [line: 20, column: 8]
+Hint: "print" does not match case of declaration ("Print") [line: 24, column: 3]
+Hint: "print" does not match case of declaration ("Print") [line: 25, column: 3]
+Hint: "println" does not match case of declaration ("PrintLn") [line: 26, column: 3]
+Hint: "format" does not match case of declaration ("Format") [line: 26, column: 11]
+Hint: "print" does not match case of declaration ("Print") [line: 27, column: 3]
+Hint: "print" does not match case of declaration ("Print") [line: 28, column: 3]
+Hint: "println" does not match case of declaration ("PrintLn") [line: 29, column: 3]
+Hint: "format" does not match case of declaration ("Format") [line: 29, column: 11]
+Hint: "testing" does not match case of declaration ("Testing") [line: 32, column: 1]
+Result >>>>
+1AA
+2bb

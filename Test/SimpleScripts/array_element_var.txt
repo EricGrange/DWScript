@@ -1,3 +1,0 @@
-0
-Read: Upper bound exceeded! Index 0
-Write: Upper bound exceeded! Index 0
