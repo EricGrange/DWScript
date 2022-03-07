@@ -54,7 +54,6 @@ type
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
          procedure EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface); override;
-         procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
 
          function IsWritable : Boolean; override;
          function SameValueAs(otherConst : TConstExpr) : Boolean;
@@ -79,7 +78,6 @@ type
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
          procedure EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface); override;
-         procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
    end;
 
    // TConstBooleanExpr
@@ -303,13 +301,6 @@ begin
    result := IScriptObjInterface(IUnknown(FData[0]));
 end;
 
-// EvalAsScriptDynArray
-//
-procedure TConstExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
-begin
-   result := IScriptDynArray(IUnknown(FData[0]));
-end;
-
 // GetIsConstant
 //
 function TConstExpr.GetIsConstant : Boolean;
@@ -415,13 +406,6 @@ end;
 // EvalAsScriptObjInterface
 //
 procedure TConstNilExpr.EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface);
-begin
-   result := nil;
-end;
-
-// EvalAsScriptDynArray
-//
-procedure TConstNilExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 begin
    result := nil;
 end;
@@ -625,9 +609,7 @@ begin
       if arraySymbol.Typ=context.TypNil then
          arraySymbol.Typ:=ElementExpr.Typ
       else if arraySymbol.Typ<>ElementExpr.Typ then begin
-         if arraySymbol.Typ=context.TypNil then
-            arraySymbol.Typ:=ElementExpr.Typ
-         else if (arraySymbol.Typ=context.TypInteger) and (ElementExpr.Typ=context.TypFloat) then
+         if (arraySymbol.Typ=context.TypInteger) and (ElementExpr.Typ=context.TypFloat) then
             arraySymbol.Typ:=context.TypFloat
          else if ElementExpr.Typ.Size=1 then begin
             if not ((arraySymbol.Typ=context.TypFloat) and (ElementExpr.Typ=context.TypInteger)) then
@@ -648,8 +630,7 @@ var
    i : Int64;
    d : Integer;
 begin
-   if typ = nil then
-      typ := context.TypInteger;
+   Assert(typ <> nil);
    if range1<range2 then
       d:=1
    else d:=-1;
