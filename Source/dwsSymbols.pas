@@ -1757,7 +1757,7 @@ type
       // script engine flags
       csfAbstract,         // class was marked abstract or has abstract methods
       csfNoVirtualMembers, // class does not have virtual members
-      csfNoOverloads,
+      csfNoOverloads,      // class does not allow overloads
       csfHasOwnMethods,
       csfHasOwnFields,
       csfExternalRooted,

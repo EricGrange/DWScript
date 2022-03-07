@@ -1,0 +1,2 @@
+Syntax Error: Overload not allowed [line: 5, column: 7]
+Syntax Error: Method "Test" of class "TSub" not implemented [line: 5, column: 17]

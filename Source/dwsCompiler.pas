@@ -2499,26 +2499,16 @@ begin
             OrphanAndNil(finalizationBlock);
       end;
 
-      if CurrentUnitSymbol<>nil then begin
-         // this is a normal unit
-         if initializationBlock<>nil then begin
-            CurrentUnitSymbol.AddInitializationExpr(initializationBlock);
-            initializationBlock:=nil;
-         end;
-         if finalizationBlock<>nil then begin
-            CurrentUnitSymbol.FinalizationExpr:=finalizationBlock;
-            finalizationBlock:=nil;
-         end;
-      end else begin
-         // special case of main program
-         if initializationBlock<>nil then begin
-            CurrentProg.InitExpr.AddStatement(initializationBlock);
-            initializationBlock:=nil;
-         end;
-         if finalizationBlock<>nil then begin
-            FMainProg.AddFinalExpr(finalizationBlock);
-            finalizationBlock:=nil;
-         end;
+      Assert(CurrentUnitSymbol <> nil);
+
+      // this is a normal unit
+      if initializationBlock<>nil then begin
+         CurrentUnitSymbol.AddInitializationExpr(initializationBlock);
+         initializationBlock:=nil;
+      end;
+      if finalizationBlock<>nil then begin
+         CurrentUnitSymbol.FinalizationExpr:=finalizationBlock;
+         finalizationBlock:=nil;
       end;
    finally
       OrphanAndNil(unitBlock);
