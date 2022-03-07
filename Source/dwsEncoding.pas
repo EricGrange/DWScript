@@ -501,9 +501,8 @@ var
 begin
    n := Length(data);
    case n and 3 of
-      1 : Result := Base64Decode(data+'=');
       2 : Result := Base64Decode(data+'==');
-      3 : Result := Base64Decode(data+'===');
+      3 : Result := Base64Decode(data+'=');
    else
       Result := Base64Decode(data);
    end;

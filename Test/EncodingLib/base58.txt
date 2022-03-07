@@ -8,3 +8,4 @@ JxF12TrwUP45BMd
 1111111
 00010966776006953d5567439e5e39f86a0d273beed61967f6
 16UwLL9Risc3QfPqBUvKofHmBQ7wMtjvM
+Non-base58 character [line: 18, column: 4]
