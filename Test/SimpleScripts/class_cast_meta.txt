@@ -1,0 +1,2 @@
+TTest1
+Cannot cast "TTest1" to class "TTest2Class" [line: 11, column: 27]

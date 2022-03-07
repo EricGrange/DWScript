@@ -1,0 +1,4 @@
+Hello TTest
+Class "TTest2" does not implement interface "IIntf" [line: 18, column: 10]
+Hello TTest
+Cannot cast interface of "TTest2" to interface "IIntf" [line: 29, column: 8]
