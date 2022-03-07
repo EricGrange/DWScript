@@ -1950,15 +1950,15 @@ begin
          '1', 'T', 't', 'Y', 'y' : Exit(True);
       end;
       3 : begin
-         Exit(    ((p[0] = 'Y') or (p[0] = 'y'))
-              and ((p[1] = 'E') or (p[1] = 'e'))
-              and ((p[2] = 'S') or (p[2] = 's')));
+         if     ((p[0] = 'Y') or (p[0] = 'y'))
+            and ((p[1] = 'E') or (p[1] = 'e'))
+            and ((p[2] = 'S') or (p[2] = 's')) then Exit(True);
       end;
       4 : begin
-         Exit(    ((p[0] = 'T') or (p[0] = 't'))
-              and ((p[1] = 'R') or (p[1] = 'r'))
-              and ((p[2] = 'U') or (p[2] = 'u'))
-              and ((p[3] = 'E') or (p[3] = 'e')));
+         if     ((p[0] = 'T') or (p[0] = 't'))
+            and ((p[1] = 'R') or (p[1] = 'r'))
+            and ((p[2] = 'U') or (p[2] = 'u'))
+            and ((p[3] = 'E') or (p[3] = 'e')) then Exit(True);
       end;
    end;
    // special case of integer: zero is false, everything else is true

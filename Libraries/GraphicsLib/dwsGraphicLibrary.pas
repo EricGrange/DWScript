@@ -223,7 +223,7 @@ end;
 //
 function TBasePixmapSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-   Result:=(typSym<>nil) and (typSym.UnAliasedType.ClassType = TBasePixmapSymbol);
+   Result := (typSym<>nil) and (typSym.UnAliasedType.ClassType = TBasePixmapSymbol);
 end;
 
 // ------------------
@@ -580,7 +580,7 @@ begin
       raise EdwsPixmap.CreateFmt('SetPixel x out of bounds (%d)', [ x ]);
    if Cardinal(y*w) > Cardinal(pixmap.GetCount) then
       raise EdwsPixmap.CreateFmt('SetPixel y out of bounds (%d)', [ y ]);
-   pixmap.SetInt32A((x + y*w) * 4, args.AsInteger[3]);
+   pixmap.SetInt32A((x + y*w) * 4, Integer(args.AsInteger[3]));
 end;
 
 // ------------------
@@ -620,7 +620,7 @@ begin
    offset := args.AsInteger[1] shl 2;
    if NativeUInt(offset) >= NativeUInt(pixmap.GetCount) then
       raise EdwsPixmap.CreateFmt('SetData out of bounds (%d)', [ offset shr 2 ]);
-   pixmap.SetInt32A(offset, args.AsInteger[2]);
+   pixmap.SetInt32A(offset, Integer(args.AsInteger[2]));
 end;
 
 // ------------------
@@ -684,6 +684,8 @@ initialization
          ['pixmap', SYS_PIXMAP, 'width', SYS_INTEGER, 'height', SYS_INTEGER, 'withAlpha=False', SYS_BOOLEAN], []);
 
    RegisterInternalProcedure(TByteBufferAssignHexStringFunc, '', ['pixmap', SYS_PIXMAP, 'hexData', SYS_STRING], 'AssignHexString');
+   RegisterInternalStringFunction(TByteBufferToHexStringFunc, '', ['pixmap', SYS_PIXMAP], [], 'ToHexString');
+
    RegisterInternalProcedure(TPixmapSetPixelFunc, '', ['pixmap', SYS_PIXMAP, 'x', SYS_INTEGER, 'y', SYS_INTEGER, 'color', SYS_INTEGER], 'SetPixel');
    RegisterInternalIntFunction(TPixmapGetPixelFunc, '', ['pixmap', SYS_PIXMAP, 'x', SYS_INTEGER, 'y', SYS_INTEGER], [], 'GetPixel');
    RegisterInternalProcedure(TPixmapSetDataFunc, '', ['pixmap', SYS_PIXMAP, 'offset', SYS_INTEGER, 'color', SYS_INTEGER], 'SetData');

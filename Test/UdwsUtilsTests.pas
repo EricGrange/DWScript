@@ -66,6 +66,7 @@ type
          procedure FastCompareTextSortedValues;
 
          procedure FastIntToStrTest;
+         procedure Int32ToStrTest;
 
          procedure VarRecArrayTest;
 
@@ -812,6 +813,16 @@ begin
    CheckEquals(IntToStr(High(Int64)), s);
    FastInt64ToStr(Low(Int64), s);
    CheckEquals(IntToStr(Low(Int64)), s);
+end;
+
+// Int32ToStrTest
+//
+procedure TdwsUtilsTests.Int32ToStrTest;
+begin
+   CheckEquals('0', Int32ToStrU(0));
+   CheckEquals('1234567', Int32ToStrU(1234567));
+   CheckEquals('-1234567890', Int32ToStrU(-1234567890));
+   CheckEquals('1000000000', Int32ToStrU(1000000000));
 end;
 
 // VarRecArrayTest
