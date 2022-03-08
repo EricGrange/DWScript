@@ -586,13 +586,21 @@ end;
 // DoEvalAsInteger
 //
 procedure TByteBufferSetByteFunc.DoEvalProc(const args : TExprBaseListExec);
+
+   function EnsureByte(const i : Int64) : Byte;
+   begin
+      if UInt64(i) > $FF then
+         raise EdwsByteBuffer.CreateFmt('value %d out of Byte range', [ i ]);
+      Result := Byte(i);
+   end;
+
 var
    buffer : IdwsByteBuffer;
 begin
    args.GetBuffer(buffer);
    if args.Count = 2 then
-      buffer.SetByteP(Byte(args.AsInteger[1]))
-   else buffer.SetByteA(args.AsInteger[1], Byte(args.AsInteger[2]))
+      buffer.SetByteP(EnsureByte(args.AsInteger[1]))
+   else buffer.SetByteA(args.AsInteger[1], EnsureByte(args.AsInteger[2]))
 end;
 
 // ------------------
@@ -618,13 +626,21 @@ end;
 // DoEvalProc
 //
 procedure TByteBufferSetWordFunc.DoEvalProc(const args : TExprBaseListExec);
+
+   function EnsureWord(const i : Int64) : Word;
+   begin
+      if UInt64(i) > $FFFF then
+         raise EdwsByteBuffer.CreateFmt('value %d out of Word range', [ i ]);
+      Result := Word(i);
+   end;
+
 var
    buffer : IdwsByteBuffer;
 begin
    args.GetBuffer(buffer);
    if args.Count = 2 then
-      buffer.SetWordP(Word(args.AsInteger[1]))
-   else buffer.SetWordA(args.AsInteger[1], Word(args.AsInteger[2]))
+      buffer.SetWordP(EnsureWord(args.AsInteger[1]))
+   else buffer.SetWordA(args.AsInteger[1], EnsureWord(args.AsInteger[2]))
 end;
 
 // ------------------
@@ -650,13 +666,21 @@ end;
 // DoEvalProc
 //
 procedure TByteBufferSetInt8Func.DoEvalProc(const args : TExprBaseListExec);
+
+   function EnsureInt8(const i : Int64) : Int8;
+   begin
+      if i <> Int8(i) then
+         raise EdwsByteBuffer.CreateFmt('value %d out of Int8 range', [ i ]);
+      Result := Int8(i);
+   end;
+
 var
    buffer : IdwsByteBuffer;
 begin
    args.GetBuffer(buffer);
    if args.Count = 2 then
-      buffer.SetInt8P(args.AsInteger[1])
-   else buffer.SetInt8A(args.AsInteger[1], args.AsInteger[2])
+      buffer.SetInt8P(EnsureInt8(args.AsInteger[1]))
+   else buffer.SetInt8A(args.AsInteger[1], EnsureInt8(args.AsInteger[2]))
 end;
 
 // ------------------
@@ -682,13 +706,21 @@ end;
 // DoEvalProc
 //
 procedure TByteBufferSetInt16Func.DoEvalProc(const args : TExprBaseListExec);
+
+   function EnsureInt16(const i : Int64) : Int16;
+   begin
+      if i <> Int16(i) then
+         raise EdwsByteBuffer.CreateFmt('value %d out of Int16 range', [ i ]);
+      Result := Int16(i);
+   end;
+
 var
    buffer : IdwsByteBuffer;
 begin
    args.GetBuffer(buffer);
    if args.Count = 2 then
-      buffer.SetInt16P(args.AsInteger[1])
-   else buffer.SetInt16A(args.AsInteger[1], args.AsInteger[2])
+      buffer.SetInt16P(EnsureInt16(args.AsInteger[1]))
+   else buffer.SetInt16A(args.AsInteger[1], EnsureInt16(args.AsInteger[2]))
 end;
 
 // ------------------
@@ -714,13 +746,21 @@ end;
 // DoEvalProc
 //
 procedure TByteBufferSetDWordFunc.DoEvalProc(const args : TExprBaseListExec);
+
+   function EnsureDWord(const i : Int64) : DWord;
+   begin
+      if UInt64(i) > $FFFFFFFF then
+         raise EdwsByteBuffer.CreateFmt('value %d out of DWord range', [ i ]);
+      Result := DWord(i);
+   end;
+
 var
    buffer : IdwsByteBuffer;
 begin
    args.GetBuffer(buffer);
    if args.Count = 2 then
-      buffer.SetDWordP(DWord(args.AsInteger[1]))
-   else buffer.SetDWordA(args.AsInteger[1], DWord(args.AsInteger[2]))
+      buffer.SetDWordP(EnsureDWord(args.AsInteger[1]))
+   else buffer.SetDWordA(args.AsInteger[1], EnsureDWord(args.AsInteger[2]))
 end;
 
 // ------------------
@@ -746,13 +786,21 @@ end;
 // DoEvalProc
 //
 procedure TByteBufferSetInt32Func.DoEvalProc(const args : TExprBaseListExec);
+
+   function EnsureInt32(const i : Int64) : Int32;
+   begin
+      if i <> Int32(i) then
+         raise EdwsByteBuffer.CreateFmt('value %d out of Int32 range', [ i ]);
+      Result := Int32(i);
+   end;
+
 var
    buffer : IdwsByteBuffer;
 begin
    args.GetBuffer(buffer);
    if args.Count = 2 then
-      buffer.SetInt32P(args.AsInteger[1])
-   else buffer.SetInt32A(args.AsInteger[1], args.AsInteger[2])
+      buffer.SetInt32P(EnsureInt32(args.AsInteger[1]))
+   else buffer.SetInt32A(args.AsInteger[1], EnsureInt32(args.AsInteger[2]))
 end;
 
 // ------------------

@@ -8,7 +8,7 @@ try
 except
     on E : Exception do PrintLn(E.Message);
 end;
-bb.SetByte(-$05);
+bb.SetInt8(-$05);
 
 PrintLn(bb.ToJSON);
 

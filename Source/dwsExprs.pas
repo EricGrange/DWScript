@@ -1578,7 +1578,7 @@ type
          FClassSym : TClassSymbol;
          FExternalObject : TObject;
          FExecutionContext : TdwsProgramExecution;
-         FOnObjectDestroy: TObjectDestroyEvent;
+         FOnObjectDestroy : TObjectDestroyEvent;
          FDestroyed : Boolean;
 
       protected
@@ -1616,7 +1616,7 @@ type
 
    TScriptAssociativeArrayHashCodes = array of Cardinal;
 
-   TScriptAssociativeArray = class sealed (TScriptObj, IScriptAssociativeArray)
+   TScriptAssociativeArray = class sealed (TDataContext, IScriptAssociativeArray)
       private
          FElementTyp, FKeyTyp : TTypeSymbol;
          FElementSize, FKeySize : Integer;
