@@ -2832,7 +2832,6 @@ begin
    VarClearSafe(dest);
 
    TVarData(dest).VType := varInt64;
-   TVarData(dest).VInt64 := 0;
 end;
 
 // VarSetDefaultDouble
@@ -2842,7 +2841,6 @@ begin
    VarClearSafe(dest);
 
    TVarData(dest).VType := varDouble;
-   TVarData(dest).VDouble := 0;
 end;
 
 // VarSetDefaultString
