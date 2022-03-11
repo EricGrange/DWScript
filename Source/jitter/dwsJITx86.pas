@@ -3318,7 +3318,7 @@ begin
 
    if (e.BaseExpr is TConstExpr) then begin
 
-      x86._mov_reg_dword(gprEAX, NativeUInt(@TConstExpr(e.BaseExpr).Data[0]));
+      x86._mov_reg_dword(gprEAX, NativeUInt(@TConstExpr(e.BaseExpr).DataContext.AsPData^[0]));
       offsetBase := 0;
 
 //   end else if (e.BaseExpr.ClassType=TVarExpr) then begin

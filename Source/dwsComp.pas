@@ -1443,7 +1443,7 @@ type
 
    TReadVarFunc = class(TAnonymousFunction)
       private
-         FData : TData;
+         FData : IDataContext;
          FTyp : TTypeSymbol;
 
       public
@@ -3405,7 +3405,7 @@ begin
 
       paramRec.HasDefaultValue := param.HasDefaultValue;
       if paramRec.HasDefaultValue then begin
-         SetLength(paramRec.DefaultValue, 1);
+         paramRec.DefaultValue := TDataContext.CreateStandalone(1);
          paramSym:=Symbol.GetDataType(systemTable, Table, paramRec.ParamType);
          if paramSym is TEnumerationSymbol then begin
             enumValue:=param.DefaultValue;
@@ -3415,9 +3415,9 @@ begin
             if elemSym=nil then
                elemValue:=param.DefaultValue
             else elemValue:=TElementSymbol(elemSym).Value;
-            paramRec.DefaultValue[0] := elemValue;
+            paramRec.DefaultValue.AsInteger[0] := elemValue;
          end else if paramSym.IsPointerType and VarIsNull(param.DefaultValue) then
-            paramRec.DefaultValue[0] := IUnknown(nil)
+            paramRec.DefaultValue.AsInterface[0] := IUnknown(nil)
          else paramRec.DefaultValue[0] := param.DefaultValue;
       end else paramRec.DefaultValue := nil;
 
@@ -3719,7 +3719,7 @@ begin
    if FHasDefaultValue then begin
       SetLength(data, 1);
       data[0]:=FDefaultValue;
-      TFieldSymbol(Result).DefaultValue:=data;
+      TFieldSymbol(Result).DefaultValue := TDataContext.CreateAcquireData(data);
    end;
 end;
 
@@ -4669,7 +4669,7 @@ function TdwsProperty.DoGenerate(systemTable : TSystemSymbolTable; Table: TSymbo
 var
    sym : TSymbol;
    propSym : TPropertySymbol;
-   indexData : TData;
+   indexData : IDataContext;
    parent : TCompositeTypeSymbol;
 begin
    FIsGenerating := True;
@@ -4701,8 +4701,8 @@ begin
    end;
 
    if FIndexType <> '' then begin
-      SetLength(indexData,1);
-      indexData[0] := FIndexValue;
+      indexData := TDataContext.CreateStandalone(1);
+      indexData.AsVariant[0] := FIndexValue;
       propSym.SetIndex(indexData, GetDataType(systemTable, Table, IndexType));
    end;
 
@@ -5187,18 +5187,18 @@ constructor TReadVarFunc.Create(FuncSym: TFuncSymbol);
 begin
   inherited;
   FTyp := FuncSym.Typ;
-  SetLength(FData, FTyp.Size);
-  FTyp.InitData(FData, 0);
+  FData := TDataContext.CreateStandalone(FTyp.Size);
+  FTyp.InitDataContext(FData, 0);
 end;
 
 procedure TReadVarFunc.Execute(info : TProgramInfo);
 begin
-  Info.Data[SYS_RESULT] := FData;
+   Info.Data[SYS_RESULT] := FData.AsPData^;
 end;
 
 procedure TReadVarFunc.SetValue(const data : TData; offset : Integer);
 begin
-   DWSCopyData(data, offset, FData, 0, FTyp.Size);
+   FData.WriteData(data, offset, FTyp.Size);
 end;
 
 { TWriteVarFunc }

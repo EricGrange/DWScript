@@ -869,12 +869,9 @@ end;
 // GetDataPtr
 //
 procedure TDynamicArrayDataExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
-var
-   data : TData;
 begin
-   SetLength(data, 1);
-   EvalAsVariant(exec, data[0]);
-   result:=exec.Stack.CreateDataContext(data, 0);
+   result := exec.Stack.CreateEmpty(1);
+   EvalAsVariantToDataContext(exec, result, 0);
 end;
 
 // ------------------
@@ -1556,7 +1553,7 @@ begin
       BoundsCheckFailed(exec, index);
 
    dataExpr := (ValueExpr as TDataExpr);
-   dynDataArray.WriteData(index*dynDataArray.ElementSize, dataExpr.DataPtr[exec], dynDataArray.ElementSize);
+   dynDataArray.WriteData(index*dynDataArray.ElementSize, dataExpr.DataPtr[exec], 0, dynDataArray.ElementSize);
 end;
 
 // ------------------
@@ -2474,7 +2471,7 @@ var
       elemSize := arg.Typ.Size;
       if elemSize > 1 then begin
          argData := (arg as TDataExpr);
-         (base.GetSelf as TScriptDynamicDataArray).WriteData((arrayLength-1)*elemSize, argData.DataPtr[exec], elemSize);
+         (base.GetSelf as TScriptDynamicDataArray).WriteData((arrayLength-1)*elemSize, argData.DataPtr[exec], 0, elemSize);
       end else begin
          arg.EvalAsVariant(exec, buf);
          base.AsVariant[arrayLength-1] := buf;
@@ -2493,7 +2490,7 @@ var
          Inc(arrayLength, k);
          base.ArrayLength := arrayLength;
          if elemSize > 1 then begin
-            (base.GetSelf as TScriptDynamicDataArray).WriteData(n*elemSize, (arg as TDataExpr).DataPtr[exec], k*elemSize);
+            (base.GetSelf as TScriptDynamicDataArray).WriteData(n*elemSize, (arg as TDataExpr).DataPtr[exec], 0, k*elemSize);
          end else begin
             dc := (arg as TDataExpr).DataPtr[exec];
             for i := 0 to k-1 do
@@ -2917,7 +2914,7 @@ begin
 
    elemSize := ItemExpr.Typ.Size;
    if elemSize > 1 then
-      (base.GetSelf as TScriptDynamicDataArray).WriteData(index*elemSize, (ItemExpr as TDataExpr).DataPtr[exec], elemSize)
+      (base.GetSelf as TScriptDynamicDataArray).WriteData(index*elemSize, (ItemExpr as TDataExpr).DataPtr[exec], 0, elemSize)
    else begin
       ItemExpr.EvalAsVariant(exec, buf);
       base.AsVariant[index] := buf;
@@ -3190,7 +3187,7 @@ begin
    Expr.EvalAsScriptAssociativeArray(exec, a);
    result := CreateNewDynamicArray(Typ.Typ);
    if a <> nil then
-      Result.ReplaceData((a.GetSelf as TScriptAssociativeArray).CopyKeys);
+      (a.GetSelf as TScriptAssociativeArray).CopyKeys(result);
 end;
 
 end.

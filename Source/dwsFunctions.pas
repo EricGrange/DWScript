@@ -229,7 +229,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsCompilerUtils;
+uses dwsCompilerUtils, dwsDataContext;
 
 var
    vInternalUnit : TInternalUnit;
@@ -275,13 +275,13 @@ function ConvertFuncParams(const funcParams : array of String) : TParamArray;
    var
       v : String;
    begin
-      SetLength(paramRec.DefaultValue, 1);
+      paramRec.DefaultValue := TDataContext.CreateStandalone(1);
       v := Copy(paramRec.ParamName, p+1, MaxInt);
       if v = 'Unassigned' then
-         VarClearSafe(paramRec.DefaultValue[0])
+         paramRec.DefaultValue.SetEmptyVariant(0)
       else if v = 'MaxInt' then
-         paramRec.DefaultValue[0] := High(Int64)
-      else paramRec.DefaultValue[0] := v;
+         paramRec.DefaultValue.AsInteger[0] := High(Int64)
+      else paramRec.DefaultValue.AsString[0] := v;
       paramRec.HasDefaultValue:=True;
       paramRec.ParamName:=Trim(Copy(paramRec.ParamName, 1, p-1));
    end;

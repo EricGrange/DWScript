@@ -1825,7 +1825,7 @@ begin
    prop:=cls.Members.FindSymbol('Prop', cvMagic) as TPropertySymbol;
 
    CheckEquals('String', prop.DefaultSym.Typ.Name);
-   CheckEquals('hello', prop.DefaultSym.Data[0]);
+   CheckEquals('hello', prop.DefaultSym.DataContext.AsString[0]);
 end;
 
 // SimpleStringListIndexOf

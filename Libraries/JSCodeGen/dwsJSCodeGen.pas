@@ -80,7 +80,6 @@ type
 
          procedure WriteDefaultValue(typ : TTypeSymbol; box : Boolean);
          procedure WriteValue(typ : TTypeSymbol; const dataPtr : IDataContext);
-         procedure WriteValueData(typ : TTypeSymbol; const data : TData);
          procedure WriteStringArray(strings : TStrings);
 
          procedure WriteFuncParams(func : TFuncSymbol);
@@ -1732,7 +1731,6 @@ var
    proc : TdwsProcedure;
    oldSelfSymbolName : String;
    constructorSymbol : TMethodSymbol;
-   locData : IDataContext;
 begin
    if cls.Name='' then Exit;
 
@@ -1757,8 +1755,7 @@ begin
             if fieldSym.DefaultValue=nil then
                WriteDefaultValue(fieldSym.Typ, False)
             else begin
-               CreateDataContext(fieldSym.DefaultValue, 0, locData);
-               WriteValue(fieldSym.Typ, locData);
+               WriteValue(fieldSym.Typ, fieldSym.DefaultValue);
             end;
             WriteStatementEnd;
          end;
@@ -1813,8 +1810,7 @@ begin
             if fieldSym.DefaultValue=nil then
                WriteDefaultValue(fieldSym.Typ, False)
             else begin
-               CreateDataContext(fieldSym.DefaultValue, 0, locData);
-               WriteValue(fieldSym.Typ, locData);
+               WriteValue(fieldSym.Typ, fieldSym.DefaultValue);
             end;
 
          end else if (sym is TMethodSymbol) and (TMethodSymbol(sym).Kind<>fkConstructor) then begin
@@ -2111,7 +2107,7 @@ begin
          WriteString('var ');
          WriteSymbolName(sym);
          WriteString(' = ');
-         WriteValueData(sym.Typ, TConstSymbol(sym).Data);
+         WriteValue(sym.Typ, TConstSymbol(sym).DataContext);
          WriteStatementEnd;
       end;
    end;
@@ -2162,7 +2158,6 @@ var
    prop : TPropertySymbol;
    firstField, skipValue : Boolean;
    publishedName : String;
-   locData : IDataContext;
    activeFields : array of TFieldSymbol;
 begin
    if not SmartLink(rec) then Exit;
@@ -2359,8 +2354,7 @@ begin
 
             end else if sym is TClassConstSymbol then begin
 
-               CreateDataContext(TClassConstSymbol(sym).Data, 0, locData);
-               WriteValue(sym.Typ, locData);
+               WriteValue(sym.Typ, TClassConstSymbol(sym).DataContext);
 
             end else Assert(False);
 
@@ -2499,7 +2493,6 @@ var
    sym : TSymbol;
    fld1, fld2 : TFieldSymbol;
    flds : array of TFieldSymbol;
-   locData : IDataContext;
 begin
    SetLength(flds, cls.Members.Count);
    n:=0;
@@ -2532,8 +2525,7 @@ begin
       if fld1.DefaultValue=nil then
          WriteDefaultValue(fld1.Typ, False)
       else begin
-         CreateDataContext(fld1.DefaultValue, 0, locData);
-         WriteValue(fld1.Typ, locData);
+         WriteValue(fld1.Typ, fld1.DefaultValue);
       end;
       WriteStatementEnd;
    end;
@@ -2683,7 +2675,7 @@ begin
          IssueSeparator;
          WriteSymbolName(constSym);
          WriteString(' = ');
-         WriteValueData(constSym.Typ, constSym.Data);
+         WriteValue(constSym.Typ, constSym.DataContext);
 
       end;
    end;
@@ -3172,7 +3164,7 @@ begin
    if (fld1.DefaultValue=nil) and (fld2.DefaultValue=nil) then Exit;
    if (fld1.DefaultValue=nil) or (fld2.DefaultValue=nil) then Exit(False);
 
-   Result:=DWSSameData(fld1.DefaultValue, fld2.DefaultValue, 0, 0, fld1.Typ.Size);
+   Result := fld1.DefaultValue.SameData(fld2.DefaultValue);
 end;
 
 // WriteDefaultValue
@@ -3191,19 +3183,6 @@ end;
 procedure TdwsJSCodeGen.WriteValue(typ : TTypeSymbol; const dataPtr : IDataContext);
 begin
    FCodeGenWriters.WriteValue(typ, dataPtr);
-end;
-
-// WriteValueData
-//
-procedure TdwsJSCodeGen.WriteValueData(typ : TTypeSymbol; const data : TData);
-var
-   dc : TDataContext;
-   idc : IDataContext;
-begin
-   dc:=TDataContext.Create;
-   dc.ReplaceData(data);
-   idc:=dc;
-   WriteValue(typ, idc);
 end;
 
 // WriteVariant
@@ -4445,11 +4424,9 @@ end;
 procedure TJSConstExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TConstExpr;
-   locData : IDataContext;
 begin
-   e:=TConstExpr(expr);
-   codeGen.CreateDataContext(e.Data, 0, locData);
-   TdwsJSCodeGen(codeGen).WriteValue(e.Typ, locData);
+   e := TConstExpr(expr);
+   TdwsJSCodeGen(codeGen).WriteValue(e.Typ, e.DataContext);
 end;
 
 // ------------------
@@ -6711,7 +6688,6 @@ var
    firstField : Boolean;
    sym : TSymbol;
    fieldSym : TFieldSymbol;
-   locData : IDataContext;
    externalName : String;
 begin
    codeGen.WriteBlockBegin('');
@@ -6754,8 +6730,7 @@ begin
       if fieldSym.DefaultExpr<>nil then
          codeGen.CompileNoWrap(fieldSym.DefaultExpr as TTypedExpr)
       else if fieldSym.DefaultValue<>nil then begin
-         codeGen.CreateDataContext(fieldSym.DefaultValue, 0, locData);
-         TdwsJSCodeGen(codeGen).WriteValue(fieldSym.Typ, locData);
+         TdwsJSCodeGen(codeGen).WriteValue(fieldSym.Typ, fieldSym.DefaultValue);
       end else TdwsJSCodeGen(codeGen).WriteDefaultValue(fieldSym.Typ, False);
       codeGen.WriteStringLn('');
    end;
@@ -8752,13 +8727,11 @@ end;
 procedure TJSConvStaticArrayToSetOfExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TConvStaticArrayToSetOfExpr;
-   data : TData;
    dc : IDataContext;
 begin
-   e:=TConvStaticArrayToSetOfExpr(expr);
+   e := TConvStaticArrayToSetOfExpr(expr);
 
-   e.EvalAsTData(nil, data);
-   (codeGen as TdwsJSCodeGen).CreateDataContext(data, 0, dc);
+   e.GetDataPtr(nil, dc);
    (codeGen as TdwsJSCodeGen).WriteValue(e.Typ, dc);
 end;
 

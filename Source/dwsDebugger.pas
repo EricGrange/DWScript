@@ -651,15 +651,13 @@ procedure TdwsSimpleDebugger.NotifyException(exec : TdwsExecution; const exceptO
       info : TProgramInfo;
       progExec : TdwsProgramExecution;
       exceptInfo : IInfo;
-      data : TData;
       dataContext : IDataContext;
    begin
       progExec:=(exec as TdwsProgramExecution);
       info:=progExec.AcquireProgramInfo(nil);
       try
-         SetLength(data, 1);
-         data[0]:=exceptObj;
-         exec.DataContext_Create(data, 0, dataContext);
+         exec.DataContext_CreateEmpty(1, dataContext);
+         dataContext.AsInterface[0] := exceptObj;
          exceptInfo:=TInfoClassObj.Create(info, exceptObj.ClassSym, dataContext);
          FOnNotifyException(exceptInfo);
       finally

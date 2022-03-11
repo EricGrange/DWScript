@@ -183,7 +183,7 @@ type
          constructor Create(mainSymbol : TUnitMainSymbol; const name : String);
          destructor Destroy; override;
 
-         procedure InitData(const data : TData; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
 
          procedure RegisterNameSpaceUnit(unitSymbol : TUnitSymbol);
          function  FindNameSpaceUnit(const name : String) : TUnitSymbol;
@@ -813,9 +813,9 @@ begin
    FNameSpace.Free;
 end;
 
-// InitData
+// InitDataContext
 //
-procedure TUnitSymbol.InitData(const data : TData; offset : Integer);
+procedure TUnitSymbol.InitDataContext(const data : IDataContext; offset : Integer);
 begin
    // nothing
 end;

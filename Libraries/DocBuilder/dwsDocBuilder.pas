@@ -3043,7 +3043,7 @@ end;
 procedure TSymbolUnit.TConstSymbolGetDataEval(info: TProgramInfo;
   ExtObject: TObject);
 begin
-  info.ResultAsVariant := TConstSymbol(ExtObject).Data;
+  info.ResultAsVariant := TConstSymbol(ExtObject).DataContext.AsVariant[0];
 end;
 {$ENDREGION}
 

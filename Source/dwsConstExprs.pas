@@ -36,22 +36,23 @@ type
    // A constant value (like 0, 3.14159, 'Hello' or true)
    TConstExpr = class(TDataExpr)
       protected
-         FData : TData;
+         FDataContext : IDataContext;
 
          function GetIsConstant : Boolean; override;
 
       public
-         constructor Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const Value: Variant); overload;
+         constructor Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const value: Variant); overload;
          constructor Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const initData : TData; addr : Integer); overload;
+         constructor Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const initData : IDataContext; addr : Integer); overload;
          constructor Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol); overload;
-         constructor CreateRef(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const Data: TData);
+         constructor CreateRef(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const initData : IDataContext);
          constructor CreateNull(const scriptPos : TScriptPos; aTyp: TTypeSymbol);
          constructor CreateDefault(const scriptPos : TScriptPos; aTyp: TTypeSymbol);
 
          procedure Orphan(context : TdwsCompilerContext); override;
 
          procedure EvalAsString(exec : TdwsExecution; var result : String); override;
-         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
          procedure EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface); override;
 
@@ -62,9 +63,9 @@ type
          function  SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
-         property Data : TData read FData;
+         property DataContext : IDataContext read FDataContext;
 
-         class function CreateTyped(context : TdwsCompilerContext; Typ: TTypeSymbol; const Data: TData; addr : Integer = 0) : TConstExpr; overload; static;
+         class function CreateTyped(context : TdwsCompilerContext; Typ: TTypeSymbol; const initData : IDataContext; addr : Integer = 0) : TConstExpr; overload; static;
          class function CreateTyped(context : TdwsCompilerContext; Typ: TTypeSymbol; constSymbol : TConstSymbol) : TConstExpr; overload; static;
    end;
 
@@ -75,7 +76,7 @@ type
          constructor Create(const scriptPos : TScriptPos; aTyp : TTypeSymbol);
 
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
-         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj); override;
          procedure EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface); override;
    end;
@@ -184,8 +185,7 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
-         procedure EvalAsTData(exec : TdwsExecution; var result : TData);
-         procedure EvalToTData(exec : TdwsExecution; var result : TData; offset : Integer);
+         procedure EvalToDataContext(exec : TdwsExecution; const destDC : IDataContext; offset : Integer);
          function  EvalAsVarRecArray(exec : TdwsExecution) : TVarRecArrayContainer;
 
          function Optimize(context : TdwsCompilerContext) : TProgramExpr; override;
@@ -208,13 +208,21 @@ uses dwsConvExprs, dwsSpecializationContext, dwsDynamicArrays;
 
 // Create
 //
-constructor TConstExpr.Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const Value: Variant);
+constructor TConstExpr.Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol);
 begin
    inherited Create(scriptPos, aTyp);
-   SetLength(FData, aTyp.Size);
+   if aTyp <> nil then
+      FDataContext := TDataContext.CreateStandalone(aTyp.Size);
+end;
+
+// Create
+//
+constructor TConstExpr.Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const value: Variant);
+begin
+   Create(scriptPos, aTyp);
    case aTyp.Size of
       0 : ;
-      1 : VarCopySafe(FData[0], Value);
+      1 : FDataContext.AsVariant[0] := value;
    else
       Assert(False);
    end;
@@ -226,24 +234,25 @@ constructor TConstExpr.Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol; c
 begin
    Create(scriptPos, aTyp);
    if initData <> nil then
-      DWSCopyData(initData, addr, FData, 0, aTyp.Size);
+      FDataContext.WriteData(initData, addr, aTyp.Size);
 end;
 
 // Create
 //
-constructor TConstExpr.Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol);
+constructor TConstExpr.Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const initData: IDataContext; addr : Integer);
 begin
-   inherited Create(scriptPos, aTyp);
-   if aTyp <> nil then
-      SetLength(FData, aTyp.Size);
+   Create(scriptPos, aTyp);
+   if initData <> nil then begin
+      Assert(initData.DataLength = aTyp.Size);
+      FDataContext.WriteData(0, initData, addr, aTyp.Size);
+   end;
 end;
 
 // CreateRef
 //
-constructor TConstExpr.CreateRef(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const Data: TData);
+constructor TConstExpr.CreateRef(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const initData: IDataContext);
 begin
-   inherited Create(scriptPos, aTyp);
-   FData:=Data;
+   Create(scriptPos, aTyp, initData, 0);
 end;
 
 // CreateNull
@@ -252,10 +261,9 @@ constructor TConstExpr.CreateNull(const scriptPos : TScriptPos; aTyp: TTypeSymbo
 var
    i : Integer;
 begin
-   inherited Create(scriptPos, aTyp);
-   SetLength(FData, aTyp.Size);
-   for i:=0 to aTyp.Size-1 do
-      VarSetNull(FData[i]);
+   Create(scriptPos, aTyp);
+   for i := 0 to aTyp.Size-1 do
+      FDataContext.SetNullVariant(i);
 end;
 
 // CreateDefault
@@ -263,7 +271,7 @@ end;
 constructor TConstExpr.CreateDefault(const scriptPos : TScriptPos; aTyp: TTypeSymbol);
 begin
    Create(scriptPos, aTyp);
-   aTyp.InitData(FData, 0);
+   aTyp.InitDataContext(FDataContext, 0);
 end;
 
 // Orphan
@@ -277,28 +285,28 @@ end;
 //
 procedure TConstExpr.EvalAsString(exec : TdwsExecution; var result : String);
 begin
-   VariantToString(FData[0], Result);
+   FDataContext.EvalAsString(0, result);
 end;
 
 // EvalAsVariant
 //
-procedure TConstExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+procedure TConstExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
-   VarCopySafe(Result, FData[0]);
+   FDataContext.EvalAsVariant(0, result);
 end;
 
 // EvalAsScriptObj
 //
 procedure TConstExpr.EvalAsScriptObj(exec : TdwsExecution; var result : IScriptObj);
 begin
-   result := IScriptObj(IUnknown(FData[0]));
+   FDataContext.EvalAsInterface(0, IInterface(result));
 end;
 
 // EvalAsScriptObjInterface
 //
 procedure TConstExpr.EvalAsScriptObjInterface(exec : TdwsExecution; var result : IScriptObjInterface);
 begin
-   result := IScriptObjInterface(IUnknown(FData[0]));
+   FDataContext.EvalAsInterface(0, IInterface(result));
 end;
 
 // GetIsConstant
@@ -319,8 +327,7 @@ end;
 //
 function TConstExpr.SameValueAs(otherConst : TConstExpr) : Boolean;
 begin
-   Result:=   (Length(FData)=Length(otherConst.FData))
-           and DWSSameData(FData, otherConst.FData, 0, 0, Length(FData));
+   Result := FDataContext.SameData(otherConst.FDataContext);
 end;
 
 // SameDataExpr
@@ -335,25 +342,26 @@ end;
 function TConstExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
 begin
    Result := CreateTyped(CompilerContextFromSpecialization(context),
-                         context.SpecializeType(Typ), Data, 0);
+                         context.SpecializeType(Typ), DataContext, 0);
 end;
 
 // GetDataPtr
 //
 procedure TConstExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   exec.DataContext_Create(FData, 0, Result);
+   result := FDataContext;
 end;
 
 // CreateTyped
 //
-class function TConstExpr.CreateTyped(context : TdwsCompilerContext; Typ: TTypeSymbol; const Data: TData; addr : Integer = 0) : TConstExpr;
+class function TConstExpr.CreateTyped(context : TdwsCompilerContext; Typ: TTypeSymbol;
+                                      const initData : IDataContext; addr : Integer = 0) : TConstExpr;
 begin
-   case Length(Data) of
+   case Typ.Size of
       0 : Result := TConstExpr.CreateNull(cNullPos, Typ);
-      1 : Result := (context.CreateConstExpr(typ, data[addr]) as TConstExpr);
+      1 : Result := (context.CreateConstExpr(typ, initData.AsVariant[addr]) as TConstExpr);
    else
-      Result := TConstExpr.Create(cNullPos, Typ, Data, addr);
+      Result := TConstExpr.Create(cNullPos, Typ, initData, addr);
    end;
 end;
 
@@ -363,8 +371,8 @@ class function TConstExpr.CreateTyped(context : TdwsCompilerContext; Typ: TTypeS
 begin
    Assert(constSymbol<>nil);
    if constSymbol.Typ is TArraySymbol then
-      Result:=TConstArrayExpr.Create(context, cNullPos, constSymbol)
-   else Result:=CreateTyped(context, Typ, constSymbol.Data);
+      Result := TConstArrayExpr.Create(context, cNullPos, constSymbol)
+   else Result := CreateTyped(context, Typ, constSymbol.DataContext);
 end;
 
 // ------------------
@@ -375,11 +383,8 @@ end;
 //
 constructor TConstNilExpr.Create(const scriptPos : TScriptPos; aTyp : TTypeSymbol);
 begin
-   inherited Create(scriptPos, typ);
-   FTyp := aTyp;
-   SetLength(FData, 1);
-   TVarData(FData[0]).VType := varUnknown;
-   TVarData(FData[0]).VUnknown := nil;
+   inherited Create(scriptPos, aTyp);
+   FDataContext.AsInterface[0] := nil;
 end;
 
 // EvalAsInteger
@@ -391,9 +396,9 @@ end;
 
 // EvalAsVariant
 //
-procedure TConstNilExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+procedure TConstNilExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
-   VarCopySafe(Result, FData[0]);
+   FDataContext.EvalAsVariant(0, result);
 end;
 
 // EvalAsScriptObj
@@ -418,12 +423,9 @@ end;
 //
 constructor TConstBooleanExpr.Create(const scriptPos : TScriptPos; aTyp : TTypeSymbol; const aValue : Boolean);
 begin
-   inherited Create(scriptPos, typ);
-   FTyp := aTyp;
+   inherited Create(scriptPos, aTyp);
    FValue := aValue;
-   SetLength(FData, 1);
-   TVarData(FData[0]).VType := varBoolean;
-   TVarData(FData[0]).VBoolean := aValue;
+   FDataContext.AsBoolean[0] := aValue;
 end;
 
 // EvalAsInteger
@@ -451,9 +453,7 @@ begin
    inherited Create(scriptPos, typ);
    FTyp := typ;
    FValue := aValue;
-   SetLength(FData, 1);
-   TVarData(FData[0]).VType := varInt64;
-   TVarData(FData[0]).VInt64 := aValue;
+   FDataContext.AsInteger[0] := aValue;
 end;
 
 // EvalAsInteger
@@ -499,9 +499,7 @@ begin
    inherited Create(scriptPos, typ);
    FTyp := typ;
    FValue := aValue;
-   SetLength(FData, 1);
-   TVarData(FData[0]).VType := varDouble;
-   TVarData(FData[0]).VDouble := aValue;
+   FDataContext.AsFloat[0] := aValue;
 end;
 
 // EvalAsFloat
@@ -527,14 +525,7 @@ begin
    inherited Create(scriptPos, typ);
    FTyp := typ;
    FValue := aValue;
-   SetLength(FData, 1);
-   {$ifdef FPC}
-   TVarData(FData[0]).VType := varString;
-   String(TVarData(FData[0]).VString) := aValue;
-   {$else}
-   TVarData(FData[0]).VType := varUString;
-   String(TVarData(FData[0]).VUString) := aValue;
-   {$endif}
+   FDataContext.AsString[0] := aValue;
 end;
 
 // EvalAsString
@@ -556,7 +547,7 @@ end;
 procedure TConstStringExpr.SetValue(const v : String);
 begin
    FValue := v;
-   FData[0] := FValue;
+   FDataContext.AsString[0] := v;
 end;
 
 // ------------------
@@ -567,8 +558,8 @@ end;
 //
 constructor TConstArrayExpr.Create(context : TdwsCompilerContext; const scriptPos : TScriptPos; symbol : TConstSymbol);
 begin
-   inherited CreateRef(scriptPos, symbol.Typ, symbol.Data);
-   FSymbol:=symbol;
+   inherited CreateRef(scriptPos, symbol.Typ, symbol.DataContext);
+   FSymbol := symbol;
 end;
 
 // ------------------
@@ -666,7 +657,7 @@ end;
 procedure TArrayConstantExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    result := TDataContext.CreateStandalone(Size);
-   EvalToTData(exec, result.AsPData^, 0);
+   EvalToDataContext(exec, result, 0);
 end;
 
 // GetSubExpr
@@ -707,50 +698,38 @@ end;
 // EvalNoResult
 //
 procedure TArrayConstantExpr.EvalNoResult(exec : TdwsExecution);
-var
-   buf : TData;
 begin
-   EvalAsTData(exec, buf);
+   // nothing
 end;
 
 // EvalAsVariant
 //
 procedure TArrayConstantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
-var
-   data : TData;
 begin
-   EvalAsTData(exec, data);
-   if Length(data)>0 then
-      VarCopySafe(Result, data[0])
-   else VarCopySafe(Result, CreateNewDynamicArray(Typ));
+   if FElementExprs.Count = 0 then
+      VarCopySafe(Result, CreateNewDynamicArray(Typ))
+   else TTypedExpr(FElementExprs.List[0]).EvalAsVariant(exec, Result);
 end;
 
-// EvalAsTData
+// EvalToDataContext
 //
-procedure TArrayConstantExpr.EvalAsTData(exec : TdwsExecution; var result : TData);
-begin
-   SetLength(result, Size);
-   Typ.InitData(result, 0);
-   EvalToTData(exec, result, 0);
-end;
-
-// EvalToTData
-//
-procedure TArrayConstantExpr.EvalToTData(exec : TdwsExecution; var result : TData; offset : Integer);
+procedure TArrayConstantExpr.EvalToDataContext(exec : TdwsExecution; const destDC : IDataContext; offset : Integer);
 var
    p, s : Integer;
    expr : TRefCountedObject;
+   v : Variant;
 begin
    p := offset;
    for expr in FElementExprs do begin
       s := TTypedExpr(expr).Typ.Size;
-      if expr.ClassType=TArrayConstantExpr then
-         TArrayConstantExpr(expr).EvalToTData(exec, result, p)
+      if expr.ClassType = TArrayConstantExpr then
+         TArrayConstantExpr(expr).EvalToDataContext(exec, destDC, p)
       else if expr is TConstExpr then
-         DWSCopyData(TConstExpr(expr).Data, 0, result, p, s)
-      else if s = 1 then
-         TTypedExpr(expr).EvalAsVariant(exec, result[p])
-      else (expr as TDataExpr).DataPtr[exec].CopyData(result, p, s);
+         destDC.WriteData(p, TConstExpr(expr).DataContext, 0, s)
+      else if s = 1 then begin
+         TTypedExpr(expr).EvalAsVariant(exec, v);
+         destDC.AsVariant[p] := v;
+      end else destDC.WriteData(p, (expr as TDataExpr).DataPtr[exec], 0, s);
       Inc(p, s);
    end;
 end;

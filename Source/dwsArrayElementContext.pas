@@ -62,14 +62,24 @@ type
          procedure EvalAsString(addr : NativeInt; var result : String);
          procedure EvalAsInterface(addr : NativeInt; var result : IUnknown);
 
+         procedure SetZeroInt64(addr : NativeInt);
+         procedure SetZeroFloat(addr : NativeInt);
+         procedure SetEmptyString(addr : NativeInt);
+         procedure SetEmptyVariant(addr : NativeInt);
+         procedure SetNullVariant(addr : NativeInt);
+         procedure SetNilInterface(addr : NativeInt);
+         procedure SetFalseBoolean(addr : NativeInt);
+
          function IsEmpty(addr : NativeInt) : Boolean;
          function VarType(addr : NativeInt) : TVarType;
 
          procedure CopyData(const destData : TData; destAddr, size : NativeInt);
          procedure WriteData(const src : IDataContext; size : NativeInt); overload;
-         procedure WriteData(destAddr : NativeInt; const src : IDataContext; size : NativeInt); overload;
+         procedure WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt); overload;
          procedure WriteData(const srcData : TData; srcAddr, size : NativeInt); overload;
-         function SameData(addr : NativeInt; const otherData : TData; otherAddr, size : NativeInt) : Boolean;
+         function SameData(addr : NativeInt; const otherData : TData; otherAddr, size : NativeInt) : Boolean; overload;
+         function SameData(addr : NativeInt; const other : IDataContext; size : NativeInt) : Boolean; overload;
+         function SameData(const other : IDataContext) : Boolean; overload;
 
          function  IncInteger(addr : NativeInt; delta : Int64) : Int64;
 
@@ -80,8 +90,15 @@ type
 
    end;
 
-
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+uses Variants;
 
 // ------------------
 // ------------------ TArrayElementDataContext ------------------
@@ -264,6 +281,57 @@ begin
    FArray.EvalAsInterface(ComputeAddr(addr), result);
 end;
 
+// SetZeroInt64
+//
+procedure TArrayElementDataContext.SetZeroInt64(addr : NativeInt);
+begin
+   SetAsInteger(addr, 0);
+end;
+
+// SetZeroFloat
+//
+procedure TArrayElementDataContext.SetZeroFloat(addr : NativeInt);
+begin
+   SetAsFloat(addr, 0);
+end;
+
+// SetEmptyString
+//
+procedure TArrayElementDataContext.SetEmptyString(addr : NativeInt);
+begin
+   SetAsString(addr, '');
+end;
+
+// SetEmptyVariant
+//
+procedure TArrayElementDataContext.SetEmptyVariant(addr : NativeInt);
+var
+   v : Variant;
+begin
+   SetAsVariant(addr, v);
+end;
+
+// SetNullVariant
+//
+procedure TArrayElementDataContext.SetNullVariant(addr : NativeInt);
+begin
+   SetAsVariant(addr, Null);
+end;
+
+// SetNilInterface
+//
+procedure TArrayElementDataContext.SetNilInterface(addr : NativeInt);
+begin
+   SetAsInterface(addr, nil);
+end;
+
+// SetFalseBoolean
+//
+procedure TArrayElementDataContext.SetFalseBoolean(addr : NativeInt);
+begin
+   SetAsBoolean(addr, False);
+end;
+
 // IsEmpty
 //
 function TArrayElementDataContext.IsEmpty(addr : NativeInt) : Boolean;
@@ -304,7 +372,7 @@ end;
 
 // WriteData
 //
-procedure TArrayElementDataContext.WriteData(destAddr : NativeInt; const src : IDataContext; size : NativeInt);
+procedure TArrayElementDataContext.WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt);
 begin
    raise Exception.Create('TArrayElementDataContext.WriteData(2) not implemented');
 end;
@@ -319,6 +387,20 @@ end;
 // SameData
 //
 function TArrayElementDataContext.SameData(addr : NativeInt; const otherData : TData; otherAddr, size : NativeInt) : Boolean;
+begin
+   raise Exception.Create('TArrayElementDataContext.SameData not implemented');
+end;
+
+// SameData
+//
+function TArrayElementDataContext.SameData(addr : NativeInt; const other : IDataContext; size : NativeInt) : Boolean;
+begin
+   raise Exception.Create('TArrayElementDataContext.SameData not implemented');
+end;
+
+// SameData
+//
+function TArrayElementDataContext.SameData(const other : IDataContext) : Boolean;
 begin
    raise Exception.Create('TArrayElementDataContext.SameData not implemented');
 end;

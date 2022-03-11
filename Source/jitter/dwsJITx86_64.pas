@@ -4028,7 +4028,7 @@ begin
 
    end else if expr.BaseExpr is TConstExpr then begin
 
-      absPointer := IntPtr(@TConstExpr(expr.BaseExpr).Data[0]);
+      absPointer := IntPtr(@TConstExpr(expr.BaseExpr).DataContext.AsPData^[0]);
       offset := cVariant_DataOffset;
 
 (*   end else if e.BaseExpr is TByRefParamExpr then begin

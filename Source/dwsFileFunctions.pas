@@ -89,7 +89,7 @@ type
          constructor Create;
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         procedure InitData(const data : TData; offset : Integer); override;
+         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
    end;
 
    TFileOpenFunc = class(TInternalMagicVariantFunction)
@@ -483,11 +483,11 @@ begin
    Result:=(typSym<>nil) and (typSym.UnAliasedType is TBaseFileSymbol);
 end;
 
-// InitData
+// InitDataContext
 //
-procedure TBaseFileSymbol.InitData(const data : TData; offset : Integer);
+procedure TBaseFileSymbol.InitDataContext(const data : IDataContext; offset : Integer);
 begin
-   data[offset]:=IUnknown(nil);
+   data.SetNilInterface(offset);
 end;
 
 // ------------------

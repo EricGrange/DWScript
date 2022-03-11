@@ -27,6 +27,8 @@ uses SysUtils;
 type
    TBase64Alphabet = array [0..63] of Char;
 
+   EdwsEncoding = class (Exception);
+
 function Base58Encode(const data : RawByteString) : String; overload; inline;
 function Base58Encode(data : Pointer; len : Integer) : String; overload;
 function Base58Decode(const data : String) : RawByteString;
@@ -156,7 +158,7 @@ begin
    for i := Length(Result)+1 to Length(data) do begin
       d := Pos(data[i], cBase58)-1;
       if d<0 then
-         raise Exception.Create('Non-base58 character');
+         raise EdwsEncoding.Create('Non-base58 character');
 
       for j := 0 to n do
          bytes[j] := bytes[j]*58;
@@ -265,7 +267,7 @@ begin
       d := vBase32DecodeTable[pIn[i]];
       if d = 255 then begin
          if pIn[i] = '=' then break;
-         raise Exception.CreateFmt('Invalid character (#%d) in Base32', [Ord(pIn[i])]);
+         raise EdwsEncoding.CreateFmt('Invalid character (#%d) in Base32', [Ord(pIn[i])]);
       end;
       c := (c shl 5) or d;
       Inc(b, 5);

@@ -39,8 +39,7 @@ type
          constructor Create(const aName : String);
          function DynamicInitialization : Boolean; override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         procedure InitData(const data : TData; offset : Integer); override;
-         procedure InitVariant(var v : Variant); override;
+         procedure InitDataContext(const data : IDataContext; offset : Integer); override;
    end;
 
    TByteBufferUnaryOpExpr = class (TUnaryOpExpr)
@@ -285,18 +284,11 @@ begin
    Result := typSym.UnAliasedTypeIs(TBaseByteBufferSymbol);
 end;
 
-// InitData
+// InitDataContext
 //
-procedure TBaseByteBufferSymbol.InitData(const data : TData; offset : Integer);
+procedure TBaseByteBufferSymbol.InitDataContext(const data : IDataContext; offset : Integer);
 begin
-   InitVariant(data[offset]);
-end;
-
-// InitVariant
-//
-procedure TBaseByteBufferSymbol.InitVariant(var v : Variant);
-begin
-   VarCopySafe(v, IdwsByteBuffer(TdwsByteBuffer.Create));
+   data.AsInterface[offset] := IdwsByteBuffer(TdwsByteBuffer.Create)
 end;
 
 // ------------------

@@ -148,11 +148,11 @@ type
 
    TTempParam = class(TParamSymbol)
       private
-         FData : TData;
+         FData : IDataContext;
          FIsVarParam : Boolean;
       public
          constructor Create(paramSym : TSymbol);
-         property Data : TData read FData;
+         property Data : IDataContext read FData;
          property IsVarParam : Boolean read FIsVarParam;
    end;
 
@@ -906,8 +906,8 @@ constructor TTempParam.Create(ParamSym: TSymbol);
 begin
   inherited Create(ParamSym.Name, ParamSym.Typ);
   FIsVarParam := (ParamSym.ClassType=TVarParamSymbol);
-  SetLength(FData, Size);
-  ParamSym.Typ.InitData(FData, 0);
+  FData := TDataContext.CreateStandalone(Size);
+  ParamSym.Typ.InitDataContext(FData, 0);
 end;
 
 { TInfoFunc }
@@ -963,7 +963,7 @@ begin
       tp := TTempParam(FTempParams[x]);
       if tp.IsVarParam then begin
          FExec.Stack.Push(tp.Size);
-         FExec.Stack.WriteData(0, FExec.Stack.StackPointer-tp.Size, tp.Size, tp.Data);
+         FExec.Stack.WriteData(FExec.Stack.StackPointer-tp.Size, tp.Data, 0, tp.Size);
       end;
    end;
 
@@ -1025,7 +1025,7 @@ begin
       for x := FTempParams.Count - 1 downto 0 do begin
          tp := TTempParam(FTempParams[x]);
          if tp.IsVarParam then begin
-            FExec.Stack.ReadData(FExec.Stack.Stackpointer - tp.Size, 0, tp.Size, tp.Data);
+            tp.Data.WriteData(FExec.Stack.Data, FExec.Stack.Stackpointer - tp.Size, tp.Size);
             FExec.Stack.Pop(tp.Size);
          end;
       end;
@@ -1098,8 +1098,7 @@ end;
 //
 function TInfoFunc.GetParameter(const s: String): IInfo;
 var
-   tp: TTempParam;
-   locData : IDataContext;
+   tp : TTempParam;
 begin
    if not FUsesTempParams then
       InitTempParams;
@@ -1107,8 +1106,7 @@ begin
    tp := TTempParam(FTempParams.FindSymbol(s, cvMagic));
 
    if Assigned(tp) then begin
-      FProgramInfo.Execution.DataContext_Create(tp.FData, 0, locData);
-      SetChild(Result, FProgramInfo, tp.Typ, locData);
+      SetChild(Result, FProgramInfo, tp.Typ, tp.FData);
    end else raise Exception.CreateFmt(RTE_NoParameterFound, [s, FTypeSym.Caption]);
 end;
 
@@ -1411,15 +1409,24 @@ end;
 // GetData
 //
 function TInfoDynamicArray.GetData : TData;
+var
+   i : Integer;
 begin
-   Result := SelfDynArray.ToData;
+   SetLength(Result, SelfDynArray.ArrayLength * SelfDynArray.ElementSize);
+   for i := 0 to High(Result) do
+      SelfDynArray.EvalAsVariant(i, Result[i]);
 end;
 
 // SetData
 //
 procedure TInfoDynamicArray.SetData(const Value: TData);
+var
+   i : Integer;
 begin
-   SelfDynArray.ReplaceData(value);
+   Assert(Length(value) mod SelfDynArray.ElementSize = 0, 'Array size mismatch');
+   SelfDynArray.ArrayLength := Length(value) div SelfDynArray.ElementSize;
+   for i := 0 to High(value) do
+      SelfDynArray.AsVariant[i] := value[i];
 end;
 
 // GetScriptObj
@@ -1585,7 +1592,6 @@ end;
 function TInfoProperty.GetParameter(const s: String): IInfo;
 var
   tp: TTempParam;
-  locData : IDataContext;
 begin
   if not Assigned(FTempParams) then
     InitTempParams;
@@ -1593,8 +1599,7 @@ begin
   tp := TTempParam(FTempParams.FindSymbol(s, cvMagic));
 
   if Assigned(tp) then begin
-    FProgramInfo.Execution.DataContext_Create(tp.FData, 0, locData);
-    SetChild(Result, FProgramInfo, tp.Typ, locData);
+    SetChild(Result, FProgramInfo, tp.Typ, tp.FData);
   end else
     raise Exception.CreateFmt(RTE_NoIndexFound, [s, FPropSym.Name]);
 end;
@@ -1628,7 +1633,7 @@ begin
     begin
       paramName := FuncParams[x].Name;
       destParam := Func.Parameter[paramName];
-      destParam.Data := TTempParam(FTempParams[x]).Data;
+      destParam.Data := TTempParam(FTempParams[x]).Data.AsPData^;
     end;
 end;
 

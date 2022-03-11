@@ -95,7 +95,6 @@ type
          function ToString : String; override;
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
-         function ToData : TData;
 
          procedure ReplaceData(const newData : TData); override;
 
@@ -117,8 +116,6 @@ type
 
    TScriptDynamicValueArray = class (TScriptDynamicDataArray)
       public
-         procedure ReplaceData(const newData : TData); override;
-
          procedure Swap(i1, i2 : NativeInt); override;
    end;
 
@@ -159,7 +156,6 @@ type
 
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
-         function ToData : TData;
 
          procedure Insert(index : NativeInt);
          procedure Delete(index, count : NativeInt);
@@ -173,8 +169,7 @@ type
          function IndexOfInterface(const item : IUnknown; fromIndex : NativeInt) : NativeInt;
          function IndexOfFuncPtr(const item : Variant; fromIndex : NativeInt) : NativeInt;
 
-         procedure WriteData(const src : TData; srcAddr, size : NativeInt);
-         procedure ReplaceData(const v : TData);
+         procedure WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt); overload;
          procedure Concat(const src : IScriptDynArray; index, size : NativeInt);
 
          procedure Reverse;
@@ -225,7 +220,6 @@ type
 
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
-         function ToData : TData;
 
          procedure Insert(index : NativeInt);
          procedure Delete(index, count : NativeInt);
@@ -239,8 +233,7 @@ type
          function IndexOfInterface(const item : IUnknown; fromIndex : NativeInt) : NativeInt;
          function IndexOfFuncPtr(const item : Variant; fromIndex : NativeInt) : NativeInt;
 
-         procedure WriteData(const src : TData; srcAddr, size : NativeInt);
-         procedure ReplaceData(const v : TData);
+         procedure WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt); overload;
          procedure Concat(const src : IScriptDynArray; index, size : NativeInt);
 
          procedure Reverse;
@@ -290,7 +283,6 @@ type
 
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
-         function ToData : TData;
 
          procedure Insert(index : NativeInt);
          procedure Delete(index, count : NativeInt);
@@ -304,8 +296,7 @@ type
          function IndexOfInterface(const item : IUnknown; fromIndex : NativeInt) : NativeInt;
          function IndexOfFuncPtr(const item : Variant; fromIndex : NativeInt) : NativeInt;
 
-         procedure WriteData(const src : TData; srcAddr, size : NativeInt);
-         procedure ReplaceData(const v : TData);
+         procedure WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt); overload;
          procedure Concat(const src : IScriptDynArray; index, size : NativeInt);
 
          procedure Reverse;
@@ -353,7 +344,6 @@ type
 
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
-         function ToData : TData;
 
          procedure Insert(index : NativeInt);
          procedure Delete(index, count : NativeInt);
@@ -367,8 +357,7 @@ type
          function IndexOfInterface(const item : IUnknown; fromIndex : NativeInt) : NativeInt;
          function IndexOfFuncPtr(const item : Variant; fromIndex : NativeInt) : NativeInt;
 
-         procedure WriteData(const src : TData; srcAddr, size : NativeInt);
-         procedure ReplaceData(const v : TData);
+         procedure WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt); overload;
          procedure Concat(const src : IScriptDynArray; index, size : NativeInt);
 
          procedure Reverse;
@@ -430,7 +419,6 @@ type
 
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
-         function ToData : TData;
 
          procedure Insert(index : NativeInt);
          procedure Delete(index, count : NativeInt);
@@ -444,8 +432,7 @@ type
          function IndexOfInterface(const item : IUnknown; fromIndex : NativeInt) : NativeInt;
          function IndexOfFuncPtr(const item : Variant; fromIndex : NativeInt) : NativeInt;
 
-         procedure WriteData(const src : TData; srcAddr, size : NativeInt);
-         procedure ReplaceData(const v : TData);
+         procedure WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt); overload;
          procedure Concat(const src : IScriptDynArray; index, size : NativeInt);
 
          procedure Reverse;
@@ -581,12 +568,10 @@ end;
 procedure TScriptDynamicDataArray.SetArrayLength(n : NativeInt);
 var
    i : NativeInt;
-   p : PData;
 begin
    SetDataLength(n*ElementSize);
-   p:=AsPData;
-   for i:=FArrayLength to n-1 do
-      FElementTyp.InitData(p^, i*ElementSize);
+   for i := FArrayLength to n-1 do
+      FElementTyp.InitDataContext(Self, i*ElementSize);
    FArrayLength:=n;
 end;
 
@@ -712,8 +697,7 @@ end;
 //
 procedure TScriptDynamicDataArray.ReplaceData(const newData : TData);
 begin
-   inherited;
-   FArrayLength:=System.Length(newData) div ElementSize;
+   Assert(False);
 end;
 
 // AddStrings
@@ -758,7 +742,8 @@ begin
    if n>0 then
       Move(p^[index*ElementSize], p^[(index+1)*ElementSize], n);
    FillChar(p^[index*ElementSize], ElementSize*SizeOf(Variant), 0);
-   FElementTyp.InitData(p^, index*ElementSize);
+
+   FElementTyp.InitDataContext(Self, index*ElementSize);
 end;
 
 // Delete
@@ -886,7 +871,7 @@ end;
 procedure TScriptDynamicDataArray.Copy(src : TScriptDynamicDataArray; index, count : NativeInt);
 begin
    ArrayLength := count;
-   WriteData(src, index*ElementSize, count*ElementSize);
+   WriteData(0, src, index*ElementSize, count*ElementSize);
 end;
 
 // Concat
@@ -905,7 +890,7 @@ begin
       n := ArrayLength;
       FArrayLength := n + size;
       SetDataLength(FArrayLength*ElementSize);
-      srcDyn.CopyData(index*ElementSize, DirectData, n*ElementSize, size*ElementSize);
+      WriteData(n*ElementSize, srcDyn, index*ElementSize, size*ElementSize);
    end;
 end;
 
@@ -949,22 +934,6 @@ begin
       Result[i]:=AsInteger[i];
 end;
 
-// ToData
-//
-function TScriptDynamicDataArray.ToData : TData;
-var
-   i, j, p : NativeInt;
-begin
-   System.SetLength(Result, ArrayLength*ElementSize);
-   p := 0;
-   for i := 0 to ArrayLength-1 do begin
-      for j := 0 to ElementSize-1 do begin
-         EvalAsVariant(i, Result[p]);
-         Inc(p);
-      end;
-   end;
-end;
-
 // GetElementSize
 //
 function TScriptDynamicDataArray.GetElementSize : Integer;
@@ -982,18 +951,6 @@ end;
 // ------------------
 // ------------------ TScriptDynamicValueArray ------------------
 // ------------------
-
-// ReplaceData
-//
-procedure TScriptDynamicValueArray.ReplaceData(const newData : TData);
-var
-   i, n : NativeInt;
-begin
-   n := Length(newData);
-   ArrayLength := n;
-   for i := 0 to n-1 do
-      SetAsVariant(i, newData[i]);
-end;
 
 // Swap
 //
@@ -1104,17 +1061,6 @@ begin
    Result := Copy(FData);
 end;
 
-// ToData
-//
-function TScriptDynamicNativeIntegerArray.ToData : TData;
-var
-   i : NativeInt;
-begin
-   SetLength(Result, FArrayLength);
-   for i := 0 to FArrayLength-1 do
-      VarCopySafe(Result[i], FData[i]);
-end;
-
 // Insert
 //
 procedure TScriptDynamicNativeIntegerArray.Insert(index : NativeInt);
@@ -1210,20 +1156,12 @@ end;
 
 // WriteData
 //
-procedure TScriptDynamicNativeIntegerArray.WriteData(const src : TData; srcAddr, size : NativeInt);
+procedure TScriptDynamicNativeIntegerArray.WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt);
 var
    i : NativeInt;
 begin
    for i := 0 to size-1 do
-      VariantToInt64(src[i + srcAddr], FData[i]);
-end;
-
-// ReplaceData
-//
-procedure TScriptDynamicNativeIntegerArray.ReplaceData(const v : TData);
-begin
-   SetArrayLength(Length(v));
-   WriteData(v, 0, FArrayLength);
+      FData[i + destAddr] := src.AsInteger[i + srcAddr];
 end;
 
 // Concat
@@ -1481,17 +1419,6 @@ begin
       Result[i] := Round(FData[i]);
 end;
 
-// ToData
-//
-function TScriptDynamicNativeFloatArray.ToData : TData;
-var
-   i : NativeInt;
-begin
-   SetLength(Result, FArrayLength);
-   for i := 0 to FArrayLength-1 do
-      VarCopySafe(Result[i], FData[i]);
-end;
-
 // Insert
 //
 procedure TScriptDynamicNativeFloatArray.Insert(index : NativeInt);
@@ -1582,20 +1509,12 @@ end;
 
 // WriteData
 //
-procedure TScriptDynamicNativeFloatArray.WriteData(const src : TData; srcAddr, size : NativeInt);
+procedure TScriptDynamicNativeFloatArray.WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt);
 var
    i : NativeInt;
 begin
    for i := 0 to size-1 do
-      FData[i] := VariantToFloat(src[i + srcAddr]);
-end;
-
-// ReplaceData
-//
-procedure TScriptDynamicNativeFloatArray.ReplaceData(const v : TData);
-begin
-   SetArrayLength(Length(v));
-   WriteData(v, 0, FArrayLength);
+      FData[i + destAddr] := src.AsFloat[i + srcAddr];
 end;
 
 // Concat
@@ -1856,17 +1775,6 @@ begin
       Result[i] := StrToInt64(FData[i]);
 end;
 
-// ToData
-//
-function TScriptDynamicNativeStringArray.ToData : TData;
-var
-   i : NativeInt;
-begin
-   SetLength(Result, FArrayLength);
-   for i := 0 to FArrayLength-1 do
-      VarCopySafe(Result[i], FData[i]);
-end;
-
 // Insert
 //
 procedure TScriptDynamicNativeStringArray.Insert(index : NativeInt);
@@ -1957,20 +1865,12 @@ end;
 
 // WriteData
 //
-procedure TScriptDynamicNativeStringArray.WriteData(const src : TData; srcAddr, size : NativeInt);
+procedure TScriptDynamicNativeStringArray.WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt);
 var
    i : NativeInt;
 begin
    for i := 0 to size-1 do
-      FData[i] := VariantToString(src[i + srcAddr]);
-end;
-
-// ReplaceData
-//
-procedure TScriptDynamicNativeStringArray.ReplaceData(const v : TData);
-begin
-   SetArrayLength(Length(v));
-   WriteData(v, 0, FArrayLength);
+      src.EvalAsString(i + srcAddr, FData[i + destAddr]);
 end;
 
 // Concat
@@ -2227,17 +2127,6 @@ begin
    Assert(False);
 end;
 
-// ToData
-//
-function TScriptDynamicNativeBaseInterfaceArray.ToData : TData;
-var
-   i : NativeInt;
-begin
-   SetLength(Result, FArrayLength);
-   for i := 0 to FArrayLength-1 do
-      VarCopySafe(Result[i], FData[i]);
-end;
-
 // Insert
 //
 procedure TScriptDynamicNativeBaseInterfaceArray.Insert(index : NativeInt);
@@ -2341,20 +2230,12 @@ end;
 
 // WriteData
 //
-procedure TScriptDynamicNativeBaseInterfaceArray.WriteData(const src : TData; srcAddr, size : NativeInt);
+procedure TScriptDynamicNativeBaseInterfaceArray.WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt);
 var
    i : NativeInt;
 begin
    for i := 0 to size-1 do
-      FData[i] := src[i + srcAddr];
-end;
-
-// ReplaceData
-//
-procedure TScriptDynamicNativeBaseInterfaceArray.ReplaceData(const v : TData);
-begin
-   SetArrayLength(Length(v));
-   WriteData(v, 0, FArrayLength);
+       src.EvalAsInterface(i + srcAddr, FData[i + destAddr]);
 end;
 
 // Concat
@@ -2684,17 +2565,6 @@ begin
       Result[i] := Ord(FBits[i]);
 end;
 
-// ToData
-//
-function TScriptDynamicNativeBooleanArray.ToData : TData;
-var
-   i : NativeInt;
-begin
-   SetLength(Result, FArrayLength);
-   for i := 0 to FArrayLength-1 do
-      VarCopySafe(Result[i], FBits[i]);
-end;
-
 // Insert
 //
 procedure TScriptDynamicNativeBooleanArray.Insert(index : NativeInt);
@@ -2801,20 +2671,12 @@ end;
 
 // WriteData
 //
-procedure TScriptDynamicNativeBooleanArray.WriteData(const src : TData; srcAddr, size : NativeInt);
+procedure TScriptDynamicNativeBooleanArray.WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt);
 var
    i : NativeInt;
 begin
    for i := 0 to size-1 do
-      FBits[i] := VariantToBool(src[i + srcAddr]);
-end;
-
-// ReplaceData
-//
-procedure TScriptDynamicNativeBooleanArray.ReplaceData(const v : TData);
-begin
-   SetArrayLength(Length(v));
-   WriteData(v, 0, FArrayLength);
+      FBits[i + destAddr] := src.AsBoolean[i + srcAddr];
 end;
 
 // Concat
