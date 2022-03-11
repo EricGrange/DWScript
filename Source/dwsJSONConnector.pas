@@ -636,8 +636,8 @@ begin
    );
 
    TJSONParseIntegerArrayMethod.Create(
-      table, SYS_JSON_PARSE_INTEGER_ARRAY, ['str', SYS_STRING], 'array of integer',
-      [iffStaticMethod], jsonObject, ''
+      table, SYS_JSON_PARSE_INTEGER_ARRAY, ['str', SYS_STRING, 'nullValue=0', SYS_INTEGER], 'array of integer',
+      [ iffStaticMethod ], jsonObject, ''
    );
    TJSONParseFloatArrayMethod.Create(
       table, SYS_JSON_PARSE_FLOAT_ARRAY, ['str', SYS_STRING], 'array of float',
@@ -1636,7 +1636,7 @@ begin
    tokenizer := TdwsJSONParserState.Create(s);
    values := TSimpleInt64List.Create;
    try
-      tokenizer.ParseIntegerArray(values);
+      tokenizer.ParseIntegerArray(values, args.AsInteger[1]);
 
       newArray := CreateNewDynamicArray((args.Exec as TdwsProgramExecution).CompilerContext.TypInteger);
       VarCopySafe(result, newArray);

@@ -19,3 +19,8 @@ PrintLn(c.Length);
 PrintLn(c[0]);
 PrintLn(c[1]);
 PrintLn(c[2]);
+
+c := JSON.ParseIntegerArray('[1,null,2]');
+PrintLn(JSON.Stringify(c));
+c := JSON.ParseIntegerArray('[1,null,2]', -1);
+PrintLn(JSON.Stringify(c));
