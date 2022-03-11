@@ -242,10 +242,8 @@ end;
 constructor TConstExpr.Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const initData: IDataContext; addr : Integer);
 begin
    Create(scriptPos, aTyp);
-   if initData <> nil then begin
-      Assert(initData.DataLength = aTyp.Size);
+   if initData <> nil then
       FDataContext.WriteData(0, initData, addr, aTyp.Size);
-   end;
 end;
 
 // CreateRef

@@ -74,11 +74,12 @@ type
          function VarType(addr : NativeInt) : TVarType;
 
          procedure CopyData(const destData : TData; destAddr, size : NativeInt);
+
          procedure WriteData(const src : IDataContext; size : NativeInt); overload;
          procedure WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt); overload;
          procedure WriteData(const srcData : TData; srcAddr, size : NativeInt); overload;
-         function SameData(addr : NativeInt; const otherData : TData; otherAddr, size : NativeInt) : Boolean; overload;
-         function SameData(addr : NativeInt; const other : IDataContext; size : NativeInt) : Boolean; overload;
+
+         function SameData(addr : NativeInt; const other : IDataContext; otherAddr, size : NativeInt) : Boolean; overload;
          function SameData(const other : IDataContext) : Boolean; overload;
 
          function  IncInteger(addr : NativeInt; delta : Int64) : Int64;
@@ -386,23 +387,25 @@ end;
 
 // SameData
 //
-function TArrayElementDataContext.SameData(addr : NativeInt; const otherData : TData; otherAddr, size : NativeInt) : Boolean;
+function TArrayElementDataContext.SameData(addr : NativeInt; const other : IDataContext; otherAddr, size : NativeInt) : Boolean;
+var
+   p, i : NativeInt;
+   v1, v2 : Variant;
 begin
-   raise Exception.Create('TArrayElementDataContext.SameData not implemented');
-end;
-
-// SameData
-//
-function TArrayElementDataContext.SameData(addr : NativeInt; const other : IDataContext; size : NativeInt) : Boolean;
-begin
-   raise Exception.Create('TArrayElementDataContext.SameData not implemented');
+   p := ComputeAddr(0);
+   for i := 0 to size-1 do begin
+      FArray.EvalAsVariant(p + i, v1);
+      other.EvalAsVariant(otherAddr + i, v2);
+      if not DWSSameVariant(v1, v2) then Exit(False);
+   end;
+   Result := True;
 end;
 
 // SameData
 //
 function TArrayElementDataContext.SameData(const other : IDataContext) : Boolean;
 begin
-   raise Exception.Create('TArrayElementDataContext.SameData not implemented');
+   Result := (other.DataLength = FElementSize) and SameData(0, other, 0, FElementSize);
 end;
 
 // IncInteger

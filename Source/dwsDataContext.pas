@@ -84,8 +84,7 @@ type
       procedure WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt); overload;
       procedure WriteData(const srcData : TData; srcAddr, size : NativeInt); overload;
 
-      function  SameData(addr : NativeInt; const otherData : TData; otherAddr, size : NativeInt) : Boolean; overload;
-      function  SameData(addr : NativeInt; const other : IDataContext; size : NativeInt) : Boolean; overload;
+      function  SameData(addr : NativeInt; const other : IDataContext; otherAddr, size : NativeInt) : Boolean; overload;
       function  SameData(const other : IDataContext) : Boolean; overload;
 
       function  IncInteger(addr : NativeInt; delta : Int64) : Int64;
@@ -195,8 +194,7 @@ type
 
          procedure MoveData(srcAddr, destAddr, size : NativeInt); inline;
 
-         function  SameData(addr : NativeInt; const otherData : TData; otherAddr, size : NativeInt) : Boolean; overload; inline;
-         function  SameData(addr : NativeInt; const otherData : IDataContext; size : NativeInt) : Boolean; overload; inline;
+         function  SameData(addr : NativeInt; const otherData : IDataContext; otherAddr, size : NativeInt) : Boolean; overload; inline;
          function  SameData(const other : IDataContext) : Boolean; overload;
 
          function IndexOfData(const item : IDataContext; fromIndex, toIndex, itemSize : NativeInt) : NativeInt;
@@ -205,7 +203,6 @@ type
          function IndexOfInteger(const item : Int64; fromIndex : NativeInt) : NativeInt;
          function IndexOfFloat(const item : Double; fromIndex : NativeInt) : NativeInt;
 
-         procedure ReplaceData(const newData : TData); virtual;
          procedure ClearData; virtual;
          procedure SetDataLength(n : NativeInt);
 
@@ -268,8 +265,7 @@ type
          procedure WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt); overload;
          procedure WriteData(const srcData : TData; srcAddr, size : NativeInt); overload;
 
-         function SameData(addr : NativeInt; const otherData : TData; otherAddr, size : NativeInt) : Boolean; overload;
-         function SameData(addr : NativeInt; const other : IDataContext; size : NativeInt) : Boolean; overload;
+         function SameData(addr : NativeInt; const other : IDataContext; otherAddr, size : NativeInt) : Boolean; overload;
          function SameData(const other : IDataContext) : Boolean; overload;
 
          function  IncInteger(addr : NativeInt; delta : Int64) : Int64;
@@ -990,16 +986,9 @@ end;
 
 // SameData
 //
-function TDataContext.SameData(addr : NativeInt; const otherData : TData; otherAddr, size : NativeInt) : Boolean;
+function TDataContext.SameData(addr : NativeInt; const otherData : IDataContext; otherAddr, size : NativeInt) : Boolean;
 begin
-   Result:=DWSSameData(FData, otherData, FAddr+addr, otherAddr, size);
-end;
-
-// SameData
-//
-function TDataContext.SameData(addr : NativeInt; const otherData : IDataContext; size : NativeInt) : Boolean;
-begin
-   Result:=DWSSameData(FData, otherData.AsPData^, FAddr+addr, otherData.Addr, size);
+   Result:=DWSSameData(FData, otherData.AsPData^, FAddr + addr, otherData.Addr + otherAddr, size);
 end;
 
 // SameData
@@ -1009,7 +998,7 @@ var
    n : NativeInt;
 begin
    n := DataLength;
-   Result := (n = other.DataLength) and SameData(0, other, n);
+   Result := (n = other.DataLength) and SameData(0, other, 0, n);
 end;
 
 // IndexOfData
@@ -1017,11 +1006,9 @@ end;
 function TDataContext.IndexOfData(const item : IDataContext; fromIndex, toIndex, itemSize : NativeInt) : NativeInt;
 var
    i : NativeInt;
-   data : PData;
 begin
-   data := AsPData;
    for i:=fromIndex to toIndex do
-      if item.SameData(0, data^, Addr+i*itemSize, itemSize) then
+      if item.SameData(0, Self, i*itemSize, itemSize) then
          Exit(i);
    Result:=-1;
 end;
@@ -1101,13 +1088,6 @@ begin
       end;
    end;
    Result:=-1;
-end;
-
-// ReplaceData
-//
-procedure TDataContext.ReplaceData(const newData : TData);
-begin
-   FData:=newData;
 end;
 
 // ClearData
@@ -1398,21 +1378,11 @@ end;
 
 // SameData
 //
-function TRelativeDataContext.SameData(addr : NativeInt; const otherData : TData; otherAddr, size : NativeInt) : Boolean;
-begin
-   Result:=DWSSameData(FGetPData^, otherData, FAddr+addr, otherAddr, size);
-end;
-
-// SameData
-//
-function TRelativeDataContext.SameData(addr : NativeInt; const other : IDataContext; size : NativeInt) : Boolean;
-var
-   otherAddr : NativeInt;
+function TRelativeDataContext.SameData(addr : NativeInt; const other : IDataContext; otherAddr, size : NativeInt) : Boolean;
 begin
    if other.GetSelf is TRelativeDataContext then
-      otherAddr := TRelativeDataContext(other.GetSelf).FAddr
-   else otherAddr := 0;
-   Result := SameData(addr, other.AsPData^, otherAddr, size);
+      otherAddr := TRelativeDataContext(other.GetSelf).FAddr + otherAddr;
+   Result := DWSSameData(AsPData^, other.AsPData^, FAddr + addr, otherAddr, size);
 end;
 
 // SameData
@@ -1422,7 +1392,7 @@ var
    n : NativeInt;
 begin
    n := DataLength;
-   Result := (n = other.DataLength) and SameData(FAddr, other, n);
+   Result := (n = other.DataLength) and SameData(FAddr, other, 0, n);
 end;
 
 // IncInteger

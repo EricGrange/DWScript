@@ -1077,7 +1077,8 @@ function TStaticArrayExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr
          Result := TConstExpr.Create(ScriptPos, Typ, v);
       end else begin
          dc := DataPtr[exec];
-         Result := TConstExpr.Create(ScriptPos, Typ, dc.AsPData^, dc.Addr);
+//         Result := TConstExpr.Create(ScriptPos, Typ, dc.AsPData^, dc.Addr);
+         Result := TConstExpr.Create(ScriptPos, Typ, dc, 0);
       end;
       Orphan(context);
    end;

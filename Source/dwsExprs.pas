@@ -1651,7 +1651,6 @@ type
          procedure GetDataAsString(exec : TdwsExecution; index : TTypedExpr; var result : String); overload;
          procedure GetDataAsString(exec : TdwsExecution; const keyValue : Variant; var result : String); overload;
 
-         //procedure ReplaceData(exec : TdwsExecution; index : Int64; value : TDataExpr);
          procedure ReplaceValue(exec : TdwsExecution; index, value : TTypedExpr); overload;
          procedure ReplaceValue(exec : TdwsExecution; const key, value : Variant); overload;
 
@@ -1751,7 +1750,6 @@ begin
    inherited Create;
    FScriptObj := scriptObj;
    DirectData := scriptObj.DirectData;
-//   ReplaceData(scriptObj.AsPData^);
 end;
 
 // GetClassSym
@@ -4877,11 +4875,9 @@ end;
 procedure TPushOperator.ExecuteTempAddr(exec : TdwsExecution);
 var
    vpd : IDataContext;
-   data : TData;
 begin
-   SetLength(data, 1);
-   FArgExpr.EvalAsVariant(exec, data[0]);
-   exec.DataContext_Create(data, 0, vpd);
+   exec.DataContext_CreateEmpty(1, vpd);
+   FArgExpr.EvalAsVariantToDataContext(exec, vpd, 0);
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, vpd);
 end;
 
@@ -4891,13 +4887,10 @@ procedure TPushOperator.ExecuteTempData(exec : TdwsExecution);
 var
    vpd : IDataContext;
    dataExpr : TDataExpr;
-   data : TData;
 begin
-   SetLength(data, FArgExpr.Typ.Size);
+   dataExpr := TDataExpr(FArgExpr);
 
-   dataExpr:=TDataExpr(FArgExpr);
-   exec.DataContext_Create(data, 0, vpd);
-
+   exec.DataContext_CreateEmpty(FArgExpr.Typ.Size, vpd);
    vpd.WriteData(dataExpr.DataPtr[exec], FArgExpr.Typ.Size);
 
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, vpd);
@@ -5723,12 +5716,9 @@ end;
 // GetDataPtr
 //
 procedure TAnonymousFuncRefExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
-var
-   data : TData;
 begin
-   SetLength(data, 1);
-   EvalAsVariant(exec, data[0]);
-   exec.DataContext_Create(data, 0, result);
+   exec.DataContext_CreateEmpty(1, result);
+   EvalAsVariantToDataContext(exec, result, 0);
 end;
 
 // ------------------
@@ -7525,7 +7515,7 @@ begin
    repeat
       if FHashCodes[index]=0 then
          Exit(False)
-      else if item.SameData(0, FKeys.AsPData^, index*FKeySize, FKeySize) then
+      else if item.SameData(0, FKeys, index*FKeySize, FKeySize) then
          Exit(True);
       index:=(index+1) and (FCapacity-1);
    until False;

@@ -96,8 +96,6 @@ type
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
 
-         procedure ReplaceData(const newData : TData); override;
-
          procedure AddStrings(sl : TStrings);
 
          function HashCode(addr : NativeInt; size : NativeInt) : Cardinal; virtual;
@@ -691,13 +689,6 @@ begin
       AsVariant[index] := v;
       Result := True;
    end else Result := False;
-end;
-
-// ReplaceData
-//
-procedure TScriptDynamicDataArray.ReplaceData(const newData : TData);
-begin
-   Assert(False);
 end;
 
 // AddStrings
