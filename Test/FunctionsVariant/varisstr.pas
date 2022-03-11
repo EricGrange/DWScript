@@ -1,3 +1,7 @@
+﻿{$ifdef JS_CODEGEN}
+uses JS_JSON;
+{$endif}
+
 procedure Test(v : Variant);
 begin
    Print(v);

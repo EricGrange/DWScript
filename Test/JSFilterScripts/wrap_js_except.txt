@@ -1,1 +1,1 @@
-TypeError, Cannot read property 'bug' of null
+TypeError, Cannot read properties of null (reading 'bug')
