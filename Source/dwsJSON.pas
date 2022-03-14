@@ -981,7 +981,9 @@ end;
 //
 function JSONStringify(const f : Double) : String;
 begin
-   FastFloatToStr(f, Result, vJSONFormatSettings);
+   if IsNan(f) then
+      Result := 'null'
+   else FastFloatToStr(f, Result, vJSONFormatSettings);
 end;
 
 // WriteJavaScriptString
@@ -2991,6 +2993,8 @@ begin
    BeforeWriteImmediate;
    if n = 0 then
       FStream.WriteString('0')
+   else if IsNan(n) then
+      FStream.WriteString('null')
    else begin
       nExt := n;
       nc := FloatToText(buffer, nExt, fvExtended, ffGeneral, 15, 0, vJSONFormatSettings);
