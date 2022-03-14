@@ -1,1 +1,1 @@
-Syntax Error: There is no accessible member with name "Create" [line: 17, column: 26]
+Syntax Error: There is no accessible member with name "Create" for type class of TExternalClass [line: 17, column: 26]

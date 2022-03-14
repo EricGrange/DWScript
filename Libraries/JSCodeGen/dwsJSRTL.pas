@@ -174,7 +174,7 @@ uses dwsJSON, dwsXPlatform, SynZip;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..312{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..314{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -680,6 +680,8 @@ const
        Code : 'function Clamp(v,mi,ma) { return v<mi ? mi : v>ma ? ma : v }'),
       (Name : 'ClampInt';
        Code : 'function ClampInt(v,mi,ma) { return v<mi ? mi : v>ma ? ma : v }'),
+      (Name : 'CompareLocaleStr';
+       Code : 'function CompareLocaleStr(a,b,l,c) { return a.localeCompare(b, l, {usage:"sort",sensitivity:c?"variant":"accent"}) }'),
       (Name : 'CompareStr';
        Code : 'function CompareStr(a,b) { if (a<b) return -1; else return (a==b)?0:1 }'),
       (Name : 'CompareText';
@@ -1239,6 +1241,8 @@ const
        Code : 'function TryStrToInt(s,b,v) { var i=parseInt(s,b), r=isFinite(i); if (r) { v.v=i } return r }'),
       (Name : 'UnixTime';
        Code : 'function UnixTime() { return Math.trunc(Date.now()*1e-3) }'),
+      (Name : 'UnixTimeMSec';
+       Code : 'function UnixTimeMSec() { return Date.now() }'),
       (Name : 'UnixTimeToDateTime';
        Code : 'function UnixTimeToDateTime(t) { return t/86400+25569 }'),
       (Name : 'Unsigned32';
@@ -1604,6 +1608,7 @@ begin
    FMagicCodeGens.AddObject('SubString', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(', '(', 1, ')', '-1,', '(', 2, ')', '-2)']));
    FMagicCodeGens.AddObject('Tan', TdwsExprGenericCodeGen.Create(['Math.tan', '(', 0, ')']));
    FMagicCodeGens.AddObject('TypeOf$_TClass_', TdwsExprGenericCodeGen.Create([0]));
+   FMagicCodeGens.AddObject('UnixTimeMSec', TdwsExprGenericCodeGen.Create(['Date.now()']));
    FMagicCodeGens.AddObject('Unsigned32', TdwsExprGenericCodeGen.Create(['(', 0, '>>>0', ')']));
    FMagicCodeGens.AddObject('UpperCase', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.toUpperCase()']));
    FMagicCodeGens.AddObject('VarIsArray', TdwsExprGenericCodeGen.Create(['Array.isArray', '(', 0 , ')']));

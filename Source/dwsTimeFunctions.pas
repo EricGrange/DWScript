@@ -58,7 +58,7 @@ type
   TUnixTimeFunc = class(TInternalMagicIntFunction)
     function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
-  TUnixTimeMsecFunc = class(TInternalMagicIntFunction)
+  TUnixTimeMSecFunc = class(TInternalMagicIntFunction)
     function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
   end;
 
@@ -466,9 +466,9 @@ begin
    Result:=Round(t*86400)-Int64(25569)*86400;
 end;
 
-{ TUnixTimeMsecFunc }
+{ TUnixTimeMSecFunc }
 
-function TUnixTimeMsecFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
+function TUnixTimeMSecFunc.DoEvalAsInteger(const args : TExprBaseListExec) : Int64;
 var
    t : TDateTime;
 begin
@@ -1007,8 +1007,8 @@ initialization
 
    RegisterInternalIntFunction(TUnixTimeFunc, 'UnixTime', []);
    RegisterInternalIntFunction(TUnixTimeFunc, 'DateTimeToUnixTime', ['utc', cDateTime]);
-   RegisterInternalIntFunction(TUnixTimeMsecFunc, 'UnixTimeMsec', []);
-   RegisterInternalIntFunction(TUnixTimeMsecFunc, 'DateTimeToUnixTimeMsec', ['utc', cDateTime]);
+   RegisterInternalIntFunction(TUnixTimeMSecFunc, 'UnixTimeMSec', []);
+   RegisterInternalIntFunction(TUnixTimeMSecFunc, 'DateTimeToUnixTimeMSec', ['utc', cDateTime]);
    RegisterInternalFloatFunction(TUnixTimeToDateTimeFunc, 'UnixTimeToDateTime', ['ut', SYS_FLOAT]);
 
    RegisterInternalIntFunction(TLocalDateTimeToUnixTimeFunc, 'LocalDateTimeToUnixTime', ['dt', cDateTime]);

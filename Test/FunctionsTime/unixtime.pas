@@ -11,7 +11,7 @@ PrintLn(DateTimeToUnixTime(t)-ut <= 1);
 
 var i := 0;
 repeat 
-	var tMsec := UnixTimeMsec;
+	var tMsec := UnixTimeMSec;
 	t := UnixTime*1000; 
 	if t <> tMsec then begin
 		if Abs(t-tMsec) > 1500 then
