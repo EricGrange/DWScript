@@ -147,6 +147,8 @@ type
          procedure EvalAsString(exec : TdwsExecution; var result : String); override;
          procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
 
+         procedure AssignValue(exec : TdwsExecution; const value: Variant); override;
+
          function  SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
 
          procedure CreateArrayElementDataContext(exec : TdwsExecution; var result : IDataContext);
@@ -154,11 +156,16 @@ type
 
    // Array expressions: x[index0] for dynamic arrays where BaseExpr is a TObjectVarExpr
    TDynamicArrayVarExpr = class sealed (TDynamicArrayExpr)
+      protected
+         function ObtainArrayAndIndex(exec : TdwsExecution; var pIDyn : PIUnknown) : NativeInt;
+
       public
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
          procedure EvalAsString(exec : TdwsExecution; var result : String); override;
+
+         procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
 
          function  SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr; override;
    end;
@@ -1340,6 +1347,22 @@ begin
    dyn.EvalAsInterface(index, result);
 end;
 
+// AssignValue
+//
+procedure TDynamicArrayExpr.AssignValue(exec : TdwsExecution; const Value: Variant);
+var
+   dyn : IScriptDynArray;
+   index : Integer;
+begin
+   FBaseExpr.EvalAsScriptDynArray(exec, dyn);
+
+   index := IndexExpr.EvalAsInteger(exec);
+   if not dyn.BoundsCheckPassed(index) then
+      BoundsCheckFailed(exec, index);
+
+   dyn.AsVariant[index] := value;
+end;
+
 // SpecializeDataExpr
 //
 function TDynamicArrayExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
@@ -1372,12 +1395,25 @@ end;
 // ------------------ TDynamicArrayVarExpr ------------------
 // ------------------
 
+// ObtainArrayAndIndex
+//
+function TDynamicArrayVarExpr.ObtainArrayAndIndex(exec : TdwsExecution; var pIDyn : PIUnknown) : NativeInt;
+begin
+   pIDyn := exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FBaseExpr).StackAddr);
+
+   Result := IndexExpr.EvalAsInteger(exec);
+   if not IScriptDynArray(pIDyn^).BoundsCheckPassed(Result) then
+      BoundsCheckFailed(exec, Result);
+
+   Result := Result * FElementSize;
+end;
+
 // EvalAsInteger
 //
 function TDynamicArrayVarExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 var
    pIDyn : PIUnknown;
-   index : Integer;
+   index : NativeInt;
 begin
    pIDyn := exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FBaseExpr).StackAddr);
 
@@ -1393,7 +1429,7 @@ end;
 function TDynamicArrayVarExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
    pIDyn : PIUnknown;
-   index : Integer;
+   index : NativeInt;
 begin
    pIDyn := exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FBaseExpr).StackAddr);
 
@@ -1409,7 +1445,7 @@ end;
 function TDynamicArrayVarExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 var
    pIDyn : PIUnknown;
-   index : Integer;
+   index : NativeInt;
 begin
    pIDyn := exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FBaseExpr).StackAddr);
 
@@ -1425,7 +1461,7 @@ end;
 procedure TDynamicArrayVarExpr.EvalAsString(exec : TdwsExecution; var result : String);
 var
    pIDyn : PIUnknown;
-   index : Integer;
+   index : NativeInt;
 begin
    pIDyn := exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FBaseExpr).StackAddr);
 
@@ -1434,6 +1470,17 @@ begin
       BoundsCheckFailed(exec, index);
 
    IScriptDynArray(pIDyn^).EvalAsString(index*FElementSize, result);
+end;
+
+// AssignValueAsInteger
+//
+procedure TDynamicArrayVarExpr.AssignValueAsInteger(exec : TdwsExecution; const value : Int64);
+var
+   pIDyn : PIUnknown;
+   index : NativeInt;
+begin
+   index := ObtainArrayAndIndex(exec, pIDyn);
+   IScriptDynArray(pIDyn^).AsInteger[index] := value;
 end;
 
 // SpecializeDataExpr
