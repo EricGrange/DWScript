@@ -45,6 +45,7 @@ type
          procedure FuncFloatEval(Info: TProgramInfo);
          procedure FuncPointEval(Info: TProgramInfo);
          procedure FuncPointVarParamEval(Info: TProgramInfo);
+         procedure FuncPointVarParamCallerEval(Info: TProgramInfo);
          procedure FuncPointArrayEval(Info: TProgramInfo);
          procedure FuncPointArraySwapXYEval(Info: TProgramInfo);
          procedure FuncCallbackFuncNameEval(Info: TProgramInfo);
@@ -114,6 +115,7 @@ type
          procedure CallFunc;
          procedure CallFuncVarParam;
          procedure CallFuncPointVarParam;
+         procedure CallFuncPointVarParamCaller;
          procedure CallFuncPointArray;
          procedure PredefinedVar;
          procedure VarDateTime;
@@ -411,6 +413,17 @@ begin
    param.DataType:='TPoint';
    param.IsVarParam:=True;
    func.OnEval:=FuncPointVarParamEval;
+
+   func:=FUnit.Functions.Add;
+   func.Name:='FuncPointVarParamCaller';
+   param:=func.Parameters.Add;
+   param.Name:='pIn';
+   param.DataType:='TPoint';
+   param:=func.Parameters.Add;
+   param.Name:='pOut';
+   param.DataType:='TPoint';
+   param.IsVarParam:=True;
+   func.OnEval:=FuncPointVarParamCallerEval;
 
    func:=FUnit.Functions.Add;
    func.Name:='FuncPointArray';
@@ -896,6 +909,19 @@ begin
    pOut:=Info.Vars['pOut'];
    pOut.Member['x'].Value:=pIn.Member['x'].Value+1;
    pOut.Member['y'].Value:=pIn.Member['y'].Value+2;
+end;
+
+// FuncPointVarParamCallerEval
+//
+procedure TdwsUnitTestsContext.FuncPointVarParamCallerEval(Info: TProgramInfo);
+var
+   f : IInfo;
+begin
+   f := Info.Func['FuncPointVarParam'];
+   f.Parameter['pIn'].Data := Info.Vars['pIn'].Data;
+   f.Parameter['pOut'].Data := Info.Vars['pOut'].Data;
+   f.Call;
+   Info.Vars['pOut'].Data := f.Parameter['pOut'].Data;
 end;
 
 // FuncPointArrayEval
@@ -1823,6 +1849,26 @@ begin
    prog:=FCompiler.Compile( 'var p1, p2 : TPoint;'
                            +'p1.X:=10; p1.Y:=20;'
                            +'FuncPointVarParam(p1, p2);'
+                           +'PrintLn(p2.X);'
+                           +'PrintLn(p2.Y);');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.Execute;
+
+   CheckEquals('11'#13#10'22'#13#10, exec.Result.ToString);
+end;
+
+// CallFuncPointVarParamCaller
+//
+procedure TdwsUnitTests.CallFuncPointVarParamCaller;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'var p1, p2 : TPoint;'
+                           +'p1.X:=10; p1.Y:=20;'
+                           +'FuncPointVarParamCaller(p1, p2);'
                            +'PrintLn(p2.X);'
                            +'PrintLn(p2.Y);');
 
