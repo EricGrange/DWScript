@@ -3850,11 +3850,8 @@ end;
 // EvalAsScriptDynArray
 //
 procedure TProgramExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
-var
-   intf : IUnknown;
 begin
-   EvalAsInterface(exec, intf);
-   Result := intf as IScriptDynArray;
+   EvalAsInterface(exec, IUnknown(result));
 end;
 
 // EvalAsScriptAssociativeArray

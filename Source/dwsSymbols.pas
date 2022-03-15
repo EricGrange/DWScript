@@ -2277,6 +2277,7 @@ type
 
       function HashCode(addr : NativeInt; size : NativeInt) : Cardinal;
    end;
+   PIScriptDynArray = ^IScriptDynArray;
 
    // IScriptAssociativeArray
    IScriptAssociativeArray = interface (IDataContext)

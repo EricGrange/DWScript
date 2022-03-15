@@ -157,13 +157,15 @@ type
    // Array expressions: x[index0] for dynamic arrays where BaseExpr is a TObjectVarExpr
    TDynamicArrayVarExpr = class sealed (TDynamicArrayExpr)
       protected
-         function ObtainArrayAndIndex(exec : TdwsExecution; var pIDyn : PIUnknown) : NativeInt;
+         function ObtainArrayAndIndex(exec : TdwsExecution; var pIDyn : PIScriptDynArray) : NativeInt;
 
       public
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          procedure EvalAsString(exec : TdwsExecution; var result : String); override;
+         procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
 
          procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
 
@@ -1397,9 +1399,9 @@ end;
 
 // ObtainArrayAndIndex
 //
-function TDynamicArrayVarExpr.ObtainArrayAndIndex(exec : TdwsExecution; var pIDyn : PIUnknown) : NativeInt;
+function TDynamicArrayVarExpr.ObtainArrayAndIndex(exec : TdwsExecution; var pIDyn : PIScriptDynArray) : NativeInt;
 begin
-   pIDyn := exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FBaseExpr).StackAddr);
+   pIDyn := PIScriptDynArray(exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FBaseExpr).StackAddr));
 
    Result := IndexExpr.EvalAsInteger(exec);
    if not IScriptDynArray(pIDyn^).BoundsCheckPassed(Result) then
@@ -1412,75 +1414,77 @@ end;
 //
 function TDynamicArrayVarExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 var
-   pIDyn : PIUnknown;
+   pIDyn : PIScriptDynArray;
    index : NativeInt;
 begin
-   pIDyn := exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FBaseExpr).StackAddr);
-
-   index := IndexExpr.EvalAsInteger(exec);
-   if not IScriptDynArray(pIDyn^).BoundsCheckPassed(index) then
-      BoundsCheckFailed(exec, index);
-
-   Result := IScriptDynArray(pIDyn^).AsInteger[index*FElementSize];
+   index := ObtainArrayAndIndex(exec, pIDyn);
+   Result := pIDyn^.AsInteger[index*FElementSize];
 end;
 
 // EvalAsBoolean
 //
 function TDynamicArrayVarExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
-   pIDyn : PIUnknown;
+   pIDyn : PIScriptDynArray;
    index : NativeInt;
 begin
-   pIDyn := exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FBaseExpr).StackAddr);
-
-   index := IndexExpr.EvalAsInteger(exec);
-   if not IScriptDynArray(pIDyn^).BoundsCheckPassed(index) then
-      BoundsCheckFailed(exec, index);
-
-   Result := IScriptDynArray(pIDyn^).AsBoolean[index*FElementSize];
+   index := ObtainArrayAndIndex(exec, pIDyn);
+   Result := pIDyn^.AsBoolean[index*FElementSize];
 end;
 
 // EvalAsFloat
 //
 function TDynamicArrayVarExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 var
-   pIDyn : PIUnknown;
+   pIDyn : PIScriptDynArray;
    index : NativeInt;
 begin
-   pIDyn := exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FBaseExpr).StackAddr);
+   index := ObtainArrayAndIndex(exec, pIDyn);
+   Result := pIDyn^.AsFloat[index*FElementSize];
+end;
 
-   index := IndexExpr.EvalAsInteger(exec);
-   if not IScriptDynArray(pIDyn^).BoundsCheckPassed(index) then
-      BoundsCheckFailed(exec, index);
-
-   Result := IScriptDynArray(pIDyn^).AsFloat[index*FElementSize];
+// EvalAsVariant
+//
+procedure TDynamicArrayVarExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+var
+   pIDyn : PIScriptDynArray;
+   index : NativeInt;
+begin
+   index := ObtainArrayAndIndex(exec, pIDyn);
+   pIDyn^.EvalAsVariant(index*FElementSize, result);
 end;
 
 // EvalAsString
 //
 procedure TDynamicArrayVarExpr.EvalAsString(exec : TdwsExecution; var result : String);
 var
-   pIDyn : PIUnknown;
+   pIDyn : PIScriptDynArray;
    index : NativeInt;
 begin
-   pIDyn := exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FBaseExpr).StackAddr);
+   index := ObtainArrayAndIndex(exec, pIDyn);
+   pIDyn^.EvalAsString(index*FElementSize, result);
+end;
 
-   index := IndexExpr.EvalAsInteger(exec);
-   if not IScriptDynArray(pIDyn^).BoundsCheckPassed(index) then
-      BoundsCheckFailed(exec, index);
-
-   IScriptDynArray(pIDyn^).EvalAsString(index*FElementSize, result);
+// EvalAsInterface
+//
+procedure TDynamicArrayVarExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
+var
+   pIDyn : PIScriptDynArray;
+   index : NativeInt;
+begin
+   index := ObtainArrayAndIndex(exec, pIDyn);
+   pIDyn^.EvalAsInterface(index*FElementSize, result);
 end;
 
 // AssignValueAsInteger
 //
 procedure TDynamicArrayVarExpr.AssignValueAsInteger(exec : TdwsExecution; const value : Int64);
 var
-   pIDyn : PIUnknown;
+   pIDyn : PIScriptDynArray;
    index : NativeInt;
 begin
    index := ObtainArrayAndIndex(exec, pIDyn);
-   IScriptDynArray(pIDyn^).AsInteger[index] := value;
+   pIDyn^.AsInteger[index] := value;
 end;
 
 // SpecializeDataExpr

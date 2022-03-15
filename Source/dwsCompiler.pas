@@ -759,6 +759,7 @@ type
          function CreateArrayHigh(const aScriptPos : TScriptPos; baseExpr : TProgramExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
          function CreateArrayLength(const aScriptPos : TScriptPos; baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
          function CreateArrayExpr(const scriptPos : TScriptPos; baseExpr : TDataExpr; indexExpr : TTypedExpr) : TArrayExpr;
+         function CreateDynamicArrayExpr(const scriptPos : TScriptPos; baseExpr : TDataExpr; indexExpr : TTypedExpr) : TDynamicArrayExpr;
 
          function EnsureLoopVarExpr(const loopPos : TScriptPos;
                                     const loopVarName : String; const loopVarNamePos : TScriptPos;
@@ -5717,9 +5718,8 @@ begin
 
             if FTok.Test(ttCOMMA) then begin
 
-               newBaseExpr:=TDynamicArrayExpr.Create(FTok.HotPos, baseExpr, indexExpr,
-                                                     TDynamicArraySymbol(baseType));
-               indexExpr:=nil;
+               newBaseExpr := CreateDynamicArrayExpr(FTok.HotPos, baseExpr, indexExpr);
+               indexExpr := nil;
 
             end else if FTok.TestDelete(ttARIGHT) then begin
 
@@ -5735,14 +5735,8 @@ begin
                   Result := CreateDynamicArraySetExpr(FCompilerContext, FTok.HotPos, baseExpr, indexExpr, valueExpr);
                   indexExpr := nil;
                end else begin
-                  if baseExpr is TObjectVarExpr then begin
-                     Result:=TDynamicArrayVarExpr.Create(FTok.HotPos, baseExpr, indexExpr,
-                                                         TDynamicArraySymbol(baseType));
-                  end else begin
-                     Result:=TDynamicArrayExpr.Create(FTok.HotPos, baseExpr, indexExpr,
-                                                      TDynamicArraySymbol(baseType));
-                  end;
-                  indexExpr:=nil;
+                  Result := CreateDynamicArrayExpr(FTok.HotPos, baseExpr, indexExpr);
+                  indexExpr := nil;
                end;
                Exit;
 
@@ -13581,11 +13575,23 @@ begin
 
    end else begin
 
-      Assert(baseType.ClassType=TDynamicArraySymbol);
+      Result := CreateDynamicArrayExpr(scriptPos, baseExpr, indexExpr);
 
-      Result:=TDynamicArrayExpr.Create(scriptPos, baseExpr, indexExpr,
-                                       TDynamicArraySymbol(baseType));
+   end;
+end;
 
+// CreateDynamicArrayExpr
+//
+function TdwsCompiler.CreateDynamicArrayExpr(const scriptPos : TScriptPos; baseExpr : TDataExpr; indexExpr : TTypedExpr) : TDynamicArrayExpr;
+var
+   baseType : TDynamicArraySymbol;
+begin
+   baseType := baseExpr.Typ as TDynamicArraySymbol;
+
+   if baseExpr is TObjectVarExpr then begin
+      Result := TDynamicArrayVarExpr.Create(FTok.HotPos, baseExpr, indexExpr, baseType);
+   end else begin
+      Result := TDynamicArrayExpr.Create(FTok.HotPos, baseExpr, indexExpr, baseType);
    end;
 end;
 

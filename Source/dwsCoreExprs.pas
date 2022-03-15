@@ -385,11 +385,13 @@ type
 
          procedure EvalAsString(exec : TdwsExecution; var result : String); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
-         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
-         function EvalAsFloat(exec : TdwsExecution) : Double; override;
-         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+         function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
+         function  EvalAsFloat(exec : TdwsExecution) : Double; override;
+         function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
          procedure EvalAsInterface(exec : TdwsExecution; var result : IUnknown); override;
+         procedure EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray); override;
+         procedure EvalAsScriptAssociativeArray(exec : TdwsExecution; var result : IScriptAssociativeArray); override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
@@ -3075,6 +3077,20 @@ end;
 // EvalAsInterface
 //
 procedure TFieldExpr.EvalAsInterface(exec : TdwsExecution; var result : IUnknown);
+begin
+   GetScriptObj(exec).EvalAsInterface(FieldSym.Offset, PIUnknown(@Result)^);
+end;
+
+// EvalAsScriptDynArray
+//
+procedure TFieldExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
+begin
+   GetScriptObj(exec).EvalAsInterface(FieldSym.Offset, PIUnknown(@Result)^);
+end;
+
+// EvalAsScriptAssociativeArray
+//
+procedure TFieldExpr.EvalAsScriptAssociativeArray(exec : TdwsExecution; var result : IScriptAssociativeArray);
 begin
    GetScriptObj(exec).EvalAsInterface(FieldSym.Offset, PIUnknown(@Result)^);
 end;
