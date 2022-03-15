@@ -77,7 +77,6 @@ type
 
          procedure WriteData(const src : IDataContext; size : NativeInt); overload;
          procedure WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt); overload;
-         procedure WriteData(const srcData : TData; srcAddr, size : NativeInt); overload;
 
          function SameData(addr : NativeInt; const other : IDataContext; otherAddr, size : NativeInt) : Boolean; overload;
          function SameData(const other : IDataContext) : Boolean; overload;
@@ -376,13 +375,6 @@ end;
 procedure TArrayElementDataContext.WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt);
 begin
    raise Exception.Create('TArrayElementDataContext.WriteData(2) not implemented');
-end;
-
-// WriteData
-//
-procedure TArrayElementDataContext.WriteData(const srcData : TData; srcAddr, size : NativeInt);
-begin
-   raise Exception.Create('TArrayElementDataContext.WriteData(3) not implemented');
 end;
 
 // SameData

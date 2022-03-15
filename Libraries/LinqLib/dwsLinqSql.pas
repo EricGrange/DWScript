@@ -358,7 +358,7 @@ begin
          paramList.Add(':a' + intToStr(i));
          dyn.EvalAsVariant(i, v);
          params.AddElementExpr(cNullPos, prog.Root.CompilerContext,
-                               TConstExpr.Create(cNullPos, prog.Root.CompilerContext.TypVariant, v));
+                               TConstExpr.CreateValue(cNullPos, prog.Root.CompilerContext.TypVariant, v));
       end;
       result := StringReplace(query, param, format('(%s)', [paramList.CommaText]), []);
    finally

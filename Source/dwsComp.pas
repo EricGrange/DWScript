@@ -5197,8 +5197,11 @@ begin
 end;
 
 procedure TReadVarFunc.SetValue(const data : TData; offset : Integer);
+var
+   i : Integer;
 begin
-   FData.WriteData(data, offset, FTyp.Size);
+   for i := 0 to FTyp.Size-1 do
+      FData.AsVariant[i] := data[offset + i];
 end;
 
 { TWriteVarFunc }

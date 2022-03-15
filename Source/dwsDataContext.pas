@@ -82,7 +82,6 @@ type
 
       procedure WriteData(const src : IDataContext; size : NativeInt); overload;
       procedure WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt); overload;
-      procedure WriteData(const srcData : TData; srcAddr, size : NativeInt); overload;
 
       function  SameData(addr : NativeInt; const other : IDataContext; otherAddr, size : NativeInt) : Boolean; overload;
       function  SameData(const other : IDataContext) : Boolean; overload;
@@ -190,7 +189,6 @@ type
 
          procedure WriteData(const src : IDataContext; size : NativeInt); overload; inline;
          procedure WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt); overload; inline;
-         procedure WriteData(const srcData : TData; srcAddr, size : NativeInt); overload; inline;
 
          procedure MoveData(srcAddr, destAddr, size : NativeInt); inline;
 
@@ -263,7 +261,6 @@ type
 
          procedure WriteData(const src : IDataContext; size : NativeInt); overload;
          procedure WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt); overload;
-         procedure WriteData(const srcData : TData; srcAddr, size : NativeInt); overload;
 
          function SameData(addr : NativeInt; const other : IDataContext; otherAddr, size : NativeInt) : Boolean; overload;
          function SameData(const other : IDataContext) : Boolean; overload;
@@ -970,13 +967,6 @@ begin
    end;
 end;
 
-// WriteData
-//
-procedure TDataContext.WriteData(const srcData : TData; srcAddr, size : NativeInt);
-begin
-   DWSCopyData(srcData, srcAddr, FData, FAddr, size);
-end;
-
 // MoveData
 //
 procedure TDataContext.MoveData(srcAddr, destAddr, size : NativeInt);
@@ -1367,13 +1357,6 @@ end;
 procedure TRelativeDataContext.WriteData(destAddr : NativeInt; const src : IDataContext; srcAddr, size : NativeInt);
 begin
    DWSCopyData(src.AsPData^, src.Addr + srcAddr, FGetPData^, FAddr+destAddr, size);
-end;
-
-// WriteData
-//
-procedure TRelativeDataContext.WriteData(const srcData : TData; srcAddr, size : NativeInt);
-begin
-   DWSCopyData(srcData, srcAddr, FGetPData^, FAddr, size);
 end;
 
 // SameData

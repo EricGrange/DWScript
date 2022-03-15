@@ -2073,7 +2073,8 @@ end;
 //
 function TIntVarExpr.EvalAsPInteger(exec : TdwsExecution) : PInt64;
 begin
-   Result:=exec.Stack.PointerToIntValue(exec.Stack.BasePointer+FStackAddr);
+//   Result:=exec.Stack.PointerToIntValue(exec.Stack.BasePointer+FStackAddr);
+   Result:=exec.Stack.PointerToIntValue_BaseRelative(FStackAddr);
 end;
 
 // ------------------
@@ -2227,14 +2228,14 @@ end;
 
 function TBoolVarExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
-   Result:=exec.Stack.ReadBoolValue(exec.Stack.BasePointer + FStackAddr);
+   Result:=exec.Stack.ReadBoolValue_BaseRelative(FStackAddr);
 end;
 
 // EvalAsInteger
 //
 function TBoolVarExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
-   Result:=Int64(exec.Stack.ReadBoolValue(exec.Stack.BasePointer + FStackAddr));
+   Result := Ord(exec.Stack.ReadBoolValue_BaseRelative(FStackAddr));
 end;
 
 // ------------------

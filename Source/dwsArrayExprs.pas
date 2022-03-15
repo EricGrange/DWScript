@@ -1105,11 +1105,10 @@ function TStaticArrayExpr.Optimize(context : TdwsCompilerContext) : TProgramExpr
    begin
       if Typ.Size=1 then begin
          EvalAsVariant(exec, v);
-         Result := TConstExpr.Create(ScriptPos, Typ, v);
+         Result := TConstExpr.CreateValue(ScriptPos, Typ, v);
       end else begin
          dc := DataPtr[exec];
-//         Result := TConstExpr.Create(ScriptPos, Typ, dc.AsPData^, dc.Addr);
-         Result := TConstExpr.Create(ScriptPos, Typ, dc, 0);
+         Result := TConstExpr.CreateData(ScriptPos, Typ, dc);
       end;
       Orphan(context);
    end;

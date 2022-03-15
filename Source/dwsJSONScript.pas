@@ -444,7 +444,7 @@ begin
 
       progExec := (exec as TdwsProgramExecution);
       methExpr := nil;
-      selfExpr := TConstExpr.Create(cNullPos, classSym, IUnknown(obj));
+      selfExpr := TConstExpr.CreateValue(cNullPos, classSym, IUnknown(obj));
       try
          methExpr := CreateMethodExpr(
             progExec.CompilerContext, stringifyMeth,

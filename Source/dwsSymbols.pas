@@ -8825,12 +8825,9 @@ end;
 
 // DataContext_CreateEmpty
 //
-procedure TdwsExecution.DataContext_CreateEmpty(size : Integer; var Result : IDataContext);
-var
-   data : TData;
+procedure TdwsExecution.DataContext_CreateEmpty(size : Integer; var result : IDataContext);
 begin
-   SetLength(data, size);
-   Result:=FStack.CreateDataContext(data, 0);
+   result := FStack.CreateEmpty(size);
 end;
 
 // DataContext_CreateValue

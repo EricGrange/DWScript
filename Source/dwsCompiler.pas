@@ -1088,7 +1088,7 @@ function TStandardSymbolFactory.ReadInitExpr(expecting : TTypeSymbol = nil) : TT
    function ReadConstRecordInitExpr(recSym : TRecordSymbol) : TTypedExpr;
    begin
       // isolate because of the temporary dynamic array
-      Result := TConstExpr.Create(cNullPos, expecting, FCompiler.ReadConstRecord(recSym), 0);
+      Result := TConstExpr.CreateData(cNullPos, expecting, FCompiler.ReadConstRecord(recSym));
    end;
 
 begin
@@ -1327,7 +1327,7 @@ function TdwsCompiler.CreateTypedDefault(typ : TTypeSymbol) : TConstExpr;
    begin
       data := TDataContext.CreateStandalone(typ.Size);
       typ.InitDataContext(data, 0);
-      Result := TConstExpr.Create(cNullPos, typ, data, 0);
+      Result := TConstExpr.CreateData(cNullPos, typ, data);
    end;
 
 begin
@@ -2888,7 +2888,7 @@ begin
             initData := TDataContext.CreateStandalone(sym.Typ.Size);
             sym.Typ.InitDataContext(initData, 0);
 
-            constExpr := TConstExpr.Create(scriptPos, sym.Typ, initData, 0);
+            constExpr := TConstExpr.CreateData(scriptPos, sym.Typ, initData);
             assignExpr := TAssignConstDataToVarExpr.Create(FCompilerContext, scriptPos, varExpr, constExpr);
          end;
          CurrentProg.InitExpr.AddStatement(assignExpr);
@@ -5117,7 +5117,7 @@ begin
 
    end else begin
 
-      constExpr := TConstExpr.Create(FTok.HotPos, baseType.MetaSymbol, Int64(baseType));
+      constExpr := TConstExpr.CreateValue(FTok.HotPos, baseType.MetaSymbol, Int64(baseType));
       Result:=ReadSymbol(constExpr, IsWrite, expecting);
 
    end;
@@ -5129,7 +5129,7 @@ function TdwsCompiler.ReadInterfaceSymbolName(baseType : TInterfaceSymbol; isWri
 var
    constExpr : TTypedExpr;
 begin
-   constExpr := TConstExpr.Create(cNullPos, baseType, Int64(baseType));
+   constExpr := TConstExpr.CreateValue(cNullPos, baseType, Int64(baseType));
    Result := ReadSymbol(constExpr, IsWrite, expecting);
 end;
 
@@ -5139,7 +5139,7 @@ function TdwsCompiler.ReadRecordSymbolName(baseType : TRecordSymbol; isWrite : B
 var
    constExpr : TTypedExpr;
 begin
-   constExpr := TConstExpr.Create(cNullPos, baseType.MetaSymbol, Int64(baseType));
+   constExpr := TConstExpr.CreateValue(cNullPos, baseType.MetaSymbol, Int64(baseType));
    Result:=ReadSymbol(constExpr, IsWrite, expecting);
 end;
 
@@ -6964,7 +6964,7 @@ begin
       else if progMeth.IsStatic then begin
          structSym:=progMeth.StructSymbol;
          Result:=GetMethodExpr(methodSym,
-                               TConstExpr.Create(FTok.HotPos, structSym.MetaSymbol, Int64(structSym)),
+                               TConstExpr.CreateValue(FTok.HotPos, structSym.MetaSymbol, Int64(structSym)),
                                rkClassOfRef, FTok.HotPos, options);
       end else if progMeth.SelfSym is TConstByRefParamSymbol then begin
          Result:=GetMethodExpr(methodSym,
@@ -6980,7 +6980,7 @@ begin
    end else begin
       structSym:=methodSym.StructSymbol;
       Result:=GetMethodExpr(methodSym,
-                            TConstExpr.Create(FTok.HotPos, structSym.MetaSymbol, Int64(structSym)),
+                            TConstExpr.CreateValue(FTok.HotPos, structSym.MetaSymbol, Int64(structSym)),
                             rkClassOfRef, FTok.HotPos, [cfoForceStatic]);
    end;
 
@@ -8708,7 +8708,7 @@ begin
       end;
 
       if sym is TClassSymbol then
-         baseExpr := TConstExpr.Create(hotPos, classSym.MetaSymbol, Int64(classSym))
+         baseExpr := TConstExpr.CreateValue(hotPos, classSym.MetaSymbol, Int64(classSym))
       else baseExpr := TVarExpr.CreateTyped(FCompilerContext, hotPos, TDataSymbol(sym));
    end;
 
@@ -8717,7 +8717,7 @@ begin
    if classSym.IsStatic then begin
       OrphanAndNil(baseExpr);
       FMsgs.AddCompilerErrorFmt(hotPos, CPE_ClassIsStaticNoInstantiation, [classSym.Name]);
-      Result:=TConstExpr.Create(cNullPos, classSym, 0);
+      Result:=TConstExpr.CreateValue(cNullPos, classSym, 0);
       Exit;
    end;
    if (restrictTo<>nil) and not classSym.IsOfType(restrictTo) then
@@ -11517,7 +11517,7 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
 
       if Result = nil then begin
          // error was already reported
-         Result := TBogusConstExpr.Create(cNullPos, FCompilerContext.TypNil, cNilIntf);
+         Result := TBogusConstExpr.CreateValue(cNullPos, FCompilerContext.TypNil, cNilIntf);
       end else if (Result.Typ=nil) or (Result.Typ.AsFuncSymbol=nil) then begin
          if (expecting = FCompilerContext.TypAnyFunc) or (Result is TConstExpr) then
             FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
@@ -11525,7 +11525,7 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
             ReportIncompatibleAt(hotPos, Result);
          // keep compiling
          OrphanAndNil(Result);
-         Result := TBogusConstExpr.Create(cNullPos, FCompilerContext.TypNil, cNilIntf);
+         Result := TBogusConstExpr.CreateValue(cNullPos, FCompilerContext.TypNil, cNilIntf);
       end;
    end;
 
@@ -13832,7 +13832,7 @@ function TdwsCompiler.ReadSpecialFunction(const namePos : TScriptPos; specialKin
       argTyp.InitDataContext(data, 0);
       if argTyp is TBaseSymbol then
          Result := FCompilerContext.CreateConstExpr(argTyp, data[0])
-      else Result := TConstExpr.Create(namePos, argTyp, data);
+      else Result := TConstExpr.CreateData(namePos, argTyp, data);
    end;
 
 var
@@ -14320,7 +14320,7 @@ function TdwsCompiler.ReadTypeExpr(const namePos : TScriptPos; typeSym : TTypeSy
 
    function CreateClassSymbolExpr(typeSym : TTypeSymbol) : TConstExpr;
    begin
-      Result:=TConstExpr.Create(namePos, typeSym, Int64(TClassOfSymbol(typeSym).TypClassSymbol));
+      Result:=TConstExpr.CreateValue(namePos, typeSym, Int64(TClassOfSymbol(typeSym).TypClassSymbol));
    end;
 
 var
@@ -14528,7 +14528,7 @@ begin
                      if expr<>nil then begin
                         if expr.Typ is TStructuredTypeSymbol then
                            expr:=TObjToClassTypeExpr.Create(FCompilerContext, namePos, expr)
-                     end else expr:=TConstExpr.Create(namePos, meta, Int64(bestHelper.ForType));
+                     end else expr:=TConstExpr.CreateValue(namePos, meta, Int64(bestHelper.ForType));
                   end else begin
                      OrphanAndNil(expr);
                   end;
@@ -14577,7 +14577,7 @@ begin
    if progMeth<>nil then begin
       if progMeth.IsStatic then begin
          structSym:=progMeth.StructSymbol;
-         selfExpr:=TConstExpr.Create(namePos, structSym.MetaSymbol, Int64(structSym));
+         selfExpr:=TConstExpr.CreateValue(namePos, structSym.MetaSymbol, Int64(structSym));
       end else if progMeth.SelfSym is TConstByRefParamSymbol then
          selfExpr:=GetConstParamExpr(namePos, TConstByRefParamSymbol(progMeth.SelfSym))
       else if progMeth.SelfSym=nil then

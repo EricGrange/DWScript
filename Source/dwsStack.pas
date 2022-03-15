@@ -100,10 +100,10 @@ type
          function  ReadFloatValue(sourceAddr : Integer) : Double; //inline;
          function  ReadFloatValue_BaseRelative(sourceAddr : Integer) : Double; inline;
          procedure ReadStrValue(sourceAddr : Integer; var Result : String);
-         function  ReadBoolValue(sourceAddr : Integer): Boolean;
+         function  ReadBoolValue_BaseRelative(addr : Integer): Boolean;
          procedure ReadInterfaceValue(sourceAddr : Integer; var Result : IUnknown);
 
-         function  PointerToIntValue(addr : Integer) : PInt64;
+         function  PointerToIntValue_BaseRelative(addr : Integer) : PInt64;
          function  PointerToFloatValue_BaseRelative(addr : Integer) : PDouble;
          function  PointerToStringValue_BaseRelative(addr : Integer) : PString;// inline;
          function  PointerToInterfaceValue_BaseRelative(addr : Integer) : PIUnknown;
@@ -453,16 +453,16 @@ begin
    {$endif}
 end;
 
-// ReadBoolValue
+// ReadBoolValue_BaseRelative
 //
-function TStackMixIn.ReadBoolValue(sourceAddr : Integer): Boolean;
+function TStackMixIn.ReadBoolValue_BaseRelative(addr : Integer) : Boolean;
 var
    varData : PVarData;
 begin
-   varData := @Data[sourceAddr];
-   if varData.VType=varBoolean then
+   varData := GetBaseDataP(addr);
+   if varData.VType = varBoolean then
       Result:=varData.VBoolean
-   else Result:=VariantToBool(PVariant(varData)^);
+   else Result := VariantToBool(PVariant(varData)^);
 end;
 
 // ReadInterfaceValue
@@ -477,13 +477,13 @@ begin
    else Result:=PVariant(varData)^;
 end;
 
-// PointerToIntValue
+// PointerToIntValue_BaseRelative
 //
-function TStackMixIn.PointerToIntValue(addr : Integer) : PInt64;
+function TStackMixIn.PointerToIntValue_BaseRelative(addr : Integer) : PInt64;
 var
    varData : PVarData;
 begin
-   varData:=@Data[addr];
+   varData := GetBaseDataP(addr);
    Assert(varData.VType=varInt64);
    Result:=@varData.VInt64;
 end;

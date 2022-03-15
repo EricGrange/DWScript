@@ -2440,7 +2440,7 @@ begin
    try
       destroySym := CompilerContext.TypDefaultDestructor;
       expr := TDestructorVirtualExpr.Create(CompilerContext, cNullPos, destroySym,
-                                            TConstExpr.Create(cNullPos, ScriptObj.ClassSym, scriptObj));
+                                            TConstExpr.CreateValue(cNullPos, ScriptObj.ClassSym, scriptObj));
 
       caller:=CallStackLastExpr;
       if caller<>nil then begin
@@ -4559,6 +4559,7 @@ function TFuncExprBase.Optimize(context : TdwsCompilerContext) : TProgramExpr;
 var
    buf : Variant;
    prog : TdwsProgram;
+   resultDC : IDataContext;
 begin
    Result:=Self;
    if IsConstant then begin
@@ -4571,8 +4572,8 @@ begin
          end else begin
             context.Execution.Stack.Push(prog.DataSize);
             try
-               EvalAsVariant(context.Execution, buf);
-               Result:=TConstExpr.Create(ScriptPos, typ, context.Execution.Stack.Data, FResultAddr);
+               GetDataPtr(context.Execution, resultDC);
+               Result:=TConstExpr.CreateData(ScriptPos, typ, resultDC);
             finally
                context.Execution.Stack.Pop(prog.DataSize);
             end;
@@ -6034,7 +6035,7 @@ var
 begin
    if IsConstant then begin
       EvalAsVariant(context.Execution, v);
-      Result := TConstExpr.Create(ScriptPos, context.TypVariant, v);
+      Result := TConstExpr.CreateValue(ScriptPos, context.TypVariant, v);
       Orphan(context);
    end else Result:=Self;
 end;
@@ -6482,13 +6483,10 @@ procedure TProgramInfo.GetSymbolInfo(sym : TSymbol; var info : IInfo);
 
    procedure GetTypeSymbolInfo(sym : TSymbol; var Result : IInfo);
    var
-      dat : TData;
       locData : IDataContext;
    begin
       if sym.BaseType is TClassSymbol then begin
-         SetLength(dat, 1);
-         VarClearSafe(dat[0]);
-         Execution.DataContext_Create(dat, 0, locData);
+         Execution.DataContext_CreateEmpty(1, locData);
          Result := TInfoClassObj.Create(Self, sym, locData);
       end else Result:=nil;
    end;

@@ -41,13 +41,10 @@ type
          function GetIsConstant : Boolean; override;
 
       public
-         constructor Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const value: Variant); overload;
-         constructor Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const initData : TData; addr : Integer); overload;
-         constructor Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const initData : IDataContext; addr : Integer); overload;
-         constructor Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol); overload;
-         constructor CreateRef(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const initData : IDataContext);
+         constructor Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol);
+         constructor CreateValue(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const value: Variant);
+         constructor CreateData(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const initData : IDataContext);
          constructor CreateNull(const scriptPos : TScriptPos; aTyp: TTypeSymbol);
-         constructor CreateDefault(const scriptPos : TScriptPos; aTyp: TTypeSymbol);
 
          procedure Orphan(context : TdwsCompilerContext); override;
 
@@ -65,7 +62,7 @@ type
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
          property DataContext : IDataContext read FDataContext;
 
-         class function CreateTyped(context : TdwsCompilerContext; Typ: TTypeSymbol; const initData : IDataContext; addr : Integer = 0) : TConstExpr; overload; static;
+         class function CreateTyped(context : TdwsCompilerContext; Typ: TTypeSymbol; const initData : IDataContext) : TConstExpr; overload; static;
          class function CreateTyped(context : TdwsCompilerContext; Typ: TTypeSymbol; constSymbol : TConstSymbol) : TConstExpr; overload; static;
    end;
 
@@ -215,9 +212,9 @@ begin
       FDataContext := TDataContext.CreateStandalone(aTyp.Size);
 end;
 
-// Create
+// CreateValue
 //
-constructor TConstExpr.Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const value: Variant);
+constructor TConstExpr.CreateValue(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const value: Variant);
 begin
    Create(scriptPos, aTyp);
    case aTyp.Size of
@@ -228,29 +225,13 @@ begin
    end;
 end;
 
-// Create
+// CreateDC
 //
-constructor TConstExpr.Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const initData: TData; addr : Integer);
+constructor TConstExpr.CreateData(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const initData: IDataContext);
 begin
    Create(scriptPos, aTyp);
    if initData <> nil then
-      FDataContext.WriteData(initData, addr, aTyp.Size);
-end;
-
-// Create
-//
-constructor TConstExpr.Create(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const initData: IDataContext; addr : Integer);
-begin
-   Create(scriptPos, aTyp);
-   if initData <> nil then
-      FDataContext.WriteData(0, initData, addr, aTyp.Size);
-end;
-
-// CreateRef
-//
-constructor TConstExpr.CreateRef(const scriptPos : TScriptPos; aTyp: TTypeSymbol; const initData: IDataContext);
-begin
-   Create(scriptPos, aTyp, initData, 0);
+      FDataContext.WriteData(0, initData, 0, aTyp.Size);
 end;
 
 // CreateNull
@@ -262,14 +243,6 @@ begin
    Create(scriptPos, aTyp);
    for i := 0 to aTyp.Size-1 do
       FDataContext.SetNullVariant(i);
-end;
-
-// CreateDefault
-//
-constructor TConstExpr.CreateDefault(const scriptPos : TScriptPos; aTyp: TTypeSymbol);
-begin
-   Create(scriptPos, aTyp);
-   aTyp.InitDataContext(FDataContext, 0);
 end;
 
 // Orphan
@@ -340,7 +313,7 @@ end;
 function TConstExpr.SpecializeDataExpr(const context : ISpecializationContext) : TDataExpr;
 begin
    Result := CreateTyped(CompilerContextFromSpecialization(context),
-                         context.SpecializeType(Typ), DataContext, 0);
+                         context.SpecializeType(Typ), DataContext);
 end;
 
 // GetDataPtr
@@ -353,13 +326,13 @@ end;
 // CreateTyped
 //
 class function TConstExpr.CreateTyped(context : TdwsCompilerContext; Typ: TTypeSymbol;
-                                      const initData : IDataContext; addr : Integer = 0) : TConstExpr;
+                                      const initData : IDataContext) : TConstExpr;
 begin
    case Typ.Size of
       0 : Result := TConstExpr.CreateNull(cNullPos, Typ);
-      1 : Result := (context.CreateConstExpr(typ, initData.AsVariant[addr]) as TConstExpr);
+      1 : Result := (context.CreateConstExpr(typ, initData.AsVariant[0]) as TConstExpr);
    else
-      Result := TConstExpr.Create(cNullPos, Typ, initData, addr);
+      Result := TConstExpr.CreateData(cNullPos, Typ, initData);
    end;
 end;
 
@@ -556,7 +529,7 @@ end;
 //
 constructor TConstArrayExpr.Create(context : TdwsCompilerContext; const scriptPos : TScriptPos; symbol : TConstSymbol);
 begin
-   inherited CreateRef(scriptPos, symbol.Typ, symbol.DataContext);
+   inherited CreateData(scriptPos, symbol.Typ, symbol.DataContext);
    FSymbol := symbol;
 end;
 

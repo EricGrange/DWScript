@@ -817,7 +817,7 @@ var
    data : IDataContext;
 begin
    GetDataPtr(exec, data);
-   Result := TConstExpr.Create(ScriptPos, Typ, data, 0);
+   Result := TConstExpr.CreateData(ScriptPos, Typ, data);
 end;
 
 // GetDataPtr
