@@ -50,9 +50,9 @@ type
 
          class function DynamicArrayAdd(context : TdwsCompilerContext; baseExpr : TTypedExpr;
                                         const namePos : TScriptPos;
-                                        argList : TTypedExprList; const argPosArray : TScriptPosArray) : TArrayAddExpr; overload; static;
+                                        argList : TTypedExprList; const argPosArray : TScriptPosArray) : TArrayPseudoMethodExpr; overload; static;
          class function DynamicArrayAdd(context : TdwsCompilerContext; baseExpr : TTypedExpr;
-                                        const scriptPos : TScriptPos; argExpr : TTypedExpr) : TArrayAddExpr; overload; static;
+                                        const scriptPos : TScriptPos; argExpr : TTypedExpr) : TArrayPseudoMethodExpr; overload; static;
 
          class function ArrayConcat(context : TdwsCompilerContext; const hotPos : TScriptPos;
                                     left, right : TTypedExpr) : TArrayConcatExpr; static;
@@ -879,27 +879,41 @@ end;
 class function CompilerUtils.DynamicArrayAdd(
       context : TdwsCompilerContext; baseExpr : TTypedExpr;
       const namePos : TScriptPos;
-      argList : TTypedExprList; const argPosArray : TScriptPosArray) : TArrayAddExpr;
+      argList : TTypedExprList; const argPosArray : TScriptPosArray) : TArrayPseudoMethodExpr;
 var
    i : Integer;
+   arrayRawSym : TSymbol;
    arraySym : TDynamicArraySymbol;
 begin
-   arraySym:=(baseExpr.Typ.UnAliasedType as TDynamicArraySymbol);
-   for i:=0 to argList.Count-1 do begin
-      if    (argList[i].Typ=nil)
-         or not (   arraySym.Typ.IsCompatible(argList[i].Typ)
-                 or arraySym.IsCompatible(argList[i].Typ)
-                 or (    (argList[i].Typ is TStaticArraySymbol)
-                     and (   arraySym.Typ.IsCompatible(argList[i].Typ.Typ)
-                          or (argList[i].Typ.Size=0)))) then begin
-         argList[i]:=WrapWithImplicitConversion(context, argList[i], arraySym.Typ, argPosArray[i],
-                                                CPE_IncompatibleParameterTypes);
-         Break;
-      end else if argList[i].ClassType=TArrayConstantExpr then begin
-         TArrayConstantExpr(argList[i]).Prepare(context, arraySym.Typ);
+   arrayRawSym := baseExpr.Typ.UnAliasedType;
+   if not (arrayRawSym is TDynamicArraySymbol) then begin
+      // keep compiling
+      Result := TArrayAddExpr.Create(namePos, baseExpr, argList);
+   end else begin
+      arraySym :=  TDynamicArraySymbol(arrayRawSym);
+      if     (argList.Count = 1) and (arraySym.Typ.Size = 1) and (baseExpr is TObjectVarExpr)
+         and (arraySym.Typ.IsCompatible(argList[0].Typ)) then begin
+
+         Result := TArrayAddValueExpr.Create(namePos, TObjectVarExpr(baseExpr), argList[0]);
+
+      end else begin
+         for i:=0 to argList.Count-1 do begin
+            if    (argList[i].Typ=nil)
+               or not (   arraySym.Typ.IsCompatible(argList[i].Typ)
+                       or arraySym.IsCompatible(argList[i].Typ)
+                       or (    (argList[i].Typ is TStaticArraySymbol)
+                           and (   arraySym.Typ.IsCompatible(argList[i].Typ.Typ)
+                                or (argList[i].Typ.Size=0)))) then begin
+               argList[i]:=WrapWithImplicitConversion(context, argList[i], arraySym.Typ, argPosArray[i],
+                                                      CPE_IncompatibleParameterTypes);
+               Break;
+            end else if argList[i].ClassType=TArrayConstantExpr then begin
+               TArrayConstantExpr(argList[i]).Prepare(context, arraySym.Typ);
+            end;
+         end;
+         Result:=TArrayAddExpr.Create(namePos, baseExpr, argList);
       end;
    end;
-   Result:=TArrayAddExpr.Create(namePos, baseExpr, argList);
    argList.Clear;
 end;
 
@@ -946,7 +960,7 @@ end;
 // DynamicArrayAdd
 //
 class function CompilerUtils.DynamicArrayAdd(context : TdwsCompilerContext; baseExpr : TTypedExpr;
-      const scriptPos : TScriptPos; argExpr : TTypedExpr) : TArrayAddExpr;
+      const scriptPos : TScriptPos; argExpr : TTypedExpr) : TArrayPseudoMethodExpr;
 var
    argList : TTypedExprList;
    argPosArray : TScriptPosArray;

@@ -8041,9 +8041,8 @@ begin
                         TArrayConstantExpr(argList[i]).Prepare(FCompilerContext, arraySym.Typ);
                      end;
                   end;
-                  Result:=TArrayAddExpr.Create(namePos, baseExpr, argList);
-                  argList.Clear;
-               end else Result:=TArrayAddExpr.Create(namePos, baseExpr, argList);
+               end;
+               Result := CompilerUtils.DynamicArrayAdd(CompilerContext, baseExpr, namePos, argList, argPosArray);
             end;
 
             amkPop : begin

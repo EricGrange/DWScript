@@ -67,6 +67,7 @@ type
          procedure SetAsInterface(index : NativeInt; const v : IUnknown);
          procedure EvalAsInterface(index : NativeInt; var result : IUnknown);
 
+         procedure AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
          function SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
 
       public
@@ -75,7 +76,6 @@ type
 
          function BoundsCheckPassed(index : NativeInt) : Boolean; inline;
 
-         procedure AddValue(const v : Variant);
          procedure Delete(index, count : NativeInt);
          procedure Insert(index : NativeInt);
          procedure Swap(i1, i2 : NativeInt); virtual;
@@ -162,7 +162,6 @@ type
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
 
-         procedure AddValue(const v : Variant);
          procedure Add(v : Int64);
          procedure Insert(index : NativeInt);
          procedure Delete(index, count : NativeInt);
@@ -203,6 +202,7 @@ type
          procedure SetAsInterface(index : NativeInt; const v : IUnknown);
          procedure EvalAsInterface(index : NativeInt; var result : IUnknown);
 
+         procedure AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
          function SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
 
          function IsEmpty(addr : NativeInt) : Boolean;
@@ -235,7 +235,6 @@ type
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
 
-         procedure AddValue(const v : Variant);
          procedure Add(v : Double);
          procedure Insert(index : NativeInt);
          procedure Delete(index, count : NativeInt);
@@ -278,6 +277,7 @@ type
          procedure SetAsInterface(index : NativeInt; const v : IUnknown);
          procedure EvalAsInterface(index : NativeInt; var result : IUnknown);
 
+         procedure AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
          function SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
 
          function IsEmpty(addr : NativeInt) : Boolean;
@@ -300,7 +300,6 @@ type
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
 
-         procedure AddValue(const v : Variant);
          procedure Add(const v : String);
          procedure Insert(index : NativeInt);
          procedure Delete(index, count : NativeInt);
@@ -341,6 +340,7 @@ type
          procedure SetAsInterface(index : NativeInt; const v : IUnknown);
          procedure EvalAsInterface(index : NativeInt; var result : IUnknown);
 
+         procedure AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
          function SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
 
          function IsEmpty(addr : NativeInt) : Boolean;
@@ -363,7 +363,6 @@ type
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
 
-         procedure AddValue(const v : Variant);
          procedure Add(const v : IUnknown);
          procedure Insert(index : NativeInt);
          procedure Delete(index, count : NativeInt);
@@ -412,14 +411,17 @@ type
 
    TScriptDynamicNativeInterfaceArray = class (TScriptDynamicNativeBaseInterfaceArray, IScriptDynArray)
       public
+         procedure AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
          function SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
    end;
    TScriptDynamicNativeObjectArray = class (TScriptDynamicNativeBaseInterfaceArray, IScriptDynArray)
       public
+         procedure AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
          function SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
    end;
    TScriptDynamicNativeDynArrayArray = class (TScriptDynamicNativeBaseInterfaceArray, IScriptDynArray)
       public
+         procedure AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
          function SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
          procedure SetArrayLength(n : NativeInt);
          procedure Insert(index : NativeInt);
@@ -440,7 +442,6 @@ type
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
 
-         procedure AddValue(const v : Variant);
          procedure Add(v : Boolean);
          procedure Insert(index : NativeInt);
          procedure Delete(index, count : NativeInt);
@@ -481,6 +482,7 @@ type
          procedure SetAsInterface(index : NativeInt; const v : IUnknown);
          procedure EvalAsInterface(index : NativeInt; var result : IUnknown);
 
+         procedure AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
          function SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
 
          function IsEmpty(addr : NativeInt) : Boolean;
@@ -625,18 +627,6 @@ begin
    Result := Cardinal(index) < Cardinal(FArrayLength);
 end;
 
-// AddValue
-//
-procedure TScriptDynamicDataArray.AddValue(const v : Variant);
-var
-   n : Integer;
-begin
-   Assert(FElementTyp.Size = 1);
-   n := FArrayLength;
-   SetArrayLength(n + 1);
-   AsVariant[n] := v;
-end;
-
 // GetAsInteger
 //
 function TScriptDynamicDataArray.GetAsInteger(index : NativeInt) : Int64;
@@ -712,6 +702,20 @@ end;
 procedure TScriptDynamicDataArray.EvalAsInterface(index : NativeInt; var result : IUnknown);
 begin
    inherited EvalAsInterface(index, result);
+end;
+
+// AddFromExpr
+//
+procedure TScriptDynamicDataArray.AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
+var
+   n : Integer;
+   v : Variant;
+begin
+   Assert(FElementTyp.Size = 1);
+   valueExpr.EvalAsVariant(exec, v);
+   n := FArrayLength;
+   SetArrayLength(n + 1);
+   AsVariant[n] := v;
 end;
 
 // SetFromExpr
@@ -1121,15 +1125,6 @@ begin
       System.Move(FData[0], Result[0], FArrayLength*SizeOf(Int64));
 end;
 
-// AddValue
-//
-procedure TScriptDynamicNativeIntegerArray.AddValue(const v : Variant);
-begin
-   if TVarData(v).VType = varInt64 then
-      Add(TVarData(v).VInt64)
-   else Add(VariantToInt64(v));
-end;
-
 // Add
 //
 procedure TScriptDynamicNativeIntegerArray.Add(v : Int64);
@@ -1411,6 +1406,13 @@ begin
    Assert(False);
 end;
 
+// AddFromExpr
+//
+procedure TScriptDynamicNativeIntegerArray.AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
+begin
+   Add(valueExpr.EvalAsInteger(exec));
+end;
+
 // SetFromExpr
 //
 function TScriptDynamicNativeIntegerArray.SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
@@ -1538,15 +1540,6 @@ begin
    SetLength(Result, FArrayLength);
    for i := 0 to FArrayLength-1 do
       Result[i] := Round(FData[i]);
-end;
-
-// AddValue
-//
-procedure TScriptDynamicNativeFloatArray.AddValue(const v : Variant);
-begin
-   if TVarData(v).VType = varDouble then
-      Add(TVarData(v).VDouble)
-   else Add(VariantToInt64(v));
 end;
 
 // Add
@@ -1834,6 +1827,13 @@ begin
    Assert(False);
 end;
 
+// AddFromExpr
+//
+procedure TScriptDynamicNativeFloatArray.AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
+begin
+   Add(valueExpr.EvalAsFloat(exec));
+end;
+
 // SetFromExpr
 //
 function TScriptDynamicNativeFloatArray.SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
@@ -1924,13 +1924,6 @@ begin
    SetLength(Result, FArrayLength);
    for i := 0 to FArrayLength-1 do
       Result[i] := StrToInt64(FData[i]);
-end;
-
-// AddValue
-//
-procedure TScriptDynamicNativeStringArray.AddValue(const v : Variant);
-begin
-   Add(VariantToUnicodeString(v));
 end;
 
 // Add
@@ -2202,6 +2195,16 @@ begin
    Assert(False);
 end;
 
+// AddFromExpr
+//
+procedure TScriptDynamicNativeStringArray.AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
+var
+   s : String;
+begin
+   valueExpr.EvalAsString(exec, s);
+   Add(s);
+end;
+
 // SetFromExpr
 //
 function TScriptDynamicNativeStringArray.SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
@@ -2295,13 +2298,6 @@ end;
 function TScriptDynamicNativeBaseInterfaceArray.ToInt64Array : TInt64DynArray;
 begin
    Assert(False);
-end;
-
-// AddValue
-//
-procedure TScriptDynamicNativeBaseInterfaceArray.AddValue(const v : Variant);
-begin
-   Add(IUnknown(v));
 end;
 
 // Add
@@ -2632,6 +2628,16 @@ begin
    end else Result := False;
 end;
 
+// AddFromExpr
+//
+procedure TScriptDynamicNativeInterfaceArray.AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
+var
+   i : IInterface;
+begin
+   valueExpr.EvalAsInterface(exec, i);
+   Add(i);
+end;
+
 // ------------------
 // ------------------ TScriptDynamicNativeObjectArray ------------------
 // ------------------
@@ -2644,6 +2650,16 @@ begin
       valueExpr.EvalAsInterface(exec, FData[index]);
       Result := True;
    end else Result := False;
+end;
+
+// AddFromExpr
+//
+procedure TScriptDynamicNativeObjectArray.AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
+var
+   i : IInterface;
+begin
+   valueExpr.EvalAsInterface(exec, i);
+   Add(i);
 end;
 
 // ------------------
@@ -2687,6 +2703,16 @@ begin
       valueExpr.EvalAsInterface(exec, FData[index]);
       Result := True;
    end else Result := False;
+end;
+
+// AddFromExpr
+//
+procedure TScriptDynamicNativeDynArrayArray.AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
+var
+   i : IInterface;
+begin
+   valueExpr.EvalAsInterface(exec, i);
+   Add(i);
 end;
 
 // ------------------
@@ -2752,13 +2778,6 @@ begin
    SetLength(Result, FArrayLength);
    for i := 0 to FArrayLength-1 do
       Result[i] := Ord(FBits[i]);
-end;
-
-// AddValue
-//
-procedure TScriptDynamicNativeBooleanArray.AddValue(const v : Variant);
-begin
-   Add(VariantToBool(v));
 end;
 
 // Add
@@ -3043,6 +3062,13 @@ end;
 procedure TScriptDynamicNativeBooleanArray.EvalAsInterface(index : NativeInt; var result : IUnknown);
 begin
    Assert(False);
+end;
+
+// AddFromExpr
+//
+procedure TScriptDynamicNativeBooleanArray.AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
+begin
+   Add(valueExpr.EvalAsBoolean(exec));
 end;
 
 // SetFromExpr

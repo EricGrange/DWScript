@@ -26,7 +26,7 @@ interface
 uses
    SysUtils,
    dwsUtils, dwsDataContext, dwsExprs, dwsCompilerContext, dwsSymbols, dwsScriptSource,
-   dwsDynamicArrays;
+   dwsDynamicArrays, dwsCoreExprs;
 
 type
 
@@ -509,6 +509,7 @@ type
          constructor Create(const scriptPos: TScriptPos;
                             aBase :  TTypedExpr; argExprs : TTypedExprList);
          destructor Destroy; override;
+
          procedure EvalNoResult(exec : TdwsExecution); override;
 
          procedure AddArg(expr : TTypedExpr);
@@ -518,6 +519,27 @@ type
 
          property ArgExpr[idx : Integer] : TTypedExpr read GetItemExpr;
          property ArgCount : Integer read FArgs.FCount;
+   end;
+
+   // Add a a single value to a dynamic array held in a variable
+   TArrayAddValueExpr = class sealed (TArrayPseudoMethodExpr)
+      private
+         FArgExpr : TTypedExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(const scriptPos: TScriptPos;
+                            aBase :  TObjectVarExpr; arg : TTypedExpr);
+         destructor Destroy; override;
+
+         procedure EvalNoResult(exec : TdwsExecution); override;
+
+         function SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr; override;
+
+         property ArgExpr : TTypedExpr read FArgExpr;
    end;
 
    // base class for dynamic array expr that return a value
@@ -705,7 +727,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsStrings, dwsConstExprs, dwsArrayElementContext, dwsCoreExprs,
+uses dwsStrings, dwsConstExprs, dwsArrayElementContext,
    dwsCompilerUtils, dwsSpecializationContext, dwsStack, dwsExprList;
 
 type
@@ -2524,15 +2546,6 @@ var
       (base.GetSelf as TScriptDynamicDataArray).WriteData((arrayLength-1)*elemSize, argData.DataPtr[exec], 0, elemSize);
    end;
 
-   procedure AddValueArg(arg : TTypedExpr);
-   var
-      buf : Variant;
-   begin
-      Inc(arrayLength);
-      arg.EvalAsVariant(exec, buf);
-      base.AddValue(buf);
-   end;
-
    procedure AddStaticArrayArg(arg : TTypedExpr);
    var
       k, n, i, elemSize : Integer;
@@ -2578,7 +2591,7 @@ begin
 
          if arg.Typ.Size > 1 then
             AddDataArg(arg)
-         else AddValueArg(arg);
+         else base.AddFromExpr(exec, arg);
 
       end else if arg.Typ.ClassType=TDynamicArraySymbol then begin
 
@@ -2676,6 +2689,65 @@ end;
 function TArrayAddExpr.GetItemExpr(idx : Integer) : TTypedExpr;
 begin
    Result:=TTypedExpr(FArgs.List[idx]);
+end;
+
+// ------------------
+// ------------------ TArrayAddValueExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TArrayAddValueExpr.Create(const scriptPos: TScriptPos;
+                                      aBase :  TObjectVarExpr; arg : TTypedExpr);
+begin
+   inherited Create(scriptPos, aBase);
+   FArgExpr := arg;
+end;
+
+// Destroy
+//
+destructor TArrayAddValueExpr.Destroy;
+begin
+   inherited;
+   FArgExpr.Free;
+end;
+
+// EvalNoResult
+//
+procedure TArrayAddValueExpr.EvalNoResult(exec : TdwsExecution);
+var
+   pIDyn : PIScriptDynArray;
+begin
+   pIDyn := PIScriptDynArray(exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FBaseExpr).StackAddr));
+   pIDyn.AddFromExpr(exec, ArgExpr);
+end;
+
+// GetSubExpr
+//
+function TArrayAddValueExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if i = 0 then
+      Result := FBaseExpr
+   else Result := FArgExpr;
+end;
+
+// GetSubExprCount
+//
+function TArrayAddValueExpr.GetSubExprCount : Integer;
+begin
+   Result := 2;
+end;
+
+// SpecializeProgramExpr
+//
+function TArrayAddValueExpr.SpecializeProgramExpr(const context : ISpecializationContext) : TProgramExpr;
+begin
+   Result := CompilerUtils.DynamicArrayAdd(
+      CompilerContextFromSpecialization(context),
+      BaseExpr.SpecializeTypedExpr(context),
+      ScriptPos,
+      ArgExpr.SpecializeTypedExpr(context)
+   );
 end;
 
 // ------------------

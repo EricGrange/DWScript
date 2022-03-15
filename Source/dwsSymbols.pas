@@ -2225,7 +2225,6 @@ type
       function ToStringArray : TStringDynArray;
       function ToInt64Array : TInt64DynArray;
 
-      procedure AddValue(const v : Variant);
       procedure Insert(index : NativeInt);
       procedure Delete(index, count : NativeInt);
       procedure MoveItem(source, destination : NativeInt);
@@ -2270,6 +2269,7 @@ type
       procedure EvalAsInterface(index : NativeInt; var result : IUnknown);
       property AsInterface[index : NativeInt] : IUnknown write SetAsInterface;
 
+      procedure AddFromExpr(exec : TdwsExecution; valueExpr : TExprBase);
       function SetFromExpr(index : NativeInt; exec : TdwsExecution; valueExpr : TExprBase) : Boolean;
 
       function IsEmpty(addr : NativeInt) : Boolean;

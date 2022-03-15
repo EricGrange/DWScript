@@ -410,6 +410,9 @@ type
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
       class procedure CodeGenPush(codeGen : TdwsCodeGen; e : TArrayAddExpr; skip : Integer); static;
    end;
+   TJSArrayAddValueExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
    TJSArrayPeekExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -1350,6 +1353,7 @@ begin
    RegisterCodeGen(TNewArrayExpr,                  TJSNewArrayExpr.Create);
    RegisterCodeGen(TArraySetLengthExpr,            TJSArraySetLengthExpr.Create);
    RegisterCodeGen(TArrayAddExpr,                  TJSArrayAddExpr.Create);
+   RegisterCodeGen(TArrayAddValueExpr,             TJSArrayAddValueExpr.Create);
    RegisterCodeGen(TArrayPeekExpr,                 TJSArrayPeekExpr.Create);
    RegisterCodeGen(TArrayPopExpr,                  TJSArrayPopExpr.Create);
    RegisterCodeGen(TArrayDeleteExpr,               TJSArrayDeleteExpr.Create);
@@ -7130,6 +7134,26 @@ begin
          codeGen.WriteString('])');
 
    end;
+end;
+
+// ------------------
+// ------------------ TJSArrayAddValueExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSArrayAddValueExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TArrayAddValueExpr;
+begin
+   e := TArrayAddValueExpr(expr);
+
+   codeGen.Compile(e.BaseExpr);
+   codeGen.WriteString('.push(');
+   codeGen.CompileValue(e.ArgExpr);
+   codeGen.WriteString(')');
+
+   codeGen.WriteStatementEnd;
 end;
 
 // ------------------
