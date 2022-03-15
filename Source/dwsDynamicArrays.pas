@@ -75,6 +75,7 @@ type
 
          function BoundsCheckPassed(index : NativeInt) : Boolean; inline;
 
+         procedure AddValue(const v : Variant);
          procedure Delete(index, count : NativeInt);
          procedure Insert(index : NativeInt);
          procedure Swap(i1, i2 : NativeInt); virtual;
@@ -145,9 +146,15 @@ type
 
    TScriptDynamicNativeIntegerArray = class (TScriptDynamicNativeArray, IScriptDynArray, IJSONWriteAble)
       protected
-         FData : TInt64DynArray;
+         FData : PInt64Array;
+         FCapacity : NativeInt;
+
+         procedure Grow;
+         procedure Shrink;
 
       public
+         destructor Destroy; override;
+
          class function InterfaceToDataOffset : Integer; override; final;
 
          procedure SetArrayLength(n : NativeInt);
@@ -155,6 +162,8 @@ type
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
 
+         procedure AddValue(const v : Variant);
+         procedure Add(v : Int64);
          procedure Insert(index : NativeInt);
          procedure Delete(index, count : NativeInt);
          procedure MoveItem(source, destination : NativeInt);
@@ -219,6 +228,8 @@ type
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
 
+         procedure AddValue(const v : Variant);
+         procedure Add(v : Double);
          procedure Insert(index : NativeInt);
          procedure Delete(index, count : NativeInt);
          procedure MoveItem(source, destination : NativeInt);
@@ -282,6 +293,8 @@ type
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
 
+         procedure AddValue(const v : Variant);
+         procedure Add(const v : String);
          procedure Insert(index : NativeInt);
          procedure Delete(index, count : NativeInt);
          procedure MoveItem(source, destination : NativeInt);
@@ -343,6 +356,8 @@ type
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
 
+         procedure AddValue(const v : Variant);
+         procedure Add(const v : IUnknown);
          procedure Insert(index : NativeInt);
          procedure Delete(index, count : NativeInt);
          procedure MoveItem(source, destination : NativeInt);
@@ -418,6 +433,8 @@ type
          function ToStringArray : TStringDynArray;
          function ToInt64Array : TInt64DynArray;
 
+         procedure AddValue(const v : Variant);
+         procedure Add(v : Boolean);
          procedure Insert(index : NativeInt);
          procedure Delete(index, count : NativeInt);
          procedure MoveItem(source, destination : NativeInt);
@@ -599,6 +616,18 @@ end;
 function TScriptDynamicDataArray.BoundsCheckPassed(index : NativeInt) : Boolean;
 begin
    Result := Cardinal(index) < Cardinal(FArrayLength);
+end;
+
+// AddValue
+//
+procedure TScriptDynamicDataArray.AddValue(const v : Variant);
+var
+   n : Integer;
+begin
+   Assert(FElementTyp.Size = 1);
+   n := FArrayLength;
+   SetArrayLength(n + 1);
+   AsVariant[n] := v;
 end;
 
 // GetAsInteger
@@ -1024,14 +1053,45 @@ end;
 // ------------------ TScriptDynamicNativeIntegerArray ------------------
 // ------------------
 
+// Destroy
+//
+destructor TScriptDynamicNativeIntegerArray.Destroy;
+begin
+   inherited;
+   FreeMemory(FData);
+end;
+
+// Grow
+//
+procedure TScriptDynamicNativeIntegerArray.Grow;
+begin
+   FCapacity := FCapacity + (FCapacity shr 2) + 8;
+   ReallocMem(FData, FCapacity * SizeOf(Int64));
+end;
+
+// Shrink
+//
+procedure TScriptDynamicNativeIntegerArray.Shrink;
+begin
+   FCapacity := FArrayLength;
+   ReallocMem(FData, FCapacity * SizeOf(Int64));
+end;
+
 // SetArrayLength
 //
 procedure TScriptDynamicNativeIntegerArray.SetArrayLength(n : NativeInt);
 begin
-   SetLength(FData, n);
-   if n > FArrayLength then
+   if n = FArrayLength then Exit;
+   FCapacity := n;
+   ReallocMem(FData, n*SizeOf(Int64));
+   if n > FArrayLength then begin
       System.FillChar(FData[FArrayLength], (n-FArrayLength)*SizeOf(Int64), 0);
-   FArrayLength := n;
+      FArrayLength := n;
+   end else begin
+      FArrayLength := n;
+      if n < FCapacity - (FCapacity shr 2) then
+        Shrink;
+   end;
 end;
 
 // ToStringArray
@@ -1049,23 +1109,55 @@ end;
 //
 function TScriptDynamicNativeIntegerArray.ToInt64Array : TInt64DynArray;
 begin
-   Result := Copy(FData);
+   SetLength(Result, FArrayLength);
+   if FArrayLength > 0 then
+      System.Move(FData[0], Result[0], FArrayLength*SizeOf(Int64));
+end;
+
+// AddValue
+//
+procedure TScriptDynamicNativeIntegerArray.AddValue(const v : Variant);
+begin
+   if TVarData(v).VType = varInt64 then
+      Add(TVarData(v).VInt64)
+   else Add(VariantToInt64(v));
+end;
+
+// Add
+//
+procedure TScriptDynamicNativeIntegerArray.Add(v : Int64);
+begin
+   if FArrayLength = FCapacity then Grow;
+   FData[FArrayLength] := v;
+   Inc(FArrayLength);
 end;
 
 // Insert
 //
 procedure TScriptDynamicNativeIntegerArray.Insert(index : NativeInt);
+var
+   n : NativeInt;
 begin
-   System.Insert(0, FData, index);
+   if FArrayLength = FCapacity then Grow;
+   n := FArrayLength-index;
+   if n > 0 then
+      System.Move(FData[index], FData[index+1], n*SizeOf(Int64));
+   FData[index] := 0;
    Inc(FArrayLength);
 end;
 
 // Delete
 //
 procedure TScriptDynamicNativeIntegerArray.Delete(index, count : NativeInt);
+var
+   n : Integer;
 begin
-   System.Delete(FData, index, count);
+   n := FArrayLength-1-index;
+   if n > 0 then
+      System.Move(FData[index+count], FData[index], n*SizeOf(Int64));
    Dec(FArrayLength, count);
+   if FArrayLength < FCapacity shr 1 then
+      Shrink;
 end;
 
 // MoveItem
@@ -1408,6 +1500,25 @@ begin
    SetLength(Result, FArrayLength);
    for i := 0 to FArrayLength-1 do
       Result[i] := Round(FData[i]);
+end;
+
+// AddValue
+//
+procedure TScriptDynamicNativeFloatArray.AddValue(const v : Variant);
+begin
+   Add(VariantToFloat(v));
+end;
+
+// Add
+//
+procedure TScriptDynamicNativeFloatArray.Add(v : Double);
+var
+   n : Integer;
+begin
+   n := FArrayLength+1;
+   SetLength(FData, n);
+   FData[FArrayLength] := v;
+   FArrayLength := n;
 end;
 
 // Insert
@@ -1766,6 +1877,25 @@ begin
       Result[i] := StrToInt64(FData[i]);
 end;
 
+// AddValue
+//
+procedure TScriptDynamicNativeStringArray.AddValue(const v : Variant);
+begin
+   Add(VariantToUnicodeString(v));
+end;
+
+// Add
+//
+procedure TScriptDynamicNativeStringArray.Add(const v : String);
+var
+   n : Integer;
+begin
+   n := FArrayLength+1;
+   SetLength(FData, n);
+   FData[FArrayLength] := v;
+   FArrayLength := n;
+end;
+
 // Insert
 //
 procedure TScriptDynamicNativeStringArray.Insert(index : NativeInt);
@@ -2116,6 +2246,25 @@ end;
 function TScriptDynamicNativeBaseInterfaceArray.ToInt64Array : TInt64DynArray;
 begin
    Assert(False);
+end;
+
+// AddValue
+//
+procedure TScriptDynamicNativeBaseInterfaceArray.AddValue(const v : Variant);
+begin
+   Add(IUnknown(v));
+end;
+
+// Add
+//
+procedure TScriptDynamicNativeBaseInterfaceArray.Add(const v : IUnknown);
+var
+   n : Integer;
+begin
+   n := FArrayLength+1;
+   SetLength(FData, n);
+   FData[FArrayLength] := v;
+   FArrayLength := n;
 end;
 
 // Insert
@@ -2554,6 +2703,24 @@ begin
    SetLength(Result, FArrayLength);
    for i := 0 to FArrayLength-1 do
       Result[i] := Ord(FBits[i]);
+end;
+
+// AddValue
+//
+procedure TScriptDynamicNativeBooleanArray.AddValue(const v : Variant);
+begin
+   Add(VariantToBool(v));
+end;
+
+// Add
+//
+procedure TScriptDynamicNativeBooleanArray.Add(v : Boolean);
+var
+   n : Integer;
+begin
+   n := FArrayLength;
+   SetArrayLength(n+1);
+   FBits[n] := v;
 end;
 
 // Insert

@@ -501,7 +501,7 @@ type
 
          function GetItemExpr(idx : Integer) : TTypedExpr;
 
-         procedure DoEval(exec : TdwsExecution; var base : IScriptDynArray);
+         procedure DoEval(const base : IScriptDynArray; exec : TdwsExecution);
 
       public
          constructor Create(const scriptPos: TScriptPos;
@@ -2504,7 +2504,7 @@ end;
 
 // DoEval
 //
-procedure TArrayAddExpr.DoEval(exec : TdwsExecution; var base : IScriptDynArray);
+procedure TArrayAddExpr.DoEval(const base : IScriptDynArray; exec : TdwsExecution);
 var
    arrayLength : Integer;
 
@@ -2512,18 +2512,21 @@ var
    var
       elemSize : Integer;
       argData : TDataExpr;
+   begin
+      Inc(arrayLength);
+      elemSize := arg.Typ.Size;
+      base.ArrayLength := arrayLength;
+      argData := (arg as TDataExpr);
+      (base.GetSelf as TScriptDynamicDataArray).WriteData((arrayLength-1)*elemSize, argData.DataPtr[exec], 0, elemSize);
+   end;
+
+   procedure AddValueArg(arg : TTypedExpr);
+   var
       buf : Variant;
    begin
       Inc(arrayLength);
-      base.ArrayLength := arrayLength;
-      elemSize := arg.Typ.Size;
-      if elemSize > 1 then begin
-         argData := (arg as TDataExpr);
-         (base.GetSelf as TScriptDynamicDataArray).WriteData((arrayLength-1)*elemSize, argData.DataPtr[exec], 0, elemSize);
-      end else begin
-         arg.EvalAsVariant(exec, buf);
-         base.AsVariant[arrayLength-1] := buf;
-      end;
+      arg.EvalAsVariant(exec, buf);
+      base.AddValue(buf);
    end;
 
    procedure AddStaticArrayArg(arg : TTypedExpr);
@@ -2547,14 +2550,20 @@ var
       end;
    end;
 
+   procedure AddDynamicArray(arg : TTypedExpr);
+   var
+      src : IScriptDynArray;
+   begin
+      arg.EvalAsScriptDynArray(exec, src);
+      base.Concat(src, 0, MaxInt);
+      arrayLength := base.ArrayLength;
+   end;
+
 var
-   src : IScriptDynArray;
    i : Integer;
    arg : TTypedExpr;
    elementTyp : TTypeSymbol;
 begin
-   BaseExpr.EvalAsScriptDynArray(exec, base);
-
    elementTyp := base.ElementType;
    arrayLength := base.ArrayLength;
 
@@ -2563,13 +2572,13 @@ begin
 
       if elementTyp.IsCompatible(arg.Typ) then begin
 
-         AddDataArg(arg);
+         if arg.Typ.Size > 1 then
+            AddDataArg(arg)
+         else AddValueArg(arg);
 
       end else if arg.Typ.ClassType=TDynamicArraySymbol then begin
 
-         arg.EvalAsScriptDynArray(exec, src);
-         base.Concat(src, 0, MaxInt);
-         arrayLength := base.ArrayLength;
+         AddDynamicArray(arg);
 
       end else if arg.Typ.UnAliasedTypeIs(TBaseIntegerSymbol) and elementTyp.UnAliasedTypeIs(TBaseFloatSymbol)  then begin
 
@@ -2592,7 +2601,8 @@ procedure TArrayAddExpr.EvalNoResult(exec : TdwsExecution);
 var
    base : IScriptDynArray;
 begin
-   DoEval(exec, base);
+   BaseExpr.EvalAsScriptDynArray(exec, base);
+   DoEval(base, exec);
 end;
 
 // AddArg
@@ -2814,7 +2824,7 @@ begin
       BoundsCheckFailed(exec, index);
    if CountExpr <> nil then begin
       count := CountExpr.EvalAsInteger(exec);
-      if count <0 then
+      if count < 0 then
          RaiseScriptError(exec, EScriptError.CreateFmt(RTE_PositiveCountExpected, [count]));
       if not base.BoundsCheckPassed(index+count-1) then
          BoundsCheckFailed(exec, index+count-1);
@@ -3077,7 +3087,8 @@ end;
 //
 procedure TArrayConcatExpr.EvalAsScriptDynArray(exec : TdwsExecution; var result : IScriptDynArray);
 begin
-   FAddExpr.DoEval(exec, result);
+   FAddExpr.BaseExpr.EvalAsScriptDynArray(exec, result);
+   FAddExpr.DoEval(result, exec);
 end;
 
 // AddArg

@@ -2225,6 +2225,7 @@ type
       function ToStringArray : TStringDynArray;
       function ToInt64Array : TInt64DynArray;
 
+      procedure AddValue(const v : Variant);
       procedure Insert(index : NativeInt);
       procedure Delete(index, count : NativeInt);
       procedure MoveItem(source, destination : NativeInt);
