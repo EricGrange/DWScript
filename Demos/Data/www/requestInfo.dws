@@ -1,4 +1,4 @@
-<html>
+﻿<html>
 <head>
 <title>Request Info</title>
 </head>
@@ -21,6 +21,8 @@ end;
 WriteValue('RemoteIP', WebRequest.RemoteIP);
 WriteValue('Security', if WebRequest.Security<>'' then WebRequest.Security else 'none');
 WriteValue('URL', WebRequest.URL);
+WriteValue('RawURL', WebRequest.RawURL);
+WriteValue('FullURL', WebRequest.FullURL);
 WriteValue('Method', WebRequest.Method);
 WriteValue('PathInfo', WebRequest.PathInfo);
 WriteValue('QueryString', WebRequest.QueryString);
