@@ -218,9 +218,16 @@ type
                                            IScriptDynArray, IJSONWriteAble, IPDoubleArray
                                           )
       protected
-         FData : TDoubleDynArray;
+         FData : PDoubleArray;
+
+         FCapacity : NativeInt;
+
+         procedure Grow;
+         procedure Shrink;
 
       public
+         destructor Destroy; override;
+
          class function InterfaceToDataOffset : Integer; override; final;
 
          procedure SetArrayLength(n : NativeInt);
@@ -1470,14 +1477,45 @@ end;
 // ------------------ TScriptDynamicNativeFloatArray ------------------
 // ------------------
 
+// Destroy
+//
+destructor TScriptDynamicNativeFloatArray.Destroy;
+begin
+   inherited;
+   FreeMemory(FData);
+end;
+
+// Grow
+//
+procedure TScriptDynamicNativeFloatArray.Grow;
+begin
+   FCapacity := FCapacity + (FCapacity shr 2) + 8;
+   ReallocMem(FData, FCapacity * SizeOf(Double));
+end;
+
+// Shrink
+//
+procedure TScriptDynamicNativeFloatArray.Shrink;
+begin
+   FCapacity := FArrayLength;
+   ReallocMem(FData, FCapacity * SizeOf(Double));
+end;
+
 // SetArrayLength
 //
 procedure TScriptDynamicNativeFloatArray.SetArrayLength(n : NativeInt);
 begin
-   SetLength(FData, n);
-   if n > FArrayLength then
+   if n = FArrayLength then Exit;
+   FCapacity := n;
+   ReallocMem(FData, n*SizeOf(Double));
+   if n > FArrayLength then begin
       System.FillChar(FData[FArrayLength], (n-FArrayLength)*SizeOf(Double), 0);
-   FArrayLength := n;
+      FArrayLength := n;
+   end else begin
+      FArrayLength := n;
+      if n < FCapacity - (FCapacity shr 2) then
+        Shrink;
+   end;
 end;
 
 // ToStringArray
@@ -1506,35 +1544,46 @@ end;
 //
 procedure TScriptDynamicNativeFloatArray.AddValue(const v : Variant);
 begin
-   Add(VariantToFloat(v));
+   if TVarData(v).VType = varDouble then
+      Add(TVarData(v).VDouble)
+   else Add(VariantToInt64(v));
 end;
 
 // Add
 //
 procedure TScriptDynamicNativeFloatArray.Add(v : Double);
-var
-   n : Integer;
 begin
-   n := FArrayLength+1;
-   SetLength(FData, n);
+   if FArrayLength = FCapacity then Grow;
    FData[FArrayLength] := v;
-   FArrayLength := n;
+   Inc(FArrayLength);
 end;
 
 // Insert
 //
 procedure TScriptDynamicNativeFloatArray.Insert(index : NativeInt);
+var
+   n : NativeInt;
 begin
-   System.Insert(0, FData, index);
+   if FArrayLength = FCapacity then Grow;
+   n := FArrayLength-index;
+   if n > 0 then
+      System.Move(FData[index], FData[index+1], n*SizeOf(Double));
+   FData[index] := 0;
    Inc(FArrayLength);
 end;
 
 // Delete
 //
 procedure TScriptDynamicNativeFloatArray.Delete(index, count : NativeInt);
+var
+   n : Integer;
 begin
-   System.Delete(FData, index, count);
+   n := FArrayLength-1-index;
+   if n > 0 then
+      System.Move(FData[index+count], FData[index], n*SizeOf(Double));
    Dec(FArrayLength, count);
+   if FArrayLength < FCapacity shr 1 then
+      Shrink;
 end;
 
 // MoveItem
