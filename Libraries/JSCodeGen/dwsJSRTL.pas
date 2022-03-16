@@ -1608,6 +1608,7 @@ begin
    FMagicCodeGens.AddObject('SubString', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(', '(', 1, ')', '-1,', '(', 2, ')', '-2)']));
    FMagicCodeGens.AddObject('Tan', TdwsExprGenericCodeGen.Create(['Math.tan', '(', 0, ')']));
    FMagicCodeGens.AddObject('TypeOf$_TClass_', TdwsExprGenericCodeGen.Create([0]));
+   FMagicCodeGens.AddObject('UnixTime', TdwsExprGenericCodeGen.Create(['Math.trunc(Date.now()*1e-3)']));
    FMagicCodeGens.AddObject('UnixTimeMSec', TdwsExprGenericCodeGen.Create(['Date.now()']));
    FMagicCodeGens.AddObject('Unsigned32', TdwsExprGenericCodeGen.Create(['(', 0, '>>>0', ')']));
    FMagicCodeGens.AddObject('UpperCase', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.toUpperCase()']));
