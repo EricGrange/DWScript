@@ -174,7 +174,7 @@ uses dwsJSON, dwsXPlatform, SynZip;
 {$R dwsJSRTL.res}
 
 const
-   cJSRTLDependencies : array [1..314{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..315{$ifdef JS_BIGINTEGER} + 16{$endif}] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -1275,6 +1275,8 @@ const
        Code : 'function VarIsEmpty(v) { return (typeof v === "undefined") }'),
       (Name : 'VarIsNull';
        Code : 'function VarIsNull(v) { return (v===null) }'),
+      (Name : 'VarIsNumeric';
+       Code : 'function VarIsNumeric(v) { return (typeof v === "number") }'),
       (Name : 'VarIsStr';
        Code : 'function VarIsStr(v) { return typeof v === "string" }'),
       (Name : 'VarToStr';

@@ -213,7 +213,8 @@ var
 begin
    args.ExprBase[0].EvalAsVariant(args.Exec, v);
    case VarType(v) of
-      varEmpty : Result := False;
+      varInt64, varDouble : Result := True;
+      varEmpty, varBoolean, varUString : Result := False;
       varUnknown : begin
          if TVarData(v).VUnknown <> nil then
             Result := CheckUnknown(IUnknown(TVarData(v).VUnknown))
