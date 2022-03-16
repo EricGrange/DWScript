@@ -4991,8 +4991,7 @@ var
    dataExpr : TDataExpr;
 begin
    dataExpr:=TDataExpr(FArgExpr);
-   dataExpr.DataPtr[exec].CopyData(exec.Stack.Data, exec.Stack.StackPointer+FStackAddr,
-                                   FTypeParamSym.Typ.Size);
+   exec.Stack.WriteData(exec.Stack.StackPointer+FStackAddr, dataExpr.DataPtr[exec], 0, FTypeParamSym.Typ.Size);
 end;
 
 // ExecuteConstData

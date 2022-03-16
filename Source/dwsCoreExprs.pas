@@ -2883,7 +2883,7 @@ begin
             fieldAddr := exec.Stack.BasePointer+FAddr+fieldSym.Offset;
             if (expr is TDataExpr) and (TDataExpr(expr).Typ.Size > 1) then begin
                dataExpr := TDataExpr(expr);
-               dataExpr.DataPtr[exec].CopyData(exec.Stack.Data, fieldAddr, fieldSym.Size);
+               exec.Stack.WriteData(fieldAddr, dataExpr.DataPtr[exec], 0, fieldSym.Size);
             end else expr.EvalAsVariant(exec, exec.Stack.Data[fieldAddr]);
          end;
       end;
