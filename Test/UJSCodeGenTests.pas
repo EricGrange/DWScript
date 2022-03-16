@@ -335,6 +335,8 @@ begin
                     +'var $testResult = [];'#13#10
                     +'function Print(s) { if (s===true) $testResult.push("True"); '
                                         +'else if (s===false) $testResult.push("False"); '
+                                        +'else if (Array.isArray(s)) $testResult.push(JSON.stringify(s)); '
+                                        +'else if (s===null) $testResult.push("Null"); '
                                         +'else $testResult.push(s); }'#13#10
                     +'function PrintLn(s) { Print(s); $testResult.push("\r\n"); }'#13#10
                     +'try {'#13#10
