@@ -236,7 +236,6 @@ type
          procedure EvalNoResult(exec : TdwsExecution); virtual;
 
          procedure EvalAsSafeScriptObj(exec : TdwsExecution; var result : IScriptObj); overload;
-         function  EvalAsSafeScriptObj(exec : TdwsExecution) : IScriptObj; overload; inline; deprecated;
 
          procedure AssignValue(exec : TdwsExecution; const value : Variant); virtual; abstract;
          procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); virtual; abstract;
@@ -2569,13 +2568,6 @@ begin
       RaiseObjectNotInstantiated(exec)
    else if result.Destroyed then
       RaiseObjectAlreadyDestroyed(exec);
-end;
-
-// EvalAsSafeScriptObj
-//
-function TExprBase.EvalAsSafeScriptObj(exec : TdwsExecution) : IScriptObj;
-begin
-   EvalAsSafeScriptObj(exec, Result);
 end;
 
 // EvalAsVariantToDataContext

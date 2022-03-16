@@ -100,7 +100,6 @@ type
    JSONPath = class
 
       class function Query(const aQuery : String; aJSON : TdwsJSONValue) : TdwsJSONValueList; overload; static;
-      class function Query(const aQuery, aJSON : String) : TdwsJSONValueList; overload; static; deprecated;
 
    end;
 
@@ -466,20 +465,6 @@ begin
       Result:=q.Apply(aJSON);
    finally
       q.Free;
-   end;
-end;
-
-// Query (json string)
-//
-class function JSONPath.Query(const aQuery, aJSON : String) : TdwsJSONValueList;
-var
-   jv : TdwsJSONValue;
-begin
-   jv := AcquireFromJSONCache(aJSON);
-   try
-      Result := Query(aQuery, jv);
-   finally
-      ReleaseToJSONCache(aJSON, jv);
    end;
 end;
 
