@@ -1136,7 +1136,7 @@ const
       (Name : 'StrSplit';
        Code : 'function StrSplit(s,d) { return s.split(d) }'),
       (Name : 'StrToBool';
-       Code : 'function StrToBool(s) { return (/^(t|y|1|true|yes)$/i).test(s) }'),
+       Code : 'function StrToBool(s) { return (/^(t|y|1|true|yes|0*[1-9][0-9]*)$/i).test(s) }'),
       (Name : 'StrToCSSText';
        Code : 'function StrToCSSText(s) { return CSS.escape(s) }'),
       (Name : 'StrToDate';
