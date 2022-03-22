@@ -85,7 +85,7 @@ begin
          RaiseLastTurboJPEGError(jpeg);
 
       var flags := 0;
-      if downscale > 0 then begin
+      if downscale > 1 then begin
          flags := TJFLAG_FASTUPSAMPLE or TJFLAG_FASTDCT;
          w := w div downscale;
          h := h div downscale;
