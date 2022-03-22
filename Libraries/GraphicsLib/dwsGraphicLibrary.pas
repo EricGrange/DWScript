@@ -91,6 +91,10 @@ type
       function DoEvalAsInteger(const args : TExprBaseListExec) : Int64; override;
    end;
 
+   TPixmapResizeFunc = class(TInternalMagicProcedure)
+      procedure DoEvalProc(const args : TExprBaseListExec); override;
+   end;
+
 (*
    TPixmapHistogramFunc = class(TInternalMagicInterfaceFunction)
       procedure DoEvalAsInterface(const args : TExprBaseListExec; var result : IUnknown); override;
@@ -254,8 +258,12 @@ var
 begin
    args.ExprBase[0].EvalAsInterface(args.Exec, IUnknown(pixmap));
    w := args.AsInteger[1];
+   if w < 0 then
+      w := pixmap.GetMeta(0);
    h := args.AsInteger[2];
-   if w*h*4 > pixmap.GetCount then
+   if h < 0 then
+      h := pixmap.GetCount div (w*4)
+   else if w*h*4 > pixmap.GetCount then
       raise EdwsPixmap.Create('Not enough data in pixmap');
    quality:=args.AsInteger[3];
    opts:=StrToIntDef(args.AsString[4], 0);
@@ -446,31 +454,41 @@ begin
          h := png.Height;
          var pixmap := CreateTPixmap(w, h);
          Result := IdwsByteBuffer(pixmap);
-         var pixmapDataPtr := PByteArray(pixmap.DataPtr);
+         var pixmapDataPtr := PRGB32(pixmap.DataPtr);
          var withAlpha := args.AsBoolean[1];
          case png.Header.ColorType of
             COLOR_RGBALPHA : begin
                if withAlpha then begin
                   png.CreateAlpha;
-                  for var y := 0 to h-1 do
-                     CopyRow32(@pixmapDataPtr[y*w], png.Scanline[y], PByte(png.AlphaScanline[y]), w);
+                  for var y := 0 to h-1 do begin
+                     CopyRow32(pixmapDataPtr, png.Scanline[y], PByte(png.AlphaScanline[y]), w);
+                     Inc(pixmapDataPtr, w);
+                  end;
                end else begin
-                  for var y := 0 to h-1 do
-                     CopyRow24(@pixmapDataPtr[y*w], png.Scanline[y], w);
+                  for var y := 0 to h-1 do begin
+                     CopyRow24(pixmapDataPtr, png.Scanline[y], w);
+                     Inc(pixmapDataPtr, w);
+                  end;
                end;
             end;
          else
             if withAlpha and (png.TransparencyMode<>ptmNone) then begin
                if png.TransparencyMode=ptmBit then begin
-                  for var y := 0 to h-1 do
-                     CopyRowDefaultBitAlpha(@pixmapDataPtr[y*w], png, y);
+                  for var y := 0 to h-1 do begin
+                     CopyRowDefaultBitAlpha(pixmapDataPtr, png, y);
+                     Inc(pixmapDataPtr, w);
+                  end;
                end else begin
-                  for var y := 0 to h-1 do
-                     CopyRowPalettedPartialAlpha(@pixmapDataPtr[y*w], png, y);
+                  for var y := 0 to h-1 do begin
+                     CopyRowPalettedPartialAlpha(pixmapDataPtr, png, y);
+                     Inc(pixmapDataPtr, w);
+                  end;
                end;
             end else begin
-               for var y := 0 to h-1 do
-                  CopyRowDefault(@pixmapDataPtr[y*w], png, y);
+               for var y := 0 to h-1 do begin
+                  CopyRowDefault(pixmapDataPtr, png, y);
+                  Inc(pixmapDataPtr, w);
+               end;
             end;
          end;
       finally
@@ -555,8 +573,12 @@ var
 begin
    args.ExprBase[0].EvalAsInterface(args.Exec, IUnknown(pixmap));
    w := args.AsInteger[1];
+   if w < 0 then
+      w := pixmap.GetMeta(0);
    h := args.AsInteger[2];
-   if w*h*4 > pixmap.GetCount then
+   if h < 0 then
+      h := pixmap.GetCount div (w*4)
+   else if w*h*4 > pixmap.GetCount then
       raise EdwsPixmap.Create('Not enough data in pixmap');
    CompressWithPNGImage(Result, args.AsBoolean[3]);
 end;
@@ -642,6 +664,56 @@ begin
 end;
 
 // ------------------
+// ------------------ TPixmapResizeFunc ------------------
+// ------------------
+
+// DoEvalProc
+//
+procedure TPixmapResizeFunc.DoEvalProc(const args : TExprBaseListExec);
+var
+   pixmap : IdwsByteBuffer;
+   newWidth, newHeight : Integer;
+   curWidth, curHeight : Integer;
+   oldX, newX, newY : Integer;
+   oldP, newP : PRGB32;
+   oldBytes : TBytes;
+begin
+   args.ExprBase[0].EvalAsInterface(args.Exec, IUnknown(pixmap));
+   newWidth := args.AsInteger[1];
+   newHeight := args.AsInteger[2];
+   CheckWidthHeight(newWidth, newHeight);
+   curWidth := pixmap.GetMeta(0);
+   if curWidth > 0 then
+      curHeight := pixmap.GetCount div (curWidth*4)
+   else if pixmap.GetCount > 0 then
+      raise EdwsPixmap.Create('Current Width unknown')
+   else begin
+      // current is empty
+      pixmap.SetCount(newWidth*newHeight*4);
+      (pixmap.GetSelf as TdwsByteBuffer).Meta[0] := newWidth;
+      Exit;
+   end;
+
+   if (curWidth = newWidth) and (curHeight = newHeight) then Exit;
+
+   SetLength(oldBytes, pixmap.GetCount);
+   System.Move(pixmap.DataPtr^, oldBytes[0], Length(oldBytes));
+
+   pixmap.SetCount(newWidth*newHeight*4);
+   pixmap.SetMeta(0, newWidth);
+
+   newP := PRGB32(pixmap.DataPtr);
+   for newY := 0 to newHeight-1 do begin
+      oldP := PRGB32(@oldBytes[(newY*curHeight div newHeight)*curWidth*4]);
+      for newX := 0 to newWidth-1 do begin
+         oldX := newX * curWidth div newWidth;
+         newP^ := PRGB32(IntPtr(oldP) + oldX * 4)^;
+         Inc(newP);
+      end;
+   end;
+end;
+
+// ------------------
 // ------------------ TPixmapHistogramFunc ------------------
 // ------------------
 
@@ -675,13 +747,13 @@ initialization
    RegisterInternalFunction(TJPEGDataToPixmapFunc, 'JPEGDataToPixmap',
          ['jpegData', SYS_STRING, 'downscale', SYS_INTEGER, '@width', SYS_INTEGER, '@height', SYS_INTEGER], SYS_PIXMAP, []);
    RegisterInternalStringFunction(TPixmapToJPEGDataFunc, 'PixmapToJPEGData',
-         ['pixmap', SYS_PIXMAP, 'width', SYS_INTEGER, 'height', SYS_INTEGER,
-          'quality=90', SYS_INTEGER, 'options=', SYS_TJPEGOptions], []);
+         ['pixmap', SYS_PIXMAP, 'width=-1', SYS_INTEGER, 'height=-1', SYS_INTEGER,
+          'quality=90', SYS_INTEGER, 'options=', SYS_TJPEGOptions], [], 'ToJPEGData');
 
    RegisterInternalFunction(TPNGDataToPixmapFunc, 'PNGDataToPixmap',
          ['pngData', SYS_STRING, 'withAlpha=False', SYS_BOOLEAN, '@width', SYS_INTEGER, '@height', SYS_INTEGER], SYS_PIXMAP, []);
    RegisterInternalStringFunction(TPixmapToPNGDataFunc, 'PixmapToPNGData',
-         ['pixmap', SYS_PIXMAP, 'width', SYS_INTEGER, 'height', SYS_INTEGER, 'withAlpha=False', SYS_BOOLEAN], []);
+         ['pixmap', SYS_PIXMAP, 'width=-1', SYS_INTEGER, 'height=-1', SYS_INTEGER, 'withAlpha=False', SYS_BOOLEAN], [], 'ToPNGData');
 
    RegisterInternalProcedure(TByteBufferAssignHexStringFunc, '', ['pixmap', SYS_PIXMAP, 'hexData', SYS_STRING], 'AssignHexString');
    RegisterInternalStringFunction(TByteBufferToHexStringFunc, '', ['pixmap', SYS_PIXMAP], [], 'ToHexString');
@@ -690,6 +762,7 @@ initialization
    RegisterInternalIntFunction(TPixmapGetPixelFunc, '', ['pixmap', SYS_PIXMAP, 'x', SYS_INTEGER, 'y', SYS_INTEGER], [], 'GetPixel');
    RegisterInternalProcedure(TPixmapSetDataFunc, '', ['pixmap', SYS_PIXMAP, 'offset', SYS_INTEGER, 'color', SYS_INTEGER], 'SetData');
    RegisterInternalIntFunction(TPixmapGetDataFunc, '', ['pixmap', SYS_PIXMAP, 'offset', SYS_INTEGER ], [], 'GetData');
+   RegisterInternalProcedure(TPixmapResizeFunc, '', ['pixmap', SYS_PIXMAP, 'newWidth', SYS_INTEGER, 'newHeight', SYS_INTEGER], 'Resize');
 
 //   RegisterInternalFunction(TPixmapHistogramFunc, 'PixmapHistogram',
 //         ['pixmap', SYS_PIXMAP, 'offset', SYS_INTEGER, 'width', SYS_INTEGER, 'stride', SYS_INTEGER, 'count', SYS_INTEGER ], SYS_TRGBAHISTOGRAM, []);
