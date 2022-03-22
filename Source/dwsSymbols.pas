@@ -6423,8 +6423,13 @@ end;
 //
 function TParamSymbolWithDefaultValue.SameParam(other : TParamSymbol) : Boolean;
 begin
-   Result:=    inherited SameParam(other)
-           and FDefaultValue.SameData((other as TParamSymbolWithDefaultValue).FDefaultValue);
+   Result := inherited SameParam(other);
+   if Result then begin
+      Result := FDefaultValue.SameData((other as TParamSymbolWithDefaultValue).FDefaultValue);
+      if not Result then begin
+         Result := Typ.UnAliasedTypeIs(TDynamicArraySymbol);
+      end;
+   end;
 end;
 
 function TParamSymbolWithDefaultValue.GetDescription : String;

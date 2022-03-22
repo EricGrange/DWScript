@@ -12872,10 +12872,10 @@ begin
          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_MismatchingParameterDefaultValues, [x, paramA.Name])
       else if     (paramA.ClassType=TParamSymbolWithDefaultValue)
               and (paramB.ClassType=TParamSymbolWithDefaultValue)
-              and not TParamSymbolWithDefaultValue(paramA).DefaultValue.SameData(TParamSymbolWithDefaultValue(paramB).DefaultValue)
-              then
+              and not TParamSymbolWithDefaultValue(paramA).SameParam(TParamSymbolWithDefaultValue(paramB))
+              then begin
          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_MismatchingParameterDefaultValues, [x, paramA.Name])
-      else r:=True;
+      end else r:=True;
       Result:=Result and r;
    end;
 end;
