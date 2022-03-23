@@ -30,7 +30,7 @@ unit dwsGraphicLibrary;
 interface
 
 uses
-   Classes, SysUtils, Vcl.Graphics,
+   Classes, SysUtils, Vcl.Graphics, System.Types,
    {$ifdef USE_LIB_JPEG}
    dwsTurboJPEG,
    {$else}
@@ -602,7 +602,7 @@ begin
       raise EdwsPixmap.CreateFmt('SetPixel x out of bounds (%d)', [ x ]);
    if Cardinal(y*w) > Cardinal(pixmap.GetCount) then
       raise EdwsPixmap.CreateFmt('SetPixel y out of bounds (%d)', [ y ]);
-   pixmap.SetInt32A((x + y*w) * 4, Integer(args.AsInteger[3]));
+   pixmap.SetDWordA((x + y*w) * 4, DWORD(args.AsInteger[3]));
 end;
 
 // ------------------
@@ -624,7 +624,7 @@ begin
       raise EdwsPixmap.CreateFmt('SetPixel x out of bounds (%d)', [ x ]);
    if Cardinal(y*w) > Cardinal(pixmap.GetCount) then
       raise EdwsPixmap.CreateFmt('SetPixel y out of bounds (%d)', [ y ]);
-   Result := pixmap.GetInt32A((x + y*w) * 4);
+   Result := pixmap.GetDWordA((x + y*w) * 4);
 end;
 
 // ------------------
@@ -642,7 +642,7 @@ begin
    offset := args.AsInteger[1] shl 2;
    if NativeUInt(offset) >= NativeUInt(pixmap.GetCount) then
       raise EdwsPixmap.CreateFmt('SetData out of bounds (%d)', [ offset shr 2 ]);
-   pixmap.SetInt32A(offset, Integer(args.AsInteger[2]));
+   pixmap.SetDWordA(offset, DWORD(args.AsInteger[2]));
 end;
 
 // ------------------
@@ -660,7 +660,7 @@ begin
    offset := args.AsInteger[1] shl 2;
    if NativeUInt(offset) >= NativeUInt(pixmap.GetCount) then
       raise EdwsPixmap.CreateFmt('SetData out of bounds (%d)', [ offset shr 2 ]);
-   Result := pixmap.GetInt32A(offset);
+   Result := pixmap.GetDWordA(offset);
 end;
 
 // ------------------
@@ -670,6 +670,30 @@ end;
 // DoEvalProc
 //
 procedure TPixmapResizeFunc.DoEvalProc(const args : TExprBaseListExec);
+
+   procedure ResizeRowToSmaller(pSrc, pDest : PRGB32; oldWidth, newWidth : Integer);
+   begin
+      var f : NativeInt := (oldWidth shl 16) div newWidth;
+      var fx : NativeInt := 0;
+      for var x : NativeInt := 0 to newWidth-1 do begin
+         pDest^ := PRGB32(@PByte(pSrc)[(fx shr 16)*4])^;
+         Inc(fx, f);
+         Inc(pDest);
+      end;
+   end;
+
+   procedure ResizeRowToLarger(pSrc, pDest : PRGB32; oldWidth, newWidth : Integer);
+   begin
+      var f : NativeInt := (oldWidth shl 16) div newWidth;
+      var fx : NativeInt := (newWidth-1)*f;
+      Inc(pDest, newWidth-1);
+      for var x:= 0 to newWidth-1 do begin
+         pDest^ := PRGB32(@PByte(pSrc)[(fx shr 16)*4])^;
+         Dec(fx, f);
+         Dec(pDest);
+      end;
+   end;
+
 var
    pixmap : IdwsByteBuffer;
    newWidth, newHeight : Integer;
@@ -694,22 +718,49 @@ begin
       Exit;
    end;
 
-   if (curWidth = newWidth) and (curHeight = newHeight) then Exit;
+   if    ((newWidth >= curWidth) and (newHeight >= curHeight))
+      or ((newWidth < curWidth) and (newHeight < curHeight)) then begin
 
-   SetLength(oldBytes, pixmap.GetCount);
-   System.Move(pixmap.DataPtr^, oldBytes[0], Length(oldBytes));
+      if (curWidth = newWidth) and (curHeight = newHeight) then Exit;
 
-   pixmap.SetCount(newWidth*newHeight*4);
-   pixmap.SetMeta(0, newWidth);
+      pixmap.SetCount(newWidth*newHeight*4);
+      pixmap.SetMeta(0, newWidth);
+      newP := PRGB32(pixmap.DataPtr);
 
-   newP := PRGB32(pixmap.DataPtr);
-   for newY := 0 to newHeight-1 do begin
-      oldP := PRGB32(@oldBytes[(newY*curHeight div newHeight)*curWidth*4]);
-      for newX := 0 to newWidth-1 do begin
-         oldX := newX * curWidth div newWidth;
-         newP^ := PRGB32(IntPtr(oldP) + oldX * 4)^;
-         Inc(newP);
+      if newWidth >= curWidth then begin
+
+         for newY := newHeight-1 downto 0 do begin
+            oldP := PRGB32(IntPtr(newP) + (newY*curHeight div newHeight)*curWidth*4);
+            ResizeRowToLarger(oldP, PRGB32(IntPtr(newP) + newY*newWidth*4), curWidth, newWidth);
+         end;
+
+      end else begin
+
+         for newY := 0 to newHeight-1 do begin
+            oldP := PRGB32(IntPtr(newP) + (newY*curHeight div newHeight)*curWidth*4);
+            ResizeRowToSmaller(oldP, PRGB32(IntPtr(newP) + newY*newWidth*4), curWidth, newWidth);
+         end;
+
       end;
+
+   end else begin
+
+      SetLength(oldBytes, pixmap.GetCount);
+      System.Move(pixmap.DataPtr^, oldBytes[0], Length(oldBytes));
+
+      pixmap.SetCount(newWidth*newHeight*4);
+      pixmap.SetMeta(0, newWidth);
+
+      newP := PRGB32(pixmap.DataPtr);
+      for newY := 0 to newHeight-1 do begin
+         oldP := PRGB32(@oldBytes[(newY*curHeight div newHeight)*curWidth*4]);
+         for newX := 0 to newWidth-1 do begin
+            oldX := newX * curWidth div newWidth;
+            newP^ := PRGB32(IntPtr(oldP) + oldX * 4)^;
+            Inc(newP);
+         end;
+      end;
+
    end;
 end;
 
