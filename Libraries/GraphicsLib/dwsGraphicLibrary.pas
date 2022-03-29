@@ -729,9 +729,17 @@ begin
 
       if newWidth >= curWidth then begin
 
+         var prevOldY := newHeight;
          for newY := newHeight-1 downto 0 do begin
-            oldP := PRGB32(IntPtr(newP) + (newY*curHeight div newHeight)*curWidth*4);
-            ResizeRowToLarger(oldP, PRGB32(IntPtr(newP) + newY*newWidth*4), curWidth, newWidth);
+            var oldY := newY*curHeight div newHeight;
+            var destP := PRGB32(IntPtr(newP) + newY*newWidth*4);
+            if oldY = prevOldY then begin
+               System.Move(PRGB32(IntPtr(destP) + newWidth*4)^, destP^, newWidth*4);
+            end else begin
+               oldP := PRGB32(IntPtr(newP) + oldY*curWidth*4);
+               ResizeRowToLarger(oldP, destP, curWidth, newWidth);
+            end;
+            prevOldY := oldY;
          end;
 
       end else begin
