@@ -34,6 +34,7 @@ const
    cWinHttpSendTimeout : TGUID = '{1DE21769-65B5-4039-BB66-62D405FB00B7}';
    cWinHttpReceiveTimeout : TGUID = '{0D14B470-4F8A-48AE-BAD2-426E15FE4E03}';
    cWinHttpCustomHeaders : TGUID = '{FD05B54E-FBF2-498A-BD1F-0B1F18F27A1E}';
+   cWinHttpDisabledRedirects : TGUID = '{D004A7CD-D009-4E5A-B297-B2A0038281B9}';
 
    cWinHttpSynchronousRequest : TGUID = '{7D0B442B-0D52-4D05-95A1-3964FAB588CA}';
 
@@ -166,17 +167,23 @@ begin
          conn.SetCredentials(customStates[cWinHttpCredentials]);
          conn.SetCustomHeaders(customStates[cWinHttpCustomHeaders]);
          keepAlive := customStates.BooleanStateDef(cWinHttpKeepAlive, cWinHttpDefaultKeepAlive);
+         conn.FWinHttp.DisableRedirects := customStates.BooleanStateDef(cWinHttpDisabledRedirects, False);
       end else begin
          conn.ConnectServer(uri, '', HTTP_DEFAULT_CONNECTTIMEOUT, HTTP_DEFAULT_SENDTIMEOUT, HTTP_DEFAULT_RECEIVETIMEOUT);
          conn.SetIgnoreSSLErrors(unassignedVariant);
          conn.SetCredentials(unassignedVariant);
          conn.SetCustomHeaders(unassignedVariant);
          keepAlive := cWinHttpDefaultKeepAlive;
+         conn.FWinHttp.DisableRedirects := True;
       end;
       conn.SetOnProgress(onProgress);
       conn.FWinHttp.CertificateInfo := certificateInfo;
 
-      Result := conn.Request(uri, method, Ord(keepAlive), '', requestData, requestContentType, replyHeaders, replyData);
+      Result := conn.Request(
+         uri, method, 30000*Ord(keepAlive), '',
+         requestData, requestContentType,
+         replyHeaders, replyData
+      );
 
    except
       on EWinHTTP do begin

@@ -858,6 +858,18 @@ object dwsWebLib: TdwsWebLib
             OnEval = dwsWebClassesHttpQueryMethodsSetSynchronousRequestEval
             Visibility = cvPrivate
             Kind = mkClassProcedure
+          end
+          item
+            Name = 'SetDisableRedirects'
+            Parameters = <
+              item
+                Name = 'val'
+                DataType = 'Boolean'
+              end>
+            Attributes = [maClassMethod, maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsSetDisableRedirectsEval
+            Visibility = cvPrivate
+            Kind = mkClassProcedure
           end>
         Properties = <
           item
@@ -881,6 +893,11 @@ object dwsWebLib: TdwsWebLib
             Name = 'SynchronousRequests'
             DataType = 'Boolean'
             WriteAccess = 'SetSynchronousRequests'
+          end
+          item
+            Name = 'DisableRedirects'
+            DataType = 'Boolean'
+            WriteAccess = 'SetDisableRedirects'
           end>
       end
       item

@@ -43,10 +43,12 @@ type
       protected
          AuthorizationHeader : String;
          CustomHeaders : TdwsCustomHeaders;
+         procedure InternalCreateRequest(const aMethod,aURL: SockString); override;
          procedure InternalConnect(ConnectionTimeOut,SendTimeout,ReceiveTimeout: DWORD); override;
          procedure InternalSendRequest(const aMethod,aData: SockString); override;
       public
          CertificateInfo : TdwsHttpCertificateInfo;
+         DisableRedirects : Boolean;
          function GetCertificateInfo(var certInfo : WINHTTP_CERTIFICATE_INFO) : Boolean;
    end;
 
@@ -100,6 +102,32 @@ function WinHttpAddRequestHeaders(hRequest: HINTERNET; pwszHeaders: PWideChar; d
 // ------------------
 // ------------------ TdwsWinHttp ------------------
 // ------------------
+
+// InternalCreateRequest
+//
+procedure TdwsWinHTTP.InternalCreateRequest(const aMethod,aURL: SockString);
+const ALL_ACCEPT: array[0..1] of PWideChar = ('*/*',nil);
+      ACCEPT_TYPES: array[boolean] of PLPWSTR = (@ALL_ACCEPT,nil);
+var
+   flags: DWORD;
+begin
+   flags := WINHTTP_FLAG_REFRESH; // options for a true RESTful request
+   if fHttps then
+      flags := flags or WINHTTP_FLAG_SECURE;
+   fRequest := WinHttpOpenRequest(
+      fConnection, Pointer(UnicodeString(aMethod)),
+      Pointer(UnicodeString(aURL)), nil, nil,
+      ACCEPT_TYPES[fNoAllAccept], flags
+   );
+   if fRequest = nil then
+      RaiseLastOSError;
+   if (fKeepAlive = 0) or DisableRedirects then begin
+      flags := WINHTTP_DISABLE_KEEP_ALIVE * Ord(fKeepAlive = 0)
+             + WINHTTP_DISABLE_REDIRECTS * Ord(DisableRedirects);
+      if not WinHttpSetOption(fRequest, WINHTTP_OPTION_DISABLE_FEATURE, @flags, sizeOf(flags)) then
+         RaiseLastOSError;
+   end;
+end;
 
 // InternalConnect
 //
@@ -193,7 +221,6 @@ begin
       FSendTimeout := sendTimeout;
       FReceiveTimeout := receiveTimeout;
    end;
-
 end;
 
 // SetCredentials

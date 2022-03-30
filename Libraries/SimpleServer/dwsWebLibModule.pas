@@ -204,6 +204,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesHttpQueryMethodsSetSynchronousRequestEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesHttpQueryMethodsSetDisableRedirectsEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FServer :  IWebServerInfo;
@@ -456,6 +458,12 @@ procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetSynchronousRequestEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.Execution.CustomStates[cWinHttpSynchronousRequest]:=Info.ParamAsBoolean[0];
+end;
+
+procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetDisableRedirectsEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.Execution.CustomStates[cWinHttpDisabledRedirects]:=Info.ParamAsBoolean[0];
 end;
 
 procedure TdwsWebLib.dwsWebClassesHttpQueryMethodsSetReceiveTimeoutMSecEval(
