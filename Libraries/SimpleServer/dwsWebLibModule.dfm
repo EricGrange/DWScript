@@ -846,6 +846,18 @@ object dwsWebLib: TdwsWebLib
             ResultType = 'Boolean'
             OnEval = dwsWebClassesHttpQueryMethodsGetKeepAliveEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'SetSynchronousRequests'
+            Parameters = <
+              item
+                Name = 'val'
+                DataType = 'Boolean'
+              end>
+            Attributes = [maClassMethod, maStatic]
+            OnEval = dwsWebClassesHttpQueryMethodsSetSynchronousRequestEval
+            Visibility = cvPrivate
+            Kind = mkClassProcedure
           end>
         Properties = <
           item
@@ -864,6 +876,11 @@ object dwsWebLib: TdwsWebLib
             DataType = 'Boolean'
             ReadAccess = 'GetKeepAlive'
             WriteAccess = 'SetKeepAlive'
+          end
+          item
+            Name = 'SynchronousRequests'
+            DataType = 'Boolean'
+            WriteAccess = 'SetSynchronousRequests'
           end>
       end
       item
