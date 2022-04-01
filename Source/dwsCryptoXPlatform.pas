@@ -33,6 +33,7 @@ interface
 procedure CryptographicRandom(buf : Pointer; nb : Integer); overload;
 function CryptographicRandom(nb : Integer) : AnsiString; overload;
 function CryptographicToken(bitStrength : Integer = 0) : String;
+function CryptographicTokenA(bitStrength : Integer = 0) : RawByteString;
 function ProcessUniqueRandom : String;
 
 // only encodes 6 bits of each bytes using URI-safe base 64 alphabet
@@ -174,6 +175,13 @@ begin
       Inc(n);
    rand := CryptographicRandom(n);
    Result := DigestToSimplifiedBase64(Pointer(rand), n);
+end;
+
+// CryptographicTokenA
+//
+function CryptographicTokenA(bitStrength : Integer = 0) : RawByteString;
+begin
+   Result := RawByteString(CryptographicToken(bitStrength));
 end;
 
 // ------------------------------------------------------------------
